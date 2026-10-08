@@ -2,7 +2,7 @@ import { smoothRoadGradesByDistance, blendRoadNetworkGrades } from './maps/roadG
 import { fadeDistantCoastShadows } from './coastShadow.ts';
 import { bindAutumnHorizonGround, refreshHorizonGroundTone } from './horizonAutumnGround.ts';
 import { continueHorizonFold } from './horizonSeam.ts';
-import { continuedGroundAt, ringMeshSurfaceSampler } from './horizonSurface.ts';
+import { continuedGroundAt, ringMeshSurfaceSampler, ringWaterlineMetres } from './horizonSurface.ts';
 import { HORIZON_STAND_HANDOVER_M } from './horizonRelief.ts';
 import { planAssaultTrenchLines, planFieldTrenchLines, assaultTeamCenters, assaultTrenchCarveDepth, FIELD_TRENCH, type AssaultTrenchPlan } from '../sim/assaultLines.ts';
 import type { NavigationWaterPolicy } from '../sim/botRoutePlanner.ts';
@@ -59,7 +59,7 @@ import { createWaterRippleField } from './waterRipples.ts';
 import { createOceanField, oceanFieldSupported, oceanGridSize, type OceanField } from './oceanFft.ts';
 import { oceanSpectrumSteps, resolveOceanState, type OceanConfig, type OceanSpectrumTexels } from './oceanSpectrum.ts';
 import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
-import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
+import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaOpeningWeight, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
@@ -7645,12 +7645,28 @@ function* terrainBuildSteps(
   // The continued coast uses the same strand distances as the playable shore.
   // Leaving the ring's default attribute at zero made the sand/wrack band stop
   // on an exact square even when the bank geometry was continuous.
-  if (shoreAt && horizonStep.value.userData.horizonRing) {
+  // (the borders lane, 2026-10-08: and the ring's own coast — a headland or a bay it draws in a sea opening, where the
+  // contours above know of no shore — measures its waterline from its own vertices, horizonSurface.ts ringWaterlineMetres)
+  const ringUv = horizonStep.value.userData.horizonRing ? horizonStep.value.geometry.getAttribute('uv') : null;
+  const ringCoast = seaOpenings.length && ringUv ? ringWaterlineMetres(horizonStep.value.geometry.getAttribute('position'), ringUv,
+    HORIZON_SEGMENTS, (() => {
+      const depthM = waterContactProfile(cfg?.id || '').depthM;
+      return (x: number, z: number): number => {
+        const angle = Math.atan2(z, x);
+        let level = seaOpenings[0].level, weight = -1;
+        for (const opening of seaOpenings) {
+          const w = seaOpeningWeight(angle, opening);
+          if (w > weight) { weight = w; level = opening.level; }
+        }
+        return level + depthM;
+      };
+    })()) : null;
+  if ((shoreAt || ringCoast) && horizonStep.value.userData.horizonRing) {
     const geometry = horizonStep.value.geometry;
     const position = geometry.getAttribute('position');
     const shore = new Uint8Array(position.count);
     for (let i = 0; i < position.count; i++) {
-      const metres = shoreAt(position.getX(i), position.getZ(i));
+      const metres = Math.min(shoreAt ? shoreAt(position.getX(i), position.getZ(i)) : 32, ringCoast ? ringCoast[i] : 32);
       shore[i] = metres >= 32 ? 0 : 255 - Math.round(Math.max(0, metres) * (255 / 32));
     }
     geometry.setAttribute('shore', new THREE.BufferAttribute(shore, 1, true));

@@ -32,7 +32,9 @@ edge, and the tall grass on over the ring's near band for `TALL_GRASS_OUTSIDE_M`
 `horizonSurface.ts ringMeshSurfaceSampler` on the height field as `_ringSurfaceAt`, and the border's water, woods,
 hedges, crops and exits standing in for the square's clamped masks); every terrain chunk vertex carries a `fold` byte (the relief's curvature) and, on the
 sea and lake maps, a `shore` byte (metres landward of the waterline from the shoreline contours, inverted so a geometry
-without it reads as far) that the material's strand runs up (round 73b); `wrecks.ts` owns typed,
+without it reads as far) that the material's strand runs up (round 73b) — on the ring too, where its own headlands and
+bays in a sea opening measure their waterline from its vertices (`horizonSurface.ts ringWaterlineMetres`, the borders
+lane 2026-10-08: Nordhavn's headland had no wet band); `wrecks.ts` owns typed,
 deterministic static tank-wreck and zero-extra-draw-call debris baking.
 `maps/regional/` holds the regional architecture kits (2026-10-03): a map's `props.architecture` names one, and after
 each planned building's placement settles the kit replaces its geometry with the region's version inside the same
