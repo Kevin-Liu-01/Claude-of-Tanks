@@ -217,6 +217,9 @@ export interface TerrainCraterEvent {
   /** The terrain under the stamp moved (false: a mark on hard ground, water, a full log, or a sub-lattice crater). */
   deforms: boolean;
   settled?: boolean;
+  /** A settled crater's age in seconds, when its source knows it (crater round 3: the Studio's settled fields set it per
+   * crater so the presentation weathers them by age; a late joiner's restore leaves it out). */
+  ageS?: number;
 }
 
 /**
