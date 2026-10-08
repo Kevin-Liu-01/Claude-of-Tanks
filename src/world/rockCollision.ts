@@ -185,6 +185,44 @@ export function simplifyConvex(points: readonly number[], limit = ROCK_HULL_POIN
   }
   const out: number[] = [];
   for (let i = 0; i < xs.length; i++) out.push(Math.round(xs[i] * 100) / 100, Math.round(zs[i] * 100) / 100);
+  return convexRounded(out);
+}
+
+/**
+ * A rounded outline made convex again (the hitbox lane, 2026-10-08): rounding a hull's corners to the centimetre can
+ * turn a short edge against the outline's winding (a level hedgehog beam's top and bottom corners lie millimetres apart),
+ * and the shell clip and the point test read every edge of a convex part as a half-plane, so one reflex corner held
+ * nothing (that beam's collider held 0 m2 and every shell through it passed; 82 formation and 30 small-rock shell slabs
+ * of the first rock shards lost more than a tenth of their outline). Repeated corners and the corners that turn
+ * against the winding, or not at all, are dropped; what is left is convex, its corners a subset of the rounded ones.
+ */
+export function convexRounded(points: readonly number[]): number[] {
+  const xs: number[] = [], zs: number[] = [];
+  for (let i = 0; i < points.length; i += 2) {
+    const n = xs.length;
+    if (n && xs[n - 1] === points[i] && zs[n - 1] === points[i + 1]) continue;
+    xs.push(points[i]); zs.push(points[i + 1]);
+  }
+  while (xs.length > 1 && xs[0] === xs[xs.length - 1] && zs[0] === zs[zs.length - 1]) { xs.pop(); zs.pop(); }
+  let area2 = 0;
+  for (let i = 0; i < xs.length; i++) {
+    const j = (i + 1) % xs.length;
+    area2 += xs[i] * zs[j] - xs[j] * zs[i];
+  }
+  // (an outline rounding collapsed — fewer than three corners, or no area — is left as rounded: a part of two corners is
+  // no part the shards can carry)
+  if (xs.length < 3 || !(Math.abs(area2) > 1e-9)) return points.slice();
+  const winding = area2 >= 0 ? 1 : -1;
+  for (let dropped = true; dropped && xs.length > 3;) {
+    dropped = false;
+    for (let i = 0; i < xs.length && xs.length > 3; i++) {
+      const n = xs.length, a = (i + n - 1) % n, b = (i + 1) % n;
+      const turn = (xs[i] - xs[a]) * (zs[b] - zs[i]) - (zs[i] - zs[a]) * (xs[b] - xs[i]);
+      if (turn * winding <= 1e-12) { xs.splice(i, 1); zs.splice(i, 1); dropped = true; i--; }
+    }
+  }
+  const out: number[] = [];
+  for (let i = 0; i < xs.length; i++) out.push(xs[i], zs[i]);
   return out;
 }
 
@@ -581,4 +619,29 @@ export function applyFormationCollision(
   setCompoundShape(collider, profile.bands.map((band) => rangedPart(band.points, band.y0, band.y1)));
   collider.min[1] = profile.low;
   collider.max[1] = profile.top;
+}
+
+// ---------------------------------------------------------------------------------------------- pooled props
+
+/** A pooled prop's shell slabs in its own frame (its geometry with the ground at y = 0): outlines and heights local. */
+export function localShellSlabs(geometry: BufferGeometry): RockBand[] | null {
+  return formationCollisionProfile([geometry], () => 0)?.bands ?? null;
+}
+
+/** Shape a pooled instance's shell record from its kind's local slabs: turned by yaw, scaled, set on its seat. */
+export function placeLocalShellSlabs(
+  collider: CollisionRecord, slabs: readonly RockBand[], x: number, y: number, z: number, yaw: number, scale: number,
+): void {
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  const parts = slabs.map((band) => {
+    const points: number[] = [];
+    for (let i = 0; i < band.points.length; i += 2) {
+      const lx = band.points[i] * scale, lz = band.points[i + 1] * scale;
+      points.push(Math.round((x + lx * c + lz * s) * 100) / 100, Math.round((z - lx * s + lz * c) * 100) / 100);
+    }
+    return rangedPart(convexRounded(points), Math.round((y + band.y0 * scale) * 100) / 100, Math.round((y + band.y1 * scale) * 100) / 100);
+  });
+  setCompoundShape(collider, parts);
+  collider.min[1] = parts[0].y0!;
+  collider.max[1] = parts[parts.length - 1].y1!;
 }

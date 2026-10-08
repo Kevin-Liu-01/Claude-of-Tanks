@@ -1,4 +1,5 @@
-import { placeWreckCollision } from './wreckCollision.ts';
+import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.ts';
+import { boxCorners, convexSlabs, slabParts } from './slabCollision.ts';
 // src/world/props.ts — rocks, ~10-building village, walls and cover props.
 // Contract: docs/ARCHITECTURE.md §3.2. All geometry composed BufferGeometry,
 // all textures canvas-generated, everything merged into few draw calls.
@@ -120,8 +121,14 @@ import {
   type SimpleCollisionShape,
 } from './collision.ts';
 import {
-  applyRockCollisionProfile, rockCollisionProfile, rockFormOf, rockStaysCrushable, type RockCollisionProfile, type RockForm,
+  applyRockCollisionProfile, localShellSlabs, placeLocalShellSlabs, rockCollisionProfile, rockFormOf, rockStaysCrushable,
+  type RockCollisionProfile, type RockForm,
 } from './rockCollision.ts'; // the hitbox lane, 2026-10-07
+/** A hedgehog beam's slabs are at most this tall (m; the hitbox lane, 2026-10-07). */
+const HEDGEHOG_SLAB_M = 0.35;
+const _hedgehogBeam = new THREE.Matrix4(), _hedgehogTilt = new THREE.Matrix4();
+/** Pooled kinds whose shell records are the slabs of their own geometry (the hitbox lane, 2026-10-07). */
+export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall']);
 import {
   appendStructureCollisionBand, applyStructureCollisionBand,
   deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
@@ -3671,21 +3678,24 @@ ${snowCap ? `
   // (props-models.json) — they cannot live in inhabitKit (no bakedGeometry
   // there). Same meta shape; the shared broken state is the burst-bag heap.
   // keep 0.97: driving a sandbag line barely registers on the speedo.
+  // (the hitbox lane, 2026-10-07: and a stack stops shells and sight lines — collision.ts names sandbags dense cover, but
+  // the stacks published no shell record, so 70-94 % of the rays through a stack passed it; their shell records are the
+  // stack's own slabs, refitDestructibleColliders)
   // the scenery lane (2026-10-03): the stacks are laid bag by bag in the sourced models' envelopes (maps/sceneryKit.ts
   // buildSandbagStack) on the hessian (wave 52); a breached stack still spends the old remnant's draws
   const LOCAL_TYPES: Record<string, PropsDestructibleMeta> = {
     sandbagbig: {
-      cls: 'break', mat: 'burlap', contact: 'ob', r: 2.0, h: 1.35, keep: 0.97,
+      cls: 'break', mat: 'burlap', contact: 'ob', collider: true, r: 2.0, h: 1.35, keep: 0.97,
       build: () => buildSandbagStack('sandbagbig'),
       broken: (rng) => buildSandbagHeap('sandbagbig', () => bSandbagBroken(rng).dispose()),
     },
     sandbagsmall: {
-      cls: 'break', mat: 'burlap', contact: 'ob', r: 1.7, h: 1.05, keep: 0.975,
+      cls: 'break', mat: 'burlap', contact: 'ob', collider: true, r: 1.7, h: 1.05, keep: 0.975,
       build: () => buildSandbagStack('sandbagsmall'),
       broken: (rng) => buildSandbagHeap('sandbagsmall', () => bSandbagBroken(rng).dispose()),
     },
     sandbagwall: {
-      cls: 'break', mat: 'burlap', contact: 'ob', r: 1.5, h: 1.0, keep: 0.975,
+      cls: 'break', mat: 'burlap', contact: 'ob', collider: true, r: 1.5, h: 1.0, keep: 0.975,
       build: () => buildSandbagStack('sandbagwall'),
       broken: (rng) => buildSandbagHeap('sandbagwall', () => bSandbagBroken(rng).dispose()),
     },
@@ -7182,8 +7192,16 @@ ${snowCap ? `
           min: [hx, beamSpec.minY, hz], max: [hx, beamSpec.maxY, hz],
           kind: 'hedgehog', hedgehogId,
         };
-        setObbShape(record, hx, hz, beamSpec.halfWidth + 0.025,
-          beamSpec.halfLength + 0.025, beamSpec.yaw);
+        // (the hitbox lane, 2026-10-07: the beam's own slabs, which lean with it; its whole projection extruded from foot
+        // to tip stopped a quarter of the sight lines that met it 10+ cm clear of the steel)
+        _hedgehogBeam.makeRotationY(beamSpec.yaw).multiply(_hedgehogTilt.makeRotationX(beamSpec.tilt))
+          .setPosition(hx, y + 0.62 * scale, hz);
+        const slabs = convexSlabs(boxCorners(0.08 * scale + 0.025, 0.08 * scale, 1.05 * scale + 0.025, _hedgehogBeam.elements),
+          HEDGEHOG_SLAB_M, 8);
+        if (slabs.length) {
+          setCompoundShape(record, slabParts(slabs));
+          record.min[1] = slabs[0].y0; record.max[1] = slabs[slabs.length - 1].y1;
+        } else setObbShape(record, hx, hz, beamSpec.halfWidth + 0.025, beamSpec.halfLength + 0.025, beamSpec.yaw);
         const collider = cloneCollisionRecord(record);
         obstacles.push(record); colliders.push(collider);
         clutterObs.push(record); clutterCols.push(collider);
@@ -7568,7 +7586,8 @@ ${snowCap ? `
         const hx = (rec.max[0] - rec.min[0]) * 0.5;
         const hz = (rec.max[2] - rec.min[2]) * 0.5;
         obstacles.push(rec);
-        colliders.push(cloneCollisionRecord(rec));
+        // (the hitbox lane, 2026-10-07: shells and sight lines meet the solids in slabs that lean with them)
+        colliders.push(placeWreckShellCollision(baked.shellSolids ?? baked.solids, placement));
         wreckScorch.push([x, z]);
         tankWreckSpots.push({
           specId, x, y, z, yaw, hx, hz, h: baked.h, debrisTris,
@@ -9168,6 +9187,7 @@ ${snowCap ? `
       ? deriveRuntimeStructureCollisionWithSolids({ baked: [geometry] }) : null;
     const contactBand = source?.profile.contact
       ?? deriveRuntimeStructureContactBand({ baked: [geometry] });
+    const shellSlabs = SLAB_SHELL_KINDS.has(kind) ? localShellSlabs(geometry) : null;
     for (const record of pool.records) {
       if (!record.ob) continue;
       const scaledExtent = (part: SimpleCollisionShape) => (part.y0 !== undefined && part.y1 !== undefined
@@ -9193,6 +9213,8 @@ ${snowCap ? `
       applyStructureCollisionBand(record.ob, scaledBand, record.x, record.z, record.yaw, record.y);
       if (record.col) {
         applyStructureCollisionBand(record.col, scaledBand, record.x, record.z, record.yaw, record.y);
+        // (the hitbox lane, 2026-10-07) a dense stack's shells and sight lines meet its own slabs, not the contact prism
+        if (shellSlabs?.length) placeLocalShellSlabs(record.col, shellSlabs, record.x, record.y, record.z, record.yaw, record.sc);
       }
     }
     if (!source) return null;

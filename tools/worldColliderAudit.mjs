@@ -522,6 +522,7 @@ function measureObject({ soup, field, ownTris, box, obstacle, collider, collider
     x: +cx.toFixed(2), z: +cz.toFixed(2), meshRiseM: meshRise,
     colliderM2: colliderCells * cell, phantomM2: phantomCells * cell, meshM2: meshCells * cell, leakM2: leakCells * cell,
     meshTopM: meshTop - groundY, colliderTopM: obstacle ? obstacle.max[1] - groundY : null,
+    shellTopM: collider ? collider.max[1] - groundY : colliders?.length ? Math.max(...colliders.map((r) => r.max[1])) - groundY : null,
   };
   if (!rays) return row;
   // shells: horizontal rays at the shell heights; the triangles cut at each height once
@@ -654,6 +655,17 @@ function auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, s
   return rows;
 }
 
+/** Whether triangle `t` lies inside the record's box grown by `margin` (m) every way. */
+function insideBox(soup, t, record, margin) {
+  const d = soup.xyz;
+  for (let c = 0; c < 9; c += 3) {
+    const x = d[t * 9 + c], y = d[t * 9 + c + 1], z = d[t * 9 + c + 2];
+    if (x < record.min[0] - margin || x > record.max[0] + margin || y < record.min[1] - margin || y > record.max[1] + margin
+      || z < record.min[2] - margin || z > record.max[2] + margin) return false;
+  }
+  return true;
+}
+
 /** The audit kind of a record: its own kind, else what it is (a solid without a kind, a crushable one). */
 function recordKind(record) {
   return record.kind ?? (record.crushable ? 'crushable' : record.shape2 ? `solid-${record.shape2.kind}` : 'solid-box');
@@ -696,6 +708,9 @@ function auditRecords({ soup, field, dressing, rays, obstacleGrid, colliderGrid,
       const accept = kind === 'tank-wreck' ? (t) => soup.family[t] === wrecks
         : (t) => soup.family[t] === buckets || soup.family[t] === poles;
       ownTris = soup.query(rec[0] - 0.3, rec[1] - 0.3, rec[2] + 0.3, rec[3] + 0.3, accept);
+      // a hedgehog beam's own steel lies inside its record's box (the merged bucket also holds the lamp post or the
+      // pole beside it, which the box's footprint reaches; 2026-10-08)
+      if (kind === 'hedgehog') ownTris = ownTris.filter((t) => insideBox(soup, t, obstacle, 0.05));
     }
     const box = regionBox([rec], 1.0);
     const nearObstacles = obstacleGrid(box[0], box[1], box[2], box[3], []);
@@ -715,7 +730,7 @@ function auditRecords({ soup, field, dressing, rays, obstacleGrid, colliderGrid,
 }
 
 /** Build the soup and audit one map's world; returns { rows } with one row per measured object. */
-export function auditMapWorld({ mapId, field, flora, dressing, families = ['rocks'], rays = true, createObstacleGrid, recordLimit = Infinity }) {
+export function auditMapWorld({ mapId, field, flora, dressing, families = ['rocks'], rays = true, createObstacleGrid, recordLimit = Infinity, recordKinds = null }) {
   const soup = new TriangleSoup(4);
   dressing.group.updateMatrixWorld(true);
   dressing.group.traverse((mesh) => {
@@ -733,7 +748,7 @@ export function auditMapWorld({ mapId, field, flora, dressing, families = ['rock
     rows.push(...auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept, claimed, createObstacleGrid }));
   }
   if (all || families.includes('records')) {
-    rows.push(...auditRecords({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept, claimed, limit: recordLimit }));
+    rows.push(...auditRecords({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept, claimed, limit: recordLimit, kinds: recordKinds }));
   }
   return { mapId, triangles: soup.count, rows };
 }

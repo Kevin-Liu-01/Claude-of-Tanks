@@ -11,6 +11,8 @@ import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
 import { rayCollisionRecord, setObbShape } from './collision.ts';
+import { SLAB_SHELL_KINDS } from './props.ts';
+import { localShellSlabs, placeLocalShellSlabs } from './rockCollision.ts';
 import { box, jitterUV } from './propGeometry.ts';
 import { prepareWorldStructureNightFixture, setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
 import { applyStructureCollisionBand, deriveRuntimeStructureCollisionProfile,
@@ -199,12 +201,14 @@ function collisionFixture(contact) {
   return new Function('deriveRuntimeStructureContactBand', 'applyStructureCollisionBand',
     'DESTRUCTIBLE_BUILDING_TYPES', 'deriveRuntimeStructureCollisionWithSolids', 'createGroundCoverSolidProfile',
     'attachGroundCoverSolidProfile', 'GROUND_COVER_PLACEMENT_BYTES',
+    // the hitbox lane (2026-10-08): a sandbag stack's shell record is its own slabs
+    'SLAB_SHELL_KINDS', 'localShellSlabs', 'placeLocalShellSlabs',
     `const groundCoverDetails = { families:0, solidCount:0, profileBytes:0, placements:0,
       placementBytes:0, unsupportedTransforms:0, buildMs:0 };
       ${refitSource}; return { refit:refitDestructibleColliders, seal:sealGroundCoverPlacements, groundCoverDetails };`)(
     contact, applyStructureCollisionBand, DESTRUCTIBLE_BUILDING_TYPES,
     deriveRuntimeStructureCollisionWithSolids, createGroundCoverSolidProfile, attachGroundCoverSolidProfile,
-    GROUND_COVER_PLACEMENT_BYTES);
+    GROUND_COVER_PLACEMENT_BYTES, SLAB_SHELL_KINDS, localShellSlabs, placeLocalShellSlabs);
 }
 const { refit, seal, groundCoverDetails } = collisionFixture(deriveRuntimeStructureContactBand);
 // Independent pre-change contact computation: the optimized contact-only path

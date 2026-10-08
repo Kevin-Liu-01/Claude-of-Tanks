@@ -417,7 +417,12 @@ export const SCENERY_DESTRUCTIBLE_TYPES = {
 // ---------------------------------------------------------------------------------------------- the pylon line
 
 /** One lattice tower's geometry (baked, world-oriented later): a 400 kV double-circuit "Donau" tower, scaled. */
-export function buildPylon(rng: Rng, height = 34, mobile = false, breadthOf = height): { geometry: THREE.BufferGeometry; legHalf: number; arms: Array<[number, number]> } {
+export function buildPylon(rng: Rng, height = 34, mobile = false, breadthOf = height): {
+  geometry: THREE.BufferGeometry; legHalf: number; arms: Array<[number, number]>;
+  /** The legs' half spread at a height over the footing and the tower's height (the hitbox lane, 2026-10-07: the legs'
+   * colliders lean with them). */
+  halfAt: (y: number) => number; height: number;
+} {
   const parts: THREE.BufferGeometry[] = [];
   // (a tower stood taller over the woods keeps the breadth of the tower it was authored as: its footing, its waist and
   // its arms, so its legs and its conductors' spread stay where they were; only its body rises)
@@ -491,7 +496,7 @@ export function buildPylon(rng: Rng, height = 34, mobile = false, breadthOf = he
   strut(waist * 0.75, H * 0.97, 0, 0, H, 0, 0.08, GALV);
   arms.push([0, H]);
   for (const [sx, sz] of corners) parts.push(paint(box(0.9, 0.5, 0.9).translate(sx * base, 0.1, sz * base), CONCRETE, 0.05, rng));
-  return { geometry: merge(parts, true, false), legHalf: base, arms };
+  return { geometry: merge(parts, true, false), legHalf: base, arms, halfAt, height: H };
 }
 
 /** A sagging conductor between two attachment points as one thin box per segment (baked, dark). */

@@ -35,7 +35,8 @@ import { createMatchPlacement, matchPlacementAnchors, type MatchPlacement, type 
 import {
   FIELD_FORMS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, rockReach, type GroundCoverHole, type SceneryConfig,
 } from './sceneryPlan.ts';
-import { cloneCollisionRecord, createObstacleGrid, setCircleShape, type CollisionRecord } from './collision.ts';
+import { createObstacleGrid, setCompoundShape, type CollisionRecord, type SimpleCollisionShape } from './collision.ts';
+import { convexSlabs, slabParts } from './slabCollision.ts';
 import { applyFormationCollision, type FormationCollisionProfile } from './rockCollision.ts';
 
 type Rng = () => number;
@@ -190,6 +191,66 @@ function admission(ctx: SceneryBuildContext, x: number, z: number, r: number, ro
 }
 
 
+
+/**
+ * A pylon leg's records (the hitbox lane, 2026-10-07/08): its concrete footing (0.9 m square, from 0.15 m under the
+ * tower's foot to 0.35 m over it), then the leg strut (0.16 m square; PYLON_LEG_HALF_M each side of its line, a
+ * centimetre past the steel for its bolts and cleats) in slabs that lean in with it, each the hull of the strut's section
+ * at its two levels, cut where the leg has drifted PYLON_LEG_DRIFT_M across (0.04 m within PYLON_FINE_TOP_M of the foot,
+ * where shells fly and the strut leans most; 0.2 m above), up to the leg's end at 0.97 of the tower. The movement record
+ * stops at PYLON_MOVE_TOP_M (no hull reaches higher); the shell and sight record runs to the leg's end. The lattice's
+ * braces and ties (0.04-0.06 m) carry none: thinner than the audit's 10 cm sight threshold, as a fence's wires.
+ */
+const PYLON_LEG_HALF_M = 0.09, PYLON_FOOTING_HALF_M = 0.45, PYLON_FOOTING_TOP_M = 0.35;
+const PYLON_FINE_TOP_M = 6, PYLON_MOVE_TOP_M = 4.5;
+const PYLON_LEG_DRIFT_M = { fine: 0.04, coarse: 0.2 } as const;
+function pylonLegRecords(
+  tower: { halfAt: (y: number) => number; height: number; legHalf: number }, sx: number, sz: number,
+  x: number, y: number, z: number, yaw: number,
+): { obstacle: CollisionRecord; collider: CollisionRecord } {
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  // a square (half a side `half`) round the leg's corner line at spread h, level ly over the seat: world x y z triples
+  const square = (h: number, half: number, ly: number, out: number[]): void => {
+    for (const [dx, dz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      const lx = sx * h + dx * half, lz = sz * h + dz * half;
+      out.push(x + lx * c + lz * s, y + ly, z - lx * s + lz * c);
+    }
+  };
+  const footing: number[] = [];
+  square(tower.legHalf, PYLON_FOOTING_HALF_M, -0.15, footing);
+  square(tower.legHalf, PYLON_FOOTING_HALF_M, PYLON_FOOTING_TOP_M, footing);
+  const shell: SimpleCollisionShape[] = slabParts(convexSlabs(footing, PYLON_FOOTING_TOP_M + 0.15 + 1e-6, 8));
+  const top = tower.height * 0.97;
+  for (let y0 = PYLON_FOOTING_TOP_M; y0 < top - 1e-3;) {
+    const h0 = tower.halfAt(y0), drift = y0 < PYLON_FINE_TOP_M ? PYLON_LEG_DRIFT_M.fine : PYLON_LEG_DRIFT_M.coarse;
+    // the highest level at which the leg has drifted no more than `drift` (its spread falls monotonically with height)
+    let lo = Math.min(top, y0 + 0.25), hi = top;
+    if (Math.abs(tower.halfAt(hi) - h0) > drift) {
+      for (let k = 0; k < 24; k++) {
+        const mid = (lo + hi) / 2;
+        if (Math.abs(tower.halfAt(mid) - h0) <= drift) lo = mid; else hi = mid;
+      }
+    } else lo = hi;
+    // the fine band ends at its own line, so the coarse slabs start there
+    const y1 = y0 < PYLON_FINE_TOP_M && lo > PYLON_FINE_TOP_M ? PYLON_FINE_TOP_M : lo;
+    const points: number[] = [];
+    square(h0, PYLON_LEG_HALF_M, y0, points);
+    square(tower.halfAt(y1), PYLON_LEG_HALF_M, y1, points);
+    shell.push(...slabParts(convexSlabs(points, y1 - y0 + 1e-6, 8)));
+    y0 = y1;
+  }
+  const record = (parts: SimpleCollisionShape[]): CollisionRecord => {
+    const r = setCompoundShape({ min: [x, y, z], max: [x, y, z] } as CollisionRecord, parts);
+    r.min[1] = Math.min(...parts.map((part) => part.y0!));
+    r.max[1] = Math.max(...parts.map((part) => part.y1!));
+    return r;
+  };
+  if (shell.length > 64) throw new Error(`pylon leg: ${shell.length} parts`);
+  return {
+    obstacle: record(shell.filter((part) => part.y0! < y + PYLON_MOVE_TOP_M)),
+    collider: record(shell),
+  };
+}
 
 /** The modes whose objective discs the match placement searches for, and how it reads each one's discs. */
 const PLACED_DISCS: ReadonlyArray<readonly [string, (placement: MatchPlacement) => Array<[number, number, number]>]> = [
@@ -468,12 +529,18 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
       const yaw = Math.atan2(nx - px, nz - pz);
       // seat on the lowest leg so no footing floats
       let y = Infinity;
-      for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      const corners: Array<[number, number]> = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+      for (const [sx, sz] of corners) {
         const lx = sx * tower.legHalf, lz = sz * tower.legHalf;
         const wx = x + lx * Math.cos(yaw) + lz * Math.sin(yaw), wz = z - lx * Math.sin(yaw) + lz * Math.cos(yaw);
         y = Math.min(y, ground.getHeightAt(wx, wz));
-        const leg = setCircleShape({ min: [wx - 0.5, y - 1, wz - 0.5], max: [wx + 0.5, y + H0 * 0.6, wz + 0.5] } as CollisionRecord, wx, wz, 0.45);
-        ctx.obstacles.push(leg); ctx.colliders.push(cloneCollisionRecord(leg)); receipt.colliders++;
+      }
+      // each leg's colliders (the hitbox lane, 2026-10-07/08): its footing and the leg strut's own slabs, leaning in with
+      // it to the leg's end, where a 0.45 m upright cylinder stood round the footing to 0.6 of the authored height (65 % of
+      // its contact area and of the sight lines that met it clear of the steel, and nothing over 20 m of a 63 m tower)
+      for (const [sx, sz] of corners) {
+        const leg = pylonLegRecords(tower, sx, sz, x, y - 0.15, z, yaw);
+        ctx.obstacles.push(leg.obstacle); ctx.colliders.push(leg.collider); receipt.colliders++;
       }
       const piece = tower.geometry.clone();
       piece.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(x, y - 0.15, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw), new THREE.Vector3(1, 1, 1)));

@@ -26,6 +26,8 @@ const out = option('out');
 const rays = !args.includes('--no-rays');
 /** At most this many records of one kind a map (the general audit samples a city's thousands of fence rails). */
 const recordLimit = Number(option('per-kind', 'Infinity'));
+/** --kinds=a,b: the records family measures only these kinds. */
+const recordKinds = option('kinds') ? new Set(option('kinds').split(',')) : null;
 /** --write-shards: also write each map's collision shard from the same build (capture-world-collision-manifests.mjs
  * --node's records exactly) and print its index entry (ENTRY {...}); the index is written by the caller. */
 const writeShards = args.includes('--write-shards');
@@ -56,7 +58,7 @@ for (const mapId of mapIds) {
     }));
     console.log('ENTRY ' + JSON.stringify({ mapId, entry }));
   }
-  const audit = auditMapWorld({ mapId, field, flora, dressing, families, rays, createObstacleGrid, recordLimit });
+  const audit = auditMapWorld({ mapId, field, flora, dressing, families, rays, createObstacleGrid, recordLimit, recordKinds });
   results[mapId] = audit;
   const summary = summariseAudit(audit);
   console.log(`${mapId}: built ${((built - started) / 1000).toFixed(1)} s, audited ${((performance.now() - built) / 1000).toFixed(1)} s`);

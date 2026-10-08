@@ -163,6 +163,19 @@ function assertClockwiseHeld(mapId, kind, parts) {
   }
   return held;
 }
+/** A convex outline's least width (the smallest projection over its edge normals). */
+function narrowPart(points) {
+  let least = Infinity;
+  for (let i = 0; i < points.length; i += 2) {
+    const j = (i + 2) % points.length, ex = points[j] - points[i], ez = points[j + 1] - points[i + 1], len = Math.hypot(ex, ez);
+    if (len < 1e-9) continue;
+    const nx = -ez / len, nz = ex / len;
+    let lo = Infinity, hi = -Infinity;
+    for (let k = 0; k < points.length; k += 2) { const p = points[k] * nx + points[k + 1] * nz; lo = Math.min(lo, p); hi = Math.max(hi, p); }
+    least = Math.min(least, hi - lo);
+  }
+  return least < 0.6;
+}
 const stats = dedicatedCollisionManifestStats();
 assert.deepEqual(Object.keys(expected), MAP_IDS, 'every registered map has a fixed census expectation');
 assert.deepEqual(Object.keys(stats), MAP_IDS, 'manifest order and map registry stay in lockstep');
@@ -183,9 +196,13 @@ for (const [mapId, counts] of Object.entries(expected)) {
     `${mapId} hedgehogs remain complete three-beam compounds`);
   assert.equal(hedgehogColliders.length, hedgehogObstacles.length,
     `${mapId} movement and shell hedgehog censuses agree`);
-  assert.ok(hedgehogObstacles.every((record) => record.shape2?.kind === 'obb'),
+  // (2026-10-07, the hitbox lane: a beam is its own slabs, each a narrow section leaning with the steel, src/world/slabCollision.ts)
+  const narrowBeam = (record) => record.shape2?.kind === 'obb'
+    || (record.shape2?.kind === 'convex' && narrowPart(record.shape2.points))
+    || (record.shape2?.kind === 'compound' && record.shape2.parts.every((part) => part.kind === 'convex' && narrowPart(part.points)));
+  assert.ok(hedgehogObstacles.every(narrowBeam),
     `${mapId} dedicated movement preserves narrow hedgehog beam shapes`);
-  assert.ok(hedgehogColliders.every((record) => record.shape2?.kind === 'obb'),
+  assert.ok(hedgehogColliders.every(narrowBeam),
     `${mapId} dedicated shell collision preserves narrow hedgehog beam shapes`);
   for (const kind of ['rubble', 'hedgehog', 'small-rock']) {
     const clutter = mapWorld.getObstacles().filter(record => record.kind === kind);
