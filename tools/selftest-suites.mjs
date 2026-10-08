@@ -925,6 +925,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/migrationState.selftest.mjs',
     'src/mp/host/matchHost.selftest.mjs',
     'src/mp/host/worldCollision.selftest.mjs',
+    // 2026-10-08 (destruction core lane): Frontline's authority plays the trench variant every client builds
+    'src/mp/host/frontlineVariant.selftest.mjs',
     'src/mp/host/hostRuleset.selftest.mjs',
     // 2026-10-01: the host Worker carries specs, not vehicles; the roster's anatomy loads at boot.
     'src/mp/host/hostFleet.selftest.mjs',

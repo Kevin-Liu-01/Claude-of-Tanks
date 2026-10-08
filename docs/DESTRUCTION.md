@@ -390,7 +390,11 @@ already built it; the hosts built the base map — hulls on uncarved ground, non
 Verdant the variant differs by 3,390 obstacle records each way: the carving moves every placement after it). Now the
 browser host (`loadCollisionWorld(…, { variant })`) and the dedicated actor (`createDedicatedWorldCollision(…,
 { variant })`) load the variant's own shard over the variant's field, so a desktop client of either shares the
-authority's indices (`authorityObstacles`: only the mobile tier lays out otherwise, until its placement split).
+authority's indices (`authorityObstacles`: only the mobile tier lays out otherwise, until its placement split). The
+clients choose the battlefield from the same table (`main.ts` for the solo battle, `mp/session/browserComposition.ts`
+for the network session: `terrainVariantFor`), so client, browser host and dedicated actor agree by construction. The
+33 variant shards are 55 MB of JSON (17 MB compressed) beside the base 50 MB, published content-addressed under
+`/mp-collision/<map>@assault-trenches.<sha>.json` with the base shards' immutable routes; a host fetches one.
 Receipt: `src/mp/host/frontlineVariant.selftest.mjs`.
 
 ### 8.5 Budget

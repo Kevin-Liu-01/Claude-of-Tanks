@@ -99,10 +99,15 @@ async function worldBuilders() {
   return builders;
 }
 
-/** Build one map's world collision in Node with the seeds the shards are captured at; returns the packed records. */
-export async function buildWorldCollisionData(mapId, { terrainSeed = 1337, vegetationSeed = 2001, propsSeed = 2002 } = {}) {
+/**
+ * Build one map's world collision in Node with the seeds the shards are captured at; returns the packed records. A
+ * `variant` (2026-10-08: 'assault-trenches', Frontline's carved trench system and its works) builds the map from that
+ * variant's config, as every client's world does (world/map.ts).
+ */
+export async function buildWorldCollisionData(mapId, { terrainSeed = 1337, vegetationSeed = 2001, propsSeed = 2002, variant = null } = {}) {
   const { maps, terrain, vegetation, props, fleet } = await worldBuilders();
-  const config = maps.getMapConfig(mapId);
+  if (variant !== null && variant !== 'assault-trenches') throw new Error(`unknown battlefield variant ${variant}`);
+  const config = variant ? { ...maps.getMapConfig(mapId), assaultTrenches: true } : maps.getMapConfig(mapId);
   // the wreck cast bakes real hull geometry: its demand-loaded builders must be resident first
   const wreckIds = config.props?.tankWrecks?.ids ?? [];
   if (wreckIds.length) await fleet.ensureTankBuilders(wreckIds);
