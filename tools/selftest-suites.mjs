@@ -982,6 +982,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/middleware-diet.selftest.mjs',
     'tools/worker-generated-types.selftest.mjs',
     'server/dedicatedWorldCollision.selftest.mjs',
+    'server/convexOutlines.selftest.mjs', // 2026-10-08 the hitbox lane: every convex part holds its outline
     'server/mapResourceCache.selftest.mjs',
     'server/collisionManifestLoader.selftest.mjs',
     'server/collisionManifestCodec.selftest.mjs',

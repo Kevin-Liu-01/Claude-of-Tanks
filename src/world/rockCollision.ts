@@ -21,7 +21,7 @@
 // Pure and deterministic: no randomness, the same arithmetic on every tier (the collision form is the desktop form), and
 // every outline to the centimetre.
 import type { BufferGeometry } from 'three';
-import { setCompoundShape, setConvexShape, type CollisionRecord, type SimpleCollisionShape } from './collision.ts';
+import { convexOutlineInPlace, setCompoundShape, setConvexShape, type CollisionRecord, type SimpleCollisionShape } from './collision.ts';
 
 /** A stone rising less than this above the ground under it is driven over: no collider (a hull's belly line). */
 export const ROCK_DRIVE_OVER_M = 0.45;
@@ -223,39 +223,12 @@ export function simplifyConvex(points: readonly number[], limit = ROCK_HULL_POIN
 /**
  * A rounded outline made convex again (the hitbox lane, 2026-10-08): rounding a hull's corners to the centimetre can
  * turn a short edge against the outline's winding (a level hedgehog beam's top and bottom corners lie millimetres apart),
- * and the shell clip and the point test read every edge of a convex part as a half-plane, so one reflex corner held
- * nothing (that beam's collider held 0 m2 and every shell through it passed; 82 formation and 30 small-rock shell slabs
- * of the first rock shards lost more than a tenth of their outline). Repeated corners and the corners that turn
- * against the winding, or not at all, are dropped; what is left is convex, its corners a subset of the rounded ones.
+ * and one reflex corner held nothing (that beam's collider held 0 m2 and every shell through it passed; 82 formation and
+ * 30 small-rock shell slabs of the first rock shards lost more than a tenth of their outline). collision.ts's law, on a
+ * copy: repeated corners and those that turn against the winding, or not at all, are dropped.
  */
 export function convexRounded(points: readonly number[]): number[] {
-  const xs: number[] = [], zs: number[] = [];
-  for (let i = 0; i < points.length; i += 2) {
-    const n = xs.length;
-    if (n && xs[n - 1] === points[i] && zs[n - 1] === points[i + 1]) continue;
-    xs.push(points[i]); zs.push(points[i + 1]);
-  }
-  while (xs.length > 1 && xs[0] === xs[xs.length - 1] && zs[0] === zs[zs.length - 1]) { xs.pop(); zs.pop(); }
-  let area2 = 0;
-  for (let i = 0; i < xs.length; i++) {
-    const j = (i + 1) % xs.length;
-    area2 += xs[i] * zs[j] - xs[j] * zs[i];
-  }
-  // (an outline rounding collapsed — fewer than three corners, or no area — is left as rounded: a part of two corners is
-  // no part the shards can carry)
-  if (xs.length < 3 || !(Math.abs(area2) > 1e-9)) return points.slice();
-  const winding = area2 >= 0 ? 1 : -1;
-  for (let dropped = true; dropped && xs.length > 3;) {
-    dropped = false;
-    for (let i = 0; i < xs.length && xs.length > 3; i++) {
-      const n = xs.length, a = (i + n - 1) % n, b = (i + 1) % n;
-      const turn = (xs[i] - xs[a]) * (zs[b] - zs[i]) - (zs[i] - zs[a]) * (xs[b] - xs[i]);
-      if (turn * winding <= 1e-12) { xs.splice(i, 1); zs.splice(i, 1); dropped = true; i--; }
-    }
-  }
-  const out: number[] = [];
-  for (let i = 0; i < xs.length; i++) out.push(xs[i], zs[i]);
-  return out;
+  return convexOutlineInPlace(points.slice());
 }
 
 const cross = (o: number, a: number, b: number): number =>
