@@ -11,7 +11,7 @@
 // tankFactoryCore's exported geometry KIT.
 
 import { KIT } from './tankFactoryCore.ts';
-import { FITTINGS } from './profiles/kit.ts';
+import { FITTINGS, convexSlab } from './profiles/kit.ts';
 import './franceSpecs.ts';
 import type { TankBuilderPort } from './tankFactoryCore.ts';
 import { CircleGeometry } from 'three';
@@ -242,7 +242,10 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.add('hull', slab(                                                           // lower bow reverse plate, shallow first course; inside native shoe lanes
     [-0.90, 0.44, 2.70], [0.90, 0.44, 2.70], [0.90, 0.61, 3.12], [-0.90, 0.61, 3.12],
     [-0.90, 0.46, 2.72], [0.90, 0.46, 2.72], [0.90, 0.63, 3.12], [-0.90, 0.63, 3.12]));
-  P.add('hull', slab(                                                           // steep source knee into the jaw lip
+  // Both offset courses reverse their normal order at the jaw. Their eight
+  // retained datums bound a finite convex knee; connecting the original rings
+  // directly folds the thin sheet through itself.
+  P.add('hull', convexSlab(                                                     // steep source knee into the jaw lip
     [-0.90, 0.61, 3.12], [0.90, 0.61, 3.12], [0.90, 1.044, 3.41], [-0.90, 1.044, 3.41],
     [-0.90, 0.63, 3.12], [0.90, 0.63, 3.12], [0.90, 1.048, 3.43], [-0.90, 1.048, 3.43]));
   // stern: rear plate face -3.395 (the rear body-column anchor; receipt
