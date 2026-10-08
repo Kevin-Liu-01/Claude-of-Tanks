@@ -55,8 +55,10 @@ import {NATIONAL_MODERNIZATION_IDS} from './nationalModernizationConfig.ts';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
-  vehicleAmbientFloorHook, getKitPaintTexture, getSharedRoughnessTexture,
+  vehicleAmbientFloorHook, getKitPaintTexture, getSharedRoughnessTexture, resolveCamoVisual, followVehicleScheme,
+  type MaterialTankSpec,
 } from './materials.ts';
+import { garnishedNetTextures, NET_TILE_M, theatreOfHex, type SuitTheatre } from './camoNetTexture.ts';
 import { VEHICLE_ERAS, isContemporaryVehicleEra } from './taxonomy.ts';
 import {
   buildBranchBundle, buildCargoVariant, buildCupola, buildExhaust, buildHatch, buildLog, buildNetDrape, buildNetRoll,
@@ -64,6 +66,7 @@ import {
   canRack, canRackStyleFor, FABRIC_FAMILIES, sandbag, whipAntennaParts, type AccessoryPainter, type RGB,
 } from './accessoryKits.ts';
 import { FOLIAGE_ALPHA_TEST, vehicleFoliageAtlas, type VehicleFoliageKind } from './vehicleFoliage.ts';
+import { drapeGhillieOverLoads } from './ghillieDrape.ts';
 import { block, latheY, moldedBox, place, roundBar, sweptTube, withBoxUV } from './accessoryPrimitives.ts';
 import {
   addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield, createPintleLayout,
@@ -1223,59 +1226,19 @@ function fieldHardwareTex() {
   });
 }
 
-// camouflage netting: open diagonal mesh with garnish rags; alpha = holes
-function netTex() {
-  // 2026-10-06 (round 2: the critics read the old regular diagonal lattice as "diamond wallpaper"): a knotted net on an
-  // uneven lattice (every row and column at its own pitch, every knot shifted), strands sagging between knots and a few
-  // broken, and frayed garnish rags of irregular outline tied in. The lattice repeats exactly across the tile.
-  return canvasTex('decor-net', 128, (g, S) => {
-    g.clearRect(0, 0, S, S);
-    const rng = mulberry32(0x4e7a);
-    const N = 11, cell = S / N;
-    const pitch = (salt: number) => { const p: number[] = []; for (let i = 0; i < N; i++) p.push(0.7 + mulberry32(salt + i)() * 0.6); return p; };
-    const px = pitch(0x51), py = pitch(0x93);
-    const sx = px.reduce((a, b) => a + b, 0), sy = py.reduce((a, b) => a + b, 0);
-    const colAt: number[] = [], rowAt: number[] = [];
-    for (let i = 0, ax = 0, ay = 0; i < N; i++) { colAt.push(ax / sx * S); rowAt.push(ay / sy * S); ax += px[i]; ay += py[i]; }
-    const jitter: Array<[number, number]> = [];
-    for (let i = 0; i < N * N; i++) jitter.push([(rng() - 0.5) * cell * 0.6, (rng() - 0.5) * cell * 0.6]);
-    const knot = (i: number, j: number): [number, number] => {
-      const wi = ((i % N) + N) % N, wj = ((j % N) + N) % N;
-      const [jx, jy] = jitter[wi * N + wj];
-      return [colAt[wi] + jx + Math.floor(i / N) * S, rowAt[wj] + jy + Math.floor(j / N) * S];
-    };
-    const tiled = (draw: (ox: number, oy: number) => void) => { for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) draw(ox, oy); };
-    g.strokeStyle = 'rgba(58,62,40,0.95)';
-    g.fillStyle = 'rgba(58,62,40,0.95)';
-    g.lineCap = 'round';
-    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
-      const a = knot(i, j);
-      for (const [di, dj] of [[1, 0], [0, 1]]) {
-        if (rng() < 0.08) continue;
-        const b = knot(i + di, j + dj), sag = 1 + rng() * 3, w = 1.3 + rng() * 0.9;
-        tiled((ox, oy) => {
-          g.lineWidth = w; g.beginPath(); g.moveTo(a[0] + ox, a[1] + oy);
-          g.quadraticCurveTo((a[0] + b[0]) / 2 + ox, (a[1] + b[1]) / 2 + sag + oy, b[0] + ox, b[1] + oy); g.stroke();
-        });
-      }
-      tiled((ox, oy) => { g.beginPath(); g.arc(a[0] + ox, a[1] + oy, 1.4 + rng() * 0.8, 0, Math.PI * 2); g.fill(); });
-    }
-    for (let i = 0; i < 120; i++) { // frayed garnish rags of irregular outline
-      const x = rng() * S, y = rng() * S, r = 3 + rng() * 5, sides = 5 + Math.floor(rng() * 3), rot = rng() * Math.PI;
-      g.fillStyle = rng() < 0.45 ? 'rgba(72,82,46,0.92)' : (rng() < 0.5 ? 'rgba(96,92,54,0.92)' : 'rgba(52,58,38,0.92)');
-      const pts: Array<[number, number]> = [];
-      for (let k = 0; k < sides; k++) {
-        const ang = rot + (k / sides) * Math.PI * 2, rr = r * (0.45 + rng() * 0.7) * (k % 2 ? 0.6 : 1);
-        pts.push([Math.cos(ang) * rr * 1.5, Math.sin(ang) * rr * 0.7]);
-      }
-      tiled((ox, oy) => {
-        g.beginPath();
-        pts.forEach(([u, v], k) => (k ? g.lineTo(x + u + ox, y + v + oy) : g.moveTo(x + u + ox, y + v + oy)));
-        g.closePath(); g.fill();
-      });
-    }
-  });
+/**
+ * The theatre a vehicle's decor nets are issued for, from the scheme it wears (round 5, 2026-10-08; wave 255 on the
+ * M60A1: a green leaf-print net roll on a sand hull; the coordinator: derive net colours from the scheme and theatre).
+ */
+function decorNetTheatre(spec: FleetTankSpec): SuitTheatre {
+  try {
+    return theatreOfHex(resolveCamoVisual(spec as unknown as MaterialTankSpec).base);
+  } catch {
+    return 'woodland';
+  }
 }
+/** The decor nets' own garnish seed (camoNetTexture.ts caches one texture per theatre and seed). */
+const DECOR_NET_SEED = 77;
 
 // welded wire grid (bustle baskets / mesh cages): straight open cross-hatch
 function gridTex() {
@@ -1548,9 +1511,11 @@ function buildDecorMaterials(
       roughnessMap: canPaint ? getSharedRoughnessTexture(spec) : undefined,
       vertexColors: true, envMapIntensity: 0.2,
     }),
+    // round 5 (2026-10-08): the rolled and draped nets wear the suits' garnished net in the vehicle's theatre
+    // (camoNetTexture.ts; sand on a desert hull), its painted tones carrying the colour
     net: () => painted({
-      map: netTex(), color: equipmentPalette.net, roughness: 0.95, metalness: 0.0,
-      alphaTest: 0.35, side: THREE.DoubleSide, vertexColors: true, envMapIntensity: 0.1,
+      map: garnishedNetTextures(decorNetTheatre(spec), DECOR_NET_SEED)?.map ?? undefined, color: 0xffffff,
+      roughness: 0.95, metalness: 0.0, alphaTest: 0.5, side: THREE.DoubleSide, vertexColors: true, envMapIntensity: 0.1,
     }),
     mesh: () => painted({ // wire-grid panels (baskets, cages)
       map: gridTex(), color: equipmentPalette.mesh, roughness: 0.7, metalness: 0.35,
@@ -1579,6 +1544,13 @@ function buildDecorMaterials(
         made[key] = material;
         setup(material);
         material.name = `Decor_${key}`;
+        // round 5: the nets swap to the new theatre's when a garage pattern switch repaints the vehicle in place
+        if (key === 'net' && canPaint) {
+          followVehicleScheme(spec.id, material, (vis) => {
+            const next = garnishedNetTextures(theatreOfHex(vis.base), DECOR_NET_SEED);
+            if (next) material.map = next.map;
+          });
+        }
       }
       return made[key]!;
     },
@@ -1665,7 +1637,8 @@ function accessoryPainter(parts: DecorPartList, rng: Rng, detail: 0 | 1, nation 
     rubber(geo, tone = 0.6) { parts.push({ mat: 'rubber', geo: bakeShade(geo, tone) }); },
     kit(geo, tone = 0.92) { parts.push({ mat: 'kit', geo: bakeShade(geo, tone) }); },
     lens(geo) { parts.push({ mat: 'lens', geo: bakeShade(geo, 0.9) }); },
-    net(geo, tone = 1) { parts.push({ mat: 'net', geo: bakeShade(boxUV(geo, 1.8), tone, 0.12) }); },
+    // a rolled or folded net shows its garnish gathered: the net's tile at a little under half its laid-out size
+    net(geo, tone = 1) { parts.push({ mat: 'net', geo: bakeShade(boxUV(geo, 2.2 / NET_TILE_M), tone, 0.12) }); },
     leaves(geo) { parts.push({ mat: 'foliage', geo }); },
   };
 }
@@ -3769,6 +3742,25 @@ const KEEP_OUT_FITTINGS: Readonly<Record<string, { foot: number; clear: number; 
   americanRws: { foot: 0.22, clear: 0.05, maxR: 0.3 },
   openYokeRws: { foot: 0.22, clear: 0.05, maxR: 0.3 },
 };
+/**
+ * Whether the vehicle already carries a crew or remote roof gun of its own (2026-10-08, the machine-gun helper's sweep:
+ * "bmp3_rok: the decor aamg stands right over the authored MAG, two guns stacked"; the coordinator's rule after main's
+ * field upgrades: one owner per mount point). The decor kit's generic roof AA gun ('aamg') is for vehicles that have
+ * none; an authored pintle gun, roof RWS or remote station owns the roof gun.
+ */
+const ROOF_GUN_FITTINGS: ReadonlySet<string> = new Set(['pintleMG', 'americanM2', 'americanRws', 'openYokeRws', 'weaponStationMount']);
+function carriesRoofGun(...groups: THREE.Object3D[]): boolean {
+  let found = false;
+  for (const group of groups) {
+    group.traverse((o) => {
+      if (found || (o.name || '').startsWith('rig_decor')) return;
+      const fitting = o.userData?.fitting;
+      if ((o.userData?.fittingRoot && typeof fitting === 'string' && ROOF_GUN_FITTINGS.has(fitting))
+        || (o.userData?.remoteControlled && o.userData?.auxiliaryPivot)) found = true;
+    });
+  }
+  return found;
+}
 /** Structural hatches and cupolas (P.addHatch / P.addCupola buckets) and their disc's share of the patch's half-diagonal. */
 const KEEP_OUT_STRUCTURE_RE = /(?:Hatch|Cupola)$/;
 const KEEP_OUT_STRUCTURE_SHARE = 0.8;
@@ -6214,6 +6206,7 @@ export function* attachTankDecorationsSteps(
       // Every row's roll and seed off the main stream, drawn in manifest order exactly as before (two draws a row), so
       // an early row (DecorManifestRow.early) seats first with the very draws it would have had in its turn.
       const draws = manifest.map(() => { const roll = rng(); return { roll, jitterSeed: (rng() * 0x7fffffff) | 0 }; });
+      const roofGunCarried = manifest.some((row) => row.kit === 'aamg') && carriesRoofGun(turretG, hullG);
       const seatRow = (row: DecorManifestRow, jitterSeed: number): void => {
         const kitFn = DECOR_KITS[row.kit];
         const slotFn = SLOTS[row.slot[0]];
@@ -6222,12 +6215,15 @@ export function* attachTankDecorationsSteps(
         if (parts) placeManifestParts(row, slotFn, parts, jitterSeed);
       };
       manifest.forEach((row, index) => {
-        if (row.early && row.kit !== 'smoke' && row.kit !== 'antenna' && !(draws[index].roll > (row.p ?? 1))) seatRow(row, draws[index].jitterSeed);
+        if (row.early && row.kit !== 'smoke' && row.kit !== 'antenna' && !(row.kit === 'aamg' && roofGunCarried)
+          && !(draws[index].roll > (row.p ?? 1))) seatRow(row, draws[index].jitterSeed);
       });
       for (let index = 0; index < manifest.length; index++) {
         const row = manifest[index];
         const { roll, jitterSeed } = draws[index];
         if (row.early) { yield { stage: 'manifest-row', completed: index + 1, total: manifest.length }; continue; }
+        // the decor roof gun yields to a roof gun the vehicle carries (carriesRoofGun); its draws stay consumed above
+        if (row.kit === 'aamg' && roofGunCarried) { yield { stage: 'manifest-row', completed: index + 1, total: manifest.length }; continue; }
         if (row.kit !== 'smoke' && row.kit !== 'antenna' && !(roll > (row.p ?? 1))) {
           const kitFn = DECOR_KITS[row.kit];
           const slotFn = SLOTS[row.slot[0]];
@@ -6324,6 +6320,10 @@ export function* attachTankDecorationsSteps(
       drawCalls += yield* mergeDecorationBucket(frame, buckets[frame], coarseBuckets[frame], false);
       drawCalls += yield* mergeDecorationBucket(frame, functionalBuckets[frame], new Map(), true);
     }
+    // round 5 (2026-10-08, the nets lane): a camouflage suit's roof and deck nets are drawn up over the loads stowed on
+    // them, never laid through them (ghillieDrape.ts)
+    drapeGhillieOverLoads(hullG, seatedLoads.hull);
+    drapeGhillieOverLoads(turretG, seatedLoads.turret);
     yield { stage: 'publish', completed: resources.groupCount(), total: resources.groupCount() };
     summary.tris = budget.tris;
     summary.drawCalls = drawCalls;
