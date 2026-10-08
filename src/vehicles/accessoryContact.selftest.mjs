@@ -34,11 +34,16 @@ const IDS = Object.freeze([
 ]);
 // the ratchets (2026-10-08, round 4's census at fcc68d78b, cell borders searched, edges sampled): floating and clipping
 // accessory pieces per tank; any other tank is held to 0
+// 2026-10-08, over push 3b (main's 5f8eefaa4 field upgrades): the Oplot-M's floating fender piece is gone (1 -> 0), and
+// its clipping takes 4 -> 8: the three overlaps main's own roof station is built with (the muzzle sleeve over the barrel,
+// the trunnions through the cradle shroud, the ammunition-box lid seated on the box; a station is a fitting, so this
+// receipt reads it) and the second decor smoke bank, which main's screens and cage-wing legs moved forward along the
+// cheek, its bracket set into the armour like every other bank's.
 const KNOWN_FLOATING = Object.freeze({
-  ua_t84_oplot_m: 1, type99a: 1, abramsx: 8, fv510_milan: 1, bmp3m_dragun125_x: 2,
+  type99a: 1, abramsx: 8, fv510_milan: 1, bmp3m_dragun125_x: 2,
 });
 const KNOWN_CLIPPING = Object.freeze({
-  leo2a4: 2, t90m_proryv: 1, ua_t84_oplot_m: 4, challenger1: 2, m60a1: 1, leclerc: 1, merkava4_trophy: 2, t72b3m: 7,
+  leo2a4: 2, t90m_proryv: 1, ua_t84_oplot_m: 8, challenger1: 2, m60a1: 1, leclerc: 1, merkava4_trophy: 2, t72b3m: 7,
   m1a2_tusk: 1, leo2a6: 2, abramsx: 8, cv90_x: 2, fv510_milan: 2, m46_patton: 8, bmp3m_dragun125_x: 2, t62mv1_x: 2,
   griffin_viper: 2,
 });
