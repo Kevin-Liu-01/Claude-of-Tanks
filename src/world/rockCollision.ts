@@ -15,7 +15,8 @@
 //             shards already carry, 'w'): a slab grows to ROCK_SHELL_BAND_M while the stone's section keeps
 //             ROCK_SHELL_KEEP of the widest section inside it, so the slabs thin over the stone's dome, and each takes the
 //             hull of the stone's section ROCK_SHELL_SECTION_AT of the way up it — a rounded boulder narrows toward its
-//             top, and a shell over its shoulder flies on;
+//             top, and a shell over its shoulder flies on (the audit's rays: 2-3 % of the rays that meet a stone or its
+//             collider stopped 10+ cm clear of the stone, 1-2 % passing 10+ cm of it unstopped; the legacy prism 70 %);
 //   none      for a stone that rises less than ROCK_DRIVE_OVER_M above its ground: a hull rolls over it.
 // Pure and deterministic: no randomness, the same arithmetic on every tier (the collision form is the desktop form), and
 // every outline to the centimetre.
@@ -28,8 +29,10 @@ export const ROCK_DRIVE_OVER_M = 0.45;
 export const ROCK_CONTACT_FLOOR_M = 0.2;
 /** ...and this one (the tallest hull's roof: a hoodoo's cap above it is a shell's business, not a hull's). */
 export const ROCK_CONTACT_TOP_M = 3;
-/** The tallest a shell slab grows (m). */
-export const ROCK_SHELL_BAND_M = 0.4;
+/** The tallest a shell slab grows (m). (The audit's sweep on Titan's and Saltwind's stones: 0.6 m slabs of six corners
+ * stop the same share of shells on the stone as 0.4 m slabs of eight, 2.3 % of the rays 10+ cm clear, in 30 % fewer
+ * shard bytes.) */
+export const ROCK_SHELL_BAND_M = 0.6;
 /** A slab ends where the stone's section falls under this share of the widest section inside it. */
 export const ROCK_SHELL_KEEP = 0.5;
 /** Each slab takes the hull of the stone's section this share of the way up it (a slab's section shrinks upward: the
@@ -40,8 +43,8 @@ export const ROCK_SHELL_CROWN_M2 = 0.8;
 /** Section sampling step through the stone's height (m). */
 const SHELL_STEP_M = 0.05;
 /** At most this many corners a movement footprint, and a shell slab's outline (the least-area corners go first). */
-export const ROCK_HULL_POINTS = 14;
-export const ROCK_SHELL_POINTS = 8;
+export const ROCK_HULL_POINTS = 12;
+export const ROCK_SHELL_POINTS = 6;
 /** The crushable small rocks (crushableClutter.ts isLooseSurfaceRock's class): every stone up to this scale that keeps a
  * collider and is not an authored tactical outcrop — the small and the deep-set stones that newly take one too. */
 export const ROCK_CRUSHABLE_MAX_SCALE = 1.8;

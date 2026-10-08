@@ -6280,9 +6280,12 @@ ${snowCap ? `
   // prop moves; refitRockColliders swaps these profiles in once all of them have run. Here, before the pools are laid,
   // the crushable class follows the stones that keep a collider: a stone a hull drives over drops its clutter, and a
   // stone that rises past the drive-over line with no collider (a small or a deep-set one) becomes a crushable rock.
-  function settleRockColliders(): void {
+  function* settleRockColliders(): Generator<PropsBuildSlice, void, void> {
     const groundAt = (gx: number, gz: number): number => heightField.getHeightAtFast(gx, gz);
+    let settled = 0;
     for (const seat of rockSeats) {
+      // (about a tenth of a millisecond a stone: a loading frame carries 96 of them at most)
+      if (++settled % 96 === 0) yield { fine: true, progress: false, stage: 'rock-colliders' };
       seat.profile = rockCollisionProfile(rockForms[seat.vv], seat.placement.elements, groundAt);
       if (!seat.profile) {
         if (seat.clutter) {
@@ -6305,7 +6308,7 @@ ${snowCap ? `
       }
     }
   }
-  settleRockColliders();
+  yield* settleRockColliders();
   function instantiateRockVariants(): void {
   for (let vi = 0; vi < 3; vi++) {
     if (rockPlacements[vi].length === 0) continue;

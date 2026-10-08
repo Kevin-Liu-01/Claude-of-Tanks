@@ -9,7 +9,8 @@
 // other record: walls, fences, props, wrecks, structures, the kindless solids; --per-kind=<n> samples each kind); all.
 import { writeFileSync } from 'node:fs';
 import { MAP_IDS } from '../src/world/maps/catalog.ts';
-import { installWorldBuildFixture } from './headlessWorldCollision.mjs';
+import { installWorldBuildFixture, packWorldCollision } from './headlessWorldCollision.mjs';
+import { writeCollisionManifestShard } from './worldCollisionManifestFiles.mjs';
 import { auditMapWorld, summariseAudit } from './worldColliderAudit.mjs';
 import { createObstacleGrid } from '../src/world/collision.ts';
 
@@ -25,6 +26,9 @@ const out = option('out');
 const rays = !args.includes('--no-rays');
 /** At most this many records of one kind a map (the general audit samples a city's thousands of fence rails). */
 const recordLimit = Number(option('per-kind', 'Infinity'));
+/** --write-shards: also write each map's collision shard from the same build (capture-world-collision-manifests.mjs
+ * --node's records exactly) and print its index entry (ENTRY {...}); the index is written by the caller. */
+const writeShards = args.includes('--write-shards');
 
 installWorldBuildFixture();
 const [maps, terrain, vegetation, props, fleet, models] = await Promise.all([
@@ -44,6 +48,14 @@ for (const mapId of mapIds) {
   const flora = vegetation.createVegetation(field, engine, 2001, config);
   const dressing = props.createProps(field, engine, 2002, config, flora);
   const built = performance.now();
+  if (writeShards) {
+    const entry = writeCollisionManifestShard(mapId, packWorldCollision({
+      obstacles: [...dressing.obstacles, ...flora.treeObstacles],
+      colliders: [...dressing.colliders, ...flora.treeObstacles],
+      concealers: flora.concealers || [],
+    }));
+    console.log('ENTRY ' + JSON.stringify({ mapId, entry }));
+  }
   const audit = auditMapWorld({ mapId, field, flora, dressing, families, rays, createObstacleGrid, recordLimit });
   results[mapId] = audit;
   const summary = summariseAudit(audit);

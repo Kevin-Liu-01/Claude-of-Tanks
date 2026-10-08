@@ -226,13 +226,15 @@ export interface CollisionRecord {
 
 function isDenseCrushableCover(kind: string | undefined): boolean {
   return kind === 'wallstone' || kind === 'walladobe' ||
-    kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall';
+    kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall' || kind === 'small-rock';
 }
 
 /**
  * Lightweight world cover reacts to a shell but never consumes it. Dense
  * masonry/adobe walls and sandbag fortifications remain real ballistic cover
  * even though a sufficiently forceful hull can eventually crush them.
+ * (the hitbox lane, 2026-10-07: and a stone a hull crushes is still stone to a shell — the crushable small rocks rise
+ * 0.45-1.5 m, a shell flew through them while the bots' gun lane and every sight line stopped on them)
  */
 export function shellPassesThroughCollisionRecord(
   record: CollisionRecord | null | undefined,

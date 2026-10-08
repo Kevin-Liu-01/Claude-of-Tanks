@@ -491,7 +491,8 @@ function recordBox(record) { return [record.min[0], record.min[2], record.max[0]
 /** The movement and shell measures of one object: its own triangles, its records, everything solid around it. */
 function measureObject({ soup, field, ownTris, box, obstacle, collider, colliders = null, nearObstacles, nearColliders, solidAccept, rays }) {
   const extent = Math.max(box[2] - box[0], box[3] - box[1]);
-  const h = Math.min(0.25, Math.max(0.04, extent / 120));
+  // (cells of about a sixtieth of the object, 5-25 cm: the shares average over hundreds of objects a map)
+  const h = Math.min(0.25, Math.max(0.05, extent / 60));
   const region = makeRegion(box[0], box[1], box[2], box[3], h);
   const groundAt = (x, z) => field.getHeightAt(x, z);
   const ground = regionGround(region, groundAt);
@@ -574,9 +575,17 @@ function rockRecordAt(grid, claimed, x, y, z, box) {
   return bestScore < 3 ? best : null;
 }
 
-/** Every rock: the boulder instances (with or without a collider) and the scenery's rock masses. */
-function auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept, claimed = new Set() }) {
+/**
+ * Every rock: the boulder instances (with or without a collider) and the scenery's rock masses. On a tree whose stones
+ * carry their own colliders (props.ts refitRockColliders), each stone's legacy record survives as the ground cover's
+ * cosmetic twin (group.userData.rockGroundCover): it is measured on the same stone as a 'legacy-' row, so one build
+ * gives the before and the after of every stone.
+ */
+function auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept, claimed = new Set(), createObstacleGrid = null }) {
   const rows = [];
+  const twins = dressing.group?.userData?.rockGroundCover ?? [];
+  const legacyGrid = twins.length && createObstacleGrid ? createObstacleGrid(twins) : null;
+  const legacyClaimed = new Set();
   // the stones in order of their seat height's match first (the legacy records), so a refitted record finds its own
   const stones = soup.sources.filter((source) => source.family === 'boulder' && source.tris);
   for (const source of stones) {
@@ -600,6 +609,18 @@ function auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, s
     row.scale = +scale.toFixed(3);
     row.sink = +((field.getHeightAt(x, z) - y) / Math.max(1e-6, scale)).toFixed(3);
     rows.push(row);
+    // the same stone under its legacy record (its seat height marks it exactly)
+    const legacy = legacyGrid ? rockRecordAt(legacyGrid, legacyClaimed, x, y, z, meshBox) : null;
+    if (legacy && Math.abs(legacy.min[1] - y) < 2e-3) {
+      legacyClaimed.add(legacy);
+      const lbox = regionBox([meshBox, recordBox(legacy)], 0.6);
+      const near = (grid) => grid(lbox[0], lbox[1], lbox[2], lbox[3], []).filter((r) => r !== obstacle && r !== collider);
+      const legacyRow = measureObject({ soup, field, ownTris, box: lbox, obstacle: legacy, collider: legacy,
+        nearObstacles: [legacy, ...near(obstacleGrid)], nearColliders: [legacy, ...near(colliderGrid)], solidAccept, rays });
+      legacyRow.kind = legacy.kind === 'small-rock' ? 'legacy-small-rock' : 'legacy-boulder';
+      legacyRow.scale = row.scale; legacyRow.sink = row.sink;
+      rows.push(legacyRow);
+    }
   }
   // the scenery's standing rock masses: kindless, solid records over the scenery rock mesh
   const sceneryFamily = soup.familyIndex.get('scenery-rock');
@@ -709,7 +730,7 @@ export function auditMapWorld({ mapId, field, flora, dressing, families = ['rock
   const claimed = new Set();
   const all = families.includes('all');
   if (all || families.includes('rocks')) {
-    rows.push(...auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept, claimed }));
+    rows.push(...auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept, claimed, createObstacleGrid }));
   }
   if (all || families.includes('records')) {
     rows.push(...auditRecords({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept, claimed, limit: recordLimit }));
