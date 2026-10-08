@@ -114,7 +114,8 @@ for (const id of ['leo2a4', 'leo2a6', 'ariete_c1', 'type10', 'strv122', 't80u'])
 // --- the verdant-spawn scene: four nations, each in its own woodland coat (round 4, 2026-10-07: the T-90M Proryv in
 // the Russian green, sand and black coat, not service digital; the Leopard 2A4 in the NATO three-tone only)
 const woodland = {
-  m1a2_sepv3: ['paint_m1a1'], t90m_proryv: ['paint_ru_t80u_modern'],
+  // (fleet lane 2026-10-08: Russia's current hulls in 4BO single-colour or the irregular three-tone)
+  m1a2_sepv3: ['paint_m1a1'], t90m_proryv: ['paint_ru_t80u_modern', 'national_ru'],
   pt91_twardy: ['paint_pl_t80u_modern', 'service_pl01'], leo2a4: ['paint_marder2'],
 };
 for (const [id, allowed] of Object.entries(woodland)) assert.ok(allowed.includes(auto(id, 'verdant')), `${id} on verdant: ${auto(id, 'verdant')}`);
@@ -133,12 +134,16 @@ for (const [mapId, ids] of [['desert', ['challenger1', 'm60a1', 'type99a', 'merk
 // with green rosettes"): each army's own scheme for the biome, pixel only where the nation fields it
 for (const tag of ['usa', 'de', 'ru', 'uk', 'fr', 'it', 'jp', 'se', 'il']) assert.equal(nationFieldsPixelCamo(tag), false, tag);
 for (const tag of ['cn', 'pl', 'kr', 'ua']) assert.equal(nationFieldsPixelCamo(tag), true, tag);
+// fleet lane 2026-10-08 (the coordinator: "4BO green single-colour; the irregular three-tone summer scheme"): a current
+// Russian hull on grass wears either
+const RU_WOODLAND = ['national_ru', 'paint_ru_t80u_modern'];
 for (const [id, verdant, desert] of [
-  ['t90m', 'paint_ru_t80u_modern', ['sig_t90ms', 'paint_t90ms']], ['t90m_proryv', 'paint_ru_t80u_modern', ['sig_t90ms', 'paint_t90ms']],
-  ['t72b3m', 'paint_ru_t80u_modern', ['sig_t90ms', 'paint_t90ms']], ['leo2a6', 'paint_marder2', ['desert']],
+  ['t90m', RU_WOODLAND, ['sig_t90ms', 'paint_t90ms']], ['t90m_proryv', RU_WOODLAND, ['sig_t90ms', 'paint_t90ms']],
+  ['t72b3m', RU_WOODLAND, ['sig_t90ms', 'paint_t90ms']], ['leo2a6', 'paint_marder2', ['desert']],
   ['leo2a4', 'paint_marder2', ['desert']], ['m1a2_sepv3', 'paint_m1a1', ['carc_tan']], ['m60a1', 'paint_m1a1', ['carc_tan']],
 ]) {
-  assert.equal(auto(id, 'verdant'), verdant, `${id} on verdant: ${verdant}`);
+  if (Array.isArray(verdant)) assert.ok(verdant.includes(auto(id, 'verdant')), `${id} on verdant: ${auto(id, 'verdant')}`);
+  else assert.equal(auto(id, 'verdant'), verdant, `${id} on verdant: ${verdant}`);
   assert.ok(desert.includes(auto(id, 'desert')), `${id} on sand: ${auto(id, 'desert')}`);
 }
 assert.equal(resolveCamoVisual(getSpec('leo2a6'), auto('leo2a6', 'verdant')).scheme, 'nato', 'the Leopard: NATO three-tone');

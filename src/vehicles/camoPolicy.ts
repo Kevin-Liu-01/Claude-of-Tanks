@@ -954,8 +954,10 @@ export const NATIONAL_AUTO_CAMO: Readonly<Record<CamoCountryTagId, NationalAutoC
   ru: nationTable({
     // fleet lane (2026-10-08; the coordinator: "Soviet/Russian: 4BO green, and three-tone summer"): the Cold War hulls
     // in plain 4BO green as well as the three-tone amoeba
+    // and (the coordinator, 2026-10-08: "4BO green single-colour; the irregular three-tone summer scheme") today's hulls
+    // in plain 4BO as often as in the green, sand and black three-tone
     woodland: [row(['service_soviet_ww2'], WARTIME_ERAS), row(['national_ru', 'service_soviet_coldwar'], COLD_WAR_ERAS),
-      row(['paint_ru_t80u_modern'])],
+      row(['national_ru', 'paint_ru_t80u_modern'])],
     desert: [row(['sig_t90ms', 'paint_t90ms'], CURRENT_ERAS)],
     urban: [row(['berlin45'], WARTIME_ERAS)],
   }),

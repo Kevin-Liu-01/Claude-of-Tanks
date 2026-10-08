@@ -42,7 +42,9 @@ const smooth = (v: number): number => v * v * (3 - 2 * v);
 // Periodic value noise. Only the small lattice is randomized; sampling and
 // colour selection use no RNG so HIGH/LOW and picker crops share one pattern.
 function noise(rng: Rng, size: number): (x: number, y: number) => number {
-  const values = Float32Array.from({ length: size * size }, rng);
+  return latticeNoise(Float32Array.from({ length: size * size }, rng), size);
+}
+function latticeNoise(values: Float32Array, size: number): (x: number, y: number) => number {
   return (x, y) => {
     x = (x - Math.floor(x)) * size; y = (y - Math.floor(y)) * size;
     const ix = Math.floor(x), iy = Math.floor(y), tx = smooth(x - ix), ty = smooth(y - iy);
@@ -60,6 +62,14 @@ function cellHash(x: number, y: number, seed: number): number {
   h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
   h = Math.imul(h ^ (h >>> 12), 0x297a2d39);
   return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
+}
+
+// Periodic value noise on a hashed lattice: it draws nothing from the RNG stream, so a field built from it never moves
+// another stencil's draws or a later painter's.
+function hashNoise(seed: number, size: number): (x: number, y: number) => number {
+  const values = new Float32Array(size * size);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) values[y * size + x] = cellHash(x, y, seed);
+  return latticeNoise(values, size);
 }
 
 /**
@@ -160,6 +170,9 @@ function ellipse(ctx: Context, x: number, y: number, rx: number, ry: number, col
   ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, TAU); ctx.fill();
 }
 
+/** How strongly the three-colour field's dark strokes are pulled onto the main colour boundaries (field units). */
+const STROKE_BOUNDARY_PULL = .38;
+
 // Connected stencil fields, large enough to break up a hull silhouette. Small
 // colour islands live inside the macro fields instead of replacing them with
 // uniformly distributed dots. Quantiles keep each intended colour present for
@@ -181,6 +194,14 @@ function paintField<C extends MaterialCanvas>(
   const macro = noise(rng, id === 'amoeba' ? 3 : density);
   const detail = noise(rng, fleck ? 29 : 13), warpX = noise(rng, 5), warpY = noise(rng, 5);
   const phase = rng() * TAU;
+  // Fleet lane fields (2026-10-08), on hashed lattices so they draw nothing from the stream: the three-colour field's
+  // dark strokes and the digital fields' second octave (see sampleFields).
+  const fieldSeed = Math.floor(phase * 0x10000) | 0;
+  const strokes = id === 'summer';
+  const strokeMain = strokes ? hashNoise(fieldSeed ^ 0x3c6ef372, 3) : null;
+  const strokeEdge = strokes ? hashNoise(fieldSeed ^ 0x1b873593, 11) : null;
+  const meso = pixel ? hashNoise(fieldSeed ^ 0x7f4a7c15, 8) : null;
+  const mesoSecond = pixel ? hashNoise(fieldSeed ^ 0x94d049bb, 8) : null;
   const palette = [visual.base, ...(visual.patches || [])].map(parse);
   if (id === 'pacific45') palette.length = 2;
   if (palette.length === 1) palette.push(parse(visual.weather || visual.base));
@@ -214,8 +235,16 @@ function paintField<C extends MaterialCanvas>(
         f = .5 + .31 * Math.sin(TAU * ((angled ? u + v : v) * 3 + warpX(u, v) * .52) + phase)
           + (detail(u, v) - .5) * .2;
       } else if (fleck) f = macro(wx, wy) * .6 + detail(u, v) * .4;
+      if (meso) f = macro(wx, wy) * .6 + meso(wx, wy) * .28 + detail(u, v) * .12;
       values[y * n + x] = f;
       secondary[y * n + x] = macro(wx + .37, wy + .61) * (fleck ? .55 : .82) + detail(u + .23, v + .47) * (fleck ? .45 : .18);
+      if (mesoSecond) secondary[y * n + x] = macro(wx + .37, wy + .61) * .6 + mesoSecond(wx, wy) * .28 + detail(u + .23, v + .47) * .12;
+      if (strokeMain && strokeEdge) {
+        // sheared lattice (u + v, 3v - u): integer coefficients keep the two-metre repeat, and the round lattice blobs
+        // become strokes about two and a half times longer than wide, bent by the shared warps
+        const sx = u + v + (warpX(u, v) - .5) * .5, sy = 3 * v - u + (warpY(u, v) - .5) * .5;
+        secondary[y * n + x] = strokeMain(sx, sy) * .86 + strokeEdge(u, v) * .14;
+      }
     }
   };
   sampleFields();
@@ -239,6 +268,14 @@ function paintField<C extends MaterialCanvas>(
   const merdc = id === 'merdc' || id === 'merdcwinter';
   const baseCoverage = wash ? (id === 'winter' ? .83 : .66) : palette.length === 3 ? .64 : .5;
   const mainCut = threshold(values, baseCoverage);
+  if (strokes) {
+    // the dark strokes ride the boundaries between the two main colours (the way the black of a three-colour scheme
+    // bridges the green and the sand) instead of floating as lone ovals inside either field
+    const spread = Math.max(1e-3, threshold(values, .75) - threshold(values, .25));
+    for (let index = 0; index < n * n; index++) {
+      secondary[index] += STROKE_BOUNDARY_PULL * Math.min(1, Math.abs(values[index] - mainCut) / spread);
+    }
+  }
   const darkCut = threshold(secondary, merdc ? .05 : .18);
   const accentCut = threshold(secondary, merdc ? .95 : .80);
   const colorAt = (f: number, second: number): Color => {
