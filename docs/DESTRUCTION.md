@@ -221,6 +221,32 @@ per 40 kJ above the scuff keeps §5's feel on a masonry house: a 60 t heavy at 9
 at 12 m/s → 101 (brings it down; so does a second 9 m/s ram); a 37.5 t medium at 8 m/s → 23 (damages it); a 40 t
 medium at 6 m/s on a timber shed → 17 (it comes down).
 
+**Bots don't drive into buildings (2026-10-08, the coordinator's ruling: the same law for bots and players, and a bot
+cornering into a wall is a behaviour defect).** All-bot Steinburg (10 matches, 7 v 7, seeds 32000–32009) put 373 of
+428 stage changes on rams. A trace of every ram blow (the drive goal, the steer point, the route plan, the hull's pose
+and input over the last seconds) named three causes, all in `game/ai.ts`'s local steering, not the planner:
+
+- **Corner hops checked against one box.** The router chose its corner, and checked the lane to it, against the one
+  box on the straight line to the goal. Hops ran across or beside the next shed or house: hulls at 6–12 m/s on a
+  corner leg that clipped a shed beside the corner, or a corner inside a shed built against the house.
+- **A pivot that rolled.** A bearing more than 1.2 rad off was turned at 0.3 throttle, which rolls a hull forward at
+  3–4 m/s through a 4–5 m arc with no obstacle check.
+- **No stopping distance.** Nothing kept a hull from reaching a wall faster than it could stop, forward or in reverse
+  (backoff reactions reversing into sheds at 5–7 m/s).
+
+The fixes:
+
+- A corner whose cell or lane meets another solid loses to a clear one. A cell beside another solid first moves out
+  along the corner's diagonal. With none clear, the old choice stands.
+- Beside a solid, the pivot creeps: its drive is cut above 1.5 m/s.
+- `finishStep` brakes a hull, forward or in reverse, whose travel lane (its width either way) meets a solid within its
+  stopping distance (planned at 3.5 m/s², under every hull's brake cap). It acts only above 1.5 m/s: a 50 t hull at
+  1.5 m/s does under a point to a shed. The gun nudge keeps its own dead-leg law.
+
+The same census after: 107 stage changes, 85 from shells and blasts (kinetic 57, blast 28) and 22 from rams. Matches
+run 322 s on average against 294 s. battlePacing's core gate passes: 132 matches, median 199 s, p10 155 s, none inside
+120 s, 1 at the cap.
+
 **A structure that the ram brings down yields** (as a crushed prop does): when the points of the hull's closing speed
 along the contact reach the structure's remaining hit points (or it is already coming down), the obstacle solver lets
 the hull through, the ram is priced and the collapse queued, and the hull keeps `√(1 − E_abs / E)` of its speed, where
@@ -396,6 +422,22 @@ for the network session: `terrainVariantFor`), so client, browser host and dedic
 33 variant shards are 55 MB of JSON (17 MB compressed) beside the base 50 MB, published content-addressed under
 `/mp-collision/<map>@assault-trenches.<sha>.json` with the base shards' immutable routes; a host fetches one.
 Receipt: `src/mp/host/frontlineVariant.selftest.mjs`.
+
+**A phone places what the desktop places (2026-10-08, the coordinator's ruling).** A phone built every map with fewer
+trees, bushes and clutter and one hulk fewer, and every draw after the first difference shifted the shared streams. A
+phone shared 5.7 % of the desktop's indices across the 33 maps, so its views read the destroyed list through identities.
+Now every tier places at the desktop's richness: `treeRichness`, the bushes, `environmentRichness` and the wreck count. A
+phone's saving is in how a record draws, never in which records stand.
+
+- Every desktop layout is unchanged, byte for byte, on all 33 maps.
+- At the phone tier, 22 of 33 maps equal the desktop's shards index for index, and every concealer matches on every map.
+- The other 11 wait on two kits that still lay records out by tier:
+  - the scenery lane's rock formations, which draw fewer stones on a phone and so other masses (Badlands, Coastal,
+    Desert, Frontier, Monsoon, Orchard, Reservoir, Saltwind, Steinburg, Verdant);
+  - the regional rowhouses, whose phone builds move their bands (Franconian on Steinburg, Sarajevan on Ruinspires).
+- The check: `node tools/capture-world-collision-manifests.mjs --tier=mobile`. Receipt (three clean maps):
+  `src/world/phoneLayoutIdentity.selftest.mjs`.
+- `authorityObstacles` keeps a phone on identities until all 33 match.
 
 ### 8.5 Budget
 

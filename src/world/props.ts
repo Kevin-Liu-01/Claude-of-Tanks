@@ -33,7 +33,9 @@ import { getDeviceTier, resolvePresetName } from '../engine/quality.ts';
 // Applied at the count reads so every map's authoring stays byte-identical.
 // Read at call time: the device tier is resolved after module evaluation.
 const DESKTOP_ENVIRONMENT_RICHNESS = 1.35;
-export function environmentRichness(): number { return getDeviceTier() === 'mobile' ? 1 : DESKTOP_ENVIRONMENT_RICHNESS; }
+// Layout identity (destruction core lane, 2026-10-08, the coordinator's ruling): every tier places the desktop's counts
+// — the clutter is records (it blocks movement, shells and sight) and the authority's indices are the desktop's.
+export function environmentRichness(): number { return DESKTOP_ENVIRONMENT_RICHNESS; }
 // A function declaration: roadStations.selftest.mjs extracts and executes the production placement
 // functions from this source, and they read their counts through this helper.
 function richCount(n: number | undefined, fallback = 0): number { return Math.round((n ?? fallback) * environmentRichness()); }
@@ -7471,8 +7473,8 @@ ${snowCap ? `
     // small screen while removing two transient live-tank factories; desktop
     // content stays unchanged. A second similarly sized roster atom was
     // exposed after this one disappeared and is scheduled separately.
-    const wreckCount = getDeviceTier() === 'mobile'
-      ? Math.min(requestedWrecks, 2) : requestedWrecks;
+    // (every tier since 2026-10-08: a hulk is a record, so the phones stand the desktop's; layout identity)
+    const wreckCount = requestedWrecks;
     if (wreckCount > 0) {
       const wrng = mulberry32(seed + 909);
       const era = (wCfg && wCfg.era) || 'ww2';

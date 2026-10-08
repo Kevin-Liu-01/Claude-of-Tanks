@@ -25,6 +25,7 @@
  * anything else differs:
  *   node tools/capture-world-collision-manifests.mjs --node --maps desert
  *   node tools/capture-world-collision-manifests.mjs --check
+ *   node tools/capture-world-collision-manifests.mjs --tier=mobile   # a phone's build against the desktop's shards
  */
 
 import { execFileSync } from 'node:child_process';
@@ -150,6 +151,16 @@ if (options.node && options.variant) {
   console.log(`captured ${options.mapIds.length} ${options.variant} shards; published the index with ${Object.keys(entries).length} of them`);
   process.exit(0);
 } else if (options.node) {
+  if (options.tier) {
+    // the phone tier (destruction core lane, 2026-10-08): the device tier resolves once per process, before any build
+    // reads it; the committed shards are the desktop's, so a phone's build must match them index for index
+    globalThis.window ??= {};
+    globalThis.window.location = { search: `?tier=${options.tier}` };
+    globalThis.window.localStorage ??= { getItem: () => null, setItem() {}, removeItem() {} };
+    const { resolveDeviceTier } = await import('../src/engine/quality.ts');
+    if (resolveDeviceTier() !== options.tier) throw new Error(`the ${options.tier} tier did not resolve`);
+    console.log(`building at the ${options.tier} tier against the desktop's committed shards`);
+  }
   const { buildWorldCollisionData } = await import('./headlessWorldCollision.mjs');
   const { readCollisionManifest } = await import('../server/collisionManifestFormat.ts');
   const { encodeCollisionManifest } = await import('../server/collisionManifestCodec.ts');
@@ -177,7 +188,7 @@ if (options.node && options.variant) {
     }
   }
   if (options.check) {
-    console.log(`${options.mapIds.length - drifted}/${options.mapIds.length} collision shards match the tree`);
+    console.log(`${options.mapIds.length - drifted}/${options.mapIds.length} collision shards match the tree${options.tier ? ` built at the ${options.tier} tier` : ''}`);
     if (drifted) process.exit(1);
     process.exit(0);
   }
