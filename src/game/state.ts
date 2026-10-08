@@ -2234,13 +2234,13 @@ function resolveWorldShellImpact(
   crushWorldPropFromShell(world, bus, shell, hit);
   // destruction: the struck structure takes the strike and the round's blast (docs/DESTRUCTION.md §4); a burst on the
   // ground (not on water) may dig a crater (§7, P3)
-  game._destruction?.shellWorldHit(shell.spec, hit.record, hit.point.x, hit.point.y, hit.point.z, _seg.x, _seg.z,
-    hit.kind === 'terrain' && !hit.record && !shellHitsWater(world, hit));
+  const craterId = game._destruction?.shellWorldHit(shell.spec, hit.record, hit.point.x, hit.point.y, hit.point.z, _seg.x, _seg.z,
+    hit.kind === 'terrain' && !hit.record && !shellHitsWater(world, hit)) ?? null;
   // the detonation, for the explosion's variety (docs/DESTRUCTION.md §11): one per burst, whatever the rules
   const blast = munitionBlastEventFor(shell.spec, hit.point.x, hit.point.y, hit.point.z,
     hit.normal?.x ?? 0, hit.normal?.y ?? 1, hit.normal?.z ?? 0,
     shellHitsWater(world, hit) ? 'water' : hit.kind === 'terrain' ? 'terrain' : hit.record?.structureIdx != null ? 'structure' : 'prop',
-    hit.record?.structureIdx);
+    hit.record?.structureIdx, craterId);
   if (blast) bus.emit(DESTRUCTION_BUS_EVENTS.blast, blast);
   bus.emit('shell:expired', {
     shellId: shell.id,

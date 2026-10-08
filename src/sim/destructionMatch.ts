@@ -57,7 +57,7 @@ export interface DestructionMatch {
    * struck structure).
    */
   shellWorldHit(spec: MunitionShellLike, record: CollisionRecord | null | undefined,
-    x: number, y: number, z: number, dirX: number, dirZ: number, groundBurst?: boolean): void;
+    x: number, y: number, z: number, dirX: number, dirZ: number, groundBurst?: boolean): number | null;
   /** A round burst on a hull (HE splash, a shaped-charge strike): its charge as a blast on the structures near. */
   shellBurst(spec: MunitionShellLike, x: number, y: number, z: number, dirX: number, dirZ: number): void;
   /** A hull's crash into `record` priced by the impact law this tick (closing speed over the crash's prior). */
@@ -128,22 +128,24 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
   const cratering = !!rules?.craters && !!ground && (rules.maxCraters ?? 0) > 0;
   let craterCount = 0;
   let cratersThisTick = 0;
-  /** A ground burst's crater, when it deforms (the wire's quantization: mm positions, cm radius, mm depth and rim). */
-  function dig(munition: MunitionClass, chargeKg: number, x: number, z: number): void {
-    if (!cratering || craterCount >= rules!.maxCraters || cratersThisTick >= CRATERS_PER_TICK) return;
+  /** A ground burst's crater, when it deforms (the wire's quantization: mm positions, cm radius, mm depth and rim): its
+   * id, or null for a mark. */
+  function dig(munition: MunitionClass, chargeKg: number, x: number, z: number): number | null {
+    if (!cratering || craterCount >= rules!.maxCraters || cratersThisTick >= CRATERS_PER_TICK) return null;
     craterFor(chargeKg, munition, rules!.craterScale, shape);
-    if (shape.radiusM < CRATER_DEFORM_MIN_RADIUS_M) return;
-    if (options.groundTypeAt?.(x, z) === 'hard') return;
+    if (shape.radiusM < CRATER_DEFORM_MIN_RADIUS_M) return null;
+    if (options.groundTypeAt?.(x, z) === 'hard') return null;
     const qx = Math.round(x * 1000) / 1000, qz = Math.round(z * 1000) / 1000;
     const radiusM = Math.min(655.35, Math.round(shape.radiusM * 100) / 100);
     const depthM = Math.min(65.535, Math.round(shape.depthM * 1000) / 1000);
     const rimM = Math.min(65.535, Math.round(shape.rimM * 1000) / 1000);
     const seed = craterSeed(qx, qz);
-    if (!ground!.addCrater(qx, qz, radiusM, depthM, rimM, seed)) return; // its ground buckets are full: a mark
+    if (!ground!.addCrater(qx, qz, radiusM, depthM, rimM, seed)) return null; // its ground buckets are full: a mark
     const craterId = craterCount++;
     cratersThisTick++;
     log.push({ kind: 'crater', craterId, x: qx, z: qz, radiusM, depthM, rimM, seed });
     craterOutbox.push({ craterId, x: qx, z: qz, radiusM, depthM, rimM, seed, munition, deforms: true });
+    return craterId;
   }
   const blow = { cause: 'blast' as StructureStageEvent['cause'], munition: null as StructureStageEvent['munition'],
     x: 0, y: 0, z: 0, dirX: 0, dirZ: 1 };
@@ -164,8 +166,8 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
     shellWorldHit(spec, record, x, y, z, dirX, dirZ, groundBurst = false) {
       const munition = munitionClassForShell(spec);
       const charge = munitionChargeKg(spec, munition);
-      if (groundBurst && !record && charge > 0) dig(munition, charge, x, z);
-      if (!structures) return;
+      const craterId = groundBurst && !record && charge > 0 ? dig(munition, charge, x, z) : null;
+      if (!structures) return craterId;
       const struck = structures.structureOf(record);
       const kinetic = struck ? kineticStructurePoints(spec, munition) : 0;
       if (struck && kinetic > 0) structures.applyPoints(struck, kinetic, setBlow('kinetic', munition, x, y, z, dirX, dirZ));
@@ -173,6 +175,7 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
         structures.applyBlast(charge, munition, setBlow('blast', munition, x, y, z, dirX, dirZ), struck);
         options.onBlast?.(x, y, z, charge);
       }
+      return craterId;
     },
     shellBurst(spec, x, y, z, dirX, dirZ) {
       if (!structures) return;

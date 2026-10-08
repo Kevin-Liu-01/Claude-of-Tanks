@@ -36,8 +36,8 @@ for (const [name, text, prefix] of [['solo', solo, 'game\\._destruction\\?\\.'],
 assert.match(authority, /advanceRepairs\(dt\);\s*advanceDestruction\(\);\s*updateVisibility\(\);/, 'the authority steps destruction before sight');
 // the detonations (§11): solo raises munition:blast where the round burst; the authority carries the same facts to the
 // peers (shell_impact: class, charge, struck structure; the direct shell_hit: the burst point), which raise it alike
-assert.match(solo, /const blast = munitionBlastEventFor\(shell\.spec, hit\.point\.x, hit\.point\.y, hit\.point\.z,[\s\S]{0,260}hit\.record\?\.structureIdx\);\s*if \(blast\) bus\.emit\(DESTRUCTION_BUS_EVENTS\.blast, blast\);\s*bus\.emit\('shell:expired'/,
-  'solo: a round meeting the world bursts before it expires, naming the structure it struck');
+assert.match(solo, /const blast = munitionBlastEventFor\(shell\.spec, hit\.point\.x, hit\.point\.y, hit\.point\.z,[\s\S]{0,260}hit\.record\?\.structureIdx, craterId\);\s*if \(blast\) bus\.emit\(DESTRUCTION_BUS_EVENTS\.blast, blast\);\s*bus\.emit\('shell:expired'/,
+  'solo: a round meeting the world bursts before it expires, naming the structure it struck and the crater it dug');
 assert.match(solo, /munitionBlastEventFor\(shell\.spec, strike\.x, strike\.y, strike\.z,[^\n]*'tank'\);\s*if \(blast\) bus\.emit\(DESTRUCTION_BUS_EVENTS\.blast, blast\);/,
   'solo: a round bursting on a hull');
 assert.match(solo, /bus\.emit\(DESTRUCTION_BUS_EVENTS\.blast, \{ munition: cookOff \? 'cook_off' : 'fuel',/, 'solo: a cook-off or a fuel fire');

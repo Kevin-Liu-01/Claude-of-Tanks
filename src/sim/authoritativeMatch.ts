@@ -1941,14 +1941,15 @@ export function createAuthoritativeMatch({
     return null;
   }
 
-  function emitWorldShellImpact(shell: DamageShell, worldHit: WorldTrace): void {
-    // destruction (docs/DESTRUCTION.md §11): the round's class and charge, and the structure it struck, for the peers'
-    // explosions and their munition:blast
+  function emitWorldShellImpact(shell: DamageShell, worldHit: WorldTrace, craterId: number | null = null): void {
+    // destruction (docs/DESTRUCTION.md §11): the round's class and charge, the structure it struck and the crater it dug,
+    // for the peers' explosions and their munition:blast
     const munition = munitionClassForShell(shell.spec);
     const structureId = worldHit.record?.structureIdx;
     emit('shell_impact', {
       munition, chargeKg: munitionChargeKg(shell.spec, munition),
       ...(typeof structureId === 'number' ? { structureId } : {}),
+      ...(craterId !== null ? { craterId } : {}),
       shellId: shell.id,
       shooterId: shell.shooterId,
       kind: worldHit.kind,
@@ -1973,9 +1974,9 @@ export function createAuthoritativeMatch({
     // the ground (not on water) may dig a crater (§7, P3)
     const groundBurst = worldHit.kind === 'terrain' && !worldHit.record
       && !shellHitsWater({ heightField }, { kind: 'terrain', point: shell.pos });
-    destruction.shellWorldHit(shell.spec, worldHit.record, shell.pos.x, shell.pos.y, shell.pos.z,
+    const craterId = destruction.shellWorldHit(shell.spec, worldHit.record, shell.pos.x, shell.pos.y, shell.pos.z,
       shell.pos.x - shell.prevPos.x, shell.pos.z - shell.prevPos.z, groundBurst);
-    emitWorldShellImpact(shell, worldHit);
+    emitWorldShellImpact(shell, worldHit, craterId);
   }
 
   function knockTargetFromShell(target: AuthoritativeEntity, shell: DamageShell): void {

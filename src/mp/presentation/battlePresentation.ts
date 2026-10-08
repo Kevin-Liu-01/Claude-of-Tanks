@@ -291,9 +291,12 @@ export function createBattlePresentation({
     if (!point.every((v) => Number.isFinite(v))) return false;
     const normal = Array.isArray(payload.normal) ? payload.normal as number[] : [Number(payload.nx) || 0, Number(payload.ny ?? 1), Number(payload.nz) || 0];
     const structureId = typeof payload.structureId === 'number' ? destruction.localId(payload.structureId) : null;
+    // the crater it dug (the authority's crater ids are every peer's: the log names them alike)
+    const craterId = typeof payload.craterId === 'number' && Number.isSafeInteger(payload.craterId) ? payload.craterId : null;
     bus.emit(DESTRUCTION_BUS_EVENTS.blast, {
       munition: payload.munition as MunitionBlastEvent['munition'], chargeKg, x: point[0]!, y: point[1]!, z: point[2]!,
       nx: normal[0] ?? 0, ny: normal[1] ?? 1, nz: normal[2] ?? 0, surface, ...(structureId !== null ? { structureId } : {}),
+      ...(craterId !== null ? { craterId } : {}),
     } satisfies MunitionBlastEvent);
     return true;
   }

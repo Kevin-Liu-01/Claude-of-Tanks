@@ -512,8 +512,9 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
     surface: 'structure', structureId: 0 }, 'the struck structure is this world\'s');
   blastBus.length = 0;
   p.applyEvent({ kind: 'shell_impact', payload: { munition: 'howitzer', chargeKg: 6.8, shellId: 901, kind: 'terrain', surfaceKind: 'terrain',
-    x: -150, y: 0, z: 0, nx: 0, ny: 1, nz: 0 } }, quiet);
+    x: -150, y: 0, z: 0, nx: 0, ny: 1, nz: 0, craterId: 3 } }, quiet);
   assert.equal(blastBus[0].payload.surface, 'water', 'open water by this world\'s mask');
+  assert.equal(blastBus[0].payload.craterId, 3, 'the crater it dug rides the blast');
   assert.equal('structureId' in blastBus[0].payload, false);
   blastBus.length = 0;
   p.applyEvent({ kind: 'shell_impact', payload: { munition: 'kinetic', chargeKg: 0, shellId: 902, kind: 'terrain', x: 0, y: 0, z: 0 } }, quiet);
