@@ -1,3 +1,4 @@
+import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { addFieldRoofWeapon } from './fieldRoofWeapon.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Four additive, independently authored source-study Leopards. No donor
@@ -329,10 +330,10 @@ function sightHousing(P: TankBuilderPort, d: Datum, x: number, bottom: number,
 }
 
 function mg(P: TankBuilderPort, d: Datum, x: number, y: number, z: number, remote = false,
-  lengthScale = 1, heightScale = 1): void {
+  lengthScale = 1, heightScale = 1, automatic = remote): void {
   equip(P, d, 'turretDetail', cylY(.12, .15, remote ? .23 : .105, 20), x, y + (remote ? .11 : .05), z);
   // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the source-measured roof stations beside these guns (feed-side collision census).
-  const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: .76, sourceScale: true,
+  const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: .76, sourceScale: true, remoteControlled: automatic,
     tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, seed: 260905, feed: 'right' });
   weapon.name = `${P.spec.id}RoofMachineGun`;
   weapon.scale.set(1,heightScale,lengthScale);
@@ -1010,6 +1011,7 @@ function a6LowHatchMG(P:TankBuilderPort,d:Datum): void {
 }
 
 function a4RemoteMount(P:TankBuilderPort,d:Datum): void {
+  const finishSupport=captureAuxiliaryStock(P,`${P.spec.id}RoofMachineGun`);
   equip(P,d,'turretDetail',cylY(.12,.16,.36,20),.743,2.62,-.926);
   // Source crossbar is a broad low cradle, separate from the tall weapon
   // cheeks and from the outboard receiver/ammunition body.
@@ -1017,12 +1019,14 @@ function a4RemoteMount(P:TankBuilderPort,d:Datum): void {
   for(const x of [.634,.854]) equip(P,d,'turretDetail',box(.024,.185,.266),x,2.868,-.929);
   // 2026-10-07 (tank-accessories round 4): the same round-3 butt growth (4.2 cm local, 7.2 cm under the 1.713 stretch)
   // put the RWS receiver's rear station at -1.276 (source -1.214). The gun moves 4.4 cm forward, onto the source
-  // pedestal's own centre (-0.926), and the stretch drops to 1.609: rear -1.214, barrel -0.087 again.
-  mg(P,d,.766,2.79,-.925,false,1.609,.74);
+  // pedestal's own centre (-0.926), and the stretch drops to 1.609: rear -1.214, barrel -0.087 again. The owner's
+  // field corrections (main 6763d7cc0) activate this original 7.62 mm station (automatic).
+  mg(P,d,.766,2.79,-.925,false,1.609,.74,true);
   a4OutboardReceiver(P,d);
   equip(P,d,'turretDetail',box(.257,.184,.306),.381,3.005,-1.055);
   equip(P,d,'turretDark',box(.204,.138,.014),.381,3.005,-.897);
   equip(P,d,'turretGlass',box(.151,.091,.008),.381,3.005,-.884);
+  finishSupport();
 }
 
 function a4OutboardReceiver(P:TankBuilderPort,d:Datum): void {
@@ -1136,6 +1140,7 @@ export function buildLeopard2A7VX(P: TankBuilderPort): void {
   roofPlateEdges(P,d,2.77,1.72);
   hullDeckEdges(P,d,'a7v_upper_glacis_era');
   mainGun(P,d,.096,true);
+  addFieldRoofWeapon(P,[-.68,.882594,-1.10],30,'Leopard 2A7V remote 30 mm cannon',.54,.70);
 }
 
 // A6M CAN: clean low tub and compact central turret. The cage is genuine
@@ -1241,7 +1246,6 @@ export function buildLeopard2A4MX(P: TankBuilderPort): void {
   roofPlateEdges(P,d,2.75,1.50);
   hullDeckEdges(P,d);
   mainGun(P,d,.079,false);
-  addFieldRoofWeapon(P,[-.65,.762144,.5],30,'Leopard 2A5M remote 30 mm cannon');
 }
 
 // A5: separately laid out basic armor tub and arrowhead modules, restrained
@@ -1317,7 +1321,7 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
   hullDeckEdges(P,d);
   a5Gun(P,d);
   addLeopardA5XSourceDetails(P);
-  addFieldRoofWeapon(P,[-.65,.857,-1],30,'Leopard 2A5 remote 30 mm cannon',.24);
+  addFieldRoofWeapon(P,[-.65,.857,-1],30,'Leopard 2A5 remote 30 mm cannon',.43,.70);
 }
 
 export const LEOPARD_X_PROFILES = Object.freeze({
