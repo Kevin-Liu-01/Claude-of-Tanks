@@ -3027,7 +3027,9 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
       ];
       const skirtTopAt = (z: number): number => 1.42 + ((z + 2.52) / 6.21) * (1.25 - 1.42);
       cr2Course(P, 'hull', skirtOuter,
-        [1.17, 1.26, 1.26, 1.26, 1.26, 1.26, 1.26, 1.26],
+        // Keep finite stock under the front crown; the former 1.26 m
+        // underside crossed above its 1.25 m top at the front corner.
+        [1.17, 1.23, 1.26, 1.26, 1.26, 1.26, 1.26, 1.26],
         [1.25, 1.25, skirtTopAt(1.76), skirtTopAt(1.75), skirtTopAt(1.11), skirtTopAt(1.10), 1.42, 1.42]);
       // segmented skirt faces: station slices see real end caps; shallow lower
       // tabs expose the six large wheels like the source.
@@ -3054,7 +3056,10 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
       const sx = (v: number): number => side * v;
       const shoulderOuter = side < 0 ? 1.55 : 1.37;
       P.add('hull', slab(
-        [sx(1.18), 1.48, -0.55], [sx(shoulderOuter), 1.48, -0.55], [sx(shoulderOuter), 1.48, 0.55], [sx(1.18), 1.48, 0.55],
+        // The crown falls outward on the right. Its underside follows that
+        // rake at 10 mm thickness instead of crossing the outer top edge.
+        [sx(1.18), 1.48, -0.55], [sx(shoulderOuter), side < 0 ? 1.47 : 1.46, -0.55],
+        [sx(shoulderOuter), side < 0 ? 1.47 : 1.46, 0.55], [sx(1.18), 1.48, 0.55],
         [sx(1.18), 1.49, -0.55], [sx(shoulderOuter), side < 0 ? 1.48 : 1.47, -0.55],
         [sx(shoulderOuter), side < 0 ? 1.48 : 1.47, 0.55], [sx(1.18), 1.49, 0.55]));
       // These were accidentally authored as 1.54 m VERTICAL rubber strips.

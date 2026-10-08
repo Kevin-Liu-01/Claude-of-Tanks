@@ -14,15 +14,15 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.2,
         "pos": [
-          -1.003832,
+          -1.0095063,
           0.8025901,
-          -0.1555199
+          -0.1555786
         ],
         "quaternion": [
-          0.0836688,
-          -0.7021393,
-          0.0836688,
-          0.7021393
+          0.0840765,
+          -0.7055611,
+          0.083259,
+          0.6987006
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "sabra_mk2_x",
