@@ -236,9 +236,16 @@ export default {
       // fords: the hull-down lines of the gorge floor. They are cut where the mill race left the stream (the
       // zone-control disc west of the viaduct) and at the mill pool east of it (the turbo-ball kickoff). (Round 5: the
       // pair under the bridge is gone with the floor there — the waist is the river's.)
-      ...[[-335, 210], [335, 210]].flatMap(([x, length]) => [
+      // (round 5's layout brief: the middle band's cover fell to 0.26 with the waist's open lips and the floor's levees under
+      // the bridge gone) a short pair at each reach's near end, out of the zone disc's and the kickoff's 30 m
+      ...[[-335, 210], [-200, 80], [200, 80], [335, 210]].flatMap(([x, length]) => [
         { kind: 'ridge', x, z: -25, length, width: 22, height: 2.6, yawDeg: 0, corridorScale: 1, settlementScale: 1 },
         { kind: 'ridge', x, z: 25, length, width: 22, height: 2.6, yawDeg: 0, corridorScale: 1, settlementScale: 1 },
+      ]),
+      // and in the waist, between the pools and the walls' feet, a narrower pair either side of the bridge
+      ...[-75, 75].flatMap((x) => [
+        { kind: 'ridge', x, z: -22, length: 44, width: 10, height: 2.2, yawDeg: 0, corridorScale: 1, settlementScale: 1 },
+        { kind: 'ridge', x, z: 22, length: 44, width: 10, height: 2.2, yawDeg: 0, corridorScale: 1, settlementScale: 1 },
       ]),
       // The raised lips along both rims where the gorge is deep, open where the main road reaches the abutments
       // (mirror pairs). They stand 20 m back from the edge: when their flat tops ran to it, a bot heading for the
@@ -380,6 +387,9 @@ export default {
     wallRuns: [
       [-280, -150, -190, -170, 2], [-280, 150, -190, 170, 2], [-360, -280, -290, -310, 1], [-360, 280, -290, 310, 1],
       [180, -150, 250, -140, 3], [180, 150, 250, 140, 3], [330, -320, 400, -300, 2], [330, 320, 400, 300, 2],
+      // round 5: the miradors' walls along the Tajo's lips either side of the bridgehead town, 5-6 m back from the edge
+      // (hull-down lines on the waist's lips, and a wall between a hull and the 54 m drop)
+      [-120, -86, -58, -42, 2], [-120, 86, -58, 42, 2], [58, -42, 120, -86, 2], [58, 42, 120, 86, 2],
     ],
     // no overhead line along the main road: it runs over the viaduct and through the two old squares
     well: false, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
