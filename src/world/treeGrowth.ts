@@ -2172,6 +2172,15 @@ interface CardEmitOptions {
    */
   lobeShare?: number;
   depthShade?: number;
+  /**
+   * Trees round 8 (2026-10-08, the gauntlet's wave 275 on the leafy bushes: "dark, evenly lit masses of repeated leaf
+   * cards, with no sunlit mass"): the centre the volume normal turns about and the vertical scale of its offset (the
+   * crown's centre and 0.75 by default). A shrub is a mound on the ground: its volume normal turns about the ground
+   * under its centre, scaled to a hemisphere, so its top faces the sky, its sides the sun or away from it, and no
+   * card of its lower half faces the ground.
+   */
+  volumeCentre?: { readonly x: number; readonly y: number; readonly z: number };
+  volumeYScale?: number;
 }
 
 /**
@@ -2196,8 +2205,16 @@ export const GROWTH_CROWN_SHADING = Object.freeze({
    * lit shell a little over the round-1 cards and the crown as a whole darker than them, the heart in shade.
    */
   crownGain: 1.1,
-  /** A grown shrub's lighter depth shade (a shrub is open to the sky round it) and the gain that gives its shell back. */
-  shrubDepthShade: 0.3, shrubGain: 1.04,
+  /**
+   * A grown shrub's depth shade and the gain that gives its shell back. Trees round 8 (2026-10-08, the gauntlet's wave
+   * 275: the bushes "dark, evenly lit masses … with no sunlit mass"; their next step the crowns' law — lit tops,
+   * translucency on the backlit side, darker interiors): the heart darker (0.3 → 0.45), the lit shell brighter (gain
+   * 1.04 → 1.32: the mean as it was, the top and the shell over it), the mound's form leading its normals (shrubVolume
+   * about the ground under it, the lobes' share 0.5 → 0.3) and a cluster's sky by its height in the mound (shrubTop:
+   * the skirt in the mound's own shade, the top in the open sky).
+   */
+  shrubDepthShade: 0.45, shrubGain: 1.32, shrubVolume: 0.55, shrubLobeShare: 0.3,
+  shrubTop: Object.freeze([0.8, 1.2]) as readonly [number, number],
   /** Trees round 4: a tufted pine's tuft by its stem darkens by up to this share (its depth in the crown's ellipsoid). */
   tuftCrownDepth: 0.35,
   /** Trees round 4: a crown card's value from its stem row to its tip row (the cluster's own shade toward its twig). */
@@ -2227,6 +2244,7 @@ export function emitLeafCards(skeleton: TreeSkeleton, options: CardEmitOptions):
   const depthShade = lobes ? (options.depthShade ?? GROWTH_CROWN_SHADING.depthShade) : 0;
   const rowCount = options.rows ?? 3, perCard = (rowCount - 1) * 6, stemWidth = options.stemWidth ?? 0.92;
   const { crown } = skeleton;
+  const volumeCentre = options.volumeCentre ?? crown, volumeYScale = options.volumeYScale ?? 0.75;
   const count = skeleton.leaves.length;
   const pos = new Float32Array(count * perCard * 3), nrm = new Float32Array(count * perCard * 3), uv = new Float32Array(count * perCard * 2);
   const col = new Float32Array(count * perCard * 3), flex = new Float32Array(count * perCard), card = new Float32Array(count * perCard * 4);
@@ -2256,7 +2274,7 @@ export function emitLeafCards(skeleton: TreeSkeleton, options: CardEmitOptions):
     const centre = v3(site.x + axis.x * site.length * 0.45, site.y + axis.y * site.length * 0.45, site.z + axis.z * site.length * 0.45);
     const faceOut = dot(face, norm(v3(centre.x - crown.x, centre.y - crown.y, centre.z - crown.z))) < 0 ? v3(-face.x, -face.y, -face.z) : face;
     const writeVertex = (p: V3, u: number, v: number, row: number, side: number): void => {
-      const sx = p.x - crown.x, sy = (p.y - crown.y) * 0.75, sz = p.z - crown.z;
+      const sx = p.x - volumeCentre.x, sy = (p.y - volumeCentre.y) * volumeYScale, sz = p.z - volumeCentre.z;
       const sl = Math.hypot(sx, sy, sz) || 1;
       const faceShare = Math.max(0, 1 - volume - lobeShare);
       let nx = (sx / sl) * volume + faceOut.x * faceShare;

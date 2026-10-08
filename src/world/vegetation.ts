@@ -2629,8 +2629,15 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
   // connecting them to the ground"): a shrub on its shrub atlas stands on its stems — a card a stool from the ground into
   // its clump (treeGrowth.ts shrubStemSites), drawn in the bark's grey-brown
   if (shrubAtlas) skeleton.leaves.push(...shrubStemSites(skeleton, SHRUB_STEM_TILE, rng));
+  // trees round 8 (wave 275: the bushes' next step, the crowns' law): the mound's form leads its normals — about the
+  // ground under its centre, scaled to a hemisphere (its top to the sky, its sides to the sun or away, its back-lit side
+  // passing the light through: the canopy material's transmission) — and its sky by a cluster's height in it
+  const moundTop = Math.max(0.3, skeleton.height);
+  const [topLo, topHi] = GROWTH_CROWN_SHADING.shrubTop;
   const cards = emitLeafCards(skeleton, {
     tiles: SPRAY_ATLAS_TILES, rng, rows: 2, depthShade: GROWTH_CROWN_SHADING.shrubDepthShade,
+    volume: GROWTH_CROWN_SHADING.shrubVolume, lobeShare: GROWTH_CROWN_SHADING.shrubLobeShare,
+    volumeCentre: { x: skeleton.crown.x, y: 0, z: skeleton.crown.z }, volumeYScale: skeleton.crown.r / moundTop,
     tint(shade, site, r) {
       const jitter = r();
       if (site.stem) {
@@ -2641,16 +2648,17 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
       const sk = snow > 0.05 && site.tile < SPRAY_ATLAS_TILES ? 0.85 + jitter * 0.15 : 0;
       _c.setHSL(hue0 + (r() - 0.5) * 0.06 + (0.585 - hue0) * sk, (sat0 + r() * 0.06) * (1 - sk * 0.85) + 0.02 * sk, 0.5,
         THREE.SRGBColorSpace);
+      const sky = topLo + (topHi - topLo) * Math.max(0, Math.min(1, site.y / moundTop));
       const value = (0.55 + 0.45 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6) * (profile.foliageValue ?? 1) * (sk > 0 ? 1 : shrubValue)
-        * GROWTH_CROWN_SHADING.shrubGain;
+        * GROWTH_CROWN_SHADING.shrubGain * sky;
       return [_c.r * gain * value, _c.g * gain * value, _c.b * gain * value];
     },
   });
   // the shrubs' normals keep the round-8 bush's positive-up floor: a skirt spray lights as the mound's side, never
-  // as a downward pole gone black
+  // as a downward pole gone black (round 8: 0.2 → 0.1 — the mound's normals point up of themselves now)
   const normal = cards.getAttribute('normal') as THREE.BufferAttribute;
   for (let i = 0; i < normal.count; i++) {
-    const nx = normal.getX(i), ny = Math.max(0.2, normal.getY(i)), nz = normal.getZ(i), l = Math.hypot(nx, ny, nz);
+    const nx = normal.getX(i), ny = Math.max(0.1, normal.getY(i)), nz = normal.getZ(i), l = Math.hypot(nx, ny, nz);
     normal.setXYZ(i, nx / l, ny / l, nz / l);
   }
   return weldGrownGeometry(cards);
