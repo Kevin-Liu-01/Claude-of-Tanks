@@ -39,6 +39,8 @@ export interface BorderHedgerowOptions {
 }
 
 const PRESENCE = 0.32;
+/** The hedge's evergreen undergrowth (sRGB hue): an olive green. */
+const HEDGE_EVERGREEN_HUE = 0.21;
 const HALF_FOOT_M = 1.3;
 /** A hedge's stations: the traced line's points (~8 m) cut in four (every 2 m, so a crown's round top is drawn) where the
  * run passes within HEDGE_FINE_OUT_M of the square's edge, in two (every 4 m, its crowns no narrower than a station's
@@ -65,17 +67,24 @@ export function buildBorderHedgerows(options: BorderHedgerowOptions): THREE.Mesh
 }
 
 /** A station of a bush line: the line point, its across direction, the ground, the crest and the girth. */
-interface HedgeStation { x: number; z: number; nx: number; nz: number; tx: number; tz: number; g: number; crest: number; half: number; lean: number; shade: number }
+interface HedgeStation { x: number; z: number; nx: number; nz: number; tx: number; tz: number; g: number; crest: number; half: number; lean: number; shade: number; hue: number; sat: number }
 
 function buildHedges(options: BorderHedgerowOptions): THREE.Mesh | null {
   const [hLo, hHi] = options.heightM ?? [2.4, 4.6];
   const rng = mulberry32((options.seed ^ 0x4ED6E) >>> 0);
   const pal = options.palette;
   const positions: number[] = [], normals: number[] = [], colors: number[] = [], indices: number[] = [];
-  const col = (l: number, hueShift: number, out: number[]): void => {
-    _color.setHSL(pal.hue + hueShift, Math.min(1, pal.sat * 0.92), Math.min(0.9, l), THREE.SRGBColorSpace);
+  const col = (l: number, hueShift: number, satK: number, out: number[]): void => {
+    _color.setHSL(pal.hue + hueShift, Math.min(1, pal.sat * 0.92 * satK), Math.min(0.9, l), THREE.SRGBColorSpace);
     out[0] = _color.r; out[1] = _color.g; out[2] = _color.b;
   };
+  // (the round's census, Amberford's corner from 60 m: one tone a crown and smooth shading read as clay — sandbags,
+  // not leaves) each vertex its own breath of light and of tilt, as the clumps of a bush's leaves catch the sky
+  const jitter = (k: number, slot: number): number => {
+    const v = Math.sin(k * 12.9898 + slot * 78.233 + tintSeed) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  let tintSeed = 0;
   const cFoot = [0, 0, 0], cShoulder = [0, 0, 0], cCrest = [0, 0, 0];
   let vertex = 0;
   const pushV = (x: number, y: number, z: number, nx: number, ny: number, nz: number, c: number[]): number => {
@@ -94,6 +103,7 @@ function buildHedges(options: BorderHedgerowOptions): THREE.Mesh | null {
       const end = i; // exclusive
       if (end - start < 2) continue;
       const tint = rng() * 2 - 1, phase = rng() * 100, leanK = 0.6 + rng() * 0.8;
+      tintSeed = phase;
       // the stations: each traced point and the midpoints between them, the presence interpolated
       const pts: { x: number; z: number; w: number }[] = [];
       let nearest = Infinity;
@@ -110,21 +120,26 @@ function buildHedges(options: BorderHedgerowOptions): THREE.Mesh | null {
       const m = pts.length, step = 8 / sub;
       // the crowns along the run: a bush every 4.5-9 m, its round top (a half-ellipse over 50-70 % of the spacing either side)
       // on the hedge's body (half the crest), each its own height and shade
-      const crowns: { c: number; r: number; h: number; shade: number }[] = [];
+      // (each crown its own species' turn of the palette: a little greener or browner, a little duller or brighter; and a
+      // third of them the hedge's evergreen undergrowth — bramble, holly, ivy — an olive green whatever the season, so an
+      // autumn hedge reads rust and olive, not one dusty pink: Amberford's corner, the round's census)
+      const crowns: { c: number; r: number; h: number; shade: number; hue: number; sat: number }[] = [];
       for (let c = rng() * 4; c < (m - 1) * step + 6; c += 4.5 + rng() * 4.5) {
         const gap = 4.5 + rng() * 4.5;
+        const evergreen = rng() < 0.33;
         // (never under 1.6 stations either side: a narrower one is drawn as a spike)
-        crowns.push({ c, r: Math.max(1.6 * step, gap * (0.5 + rng() * 0.2)), h: 0.80 + rng() * 0.42, shade: 0.86 + rng() * 0.30 });
+        crowns.push({ c, r: Math.max(1.6 * step, gap * (0.5 + rng() * 0.2)), h: 0.80 + rng() * 0.42, shade: 0.86 + rng() * 0.30,
+          hue: evergreen ? (HEDGE_EVERGREEN_HUE - pal.hue) * 0.85 : (rng() - 0.5) * 0.07, sat: evergreen ? 1.0 : 0.8 + rng() * 0.3 });
       }
-      const crownAt = (sArc: number): { lift: number; shade: number } => {
-        let lift = 0.5, shade = 0.92;
+      const crownAt = (sArc: number): { lift: number; shade: number; hue: number; sat: number } => {
+        let lift = 0.5, shade = 0.92, hue = 0, sat = 0.9;
         for (const cr of crowns) {
           const d = (sArc - cr.c) / cr.r;
           if (d <= -1 || d >= 1) continue;
           const top = cr.h * Math.sqrt(1 - d * d);
-          if (top > lift) { lift = top; shade = cr.shade; }
+          if (top > lift) { lift = top; shade = cr.shade; hue = cr.hue; sat = cr.sat; }
         }
-        return { lift, shade };
+        return { lift, shade, hue, sat };
       };
       const stations: (HedgeStation | null)[] = [];
       for (let k = 0; k < m; k++) {
@@ -141,17 +156,17 @@ function buildHedges(options: BorderHedgerowOptions): THREE.Mesh | null {
         const presence = Math.min(1, (p.w - PRESENCE) / (1 - PRESENCE) * 1.6);
         // (the crest a string of crowns 4.5-9 m apart over the hedge's body, not a wavy embankment: the PR head's census and
         // this lane's render at 120 and 300 m)
-        const { lift, shade } = crownAt(k * step);
+        const { lift, shade, hue: crownHue, sat: crownSat } = crownAt(k * step);
         const crest = (hLo + (hHi - hLo) * swell) * lift * (0.30 + 0.70 * endTaper) * (0.55 + 0.45 * presence);
         const half = HALF_FOOT_M * (0.75 + 0.35 * swell) * (0.70 + 0.36 * lift) * (0.45 + 0.55 * endTaper);
         stations.push({ x: p.x, z: p.z, nx: -tz, nz: tx, tx, tz, g, crest, half, lean: (swell - 0.5) * 0.5 * leanK + (rng() - 0.5) * 0.25,
-          shade: shade * (0.95 + 0.10 * rng()) });
+          shade: shade * (0.95 + 0.10 * rng()), hue: crownHue, sat: crownSat });
       }
       // the rings of five vertices — left foot, left shoulder, crest, right shoulder, right foot — and the closing tips
       let prev: number[] | null = null;
       const tipAt = (st: HedgeStation, dir: number): number => {
         // the run's end closes on a low point a station's half-step beyond, the foliage's dark at the ground
-        col(pal.l0 * 0.92, tint * 0.025, cFoot);
+        col(pal.l0 * 0.92, tint * 0.025, 1, cFoot);
         return pushV(st.x + st.tx * dir * step * 0.5, st.g + 0.3, st.z + st.tz * dir * step * 0.5, st.tx * dir, 0.8, st.tz * dir, cFoot);
       };
       for (let k = 0; k < m; k++) {
@@ -161,24 +176,27 @@ function buildHedges(options: BorderHedgerowOptions): THREE.Mesh | null {
         // the crest's slope along the line tilts its normal so the lumps catch the light on their sunward flank
         const dCrest = ((nb.g + nb.crest) - (pb.g + pb.crest)) / (2 * step);
         const ax = -st.tx * dCrest * 0.9, az = -st.tz * dCrest * 0.9;
-        const hue = tint * 0.025 + (st.shade - 1) * 0.04;
+        const hue = tint * 0.025 + (st.shade - 1) * 0.04 + st.hue;
         // (the ring forest's crowns run l0 at their foot to l1 at their top, horizonVista.ts paintCanopy; a hedge's crowns
         // face the sky and the sun far more than a tree's lobes do, so at the crowns' own tones the bush lines read as
         // light moss mounds over the sward — (88-102, 118-134, 72-74) beside crowns at (53-69, 80-86, 63-70), the round's
         // first b1 census: they keep 0.8-0.92 of those tones, a breath less saturated)
-        col(pal.l0 * 0.80 * st.shade, hue, cFoot);
-        col((pal.l0 + pal.l1) * 0.5 * 0.90 * st.shade, hue, cShoulder);
-        col(pal.l1 * 0.92 * st.shade, hue, cCrest);
+        col(pal.l0 * 0.80 * st.shade, hue, st.sat, cFoot);
         const foot = st.g - 0.7, top = st.g + st.crest, shoulderY = st.g + st.crest * 0.6;
         const cx = st.x + st.nx * st.lean, cz = st.z + st.nz * st.lean;
         const ring: number[] = [];
         for (const side of [1, -1]) {
           const sx = st.nx * side, sz = st.nz * side;
           ring.push(pushV(st.x + sx * st.half * 0.78, foot, st.z + sz * st.half * 0.78, sx * 0.85 + ax, 0.55, sz * 0.85 + az, cFoot));
-          ring.push(pushV(cx + sx * st.half, shoulderY, cz + sz * st.half, sx * 0.70 + ax, 0.70, sz * 0.70 + az, cShoulder));
+          const js = jitter(k, side > 0 ? 1 : 2), jt = jitter(k, side > 0 ? 3 : 4) - 0.5;
+          col((pal.l0 + pal.l1) * 0.5 * 0.90 * st.shade * (0.90 + 0.20 * js), hue, st.sat, cShoulder);
+          ring.push(pushV(cx + sx * st.half, shoulderY, cz + sz * st.half,
+            sx * 0.70 + ax + st.tx * jt * 0.36, 0.70, sz * 0.70 + az + st.tz * jt * 0.36, cShoulder));
         }
         // the order round the section: left foot 0, left shoulder 1, crest 2, right shoulder 3, right foot 4
-        const crestV = pushV(cx, top, cz, st.nx * 0.12 + ax * 1.4, 1.0, st.nz * 0.12 + az * 1.4, cCrest);
+        const jc = jitter(k, 5), jx = jitter(k, 6) - 0.5, jz = jitter(k, 7) - 0.5;
+        col(pal.l1 * 0.92 * st.shade * (0.88 + 0.24 * jc), hue, st.sat, cCrest);
+        const crestV = pushV(cx, top, cz, st.nx * 0.12 + ax * 1.4 + jx * 0.36, 1.0, st.nz * 0.12 + az * 1.4 + jz * 0.36, cCrest);
         const section = [ring[0], ring[1], crestV, ring[3], ring[2]];
         if (!prev) {
           // a run's first station (or the first after a gap in the ground): close it with a tip behind it
