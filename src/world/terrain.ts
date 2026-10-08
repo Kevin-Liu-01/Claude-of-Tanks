@@ -109,6 +109,18 @@ export interface RoadPathStyle {
   surface?: RoadSurface;
   /** The carriageway's full width (m), 4–18; absent: the map's ~7.7 m gauge. */
   widthM?: number;
+  /**
+   * The map-revival lane (2026-10-07, Tidegate Polders' lanes on the dyke crowns): the carriageway standing at least this
+   * many metres over the ground it crosses (a road already on an embankment as high is left as it is), on a crowned bank
+   * of its own — a crest the carriageway's width and a metre and a fifth of verge either side, its
+   * shoulders down to the graded road plane over six metres — the lift ramped out over `crownRampM` from wherever a road
+   * that keeps its grade comes within eight metres (a junction or a crossing meets it at that road's level), and faded
+   * over a bridge's approaches (they grade to its deck as before). Absent: the path grades as before, and a map that lifts
+   * no path builds its terrain as before.
+   */
+  crownLiftM?: number;
+  /** The crown lift's ramp toward a road that keeps its grade (m; default 40). */
+  crownRampM?: number;
 }
 /** The road layer's class codes (R): 0 the map's own road. */
 const ROAD_SURFACE_CODE: Readonly<Record<RoadSurface, number>> = Object.freeze({ asphalt: 1, cobble: 2, patched: 3, dirt: 4 });
@@ -1283,6 +1295,12 @@ function* heightFieldBuildSteps(
   let gSegIdx: Int16Array | null = new Int16Array(GN * GN);
   let gSegT: Float32Array | null = new Float32Array(GN * GN);
   const gCorridor = new Float32Array(GN * GN);
+  // (the map-revival lane, 2026-10-07; RoadPathStyle.crownLiftM) the crowned banks of the lifted paths: per cell, the
+  // nearest line's lift (its nodes' ramped lifts, interpolated as the elevation is) and its crest's half-width; null on
+  // every map that lifts no path
+  const crownStyles = layout.roadStyles?.some((style) => (style?.crownLiftM ?? 0) > 0) ? layout.roadStyles : null;
+  const gRoadLift = crownStyles ? new Float32Array(GN * GN) : null;
+  const gRoadCrest = crownStyles ? new Float32Array(GN * GN) : null;
 
   const roads = layout.roads;
   // Count completed segments, corridor rows, support setup and range rows;
@@ -1558,6 +1576,16 @@ function* heightFieldBuildSteps(
         roadElevation += (bridge.deckY - roadElevation) * bridge.approach;
         h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd)) * (1 - bridge.span);
       } else h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd));
+      // (the map-revival lane, 2026-10-07) a lifted path's crowned bank over the graded plane: the crest to the
+      // carriageway's edge and its verge, the shoulders down over six metres; a bridge's approaches grade to its deck
+      // as before (the lift fades with the approach, and is nil on the span)
+      if (gRoadLift) {
+        const lift = sampleHeightGridCell(gRoadLift, GN, gridIndex, gridFx, gridFz);
+        if (lift > 0) {
+          const crest = sampleHeightGridCell(gRoadCrest!, GN, gridIndex, gridFx, gridFz);
+          h += lift * (1 - smoothstep(crest, crest + 6, rd)) * (bridgeDecks.length ? 1 - bridgeTermsAt(x, z).approach : 1);
+        }
+      }
     }
     const detailed = applyRoadShoulderDetail(x, z, h, rd, settlementWeight, marshWeight, lakeWetness, padWetness);
     // Dry viaduct abutments cut any sub-metre shoulder noise flush with the
@@ -2195,6 +2223,36 @@ function* heightFieldBuildSteps(
       const e = nodeElev[gSegRoad![i]];
       const s = gSegIdx![i];
       gRoadElev[i] = e[s] + (e[s + 1] - e[s]) * gSegT![i];
+    }
+    if (crownStyles) fillRoadCrowns(crownStyles, nodeElev);
+  }
+  /**
+   * The lifted paths' banks (RoadPathStyle.crownLiftM): each node's lift what its graded plane still lacks of the lift over
+   * the ground it crosses (a road already on an embankment as high takes none), ramped toward the roads that keep their
+   * grade.
+   */
+  function fillRoadCrowns(styles: readonly (RoadPathStyle | null)[], elev: readonly (readonly number[])[]): void {
+    const keepsGrade = roads.map((_, r) => !((styles[r]?.crownLiftM ?? 0) > 0));
+    const nodeLift = roads.map((nodes, r) => {
+      const lift = styles[r]?.crownLiftM ?? 0;
+      if (!(lift > 0)) return nodes.map(() => 0);
+      const ramp = styles[r]?.crownRampM ?? 40;
+      return nodes.map(([x, z], i) => {
+        let d = Infinity;
+        for (let q = 0; q < roads.length; q++) {
+          if (!keepsGrade[q]) continue;
+          const other = roads[q];
+          for (let k = 0; k + 1 < other.length; k++) d = Math.min(d, segDist(x, z, other[k][0], other[k][1], other[k + 1][0], other[k + 1][1]).d);
+        }
+        const lacks = clamp(lift - (elev[r][i] - heightAt(x, z, false, false)), 0, lift);
+        return lacks * smoothstep(8, 8 + ramp, d);
+      });
+    });
+    for (let i = 0; i < GN * GN; i++) {
+      if (!(gRoadDist[i] < 1e8)) continue;
+      const r = gSegRoad![i], s = gSegIdx![i], l = nodeLift[r];
+      gRoadLift![i] = l[s] + (l[s + 1] - l[s]) * gSegT![i];
+      gRoadCrest![i] = (styles[r]?.widthM ? clamp(styles[r]!.widthM! / 2, 2, 9) : 3.85) + 1.2;
     }
   }
   // --- road node elevations: pre-road height sampled + smoothed + junction blend ---
