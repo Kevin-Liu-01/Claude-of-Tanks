@@ -22,10 +22,11 @@ assert.equal(nodes.length, 2, 'the Studio\'s stepFx and advanceFx');
 const functions = nodes.map((node) => node.getText(source));
 
 /** What the two functions read without declaring it (the Studio's state they close over, globals aside): the ports
- * below stub what the step needs, and the rest reads as undefined, so a branch that adds its own Studio state to the
- * step (its destruction, its strike rounds) runs this receipt unchanged where it merges this one. */
+ * below stub what the step needs, and the rest reads as undefined (a no-op where it is called), so a branch that adds
+ * its own Studio state to the step (its destruction, its strike rounds, its track dust) runs this receipt unchanged
+ * where it merges this one. */
 const HARNESS = new Set(['clockMs']);
-const free = new Set();
+const free = new Set(), called = new Set();
 {
   const declared = new Set();
   const visit = (node) => {
@@ -38,6 +39,7 @@ const free = new Set();
         && parent.name === node;
       if (declares) declared.add(node.text);
       else if (!key && !ts.isBindingElement(parent)) free.add(node.text);
+      if (ts.isCallExpression(parent) && parent.expression === node) called.add(node.text);
     }
     ts.forEachChild(node, visit);
   };
@@ -69,7 +71,7 @@ function studioStep(world) {
     resolveFxSubject: noop, getWorld: () => world, FX_STEP_S: 1 / 60, applyStoryboardActors: noop, advanceWater: noop,
     applyStoryboardCamera: noop, invalidate: noop,
   };
-  for (const name of free) if (!(name in ports)) ports[name] = undefined;
+  for (const name of free) if (!(name in ports)) ports[name] = called.has(name) ? noop : undefined;
   const code = stripTypeScriptTypes(`
     function makeStudioStep(ports) {
     const { ${Object.keys(ports).join(',')} } = ports;
