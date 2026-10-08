@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
-import { GHILLIE_SUIT_CONFIGS } from './ghillieSuit.ts';
+import { addVehicleGhillieSuit, GHILLIE_SUIT_CONFIGS } from './ghillieSuit.ts';
 
 const ids = [
   'ua_t64bv', 'pt91_twardy', 'm1a2_sepv3',
@@ -249,6 +249,32 @@ for (const id of ['leo2a4', 'ua_t72b3m_hetman_ii', 'ua_t72b3_modern']) {
   const floating = suitContact(tank, id);
   assert.deepEqual(floating, [], `${id} suit pieces touch nothing within ${TOUCH_M * 1000} mm:\n  ${floating.join('\n  ')}`);
   tank.dispose();
+}
+
+// 2026-10-08 (round 5, the lane lead's integration rehearsal): the suit is laid after assembly through the port's
+// afterAssemble list. A profile step that assigns postAssemble before the suit call and a field kit that wraps it after
+// both keep running, the suit still builds, and nothing recurses (an accessor on postAssemble once looped forever
+// against a wrapper that captured it).
+{
+  const box = (w, h, d, y) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial()); m.position.y = y; return m; };
+  const hullG = new THREE.Group(), turretG = new THREE.Group(), gunG = new THREE.Group();
+  hullG.add(box(3, 1, 6, 0.5)); turretG.add(box(2, 0.6, 3, 0.3)); turretG.position.y = 1;
+  const root = new THREE.Group(); root.add(hullG, turretG, gunG); root.updateMatrixWorld(true);
+  const calls = [];
+  const P = { spec: { id: 'receipt_port' }, q: true, hullG, turretG, gunG, mats: { canvasCloth: new THREE.MeshStandardMaterial() },
+    disposables: [], postAssemble: null, afterAssemble: [] };
+  P.postAssemble = () => calls.push('profile');
+  const cfg = { id: 'receipt_port', seed: 7, style: 'leafy', density: 1, leafScale: 1, light: 0x667744, dark: 0x334422, netColor: '#334422',
+    turret: { top: [{ x0: -0.9, x1: 0.9, z0: -1.4, z1: 1.4, nx: 8, nz: 12, yAt: () => 0.62, seed: 1 }],
+      side: [-1, 1].map((side) => ({ side, z0: -1.3, z1: 1.3, nz: 8, ny: 4, topAt: () => 0.6, bottomAt: () => 0.1, outAt: () => 1.02, seed: 2 + side })) } };
+  assert.equal(addVehicleGhillieSuit(P, cfg), true);
+  const before = P.postAssemble;
+  P.postAssemble = (rig) => { before?.(rig); calls.push('field kit'); };
+  const rig = { root, hullG, turretG, gunG, recoilG: gunG };
+  P.postAssemble(rig);
+  for (const step of P.afterAssemble) step(rig);
+  assert.deepEqual(calls, ['profile', 'field kit'], 'both profile postAssemble steps still run around the suit');
+  assert.ok(turretG.getObjectByName('receipt_port_ghillie_turret_net')?.isMesh, 'the suit builds after assembly');
 }
 
 const twardy = GHILLIE_SUIT_CONFIGS.pt91_twardy;

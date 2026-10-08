@@ -128,8 +128,8 @@ interface GhillieBuilderPort {
   /** The cloth the suit clones, and the scheme wheel paint its theatre is read from (round 5). */
   mats: { canvasCloth: THREE.MeshStandardMaterial; wheels?: THREE.MeshStandardMaterial };
   disposables: DisposableResource[];
-  /** Runs once the tank is assembled (TankBuilderPort.postAssemble): the suit is laid against the finished armour. */
-  postAssemble?: ((rig: never) => void) | null;
+  /** Steps run once the tank is assembled, after its profile's postAssemble (TankBuilderPort.afterAssemble). */
+  afterAssemble?: Array<(rig: never) => void>;
 }
 
 // Shared physical-ghillie authoring process.
@@ -2401,22 +2401,9 @@ export function addVehicleGhillieSuit(P: GhillieBuilderPort, config?: GhillieCon
   const authored = config ?? GHILLIE_CONFIG_INDEX[P.spec.id];
   if (!authored || authored.disabled) return false;
   const cfg = freezeConfig(authored);
-  if (!('postAssemble' in P)) {
-    buildGhillieSuit(P, cfg);
-    return true;
-  }
-  // the suit runs after whatever the profile assembles, even one it assigns after this call (a field kit added later
-  // in the same builder): a later assignment is kept and run first
-  let profileStep = P.postAssemble as ((rig: unknown) => void) | null | undefined;
-  const run = (rig: unknown): void => {
-    profileStep?.(rig);
-    buildGhillieSuit(P, cfg);
-  };
-  Object.defineProperty(P, 'postAssemble', {
-    configurable: true,
-    enumerable: true,
-    get: () => run,
-    set: (step: ((rig: unknown) => void) | null | undefined) => { profileStep = step; },
-  });
+  // laid against the finished armour: after the profile's own postAssemble chain, which it never wraps (a port without
+  // that stage builds at once)
+  if (P.afterAssemble) P.afterAssemble.push(() => buildGhillieSuit(P, cfg));
+  else buildGhillieSuit(P, cfg);
   return true;
 }
