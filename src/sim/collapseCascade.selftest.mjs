@@ -7,7 +7,12 @@
 // mid-fall ends it once.
 import assert from 'node:assert/strict';
 import { nearestColliderHit, setCompoundShape, setObbShape } from '../world/collision.ts';
-import { COLLAPSE_SETTLE_TICKS, COLLAPSE_STOREY_TICKS, createStructureDamage } from './structureDamage.ts';
+import { COLLAPSE_SETTLE_TICKS, collapseStoreyTicks, createStructureDamage } from './structureDamage.ts';
+
+/** The house's storeys are 3.2 m: each takes sqrt(2·3.2/9.81) s to fall, 48 ticks. */
+const COLLAPSE_STOREY_TICKS = collapseStoreyTicks(3.2);
+assert.equal(COLLAPSE_STOREY_TICKS, 48, 'a 3.2 m storey falls in 48 ticks');
+assert.equal(collapseStoreyTicks(0.3), 18, 'never faster than 18');
 
 /** A three-storey house at the origin, 8 m across (x) and 10 m along (z): walls to 9.6 m in one filled band (three
  * storeys of 3.2 m), a pitched roof of four half-metre strips to 11.6 m. */
@@ -51,11 +56,11 @@ function bringDown(sections, ticks = 200, beforeStep = null) {
 // ---- sections on: the roof, the storeys top down, the swap after
 {
   const shots = [];
-  const run = bringDown(true, 200, (tick, table, s0, colliders) => {
+  const run = bringDown(true, 300, (tick, table, s0, colliders) => {
     // a shell at 8 m (the top storey) and at 5 m (the middle one) before a step, so after the step before it: what still
     // stands stops it
-    if ([22, 23, 43, 44].includes(tick)) shots.push({ tick, high: shellAt(colliders, 8), mid: shellAt(colliders, 5) });
-    if (tick === 30) {
+    if ([1 + COLLAPSE_STOREY_TICKS, 2 + COLLAPSE_STOREY_TICKS, 1 + 2 * COLLAPSE_STOREY_TICKS, 2 + 2 * COLLAPSE_STOREY_TICKS].includes(tick)) shots.push({ tick, high: shellAt(colliders, 8), mid: shellAt(colliders, 5) });
+    if (tick === 60) {
       // a hull ramming it while it falls drives through (it yields at full speed, as P1's one-tick wait did)
       assert.equal(table.yieldTo(s0, 60, 6, 6, { ...blow, cause: 'ram' }), 1, 'a falling building yields to a ramming hull');
     }
@@ -90,8 +95,9 @@ function bringDown(sections, ticks = 200, beforeStep = null) {
   // shells meet what still stands: the top storey stops a high shell until it drops (step 22); the middle one a shell
   // at 5 m until its turn (step 43)
   const after = (step) => shots.find((s) => s.tick === step + 1);
-  assert.ok(Number.isFinite(after(21).high) && !Number.isFinite(after(22).high), `the top storey stops a shell at 8 m until it drops (${after(21).high}, ${after(22).high})`);
-  assert.ok(Number.isFinite(after(42).mid) && !Number.isFinite(after(43).mid), `the middle storey one at 5 m until its turn (${after(42).mid}, ${after(43).mid})`);
+  const top = 1 + COLLAPSE_STOREY_TICKS, mid = 1 + 2 * COLLAPSE_STOREY_TICKS;
+  assert.ok(Number.isFinite(after(top - 1).high) && !Number.isFinite(after(top).high), `the top storey stops a shell at 8 m until it drops (${after(top - 1).high}, ${after(top).high})`);
+  assert.ok(Number.isFinite(after(mid - 1).mid) && !Number.isFinite(after(mid).mid), `the middle storey one at 5 m until its turn (${after(mid - 1).mid}, ${after(mid).mid})`);
   console.log(`  sections on: roof at tick ${firstTick('roof')}, storeys 2/1/0 at ${firstTick(2)}/${firstTick(1)}/${firstTick(0)}, collapsed and swapped at ${collapsed[0].tick} (${(collapsed[0].tick / 60).toFixed(2)} s)`);
 }
 
@@ -106,11 +112,11 @@ function bringDown(sections, ticks = 200, beforeStep = null) {
 
 // ---- a collapse restored mid-fall (a late joiner's log, a resumed host) ends the cascade once
 {
-  const run = bringDown(true, 200, (tick, table) => { if (tick === 30) assert.ok(table.restoreStage(0, 'collapsed')); });
-  const late = run.breaches.filter((b) => b.tick > 30);
+  const run = bringDown(true, 300, (tick, table) => { if (tick === 60) assert.ok(table.restoreStage(0, 'collapsed')); });
+  const late = run.breaches.filter((b) => b.tick > 60);
   assert.equal(late.length, 0, 'no fall after the restore');
   assert.equal(run.stages.filter((e) => e.stage === 'collapsed').length, 0, 'and no second collapse event (the restore lays it down silently)');
-  assert.equal(run.swapAt, 30, 'swapped by the restore');
+  assert.equal(run.swapAt, 60, 'swapped by the restore');
 }
 
 console.log(`collapseCascade: with sections on a house comes down top first (the roof, then each storey ${COLLAPSE_STOREY_TICKS} ticks apart, each `

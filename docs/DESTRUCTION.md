@@ -161,12 +161,13 @@ from its collision records alone (a host has no rendered kit), on its first blow
   a storey's floor once it dropped, the ground storey's stub tops last). A landmark loses sections, never the whole.
 - **The collapse, seen** (2026-10-08; wave 277: "the building is never seen to come down"): with sections on, a
   structure whose whole crosses collapse comes down top first before its swap — the roof if it still stands at the next
-  tick, then each storey from the top every 21 ticks (0.35 s), its standing faces falling with it (the last one's breach
-  carries `storeyDown`: the kit's heap on that floor line), the ground storey to its stubs — and 24 ticks (0.4 s) after
-  the ground storey its collision swaps, its heap rises and its `collapsed` stage releases (that event carries
+  tick, then each storey from the top, each the time its height takes to fall (`collapseStoreyTicks`: √(2h/g), a 3.2 m
+  storey 48 ticks, 0.81 s; at least 18), its standing faces falling with it (the last one's breach carries `storeyDown`:
+  the kit's heap on that floor line), the ground storey to its stubs — and 30 ticks (0.5 s) after the ground storey its
+  collision swaps, its heap rises and its `collapsed` stage releases (that event carries
   `sections: true`: the presentation's collapse lays the final pile without throwing pieces from the full height, since
-  every storey threw its own). A three-storey house: the roof at once, the storeys 0.35, 0.7 and 1.05 s later, the swap at
-  1.47 s. Meanwhile further blows add nothing, a hull ramming it drives through (it yields at full speed, as P1's one-tick
+  every storey threw its own). A three-storey house: the roof at once, the storeys 0.81, 1.62 and 2.43 s later, the swap
+  at 2.92 s (no building-collapse footage in the reference set; a storey's free fall is the floor on its timing). Meanwhile further blows add nothing, a hull ramming it drives through (it yields at full speed, as P1's one-tick
   wait did), and shells and sight lines meet what still stands. A late joiner's settled log and a resumed host lay the
   collapse down at once (a cascade in flight ends there). Sections off: one event and the next tick's swap, as in P1.
   `sim/collapseCascade.selftest` pins it.
@@ -669,7 +670,7 @@ Cover that disappears changes the game. The gates, every phase:
 | `sim/destructionCraters.selftest.mjs` | the dig law, marks, hard ground, the tick and match caps, the quantized log and its restore, both sims alike, a real HE round's crater stamped once on a peer and replayed bit for bit |
 | `sim/structureSections.selftest.mjs` | P2: eaves, storeys and shares; a hole passes a ray to the far inner face, two aligned pass it; a panel falls to its stub, the roof, a storey after three faces (`storeyDown`); the tick's breach budget; a restored host, the wire, live and late mirrors open bit for bit the same; off in every mode, P1's tuning unchanged |
 | `sim/destructionSections.selftest.mjs` | P2 in the authority for real: an M1A2's HE round holes a wall, its APFSDS round passes the hole and strikes the far wall from inside (sections off: it stops on the near wall), bit-for-bit replay; spotting sees through holes in both walls, not one; one narrow phase in both worlds |
-| `sim/collapseCascade.selftest.mjs` | P2: a collapse comes down top first — the roof, the storeys 21 ticks apart each with one `storeyDown`, the swap and `collapsed` 24 ticks after the ground storey; shells meet what stands; a ramming hull drives through; sections off it is P1's single event; a restore mid-fall ends it once |
+| `sim/collapseCascade.selftest.mjs` | P2: a collapse comes down top first — the roof, the storeys a storey's fall apart (48 ticks at 3.2 m) each with one `storeyDown`, the swap and `collapsed` 30 ticks after the ground storey; shells meet what stands; a ramming hull drives through; sections off it is P1's single event; a restore mid-fall ends it once |
 | `game/studioDestruction.selftest.mjs` | P2: the Studio films the sim's own holes (a strike, a round through the hole, reset) |
 | `mp/wire` (extended) | the log round-trips, keyframe whole and delta additions |
 | `mp/host/migrationState` (extended) | restore of stages and craters; nothing collapses twice |
