@@ -1111,19 +1111,23 @@ function buildType99AHullDeckAndArmor(P: Modern2BuilderPort) {
   // panel run (print skirt band y 0.39..1.47), FULL-DEPTH FY-4 TILE WALL
   // over the front two-thirds (print tile band y 0.47..1.34 z -2.06..2.70,
   // armor-linked bricks — faces ±1.85 EXACT), rubber rear, bow panels ------
+  // Fleet lane 2026-10-08 (wave 269 chase frames: "the thin rear-corner plates splay outward from the hull"): the rear
+  // skirt run and its fringe went on to z -3.55 and -3.62, past the track's rear wrap (-3.48) and 40 cm past the top
+  // band (-3.15), so from behind their last stretch stood as bare 1 cm fins at the corners. The run, its fringe and
+  // the band now end together at the track's rear (z -3.45).
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.02, 0.24, 6.40), s * 1.845, 1.345, 0.05);              // skirt top band at the oracle's
+    P.add('hull', box(0.02, 0.24, 6.70), s * 1.845, 1.345, -0.10);             // skirt top band at the oracle's
                                                                                //   ±1.855 face; inner face 1.835
                                                                                //   clears the native shoe envelope
     P.add('hull', box(0.01, 1.04, 0.56), s * 1.855, 0.94, 3.00);               // deep bow panel (thin outer sheet;
     P.add('hull', box(0.01, 0.35, 0.26), s * 1.855, 1.075, 3.34);              //   inner face clears terminal shoes)
                                                                                //   (drops to the print tip line)
     P.add('hullDark', box(0.01, 0.90, 0.024), s * 1.855, 0.92, 2.73);          // bow panel seam
-    P.add('hull', box(0.01, 0.66, 1.49), s * 1.855, 0.84, -2.805);             // source-painted rear skirt run;
+    P.add('hull', box(0.01, 0.66, 1.39), s * 1.855, 0.84, -2.755);             // source-painted rear skirt run;
                                                                                // only its flexible lower fringe is
                                                                                // dark rubber, not the whole panel
     for (let k = 0; k < 3; k++) P.add('hullDark', box(0.01, 0.56, 0.02), s * 1.855, 0.82, -2.32 - k * 0.52);
-    P.add('hullRubber', box(0.01, 0.12, 1.54), s * 1.855, 0.50, -2.85);        // lower fringe
+    P.add('hullRubber', box(0.01, 0.12, 1.39), s * 1.855, 0.50, -2.755);       // lower fringe
   }
   // Eight full-height FY-4 side cassettes per side.  The previous 3×11 field
   // rendered as a solid Minecraft wall and hid the characteristic six-wheel

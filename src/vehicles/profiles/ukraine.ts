@@ -1380,6 +1380,11 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   }
   for (const s of [-1, 1]) {
     P.add('hullRubber', box(0.035, 0.26, 2.20), s * 1.80, 0.50, -2.10, 0, 0, -s * 0.010);
+    // Fleet lane 2026-10-08 (wave 269 chase frames: "the thin plates at both rear hull corners flare outward like loose
+    // fins"): from behind, the last skirt panel stood 15 cm clear of the track band (1.553) with daylight through the
+    // slit. Its stern end closes the slit as the raked bow tip does at the front: an end block with its inner face at
+    // 1.60, under the fender (to 1.26), over the panel's last 8 cm and 2 cm past it.
+    P.add('hull', box(0.285, 0.62, 0.10), s * 1.7425, 0.95, -3.25, 0, 0, -s * 0.006);
   }
   // §5.272 MUST-FIX (2): the print's THICK skirt runs the FULL hull length
   // — forward panel + raked tip now shroud the raised idler wrap whose
