@@ -76,7 +76,8 @@ function checkPaint(root, id, fullSceneVisibility = true) {
 await ensureInteriorFills(ids);
 try {
   for (const id of ids) for (const quality of ['high', 'low']) {
-    // Geometry receipts deliberately run the authoritative solver. Defer
+    // 2026-10-05: geometry receipts apply the generated seats like the game (the solver runs in
+    // gen-vehicle-marking-seats); the posed paint checks below hold them to the built armor. Defer
     // batching so each marking retains its semantic mesh and owner for rays.
     const tank = createTank(id, null, { quality, proceduralOnly: true,
       geometryReceipt: true, deferStaticBatch: true });
@@ -86,7 +87,7 @@ try {
         if (object.isLOD) { object.autoUpdate = false; object.levels.forEach((level, i) => { level.object.visible = i === 0; }); }
         if (object.isMesh) { materials.set(object, object.material); object.material = physical; }
       });
-      assert.equal(tank.root.userData.markingSeatPath, 'surface-solver');
+      assert.equal(tank.root.userData.markingSeatPath, 'generated');
       const spec = TANK_SPECS[id], state = createTankState(spec, new THREE.Vector3(), 0);
       let poses = 0;
       for (const yaw of [-90, 0, 90]) for (const pitch of [-spec.gunDepressionDeg, 0, spec.gunElevationDeg]) {

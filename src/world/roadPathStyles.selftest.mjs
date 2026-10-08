@@ -11,7 +11,9 @@ import { getMapConfig } from './maps/index.ts';
 // unstyled one, absent without a styled net); the stack carries it under the mask and addresses it; the material decodes
 // it with one exact fetch through the mask's own sampler. No GPU or art claim.
 
-const base = getMapConfig('ruinspires');
+// (the plain net is Ruinspires' own lines without its authored styles: the map-revival lane set them, 2026-10-05)
+const authored = getMapConfig('ruinspires');
+const base = { ...authored, terrain: { ...authored.terrain, roads: { ...authored.terrain.roads, pathStyles: undefined } } };
 const STYLES = [{ surface: 'asphalt', widthM: 18 }, null, null, { surface: 'cobble', widthM: 6 }, { surface: 'patched', widthM: 6 },
   null, null, { surface: 'dirt' }];
 const styledCfg = { ...base, terrain: { ...base.terrain, roads: { ...base.terrain.roads, pathStyles: STYLES } } };

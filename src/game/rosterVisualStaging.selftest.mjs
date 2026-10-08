@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
+import { createGunshipBattleVisual, syncGunshipVisual } from './gunshipVisual.ts';
 
 const candidateSource = readFileSync(new URL('./rosterState.ts', import.meta.url), 'utf8');
 const names = ['ensureStagedVisuals', 'ensureStagedVisualsSteps', 'nextStagedBake',
@@ -12,9 +13,9 @@ function load(source, ports) {
   const code = ts.transpileModule(functions.map(node => node.getText(tree).replace(/^export /, '')).join('\n'), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
   }).outputText;
-  return new Function('createTank', 'createTankSteps', 'getDeviceTier', 'HERO_TEX_SPECS',
+  return new Function('createTank', 'createTankSteps', 'getDeviceTier', 'HERO_TEX_SPECS', 'createGunshipBattleVisual',
     `${code}\nreturn {${functions.map(node => node.name.text).join(',')}};`)(
-    ports.sync, ports.steps, ports.tier, new Set(['m1a2', 't90m']));
+    ports.sync, ports.steps, ports.tier, new Set(['m1a2', 't90m']), createGunshipBattleVisual);
 }
 function fixture({ mobile = false, player = false, pooled = false, fail = null } = {}) {
   const scene = new THREE.Scene(), trace = [], created = [], ground = () => 0;
@@ -140,3 +141,15 @@ for (const fail of ['factory', 'scene', 'ground', 'pose']) {
   assert.throws(() => f.api.ensureTankVisual(f.game, f.ent), /context is unavailable/);
 }
 console.log('roster staging: PASS recorded synchronous policy parity, private graph publication, cancellation, stale lifetimes, pools and failure cleanup');
+
+for (const staged of [false, true]) {
+  const f = fixture({ player: true }); f.game.ruleset = { aerial: 'gunship' };
+  const visual = staged ? drain(f.api.ensureTankVisualSteps(f.game, f.ent)) : f.api.ensureTankVisual(f.game, f.ent);
+  assert.equal(f.builds.length, 0, 'AC-130 never invokes a tank builder');
+  assert.equal(visual.root.userData.aircraftOnly, true);
+  assert.equal(visual.root.children.length, 0, 'no selected tank meshes in the flight anchor');
+  syncGunshipVisual(visual.root, new THREE.Vector3(10, 180, 30), 1, .016, true);
+  const aircraft = f.scene.getObjectByName('AC-130 gunship');
+  assert.ok(aircraft); assert.equal(aircraft.position.y, 180);
+  visual.dispose(); assert.equal(f.scene.children.length, 0, 'aircraft and anchor release together');
+}

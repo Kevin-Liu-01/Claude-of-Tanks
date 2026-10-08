@@ -84,3 +84,11 @@ assert.equal(preloader.preload(waiting), false, 'live battle packets cannot star
 assert.deepEqual(calls, callsBeforeBattlePacket, 'live battle packets cannot build or cancel worlds');
 
 console.log('lobbyPreloader.selftest: coalescing, retry, roster delta and map intent passed');
+
+phase='garage';
+const beforeAircraft=calls.filter(c=>c.startsWith('builders:')).length;
+preloader.preload({...waiting,gameMode:'ac130',players:[{id:'pilot',team:'alpha',specId:'gunship-only-spec'}]});
+await Promise.resolve();
+assert.equal(calls.filter(c=>c.startsWith('builders:')).length,beforeAircraft,'aircraft seats never preload their selected tank');
+preloader.preload({...waiting,gameMode:'standard',players:[{id:'pilot',team:'alpha',specId:'gunship-only-spec'}]});
+await Promise.resolve();assert.ok(calls.includes('builders:gunship-only-spec'),'switching back to tanks restores builder preparation');

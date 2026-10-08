@@ -1,6 +1,8 @@
 import { fisheryWharfClearance } from './fisheryWharfSite.ts';
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
 import { sceneryClearances, type SceneryConfig } from './sceneryPlan.ts';
+import { landmarkClearances } from './landmarks/plan.ts';
+import type { LandmarkPlacement } from './landmarks/types.ts';
 
 /** Construction-only clearance shared by every tree placement path. */
 export interface StructureClearance {
@@ -45,10 +47,11 @@ export function createStructureClearances(
  */
 export function placedStructureClearances(mapId: string | undefined,
   field: Parameters<typeof fisheryWharfClearance>[1], riverLandings: readonly RiverLandingAnchor[],
-  scenery: SceneryConfig | null = null): StructureClearance[] {
+  landmarks: readonly LandmarkPlacement[] | null = null, scenery: SceneryConfig | null = null): StructureClearance[] {
   const wharf = fisheryWharfClearance(mapId, field, riverLandings);
-  // the scenery lane (2026-10-03): a map's rock formations and landmarks (sceneryPlan.ts), from its config alone
-  return [...(wharf ? [wharf] : []), ...sceneryClearances(scenery)];
+  // the scenery lane (2026-10-03): a map's rock formations and landmarks (sceneryPlan.ts), from its config alone; the
+  // landmarks lane (2026-10-05): its set pieces' footprints (landmarks/plan.ts), from the config alone too
+  return [...(wharf ? [wharf] : []), ...sceneryClearances(scenery), ...landmarkClearances(landmarks)];
 }
 
 export function overlapsStructureClearance(
