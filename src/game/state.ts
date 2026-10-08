@@ -126,7 +126,11 @@ import { mulberry32 } from './stateCore.ts';
 import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.ts';
 import { classifyShellSurface, shellHitsWater } from '../sim/shellSurface.ts';
 import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
-import { DESTRUCTION_BUS_EVENTS, type StructureStageEvent, type TerrainCraterEvent } from '../sim/destructionEvents.ts';
+import {
+  DESTRUCTION_BUS_EVENTS, type StructureBreachEvent, type StructureStageEvent, type TerrainCraterEvent,
+} from '../sim/destructionEvents.ts';
+import { architectureStyleOf, wallMaterialForStyle } from '../sim/structureMaterial.ts';
+import { getMapConfig } from '../world/maps/index.ts';
 import {
   FUEL_CHARGE_KG, PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, cookOffChargeKg, munitionBlastEventFor, propFellRadiusM,
 } from '../sim/munitionBlast.ts';
@@ -339,6 +343,7 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   /** Destruction (docs/DESTRUCTION.md): this battle's structures and log, as the authority keeps them. */
   _destruction?: DestructionMatch | null;
   _destructionEvents?: StructureStageEvent[];
+  _destructionBreaches?: StructureBreachEvent[];
   _destructionCraters?: TerrainCraterEvent[];
   /** Blasts the destruction match reported, waiting for their light props to fall (fellBlastProps). */
   _destructionBlasts?: number[];
@@ -392,6 +397,8 @@ interface SoloWorld {
     out: SoloObstacle[],
   ) => SoloObstacle[];
   getConcealment?(): ConcealerDisc[];
+  /** The battle's ground overlay for the drawn ground and the decals to follow (world/map.ts; crater-render-spec §B). */
+  bindGroundOverlay?(overlay: TerrainDeformation | null): void;
   crushObstacle?(
     obstacle: SoloObstacle,
     dirX: number,
@@ -1223,6 +1230,7 @@ export function setupBattle(
   resetStructureRecords(world.getObstacles(), worldColliders);
   const ground = groundFor(world);
   ground.overlay.reset();
+  world.bindGroundOverlay?.(ground.overlay);
   restoreConcealers(world.getConcealment ? world.getConcealment() : null);
   const blasts: number[] = game._destructionBlasts = [];
   game._destruction = createDestructionMatch({
@@ -1238,8 +1246,11 @@ export function setupBattle(
     onBlast: (x, y, z, chargeKg) => { blasts.push(x, y, z, chargeKg); },
     // P3: no crater on hard ground (roads, bridge decks, ice), as the authority reads it
     groundTypeAt: (x, z) => world.heightField?.getGroundType?.(x, z) ?? 'medium',
+    // the map's walls price a ram (§4.4), as the authority reads them
+    wallMaterial: wallMaterialForStyle(architectureStyleOf(getMapConfig(game.mapId))),
   });
   game._destructionEvents = [];
+  game._destructionBreaches = [];
   game._destructionCraters = [];
 
   // COMMUNITY TANKS: field the participants; park everyone else (hidden,
@@ -3117,6 +3128,11 @@ function stepDestruction(game: SoloGameState, bus: EventBus, world: SoloWorld): 
   events.length = 0;
   destruction.drainEvents(events);
   for (const event of events) bus.emit(DESTRUCTION_BUS_EVENTS.stage, event);
+  // P2: holes and section falls, after the stages of the same tick (the log's order)
+  const breaches = game._destructionBreaches ??= [];
+  breaches.length = 0;
+  destruction.drainBreaches(breaches);
+  for (const breach of breaches) bus.emit(DESTRUCTION_BUS_EVENTS.breach, breach);
   const craters = game._destructionCraters ??= [];
   craters.length = 0;
   destruction.drainCraters(craters);

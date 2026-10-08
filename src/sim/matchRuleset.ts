@@ -286,6 +286,20 @@ export interface MatchRuleset {
   readonly alliedNation?: 'player' | null;
   /** Buildings that break and collapse, ground that craters (docs/DESTRUCTION.md §9). */
   readonly destruction: DestructionRules;
+  /**
+   * The battlefield variant the mode plays on (null: the base map). Frontline Assault's 'assault-trenches' carves the
+   * trench system into the terrain and dresses its works; every client builds it and the authority plays exactly it
+   * (its own collision manifest, server/world-collision-manifests/<map>@assault-trenches.json).
+   */
+  readonly terrainVariant: TerrainVariant | null;
+}
+
+/** A battlefield variant a mode can play (the map built with that variant's config, its own collision manifest). */
+export type TerrainVariant = 'assault-trenches';
+export const TERRAIN_VARIANTS: readonly TerrainVariant[] = Object.freeze(['assault-trenches']);
+/** The variant `mode` plays on (null: the base map). */
+export function terrainVariantFor(mode: GameModeId | string | null | undefined): TerrainVariant | null {
+  return (BASE_RULESETS as Readonly<Record<string, MatchRuleset>>)[String(mode)]?.terrainVariant ?? null;
 }
 
 export interface CampaignRulesetInput {
@@ -308,11 +322,14 @@ const ENDING_HOLD_S = 8;
  */
 // craters (P3) stay off until the rendered terrain follows the ground overlay (docs/DESTRUCTION.md §7, §14): a crater
 // the simulation digs under a flat drawn ground would sink hulls into it
+// sections (P2: holes, fallen walls, roofs and storeys that shells and sight lines pass) stay off until their gates pass
+// (docs/DESTRUCTION.md §3.4, §13): the receipts, the paired pacing and fairness, the cost runs and the motion strips
+const SECTIONS_SWITCH = false;
 const DESTRUCTION_ON: DestructionRules = Object.freeze({
-  structures: true, craters: false, structureDamageScale: 1, craterScale: 1, maxCraters: 160,
+  structures: true, craters: false, sections: SECTIONS_SWITCH, structureDamageScale: 1, craterScale: 1, maxCraters: 160,
 });
 const DESTRUCTION_OFF: DestructionRules = Object.freeze({
-  structures: false, craters: false, structureDamageScale: 0, craterScale: 0, maxCraters: 0,
+  structures: false, craters: false, sections: false, structureDamageScale: 0, craterScale: 0, maxCraters: 0,
 });
 
 const STANDARD: MatchRuleset = Object.freeze({
@@ -320,7 +337,7 @@ const STANDARD: MatchRuleset = Object.freeze({
   ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, jumpMps: null, recoilLaunchScale: 1, shellKnockScale: 0.3,
   respawnS: null, timeLimitS: 900, timeout: 'draw', endingHoldS: ENDING_HOLD_S,
   allies: null, enemies: null, assault: null, horde: null, enemyNation: null,
-  destruction: DESTRUCTION_ON,
+  destruction: DESTRUCTION_ON, terrainVariant: null,
 });
 
 const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze({
@@ -351,7 +368,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // costs the operation when it runs out; defenders escalate per sector and per difficulty.
   frontline_assault: Object.freeze({
     ...STANDARD, mode: 'frontline_assault', respawnS: null, timeLimitS: 720, timeout: 'defeat',
-    allies: 3, enemies: 10,
+    allies: 3, enemies: 10, terrainVariant: 'assault-trenches',
     assault: Object.freeze({ initialActive: 3, extraDefenders: 0, hpPerLine: 0.16, difficultyHp: 0, holdS: 20 }),
   }),
   // Mars mode (owner 2026-09-18): Olympus Basin's own physics — 0.38 g, a 6.5 m/s jump, +25 % speed, tougher

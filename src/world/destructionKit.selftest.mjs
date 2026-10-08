@@ -24,6 +24,9 @@ function makeWriters(meshCap, pieceCap) {
   return { mesh, pieces };
 }
 const digest = (writers) => JSON.stringify([writers.mesh.runs.map((r) => [r.bucket, r.role, r.v, r.t]), writers.pieces.list]);
+/** The core unit size of a face's material (destructionDefaultKit unitOf: brick 0.24, stone 0.4, plate 0.45 …). */
+const UNIT = { brick: 0.24, stone: 0.4, rubble: 0.3, concrete: 0.45, adobe: 0.3, plaster: 0.25, timber: 0.6, plank: 0.5, metal: 0.6 };
+const unitSize = (face) => UNIT[face.layers[face.layers.length - 1].material] ?? 0.3;
 
 // ---- a two-storey plastered house with a tiled gable roof and four windows, built as a kit would (body frame)
 function part(bucket, w, h, d, x, y, z, color) {
@@ -173,6 +176,45 @@ assert.ok(results.breach.writers.pieces.list.every((p) => p[18] <= 0.5), 'debris
 // sectionDown: the tiles fall, the roof hidden
 assert.ok(results.sectionDown.writers.pieces.list.every((p) => p[1] === 'tile'));
 assert.deepEqual(results.sectionDown.result.hides, [{ section: null, partClass: 'roof' }]);
+// P2: a wall panel falls — the ground storey's front panel above its metre-high stub, the upper storey's to its floor line
+{
+  const frontDepth = front.layers.reduce((sum, l) => sum + l.thicknessM, 0);
+  for (const [storeyIndex, stubTop] of [[0, 1], [1, 3]]) {
+    const face = anatomy.storeys[storeyIndex].faces.find((f) => f.name === 'front');
+    const run = (w) => seam.sectionDown(face.section, damageSeed(anatomy.seed, face.section, 255), w);
+    const a = makeWriters(...caps.sectionDown), b = makeWriters(...caps.sectionDown);
+    const ra = run(a);
+    run(b);
+    assert.equal(digest(a), digest(b), `storey ${storeyIndex}'s panel: same seed, same pieces`);
+    assert.ok(a.mesh.vertices <= caps.sectionDown[0] && a.pieces.count <= caps.sectionDown[1], 'within the caps');
+    assert.deepEqual(ra, { cuts: [], hides: [{ section: face.section, partClass: null }] }, 'the panel\'s own section hidden');
+    const stub = a.mesh.runs.filter((r) => r.role === 'remnant');
+    assert.deepEqual(stub.map((r) => r.bucket), ['stone'], 'the stub\'s top in the wall\'s core units');
+    for (const v of stub[0].v) {
+      assert.ok(v[1] > stubTop - 0.2 && v[1] < stubTop + 0.6, `a ragged course at the stub's top (y ${v[1].toFixed(2)})`);
+      assert.ok(v[2] <= 4 + 1e-9 && v[2] >= 4 - frontDepth - 0.05, 'set in the wall\'s thickness');
+    }
+    const xs = stub[0].v.map((v) => v[0]);
+    assert.ok(Math.min(...xs) < -4.5 && Math.max(...xs) > 4.5, 'along the whole face');
+    assert.ok(a.mesh.runs.some((r) => r.role === 'room' && r.bucket === 'dark'), 'the room it opens, dark');
+    const own = new Set([...face.layers.map((l) => l.bucket), 'glass']);
+    assert.ok(a.pieces.list.length >= 40 && a.pieces.list.every((p) => own.has(p[0])), 'the panel\'s pieces in its own layers');
+    assert.ok(a.pieces.list.every((p) => p[18] > 0), 'thrown out of the front face');
+    assert.ok(a.pieces.list.every((p) => p[0] === 'glass' || p[4] >= stubTop - 1e-9), 'from above the stub'); // [4] py
+    assert.ok(a.pieces.list.filter((p) => p[0] !== 'glass').slice(0, 6).every((p) => p[10] > unitSize(face) * 1.4), // [10] sx
+      'big slabs of it first');
+  }
+  // the upper storey drops: its floor's timber and what stood on it, falling; its faces hidden
+  const storeyRun = (w) => seam.storeyDown(1, damageSeed(anatomy.seed, 1, 255), w);
+  const a = makeWriters(...caps.sectionDown), b = makeWriters(...caps.sectionDown);
+  const ra = storeyRun(a);
+  storeyRun(b);
+  assert.equal(digest(a), digest(b), 'the storey drop: same seed, same pieces');
+  assert.ok(a.pieces.list.some((p) => p[0] === anatomy.storeys[1].floor.structure.bucket), 'its floor\'s structure breaks up');
+  assert.ok(a.pieces.list.every((p) => p[17] < 0), 'falling'); // [17] vy
+  assert.deepEqual(ra.hides.map((h) => h.section).sort((x, y) => x - y), anatomy.storeys[1].faces.map((f) => f.section).sort((x, y) => x - y),
+    'its faces hidden');
+}
 // collapse: stubs, a pile on the heap, debris; everything hidden
 const collapseRuns = results.collapse.writers.mesh.runs;
 assert.ok(collapseRuns.some((r) => r.role === 'remnant'), 'stubs stand');

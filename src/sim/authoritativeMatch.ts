@@ -131,8 +131,11 @@ import type {
 } from './matchModes.ts';
 import type { SpecialActionState } from './specialActionPolicy.ts';
 import { createDestructionMatch } from './destructionMatch.ts';
-import type { DestructionLogEntry, StructureStageEvent, TerrainCraterEvent } from './destructionEvents.ts';
+import type {
+  DestructionLogEntry, StructureBreachEvent, StructureStageEvent, TerrainCraterEvent,
+} from './destructionEvents.ts';
 import { shellHitsWater } from './shellSurface.ts';
+import { architectureStyleOf, wallMaterialForStyle } from './structureMaterial.ts';
 import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, munitionChargeKg, munitionClassForShell, propFellRadiusM } from './munitionBlast.ts';
 import { createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, rubbleHeightFor } from './terrainDeformation.ts';
 import { fellConcealersAt } from './spotting.ts';
@@ -824,10 +827,13 @@ export function createAuthoritativeMatch({
     onBlast: (x, y, z, chargeKg) => { pendingBlasts.push(x, y, z, chargeKg); },
     // P3: no crater on hard ground (roads, bridge decks, ice), as the solo step reads it
     groundTypeAt: (x, z) => (heightField as { getGroundType?(x: number, z: number): string }).getGroundType?.(x, z) ?? 'medium',
+    // the map's walls price a ram (§4.4: timber and mudbrick give sooner than masonry and concrete)
+    wallMaterial: wallMaterialForStyle(architectureStyleOf(getMapConfig(String(mapId || 'verdant')))),
   });
   /** The tick's blasts (x, y, z, kg), felling their light props at the end of the step (advanceDestruction). */
   const pendingBlasts: number[] = [];
   const destructionEvents: StructureStageEvent[] = [];
+  const breachEvents: StructureBreachEvent[] = [];
   const craterEvents: TerrainCraterEvent[] = [];
   const trenchLines = (heightField as { assaultTrenchLines?: { sectors?: RuntimeValue; lines?: RuntimeValue } }).assaultTrenchLines;
   const placement = createMatchPlacement({
@@ -2407,6 +2413,10 @@ export function createAuthoritativeMatch({
     destructionEvents.length = 0;
     destruction.drainEvents(destructionEvents);
     for (const event of destructionEvents) emit('structure_stage', { ...event });
+    // P2: holes and section falls, after the stages of the same tick (the log's order)
+    breachEvents.length = 0;
+    destruction.drainBreaches(breachEvents);
+    for (const event of breachEvents) emit('structure_breach', { ...event });
     craterEvents.length = 0;
     destruction.drainCraters(craterEvents);
     for (const event of craterEvents) emit('terrain_crater', { ...event });

@@ -283,6 +283,8 @@ export function createBattlePresentation({
   const authorityObstacles = createAuthorityObstacles(worldCollision);
   // the authority's destruction on this world: stages, collapses, heaps (docs/DESTRUCTION.md §8)
   const destruction = createDestructionMirror(worldCollision as Parameters<typeof createDestructionMirror>[0], bus);
+  // the round's ground (craters, heaps) is what this world draws and drapes on (crater-render-spec §B); unbound at dispose
+  (worldCollision as { bindGroundOverlay?(overlay: unknown): void } | null)?.bindGroundOverlay?.(destruction.ground);
   /** The authority's detonation as this world's munition:blast (its structure mapped to this world's), or false. */
   function emitBlast(payload: Record<string, unknown>, surface: MunitionBlastEvent['surface']): boolean {
     const chargeKg = Number(payload.chargeKg);
@@ -391,6 +393,8 @@ export function createBattlePresentation({
     if (own && !spectator) viewerTeam = own.team;
     game.gameMode = rosterContext.mode || 'standard';
     game.ruleset = rulesetFromWelcome(rosterContext.rulesetJson, game.gameMode);
+    // P2: a match that plays sections sends its holes and falls as breaches; its stages say so to the presentation
+    destruction.setSections(game.ruleset.destruction?.sections === true);
     rosterReady = rosterReady.then(() => prepareRoster(entries, rosterContext));
     return rosterReady;
   }
@@ -895,6 +899,10 @@ export function createBattlePresentation({
         // the authority's stage on this world's own structure (destructionMirror.ts), animated: it emits structure:stage
         destruction.applyStageEvent(payload as Record<string, unknown>);
         return;
+      case 'structure_breach':
+        // the authority's hole or section fall (P2) opened on this world's structure: it emits structure:breach
+        destruction.applyBreachEvent(payload as Record<string, unknown>);
+        return;
       case 'terrain_crater':
         // the authority's crater on this world's ground (P3): the prediction rides it; it emits terrain:crater
         destruction.applyCraterEvent(payload as Record<string, unknown>);
@@ -1099,6 +1107,7 @@ export function createBattlePresentation({
 
   function dispose(): void {
     disposed = true;
+    (worldCollision as { bindGroundOverlay?(overlay: unknown): void } | null)?.bindGroundOverlay?.(null);
     unmount();
     for (const actor of actors.values()) actor.visual.dispose();
     actors.clear();

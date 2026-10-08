@@ -6,7 +6,7 @@
 // off in every mode's ruleset until the drawn terrain follows the overlay.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { CRATERS_PER_TICK, craterSeed, createDestructionMatch } from './destructionMatch.ts';
+import { CRATERS_PER_TICK, craterSeed, createDestructionMatch, quantizeCrater } from './destructionMatch.ts';
 import { CRATER_DEFORM_MIN_RADIUS_M, craterFor, munitionChargeKg } from './munitionBlast.ts';
 import { createTerrainDeformation } from './terrainDeformation.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
@@ -15,7 +15,7 @@ import { createDestructionMirror } from '../mp/presentation/destructionMirror.ts
 import { quantizeDestructionEntry } from '../mp/wire/destructionLog.ts';
 import { getSpec } from '../vehicles/specs.ts';
 
-const RULES = Object.freeze({ structures: true, craters: true, structureDamageScale: 1, craterScale: 1, maxCraters: 6 });
+const RULES = Object.freeze({ structures: true, craters: true, sections: false, structureDamageScale: 1, craterScale: 1, maxCraters: 6 });
 const he125 = { type: 'HE', caliberMm: 125 };
 const he105 = { type: 'HE', caliberMm: 105 };
 const howitzer = { type: 'HE', caliberMm: 105, blastRadiusM: 22, tracer: 'GUNSHIP' };
@@ -37,6 +37,9 @@ const noWorld = { obstacles: [], colliders: [] };
     depthM: Math.round(shape.depthM * 1000) / 1000, rimM: Math.round(shape.rimM * 1000) / 1000, seed: craterSeed(10.123, -20.988),
     munition: 'he', deforms: true }, 'quantized as the wire carries it');
   assert.deepEqual(match.log.at(-1), quantizeDestructionEntry(match.log.at(-1)), 'the log entry is its own wire form');
+  // the one quantization every digger shares (the Studio's strips dig with it too)
+  const { craterId: _id, munition: _m, deforms: _d, ...dug } = event;
+  assert.deepEqual(quantizeCrater(10.12345, -20.98765, shape, {}), dug, 'quantizeCrater is the dig\'s own');
   assert.ok(ground.offsetAt(10.123, -20.988) < -0.5 * shape.depthM, `the bowl (${ground.offsetAt(10.123, -20.988).toFixed(3)} m)`);
   assert.equal(match.craters, 1);
   // a 105 mm round is a mark; a burst off the ground digs nothing; hard ground keeps its face
@@ -81,6 +84,11 @@ const noWorld = { obstacles: [], colliders: [] };
   assert.match(solo, /destruction\.drainCraters\(craters\);\s*for \(const crater of craters\) bus\.emit\(DESTRUCTION_BUS_EVENTS\.crater, crater\);/, 'solo: terrain:crater');
   assert.match(authority, /destruction\.drainCraters\(craterEvents\);\s*for \(const event of craterEvents\) emit\('terrain_crater', \{ \.\.\.event \}\);/, 'authority: terrain_crater');
   for (const text of [solo, authority]) assert.match(text, /groundTypeAt: \(x, z\) => /, 'no crater on hard ground, alike');
+  // the drawn ground and the decals follow the battle's overlay: bound per battle, a round's mirror on a network seat
+  assert.match(solo, /ground\.overlay\.reset\(\);\s*world\.bindGroundOverlay\?\.\(ground\.overlay\);/, 'solo binds its ground');
+  const presentation = readFileSync(new URL('../mp/presentation/battlePresentation.ts', import.meta.url), 'utf8');
+  assert.match(presentation, /bindGroundOverlay\?\.\(destruction\.ground\);/, 'a network seat binds its mirror\'s ground');
+  assert.match(presentation, /function dispose\(\): void \{\s*disposed = true;\s*\(worldCollision[^\n]*bindGroundOverlay\?\.\(null\);/, 'and unbinds it');
 }
 
 // ---- the authority, run for real: an HE round on open ground digs, every peer stamps it once, the run replays

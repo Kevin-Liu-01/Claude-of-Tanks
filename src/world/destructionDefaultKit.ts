@@ -12,13 +12,19 @@
  *   hole, where the presentation's blocky cut edge runs (0.8 r – 1.2 r); on a rendered wall the render broken back
  *   further (a shallow ring cut of 1.45 r with the core's units in it); the dark room behind with the floor-slab edge
  *   where the hole crosses a storey line; debris thrown along the blow. Nothing stands proud of the wall;
- * - sectionDown: a roof's covering sliding off (tiles, slates, sheet, straw);
+ * - sectionDown (P2, §3.4): a roof's covering sliding off (tiles, slates, sheet, straw); a wall panel toppling out and
+ *   down in its own layers (a few big slabs, then its units, the glass in its openings) above a stub whose top is a
+ *   ragged course of the wall's own units (the ground storey keeps its lowest metre, an upper storey its floor line),
+ *   the room it opens dark behind (its far wall, floor and ceiling);
+ * - storeyDown (P2): a storey dropping after its faces — its floor slab (joists or concrete) breaking up into the storey
+ *   below with what stood on it;
  * - collapse: ragged wall stubs (taller at a masonry building's corners), a heap of chunks in the building's own buckets
  *   seated on the sim's mound, and the falling debris.
  *
  * Frames are the body frame (destructionKit.ts). Registered as 'default' on import (the world's seam imports it).
  */
 import type { BufferGeometry } from 'three';
+import { STRUCTURE_WALL_STUB_M } from './collision.ts';
 import {
   bodyMoundHeightAt, damageRng, registerStructureDamageKit,
   type BreachSpec, type DamageFace, type DamageMeshWriter, type DamageOpening, type DamagePieceWriter,
@@ -461,10 +467,85 @@ function breach(anatomy: StructureDamageAnatomy, hole: BreachSpec, out: DamageWr
   };
 }
 
+/**
+ * A wall panel falls (P2, §3.4): the face's slab above its stub (the ground storey keeps its lowest metre, as the sim's
+ * openings do; an upper storey's panel goes to its floor line). What stands is a stub whose top is a ragged course of
+ * the wall's core units, set in its thickness; the room it opens shows dark behind (its far wall, its floor, and the
+ * ceiling where a storey stands above); the panel itself topples out and down in its own layers — a few big slabs of it
+ * first, then its units — and its windows' glass with it. The presentation clamps the panel's intact geometry down to
+ * the stub (the hide names the face's section).
+ */
+function wallPanelDown(anatomy: StructureDamageAnatomy, storey: DamageStorey, face: DamageFace, rng: () => number,
+  out: DamageWriters): DamageStageResult {
+  const stubTop = storey.index === 0 ? storey.y0 + Math.min(STRUCTURE_WALL_STUB_M, face.height * 0.5) : storey.y0;
+  const top = storey.y0 + face.height;
+  const depth = thicknessOf(face);
+  const skin = face.layers[0]!, core = face.layers[face.layers.length - 1] ?? skin;
+  const yaw = Math.atan2(face.out[0], face.out[2]);
+  const at = (u: number, inward: number): [number, number] =>
+    [face.origin[0] + face.u[0] * u - face.out[0] * inward, face.origin[2] + face.u[2] * u - face.out[2] * inward];
+  const mesh = out.mesh;
+  // the stub's broken top: the core's units along the face in one course, stepped up a second here and there
+  if (mesh.begin(core.bucket, 'remnant')) {
+    const unitW = Math.max(0.2, unitOf(core.material).size), unitH = unitW * 0.5;
+    const n = Math.max(1, Math.round(face.width / unitW)), w = face.width / n;
+    for (let i = 0; i < n && roomFor(mesh, 2); i++) {
+      const u = -face.width / 2 + (i + 0.5) * w;
+      const courses = rng() < 0.4 ? 2 : 1;
+      for (let c = 0; c < courses; c++) {
+        const [x, z] = at(u + (rng() - 0.5) * w * 0.1, depth * (0.5 + (rng() - 0.5) * 0.1));
+        writeBox(mesh, x, stubTop + (c + 0.5) * unitH * (0.85 + rng() * 0.3) - unitH * 0.35, z,
+          w * 0.5 * (0.88 + rng() * 0.1), unitH * 0.5, depth * 0.4, yaw + (rng() - 0.5) * 0.06, core.tint, 0.78 + rng() * 0.2);
+      }
+    }
+    mesh.end();
+  }
+  // the room it opens: dark at its far wall (an open shell's far side), its floor and, under a storey, its ceiling
+  if (mesh.begin('dark', 'room')) {
+    const across = Math.abs(face.out[0]) > Math.abs(face.out[2]) ? anatomy.w : anatomy.d;
+    const back = anatomy.interior.open ? across * 0.9 : Math.max(depth + 0.6, across - depth - 0.1);
+    const cy = (stubTop + top) / 2, hy = Math.max(0.05, (top - stubTop) / 2);
+    const [bx, bz] = at(0, back);
+    writeBox(mesh, bx, cy, bz, face.width / 2, hy, 0.05, yaw, anatomy.interior.color);
+    const [fx, fz] = at(0, back / 2);
+    writeBox(mesh, fx, storey.y0 + 0.02, fz, face.width / 2, 0.02, back / 2, yaw, anatomy.interior.color, 1.4);
+    if (anatomy.storeys[storey.index + 1]) writeBox(mesh, fx, top - 0.02, fz, face.width / 2, 0.02, back / 2, yaw, anatomy.interior.color, 0.8);
+    mesh.end();
+  }
+  // the panel topples: its big slabs first, then its units in its own layers (the render one in four), out and down
+  const pieces = out.pieces;
+  const height = Math.max(0.1, top - stubTop);
+  const count = Math.min(160, Math.max(40, Math.round(face.width * height * 5)));
+  for (let k = 0; k < count && pieces.count < pieces.capacity; k++) {
+    const u = (rng() - 0.5) * face.width, y = stubTop + rng() * height;
+    const [x, z] = at(u, -0.05);
+    const outward = 0.6 + rng() * 1.6 + (y - stubTop) * 0.25;
+    pushPiece(pieces, k % 4 === 0 ? skin : core, rng, x, y, z,
+      face.out[0] * outward + face.u[0] * (rng() - 0.5) * 0.6, -rng() * 0.8,
+      face.out[2] * outward + face.u[2] * (rng() - 0.5) * 0.6, k < 6 ? 3 + rng() * 2 : 1);
+  }
+  const glass: FractureSlot = { material: 'glass', bucket: 'glass', tint: WHITE, thicknessM: 0.01, share: 1 };
+  for (const opening of face.openings) {
+    if (storey.y0 + opening.y0 + opening.h < stubTop) continue;
+    for (let k = 0; k < 4 && pieces.count < pieces.capacity; k++) {
+      const u = opening.u + (rng() - 0.5) * opening.w, y = storey.y0 + opening.y0 + rng() * opening.h;
+      const [x, z] = at(u, -0.1);
+      pushPiece(pieces, glass, rng, x, y, z, face.out[0] * (1 + rng()), rng(), face.out[2] * (1 + rng()));
+    }
+  }
+  return { cuts: [], hides: [{ section: face.section, partClass: null }] };
+}
+
 function sectionDown(anatomy: StructureDamageAnatomy, section: number, seed: number, out: DamageWriters): DamageStageResult {
   const rng = damageRng(seed);
   const roof = anatomy.roof;
-  if (!roof || roof.section !== section) return { cuts: [], hides: [] };
+  if (!roof || roof.section !== section) {
+    for (const storey of anatomy.storeys) {
+      const face = storey.faces.find((candidate) => candidate.section === section);
+      if (face && face.layers.length) return wallPanelDown(anatomy, storey, face, rng, out);
+    }
+    return { cuts: [], hides: [] };
+  }
   const pieces = out.pieces;
   // the covering slides off and falls: its own units across the roof's plan, thrown outward a little
   for (let k = 0; k < 120 && pieces.count < pieces.capacity; k++) {
@@ -473,6 +554,32 @@ function sectionDown(anatomy: StructureDamageAnatomy, section: number, seed: num
     pushPiece(pieces, roof.covering, rng, x, y, z, x * 0.3 + (rng() - 0.5), rng(), z * 0.3 + (rng() - 0.5));
   }
   return { cuts: [], hides: [{ section: null, partClass: 'roof' }] };
+}
+
+/**
+ * A storey drops after its faces (P2): its floor slab — an upper storey's joists or concrete — breaks up and falls into
+ * the storey below, with what stood on it (the building's pile materials, a share each). The presentation clamps the
+ * storey's band down to its floor line; the hides name its faces' sections.
+ */
+function storeyDown(anatomy: StructureDamageAnatomy, storeyIndex: number, seed: number, out: DamageWriters): DamageStageResult {
+  const rng = damageRng(seed);
+  const storey = anatomy.storeys[storeyIndex];
+  if (!storey) return { cuts: [], hides: [] };
+  const pieces = out.pieces;
+  const halfW = anatomy.w / 2 * 0.9, halfD = anatomy.d / 2 * 0.9;
+  if (storey.floor) {
+    const slot = storey.floor.structure;
+    for (let k = 0; k < 90 && pieces.count < pieces.capacity; k++) {
+      pushPiece(pieces, slot, rng, (rng() * 2 - 1) * halfW, storey.y0, (rng() * 2 - 1) * halfD,
+        (rng() - 0.5) * 0.8, -0.5 - rng() * 1.5, (rng() - 0.5) * 0.8, k < 8 ? 2.5 : 1);
+    }
+  }
+  for (let k = 0; k < 60 && pieces.count < pieces.capacity && anatomy.rubble.length; k++) {
+    const slot = anatomy.rubble[k % anatomy.rubble.length]!;
+    pushPiece(pieces, slot, rng, (rng() * 2 - 1) * halfW, storey.y0 + rng() * (storey.y1 - storey.y0), (rng() * 2 - 1) * halfD,
+      (rng() - 0.5) * 0.6, -1 - rng() * 2, (rng() - 0.5) * 0.6);
+  }
+  return { cuts: [], hides: storey.faces.map((face) => ({ section: face.section, partClass: null })) };
 }
 
 function collapse(anatomy: StructureDamageAnatomy, seed: number, out: DamageWriters): DamageStageResult {
@@ -535,6 +642,7 @@ export const DEFAULT_STRUCTURE_DAMAGE_KIT: StructureDamageKit = Object.freeze({
   damaged,
   breach,
   sectionDown,
+  storeyDown,
   collapse,
 });
 registerStructureDamageKit(DEFAULT_STRUCTURE_DAMAGE_KIT);

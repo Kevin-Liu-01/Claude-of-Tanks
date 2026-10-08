@@ -830,6 +830,17 @@ export class MatchClient {
           this.retainedDestruction.push(Number.isFinite(cx) && Number.isFinite(cz)
             ? { kind: 'stage', structureId, stage, cx, cz } : { kind: 'stage', structureId, stage });
         }
+      } else if (event.kind === 'structure_breach') {
+        // a hole or a fall (P2), as the log carries it (its footprint centre with it)
+        const p = event.payload;
+        const structureId = Number(p.structureId), section = Number(p.section), hole = Number(p.hole);
+        const x = Number(p.x), y = Number(p.y), z = Number(p.z), radiusM = Number(p.radiusM);
+        if (Number.isSafeInteger(structureId) && structureId >= 0 && Number.isSafeInteger(section) && Number.isSafeInteger(hole)
+          && Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z) && Number.isFinite(radiusM)) {
+          const cx = Number(p.cx), cz = Number(p.cz);
+          const entry = { kind: 'breach' as const, structureId, section, hole, x, y, z, radiusM, sectionDown: p.sectionDown === true };
+          this.retainedDestruction.push(Number.isFinite(cx) && Number.isFinite(cz) ? { ...entry, cx, cz } : entry);
+        }
       }
     }
     if (!game) return;

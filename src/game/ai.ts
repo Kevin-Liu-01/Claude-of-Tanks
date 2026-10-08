@@ -2631,6 +2631,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let routeTimer = 0;
   let routeGoalX = 1e9;
   let routeGoalZ = 1e9;
+  // probe-visible: the destination the last driveToXZ was handed and the point it steered for (corner or detour)
+  let driveGoalX = NaN, driveGoalZ = NaN, driveGoalAtS = -Infinity, steerGoalX = NaN, steerGoalZ = NaN;
   // Corner hold (bots lane, 2026-10-03; Coastal pacing seed 25003 on the physics lane's tree): a T-90M Proryv pressed
   // against a boulder's north-west corner re-chose its corner at every recheck, and each choice undid the last.
   // Pressed to the rock, the north-east corner's lane ran inside the rock's margin, so it turned for the north-west
@@ -2747,6 +2749,85 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return box;
   }
 
+  // Solids round a corner hop and a pivot (destruction core lane, 2026-10-08; docs/DESTRUCTION.md §4.4). All-bot
+  // Steinburg traces put hulls into sheds and houses two ways. The corner router chose its corner, and checked the
+  // lane to it, against the one box on the straight line to the goal, so a hop ran across or beside the next building
+  // (hulls at 6-12 m/s on a corner leg that clipped a shed standing beside the corner): a corner whose cell or lane
+  // meets another solid now loses to one whose cell and lane are clear (a cell beside another solid first moves on out
+  // along the corner's diagonal), and with none clear the old choice stands. The pivot for a bearing more than 1.2 rad
+  // off was driven at 0.3 throttle, which rolls a hull forward at 3-4 m/s through a 4-5 m arc with no obstacle check:
+  // beside a solid (any within half the hull's length plus PIVOT_CLEAR_M) it now creeps, its drive cut above
+  // SOLID_CREEP_MPS. And whatever the drive, finishStep brakes a hull that would reach a solid faster than it can stop.
+  const PIVOT_CLEAR_M = 4;
+  const CORNER_CELL_CLEAR_M = 1;
+  const CORNER_PUSH_M = 4;
+  const CORNER_PUSHES = 2;
+  const SOLID_STOP_MPS2 = 3.5; // under every hull's service-brake cap (movement.ts BRAKE_CAP_MIN 4.5 m/s²)
+  // A contact below this is a scuff: a 50 t hull at 1.5 m/s carries 56 kJ, under 1 point over a shed's 30 kJ scuff
+  // (sim/structureDamage.ts RAM_SCUFF_KJ), so a hull may creep up to a wall but never drive into one
+  const SOLID_CREEP_MPS = 1.5;
+  const ownHalfLengthM = (): number => (spec.dims.hullLengthM || spec.dims.lengthM || 6) * 0.5;
+  const routeSolids: AiObstacle[] = [];
+  let cornersCrowded = 0, pivotCreeps = 0, solidBrakes = 0, gunNudgeAtS = -Infinity;
+
+  let routeOutcome = 'none'; // probe-visible: the last plan's outcome (short, clear, blocked)
+
+  function solidsAround(minX: number, minZ: number, maxX: number, maxZ: number): AiObstacle[] {
+    return deps.queryObstacles ? deps.queryObstacles(minX, minZ, maxX, maxZ, routeSolids) : obstacles;
+  }
+
+  /** A solid (not crushed, crushable or a bridge deck) within `margin` of (x, z). */
+  function solidWithin(x: number, z: number, margin: number): boolean {
+    const candidates = solidsAround(x - margin, z - margin, x + margin, z + margin);
+    for (let i = 0; i < candidates.length; i++) {
+      const o = candidates[i];
+      if (o.crushed || o.crushable || o.kind === 'bridge') continue;
+      if (collisionFootprintContainsPoint(o as CollisionRecord, x, z, margin)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * The lane (sx, sz) -> (ex, ez) meets a solid other than `skip` within `margin`. A solid the start already stands
+   * within `margin` of counts only when the lane's middle or end is within it too (a hull leaving a wall's side).
+   */
+  function laneMeetsSolid(sx: number, sz: number, ex: number, ez: number, margin: number, skip: AiObstacle | null): boolean {
+    let dx = ex - sx, dz = ez - sz;
+    const length = Math.hypot(dx, dz);
+    if (length < 1e-6) return false;
+    dx /= length; dz /= length;
+    const candidates = solidsAround(Math.min(sx, ex) - margin, Math.min(sz, ez) - margin,
+      Math.max(sx, ex) + margin, Math.max(sz, ez) + margin);
+    for (let i = 0; i < candidates.length; i++) {
+      const o = candidates[i];
+      if (o === skip || o.crushed || o.crushable || o.kind === 'bridge') continue;
+      const record = o as CollisionRecord;
+      if (rayCollisionFootprintEntry2(record, sx, sz, dx, dz, length, margin) == null) continue;
+      if (!collisionFootprintContainsPoint(record, sx, sz, margin)) return true;
+      if (collisionFootprintContainsPoint(record, (sx + ex) * 0.5, (sz + ez) * 0.5, margin)
+        || collisionFootprintContainsPoint(record, ex, ez, margin)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * A solid the hull's swept lane enters within `reach` ahead along (dirX, dirZ) (a unit vector), the lane `margin`
+   * either side of the centre line; solids the hull already stands within `margin` of are the contact solver's.
+   */
+  function solidAhead(sx: number, sz: number, dirX: number, dirZ: number, reach: number, margin: number): boolean {
+    const ex = sx + dirX * reach, ez = sz + dirZ * reach;
+    const candidates = solidsAround(Math.min(sx, ex) - margin, Math.min(sz, ez) - margin,
+      Math.max(sx, ex) + margin, Math.max(sz, ez) + margin);
+    for (let i = 0; i < candidates.length; i++) {
+      const o = candidates[i];
+      if (o.crushed || o.crushable || o.kind === 'bridge') continue;
+      const record = o as CollisionRecord;
+      const entry = rayCollisionFootprintEntry2(record, sx, sz, dirX, dirZ, reach, margin);
+      if (entry != null && entry > 0) return true;
+    }
+    return false;
+  }
+
   function routeSegmentHitsBox(
     sourceX: number,
     sourceZ: number,
@@ -2804,17 +2885,35 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     margin: number,
   ): boolean {
     populateRouteCandidates(box, margin + 2.8);
-    let best = Infinity, bx = 0, bz = 0;
+    // a corner whose cell or lane meets another solid loses to a clear one (see PIVOT_CLEAR_M); a cell beside another
+    // solid (a shed against the house) first moves on out along the corner's diagonal
+    let best = Infinity, bx = 0, bz = 0, bestClear = false, crowdedBest = Infinity;
+    const cellMargin = spec.dims.widthM * 0.5 + CORNER_CELL_CLEAR_M;
+    const boxX = (box.min[0] + box.max[0]) * 0.5, boxZ = (box.min[2] + box.max[2]) * 0.5;
     for (let i = 0; i < routeCandidates.length; i++) {
-      const cx = routeCandidates[i].x;
-      const cz = routeCandidates[i].z;
+      let cx = routeCandidates[i].x;
+      let cz = routeCandidates[i].z;
+      let cellClear = !solidWithin(cx, cz, cellMargin);
+      for (let push = 1; !cellClear && push <= CORNER_PUSHES; push++) {
+        const px = cx + Math.sign(cx - boxX) * CORNER_PUSH_M * push;
+        const pz = cz + Math.sign(cz - boxZ) * CORNER_PUSH_M * push;
+        if (solidWithin(px, pz, cellMargin)) continue;
+        cx = px; cz = pz; cellClear = true;
+      }
       if (!cornerOpen(box, sourceX, sourceZ, cx, cz, margin)) continue;
       const d1 = Math.hypot(cx - sourceX, cz - sourceZ);
       const score = d1 + Math.hypot(goalX - cx, goalZ - cz) +
         cornerBias(sourceX, sourceZ, directionX, directionZ, cx, cz);
-      if (score < best) { best = score; bx = cx; bz = cz; }
+      if (bestClear && score >= best) continue;
+      const clear = cellClear && !laneMeetsSolid(sourceX, sourceZ, cx, cz, margin * 0.85, box);
+      if (!clear) {
+        if (score < crowdedBest) crowdedBest = score;
+        if (bestClear || score >= best) continue;
+      }
+      best = score; bx = cx; bz = cz; bestClear = clear;
     }
     if (best === Infinity) return false;
+    if (bestClear && crowdedBest < best) cornersCrowded++;
     routeCorner.x = bx;
     routeCorner.z = bz;
     routeActive = true;
@@ -2831,6 +2930,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     let directionX = gx - sourceX;
     let directionZ = gz - sourceZ;
     const distance = Math.hypot(directionX, directionZ);
+    routeOutcome = 'short';
     if (distance < 12) return;
     directionX /= distance;
     directionZ /= distance;
@@ -2839,6 +2939,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const box = findBlockingObstacle(
       sourceX, sourceZ, directionX, directionZ, limit, margin,
     );
+    routeOutcome = box ? 'blocked' : 'clear';
     if (box) {
       const heldOpen = wasActive && cornerOpen(box, sourceX, sourceZ, heldX, heldZ, margin);
       if (heldOpen && nowS < routeCornerSettledUntilS) {
@@ -3008,6 +3109,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const point = combatBridgeWaypoint(x, z);
       if (point) { x = point[0]; z = point[1]; }
     }
+    driveGoalX = x; driveGoalZ = z; driveGoalAtS = nowS;
     let dx = x - st.pos.x, dz = z - st.pos.z;
     let dist = Math.hypot(dx, dz);
     if (dist < ARRIVE_DIST_M) {
@@ -3063,6 +3165,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       dx = x - st.pos.x; dz = z - st.pos.z;
       dist = Math.hypot(dx, dz);
     }
+    steerGoalX = x; steerGoalZ = z;
     const bearing = Math.atan2(dx, dz);
     const err = wrapAngle(bearing - st.yaw);
     input.steer = clamp(err * 2.2, -1, 1);
@@ -3075,6 +3178,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       // rotation, blkT growing forever). A rotating-in-place hull neither
       // needs obstacle avoidance nor moves enough to hit anything — skip
       // it, and give the pivot enough drive to actually break friction.
+      // Beside a solid that drive rolls the hull through a 4-5 m arc into it at 3-4 m/s: there the pivot creeps, its
+      // drive cut above SOLID_CREEP_MPS (see PIVOT_CLEAR_M).
+      if (Math.abs(st.speed) >= SOLID_CREEP_MPS && solidWithin(st.pos.x, st.pos.z, ownHalfLengthM() + PIVOT_CLEAR_M)) {
+        input.throttle = 0;
+        input.brake = true;
+        pivotCreeps++;
+        return false;
+      }
       input.throttle = 0.3;
       return false;
     }
@@ -3209,6 +3320,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     input.throttle = -0.6;
     input.steer = 0;
     input.brake = false;
+    gunNudgeAtS = nowS; // its own dead-leg law judges a nudge that goes nowhere (see LEG_DEAD_M), not the solid brake
   }
 
   function driveFallback(input: AiInput, navX: number, navZ: number): void {
@@ -5770,6 +5882,24 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         routeTimer = Math.min(routeTimer,0.1);
       }
     }
+    // The same safety against solids (destruction core lane, 2026-10-08; see PIVOT_CLEAR_M): a hull never drives
+    // into a wall, a house or a shed faster than it can stop short of it, forward or in reverse. Above SOLID_CREEP_MPS,
+    // the lane the hull's width either way of its line of travel, out to its half-length plus a stop at
+    // SOLID_STOP_MPS2, must be clear of solids; when it is not, the controller brakes (the steering stays) and replans.
+    const travel = entity.state.speed;
+    if (entity.state.grounded && Math.abs(travel) > SOLID_CREEP_MPS && input.throttle * travel >= 0
+      && !(travel < 0 && nowS - gunNudgeAtS < 0.05)) {
+      const st = entity.state;
+      const sign = Math.sign(travel), speed = Math.abs(travel);
+      const reach = ownHalfLengthM() + 1 + speed * 0.15 + speed * speed / (2 * SOLID_STOP_MPS2);
+      if (solidAhead(st.pos.x, st.pos.z, Math.sin(st.yaw) * sign, Math.cos(st.yaw) * sign, reach,
+        spec.dims.widthM * 0.5 + 0.25)) {
+        input.throttle = 0;
+        input.brake = true;
+        routeTimer = Math.min(routeTimer, 0.1);
+        solidBrakes++;
+      }
+    }
     // Braking belongs only to grounded driving. Airborne controls must never
     // turn a jump into an accidental persistent handbrake on landing.
     if (entity.state.grounded && (Math.abs(input.throttle) > .1 || Math.abs(entity.state.speed) > .5 || timeS < terrainAvoidUntilS)) {
@@ -6165,6 +6295,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       objectiveShifts, objectiveShifting, zoneHoldMoves,
       routeCornerX: routeActive ? +routeCorner.x.toFixed(2) : null,
       routeCornerZ: routeActive ? +routeCorner.z.toFixed(2) : null, routeCornerFlips,
+      driveGoalX, driveGoalZ, driveGoalAgeS: nowS - driveGoalAtS, steerGoalX, steerGoalZ, cornersCrowded, pivotCreeps, solidBrakes, routeOutcome,
       objectiveShiftX: objectiveShifting ? +objectiveShiftPoint.x.toFixed(1) : null,
       objectiveShiftZ: objectiveShifting ? +objectiveShiftPoint.z.toFixed(1) : null,
       zoneHoldX: Number.isFinite(zoneHoldForX) ? +zoneHold.x.toFixed(1) : null,

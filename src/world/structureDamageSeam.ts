@@ -49,6 +49,8 @@ export interface StructureDamageSeam {
   damaged(seed: number, out: DamageWriters): DamageStageResult;
   breach(hole: BreachSpec, out: DamageWriters): DamageStageResult;
   sectionDown(section: number, seed: number, out: DamageWriters): DamageStageResult;
+  /** A storey drops after its faces (P2): `storey` is the anatomy's (holeAt maps the event's point to it). */
+  storeyDown(storey: number, seed: number, out: DamageWriters): DamageStageResult;
   collapse(seed: number, out: DamageWriters): DamageStageResult;
   /**
    * The hole a blow at world point (x, y, z) opens (radius `radiusM`, blow direction `dirX`, `dirZ` in the world): the
@@ -119,7 +121,7 @@ export function describeStructure(args: DescribeStructureArgs): StructureDamageA
   return describeDefault(input);
 }
 
-type StageMember = 'damaged' | 'breach' | 'sectionDown' | 'collapse';
+type StageMember = 'damaged' | 'breach' | 'sectionDown' | 'storeyDown' | 'collapse';
 
 export function createStructureDamageSeam(structureIdx: number, builder: string, style: string | null,
   anatomy: StructureDamageAnatomy, spans: readonly StructureSpan[]): StructureDamageSeam {
@@ -133,7 +135,7 @@ export function createStructureDamageSeam(structureIdx: number, builder: string,
     return chain.find((candidate) => candidate[member]) ?? DEFAULT_STRUCTURE_DAMAGE_KIT;
   };
   const damagedKit = kitFor('damaged'), breachKit = kitFor('breach');
-  const sectionKit = kitFor('sectionDown'), collapseKit = kitFor('collapse');
+  const sectionKit = kitFor('sectionDown'), storeyKit = kitFor('storeyDown'), collapseKit = kitFor('collapse');
   const casters = [...new Set(spans.map((span) => span.mesh))].filter((mesh) => mesh.castShadow);
   return {
     structureIdx, builder, style, anatomy, spans,
@@ -144,6 +146,8 @@ export function createStructureDamageSeam(structureIdx: number, builder: string,
     breach: (hole, out) => (breachKit.breach ?? DEFAULT_STRUCTURE_DAMAGE_KIT.breach!).call(breachKit, anatomy, hole, out),
     sectionDown: (section, seed, out) => (sectionKit.sectionDown ?? DEFAULT_STRUCTURE_DAMAGE_KIT.sectionDown!)
       .call(sectionKit, anatomy, section, seed, out),
+    storeyDown: (storey, seed, out) => (storeyKit.storeyDown ?? DEFAULT_STRUCTURE_DAMAGE_KIT.storeyDown!)
+      .call(storeyKit, anatomy, storey, seed, out),
     collapse: (seed, out) => (collapseKit.collapse ?? DEFAULT_STRUCTURE_DAMAGE_KIT.collapse!).call(collapseKit, anatomy, seed, out),
   };
 }
