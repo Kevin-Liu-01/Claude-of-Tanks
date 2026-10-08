@@ -46,13 +46,13 @@ export interface HouseDamageExtras {
   surfaces: ReadonlyMap<number, FaceSurface>;
 }
 
-function extrasOf(anatomy: StructureDamageAnatomy): HouseDamageExtras | null {
+export function extrasOf(anatomy: StructureDamageAnatomy): HouseDamageExtras | null {
   const k = anatomy.kitPlan as { damage?: HouseDamageExtras } | undefined;
   return k?.damage?.kind === 'house-damage' ? k.damage : null;
 }
 
 /** A plain world projection (a default anatomy's wall: no offset known). */
-function fallbackSurface(face: DamageFace): FaceSurface {
+export function fallbackSurface(face: DamageFace): FaceSurface {
   const alongX = Math.abs(face.out[2]) > 0.5;
   return {
     uv(bucket, u, y, out) {
@@ -80,7 +80,7 @@ const UV: [number, number] = [0, 0];
 const COL: [number, number, number] = [0, 0, 0];
 
 /** The face frame: a point at (u, y above the storey floor, o out of the face) in the body frame. */
-class FacePen {
+export class FacePen {
   readonly f: DamageFace;
   readonly s: FaceSurface;
   constructor(f: DamageFace, s: FaceSurface) { this.f = f; this.s = s; }
@@ -90,7 +90,7 @@ class FacePen {
 }
 
 /** Triangles through a DamageMeshWriter, one bucket and role a run, never past the writer's capacity. */
-class Mesh {
+export class Mesh {
   private readonly w: DamageMeshWriter;
   private open = false;
   /** this run redraws the intact wall's own skin: its vertices take the wall's sampled colour (FaceSurface.colour) */
@@ -211,7 +211,7 @@ class Mesh {
 }
 
 /** The face's normal (out) and in-plane axes as body-frame vectors. */
-function axes(f: DamageFace): { n: Vec3; inward: Vec3; u: Vec3; nu: Vec3; up: Vec3; down: Vec3 } {
+export function axes(f: DamageFace): { n: Vec3; inward: Vec3; u: Vec3; nu: Vec3; up: Vec3; down: Vec3 } {
   return {
     n: f.out, inward: [-f.out[0], -f.out[1], -f.out[2]], u: f.u, nu: [-f.u[0], -f.u[1], -f.u[2]], up: [0, 1, 0], down: [0, -1, 0],
   };
@@ -254,17 +254,17 @@ function inOpening(f: DamageFace, u: number, y: number): boolean {
  * returns: a rim returns `CUT_PER_HOLE` × its farthest break (so the cut always takes everything inside the hole) and
  * redraws the wall out to `REDRAW_PER_CUT` × the cut (so the cut's edge never shows past the redraw).
  */
-const CUT_PER_HOLE = 1 / 0.75, REDRAW_PER_CUT = 1.25;
+export const CUT_PER_HOLE = 1 / 0.75, REDRAW_PER_CUT = 1.25;
 
 /** A blast's soot: darkest at `inner` from the hole's middle, gone at `outer` (where the redraw meets the wall). */
-function sootField(cu: number, cy: number, inner: number, outer: number): (u: number, y: number) => number {
+export function sootField(cu: number, cy: number, inner: number, outer: number): (u: number, y: number) => number {
   return (u, y) => {
     const t = Math.min(1, Math.max(0, (Math.hypot(u - cu, y - cy) - inner) / Math.max(1e-3, outer - inner)));
     return 1 - 0.5 * (1 - t * t * (3 - 2 * t));
   };
 }
 
-type FacePt = readonly [number, number, number];
+export type FacePt = readonly [number, number, number];
 
 /** A convex polygon on a face (u, y, o) clipped to the half-plane a·u + b·y ≤ c (Sutherland–Hodgman; o follows). */
 function clipFacePoly(poly: readonly FacePt[], a: number, b: number, c: number): FacePt[] {
@@ -295,7 +295,7 @@ function facePolyArea(poly: readonly FacePt[]): number {
  * breach beside a door redraws the wall up to its jamb, not over it, and leaves no gap where a whole quad would have
  * touched it).
  */
-function wallPieces(f: DamageFace, poly: readonly FacePt[]): FacePt[][] {
+export function wallPieces(f: DamageFace, poly: readonly FacePt[]): FacePt[][] {
   const half = f.width / 2;
   const inWidth = clipFacePoly(clipFacePoly(clipFacePoly(poly, 1, 0, half), -1, 0, half), 0, -1, 0.05);
   let pieces: FacePt[][] = inWidth.length >= 3 ? [inWidth] : [];
@@ -320,7 +320,8 @@ function wallPieces(f: DamageFace, poly: readonly FacePt[]): FacePt[][] {
  * The redrawn wall runs a hair past the cut and a hair proud of the intact face (OVERLAP, LIFT), so no crack opens along
  * the circle where the presentation's discard meets it (the two coincide in texture and tint).
  */
-const OVERLAP = 0.012, LIFT = 0.0015;
+const OVERLAP = 0.012;
+export const LIFT = 0.0015;
 
 function insideCircle(u: number, y: number, cu: number, cy: number, r: number): boolean {
   return (u - cu) * (u - cu) + (y - cy) * (y - cy) <= r * r;
@@ -364,7 +365,7 @@ function blowSpeed(hole: BreachSpec): number {
  * sides), so the hole never looks through the house; the floor slab's edge at the storey line and the joist ends at
  * the ceiling where the hole reaches them.
  */
-function roomBehind(mesh: Mesh, anatomy: StructureDamageAnatomy, pen: FacePen, storeyIndex: number, cu: number, cy: number, r: number,
+export function roomBehind(mesh: Mesh, anatomy: StructureDamageAnatomy, pen: FacePen, storeyIndex: number, cu: number, cy: number, r: number,
   depth: number): void {
   const f = pen.f, storey = anatomy.storeys[storeyIndex];
   const dark = anatomy.interior.color;
@@ -800,7 +801,7 @@ function segmentInCircle(mm: FrameMember, cu: number, cy: number, r: number): [n
 // ---------------------------------------------------------------------------------------------------- breach
 
 /** The hole's face: its storey's face by name. */
-function faceOf(anatomy: StructureDamageAnatomy, hole: BreachSpec): DamageFace | null {
+export function faceOf(anatomy: StructureDamageAnatomy, hole: BreachSpec): DamageFace | null {
   return anatomy.storeys[hole.storey]?.faces.find((f) => f.name === hole.face) ?? null;
 }
 
@@ -950,11 +951,11 @@ export function damagedHouse(anatomy: StructureDamageAnatomy, seed: number, out:
   return { cuts, hides: [{ section: null, partClass: 'glass' }] };
 }
 
-function norm3(v: Vec3): Vec3 {
+export function norm3(v: Vec3): Vec3 {
   const l = Math.hypot(v[0], v[1], v[2]) || 1;
   return [v[0] / l, v[1] / l, v[2] / l];
 }
-function cross3(a: Vec3, b: Vec3): Vec3 {
+export function cross3(a: Vec3, b: Vec3): Vec3 {
   return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 }
 /** The unit quaternion of the rotation whose columns are the orthonormal axes x, y, z. */
@@ -998,10 +999,10 @@ export function bodyCentre(anatomy: StructureDamageAnatomy): [number, number] {
  * sim/terrainDeformation.ts rubbleMoundHeightAt); without it (an offline preview, a test), a dome over the house's
  * footprint and a metre round it, its crown from the storeys.
  */
-type MoundHeight = (x: number, z: number) => number;
+export type MoundHeight = (x: number, z: number) => number;
 /** How far the pile's skin stands over the sim's mound where the mound is high (the terrain is raised by the mound
  *  itself: a skin on its profile would lie in the ground); it tapers to nothing at the heap's rim. */
-const HEAP_LIFT_M = 0.35;
+export const HEAP_LIFT_M = 0.35;
 export function domeMound(anatomy: StructureDamageAnatomy): MoundHeight {
   const rx = anatomy.w / 2 + 1, rz = anatomy.d / 2 + 1, [cx, cz] = bodyCentre(anatomy);
   const crown = Math.max(0.8, Math.min(2.6, anatomy.storeys.length * 0.55 + 0.4));
@@ -1139,7 +1140,7 @@ const SKIN_MATERIALS: ReadonlySet<string> = new Set(['stone', 'brick', 'rubble',
  * heap with a lump of its own, in the walls' main material (its own texture across the top, its tint dusted and
  * darkened); returns the heap's reach along x and z for the chunks (DESTRUCTION.md §16.3 Collapse).
  */
-function heapSkin(mesh: Mesh, anatomy: StructureDamageAnatomy, slots: readonly FractureSlot[], mound: MoundHeight, cx: number, cz: number,
+export function heapSkin(mesh: Mesh, anatomy: StructureDamageAnatomy, slots: readonly FractureSlot[], mound: MoundHeight, cx: number, cz: number,
   rng: () => number): [number, number] {
   const RINGS = 7, SECTORS = 22, EDGE = 0.12;
   const rx = anatomy.w / 2 + 0.8, rz = anatomy.d / 2 + 0.8, far = 1.8 * Math.max(rx, rz);
@@ -1348,7 +1349,7 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
 // ---------------------------------------------------------------------------------------------------- the roof falls
 
 /** A timber between two body-frame points, `w` wide and `t` deep, its broad face toward `up` (a rafter, a batten). */
-function beamBetween(mesh: Mesh, a: Vec3, b: Vec3, w: number, t: number, upHint: Vec3, tint: Rgb): void {
+export function beamBetween(mesh: Mesh, a: Vec3, b: Vec3, w: number, t: number, upHint: Vec3, tint: Rgb): void {
   if (!mesh.fits(16)) return;
   const ax = norm3([b[0] - a[0], b[1] - a[1], b[2] - a[2]]);
   let side = norm3(cross3(ax, upHint));
@@ -1549,7 +1550,7 @@ function roofDown(anatomy: StructureDamageAnatomy, seed: number, out: { mesh: Da
 }
 
 /** A piece from a body-frame point, falling with a small scatter. */
-function throwPieceAt(out: DamagePieceWriter, rng: () => number, bucket: string, shape: DebrisShape, p: Vec3, s: [number, number, number], tint: Rgb, speed: number): boolean {
+export function throwPieceAt(out: DamagePieceWriter, rng: () => number, bucket: string, shape: DebrisShape, p: Vec3, s: [number, number, number], tint: Rgb, speed: number): boolean {
   const ang = rng() * Math.PI * 2;
   return out.push(bucket, shape, Math.floor(rng() * 4), p[0], p[1], p[2], 0, Math.sin(ang / 2), 0, Math.cos(ang / 2), s[0], s[1], s[2],
     tint[0], tint[1], tint[2], (rng() - 0.5) * speed, -speed * (0.5 + rng() * 0.5), (rng() - 0.5) * speed);
@@ -1788,7 +1789,9 @@ function wallDown(anatomy: StructureDamageAnatomy, section: number, seed: number
   // 3. the heap along its foot, outside: a bank of the wall's main material against the stub, falling away from it, and
   // chunks of its own layers on it (a render's plates, a core's or a masonry wall's units, a frame's timbers)
   const groundY = -(f.origin[1]);
-  const spread = 1 + H * 0.45, crest = 0.45 + 0.12 * H;
+  // (a hall's wall falls as one band up to its eave: its bank spreads as a storey-and-a-half's would, the rest of it
+  // broken up in the fall)
+  const Hb = Math.min(H, 5), spread = 1 + Hb * 0.45, crest = 0.45 + 0.12 * Hb;
   const bankLumps = Array.from({ length: 4 }, () => [rng() * 2 - 1, rng() * Math.PI * 2, 1.1 + rng() * 2]);
   const bankAt = (uu: number, oo: number): number => {
     let v = 0;

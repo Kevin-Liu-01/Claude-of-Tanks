@@ -26,6 +26,7 @@ import { WEATHER_ROUTE, wallWeather, type WeatherTints } from './weather.ts';
 import { breachHouse, collapseHouse, damagedHouse, domeMound, sectionDownHouse, storeyDownHouse, type FaceSurface, type HouseDamageExtras } from './fracture.ts';
 import { debrisPiece } from './debris.ts';
 import { readShell } from './shell.ts';
+import { breachSheet, collapseSheet, damagedSheet, isSheetBody, isSheetFace, roofDownSheet, sectionDownSheet } from './sheet.ts';
 
 const FACE_ORDER: readonly SeamFace[] = ['front', 'right', 'back', 'left'];
 const WHITE: Rgb = [1, 1, 1];
@@ -353,19 +354,29 @@ function describeHouse(style: ArchitectureStyle, input: StructureDescribeInput):
  */
 const NOT_SHELLS = /gantry|market|ramada|container|ruin|stack|watertower|minaret|tower|needle|arcology|crane|silo|tent/i;
 
-/** A wall bucket's layers, outermost first, in the building's own buckets (a regional kit's or the base set's). */
-function shellLayers(style: ArchitectureStyle, bucket: string, tint: Rgb, coreBucket: string): FractureSlot[] {
-  if (bucket === 'regionalStone' || bucket === 'stone') return [{ material: stoneMaterial(style), bucket, tint, thicknessM: 0.45, share: 1 }];
-  if (bucket === 'structureMetal' || bucket === 'steel') return [{ material: 'metal', bucket, tint, thicknessM: 0.02, share: 1 }];
-  if (bucket === 'wood' || bucket === 'structureWood' || bucket === 'dark') return [{ material: 'plank', bucket, tint, thicknessM: 0.12, share: 1 }];
-  if (bucket === 'straw') return [{ material: 'thatch', bucket, tint, thicknessM: 0.3, share: 1 }];
-  if (bucket === 'baked' || (/plaster2/i.test(bucket) && style.surfaces.concrete)) return [{ material: 'concrete', bucket, tint, thicknessM: 0.25, share: 1 }];
+/**
+ * A wall bucket's layers, outermost first, in the building's own buckets (a regional kit's or the base set's), as deep
+ * in all as the wall its parts show (shell.ts ShellFace.depth; the presentation clamps a fallen panel through that
+ * depth, so a thicker wall box than its layers would stand through its own fall).
+ */
+function shellLayers(style: ArchitectureStyle, bucket: string, tint: Rgb, coreBucket: string, depth: number | null = null): FractureSlot[] {
+  const D = depth !== null && depth >= 0.05 && depth <= 0.9 ? depth : null;
+  if (bucket === 'regionalStone' || bucket === 'stone') return [{ material: stoneMaterial(style), bucket, tint, thicknessM: D ?? 0.45, share: 1 }];
+  if (bucket === 'structureMetal' || bucket === 'steel') {
+    // the cladding, then its girts and the hall's lining behind it (the wall box's own depth)
+    const sheet: FractureSlot = { material: 'metal', bucket, tint, thicknessM: 0.02, share: 1 };
+    return D !== null && D > 0.06 ? [sheet, { material: 'metal', bucket, tint: [0.27, 0.28, 0.3], thicknessM: D - 0.02, share: 1 }] : [sheet];
+  }
+  if (bucket === 'wood' || bucket === 'structureWood' || bucket === 'dark') return [{ material: 'plank', bucket, tint, thicknessM: D ?? 0.12, share: 1 }];
+  if (bucket === 'straw') return [{ material: 'thatch', bucket, tint, thicknessM: D ?? 0.3, share: 1 }];
+  if (bucket === 'baked' || (/plaster2/i.test(bucket) && style.surfaces.concrete)) return [{ material: 'concrete', bucket, tint, thicknessM: D ?? 0.25, share: 1 }];
   // a render over the region's core (mud brick in the earth kits, the kit's brick, else rubble masonry)
   const core: FractureMaterial = EARTH_KITS.has(style.id) ? 'adobe' : style.surfaces.stone.kind === 'brick' ? 'brick' : 'rubble';
+  const coreT = Math.max(0.1, (D ?? 0.43) - 0.03);
   return [
     { material: 'plaster', bucket, tint, thicknessM: 0.03, share: 1 },
-    core === 'adobe' ? { material: 'adobe', bucket, tint: mul3(tint, CLAY), thicknessM: 0.4, share: 1 }
-      : { material: core, bucket: coreBucket, tint: coreBucket === bucket ? mul3(tint, [0.8, 0.74, 0.68]) : WHITE, thicknessM: 0.4, share: 1 },
+    core === 'adobe' ? { material: 'adobe', bucket, tint: mul3(tint, CLAY), thicknessM: coreT, share: 1 }
+      : { material: core, bucket: coreBucket, tint: coreBucket === bucket ? mul3(tint, [0.8, 0.74, 0.68]) : WHITE, thicknessM: coreT, share: 1 },
   ];
 }
 
@@ -432,16 +443,15 @@ function describeShell(style: ArchitectureStyle, input: StructureDescribeInput):
   const W = r.x1 - r.x0, D = r.z1 - r.z0, wallH = r.eave - r.base;
   // a shaft (taller than twice its footprint) falls as a shaft, not as a house
   if (wallH > 2.2 * Math.max(W, D)) return null;
-  // a sheet-clad body tears and buckles on its frame, where a house's builders would heap it like masonry: its own
-  // builders come with the sheet kit (until then the default reads it)
-  if (r.faces.filter((f) => f.bucket === 'structureMetal' || f.bucket === 'steel').length >= 2) return null;
   // a light structure baked into one coloured mesh (a Quonset's arch, a greenhouse's glass, a shack's boards: the base
   // set's DESTRUCTIBLE_BUILDING_TYPES) says nothing of its material by its bucket: its own kit reads it
   if (r.faces.some((f) => f.bucket === 'baked')) return null;
   const open = OPEN_SHELLS.has(input.builder) || /hall|works|factory|warehouse|depot|shed|garage|hangar|mill|station|barn|store/i.test(input.builder);
   // the bands the sim cuts the walls into (sim/structureSections.ts: 3.2 m, at most six), so a fallen section shows the
   // band that fell; an open hall's bands have no floors between them
-  const count = Math.max(1, Math.min(6, Math.round(wallH / 3.2)));
+  // (a wall built as one part from foot to eave falls whole: the presentation clamps a fallen panel by its parts, so a
+  // band of such a wall could never come away from the rest; its body is one band)
+  const count = r.faces.every((f) => f.whole) ? 1 : Math.max(1, Math.min(6, Math.round(wallH / 3.2)));
   const storeyH = wallH / count;
   const has = (b: string): boolean => !!input.parts[b]?.length;
   const coreBucket = has('regionalStone') ? 'regionalStone' : has('stone') ? 'stone' : '';
@@ -451,7 +461,7 @@ function describeShell(style: ArchitectureStyle, input: StructureDescribeInput):
   for (let i = 0; i < count; i++) {
     const y0 = r.base + i * storeyH, y1 = y0 + storeyH;
     const faces: DamageFace[] = r.faces.map((sf, f) => {
-      const layers = shellLayers(style, sf.bucket, sf.tint, coreBucket || sf.bucket);
+      const layers = shellLayers(style, sf.bucket, sf.tint, coreBucket || sf.bucket, sf.depth);
       const origin: Vec3 = [sf.origin[0], y0, sf.origin[2]];
       const fit = sf.uv;
       const regional = sf.bucket.startsWith('regional');
@@ -636,14 +646,24 @@ export function registerHouseDamageKits(styles: readonly ArchitectureStyle[]): v
       id: style.id,
       // a house from its plan; a body without one read off its parts (a hall, a works, the base set's buildings)
       describe: (input) => describeHouse(style, input) ?? describeShell(style, input),
-      breach: (anatomy, hole, out) => breachHouse(anatomy, hole, out),
-      damaged: (anatomy, seed, out) => damagedHouse(anatomy, seed, out),
+      // a sheet-clad face tears and its frame shows (sheet.ts); every other wall breaks as a house's
+      breach: (anatomy, hole, out) => (isSheetFace(anatomy.storeys[hole.storey]?.faces.find((f) => f.section === hole.section))
+        ? breachSheet(anatomy, hole, out) : breachHouse(anatomy, hole, out)),
+      damaged: (anatomy, seed, out) => (isSheetBody(anatomy) ? damagedSheet(anatomy, seed, out) : damagedHouse(anatomy, seed, out)),
       piece: (_bucket, shape, variant, rng) => debrisPiece(shape, variant, rng),
       // the pile on the sim's own heap (the world fills `anatomy.mound` from the structure table); a dome over the house
       // where none is given (an offline preview, a receipt)
-      collapse: (anatomy, seed, out) => collapseHouse(anatomy, seed, out,
-        anatomy.mound ? (x, z) => bodyMoundHeightAt(anatomy, x, z) : domeMound(anatomy)),
-      sectionDown: (anatomy, section, seed, out) => sectionDownHouse(anatomy, section, seed, out),
+      collapse: (anatomy, seed, out) => {
+        const mound = anatomy.mound ? (x: number, z: number) => bodyMoundHeightAt(anatomy, x, z) : domeMound(anatomy);
+        return isSheetBody(anatomy) ? collapseSheet(anatomy, seed, out, mound) : collapseHouse(anatomy, seed, out, mound);
+      },
+      sectionDown: (anatomy, section, seed, out) => {
+        if (anatomy.roof && section === anatomy.roof.section) {
+          return anatomy.roof.covering.material === 'metal' && isSheetBody(anatomy) ? roofDownSheet(anatomy, seed, out) : sectionDownHouse(anatomy, section, seed, out);
+        }
+        const face = anatomy.storeys[Math.floor(section / 4)]?.faces.find((f) => f.section === section);
+        return isSheetFace(face) ? sectionDownSheet(anatomy, section, seed, out) : sectionDownHouse(anatomy, section, seed, out);
+      },
       storeyDown: (anatomy, storey, seed, out) => storeyDownHouse(anatomy, storey, seed, out),
     };
     registerStructureDamageKit(kit);

@@ -17,6 +17,7 @@ import { ARCHITECTURE_STYLES, buildRegionalParts, regionalKitPlanOf } from './in
 import { streamFrom } from './geometry.ts';
 import { describeStructure, createStructureDamageSeam } from '../../structureDamageSeam.ts';
 import '../../destructionDefaultKit.ts';
+import { isSheetBody, isSheetFace } from './sheet.ts';
 import { URBAN_BUILDERS } from '../urbanKit.ts';
 import { VILLAGE_BUILDERS } from '../villageKit.ts';
 import { STRUCTURE_BUILDERS } from '../structureKit.ts';
@@ -114,9 +115,12 @@ function assertFacing(runs, label) {
 
 // ---- 2 and 3. the base set on a regional map, and every regional builder that lays no house
 const CAPS = { breach: [3000, 96], damaged: [3000, 48], sectionDown: [6000, 160], storeyDown: [6000, 160], collapse: [16000, 240] };
-let shells = 0, defaults = 0, stages = 0;
+let shells = 0, defaults = 0, stages = 0, sheetShells = 0;
 const shellIds = new Set(), defaultIds = new Set();
 function exercise(label, a, seam) {
+  // (the body's own middle: a shell's walls need not centre on its parts' origin)
+  const fo = a.storeys[0].faces.map((f) => f.origin);
+  const mx = fo.reduce((s, o) => s + o[0], 0) / fo.length, mz = fo.reduce((s, o) => s + o[2], 0) / fo.length;
   const reach = Math.max(a.w, a.d) / 2 + 6;
   const check = (name, run, cap) => {
     const one = writers(...cap), two = writers(...cap);
@@ -125,7 +129,7 @@ function exercise(label, a, seam) {
     assert.deepEqual(again, res, `${label} ${name}: the same result twice`);
     assertFacing(one.runs, `${label} ${name}`);
     for (const r of one.runs) for (let i = 0; i < r.pos.length; i += 3) {
-      assert.ok(Math.abs(r.pos[i]) <= reach && Math.abs(r.pos[i + 2]) <= reach && r.pos[i + 1] >= -2 && r.pos[i + 1] <= a.h + 3,
+      assert.ok(Math.abs(r.pos[i] - mx) <= reach && Math.abs(r.pos[i + 2] - mz) <= reach && r.pos[i + 1] >= -2 && r.pos[i + 1] <= a.h + 3,
         `${label} ${name}: a vertex within the body's reach (${r.pos[i].toFixed(2)}, ${r.pos[i + 1].toFixed(2)}, ${r.pos[i + 2].toFixed(2)})`);
     }
     stages++;
@@ -150,7 +154,7 @@ function validate(label, a, styleId) {
     for (const f of st.faces) {
       for (const v of [...f.origin, ...f.u, ...f.out, f.width, f.height]) finite(v, `${label} face`);
       assert.ok(Math.abs(Math.abs(f.origin[0]) - (Math.abs(f.out[0]) > 0.5 ? a.w / 2 : 0)) < a.w + 1, `${label}: a face on the box`);
-      assert.ok(f.layers.length >= 1 && f.layers.every((l) => l.thicknessM > 0 && l.material !== 'metal'), `${label}: a face's layers (no sheet: the sheet kit's)`);
+      assert.ok(f.layers.length >= 1 && f.layers.every((l) => l.thicknessM > 0), `${label}: a face's layers`);
       for (const o of f.openings) assert.ok(Math.abs(o.u) <= f.width / 2 + 0.05 && o.y0 >= -0.05 && o.y0 + o.h <= f.height + 0.05, `${label}: an opening inside its face`);
       if (f.masonry) {
         const c = f.masonry.courses;
@@ -182,7 +186,32 @@ function describeAndRun(label, builder, styleId, parts) {
   if (a.kit === 'default') { defaults++; defaultIds.add(label.split(' ')[0]); return; }
   shells++; shellIds.add(label.split(' ')[0]);
   validate(label, a, styleId);
-  exercise(label, a, createStructureDamageSeam(2, builder, styleId, a, []));
+  const seam = createStructureDamageSeam(2, builder, styleId, a, []);
+  exercise(label, a, seam);
+  if (isSheetBody(a)) {
+    sheetShells++;
+    // a blast through a sheet wall: torn sheet round it (both sides), the frame's members across the gap, no masonry
+    // (a point of plain sheet: clear of every opening by the hole and a half metre)
+    let spot = null;
+    for (const x of a.storeys[0].faces) {
+      if (!isSheetFace(x) || x.width < 4 || x.height < 3) continue;
+      for (let u = -x.width / 2 + 1.6; u <= x.width / 2 - 1.6 && !spot; u += 0.5) {
+        for (let y = 1.6; y <= x.height - 1.2 && !spot; y += 0.5) {
+          if (!x.openings.some((o) => Math.abs(u - o.u) < o.w / 2 + 1.6 && y > o.y0 - 1.6 && y < o.y0 + o.h + 1.6)) spot = { f: x, u, y };
+        }
+      }
+      if (spot) break;
+    }
+    if (spot) {
+      const { f } = spot;
+      const out = writers(...CAPS.breach);
+      seam.breach({ section: f.section, storey: 0, face: f.name, hole: 0, u: spot.u, y: spot.y, radiusM: 1.1,
+        dirX: -f.out[0], dirZ: -f.out[2], munition: 'he', cause: 'blast', seed: 5 }, out);
+      assert.ok(out.runs.some((r) => r.role === 'rim' && r.bucket === f.layers[0].bucket && r.pos.length >= 60), `${label}: the sheet torn round the hole`);
+      assert.ok(out.runs.filter((r) => r.role === 'rim').reduce((n, r) => n + r.pos.length / 3, 0) >= 120, `${label}: the sheet and the frame behind it`);
+      assert.ok(out.runs.some((r) => r.role === 'room'), `${label}: the dark hall behind the hole`);
+    }
+  }
 }
 function seeded(initial) {
   let state = initial >>> 0;
@@ -216,8 +245,11 @@ for (const style of ARCHITECTURE_STYLES) {
   }
 }
 for (const id of ['polder/barn', 'siwa/adobe', 'shanghai/rowhouse']) assert.ok(shellIds.has(id), `${id}: reads as a shell`);
-for (const id of ['kyushu/warehouse', 'wadirum/warehouse', 'saar/stack', 'saar/gantry', 'ksar/caravanserai']) {
-  assert.ok(!shellIds.has(id), `${id}: left to the default (a sheet-clad hall, a shaft, an open frame, a courtyard)`);
+// the sheet-clad halls read as shells and break by the sheet kit (sheet.ts: their sheet torn, their frame standing)
+for (const id of ['kyushu/warehouse', 'wadirum/warehouse', 'glencanyon/warehouse']) assert.ok(shellIds.has(id), `${id}: a sheet-clad hall reads as a shell`);
+assert.ok(sheetShells >= 8, `sheet-clad shells broken by the sheet kit (${sheetShells})`);
+for (const id of ['saar/stack', 'saar/gantry', 'ksar/caravanserai']) {
+  assert.ok(!shellIds.has(id), `${id}: left to the default (a shaft, an open frame, a courtyard)`);
 }
 assert.ok(shells >= 50, `the shells the kits now draw (${shells})`);
-console.log(`shell damage: ${shells} builds read as shells in their kit's materials (${baseShells.length} of the base set's buildings: ${baseShells.map((x) => x.slice(5)).join(', ')}), ${defaults} left to the default; ${stages} stages deterministic, within the caps, inside the body's reach, every triangle facing its normal`);
+console.log(`shell damage: ${shells} builds read as shells in their kit's materials, ${sheetShells} of them sheet-clad halls the sheet kit breaks (${baseShells.length} of the base set's buildings: ${baseShells.map((x) => x.slice(5)).join(', ')}), ${defaults} left to the default; ${stages} stages deterministic, within the caps, inside the body's reach, every triangle facing its normal`);
