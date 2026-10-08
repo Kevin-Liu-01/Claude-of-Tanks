@@ -10,6 +10,10 @@ import { addCatalogExterior } from './maps/exteriorDetailKit.ts';
 // structureCollision.ts SHA256 2cac73132b9c1f53d686fd516f739b3ed919a08c44908592d44bb51e84f2cbbb.
 // Only these three functions are replaced, so the separate per-solid runtime
 // reuse optimization and real geometry/scoring dependencies remain identical.
+// (2026-10-08, the perf lane: the current merge no longer restarts its pair search — it resumes after each merge and
+// draws its pairs from a welded-corner index — so the control replaces its one mergeProjectedTriangles with all three
+// originals, and the receipt holds the two to the same accepted merges in the same order, pair by pair (the polygons
+// each merge joined and the hull it made), with the hull tests and key builds at most the original's.)
 const originals = {
   sharedVertexCount: `function sharedVertexCount(keys: ReadonlySet<string>, polygon: number[]): number {
   let shared = 0;
@@ -51,18 +55,25 @@ const functionPattern = name => new RegExp(`^function ${name}\\([\\s\\S]*?^}`, '
 const hooks = registerHooks({ load(url, context, nextLoad) {
   if (![`${moduleUrl.href}?keys-candidate`, `${moduleUrl.href}?keys-original`].includes(url)) return nextLoad(url, context);
   let text = source;
-  if (url.endsWith('?keys-original')) for (const [name, original] of Object.entries(originals)) {
-    assert.ok(functionPattern(name).test(text), `${name}: actual function boundary exists`);
-    text = text.replace(functionPattern(name), original);
+  const isOriginal = url.endsWith('?keys-original');
+  if (isOriginal) {
+    // (the ranged band merge keeps the shared-corner count; mergeFirstProjectedPair is gone from the current source and
+    // goes back in ahead of the original mergeProjectedTriangles)
+    for (const name of ['sharedVertexCount', 'mergeProjectedTriangles']) assert.ok(functionPattern(name).test(text), `${name}: actual function boundary exists`);
+    assert.ok(!functionPattern('mergeFirstProjectedPair').test(text), 'mergeFirstProjectedPair: gone from the current source');
+    text = text.replace(functionPattern('sharedVertexCount'), () => originals.sharedVertexCount)
+      .replace(functionPattern('mergeProjectedTriangles'), () => `${originals.mergeFirstProjectedPair}\n\n${originals.mergeProjectedTriangles}`);
   }
-  for (const [name, counter] of [['polygonVertexKeys', 'keys'], ['sharedVertexCount', 'pairs'], ['combinedConvexHull', 'hulls']]) {
+  const counters = [['polygonVertexKeys', 'keys'], ['sharedVertexCount', 'pairs'], ['combinedConvexHull', 'hulls']];
+  for (const [name, counter] of counters) {
     const declaration = text.match(new RegExp(`function ${name}\\([^]*?\\{`))?.[0];
     assert.ok(declaration, `${name}: instrumentation stays inside actual source function`);
     text = text.replace(declaration, `${declaration} __mergeCounts.${counter}++;`);
   }
+  // each accepted merge by what it joined: the two polygons (the first's before it becomes the hull) and the hull
   const accepted = 'polygons[first] = hull;';
   assert.equal(text.split(accepted).length, 2);
-  text = text.replace(accepted, `__mergeTrace.push({ first, second, hull: hull.slice() }); ${accepted}`);
+  text = text.replace(accepted, `__mergeTrace.push({ first: polygons[first].slice(), second: polygons[second].slice(), hull: hull.slice() }); ${accepted}`);
   text += `
     const __mergeCounts = { keys: 0, pairs: 0, hulls: 0 };
     const __mergeTrace = [];
@@ -103,8 +114,8 @@ function compare(entrypoint, input, label) {
   assert.equal(fingerprint(actual), fingerprint(expected), `${label}: exact Float64 output bits and structure`);
   const control = original.mergeReceipt(), cached = candidate.mergeReceipt();
   assert.equal(fingerprint(cached.trace), fingerprint(control.trace), `${label}: exact accepted first/second pair and hull sequence`);
-  assert.equal(cached.counts.pairs, control.counts.pairs, `${label}: pair-search/restart order unchanged`);
-  assert.equal(cached.counts.hulls, control.counts.hulls, `${label}: convexity math admission unchanged`);
+  assert.ok(cached.counts.pairs <= control.counts.pairs, `${label}: no more shared-corner counts than the restarted search`);
+  assert.ok(cached.counts.hulls <= control.counts.hulls, `${label}: no pair takes the convexity test more often than in the restarted search`);
   assert.ok(cached.counts.keys <= control.counts.keys, `${label}: vertex key construction never increases`);
   return { actual, counts: { candidate: cached.counts, original: control.counts }, accepted: cached.trace.length };
 }
@@ -130,6 +141,39 @@ for (const [label, triangles] of cases) {
   const repeat = compare('testMerge', triangles, `${label} repeated`);
   assert.equal(fingerprint(result.actual), fingerprint(repeat.actual));
   assert.deepEqual(result.counts, repeat.counts, `${label}: no cross-call cache survives`);
+}
+// seeded soups on a small lattice: shared edges everywhere, duplicates, both windings, concave unions, so merges land
+// early and late in the list and each one reorders what the restarted search meets next
+{
+  const random = seeded(0x2ce11);
+  let merges = 0;
+  const hullTests = { candidate: 0, original: 0 }, keyBuilds = { candidate: 0, original: 0 };
+  for (let soup = 0; soup < 48; soup++) {
+    const size = 3 + Math.floor(random.rng() * 4), wanted = 6 + Math.floor(random.rng() * 40);
+    const triangles = [];
+    for (let k = 0; k < wanted; k++) {
+      const x = Math.floor(random.rng() * size), z = Math.floor(random.rng() * size), up = random.rng() < 0.5;
+      // whole cells half the time: rectangles that meet in L and T unions, the pairs a merge must refuse
+      const cell = random.rng() < 0.5 ? [true, false] : [up];
+      for (const half of cell) {
+        const t = half ? [x, z, x + 1, z, x, z + 1] : [x + 1, z, x + 1, z + 1, x, z + 1];
+        triangles.push(random.rng() < 0.3 ? [t[4], t[5], t[2], t[3], t[0], t[1]] : t);
+      }
+    }
+    const result = compare('testMerge', triangles, `lattice soup ${soup}`);
+    merges += result.accepted;
+    for (const side of ['candidate', 'original']) { hullTests[side] += result.counts[side].hulls; keyBuilds[side] += result.counts[side].keys; }
+  }
+  assert.ok(merges > 200, 'the soups merge often');
+  // a dart the merge must refuse (two triangles on one edge, their union reflex at a shared corner) at the top of the
+  // list, then pairs that merge after it: the restarted search tests the refused pair again after every later merge,
+  // the resumed one once
+  const refused = compare('testMerge', [[0, 0, 2, 0, 1, 1], [0, 0, 2, 0, 3, -0.5],
+    ...Array.from({ length: 12 }, (_, k) => square(10 + 3 * k, 0)).flat()], 'a refused dart ahead of later merges');
+  assert.equal(refused.accepted, 12);
+  assert.equal(refused.counts.original.hulls, 12 + 13, 'the restarted search: the dart again after each of the 12 merges');
+  assert.equal(refused.counts.candidate.hulls, 12 + 1, 'the resumed search: the dart once');
+  console.log(`lattice soups: ${merges} merges; hull tests ${hullTests.candidate} against ${hullTests.original} restarted, key builds ${keyBuilds.candidate} against ${keyBuilds.original}`);
 }
 const pairHeavy = Array.from({ length: 32 }, (_, index) => [index * 3, 0, index * 3 + 1, 0, index * 3, 1]);
 const work = compare('testMerge', pairHeavy, 'deterministic rejected-pair work reduction');

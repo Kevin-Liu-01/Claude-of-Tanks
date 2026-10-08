@@ -16,8 +16,9 @@ assert.deepEqual(copper.terrain.landforms[0], { kind: 'basin', x: COPPER_QUARRY.
 assert.deepEqual(copper.terrain.marshes, [{ x: -66, z: 32, r: 38, dip: 0.8 }],
   'Protected mud-pan coordinates remain the actual authored wet footprint');
 assert.equal(copper.terrain.village.x0, 64, 'Eastern cut boundary leaves24m before the building zone');
-// (2026-10-05, Copper Mesa round 2: the risers narrowed, the treads widened)
-for (const [a, b] of [[0, 0.31], [0.37, 0.55], [0.61, 0.80]]) {
+// (2026-10-05, Copper Mesa round 2: the risers narrowed, the treads widened) (2026-10-07, round 3: each riser a cut
+// face over 0.04 of the radius; round 3b, the bots lane's swap test: the PR head's risers again, 0.11 to 0.13)
+for (const [a, b] of [[0, 0.28], [0.39, 0.52], [0.63, 0.76]]) {
   assert.equal(copperQuarryRise(a), copperQuarryRise(b), 'Cut treads have finite radial width');
 }
 for (const point of [[-180, 0, 24], [40, 0, 100], [-66, 32, 100], [-300, 0, 100]]) {
@@ -62,13 +63,13 @@ for (const seed of seeds) {
   for (let z = -194; z < 234; z += 4) for (let x = -256; x < 40; x += 4) {
     const h = actual.getHeightAt(x, z), old = baseline.getHeightAt(x, z);
     assert.ok(Number.isFinite(h) && h <= old && h >= old - COPPER_QUARRY.maximumCut - 1e-10,
-      'Excavation never raises a dam and cannot exceed its8m cut budget');
+      `Excavation never raises a dam and cannot exceed its ${COPPER_QUARRY.maximumCut} m cut budget`);
     assert.equal(actual.getGroundType(x, z), baseline.getGroundType(x, z), 'Ground collision classification retained');
     if (old - h < 0.1) continue;
     changedArea += 16;
     const q = Math.hypot((x + 78) / 178, (z - 20) / 214);
     const normal = actual.getNormalAt(x, z);
-    for (const [i, a, b] of [[0, 0.37, 0.55], [1, 0.61, 0.80]]) {
+    for (const [i, a, b] of [[0, 0.39, 0.52], [1, 0.63, 0.76]]) {
       if (q >= a && q <= b && normal.y > 0.99) treadArea[i] += 16;
     }
     if (x % 20 === 0 && z % 20 === 6) {

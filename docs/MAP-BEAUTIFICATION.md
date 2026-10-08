@@ -7840,9 +7840,11 @@ Whiteout):
   defects; the after side's are the buildings and the far peaks over a white band (the shell's, the far-air lane).
 - *no harm off the snow maps* (Verdant, Titan Gorge, Caldera and Saltwind; Whiteout seen): the frames equal but for the ±1
   dither and the clouds' motion; `snowFaces.selftest` proves the branch selects exactly alpine, whiteout and winter.
-- *cost* (v3: Glacier's establishing view, the PR head against the branch against a head twin, desktop high): 13 cycles
-  pooled over two holds (2 more void over load 250), GPU p25 −0.30 ± 0.74 ms, CPU p50 +0.00 ± 0.15 ms — ACCEPT; the census
-  identical (5,466,742 triangles, 724 draws).
+- *cost* (v3: Glacier's establishing view, desktop high), re-measured after the merge at nice 0 on a priority ticket
+  (2026-10-07; the merged tree with the change reverted against the merged tree, against a twin of the revert; the other
+  hulls hidden, with the near-shadow-detail fix; load 102–142): 8 cycles, GPU p25 +0.10 ± 0.29 ms (null −0.10), CPU p50
+  +0.00 ± 0.25 ms — ACCEPT; the census identical (4,061,091 triangles, 476 draws). The first holds (13 cycles, GPU p25
+  −0.30 ± 0.74 ms, CPU p50 +0.00 ± 0.15 ms; 5,466,742 triangles, 724 draws with the hulls shown) ran niced and are void.
 
 ### 2026-10-07 — the ground bounce no longer counts a face's self-shade twice (the skies lane)
 
@@ -7863,8 +7865,11 @@ shadow takes a little too much bounce (the CSM cannot tell the two shadows apart
 **Measured:**
 - *the look* (the facades lane's r3c fill check, the PR head against the branch on Steinburg and Verdant's wall views):
   shaded walls +1.8–3.9 % and warmer; nothing else moved.
-- *cost* (v3: Steinburg's shops-eye, the PR head against the branch against a head twin, desktop high): 8 cycles, GPU p25
-  +0.42 ± 1.04 ms (null +0.88), CPU p50 −0.09 ± 0.17 ms — ACCEPT; the census identical (4,664,349 triangles, 495 draws).
+- *cost* (v3: Steinburg's shops-eye, desktop high), re-measured after the merge at nice 0 on a priority ticket (2026-10-07;
+  the merged tree with the change reverted against the merged tree, against a twin of the revert; the other hulls hidden,
+  with the near-shadow-detail fix; load 100–110): 8 cycles, GPU p25 +0.34 ± 1.14 ms (null −0.17), CPU p50 −0.21 ± 0.12 ms —
+  ACCEPT; the census identical (4,326,639 triangles, 414 draws). The first hold (GPU p25 +0.42 ± 1.04 ms, CPU p50
+  −0.09 ± 0.17 ms; 4,664,349 triangles, 495 draws with the hulls shown) ran niced and is void.
 
 ## Acceptance is visual and measured
 
