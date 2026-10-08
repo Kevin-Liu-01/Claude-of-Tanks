@@ -1,6 +1,6 @@
 import { BufferAttribute, type BufferGeometry } from 'three';
 import type { CanyonGround } from './horizonRedrock.ts';
-import { continuedGroundAt } from './horizonSurface.ts';
+import { continuedGroundSampler } from './horizonSurface.ts';
 
 const DIVISIONS = 8;
 const REACH = 16;
@@ -33,7 +33,8 @@ export function refineHorizonGroundSeam(geometry: BufferGeometry, columns: numbe
   const stride = columns + 1, rows = position.count / stride;
   const arrays = Object.fromEntries(Object.entries(attributes).map(([name, attribute]) => [name, Array.from(attribute.array)]));
   const indices: number[] = [], vertices = new Map<string, number>();
-  const sample = (x: number, z: number): number => continuedGroundAt(ground, x, z);
+  // (the time-to-battle lane, 2026-10-08) the continued ground with its residuals kept by point (horizonSurface.ts)
+  const sample = continuedGroundSampler(ground);
   const groundHeights = new Float64Array(position.count);
   const sampled = new Uint8Array(position.count);
   function groundAtVertex(index: number): number {
@@ -53,19 +54,28 @@ export function refineHorizonGroundSeam(geometry: BufferGeometry, columns: numbe
       weights.reduce((sum, weight, k) => sum + data[corners[k] * size + axis] * weight, 0);
     const x = blend(position.array, 3, 0), z = blend(position.array, 3, 2);
     const weight = row === 0 && w === 0 ? 0 : detailWeight(x, z);
-    const base = weights.reduce((sum, value, k) => sum + groundAtVertex(corners[k]) * value, 0);
-    const y = blend(position.array, 3, 1) + (sample(x, z) - base) * weight;
+    // (the time-to-battle lane, 2026-10-08) a vertex the correction does not reach (weight 0: a third of them) keeps its
+    // blends exactly — a blend sums from +0, so it is never -0, and `blend + finite * 0` is the blend itself — so its
+    // ground samples (five, each up to three height evaluations) are not taken
+    let y = blend(position.array, 3, 1);
+    if (weight !== 0) {
+      const base = weights.reduce((sum, value, k) => sum + groundAtVertex(corners[k]) * value, 0);
+      y += (sample(x, z) - base) * weight;
+    }
     const id = arrays.position.length / 3;
     for (const [name, attribute] of Object.entries(attributes)) {
       if (name === 'position') { arrays[name].push(x, y, z); continue; }
       if (name === 'normal') {
-        const e = 128 / 96;
-        let nx = sample(x - e, z) - sample(x + e, z), ny = 2 * e;
-        let nz = sample(x, z - e) - sample(x, z + e);
-        const length = Math.hypot(nx, ny, nz);
-        nx = blend(attribute.array, 3, 0) * (1 - weight) + nx / length * weight;
-        ny = blend(attribute.array, 3, 1) * (1 - weight) + ny / length * weight;
-        nz = blend(attribute.array, 3, 2) * (1 - weight) + nz / length * weight;
+        let nx = blend(attribute.array, 3, 0), ny = blend(attribute.array, 3, 1), nz = blend(attribute.array, 3, 2);
+        if (weight !== 0) {
+          const e = 128 / 96;
+          const gx = sample(x - e, z) - sample(x + e, z), gy = 2 * e;
+          const gz = sample(x, z - e) - sample(x, z + e);
+          const length = Math.hypot(gx, gy, gz);
+          nx = nx * (1 - weight) + gx / length * weight;
+          ny = ny * (1 - weight) + gy / length * weight;
+          nz = nz * (1 - weight) + gz / length * weight;
+        }
         const inverse = 1 / Math.hypot(nx, ny, nz);
         arrays[name].push(nx * inverse, ny * inverse, nz * inverse);
       } else for (let axis = 0; axis < attribute.itemSize; axis++) arrays[name].push(blend(attribute.array, attribute.itemSize, axis));
