@@ -38,6 +38,8 @@ interface TallGrassField {
   _landUseAt?(x: number, z: number, out: LandFieldSample): LandFieldSample;
   /** Ground lane (2026-10-03): the canopy's cover (0..1) — little sward grows in a stand's shade. */
   _woodsAt?(x: number, z: number): number;
+  /** Ground lane (2026-10-08): a cinder yard's weed clumps (groundRedux.ts cinderYardWeedsAt), on a map with one. */
+  _yardWeedsAt?(x: number, z: number): number;
 }
 
 type TallGrassBlocked = (x: number, y: number, z: number, height: number, radius: number) => boolean;
@@ -551,7 +553,28 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       // marram: dense on the backshore (the strand's own wetness ramp, above the waterline), sparse inland
       if (b.kind === 'dune' && field._waterWetnessAt) keep *= 0.4 + 1.6 * smoothstep(0.03, 0.30, field._waterWetnessAt(x, z));
     }
-    if (field._villageMask && field._villageMask(x, z) > 0.35) keep *= b.kind === 'verge' ? 0.4 : 0.12;
+    let yardDry = 0, yardFringe = false;
+    if (field._villageMask && field._villageMask(x, z) > 0.35) {
+      if (field._yardWeedsAt) {
+        // (2026-10-08, the gauntlet's wave 260 on Cinder Junction: "evenly spaced, saturated green single-blade sprites
+        // … not weeds in a cinder yard") a cinder yard's weeds stand in their clumps (groundRedux.ts cinderYardWeedsAt),
+        // thick and tall at a clump's heart, ragged at its edge, nothing on the trodden cinder between; a clump in three
+        // gone over to straw, the rest a sooty green
+        const w = field._yardWeedsAt(x, z);
+        if (w > 0.02) {
+          keep *= 2.2 * w;
+          heightScale *= 0.75 + 0.85 * w;
+        } else {
+          // and along the walls: the metre of cinder round anything standing on the yard (a wall, a shed, a stack of
+          // sleepers, a platform's edge) no wheel or boot reaches grows its own ragged fringe — the sealed footprints'
+          // own probe at a metre, after the admission roll (the candidate's own footprint test keeps it out of them)
+          if (!blocked) return;
+          keep *= 0.45 * (0.5 + swardNoise(x, z, 0.8, 0x1f2e));
+          yardFringe = true;
+        }
+        yardDry = 0.8 * smoothstep(0.50, 0.68, swardNoise(x, z, 5.3, 0x3d9a));
+      } else keep *= b.kind === 'verge' ? 0.4 : 0.12;
+    }
     let grazed = 0;
     if (splatNoise) {
       const sn = splatNoise(x, z, _splat);
@@ -680,11 +703,12 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     if (roll > keep) return;
     if (n && n.y < TALL_GRASS.minSlopeY) return;
     const y = heightAt(x, z);
+    if (yardFringe && !blocked!(x, y, z, 0.3, 1.0)) return;
     const heightM = Math.min(1.9, b.heightM * heightScale * (1 + b.heightVar * (2 * hR - 1)));
     if (blocked && blocked(x, y, z, heightM, 0.12)) return;
     const widthM = b.widthM * (ring.far ? TALL_GRASS.farWidth : 1) * (0.8 + 0.4 * wR);
     // the tint: a per-clump luminance jitter, straw on the terrain's dry patches, deeper green in the hollows
-    const dry = Math.max(pastureDry >= 0 ? pastureDry : splatNoise ? smoothstep(0.55, 0.85, _splat.mA) : 0, grazed * 0.45);
+    const dry = Math.max(pastureDry >= 0 ? pastureDry : splatNoise ? smoothstep(0.55, 0.85, _splat.mA) : 0, grazed * 0.45, yardDry);
     const lum = 0.82 + 0.36 * tintR;
     const r = (b.tip[0] * (1 - dry) + b.dry[0] * dry) / b.tip[0];
     const g = (b.tip[1] * (1 - dry) + b.dry[1] * dry) / b.tip[1];
