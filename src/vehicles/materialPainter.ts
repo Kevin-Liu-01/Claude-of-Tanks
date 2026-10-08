@@ -476,10 +476,13 @@ export function createMaterialPainter<C extends MaterialCanvas>(
     for (let i = 0; i < nV; i++) {
       f.vLines.push({ p: (i + 0.12 + rng() * 0.76) / nV, weld: rng() < 0.42, bolts: rng() < 0.35, gaps: mkGaps() });
     }
-    // bolt rings (hatch / plate access circles)
+    // bolt rings (hatch / plate access circles). Fleet lane round 1 (2026-10-08; the fleet audit's T-90M X skirts): the
+    // tile placed two to four of these at random in every 2 m repeat, so they landed on skirts, glacis plates and gun
+    // shields alike and repeated down a hull side like stamped decals. Access plates and hatches are modelled where they
+    // are; the tile keeps its seams, welds and bolt lines. The draws stay (every later feature keeps its place).
     const nR = 2 + ((rng() * 3) | 0);
     for (let i = 0; i < nR; i++) {
-      f.rings.push({ x: 0.1 + rng() * 0.8, y: 0.1 + rng() * 0.8, r: 0.022 + rng() * 0.03, n: 8 + ((rng() * 6) | 0) });
+      void [rng(), rng(), rng(), rng()];
     }
     // chips clustered near lines and edges
     // r8: 260 chips with bright glints read as white speckle noise at
