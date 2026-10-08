@@ -1503,21 +1503,9 @@ function buildUAOplotM(P: TankBuilderPort): void {
   }
   P.add('turret', cylY(0.225, 0.24, 0.055, 16), -0.54, 0.81, -0.38);
   P.add('turretDark', cylY(0.195, 0.195, 0.02, 16), -0.54, 0.842, -0.38);
-  {
-    // 2026-10-07 (tank-accessories round 3): "the commander's mount shows no gun". The Oplot-M's commander fights a
-    // 12.7 mm KT-12.7 (an NSVT derivative) from his station; it stands on its own pintle on the commander's hatch ring
-    // (top 0.845) in the ring's outboard-rear quadrant, true scale, barrel forward over the vision blocks (bore 0.30
-    // above the ring) and inside the 2.80 m MG band (top ~2.69 m world).
-    // 2026-10-07 (round 4, wave 214: "the Oplot's 12.7 reads as an M2; it should be the Soviet-pattern KT/NSVT with
-    // its box"): the nsvt class is now the NSVT's own construction (machineGunGeometry.ts). The KT's box hangs on the
-    // outboard side (the NSV feeds from either side; outboard keeps the box off the commander's hatch), and the
-    // mount's collimator stands on its arm on the inboard side, where the commander sights from the hatch.
-    const kt = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', scale: 1.0, ammo: true, shield: false, seed: 8420,
-      feed: 'left', reflexSight: true });
-    kt.name = 'uaOplotMCommanderKt127';
-    kt.position.set(0.74, 0.841, -0.46);
-    P.turretG.add(kt);
-  }
+  // 2026-10-08: the Oplot-M carries one 12.7 mm heavy machine gun, and main's field upgrade (5f8eefaa4,
+  // upgradeOplotFieldEquipment) fits it as a working remote station with its own ammunition; the accessories lane's
+  // decorative KT-12.7 on the commander's hatch ring (rounds 3-4) would have been a second one, so the ring is bare.
   {
     // NSVT stowed on the low bustle deck (UA wartime fit) — exact-group
     // census; the PNK-6 keeps the single p95 spike window.
