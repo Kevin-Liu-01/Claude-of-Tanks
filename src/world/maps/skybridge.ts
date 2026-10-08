@@ -134,6 +134,29 @@ function armRimGuards(): (readonly [number, number, number, number])[] {
   return runs;
 }
 
+/** The kerbs round the arm's head: an arc 37 m from the head's centre round its closed end (the brink stands 34.5-35 m
+ * out) and on along both rims 60 m toward the dam, in runs of about 10 m so each kerb sits on its own ground (the swap
+ * test, 2026-10-07: in 2 of 55 games a hull went over the head's east rim, sat in the water at (-27, -43) beyond the
+ * reach of every bot, and held the match to its 15-minute cap). */
+function armHeadGuards(): (readonly [number, number, number, number])[] {
+  const a = [Math.cos(ARM_YAW * Math.PI / 180), Math.sin(ARM_YAW * Math.PI / 180)], n = [a[1], -a[0]];
+  const end = [DAM_X - a[0] * CREST_GAP, DAM_Z - a[1] * CREST_GAP];
+  const head = [end[0] - a[0] * ARM_LENGTH, end[1] - a[1] * ARM_LENGTH], off = 37, along = 60;
+  // in the head's frame: `s` along the arm toward the dam, `c` across it (n)
+  const at = (s: number, c: number) => [head[0] + a[0] * s + n[0] * c, head[1] + a[1] * s + n[1] * c];
+  const pts: number[][] = [];
+  for (let s = along; s > 0; s -= 10) pts.push(at(s, off));
+  for (let deg = 90; deg <= 270; deg += 15) {
+    const t = deg * Math.PI / 180;
+    pts.push(at(Math.cos(t) * off, Math.sin(t) * off));
+  }
+  for (let s = 10; s <= along; s += 10) pts.push(at(s, -off));
+  const r1 = (q: number[]) => q.map((x) => Math.round(x * 10) / 10) as unknown as readonly [number, number, number, number];
+  const runs: (readonly [number, number, number, number])[] = [];
+  for (let i = 0; i + 1 < pts.length; i++) runs.push(r1([...pts[i], ...pts[i + 1]]));
+  return runs;
+}
+
 /** The dam on road 5 over the arm's end (reservoirDam.ts, laid by the 'dam' dressing kit). */
 export const SKYBRIDGE_DAM: ReservoirDamSite = {
   x: DAM_X, z: Math.round(DAM_Z * 100) / 100, roadDeg: Math.atan2(CREST_U[1], CREST_U[0]) * 180 / Math.PI,
@@ -141,7 +164,7 @@ export const SKYBRIDGE_DAM: ReservoirDamSite = {
   reservoirBedY: ARM_DEPTH, tailwaterBedY: POCKET_DEPTH,
   pocketFromM: POCKET_ALONG - POCKET_LENGTH / 2, pocketToM: POCKET_ALONG + POCKET_LENGTH / 2,
   pocketHalfM: POCKET_HALF * ARM_WALL[1], pocketWallM: CREST_GAP + POCKET_HALF * (1 - ARM_WALL[1]),
-  rimGuards: armRimGuards(),
+  rimGuards: [...armRimGuards(), ...armHeadGuards()],
 };
 
 export default {

@@ -83,8 +83,9 @@ for (const g of [...buckets.plaster2, ...buckets.dark, ...buckets.structureMetal
     const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
     assert.ok(Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z), 'finite');
     const t = (x - D.x) * v[0] + (z - D.z) * v[1], along = (x - D.x) * u[0] + (z - D.z) * u[1];
-    // (the dam's own span: the rims' kerbs run on up the arm past the abutments)
-    if (Math.abs(along) < D.halfChordM - 5) { minT = Math.min(minT, t); maxT = Math.max(maxT, t); }
+    // (the dam's own span: the rims' kerbs run on up the arm past the abutments; the head's kerbs, 250 m up the arm
+    // (Skybridge round 5b), stand in line with the dam's span but far from it)
+    if (Math.abs(along) < D.halfChordM - 5 && Math.hypot(x - D.x, z - D.z) < 120) { minT = Math.min(minT, t); maxT = Math.max(maxT, t); }
     if (t > 12) lowFace = Math.min(lowFace, y);
   }
 }
