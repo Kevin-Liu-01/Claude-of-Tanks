@@ -6,9 +6,10 @@
  * four faces over the storeys below the eaves, and the roof above them. The eaves are where the shell bands' plan area
  * falls below three quarters of its widest (a pitched roof's staircase of strips; a flat roof's last half metre), and
  * the storeys split the walls below into 3.2 m bands (at most six). A section's hit points are its share of the
- * structure's by its area — four times its share of the envelope, between 8 % and 50 % — so a house's wall panel falls
- * to two or three 125 mm HE rounds landing in it while the house itself still takes six (every blow also prices the
- * whole, as in P1).
+ * structure's by its area — twice its share of the envelope, between 5 % and 30 % — so a house's wall panel falls to
+ * one or two 125 mm HE rounds landing in it and its roof to two, while the house itself still takes six (every blow
+ * also prices the whole, as in P1); a large building's roof and a storey's faces fall long before it does (a storey
+ * can drop).
  *
  * What opens is written into the structure's `StructureOpenings` (world/collision.ts), which every shell band of the
  * structure points at once something has opened: the world raycasts read the structure as a hollow box from then on,
@@ -39,9 +40,9 @@ const WALL_BAND_M = 1.2;
 const AREA_STEP_M = 0.5;
 const EAVES_AREA_SHARE = 0.75;
 /** A section's hit points: this many times its share of the envelope, within these bounds of the structure's. */
-const SECTION_HP_K = 4;
-const SECTION_HP_MIN = 0.08;
-const SECTION_HP_MAX = 0.5;
+const SECTION_HP_K = 2;
+const SECTION_HP_MIN = 0.05;
+const SECTION_HP_MAX = 0.3;
 /** A blast's hole: radius = 0.45 · (W · structureFactor)^⅓ (125 mm HE 0.68 m, the gunship's howitzer 0.85 m). */
 const BLAST_HOLE_K = 0.45;
 /** Walls give way more or less readily than masonry. */

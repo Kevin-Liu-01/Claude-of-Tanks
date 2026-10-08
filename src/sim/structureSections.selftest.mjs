@@ -61,11 +61,13 @@ const state = (s) => JSON.stringify({ holes: [...s.holes], down: [...s.down], co
   near(sections.storeyH, 2.75, 1e-9, 'storey height');
   assert.equal(sections.count, 9);
   assert.ok(MAX_STOREYS >= 6);
-  // shares: 4 × the section's share of the 278 m² envelope, within 8–50 %
+  // shares: 2 × the section's share of the 278 m² envelope, within 5–30 %
   const envelope = 2 * (8 + 10) * 5.5 + 80;
-  near(sections.maxHp[0] / s0.maxHp, 4 * 8 * 2.75 / envelope, 1e-9, 'an end wall panel');
-  near(sections.maxHp[2] / s0.maxHp, 4 * 10 * 2.75 / envelope, 1e-9, 'a side wall panel');
-  near(sections.maxHp[8] / s0.maxHp, 0.5, 1e-9, 'the roof (capped at half)');
+  near(sections.maxHp[0] / s0.maxHp, 2 * 8 * 2.75 / envelope, 1e-9, 'an end wall panel');
+  near(sections.maxHp[2] / s0.maxHp, 2 * 10 * 2.75 / envelope, 1e-9, 'a side wall panel');
+  near(sections.maxHp[8] / s0.maxHp, 0.3, 1e-9, 'the roof (capped at 30 %)');
+  // a storey can drop before the building comes down: the roof and three of the top storey's faces under the whole
+  assert.ok(sections.maxHp[8] + sections.maxHp[4] + sections.maxHp[5] + sections.maxHp[6] < s0.maxHp, 'a storey drop is reachable');
   // sections at points: the roof above the eaves, faces by the nearest plane, storeys by height, the room's floor none
   assert.equal(sectionAt(sections, 4, 2, 0), 2, '+across face, ground storey');
   assert.equal(sectionAt(sections, -4, 4, 1), 7, '−across face, upper storey');
@@ -116,7 +118,7 @@ const state = (s) => JSON.stringify({ holes: [...s.holes], down: [...s.down], co
   assert.equal(ray(colliders, 20, 2, 4, -1, 0, -0.25) > 16, true, 'an oblique ray through the near hole crosses the room');
   // the same point again opens nothing new (it lies in the hole)
   table.applyBlast(3.52, 'he', blow(4, 2, 0.1), s0);
-  assert.equal(drain(table).length, 0, 'a burst in an open hole opens nothing new');
+  assert.equal(drain(table).filter((e) => !e.sectionDown).length, 0, 'a burst in an open hole opens no new hole');
   // the next battle stands it up again
   resetStructureRecords(obstacles, colliders);
   assert.ok(colliders.every((record) => !record.openings), 'reset clears the openings');
@@ -188,8 +190,9 @@ const state = (s) => JSON.stringify({ holes: [...s.holes], down: [...s.down], co
   match.step();
   const heatHoles = [];
   match.drainBreaches(heatHoles);
-  assert.equal(heatHoles.length, 1, 'one hole for a HEAT round');
-  assert.ok(heatHoles[0].radiusM > penetratorHoleRadiusM(heat), `its blast's (${heatHoles[0].radiusM} m)`);
+  const heatHole = heatHoles.filter((e) => !e.sectionDown);
+  assert.equal(heatHole.length, 1, 'one hole for a HEAT round');
+  assert.ok(heatHole[0].radiusM > penetratorHoleRadiusM(heat), `its blast's (${heatHole[0].radiusM} m)`);
   // HE until the struck panel falls
   for (let i = 0; i < 4; i++) match.shellWorldHit(he, record, 0.5, 1.6, 5, 0, -1);
   match.step(); match.step();
