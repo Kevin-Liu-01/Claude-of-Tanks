@@ -1023,6 +1023,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/shellSurface.selftest.mjs',
     // 2026-10-07 (destruction core lane): the munition blast catalog over every round in the game (docs/DESTRUCTION.md §4).
     'src/sim/munitionBlast.selftest.mjs',
+    'src/sim/structureDamage.selftest.mjs',
+    'src/sim/destructionParity.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
     // 2026-10-03 (bots lane): an edge holds the side slope across it to the two-way slope rule.

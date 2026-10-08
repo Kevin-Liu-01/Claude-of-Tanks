@@ -259,6 +259,22 @@ export const DESTRUCTION_WIRE_EVENTS = Object.freeze({
   crater: 'terrain_crater',
 } as const);
 
+// ---- Rules -----------------------------------------------------------------------------------------------------
+
+/** The ruleset's destruction block (sim/matchRuleset.ts MatchRuleset.destruction; DESTRUCTION.md §9). */
+export interface DestructionRules {
+  /** Buildings take damage and collapse. */
+  readonly structures: boolean;
+  /** Explosions deform the ground. */
+  readonly craters: boolean;
+  /** Multiplies every structure point dealt. */
+  readonly structureDamageScale: number;
+  /** Multiplies crater radii. */
+  readonly craterScale: number;
+  /** Deforming craters per match. */
+  readonly maxCraters: number;
+}
+
 // ---- Settled state ---------------------------------------------------------------------------------------------
 
 /**

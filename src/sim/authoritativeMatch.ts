@@ -130,6 +130,8 @@ import type {
   ObjectiveTeam,
 } from './matchModes.ts';
 import type { SpecialActionState } from './specialActionPolicy.ts';
+import { createDestructionMatch } from './destructionMatch.ts';
+import type { StructureStageEvent } from './destructionEvents.ts';
 
 type Team = typeof TEAM_ALPHA | typeof TEAM_BRAVO;
 type LobbyTeam = Team | typeof TEAM_SPECTATOR;
@@ -231,6 +233,11 @@ export interface AuthoritativeEntity {
   /** Impact physics: closing speed already priced in the crash still resolving, and when it last grew. */
   _impactAccumMps?: number;
   _impactAccumT?: number;
+  /** Destruction: the structure record this hull met hard this tick (a crash prices a ram on it). */
+  _ramRecord?: AuthoritativeObstacle | null;
+  /** Destruction: the share of its speed the hull keeps after rammed structures yielded this tick (applied after the
+   * move, as a crushed prop's crushKeep is). */
+  _ramKeep?: number;
 }
 
 export interface AuthoritativeObstacle extends CollisionRecord {
@@ -248,6 +255,8 @@ export interface AuthoritativeWorldCollision {
   mapId?: string;
   heightField?: HeightField;
   getObstacles?(): AuthoritativeObstacle[];
+  /** Shell and sight records (destruction reads the structures' shell bands). */
+  getColliders?(): AuthoritativeObstacle[];
   queryObstacles?(
     minX: number,
     minZ: number,
@@ -785,6 +794,13 @@ export function createAuthoritativeMatch({
     ? rulesetOption : matchRulesetFor(normalizedGameMode);
   // an explicit battleLimitS (tests, tooling) wins; otherwise the ruleset's clock (null = no clock)
   const clockLimitS = battleLimitS !== BATTLE_LIMIT_S ? battleLimitS : (ruleset.timeLimitS ?? Infinity);
+  // destruction (docs/DESTRUCTION.md, 2026-10-07): the match's structures, priced by the munition catalog; the solo
+  // step owns the same object (game/state.ts) and calls it at the same moments
+  const destruction = createDestructionMatch({
+    rules: ruleset.destruction, obstacles: staticObstacles,
+    colliders: worldCollision && typeof worldCollision.getColliders === 'function' ? worldCollision.getColliders() : [],
+  });
+  const destructionEvents: StructureStageEvent[] = [];
   const trenchLines = (heightField as { assaultTrenchLines?: { sectors?: RuntimeValue; lines?: RuntimeValue } }).assaultTrenchLines;
   const placement = createMatchPlacement({
     mapId,
@@ -980,6 +996,11 @@ export function createAuthoritativeMatch({
   function emit(type: string, payload: Record<string, RuntimeValue>): void {
     if (type === 'tank_destroyed') modeController.recordDestruction(String(payload.id),
       typeof payload.killerId==='string'?payload.killerId:null);
+    if (type === 'tank_destroyed' && destruction.enabled) {
+      // a cook-off or a fuel fire bursts on the structures beside the hull (never on the tanks)
+      const dead = entityById.get(String(payload.id));
+      if (dead) destruction.tankDeath(String(payload.cause), dead.spec.weightTons, dead.state.pos.x, dead.state.pos.y, dead.state.pos.z);
+    }
     if (pendingEvents.length >= MAX_EVENTS) pendingEvents.shift();
     const event: AuthoritativeEvent = { type, timeS, ...payload };
     // Where the hull died (ghost-crunch lane, 2026-10-02), as tank_ram and tank_impact carry theirs: a peer presents the
@@ -1120,6 +1141,16 @@ export function createAuthoritativeMatch({
   /** The contacts the first obstacle sweep found hard, swept again (collideWithObstacles). */
   const hardObstacles: AuthoritativeObstacle[] = [];
 
+  /** Destruction: the speed share a hull keeps through a structure that yields to its ram, or null (it holds). */
+  function structureYield(entity: AuthoritativeEntity, obstacle: AuthoritativeObstacle, pushX: number, pushZ: number): number | null {
+    const length = Math.hypot(pushX, pushZ);
+    if (length <= 1e-9) return null;
+    const state = entity.state;
+    const closing = Math.max(0, -state.speed * (Math.sin(state.yaw) * pushX + Math.cos(state.yaw) * pushZ) / length);
+    return destruction.ramThrough(obstacle, entity.spec.weightTons, closing, Math.abs(state.speed),
+      state.pos.x, state.pos.y, state.pos.z, -pushX / length, -pushZ / length);
+  }
+
   function collideWithObstacles(
     entity: AuthoritativeEntity,
     pos: Vector3,
@@ -1161,8 +1192,19 @@ export function createAuthoritativeMatch({
       );
       if (!pushed) continue;
       if (!obstacle.crushable || !obstacleIsPressedThrough(entity, obstacle)) {
+        // destruction (docs/DESTRUCTION.md §4.4): a structure this ram brings down yields, as a crushed prop does
+        if (obstacle.structureIdx !== undefined && destruction.enabled) {
+          const keep = structureYield(entity, obstacle, outPush.x - beforeX, outPush.z - beforeZ);
+          if (keep !== null) {
+            outPush.x = beforeX;
+            outPush.z = beforeZ;
+            entity._ramKeep = Math.min(entity._ramKeep ?? 1, keep);
+            continue;
+          }
+        }
         hard = true; // a solid primitive (or a trunk too slow to fell) is a hard surface
         hardObstacles[hardCount++] = obstacle;
+        if (obstacle.structureIdx !== undefined && !entity._ramRecord) entity._ramRecord = obstacle;
         continue;
       }
       outPush.x = beforeX;
@@ -1848,6 +1890,9 @@ export function createAuthoritativeMatch({
     if (isHeClass(shell.spec.type)) resolveHeImpact(shell, shell.pos, null, null);
     else shell.dead = true;
     destroyShellObstacle(shell, worldHit);
+    // destruction: the struck structure takes the strike and the round's blast (docs/DESTRUCTION.md §4)
+    destruction.shellWorldHit(shell.spec, worldHit.record, shell.pos.x, shell.pos.y, shell.pos.z,
+      shell.pos.x - shell.prevPos.x, shell.pos.z - shell.prevPos.z);
     emitWorldShellImpact(shell, worldHit);
   }
 
@@ -1859,6 +1904,8 @@ export function createAuthoritativeMatch({
 
   function resolveTankShellHit(shell: DamageShell, tankHit: TankTrace): void {
     knockTargetFromShell(tankHit.target, shell);
+    const strike = tankHit.hits[0]?.point;
+    if (strike) destruction.shellBurst(shell.spec, strike.x, strike.y, strike.z, shell.vel.x, shell.vel.z);
     if (isHeClass(shell.spec.type)) {
       resolveHeImpact(shell, tankHit.hits[0]!.point, tankHit.target, tankHit.hits);
       return;
@@ -2104,6 +2151,11 @@ export function createAuthoritativeMatch({
         closingMps: closing, priorClosingMps: prior, faceForward, sideSign, attitudeFactor: 1, rng,
       });
       if (result || (impact > 1.5 && fresh)) publishEntityImpact(entity, 'impact', closing, result);
+      // destruction: the structure the hull struck takes the crash's energy (docs/DESTRUCTION.md §4.4)
+      if (entity._ramRecord && state.impactSource === IMPACT_SOURCE_COLLIDER) {
+        destruction.ram(entity._ramRecord, entity.spec.weightTons, closing, prior,
+          state.pos.x, state.pos.y, state.pos.z, -state.impactNx, -state.impactNz);
+      }
     }
     // the fall the hull made (movement.ts fallImpactMps: the landing less the height the solver gave it, by energy)
     const landing = Number.isFinite(state.fallImpactMps) ? state.fallImpactMps : state.landingImpactMps;
@@ -2143,8 +2195,11 @@ export function createAuthoritativeMatch({
       const parking = entity.aerial?.kind === 'drone' && entity.aerial.active;
       const { throttle, steer, brake, aimLocked } = entity.input;
       if (parking) { entity.input.throttle = 0; entity.input.steer = 0; entity.input.brake = true; entity.input.aimLocked = true; }
+      entity._ramRecord = null;
+      entity._ramKeep = undefined;
       try { updateTank(entity, structureSupport, dt, collideMovingEntity); }
       finally { if (parking) { entity.input.throttle = throttle; entity.input.steer = steer; entity.input.brake = brake; entity.input.aimLocked = aimLocked; } }
+      if (entity._ramKeep !== undefined) entity.state.speed *= entity._ramKeep;
       resolveEntityImpacts(entity);
     }
     movingEntity = null;
@@ -2242,8 +2297,18 @@ export function createAuthoritativeMatch({
     advanceWeapons(dt);
     advanceFires(dt);
     advanceRepairs(dt);
+    advanceDestruction();
     updateVisibility();
     determineResult(modeController.step(dt, timeS + modeTimeOffsetS));
+  }
+
+  /** Destruction's end of step: queued collapses swap their collision, stage events go out (every viewer). */
+  function advanceDestruction(): void {
+    if (!destruction.enabled) return;
+    destruction.step();
+    destructionEvents.length = 0;
+    destruction.drainEvents(destructionEvents);
+    for (const event of destructionEvents) emit('structure_stage', { ...event });
   }
 
   function canObserveEntity(viewer: AuthoritativeEntity | undefined, entityId: string): boolean {
@@ -2259,6 +2324,8 @@ export function createAuthoritativeMatch({
     const event = value as Record<string, RuntimeValue>;
     const eventType = typeof event.type === 'string' ? event.type : '';
     if (eventType === 'world_prop_destroyed' || eventType.startsWith('mode_')) return true;
+    // destruction: a building breaking or the ground cratering is world state; the events name no shooter
+    if (eventType === 'structure_stage' || eventType === 'structure_breach' || eventType === 'terrain_crater') return true;
     for (const id of [event.id, event.shooterId, event.targetId, event.killerId, event.aId, event.bId]) {
       if (id && canObserveEntity(viewer, String(id))) return true;
     }

@@ -199,8 +199,16 @@ SP = max(0, E − 120 kJ) / 40,   E = impactEnergyKj(massTons, v) = ½·tons·v�
 ```
 
 60 t at 10 m/s → 72 SP (a shed collapses, a house is breached); 45 t at 15 m/s → 123 SP (a house comes down); a hull
-nudging a wall at 2 m/s → nothing. The hull still takes its own crash damage from the impact law; a structure that
-collapses under the blow stops being hard in the same tick, and the crash's remaining closing speed is not priced again.
+nudging a wall at 2 m/s → nothing.
+
+**A structure that the ram brings down yields** (as a crushed prop does): when the points of the hull's closing speed
+along the contact reach the structure's remaining hit points (or it is already coming down), the obstacle solver lets
+the hull through, the ram is priced and the collapse queued, and the hull keeps `√(1 − E_abs / E)` of its speed, where
+`E_abs = 120 kJ + 40 kJ × remaining HP` is what the structure took and `E = ½·m·v²` the hull's energy; no crash is
+priced on the hull. A structure that holds is a hard surface: the hull takes the impact law's crash and the structure
+takes the ram. Measured (destructionParity, the authority on verdant): an M1A2 at 18.4 m/s through a 147 HP house
+deals 296 SP, keeps 13 m/s, takes no damage and drives on; the same hull into an intact large building crashes as
+into a wall.
 
 ### 4.5 Craters
 
