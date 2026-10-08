@@ -9,6 +9,7 @@
 //
 //   node tools/time-to-battle-probe.mjs --roots=<A>,<B> --labels=main,pr --maps=verdant,titan_gorge,monsoon --out=<dir>
 //        [--runs=cold,warm] [--reps=1] [--spec=t90m_x] [--sides=13x14] [--profile] [--port=5491] [--session-mutex=<dir>]
+//        [--warm=page|relaunch] [--browser-args=<flag>|<flag>]
 //
 // cold: a fresh browser profile (empty HTTP cache, empty GPU program cache, no storage) — a first visit. warm: a second
 // page in the same profile, after the cold run — a returning player (HTTP and GPU caches warm, a fresh page). Both builds
@@ -34,6 +35,10 @@ const log = (m) => console.log(`[${TOOL} ${new Date().toTimeString().slice(0, 8)
 function installGlTimers() {
   const t = { compileShader: [0, 0], linkProgram: [0, 0], getProgramParameter: [0, 0], getShaderParameter: [0, 0],
     texImage2D: [0, 0], texSubImage2D: [0, 0], compressedTexImage2D: [0, 0], bufferData: [0, 0] };
+  // the slow program queries (the warm opening-frame stall): when each program's link was issued, and every status query
+  // over 30 ms with its program's link order and age — a query waiting on its own link, or on a queue of links before it
+  const linkAt = new WeakMap(), slowQueries = [];
+  let linkSeq = 0;
   for (const C of [window.WebGL2RenderingContext, window.WebGLRenderingContext]) {
     if (!C) continue;
     for (const name of Object.keys(t)) {
@@ -41,14 +46,23 @@ function installGlTimers() {
       if (typeof original !== 'function') continue;
       C.prototype[name] = function (...args) {
         const s = performance.now();
-        try { return original.apply(this, args); } finally { const e = t[name]; e[0]++; e[1] += performance.now() - s; }
+        try { return original.apply(this, args); } finally {
+          const now = performance.now(), e = t[name]; e[0]++; e[1] += now - s;
+          if (name === 'linkProgram') linkAt.set(args[0], { at: s, seq: ++linkSeq });
+          else if (name === 'getProgramParameter' && now - s > 30 && slowQueries.length < 60) {
+            const l = linkAt.get(args[0]);
+            const pname = args[1] === this.LINK_STATUS ? 'LINK_STATUS' : args[1] === 0x91B1 ? 'COMPLETION_STATUS' : String(args[1]);
+            slowQueries.push({ at: +s.toFixed(1), ms: +(now - s).toFixed(1), pname, linkSeq: l?.seq ?? null,
+              sinceLinkMs: l ? +(s - l.at).toFixed(1) : null, linksIssued: linkSeq });
+          }
+        }
       };
     }
   }
   const longTasks = [];
   try { new PerformanceObserver((l) => { for (const e of l.getEntries()) longTasks.push([+e.startTime.toFixed(1), +e.duration.toFixed(1)]); }).observe({ type: 'longtask', buffered: true }); } catch { /* unsupported */ }
   window.__TTB = {
-    gl: t, longTasks,
+    gl: t, longTasks, slowQueries,
     snapshot() { return Object.fromEntries(Object.entries(t).map(([k, [n, ms]]) => [k, { n, ms: +ms.toFixed(1) }])); },
   };
 }
@@ -71,6 +85,7 @@ async function enterBattle({ specId, mapId, opponents }) {
     trace: window.__BATTLE_LOAD ?? null, world: window.__WORLD_LOAD ?? null, minimap: window.__MINIMAP_LOAD ?? null,
     prefetch: window.__WORLD_PREFETCH ?? null, startBattle: window.__START_BATTLE_TIMINGS ?? null, combatWarm: window.__COMBAT_WARM ?? null,
     programsBefore: programs0, programsAtOpen: R.info.programs?.length ?? null, glAtOpen: diff(gl0, gl1),
+    slowProgramQueries: window.__TTB.slowQueries.filter((q) => q.at >= t0),
     longTasks: { n: lt.length, ms: Math.round(lt.reduce((s, [, d]) => s + d, 0)), max: lt.reduce((m, [, d]) => Math.max(m, d), 0) },
     tanks: D.game.tanks.length, visualsAtOpen: D.game.tanks.filter((e) => e.visual).length,
     gl0,
@@ -192,7 +207,7 @@ async function pageRun(browser, { port, mapId, specId, opponents, allies, enemie
       self.set(k, (self.get(k) || 0) + us);
     }
     cpu = { byChunk: profileSelfByChunk(prof).slice(0, 30),
-      topSelf: [...self].map(([k, us]) => ({ fn: k, ms: +(us / 1000).toFixed(1) })).sort((a, b) => b.ms - a.ms).slice(0, 60) };
+      topSelf: [...self].map(([k, us]) => ({ fn: k, ms: +(us / 1000).toFixed(1) })).sort((a, b) => b.ms - a.ms).slice(0, 60), raw: prof };
     await cdp.send('Profiler.disable').catch(() => {});
   }
   const settled = await page.evaluate(afterOpen, { gl0: entry.gl0, t0: entry.t0 });
@@ -218,6 +233,9 @@ async function main(opt) {
   const startedAt = Date.now();
   const budgetMs = Number(process.env.PERF_BUDGET_MS || opt['budget-ms'] || 3600e3);
   const unitMs = Number(opt['unit-ms'] ?? 330000);
+  // --browser-args=<flag>|<flag>: extra Chrome flags for the measured browsers (an experiment's arm, e.g. the GPU
+  // program disk cache off); the receipt records them
+  const extraBrowserArgs = typeof opt['browser-args'] === 'string' ? opt['browser-args'].split('|').filter(Boolean) : [];
   let left = 0;
   const locks = process.env.COT_LANE_HOLD === '1' ? null : await acquireProbeLocks({ sessionMutex: opt['session-mutex'] ?? null, log });
   const refresh = locks ? setInterval(() => locks.refresh(), 30000) : null;
@@ -251,10 +269,15 @@ async function main(opt) {
           if (runs.every((run) => existsSync(fileOf(run)))) continue;
           if (Date.now() - startedAt + unitMs > budgetMs) { log(`budget: ${mapId} ${labels[i]} left for the next run`); left++; continue; }
           const dir = mkdtempSync(path.join(os.tmpdir(), 'ttb-profile-'));
-          const browser = await puppeteer.launch({ headless: 'new', userDataDir: dir, protocolTimeout: 600000,
-            args: [...MAP_PROBE_BROWSER_ARGS, '--enable-precise-memory-info', '--window-size=1920,1080'] });
+          const launch = () => puppeteer.launch({ headless: 'new', userDataDir: dir, protocolTimeout: 600000,
+            args: [...MAP_PROBE_BROWSER_ARGS, '--enable-precise-memory-info', '--window-size=1920,1080', ...extraBrowserArgs] });
+          let browser = await launch();
           try {
             for (const run of runs) {
+              // --warm=relaunch: a returning player — the browser closed after the cold run and opened again on the same
+              // profile (its HTTP and GPU disk caches kept, nothing in memory); the default warm run is a second page of the
+              // same browser
+              if (run !== runs[0] && opt.warm === 'relaunch') { await browser.close().catch(() => {}); browser = await launch(); }
               let rec;
               try {
                 rec = await pageRun(browser, { port: port0 + i, mapId, specId, opponents, allies, enemies, profile: !!opt.profile, label: labels[i], run });
@@ -264,7 +287,11 @@ async function main(opt) {
                 continue;
               }
               rec.rep = rep;
+              if (extraBrowserArgs.length) rec.browserArgs = extraBrowserArgs;
+              if (opt.warm === 'relaunch') rec.warmMode = 'relaunch';
               const file = fileOf(run);
+              // the whole CPU profile beside the record (call trees: who calls what during the entry), not inside it
+              if (rec.cpu?.raw) { writeFileSync(file.replace(/\.json$/, '.cpuprofile'), JSON.stringify(rec.cpu.raw)); delete rec.cpu.raw; }
               writeFileSync(file, JSON.stringify(rec, null, 1));
               const st = rec.trace?.stages ?? {};
               log(`${mapId} ${labels[i]} ${run}: open ${rec.openMs} ms (trace ${rec.trace?.totalMs}) · ${Object.entries(st).map(([k, v]) => `${k} ${v}`).join(' · ')} · programs ${rec.programsBefore}→${rec.programsAtOpen}→${rec.programsSettled} · link ${rec.glAtOpen?.linkProgram?.n}/${rec.glAtOpen?.linkProgram?.ms} ms · net ${rec.network.requests} req ${(rec.network.bytes / 1e6).toFixed(1)} MB · load ${rec.load1}`);

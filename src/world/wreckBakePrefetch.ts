@@ -20,7 +20,7 @@ import { WRECK_BAKE_PLAN, WRECK_BAKE_PLAN_VARIANTS } from './maps/wreckBakePlan.
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import type { WreckBake, WreckOptions } from './wrecks.ts';
 
-export type WreckBakePlanRow = readonly [string, number, 0 | 1];
+type WreckBakePlanRow = readonly [string, number, 0 | 1];
 
 interface PrefetchClient {
   prepare(): void;

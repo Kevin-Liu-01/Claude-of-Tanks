@@ -3015,7 +3015,7 @@ export function createProps(
 }
 
 /** One wreck bake a map's props build asks the worker for: the donor and its seeded options. */
-export interface WreckBakeRequestRecord { specId: string; seed: number; pop: boolean }
+interface WreckBakeRequestRecord { specId: string; seed: number; pop: boolean }
 
 /**
  * The wreck bakes a map's props build requests of the worker, in order (the time-to-battle lane, 2026-10-07): the
