@@ -76,7 +76,18 @@ try {
   await page.goto(`${urlFor(requestedPartition?.comparisons[0] || 'm1a2')}&registry=1`, { waitUntil:'domcontentloaded', timeout:90000 });
   await page.waitForFunction('Array.isArray(window.__REFERENCE_IDS)', { timeout:90000 });
   const discovered = await page.evaluate('window.__REFERENCE_IDS');
-  const ids = requestedPartition?.comparisons || discovered;
+  // Use the same registration boundary as geometry-gate: an unregistered
+  // first-party vehicle has no comparison target, while a registered target
+  // whose file is missing must still enter the loop and fail visibly.
+  const registered = new Set(discovered);
+  const candidates = requestedPartition?.comparisons || discovered;
+  const ids = candidates.filter(id => registered.has(id));
+  for (const id of candidates.filter(id => !registered.has(id))) {
+    rows.push({id,name:id,score:null,scores:{},gatePassed:null,
+      comparisonPurpose:'first-party-unregistered',comparisonApplicable:false,
+      fallback:'no registered comparison target; physical release checks remain required'});
+    console.log(`[fidelity N/A] ${id}: no registered comparison target`);
+  }
 
   for (let index=0; index<ids.length; index++) {
     const id = ids[index];
@@ -234,11 +245,11 @@ const md=[
   'Component cells are N/A when a source GLB is fused and therefore cannot expose an independent hull/turret mask. '+
     'Its whole silhouette and lower running-gear profile remain scored.','',
   'Historical first-party preservation compares against a hash-pinned original commit. It makes no real-world source-fidelity claim.','',
-  'Explicit owner-authored concepts have no source score and are not counted as passing references. Their physical design gate and full release checks remain mandatory.','',
+  'Explicit owner-authored concepts and first-party vehicles without comparison registrations have no source score and are not counted as passing references. Their applicable physical design and full release checks remain mandatory. Registered but unavailable references still fail.','',
 ].join('\n');
 fs.writeFileSync(path.join(REPORT_DIR,'procedural-fidelity.md'),md);
 
 console.log(`\nprocedural-fidelity: ${summary.passed}/${summary.references} available references pass `+
-  `their ${PASS}+ fleet, ${EXEMPLAR_PASS}+ exemplar or ${PRESERVATION_PASS}+ preservation floor; ${summary.unavailable} unavailable; ${summary.notApplicable} explicit concept N/A; `+
+  `their ${PASS}+ fleet, ${EXEMPLAR_PASS}+ exemplar or ${PRESERVATION_PASS}+ preservation floor; ${summary.unavailable} unavailable; ${summary.notApplicable} comparison N/A; `+
   `median ${summary.median.toFixed(1)}; worst ${summary.worst}; best ${summary.best}`);
 if (CHECK && (summary.failed || summary.unavailable)) process.exitCode=1;

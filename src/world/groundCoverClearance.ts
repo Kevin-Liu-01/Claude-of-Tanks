@@ -152,6 +152,17 @@ function detailedSolidIntersects(
 }
 
 /** Reuse the world's solid-footprint index; never scan the scene or add a grid. */
+/**
+ * The scenery lane (b14; gauntlet wave 97 on the boulders: "sitting on a clean lawn … no burial, soil lip, or grass and
+ * moss creeping up its skirt"): records the ground cover may lap — a boulder's. A tuft is cleared only when its own
+ * root lies in the footprint, so the tufts round a stone's foot stand against it and lean on it, where the whole disc
+ * test cleared a ring of bare ground a tuft wide round every stone. Cosmetic ownership only: the record is unchanged.
+ */
+const lappedRecords = new WeakSet<CollisionRecord>();
+export function letGroundCoverLap(record: CollisionRecord): void {
+  lappedRecords.add(record);
+}
+
 export function createGroundCoverClearance(query: ObstacleQuery): GroundCoverBlocked {
   const candidates: CollisionRecord[] = [];
   return (x, y, z, height, radius) => {
@@ -160,7 +171,7 @@ export function createGroundCoverClearance(query: ObstacleQuery): GroundCoverBlo
       // Keep natural ground beneath elevated decks. Dead/crushed flags are
       // deliberately ignored: streamed grass must not depend on battle state.
       if (record.max[1] < y + 0.06 || record.min[1] > y + height) continue;
-      if (!collisionFootprintContainsPoint(record, x, z, radius)) continue;
+      if (!collisionFootprintContainsPoint(record, x, z, lappedRecords.has(record) ? 0 : radius)) continue;
       const detail = placementData.get(record);
       if (!detail || detailedSolidIntersects(detail, x, y, z, height, radius)) return true;
     }

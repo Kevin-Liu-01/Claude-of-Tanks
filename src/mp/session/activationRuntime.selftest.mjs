@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import { createActivationRuntime } from './activationRuntime.ts';
 
-function createHarness({ spectator = false, observerReady = true, cameraReady = true } = {}) {
+function createHarness({ spectator = false, observerReady = true, cameraReady = true, gunship = false } = {}) {
   const calls = [];
   let constructing = true;
   const world = { resetDestructibles: () => calls.push(['resetWorld']) };
   const game = {
     mapId: null,
     phase: 'garage',
-    player: { spec: { id: 'm1a2' }, visual: { id: 'visual' }, equip: { rammer: true }, state: { yaw: 1.2 } },
+    player: { aerial: gunship ? {kind:'gunship'} : undefined, spec: { id: 'm1a2' }, visual: { id: 'visual' }, equip: { rammer: true }, state: { yaw: 1.2 } },
   };
   const bridge = { setPerspective: (id) => calls.push(['perspective', id]) };
   const runtime = createActivationRuntime({
@@ -113,3 +113,7 @@ assert.throws(
 assert.throws(() => createHarness({ spectator: true, cameraReady: false }), /observer camera could not be prepared/);
 
 console.log('activationRuntime.selftest: player, spectator, and activation order pass');
+
+const pilot=createHarness({gunship:true});
+assert.equal(pilot.game.phase,'battle');
+assert.ok(!pilot.calls.some(([name])=>name==='damageTank'||name==='equipment'),'gunship activation never requests tank masks');

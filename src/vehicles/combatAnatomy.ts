@@ -10,6 +10,7 @@ import { MODULE_IDS } from '../sim/moduleCatalog.ts';
 import type { EraProtection, ExternalWeaponStock } from '../sim/armor.ts';
 import { prepareWeaponCollision } from './weaponCollision.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import type { TrackContactReceipt } from '../sim/trackContact.ts';
 import {
   combatAnatomyCalibration,
   type AnatomyCalibrationBounds,
@@ -125,6 +126,7 @@ interface ArmorAnatomy {
   crew?: CrewVolume[];
   collisionShells?: { hull: CollisionCell[]; turret: CollisionCell[] };
   bodyContactPoints?: { hull: number[]; turret: number[] };
+  trackContact?: TrackContactReceipt;
 }
 
 interface CombatShell {
@@ -1492,6 +1494,9 @@ function assignCollisionOutputs(
     hull: collisionContactPoints(armor.collisionShells.hull),
     turret: collisionContactPoints(armor.collisionShells.turret),
   };
+  // the tracks' ground contact the movement solve reads wherever it runs (sim/trackContact.ts; physics lane round 8)
+  if (calibration?.trackContact) armor.trackContact = calibration.trackContact;
+  else delete armor.trackContact;
 }
 
 export function finalizeCombatAnatomy<T>(

@@ -33,6 +33,13 @@ export function battleSideStack(height: number, chat: boolean, toastCount: numbe
     chatHeight: Math.max(0, available - toastHeight - gap) };
 }
 
+export const REPORT_MAP_GAP = 12;
+/** A bottom-anchored report budget; notification counts never enter this policy. */
+export function battleReportDock(bottom: number, ceiling: number, compact: boolean) {
+  const height = Math.min(compact ? 160 : 260, Math.max(0, bottom - ceiling));
+  return { top: bottom - height, height, bottom };
+}
+
 export function installBattleHudLayout(root: HTMLElement): void {
   let frame = 0;
   const observed = new Set<Element>();
@@ -79,10 +86,22 @@ export function installBattleHudLayout(root: HTMLElement): void {
       watchAttributes(node, ['class', 'hidden', 'data-count'], content);
     }
   };
+  function statusDockBottom(): number | null {
+    const panel = read('.cot-dp');
+    const strip = read('.cot-vehicle-status:not([hidden])');
+    if (!panel || !strip) return null;
+    let bottom = panel.top - 5;
+    for (const selector of ['.cot-vehicle-controls', '.cot-drive', '.cot-touch.on .joy', '.cot-touch.on .mobile-chrome']) {
+      const box = read(selector);
+      if (box && strip.left < box.right + 8 && strip.right > box.left - 8
+        && bottom > box.top - 8 && bottom - strip.height < box.bottom + 8) bottom = box.top - 8;
+    }
+    return bottom;
+  }
   function leftFloor(height: number, touch: boolean): number {
     const status = read('.cot-dp');
     return Math.min(height - 12,
-      status ? status.top - (touch ? 8 : 36) : height,
+      status ? Math.min(status.top - (touch ? 8 : 36), (statusDockBottom() ?? height) - (read('.cot-vehicle-status:not([hidden])')?.height ?? 0)) : height,
       read('.cot-spec.show')?.top ?? height,
       touch ? read('.cot-touch.on .joy')?.top ?? height : height,
       touch ? read('.cot-touch.on .fire.alt')?.top ?? (height <= 340 ? height - 206 : height) : height,
@@ -90,9 +109,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
   }
   function rightFloor(height: number, width: number, map: DOMRect | null): number {
     const ammo = read('.cot-shells');
+    const flight = read('.cot-flight-hud:not([hidden]) .flight-console');
+    const reportLeft = (map && map.left > width / 2 ? map.right : width - 12) - Math.min(300, width / 2 - 24);
     return Math.min(height - 92,
+      flight && flight.right > reportLeft ? flight.top - REPORT_MAP_GAP : height,
       ammo && ammo.left > width / 2 ? ammo.top - 8 : height,
-      map && map.left > width / 2 ? map.top - 8 : height,
+      map && map.left > width / 2 ? map.top - REPORT_MAP_GAP : height,
       read('.cot-spec.show')?.top ?? height,
       width < 768 ? read('.cot-drive')?.top ?? height : height);
   }
@@ -103,15 +125,19 @@ export function installBattleHudLayout(root: HTMLElement): void {
       document.body.toggleAttribute('data-cot-battle-layout', visible);
     }
     if (!visible) return;
-    observe('.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
-    observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane', true);
+    observe('.cot-vehicle-status,.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
+    observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane,.cot-medal-toasts,.cot-si-cardhost,.cot-si-log', true);
     // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
     // asks for a relayout when it mounts, and the right roster takes the lane below it.
-    observe('.cot-mp-status.battle');
+    observe('.cot-mp-status.battle,.cot-flight-hud,.flight-console');
     const height = window.visualViewport?.height || window.innerHeight;
     const width = window.visualViewport?.width || window.innerWidth;
     const touch = document.body.classList.contains('cot-touch-layout');
     const tray = width < 1000 ? 'stacked' : 'inline';
+    const sideNotices = !touch && width < 768;
+    const activeAlert = read('.cot-alert.show');
+    const noticeReserve = sideNotices && (read('.cot-sixth.on') || activeAlert)
+      ? (read('.cot-sixth')?.height ?? 48) + (activeAlert ? activeAlert.height + 8 : 0) + 16 : 0;
     if (document.body.dataset.hudTray !== tray) document.body.dataset.hudTray = tray;
     const map = read('.cot-minimap');
     const score = read('.cot-top');
@@ -172,7 +198,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       systemsHeight && systemsLeft < sideWidth + 12 ? systemsTop - 8 : height);
     const countdown = read('.cot-prebattle.on');
     const leftKillBottom = countdown && countdown.left < sideWidth
-      && countdown.bottom > leftAnchor ? Math.min(leftBottom, countdown.top - 8) : leftBottom;
+      && countdown.bottom > leftAnchor ? Math.min(leftBottom - noticeReserve, countdown.top - 8) : leftBottom - noticeReserve;
     const leftSpace = Math.max(0, leftKillBottom - leftAnchor);
     // Keep incoming damage and an open chat usable during a burst of kills.
     const chatReserve = chat ? Math.min(leftSpace, Math.max(62, Math.min(140, leftSpace * .4))) : 0;
@@ -191,47 +217,85 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0) + 8;
     const rightBottom = Math.min(rightFloor(height, width, map),
       systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? systemsTop - 8 : height);
-    const reportReserve = root.querySelector('.cot-si-card') ? (root.classList.contains('compact-shot-report') ? 100 : 160) : 0;
-    const rightKillFloor = Math.max(rightAnchor, rightBottom - reportReserve - (reportReserve ? 8 : 0));
+    const rosterStart = rosterTopRight ?? earRight?.top ?? scoreBottom + 8;
+    const rosterCount = Number(root.querySelector<HTMLElement>('.cot-ear.r')?.dataset.count) || 0;
+    const rosterMinimum = earRight ? (root.querySelector('.cot-ear.r.icon-grid') ? 124 : 22 + Math.min(14, rosterCount) * 12) : 0;
+    const report = battleReportDock(rightBottom,
+      Math.max(top + 12, rosterStart + rosterMinimum + (earRight ? 32 : 0)),
+      root.classList.contains('compact-shot-report'));
+    const dockReport = !touch;
+    root.classList.toggle('tight-shot-report', dockReport && report.height < 220);
+    const rightKillFloor = dockReport ? report.top - 8 : rightBottom;
     const rightKillBottom = countdown && countdown.right > width - sideWidth
       && countdown.bottom > rightAnchor ? Math.min(rightBottom, countdown.top - 8) : rightBottom;
     const killRowsRight = battleNotificationRows(Math.min(rightKillBottom, rightKillFloor) - rightAnchor, killRight?.childElementCount || 0);
     setRows(killRight, killRowsRight);
     const killHeightRight = Math.max(0, killRowsRight * 29 - 3);
     const killsRight = Math.min(killHeightRight, read('.cot-kill-lane.r')?.height || 0);
-    const rightTop = rightAnchor + (killsRight ? killsRight + 8 : 0);
+    const rightTop = dockReport ? report.top : rightAnchor + (killsRight ? killsRight + 8 : 0);
     const notice = read('.cot-sixth');
     // Center notices below the score. On narrow screens their horizontal
     // footprint also crosses the team feeds, so clear those occupied lanes.
     const noticeLeft = (width - (notice?.width ?? 248)) / 2;
     let noticeTop = Math.max(top + 8, height * .12);
-    if (noticeLeft < sideWidth + 14) noticeTop = Math.max(noticeTop, leftTop, rightTop);
+    if (noticeLeft < sideWidth + 14) noticeTop = Math.max(noticeTop, leftTop, rightAnchor + (killsRight ? killsRight + 8 : 0));
     if (systems && noticeTop < systemsTop + systemsHeight + 8
       && noticeTop + (notice?.height ?? 48) > systemsTop - 8
       && noticeLeft < systemsLeft + dockWidth && width - noticeLeft > systemsLeft) {
       noticeTop = systemsTop + systemsHeight + 8;
     }
-    const stack = battleSideStack(leftBottom - leftTop, chat, toastCount);
+    const stack = battleSideStack(leftBottom - noticeReserve - leftTop, chat, toastCount);
     setRows(toastHost, stack.toastRows);
-    if (touch && width > height && height <= 340) noticeTop = Math.max(top + 8, scoreBottom + 52);
+    if (touch && width > height && height <= 340) noticeTop = Math.max(top + 16, scoreBottom + 52);
+    if (sideNotices) noticeTop = Math.max(top + 8, leftBottom - noticeReserve + 8);
+    // Awards use the center lane only when the actual visible HUD leaves room.
+    // Keep the card measurable while deferred; no per-frame polling is needed.
+    const banner = document.querySelector<HTMLElement>('.cot-medal-toasts');
+    let bannerTop = Math.ceil(top + 16);
+    if (banner?.childElementCount) {
+      const bounds = banner.getBoundingClientRect();
+      const crosses = (box: DOMRect) => bounds.left < box.right + 8 && bounds.right > box.left - 8;
+      for (const selector of ['.cot-kill-lane.l', '.cot-kill-lane.r', '.cot-sixth.on', '.cot-alert.show']) {
+        const box = read(selector);
+        if (box && crosses(box) && bannerTop < box.bottom + 12 && bannerTop + bounds.height > box.top - 12) {
+          bannerTop = Math.ceil(box.bottom + 12);
+        }
+      }
+      let fits = bannerTop + bounds.height <= height - 8;
+      for (const selector of ['.cot-vehicle-controls', '.cot-shells', '.cot-dp', '.cot-minimap',
+        '.cot-touch.on .joy', '.cot-touch.on .autoaim', '.cot-touch.on .scope', '.cot-touch.on .fire', '.cot-cons']) {
+        const box = read(selector);
+        if (box && crosses(box) && bannerTop < box.bottom + 8 && bannerTop + bounds.height > box.top - 8) fits = false;
+      }
+      const placement = fits ? 'ready' : 'deferred';
+      if (banner.dataset.placement !== placement) {
+        banner.dataset.placement = placement;
+        banner.dispatchEvent(new Event('cot-banner-placement'));
+      }
+    }
     const network = !!read('.cot-mp-status.battle');
+    const reportBounds = read('.cot-si-cardhost');
     const properties = {
+      'status-lift': Math.max(5, (read('.cot-dp')?.top ?? 0) - (statusDockBottom() ?? height)),
+      'center-notice-width': !touch && width >= 768 && reportBounds ? Math.max(136, Math.min(248, (reportBounds.left - width / 2 - 12) * 2)) : 248,
+      'flight-right-clearance': map && map.left > width / 2 && map.bottom > height / 2 ? width - map.left + 12 : 12,
       'network-left': width > height ? Math.max(122, (map?.right ?? 104) + 8) : (map?.right ?? 104) + 8,
       'aim-warning-top': width > height ? (map?.bottom ?? 114) + 4 : height * .5 + 48,
       'fps-top': (read('.cot-spec.show')?.top ?? 36) - 28,
       'network-top': width > height ? scoreBottom + 4 : (chrome?.top ?? top + 8),
       'roster-left-height': battleRosterHeight(height, leftBottom - (read('.cot-ear.l')?.top ?? 52), root.querySelector('.cot-ear.l.icon-grid') ? 124 : 48, Number(root.querySelector<HTMLElement>('.cot-ear.l')?.dataset.count) || 0, root.classList.contains('rosters-expanded')),
-      'roster-right-height': battleRosterHeight(height, rightBottom - (rosterTopRight ?? earRight?.top ?? 52), root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, Number(root.querySelector<HTMLElement>('.cot-ear.r')?.dataset.count) || 0, root.classList.contains('rosters-expanded')),
+      'roster-right-height': Math.min(battleRosterHeight(height, rightBottom - rosterStart, root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, rosterCount, root.classList.contains('rosters-expanded')), dockReport ? Math.max(0, report.top - rosterStart - 32) : Infinity),
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
       'portrait-countdown-top': systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
       'notice-top': noticeTop, 'alert-top': noticeTop + (notice?.height ?? 48) + 8,
-      'objective-top': scoreBottom, 'objective-bottom': top,
+      'objective-top': scoreBottom, 'objective-bottom': top, 'banner-top': bannerTop,
       'objective-width': objectiveWidth(score?.width || 344) - (touch && network && width > height ? 52 : 0),
       'objective-left': score ? score.left + score.width / 2 : width / 2,
       'kill-left-top': leftAnchor, 'kill-right-top': rightAnchor,
       'kill-left-height': killHeightLeft, 'kill-right-height': killHeightRight,
-      'left-top': leftTop, 'left-height': Math.max(0, leftBottom - leftTop),
+      'left-top': leftTop, 'left-height': Math.max(0, leftBottom - noticeReserve - leftTop),
       'right-top': rightTop, 'right-height': Math.max(0, rightBottom - rightTop),
+      'report-right': map && map.left > width / 2 && map.bottom > height / 2 ? width - map.right : 12,
       'toast-height': stack.toastHeight, 'chat-top': leftTop + stack.chatOffset,
       'chat-height': stack.chatHeight,
     };

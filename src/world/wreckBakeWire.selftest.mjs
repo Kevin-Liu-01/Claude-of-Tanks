@@ -32,6 +32,7 @@ function extraMetadata(baked) {
 function transferRoundTrip(baked, label) {
   const expected = outputIdentity(baked);
   const metadata = extraMetadata(baked);
+  const solids = structuredClone(baked.solids);
   const originals = [...attributes(baked.geo), ...attributes(baked.shadowGeo)];
   const { wire, transfer } = packWreckBake(baked);
   const packed = [...wireAttributes(wire.geo), ...wireAttributes(wire.shadowGeo)];
@@ -62,6 +63,7 @@ function transferRoundTrip(baked, label) {
       `${label}: inflation must reuse the transferred typed view`);
   }
   assert.deepEqual(outputIdentity(inflated), expected, `${label}: all ordered bytes and metadata survive`);
+  assert.deepEqual(inflated.solids, solids, `${label}: posed collision bodies survive worker transfer`);
   assert.deepEqual(extraMetadata(inflated), metadata, `${label}: upload metadata and view offsets survive`);
   baked.geo.dispose(); baked.shadowGeo?.dispose();
   return inflated;
@@ -96,7 +98,7 @@ function metadataFixture(IndexArray) {
   // Preserve stored bounds, even when they intentionally exceed the vertices.
   geo.boundingBox = new THREE.Box3(new THREE.Vector3(-2, -0, -3), new THREE.Vector3(2, 5, 3));
   geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(-0, 2, 0), 8);
-  return { geo, shadowGeo: null, hx: 2, hz: 3, h: 5, tris: 1 };
+  return { solids: [[-1, 0, -1, 1, 0, -1, 1, 1, 1]], geo, shadowGeo: null, hx: 2, hz: 3, h: 5, tris: 1 };
 }
 
 for (const IndexArray of [Uint16Array, Uint32Array]) {
