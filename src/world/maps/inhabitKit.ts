@@ -2824,8 +2824,56 @@ export const HAYCOCK_BALE: DestructiblePropType = {
   ...DESTRUCTIBLE_TYPES.bale, build: () => buildHaycock(), contactProxy: () => buildHaycockContactProxy(),
 };
 
+/**
+ * (b39; the audit's "2-3 plain box chunks") The coursed module breached, in its own courses: each course's blocks gone
+ * across a gap round the breach that widens course by course (a broken masonry edge steps along its courses), the bottom
+ * course nearly whole; the capstones left only where the course under them stands; the fallen blocks and caps lying on
+ * both faces below the breach, tilted as they landed.
+ */
+function bWallStoneCoursedBroken(rng: Rng): THREE.BufferGeometry {
+  const o = spentDraws(wallStoneBrokenDraws, rng, 0xc0a5);
+  const parts: THREE.BufferGeometry[] = [];
+  const courses = [0.42, 0.38, 0.30], thick = 0.46, L = WALL_SEG;
+  const breach = (o() - 0.5) * 0.4 * L, width = (0.42 + o() * 0.2) * L;
+  let y = 0, fallen = 0, topLo = 0, topHi = 0;
+  for (let c = 0; c < courses.length; c++) {
+    const ch = courses[c], share = c === 0 ? 0.18 : c === 1 ? 0.72 : 1;
+    const lo = breach - (width / 2) * share * (0.85 + o() * 0.3), hi = breach + (width / 2) * share * (0.85 + o() * 0.3);
+    if (c === courses.length - 1) { topLo = lo; topHi = hi; }
+    for (let z = -L / 2; z < L / 2 - 0.04;) {
+      const bl = Math.min(L / 2 - z, 0.36 + o() * 0.3), zc = z + bl / 2;
+      if (zc < lo || zc > hi) {
+        const blk = box(thick + (o() - 0.5) * 0.03, ch - 0.015, bl - 0.012, 0.7);
+        // the blocks at the gap's edge loosened: tilted and pushed a little out of the face
+        const edge = Math.min(Math.abs(zc - lo), Math.abs(zc - hi)) < 0.45;
+        blk.rotateX((o() - 0.5) * (edge ? 0.12 : 0.03)); blk.rotateZ((o() - 0.5) * (edge ? 0.1 : 0.03));
+        parts.push(blk.translate((o() - 0.5) * (edge ? 0.1 : 0.03), y + ch / 2, zc));
+      } else fallen++;
+      z += bl;
+    }
+    y += ch - 0.015;
+  }
+  // the capstones that still have a course under them; the rest fall with the blocks
+  for (let k = 0; k < 4; k++) {
+    const zc = -L / 2 + (k + 0.5) * (L / 4);
+    if (zc > topLo - L / 8 && zc < topHi + L / 8) { fallen++; continue; }
+    const cap = box(0.56, 0.11, L * 0.26, 0.9);
+    cap.rotateX((o() - 0.5) * 0.08); cap.rotateZ((o() - 0.5) * 0.06);
+    parts.push(cap.translate((o() - 0.5) * 0.04, y + 0.04, zc));
+  }
+  // the fallen: on both faces below the breach, a block for most of those gone, a cap or two among them
+  const lying = Math.max(5, Math.round(fallen * 0.7));
+  for (let k = 0; k < lying; k++) {
+    const side = o() < 0.5 ? -1 : 1, cap = k < 2;
+    const piece = cap ? box(0.56, 0.11, L * 0.26, 0.9) : box(thick * (0.85 + o() * 0.2), 0.3 + o() * 0.1, 0.36 + o() * 0.3, 0.7);
+    piece.rotateY((o() - 0.5) * 1.2 + (cap ? Math.PI / 2 : 0)); piece.rotateX((o() - 0.5) * 0.6); piece.rotateZ((o() - 0.5) * 0.5);
+    parts.push(piece.translate(side * (0.45 + o() * 1.0), cap ? 0.06 : 0.14, breach + (o() - 0.5) * width * 1.1));
+  }
+  return merge(parts);
+}
+
 /** The coursed wall module the brick-print maps keep (see bWallStone): the stone wall's record with its original
- * courses and remnant. */
+ * courses, and (b39) its breach in those courses. */
 export const COURSED_WALLSTONE = {
-  ...DESTRUCTIBLE_TYPES.wallstone, build: wallStoneEnvelope, broken: wallStoneBrokenDraws,
+  ...DESTRUCTIBLE_TYPES.wallstone, build: wallStoneEnvelope, broken: bWallStoneCoursedBroken,
 } satisfies DestructiblePropType;
