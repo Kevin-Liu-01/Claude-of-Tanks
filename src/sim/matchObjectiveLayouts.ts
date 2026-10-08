@@ -21,6 +21,11 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // Chimney Valley (the map-revival lane, 2026-10-05): rotation-symmetric about the centre — the town's junction square
   // (also the turbo-ball kickoff) and the two chimney fields' aprons in front of the benches, on the line of equal drives
   goreme: { kickoff: { x: 0, z: 0 }, zones: [{ x: -214, z: 12 }, { x: 0, z: 0 }, { x: 214, z: -12 }] },
+  // Suzhou Creek (the map-revival lane, 2026-10-05): the creek runs between the deployments, alpha's side owning the west
+  // bridge and bravo's the three others; the discs stand on the line of equal driven distance on both banks — the west
+  // bank's open ground north of the creek (alpha crosses for it), the waterfront south of the diagonals' crossing and
+  // the east quarter's yards (bravo crosses for them); the kickoff between them on the south bank.
+  blackglass: { kickoff: { x: -97, z: -7 }, zones: [{ x: -285, z: 33 }, { x: 34, z: -50 }, { x: 140, z: -34 }] },
   // Amberford (layout brief, 2026-10-03): the three greens — the sunken lane's green in the south-bank orchards near the
   // southern deployment, the ford green on the line of equal drives and the fair green near the northern arc; the
   // kickoff on the north-bank meadow between the bridge and the ford (2026-10-03: 8 m north, where the bounded search
@@ -72,7 +77,7 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // crossing in the western orchards and the market square (also the turbo-ball kickoff), each a paved apron in the
   // map file, and the bypass in the gap beyond the castle rock, the validated seat of the bounded search on the
   // road's natural floor (an apron there would ramp the bypass past a road grade).
-  urban: { kickoff: { x: -50, z: 0 }, zones: [{ x: -330, z: 24 }, { x: -50, z: 0 }, { x: 247.2, z: 0 }] },
+  urban: { kickoff: { x: -50, z: 0 }, zones: [{ x: -330, z: 4 }, { x: -50, z: 0 }, { x: 247.2, z: 0 }] },
   // Cinder Junction (redesign 2026-10-01): three paved aprons on the main line, rotationally symmetric about the
   // station square — the west level crossing, the station square (also the turbo-ball kickoff), the east level
   // crossing; each is a graded apron in the map file, so the discs seat where they are authored.

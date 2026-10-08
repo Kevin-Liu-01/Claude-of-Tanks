@@ -156,6 +156,9 @@ export interface WorldRuntime {
   dispose(): void;
   /** Readiness snapshot only; never performs streaming work. */
   getGrassWorkState: VegetationRuntime['getGrassWorkState'];
+  /** (b17) The field walls' stone forms still to build near the camera (0 when every wanted cell has its stones):
+   *  a readiness snapshot only, as the grass's. */
+  getFieldWallWorkState(): { pending: number };
   config: BattlefieldMapConfig;
   heightField: WorldHeightField;
   minimapTextureState: SourcedTextureState;
@@ -341,6 +344,30 @@ export async function createMapAsync(
  * world object.
  * @returns {object} World (ARCHITECTURE §2.7)
  */
+/**
+ * The scenery lane (b14): the boulders' beds (props.ts buildRockBeds — the ground built up against each stone's foot)
+ * draw with the battlefield's own terrain material, so their colour, grain and light are the ground's at that place.
+ * The material is the one every terrain chunk draws (its layer means mark it); a world without it draws no beds. The
+ * beds cast nothing and their geometry is world space.
+ */
+function bindRockBeds(terrain: TerrainRoot, propsGroup: THREE.Group): void {
+  const beds = propsGroup.userData.rockBeds as THREE.BufferGeometry[] | undefined;
+  if (!beds?.length) return;
+  let ground: THREE.Material | null = null;
+  terrain.traverse((object) => {
+    const material = (object as THREE.Mesh).isMesh ? (object as THREE.Mesh).material : null;
+    if (!ground && material && !Array.isArray(material) && material.userData.layerMeans && material.userData.groundClock) ground = material;
+  });
+  if (!ground) return;
+  for (const geometry of beds) {
+    const mesh = new THREE.Mesh(geometry, ground);
+    mesh.name = 'rock-beds';
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    propsGroup.add(mesh);
+  }
+}
+
 function assembleWorld(
   engineCtx: EngineContext,
   config: BuildMapConfig,
@@ -357,6 +384,7 @@ function assembleWorld(
   const group = new THREE.Group();
   group.name = 'world-' + config.id;
   group.add(terrain, vegetation.group, props.group);
+  bindRockBeds(terrain, props.group);
   engineCtx.scene.add(group);
   // Round 77c: where the world baked an impostor atlas (desktop, a renderer) the horizon ring's forest over the red
   // line draws from it — the same trees under the same law at the rim's stature (horizonForestImpostors.ts); the
@@ -584,6 +612,7 @@ function assembleWorld(
     minimapTextureState,
     // Checkpoint-only diagnostics; never force streaming or alter readiness.
     getGrassWorkState: () => vegetation.getGrassWorkState(),
+    getFieldWallWorkState: () => ({ pending: (props.group.userData.fieldWallLod as { pending?: number } | undefined)?.pending ?? 0 }),
     /** Round 73: the tall-grass tier (diagnostics and the round's probes: state, meshes, the press field). */
     _tallGrass: tallGrass,
     raycast,

@@ -19,6 +19,9 @@ assert.equal(isTreeSpecies('telephone-pole'), false, 'non-tree ids stay outside 
 
 const signatures = new Set();
 const usedSpecies = new Set();
+// (batch 4: maps-longleaf round 2, e90520dbf, the gauntlet's wave 124 — the Gulf coast's flatwoods are longleaf alone in
+// open groves, so Longleaf's groves are one species; its lone trees and its rim keep the creek bottom's oaks)
+const PURE_STANDS = Object.freeze({ longleaf: ['clusterMix'] });
 for (const mapId of MAP_IDS) {
   const vegetation = getMapConfig(mapId).vegetation;
   assert.ok(vegetation.species.length >= 3,
@@ -35,7 +38,7 @@ for (const mapId of MAP_IDS) {
     ['loneMix', vegetation.loneMix],
     ['rimMix', vegetation.rimMix],
   ]) {
-    assert.ok(mix.length >= 2, `${mapId}.${mixName}: placement does not collapse to one silhouette`);
+    assert.ok(mix.length >= 2 || (PURE_STANDS[mapId] ?? []).includes(mixName), `${mapId}.${mixName}: placement does not collapse to one silhouette`);
     assert.ok(mix.every(([species, weight]) => declared.has(species)
       && Number.isFinite(weight) && weight > 0),
     `${mapId}.${mixName}: weights are positive and reference declared species`);

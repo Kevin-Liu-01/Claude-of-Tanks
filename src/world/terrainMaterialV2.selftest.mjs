@@ -66,6 +66,37 @@ function checkTerrain(source) {
     assert.ok(blockAfter(frag, cond, label).includes(fetch), `${label}: fetched inside its coverage branch`);
     assert.equal(frag.split(fetch).length, 2, `${label}: fetched nowhere else`);
   }
+  // 1b. (ground lane, 2026-10-07 — mr2's Aegis toggle hold: the strata block cost ~1.6 ms GPU p25 at Aegis' chase, most
+  // of it level ground where every term weighs zero) the strata's and the far walls' reads inside the gates of the
+  // weights that scale them, read nowhere else: the beds, joints and face tints where steep > 0, the formation where it
+  // has weight, the wall-plane albedo, masses, ledges and normals where steepW > 0
+  const enclosedBy = (fetch, cond, label) => {
+    const at = frag.indexOf(fetch);
+    assert.ok(at >= 0, `${label}: the read exists`);
+    assert.equal(frag.split(fetch).length, 2, `${label}: read nowhere else`);
+    for (let i = at, depth = 0; i >= 0; i--) {
+      if (frag[i] === '}') depth++;
+      else if (frag[i] === '{' && --depth < 0) {
+        if (frag.slice(0, i + 1).endsWith(`if (${cond}) {`)) return;
+        depth = 0;
+      }
+    }
+    assert.fail(`${label}: read inside "if (${cond})"`);
+  };
+  for (const [fetch, cond, label] of [
+    ['bedSignal(bedH + n2Wall * 1.2, 0.067 * 1.06, gCliffJ)', 'steep > 0.0', 'the laminae'],
+    ['bedSignal(bedH + n2Wall * 3.3, 0.020 * 1.06, gCliffJ + 0.31)', 'steep > 0.0', 'the marker beds'],
+    ['bedSignal(bedH + n2Wall * 4.8, 0.0083 * 1.06, gCliffJ + 0.67)', 'steep > 0.0', 'the caprock beds'],
+    ['textureLod(uNoise, gWallUVx * vec2(0.010, 0.0006)', 'steep > 0.0', 'the varnish'],
+    ['wallNoiseG(0.011, vec2(0.19, 0.67))', 'steep > 0.0', 'the wall macro'],
+    ['nz(wp.xz, 0.0071, vec2(0.83, 0.41))', 'uFormation.x > -1e8 && max(fR, steep) > 0.0', 'the formation boundary'],
+    ['wallTex(uAlbR, 0.011)', 'steepW > 0.0', 'the far masses'],
+    ['bedSignal(wp.y + ledgeWarp * 2.2, 0.016, gCliffJ + 0.53)', 'steepW > 0.0', 'the far ledges'],
+    ['texture2D(uNrmR, gWallUVx * 0.019)', 'steepW > 0.0', 'the far wall normal'],
+    ['texture2D(uNrmR, gWallUVx * 0.041)', 'steepW > 0.0', 'the relief\'s wall tap'],
+    ['nz(gWallUVx, 0.0031, vec2(0.63, 0.21))', 'steepW > 0.0', 'the crag phase'],
+  ]) enclosedBy(fetch, cond, label);
+  assert.ok(frag.includes('if (steepW > 0.0) rrC = mix(rrC, wallTex(uAlbR, 0.031), steepW);'), 'the far albedo\'s wall reads');
   // the coverage declarations, executed: what each layer leaves of the ones under it
   const decl = (name) => unique(frag, new RegExp(`float ${name} = ([^;]+);`, 'g'), name)[1];
   const cov = new Function('steepW', 'fR', 'fMs', 'seaSand', 'fD', `
@@ -135,6 +166,9 @@ const mutants = [
   ['if (df > 0.996) return farS;', '', 'near tap always'],
   ['float n2 = nz(uv, 0.0031, vec2(0.41, 0.13)).g;', 'float n2 = texture2D(uNoise, uv * 0.0031 + vec2(0.41, 0.13)).g;', 'anisotropic low-frequency read'],
   ["shader.uniforms.uMeanR = { value: layerMeans.R };", "shader.uniforms.uMeanR = { value: null };", 'rock mean unbound'],
+  ['    float pale = 0.0;\n    if (steep > 0.0) {', '    float pale = 0.0;\n    if (true) {', 'the beds ungated'],
+  ['if (uFormation.x > -1e8 && max(fR, steep) > 0.0) {', 'if (uFormation.x > -1e8) {', 'the formation ungated'],
+  ['if (steepW > 0.0) rrC = mix(rrC, wallTex(uAlbR, 0.031), steepW);', 'rrC = mix(rrC, wallTex(uAlbR, 0.031), steepW);', 'the far albedo ungated'],
 ];
 for (const [from, to, label] of mutants) {
   assert.equal(terrain.split(from).length, 2, `mutation seam exists: ${label}`);
@@ -159,11 +193,18 @@ for (const id of MAP_IDS) {
 assert.equal(resolveGroundReduxProfile('moon').exposure, 0, 'airless regolith: nothing follows the sun');
 assert.equal(resolveGroundReduxProfile('moon').windRipple, 0, 'and no wind ripples on it');
 // 2026-10-03 the ground lane: a volcanic basin (Caldera, groundRedux VOLCANIC) takes no wind's ripples either
-assert.equal(resolveGroundReduxProfile('caldera').windRipple, 0, 'no wind ripples on the volcanic basin');
-assert.equal(resolveGroundReduxProfile('caldera').patchwork, 0, 'and no blown-sand patchwork');
+// (2026-10-05, the map-revival lane's Caldera round 2: Aso's grassland — still no sand ripples, and the land's own
+// patchwork of greens)
+assert.equal(resolveGroundReduxProfile('caldera').windRipple, 0, 'no wind ripples on the caldera');
+assert.equal(resolveGroundReduxProfile('caldera').patchwork, 1, 'Aso\'s grassland keeps the land\'s patchwork');
+// 2026-10-05 the map-revival lane's Copper Mesa round 2: Queenstown's conglomerate gravel, no sand to ripple
+assert.equal(resolveGroundReduxProfile('copper_mesa').windRipple, 0, 'no wind ripples on the bare hills');
+// 2026-10-05 the map-revival lane's Oasis round 2 (gauntlet wave 125: "corduroy ripples"): Siwa's sand takes the wind's
+// ripples at four tenths
+assert.equal(resolveGroundReduxProfile('oasis').windRipple, 0.4, 'Siwa: the ripples at four tenths');
 // 2026-10-05 the map-revival lane's Chimney Valley: tuff ash soil, no sand to ripple
 assert.equal(resolveGroundReduxProfile('goreme').windRipple, 0, 'no wind ripples on the tuff valleys');
-for (const id of MAP_IDS) if (id !== 'moon' && id !== 'caldera' && id !== 'goreme') assert.equal(resolveGroundReduxProfile(id).windRipple, 1, `${id}: its authored ripples at full`);
+for (const id of MAP_IDS) if (id !== 'moon' && id !== 'caldera' && id !== 'copper_mesa' && id !== 'oasis' && id !== 'goreme') assert.equal(resolveGroundReduxProfile(id).windRipple, 1, `${id}: its authored ripples at full`);
 // the sand trains: no global phase over a per-position wind (the round-43 marble), the cell function in its place
 assert.ok(!/float rphase = dot\(uv, wind\)/.test(active(terrain)), 'the global ripple phase over a turned wind is gone');
 assert.ok(/vec2 sandWaves\(vec2 p, vec2 w0, float cellM, float swing, float warp, vec2 k, vec2 amp, out float tone\) \{/.test(terrain), 'the cell-blended wave trains');
@@ -215,14 +256,15 @@ for (const [character, [lo, hi]] of Object.entries(RING_RELIEF_WALL_BAND)) {
 assert.ok(ground.includes("const wallBand = character ? RING_RELIEF_WALL_BAND[character] : undefined;") && ground.includes('wall.set(...(wallBand ?? RING_RELIEF_WALL_NONE));'),
   'the ring bind sets the band per relief character (none elsewhere)');
 
+let bedLawNote = '';
 // 2026-10-03 the ground lane: the bed law's CPU twins (terrainBedWobbleAt, terrainFormationBoundaryY) carry the shader's
 // constants (gBedWob, the uFormation step), stay inside their amplitudes and wander — the scenery lane's bedrock skin
 // stripes by them, so its beds and the terrain's strata are one rock
 {
   const shader = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
-  assert.ok(shader.includes('gBedWob = (nz(wp.xz, 0.0208, vec2(0.37, 0.83)).g - 0.5) * 3.2 + (nz(wp.xz, 0.0588, vec2(0.71, 0.19)).r - 0.5) * 1.1;'),
+  assert.ok(shader.includes('gBedWob = (nz(wp.xz, 0.0050, vec2(0.37, 0.83)).g - 0.5) * 3.2 + (nz(wp.xz, 0.0147, vec2(0.71, 0.19)).g - 0.5) * 1.1;'),
     'the shader\'s bed wander is the twin\'s law');
-  assert.ok(shader.includes('(nz(wp.xz, 0.0071, vec2(0.83, 0.41)).r - 0.5) * 2.0 * uFormation.y'), 'the formation boundary\'s wander is the twin\'s law');
+  assert.ok(shader.includes('(nz(wp.xz, 0.0071, vec2(0.83, 0.41)).g - 0.5) * 2.0 * uFormation.y'), 'the formation boundary\'s wander is the twin\'s law');
   let lo = Infinity, hi = -Infinity, sum = 0, sq = 0, n = 0;
   for (let z = -500; z <= 500; z += 7.3) for (let x = -500; x <= 500; x += 7.3) {
     const w = terrainBedWobbleAt(x, z);
@@ -233,5 +275,34 @@ assert.ok(ground.includes("const wallBand = character ? RING_RELIEF_WALL_BAND[ch
   const sd = Math.sqrt(sq / n - (sum / n) ** 2);
   assert.ok(lo >= -2.15 - 1e-9 && hi <= 2.15 + 1e-9, `the bed wander stays inside ±2.15 m (${lo.toFixed(2)}..${hi.toFixed(2)})`);
   assert.ok(sd > 0.2, `the beds wander (sd ${sd.toFixed(2)} m)`);
+  // 2026-10-06 (Titan's zigzag strata): the wander is smooth along a wall — its departure from its own 4 m running mean
+  // (the teeth a bed's edge draws) stays under 0.15 m RMS. The 2026-10-03 law (its second term on the r field at 0.0588,
+  // half that field's power at 2–8 texels) drew 0.27 m; a mutation control proves the measure tells them apart
+  const teeth = (w) => {
+    let s2 = 0, c = 0;
+    for (let z = -400; z <= 400; z += 5.3) for (let x = -400; x <= 400; x += 5.3) for (const [dx, dz] of [[1, 0], [0, 1]]) {
+      let m = 0;
+      for (let k = -8; k <= 8; k++) m += w(x + dx * k * 0.25, z + dz * k * 0.25);
+      const r = w(x, z) - m / 17;
+      s2 += r * r; c++;
+    }
+    return Math.sqrt(s2 / c);
+  };
+  const smooth = teeth(terrainBedWobbleAt);
+  assert.ok(smooth < 0.15, `the bed wander has no teeth (${smooth.toFixed(3)} m RMS off its 4 m mean)`);
+  // the mutation control: the same law sampled four times finer must read as teeth
+  const finer = teeth((x, z) => terrainBedWobbleAt(x * 4, z * 4));
+  assert.ok(finer > 0.2, `the teeth measure sees a wander four times finer (${finer.toFixed(3)} m)`);
+  bedLawNote = `a smooth bed wander (${smooth.toFixed(2)} m teeth, ${finer.toFixed(2)} m on its finer control) and a banded wall stretch`;
+  // the wall basis: the thickness stretch on a periodic band of the height (zero mean over 48 m), never a multiple of the
+  // absolute height (v = −y · k(x, z) sheared every wall read by y · ∇k), and the strata's per-cliff frequency the same
+  assert.ok(shader.includes('float wallV = wp.y + (wallVScale * bedSwell - 1.0) * 7.6394 * sin((wp.y + wallVOff) * 0.13090);')
+    && shader.includes('gWallUVx.y = -wallV + wallVOff + gBedWob;') && shader.includes('gWallUVz.y = -wallV + wallVOff + gBedWob;'),
+    'the wall basis stretches its beds on a band of the height');
+  assert.ok(!/gWallUV[xz]\.y \* wallVScale/.test(shader) && !/bedY \* [0-9.]+ \* bedF/.test(shader) && !/bedSignal\(bedY/.test(shader),
+    'nothing multiplies the absolute height by a field of (x, z)');
+  assert.ok(Math.abs(7.6394 - 48 / (2 * Math.PI)) < 1e-3 && Math.abs(0.13090 - 2 * Math.PI / 48) < 1e-4, 'the band is 48 m, its amplitude 48 / 2π');
+  assert.ok(shader.includes('float bedH = bedY + (bedF / 1.06 - 1.0) * 7.6394 * sin((bedY + gCliffJ * 9.7) * 0.13090);'),
+    'the strata read the banded bed height');
 }
-console.log(`terrainMaterialV2: coverage-gated layers (7 gates, 512 executed coverage cases), far band without detail normals, one-fetch far variant on measured means, explicit-LOD noise, exposure and non-periodic beds on ${MAP_IDS.length} maps, the ring as this material (bedforms on gentle sand, distance-faded slip-face sines, the atlas gradient's wall band), ${mutants.length + 3} mutation controls PASS; no GPU/art claim`);
+console.log(`terrainMaterialV2: coverage-gated layers (7 gates, 512 executed coverage cases), far band without detail normals, one-fetch far variant on measured means, explicit-LOD noise, exposure and non-periodic beds on ${MAP_IDS.length} maps, the ring as this material (bedforms on gentle sand, distance-faded slip-face sines, the atlas gradient's wall band), ${bedLawNote}, ${mutants.length + 4} mutation controls PASS; no GPU/art claim`);

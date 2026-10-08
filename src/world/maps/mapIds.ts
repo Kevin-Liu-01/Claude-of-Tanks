@@ -42,7 +42,7 @@ const MAP_NAMES = Object.freeze({
   caldera: 'Obsidian Caldera',
   foundry: 'Ironworks',
   ruinspires: 'Ruinspires',
-  blackglass: 'Blackglass District',
+  blackglass: 'Suzhou Creek',
   titan_gorge: 'Titan Gorge',
   skybridge: 'Skybridge Chasm',
   polders: 'Tidegate Polders',

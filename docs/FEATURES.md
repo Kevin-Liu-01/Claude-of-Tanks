@@ -217,7 +217,7 @@ The game includes:
 15. Obsidian Caldera
 16. Ironworks
 17. Ruinspires
-18. Blackglass District
+18. Suzhou Creek
 19. Titan Gorge
 20. Skybridge Chasm
 21. Tidegate Polders

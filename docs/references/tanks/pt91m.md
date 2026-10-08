@@ -1,5 +1,92 @@
 # PT-91M Pendekar (`pt91m`)
 
+## Current owner-directed T-72BU rebuild — 2026-10-06
+
+**Current target:** the owner explicitly requested the actual `t72bu_x` hull,
+cast turret, fenders, running gear, and main gun with refitted PT-91 armor and
+equipment. This is an owner-directed game interpretation of Pendekar, not the
+historical dimensions/oracle target recorded below. `t72bu` is a different,
+older roster model and is not the donor. The earlier standalone recipe is
+superseded; its historical reference claims and results remain in this packet.
+
+The owner photo is `codex-clipboard-2100924b-f02a-4579-a87a-abcf486ecd55.png`,
+SHA-256 `938820260d5a315c76934da76bc4b768ac6bcd642f46360061d9d66fc8cb9b71`.
+It supplies the intended low cast-turret silhouette, rectangular ERAWA courses,
+full side skirts, roof instruments, and commander machine-gun identity.
+
+Implementation:
+
+- `profiles/t72buX.ts` exports a narrow core recipe. Its default complete
+  T-72BU build remains byte-identical in HIGH and LOW, including positions,
+  normals, UVs, indices and native transforms. The Pendekar branch omits the
+  original reactive/roof kit before adding its own equipment; it does not
+  place another hull or turret over the donor.
+- `profiles/pt91mPendekar.ts` fits 30 rectangular turret cassettes and 32
+  glacis cassettes to native donor triangles. Each has four finite mounting
+  feet. The added forward skirt cassettes attach to retained donor leaves;
+  fender crowns and track corridors are unchanged. Six destructible semantic
+  fields remain bound to the actual rendered ERA triangles.
+- Two cupola collars enter the cast roof around their complete rims. Twelve
+  periscope blocks, a recessed boxed primary sight, panorama, weather mast,
+  warning sensors, smoke banks, commander machine gun, and open rear basket
+  supply the PT-91 equipment identity. The kit uses rectangular ERAWA forms,
+  not the removed T-72BU chevrons.
+- `additionalFleetSpecs.ts` preserves the target's combat balance and shell
+  selection while registering the donor's real turret/trunnion/muzzle frame.
+  `nationWheelSets.ts` gives Pendekar the actual resolved T-72BU wheel recipe
+  (`t90`), verified against the donor's native wheel, roller, link and
+  instance buffers. No gameplay change is inferred from visual armor.
+- The separately authored `pt91_twardy` keeps its old spatial armor fit and
+  0.50 m track-width setting through a narrow `poland.ts` override. Its full
+  finalized serialized spec matches the pre-rebuild baseline exactly
+  (`ef62b8305570e71a5fb5bcdf3d546e4fae844d9f0f3595844a7bbc0873cd8001`).
+  No other variant clones `pt91m`.
+
+The selected donor dimensions are hull length **6.34341572519 m**, overall
+length **10.34772314839 m**, structural height **2.16259918790 m**, with a
+**3.66 m** registered width allowance for the new skirt kit. These are the
+requested game's donor dimensions, not replacement claims about a historical
+Pendekar. Original physical dimensions below remain historical reference data.
+
+Implementation checks on the new recipe:
+
+- Full default donor fingerprint before/after refactor: HIGH
+  `5b860dbc989288b9280cdc8e3a472542208b9ae0f51b004dd9a0eb4f54a1bd13`;
+  LOW `bedad350c210792db3b031f0acef89963ef602d800c1e30b0f1997201df7488d`.
+- `pt91mPendekarFidelity.selftest.mjs` compares the actual HIGH/LOW donor
+  hull, turret, gun, gun mount, running gear and native rig transforms. It
+  checks independently measured ERA foot contact, full cupola-rim support,
+  live/spent/reset armor identity, and all moving gun stock through the full
+  yaw circle at 15° intervals, legal pitch extremes and actual full recoil
+  against the added armor and furniture. An inserted barrel obstruction is a
+  negative control. This is a physical/donor contract, not a photographic
+  similarity score.
+- Independent contact review caught isolated smoke tubes, a recessed lens
+  without its carrier, and small instrument/handle/pack gaps. The final
+  recipe has connected closed-end smoke ladders, a finite optic carrier,
+  an MG feed bracket, and seated weather crossbar, hatch handles, sight block
+  and basket pack. Their emitted triangle contact is checked in both detail
+  levels, including negative controls for the original detached placements.
+- The full gun sweep exposed the former outer glacis cells sitting on the
+  fender crown and obstructing legal −6° depression near 30°/330° traverse.
+  All four tile columns now fit fully inboard of the donor's x=0.916 m
+  fender boundary. The donor itself and its gun limits remain unchanged.
+  A reconstructed old outer cell remains a failing clearance control.
+- The superseded test is retained verbatim in
+  [`pt91m.legacy-fidelity-selftest.txt`](pt91m.legacy-fidelity-selftest.txt).
+  Its old datums are not weakened or relabeled as passing for the new target.
+
+**Qualification/publication status:** implementation and focused native checks
+are complete; regenerated anatomy/crew/modules, interior fills, assets,
+release checks, and final HIGH/LOW Gallery plus Garage/live render acceptance
+are pending the parent integration run. Fresh native front, quarter, side,
+top and rear views must evaluate the owner photo and explicit donor target.
+The historical oracle comparison is **superseded target / not requalified**;
+its old pass receipts do not qualify this changed model and no new numerical
+comparison pass is claimed here.
+
+## Historical standalone target and qualification record
+
 **Exact variant modeled:** PT-91M Pendekar (Malaysia, 2000s) — Polish T-72M1
 deep upgrade: ERAWA-1/2 flat ERA tiles over glacis/turret/skirt fronts,
 2A46MS gun, SAVAN-15 sight, distinctive tall met mast on the turret rear and

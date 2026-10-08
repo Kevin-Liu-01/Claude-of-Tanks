@@ -266,9 +266,14 @@ const TERRAIN_PLAN = {
     // ripple. The ground is now ash and cinder — the fine-grained sand set, desaturated to a warm dark grey (ash
     // ~0.15 albedo; the volcanic zoning pales it on the level, blackens and reddens it on the cones), the worn variant
     // a step darker; the rock a desaturated basalt
-    G: { set: 'sand', desat: 0.85, tint: [0.40, 0.38, 0.36], lift: 0.02, roughMul: 1.3 },
-    D: { set: 'sand', desat: 0.8, tint: [0.31, 0.29, 0.28], lift: 0.02, roughMul: 1.35 },
-    R: { set: 'rock', desat: 0.7, tint: [0.62, 0.60, 0.59], lift: 0.03, roughMul: 1.2 }, M: null,
+    // (the map-revival lane, Caldera round 2: Aso's floor and slopes — the photo grass a muted summer green with a cured
+    // gold in it, the dirt the black volcanic Andosol of the fields and tracks, the rock the basalt as before)
+    G: { set: 'grass', tint: [0.86, 0.88, 0.66], roughMul: 1.25 },
+    D: { set: 'dirt', desat: 0.4, tint: [0.42, 0.40, 0.38], roughMul: 1.3 },
+    // (Caldera round 2, item 5, wave 114: the Black Shelves "need a dark, rough, blocky material, not grey"): the rock
+    // set's fractured blocks — the lava flows' whole surface and the steep rock — near-black basalt, a breath warm,
+    // lifted just off black (was 0.62 grey)
+    R: { set: 'rock', desat: 0.75, tint: [0.36, 0.35, 0.34], lift: 0.015, roughMul: 1.3 }, M: null,
   },
   foundry: {
     G: { set: 'grass', tint: [0.66, 0.65, 0.56], roughMul: 1.32 },
@@ -295,6 +300,19 @@ const TERRAIN_PLAN = {
     G: { set: 'sand', tint: [0.86, 0.66, 0.50], roughMul: 1.24 },
     D: { set: 'sand', tint: [0.66, 0.48, 0.37], roughMul: 1.28 },
     R: null, M: null,
+  },
+  copper_mesa: {
+    // (the map-revival lane, 2026-10-05) Queenstown under Mount Lyell: the hills the smelters' fumes stripped to pink
+    // and mauve-grey conglomerate gravel. The sand set under a pink tint, sand × tint ≈ 0.63/0.50/0.46 (luma 0.53, the
+    // brightness of the old ochre floor; the dirt set's 0.43/0.34/0.25 under the same pink would fall to a luma near
+    // 0.27, round 47's "ground too black"); the worn variant ≈ 0.55/0.43/0.39. R stays null: the procedural strata keep
+    // the benches' bedding.
+    // (Copper Mesa round 2, wave 117: still "orange-tan sand"): the sand set half desaturated under a cooler pink-grey,
+    // and the steep ground — the rills' walls, the benches' risers — the grey rock set warmed toward the conglomerate's
+    // pink, lifted off black (round 47)
+    G: { set: 'sand', desat: 0.5, tint: [0.80, 0.72, 0.78], roughMul: 1.26 },
+    D: { set: 'sand', desat: 0.5, tint: [0.70, 0.62, 0.68], roughMul: 1.3 },
+    R: { set: 'rock', desat: 0.55, tint: [1.22, 1.08, 1.06], lift: 0.04, roughMul: 1.2 }, M: null,
   },
   ruinspires: {
     // grey ruined capital between the Ironworks and Steinburg registers: ash-muted city turf (≈ 0.32/0.34/0.23),
