@@ -168,9 +168,13 @@ export interface StructureStageEvent extends StructureIdentity {
  */
 export interface StructureBreachEvent {
   structureId: number;
-  /** Section index within the structure (stable per structure; DESTRUCTION.md §3.4). */
+  /** The core's section index within the structure (DESTRUCTION.md §3.4: a face of its footprint and a height band,
+   * or its roof). The kit's own sections differ; the world maps a hole to its face and storey by the point below. */
   section: number;
   sectionKind: StructureSectionKind;
+  /** The section's height span (world y): what falls when `sectionDown`. */
+  y0: number;
+  y1: number;
   /** Breach slot within the section's bounded hole list. */
   hole: number;
   x: number;

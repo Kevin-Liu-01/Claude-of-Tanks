@@ -123,9 +123,10 @@ Stages only advance. A blow that crosses two thresholds emits one event per stag
 
 ### 3.4 Sections (P2)
 
-Each structure splits into sections derived from its shell bands: the four wall faces of its footprint rectangle (the
-band parts within 1.2 m of a face), the roof (bands above the eaves line: the highest 30 % of `topY − baseY`, or the
-`roof` bucket's bands) and, for `topY − baseY > 7 m`, the upper floor (bands above mid-height). Each section has its
+Each structure splits into sections derived from its collision records alone (a host has no rendered kit): each wall
+face of its footprint rectangle (the band parts within 1.2 m of the face) in height bands of 3.2 m (a storey), and the
+roof (the bands above the eaves line: the highest 30 % of `topY − baseY`). The kit's anatomy keeps its own storeys and
+faces; the world maps the core's sections onto them by geometry (§16.2). Each section has its
 own hit points (its share of `V`), takes the blows that land in it at full weight and passes 40 % to the whole. A
 breached wall section carries up to four holes (`StructureBreachEvent`): a hole is a vertical cylinder of radius
 `r` through the wall's thickness that shells and sight lines pass (`shellPassesThroughCollisionRecord` checks the
@@ -432,96 +433,123 @@ Cover that disappears changes the game. The gates, every phase:
 > just as good as everything else."
 
 Damaged, breached and collapsed states are never generic boxes or generic rubble. Every stage is built from the
-building's (or prop's) own kit: wall breaks follow the material, roofs fall their own way, a breach exposes the
-interior, and the rubble is the building's own materials and colours. The seam is `src/world/destructionKit.ts`.
+building's (or prop's) own kit: wall breaks follow the material, roofs fall their own way, a breach opens the room
+behind the wall, and the rubble is the building's own buckets, weather tints, timbers and tiles. The seam is
+`src/world/destructionKit.ts`; the fracture builders live in or beside each kit.
 
 ### 16.1 Who does what
 
 | Owner | Delivers |
 |---|---|
-| Core (this lane) | when and where: stages, holes (centre, radius, section), fallen sections, the rubble mound's profile; the build-time **anatomy** of every structure (`describe` default); the **default kit's layouts** (which piece goes where), deterministic and Node-tested; the per-vertex tags (§16.4); the runtime seam `world.structureDamage(id)` |
-| Facades lane | structure, regional and landmark kits: their own `describe` (from the kit's own house plan), authored palette pieces for their materials, and any layout they override (a Fachwerk breach that drops infill panels out of an intact frame, a Kyushu roof that slides its tiles, Sarajevo's stone, a ksar's earth roof slumping) |
-| Scenery lane | prop kits: the type table's `broken` builders to the same standard, `fracture` slots and `debris` from each prop's own materials (splintered planks, bent sheet, broken stone, torn canvas, shattered glass) |
-| Presentation lane | the default fracture palette's meshes, instancing, pooled debris, the collapse animation, the hole cut (shader discard on the tagged vertices), the interior's darkness, dust, sound |
+| Core (this lane) | when and where: stages, holes (section, centre, radius), fallen sections, the rubble mound's profile; `describe` at build time and the anatomy store; the per-vertex tags (§16.4); the runtime seam `world.structureDamage(id)` that resolves each stage through the kit chain; the **default kit** (anatomy read from the parts, fractured from the building's own buckets) |
+| Facades lane | the structure, regional and landmark kits: `describe` from the house grammar's own plan, and the fracture builders for their materials (below) |
+| Scenery lane | prop kits: the type table's `broken` builders to the same standard, the props' `fracture` slots and `debris` |
+| Presentation lane | renders what builders write: the damage batches (one dynamic mesh per bucket, the bucket's own material), the pooled debris (one instanced mesh per bucket and shape in use), the collapse animation, the hole cut (shader discard on the tagged vertices), the room's darkness, dust and sound |
 
-### 16.2 Anatomy (build time, numbers only)
+### 16.2 What a kit hands over (`StructureDamageAnatomy`, build time)
 
-`describe(input) → StructureDamageAnatomy`, once per structure at build time, no geometry built:
+Numbers and the kit's own layout handles, never geometry, in the **body frame** the kit drew in (house.ts: centred on
+the origin, base at y = 0, ridge along +Z; faces front +Z, right +X, back −Z, left −X):
 
-- **walls**: one section per face of the plot rectangle: its plane, width, eaves height, **material layers outermost
-  first** (render over brick, timber frame over infill, concrete over rebar), the frame pitch and member width
-  (Fachwerk), the course height and unit length (masonry), and its openings;
-- **roof**: form (gable, hip, shed, flat, dome, spire, vault), covering (tile, slate, sheet, thatch, earth) and what
-  carries it (timber rafters, a slab), eaves and ridge;
-- **floors**: slab heights and material (what a breach shows and an upper floor's fall drops);
-- **interior**: the dark tone, and whether it is an open shell (barn, hangar);
-- **rubble**: the pile's materials by volume share, in this building's colours;
-- **remnant**: the stub height walls keep, standing corners, chimneys.
+- **storeys**, bottom up: floor and ceiling heights, jetties (front, right, back, left), framed or not, the floor slab
+  at the storey line (joists or a slab, their pitch);
+- per storey, the **four face rects** (`DamageFace`: origin, u, out, width, height), each with its **wall bucket**,
+  its **material layers** outermost first (render over rubble, a frame over its infill, concrete over rebar), its
+  **openings** (kind, centre u, width, sill y, height, reveal, war wear), its **Fachwerk members** as segments
+  (`FrameMember`: post, rail, brace, sill, plate, stud, strut; endpoints, width, depth) and its **masonry layout**
+  (`MasonryLayout`: course boundaries, the block joints of each course, the tile UV of a face point — the facades
+  lane's `masonryLayout` behind it);
+- the **roof**: kind (gable, half-hip, hip, flat, shed; dome, spire, vault for landmarks), pitch, eave and ridge,
+  slab thickness, covering (tile, slate, thatch, earth, sheet) and structure (rafters and battens, or a slab), batten
+  and rafter pitch, its **slabs** as quads in their buckets;
+- **chimneys** and the **plinth**;
+- the **room** (its darkness, open shell or not), the **rubble** shares in the building's buckets and tints, the
+  **remnant** (stub height, corners, chimneys);
+- `kitPlan`: the kit's own plan (HouseSpec and HouseFrame) for its builders to read back, opaque to the core.
 
-The **default describe** reads the parts the kit built (`StructureDescribeInput.parts`, by props bucket):
+Sections: the anatomy numbers its own (one per storey and face, one for the roof) for the tags (§16.4). The core's
+sim sections (§3.4) are derived from the collision records alone, so a host without the rendered kit has them; the world
+maps an event onto the anatomy by geometry: a breach by its hole's point and normal (the face whose plane it lies on,
+the storey whose span holds it), a fallen section by its face and height span (`StructureBreachEvent.y0..y1`).
+
+**The default `describe`** (core) reads the parts by bucket when a kit gives no plan:
 
 | Bucket | Fracture material |
 |---|---|
-| `stone`, `regionalStone` | `brick` when the style's stone surface is `brick`, else `stone` |
-| `plaster`, `plaster2`, `plaster3`, `regionalPlaster` | `plaster` over a core: `concrete` (+ `rebar`) for a style that pours its plaster2 (`surfaces.concrete`), `adobe` for the earth kits (wadirum, ksar, navajo), else `brick` |
-| `wood` | `timber` + `infill` on a framed face (the Fachwerk kits: franconian, hessian, eifel), else `plank` |
+| `stone`, `regionalStone` | `brick` when the style's stone surface is brick; `rubble` for fieldstone and rubble; else `stone` |
+| `plaster`, `plaster2`, `plaster3`, `regionalPlaster*` | `plaster` over a core: `concrete` + rebar where the style pours its plaster2 (`surfaces.concrete`), `adobe` for the earth kits (wadirum, ksar, navajo), else `rubble` |
+| `wood`, `structureWood` | `timber` + `infill` on a framed storey (the Fachwerk kits: franconian, hessian, eifel), else `plank` |
 | `roof`, `regionalRoof` | by the style's roof surface: beavertail, pantile, canal → `tile`; slate → `slate`; sheet, asbestos → `metal`; shingle → `plank` |
 | `straw` | `thatch` |
 | `steel`, `structureMetal` | `metal` |
 | `glass` | `glass`; `curtain` → `canvas` |
 
-Colours come from the parts themselves (their vertex colours, else their bucket material's colour), so the pile is the
-building's own. Floors fall every `h / storeys` (3 m without a plan); the roof's form and ridge come from the roof
-bucket's extent. A kit that already holds a plan of the building (house.ts `HouseSpec`: walls, openings, roof) passes
-it back as `kitPlan` and describes from it exactly.
+Tints come from the parts (their vertex colours in the weathered buckets, else white over the bucket's texture), so
+the pile carries the building's weather. Storeys come from `h` and the shell bands (3 m a storey without a plan).
 
-### 16.3 Stages (stage time, instanced pieces)
+### 16.3 How each part fractures (the builders)
 
-Each generator writes **instances of the per-world fracture palette** into a caller-owned writer and returns its cuts
-(holes to discard from the intact geometry), its hides (part classes or sections to mask) and, for authored set pieces
-only, custom geometry:
+| Part | Fracture (default kit; a kit may override any) |
+|---|---|
+| Masonry | the break steps along the layout's courses and joints; broken blocks keep their tile UVs (`MasonryLayout.uv`); loose blocks as debris |
+| Fachwerk | members snap at a point along their segment with a splintered cap and hang from their joints; infill panels drop out whole, leaving wattle-and-daub and lath edges in the frame |
+| Plaster over rubble | a render lip round a core of rubble stones |
+| Concrete | plates with rebar stubs at the break edge |
+| Adobe | rounded, crumbled edges and clods |
+| Breach | the dark backing behind every opening becomes a room: the floor plane, the floor-slab edge at the storey line, joist ends at the break's top; the rim in the wall's own layers; debris thrown along the blow |
+| Damaged | spalled render patches, chipped arrises, cracked and missing glass (glass hidden, shards as debris), slipped tiles |
+| Roof (P2 `sectionDown`) | a stripped patch shows battens and rafters (`emitRoofPatch`); a fall adds missing slab sections, a broken ridge and hanging rafters; thatch chars and slumps; an earth roof slumps between its beams; sheet bends |
+| Collapse | remnants (wall stubs, corners, chimneys), a heap of chunk prisms in the building's own buckets with its weather tints plus timbers and roof tiles, seated on the sim's mound (`rubbleMoundHeightAt`), and the falling debris |
 
-| Generator | The default kit's layout | Writer capacity |
+**Writers.** A builder writes **triangles** into `DamageMeshWriter` runs (one bucket and role a run; vertex position,
+normal, UV, tint; indexed triangles) and **pooled debris** into `DamagePieceWriter` (bucket, shape — chunk, brick,
+block, stone, plate, splinter, beam, tile, slate, sheet, shard, clod, straw, rebar — variant, pose, scale, tint,
+initial velocity). Roles: `rim`, `room`, `remnant`, `rubble`, `debris`. A stage returns its **cuts** (cylinders the
+presentation discards from the intact wall) and its **hides** (a section, a part class, or both).
+
+**Caps per stage** (the writer refuses past them; the builder stops):
+
+| Stage | Mesh vertices | Debris pieces |
 |---|---|---|
-| `damaged` | spalled render patches and chipped arrises in the wall's own layer, cracked and missing glass (glass hidden, shards as debris), a few slipped roof tiles | 64 |
-| `breach(hole)` | the rim follows the layers: render spalled back further than the core; brick stepped along courses; stone broken on its joints; Fachwerk keeps its timbers and drops the infill panels the hole touches; concrete cracks to plates with rebar ends; adobe crumbles round. Behind it the floor slabs crossing the hole (their edges broken) and the dark interior; debris thrown along the blow | 96 |
-| `sectionDown` (P2) | a roof slides off its rafters and drops its covering (tiles shatter, slate sheets, thatch slumps, an earth roof falls as a mass); an upper floor pancakes; a wall panel topples outward | 160 |
-| `collapse` | remnants (wall stubs to `remnant.stubHeightM`, corners, chimneys), the pile seated on the sim's mound (`rubbleMoundHeightAt`) in the anatomy's rubble shares and colours, and falling debris for the animation | 600 (120 remnant, 360 rubble, 120 debris) |
+| `damaged` | 1,500 | 48 |
+| `breach` (each hole) | 3,000 | 96 |
+| `sectionDown` (P2) | 6,000 | 160 |
+| `collapse` (shed / house / large) | 6,000 / 16,000 / 32,000 | 120 / 240 / 360 |
 
-Pieces are unit-sized and scaled per instance; the palette holds at most four variants of each of the 16 materials, so
-one world's damage draws in at most 16 instanced meshes plus the pooled debris (at most 1,024 live, shared). `collapse`
-may be run when the structure is breached (its result kept) so the collapse frame only uploads.
+Damage batches are one dynamic mesh per bucket per world (its own material, its UVs and tints), so a battle's damage
+adds at most one draw per bucket in use; pooled debris holds at most 1,024 live pieces per world. `collapse` may run
+when the structure is breached and keep its result, so the collapse frame only uploads.
 
 ### 16.4 Tags in the intact geometry
 
 At build time (P1, core) every part of a structure carries `userData.structureIdx`, and the merge writes a per-vertex
 attribute `aDamage` = (structure index, section, part class: wall, roof, glass, trim, interior). The presentation's
-mask reads it: `damaged` hides glass; a fallen roof hides its roof; a collapse hides the structure; a hole discards the
-wall fragments inside its cut. Sections are assigned per part by the face it lies on (`describe`'s sections).
+mask reads it: `damaged` hides glass, a fallen roof hides its section, a collapse hides the structure, a hole discards
+the wall inside its cut. A part's section is the storey and face it lies on (its centroid against the anatomy's face
+rects); a roof part's is the roof's.
 
 ### 16.5 Props
 
 The destructible type table (`maps/inhabitKit.ts DESTRUCTIBLE_TYPES`) already pairs `build` with an authored `broken`
-builder per kind. The standard now: a broken state made of the prop's own materials (a fence splinters along its
-planks, a pole snaps or bends by its material, a cart smashes its boards and keeps its iron, a stone wall drops its own
-stones, a truck crumples its sheet). Each type gains `fracture` slots (defaulted from its `mat`: wood → `plank`, straw →
-`thatch`, stone → `stone`, plaster → `adobe` + `plaster`, baked and vehicle → `metal` + `glass`), and a prop kit may
-throw `debris` from them along the blow. Same determinism and budget rules as structures.
+builder. The standard now: a broken state made of the prop's own materials (a fence splinters along its planks, a
+pole snaps or bends by its material, a cart smashes its boards and keeps its iron, a stone wall drops its own stones, a
+truck crumples its sheet), and debris from the same materials thrown along the blow (`PropDamageKit.debris`). Each
+type gains `fracture` slots, defaulted from its `mat` (wood → `plank`, straw → `thatch`, stone → `stone`, plaster →
+`adobe` under `plaster`, baked and vehicle → `metal` and `glass`).
 
 ### 16.6 Rules
 
-1. Deterministic: generators read only their arguments and draw only from `damageRng(seed)`; seeds come from
-   `damageSeed` (a building: its map and placement centre in centimetres; a hole: the building's seed, its section and
-   its slot). Same seed, same breaks, on every peer.
-2. In budget: instances into typed arrays, no allocation per piece, custom geometry once per set piece.
-3. Precompute only what collapse needs: anatomy at build time (numbers), everything else when its stage first
-   happens.
-4. Resolution: `structureDamageKitChain(builder, style)` → the builder's own kit (a landmark), the map's regional kit,
-   then the default; each member is taken from the first kit that defines it, so a kit may override only its roof.
+1. Deterministic: builders read only their arguments and draw only from `damageRng(seed)`; `damageSeed` gives a
+   building its seed from its map and placement centre in centimetres (the same on every peer and tier), a hole
+   `damageSeed(seed, section, hole)`, a stage `damageSeed(seed, stage)`. Same seed, same breaks.
+2. In budget: writers, not new geometries; no allocation per vertex or piece; the caps above.
+3. Precompute only what collapse needs: the anatomy at build time, every stage when it first happens.
+4. Resolution: `structureDamageKitChain(builder, style)` — the builder's own kit (a landmark), the map's regional kit,
+   then the default; each member from the first kit that defines it.
 
 ### 16.7 Receipts
 
-`src/world/destructionKit.selftest.mjs` (P1): every registered kit's generators run twice on the same anatomies and
-seeds and write identical bytes; every writer stays within its capacity; rim pieces stay within 0.3 m of their hole's
-edge and inside the wall's thickness; rubble lies within the mound's footprint and on its surface (±5 cm); the default
-describe of a sample of every kit's buildings names every bucket's material.
+`src/world/destructionKit.selftest.mjs` (P1, extended by every kit lane for its kit): each registered kit's builders
+run twice on the same anatomies and seeds and write identical bytes; every writer stays within its cap; rim triangles
+stay within 0.3 m of their hole's edge and inside the wall's layers; rubble lies within the mound's footprint and on
+its surface (±5 cm); the default describe of a sample of every kit's buildings names a material for every bucket.
