@@ -141,6 +141,8 @@ function checkSourceContract(text) {
     'uRingCap',
     // map revival lane 2 (2026-10-05, Aegis Crossing): a map's paved town rect (SplatConfig townPaving; vec4, no sampler)
     'uTownPave',
+    // ground lane (2026-10-07): the stand floor under a closed canopy (the map's vegetation.standFloor 'canopy')
+    'uStandFloor',
     'uSlopeGrassHold', // round 45 (2026-09-23): tropical hills hold turf to steeper slopes (scalar, no sampler)
     'uRingRock', // round 49 (2026-09-23): per-map slope band over which a ring face past the square becomes landform rock (vec2, no sampler)
     'uBeddedR', // round 55 (2026-09-24): 1 on the maps whose R layer is the procedural bedded sandstone tile — their wall crag is analytic (scalar, no sampler)

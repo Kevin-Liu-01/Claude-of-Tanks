@@ -303,4 +303,17 @@ let bedLawNote = '';
   assert.ok(shader.includes('float bedH = bedY + (bedF / 1.06 - 1.0) * 7.6394 * sin((bedY + gCliffJ * 9.7) * 0.13090);'),
     'the strata read the banded bed height');
 }
+// 2026-10-07 the ground lane (the trees lane's round 8: a wood's mask is its drawn crowns where the map sets
+// vegetation.standFloor 'canopy'): the deeper stand floor is the map's flag (uStandFloor, from the world's build), its own
+// branch of the woods block; every map without the flag takes the copse floor it took
+{
+  const frag = shaderOf(terrain);
+  const woodsAt = frag.indexOf('if (woods > 0.02) {');
+  const standAt = frag.indexOf('} else if (uStandFloor > 0.5) {', woodsAt);
+  assert.ok(woodsAt > 0 && standAt > woodsAt && standAt - woodsAt < 1200, 'the stand floor is a branch of the woods block');
+  assert.ok(frag.includes('a.rgb = mix(a.rgb, floorCol, floorW * (uReduxD.y < 0.5 ? 0.85 : 0.5));'), 'the copse floor as it was');
+  assert.ok(terrain.includes("standFloorCanopy: (cfg.vegetation as { standFloor?: string } | undefined)?.standFloor === 'canopy'")
+    && terrain.includes('shader.uniforms.uStandFloor = { value: S.standFloorCanopy ? 1 : 0 };'), 'the flag is the map\'s vegetation.standFloor');
+}
+
 console.log(`terrainMaterialV2: coverage-gated layers (7 gates, 512 executed coverage cases), far band without detail normals, one-fetch far variant on measured means, explicit-LOD noise, exposure and non-periodic beds on ${MAP_IDS.length} maps, the ring as this material (bedforms on gentle sand, distance-faded slip-face sines, the atlas gradient's wall band), ${bedLawNote}, ${mutants.length + 4} mutation controls PASS; no GPU/art claim`);

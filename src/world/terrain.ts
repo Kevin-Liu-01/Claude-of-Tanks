@@ -314,6 +314,9 @@ interface TerrainSettings {
 }
 
 interface SplatConfig {
+  /** Ground lane (2026-10-07): set by the world's build from the map's vegetation.standFloor ('canopy', the trees lane's
+   * round 8): the woods mask's discs are the drawn crowns, and the material lays the deeper stand floor under them. */
+  standFloorCanopy?: boolean;
   sourcedPalette?: TerrainPaletteId;
   grassTone?: ToneFunction | null;
   dirtTone?: ToneFunction | null;
@@ -3771,6 +3774,7 @@ uniform float uPloughLift; // ground lane (wave 83): a turned field's tone over 
 uniform float uMarshGloss;
 uniform vec4 uFormation; // ground lane: (boundary y, its wander m, the lower formation's paling, the upper's reddening); x < -1e8 = one formation
 uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoulderDirt, uLaneK, uIceDrift, uMidRelief, uFieldPatch;
+uniform float uStandFloor; // ground lane (2026-10-07): 1 = the map's woods mask is its drawn crowns (vegetation standFloor 'canopy')
 uniform float uRoadPuddle; // ground lane: the map's share of the ruts' puddles and their mud (splat.roadPuddles, default 1)
 // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving (a cobble set: Cinder Junction, Steinburg,
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
@@ -5341,6 +5345,16 @@ void splatCompute() {
     vec3 soilF = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB).rgb;
     if (uReduxD.y > 1.5) {
       a.rgb = mix(a.rgb, soilF * vec3(0.80, 0.70, 0.62), floorW * smoothstep(0.55, 0.95, woods) * smoothstep(0.35, 0.75, gap) * 0.55);
+    } else if (uStandFloor > 0.5) {
+      // (2026-10-07, the trees lane's round 8: a wood's mask is its drawn crowns, the canopy closed over it) the stand
+      // floor under a closed canopy: deeper and damper than a copse's — dark soil under a mat of leaf litter, paler drifts
+      // of the year's leaves on it (a metre or two), moss in the wet hollows, and the sward only in the few light gaps
+      float leaves = smoothstep(0.42, 0.72, nz(uvW, 0.55, vec2(0.61, 0.17)).r) * tileVis(1.8);
+      vec3 damp = soilF * vec3(0.92, 0.74, 0.56) * (0.90 + 0.12 * n1h);
+      vec3 litter = mix(damp, soilF * vec3(1.22, 0.98, 0.70), leaves * 0.55);
+      litter = mix(litter, a.rgb * vec3(0.62, 0.78, 0.52), smoothstep(0.30, 0.65, smoothstep(0.06, 0.50, vFold)) * 0.30);
+      vec3 floorCol = mix(litter, a.rgb * vec3(0.78, 0.96, 0.66), smoothstep(0.70, 0.90, gap) * 0.5);
+      a.rgb = mix(a.rgb, floorCol, smoothstep(0.10, 0.55, woods) * (1.0 - 0.8 * fR) * (1.0 - roadCore) * (uReduxD.y < 0.5 ? 0.94 : 0.6));
     } else {
       vec3 litter = soilF * vec3(1.06, 0.86, 0.64) * (0.92 + 0.16 * n1h);
       vec3 floorCol = mix(litter, a.rgb * vec3(0.78, 0.96, 0.66), smoothstep(0.55, 0.80, gap) * 0.7);
@@ -6917,6 +6931,7 @@ function* createSplatMaterialSteps(
     // r2: agrarian field patchwork — only sensible on temperate farmland maps
     // ground lane (2026-10-03): a map with a land-use row (landUse.ts) draws its real fields instead
     shader.uniforms.uFieldPatch = { value: landUseProfile ? 0 : S.fieldPatch ?? 0 };
+    shader.uniforms.uStandFloor = { value: S.standFloorCanopy ? 1 : 0 }; // ground lane (2026-10-07): the deeper stand floor
     shader.uniforms.uLandA = { value: new THREE.Vector4(...landUse.landA) };
     shader.uniforms.uLandB = { value: new THREE.Vector4(...landUse.landB) };
     shader.uniforms.uLandC = { value: new THREE.Vector4(...landUse.landC) };
@@ -7379,7 +7394,8 @@ function* terrainBuildSteps(
   const materialSteps = createSplatMaterialSteps(
     engineCtx,
     heightField._layout,
-    cfg ? cfg.splat : null,
+    // (ground lane, 2026-10-07: the map's stand floor rides with its splat — the trees lane's vegetation.standFloor)
+    cfg ? { ...cfg.splat, standFloorCanopy: (cfg.vegetation as { standFloor?: string } | undefined)?.standFloor === 'canopy' } : null,
     (cfg && cfg.id) || 'verdant',
     heightField._mesaW || null,
     heightField._waterWetnessAt || null,
