@@ -156,6 +156,7 @@ export interface SoloBattleDeploymentRuntimeOptions {
   preparePlayerPanel(): Promise<void>;
   prepareAtmosphere?(): Promise<void>;
   prepareNightLighting?(): Promise<void>;
+  warmVisionSteps?(): Generator<void>;
   runSceneWatchdog(assertCurrent: () => void): Promise<SceneWatchdogResult | void>;
   getGeneration(): number;
   advanceGeneration(): number;
@@ -677,6 +678,13 @@ export function createSoloBattleDeploymentRuntime(
         };
         mark('forwardPrograms');
 
+        if (options.warmVisionSteps) {
+          for (const _ of options.warmVisionSteps()) {
+            await guardedCoveredYield(true);
+            requireCurrent(generation);
+          }
+        }
+        mark('visionPrograms');
         trace.deploymentPostWarm = await post.warmFirstFrame(() => guardedCoveredYield(true));
         requireCurrent(generation);
         mark('postPasses');

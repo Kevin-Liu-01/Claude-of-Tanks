@@ -1,3 +1,5 @@
+import {resizeAuthoredVehicle} from './vehicleSize.ts';
+import {upgradeOplotFieldEquipment} from './fieldProtectionPack.ts';
 import { buildT64Modern } from './t72ModernVariants.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 // Ukrainian tracked-vehicle family — §5.248 GROUND-UP REBUILDS (ukraine wave).
@@ -65,7 +67,7 @@ interface UkraineBuilderPort {
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
-  readonly mats: Record<string, THREE.Material> & {
+  readonly mats: {
     readonly hull: THREE.Material;
     readonly canvasCloth: THREE.MeshStandardMaterial;
     readonly dark: THREE.Material;
@@ -93,7 +95,7 @@ interface UkraineBuilderPort {
     ...orientation: number[]
   ): void;
   visualEraCluster(key: string, owner: VehicleAssemblyOwner, build: () => void): void;
-  offsetBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
+  offsetBuckets: TankBuilderPort['offsetBuckets'];
 }
 
 interface CassetteOptions {
@@ -1138,7 +1140,7 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
 // rear anti-thermal cover roll on the bustle; Varta dazzler pair flanking
 // the gun; 6x rubber-rim gear with the Ukrainian skirt line.
 // ---------------------------------------------------------------------------
-function buildUAOplotM(P: UkraineBuilderPort): void {
+function buildUAOplotM(P: TankBuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
   const slab = orientedSlab;
   const eraReceipt = {
@@ -1385,6 +1387,7 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   widthAnchor(P, 1.8875, 0.80, -2.60);
   };
   buildOplotHullSides();
+  resizeAuthoredVehicle(P,1.10);
 
   const buildOplotTurretShell = (): void => {
   // ---- KMDB WELDED TURRET — measured from the WARPED (published-scale)
@@ -1395,7 +1398,7 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   // published 2.285, PNK-6 tower at world -1.34 (the ref's own spike
   // column), and the real interior basket the print carries (its turret
   // mask bottoms at 0.61 inside the hull).
-  P.turretG.position.set(0, 1.42, -0.30);
+  P.turretG.position.set(0, 1.562, -0.33);
   // SHELL PRISM: the flat-roof welded body only (world -1.88..+0.25).
   // §5.272 fix (5): the roof plate drops to 0.795 local (world 2.215) so
   // the hatch rings / periscopes / stowed kit STAND PROUD and read — the
@@ -1789,6 +1792,7 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   addVehicleGhillieSuit(P);
   };
   buildOplotWeapon();
+  upgradeOplotFieldEquipment(P);
   P.topY = 1.42;
 }
 
@@ -2069,6 +2073,6 @@ export const UKRAINE_PROFILES = {
   ua_t64bv: { build: (P: TankBuilderPort) => buildT64Modern(P, true) },
   ua_t80bv: { build: (builder: ProfileBuilderPort) => buildUAT80BV(builder as UkraineBuilderPort) },
   ua_t80u_kursk: { build: (builder: ProfileBuilderPort) => buildUAT80UKursk(builder as UkraineBuilderPort) },
-  ua_t84_oplot_m: { build: (builder: ProfileBuilderPort) => buildUAOplotM(builder as UkraineBuilderPort) },
+  ua_t84_oplot_m: { build: (builder: ProfileBuilderPort) => buildUAOplotM(builder as TankBuilderPort) },
   ua_m1a1: { build: (builder: ProfileBuilderPort) => buildUAM1A1(builder as UkraineBuilderPort) },
 } satisfies VehicleProfileRecord;
