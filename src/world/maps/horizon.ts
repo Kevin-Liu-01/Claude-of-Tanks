@@ -3990,9 +3990,14 @@ export function* buildHorizonRingSteps(
   // hedged stretches of the field boundaries past the edge (hedgeLines, traced before the forest, which stands their
   // belts and the roads' avenues)
   if (hedgeLines.length) {
+    // (the borders lane, 2026-10-08: Tarkhan's lead broadleaf, the poplar, has no crown palette of its own, so its hedges
+    // took the default lime over a gold steppe beside its olive-gold oaks) the hedge takes the crowns of the first rim
+    // broadleaf, by share, that carries a palette
+    const hedgeCanopy = rimMix.filter(([species]) => !isConifer(species)).slice().sort((a, b) => b[1] - a[1])
+      .map(([species]) => vegetation?.palettes?.[species]?.canopy).find((canopy) => canopy);
     const hedges = buildBorderHedgerows({
       seed: ((seed ^ 0x4ED9) ^ idHash(mapId)) >>> 0, lines: hedgeLines, groundAt: ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs),
-      palette: horizonBroadleafPalette(rimBroadleaf ? vegetation?.palettes?.[rimBroadleaf]?.canopy : undefined),
+      palette: horizonBroadleafPalette(hedgeCanopy),
     });
     if (hedges) {
       const setup = (_engineCtx as { setupShadowMaterial?: (material: THREE.Material, extraHook?: null) => THREE.Material } | null)?.setupShadowMaterial;
