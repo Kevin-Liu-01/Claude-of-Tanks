@@ -48,11 +48,12 @@ export default {
     ] },
     // The outpost's square and a vehicle park in each flank lane, on the line of equal distance between the
     // deployments: level aprons the zone-control placement seats its 30 m discs on.
+    // (the Redrock lane, 2026-10-07: graded sand drifted back over in patches, not three ruled brown rectangles)
     hardstands: [
-      { x: 8, z: 0, width: 60, length: 60, yawDeg: 0, grade: 0 },
+      { x: 8, z: 0, width: 60, length: 60, yawDeg: 0, grade: 0, paint: { cover: 0.85, mottle: 0.65 } },
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): tilted 7 % down to the east with its ground
-      { x: -122, z: 21, width: 60, length: 60, yawDeg: -87, level: 6.2, grade: 0.07 },
-      { x: 138, z: -21, width: 60, length: 60, yawDeg: 0, grade: 0 },
+      { x: -122, z: 21, width: 60, length: 60, yawDeg: -87, level: 6.2, grade: 0.07, paint: { cover: 0.85, mottle: 0.65 } },
+      { x: 138, z: -21, width: 60, length: 60, yawDeg: 0, grade: 0, paint: { cover: 0.85, mottle: 0.65 } },
     ],
     village: { x0: -96, x1: 112, z0: -86, z1: 106, cx: 8, cz: 0, feather: 40, flatten: 0.76, relief: 0.16 },
     landforms: [
