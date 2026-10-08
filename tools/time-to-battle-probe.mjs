@@ -78,6 +78,11 @@ async function enterBattle({ specId, mapId, opponents }) {
   // program the renderer acquires or releases during the entry, by time, shader name and cache-key hash; the released
   // keys kept whole for the diff against a later program of the same name (which parameters changed)
   const churn = [], keys = new Map();
+  // the call paths of the releases (and of the acquisitions after the first release): who disposes or swaps materials
+  const stacks = new Map();
+  const stackOf = () => { const limit = Error.stackTraceLimit; Error.stackTraceLimit = 40; try { return String(new Error().stack || '').split('\n').slice(2, 40).join('\n'); } finally { Error.stackTraceLimit = limit; } };
+  const noteStack = (tag) => { if (stacks.size >= 12) return; const st = stackOf(); const k = st.slice(0, 600); const e = stacks.get(k); if (e) e.n++; else stacks.set(k, { tag, n: 1, at: +performance.now().toFixed(1), stack: st.slice(0, 4000) }); };
+  let releasedAny = false;
   const hash = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193); return (h >>> 0).toString(16); };
   try {
     const keyOf = (p) => { const k = String(p?.cacheKey ?? ''); const h = hash(k); if (!keys.has(h)) keys.set(h, k); return h; };
@@ -85,7 +90,7 @@ async function enterBattle({ specId, mapId, opponents }) {
       if (!p || p.__ttbWatched || typeof p.destroy !== 'function') return;
       p.__ttbWatched = true;
       const destroy = p.destroy;
-      p.destroy = function (...args) { try { churn.push([+performance.now().toFixed(1), '-', p.id, p.name, keyOf(p)]); } catch { /* diagnostics only */ } return destroy.apply(this, args); };
+      p.destroy = function (...args) { try { churn.push([+performance.now().toFixed(1), '-', p.id, p.name, keyOf(p)]); releasedAny = true; noteStack('release'); } catch { /* diagnostics only */ } return destroy.apply(this, args); };
     };
     const list = R.info.programs;
     if (Array.isArray(list) && !list.__ttbWatched) {
@@ -93,7 +98,7 @@ async function enterBattle({ specId, mapId, opponents }) {
       for (const p of list) { watch(p); churn.push([+performance.now().toFixed(1), '=', p?.id, p?.name, keyOf(p)]); }
       const push = list.push;
       list.push = function (...ps) {
-        try { for (const p of ps) { churn.push([+performance.now().toFixed(1), '+', p?.id, p?.name, keyOf(p)]); watch(p); } } catch { /* diagnostics only */ }
+        try { for (const p of ps) { churn.push([+performance.now().toFixed(1), '+', p?.id, p?.name, keyOf(p)]); watch(p); if (releasedAny) noteStack('acquire after release'); } } catch { /* diagnostics only */ }
         return push.apply(this, ps);
       };
     }
@@ -142,7 +147,8 @@ async function enterBattle({ specId, mapId, opponents }) {
       }
       late.push({ at: e[0], name: e[3], shader: A.slice(0, 2).join(','), nearestAt: best ? +best.at.toFixed(1) : null, nDiff: best?.n ?? null, fields });
     }
-    programChurn = { events: ev.slice(0, 600), released: released.length, acquired: acquired.length, diffs, openWindowMs: winMs, late };
+    programChurn = { events: ev.slice(0, 600), released: released.length, acquired: acquired.length, diffs, openWindowMs: winMs, late,
+      stacks: [...stacks.values()].map((e) => ({ ...e, at: +(e.at - t0).toFixed(1) })) };
   } catch (error) { programChurn = { error: String(error).slice(0, 200) }; }
   const gl1 = window.__TTB.snapshot();
   const diff = (a, b) => Object.fromEntries(Object.keys(b).map((k) => [k, { n: b[k].n - a[k].n, ms: +(b[k].ms - a[k].ms).toFixed(1) }]));
