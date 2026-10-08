@@ -1,7 +1,9 @@
 // src/dev/colliderOverlay.ts — the world's collider view (the hitbox lane, 2026-10-07): every collision record near a
 // point drawn as the prisms the simulation tests — the movement obstacles in orange, the shell and line-of-sight
 // colliders in cyan — each part from its own bottom to its own top. Lines in front of the scene draw solid; the stretch
-// a mesh hides draws faint, so a collider standing in empty air reads at once against the stone or wall it stands for.
+// a mesh hides draws faint and dashed, so a collider standing in empty air reads at once against the stone or wall it
+// stands for, and one behind a bank or a tree never reads as hanging on its face (the hitbox lane, 2026-10-08: a fit
+// wave read the faint prisms of three stones behind a terrain bank as colliders floating on the bank).
 // Debug-only: reached through window.__DEBUG.colliderOverlay (debugSurface.ts), never from a player's boot.
 import * as THREE from 'three';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
@@ -91,9 +93,12 @@ function linesOf(positions: number[], color: number, width: number, resolution: 
   const material = new LineMaterial({
     color, linewidth: hidden ? width * 0.6 : width, transparent: true, opacity: hidden ? 0.28 : 1,
     depthTest: !hidden, depthWrite: false,
+    // (dashes of 15 cm every 40 cm, in world metres: the hidden stretch)
+    dashed: hidden, dashSize: 0.15, gapSize: 0.25,
   });
   material.resolution.copy(resolution);
   const lines = new LineSegments2(geometry, material);
+  if (hidden) lines.computeLineDistances();
   lines.renderOrder = hidden ? 9998 : 9999;
   lines.frustumCulled = false;
   return lines;
