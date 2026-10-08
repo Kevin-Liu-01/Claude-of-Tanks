@@ -49,6 +49,8 @@ import {
 } from './structureDamageSeam.ts';
 import { createStructureDamage } from '../sim/structureDamage.ts';
 import { rubbleHeightFor, type TerrainDeformation } from '../sim/terrainDeformation.ts';
+import { installTerrainCraterMesh } from './terrainCraterMesh.ts';
+import { createGroundCoverCraters } from './groundCoverCraters.ts';
 
 type EngineContext = Parameters<typeof buildTerrainMeshes>[1] &
   Parameters<typeof createVegetation>[1] &
@@ -623,6 +625,10 @@ function assembleWorld(
 
   // destruction (§7): the battle's ground overlay, bound per battle (crater-render-spec §B)
   let boundGroundOverlay: TerrainDeformation | null = null;
+  // ground lane (crater-render-spec §B): the drawn terrain follows that overlay, polled from its own updateLOD pass
+  installTerrainCraterMesh(terrain);
+  // ground lane (crater-render-spec §C): the ground cover follows it too — one law, synced after the terrain each frame
+  const groundCoverCraters = createGroundCoverCraters();
   // destruction (§16): each structure's seam on first ask, its mound from the world's own structure table
   const structureSeams = new Map<number, StructureDamageSeam>();
   let structureTable: ReturnType<typeof createStructureDamage> | null = null;
@@ -775,6 +781,11 @@ function assembleWorld(
       focusPos: THREE.Vector3 | null = null,
     ) {
       terrain.userData.updateLOD(cameraPos);
+      // ground lane (crater-render-spec §C): the cover in a crater's reach, after the terrain took the same stamps
+      groundCoverCraters.sync(boundGroundOverlay);
+      vegetation.followCraters?.(groundCoverCraters);
+      tallGrass.followCraters?.(groundCoverCraters);
+      litter.followCraters?.(groundCoverCraters);
       // water pass 8: the reactive field's window follows the chase focus (the camera when there is none)
       const waterAnchor = focusPos ?? cameraPos;
       terrain.userData.updateWater?.(dt, waterAnchor.x, waterAnchor.z);
