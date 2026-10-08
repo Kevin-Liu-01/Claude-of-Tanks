@@ -1257,8 +1257,18 @@ function curtainSampler(columns: Array<{ a: number; pts: Point3[]; normals: Poin
   };
 }
 
-function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, uvk: number): ClothSurface {
+function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, uvk: number,
+  gunFloor: ((x: number, z: number) => number) | null = null): ClothSurface {
   const { side, z0, z1, topAt, bottomAt, outAt, shoulder } = panel;
+  // 2026-10-08 (the lane lead, the owner's field standard "weapons clear of cages and nets"): a roof gun standing at the
+  // flank's edge (the PT-91 Twardy's NSVT on its cupola ring) keeps the drape's roll under it. Over the drape's run in
+  // from the edge, a column's cells reaching within 2 cm of the standing gun's floor are left out, so the net's top stops
+  // under the gun instead of rolling over the roof through it.
+  const runFloor = gunFloor ? (z: number): number => {
+    let low = Infinity;
+    for (let o = outAt(z, 1) + 0.05; o > outAt(z, 1) - 0.6; o -= 0.04) low = Math.min(low, gunFloor(side * o, z));
+    return low;
+  } : null;
   const ties = hemTies(panel, cfg.seed);
   const s = panelSeed(panel, cfg.seed) ^ (side > 0 ? 0x2b : 0x71);
   const maxOut = (cfg.maxHalfWidth ?? Infinity) - 0.002;
@@ -1304,6 +1314,7 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
       return [Math.min(outAt(z, t), maxOut), THREE.MathUtils.lerp(bottom, top, t)];
     },
     place: (z, out, up) => [side * out, up, z],
+    ...(runFloor ? { keep: (z: number, up: number): boolean => up < runFloor(z) - 0.02 } : {}),
   };
   const { geometry, columns } = buildCurtain(spec, uvk, panelUvOffset(panel, cfg.seed), side < 0);
   const underTurret = support.hull && !support.turretless, topRow = curtainTopAt(columns);
@@ -2305,10 +2316,15 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         })),
       ],
       // over the basket rails and the flank cage's top rail, 30-40 cm down its outside; the right flank stops short of
-      // the drone dock
-      side: [-1, 1].map((side) => ({ side, z0: -3.30, z1: side < 0 ? 0.20 : 1.05,
+      // the drone dock. 2026-10-08 (the lane lead, merging main's 6763d7cc0): the owner's modern field cage stands its
+      // three side panels 0.19 m off each flank (turret-local z -2.77 to 0.09, top rail 0.82 m), and a drape hung down
+      // them rests on their bars and sags through between them (83 crossings). The owner's rule for cages ("the cage bars
+      // stay visible", 2026-09-15): the flank drapes keep to the bustle corner and the right front, and over the panels'
+      // run the roof net ends at the basket rails.
+      side: [-1, 1].flatMap((side) => ([[-3.30, -2.85], ...(side > 0 ? [[0.17, 1.05]] : [])] as [number, number][]).map(([z0, z1]) => ({
+        side, z0, z1,
         topAt: () => 0.93, bottomAt: (z: number) => 0.50 + Math.sin(z * 3.4) * 0.035,
-        outAt: (_z: number, t: number) => 1.87 + (1 - t) * 0.03, seed: 307 + side })),
+        outAt: (_z: number, t: number) => 1.87 + (1 - t) * 0.03, seed: 307 + side + (z0 > 0 ? 4 : 0) }))),
       // over the bustle's rear cage
       face: [{ z: -3.62, x0: -1.50, x1: 1.50, y0: 0.52, y1: 0.95, nx: 20, ny: 5, seed: 317,
         outline: [[-1.50, 0.52], [1.50, 0.52], [1.50, 0.95], [-1.50, 0.95]] }],
@@ -2502,7 +2518,7 @@ function cageWingsOf(turret: THREE.Object3D): CageWing[] {
  * national roof guns depress to just over the cage's inner tubes, so whatever a wing's net carries under that sweep
  * stays under this floor.
  */
-function roofWeaponFloor(turret: THREE.Object3D, vehicleId: string): (x: number, z: number) => number {
+function roofWeaponFloor(turret: THREE.Object3D, vehicleId: string): RoofWeaponFloor {
   const BIN = 0.02;
   turret.updateWorldMatrix(true, true);
   const toTurret = new THREE.Matrix4().copy(turret.matrixWorld).invert();
@@ -2536,15 +2552,58 @@ function roofWeaponFloor(turret: THREE.Object3D, vehicleId: string): (x: number,
     pitch.updateWorldMatrix(false, true);
     sweeps.push({ x: axis.x, z: axis.z, floor: Float64Array.from({ length: floor.length }, (_, i) => floor[i] ?? Infinity) });
   }
-  return (x, z) => {
+  // 2026-10-08 (the lane lead, the owner's field standard "weapons clear of cages and nets"): what a roof gun holds still
+  // stands in the net's way as it is. A crew gun (a pintle fitting with no elevating station: the PT-91 Twardy's NSVT
+  // ran through its roof net) and a station's own base and yaw housing (the SEPv3 CROWS-LP's) each give their lowest
+  // point over every raster cell; the swept elevating mass above keeps its sweep.
+  const fixed = new Map<string, number>();
+  turret.traverse((root) => {
+    const gun = root.userData?.fittingRoot && ROOF_GUN_FITTINGS.test(String(root.userData.fitting || ''));
+    if (!gun && !(root.userData?.remoteControlled && root.userData.firingAxis === '+Z')) return;
+    // a census marker drawn inside authored stock (machineGunGeometry.ts MG_MARKER_SCALE) stands in nothing's way
+    if (Number(root.userData.weaponScale) < 0.25 || !root.visible) return;
+    const swept = root.getObjectByName('auxiliaryWeaponPitch');
+    root.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      const pos = mesh.isMesh ? mesh.geometry?.attributes?.position as THREE.BufferAttribute | undefined : undefined;
+      if (!pos) return;
+      for (let p: THREE.Object3D | null = o; p && p !== root; p = p.parent) if (p === swept || !p.visible) return;
+      toLocal.multiplyMatrices(toTurret, mesh.matrixWorld);
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(toLocal);
+        const key = `${Math.floor(v.x / FIXED_BIN)},${Math.floor(v.z / FIXED_BIN)}`;
+        fixed.set(key, Math.min(fixed.get(key) ?? Infinity, v.y));
+      }
+    });
+  });
+  const standing = (x: number, z: number): number => {
     let low = Infinity;
+    if (fixed.size) {
+      const i = Math.floor(x / FIXED_BIN), k = Math.floor(z / FIXED_BIN);
+      for (let a = i - 1; a <= i + 1; a++) for (let b = k - 1; b <= k + 1; b++) low = Math.min(low, fixed.get(`${a},${b}`) ?? Infinity);
+    }
+    return low;
+  };
+  return Object.assign((x: number, z: number): number => {
+    let low = standing(x, z);
     for (const sweep of sweeps) {
       const bin = Math.floor(Math.hypot(x - sweep.x, z - sweep.z) / BIN);
       for (let k = Math.max(0, bin - 1); k <= Math.min(sweep.floor.length - 1, bin + 1); k++) low = Math.min(low, sweep.floor[k]);
     }
     return low;
-  };
+  }, { standing });
 }
+
+/**
+ * The lowest any roof weapon passes over (x, z): swept stations and standing guns (see roofWeaponFloor). `standing` is
+ * the floor of what stands still alone: the crew guns and the stations' bases, as they are built.
+ */
+type RoofWeaponFloor = ((x: number, z: number) => number) & { readonly standing: (x: number, z: number) => number };
+
+/** The roof guns' fittings (crew pintles and stations) whose standing parts the turret's nets are cut round. */
+const ROOF_GUN_FITTINGS = /^(pintleMG|americanM2|americanRws|openYokeRws|weaponStationMount|auxiliaryWeapon)$/;
+/** The raster (m) a roof gun's standing parts are binned on. */
+const FIXED_BIN = 0.04;
 
 /**
  * Openings a wing's net is cut round: anything of the turret standing up through its lattice (a sight's head), and the
@@ -2741,7 +2800,7 @@ function addGhillieOwner(
     tops.push(topCloth(opened.length ? { ...panel, holes: [...(panel.holes ?? []), ...opened] } : panel, cfg, support, uvk));
   }
   const surfaces: ClothSurface[] = [...tops];
-  for (const panel of panels.side ?? []) surfaces.push(sideCloth(panel, cfg, support, uvk));
+  for (const panel of panels.side ?? []) surfaces.push(sideCloth(panel, cfg, support, uvk, gunFloor?.standing ?? null));
   for (const panel of panels.face ?? []) surfaces.push(faceCloth(panel, cfg, support, uvk));
   if (leafy && cage.length && gunFloor) cage.forEach((wing, i) => surfaces.push(...cageWingCloths(wing, i, cfg, probe, uvk, gunFloor)));
   if (gunFloor || dock) {

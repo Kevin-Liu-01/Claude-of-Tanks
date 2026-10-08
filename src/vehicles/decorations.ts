@@ -3752,24 +3752,14 @@ const KEEP_OUT_FITTINGS: Readonly<Record<string, { foot: number; clear: number; 
   openYokeRws: { foot: 0.22, clear: 0.05, maxR: 0.3 },
 };
 /**
- * Whether the vehicle already carries a crew or remote roof gun of its own (2026-10-08, the machine-gun helper's sweep:
- * "bmp3_rok: the decor aamg stands right over the authored MAG, two guns stacked"; the coordinator's rule after main's
- * field upgrades: one owner per mount point). The decor kit's generic roof AA gun ('aamg') is for vehicles that have
- * none; an authored pintle gun, roof RWS or remote station owns the roof gun.
+ * The decor seats no weapon. Round 5 first dropped the kit's generic roof AA gun ('aamg') under any roof gun the vehicle
+ * carries (the machine-gun helper's sweep: "bmp3_rok: the decor aamg stands right over the authored MAG, two guns
+ * stacked"; the coordinator: one owner per mount point). Then the owner's field standard (main 6763d7cc0, 2026-10-08:
+ * every roof weapon true to its calibre, none duplicate or nonfunctional) retired it: the one vehicle it still reached,
+ * the Dardo, carries no roof gun on its real turret, and a decor gun never fires. Its manifest rows keep their draws, so
+ * every other decor piece seats as before.
  */
-const ROOF_GUN_FITTINGS: ReadonlySet<string> = new Set(['pintleMG', 'americanM2', 'americanRws', 'openYokeRws', 'weaponStationMount']);
-function carriesRoofGun(...groups: THREE.Object3D[]): boolean {
-  let found = false;
-  for (const group of groups) {
-    group.traverse((o) => {
-      if (found || (o.name || '').startsWith('rig_decor')) return;
-      const fitting = o.userData?.fitting;
-      if ((o.userData?.fittingRoot && typeof fitting === 'string' && ROOF_GUN_FITTINGS.has(fitting))
-        || (o.userData?.remoteControlled && o.userData?.auxiliaryPivot)) found = true;
-    });
-  }
-  return found;
-}
+const DECOR_RETIRED_KITS: ReadonlySet<string> = new Set(['aamg']);
 /** Structural hatches and cupolas (P.addHatch / P.addCupola buckets) and their disc's share of the patch's half-diagonal. */
 const KEEP_OUT_STRUCTURE_RE = /(?:Hatch|Cupola)$/;
 const KEEP_OUT_STRUCTURE_SHARE = 0.8;
@@ -3880,7 +3870,8 @@ function connectedPieceBoxes(mesh: THREE.Mesh, toFrame: THREE.Matrix4): THREE.Bo
  * and a decor piece whose placed box enters one takes its next route: the stern rack (rearFieldStowage: the shelf,
  * cans, log, bags and the rods back to the stern plate), the roof cage wings (fieldRoofCage), the side screens (on a
  * tank carrying oplotFieldUpgrade or leclercFieldProtection: per side, the band from the wall to the screen face that
- * the outermost lattice bars and their standoffs span) and each piece of a remote roof station seated on a yaw support
+ * the outermost lattice bars and their standoffs span; on a tank carrying modernFieldCage, the band its panels span,
+ * wall to packs) and each piece of a remote roof station seated on a yaw support
  * (sourceMachineGun with a datum: its base, cradle, gun, sight and ammunition box, each its own box, since one box round
  * an L-shaped station would also take the turret cheek under its ammunition box). Read off the built tank's own records
  * and geometry; running gear and decor never.
@@ -3926,6 +3917,26 @@ function collectFieldEquipment(group: THREE.Group, frame: DecorFrame, screens: b
     const band = new THREE.Box3();
     for (const b of own) if (outer(b) >= face - FIELD_SCREEN_FACE_BAND) band.union(b);
     out.push(band.expandByScalar(FIELD_EQUIPMENT_CLEAR));
+  }
+  // the owner's modern field cage (modernFieldCage.ts, main 6763d7cc0 "fit cages"): three panels a side stood 0.19 m off
+  // the turret's outer course on wall feet, its bars the frame's whole open lattice on every tank that carries it. Per
+  // side, the band those bars span (each standoff starts inside its wall foot, so the band runs from the wall out to the
+  // screen face over the panels' run and height), and past the face the rear panels' strapped packs (0.12 m). Read off
+  // the built bars, not the record's anchors: a profile's post-build scale (the Challenger 1 X's turret, 1.1) moves the
+  // geometry and leaves the record where the builder stood. Decor that hung on the bare wall (the Challengers' cans,
+  // canvas and kit) takes its next route.
+  if (frame === 'turret' && group.userData.modernFieldCage) {
+    const bars: THREE.Box3[] = [];
+    group.traverse((o) => {
+      if (o instanceof THREE.Mesh && o.name === 'turretOpenLattice') bars.push(...connectedPieceBoxes(o, toFrame(o)));
+    });
+    for (const side of [-1, 1]) {
+      const band = new THREE.Box3();
+      for (const b of bars) if (Math.sign(b.min.x + b.max.x) === side) band.union(b);
+      if (band.isEmpty()) continue;
+      if (side > 0) band.max.x += 0.13; else band.min.x -= 0.13;
+      out.push(band.expandByScalar(FIELD_EQUIPMENT_CLEAR));
+    }
   }
   return out;
 }
@@ -6231,7 +6242,7 @@ export function* attachTankDecorationsSteps(
       // Every row's roll and seed off the main stream, drawn in manifest order exactly as before (two draws a row), so
       // an early row (DecorManifestRow.early) seats first with the very draws it would have had in its turn.
       const draws = manifest.map(() => { const roll = rng(); return { roll, jitterSeed: (rng() * 0x7fffffff) | 0 }; });
-      const roofGunCarried = manifest.some((row) => row.kit === 'aamg') && carriesRoofGun(turretG, hullG);
+      const skipRow = (row: DecorManifestRow): boolean => DECOR_RETIRED_KITS.has(row.kit);
       const seatRow = (row: DecorManifestRow, jitterSeed: number): void => {
         const kitFn = DECOR_KITS[row.kit];
         const slotFn = SLOTS[row.slot[0]];
@@ -6240,15 +6251,15 @@ export function* attachTankDecorationsSteps(
         if (parts) placeManifestParts(row, slotFn, parts, jitterSeed);
       };
       manifest.forEach((row, index) => {
-        if (row.early && row.kit !== 'smoke' && row.kit !== 'antenna' && !(row.kit === 'aamg' && roofGunCarried)
+        if (row.early && row.kit !== 'smoke' && row.kit !== 'antenna' && !skipRow(row)
           && !(draws[index].roll > (row.p ?? 1))) seatRow(row, draws[index].jitterSeed);
       });
       for (let index = 0; index < manifest.length; index++) {
         const row = manifest[index];
         const { roll, jitterSeed } = draws[index];
         if (row.early) { yield { stage: 'manifest-row', completed: index + 1, total: manifest.length }; continue; }
-        // the decor roof gun yields to a roof gun the vehicle carries (carriesRoofGun); its draws stay consumed above
-        if (row.kit === 'aamg' && roofGunCarried) { yield { stage: 'manifest-row', completed: index + 1, total: manifest.length }; continue; }
+        // the decor seats no weapon (DECOR_RETIRED_KITS); the roof gun row's draws stay consumed above
+        if (skipRow(row)) { yield { stage: 'manifest-row', completed: index + 1, total: manifest.length }; continue; }
         if (row.kit !== 'smoke' && row.kit !== 'antenna' && !(roll > (row.p ?? 1))) {
           const kitFn = DECOR_KITS[row.kit];
           const slotFn = SLOTS[row.slot[0]];
