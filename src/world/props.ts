@@ -37,7 +37,7 @@ export function environmentRichness(): number { return getDeviceTier() === 'mobi
 // A function declaration: roadStations.selftest.mjs extracts and executes the production placement
 // functions from this source, and they read their counts through this helper.
 function richCount(n: number | undefined, fallback = 0): number { return Math.round((n ?? fallback) * environmentRichness()); }
-import { markShadowOnly, setShadowCasterCascades, setShadowCasterProfile, shadowCasterProfileOf, type ShadowCasterProfile } from '../engine/renderLayers.ts';
+import { markShadowOnly, setShadowCasterCascades, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { destructibleCastsShadow, destructibleShadowCascades, shadowCascadesForHeight } from './destructibleRenderPolicy.ts';
 import {
@@ -7896,8 +7896,9 @@ ${snowCap ? `
           });
           const sm = new THREE.Mesh(mergeGeometries(wreckShadowGeos, false), shadowMat);
           sm.name = 'tank-wrecks-shadow';
-          setShadowCasterProfile(sm, partsShadowProfile(wreckShadowGeos)); // round 79: one sphere per wreck
-          routeCasterCascades(sm, shadowCasterProfileOf(sm)!); // (b37: by its tallest wreck)
+          const wreckShadowProfile = partsShadowProfile(wreckShadowGeos);
+          setShadowCasterProfile(sm, wreckShadowProfile); // round 79: one sphere per wreck
+          routeCasterCascades(sm, wreckShadowProfile); // (b37: by its tallest wreck)
           sm.castShadow = true;
           sm.receiveShadow = false;
           sm.matrixAutoUpdate = false;
@@ -8890,8 +8891,9 @@ ${snowCap ? `
     im.matrixAutoUpdate = false;
     im.computeBoundingSphere();
     im.name = `baked-${name}`;
-    setShadowCasterProfile(im, { heightM: casterHeightM(e.geo, e.list), instanced: true }); // round 79
-    routeCasterCascades(im, shadowCasterProfileOf(im)!); // (b37: by its tallest instance)
+    const bakedProfile: ShadowCasterProfile = { heightM: casterHeightM(e.geo, e.list), instanced: true };
+    setShadowCasterProfile(im, bakedProfile); // round 79
+    routeCasterCascades(im, bakedProfile); // (b37: by its tallest instance)
     group.add(im);
   }
   }
