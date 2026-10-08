@@ -61,6 +61,8 @@ export interface YardPlanOptions {
   roadClearance?: number;
   /** Polar and martian sets thin the mix (no wooden pallets on Mars). */
   palette?: 'brownfield' | 'polar' | 'martian';
+  /** Families a map leaves out of every profile (props.yardOmit: Tarkhan Steppe's 1950s station keeps no skips). */
+  omit?: readonly YardFamily[];
 }
 
 /** Footprint radius per family (metres): clearance against solids, other pieces and the structure envelope. */
@@ -102,8 +104,10 @@ export function yardStructureKinds(): readonly string[] {
   return Object.keys(YARD_PROFILES);
 }
 
-function pickFamily(rng: () => number, profile: ReadonlyArray<readonly [YardFamily, number]>, palette: string): YardFamily {
-  const rows = palette === 'martian' ? profile.filter(([family]) => MARTIAN_FAMILIES.has(family)) : profile;
+function pickFamily(rng: () => number, profile: ReadonlyArray<readonly [YardFamily, number]>, palette: string,
+  omit: readonly YardFamily[] = []): YardFamily {
+  const kept = omit.length ? profile.filter(([family]) => !omit.includes(family)) : profile;
+  const rows = palette === 'martian' ? kept.filter(([family]) => MARTIAN_FAMILIES.has(family)) : kept;
   const total = rows.reduce((sum, [, weight]) => sum + weight, 0);
   let roll = rng() * total;
   for (const [family, weight] of rows) { roll -= weight; if (roll <= 0) return family; }
@@ -142,7 +146,7 @@ export function planYardDressing(
   field: YardField,
   solids: readonly YardSolid[],
   seed: number,
-  { budget, half = 478, roadClearance = 4.5, palette = 'brownfield' }: YardPlanOptions,
+  { budget, half = 478, roadClearance = 4.5, palette = 'brownfield', omit = [] }: YardPlanOptions,
 ): YardPlan {
   const rng = mulberry32(seed + 7501);
   const placements: YardPlacement[] = [];
@@ -158,7 +162,7 @@ export function planYardDressing(
     const want = Math.max(1, Math.round(YARD_PIECES_PER_KIND[s.kind] * density * (palette === 'polar' ? 0.7 : 1)));
     for (let k = 0, tries = 0; k < want && tries < want * 6 && placements.length < budget; tries++) {
       attempts++;
-      const family = pickFamily(rng, profile, palette);
+      const family = pickFamily(rng, profile, palette, omit);
       const r = YARD_FAMILY_RADIUS[family];
       const side = (rng() * 4) | 0;
       const along = (rng() - 0.5) * 0.86;

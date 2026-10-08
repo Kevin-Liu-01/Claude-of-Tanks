@@ -299,6 +299,12 @@ export default {
     // 6 m off each pillar.
     // Round 3 (2026-10-07; gauntlet wave 204: the banner should name a sovkhoz, the Virgin Lands' state farms): СОВХОЗ
     // «ЦЕЛИННЫЙ»; no grass up through the elevator's yard.
+    // Round 4 (2026-10-07; gauntlet wave 244: the elevator "a speckled granite skin with no slip-form bands, joints or
+    // rust", the arch "a thin flat signboard", "shipping containers, a skip and round bales are anachronistic in the
+    // 1950s"): the battery cast in level lifts with its construction joints, rain and rust runs and a cage ladder (the
+    // set pieces' weathering now reaches a map without a kit: landmarks/compose.ts); the banner a boarded box with its
+    // battens and drip cap; the station's ranks hold sawn timber, its yards keep no skips and its hay stands in kopny
+    // (containerRowGoods, yardOmit, structureVariants below).
     landmarks: [
       { kind: 'path', x: 186, z: -153.7, yawDeg: 0, name: "the elevator's yard", params: { length: 8, width: 34, surface: 'gravel' } },
       { kind: 'grainElevator', x: 186, z: -166, yawDeg: 0, name: 'the grain elevator on the siding', params: { trucks: 2 } },
@@ -313,6 +319,10 @@ export default {
       'shed', 'containerRow', 'farmhouse', 'stack', 'granary', 'cottage', 'warehouse', 'shed',
       'cottage', 'ruin', 'barn', 'containerRow', 'cottage'],
     destructibleBuildings: ['longhouse', 'deserttent', 'motorpool', 'quonsethut'],
+    // (round 4: a 1950s grain station — the ranks by the gantry hold sawn timber, the yards no skips, the hay in kopny)
+    containerRowGoods: 'timber',
+    yardOmit: ['skip'],
+    structureVariants: { bale: 'kopna' },
     // rail-kit stores are wide: the same lateral step and ground-fit tolerance
     // as Cinder Junction
     sideSkip: 0.15, spacingPad: 7, buildingLat: [12, 5], maxSpread: 2.4,

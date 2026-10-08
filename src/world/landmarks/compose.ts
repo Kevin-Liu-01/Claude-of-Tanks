@@ -304,8 +304,16 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
       const tints = { ...pickWeatherTints(palette, streamFrom(hashSeed(`landmark:weather:${ctx.mapId}:${placement.kind}`, ...identity))), ...built.tints };
       parts = weatherRegionalParts(parts, tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
     } else {
-      // a map without a kit draws the plain buckets (no vertex colour there): the occlusion record never reaches the merge
-      for (const geometry of partList(parts)) if (geometry.getAttribute('shade')) geometry.deleteAttribute('shade');
+      // a map without a kit (Tarkhan Steppe's grain station; the landmarks lane, 2026-10-07, round 4: the elevator's
+      // slip-form lifts, its rain and its rust rode the occlusion and paint records this branch dropped, so gauntlet wave
+      // 244 saw a pristine pebble-dash): its walls take the default palette's weathering and the builder's tints, as on a
+      // kit's map; its roofs stay in the map's plain roof, which has no vertex colour (their records never reach the merge)
+      const roofs = parts.roof;
+      parts.roof = [];
+      const tints = { ...pickWeatherTints(DEFAULT_WEATHER, streamFrom(hashSeed(`landmark:weather:${ctx.mapId}:${placement.kind}`, ...identity))), ...built.tints };
+      parts = weatherRegionalParts(parts, tints, { damp: DEFAULT_WEATHER.damp, moss: DEFAULT_WEATHER.moss, mossTint: DEFAULT_WEATHER.mossTint });
+      parts.roof = roofs;
+      for (const geometry of roofs) for (const name of ['shade', 'tint']) if (geometry.getAttribute(name)) geometry.deleteAttribute(name);
     }
     // the collision, derived from the solids at the piece's pose (a bridge's deck is its own movement record); a piece
     // that is all dressing (a square's paths and fence) publishes none

@@ -68,6 +68,10 @@ export interface StructureBuildContext {
   /** Maps lane B (2026-10-03): an authored plot (props.plannedSites[].plot), metres across (x) and deep (z); a builder
    * that honours it (the warehouse) builds to that footprint instead of its own drawn size, the draws kept. */
   plot?: { w: number; d: number };
+  /** The landmarks lane (2026-10-07, Tarkhan Steppe round 4): what a container row's ranks hold (props.containerRowGoods)
+   * — absent, the shipping boxes; 'timber', sawn timber in packages on their bearers (a 1950s station's yard), the
+   * ranks, draws and footprint as the boxes'. */
+  containerGoods?: 'timber';
 }
 
 /**

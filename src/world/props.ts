@@ -476,6 +476,12 @@ interface PropsSettings {
   industrialCladding?: 'brick' | 'steel';
   /** Round 75: the yard dressing budget (pieces) around the industrial structures; default 4.5 a structure, at most 140. */
   yardDressing?: number;
+  /** The landmarks lane (2026-10-07, Tarkhan Steppe round 4): yard families a map leaves out (its 1950s station, the
+   * skips) — yardDressing.ts YardPlanOptions.omit. */
+  yardOmit?: readonly YardFamily[];
+  /** The landmarks lane (2026-10-07, Tarkhan Steppe round 4): what the container rows hold — the shipping boxes, or
+   * 'timber' (sawn timber in packages, a 1950s station's ranks; exteriorDetailKit.ts StructureBuildContext.containerGoods). */
+  containerRowGoods?: 'timber';
   /** Round 75 item 6: derived at build from the map's splat dirt tone — the boulders' soil skirt (never authored). */
   rockSoilTone?: ToneFunction | null;
   inhabit?: InhabitSettings;
@@ -3382,8 +3388,10 @@ function* propsBuildSteps(
     }),
     // regional kits (maps/regional/weather.ts), on a map that adopted one: the same plaster, stone and roof textures
     // (a sourced swap replaces the shared Texture's source in place, so these follow it) under each building's
-    // per-vertex tint and weathering. A map without a kit owns none of them.
-    ...(regionalArchitecture ? {
+    // per-vertex tint and weathering. A map without a kit owns none of them, but for its set pieces' walls (the landmarks
+    // lane, 2026-10-07, Tarkhan Steppe round 4: landmarks/compose.ts weathers them as on a kit's map; their roofs stay in
+    // the plain roof).
+    ...(regionalArchitecture || P.landmarks?.length ? {
       regionalPlaster: new THREE.MeshStandardMaterial({ map: plaster.albedo, normalMap: plaster.normal,
         roughnessMap: plaster.surface, aoMap: plaster.surface, vertexColors: true, roughness: 1, metalness: 0 }),
       regionalPlaster2: new THREE.MeshStandardMaterial({ map: plaster2.albedo, normalMap: plaster2.normal,
@@ -3392,7 +3400,7 @@ function* propsBuildSteps(
         roughnessMap: plaster3.surface, aoMap: plaster3.surface, vertexColors: true, roughness: 1, metalness: 0 }),
       regionalStone: new THREE.MeshStandardMaterial({ map: stone.albedo, normalMap: stone.normal,
         roughnessMap: stone.surface, aoMap: stone.surface, vertexColors: true, roughness: 1, metalness: 0 }),
-      regionalRoof: Object.assign(makeRoofMaterial(roofT, mapId), { vertexColors: true }),
+      ...(regionalArchitecture ? { regionalRoof: Object.assign(makeRoofMaterial(roofT, mapId), { vertexColors: true }) } : {}),
     } : {}),
   };
   function configureSurfaceMaterials(): void {
@@ -3559,7 +3567,10 @@ ${snowCap ? `
       // (the hessian is the canvas's shader with another map, and the hay the straw's: they share their programs; the
       // field print has its own, for the modules' shifted windows, and the mud print its own, for its world-space
       // weathering)
-      const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind === 'hay' ? 'straw' : materialKind;
+      // (and on a map without a kit, its set pieces' weathered walls are the coloured metal's shader with the render's and
+      // the stone's maps: they share its program, so a kit-less map's set pieces compile none of their own)
+      const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind === 'hay' ? 'straw'
+        : !regionalArchitecture && materialKind.startsWith('regional') ? 'structureMetal' : materialKind;
       material.customProgramCacheKey = () =>
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
@@ -4052,6 +4063,7 @@ ${snowCap ? `
   // Round 75: what a plan builder may read about this battlefield (maps/exteriorDetailKit.ts StructureBuildContext).
   const structureContext: StructureBuildContext = {
     mapId, snowCap: mapId === 'winter' || !!P.snowCap, seed, cladding: P.industrialCladding ?? 'brick',
+    ...(P.containerRowGoods ? { containerGoods: P.containerRowGoods } : {}),
   };
   /** A building stands in a carriageway when its footprint comes within the road core (the layout brief's 3.5 m,
    * tools/map-layout-metrics.mjs ROAD_CORE_M) of a road's line; a move clears it by a further 0.75 m. */
@@ -8794,7 +8806,7 @@ ${snowCap ? `
     const budget = P.yardDressing ?? Math.min(140, Math.round(structures.length * 4.5));
     if (!structures.length || !(budget > 0)) return;
     const palette = mapId === 'mars' ? 'martian' : snowCap || mapId === 'whiteout' ? 'polar' : 'brownfield';
-    const plan = planYardDressing(structures, heightField, obstacles, seed, { budget, palette });
+    const plan = planYardDressing(structures, heightField, obstacles, seed, { budget, palette, ...(P.yardOmit ? { omit: P.yardOmit } : {}) });
     const families = new Map<YardFamily, ReturnType<typeof buildYardFamily>>();
     const perMaterial: Record<string, { bucket: string; pieces: number; families: string[]; vertices: number }> = {};
     const pos = new THREE.Vector3(), scl = new THREE.Vector3(), q = new THREE.Quaternion(), m = new THREE.Matrix4();
@@ -9058,6 +9070,8 @@ ${snowCap ? `
   ): GroundCoverSolidProfile | null {
     const positions = geometry.getAttribute('position');
     if (!positions || !pool.records.length) return null;
+    // (a kind that keeps its metadata footprint — the kopna's circle — is not refitted: DestructiblePropType.metaFootprint)
+    if (pool.meta.metaFootprint) return null;
     // Refit every destructible obstacle to the actual ground-bearing solids.
     // Roof overhangs, open bays and support gaps remain visually and
     // physically open instead of inheriting the metadata placement box.

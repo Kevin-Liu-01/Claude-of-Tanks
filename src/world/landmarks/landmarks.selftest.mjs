@@ -82,9 +82,10 @@ function polygonGapToPath(poly, path) {
 const KINDS = Object.keys(LANDMARK_KINDS);
 assert.deepEqual(Object.keys(LANDMARK_BUILDERS).sort(), [...KINDS].sort(), 'every planned kind has a builder, and every builder is planned');
 
-/** Desktop triangle budgets by kind (the phones build the coarse share of the same). */
+/** Desktop triangle budgets by kind (the phones build the coarse share of the same). (Round 4, 2026-10-07: the grain
+ * elevator's slip-form lifts, construction joints and cage ladder, 2.7 k of it fine joinery: 9000 -> 12000.) */
 const BUDGET = {
-  church: 16000, stationHall: 13000, townHall: 10000, marketHall: 8000, grainElevator: 9000, granary: 2500,
+  church: 16000, stationHall: 13000, townHall: 10000, marketHall: 8000, grainElevator: 12000, granary: 2500,
   waterTower: 6000, windmill: 8000, belfry: 4000, campanile: 4000, fireLookout: 5000, valveTower: 4000,
   obelisk: 4500, statue: 1500, columnMonument: 1500, memorialWall: 2000, equestrianStatue: 1500,
   fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000, churchyard: 4500, path: 1500, garden: 2500,
@@ -231,7 +232,8 @@ check('kolkhozArch lettering', () => {
       const p = g.getAttribute('position');
       for (let i = 0; i < p.count; i += 3) {
         const zs = [p.getZ(i), p.getZ(i + 1), p.getZ(i + 2)];
-        if (zs.every((z) => Math.abs(z - side * 0.074) < 0.0015)) xs.push((p.getX(i) + p.getX(i + 1) + p.getX(i + 2)) / 3);
+        // (round 4: the banner a boarded box, its letters on the boards' faces, 0.178 m out, 4 mm proud)
+        if (zs.every((z) => Math.abs(z - side * 0.182) < 0.0015)) xs.push((p.getX(i) + p.getX(i + 1) + p.getX(i + 2)) / 3);
       }
     }
     return xs;

@@ -3,11 +3,11 @@
 // tower, the railway station with its platform canopy, the market hall and the grain elevator. Proportions from the
 // buildings themselves: a Kursk-governorate village church of 1800-1900 is a whitewashed brick "ship" — the bell tower,
 // the refectory, the cube with its drum and dome, the apse — 25-32 m long, its bell tower 25-30 m to the cross.
-import { LocalFrame, PartSink, faceBox, facePoint, rgb, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
+import { LocalFrame, PartSink, faceBox, facePoint, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import {
-  LIMEWASH_UV, archSurround, archWindow, archedBody, archedSlab, bar, cornerPilasters, cross, dome, drum, extrude, moulding, portico, revolve, smoothRender, tentRoof,
-  type ArchHole, type FaceName,
+  LIMEWASH_UV, archSurround, archWindow, archedBody, archedSlab, bar, cornerPilasters, cross, dome, drum, drumSide, extrude, moulding, portico, revolve, smoothRender,
+  tentRoof, type ArchHole, type FaceName,
 } from './kit.ts';
 import { ageWall } from './age.ts';
 import type { LandmarkBuildContext, LandmarkBuilder } from './types.ts';
@@ -748,14 +748,42 @@ export const grainElevator: LandmarkBuilder = (ctx) => {
   const rows = Math.max(1, Math.min(3, Math.round(Number(ctx.params.rows)))), cols = Math.max(2, Math.round(Number(ctx.params.cols)));
   const r = Math.max(2, Number(ctx.params.radius)), H = Math.max(14, Number(ctx.params.height)), head = Math.max(H + 6, Number(ctx.params.head));
   const base = -0.6 - ctx.groundFall, concrete: RegionalBucket = 'plaster3';
+  // (round 4, gauntlet wave 244: "a speckled granite skin with no slip-form bands, joints or rust"): the render's print
+  // at half its density, a cast face's soft mottle rather than a render's pebble-dash grain
+  const CAST = { density: 0.2 } as const;
   // the whole run — silos, head house (7 m) and the spout (4.8 m) — centred on the piece
   const x0 = -(cols * 2 * r + 7.0 + 4.8) / 2;
-  sink.span(concrete, x0 - 0.2, base, -rows * r - 0.2, x0 + cols * 2 * r + 0.2, 1.2, rows * r + 0.2);
+  sink.span(concrete, x0 - 0.2, base, -rows * r - 0.2, x0 + cols * 2 * r + 0.2, 1.2, rows * r + 0.2, CAST);
+  // the slide's lifts: the battery is slip-formed in one continuous pour, so its lifts run level across every bin — each
+  // a band of its own mix and cure (a shade lighter or darker, warmer or cooler), a construction joint wherever the slide
+  // stood (every second or third lift), its look from the variant stream (the geometry's stream never moves)
+  const look = ctx.variant;
+  const lifts: Array<{ y0: number; y1: number; tint: readonly [number, number, number]; joint: boolean }> = [];
+  for (let y = 1.2, k = 0; y < H - 0.05; k++) {
+    const y1 = Math.min(H, y + 1.3 + look() * 1.2);
+    const v = 0.9 + look() * 0.16, warm = (look() - 0.5) * 0.05;
+    lifts.push({ y0: y, y1: H - y1 < 0.6 ? H : y1, tint: [v * (1 + warm), v, v * (1 - warm)], joint: k % 3 === 2 || look() < 0.25 });
+    y = H - y1 < 0.6 ? H : y1;
+  }
+  const RUST: readonly [number, number, number] = [1.16, 0.8, 0.58];
+  /** A streak's paint fading from `top` at its head to the wall's own colour `len` below. */
+  const fadeDown = (yTop: number, len: number, top: readonly [number, number, number]) => (p: Vec3): [number, number, number] => {
+    const t = Math.max(0, Math.min(1, (yTop - p[1]) / len));
+    return [top[0] + (1 - top[0]) * t, top[1] + (1 - top[1]) * t, top[2] + (1 - top[2]) * t];
+  };
+  /** A strip of a silo's face from angle a0 to a1 (radians, as the rings run) between two heights, `out` proud of it. */
+  const siloStrip = (x: number, z: number, a0: number, a1: number, yTop: number, yBot: number, out: number, opts: EmitOptions) => {
+    const p = (a: number, y: number): Vec3 => [x + Math.cos(a) * (r + out), y, z + Math.sin(a) * (r + out)];
+    // counter-clockwise from outside the silo (the angle runs clockwise seen from above as x→z)
+    sink.quad(concrete, p(a1, yTop), p(a1, yBot), p(a0, yBot), p(a0, yTop), { ...CAST, decor: true, ...opts });
+  };
   for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
     const x = x0 + r + i * 2 * r, z = -rows * r + r + j * 2 * r;
-    revolve(sink, concrete, x, z, [[r, 1.2], [r, H], [r * 0.96, H + 0.12], [r * 0.3, H + 0.55], [0.001, H + 0.6]], 16);
-    // the slip-form rings (the pours' joints) as faint bands
-    for (let y = 3; y < H - 1; y += 3) revolve(sink, concrete, x, z, [[r + 0.02, y], [r + 0.02, y + 0.12]], 16, { decor: true, shade: 0.86 });
+    for (const lift of lifts) drumSide(sink, concrete, x, z, r, lift.y0, lift.y1, 16, { ...CAST, tint: lift.tint });
+    // the dome (its first step flat, so no cap closes the bin under it)
+    revolve(sink, concrete, x, z, [[r, H], [r, H], [r * 0.96, H + 0.12], [r * 0.3, H + 0.55], [0.001, H + 0.6]], 16, CAST);
+    // the joints where the slide stood: a dark line a hand tall, a little proud of the face
+    for (const lift of lifts) if (lift.joint && lift.y1 < H) drumSide(sink, concrete, x, z, r + 0.012, lift.y1 - 0.03, lift.y1 + 0.03, 16, { ...CAST, decor: true, shade: 0.58 });
     // its age (gauntlet waves 154-158: "pristine"): the rain's runs down the concrete from the gallery and the domes, each
     // a strip bent round the silo two facets wide, darkest under the lip
     if (ctx.age) {
@@ -764,21 +792,48 @@ export const grainElevator: LandmarkBuilder = (ctx) => {
         const a0 = age() * Math.PI * 2, da = 0.18 + age() * 0.2, len = 4 + age() * (H - 6), depth = 0.24 + age() * 0.2;
         const top = H - 0.05, bottom = Math.max(1.6, top - len);
         for (const [aa, ab] of [[a0, a0 + da], [a0 + da, a0 + 2 * da]] as const) {
-          const p = (a: number, y: number): Vec3 => [x + Math.cos(a) * (r + 0.03), y, z + Math.sin(a) * (r + 0.03)];
-          // counter-clockwise from outside the silo (the angle runs clockwise seen from above as x→z)
-          sink.quad(concrete, p(ab, top), p(ab, bottom), p(aa, bottom), p(aa, top), {
-            decor: true, shadeAt: (q) => 1 - depth * Math.max(0, Math.min(1, (q[1] - bottom) / Math.max(0.5, top - bottom))),
-          });
+          siloStrip(x, z, aa, ab, top, bottom, 0.03, { shadeAt: (q) => 1 - depth * Math.max(0, Math.min(1, (q[1] - bottom) / Math.max(0.5, top - bottom))) });
         }
       }
     }
   }
-  // the gallery along the tops
+  // the cage ladder up the yard-side bin at the battery's far end, from the slab to the gallery: its rails, rungs and
+  // hoops in painted steel gone to rust, each wall bracket bleeding a rust run down the concrete
+  {
+    const x = x0 + r, z = rows * r - r, a = Math.PI / 2 + 0.22;
+    const nx = Math.cos(a), nz = Math.sin(a), tx = -Math.sin(a), tz = Math.cos(a);
+    /** a point `o` out from the bin's face, `l` along it (the ladder's lateral), at height y */
+    const at = (o: number, y: number, l: number): Vec3 => [x + nx * (r + o) + tx * l, y, z + nz * (r + o) + tz * l];
+    const LADDER = rgb(0x5b4636), top = H + 0.35, RAIL = 0.23;
+    for (const side of [-1, 1]) bar(sink, 'structureMetal', at(0.25, 1.2, side * RAIL), at(0.25, top + 1.0, side * RAIL), 0.05, { colour: LADDER, decor: true });
+    for (let y = 1.5; y < top; y += 0.3) bar(sink, 'structureMetal', at(0.25, y, -RAIL), at(0.25, y, RAIL), 0.025, { colour: LADDER, decor: true, fine: true });
+    for (let y = 3.4; y < top; y += 1.8) {
+      // the hoop: half an octagon round the climber, its arms back to the rails
+      const ring: Vec3[] = [];
+      for (let k = 0; k <= 4; k++) { const t = k / 4 * Math.PI; ring.push(at(0.3 + 0.62 * Math.sin(t), y, 0.36 * Math.cos(t))); }
+      for (let k = 0; k < 4; k++) bar(sink, 'structureMetal', ring[k], ring[k + 1], 0.03, { colour: LADDER, decor: true, fine: true });
+      for (const side of [-1, 1]) bar(sink, 'structureMetal', at(0.25, y, side * RAIL), at(0.3, y, side * 0.36), 0.03, { colour: LADDER, decor: true, fine: true });
+    }
+    for (let y = 2.4; y < top - 0.5; y += 3.2) {
+      for (const side of [-1, 1]) {
+        bar(sink, 'structureMetal', at(0.0, y, side * RAIL), at(0.25, y, side * RAIL), 0.05, { colour: LADDER, decor: true });
+        const aa = a + side * RAIL / r;
+        siloStrip(x, z, aa - 0.035, aa + 0.035, y, y - 0.8 - look() * 1.6, 0.031, { tintAt: fadeDown(y, 1.8, RUST) });
+      }
+    }
+  }
+  // the gallery along the tops, its strip of windows (each glazed bay over a run of rust from its frame)
   const gx1 = x0 + cols * 2 * r;
-  sink.span(concrete, x0 + r * 0.4, H + 0.35, -1.6, gx1, H + 2.9, 1.6);
+  sink.span(concrete, x0 + r * 0.4, H + 0.35, -1.6, gx1, H + 2.9, 1.6, CAST);
   sink.span('roof', x0 + r * 0.4 - 0.2, H + 2.9, -1.8, gx1, H + 3.05, 1.8);
-  for (let x = x0 + r; x < gx1 - 1; x += 2.2) {
-    for (const zs of [1, -1]) sink.quad('glass', [x, H + 1.4, zs * 1.61], [x + (zs > 0 ? 1 : -1) * 0.0, H + 1.4, zs * 1.61], [x, H + 2.2, zs * 1.61], [x, H + 2.2, zs * 1.61], { decor: true });
+  for (let x = x0 + r; x < gx1 - 1.4; x += 2.2) {
+    for (const zs of [1, -1]) {
+      const zf = zs * 1.61, xa = zs > 0 ? x : x + 1.2, xb = zs > 0 ? x + 1.2 : x;
+      sink.quad('glass', [xa, H + 1.4, zf], [xb, H + 1.4, zf], [xb, H + 2.2, zf], [xa, H + 2.2, zf], { decor: true });
+      const len = 0.5 + look() * 0.7;
+      sink.quad(concrete, [xa + (zs > 0 ? 0.2 : -0.2), H + 1.36 - len, zf], [xb + (zs > 0 ? -0.5 : 0.5), H + 1.36 - len, zf],
+        [xb + (zs > 0 ? -0.5 : 0.5), H + 1.36, zf], [xa + (zs > 0 ? 0.2 : -0.2), H + 1.36, zf], { ...CAST, decor: true, tintAt: fadeDown(H + 1.36, len, RUST) });
+    }
   }
   // the head house
   const hx0 = gx1 - 0.2, hw = 7.0, hd = Math.max(8, rows * 2 * r + 1);
@@ -788,16 +843,33 @@ export const grainElevator: LandmarkBuilder = (ctx) => {
     holes.back!.push({ u: 0, w: 1.0, y0: y, spring: y + 1.6, form: 'flat' });
     holes.right!.push({ u: 0, w: 1.0, y0: y, spring: y + 1.6, form: 'flat' });
   }
-  const hf = archedBody(sink, concrete, hx0 + hw / 2, 0, hw, hd, base, head, holes, 0.25);
+  const hf = archedBody(sink, concrete, hx0 + hw / 2, 0, hw, hd, base, head, holes, 0.25, CAST);
   for (const name of ['front', 'back', 'right'] as const) for (const h of holes[name] ?? []) archWindow(sink, hf[name], h, 0.25, rgb(0x4a5a58), false, { bars: true });
+  // its lifts as level joints between the window rows, and a rust run from every sill
+  for (const name of ['front', 'back', 'right'] as const) {
+    const f = hf[name], half = f.width / 2;
+    const line = (y: number) => sink.quad(concrete, facePoint(f, -half + 0.02, y - 0.03, 0.012), facePoint(f, half - 0.02, y - 0.03, 0.012),
+      facePoint(f, half - 0.02, y + 0.03, 0.012), facePoint(f, -half + 0.02, y + 0.03, 0.012), { ...CAST, decor: true, shade: 0.58 });
+    line(2.2);
+    for (let y = 7.0; y < head - 1.5; y += 4.4) line(y);
+    for (const h of holes[name] ?? []) {
+      const len = 0.8 + look() * 1.4, u0 = h.u - h.w * 0.32, u1 = h.u + h.w * (0.05 + look() * 0.25);
+      sink.quad(concrete, facePoint(f, u0, h.y0 - 0.06 - len, 0.008), facePoint(f, u1, h.y0 - 0.06 - len, 0.008),
+        facePoint(f, u1, h.y0 - 0.06, 0.008), facePoint(f, u0, h.y0 - 0.06, 0.008), { ...CAST, decor: true, tintAt: fadeDown(h.y0 - 0.06, len, RUST) });
+    }
+  }
   const roof: RoofSpec = { kind: 'gable', pitchDeg: 30, eave: 0.3, verge: 0.3, thickness: 0.12, bucket: 'roof', ridge: null };
   sink.placed(0, hx0 + hw / 2, 0, 0, () => emitRoof(sink, roofGeometry(hw, hd, head, roof), roof));
-  // the loading spout leaning out over the track side
-  bar(sink, 'structureMetal', [hx0 + hw, head * 0.55, 0], [hx0 + hw + 4.5, head * 0.32, 0], 0.35, { colour: rgb(0x5d6062), decor: true });
+  // the loading spout leaning out over the track side, rusted, from its bracket on the head house (a run below it)
+  const SPOUT = rgb(0x6a5242);
+  bar(sink, 'structureMetal', [hx0 + hw, head * 0.55, 0], [hx0 + hw + 4.5, head * 0.32, 0], 0.35, { colour: SPOUT, decor: true });
+  sink.span('structureMetal', hx0 + hw, head * 0.55 - 0.45, -0.4, hx0 + hw + 0.12, head * 0.55 + 0.45, 0.4, { colour: shade(SPOUT, 0.8), decor: true });
+  sink.quad(concrete, [hx0 + hw + 0.008, head * 0.55 - 2.6, 0.32], [hx0 + hw + 0.008, head * 0.55 - 2.6, -0.3], [hx0 + hw + 0.008, head * 0.55 - 0.45, -0.3],
+    [hx0 + hw + 0.008, head * 0.55 - 0.45, 0.32], { ...CAST, decor: true, tintAt: fadeDown(head * 0.55 - 0.45, 2.15, RUST) });
   // the harvest's lorries waiting in the yard before the silos (`trucks`, the props' destructible truck, a hull crushes)
   const trucks = Math.max(0, Math.min(4, Math.round(Number(ctx.params.trucks) || 0)));
   const destructibles = Array.from({ length: trucks }, (_, k) => ({ kind: 'truck', x: x0 + 4 + k * 7.5, z: rows * r + 5.5, yawDeg: 90 + (k % 2 ? 8 : -6) }));
-  return { parts: sink.finish(), tints: { plaster3: [0.84, 0.83, 0.8] }, destructibles };
+  return { parts: sink.finish(), tints: { plaster3: [0.86, 0.85, 0.82] }, destructibles };
 };
 
 // ---------------------------------------------------------------------------------------------------------- granary

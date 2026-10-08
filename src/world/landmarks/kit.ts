@@ -34,6 +34,19 @@ function bandUv(p: Vec3, q: Vec3, arcAtP: number): EmitOptions['uv'] {
 }
 
 /**
+ * A drum's side alone, no caps (a lift of a cast silo, a band round a shaft): the ring of quads at radius `r` from y0 up
+ * to y1, wound outward, its UVs as revolve's (arc length round, height up).
+ */
+export function drumSide(sink: PartSink, bucket: RegionalBucket, x: number, z: number, r: number, y0: number, y1: number, n: number,
+  opts: EmitOptions = {}, phase = 0): void {
+  const a = ringY(x, y0, z, r, n, phase), b = ringY(x, y1, z, r, n, phase);
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    sink.quad(bucket, a[i], a[j], b[j], b[i], { ...opts, uv: bandUv(a[i], a[j], r * Math.PI * 2 * i / n) });
+  }
+}
+
+/**
  * A surface of revolution about the vertical through (x, z): `profile` is [radius, y] pairs from the bottom up. A flat
  * step (two rows at one height) is an annulus facing up or down; the ends close with caps where their radius is > 0.
  * The UVs run round the ring by arc length and up by height, so a course or a tile row wraps the drum unbroken.

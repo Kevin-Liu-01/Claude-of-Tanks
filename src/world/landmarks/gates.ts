@@ -79,14 +79,36 @@ export const kolkhozArch: LandmarkBuilder = (ctx) => {
     sink.quad('structureWood', [x + fl * 0.5, fy + 0.84, -0.03], [x + fl, fy + 0.86, 0.0], [x + fl, fy + 0.02, 0.0], [x + fl * 0.5, fy - 0.06, -0.03], { colour: shade(BANNER_RED, 0.72), decor: true });
   }
   // the beam and the banner over the passage (a solid of their own, clear of the pillars' tops)
+  // (round 4, gauntlet wave 244: "a thin flat signboard; give it depth and plank grain"): the banner a boarded box a
+  // hand and a half deep on its beam — on each face four painted boards, the grain along them, their joints open to the
+  // dark carcass behind, a white batten frame proud of them, a drip cap over its top and its ends boarded across
   const beamY = pillarTop - 1.35, inner = span / 2;
-  sink.span('structureWood', -inner - 0.02, beamY, -0.16, inner + 0.02, beamY + 0.3, 0.16, { colour: TIMBER_DARK });
-  const by0 = beamY + 0.3 + ARCH_GAP_M, by1 = by0 + 1.2;
-  sink.span('structureWood', -inner + 0.25, by0, -0.07, inner - 0.25, by1, 0.07, { colour: BANNER_RED });
-  for (const [x0, x1, y0, y1] of [[-inner + 0.15, inner - 0.15, by0 - 0.06, by0 + 0.08], [-inner + 0.15, inner - 0.15, by1 - 0.08, by1 + 0.06],
-    [-inner + 0.15, -inner + 0.3, by0, by1], [inner - 0.3, inner - 0.15, by0, by1]] as const) {
-    sink.span('structureWood', x0, y0, -0.1, x1, y1, 0.1, { colour: WHITE, decor: true });
+  sink.member('structureWood', [-inner - 0.02, beamY + 0.15, 0], [inner + 0.02, beamY + 0.15, 0], 0.3, 0.32, [0, 0, 1],
+    { colour: TIMBER_DARK, exposed: true }, 0.16);
+  const by0 = beamY + 0.3 + ARCH_GAP_M, by1 = by0 + 1.2, half = 0.15, bx = inner - 0.25;
+  sink.span('structureWood', -bx, by0, -half, bx, by1, half, { colour: TIMBER_DARK });
+  const BOARDS = 4, b0 = by0 + 0.1, b1 = by1 - 0.1, pitch = (b1 - b0) / BOARDS;
+  for (const zs of [1, -1]) {
+    const out: Vec3 = [0, 0, zs];
+    for (let k = 0; k < BOARDS; k++) {
+      // (each board its own coat: the top ones bleached by the sun, a shade either way board to board)
+      const y = b0 + pitch * (k + 0.5), tone = 0.94 + 0.08 * ((k * 7 + (zs > 0 ? 3 : 5)) % 4) / 3 + 0.05 * k / BOARDS;
+      sink.member('structureWood', [-bx + 0.12, y, zs * half], [bx - 0.12, y, zs * half], pitch - 0.016, 0.028, out,
+        { colour: shade(BANNER_RED, tone), decor: true }, 0);
+    }
+    // the white battens: rails over the top and the foot, stiles at the ends, all proud of the boards
+    for (const y of [by1 - 0.06, by0 + 0.06]) {
+      sink.member('structureWood', [-bx, y, zs * half], [bx, y, zs * half], 0.12, 0.055, out, { colour: WHITE, decor: true }, 0);
+    }
+    for (const x of [-bx + 0.07, bx - 0.07]) {
+      sink.member('structureWood', [x, by0, zs * half], [x, by1, zs * half], 0.14, 0.055, out, { colour: WHITE, decor: true }, 0);
+    }
   }
+  // the ends boarded across, and the drip cap over the top, its overhang shedding the rain off both faces
+  for (const sx of [-1, 1]) {
+    sink.member('structureWood', [sx * bx, by0, 0], [sx * bx, by1, 0], half * 2 + 0.11, 0.04, [sx, 0, 0], { colour: WHITE, decor: true }, 0);
+  }
+  sink.span('structureWood', -bx - 0.08, by1, -half - 0.1, bx + 0.08, by1 + 0.07, half + 0.1, { colour: TIMBER_DARK, decor: true });
   // the lettering: the farm's name in white sign-writer's capitals on both faces, each reading left to right from its
   // own side (gauntlet wave 154: pseudo-glyph strokes at the same x on both faces read "garbled, mirror-reversed" from
   // behind)
@@ -96,18 +118,23 @@ export const kolkhozArch: LandmarkBuilder = (ctx) => {
     const { unit } = measureText(sign, style);
     const baseline = (by0 + by1) / 2 - 3 * unit;
     for (const face of [
-      { origin: [0, 0, 0.07], u: [1, 0, 0], out: [0, 0, 1], width: span },
-      { origin: [0, 0, -0.07], u: [-1, 0, 0], out: [0, 0, -1], width: span },
+      { origin: [0, 0, half + 0.028], u: [1, 0, 0], out: [0, 0, 1], width: span },
+      { origin: [0, 0, -half - 0.028], u: [-1, 0, 0], out: [0, 0, -1], width: span },
     ] satisfies Face[]) letterText(sink, 'structureWood', face, sign, 0, baseline, style);
   }
-  // the crest with the star
-  const cy = by1 + ARCH_GAP_M, cr = 0.95;
+  // the crest with the star (round 4: as deep as the banner, seated on its drip cap, its arc edged in red on both faces)
+  const cy = by1 + 0.07 + ARCH_GAP_M, cr = 0.95, cd = 0.13;
   const crest: Vec3[] = [];
   for (let i = 0; i <= 10; i++) { const a = i / 10 * Math.PI; crest.push([Math.cos(a) * cr, cy + Math.sin(a) * cr, 0]); }
   // (the crest's half disc, counter-clockwise seen from the front, extruded back through the banner's plane)
-  sink.prism('structureWood', crest.map((p): Vec3 => [p[0], p[1], 0.06]).reverse(), [0, 0, -1], 0.12, { colour: WHITE });
-  star(sink, 'structureMetal', 0, cy + 0.45, 0.09, 0.38, 0.05, { colour: STAR_RED, decor: true });
-  star(sink, 'structureMetal', 0, cy + 0.45, -0.09, 0.38, 0.05, { colour: STAR_RED, decor: true }, Math.PI);
+  sink.prism('structureWood', crest.map((p): Vec3 => [p[0], p[1], cd]).reverse(), [0, 0, -1], cd * 2, { colour: WHITE });
+  for (const zs of [1, -1]) for (let i = 0; i < 10; i++) {
+    const a = crest[i], b = crest[i + 1], ra = 0.92, z = zs * cd;
+    sink.member('structureWood', [a[0] * ra, cy + (a[1] - cy) * ra, z], [b[0] * ra, cy + (b[1] - cy) * ra, z], 0.09, 0.025, [0, 0, zs],
+      { colour: BANNER_RED, decor: true }, 0);
+  }
+  star(sink, 'structureMetal', 0, cy + 0.45, cd + 0.03, 0.38, 0.05, { colour: STAR_RED, decor: true });
+  star(sink, 'structureMetal', 0, cy + 0.45, -cd - 0.03, 0.38, 0.05, { colour: STAR_RED, decor: true }, Math.PI);
   // the braces from the pillars to the beam
   for (const sx of [-1, 1]) {
     bar(sink, 'structureWood', [sx * inner, beamY - 1.2, 0], [sx * (inner - 1.2), beamY, 0], 0.14, { colour: TIMBER_DARK, decor: true });

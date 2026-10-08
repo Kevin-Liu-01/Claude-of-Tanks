@@ -464,6 +464,51 @@ function bDiemenBroken(rng: Rng): THREE.BufferGeometry {
  * The stook: a teepee of sheaves leaning on each other, each a bound sheaf (its straw the face band's, a darker band
  * where it is tied), its butts splayed on the ground (the packed band: cut ends), a head of ears at the top.
  */
+/**
+ * The kopna, the field cock (the landmarks lane, 2026-10-07, Tarkhan Steppe round 4: "round bales are anachronistic in
+ * the 1950s"): the hay raked up into a rounded cock a little over a man's chest on its settled foot, its locks drawn down
+ * from the crown — the round bale's height on a foot of its reach (inhabitKit's bale: r 0.78, h 1.45), drawn from a
+ * stream of its own (ksarGate.ts STRUCTURE_VARIANTS kopna takes the bale's draws in its place; its obstacle keeps the
+ * bale's circle, DestructiblePropType.metaFootprint).
+ */
+export function buildKopna(): THREE.BufferGeometry {
+  let a = 0x6b0a7;
+  const rng: Rng = () => {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+  const R = 0.72, H = 1.42, segs = 12, tiles = 2, locks = noiseTable(rng, 12);
+  const face = (y: number) => bandV(HAY_FACE_V, y / H);
+  // [radius, height, v, the locks' rise and fall there (m)]: the pressed foot, the belly, the shoulder, the crown
+  const rows: ReadonlyArray<readonly [number, number, number, number]> = [
+    [R + 0.08, -0.06, bandV(HAY_FACE_V, 0), 0], [R + 0.05, 0.06, bandV(HAY_FACE_V, 0.03), 0.01], [R + 0.04, 0.3, face(0.3), 0.03],
+    [R * 0.97, 0.58, face(0.58), 0.05], [R * 0.84, 0.88, face(0.88), 0.06], [R * 0.6, 1.12, face(1.12), 0.05],
+    [R * 0.3, 1.31, face(1.31), 0.04], [0.1, 1.4, face(1.4), 0.02], [0.02, H, face(H), 0],
+  ];
+  const cols = segs + 1, pos = new Float32Array(rows.length * cols * 3), uv = new Float32Array(rows.length * cols * 2);
+  const index: number[] = [];
+  for (let k = 0; k < rows.length; k++) {
+    const [r, y, v, lift] = rows[k];
+    for (let j = 0; j < cols; j++) {
+      const t = (j % segs) / segs, an = t * Math.PI * 2, o = (k * cols + j) * 3;
+      pos[o] = Math.cos(an) * r; pos[o + 1] = y + (sampleTable(locks, 12, t * 2, y * 1.4) - 0.5) * 2 * lift; pos[o + 2] = Math.sin(an) * r;
+      uv[(k * cols + j) * 2] = (j / segs) * tiles; uv[(k * cols + j) * 2 + 1] = v;
+    }
+  }
+  for (let k = 0; k < rows.length - 1; k++) for (let j = 0; j < segs; j++) {
+    const i0 = k * cols + j, i1 = i0 + 1, i2 = i0 + cols, i3 = i2 + 1;
+    index.push(i0, i2, i1, i1, i2, i3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  g.setIndex(index);
+  g.computeVertexNormals();
+  return merge([g]);
+}
+
 export function buildStook(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   const count = 6 + Math.floor(rng() * 2), lean = 0.3, len = 1.32;

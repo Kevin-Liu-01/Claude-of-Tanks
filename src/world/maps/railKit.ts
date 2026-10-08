@@ -358,6 +358,69 @@ function pushContainer(
   for (const g of parts) target.push(g);
 }
 
+/** The wood print's course pitch on a timber package (m): its plank gaps read as the boards' edges in courses. */
+const TIMBER_TILE_M = 0.92;
+
+/**
+ * A timber package's UVs from its faces' own positions: the long sides and the ends show the boards' edges in courses
+ * (the print's plank gaps level, its grain along the stack), the top the boards' faces running along it.
+ */
+function timberPackageUv(geometry: THREE.BufferGeometry, offset: number): void {
+  const pos = geometry.getAttribute('position'), nor = geometry.getAttribute('normal'), uv = geometry.getAttribute('uv');
+  const k = 1 / TIMBER_TILE_M;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), ax = Math.abs(nor.getX(i)), ay = Math.abs(nor.getY(i));
+    if (ay > 0.5) uv.setXY(i, x * k + offset, z * k);
+    else if (ax > 0.5) uv.setXY(i, y * k + offset, z * k);
+    else uv.setXY(i, y * k + offset, x * k);
+  }
+  uv.needsUpdate = true;
+}
+
+/**
+ * One rank of sawn timber where a container stood (the landmarks lane, 2026-10-07, Tarkhan Steppe round 4: "shipping
+ * containers are anachronistic in the 1950s"; StructureBuildContext.containerGoods 'timber'): four packages two by two
+ * on three bearers, the sticker course dark between the lower and upper packages, inside the container's own box
+ * (2.44 x 2.6 x 6.1 m) so the rank's footprint and every later placement stand as they did. The packages share one
+ * plan (one length, one slide along the rank) and abut, so their solids project to a single rectangle as the box's did;
+ * the bearers and stickers are dressing (no collision part of their own). The first package takes the container body's
+ * four UV draws from the shared stream ('consume'); the rest take none, and the look draws from the box's local stream.
+ */
+function pushTimberPackages(target: THREE.BufferGeometry[], local: () => number, yaw: number, x: number, y: number, z: number): void {
+  const W = CONTAINER_W, H = CONTAINER_H, L = CONTAINER_L;
+  const bearer = 0.14, sticker = 0.06;
+  const pw = W / 2, ph = (H - bearer - sticker) / 2;
+  const parts: THREE.BufferGeometry[] = [];
+  const place = (g: THREE.BufferGeometry, tag: 'consume' | 'none', dressing = false): void => {
+    g.userData.uvJitter = tag;
+    if (dressing) g.userData.noCollision = true;
+    g.rotateY(yaw);
+    g.translate(x, y, z);
+    parts.push(g);
+  };
+  for (const bz of [-L / 2 + 0.5, 0, L / 2 - 0.5]) {
+    const b = new THREE.BoxGeometry(W - 0.04, bearer, 0.16);
+    timberPackageUv(b, local() * 3);
+    b.translate(0, bearer / 2, bz);
+    place(b, 'none', true);
+    const st = new THREE.BoxGeometry(W - 0.2, sticker, 0.08);
+    timberPackageUv(st, local() * 3);
+    st.translate(0, bearer + ph + sticker / 2, bz);
+    place(st, 'none', true);
+  }
+  // the packages: a few centimetres short of the box and slid a little along it, all four together
+  const len = L - 0.06 - local() * 0.3, slide = (local() - 0.5) * (L - len);
+  let first = true;
+  for (const sx of [-1, 1]) for (const course of [0, 1]) {
+    const g = new THREE.BoxGeometry(pw, ph, len);
+    timberPackageUv(g, local() * 5);
+    g.translate(sx * pw / 2, bearer + ph / 2 + course * (ph + sticker), slide);
+    place(g, first ? 'consume' : 'none');
+    first = false;
+  }
+  for (const g of parts) target.push(g);
+}
+
 /**
  * Container row: 5-6 shipping boxes in a ragged rank, a couple stacked two high — the yard's signature hard
  * cover. Round 75: corrugated painted steel on the 'steel' atlas bucket (an operator livery per box from the
@@ -370,8 +433,11 @@ export function makeContainerRow(
   rng: () => number,
   buckets: GeometryBuckets,
 ): StructureDimensions {
-  const target = buckets.steel || buckets.baked || buckets.dark;
-  const liveries = containerLiveries(structureBuildContext(buckets));
+  const context = structureBuildContext(buckets);
+  // (a 1950s map's ranks hold sawn timber, not shipping boxes: StructureBuildContext.containerGoods)
+  const timber = context?.containerGoods === 'timber';
+  const target = timber ? buckets.wood : buckets.steel || buckets.baked || buckets.dark;
+  const liveries = containerLiveries(context);
   const n = 5 + ((rng() * 2) | 0);
   const CL = CONTAINER_L, CW = CONTAINER_W, CH = CONTAINER_H;
   let x = -((n - 1) * (CW + 0.5)) / 2;
@@ -383,7 +449,8 @@ export function makeContainerRow(
     const zOff = (rng() - 0.5) * 1.4;
     const jitter = drawBodyJitter(rng);
     const strip: SteelStrip = local() < 0.5 ? 'sideA' : 'sideB';
-    pushContainer(target, jitter, local, hex, strip, yaw, x, 0, zOff, local() < 0.5);
+    if (timber) pushTimberPackages(target, local, yaw, x, 0, zOff);
+    else pushContainer(target, jitter, local, hex, strip, yaw, x, 0, zOff, local() < 0.5);
     if (rng() < 0.45) { // second tier
       const liveryDraw2 = rng();
       const local2 = forkRng(liveryDraw2 + k * 0.311);
@@ -392,7 +459,8 @@ export function makeContainerRow(
       const yaw2 = yaw + (rng() - 0.5) * 0.05;
       const x2 = x + (rng() - 0.5) * 0.2;
       const z2 = zOff + (rng() - 0.5) * 0.5;
-      pushContainer(target, jitter2, local2, hex2, local2() < 0.5 ? 'sideA' : 'sideB', yaw2, x2, CH + 0.02, z2, local2() < 0.5);
+      if (timber) pushTimberPackages(target, local2, yaw2, x2, CH + 0.02, z2);
+      else pushContainer(target, jitter2, local2, hex2, local2() < 0.5 ? 'sideA' : 'sideB', yaw2, x2, CH + 0.02, z2, local2() < 0.5);
     }
     x += CW + 0.4 + rng() * 0.5;
   }

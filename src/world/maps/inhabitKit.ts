@@ -53,6 +53,9 @@ export interface DestructiblePropType {
   keep?: number;
   crushMin?: number;
   explosive?: boolean;
+  /** the obstacle keeps its metadata footprint (a round heap's circle) instead of the refit to its geometry's ground
+   *  band (props.ts refitDestructibleColliders): a turned heap's band is a fan of pieces, its true footprint a circle */
+  metaFootprint?: boolean;
 }
 
 export const FENCE_SEG = 2.4; // fence-kit module pitch, meters

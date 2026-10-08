@@ -14,6 +14,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { DESTRUCTIBLE_BUILDING_TYPES } from '../structureKit.ts';
+import { DESTRUCTIBLE_TYPES } from '../inhabitKit.ts';
+import { buildKopna } from '../haystackKit.ts';
 
 type Rng = () => number;
 
@@ -178,5 +180,20 @@ export const KSAR_GATE_POST = Object.freeze({
   broken: (rng: Rng) => { HUT.broken(rng).dispose(); return buildKsarGatePostBroken(mulberry32(0x6a7e6)); },
 });
 
+/** The round bale it stands in for (inhabitKit). */
+const BALE = DESTRUCTIBLE_TYPES.bale;
+
+/**
+ * The field cock in the round bale's place (the landmarks lane, 2026-10-07, Tarkhan Steppe round 4: the round baler
+ * belongs to the 1970s; a 1950s steppe's hay stands in kopny, haystackKit.ts buildKopna): the bale's class, height and
+ * burst heap, its obstacle the bale's circle (r 0.75, kept: metaFootprint); its build takes the bale's draws from the
+ * destructible geometry stream (none) and draws the cock from a seed of its own.
+ */
+export const KOPNA = Object.freeze({
+  ...BALE,
+  metaFootprint: true,
+  build: (rng: Rng) => { BALE.build(rng).dispose(); return buildKopna(); },
+});
+
 /** The structure variants a map may name in place of a generic kind (props structureVariants). */
-export const STRUCTURE_VARIANTS = Object.freeze({ ksargate: KSAR_GATE_POST });
+export const STRUCTURE_VARIANTS = Object.freeze({ ksargate: KSAR_GATE_POST, kopna: KOPNA });
