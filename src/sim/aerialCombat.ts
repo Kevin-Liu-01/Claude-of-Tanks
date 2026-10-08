@@ -7,12 +7,10 @@ import { missionAttachmentFor, type MissionCarrierSpec } from './missionAttachme
 import {droneLaunchHeight} from './droneLaunch.ts';
 import {missionAttachmentPose,type MissionCarrierPose} from './missionAttachmentPose.ts';
 import type { ShellSpec } from './shellSpec.ts';
+import type { AerialView } from './matchModes.ts';
 
-export interface AerialView {
-  kind: 'drone' | 'gunship'; active: boolean; launching: boolean;
-  x: number; y: number; z: number; yaw: number; pitch: number;
-  batteryS: number; cooldownS: number;
-}
+// The view type lives with the mode rules (matchModes.ts) so the rules never import this flight model.
+export type { AerialView };
 export interface AerialEntity {
   id: string; bot?: boolean; isPlayer?: boolean; team: string;
   spec?: MissionCarrierSpec;
