@@ -150,6 +150,10 @@ function dustOf(look: StructureLook, out: [number, number, number]): Rgb {
   }
   if (w <= 0) { out[0] = 0.55; out[1] = 0.52; out[2] = 0.47; return out; }
   out[0] = r / w; out[1] = g / w; out[2] = b / w;
+  // (round 4: a rendered house's breach still threw near-white cotton in full sun) masonry powder is never brighter
+  // than a pale stone: its luminance is held under 0.4
+  const lum = 0.2126 * out[0] + 0.7152 * out[1] + 0.0722 * out[2];
+  if (lum > 0.4) { const k = 0.4 / lum; out[0] *= k; out[1] *= k; out[2] *= k; }
   return out;
 }
 
@@ -165,7 +169,7 @@ const _dust: [number, number, number] = [0, 0, 0];
 
 function puff(C: BlastContext, x: number, y: number, z: number, vx: number, vy: number, vz: number, drag: number,
   rise: number, windK: number, life: number, size0: number, size1: number, c0: Rgb, c1: Rgb, density: number,
-  play: number, start: number, bo: number): void {
+  play: number, start: number, bo: number, aspect = 1): void {
   const m = C.m;
   const R = C.rand;
   m.x = x; m.y = y; m.z = z; m.birthOffset = bo;
@@ -174,7 +178,7 @@ function puff(C: BlastContext, x: number, y: number, z: number, vx: number, vy: 
   m.r0 = c0[0]; m.g0 = c0[1]; m.b0 = c0[2]; m.r1 = c1[0]; m.g1 = c1[1]; m.b1 = c1[2];
   m.density = density; m.fadeIn = 0.08; m.fadeOut = 0.45;
   m.medium = 'burst'; m.variant = Math.floor(R() * 4); m.mirror = R() < 0.5; m.playSeconds = play; m.startFrame = start;
-  m.aspect = 1;
+  m.aspect = aspect;
   m.heat = 0; m.cool = 1;
   C.media(m);
 }
@@ -215,7 +219,7 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
       const sp = (breach ? 6 : 3.5) * (0.6 + 0.6 * R()) * k;
       puff(C, e.x, e.y, e.z, -dirX * sp + (R() - 0.5) * 2, 0.6 + R() * 1.4, -dirZ * sp + (R() - 0.5) * 2, 2.2,
         0.2, 0.9, 4 + R() * 2.5, 0.8 * k * dk, (breach ? 3.6 : 2.4) * k * dk, i === 0 ? dark : dust, dust,
-        breach ? 0.7 : 0.6, 4.5, 2, R() * 0.05);
+        breach ? 0.55 : 0.5, 4.5, 2, R() * 0.05, 1.3 + R() * 0.4); // the powder spills out and down the face, wider than tall
     }
     if (breach) {
       // the dark interior dust rolling out of the hole

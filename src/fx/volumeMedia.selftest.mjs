@@ -384,6 +384,13 @@ function captureContext(seed) {
   assert.ok(/float tag = floor/.test(dshader.vertexShader) && /discard/.test(dshader.fragmentShader), 'the depth pass sinks and opens too');
   mask.reset();
   assert.equal(data[o], 0, 'reset stands every structure up');
+  // a whole upload is never cut short by a range written before the renderer gets to it (round 4: a reset, then a
+  // breach in the same frame, and the GPU kept the last scene's fallen house)
+  mask.addHole(5, 1, 2, 3, 0.5, 1, 0, 0.5);
+  assert.equal(mask.texture.updateRanges.length, 0, 'after a reset the next upload is the whole texture');
+  mask.texture.onUpdate(mask.texture);
+  mask.addHole(5, 1, 2, 3, 0.5, 1, 0, 0.5);
+  assert.ok(mask.texture.updateRanges.length > 0, 'once uploaded, events upload their own ranges again');
 }
 
 // ---- 9. what a building's stage builders write, drawn in its own materials -----------------------------------
