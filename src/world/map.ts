@@ -215,13 +215,6 @@ export interface WorldRuntime {
   bindGroundOverlay(overlay: TerrainDeformation | null): void;
   /** The bound overlay, or null: what decals and dressing drape on (base + `offsetAt`). */
   groundOverlay(): TerrainDeformation | null;
-  /**
-   * The drawn ground and its cover follow the bound overlay now (crater-render-spec §B, §C): the terrain chunks take its
-   * new stamps, the cover in their reach clears or re-seats. `update` does it every frame; a frame rendered without one
-   * (the Studio's offline export steps and captures) calls this, or a crater dug mid-clip never reaches the drawn ground.
-   * O(1) when nothing changed.
-   */
-  syncGround(): void;
   spawnPoints: {
     player: { pos: [number, number, number]; yaw?: number };
     enemies: Array<{ pos: [number, number, number]; yaw?: number }>;
@@ -243,6 +236,20 @@ export interface WorldRuntime {
   /** Round 77c: bake the vegetation's impostor atlas under cover (the activation / solo loading warm). */
   warmImpostors(): boolean;
   setWindTime(timeSeconds: number): void;
+  /**
+   * The props' own clock (hinge topples, loose bodies, pole LOD) advanced by `deltaSeconds`, as `update` does it. A frame
+   * stepped without an update — the Studio's export steps, and its playback, whose update runs at dt 0 — calls this every
+   * fixed step, or a prop felled in a clip never animates its fall (fix/studio-world-step, 2026-10-08).
+   */
+  updateProps(deltaSeconds: number, cameraPosition: THREE.Vector3): void;
+  /**
+   * The drawn ground follows what it is bound to now (fix/studio-world-step, 2026-10-08): the terrain's
+   * `syncGroundOverlay` hook (a deformed ground's chunks, when a module installs one) and its `followGroundOverlay` hook
+   * (the ground cover over them). `update` reaches the same through its LOD walk; a frame rendered without an update (the
+   * Studio's export steps and captures) calls this, or a crater dug mid-clip never reaches the picture. O(1) when nothing
+   * is new; a no-op on a world with no such hooks.
+   */
+  syncGround(): void;
   /** Water pass 6/7: the vehicles in the water this frame (footprint, heading, speed -> wake). No-op on maps without water. */
   setWaterDisturbances(sources: readonly WaterDisturbance[]): void;
   resetWater(): void;
@@ -636,15 +643,16 @@ function assembleWorld(
   installTerrainCraterMesh(terrain);
   // ground lane (crater-render-spec §C): the ground cover follows it too — one law, synced after the terrain each frame
   const groundCoverCraters = createGroundCoverCraters();
-  /** The terrain, then the cover in its reach, take the bound overlay's new stamps (`update`'s first steps, without the
-   * LOD walk): what a frame rendered without an update (the Studio's export steps and captures) needs. */
+  /** The cover in the bound overlay's reach takes its new stamps after the terrain took them (`update`'s steps after its
+   * LOD walk): the terrain's `followGroundOverlay` hook, which `world.syncGround` runs after its `syncGroundOverlay` for a
+   * frame rendered without an update (the Studio's export steps and captures). O(1) when nothing is new. */
   function followGroundCover(): void {
-    (terrain.userData.syncGroundOverlay as (() => void) | undefined)?.();
     groundCoverCraters.sync(boundGroundOverlay);
     vegetation.followCraters?.(groundCoverCraters);
     tallGrass.followCraters?.(groundCoverCraters);
     litter.followCraters?.(groundCoverCraters);
   }
+  terrain.userData.followGroundOverlay = followGroundCover;
   // destruction (§16): each structure's seam on first ask, its mound from the world's own structure table
   const structureSeams = new Map<number, StructureDamageSeam>();
   let structureTable: ReturnType<typeof createStructureDamage> | null = null;
@@ -705,7 +713,6 @@ function assembleWorld(
     patchStructureMaterials: (patch) => patchStructureMaterialEntries(props.structureMaterials, patch),
     touchStructureShadows: (structureIdx) => { getStructureDamage(structureIdx)?.touchShadows(); },
     bindGroundOverlay: (overlay) => { boundGroundOverlay = overlay; terrain.userData.groundOverlay = overlay; },
-    syncGround: followGroundCover,
     groundOverlay: () => boundGroundOverlay,
     crushables: props.crushables || [],
     crushProp: (i: number, dx: number, dz: number, speedMps = 0) => (
@@ -823,6 +830,11 @@ function assembleWorld(
     warmImpostors: () => { bakePanorama(); return vegetation.warmImpostors(); },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
     setWindTime(t: number) { vegetation.setWindTime(t); terrain.userData.setWaterTime?.(t); tallGrass.setWindTime(t); },
+    updateProps(dt: number, cameraPos: THREE.Vector3) { if (props.updateProps) props.updateProps(dt, cameraPos); },
+    syncGround() {
+      (terrain.userData.syncGroundOverlay as (() => void) | undefined)?.();
+      (terrain.userData.followGroundOverlay as (() => void) | undefined)?.();
+    },
     setWaterDisturbances(sources) { terrain.userData.setWaterDisturbances?.(sources); },
     resetWater() { terrain.userData.resetWater?.(); },
     advanceWater(dt, x, z) { terrain.userData.updateWater?.(dt, x, z); },
