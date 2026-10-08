@@ -67,6 +67,11 @@ interface ShellFace {
   uv: ShellUvFit | null;
   /** The wall's built share of its width × height (a wall with its openings cut reads below 1). */
   coverage: number;
+  /** The wall's depth: from its outer plane to the inner one its parts show (null where none reads; the kit's own). */
+  depth: number | null;
+  /** Whether the part carrying most of this wall runs its whole height (one box from foot to eave: a fallen band of it
+   *  cannot leave the rest standing, so the face falls whole). */
+  whole: boolean;
   openings: ShellOpening[];
 }
 
@@ -200,6 +205,40 @@ function fitUv(tris: readonly Tri[], bucket: string, origin: Vec3, u: Vec3): She
   return { bucket, au: fu[0], bu: fu[1], av: fv[0], bv: fv[1] };
 }
 
+/** The height the face's main part spans: the one geometry carrying most of the face in its bucket. */
+function tallestPart(tris: readonly Tri[], bucket: string): number {
+  const byPart = new Map<number, { area: number; lo: number; hi: number }>();
+  for (const t of tris) {
+    if (t.bucket !== bucket) continue;
+    const e = byPart.get(t.part) ?? { area: 0, lo: Infinity, hi: -Infinity };
+    e.area += t.area;
+    e.lo = Math.min(e.lo, t.a[1], t.b[1], t.c[1]); e.hi = Math.max(e.hi, t.a[1], t.b[1], t.c[1]);
+    byPart.set(t.part, e);
+  }
+  let best: { area: number; lo: number; hi: number } | null = null;
+  for (const e of byPart.values()) if (!best || e.area > best.area) best = e;
+  return best ? best.hi - best.lo : 0;
+}
+
+/**
+ * How deep a wall is: the wall-bucket plane facing into the building behind its outer plane (3 cm to a metre in) that
+ * carries the most area — the wall box's own back (a sheet hall's cladding on its girts, a masonry wall's inner face);
+ * null where no inner face reads (a wall built as one face).
+ */
+function innerDepth(tris: readonly Tri[], side: { axis: 0 | 2; sign: 1 | -1 }, plane: number): number | null {
+  const bins = new Map<number, number>();
+  for (const t of tris) {
+    if (!WALL_BUCKETS.has(t.bucket) || t.n[side.axis] * side.sign > -0.92) continue;
+    const back = (plane - centroid(t, side.axis)) * side.sign;
+    if (back < 0.03 || back > 1) continue;
+    const key = Math.round(back / 0.02);
+    bins.set(key, (bins.get(key) ?? 0) + t.area);
+  }
+  let best = 0, area = 0;
+  for (const [key, a] of [...bins].sort((p, q) => p[0] - q[0])) if (a > area) { area = a; best = key; }
+  return area > 0 ? best * 0.02 : null;
+}
+
 /**
  * The shell of a building from its parts, or null when its walls do not close round it. Deterministic: the parts are
  * read in their own order, and every choice is by area with ties to the outer plane.
@@ -261,6 +300,8 @@ export function readShell(parts: ShellParts): ShellReading | null {
       tint: meanColour(onPlane.filter((t) => t.bucket === bucket)),
       uv: fitUv(onPlane, bucket, origin, u),
       coverage: area / Math.max(1e-6, width * (y1 - y0)), openings: [],
+      depth: innerDepth(tris, side, plane),
+      whole: tallestPart(onPlane, bucket) >= 0.85 * (y1 - y0),
     });
   }
   // a shell is walled: every side mostly built (a gable end counts its triangle; openings cut lower it a little)
