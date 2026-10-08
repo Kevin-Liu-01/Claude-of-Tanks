@@ -311,7 +311,7 @@ function launcherCheek(P: TankBuilderPort, side: number): void {
     const ring: [number,number][]=[[inner,low],[outer,low],[outer,middle],[xu,yu],[xr,yr],[xi,yi]];
     const worldRing=ring.map(([x,y]): [number,number]=>[side*x,y-YAW_Y]);
     return {z:z-YAW_Z,ring:side<0?worldRing.reverse():worldRing};
-  })));
+  }),{sideQuadDiagonal:'convex'}));
   innerCheekBlade(P,side);
 }
 
@@ -507,7 +507,7 @@ export function buildK2X(P: TankBuilderPort): void {
     turret(.133,1.271,.465,1.636,2.397),
     turret(1.034,1.271,.43,1.636,2.355),
     turret(1.816,.432,.38,1.636,2.318),
-  ]));
+  ], {sideQuadDiagonal:'convex'}));
   // The ring has a true solid seat, without broad hidden filler planes.
   P.add('turret', cylY(1.12, .085, 48), 0, .030, 0);
   armorModules(P);
