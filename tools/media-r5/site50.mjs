@@ -20,7 +20,7 @@ import { hullOf, waterBlocks } from './route-check.mjs';
 
 export const LOOP_MS = 6000, XFADE_MS = 600, DUR = LOOP_MS + XFADE_MS;
 /** A site still's longest exposure (ms): crisp at round six's camera speeds (siteScene). */
-export const STILL_EXPOSURE_MS = 8;
+export const STILL_EXPOSURE_MS = 2;
 export const KINDS = Object.freeze(['tank', 'battle', 'scene']);
 /** The site lens: a touch of streak; deep focus and no fringe (sets.mjs pictureFor), crisp edge to edge. */
 const SITE_LENS = { streaks: { amount: 0.22, length: 0.6 } };
@@ -381,24 +381,26 @@ export const SHOTS = [
 // snow schemes only on the snow maps, sand and pixel-desert on Sunscar, urban blocks and dazzle in Steinburg, light
 // coats for the night fights so the flare catches them. Its enemy wears a different scheme. The Studio paints per
 // vehicle model, so no model may appear on both sides of one shot. n: [unit scheme, enemy scheme]
+// Media wave m1 (2026-10-07): the critics read the generic catalog patterns on heroes as toys (pixel-stepped blocks, a
+// fabric-scale flecktarn); each such hero now wears a realistic vehicle-scale scheme of its own nation, one per shot.
 export const PAINT = Object.freeze({
-  1: ['flecktarn', 'sig_t90a'], 2: ['berlin', 'service_soviet_coldwar'], 3: ['urbanblock', 'sig_t90'],
-  4: ['sig_t90', 'service_leo2a6m'], 5: ['sig_object695_x', 'merdc'], 6: ['splinter', 'sig_t90a_vladimir'],
-  7: ['winterbands', 'service_soviet_coldwar'], 8: ['paint_m6_linebacker', 'sig_t90ms'], 9: ['sig_leo2a4_otco', 'sig_t90a'],
+  1: ['paint_marder2', 'sig_t90a'], 2: ['paint_m1a1', 'service_soviet_coldwar'], 3: ['sig_leclerc', 'sig_t90'],
+  4: ['sig_t90', 'service_leo2a6m'], 5: ['sig_object695_x', 'merdc'], 6: ['sig_kf51b', 'sig_t90a_vladimir'],
+  7: ['service_strv122', 'service_soviet_coldwar'], 8: ['paint_m6_linebacker', 'sig_t90ms'], 9: ['sig_leo2a4_otco', 'sig_t90a'],
   10: ['sig_type100', 'rasputitsa'], 11: ['desert', 'paint_ru_t80u_modern'], 12: ['sig_t90ms', 'summer'],
-  13: ['sig_k2b', null], 14: ['winter', 'merdcwinter'], 15: ['autumn', 'service_soviet_coldwar'],
-  16: ['dazzle', 'sig_t90a'], 17: ['sig_challenger_3x', 'sig_t72m1_jaguar'], 18: ['digitaldesert', 'service_soviet_coldwar'],
+  13: ['sig_k2b', null], 14: ['service_soviet_coldwar', 'merdcwinter'], 15: ['service_ariete_c1', 'service_soviet_coldwar'],
+  16: ['paint_griffin_viper', 'sig_t90a'], 17: ['sig_challenger_3x', 'sig_t72m1_jaguar'], 18: ['service_leo2a6m', 'service_soviet_coldwar'],
   19: ['sig_pl01_105', 'paint_ru_t80u_modern'], 20: ['sig_ua_challenger2', 'sig_t90'], 21: ['sig_t90sm', 'service_leo2a6m'],
-  22: ['sig_ua_t64bv', 'sig_t90a'], 23: ['paint_pl_t80u_modern', 'service_soviet_coldwar'], 24: ['merdcwinter', 'sig_t90a_vladimir'],
-  25: ['washworn', 'service_soviet_coldwar'], 26: ['sig_merkava3c', 'paint_amx40'], 27: ['sig_merkava4b', 'sig_t90ms'],
-  28: ['sig_challenger2e', 'sig_t90'], 29: ['tigerstripe', 'sig_t90a_vladimir'], 30: ['jungleops', 'sig_t72m1_jaguar'],
+  22: ['sig_ua_t64bv', 'sig_t90a'], 23: ['paint_pl_t80u_modern', 'service_soviet_coldwar'], 24: ['paint_ares_apc_x', 'sig_t90a_vladimir'],
+  25: ['service_leo2a4m', 'service_soviet_coldwar'], 26: ['sig_merkava3c', 'paint_amx40'], 27: ['sig_merkava4b', 'sig_t90ms'],
+  28: ['sig_challenger2e', 'sig_t90'], 29: ['service_marder1a3', 'sig_t90a_vladimir'], 30: ['sig_k1a1', 'sig_t72m1_jaguar'],
   31: ['service_type99a', 'rasputitsa'], 32: ['service_usa_desert', 'sig_t90a'], 33: ['sig_ua_m1a1', 'sig_t90m'],
-  34: ['sig_tos1a_tagil', 'service_leo2a6m'], 35: ['sig_type90a', 'service_soviet_coldwar'], 36: ['amoeba', 'paint_ru_t80u_modern'],
-  37: ['sig_ztz99a2', 'sig_t90'], 38: ['ardennes44', 'merdcwinter'], 39: ['dpm', 'sig_t90a'],
+  34: ['sig_tos1a_tagil', 'service_leo2a6m'], 35: ['sig_type90a', 'service_soviet_coldwar'], 36: ['sig_type10b', 'paint_ru_t80u_modern'],
+  37: ['sig_ztz99a2', 'sig_t90'], 38: ['sig_t90a_vladimir', 'merdcwinter'], 39: ['paint_chieftain5', 'sig_t90a'],
   40: ['sig_amx56', 'service_soviet_coldwar'], 41: ['sig_leo2a6_ua', 'sig_t90'], 42: ['merdc', 'paint_ru_t80u_modern'],
-  43: ['sig_m551_sheridan', 'winter'], 44: ['sig_abramsx', 'sig_t90ms'], 45: ['naval', 'sig_t90a'],
-  46: ['tropic', 'rasputitsa'], 47: ['sig_t90a_burlak', 'summer'], 48: ['sig_ztz85_iii', 'sig_t72m1_jaguar'],
-  49: ['oakleaf', 'service_soviet_coldwar'], 50: ['service_challenger_3', 'paint_ru_t80u_modern'],
+  43: ['sig_m551_sheridan', 'winter'], 44: ['sig_abramsx', 'sig_t90ms'], 45: ['sig_ares_apc_x', 'sig_t90a'],
+  46: ['paint_cn_t80u_modern', 'rasputitsa'], 47: ['sig_t90a_burlak', 'summer'], 48: ['sig_ztz85_iii', 'sig_t72m1_jaguar'],
+  49: ['sig_amx10p', 'service_soviet_coldwar'], 50: ['service_challenger_3', 'paint_ru_t80u_modern'],
 });
 
 // The hero's first round goes out on a flank (the barrel crosses the frame, away from the lens) in a third of the shots,

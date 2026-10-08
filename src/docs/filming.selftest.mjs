@@ -101,6 +101,10 @@ assert.match(text, new RegExp(`at most ${FILM_MOTION_STEP_PX} pixels apart`));
 const sets = read('tools/media-r5/sets.mjs');
 assert.match(sets, /export const pictureFor = \(set, extra = \{\}\) => \(\{\n\s+preset: [^\n]+\n\s+dof: \{ enabled: false \},\n\s+chromaticAberration: 0,/);
 assert.match(text, /in deep focus: sharp from the lens to the horizon/);
+// The stills' exposure, held to the builder (media wave m1, 2026-10-07: 2 ms, so the tread and the turret stay crisp).
+const stillMs = /export const STILL_EXPOSURE_MS = (\d+);/.exec(read('tools/media-r5/site50.mjs'))?.[1];
+assert.ok(stillMs, 'the stills exposure in site50.mjs');
+assert.match(text, new RegExp(`two 4K stills at a ${stillMs} ms exposure`));
 assert.match(read('tools/media-r5/cinema-jobs.mjs'), /resolution: Number\(opt\.resolution \?\? 2160\)/, 'finals render at 2160p');
 assert.match(read('tools/media-r5/lens-check.mjs'), /export function lensReport\(scene, model, \{ stepMs = 100,/);
 assert.match(text, /samples the camera every 100 ms and casts five sightlines/);

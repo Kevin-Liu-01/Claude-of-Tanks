@@ -126,7 +126,20 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
       blockedAt.push(t);
       if (worst.length < 4) worst.push({ tMs: t, by });
     }
-    perSample.push({ tMs: t, seen: inView, centred, clear: !isBlocked && blockedRays === 0, distM: +Math.hypot(points[0][0] - cam.x, points[0][1] - cam.y, points[0][2] - cam.z).toFixed(1) });
+    // the hull's screen box (media wave m1, 2026-10-07): its bounding box's eight corners, ground to 2.6 m, in the frame's
+    // normalised coordinates (-1..1 each way); whole when every corner lies inside 92 % of the frame
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, ahead = true;
+    for (const [a, b] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) for (const h of [0, 2.6]) {
+      const q = [x + fx * halfLength * a + fz * halfWidth * b, gy + h, z + fz * halfLength * a - fx * halfWidth * b];
+      const d = [q[0] - cam.x, q[1] - cam.y, q[2] - cam.z], depth = d[0] * fw[0] + d[1] * fw[1] + d[2] * fw[2];
+      if (depth <= 0.5) { ahead = false; continue; }
+      const sx = (d[0] * right[0] + d[1] * right[1] + d[2] * right[2]) / depth / tx, sy = (d[0] * up[0] + d[1] * up[1] + d[2] * up[2]) / depth / ty;
+      x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy);
+    }
+    const box = ahead ? [x0, y0, x1, y1].map((v) => +v.toFixed(3)) : null;
+    const whole = !!box && box[0] > -0.92 && box[2] < 0.92 && box[1] > -0.92 && box[3] < 0.92;
+    perSample.push({ tMs: t, seen: inView, centred, clear: !isBlocked && blockedRays === 0, distM: +Math.hypot(points[0][0] - cam.x, points[0][1] - cam.y, points[0][2] - cam.z).toFixed(1),
+      box, whole, size: box ? +((box[3] - box[1]) / 2).toFixed(3) : 0 });
   }
   return { blocked: samples ? blocked / samples : 0, outOfFrame: samples ? outOfFrame / samples : 0, samples, worst, blockedAt, perSample };
 }
@@ -138,12 +151,23 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
  * frame holds it) with the hero centred and clear, at least `apartMs` from the first. Ends of the take are left out
  * (the loop's crossfade). Returns [ms, ...].
  */
-export function stillMoments(scene, model, designatedMs, { minDistM = 8, apartMs = 900, edgeMs = 400 } = {}) {
+export function stillMoments(scene, model, designatedMs, { minDistM = 8, apartMs = 900, edgeMs = 400, nearMs = 700, burstMs = 1200 } = {}) {
   const dur = scene.storyboard?.durationMs ?? 0;
-  const good = lensReport(scene, model).perSample.filter((p) => p.seen && p.centred && p.clear && p.tMs >= edgeMs && p.tMs <= dur - edgeMs);
+  // media wave m1 (2026-10-07): a still keeps the whole hull in frame (not cut by an edge), its centre in the middle
+  // band of the frame (not squeezed to one side), and no burst at the hero just before (dust or a blast would bury it)
+  const bursts = (scene.effects ?? []).filter((e) => e.actor === 'hero' && /dust|boom|huge|barrage|debris|shockwave|smoke/.test(e.type ?? ''));
+  const buried = (t) => bursts.some((e) => t >= (e.tMs ?? 0) && t <= (e.tMs ?? 0) + burstMs);
+  const framed = (p) => p.whole && p.box && Math.abs((p.box[0] + p.box[2]) / 2) <= 0.4;
+  const samples = lensReport(scene, model).perSample.filter((p) => p.seen && p.clear && p.tMs >= edgeMs && p.tMs <= dur - edgeMs);
+  const good = samples.filter((p) => framed(p) && !buried(p.tMs));
   if (!good.length) return [designatedMs];
-  const first = good.some((p) => Math.abs(p.tMs - designatedMs) < 50) ? designatedMs
+  // the key moment: the designated instant if it frames well, else the best-framed sample within nearMs of it (the
+  // larger hull wins), else the nearest good sample
+  const near = good.filter((p) => Math.abs(p.tMs - designatedMs) <= nearMs);
+  const exact = near.find((p) => Math.abs(p.tMs - designatedMs) < 50);
+  const first = exact ? designatedMs : near.length ? near.reduce((a, b) => (b.size > a.size ? b : a)).tMs
     : good.reduce((a, b) => (Math.abs(b.tMs - designatedMs) < Math.abs(a.tMs - designatedMs) ? b : a)).tMs;
-  const close = good.filter((p) => p.distM >= minDistM && Math.abs(p.tMs - first) >= apartMs).sort((a, b) => a.distM - b.distM)[0];
+  // the close portrait: the largest hull on screen, at least apartMs from the first, never nearer than minDistM
+  const close = good.filter((p) => p.distM >= minDistM && Math.abs(p.tMs - first) >= apartMs).sort((a, b) => b.size - a.size)[0];
   return close ? [first, close.tMs] : [first];
 }

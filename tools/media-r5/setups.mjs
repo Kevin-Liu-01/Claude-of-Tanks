@@ -340,7 +340,9 @@ export function buildShot(s, m) {
   // a 120° shutter (1/90 s at 30 fps; owner 2026-10-06: "make sure the videos are a lot higher quality and not blurry"):
   // with hulls at 9-15 m/s and the lens sweeping past at 7 m, 180° smeared the detail; a third less blur keeps the
   // motion smooth and the hulls crisp
-  scene.film = m.film ?? s.film ?? { fps: 30, shutterDeg: 120, samples: 8, maxSamples: 48 };
+  // a 90° shutter (media wave m1, 2026-10-07: at 120° the critics read fast moves as smear, and the owner asked for
+  // videos "not blurry")
+  scene.film = m.film ?? s.film ?? { fps: 30, shutterDeg: 90, samples: 8, maxSamples: 48 };
   scene.effects = [...(s.effects ?? []), ...(m.effects ?? [])].sort((a, b) => a.tMs - b.tMs).map(fx => {
     if (!fx.at?.hero) return fx;
     const hp = heroPath(fx.tMs), q = frame(hp.p, hp.h).at(fx.at.hero[0], fx.at.hero[1]);
