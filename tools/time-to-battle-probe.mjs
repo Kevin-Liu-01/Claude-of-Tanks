@@ -81,7 +81,17 @@ async function enterBattle({ specId, mapId, opponents }) {
   // the call paths of the releases (and of the acquisitions after the first release): who disposes or swaps materials
   const stacks = new Map();
   const stackOf = () => { const limit = Error.stackTraceLimit; Error.stackTraceLimit = 40; try { return String(new Error().stack || '').split('\n').slice(2, 40).join('\n'); } finally { Error.stackTraceLimit = limit; } };
-  const noteStack = (tag) => { if (stacks.size >= 12) return; const st = stackOf(); const k = st.slice(0, 600); const e = stacks.get(k); if (e) e.n++; else stacks.set(k, { tag, n: 1, at: +performance.now().toFixed(1), stack: st.slice(0, 4000) }); };
+  // (keyed by the whole path below the probe's own two frames; up to 16 release paths, and 8 acquisition paths once
+  // 20 programs have been released — the opening frame's burst, not the impostor bakes' few)
+  let releases = 0, acquirePaths = 0;
+  const noteStack = (tag) => {
+    if (tag === 'release' ? stacks.size - acquirePaths >= 16 : (releases < 20 || acquirePaths >= 8)) return;
+    const st = stackOf().split('\n').slice(2).join('\n');
+    const e = stacks.get(st);
+    if (e) { e.n++; return; }
+    stacks.set(st, { tag, n: 1, at: +performance.now().toFixed(1), stack: st.slice(0, 4000) });
+    if (tag !== 'release') acquirePaths++;
+  };
   let releasedAny = false;
   const hash = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193); return (h >>> 0).toString(16); };
   try {
@@ -90,7 +100,7 @@ async function enterBattle({ specId, mapId, opponents }) {
       if (!p || p.__ttbWatched || typeof p.destroy !== 'function') return;
       p.__ttbWatched = true;
       const destroy = p.destroy;
-      p.destroy = function (...args) { try { churn.push([+performance.now().toFixed(1), '-', p.id, p.name, keyOf(p)]); releasedAny = true; noteStack('release'); } catch { /* diagnostics only */ } return destroy.apply(this, args); };
+      p.destroy = function (...args) { try { churn.push([+performance.now().toFixed(1), '-', p.id, p.name, keyOf(p)]); releasedAny = true; releases++; noteStack('release'); } catch { /* diagnostics only */ } return destroy.apply(this, args); };
     };
     const list = R.info.programs;
     if (Array.isArray(list) && !list.__ttbWatched) {
