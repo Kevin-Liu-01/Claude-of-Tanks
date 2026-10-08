@@ -18,6 +18,8 @@ import { buildJaguarModern } from './t72ModernVariants.ts';
 
 import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { addMissionAttachmentReceiver } from '../missionAttachmentReceiver.ts';
+import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import * as THREE from 'three';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import {
@@ -44,11 +46,13 @@ interface DisposableResource {
 }
 
 interface PolishBuilderMaterials extends Record<string, THREE.Material> {
+  hull: THREE.Material;
   canvasCloth: THREE.MeshStandardMaterial;
   wood: THREE.MeshStandardMaterial;
 }
 
 interface PolishBuilderPort {
+  postAssemble: TankBuilderPort['postAssemble'];
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
@@ -648,6 +652,7 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
   P.decal('turret', 'number', 'PT-91', 0.24, [-1.32, 0.42, -0.98], -Math.PI / 2);
   P.decal('turret', 'number', 'PT-91', 0.24, [1.32, 0.42, -0.98], Math.PI / 2);
   addVehicleGhillieSuit(P);
+  addMissionAttachmentReceiver(P, 'pt91_twardy');
   P.topY = Math.max(P.topY || 0, 1.35);
 }
 
