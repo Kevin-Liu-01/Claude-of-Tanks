@@ -897,6 +897,10 @@ export function createBattlePresentation({
         // the authority's stage on this world's own structure (destructionMirror.ts), animated: it emits structure:stage
         destruction.applyStageEvent(payload as Record<string, unknown>);
         return;
+      case 'structure_breach':
+        // the authority's hole or section fall (P2) opened on this world's structure: it emits structure:breach
+        destruction.applyBreachEvent(payload as Record<string, unknown>);
+        return;
       case 'terrain_crater':
         // the authority's crater on this world's ground (P3): the prediction rides it; it emits terrain:crater
         destruction.applyCraterEvent(payload as Record<string, unknown>);

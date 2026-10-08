@@ -15,7 +15,7 @@ import { createDestructionMirror } from '../mp/presentation/destructionMirror.ts
 import { quantizeDestructionEntry } from '../mp/wire/destructionLog.ts';
 import { getSpec } from '../vehicles/specs.ts';
 
-const RULES = Object.freeze({ structures: true, craters: true, structureDamageScale: 1, craterScale: 1, maxCraters: 6 });
+const RULES = Object.freeze({ structures: true, craters: true, sections: false, structureDamageScale: 1, craterScale: 1, maxCraters: 6 });
 const he125 = { type: 'HE', caliberMm: 125 };
 const he105 = { type: 'HE', caliberMm: 105 };
 const howitzer = { type: 'HE', caliberMm: 105, blastRadiusM: 22, tracer: 'GUNSHIP' };

@@ -322,11 +322,14 @@ const ENDING_HOLD_S = 8;
  */
 // craters (P3) stay off until the rendered terrain follows the ground overlay (docs/DESTRUCTION.md §7, §14): a crater
 // the simulation digs under a flat drawn ground would sink hulls into it
+// sections (P2: holes, fallen walls, roofs and storeys that shells and sight lines pass) stay off until their gates pass
+// (docs/DESTRUCTION.md §3.4, §13): the receipts, the paired pacing and fairness, the cost runs and the motion strips
+const SECTIONS_SWITCH = false;
 const DESTRUCTION_ON: DestructionRules = Object.freeze({
-  structures: true, craters: false, structureDamageScale: 1, craterScale: 1, maxCraters: 160,
+  structures: true, craters: false, sections: SECTIONS_SWITCH, structureDamageScale: 1, craterScale: 1, maxCraters: 160,
 });
 const DESTRUCTION_OFF: DestructionRules = Object.freeze({
-  structures: false, craters: false, structureDamageScale: 0, craterScale: 0, maxCraters: 0,
+  structures: false, craters: false, sections: false, structureDamageScale: 0, craterScale: 0, maxCraters: 0,
 });
 
 const STANDARD: MatchRuleset = Object.freeze({

@@ -40,7 +40,8 @@ import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import {
   createObstacleGrid,
-  rayCollisionRecord,
+  nearestColliderHit,
+  type ColliderRayHit,
   type CollisionRecord,
   type ObstacleQuery,
 } from './collision.ts';
@@ -527,8 +528,8 @@ function assembleWorld(
     terrain.userData.sourcedTexturesReady, props.sourcedTexturesReady,
   );
 
-  const _aabbNrm = new THREE.Vector3();
   const _bestNrm = new THREE.Vector3();
+  const _nearestHit: ColliderRayHit = { distance: Infinity, record: null };
 
   /**
    * Cheap world raycast: heightfield ray-march + tight prop-shape tests.
@@ -548,26 +549,15 @@ function assembleWorld(
     dir: THREE.Vector3,
     maxDist: number,
   ): { distance: number; record: CollisionRecord | null } {
-    let best = Infinity;
-    let record: CollisionRecord | null = null;
     const endX = origin.x + dir.x * maxDist;
     const endZ = origin.z + dir.z * maxDist;
     queryColliders(
       Math.min(origin.x, endX), Math.min(origin.z, endZ),
       Math.max(origin.x, endX), Math.max(origin.z, endZ), rayCandidates);
-    for (const candidate of rayCandidates) {
-      // Destroyed records stay in the broad phase for O(1) rematch restore.
-      if (candidate.dead) continue;
-      const distance = rayCollisionRecord(
-        origin, dir, candidate, Math.min(maxDist, best), _aabbNrm,
-      );
-      if (distance >= 0 && distance < best) {
-        best = distance;
-        record = candidate;
-        _bestNrm.copy(_aabbNrm);
-      }
-    }
-    return { distance: best, record };
+    // destroyed records stay in the broad phase for O(1) rematch restore; a structure with openings (destruction P2)
+    // answers as a whole
+    nearestColliderHit(rayCandidates, origin, dir, maxDist, _bestNrm, _nearestHit);
+    return { distance: _nearestHit.distance, record: _nearestHit.record };
   }
 
   function terrainHitDistance(

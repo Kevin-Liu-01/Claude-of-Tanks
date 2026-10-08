@@ -1040,6 +1040,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/destructionNavigation.selftest.mjs',
     'src/sim/destructionShard.selftest.mjs',
     'src/sim/destructionCraters.selftest.mjs',
+    // 2026-10-08 (destruction core lane, P2): sections — holes, fallen panels, roofs and storeys that rays pass
+    'src/sim/structureSections.selftest.mjs',
     // the kit seam's world side: the default kit, the aDamage tags, spans, depth materials and shadow touch (§16.4)
     'src/world/destructionKit.selftest.mjs',
     // 2026-10-08 (destruction core lane, layout identity): a phone places the desktop's records, index for index

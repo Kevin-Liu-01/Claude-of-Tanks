@@ -10,6 +10,10 @@
  * Pure and Node-runnable. Inert (no table, nothing priced) when the ruleset turns structures off or the world's
  * records carry no structure groups (a shard captured before 2026-10-07).
  *
+ * Sections (P2, §3.4) when the ruleset turns them on: a round's strike opens a hole in the struck section (its blast's by
+ * the charge, a penetrator's by its calibre), sections fall at zero and bring what stood on them; each is a
+ * StructureBreachEvent, logged ('breach', its footprint centre with it) and handed back like the stages.
+ *
  * Craters (P3, §7): a round that bursts on the ground digs one when the ruleset allows craters and the crater law gives
  * at least CRATER_DEFORM_MIN_RADIUS_M — never on hard ground (roads, bridge decks, ice), at most CRATERS_PER_TICK a tick
  * and `maxCraters` a match — stamped on the match's ground overlay quantized as the wire carries it (so every peer and a
@@ -18,11 +22,12 @@
  */
 import type { CollisionRecord } from '../world/collision.ts';
 import type {
-  DestructionLogEntry, DestructionRules, MunitionClass, StructureStage, StructureStageEvent, TerrainCraterEvent,
+  DestructionLogEntry, DestructionRules, MunitionClass, StructureBreachEvent, StructureStage, StructureStageEvent,
+  TerrainCraterEvent,
 } from './destructionEvents.ts';
 import {
   CRATER_DEFORM_MIN_RADIUS_M, cookOffChargeKg, craterFor, FUEL_CHARGE_KG, kineticStructurePoints, munitionChargeKg,
-  munitionClassForShell, type CraterShape, type MunitionShellLike,
+  munitionClassForShell, penetratorHoleRadiusM, type CraterShape, type MunitionShellLike,
 } from './munitionBlast.ts';
 import { createStructureDamage, type StructureDamage, type StructureState } from './structureDamage.ts';
 import { rubbleHeightFor, type TerrainDeformation } from './terrainDeformation.ts';
@@ -77,6 +82,8 @@ export interface DestructionMatch {
   /** End of the fixed step: queued collapses, the log, this tick's events (drain them with `drainEvents`). */
   step(): void;
   drainEvents(out: StructureStageEvent[]): number;
+  /** This tick's holes and section falls (P2), in log order. */
+  drainBreaches(out: StructureBreachEvent[]): number;
   /** This tick's craters (P3), in log order. */
   drainCraters(out: TerrainCraterEvent[]): number;
   /** Deforming craters dug so far this match (and restored). */
@@ -111,13 +118,14 @@ export function quantizeCrater(x: number, z: number, shape: CraterShape, out: Qu
   return out;
 }
 
-/** Reset every structure record's flags (a world reused for a new battle; the props reset their own). */
+/** Reset every structure record's flags and openings (a world reused for a new battle; the props reset their own). */
 export function resetStructureRecords(obstacles: readonly CollisionRecord[], colliders: readonly CollisionRecord[]): void {
   for (const record of obstacles) if (record.structureIdx !== undefined) record.crushed = false;
   for (const record of colliders) {
     if (record.structureIdx === undefined) continue;
     record.crushed = false;
     record.dead = false;
+    if (record.openings) record.openings = null;
   }
 }
 
@@ -131,6 +139,7 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
     ? createStructureDamage(options.obstacles, options.colliders, {
       damageScale: rules!.structureDamageScale,
       wallMaterial: options.wallMaterial ?? 'masonry',
+      sections: rules!.sections === true,
       // the heap over its footprint first (a hull on it rides the mound from this tick), then the caller's refresh
       onCollapse: (structure) => {
         ground?.addRubble(structure.cx, structure.cz, structure.hw, structure.hd, structure.yaw,
@@ -142,6 +151,8 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
   const log: DestructionLogEntry[] = [];
   const stepEvents: StructureStageEvent[] = [];
   const outbox: StructureStageEvent[] = [];
+  const stepBreaches: StructureBreachEvent[] = [];
+  const breachOutbox: StructureBreachEvent[] = [];
   const craterOutbox: TerrainCraterEvent[] = [];
   const shape: CraterShape = { radiusM: 0, depthM: 0, rimM: 0 };
   const quantized: QuantizedCrater = { x: 0, z: 0, radiusM: 0, depthM: 0, rimM: 0, seed: 0 };
@@ -164,14 +175,15 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
     return craterId;
   }
   const blow = { cause: 'blast' as StructureStageEvent['cause'], munition: null as StructureStageEvent['munition'],
-    x: 0, y: 0, z: 0, dirX: 0, dirZ: 1 };
+    x: 0, y: 0, z: 0, dirX: 0, dirZ: 1, holeRadiusM: 0 };
   const setBlow = (cause: StructureStageEvent['cause'], munition: StructureStageEvent['munition'],
-    x: number, y: number, z: number, dirX: number, dirZ: number) => {
+    x: number, y: number, z: number, dirX: number, dirZ: number, holeRadiusM = 0) => {
     const length = Math.hypot(dirX, dirZ);
     blow.cause = cause; blow.munition = munition;
     blow.x = x; blow.y = y; blow.z = z;
     blow.dirX = length > 1e-9 ? dirX / length : 0;
     blow.dirZ = length > 1e-9 ? dirZ / length : 1;
+    blow.holeRadiusM = holeRadiusM;
     return blow;
   };
 
@@ -186,9 +198,13 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
       if (!structures) return craterId;
       const struck = structures.structureOf(record);
       const kinetic = struck ? kineticStructurePoints(spec, munition) : 0;
-      if (struck && kinetic > 0) structures.applyPoints(struck, kinetic, setBlow('kinetic', munition, x, y, z, dirX, dirZ));
+      // a penetrator's hole (P2): a kinetic round's own; a shaped charge's rides its blast (the larger of the two)
+      const hole = kinetic > 0 ? penetratorHoleRadiusM(spec) : 0;
+      if (struck && kinetic > 0) {
+        structures.applyPoints(struck, kinetic, setBlow('kinetic', munition, x, y, z, dirX, dirZ, charge > 0 ? 0 : hole));
+      }
       if (charge > 0) {
-        structures.applyBlast(charge, munition, setBlow('blast', munition, x, y, z, dirX, dirZ), struck);
+        structures.applyBlast(charge, munition, setBlow('blast', munition, x, y, z, dirX, dirZ, hole), struck);
         options.onBlast?.(x, y, z, charge);
       }
       return craterId;
@@ -235,12 +251,26 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
         log.push({ kind: 'stage', structureId: event.structureId, stage: event.stage, cx: event.cx, cz: event.cz });
         outbox.push(event);
       }
+      stepBreaches.length = 0;
+      structures.drainBreaches(stepBreaches);
+      for (const event of stepBreaches) {
+        log.push({ kind: 'breach', structureId: event.structureId, section: event.section, hole: event.hole,
+          x: event.x, y: event.y, z: event.z, radiusM: event.radiusM, sectionDown: event.sectionDown, cx: event.cx, cz: event.cz });
+        breachOutbox.push(event);
+      }
     },
     drainEvents(out) {
       if (!outbox.length) return 0;
       const count = outbox.length;
       for (const event of outbox) out.push(event);
       outbox.length = 0;
+      return count;
+    },
+    drainBreaches(out) {
+      if (!breachOutbox.length) return 0;
+      const count = breachOutbox.length;
+      for (const event of breachOutbox) out.push(event);
+      breachOutbox.length = 0;
       return count;
     },
     drainCraters(out) {
@@ -256,6 +286,8 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
       for (const entry of entries) {
         log.push({ ...entry });
         if (entry.kind === 'stage' && structures?.restoreStage(entry.structureId, entry.stage as StructureStage)) applied++;
+        if (entry.kind === 'breach' && structures && structures.restoreBreach(entry.structureId, entry.section, entry.hole,
+          entry.x, entry.y, entry.z, entry.radiusM, entry.sectionDown) >= 0) applied++;
         if (entry.kind === 'crater') {
           // the previous authority's crater, as it stamped it (its id continues the count; a full bucket stays a mark)
           if (ground?.addCrater(entry.x, entry.z, entry.radiusM, entry.depthM, entry.rimM, entry.seed)) applied++;

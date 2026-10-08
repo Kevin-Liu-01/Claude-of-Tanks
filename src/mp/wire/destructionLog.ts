@@ -4,7 +4,7 @@
  * The log (sim/destructionEvents.ts DestructionLogEntry: a structure's stage, a breach, a crater) only grows within a
  * match, so a snapshot carries it as the destroyed-prop list travels: whole in a keyframe, the entries after its
  * baseline's length in a delta (the packet names that length, so a client never splices a delta onto the wrong
- * base). Entries are compact binary: a stage 11–13 bytes (with its footprint centre), a breach 20, a crater 19. Positions travel in millimetres,
+ * base). Entries are compact binary: a stage 11–13 bytes (with its footprint centre), a breach 20–28 (with it), a crater 19. Positions travel in millimetres,
  * radii in centimetres, depths in millimetres: the authority quantizes its own entries the same way, so the log a
  * migrated host restores is the log every peer applied.
  */
@@ -30,11 +30,13 @@ export function quantizeDestructionEntry(entry: DestructionLogEntry): Destructio
       : { kind: 'stage', structureId: entry.structureId, stage: entry.stage };
   }
   if (entry.kind === 'breach') {
-    return {
-      kind: 'breach', structureId: entry.structureId, section: entry.section & 0xff, hole: entry.hole & 0xff,
+    const breach = {
+      kind: 'breach' as const, structureId: entry.structureId, section: entry.section & 0x7f, hole: entry.hole & 0xff,
       x: mm(entry.x) / 1000, y: mm(entry.y) / 1000, z: mm(entry.z) / 1000, radiusM: cm16(entry.radiusM) / 100,
       sectionDown: !!entry.sectionDown,
     };
+    return Number.isFinite(entry.cx) && Number.isFinite(entry.cz)
+      ? { ...breach, cx: mm(entry.cx!) / 1000, cz: mm(entry.cz!) / 1000 } : breach;
   }
   return {
     kind: 'crater', craterId: entry.craterId, x: mm(entry.x) / 1000, z: mm(entry.z) / 1000,
@@ -57,13 +59,16 @@ export function writeDestructionEntries(writer: ByteWriter, entries: readonly De
       writer.u8(stage | (identity ? 0x80 : 0));
       if (identity) { writer.i32(mm(entry.cx!)); writer.i32(mm(entry.cz!)); }
     } else if (entry.kind === 'breach') {
+      const identity = Number.isFinite(entry.cx) && Number.isFinite(entry.cz);
       writer.u8(KIND_BREACH);
       writer.varint(entry.structureId);
-      writer.u8(entry.section & 0xff);
+      // the high bit: the footprint centre follows (sections are at most 4 · 6 + 1)
+      writer.u8((entry.section & 0x7f) | (identity ? 0x80 : 0));
       writer.u8(entry.hole & 0xff);
       writer.i32(mm(entry.x)); writer.i32(mm(entry.y)); writer.i32(mm(entry.z));
       writer.u16(cm16(entry.radiusM));
       writer.u8(entry.sectionDown ? 1 : 0);
+      if (identity) { writer.i32(mm(entry.cx!)); writer.i32(mm(entry.cz!)); }
     } else {
       writer.u8(KIND_CRATER);
       writer.varint(entry.craterId);
@@ -92,11 +97,17 @@ export function readDestructionEntries(reader: ByteReader): DestructionLogEntry[
       }
     } else if (kind === KIND_BREACH) {
       const structureId = reader.varint();
-      const section = reader.u8(), hole = reader.u8();
+      const word = reader.u8(), hole = reader.u8();
+      const section = word & 0x7f;
       const x = reader.i32() / 1000, y = reader.i32() / 1000, z = reader.i32() / 1000;
       const radiusM = reader.u16() / 100;
       const sectionDown = reader.u8() !== 0;
-      entries.push({ kind: 'breach', structureId, section, hole, x, y, z, radiusM, sectionDown });
+      if (word & 0x80) {
+        const cx = reader.i32() / 1000, cz = reader.i32() / 1000;
+        entries.push({ kind: 'breach', structureId, section, hole, x, y, z, radiusM, sectionDown, cx, cz });
+      } else {
+        entries.push({ kind: 'breach', structureId, section, hole, x, y, z, radiusM, sectionDown });
+      }
     } else if (kind === KIND_CRATER) {
       const craterId = reader.varint();
       const x = reader.i32() / 1000, z = reader.i32() / 1000;

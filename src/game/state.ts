@@ -126,7 +126,9 @@ import { mulberry32 } from './stateCore.ts';
 import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.ts';
 import { classifyShellSurface, shellHitsWater } from '../sim/shellSurface.ts';
 import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
-import { DESTRUCTION_BUS_EVENTS, type StructureStageEvent, type TerrainCraterEvent } from '../sim/destructionEvents.ts';
+import {
+  DESTRUCTION_BUS_EVENTS, type StructureBreachEvent, type StructureStageEvent, type TerrainCraterEvent,
+} from '../sim/destructionEvents.ts';
 import { architectureStyleOf, wallMaterialForStyle } from '../sim/structureMaterial.ts';
 import { getMapConfig } from '../world/maps/index.ts';
 import {
@@ -341,6 +343,7 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   /** Destruction (docs/DESTRUCTION.md): this battle's structures and log, as the authority keeps them. */
   _destruction?: DestructionMatch | null;
   _destructionEvents?: StructureStageEvent[];
+  _destructionBreaches?: StructureBreachEvent[];
   _destructionCraters?: TerrainCraterEvent[];
   /** Blasts the destruction match reported, waiting for their light props to fall (fellBlastProps). */
   _destructionBlasts?: number[];
@@ -1247,6 +1250,7 @@ export function setupBattle(
     wallMaterial: wallMaterialForStyle(architectureStyleOf(getMapConfig(game.mapId))),
   });
   game._destructionEvents = [];
+  game._destructionBreaches = [];
   game._destructionCraters = [];
 
   // COMMUNITY TANKS: field the participants; park everyone else (hidden,
@@ -3124,6 +3128,11 @@ function stepDestruction(game: SoloGameState, bus: EventBus, world: SoloWorld): 
   events.length = 0;
   destruction.drainEvents(events);
   for (const event of events) bus.emit(DESTRUCTION_BUS_EVENTS.stage, event);
+  // P2: holes and section falls, after the stages of the same tick (the log's order)
+  const breaches = game._destructionBreaches ??= [];
+  breaches.length = 0;
+  destruction.drainBreaches(breaches);
+  for (const breach of breaches) bus.emit(DESTRUCTION_BUS_EVENTS.breach, breach);
   const craters = game._destructionCraters ??= [];
   craters.length = 0;
   destruction.drainCraters(craters);

@@ -65,8 +65,9 @@ export class ReliableEventQueue {
    * and a prop whose fall is still on its way here must not be laid down by that list first.
    */
   private readonly pendingObstacles = new Map<number, number>();
-  /** Structure ids of the `structure_stage` events still owed to the presentation (destruction, 2026-10-07): the
-   * snapshot's destruction log names a stage before its event is presented, and the stage belongs to the event. */
+  /** Structure ids of the `structure_stage` and `structure_breach` events still owed to the presentation (destruction,
+   * 2026-10-07; breaches P2): the snapshot's destruction log names a stage or a hole before its event is presented, and
+   * the structure's entries belong to their events. */
   private readonly pendingStructures = new Map<number, number>();
   /** Crater ids of the `terrain_crater` events still owed to the presentation (P3): a crater belongs to its event too. */
   private readonly pendingCraters = new Map<number, number>();
@@ -107,7 +108,7 @@ export class ReliableEventQueue {
     return this.pendingObstacles.has(index);
   }
 
-  /** Whether a `structure_stage` for this structure is still owed to the presentation. */
+  /** Whether a `structure_stage` or `structure_breach` for this structure is still owed to the presentation. */
   isStructurePending(structureId: number): boolean {
     return this.pendingStructures.has(structureId);
   }
@@ -119,7 +120,7 @@ export class ReliableEventQueue {
 
   private notePending(event: WireEvent, delta: number): void {
     const counted = event.kind === 'world_prop_destroyed' ? this.pendingObstacles
-      : event.kind === 'structure_stage' ? this.pendingStructures
+      : event.kind === 'structure_stage' || event.kind === 'structure_breach' ? this.pendingStructures
         : event.kind === 'terrain_crater' ? this.pendingCraters : null;
     if (!counted) return;
     const index = Number(event.kind === 'world_prop_destroyed' ? event.payload.obstacleIndex

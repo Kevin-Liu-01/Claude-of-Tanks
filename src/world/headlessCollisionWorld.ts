@@ -1,6 +1,6 @@
 import { Vector3 } from 'three';
-import { createObstacleGrid, rayCollisionRecord } from './collision.ts';
-import type { CollisionRecord } from './collision.ts';
+import { createObstacleGrid, nearestColliderHit as nearestRecordHit } from './collision.ts';
+import type { ColliderRayHit, CollisionRecord } from './collision.ts';
 import type { HeightField } from './terrain.ts';
 
 /**
@@ -154,8 +154,8 @@ export function createHeadlessCollisionWorld(
   const candidates: CollisionRecord[] = [];
   const point = new Vector3();
   const bisectPoint = new Vector3();
-  const hitNormal = new Vector3();
   const bestNormal = new Vector3();
+  const nearestHit: ColliderRayHit = { distance: Infinity, record: null };
   const fastHeightAt = worldHeightField.getHeightAtFast || worldHeightField.getHeightAt;
 
   function nearestColliderHit(
@@ -163,8 +163,6 @@ export function createHeadlessCollisionWorld(
     direction: Vector3,
     maxDistance: number,
   ): { distance: number; record: CollisionRecord | null } {
-    let bestDistance = Infinity;
-    let bestRecord: CollisionRecord | null = null;
     const endX = origin.x + direction.x * maxDistance;
     const endZ = origin.z + direction.z * maxDistance;
     queryColliders(
@@ -172,18 +170,9 @@ export function createHeadlessCollisionWorld(
       Math.max(origin.x, endX), Math.max(origin.z, endZ),
       candidates,
     );
-    for (const collider of candidates) {
-      if (collider.dead) continue;
-      const distance = rayCollisionRecord(
-        origin, direction, collider, Math.min(maxDistance, bestDistance), hitNormal,
-      );
-      if (distance >= 0 && distance < bestDistance) {
-        bestDistance = distance;
-        bestRecord = collider;
-        bestNormal.copy(hitNormal);
-      }
-    }
-    return { distance: bestDistance, record: bestRecord };
+    // the rendered world's narrow phase (world/collision.ts): dead records skipped, a structure with openings as a whole
+    nearestRecordHit(candidates, origin, direction, maxDistance, bestNormal, nearestHit);
+    return { distance: nearestHit.distance, record: nearestHit.record };
   }
 
   function terrainHitDistance(
