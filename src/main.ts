@@ -177,7 +177,7 @@ import { createKillcamAccess } from './game/killcamAccess.ts';
 import { createPlayerBattleActions } from './game/playerBattleActions.ts';
 import { createPlayerFrameInput } from './game/playerFrameInput.ts';
 import { createBattleFrameRuntime } from './game/battleFrameRuntime.ts';
-import { createBattlePresentationRuntime } from './game/battlePresentationRuntime.ts';
+import { createBattlePresentationRuntime, loadMissionAttachmentVisual } from './game/battlePresentationRuntime.ts';
 import { createBattleHudFrameRuntime } from './game/battleHudFrameRuntime.ts';
 import { createMatchModeWorldPresentation } from './game/matchModeWorldPresentation.ts';
 import { createBattleResultPresentationRuntime } from './game/battleResultPresentationRuntime.ts';
@@ -683,6 +683,8 @@ let coveredBattleWatchdog: (() => Promise<SceneWatchdogResult | void>) | null = 
 const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
   loadModule: () => import('./fx/effects.ts'),
   initialize: async ({ createFxChunked }) => {
+    // the battle-only mission-attachment visual (the drone dock on its carrier) lands with the FX graph
+    await loadMissionAttachmentVisual();
     const live = await createFxChunked(engineCtx, hfProxy, {
       seed: 5000,
       auxiliaryEntities: () => multiplayerV2.current?.active ? game.tankById.values() : game.tanks, // v2 is the only multiplayer (cutover)
@@ -973,6 +975,8 @@ const pedestal = createGaragePedestalRuntime({
   // invoked; the closure keeps this early lifecycle declaration independent
   // of the later renderer-target owner.
   prepareVisual: (visual) => prepareGarageTankEnergyVisual(visual.root, getSpec(visual.specId).dims),
+  // (the time-to-battle lane, 2026-10-08) the dormant skin ends where the hero becomes the battle's, on every entry path
+  releaseVisual: (visual) => clearJuggernautVisual(visual.root, true),
   compilePrograms: (root) => forwardProgramWarm.compile(root),
   // FSP-01: strict first-use preparation (submission, readiness polling,
   // uniform reflection) of the parked hero's forward programs against the
@@ -1924,6 +1928,7 @@ const battlePresentation = createBattlePresentationRuntime({
 // terrain, FX and first-frame warm order plus cancellation/fallback policy.
 const soloBattleDeployment = createSoloBattleDeploymentAccess({
   options: () => ({
+    warmVisionSteps: combatWarmComposition.warmVisionSteps,
     game,
     renderer,
     scene,
@@ -2988,6 +2993,7 @@ let shotHudFrame = false;
 
 let lastAuxiliaryNight: boolean | null = null;
 const mainFrame = createMainFrameRuntime({
+  thermalVehicles: combatWarmComposition.thermalVehicles,
   scene,
   camera,
   game,
