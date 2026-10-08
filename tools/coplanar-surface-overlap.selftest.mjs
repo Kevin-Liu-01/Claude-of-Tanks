@@ -40,6 +40,9 @@ assert.equal(audit.findings.length, 0, 'opposite-facing contact backs do not fal
 detail.rotation.y = 0;
 materialB.polygonOffset = true;
 audit = findCoplanarSurfaceOverlaps(root);
+assert.equal(audit.findings.length, 1, 'zero polygon offset does not mitigate overlap');
+materialB.polygonOffsetUnits = -1;
+audit = findCoplanarSurfaceOverlaps(root);
 assert.equal(audit.findings.length, 0, 'explicit polygon-offset overlays are treated as mitigated');
 assert.equal(audit.mitigatedFindings.length, 1,
   'mitigated overlap remains measurable instead of disappearing from the audit');
