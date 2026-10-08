@@ -7507,7 +7507,7 @@ function* terrainBuildSteps(
   // (tallGrass.ts: the sward runs on over the ring's near band instead of stopping 4 m past the playable edge)
   {
     const ringPosition = (horizonStep.value as THREE.Mesh).geometry?.getAttribute?.('position') as THREE.BufferAttribute | undefined;
-    if (ringPosition) heightField._ringSurfaceAt = ringMeshSurfaceSampler(ringPosition, HORIZON_SEGMENTS);
+    if (ringPosition) heightField._ringSurfaceAt = ringMeshSurfaceSampler(ringPosition, horizonRing().HORIZON_SEGMENTS);
   }
   yield [0, CHUNKS * CHUNKS + 2, true]; // horizon ring built — splat bake gets its own slice
   // round 40: where the square's water reaches the edge the ring opens to a sea apron (edgeWater.ts); the terrain
@@ -7655,7 +7655,7 @@ function* terrainBuildSteps(
   // (the borders lane, 2026-10-08: and the ring's own coast — a headland or a bay it draws in a sea opening, where the
   // contours above know of no shore — measures its waterline from its own vertices, horizonSurface.ts ringWaterlineMetres)
   const ringUv = horizonStep.value.userData.horizonRing ? horizonStep.value.geometry.getAttribute('uv') : null;
-  const ringCoast = seaOpenings.length && ringUv ? ringWaterlineMetres(horizonStep.value.geometry.getAttribute('position'), ringUv, HORIZON_SEGMENTS) : null;
+  const ringCoast = seaOpenings.length && ringUv ? ringWaterlineMetres(horizonStep.value.geometry.getAttribute('position'), ringUv, horizonRing().HORIZON_SEGMENTS) : null;
   if ((shoreAt || ringCoast) && horizonStep.value.userData.horizonRing) {
     const geometry = horizonStep.value.geometry;
     const position = geometry.getAttribute('position');
