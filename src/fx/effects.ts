@@ -88,6 +88,9 @@ export interface FxWorldSeam {
   structureDamage?(structureIdx: number): StructureDamageSeam | null;
   /** the battle's ground overlay (craters, rubble heaps) the drawn ground follows; null between battles */
   groundOverlay?(): { offsetAt(x: number, z: number): number; contactOffsetAt?(x: number, z: number): number } | null;
+  /** ground lane: a crater's cover cleared (its tall grass, flowers and scatter inside the radius) for the rest of the
+   *  match; presentation only (the sim's overlay never carries marks), called once per mark at event time */
+  clearCoverAt?(x: number, z: number, radiusM: number): void;
   readonly mapId?: string;
 }
 
@@ -992,6 +995,12 @@ function* createFxSteps(
   // once) and what its stage builders write (rims, rooms, remnants, the pile) in its own materials. A phone that kept
   // a collapsed building standing would show a wall its hull drives through. Only the falling pieces scale by tier.
   const craters: CraterMarks | null = createCraterMarks();
+  // an explosive mark clears the cover it blew away (0.9 R: the pit and the inner wall; the blanket keeps its stubble),
+  // through the world's presentation-only seam, when the world has one
+  const clearCover = (x: number, z: number, radiusM: number): void => {
+    const w = world ? world() : null;
+    w?.clearCoverAt?.(x, z, 0.9 * radiusM);
+  };
   const structMask: StructureMask | null = createStructureMask(4096, { holes: mediaTier });
   const structDebris: StructureDebris | null = createStructureDebris({
     now: () => particles.getTime(), scene: engineCtx.scene ?? null, groundY: (x, z) => groundY(x, z),
@@ -1937,6 +1946,7 @@ function* createFxSteps(
         if (_crater.radiusM > 0.25) {
           craters.stamp(pos.x, pos.z, _crater.radiusM, surface, true, rng(), particles.getTime() + birthOffset, deformedGroundY,
             groundClimate());
+          clearCover(pos.x, pos.z, _crater.radiusM);
         }
       }
     } else {
@@ -5183,6 +5193,7 @@ function* createFxSteps(
         const now = particles.getTime();
         craters.crater({ x: e.x, z: e.z, radiusM: e.radiusM, p1, p2, p3, surface, climate: groundClimate(), explosive: true,
           seed: (e.seed % 65536) / 65536, birth: settled ? now - 600 : now }, deformedGroundY);  // settled: an old, weathered crater
+        clearCover(e.x, e.z, e.radiusM);
         if (!settled && blast) craterEjecta(blast, e.x, e.z, e.radiusM, surface, deformedGroundY, 0);
       });
       onFxEvent(bus, 'shell:fired', (e) => {
