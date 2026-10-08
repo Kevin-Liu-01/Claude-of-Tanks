@@ -1849,12 +1849,24 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   /** The Studio's destruction match over the world it shows (game/studioDestruction.ts), made for each world. */
   let studioSim: StudioDestruction | null = null;
   let studioSimWorld: WorldRuntime | null = null;
+  /** The Studio destruction's raised events, with the Studio clock they were raised at (cleared with the fx runtime). */
+  const studioSimLog: Array<{ tMs: number; event: string; structureId: number | null; section: number | null; hole: number | null;
+    stage: string | null; sectionDown: boolean; storeyDown: boolean }> = [];
   function studioDestructionNow(): StudioDestruction | null {
     const w = getWorld();
     if (!w) return null;
     if (studioSimWorld !== w) {
       ensureFxBus();
-      studioSim = createStudioDestruction(w as unknown as Parameters<typeof createStudioDestruction>[0], fxBus, {
+      // every stage and breach it raises is logged with the Studio's clock (a capture tool reads which events each frame
+      // presented: __STUDIO.destructionEvents) and goes on to the fx bus
+      const loggingBus = { emit: (event: string, payload: unknown) => {
+        const p = payload as { structureId?: number; section?: number; hole?: number; stage?: string; sectionDown?: boolean; storeyDown?: boolean };
+        studioSimLog.push({ tMs: clockMs, event, structureId: p.structureId ?? null, section: p.section ?? null, hole: p.hole ?? null,
+          stage: p.stage ?? null, sectionDown: p.sectionDown === true, storeyDown: p.storeyDown === true });
+        if (studioSimLog.length > 512) studioSimLog.shift();
+        fxBus.emit(event, payload);
+      } };
+      studioSim = createStudioDestruction(w as unknown as Parameters<typeof createStudioDestruction>[0], loggingBus, {
         rules: matchRulesetFor('standard').destruction,
         wallMaterial: wallMaterialForStyle(architectureStyleOf(getMapConfig(w.mapId))),
       });
@@ -2168,6 +2180,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     studioStages.clear();
     // every building stands again (the Studio's destruction: openings cleared, the next strike starts fresh)
     studioSim?.reset();
+    studioSimLog.length = 0;
     fx.resetSeed(seed);
     fx.setFrozen(false);
     clockMs = 0;
@@ -3719,6 +3732,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       lighting.updateFrustums(); lighting.update(true);
       return clockMs;
     },
+    /** The stages and breaches the Studio's destruction raised so far (P2 strips read which each frame presented). */
+    destructionEvents: () => studioSimLog.slice(),
     get timeOfDay() { return timeOfDay; },
     setTimeOfDay,
     setMap: (id: string) => recording
