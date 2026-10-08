@@ -134,10 +134,12 @@ from its collision records alone (a host has no rendered kit), on its first blow
   shed) above the base. **Storeys**: the walls below the eaves in bands of 3.2 m, at most six.
 - **Sections**: a wall section is a face of the footprint rectangle over one storey, `storey · 4 + face` (faces 0 and 1
   the +/− forward ends, 2 and 3 the +/− across sides, across = (cos yaw, −sin yaw)); the roof is `storeys · 4`.
-- **Hit points**: four times the section's share of the envelope (walls' area plus the roof's plan), between 8 % and
-  50 % of the structure's: a 10 × 8 m two-storey house's side panel 40 %, its end panel 32 %, its roof 50 %. A section
-  takes the blows that land in it at full weight; **the whole still takes every blow at full weight too** (P1's stage
-  tuning stands: six 125 mm HE rounds still bring the house down; its panel falls at the second or third in it).
+- **Hit points**: twice the section's share of the envelope (walls' area plus the roof's plan), between 5 % and 30 %
+  of the structure's: a 10 × 8 m two-storey house's side panel 20 %, its end panel 16 %, its roof 30 %. A section takes
+  the blows that land in it at full weight; **the whole still takes every blow at full weight too** (P1's stage tuning
+  stands: six 125 mm HE rounds still bring the house down; its panel falls at the first or second in it, its roof at the
+  second). The roof and three faces of the top storey stay under the whole's hit points, so a storey can drop before
+  the building comes down — on a house only just, on a large building or a landmark long before.
 - **Which section a blow strikes**: the one at its point (quantized to the millimetre first, so a peer classifies it
   the same): above the eaves the roof, else the face whose plane is nearest over the storey of its height; a point more
   than 1.2 m inside every face below the eaves (the floor of a room a round entered by) strikes none. A direct hit
