@@ -18,6 +18,7 @@
 //     line, the floor slab's edge and the joist ends where the hole reaches them.
 // Everything is drawn in the structure's body frame, in the building's own buckets with its UVs and weather tints,
 // within the writers' caps; it draws only from damageRng(hole.seed).
+import { STRUCTURE_WALL_STUB_M } from '../../collision.ts';
 import {
   damageRng,
   type BreachSpec, type DamageFace, type DamageMeshWriter, type DamagePieceWriter, type DamageRole, type DamageStageResult,
@@ -1024,7 +1025,10 @@ function stubBlock(mesh: Mesh, pen: FacePen, slot: FractureSlot, u0: number, u1:
  * standing higher), a render or a frame's infill to a ragged line with its core along the break, a framed wall's
  * sill and the stumps of its posts; never across a door or a window.
  */
-function remnantWall(mesh: Mesh, pen: FacePen, anatomy: StructureDamageAnatomy, rng: () => number, profile?: (u: number) => number): void {
+function remnantWall(mesh: Mesh, pen: FacePen, anatomy: StructureDamageAnatomy, rng: () => number, profile?: (u: number) => number,
+  from = 0, postRise = 0.8): void {
+  // (`from`: a section's fall leaves the intact wall standing to its clamp line, the presentation's: the stub is drawn
+  // from there up, never over the wall's own face below it)
   const f = pen.f, rem = anatomy.remnant;
   const depth = Math.max(0.16, Math.min(0.5, f.layers.reduce((a, l) => a + l.thicknessM, 0)));
   const half = f.width / 2;
@@ -1052,6 +1056,8 @@ function remnantWall(mesh: Mesh, pen: FacePen, anatomy: StructureDamageAnatomy, 
         if (inOpening(f, mu, (y0 + y1) / 2)) continue;
         if (y1 <= stubAt(mu) + (rng() - 0.5) * 0.3) row.push({ u0, u1, y0, y1 });
       }
+      // (a course wholly under the clamp line is the intact wall's)
+      if (y1 <= from + 1e-3) { kept.push([]); continue; }
       kept.push(row);
       if (!row.length) break;
     }
@@ -1092,8 +1098,8 @@ function remnantWall(mesh: Mesh, pen: FacePen, anatomy: StructureDamageAnatomy, 
       const u0 = -half + (f.width * i) / steps, u1 = -half + (f.width * (i + 1)) / steps, mid = (u0 + u1) / 2;
       if (inOpening(f, mid, Math.min(0.5, stubAt(mid) / 2))) continue;
       const h0 = stubAt(u0), h1 = stubAt(u1);
-      mesh.facePoly(pen, skin.bucket, [[u0, 0, LIFT], [u1, 0, LIFT], [u1, h1, LIFT], [u0, h0, LIFT]], n, skin.tint, 1);
-      mesh.facePoly(pen, skin.bucket, [[u1, 0, -depth], [u0, 0, -depth], [u0, h0, -depth], [u1, h1, -depth]], inward, skin.tint, 0.6, 0.07, 0);
+      mesh.facePoly(pen, skin.bucket, [[u0, from, LIFT], [u1, from, LIFT], [u1, h1, LIFT], [u0, h0, LIFT]], n, skin.tint, 1);
+      mesh.facePoly(pen, skin.bucket, [[u1, from, -depth], [u0, from, -depth], [u0, h0, -depth], [u1, h1, -depth]], inward, skin.tint, 0.6, 0.07, 0);
     }
   }
   if (mesh.begin(core.bucket, 'remnant')) {
@@ -1110,10 +1116,11 @@ function remnantWall(mesh: Mesh, pen: FacePen, anatomy: StructureDamageAnatomy, 
     const timber = f.layers.find((l) => l.material === 'timber') ?? outer;
     if (mesh.begin(timber.bucket, 'remnant')) {
       for (const mm of f.members) {
-        if (mm.role === 'sill') memberBox(mesh, pen, timber, mm, 1, 0, 0, Math.abs(mm.u1 - mm.u0), false, false, n, rng);
+        if (mm.role === 'sill' && from < 0.05) memberBox(mesh, pen, timber, mm, 1, 0, 0, Math.abs(mm.u1 - mm.u0), false, false, n, rng);
         if (mm.role !== 'post') continue;
-        const top = Math.min(Math.max(mm.y0, mm.y1), stubAt(mm.u0) + 0.2 + rng() * 0.8);
-        const low = Math.min(mm.y0, mm.y1);
+        // (a post breaks at its own height over the infill's edge: a collapse's up to a metre, a fallen panel's a hand)
+        const top = Math.min(Math.max(mm.y0, mm.y1), stubAt(mm.u0) + postRise * (0.25 + rng()));
+        const low = Math.max(Math.min(mm.y0, mm.y1), from);
         if (top - low > 0.1) memberBox(mesh, pen, timber, { ...mm, y0: low, y1: top, u1: mm.u0 }, 0, 1, 0, top - low, false, true, n, rng);
       }
     }
@@ -1330,6 +1337,8 @@ export function roofDown(anatomy: StructureDamageAnatomy, seed: number, out: { m
   const coverTint = thatch ? charred(cover.tint, 0.42) : cover.tint;
   const rafterTint = thatch ? charred(timber.tint, 0.35) : timber.tint;
   const pitched = roof.kind !== 'flat' && roof.slabs.length >= 2;
+  // the floor a fallen rafter can reach: the top storey's (a house of three storeys keeps the two floors under it)
+  const topFloor = anatomy.storeys.length ? anatomy.storeys[anatomy.storeys.length - 1].y0 : 0;
   if (pitched) {
     const slopes = roof.slabs.slice(0, 2);
     for (const slab of slopes) {
@@ -1387,8 +1396,8 @@ export function roofDown(anatomy: StructureDamageAnatomy, seed: number, out: { m
             const inward = norm3([-nrm[0], 0, -nrm[2]]);
             const tp = Math.max(0, Math.min(0.5, (roof.eaveY - footIn[1]) / Math.max(1e-3, headIn[1] - footIn[1])));
             const plate: Vec3 = [footIn[0] + (headIn[0] - footIn[0]) * tp, footIn[1] + (headIn[1] - footIn[1]) * tp, footIn[2] + (headIn[2] - footIn[2]) * tp];
-            // its end comes to rest on the floor at the worst
-            const dropTo: Vec3 = [plate[0] + inward[0] * len * 0.45, Math.max(0.15 + rng() * 0.3, plate[1] - len * 0.85), plate[2] + inward[2] * len * 0.45];
+            // its end comes to rest on the top storey's floor at the worst (the floors below it still stand)
+            const dropTo: Vec3 = [plate[0] + inward[0] * len * 0.45, Math.max(topFloor + 0.15 + rng() * 0.3, plate[1] - len * 0.85), plate[2] + inward[2] * len * 0.45];
             beamBetween(mesh, plate, dropTo, 0.1, 0.14, along, rafterTint);
           }
         }
@@ -1487,7 +1496,8 @@ export function roofDown(anatomy: StructureDamageAnatomy, seed: number, out: { m
     }
   }
   mesh.end();
-  return { cuts: [], hides: [{ section: roof.section, partClass: 'roof' }] };
+  // (the presentation flattens a part class's spans: the house has the one roof, its covering hidden whole)
+  return { cuts: [], hides: [{ section: null, partClass: 'roof' }] };
 }
 
 /** A piece from a body-frame point, falling with a small scatter. */
@@ -1507,7 +1517,134 @@ export function sectionDownHouse(anatomy: StructureDamageAnatomy, section: numbe
   return wallDown(anatomy, section, seed, out);
 }
 
+/**
+ * A storey drops after its faces (P2, DESTRUCTION.md §3.4: with the roof down, a top storey with three faces down drops
+ * whole; the presentation squashes its band to its floor line). The house's storeys are closed bodies, so the storey
+ * below keeps its top over the floor line: the dropped storey lies on it, a heap of its own walls (their units, render,
+ * daub, in their buckets and tints) piled highest along the walls they fell from and thinning to the middle, its
+ * timbers (plates, posts, joists) across it, a few broken ends over the edge; the walls' pieces fall in and over the
+ * side. The ground storey never drops (its stubs stand till the collapse).
+ */
+export function storeyDownHouse(anatomy: StructureDamageAnatomy, storeyIndex: number, seed: number,
+  out: { mesh: DamageMeshWriter; pieces: DamagePieceWriter }): DamageStageResult {
+  const st = anatomy.storeys[storeyIndex], below = anatomy.storeys[storeyIndex - 1];
+  if (!st || !below || storeyIndex === 0) return { cuts: [], hides: [] };
+  const rng = damageRng(seed);
+  const mesh = new Mesh(out.mesh);
+  // the floor the storey falls onto: the top of the storey below, between its faces' outer planes (body frame). A face's
+  // name says nothing of its axis (a Franconian row house fronts its street on +x, its "left" and "right" are its
+  // ends), so the faces are sorted by the way they look out.
+  let x0 = -Infinity, x1 = Infinity, z0 = -Infinity, z1 = Infinity;
+  for (const f of below.faces) {
+    if (Math.abs(f.out[0]) > 0.7) {
+      if (f.out[0] > 0) x1 = Math.min(x1, f.origin[0] - 0.08); else x0 = Math.max(x0, f.origin[0] + 0.08);
+    } else if (Math.abs(f.out[2]) > 0.7) {
+      if (f.out[2] > 0) z1 = Math.min(z1, f.origin[2] - 0.08); else z0 = Math.max(z0, f.origin[2] + 0.08);
+    }
+  }
+  if (!Number.isFinite(x0 + x1 + z0 + z1) || x1 - x0 < 1 || z1 - z0 < 1) return { cuts: [], hides: [] };
+  const floorY = st.y0, storeyH = st.y1 - st.y0;
+  // what the storey was built of: its faces' layers, and the timbers of a framed storey or of its floor
+  const slots = new Map<string, FractureSlot>();
+  for (const f of st.faces) for (const l of f.layers) if (!slots.has(`${l.material}|${l.bucket}`)) slots.set(`${l.material}|${l.bucket}`, l);
+  const list = [...slots.values()];
+  const timber: FractureSlot = list.find((l) => l.material === 'timber') ?? st.floor?.structure
+    ?? { material: 'timber', bucket: 'structureWood', tint: [0.36, 0.27, 0.19], thicknessM: 0.2, share: 1 };
+  // the skin in the walls' main material, as a wall's fall banks it (a rendered wall's core under its render, which
+  // comes down as plates among the chunks; a framed storey's daub: the infill's bucket in the clay under its wash)
+  const main = list.find((l) => l.material !== 'timber' && l.material !== 'plank' && l.material !== 'plaster') ?? list[list.length - 1] ?? timber;
+  const skinSlot: FractureSlot = main.material === 'infill' ? { ...main, tint: DAUB } : main;
+  // the heap's height over the floor: highest along the walls (a third of the storey's height, at most 1.1 m), a third
+  // of that in the middle, lumpy
+  const crest = Math.min(1.2, 0.2 + storeyH * 0.32);
+  const lumps = Array.from({ length: 7 }, () => [rng() * 2 - 1, rng() * Math.PI * 2, 0.7 + rng() * 2.2]);
+  const heightAt = (x: number, z: number): number => {
+    const edge = Math.min(x - x0, x1 - x, z - z0, z1 - z);
+    const fromWall = Math.min(1, Math.max(0, edge / Math.max(0.6, Math.min(x1 - x0, z1 - z0) * 0.35)));
+    let v = 0;
+    for (const [a, ph, f] of lumps) v += a * Math.sin(x * f + ph) * Math.cos(z * f * 0.8 - ph) / 3;
+    const k = 1 - 0.62 * fromWall;
+    return Math.max(0.05, crest * k * (0.8 + 0.5 * v) * Math.min(1, edge / 0.25 + 0.35));
+  };
+  // the skin: a grid over the floor, each vertex on the heap, in the walls' main material
+  const NX = Math.max(4, Math.min(14, Math.round((x1 - x0) / 0.7))), NZ = Math.max(4, Math.min(14, Math.round((z1 - z0) / 0.7)));
+  if (mesh.room((NX + 1) * (NZ + 1) + 8) && mesh.begin(skinSlot.bucket, 'rubble')) {
+    const density = skinSlot.bucket.includes('laster') ? 0.42 : 0.5, dust = 0.8;
+    const tint: Rgb = [skinSlot.tint[0] * dust, skinSlot.tint[1] * dust * 0.98, skinSlot.tint[2] * dust * 0.95];
+    const P = (i: number, k: number): Vec3 => {
+      const x = x0 + ((x1 - x0) * i) / NX, z = z0 + ((z1 - z0) * k) / NZ;
+      return [x, floorY + heightAt(x, z), z];
+    };
+    const idx: number[] = [];
+    for (let k = 0; k <= NZ; k++) for (let i = 0; i <= NX; i++) {
+      const p = P(i, k), dx = P(Math.min(NX, i + 1), k)[1] - P(Math.max(0, i - 1), k)[1], dz = P(i, Math.min(NZ, k + 1))[1] - P(i, Math.max(0, k - 1))[1];
+      const sx = (x1 - x0) / NX * (i > 0 && i < NX ? 2 : 1), sz = (z1 - z0) / NZ * (k > 0 && k < NZ ? 2 : 1);
+      const n = norm3([-dx / sx, 1, -dz / sz]);
+      const shade = 0.78 + 0.22 * n[1];
+      idx.push(mesh.rawVertex(p, n, p[0] * density, p[2] * density, [tint[0] * shade, tint[1] * shade, tint[2] * shade]));
+    }
+    const at = (i: number, k: number) => k * (NX + 1) + i;
+    for (let k = 0; k < NZ; k++) for (let i = 0; i < NX; i++) {
+      mesh.rawQuad([idx[at(i, k)], idx[at(i, k + 1)], idx[at(i + 1, k + 1)], idx[at(i + 1, k)]], P(i, k), P(i, k + 1), P(i + 1, k + 1), P(i + 1, k), [0, 1, 0]);
+    }
+  }
+  // the chunks: its walls' own units and render on the heap, densest along the walls
+  const budget = Math.max(20, Math.min(170, Math.floor((out.mesh.capacity - out.mesh.vertices) / 30)));
+  for (const layer of list) {
+    const slot: FractureSlot = layer.material === 'infill' ? { ...layer, material: 'adobe', tint: DAUB } : layer;
+    if (layer === timber || !mesh.begin(slot.bucket, 'rubble')) continue;
+    const count = Math.round(budget / Math.max(1, list.length));
+    const flat = slot.material === 'plaster' || slot.material === 'infill' || slot.material === 'metal';
+    for (let k = 0; k < count; k++) {
+      const sx = flat ? 0.12 + rng() * 0.22 : 0.1 + rng() * 0.24, sy = flat ? 0.015 + rng() * 0.025 : 0.07 + rng() * 0.15;
+      const sz = flat ? 0.1 + rng() * 0.2 : 0.09 + rng() * 0.2, r = Math.hypot(sx, sz) / 2 + 0.05;
+      // along a wall more often than not
+      const side = Math.floor(rng() * 4), t = rng(), inset = r + Math.pow(rng(), 1.8) * Math.min(x1 - x0, z1 - z0) * 0.45;
+      const x = side < 2 ? x0 + r + t * Math.max(0, x1 - x0 - 2 * r) : side === 2 ? x0 + inset : x1 - inset;
+      const z = side >= 2 ? z0 + r + t * Math.max(0, z1 - z0 - 2 * r) : side === 0 ? z0 + inset : z1 - inset;
+      const cx = Math.max(x0 + r, Math.min(x1 - r, x)), cz = Math.max(z0 + r, Math.min(z1 - r, z));
+      heapChunk(mesh, slot, cx, floorY + heightAt(cx, cz) + sy * 0.3, cz, sx, sy, sz, rng() * Math.PI, (rng() - 0.5) * 0.9, rng);
+    }
+  }
+  // the timbers across the heap: plates, posts and joists, lying where they fell, a few ends over the edge
+  if (mesh.begin(timber.bucket, 'rubble')) {
+    const beams = Math.min(10, 3 + Math.round((x1 - x0 + z1 - z0) / 3));
+    for (let k = 0; k < beams; k++) {
+      const len = 1.4 + rng() * Math.min(3.2, Math.max(x1 - x0, z1 - z0) * 0.6), ang = rng() * Math.PI;
+      const cx = x0 + 0.3 + rng() * (x1 - x0 - 0.6), cz = z0 + 0.3 + rng() * (z1 - z0 - 0.6);
+      const dx = Math.cos(ang) * len / 2, dz = Math.sin(ang) * len / 2;
+      const ax = Math.max(x0, Math.min(x1, cx - dx)), az = Math.max(z0, Math.min(z1, cz - dz));
+      const bx = Math.max(x0, Math.min(x1, cx + dx)), bz = Math.max(z0, Math.min(z1, cz + dz));
+      const a: Vec3 = [ax, floorY + heightAt(ax, az) + 0.08, az], b: Vec3 = [bx, floorY + heightAt(bx, bz) + 0.08 + rng() * 0.25, bz];
+      beamBetween(mesh, a, b, 0.14, 0.16, [0, 1, 0], [timber.tint[0] * (0.85 + rng() * 0.2), timber.tint[1] * (0.85 + rng() * 0.2), timber.tint[2] * 0.9]);
+    }
+  }
+  mesh.end();
+  // the fall: the walls' pieces and the timbers, from the storey's height in and over the side
+  const pslots = list.length ? list : anatomy.rubble;
+  for (let k = 0; k < out.pieces.capacity; k++) {
+    const isTimber = k % 4 === 0;
+    const slot = isTimber ? timber : pslots[Math.floor(rng() * pslots.length)];
+    if (!slot) break;
+    const shape: DebrisShape = isTimber ? (rng() < 0.5 ? 'beam' : 'splinter') : slot.material === 'brick' ? 'brick' : slot.material === 'stone' ? 'block'
+      : slot.material === 'rubble' ? 'stone' : slot.material === 'plaster' || slot.material === 'infill' ? 'plate' : slot.material === 'adobe' || slot.material === 'earth' ? 'clod' : 'chunk';
+    const sz3 = shape === 'beam' ? [0.8 + rng() * 1.4, 0.14, 0.18] : shape === 'splinter' ? [0.05, 0.6 + rng() * 0.6, 0.05] : shape === 'plate' ? [0.2 + rng() * 0.25, 0.03, 0.18 + rng() * 0.2]
+      : [0.14 + rng() * 0.22, 0.1 + rng() * 0.15, 0.12 + rng() * 0.18];
+    // from a wall line, at its height, outward or in
+    const side = Math.floor(rng() * 4), t = rng();
+    const x = side < 2 ? x0 + t * (x1 - x0) : side === 2 ? x0 : x1, z = side >= 2 ? z0 + t * (z1 - z0) : side === 0 ? z0 : z1;
+    const outX = side === 2 ? -1 : side === 3 ? 1 : 0, outZ = side === 0 ? -1 : side === 1 ? 1 : 0, dir = rng() < 0.4 ? 1 : -1;
+    const ang = rng() * Math.PI * 2;
+    if (!out.pieces.push(slot.bucket, shape, Math.floor(rng() * 4), x, floorY + 0.4 + rng() * storeyH * 0.7, z, 0, Math.sin(ang / 2), 0, Math.cos(ang / 2),
+      sz3[0], sz3[1], sz3[2], slot.tint[0], slot.tint[1], slot.tint[2], outX * dir * (0.5 + rng() * 1.5) + (rng() - 0.5) * 0.5, -0.5 - rng() * 1.5,
+      outZ * dir * (0.5 + rng() * 1.5) + (rng() - 0.5) * 0.5)) break;
+  }
+  return { cuts: [], hides: st.faces.map((f) => ({ section: f.section, partClass: null })) };
+}
+
 const LIME_WASH: Rgb = [0.66, 0.62, 0.55];
+/** a framed wall's daub under its limewash: clay and straw */
+const DAUB: Rgb = [0.6, 0.5, 0.38];
 const BOARDS: Rgb = [0.44, 0.33, 0.23];
 
 /**
@@ -1529,17 +1666,21 @@ function wallDown(anatomy: StructureDamageAnatomy, section: number, seed: number
   const depth = Math.max(0.16, Math.min(0.5, f.layers.reduce((a, l) => a + l.thicknessM, 0)));
   const P = (u: number, y: number, o: number): Vec3 => [pen.x(u, o), pen.y(y), pen.z(u, o)];
   const { n, u: uDir, nu, up, down } = axes(f);
-  // 1. the stub: a metre, ragged, torn up to the full storey at each end (never across an opening: remnantWall)
+  // 1. the stub. The sim keeps the ground storey's lowest metre over the base (STRUCTURE_WALL_STUB_M) and drops an upper
+  // storey's panel to its floor line; the presentation clamps the intact wall to that line (DESTRUCTION.md §3.4, §11).
+  // On it, a ragged course of the wall's own units or render stands 8-40 cm, a pier at each end where the walls either
+  // side hold it a little higher (never across an opening: remnantWall)
+  const clampY = si === 0 ? Math.max(0, STRUCTURE_WALL_STUB_M - f.origin[1]) : 0;
   const lobes = Array.from({ length: 4 }, () => [rng() * 2 - 1, rng() * Math.PI * 2]);
-  const rampL = 0.5 + rng() * 1.1, rampR = 0.5 + rng() * 1.1;
+  const rampL = 0.25 + rng() * 0.35, rampR = 0.25 + rng() * 0.35;
   const stubAt = (u: number) => {
     let v = 0;
     for (let k = 0; k < lobes.length; k++) v += lobes[k][0] * Math.sin(u * (k + 1) * 1.7 + lobes[k][1]) / (k + 1);
-    const base = Math.max(0.35, 1.0 * (1 + 0.35 * v));
+    const rag = 0.08 + 0.32 * Math.max(0, Math.min(1, 0.5 + 0.6 * v));
     const end = Math.max(0, 1 - Math.min((u + half) / rampL, (half - u) / rampR));
-    return Math.min(H, base + end * end * (H - base));
+    return Math.min(H, clampY + rag + end * end * 0.65);
   };
-  remnantWall(mesh, pen, anatomy, rng, stubAt);
+  remnantWall(mesh, pen, anatomy, rng, stubAt, Math.max(0, clampY - 0.04), 0.2);
   // 2. the open storey behind it: the opposite wall's inner face, the side walls', the boards, the joists above
   const opp = st.faces.find((x) => x !== f && x.out[0] * f.out[0] + x.out[2] * f.out[2] < -0.9);
   const reach = opp ? Math.abs((f.origin[0] - opp.origin[0]) * f.out[0] + (f.origin[2] - opp.origin[2]) * f.out[2]) : Math.min(anatomy.w, anatomy.d);
@@ -1595,22 +1736,54 @@ function wallDown(anatomy: StructureDamageAnatomy, section: number, seed: number
       }
     }
   }
-  // 3. the heap along its foot, outside: chunks of its own layers, highest against the stub, on the ground under the face
+  // 3. the heap along its foot, outside: a bank of the wall's main material against the stub, falling away from it, and
+  // chunks of its own layers on it (a render's plates, a core's or a masonry wall's units, a frame's timbers)
   const groundY = -(f.origin[1]);
   const spread = 1 + H * 0.45, crest = 0.45 + 0.12 * H;
+  const bankLumps = Array.from({ length: 4 }, () => [rng() * 2 - 1, rng() * Math.PI * 2, 1.1 + rng() * 2]);
+  const bankAt = (uu: number, oo: number): number => {
+    let v = 0;
+    for (const [a, ph, fq] of bankLumps) v += a * Math.sin(uu * fq + ph) / 4;
+    const endFade = Math.min(1, (half + 0.3 - Math.abs(uu)) / 0.8);
+    return Math.max(0, crest * Math.pow(Math.max(0, 1 - (oo - 0.1) / spread), 1.3) * (0.75 + 0.5 * v) * Math.max(0, endFade));
+  };
   const layers = f.layers.filter((l) => l.thicknessM > 0);
+  const mainSlot = layers.find((l) => l.material !== 'timber' && l.material !== 'plank' && l.material !== 'plaster') ?? layers[layers.length - 1];
+  const bankSlot: FractureSlot | undefined = mainSlot?.material === 'infill' ? { ...mainSlot, tint: DAUB } : mainSlot;
+  const NU = Math.max(4, Math.min(16, Math.round((f.width + 0.6) / 0.6))), NO = 5;
+  if (bankSlot && mesh.room((NU + 1) * (NO + 1) + 4) && mesh.begin(bankSlot.bucket, 'rubble')) {
+    const dust = 0.82, tint: Rgb = [bankSlot.tint[0] * dust, bankSlot.tint[1] * dust * 0.98, bankSlot.tint[2] * dust * 0.95];
+    const G = (i: number, k: number): Vec3 => {
+      const uu = -half - 0.3 + ((f.width + 0.6) * i) / NU, oo = 0.02 + (spread * k) / NO;
+      return P(uu, groundY + bankAt(uu, oo) - (k === NO ? 0.05 : 0), oo);
+    };
+    const ids: number[] = [];
+    for (let k = 0; k <= NO; k++) for (let i = 0; i <= NU; i++) {
+      const g = G(i, k), du = [G(Math.min(NU, i + 1), k), G(Math.max(0, i - 1), k)], dv = [G(i, Math.min(NO, k + 1)), G(i, Math.max(0, k - 1))];
+      const tu: Vec3 = [du[0][0] - du[1][0], du[0][1] - du[1][1], du[0][2] - du[1][2]], tv: Vec3 = [dv[0][0] - dv[1][0], dv[0][1] - dv[1][1], dv[0][2] - dv[1][2]];
+      let nrm = norm3(cross3(tu, tv));
+      if (nrm[1] < 0) nrm = [-nrm[0], -nrm[1], -nrm[2]];
+      const shade = 0.78 + 0.22 * nrm[1], d = 0.5;
+      ids.push(mesh.rawVertex(g, nrm, g[0] * d + g[2] * d * 0.3, g[2] * d - g[0] * d * 0.3, [tint[0] * shade, tint[1] * shade, tint[2] * shade]));
+    }
+    const ix = (i: number, k: number) => k * (NU + 1) + i;
+    for (let k = 0; k < NO; k++) for (let i = 0; i < NU; i++) {
+      mesh.rawQuad([ids[ix(i, k)], ids[ix(i + 1, k)], ids[ix(i + 1, k + 1)], ids[ix(i, k + 1)]], G(i, k), G(i + 1, k), G(i + 1, k + 1), G(i, k + 1), [0, 1, 0]);
+    }
+  }
   const room = Math.floor((out.mesh.capacity - out.mesh.vertices) / 26);
-  const total = Math.max(0, Math.min(150, room));
-  for (const slot of layers) {
-    const share = slot.thicknessM / layers.reduce((a, l) => a + l.thicknessM, 0);
+  const total = Math.max(0, Math.min(110, room));
+  for (const layer of layers) {
+    const slot: FractureSlot = layer.material === 'infill' ? { ...layer, material: 'adobe', tint: DAUB } : layer;
+    const share = layer.thicknessM / layers.reduce((a, l) => a + l.thicknessM, 0);
     const count = Math.round(total * share);
     if (count < 1 || !mesh.begin(slot.bucket, 'rubble')) continue;
     const timber = slot.material === 'timber' || slot.material === 'plank';
     // a render, a daub or a sheet breaks into plates; stone, brick and a core into chunks
-    const flat = slot.material === 'plaster' || slot.material === 'infill' || slot.material === 'metal' || slot.material === 'tile' || slot.material === 'slate';
+    const flat = slot.material === 'plaster' || slot.material === 'metal' || slot.material === 'tile' || slot.material === 'slate';
     for (let i = 0; i < count; i++) {
       const uu = (rng() - 0.5) * (f.width + 0.6), oo = 0.15 + Math.pow(rng(), 1.6) * spread;
-      const hh = crest * Math.pow(Math.max(0, 1 - (oo - 0.15) / spread), 1.3) * (0.6 + rng() * 0.4);
+      const hh = bankAt(uu, oo) * (0.85 + rng() * 0.2);
       const sx = timber ? 0.5 + rng() * 0.9 : flat ? 0.12 + rng() * 0.22 : 0.1 + rng() * 0.24;
       const sy = timber ? 0.06 + rng() * 0.04 : flat ? 0.015 + rng() * 0.025 : 0.07 + rng() * 0.15;
       const sz = timber ? 0.07 : flat ? 0.1 + rng() * 0.2 : 0.09 + rng() * 0.2;
