@@ -64,6 +64,7 @@ const karstConsumer = `  // (b23, the scenery lane) the limestone in relief over
       mesh.matrixAutoUpdate = false;
       // (a block at most this proud casts a shadow the far cascades cannot resolve: the footprint law hides it there)
       setShadowCasterProfile(mesh, { heightM: KARST_BOSS_PROUD[1] });
+      routeCasterCascades(mesh, { heightM: KARST_BOSS_PROUD[1] }); // (b37)
       group.add(mesh);
     }
     group.userData.karstRelief = relief.counts;

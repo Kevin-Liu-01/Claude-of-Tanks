@@ -6,7 +6,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { mergePropsMaterialGeometrySteps, PROPS_CONVERSION_BATCH_LIMIT,
   PROPS_CONVERSION_BUDGET_MS } from './propsMaterialGeometry.ts';
-import { setShadowCasterProfile, shadowCasterProfileOf } from '../engine/renderLayers.ts';
+import { setShadowCasterCascades, setShadowCasterProfile, shadowCasterCascadesOf, shadowCasterProfileOf } from '../engine/renderLayers.ts';
+import { shadowCascadesForHeight } from './destructibleRenderPolicy.ts';
 import { bindStructureSpans, tagStructureVertices } from './structureDamageSeam.ts';
 
 const owned = new Set();
@@ -137,8 +138,10 @@ const mergeCode = stripTypeScriptTypes(propsSource.slice(mergeStart, mergeEnd));
 const profileStart = propsSource.indexOf('const PROPS_SHADOW_CELL_M = ');
 const profileEnd = propsSource.indexOf('/** The profile of a merged shadow-only mesh', profileStart);
 assert.ok(profileStart > 0 && profileEnd > profileStart, 'the production bucket profile helper is covered');
-const bucketShadowProfile = new Function('THREE',
-  `${stripTypeScriptTypes(propsSource.slice(profileStart, profileEnd))}\nreturn bucketShadowProfile;`)(THREE);
+// (b37) the slice also holds routeCasterCascades: a bucket's cascades by its tallest piece, over the real policy
+const [bucketShadowProfile, routeCasterCascades] = new Function('THREE', 'shadowCascadesForHeight', 'setShadowCasterCascades',
+  `${stripTypeScriptTypes(propsSource.slice(profileStart, profileEnd))}\nreturn [bucketShadowProfile, routeCasterCascades];`)(
+  THREE, shadowCascadesForHeight, setShadowCasterCascades);
 function materialFixture(buckets, events = []) {
   const group = new THREE.Group(), material = new THREE.MeshBasicMaterial();
   const mats = Object.fromEntries(Object.keys(buckets).map(key => [key, material]));
@@ -152,13 +155,14 @@ function materialFixture(buckets, events = []) {
   const prepare = new Function('buckets', 'mats', 'group', 'THREE', 'ensureWorldNightEmissionMask',
     'prepareWorldStaticNightFixture', 'mergePropsMaterialGeometrySteps', 'bucketShadowProfile', 'setShadowCasterProfile', 'bindClutterBatch',
     'tagStructureVertices', 'bindStructureSpans', 'structureSpans', 'structureMaterials', 'structureDepthMaterial',
+    'routeCasterCascades',
     `${mergeCode}\nreturn mergeMaterialBuckets;`)(
     buckets, mats, group, THREE,
     geometry => { events.push(['curtain', geometry]); },
     geometries => { events.push(['glass', geometries]); },
     (sources, key) => mergePropsMaterialGeometrySteps(sources, key, () => 0),
     bucketShadowProfile, setShadowCasterProfile, bindClutterBatch,
-    tagStructureVertices, bindStructureSpans, structureSpans, structureMaterials, structureDepthMaterial);
+    tagStructureVertices, bindStructureSpans, structureSpans, structureMaterials, structureDepthMaterial, routeCasterCascades);
   return { group, material, prepare, structureSpans, structureMaterials };
 }
 const wrapperStart = propsSource.indexOf('export async function createPropsAsync(');
@@ -192,7 +196,10 @@ function profileCase() {
   assert.ok(nearCell[3] > 3 && nearCell[3] < 6, 'the near cell bounds both boxes');
   const q = shadowCasterProfileOf(wood);
   assert.equal(q.spheres.length, 4); assert.equal(q.heightM, 1);
-  for (const mesh of f.group.children) setShadowCasterProfile(mesh, null);
+  // (b37) the cascades follow the tallest piece: a 6 m bucket casts into every cascade, a 1 m one the near two only
+  assert.equal(shadowCasterCascadesOf(stone), null, 'a bucket with a 6 m piece keeps every cascade');
+  assert.equal(shadowCasterCascadesOf(wood), 0b0011, 'a bucket no taller than 2 m casts into the near two cascades');
+  for (const mesh of f.group.children) { setShadowCasterProfile(mesh, null); setShadowCasterCascades(mesh, null); }
   for (const g of [near, far, twin, ...buckets.wood]) g.dispose();
   for (const mesh of f.group.children) mesh.geometry.dispose();
   f.material.dispose();
