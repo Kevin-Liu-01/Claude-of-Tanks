@@ -9,7 +9,7 @@ const vec=p=>new THREE.Vector3(...p);
 const key=p=>p.toArray().map(v=>v.toFixed(5)).join(',');
 
 function actualLeaf(applique,leaf){
- const normal=vec(leaf.normal),corners=[...leaf.face,...leaf.back.map(p=>vec(p).addScaledVector(normal,-.008).toArray())];
+ const normal=vec(leaf.normal),corners=[...leaf.face,...leaf.back.map(p=>vec(p).addScaledVector(normal,.012).toArray())];
  const position=applique.geometry.attributes.position,values=[];
  for(let i=0;i<position.count;i+=3){
   const points=[0,1,2].map(j=>new THREE.Vector3().fromBufferAttribute(position,i+j));
@@ -50,10 +50,10 @@ function seated(backing,leaf,offset=0){
  for(const p of contactSamples(leaf)){
   p.addScaledVector(normal,offset);
   const ray=new THREE.Raycaster(p.clone().addScaledVector(normal,.015),normal.clone().negate(),0,.045);
-  const hit=ray.intersectObject(backing)[0];
+  const hit=ray.intersectObject(backing).find(h=>Math.abs(h.distance-.015)<3e-6);
   assert.ok(hit&&Math.abs(hit.distance-.015)<3e-6,'whole finite receiving face is seated on permanent native housing');
-  const inner=new THREE.Raycaster(p.clone().addScaledVector(normal,-.008),normal.clone().negate(),.000001,.05);
-  assert.equal(inner.intersectObject(backing).length,0,'8 mm attachment enters finite stock, not a zero-thickness overlay');
+  const inner=new THREE.Raycaster(p.clone().addScaledVector(normal,-.004),normal.clone().negate(),.000001,.05);
+  assert.equal(inner.intersectObject(backing).length,0,'carrier root enters finite stock, not a zero-thickness overlay');
  }
 }
 function snapshot(root){

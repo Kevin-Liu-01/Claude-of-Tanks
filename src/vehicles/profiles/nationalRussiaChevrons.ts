@@ -3,6 +3,7 @@
 // neither is a rotated square box or a replacement primary turret shell.
 import * as THREE from 'three';
 import {orientedSlab} from './kit.ts';
+import {sampleArmorFace} from './armorFaceSampling.ts';
 import {markEraHitFaces} from './eraHitFaces.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
@@ -39,23 +40,31 @@ function surfacePoint(meshes:THREE.Mesh[],facet:Facet,side:number,t:number,y:num
 
 function leafGeometry(back:readonly Point[],normal:THREE.Vector3,loDepth:number,hiDepth:number):{geometry:THREE.BufferGeometry;face:Point[]} {
  const face=back.map((p,i)=>new THREE.Vector3(...p).addScaledVector(normal,i<2?loDepth:hiDepth).toArray() as Point);
- const rear=back.map(p=>new THREE.Vector3(...p).addScaledVector(normal,-.008).toArray());
+ const rear=back.map(p=>new THREE.Vector3(...p).addScaledVector(normal,.012).toArray());
  return {geometry:orientedSlab(...rear,...face),face};
 }
 
 function addFacet(P:ChevronPort,meshes:THREE.Mesh[],facet:Facet,side:number,ridgeDepth:number,leaves:Leaf[]):void {
  const normal=new THREE.Vector3(side*(facet.a[1]-facet.b[1]),0,facet.b[0]-facet.a[0]).normalize();
  const ridge=(facet.low+facet.high)/2,span=Math.hypot(facet.b[0]-facet.a[0],facet.b[1]-facet.a[1]);
- const seam=.012/span;
+ const seam=.022/span;
  for(let i=0;i<facet.tiles;i++){
   const a=i/facet.tiles+seam/2,b=(i+1)/facet.tiles-seam/2;
   for(const course of ['lower','upper'] as const){
-   // A 4 mm horizontal service seam separates the two real wedges at their
+   // A 12 mm horizontal service seam separates the two real wedges at their
    // shared visual ridge. Independent shells can be spent/reset with the zone.
-   const low=course==='lower'?facet.low:ridge+.002,high=course==='lower'?ridge-.002:facet.high;
+   const low=course==='lower'?facet.low:ridge+.006,high=course==='lower'?ridge-.006:facet.high;
    const back=[surfacePoint(meshes,facet,side,a,low,normal),surfacePoint(meshes,facet,side,b,low,normal),
     surfacePoint(meshes,facet,side,b,high,normal),surfacePoint(meshes,facet,side,a,high,normal)].map(p=>p.toArray() as Point);
-   const {geometry,face}=leafGeometry(back,normal,course==='lower'?.026:ridgeDepth,course==='lower'?ridgeDepth:.026);
+   // The cassette sits outside the turret, on an inset finite carrier.
+   // Only the carrier's 4 mm root enters permanent stock. A visible lip and
+   // wider service joints stop the removable leaves reading as buried faces.
+   const carrier=[[.045,.09],[.955,.09],[.955,.91],[.045,.91]].map(([u,v])=>
+    sampleArmorFace(back[0],back[1],back[2],back[3],u,v,normal.toArray()).point);
+   P.addExternalArmor('turret',orientedSlab(
+    ...carrier.map(p=>p.clone().addScaledVector(normal,-.004).toArray()),
+    ...carrier.map(p=>p.clone().addScaledVector(normal,.018).toArray())));
+   const {geometry,face}=leafGeometry(back,normal,course==='lower'?.039:ridgeDepth,course==='lower'?ridgeDepth:.039);
    P.destructibleCluster(`turret_era_${side<0?'L':'R'}`,()=>P.addExternalArmor('turret',markEraHitFaces(geometry,normal.toArray(),.35)));
    leaves.push({side,course,normal:normal.toArray(),back,face});
   }
@@ -68,5 +77,5 @@ export function addRussianChevronEra(P:ChevronPort,model:number,rows:readonly Ru
  const leaves:Leaf[]=[],facets=cheekFacets(rows,model),depth=[.17,.20,.16][model];
  try {for(const side of[-1,1])for(const facet of facets)addFacet(P,meshes,facet,side,depth,leaves);}
  finally {material.dispose();}
- P.turretG.userData.russianChevronEra={style:'paired-relikt-chevron',courses:2,leaves,seatDepthM:.008,serviceSeamM:.004};
+ P.turretG.userData.russianChevronEra={style:'paired-relikt-chevron',courses:2,leaves,cassetteStandOffM:.012,carrierRootM:.004,serviceSeamM:.012};
 }
