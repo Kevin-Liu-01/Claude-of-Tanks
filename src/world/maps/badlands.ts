@@ -196,7 +196,9 @@ export default {
     // and the scattered checkpoints are desert posts of plastered mud brick (maps/regional/ksarGate.ts), same footprint
     // (round 9, the gauntlet's wave 261: the field works' pillbox, "an untextured grey box ... a flat black rectangle for a
     // door", is the desert post's sangar: stone under a mud render, sandbags on its roof, slits under timber lintels)
-    structureVariants: { checkpointhut: 'ksargate', bunker: 'sangar' },
+    // (round 9, the gauntlet's wave 261 on the fuel point's ksar gate post, "a plain tan cube with a door": the fuel points'
+    // and scattered posts are the Wadi Rum kit's own fuel and water post now, structureKit makeWadiRumFuelPost)
+    structureVariants: { bunker: 'sangar' },
     // Three strongpoint pairs, each the other's rotation about the outpost: a cistern yard in each flank lane, a
     // lookout in front of the outpost on each side, and a fuel point by each deployment's flank track.
     tacticalBeats: [
