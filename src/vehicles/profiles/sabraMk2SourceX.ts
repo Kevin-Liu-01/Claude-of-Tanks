@@ -3,6 +3,7 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import * as THREE from 'three';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 import { sectionSolid } from './sectionSolid.ts';
+import { clippedArmorSkin } from './armorFaceSampling.ts';
 import { KIT, FITTINGS } from './kit.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -98,12 +99,14 @@ function buildSabraRearDeck(P: TankBuilderPort): void {
 }
 
 function buildSabraHull(P: TankBuilderPort): void {
-  P.add('hull',armorLoft([
+  P.add('hull',sectionSolid([
     [-3.25,.75,1.10,.96,.65,1.12,1.76],[-2.90,.87,1.11,.97,.44,1.31,1.84],
     [-1.68,.91,1.11,.98,.44,1.33,1.84],[-.72,.91,1.13,1.02,.44,1.35,1.565],
     [1.51,.91,1.15,1.03,.44,1.34,1.565],[2.46,.93,1.09,1.02,.50,1.18,1.48],
     [3.15,.91,1.09,1.03,.87,1.10,1.105],
-  ]));
+  ].map(([z,belly,shoulder,roof,floor,knee,top])=>({z,ring:[
+    [-belly,floor],[belly,floor],[shoulder,knee],[roof,top],[-roof,top],[-shoulder,knee],
+  ]})),{sideQuadDiagonal:'convex'}));
   for(const side of [-1,1]) {
     // Retain the original aft shelf through z2.34. The source's forward
     // region is a thin rolled fender, not this thick straight box.
@@ -139,13 +142,26 @@ function buildSabraRunningGear(P: TankBuilderPort): void {
   });
 }
 
+/** Clip the emitted welded roof to a cover outline, then close its 37 mm
+ * vertical stock. Shared facet edges get no internal duplicate walls. */
+function sabraCheekCover(shell: THREE.BufferGeometry,side: number,za: number,zb: number,
+  inner: number,outerA: number,outerB: number): THREE.BufferGeometry {
+  return clippedArmorSkin(shell,n=>n.y>1e-9,[
+    v=>v.z-za,v=>zb-v.z,v=>side*v.x-inner,
+    v=>outerA+(outerB-outerA)*(v.z-za)/(zb-za)-side*v.x,
+  ],[0,1,0],-.025,.012);
+}
+
 function buildSabraTurretArmor(P: TankBuilderPort, py: number, pz: number): void {
   P.add('turret',cylY(1.00,1.00,.080,P.q?48:24),0,1.593-py,0);
   // The source welded cheeks shape the whole volume; no cast donor sits beneath a flat wedge.
-  P.add('turret',armorLoft([
+  P.add('turret',sectionSolid([
     [-1.73,.80,1.10,1.04,1.86,2.05,2.54],[-1.60,.85,1.18,1.11,1.84,2.00,2.55],
     [-.60,1.26,1.51,1.22,1.62,1.86,2.54],[.52,1.29,1.50,1.16,1.66,1.94,2.49],
-  ],py,pz));
+  ].map(([z,belly,shoulder,roof,floor,knee,top])=>({z:z-pz,ring:[
+    [-belly,floor-py],[belly,floor-py],[shoulder,knee-py],
+    [roof,top-py],[-roof,top-py],[-shoulder,knee-py],
+  ]})),{sideQuadDiagonal:'convex'}));
   // Source front armor slopes laterally as well as forward. Its narrow raised
   // center and stepped plates must not become one broad flat wedge.
   const frontRows=[
@@ -153,23 +169,27 @@ function buildSabraTurretArmor(P: TankBuilderPort, py: number, pz: number): void
     [1.40,1.12,1.39,1.05,1.74,1.94,2.16,2.455],
     [1.94,.59,.85,.73,1.95,2.01,2.035,2.265],
   ];
-  P.add('turret',sectionSolid(frontRows.map(([z,belly,shoulder,roof,floor,knee,edge,ridge])=>({z:z-pz,
+  const frontShell=sectionSolid(frontRows.map(([z,belly,shoulder,roof,floor,knee,edge,ridge])=>({z:z-pz,
     ring:[[-belly,floor-py],[belly,floor-py],[shoulder,knee-py],[roof,edge-py],[.36,ridge-py],
       [-.36,ridge-py],[-roof,edge-py],[-shoulder,knee-py]],
-  }))));
+  })),{sideQuadDiagonal:'convex'});
+  P.add('turret',frontShell);
   const cheekTop=(x:number,z:number):number=>{
-    const a=z<=1.40?frontRows[0]:frontRows[1],b=z<=1.40?frontRows[1]:frontRows[2];
-    const t=(z-a[0])/(b[0]-a[0]),roof=a[3]+(b[3]-a[3])*t,edge=a[6]+(b[6]-a[6])*t,ridge=a[7]+(b[7]-a[7])*t;
-    return ridge+(edge-ridge)*(Math.abs(x)-.36)/(roof-.36);
+    const p=frontShell.getAttribute('position'),ray=new THREE.Ray(new THREE.Vector3(x,10,z-pz),new THREE.Vector3(0,-1,0));
+    const a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3(),hit=new THREE.Vector3();
+    let roof=-Infinity;
+    for(let i=0;i<p.count;i+=3){
+      a.fromBufferAttribute(p,i);b.fromBufferAttribute(p,i+1);c.fromBufferAttribute(p,i+2);
+      if(ray.intersectTriangle(a,b,c,false,hit))roof=Math.max(roof,hit.y);
+    }
+    if(!Number.isFinite(roof))throw new Error('Sabra cheek fitting lies outside its native roof');
+    return roof+py;
   };
   for(const side of [-1,1]) {
     for(const [za,zb,inner,outerA,outerB] of [[.67,1.19,.43,1.13,1.075],[1.225,1.90,.43,1.065,.735]]) {
-      const panel=sectionSolid([[za,outerA],[zb,outerB]].map(([z,outer])=>({z:z-pz,
-        ring:[[inner,cheekTop(inner,z)-py-.025],[outer,cheekTop(outer,z)-py-.025],
-          [outer,cheekTop(outer,z)-py+.012],[inner,cheekTop(inner,z)-py+.012]],
-      })));
-      if(side<0)mirrorX(panel);
-      P.addExternalArmor('turret',panel);
+      // A continuous finite cover follows each underlying planar facet,
+      // including its ridge; a four-corner bilinear cover could float over it.
+      P.addExternalArmor('turret',sabraCheekCover(frontShell,side,za-pz,zb-pz,inner,outerA,outerB));
     }
     for(const [x,z] of [[.69,1.53],[.69,1.87],[.89,1.29],[.94,1.645],[.875,1.326],[.5,.76],[.78,.76]])
       turretEquipment(P,'turretDetail',cylY(.017,.017,.013,6),side*x,cheekTop(x,z)+.025,z,.31,0,side*.42);

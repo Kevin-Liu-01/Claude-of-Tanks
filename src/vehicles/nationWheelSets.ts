@@ -209,6 +209,7 @@ type WheelStandardException = Readonly<{ donor: WheelDonorId; reason: string }>;
 
 /** Per-hull redirects that the nation rule alone would get wrong, each with its reason. */
 export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardException>> = Object.freeze({
+  pt91m: { donor: 't90', reason: 'owner 2026-10-06: Pendekar retains the actual T-72BU donor chassis and its pressed running gear' },
   sabra_mk2_x: { donor: 'm60a3', reason: 'owner 2026-09-22: "sabra uses the m60a3 wheels" (Magach/M60 hull under Israeli armour)' },
   aft10_x: { donor: 'type100', reason: 'tank destroyer on a ZBD-04-family IFV chassis → China IFV wheel' },
   bmpt_terminator2: { donor: 't90m', reason: 'T-72/T-90 MBT hull under an IFV role → T-90M wheel' },

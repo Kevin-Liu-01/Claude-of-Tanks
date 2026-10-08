@@ -1,3 +1,4 @@
+import {addRearFieldStowage} from './rearFieldStowage.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
@@ -6,7 +7,7 @@ import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
-import { antenna, equipment, hatch, panel, openGunTube, hullSolid, hullStation, optic, towEye, turretStation } from './easternSourceKit.ts';
+import { antenna, equipment, hatch, panel, openGunTube, hullStation, optic, towEye, turretStation } from './easternSourceKit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 const { box, cylX, cylY, cylZ } = KIT;
 // Closed X-extruded stock from scalar plane intersections. These are authored
@@ -93,22 +94,22 @@ function addType96RearDeck(P: TankBuilderPort): void {
     }
 }
 function buildType96Hull(P: TankBuilderPort): void {
-    hullSolid(P, [
+    P.add('hull', sectionSolid([
         hullStation(-3.3848, 1.02, 1.68, 1.53, .56, 1.335, 1.60),
         hullStation(-3.20, 1.06, 1.69, 1.55, .48, 1.340, 1.60),
         hullStation(-1.23, 1.08, 1.69, 1.55, .47, 1.350, 1.62),
         hullStation(1.00, 1.08, 1.70, 1.54, .47, 1.370, 1.59),
         hullStation(2.60, 1.03455, 1.70, 1.39455, .54273, 1.37727, 1.43091),
         hullStation(2.6992, 1.03173, 1.70, 1.38553, .54724, 1.37772, 1.41240),
-    ]);
+    ], { sideQuadDiagonal: 'convex' }));
     // The forward central shell ends at its own nose, not the fender AABB.
     // Object_22's upper glacis is two measured planes; the former broad flat
     // roof sat above the armor blocks and hid their actual receiving faces.
-    hullSolid(P, [
+    P.add('hull', sectionSolid([
         { z: 2.6992, ring: [[-1.03173, .54724], [1.03173, .54724], [1.03173, 1.350], [.9375, 1.41240], [-.9375, 1.41240], [-1.03173, 1.350]] },
         { z: 3.3008, ring: [[-.9946, .96313], [.9946, .96313], [.9946, 1.104], [.9263, 1.14780], [-.9263, 1.14780], [-.9946, 1.104]] },
         { z: 3.4551, ring: [[-.9263, 1.060], [.9263, 1.060], [.9263, 1.073], [.9263, 1.08040], [-.9263, 1.08040], [-.9263, 1.073]] },
-    ]);
+    ], { sideQuadDiagonal: 'convex' }));
     // Separate thin bent fenders follow their own higher outboard planes.
     // This avoids either raising the center receiver or filling the track bay.
     const fender: readonly (readonly [
@@ -235,7 +236,7 @@ export function buildType96Turret(P: TankBuilderPort): void {
         turretStation(P, .64, 1.18, 1.44, .93, 1.62, 1.84, 2.25),
         turretStation(P, 1.33, .70, 1.00, .50, 1.66, 1.83, 2.05),
         turretStation(P, 1.93, .29, .40, .26, 1.72, 1.84, 1.98),
-    ]));
+    ], { sideQuadDiagonal: 'convex' }));
     addTurretBins(P);
     addType96SmokeLaunchers(P);
     addType96Cupola(P);
@@ -302,6 +303,7 @@ export function buildType96bX(P: TankBuilderPort): void {
     buildType96Gear(P);
     buildType96Turret(P);
     preserveSourceStudyGunMountAppearance(P);
+    addRearFieldStowage(P);
     P.topY = 3.016 - frame.turret[1];
     P.hullG.userData.xRebuild = { candidate: 'type96b_x', independent: true, sourceLocalOnly: true };
 }
