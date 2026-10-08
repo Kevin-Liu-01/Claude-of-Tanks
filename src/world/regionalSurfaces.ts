@@ -476,6 +476,18 @@ interface MasonryRecipe {
   mortarOfStone?: number;
   /** the face's rise from its arris to its middle (the pillow's height; default 0.45): squared stone stays nearly flat */
   faceRamp?: number;
+  /**
+   * (the facades lane, round 6; wave 241: "painted-on bevels and no tooling, staining or mortar loss") a cut stone's
+   * dressing: the depth of the fine parallel strokes the mason tooled its field with (Scharrierung), upright or aslant
+   * stone by stone, inside a smooth margin `margin` px wide round its arrises; 0 / absent: an untooled face
+   */
+  tooling?: number;
+  margin?: number;
+  /** the share of the joint grid's corners whose arrises are broken off, and of the joint runs whose mortar is lost */
+  chips?: number;
+  raked?: number;
+  /** the share of bricks over-fired dark (clinkers) */
+  clinker?: number;
 }
 
 const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze({
@@ -484,7 +496,7 @@ const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze
   // 23-44 cm, blocks of 0.4-1.0 m, some split — under tight joints in the stone's own tone, nearly flat-faced
   sandstone: { courseMin: 58, courseMax: 112, blockMin: 104, blockMax: 260, mortar: 1.3, mortarTint: [0.62, 0.57, 0.52], mortarOfStone: 0.6,
     tint: [1, 1, 1], spread: 0.2, hue: 0.1, relief: 0.4, pillow: 0.14, faceRamp: 0.16, speckle: 0.05, lichen: 0.3, grime: 0.4, rubble: 0.25,
-    bedding: 0.035, mottle: 0.34 },
+    bedding: 0.035, mottle: 0.34, tooling: 0.5, margin: 8, chips: 0.22, raked: 0.2 },
   // 2026-10-03 gauntlet wave 0 / kits v1 captures: the first limestone and granite read as a blue-grey checkerboard (one
   // tone a block, dark pillowed joints): the stones are smaller and more irregular, the tone moves within a stone more
   // than between stones, and the joints are pale lime mortar, not shadow
@@ -495,8 +507,12 @@ const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze
     mottle: 0.16 },
   granite: { courseMin: 38, courseMax: 96, blockMin: 56, blockMax: 176, mortar: 2.8, mortarTint: [0.7, 0.68, 0.63],
     tint: [1, 1, 1], spread: 0.11, hue: 0.05, relief: 0.6, pillow: 0.5, speckle: 0.7, lichen: 0.5, grime: 0.3, rubble: 0.55 },
-  brick: { courseMin: 20, courseMax: 21, blockMin: 62, blockMax: 63, mortar: 1.6, mortarTint: [0.62, 0.6, 0.56],
-    tint: [1, 1, 1], spread: 0.22, hue: 0.06, relief: 0.2, pillow: 0.15, speckle: 0.15, lichen: 0.08, grime: 0.3, rubble: 0 },
+  // (round 6; wave 241: "cartoon bricks", "bevelled pillow-faced") the brick's own scale (a 24 x 7 cm brick in a 1 cm
+  // joint, 8 cm courses) kept, its face nearly flat with a softened arris, the joints a shade toward the brick, a few
+  // raked out, a few clinkers and spalled corners
+  brick: { courseMin: 20, courseMax: 21, blockMin: 62, blockMax: 63, mortar: 1.6, mortarTint: [0.62, 0.6, 0.56], mortarOfStone: 0.2,
+    tint: [1, 1, 1], spread: 0.22, hue: 0.06, relief: 0.2, pillow: 0.06, faceRamp: 0.12, speckle: 0.15, lichen: 0.08, grime: 0.3, rubble: 0,
+    chips: 0.12, raked: 0.15, clinker: 0.07 },
   greywacke: { courseMin: 34, courseMax: 80, blockMin: 60, blockMax: 170, mortar: 3.2, mortarTint: [0.5, 0.49, 0.46],
     tint: [1, 1, 1], spread: 0.2, hue: 0.04, relief: 0.7, pillow: 0.5, speckle: 0.2, lichen: 0.3, grime: 0.35, rubble: 0.5 },
   rubble: { courseMin: 36, courseMax: 90, blockMin: 50, blockMax: 160, mortar: 4.2, mortarTint: [0.66, 0.62, 0.55],
@@ -523,9 +539,12 @@ const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze
 // the stone's own tone, darker than its face only by the shadow they hold
 // (r6 views, round 4: the shop fronts still read as a grid of orange and grey blocks) one stone's tone close to the
 // next's, the broad grime clouds lighter: the soiling runs and the joints' shadow carry the wall
+// (round 6; wave 241: "a cartoon ashlar ... with painted-on bevels and no tooling, staining or mortar loss") each stone
+// tooled inside its margin, an arris broken here and there, a joint's mortar lost
 const DRESSED: Partial<MasonryRecipe> = Object.freeze({ courseMin: 56, courseMax: 88, blockMin: 115, blockMax: 230, mortar: 0.8,
   mortarTint: [0.42, 0.39, 0.36] as Tint, mortarOfStone: 0.7, spread: 0.1, hue: 0.04, relief: 0.35, pillow: 0.12, faceRamp: 0.16,
-  speckle: 0.04, lichen: 0.22, grime: 0.55, rubble: 0.15, bedding: 0.05, mottle: 0.36, streaks: 0.55 });
+  speckle: 0.04, lichen: 0.22, grime: 0.55, rubble: 0.15, bedding: 0.05, mottle: 0.36, streaks: 0.55, tooling: 0.55, margin: 8, chips: 0.2,
+  raked: 0.25 });
 
 /** One course of a stone tile's layout: its rows (canvas px, from the top) and its blocks' columns. */
 export interface MasonryCourse { y0: number; y1: number; blocks: ReadonlyArray<{ x0: number; x1: number; split: boolean }> }
@@ -553,7 +572,12 @@ export function masonryLayout(kind: StoneSurfaceKind, dressed = false, seed = 0x
     for (let c = 0; c + 1 < edges.length; c++) blocks.push({ x0: edges[c], x1: edges[c + 1], split: R.rubble > 0 && hash2(c, r, seed + 31) < R.rubble });
     courses.push({ y0: rowsE[r], y1: rowsE[r + 1], blocks });
   }
-  return { size: s, mortar: R.mortar, wobble: 1.2 + R.relief * 2.4, courses };
+  return { size: s, mortar: R.mortar, wobble: jointWobble(R), courses };
+}
+
+/** How far a joint wanders off its line (px): a sawn or tooled stone's joints run true, a rough stone's wander. */
+function jointWobble(R: MasonryRecipe): number {
+  return R.tooling ? 0.5 + R.relief : 1.2 + R.relief * 2.4;
 }
 
 function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number, dressed = false): Generator<SurfaceSlice, [Uint8ClampedArray, Float32Array, Float32Array], void> {
@@ -591,12 +615,24 @@ function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number, d
         const split = y0 + (y1 - y0) * (0.35 + hash2(c, r, seed + 37) * 0.3);
         if (y < split) { by1 = split; c += 1000; } else { by0 = split; c += 2000; }
       }
-      const wob = (wobF(x, y) - 0.5) * 2 * (1.2 + R.relief * 2.4);
+      const wob = (wobF(x, y) - 0.5) * 2 * jointWobble(R);
       const dx = Math.min(x - bx0, bx1 - x) + wob;
       const dy = Math.min(y - by0, by1 - y) + wob * 0.8;
       const d = Math.min(dx, dy);
       const joint = d < R.mortar ? 1 : 0;
       const k = hash2(c, r, seed), k2 = hash2(c, r, seed + 1);
+      // (round 6) the joint run this texel lies on (a vertical one keyed by its x and course, a bed joint by its block
+      // and y; both wrap with the tile) and the corner of the joint grid nearest it
+      const vx = x - bx0 < bx1 - x ? bx0 : bx1, hy = y - by0 < by1 - y ? by0 : by1;
+      const raked = R.raked ? (dx < dy ? hash2(vx % s, r, seed + 83) : hash2(c, hy % s, seed + 89)) < R.raked : false;
+      let chip = 0;
+      if (R.chips) {
+        const kc = hash2(vx % s, hy % s, seed + 71);
+        if (kc < R.chips) {
+          const rad = (R.margin ?? 5) * (0.7 + hash2(vx % s, hy % s, seed + 73) * 0.9), cd = Math.hypot(x - vx, (y - hy) * 1.3);
+          chip = 1 - smooth(rad * 0.55, rad, cd);
+        }
+      }
       const bev = clamp((d - R.mortar) / (6 + R.pillow * 14));
       const pill = R.pillow > 0 ? Math.pow(bev, 0.6) : 1;
       const tex = texF(x, y) * 0.8 + hash2(x, y, seed + 3) * 0.2;
@@ -607,20 +643,30 @@ function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number, d
       const speck = R.speckle > 0 ? (hash2(x, y, seed + 17) > 0.93 ? 1 : hash2(x, y, seed + 19) > 0.95 ? -1 : 0) * R.speckle : 0;
       let rr: number, gg: number, bb: number;
       if (joint) {
-        const m = 0.85 + tex * 0.2 - grime * 0.6;
+        // a raked joint: the mortar lost back into the wall, a dark gap
+        const m = (0.85 + tex * 0.2 - grime * 0.6) * (raked ? 0.66 : 1);
         rr = mortarRgb[0] * m; gg = mortarRgb[1] * m; bb = mortarRgb[2] * m;
-        hgt[i] = clamp(0.08 + tex * 0.05);
+        hgt[i] = clamp(raked ? 0.02 + tex * 0.03 : 0.08 + tex * 0.05);
         rough[i] = clamp(0.95);
       } else {
         // bedding: sedimentary stones show faint layers along the course
         const bed = R.bedding ? Math.sin((y + k * 37) * 0.33 + bedF(x, y) * 3) * R.bedding : 0;
         const cloud = R.mottle === undefined ? 0.84 + tex * 0.3 : 0.99 - R.mottle / 2 + tex * R.mottle;
-        const v = (1 + (k - 0.5) * 2 * R.spread) * (0.86 + 0.14 * pill) * cloud + bed - grime + speck * 0.12;
-        const h = (k2 - 0.5) * R.hue * 2;
+        // (round 6) the mason's tooling: strokes 1 cm apart across the field inside the margin, upright on most stones,
+        // aslant on the rest; a clinker among the bricks
+        let tool = 0;
+        if (R.tooling && d - R.mortar > (R.margin ?? 8)) {
+          const lean = hash2(c, r, seed + 61) < 0.6 ? 0 : (hash2(c, r, seed + 67) < 0.5 ? 0.4 : -0.4);
+          const ph = ((x - bx0) + (y - by0) * lean) / 2.6;
+          tool = (Math.cos(ph * Math.PI * 2) * 0.5 + (hash2(Math.floor(ph), c, seed + 79) - 0.5) * 0.4) * R.tooling;
+        }
+        const clink = R.clinker && hash2(c, r, seed + 81) < R.clinker ? 1 : 0;
+        const v = ((1 + (k - 0.5) * 2 * R.spread) * (0.86 + 0.14 * pill) * cloud + bed - grime + speck * 0.12 + tool * 0.035) * (1 - chip * 0.12) * (clink ? 0.6 : 1);
+        const h = (k2 - 0.5) * R.hue * 2 + (clink ? -0.06 : 0);
         rr = tint[0] * v * (1 + h); gg = tint[1] * v; bb = tint[2] * v * (1 - h);
         rr = rr * (1 - lichen) + 0.68 * lichen; gg = gg * (1 - lichen) + 0.64 * lichen; bb = bb * (1 - lichen) + 0.48 * lichen;
-        hgt[i] = clamp(0.3 + pill * (R.faceRamp ?? 0.45) + (tex - 0.5) * R.relief * 0.5);
-        rough[i] = clamp(0.82 + (tex - 0.5) * 0.1 + lichen * 0.1);
+        hgt[i] = clamp(0.3 + pill * (R.faceRamp ?? 0.45) + (tex - 0.5) * R.relief * 0.5 + tool * 0.06 - chip * 0.04);
+        rough[i] = clamp(0.82 + (tex - 0.5) * 0.1 + lichen * 0.1 + chip * 0.06);
       }
       put(px, j, rr, gg, bb);
     }
@@ -744,8 +790,9 @@ export function* makeRegionalStone(kind: StoneSurfaceKind, tint: Tint, anisotrop
   Generator<SurfaceSlice, RegionalSurfaceTextures, void> {
   const s = 512;
   const [px, hgt, rough] = yield* cached(`stone:${kind}${dressed ? ':dressed' : ''}:${tint.join(',')}:${seed}`, () => masonry(s, kind, tint, seed, dressed));
-  // (sandstone: squared stone with tight joints, not pillowed blocks — wave 199)
-  const relief = kind === 'brick' || kind === 'sandstone' ? 2.2 : kind === 'limestone' ? 2.0 : kind === 'granite' ? 2.4 : 3.0;
+  // (sandstone: squared stone with tight joints, not pillowed blocks — wave 199; round 6, wave 241: "heavily embossed",
+  // "cartoon bevels": the brick and the sandstone a third shallower, their tooling and joints carrying the face)
+  const relief = kind === 'brick' || kind === 'sandstone' ? 1.5 : kind === 'limestone' ? 2.0 : kind === 'granite' ? 2.4 : 3.0;
   return finish(px, hgt, rough, s, anisotropy, relief, kind === 'limestone' ? 0.74 : 0.66);
 }
 
