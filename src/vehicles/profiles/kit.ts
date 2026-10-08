@@ -2865,11 +2865,12 @@ function fittingSmokeBank(opts: FittingOptions = {}): THREE.Group {
     const dx = Math.cos(splay) * f * spacing;
     const dz = -Math.sin(splay) * f * spacing;
     // Fleet lane round 2 (2026-10-08; wave 257 on the Leclerc, Merkava 4, T-72B3M and M1A2 TUSK: "prism-shaped smoke
-    // dischargers"): round tubes (twelve sides; the eight-sided tubes read as prisms at close range), each mouth a dark
-    // bore set in the tube's own rim, and the bank on a painted bracket instead of a dark block
+    // dischargers"): round tubes (twelve sides; the eight-sided tubes read as prisms at close range) with round dark
+    // muzzle caps of the same footprint as before (a decor bank seats against them on the PT-91 Twardy), and the bank on
+    // a painted bracket instead of a dark block
     parts.add(slot, xform(markSmokeTube(cylZ(r, len, 12)), 0, 0, 0, pitch, a, 0), dx, 0, dz);
     if (opts.caps !== false) {
-      parts.add('dark', xform(xform(cylZ(r * 0.74, 0.008, 12), 0, 0, len / 2 + 0.004), 0, 0, 0, pitch, a, 0), dx, 0, dz);
+      parts.add('dark', xform(xform(cylZ(r * 0.88, 0.012, 12), 0, 0, len / 2 + 0.007), 0, 0, 0, pitch, a, 0), dx, 0, dz);
     }
   }
   if (opts.base !== false) {
