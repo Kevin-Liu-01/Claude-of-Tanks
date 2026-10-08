@@ -58,7 +58,8 @@ export interface StructureStagesOptions {
   scars?: StructureScars | null;
 }
 
-/** The section and storey a hole's runs were cut in (a section fall takes them). */
+/** The section and storey a run was laid for (-1: none — a roof's wreckage has no storey, a storey's heap no
+ *  section): a section's fall takes its own runs, a storey's drop its storey's. */
 interface RunOwner { section: number; storey: number }
 
 export function createStructureStages(o: StructureStagesOptions): StructureStages {
@@ -246,18 +247,20 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     for (const span of rides) changed = lowerSpan(span, dropM) || changed;
     return changed;
   }
-  /** A fallen section takes the structure's standing runs inside it with it (facades: a dropped storey left the room
-   *  behind an upper hole and a fallen roof's eave bands standing): runs mostly inside the volume hide. */
+  /** A fallen section takes the structure's standing runs with it (facades: a dropped storey left the room behind an
+   *  upper hole and a fallen roof's eave bands standing): a labelled run by its owner alone (a hole's room stands metres
+   *  in; a fallen roof's wreckage is no storey's), an unlabelled one (a damaged stage's patches) when mostly inside the
+   *  fallen volume. */
   function dropRuns(seam: StructureDamageSeam, inside: (bx: number, by: number, bz: number) => boolean,
     owns: (owner: RunOwner) => boolean): boolean {
     const { x: px, y: py, z: pz, yaw } = seam.anatomy.placement;
     const c = Math.cos(yaw), s = Math.sin(yaw);
     let dropped = false;
     for (const mesh of debris.standingRuns(STAGE_RUN_TAG + seam.structureIdx + 1)) {
-      // a hole's rim and room are its section's (wherever the room stands: an open interior's backing is metres in)
       const owner = mesh.userData.runOwner as RunOwner | undefined;
-      let gone = owner ? owns(owner) : false;
-      if (!gone) {
+      let gone = false;
+      if (owner) gone = owns(owner);
+      else {
         // the rest (a damaged stage's patches) by where they stand: mostly inside the fallen volume. The writers lay the
         // runs in the world frame (toWorld: world = R(yaw) body + placement), so body = R(-yaw)(world - placement)
         const pos = mesh.geometry.getAttribute('position');
@@ -272,21 +275,28 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     }
     return dropped;
   }
-  /** The structure's standing runs mostly above `aboveY` (body) come down by `dropM` with what they stood on. */
-  function lowerRuns(seam: StructureDamageSeam, aboveY: number, reachX: number, reachZ: number, dropM: number): boolean {
+  /** A dropped storey's neighbours among the structure's standing runs (its own are gone) settle by the clamp's law, per
+   *  vertex over the footprint: over the band down by the storey's height, in it onto the floor line (a fallen roof's
+   *  wreckage rides down and its hanging rafters lie on the line; an upper storey's heap rides down onto it). */
+  function settleRuns(seam: StructureDamageSeam, storey: DamageStorey, reachX: number, reachZ: number): boolean {
     const { x: px, y: py, z: pz, yaw } = seam.anatomy.placement;
     const c = Math.cos(yaw), s = Math.sin(yaw);
+    const dropM = storey.y1 - storey.y0;
     let moved = false;
     for (const mesh of debris.standingRuns(STAGE_RUN_TAG + seam.structureIdx + 1)) {
-      const pos = mesh.geometry.getAttribute('position');
-      let upN = 0;
+      const pos = mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
+      let touched = false;
       for (let i = 0; i < pos.count; i++) {
         const wx = pos.getX(i) - px, wz = pos.getZ(i) - pz;
-        const bx = wx * c - wz * s, bz = wx * s + wz * c;
-        if (pos.getY(i) - py > aboveY && Math.abs(bx) <= reachX && Math.abs(bz) <= reachZ) upN++;
+        if (Math.abs(wx * c - wz * s) > reachX || Math.abs(wx * s + wz * c) > reachZ) continue;
+        const by = pos.getY(i) - py;
+        if (!(by > storey.y0 + 0.02)) continue;
+        pos.setY(i, (by > storey.y1 + SLAB_EPS ? by - dropM : storey.y0) + py);
+        touched = true;
       }
-      if (!(pos.count > 0 && upN >= pos.count * 0.5)) continue;
-      mesh.geometry.translate(0, -dropM, 0);
+      if (!touched) continue;
+      pos.needsUpdate = true;
+      mesh.geometry.computeBoundingSphere();
       moved = true;
     }
     return moved;
@@ -352,14 +362,14 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   /** A stage's builder through the writers. `standing`: its runs belong to the standing building (a breach's rim and
    *  room, a spall's units) and fall with it; a collapse's own stubs and pile stay where they lie. */
   function run(seam: StructureDamageSeam, delayS: number, settled: boolean, build: (out: DamageWriters) => DamageStageResult,
-    standing = true, owner?: RunOwner): void {
+    standing = true, owner?: RunOwner, piecesOnly = false): void {
     const byBucket = spanMaterials(seam);
     const resolve = (bucket: string, role?: DamageRole): THREE.Material => role === 'room' ? roomMaterial
       : byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? fallbackFor(bucket);
     const depths = standing ? depthMaterials(seam) : null;
     const out = debris.begin(seam.anatomy.placement, resolve, delayS, settled, standing
-      ? { tag: STAGE_RUN_TAG + seam.structureIdx + 1, depthFor: (bucket) => depths?.get(bucket) ?? null }
-      : {});
+      ? { tag: STAGE_RUN_TAG + seam.structureIdx + 1, depthFor: (bucket) => depths?.get(bucket) ?? null, meshes: !piecesOnly }
+      : { meshes: !piecesOnly });
     let result: DamageStageResult | null = null;
     try { result = build(out); } catch { result = null; }
     const made = debris.commit();
@@ -422,7 +432,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           changed = dropRuns(seam, (bx, by, bz) => by >= roof.eaveY - 0.25 && Math.abs(bx) <= reachX && Math.abs(bz) <= reachZ,
             (owner) => owner.section === roof.section) || changed;
           o.scars?.clearWhere(e.structureId, (_x, y) => y >= a.placement.y + roof.eaveY - 0.25);
-          run(seam, 0, settled, (out) => seam.sectionDown(roof.section, damageSeed(a.seed, roof.section, 255), out));
+          run(seam, 0, settled, (out) => seam.sectionDown(roof.section, damageSeed(a.seed, roof.section, 255), out), true,
+            { section: roof.section, storey: -1 });
         }
       } else {
         const spec = seam.holeAt(e.x, e.y, e.z, 0.01, 0, 0, e.munition, cause, 255);
@@ -447,7 +458,10 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
             const c = Math.cos(yaw), s = Math.sin(yaw), wx = x - px, wz = z - pz;
             return onPanel(wx * c - wz * s, y - py, wx * s + wz * c);
           });
-          run(seam, 0, settled, (out) => seam.sectionDown(spec.section, damageSeed(a.seed, spec.section, 255), out));
+          // falling with its storey (the core 2026-10-08: its stub and room were laid only to be hidden by the drop), the
+          // panel throws its pieces only; the storey's own fall lays what is left
+          run(seam, 0, settled, (out) => seam.sectionDown(spec.section, damageSeed(a.seed, spec.section, 255), out), true,
+            { section: spec.section, storey: storey.index }, ev.storeyDown === true);
         }
         if (ev.storeyDown === true && storey) {
           // the band down to its floor line, what stood on it lowered by its height, its holes' runs and cuts gone, then
@@ -457,13 +471,14 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           const dropM = storey.y1 - storey.y0;
           changed = dropRuns(seam, (bx, by, bz) => by > storey.y0 + 0.02 && by <= storey.y1 + SLAB_EPS && Math.abs(bx) <= reachX
             && Math.abs(bz) <= reachZ, (owner) => owner.storey === storey.index) || changed;
-          changed = lowerRuns(seam, storey.y1 + SLAB_EPS, reachX, reachZ, dropM) || changed;
+          changed = settleRuns(seam, storey, reachX, reachZ) || changed;
           mask.moveHoles(seam.structureIdx, a.placement.y + storey.y0 + 0.02, a.placement.y + storey.y1 + SLAB_EPS, dropM);
           o.scars?.clearWhere(e.structureId, (_x, y) => y > a.placement.y + storey.y0 + 0.02);
           const storeyDown = (seam as StructureDamageSeam & { storeyDown?(storey: number, seed: number, out: DamageWriters): DamageStageResult })
             .storeyDown;
           if (typeof storeyDown === 'function') {
-            run(seam, 0, settled, (out) => storeyDown.call(seam, storey.index, damageSeed(a.seed, 1000 + storey.index), out));
+            run(seam, 0, settled, (out) => storeyDown.call(seam, storey.index, damageSeed(a.seed, 1000 + storey.index), out), true,
+              { section: -1, storey: storey.index });
           }
         }
       }

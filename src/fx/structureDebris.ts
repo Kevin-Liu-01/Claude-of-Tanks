@@ -261,6 +261,9 @@ export interface StageRunOptions {
   tag?: number;
   /** A bucket's shadow depth material (the world's patched one), so a tagged run's shadow falls with it. */
   depthFor?: (bucket: string) => THREE.Material | null;
+  /** false: the builder lays no static runs (the mesh writer's begin() refuses them), only throws its pieces — a wall
+   *  panel falling with its storey, whose own fall lays what is left standing. */
+  meshes?: boolean;
 }
 
 export interface StructureDebrisOptions {
@@ -381,6 +384,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
   let stageSettled = false;
   let stageTag = 0;
   let stageDepth: ((bucket: string) => THREE.Material | null) | null = null;
+  let stageMeshes = true;
   // mesh runs: one growing set of arrays per (bucket, role) of the stage
   interface Run { bucket: string; role: DamageRole; pos: number[]; nrm: number[]; uv: number[]; col: number[]; idx: number[] }
   const runs: Run[] = [];
@@ -398,7 +402,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
 
   const meshWriter: DamageMeshWriter = {
     begin(bucket: string, role: DamageRole): boolean {
-      if (stageVertices >= stageCap) return false;
+      if (!stageMeshes || stageVertices >= stageCap) return false;
       current = runs.find((r) => r.bucket === bucket && r.role === role) ?? null;
       if (!current) { current = { bucket, role, pos: [], nrm: [], uv: [], col: [], idx: [] }; runs.push(current); }
       runBase = current.pos.length / 3;
@@ -478,6 +482,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
       stageSettled = settled;
       stageTag = options.tag && options.tag > 0 ? options.tag : 0;
       stageDepth = options.depthFor ?? null;
+      stageMeshes = options.meshes !== false;
       cosY = Math.cos(placement.yaw); sinY = Math.sin(placement.yaw);
       resolveMaterial = materialFor;
       stageDelay = settled ? 0 : delayS;
