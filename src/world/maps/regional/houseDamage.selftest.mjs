@@ -276,3 +276,28 @@ import { bodyMoundHeightAt, kitPlanFor } from '../../destructionKit.ts';
   assert.ok(skin > 100, `the heap's skin first (${skin} vertices)`);
   console.log(`house damage: the plan reader registered; a collapse seats its heap on the sim's mound (skin ${skin} vertices, worst ${worst.toFixed(2)} m off the profile)`);
 }
+
+// 8. a default anatomy (the core's reading of a houseless builder's parts: no kit plan, no masonry layout): the house
+// kits' stage builders still dress it — they are the chain's builders for every structure on a kit's map — from the
+// faces' own frames, within their caps and deterministic
+{
+  const style = ARCHITECTURE_STYLES.find((s) => s.id === 'kolkhoz');
+  const { parts, w, d, h } = build(style, 'cottage', 31, 'plaster');
+  const full = kitOf('cottage', 'kolkhoz', 'describe')({ structureIdx: 11, mapId: 'damage', builder: 'cottage', style: 'kolkhoz', parts, w, d, h,
+    placement: { x: 0, y: 0, z: 0, yaw: 0 }, massClass: 'house', seed: 3, kitPlan: regionalKitPlanOf(parts) });
+  const bare = { ...full, kit: 'default', kitPlan: undefined,
+    storeys: full.storeys.map((st) => ({ ...st, faces: st.faces.map((f) => ({ ...f, masonry: null, members: [] })) })) };
+  let stages = 0;
+  for (const [member, args, caps] of [['breach', (a) => [a, { section: a.storeys[0].faces[0].section, storey: 0, face: 'front', hole: 0, u: 0.4, y: 1.5,
+    radiusM: 0.9, dirX: 0, dirZ: -1, munition: 'he', cause: 'blast', seed: 77 }], [3000, 96]], ['damaged', (a) => [a, 9], [1500, 48]],
+  ['collapse', (a) => [a, 5], [16000, 240]], ['sectionDown', (a) => [a, a.roof.section, 6], [6000, 160]]]) {
+    const fn = kitOf('cottage', 'kolkhoz', member);
+    const one = writers(...caps), two = writers(...caps);
+    const res = fn(...args(bare), one), again = fn(...args(bare), two);
+    assert.deepEqual(JSON.stringify(two.runs), JSON.stringify(one.runs), `default anatomy: ${member} deterministic`);
+    assert.deepEqual(again, res);
+    assert.ok(one.mesh.vertices > 0, `default anatomy: ${member} draws something (${one.mesh.vertices} vertices)`);
+    stages++;
+  }
+  console.log(`house damage: a default anatomy (no plan, no masonry layout) dressed by ${stages} stage builders, deterministic, within their caps`);
+}
