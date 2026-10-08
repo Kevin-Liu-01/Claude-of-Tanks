@@ -2485,9 +2485,12 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     {
       // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the pedestal side band it is tucked under (feed-side collision census).
       // 2026-10-08 (round 5): the stowed spare keeps the envelope it was tucked to (the source scale and barrel); the
-      // crew guns' true-size floor grew it 12 % into the commander's M2 and its ring.
+      // crew guns' true-size floor grew it 12 % into the commander's M2 and its ring. It is stowed pointing aft on its
+      // pintle 16 cm further back, so its stock stops 5 cm short of the ring and its barrel lies over the dome's rear
+      // instead of alongside the M2 (was (0.30, ly 2.96, zl -0.62) facing forward).
       const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 47, feed: 'right', sourceScale: true });
-      mg.position.set(0.30, ly(2.96), zl(-0.62));
+      mg.position.set(0.30, ly(2.96), zl(-0.78));
+      mg.rotation.y = Math.PI;
       P.turretG.add(mg);
     }
     P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [B.w0 - 0.005, yl((B.top0 + B.floor0) / 2), zl(-1.58)], Math.PI / 2);
