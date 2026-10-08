@@ -2,6 +2,7 @@
 // glacis, curved track guards and gear remain visible underneath the upgrades.
 import * as THREE from 'three';
 import {KIT} from './kit.ts';
+import {addChineseChevronBank} from './chineseChevronEra.ts';
 import {addChineseFuelDrum} from './chineseFuelDrum.ts';
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
 import {beamBetween,blindTube,roofSheet} from './measuredPrimitives.ts';
@@ -23,6 +24,7 @@ function cheekModule(P:TankBuilderPort,side:number,rows:readonly CheekRow[]):voi
   const g=weldedFlankHousing(rows,side,.035);
   // Permanent armor wedge remains in place beneath the small ERA face tiles.
   P.addExternalArmor('turret',g);
+  addChineseChevronBank(P,side,rows,P.spec.id==='cn_t72b3m_modern'?.115:P.spec.id==='cn_t80u_modern'?.10:.09);
 }
 
 function bustle(P:TankBuilderPort,back:number,half:number,bottom:number,top:number):void {
@@ -129,13 +131,10 @@ function turretEra(P:TankBuilderPort,c:NationalModernizationConfig):void {
   const parts=permanentParts(P,['turretExternalArmor']);
   for(const side of [-1,1]){
     if(c.model===0){
-      for(const z of [.38,.76,1.06])seatCheekTile(P,parts,side,z,.43,[.29,.06,.28]);
       for(const z of [-1.04,-.65,-.27])seatCheekTile(P,parts,side,z,.43,[.27,.075,.30]);
     }else if(c.model===1){
-      for(const z of [.13,.51,.88,1.17])seatCheekTile(P,parts,side,z,.45,[.25,.075,.26]);
       for(const z of [-1.30,-.89,-.47])seatCheekTile(P,parts,side,z,.48,[.32,.085,.30]);
     }else{
-      for(const z of [.46,.89])seatCheekTile(P,parts,side,z,.40,[.35,.065,.26]);
       for(const z of [-.98,-.53,-.10])seatCheekTile(P,parts,side,z,.40,[.25,.07,.31]);
     }
   }
