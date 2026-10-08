@@ -49,6 +49,7 @@ const ubr6=ammunition(cannon,'30×165 mm 3UBR6 AP-T');
 // cannon ammunition. Keep this boot-light: no fleet builders or registry import.
 const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   t72b3m:b32Heavy,
+  ua_t84_oplot_m:b32Heavy,
   ua_t72b3m_hetman_ii:ubr6,
   pl_t72b3_zubr_ii:cannon,
   ua_t80u_modern:b32Heavy,
