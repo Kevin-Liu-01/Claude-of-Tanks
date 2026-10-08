@@ -263,6 +263,8 @@ export interface StructureDebrisOptions {
   poolCapacity?: number;
   /** Mesh-run vertices per stage (the stage's cap; DESTRUCTION.md §16.3). */
   stageVertexCap?: number;
+  /** Falling pieces per stage (the phone tier throws fewer). */
+  pieceCap?: number;
 }
 
 export interface StructureDebris {
@@ -414,7 +416,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
   const _qy = new THREE.Quaternion();
   const _up = new THREE.Vector3(0, 1, 0);
   let stagePieces = 0;
-  const pieceCap = 1024;
+  const pieceCap = Math.max(0, o.pieceCap ?? 1024);
   const pieceWriter: DamagePieceWriter = {
     push(bucket, shape, variant, px, py, pz, qx, qy, qz, qw, sx, sy, sz, r, g, b, vx, vy, vz): boolean {
       // a settled stage (a late joiner, a migration) lays down its static runs only: nothing falls

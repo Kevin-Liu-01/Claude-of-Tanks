@@ -366,6 +366,13 @@ function captureContext(seed) {
   assert.equal(settled.pieces.count, 0, 'a settled stage drops no pieces');
   debris.reset();
   assert.equal(debris.stats().meshes, 0, 'reset removes the runs');
+  // the phone tier throws fewer pieces (its static runs are the same world state)
+  const phone = createStructureDebris({ now: () => now, groundY: () => 0, poolCapacity: 24, pieceCap: 3 });
+  const po = phone.begin({ x: 0, y: 0, z: 0, yaw: 0 }, () => brick, 0, false);
+  let thrown = 0;
+  for (let i = 0; i < 6; i++) if (po.pieces.push('stone', 'brick', i, 0, 3, 0, 0, 0, 0, 1, 0.24, 0.07, 0.11, 0.6, 0.3, 0.2, 2, 4, 0)) thrown++;
+  assert.equal(thrown, 3, 'the piece cap holds per stage');
+  assert.equal(po.pieces.capacity, 3);
 }
 
 console.log('volumeMedia selftest: atlases, ledger, layout, bake determinism, pool sort and bounds, recipes, surfaces, chunks, structures, craters, structure mask, structure debris — ok');

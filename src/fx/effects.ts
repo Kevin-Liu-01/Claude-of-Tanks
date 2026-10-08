@@ -986,15 +986,17 @@ function* createFxSteps(
   const chunks: DebrisChunks | null = mediaTier
     ? createDebrisChunks({ seed, now: () => particles.getTime(), scene: engineCtx.scene ?? null })
     : null;
-  const craters: CraterMarks | null = mediaTier ? createCraterMarks() : null;
-  // buildings coming down in the world's own geometry: the world hands its structure bucket materials to the mask's
-  // patch once per world (before the warm, so the programs compile once)
-  const structMask: StructureMask | null = mediaTier ? createStructureMask() : null;
-  // what the building's stage builders write (rims, rooms, remnants, the pile; falling pieces), in its own materials
-  const structDebris: StructureDebris | null = mediaTier
-    ? createStructureDebris({ now: () => particles.getTime(), scene: engineCtx.scene ?? null, groundY: (x, z) => groundY(x, z) })
-    : null;
-  if (structDebris) group.add(structDebris.group);
+  // World state, every tier: the marks a crater leaves, a building coming down in the world's own geometry (the world
+  // hands its structure bucket materials to the mask's patch once per world, before the warm, so the programs compile
+  // once) and what its stage builders write (rims, rooms, remnants, the pile) in its own materials. A phone that kept
+  // a collapsed building standing would show a wall its hull drives through. Only the falling pieces scale by tier.
+  const craters: CraterMarks | null = createCraterMarks();
+  const structMask: StructureMask | null = createStructureMask();
+  const structDebris: StructureDebris | null = createStructureDebris({
+    now: () => particles.getTime(), scene: engineCtx.scene ?? null, groundY: (x, z) => groundY(x, z),
+    poolCapacity: mediaTier ? 96 : 24, pieceCap: mediaTier ? 1024 : 160,
+  });
+  group.add(structDebris.group);
   /** Run one stage builder of a structure through the debris writers (event time). */
   function buildStage(structureId: number, stage: 'damaged' | 'collapsed', settled: boolean): void {
     if (!structDebris || !world) return;
@@ -4553,6 +4555,84 @@ function* createFxSteps(
     }
   }
 
+  /**
+   * The phone tier's beat for a structure stage (no volume media there): main's pooled dust and chips, at the
+   * building's own footprint, height and rubble colour. A breach throws a masonry burst out of the struck face; a
+   * collapse bursts dust out of its base on every side, raises a column over the footprint, throws chips along the
+   * blow and lets the settling dust hang.
+   */
+  function phoneStageBeat(e: StructureStageEvent): void {
+    const lk = structureLook ? structureLook(e.structureId) : null;
+    // the dominant rubble colour (linear), lifted toward a dust grey; masonry grey when nothing is known
+    let dr = 0.27, dg = 0.25, db = 0.21;
+    if (lk && lk.rubble.length) {
+      let best = lk.rubble[0];
+      for (const sh of lk.rubble) if (sh.share > best.share) best = sh;
+      dr = best.color[0] * 0.55 + 0.12; dg = best.color[1] * 0.55 + 0.115; db = best.color[2] * 0.55 + 0.1;
+    }
+    if (e.stage === 'breached') {
+      _v3.set(e.x, e.y, e.z);
+      _v4.set(e.dirX, 0, e.dirZ);
+      emitMasonryBreak('wall', _v3, _v4, 2.2, groundY(e.x, e.z));
+      return;
+    }
+    if (e.stage !== 'collapsed') return;
+    const gy = e.baseY;
+    const h = Math.max(2, e.topY - e.baseY);
+    const cy = Math.cos(e.yaw), sy = Math.sin(e.yaw);
+    // dust out of the base on every side, rolling outward low
+    const ring = Math.min(22, Math.max(10, Math.round((e.hw + e.hd) * 1.1)));
+    for (let i = 0; i < ring; i++) {
+      const t = (i + rng() * 0.6) / ring;
+      // a point on the footprint's perimeter (body frame), then the outward push
+      const per = t * 4;
+      const side = Math.floor(per);
+      const f = per - side;
+      let bx: number, bz: number, ox: number, oz: number;
+      if (side === 0) { bx = -e.hw + f * 2 * e.hw; bz = -e.hd; ox = 0; oz = -1; }
+      else if (side === 1) { bx = e.hw; bz = -e.hd + f * 2 * e.hd; ox = 1; oz = 0; }
+      else if (side === 2) { bx = e.hw - f * 2 * e.hw; bz = e.hd; ox = 0; oz = 1; }
+      else { bx = -e.hw; bz = e.hd - f * 2 * e.hd; ox = -1; oz = 0; }
+      const wx = e.cx + bx * cy + bz * sy, wz = e.cz - bx * sy + bz * cy;
+      const vx = ox * cy + oz * sy, vz = -ox * sy + oz * cy;
+      const sp = 2.4 + rng() * 2.2;
+      _puffO.pos[0] = wx; _puffO.pos[1] = gy + 0.6 + rng() * 0.8; _puffO.pos[2] = wz;
+      _puffO.vel[0] = vx * sp + e.dirX * 1.2; _puffO.vel[1] = 0.3 + rng() * 0.5; _puffO.vel[2] = vz * sp + e.dirZ * 1.2;
+      _puffO.life = 3.2 + rng() * 1.8;
+      _puffO.size0 = 1.6 + rng() * 0.8; _puffO.size1 = 5.5 + rng() * 2.5;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 0.8;
+      _puffO.col0[0] = dr * 1.08; _puffO.col0[1] = dg * 1.08; _puffO.col0[2] = db * 1.08;
+      _puffO.col1[0] = dr * 0.9; _puffO.col1[1] = dg * 0.9; _puffO.col1[2] = db * 0.9;
+      _puffO.alpha = 0.38 + rng() * 0.12; _puffO.grav = -0.12; _puffO.birthOffset = 0.15 + rng() * 0.35;
+      particles.emit('dust', _puffO);
+    }
+    // the column over the footprint as the walls go down
+    for (let i = 0; i < 8; i++) {
+      const k = i / 7;
+      _puffO.pos[0] = e.cx + (rng() - 0.5) * e.hw; _puffO.pos[1] = gy + 1 + k * h * 0.6; _puffO.pos[2] = e.cz + (rng() - 0.5) * e.hd;
+      _puffO.vel[0] = e.dirX * 0.6 + (rng() - 0.5) * 0.6; _puffO.vel[1] = 1.6 + rng() * 1.6; _puffO.vel[2] = e.dirZ * 0.6 + (rng() - 0.5) * 0.6;
+      _puffO.life = 4.5 + rng() * 2;
+      _puffO.size0 = 2.5 + k * 1.5; _puffO.size1 = 7 + rng() * 3 + k * 2;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 0.5;
+      _puffO.col0[0] = dr; _puffO.col0[1] = dg; _puffO.col0[2] = db;
+      _puffO.col1[0] = dr * 0.92; _puffO.col1[1] = dg * 0.92; _puffO.col1[2] = db * 0.92;
+      _puffO.alpha = 0.32 + rng() * 0.1; _puffO.grav = -0.18; _puffO.birthOffset = 0.3 + k * 0.5;
+      particles.emit('dust', _puffO);
+    }
+    // chips along the blow, from across the footprint
+    for (let i = 0; i < 14; i++) {
+      _debO.pos[0] = e.cx + (rng() - 0.5) * e.hw * 1.6; _debO.pos[1] = gy + 0.5 + rng() * h * 0.5; _debO.pos[2] = e.cz + (rng() - 0.5) * e.hd * 1.6;
+      _debO.vel[0] = e.dirX * (1.5 + rng() * 3) + (rng() - 0.5) * 4;
+      _debO.vel[1] = 1 + rng() * 3;
+      _debO.vel[2] = e.dirZ * (1.5 + rng() * 3) + (rng() - 0.5) * 4;
+      _debO.life = 1.6 + rng() * 0.6; _debO.scale = 0.12 + rng() * 0.16; _debO.spin = 6 + rng() * 12;
+      _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+      _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0.1 + rng() * 0.5;
+      particles.emit('debris', _debO);
+    }
+    scheduleDestructionSettlingDust(e.cx, e.cz, gy, 0.6);
+  }
+
   function emitSandbagBreak(pos: THREE.Vector3, dir: THREE.Vector3, gy: number): void {
     for (let i = 0; i < 13; i++) {
       const a = rng() * Math.PI * 2;
@@ -5014,8 +5094,9 @@ function* createFxSteps(
             e.cx, e.baseY, e.cz, e.settled === true);
         }
         if (e.stage === 'collapsed' || e.stage === 'damaged') buildStage(e.structureId, e.stage, e.settled === true);
-        if (!blast || e.settled) return;
-        structureStageFx(blast, e, structureLook ? structureLook(e.structureId) : null);
+        if (e.settled) return;
+        if (blast) structureStageFx(blast, e, structureLook ? structureLook(e.structureId) : null);
+        else phoneStageBeat(e);
       });
       bus.on(DESTRUCTION_BUS_EVENTS.crater, (payload) => {
         const e = payload as TerrainCraterEvent;
