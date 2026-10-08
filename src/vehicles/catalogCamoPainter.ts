@@ -199,13 +199,14 @@ export function camoArtTileRepeat(id: string | undefined): number {
 }
 
 /** Field raster samples per metre (3.1 cm): the fields are smooth, and every edge is placed by bilinear interpolation
- * and drawn with 2 x 2 supersampling at the tile's own resolution, so a finer raster only costs time. */
+ * and anti-aliased from the field's own gradient at the tile's resolution, so a finer raster only costs time. */
 const PATCH_FIELD_RASTER_PER_M = 32;
 /** Digital pixels per metre at the reference cell size (2.5 cm pixels). */
 const PATCH_PIXELS_PER_M = 40;
 /** Main-patch cell widths at the reference density: a three-colour scheme sprays metre-to-two-metre patches (cells of
- * 0.8 m merge into them); a digital scheme's clusters are tighter. */
-const PATCH_CELL_M = 0.8, PIXEL_CLUSTER_CELL_M = 0.65;
+ * 0.8 m merge into them). A digital scheme's clusters are tighter and spread through the whole field (0.45 m cells;
+ * at 0.65 m the hull showed broad bare stretches between bands of clusters, the camo lab of 2026-10-08). */
+const PATCH_CELL_M = 0.8, PIXEL_CLUSTER_CELL_M = 0.45;
 
 /** The macro cells across the tile for a recipe and its tile span: more for recipes authored denser (camoScale above
  * 0.5 or patchK below 1). */
