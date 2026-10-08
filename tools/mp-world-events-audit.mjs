@@ -46,6 +46,7 @@ import { PHASE, TICK_HZ } from '../src/mp/wire/constants.ts';
 import { createHash } from 'node:crypto';
 import { decodeMigrationKeyframe, deriveMigrationKey, openMigrationBlob } from '../src/mp/host/migrationState.ts';
 import { createStructureDamage } from '../src/sim/structureDamage.ts';
+import { isHeClass } from '../src/sim/damage.ts';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const until = async (predicate, label, timeoutMs) => {
@@ -56,12 +57,13 @@ const until = async (predicate, label, timeoutMs) => {
   }
 };
 const now = () => performance.now();
-const TRACKED_BUS = new Set(['prop:crushed', 'shell:expired', 'shell:hit', 'tank:destroyed', 'tank:ram', 'tank:impact', 'tank:fire', 'shell:fired', 'weapon:predicted', 'structure:stage']);
+const TRACKED_BUS = new Set(['prop:crushed', 'shell:expired', 'shell:hit', 'tank:destroyed', 'tank:ram', 'tank:impact', 'tank:fire', 'shell:fired', 'weapon:predicted', 'structure:stage', 'structure:breach']);
 // destruction (2026-10-07): a structure's stage is world state like a prop's fall: keyed by what it names, not by its host
-const HOST_KINDS = ['world_prop_destroyed', 'shell_impact', 'shell_hit', 'tank_destroyed', 'tank_ram', 'tank_impact', 'tank_fire', 'shell_fired', 'structure_stage'];
-const WORLD_KINDS = new Set(['world_prop_destroyed', 'structure_stage']);
+// sections (P2, 2026-10-08): a hole or a section's fall is world state too, keyed by its structure, section and slot
+const HOST_KINDS = ['world_prop_destroyed', 'shell_impact', 'shell_hit', 'tank_destroyed', 'tank_ram', 'tank_impact', 'tank_fire', 'shell_fired', 'structure_stage', 'structure_breach'];
+const WORLD_KINDS = new Set(['world_prop_destroyed', 'structure_stage', 'structure_breach']);
 /** host event kind → the bus kind the presentation emits for it */
-const BUS_FOR = { world_prop_destroyed: 'prop:crushed', shell_impact: 'shell:expired', shell_hit: 'shell:hit', tank_destroyed: 'tank:destroyed', tank_ram: 'tank:ram', tank_impact: 'tank:impact', tank_fire: 'tank:fire', shell_fired: 'shell:fired', structure_stage: 'structure:stage' };
+const BUS_FOR = { world_prop_destroyed: 'prop:crushed', shell_impact: 'shell:expired', shell_hit: 'shell:hit', tank_destroyed: 'tank:destroyed', tank_ram: 'tank:ram', tank_impact: 'tank:impact', tank_fire: 'tank:fire', shell_fired: 'shell:fired', structure_stage: 'structure:stage', structure_breach: 'structure:breach' };
 const MAP_ID = 'verdant';
 const SNAPSHOT_TICKS = 3; // 20 Hz
 /** A send this close to a view's end (its leave, the host's close, the run's end) cannot have been presented by it. */
@@ -78,6 +80,7 @@ function keyOf(type, payload) {
     case 'tank_fire': return `fire:${payload.id}:${payload.burning ? 1 : 0}`;
     case 'shell_fired': return `fired:${payload.shellId}`;
     case 'structure_stage': return `stage:${payload.structureId}:${payload.stage}`;
+    case 'structure_breach': return `breach:${payload.structureId}:${payload.section}:${payload.hole}`;
     default: return `${type}`;
   }
 }
@@ -92,6 +95,7 @@ function busKeyOf(type, payload) {
     case 'tank:fire': return `fire:${payload.id}:${payload.burning ? 1 : 0}`;
     case 'shell:fired': return `fired:${payload.shellId}`;
     case 'structure:stage': return `stage:${payload.structureId}:${payload.stage}`;
+    case 'structure:breach': return `breach:${payload.structureId}:${payload.section}:${payload.hole}`;
     default: return null;
   }
 }
@@ -152,7 +156,25 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         break;
       }
     }
-    return { hedgehog, tree, ram };
+    // sections (P2, 2026-10-08): another structure a bot can shell — 20 m out across its long side, the line clear — for
+    // the holes (and a panel's fall) a match with sections on sends
+    let breach = null;
+    for (const structure of structureTable.structures) {
+      if (!structure.destructible || structure.id === ram?.structureId || breach) continue;
+      for (const side of [1, -1]) {
+        const rx = Math.cos(structure.yaw) * side, rz = -Math.sin(structure.yaw) * side;
+        const startX = structure.cx + rx * (structure.hw + 20), startZ = structure.cz + rz * (structure.hw + 20);
+        const blocked = referenceObstacles.some((o) => !o.crushable && o.structureIdx !== structure.id && [0.2, 0.4, 0.6, 0.8, 1].some((t) => {
+          const x = startX + (structure.cx - startX) * t * (20 / (structure.hw + 20)), z = startZ + (structure.cz - startZ) * t * (20 / (structure.hw + 20));
+          return x > o.min[0] - 3 && x < o.max[0] + 3 && z > o.min[2] - 3 && z < o.max[2] + 3;
+        }));
+        if (blocked) continue;
+        breach = { structureId: structure.id, start: [startX, startZ], yaw: Math.atan2(-rx, -rz),
+          target: [structure.cx + rx * structure.hw, structure.baseY + 1.8, structure.cz + rz * structure.hw] };
+        break;
+      }
+    }
+    return { hedgehog, tree, ram, breach };
   })();
   const hostLog = [];          // every event as sent to each viewer
   const hostCores = [];        // { id, core, hooked, generation }
@@ -246,8 +268,9 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         const propIndex = type === 'prop:crushed' ? (payload.obstacleIndex ?? obstacleIndexAt(pos)) : null;
         const hostId = peer.session.p2p?.hostId ?? peer.id;
         const busKey = busKeyOf(type, payload);
-        const stagePos = type === 'structure:stage' ? [payload.x, payload.y, payload.z] : null;
-        record.applied.push({ kind: type, key: type === 'prop:crushed' ? (propIndex !== null ? `prop:${propIndex}` : null) : type === 'structure:stage' ? busKey : (busKey ? `${hostId}/${busKey}` : null), hostId, pos: stagePos ?? pos, path, presentedTick, frameGap, newestTick: newestTick(), wallMs: now(),
+        const worldKeyed = type === 'structure:stage' || type === 'structure:breach';
+        const stagePos = worldKeyed ? [payload.x, payload.y, payload.z] : null;
+        record.applied.push({ kind: type, key: type === 'prop:crushed' ? (propIndex !== null ? `prop:${propIndex}` : null) : worldKeyed ? busKey : (busKey ? `${hostId}/${busKey}` : null), hostId, pos: stagePos ?? pos, path, presentedTick, frameGap, newestTick: newestTick(), wallMs: now(),
           index: propIndex, shooterId: payload.shooterId ?? null, feedbackPredicted: payload.feedbackPredicted ?? null, fireIntentSeq: payload.fireIntentSeq ?? null,
           settled: payload.settled === true });
       },
@@ -394,6 +417,23 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         Object.assign(bots[2].input, { throttle: 1, steer: 0, brake: false });
         report.steps.scripted.ram = { botId: bots[2].id, structureId: scriptedSites.ram.structureId };
       }
+      // sections (P2): a bot shells another house's wall with its HE round, its AI off and its gun reloaded (with the
+      // switch off it only damages the house)
+      const sheller = bots.slice(3).map((bot) => ({ bot, slot: bot.spec.gun.shells.findIndex((shell) => isHeClass(shell.type)) }))
+        .find((entry) => entry.slot >= 0);
+      if (scriptedSites.breach && sheller) {
+        const { bot, slot } = sheller;
+        const [x, z] = scriptedSites.breach.start;
+        bot.state.pos.set(x, groundAt(x, z) + 0.05, z);
+        bot.state.yaw = scriptedSites.breach.yaw;
+        bot.state.speed = 0;
+        bot.aiCtl = null;
+        bot.combat.shellSlot = slot;
+        Object.assign(bot.combat.reload, { t: 0, kind: 'ready' });
+        Object.assign(bot.input, { throttle: 0, steer: 0, brake: true, fire: true, shellSlot: slot });
+        bot.input.aimPoint.set(...scriptedSites.breach.target);
+        report.steps.scripted.breach = { botId: bot.id, structureId: scriptedSites.breach.structureId, shell: bot.spec.gun.shells[slot].name };
+      }
       log(`scripted: ${JSON.stringify(report.steps.scripted)}`);
     }
     await sleep(playMs);
@@ -494,6 +534,10 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     report.steps.migration.oldStages = oldStages.size;
     report.steps.migration.restagedEvents = uniqueBy(hostEventsBetween(marks.newHostLiveAt, marks.migrationPlayEnd, 'structure_stage')
       .filter((e) => e.host === 'p2' && oldStages.has(e.key)), (e) => e.key);
+    const oldBreaches = new Set(hostLog.filter((e) => e.type === 'structure_breach' && e.host === 'p1').map((e) => e.key));
+    report.steps.migration.oldBreaches = oldBreaches.size;
+    report.steps.migration.rebreachedEvents = uniqueBy(hostEventsBetween(marks.newHostLiveAt, marks.migrationPlayEnd, 'structure_breach')
+      .filter((e) => e.host === 'p2' && oldBreaches.has(e.key)), (e) => e.key);
     report.steps.migration.newCrushEventsAfter = uniqueBy(hostEventsBetween(marks.newHostLiveAt, marks.migrationPlayEnd, 'world_prop_destroyed').filter((e) => e.host === 'p2'), (e) => e.key);
     const ghostFx = (peer) => peer.rounds.at(-1).applied.filter((e) => e.kind === 'prop:crushed' && e.wallMs >= marks.newHostLiveAt && e.wallMs < marks.migrationPlayEnd && recrushed.some((h) => h.key === e.key && h.viewerId === peer.id));
     report.steps.migration.ghostFxP2 = ghostFx(p2).length;
@@ -648,8 +692,14 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       const stageSentBefore = (a) => hostLog.some((e) => e.type === 'structure_stage' && e.key === a.key && e.wallMs < round.welcomeAtMs);
       const olderStages = applied.filter((a, i) => a.kind === 'structure:stage' && !used.has(i) && stageSentBefore(a));
       const ghostStages = applied.filter((a, i) => a.kind === 'structure:stage' && !used.has(i) && !hostLog.some((e) => e.type === 'structure_stage' && e.key === a.key));
+      // sections (P2): the same for holes and section falls
+      const breachSentBefore = (a) => hostLog.some((e) => e.type === 'structure_breach' && e.key === a.key && e.wallMs < round.welcomeAtMs);
+      const olderBreaches = applied.filter((a, i) => a.kind === 'structure:breach' && !used.has(i) && breachSentBefore(a));
+      const ghostBreaches = applied.filter((a, i) => a.kind === 'structure:breach' && !used.has(i) && !hostLog.some((e) => e.type === 'structure_breach' && e.key === a.key));
       perPeer[`${peer.label}#${round.roundIndex}`] = { welcomeTick: round.welcomeTick, welcomes: round.welcomes, actors: round.actors, rosterError: round.rosterError, frames: round.frames, ghostFx: ghostFx.length,
-        stagesOlderSettled: olderStages.filter((a) => a.settled).length, stagesOlderAnimated: olderStages.filter((a) => !a.settled).length, ghostStages: ghostStages.length, unattributedFx: unattributedFx.length, unmatchedCrushes: unmatchedCrushes.length, replaysOfOlderState: predating.length, replaysAnimated: predating.filter((a) => !a.settled).length, replaysSettled: predating.filter((a) => a.settled).length,
+        stagesOlderSettled: olderStages.filter((a) => a.settled).length, stagesOlderAnimated: olderStages.filter((a) => !a.settled).length, ghostStages: ghostStages.length,
+        breachesOlderSettled: olderBreaches.filter((a) => a.settled).length, breachesOlderAnimated: olderBreaches.filter((a) => !a.settled).length,
+        ghostBreaches: ghostBreaches.length, unattributedFx: unattributedFx.length, unmatchedCrushes: unmatchedCrushes.length, replaysOfOlderState: predating.length, replaysAnimated: predating.filter((a) => !a.settled).length, replaysSettled: predating.filter((a) => a.settled).length,
         ownShotFlashes: applied.filter((a) => a.kind === 'weapon:predicted').length, ownShellFiredUnpredicted: applied.filter((a) => a.kind === 'shell:fired' && a.shooterId === peer.id && a.feedbackPredicted === false).length, ownShellFiredPredicted: applied.filter((a) => a.kind === 'shell:fired' && a.shooterId === peer.id && a.feedbackPredicted === true).length };
     }
   }
