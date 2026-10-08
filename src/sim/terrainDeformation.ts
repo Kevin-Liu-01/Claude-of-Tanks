@@ -168,7 +168,11 @@ export function rubbleProfile(stamp: RubbleStamp, x: number, z: number): number 
   return stamp.heightM * 0.5 * (1 + Math.cos(Math.PI * outside / stamp.falloffM));
 }
 
-/** The seed's three wobble phases (deterministic, no RNG state). */
+/** The seed's three wobble phases (deterministic, no RNG state): a crater's ragged edge, and the presentation's decal
+ * edge that follows it (crater-render-spec §D) — one law, not a copy. */
+export function craterWobblePhases(seed: number): [number, number, number] {
+  return phases(seed);
+}
 function phases(seed: number): [number, number, number] {
   const s = seed >>> 0;
   return [((s & 0xff) / 256) * Math.PI * 2, (((s >>> 8) & 0xff) / 256) * Math.PI * 2, (((s >>> 16) & 0xff) / 256) * Math.PI * 2];

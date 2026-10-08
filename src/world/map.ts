@@ -48,7 +48,7 @@ import {
   createStructureDamageSeam, patchStructureMaterialEntries, type StructureDamageSeam, type StructureMaterialInfo,
 } from './structureDamageSeam.ts';
 import { createStructureDamage } from '../sim/structureDamage.ts';
-import { rubbleHeightFor } from '../sim/terrainDeformation.ts';
+import { rubbleHeightFor, type TerrainDeformation } from '../sim/terrainDeformation.ts';
 
 type EngineContext = Parameters<typeof buildTerrainMeshes>[1] &
   Parameters<typeof createVegetation>[1] &
@@ -205,6 +205,14 @@ export interface WorldRuntime {
   patchStructureMaterials(patch: (material: THREE.Material, info: StructureMaterialInfo) => void): number;
   /** The structure's seam `touchShadows()` by id (a no-op for an id the world does not know). */
   touchStructureShadows(structureIdx: number): void;
+  /**
+   * The battle's ground overlay (sim/terrainDeformation.ts: craters, rubble heaps) this world draws and drapes on —
+   * the solo battle's own ground, or a network round's mirror (crater-render-spec §B). Bound per battle, null between;
+   * the terrain's userData carries it too (`groundOverlay`) for the drawn ground to follow.
+   */
+  bindGroundOverlay(overlay: TerrainDeformation | null): void;
+  /** The bound overlay, or null: what decals and dressing drape on (base + `offsetAt`). */
+  groundOverlay(): TerrainDeformation | null;
   spawnPoints: {
     player: { pos: [number, number, number]; yaw?: number };
     enemies: Array<{ pos: [number, number, number]; yaw?: number }>;
@@ -613,7 +621,8 @@ function assembleWorld(
     return { point, normal, dist: hitT, kind, record: kind === 'prop' ? propHit.record : null };
   }
 
-  const unregisterDestructibles = props.registerDestructibles();
+  // destruction (§7): the battle's ground overlay, bound per battle (crater-render-spec §B)
+  let boundGroundOverlay: TerrainDeformation | null = null;
   // destruction (§16): each structure's seam on first ask, its mound from the world's own structure table
   const structureSeams = new Map<number, StructureDamageSeam>();
   let structureTable: ReturnType<typeof createStructureDamage> | null = null;
@@ -633,6 +642,7 @@ function assembleWorld(
     structureSeams.set(structureIdx, seam);
     return seam;
   };
+  const unregisterDestructibles = props.registerDestructibles();
   return {
     mapId: config.id,
     terrainVariant: config.assaultTrenches ? 'assault-trenches' : null,
@@ -672,6 +682,8 @@ function assembleWorld(
     structureDamage: getStructureDamage,
     patchStructureMaterials: (patch) => patchStructureMaterialEntries(props.structureMaterials, patch),
     touchStructureShadows: (structureIdx) => { getStructureDamage(structureIdx)?.touchShadows(); },
+    bindGroundOverlay: (overlay) => { boundGroundOverlay = overlay; terrain.userData.groundOverlay = overlay; },
+    groundOverlay: () => boundGroundOverlay,
     crushables: props.crushables || [],
     crushProp: (i: number, dx: number, dz: number, speedMps = 0) => (
       props.crushProp(i, dx, dz, speedMps)

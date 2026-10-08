@@ -283,6 +283,8 @@ export function createBattlePresentation({
   const authorityObstacles = createAuthorityObstacles(worldCollision);
   // the authority's destruction on this world: stages, collapses, heaps (docs/DESTRUCTION.md §8)
   const destruction = createDestructionMirror(worldCollision as Parameters<typeof createDestructionMirror>[0], bus);
+  // the round's ground (craters, heaps) is what this world draws and drapes on (crater-render-spec §B); unbound at dispose
+  (worldCollision as { bindGroundOverlay?(overlay: unknown): void } | null)?.bindGroundOverlay?.(destruction.ground);
   /** The authority's detonation as this world's munition:blast (its structure mapped to this world's), or false. */
   function emitBlast(payload: Record<string, unknown>, surface: MunitionBlastEvent['surface']): boolean {
     const chargeKg = Number(payload.chargeKg);
@@ -1099,6 +1101,7 @@ export function createBattlePresentation({
 
   function dispose(): void {
     disposed = true;
+    (worldCollision as { bindGroundOverlay?(overlay: unknown): void } | null)?.bindGroundOverlay?.(null);
     unmount();
     for (const actor of actors.values()) actor.visual.dispose();
     actors.clear();
