@@ -5,7 +5,7 @@
 // vertices to any other piece's triangles is at most 15 mm (a gap a close-up shows as daylight). Ghillie suits are
 // measured by their own receipts.
 //
-// The round-4 census found 73 pieces that touch nothing (contact occlusion quads riding 5 cm above a turret roof, a
+// The round-4 census found 64 pieces that touch nothing (contact occlusion quads riding 5 cm above a turret roof, a
 // 2.4 m rack rail with nothing within 10 cm, RWS covers and remote-gun parts on standoffs that were never modelled,
 // light-cluster guards, tow cables). KNOWN_FLOATING is a ratchet: a tank may not gain a floating piece, and every fix
 // lowers its entry; round 5 drives it to zero.
@@ -22,10 +22,10 @@ const IDS = Object.freeze([
   'leclerc', 'merkava4_trophy', 't72b3m', 'm1a2_tusk', 'leo2a6',
   'abramsx', 'cv90_x', 'bmp2', 'leo2_revolution', 'fv510_milan', 'm46_patton', 'bmp3m_dragun125_x', 't62mv1_x', 'griffin_viper',
 ]);
-// the ratchet (2026-10-08, round 4's census at 31247cc05): floating accessory pieces per tank; any other tank is held to 0
+// the ratchet (2026-10-08, round 4's census at 31247cc05, cell borders searched): floating accessory pieces per tank; any other tank is held to 0
 const KNOWN_FLOATING = Object.freeze({
-  m1a2_sepv3: 3, leo2a4: 4, t90m_proryv: 1, ua_t84_oplot_m: 5, challenger1: 2, m60a1: 1, type99a: 4, leclerc: 1,
-  merkava4_trophy: 2, t72b3m: 7, m1a2_tusk: 3, leo2a6: 2, abramsx: 17, cv90_x: 2, fv510_milan: 3, m46_patton: 8,
+  m1a2_sepv3: 1, leo2a4: 2, t90m_proryv: 1, ua_t84_oplot_m: 5, challenger1: 2, m60a1: 1, type99a: 1, leclerc: 1,
+  merkava4_trophy: 2, t72b3m: 7, m1a2_tusk: 1, leo2a6: 2, abramsx: 17, cv90_x: 2, fv510_milan: 3, m46_patton: 8,
   bmp3m_dragun125_x: 4, t62mv1_x: 2, griffin_viper: 2,
 });
 
@@ -69,7 +69,8 @@ function floatingPieces(root) {
   });
   const grid = new Map();
   tris.forEach((t, i) => {
-    const box = new THREE.Box3().setFromPoints([t.a, t.b, t.c]);
+    // registered in every cell within TOUCH_M of the triangle, so a vertex finds a triangle across a cell border
+    const box = new THREE.Box3().setFromPoints([t.a, t.b, t.c]).expandByScalar(TOUCH_M);
     for (let x = Math.floor(box.min.x / CELL_M); x <= Math.floor(box.max.x / CELL_M); x++)
       for (let y = Math.floor(box.min.y / CELL_M); y <= Math.floor(box.max.y / CELL_M); y++)
         for (let z = Math.floor(box.min.z / CELL_M); z <= Math.floor(box.max.z / CELL_M); z++) {
