@@ -74,9 +74,50 @@ async function enterBattle({ specId, mapId, opponents }) {
   const gl0 = window.__TTB.snapshot();
   const programs0 = R.info.programs?.length ?? null;
   const longFrom = window.__TTB.longTasks.length;
+  // the program churn (2026-10-08: a warm entry links ~30 more programs than a cold one and opens with ~22 fewer): every
+  // program the renderer acquires or releases during the entry, by time, shader name and cache-key hash; the released
+  // keys kept whole for the diff against a later program of the same name (which parameters changed)
+  const churn = [], keys = new Map();
+  const hash = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193); return (h >>> 0).toString(16); };
+  try {
+    const keyOf = (p) => { const k = String(p?.cacheKey ?? ''); const h = hash(k); if (!keys.has(h)) keys.set(h, k); return h; };
+    const watch = (p) => {
+      if (!p || p.__ttbWatched || typeof p.destroy !== 'function') return;
+      p.__ttbWatched = true;
+      const destroy = p.destroy;
+      p.destroy = function (...args) { try { churn.push([+performance.now().toFixed(1), '-', p.id, p.name, keyOf(p)]); } catch { /* diagnostics only */ } return destroy.apply(this, args); };
+    };
+    const list = R.info.programs;
+    if (Array.isArray(list) && !list.__ttbWatched) {
+      list.__ttbWatched = true;
+      for (const p of list) watch(p);
+      const push = list.push;
+      list.push = function (...ps) {
+        try { for (const p of ps) { churn.push([+performance.now().toFixed(1), '+', p?.id, p?.name, keyOf(p)]); watch(p); } } catch { /* diagnostics only */ }
+        return push.apply(this, ps);
+      };
+    }
+  } catch { /* diagnostics only */ }
   const t0 = performance.now();
   await D.beginBattleEntry(specId, mapId);
   const openMs = performance.now() - t0;
+  // the churn's summary: per shader name the programs released and acquired during the entry, and for each released key
+  // with a later acquired key of the same name, the cache-key fields that differ (index: old -> new)
+  let programChurn = null;
+  try {
+    const ev = churn.filter(([at]) => at >= t0).map(([at, op, id, name, key]) => [+(at - t0).toFixed(1), op, id, name, key]);
+    const diffs = [];
+    const released = ev.filter((e) => e[1] === '-'), acquired = ev.filter((e) => e[1] === '+');
+    for (const r of released) {
+      const later = acquired.find((a) => a[3] === r[3] && a[0] >= r[0] - 2000 && a[4] !== r[4]);
+      if (!later || diffs.length >= 40) continue;
+      const a = (keys.get(r[4]) ?? '').split(','), b = (keys.get(later[4]) ?? '').split(',');
+      const fields = [];
+      for (let i = 0; i < Math.max(a.length, b.length) && fields.length < 12; i++) if (a[i] !== b[i]) fields.push(`${i}: ${String(a[i]).slice(0, 60)} -> ${String(b[i]).slice(0, 60)}`);
+      diffs.push({ name: r[3], releasedAt: r[0], acquiredAt: later[0], lengths: [a.length, b.length], fields });
+    }
+    programChurn = { events: ev.slice(0, 600), released: released.length, acquired: acquired.length, diffs };
+  } catch (error) { programChurn = { error: String(error).slice(0, 200) }; }
   const gl1 = window.__TTB.snapshot();
   const diff = (a, b) => Object.fromEntries(Object.keys(b).map((k) => [k, { n: b[k].n - a[k].n, ms: +(b[k].ms - a[k].ms).toFixed(1) }]));
   const lt = window.__TTB.longTasks.slice(longFrom).filter(([at]) => at >= t0);
@@ -86,7 +127,7 @@ async function enterBattle({ specId, mapId, opponents }) {
     prefetch: window.__WORLD_PREFETCH ?? null, startBattle: window.__START_BATTLE_TIMINGS ?? null, combatWarm: window.__COMBAT_WARM ?? null,
     topMask: window.__TOP_MASK_LOAD ?? null,
     programsBefore: programs0, programsAtOpen: R.info.programs?.length ?? null, glAtOpen: diff(gl0, gl1),
-    slowProgramQueries: window.__TTB.slowQueries.filter((q) => q.at >= t0),
+    slowProgramQueries: window.__TTB.slowQueries.filter((q) => q.at >= t0), programChurn,
     longTasks: { n: lt.length, ms: Math.round(lt.reduce((s, [, d]) => s + d, 0)), max: lt.reduce((m, [, d]) => Math.max(m, d), 0) },
     tanks: D.game.tanks.length, visualsAtOpen: D.game.tanks.filter((e) => e.visual).length,
     gl0,
