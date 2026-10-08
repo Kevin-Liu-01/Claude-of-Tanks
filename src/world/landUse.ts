@@ -394,6 +394,8 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
     strength: 1, heading: 1.571, blockU: 170, blockV: 110, maxSplit: 3, marginM: 2.0, trackShare: 0.4, hedgeShare: 0.05,
     warpM: 20, region: 'secano', salt: 103,
   },
+  // (Orchard Valley has no row: its karst fields (2026-10-05) laid a cadastral quilt over the Chouf's terraces and most
+  // of the establishing view's cost; the coordinator dropped it on 2026-10-06, and the terraces carry the valley's ground)
 });
 
 /** The map's land use, or null (no fields). */
