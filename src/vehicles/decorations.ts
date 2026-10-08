@@ -55,7 +55,8 @@ import {NATIONAL_MODERNIZATION_IDS} from './nationalModernizationConfig.ts';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
-  vehicleAmbientFloorHook, getKitPaintTexture, getSharedRoughnessTexture, resolveCamoVisual, type MaterialTankSpec,
+  vehicleAmbientFloorHook, getKitPaintTexture, getSharedRoughnessTexture, resolveCamoVisual, followVehicleScheme,
+  type MaterialTankSpec,
 } from './materials.ts';
 import { garnishedNetTextures, NET_TILE_M, theatreOfHex, type SuitTheatre } from './camoNetTexture.ts';
 import { VEHICLE_ERAS, isContemporaryVehicleEra } from './taxonomy.ts';
@@ -1196,6 +1197,13 @@ function buildDecorMaterials(
         const wear = fieldWear[key];
         if (wear) material.defines = { ...material.defines, COT_FIELD_WEAR: wear };
         material.name = `Decor_${key}`;
+        // round 5: the nets swap to the new theatre's when a garage pattern switch repaints the vehicle in place
+        if (key === 'net' && canPaint) {
+          followVehicleScheme(spec.id, material, (vis) => {
+            const next = garnishedNetTextures(theatreOfHex(vis.base), DECOR_NET_SEED);
+            if (next) material.map = next.map;
+          });
+        }
       }
       return made[key]!;
     },

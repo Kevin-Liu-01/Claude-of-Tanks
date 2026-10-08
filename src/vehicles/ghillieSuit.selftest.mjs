@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { addVehicleGhillieSuit, GHILLIE_SUIT_CONFIGS } from './ghillieSuit.ts';
+import { applyCamoPatterns, setCamoOverride } from './materials.ts';
+import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 
 const ids = [
   'ua_t64bv', 'pt91_twardy', 'm1a2_sepv3',
@@ -275,6 +277,40 @@ for (const id of ['leo2a4', 'ua_t72b3m_hetman_ii', 'ua_t72b3_modern']) {
   for (const step of P.afterAssemble) step(rig);
   assert.deepEqual(calls, ['profile', 'field kit'], 'both profile postAssemble steps still run around the suit');
   assert.ok(turretG.getObjectByName('receipt_port_ghillie_turret_net')?.isMesh, 'the suit builds after assembly');
+}
+
+// 2026-10-08 (round 5): a garage pattern switch repaints a vehicle in place, without rebuilding it. The suit's net
+// follows the scheme into its theatre (wave 253: "the desert Abrams wears green nets ... against sand paint").
+{
+  const restoreCanvas = installCanvasFixture();
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    const tank = createTank('leo2a4', null, { proceduralOnly: true, quality: 'high', camoSeed: 4242 });
+    const net = tank.root.getObjectByName('leo2a4_ghillie_turret_net');
+    assert.match(net?.material?.map?.name ?? '', /^ghillieNet:woodland:/, 'the A4 wears a woodland net on its woodland scheme');
+    setCamoOverride('leo2a4', 'desert');
+    applyCamoPatterns('leo2a4');
+    assert.match(net.material.map.name, /^ghillieNet:desert:/, 'a switch to a desert scheme carries the net to the desert');
+    setCamoOverride('leo2a4', null);
+    applyCamoPatterns('leo2a4');
+    assert.match(net.material.map.name, /^ghillieNet:woodland:/, 'and back');
+    tank.dispose();
+    // the decor's rolled nets follow too: the M60A1's sand roll turns woodland on a woodland scheme
+    const m60 = createTank('m60a1', null, { quality: 'high', camoSeed: 4242, decor: true });
+    let roll = null;
+    m60.root.traverse((o) => { if (o.isMesh && o.material?.name === 'Decor_net') roll = o; });
+    assert.match(roll?.material?.map?.name ?? '', /^ghillieNet:desert:/, 'the M60A1 rolls a sand net on its desert coat');
+    setCamoOverride('m60a1', 'summer');
+    applyCamoPatterns('m60a1');
+    assert.match(roll.material.map.name, /^ghillieNet:woodland:/, 'a woodland scheme carries the roll to woodland garnish');
+    setCamoOverride('m60a1', null);
+    applyCamoPatterns('m60a1');
+    m60.dispose();
+  } finally {
+    console.warn = warn;
+    restoreCanvas();
+  }
 }
 
 const twardy = GHILLIE_SUIT_CONFIGS.pt91_twardy;

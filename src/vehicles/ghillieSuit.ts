@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { KIT } from './profiles/kit.ts';
-import { cloneVehicleMaterial, resolveCamoVisual, type MaterialTankSpec } from './materials.ts';
+import { cloneVehicleMaterial, followVehicleScheme, resolveCamoVisual, type MaterialTankSpec } from './materials.ts';
+import type { MaterialVisual } from './materialPainter.ts';
 import { oplotFlankOuterX } from './oplotFlankLayout.ts';
 import {
   configureFoliageMaterial, FoliageCardBuffer, foliageCardPoints, GARNISH_BOUGH_TILES, GARNISH_STRIP_BASE_SRGB, GARNISH_STRIP_TILES,
@@ -9,7 +10,7 @@ import {
 import type { SprayKind } from '../world/treeSprayAtlas.ts';
 import { GHILLIE_TOP_CARDS, GHILLIE_TOP_VERTICES } from './ghillieDrape.ts';
 import {
-  garnishedNetTextures, NET_PALETTES, NET_TEXTURE_PX, NET_TILE_M, suitTheatreOf, type NetPalette, type SuitTheatre,
+  garnishedNetTextures, NET_PALETTES, NET_TEXTURE_PX, NET_TILE_M, suitTheatreOf, theatreOfHex, type NetPalette, type SuitTheatre,
 } from './camoNetTexture.ts';
 
 type Point2 = readonly [number, number];
@@ -1428,7 +1429,7 @@ function cutLeafCoverTextures(pal: CoverPalette, seed: number): { map: THREE.Can
       out = null;
     }
   }
-  coverCache.set(key, out);
+  if (typeof document !== 'undefined') coverCache.set(key, out);
   return out;
 }
 
@@ -2299,7 +2300,16 @@ function addGhillieOwner(
       if (k < tops.length) topCards = foliage.cardCount;
     });
   }
-  const netMesh = addMerged(P, parent, surfaces.map((s) => s.geometry), makeNet(P, cfg, theatre, cover), `${cfg.id}_ghillie_${owner}_net`);
+  const netMat = makeNet(P, cfg, theatre, cover);
+  const netMesh = addMerged(P, parent, surfaces.map((s) => s.geometry), netMat, `${cfg.id}_ghillie_${owner}_net`);
+  // a garage pattern switch repaints the vehicle in place: the net swaps to the new theatre's (a cover to the new scheme)
+  if (netMesh && P.mats.wheels) {
+    followVehicleScheme(P.mats.wheels, netMat, (vis) => {
+      const t = theatreOfHex(vis.base);
+      const next = leafy ? garnishedNetTextures(t, cfg.seed) : cutLeafCoverTextures(coverPaletteOf(vis, t), cfg.seed);
+      if (next) { netMat.map = next.map; netMat.bumpMap = next.bump; }
+    });
+  }
   // the roof and deck carriers lead the merged net (and their garnish the cards): the decor draws a draped net over its
   // loads; a fitted cover is cut to the hull and its stowage is strapped on top of it
   if (netMesh && leafy) netMesh.userData[GHILLIE_TOP_VERTICES] = tops.reduce((n, t) => n + t.geometry.attributes.position.count, 0);
@@ -2317,6 +2327,19 @@ function addGhillieOwner(
     mesh.userData.continuityRole = 'open-lattice';
     if (leafy) mesh.userData[GHILLIE_TOP_CARDS] = [topCards, P.q !== false ? 24 : 12];
     parent.add(mesh);
+    // the garnish was tinted for the build's theatre; on a pattern switch its colour shifts to the new theatre's
+    if (P.mats.wheels) {
+      const built = meanStrip(theatre);
+      followVehicleScheme(P.mats.wheels, mat, (vis) => {
+        const t = theatreOfHex(vis.base);
+        if (!leafy) {
+          mat.map = vehicleFoliageAtlas(t === 'desert' ? 'garnish-arid' : 'garnish-woodland');
+          return;
+        }
+        const now = meanStrip(t);
+        mat.color.setRGB(now[0] / built[0], now[1] / built[1], now[2] / built[2]);
+      });
+    }
     // the atlas is shared fleet-wide (vehicleFoliage.ts) and never joins a visual's disposables
     P.disposables.push(leaves, mat);
   }
@@ -2329,22 +2352,30 @@ const COVER_FALLBACK: Readonly<Record<SuitTheatre, CoverPalette>> = Object.freez
   snow: { base: [214, 216, 212], patches: [[150, 150, 144], [184, 186, 182], [232, 232, 228]] },
 });
 
-/** The cover's colours from the scheme this vehicle wears (its base and patches, and a lighter tone of its base). */
+/** A cover's colours from a scheme (its base and patches, and a lighter tone of its base). */
+function coverPaletteOf(vis: MaterialVisual, theatre: SuitTheatre): CoverPalette {
+  const base = hexRgb(vis.base);
+  const patches = (vis.patches ?? []).slice(0, 3).map(hexRgb);
+  if (!patches.length) return COVER_FALLBACK[theatre];
+  const light: [number, number, number] = [Math.min(255, base[0] * 1.1 + 4), Math.min(255, base[1] * 1.1 + 4), Math.min(255, base[2] * 1.06)];
+  return { base, patches: [...patches, light] };
+}
+
+/** The cover's colours from the scheme this vehicle wears. */
 function buildCoverPalette(P: GhillieBuilderPort, theatre: SuitTheatre): CoverPalette {
   try {
-    if (P.spec.visual) {
-      const vis = resolveCamoVisual(P.spec as unknown as MaterialTankSpec);
-      const base = hexRgb(vis.base);
-      const patches = (vis.patches ?? []).slice(0, 3).map(hexRgb);
-      if (patches.length) {
-        const light: [number, number, number] = [Math.min(255, base[0] * 1.1 + 4), Math.min(255, base[1] * 1.1 + 4), Math.min(255, base[2] * 1.06)];
-        return { base, patches: [...patches, light] };
-      }
-    }
+    if (P.spec.visual) return coverPaletteOf(resolveCamoVisual(P.spec as unknown as MaterialTankSpec), theatre);
   } catch {
     // a spec the paint system cannot resolve: the theatre's issue colours
   }
   return COVER_FALLBACK[theatre];
+}
+
+/** A theatre's garnish strips, their share-weighted mean in linear RGB (the garnish follows a scheme switch by it). */
+function meanStrip(theatre: SuitTheatre): [number, number, number] {
+  const out: [number, number, number] = [0, 0, 0];
+  for (const [c, w] of NET_PALETTES[theatre].strips) for (let k = 0; k < 3; k++) out[k] += srgbLin(c[k]) * w;
+  return out;
 }
 
 function buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): void {

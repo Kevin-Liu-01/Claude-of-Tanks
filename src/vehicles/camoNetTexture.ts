@@ -233,7 +233,8 @@ export function garnishedNetTextures(theatre: SuitTheatre, seed: number): { map:
       out = null;
     }
   }
-  netCache.set(key, out);
+  // without a DOM nothing is painted, and nothing is remembered (a later build with a canvas paints it)
+  if (typeof document !== 'undefined') netCache.set(key, out);
   return out;
 }
 

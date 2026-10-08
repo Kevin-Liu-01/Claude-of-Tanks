@@ -347,7 +347,7 @@ export function ghillieGarnishAtlas(species: SprayKind): THREE.Texture | null {
       texture = null;
     }
   }
-  garnishAtlasCache.set(species, texture);
+  if (typeof document !== 'undefined') garnishAtlasCache.set(species, texture);
   return texture;
 }
 

@@ -96,6 +96,8 @@ interface SharedTextureEntry {
   feats: PlateFeatures | null;
   patternId: MaterialPatternId;
   paintable: Set<PaintableRecord>;
+  /** Equipment painted for this entry's scheme (followVehicleScheme): told the new scheme on every repaint. */
+  schemeFollowers?: Set<(vis: MaterialVisual) => void>;
   quality: MaterialTextureQuality;
   camoCanvas: HTMLCanvasElement;
   normalCanvas: HTMLCanvasElement;
@@ -1968,6 +1970,30 @@ function retintEntryFittings(entry: SharedTextureEntry, vis: MaterialVisual): vo
     paintKitCanvas(entry.kitCanvas, vis);
     entry.kitTex.needsUpdate = true;
   }
+  for (const follow of entry.schemeFollowers ?? []) follow(vis);
+}
+
+/**
+ * Round 5 (2026-10-08, the nets lane): equipment painted for the scheme its vehicle wears (a camouflage suit's net and
+ * garnish, the decor's nets: woodland, desert or snow) follows a pattern switch, which repaints the shared entry in
+ * place without rebuilding the tank. `follow` runs at once with the scheme the vehicle wears now and again on every
+ * repaint or restore of its entry until `owner` is disposed. The entry is the one `vehicle` (one of the vehicle's
+ * scheme-painted materials, such as its wheel paint) belongs to, or by spec id the first live entry of that vehicle.
+ * Returns false when there is none (a build without paint: node receipts, the non-rendering material set).
+ */
+export function followVehicleScheme(vehicle: THREE.Material | string, owner: THREE.Material,
+  follow: (vis: MaterialVisual) => void): boolean {
+  let entry: SharedTextureEntry | null = null;
+  for (const candidate of TEX_CACHE.values()) {
+    if (typeof vehicle === 'string' ? candidate.spec.id === vehicle && candidate.refs > 0
+      : [...candidate.paintable].some((rec) => rec.m === vehicle)) { entry = candidate; break; }
+  }
+  if (!entry) return false;
+  const followers = entry.schemeFollowers ?? (entry.schemeFollowers = new Set());
+  followers.add(follow);
+  owner.addEventListener('dispose', () => followers.delete(follow));
+  follow(patternVisual(entry.spec, entry.patternId));
+  return true;
 }
 
 // ---- camo r4: instant pattern switching (owner ask 2026-08-07) ------------
