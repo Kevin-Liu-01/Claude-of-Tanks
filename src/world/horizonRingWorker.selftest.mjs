@@ -16,12 +16,25 @@
 //      supplied build leaves the ring's stage on the group and map.ts finishes it after the props, before the world is
 //      assembled (the worker's whole build to answer; the stage builds the pipeline meanwhile and takes the worker's the
 //      moment it arrives, never waiting) — and keeps the ring the terrain's first child.
+//   5. The worker's realm: a worker never resolves the device tier (getDeviceTier() is 'desktop' there) while a phone's
+//      page resolves 'mobile', so the pipeline depends on the tier only through its request (`vista`): a child process
+//      with the tier resolved to 'mobile' builds the same requests to the same arrays.
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { installWorldBuildFixture } from '../../tools/headlessWorldCollision.mjs';
 
 installWorldBuildFixture();
+// (part 5's child: the page's realm on a phone — the tier resolved to 'mobile' — prints its pipelines' wire digests)
+const TIER_CHILD = process.argv[2] === '--tier-child';
+if (TIER_CHILD) {
+  const quality = await import('../engine/quality.ts');
+  globalThis.window = { location: { search: '?tier=mobile' } };
+  try { quality.resolveDeviceTier(); } finally { delete globalThis.window; }
+  if (quality.getDeviceTier() !== 'mobile') throw new Error('the child did not resolve the mobile tier');
+}
 const { MAP_IDS, getMapConfig } = await import('./maps/index.ts');
 const { createHeightField } = await import('./terrain.ts');
 const { buildHorizonRingSteps, horizonRingGeometrySteps } = await import('./maps/horizon.ts');
@@ -75,6 +88,26 @@ function pipelineDigest(p) {
   const { geometry: _geometry, ...rest } = p;
   digestValue(h, rest);
   return h.digest('hex');
+}
+
+// --- 5. the worker's realm -----------------------------------------------------------------------------------------------
+const REALM_MAPS = ['verdant', 'badlands'];
+const wireDigest = (wire) => { const h = createHash('sha1'); digestValue(h, wire); return h.digest('hex'); };
+const realmRequest = (mapId) => ({ mapId, terrainVariant: null, fieldSeed: 1337, ringSeed: 1337, vista: false, debugColors: false });
+if (TIER_CHILD) {
+  console.log(JSON.stringify(REALM_MAPS.map((mapId) => wireDigest(buildHorizonRingWire(realmRequest(mapId)).wire))));
+  process.exit(0);
+}
+{
+  const { getDeviceTier } = await import('../engine/quality.ts');
+  assert.equal(getDeviceTier(), 'desktop', 'the parent stands for the worker: the tier unresolved');
+  const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--tier-child'],
+    { encoding: 'utf8', timeout: 600000, maxBuffer: 4 * 1024 * 1024 });
+  assert.equal(child.status, 0, `the mobile-tier child failed: ${child.stderr?.slice(-600)}`);
+  const childDigests = JSON.parse(child.stdout.trim().split('\n').at(-1));
+  const parentDigests = REALM_MAPS.map((mapId) => wireDigest(buildHorizonRingWire(realmRequest(mapId)).wire));
+  assert.deepEqual(childDigests, parentDigests,
+    'the pipeline depends on the device tier only through the request: a phone\'s page and its worker build the same ring');
 }
 
 // --- 1. every map: the worker's pipeline is the page's ---------------------------------------------------------------
