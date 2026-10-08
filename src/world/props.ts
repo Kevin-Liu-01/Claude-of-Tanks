@@ -483,6 +483,10 @@ interface PropsSettings {
   sandbagLines?: number;
   /** Field works between the spawns (breastwork + wire + pillbox); every map, default 3 (2026-09-17). */
   fieldWorks?: number;
+  /** The field works' pillboxes keep off the trunks the vegetation planted (the Redrock lane's rule, visual/redrock-smooth
+   *  ae7dcffa7, 2026-10-07; every map's default since the scenery lane's b40): a seat whose pillbox footprint, with
+   *  PILLBOX_TRUNK_BERTH_M round it, holds a trunk is passed for the work's next seat. false keeps the old seats. */
+  pillboxClearOfTrees?: boolean;
   tankWrecks?: TankWreckSettings;
   rockSink?: number;
   /** The steepest ground a boulder rests on, degrees (landformGeology.ts restsOnTalus; the mountains lane, 2026-10-04,
@@ -2251,6 +2255,9 @@ const _quat = new THREE.Quaternion();
 // poles, each drawn into it every frame. A profile tells the router where the content stands (an InstancedMesh's
 // instances, a bucket's piece cells) and how tall it is (a shadow shorter than two texels of a map's PCF kernel
 // cannot read there); the router skips the cascades the content cannot touch.
+/** (b40) The berth a field-works pillbox keeps round its contact footprint from a trunk's own half-width: a crown's
+ *  low limbs and a conifer's skirt stay off its walls and roof. */
+const PILLBOX_TRUNK_BERTH_M = 1.5;
 const PROPS_SHADOW_CELL_M = 96;
 const _profileSphere = new THREE.Sphere();
 /** The content height of a geometry under the largest of `matrices` (metres). */
@@ -7302,6 +7309,22 @@ ${snowCap ? `
       && heightField.getNormalAt(x, z).y >= 0.86 && !nearTrench(x, z)
       && ![player, ...enemies].some((spawn) => Math.hypot(x - spawn.x, z - spawn.z) < 45)
       && !placedB.some((building) => Math.hypot(x - building.x, z - building.z) < building.rr + 6);
+    // (b40) a pillbox stood in Redrock's west spring with three palm trunks through its roof, and the same overlap stood
+    // on Alpine (4 trunks), Caldera (3), Delta (1), Frontier (1), Steppe (3) and Verdant (3): the pillbox's measured
+    // contact footprint, in its own frame, and a berth round it keep off every trunk planted before it
+    const trunks = P.pillboxClearOfTrees === false ? [] : (vegetation?.treeObstacles ?? []).map((tree) => ({
+      x: (tree.min[0] + tree.max[0]) / 2, z: (tree.min[2] + tree.max[2]) / 2,
+      half: Math.max(tree.max[0] - tree.min[0], tree.max[2] - tree.min[2]) / 2,
+    }));
+    const pillboxClearOfTrunks = (x: number, z: number, yaw: number, berth = PILLBOX_TRUNK_BERTH_M): boolean => {
+      if (!trunks.length) return true;
+      const [hw, hl] = destructibleFootprint('bunker');
+      const fx = Math.sin(yaw), fz = Math.cos(yaw);
+      return !trunks.some((t) => {
+        const dx = t.x - x, dz = t.z - z;
+        return Math.abs(dx * fz - dz * fx) < hw + t.half + berth && Math.abs(dx * fx + dz * fz) < hl + t.half + berth;
+      });
+    };
     let placed = 0;
     for (let attempt = 0; attempt < target * 30 && placed < target; attempt++) {
       const along = 0.22 + wrng() * 0.56;
@@ -7340,15 +7363,57 @@ ${snowCap ? `
       // a pillbox closes one end of every second work (either end, else the centre) 3–4 m behind the breastwork line
       if (placed % 2 === 0) {
         const first = wrng() < 0.5 ? 1 : -1;
-        const reach = modules * 1.35 + 4.4;
-        for (const [ox, oz] of [[lx * first * reach, lz * first * reach], [-lx * first * reach, -lz * first * reach], [-fx * 4, -fz * 4]]) {
+        const reach = modules * 1.35 + 4.4, yawP = Math.atan2(fx, fz);
+        // the pillbox's whole footprint (an 8 m square) keeps out of the road core, not just its centre, and (b40) off
+        // the trunks: a seat the ground or the road refuses is null, one only the trunks refuse is 'trunk'
+        const seat = (ox: number, oz: number): readonly [number, number] | 'trunk' | null => {
           const px = cx + ox - fx * 3, pz = cz + oz - fz * 3;
-          // the pillbox's whole footprint (an 8 m square) keeps out of the road core, not just its centre
           if (!clear(px, pz) || heightField.getNormalAt(px, pz).y < 0.9
-            || !destructibleClearOfRoad('bunker', px, pz, Math.atan2(fx, fz), 1)) continue;
-          addDestructible('bunker', px, heightField.getHeightAt(px, pz) - 0.08, pz, Math.atan2(fx, fz), 1);
+            || !destructibleClearOfRoad('bunker', px, pz, yawP, 1)) return null;
+          return pillboxClearOfTrunks(px, pz, yawP) ? [px, pz] : 'trunk';
+        };
+        let at: readonly [number, number] | null = null, barred = false;
+        for (const [ox, oz] of [[lx * first * reach, lz * first * reach], [-lx * first * reach, -lz * first * reach], [-fx * 4, -fz * 4]]) {
+          const got = seat(ox, oz);
+          if (got === 'trunk') barred = true;
+          else if (got) { at = got; break; }
+        }
+        // (b40) where the trunks bar every seat the ground allows, the pillbox steps further along the line or back from
+        // it, so the work keeps its pillbox (on Caldera and Saltmere the trunks barred all three usual seats)
+        if (!at && barred) {
+          const far = reach + 3.5;
+          for (const [ox, oz] of [[lx * first * far, lz * first * far], [-lx * first * far, -lz * first * far], [-fx * 8, -fz * 8],
+            [lx * first * reach - fx * 4, lz * first * reach - fz * 4], [-lx * first * reach - fx * 4, -lz * first * reach - fz * 4]]) {
+            const got = seat(ox, oz);
+            if (got && got !== 'trunk') { at = got; break; }
+          }
+        }
+        // still barred (a palm grove's or an orchard's trunks every few metres round the work: Delta's two works, one of
+        // Orchard's): the seat nearest an end of the work, out to 20 m along the line either way and 20 m back from it,
+        // whose footprint the trunks leave clear by the berth, else by 0.3 m (no trunk in the box) — every work keeps its
+        // pillbox; no draw is taken, so nothing after it moves
+        if (!at && barred) {
+          let best: readonly [number, number] | null = null;
+          for (const berth of [PILLBOX_TRUNK_BERTH_M, 0.3]) {
+            let bestScore = Infinity;
+            for (let u = -20; u <= 20; u += 2.5) {
+              for (let v = 0; v <= 20; v += 2.5) {
+                const score = Math.min(Math.abs(u - first * reach), Math.abs(u + first * reach)) + v * 0.5;
+                if (score >= bestScore) continue;
+                const px = cx + lx * u - fx * (3 + v), pz = cz + lz * u - fz * (3 + v);
+                if (!clear(px, pz) || heightField.getNormalAt(px, pz).y < 0.9
+                  || !destructibleClearOfRoad('bunker', px, pz, yawP, 1) || !pillboxClearOfTrunks(px, pz, yawP, berth)) continue;
+                best = [px, pz]; bestScore = score;
+              }
+            }
+            if (best) break;
+          }
+          at = best;
+        }
+        if (at) {
+          const [px, pz] = at;
+          addDestructible('bunker', px, heightField.getHeightAt(px, pz) - 0.08, pz, yawP, 1);
           if (wrng() < 0.7) scatterDestructibles('ammobox', px - fx * 4.5, pz - fz * 4.5, 1, 1.5, 3);
-          break;
         }
       }
       placed++;
