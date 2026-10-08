@@ -15,7 +15,7 @@
  * Draws only through the blast context (volume media, thrown chunks, additive light): seeded, pooled, no allocation.
  * A settled event (a late joiner, a reconnect) draws nothing: its stage is laid down by the world, silently.
  */
-import type { StructureBreachEvent, StructureStageEvent } from '../sim/destructionEvents.ts';
+import type { StructureStageEvent } from '../sim/destructionEvents.ts';
 import type { BlastContext } from './blastRecipes.ts';
 import type { ChunkShape } from './debrisChunks.ts';
 import { linearHex } from './surfaceLooks.ts';
@@ -71,21 +71,13 @@ export function lookForStruckKind(kind: string | null | undefined): StructureLoo
 }
 
 /**
- * The P1 breach stage names a blow, not a hole: the hole it opens where the blow met the building — the point carried
- * to the nearest face of its footprint, at least most of a radius off the ground and under the eaves, facing out of
- * that face — as big as the blow (a rammed wall the hull's height, a howitzer shell two metres, a kinetic round a shot
- * hole), never wider than the building can hold.
+ * The P1 breach stage names a blow, not a hole: the point and radius of the hole it opens, for the world seam's
+ * holeAt (which picks the anatomy face nearest the point, its storey and the seed). As big as the blow (a rammed wall
+ * the hull's height, the gunship's howitzer or missile two metres, HE 1.3 m, a kinetic round a shot hole), never wider
+ * than the building holds; at least most of a radius off the ground (a shell bursting at the foot of a wall still
+ * holes it) and under the eaves; a ram opens at the hull.
  */
-export function breachHoleForStage(e: StructureStageEvent): StructureBreachEvent {
-  const c = Math.cos(e.yaw), sn = Math.sin(e.yaw);
-  // body frame (x across = hw, z along = hd): world = (cx + bx c + bz s, cz - bx s + bz c)
-  const dx = e.x - e.cx, dz = e.z - e.cz;
-  let bx = dx * c - dz * sn, bz = dx * sn + dz * c;
-  const hw = Math.max(0.5, e.hw), hd = Math.max(0.5, e.hd);
-  // the nearest face, by the share of its half extent the point stands out
-  let nbx = 0, nbz = 0;
-  if (Math.abs(bx) / hw >= Math.abs(bz) / hd) { nbx = bx < 0 ? -1 : 1; bx = nbx * hw; bz = Math.max(-hd, Math.min(hd, bz)); }
-  else { nbz = bz < 0 ? -1 : 1; bz = nbz * hd; bx = Math.max(-hw, Math.min(hw, bx)); }
+export function breachBlowFor(e: StructureStageEvent): { x: number; y: number; z: number; radiusM: number } {
   const m = e.munition;
   const r = e.cause === 'ram' ? 1.5
     : m === 'howitzer' || m === 'missile' ? 2.1
@@ -95,14 +87,42 @@ export function breachHoleForStage(e: StructureStageEvent): StructureBreachEvent
             : m === 'autocannon_he' ? 0.55
               : 0.45;
   const h = Math.max(1, e.topY - e.baseY);
-  const radiusM = Math.min(r, 0.45 * Math.min(h, 2 * Math.min(hw, hd)));
+  const radiusM = Math.min(r, 0.45 * Math.min(h, 2 * Math.max(0.5, Math.min(e.hw, e.hd))));
   const y = Math.min(e.baseY + h - radiusM * 0.6, Math.max(e.baseY + radiusM * 0.85, e.cause === 'ram' ? e.baseY + 1.2 : e.y));
-  return {
-    structureId: e.structureId, section: -1, sectionKind: 'wall', y0: e.baseY, y1: e.topY, hole: 0,
-    x: e.cx + bx * c + bz * sn, y, z: e.cz - bx * sn + bz * c,
-    nx: nbx * c + nbz * sn, ny: 0, nz: -nbx * sn + nbz * c,
-    radiusM, munition: e.munition, sectionDown: false, settled: e.settled === true,
-  };
+  return { x: e.x, y, z: e.z, radiusM };
+}
+
+/** What a fracture material looks like where its bucket is textured (the anatomy's tint is white there): linear RGB. */
+const FRACTURE_BASE: Readonly<Record<string, Rgb>> = Object.freeze({
+  brick: linearHex(0x8c5a44), stone: linearHex(0x8d877c), rubble: linearHex(0x7d776c), concrete: linearHex(0x9a978f),
+  adobe: linearHex(0xa98a63), plaster: linearHex(0xcac0ae), timber: linearHex(0x5e4632), infill: linearHex(0xb8ab90),
+  plank: linearHex(0x7a5c3e), metal: linearHex(0x5c6156), glass: linearHex(0x9fb0b4), tile: linearHex(0x94503a),
+  slate: linearHex(0x4a4d52), thatch: linearHex(0xa08850), earth: linearHex(0x6e5c45), canvas: linearHex(0x8a7d5c),
+});
+
+/** The parts of a structure's anatomy the look reads (world/destructionKit.ts StructureDamageAnatomy). */
+interface AnatomyLike {
+  rubble: readonly { material: string; tint: Rgb; share: number }[];
+  interior: { color: Rgb };
+}
+
+/**
+ * A structure's look from its anatomy: its rubble by share in its own colours (the anatomy's tint where its bucket is
+ * vertex-coloured; the material's own colour where it is textured and the tint is white), and its interior's dark.
+ */
+export function lookFromAnatomy(anatomy: AnatomyLike | null | undefined): StructureLook | null {
+  if (!anatomy || !anatomy.rubble?.length) return null;
+  const rubble: RubbleShare[] = [];
+  for (const slot of anatomy.rubble) {
+    if (!(slot.share > 0)) continue;
+    const t = slot.tint;
+    const white = Math.min(t[0], t[1], t[2]) > 0.85;
+    const base = FRACTURE_BASE[slot.material] ?? FALLBACK_LOOK.rubble[1]!.color;
+    rubble.push({ material: slot.material, color: white ? base : [t[0], t[1], t[2]], share: slot.share });
+  }
+  if (!rubble.length) return null;
+  const ic = anatomy.interior?.color;
+  return { rubble, interior: ic ? [ic[0], ic[1], ic[2]] : FALLBACK_LOOK.interior };
 }
 
 /** The piece shape a fracture material breaks into. */

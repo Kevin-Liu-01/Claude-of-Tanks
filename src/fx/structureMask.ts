@@ -7,28 +7,33 @@
  * float DataTexture and patches the bucket materials (handed over by world.patchStructureMaterials) and their shadow
  * depth materials, so every tagged vertex and fragment reads its structure's state:
  *
- *  - holes: up to four per structure (a breach's centre and radius, world space); a fragment of the structure inside
- *    one is discarded, with a blocky ragged edge (brick-sized cells of the wall break out at different radii) — the
- *    stage builder's broken rim and the dark room behind it come through the debris writers;
+ *  - holes: up to four per structure, each the stage builder's cut (DESTRUCTION.md §16: a cylinder along the face's
+ *    outward normal, from outsideM outside the face to depthM into the wall, world space here); a fragment of the
+ *    structure inside one is discarded, with a blocky ragged edge (brick-sized cells of the wall break out between 0.8
+ *    and 1.2 of the radius, under the builder's rim, which covers 0.75 to 1.25) — the broken rim in the wall's own
+ *    courses and the dark room behind it come through the debris writers;
  *  - collapse: from its start time the building comes down into its own dust plume over COLLAPSE_S — the storeys
  *    crumble apart (cells of the walls drift and drop, the upper ones most), the whole leans a few degrees toward the
  *    blow about its base and sinks gravity-eased — and is discarded at the end (the core's rubble heap is the ground
  *    then); a settled collapse (a late joiner, a migration) is gone at once.
  *
- * Six texels per structure: A = (collapse start on the fx clock or 0, height m, blow dir x, blow dir z),
- * B = (base pivot x, y, z, hole count), H0..H3 = (hole centre x, y, z, radius m). No per-frame CPU but the clock
- * uniform (and, while a building falls, one version bump per bucket so the static shadow cache follows the sinking
- * shadow): a stage or breach event writes texels and one upload range.
+ * Ten texels per structure: A = (collapse start on the fx clock or 0, height m, blow dir x, blow dir z),
+ * B = (base pivot x, y, z, hole count), then per hole C = (centre x, y, z, radius m) and N = (outward normal x, z,
+ * depth m, outside m). No per-frame CPU but the clock uniform: a stage or breach event writes texels and one upload
+ * range. (The static shadow cache cannot see a shape the GPU changes: the presentation touches the structure's
+ * casters through the world seam on every frame the mask moves it.)
  *
  * World space throughout: the vertex patch carries `transformed` to the world through the model, batching and
- * instance matrices, moves it there, and carries the displacement back — merged buckets at identity and BatchedMesh
- * cells (a local frame per part) both work.
+ * instance matrices, moves it there, and carries the displacement back (the world keeps every bucket and batch at
+ * identity, so this is the identity there; it keeps the patch right for anything that is not). The world hands over
+ * every bucket material once, its shadow depth materials included (role 'depth': the patch compiles on the depth
+ * shader too, so a hole lets the sun through and the shadow sinks with the building).
  */
 import * as THREE from 'three';
 
 const TEX_W = 512;
-/** Texels per structure: A, B and the holes. */
-const STRIDE = 6;
+/** Texels per structure: A, B and two per hole. */
+const STRIDE = 10;
 /** Holes a structure keeps (a ring: a fifth replaces the first). */
 export const MAX_HOLES = 4;
 /** Seconds a collapse takes from the first crack to the last stone below the dust. */
@@ -125,11 +130,16 @@ if ( vStructHoles > 0.5 ) {
   float rk = 0.8 + 0.4 * fxStructHash3( floor( vStructPos * 2.6 ) ).x;
   for ( int i = 0; i < ${MAX_HOLES}; i++ ) {
     if ( float( i ) >= vStructHoles ) break;
-    int at = hb + i;
-    vec4 hh = texelFetch( uStructMask, ivec2( at % ${TEX_W}, at / ${TEX_W} ), 0 );
-    vec3 dd = vStructPos - hh.xyz;
-    float r = hh.w * rk;
-    if ( dot( dd, dd ) < r * r ) discard;
+    int at = hb + i * 2;
+    vec4 hc = texelFetch( uStructMask, ivec2( at % ${TEX_W}, at / ${TEX_W} ), 0 );
+    vec4 hn = texelFetch( uStructMask, ivec2( ( at + 1 ) % ${TEX_W}, ( at + 1 ) / ${TEX_W} ), 0 );
+    vec3 dd = vStructPos - hc.xyz;
+    // the cut is a cylinder along the face's outward normal: from hn.w outside the face to hn.z into the wall
+    float along = dot( dd.xz, hn.xy );
+    if ( along < -hn.z || along > hn.w ) continue;
+    vec3 lateral = dd - vec3( hn.x, 0.0, hn.y ) * along;
+    float r = hc.w * rk;
+    if ( dot( lateral, lateral ) < r * r ) discard;
   }
 }
 `;
@@ -141,20 +151,20 @@ export interface StructureMask {
   /** A structure starts coming down at `startS` (fx clock); `settled`: it is gone already. */
   collapse(structureId: number, startS: number, heightM: number, dirX: number, dirZ: number,
     pivotX: number, baseY: number, pivotZ: number, settled?: boolean): void;
-  /** A hole through the structure (world centre, radius m): the next of its MAX_HOLES slots (a ring: a fifth hole
-   *  replaces the first). Returns the slot, or -1. */
-  addHole(structureId: number, x: number, y: number, z: number, radiusM: number): number;
+  /**
+   * A hole through the structure: the builder's cut in the world (centre, radius m, the face's outward normal, depth m
+   * into the wall, m outside it), in the next of its MAX_HOLES slots (a ring: a fifth hole replaces the first).
+   * Returns the slot, or -1.
+   */
+  addHole(structureId: number, x: number, y: number, z: number, radiusM: number, nx: number, nz: number,
+    depthM: number, outsideM?: number): number;
   /** The fx clock (patched shaders animate from it); while a building falls, its buckets' shadows follow. */
   setClock(seconds: number): void;
   /** Shift every collapse start with the fx clock's rebase. */
   shiftTime(delta: number): void;
   reset(): void;
-  /** Patch one bucket material (idempotent). */
+  /** Patch one bucket material, surface or shadow depth (idempotent). */
   patch(material: THREE.Material): void;
-  /** Patch a bucket mesh: its material(s) and a shadow depth material of its own (created when it has none). */
-  patchMesh(mesh: THREE.Object3D): void;
-  /** Keep a bucket's shadow following its falling building until `untilS` (fx clock). */
-  followShadow(mesh: THREE.Object3D, untilS: number): void;
   readonly capacity: number;
 }
 
@@ -173,9 +183,6 @@ export function createStructureMask(capacity = 4096): StructureMask {
   const patched = new WeakSet<THREE.Material>();
   const holeCount = new Uint8Array(capacity);
   const holeNext = new Uint8Array(capacity);
-  // bucket meshes whose shadow follows a fall: the static shadow cache re-renders a caster that changes on
-  // consecutive frames as a dynamic one, so its depth material's version moves every frame until the fall ends
-  const following = new Map<THREE.Object3D, number>();
 
   const touch = (firstTexel: number, count: number): void => {
     texture.addUpdateRange(firstTexel * 4, count * 4);
@@ -217,13 +224,16 @@ export function createStructureMask(capacity = 4096): StructureMask {
       data[o + 4] = pivotX; data[o + 5] = baseY; data[o + 6] = pivotZ;
       touch(t, 2);
     },
-    addHole(id, x, y, z, radiusM) {
+    addHole(id, x, y, z, radiusM, nx, nz, depthM, outsideM = 0.3) {
       if (!inRange(id) || !(radiusM > 0)) return -1;
       const s = holeNext[id];
       holeNext[id] = (s + 1) % MAX_HOLES;
-      const t = id * STRIDE + 2 + s, o = t * 4;
+      const t = id * STRIDE + 2 + s * 2, o = t * 4;
+      const nl = Math.hypot(nx, nz);
       data[o] = x; data[o + 1] = y; data[o + 2] = z; data[o + 3] = radiusM;
-      touch(t, 1);
+      data[o + 4] = nl > 1e-6 ? nx / nl : 0; data[o + 5] = nl > 1e-6 ? nz / nl : 0;
+      data[o + 6] = Math.max(0.05, depthM); data[o + 7] = Math.max(0, outsideM);
+      touch(t, 2);
       const n = Math.max(holeCount[id], s + 1);
       if (n !== holeCount[id]) {
         holeCount[id] = n;
@@ -232,15 +242,7 @@ export function createStructureMask(capacity = 4096): StructureMask {
       }
       return s;
     },
-    setClock(seconds) {
-      uniforms.uStructClock.value = seconds;
-      if (following.size === 0) return;
-      for (const [mesh, until] of following) {
-        const depth = (mesh as THREE.Mesh).customDepthMaterial;
-        if (depth) depth.needsUpdate = true;
-        if (seconds > until) following.delete(mesh);
-      }
-    },
+    setClock(seconds) { uniforms.uStructClock.value = seconds; },
     shiftTime(delta) {
       let any = false;
       for (let id = 0; id < capacity; id++) {
@@ -248,33 +250,15 @@ export function createStructureMask(capacity = 4096): StructureMask {
         if (data[o] > 0) { data[o] = Math.max(1e-3, data[o] + delta); any = true; }
       }
       if (any) { texture.clearUpdateRanges?.(); texture.needsUpdate = true; }
-      for (const [mesh, until] of following) following.set(mesh, until + delta);
     },
     reset() {
       data.fill(0);
       holeCount.fill(0);
       holeNext.fill(0);
-      following.clear();
       texture.clearUpdateRanges?.();
       texture.needsUpdate = true;
     },
     patch,
-    patchMesh(object) {
-      const mesh = object as THREE.Mesh;
-      const m = mesh.material;
-      if (Array.isArray(m)) for (const x of m) patch(x);
-      else if (m) patch(m);
-      if (!mesh.customDepthMaterial) {
-        // three copies the bucket material's side, map and alpha test onto it at every shadow render
-        const depth = new THREE.MeshDepthMaterial();
-        depth.name = 'fx-structure-depth';
-        mesh.customDepthMaterial = depth;
-      }
-      patch(mesh.customDepthMaterial);
-    },
-    followShadow(mesh, untilS) {
-      if ((mesh as THREE.Mesh).customDepthMaterial) following.set(mesh, Math.max(following.get(mesh) ?? -Infinity, untilS));
-    },
   };
 }
 

@@ -10,7 +10,7 @@ import { createDebrisChunks, makeChunkPiece, CHUNK_SHAPES } from './debrisChunks
 import { groundBurst, kineticStrike, muzzleBlast, killFireball, columnPuff, dustSurge, isExplosive, blastScale } from './blastRecipes.ts';
 import { SURFACE_KINDS, SURFACE_LOOKS, classifyTerrain, surfaceForMaterial, linearHex } from './surfaceLooks.ts';
 import { mulberry32 } from './particles.ts';
-import { structureStageFx, propBreakFx, lookForStruckKind, breachHoleForStage } from './structureFx.ts';
+import { structureStageFx, propBreakFx, lookForStruckKind, breachBlowFor, lookFromAnatomy } from './structureFx.ts';
 import { createCraterMarks } from './craterMarks.ts';
 import { createStructureMask, COLLAPSE_S, MAX_HOLES } from './structureMask.ts';
 import { createStructureDebris, paletteGeometry, DEBRIS_SHAPES } from './structureDebris.ts';
@@ -269,24 +269,29 @@ function captureContext(seed) {
   propBreakFx(shed.ctx, 'metalbuilding', 'quonsethut', 0, 0, 0, 1, 0, 3);
   assert.ok(shed.log.chunk.some((k) => k.shape === 'sheet'), 'a steel shed folds into sheet');
   assert.equal(lookForStruckKind('structure'), null, 'a building keeps the masonry fallback until its anatomy');
-  // the P1 breach stage's hole: on the nearest face of the footprint, off the ground, facing out, sized by the blow
-  const toBody = (h) => { const c = Math.cos(base.yaw), s = Math.sin(base.yaw), dx = h.x - base.cx, dz = h.z - base.cz;
-    return [dx * c - dz * s, dx * s + dz * c]; };
-  const he = breachHoleForStage({ ...base, stage: 'breached', x: 30, y: 0.3, z: 20 });
-  const [hbx, hbz] = toBody(he);
-  assert.ok(Math.abs(Math.abs(hbx) - base.hw) < 1e-9 || Math.abs(Math.abs(hbz) - base.hd) < 1e-9, 'the hole sits on a face');
-  assert.ok(Math.abs(hbx) <= base.hw + 1e-9 && Math.abs(hbz) <= base.hd + 1e-9, 'never outside the footprint');
-  assert.ok(Math.abs(Math.hypot(he.nx, he.nz) - 1) < 1e-9 && he.ny === 0, 'it faces out of the wall, level');
-  assert.ok(he.nx * (30 - base.cx) > 0, 'the face toward the blow');
-  assert.ok(he.y >= base.baseY + he.radiusM * 0.85 - 1e-9, 'a burst on the ground still holes the wall above it');
+  // the P1 breach stage's blow: a point and radius for the seam's holeAt, off the ground, sized by the blow
+  const he = breachBlowFor({ ...base, stage: 'breached', x: 15, y: 0.3, z: 20 });
   assert.equal(he.radiusM, 1.3, 'an HE shell: 1.3 m');
-  const big = breachHoleForStage({ ...base, stage: 'breached', munition: 'howitzer' });
-  const ram = breachHoleForStage({ ...base, stage: 'breached', cause: 'ram', munition: null, y: 0.2 });
-  const shot = breachHoleForStage({ ...base, stage: 'breached', munition: 'kinetic' });
+  assert.ok(he.y >= base.baseY + he.radiusM * 0.85 - 1e-9, 'a burst at the foot of a wall still holes the wall above it');
+  assert.ok(he.x === 15 && he.z === 20, 'the face is the seam\'s to choose (the point is the blow\'s)');
+  const big = breachBlowFor({ ...base, stage: 'breached', munition: 'howitzer' });
+  const ram = breachBlowFor({ ...base, stage: 'breached', cause: 'ram', munition: null, y: 0.2 });
+  const shot = breachBlowFor({ ...base, stage: 'breached', munition: 'kinetic' });
   assert.ok(big.radiusM > he.radiusM && he.radiusM > shot.radiusM, 'as big as the blow');
   assert.ok(Math.abs(ram.y - 1.2 - base.baseY) < 0.5, 'a rammed wall opens at the hull');
-  const hut = breachHoleForStage({ ...base, stage: 'breached', munition: 'howitzer', hw: 1.2, hd: 1.0, topY: 2.4 });
+  const hut = breachBlowFor({ ...base, stage: 'breached', munition: 'howitzer', hw: 1.2, hd: 1.0, topY: 2.4 });
   assert.ok(hut.radiusM <= 0.45 * 2.4 + 1e-9 && hut.y + hut.radiusM * 0.6 <= 2.4 + 1e-9, 'never wider than the building holds');
+  // a look from the anatomy: its own tints where vertex-coloured, the material's colour where textured (white tint)
+  const look = lookFromAnatomy({
+    rubble: [{ material: 'plaster', bucket: 'plaster', tint: [0.6, 0.5, 0.3], share: 0.4 },
+      { material: 'brick', bucket: 'brick', tint: [1, 1, 1], share: 0.6 }, { material: 'tile', bucket: 'roof', tint: [1, 1, 1], share: 0 }],
+    interior: { color: [0.02, 0.02, 0.018] },
+  });
+  assert.equal(look.rubble.length, 2, 'a zero share is no rubble');
+  assert.deepEqual(look.rubble[0].color, [0.6, 0.5, 0.3], 'a vertex-coloured bucket keeps its building\'s own tint');
+  assert.ok(look.rubble[1].color[0] > look.rubble[1].color[2] && look.rubble[1].color[0] < 0.5, 'a textured brick bucket reads brick');
+  assert.deepEqual(look.interior, [0.02, 0.02, 0.018]);
+  assert.equal(lookFromAnatomy(null), null);
 }
 {
   const craters = createCraterMarks();
@@ -304,7 +309,7 @@ function captureContext(seed) {
 {
   const mask = createStructureMask(64);
   const data = mask.texture.image.data;
-  const T = 6 * 4; // six texels per structure
+  const T = 10 * 4; // ten texels per structure
   mask.setClock(10);
   mask.collapse(5, 10.5, 7, 3, 4, 100, 2, -50);
   const o = 5 * T;
@@ -316,16 +321,19 @@ function captureContext(seed) {
   assert.ok(data[6 * T] > 0 && 10 - data[6 * T] > COLLAPSE_S, 'a settled collapse is over already');
   mask.collapse(9999, 10, 7, 1, 0, 0, 0, 0);
   // holes: a ring of MAX_HOLES per structure, the count in B.w
-  assert.equal(mask.addHole(5, 101, 3, -49, 1.25), 0);
-  assert.equal(mask.addHole(5, 99, 4, -51, 0.8), 1);
+  assert.equal(mask.addHole(5, 101, 3, -49, 1.25, 0, 2, 0.5), 0);
+  assert.equal(mask.addHole(5, 99, 4, -51, 0.75, 1, 0, 0.4, 0.2), 1);
   assert.deepEqual([data[o + 8], data[o + 9], data[o + 10], data[o + 11]], [101, 3, -49, 1.25], 'hole 0: centre and radius');
+  assert.deepEqual([data[o + 12], data[o + 13], data[o + 14], data[o + 15]], [0, 1, 0.5, 0.30000001192092896],
+    'hole 0: the outward normal (unit), the depth into the wall, 0.3 m outside by default');
+  assert.deepEqual([data[o + 16], data[o + 19], data[o + 22], data[o + 23]], [99, 0.75, 0.4000000059604645, 0.20000000298023224]);
   assert.equal(data[o + 7], 2, 'two holes counted');
-  for (let i = 2; i < MAX_HOLES; i++) mask.addHole(5, 0, 0, 0, 0.7);
+  for (let i = 2; i < MAX_HOLES; i++) mask.addHole(5, 0, 0, 0, 0.7, 1, 0, 0.5);
   assert.equal(data[o + 7], MAX_HOLES, 'the count stops at the ring');
-  assert.equal(mask.addHole(5, 1, 2, 3, 0.5), 0, 'a fifth hole replaces the first (the ring)');
+  assert.equal(mask.addHole(5, 1, 2, 3, 0.5, 1, 0, 0.5), 0, 'a fifth hole replaces the first (the ring)');
   assert.deepEqual([data[o + 8], data[o + 9], data[o + 10], data[o + 11]], [1, 2, 3, 0.5]);
   assert.equal(data[o + 7], MAX_HOLES);
-  assert.equal(mask.addHole(7, 0, 0, 0, 0), -1, 'a zero-radius hole is no hole');
+  assert.equal(mask.addHole(7, 0, 0, 0, 0, 1, 0, 0.5), -1, 'a zero-radius hole is no hole');
   assert.equal(data[7 * T + 7], 0);
   mask.shiftTime(100);
   assert.equal(data[o], 110.5, 'the clock rebase moves the start');
@@ -350,29 +358,18 @@ function captureContext(seed) {
   assert.ok(shader.vertexShader.indexOf('#include <batching_vertex>') < shader.vertexShader.indexOf('vStructCut = 0.0;'),
     'the patch reads batchingMatrix after three defines it');
   assert.ok(/if \( vStructCut > 0\.5 \) discard;/.test(shader.fragmentShader), 'a fallen structure is discarded');
-  assert.ok(/vStructHoles > 0\.5[\s\S]*discard/.test(shader.fragmentShader), 'a fragment inside a hole is discarded');
+  assert.ok(/vStructHoles > 0\.5[\s\S]*along < -hn\.z \|\| along > hn\.w[\s\S]*discard/.test(shader.fragmentShader),
+    'a fragment inside a hole\'s cylinder (outside..depth along the face normal) is discarded');
   assert.ok(/flat varying float vStructSid;/.test(shader.vertexShader) && /flat varying float vStructSid;/.test(shader.fragmentShader),
     'the structure index reaches the fragment unblended');
   assert.ok(/fx-structure-mask/.test(material.customProgramCacheKey()), 'its own program cache key');
-  // a bucket mesh: its material and a depth material of its own, so the shadow sinks and opens with the building
-  const bucket = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
-  mask.patchMesh(bucket);
-  assert.ok(bucket.customDepthMaterial && bucket.customDepthMaterial.isMeshDepthMaterial, 'the bucket casts through its own depth material');
-  assert.ok(/fx-structure-mask/.test(bucket.customDepthMaterial.customProgramCacheKey()), 'the depth material is patched');
-  const own = new THREE.MeshDepthMaterial();
-  const bucket2 = new THREE.Mesh(new THREE.BufferGeometry(), [new THREE.MeshStandardMaterial(), new THREE.MeshStandardMaterial()]);
-  bucket2.customDepthMaterial = own;
-  mask.patchMesh(bucket2);
-  assert.equal(bucket2.customDepthMaterial, own, "the world's own depth material is kept, and patched");
-  assert.ok(/fx-structure-mask/.test(own.customProgramCacheKey()) && bucket2.material.every((m) => /fx-structure-mask/.test(m.customProgramCacheKey())));
-  // the shadow follows the fall: the depth material's version moves every frame until the fall ends
-  mask.setClock(200);
-  mask.followShadow(bucket, 202);
-  const v0 = bucket.customDepthMaterial.version;
-  mask.setClock(200.5); mask.setClock(201);
-  assert.equal(bucket.customDepthMaterial.version, v0 + 2, 'one bump per frame while the building falls');
-  mask.setClock(203); mask.setClock(203.5);
-  assert.equal(bucket.customDepthMaterial.version, v0 + 3, 'no bumps after the fall');
+  // the world hands its shadow depth materials over as their own entries: they compile the same patch
+  const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+  mask.patch(depth);
+  const dshader = { uniforms: {}, vertexShader: '#include <common>\nvoid main() {\n#include <batching_vertex>\n#include <begin_vertex>\n#include <project_vertex>\n}',
+    fragmentShader: '#include <common>\nvoid main() {\n gl_FragColor = packDepthToRGBA( 0.5 );\n}' };
+  depth.onBeforeCompile(dshader, null);
+  assert.ok(/vStructCut = 0\.0;/.test(dshader.vertexShader) && /discard/.test(dshader.fragmentShader), 'the depth pass sinks and opens too');
   mask.reset();
   assert.equal(data[o], 0, 'reset stands every structure up');
 }

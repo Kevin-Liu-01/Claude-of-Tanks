@@ -42,11 +42,12 @@ import {
 } from './blastRecipes.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, type CraterMarks } from './craterMarks.ts';
-import { breachHoleForStage, lookForStruckKind, propBreakFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
-import { COLLAPSE_S, createStructureMask, type StructureMask } from './structureMask.ts';
+import { lookForStruckKind, lookFromAnatomy, propBreakFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
+import { createStructureMask, type StructureMask } from './structureMask.ts';
+import { createStructureStages, type StructureStages } from './structureStages.ts';
 import { createStructureDebris, type StructureDebris } from './structureDebris.ts';
-import { damageSeed, type DamageWriters } from '../world/destructionKit.ts';
-import { DESTRUCTION_BUS_EVENTS, type StructureBreachEvent, type StructureStageEvent, type TerrainCraterEvent } from '../sim/destructionEvents.ts';
+import type { StructureDamageSeam, StructureMaterialInfo } from '../world/structureDamageSeam.ts';
+import { DESTRUCTION_BUS_EVENTS, type MunitionBlastEvent, type StructureBreachEvent, type StructureStageEvent, type TerrainCraterEvent } from '../sim/destructionEvents.ts';
 import { munitionChargeKg, munitionClassForShell, cookOffChargeKg, craterFor } from '../sim/munitionBlast.ts';
 import type { MunitionClass } from '../sim/destructionEvents.ts';
 import { getDeviceTier } from '../engine/quality.ts';
@@ -76,29 +77,10 @@ interface FxHeightField {
   getTrackSurfaceAt?(x: number, z: number): TrackSurface;
 }
 
-/** One structure's damage seam as the presentation reads it (the core lane's world.structureDamage, §16). */
-/** A hole the presentation opens in a structure (the breach event's fields; DESTRUCTION.md §16.5). */
-interface FxStructureHole {
-  structureId: number;
-  section: number;
-  hole: number;
-  x: number; y: number; z: number;
-  nx: number; ny: number; nz: number;
-  radiusM: number;
-}
-
-interface FxStructureSeam {
-  anatomy: { seed: number; placement: { x: number; y: number; z: number; yaw: number } };
-  spans: readonly { mesh: THREE.Object3D; bucket: string }[];
-  damaged?(seed: number, out: DamageWriters): unknown;
-  breach?(hole: FxStructureHole, out: DamageWriters): unknown;
-  collapse?(seed: number, out: DamageWriters): unknown;
-}
-
-/** The world seam the collapse look reads (the core lane's world.patchStructureMaterials / structureDamage, §16). */
+/** The world seam the structure looks read (world/map.ts; DESTRUCTION.md §16.4). */
 export interface FxWorldSeam {
-  patchStructureMaterials?(patch: (material: THREE.Material, info?: { bucket?: string; mesh?: THREE.Object3D; batched?: boolean }) => void): number;
-  structureDamage?(structureIdx: number): FxStructureSeam | null;
+  patchStructureMaterials?(patch: (material: THREE.Material, info: StructureMaterialInfo) => void): number;
+  structureDamage?(structureIdx: number): StructureDamageSeam | null;
 }
 
 interface FxOptions {
@@ -1008,61 +990,47 @@ function* createFxSteps(
     poolCapacity: mediaTier ? 96 : 24, pieceCap: mediaTier ? 1024 : 160,
   });
   group.add(structDebris.group);
-  /** The bucket materials of a structure's spans, by bucket (the writers draw in them). */
-  function spanMaterials(seam: FxStructureSeam): Map<string, THREE.Material> {
-    const byBucket = new Map<string, THREE.Material>();
-    for (const span of seam.spans) {
-      const m = (span.mesh as THREE.Mesh).material;
-      const material = Array.isArray(m) ? m[0] : m;
-      if (material && !byBucket.has(span.bucket)) byBucket.set(span.bucket, material);
-    }
-    return byBucket;
+  // ---- the world's structure seam (DESTRUCTION.md §16.4): each stage's builder through the writers, its cuts into the
+  // mask, its hides flattened, the static shadow cache touched while the GPU reshapes a building
+  let seamWorld: FxWorldSeam | null = null;
+  const looks = new Map<number, StructureLook | null>();
+  function seamOf(id: number): StructureDamageSeam | null {
+    const w = world ? world() : null;
+    if (w !== seamWorld) { seamWorld = w; looks.clear(); }
+    return w?.structureDamage?.(id) ?? null;
   }
-  /** Run one stage builder of a structure through the debris writers (event time). */
-  function buildStage(structureId: number, stage: 'damaged' | 'collapsed', settled: boolean): void {
-    if (!structDebris || !world) return;
-    const seam = world()?.structureDamage?.(structureId);
-    if (!seam) return;
-    const build = stage === 'collapsed' ? seam.collapse : seam.damaged;
-    if (typeof build !== 'function') return;
-    const byBucket = spanMaterials(seam);
-    // a collapse's pile and stubs show under the dust, a little after the fall begins
-    const out = structDebris.begin(seam.anatomy.placement, (bucket) => byBucket.get(bucket) ?? null,
-      stage === 'collapsed' ? 0.7 : 0, settled);
-    build.call(seam, damageSeed(seam.anatomy.seed, stage === 'collapsed' ? 3 : 1), out);
-    structDebris.commit();
-    // the building's shadow sinks with it (the static shadow cache follows its buckets while it falls)
-    if (stage === 'collapsed' && !settled && structMask) {
-      const until = particles.getTime() + COLLAPSE_S + 0.2;
-      for (const span of seam.spans) structMask.followShadow(span.mesh, until);
-    }
+  /** A structure's look: the caller's, else its anatomy's rubble and interior, else null (the masonry fallback). */
+  function lookOf(id: number): StructureLook | null {
+    const given = structureLook ? structureLook(id) : null;
+    if (given) return given;
+    const seam = seamOf(id);
+    if (looks.has(id)) return looks.get(id) ?? null;
+    const look = lookFromAnatomy(seam?.anatomy);
+    looks.set(id, look);
+    return look;
   }
-  /**
-   * Open a hole in a structure: the mask cuts its walls (and their shadow) inside it, the kit's breach builder writes
-   * the broken rim and the dark room behind it in the building's own materials.
-   */
-  function openHole(hole: FxStructureHole, settled: boolean): void {
-    if (!structMask) return;
-    structMask.addHole(hole.structureId, hole.x, hole.y, hole.z, hole.radiusM);
-    if (!structDebris || !world) return;
-    const seam = world()?.structureDamage?.(hole.structureId);
-    if (!seam || typeof seam.breach !== 'function') return;
-    const byBucket = spanMaterials(seam);
-    const out = structDebris.begin(seam.anatomy.placement, (bucket) => byBucket.get(bucket) ?? null, 0, settled);
-    // (a copy: the builder may keep what it is handed)
-    seam.breach({ ...hole }, out);
-    structDebris.commit();
-  }
+  // a structure's stages laid into the world's own geometry (structureStages.ts): builders, cuts, hides, shadow touches
+  // every bucket material the world draws, by bucket (a plain mesh's over a batch's clone): what the builders write in
+  const bucketMaterials = new Map<string, { material: THREE.Material; batched: boolean }>();
+  const stages: StructureStages | null = structMask && structDebris
+    ? createStructureStages({ mask: structMask, debris: structDebris, now: () => particles.getTime(),
+      materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null })
+    : null;
+  /** The last detonation on a structure (munition:blast), for the shell event that follows it. */
+  const lastBlast = { x: 0, y: 0, z: 0, structureId: -1 };
   let patchedWorld: FxWorldSeam | null = null;
   function attachWorld(): void {
     if (!structMask || !world) return;
     const w = world();
     if (!w || w === patchedWorld || typeof w.patchStructureMaterials !== 'function') return;
     patchedWorld = w;
-    // each bucket mesh takes the patch on its material(s) and on a shadow depth material of its own
+    bucketMaterials.clear();
+    // every bucket material once, its shadow depth materials among them (role 'depth')
     w.patchStructureMaterials((material, info) => {
-      if (info?.mesh) structMask.patchMesh(info.mesh);
-      else structMask.patch(material);
+      structMask.patch(material);
+      if (!info || info.role !== 'surface' || !info.bucket) return;
+      const known = bucketMaterials.get(info.bucket);
+      if (!known || (known.batched && !info.batched)) bucketMaterials.set(info.bucket, { material, batched: info.batched });
     });
   }
   if (vol) group.add(vol.group);
@@ -4457,6 +4425,7 @@ function* createFxSteps(
     craters?.shiftTime(delta);
     structMask?.shiftTime(delta);
     structDebris?.shiftTime(delta);
+    stages?.shiftTime(delta);
     for (const tracer of staticTracers) if (tracer.length > 14) tracer[14] += delta;
     for (const state of lightStates) state.bornAt += delta;
     for (const ring of shockRings) ring.bornAt += delta;
@@ -4603,7 +4572,7 @@ function* createFxSteps(
    * blow and lets the settling dust hang.
    */
   function phoneStageBeat(e: StructureStageEvent): void {
-    const lk = structureLook ? structureLook(e.structureId) : null;
+    const lk = lookOf(e.structureId);
     // the dominant rubble colour (linear), lifted toward a dust grey; masonry grey when nothing is known
     let dr = 0.27, dg = 0.25, db = 0.21;
     if (lk && lk.rubble.length) {
@@ -5098,6 +5067,7 @@ function* createFxSteps(
       resolvePendingHe();
       particles.update(dt);
       structMask?.setClock(particles.getTime());
+      stages?.update();
       structDebris?.update();
       vol?.update(camera ?? engineCtx.camera ?? null);
       chunks?.update();
@@ -5129,24 +5099,22 @@ function* createFxSteps(
       // destruction-fx lane: the core lane's structure stages and crater stamps (DESTRUCTION.md §11)
       bus.on(DESTRUCTION_BUS_EVENTS.stage, (payload) => {
         const e = payload as StructureStageEvent;
-        if (e.stage === 'collapsed' && structMask) {
-          // the building sinks into its dust over COLLAPSE_S, then is gone (settled: gone at once)
-          structMask.collapse(e.structureId, particles.getTime(), Math.max(1, e.topY - e.baseY), e.dirX, e.dirZ,
-            e.cx, e.baseY, e.cz, e.settled === true);
-        }
-        // a blow that jumps a stage lays the stages it skipped: a breach out of an intact building is damaged too
-        if (e.stage === 'damaged' || (e.stage === 'breached' && e.previous === 'intact')) buildStage(e.structureId, 'damaged', e.settled === true);
-        if (e.stage === 'breached') openHole(breachHoleForStage(e), e.settled === true);
-        if (e.stage === 'collapsed') buildStage(e.structureId, 'collapsed', e.settled === true);
+        stages?.stage(e, seamOf(e.structureId));
         if (e.settled) return;
-        if (blast) structureStageFx(blast, e, structureLook ? structureLook(e.structureId) : null);
+        if (blast) structureStageFx(blast, e, lookOf(e.structureId));
         else phoneStageBeat(e);
       });
-      // P2: a hole in a section (the core's bounded hole list); a section that fell takes its own builder later
       bus.on(DESTRUCTION_BUS_EVENTS.breach, (payload) => {
         const e = payload as StructureBreachEvent;
-        if (!(e.radiusM > 0)) return;
-        openHole(e, e.settled === true);
+        stages?.breach(e, seamOf(e.structureId));
+      });
+      // the detonation's own record, raised before the shell event it belongs to: a burst on a structure names it, so
+      // the wall strike that follows throws that building's own materials
+      bus.on(DESTRUCTION_BUS_EVENTS.blast, (payload) => {
+        const b = payload as MunitionBlastEvent;
+        if (b.surface === 'structure' && typeof b.structureId === 'number') {
+          lastBlast.x = b.x; lastBlast.y = b.y; lastBlast.z = b.z; lastBlast.structureId = b.structureId;
+        } else lastBlast.structureId = -1;
       });
       bus.on(DESTRUCTION_BUS_EVENTS.crater, (payload) => {
         const e = payload as TerrainCraterEvent;
@@ -5271,8 +5239,12 @@ function* createFxSteps(
             // destruction-fx lane: the round bursts on (or chips) the wall in the wall's own material
             const m = info ?? munitionOfExpiry(e);
             const explosive = isExplosive(m.munition) && m.chargeKg > 0;
+            // the building the blast named (munition:blast, raised just before this event), else the struck kind
+            const named = lastBlast.structureId >= 0 && Math.abs(lastBlast.x - _v3.x) + Math.abs(lastBlast.z - _v3.z) < 2
+              ? lookOf(lastBlast.structureId) : null;
+            lastBlast.structureId = -1;
             wallStrike(blast, _v3.x, _v3.y, _v3.z, _v4.x, _v4.y, _v4.z, explosive,
-              explosive ? blastScale(m.chargeKg) : (m.caliberMm || 90) / 120, lookForStruckKind(e.surfaceKind));
+              explosive ? blastScale(m.chargeKg) : (m.caliberMm || 90) / 120, named ?? lookForStruckKind(e.surfaceKind));
             if (e.shellId != null) burstDrawn.add(e.shellId);
             return;
           }
@@ -5999,6 +5971,8 @@ function* createFxSteps(
       craters?.reset();
       structMask?.reset();
       structDebris?.reset();
+      stages?.reset();
+      lastBlast.structureId = -1;
       craterEventsSeen = false;
       pendingHeCount = 0;
       burstDrawn.clear();
