@@ -78,7 +78,29 @@ export function worldModel(features) {
   }
   /** Whether a hull at `speedMps` crushes a record it overruns (as a battle hull does) rather than stopping on it. */
   const crushes = (r, speedMps) => !!r.crushable && speedMps > (r.crushMin ?? CRUSH_MIN_MPS);
-  const model = { records, query, heightAt, slopeAt, wetAt, hullContacts, crushes, size: features.size };
+  // the shrubs (lab features since 2026-10-08): bushes and understorey a hull drives through, so they stop no route and
+  // stay out of the records, but a lens beside one sees leaves (lens-check.mjs's foreground). { x, y, z, r, h, kind }
+  // on an 8 m grid.
+  const shrubs = (features.shrubs ?? []).map(([x, y, z, r, h, k]) => ({ x, y, z, r, h, kind: k ? 'understorey' : 'bush' }));
+  const SHRUB_CELL = 8, shrubCells = new Map();
+  for (const sh of shrubs) {
+    const key = `${Math.floor(sh.x / SHRUB_CELL)},${Math.floor(sh.z / SHRUB_CELL)}`;
+    if (!shrubCells.has(key)) shrubCells.set(key, []);
+    shrubCells.get(key).push(sh);
+  }
+  /** The shrubs whose crowns reach into the box x0..x1, z0..z1 (crowns stay under 8 m across). */
+  function queryShrubs(x0, z0, x1, z1, out = []) {
+    out.length = 0;
+    for (let i = Math.floor((x0 - SHRUB_CELL) / SHRUB_CELL); i <= Math.floor((x1 + SHRUB_CELL) / SHRUB_CELL); i++) {
+      for (let j = Math.floor((z0 - SHRUB_CELL) / SHRUB_CELL); j <= Math.floor((z1 + SHRUB_CELL) / SHRUB_CELL); j++) {
+        for (const sh of shrubCells.get(`${i},${j}`) ?? []) {
+          if (sh.x + sh.r >= x0 && sh.x - sh.r <= x1 && sh.z + sh.r >= z0 && sh.z - sh.r <= z1) out.push(sh);
+        }
+      }
+    }
+    return out;
+  }
+  const model = { records, query, heightAt, slopeAt, wetAt, hullContacts, crushes, shrubs, queryShrubs, size: features.size };
   models.set(features, model);
   return model;
 }

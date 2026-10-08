@@ -127,4 +127,25 @@ assert.ok(poleSeen.blockedAt.every((t) => t < poleFall), `the toppled pole hides
 const hill = { storyboard: { groundRel: true, groundSmooth: 0, shots: [{ tMs: 0, pos: [60, 2, -60], lookAt: [0, 1, 0] }] } };
 assert.ok(Math.abs(absoluteShots(hill, model)[0].pos[1] - (model.heightAt(60, -60) + 2)) < 1e-6, 'a key on the hill rides its ground');
 
+// The foreground (composition wave c3, 2026-10-08): low cover the sightlines leave out still crowds a low lens, and the
+// shrubs a hull drives through (no record of their own) fill a lens beside them; a lens in a crown sees only leaves.
+const fixedAt = (pos, look) => [
+  { id: 'a', tMs: 0, pos, lookAt: look, fov: 40, transition: 'linear' },
+  { id: 'b', tMs: 2000, pos, lookAt: look, fov: 40, transition: 'linear' },
+];
+const parkedAt = (x, z, shots, sc = scene) => ({ ...sc, actors: [{ name: 'hero', id: 'leo2a7v_x', pos: [x, z], facingDeg: 90 }],
+  storyboard: { ...sc.storyboard, durationMs: 2000, shots, actorTracks: [] } });
+const overFence = lensReport(parkedAt(0, 32, fixedAt([0, 1.0, 16.5], [0, 1.2, 32])), model).perSample[0].fore;
+assert.ok(overFence.share > 0.01 && overFence.kind === 'fencerail', `a fence under a low lens crowds its frame (${JSON.stringify(overFence)})`);
+const shrubbed = worldModel({ ...features, shrubs: [[-5, 0, 30, 1.6, 2.2, 0], [40, 0, -40, 1.2, 1.6, 1]] });
+assert.equal(shrubbed.records.length, 7, 'shrubs are no records: a hull drives through them');
+assert.deepEqual(shrubbed.queryShrubs(-6, 29, -4, 31).map((sh) => sh.kind), ['bush'], 'the shrubs come back on their grid');
+assert.deepEqual(shrubbed.queryShrubs(30, -50, 50, -30).map((sh) => sh.kind), ['understorey']);
+const besideBush = lensReport(parkedAt(0, 30, fixedAt([-9, 1.6, 30], [0, 1.2, 30]), scene), shrubbed).perSample[0].fore;
+assert.ok(besideBush.share > 0.1 && besideBush.kind === 'bush', `a bush between the lens and the hull fills the frame (${JSON.stringify(besideBush)})`);
+assert.equal(lensReport(parkedAt(0, 30, fixedAt([-9, 1.6, 30], [0, 1.2, 30]), scene), model).perSample[0].fore.share, 0, 'without the shrubs, nothing');
+const inBush = lensReport(parkedAt(0, 30, fixedAt([-5, 1.2, 30], [0, 1.2, 30]), scene), shrubbed);
+assert.ok(inBush.inside > 0.9, `a lens inside a crown is caught (${inBush.inside})`);
+assert.equal(lensReport(parkedAt(0, 30, fixedAt([-5, 3.0, 30], [0, 1.2, 30]), scene), shrubbed).inside, 0, 'a lens over the crown is not');
+
 console.log('world-model.selftest: pass');

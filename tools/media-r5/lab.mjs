@@ -246,15 +246,39 @@ try {
         // the presentation crushables a hull topples without a collision record (utility poles, loop-class dressing):
         // [x, y, z, r, h, kind, dynamic]
         const crushables = (W.crushables ?? []).map(c => [r2(c.x), r2(c.y), r2(c.z), r2(c.r), r2(c.h), c.kind ?? (c.index != null ? 'pole' : 'prop'), c.dynamic ? 1 : 0]);
+        // the shrubs (2026-10-08, composition wave c3: a bush at the lens filled S36's frame at 5 s, and the obstacle dump
+        // held no shrub, for a hull drives through them): every bush and understorey instance the vegetation draws
+        // (vegetation.ts userData.bush / understorey; one cleared out of a solid has a zero basis and is skipped), as
+        // [x, y, z, crown radius, height, 0 bush | 1 understorey], once per place
+        const shrubs = [], shrubAt = new Set();
+        W.group.traverse(o => {
+          if (!o.isInstancedMesh || !(o.userData.bush || o.userData.understorey)) return;
+          const g = o.geometry;
+          if (!g.boundingBox) g.computeBoundingBox();
+          const bb = g.boundingBox, mw = o.matrixWorld.elements, a = o.instanceMatrix.array;
+          const ur = Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x), Math.abs(bb.min.z), Math.abs(bb.max.z)), uh = Math.max(0.1, bb.max.y);
+          const msx = Math.hypot(mw[0], mw[1], mw[2]), msy = Math.hypot(mw[4], mw[5], mw[6]);
+          for (let i = 0; i < o.count; i++) {
+            const at = i * 16;
+            const sx = Math.hypot(a[at], a[at + 1], a[at + 2]), sy = Math.hypot(a[at + 4], a[at + 5], a[at + 6]), sz = Math.hypot(a[at + 8], a[at + 9], a[at + 10]);
+            if (sx === 0 && sz === 0) continue;
+            const lx = a[at + 12], ly = a[at + 13], lz = a[at + 14];
+            const x = mw[0] * lx + mw[4] * ly + mw[8] * lz + mw[12], y = mw[1] * lx + mw[5] * ly + mw[9] * lz + mw[13], z = mw[2] * lx + mw[6] * ly + mw[10] * lz + mw[14];
+            const place = `${Math.round(x * 4)},${Math.round(z * 4)}`;
+            if (shrubAt.has(place)) continue;
+            shrubAt.add(place);
+            shrubs.push([r2(x), r2(y), r2(z), r2(ur * Math.max(sx, sz) * msx), r2(uh * sy * msy), o.userData.bush ? 0 : 1]);
+          }
+        });
         return { map: W.mapId, size: hf.size, roads: f.roads, buildings: f.buildings.map(pick), tacticalBeats: f.tacticalBeats.map(pick),
           treeClusters: f.treeClusters, waterOrSoft: f.waterOrSoft.map(pick),
           spawns: [[sp.player.pos[0], sp.player.pos[2], 'ally'], ...sp.enemies.map(e => [e.pos[0], e.pos[2], 'enemy'])],
           village: v && Number.isFinite(v.cx) ? [v.cx, v.cz, v.x0, v.z0, v.x1, v.z1] : null, shot: W.config.shot ?? null,
-          sky: W.config.sky ?? null, obstacles, crushables,
+          sky: W.config.sky ?? null, obstacles, crushables, shrubs,
           grid: { step: STEP, n, origin: h0, heightDm: b64(heights), water255: b64(wet) } };
       });
       writeFileSync(join(out, `features-${map}.json`), JSON.stringify(feats));
-      console.log(`[lab] ${map}: features (${feats.buildings.length} buildings, ${feats.treeClusters.length} clusters)`);
+      console.log(`[lab] ${map}: features (${feats.buildings.length} buildings, ${feats.treeClusters.length} clusters, ${feats.shrubs.length} shrubs)`);
     }
     const mapJobs = jobs.filter(j => j.map === map);
     if (scoutMaps.includes(map)) {

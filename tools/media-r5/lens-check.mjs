@@ -85,8 +85,16 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
   const [halfLength, halfWidth] = hullOf(heroActor.id);
   const cam = {}, pose = {}, hits = [], fallen = crushTimes(scene, model);
   let samples = 0, blocked = 0, outOfFrame = 0, insideCount = 0, now = 0;
-  const ignore = (r) => (r.crushable && r.max[1] - r.min[1] < LOW_COVER_M) || (fallen.get(r) ?? Infinity) <= now;
-  const worst = [], blockedAt = [], perSample = [], nearby = [];
+  const crushed = (r) => (fallen.get(r) ?? Infinity) <= now;
+  const ignore = (r) => (r.crushable && r.max[1] - r.min[1] < LOW_COVER_M) || crushed(r);
+  const worst = [], blockedAt = [], perSample = [], nearby = [], nearShrubs = [];
+  // a lens in a shrub's crown (its inner 0.8 across, under its top) sees only leaves (world-model.mjs shrubs)
+  const shrubAround = (eye) => {
+    for (const sh of model.queryShrubs?.(eye[0] - 0.5, eye[2] - 0.5, eye[0] + 0.5, eye[2] + 0.5, nearShrubs) ?? []) {
+      if (Math.hypot(eye[0] - sh.x, eye[2] - sh.z) < sh.r * 0.8 && eye[1] < sh.y + sh.h) return { kind: sh.kind, min: [sh.x - sh.r, sh.y, sh.z - sh.r], max: [sh.x + sh.r, sh.y + sh.h, sh.z + sh.r] };
+    }
+    return null;
+  };
   for (let t = 0; t <= dur; t += stepMs) {
     if (!sampleCameraRail(shots, t, cam)) continue;
     now = t;
@@ -119,7 +127,7 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
     const c = [points[0][0] - cam.x, points[0][1] - cam.y, points[0][2] - cam.z], cDepth = c[0] * fw[0] + c[1] * fw[1] + c[2] * fw[2];
     const centred = cDepth > 0.5 && Math.abs((c[0] * right[0] + c[1] * right[1] + c[2] * right[2]) / cDepth) < tx * 0.7
       && Math.abs((c[0] * up[0] + c[1] * up[1] + c[2] * up[2]) / cDepth) < ty * 0.7;
-    const insideAny = insideRecord(model, eye, 0.3), inside = insideAny && !ignore(insideAny) ? insideAny : null;
+    const insideAny = insideRecord(model, eye, 0.3) ?? shrubAround(eye), inside = insideAny && !ignore(insideAny) ? insideAny : null;
     if (inside) insideCount++;
     let blockedRays = 0, by = inside ? `lens inside a ${inside.kind}` : '';
     if (!inside) {
@@ -161,13 +169,15 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
     const distM = Math.hypot(points[0][0] - cam.x, points[0][1] - cam.y, points[0][2] - cam.z);
     // the foreground (media wave m1, 2026-10-07: a burnt truck's cargo box filled the bottom of S04 at 2 s, clear of every
     // sightline): each record nearer the lens than the hull, its solids' corners on screen, the union clipped to the frame,
-    // as a share of it; the largest is kept. Low crushable cover (fences and wire under the lens), trees (the woods rule
-    // keeps the lens out of them) and what the hulls have crushed by then are left out.
+    // as a share of it; the largest is kept. Trees (the woods rule keeps the lens out of them) and what the hulls have
+    // crushed by then are left out. Low cover counts here (composition wave c3, 2026-10-08: of the 41 frames both critics
+    // flagged FOREGROUND, the hedgehogs, fences, benches, crates and drums under the lens scored nothing while the
+    // sightlines' low-cover rule left them out; it cannot hide a hull, but it crowds the frame).
     let foreShare = 0, foreKind = null, zoneShare = 0, zoneKind = null;
     const zoneTop = box ? Math.min(box[1], 0.2) : 0.2;
     model.query(Math.min(cam.x, x) - 10, Math.min(cam.z, z) - 10, Math.max(cam.x, x) + 10, Math.max(cam.z, z) + 10, nearby);
     for (const r of nearby) {
-      if (r.treeIdx != null || r.canopyR || ignore(r)) continue;
+      if (r.treeIdx != null || r.canopyR || crushed(r)) continue;
       const nx = Math.max(r.min[0], Math.min(cam.x, r.max[0])), ny = Math.max(r.min[1], Math.min(cam.y, r.max[1])), nz = Math.max(r.min[2], Math.min(cam.z, r.max[2]));
       if (Math.hypot(nx - cam.x, ny - cam.y, nz - cam.z) > distM - 3) continue;
       let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
@@ -187,6 +197,27 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
       const zw = Math.min(0.6, a1) - Math.max(-0.6, a0), zh = Math.min(zoneTop, b1) - Math.max(-1, b0);
       const zone = zw > 0 && zh > 0 ? (zw * zh) / 4 : 0;
       if (zone > zoneShare) { zoneShare = zone; zoneKind = r.kind; }
+    }
+    // the shrubs nearer the lens than the hull (world-model.mjs; composition wave c3: a bush at the lens filled S36's
+    // frame): each crown a box 0.8 of its radius across, ground to top, the same way
+    for (const sh of model.queryShrubs?.(Math.min(cam.x, x) - 10, Math.min(cam.z, z) - 10, Math.max(cam.x, x) + 10, Math.max(cam.z, z) + 10, nearShrubs) ?? []) {
+      const half = sh.r * 0.8, ring = Math.hypot(sh.x - cam.x, sh.z - cam.z) - half;
+      if (ring > distM - 3) continue;
+      let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity, behind = false;
+      for (const lx of [-half, half]) for (const lz of [-half, half]) for (const qy of [sh.y, sh.y + sh.h]) {
+        const d = [sh.x + lx - cam.x, qy - cam.y, sh.z + lz - cam.z], depth = d[0] * fw[0] + d[1] * fw[1] + d[2] * fw[2];
+        if (depth <= 0.3) { behind = true; continue; }
+        const sx = (d[0] * right[0] + d[1] * right[1] + d[2] * right[2]) / depth / tx, sy = (d[0] * up[0] + d[1] * up[1] + d[2] * up[2]) / depth / ty;
+        a0 = Math.min(a0, sx); a1 = Math.max(a1, sx); b0 = Math.min(b0, sy); b1 = Math.max(b1, sy);
+      }
+      // a crown reaching behind the lens spans the frame's side it stands on, to the edge
+      if (behind && a1 > -Infinity) { if (a0 > 0) a1 = 1; else if (a1 < 0) a0 = -1; b0 = Math.min(b0, -1); }
+      const w = Math.min(1, a1) - Math.max(-1, a0), h = Math.min(1, b1) - Math.max(-1, b0);
+      const share = w > 0 && h > 0 ? (w * h) / 4 : 0;
+      if (share > foreShare) { foreShare = share; foreKind = sh.kind; }
+      const zw = Math.min(0.6, a1) - Math.max(-0.6, a0), zh = Math.min(zoneTop, b1) - Math.max(-1, b0);
+      const zone = zw > 0 && zh > 0 ? (zw * zh) / 4 : 0;
+      if (zone > zoneShare) { zoneShare = zone; zoneKind = sh.kind; }
     }
     perSample.push({ tMs: t, seen: inView, centred, clear: !isBlocked && blockedRays === 0, distM: +distM.toFixed(1),
       box, whole, size: box ? +((box[3] - box[1]) / 2).toFixed(3) : 0, fore: { share: +foreShare.toFixed(3), kind: foreKind, zone: +zoneShare.toFixed(3), zoneKind },
