@@ -986,6 +986,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/middleware-diet.selftest.mjs',
     'tools/worker-generated-types.selftest.mjs',
     'server/dedicatedWorldCollision.selftest.mjs',
+    'server/convexOutlines.selftest.mjs', // 2026-10-08 the hitbox lane: every convex part holds its outline
     'server/mapResourceCache.selftest.mjs',
     'server/collisionManifestLoader.selftest.mjs',
     'server/collisionManifestCodec.selftest.mjs',
@@ -1062,6 +1063,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.underFire.selftest.mjs',
     // 2026-10-04 (physics lane): a collider stop backs the hull off at once, through an engagement that starts on it.
     'src/game/ai.colliderStop.selftest.mjs',
+    // 2026-10-07 (bots lane): an empty rack with no teammate left that can fire runs at a passive target (Polders 41000).
+    'src/game/ai.lastRun.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',
@@ -1173,8 +1176,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/map-layout-metrics.selftest.mjs',
     'src/world/mapLayoutBrief.selftest.mjs',
     'server/collisionManifestDrift.selftest.mjs',
+    'src/world/wreckBakePlanDrift.selftest.mjs', // 2026-10-08: the wreck bake plan holds every map, tier and terrain the tree builds
     'src/world/roadFootprint.selftest.mjs', // 2026-10-02: solids from the scatter passes keep their footprints out of the road core
     'tools/visual-census.selftest.mjs', // 2026-10-01: the redesign baseline census (camera set, site selection, metrics, reports)
+    'tools/worldColliderAudit.selftest.mjs', // 2026-10-07 the hitbox lane: the world collider audit's measures
     'tools/environment-motion-probe.selftest.mjs',
     'tools/horizon-construction-bench.selftest.mjs',
     'tools/map-art-guards.selftest.mjs',
@@ -1260,12 +1265,16 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainResources.selftest.mjs',
     'src/world/propsResources.selftest.mjs',
     'src/world/plasterSurfaceSharing.selftest.mjs',
+    'src/world/plasterBaseMemo.selftest.mjs', // 2026-10-08: the render families paint one untoned base per build
+    'src/world/nearMeshVertexMemo.selftest.mjs', // 2026-10-08: the near mesh's vertex heights asked once per props build
     'src/world/propsScheduling.selftest.mjs',
     'src/world/propsMaterialGeometry.selftest.mjs',
     'src/world/crushableClutter.selftest.mjs',
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/yardDressing.selftest.mjs',
     'src/world/rockDressing.selftest.mjs',
+    'src/world/rockCollision.selftest.mjs', // 2026-10-07 the hitbox lane: a stone's colliders from its own mesh
+    'src/world/rockDriveOver.selftest.mjs', // 2026-10-08 the hitbox lane: a drive-over stone has no collider; shells meet its ground
     // the scenery lane (after wave 57): the telegraph poles' weathered timber
     'src/world/poleTimber.selftest.mjs',
     'src/world/scenery.selftest.mjs',
@@ -1331,6 +1340,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // trees round 2b (2026-10-03): where trees stand: woodland edges and verges, Wadi Rum's groves, the palms' sites
     'src/world/treeSpacing.selftest.mjs',
     'src/world/hedgeTrees.selftest.mjs',
+    // the trees lane (2026-10-06, wave 178): the landscape-woods hook (a map's woods on its ridges and slopes)
+    'src/world/landscapeWoods.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',
@@ -1354,6 +1365,7 @@ export const SELFTEST_SUITES = Object.freeze({
   'src/world/horizonAutumnGround.selftest.mjs',
     'src/world/edgeWater.selftest.mjs',
   'src/world/autumnHorizonSeam.selftest.mjs',
+    'src/world/horizonSeamSampler.selftest.mjs', // the time-to-battle lane (2026-10-08): the seam byte for byte with half the samples
     'src/world/horizonMesaTexture.selftest.mjs',
     'src/world/horizonNoiseSampling.selftest.mjs',
     'src/world/horizonMesaSurface.selftest.mjs',
@@ -1424,6 +1436,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/wreckDiscardedPaint.selftest.mjs',
     'src/world/wreckBakeWire.selftest.mjs',
     'src/world/wreckBakeClient.selftest.mjs',
+    'src/world/wreckBakePrefetch.selftest.mjs',
+    'src/world/surfacePaintPrefetch.selftest.mjs',
     'src/world/wreckBakeWorker.selftest.mjs',
     'src/world/exactWreckGeometry.selftest.mjs',
     'src/world/topple.selftest.mjs',

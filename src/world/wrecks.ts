@@ -35,7 +35,7 @@ import {
 } from './exactWreckGeometry.ts';
 import { createTank } from '../vehicles/fleetFactory.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
-import { collectWreckSolids } from './wreckCollision.ts';
+import { collectWreckShellSolids, collectWreckSolids } from './wreckCollision.ts';
 
 export interface WreckOptions {
   seed?: number;
@@ -47,6 +47,9 @@ export interface WreckOptions {
 
 export interface WreckBake {
   solids: number[][];
+  /** The hull's and turret's convex-hull corners for the shell record (wreckCollision.ts collectWreckShellSolids; the
+   * hitbox lane, 2026-10-08); a bake without them keeps the movement solids for shells too. */
+  shellSolids?: number[][];
   geo: THREE.BufferGeometry;
   shadowGeo: THREE.BufferGeometry | null;
   hx: number;
@@ -385,16 +388,19 @@ function wreckBakeResult(
   merged: THREE.BufferGeometry,
   shadowGeo: THREE.BufferGeometry | null,
   solids: number[][],
+  shellSolids: number[][] | null = null,
 ): WreckBake {
   merged.computeBoundingBox();
   const bounds = merged.boundingBox;
   if (!bounds) throw new Error('wreck bounds unavailable');
   const baseY = bounds.min.y;
   for (const solid of solids) for (let i = 1; i < solid.length; i += 3) solid[i] -= baseY;
+  for (const solid of shellSolids ?? []) for (let i = 1; i < solid.length; i += 3) solid[i] -= baseY;
   merged.translate(0, -bounds.min.y, 0);
   shadowGeo?.translate(0, -bounds.min.y, 0);
   return {
     solids,
+    ...(shellSolids ? { shellSolids } : {}),
     geo: merged,
     shadowGeo,
     hx: (bounds.max.x - bounds.min.x) / 2,
@@ -485,6 +491,7 @@ function* buildTankWreckSteps(
     const root = visual.root;
     root.updateMatrixWorld(true);
     const solids = collectWreckSolids(root);
+    const shellSolids = collectWreckShellSolids(root);
     const rootInv = root.matrixWorld.clone().invert();
     yield { fine: true, stage: 'construct' };
     const { geos, proxyGeos } = yield* collectWreckGeometrySteps(root, rootInv, owner);
@@ -508,7 +515,7 @@ function* buildTankWreckSteps(
     yield* paintWreckGeometrySteps(merged, rustPhase, remnantLinear(opts.remnant));
     if (!preparedForPaint) yield* compactWreckGeometrySteps(merged);
     const shadowGeo = yield* mergeShadowGeometrySteps(proxyGeos, owner);
-    const result = wreckBakeResult(merged, shadowGeo, solids);
+    const result = wreckBakeResult(merged, shadowGeo, solids, shellSolids);
     yield { fine: true, stage: 'finalize' };
     owner.geometries.delete(merged);
     if (shadowGeo) owner.geometries.delete(shadowGeo);

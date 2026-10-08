@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { createHeightField } from './terrain.ts';
-import { mulberry32, FIELD_LOG_COUNTS, HAY_CRATE_SITES } from './props.ts'; // density pass 2 (2026-09-12): the projected stages read the per-map caps
+import { mulberry32, FIELD_LOG_COUNTS, HAY_CRATE_SITES, SLAB_SHELL_KINDS } from './props.ts'; // density pass 2 (2026-09-12): the projected stages read the per-map caps
+import { localShellSlabs, placeLocalShellSlabs } from './rockCollision.ts'; // the hitbox lane (2026-10-08): the stacks' shell slabs
 import { cloneCollisionRecord, pushHullFromObstacle, setCircleShape, setObbShape } from './collision.ts';
 import { sampleDiscGround, sampleObbGround, planGroundedSegment } from './propPlacement.ts';
 import { scaleUV } from './propGeometry.ts';
@@ -33,7 +34,7 @@ const dependencies = { THREE, mulberry32, cloneCollisionRecord, setCircleShape, 
   DESTRUCTIBLE_BUILDING_TYPES, FENCE_SEG, WALL_SEG, pickCivilianVehicleKind,
   deriveRuntimeStructureCollisionWithSolids, deriveRuntimeStructureContactBand,
   applyStructureCollisionBand, attachGroundCoverSolidProfile, createGroundCoverSolidProfile,
-  GROUND_COVER_PLACEMENT_BYTES, setWorldNightFixtureActive,
+  GROUND_COVER_PLACEMENT_BYTES, setWorldNightFixtureActive, SLAB_SHELL_KINDS, localShellSlabs, placeLocalShellSlabs,
   // (2026-10-07) the destructible stage seats a cart tilted to its ground (props.ts cartGroundPose, CART_KINDS); since
   // 2026-10-08 a parked vehicle too (GROUND_POSED_KINDS)
   CART_RECEIPTS, CIVILIAN_VEHICLE_RECEIPTS,

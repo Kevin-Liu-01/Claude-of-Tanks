@@ -96,6 +96,19 @@ export default {
         outcrop: { count: 4, radius: 8 } },
     ],
     rockTone: grey, rocks: 260, outcrops: 48, craters: 90, rubblePiles: 0, hedgehogs: 0,
+    // The hitbox lane (2026-10-08): the stones' own colliders took from the brief's cover the empty corners their legacy
+    // records had counted, and the valley's middle band fell under its band (coverMidShare 0.308 -> 0.296 of 0.30).
+    // Three pairs of outcrops of the valley's own boulders, each pair the other's rotation about the landing field and
+    // clear of the zone-control discs, each a crescent bulging toward the side it shelters from, put real hull-down cover
+    // back on the open floor where the layout metric found it short.
+    coverOutcrops: [
+      { x: 106, z: 88, towardDeg: -108, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders north-east of the outpost' },
+      { x: -106, z: -88, towardDeg: 72, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders south-west of the outpost' },
+      { x: 244, z: -26, towardDeg: -128, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders on the east floor' },
+      { x: -244, z: 26, towardDeg: 52, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders on the west floor' },
+      { x: -224, z: 58, towardDeg: -71, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders on the west floor, north' },
+      { x: 224, z: -58, towardDeg: 109, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders on the east floor, south' },
+    ],
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
     tankWrecks: { era: 'cold-war', count: 0, debris: true, ids: [] },
