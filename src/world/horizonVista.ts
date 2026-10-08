@@ -945,6 +945,14 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
     const i = row * n + column;
     return Math.hypot(positions[i * 3], positions[i * 3 + 2]);
   };
+  // the borders lane (2026-10-08, Nordhavn: its sea opening holds column 0, whose rows stretch out to 4.3 km, so the
+  // column-0 radius passed the face reach at row ~100 while the row's mountains stood at 1.06-1.4 km — no face tree
+  // above 125 m): the face loop runs while any column of a row is inside the reach
+  const rowMinRadius = (row: number): number => {
+    let r = Infinity;
+    for (let column = 0; column < n; column++) r = Math.min(r, rowRadius(row, column));
+    return r;
+  };
   const smoothstep = (a: number, b: number, x: number): number => {
     const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
     return t * t * (3 - 2 * t);
@@ -1024,12 +1032,45 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
   const faceCanopyAt = options.faceCanopyAt ?? null;
   const faceRadius = faceCanopyAt ? Math.max(options.maxRadius, options.faceRadius ?? options.maxRadius) : options.maxRadius;
   const faceCandidates: ForestPlacement[] = [];
+  // (the round's frozen census, Nordhavn: 12,000 face trees at one candidate per 55 m² of stand fill 0.66 km² — a
+  // quarter of its 2.3 km² of stands — and the cores-first budget gave all of them to the lowest, densest stands: no
+  // tree above half the treeline, the upper belts bare canopy) the candidates' density follows the budget: a first pass
+  // measures the stands the faces offer (the same faces, the same acceptance at each face's centre), and the second
+  // draws about 1.25 budgets of candidates over them, so the budget trims only the stands' margins and every belt, low
+  // and high, keeps its trees (7.4 m apart where the stands are few, 11-15 m on the most wooded rings)
+  const faceBudgetN = Math.max(0, options.faceInstances ?? 0);
+  let faceDensity = 1;
+  if (faceCanopyAt && faceBudgetN > 0) {
+    let expected = 0;
+    for (let row = 1; row < rows.length - 1; row++) {
+      if (rows[row].skirt && rows[row + 1].skirt) continue;
+      if (rowMinRadius(row) > faceRadius) break;
+      if (row < ridgeRow) continue;
+      for (let column = 0; column < n; column++) {
+        const k1 = (column + 1) % n;
+        const i00 = row * n + column, i01 = row * n + k1, i10 = (row + 1) * n + column, i11 = (row + 1) * n + k1;
+        const rise = (heights[i10] + heights[i11]) * 0.5 - (heights[i00] + heights[i01]) * 0.5;
+        if (rise < -0.5) continue;
+        const dx = positions[i10 * 3] - positions[i00 * 3], dz = positions[i10 * 3 + 2] - positions[i00 * 3 + 2];
+        const radialSpan = Math.hypot(dx, dz);
+        if (Math.abs(rise) / Math.max(1, radialSpan) > 1.0) continue;
+        const cx = (positions[i00 * 3] + positions[i11 * 3]) * 0.5, cz = (positions[i00 * 3 + 2] + positions[i11 * 3 + 2]) * 0.5;
+        const r = Math.hypot(cx, cz);
+        if (r < HORIZON_FACE_FOREST_M[0] - 40 || r > faceRadius) continue;
+        const area = radialSpan * Math.hypot(positions[i01 * 3] - positions[i00 * 3], positions[i01 * 3 + 2] - positions[i00 * 3 + 2]);
+        expected += (area / HORIZON_FACE_CANDIDATE_M2) * smoothstep(0.18, 0.75, faceCanopyAt(cx, cz))
+          * smoothstep(HORIZON_FACE_FOREST_M[0], HORIZON_FACE_FOREST_M[1], r);
+      }
+    }
+    if (expected > 0) faceDensity = Math.min(1, (faceBudgetN * 1.25) / expected);
+  }
   for (let row = 1; row < rows.length - 1; row++) {
     if (rows[row].skirt && rows[row + 1].skirt) continue;
     // (the column-0 radius bounds the row everywhere but the corners, which reach about 1.4 x further: the loop runs on to
     // the face reach so the corners' faces are visited, and each face below checks its own radius)
     const rowR = rowRadius(row, 0);
-    if (rowR > faceRadius) break;
+    if ((faceCanopyAt ? rowMinRadius(row) : rowR) > faceRadius) break;
+    // (the range class keeps the rows it had: none past the row whose column 0 left the face reach)
     const faceOnly = rowR > options.maxRadius;
     const band = row < ridgeRow;
     for (let column = 0; column < n; column++) {
@@ -1049,7 +1090,7 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
       if (faceCanopyAt && !band) {
         const faceR = Math.hypot(positions[i00 * 3], positions[i00 * 3 + 2]);
         if (faceR >= HORIZON_FACE_FOREST_M[0] - 40 && faceR <= faceRadius) {
-          let fc = area / HORIZON_FACE_CANDIDATE_M2;
+          let fc = (area / HORIZON_FACE_CANDIDATE_M2) * faceDensity;
           fc = Math.floor(fc) + (faceRng() < fc - Math.floor(fc) ? 1 : 0);
           for (let t = 0; t < fc; t++) {
             const u = faceRng(), w = faceRng(), keep = faceRng(), scaleRoll = faceRng(), yaw = faceRng(), kind = faceRng(), tone = faceRng(), key = faceRng();
@@ -1181,7 +1222,7 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
   // (Frosthollow: 31k candidates kept at a twelfth); the budget instead contracts the stands to their cores — the
   // candidates ranked by their stand weight, a little of their key mixed in so the stands' edges stay ragged — so a wood
   // stays a closed wood and the open faces between the belts stay open
-  const faceBudget = Math.max(0, options.faceInstances ?? 0);
+  const faceBudget = faceBudgetN;
   const faceKept = faceCandidates.length <= faceBudget ? faceCandidates
     : faceCandidates.slice().sort((a, b) => ((b.stand ?? 0) + b.key * 0.14) - ((a.stand ?? 0) + a.key * 0.14)).slice(0, faceBudget);
   const placements = bandKept.concat(rangeKept, faceKept);
