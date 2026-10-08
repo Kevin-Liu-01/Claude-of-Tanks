@@ -22,6 +22,8 @@ import { setNightEmissionMask } from '../../engine/nightEmissionMaterial.ts';
 import { FIELD_STONE_FACE_V, FIELD_STONE_HEARTING_V } from '../fieldStoneSurface.ts';
 // (b15: the straw props wear the hay print's bands: hayPrint.ts; the stook is a teepee of bound sheaves: haystackKit.ts)
 import { HAY_FACE_V, HAY_PACKED_V } from '../hayPrint.ts';
+// (b45: a rebuilt kind spends its legacy builder's draws exactly)
+import { spentDraws } from './brokenDraws.ts';
 import { buildStook, mapToBand } from './haystackKit.ts';
 
 type Rng = () => number;
@@ -1467,7 +1469,9 @@ export function bSandbagBroken(rng: Rng): THREE.BufferGeometry {
 }
 
 // --- ammunition boxes (stacked pair + strewn broken state) ------------------
-function bAmmobox(rng: Rng): THREE.BufferGeometry {
+// (b45) the legacy builds: retired, but their draws are spent exactly (brokenDraws.ts spentDraws) so every later
+// pool's geometry and every later placement read the map's props stream as before
+function bAmmoboxLegacy(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const spots = [[0, 0, 0, 0.14], [0.14, 0.36, -0.08, -0.3], [-0.5, 0, 0.32, 0.5]];
   for (const [px, py, pz, ry] of spots) {
@@ -1480,7 +1484,7 @@ function bAmmobox(rng: Rng): THREE.BufferGeometry {
   }
   return merge(parts);
 }
-function bAmmoboxBroken(rng: Rng): THREE.BufferGeometry {
+function bAmmoboxBrokenLegacy(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   for (let k = 0; k < 3; k++) { // burst boxes, lids blown
     const bx = box(0.8, 0.14, 0.4);
@@ -1489,6 +1493,147 @@ function bAmmoboxBroken(rng: Rng): THREE.BufferGeometry {
     parts.push(P(bx.translate((rng() - 0.5) * 1.4, 0.08, (rng() - 0.5) * 1.2), OLIVE_D, 0.12, rng));
   }
   parts.push(...plankScatter(4, 0.5, 0.14, 0.8, rng, OLIVE_D));
+  return merge(parts);
+}
+
+// --- ammunition crates (b45; gauntlet wave 270 on Redrock: "plain cube ammo crates with hard edges, no wear, scale or
+// detail") ------------------------------------------------------------------------------------------------------------
+// Painted wooden ammunition crates as they are built: the body's boards on two skids, an end cleat framing each end
+// with a rope becket through it, a lid with two hasps on the front and hinge straps behind, the boards' seam, the
+// markings stencilled in faded yellow. The olive is worn through to the wood at the cleats, the skids and the lid's
+// edge, dusted toward the foot and darker where the crate meets what it sits on. Two side by side, a third across their
+// seam resting on their lids, a steel ammunition can beside them for scale. On the props' vehicle finish (props.ts
+// mats.vehicle: orange-peel, chips, panel grime under a vertex-colour livery), so it reads as painted wood and steel.
+// The wood smash and the 'ammo' blast stay the kind's (propSounds.ts, effects.ts); the record, footprint and draws do too.
+const CRATE_PAINT: Palette = [0.20, 0.22, 0.15];
+const CRATE_LID: Palette = [0.20, 0.21, 0.17];
+const CRATE_WORN: Palette = [0.11, 0.17, 0.33];
+const CRATE_SEAM: Palette = [0.20, 0.18, 0.07];
+const HEMP: Palette = [0.11, 0.28, 0.50];
+const STENCIL_YELLOW: Palette = [0.14, 0.48, 0.56];
+const HARDWARE: Palette = [0.58, 0.05, 0.19];
+const DUST_TINT: Palette = [0.09, 0.18, 0.50];
+/** A crate's length, width and height (its lid on, its skids under it), metres. */
+const AMMO_CRATE = Object.freeze({ L: 0.78, W: 0.30, H: 0.27 });
+
+/** A painted mark or a seam laid flat on a face: a quad facing +z, `w` by `h`. */
+function facePlane(w: number, h: number): THREE.BufferGeometry {
+  return new THREE.PlaneGeometry(w, h);
+}
+
+/** The crate's dust toward its foot and on its tops, and its contact: the paint darker where the crate sits. */
+function dustAndContact(geo: THREE.BufferGeometry, rng: Rng): THREE.BufferGeometry {
+  const pos = geo.getAttribute('position'), nrm = geo.getAttribute('normal'), col = geo.getAttribute('color');
+  _c.setHSL(DUST_TINT[0], DUST_TINT[1], DUST_TINT[2] + (rng() - 0.5) * 0.06, THREE.SRGBColorSpace);
+  const dr = _c.r, dg = _c.g, db = _c.b;
+  for (let i = 0; i < pos.count; i++) {
+    const y = pos.getY(i);
+    const foot = 1 - Math.min(1, Math.max(0, y / 0.11));
+    const top = Math.max(0, nrm.getY(i) - 0.8) * 5;
+    const t = 0.42 * foot * foot + 0.14 * top;
+    const shade = y < 0.012 ? 0.72 : 1;
+    col.setXYZ(i, (col.getX(i) + (dr - col.getX(i)) * t) * shade,
+      (col.getY(i) + (dg - col.getY(i)) * t) * shade, (col.getZ(i) + (db - col.getZ(i)) * t) * shade);
+  }
+  return geo;
+}
+
+/** One wooden ammunition crate, its skids on y = 0, its length along x, its front (hasps, markings) toward +z. */
+function ammoCrate(o: Rng): THREE.BufferGeometry {
+  const { L, W, H } = AMMO_CRATE, skid = 0.022, lidT = 0.024, body = H - skid - lidT, top = skid + body;
+  const parts: THREE.BufferGeometry[] = [];
+  for (const sx of [-1, 1]) parts.push(P(box(0.05, skid, W - 0.02), CRATE_WORN, 0.08, o).translate(sx * (L / 2 - 0.13), skid / 2, 0));
+  parts.push(P(box(L - 0.012, body, W - 0.012), CRATE_PAINT, 0.05, o).translate(0, skid + body / 2, 0));
+  // the boards' seam along both faces, and the lid's hinge line along the back
+  for (const sz of [-1, 1]) {
+    const seam = P(facePlane(L - 0.05, 0.006), CRATE_SEAM, 0.02, o);
+    if (sz < 0) seam.rotateY(Math.PI);
+    parts.push(seam.translate(0, skid + body * 0.5, sz * (W / 2 - 0.0045)));
+  }
+  parts.push(P(box(L, lidT, W + 0.004), CRATE_LID, 0.05, o).translate(0, top + lidT / 2, 0));
+  parts.push(P(box(L - 0.02, 0.006, 0.006), CRATE_WORN, 0.10, o).translate(0, top + lidT - 0.003, W / 2 + 0.002));
+  // the end cleats: a frame proud of each end, the rope becket hanging between its rails
+  for (const sx of [-1, 1]) {
+    const x = sx * (L / 2 + 0.006);
+    for (const sz of [-1, 1]) parts.push(P(box(0.018, body + 0.004, 0.032), CRATE_WORN, 0.10, o).translate(x, skid + body / 2, sz * (W / 2 - 0.016)));
+    for (const y of [skid + 0.019, top - 0.019]) parts.push(P(box(0.018, 0.03, W - 0.064), CRATE_WORN, 0.10, o).translate(x, y, 0));
+    const rx = sx * (L / 2 + 0.022), ry = skid + body * 0.6;
+    for (const sz of [-1, 1]) {
+      parts.push(P(box(0.012, 0.055, 0.012), HEMP, 0.08, o).translate(rx, ry - 0.0275, sz * 0.035));
+      parts.push(P(box(0.02, 0.02, 0.02), HEMP, 0.08, o).translate(rx, ry + 0.004, sz * 0.035));
+    }
+    parts.push(P(box(0.012, 0.012, 0.082), HEMP, 0.08, o).translate(rx, ry - 0.055, 0));
+  }
+  // the hasps and their staples on the front, the hinge straps behind
+  for (const sx of [-1, 1]) {
+    parts.push(P(box(0.032, 0.05, 0.006), HARDWARE, 0.05, o).translate(sx * L * 0.28, top - 0.008, W / 2 + 0.004));
+    parts.push(P(box(0.014, 0.014, 0.012), HARDWARE, 0.05, o).translate(sx * L * 0.28, top - 0.04, W / 2 + 0.006));
+    parts.push(P(box(0.05, 0.03, 0.005), HARDWARE, 0.05, o).translate(sx * L * 0.3, top - 0.004, -W / 2 - 0.003));
+  }
+  // the markings: a stencilled block and a code line on the front, a coloured band at one end, a line on the lid
+  const front = W / 2 + 0.0016;
+  for (const [w, x, yr] of [[0.22, -0.14, 0.72], [0.22, -0.14, 0.56], [0.15, -0.175, 0.40], [0.12, 0.16, 0.72]] as const) {
+    parts.push(P(facePlane(w, 0.012), STENCIL_YELLOW, 0.04, o).translate(x, skid + body * yr, front));
+  }
+  parts.push(P(facePlane(0.045, body * 0.5), STENCIL_YELLOW, 0.04, o).translate(L * 0.36, skid + body * 0.52, front));
+  const lidMark = P(facePlane(0.2, 0.014), STENCIL_YELLOW, 0.04, o);
+  lidMark.rotateX(-Math.PI / 2);
+  parts.push(lidMark.translate(-0.12, top + lidT + 0.0016, 0.02));
+  return dustAndContact(merge(parts), o);
+}
+
+/** A steel ammunition can (the belt box): body, lid, the latch at one end, the carry handle on the lid, a marking. */
+function ammoCan(o: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  parts.push(P(box(0.27, 0.165, 0.14), CRATE_PAINT, 0.05, o).translate(0, 0.0825, 0));
+  parts.push(P(box(0.28, 0.022, 0.15), CRATE_LID, 0.05, o).translate(0, 0.176, 0));
+  parts.push(P(box(0.012, 0.06, 0.04), HARDWARE, 0.05, o).translate(0.141, 0.15, 0));
+  for (const sx of [-1, 1]) parts.push(P(box(0.012, 0.02, 0.012), HARDWARE, 0.05, o).translate(sx * 0.05, 0.197, 0));
+  parts.push(P(box(0.11, 0.012, 0.014), HARDWARE, 0.05, o).translate(0, 0.21, 0));
+  parts.push(P(facePlane(0.15, 0.01), STENCIL_YELLOW, 0.04, o).translate(-0.02, 0.11, 0.0716));
+  return dustAndContact(merge(parts), o);
+}
+
+function bAmmobox(rng: Rng): THREE.BufferGeometry {
+  const o = spentDraws(bAmmoboxLegacy, rng, 0xa770);
+  const { W, H } = AMMO_CRATE;
+  const parts: THREE.BufferGeometry[] = [];
+  for (const sz of [-1, 1]) {
+    const crate = ammoCrate(o);
+    crate.rotateY((o() - 0.5) * 0.04); // (within the 24 mm between their lids at the ends)
+    parts.push(crate.translate((o() - 0.5) * 0.06, 0, sz * (W / 2 + 0.012)));
+  }
+  // the third across their seam, resting on their lids
+  const upper = ammoCrate(o);
+  upper.rotateY((o() - 0.5) * 0.3);
+  parts.push(upper.translate((o() - 0.5) * 0.12, H, (o() - 0.5) * 0.06));
+  const can = ammoCan(o);
+  can.rotateY(0.4 + o() * 0.8);
+  parts.push(can.translate(0.62, 0, 0.16 + (o() - 0.5) * 0.1));
+  return merge(parts);
+}
+/** (b45) the retired builds, for the receipt: the new ones spend exactly their draws. */
+export const AMMOBOX_LEGACY = Object.freeze({ build: bAmmoboxLegacy, broken: bAmmoboxBrokenLegacy });
+function bAmmoboxBroken(rng: Rng): THREE.BufferGeometry {
+  const o = spentDraws(bAmmoboxBrokenLegacy, rng, 0xa771);
+  const { L, W } = AMMO_CRATE;
+  const parts: THREE.BufferGeometry[] = [];
+  // the upper crate knocked off whole onto its side, one shoved askew, the third burst into its boards and lid
+  const fallen = ammoCrate(o);
+  fallen.rotateX(Math.PI / 2);
+  fallen.rotateY(o() * Math.PI);
+  parts.push(fallen.translate(0.35, W / 2 + 0.013, 0.55)); // (on its front: it rests on the hasps' staples)
+  const askew = ammoCrate(o);
+  askew.rotateY(0.35 + o() * 0.4);
+  parts.push(askew.translate(-0.2, 0, -0.15));
+  parts.push(...plankScatter(5, 0.7, 0.13, 0.65, o, CRATE_PAINT));
+  const lid = P(box(L, 0.024, W), CRATE_LID, 0.05, o);
+  lid.rotateY(o() * Math.PI);
+  lid.rotateZ(0.12);
+  parts.push(lid.translate(0.1, 0.07, -0.5)); // (one end on the ground, one on a board)
+  const can = ammoCan(o);
+  can.rotateX(Math.PI / 2); // (on its side: its 15 cm width now its height)
+  parts.push(can.translate(0.78, 0.075, -0.05));
   return merge(parts);
 }
 
@@ -1882,7 +2027,7 @@ export const DESTRUCTIBLE_TYPES = {
   van:         { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.63, h: 2.08, hw: 1.11, hl: 2.38, build: CIVILIAN_VEHICLE_RECEIPTS.van.build, broken: CIVILIAN_VEHICLE_RECEIPTS.van.broken, collider: true, keep: 0.92, crushMin: 1.8 },
   truckbox:    { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 3.55, h: 2.47, hw: 1.29, hl: 3.30, build: CIVILIAN_VEHICLE_RECEIPTS.truckbox.build, broken: CIVILIAN_VEHICLE_RECEIPTS.truckbox.broken, collider: true, keep: 0.87, crushMin: 2.0 },
   truckflatbed:{ cls: 'break',  mat: 'vehicle', contact: 'ob', r: 3.55, h: 1.96, hw: 1.29, hl: 3.30, build: CIVILIAN_VEHICLE_RECEIPTS.truckflatbed.build, broken: CIVILIAN_VEHICLE_RECEIPTS.truckflatbed.broken, collider: true, keep: 0.87, crushMin: 2.0 },
-  ammobox:     { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.85, h: 0.75, build: bAmmobox,    broken: bAmmoboxBroken },
+  ammobox:     { cls: 'break',  mat: 'vehicle', contact: 'loop', r: 0.85, h: 0.75, build: bAmmobox,  broken: bAmmoboxBroken },
   tent:        { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.7,  h: 2.1,  hw: 1.28, hl: 1.90, build: bTent, broken: bTentBroken, keep: 0.985 },
   drumred:     { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.34, h: 0.92, build: bDrumRed,    broken: bDrumRedBroken, explosive: true },
   barrier:     { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.45, h: 1.0,  hw: 0.42, hl: 1.42, build: bBarrier, broken: bBarrierBroken, collider: true, keep: 0.83, crushMin: 2.4 },
