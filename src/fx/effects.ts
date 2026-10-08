@@ -2862,7 +2862,8 @@ function* createFxSteps(
       _puffO.life = 0.1 + rng() * 0.1;
       _puffO.size0 = (1.4 + rng()) * dk; _puffO.size1 = (3.2 + rng() * 1.2) * dk;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
-      col3(0xffffff, _puffO.col0); col3(0xffb040, _puffO.col1);
+      // (b6: a white bulb on a kill's first frame) a hot yellow flash, not white
+      col3(0xffe2a8, _puffO.col0); col3(0xffa040, _puffO.col1);
       _puffO.alpha = 1.0; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
       particles.emit('flash', _puffO);
     }

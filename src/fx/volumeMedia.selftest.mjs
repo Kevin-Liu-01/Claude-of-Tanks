@@ -138,7 +138,7 @@ function captureContext(seed) {
       chunk: (k) => log.chunk.push({ ...k }),
       flash: () => { log.flash++; }, fire: () => { log.fire++; }, sparks: () => { log.sparks++; },
       jet: () => { log.jets = (log.jets || 0) + 1; }, shockRing: () => { log.rings = (log.rings || 0) + 1; },
-      lightPulse: () => { log.pulses++; }, distBoost: () => 1, tier: 1,
+      lightPulse: (x, y, z, k) => { log.pulses++; log.pulseK = k; }, distBoost: () => 1, tier: 1,
       m: makeVolumePuff(), k: makeChunkPiece(),
       lp: { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, size0: 1, size1: 1, rot: 0, rotVel: 0, col0: [1, 1, 1], col1: [1, 1, 1], alpha: 1, grav: 0, birthOffset: 0 },
       ls: { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, width: 0.03, stretch: 0.03, grav: -18, col: [1, 1, 1], alpha: 1, seed: 0, birthOffset: 0 },
@@ -192,6 +192,15 @@ function captureContext(seed) {
   assert.ok(jetTop(big) > 18, `the gunship's stands past 18 m (${jetTop(big).toFixed(1)})`);
   const ac = he(5, 'autocannon_he', 0.05, 'soil');
   assert.ok(jetTop(ac) < 4, `a 30 mm round's stays low (${jetTop(ac).toFixed(1)})`);
+  // (wave 273) a burst's light on the ground is brief and weak, far weaker on snow; its cloud spreads without lifting off;
+  // a shaped charge throws few soil jets and is born in its own dark smoke
+  const snowGlow = he(5, 'he', 3.5, 'snow');
+  assert.ok(a.pulseK <= 0.6 && snowGlow.pulseK < 0.35 * a.pulseK, `the ground glow: soil ${a.pulseK}, snow ${snowGlow.pulseK}`);
+  assert.ok(a.media.filter((m) => m.medium === 'burst' && m.aspect >= 1 && m.aspect < 1.5 && m.grav === 0 && m.life > 5)
+    .every((m) => m.rise <= 0.25), 'the dust cloud does not lift off');
+  const atgmJets = jets(atgm.log);
+  assert.ok(atgmJets.length <= 3 && atgm.log.media.some((m) => m.medium === 'billow' && m.r0 < 0.06 && m.heat < 1),
+    'a shaped charge: few jets, its own dark smoke');
   // and its cloud keeps moving: no dust or residue flipbook holds its last frame for the rest of its life
   for (const m of [...a.media, ...big.media]) {
     if (m.heat === 0 && m.life > 3) assert.ok(m.playSeconds >= m.life * 0.8, 'a flipbook plays its whole life');
