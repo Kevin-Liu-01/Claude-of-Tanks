@@ -1877,22 +1877,10 @@ const sepv3TurretRoofEdge = (z: number): number => profileY([[-3.35, 1.05], [-2.
 /** The Leopard 2A4 turret roof net's outer edge (LEO2A4_TURRET_ROOF_OUTLINE), for the flank drapes' roll-over. */
 const leo2A4TurretRoofEdge = (z: number): number => profileY([[-2.28, 0.91], [-1.58, 0.99], [-0.72, 1.06], [0.69, 1.09]], z);
 
-// Leopard 2A6 UA fitted camouflage carrier. The original blanket used a
-// single y=.98 roof and z=2.72 face, leaving visible daylight over the 2A6M
-// wedge. These profiles follow the authored roof tiers and the ruled cheek
-// surface used by the UA ERA package. Values are turret-local metres.
-const leo2A6UAFrontLowerZ = (x: number): number => profileY([
-  [0.32, 2.70], [0.40, 2.64], [0.94, 2.26], [1.30, 1.96],
-], Math.abs(x));
-const leo2A6UAFrontUpperZ = (x: number): number => profileY([
-  [0.32, 2.02], [0.55, 1.87], [0.90, 1.62], [1.08, 1.40], [1.30, 1.16],
-], Math.abs(x));
-const leo2A6UAFrontArmorZ = (x: number, y: number): number => THREE.MathUtils.lerp(
-  leo2A6UAFrontLowerZ(x),
-  leo2A6UAFrontUpperZ(x),
-  THREE.MathUtils.clamp((y - 0.16) / 0.46, 0, 1),
-);
-const leo2A6UAFrontNetZ = (x: number, y: number): number => leo2A6UAFrontArmorZ(x, y) + 0.065;
+// Leopard 2A6 UA roof carriers. The original blanket used a single y=.98
+// roof, leaving visible daylight over the 2A6M wedge; these profiles follow the
+// authored roof tiers (round 5: the cheek nets are gone, so their ruled-face
+// profile went with them). Values are turret-local metres.
 const leo2A6UAFrontRoofY = (x: number, z: number): number => {
   const armorY = profileY([
     [0.46, 0.655], [0.72, 0.620], [1.20, 0.535], [1.68, 0.425], [2.18, 0.430],
