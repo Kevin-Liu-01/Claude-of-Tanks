@@ -7894,17 +7894,18 @@ function* createTankOwnedSteps(
       eraPartSet = new Set([...destructibleEraParts.map((entry) => entry.part), ...visualEraParts.map((entry) => entry.part)]);
       for (const ch of specId) eraTintSeed = (eraTintSeed * 31 + ch.charCodeAt(0)) >>> 0;
     }
-    if (!eraPartSet.size) return;
     const color = merged.getAttribute('color');
     if (!color) return;
     let vertexOffset = 0;
     for (const part of list) {
       const vertexCount = part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
-      if (eraPartSet.has(part) && vertexCount > 0) {
+      // a builder's bolt-on face plate (userData.panelTone: a skirt cassette, a bin lid) takes a milder batch shift
+      const panel = !eraPartSet.has(part) && (part.userData as { panelTone?: boolean } | undefined)?.panelTone === true;
+      if ((panel || eraPartSet.has(part)) && vertexCount > 0) {
         let h = (eraTintSeed ^ Math.imul(++eraTintIndex, 0x9e3779b1)) >>> 0;
         h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d) >>> 0;
         const a = (h & 0xffff) / 0xffff, b = (h >>> 16) / 0xffff;
-        const k = 0.9 + 0.18 * a, warm = (b - 0.5) * 0.05;
+        const k = panel ? 0.93 + 0.12 * a : 0.9 + 0.18 * a, warm = (b - 0.5) * (panel ? 0.04 : 0.05);
         for (let i = vertexOffset; i < vertexOffset + vertexCount; i++) {
           color.setXYZ(i, color.getX(i) * k * (1 + warm), color.getY(i) * k, color.getZ(i) * k * (1 - warm));
         }

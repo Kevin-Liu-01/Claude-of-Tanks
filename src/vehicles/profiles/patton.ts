@@ -3985,8 +3985,16 @@ function pattonSideCassette(
       [fenderAnchorInnerX, topY, z0], [outerX, topY, z0],
       [outerX, topY, z1], [fenderAnchorInnerX, topY, z1],
     ));
-    const faceX = side * 1.8165;
-    P.add('hullDetail', box(0.008, h * 0.78, len * 0.84), faceX, y, z);
+    // Fleet lane round 1 (2026-10-08; accessories wave 255: "a row of near-identical clean rectangles with no ...
+    // missing corners or varied hinge heights"): each cassette's face plate takes its own seat (height within 1.5 cm,
+    // size within a few per cent, set 0-2 mm into the frame), deterministic from its station, and its own paint
+    // batch (tankFactoryCore panelTone); the cassette bodies and the outer face line are unchanged.
+    const seed = Math.abs(Math.imul(Math.round(z * 1000) + (side > 0 ? 7919 : 0), 0x9e3779b1)) >>> 0;
+    const u = (k: number): number => (((seed >>> (k * 8)) & 0xff) / 255);
+    const faceX = side * (1.8165 - 0.002 * u(0));
+    const face = box(0.008, h * (0.74 + 0.06 * u(1)), len * (0.80 + 0.06 * u(2)));
+    face.userData.panelTone = true;
+    P.add('hullDetail', face, faceX, y + (u(3) - 0.5) * 0.03, z);
     return;
   }
   // The Starship course has to fit between the 1.8155 m published outer
@@ -4604,10 +4612,14 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
   // Measured (tools/tmp-m60-closeround.mjs, board rig): proc front-view
   // brightest pixel is no longer a glass pane and pane median sits below the
   // lit camo plates.
+  // Fleet lane round 1 (2026-10-08; accessories wave 255: "the turret-front sight window (left of the gun) is a
+  // saturated blue disc"): the half-metal blue-grey mirrored the sky into the round rangefinder windows. Neutral smoked
+  // glass with a dielectric sheen keeps the r4 calm-down's dark read without the blue.
   const buildM60AssemblyStage1 = (): void => {
-    P.mats.glass.color.setHex(0x46525b);
-    P.mats.glass.roughness = 0.52;
-    P.mats.glass.metalness = 0.50;
+    P.mats.glass.color.setHex(0x323834);
+    P.mats.glass.roughness = 0.42;
+    P.mats.glass.metalness = 0.12;
+    P.mats.glass.envMapIntensity = 0.35;
   };
   buildM60AssemblyStage1();
   const vehicleScale = 0.90;
@@ -4718,11 +4730,20 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
       // mud flap: tall sheet joined to the fender tips, kinked at -3.40 to the
       // measured 1.45 ledge, band-thin tail tip (top 1.33/bot 0.97 keeps the
       // 12% body filter from extending hullLengthM past the -3.445 column)
-      P.add('hullRubber', slab(
+      // Fleet lane round 1 (2026-10-08; accessories wave 255: "brick-like black mudflaps", "featureless black slabs
+      // with no rubber flap, bolts, wear or readable function"): the same measured volumes, read as what they are on
+      // the vehicle. The fender end and the mudguard bracket behind it are painted sheet steel; the rubber flap hangs
+      // from the bracket's rear face under a bolted clamp strip and ends in the thin tail tip.
+      P.add('hull', slab(
         [side * 1.02, 0.775, -3.30], [side * 1.78, 0.775, -3.30], [side * 1.78, 0.775, -3.40], [side * 1.02, 0.775, -3.40],
         [side * 1.02, 1.79, -3.30], [side * 1.78, 1.79, -3.30], [side * 1.78, 1.455, -3.40], [side * 1.02, 1.455, -3.40]));
-      P.add('hullRubber', box(0.76, 0.675, 0.09), side * 1.40, 1.1125, -3.445);
+      P.add('hull', box(0.76, 0.675, 0.072), side * 1.40, 1.1125, -3.436);
+      P.add('hullRubber', box(0.76, 0.675, 0.018), side * 1.40, 1.1125, -3.481);
       P.add('hullRubber', box(0.76, 0.37, 0.06), side * 1.40, 1.145, -3.52);
+      P.add('hullDetail', box(0.72, 0.042, 0.010), side * 1.40, 1.405, -3.495);
+      for (let k = 0; k < 5; k++) {
+        P.add('hullDark', cylZ(0.0105, 0.010, 6), side * (1.40 + (k - 2) * 0.165), 1.405, -3.504);
+      }
     }
     // sloped rear plate (centre): plan rear extent -3.28 at |x| <= 1.0
     P.add('hull', slab(
@@ -4774,10 +4795,23 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
         P.add('hullDetail', box(0.09, 0.032, 0.055), -1.43, hull.deckAt(cz) + 0.010, cz);
       }
     }
-    // rear plate: flush transmission access ring + towing pintle (to -3.52)
-    P.add('hullDark', cylZ(0.26, 0.02, P.q ? 18 : 12), 0, 1.05, -3.28);
+    // rear plate: transmission access cover + towing pintle (to -3.52). Fleet lane round 1 (2026-10-08; wave 255: "the
+    // black disc with a tan bar ... cannot be identified"): the cover is a painted plate on a ring of bolts with a
+    // lifting handle, and the pintle a bracket, stem and open hook jaw
+    P.add('hullDetail', cylZ(0.26, 0.02, P.q ? 24 : 12), 0, 1.05, -3.28);
+    if (P.q) {
+      for (let k = 0; k < 12; k++) {
+        const a = (k / 12) * Math.PI * 2;
+        P.add('hullDark', cylZ(0.012, 0.012, 6), Math.sin(a) * 0.225, 1.05 + Math.cos(a) * 0.225, -3.294);
+      }
+      P.add('hullDark', xform(new THREE.TorusGeometry(0.05, 0.008, 6, 10, Math.PI), 0, 0, 0, 0, 0, 0), 0, 1.03, -3.294);
+    }
     P.add('hullDetail', box(0.34, 0.18, 0.06), 0, 1.16, -3.31);
-    P.add('hullDetail', cylZ(0.05, 0.24, 8), 0, 1.16, -3.40);
+    P.add('hullDetail', cylZ(0.042, 0.07, 8), 0, 1.16, -3.375);
+    // the jaw: 261 degrees of ring in the vehicle's long vertical plane, its gap turned to the top (latch side); the
+    // ring's rear edge keeps the -3.52 rear extent the old pin had
+    P.add('hullDark', xform(new THREE.TorusGeometry(0.052, 0.02, 6, P.q ? 12 : 8, Math.PI * 1.45), 0, 0, 0, 0, Math.PI / 2, 0),
+      0, 1.16, -3.448, 2.435, 0, 0);
     // rear-plate louver wall (r4 tell 3): the r3 patch (4 slats x 1.18 m) left
     // the ref's rear reading "ribbed machinery" vs proc "camo wall with a
     // vent". Full-width treatment now: two mirrored HERRINGBONE banks of
@@ -4792,10 +4826,24 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
   buildM60HullStage2();
   const buildM60HullStage3 = (): void => {
     {
+      // Fleet lane round 1 (2026-10-08; accessories wave 255: "a rear plate that is a blank tan slab with no exhaust
+      // grille"): the herringbone strips sat 0.5 mm proud in the plate's own paint over a dark panel buried behind the
+      // -3.28 face, so nothing of the grille showed. Each bank is now a dark field 2 mm proud of the plate inside a
+      // painted 22 mm frame, its strips angled 0.62 rad outward at the top like louvre vanes so their lit upper faces and
+      // the dark gaps read as a grille in depth. Everything stays inside the plan and side outlines the mud flaps,
+      // corner strips and pintle already set (|x| <= 0.97, 2.6 cm behind the plate).
       const aSlat = 0.30, sinA = Math.sin(aSlat), cosA = Math.cos(aSlat);
       const y0 = 1.09, y1 = 1.43, yc = (y0 + y1) / 2;
+      const PLATE = -3.28, FRAME_W = 0.022, FRAME_D = 0.022, VANE_TILT = 0.62, VANE_W = 0.034, VANE_T = 0.004;
       for (const side of [-1, 1]) {
-        const bx0 = 0.13, bx1 = 0.945, bxc = side * (bx0 + bx1) / 2;
+        const bx0 = 0.13, bx1 = 0.945, bxc = side * (bx0 + bx1) / 2, bw = bx1 - bx0;
+        P.add('hullDark', box(bw, y1 - y0, 0.004), bxc, yc, PLATE - 0.002);
+        for (const fy of [y0 - FRAME_W / 2, y1 + FRAME_W / 2]) {
+          P.add('hull', box(bw + 2 * FRAME_W, FRAME_W, FRAME_D), bxc, fy, PLATE - FRAME_D / 2);
+        }
+        for (const fx of [bx0 - FRAME_W / 2, bx1 + FRAME_W / 2]) {
+          P.add('hull', box(FRAME_W, y1 - y0, FRAME_D), side * fx, yc, PLATE - FRAME_D / 2);
+        }
         // slat long axis: rising toward the centre spine on both banks
         const th = side > 0 ? -aSlat : aSlat;
         const dx = Math.cos(th), dy = Math.sin(th);
@@ -4809,8 +4857,10 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
           const t0 = Math.max(tx[0], ty[0]), t1 = Math.min(tx[1], ty[1]);
           if (t1 - t0 < 0.09) continue;
           const tm = (t0 + t1) / 2;
-          P.add('hullDetail', box(t1 - t0 - 0.014, 0.020, 0.006),
-            px + tm * dx, py + tm * dy, -3.2775, 0, 0, th);
+          // the vane: tilted about its own long axis (top edge outboard), then laid on the herringbone line
+          const vane = box(t1 - t0 - 0.014, VANE_W, VANE_T).rotateX(-VANE_TILT).rotateZ(th)
+            .translate(px + tm * dx, py + tm * dy, PLATE - 0.004 - (VANE_W / 2) * Math.sin(VANE_TILT));
+          P.add('hullDetail', vane);
         }
       }
     }
