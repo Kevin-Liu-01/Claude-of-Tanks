@@ -148,6 +148,12 @@ const OVER_WATER = {
       [[62.08, 116.27], [44.4, 178.8]], [[109.13, 109.31], [99.9, 73.0]]],
     dropped: [[-197.27, 3.82], [-226.62, -24.01], [-225.05, -7.68]],
   },
+  // (Skybridge round 6, 2026-10-08: the arm's meander reaches one seated building, 10.6 x 9.1 m, packed 14.5 m east onto
+  // dry ground; the five other moves are the carriageway's, as on the PR head)
+  skybridge: {
+    moved: [[[-13.65, -70.49], [0.4, -74.0]]],
+    dropped: [],
+  },
 };
 function kitSeats(mapId, config, carriageway, structures, now) {
   const water = OVER_WATER[mapId] ?? { moved: [], dropped: [] };

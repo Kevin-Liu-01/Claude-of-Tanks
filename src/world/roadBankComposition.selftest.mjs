@@ -67,7 +67,10 @@ function compile(body, constraintBody = constraints, helpers = helperSource) {
       clearanceReduction = () => 0, classicRimLift = (r) => border.liftAt(0, 0, r), authoringOnLandform = false,
       // the map-revival lane (2026-10-05, Orchard Valley): the contour terraces' zones (terrain.terraces); the standard
       // fixture authors none, so the micro-relief's terrace term reads nothing
-      terraceZones = [] } = fixture;
+      terraceZones = [],
+      // the map-revival lane (2026-10-08, Skybridge round 6): the lakes a point can reach (lakeCandidateIndex.ts); the
+      // fixture authors no lakes, so every point reads the plain loop (null)
+      lakesNear = () => null } = fixture;
     // Frontline Assault 2026-09-13: heightAt now ends with the assault-trenches carve; the
     // standard field (this fixture) has no plan, so the carve contributes nothing here.
     const trenchPlan = fixture.trenchPlan ?? (() => null);

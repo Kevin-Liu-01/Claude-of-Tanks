@@ -20,6 +20,8 @@
 // The terrain's rock layer follows slope, so the walls, risers and gully sides read as rock. geologyZoneWeights names
 // the zones a material can key on: a lava flow's footprint, a cinder cone's base and its talus fans.
 
+import { landformPathFrame, type LandformPathFrame, type PreparedLandformPath } from './landformPath.ts';
+
 export interface LandformGeology {
   /** Plan irregularity, 0 (the authored ellipse or bar) to 0.35. */
   outline?: number;
@@ -68,6 +70,16 @@ export interface LandformGeology {
   fans?: { reach?: number; heightM?: number };
   /** Bedding: the bed thickness in metres and the riser's share of each bed (default 0.3). */
   strata?: { stepM: number; riser?: number };
+  /** Canyon ridges (the map-revival lane, 2026-10-08, Skybridge round 6; gauntlet wave 259: the arm's walls "a uniform-
+   * height vertical extrusion", "no alcoves, ledges"): a ledge splits the wall into two tiers — the lower wall rises
+   * from the floor to the ledge at `level` (the share of the depth still below it, 0.5 = halfway up), the ledge runs out
+   * up to `share` of the half-width, then the upper wall climbs to the rim, set back by the ledge. The ledge comes and
+   * goes along each side (smooth noise over `period` metres, default 70): where it closes the wall stands in one face. */
+  ledge?: { level: number; share: number; period?: number };
+  /** Canyon ridges (round 6: "a stair-stepped, saw-toothed edge"): the rim rounds over — the wall tops out `drop` of the
+   * depth below the plain and the brow curves up from there to the plain over `share` of the half-width, the slickrock's
+   * rounded edge in place of a sharp lip. */
+  brow?: { share: number; drop: number };
   /** Knobbly relief amplitude in metres. */
   rough?: number;
   /** What the landform is made of, where its shape does not say: 'slag' (an industrial tip) counts as a rock
@@ -86,8 +98,10 @@ export interface LandformGeology {
    * 6 % of the length instead of the smooth taper (a shelf whose end would otherwise ramp up onto its cap). 'nose'
    * instead turns the whole section round both ends, wall and talus apron alike, on a half-disc as wide as the ridge
    * (a butte's nose, ridgeNose): the end is as steep as the sides, and its apron runs on round it instead of stopping
-   * in a cut. */
-  cliffEnd?: 1 | -1 | 'both' | 'nose';
+   * in a cut. 'nose-start' / 'nose-end' (the map-revival lane, 2026-10-08, Skybridge round 6): a nose at the -x (a
+   * path's first) or +x (its last) end only, the other end a cliff end (a drowned arm's head, and its square end at a
+   * dam). */
+  cliffEnd?: 1 | -1 | 'both' | 'nose' | 'nose-start' | 'nose-end';
 }
 
 /** The slice of a landform the geology reads. */
@@ -106,6 +120,11 @@ export interface GeologicForm {
   /** Its cosine and sine, as terrain.ts createLayout caches them. */
   _c?: number;
   _s?: number;
+  /** A path ridge's prepared curve (terrain.ts createLayout; landformPath.ts): its frame is the curve's. */
+  _path?: PreparedLandformPath;
+  /** A path ridge's half-widths at its control points, spread evenly along its curve (terrain.ts `widths`): the width
+   * at a station is theirs, eased between neighbours (ridgeWidthAt). */
+  _widths?: Float64Array;
   geology?: LandformGeology;
 }
 
@@ -202,6 +221,44 @@ function canyonProfile(q: number, geology: LandformGeology): number {
   if (q <= foot) { const t = (q - toe) / (foot - toe); return 1 - apron * t * t; }
   const t = (q - foot) / Math.max(1e-6, rim - foot);
   return (1 - apron) * (1 - t * t * (3 - 2 * t));
+}
+
+/**
+ * A canyon ridge's section with a ledge and a rounded brow (round 6), 0..1 of the depth at the normalized distance q
+ * from the axis, on the side `side` (0 or 1, blended at a nose) at the axial station `at`: the floor and the talus as
+ * canyonProfile; the lower wall steep from the water and easing onto the ledge; the ledge, rising a little to its back;
+ * the upper wall, easing up from the ledge and steepest at the rim; then the brow, rounding over to the plain.
+ */
+function canyonSection(q: number, geology: LandformGeology, at: number, side: number, salt: number): number {
+  const [foot, rim] = geology.wall ?? CANYON_WALL;
+  const apron = Math.max(0, Math.min(0.6, geology.apron ?? 0.3));
+  const toe = Math.max(0.05, foot - CANYON_TALUS);
+  if (apron > 0 && q <= toe) return 1;
+  if (q <= foot) { if (apron <= 0) return 1; const t = (q - toe) / (foot - toe); return 1 - apron * t * t; }
+  const top = 1 - apron, drop = geology.brow ? Math.max(0, Math.min(0.3, geology.brow.drop)) : 0;
+  const ledge = geology.ledge;
+  let rimQ = rim;
+  if (ledge) {
+    // the ledge's width here: smooth noise along each side (blended round a nose), from none to `share`
+    const period = Math.max(10, ledge.period ?? 70);
+    const n = valueNoise(at / period, 7.3, salt + 41) * (1 - side) + valueNoise(at / period, 11.9, salt + 43) * side;
+    const lw = Math.max(0, ledge.share) * smoothstep(0.3, 0.7, n);
+    const level = Math.max(drop + 0.05, Math.min(top - 0.05, ledge.level));
+    const rise = 0.04 * (ledge.share > 0 ? lw / ledge.share : 0);
+    const half = (rim - foot) / 2, q1 = foot + half, q2 = q1 + lw;
+    rimQ = q2 + half;
+    if (q <= q1) { const t = (q - foot) / half; return top - (top - level) * (1 - (1 - t) * (1 - t)); }
+    if (q <= q2) return level - rise * (q - q1) / Math.max(1e-6, lw);
+    if (q <= rimQ) { const t = (q - q2) / half; return (level - rise) - (level - rise - drop) * t * t; }
+  } else if (q <= rim) {
+    const t = (q - foot) / (rim - foot);
+    return top - (top - drop) * t * t * (3 - 2 * t);
+  }
+  // the brow: from the rim's drop, rounding up to the plain
+  const browW = geology.brow ? Math.max(0, geology.brow.share) : 0;
+  if (browW <= 0 || q >= rimQ + browW) return 0;
+  const u = (q - rimQ) / browW;
+  return drop * (1 - u) * (1 - u);
 }
 
 /** Where a canyon's side canyons cut: its wall and a little of the plain past the rim (their heads bite back). */
@@ -523,14 +580,19 @@ export function knollGeologyHeight(form: GeologicForm, lx: number, lz: number): 
  * that is |lz|, lx and the side; past a nose's centre the section turns round the end, so the distance is measured from
  * the centre and the two sides' lobes and rills blend by bearing, meeting at the tip without a step. */
 interface RidgeStation { across: number; at: number; side: number }
+/** Which end a ridge's nose turns round: 0 both, -1 the -x end, +1 the +x end, null none. */
+function noseEnd(cliffEnd: LandformGeology['cliffEnd']): -1 | 0 | 1 | null {
+  return cliffEnd === 'nose' ? 0 : cliffEnd === 'nose-start' ? -1 : cliffEnd === 'nose-end' ? 1 : null;
+}
 const ridgeStation: RidgeStation = { across: 0, at: 0, side: 0 };
 function ridgeNose(form: GeologicForm, lx: number, lz: number, width: number, outline: number): RidgeStation {
   ridgeStation.across = Math.abs(lz); ridgeStation.at = lx; ridgeStation.side = lz >= 0 ? 1 : 0;
-  if (form.geology?.cliffEnd !== 'nose') return ridgeStation;
+  const noseAt = noseEnd(form.geology?.cliffEnd);
+  if (noseAt === null) return ridgeStation;
   // the half-disc's centre stands far enough in that the lobed margin stays inside the ridge's length
   const centre = Math.max(0, Math.max(1, (form.length || 100) * 0.5) - width * (1 + outline));
   const into = Math.abs(lx) - centre;
-  if (into <= 0) return ridgeStation;
+  if (into <= 0 || (noseAt !== 0 && Math.sign(lx) !== noseAt)) return ridgeStation;
   ridgeStation.across = Math.hypot(lz, into);
   ridgeStation.at = Math.sign(lx) * centre;
   ridgeStation.side = 0.5 + Math.atan2(lz, into) / Math.PI;
@@ -563,23 +625,30 @@ function ridgeRill(at: number, side: number, q: number, perMetre: number, width:
 export function ridgeGeologyHeight(form: GeologicForm, lx: number, lz: number, along: number): number | null {
   const geology = form.geology;
   if (!geology) return null;
-  const width = Math.max(1, form.width || 45);
+  const width = ridgeWidthAt(form, lx);
   const height = form.height || 0;
   const outline = Math.max(0, Math.min(0.35, geology.outline ?? 0));
   const { across, at, side: sideW } = ridgeNose(form, lx, lz, width, outline);
-  if (geology.cliffEnd === 'nose') along = 1;
+  const noseAt = noseEnd(geology.cliffEnd);
+  if (noseAt === 0) along = 1;
+  else if (noseAt !== null) {
+    // one nose: round that end; the other is a cliff end (steep over the last 6 % of the length)
+    const half = Math.max(1, (form.length || 100) * 0.5);
+    along = Math.sign(lx) === noseAt || lx === 0 ? 1 : 1 - smoothstep(0.94, 1, Math.abs(lx) / half);
+  }
   if (along <= 0 || across > width * (1 + outline) + 0.5) return 0;
   const salt = formSalt(form);
   let q = across / width;
   if (outline > 0) q /= 1 + outline * ridgeLobe(at, sideW, salt);
   if (q >= 1) return 0;
-  const shape = profileOf(q, geology, height, ridgeShoulder);
+  const shape = geology.profile === 'canyon' && height < 0 && (geology.ledge || geology.brow)
+    ? canyonSection(q, geology, at, sideW, salt) : profileOf(q, geology, height, ridgeShoulder);
   if (geology.front) {
     // a flow's own ends: a steep blocky front downhill, a gently thinning vent end uphill
     const half = Math.max(1, (form.length || 100) * 0.5), t = Math.max(-1, Math.min(1, lx / half)) * geology.front;
     along = t > 0 ? 1 - smoothstep(0.92, 1, t) : 1 - smoothstep(0.5, 1, -t);
     if (along <= 0) return 0;
-  } else if (geology.cliffEnd && geology.cliffEnd !== 'nose' && (geology.cliffEnd === 'both' || lx * geology.cliffEnd > 0)) {
+  } else if (geology.cliffEnd && noseAt === null && (geology.cliffEnd === 'both' || lx * (geology.cliffEnd as number) > 0)) {
     const half = Math.max(1, (form.length || 100) * 0.5);
     along = 1 - smoothstep(0.94, 1, Math.abs(lx) / half);
     if (along <= 0) return 0;
@@ -610,6 +679,34 @@ const FLOW_EDGE_M = 4;
 const CONE_EDGE_M = 3;
 
 /** Whether a landform's geology names a zone: a lava flow (a ridge), a cinder cone or a cone's talus fans (knolls). */
+/** A landform's local frame at the world point: its straight bearing's, or a path ridge's curve's (false: out of its
+ * reach). Written to `frame`. */
+const frame: LandformPathFrame = { lx: 0, lz: 0 };
+function localFrame(form: GeologicForm, x: number, z: number): boolean {
+  if (form._path) return landformPathFrame(form._path, x, z, frame);
+  const yaw = (form.yawDeg ?? 0) * Math.PI / 180;
+  const c = form._c ?? Math.cos(yaw), s = form._s ?? Math.sin(yaw);
+  const dx = x - form.x, dz = z - form.z;
+  frame.lx = dx * c + dz * s; frame.lz = -dx * s + dz * c;
+  return true;
+}
+
+/** A ridge's half-width at the axial station lx: its own, or a path's eased between its control points' (round 6). */
+export function ridgeWidthAt(form: GeologicForm, lx: number): number {
+  const w = form._widths;
+  if (!w || w.length < 2 || !form._path) return Math.max(1, form.width || 45);
+  const f = Math.max(0, Math.min(1, (lx + form._path.length / 2) / form._path.length)) * (w.length - 1);
+  const i = Math.min(w.length - 2, Math.floor(f)), t = f - i, e = t * t * (3 - 2 * t);
+  return Math.max(1, w[i] + (w[i + 1] - w[i]) * e);
+}
+
+/** How far a ridge's footprint reaches from its centre (m): a bar's half-diagonal, or a path's bounds and widest width. */
+function ridgeReach(form: GeologicForm, outline: number, edge: number): number {
+  const width = Math.max(1, form._widths ? Math.max(...form._widths) : form.width || 45) * (1 + outline) + edge;
+  if (form._path) return form._path.halfDiagonal + width;
+  return Math.hypot(Math.max(1, (form.length || 100) * 0.5) + edge, width);
+}
+
 export function hasGeologyZones(form: GeologicForm): boolean {
   const geology = form.geology;
   if (!geology) return false;
@@ -631,15 +728,13 @@ export function geologyZoneWeights(form: GeologicForm, x: number, z: number, out
   out[0] = 0; out[1] = 0; out[2] = 0;
   const geology = form.geology;
   if (!geology) return out;
-  const yaw = (form.yawDeg ?? 0) * Math.PI / 180;
-  const c = form._c ?? Math.cos(yaw), s = form._s ?? Math.sin(yaw);
-  const dx = x - form.x, dz = z - form.z;
-  const lx = dx * c + dz * s, lz = -dx * s + dz * c;
+  if (!localFrame(form, x, z)) return out;
+  const lx = frame.lx, lz = frame.lz;
   const outline = Math.max(0, Math.min(0.35, geology.outline ?? 0));
   const salt = formSalt(form);
   if (form.kind === 'ridge') {
     if (geology.profile !== 'flow') return out;
-    const width = Math.max(1, form.width || 45), half = Math.max(1, (form.length || 100) * 0.5);
+    const width = ridgeWidthAt(form, lx), half = Math.max(1, (form.length || 100) * 0.5);
     // the margin as ridgeGeologyHeight lobes it: q = |lz| / (width (1 + outline edgeLobe)) reaches 1 there
     const edge = width * (outline > 0 ? 1 + outline * edgeLobe(lx, lz >= 0 ? 1 : -1, salt) : 1);
     out[0] = (1 - smoothstep(0, FLOW_EDGE_M, Math.abs(lz) - edge))
@@ -672,10 +767,7 @@ export function geologyZoneWeights(form: GeologicForm, x: number, z: number, out
 function zoneReach(form: GeologicForm): number {
   const geology = form.geology!;
   const outline = Math.max(0, Math.min(0.35, geology.outline ?? 0));
-  if (form.kind === 'ridge') {
-    return Math.hypot(Math.max(1, (form.length || 100) * 0.5) + FLOW_EDGE_M,
-      Math.max(1, form.width || 45) * (1 + outline) + FLOW_EDGE_M);
-  }
+  if (form.kind === 'ridge') return ridgeReach(form, outline, FLOW_EDGE_M);
   const rx = Math.max(1, form.rx || form.r || 70), rz = Math.max(1, form.rz || form.r || rx);
   const reach = geology.fans ? Math.max(0.05, Math.min(0.6, geology.fans.reach ?? 0.3)) : 0;
   return Math.max(rx, rz) * (1 + outline) * (1 + reach) + CONE_EDGE_M;
@@ -772,18 +864,17 @@ export function isRockLandform(form: GeologicForm): boolean {
 export function geologyRockWeight(form: GeologicForm, x: number, z: number): number {
   if (!isRockLandform(form)) return 0;
   const geology = form.geology!;
-  const yaw = (form.yawDeg ?? 0) * Math.PI / 180;
-  const c = form._c ?? Math.cos(yaw), s = form._s ?? Math.sin(yaw);
-  const dx = x - form.x, dz = z - form.z;
-  const lx = dx * c + dz * s, lz = -dx * s + dz * c;
+  if (!localFrame(form, x, z)) return 0;
+  const lx = frame.lx, lz = frame.lz;
   const outline = Math.max(0, Math.min(0.35, geology.outline ?? 0));
   const salt = formSalt(form);
   if (form.kind === 'ridge') {
-    const width = Math.max(1, form.width || 45), half = Math.max(1, (form.length || 100) * 0.5);
+    const width = ridgeWidthAt(form, lx), half = Math.max(1, (form.length || 100) * 0.5);
     const { across, at, side } = ridgeNose(form, lx, lz, width, outline);
     const edge = width * (outline > 0 ? 1 + outline * ridgeLobe(at, side, salt) : 1);
     // a nose's footprint turns round its ends with the section; any other ridge's runs square to its length
-    const ends = geology.cliffEnd === 'nose' ? 1 : 1 - smoothstep(0, FLOW_EDGE_M, Math.abs(lx) - half);
+    const noseAt = noseEnd(geology.cliffEnd);
+    const ends = noseAt === 0 || (noseAt !== null && Math.sign(lx) === noseAt) ? 1 : 1 - smoothstep(0, FLOW_EDGE_M, Math.abs(lx) - half);
     return (1 - smoothstep(0, FLOW_EDGE_M, across - edge)) * ends;
   }
   const rx = Math.max(1, form.rx || form.r || 70), rz = Math.max(1, form.rz || form.r || rx);
@@ -799,10 +890,7 @@ export function createGeologyRockSampler(forms: readonly GeologicForm[]): ((x: n
   if (!rock.length) return null;
   const reach = rock.map((form) => {
     const outline = Math.max(0, Math.min(0.35, form.geology?.outline ?? 0));
-    if (form.kind === 'ridge') {
-      return Math.hypot(Math.max(1, (form.length || 100) * 0.5) + FLOW_EDGE_M,
-        Math.max(1, form.width || 45) * (1 + outline) + FLOW_EDGE_M);
-    }
+    if (form.kind === 'ridge') return ridgeReach(form, outline, FLOW_EDGE_M);
     return Math.max(form.rx || form.r || 70, form.rz || form.r || form.rx || 70) * (1 + outline) + FLOW_EDGE_M;
   });
   return (x, z) => {

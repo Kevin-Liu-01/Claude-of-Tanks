@@ -14,6 +14,7 @@
 import * as THREE from 'three';
 import type { SimplexNoise } from '../engine/simplexFast.ts';
 import { finishSkin, hsl, SkinMesh, type CastleGround, type V3 } from './castleRock.ts';
+import { landformPathStation, prepareLandformPath, type LandformPathStation } from './landformPath.ts';
 
 type Rng = () => number;
 
@@ -32,6 +33,9 @@ export interface CanyonWallSpec {
   span?: number;
   /** sRGB HSL base tone of the rock (default Navajo sandstone). */
   tone?: readonly [number, number, number];
+  /** (Skybridge round 6) a path trench's control points (its landform's `path`, landformPath.ts): the skin follows the
+   * curve, its length the curve's; x, z, length and yawDeg then only name it. */
+  path?: ReadonlyArray<readonly [number, number]>;
 }
 
 interface CanyonWallOptions {
@@ -45,8 +49,19 @@ export function buildCanyonWall(spec: CanyonWallSpec, ground: CastleGround, nois
   { mobile = false }: CanyonWallOptions = {}): { geometry: THREE.BufferGeometry | null; triangles: number } {
   const groundAt = ground.getHeightAtFast ? (x: number, z: number) => ground.getHeightAtFast!(x, z) : (x: number, z: number) => ground.getHeightAt(x, z);
   const yaw = THREE.MathUtils.degToRad(spec.yawDeg);
-  const ax: V3 = [Math.cos(yaw), 0, Math.sin(yaw)], cr: V3 = [-Math.sin(yaw), 0, Math.cos(yaw)];
-  const span = (spec.span ?? 0.82) * spec.length;
+  const ax: V3 = [Math.cos(yaw), 0, Math.sin(yaw)];
+  // (round 6) a station's frame: the straight axis's (exactly as before), or the path's point and tangent
+  const path = spec.path ? prepareLandformPath(spec.path, spec.width) : null;
+  const st: LandformPathStation = { x: 0, z: 0, tx: ax[0], tz: ax[2] };
+  let stS = NaN;
+  const frameAt = (s: number): LandformPathStation => {
+    if (s === stS) return st;
+    stS = s;
+    if (path) return landformPathStation(path, s, st);
+    st.x = spec.x + ax[0] * s; st.z = spec.z + ax[2] * s;
+    return st;
+  };
+  const span = (spec.span ?? 0.82) * (path ? path.length : spec.length);
   const step = mobile ? 2.8 : 1.4;
   const stations = Math.max(2, Math.floor(span / step));
   const tone = spec.tone ?? [0.045, 0.5, 0.46];
@@ -54,7 +69,7 @@ export function buildCanyonWall(spec: CanyonWallSpec, ground: CastleGround, nois
   const salt = rng() * 100;
   for (const side of [-1, 1]) {
     // per station: the wall's foot and brow on this side (out from the axis, the floor, then the rise, then the plain)
-    const at = (s: number, r: number) => groundAt(spec.x + ax[0] * s + cr[0] * side * r, spec.z + ax[2] * s + cr[2] * side * r);
+    const at = (s: number, r: number) => { const f = frameAt(s); return groundAt(f.x + -f.tz * side * r, f.z + f.tx * side * r); };
     const walls: Array<{ s: number; foot: number; footY: number; brow: number; browY: number } | null> = [];
     for (let k = 0; k <= stations; k++) {
       const s = -span / 2 + (k / stations) * span;
@@ -100,25 +115,31 @@ export function buildCanyonWall(spec: CanyonWallSpec, ground: CastleGround, nois
         p = p * endFade - 0.5 * (1 - endFade);
         // toward the void: back along the station's ray to the axis
         const r = rw - p;
-        const pt: V3 = [spec.x + ax[0] * w.s + cr[0] * side * r, y, spec.z + ax[2] * w.s + cr[2] * side * r];
+        const f = frameAt(w.s);
+        const pt: V3 = [f.x + -f.tz * side * r, y, f.z + f.tx * side * r];
         // the colour: the sandstone's cross-beds, the varnish curtains from the brow, the bathtub ring at the water
         const mott = noise.noise3d(pt[0] * 0.17 + salt, pt[1] * 0.17, pt[2] * 0.17);
         const sweep = Math.sin(y * 1.7 + w.s * 0.11 + mott * 1.4);
         let h = tone[0] + 0.008 * sweep, sa = tone[1] * (1 - 0.08 * sweep), l = tone[2] * (1 + 0.06 * sweep + 0.05 * mott);
         const curtain = smooth(0.5, 0.85, noise.noise(w.s * 0.21 + salt * 2, side * 5.1) * 0.5 + 0.5) * smooth(yLow, yTop, y);
         l *= 1 - 0.38 * curtain; sa *= 1 - 0.3 * curtain;
-        const ring = 1 - smooth(yLow + 0.7, yLow + 6.5, y);
-        l *= 1 + 0.32 * ring; sa *= 1 - 0.35 * ring;
+        // (round 6, wave 259: "no legible bathtub ring") the lake's calcite ring: a pale band some five metres over the
+        // water, its top a crisp line where the lake stood longest, wavering a little along the wall
+        const ringTop = yLow + 5.2 + 0.6 * noise.noise(w.s * 0.05 + salt, side * 2.9);
+        const ring = 1 - smooth(ringTop - 0.35, ringTop + 0.15, y);
+        l *= 1 + 0.62 * ring; sa *= 1 - 0.55 * ring;
         l *= 1 - 0.1 * flute - 0.12 * (1 - Math.min(1, p / 0.9));
         col.push(mesh.vert(pt, hsl(h, sa, l), groundAt(pt[0], pt[2])));
       }
       grid.push(col);
     }
-    // the faces between neighbouring stations (a station with no wall parts the skin)
-    const out: V3 = [-cr[0] * side, 0, -cr[2] * side];
+    // the faces between neighbouring stations (a station with no wall parts the skin); toward the void: the station's
+    // own inward normal (the straight axis's one normal)
     for (let k = 0; k < stations; k++) {
       const a = grid[k], b = grid[k + 1];
       if (!a.length || !b.length) continue;
+      const f = frameAt(-span / 2 + (k / stations) * span);
+      const out: V3 = [f.tz * side, 0, -f.tx * side];
       for (let i = 0; i + 1 < rows; i++) {
         mesh.tri(a[i], b[i], b[i + 1], out);
         mesh.tri(a[i], b[i + 1], a[i + 1], out);

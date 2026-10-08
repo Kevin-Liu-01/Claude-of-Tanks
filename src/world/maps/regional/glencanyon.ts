@@ -116,7 +116,9 @@ function transformer(sink: PartSink, x: number, z: number, yaw: number, s: numbe
  */
 function busFrame(sink: PartSink, x: number, z0: number, z1: number, h: number, colour: Rgb): void {
   const c = 0.22;
-  for (const z of [z0, z1]) latticeTower(sink, x, z, c, c, h, colour, false, 2.4);
+  // (Skybridge round 6: the frames braced at the dead-end towers' 3.2 m bay and their strings' discs six-sided — the
+  // switchyard back inside the kit's 12,000-triangle budget, 12,952 -> 11,656, with round 4's bushings and strain strings)
+  for (const z of [z0, z1]) latticeTower(sink, x, z, c, c, h, colour, false, 3.2);
   // the beam: two chords and the web between them
   for (const dy of [0, -0.5]) sink.member('structureMetal', [x, h - 0.15 + dy, z0 - 0.3], [x, h - 0.15 + dy, z1 + 0.3], 0.07, 0.07, [0, 1, 0], { colour, decor: true, exposed: true }, 0);
   const n = Math.max(3, Math.round((z1 - z0 + 0.6) / 0.6));
@@ -128,7 +130,7 @@ function busFrame(sink: PartSink, x: number, z0: number, z1: number, h: number, 
     const z = z0 + (z1 - z0) * (k + 0.5) / 3;
     // the string: a stack of discs on its rod, the clamp and the bus tube along x
     sink.member('structureMetal', [x, h - 0.7, z], [x, h - 1.9, z], 0.03, 0.03, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
-    for (let d = 0; d < 6; d++) sink.cylinder('structureMetal', [x, h - 0.85 - d * 0.18, z], 'y', 0.05, 0.14, 8, { colour: PORCELAIN, decor: true }, 0.14);
+    for (let d = 0; d < 6; d++) sink.cylinder('structureMetal', [x, h - 0.85 - d * 0.18, z], 'y', 0.05, 0.14, 6, { colour: PORCELAIN, decor: true }, 0.14);
     pipe(sink, 'structureMetal', [x - 2.6, h - 2.0, z], [x + 2.6, h - 2.0, z], 0.07, 6, { colour: ALUMINIUM, decor: true });
   }
 }

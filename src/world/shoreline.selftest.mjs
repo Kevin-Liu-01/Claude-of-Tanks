@@ -71,12 +71,14 @@ for (const id of MAP_IDS.filter(id => id !== 'polders')) {
   }
 }
 assert.ok(legacyChecks > 10000);
-// Skybridge's arm (round 4): every disc round, its shore exactly its radius at every bearing
+// Skybridge's arm (round 6): every disc an ellipse long along the arm's curve — its opposite bearings alike, never wider
+// than its radius nor narrower than 1.6 times less — or round (the tailwater pocket's); and like every authored shore it
+// keeps its contour smooth (below)
 for (const disc of getMapConfig('skybridge').terrain.lakes) {
-  assert.ok(disc.radii.length === 16 && disc.radii.every((r) => r === 1), 'skybridge: the arm\'s discs are round');
-  for (let i = 0; i < 32; i++) assert.ok(Math.abs(shorelineRadiusAt(disc, i * Math.PI / 16) - disc.r) < 1e-9, 'skybridge: a round shore');
+  assert.ok(disc.radii.length === 16 && disc.radii.every((r, i) => Math.abs(r - disc.radii[(i + 8) & 15]) < 1e-9 && r <= 1 && r >= 1 / 1.6 - 1e-3),
+    'skybridge: the arm\'s discs are ellipses along it, or round');
 }
-for (const disc of ['polders', 'oasis', 'saltwind', 'fjord'].flatMap(id => getMapConfig(id).terrain.lakes)) {
+for (const disc of ['polders', 'oasis', 'saltwind', 'fjord', 'skybridge'].flatMap(id => getMapConfig(id).terrain.lakes)) {
   assert.equal(disc.radii.length, 16);
   for (let i = 0; i < 16; i++) {
     const a = i * Math.PI / 8;

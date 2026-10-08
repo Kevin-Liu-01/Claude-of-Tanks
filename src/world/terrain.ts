@@ -29,6 +29,7 @@ import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts
 import { shorelineDistance, shorelineRadiusAt, shorelineWetness, sampleShorelineMask } from './shoreline.ts';
 import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, LIQUID_MARSH_CORE, LIQUID_MARSH_STRIDE } from './liquidMarshSurface.ts';
 import { composeLakeHeight, type LakeHeightResult } from './lakeHeightComposition.ts';
+import { buildLakeCandidateIndex, lakeCandidatesAt, type LakeCandidateIndex } from './lakeCandidateIndex.ts';
 import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness } from './liquidMarshIndex.ts';
 import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
 import {
@@ -48,6 +49,7 @@ import { stampShoreDirtMask } from './shoreDirtMask.ts';
 import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMask.ts';
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
 import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type PreparedPlayableRelief } from './playableRelief.ts';
+import { landformPathFrame, prepareLandformPath, type LandformPathFrame, type PreparedLandformPath } from './landformPath.ts';
 import { createGeologyRockSampler, createGeologyZoneSampler, knollGeologyHeight, ridgeGeologyHeight, type GeologyZones, type LandformGeology } from './landformGeology.ts';
 import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import { createBorderLandform, resolveBorderLandform, type BorderLandformSettings } from './borderLandform.ts';
@@ -271,6 +273,18 @@ interface LandformConfig {
    * (a few incommensurate sines of the distance along it), the two walls together, never wider than authored, the
    * middle 30 m either side on the authored line. Absent = straight. */
   meander?: number;
+  /** Ridges only (the map-revival lane, 2026-10-08, Skybridge round 6): the ridge follows this path instead of its
+   * bearing — control points the curve passes through (landformPath.ts); x, z, length and yawDeg are then the path's
+   * (createLayout sets them). Every term of the ridge's geology follows the bends. */
+  path?: ReadonlyArray<readonly [number, number]>;
+  _path?: PreparedLandformPath;
+  /** A path ridge's half-widths at its control points, spread evenly along its curve (default: `width` throughout): a
+   * canyon arm widening toward its dam (landformGeology.ts ridgeWidthAt). */
+  widths?: ReadonlyArray<number>;
+  _widths?: Float64Array;
+  /** 'carve' (a negative landform): carved landforms join as a union, the deepest of them at each point, instead of
+   * adding, so a branch or a bend's overlap never cuts twice as deep (a canyon's side canyons). */
+  union?: 'carve';
 }
 
 interface DuneConfig {
@@ -916,6 +930,16 @@ const DEFAULT_SPAWNS: SpawnConfig = {
 export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads = true): TerrainLayout {
   const t: TerrainSettings = { ...DEFAULT_TERRAIN, ...(cfg?.terrain ?? {}) };
   t.landforms = (t.landforms || []).map((form) => {
+    if (form.path) {
+      // (round 6) a path ridge: its frame is the curve's; its centre, length and bearing are the path's
+      if (form.kind !== 'ridge') throw new Error(`A landform path is for ridges (${form.kind})`);
+      const outline = Math.max(0, Math.min(0.35, form.geology?.outline ?? 0));
+      if (form.widths && form.widths.length !== form.path.length) throw new Error('A landform path takes one width per control point');
+      const widest = form.widths ? Math.max(...form.widths) : form.width || 45;
+      const path = prepareLandformPath(form.path, Math.max(1, widest) * (1 + outline) + 4);
+      return { ...form, x: path.cx, z: path.cz, length: path.length, yawDeg: 0, _c: 1, _s: 0, _path: path,
+        ...(form.widths ? { _widths: Float64Array.from(form.widths) } : {}) };
+    }
     const yaw = THREE.MathUtils.degToRad(form.yawDeg || 0);
     if (form.relief) return { ...form, _c: Math.cos(yaw), _s: Math.sin(yaw), _relief: preparePlayableRelief(form.relief) };
     return { ...form, _c: Math.cos(yaw), _s: Math.sin(yaw) };
@@ -1006,6 +1030,8 @@ function segDist(
   return { d: Math.sqrt(ex * ex + ez * ez), t };
 }
 
+const _pathFrame: LandformPathFrame = { lx: 0, lz: 0 };
+
 /** Pure analytical height contribution for an authored tactical landform. */
 export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
   phase: 'legacy-support' | 'authored-relief' = 'authored-relief'): number {
@@ -1013,8 +1039,13 @@ export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
   const dx = x - form.x, dz = z - form.z;
   const c = form._c ?? Math.cos(THREE.MathUtils.degToRad(form.yawDeg || 0));
   const s = form._s ?? Math.sin(THREE.MathUtils.degToRad(form.yawDeg || 0));
-  const lx = dx * c + dz * s;
-  const lz = -dx * s + dz * c;
+  let lx = dx * c + dz * s;
+  let lz = -dx * s + dz * c;
+  if (form._path) {
+    // (round 6) a path ridge's frame: the station along its curve and the distance across it; beyond its reach nothing
+    if (!landformPathFrame(form._path, x, z, _pathFrame)) return 0;
+    lx = _pathFrame.lx; lz = _pathFrame.lz;
+  }
   const height = form.height || 0;
   if (form.kind === 'gorge') {
     const along = 1 - smoothstep((form.length || 700) * .36, (form.length || 700) * .5, Math.abs(lx));
@@ -1428,6 +1459,26 @@ function* heightFieldBuildSteps(
   // every legacy lake retains the original sequential arithmetic below.
   const continuousLakeAprons = _LAKES.some(lake => lake.radii !== undefined);
   const lakeHeightResult: LakeHeightResult = { height: 0, wetness: 0 };
+  // (2026-10-08, lakeCandidateIndex.ts) the discs that can reach a point, so a map whose water is a chain of many discs
+  // (Skybridge's meander) does not walk them all at every sample; rebuilt once the liquid banks fix each disc's band;
+  // null under nine discs (the plain loops), and every result bit-identical either way
+  let lakeIndex: LakeCandidateIndex | null = buildLakeCandidateIndex(_LAKES, null);
+  const lakesNear = (x: number, z: number): ArrayLike<number> | null => lakeIndex ? lakeCandidatesAt(lakeIndex, x, z) : null;
+  /** sampleShorelineMask(_MARSHES, _LAKES, x, z) over the candidate lakes (the same maximum, in the same order). */
+  const shoreMaskAt = (x: number, z: number): number => {
+    const near = lakesNear(x, z);
+    if (!near) return sampleShorelineMask(_MARSHES, _LAKES, x, z);
+    let wetness = 0;
+    for (let k = 0; k < near.length; k++) {
+      wetness = Math.max(wetness, shorelineWetness(_LAKES[near[k]], x, z, true));
+      if (wetness === 1) return 1;
+    }
+    for (let i = 0; i < _MARSHES.length; i++) {
+      wetness = Math.max(wetness, shorelineWetness(_MARSHES[i], x, z, false));
+      if (wetness === 1) return 1;
+    }
+    return wetness;
+  };
   let liquidIndex: Uint32Array | null = null;
   let quarryFloorY: number | null = null;
   let landformPhase: 'legacy-support' | 'authored-relief' = 'legacy-support';
@@ -1528,6 +1579,8 @@ function* heightFieldBuildSteps(
       h += (wall + tier2 * tierScale) * T.mesas.amp * capNoise
         * corridorProtect * (1 - settlementWeight) * (1 - marshWeight) * spawnClear;
     }
+    // (round 6) the carved landforms ('carve' union) join as their deepest, not their sum
+    let carve = 0;
     for (let li = 0; li < T.landforms.length; li++) {
       const form = T.landforms[li];
       const corridorScale = form.corridorScale ?? 0.62;
@@ -1536,9 +1589,10 @@ function* heightFieldBuildSteps(
       const protect = (1 - corridorWeight * (1 - corridorScale))
         * (1 - settlementWeight * (1 - settlementScale))
         * (1 - marshWeight * (1 - wetScale));
-      h += sampleLandformHeight(form, x, z, landformPhase) * spawnClear * protect;
+      const dh = sampleLandformHeight(form, x, z, landformPhase) * spawnClear * protect;
+      if (form.union === 'carve') { if (dh < carve) carve = dh; } else h += dh;
     }
-    return h;
+    return h + carve;
   }
 
   function applyHeightConstraints(
@@ -1569,7 +1623,7 @@ function* heightFieldBuildSteps(
     let lakeWetness = 0;
     if (lakesOn) {
       composeLakeHeight(_LAKES, lakeLevels, liquidLakeBanks, continuousLakeAprons,
-        x, z, h, settlementWeight, lakeHeightResult);
+        x, z, h, settlementWeight, lakeHeightResult, lakesNear(x, z));
       h = lakeHeightResult.height;
       lakeWetness = lakeHeightResult.wetness;
     }
@@ -1675,7 +1729,7 @@ function* heightFieldBuildSteps(
       if (waterWeight > 0) h += (waterLevelSum / waterWeightSum - h) * waterWeight;
     }
     if (liquidLakeBanks !== null) {
-      composeLakeHeight(_LAKES, lakeLevels, liquidLakeBanks, continuousLakeAprons, x, z, h, 0, outlandLakeHeight);
+      composeLakeHeight(_LAKES, lakeLevels, liquidLakeBanks, continuousLakeAprons, x, z, h, 0, outlandLakeHeight, lakesNear(x, z));
       h = outlandLakeHeight.height;
     }
     return h;
@@ -2320,6 +2374,7 @@ function* heightFieldBuildSteps(
     // cram a multi-metre bank into the fixed ice lake's 0.38-radius apron.
     liquidLakeBanks = buildLiquidLakeBanks(liquidLakes,
       (x, z) => heightAt(x, z, false, false, false));
+    lakeIndex = buildLakeCandidateIndex(_LAKES, liquidLakeBanks);
   }
 
   // Round 61 (2026-09-24, Amberford's bridge over the river): a marsh station authored `crossing: 'bridge'` carries
@@ -2534,14 +2589,16 @@ function* heightFieldBuildSteps(
     const roadDistance = gridSample(gRoadDist, x, z);
     if (roadDistance < 14) return 0;
     const wetness = liquidWater ? waterWetnessAt(x, z)
-      : sampleShorelineMask(_MARSHES, _LAKES, x, z);
+      : shoreMaskAt(x, z);
     return trackSurfaceAt(trackPolicy, roadDistance, wetness, waterRampStart, waterRampEnd);
   }
 
   function getGroundType(x: number, z: number): GroundType {
     if (gridSample(gRoadDist, x, z) < 4.3) return 'hard';
     if (bridgeDecks.length && bridgeDeckOver(x, z) !== null) return 'hard'; // round 61: stone across the whole deck
-    for (const lk of _LAKES) {
+    const nearLakes = lakesNear(x, z), lakeCount = nearLakes ? nearLakes.length : _LAKES.length;
+    for (let k = 0; k < lakeCount; k++) {
+      const lk = _LAKES[nearLakes ? nearLakes[k] : k];
       // maps r1 (ADDITIVE): terrain.softLakes = liquid-water sheets (coastal
       // shallows) drive as bogged 'soft' ground; default stays 'hard' (ice).
       if (shorelineDistance(lk, x, z, 0.95) < 0.95) return T.softLakes ? 'soft' : 'hard';
@@ -2587,7 +2644,9 @@ function* heightFieldBuildSteps(
   /** Round 47: the bay contour and its water level at any point (the ring, the material bake and the apron read it). */
   function outlandWaterAt(x: number, z: number): { wetness: number; level: number } | null {
     let best = 0, level = 0;
-    for (let li = 0; li < _LAKES.length; li++) {
+    const near = lakesNear(x, z), count = near ? near.length : _LAKES.length;
+    for (let k = 0; k < count; k++) {
+      const li = near ? near[k] : k;
       const wetness = shorelineWetness(_LAKES[li], x, z, true);
       if (wetness > best) { best = wetness; level = lakeLevels[li]; }
     }
@@ -2608,10 +2667,13 @@ function* heightFieldBuildSteps(
     let wetness = liquidIndex
       ? sampleIndexedMarshWetness(_MARSHES, liquidIndex,
         liquidMarshIndexBucket(x, z, MAP_SIZE, liquidIndexWords), liquidIndexWords, x, z)
-      : sampleShorelineMask(_MARSHES, _LAKES, x, z);
-    if (liquidIndex && wetness < 1) for (const lake of _LAKES) {
-      wetness = Math.max(wetness, shorelineWetness(lake, x, z, true));
-      if (wetness === 1) break;
+      : shoreMaskAt(x, z);
+    if (liquidIndex && wetness < 1) {
+      const near = lakesNear(x, z), count = near ? near.length : _LAKES.length;
+      for (let k = 0; k < count; k++) {
+        wetness = Math.max(wetness, shorelineWetness(_LAKES[near ? near[k] : k], x, z, true));
+        if (wetness === 1) break;
+      }
     }
     if (wetness <= 0) return 0;
     // Surface heights deliberately yield to these dry height constraints.
@@ -2637,7 +2699,9 @@ function* heightFieldBuildSteps(
     if (railCuttingsOn && railCuttingExcludes(railCuttings!, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8, railOpenLines)) {
       return true;
     }
-    for (const lk of _LAKES) {
+    const nearLakes = lakesNear(x, z), lakeCount = nearLakes ? nearLakes.length : _LAKES.length;
+    for (let k = 0; k < lakeCount; k++) {
+      const lk = _LAKES[nearLakes ? nearLakes[k] : k];
       if (lk.radii) {
         if (shorelineDistance(lk, x, z, 1.04) < 1.04) return true;
         continue;
@@ -7616,9 +7680,16 @@ function* terrainBuildSteps(
       ...(heightField._layout.marshes ?? []).map((d) => ({ d, lake: false })),
     ];
     if (discs.length) {
+      // (2026-10-08, lakeCandidateIndex.ts) the lakes that can reach a point (the minimum is order-free; the marshes all)
+      const lakeCount = heightField._layout.lakes?.length ?? 0;
+      const shoreIndex = buildLakeCandidateIndex(heightField._layout.lakes ?? [], null);
+      const marshIds = Array.from({ length: discs.length - lakeCount }, (_, i) => lakeCount + i);
       shoreAt = (x: number, z: number): number => {
         let best = 32;
-        for (let i = 0; i < discs.length; i++) {
+        const near = shoreIndex ? lakeCandidatesAt(shoreIndex, x, z) : null;
+        const count = near ? near.length + marshIds.length : discs.length;
+        for (let k = 0; k < count; k++) {
+          const i = near ? (k < near.length ? near[k] : marshIds[k - near.length]) : k;
           const { d, lake } = discs[i];
           const dist = shorelineDistance(d, x, z, 1.32);
           if (!Number.isFinite(dist)) continue;
