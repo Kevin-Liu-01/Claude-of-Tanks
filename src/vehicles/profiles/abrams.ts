@@ -1,3 +1,4 @@
+import {addRearFieldStowage} from './rearFieldStowage.ts';
 import {buildM1A1GunMount} from './m1a1GunMount.ts';
 import {abramsPlanarCheek} from './abramsPlanarCheek.ts';
 import {facetedSlab,symmetricSlab} from './facetedSlab.ts';
@@ -372,7 +373,7 @@ function configuredAbramsProfile(
 ) {
   return {
     ...options,
-    build: (builder: RuntimeValue): void => build(requireAbramsBuilder(builder), options),
+    build: (builder: RuntimeValue): void => { const P=requireAbramsBuilder(builder); build(P, options); if(P.spec.id==='m1a2')addRearFieldStowage(P); },
   };
 }
 
