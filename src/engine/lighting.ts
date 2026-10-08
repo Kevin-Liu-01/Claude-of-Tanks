@@ -1363,6 +1363,9 @@ export function createLighting(
     // correlate a completed frame's renderer counters with its cascade work.
     // Keep the richer getShadowTelemetry() path at HUD cadence only.
     get scheduledMask() { return lastScheduledMask; },
+    /** The static shadow cache's record of the last frame (live, never allocated; null until the cache loads): what each
+     * cascade did and why — the cost probes read it at the top of every lighting update (shadowStaticCache.ts). */
+    get staticCacheFrame() { return staticShadowCache?.frameRecord ?? null; },
 
     /** A restored renderer has no depth contents, even when the CPU target
      * objects survived. Cold targets must fail every dormancy/partial-prime

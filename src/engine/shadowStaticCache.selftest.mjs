@@ -346,4 +346,58 @@ const copies = (log) => log.filter((e) => e.kind === 'copy').map((e) => `${e.fro
   assert.match(lighting, /invalidateShadowMaps\(\): void \{[\s\S]{0,140}staticShadowCache\?\.dispose\(\)/);
 }
 
-console.log('shadow static cache: pose/content invalidation, forced frames the ordinary way, two-pass render, promotion and demotion, the settle rule, arming, fail-open, router PASS');
+// the frame record (2026-10-08, the coordinator's ask after fifo2's latch audit: a static view paid c0+c1 0.4 ms reused
+// or 5 ms rebuilt, at random per page and visit): what each cascade did at each lighting update and why — one live
+// record, rewritten every frame, read by the cost probes at the top of the next update
+{
+  const f = fixture();
+  const cache = createShadowStaticCache();
+  const rec = cache.frameRecord;
+  frame(f, cache);
+  assert.equal(rec.fullMask, 1, 'the first render: the live map is allocated the ordinary way');
+  assert.equal(rec.content, 'initial', 'the first hash of the static world');
+  frame(f, cache);
+  assert.equal(rec.unsettledMask, 1, 'settling: the ordinary render, unsettled');
+  for (let i = 2; i < STATIC_SHADOW_SETTLE_FRAMES; i++) frame(f, cache);
+  frame(f, cache);
+  assert.equal(rec.rebuildMask, 1); assert.equal(rec.reason, 'cold', 'the first copy');
+  frame(f, cache);
+  assert.deepEqual([rec.reuseMask, rec.rebuildMask, rec.fullMask, rec.reason, rec.content], [1, 0, 0, '', ''], 'a still frame reuses, for no reason');
+  assert.equal(cache.frameRecord, rec, 'one live record');
+  // a snap: the pose moves (the field and the step named), the cascade settles the ordinary way, then one re-render
+  frame(f, cache, { mutate: () => { f.light.position.x += 0.4; } });
+  assert.deepEqual([rec.moveMask, rec.moveField, rec.unsettledMask], [1, 0, 1]);
+  assert.ok(Math.abs(rec.moveDelta - 0.4) < 1e-9, 'the step');
+  for (let i = 1; i < STATIC_SHADOW_SETTLE_FRAMES; i++) frame(f, cache);
+  frame(f, cache);
+  assert.deepEqual([rec.rebuildMask, rec.reason, rec.poseField, rec.moveMask], [1, 'pose', 0, 0], 'held: rebuilt for its pose');
+  // the static content: what changed, in which caster
+  frame(f, cache, { mutate: () => { f.trees.instanceMatrix.needsUpdate = true; } });
+  assert.deepEqual([rec.reason, rec.content, rec.changed], ['content', 'instances', 'trees']);
+  frame(f, cache, { mutate: () => { f.crate.material.needsUpdate = true; } });
+  assert.deepEqual([rec.content, rec.changed], ['material', 'crate']);
+  frame(f, cache, { mutate: () => { f.terrain.geometry.attributes.position.needsUpdate = true; } });
+  assert.deepEqual([rec.content, rec.changed], ['geometry', 'terrain']);
+  frame(f, cache, { mutate: () => { f.crate.position.x += 1; f.crate.updateMatrixWorld(); } });
+  assert.deepEqual([rec.content, rec.changed], ['matrix', 'crate']);
+  frame(f, cache, { mutate: () => { f.crate.position.x -= 1; f.crate.updateMatrixWorld(); } });
+  assert.deepEqual([rec.content, cache.telemetry().promoted], ['matrix', 1], 'the second consecutive change promotes it, still named');
+  frame(f, cache);
+  assert.equal(rec.content, '', 'a promoted caster at rest changes nothing');
+  const late = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+  late.name = 'late-caster'; late.castShadow = true; f.props.add(late); late.updateMatrixWorld();
+  frame(f, cache);
+  assert.deepEqual([rec.content, rec.changed], ['insert', 'late-caster'], 'a caster that arrives late');
+  frame(f, cache, { mutate: () => { late.visible = false; } });
+  assert.deepEqual([rec.content, rec.changed], ['structure', ''], 'a visibility flip no caster step names');
+  frame(f, cache, { forced: true });
+  assert.deepEqual([rec.forced, rec.reason, rec.rebuildMask, rec.reuseMask], [true, 'forced', 0, 0]);
+  frame(f, cache);
+  assert.deepEqual([rec.forced, rec.reason, rec.rebuildMask], [false, 'forced', 1], 'the first unforced frame re-renders for them');
+  const t = cache.telemetry();
+  assert.deepEqual([t.reasons.cold, t.reasons.pose, t.reasons.forced], [1, 1, 1]);
+  assert.equal(t.reasons.content, 7, 'one re-render per content change');
+  assert.deepEqual(t.contentKinds, { initial: 1, instances: 1, material: 1, geometry: 1, matrix: 2, insert: 1, structure: 1 });
+}
+
+console.log('shadow static cache: pose/content invalidation, forced frames the ordinary way, two-pass render, promotion and demotion, the settle rule, arming, fail-open, router, the frame record PASS');

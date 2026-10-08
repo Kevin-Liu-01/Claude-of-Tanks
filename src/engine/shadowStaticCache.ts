@@ -86,7 +86,11 @@ export function planCascade(input: {
  * Promotion bookkeeping of one world caster across frames (pure): a caster that changed on PROMOTE consecutive frames
  * becomes dynamic; a dynamic caster still for DEMOTE frames becomes static again.
  */
-interface CasterMotionRecord { sig: number; changedRun: number; stillRun: number; dynamic: boolean }
+interface CasterMotionRecord {
+  sig: number; changedRun: number; stillRun: number; dynamic: boolean;
+  /** The caster's part signatures at its last change (casterSignatureParts): what changed, named for the frame record. */
+  parts?: Uint32Array;
+}
 export function stepCasterMotion(record: CasterMotionRecord, sig: number): 'none' | 'changed' | 'promote' | 'demote' {
   const changed = sig !== record.sig;
   record.sig = sig;
@@ -122,13 +126,28 @@ function mixMaterial(h: number, m: THREE.Material | undefined): number {
   return mix(h, m.visible ? 1 : 2);
 }
 
-/** What three's shadow traversal reads from one caster, as one 32-bit signature. */
-export function casterSignature(object: CasterLike): number {
+/** What changed in a caster, by its part signatures (casterSignatureParts' order). */
+const PART_KINDS = ['flags', 'geometry', 'material', 'matrix', 'instances'] as const;
+const PARTS = PART_KINDS.length;
+const scratchParts = new Uint32Array(PARTS);
+
+/**
+ * What three's shadow traversal reads from one caster, in five part signatures: its flags (identity, layers, the cast
+ * and culling flags, the router's cascade masks), its geometry (identity, draw range, the index and the position and
+ * instanced streams' versions), its materials (identity, version, visibility), its world matrix and its instances.
+ */
+export function casterSignatureParts(object: CasterLike, out: Uint32Array): Uint32Array {
   let h = 2166136261;
   h = mix(h, object.id);
   h = mix(h, object.layers.mask);
   h = mix(h, object.castShadow ? 1 : 2);
   h = mix(h, object.frustumCulled ? 1 : 2);
+  const staticMask = shadowCasterCascadesOf(object);
+  if (staticMask !== null) h = mix(h, staticMask);
+  const dynamicMask = shadowCasterDynamicMaskOf(object);
+  if (dynamicMask !== null) h = mix(h, dynamicMask);
+  out[0] = h;
+  h = 2166136261;
   const g = object.geometry;
   if (g) {
     h = mix(h, g.id);
@@ -142,21 +161,38 @@ export function casterSignature(object: CasterLike): number {
       if (key === 'position' || attribute.isInstancedBufferAttribute) h = mix(h, attribute.version ?? 0);
     }
   }
+  out[1] = h;
+  h = 2166136261;
   const m = object.material;
   if (Array.isArray(m)) for (let i = 0; i < m.length; i++) h = mixMaterial(h, m[i]);
   else h = mixMaterial(h, m);
   if (object.customDepthMaterial) h = mixMaterial(h, object.customDepthMaterial);
+  out[2] = h;
+  h = 2166136261;
   const e = object.matrixWorld.elements;
   for (let i = 0; i < 16; i++) h = mixFloat(h, e[i]);
+  out[3] = h;
+  h = 2166136261;
   if (object.isInstancedMesh) {
     h = mix(h, object.count ?? 0);
     h = mix(h, object.instanceMatrix?.version ?? 0);
   }
-  const staticMask = shadowCasterCascadesOf(object);
-  if (staticMask !== null) h = mix(h, staticMask);
-  const dynamicMask = shadowCasterDynamicMaskOf(object);
-  if (dynamicMask !== null) h = mix(h, dynamicMask);
+  out[4] = h;
+  return out;
+}
+
+/** What three's shadow traversal reads from one caster, as one 32-bit signature (its parts, combined). */
+export function casterSignature(object: CasterLike): number {
+  casterSignatureParts(object, scratchParts);
+  let h = 2166136261;
+  for (let i = 0; i < PARTS; i++) h = mix(h, scratchParts[i]);
   return h;
+}
+
+/** The first part that differs between two part signatures: what changed in a caster. */
+function changedPart(before: Uint32Array, after: Uint32Array): string {
+  for (let i = 0; i < PARTS; i++) if (before[i] !== after[i]) return PART_KINDS[i];
+  return 'flags';
 }
 
 const isCaster = (o: CasterLike): boolean => !!(o.isMesh || o.isLine || o.isPoints);
@@ -200,8 +236,43 @@ interface ShadowStaticCacheTelemetry {
   staticCasters: number;
   hashMs: number;
   lastRebuildReason: string;
+  /** Cascade re-renders by reason, and content changes by what changed (the frame records, summed). */
+  reasons: Record<string, number>;
+  contentKinds: Record<string, number>;
   failed: string | null;
   targetBytes: number;
+}
+
+/**
+ * One lighting update's record (live, rewritten every frame, never allocated): what each cascade did, as bit masks over
+ * the cascades, and why. Read it before the next update (the cost probes read it at the top of lighting.update()).
+ */
+interface ShadowStaticCacheFrame {
+  /** The lighting update it belongs to. */
+  frame: number;
+  /** A forced frame (every cascade rendered the ordinary way; the copies are stale). */
+  forced: boolean;
+  /** The cascades the cache re-rendered (the static layer, the copy, the dynamic pass). */
+  rebuildMask: number;
+  /** The cascades that reused their static copy (the copy and the dynamic pass). */
+  reuseMask: number;
+  /** The cascades rendered the ordinary way while armed (no live map yet, or a pose still moving). */
+  fullMask: number;
+  /** Of those, the cascades whose snapped pose had not held STATIC_SHADOW_SETTLE_FRAMES yet. */
+  unsettledMask: number;
+  /** The cascades whose snapped pose moved at this update, the first field that moved (writeCascadePose order) and by how much. */
+  moveMask: number;
+  moveField: number;
+  moveDelta: number;
+  /** The first rebuild's reason: 'cold', 'pose', 'content', 'forced', 'disabled' or an invalidation's ('force', 'dispose'). */
+  reason: string;
+  /** For a pose rebuild, the first field that differs from the copy's pose, and by how much. */
+  poseField: number;
+  poseDelta: number;
+  /** The static content changed at this update: what ('initial', 'insert', 'flags', 'geometry', 'material', 'matrix',
+   * 'instances', 'demote', 'structure') and the first changed caster's name. */
+  content: string;
+  changed: string;
 }
 
 export interface ShadowStaticCache {
@@ -217,6 +288,8 @@ export interface ShadowStaticCache {
   /** Release the copies' GPU targets (context restore, disposal); they are re-created on demand. */
   dispose(): void;
   telemetry(): ShadowStaticCacheTelemetry;
+  /** This frame's record (live; see ShadowStaticCacheFrame). */
+  readonly frameRecord: ShadowStaticCacheFrame;
 }
 
 /** The renderer surface the cache uses (the router hands the live WebGLRenderer; receipts a recording stub). */
@@ -254,9 +327,21 @@ export function createShadowStaticCache(): ShadowStaticCache {
   const muted: THREE.Object3D[] = [];
   const stats: ShadowStaticCacheTelemetry = {
     enabled: false, frames: 0, rebuilds: [], reuses: [], copies: 0, unsettled: 0, forcedFrames: 0, fullRenders: 0, contentChanges: 0,
-    promoted: 0, promotions: 0, demotions: 0, staticCasters: 0, hashMs: 0, lastRebuildReason: '', failed: null, targetBytes: 0,
+    promoted: 0, promotions: 0, demotions: 0, staticCasters: 0, hashMs: 0, lastRebuildReason: '', reasons: {}, contentKinds: {},
+    failed: null, targetBytes: 0,
   };
   let rebuildReason = 'cold';
+  const record: ShadowStaticCacheFrame = {
+    frame: 0, forced: false, rebuildMask: 0, reuseMask: 0, fullMask: 0, unsettledMask: 0, moveMask: 0, moveField: -1, moveDelta: 0,
+    reason: '', poseField: -1, poseDelta: 0, content: '', changed: '',
+  };
+  let hashedOnce = false;
+  /** The first content change of this frame: what changed and in which caster. */
+  const noteContent = (kind: string, object: THREE.Object3D | null): void => {
+    if (record.content) return;
+    record.content = kind;
+    record.changed = object ? object.name || object.type : '';
+  };
 
   function slotFor(index: number): CascadeSlot {
     let slot = slots[index];
@@ -364,6 +449,7 @@ export function createShadowStaticCache(): ShadowStaticCache {
       const record = motion.get(object)!;
       if (stepCasterMotion(record, casterSignature(object as CasterLike)) === 'demote') {
         promoted.delete(object); coverDirty = true; stats.demotions++;
+        noteContent('demote', object);
       }
     }
     let h = 2166136261;
@@ -377,14 +463,24 @@ export function createShadowStaticCache(): ShadowStaticCache {
       if (isProxy(o)) continue; // derived from its owner and the cascade's frustum
       if (isCaster(o) && o.castShadow) {
         const sig = casterSignature(o);
-        let record = motion.get(o);
-        if (!record) { record = { sig, changedRun: 0, stillRun: 0, dynamic: false }; motion.set(o, record); }
-        else if (stepCasterMotion(record, sig) === 'promote') {
-          // moving on consecutive frames: dynamic from this frame on (its subtree draws with the dynamic layer)
-          promoted.add(o);
-          coverDirty = true;
-          stats.promotions++;
-          continue;
+        let motionRecord = motion.get(o);
+        if (!motionRecord) {
+          motionRecord = { sig, changedRun: 0, stillRun: 0, dynamic: false, parts: Uint32Array.from(scratchParts) };
+          motion.set(o, motionRecord);
+          if (hashedOnce) noteContent('insert', o);
+        } else {
+          const step = stepCasterMotion(motionRecord, sig);
+          if (step === 'changed' || step === 'promote') {
+            if (motionRecord.parts) { noteContent(changedPart(motionRecord.parts, scratchParts), o); motionRecord.parts.set(scratchParts); }
+            else { noteContent('flags', o); motionRecord.parts = Uint32Array.from(scratchParts); }
+          }
+          if (step === 'promote') {
+            // moving on consecutive frames: dynamic from this frame on (its subtree draws with the dynamic layer)
+            promoted.add(o);
+            coverDirty = true;
+            stats.promotions++;
+            continue;
+          }
         }
         h = mix(mix(h, o.id), sig);
         casters++;
@@ -393,11 +489,16 @@ export function createShadowStaticCache(): ShadowStaticCache {
       for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
     }
     stats.staticCasters = casters;
+    hashedOnce = true;
     return h;
   }
 
   function beginFrame({ scene, lights, forced, enabled }: { scene: THREE.Scene; lights: readonly THREE.DirectionalLight[]; forced: boolean; enabled: boolean }): void {
     frame++;
+    record.frame = frame; record.forced = false;
+    record.rebuildMask = 0; record.reuseMask = 0; record.fullMask = 0; record.unsettledMask = 0;
+    record.moveMask = 0; record.moveField = -1; record.moveDelta = 0;
+    record.reason = ''; record.poseField = -1; record.poseDelta = 0; record.content = ''; record.changed = '';
     const on = enabled && !failed;
     stats.enabled = on;
     for (let i = 0; i < lights.length; i++) {
@@ -406,10 +507,22 @@ export function createShadowStaticCache(): ShadowStaticCache {
       slot.armed = false;
       writeCascadePose(lights[i], scratchPose);
       if (samePose(scratchPose, slot.lastPose)) slot.steady++;
-      else { slot.lastPose.set(scratchPose); slot.steady = 0; }
+      else {
+        if (!Number.isNaN(slot.lastPose[0])) {
+          record.moveMask |= 1 << i;
+          if (record.moveField < 0) {
+            for (let k = 0; k < POSE_FIELDS; k++) {
+              if (scratchPose[k] !== slot.lastPose[k]) { record.moveField = k; record.moveDelta = Math.abs(scratchPose[k] - slot.lastPose[k]); break; }
+            }
+          }
+        }
+        slot.lastPose.set(scratchPose);
+        slot.steady = 0;
+      }
     }
     if (!on) {
       if (contentStamp >= 0) { contentStamp++; rebuildReason = 'disabled'; }
+      record.reason = 'disabled';
       return;
     }
     if (forced) {
@@ -422,6 +535,8 @@ export function createShadowStaticCache(): ShadowStaticCache {
       contentStamp++;
       rebuildReason = 'forced';
       stats.forcedFrames++;
+      record.forced = true;
+      record.reason = 'forced';
       return;
     }
     staticRoots.length = 0;
@@ -433,6 +548,7 @@ export function createShadowStaticCache(): ShadowStaticCache {
     if (!staticRoots.length) return;
     const started = performance.now();
     const previousPromoted = promoted.size;
+    const firstHash = !hashedOnce;
     const h = hashStaticContent();
     if (coverDirty || promoted.size !== previousPromoted) rebuildCover();
     stats.hashMs = +(performance.now() - started).toFixed(3);
@@ -442,6 +558,12 @@ export function createShadowStaticCache(): ShadowStaticCache {
       contentStamp++;
       stats.contentChanges++;
       rebuildReason = 'content';
+      // a change no caster step named: the first hash ('initial'), else a visibility flip, a removal, a node moved
+      if (!record.content) record.content = firstHash ? 'initial' : 'structure';
+      stats.contentKinds[record.content] = (stats.contentKinds[record.content] || 0) + 1;
+    } else {
+      record.content = '';
+      record.changed = '';
     }
     stats.frames++;
     for (let i = 0; i < lights.length; i++) slotFor(i).armed = true;
@@ -475,6 +597,7 @@ export function createShadowStaticCache(): ShadowStaticCache {
       // three allocates the live map in this render: the copy starts on the next frame
       slot.valid = false;
       stats.fullRenders++;
+      record.fullMask |= 1 << cascadeIndex;
       return false;
     }
     const target = ensureTarget(renderer, slot, live);
@@ -484,9 +607,22 @@ export function createShadowStaticCache(): ShadowStaticCache {
       armed: true, hasTarget: !!target, settled, slotValid: slot.valid, poseSame: samePose(scratchPose, slot.pose),
       contentSame: slot.contentStamp === contentStamp, forced: false,
     });
-    if (plan === 'full') { stats.fullRenders++; if (!settled) stats.unsettled++; return false; }
+    if (plan === 'full') {
+      stats.fullRenders++;
+      record.fullMask |= 1 << cascadeIndex;
+      if (!settled) { stats.unsettled++; record.unsettledMask |= 1 << cascadeIndex; }
+      return false;
+    }
     if (plan === 'rebuild') {
       const reason = !slot.valid ? 'cold' : !samePose(scratchPose, slot.pose) ? 'pose' : rebuildReason;
+      record.rebuildMask |= 1 << cascadeIndex;
+      if (!record.reason) record.reason = reason;
+      if (reason === 'pose' && record.poseField < 0) {
+        for (let k = 0; k < POSE_FIELDS; k++) {
+          if (scratchPose[k] !== slot.pose[k]) { record.poseField = k; record.poseDelta = Math.abs(scratchPose[k] - slot.pose[k]); break; }
+        }
+      }
+      stats.reasons[reason] = (stats.reasons[reason] || 0) + 1;
       // the static layer: every dynamic caster hidden; three clears and renders the live map
       hideAll(dynamicTop);
       hideAll(promotedList());
@@ -507,6 +643,7 @@ export function createShadowStaticCache(): ShadowStaticCache {
     } else {
       if (!copyDepth(renderer, target, live)) { slot.valid = false; return false; }
       stats.reuses[cascadeIndex] = (stats.reuses[cascadeIndex] || 0) + 1;
+      record.reuseMask |= 1 << cascadeIndex;
     }
     // the dynamic layer on top of the static depth: the static subtrees hidden, the live map not cleared
     if (coverDirty) rebuildCover();
@@ -540,8 +677,8 @@ export function createShadowStaticCache(): ShadowStaticCache {
     let bytes = 0;
     for (const slot of slots) if (slot?.target) bytes += slot.target.width * slot.target.height * 5;
     stats.targetBytes = bytes;
-    return { ...stats, rebuilds: [...stats.rebuilds], reuses: [...stats.reuses] };
+    return { ...stats, rebuilds: [...stats.rebuilds], reuses: [...stats.reuses], reasons: { ...stats.reasons }, contentKinds: { ...stats.contentKinds } };
   }
 
-  return { beginFrame, renderCascade, disarm, invalidate, dispose, telemetry };
+  return { beginFrame, renderCascade, disarm, invalidate, dispose, telemetry, frameRecord: record };
 }
