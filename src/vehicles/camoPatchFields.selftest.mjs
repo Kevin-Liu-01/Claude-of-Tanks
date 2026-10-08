@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createCanvas, Path2D, DOMMatrix, ImageData } from '@napi-rs/canvas';
-import { createCatalogCamoPainter, isPatchFieldArt, liftDigitalTone } from './catalogCamoPainter.ts';
+import { camoArtTileSpanM, createCatalogCamoPainter, isPatchFieldArt, liftDigitalTone } from './catalogCamoPainter.ts';
 import { createMaterialPainter } from './materialPainter.ts';
 import { resolveCamoVisual, camoPatternIdHash, camoPatternStreamSeed } from './materials.ts';
 import { patchRoles } from './camoPatchField.ts';
@@ -29,7 +29,8 @@ function classified(specId, patternId) {
   const visual = resolveCamoVisual(getSpec(specId), patternId);
   const seed = camoPatternStreamSeed(visual, camoPatternIdHash(patternId));
   const c = createCanvas(N, N);
-  catalog(c.getContext('2d'), N, visual, painter.mulberry32(seed));
+  // the tile as the bake paints it: a wide 4 m tile for every patch-field scheme (painter v3)
+  catalog(c.getContext('2d'), N, visual, painter.mulberry32(seed), camoArtTileSpanM(visual.catalogPattern));
   const d = c.getContext('2d').getImageData(0, 0, N, N).data;
   const digital = visual.catalogPattern === 'digital' || visual.catalogPattern === 'digitaldesert';
   const pal = [visual.base, ...(visual.patches || [])].map(hex).map((p) => (digital ? liftDigitalTone(p) : p));
@@ -97,7 +98,15 @@ for (const [specId, patternId] of fieldPaints) {
     if (touches.size >= 2) bridging += texels.length;
   }
   assert.ok(bridging / darkTexels >= .6, `${patternId}: the dark tone bridges both main tones (${(bridging / darkTexels).toFixed(2)})`);
-  fieldLog.push(`${patternId} q ${quotient.toFixed(2)} aspect ${aspect.toFixed(2)} largest ${(largest * 100).toFixed(0)}%/${small} islands`);
+  // painter v3: patches the size a crew sprays on a hull (metre-scale), not half-metre blobs. The second main tone's
+  // area-weighted mean patch, in square metres of armour (the tile spans camoArtTileSpanM metres): 2.0 to 4.9 m^2 on
+  // the 4 m tile against 0.4 to 1.2 m^2 for the same recipes on the shared 2 m tile
+  const pxPerM = N / camoArtTileSpanM(visual.catalogPattern);
+  const second2 = all.filter(({ tone }) => tone === roles.second).map(({ texels }) => texels.length / (pxPerM * pxPerM));
+  const patchM2 = second2.reduce((a, s) => a + s * s, 0) / second2.reduce((a, s) => a + s, 0);
+  assert.ok(patchM2 >= .8, `${patternId}: metre-scale patches (second tone's area-weighted mean ${patchM2.toFixed(2)} m^2)`);
+  fieldLog.push(`${patternId} q ${quotient.toFixed(2)} aspect ${aspect.toFixed(2)} largest ${(largest * 100).toFixed(0)}%/${small} islands, `
+    + `patches ${patchM2.toFixed(1)} m^2`);
 }
 
 // --- digital fields

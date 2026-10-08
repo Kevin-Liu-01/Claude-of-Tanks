@@ -26,7 +26,7 @@ import { stockCamoPatternIdFor,
 import type { AutoCamoPatternId, AutoCamoVehicle, CamoPatternId, CustomCamo } from './camoPolicy.ts';
 import { ALBEDO_SIZE, MAP_SIZE, createMaterialPainter } from './materialPainter.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
-import { catalogCamoArtId, fleetCamoArtId } from './catalogCamoPainter.ts';
+import { camoArtTileRepeat, catalogCamoArtId, fleetCamoArtId } from './catalogCamoPainter.ts';
 import type { MaterialBasePaintRequest, MaterialVisual, PlateFeatures } from './materialPainter.ts';
 import {
   canPaintMaterialBaseInWorker, tryPaintMaterialBase,
@@ -555,6 +555,19 @@ function* bakeSharedCanvasesSteps(
   entry.quality = quality;
 }
 
+/**
+ * Fleet lane painter v3 (2026-10-08): a patch-field scheme's albedo and roughness tiles span 4 m
+ * (catalogCamoPainter.ts camoArtTileSpanM), so those two textures repeat at half the density of the hull's shared
+ * 2 m UVs; the normal map keeps the 2 m plate plan. Set after every bake, repaint and restore of an entry.
+ */
+function syncCamoTileRepeat(entry: SharedTextureEntry, visual: MaterialVisual, only?: 'camo' | 'rough'): void {
+  const k = camoArtTileRepeat(visual.catalogPattern);
+  for (const texture of [only === 'rough' ? null : entry.camoTex, only === 'camo' ? null : entry.roughTex]) {
+    if (texture && (texture.repeat.x !== k || texture.repeat.y !== k)) texture.repeat.set(k, k);
+  }
+}
+const wideCamoTile = (visual: MaterialVisual): boolean => camoArtTileRepeat(visual.catalogPattern) !== 1;
+
 function acquireSharedTextures(
   spec: MaterialTankSpec,
   aniso: number,
@@ -586,6 +599,7 @@ function acquireSharedTextures(
     entry.camoTex = canvasTex(entry.camoCanvas, { aniso, repeat: true });
     entry.normalTex = canvasTex(entry.normalCanvas, { srgb: false, aniso, repeat: true });
     entry.roughTex = canvasTex(entry.roughCanvas, { srgb: false, aniso, repeat: true });
+    syncCamoTileRepeat(entry, resolveCamoVisual(entry.spec, entry.patternId));
     TEX_CACHE.set(key, entry);
   } else if (isMaterialTextureQualityUpgrade(entry.quality, quality)) {
     // In-place quality promotion when a closer presentation reuses an entry.
@@ -791,6 +805,7 @@ async function tryPrebakeSharedTexturesInWorker(
     entry.camoTex = canvasTex(entry.camoCanvas, { aniso, repeat: true });
     entry.normalTex = canvasTex(entry.normalCanvas, { srgb: false, aniso, repeat: true });
     entry.roughTex = canvasTex(entry.roughCanvas, { srgb: false, aniso, repeat: true });
+    syncCamoTileRepeat(entry, request.visual);
     TEX_CACHE.set(key, entry);
     adopted = true;
     return true;
@@ -904,6 +919,7 @@ export function prebakeSharedTextures(
     entry.camoTex = canvasTex(entry.camoCanvas, { aniso, repeat: true });
     entry.normalTex = canvasTex(entry.normalCanvas, { srgb: false, aniso, repeat: true });
     entry.roughTex = canvasTex(entry.roughCanvas, { srgb: false, aniso, repeat: true });
+    syncCamoTileRepeat(entry, resolveCamoVisual(entry.spec, entry.patternId));
     TEX_CACHE.set(key, entry);
   })();
   const tracked = pending.finally(() => {
@@ -1957,9 +1973,10 @@ function repaintEntry(entry: SharedTextureEntry, patternId: MaterialPatternId): 
   // printed vinyl — critic r4). Same `feats` plan keeps chips/lines aligned
   // with the normal map; the stochastic dust layer redraws from a
   // pattern-keyed stream, which is invisible at paint scale.
-  paintRoughness(entry.roughCanvas, mulberry32(entry.seed ^ ph ^ 0x9e37), feats);
+  paintRoughness(entry.roughCanvas, mulberry32(entry.seed ^ ph ^ 0x9e37), feats, undefined, wideCamoTile(vis));
   paintPatchRoughness(entry.roughCanvas, entry.camoCanvas, vis);
   roughTex.needsUpdate = true;
+  syncCamoTileRepeat(entry, vis);
   entry.patternId = patternId;
   retintEntryFittings(entry, vis);
   // camo r4: memoize the finished bake — the next visit to this
@@ -2088,7 +2105,9 @@ async function restoreBake(entry: SharedTextureEntry, patternId: MaterialPattern
   if (entry.camoTex) entry.camoTex.needsUpdate = true;
   if (entry.roughTex) entry.roughTex.needsUpdate = true;
   entry.patternId = patternId;
-  retintEntryFittings(entry, patternVisual(entry.spec, patternId));
+  const restored = patternVisual(entry.spec, patternId);
+  syncCamoTileRepeat(entry, restored);
+  retintEntryFittings(entry, restored);
   return true;
 }
 
@@ -2171,11 +2190,13 @@ async function repaintCamoEntryChunked(
     if (!await yieldCamoSweep(16, generation)) return false;
     exposureTrim(entry.camoCanvas);
     camoTex.needsUpdate = true;
+    syncCamoTileRepeat(entry, visual, 'camo');
     if (!await yieldCamoSweep(16, generation)) return false;
-    paintRoughness(entry.roughCanvas, mulberry32(entry.seed ^ patternHash ^ 0x9e37), feats);
+    paintRoughness(entry.roughCanvas, mulberry32(entry.seed ^ patternHash ^ 0x9e37), feats, undefined, wideCamoTile(visual));
     if (!await yieldCamoSweep(16, generation)) return false;
     paintPatchRoughness(entry.roughCanvas, entry.camoCanvas, visual);
     roughTex.needsUpdate = true;
+    syncCamoTileRepeat(entry, visual);
     entry.patternId = patternId;
     retintEntryFittings(entry, visual);
     snapshotBake(entry, patternId);
