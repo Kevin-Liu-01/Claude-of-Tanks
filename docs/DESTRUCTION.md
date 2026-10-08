@@ -125,16 +125,41 @@ Stages only advance. A blow that crosses two thresholds emits one event per stag
 
 ### 3.4 Sections (P2)
 
-Each structure splits into sections derived from its collision records alone (a host has no rendered kit): each wall
-face of its footprint rectangle (the band parts within 1.2 m of the face) in height bands of 3.2 m (a storey), and the
-roof (the bands above the eaves line: the highest 30 % of `topY − baseY`). The kit's anatomy keeps its own storeys and
-faces; the world maps the core's sections onto them by geometry (§16.2). Each section has its
-own hit points (its share of `V`), takes the blows that land in it at full weight and passes 40 % to the whole. A
-breached wall section carries up to four holes (`StructureBreachEvent`): a hole is a vertical cylinder of radius
-`r` through the wall's thickness that shells and sight lines pass (`shellPassesThroughCollisionRecord` checks the
-record's hole list before a band part counts as a hit). A section brought to zero falls (`sectionDown`): a roof or an
-upper floor removes its bands; a wall face removes its bands down to 1 m (the stub stays cover). A landmark loses
-sections but never the whole.
+Landed off on `feature/destruction-sections` (2026-10-08) behind the ruleset's `sections` flag (§9:
+`SECTIONS_SWITCH`, off in every mode until its gates pass). `sim/structureSections.ts` derives a structure's sections
+from its collision records alone (a host has no rendered kit), on its first blow:
+
+- **The eaves**: the top of the highest half metre whose shell bands' plan area is at least ¾ of the widest (a pitched
+  roof's staircase of strips falls under it; a flat roof keeps its last half metre), at least a storey (or 60 % of a low
+  shed) above the base. **Storeys**: the walls below the eaves in bands of 3.2 m, at most six.
+- **Sections**: a wall section is a face of the footprint rectangle over one storey, `storey · 4 + face` (faces 0 and 1
+  the +/− forward ends, 2 and 3 the +/− across sides, across = (cos yaw, −sin yaw)); the roof is `storeys · 4`.
+- **Hit points**: four times the section's share of the envelope (walls' area plus the roof's plan), between 8 % and
+  50 % of the structure's: a 10 × 8 m two-storey house's side panel 40 %, its end panel 32 %, its roof 50 %. A section
+  takes the blows that land in it at full weight; **the whole still takes every blow at full weight too** (P1's stage
+  tuning stands: six 125 mm HE rounds still bring the house down; its panel falls at the second or third in it).
+- **Which section a blow strikes**: the one at its point (quantized to the millimetre first, so a peer classifies it
+  the same): above the eaves the roof, else the face whose plane is nearest over the storey of its height; a point more
+  than 1.2 m inside every face below the eaves (the floor of a room a round entered by) strikes none. A direct hit
+  strikes its section with its blast's points and hole; a burst within the blast law's contact zone (0.6·W^⅓) of a
+  structure strikes its nearest section with its points (no hole: splash does not punch through); a penetrator strikes
+  with its kinetic points and its hole; a ram strikes the section at its contact (no hole).
+- **Holes**: a blast's radius `0.45·(W·structureFactor)^⅓` (125 mm HE 0.68 m, the gunship's howitzer 0.85 m, an FPV
+  warhead 0.42 m), a penetrator's `0.0035·calibre` (§4.3), a shaped charge's the larger of the two (one hole); scaled by
+  the walls (timber 1.3, mudbrick 1.15, masonry 1, concrete 0.7), at most 1.6 m and half a storey, at least 0.1 m (less
+  is a mark). A wall hole is a disc on its face — its centre along the face, its height, the struck surface's depth (a
+  ray passes it within 0.8 m of that depth) and its radius — whatever storey's section it opened in; a roof hole is a
+  vertical cylinder through the roof. Four slots a section, never reused (the log only grows); a point already in an
+  opening opens nothing new.
+- **Falls** (`sectionDown`): a section at zero falls. A wall panel opens from its stub up to its storey's top — the
+  ground storey keeps its lowest metre (cover), an upper storey's panel goes to its floor line. The roof opens
+  everything above the eaves. **Then what it brings**: a roof whose top storey has three faces down comes down; with the
+  roof down, a top storey with three faces down drops whole (its standing faces fall; that last fall carries
+  `storeyDown`), and nothing stands above its floor line (`capY`: the top while the roof stands, the eaves once it fell,
+  a storey's floor once it dropped, the ground storey's stub tops last). A landmark loses sections, never the whole.
+
+The openings are written into the structure's `StructureOpenings` (`world/collision.ts`), which every one of its shell
+bands points at once something opens (`CollisionRecord.openings`); the world raycasts read them (§6).
 
 ## 4. Blast and impact model
 
@@ -294,8 +319,15 @@ collapse's work is 1–4 ms of CPU (§10), most of it the route grid's refresh r
 - **Collapse** sets `crushed` on the structure's contact and movement records (movement, the support field and the
   route grid skip them) and `crushed + dead` on its shell bands (shells and sight lines skip them). The grids are not
   rebuilt: flags, as for every other destroyed record. The rubble mound joins the ground (§7).
-- **Breach holes** (P2): the hole list on a band record makes `rayCollisionRecord` pass a ray whose entry point lies in
-  a hole; spotting's `hardLos` and the shell traces read the same raycast, so sight and shells open together.
+- **Openings** (P2, §3.4): the world raycasts' narrow phase is one function, `nearestColliderHit` (`world/collision.ts`),
+  run by the solo world (`world/map.ts`) and the headless one (`world/headlessCollisionWorld.ts`) alike; shells,
+  spotting's `hardLos`, the bots' sight and the aim all read it, so they open together. A structure whose bands point at
+  openings answers as a whole, once per ray (`rayStructureOpenings`): a **hollow box** (its footprint rectangle, base to
+  top). The ray's first surface of the structure stands unless it lies in an opening (or the ray starts inside); then the
+  ray crosses the room and stops on the inner face it leaves by (its normal facing the room) — unless that point is in an
+  opening too, when it passes the structure; the floor never opens. A round through a hole bursts on the far wall's
+  inner face (and strikes that section from inside); two holes on one line pass it. Movement is untouched: a fallen
+  panel's contact record still stands (its stub is cover), and the route grid does not change until the collapse.
 - **Hulls on or in a collapsing structure**: a hull standing on the roof loses its support and lands on the rubble
   (the impact law prices the fall); a hull inside an open-plan footprint is lifted by the mound like any slope (the
   mound under a hull's footprint at the collapse tick is capped at its belly + 0.4 m, so nothing launches).
@@ -394,6 +426,16 @@ world's records (the predicted hull stops meeting them, the seat's rays pass) an
 ground (a wrapped height field under `createPredictionWorld`). A world laid out otherwise finds the structure by its
 footprint centre (5 cm, the same class) — every stage entry and event carries it — and never another in its stead.
 
+Breaches (P2) travel the same way: the authority releases at most six a tick (`BREACH_EVENTS_PER_TICK`) after the
+tick's stages, each a `structure_breach` and a `breach` log entry (20 B, 28 B with the footprint centre: the section
+byte's high bit says it follows). Their centres are quantized as the wire carries them before anything opens, so a peer
+opens exactly what the authority opened: the mirror (`applyBreachEvent`, and `applyLog` for what it did not see) opens
+the hole in its slot or the section's fall in the section at the point on its own structure (`restoreBreach`), once —
+a filled slot or a fallen section is the same breach again, so a live event and the log that names it later open it
+once — and raises `structure:breach` with its own section and `storeyDown`. A `structure_breach` still owed holds back
+its structure's log entries (`isStructurePending` counts both kinds); the migration retain keeps breach entries beside
+the stages.
+
 ### 8.3 Host migration
 
 The sealed migration keyframe's frame carries the log. `RetainedMigrationState.destruction` keeps every stage event the
@@ -401,7 +443,8 @@ seat received (as `fallen` keeps prop falls; a link reset clears the queue, neve
 takes the longer log of the keyframe and the newest frame and merges them in. `applyResumeState` calls
 `authority.restoreDestruction(log)`: the log is kept verbatim (its order and length continue), stages and collapses
 (records, heaps, the route grid) applied without events. Hit points are not on the wire: a damaged structure resumes at
-its stage's upper bound (70 % or 35 %), a small gift to the building, documented and bounded.
+its stage's upper bound (70 % or 35 %), a small gift to the building, documented and bounded. A restored breach opens its hole or its fall as the
+authority did (P2); a section's hit points are not on the wire either: a holed section resumes whole.
 
 ### 8.4 Identity across layouts
 
@@ -472,7 +515,10 @@ readonly destruction: {
 ```
 
 Craters are off in every mode for now (§7: until the drawn terrain follows the overlay); the column says what each mode
-takes once they ship.
+takes once they ship. **Sections** (`readonly sections: boolean`, P2 §3.4) follow `structures` in every mode behind
+`SECTIONS_SWITCH`, off until their gates pass (the receipts below, paired pacing and fairness, the determinism and
+world-events audits with sections on, the cost of the openings-aware rays, and the motion strips of a wall panel coming
+down from a metre up, storeys dropping and a round through a hole).
 
 | Mode | structures | craters | scales | Why |
 |---|---|---|---|---|
@@ -541,6 +587,18 @@ collapse-spike probe: the worst frame of a scripted collapse, against the same f
     `munition:blast` from them in the same order, the structure mapped to the peer's own world (the mirror's identity,
     §8.4) and water read from the peer's own mask.
 
+- **Sections** (P2): `structure:breach` / `structure_breach` (`StructureBreachEvent`, the structure's identity with it):
+  a hole (`hole` 0–3, `radiusM`, centred at x, y, z on the face whose outward normal is n; a roof hole's n is up) or a
+  fall (`sectionDown`, `hole` 255, `radiusM` 0, standing at the section's centre on its face, with its span y0..y1;
+  `storeyDown` on the fall that completes a storey). The presentation finds its kit's own section at the point
+  (`seam.holeAt`) and builds it through the kit (`seam.breach`, `seam.sectionDown`, `seam.storeyDown`): the default kit's
+  wall panel leaves a stub topped with a ragged course of the wall's own units, the room dark behind it, and throws the
+  panel out and down in its own layers; a storey drop breaks its floor slab into the storey below. A match that plays
+  sections says so on every `StructureStageEvent` (`sections: true`): a `breached` stage then cuts no hole of its own.
+- **The Studio** films the sim's own: `game/studioDestruction.ts` runs one destruction match (sections on) over the
+  Studio world's records — a wall strike opens the sim's hole and raises `structure:breach` as the solo step does, a
+  round traced through the world afterwards passes it — and `reset` stands everything up for a scene load.
+
 ## 12. Balance
 
 Cover that disappears changes the game. The gates, every phase:
@@ -562,6 +620,9 @@ Cover that disappears changes the game. The gates, every phase:
 | `sim/destructionCollision.selftest.mjs` | collapse swaps movement, shells and sight lines on the real verdant and urban shards; rubble climbable |
 | `sim/destructionNavigation.selftest.mjs` | the route grid opens a collapsed block's cells, identically solo and authority |
 | `sim/destructionCraters.selftest.mjs` | the dig law, marks, hard ground, the tick and match caps, the quantized log and its restore, both sims alike, a real HE round's crater stamped once on a peer and replayed bit for bit |
+| `sim/structureSections.selftest.mjs` | P2: eaves, storeys and shares; a hole passes a ray to the far inner face, two aligned pass it; a panel falls to its stub, the roof, a storey after three faces (`storeyDown`); the tick's breach budget; a restored host, the wire, live and late mirrors open bit for bit the same; off in every mode, P1's tuning unchanged |
+| `sim/destructionSections.selftest.mjs` | P2 in the authority for real: an M1A2's HE round holes a wall, its APFSDS round passes the hole and strikes the far wall from inside (sections off: it stops on the near wall), bit-for-bit replay; spotting sees through holes in both walls, not one; one narrow phase in both worlds |
+| `game/studioDestruction.selftest.mjs` | P2: the Studio films the sim's own holes (a strike, a round through the hole, reset) |
 | `mp/wire` (extended) | the log round-trips, keyframe whole and delta additions |
 | `mp/host/migrationState` (extended) | restore of stages and craters; nothing collapses twice |
 | `tools/mp-world-events-audit` (extended) | the new kinds pass the audit's judgments |
@@ -577,7 +638,7 @@ Cover that disappears changes the game. The gates, every phase:
 |---|---|---|
 | **P0** | this document; `destructionEvents.ts` (the presentation contract); `world/destructionKit.ts` (the kit seam, §16) | typecheck |
 | **P1** | group ids in the build and the shards; the structure table; blast, kinetic and ram damage; stages; collapse (flags, rubble mound, nav refresh); solo and authority; the wire log, events, migration; the ruleset block; blasts break light props within reach; the kit seam's default describe and layouts, the `aDamage` tags and `world.structureDamage(id)` | receipts above, `npm test`, typecheck, pacing vs base, cost v3 + collapse spike, the world-events and determinism audits |
-| **P2** | sections, holes that pass shells and sight, partial collapse (roofs, upper floors), landmark sections | the same, plus the shell-through-hole and sight-through-hole receipts |
+| **P2** | sections, holes that pass shells and sight, partial collapse (roofs, upper floors), landmark sections — landed off (`feature/destruction-sections`, 2026-10-08) | the same, plus the shell-through-hole and sight-through-hole receipts (`destructionSections`, `structureSections`) and the motion strips |
 | **P3** | craters that deform the ground, the terrain mesh updated in place, crater log sync | stamp determinism, contact consistency, cost of a 152 mm barrage |
 | **P4** | bots that shell a hider's house; concealment that follows felled trees | pacing tail |
 
