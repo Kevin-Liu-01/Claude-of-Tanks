@@ -4260,11 +4260,12 @@ vec2 wallCragTilt(vec2 q, float ph) {
 float jh1(float p) { p = fract(p * 0.1031); p *= p + 33.33; p *= p + p; return fract(p); }
 // One wall projection of a jebel face: u along the wall and y the bed height (both metres), ph the cliff's slow phase;
 // returns (tilt along the wall, tilt up, albedo factor). The beds ~6.5 m (±35 %) parted by grooves (the upper lip facing
-// down, the floor up, dark in the groove), each bed its own tone and cross-bedding (inclined laminae at ±30°); joints
-// every ~4.6 m, irregular, offset bed by bed so they break at the partings, each a sharp V (its walls turned into the
-// crack, dark at its root) and present on about two thirds; each column between them a facet of its own; and low on the
-// near faces the honeycomb (tafoni), bowl pits 0.4-1.2 m across in patches. footM is the pixel's footprint (m): the
-// partings and cracks never narrow under about two pixels.
+// down, the floor up, faintly dark in the groove, some partings near gone), each bed a shade of its own and cross-bedded
+// (inclined laminae at ±30°); the joints vertical fractures through the beds, 6.5-13.5 m apart and wandering a little,
+// a crack showing where a bed still holds it (two beds in three) — never offset bed by bed, which laid the face in a
+// running bond — each a V (its walls turned a little into the crack, dark at its root); each column between two joints a
+// face of its own; and low on the near faces the honeycomb (tafoni), bowl pits 0.4-1.2 m across in patches. footM is the
+// pixel's footprint (m): the partings and cracks never narrow under about two pixels.
 vec3 jebelFaceV2(float u, float y, float ph, float nearW, float tafW, float footM) {
   float yb = y + 1.6 * sin(u * 0.011 + ph * 6.0);
   float T = 6.5, k = floor(yb / T);
@@ -4274,30 +4275,31 @@ vec3 jebelFaceV2(float u, float y, float ph, float nearW, float tafW, float foot
   if (yb >= b1) { k += 1.0; b0 = b1; b1 = (k + 1.0 + 0.35 * (jh1((k + 1.0) * 1.7 + 3.1) - 0.5)) * T; }
   float dBot = yb - b0, dTop = b1 - yb, f = dBot / max(b1 - b0, 0.1);
   float w = max(0.24, 2.0 * footM);
-  float sk = 0.35 + 0.65 * jh1(k * 2.3 + 0.7), sk1 = 0.35 + 0.65 * jh1((k + 1.0) * 2.3 + 0.7);
+  float sk = 0.15 + 0.85 * jh1(k * 2.3 + 0.7), sk1 = 0.15 + 0.85 * jh1((k + 1.0) * 2.3 + 0.7);
   float gB = clamp(1.0 - dBot / w, 0.0, 1.0), gT = clamp(1.0 - dTop / w, 0.0, 1.0);
-  float tv = -0.75 * sk * gB + 0.75 * sk1 * gT;
-  float shade = (1.0 - 0.38 * sk * gB * gB) * (1.0 - 0.38 * sk1 * gT * gT);
-  // the bed's own tone, and its cross-bedding near
-  shade *= 0.88 + 0.24 * jh1(k * 5.1 + 2.0);
+  float tv = -0.6 * sk * gB + 0.6 * sk1 * gT;
+  float shade = (1.0 - 0.2 * sk * gB * gB) * (1.0 - 0.2 * sk1 * gT * gT);
+  // the bed's own shade, and its cross-bedding near
+  shade *= 0.94 + 0.12 * jh1(k * 5.1 + 2.0);
   float ang = (jh1(k * 3.7 + 1.1) - 0.5) * 1.05, sp = 0.35 + 0.45 * jh1(k * 4.3 + 9.2);
   float lam = fract((u * sin(ang) + yb * cos(ang)) / sp);
   shade *= 1.0 - 0.11 * nearW * smoothstep(0.80, 0.97, lam) * (1.0 - smoothstep(0.78, 1.0, f));
-  // the joints, offset bed by bed
-  float W = 4.6, uj = u + 23.7 * jh1(k * 6.1 + 4.4), j = floor(uj / W);
-  float c0 = (j + 0.6 * (jh1(j * 1.37 + k * 0.71 + 8.0) - 0.5)) * W;
-  if (uj < c0) { j -= 1.0; c0 = (j + 0.6 * (jh1(j * 1.37 + k * 0.71 + 8.0) - 0.5)) * W; }
-  float c1 = (j + 1.0 + 0.6 * (jh1((j + 1.0) * 1.37 + k * 0.71 + 8.0) - 0.5)) * W;
-  if (uj >= c1) { j += 1.0; c0 = c1; c1 = (j + 1.0 + 0.6 * (jh1((j + 1.0) * 1.37 + k * 0.71 + 8.0) - 0.5)) * W; }
+  // the joints: vertical through the beds (their lines shared by every bed, wandering a metre down the face)
+  float W = 10.0, uj = u + 1.1 * sin(yb * 0.045 + ph * 5.0), j = floor(uj / W);
+  float c0 = (j + 0.7 * (jh1(j * 1.37 + 8.0) - 0.5)) * W;
+  if (uj < c0) { j -= 1.0; c0 = (j + 0.7 * (jh1(j * 1.37 + 8.0) - 0.5)) * W; }
+  float c1 = (j + 1.0 + 0.7 * (jh1((j + 1.0) * 1.37 + 8.0) - 0.5)) * W;
+  if (uj >= c1) { j += 1.0; c0 = c1; c1 = (j + 1.0 + 0.7 * (jh1((j + 1.0) * 1.37 + 8.0) - 0.5)) * W; }
   float dl = uj - c0, dr = c1 - uj, hw = max(0.32, 2.0 * footM);
-  float pl = step(0.35, jh1(j * 7.7 + k * 1.3)), pr = step(0.35, jh1((j + 1.0) * 7.7 + k * 1.3));
+  // (the crack shows where the bed still holds it: two beds in three along each joint's line)
+  float pl = step(0.33, jh1(j * 7.7 + k * 1.3)), pr = step(0.33, jh1((j + 1.0) * 7.7 + k * 1.3));
   float vl = pl * clamp(1.0 - dl / hw, 0.0, 1.0), vr = pr * clamp(1.0 - dr / hw, 0.0, 1.0);
-  float tu = -0.95 * pl * step(dl, hw) + 0.95 * pr * step(dr, hw);
-  shade *= (1.0 - 0.5 * vl * vl) * (1.0 - 0.5 * vr * vr);
-  // the column's facet
-  tu += (jh1(j * 3.3 + k * 9.1) - 0.5) * 0.26;
-  tv += (jh1(j * 5.9 + k * 2.2) - 0.5) * 0.12;
-  shade *= 0.93 + 0.14 * jh1(j * 2.9 + k * 4.7);
+  float tu = -0.5 * pl * step(dl, hw) + 0.5 * pr * step(dr, hw);
+  shade *= (1.0 - 0.45 * vl * vl) * (1.0 - 0.45 * vr * vr);
+  // the column's own face: a lean and a shade per column, whole down the cliff
+  tu += (jh1(j * 3.3 + 1.9) - 0.5) * 0.22;
+  tv += (jh1(j * 5.9 + 0.4) - 0.5) * 0.05;
+  shade *= 0.95 + 0.10 * jh1(j * 2.9 + 6.1);
   // the honeycomb: pits in 1.3 m cells, in patches
   if (tafW > 0.003) {
     vec2 p = vec2(u, yb) / 1.3, cell = floor(p);
