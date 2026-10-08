@@ -154,7 +154,19 @@ export default {
     // The farm court's paved yard, inside the mill lane's loop: the zone-control placement seats its middle disc there.
     hardstands: [{ x: -40, z: 0, width: 60, length: 60, yawDeg: 0, grade: 0 }],
     village: VILLAGE,
-    roads: { paths: ROADS },
+    // Step 7 (2026-10-07; gauntlet wave 248: "lanes as wide as a modern road and level with the water"; the coordinator's
+    // ruling): the polder's roads narrowed and raised a metre on crowned banks of their own (terrain.ts RoadPathStyle
+    // widthM, crownLiftM) — the causeway 6 m, the west and east roads 5.5 m, the north lane and the oxbow lane 4 m on the
+    // dyke crowns; the mill lane keeps its grade through the farm court (4.5 m), and the lifts ramp down to it where they
+    // meet it. One lift for every raised road, so their junctions meet level.
+    roads: { paths: ROADS, pathStyles: [
+      { widthM: 4.5 },
+      { widthM: 5.5, crownLiftM: 1 },
+      { widthM: 6, crownLiftM: 1 },
+      { widthM: 5.5, crownLiftM: 1 },
+      { widthM: 4, crownLiftM: 1 },
+      { widthM: 4, crownLiftM: 1 },
+    ] },
     // Five distinct drainage landforms, not repeated ornamental ponds. Long
     // eroded drains, a broad retention bay and an offset hooked basin share
     // sixteen authored stations / the existing 64-sample canonical contour.
