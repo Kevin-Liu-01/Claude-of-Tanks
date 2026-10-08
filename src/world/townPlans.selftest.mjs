@@ -184,12 +184,19 @@ function kitSeats(mapId, config, carriageway, structures, now) {
     taken.add(i); moved++; worstMove = Math.max(worstMove, d);
   }
   assert.ok(moved <= carriageway, `${mapId}: only buildings that stood in a carriageway move (${moved} of ${carriageway})`);
+  // the map's authored row additions (props.townRowPlanAdditions: Suzhou Creek's lilong lanes, 2026-10-07) stand where
+  // the map lays them, each a structure within KIT_SEAT_M of its entry; at most one structure to an entry
+  let added = 0;
+  for (const entry of config.props.townRowPlanAdditions ?? []) {
+    const [i] = nearest(entry.x, entry.z, KIT_SEAT_M);
+    if (i >= 0) { taken.add(i); added++; }
+  }
   const extra = now.filter((_, i) => !taken.has(i));
   for (const s of extra) {
     assert.ok(s.w <= KIT_SHED_M && s.d <= KIT_SHED_M, `${mapId}: a structure the PR head had no seat for at (${s.cx.toFixed(1)}, ${s.cz.toFixed(1)}) is a yard's shed (${s.w.toFixed(1)} x ${s.d.toFixed(1)} m)`);
   }
   summary.push(`${mapId} (${config.props.architecture} kit) ${seated} seated (up to ${worstSeat.toFixed(1)} m), ${moved} off a carriageway (up to ${worstMove.toFixed(1)} m), `
-    + `${overWater ? `${overWater} off the water and ${water.dropped.length} rows left out, ` : ''}${extra.length} yard sheds`);
+    + `${overWater ? `${overWater} off the water and ${water.dropped.length} rows left out, ` : ''}${added ? `${added} authored rows, ` : ''}${extra.length} yard sheds`);
 }
 for (const [mapId, { carriageway, structures }] of Object.entries(PR_HEAD)) {
   const config = getMapConfig(mapId);
