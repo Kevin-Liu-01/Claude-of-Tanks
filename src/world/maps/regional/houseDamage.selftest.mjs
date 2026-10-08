@@ -3,8 +3,9 @@
 //     the core's default reads it), with finite numbers, four faces a storey in house.ts's order, members and
 //     openings inside their faces, a coursed wall's joints ascending;
 //   - a breach on every face of every storey of a sample of houses writes the same bytes twice (damageRng only), stays
-//     within the writers' caps (3,000 vertices, 96 pieces), draws its rim inside the cut (plus the 0.3 m the seam allows)
-//     and within the wall's layers, its room behind the wall, and cuts one cylinder on the face.
+//     within the writers' caps (3,000 vertices, 96 pieces), draws its rim within 5/4 of its cut (the seam's blocky cut
+//     edge runs between 0.8 and 1.2 of it) and within the wall's layers, its room behind the wall, and cuts one cylinder
+//     on the face; every triangle a stage writes faces the way its normal says.
 import assert from 'node:assert/strict';
 import { ARCHITECTURE_STYLES, buildRegionalParts, regionalKitPlanOf } from './index.ts';
 import { streamFrom } from './geometry.ts';
@@ -50,6 +51,22 @@ function writers(vertexCap = 3000, pieceCap = 96) {
     },
   };
   return { mesh, pieces, runs, list };
+}
+
+/** Every triangle faces the way its vertex normals say (the presentation's materials are single-sided). */
+function assertFacing(runs, label) {
+  for (const run of runs) for (let i = 0; i < run.idx.length; i += 3) {
+    const [a, b, c] = [run.idx[i], run.idx[i + 1], run.idx[i + 2]];
+    const P = (k) => [run.pos[k * 3], run.pos[k * 3 + 1], run.pos[k * 3 + 2]];
+    const A = P(a), B = P(b), C = P(c);
+    const e1 = [B[0] - A[0], B[1] - A[1], B[2] - A[2]], e2 = [C[0] - A[0], C[1] - A[1], C[2] - A[2]];
+    const g = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+    const gl = Math.hypot(...g);
+    if (gl < 1e-9) continue;
+    const nv = [0, 1, 2].map((k) => run.nor[a * 3 + k] + run.nor[b * 3 + k] + run.nor[c * 3 + k]);
+    const dot = (g[0] * nv[0] + g[1] * nv[1] + g[2] * nv[2]) / gl / (Math.hypot(...nv) || 1);
+    assert.ok(dot > -0.05, `${label}: a ${run.bucket}/${run.role} triangle wound against its normal (${dot.toFixed(2)}; ${[A, B, C].map((p) => p.map((v) => v.toFixed(3)).join(',')).join(' | ')}; n ${nv.map((v) => (v / 3).toFixed(2)).join(',')}; run of ${run.idx.length / 3} triangles, #${i / 3})`);
+  }
 }
 
 // 1. describe: every kit, every builder, two seeds and walls
@@ -117,15 +134,18 @@ for (const [styleId, id, wall] of SAMPLE) {
     assert.deepEqual(JSON.stringify(two.list), JSON.stringify(one.list), `${styleId}/${id}: and throws the same pieces`);
     assert.deepEqual(again, res);
     assert.equal(res.cuts.length, 1, 'one cut a hole');
+    assertFacing(one.runs, `${styleId}/${id} breach`);
     const cut = res.cuts[0];
-    assert.ok(cut.radiusM >= r - 1e-9 && cut.radiusM <= r * 1.8 + 1e-9, `${styleId}/${id}: the cut takes the hole (${cut.radiusM} for ${r})`);
+    // (the seam's blocky cut edge runs between 0.8 and 1.2 of the cut: a rim's hole lies inside 3/4 of it, its redraw
+    // reaches 5/4 of it)
+    assert.ok(cut.radiusM > 0.1 && cut.radiusM <= r * 2.5 + 1e-9, `${styleId}/${id}: the cut takes the hole (${cut.radiusM} for ${r})`);
     const depth = cut.depthM;
     for (const run of one.runs) {
       for (let i = 0; i < run.pos.length; i += 3) {
         const dx = run.pos[i] - cut.x, dy = run.pos[i + 1] - cut.y, dz = run.pos[i + 2] - cut.z;
         const along = dx * cut.nx + dz * cut.nz, rx = dx - cut.nx * along, rz = dz - cut.nz * along, radial = Math.hypot(rx, dy, rz);
         if (run.role === 'rim') {
-          assert.ok(radial <= cut.radiusM + 0.3, `${styleId}/${id} ${f.name}: a rim vertex within 0.3 m of its cut (${radial.toFixed(3)} of ${cut.radiusM.toFixed(3)})`);
+          assert.ok(radial <= cut.radiusM * 1.25 + 0.2, `${styleId}/${id} ${f.name}: a rim vertex within the redraw's reach (${radial.toFixed(3)} of ${cut.radiusM.toFixed(3)})`);
           assert.ok(along <= 0.2 && along >= -depth - 0.05, `${styleId}/${id} ${f.name}: a rim vertex within the wall's layers (${along.toFixed(3)})`);
         } else if (run.role === 'room') {
           assert.ok(along <= 0.02, `${styleId}/${id} ${f.name}: the room lies behind the wall (${along.toFixed(3)})`);
@@ -160,8 +180,9 @@ for (const [styleId, id, wall] of SAMPLE) {
     assert.deepEqual(JSON.stringify(two.list), JSON.stringify(one.list));
     assert.deepEqual(again, res);
     assert.ok(res.hides.some((x) => x.partClass === 'glass' && x.section === null), `${styleId}/${id}: damaged hides the glass`);
+    assertFacing(one.runs, `${styleId}/${id} damaged`);
     for (const c of res.cuts) {
-      assert.ok(c.radiusM > 0 && c.radiusM < 0.8 && c.depthM <= 0.06, `${styleId}/${id}: a spall is a small, shallow cut (${c.radiusM}, ${c.depthM})`);
+      assert.ok(c.radiusM > 0 && c.radiusM < 1.0 && c.depthM <= 0.06, `${styleId}/${id}: a spall is a small, shallow cut (${c.radiusM}, ${c.depthM})`);
       const onFace = a.storeys.some((st) => st.faces.some((f) => Math.abs((c.x - f.origin[0]) * f.out[0] + (c.z - f.origin[2]) * f.out[2]) < 1e-3
         && c.nx === f.out[0] && c.nz === f.out[2]));
       assert.ok(onFace, `${styleId}/${id}: a spall cut lies on a face's plane`);
@@ -190,6 +211,7 @@ for (const [styleId, id, wall] of SAMPLE) {
   assert.deepEqual(JSON.stringify(two.list), JSON.stringify(one.list));
   assert.deepEqual(again, res);
   assert.ok(res.hides.some((x) => x.section === null && x.partClass === null), `${styleId}/${id}: a collapse hides the structure`);
+  assertFacing(one.runs, `${styleId}/${id} collapse`);
   for (const run of one.runs) for (let i = 0; i < run.pos.length; i += 3) {
     const x = run.pos[i] - cx, y = run.pos[i + 1], z = run.pos[i + 2] - cz;
     if (run.role === 'rubble') {
@@ -239,6 +261,7 @@ for (const [styleId, id, wall] of SAMPLE) {
   assert.deepEqual(JSON.stringify(two.runs), JSON.stringify(one.runs), `${styleId}/${id}: the roof falls the same way twice`);
   assert.deepEqual(again, res);
   assert.ok(res.hides.some((x) => x.section === a.roof.section && x.partClass === 'roof'), `${styleId}/${id}: the fallen roof's covering hidden`);
+  assertFacing(one.runs, `${styleId}/${id} roof`);
   for (const run of one.runs) for (let i = 0; i < run.pos.length; i += 3) {
     const x = run.pos[i] - cx, y = run.pos[i + 1], z = run.pos[i + 2] - cz;
     assert.ok(Math.abs(x) <= a.w / 2 + 1.5 && Math.abs(z) <= a.d / 2 + 1.5, `${styleId}/${id}: the fallen roof inside the footprint (${x.toFixed(2)}, ${z.toFixed(2)})`);
@@ -247,6 +270,36 @@ for (const [styleId, id, wall] of SAMPLE) {
   roofs++;
 }
 console.log(`house damage: ${roofs} roofs fall deterministically within their caps, their coverings hidden, what is left under the ridge`);
+
+// 6b. a wall falls (sectionDown on a wall's section): deterministic, within its caps, the section hidden, a stub, the open
+// storey behind it and its heap outside, all inside the house's reach, every triangle facing its normal
+let walls = 0, wv = 0;
+for (const [styleId, id, wall] of SAMPLE) {
+  const style = ARCHITECTURE_STYLES.find((s) => s.id === styleId);
+  if (!style?.builders[id]) continue;
+  const { parts, w, d, h } = build(style, id, 21, wall);
+  const describe = kitOf(id, styleId, 'describe'), sectionDown = kitOf(id, styleId, 'sectionDown');
+  const a = describe({ structureIdx: 6, mapId: 'damage', builder: id, style: styleId, parts, w, d, h, placement: { x: 0, y: 0, z: 0, yaw: 0 },
+    massClass: 'house', seed: 15, kitPlan: regionalKitPlanOf(parts) });
+  const [cx, cz] = bodyCentre(a);
+  for (const st of a.storeys.slice(0, 2)) for (const f of st.faces) {
+    const one = writers(6000, 160), two = writers(6000, 160);
+    const res = sectionDown(a, f.section, 33 + walls, one), again = sectionDown(a, f.section, 33 + walls, two);
+    assert.deepEqual(JSON.stringify(two.runs), JSON.stringify(one.runs), `${styleId}/${id} ${f.name}: a wall falls the same way twice`);
+    assert.deepEqual(again, res);
+    assert.ok(res.hides.some((x) => x.section === f.section && x.partClass === null), `${styleId}/${id}: the fallen wall's section hidden`);
+    assert.ok(one.runs.some((r) => r.role === 'remnant') && one.runs.some((r) => r.role === 'room') && one.runs.some((r) => r.role === 'rubble'),
+      `${styleId}/${id} ${f.name}: a stub, the open storey and a heap`);
+    assertFacing(one.runs, `${styleId}/${id} ${f.name} wall`);
+    for (const run of one.runs) for (let i = 0; i < run.pos.length; i += 3) {
+      const x = run.pos[i] - cx, y = run.pos[i + 1], z = run.pos[i + 2] - cz;
+      assert.ok(Math.abs(x) <= a.w / 2 + 4.5 && Math.abs(z) <= a.d / 2 + 4.5, `${styleId}/${id}: the fallen wall within reach (${x.toFixed(2)}, ${z.toFixed(2)})`);
+      assert.ok(y >= -0.6 && y <= (a.roof?.ridgeY ?? a.h) + 0.5, `${styleId}/${id}: the fallen wall between the ground and the ridge (${y.toFixed(2)})`);
+    }
+    wv = Math.max(wv, one.mesh.vertices); walls++;
+  }
+}
+console.log(`house damage: ${walls} wall sections fall deterministically within their caps (worst ${wv} vertices), each hidden, a stub, the storey open behind it, a heap outside, every triangle facing its normal`);
 
 // 7. the seam (DESTRUCTION.md §16.3): the kits' plan reader is registered (the world's describe call sites read the plan
 // through kitPlanFor, importing no kit); a collapse seats its heap on the sim's own mound (bodyMoundHeightAt) when the
