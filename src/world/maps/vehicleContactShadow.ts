@@ -204,10 +204,26 @@ export function buildRunnerTracks<R extends ContactRecord>(records: readonly R[]
   return mesh;
 }
 
+/** The ground-cover holes over hauled-out boats' mud (map.ts withGroundCoverHoles): discs along each patch. */
+export function boatMudHoles(records: readonly BoatMudRecord[], field: ContactField): Array<{ x: number; z: number; r: number }> {
+  const holes: Array<{ x: number; z: number; r: number }> = [];
+  for (const r of records) {
+    const ax = Math.cos(r.yaw), az = -Math.sin(r.yaw);
+    const hA = field.getHeightAt(r.x + ax * r.halfLength, r.z + az * r.halfLength);
+    const hB = field.getHeightAt(r.x - ax * r.halfLength, r.z - az * r.halfLength);
+    const shift = 0.7 * (hA < hB ? 1 : -1), radius = r.halfWidth + 0.45, reach = r.halfLength + 0.8 - radius;
+    for (let k = -2; k <= 2; k++) {
+      const along = shift + (k / 2) * Math.max(0, reach);
+      holes.push({ x: r.x + ax * along, z: r.z + az * along, r: radius });
+    }
+  }
+  return holes;
+}
+
 /** A hauled-out boat's plan (mapKits.ts beachedBoat's receipt: its length on (cos yaw, -sin yaw)). */
 interface BoatMudRecord { readonly x: number; readonly z: number; readonly yaw: number; readonly halfLength: number; readonly halfWidth: number }
 
-/** The landing's mud: grey-brown silt, wetter and darker toward the middle, its edge broken (alpha soft, ragged). */
+/** The landing's mud: brown silt, wetter and darker toward the middle, its edge broken (alpha soft, ragged). */
 function boatMudTexture(anisotropy: number): THREE.Texture {
   const w = 64, h = 128;
   const canvas = document.createElement('canvas');
@@ -222,10 +238,10 @@ function boatMudTexture(anisotropy: number): THREE.Texture {
       const edge = 0.08 * Math.sin(a0 * 7 + 1.3) + 0.05 * Math.sin(a0 * 17 + 0.4);
       const dx = Math.max(0, u - 0.45) / 0.55, dy = Math.max(0, v - 0.62) / 0.38;
       const d = Math.min(1, Math.max(0, Math.hypot(dx, dy) + edge));
-      const a = (1 - d * d * (3 - 2 * d)) * 0.9;
-      const wet = 1 - 0.35 * Math.max(0, 1 - Math.hypot(u, v * 0.8));
+      const a = Math.min(1, (1 - d * d * (3 - 2 * d)) * 1.15) * 0.96;
+      const wet = 1 - 0.3 * Math.max(0, 1 - Math.hypot(u, v * 0.8));
       const k = (y * w + x) * 4;
-      image.data[k] = Math.round(78 * wet); image.data[k + 1] = Math.round(64 * wet); image.data[k + 2] = Math.round(48 * wet);
+      image.data[k] = Math.round(74 * wet); image.data[k + 1] = Math.round(57 * wet); image.data[k + 2] = Math.round(40 * wet);
       image.data[k + 3] = Math.round(a * 255);
     }
     ctx.putImageData(image, 0, 0);
@@ -274,7 +290,8 @@ export function buildBoatMud(records: readonly BoatMudRecord[], field: ContactFi
   geometry.setIndex(idx);
   geometry.computeVertexNormals();
   const material = new THREE.MeshStandardMaterial({
-    map: boatMudTexture(anisotropy), transparent: true, depthWrite: false, roughness: 0.42, metalness: 0,
+    // (hold 11: at 0.42 the sky's reflection turned the brown silt a pale blue-grey film)
+    map: boatMudTexture(anisotropy), transparent: true, depthWrite: false, roughness: 0.78, metalness: 0,
     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
   });
   const mesh = new THREE.Mesh(geometry, material);

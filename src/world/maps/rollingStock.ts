@@ -42,11 +42,14 @@ const V60_RED = material('paint', linearHex(0x7a1c22), 0.5, 0.05, 0, 1);
 const V60_ROD = material('steel', linearHex(0x77726a), 0.42, 0.7, 0, 1);
 const GLASS = material('glass', [0.02, 0.024, 0.028], 0.06, 0, 0, 0.2);
 const WARN_YELLOW = material('paint', linearHex(0xd0a020), 0.6, 0, 0, 1);
-const COAL = material('cargo', [0.022, 0.021, 0.02], 0.62, 0, 0, 0.3);
+const COAL = material('cargo', [0.016, 0.0155, 0.015], 0.62, 0, 0, 0.3);
 // (round 2, wave 152: "smooth black slabs") lump coal catches the light on its facets: a glossier, greyer face
-// (round 3, wave 234: "a smooth black cap") the lumps' facets catch the light, the dull ones lie in their shadow
-const COAL_FACE = material('cargo', [0.05, 0.049, 0.047], 0.42, 0, 0, 0.3);
-const COAL_DULL = material('cargo', [0.028, 0.027, 0.026], 0.68, 0, 0, 0.3);
+// (round 3, wave 234: "a smooth black cap") the lumps' facets catch the light, the dull ones lie in their shadow; the
+// heap faces the whole sky (the stock's baked material reads colours alone, no gloss), so coal-black albedos: at 0.05
+// the top read as light grey gravel in hold 11
+// (a soft mosaic: the lumps' relief carries the read, the two shades only break up the faces)
+const COAL_FACE = material('cargo', [0.02, 0.0195, 0.019], 0.42, 0, 0, 0.3);
+const COAL_DULL = material('cargo', [0.013, 0.0125, 0.012], 0.68, 0, 0, 0.3);
 // (round 3: running gear, lettering) worn running gear a shade off the black frame so it reads under it; the stencils
 const GEAR_STEEL = material('steel', linearHex(0x4a4640), 0.55, 0.4, 0, 0.8);
 const STENCIL = material('paint', linearHex(0xd6d2c4), 0.62, 0, 0, 0.6);

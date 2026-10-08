@@ -80,7 +80,7 @@ import { CIVILIAN_VEHICLE_RECEIPTS, pickCivilianVehicleKind } from './maps/civil
 import { CART_RECEIPTS } from './maps/cartKit.ts';
 // the map-vehicles lane (2026-10-05): the vehicles' surface stream and liveries, their ground-contact patches
 import { applyVehicleSurfaceHook, VEHICLE_SURFACE_PROGRAM } from './maps/vehicleSurface.ts';
-import { buildBoatMud, buildRunnerTracks, buildVehicleContactShadows, vehicleShadowCaster } from './maps/vehicleContactShadow.ts';
+import { boatMudHoles, buildBoatMud, buildRunnerTracks, buildVehicleContactShadows, vehicleShadowCaster } from './maps/vehicleContactShadow.ts';
 import {
   CART_SLIDE_MAX_M, PARKED_VEHICLE_CLEARANCE, polygonGap, seatCartsClear, separateParkedVehicles, shapePolygons,
   type FootprintPolygon,
@@ -8837,6 +8837,9 @@ ${snowCap ? `
     if (mud) {
       engineCtx.setupShadowMaterial(mud.material as THREE.MeshStandardMaterial);
       group.add(mud);
+      // no blade grows up through the mud or the hull lying in it (map.ts holds these with the scenery's holes): discs
+      // along each boat, the patch's run toward the water included
+      group.userData.boatMudHoles = boatMudHoles(hauled, heightField);
     }
   }
 
