@@ -124,8 +124,6 @@ uniform float uTurbulence;
 uniform float uWeatherWarp;
 // QA (round 9 candidate): the shell under which a sample keeps no density (0 = none) — the detached fragments culled
 uniform float uFragMin;
-// round 10 (2026-10-07): the detail's fetch skipped where its remap cannot change the result (1 = on, the law; 0 = off)
-uniform float uDetailSkip;
 const float CL2_LOCAL = ${f(CLOUD2_PERIODS.local)};
 const float CL2_STREETS = ${f(CLOUD2_PERIODS.streets)};
 const float CL2_SHAPE = ${f(CLOUD2_PERIODS.shape)};
@@ -224,13 +222,10 @@ vec4 cl2Media( vec3 p, vec4 shell, vec4 hf, float lod, float detail ) {
 	vec4 lo = vec4( 1.0 - shape ) * uLayerShape;
 	vec4 d = clamp( ( shell - lo ) / max( 1.0 - lo, vec4( 1e-3 ) ), 0.0, 1.0 );
 	if ( uFragMin > 0.0 ) d *= smoothstep( vec4( uFragMin ), vec4( uFragMin * 2.0 ), shell );
-	// round 10 (exact): the detail's remap (2d − m/2) / (1 − m/2) with any modifier m in [0, 1] saturates every lane at
-	// d >= 0.5 (2d − m/2 >= 1 − m/2) and keeps d = 0 at 0 — so where no lane lies strictly between, the result is the step
-	// itself and the fetch is skipped: a solid tower's interior samples never read the detail volume
-	vec4 edge = step( vec4( 1e-6 ), d ) * ( 1.0 - step( vec4( 0.5 ), d ) );
-	if ( detail > 0.0 && dot( d, d ) > 0.0 && uDetailSkip > 0.5 && dot( edge, edge ) <= 0.0 ) {
-		d = step( vec4( 0.5 ), d );
-	} else if ( detail > 0.0 && dot( d, d ) > 0.0 ) {
+	// (round 10's exact skip of this fetch where the remap saturates was measured by the layer's own GPU timer on Monsoon's
+	// towers and dropped: its per-sample test cost more than the 32³ volume's cached fetch it saved — +0.18 ms on the
+	// establishing view, nothing on sky-w)
+	if ( detail > 0.0 && dot( d, d ) > 0.0 ) {
 		float dn = textureLod( tDetail, ( sp + uDetailShift ) / CL2_DETAIL, 0.0 ).r;
 		// fluffy (the inverted cells) on the tops, the cells' cores at the base; a wispy lane takes the cells higher up
 		vec4 topErode = mix( vec4( 1.0 - dn ), vec4( dn ), uLayerWisp );

@@ -618,7 +618,7 @@ function createMediumUniforms(): Record<string, THREE.IUniform> {
     tLocal: { value: null }, tStreetField: { value: null }, tShape: { value: null }, tDetail: { value: null }, tTurb: { value: null },
     uLocalShift: { value: new THREE.Vector2() }, uStreetShift2: { value: new THREE.Vector2() }, uWindDir2: { value: new THREE.Vector2(1, 0) },
     uShapeShift: { value: new THREE.Vector3() }, uDetailShift: { value: new THREE.Vector3() }, uClear2: { value: new THREE.Vector3() },
-    uTurbulence: { value: 0 }, uFragMin: { value: 0 }, uDetailSkip: { value: 1 }, uWeatherWarp: { value: 0 }, uCellPeriod: { value: 96000 }, uShapePeriod: { value: 3200 },
+    uTurbulence: { value: 0 }, uFragMin: { value: 0 }, uWeatherWarp: { value: 0 }, uCellPeriod: { value: 96000 }, uShapePeriod: { value: 3200 },
   };
 }
 
@@ -1317,9 +1317,8 @@ export class VolumetricCloudLayer {
     }
     t.uOpaqueCut.value = lightTune('CLOUD_OPAQUE_CUT', 1);
     t.uRainCore.value = lightTune('CLOUD_RAIN_CORE', 0);
-    // QA (round 10): the cost lab's knobs — the detail skip (the law, exact), the step cap, the entry refinement, the far
-    // cascade's bilinear read, the streets' share
-    m.uDetailSkip.value = lightTune('CLOUD_DETAIL_SKIP', 1);
+    // QA (round 10): the cost lab's knobs — the step cap, the entry refinement, the far cascade's bilinear read, the
+    // streets' share
     t.uStepCap.value = lightTune('CLOUD_STEP_CAP', CLOUD_TIERS[this.traceTier]?.steps ?? 128);
     (t.uFine.value as THREE.Vector2).set(lightTune('CLOUD_FINE_N', 4), lightTune('CLOUD_FINE_STRIDE', 0.25));
     t.uBsmFarBilinear.value = lightTune('CLOUD_BSM_FAR_BILINEAR', 0);

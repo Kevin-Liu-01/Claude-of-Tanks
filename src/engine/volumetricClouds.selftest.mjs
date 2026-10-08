@@ -697,20 +697,9 @@ assert.ok(!/cl2Noise|mottle \*/.test(shadersSource), 'no mottle term left in the
 // (2026-10-07, the cost lab) the march's light budget as uniforms whose defaults are the law: (round 9, priced on Monsoon's
 // towers) light every third lit step while the ray keeps 0.15 of its light, the tier's sun steps, the march out at 0.05
 assert.match(layerSource, /const CLOUD_LIGHT_EVERY = 3;/);
-// round 10 (2026-10-07): the detail's fetch skipped where its remap saturates — exact. The twin: for every modifier m in
-// [0, 1] the remap of d >= 0.5 is 1 and of d = 0 is 0, so the step stands in for it whenever no lane lies strictly between
-{
-  const remap = (d, m) => Math.min(1, Math.max(0, (d * 2 - m * 0.5) / Math.max(1 - m * 0.5, 1e-3)));
-  for (let m = 0; m <= 1.0001; m += 0.05) {
-    for (let d = 0.5; d <= 1.0001; d += 0.01) assert.ok(remap(d, m) >= 1 - 1e-6, `the remap saturates d ${d.toFixed(2)} at m ${m.toFixed(2)}`);
-    assert.equal(remap(0, m), 0);
-  }
-  assert.ok(shadersSource.includes('vec4 edge = step( vec4( 1e-6 ), d ) * ( 1.0 - step( vec4( 0.5 ), d ) );')
-    && shadersSource.includes('if ( detail > 0.0 && dot( d, d ) > 0.0 && uDetailSkip > 0.5 && dot( edge, edge ) <= 0.0 ) {\n\t\td = step( vec4( 0.5 ), d );'),
-    'the skip only where no lane lies strictly between 0 and 0.5, and the step in its place');
-  assert.ok(shadersSource.includes('d = clamp( ( d * 2.0 - modifier * 0.5 ) / max( 1.0 - modifier * 0.5, vec4( 1e-3 ) ), 0.0, 1.0 );'), 'the remap the twin mirrors');
-  assert.match(layerSource, /uDetailSkip: \{ value: 1 \}/, 'on by default');
-}
+// (round 10's exact detail skip was measured by the layer's own GPU timer and dropped: it cost more than it saved)
+assert.ok(!/uDetailSkip/.test(shadersSource) && !/uDetailSkip/.test(layerSource), 'no detail skip left in the medium');
+assert.ok(shadersSource.includes('d = clamp( ( d * 2.0 - modifier * 0.5 ) / max( 1.0 - modifier * 0.5, vec4( 1e-3 ) ), 0.0, 1.0 );'), 'the detail remap');
 assert.match(layerSource, /const CLOUD_MARCH_EXIT_T = 0\.05;/);
 assert.match(layerSource, /uLightBudget: \{ value: new THREE\.Vector4\(CLOUD_LIGHT_EVERY, 0\.15, defs\.sunSteps, CLOUD_MARCH_EXIT_T\) \}/);
 assert.match(layerSource, /set\(Math\.max\(1, Math\.round\(lightTune\('CLOUD_LIGHT_EVERY', CLOUD_LIGHT_EVERY\)\)\), lightTune\('CLOUD_LIGHT_T', 0\.15\),\s*lightTune\('CLOUD_SUN_STEPS', CLOUD_TIERS\[this\.traceTier\]\?\.sunSteps \?\? 2\), lightTune\('CLOUD_T_EXIT', CLOUD_MARCH_EXIT_T\)\);/, 'the defaults the law');
