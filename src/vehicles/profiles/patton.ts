@@ -4652,13 +4652,23 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     return tail[1];
   };
   const buildM60HullStage2 = (): void => {
+    // Fleet lane round 1 (2026-10-07; accessories wave 255: "thin black outline frames lying flat on the deck with the
+    // same sand skin showing between the bars ... no louver slats, depth or dark void"): each bay is now a raised
+    // 16 mm frame around a dark floor with seven 34-degree louvre vanes inside it, so the lit and shaded vane faces and
+    // the dark void between them read as a grille in depth. Tops stay at or under the 1.904 deck-band cap (front bay
+    // crown 1.886 + 16 mm frame; vane tops 15 mm).
+    const FRAME = 0.028, FRAME_H = 0.016, VANES = 7, VANE_TILT = 0.6;
     for (const side of [-1, 1]) {
       for (const [gz0, gz1] of [[-1.92, -2.24], [-2.30, -2.60]]) {
-        const gm = (gz0 + gz1) / 2, gd = gz0 - gz1, gy = crownAt(gm);
-        P.add('hullDark', box(0.56, 0.012, gd), side * 0.40, gy + 0.006, gm);
-        for (let i = 0; i < 4; i++) {
-          const z = gz0 - (i + 0.5) * (gd / 4);
-          P.add('hullDetail', box(0.52, 0.012, (gd / 4) * 0.55), side * 0.40, gy + 0.012, z);
+        const gm = (gz0 + gz1) / 2, gd = gz0 - gz1, gy = crownAt(gm), gx = side * 0.40, bw = 0.56;
+        P.add('hullDark', box(bw, 0.006, gd), gx, gy + 0.003, gm);
+        P.add('hull', box(bw + 2 * FRAME, FRAME_H, FRAME), gx, gy + FRAME_H / 2, gz0 + FRAME / 2);
+        P.add('hull', box(bw + 2 * FRAME, FRAME_H, FRAME), gx, gy + FRAME_H / 2, gz1 - FRAME / 2);
+        for (const dx of [-1, 1]) P.add('hull', box(FRAME, FRAME_H, gd), gx + dx * (bw / 2 + FRAME / 2), gy + FRAME_H / 2, gm);
+        const pitch = gd / VANES;
+        for (let i = 0; i < VANES; i++) {
+          const z = gz0 - (i + 0.5) * pitch;
+          P.add('hullDetail', box(bw - 0.012, 0.005, pitch * 0.9), gx, gy + 0.004, z, -VANE_TILT, 0, 0);
         }
       }
     }
