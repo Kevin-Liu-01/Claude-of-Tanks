@@ -366,7 +366,9 @@ for (const [n, id, kind, title, set, film, still] of SHOTS) {
         const moveFamily = lens.replace(/[LR]$/, ''), routeFamily = family.split(/[[+-]/)[0];
         // framing leads (composition wave c1): the sweet share and the bad share outweigh the motion terms, whose range
         // and climb rewards (which drove the lens up into the look-down) are capped low
-        const score = 4 * fr.sweet - 3 * fr.bad + 1.0 * Math.min(range, 3) / 3 + 0.2 * Math.min(m.climb, 10) / 10 + 0.8 * m.front + 0.4 * Math.min(m.speed, speed) / speed + 0.3 * closing
+        // framing v3's flaws (composition wave c3: clutter in the foreground and sliced escorts cost a good frame half a
+        // point; a gun jammed against the edge drew the critics' notes)
+        const score = 4 * fr.sweet - 3 * fr.bad - 1.75 * (fr.flaw ?? 0) - 0.5 * (fr.gunTight ?? 0) + 1.0 * Math.min(range, 3) / 3 + 0.2 * Math.min(m.climb, 10) / 10 + 0.8 * m.front + 0.4 * Math.min(m.speed, speed) / speed + 0.3 * closing
           + 0.3 * inFrame - 2 * blocked - USAGE_W * (usage.get(moveFamily) ?? 0) - 0.15 * (usage.get(routeFamily) ?? 0) + (scene.meta.cameraFix ? -0.2 : 0) + (road && town ? 0.15 : 0)
           - 1 * (setUse.get(setKeys(n, family, lens)[0]) ?? 0) - 3 * (setUse.get(setKeys(n, family, lens)[1]) ?? 0) - 1.5 * (setUse.get(setKeys(n, family, lens)[2]) ?? 0)
           + 0.6 * flankSwing;
@@ -381,7 +383,7 @@ for (const [n, id, kind, title, set, film, still] of SHOTS) {
   const { results, why } = found;
   const best = results[0], secs = ((Date.now() - t0) / 1000).toFixed(0);
   if (process.env.WHY || !best) console.log(`   rejected: ${[...why].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k} ×${v}`).join('; ')}`);
-  if (process.env.TOP) for (const r of results.slice(0, Number(process.env.TOP))) console.log(`   ${r.score.toFixed(2)} ${r.family} ${r.lens} sweet ${r.fr.sweet.toFixed(2)} bad ${r.fr.bad.toFixed(2)}`);
+  if (process.env.TOP) for (const r of results.slice(0, Number(process.env.TOP))) console.log(`   ${r.score.toFixed(2)} ${r.family} ${r.lens} sweet ${r.fr.sweet.toFixed(2)} bad ${r.fr.bad.toFixed(2)}${r.fr.flaw != null ? ` flaw ${r.fr.flaw.toFixed(2)} gun ${r.fr.gunTight.toFixed(2)}` : ''}`);
   // (2026-10-08: a partial run that found nothing deleted three takes' plans; the plan in hand stays unless DROP=1)
   if (!best) { console.log(`s${String(n).padStart(2, '0')} ${id}: no candidate clears every check — ${process.env.DROP === '1' ? 'keeps its own motion' : plan[n] ? 'keeps its plan' : 'keeps its own motion'} (${secs} s)`); if (process.env.DROP === '1') delete plan[n]; continue; }
   for (const k of [best.lens.replace(/[LR]$/, ''), best.family.split(/[[+-]/)[0]]) usage.set(k, (usage.get(k) ?? 0) + 1);
@@ -390,7 +392,7 @@ for (const [n, id, kind, title, set, film, still] of SHOTS) {
     ...(found.count ? { count: found.count } : {}),
     routes: best.routes, ...(best.aim ? { aim: best.aim } : {}), cam: best.cam ?? [...lensMoves(kind, town), ...lensMoves(kind)].find(([l]) => l === best.lens)[1],
     checks: { lens: `${best.m.near.toFixed(0)}–${best.m.far.toFixed(0)} m`, climb: +best.m.climb.toFixed(1), front: +best.m.front.toFixed(2), inFrame: +best.inFrame.toFixed(2), blocked: +best.blocked.toFixed(2),
-      sweet: +best.fr.sweet.toFixed(2), bad: +best.fr.bad.toFixed(2), candidates: results.length } };
+      sweet: +best.fr.sweet.toFixed(2), bad: +best.fr.bad.toFixed(2), ...(best.fr.flaw != null ? { flaw: +best.fr.flaw.toFixed(2), gunTight: +best.fr.gunTight.toFixed(2) } : {}), candidates: results.length } };
   console.log(`s${String(n).padStart(2, '0')} ${id}: ${plan[n].note} · lens ${plan[n].checks.lens}, climb ${plan[n].checks.climb} m, front ${plan[n].checks.front}, sweet ${plan[n].checks.sweet}, bad ${plan[n].checks.bad}, ${results.length} passed (${secs} s)`);
 }
 writeFileSync(OUT, `${JSON.stringify(plan, null, 1)}\n`);

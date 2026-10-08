@@ -82,8 +82,13 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
   const heroKeys = scene.storyboard?.actorTracks?.find((t) => t.actor === 'hero')?.keys;
   const heroActor = scene.actors.find((a) => a.name === 'hero');
   if (!shots.length || !heroActor) return { blocked: 0, outOfFrame: 0, inside: 0, samples: 0, worst: [], blockedAt: [], perSample: [] };
-  const [halfLength, halfWidth] = hullOf(heroActor.id);
+  const [halfLength, halfWidth, muzzleReach = halfLength + 2.4, heightM = 2.4] = hullOf(heroActor.id);
   const cam = {}, pose = {}, hits = [], fallen = crushTimes(scene, model);
+  // the other tanks (composition wave c3: escorts sliced by the frame's edge, or parked right behind the hero so the
+  // hulls fuse), each with its track and contact rectangle
+  const escorts = scene.actors.filter((a) => a.name !== 'hero').map((a) => ({
+    actor: a, keys: scene.storyboard?.actorTracks?.find((t) => t.actor === a.name)?.keys ?? null, dims: hullOf(a.id), pose: {},
+  }));
   let samples = 0, blocked = 0, outOfFrame = 0, insideCount = 0, now = 0;
   const crushed = (r) => (fallen.get(r) ?? Infinity) <= now;
   const ignore = (r) => (r.crushable && r.max[1] - r.min[1] < LOW_COVER_M) || crushed(r);
@@ -173,7 +178,9 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
     // crushed by then are left out. Low cover counts here (composition wave c3, 2026-10-08: of the 41 frames both critics
     // flagged FOREGROUND, the hedgehogs, fences, benches, crates and drums under the lens scored nothing while the
     // sightlines' low-cover rule left them out; it cannot hide a hull, but it crowds the frame).
-    let foreShare = 0, foreKind = null, zoneShare = 0, zoneKind = null;
+    let foreShare = 0, foreKind = null, zoneShare = 0, zoneKind = null, clutter = 0, clutterKind = null;
+    // clutter: the foreground without architecture (houses and anything over 4 m: a street's frontages are its set,
+    // not in the shot's way; composition wave c2 scored them up), so props, low cover and shrubs
     const zoneTop = box ? Math.min(box[1], 0.2) : 0.2;
     model.query(Math.min(cam.x, x) - 10, Math.min(cam.z, z) - 10, Math.max(cam.x, x) + 10, Math.max(cam.z, z) + 10, nearby);
     for (const r of nearby) {
@@ -194,6 +201,7 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
       const w = Math.min(1, a1) - Math.max(-1, a0), h = Math.min(1, b1) - Math.max(-1, b0);
       const share = w > 0 && h > 0 ? (w * h) / 4 : 0;
       if (share > foreShare) { foreShare = share; foreKind = r.kind; }
+      if (share > clutter && r.kind !== 'structure' && r.max[1] - r.min[1] <= 4) { clutter = share; clutterKind = r.kind; }
       const zw = Math.min(0.6, a1) - Math.max(-0.6, a0), zh = Math.min(zoneTop, b1) - Math.max(-1, b0);
       const zone = zw > 0 && zh > 0 ? (zw * zh) / 4 : 0;
       if (zone > zoneShare) { zoneShare = zone; zoneKind = r.kind; }
@@ -215,12 +223,49 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
       const w = Math.min(1, a1) - Math.max(-1, a0), h = Math.min(1, b1) - Math.max(-1, b0);
       const share = w > 0 && h > 0 ? (w * h) / 4 : 0;
       if (share > foreShare) { foreShare = share; foreKind = sh.kind; }
+      if (share > clutter) { clutter = share; clutterKind = sh.kind; }
       const zw = Math.min(0.6, a1) - Math.max(-0.6, a0), zh = Math.min(zoneTop, b1) - Math.max(-1, b0);
       const zone = zw > 0 && zh > 0 ? (zw * zh) / 4 : 0;
       if (zone > zoneShare) { zoneShare = zone; zoneKind = sh.kind; }
     }
+    // the gun (composition wave c3: barrels cut by the frame's edge or jammed against it in a third of the frames): the
+    // muzzle's screen point, `muzzleReach` out along the hull's heading plus the turret's from the trunnion (80 % of the
+    // silhouette's height), and `gunRoom`, the frame left ahead of the muzzle toward the edge the gun points at (frame
+    // units across, 2 wide; negative when the muzzle is past that edge; null when either point is behind the lens)
+    const turretDeg = heroKeys?.length ? pose.turretDeg ?? 0 : heroActor.turretDeg ?? 0, gunDeg = heroKeys?.length ? pose.gunDeg ?? 0 : heroActor.gunDeg ?? 0;
+    const gunYaw = yaw + turretDeg * Math.PI / 180, gunPitch = gunDeg * Math.PI / 180, trunnion = gy + heightM * 0.8;
+    const screenOf = (q) => {
+      const d = [q[0] - cam.x, q[1] - cam.y, q[2] - cam.z], depth = d[0] * fw[0] + d[1] * fw[1] + d[2] * fw[2];
+      return depth > 0.5 ? [(d[0] * right[0] + d[1] * right[1] + d[2] * right[2]) / depth / tx, (d[0] * up[0] + d[1] * up[1] + d[2] * up[2]) / depth / ty] : null;
+    };
+    const pivotS = screenOf([x, trunnion, z]);
+    const muzzleS = screenOf([x + Math.sin(gunYaw) * Math.cos(gunPitch) * muzzleReach, trunnion + Math.sin(gunPitch) * muzzleReach, z + Math.cos(gunYaw) * Math.cos(gunPitch) * muzzleReach]);
+    const gunRoom = pivotS && muzzleS ? +(muzzleS[0] >= pivotS[0] ? 1 - muzzleS[0] : 1 + muzzleS[0]).toFixed(3) : null;
+    // the escorts: one is sliced when its box crosses the frame's side edge with at least a quarter of its width inside
+    // and it stands half the hero's height or more; stacked when it stands behind the hero and half its box or more
+    // lies inside the hero's
+    let sliced = 0, stacked = 0;
+    for (const e of escorts) {
+      let ex = e.actor.pos[0], ez = e.actor.pos[1], eyaw = (e.actor.facingDeg ?? 0) * Math.PI / 180;
+      if (e.keys?.length) { if (!sampleActorTrack(e.keys, t, e.pose)) continue; ex = e.pose.x; ez = e.pose.z; eyaw = (e.pose.facingDeg ?? 0) * Math.PI / 180; }
+      const egy = model.heightAt(ex, ez), efx = Math.sin(eyaw), efz = Math.cos(eyaw), [ehl, ehw] = e.dims;
+      let ex0 = Infinity, ex1 = -Infinity, ey0 = Infinity, ey1 = -Infinity, front = true;
+      for (const [a, b] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) for (const h of [0, 2.6]) {
+        const q = screenOf([ex + efx * ehl * a + efz * ehw * b, egy + h, ez + efz * ehl * a - efx * ehw * b]);
+        if (!q) { front = false; continue; }
+        ex0 = Math.min(ex0, q[0]); ex1 = Math.max(ex1, q[0]); ey0 = Math.min(ey0, q[1]); ey1 = Math.max(ey1, q[1]);
+      }
+      if (!front || ey1 < -1 || ey0 > 1 || ex1 < -1 || ex0 > 1) continue;
+      const inside = Math.min(1, ex1) - Math.max(-1, ex0), width = ex1 - ex0;
+      if ((ex0 < -1 || ex1 > 1) && inside >= width * 0.25 && box && (ey1 - ey0) >= (box[3] - box[1]) * 0.5) sliced++;
+      if (box && Math.hypot(ex - cam.x, ez - cam.z) > distM) {
+        const ox = Math.min(ex1, box[2]) - Math.max(ex0, box[0]), oy = Math.min(ey1, box[3]) - Math.max(ey0, box[1]);
+        if (ox > 0 && oy > 0 && ox * oy >= 0.5 * width * (ey1 - ey0)) stacked++;
+      }
+    }
     perSample.push({ tMs: t, seen: inView, centred, clear: !isBlocked && blockedRays === 0, distM: +distM.toFixed(1),
-      box, whole, size: box ? +((box[3] - box[1]) / 2).toFixed(3) : 0, fore: { share: +foreShare.toFixed(3), kind: foreKind, zone: +zoneShare.toFixed(3), zoneKind },
+      muzzle: muzzleS ? muzzleS.map((v) => +v.toFixed(3)) : null, gunRoom, sliced, stacked,
+      box, whole, size: box ? +((box[3] - box[1]) / 2).toFixed(3) : 0, fore: { share: +foreShare.toFixed(3), kind: foreKind, zone: +zoneShare.toFixed(3), zoneKind, clutter: +clutter.toFixed(3), clutterKind },
       at: [+x.toFixed(2), +z.toFixed(2)], eye: [+cam.x.toFixed(2), +cam.y.toFixed(2), +cam.z.toFixed(2)], facing,
       pitchDeg: +(Math.asin(Math.max(-1, Math.min(1, fw[1]))) * 180 / Math.PI).toFixed(1), heightM: +(cam.y - model.heightAt(cam.x, cam.z)).toFixed(1) });
   }
@@ -286,6 +331,15 @@ export function framingFaults(scene, report) {
  * the height or with its bottom edge above the lowest 35 % (dead ground under it). v2 drops v1's foreground share: on
  * c2's frames it did not predict the critics' FOREGROUND flag (thin poles and trees across the hull), and it rose with
  * composition (+0.24: houses framing a street).
+ * v3 (wave c3, 2026-10-08; held against the lens record and scores of waves c1-c3's 374 frames): sweet keeps v2's low
+ * lens and adds an elevated three-quarter, 3.5-6.5 m up looking down 8-20° at a hull 10-16 m out and 45-68 % of the
+ * frame's height (the critics' 7.0-7.5 frames held both; such frames scored 5.72, v2's sweet 5.52), so bad moves its
+ * pitch limit to -22°. Two flaws come back as rates of their own, not as bad: they cost a good frame half a point, where
+ * bad geometry costs two (v2's bad frames 3.74, its sweet 5.52). `flaw`: clutter in the foreground (props, low cover,
+ * shrubs, not a street's frontages; clutter >= 0.02 or the zone under the hull >= 0.005 marks the critics' FOREGROUND
+ * flag at precision 0.73-0.81 against a base rate of 0.33, and costs a good frame 0.37) or an escort sliced by the
+ * frame's side (0.54). `gunTight`: under 0.1 of the frame ahead of the muzzle (64-88 % of such frames drew CUT or
+ * EDGE_SQUEEZE, though their scores held).
  */
 export function framingScore(report, { version = 2 } = {}) {
   const ps = report.perSample, n = ps.length || 1;
@@ -295,11 +349,23 @@ export function framingScore(report, { version = 2 } = {}) {
     const bad = ps.filter((p) => !p.seen || p.pitchDeg < -18 || p.heightM > 13 || p.size < 0.2 || (!p.whole && p.size < 0.58) || edge(p) > 0.5 || p.fore.share >= 0.06).length / n;
     return { sweet, bad };
   }
-  const sweet = ps.filter((p) => p.seen && p.whole && p.heightM <= 3 && p.pitchDeg >= -6 && p.size >= 0.4 && p.size <= 0.68
-    && p.box && p.box[1] <= -0.5 && edge(p) <= 0.35 && Math.abs(p.facing ?? 0) >= 0.15).length / n;
-  const bad = ps.filter((p) => !p.seen || p.pitchDeg < -15 || p.heightM > 8 || p.size < 0.3 || (!p.whole && p.size < 0.58)
+  if (version === 2) {
+    const sweet = ps.filter((p) => p.seen && p.whole && p.heightM <= 3 && p.pitchDeg >= -6 && p.size >= 0.4 && p.size <= 0.68
+      && p.box && p.box[1] <= -0.5 && edge(p) <= 0.35 && Math.abs(p.facing ?? 0) >= 0.15).length / n;
+    const bad = ps.filter((p) => !p.seen || p.pitchDeg < -15 || p.heightM > 8 || p.size < 0.3 || (!p.whole && p.size < 0.58)
+      || edge(p) > 0.5 || (p.box && p.box[1] > -0.3)).length / n;
+    return { sweet, bad };
+  }
+  const low = (p) => p.heightM <= 3 && p.pitchDeg >= -6 && p.size >= 0.4 && p.size <= 0.68;
+  const raised = (p) => p.heightM > 3.5 && p.heightM <= 6.5 && p.pitchDeg >= -20 && p.pitchDeg <= -8 && p.size >= 0.45 && p.size <= 0.68
+    && p.distM >= 10 && p.distM <= 16;
+  const sweet = ps.filter((p) => p.seen && p.whole && (low(p) || raised(p)) && p.box && p.box[1] <= -0.5 && edge(p) <= 0.35
+    && Math.abs(p.facing ?? 0) >= 0.15).length / n;
+  const bad = ps.filter((p) => !p.seen || p.pitchDeg < -22 || p.heightM > 8 || p.size < 0.3 || (!p.whole && p.size < 0.58)
     || edge(p) > 0.5 || (p.box && p.box[1] > -0.3)).length / n;
-  return { sweet, bad };
+  const flaw = ps.filter((p) => (p.fore?.clutter ?? 0) >= 0.02 || (p.fore?.zone ?? 0) >= 0.005 || p.sliced > 0).length / n;
+  const gunTight = ps.filter((p) => p.gunRoom != null && p.gunRoom < 0.1).length / n;
+  return { sweet, bad, flaw, gunTight };
 }
 
 /**

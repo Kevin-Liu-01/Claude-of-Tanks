@@ -148,4 +148,14 @@ const inBush = lensReport(parkedAt(0, 30, fixedAt([-5, 1.2, 30], [0, 1.2, 30]), 
 assert.ok(inBush.inside > 0.9, `a lens inside a crown is caught (${inBush.inside})`);
 assert.equal(lensReport(parkedAt(0, 30, fixedAt([-5, 3.0, 30], [0, 1.2, 30]), scene), shrubbed).inside, 0, 'a lens over the crown is not');
 
+// The gun's room (composition wave c3: barrels cut by the frame's edge): a broadside hull 15 m off keeps about a quarter
+// of the frame ahead of its muzzle (the Leopard's reaches 7.1 m from its centre); 10 m off, the muzzle is past the edge.
+const [, , leoReach] = hullOf('leo2a7v_x');
+assert.ok(leoReach > 6.5 && leoReach < 7.5, `the muzzle's reach is the spec's overall length less half the hull (${leoReach})`);
+const room15 = lensReport(parkedAt(0, 30, fixedAt([0, 1.6, 15], [0, 1.2, 30])), model).perSample[0];
+assert.ok(room15.gunRoom > 0.15 && room15.gunRoom < 0.4 && room15.muzzle[0] < 0, `from 15 m the muzzle points left with room ahead (${JSON.stringify([room15.muzzle, room15.gunRoom])})`);
+const room10 = lensReport(parkedAt(0, 30, fixedAt([0, 1.6, 20], [0, 1.2, 30])), model).perSample[0];
+assert.ok(room10.gunRoom < 0, `from 10 m the muzzle is past the edge (${room10.gunRoom})`);
+assert.equal(room15.sliced, 0, 'no escort, none sliced');
+
 console.log('world-model.selftest: pass');
