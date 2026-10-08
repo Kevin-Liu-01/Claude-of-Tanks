@@ -461,6 +461,8 @@ collapse-spike probe: the worst frame of a scripted collapse, against the same f
     map's mask), a round bursting on a hull (`resolveTankShellImpact`, surface tank, before its hits), a cook-off or a
     fuel fire (`announceDestroyed`, 1 m above the hull, before `tank:destroyed`; `cookOffChargeKg(weight)`,
     `FUEL_CHARGE_KG`). A penetrator, small arms and smoke raise none (`munitionBlastEventFor` returns null).
+  - a ground burst that dug a crater (§7) carries its `craterId` (solo `munition:blast`; network `shell_impact`), so
+    the presentation takes that burst's mark from the crater's own `terrain:crater` at the end of the tick.
   - network: `shell_impact` carries `munition`, `chargeKg` and `structureId`; every `shell_hit` carries `munition` and
     `chargeKg`, and the first one a round bursting on a hull makes (the direct hit's) carries `blast: [x, y, z, nx, ny,
     nz]`, splash hits none; `tank_destroyed` names the cause. `mp/presentation/battlePresentation.ts` raises the same

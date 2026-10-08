@@ -72,8 +72,10 @@ const noWorld = { obstacles: [], colliders: [] };
 {
   const solo = readFileSync(new URL('../game/state.ts', import.meta.url), 'utf8');
   const authority = readFileSync(new URL('./authoritativeMatch.ts', import.meta.url), 'utf8');
-  assert.match(solo, /shellWorldHit\(shell\.spec, hit\.record, hit\.point\.x, hit\.point\.y, hit\.point\.z, _seg\.x, _seg\.z,\s*hit\.kind === 'terrain' && !hit\.record && !shellHitsWater\(world, hit\)\);/,
-    'solo: a burst on dry ground');
+  assert.match(solo, /const craterId = game\._destruction\?\.shellWorldHit\(shell\.spec, hit\.record, hit\.point\.x, hit\.point\.y, hit\.point\.z, _seg\.x, _seg\.z,\s*hit\.kind === 'terrain' && !hit\.record && !shellHitsWater\(world, hit\)\) \?\? null;/,
+    'solo: a burst on dry ground (the crater it dug rides its munition:blast)');
+  assert.match(authority, /const craterId = destruction\.shellWorldHit\([\s\S]{0,160}groundBurst\);\s*emitWorldShellImpact\(shell, worldHit, craterId\);/,
+    'authority: the crater it dug rides its shell_impact');
   assert.match(authority, /const groundBurst = worldHit\.kind === 'terrain' && !worldHit\.record\s*&& !shellHitsWater\(\{ heightField \}, \{ kind: 'terrain', point: shell\.pos \}\);/,
     'authority: the same test');
   assert.match(solo, /destruction\.drainCraters\(craters\);\s*for \(const crater of craters\) bus\.emit\(DESTRUCTION_BUS_EVENTS\.crater, crater\);/, 'solo: terrain:crater');
@@ -92,14 +94,18 @@ function run(seed) {
   match.onMatchReady();
   // the HE round (slot 2), the gun depressed into open ground ahead
   const fire = new Map([['gun', { throttle: 0, steer: 0, brake: true, fire: true, aimYaw: 0, aimPitch: -0.12, shellSlot: 2 }]]);
-  const craters = [];
+  const craters = [], impacts = [];
   for (let i = 0; i < 600 && craters.length < 2; i++) {
     match.step({ dt: 1 / 60, inputs: fire });
+    // the crater is public (the far side sees it); the impact is the shooter's to see
     for (const event of match.eventsForViewer('far')) if (event.type === 'terrain_crater') craters.push(event);
+    for (const event of match.eventsForViewer('gun')) {
+      if (event.type === 'shell_impact' && typeof event.craterId === 'number') impacts.push(event);
+    }
     match.afterEventBroadcast();
   }
   const meta = match.snapshot({ tick: 0, serverTimeMs: 0, viewerId: 'far', ackInputSeq: null }).meta;
-  return { craters, log: meta.destructionLog, height: (x, z) => match.heightField.getHeightAt(x, z) };
+  return { craters, impacts, log: meta.destructionLog, height: (x, z) => match.heightField.getHeightAt(x, z) };
 }
 {
   const a = run(9);
@@ -108,6 +114,8 @@ function run(seed) {
   assert.equal(c.munition, 'he');
   assert.ok(Math.abs(c.radiusM - craterFor(munitionChargeKg(getSpec('m1a2').gun.shells[2]), 'he', 1, { radiusM: 0, depthM: 0, rimM: 0 }).radiusM) < 0.006);
   assert.deepEqual(a.log.filter((e) => e.kind === 'crater').map((e) => e.craterId), a.craters.map((e) => e.craterId), 'logged in order');
+  assert.deepEqual(a.impacts.map((e) => e.craterId), a.craters.map((e) => e.craterId), 'each crater rides the impact that dug it');
+  assert.ok(a.impacts.every((e, i) => Math.abs(e.x - a.craters[i].x) < 0.001 && Math.abs(e.z - a.craters[i].z) < 0.001));
   const b = run(9);
   assert.deepEqual(JSON.stringify(b.log), JSON.stringify(a.log), 'the run replays bit for bit, its craters included');
   assert.equal(b.height(c.x, c.z), a.height(c.x, c.z));

@@ -220,10 +220,11 @@ export function craterFor(chargeKg: number, munition: MunitionClass, craterScale
  * does not detonate (kinetic, small arms, smoke). `structureId` names the structure it struck, when it struck one.
  */
 export function munitionBlastEventFor(spec: MunitionShellLike, x: number, y: number, z: number, nx: number, ny: number,
-  nz: number, surface: MunitionBlastEvent['surface'], structureId?: number | null): MunitionBlastEvent | null {
+  nz: number, surface: MunitionBlastEvent['surface'], structureId?: number | null, craterId?: number | null): MunitionBlastEvent | null {
   const munition = munitionClassForShell(spec);
   const chargeKg = munitionChargeKg(spec, munition);
   if (!(chargeKg > 0)) return null;
   return { munition, chargeKg, x, y, z, nx, ny, nz, surface,
-    ...(typeof structureId === 'number' && Number.isSafeInteger(structureId) ? { structureId } : {}) };
+    ...(typeof structureId === 'number' && Number.isSafeInteger(structureId) ? { structureId } : {}),
+    ...(typeof craterId === 'number' && Number.isSafeInteger(craterId) ? { craterId } : {}) };
 }
