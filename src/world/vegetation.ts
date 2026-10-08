@@ -329,6 +329,9 @@ export interface VegetationRuntime {
   /** Checkpoint-only accounting; never force-drains unfinished visible grass. */
   getGrassWorkState(): VegetationGrassWorkState;
   setGroundCoverClearance(blocked: GroundCoverBlocked): void;
+  /** Ground lane (2026-10-08): the hulls' pressure field (tallGrass.ts's groundPressure.ts field) the tufts lie down in
+   * as the tall grass does; null (no sward, the phones) leaves them standing. */
+  bindGroundPressure?(field: { readonly stateUniform: { value: THREE.Texture | null }; readonly params: THREE.Vector4 } | null): void;
   update(
     deltaSeconds: number,
     cameraPosition: THREE.Vector3,
@@ -3898,6 +3901,11 @@ function* vegetationBuildSteps(
   const uScopeDist = { value: 70 };
   // Camera forward (unit) — drives the sniper center-cone grass clear-out.
   const uCamFwd = { value: new THREE.Vector3(0, 0, 1) };
+  // ground lane (2026-10-08): the hulls' pressure field the tufts lie down in (bindGroundPressure; w 0 = none bound),
+  // copied each frame from the tall grass's field (its state texture ping-pongs between two targets)
+  const uTuftPress = { value: null as THREE.Texture | null };
+  const uTuftPressParams = { value: new THREE.Vector4(96, 0, 0, 0) };
+  let boundPressure: { readonly stateUniform: { value: THREE.Texture | null }; readonly params: THREE.Vector4 } | null = null;
 
   // ---- grass materials (shared hook, per-material fade distance) ----
   const grassWindHook = (farDist: number): MaterialShaderHook => (shader: MaterialShader): void => {
@@ -3906,8 +3914,10 @@ function* vegetationBuildSteps(
     shader.uniforms.uGrassFar = { value: farDist };
     shader.uniforms.uSniperFade = uSniperFade;
     shader.uniforms.uCamFwd = uCamFwd;
+    shader.uniforms.uTuftPress = uTuftPress;
+    shader.uniforms.uTuftPressParams = uTuftPressParams;
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\nuniform float uWindTime;\nuniform vec3 uCamPos;\nuniform float uGrassFar;\nuniform float uSniperFade;\nuniform vec3 uCamFwd;');
+      '#include <common>\nuniform float uWindTime;\nuniform vec3 uCamPos;\nuniform float uGrassFar;\nuniform float uSniperFade;\nuniform vec3 uCamFwd;\nuniform sampler2D uTuftPress;\nuniform vec4 uTuftPressParams;\nvarying float vTuftCrush;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`
       #include <begin_vertex>
       vec3 cotGrassRoot;
@@ -3930,9 +3940,22 @@ function* vegetationBuildSteps(
         float rayBand = 1.0 - (1.0 - smoothstep(2.6, 6.0, dRay)) * (1.0 - smoothstep(90.0, 130.0, dCam));
         gfade *= mix(1.0, nearBand * rayBand, uSniperFade);
         transformed *= gfade;
+        // ground lane (2026-10-08, the coordinator's backlog: "grass flattened in the hull's path"): the hulls' press — the
+        // tall grass's own field (groundPressure.ts) — lays the tuft down as it lays the blades: its card pressed to a
+        // quarter of its height, its sway stilled, and its bruise (the field's slower crush memory) darkening it a while
+        float tuftPress = 0.0;
+        vTuftCrush = 0.0;
+        if (uTuftPressParams.w > 0.5) {
+          vec2 pOff = abs(giw.xz - uTuftPressParams.yz) / uTuftPressParams.x;
+          float pWin = 1.0 - smoothstep(0.40, 0.47, max(pOff.x, pOff.y));
+          vec4 pr = texture2D(uTuftPress, fract(giw.xz / uTuftPressParams.x));
+          tuftPress = clamp(pr.r * pWin, 0.0, 1.0);
+          vTuftCrush = clamp(pr.a * pWin, 0.0, 1.0);
+          transformed.y *= 1.0 - 0.75 * tuftPress;
+        }
         // ground footprint of this vertex BEFORE the wind sway (instance space)
         cotGrassRoot = vec3(transformed.x, 0.0, transformed.z);
-        float sway = uv.y * uv.y;
+        float sway = uv.y * uv.y * (1.0 - 0.85 * tuftPress);
         float phase = giw.x * 0.35 + giw.z * 0.28;
         transformed.x += sway * (0.12 * sin(uWindTime * 1.6 + phase) + 0.05 * sin(uWindTime * 3.7 + phase * 2.3));
         transformed.z += sway * 0.08 * cos(uWindTime * 1.3 + phase);
@@ -3964,7 +3987,9 @@ function* vegetationBuildSteps(
       #if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA )
         if (vColor.r < 0.0) diffuseColor.rgb = -vColor.rgb * (dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)) / 0.28);
         else diffuseColor *= vColor;
-      #endif`);
+      #endif
+      diffuseColor.rgb *= 1.0 - 0.22 * vTuftCrush; // ground lane: a crushed tuft's bruise (the tall grass's crushDarken)`);
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nvarying float vTuftCrush;');
     // ground lane (2026-10-03, waves 13/14: "grass in shadow turns a saturated teal or indigo"): the shaded sward's light
     // as the tall grass takes it — the same text as tallGrass.ts SHADED_SWARD_GLSL (tallGrass.selftest compares them; a
     // copy keeps the carpet's module free of the tall-grass tier): after the chunk, as far as the blade is in shadow
@@ -4024,8 +4049,8 @@ function* vegetationBuildSteps(
         // tuft cover the 1049e4e pastures showed to ~300 m; the near carpet
         // keeps the crisp 0.44 edge beside the tracks.
         // v8/v7: root-anchored shadow lookup; v9/v8 (ground lane): the crop tuft's colour branch; v10/v9: the shaded sky light desaturated
-        matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v11', 0.34),
-        matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v10'),
+        matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v12', 0.34), // v12: the hulls' press
+        matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v11'), // v11: the hulls' press
       });
       yield { stage: 'grassPrep', fine: true };
     }
@@ -8055,6 +8080,7 @@ function* vegetationBuildSteps(
     if (treeCrushAnims.length) updateTreeCrush(dt); // gameplay_feel r6 topples
     uCamPos.value.copy(camPos);
     if (camFwd) uCamFwd.value.copy(camFwd);
+    if (boundPressure) { uTuftPress.value = boundPressure.stateUniform.value; uTuftPressParams.value.copy(boundPressure.params); }
     updateNearTierShadowReach(camPos);
     uSniperFade.value += (sniperFadeTarget - uSniperFade.value) *
       (1 - Math.exp(-(dt || 0) / 0.08));
@@ -8231,7 +8257,11 @@ function* vegetationBuildSteps(
     }
   }
   rimTrees.length = 0;
-  return { group, update, dispose, getGrassWorkState, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
+  function bindGroundPressure(field: { readonly stateUniform: { value: THREE.Texture | null }; readonly params: THREE.Vector4 } | null): void {
+    boundPressure = field;
+    if (!field) { uTuftPress.value = null; uTuftPressParams.value.set(96, 0, 0, 0); }
+  }
+  return { group, update, dispose, getGrassWorkState, setWindTime, setSniperFade, setGroundCoverClearance, bindGroundPressure, treeObstacles, concealers,
     crushTree, resetToppled, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _woodsMask: woodsMask,
     _rimMix: veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,

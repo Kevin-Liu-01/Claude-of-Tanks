@@ -16,6 +16,7 @@ import {
 } from './terrain.ts';
 // Round 73 (2026-09-25): the tall-grass tier and the pressure field its blades bend to
 import { createTallGrass, type TallGrass } from './tallGrass.ts';
+import { TRACK_MARKS, createTrackMarks } from './trackMarks.ts';
 import type { GroundDisturbance } from './groundPressure.ts';
 import type { HeightField, TerrainMapConfig } from './terrain.ts';
 import {
@@ -212,6 +213,11 @@ export interface WorldRuntime {
   advanceWater(dt: number, anchorX: number, anchorZ: number): void;
   /** Round 73: every hull this frame (footprint, heading, speed) — the tall grass lies down under it. */
   setGroundDisturbances?(sources: readonly GroundDisturbance[]): void;
+  /** Ground lane (2026-10-08): one presented hull this frame lays its tracks' marks (trackMarks.ts: its key, centre,
+   * heading, ground speed, half gauge and track width); cosmetic, local to this client. */
+  stampTrackMarks?(key: object, x: number, z: number, fx: number, fz: number, speed: number, halfGaugeM: number, trackWidthM: number): void;
+  /** Ground lane: hulls driven along polylines through the track marks — the capture tools' staging (trackMarks.ts layPaths). */
+  layTrackMarkPaths?(paths: readonly (readonly number[])[], speedMps?: number): number;
   setSniperFade(
     fraction: number,
     immediate?: boolean,
@@ -477,6 +483,16 @@ function assembleWorld(
     releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
   });
   group.add(tallGrass.group);
+  // ground lane (2026-10-08): the tufts lie down in the same press the hulls stamp for the tall grass
+  vegetation.bindGroundPressure?.(tallGrass.pressure);
+  // ground lane (2026-10-08): the tanks' track marks — a ring of strips that modulate the drawn ground, laid by the
+  // presented hulls (stampTrackMarks) and cleared with the destructibles at every battle's start; while they are laid the
+  // FX layer's own short-lived dry prints stand down (heightField.trackMarksActive)
+  const trackMarks = createTrackMarks(heightField, {
+    segments: getDeviceTier() === 'mobile' ? TRACK_MARKS.segmentsMobile : TRACK_MARKS.segments,
+  });
+  group.add(trackMarks.mesh);
+  heightField.trackMarksActive = () => true;
   const rayCandidates: CollisionRecord[] = [];
 
   const sp = layout.spawns;
@@ -603,6 +619,7 @@ function assembleWorld(
       vegetation.dispose();
       litter.dispose();
       tallGrass.dispose(); // round 73: the sward, its materials and the pressure field's targets
+      trackMarks.dispose(); // ground lane: the track marks' ring and material
       terrain.userData.disposeWater?.(); // water pass 8: the reactive field's render targets
       horizonPanorama?.dispose(); // the mountains lane: the far panorama's atlas
     },
@@ -689,6 +706,7 @@ function assembleWorld(
     resetDestructibles: () => {
       if (props.resetDestructibles) props.resetDestructibles();
       if (vegetation.resetToppled) vegetation.resetToppled();
+      trackMarks.reset(); // ground lane: every battle starts on clean ground
     },
     spawnPoints,
     /** @returns {{roads:Array, buildings:Array, tacticalBeats:Array, treeClusters:Array, waterOrSoft:Array}} minimap features */
@@ -728,6 +746,7 @@ function assembleWorld(
       bakePanorama(); // a no-op once baked
       litter.update(cameraPos);
       tallGrass.update(dt, cameraPos, focusPos, cameraFwd); // round 73: the sward's ring, wind and press
+      trackMarks.update(dt, cameraPos); // ground lane: the marks' clock and their distance fade
       if (props.updateProps) props.updateProps(dt, cameraPos); // pole LOD + hinge-topple anims
     },
     /**
@@ -746,6 +765,9 @@ function assembleWorld(
     advanceWater(dt, x, z) { terrain.userData.updateWater?.(dt, x, z); },
     /** Round 73: the hulls' footprints this frame press the tall grass (main.ts publishes every vehicle). */
     setGroundDisturbances(sources) { tallGrass.setDisturbances(sources); },
+    /** Ground lane (2026-10-08): a presented hull lays its tracks' marks (battlePresentationRuntime.ts). */
+    stampTrackMarks(key, x, z, fx, fz, speed, halfGaugeM, trackWidthM) { trackMarks.stamp(key, x, z, fx, fz, speed, halfGaugeM, trackWidthM); },
+    layTrackMarkPaths: (paths, speedMps) => trackMarks.layPaths(paths, speedMps),
     /**
      * Sniper near-grass suppression passthrough (see vegetation.setSniperFade).
      * @param {number} f target fade 0..1

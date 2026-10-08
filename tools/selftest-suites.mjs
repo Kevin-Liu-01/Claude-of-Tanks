@@ -1237,6 +1237,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/groundRedux.selftest.mjs',
     'src/world/terrainMaterialV2.selftest.mjs',
     'src/world/groundPressure.selftest.mjs',
+    'src/world/trackMarks.selftest.mjs', // ground lane (2026-10-08): the tanks' track marks and the tufts in the hulls' press
     'src/world/tallGrass.selftest.mjs',
     'src/world/landUse.selftest.mjs', // ground lane (2026-10-03): the field system and its CPU twin
     'src/world/landUseBake.selftest.mjs', // ground lane (2026-10-03): the land use baked under the ground mask

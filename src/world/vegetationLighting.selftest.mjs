@@ -265,8 +265,11 @@ const source = await readFile(new URL('./vegetation.ts', import.meta.url), 'utf8
 // vista pass (2026-09-19): the far canopy hook fetches the canopy detail tile twice more (metre-scale clump mottle
 // lC / lD); the near foliage cards keep their four. Round 77b (2026-09-26): the near cards fetch their class's
 // leaf-detail tile once (the normal and the alpha-break mask in one RGBA sample, shared by both uses) — seven.
-assert.equal((source.match(/texture2D\(/g) || []).length, 7,
-  'foliage detail stays within the seven texture-fetch expressions (four near-card, one leaf-detail tile, two far-canopy mottle)');
+// The ground lane (2026-10-08): + one, the grass tufts' vertex read of the hulls' pressure field (they lie down in it as
+// the tall grass does) — eight; no foliage fetch was added.
+assert.equal((source.match(/texture2D\(/g) || []).length, 8,
+  'foliage detail stays within the seven texture-fetch expressions (four near-card, one leaf-detail tile, two far-canopy mottle) and the tufts\' one press read');
+assert.equal((source.match(/texture2D\(uTuftPress, /g) || []).length, 1, 'the tufts read the press once');
 assert.equal((source.match(/texture2D\( normalMap, vNormalMapUv \)/g) || []).length, 1, 'the detail tile is sampled once');
 assert.equal((source.match(/new THREE\.(?:CanvasTexture|DataTexture|Texture)\(/g) || []).length, 6,
   'no extra texture source is introduced by the lighting repair');

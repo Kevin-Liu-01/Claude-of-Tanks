@@ -66,6 +66,7 @@ interface TankEntity {
     era: string;
     topSpeedKmh: number;
     dims: { heightM: number; widthM: number; hullLengthM: number };
+    visual?: { trackWidthM?: number };
   };
   input: { throttle?: number };
   _soloRenderPose?: TankPresentationTracker;
@@ -102,6 +103,8 @@ interface PresentationWorld {
   };
   crushables?: CrushableProp[];
   crushProp(index: number, dirX: number, dirZ: number, speed: number): boolean;
+  /** Ground lane (2026-10-08): the hull lays its tracks' marks (world/trackMarks.ts; cosmetic, local to this client). */
+  stampTrackMarks?(key: object, x: number, z: number, fx: number, fz: number, speed: number, halfGaugeM: number, trackWidthM: number): void;
 }
 
 type PosePorts = Pick<BattleClientAccess,
@@ -425,6 +428,13 @@ export function createBattlePresentationRuntime({
     emitDust(entity, fx, presented, speed, topSpeedMps, fxTicks);
     emitExhaust(entity, fx, presented, speed, topSpeedMps);
     crushNearbyProps(entity, fx, world, speed);
+    if (world?.stampTrackMarks && entity.state?.grounded !== false) {
+      // the ground lane's track marks: each track's centreline half a gauge out from the hull's, its width the spec's
+      const dims = entity.spec.dims;
+      const trackWidthM = entity.spec.visual?.trackWidthM ?? dims.widthM * 0.16;
+      world.stampTrackMarks(entity, presented.pos.x, presented.pos.z, forward.x, forward.z, speed,
+        Math.max(0.4, dims.widthM * 0.5 - trackWidthM * 0.5), trackWidthM);
+    }
   };
 
   const updateTank = (

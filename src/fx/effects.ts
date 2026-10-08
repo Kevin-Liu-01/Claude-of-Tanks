@@ -54,6 +54,8 @@ interface FxHeightField {
   /** Water pass 8: the reactive water field takes splashes and carries the wakes (no ring prints then). */
   addWaterImpulse?(x: number, z: number, radiusM: number, amplitudeM: number, foam?: number): void;
   waterRipplesActive?(): boolean;
+  /** The ground lane (2026-10-08): the world lays the tracks' marks (world/trackMarks.ts); no dry prints then. */
+  trackMarksActive?(): boolean;
   getGroundType?(x: number, z: number): string;
   getTrackSurfaceAt?(x: number, z: number): TrackSurface;
 }
@@ -5190,7 +5192,9 @@ function* createFxSteps(
         return;
       }
       const surface = heightField?.getTrackSurfaceAt?.(pos.x, pos.z) ?? 0;
-      if (intensity > 0.08 && !frozen) stampTrackPrint(pos, dir, false, surface);
+      // (the ground lane, 2026-10-08: the world lays the tracks' own marks — world/trackMarks.ts — so the short-lived dry
+      // prints stand down there; the water wakes stay this layer's)
+      if (intensity > 0.08 && !frozen && !heightField?.trackMarksActive?.()) stampTrackPrint(pos, dir, false, surface);
       const groundType = heightField?.getGroundType?.(pos.x, pos.z) ?? 'medium';
       const surfaceMultiplier = drySurfaceMultiplier(groundType);
       if (rng() > intensity * 0.85 * surfaceMultiplier) return;

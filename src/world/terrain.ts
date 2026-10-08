@@ -513,6 +513,9 @@ export interface HeightField {
   addWaterImpulse?(x: number, z: number, radiusM: number, amplitudeM: number, foam?: number): void;
   /** Water pass 8: true when the reactive field carries the wakes (the FX layer then skips its ring prints). */
   waterRipplesActive?(): boolean;
+  /** Ground lane (2026-10-08): true when the world lays the tanks' track marks (trackMarks.ts) — the FX layer's own
+   * short-lived dry prints then stand down (its water wakes stay). */
+  trackMarksActive?(): boolean;
   /** Presentation-only; simulation/headless fields may omit this query. */
   getTrackSurfaceAt?(x: number, z: number): TrackSurface;
   /** Round 61 (2026-09-24): the bridge decks resolved from the stations authored `crossing: 'bridge'` (empty on every
