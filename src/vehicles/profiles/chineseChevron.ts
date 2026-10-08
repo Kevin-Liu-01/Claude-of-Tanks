@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { orientedSlab } from './kit.ts';
+import {clippedArmorSkin} from './armorFaceSampling.ts';
 
 type ChevronSide = -1 | 1;
 
@@ -134,4 +135,17 @@ export function chevronSurfacePanel(
     base[0].toArray(), base[1].toArray(), base[2].toArray(), base[3].toArray(),
     top[0].toArray(), top[1].toArray(), top[2].toArray(), top[3].toArray(),
   );
+}
+
+/** Raised two-face arrow cassettes clipped from the actual carrier triangles.
+ * Each column wraps across the upper/lower ridge; station boundaries remain
+ * in its geometry rather than bridging a warped four-corner surface. */
+export function chineseArrowCassette(stations:readonly ChevronStation[],side:ChevronSide,
+  start:number,end:number):THREE.BufferGeometry {
+ const shell=closedIntegratedChevron(stations,side);
+ const near=interpolateChevronStation(stations,(start+end)/2);
+ const limits=[(p:THREE.Vector3)=>side*p.x-start,(p:THREE.Vector3)=>end-side*p.x,
+  (p:THREE.Vector3)=>p.y-(near.lowerY+.055),(p:THREE.Vector3)=>near.upperY-.055-p.y];
+ try{return clippedArmorSkin(shell,n=>n.z>.12&&Math.abs(n.y)>.10,limits,[0,0,1],-.004,.040);}
+ finally{shell.dispose();}
 }
