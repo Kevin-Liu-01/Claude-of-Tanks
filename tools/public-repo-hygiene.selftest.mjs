@@ -51,6 +51,7 @@ const maintainedStandaloneTools = new Set([
   'tools/qa-evidence-manifest.mjs',
   'tools/reviveprobe.mjs',
   'tools/switch-latency-probe.mjs',
+  'tools/time-to-battle-probe.mjs', // the perf lane's click-to-playable-battle probe per build, map and cache state (2026-10-07; browser, through the capture FIFO, run by hand)
   'tools/voice-smoke.mjs',
   'tools/winding-audit.mjs',
   'tools/world-pole-visual-audit.mjs',
