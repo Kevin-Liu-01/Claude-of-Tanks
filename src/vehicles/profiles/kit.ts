@@ -2007,15 +2007,6 @@ function createOpenYokeContext(opts: FittingOptions): OpenYokeBuildContext {
   };
 }
 
-function aimOpenYokeGeometry(
-  _context: OpenYokeBuildContext,
-  geometry: THREE.BufferGeometry,
-  dz: number,
-  dy = 0,
-): THREE.BufferGeometry {
-  return placeMachineGunBarrelGeometry(geometry, dz, dy);
-}
-
 function addOpenYokeBase(context: OpenYokeBuildContext): void {
   const {box,cylX,cylY,torus}=KIT;
   const {body,parts,s,yokeCenterY}=context;

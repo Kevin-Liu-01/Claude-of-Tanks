@@ -786,9 +786,12 @@ function buildStrv103A(P: SwedishBuilderPort): void {
     const a = k * Math.PI / 6;
     P.add('hullDark', cylY(0.006, 0.006, 0.006, 6), 0.28 + Math.cos(a) * 0.252, 2.002, -0.40 + Math.sin(a) * 0.252);
   }
+  // 2026-10-08 (tank-accessories round 5; wave 256 on the Strv 103A: "a plain dark rod through a box between two slotted
+  // plates, with no receiver detail, feed tray, belt, ammunition box or muzzle device"): the shield's leaves stand
+  // 0.14 m (the low shield), so the receiver's feed cover, the can on the gun's left and its belt read over them.
   mount(P, 'hull', FITTINGS.pintleMG({
     mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 1.0,
-    elev: 0.04, shield: true, ammo: true, seed: 10430,
+    elev: 0.04, shield: 'low', ammo: true, seed: 10430,
   }), 0.40, 1.999, -0.24, [0, 0.05, 0]);                                      // commander Ksp 58 on the cupola race
   P.add('hull', sph(0.155, 14, Math.PI / 2), -0.52, 1.87, -0.30);             // fixed observation dome (left)
   P.add('hullDark', torus(0.14, 0.012, 12), -0.52, 1.925, -0.30);

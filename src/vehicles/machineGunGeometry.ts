@@ -248,6 +248,15 @@ export function addPintleMount(context: PintleLayout): void {
     parts.add(weaponSlot, cylY(0.0045 * s, 0.0045 * s, 0.006, 6), Math.cos(a) * 0.035 * s, 0.009, Math.sin(a) * 0.035 * s);
   }
   parts.add(weaponSlot, cylY(0.018 * s, 0.023 * s, colH, near ? 12 : 8), 0, 0.014 + colH / 2, 0);
+  if (context.riser > 0.03) {
+    // 2026-10-08 (round 5; wave 254 on the Challenger 1: "it sits on a bare thin pole, so it reads as a prop on a stick
+    // rather than a gun in a mount"): a risen pintle stands in its post: a 64 mm sleeve over the riser with a clamp
+    // collar and its lock bolt at the top, so the spindle above it reads as the pintle in its socket.
+    const sleeveH = context.riser + 0.02;
+    parts.add(context.supportSlot, cylY(0.03 * s, 0.034 * s, sleeveH, near ? 12 : 8), 0, 0.014 + sleeveH / 2, 0);
+    parts.add(context.supportSlot, cylY(0.038 * s, 0.038 * s, 0.022 * s, near ? 12 : 8), 0, 0.014 + sleeveH - 0.011 * s, 0);
+    if (near) parts.add(weaponSlot, cylX(0.006 * s, 0.03 * s, 6), 0.045 * s, 0.014 + sleeveH - 0.011 * s, 0);
+  }
   parts.add(weaponSlot, box(0.115 * s, 0.045 * s, 0.15 * s), 0, colTop + 0.0225 * s, 0.01);
   // 2026-10-07 (round 3): a cradle that carries the gun. The fork arms used to stand inside the receiver's walls; the
   // cheeks now clasp the receiver from outside, a cradle floor runs under it, and the trunnion pin passes through
@@ -587,7 +596,7 @@ function addBelt(context: PintleLayout, p0: readonly number[], p1: readonly numb
  */
 export function addPintleAmmo(context: PintleLayout): void {
   if (context.classKey === 'nsvt') { addNsvtAmmo(context); return; }
-  const { ammoSlot, bodyBottom, bodyW, feedSign: f, parts, recY, recZ, rh, s, weaponSlot, cls, mount } = context;
+  const { ammoSlot, bodyBottom, bodyW, feedSign: f, parts, recY, recZ, s, weaponSlot, cls, mount } = context;
   if (!context.ammo) return;
   const near = context.detail === 1;
   const heavy = cls.caliber > 10;
@@ -634,23 +643,37 @@ export function addPintleAmmo(context: PintleLayout): void {
       parts.add(weaponSlot, block(armX0 - armX1, 0.009 * s, 0.03 * s), f * (armX0 + armX1) / 2, armY, canZ + canD * 0.18);
     }
   }
-  // the feed tray on the receiver's feed side: a shelf the length of a round, the cartridge stop at its front and a
-  // guide at its rear (round 4)
+  // the belt: out of the mouth, up and over, and down onto the tray at the feedway
+  // round 5: a heavy gun's belt arcs higher over its can (0.065 s before), so it reads from the side and the front
+  // three-quarter; a GPMG's short belt keeps its arc
+  addPintleFeed(context, [inboard + f * mouthW * 0.5, lidY - 0.02 * s, pintleFeedTrayZ(context)], lidY, (heavy ? 0.085 : 0.065) * s,
+    heavy ? 13 : 17);
+}
+
+/** The feed tray's station along the bore: the receiver's forward part, where the belt enters the feedway. */
+export function pintleFeedTrayZ(context: PintleLayout): number {
+  return context.recZ + 0.12 * context.s;
+}
+
+/**
+ * The feed tray on the receiver's feed side (a shelf the length of a round, the cartridge stop at its front and a guide
+ * at its rear; round 4) and the belt from p0 (inside a box's open mouth) up over an apex `rise` above the higher of
+ * `apexOver` and the tray, and down onto the tray at the feedway. The pintle's own can uses it, and so does a remote
+ * station that hangs its box elsewhere on its cradle (round 5, the T-90SM/T-72B3M station).
+ */
+export function addPintleFeed(context: PintleLayout, p0: readonly number[], apexOver: number, rise: number, maxRounds: number): void {
+  const { bodyW, cls, feedSign: f, parts, recY, rh, s, weaponSlot } = context;
+  const near = context.detail === 1;
   const round = roundDims(cls, s);
-  const trayX = f * (bodyW / 2 + 0.016 * s), trayY = recY + rh * 0.18, trayZ = recZ + 0.12 * s;
+  const trayX = f * (bodyW / 2 + 0.016 * s), trayY = recY + rh * 0.18, trayZ = pintleFeedTrayZ(context);
   parts.add(weaponSlot, block(0.034 * s, 0.006 * s, round.len * 0.78), trayX, trayY, trayZ + round.len * 0.08);
   parts.add(weaponSlot, block(0.034 * s, 0.022 * s, 0.005 * s), trayX, trayY + 0.011 * s, trayZ + round.len * 0.6);
   if (near) parts.add(weaponSlot, block(0.034 * s, 0.012 * s, 0.005 * s), trayX, trayY + 0.006 * s, trayZ - round.len * 0.36);
-  // the belt: out of the mouth, up and over, and down onto the tray at the feedway
-  const mouthX = inboard + f * mouthW * 0.5;
-  const p0 = [mouthX, lidY - 0.02 * s, trayZ];
   const p3 = [f * (bodyW / 2 + 0.006 * s), trayY + 0.003 * s + round.r, trayZ];
-  // round 5: a heavy gun's belt arcs higher over its can (0.065 s before), so it reads from the side and the front
-  // three-quarter; a GPMG's short belt keeps its arc
-  const apex = Math.max(lidY, p3[1]) + (heavy ? 0.085 : 0.065) * s;
-  const p1 = [mouthX, apex, trayZ];
+  const apex = Math.max(apexOver, p3[1]) + rise;
+  const p1 = [p0[0], apex, p0[2]];
   const p2 = [p3[0] + f * 0.05 * s, p3[1] + (apex - p3[1]) * 0.7, trayZ];
-  addBelt(context, p0, p1, p2, p3, round, heavy ? 13 : 17);
+  addBelt(context, p0, p1, p2, p3, round, maxRounds);
 }
 
 export function addPintleShield(context: PintleLayout): void {
