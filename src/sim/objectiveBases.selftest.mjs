@@ -9,10 +9,15 @@ import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollis
 import { createMatchPlacement, matchPlacementAnchors, placementTerrainSafe } from './matchPlacement.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
 import { MATCH_MODE_ARENA_HALF_EXTENT_M } from './matchObjectiveLayouts.ts';
+import { ballSolidAt } from './ballSolids.ts';
 
 const r1 = (value) => Math.round(value * 10) / 10;
 assert.equal(matchRulesetFor('capture_the_flag').bases.separationM, 470, 'the flags 470 m apart');
 assert.equal(matchRulesetFor('turbo_ball').bases.separationM, 500, 'the goals 500 m apart');
+assert.deepEqual([matchRulesetFor('capture_the_flag').bases.reliefM, matchRulesetFor('capture_the_flag').bases.normalY], [5, 0.94],
+  'a flag stands on the objective footprint');
+assert.deepEqual([matchRulesetFor('turbo_ball').bases.reliefM, matchRulesetFor('turbo_ball').bases.normalY], [7, 0.90],
+  'a goal stands on ground as steep as a spawn slot\'s');
 for (const mode of ['standard', 'zone_control', 'endless_horde', 'frontline_assault', 'mars']) {
   assert.equal(matchRulesetFor(mode).bases, null, `${mode}: no bases`);
 }
@@ -34,8 +39,8 @@ for (const mapId of MAP_IDS) {
     // each base on its own side of the middle line
     const along = (p) => ((p.x - pivot.x) * axis.x + (p.z - pivot.z) * axis.z) / axisLength;
     assert.ok(along(alpha) < -40 && along(bravo) > 40, `${mapId}/${mode}: each base on its own half`);
-    const radius = mode === 'turbo_ball' ? 18 : 12;
-    const footprint = { radius, relief: 5, normalY: 0.94, halfExtent: mode === 'turbo_ball' ? MATCH_MODE_ARENA_HALF_EXTENT_M : undefined };
+    const rules = matchRulesetFor(mode).bases, radius = rules.radiusM;
+    const footprint = { radius, relief: rules.reliefM, normalY: rules.normalY, halfExtent: rules.arena ? MATCH_MODE_ARENA_HALF_EXTENT_M : undefined };
     for (const [team, base] of [['alpha', alpha], ['bravo', bravo]]) {
       assert.ok(placementTerrainSafe(field, base, footprint), `${mapId}/${mode}/${team}: ground the base footprint holds`);
       for (const obstacle of world.queryObstacles(base.x - radius, base.z - radius, base.x + radius, base.z + radius, [])) {
@@ -52,6 +57,10 @@ for (const mapId of MAP_IDS) {
       const gap = Math.abs(Math.hypot(kick.x - alpha.x, kick.z - alpha.z) - Math.hypot(kick.x - bravo.x, kick.z - bravo.z));
       worstKick = Math.max(worstKick, gap);
       assert.ok(gap <= 0.5, `${mapId}: the kickoff stands equidistant from both goals (${r1(gap)} m)`);
+      // the ball starts there and comes back after every goal: never inside, nor against, a record that stops it
+      const floor = field.getHeightAt(kick.x, kick.z);
+      assert.ok(!ballSolidAt((a, b, c, d) => world.queryObstacles(a, b, c, d, []), kick.x, floor + 2.2, kick.z, 2.2 + 2),
+        `${mapId}: the kickoff clear of every ball-stopping record`);
       row.kickOffPivot = r1(Math.hypot(kick.x - pivot.x, kick.z - pivot.z));
     }
     report[mode].push(row);

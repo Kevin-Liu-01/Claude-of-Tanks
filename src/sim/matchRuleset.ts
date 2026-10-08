@@ -62,6 +62,12 @@ interface AssaultRules {
  */
 interface ObjectiveBaseRules {
   readonly separationM: number;
+  /** The ground a base stands on: a disc of `radiusM` whose heights stay within `reliefM` and whose every sample's
+   * normal stays above `normalY`, kept off solids and reachable; `arena` keeps it inside the mode's arena square. */
+  readonly radiusM: number;
+  readonly reliefM: number;
+  readonly normalY: number;
+  readonly arena: boolean;
 }
 
 /**
@@ -352,7 +358,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   standard: STANDARD,
   // Flags: respawning objective play on the standard physics; the controller slows a carrier.
   capture_the_flag: Object.freeze({ ...STANDARD, mode: 'capture_the_flag', respawnS: 6,
-    bases: Object.freeze({ separationM: 470 }) }),
+    bases: Object.freeze({ separationM: 470, radiusM: 12, reliefM: 5, normalY: 0.94, arena: false }) }),
   // Zones: respawning hold-the-ground play; the 750-point target resolves inside the clock.
   zone_control: Object.freeze({ ...STANDARD, mode: 'zone_control', respawnS: 6 }),
   // Turbo Ball: arcade physics — 0.6 g so hulls and shells fly, 1.85× speed, tough hulls, half
@@ -362,7 +368,9 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     ...STANDARD, mode: 'turbo_ball', gravityScale: 0.6, physics: TURBO_PHYSICS, speedMultiplier: 1.85, hpScale: 1.5,
     damageScale: 0.5, reloadScale: 0.7, ammo: 'unlimited', equipmentSlots: 0, consumables: false,
     criticalDamage: false, jumpMps: 13, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
-    bases: Object.freeze({ separationM: 500 }),
+    // the goals stand on ground as steep as a spawn slot's (a scoring disc the ball rolls into, not a flag a hull stops
+    // on): the flags' stricter footprint seated no mirrored pair near 500 m on Saltwind (modes lane 2026-10-08)
+    bases: Object.freeze({ separationM: 500, radiusM: 18, reliefM: 7, normalY: 0.90, arena: true }),
     ball: Object.freeze({ keep: 0.42, drive: 0.82, push: 4, closingPush: 0.35, lift: 2.5, closingLift: 0.12, drag: 0.992,
       shotSpeedMps: 34, shotLift: 7, shotPitchLift: 20, goalRadiusM: 18 }),
   }),

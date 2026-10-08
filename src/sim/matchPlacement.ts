@@ -385,9 +385,9 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
     // ruleset's separation either side of the pivot, each the other's rotation about it (sim/deployment.ts), moved
     // together onto ground the base footprint holds; a side the joint search cannot seat searches alone (reported by
     // the bases receipt), and the bounded search fails closed as before.
-    const radius = mode === 'turbo_ball' ? 18 : 12;
-    const halfExtent = mode === 'turbo_ball' ? MATCH_MODE_ARENA_HALF_EXTENT_M : undefined;
-    const footprint: Footprint = { radius, relief: 5, normalY: OBJECTIVE_NORMAL_Y, solidOnly: true, halfExtent };
+    const radius = baseRules.radiusM;
+    const halfExtent = baseRules.arena ? MATCH_MODE_ARENA_HALF_EXTENT_M : undefined;
+    const footprint: Footprint = { radius, relief: baseRules.reliefM, normalY: baseRules.normalY, solidOnly: true, halfExtent };
     const reach = Math.min(baseRules.separationM, axisLength) * 0.5;
     const target = (side: number) => ({ x: originalMiddle.x + ux * reach * side, z: originalMiddle.z + uz * reach * side, yaw: 0 });
     const sideOf = { alpha: -1, bravo: 1 } as const;
