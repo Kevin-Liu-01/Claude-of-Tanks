@@ -646,9 +646,9 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
     const rockContact = !snowCap && dust < 0.5, rockSpotOf = new Map(rockContact ? [[placement, { x: 10, z: 20, r: SPOT_R }]] : []);
     const rockBedShades = [];
     const groundShoreByte = (x, z) => (shoreAt ? terrainShoreByte(shoreAt(x, z)) : 0);
-    const fn = new Function('THREE', 'terrainNearMeshHeightAt', 'terrainNearMeshNormalAt', 'groundShoreByte', 'GROUND_FILLET_FORM_SHARE', 'heightField', 'cfg', 'rockDressing', 'snowCap', 'rockGeos', 'rockPlacements',
+    const fn = new Function('THREE', 'terrainNearMeshHeightAt', 'terrainNearMeshNormalAt', 'groundShoreByte', 'groundNormalCache', 'GROUND_FILLET_FORM_SHARE', 'heightField', 'cfg', 'rockDressing', 'snowCap', 'rockGeos', 'rockPlacements',
       'rockClutter', 'boulderSections', 'boulderSectionRadius', 'rockContact', 'rockSpotOf', 'rockBedShades', 'contactShare',
-      `${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt, terrainNearMeshNormalAt, groundShoreByte, GROUND_FILLET_FORM_SHARE, { getHeightAt: heightAt, ...(foldAt ? { _foldAt: foldAt } : {}) },
+      `${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt, terrainNearMeshNormalAt, groundShoreByte, new Map(), GROUND_FILLET_FORM_SHARE, { getHeightAt: heightAt, ...(foldAt ? { _foldAt: foldAt } : {}) },
       { splat: { rippleDir: [1, 0] } }, { dust }, snowCap, rockGeos, rockPlacements, rockClutter, boulderSections, boulderSectionRadius,
       rockContact, rockSpotOf, rockBedShades, contactShare);
     const it = fn();
@@ -760,9 +760,17 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
     // the helper itself: on a plane the drawn normal is the plane's
     const plane = (x, z) => 0.2 * x + 0.1 * z, np = terrainNearMeshNormalAt(plane, 3.3, -7.9, new THREE.Vector3()), planeN = new THREE.Vector3(-0.2, 1, -0.1).normalize();
     assert.ok(np.distanceTo(planeN) < 1e-9, 'a plane\'s own normal');
+    const bumpy = (x, z) => Math.sin(x * 0.9) * 0.6 + Math.cos(z * 0.7) * 0.4, cache = new Map(), c1 = new THREE.Vector3(), c2 = new THREE.Vector3();
+    for (let i = 0; i < 200; i++) {
+      const x = -40 + i * 0.413, z = 17 - i * 0.291;
+      terrainNearMeshNormalAt(bumpy, x, z, c1, cache); terrainNearMeshNormalAt(bumpy, x, z, c2);
+      assert.ok(c1.distanceTo(c2) < 1e-12, 'the cached grid normals are the uncached ones');
+    }
+    assert.ok(cache.size > 0 && cache.size < 200 * 3, `each grid vertex read once (${cache.size} for 600 reads)`);
   }
   assert.match(source, /const groundShoreByte = \(x: number, z: number\): number => \(groundShoreAt \? terrainShoreByte\(groundShoreAt\(x, z\)\) : 0\);/, 'the chunks\' shore byte, from the terrain\'s own sampler');
-  assert.match(source, /surface: \{ normalAt: \(x, z, out\) => terrainNearMeshNormalAt\(\(px, pz\) => heightField\.getHeightAt\(px, pz\), x, z, out\), shoreByte: groundShoreByte \}/, 'the walls\' turf carries the same');
+  assert.match(source, /surface: \{ normalAt: \(x, z, out\) => terrainNearMeshNormalAt\(\(px, pz\) => heightField\.getHeightAt\(px, pz\), x, z, out, groundNormalCache\), shoreByte: groundShoreByte \}/, 'the walls\' turf carries the same');
+  assert.match(source, /group\.userData\.rockBeds = yield\* buildRockBeds\(\);[\s\S]{0,1400}groundNormalCache\.clear\(\);[^\n]*\n\s*yield \{ fine: true, stage: 'rock-instances' \};/, 'the grid normals let go once the fillets are built');
   assert.match(source, /if \(!mobileProps\) group\.userData\.rockBeds = yield\* buildRockBeds\(\);\n\s*rockClutter\.clear\(\);/, 'the beds built while the crushables are known, not on the phones');
   const map = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
   assert.match(map, /group\.add\(terrain, vegetation\.group, props\.group\);\n\s*bindRockBeds\(terrain, props\.group\);/, 'the world binds the beds');

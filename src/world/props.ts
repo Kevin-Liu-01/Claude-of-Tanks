@@ -5112,6 +5112,8 @@ ${snowCap ? `
   // for the fillets the world draws with the ground's material: the walls' turf and the boulders' beds
   const groundShoreAt = (heightField as { _shoreAt?: (x: number, z: number) => number })._shoreAt ?? null;
   const groundShoreByte = (x: number, z: number): number => (groundShoreAt ? terrainShoreByte(groundShoreAt(x, z)) : 0);
+  // (b44) the drawn ground's normals under the fillets, each grid vertex's read once for the whole build
+  const groundNormalCache = new Map<number, number[]>();
   const wallDressing = createWallDressing({
     ground: heightField, snow: snowCap, mobile: mobileProps, adobeBucket: adobeWallBucket, mudUv: ADOBE_UV_PER_M,
     plainV: adobeWallBucket === 'fieldMud' ? FIELD_MUD_PLAIN_V : undefined,
@@ -5119,7 +5121,7 @@ ${snowCap ? `
     turf: wallTurfOn ? {
       meshAt: (x, z) => terrainNearMeshHeightAt((px, pz) => heightField.getHeightAt(px, pz), x, z), foldAt: turfFoldAt,
       // (b44) the chunks' own normal and shore byte under every vertex, as the boulders' beds carry them
-      surface: { normalAt: (x, z, out) => terrainNearMeshNormalAt((px, pz) => heightField.getHeightAt(px, pz), x, z, out), shoreByte: groundShoreByte },
+      surface: { normalAt: (x, z, out) => terrainNearMeshNormalAt((px, pz) => heightField.getHeightAt(px, pz), x, z, out, groundNormalCache), shoreByte: groundShoreByte },
     } : undefined,
   });
   function addWallRun(
@@ -6460,7 +6462,7 @@ ${snowCap ? `
           for (let j = 0; j < RINGS; j++) {
             const x = px + dx * ringR[j], z = pz + dz * ringR[j], y = (j < 2 ? ground[k] : meshAt(x, z)) + ringY[j];
             cell.pos.push(x, y, z);
-            terrainNearMeshNormalAt(groundAt, x, z, groundN);
+            terrainNearMeshNormalAt(groundAt, x, z, groundN, groundNormalCache);
             cell.nrm.push(groundN.x, groundN.y, groundN.z);
             cell.fold.push(foldByte(x, z));
             cell.shore.push(groundShoreByte(x, z));
@@ -6562,6 +6564,7 @@ ${snowCap ? `
     wallDressing.turfs.length = 0;
   }
 
+  groundNormalCache.clear(); // (b44: the walls' turf and the boulders' beds are built)
   yield { fine: true, stage: 'rock-instances' };
 
   // --- field haystacks: classic WoT soft-cover silhouettes in the open ---

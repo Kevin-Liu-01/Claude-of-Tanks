@@ -7255,22 +7255,32 @@ export function terrainShoreByte(metres: number): number {
  * (terrainNearMeshHeightAt's split). A surface drawn with the ground's material over this normal slopes and lights as
  * the ground under it: the material's slope laws (the fields, the soil, the rock and the litter) read the same slope.
  */
-export function terrainNearMeshNormalAt(heightAt: (x: number, z: number) => number, x: number, z: number, out: THREE.Vector3): THREE.Vector3 {
+export function terrainNearMeshNormalAt(
+  heightAt: (x: number, z: number) => number, x: number, z: number, out: THREE.Vector3, cache: Map<number, number[]> | null = null,
+): THREE.Vector3 {
   const cell = CHUNK_SIZE / LOD_SEGS[0], e = CHUNK_SIZE / FINE_SEGS;
   const u = (x + HALF) / cell, w = (z + HALF) / cell;
   const gx = Math.floor(u), gz = Math.floor(w), fx = u - gx, fz = w - gz;
-  const x0 = -HALF + gx * cell, z0 = -HALF + gz * cell;
   out.set(0, 0, 0);
-  const add = (vx: number, vz: number, weight: number): void => {
+  // (a builder sampling thousands of points near each other — the beds, the turf — passes a cache: each grid vertex's
+  // four heights are read once)
+  const add = (ix: number, iz: number, weight: number): void => {
     if (weight <= 0) return;
-    const nx = (heightAt(vx - e, vz) - heightAt(vx + e, vz)) / (2 * e), nz = (heightAt(vx, vz - e) - heightAt(vx, vz + e)) / (2 * e);
-    const il = weight / Math.sqrt(nx * nx + 1 + nz * nz);
-    out.x += nx * il; out.y += il; out.z += nz * il;
+    const key = (ix + 4096) * 16384 + (iz + 4096);
+    let n = cache?.get(key);
+    if (!n) {
+      const vx = -HALF + ix * cell, vz = -HALF + iz * cell;
+      const nx = (heightAt(vx - e, vz) - heightAt(vx + e, vz)) / (2 * e), nz = (heightAt(vx, vz - e) - heightAt(vx, vz + e)) / (2 * e);
+      const il = 1 / Math.sqrt(nx * nx + 1 + nz * nz);
+      n = [nx * il, il, nz * il];
+      cache?.set(key, n);
+    }
+    out.x += n[0] * weight; out.y += n[1] * weight; out.z += n[2] * weight;
   };
   if (fx + fz <= 1) {
-    add(x0, z0, 1 - fx - fz); add(x0 + cell, z0, fx); add(x0, z0 + cell, fz);
+    add(gx, gz, 1 - fx - fz); add(gx + 1, gz, fx); add(gx, gz + 1, fz);
   } else {
-    add(x0 + cell, z0 + cell, fx + fz - 1); add(x0, z0 + cell, 1 - fx); add(x0 + cell, z0, 1 - fz);
+    add(gx + 1, gz + 1, fx + fz - 1); add(gx, gz + 1, 1 - fx); add(gx + 1, gz, 1 - fz);
   }
   return out.normalize();
 }
