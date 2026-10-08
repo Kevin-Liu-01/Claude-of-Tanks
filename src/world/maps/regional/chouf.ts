@@ -377,7 +377,15 @@ const sabil: RegionalBuilder = (ctx) => {
     // the platform reaches the footprint's edges (0.3 past the piers), the piers at the corners, the lintel ring
     sink.span('stone', -Sx / 2 - 0.3, -0.3, -Sz / 2 - 0.3, Sx / 2 + 0.3, 0.25, Sz / 2 + 0.3);
     for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) sink.span('stone', sx * Sx / 2 - (sx > 0 ? p : 0), 0.25, sz * Sz / 2 - (sz > 0 ? p : 0), sx * Sx / 2 + (sx < 0 ? p : 0), H, sz * Sz / 2 + (sz < 0 ? p : 0));
-    sink.span('stone', -Sx / 2, H, -Sz / 2, Sx / 2, H + 0.55, Sz / 2);
+    // the lintel ring over the four arches (round 5, gauntlet wave 251: from under the kiosk the solid lintel slab read as
+    // a flat ashlar ceiling lit as in sun): four beams round the open middle, and over the middle the drum's floor, a
+    // limewashed soffit 0.25 m up in the kiosk's shade
+    const lw = 0.75;
+    sink.span('stone', -Sx / 2, H, -Sz / 2, Sx / 2, H + 0.55, -Sz / 2 + lw);
+    sink.span('stone', -Sx / 2, H, Sz / 2 - lw, Sx / 2, H + 0.55, Sz / 2);
+    sink.span('stone', -Sx / 2, H, -Sz / 2 + lw, -Sx / 2 + lw, H + 0.55, Sz / 2 - lw);
+    sink.span('stone', Sx / 2 - lw, H, -Sz / 2 + lw, Sx / 2, H + 0.55, Sz / 2 - lw);
+    sink.span('plaster', -Sx / 2 + lw, H + 0.25, -Sz / 2 + lw, Sx / 2 - lw, H + 0.55, Sz / 2 - lw, { shade: 0.55 });
     for (const f of [
       { origin: [0, 0, Sz / 2], u: [1, 0, 0], out: [0, 0, 1], width: Sx }, { origin: [Sx / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: Sz },
       { origin: [0, 0, -Sz / 2], u: [-1, 0, 0], out: [0, 0, -1], width: Sx }, { origin: [-Sx / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: Sz },
