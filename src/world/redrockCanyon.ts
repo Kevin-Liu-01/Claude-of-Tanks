@@ -14,8 +14,9 @@ const REDROCK_CANYON = Object.freeze({
   // The heads close each mouth with the tallest massifs (their height over the side walls'): the views past both
   // mouths end on jebels, not on a low sand rise.
   headLiftM: 70,
-  // The ravines: their flat sand beds' half-width before the side walls' talus starts.
-  ravineBedHalfWidth: 20,
+  // The ravines: their flat sand beds' half-width before the side walls' talus starts (30 m: the two cross tracks run up
+  // to 28 m off a ravine's axis, so their roads stay on the bed, not on a wall's talus).
+  ravineBedHalfWidth: 30,
 });
 
 function ramp(low: number, high: number, value: number): number {
