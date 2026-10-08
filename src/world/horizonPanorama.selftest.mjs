@@ -576,6 +576,16 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
   // refusals: no grounded light (the legacy rig), no preset
   scene.userData.lightModel = { ...scene.userData.lightModel, mode: 'legacy' };
   assert.equal(handle.relight(renderer), false, 'the legacy rig: no relight (the dim stands)');
+  // a refusal after a relit battle returns the far country to the authored day (a galaxy sky's legacy rig on a cached
+  // world must not keep the last battle's night)
+  publish(nightPreset, [0.024, 0.029, 0.036], [0.044, 0.05, 0.056], [0.06, 0.06, 0.05]);
+  assert.equal(handle.relight(renderer), true, 'night again');
+  const relitBakes = handle.stats.bakes;
+  scene.userData.lightModel = { ...scene.userData.lightModel, mode: 'legacy' };
+  assert.equal(handle.relight(renderer), false, 'refused');
+  assert.equal(handle.stats.bakes, relitBakes + 1, 'and re-baked');
+  assert.equal(handle.stats.light, null, 'back to the authored day');
+  assert.deepEqual(seen.at(-1).sunScale, [1, 1, 1], 'under the day\'s own uniforms');
   const bare = createHorizonPanorama({ ...options, sun: daySun }, null);
   scene.add(bare.mesh);
   publish(nightPreset, [0.024, 0.029, 0.036], [0.044, 0.05, 0.056], [0.06, 0.06, 0.05]);

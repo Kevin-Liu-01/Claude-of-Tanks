@@ -2181,16 +2181,23 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       // the live light as the battlefield publishes it (the battle atmosphere has just applied its preset): the grounded
       // model's resolve, the sky it was resolved under and that sky's horizon
       const { atmosphere, model } = publishedSky();
-      if (!renderer || unsupported(renderer) || !options.lightPreset || !model || model.mode !== 'physical') return false;
-      if (!atmosphere?.active || !atmosphere.sunDir || !atmosphere.irradianceRaw || !atmosphere.summary) return false;
+      if (!renderer || unsupported(renderer)) return false;
+      // (refused: a bake relit for an earlier battle returns to the authored day — the September behaviour, whose night
+      // dim the battle atmosphere then applies; a galaxy sky's legacy rig on a cached world must not keep a night bake)
+      const refuse = (): boolean => {
+        if (light && baked) { light = null; bake(renderer); }
+        return false;
+      };
+      if (!options.lightPreset || !model || model.mode !== 'physical') return refuse();
+      if (!atmosphere?.active || !atmosphere.sunDir || !atmosphere.irradianceRaw || !atmosphere.summary) return refuse();
       // (a first relight with the day showing takes its reference now: a bake that ran under another map's sky had none)
       takeDayReference(atmosphere);
-      if (!dayReference) return false;
+      if (!dayReference) return refuse();
       // the day light rebuilt from this map's own sky as the bake saw it, under the same deck pattern the live resolve took
       const preset = options.lightPreset;
       const dayModel = resolveLightModel(preset, dayReference.params, { irradianceRaw: dayReference.irradianceRaw },
         authoredSunOf(preset), model.deckClosure < 1);
-      if (dayModel.mode !== 'physical') return false;
+      if (dayModel.mode !== 'physical') return refuse();
       const next = horizonPanoramaRelight(
         { model: dayModel, irradianceRaw: dayReference.irradianceRaw, horizon: dayReference.horizon, sunHorizon: dayReference.sunHorizon,
           sunDir: dayReference.params.sunDir },
