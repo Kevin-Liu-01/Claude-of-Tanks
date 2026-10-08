@@ -7254,8 +7254,16 @@ function* vegetationBuildSteps(
     const shrubGrowth: GrowthSpecies = bushSpecies === 'willow' && veg.willowForm === 'tidalMangrove' ? 'mangrove'
       : shrubForm ?? (grownTrees ? formOf(bushSpecies)?.form : null) ?? bushSpecies;
     // (trees lane, 2026-10-05: on a bare map a deciduous shrub stands bare, its winter twigs or canes)
+    // (trees lane, 2026-10-08, the gauntlet's wave 260 on Hostomel's handcart: the near bush "flat olive-brown leaf cards
+    // with dark outlines, a heap of paper cut-outs"): a shrub grown as its bush slot's own leafy form takes that form's
+    // leaves as the slot's trees do (grownDefinition: treeBiomePalette's leafy form) — the birch slot's leafy birch on
+    // Hostomel and the reservoir drew its leaf sprays in the bare winter birch's twig brown (grownTintLaw's birch without
+    // leaves); a map's own shrub form keeps its own palette, and the place's shrub colour still wins
+    const bushSlotLeaves = grownTrees && !shrubForm && formOf(bushSpecies)?.leaves === true;
+    const bushFormTerms = bushSlotLeaves || shrubColour
+      ? { ...(bushSlotLeaves ? { leaves: true } : {}), ...(shrubColour ? { colour: shrubColour } : {}) } : null;
     const bushPal = grownTrees
-      ? bareFormPalette(treeBiomePalette(palOf(bushSpecies), shrubColour ? { colour: shrubColour } : null, false, treeBiomeColour(cfg?.id)),
+      ? bareFormPalette(treeBiomePalette(palOf(bushSpecies), bushFormTerms, false, treeBiomeColour(cfg?.id)),
         shrubGrowth, bareMap)
       : palOf(bushSpecies);
     const shrubMats = shrubMaterials(shrubForm, bushPal);
