@@ -405,7 +405,16 @@ assert.deepEqual([CLOUD_HISTORY_SCALE, CLOUD_TRACE_DIVISOR, CLOUD_REBUILD_SLOTS]
     const a = CLOUD_TIERS[order[i - 1]], b = CLOUD_TIERS[order[i]];
     assert.ok(b.steps >= a.steps && b.octaves >= a.octaves && b.sunSteps >= a.sunSteps, `${order[i]} marches at least as finely as ${order[i - 1]}`);
     assert.ok(b.stepMin <= a.stepMin && b.growth <= a.growth && b.marchMax >= a.marchMax && b.detailRange >= a.detailRange, `${order[i]} strides no coarser`);
+    // (round 11) the march's light budget no sparser up the tiers: the light no rarer, the exit no earlier, the entry
+    // refinement no coarser
+    assert.ok(b.lightEvery <= a.lightEvery && b.exitT <= a.exitT && b.fineN >= a.fineN && b.fineStride <= a.fineStride, `${order[i]} lights no sparser`);
   }
+  // round 11 (2026-10-08, F2: Monsoon medium's sky-w +1.07 ms over the normal line): medium and low take the budget the
+  // layer's own GPU timer priced (every 4th lit step, out at 0.08, two refinement samples at half a step); high and ultra
+  // keep the law the waves passed and F1 measured (every 3rd, 0.05, four at a quarter)
+  for (const k of ['low', 'medium']) assert.deepEqual([CLOUD_TIERS[k].lightEvery, CLOUD_TIERS[k].exitT, CLOUD_TIERS[k].fineN, CLOUD_TIERS[k].fineStride], [4, 0.08, 2, 0.5], `${k}: the cheaper budget`);
+  for (const k of ['high', 'ultra']) assert.deepEqual([CLOUD_TIERS[k].lightEvery, CLOUD_TIERS[k].exitT, CLOUD_TIERS[k].fineN, CLOUD_TIERS[k].fineStride], [3, 0.05, 4, 0.25], `${k}: the passed law`);
+  for (const t of Object.values(CLOUD_TIERS)) assert.ok(Number.isInteger(t.lightEvery) && t.lightEvery >= 1 && Number.isInteger(t.fineN) && t.fineN >= 1 && t.fineStride > 0 && t.fineStride <= 1 && t.exitT > 0 && t.exitT < 0.1, 'a sane budget');
   for (const t of Object.values(CLOUD_TIERS)) assert.ok(t.octaves === 4 || t.octaves === 8, 'four or eight octaves (two vec4s)');
   assert.ok(CLOUD_TIERS.high.marchMax >= 30000, 'the high tier marches the curved shells far enough to meet the haze');
 }
@@ -694,15 +703,17 @@ assert.match(layerSource, /lightTune\('CLOUD_DECK_GROUND', 1\)\)\) \* this\.deck
 // flat to half, keeps its grey base); round 5's mottle dropped (no dead cost: it barely showed on the GPU)
 assert.ok(shadersSource.includes('* mix( 1.0, uDeckTune.z, smoothstep( 0.6, 1.0, flatK ) );'), 'the trace carries the closing deck\'s ground return');
 assert.ok(!/cl2Noise|mottle \*/.test(shadersSource), 'no mottle term left in the medium or the trace');
-// (2026-10-07, the cost lab) the march's light budget as uniforms whose defaults are the law: (round 9, priced on Monsoon's
-// towers) light every third lit step while the ray keeps 0.15 of its light, the tier's sun steps, the march out at 0.05
-assert.match(layerSource, /const CLOUD_LIGHT_EVERY = 3;/);
+// (2026-10-07, the cost lab) the march's light budget as uniforms whose defaults are the tier's law (round 9, priced on
+// Monsoon's towers: high's light every third lit step while the ray keeps 0.15 of its light, the tier's sun steps, the march
+// out at 0.05; round 11 per tier — the values pinned with the tiers above)
+assert.ok(!/const CLOUD_LIGHT_EVERY =|const CLOUD_MARCH_EXIT_T =/.test(layerSource), 'one budget: the tier table\'s');
 // (round 10's exact detail skip was measured by the layer's own GPU timer and dropped: it cost more than it saved)
 assert.ok(!/uDetailSkip/.test(shadersSource) && !/uDetailSkip/.test(layerSource), 'no detail skip left in the medium');
 assert.ok(shadersSource.includes('d = clamp( ( d * 2.0 - modifier * 0.5 ) / max( 1.0 - modifier * 0.5, vec4( 1e-3 ) ), 0.0, 1.0 );'), 'the detail remap');
-assert.match(layerSource, /const CLOUD_MARCH_EXIT_T = 0\.05;/);
-assert.match(layerSource, /uLightBudget: \{ value: new THREE\.Vector4\(CLOUD_LIGHT_EVERY, 0\.15, defs\.sunSteps, CLOUD_MARCH_EXIT_T\) \}/);
-assert.match(layerSource, /set\(Math\.max\(1, Math\.round\(lightTune\('CLOUD_LIGHT_EVERY', CLOUD_LIGHT_EVERY\)\)\), lightTune\('CLOUD_LIGHT_T', 0\.15\),\s*lightTune\('CLOUD_SUN_STEPS', CLOUD_TIERS\[this\.traceTier\]\?\.sunSteps \?\? 2\), lightTune\('CLOUD_T_EXIT', CLOUD_MARCH_EXIT_T\)\);/, 'the defaults the law');
+assert.match(layerSource, /uLightBudget: \{ value: new THREE\.Vector4\(defs\.lightEvery, 0\.15, defs\.sunSteps, defs\.exitT\) \}/);
+assert.match(layerSource, /uFine: \{ value: new THREE\.Vector2\(defs\.fineN, defs\.fineStride\) \}/);
+assert.match(layerSource, /const budget = CLOUD_TIERS\[this\.traceTier\] \?\? CLOUD_TIERS\.high;\s*t\.uStepCap\.value = lightTune\('CLOUD_STEP_CAP', budget\.steps\);\s*\(t\.uFine\.value as THREE\.Vector2\)\.set\(lightTune\('CLOUD_FINE_N', budget\.fineN\), lightTune\('CLOUD_FINE_STRIDE', budget\.fineStride\)\);/, 'the refinement the tier\'s');
+assert.match(layerSource, /set\(Math\.max\(1, Math\.round\(lightTune\('CLOUD_LIGHT_EVERY', budget\.lightEvery\)\)\), lightTune\('CLOUD_LIGHT_T', 0\.15\),\s*lightTune\('CLOUD_SUN_STEPS', budget\.sunSteps\), lightTune\('CLOUD_T_EXIT', budget\.exitT\)\);/, 'the defaults the tier\'s law');
 // round 7 (2026-10-07, wave 221 on Monsoon: a rain shaft in front of a tower's dark core read as blue sky through it): the
 // rain under a storm takes the storm's grey light, darker under a heavy core, the sun's glow only through a thin column
 assert.ok(layerSource.includes('amb = mix( amb, vec3( dot( amb, vec3( 0.2126, 0.7152, 0.0722 ) ) ), 0.7 ) * ( 1.0 - 0.7 * prec );')

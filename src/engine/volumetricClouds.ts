@@ -86,14 +86,9 @@ const CLOUD_CIRRUS_TILE_M = 30000;
 // (round 6, wave 222: an overcast "with no brighter patch to give the sun's direction" — the critics' advice "a lower,
 // subtler deck that shows the sun's direction, not more cloud contrast": the forward lobe through a deck at 0.45)
 export const CLOUD_DECK_SUN_LOBE = 0.45;
-/**
- * The march's light budget (round 9, 2026-10-07, priced on the hardware by the cost lab's knob screen at Monsoon's sky-w,
- * high: 11.45 ms a frame shipped): the light on every third lit step (−0.18 ms) and the march out at 0.05 of the light,
- * the opaque cut renormalising the rest (−0.46 ms); together with one sun step −0.94 ms — the sun step kept (its own share
- * −0.05, the towers' self-shadowing near the point).
- */
-const CLOUD_LIGHT_EVERY = 3;
-const CLOUD_MARCH_EXIT_T = 0.05;
+// (the march's light budget is per tier now: CLOUD_TIERS lightEvery / exitT / fineN / fineStride. Round 9 set the high
+// tier's — the light on every third lit step, the march out at 0.05 of the light, priced at Monsoon's sky-w: −0.18 and
+// −0.46 ms; the sun step kept for the towers' self-shadowing near the point)
 /**
  * The ground's return on a closing deck's base, a multiple of the law's (2026-10-07, round 5): the cover's own light
  * raised from the snow or sand under it (round four's Whiteout deck sat at 163 of 255 over a snowfield near white).
@@ -203,12 +198,18 @@ export const CLOUD_AERIAL = Object.freeze({
  * The march's tunables per quality preset (the mobile tier never runs the layer): the primary steps, the octaves, the
  * secondary steps toward the sun, the stride floor and growth, the march's reach, the detail's reach (m).
  */
-export const CLOUD_TIERS: Readonly<Record<string, Cloud2TraceDefines & { stepMin: number; growth: number; marchMax: number; detailRange: number }>> = Object.freeze({
-  low: { steps: 72, octaves: 4, sunSteps: 1, stepMin: 90, growth: 0.016, marchMax: 22000, detailRange: 2500 },
-  medium: { steps: 96, octaves: 4, sunSteps: 1, stepMin: 70, growth: 0.013, marchMax: 28000, detailRange: 6000 },
+// and the march's light budget per tier (round 11, 2026-10-08): the light on every lightEvery-th lit step, the march out at
+// exitT of the light, the entry refinement's fineN samples at fineStride of a step. High and ultra keep round 10's (the
+// look the waves passed, F1's cost); medium and low take the cheaper budget the layer's own GPU timer priced on Monsoon's
+// towers at high (the three together −0.77 ms on establishing and sky-w) — F2 put medium's sky-w at +1.07 ms, over the
+// normal line its exception requires.
+export const CLOUD_TIERS: Readonly<Record<string, Cloud2TraceDefines & { stepMin: number; growth: number; marchMax: number; detailRange: number;
+  lightEvery: number; exitT: number; fineN: number; fineStride: number }>> = Object.freeze({
+  low: { steps: 72, octaves: 4, sunSteps: 1, stepMin: 90, growth: 0.016, marchMax: 22000, detailRange: 2500, lightEvery: 4, exitT: 0.08, fineN: 2, fineStride: 0.5 },
+  medium: { steps: 96, octaves: 4, sunSteps: 1, stepMin: 70, growth: 0.013, marchMax: 28000, detailRange: 6000, lightEvery: 4, exitT: 0.08, fineN: 2, fineStride: 0.5 },
   // (round 9: the stride's growth 0.011 → 0.0125 — the cost lab's knob screen on Monsoon's towers: 0.26 ms at ×1.3)
-  high: { steps: 128, octaves: 8, sunSteps: 2, stepMin: 50, growth: 0.0125, marchMax: CLOUD_MARCH_MAX_M, detailRange: 20000 },
-  ultra: { steps: 160, octaves: 8, sunSteps: 3, stepMin: 40, growth: 0.009, marchMax: 40000, detailRange: 30000 },
+  high: { steps: 128, octaves: 8, sunSteps: 2, stepMin: 50, growth: 0.0125, marchMax: CLOUD_MARCH_MAX_M, detailRange: 20000, lightEvery: 3, exitT: 0.05, fineN: 4, fineStride: 0.25 },
+  ultra: { steps: 160, octaves: 8, sunSteps: 3, stepMin: 40, growth: 0.009, marchMax: 40000, detailRange: 30000, lightEvery: 3, exitT: 0.05, fineN: 4, fineStride: 0.25 },
 });
 /** The noise uploads the layer needs from the worker, in its posting order (the volumes are baked on the GPU). */
 export const CLOUD_NOISE_KINDS = Object.freeze(['blue', 'weather', 'streets', 'local'] as const);
@@ -834,8 +835,8 @@ export class VolumetricCloudLayer {
         uMarchMax: { value: defs.marchMax }, uStepMin: { value: defs.stepMin }, uStepGrowth: { value: defs.growth },
         uDetailRange: { value: defs.detailRange }, uPixelAngle: { value: 0.002 },
         uHazeDatum: { value: 0 }, uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
-        uOpaqueCut: { value: 1 }, uLightBudget: { value: new THREE.Vector4(CLOUD_LIGHT_EVERY, 0.15, defs.sunSteps, CLOUD_MARCH_EXIT_T) },
-        uStepCap: { value: defs.steps }, uFine: { value: new THREE.Vector2(4, 0.25) }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckTune: { value: new THREE.Vector3(1, 1, CLOUD_DECK_GROUND_RETURN) }, uDebug: { value: 0 },
+        uOpaqueCut: { value: 1 }, uLightBudget: { value: new THREE.Vector4(defs.lightEvery, 0.15, defs.sunSteps, defs.exitT) },
+        uStepCap: { value: defs.steps }, uFine: { value: new THREE.Vector2(defs.fineN, defs.fineStride) }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckTune: { value: new THREE.Vector3(1, 1, CLOUD_DECK_GROUND_RETURN) }, uDebug: { value: 0 },
         tSceneDepth: { value: null }, uSceneDepthOn: { value: 0 }, uSceneNearFar: { value: new THREE.Vector2(0.5, 4000) },
         uDepthRight: { value: new THREE.Vector3(1, 0, 0) }, uDepthUp: { value: new THREE.Vector3(0, 1, 0) },
         uDepthFwd: { value: new THREE.Vector3(0, 0, -1) }, uDepthTan: { value: new THREE.Vector2(1, 1) }, uDomeRadius: { value: CLOUD_DOME_RADIUS_M },
@@ -1318,25 +1319,23 @@ export class VolumetricCloudLayer {
     t.uOpaqueCut.value = lightTune('CLOUD_OPAQUE_CUT', 1);
     t.uRainCore.value = lightTune('CLOUD_RAIN_CORE', 0);
     // QA (round 10): the cost lab's knobs — the step cap, the entry refinement, the far cascade's bilinear read, the
-    // streets' share
-    t.uStepCap.value = lightTune('CLOUD_STEP_CAP', CLOUD_TIERS[this.traceTier]?.steps ?? 128);
-    (t.uFine.value as THREE.Vector2).set(lightTune('CLOUD_FINE_N', 4), lightTune('CLOUD_FINE_STRIDE', 0.25));
+    // streets' share; the march's budget the tier's (round 11)
+    const budget = CLOUD_TIERS[this.traceTier] ?? CLOUD_TIERS.high;
+    t.uStepCap.value = lightTune('CLOUD_STEP_CAP', budget.steps);
+    (t.uFine.value as THREE.Vector2).set(lightTune('CLOUD_FINE_N', budget.fineN), lightTune('CLOUD_FINE_STRIDE', budget.fineStride));
     t.uBsmFarBilinear.value = lightTune('CLOUD_BSM_FAR_BILINEAR', 0);
     {
       const k = lightTune('CLOUD_STREETS', 1), base = this.streetsBase;
       (m.uLayerStreets.value as THREE.Vector4).set(base.x * k, base.y * k, base.z * k, base.w * k);
     }
     m.uFragMin.value = lightTune('CLOUD_FRAG_MIN', 0);
-    // QA: the march's light budget (cloudShaders.ts uLightBudget; the defaults the shipped law) and the towers' warp, the
+    // QA: the march's light budget (cloudShaders.ts uLightBudget; the defaults the tier's law) and the towers' warp, the
     // detail's reach and the stride's growth as scales — the cost lab's knobs
-    (t.uLightBudget.value as THREE.Vector4).set(Math.max(1, Math.round(lightTune('CLOUD_LIGHT_EVERY', CLOUD_LIGHT_EVERY))), lightTune('CLOUD_LIGHT_T', 0.15),
-      lightTune('CLOUD_SUN_STEPS', CLOUD_TIERS[this.traceTier]?.sunSteps ?? 2), lightTune('CLOUD_T_EXIT', CLOUD_MARCH_EXIT_T));
-    {
-      const defs = CLOUD_TIERS[this.traceTier] ?? CLOUD_TIERS.high;
-      t.uDetailRange.value = defs.detailRange * lightTune('CLOUD_DETAIL_RANGE', 1);
-      t.uStepGrowth.value = defs.growth * lightTune('CLOUD_STEP_GROWTH', 1);
-      m.uWeatherWarp.value = this.warpM * lightTune('CLOUD_WARP', 1);
-    }
+    (t.uLightBudget.value as THREE.Vector4).set(Math.max(1, Math.round(lightTune('CLOUD_LIGHT_EVERY', budget.lightEvery))), lightTune('CLOUD_LIGHT_T', 0.15),
+      lightTune('CLOUD_SUN_STEPS', budget.sunSteps), lightTune('CLOUD_T_EXIT', budget.exitT));
+    t.uDetailRange.value = budget.detailRange * lightTune('CLOUD_DETAIL_RANGE', 1);
+    t.uStepGrowth.value = budget.growth * lightTune('CLOUD_STEP_GROWTH', 1);
+    m.uWeatherWarp.value = this.warpM * lightTune('CLOUD_WARP', 1);
     t.uDeckLobe.value = lightTune('CLOUD_DECK_SUN_LOBE', CLOUD_DECK_SUN_LOBE);
     // QA: a deck's light by its own column (0 / 0 the round-three law: the sun ray's depth, the map's ambient scale) and a
     // closing deck's ground return
