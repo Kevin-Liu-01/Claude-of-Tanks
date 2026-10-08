@@ -105,7 +105,12 @@ async function afterOpen({ gl0, t0 }) {
   const inStream = frames.filter(([at]) => at <= streamEndMs).map(([, d]) => d).sort((a, b) => a - b);
   const after = frames.filter(([at]) => at > streamEndMs).map(([, d]) => d).sort((a, b) => a - b);
   const q = (xs, p) => (xs.length ? xs[Math.min(xs.length - 1, Math.floor(p * xs.length))] : null);
-  const earlyBattle = { terrainStream: { endMs: streamEndMs, steps: stream.length, geometries: stream.length && Number.isFinite(startCount) ? stream[stream.length - 1][1] - startCount : 0, trace: stream.slice(0, 80) },
+  // the first 10 s of the battle (from the open): frame intervals and hitches (worker contention must not move hitches into
+  // the battle start)
+  const first = frames.filter(([at]) => at <= 10000).map(([, d]) => d).sort((a, b) => a - b);
+  const first10s = { n: first.length, p50: q(first, 0.5), p95: q(first, 0.95), p99: q(first, 0.99), max: first[first.length - 1] ?? null,
+    over50: first.filter((d) => d > 50).length, over100: first.filter((d) => d > 100).length, sumOver50: Math.round(first.filter((d) => d > 50).reduce((s2, d) => s2 + d, 0)) };
+  const earlyBattle = { first10s, terrainStream: { endMs: streamEndMs, steps: stream.length, geometries: stream.length && Number.isFinite(startCount) ? stream[stream.length - 1][1] - startCount : 0, trace: stream.slice(0, 80) },
     framesDuringStream: { n: inStream.length, p50: q(inStream, 0.5), p95: q(inStream, 0.95), max: inStream[inStream.length - 1] ?? null, over50: inStream.filter((d) => d > 50).length },
     framesAfter: { n: after.length, p50: q(after, 0.5), p95: q(after, 0.95), max: after[after.length - 1] ?? null, over50: after.filter((d) => d > 50).length } };
   const gl2 = window.__TTB.snapshot();
