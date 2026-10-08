@@ -196,8 +196,15 @@ export function createStructureMask(capacity = 4096, { holes = true }: { holes?:
   const holeCount = new Uint8Array(capacity);
   const holeNext = new Uint8Array(capacity);
 
+  // A whole upload (the first, a reset, a clock rebase) must not be cut short by an event's range written before the
+  // renderer gets to it: three uploads only the ranges when there are any. Round 4's strips caught it — a reset
+  // between two Studio scenes, then a breach's range in the same frame, and the GPU kept the last scene's fallen
+  // house folded away: in a battle, a cached world's next match would have lost every building the last one dropped.
+  let wholePending = true;
+  texture.onUpdate = () => { wholePending = false; };
+  const whole = (): void => { wholePending = true; texture.clearUpdateRanges?.(); texture.needsUpdate = true; };
   const touch = (firstTexel: number, count: number): void => {
-    texture.addUpdateRange(firstTexel * 4, count * 4);
+    if (!wholePending) texture.addUpdateRange(firstTexel * 4, count * 4);
     texture.needsUpdate = true;
   };
   const inRange = (id: number): boolean => Number.isInteger(id) && id >= 0 && id < capacity;
@@ -263,14 +270,13 @@ export function createStructureMask(capacity = 4096, { holes = true }: { holes?:
         const o = id * STRIDE * 4;
         if (data[o] > 0) { data[o] = Math.max(1e-3, data[o] + delta); any = true; }
       }
-      if (any) { texture.clearUpdateRanges?.(); texture.needsUpdate = true; }
+      if (any) whole();
     },
     reset() {
       data.fill(0);
       holeCount.fill(0);
       holeNext.fill(0);
-      texture.clearUpdateRanges?.();
-      texture.needsUpdate = true;
+      whole();
     },
     patch,
   };
