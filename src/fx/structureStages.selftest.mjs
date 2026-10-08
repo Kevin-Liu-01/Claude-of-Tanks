@@ -207,6 +207,11 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   assert.equal(N[3 * 4 + 2], 1, 'the hole reads as a breach (deep)');
   assert.equal(N[0 * 4 + 2], 0, 'a spall reads as a patch of the core');
   assert.ok(Math.abs(N[3 * 4] - s) < 1e-3 && Math.abs(N[3 * 4 + 1] - c) < 1e-3, 'facing out of the front wall');
+  // (b5: the scar quads faced into the wall and the phone culled them all) the quad's front looks out of the wall, and
+  // the material draws both sides
+  assert.equal(scars.mesh.material.side, THREE.DoubleSide, 'a scar is drawn whichever way its quad winds');
+  assert.match(scars.mesh.material.vertexShader, /vec3 right = vec3\( n\.z, 0\.0, -n\.x \);/,
+    'right x up = n: the quad faces out of the wall');
   phone.stage({ ...base, stage: 'collapsed', previous: 'breached', x: 40, y: 4, z: -30, dirX: 0, dirZ: 1 }, seam);
   assert.ok([0, 1, 2, 3].every((i) => C[i * 4 + 3] === 0), 'a collapse takes its scars with it');
   phone.reset();
