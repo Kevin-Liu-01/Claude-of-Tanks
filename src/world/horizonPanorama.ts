@@ -158,6 +158,147 @@ float jebelSection(float q, float foot, float apron, float rim) {
 }
 `;
 
+/**
+ * The borders lane (2026-10-08, gauntlet wave 270 on Redrock: "the pale buttes along the horizon are near-identical
+ * clones in a row"; "the horizon should be a chain of massive jebels with domed tops and siq gaps, not isolated buttes
+ * standing on a mesa"): the far jebels' kinds. Each massif rolls its kind in its cell and takes that kind's size, plan,
+ * height, cap and siqs about the map's own means (the uJebel uniforms: the share, the height, the radius, the bosses —
+ * no uniform more):
+ *  - beehive: a rounded crown over a sheer wall (Jebel Rum's heads): a broad cap and a dome over the whole of it;
+ *  - jebel: the bossed massif the law drew before;
+ *  - mesa: broad, low and drawn out, its flat top barely bossed;
+ *  - chain: a long massif cut through by one or two siqs, its crest rising and falling along it;
+ *  - knoll: a small, low, rounded inselberg on the plain between the massifs.
+ * The cells are 2 km (were 2.6) with their centres anywhere in the inner 80 % (was 60 %), the share scaled by 0.75, so the
+ * big massifs keep about their count and the knolls stand between them; no massif reaches past the next cell (its long
+ * axis at most 0.98 of a cell), so the 3 x 3 cells round a point see every massif over it.
+ */
+export const HORIZON_JEBEL_CELL_M = 2000;
+export const HORIZON_JEBEL_SHARE_SCALE = 0.75;
+export interface HorizonJebelKind {
+  name: 'beehive' | 'jebel' | 'mesa' | 'chain' | 'knoll';
+  /** the share of the massifs of this kind */
+  share: number;
+  /** the radius, the elongation and the height, as ranges about the map's radius (1) and height (1) */
+  rad: readonly [number, number]; el: readonly [number, number]; hgt: readonly [number, number];
+  /** the cap's rim, as a multiple of the map's rim (clamped 0.4-0.95) */
+  rim: number;
+  /** the cap's bosses, as a multiple of the map's bosses */
+  boss: number;
+  /** a broad dome over the cap, as a share of the massif's height (0: none) */
+  dome: number;
+  /** the siqs cut across the massif's long axis */
+  siqs: number;
+}
+export const HORIZON_JEBEL_KINDS: readonly HorizonJebelKind[] = Object.freeze([
+  { name: 'beehive', share: 0.28, rad: [0.7, 1.1], el: [1.0, 1.4], hgt: [0.6, 0.9], rim: 1.08, boss: 0.6, dome: 0.22, siqs: 0 },
+  { name: 'jebel', share: 0.24, rad: [0.6, 1.05], el: [1.0, 1.5], hgt: [0.7, 1.0], rim: 1.0, boss: 1.0, dome: 0, siqs: 0 },
+  { name: 'mesa', share: 0.14, rad: [1.0, 1.3], el: [1.3, 1.9], hgt: [0.4, 0.62], rim: 1.12, boss: 0.25, dome: 0, siqs: 0 },
+  { name: 'chain', share: 0.16, rad: [0.65, 0.85], el: [2.2, 3.0], hgt: [0.8, 1.1], rim: 0.95, boss: 0.8, dome: 0, siqs: 2 },
+  { name: 'knoll', share: 0.18, rad: [0.25, 0.5], el: [1.0, 1.35], hgt: [0.15, 0.32], rim: 1.1, boss: 0.4, dome: 0.3, siqs: 0 },
+] as const) as readonly HorizonJebelKind[];
+
+/** The GLSL hash (NOISE_GLSL hash12) in JS, for the twin. */
+export function horizonJebelHash(x: number, y: number): number {
+  const fr = (v: number): number => v - Math.floor(v);
+  let p0 = fr(x * 0.1031), p1 = fr(y * 0.1031), p2 = fr(x * 0.1031);
+  const d = p0 * (p1 + 33.33) + p1 * (p2 + 33.33) + p2 * (p0 + 33.33);
+  p0 += d; p1 += d; p2 += d;
+  return fr((p0 + p1) * p2);
+}
+
+/** One far massif as the bake lays it in its cell (the JS twin of JEBEL_GLSL's per-cell law), or null for an empty cell
+ * or one inside the near limit. `means`: the map's share, height (m), radius (m) and near limit (m). */
+export interface HorizonJebelMassif { kind: HorizonJebelKind['name']; x: number; z: number; rad: number; el: number; hgt: number; ang: number }
+function jebelCell(
+  cx: number, cy: number, means: { share: number; heightM: number; radiusM: number; nearM: number },
+): (HorizonJebelMassif & { k: HorizonJebelKind }) | null {
+  const h = horizonJebelHash;
+  if (h(cx + 31.7, cy + 3.1) < 1 - means.share * HORIZON_JEBEL_SHARE_SCALE) return null;
+  const roll = h(cx + 17.3, cy + 23.9);
+  let acc = 0, kind = HORIZON_JEBEL_KINDS[HORIZON_JEBEL_KINDS.length - 1];
+  for (const k of HORIZON_JEBEL_KINDS.slice(0, -1)) { acc += k.share; if (roll < acc) { kind = k; break; } }
+  const lerp = (r: readonly [number, number], t: number): number => r[0] + (r[1] - r[0]) * t;
+  const cell = HORIZON_JEBEL_CELL_M;
+  const x = (cx + 0.1 + 0.8 * h(cx + 2.9, cy + 7.3)) * cell, z = (cy + 0.1 + 0.8 * h(cx + 6.1, cy + 1.7)) * cell;
+  const rad = means.radiusM * lerp(kind.rad, h(cx + 5.3, cy + 8.8));
+  const el = Math.min(lerp(kind.el, h(cx + 0.7, cy + 2.2)), (0.98 * cell) / rad);
+  if (Math.hypot(x, z) - rad * el < means.nearM) return null;
+  return { kind: kind.name, k: kind, x, z, rad, el, hgt: means.heightM * lerp(kind.hgt, h(cx + 8.2, cy + 6.6)), ang: 2 * Math.PI * h(cx + 9.1, cy + 4.4) };
+}
+export function horizonJebelMassif(
+  cx: number, cy: number, means: { share: number; heightM: number; radiusM: number; nearM: number },
+): HorizonJebelMassif | null {
+  const m = jebelCell(cx, cy, means);
+  if (!m) return null;
+  const { k: _k, ...massif } = m;
+  return massif;
+}
+
+/** The far jebels' means as the uJebel uniforms carry them (a character's jebel knobs). */
+export interface HorizonJebelMeans {
+  share: number; heightM: number; radiusM: number; nearM: number; foot: number; rim: number; apron: number;
+  flutes: number; fluteDepth: number; bossM: number; footVary: number;
+}
+/** A panorama character's jebel knobs as the field's means. */
+export function horizonJebelMeans(ch: HorizonPanoramaCharacter): HorizonJebelMeans {
+  return { share: ch.jebelShare, heightM: ch.jebelM, radiusM: ch.jebelRadiusM, nearM: ch.jebelNearM, foot: ch.jebelFoot,
+    rim: ch.jebelRim, apron: ch.jebelApron, flutes: ch.jebelFlutes, fluteDepth: ch.jebelFluteDepth, bossM: ch.jebelBossM, footVary: ch.jebelFootVary };
+}
+function jebelLobeAt(th: number, salt: number): number {
+  let sum = 0;
+  for (let k = 2; k <= 5; k++) sum += Math.sin(k * th + 2 * Math.PI * horizonJebelHash(k, salt)) / (k - 1);
+  return sum / 2.0833333;
+}
+const smooth01 = (a: number, b: number, x: number): number => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+/**
+ * The far jebels' height over the plain at a point (m): the JS twin of JEBEL_GLSL's jebelField — the tallest massif of
+ * the 3 x 3 cells round the point, each its kind's section, flutes, bosses, crown and siqs. The far range on a jebel map
+ * lays its country by it (horizonFarRange.ts), so the near, the far and the panorama's massifs are one law.
+ */
+export function horizonJebelFieldAt(x: number, z: number, m: HorizonJebelMeans): number {
+  const h = horizonJebelHash, cell = HORIZON_JEBEL_CELL_M;
+  const cx0 = Math.floor(x / cell), cy0 = Math.floor(z / cell);
+  let best = 0;
+  for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+    const cx = cx0 + i, cy = cy0 + j;
+    const c = jebelCell(cx, cy, m);
+    if (!c) continue;
+    const ax = Math.cos(c.ang), az = Math.sin(c.ang), qx = x - c.x, qz = z - c.z;
+    const lx = (qx * ax + qz * az) / c.el / c.rad, ly = (-qx * az + qz * ax) / c.rad;
+    const q = Math.hypot(lx, ly);
+    if (q >= 1) continue;
+    const th = Math.atan2(ly, lx), salt = h(cx + 4.8, cy + 5.9) * 97;
+    const rim = Math.max(0.4, Math.min(0.95, m.rim * c.k.rim));
+    let wall = Math.max(0.25, Math.min(0.92, m.foot * (1 + m.footVary * jebelLobeAt(th, salt + 29))));
+    const notch = Math.max(0, Math.cos(2 * Math.PI * (th / (2 * Math.PI) * m.flutes + h(cx + 3.7, cy + 0.3)))) ** 2;
+    wall -= notch * m.fluteDepth * (1 - rim) * wall;
+    const apron = m.apron * (1 + 0.5 * jebelLobeAt(th, salt + 31));
+    let hj = c.hgt * horizonJebelSection(q, wall, apron, rim);
+    const top = wall * rim;
+    if (q < top && m.bossM > 0) {
+      let boss = 0;
+      for (let k = 0; k < 4; k++) {
+        const ba = 2 * Math.PI * h(k, salt + 41), br = Math.sqrt(h(k + 7, salt + 41)) * top * 0.62;
+        const bradius = top * (0.3 + 0.16 * h(k + 13, salt + 41));
+        const bd = Math.hypot(lx - Math.cos(ba) * br, ly - Math.sin(ba) * br) / bradius;
+        if (bd < 1) boss = Math.max(boss, (1 - bd * bd) * (1 - bd * bd) * (0.6 + 0.4 * h(k + 19, salt + 41)));
+      }
+      hj += m.bossM * c.k.boss * boss;
+    }
+    if (c.k.dome > 0 && q < top) { const d = q / top; hj += c.k.dome * c.hgt * (1 - d * d) ** 0.6; }
+    if (c.k.siqs > 0) {
+      hj *= 0.86 + 0.14 * Math.sin(lx * 4.1 + salt);
+      for (let si = 0; si < Math.min(2, c.k.siqs); si++) {
+        const g = -0.55 + 1.1 * h(si + 3, salt + 57), w = 0.05 + 0.04 * h(si + 5, salt + 57);
+        hj *= 0.04 + 0.96 * smooth01(w * 0.4, w, Math.abs(lx - g));
+      }
+    }
+    best = Math.max(best, hj);
+  }
+  return best;
+}
+
 export const HORIZON_PANORAMA_CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonPanoramaCharacter>> = Object.freeze({
   alpine: { ampM: 1700, foot: 0.16, macroL: 5200, sharp: 1.45, midL: 1500, gullyL: 520, gullyM: 55, warpM: 900, valley: 0.4, valleyL: 7500, snowline: 0.40, treeline: 0.22, rockSlope: 0.30, bedM: 70, strata: 0.10, tables: false, farRise: 0, layers: 1, plinth: false, ...PANO_EXTRAS },
   polar: { ampM: 1300, foot: 0.18, macroL: 5800, sharp: 1.3, midL: 1700, gullyL: 560, gullyM: 45, warpM: 1000, valley: 0.4, valleyL: 8000, snowline: 0.05, treeline: 0.10, rockSlope: 0.34, bedM: 80, strata: 0.08, tables: false, farRise: 0, layers: 1, plinth: false, ...PANO_EXTRAS },
@@ -781,6 +922,14 @@ vec3 noised(vec2 x) {
 const mat2 ROT = mat2(1.6, 1.2, -1.2, 1.6);
 `;
 
+/** The kinds' cumulative shares and ranges as GLSL (from HORIZON_JEBEL_KINDS, so the bake and the twin keep one table). */
+const JEBEL_KINDS_GLSL = HORIZON_JEBEL_KINDS.slice(0, -1).map((k, i) =>
+  `  if (roll < ${HORIZON_JEBEL_KINDS.slice(0, i + 1).reduce((sum, x) => sum + x.share, 0).toFixed(4)}) return ${i}.0;`).join('\n');
+const JEBEL_RANGES_GLSL = HORIZON_JEBEL_KINDS.map((k, i) => {
+  const f = (v: number): string => v.toFixed(4);
+  return `  if (kind < ${i}.5) return which == 0 ? vec4(${f(k.rad[0])}, ${f(k.rad[1])}, ${f(k.el[0])}, ${f(k.el[1])})`
+    + ` : which == 1 ? vec4(${f(k.hgt[0])}, ${f(k.hgt[1])}, ${f(k.rim)}, ${f(k.boss)}) : vec4(${f(k.dome)}, ${k.siqs.toFixed(1)}, 0.0, 0.0);`;
+}).join('\n') + '\n  return vec4(0.0);';
 /** The far jebels' law, shared by the height pass and the strip (which takes the walls' normals from it). */
 const JEBEL_GLSL = /* glsl */`
 uniform vec4 uJebel;   // sheer jebels: share of 2.6 km cells, height (m), radius (m), the cap's bosses (m)
@@ -797,22 +946,34 @@ float jebelLobe(float th, float salt) {
   return sum / 2.0833333;
 }
 
-// the jebels at a point (uJebel.x > 0): the tallest massif's height over the plain (one in a share of 2.6 km cells,
-// standing alone on the plain — maps lane A's section, horizonJebelSection: a bossed cap, a sheer wall fluted in vertical
-// grooves whose foot wanders round the massif, a short concave talus apron; drawn out along a turned axis). Beside it the
-// footprint inside the walls' feet (the height pass writes it for the strip to bare), the varnish down the walls, and for
-// the strip the massif the point belongs to: its share of its own height there, its bearing round its centre, its salt
+// the jebels at a point (uJebel.x > 0): the tallest massif's height over the plain (in a share of 2 km cells, each its
+// kind's — HORIZON_JEBEL_KINDS: a beehive, a bossed jebel, a mesa, a chain cut by siqs or a knoll — standing alone on the
+// plain: maps lane A's section, horizonJebelSection: a bossed cap, a sheer wall fluted in vertical grooves whose foot
+// wanders round the massif, a short concave talus apron; drawn out along a turned axis). Beside it the footprint inside
+// the walls' feet (the height pass writes it for the strip to bare), the varnish down the walls, and for the strip the
+// massif the point belongs to: its share of its own height there, its bearing round its centre, its salt
 float gJebelBare = 0.0, gJebelVarnish = 0.0, gJebelRel = 0.0, gJebelTh = 0.0, gJebelSalt = 0.0;
+// the kind a roll falls in (HORIZON_JEBEL_KINDS' cumulative shares), and that kind's ranges
+float jebelKind(float roll) {
+${JEBEL_KINDS_GLSL}
+  return 4.0;
+}
+vec4 jebelKindRange(float kind, int which) {
+  // which 0: radius lo/hi, elongation lo/hi; 1: height lo/hi, rim, boss; 2: dome, siqs
+${JEBEL_RANGES_GLSL}
+}
 float jebelField(vec2 p) {
   gJebelBare = 0.0; gJebelVarnish = 0.0; gJebelRel = 0.0; gJebelTh = 0.0; gJebelSalt = 0.0;
-  vec2 cell = floor(p / 2600.0);
+  vec2 cell = floor(p / ${HORIZON_JEBEL_CELL_M.toFixed(1)});
   float best = 0.0;
   for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
     vec2 c = cell + vec2(float(i), float(j));
-    if (hash12(c + vec2(31.7, 3.1)) < 1.0 - uJebel.x) continue;
-    vec2 centre = (c + 0.2 + 0.6 * vec2(hash12(c + vec2(2.9, 7.3)), hash12(c + vec2(6.1, 1.7)))) * 2600.0;
-    float rad = uJebel.z * (0.7 + 0.6 * hash12(c + vec2(5.3, 8.8)));
-    float el = 1.0 + 0.5 * hash12(c + vec2(0.7, 2.2));
+    if (hash12(c + vec2(31.7, 3.1)) < 1.0 - uJebel.x * ${HORIZON_JEBEL_SHARE_SCALE.toFixed(4)}) continue;
+    float kind = jebelKind(hash12(c + vec2(17.3, 23.9)));
+    vec4 k0 = jebelKindRange(kind, 0), k1 = jebelKindRange(kind, 1), k2 = jebelKindRange(kind, 2);
+    vec2 centre = (c + 0.1 + 0.8 * vec2(hash12(c + vec2(2.9, 7.3)), hash12(c + vec2(6.1, 1.7)))) * ${HORIZON_JEBEL_CELL_M.toFixed(1)};
+    float rad = uJebel.z * mix(k0.x, k0.y, hash12(c + vec2(5.3, 8.8)));
+    float el = min(mix(k0.z, k0.w, hash12(c + vec2(0.7, 2.2))), 0.98 * ${HORIZON_JEBEL_CELL_M.toFixed(1)} / rad);
     // (its near edge past the limit: the massif's long axis is rad * el)
     if (length(centre) - rad * el < uJebel3.w) continue;
     float ang = 6.2831853 * hash12(c + vec2(9.1, 4.4));
@@ -821,15 +982,15 @@ float jebelField(vec2 p) {
     float q = length(lq);
     if (q >= 1.0) continue;
     float th = atan(lq.y, lq.x), salt = hash12(c + vec2(4.8, 5.9)) * 97.0;
-    float rim = uJebel2.y;
+    float rim = clamp(uJebel2.y * k1.z, 0.4, 0.95);
     float wall = clamp(uJebel2.x * (1.0 + uJebel3.y * jebelLobe(th, salt + 29.0)), 0.25, 0.92);
     // the flutes: a rounded notch where the cosine peaks, setting the wall back between its spurs
     float notch = pow(max(0.0, cos(6.2831853 * (th / 6.2831853 * uJebel2.w + hash12(c + vec2(3.7, 0.3))))), 2.0);
     wall -= notch * uJebel3.x * (1.0 - rim) * wall;
     float apron = uJebel2.z * (1.0 + 0.5 * jebelLobe(th, salt + 31.0));
-    float hgt = uJebel.y * (0.7 + 0.3 * hash12(c + vec2(8.2, 6.6)));
+    float hgt = uJebel.y * mix(k1.x, k1.y, hash12(c + vec2(8.2, 6.6)));
     float hj = hgt * jebelSection(q, wall, apron, rim);
-    // the cap's bosses: rounded domes inside the rim (their union), as maps lane A sets them
+    // the cap's bosses: rounded domes inside the rim (their union), as maps lane A sets them, by the kind's measure
     float top = wall * rim;
     if (q < top && uJebel.w > 0.0) {
       float boss = 0.0;
@@ -840,7 +1001,19 @@ float jebelField(vec2 p) {
         float bd = length(lq - vec2(cos(ba), sin(ba)) * br) / bradius;
         if (bd < 1.0) boss = max(boss, (1.0 - bd * bd) * (1.0 - bd * bd) * (0.6 + 0.4 * hash12(vec2(fk + 19.0, salt + 41.0))));
       }
-      hj += uJebel.w * boss;
+      hj += uJebel.w * k1.w * boss;
+    }
+    // a beehive's and a knoll's crown: a broad dome over the whole cap
+    if (k2.x > 0.0 && q < top) { float d = q / top; hj += k2.x * hgt * pow(1.0 - d * d, 0.6); }
+    // a chain's siqs: one or two narrow gaps across its long axis, down to the plain, and its crest rising and falling
+    if (k2.y > 0.0) {
+      hj *= 0.86 + 0.14 * sin(lq.x * 4.1 + salt);
+      for (int s = 0; s < 2; s++) {
+        float fs = float(s);
+        if (fs >= k2.y) break;
+        float g = -0.55 + 1.1 * hash12(vec2(fs + 3.0, salt + 57.0)), w = 0.05 + 0.04 * hash12(vec2(fs + 5.0, salt + 57.0));
+        hj *= mix(0.04, 1.0, smoothstep(w * 0.4, w, abs(lq.x - g)));
+      }
     }
     if (hj > best) { best = hj; gJebelRel = hj / hgt; gJebelTh = th; gJebelSalt = salt; }
     gJebelBare = max(gJebelBare, smoothstep(wall + 0.04, wall - 0.01, q));
