@@ -2045,7 +2045,7 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
     // rope and a steel strap over it, each where the rope really lies
     for (const s of [-0.3, 0, 0.31]) {
       const at = curve.getPointAt(THREE.MathUtils.clamp(s + 0.5, 0, 1));
-      const base = at.y - R * 1.15, Rs = R * 1.15 + 0.006;   // the strand swell reaches 1.15 R
+      const base = at.y - R * 1.15 - 0.004, Rs = R * 1.15 + 0.006;   // the strand swell reaches 1.15 R
       parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.06, base, 2 * Rs + 0.016), at.x, base / 2, at.z), 0.72) });
       // the strap: down to the saddle on both sides, over the rope between (outward winding)
       const path: Array<[number, number]> = [[at.z - Rs, base], [at.z - Rs, at.y]];
@@ -4019,6 +4019,8 @@ const SIDE_TOE = 0.1;
  * inside the 60-degree forward cone (smokeLauncherFleet). */
 const SIDE_AIM = 0.7;
 const SIDE_CANT_MAX = Math.PI / 4;
+/** A seated bank's bracket reaches back to the turret at most this far behind any corner (m; round 5). */
+const BRACKET_MAX_DEPTH = 0.2;
 
 /** How dark a load's foot is baked where it meets its support, and over what height the darkening fades (round 4). */
 const CONTACT_AO = 0.6;
@@ -5905,7 +5907,24 @@ export function* attachTankDecorationsSteps(
             const half = bb ? (bb.max.x - bb.min.x) / 2 : 0.2, back = bb ? Math.max(0.04, -bb.min.z) : 0.04;
             const off = 0.005 + half * Math.sin(toe) + back * Math.cos(toe);
             const nh = new THREE.Vector3(h.n.x, 0, h.n.z).normalize();
-            return { pos: V(h.p.x + nh.x * off, y, h.p.z + nh.z * off), rot: E(0, s * along, 0) };
+            // the bracket's middle on the probed point (its foot stood at the probe, so a low wall left its top in air)
+            const mid = bb ? (bb.min.y + bb.max.y) / 2 : 0.05;
+            return { pos: V(h.p.x + nh.x * off, y - mid, h.p.z + nh.z * off), rot: E(0, s * along, 0) };
+          };
+          // a seat to the wall holds only where the turret stands behind every corner of the bracket within
+          // BRACKET_MAX_DEPTH (a row longer than a small cheek hangs past its edge: the BMP-3M Dragun)
+          const backed = (pos: THREE.Vector3, rot: THREE.Euler): boolean => {
+            const k = cl.findIndex((p) => p.bracket);
+            if (k < 0) return true;
+            cl[k].geo.computeBoundingBox();
+            const b = cl[k].geo.boundingBox!, cast = cheekCaster(pos, rot);
+            for (const cx of [b.min.x, b.max.x]) {
+              for (const cy of [b.min.y, b.max.y]) {
+                const f = new THREE.Vector3(cx, cy, b.max.z), hit = cast(f);
+                if (!hit || f.z - hit.z > BRACKET_MAX_DEPTH) return false;
+              }
+            }
+            return true;
           };
           for (const pass of [0, 1, 2] as const) {
             for (const [z, yf] of candidates(pass)) {
@@ -5913,7 +5932,7 @@ export function* attachTankDecorationsSteps(
               const h = turP.side(y, z, s, W / 2 + 1);
               if (!h) continue;
               const at = seat(h, y, z, pass);
-              if (!at) continue;
+              if (!at || (pass < 2 && !backed(at.pos, at.rot))) continue;
               const { pos, rot } = at;
               wedgeBracket(cl, pos, rot, h.p, h.n, resources.releaseGeometry, cheekCaster(pos, rot));
               if (tryCommit(pos, rot)) { done = true; break; }
@@ -5933,7 +5952,7 @@ export function* attachTankDecorationsSteps(
                 const h = solid.side(y, z, s, W / 2 + 1);
                 if (!h) continue;
                 const at = seat(h, y, z, pass);
-                if (!at) continue;
+                if (!at || (pass < 2 && !backed(at.pos, at.rot))) continue;
                 const { pos, rot } = at;
                 wedgeBracket(cl, pos, rot, h.p, h.n, resources.releaseGeometry, cheekCaster(pos, rot));
                 const bb = placedBox(cl, pos, rot);
@@ -5958,7 +5977,7 @@ export function* attachTankDecorationsSteps(
                 const h = solid.side(y, z, s, W / 2 + 1);
                 if (!h) continue;
                 const at = seat(h, y, z, pass);
-                if (!at) continue;
+                if (!at || (pass < 2 && !backed(at.pos, at.rot))) continue;
                 wedgeBracket(cl, at.pos, at.rot, h.p, h.n, resources.releaseGeometry, cheekCaster(at.pos, at.rot));
                 done = tryCommit(at.pos, at.rot);
               }
