@@ -44,6 +44,9 @@ const PLATE: Palette = [0.12, 0.04, 0.39];
 const WOOD: Palette = [0.075, 0.27, 0.25];
 const CANVAS: Palette = [0.105, 0.14, 0.26];
 const CHAR: Palette = [0.07, 0.10, 0.06];
+/** (b39) A burned wreck's weathered rust and the pale ash where the paint burned to the primer. */
+const BURNT_RUST: Palette = [0.05, 0.55, 0.3];
+const ASH: Palette = [0.08, 0.05, 0.44];
 const RUST: Palette = [0.045, 0.49, 0.19];
 
 const CAR_PAINTS: readonly Palette[] = [
@@ -71,12 +74,79 @@ function box(w: number, h: number, d: number): THREE.BoxGeometry {
   return geometry;
 }
 
+/**
+ * (b39, the scenery lane; the destructibles audit: every vehicle broke into one charred box on a rusty frame — the
+ * jeep's, the sedan's and the wagon's wrecks identical, every livery lost) A wreck is its own vehicle's build, burned:
+ * while `burning` is set paint() burns every part it paints (burnPart).
+ */
+let burning = false;
+let intactBody: Palette | null = null;
+/**
+ * (b39) A vehicle's body paint: an intact build's own choice, remembered; a burning rebuild's the intact's (a pool builds
+ * its broken state right after its intact one: props.ts prepareDestructiblePools), so a burned-out car's blistered paint
+ * is the colour its intact ones wear. The choice is still drawn, so every stream keeps its count.
+ */
+function bodyPaint(drawn: Palette): Palette {
+  if (burning) return intactBody ?? drawn;
+  intactBody = drawn;
+  return drawn;
+}
+/** A smooth-ish value by place (no draw): the burn's patches, the same at every vertex sharing a place. */
+function placeNoise(x: number, y: number, z: number): number {
+  const q = (v: number) => Math.round(v * 50) / 50;
+  const a = Math.sin(q(x) * 12.9898 + q(y) * 78.233 + q(z) * 37.719) * 43758.5453;
+  const white = a - Math.floor(a);
+  const low = 0.5 + 0.5 * Math.sin(q(x) * 2.3 + q(z) * 1.7 + 0.8) * Math.cos(q(y) * 3.1 - q(z) * 0.9);
+  return low * 0.65 + white * 0.35;
+}
+/**
+ * A part burned: the glass, the lamps' lenses and the plates gone (folded to a point; a burst window frames nothing),
+ * the canvas burned away; the tyres burned off their rims (drawn in toward the hub across the axle, bare rusted
+ * steel); the timber charred; the paint burned to char and rust, blistered paint left low on the panels where the fire
+ * was coolest, the steel dark and rusting.
+ */
+function burnPart<T extends THREE.BufferGeometry>(geometry: T, palette: Palette, rng: Rng): T {
+  const p = geometry.getAttribute('position') as THREE.BufferAttribute, count = p.count;
+  geometry.computeBoundingBox();
+  const b = geometry.boundingBox!, cx = (b.min.x + b.max.x) / 2, cy = (b.min.y + b.max.y) / 2, cz = (b.min.z + b.max.z) / 2;
+  const gone = palette === GLASS || palette === LAMP_WHITE || palette === LAMP_AMBER || palette === LAMP_RED || palette === PLATE || palette === CANVAS;
+  if (gone) for (let i = 0; i < count; i++) p.setXYZ(i, cx, cy, cz);
+  if (palette === RUBBER) {
+    // the axle across the part's thinnest extent; the rest drawn in to the rim
+    const ex = b.max.x - b.min.x, ey = b.max.y - b.min.y, ez = b.max.z - b.min.z;
+    const axle = ex <= ey && ex <= ez ? 0 : ey <= ez ? 1 : 2;
+    for (let i = 0; i < count; i++) {
+      const v = [p.getX(i), p.getY(i), p.getZ(i)], c = [cx, cy, cz];
+      for (let k = 0; k < 3; k++) if (k !== axle) v[k] = c[k] + (v[k] - c[k]) * 0.68;
+      p.setXYZ(i, v[0], v[1], v[2]);
+    }
+  }
+  const colors = new Float32Array(count * 3);
+  const drift = (rng() - 0.5) * 0.05;
+  for (let i = 0; i < count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i), n = placeNoise(x, y, z);
+    let pal: Palette, lift = 0;
+    if (gone) pal = CHAR;
+    else if (palette === RUBBER || palette === STEEL || palette === DARK_STEEL || palette === ALUMINUM || palette === BLACK) pal = n > 0.55 ? RUST : DARK_STEEL, lift = -0.06;
+    else if (palette === WOOD) pal = CHAR, lift = n * 0.04;
+    else if (y < 0.72 && n > 0.62) pal = palette, lift = -palette[2] * 0.45;
+    else if (n > 0.74) pal = BURNT_RUST, lift = (n - 0.74) * 0.2;
+    else if (n < 0.38 && y > 0.6) pal = ASH, lift = -n * 0.25;
+    else pal = n > 0.56 ? RUST : CHAR;
+    _color.setHSL(pal[0], pal[1], Math.max(0.025, Math.min(0.6, pal[2] + lift + drift + (n - 0.5) * 0.05)), THREE.SRGBColorSpace);
+    colors[i * 3] = _color.r; colors[i * 3 + 1] = _color.g; colors[i * 3 + 2] = _color.b;
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return geometry;
+}
+
 function paint<T extends THREE.BufferGeometry>(
   geometry: T,
   palette: Palette,
   rng: Rng,
   variation = 0.035,
 ): T {
+  if (burning) return burnPart(geometry, palette, rng);
   const count = geometry.getAttribute('position').count;
   const colors = new Float32Array(count * 3);
   const partDrift = (rng() - 0.5) * variation;
@@ -224,7 +294,7 @@ function addGrille(
 
 function buildPassengerCar(rng: Rng, bodyStyle: 'sedan' | 'wagon'): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
-  const body = choose(rng, CAR_PAINTS);
+  const body = bodyPaint(choose(rng, CAR_PAINTS));
   const halfWidth = 0.87;
   addBox(parts, rng, DARK_STEEL, 1.62, 0.18, 3.72, 0, 0.45, 0);
   addBox(parts, rng, body, 1.72, 0.48, 3.82, 0, 0.70, 0);
@@ -249,7 +319,7 @@ function buildPassengerCar(rng: Rng, bodyStyle: 'sedan' | 'wagon'): THREE.Buffer
 
 function buildPickup(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
-  const body = choose(rng, WORK_PAINTS);
+  const body = bodyPaint(choose(rng, WORK_PAINTS));
   addBox(parts, rng, DARK_STEEL, 1.78, 0.20, 4.60, 0, 0.48, 0);
   addBox(parts, rng, body, 1.90, 0.52, 4.50, 0, 0.75, 0);
   addBox(parts, rng, body, 1.82, 0.28, 1.18, 0, 1.06, 1.52);
@@ -271,7 +341,7 @@ function buildPickup(rng: Rng): THREE.BufferGeometry {
 
 function buildVan(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
-  const body = choose(rng, WORK_PAINTS);
+  const body = bodyPaint(choose(rng, WORK_PAINTS));
   addBox(parts, rng, DARK_STEEL, 1.78, 0.20, 4.35, 0, 0.45, 0);
   addBox(parts, rng, body, 1.90, 0.58, 4.30, 0, 0.75, 0);
   addBox(parts, rng, body, 1.82, 1.28, 3.45, 0, 1.38, -0.20);
@@ -289,7 +359,7 @@ function buildVan(rng: Rng): THREE.BufferGeometry {
 
 function buildUtility4x4(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
-  const body: Palette = rng() < 0.55 ? [0.19, 0.18, 0.28] : [0.58, 0.07, 0.35];
+  const body: Palette = bodyPaint(rng() < 0.55 ? [0.19, 0.18, 0.28] : [0.58, 0.07, 0.35]);
   addBox(parts, rng, DARK_STEEL, 1.44, 0.17, 3.38, 0, 0.45, 0);
   addBox(parts, rng, body, 1.54, 0.48, 3.30, 0, 0.72, 0);
   addBox(parts, rng, body, 1.48, 0.28, 1.05, 0, 1.04, 1.22);
@@ -366,7 +436,7 @@ function addFlatbedTruckBody(parts: THREE.BufferGeometry[], rng: Rng, body: Pale
 
 function buildTruck(rng: Rng, bodyStyle: 'cargo' | 'box' | 'flatbed'): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
-  const body = bodyStyle === 'cargo' ? [0.19, 0.18, 0.27] as Palette : choose(rng, WORK_PAINTS);
+  const body = bodyPaint(bodyStyle === 'cargo' ? [0.19, 0.18, 0.27] as Palette : choose(rng, WORK_PAINTS));
   addTruckChassis(parts, rng, body);
   if (bodyStyle === 'box') addBoxTruckBody(parts, rng);
   else if (bodyStyle === 'cargo') addCargoTruckBody(parts, rng, body);
@@ -407,28 +477,62 @@ function buildBrokenVehicle(
   return merge(parts);
 }
 
-const brokenSedan = (rng: Rng): THREE.BufferGeometry => buildBrokenVehicle(rng, 1.72, 3.82, -0.12, [1.20, -1.20]);
-const brokenPickup = (rng: Rng): THREE.BufferGeometry => buildBrokenVehicle(rng, 1.90, 4.50, 0.56, [1.38, -1.38]);
-const brokenVan = (rng: Rng): THREE.BufferGeometry => buildBrokenVehicle(rng, 1.90, 4.30, 0.65, [1.36, -1.38]);
-const brokenTruck = (rng: Rng): THREE.BufferGeometry => buildBrokenVehicle(rng, 2.12, 5.86, 1.72, [2.08, -1.05, -2.07]);
+// (the old shared wrecks: their draws are spent first, so every later pool keeps its geometry)
+const legacySedan = (rng: Rng): THREE.BufferGeometry => buildBrokenVehicle(rng, 1.72, 3.82, -0.12, [1.20, -1.20]);
+const legacyPickup = (rng: Rng): THREE.BufferGeometry => buildBrokenVehicle(rng, 1.90, 4.50, 0.56, [1.38, -1.38]);
+const legacyVan = (rng: Rng): THREE.BufferGeometry => buildBrokenVehicle(rng, 1.90, 4.30, 0.65, [1.36, -1.38]);
+const legacyTruck = (rng: Rng): THREE.BufferGeometry => buildBrokenVehicle(rng, 2.12, 5.86, 1.72, [2.08, -1.05, -2.07]);
+
+/**
+ * (b39) A burned-out wreck of the vehicle itself: the old shared wreck's draws spent (its first two seed this one's own
+ * stream, so every wreck on a map is its own), then the vehicle's own build burned (burnPart), sat down on its bare
+ * rims, its roof sagging, its panels dented by place (the same dent at every vertex sharing a corner, so no part
+ * opens), leaning a little. Its own silhouette and livery family, read as a burned car, a burned lorry.
+ */
+function burnedOut(build: (rng: Rng) => THREE.BufferGeometry, legacy: (rng: Rng) => THREE.BufferGeometry, salt: number): (rng: Rng) => THREE.BufferGeometry {
+  return (rng: Rng): THREE.BufferGeometry => {
+    let seed = salt, k = 0;
+    legacy(() => { const v = rng(); if (k++ < 2) seed = Math.imul(seed ^ Math.floor(v * 4294967296), 0x9e3779b1); return v; }).dispose();
+    let a = seed | 0;
+    const own: Rng = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    burning = true;
+    let geometry: THREE.BufferGeometry;
+    try { geometry = build(own); } finally { burning = false; }
+    geometry.computeBoundingBox();
+    const top = geometry.boundingBox!.max.y, lean = (own() - 0.5) * 0.05, pitch = (own() - 0.5) * 0.03;
+    const p = geometry.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < p.count; i++) {
+      let x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+      const n = placeNoise(x, y, z), m = placeNoise(z, x, y);
+      if (y > top * 0.7) y -= (y - top * 0.7) * (0.22 + 0.18 * n);
+      x += (n - 0.5) * 0.04; z += (m - 0.5) * 0.04; y += (m - 0.5) * 0.02;
+      y += -0.1 + x * lean + z * pitch;
+      p.setXYZ(i, x, Math.max(y, -0.06), z);
+    }
+    geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+    return geometry;
+  };
+}
 
 export const CIVILIAN_VEHICLE_RECEIPTS = {
   truck: { lane: 'heavy', halfWidth: 1.29, halfLength: 3.30, height: 2.30, triangleBudget: 1600,
-    build: (rng: Rng) => buildTruck(rng, 'cargo'), broken: brokenTruck },
+    build: (rng: Rng) => buildTruck(rng, 'cargo'), broken: burnedOut((rng: Rng) => buildTruck(rng, 'cargo'), legacyTruck, 0x7a01) },
   jeep: { lane: 'light', halfWidth: 0.94, halfLength: 1.88, height: 1.73, triangleBudget: 950,
-    build: buildUtility4x4, broken: brokenSedan },
+    build: buildUtility4x4, broken: burnedOut(buildUtility4x4, legacySedan, 0x7a02) },
   sedan: { lane: 'light', halfWidth: 1.01, halfLength: 2.13, height: 1.61, triangleBudget: 950,
-    build: (rng: Rng) => buildPassengerCar(rng, 'sedan'), broken: brokenSedan },
+    build: (rng: Rng) => buildPassengerCar(rng, 'sedan'), broken: burnedOut((rng: Rng) => buildPassengerCar(rng, 'sedan'), legacySedan, 0x7a03) },
   wagon: { lane: 'light', halfWidth: 1.01, halfLength: 2.13, height: 1.69, triangleBudget: 950,
-    build: (rng: Rng) => buildPassengerCar(rng, 'wagon'), broken: brokenSedan },
+    build: (rng: Rng) => buildPassengerCar(rng, 'wagon'), broken: burnedOut((rng: Rng) => buildPassengerCar(rng, 'wagon'), legacySedan, 0x7a04) },
   pickup: { lane: 'light', halfWidth: 1.11, halfLength: 2.47, height: 1.77, triangleBudget: 1050,
-    build: buildPickup, broken: brokenPickup },
+    build: buildPickup, broken: burnedOut(buildPickup, legacyPickup, 0x7a05) },
   van: { lane: 'light', halfWidth: 1.11, halfLength: 2.38, height: 2.08, triangleBudget: 950,
-    build: buildVan, broken: brokenVan },
+    build: buildVan, broken: burnedOut(buildVan, legacyVan, 0x7a06) },
   truckbox: { lane: 'heavy', halfWidth: 1.29, halfLength: 3.30, height: 2.47, triangleBudget: 1600,
-    build: (rng: Rng) => buildTruck(rng, 'box'), broken: brokenTruck },
+    build: (rng: Rng) => buildTruck(rng, 'box'), broken: burnedOut((rng: Rng) => buildTruck(rng, 'box'), legacyTruck, 0x7a07) },
   truckflatbed: { lane: 'heavy', halfWidth: 1.29, halfLength: 3.30, height: 1.96, triangleBudget: 1700,
-    build: (rng: Rng) => buildTruck(rng, 'flatbed'), broken: brokenTruck },
+    build: (rng: Rng) => buildTruck(rng, 'flatbed'), broken: burnedOut((rng: Rng) => buildTruck(rng, 'flatbed'), legacyTruck, 0x7a08) },
 } satisfies Record<CivilianVehicleKind, CivilianVehicleReceipt>;
 
 const INDUSTRIAL_HEAVY: readonly CivilianVehicleKind[] = ['truckbox', 'truckflatbed', 'truck'];

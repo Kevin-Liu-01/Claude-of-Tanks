@@ -85,7 +85,10 @@ for (const kind of ['stog', 'plast', 'hooiberg', 'meule', 'diemen', 'strawstack'
       const p = g.attributes.position, uv = g.attributes.uv;
       assert.ok(uv && uv.count === p.count && g.attributes.normal, `${kind} ${label}: position, normal and uv`);
       const tris = (g.index ? g.index.count : p.count) / 3;
-      assert.ok(tris <= BUDGET[kind], `${kind} ${label}: within its budget (${tris} triangles of ${BUDGET[kind]})`);
+      // (b39) a broken stack — the torn remnant, its spill and the clumps thrown off it, a burst bale's roll and mat —
+      // draws one instance a destroyed stack: at most 450 triangles, or the kind's own budget where that is larger
+      const budget = label === 'broken' ? Math.max(BUDGET[kind], 450) : BUDGET[kind];
+      assert.ok(tris <= budget, `${kind} ${label}: within its budget (${tris} triangles of ${budget})`);
       for (let i = 0; i < uv.count; i++) assert.ok(inBands(uv.getY(i)), `${kind} ${label}: its print in the bands (v ${uv.getY(i).toFixed(3)})`);
       if (label === 'broken' || !STACKS.has(kind)) continue;
       // a region's stack: its hay above the skirt inside its reach, its top (the poles) inside its height, its settled foot

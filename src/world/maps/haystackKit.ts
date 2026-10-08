@@ -22,6 +22,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { HAY_FACE_V, HAY_PACKED_V, HAY_THATCH_V, HAY_WOOD_V } from '../hayPrint.ts';
 import type { DestructiblePropType } from './inhabitKit.ts';
+import { spentDraws } from './brokenDraws.ts';
 
 type Rng = () => number;
 
@@ -229,8 +230,103 @@ function hayMounds(rng: Rng, spread: number, withPole: boolean): THREE.BufferGeo
   return merge(parts);
 }
 
-function bStogBroken(rng: Rng): THREE.BufferGeometry { return hayMounds(rng, 1.15, true); }
-function bPlastBroken(rng: Rng): THREE.BufferGeometry { return hayMounds(rng, 0.85, true); }
+/** What a torn-open stack keeps of its build: its foot radius, its height, a pole's length (0 for none), a cap. */
+export interface SpilledStackShape {
+  R: number;
+  H: number;
+  pole?: number;
+  /** A thatched cap (the Diemen's), slid off onto the spilled hay. */
+  cap?: boolean;
+}
+
+/**
+ * (b39; the destructibles audit: every straw kind broke to the same three low cones) A stack a shell or a hull has torn
+ * open, in its own hay: the lower part still standing with a great bite out of one side and its top ragged, the hay
+ * that stood there spread out of the bite in a wide, low, ragged fan with clumps thrown beyond it; the pole a stack
+ * was built round leaning out of the remnant over the spill; a thatched cap slid off onto the hay. Every draw from `o`,
+ * the break's own stream.
+ */
+export function spilledStack(o: Rng, { R, H, pole: poleLen = 0, cap = false }: SpilledStackShape): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const biteA = o() * Math.PI * 2, bx = Math.cos(biteA), bz = Math.sin(biteA);
+  const keepH = H * (0.3 + o() * 0.12), tiles = Math.max(2, Math.round((Math.PI * 2 * R) / 4)), segs = 12;
+  const face = (y: number) => bandV(HAY_FACE_V, y / H);
+  // the remnant: the stack's foot and belly, its top torn ragged
+  const remnant = turn([
+    [R * 0.97, -0.1, face(0), 0.04],
+    [R * 1.02, 0.15, face(0.15), 0.06],
+    [R * 1.04, keepH * 0.55, face(keepH * 0.55), 0.12],
+    [R * 0.86, keepH * 0.9, face(keepH * 0.9), 0.2],
+    [R * 0.42, keepH, face(keepH), 0.24],
+    [0.08, keepH * 1.04, face(keepH * 1.04), 0.05],
+  ], segs, o, tiles, R * 1.35);
+  // the bite: the side the hay was torn from, drawn down and in
+  const p = remnant.attributes.position as THREE.BufferAttribute;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i), r = Math.hypot(x, z);
+    const c = r > 1e-4 ? (x * bx + z * bz) / r : 0, bite = c > 0 ? c * c : 0;
+    const k = 1 - 0.38 * bite;
+    p.setXYZ(i, x * k, y > 0.05 ? y * (1 - 0.7 * bite) : y, z * k);
+  }
+  remnant.computeVertexNormals();
+  parts.push(remnant);
+  // the spill: a wide, low fan of the hay out of the bite, ragged at its edge, the face band's foot (pressed, darker)
+  const fanR = R * (1.1 + o() * 0.25), fanH = 0.2 + o() * 0.12;
+  const fan = turn([
+    [fanR * 1.05, -0.08, bandV(HAY_FACE_V, 0), 0.16],
+    [fanR, 0.04, bandV(HAY_FACE_V, 0.04), 0.18],
+    [fanR * 0.62, fanH * 0.8, bandV(HAY_FACE_V, 0.1), 0.1],
+    [0.1, fanH, bandV(HAY_FACE_V, 0.14), 0.03],
+  ], 14, o, tiles);
+  fan.scale(1.35, 1, 0.9);
+  // its straw lying the way it was thrown: the print's strands (along v) laid along the throw, not radial from the centre
+  const fp = fan.attributes.position as THREE.BufferAttribute, fuv = fan.attributes.uv as THREE.BufferAttribute;
+  for (let i = 0; i < fp.count; i++) {
+    fuv.setXY(i, fp.getZ(i) * 0.45, bandV(HAY_FACE_V, 0.12 + 0.5 * (fp.getX(i) / (fanR * 2.9) + 0.5)));
+  }
+  fan.rotateY(-biteA);
+  parts.push(fan.translate(bx * R * 1.15, 0, bz * R * 1.15));
+  // clumps thrown beyond it
+  for (let k = 0; k < 4; k++) {
+    const a = biteA + (o() - 0.5) * 1.6, d = R * (1.9 + o() * 0.9), r = 0.22 + o() * 0.3;
+    const clump = turn([
+      [r * 1.1, -0.05, bandV(HAY_FACE_V, 0), 0.06], [r, 0.07, bandV(HAY_FACE_V, 0.05), 0.08],
+      [r * 0.62, 0.12 + r * 0.22, bandV(HAY_FACE_V, 0.1), 0.06], [r * 0.22, 0.16 + r * 0.3, bandV(HAY_FACE_V, 0.12), 0.03],
+      [0.03, 0.17 + r * 0.31, bandV(HAY_FACE_V, 0.13), 0.0],
+    ], 6, o, 1); // (a loose clump, rounded)
+    parts.push(clump.translate(Math.cos(a) * d, 0, Math.sin(a) * d));
+  }
+  // the pole leaning out of the remnant over the spill
+  if (poleLen > 0) {
+    const lean = 0.55 + o() * 0.6, along = poleLen * Math.sin(lean);
+    parts.push(pole(0.065, -0.3, poleLen * Math.cos(lean), bx * along, bz * along));
+  }
+  // the thatched cap slid off onto the spill: a steep cone lying tilted on the hay
+  if (cap) {
+    const capR = R * 0.95, capH = H * 0.42;
+    const cone = turn([
+      [capR, 0, bandV(HAY_THATCH_V, 0), 0.08], [capR * 0.78, capH * 0.3, bandV(HAY_THATCH_V, 0.3), 0.06],
+      [capR * 0.42, capH * 0.68, bandV(HAY_THATCH_V, 0.68), 0.04], [0.06, capH, bandV(HAY_THATCH_V, 1), 0.01],
+    ], 14, o, Math.max(2, Math.round((Math.PI * 2 * capR) / 4)));
+    cone.rotateZ(-(1.1 + o() * 0.3)); // over on its side, its eave toward the stack
+    cone.rotateY(-biteA);
+    parts.push(cone.translate(bx * R * 1.9, capR * 0.45, bz * R * 1.9));
+  }
+  return merge(parts);
+}
+
+function bStogBrokenLegacy(rng: Rng): THREE.BufferGeometry { return hayMounds(rng, 1.15, true); }
+function bPlastBrokenLegacy(rng: Rng): THREE.BufferGeometry { return hayMounds(rng, 0.85, true); }
+/** (b39) The stog torn open (spilledStack), its pole leaning out over the spill. */
+function bStogBroken(rng: Rng): THREE.BufferGeometry {
+  const o = spentDraws(bStogBrokenLegacy, rng, 0x5709);
+  return spilledStack(o, { R: 1.8, H: 4.5, pole: 5.4 });
+}
+/** (b39) The plast torn open, its pole leaning out over the spill. */
+function bPlastBroken(rng: Rng): THREE.BufferGeometry {
+  const o = spentDraws(bPlastBrokenLegacy, rng, 0x91a5);
+  return spilledStack(o, { R: 1.3, H: 3.2, pole: 3.9 });
+}
 
 /**
  * The hooiberg: four tall poles at a square's corners, a thatched pyramid roof hung between them at the stack's height,
@@ -379,7 +475,12 @@ function bMeule(rng: Rng): THREE.BufferGeometry {
   return merge([body, footSkirt(R, 0.3, segs, rng, tiles), knot]);
 }
 
-function bMeuleBroken(rng: Rng): THREE.BufferGeometry { return hayMounds(rng, 1.3, false); }
+function bMeuleBrokenLegacy(rng: Rng): THREE.BufferGeometry { return hayMounds(rng, 1.3, false); }
+/** (b39) The meule torn open (spilledStack): no pole, its broad drum's hay fanned out of the bite. */
+function bMeuleBroken(rng: Rng): THREE.BufferGeometry {
+  const o = spentDraws(bMeuleBrokenLegacy, rng, 0x3e01);
+  return spilledStack(o, { R: 2.25, H: 4.5 });
+}
 
 /**
  * The draws the Diemen's old build took from the destructible stream (b15's long rick: its four sizes, its two noise
@@ -447,9 +548,14 @@ function bDiemen(rng: Rng): THREE.BufferGeometry {
   return merge([hay, pole(0.07, -0.4, H + 0.45 + own() * 0.3, (own() - 0.5) * 0.12, (own() - 0.5) * 0.12)]);
 }
 
-function bDiemenBroken(rng: Rng): THREE.BufferGeometry {
+function bDiemenBrokenLegacy(rng: Rng): THREE.BufferGeometry {
   const a = hayMounds(rng, 1.1, false), b = hayMounds(rng, 1.0, false);
   return merge([a.translate(0, 0, -1.6), b.translate(0, 0, 1.6)]);
+}
+/** (b39) The Diemen torn open (spilledStack): its pole leaning out over the spill, its thatched cap slid off onto it. */
+function bDiemenBroken(rng: Rng): THREE.BufferGeometry {
+  const o = spentDraws(bDiemenBrokenLegacy, rng, 0xd1e8);
+  return spilledStack(o, { R: 1.8, H: 4.7, pole: 5.2, cap: true });
 }
 
 /**

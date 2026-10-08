@@ -15,9 +15,10 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { DestructiblePropType } from './inhabitKit.ts';
+import { spentDraws } from './brokenDraws.ts';
 // (b15: the field stacks of every region, and the straw props' bands of the hay print)
 import { HAY_FACE_V, HAY_WOOD_V } from '../hayPrint.ts';
-import { STRAW_STAND_IN_TOP_M, mapToBand, prismStandIn } from './haystackKit.ts';
+import { STRAW_STAND_IN_TOP_M, mapToBand, prismStandIn, spilledStack } from './haystackKit.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -247,8 +248,13 @@ const WEATHER_GREY: Palette = [0.1, 0.06, 0.42];
  * A Mekong-delta family tomb in the rice fields: a rendered plinth, the low barrel of the grave, a headstone wall with
  * a little hipped roof of tiles, and two stub pillars at the foot — painted stucco gone grey with the monsoons.
  */
+/** (b39) The stucco the last tomb built wore: a pool builds its broken state right after its intact one (props.ts
+ *  prepareDestructiblePools), so the broken tomb keeps the colour its tombs stand in. */
+let tombStucco: Palette = STUCCO_PALE;
+
 function bTomb(rng: Rng): THREE.BufferGeometry {
   const paint = rng() < 0.55 ? STUCCO_PALE : STUCCO_BLUE;
+  tombStucco = paint;
   const parts: THREE.BufferGeometry[] = [];
   parts.push(paint_(box(2.6, 0.32, 3.4), WEATHER_GREY, 0.06, rng).translate(0, 0.16, 0));
   parts.push(paint_(box(1.7, 0.5, 2.4), paint, 0.06, rng).translate(0, 0.57, 0.15));
@@ -267,13 +273,87 @@ function bTomb(rng: Rng): THREE.BufferGeometry {
   return merge(parts, true, false);
 }
 
-function bTombBroken(rng: Rng): THREE.BufferGeometry {
+function bTombBrokenLegacy(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   parts.push(paint_(box(2.6, 0.32, 3.4), WEATHER_GREY, 0.06, rng).translate(0, 0.16, 0));
   for (let i = 0; i < 5; i++) {
     const chunk = box(0.4 + rng() * 0.6, 0.2 + rng() * 0.3, 0.4 + rng() * 0.6);
     chunk.rotateY(rng() * 3); chunk.rotateZ((rng() - 0.5) * 0.7);
     parts.push(paint_(chunk, rng() < 0.5 ? STUCCO_PALE : WEATHER_GREY, 0.08, rng).translate((rng() - 0.5) * 2.4, 0.42, (rng() - 0.5) * 3));
+  }
+  return merge(parts, true, false);
+}
+/**
+ * (b39; the destructibles audit's "the plinth and five chunks") A family tomb a shell has hit, in its own stucco: the
+ * plinth cracked across into settled slabs; the grave's walls standing to a broken line round the caved-in barrel, its
+ * pieces on the body and the ground; the headstone wall broken off at the shoulder, its upper part thrown down behind
+ * with the tiled roof and the loose tiles; the plaque split, one foot pillar down; rubble showing the grey core under
+ * the stucco, sooted here and there.
+ */
+function bTombBroken(rng: Rng): THREE.BufferGeometry {
+  const o = spentDraws(bTombBrokenLegacy, rng, 0x70b1);
+  const stucco = tombStucco, CORE: Palette = [0.09, 0.05, 0.33], SOOT: Palette = [0.07, 0.08, 0.12];
+  const parts: THREE.BufferGeometry[] = [];
+  const chunk = (w: number, h: number, d: number, pal: Palette, x: number, y: number, z: number, tilt = 0.6) => {
+    const g = box(w, h, d);
+    g.rotateX((o() - 0.5) * tilt); g.rotateY(o() * Math.PI); g.rotateZ((o() - 0.5) * tilt);
+    parts.push(paint_(g, pal, 0.07, o).translate(x, y, z));
+  };
+  // the plinth, cracked across into three slabs, each settled a little
+  const cuts = [-1.7, -0.45 + (o() - 0.5) * 0.4, 0.75 + (o() - 0.5) * 0.4, 1.7];
+  for (let k = 0; k < 3; k++) {
+    const slab = box(2.6, 0.32, cuts[k + 1] - cuts[k] - 0.04);
+    slab.rotateX((o() - 0.5) * 0.05); slab.rotateZ((o() - 0.5) * 0.06);
+    parts.push(paint_(slab, WEATHER_GREY, 0.06, o).translate((o() - 0.5) * 0.06, 0.16 - o() * 0.04, (cuts[k] + cuts[k + 1]) / 2));
+  }
+  // the grave's four walls standing to a broken line (blocks of their own heights), the barrel's fill heaped inside
+  for (const [cx, cz, along, len] of [[-0.79, 0.15, 'z', 2.4], [0.79, 0.15, 'z', 2.4], [0, -1.03, 'x', 1.7], [0, 1.33, 'x', 1.7]] as const) {
+    const blocks = Math.max(3, Math.round(len / 0.38));
+    for (let b = 0; b < blocks; b++) {
+      const u = -len / 2 + (b + 0.5) * (len / blocks), h = 0.12 + o() * 0.4 * (0.5 + 0.5 * Math.sin(b * 1.7 + cx * 3));
+      const g = along === 'z' ? box(0.12, h, len / blocks - 0.02) : box(len / blocks - 0.02, h, 0.12);
+      parts.push(paint_(g, o() < 0.8 ? stucco : CORE, 0.06, o).translate(cx + (along === 'x' ? u : 0), 0.32 + h / 2, cz + (along === 'z' ? u : 0)));
+    }
+  }
+  for (let k = 0; k < 7; k++) chunk(0.25 + o() * 0.3, 0.12 + o() * 0.16, 0.22 + o() * 0.3, o() < 0.5 ? stucco : CORE, (o() - 0.5) * 1.2, 0.42, -0.7 + o() * 1.7);
+  // the barrel's shell in pieces, on the body and off it
+  for (let k = 0; k < 4; k++) {
+    const piece = box(0.45 + o() * 0.35, 0.09, 0.5 + o() * 0.4);
+    piece.rotateZ((o() - 0.5) * 1.2); piece.rotateY(o() * Math.PI);
+    const off = k < 2, x = off ? (o() < 0.5 ? -1 : 1) * (1.55 + o() * 0.45) : (o() - 0.5) * 0.9;
+    parts.push(paint_(piece, stucco, 0.06, o).translate(x, off ? 0.08 : 0.62, -0.6 + o() * 1.6));
+  }
+  // the headstone wall broken off at the shoulder: columns standing to a broken top, higher at one end
+  const high = o() < 0.5 ? 0 : 4; // the column left standing near its full height, at one end
+  for (let c = 0; c < 5; c++) {
+    const x = -0.88 + c * 0.44, h = c === high ? 1.15 + o() * 0.3 : 0.3 + o() * 0.55 + (Math.abs(c - high) === 1 ? 0.25 : 0);
+    parts.push(paint_(box(0.43, h, 0.3), stucco, 0.05, o).translate(x, 0.275 + h / 2, -1.3));
+  }
+  // the plaque split: its lower half still on the stub, the upper half face down in front of the plinth
+  parts.push(paint_(box(0.9, 0.3, 0.04), WEATHER_GREY, 0.05, o).translate(0, 0.86, -1.13));
+  const half = box(0.9, 0.04, 0.38); half.rotateY((o() - 0.5) * 0.8);
+  parts.push(paint_(half, WEATHER_GREY, 0.05, o).translate((o() - 0.5) * 0.6, 0.34, -0.55));
+  // the wall's upper part thrown down behind in two pieces, the roof's slopes and its tiles round them
+  for (let k = 0; k < 2; k++) {
+    const piece = box(1.05 + o() * 0.2, 0.3, 0.55 + o() * 0.2);
+    piece.rotateX((o() - 0.5) * 0.25); piece.rotateY((o() - 0.5) * 0.5); piece.rotateZ((o() - 0.5) * 0.2);
+    parts.push(paint_(piece, stucco, 0.06, o).translate((k - 0.5) * 1.15 + (o() - 0.5) * 0.2, 0.15, -2.05 - o() * 0.2));
+  }
+  for (const side of [-1, 1]) {
+    const slope = box(1.35, 0.06, 0.62);
+    slope.rotateZ(side * (0.15 + o() * 0.25)); slope.rotateY((o() - 0.5) * 0.9);
+    parts.push(paint_(slope, TOMB_TILE, 0.06, o).translate(side * (0.55 + o() * 0.3), 0.36 + o() * 0.06, -2.1 + (o() - 0.5) * 0.3));
+  }
+  for (let k = 0; k < 8; k++) chunk(0.24, 0.03, 0.17, TOMB_TILE, (o() - 0.5) * 3.0, 0.02, -1.75 - o() * 0.6, 0.3);
+  // the foot pillars: one standing, chipped; the other down, lying out from the foot
+  const down = o() < 0.5 ? -1 : 1;
+  parts.push(paint_(box(0.32, 0.62, 0.32), stucco, 0.05, o).translate(-down * 1.05, 0.63, 1.45));
+  const fallen = box(0.32, 0.8, 0.32); fallen.rotateX(Math.PI / 2 - 0.08); fallen.rotateY(down * (0.4 + o() * 0.5));
+  parts.push(paint_(fallen, stucco, 0.05, o).translate(down * 1.25, 0.16, 1.85));
+  // rubble round it: stucco, the grey core, a few sooted
+  for (let k = 0; k < 9; k++) {
+    const a = o() * Math.PI * 2, r = 1.35 + o() * 0.8;
+    chunk(0.14 + o() * 0.22, 0.08 + o() * 0.12, 0.12 + o() * 0.2, k < 4 ? stucco : k < 7 ? CORE : SOOT, Math.cos(a) * r * 0.75, 0.05, Math.sin(a) * r);
   }
   return merge(parts, true, false);
 }
@@ -305,7 +385,7 @@ function bStrawStack(rng: Rng): THREE.BufferGeometry {
   return merge(parts, false, true);
 }
 
-function bStrawStackBroken(rng: Rng): THREE.BufferGeometry {
+function bStrawStackBrokenLegacy(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   for (const [ox, oz, rr] of [[-0.7, 0.2, 1.2], [0.8, -0.2, 1.0], [0.1, 0.8, 0.8]]) {
     const mound = new THREE.CylinderGeometry(rr * 0.5, rr, 0.55, 8, 1);
@@ -315,6 +395,10 @@ function bStrawStackBroken(rng: Rng): THREE.BufferGeometry {
     parts.push(mapToBand(scaleUV(mound, 2, 0.6), HAY_FACE_V).translate(ox, 0.27, oz));
   }
   return merge(parts, false, true);
+}
+/** (b39) The Bengal straw stack torn open (haystackKit spilledStack), its bamboo pole leaning out over the spill. */
+function bStrawStackBroken(rng: Rng): THREE.BufferGeometry {
+  return spilledStack(spentDraws(bStrawStackBrokenLegacy, rng, 0x57a7), { R: 1.55, H: 3.7, pole: 4.3 });
 }
 
 // ---------------------------------------------------------------------------------------------- the mill yard

@@ -1289,6 +1289,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/karstRelief.selftest.mjs',
     // the scenery lane (b33): the karst fields' clearance heaps (the gromače), their form and Saltwind's placement
     'src/world/gromace.selftest.mjs',
+    'src/world/maps/propDamageKits.selftest.mjs',
     // the scenery lane (b16, wave 121): the ksar gate post in place of the steel checkpoint hut on Desert and Redrock
     'src/world/maps/regional/ksarGate.selftest.mjs',
     'src/world/wireMaterial.selftest.mjs',

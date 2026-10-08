@@ -67,6 +67,8 @@ import { fieldStoneLithologyFor, liftFieldStoneMean, paintFieldStoneBuffers, typ
 import { paintDryWallBuffers } from './fieldWallFace.ts';
 import { paintHayBuffers } from './hayPrint.ts';
 import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, ROUND_BALE_MAPS, type HaystackStyle } from './maps/haystackKit.ts';
+// (b39, the scenery lane) the props' damage kit registers itself (destructionKit.ts propDamageKitFor; DESTRUCTION.md §16.5)
+import './maps/propDamageKits.ts';
 import { KARST_BOSS_PROUD, buildKarstRelief, type KarstGround } from './karstRelief.ts';
 import { resolveLandUseProfile } from './landUse.ts';
 import { STRUCTURE_VARIANTS } from './maps/regional/ksarGate.ts'; // b16: the ksar gate post for the checkpoint hut
