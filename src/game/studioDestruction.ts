@@ -12,7 +12,7 @@
  *
  * The Studio wires it (studio.ts): a wall strike traces the world from the effect along its heading and calls `strike`
  * with the record it met; its flying rounds trace each step's segment and call `strike` where they meet a structure;
- * `step` runs once per fixed step after them.
+ * a ram effect calls `ram` where an actor's nose meets a wall; `step` runs once per fixed step after them.
  */
 import type { CollisionRecord } from '../world/collision.ts';
 import { DESTRUCTION_BUS_EVENTS, type DestructionRules, type StructureBreachEvent, type StructureStageEvent } from '../sim/destructionEvents.ts';
@@ -34,6 +34,12 @@ export interface StudioDestruction {
   readonly match: DestructionMatch;
   /** A round meeting the world at (x, y, z) heading (dirX, dirZ): `record` the record it met (null on the ground). */
   strike(spec: MunitionShellLike, record: CollisionRecord | null, x: number, y: number, z: number, dirX: number, dirZ: number): void;
+  /**
+   * A hull of `massTons` ramming the structure `record` belongs to at `closingMps`, its nose at (x, y, z) heading
+   * (dirX, dirZ), as the authority prices a ram (§4.4): when the ram brings it down the structure yields and this returns
+   * the share of its speed the hull keeps; otherwise the crash is priced and this returns null (it holds).
+   */
+  ram(record: CollisionRecord, massTons: number, closingMps: number, x: number, y: number, z: number, dirX: number, dirZ: number): number | null;
   /** One fixed step: queued collapses, then this step's stages and breaches raised on the bus (the solo step's order). */
   step(): void;
   /** Stand every building up again and start a fresh match over the same records. */
@@ -62,6 +68,11 @@ export function createStudioDestruction(world: StudioWorld, bus: StudioBus, opti
     get match() { return match; },
     strike(spec, record, x, y, z, dirX, dirZ) {
       match.shellWorldHit(spec, record, x, y, z, dirX, dirZ, !record);
+    },
+    ram(record, massTons, closingMps, x, y, z, dirX, dirZ) {
+      const keep = match.ramThrough(record, massTons, closingMps, closingMps, x, y, z, dirX, dirZ);
+      if (keep === null) match.ram(record, massTons, closingMps, 0, x, y, z, dirX, dirZ);
+      return keep;
     },
     step() {
       match.step();
