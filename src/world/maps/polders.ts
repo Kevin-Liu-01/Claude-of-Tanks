@@ -185,10 +185,8 @@ export default {
       { x: 166, z: -6, r: 73, level: -3.3,
         radii: [0.76, 0.78, 0.73, 0.63, 0.66, 0.95, 0.61, 0.42,
           0.38, 0.44, 0.51, 0.66, 0.91, 0.89, 0.81, 0.75] },
-      // East/west oxbow and a separately oriented tapering overflow reach.
-      { x: -163, z: 267, r: 61, level: 0,
-        radii: [0.87, 0.63, 0.33, 0.22, 0.23, 0.35, 0.53, 0.87,
-          1.00, 0.85, 0.50, 0.29, 0.26, 0.29, 0.47, 0.73] },
+      // A separately oriented tapering overflow reach. (Step 6: the east/west oxbow basin that stood here is the old
+      // creek's arm, terrain.canals below.)
       { x: 100, z: 286, r: 72, level: -5.4,
         radii: [0.90, 1.00, 0.60, 0.37, 0.34, 0.34, 0.40, 0.62,
           0.89, 0.72, 0.48, 0.39, 0.35, 0.40, 0.55, 0.73] },
@@ -198,7 +196,9 @@ export default {
     // lift bridge (props.landmarks liftBridge) is the deck the ride stands on (no river kit builds one on Polders)
     // (the deck 2.47 m over the water surface, y 2.90: a fixed plane over the road's own 2.83 there, so the road's
     // endpoint completion never moves it; the landmarks lane's boards read the banks at 2.88–2.90)
-    marshes: [{ x: -158, z: 265.5, r: 6, dip: 0, level: 0, crossing: 'bridge', deckWidthM: 6, approachM: 30, deckClearM: 2.47 }],
+    marshes: [{ x: -158, z: 265.5, r: 6, dip: 0, level: 0, crossing: 'bridge', deckWidthM: 6, approachM: 30, deckClearM: 2.47 },
+      // (step 6) the oxbow arm's west horn silted up: a reedy marsh at the arm's level
+      { x: -206, z: 211, r: 15, dip: 0.5, level: 0 }],
     // Step 5 (2026-10-07; the coordinator: "build it yourself ... Polders' vaart and weteringen are the first users"): the
     // polder's drainage in straight water at one level (terrain.canals, canals.ts) — the vaart along the main dyke's
     // north foot from the west road's culvert to the farm court's edge, and two weteringen north from it between the long
@@ -206,6 +206,14 @@ export default {
     // falls to -1.3 m between the weteringen), so the water stands in its cut everywhere. They join no basin (the five
     // basins keep their own levels); the roads cross them on culverts
     canals: [
+      // Step 6 (2026-10-07; gauntlet wave 248: "a closed, peanut-shaped basin with a hard outline that reads as a garden
+      // pond"; the coordinator's ruling): the oxbow is the old creek's cut-off arm — a curved channel at its level from the
+      // mill's outfall west under the lift bridge, swinging north, its west horn silted to a reedy marsh (marshes) and
+      // drained by a ditch south-west to the west wetering's head, under the north lane on a culvert
+      { path: [[-121, 266], [-140, 266.5], [-158, 266], [-174, 263], [-189, 255], [-200, 243], [-206, 229], [-207, 216]],
+        widthM: 18, level: 0, profile: 'bank', shelfM: 3, name: 'the oxbow arm' },
+      { path: [[-207, 214], [-221, 192], [-236, 170], [-248, 158], [-252, 155]], widthM: 4, level: 0, profile: 'ditch',
+        name: "the oxbow's drain" },
       { path: [[-282, 20.4], [-112, 19]], widthM: 9, level: -1.7, profile: 'bank', name: 'the vaart' },
       { path: [[-252, 25], [-252, 128]], widthM: 4, level: -1.7, profile: 'ditch', name: 'the west wetering' },
       { path: [[-182, 25], [-182, 140]], widthM: 4, level: -1.7, profile: 'ditch', name: 'the east wetering' },

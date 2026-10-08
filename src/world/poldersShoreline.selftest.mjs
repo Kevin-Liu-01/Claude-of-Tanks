@@ -119,8 +119,9 @@ function inspectBanks(field) {
     inspectBankRay(field, lake, i * Math.PI / 32, pads, receipt);
   }
   // (2026-10-07, the map-revival lane, step 2: the oxbow lane's 20 m road exclusion takes the oxbow's waist out of the
-  // core samples: 560 a seed, was over 600)
-  assert.ok(receipt.coreSamples >= 540 && receipt.bankSamples >= 1200 && receipt.dryCoves >= 200);
+  // core samples: 560 a seed, was over 600; step 6: the oxbow basin is the creek's arm, a canal, and its 64 rays go)
+  assert.ok(receipt.coreSamples >= 490 && receipt.bankSamples >= 1200 && receipt.dryCoves >= 200,
+    `the banks' samples: ${receipt.coreSamples} core, ${receipt.bankSamples} bank, ${receipt.dryCoves} dry coves`);
   return receipt;
 }
 
@@ -164,7 +165,8 @@ function inspectPadApproach(field, pad) {
 }
 
 assert.equal(originalLakes.length, 27);
-assert.equal(polders.terrain.lakes.length, 5);
+// (2026-10-07, the map-revival lane, step 6: the east/west oxbow basin is the old creek's arm, a canal — four basins)
+assert.equal(polders.terrain.lakes.length, 4);
 // 2026-10-02: Tidegate Polders, rebuilt to docs/MAP-LAYOUT-BRIEF.md, redrew bravo's pads (two staggered rows behind the
 // northern cross dyke). The witnesses that pinned the old 18 m pad moves are retired; the pads stay far from alpha's
 // and apart, and environmentExpansion keeps each one dry, stable and 60 m from the next.
@@ -180,20 +182,27 @@ assert.ok(contours[0].lengthM > 175 && contours[0].lengthM / contours[0].widthM 
   'southwest water is a long drainage reach, not another compact cloud');
 assert.ok(contours[1].widthM > 110 && contours[1].lengthM > 95 && contours[1].areaM2 > 9000,
   'southeast water keeps the broad retention-bay role');
-assert.ok(contours[3].widthM > 100 && contours[3].widthM / contours[3].lengthM > 2.2,
-  'northwest oxbow follows a different east/west drainage direction');
-const totalAreaM2 = contours.reduce((area, contour) => area + contour.areaM2, 0);
-assert.ok(totalAreaM2 > 29000 && totalAreaM2 < 35000, 'retain substantial water coverage within the existing dry compartments');
+// (step 6) the northwest water is the old creek's cut-off arm: a channel at its own level, east/west at the lift bridge and
+// swinging north to its silted horn — no closed basin
+const arm = polders.terrain.canals.find((canal) => canal.name === 'the oxbow arm');
+assert.ok(arm && arm.level === 0 && arm.widthM >= 15, 'northwest water is the oxbow arm, at its level, a channel wide');
+const heading = (a, b) => Math.atan2(b[1] - a[1], b[0] - a[0]);
+const swing = Math.abs(heading(arm.path[0], arm.path[1]) - heading(arm.path.at(-2), arm.path.at(-1))) % (2 * Math.PI);
+const turn = Math.min(swing, 2 * Math.PI - swing);
+assert.ok(turn > 1.2 && turn < Math.PI, `the arm curves like a meander (${(turn * 180 / Math.PI).toFixed(0)} degrees)`);
+const armLengthM = arm.path.slice(1).reduce((n, p, i) => n + Math.hypot(p[0] - arm.path[i][0], p[1] - arm.path[i][1]), 0);
+const totalAreaM2 = contours.reduce((area, contour) => area + contour.areaM2, 0) + armLengthM * arm.widthM;
+assert.ok(totalAreaM2 > 23000 && totalAreaM2 < 35000, `retain substantial water coverage within the existing dry compartments (${totalAreaM2.toFixed(0)} m²)`);
 // (2026-10-06, the map-revival lane, step 1: the 52 stations of the farm and drain composition, and 45 more on the long
 // field dykes' crests and the headland at the north dyke's foot — the map's own trees moved onto the rows; step 5,
 // 2026-10-07: 22 more on the crests of the two flank dykes)
 assert.equal(polders.vegetation.authoredTrees.reduce((count, feature) => count + feature.count, 0), 119,
   'farm/drain composition and the dyke rows redistribute the authored tree budget');
 assert.ok(polders.terrain.lakes.reduce((count, lake) => count + 4 + lake.radii.length, 0) < originalLakes.length * 4);
-assert.equal(buildLiquidLakeBanks(polders.terrain.lakes, () => 9).byteLength, 40);
+assert.equal(buildLiquidLakeBanks(polders.terrain.lakes, () => 9).byteLength, 32);
 assert.equal(buildLiquidLakeBanks(originalLakes, () => 9).byteLength, 216);
-console.log(JSON.stringify({ contours, originalRecords: 27, records: 5, originalContourVertices: 1728, contourVertices: 320,
-  authoringScalarsBefore: 108, authoringScalarsAfter: 100, levelAndBankBytesBefore: 432, levelAndBankBytesAfter: 80 }));
+console.log(JSON.stringify({ contours, totalAreaM2: Math.round(totalAreaM2), originalRecords: 27, records: 4, originalContourVertices: 1728,
+  contourVertices: 256, authoringScalarsBefore: 108, authoringScalarsAfter: 80, levelAndBankBytesBefore: 432, levelAndBankBytesAfter: 64 }));
 const receipts = [];
 for (const seed of [1337, 2049, 7719]) {
   // 2026-09-17 field trenches: the relief law is compared on untrenched fields (fieldTrenches:false); the carve has its own receipt.
