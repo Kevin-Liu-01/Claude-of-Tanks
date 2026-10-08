@@ -193,7 +193,8 @@ for (const [styleId, id, wall] of SAMPLE) {
   for (const run of one.runs) for (let i = 0; i < run.pos.length; i += 3) {
     const x = run.pos[i] - cx, y = run.pos[i + 1], z = run.pos[i + 2] - cz;
     if (run.role === 'rubble') {
-      assert.ok((x / (rx + 0.6)) ** 2 + (z / (rz + 0.6)) ** 2 <= 1.0001, `${styleId}/${id}: rubble inside the mound's footprint (${x.toFixed(2)}, ${z.toFixed(2)})`);
+      // a chunk is kept only where the heap stands, and reaches at most 1.6 m past its centre (a long timber's half)
+      assert.ok((x / (rx + 1.7)) ** 2 + (z / (rz + 1.7)) ** 2 <= 1.0001, `${styleId}/${id}: rubble on the mound's footprint (${x.toFixed(2)}, ${z.toFixed(2)})`);
       const m = mound(x + cx, z + cz);
       assert.ok(y >= m - 1.2 && y <= m + 1.6, `${styleId}/${id}: rubble on the mound (${y.toFixed(2)} at ${m.toFixed(2)})`);
     } else if (run.role === 'remnant') {
@@ -246,3 +247,32 @@ for (const [styleId, id, wall] of SAMPLE) {
   roofs++;
 }
 console.log(`house damage: ${roofs} roofs fall deterministically within their caps, their coverings hidden, what is left under the ridge`);
+
+// 7. the seam (DESTRUCTION.md §16.3): the kits' plan reader is registered (the world's describe call sites read the plan
+// through kitPlanFor, importing no kit); a collapse seats its heap on the sim's own mound (bodyMoundHeightAt) when the
+// world gave one, its skin within a few centimetres of it, wherever and however the house was placed
+import { bodyMoundHeightAt, kitPlanFor } from '../../destructionKit.ts';
+{
+  const style = ARCHITECTURE_STYLES.find((s) => s.id === 'hessian');
+  const { parts, w, d, h } = build(style, 'cottage', 23, 'stone');
+  assert.equal(kitPlanFor(parts, 'hessian'), regionalKitPlanOf(parts), 'kitPlanFor reads the regional plan');
+  const placement = { x: 140, y: 3, z: -60, yaw: 0.7 };
+  const a = kitOf('cottage', 'hessian', 'describe')({ structureIdx: 9, mapId: 'damage', builder: 'cottage', style: 'hessian', parts, w, d, h,
+    placement, massClass: 'house', seed: 21, kitPlan: kitPlanFor(parts, 'hessian') });
+  // the core's footprint: a rectangle round the contact band in its own frame (forward along the longer side)
+  a.mound = { cx: placement.x + 0.4, cz: placement.z - 0.3, hw: Math.min(w, d) / 2 + 0.3, hd: Math.max(w, d) / 2 + 0.3, yaw: 0.7 + Math.PI / 2, heightM: 1.9 };
+  const one = writers(16000, 240);
+  kitOf('cottage', 'hessian', 'collapse')(a, 41, one);
+  let skin = 0, worst = 0;
+  for (const run of one.runs) {
+    if (run.role !== 'rubble') continue;
+    for (let i = 0; i < run.pos.length; i += 3) {
+      const m = bodyMoundHeightAt(a, run.pos[i], run.pos[i + 2]);
+      worst = Math.max(worst, Math.abs(run.pos[i + 1] - m));
+      assert.ok(run.pos[i + 1] >= m - 1.2 && run.pos[i + 1] <= m + 1.6, `the heap on the sim's mound (${run.pos[i + 1].toFixed(2)} at ${m.toFixed(2)})`);
+    }
+    if (run.idx.length && run === one.runs.find((r) => r.role === 'rubble')) skin = run.pos.length / 3;
+  }
+  assert.ok(skin > 100, `the heap's skin first (${skin} vertices)`);
+  console.log(`house damage: the plan reader registered; a collapse seats its heap on the sim's mound (skin ${skin} vertices, worst ${worst.toFixed(2)} m off the profile)`);
+}

@@ -137,6 +137,14 @@ class Mesh {
     const kk = k * pen.s.weather(bucket, p[1]);
     return this.w.vertex(pen.x(p[0], p[2]), pen.y(p[1]), pen.z(p[0], p[2]), n[0], n[1], n[2], UV[0] + du, UV[1] + dv, tint[0] * kk, tint[1] * kk, tint[2] * kk);
   }
+  /** One body-frame vertex of an open run (a smooth surface's grid: the heap's skin); its index, or -1 past the cap. */
+  rawVertex(p: Vec3, n: Vec3, u: number, v: number, tint: Rgb): number {
+    if (!this.fits(1)) return -1;
+    return this.w.vertex(p[0], p[1], p[2], n[0], n[1], n[2], u, v, tint[0], tint[1], tint[2]);
+  }
+  rawTriangle(a: number, b: number, c: number): void {
+    if (a >= 0 && b >= 0 && c >= 0) this.w.triangle(a, b, c);
+  }
   /** A world-space quad with uvs projected by its normal's dominant axis at `d` repeats a metre (a heap's chunk, a plinth). */
   quadUv(a: Vec3, b: Vec3, c: Vec3, d: Vec3, n: Vec3, density: number, tint: Rgb): boolean {
     if (!this.fits(4)) return false;
@@ -773,7 +781,7 @@ export function breachHouse(anatomy: StructureDamageAnatomy, hole: BreachSpec, o
  * out to the cut (DESTRUCTION.md §16.3 Damaged).
  */
 function spall(mesh: Mesh, pen: FacePen, skin: FractureSlot, core: FractureSlot, cu: number, cy: number, r: number, rng: () => number):
-  { x: number; y: number; z: number; nx: number; nz: number; radiusM: number; depthM: number } | null {
+  { x: number; y: number; z: number; nx: number; nz: number; radiusM: number; depthM: number; outsideM: number } | null {
   const f = pen.f;
   if (cu - r < -f.width / 2 || cu + r > f.width / 2 || cy - r < 0.05 || cy + r > f.height - 0.05) return null;
   if (f.openings.some((o) => Math.abs(cu - o.u) < o.w / 2 + r && cy + r > o.y0 && cy - r < o.y0 + o.h)) return null;
@@ -805,7 +813,9 @@ function spall(mesh: Mesh, pen: FacePen, skin: FractureSlot, core: FractureSlot,
     }
   }
   mesh.end();
-  return { x: pen.x(cu, 0), y: pen.y(cy), z: pen.z(cu, 0), nx: f.out[0], nz: f.out[2], radiusM: R, depthM: t + 0.01 };
+  // only the skin goes: a downpipe, a sign or a timber proud of the wall over the patch stays (the seam's 0.3 m default is
+  // a breach's, taking the sills and surrounds inside its hole)
+  return { x: pen.x(cu, 0), y: pen.y(cy), z: pen.z(cu, 0), nx: f.out[0], nz: f.out[2], radiusM: R, depthM: t + 0.01, outsideM: 0.01 };
 }
 
 /**
@@ -1033,6 +1043,75 @@ function remnantWall(mesh: Mesh, pen: FacePen, anatomy: StructureDamageAnatomy, 
 }
 
 /** A chunk of the pile: an irregular box seated on the mound, in its bucket with its tint (body frame, world uvs). */
+/** The skin's bucket: the walls' main material in the pile (a render's core where the skin is a render). */
+const SKIN_MATERIALS: ReadonlySet<string> = new Set(['stone', 'brick', 'rubble', 'concrete', 'adobe', 'earth', 'plaster']);
+
+/**
+ * The heap's skin: a polar grid over the mound from its crown out to where it stands 12 cm high, each vertex on the
+ * heap with a lump of its own, in the walls' main material (its own texture across the top, its tint dusted and
+ * darkened); returns the heap's reach along x and z for the chunks (DESTRUCTION.md §16.3 Collapse).
+ */
+function heapSkin(mesh: Mesh, anatomy: StructureDamageAnatomy, slots: readonly FractureSlot[], mound: MoundHeight, cx: number, cz: number,
+  rng: () => number): [number, number] {
+  const RINGS = 7, SECTORS = 22, EDGE = 0.12;
+  const rx = anatomy.w / 2 + 0.8, rz = anatomy.d / 2 + 0.8, far = 1.8 * Math.max(rx, rz);
+  // how far out each sector's ray stays on the heap
+  const ext: number[] = [];
+  let reachX = rx, reachZ = rz;
+  for (let k = 0; k < SECTORS; k++) {
+    const a = (k / SECTORS) * Math.PI * 2, dx = Math.cos(a), dz = Math.sin(a);
+    let r = 0.25;
+    while (r < far && mound(cx + dx * (r + 0.25), cz + dz * (r + 0.25)) > EDGE) r += 0.25;
+    ext.push(r);
+    reachX = Math.max(reachX, Math.abs(dx) * (r + 0.6));
+    reachZ = Math.max(reachZ, Math.abs(dz) * (r + 0.6));
+  }
+  const slot = slots.find((s) => SKIN_MATERIALS.has(s.material)) ?? slots[0];
+  if (!slot || !mesh.room(1 + RINGS * SECTORS) || !mesh.begin(slot.bucket, 'rubble')) return [reachX, reachZ];
+  const density = slot.bucket.includes('laster') ? 0.42 : 0.5, dust = 0.8;
+  const tint: Rgb = [slot.tint[0] * dust, slot.tint[1] * dust * 0.98, slot.tint[2] * dust * 0.95];
+  // the positions first (a lump at every vertex but the rim, which stays on the heap), then the normals across the grid
+  const pos: Vec3[] = [[cx, mound(cx, cz) + 0.05, cz]];
+  for (let ring = 1; ring <= RINGS; ring++) {
+    const t = Math.pow(ring / RINGS, 0.85);
+    for (let k = 0; k < SECTORS; k++) {
+      const a = (k / SECTORS) * Math.PI * 2, r = ext[k] * t * (ring === RINGS ? 1 : 0.92 + rng() * 0.16);
+      const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
+      const lump = ring === RINGS ? 0.01 : (rng() - 0.35) * 0.22 * (1 - t * 0.6);
+      pos.push([x, mound(x, z) + lump, z]);
+    }
+  }
+  const at = (ring: number, k: number): number => (ring === 0 ? 0 : 1 + (ring - 1) * SECTORS + ((k + SECTORS) % SECTORS));
+  const idx: number[] = [];
+  for (let i = 0; i < pos.length; i++) {
+    const ring = i === 0 ? 0 : 1 + Math.floor((i - 1) / SECTORS), k = i === 0 ? 0 : (i - 1) % SECTORS;
+    let n: Vec3 = [0, 1, 0];
+    if (ring > 0) {
+      const p = pos[i], inner = pos[at(ring - 1, k)], outer = pos[at(Math.min(RINGS, ring + 1), k)];
+      const left = pos[at(ring, k - 1)], right = pos[at(ring, k + 1)];
+      const radial: Vec3 = [outer[0] - inner[0], outer[1] - inner[1], outer[2] - inner[2]];
+      const around: Vec3 = [right[0] - left[0], right[1] - left[1], right[2] - left[2]];
+      n = norm3(cross3(around, radial));
+      if (n[1] < 0) n = [-n[0], -n[1], -n[2]];
+      if (!Number.isFinite(n[0])) n = [0, 1, 0];
+      void p;
+    }
+    const shade = 0.78 + 0.22 * n[1];
+    idx.push(mesh.rawVertex(pos[i], n, pos[i][0] * density, pos[i][2] * density, [tint[0] * shade, tint[1] * shade, tint[2] * shade]));
+  }
+  // counter-clockwise from above: the crown's fan, then the rings' quads
+  for (let k = 0; k < SECTORS; k++) mesh.rawTriangle(idx[0], idx[at(1, k + 1)], idx[at(1, k)]);
+  for (let ring = 1; ring < RINGS; ring++) {
+    for (let k = 0; k < SECTORS; k++) {
+      const a = idx[at(ring, k)], b = idx[at(ring, k + 1)], c = idx[at(ring + 1, k + 1)], d = idx[at(ring + 1, k)];
+      mesh.rawTriangle(a, b, c);
+      mesh.rawTriangle(a, c, d);
+    }
+  }
+  mesh.end();
+  return [reachX, reachZ];
+}
+
 function heapChunk(mesh: Mesh, slot: FractureSlot, cx: number, cy: number, cz: number, sx: number, sy: number, sz: number, yaw: number,
   tilt: number, rng: () => number): void {
   if (!mesh.fits(24)) return;
@@ -1086,17 +1165,23 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
     heapChunk(mesh, { material: 'brick', bucket: c.bucket, tint: [0.62, 0.42, 0.34], thicknessM: 0.24, share: 0 }, c.x, (c.y0 + c.y1) / 2, c.z,
       c.sx / 2, (c.y1 - c.y0) / 2, c.sz / 2, 0, 0, () => 0.99);
   }
-  // the heap: chunks of the house's own materials by their shares, seated on the mound, densest at its crown
-  const rx = anatomy.w / 2 + 0.8, rz = anatomy.d / 2 + 0.8;
-  const budget = Math.max(40, Math.min(420, Math.floor((out.mesh.capacity - out.mesh.vertices) / 26)));
+  // the heap: first a skin over the mound in the walls' own material (the pile reads as this house's rubble, not as
+  // ground with chunks on it), then chunks of its materials by their shares, kept where the heap stands high
   const slots = anatomy.rubble.filter((s) => s.share > 0.005);
+  const reach = heapSkin(mesh, anatomy, slots, mound, cx, cz, rng);
+  const budget = Math.max(40, Math.min(420, Math.floor((out.mesh.capacity - out.mesh.vertices) / 26)));
+  const crown = Math.max(0.05, mound(cx, cz));
   for (const slot of slots) {
     const count = Math.round(budget * slot.share);
     if (count < 1 || !mesh.begin(slot.bucket, 'rubble')) continue;
     for (let i = 0; i < count; i++) {
-      // a point in the footprint's ellipse, drawn toward the middle
-      const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * (0.4 + 0.6 * rng());
-      const x = cx + Math.cos(a) * r * rx, z = cz + Math.sin(a) * r * rz;
+      // a point over the heap, kept as often as the heap is high there (dense on its crown, thinning down its skirt)
+      let x = cx, z = cz;
+      for (let t = 0; t < 8; t++) {
+        const a = rng() * Math.PI * 2, r = Math.sqrt(rng());
+        const px = cx + Math.cos(a) * r * reach[0], pz = cz + Math.sin(a) * r * reach[1];
+        if (rng() * crown < mound(px, pz)) { x = px; z = pz; break; }
+      }
       const timber = slot.material === 'timber' || slot.material === 'plank';
       const flat = slot.material === 'tile' || slot.material === 'slate' || slot.material === 'plaster' || slot.material === 'infill' || slot.material === 'metal';
       const sx = timber ? 0.5 + rng() * 1.1 : flat ? 0.12 + rng() * 0.22 : 0.12 + rng() * 0.26;

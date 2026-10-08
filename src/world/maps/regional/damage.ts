@@ -13,7 +13,7 @@
 // hands back no plan: the core's default kit reads its parts.
 import { masonryLayout } from '../../regionalSurfaces.ts';
 import {
-  registerStructureDamageKit,
+  bodyMoundHeightAt, registerStructureDamageKit,
   type DamageChimney, type DamageFace, type DamageOpening, type DamageRoof, type DamageStorey, type FaceName as SeamFace,
   type FractureMaterial, type FractureSlot, type FrameMember, type MasonryLayout, type RoofKind as SeamRoofKind, type RoofSlab,
   type StructureDamageAnatomy, type StructureDamageKit, type StructureDescribeInput, type Vec3,
@@ -23,7 +23,7 @@ import { storeyFaces, type HousePlan } from './house.ts';
 import type { RegionalKitPlan } from './index.ts';
 import type { ArchitectureStyle } from './types.ts';
 import { WEATHER_ROUTE, wallWeather, type WeatherTints } from './weather.ts';
-import { breachHouse, collapseHouse, damagedHouse, sectionDownHouse, type FaceSurface, type HouseDamageExtras } from './fracture.ts';
+import { breachHouse, collapseHouse, damagedHouse, domeMound, sectionDownHouse, type FaceSurface, type HouseDamageExtras } from './fracture.ts';
 import { debrisPiece } from './debris.ts';
 
 const FACE_ORDER: readonly SeamFace[] = ['front', 'right', 'back', 'left'];
@@ -424,7 +424,10 @@ export function registerHouseDamageKits(styles: readonly ArchitectureStyle[]): v
       breach: (anatomy, hole, out) => breachHouse(anatomy, hole, out),
       damaged: (anatomy, seed, out) => damagedHouse(anatomy, seed, out),
       piece: (_bucket, shape, variant, rng) => debrisPiece(shape, variant, rng),
-      collapse: (anatomy, seed, out) => collapseHouse(anatomy, seed, out),
+      // the pile on the sim's own heap (the world fills `anatomy.mound` from the structure table); a dome over the house
+      // where none is given (an offline preview, a receipt)
+      collapse: (anatomy, seed, out) => collapseHouse(anatomy, seed, out,
+        anatomy.mound ? (x, z) => bodyMoundHeightAt(anatomy, x, z) : domeMound(anatomy)),
       sectionDown: (anatomy, section, seed, out) => sectionDownHouse(anatomy, section, seed, out),
     };
     registerStructureDamageKit(kit);

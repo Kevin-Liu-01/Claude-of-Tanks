@@ -16,6 +16,7 @@ import { hashSeed, streamFrom, REGIONAL_BUCKETS, type RegionalParts } from './ge
 import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts, type WeatherTints } from './weather.ts';
 import { withHousePlans, withWear, type HousePlan } from './house.ts';
 import { registerHouseDamageKits } from './damage.ts';
+import { setKitPlanReader } from '../../destructionKit.ts';
 import { HESSIAN_STYLE } from './hessian.ts';
 import { SAVOYARD_STYLE } from './savoyard.ts';
 import { DALMATIAN_STYLE } from './dalmatian.ts';
@@ -77,8 +78,10 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
 export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLES));
 /** Every registered kit (receipts iterate it). */
 export const ARCHITECTURE_STYLES: readonly ArchitectureStyle[] = Object.freeze(Object.values(STYLES));
-// the destruction seam (docs/DESTRUCTION.md §16): every style's damage kit, its anatomy read from the house plan
+// the destruction seam (docs/DESTRUCTION.md §16): every style's damage kit, its anatomy read from the house plan, and
+// the plan's reader the world's describe call sites use (kitPlanFor: the world builder imports no kit)
 registerHouseDamageKits(ARCHITECTURE_STYLES);
+setKitPlanReader((parts) => regionalKitPlanOf(parts));
 
 /** The kit a map authored (`props.architecture`), or null. An unknown id fails closed. */
 export function resolveRegionalArchitecture(id: string | null | undefined): ArchitectureStyle | null {
