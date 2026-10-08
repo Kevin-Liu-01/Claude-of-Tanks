@@ -112,8 +112,10 @@ function checkSourceContract(text) {
   // competition between ambient wear, shoulder and town wear is unchanged.
   // (wave 71, the ground lane: a meadow's worn patch is grazed turf with its soil at the trodden core — wornCore; the
   // arid maps' sand and the snow maps' scoured crests keep the whole patch)
+  // (2026-10-07, the ground lane's pads: a hardstand pad is the carriageway's packed ground, so the shoulder's dirt
+  // stands down over the pad's stamp — apronRim — or a ring of bare ground outlined it; hardstandSurface pins the pad)
   assert.equal(compact(scalar(text, 'fD')),
-    'clamp(max(wornCore*uWornDirtStrength,max(shoulder*uShoulderDirt,mk.a*uTownWear*(0.35+0.65*n1))),0.0,1.0)',
+    'clamp(max(wornCore*uWornDirtStrength,max(shoulder*uShoulderDirt*(1.0-apronRim),mk.a*uTownWear*(0.35+0.65*n1))),0.0,1.0)',
     'authored dirt/road/town blend policy unchanged');
   assert.equal(compact(scalar(text, 'wornCore')),
     '(uSandMacro>0.001||uReduxD.y>1.5)?worn:smoothstep(0.78,1.0,n2w+(n1w-0.5)*0.45)',
