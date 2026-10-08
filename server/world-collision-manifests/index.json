@@ -47,8 +47,8 @@
       "concealers": 5966
     },
     "steppe": {
-      "bytes": 1391889,
-      "sha256": "3423e2115984ba8f086229432107bed1741361503a05a0d915fd52f41842217b",
+      "bytes": 1391888,
+      "sha256": "0443ee5198ad0a90d5bcfddbca90f785be78acfc8e5ff8e6da58fa9d93f9ff9c",
       "obstacles": 1969,
       "colliders": 1753,
       "concealers": 831
@@ -61,8 +61,8 @@
       "concealers": 1361
     },
     "frontier": {
-      "bytes": 2289571,
-      "sha256": "634804e54d118a432352f479d1a6b269a4869c1af97a72b37a1c9788f3b6bfe9",
+      "bytes": 2289572,
+      "sha256": "8e2e2c540180ce7e99748ce413af351826f3968a81b0932a68539deca055f264",
       "obstacles": 8062,
       "colliders": 7964,
       "concealers": 8287
