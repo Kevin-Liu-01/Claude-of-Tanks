@@ -39,6 +39,7 @@ import { SHANGHAI_STYLE } from './shanghai.ts';
 import { LONGLEAF_STYLE } from './longleaf.ts';
 import { SARAJEVO_STYLE } from './sarajevo.ts';
 import { ANDALUSIAN_STYLE } from './andalusian.ts';
+import { CHOUF_STYLE } from './chouf.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
@@ -69,6 +70,7 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   longleaf: LONGLEAF_STYLE,
   sarajevo: SARAJEVO_STYLE,
   andalusian: ANDALUSIAN_STYLE,
+  chouf: CHOUF_STYLE,
 });
 
 export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLES));
