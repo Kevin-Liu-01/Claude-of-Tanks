@@ -73,41 +73,42 @@ export function ringMeshSurfaceSampler(position: { array: ArrayLike<number>; cou
  * The borders lane (2026-10-08, Nordhavn's headland past the edge: "a smooth lawn slope dipping under water, no rocks,
  * no wet band"): metres landward of the ring's own waterline at every ring vertex (`maxM` where none is near). The
  * square's strand reads its shoreline contours (terrain.ts shoreAt), which know nothing of a headland or a bay the ring
- * draws in a sea opening; there a dry vertex beside a marine one (uv V < 0) whose ground lies under the sea's surface
- * measures the crossing along their shared edge, so the strand — wet band, foam line, wrack, pebbles — runs on round
- * the ring's own coast. `surfaceAt` is the sea's surface at a point (the opening's floor and the map's water depth).
+ * draws in a sea opening. The ring carries its marine weight in its uv's V (negative: the sea sector's weight faded
+ * over the metre above the water's floor, maps/horizon.ts — the coverage its water is drawn from), so the waterline is
+ * where that weight crosses `threshold`: a vertex below it beside one above measures the crossing along their shared
+ * edge (interpolated, so the line follows the coast, not the grid's quads), and four relaxation passes carry the
+ * distance 32 m up the shore — the strand (wet band, foam line, wrack, pebbles) runs on round the ring's own coast.
+ * (The round's first census measured it by the ground's height under the sea's surface instead: a shelf of dry
+ * vertices a few centimetres under it took the whole wet band, a grey staircase along the grid's quads.)
  * Rows of `columns` + 1 vertices (the seam column repeats the first), before the seam's refinement.
  */
 export function ringWaterlineMetres(
   position: { array: ArrayLike<number>; count: number }, uv: { array: ArrayLike<number> },
-  columns: number, surfaceAt: (x: number, z: number) => number, maxM = 32,
+  columns: number, threshold = 0.4, maxM = 32,
 ): Float32Array {
   const stride = columns + 1, rows = Math.floor(position.count / stride), P = position.array, U = uv.array;
   const out = new Float32Array(position.count).fill(maxM);
-  const surface = new Float32Array(rows * columns), wet = new Uint8Array(rows * columns), dist = new Float32Array(rows * columns);
+  const marine = new Float32Array(rows * columns), dist = new Float32Array(rows * columns);
   for (let j = 0; j < rows; j++) for (let k = 0; k < columns; k++) {
-    const i = j * stride + k, o = j * columns + k;
-    surface[o] = surfaceAt(P[i * 3], P[i * 3 + 2]);
-    wet[o] = U[i * 2 + 1] < -0.001 && P[i * 3 + 1] < surface[o] ? 1 : 0;
+    const v = U[(j * stride + k) * 2 + 1];
+    marine[j * columns + k] = v < 0 ? -v : 0;
   }
   for (let j = 0; j < rows; j++) for (let k = 0; k < columns; k++) {
-    const o = j * columns + k, i = j * stride + k;
+    const o = j * columns + k, i = j * stride + k, mi = marine[o];
     let best = maxM;
-    if (wet[o]) best = 0;
+    if (mi >= threshold) best = 0;
     else {
-      const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2];
+      const x = P[i * 3], z = P[i * 3 + 2];
       for (let dj = -1; dj <= 1; dj++) {
         const jn = j + dj;
         if (jn < 0 || jn >= rows) continue;
         for (let dk = -1; dk <= 1; dk++) {
           if (!dj && !dk) continue;
-          const kn = (k + dk + columns) % columns, on = jn * columns + kn;
-          if (!wet[on]) continue;
-          const n = jn * stride + kn, yn = P[n * 3 + 1];
-          // the crossing of the sea's surface along the edge (each end's own surface, linear between them)
-          // (a dry vertex already under the surface — ground the sea's sector does not flag — is on the waterline)
-          const above = Math.max(0, y - surface[o]), below = Math.max(0, surface[on] - yn);
-          const t = above / Math.max(1e-6, above + below);
+          const kn = (k + dk + columns) % columns, on = jn * columns + kn, mn = marine[on];
+          if (mn < threshold) continue;
+          const n = jn * stride + kn;
+          // where the weight crosses the threshold along the edge (linear between the two ends)
+          const t = (threshold - mi) / Math.max(1e-6, mn - mi);
           best = Math.min(best, t * Math.hypot(P[n * 3] - x, P[n * 3 + 2] - z));
         }
       }

@@ -59,7 +59,7 @@ import { createWaterRippleField } from './waterRipples.ts';
 import { createOceanField, oceanFieldSupported, oceanGridSize, type OceanField } from './oceanFft.ts';
 import { oceanSpectrumSteps, resolveOceanState, type OceanConfig, type OceanSpectrumTexels } from './oceanSpectrum.ts';
 import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
-import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaOpeningWeight, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
+import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
@@ -7648,19 +7648,7 @@ function* terrainBuildSteps(
   // (the borders lane, 2026-10-08: and the ring's own coast — a headland or a bay it draws in a sea opening, where the
   // contours above know of no shore — measures its waterline from its own vertices, horizonSurface.ts ringWaterlineMetres)
   const ringUv = horizonStep.value.userData.horizonRing ? horizonStep.value.geometry.getAttribute('uv') : null;
-  const ringCoast = seaOpenings.length && ringUv ? ringWaterlineMetres(horizonStep.value.geometry.getAttribute('position'), ringUv,
-    HORIZON_SEGMENTS, (() => {
-      const depthM = waterContactProfile(cfg?.id || '').depthM;
-      return (x: number, z: number): number => {
-        const angle = Math.atan2(z, x);
-        let level = seaOpenings[0].level, weight = -1;
-        for (const opening of seaOpenings) {
-          const w = seaOpeningWeight(angle, opening);
-          if (w > weight) { weight = w; level = opening.level; }
-        }
-        return level + depthM;
-      };
-    })()) : null;
+  const ringCoast = seaOpenings.length && ringUv ? ringWaterlineMetres(horizonStep.value.geometry.getAttribute('position'), ringUv, HORIZON_SEGMENTS) : null;
   if ((shoreAt || ringCoast) && horizonStep.value.userData.horizonRing) {
     const geometry = horizonStep.value.geometry;
     const position = geometry.getAttribute('position');
