@@ -232,10 +232,17 @@ for (const id of ids) {
   }
 
   if (cfg.gun) {
+    // 2026-10-08 (round 5; the coordinator after wave 269 on the Leopard 2A6 UA: the barrel "left mostly clear (real
+    // crews wrap only short sections)"): the gun carries short wraps along the tube, never a sleeve the length of it
     const gunNet = tank.root.getObjectByName(`${id}_ghillie_gun_net`);
     const gunBounds = new THREE.Box3().setFromObject(gunNet);
-    assert.ok(gunBounds.max.z - gunBounds.min.z > 5.0,
-      `${id} gun shroud covers the L55 tube without closing its bore`);
+    const toGun = new THREE.Matrix4().copy(gunRig.matrixWorld).invert(), at = gunNet.geometry.getAttribute('position');
+    const wrapped = new Set();
+    for (let i = 0; i < at.count; i++) {
+      wrapped.add(Math.floor(new THREE.Vector3().fromBufferAttribute(at, i).applyMatrix4(gunNet.matrixWorld).applyMatrix4(toGun).z / 0.05));
+    }
+    assert.ok(wrapped.size * 0.05 > 0.5 && wrapped.size * 0.05 <= 1.4,
+      `${id} wraps short sections of the tube (${(wrapped.size * 0.05).toFixed(2)} m), its bore open`);
     assert.ok(gunBounds.max.z < tank.root.getObjectByName('rig_muzzle').getWorldPosition(new THREE.Vector3()).z,
       `${id} gun shroud stops behind the live muzzle anchor`);
   }
