@@ -10,7 +10,7 @@ import { growTreeSkeleton, GROWTH_LEAF_BUDGET, GROWTH_SPECIES, TREE_GROWTH_PROFI
 import { createHeightField } from './terrain.ts';
 import { createVegetation, grownFormSprayKind } from './vegetation.ts';
 import { getMapConfig } from './maps/index.ts';
-import { treeBiomeColour, treeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeColour, treeBiomeSlot, treeBiomeTransmission } from './treeBiomes.ts';
 import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
 
 function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -24,6 +24,9 @@ for (const slot of ['acacia', 'cedar', 'oak']) {
 assert.equal(treeBiomeSlot('desert', 'eucalyptus')?.form, 'acacia', 'the Saharan wadi keeps the savanna acacia');
 assert.equal(treeBiomeSlot('desert', 'eucalyptus')?.colour, undefined, 'and the place\'s arid colour');
 assert.ok(GROWTH_SPECIES.includes('tortilis'), 'a tree slot\'s form');
+// (the Redrock lane on wave 282: the back-lit crowns glowed lime) Wadi Rum's leaflets pass little light; elsewhere the whole gain
+assert.ok(treeBiomeTransmission('badlands') <= 0.5, 'Wadi Rum\'s leaves pass little of the low sun');
+assert.equal(treeBiomeTransmission('verdant'), 1, 'a place without a transmission keeps the whole gain');
 assert.equal(grownFormSprayKind('tortilis'), 'acacia', 'it paints the acacia\'s bipinnate leaflets');
 const p = TREE_GROWTH_PROFILES.tortilis, savanna = TREE_GROWTH_PROFILES.acacia;
 assert.ok(p.forkAt[1] <= 0.25 && p.leafShare <= 0.5 && (p.foliageValue ?? 1) < (savanna.foliageValue ?? 1) && p.deadwood > 0,
