@@ -490,16 +490,19 @@ function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trop
   put('turretDetail',cylY(.31,.052,8),-.635,2.676,.046);
   // Fleet lane round 2 (2026-10-08; wave 257: "the periscope blocks around the octagonal cupola stick out like stuck-on
   // stubs"): each of the eight periscope heads sat on an octagon CORNER as a 2.7 cm slab turned edge-on, radially out.
-  // They now sit on the eight faces, square to them: a short armoured head standing 4 cm proud of the face with its
-  // window glass outboard under a small brow.
+  // They now stand on the crown as one armoured periscope ring: eight housings meeting corner to corner round the
+  // hatch, inside the crown's outline, each with its window outboard (separate heads hung over the drum's oblique faces,
+  // or standing apart on the crown, closed voxel columns the watertight census then read as pockets).
+  const ringOuter=.285*Math.cos(Math.PI/8),ringSide=2*.285*Math.sin(Math.PI/8);
   for(let i=0;i<8;i++){
     const a=Math.PI/8+i*Math.PI/4,c=Math.cos(a),sn=Math.sin(a),ry=Math.PI/2-a;
     const at=(r:number):[number,number]=>[-.635+c*r,.046+sn*r];
-    const [hx,hz]=at(.322),[gx,gz]=at(.351),[bx,bz]=at(.350);
-    put('turretDark',box(.12,.064,.06),hx,2.645,hz,0,ry);
-    put('turretGlass',box(.094,.038,.006),gx,2.641,gz,0,ry);
-    put('turretDark',box(.124,.010,.022),bx,2.673,bz,0,ry);
+    const [hx,hz]=at(ringOuter-.03),[gx,gz]=at(ringOuter+.0015);
+    put('turretDark',box(ringSide,.05,.06),hx,2.727,hz,0,ry);
+    put('turretGlass',box(.09,.028,.004),gx,2.729,gz,0,ry);
   }
+  // the hatch lid inside the ring, standing a little proud of the crown
+  put('turretDetail',cylY(.205,.03,16),-.635,2.717,.046);
   put('turretDetail',cylY(.23,.3015,24),.507,2.6823,-.516);
   put('turretDark',box(.26,.12,.016),.507,2.727,-.278);
   put('turretGlass',box(.20,.075,.009),.507,2.736,-.266);
