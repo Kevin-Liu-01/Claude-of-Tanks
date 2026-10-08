@@ -106,32 +106,56 @@ const fort: RegionalBuilder = (ctx) => {
     // the footing: the stone the render stops above, a hand proud of the wall and knee-high
     sink.span('stone', x0 - 0.07, -0.3, z0 - 0.07, x1 + 0.07, 0.55 + rng() * 0.25, z1 + 0.07, { shadeAt: scour, tint: lot() });
   };
-  // where the render has fallen away: the coursed stone under it, in patches low on the walls and at the corners
-  const spalls = (face: Face, count: number) => {
-    for (let k = 0; k < count; k++) {
-      const w = 0.6 + rng() * 1.5, hh = 0.4 + rng() * 0.9;
-      const u = (rng() - 0.5) * Math.max(0, face.width - w - 0.4), y = 0.9 + rng() * rng() * (h - 1.6);
-      faceBox(sink, 'stone', face, u, y, 0.01, w, hh, 0.02, { decor: true, tint: lot() });
+  // (round 10, the gauntlet's wave 270: "a flat plane with a stucco noise texture and two rectangles of stone-block texture
+  // pasted on like decals", "grey cobbled wedge ramps butted against its base") the walls' and towers' cores are the
+  // coursed stone itself, and their render a skin 8 cm proud of it, laid in 0.35 m courses, each course one panel between
+  // the holes; the holes are a few ragged patches where the render has fallen, more of them low and towards the ends, the
+  // stone showing in them behind the render's broken edge. One lot of render to a face; no drift wedges, the ground is
+  // the terrain's
+  const skin = (face: Face, u0: number, u1: number, y0: number, y1: number) => {
+    if (u1 - u0 < 0.3 || y1 - y0 < 0.3) return;
+    const tint = lot(), size = Math.min(1, (u1 - u0) / 6);
+    const holes: Array<[number, number, number, number]> = [];
+    const n = Math.round((u1 - u0) * (y1 - y0) / 18 * (0.5 + rng() * 0.8));
+    for (let k = 0; k < n; k++) {
+      const end = rng() < 0.35;
+      const cu = end ? (rng() < 0.5 ? u0 + rng() * 1.2 : u1 - rng() * 1.2) : u0 + rng() * (u1 - u0);
+      holes.push([cu, y0 + (y1 - y0) * rng() * rng(), (0.5 + rng() * 1.3) * size, (0.35 + rng() * 0.8) * size]);
+    }
+    const rows = Math.max(1, Math.round((y1 - y0) / 0.35)), dy = (y1 - y0) / rows;
+    const cols = Math.max(1, Math.round((u1 - u0) / 0.3)), du = (u1 - u0) / cols;
+    for (let r = 0; r < rows; r++) {
+      const y = y0 + (r + 0.5) * dy;
+      for (let c = 0, run = -1; c <= cols; c++) {
+        let lost = c === cols;
+        if (!lost) {
+          const u = u0 + (c + 0.5) * du, edge = 0.7 + 0.6 * rng();
+          for (const [hu, hy, ru, ry] of holes) {
+            const qu = (u - hu) / ru, qy = (y - hy) / ry;
+            if (qu * qu + qy * qy < edge) { lost = true; break; }
+          }
+        }
+        if (!lost && run < 0) run = c;
+        if (lost && run >= 0) {
+          const a = u0 + run * du, b = u0 + c * du;
+          faceBox(sink, 'plaster', face, (a + b) / 2, y, 0.04, b - a, dy, 0.08, { tint, shadeAt: scour });
+          run = -1;
+        }
+      }
     }
   };
-  // sand drifted against a wall's foot: a wedge 0.5-1.1 m high and three times as wide, a few metres long, a few to a side
-  const drifts = (face: Face, count: number) => {
-    for (let k = 0; k < count; k++) {
-      const len = 2.5 + rng() * 4.5, rise = 0.5 + rng() * 0.6, reach = rise * (2.6 + rng() * 1.0);
-      const u0 = (rng() - 0.5) * Math.max(0, face.width - len);
-      const o = face.origin, a = face.u, n = face.out;
-      const at = (along: number, out: number, y: number): Vec3 => [o[0] + a[0] * along + n[0] * out, y, o[2] + a[2] * along + n[2] * out];
-      sink.prism('plaster3', [at(u0 - len / 2, 0, -0.3), at(u0 - len / 2, 0, rise), at(u0 - len / 2, reach, -0.3)], [a[0], 0, a[2]], len,
-        { decor: true, tint: [1.08, 0.94, 0.78] });
-    }
+  // a stone core on its footing (the footing a hand proud of the wall and knee-high)
+  const core = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number) => {
+    sink.span('stone', x0, y0, z0, x1, y1, z1, { shadeAt: scour, tint: lot() });
+    sink.span('stone', x0 - 0.07, -0.3, z0 - 0.07, x1 + 0.07, 0.55 + rng() * 0.25, z1 + 0.07, { shadeAt: scour, tint: lot() });
   };
   const gateW = 3.2, gateH = 3.9, gateTowerW = 6.0, proud = 0.7;
   // the curtain walls: the back, the two sides, the front either side of the gate tower
-  span(-W / 2, -0.3, -D / 2, W / 2, h, -D / 2 + t);
-  span(-W / 2, -0.3, -D / 2 + t, -W / 2 + t, h, D / 2 - t);
-  span(W / 2 - t, -0.3, -D / 2 + t, W / 2, h, D / 2 - t);
-  span(-W / 2, -0.3, D / 2 - t, -gateTowerW / 2, h, D / 2);
-  span(gateTowerW / 2, -0.3, D / 2 - t, W / 2, h, D / 2);
+  core(-W / 2, -0.3, -D / 2, W / 2, h, -D / 2 + t);
+  core(-W / 2, -0.3, -D / 2 + t, -W / 2 + t, h, D / 2 - t);
+  core(W / 2 - t, -0.3, -D / 2 + t, W / 2, h, D / 2 - t);
+  core(-W / 2, -0.3, D / 2 - t, -gateTowerW / 2, h, D / 2);
+  core(gateTowerW / 2, -0.3, D / 2 - t, W / 2, h, D / 2);
   // the coping along the wall heads (a pale lime-mortared course) and the merlons on its outer edge
   const coping = { tint: [1.12, 1.08, 1.0] as Rgb };
   const cope = (x0: number, z0: number, x1: number, z1: number) => sink.span(wall, x0, h, z0, x1, h + 0.18, z1, coping);
@@ -141,14 +165,27 @@ const fort: RegionalBuilder = (ctx) => {
   cope(-W / 2 - 0.08, D / 2 - t, -gateTowerW / 2, D / 2 + 0.08);
   cope(gateTowerW / 2, D / 2 - t, W / 2 + 0.08, D / 2 + 0.08);
   {
+    // rendered between the towers (each corner tower covers 2.4 m of the walls' ends)
     const back: Face = { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W };
     const west: Face = { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D };
     const east: Face = { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
-    const fw = W / 2 - gateTowerW / 2;
-    const frontL: Face = { origin: [-(gateTowerW / 2 + fw / 2), 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: fw };
-    const frontR: Face = { origin: [gateTowerW / 2 + fw / 2, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: fw };
-    for (const f of [back, west, east]) { spalls(f, 3 + Math.floor(rng() * 3)); drifts(f, 1 + Math.floor(rng() * 3)); }
-    for (const f of [frontL, frontR]) { spalls(f, 1 + Math.floor(rng() * 2)); drifts(f, Math.floor(rng() * 2)); }
+    const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
+    skin(back, -W / 2 + 2.4, W / 2 - 2.4, 0.75, h);
+    skin(west, -D / 2 + 2.4, D / 2 - 2.4, 0.75, h);
+    skin(east, -D / 2 + 2.4, D / 2 - 2.4, 0.75, h);
+    skin(front, -W / 2 + 2.4, -gateTowerW / 2, 0.75, h);
+    skin(front, gateTowerW / 2, W / 2 - 2.4, 0.75, h);
+    // and on the court side: over the rooms along the back and the west wall, to the foot on the east and the front
+    const backIn: Face = { origin: [0, 0, -D / 2 + t], u: [1, 0, 0], out: [0, 0, 1], width: W };
+    const westIn: Face = { origin: [-W / 2 + t, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
+    const eastIn: Face = { origin: [W / 2 - t, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D };
+    const frontIn: Face = { origin: [0, 0, D / 2 - t], u: [-1, 0, 0], out: [0, 0, -1], width: W };
+    const roomsTop = Math.min(3.4, h - 0.6) + 0.5;
+    skin(backIn, -W / 2 + 2.4, W / 2 - 2.4, roomsTop, h);
+    skin(westIn, -D / 2 + 2.4, D / 2 - 2.4, roomsTop, h);
+    skin(eastIn, -D / 2 + 2.4, D / 2 - 2.4, 0.75, h);
+    skin(frontIn, -W / 2 + 2.4, -gateTowerW / 2, 0.75, h);
+    skin(frontIn, gateTowerW / 2, W / 2 - 2.4, 0.75, h);
   }
   // (the merlons each a little different, worn at their tops, one in nine fallen)
   const merlon = (x0: number, z0: number, x1: number, z1: number, y = h + 0.18) => {
@@ -168,7 +205,7 @@ const fort: RegionalBuilder = (ctx) => {
   const tw = 3.2, th = h + 2.4;
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
     const tx = sx * (W / 2 - 0.8), tz = sz * (D / 2 - 0.8);
-    span(tx - tw / 2, -0.3, tz - tw / 2, tx + tw / 2, th, tz + tw / 2);
+    core(tx - tw / 2, -0.3, tz - tw / 2, tx + tw / 2, th, tz + tw / 2);
     sink.span(wall, tx - tw / 2 - 0.1, th, tz - tw / 2 - 0.1, tx + tw / 2 + 0.1, th + 0.2, tz + tw / 2 + 0.1, coping);
     for (const k of [-1, 0, 1]) {
       merlon(tx + k * 1.15 - 0.36, tz + sz * (tw / 2 - 0.36), tx + k * 1.15 + 0.36, tz + sz * (tw / 2 + 0.1), th + 0.2);
@@ -176,13 +213,39 @@ const fort: RegionalBuilder = (ctx) => {
     }
     const outX: Face = { origin: [tx + sx * tw / 2, 0, tz], u: [0, 0, -sx], out: [sx, 0, 0], width: tw };
     const outZ: Face = { origin: [tx, 0, tz + sz * tw / 2], u: [sz, 0, 0], out: [0, 0, sz], width: tw };
-    for (const f of [outX, outZ]) for (const y of [2.6, 5.4]) faceBox(sink, 'dark', f, 0, y, 0.01, 0.16, 0.95, 0.02, { decor: true });
+    // rendered on their outer faces, and over the wall heads on their inner ones; the slits through the render
+    const inX: Face = { origin: [tx - sx * tw / 2, 0, tz], u: [0, 0, sx], out: [-sx, 0, 0], width: tw };
+    const inZ: Face = { origin: [tx, 0, tz - sz * tw / 2], u: [-sz, 0, 0], out: [0, 0, -sz], width: tw };
+    for (const f of [outX, outZ]) skin(f, -tw / 2, tw / 2, 0.75, th);
+    for (const f of [inX, inZ]) skin(f, -tw / 2, tw / 2, 0.75, th);
+    for (const f of [outX, outZ]) for (const y of [2.6, 5.4]) faceBox(sink, 'dark', f, 0, y, 0.09, 0.16, 0.95, 0.02, { decor: true });
   }
   // the gate tower: 6 m wide, 0.7 m proud of the front, two metres over the walls; its arched gateway
   const gz = D / 2 + proud, gth = h + 2.0, gx = gateTowerW / 2;
-  span(-gx, -0.3, D / 2 - t - 0.6, -gateW / 2, gth, gz);
-  span(gateW / 2, -0.3, D / 2 - t - 0.6, gx, gth, gz);
-  span(-gateW / 2, gateH + gateW / 2 + 0.25, D / 2 - t - 0.6, gateW / 2, gth, gz);
+  core(-gx, -0.3, D / 2 - t - 0.6, -gateW / 2, gth, gz);
+  core(gateW / 2, -0.3, D / 2 - t - 0.6, gx, gth, gz);
+  core(-gateW / 2, gateH + gateW / 2 + 0.25, D / 2 - t - 0.6, gateW / 2, gth, gz);
+  {
+    // its render: the jambs, the spandrels clear of the voussoirs, the head over the arch; the sides' proud foot and
+    // their full depth over the wall heads
+    const gf: Face = { origin: [0, 0, gz], u: [1, 0, 0], out: [0, 0, 1], width: 2 * gx };
+    const zc = (D / 2 - t - 0.6 + gz) / 2, top = gateH + gateW / 2 + 0.35;
+    for (const s of [-1, 1]) {
+      const [a, b] = s < 0 ? [-gx, -gateW / 2] : [gateW / 2, gx];
+      skin(gf, a, b, 0.75, gateH);
+      skin(gf, s < 0 ? -gx : gateW / 2 + 0.35, s < 0 ? -gateW / 2 - 0.35 : gx, gateH, top);
+      const side: Face = { origin: [s * gx, 0, zc], u: [0, 0, -s], out: [s, 0, 0], width: gz - (D / 2 - t - 0.6) };
+      const [p0, p1] = s < 0 ? [D / 2 - zc, gz - zc] : [zc - gz, zc - D / 2];
+      skin(side, p0, p1, 0.75, h);
+      skin(side, -side.width / 2, side.width / 2, h + 0.18, gth);
+    }
+    skin(gf, -gx, gx, top, gth);
+    // the back on the court: the jambs either side of the passage, the head over it
+    const gb: Face = { origin: [0, 0, D / 2 - t - 0.6], u: [-1, 0, 0], out: [0, 0, -1], width: 2 * gx };
+    skin(gb, -gx, -gateW / 2, 0.75, gateH);
+    skin(gb, gateW / 2, gx, 0.75, gateH);
+    skin(gb, -gx, gx, gateH, gth);
+  }
   // the arch: seven voussoirs round a half circle over the jambs, the keystone proud
   const archR = gateW / 2, archY = gateH;
   for (let k = 0; k < 7; k++) {
@@ -210,9 +273,21 @@ const fort: RegionalBuilder = (ctx) => {
   // the gate tower's merlons and the flag over the gate
   for (let x = -gx + 0.2; x < gx - 0.5; x += 1.45) merlon(x, gz - 0.5, x + 0.8, gz, gth);
   sink.span('structureMetal', -0.05, gth, gz - 1.0, 0.05, gth + 6.5, gz - 0.9, { colour: rgb(0x8a8e90), decor: true });
-  const flag: Array<[number, Rgb]> = [[0, rgb(0x1a1a1a)], [1, rgb(0xe8e6e0)], [2, rgb(0x2e7a3e)]];
+  // Jordan's flag (round 10, the coordinator: the old red rectangle at the hoist made it the Emirates'): black, white and
+  // green bands, and at the hoist a red triangle reaching half the fly with a white seven-pointed star in it
+  const flag: Array<[number, Rgb]> = [[0, rgb(0x1a1a1a)], [1, rgb(0xeeece6)], [2, rgb(0x14753c)]];
   for (const [band, colour] of flag) sink.span('structureWood', 0.06, gth + 6.3 - band * 0.42 - 0.42, gz - 0.97, 2.0, gth + 6.3 - band * 0.42, gz - 0.95, { colour, decor: true });
-  sink.span('structureWood', 0.06, gth + 5.04, gz - 0.975, 0.9, gth + 6.3, gz - 0.945, { colour: rgb(0xb02a2a), decor: true });
+  {
+    const fz = gz - 0.976, mid = gth + 5.67, red = rgb(0xc4142c), white = rgb(0xf4f2ec);
+    sink.prism('structureWood', [[0.06, gth + 5.04, fz], [1.03, mid, fz], [0.06, gth + 6.3, fz]], [0, 0, 1], 0.032, { colour: red, decor: true });
+    const sx = 0.06 + 0.97 / 3, sz = fz - 0.002, ro = 0.13, ri = 0.058;
+    const star = (k: number, r: number): Vec3 => [sx + r * Math.sin((k * Math.PI) / 7), mid + r * Math.cos((k * Math.PI) / 7), sz];
+    const inner = Array.from({ length: 7 }, (_, i) => star(2 * i + 1, ri));
+    sink.prism('structureWood', inner.slice().reverse(), [0, 0, 1], 0.036, { colour: white, decor: true });
+    for (let i = 0; i < 7; i++) {
+      sink.prism('structureWood', [inner[(i + 6) % 7], star(2 * i, ro), inner[i]].reverse(), [0, 0, 1], 0.036, { colour: white, decor: true });
+    }
+  }
   // the court: rooms along the back and the west wall, flat roofs behind a low parapet, doors and windows on the court
   const ri = -D / 2 + t, rd = Math.min(4.2, D * 0.28), rh = 3.4;
   span(-W / 2 + t, -0.3, ri, W / 2 - t, rh, ri + rd);

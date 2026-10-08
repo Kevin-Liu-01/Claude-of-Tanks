@@ -47,11 +47,63 @@ function wander(t: number, salt: number): number {
   return a + (hash(i + 1, salt) - a) * u;
 }
 
-/** Rounded vertical grooves along a wall run, 0..1 at their deepest: flutes every 8-16 m (a domain-warped cosine). */
-function flute(s: number, salt: number): number {
-  const phase = s / 11 + 0.8 * wander(s / 31, salt + 11) + hash(3, salt);
-  const notch = Math.max(0, Math.cos(phase * Math.PI * 2));
-  return notch * notch * (0.45 + 0.55 * wander(s / 17 + 2.3, salt + 12));
+/** The vertical joints along a wall run (round 10, the gauntlet's wave 270: "a pleated curtain", "smooth rounded flutes
+ * like draped cloth" — the round-9 flutes were rounded cosine notches every 8-16 m): columns 4.8-19 m wide between
+ * joints, each joint a V re-entrant 1.2-3.6 m deep (sharp at its root), and each column a face of its own standing up to
+ * 1.1 m back of its neighbours, eased across the joint's V so the ground stays continuous — metres the face stands back
+ * at s. */
+const JOINT_W = 12;
+function jointBoundary(j: number, salt: number): number { return (j + 0.6 * (hash(j, salt + 41) - 0.5)) * JOINT_W; }
+function jointSetback(s: number, salt: number): number {
+  let j = Math.floor(s / JOINT_W);
+  if (s < jointBoundary(j, salt)) j--; else if (s >= jointBoundary(j + 1, salt)) j++;
+  const b0 = jointBoundary(j - 1, salt), b1 = jointBoundary(j, salt), b2 = jointBoundary(j + 1, salt), b3 = jointBoundary(j + 2, salt);
+  // each joint's half-width, at most 0.45 of the narrower column beside it (so a column's two V's never meet)
+  const halfL = Math.min(2 + 1.4 * hash(j, salt + 44), 0.45 * Math.min(b1 - b0, b2 - b1));
+  const halfR = Math.min(2 + 1.4 * hash(j + 1, salt + 44), 0.45 * Math.min(b2 - b1, b3 - b2));
+  const col = (k: number) => 1.1 * hash(k, salt + 43), depth = (k: number) => 1.2 + 2.4 * hash(k, salt + 42);
+  const dl = s - b1, dr = b2 - s;
+  let back = col(j);
+  if (dl < halfL) back += (col(j - 1) - col(j)) * 0.5 * (1 - dl / halfL);
+  if (dr < halfR) back += (col(j + 1) - col(j)) * 0.5 * (1 - dr / halfR);
+  return back + Math.max(depth(j) * Math.max(0, 1 - dl / halfL), depth(j + 1) * Math.max(0, 1 - dr / halfR));
+}
+
+/** The face's bedding tiers (round 10, the gauntlet's wave 270: "no bedding", "bedding ledges in relief, breaking the
+ * flutes into tiers"): the rise in beds of ~6-17 m, each a riser at ~82 degrees (a smoothstep: its foot and its nose
+ * rounded) under a ledge 0.8-3.4 m deep, the top bed running out to the lip. tieredFace gives the height over the face's
+ * foot at setback x; tierRunOf the face's whole run. Bed thicknesses and ledge depths wander along the wall. */
+// (six beds on every face whatever its rise — a count rounded from the rise jumped where the rise crossed a half bed, and
+// the face and its lip jumped with it)
+const TIER_N = 6;
+const _tierT: number[] = [0, 0, 0, 0, 0, 0], _tierL: number[] = [0, 0, 0, 0, 0, 0]; // (module scratch: no query allocates)
+function tierLayout(rise: number, s: number, salt: number): number {
+  const n = TIER_N;
+  let sum = 0;
+  for (let k = 0; k < n; k++) { _tierT[k] = 0.65 + 0.7 * wander(s / 47 + k * 1.37, salt + 50 + k); sum += _tierT[k]; }
+  for (let k = 0; k < n; k++) {
+    _tierT[k] *= rise / sum;
+    _tierL[k] = k < n - 1 ? 0.8 + 2.6 * wander(s / 39 + k * 2.11, salt + 70 + k) : 0;
+  }
+  return n;
+}
+function tierRunOf(rise: number, s: number, salt: number): number {
+  const n = tierLayout(rise, s, salt);
+  let run = 0;
+  for (let k = 0; k < n; k++) run += 0.14 * _tierT[k] + _tierL[k];
+  return run;
+}
+function tieredFace(x: number, rise: number, s: number, salt: number): number {
+  const n = tierLayout(rise, s, salt);
+  let x0 = 0, z0 = 0;
+  for (let k = 0; k < n; k++) {
+    const a = 0.14 * _tierT[k];
+    if (x < x0 + a) { const u = Math.max(0, (x - x0) / a); return z0 + _tierT[k] * u * u * (3 - 2 * u); }
+    x0 += a; z0 += _tierT[k];
+    if (x < x0 + _tierL[k]) return z0;
+    x0 += _tierL[k];
+  }
+  return rise;
 }
 
 /** The gullies: a broad cleft every ~70 m of wall on about half the cells, as metres it sets the cliff back. (Half-width
@@ -94,7 +146,7 @@ function gullyCone(s: number, salt: number): number {
 function domeField(d: number, s: number, H: number, cell: number, r0: number, rv: number, h0: number, hv: number,
   capR: number, salt: number): number {
   const ci = Math.floor(d / cell), cj = Math.floor(s / cell);
-  let best = 0;
+  let best = 0, second = 0;
   for (let i = ci - 1; i <= ci + 1; i++) for (let j = cj - 1; j <= cj + 1; j++) {
     const key = i * 7919 + j;
     const cd = (i + 0.5 + 0.7 * (hash(key, salt + 31) - 0.5)) * cell;
@@ -103,9 +155,15 @@ function domeField(d: number, s: number, H: number, cell: number, r0: number, rv
     const r2 = ((d - cd) ** 2 + (s - cs) ** 2) / (radius * radius);
     if (r2 >= 1) continue;
     const height = Math.min(H * (h0 + hv * hash(key, salt + 34)), capR * radius);
-    best = Math.max(best, height * Math.cos(1.5708 * r2 ** 0.8));
+    const hd = height * Math.cos(1.5708 * r2 ** 0.8);
+    if (hd > best) { second = best; best = hd; } else if (hd > second) second = hd;
   }
-  return best;
+  // (round 10, the gauntlet's wave 270: "a sawtooth crest of near-identical small teeth" — the two highest domes' union a
+  // smooth maximum over 4 m, so the saddle between two domes is a rounded col, not a V between two teeth; the rounding
+  // weighs in with the lower dome's own height, so it is nil at every dome's edge, and the top two are the same in any
+  // order: the field stays continuous)
+  const k = 4, g = best - second;
+  return best + (g < k && second > 0 ? (k - g) * (k - g) / (4 * k) * Math.min(1, second / k) : 0);
 }
 
 /** The jebels' tops `back` metres behind the nearest lip, at world-plan (u, v): beehive domes crowding the rim, broad
@@ -113,7 +171,9 @@ function domeField(d: number, s: number, H: number, cell: number, r0: number, rv
 function domes(u: number, v: number, back: number, H: number, detail: number): number {
   // (the coarse ring past the square keeps the broad domes, which its 10-20 m rows resolve, and drops the beehives)
   const rim = detail * (1 - ramp(28, 52, back)), massif = ramp(12, 40, back);
-  return Math.max(rim > 0 ? rim * domeField(u, v, H, 24, 9, 8, 0.06, 0.14, 0.7, 401) : 0,
+  // (round 10: the rim's beehives fewer and broader, 11-27 m across their bases and of more varied height — at 24 m cells
+  // and 9-17 m radii a row of like domes stood along every crest as teeth)
+  return Math.max(rim > 0 ? rim * domeField(u, v, H, 34, 11, 16, 0.05, 0.15, 0.55, 401) : 0,
     massif > 0 ? massif * domeField(u, v, H, 68, 24, 18, 0.05, 0.11, 0.42, 406) : 0);
 }
 
@@ -158,23 +218,30 @@ function jebelSection(d: number, s: number, H: number, detail: number, apron: nu
   // degrees — where the bench running on flat into every groove laid a sand floor in each: pale flames up the face.)
   const benchW = 2 + 9 * w3;
   const bench = disiEnd + benchW + 8 * wander(s / 52 + 1.9, salt + 3);
-  const gully = fine * chimney(s, salt), foot = bench + fine * 1.6 * flute(s, salt) + gully;
-  // near vertical over most of its height: a 78-82 degree face rounding at its foot and its lip
-  const rise = H - disiTop - 0.8, run = Math.max(4, rise * (0.19 + 0.55 * soft));
-  sectionLip = foot + run; sectionCrownLip = bench + gully + run;
+  // (round 10: the face cut back at its joints, and stepped in bedding tiers, both the playable terrain's: `fine`)
+  const gully = fine * chimney(s, salt), joint = fine * jointSetback(s, salt), foot0 = bench + gully, foot = foot0 + joint;
+  // near vertical over most of its height: a 78-82 degree face rounding at its foot and its lip (the ring's soft
+  // section), or the tiers' risers and ledges (the playable terrain's)
+  const rise = H - disiTop - 0.8, runSoft = Math.max(4, rise * (0.19 + 0.55 * soft));
+  const runTier = fine > 0 ? tierRunOf(rise, s, salt) : runSoft, run = runSoft + (runTier - runSoft) * fine;
+  sectionLip = foot + run; sectionCrownLip = foot0 + run;
   if (d <= bench) return disiTop + 0.8 * (d - disiEnd) / (bench - disiEnd);
   const cleft = disiTop + 0.8 + 1.6 * (d - bench);
   if (d <= foot) return Math.min(H, cleft);
-  if (d >= sectionLip) return H;
-  const t = (d - foot) / run;
-  // (a trapezoid of slope: eased in over the first 12 % and out over the last, linear between — continuous in value and
-  // slope, y = t^2 / (2 * 0.12 * 0.88) on the ends)
-  let y = t < 0.12 ? (t * t) / 0.2112 : t > 0.88 ? 1 - ((1 - t) * (1 - t)) / 0.2112 : (t - 0.06) / 0.88;
-  // where the ring draws it, a rounded massif: steep at its foot, its shoulder rounding over (no sharp lip for the rows)
-  if (soft > 0) { const e = t * t * (3 - 2 * t); y += soft * (e * (2 - e) - y); }
-  // bedding ledges every ~9-13 m: the face eases back for a moment at each bed (its slope 0.7-1.3 of the face's)
-  const bed = 9 + 4 * w1, phase = 6.2832 * (y * rise + 7 * w2) / bed;
-  y += fine * 0.3 * (bed / rise) * Math.sin(phase) / 6.2832 * (1 - (2 * y - 1) ** 8);
+  const face = (x: number): number => {
+    if (x >= run) return 1;
+    const t = Math.max(0, x / run);
+    // (a trapezoid of slope: eased in over the first 12 % and out over the last, linear between — continuous in value and
+    // slope, y = t^2 / (2 * 0.12 * 0.88) on the ends)
+    let y = t < 0.12 ? (t * t) / 0.2112 : t > 0.88 ? 1 - ((1 - t) * (1 - t)) / 0.2112 : (t - 0.06) / 0.88;
+    // where the ring draws it, a rounded massif: steep at its foot, its shoulder rounding over (no sharp lip for the rows)
+    if (soft > 0) { const e = t * t * (3 - 2 * t); y += soft * (e * (2 - e) - y); }
+    if (fine > 0) y += (tieredFace(t * runTier, rise, s, salt) / rise - y) * fine;
+    return y;
+  };
+  // the joints fade over the face's top quarter, so the crest is one line over the columns, not a tooth at every joint
+  const yJ = face(d - foot), y0 = face(d - foot0), w = ramp(0.68, 0.96, y0);
+  const y = yJ + (y0 - yJ) * w;
   return Math.min(H, Math.max(cleft, disiTop + 0.8 + rise * y));
 }
 
@@ -270,10 +337,15 @@ function canyonWall(across: number, along: number, z: number, toeDistance: numbe
     if (q > 0) {
       const plateau = (depth - ease - mainLip) + (d - e - sectionLip);
       const c = H * (0.3 + 0.7 * ramp(-40, 100, plateau));
-      if (c < H) cap = Math.min(cap, H - q * (H - c));
+      // (round 10, the gauntlet's wave 270: "a faceted shark fin with flat-shaded planes" — the step-down was a plane: it
+      // eases in now, q's smoothstep, and meets the face in a smooth minimum, so the nose rounds over)
+      if (c < H) cap = Math.min(cap, H - q * q * (3 - 2 * q) * (H - c));
     }
   }
-  if (h > cap) h = cap;
+  // (the smooth minimum's reach is at most 8 m and no more than the cap's own drop below the top, so it fades out where
+  // the nose's step-down begins — no seam where the cap comes in)
+  const capK = Math.min(8, H - cap);
+  if (capK > 0 && h > cap - capK) { const g = h - cap; h = g >= capK ? cap : h - (g + capK) * (g + capK) / (4 * capK); }
   // the beehive domes behind the nearest lip, on one world-plan field (round 9: the lip without the flutes, so a dome is
   // not cut to a tooth at every flute; a gully's notch in the lip is a saddle between two rounded domes)
   const crown = (detail + 0.8 * (1 - detail)) * ramp(-3, 5, lip);

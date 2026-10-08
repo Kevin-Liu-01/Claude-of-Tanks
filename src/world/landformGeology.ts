@@ -57,8 +57,14 @@ export interface LandformGeology {
    * radius as a share of the cap (default 0.3; each boss takes up to 0.16 more). */
   bosses?: { count: number; heightM: number; radius?: number };
   /** inselberg with a rim: vertical flutes down the wall, how many round the jebel and how far each sets the wall back,
-   * as a share of the wall's width (default 0.5). */
-  flutes?: { count: number; depth?: number };
+   * as a share of the wall's width (default 0.5). `joints` (the Redrock lane, round 10: "drip folds", "melted-candle
+   * grooves"): each a V-shaped joint, sharp at its root, at an irregular bearing (jittered within its slot) and of its
+   * own depth, instead of an evenly spaced rounded notch. */
+  flutes?: { count: number; depth?: number; joints?: boolean };
+  /** inselberg with a rim: the wall in this many bedding tiers (the Redrock lane, round 10: "no bedding, no ledges") —
+   * each a steep riser under a narrow ledge, the ledges a share of the wall's width (`ledge`, default 0.3 of a tier's
+   * run). Absent: one smooth wall (the horizon's far jebels and every other inselberg). */
+  tiers?: { count: number; ledge?: number };
   /** cone: the crater's rim as a fraction of the radius, its depth in metres and an optional breach bearing in
    * degrees (0 = local +x, counter-clockwise towards local +z). */
   crater?: { rim: number; depthM: number; breachDeg?: number };
@@ -272,13 +278,19 @@ const JEBEL_CAP_DROP = 0.08;
  * then a concave talus apron `apron` high at the foot thinning to the plain at the toe.
  */
 export function inselbergSection(q: number, foot: number, apron: number, crown = 4, rim = 0,
-  capDrop = JEBEL_CAP_DROP): number {
+  capDrop = JEBEL_CAP_DROP, tiers = 0, ledge = 0.3): number {
   if (q >= 1) return 0;
   if (rim > 0) {
     const top = foot * rim;
     if (q <= top) return 1 - capDrop * (q / top) ** 2;
     if (q <= foot) {
       const t = (q - top) / (foot - top);
+      if (tiers >= 2) {
+        // the bedding tiers: from the top down, each tier's run a ledge (level) then a riser (a smoothstep)
+        const n = Math.round(tiers), k = Math.min(n - 1, Math.floor(t * n)), f = t * n - k;
+        const r = f < ledge ? 0 : (f - ledge) / (1 - ledge), e = r * r * (3 - 2 * r);
+        return apron + (1 - capDrop - apron) * (1 - (k + e) / n);
+      }
       return apron + (1 - capDrop - apron) * (1 - t * t * (3 - 2 * t));
     }
   } else if (q <= foot) return 1 - (1 - apron) * (q / foot) ** crown;
@@ -296,10 +308,23 @@ function inselbergFoot(geology: LandformGeology, theta: number, salt: number): [
   const rim = jebelRim(geology);
   if (rim > 0 && geology.flutes && geology.flutes.count >= 1) {
     const count = Math.round(geology.flutes.count), depth = Math.max(0, Math.min(1, geology.flutes.depth ?? 0.5));
-    // a groove where cos peaks: a rounded notch half a flute wide, the wall standing at its line between the grooves
-    const phase = (theta / TAU) * count + hash2(count, 3, salt + 37);
-    const notch = Math.max(0, Math.cos(phase * TAU)) ** 2;
-    wall -= notch * depth * (1 - rim) * wall;
+    if (geology.flutes.joints) {
+      // a joint in each of `count` slots round the bearing, at a jittered place in its slot: a V notch (its half-width
+      // 0.12-0.27 of a slot, its depth 0.45-1 of the flutes' depth), the nearest two slots' joints read so it wraps
+      const u = (theta / TAU + 1) * count, i = Math.floor(u);
+      let notch = 0;
+      for (let k = i - 1; k <= i + 1; k++) {
+        const slot = ((k % count) + count) % count;
+        const at = k + 0.5 + 0.7 * (hash2(slot, 5, salt + 37) - 0.5), half = 0.12 + 0.15 * hash2(slot, 6, salt + 37);
+        notch = Math.max(notch, Math.max(0, 1 - Math.abs(u - at) / half) * (0.45 + 0.55 * hash2(slot, 7, salt + 37)));
+      }
+      wall -= notch * depth * (1 - rim) * wall;
+    } else {
+      // a groove where cos peaks: a rounded notch half a flute wide, the wall standing at its line between the grooves
+      const phase = (theta / TAU) * count + hash2(count, 3, salt + 37);
+      const notch = Math.max(0, Math.cos(phase * TAU)) ** 2;
+      wall -= notch * depth * (1 - rim) * wall;
+    }
   }
   return [wall, apron * (1 + 0.5 * lobe(theta, salt + 31))];
 }
@@ -331,7 +356,8 @@ function profileOf(q: number, geology: LandformGeology, height: number, fallback
   const profile = geology.profile ?? 'dome';
   if (profile === 'inselberg' && foot) {
     return inselbergSection(q, foot[0], foot[1], Math.max(1.5, geology.crown ?? 4), jebelRim(geology),
-      Math.max(0, Math.min(0.4, geology.capDrop ?? JEBEL_CAP_DROP)));
+      Math.max(0, Math.min(0.4, geology.capDrop ?? JEBEL_CAP_DROP)), geology.tiers?.count ?? 0,
+      Math.max(0, Math.min(0.6, geology.tiers?.ledge ?? 0.3)));
   }
   if (profile === 'butte') return butteProfile(q, geology);
   if (profile === 'cone') return coneProfile(q, geology, height);
