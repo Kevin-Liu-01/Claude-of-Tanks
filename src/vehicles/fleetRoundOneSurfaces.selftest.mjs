@@ -8,7 +8,9 @@ import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
 //    that band and jump along the barrel;
 //  - wheel insets (lightening holes, hub wells) take the rubber with a cavity's light (materials.ts COT_GEAR_CAVITY),
 //    so a hole reads as a hole under the Garage key;
-//  - a broad box sight pane keeps its armoured frame and hood (tankFactoryCore.ts armouredGlassSurround);
+//  - a broad box sight pane is cut into an armoured frame and a window (tankFactoryCore.ts armouredGlassSurround): four
+//    painted bars take the outer ring of the pane's own box, flush with its faces, so nothing stands proud or overhangs
+//    (the watertight census and every envelope see exactly the authored box);
 //  - the shared plate tile carries seams, welds and bolt lines but no random bolt circles (materialPainter.ts).
 
 // --- boreCylinderUV on a plain tube: u is arc length round the bore at the vertex radius, v the bore axis, one
@@ -101,7 +103,7 @@ for (const id of ['t90m_x', 'm1a2_sepv3_x', 'leo2a6_ua', 'challenger_3']) {
   assert.match(shader.fragmentShader.slice(cavity), /directDiffuse \*= 0\.4\d+;[\s\S]*indirectDiffuse \*= 0\.3\d*;/, 'direct and indirect shares');
 }
 
-// --- framed sight glass: every broad box pane on these hulls stands in a frame (bars lapping its edges and a hood)
+// --- framed sight glass: every broad box window on these hulls stands in a frame (bars round its edges, flush with it)
 {
   const counts = [];
   const FRAME_OF = { turretGlass: 'turretDetail', hullGlass: 'hullDetail', gunMountGlass: 'gunMount' };
