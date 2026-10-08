@@ -121,7 +121,14 @@ const BASE = {
   wearHull: [-3.4, 3.6, 1.5, 1.8], wearSoot: [0, 0, 0, 0], wearSootAxis: [0, 0, 1, 1],
   ...soilVec(vehicleFieldSoil('verdant')), wearAlbedo: [0.1, 0.12, 0.06], wearRough: 0.7, wearMetal: 0.05,
 };
-const run = (over) => runGlsl(core, { ...BASE, ...over }, fns, new Set());
+const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+// (the glue's own derived inputs: the close-range factor and whether the pixel lies inside the soot source's reach)
+const run = (over) => {
+  const v = { ...BASE, ...over };
+  v.wearNear = 1 - ss(0.008, 0.022, v.wearFoot);
+  v.wearSootIn = v.wearSoot[3] > 0 && v.wearSootOff < v.wearSoot[3] && v.wearSootAlong > -0.35 * v.wearSootAxis[3] && v.wearSootAlong < v.wearSootAxis[3];
+  return runGlsl(core, v, fns, new Set());
+};
 // strength 0 and a role of none change nothing
 for (const over of [{ wearStrength: 0 }, { wearRole: [0, 0, 0, 0] }]) {
   const o = run({ ...over, wearUp: 1, wearH: 0.2, wearSoot: [0, 0, 0, 0.3], wearSootAlong: 0.1, wearSootOff: 0.05 });
@@ -240,8 +247,12 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   assert.deepEqual(under.diffuseColor, [0.1, 0.12, 0.06, 1], 'the back face of double-sided cloth turns the frame over');
   const none = runGlsl(glue, vars(0.3, 0, 1, [0, 0, 0, 0]), stub, new Set());
   assert.deepEqual(none.diffuseColor, [0.1, 0.12, 0.06, 1], 'a role of none skips the whole wear');
-  assert.ok(FIELD_WEAR_FRAGMENT.indexOf('dFdx') < FIELD_WEAR_FRAGMENT.indexOf('if ( wearFoot <'),
-    'screen derivatives are taken in uniform control flow, before the close-range branch');
+  assert.ok(FIELD_WEAR_FRAGMENT.indexOf('dFdx') < FIELD_WEAR_FRAGMENT.indexOf('if ( wearH < 1.75'),
+    'screen derivatives are taken in uniform control flow, before the per-pixel skip');
+  // a high vertical face at range, outside the soot's reach, skips the noise and the core entirely
+  const skipped = runGlsl(glue, { ...vars(2.4, 0), uVehWearRole: [1, 1, 1, 1] }, { ...stub, dFdx: () => [0.05, 0, 0], dFdy: () => [0, 0.05, 0],
+    cotWearNoise: () => { throw new Error('noise evaluated on a skipped pixel'); } }, new Set());
+  assert.deepEqual(skipped.diffuseColor, [0.1, 0.12, 0.06, 1], 'a pixel no wear reaches skips the noise');
   assert.ok(FIELD_WEAR_VERTEX.includes('vec3 cotWearPos = transformed;') && FIELD_WEAR_VERTEX.includes('USE_INSTANCING')
     && FIELD_WEAR_VERTEX.includes('USE_BATCHING'), 'instances and batched parts each take their own pattern offset');
   assert.ok(!/viewMatrix|cameraPosition|vViewPosition/.test(FIELD_WEAR_FRAGMENT), 'no matrix work per fragment: the frames come from the vertex stage');
