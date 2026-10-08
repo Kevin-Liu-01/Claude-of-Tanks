@@ -68,8 +68,10 @@ assert.ok(Math.max(...coolerColors.map(shade)) - Math.min(...coolerColors.map(sh
   'beer cooler owns a separate, lighter lid');
 assert.ok(coolerColors.every(([r, g, b]) => Math.max(r, g, b) < 0.78),
   'beer cooler avoids bright high-contrast authored colors');
+// round 5 (2026-10-08, the coordinator: "military kit only"): the cooler is an olive insulated container with steel
+// latches and pressed ribs; the civilian drain plug and raised lid panel are gone
 assert.ok(cooler.length >= 10,
-  `beer cooler is a molded body and lid with latches, grips, a raised lid panel and a drain plug (${cooler.length} parts)`);
+  `the insulated container is a molded body and lid with latches, hinges, grips and pressed ribs (${cooler.length} parts)`);
 // 2026-10-05 (tank-accessories lane): molded stock, not twelve-triangle blocks — the body and lid carry filleted
 // edges, so their normals take many directions instead of the six axis faces of a box.
 const moldedFaces = cooler.filter((part) => part.mat === 'cans').map((part) => {

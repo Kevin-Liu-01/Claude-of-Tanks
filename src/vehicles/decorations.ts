@@ -55,16 +55,19 @@ import {NATIONAL_MODERNIZATION_IDS} from './nationalModernizationConfig.ts';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
-  vehicleAmbientFloorHook, getKitPaintTexture, getSharedRoughnessTexture,
+  vehicleAmbientFloorHook, getKitPaintTexture, getSharedRoughnessTexture, resolveCamoVisual, followVehicleScheme,
+  type MaterialTankSpec,
 } from './materials.ts';
+import { garnishedNetTextures, NET_TILE_M, theatreOfHex, type SuitTheatre } from './camoNetTexture.ts';
 import { VEHICLE_ERAS, isContemporaryVehicleEra } from './taxonomy.ts';
 import {
   buildBranchBundle, buildCargoVariant, buildCupola, buildExhaust, buildHatch, buildLog, buildNetDrape, buildNetRoll,
   buildPackCluster, buildSearchlight, buildSight, buildTarpRoll, buildTools, buildTravelLock, drum200, duffel, jerrycan,
-  canRack, canRackStyleFor, sandbag, whipAntennaParts, type AccessoryPainter, type RGB,
+  canRack, canRackStyleFor, FABRIC_FAMILIES, sandbag, whipAntennaParts, type AccessoryPainter, type RGB,
 } from './accessoryKits.ts';
 import { FOLIAGE_ALPHA_TEST, vehicleFoliageAtlas, type VehicleFoliageKind } from './vehicleFoliage.ts';
-import { block, moldedBox, place, roundBar, withBoxUV } from './accessoryPrimitives.ts';
+import { drapeGhillieOverLoads } from './ghillieDrape.ts';
+import { block, latheY, moldedBox, place, roundBar, sweptTube, withBoxUV } from './accessoryPrimitives.ts';
 import {
   addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield, createPintleLayout,
   MG_AMMO_CAN_SLOT, MG_CARTRIDGE_SLOT,
@@ -115,15 +118,44 @@ interface DecorPartMeta {
 interface DecorPart {
   mat: DecorMaterialKey;
   geo: THREE.BufferGeometry;
-  /** 'pad': the contact pad under a secured load; slots that carry the piece on a built rack drop it. */
-  role?: 'pad';
+  /**
+   * 'pad': the contact pad under a secured load; slots that carry the piece on a built rack drop it.
+   * 'lash' (round 5, 2026-10-08): a tie-down holding the load to its deck or rack (webbing, deck rings, buckle).
+   * 'cinch': a bag's own strap that a lashing replaces at its station. A load seated on a deck or a rack keeps its
+   * lashings and drops the cinches they replace; anywhere else (a side ledge, a stack, a basket) it keeps the cinches
+   * and drops the lashings (tieKept), so exactly one of each pair is drawn.
+   */
+  role?: 'pad' | 'lash' | 'cinch';
+  /** A cinch strap's station (an index into its list's lashAt) until lashLoad claims it (round 5). */
+  station?: number;
+  /** A lashing's deck ring (round 5): commit keeps a lashing only where both its rings have support under them. */
+  anchor?: boolean;
+  /**
+   * Which end of its lashing a deck ring anchors (0 the near flank, 1 the far), and whether it is the inner ring of
+   * that end (round 5): every end carries a ring just outside the load's foot and one just inside it, under the load's
+   * edge; commit draws the outer ring where the deck reaches it and the inner one where the load's foot is the deck's
+   * edge (a case on a narrow bustle plate, a roof's rim), so the lashing keeps its hold either way.
+   */
+  end?: 0 | 1;
+  inner?: boolean;
+  /** The lashing a part belongs to, or the lashing that replaces a cinch strap (round 5; per piece). */
+  tie?: number;
+  /** A smoke bank's mounting bracket (round 5): turretCheekPair rebuilds it as a wedge flush with the cheek. */
+  bracket?: boolean;
+  /** A smoke tube's (or its cap's) pivot on the bracket face (round 5): a side mount cants the tubes about it. */
+  pivot?: readonly [number, number, number];
 }
+
+/** Where a bag's cinch strap crosses it (round 5): a point on the bag's axis and the strap's crossing direction. */
+interface LashStation { x: number; z: number; cx: number; cz: number }
 
 interface DecorPartList extends Array<DecorPart> {
   meta?: DecorPartMeta;
   metaCx?: number;
   /** The same piece at the coarse level (built from an identically seeded stream; seated with this list's matrix). */
   coarse?: DecorPartList;
+  /** The cinch stations of the piece's soft goods (round 5), indexed by DecorPart.station. */
+  lashAt?: LashStation[];
 }
 
 interface DecorKitArgs {
@@ -153,6 +185,11 @@ interface DecorKitArgs {
   links?: number;
   _W?: number;
   set?: string[];
+  /**
+   * The fabric family of a soft load (round 5, 2026-10-08): the n-th soft load a tank dresses takes the n-th family of
+   * the tank's rotation (fabricFamilyRgb), so its kit alternates light and dark goods instead of one olive.
+   */
+  fabric?: number;
 }
 
 type DecorKitBuilder = (args: DecorKitArgs) => DecorPartList;
@@ -239,6 +276,8 @@ interface DecorSlotArgs {
   low?: boolean;
   onBasket?: boolean;
   routes?: Array<[string, DecorSlotArgs]>;
+  /** turretRoofPair: the bank's yaw off the bow, mirrored per side (radians) */
+  yaw?: number;
 }
 
 interface DecorManifestRow {
@@ -334,6 +373,11 @@ interface CommitOptions {
   seatY?: number | null;
   zExtra?: number;
   attachment?: DecorAttachmentIntent;
+  /**
+   * Round 5: the load rides a deck ('deck': its foot is laid on the support under it, settleFoot) or a built rack
+   * ('rack'); either keeps its lashings (tieKept). A load on a side ledge, a stack or in a basket keeps its straps.
+   */
+  secure?: 'deck' | 'rack';
 }
 
 interface DecorAttachmentIntent {
@@ -470,13 +514,9 @@ const triCount = (geo: THREE.BufferGeometry) => ((geo.index ? geo.index.count : 
 
 // Per-piece baked shade: tone jitter + a soft downward-face AO so merged
 // families don't read as one flat injection-molded color (the same trick
-// tankFactory.bakeDirt plays on the camo shells). 2026-10-06 (round 2: the
-// critics found every piece factory-clean): a field-wear ramp in the piece's
-// seat frame (origin on the support, +Y up) — road dust settled on the faces
-// that look up, warm and pale, and mud caked over the lowest 10 cm where the
-// piece meets the hull, dark and brown.
-const DECOR_DUST_GAIN: readonly [number, number, number] = [0.42, 0.3, 0.06];
-const DECOR_MUD_LOSS: readonly [number, number, number] = [0.32, 0.38, 0.46];
+// tankFactory.bakeDirt plays on the camo shells, minus the dust ramp).
+// 2026-10-08: round 2's baked dust-and-mud ramp left with the field wear (blind waves 240 and 264 scored the wear flat
+// up close: "a gravity-blind overlay ... flat tan tints"); the wear redesign owns dirt.
 function bakeShade(geo: THREE.BufferGeometry, tone = 1, ao = 0.3): THREE.BufferGeometry {
   const pos = geo.attributes.position;
   if (!geo.attributes.normal) geo.computeVertexNormals();
@@ -485,9 +525,7 @@ function bakeShade(geo: THREE.BufferGeometry, tone = 1, ao = 0.3): THREE.BufferG
   for (let i = 0; i < pos.count; i++) {
     const nyv = nor.getY(i);
     const a = (1 - Math.max(0, -nyv) * ao) * (1 - Math.max(0, nyv) * ao * 0.25);
-    const dust = Math.pow(Math.max(0, nyv), 1.5) * 0.34;
-    const mud = Math.pow(THREE.MathUtils.clamp(1 - pos.getY(i) / 0.1, 0, 1), 1.5) * 0.42;
-    for (let k = 0; k < 3; k++) col[i * 3 + k] = tone * a * (1 + dust * DECOR_DUST_GAIN[k]) * (1 - mud * DECOR_MUD_LOSS[k]);
+    col[i * 3] = tone * a; col[i * 3 + 1] = tone * a; col[i * 3 + 2] = tone * a;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   return geo;
@@ -504,16 +542,30 @@ function bakeTint(geo: THREE.BufferGeometry, r: number, g: number, b: number, ao
   return geo;
 }
 
-// shift/rotate every part of a kit in its local frame (builder helper)
+// shift/rotate every part of a kit in its local frame (builder helper); a whole-list move carries its cinch stations
 function xformParts(parts: DecorPartList, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0, from = 0): DecorPartList {
   for (let i = from; i < parts.length; i++) xform(parts[i].geo, x, y, z, rx, ry, rz);
+  if (from === 0 && parts.lashAt) {
+    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz));
+    const p = new THREE.Vector3(), d = new THREE.Vector3();
+    for (const st of parts.lashAt) {
+      p.set(st.x, 0, st.z).applyQuaternion(q);
+      d.set(st.cx, 0, st.cz).applyQuaternion(q).setY(0).normalize();
+      st.x = p.x + x; st.z = p.z + z; st.cx = d.x; st.cz = d.z;
+    }
+  }
   return parts;
 }
 
+/**
+ * The piece's own box. Round 5: a load's lashings lie on the support beside it and are not part of its envelope (its
+ * seat, guards, ledger, packing and racks read the load itself); commit checks their deck rings have support.
+ */
 function partsBBox(parts: DecorPartList): THREE.Box3 {
   const bb = new THREE.Box3();
   const t = new THREE.Box3();
   for (const p of parts) {
+    if (p.role === 'lash') continue;
     p.geo.computeBoundingBox();
     if (p.geo.boundingBox) t.copy(p.geo.boundingBox);
     bb.union(t);
@@ -607,8 +659,16 @@ function simplifyTiePath<T extends { a: number; y: number; na: number; ny: numbe
  */
 function tieBand(path0: ReadonlyArray<{ a: number; y: number; na: number; ny: number }>, axis: 'x' | 'z', lateral: number,
   width: number): THREE.BufferGeometry {
+  return ribbonBand(path0, (a, y, l) => (axis === 'z' ? [lateral + l, y, a] : [a, y, lateral + l]), width);
+}
+
+/**
+ * tieBand along any vertical crossing plane (round 5): `P(a, y, l)` maps a path point (`a` along the crossing, height
+ * `y`) and an offset `l` across the band to the piece frame; it must be affine.
+ */
+function ribbonBand(path0: ReadonlyArray<{ a: number; y: number; na: number; ny: number }>,
+  P: (a: number, y: number, l: number) => [number, number, number], width: number): THREE.BufferGeometry {
   const path = simplifyTiePath(path0);
-  const P = (a: number, y: number, l: number): [number, number, number] => (axis === 'z' ? [lateral + l, y, a] : [a, y, lateral + l]);
   const rings: Array<[[number, number, number], [number, number, number]]> = path.map((p, i) => {
     // the band's own normal at a corner: the mean of its neighbours' outward normals
     const prev = path[Math.max(0, i - 1)], next = path[Math.min(path.length - 1, i + 1)];
@@ -652,7 +712,7 @@ const SECURED_HARD_KITS: ReadonlySet<string> = new Set(['jerry', 'rations']);
 const SECURED_PAD_KITS: ReadonlySet<string> = new Set(['cargo', 'jerry', 'rations', 'bin', 'packs', 'tarp', 'camonet']);
 const SOFT_CARGO: ReadonlySet<string> = new Set(['long-duffel', 'large-rucksack', 'bedroll-pair', 'folded-tarp-pack',
   'camo-net-bag', 'crew-backpack', 'helmet-bundle', 'folding-chair', 'cable-reel']);
-function secureLoadParts(parts: DecorPartList, kit: string, variant: string, detail: 0 | 1, webbingRgb: RGB): void {
+function secureLoadParts(parts: DecorPartList, kit: string, variant: string, detail: 0 | 1, tie: RGB): void {
   if (!SECURED_PAD_KITS.has(kit)) return;
   // round 4: a draped net lies on the deck itself (conformDrape); a dark pad would show through its mesh
   if (parts.meta?.drape) return;
@@ -664,14 +724,20 @@ function secureLoadParts(parts: DecorPartList, kit: string, variant: string, det
   // and its sides sat inside the footprint where nothing sees them)
   parts.push({ mat: 'cans', role: 'pad', geo: bakeTint(padQuad(w * 0.86, d * 0.86, cx, 0.0015, cz), 0.03, 0.03, 0.026, 0) });
   const hard = SECURED_HARD_KITS.has(kit) || (kit === 'cargo' && !SOFT_CARGO.has(variant));
-  if (!detail || !hard) return;
+  // round 5: the coarse level (28 m on, where the chase and flank cameras sit) carries the ties too, without buckles
+  if (!hard) return;
   const alongX = w >= d; // the tie crosses the short axis
   // Round 3: a pair or a wide case gets two ties, one over each half; a single tie down the middle of a can pair ran
   // along the gap between the cans, and the critics read the pair as "upright and unstrapped".
   const count = Math.max(w, d) > 0.38 ? 2 : 1;
   const band = 0.038, thick = 0.006;
-  const strap = (geo: THREE.BufferGeometry) => parts.push({ mat: 'cans', geo: bakeTint(geo, webbingRgb[0], webbingRgb[1], webbingRgb[2], 0.25) });
-  const ring = (geo: THREE.BufferGeometry) => parts.push({ mat: 'steel', geo: bakeShade(geo, 0.5) });
+  // round 5: the ties are lashings (tieKept drops them where the load rides a ledge or a stack), in a webbing that
+  // stands off the load's own value (`tie`, tieRgbFor: a dark case takes coyote straps, a pale crate near-black ones)
+  // each tie is one lashing (tie id 1000 + k); its deck rings are anchors commit checks for support
+  let tieId = 1000;
+  const strap = (geo: THREE.BufferGeometry) => parts.push({ mat: 'cans', role: 'lash', tie: tieId, geo: bakeTint(geo, tie[0], tie[1], tie[2], 0.25) });
+  const ring = (geo: THREE.BufferGeometry, anchor = true, end?: 0 | 1, inner = false) => parts.push({ mat: 'steel',
+    role: 'lash', tie: tieId, anchor, ...(end !== undefined ? { end } : {}), ...(inner ? { inner } : {}), geo: bakeShade(geo, 0.5) });
   // Round 4 (2026-10-07, wave 216 on the PT-91: "the straps are flat dark bars that neither wrap nor compress their
   // loads"): each tie follows the load's own surfaces (tiePath: down onto its lid, in onto both faces), round its
   // edges and over whatever stands on its top, from a deck ring to a deck ring, with a cam buckle on its near face.
@@ -680,6 +746,7 @@ function secureLoadParts(parts: DecorPartList, kit: string, variant: string, det
   const meshes = parts.filter((p) => p.role !== 'pad').map((p) => new THREE.Mesh(p.geo, solid));
   for (const mesh of meshes) mesh.updateMatrixWorld(true);
   for (let k = 0; k < count; k++) {
+    tieId = 1000 + k;
     const t = count === 1 ? 0 : (k ? 0.27 : -0.27);
     // the tie takes the flattest lane near its station: beside a bottle or a handle rather than up over it, so no
     // span stands off the load
@@ -697,13 +764,19 @@ function secureLoadParts(parts: DecorPartList, kit: string, variant: string, det
       strap(withBoxUV(tieBand(path, alongX ? 'z' : 'x', lateral, band)));
       const along = (a: number, y: number, wx: number, wy: number, wz: number) => (alongX
         ? place(block(wx, wy, wz), lateral, y, a) : place(block(wz, wy, wx), a, y, lateral));
-      ring(along(path[0].a - 0.006, 0.006, 0.046, 0.012, 0.03));
-      ring(along(path[path.length - 1].a + 0.006, 0.006, 0.046, 0.012, 0.03));
+      // round 5: the deck rings are low steel ridges (deckRing: six triangles where a block took twelve)
+      const deck = (a: number) => (alongX ? place(deckRing(band + 0.014, 0.03, 0.014), lateral, 0, a)
+        : place(deckRing(band + 0.014, 0.03, 0.014), a, 0, lateral, 0, Math.PI / 2, 0));
+      // each end's ring just outside the foot, and its alternative just inside the face, under the load's edge
+      ring(deck(path[0].a - 0.006), true, 0);
+      ring(deck(path[1].a + 0.012), true, 0, true);
+      ring(deck(path[path.length - 1].a + 0.006), true, 1);
+      ring(deck(path[path.length - 2].a - 0.012), true, 1, true);
       // the cam buckle on the near face, a hand's width up (round 4 follow-up: on the first tie only; the budget)
-      if (k === 0) {
+      if (k === 0 && detail) {
         const b0 = path[1], b1 = path[2];
         const by = b0.y + (b1.y - b0.y) * 0.45, ba = b0.a + (b1.a - b0.a) * 0.45 - 0.008;
-        ring(along(ba, by, band + 0.012, 0.03, 0.012));
+        ring(along(ba, by, band + 0.012, 0.03, 0.012), false);
       }
       continue;
     }
@@ -721,6 +794,285 @@ function secureLoadParts(parts: DecorPartList, kit: string, variant: string, det
         strap(place(block(thick, h, band), cx + sx * (w / 2 + thick / 2 + 0.001), h / 2, z));
         ring(place(block(0.028, 0.012, 0.046), cx + sx * (w / 2 + 0.018), 0.006, z));
       }
+    }
+  }
+}
+
+/**
+ * Tie-down webbing that stands off its load (round 5, 2026-10-08; the critics: ties "neither wrap nor compress their
+ * loads", "olive bags ... with no straps" where the dark olive webbing vanished into the olive bag): a load whose own
+ * surfaces are pale (canvas tan, coyote, weathered crate wood) takes near-black webbing, every darker load coyote
+ * webbing. Vertex tints for the painted-hardware ('cans') draw over its map's ground (#cbc9c1): coyote about sRGB
+ * (124, 110, 82), near-black about (41, 43, 36).
+ */
+const TIE_LIGHT: RGB = [0.335, 0.265, 0.16];
+const TIE_DARK: RGB = [0.037, 0.041, 0.032];
+/** A load whose mean surface luminance (linear albedo) passes this is pale and takes the dark webbing. */
+const LIGHT_LOAD_Y = 0.085;
+function tieRgbFor(parts: DecorPartList, canvas: THREE.Color): RGB {
+  let sum = 0, n = 0;
+  for (const p of parts) {
+    if (p.role || p.station !== undefined) continue;
+    // each family's ground: its map's mean colour times the material colour (linear)
+    const g = p.mat === 'canvas' ? [canvas.r * 0.43, canvas.g * 0.4, canvas.b * 0.33]
+      : p.mat === 'cans' ? [0.597, 0.584, 0.533] : p.mat === 'wood' ? [0.113, 0.092, 0.066] : null;
+    const col = g ? p.geo.getAttribute('color') : null;
+    if (!g || !col) continue;
+    for (let i = 0; i < col.count; i += 3) {
+      sum += 0.2126 * col.getX(i) * g[0] + 0.7152 * col.getY(i) * g[1] + 0.0722 * col.getZ(i) * g[2];
+      n++;
+    }
+  }
+  return (n ? sum / n : 0) > LIGHT_LOAD_Y ? TIE_DARK : TIE_LIGHT;
+}
+
+/**
+ * The path of a lashing over a load (round 5): hullTiePath along any horizontal crossing direction (dx, dz) through
+ * (ox, oz), scanning `half` either side. Seventeen rays down onto the load (a small bedroll's curve between samples
+ * stays within 2 mm of the chord) and five heights in from each side; the upper convex hull of the hits from a deck
+ * ring 15 mm beyond one flank to one beyond the other, so the webbing bridges the hollow between two bags.
+ */
+function lashPath(meshes: THREE.Mesh[], ox: number, oz: number, dx: number, dz: number, half: number, top: number):
+  Array<{ a: number; y: number; na: number; ny: number }> | null {
+  const ray = new THREE.Raycaster();
+  const at = (a: number, y: number): THREE.Vector3 => new THREE.Vector3(ox + dx * a, y, oz + dz * a);
+  const cast = (origin: THREE.Vector3, dir: THREE.Vector3): THREE.Intersection | null => {
+    ray.set(origin, dir);
+    ray.far = 3;
+    return ray.intersectObjects(meshes, false)[0] ?? null;
+  };
+  const along = (p: THREE.Vector3): number => (p.x - ox) * dx + (p.z - oz) * dz;
+  const pts: Array<[number, number]> = [];
+  for (let k = 0; k <= 16; k++) {
+    const hit = cast(at(-half + (2 * half * k) / 16, top + 0.3), new THREE.Vector3(0, -1, 0));
+    if (hit) pts.push([along(hit.point), hit.point.y]);
+  }
+  for (let k = 0; k < 5; k++) {
+    const y = 0.015 + ((top - 0.03) * k) / 4;
+    for (const sign of [-1, 1]) {
+      const hit = cast(at(sign < 0 ? -half - 0.3 : half + 0.3, y), new THREE.Vector3(-sign * dx, 0, -sign * dz));
+      if (hit) pts.push([along(hit.point), y]);
+    }
+  }
+  if (pts.length < 6) return null;
+  let a0 = Infinity, a1 = -Infinity;
+  for (const [a] of pts) { a0 = Math.min(a0, a); a1 = Math.max(a1, a); }
+  pts.push([a0 - 0.015, 0.003], [a1 + 0.015, 0.003]);
+  pts.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+  const hull: Array<[number, number]> = [];
+  const cross = (o: [number, number], a: [number, number], b: [number, number]): number =>
+    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  for (const p of pts) {
+    while (hull.length >= 2 && cross(hull[hull.length - 2], hull[hull.length - 1], p) >= 0) hull.pop();
+    hull.push(p);
+  }
+  if (hull.length < 3) return null;
+  // a corner within 2.5 mm of the chord between its kept neighbours adds a span and no shape (the triangle budget)
+  const kept: Array<[number, number]> = [hull[0]];
+  for (let i = 1; i < hull.length - 1; i++) {
+    const p = kept[kept.length - 1], q = hull[i], r = hull[i + 1];
+    const ex = r[0] - p[0], ey = r[1] - p[1], l = Math.hypot(ex, ey) || 1;
+    if (Math.abs((q[0] - p[0]) * ey - (q[1] - p[1]) * ex) / l < 0.0025) continue;
+    kept.push(q);
+  }
+  kept.push(hull[hull.length - 1]);
+  const edgeN = (i: number): [number, number] => {
+    const [ax, ay] = kept[i], [bx, by] = kept[i + 1];
+    const ex = bx - ax, ey = by - ay, l = Math.hypot(ex, ey) || 1;
+    return [-ey / l, ex / l];
+  };
+  return kept.map(([a, y], i) => {
+    const n0 = i > 0 ? edgeN(i - 1) : edgeN(0), n1 = i < kept.length - 1 ? edgeN(i) : edgeN(kept.length - 2);
+    const na = n0[0] + n1[0], ny = n0[1] + n1[1], l = Math.hypot(na, ny) || 1;
+    return { a, y, na: na / l, ny: ny / l };
+  });
+}
+
+/**
+ * A deck ring's anchor (round 5): a low steel ridge `w` across the webbing and `d` along it, `h` tall, its base on the
+ * deck (y = 0) and its ridge under the webbing; six triangles (the base never shows).
+ */
+function deckRing(w: number, d: number, h: number): THREE.BufferGeometry {
+  const hw = w / 2, hd = d / 2;
+  const a = [-hw, 0, -hd], b = [hw, 0, -hd], c = [hw, 0, hd], e = [-hw, 0, hd], r0 = [-hw, h, 0], r1 = [hw, h, 0];
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute([
+    ...a, ...r0, ...r1, ...a, ...r1, ...b,          // the near slope
+    ...e, ...c, ...r1, ...e, ...r1, ...r0,          // the far slope
+    ...a, ...e, ...r0, ...b, ...r1, ...c,           // the two ends
+  ], 3));
+  g.computeVertexNormals();
+  return withBoxUV(g);
+}
+
+/**
+ * Lash a soft load down (round 5, 2026-10-08; wave 255 on the M60A1: "three olive bedrolls and a round sack lie loose
+ * on the rear engine deck ... with no straps or tie-downs"; wave 253 on the SEPv3: "crates, sacks and rolls ... lie loose
+ * ... with no straps, lashing points, sag or contact shadow"; the coordinator: "straps that wrap the load and pull it
+ * in"). Where a bag's own strap pinches it (its cinch stations, recorded by the kit), a lashing takes the strap's place:
+ * webbing from a deck ring beyond one flank, over the pinched crown, to a ring beyond the other flank, 3.5 mm off the
+ * load (lashPath), with a cam buckle on the first flank at the near level. Stations on one crossing line (a pair of
+ * bedrolls, a pack cluster) share one lashing over all of them. The lashing's parts are 'lash' and the straps it
+ * replaces 'cinch'; a station whose section does not answer keeps its plain strap. The webbing and rings ride the
+ * hardware and steel draws the straps already use; no random draws.
+ */
+function lashLoad(parts: DecorPartList, detail: 0 | 1, tie: RGB): void {
+  const stations = parts.lashAt;
+  if (!stations?.length) return;
+  const solid = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+  const meshes = parts.filter((p) => p.role !== 'pad' && p.station === undefined).map((p) => new THREE.Mesh(p.geo, solid));
+  const bb = partsBBox(parts);
+  const claimed = new Set<number>(), claimedBy = new Map<number, number>();
+  const lashParts: DecorPart[] = [];
+  for (let i = 0; i < stations.length; i++) {
+    if (claimed.has(i)) continue;
+    const first = stations[i];
+    const group = [i];
+    for (let j = i + 1; j < stations.length; j++) {
+      if (claimed.has(j)) continue;
+      const b = stations[j];
+      if (Math.abs(first.cx * b.cx + first.cz * b.cz) < 0.955) continue;              // square to the line within 17 deg
+      if (Math.abs((b.x - first.x) * first.cz - (b.z - first.z) * first.cx) < 0.06) group.push(j);   // within 6 cm of it
+    }
+    let ox = 0, oz = 0;
+    for (const k of group) { ox += stations[k].x; oz += stations[k].z; }
+    ox /= group.length; oz /= group.length;
+    const dx = first.cx, dz = first.cz;
+    let half = 0;
+    for (const x of [bb.min.x, bb.max.x]) for (const z of [bb.min.z, bb.max.z]) {
+      half = Math.max(half, Math.abs((x - ox) * dx + (z - oz) * dz));
+    }
+    const path = lashPath(meshes, ox, oz, dx, dz, half + 0.05, bb.max.y);
+    if (!path) continue;
+    const tieId = i;
+    for (const k of group) { claimed.add(k); claimedBy.set(k, tieId); }
+    const from = lashParts.length;
+    // the band runs along the crossing; its width lies along the bag's axis
+    const map = (a: number, y: number, l: number): [number, number, number] => [ox + dx * a - dz * l, y, oz + dz * a + dx * l];
+    const band = 0.034;
+    lashParts.push({ mat: 'cans', role: 'lash', geo: bakeTint(withBoxUV(ribbonBand(path, map, band)), tie[0], tie[1], tie[2], 0.25) });
+    const yaw = Math.atan2(dx, dz);
+    for (const [end, dir, k] of [[path[0], -1, 0], [path[path.length - 1], 1, 1]] as const) {
+      // the deck ring: a low steel bar on its anchor plate, square to the webbing; its alternative under the load's edge
+      for (const inner of [false, true]) {
+        const [x, , z] = map(end.a + dir * (inner ? -0.022 : 0.004), 0, 0);
+        lashParts.push({ mat: 'steel', role: 'lash', anchor: true, end: k, ...(inner ? { inner } : {}),
+          geo: bakeShade(place(deckRing(band + 0.014, 0.03, 0.014), x, 0, z, 0, yaw, 0), 0.5) });
+      }
+    }
+    if (detail) {
+      // the cam buckle on the first flank, a hand's width up from the ring
+      const p0 = path[0], p1 = path[1];
+      const t = 0.45, ta = p1.a - p0.a, ty = p1.y - p0.y, tl = Math.hypot(ta, ty) || 1;
+      const pa = p0.a + ta * t, py = p0.y + ty * t;
+      const [x, y, z] = map(pa - (ty / tl) * 0.008, py + (ta / tl) * 0.008, 0);
+      const buckle = place(block(band + 0.012, 0.03, 0.012), 0, 0, 0, Math.atan2(ta / tl, ty / tl), 0, 0);
+      lashParts.push({ mat: 'steel', role: 'lash', geo: bakeShade(place(buckle, x, y, z, 0, yaw, 0), 0.5) });
+    }
+    for (let k = from; k < lashParts.length; k++) lashParts[k].tie = tieId;
+  }
+  for (const p of parts) {
+    if (p.station !== undefined && claimed.has(p.station)) { p.role = 'cinch'; p.tie = claimedBy.get(p.station); }
+    delete p.station;
+  }
+  parts.push(...lashParts);
+}
+
+/**
+ * One of each lashing and the strap it replaces is drawn (round 5): a load the slot seats on a deck or rack keeps its
+ * lashings ('lash') and drops the cinch straps they replace; anywhere else it keeps the cinches and drops the lashings;
+ * a lashing whose deck ring finds no support gives way to the strap it would replace. Commit counts the kept parts and
+ * prunes the others only once the piece is placed (a slot may try one list at several seats).
+ */
+interface TieRings {
+  /** Lashings with an end whose rings both lack support: the strap they replace is drawn instead. */
+  readonly unsupported: ReadonlySet<number>;
+  /** `${tie}:${end}` for each lashing end anchored by its inner ring (the outer one had no deck under it). */
+  readonly inner: ReadonlySet<string>;
+}
+const NO_TIE_RINGS: TieRings = { unsupported: new Set(), inner: new Set() };
+
+function tieKept(part: DecorPart, lashed: boolean, rings: TieRings): boolean {
+  if (part.role !== 'lash' && part.role !== 'cinch') return true;
+  const keepLash = lashed && !(part.tie !== undefined && rings.unsupported.has(part.tie));
+  if (part.role !== (keepLash ? 'lash' : 'cinch')) return false;
+  // one deck ring per lashing end: the outer one, or the inner one where the outer has no deck under it
+  if (part.anchor && part.end !== undefined) return rings.inner.has(`${part.tie}:${part.end}`) === !!part.inner;
+  return true;
+}
+
+function pruneTies(list: DecorPartList | undefined, lashed: boolean, rings: TieRings,
+  release: (geometry: THREE.BufferGeometry) => void): void {
+  if (!list) return;
+  // released through the attach's owner: a slot may commit a list a guard already turned away (seatLoad's keep-out
+  // step), whose geometries the owner has released once
+  for (let i = list.length - 1; i >= 0; i--) {
+    if (!tieKept(list[i], lashed, rings)) { release(list[i].geo); list.splice(i, 1); }
+  }
+}
+
+/** How high above its foot a load's base follows the support under it (m; round 5). */
+const FOOT_BAND_M = 0.06;
+/** How far a foot vertex may move onto the support under it (m; round 5): the soft seat's spread. */
+const FOOT_REACH_M = 0.05;
+/** A lashing's deck ring needs the support within this of its foot (m; round 5): a ring is never seated in air. */
+const RING_REACH_M = 0.02;
+
+/**
+ * Lay a load's foot on the support it really has (round 5, 2026-10-08; the coordinator: "sag where the load rests"; the
+ * contact receipt: contact pads tilted through a crowned turret roof). The support's height above or below the piece's
+ * foot plane is probed straight down on a 5 x 5 grid over its footprint; then every vertex of its contact pad, of its
+ * lashings near the deck and, for a soft load, of its own body within FOOT_BAND_M of the foot moves vertically by that
+ * height (bilinear between the probes, clamped to FOOT_REACH_M), fully at the foot and fading to nothing at the band's
+ * top: a bag settles into the hollows and rides the crowns, a pad and a deck ring lie on the deck itself. A grid node
+ * with nothing under it moves nothing. `lists` share one grid (the near and coarse levels move alike).
+ */
+function settleFoot(lists: DecorPartList[], prober: SurfaceProber, pos: THREE.Vector3, rot: THREE.Euler, soft: boolean): void {
+  // the grid spans the load and its lashings' deck runs (partsBBox leaves the lashings out)
+  const bb = partsBBox(lists[0]);
+  for (const p of lists[0]) {
+    if (p.role !== 'lash') continue;
+    p.geo.computeBoundingBox();
+    if (p.geo.boundingBox) bb.union(p.geo.boundingBox);
+  }
+  if (bb.isEmpty()) return;
+  const m = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1));
+  const inv = m.clone().invert();
+  const N = 5, delta: number[] = [];
+  const v = new THREE.Vector3();
+  const gx = (i: number): number => bb.min.x + ((bb.max.x - bb.min.x) * i) / (N - 1);
+  const gz = (k: number): number => bb.min.z + ((bb.max.z - bb.min.z) * k) / (N - 1);
+  for (let k = 0; k < N; k++) for (let i = 0; i < N; i++) {
+    v.set(gx(i), 0, gz(k)).applyMatrix4(m);
+    const hit = prober.top(v.x, v.z, v.y + 0.12);
+    delta.push(hit ? THREE.MathUtils.clamp(hit.p.y - v.y, -FOOT_REACH_M, FOOT_REACH_M) : 0);
+  }
+  const at = (x: number, z: number): number => {
+    const fx = THREE.MathUtils.clamp(((x - bb.min.x) / Math.max(bb.max.x - bb.min.x, 1e-6)) * (N - 1), 0, N - 1);
+    const fz = THREE.MathUtils.clamp(((z - bb.min.z) / Math.max(bb.max.z - bb.min.z, 1e-6)) * (N - 1), 0, N - 1);
+    const i = Math.min(N - 2, Math.floor(fx)), k = Math.min(N - 2, Math.floor(fz)), u = fx - i, w = fz - k;
+    const d = (ii: number, kk: number): number => delta[kk * N + ii];
+    return (d(i, k) * (1 - u) + d(i + 1, k) * u) * (1 - w) + (d(i, k + 1) * (1 - u) + d(i + 1, k + 1) * u) * w;
+  };
+  for (const list of lists) {
+    for (const part of list) {
+      const pad = part.role === 'pad';
+      if (!pad && part.role !== 'lash' && !soft) continue;
+      const attr = part.geo.getAttribute('position');
+      let moved = false;
+      for (let i = 0; i < attr.count; i++) {
+        const ly = attr.getY(i);
+        if (ly > FOOT_BAND_M) continue;
+        const weight = pad ? 1 : 1 - THREE.MathUtils.smoothstep(Math.max(0, ly), 0.004, FOOT_BAND_M);
+        const shift = at(attr.getX(i), attr.getZ(i)) * weight;
+        if (Math.abs(shift) < 1e-5) continue;
+        v.set(attr.getX(i), ly, attr.getZ(i)).applyMatrix4(m);
+        v.y += shift;
+        v.applyMatrix4(inv);
+        attr.setXYZ(i, v.x, v.y, v.z);
+        moved = true;
+      }
+      if (moved) { attr.needsUpdate = true; part.geo.computeBoundingBox(); }
     }
   }
 }
@@ -876,59 +1228,19 @@ function fieldHardwareTex() {
   });
 }
 
-// camouflage netting: open diagonal mesh with garnish rags; alpha = holes
-function netTex() {
-  // 2026-10-06 (round 2: the critics read the old regular diagonal lattice as "diamond wallpaper"): a knotted net on an
-  // uneven lattice (every row and column at its own pitch, every knot shifted), strands sagging between knots and a few
-  // broken, and frayed garnish rags of irregular outline tied in. The lattice repeats exactly across the tile.
-  return canvasTex('decor-net', 128, (g, S) => {
-    g.clearRect(0, 0, S, S);
-    const rng = mulberry32(0x4e7a);
-    const N = 11, cell = S / N;
-    const pitch = (salt: number) => { const p: number[] = []; for (let i = 0; i < N; i++) p.push(0.7 + mulberry32(salt + i)() * 0.6); return p; };
-    const px = pitch(0x51), py = pitch(0x93);
-    const sx = px.reduce((a, b) => a + b, 0), sy = py.reduce((a, b) => a + b, 0);
-    const colAt: number[] = [], rowAt: number[] = [];
-    for (let i = 0, ax = 0, ay = 0; i < N; i++) { colAt.push(ax / sx * S); rowAt.push(ay / sy * S); ax += px[i]; ay += py[i]; }
-    const jitter: Array<[number, number]> = [];
-    for (let i = 0; i < N * N; i++) jitter.push([(rng() - 0.5) * cell * 0.6, (rng() - 0.5) * cell * 0.6]);
-    const knot = (i: number, j: number): [number, number] => {
-      const wi = ((i % N) + N) % N, wj = ((j % N) + N) % N;
-      const [jx, jy] = jitter[wi * N + wj];
-      return [colAt[wi] + jx + Math.floor(i / N) * S, rowAt[wj] + jy + Math.floor(j / N) * S];
-    };
-    const tiled = (draw: (ox: number, oy: number) => void) => { for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) draw(ox, oy); };
-    g.strokeStyle = 'rgba(58,62,40,0.95)';
-    g.fillStyle = 'rgba(58,62,40,0.95)';
-    g.lineCap = 'round';
-    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
-      const a = knot(i, j);
-      for (const [di, dj] of [[1, 0], [0, 1]]) {
-        if (rng() < 0.08) continue;
-        const b = knot(i + di, j + dj), sag = 1 + rng() * 3, w = 1.3 + rng() * 0.9;
-        tiled((ox, oy) => {
-          g.lineWidth = w; g.beginPath(); g.moveTo(a[0] + ox, a[1] + oy);
-          g.quadraticCurveTo((a[0] + b[0]) / 2 + ox, (a[1] + b[1]) / 2 + sag + oy, b[0] + ox, b[1] + oy); g.stroke();
-        });
-      }
-      tiled((ox, oy) => { g.beginPath(); g.arc(a[0] + ox, a[1] + oy, 1.4 + rng() * 0.8, 0, Math.PI * 2); g.fill(); });
-    }
-    for (let i = 0; i < 120; i++) { // frayed garnish rags of irregular outline
-      const x = rng() * S, y = rng() * S, r = 3 + rng() * 5, sides = 5 + Math.floor(rng() * 3), rot = rng() * Math.PI;
-      g.fillStyle = rng() < 0.45 ? 'rgba(72,82,46,0.92)' : (rng() < 0.5 ? 'rgba(96,92,54,0.92)' : 'rgba(52,58,38,0.92)');
-      const pts: Array<[number, number]> = [];
-      for (let k = 0; k < sides; k++) {
-        const ang = rot + (k / sides) * Math.PI * 2, rr = r * (0.45 + rng() * 0.7) * (k % 2 ? 0.6 : 1);
-        pts.push([Math.cos(ang) * rr * 1.5, Math.sin(ang) * rr * 0.7]);
-      }
-      tiled((ox, oy) => {
-        g.beginPath();
-        pts.forEach(([u, v], k) => (k ? g.lineTo(x + u + ox, y + v + oy) : g.moveTo(x + u + ox, y + v + oy)));
-        g.closePath(); g.fill();
-      });
-    }
-  });
+/**
+ * The theatre a vehicle's decor nets are issued for, from the scheme it wears (round 5, 2026-10-08; wave 255 on the
+ * M60A1: a green leaf-print net roll on a sand hull; the coordinator: derive net colours from the scheme and theatre).
+ */
+function decorNetTheatre(spec: FleetTankSpec): SuitTheatre {
+  try {
+    return theatreOfHex(resolveCamoVisual(spec as unknown as MaterialTankSpec).base);
+  } catch {
+    return 'woodland';
+  }
 }
+/** The decor nets' own garnish seed (camoNetTexture.ts caches one texture per theatre and seed). */
+const DECOR_NET_SEED = 77;
 
 // welded wire grid (bustle baskets / mesh cages): straight open cross-hatch
 function gridTex() {
@@ -1020,6 +1332,12 @@ interface DecorMaterials {
  */
 const DECOR_GLASS = 0x171b17;
 
+/**
+ * Issue paints of 200 L drums (round 5, 2026-10-08): olive drab, dark green, field grey and sand, linear multipliers on
+ * the painted-hardware draw (muted again by accessoryPainter.paint); never the vehicle's scheme.
+ */
+const DRUM_PAINTS: readonly RGB[] = [[0.27, 0.31, 0.18], [0.18, 0.23, 0.15], [0.23, 0.24, 0.22], [0.44, 0.39, 0.27]];
+
 // 2026-10-06 (round 2): water cans in slate-olive and extinguishers in a dirty issue red, not toy blue and red.
 // 2026-10-07 (round 3): the extinguisher red is now only the bottle's band, an oxide red that no longer reads as a toy.
 const BASE_EQUIPMENT_PALETTE = Object.freeze({
@@ -1031,9 +1349,12 @@ const BASE_EQUIPMENT_PALETTE = Object.freeze({
   accent: [0.34, 0.34, 0.25],
   fuelA: [0.48, 0.40, 0.23],
   fuelB: [0.35, 0.38, 0.22],
-  waterA: [0.203, 0.275, 0.292],
-  waterB: [0.172, 0.235, 0.250],
-  extinguisher: [0.30, 0.12, 0.085],
+  // round 5 (2026-10-08; wave 257, the coordinator: "military kit only, in service colours (olive, tan, sand, field
+  // grey)"; the critics: water cans "pale blue-grey and spotless", "blue-grey rather than service tan or olive"): water
+  // cans in a deeper green than the fuel cans, and the extinguisher's band a dark field grey, never red
+  waterA: [0.215, 0.27, 0.17],
+  waterB: [0.185, 0.235, 0.15],
+  extinguisher: [0.16, 0.165, 0.15],
   toolCan: [0.34, 0.39, 0.23],
   ammoCase: [0.28, 0.34, 0.20],
 } satisfies FleetEquipmentPalette);
@@ -1045,7 +1366,7 @@ const EQUIPMENT_PALETTE_OVERRIDES: Record<
   american: {
     canvas: 0x777158, burlap: 0x8d7854, steel: 0x3b3d3d, net: 0x687052,
     accent: [0.38, 0.35, 0.22], fuelA: [0.50, 0.40, 0.21], fuelB: [0.38, 0.36, 0.18],
-    extinguisher: [0.31, 0.115, 0.08], ammoCase: [0.30, 0.35, 0.18],
+    ammoCase: [0.30, 0.35, 0.18],
   },
   british: {
     canvas: 0x696a50, burlap: 0x817052, steel: 0x343938, net: 0x59634a,
@@ -1055,22 +1376,22 @@ const EQUIPMENT_PALETTE_OVERRIDES: Record<
   'east-asian': {
     canvas: 0x5d674f, burlap: 0x786b4d, steel: 0x303634, net: 0x536047,
     accent: [0.25, 0.34, 0.22], fuelA: [0.29, 0.36, 0.20], fuelB: [0.22, 0.30, 0.18],
-    waterA: [0.179, 0.249, 0.248], waterB: [0.150, 0.211, 0.218],
+    waterA: [0.19, 0.26, 0.17], waterB: [0.16, 0.22, 0.145],
   },
   french: {
     canvas: 0x746b55, burlap: 0x88765b, steel: 0x363a3d, net: 0x616951,
     accent: [0.31, 0.33, 0.27], fuelA: [0.41, 0.38, 0.25], fuelB: [0.31, 0.34, 0.24],
-    waterA: [0.192, 0.256, 0.268], waterB: [0.167, 0.226, 0.238],
+    waterA: [0.22, 0.25, 0.18], waterB: [0.19, 0.215, 0.155],
   },
   german: {
     canvas: 0x62665a, burlap: 0x7a705d, steel: 0x35393b, net: 0x59624f,
     accent: [0.28, 0.31, 0.27], fuelA: [0.34, 0.35, 0.25], fuelB: [0.26, 0.31, 0.23],
-    extinguisher: [0.29, 0.11, 0.08], toolCan: [0.30, 0.34, 0.25],
+    toolCan: [0.30, 0.34, 0.25],
   },
   israeli: {
     canvas: 0x80765f, burlap: 0x918064, steel: 0x3a3b38, net: 0x6d7058,
     accent: [0.38, 0.36, 0.28], fuelA: [0.44, 0.40, 0.27], fuelB: [0.36, 0.36, 0.25],
-    waterA: [0.199, 0.264, 0.261], waterB: [0.170, 0.226, 0.227],
+    waterA: [0.3, 0.28, 0.2], waterB: [0.26, 0.245, 0.18],
   },
   italian: {
     canvas: 0x6b6b4d, burlap: 0x857454, steel: 0x353936, net: 0x5c6449,
@@ -1080,7 +1401,7 @@ const EQUIPMENT_PALETTE_OVERRIDES: Record<
   nordic: {
     canvas: 0x59645f, burlap: 0x716f5d, steel: 0x303638, net: 0x4f5f55,
     accent: [0.24, 0.31, 0.29], fuelA: [0.30, 0.35, 0.28], fuelB: [0.24, 0.31, 0.25],
-    waterA: [0.186, 0.253, 0.262], waterB: [0.161, 0.223, 0.232],
+    waterA: [0.19, 0.24, 0.19], waterB: [0.165, 0.21, 0.165],
   },
   polish: {
     canvas: 0x626751, burlap: 0x7c7154, steel: 0x333837, net: 0x566149,
@@ -1090,14 +1411,14 @@ const EQUIPMENT_PALETTE_OVERRIDES: Record<
   soviet: {
     canvas: 0x596047, burlap: 0x75694c, steel: 0x303532, net: 0x505b42,
     accent: [0.24, 0.32, 0.18], fuelA: [0.28, 0.35, 0.18], fuelB: [0.22, 0.29, 0.16],
-    waterA: [0.167, 0.237, 0.231], waterB: [0.141, 0.199, 0.198],
-    extinguisher: [0.28, 0.115, 0.08], toolCan: [0.25, 0.34, 0.17], ammoCase: [0.24, 0.32, 0.17],
+    waterA: [0.18, 0.24, 0.14], waterB: [0.155, 0.205, 0.12],
+    toolCan: [0.25, 0.34, 0.17], ammoCase: [0.24, 0.32, 0.17],
   },
   ukrainian: {
     canvas: 0x636b50, burlap: 0x7e7251, steel: 0x343836, net: 0x58654a,
     accent: [0.29, 0.35, 0.20], fuelA: [0.39, 0.38, 0.19], fuelB: [0.27, 0.34, 0.17],
-    waterA: [0.188, 0.263, 0.285], waterB: [0.161, 0.225, 0.248],
-    extinguisher: [0.29, 0.12, 0.085], toolCan: [0.27, 0.35, 0.18],
+    waterA: [0.2, 0.26, 0.15], waterB: [0.17, 0.225, 0.13],
+    toolCan: [0.27, 0.35, 0.18],
   },
   neutral: {},
 });
@@ -1192,9 +1513,11 @@ function buildDecorMaterials(
       roughnessMap: canPaint ? getSharedRoughnessTexture(spec) : undefined,
       vertexColors: true, envMapIntensity: 0.2,
     }),
+    // round 5 (2026-10-08): the rolled and draped nets wear the suits' garnished net in the vehicle's theatre
+    // (camoNetTexture.ts; sand on a desert hull), its painted tones carrying the colour
     net: () => painted({
-      map: netTex(), color: equipmentPalette.net, roughness: 0.95, metalness: 0.0,
-      alphaTest: 0.35, side: THREE.DoubleSide, vertexColors: true, envMapIntensity: 0.1,
+      map: garnishedNetTextures(decorNetTheatre(spec), DECOR_NET_SEED)?.map ?? undefined, color: 0xffffff,
+      roughness: 0.95, metalness: 0.0, alphaTest: 0.5, side: THREE.DoubleSide, vertexColors: true, envMapIntensity: 0.1,
     }),
     mesh: () => painted({ // wire-grid panels (baskets, cages)
       map: gridTex(), color: equipmentPalette.mesh, roughness: 0.7, metalness: 0.35,
@@ -1214,13 +1537,6 @@ function buildDecorMaterials(
       vertexColors: true, envMapIntensity: 0.1,
     }),
   };
-  // 2026-10-07 round 4 field wear (materials.ts VEHICLE_FIELD_WEAR_GARAGE; wave 240: "every item is spotless flat
-  // colour (drums, jerrycans, box, bag ...) with no dirt, rust, fuel stains or edge wear"): the kit wears the vehicle's
-  // dust, mud, soot and stains, the hard kit, steel and cans as painted bodywork (1), cloth, burlap, wood and rubber as
-  // soft goods (4). Nets, wire mesh, lenses and leaves stay as they are.
-  const fieldWear: Partial<Record<DecorMaterialKey, number>> = {
-    kit: 1, steel: 1, cans: 1, canvas: 4, burlap: 4, wood: 4, rubber: 4,
-  };
   return {
     get(key: DecorMaterialKey) {
       if (!made[key]) {
@@ -1229,9 +1545,14 @@ function buildDecorMaterials(
         const material = new THREE.MeshStandardMaterial(def);
         made[key] = material;
         setup(material);
-        const wear = fieldWear[key];
-        if (wear) material.defines = { ...material.defines, COT_FIELD_WEAR: wear };
         material.name = `Decor_${key}`;
+        // round 5: the nets swap to the new theatre's when a garage pattern switch repaints the vehicle in place
+        if (key === 'net' && canPaint) {
+          followVehicleScheme(spec.id, material, (vis) => {
+            const next = garnishedNetTextures(theatreOfHex(vis.base), DECOR_NET_SEED);
+            if (next) material.map = next.map;
+          });
+        }
       }
       return made[key]!;
     },
@@ -1271,11 +1592,16 @@ function mutedEquipmentTint(rgb: RGB, nation: string, palette: FleetEquipmentPal
   ];
 }
 
-function accessoryPainter(parts: DecorPartList, rng: Rng, detail: 0 | 1, nation = ''): AccessoryPainter {
+function accessoryPainter(parts: DecorPartList, rng: Rng, detail: 0 | 1, nation = '', fabric?: number): AccessoryPainter {
   const palette = equipmentPaletteForNation(nation);
+  const webbingTint = (tone: number): RGB => {
+    const c = new THREE.Color(palette.canvas);
+    return [c.r * 0.5 * 0.8 * tone, c.g * 0.56 * 0.78 * tone, c.b * 0.44 * 0.7 * tone];
+  };
   return {
     detail,
     rng,
+    fabric,
     paint(geo, rgb, ao = 0.26) {
       const [r, g, b] = mutedEquipmentTint(rgb, nation, palette);
       parts.push({ mat: 'cans', geo: bakeTint(geo, r, g, b, ao) });
@@ -1289,8 +1615,15 @@ function accessoryPainter(parts: DecorPartList, rng: Rng, detail: 0 | 1, nation 
     // the nation's issue canvas through the webbing tint (0.5, 0.56, 0.44), times the weave map's ground over the
     // lighter hardware map's (#b9b2a4 over #cbc9c1, linear), so the strap reads as it did in the canvas family.
     strap(geo, tone = 0.6) {
-      const c = new THREE.Color(palette.canvas);
-      parts.push({ mat: 'cans', geo: bakeTint(geo, c.r * 0.5 * 0.8 * tone, c.g * 0.56 * 0.78 * tone, c.b * 0.44 * 0.7 * tone, 0.3) });
+      const [r, g, b] = webbingTint(tone);
+      parts.push({ mat: 'cans', geo: bakeTint(geo, r, g, b, 0.3) });
+    },
+    // round 5: a bag's cinch strap at a station a lashing may take over (lashLoad); `at` and `across` in the piece frame
+    cinch(geo, at, across, tone = 0.6) {
+      const [r, g, b] = webbingTint(tone);
+      const stations = parts.lashAt ?? (parts.lashAt = []);
+      const station = stations.push({ x: at[0], z: at[1], cx: across[0], cz: across[1] }) - 1;
+      parts.push({ mat: 'cans', station, geo: bakeTint(geo, r, g, b, 0.3) });
     },
     // Burlap shares the canvas draw (same weave map, near-identical finish): a warmer tint of the issue fabric.
     burlap(geo, tone = 0.9) { parts.push({ mat: 'canvas', geo: bakeTint(boxUV(geo, 2.8), 1.42 * tone, 1.16 * tone, 0.94 * tone, 0.3) }); },
@@ -1306,7 +1639,8 @@ function accessoryPainter(parts: DecorPartList, rng: Rng, detail: 0 | 1, nation 
     rubber(geo, tone = 0.6) { parts.push({ mat: 'rubber', geo: bakeShade(geo, tone) }); },
     kit(geo, tone = 0.92) { parts.push({ mat: 'kit', geo: bakeShade(geo, tone) }); },
     lens(geo) { parts.push({ mat: 'lens', geo: bakeShade(geo, 0.9) }); },
-    net(geo, tone = 1) { parts.push({ mat: 'net', geo: bakeShade(boxUV(geo, 1.8), tone, 0.12) }); },
+    // a rolled or folded net shows its garnish gathered: the net's tile at a little under half its laid-out size
+    net(geo, tone = 1) { parts.push({ mat: 'net', geo: bakeShade(boxUV(geo, 2.2 / NET_TILE_M), tone, 0.12) }); },
     leaves(geo) { parts.push({ mat: 'foliage', geo }); },
   };
 }
@@ -1455,7 +1789,9 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
     const tone = 0.9 + rng() * 0.1;
     const rows = n > 6 ? 2 : 1;
     const per = Math.ceil(n / rows);
-    parts.push({ mat: 'kit', geo: bakeShade(xform(box(per * 0.082 + 0.06, 0.10, 0.06), 0, 0.05, -0.01), tone) }); // wedge bracket
+    const bracket = bakeShade(xform(box(per * 0.082 + 0.06, 0.10, 0.06), 0, 0.05, -0.01), tone);
+    bracket.userData.tone = tone;
+    parts.push({ mat: 'kit', bracket: true, geo: bracket }); // wedge bracket (turretCheekPair lays its back on the cheek)
     for (let i = 0; i < n; i++) {
       const row = (i / per) | 0;
       const k = i % per;
@@ -1468,9 +1804,9 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
       const cap = xform(cylZ(0.0335, 0.014, tubeSeg), 0, 0, 0.185);
       xform(g, 0, 0, 0, -34 * D2R, cant, 0);        // elevated + fanned
       xform(cap, 0, 0, 0, -34 * D2R, cant, 0);
-      parts.push({ mat: 'kit', geo: bakeShade(xform(g, x, y, 0.02), tone * (0.94 + rng() * 0.1)) });
+      parts.push({ mat: 'kit', pivot: [x, y, 0.02], geo: bakeShade(xform(g, x, y, 0.02), tone * (0.94 + rng() * 0.1)) });
       // the dark muzzle cap shares the bank's kit draw (one resident draw per bank family)
-      parts.push({ mat: 'kit', geo: bakeShade(xform(cap, x, y, 0.02), 0.32) });
+      parts.push({ mat: 'kit', pivot: [x, y, 0.02], geo: bakeShade(xform(cap, x, y, 0.02), 0.32) });
     }
     return parts;
   },
@@ -1478,26 +1814,34 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   // -- stowage boxes: wood crate / steel bin / long fender box ------------------
   // Molded / pressed stock (accessoryPrimitives.moldedBox): filleted vertical
   // edges and bevelled rims, so the boxes catch a highlight on every edge.
-  bin({ rng, v = 'steel', w = 0.55, h = 0.28, d = 0.4, detail = 1 }) {
+  bin({ rng, v = 'steel', w = 0.55, h = 0.28, d = 0.4, detail = 1, nation = '' }) {
     const parts: DecorPartList = [];
     const tone = 0.9 + rng() * 0.2;
     const seg = detail ? 2 : 1;
+    // Round 5 (2026-10-08; wave 262, both critics: "stowage that takes on the hull's camo pattern disappears into it.
+    // Canvas and kit should be their own materials and colours"): a loose steel bin is issue kit in its own service paint
+    // (the nation's tool-can olive, the long box its ammunition-case olive or sand) on the painted-hardware draw, not the
+    // scheme's kit paint
+    const palette = equipmentPaletteForNation(nation);
+    const service = mutedEquipmentTint(v === 'long' ? palette.ammoCase : palette.toolCan, nation, palette);
+    const paint = (geo: THREE.BufferGeometry, k: number) => parts.push({ mat: 'cans',
+      geo: bakeTint(geo, service[0] * k, service[1] * k, service[2] * k, 0.3) });
     if (v === 'crate') {
       parts.push({ mat: 'wood', geo: bakeShade(boxUV(place(moldedBox(w, h, d, 0.008, 1, 0.006), 0, h / 2, 0), 2.2), tone) });
       for (const sy of [0.14, 0.9]) { // batten frames
         parts.push({ mat: 'wood', geo: bakeShade(boxUV(place(moldedBox(w + 0.022, 0.035, d + 0.022, 0.006, 1, 0.005), 0, h * sy, 0), 2.2), 0.68) });
       }
     } else if (v === 'long') { // fender-length box with proud lid
-      parts.push({ mat: 'kit', geo: bakeShade(place(moldedBox(w, h * 0.86, d, 0.018, seg, 0.01), 0, h * 0.43, 0), tone * 0.94) });
-      parts.push({ mat: 'kit', geo: bakeShade(place(moldedBox(w * 1.012, h * 0.16, d * 1.03, 0.022, seg, 0.012), 0, h * 0.92, 0), 1.04) });
+      paint(place(moldedBox(w, h * 0.86, d, 0.018, seg, 0.01), 0, h * 0.43, 0), tone * 0.94);
+      paint(place(moldedBox(w * 1.012, h * 0.16, d * 1.03, 0.022, seg, 0.012), 0, h * 0.92, 0), 1.08);
       if (detail) {
         for (const fx of [-w * 0.32, w * 0.32]) { // hasp straps over the lid lip
           parts.push({ mat: 'steel', geo: bakeShade(place(moldedBox(0.03, h * 0.42, 0.01, 0.003, 0, 0.002), fx, h * 0.74, d / 2 + 0.006), 0.6) });
         }
       }
     } else { // pressed steel bin, crowned lid + clasp
-      parts.push({ mat: 'kit', geo: bakeShade(place(moldedBox(w, h * 0.8, d, 0.03, seg, 0.012), 0, h * 0.4, 0), 0.95 + (tone - 1) * 0.4) });
-      parts.push({ mat: 'kit', geo: bakeShade(place(moldedBox(w * 1.01, h * 0.22, d * 1.02, 0.045, seg, h * 0.08), 0, h * 0.89, 0), 1.03) });
+      paint(place(moldedBox(w, h * 0.8, d, 0.03, seg, 0.012), 0, h * 0.4, 0), 0.95 + (tone - 1) * 0.4);
+      paint(place(moldedBox(w * 1.01, h * 0.22, d * 1.02, 0.045, seg, h * 0.08), 0, h * 0.89, 0), 1.08);
       if (detail) {
         parts.push({ mat: 'steel', geo: bakeShade(place(moldedBox(0.05, 0.05, 0.016, 0.006, 1, 0.003), 0, h * 0.8, d / 2 + 0.01), 0.6) });
         for (const fx of [-w * 0.34, w * 0.34]) {
@@ -1509,11 +1853,11 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   },
 
   // -- rolled tarp / canvas roll (accessoryKits.buildTarpRoll) -------------------
-  tarp({ rng, v = 'fat', len = 0.9, detail = 1 }) {
+  tarp({ rng, v = 'fat', len = 0.9, detail = 1, fabric }) {
     const parts: DecorPartList = [];
     const tone = 0.85 + rng() * 0.25;
     // round 4 (2026-10-07): the roll's strap stations and pinch come from a seed off its tone draw (no new draw)
-    buildTarpRoll(accessoryPainter(parts, rng, detail), len, v === 'fat' ? 0.125 : 0.085, tone * 0.9, 71 + Math.floor(tone * 7919));
+    buildTarpRoll(accessoryPainter(parts, rng, detail, '', fabric), len, v === 'fat' ? 0.125 : 0.085, tone * 0.9, 71 + Math.floor(tone * 7919));
     return parts;
   },
 
@@ -1543,9 +1887,9 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   },
 
   // -- soft stowage: rucksack / bedroll / duffel cluster (accessoryKits) --------
-  packs({ rng, n = 3, detail = 1 }) {
+  packs({ rng, n = 3, detail = 1, fabric }) {
     const parts: DecorPartList = [];
-    const span = buildPackCluster(accessoryPainter(parts, rng, detail), n);
+    const span = buildPackCluster(accessoryPainter(parts, rng, detail, '', fabric), n);
     xformParts(parts, -span / 2, 0, 0);
     return parts;
   },
@@ -1554,16 +1898,17 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   // Molded cases, sewn bags, pressed cans and crates from accessoryKits.ts: lids,
   // handles, straps and latches stay separate members instead of becoming one
   // grey cuboid after merging. Every geometry still originates at its seat.
-  cargo({ rng, v = 'beer-cooler-blue', scale = 1, nation = '', flat, detail = 1 }) {
+  cargo({ rng, v = 'beer-cooler-blue', scale = 1, nation = '', flat, detail = 1, fabric }) {
     const variant = (FLEET_EQUIPMENT_VARIANTS as readonly string[]).includes(v)
       ? v as FleetEquipmentVariant : 'beer-cooler-blue';
     const parts: DecorPartList = [];
     // round 4 follow-up: the can pairs ride their nation's rack (canRackStyleFor)
-    buildCargoVariant(variant, accessoryPainter(parts, rng, detail, nation), equipmentPaletteForNation(nation), flat,
+    buildCargoVariant(variant, accessoryPainter(parts, rng, detail, nation, fabric), equipmentPaletteForNation(nation), flat,
       canRackStyleFor(nation));
     const safeScale = THREE.MathUtils.clamp(Number(scale) || 1, 0.72, 1);
     if (safeScale !== 1) {
       for (const part of parts) part.geo.scale(safeScale, safeScale, safeScale);
+      for (const st of parts.lashAt ?? []) { st.x *= safeScale; st.z *= safeScale; }
     }
     parts.meta = {
       w: 0.78 * safeScale,
@@ -1650,14 +1995,70 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
         Math.sin(t * Math.PI) * sag + Math.sin(t * 11 + seed) * 0.012,
       ));
     }
-    parts.push({ mat: 'steel', geo: bakeShade(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 20, R, 5, false), 0.46) });
-    for (const s of [-1, 1]) { // swaged eye loops + ferrules
-      parts.push({ mat: 'steel', geo: bakeShade(xform(torus(0.07, 0.024, 10, 5), s * (len / 2 + 0.07), R + 0.01, 0), 0.52) });
-      parts.push({ mat: 'steel', geo: bakeShade(xform(cylX(0.04, 0.11, 7), s * (len / 2 - 0.02), R + 0.012, 0), 0.55) });
+    // Round 5 (2026-10-08; wave 257 on the Merkava 4: "the cable ... is a uniform black line with a loop rather than wire
+    // rope"): six-sided rope whose radius swells on alternate sides and turns a sixth round each span, so three strands
+    // wind along its lay (the round-4 tube's 20 spans, one more side)
+    const curve = new THREE.CatmullRomCurve3(pts);
+    const strand = (tube: THREE.TubeGeometry, path: THREE.Curve<THREE.Vector3>, spans: number): THREE.TubeGeometry => {
+      const rp = tube.getAttribute('position');
+      const c = new THREE.Vector3(), v = new THREE.Vector3();
+      for (let i = 0; i <= spans; i++) {
+        path.getPointAt(i / spans, c);
+        for (let j = 0; j <= 6; j++) {
+          const k = i * 7 + j;
+          v.fromBufferAttribute(rp, k).sub(c).multiplyScalar(1 + 0.15 * Math.cos(Math.PI * j + 1.05 * i)).add(c);
+          rp.setXYZ(k, v.x, v.y, v.z);
+        }
+      }
+      tube.computeVertexNormals();
+      return tube;
+    };
+    const rope = bakeShade(strand(new THREE.TubeGeometry(curve, 20, R, 6, false), curve, 20), 0.5);
+    // the part order is the cable's contract (griffinViper reads it): the rope, each end's eye and ferrule, three clamps
+    parts.push({ mat: 'steel', geo: rope });
+    for (const s of [-1, 1]) {
+      // round 5 (wave 255 on the T-90M's cable: "the tow-cable eye reads as a rubbery ring, not braided steel"): each end
+      // a spliced eye lying on the deck, the rope itself turned back in a teardrop to a pressed ferrule over the throat
+      // the ferrule stands on the support at the rope's end height (no part dips under the clamp plane, y = 0); the
+      // eye's legs leave it pressed together and the loop sags to rest on the support at its far end
+      const end = curve.getPointAt(s < 0 ? 0 : 1), L = R * 6.5, W = R * 2.4;
+      const yf = Math.max(end.y, R * 1.6 + 0.003), yRest = R * 0.9 + 0.003;
+      const at = (u: number, w: number): THREE.Vector3 => new THREE.Vector3(end.x + s * u, yf + (yRest - yf) * Math.min(1, u / (L * 0.6)), end.z + w);
+      const loop = new THREE.CatmullRomCurve3([at(R * 0.4, R * 0.6), at(L * 0.42, W * 0.92), at(L * 0.84, W * 0.78), at(L, 0),
+        at(L * 0.84, -W * 0.78), at(L * 0.42, -W * 0.92), at(R * 0.4, -R * 0.6)], false, 'centripetal');
+      parts.push({ mat: 'steel', geo: bakeShade(strand(new THREE.TubeGeometry(loop, 8, R * 0.9, 6, false), loop, 8), 0.52) });
+      parts.push({ mat: 'steel', geo: bakeShade(xform(cylX(R * 1.6, R * 3.4, 7), end.x + s * R * 0.9, yf, end.z), 0.55) });
     }
-    for (const s of [-0.3, 0, 0.31]) { // hull clamp blocks
-      parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.06, 0.06, 0.055), s * len, 0.03, 0), 0.72) });
+    const straps: THREE.BufferGeometry[] = [];
+    // hull clamps: round 5 (2026-10-08; the contact receipt: the rope ran through solid clamp blocks) a saddle under the
+    // rope and a steel strap over it, each where the rope really lies
+    for (const s of [-0.3, 0, 0.31]) {
+      const at = curve.getPointAt(THREE.MathUtils.clamp(s + 0.5, 0, 1));
+      const base = at.y - R * 1.15 - 0.004, Rs = R * 1.15 + 0.006;   // the strand swell reaches 1.15 R
+      parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.06, base, 2 * Rs + 0.016), at.x, base / 2, at.z), 0.72) });
+      // the strap: down to the saddle on both sides, over the rope between (outward winding)
+      const path: Array<[number, number]> = [[at.z - Rs, base], [at.z - Rs, at.y]];
+      for (const a of [Math.PI * 0.75, Math.PI * 0.5, Math.PI * 0.25]) path.push([at.z + Math.cos(a) * Rs, at.y + Math.sin(a) * Rs]);
+      path.push([at.z + Rs, at.y], [at.z + Rs, base]);
+      const ring: number[] = [], x0 = at.x - 0.016, x1 = at.x + 0.016;
+      for (let k = 0; k < path.length - 1; k++) {
+        const [z0, y0] = path[k], [z1, y1] = path[k + 1];
+        ring.push(x0, y0, z0, x0, y1, z1, x1, y1, z1, x0, y0, z0, x1, y1, z1, x1, y0, z0);
+      }
+      const strap = new THREE.BufferGeometry();
+      strap.setAttribute('position', new THREE.Float32BufferAttribute(ring, 3));
+      strap.computeVertexNormals();
+      straps.push(bakeShade(withBoxUV(strap), 0.55));
     }
+    // the clamps' straps ride the rope's own part (one steel draw either way)
+    const flat = rope.index ? rope.toNonIndexed() : rope;
+    const merged = mergeGeometries([flat, ...straps], false);
+    if (merged) {
+      parts[0].geo = merged;
+      if (flat !== rope) flat.dispose();
+      rope.dispose();
+      for (const g of straps) g.dispose();
+    } else for (const g of straps) parts.push({ mat: 'steel', geo: g });
     return parts;
   },
 
@@ -1728,6 +2129,7 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   },
 
   // -- external fuel drums --------------------------------------------------------
+  // (round 5: DRUM_PAINTS, the issue colours a drum comes in)
   // twin: two longitudinal 200 L drums as one piece, brackets down (deck-seat).
   // single: one TRANSVERSE drum (axis X), rear-plate cantilever mount. The drum
   // body is a lathe with rolled chimes and rolling hoops (accessoryKits.drum200).
@@ -1737,7 +2139,9 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
     const R = 0.28, L = 0.85;
     const drum = (cx: number, transverse: boolean) => {
       const tone = 0.86 + rng() * 0.18;
-      drum200(painter, cx, transverse, tone);
+      // round 5 (wave 255: "identical smooth tubes. Give them rims and ribs, rust at the straps, spill streaks and some
+      // variation"): each drum its own issue colour from its tone draw (no new draw), rust and spill baked by drum200
+      drum200(painter, cx, transverse, tone, DRUM_PAINTS[Math.floor(tone * 997) % DRUM_PAINTS.length], Math.floor(tone * 7919));
       // cradle brackets + straps
       for (const b of [-L * 0.3, L * 0.3]) {
         const strap = transverse
@@ -1781,7 +2185,8 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
     // tie-downs (secureLoadParts) wrap the cans themselves. Round 4 follow-up (wave 240: "the same generic ... jerrycan
     // rack on several nations"): the rack is the nation's own (accessoryKits canRack: a welded Soviet frame, a NATO
     // holder with a latch bar, Israeli end plates and retaining bars, a Chinese frame with clamp bars).
-    canRack(painter, canRackStyleFor(nation), pairedCount * pitch + 0.05, 0.39, 0.44, pairedCount);
+    canRack(painter, canRackStyleFor(nation), pairedCount * pitch + 0.05, 0.39, 0.44, pairedCount,
+      ((pairedCount - 1) / 2) * pitch + 0.0825, 0.1725);
     return parts;
   },
 
@@ -1921,9 +2326,16 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   // -- bucket hung on a rear hook ---------------------------------------------------------
   bucket({ rng }) {
     const parts: DecorPartList = [];
-    parts.push({ mat: 'steel', geo: bakeShade(lathe([[0.075, 0], [0.09, 0.02], [0.115, 0.20], [0.105, 0.21], [0.088, 0.205]], 11), 0.62 + rng() * 0.1) });
-    parts.push({ mat: 'steel', geo: bakeShade(xform(torusV(0.1, 0.007, 10, 4, Math.PI), 0, 0.21, 0), 0.5) }); // bail up
-    parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.02, 0.06, 0.014), 0, 0.30, 0.02), 0.5) });          // hook tab
+    // Round 5 (2026-10-08; wave 254 on the Challenger 1: "the black bucket at the far-left rear corner hangs in space
+    // with no visible hook or bracket"): a pressed pail with a rolled rim and two swaged ribs, its bail a round 8 mm
+    // rod from two ears on the rim up to the hook it hangs on (hullRearHang builds the bracket and hook)
+    const tone = 0.62 + rng() * 0.1;
+    parts.push({ mat: 'steel', geo: bakeShade(latheY([[0.075, 0], [0.09, 0.02], [0.1, 0.09], [0.105, 0.097], [0.108, 0.15],
+      [0.113, 0.157], [0.115, 0.2], [0.123, 0.207], [0.117, 0.214], [0.107, 0.208], [0.094, 0.03], [0.0005, 0.03]], 10)
+      .rotateY(Math.PI / 2), tone) });                                  // a lathe station under each ear (the ears sit on the wall)
+    for (const s of [-1, 1]) parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.016, 0.03, 0.014), s * 0.118, 0.19, 0), 0.5) }); // bail ears
+    parts.push({ mat: 'steel', geo: bakeShade(sweptTube([[-0.124, 0.19, 0], [-0.1, 0.27, 0], [-0.045, 0.32, 0], [0, 0.33, 0],
+      [0.045, 0.32, 0], [0.1, 0.27, 0], [0.124, 0.19, 0]], 0.0045, 5, 12), 0.5) });                         // bail up
     return parts;
   },
 
@@ -2200,6 +2612,21 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.2 }, slot: ['turretSide', { side: -1 }] },
   ],
   // --- Cold war ---
+  // Round 5 (2026-10-08; wave 254: "the rear kit is a few tiny, clean, rigid lumps", the bucket "hangs in space"; wave 262
+  // on the desert line: "olive kit bags, upright green cans, a brown box and a grey bin ... unstrapped"): the Challenger 1
+  // carried the default draw (smoke, whip, IR light, side links, bow hooks, bucket, rations). It keeps those pieces and
+  // gains a fat canvas roll across the rear deck, laid ahead of the roof gear so the stern reads at play distance; the
+  // L37 on the commander's cupola is the profile's roof gun, so the decor adds none (as before).
+  challenger1: () => [
+    { kit: 'smoke', p: 1, v: { v: '4' }, slot: ['turretCheekPair', {}] },
+    { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.25 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'bucket', p: 1, v: {}, slot: ['hullRearHang', {}] },
+    { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
+    { kit: 'shackles', p: 1, v: { v: 'hook' }, slot: ['bowPair', {}] },
+    { kit: 'tracks', p: 1, v: { n: 4, linkW: 0.46 }, slot: ['turretSidePlate', { side: -1 }] },
+    { kit: 'light', p: 1, v: { v: 'ir_small' }, slot: ['turretRoof', { rear: false, side: 1 }] },
+  ],
   m60a1: () => [
     { kit: 'aamg', p: 1, v: { v: 'm2', shield: true }, slot: ['turretRoof', { rear: true, side: -1 }] },
     // The native M60 builder owns one compact open-lattice bustle envelope
@@ -2230,8 +2657,11 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   // vertical, while procedural-only Gallery builds correctly omit it.
   // Preserve the rest of the deterministic cold-war dressing, but keep the
   // recovery rope canonical so both surfaces render the same assembly.
+  // Round 5 (2026-10-08; wave 256 on the Strv 103A rear basket: "a tan box with two crossed olive poles and a black
+  // curved mark, is unidentifiable as any kit and reads as a cartoon face"): that was the casemate kit's stowed travel
+  // lock, seated in the tail rack. The 103A carries its gun's travel clamp on the beak (sweden.ts), so it takes none.
   strv103a: (spec, rng) => defaultManifest(spec, rng)
-    .map((row) => (row.kit === 'cable' ? { ...row, p: 0 } : row)),
+    .map((row) => (row.kit === 'cable' || row.kit === 'travelLock' ? { ...row, p: 0 } : row)),
   // --- Modern ---
   leo2a4: () => [
     // The family profile owns the complete hull-and-turret ghillie suit.
@@ -2573,6 +3003,15 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // seating changes drop it).
   if (spec.id === 'griffin_viper') {
     for (const row of base) if (row.kit === 'cable') { row.slot = ['hullSideCable', { side: 1 }]; row.p = 1; row.early = true; }
+  }
+  // 2026-10-08 (coordinator ruling, "a visual refactor must not change a gameplay count incidentally"): the Type 89
+  // Light Tiger's decor bank pair is curated on its roof front. Its cheek stations read their height off pivotTopY(),
+  // and the old compact roof RWS raised that probe to 1.12 m, so the third station met a roof box and the pair stood
+  // on the roof front (8 of its 20 launch sockets, the PR head's). The round-5 true-size open-yoke RWS reads 1.03 m,
+  // the station meets the turret side and overhangs the width guard, and the pair was lost (20 -> 12). The pair keeps
+  // its roof-front seat by name: on the roof plate itself, outboard of the roof box, the PR head's yaw.
+  if (spec.id === 'type89_light_tiger') {
+    for (const row of base) if (row.kit === 'smoke') row.slot = ['turretRoofPair', { x: 0.76, z: 0.36, yaw: 0.55 }];
   }
   // Round 4 (2026-10-07): no loadout carries a cable spool or a camp chair. Wave 215 on the M60A1 and Type 99A: "a
   // wooden cable spool ... with no bracket or lashing ... decor cargo rather than crew kit" (both critics: strapping it
@@ -3062,7 +3501,8 @@ function seatProbe(
  * steel draw. `plateZ` is the local z of the rear plate face; the piece occupies `bb` on its foot (y = 0).
  */
 function rearRackParts(bb: THREE.Box3, railZ: readonly [number, number], detail: 0 | 1,
-  struts: ReadonlyArray<{ b: number; z: number } | null>): DecorPart[] {
+  struts: ReadonlyArray<{ b: number; z: number; n?: THREE.Vector3 } | null>,
+  railN: ReadonlyArray<THREE.Vector3 | null> = [null, null]): DecorPart[] {
   // Round 4 (2026-10-07, wave 217 on the T-72B3M: "flat pure-black square bars with no brackets, bolts or shading, and
   // its only visible support is a thin strut ending in a loose plate below it"): the frame is angle stock in shaded
   // steel (RACK_STEEL_TONE, not near-black), each strut is round bar ending on a foot plate laid on the rear plate where
@@ -3094,10 +3534,10 @@ function rearRackParts(bb: THREE.Box3, railZ: readonly [number, number], detail:
     const strut = struts[i];
     if (strut) {
       steel(roundBar([x, -rail, z0 + 0.04], [x, -strut.b, strut.z - 0.012], 0.012, detail ? 8 : 5));  // diagonal under-strut
-      steel(footPlate(x, -strut.b, strut.z, 0.07, 0.09, detail));                    // foot plate bolted to the hull
-      steel(footPlate(x, -rail / 2, railZ[i], 0.07, 0.07, 0));                      // upper foot at the rail (under the load)
+      steel(footPlate(x, -strut.b, strut.z, 0.07, 0.09, detail, strut.n));           // foot plate bolted to the hull
+      steel(footPlate(x, -rail / 2, railZ[i], 0.07, 0.07, 0, railN[i]));            // upper foot at the rail (under the load)
     } else {
-      steel(footPlate(x, -0.06, railZ[i], 0.07, 0.14, detail));                      // welded bracket bolted to the plate
+      steel(footPlate(x, -0.06, railZ[i], 0.07, 0.14, detail, railN[i]));            // welded bracket bolted to the plate
     }
   }
   return parts;
@@ -3137,14 +3577,19 @@ function boltHead(x: number, y: number, faceZ: number, size = 0.016, rise = 0.00
   return withBoxUV(g);
 }
 
-/** A foot plate on a plate face at z = `faceZ` (the plate behind it, +z), with two bolt heads at the near level. */
-function footPlate(x: number, y: number, faceZ: number, w: number, h: number, detail: 0 | 1): THREE.BufferGeometry {
-  const plate = place(block(w, h, 0.01), x, y, faceZ - 0.005);
-  if (!detail) return plate;
-  const bolts = [-1, 1].map((s) => boltHead(x + s * w * 0.3, y, faceZ - 0.01));
-  const merged = mergeGeometries([plate, ...bolts], false) ?? plate;
+/**
+ * A foot plate on a plate face at z = `faceZ` (the plate behind it, +z), with two bolt heads at the near level. Round 5
+ * (2026-10-08; the contact receipt: a vertical foot plate cut into a sloped rear plate, or stood off a leaning turret
+ * wall): given the face's outward normal `n` (from the probe that found the face), the foot lies on the face itself.
+ */
+function footPlate(x: number, y: number, faceZ: number, w: number, h: number, detail: 0 | 1,
+  n?: THREE.Vector3 | null): THREE.BufferGeometry {
+  const plate = place(block(w, h, 0.01), 0, 0, -0.005);
+  const bolts = detail ? [-1, 1].map((s) => boltHead(s * w * 0.3, 0, -0.01)) : [];
+  const merged = bolts.length ? (mergeGeometries([plate, ...bolts], false) ?? plate) : plate;
   if (merged !== plate) { plate.dispose(); for (const b of bolts) b.dispose(); }
-  return merged;
+  if (n && n.lengthSq() > 1e-8) merged.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), n.clone().normalize()));
+  return merged.translate(x, y, faceZ);
 }
 
 /** How far a rear rack's diagonal struts reach down the plate below its rails (m). */
@@ -3153,6 +3598,10 @@ function rearRackBrace(bb: THREE.Box3): number {
 }
 /** A rear rack's lowest point below its load's foot: the strut's foot plate (round 4). */
 const REAR_RACK_FOOT = 0.045;
+/** A turret-side load's back clears the surface behind it by this (m; round 5, sideClearance)... */
+const SIDE_CLEAR_M = 0.008;
+/** ...and a ledge reaches at most this far past the probed wall to give it that (m). */
+const SIDE_PUSH_MAX_M = 0.32;
 
 /**
  * Turret-side carriage for a hung load (round 3, 2026-10-07), built in the piece's frame, where the turret wall lies
@@ -3160,28 +3609,40 @@ const REAR_RACK_FOOT = 0.045;
  * nothing under or around them, so they read as stuck on. Each load now sits on two welded L-arms that run from the
  * wall out under its far edge, held by a webbing strap from a wall cleat over its top to the arm tip.
  */
-function sideLedgeParts(bb: THREE.Box3, wallZ: number, detail: 0 | 1, webbingRgb: RGB, load: THREE.Mesh[] = []): DecorPart[] {
+function sideLedgeParts(bb: THREE.Box3, wallZ: number, detail: 0 | 1, webbingRgb: RGB, load: THREE.Mesh[] = [],
+  wallAt?: (x: number, y: number) => { p: THREE.Vector3; n: THREE.Vector3 } | null): DecorPart[] {
   const parts: DecorPart[] = [];
   // round 4 (wave 217: racks of "flat pure-black square bars with no brackets, bolts or shading"): angle-stock arms in
   // shaded steel, the wall plates bolted, and the strap laid over the load's own surfaces (tiePath) where they answer
   const steel = (geo: THREE.BufferGeometry) => parts.push({ mat: 'steel', geo: bakeShade(geo, RACK_STEEL_TONE) });
-  const reach = Math.max(0.06, bb.max.z + 0.02 - wallZ);
   const len = bb.max.x - bb.min.x;
   const arms = len > 0.5 ? [bb.min.x + len * 0.2, bb.max.x - len * 0.2] : [(bb.min.x + bb.max.x) / 2];
   const top = bb.max.y;
   for (const x of arms) {
-    steel(angleStock(reach, 'z', x, wallZ + reach / 2, 1, 0.03));                     // arm under the load
-    steel(place(block(0.03, 0.05, 0.008), x, 0.025, wallZ + reach - 0.004));          // upturned tip
-    steel(footPlate(x, -0.02, wallZ, 0.06, 0.08, detail));                            // wall foot plate, bolted
-    if (detail) steel(roundBar([x, -0.075, wallZ + 0.008], [x, -0.012, wallZ + reach * 0.7], 0.009, 6)); // gusset strut
+    // round 5: the wall foot lies on the wall where the slot finds it behind the arm (a leaning or curved turret side
+    // tilts and moves it, a bin or a cloth cover stands it out), not on a plane at wallZ, below the arm's flange (the
+    // load rests against the wall above it); the arm runs from that foot out under the load
+    const wall = wallAt?.(x, -0.045) ?? null;
+    const z0 = wall ? wall.p.z : wallZ;
+    const reach = Math.max(0.06, bb.max.z + 0.02 - z0);
+    steel(angleStock(reach, 'z', x, z0 + reach / 2, 1, 0.03));                        // arm under the load
+    steel(place(block(0.03, 0.05, 0.008), x, 0.025, z0 + reach - 0.004));             // upturned tip
+    steel(footPlate(x, -0.045, z0, 0.06, 0.08, detail, wall?.n ?? null));             // wall foot plate, bolted
+    if (detail) steel(roundBar([x, -0.075, z0 + 0.008], [x, -0.012, z0 + reach * 0.7], 0.009, 6)); // gusset strut
     const band = (geo: THREE.BufferGeometry) => parts.push({ mat: 'cans', geo: bakeTint(geo, webbingRgb[0], webbingRgb[1], webbingRgb[2], 0.25) });
-    const path = load.length ? tiePath(load, 'z', x, Math.max(wallZ, bb.min.z), bb.max.z, top) : null;
-    if (path) band(withBoxUV(tieBand(path, 'z', x, 0.035)));
-    else {
-      band(place(block(0.035, 0.006, reach), x, top + 0.003, wallZ + reach / 2));       // over the top
-      band(place(block(0.035, top, 0.006), x, top / 2, wallZ + reach + 0.003));          // down the outer face
+    const path = load.length ? tiePath(load, 'z', x, Math.max(z0, bb.min.z), bb.max.z, top) : null;
+    // the wall cleat on the wall at the strap's height; the strap runs from it to the load's back edge and over
+    const cleatY = (path ? path[2].y : top) + 0.012;
+    const cleatWall = wallAt?.(x, cleatY) ?? null;
+    const cleatZ = (cleatWall ? cleatWall.p.z : z0) + 0.01;
+    if (path) {
+      if (path[2].a - cleatZ > 0.03) path.splice(0, 2, { a: cleatZ + 0.008, y: cleatY, na: 0, ny: 1 });
+      band(withBoxUV(tieBand(path, 'z', x, 0.035)));
+    } else {
+      band(place(block(0.035, 0.006, bb.max.z - cleatZ), x, top + 0.003, (cleatZ + bb.max.z) / 2));   // over the top
+      band(place(block(0.035, top, 0.006), x, top / 2, bb.max.z + 0.003));                           // down the outer face
     }
-    steel(place(block(0.05, 0.03, 0.02), x, (path ? path[2].y : top) + 0.012, wallZ + 0.01)); // wall cleat
+    steel(place(block(0.05, 0.03, 0.02), x, cleatY, cleatZ));                           // wall cleat
   }
   return parts;
 }
@@ -3292,6 +3753,25 @@ const KEEP_OUT_FITTINGS: Readonly<Record<string, { foot: number; clear: number; 
   americanRws: { foot: 0.22, clear: 0.05, maxR: 0.3 },
   openYokeRws: { foot: 0.22, clear: 0.05, maxR: 0.3 },
 };
+/**
+ * Whether the vehicle already carries a crew or remote roof gun of its own (2026-10-08, the machine-gun helper's sweep:
+ * "bmp3_rok: the decor aamg stands right over the authored MAG, two guns stacked"; the coordinator's rule after main's
+ * field upgrades: one owner per mount point). The decor kit's generic roof AA gun ('aamg') is for vehicles that have
+ * none; an authored pintle gun, roof RWS or remote station owns the roof gun.
+ */
+const ROOF_GUN_FITTINGS: ReadonlySet<string> = new Set(['pintleMG', 'americanM2', 'americanRws', 'openYokeRws', 'weaponStationMount']);
+function carriesRoofGun(...groups: THREE.Object3D[]): boolean {
+  let found = false;
+  for (const group of groups) {
+    group.traverse((o) => {
+      if (found || (o.name || '').startsWith('rig_decor')) return;
+      const fitting = o.userData?.fitting;
+      if ((o.userData?.fittingRoot && typeof fitting === 'string' && ROOF_GUN_FITTINGS.has(fitting))
+        || (o.userData?.remoteControlled && o.userData?.auxiliaryPivot)) found = true;
+    });
+  }
+  return found;
+}
 /** Structural hatches and cupolas (P.addHatch / P.addCupola buckets) and their disc's share of the patch's half-diagonal. */
 const KEEP_OUT_STRUCTURE_RE = /(?:Hatch|Cupola)$/;
 const KEEP_OUT_STRUCTURE_SHARE = 0.8;
@@ -3362,6 +3842,124 @@ function collectKeepOut(group: THREE.Group): DecorKeepOut[] {
   return out;
 }
 
+/** How far a piece stays off a field-upgrade volume (m), and how close to a side's outermost lattice a screen bar is. */
+const FIELD_EQUIPMENT_CLEAR = 0.01;
+const FIELD_SCREEN_FACE_BAND = 0.04;
+
+/** The bounds of each connected piece of `mesh` (vertices welded on a 0.1 mm grid), in the frame `toFrame` maps into. */
+function connectedPieceBoxes(mesh: THREE.Mesh, toFrame: THREE.Matrix4): THREE.Box3[] {
+  const pos = mesh.geometry.getAttribute('position'), index = mesh.geometry.getIndex();
+  const n = pos.count, parent = new Int32Array(n);
+  for (let i = 0; i < n; i++) parent[i] = i;
+  const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  const local: THREE.Vector3[] = [];
+  const welded = new Map<string, number>();
+  for (let i = 0; i < n; i++) {
+    const p = new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(toFrame);
+    local.push(p);
+    const key = `${Math.round(p.x * 1e4)},${Math.round(p.y * 1e4)},${Math.round(p.z * 1e4)}`;
+    const at = welded.get(key);
+    if (at === undefined) welded.set(key, i); else parent[find(i)] = find(at);
+  }
+  const corners = index ? index.count : n;
+  for (let t = 0; t < corners; t += 3) {
+    const a = index ? index.getX(t) : t, b = index ? index.getX(t + 1) : t + 1, c = index ? index.getX(t + 2) : t + 2;
+    parent[find(b)] = find(a); parent[find(c)] = find(a);
+  }
+  const boxes = new Map<number, THREE.Box3>();
+  for (let i = 0; i < n; i++) {
+    const r = find(i);
+    if (!boxes.has(r)) boxes.set(r, new THREE.Box3());
+    boxes.get(r)!.expandByPoint(local[i]);
+  }
+  return [...boxes.values()];
+}
+
+/**
+ * The volumes a profile's field upgrade owns, `group`-local (2026-10-08; main's 5f8eefaa4 "roof cannons and field
+ * protection upgrades", the coordinator: "they must not double up with your MGs, RWS or stowage -- two guns on one
+ * mount or packs clipping your racks. Decide one owner per mount point"). The upgrade owns every mount point it fits,
+ * and a decor piece whose placed box enters one takes its next route: the stern rack (rearFieldStowage: the shelf,
+ * cans, log, bags and the rods back to the stern plate), the roof cage wings (fieldRoofCage), the side screens (on a
+ * tank carrying oplotFieldUpgrade or leclercFieldProtection: per side, the band from the wall to the screen face that
+ * the outermost lattice bars and their standoffs span) and each piece of a remote roof station seated on a yaw support
+ * (sourceMachineGun with a datum: its base, cradle, gun, sight and ammunition box, each its own box, since one box round
+ * an L-shaped station would also take the turret cheek under its ammunition box). Read off the built tank's own records
+ * and geometry; running gear and decor never.
+ */
+function collectFieldEquipment(group: THREE.Group, frame: DecorFrame, screens: boolean): THREE.Box3[] {
+  const out: THREE.Box3[] = [];
+  const rack = group.userData.rearFieldStowage as
+    { anchors: [number, number, number][]; z: number; top: number; logY: number } | undefined;
+  if (frame === 'hull' && rack?.anchors?.length) {
+    const front = Math.max(...rack.anchors.map((a) => a[2])) + 0.03;
+    out.push(new THREE.Box3(new THREE.Vector3(-1.34, rack.logY - 0.09, rack.z - 0.17),
+      new THREE.Vector3(1.34, rack.top + 0.01, front)));
+  }
+  const cage = group.userData.fieldRoofCage as { feet: [number, number, number][]; corners: [number, number, number][] }[] | undefined;
+  if (frame === 'turret' && Array.isArray(cage)) {
+    for (const wing of cage) {
+      const b = new THREE.Box3();
+      for (const p of [...wing.feet, ...wing.corners]) b.expandByPoint(new THREE.Vector3(p[0], p[1], p[2]));
+      b.max.y += 0.025;
+      out.push(b.expandByScalar(0.03));
+    }
+  }
+  group.updateWorldMatrix(true, true);
+  const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
+  const toFrame = (mesh: THREE.Object3D): THREE.Matrix4 => new THREE.Matrix4().multiplyMatrices(inv, mesh.matrixWorld);
+  const lattice: THREE.Box3[] = [];
+  group.traverse((o) => {
+    if (o.userData?.remoteControlled && o.userData.auxiliaryPivot && o.getObjectByName('sourceMachineGun_yawSupport')) {
+      o.traverse((c) => {
+        if (!(c instanceof THREE.Mesh) || !c.geometry?.getAttribute('position')) return;
+        for (const b of connectedPieceBoxes(c, toFrame(c))) out.push(b.expandByScalar(FIELD_EQUIPMENT_CLEAR));
+      });
+    }
+    if (screens && o instanceof THREE.Mesh && o.name === `${frame}OpenLattice`) lattice.push(...connectedPieceBoxes(o, toFrame(o)));
+  });
+  // per side, the screen: the lattice pieces reaching within FIELD_SCREEN_FACE_BAND of that side's outermost bar (the
+  // face bars and the standoffs out to them), one band box
+  for (const side of [-1, 1]) {
+    const own = lattice.filter((b) => Math.sign(b.min.x + b.max.x) === side);
+    if (!own.length) continue;
+    const outer = (b: THREE.Box3): number => (side > 0 ? b.max.x : -b.min.x);
+    const face = Math.max(...own.map(outer));
+    const band = new THREE.Box3();
+    for (const b of own) if (outer(b) >= face - FIELD_SCREEN_FACE_BAND) band.union(b);
+    out.push(band.expandByScalar(FIELD_EQUIPMENT_CLEAR));
+  }
+  return out;
+}
+
+/**
+ * The bodies of the frame's roof guns (round 5, 2026-10-08; the lane lead after helper B's crew-scale machine-gun floor:
+ * "decor loads now touch the grown guns on udes03, type90, type90a, carro45t, leo2a6m, pl01_105 and m46_patton"): every
+ * connected piece of a pintle gun, M2 or remote-station fitting (receiver, barrel, cradle, ammunition box, shield), its
+ * own box `group`-local and a centimetre proud, which a decor piece's placed box may not enter. The foot disc (collectKeepOut)
+ * keeps the mount's base clear; these keep the gun itself out of the stowage, a barrel above a load leaving it be.
+ */
+const GUN_BODY_FITTINGS: ReadonlySet<string> = new Set(['pintleMG', 'americanM2', 'americanRws', 'openYokeRws']);
+/**
+ * Decor kept off the guns' bodies: every piece (an M46's roof light stood through its M2's receiver) but the smoke banks,
+ * whose sockets are pinned and seated first, and the decor roof gun, whose dedupe against an authored gun is the lane
+ * lead's.
+ */
+const GUN_BODY_EXEMPT: ReadonlySet<string> = new Set(['smoke', 'aamg']);
+function collectGunBodies(group: THREE.Group): THREE.Box3[] {
+  const out: THREE.Box3[] = [];
+  group.updateWorldMatrix(true, true);
+  const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
+  group.traverse((o) => {
+    if (!(o instanceof THREE.Mesh) || o instanceof THREE.InstancedMesh || !o.geometry?.getAttribute('position')) return;
+    if (o.visible === false || (o.name || '').startsWith('rig_decor')) return;
+    if (typeof o.userData.fitting !== 'string' || !GUN_BODY_FITTINGS.has(o.userData.fitting)) return;
+    const toFrame = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+    for (const b of connectedPieceBoxes(o, toFrame)) out.push(b.expandByScalar(0.01));
+  });
+  return out;
+}
+
 /** The first keep-out disc the frame-local box's deck footprint reaches into, or null. */
 function keepOutDisc(bb: THREE.Box3, discs: readonly DecorKeepOut[]): DecorKeepOut | null {
   for (const disc of discs) {
@@ -3372,9 +3970,87 @@ function keepOutDisc(bb: THREE.Box3, discs: readonly DecorKeepOut[]): DecorKeepO
   return null;
 }
 
+/**
+ * Lay a smoke bank's bracket flush on the cheek (round 5, 2026-10-08; the contact receipt: the bracket box stood
+ * diagonally through the turret cheek, one end buried, the other 20 cm off it): the bracket becomes a welded wedge,
+ * its front face the bank's mounting face and its back face on the cheek plane the station's probe met (`wallP`,
+ * `wallN` in the frame), each back corner straight behind its front corner. A wall nearly edge-on to the bank keeps
+ * the box. Same twelve triangles; the bank's tubes and sockets do not move.
+ */
+function wedgeBracket(list: DecorPartList, pos: THREE.Vector3, rot: THREE.Euler, wallP: THREE.Vector3, wallN: THREE.Vector3,
+  release: (geometry: THREE.BufferGeometry) => void, castBack?: (front: THREE.Vector3) => THREE.Vector3 | null): void {
+  const k = list.findIndex((p) => p.bracket);
+  if (k < 0) return;
+  const q = new THREE.Quaternion().setFromEuler(rot).invert();
+  const p0 = wallP.clone().sub(pos).applyQuaternion(q), n0 = wallN.clone().applyQuaternion(q).normalize();
+  if (n0.z < 0.2) return;
+  const old = list[k].geo;
+  old.computeBoundingBox();
+  const b = old.boundingBox!;
+  // each back corner where the cheek really is straight behind its front corner (a curved cheek is not its tangent
+  // plane over half a metre), else on the tangent plane the station's probe met
+  const backs = new Map<string, THREE.Vector3>();
+  const corner = (sx: number, sy: number, front: boolean): THREE.Vector3 => {
+    const f = new THREE.Vector3(sx > 0 ? b.max.x : b.min.x, sy > 0 ? b.max.y : b.min.y, b.max.z);
+    if (front) return f;
+    const key = `${sx},${sy}`;
+    if (!backs.has(key)) {
+      const hit = castBack?.(f) ?? null;
+      const t = hit ? f.z - hit.z + 0.002 : f.clone().sub(p0).dot(n0) / n0.z;
+      backs.set(key, f.clone().setZ(f.z - THREE.MathUtils.clamp(t, 0.02, 0.4)));
+    }
+    return backs.get(key)!.clone();
+  };
+  const box3 = new THREE.BoxGeometry(1, 1, 1);
+  const pos3 = box3.getAttribute('position');
+  for (let i = 0; i < pos3.count; i++) {
+    const v = corner(Math.sign(pos3.getX(i)), Math.sign(pos3.getY(i)), pos3.getZ(i) > 0);
+    pos3.setXYZ(i, v.x, v.y, v.z);
+  }
+  const wedge = box3.toNonIndexed();
+  box3.dispose();
+  wedge.computeVertexNormals();
+  const tone = Number(old.userData.tone) || 0.95;
+  list[k].geo = bakeShade(withBoxUV(wedge), tone);
+  list[k].geo.userData.tone = tone;
+  release(old);   // a station's guard may already have released the list it re-seats
+}
+
+/**
+ * Cant every smoke tube (and its cap) of a bank about its pivot on the bracket face by `angle` about +Y (round 5): a
+ * bank laid along a side wall points its tubes forward on the bracket. The sockets ride the geometry (markSmokeTube).
+ */
+function skewTubes(list: DecorPartList, angle: number): void {
+  if (Math.abs(angle) > 1e-6) {
+    const turn = new THREE.Matrix4().makeRotationY(angle), m = new THREE.Matrix4();
+    for (const part of list) {
+      if (!part.pivot) continue;
+      const [x, y, z] = part.pivot;
+      m.makeTranslation(x, y, z).multiply(turn).multiply(new THREE.Matrix4().makeTranslation(-x, -y, -z));
+      part.geo.applyMatrix4(m);
+    }
+  }
+  if (list.coarse) skewTubes(list.coarse, angle);
+}
+/** A smoke bank's cheek faces at most this far off the bow (rad; round 5): its row lies flush along it. */
+const CHEEK_MAX_ALPHA = 0.85;
+/** A side wall facing further round than this (rad, 16 degrees aft of square out) takes a bank only as the last resort. */
+const SIDE_MAX_ALPHA = 1.85;
+/** A bank's row turns at most this far from the bow (rad): on a wall facing further aft it stands off the wall more. */
+const SIDE_ALONG_MAX = 1.47;
+/** A bank laid along a side wall turns this far off it toward the bow (rad; round 5)... */
+const SIDE_TOE = 0.1;
+/** ...and its tubes point at most this far off the bow (rad), canted forward on the bracket where the wall faces
+ * further out, by at most SIDE_CANT_MAX (45 degrees: tube clears tube), so the outer tube of a six-tube fan stays
+ * inside the 60-degree forward cone (smokeLauncherFleet). */
+const SIDE_AIM = 0.7;
+const SIDE_CANT_MAX = Math.PI / 4;
+/** A seated bank's bracket reaches back to the turret at most this far behind any corner (m; round 5). */
+const BRACKET_MAX_DEPTH = 0.2;
+
 /** How dark a load's foot is baked where it meets its support, and over what height the darkening fades (round 4). */
-const CONTACT_AO = 0.5;
-const CONTACT_BAND_M = 0.05;
+const CONTACT_AO = 0.6;
+const CONTACT_BAND_M = 0.06;
 /**
  * Contact occlusion baked into a load's own foot (round 4, 2026-10-07; wave 215 on the M60A1: "roof gear has almost no
  * contact shadow"). Decor casts no shadow, and the inset pad (secureLoadParts) only darkens the deck under a piece, so
@@ -3516,9 +4192,14 @@ function placedPartBoxes(parts: DecorPartList, pos: THREE.Vector3, rot: THREE.Eu
 }
 
 function clonePartList(parts: DecorPartList): DecorPartList {
-  const clone = parts.map((p) => ({ mat: p.mat, geo: p.geo.clone(), ...(p.role ? { role: p.role } : {}) })) as DecorPartList;
+  const clone = parts.map((p) => ({ mat: p.mat, geo: p.geo.clone(), ...(p.role ? { role: p.role } : {}),
+    ...(p.station !== undefined ? { station: p.station } : {}), ...(p.anchor ? { anchor: true } : {}),
+    ...(p.tie !== undefined ? { tie: p.tie } : {}), ...(p.bracket ? { bracket: true } : {}),
+    ...(p.end !== undefined ? { end: p.end } : {}), ...(p.inner ? { inner: true } : {}),
+    ...(p.pivot ? { pivot: p.pivot } : {}) })) as DecorPartList;
   if (parts.meta) clone.meta = { ...parts.meta };
   if (parts.metaCx !== undefined) clone.metaCx = parts.metaCx;
+  if (parts.lashAt) clone.lashAt = parts.lashAt.map((st) => ({ ...st }));
   if (parts.coarse) clone.coarse = clonePartList(parts.coarse);
   return clone;
 }
@@ -4001,6 +4682,10 @@ export function* attachTankDecorationsSteps(
     };
     const lowTier = opts.geometryQuality === 'low';
     const familyFolds = decorFamilyFolds(equipmentPaletteForNation(spec.nation || ''));
+    // round 5: the tank's issue canvas (linear; tieRgbFor) and its soft loads' fabric rotation (fabricFamily)
+    const canvasLinear = new THREE.Color(equipmentPaletteForNation(spec.nation || '').canvas);
+    const fabricBase = fnv1a(`fabric:${decorId}`) % FABRIC_FAMILIES.length;
+    let fabricCount = 0;
     // the tie-downs' webbing: the nation's issue canvas through the painter's webbing tint (accessoryPainter.strap)
     const webbingRgb: RGB = (() => {
       const c = new THREE.Color(equipmentPaletteForNation(spec.nation || '').canvas);
@@ -4011,6 +4696,13 @@ export function* attachTankDecorationsSteps(
 
     // round 4: whip feet, roof-gun mounts, hatches and cupolas of each frame, and the decor equipment seated so far
     const keepOut: Record<DecorFrame, DecorKeepOut[]> = { hull: collectKeepOut(hullG), turret: collectKeepOut(turretG) };
+    // 2026-10-08: the volumes main's field upgrades own (collectFieldEquipment); the side screens ride the turret's record
+    const screens = !!(turretG.userData.oplotFieldUpgrade || turretG.userData.leclercFieldProtection);
+    const fieldEquipment: Record<DecorFrame, THREE.Box3[]> = {
+      hull: collectFieldEquipment(hullG, 'hull', screens), turret: collectFieldEquipment(turretG, 'turret', screens),
+    };
+    // round 5: the roof guns' own bodies (collectGunBodies), out of every decor piece's placed box (GUN_BODY_EXEMPT aside)
+    const gunBodies: Record<DecorFrame, THREE.Box3[]> = { hull: collectGunBodies(hullG), turret: collectGunBodies(turretG) };
     // Round 4 (2026-10-07, wave 214 on the Challenger 1: "each stowage item ... sits alone on spotless roof paint,
     // spaced like display pieces with no piling"; the critic: "crews pack kit ... cluster and compress what is there"):
     // the loads seated so far on each frame (placed boxes), so the next deck load packs against one of them.
@@ -4072,7 +4764,7 @@ export function* attachTankDecorationsSteps(
         const seat = supportedSeat(o.prober, x, z, o.w, o.d, o.fromY, o.spread, o.soft, o.off[0], o.off[1]);
         if (!seat || !seat.n || seat.n.y < o.minNy) return false;
         if (commit(o.name, o.parts, o.frame, V(x, seat.y - o.sink, z), roofMountEuler(seat.n, o.yaw), o.ledger,
-          o.seatOpts ? { seatY: seat.y } : {})) {
+          o.seatOpts ? { seatY: seat.y, secure: 'deck' } : { secure: 'deck' })) {
           registerCarrier(o.name, o.frame, o.parts, o.ledger, seat.y - o.sink);
           return true;
         }
@@ -4217,7 +4909,8 @@ export function* attachTankDecorationsSteps(
       zExtra: number,
     ): boolean {
       if (!widthGuardOK(bb, zExtra)) return rejectCommit(name, parts, 'width');
-      if (!gunGuardOK(placedPartBoxes(parts, pos, rot), seatY)) {
+      // round 5: the bore and the turret's skirt pass over a load's lashings, which lie flat on the deck beside it
+      if (!gunGuardOK(placedPartBoxes(parts.filter((p) => p.role !== 'lash'), pos, rot), seatY)) {
         const reason = `gun@${gunGuardOK.lastYaw ?? 'cone'}`;
         gunGuardOK.lastYaw = null;
         return rejectCommit(name, parts, reason);
@@ -4282,6 +4975,48 @@ export function* attachTankDecorationsSteps(
       };
     }
 
+    /**
+     * Round 5: which deck ring anchors each lashing end, and the lashings that have none: a ring needs the frame's
+     * surface within RING_REACH_M of its foot, probed straight down (a ring past a deck's edge or over a grille well
+     * has none). An end takes its outer ring where it has support, else the inner one under the load's edge; a
+     * lashing with an end that has neither gives way to the strap it would replace.
+     */
+    function tieRings(parts: DecorPartList, frame: DecorFrame, pos: THREE.Vector3, rot: THREE.Euler): TieRings {
+      const unsupported = new Set<number>(), inner = new Set<string>();
+      const byTie = new Map<number, DecorPart[]>();
+      for (const p of parts) {
+        if (!p.anchor || p.tie === undefined) continue;
+        if (!byTie.has(p.tie)) byTie.set(p.tie, []);
+        byTie.get(p.tie)!.push(p);
+      }
+      if (!byTie.size) return { unsupported, inner };
+      const prober = frame === 'hull' ? solidHullProber() : solidTurretProber();
+      const m = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1));
+      const c = new THREE.Vector3();
+      const held = (ring: DecorPart): boolean => {
+        ring.geo.computeBoundingBox();
+        ring.geo.boundingBox!.getCenter(c);
+        c.y = 0;
+        c.applyMatrix4(m);
+        const hit = prober.top(c.x, c.z, c.y + 0.12);
+        return !!hit && Math.abs(hit.p.y - c.y) <= RING_REACH_M;
+      };
+      for (const [tie, rings] of byTie) {
+        if (rings.some((r) => r.end === undefined)) {          // a box tie's rings: every one must hold
+          if (!rings.every(held)) unsupported.add(tie);
+          continue;
+        }
+        for (const end of [0, 1] as const) {
+          const outer = rings.filter((r) => r.end === end && !r.inner), alt = rings.filter((r) => r.end === end && r.inner);
+          if (outer.length && outer.every(held)) continue;
+          if (alt.length && alt.every(held)) { inner.add(`${tie}:${end}`); continue; }
+          unsupported.add(tie);
+          break;
+        }
+      }
+      return { unsupported, inner };
+    }
+
     /** Commit one built kit at pos/rot under hull|turret. */
     function commit(
       name: string,
@@ -4290,11 +5025,14 @@ export function* attachTankDecorationsSteps(
       pos: THREE.Vector3,
       rot: THREE.Euler,
       ledger: THREE.Box3[],
-      { allowOverlap = false, seatY = null, zExtra = 0, attachment }: CommitOptions = {},
+      { allowOverlap = false, seatY = null, zExtra = 0, attachment, secure }: CommitOptions = {},
     ): boolean {
       keepOutMiss = null;
+      // round 5: a load on a deck or rack keeps its lashings, anywhere else the straps they replace; on a deck, each
+      // lashing only where both its deck rings have the deck under them (a ring past a roof's edge would hang in air)
+      const rings = secure === 'deck' ? tieRings(parts, frame, pos, rot) : NO_TIE_RINGS;
       let tris = 0;
-      for (const p of parts) tris += triCount(p.geo);
+      for (const p of parts) if (tieKept(p, !!secure, rings)) tris += triCount(p.geo);
       if (budget.tris + tris > budget.max) return rejectCommit(name, parts, 'budget');
       if (parts.meta?.drape) {
         conformDrape(parts, frame, pos, rot);
@@ -4309,11 +5047,15 @@ export function* attachTankDecorationsSteps(
         : guardTurretCommit(name, parts, bb);
       if (!guarded) return false;
       if (keepClearHit(bb, frame)) return rejectCommit(name, parts, 'keep-clear');
+      if (fieldEquipment[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'field-equipment');
       const disc = isLoadPiece(name) ? keepOutDisc(bb, keepOut[frame]) : null;
       if (disc) { keepOutMiss = { frame, disc, bb }; return rejectCommit(name, parts, 'keep-out'); }
+      if (!GUN_BODY_EXEMPT.has(name) && gunBodies[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'gun-body');
       if (!allowOverlap && overlaps(bb, ledger)) {
         return rejectCommit(name, parts, 'overlap');
       }
+      pruneTies(parts, !!secure, rings, resources.releaseGeometry);
+      pruneTies(parts.coarse, !!secure, rings, resources.releaseGeometry);
       const receipt = attachment ? attachmentReceipt(parts, pos, rot, attachment) : null;
       ledger.push(bb);
       budget.tris += tris;
@@ -4321,6 +5063,11 @@ export function* attachTankDecorationsSteps(
         seatedLoads[frame].push(bb.clone());
         // round 4: the contact line darkened into the load's own foot (contactShade), both levels
         if (!parts.meta?.drape) { contactShade(parts); if (parts.coarse) contactShade(parts.coarse); }
+        // round 5: on a deck, the pad, the lashings' deck runs and a soft load's base lie on the support under them
+        if (secure === 'deck' && !parts.meta?.drape) {
+          settleFoot(parts.coarse ? [parts, parts.coarse] : [parts], frame === 'hull' ? solidHullProber() : solidTurretProber(),
+            pos, rot, sagsOnSupport(name));
+        }
       }
       const m = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1));
       const functional = FUNCTIONAL_KITS.has(name);
@@ -4412,6 +5159,51 @@ export function* attachTankDecorationsSteps(
 
     const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
     const E = (rx = 0, ry = 0, rz = 0) => new THREE.Euler(rx, ry, rz);
+
+    /**
+     * Round 5: a caster for a turret-frame piece at pos/rot that finds the turret's own surface straight behind a
+     * piece-local point (along the piece's -z), returned in the piece frame (wedgeBracket).
+     */
+    function cheekCaster(pos: THREE.Vector3, rot: THREE.Euler): (front: THREE.Vector3) => THREE.Vector3 | null {
+      const ray = new THREE.Raycaster();
+      const q = new THREE.Quaternion().setFromEuler(rot), qi = q.clone().invert();
+      turretG.updateWorldMatrix(true, false);
+      const toWorld = turretG.matrixWorld, fromWorld = toWorld.clone().invert();
+      const back = new THREE.Vector3(0, 0, -1).applyQuaternion(q).transformDirection(toWorld);
+      return (front) => {
+        const o = front.clone().applyQuaternion(q).add(pos).applyMatrix4(toWorld);
+        ray.set(o, back);
+        ray.far = 0.5;
+        const hit = ray.intersectObjects(turretTargets, false)[0];
+        return hit ? hit.point.clone().applyMatrix4(fromWorld).sub(pos).applyQuaternion(qi) : null;
+      };
+    }
+
+    /**
+     * Round 5 (2026-10-08; the contact receipt: a side-hung water-can rack cut 21 cm into the Leclerc's side bins, and a
+     * census found every turret-side load's back 15-30 cm inside the turret's outer surface, the ledge built from a
+     * wall plane at the probe's height): how far a turret-side load at pos/rot (its local +z out of the wall, toward
+     * `side`) must move out so its back clears the turret's outermost solid surface behind it (armour, a bin, an ERA
+     * brick, a cloth cover; not a suit's net), probed straight in from the side over its back face; null past
+     * SIDE_PUSH_MAX_M, where something stands out further than a ledge reaches past.
+     */
+    function sideClearance(bb: THREE.Box3, pos: THREE.Vector3, rot: THREE.Euler, side: number): number | null {
+      const prober = solidTurretProber();
+      const q = new THREE.Quaternion().setFromEuler(rot), qi = q.clone().invert();
+      const p = new THREE.Vector3();
+      let need = 0;
+      for (let i = 0; i < 5; i++) {
+        for (const fy of [0.1, 0.5, 0.9]) {
+          p.set(bb.min.x + 0.03 + (bb.max.x - bb.min.x - 0.06) * (i / 4), bb.min.y + (bb.max.y - bb.min.y) * fy, bb.min.z)
+            .applyQuaternion(q).add(pos);
+          const hit = prober.side(p.y, p.z, side, W / 2 + 1);
+          if (!hit) continue;
+          const z = hit.p.clone().sub(pos).applyQuaternion(qi).z;
+          need = Math.max(need, z - bb.min.z + SIDE_CLEAR_M);
+        }
+      }
+      return need > SIDE_PUSH_MAX_M ? null : need;
+    }
 
     const placeHullRearDeck: SlotPlacer = (_args, parts, name) => {
       const bounds = partsBBox(parts);
@@ -4542,6 +5334,7 @@ export function* attachTankDecorationsSteps(
         return commit(name, parts, 'hull', roofMountPosition(parts, hit, embedM),
           roofMountEuler(hit.n, yaw), placedHull, {
             seatY: seat.y,
+            secure: isLoadPiece(name) ? 'deck' : undefined,
             attachment: {
               slot: 'hull-roof',
               supportPoint: hit.p,
@@ -4682,11 +5475,18 @@ export function* attachTankDecorationsSteps(
           }
         }
         // fallback 2: horizontal run across the lower bow plate (Tiger bow
-        // spare cable) — the bore never reaches this low forward
+        // spare cable) — the bore never reaches this low forward. Round 5 (2026-10-08; the contact receipt: on the
+        // raked, curved bows of the Leopard 2, Leclerc and T-72 the clamps stood through the plate): only across a
+        // near-vertical bow plate, flat to 1.2 cm over the run (the Tiger's driver plate it was written for).
         {
           const y = H * 0.42;
           const h = hullP.zface(0, y, -1, L / 2 + 1.6);
-          if (h && h.n.z > 0.3) {
+          const span = partsBBox(parts).max.x * 0.62;
+          const flat = !!h && Math.abs(h.n.y) < 0.2 && [-span, span].every((x) => {
+            const e = hullP.zface(x, y, -1, L / 2 + 1.6);
+            return !!e && Math.abs(e.p.z - h.p.z) < 0.012;
+          });
+          if (h && h.n.z > 0.3 && flat) {
             const pitch = Math.atan2(-h.n.y, h.n.z);
             if (commit(name, clonePartList(parts), 'hull', V(0, y, h.p.z + 0.04),
               E(pitch + Math.PI / 2 * 0.92, 0, 0), placedHull)) {
@@ -4731,19 +5531,23 @@ export function* attachTankDecorationsSteps(
         }
         const pieceZ = plateOut - gap - bb.max.z;
         const lxs = [bb.min.x - 0.025, bb.max.x + 0.025];
-        const railZ = lxs.map((lx) => {
+        const railN: Array<THREE.Vector3 | null> = [null, null];
+        const railZ = lxs.map((lx, i) => {
           const hit = hullP.zface(px + lx, y - 0.015, 1, sternZ - 1.4);
-          return isRearPlateHit(hit) && hit.p.z >= plateOut - 0.02 && hit.p.z <= plateOut + 0.45 ? hit.p.z - pieceZ : null;
+          if (!isRearPlateHit(hit) || hit.p.z < plateOut - 0.02 || hit.p.z > plateOut + 0.45) return null;
+          railN[i] = hit.n.clone();
+          return hit.p.z - pieceZ;
         });
         if (railZ[0] === null || railZ[1] === null) { disposePartList(parts); return false; }
         const rails: [number, number] = [railZ[0], railZ[1]];
+        // round 5: each foot keeps the plate's own normal where it was found (a sloped plate tilts its foot)
         const struts = lxs.map((lx, i) => {
           for (let b = rearRackBrace(bb); b >= 0.1 - 1e-6; b -= 0.03) {
             if (y - b - REAR_RACK_FOOT < rearFittingFloor()) continue;
             const hit = hullP.zface(px + lx, y - b, 1, sternZ - 1.4);
             if (!isRearPlateHit(hit)) continue;
             const z = hit.p.z - pieceZ;
-            if (z >= rails[i] - 0.05 && z <= rails[i] + 0.35) return { b, z };
+            if (z >= rails[i] - 0.05 && z <= rails[i] + 0.35) return { b, z, n: hit.n.clone() };
           }
           return null;
         });
@@ -4757,11 +5561,11 @@ export function* attachTankDecorationsSteps(
             if (list[i].role === 'pad') { list[i].geo.dispose(); list.splice(i, 1); }
           }
           for (const part of list) part.geo.applyMatrix4(about);
-          list.push(...rearRackParts(bb, rails, detail, struts));
+          list.push(...rearRackParts(bb, rails, detail, struts, railN));
         };
         carry(parts, 1);
         if (parts.coarse) carry(parts.coarse, 0);
-        if (!commit(name, parts, 'hull', V(px, y, pieceZ), E(), placedHull, { seatY: y, zExtra: 0.35 })) return false;
+        if (!commit(name, parts, 'hull', V(px, y, pieceZ), E(), placedHull, { seatY: y, zExtra: 0.35, secure: 'rack' })) return false;
         // round 4 follow-up: a case on the rack can carry a soft load too (stackLoad); its lid is the load's own box
         registerCarrier(name, 'hull', parts, placedHull, y, bb.clone().translate(new THREE.Vector3(px, y, pieceZ)));
         return true;
@@ -4825,11 +5629,16 @@ export function* attachTankDecorationsSteps(
         // Round 3 (2026-10-07, critics: "a white ring-shaped object hovers detached in mid-air"): the hung piece
         // hangs from a visible hook. A welded bracket arm runs from the plate face out to the piece's top tab and
         // drops a hook through it, so the bucket hangs from the hull instead of beside it.
-        const hookY = bb.max.y - 0.01, plateZ = 0.09;
+        // Round 5 (2026-10-08; wave 254 on the Challenger 1: "hangs in space with no visible hook or bracket"): the
+        // bracket reads at play distance: a bolted foot plate on the rear plate, an angle-stock arm out over the bail
+        // and a J-hook of round bar through it; the pail hangs a hand's width off the plate.
+        const hookY = bb.max.y, plateZ = 0.135;
         const hook = (list: DecorPartList, detail: 0 | 1) => {
-          list.push({ mat: 'steel', geo: bakeShade(place(block(0.022, 0.018, plateZ + 0.01), 0, hookY + 0.03, plateZ / 2), 0.45) });
-          list.push({ mat: 'steel', geo: bakeShade(place(block(0.05, 0.06, 0.01), 0, hookY + 0.03, plateZ - 0.004), 0.45) });
-          if (detail) list.push({ mat: 'steel', geo: bakeShade(place(block(0.012, 0.045, 0.012), 0, hookY + 0.008, 0.012), 0.45) });
+          const st = (geo: THREE.BufferGeometry) => list.push({ mat: 'steel', geo: bakeShade(geo, RACK_STEEL_TONE) });
+          st(footPlate(0, hookY + 0.035, plateZ, 0.1, 0.09, detail));                                   // foot plate, bolted
+          st(angleStock(plateZ + 0.002, 'z', 0, plateZ / 2 - 0.011, 1, 0.034).translate(0, hookY + 0.06, 0)); // arm over the bail
+          st(sweptTube([[0, hookY + 0.057, 0.013], [0, hookY - 0.004, 0.013], [0, hookY - 0.019, -0.002],
+            [0, hookY - 0.006, -0.02]], 0.0055, 5, detail ? 8 : 4));                                      // J-hook round the bail
         };
         hook(parts, 1);
         if (parts.coarse) hook(parts.coarse, 0);
@@ -4864,7 +5673,10 @@ export function* attachTankDecorationsSteps(
       bowChain(_args, parts, name) {
         const y = H * 0.3;
         const h = hullP.zface(-W * 0.28, y, -1, L / 2 + 1.6);
-        if (!h) { disposePartList(parts); return false; }
+        // round 5 (2026-10-08; wave 257 on the Merkava 4: "a dark wheel-like disc floats beside the rear-left corner"):
+        // the bow probe passed under the Merkava's glacis and met the stern, so the chain hung off the rear corner;
+        // a chain hangs only from a forward-facing bow plate
+        if (!h || h.n.z < 0.3 || h.p.z < 0) { disposePartList(parts); return false; }
         return commit(name, parts, 'hull', V(-W * 0.28, y - 0.02, h.p.z + 0.05), E(), placedHull);
       },
       // ---- turret slots ----
@@ -5020,21 +5832,37 @@ export function* attachTankDecorationsSteps(
             const h = turP.side(y, z, side, W / 2 + 1);
             if (!h || Math.abs(h.n.x) < 0.55) continue;
             const candidate = clonePartList(parts);
+            const pos = V(h.p.x + side * out * 0.3, y - 0.06, z);
+            const rot = E(0, side > 0 ? Math.PI / 2 : -Math.PI / 2, (slotRng() - 0.5) * 0.1);
             if (hung) {
-              const wallZ = -out * 0.3;
+              // round 5: out until its back clears the turret's outermost surface behind it (sideClearance)
+              const push = sideClearance(bb, pos, rot, side);
+              if (push === null) { disposePartList(candidate); continue; }
+              pos.x += side * push;
+              const wallZ = -out * 0.3 - push;
+              // round 5: the wall behind each arm, probed at the arm's foot, in the piece's frame
+              const qr = new THREE.Quaternion().setFromEuler(rot), qi = qr.clone().invert();
+              const wallAt = (lx: number, ly: number): { p: THREE.Vector3; n: THREE.Vector3 } | null => {
+                const f = new THREE.Vector3(lx, ly, wallZ).applyQuaternion(qr).add(pos);
+                const hit = turP.side(f.y, f.z, side, W / 2 + 1);
+                if (!hit || Math.abs(hit.n.x) < 0.3) return null;
+                const p = hit.p.clone().sub(pos).applyQuaternion(qi);
+                // between a hand behind the probed wall and the load's own back (a bin or a cover stands out of it)
+                return p.z > wallZ - 0.12 && p.z < bb.min.z + 0.01 ? { p, n: hit.n.clone().applyQuaternion(qi).normalize() } : null;
+              };
               const carry = (list: DecorPartList, detail: 0 | 1) => {
                 for (let i = list.length - 1; i >= 0; i--) {
                   if (list[i].role === 'pad') { list[i].geo.dispose(); list.splice(i, 1); }
                 }
                 const solid = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
-                const load = list.filter((p) => p.role !== 'pad').map((p) => new THREE.Mesh(p.geo, solid));
-                list.push(...sideLedgeParts(bb, wallZ, detail, webbingRgb, load));
+                // the strap rides the load's own surfaces, not the deck lashings a ledge drops (tieKept)
+                const load = list.filter((p) => p.role !== 'pad' && p.role !== 'lash').map((p) => new THREE.Mesh(p.geo, solid));
+                list.push(...sideLedgeParts(bb, wallZ, detail, webbingRgb, load, wallAt));
               };
               carry(candidate, 1);
               if (candidate.coarse) carry(candidate.coarse, 0);
             }
-            if (commit(name, candidate, 'turret', V(h.p.x + side * out * 0.3, y - 0.06, z),
-              E(0, side > 0 ? Math.PI / 2 : -Math.PI / 2, (slotRng() - 0.5) * 0.1), placedTurret)) {
+            if (commit(name, candidate, 'turret', pos, rot, placedTurret)) {
               disposePartList(parts);
               return true;
             }
@@ -5060,18 +5888,155 @@ export function* attachTankDecorationsSteps(
         disposePartList(parts);
         return false;
       },
+      // A bank pair seated on the turret roof plate at (+-x, z), yaw +-yaw (2026-10-08; a curated seat, see the
+      // type89_light_tiger override in decorManifestFor): the bracket stands on the solid roof under it (decor,
+      // suits and fittings are not support), 4 mm into the plate; a side without roof there keeps no bank.
+      turretRoofPair(args, parts, name) {
+        const x = args.x ?? 0.7, z = args.z ?? 0.3, yaw = args.yaw ?? 0.55;
+        let ok = false;
+        const solid = solidTurretProber();
+        for (const s of [-1, 1]) {
+          const cl = clonePartList(parts);
+          const seat = seatProbe(solid, s * x, z, 0.3, 0.1, 3.5, 0.03);
+          if (seat && commit(name, cl, 'turret', V(s * x, seat.y - 0.004, z), E(0, s * yaw, 0), placedTurret)) ok = true;
+          else disposePartList(cl);
+        }
+        disposePartList(parts);
+        return ok;
+      },
       turretCheekPair(_args, parts, name) {
         let ok = false;
         const stations = [[0.3, 0.5], [0.2, 0.42], [0.36, 0.6]];
-        for (const s of [-1, 1]) {
-          const cl = clonePartList(parts);
-          let done = false;
+        // Round 5 (2026-10-08; the contact receipt and a fleet census: the forward-fan yaw laid a bank's row along a
+        // cheek facing about 31 degrees off the bow, so on the flat sides of the Abrams, Griffin and T-80 and the round
+        // T-72 and T-62 turrets the row stood out of the wall with its inner half inside the turret): a bank seats to
+        // the wall it meets. Its row lies along the wall (a side wall: SIDE_TOE off it toward the bow), its bracket's back
+        // clear of it and the wedge filling the rest, its tubes along the wall's normal or, where that faces further out
+        // than SIDE_AIM, canted forward on the bracket about their pivots. Cheeks are tried first, the stations and
+        // three more forward along the cheek; then a side facing square out; a wall facing aft, or a roof or an
+        // overhang, takes the old fan only where nothing else does, so no bank is dropped (the smoke counts are pinned).
+        const forward = [[0.45, 0.5], [0.6, 0.48], [0.75, 0.46]];
+        // a cheek or a side is looked for higher up the wall as well (a T-72's stations meet the underside of its side
+        // boxes), the old fan only at the stations themselves
+        const candidates = (pass: 0 | 1 | 2): number[][] => {
+          const base = pass === 0 ? [...stations, ...forward] : stations;
+          if (pass === 2) return base;
+          const lifts = pass === 0 ? [0, 0.14, 0.28] : [0, 0.14];
+          return lifts.flatMap((dy) => base.map(([z, yf]) => [z, Math.min(0.9, yf + dy)]));
+        };
+        // The smoke counts are pinned (vehicle-controls-inventory): a side whose bank the old fan could not seat keeps
+        // no bank, wherever a wall seat might have taken one. legacySeats replays the old fan's stations, its
+        // soft-cover fallback and the field upgrades' forward steps against the commit's own guards (turret width and
+        // reach, keep-clear, the field volumes, overlap) on the bank's plain bracket, without committing.
+        const legacyGuards = (pos: THREE.Vector3, rot: THREE.Euler): 'ok' | 'field' | 'no' => {
+          const bb = placedBox(parts, pos, rot);
+          let rMax = 0;
+          for (const x of [bb.min.x, bb.max.x]) for (const z of [bb.min.z, bb.max.z]) rMax = Math.max(rMax, Math.hypot(x, z));
+          if (Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x)) > W / 2 + 0.048 || rMax > sweepR + 0.55) return 'no';
+          if (keepClearHit(bb, 'turret')) return 'no';
+          if (fieldEquipment.turret.some((box) => box.intersectsBox(bb))) return 'field';
+          return overlaps(bb, placedTurret) ? 'no' : 'ok';
+        };
+        const legacySeats = (s: number): boolean => {
+          let field = false;
           for (const [z, yf] of stations) {
             const y = Math.max(0.24, pivotTopY() * yf);
             const h = turP.side(y, z, s, W / 2 + 1);
             if (!h) continue;
-            const yaw = s * 0.55; // forward fan, mirrored about local +Z
-            if (commit(name, cl, 'turret', V(h.p.x + s * 0.03, y, z), E(0, yaw, 0), placedTurret)) { done = true; break; }
+            const r = legacyGuards(V(h.p.x + s * 0.03, y, z), E(0, s * 0.55, 0));
+            if (r === 'ok') return true;
+            field ||= r === 'field';
+          }
+          const solid = solidTurretProber();
+          for (const [z, yf] of stations) {
+            const y = Math.max(0.24, pivotTopY() * yf);
+            const h = solid.side(y, z, s, W / 2 + 1);
+            if (!h) continue;
+            const pos = V(h.p.x + s * 0.03, y, z), rot = E(0, s * 0.55, 0);
+            const bb = placedBox(parts, pos, rot);
+            const over = Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x)) - (W / 2 + 0.048);
+            if (over > 0.003) continue;
+            if (over > 0) pos.x -= s * (over + 0.0005);
+            const r = legacyGuards(pos, rot);
+            if (r === 'ok') return true;
+            field ||= r === 'field';
+          }
+          if (field) {
+            const y = Math.max(0.24, pivotTopY() * 0.5);
+            for (let z = 0.42; z <= 1.6; z += 0.06) {
+              const h = solid.side(y, z, s, W / 2 + 1);
+              if (h && legacyGuards(V(h.p.x + s * 0.03, y, z), E(0, s * 0.55, 0)) === 'ok') return true;
+            }
+          }
+          return false;
+        };
+        for (const s of [-1, 1]) {
+          if (!legacySeats(s)) continue;
+          const cl = clonePartList(parts);
+          let done = false;
+          // whether a station passed every guard and was turned away by a field upgrade's volume alone (below)
+          let fieldBlocked = false;
+          const tryCommit = (pos: THREE.Vector3, rot: THREE.Euler): boolean => {
+            if (commit(name, cl, 'turret', pos, rot, placedTurret)) return true;
+            if (summary.skipped[summary.skipped.length - 1]?.[1] === 'field-equipment') fieldBlocked = true;
+            return false;
+          };
+          let skewed = 0;
+          const skewTo = (angle: number): void => { skewTubes(cl, angle - skewed); skewed = angle; };
+          // the old fan's own bracket (pass 2 replays it exactly, so a bank it seated seats again)
+          const plainBracket = (): void => {
+            const k = cl.findIndex((p) => p.bracket), k0 = parts.findIndex((p) => p.bracket);
+            if (k < 0 || k0 < 0) return;
+            resources.releaseGeometry(cl[k].geo);
+            cl[k].geo = parts[k0].geo.clone();
+          };
+          const seat = (h: { p: THREE.Vector3; n: THREE.Vector3 }, y: number, z: number, pass: 0 | 1 | 2):
+            { pos: THREE.Vector3; rot: THREE.Euler } | null => {
+            const alpha = Math.atan2(Math.abs(h.n.x), h.n.z);
+            if (pass === 2) { skewTo(0); plainBracket(); return { pos: V(h.p.x + s * 0.03, y, z), rot: E(0, s * 0.55, 0) }; }
+            if (Math.abs(h.n.y) > 0.7) return null;
+            if (pass === 0 ? alpha > CHEEK_MAX_ALPHA : alpha <= CHEEK_MAX_ALPHA || alpha > SIDE_MAX_ALPHA) return null;
+            // a side facing aft of square out turns the row further off it, so the cant still brings the tubes forward
+            const toe = pass === 0 ? 0 : Math.max(SIDE_TOE, alpha - SIDE_ALONG_MAX), along = alpha - toe;
+            skewTo(s * Math.max(-SIDE_CANT_MAX, Math.min(0, SIDE_AIM - along)));
+            const k = cl.findIndex((p) => p.bracket);
+            const bb = k >= 0 ? (cl[k].geo.computeBoundingBox(), cl[k].geo.boundingBox!) : null;
+            const half = bb ? (bb.max.x - bb.min.x) / 2 : 0.2, back = bb ? Math.max(0.04, -bb.min.z) : 0.04;
+            const off = 0.005 + half * Math.sin(toe) + back * Math.cos(toe);
+            const nh = new THREE.Vector3(h.n.x, 0, h.n.z).normalize();
+            // the bracket's middle on the probed point (its foot stood at the probe, so a low wall left its top in air)
+            const mid = bb ? (bb.min.y + bb.max.y) / 2 : 0.05;
+            return { pos: V(h.p.x + nh.x * off, y - mid, h.p.z + nh.z * off), rot: E(0, s * along, 0) };
+          };
+          // a seat to the wall holds only where the turret stands behind every corner of the bracket within
+          // BRACKET_MAX_DEPTH (a row longer than a small cheek hangs past its edge: the BMP-3M Dragun)
+          const backed = (pos: THREE.Vector3, rot: THREE.Euler): boolean => {
+            const k = cl.findIndex((p) => p.bracket);
+            if (k < 0) return true;
+            cl[k].geo.computeBoundingBox();
+            const b = cl[k].geo.boundingBox!, cast = cheekCaster(pos, rot);
+            for (const cx of [b.min.x, b.max.x]) {
+              for (const cy of [b.min.y, b.max.y]) {
+                const f = new THREE.Vector3(cx, cy, b.max.z), hit = cast(f);
+                if (!hit || f.z - hit.z > BRACKET_MAX_DEPTH) return false;
+              }
+            }
+            return true;
+          };
+          for (const pass of [0, 1, 2] as const) {
+            for (const [z, yf] of candidates(pass)) {
+              const y = Math.max(0.24, pivotTopY() * yf);
+              const h = turP.side(y, z, s, W / 2 + 1);
+              if (!h) continue;
+              const at = seat(h, y, z, pass);
+              if (!at || (pass < 2 && !backed(at.pos, at.rot))) continue;
+              const { pos, rot } = at;
+              wedgeBracket(cl, pos, rot, h.p, h.n, resources.releaseGeometry, cheekCaster(pos, rot));
+              if (tryCommit(pos, rot)) { done = true; break; }
+              // the old fan with its wedge turned away: its own plain bracket at the same seat, as it always seated
+              if (pass === 2) { plainBracket(); if (tryCommit(pos, rot)) { done = true; break; } }
+            }
+            if (done) break;
           }
           // Round 3 (2026-10-07): a declared smoke bank is a gameplay fitting, and a change in the turret's dressing
           // alone must not drop it. When every station overhangs the width guard, the bank seats on the turret under
@@ -5080,16 +6045,48 @@ export function* attachTankDecorationsSteps(
           // a station never reaches this; one that overhangs by more stays off, as before.
           if (!done) {
             const solid = solidTurretProber();
-            for (const [z, yf] of stations) {
-              const y = Math.max(0.24, pivotTopY() * yf);
-              const h = solid.side(y, z, s, W / 2 + 1);
-              if (!h) continue;
-              const pos = V(h.p.x + s * 0.03, y, z), rot = E(0, s * 0.55, 0);
-              const bb = placedBox(cl, pos, rot);
-              const over = Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x)) - (W / 2 + 0.048);
-              if (over > 0.003) continue;
-              if (over > 0) pos.x -= s * (over + 0.0005);
-              if (commit(name, cl, 'turret', pos, rot, placedTurret)) { done = true; break; }
+            for (const pass of [0, 1, 2] as const) {
+              for (const [z, yf] of candidates(pass)) {
+                const y = Math.max(0.24, pivotTopY() * yf);
+                const h = solid.side(y, z, s, W / 2 + 1);
+                if (!h) continue;
+                const at = seat(h, y, z, pass);
+                if (!at || (pass < 2 && !backed(at.pos, at.rot))) continue;
+                const { pos, rot } = at;
+                const inboard = (): boolean => {
+                  const bb = placedBox(cl, pos, rot);
+                  const over = Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x)) - (W / 2 + 0.048);
+                  if (over > 0.003) return false;
+                  if (over > 0) pos.x -= s * (over + 0.0005);
+                  return true;
+                };
+                wedgeBracket(cl, pos, rot, h.p, h.n, resources.releaseGeometry, cheekCaster(pos, rot));
+                const x0 = pos.x;
+                if (inboard() && tryCommit(pos, rot)) { done = true; break; }
+                if (pass === 2) { pos.x = x0; plainBracket(); if (inboard() && tryCommit(pos, rot)) { done = true; break; } }
+              }
+              if (done) break;
+            }
+          }
+          // 2026-10-08: a field upgrade's screens or roof-cage legs own the cheek stations (main's 5f8eefaa4 on the
+          // Oplot-M and the Leclerc X); a bank one of them turned away keeps its launch sockets on the first station
+          // forward of them along the turret side, in 6 cm steps. A bank every station refused for its own reasons (the
+          // width guard, its overlap) stays off, as before, so no vehicle gains sockets it never had. Round 5: seated to
+          // the wall there as at the stations (seat), cheek, then side, then the old fan.
+          if (!done && fieldBlocked) {
+            const solid = solidTurretProber();
+            const y = Math.max(0.24, pivotTopY() * 0.5);
+            for (const pass of [0, 1, 2] as const) {
+              for (let z = 0.42; z <= 1.6 && !done; z += 0.06) {
+                const h = solid.side(y, z, s, W / 2 + 1);
+                if (!h) continue;
+                const at = seat(h, y, z, pass);
+                if (!at || (pass < 2 && !backed(at.pos, at.rot))) continue;
+                wedgeBracket(cl, at.pos, at.rot, h.p, h.n, resources.releaseGeometry, cheekCaster(at.pos, at.rot));
+                done = tryCommit(at.pos, at.rot);
+                if (!done && pass === 2) { plainBracket(); done = tryCommit(at.pos, at.rot); }
+              }
+              if (done) break;
             }
           }
           if (!done) disposePartList(cl);
@@ -5142,24 +6139,34 @@ export function* attachTankDecorationsSteps(
         const values = { ...(row.v || {}) };
         if (row.kit === 'wheel') values.r = wheelR;
         if (row.kit === 'drums') values._W = W;
-        // round 4 follow-up: a can rack is the nation's own (canRackStyleFor)
-        if (row.kit === 'jerry') values.nation = spec.nation || '';
+        // round 4 follow-up: a can rack is the nation's own (canRackStyleFor); round 5: a bin wears the nation's paint
+        if (row.kit === 'jerry' || row.kit === 'bin') values.nation = spec.nation || '';
         // The mobile tier builds only the coarse forms; other tiers build both levels
         // from identically seeded streams (builders draw before branching on detail).
         const variant = String(values.v ?? '');
+        const pieceName = row.kit === 'cargo' ? `cargo:${variant}` : row.kit;
+        // round 5: the n-th soft load of the tank takes the n-th fabric of its rotation (fabricFamily), so its kit
+        // alternates light and dark goods; the counter steps once per built row, the same at every tier
+        if (sagsOnSupport(pieceName)) values.fabric = fabricBase + fabricCount++;
+        // round 5: one tie webbing per load at both levels, standing off the load's own value (tieRgbFor)
+        const secure = (list: DecorPartList, detail: 0 | 1, tie: RGB): void => {
+          secureLoadParts(list, row.kit, variant, detail, tie);
+          if (isLoadPiece(pieceName)) lashLoad(list, detail, tie);
+        };
         if (lowTier) {
           const coarseOnly = kitFn({ rng: mulberry32(seed), ...values, detail: 0 });
-          if (coarseOnly) secureLoadParts(coarseOnly, row.kit, variant, 0, webbingRgb);
+          if (coarseOnly) secure(coarseOnly, 0, tieRgbFor(coarseOnly, canvasLinear));
           return coarseOnly;
         }
         const parts = kitFn({ rng: mulberry32(seed), ...values, detail: 1 });
         if (parts) {
+          const tie = tieRgbFor(parts, canvasLinear);
           parts.coarse = DETAIL_KITS.has(row.kit)
             ? kitFn({ rng: mulberry32(seed), ...values, detail: 0 })
             : clonePartList(parts);
-          if (parts.coarse && DETAIL_KITS.has(row.kit)) secureLoadParts(parts.coarse, row.kit, variant, 0, webbingRgb);
-          secureLoadParts(parts, row.kit, variant, 1, webbingRgb);
-          if (parts.coarse && !DETAIL_KITS.has(row.kit)) secureLoadParts(parts.coarse, row.kit, variant, 0, webbingRgb);
+          if (parts.coarse && DETAIL_KITS.has(row.kit)) secure(parts.coarse, 0, tie);
+          secure(parts, 1, tie);
+          if (parts.coarse && !DETAIL_KITS.has(row.kit)) secure(parts.coarse, 0, tie);
         }
         return parts;
       } catch (error) {
@@ -5226,6 +6233,7 @@ export function* attachTankDecorationsSteps(
       // Every row's roll and seed off the main stream, drawn in manifest order exactly as before (two draws a row), so
       // an early row (DecorManifestRow.early) seats first with the very draws it would have had in its turn.
       const draws = manifest.map(() => { const roll = rng(); return { roll, jitterSeed: (rng() * 0x7fffffff) | 0 }; });
+      const roofGunCarried = manifest.some((row) => row.kit === 'aamg') && carriesRoofGun(turretG, hullG);
       const seatRow = (row: DecorManifestRow, jitterSeed: number): void => {
         const kitFn = DECOR_KITS[row.kit];
         const slotFn = SLOTS[row.slot[0]];
@@ -5234,12 +6242,15 @@ export function* attachTankDecorationsSteps(
         if (parts) placeManifestParts(row, slotFn, parts, jitterSeed);
       };
       manifest.forEach((row, index) => {
-        if (row.early && row.kit !== 'smoke' && row.kit !== 'antenna' && !(draws[index].roll > (row.p ?? 1))) seatRow(row, draws[index].jitterSeed);
+        if (row.early && row.kit !== 'smoke' && row.kit !== 'antenna' && !(row.kit === 'aamg' && roofGunCarried)
+          && !(draws[index].roll > (row.p ?? 1))) seatRow(row, draws[index].jitterSeed);
       });
       for (let index = 0; index < manifest.length; index++) {
         const row = manifest[index];
         const { roll, jitterSeed } = draws[index];
         if (row.early) { yield { stage: 'manifest-row', completed: index + 1, total: manifest.length }; continue; }
+        // the decor roof gun yields to a roof gun the vehicle carries (carriesRoofGun); its draws stay consumed above
+        if (row.kit === 'aamg' && roofGunCarried) { yield { stage: 'manifest-row', completed: index + 1, total: manifest.length }; continue; }
         if (row.kit !== 'smoke' && row.kit !== 'antenna' && !(roll > (row.p ?? 1))) {
           const kitFn = DECOR_KITS[row.kit];
           const slotFn = SLOTS[row.slot[0]];
@@ -5336,6 +6347,10 @@ export function* attachTankDecorationsSteps(
       drawCalls += yield* mergeDecorationBucket(frame, buckets[frame], coarseBuckets[frame], false);
       drawCalls += yield* mergeDecorationBucket(frame, functionalBuckets[frame], new Map(), true);
     }
+    // round 5 (2026-10-08, the nets lane): a camouflage suit's roof and deck nets are drawn up over the loads stowed on
+    // them, never laid through them (ghillieDrape.ts)
+    drapeGhillieOverLoads(hullG, seatedLoads.hull);
+    drapeGhillieOverLoads(turretG, seatedLoads.turret);
     yield { stage: 'publish', completed: resources.groupCount(), total: resources.groupCount() };
     summary.tris = budget.tris;
     summary.drawCalls = drawCalls;

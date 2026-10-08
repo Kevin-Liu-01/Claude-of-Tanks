@@ -31,7 +31,8 @@ assert.equal(packageJson.scripts.posttest, undefined, 'npm --all must apply to e
 // runner's 45-second admission window. Keep them together, within their
 // existing lifecycle, so four workers do useful work before draining.
 // 2026-10-02: one fleet pass per build hosts the former whole-fleet receipts' audits (fleetPass.test-support.mjs).
-assert.deepEqual(SELFTEST_SUITES.pre.slice(0,4),[
+assert.deepEqual(SELFTEST_SUITES.pre.slice(0,5),[
+  'tools/asset-provenance.selftest.mjs',
   'src/vehicles/fleetLazy.selftest.mjs',
   'src/vehicles/fleetPassHigh.selftest.mjs',
   'tools/wheel-axial-extents.selftest.mjs',

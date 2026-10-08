@@ -1439,8 +1439,11 @@ function buildType99ATurretRoofAndGun(P: Modern2BuilderPort) {
     // carried just ahead of the hatch while the aft spade grips overlap the
     // cupola rim, so a standing commander can actually reach the weapon.
     P.add('turretDetail', box(0.20, 0.035, 0.22), 0.52, 1.097, -0.22);
+    // 2026-10-08 (round 5; wave 255: "a long barrel on a plain block receiver with no ammunition box, belt or feed";
+    // the coordinator: the right gun per nation): the QJC-88's own construction at true scale, its 50-round box and
+    // belt on the left.
     const mg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'nsvt', tone: 'dark', scale: 1.08, ammo: true,
+      mats: P.mats, cls: 'qjc88', tone: 'dark', scale: 1.0, ammo: true,
       elev: 0.02, rotation: [0, 0, 0], seed: 18,
     });
     mg.position.set(0.52, 1.11, -0.17);
@@ -1621,7 +1624,10 @@ function buildMBT70(P: Modern2BuilderPort) {
   };
   P.add('turret', polyMultiLoft(turretPlan, [
     { height: turretFloorHeight, inset: 1.00 },
-    { height: 0.22, inset: rearBiasedInset(0.88, 0.96, 0.99) },
+    // The raked aft floor reaches .23 m: carry the lower belt above it
+    // instead of letting a constant .22 m ring cross through that floor.
+    { height: (point: readonly [number, number]) => Math.max(0.22, turretFloorHeight(point) + 0.025),
+      inset: rearBiasedInset(0.88, 0.96, 0.99) },
     { height: 0.52, inset: rearBiasedInset(0.70, 0.89, 0.95) },
     { height: TH, inset: rearBiasedInset(0.52, 0.84, 0.91) },
   ]));

@@ -407,11 +407,18 @@ export function fabricRollParts(len: number, r: number, cinch: readonly number[]
  * A 200 L class steel drum as a lathe along +Y from y = 0 to `len`: rolled chimes at both heads and two rolling hoops
  * (round 3: the T-90M's rear drums were plain canvas-green cylinders).
  */
-function drumLathe(R: number, len: number, seg = 16, hoops = true): THREE.BufferGeometry {
-  const hoop = (y: number): XY[] => [[R, y - 0.016], [R + 0.012, y], [R, y + 0.016]];
-  return latheY([[0.0005, 0.01], [R - 0.012, 0.012], [R + 0.004, 0], [R, 0.02],
+function drumLathe(R: number, len: number, seg = 16, hoops = true, bold = false): THREE.BufferGeometry {
+  // round 5 (`bold`, the Type 99A's half-metre drums): the rolling hoops stand 18 mm proud, a swaged rib runs between
+  // each hoop and its head, and the chimes are rolled beads 12 mm proud
+  const hoop = (y: number): XY[] => [[R, y - 0.016], [R + (bold ? 0.018 : 0.012), y], [R, y + 0.016]];
+  const rib = (y: number): XY[] => [[R, y - 0.009], [R + 0.007, y], [R, y + 0.009]];
+  const chime = bold ? 0.012 : 0.004;
+  return latheY([[0.0005, 0.01], [R - 0.012, 0.012], [R + chime, 0], ...(bold ? [[R + chime * 0.6, 0.012] as XY] : []), [R, 0.02],
+    ...(hoops && bold ? rib(len * 0.13) : []),
     ...(hoops ? [...hoop(len * 0.29), ...hoop(len * 0.71)] : []),
-    [R, len - 0.02], [R + 0.004, len], [R - 0.012, len - 0.012], [0.0005, len - 0.01]], seg);
+    ...(hoops && bold ? rib(len * 0.87) : []),
+    [R, len - 0.02], ...(bold ? [[R + chime * 0.6, len - 0.012] as XY] : []), [R + chime, len], [R - 0.012, len - 0.012],
+    [0.0005, len - 0.01]], seg);
 }
 
 export interface FuelDrumSpec {
@@ -426,6 +433,16 @@ export interface FuelDrumSpec {
   /** The head that carries the two bung caps: 1 the top (y = len), -1 the bottom (y = 0), 0 none. */
   bungHead?: -1 | 0 | 1;
   detail?: AccessoryDetail;
+  /** Heavy rims and ribs (round 5): see drumLathe. */
+  bold?: boolean;
+  /**
+   * The drum's issue paint, linear (round 5): the body bakes its colours into a `color` attribute for the vehicle's
+   * vertex-coloured matte draw (`bark`): the paint mottled, rust where the straps chafe, a fuel stain run from the bung
+   * head along the crown, grime in the chimes, the hoops' crests worn to steel, and two shallow dents, all to `seed`.
+   * The crown is the drum's local -X (the bearing that lies uppermost when the drum is laid along X, alongX callers).
+   */
+  paint?: readonly [number, number, number];
+  seed?: number;
 }
 
 export interface FuelDrumParts {
@@ -448,7 +465,8 @@ export interface FuelDrumParts {
 export function fuelDrumParts(spec: FuelDrumSpec): FuelDrumParts {
   const R = spec.r, len = spec.len, detail = spec.detail ?? 1;
   const seg = spec.seg ?? (detail ? 18 : 10);
-  const body = withBoxUV(drumLathe(R, len, seg, detail === 1));
+  const body = withBoxUV(drumLathe(R, len, seg, detail === 1, spec.bold === true));
+  if (spec.paint) weatherDrumBody(body, R, len, spec.paint, spec.straps ?? [], spec.bungHead ?? 0, spec.seed ?? 1, detail);
   const straps: THREE.BufferGeometry[] = [];
   const hardware: THREE.BufferGeometry[] = [];
   const bearing = spec.buckleAt ?? 0;
@@ -479,6 +497,72 @@ export function fuelDrumParts(spec: FuelDrumSpec): FuelDrumParts {
     }
   }
   return { body, straps, hardware };
+}
+
+/**
+ * Fuel drum issue paints, linear albedo (round 5; the wave-257 rule "military kit only, in service colours"): olive
+ * drab, dark green, faded green-grey and sand. Never the scheme's fitting paint, which a desert scheme turns orange
+ * under the warm key (wave 269 on the T-90M: "a bright orange plastic-looking cylinder at the rear left").
+ */
+export const DRUM_ISSUE_PAINTS: ReadonlyArray<readonly [number, number, number]> = [
+  [0.075, 0.085, 0.036], [0.0423, 0.0685, 0.0319], [0.117, 0.133, 0.0844], [0.314, 0.238, 0.117],
+];
+
+// Round 5 drum weathering colours, linear: a dark rust brown, never an orange (sRGB 84, 52, 34), and steel worn bright
+// through the paint (96, 94, 88)
+const DRUM_RUST: Rgb3 = [0.0887, 0.0343, 0.016];
+const DRUM_STEEL: Rgb3 = [0.117, 0.112, 0.0976];
+
+/** Bake a painted drum's colours and dents (see FuelDrumSpec.paint); `body` is the drum's own frame (+Y the axis). */
+function weatherDrumBody(body: THREE.BufferGeometry, R: number, len: number, paint: Rgb3, straps: readonly number[],
+  bungHead: number, seed: number, detail: AccessoryDetail): void {
+  const pos = body.getAttribute('position');
+  // two shallow dents in the shell, between the hoops (near level only)
+  const dents = detail ? [0, 1].map((k) => ({ a: hash01(seed, 81, k) * TAU, y: len * (0.36 + 0.28 * hash01(seed, 83, k)),
+    depth: 0.004 + 0.004 * hash01(seed, 87, k) })) : [];
+  const gap = (a: number, b: number): number => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    const r = Math.hypot(v.x, v.z);
+    if (r < R - 0.003 || r > R + 0.003) continue;                     // the plain shell only, not hoops or heads
+    const a = Math.atan2(v.x, v.z);
+    for (const dent of dents) {
+      const d2 = (gap(a, dent.a) * R / 0.06) ** 2 + ((v.y - dent.y) / 0.06) ** 2;
+      if (d2 < 1) {
+        const k = 1 - (dent.depth * (1 - d2)) / r;
+        pos.setXYZ(i, v.x * k, v.y, v.z * k);
+      }
+    }
+  }
+  body.computeVertexNormals();
+  const crown = -Math.PI / 2 + (hash01(seed, 89) - 0.5) * 0.6;           // the stain's bearing, near the top
+  const color = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    const r = Math.hypot(v.x, v.z), a = Math.atan2(v.x, v.z), y = v.y;
+    const mottle = 0.92 + 0.08 * Math.sin(a * 3 + y * 9 + seed) * Math.sin(a * 5 - y * 4 + seed * 2);
+    let c: Rgb3 = scale3(paint, mottle);
+    // grime in the chimes and on the heads
+    if (y < 0.022 || y > len - 0.022 || r < R - 0.01) c = scale3(mix3(c, DRUM_RUST, 0.14), 0.7);
+    // worn hoop and rib crests
+    else if (r > R + 0.005) c = mix3(c, DRUM_STEEL, Math.min(0.5, (r - R - 0.005) * 40));
+    // rust where each strap chafes, patchy round the drum
+    for (const share of straps) {
+      const g = (y - share * len) / 0.04;
+      const rust = Math.exp(-g * g) * (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(a * 4 + seed + share * 7)));
+      c = mix3(c, DRUM_RUST, Math.min(0.6, rust * 0.7));
+    }
+    // a fuel stain run from the bung head along the crown, darker and fading
+    if (bungHead) {
+      const fromHead = bungHead > 0 ? len - y : y;
+      const across = gap(a, crown) / 0.32;
+      const stain = Math.exp(-across * across) * Math.max(0, 1 - fromHead / (len * 0.55));
+      c = scale3(mix3(c, DRUM_RUST, stain * 0.3), 1 - stain * 0.45);
+    }
+    color[i * 3] = c[0]; color[i * 3 + 1] = c[1]; color[i * 3 + 2] = c[2];
+  }
+  body.setAttribute('color', new THREE.BufferAttribute(color, 3));
 }
 
 export interface BarkLogSpec {
@@ -522,6 +606,11 @@ export interface BarkLogParts {
  * that swells and tapers, and sawn ends in pale end grain with growth rings and radial checks inside a rim of bark. Centred
  * on the origin, lying along +X, deterministic in `seed`. The coarse level (`detail` 0) is the same envelope without the
  * furrows, knots and grain.
+ * Round 5 (2026-10-08; wave 255 on the T-90M: "the log bundle is identical smooth dowels: needs bark, knots, split ends
+ * and varied diameters"): thirteen even ridges running the whole length read as a bundle of rods. The bark is now
+ * plates: every ridge rises and dies away station to station and wanders off its line, the furrows open and close, the
+ * trunk tapers a tenth and swells unevenly, the knots ring dark and the ridges carry grey lichen; three drying checks
+ * split each sawn end to the bark. Same stations and triangles.
  */
 export function barkLog(spec: BarkLogSpec): BarkLogParts {
   const detail = spec.detail ?? 1;
@@ -530,10 +619,10 @@ export function barkLog(spec: BarkLogSpec): BarkLogParts {
   const seg = detail ? (deep ? 26 : 18) : 9;
   const count = detail ? (deep ? 13 : 9) : 4;
   const ridgeAmp = deep ? 0.085 : 0.05;
-  const taper = spec.taper ?? 0.06;
+  const taper = spec.taper ?? 0.1;
   const phase = hash01(seed, 3) * TAU;
   const radiusAt = (u: number): number =>
-    spec.r * (1 - taper * u) * (1 + 0.03 * Math.sin(u * 9.4 + phase) + 0.02 * Math.sin(u * 23 + phase * 2));
+    spec.r * (1 - taper * u) * (1 + 0.045 * Math.sin(u * 9.4 + phase) + 0.03 * Math.sin(u * 23 + phase * 2));
   const twist = (hash01(seed, 5) - 0.5) * 0.7;
   // the first knot carries the cut branch stub and faces up and out of the load (it never digs into its support)
   const knots = detail ? [0, 1, 2].map((k) => ({
@@ -541,16 +630,19 @@ export function barkLog(spec: BarkLogSpec): BarkLogParts {
     u: 0.14 + 0.72 * hash01(seed, 37, k), h: 0.09 + 0.08 * hash01(seed, 41, k),
   })) : [];
   const angleGap = (a: number, b: number): number => Math.atan2(Math.sin(a - b), Math.cos(a - b));
-  const ring = (u: number): XY[] => {
+  const ring = (u: number, station: number): XY[] => {
     const R = radiusAt(u);
     const out: XY[] = [];
+    const at = seed + 7919 * station;
     for (let i = 0; i < seg; i++) {
-      const a = (i / seg) * TAU + twist * u;
+      // round 5: each ridge wanders off its line station to station (a quarter of its spacing), so none runs straight
+      const a = (i / seg) * TAU + twist * u + (detail ? (hash01(at, 61, i) - 0.5) * (TAU / seg) * 0.5 : 0);
       let k = 1;
       if (detail) {
-        // a ridge on every even vertex, a furrow on every odd one, each ridge its own height along the run
-        const ridge = i % 2 === 0 ? 1 : -0.75;
-        k += ridge * ridgeAmp * (0.55 + 0.9 * hash01(seed, i)) * (0.8 + 0.2 * Math.sin(u * 11 + i * 1.7));
+        // a ridge on every even vertex, a furrow on every odd one; round 5: a ridge rises into a plate and dies away
+        // station to station, and the furrow beside it opens and closes
+        const ridge = i % 2 === 0 ? Math.max(0, 1.45 * hash01(at, 67, i) - 0.3) : -(0.25 + 0.65 * hash01(at, 71, i));
+        k += ridge * ridgeAmp * (0.55 + 0.7 * hash01(seed, i));
         for (const knot of knots) {
           k += knot.h * Math.exp(-((angleGap(a, knot.a) / 0.34) ** 2) - (((u - knot.u) * spec.len) / 0.06) ** 2);
         }
@@ -562,7 +654,7 @@ export function barkLog(spec: BarkLogSpec): BarkLogParts {
   const sections: LoftSection[] = [];
   for (let s = 0; s < count; s++) {
     const u = s / (count - 1);
-    sections.push({ z: (u - 0.5) * spec.len, ring: ring(u) });
+    sections.push({ z: (u - 0.5) * spec.len, ring: ring(u, s) });
   }
   // smooth bark (welded side), crisp sawn caps
   const side = loftZ(sections, false, false);
@@ -598,11 +690,11 @@ export function barkLog(spec: BarkLogSpec): BarkLogParts {
       const rings = new THREE.RingGeometry(R * inner, R * outer, 12, 1).toNonIndexed();
       grain.push(alongX(withBoxUV(place(rings, 0, 0, z + end * 0.0035, 0, end > 0 ? 0 : Math.PI, 0))));
     }
-    // two radial drying checks from the pith toward the bark
-    for (const k of [0, 1]) {
+    // three radial drying checks from the pith to the bark (round 5: wider and full length, the ends read split)
+    for (const k of [0, 1, 2]) {
       const a = hash01(seed, 53 + end, k) * TAU;
-      const check = new THREE.PlaneGeometry(0.007, R * 0.62).toNonIndexed();
-      place(check, 0, R * 0.36, 0, 0, 0, 0);
+      const check = new THREE.PlaneGeometry(0.004 + R * 0.06, R * 0.8).toNonIndexed();
+      place(check, 0, R * 0.44, 0, 0, 0, 0);
       place(check, 0, 0, 0, 0, 0, a);
       grain.push(alongX(withBoxUV(place(check, 0, 0, z + end * 0.004, 0, end > 0 ? 0 : Math.PI, 0))));
     }
@@ -618,7 +710,7 @@ export function barkLog(spec: BarkLogSpec): BarkLogParts {
     place(g, 0, 0, 0, 0, 0, knot.a - Math.PI / 2);              // turned out to the knot's bearing
     stub = alongX(place(g, 0, 0, (knot.u - 0.5) * spec.len));
   }
-  if (spec.tinted) tintBarkLog({ bark, stub, ends, grain, radiusAt }, spec.len, ridgeAmp, seed);
+  if (spec.tinted) tintBarkLog({ bark, stub, ends, grain, radiusAt }, spec.len, ridgeAmp, seed, knots);
   return { bark, stub, ends, grain, radiusAt };
 }
 
@@ -631,6 +723,8 @@ const SAPWOOD: Rgb3 = [0.423, 0.296, 0.146];
 const HEARTWOOD: Rgb3 = [0.297, 0.157, 0.0612];
 const GROWTH_RING: Rgb3 = [0.145, 0.0762, 0.0343];
 const DRYING_CHECK: Rgb3 = [0.0176, 0.0103, 0.0060];
+/** Grey lichen over the bark's ridges (round 5): sRGB (92, 94, 82). */
+const LICHEN: Rgb3 = [0.107, 0.112, 0.0844];
 type Rgb3 = readonly [number, number, number];
 
 function paintVertices(geometry: THREE.BufferGeometry, colorAt: (x: number, y: number, z: number, i: number) => Rgb3): void {
@@ -647,16 +741,30 @@ const mix3 = (a: Rgb3, b: Rgb3, t: number): Rgb3 => [a[0] + (b[0] - a[0]) * t, a
 const scale3 = (a: Rgb3, k: number): Rgb3 => [a[0] * k, a[1] * k, a[2] * k];
 
 /** Bake the log's wood colours (see `BarkLogSpec.tinted`); positions are the placed log's (axis along X). */
-function tintBarkLog(parts: BarkLogParts, len: number, ridgeAmp: number, seed: number): void {
+function tintBarkLog(parts: BarkLogParts, len: number, ridgeAmp: number, seed: number,
+  knots: ReadonlyArray<{ a: number; u: number }> = []): void {
   const phase = hash01(seed, 71) * TAU;
   // weathering: slow grey-to-warm patches along the trunk and round it, the same at every copy of a position
   const patch = (x: number, a: number): number => 0.9 + 0.08 * Math.sin(x * 6.1 + phase) + 0.07 * Math.sin(a * 3 + x * 2.3 + phase * 2);
+  const gap = (a: number, b: number): number => Math.atan2(Math.sin(a - b), Math.cos(a - b));
   paintVertices(parts.bark, (x, y, z) => {
     const r = Math.hypot(y, z);
     const u = Math.min(1, Math.max(0, x / len + 0.5));
+    const a = Math.atan2(z, y);
     const f = (r / parts.radiusAt(u) - 1) / ridgeAmp;                 // -1 in a furrow, +1 on a ridge
-    const base = f < 0 ? mix3(BARK_MID, BARK_FURROW, Math.min(1, -f * 1.1)) : mix3(BARK_MID, BARK_RIDGE, Math.min(1, f * 0.8));
-    return scale3(base, patch(x, Math.atan2(z, y)));
+    // round 5: softer furrows, and each plate of bark (a ridge between two stations) its own lightness
+    let base = f < 0 ? mix3(BARK_MID, BARK_FURROW, Math.min(0.75, -f * 0.9)) : mix3(BARK_MID, BARK_RIDGE, Math.min(1, f * 0.8));
+    const cell = hash01(seed + Math.round(u * 12) * 131, 73, Math.round(((a + TAU) % TAU) / TAU * 13));
+    base = scale3(base, 0.84 + 0.32 * cell);
+    // round 5: grey lichen in patches on the ridges, and a dark ring of bark round each knot
+    const lichen = Math.sin(x * 4.1 + a * 2 + phase * 3) * Math.sin(x * 1.7 - a * 3 + phase);
+    if (f > 0 && lichen > 0.35) base = mix3(base, LICHEN, Math.min(0.6, (lichen - 0.35) * 2));
+    for (const knot of knots) {
+      // the knot's bearing about the trunk in the placed frame (barkLog turns its +Z axis to +X: y stays, z = -x')
+      const d = Math.hypot(gap(a, Math.atan2(-Math.cos(knot.a), Math.sin(knot.a))) / 0.5, ((u - knot.u) * len) / 0.09);
+      if (d < 1) base = scale3(base, 0.55 + 0.45 * d);
+    }
+    return scale3(base, patch(x, a));
   });
   if (parts.stub) paintVertices(parts.stub, (x, y, z) => scale3(BARK_MID, patch(x, Math.atan2(z, y)) * 1.1));
   for (const face of parts.ends) {

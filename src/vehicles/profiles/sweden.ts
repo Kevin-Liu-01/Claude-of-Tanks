@@ -6,7 +6,7 @@
 // course, then adds supported Swedish armor, equipment and gun-station cues.
 
 import * as THREE from 'three';
-import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.ts';
+import { KIT, FITTINGS, orientedSlab, convexSlab, muzzleBore } from './kit.ts';
 import { buildStrv103 } from './casemate.ts';
 import { centurionBuild } from './uk.ts';
 import { buildLeo2A5 } from './leopard.ts';
@@ -426,7 +426,7 @@ function loftRows(
   for (let i = 0; i < rows.length - 1; i++) {
     const a = rows[i], c = rows[i + 1];
     const awt = a.wt ?? a.w, cwt = c.wt ?? c.w;
-    P.add(bucket, orientedSlab(
+    P.add(bucket, convexSlab(
       [-a.w, a.b, a.z], [a.w, a.b, a.z], [c.w, c.b, c.z], [-c.w, c.b, c.z],
       [-awt, a.t, a.z], [awt, a.t, a.z], [cwt, c.t, c.z], [-cwt, c.t, c.z]));
   }
@@ -480,7 +480,7 @@ function buildUdes03(P: SwedishBuilderPort): void {
   // Central gun spine is sunk into the wedge and closes the roof around the
   // fixed trunnion.  Its tapered upper facets form a real armored trough,
   // avoiding the detached barrel-on-a-flat-roof appearance of the old model.
-  P.add('hull', orientedSlab(
+  P.add('hull', convexSlab(
     [-0.24, 1.17, 2.78], [0.24, 1.17, 2.78], [0.30, 1.43, 0.62], [-0.30, 1.43, 0.62],
     [-0.14, 1.37, 2.78], [0.14, 1.37, 2.78], [0.20, 1.58, 0.62], [-0.20, 1.58, 0.62]));
   for (const side of [-1, 1]) {
@@ -786,9 +786,12 @@ function buildStrv103A(P: SwedishBuilderPort): void {
     const a = k * Math.PI / 6;
     P.add('hullDark', cylY(0.006, 0.006, 0.006, 6), 0.28 + Math.cos(a) * 0.252, 2.002, -0.40 + Math.sin(a) * 0.252);
   }
+  // 2026-10-08 (tank-accessories round 5; wave 256 on the Strv 103A: "a plain dark rod through a box between two slotted
+  // plates, with no receiver detail, feed tray, belt, ammunition box or muzzle device"): the shield's leaves stand
+  // 0.14 m (the low shield), so the receiver's feed cover, the can on the gun's left and its belt read over them.
   mount(P, 'hull', FITTINGS.pintleMG({
     mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 1.0,
-    elev: 0.04, shield: true, ammo: true, seed: 10430,
+    elev: 0.04, shield: 'low', ammo: true, seed: 10430,
   }), 0.40, 1.999, -0.24, [0, 0.05, 0]);                                      // commander Ksp 58 on the cupola race
   P.add('hull', sph(0.155, 14, Math.PI / 2), -0.52, 1.87, -0.30);             // fixed observation dome (left)
   P.add('hullDark', torus(0.14, 0.012, 12), -0.52, 1.925, -0.30);

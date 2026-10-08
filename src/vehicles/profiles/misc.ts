@@ -1331,15 +1331,17 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
       // angles (sweep under-fr [1.017, 2.201, 0.994], 0.242 x 0.077). Plug
       // follows the chamfer underside line 5 mm below the sheet (armor module
       // face, §5.326 closure class); interior to plan/side silhouettes.
+      // The closure floor is 10 mm below its 0.295 m outboard roof; the old
+      // 0.300 m floor inverted the final strip beside the chamfer edge.
       P.add('turret', slab(
-        [s * 1.00, 0.30, 0.97], [s * 1.40, 0.30, 0.93], [s * 1.40, 0.30, 0.86], [s * 1.00, 0.30, 0.90],
+        [s * 1.00, 0.285, 0.97], [s * 1.40, 0.285, 0.93], [s * 1.40, 0.285, 0.86], [s * 1.00, 0.285, 0.90],
         [s * 1.00, 0.555, 0.97], [s * 1.40, 0.295, 0.93], [s * 1.40, 0.295, 0.86], [s * 1.00, 0.555, 0.90]));
       // Watertight pass 2026-09-13: the same wedge void ran under the whole
       // chamfer sheet (z 0.02..0.90, 53 / 49 L per side), open at its front
       // mouth. The bulkhead's profile now fills the full length beneath the
       // sheet, 5 mm below it, over the cheek core.
       P.add('turret', slab(
-        [s * 1.00, 0.30, 0.90], [s * 1.40, 0.30, 0.86], [s * 1.40, 0.30, 0.04], [s * 1.00, 0.30, 0.08],
+        [s * 1.00, 0.285, 0.90], [s * 1.40, 0.285, 0.86], [s * 1.40, 0.285, 0.04], [s * 1.00, 0.285, 0.08],
         [s * 1.00, 0.555, 0.90], [s * 1.40, 0.295, 0.86], [s * 1.40, 0.295, 0.04], [s * 1.00, 0.555, 0.08]));
     }
     // Watertight pass 2026-09-13 ("pour water into the turret and it must not
@@ -1709,10 +1711,20 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
       // inside the ref's own 2.37-2.42 cluster window at z_w 0.16..0.46.
       // 2026-10-07 (round 4, wave 217): the M2 takes its can, belt and feed tray (on its left, outboard); the XLR and
       // AMX-56 centred roof stations keep it off, where the can would stand in their sight cluster.
-      const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'dark', elev: -0.20, seed: 17, scale: 0.76,
-        ammo: !centeredRoofStations });
-      m2.name = 'leclercRoofM2';
-      m2.position.set(0.88, 0.575, 0.36);
+      // 2026-10-08 (tank-accessories round 5; wave 257 on the Leclerc: "a 12.7 mm M2-style weapon where a Leclerc
+      // normally carries a 7.62 mm"; "the gun barrel merges in silhouette with the smoke-launcher tubes behind it, and
+      // the gun stands on a thin round post with only a bare green ammo can and no cradle or ring"): the roof gun is
+      // the 7.62 GPMG at true scale (the Leclerc's 12.7 is its coaxial). Its foot stood 0.2 m down inside the HL-70
+      // housing's outboard edge, so only the cradle showed above the lid; it now stands on the housing's lid plate
+      // (top 0.791) on a ring mount, its post 4 cm risen in a sleeve, and the barrel rides 0.14 m higher, clear of the
+      // smoke tubes' line. Moved from (0.88, 0.575, 0.36) to (0.70, 0.789, 0.38); the AMX-56, whose dual sight box
+      // covers that lid, carries it on the box's top (0.84) at (0.62, 0.838, 0.18) without the riser.
+      const amx56Seat = variant === 'amx56';
+      const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.08, seed: 17, scale: 1.0,
+        ammo: !centeredRoofStations, riser: amx56Seat ? 0 : 0.04, ring: { r: 0.15, stubs: 3 } });
+      m2.name = 'leclercRoofGpmg';
+      if (amx56Seat) m2.position.set(0.62, 0.838, 0.18);
+      else m2.position.set(0.70, 0.789, 0.38);
       P.turretG.add(m2);
       P.add('turretDark', box(0.10, 0.02, 0.14), 0.70, 0.62, 0.10);              // flat 12.7 ammo pouch on the mid roof
     }

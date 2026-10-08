@@ -5,10 +5,18 @@
 // vertices to any other piece's triangles is at most 15 mm (a gap a close-up shows as daylight). Ghillie suits are
 // measured by their own receipts.
 //
-// The round-4 census found 64 pieces that touch nothing (contact occlusion quads riding 5 cm above a turret roof, a
-// 2.4 m rack rail with nothing within 10 cm, RWS covers and remote-gun parts on standoffs that were never modelled,
-// light-cluster guards, tow cables). KNOWN_FLOATING is a ratchet: a tank may not gain a floating piece, and every fix
-// lowers its entry; round 5 drives it to zero.
+// The round-4 census found 64 pieces that touch nothing by that vertex measure (contact occlusion quads riding 5 cm
+// above a turret roof, a 2.4 m rack rail with nothing within 10 cm, RWS covers and remote-gun parts on standoffs that
+// were never modelled, light-cluster guards, tow cables). KNOWN_FLOATING is a ratchet: a tank may not gain a floating
+// piece, and every fix lowers its entry; round 5 drives it to zero.
+//
+// Round 5 (2026-10-08, the props helper with the coordinator): the vertex measure missed contact along an edge. A piece
+// whose vertices all lie more than 15 mm from every other piece can still lie along a surface (a gasket band round a
+// rounded case) or cross one (a smoke-bank bracket set diagonally into the turret cheek), so its edges are sampled
+// every 3 cm as well: 51 of the 64 were in contact, 13 really float. A piece in contact only because an edge crosses
+// another piece's triangle is CLIPPING (flasks standing through a closed crate lid, a tool handle through a solid clamp
+// block, a foot plate cut into a sloped plate, a pad tilted through a crowned roof): that is a defect of its own, held
+// by its own ratchet (KNOWN_CLIPPING), so a fix in geometry can't come back unseen.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
@@ -16,17 +24,36 @@ import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 
 const TOUCH_M = 0.015;
 const CELL_M = 0.1;
+/** Edge sample spacing (m): a crossing lies within half of it of a sample, so within TOUCH_M of the surface it crosses. */
+const SAMPLE_M = 0.03;
 // the waves' close-up tanks, the weathering wave's Leopard 2A6, and every 24th fleet id (ALL_TANK_IDS index 7, 31, ...)
 const IDS = Object.freeze([
   'm1a2_sepv3', 'leo2a4', 't90m_proryv', 'ua_t84_oplot_m', 'challenger1', 'm60a1', 'type99a', 'pt91_twardy', 'strv103a',
   'leclerc', 'merkava4_trophy', 't72b3m', 'm1a2_tusk', 'leo2a6',
   'abramsx', 'cv90_x', 'bmp2', 'leo2_revolution', 'fv510_milan', 'm46_patton', 'bmp3m_dragun125_x', 't62mv1_x', 'griffin_viper',
 ]);
-// the ratchet (2026-10-08, round 4's census at 31247cc05, cell borders searched): floating accessory pieces per tank; any other tank is held to 0
-const KNOWN_FLOATING = Object.freeze({
-  m1a2_sepv3: 1, leo2a4: 2, t90m_proryv: 1, ua_t84_oplot_m: 5, challenger1: 2, m60a1: 1, type99a: 1, leclerc: 1,
-  merkava4_trophy: 2, t72b3m: 7, m1a2_tusk: 1, leo2a6: 2, abramsx: 17, cv90_x: 2, fv510_milan: 3, m46_patton: 8,
-  bmp3m_dragun125_x: 4, t62mv1_x: 2, griffin_viper: 2,
+// the ratchets: floating and clipping accessory pieces per tank; any other tank is held to 0. Round 4's census at
+// fcc68d78b (cell borders searched, edges sampled) found 13 and 49; round 5's stowage pass (2026-10-08) took them to 12
+// and 22: smoke brackets laid on the cheek, hung loads' wall feet under their arms, cans racks' straps clear of the
+// cans, tool and cable clamps under straps, the bucket's ears on its wall, the crate's flasks under its lid.
+// 2026-10-08, over push 3b (main's 5f8eefaa4 field upgrades): the Oplot-M's floating fender piece is gone (1 -> 0), and
+// its clipping took 4 -> 8: the three overlaps main's own roof station is built with (the muzzle sleeve over the barrel,
+// the trunnions through the cradle shroud, the ammunition-box lid seated on the box; a station is a fitting, so this
+// receipt reads it) and the second decor smoke bank, which main's screens and cage-wing legs moved forward along the
+// cheek, its bracket set into the armour like every other bank's (round 5's seat lays it flush there too).
+// 2026-10-08 (round 5, the guns helper over the lane head 5729f2d5b): the gun and weapon-station pieces are seated
+// (699f6c176, 8c6fca407, cb11de6ba): floating abramsx 8 -> 0, bmp3m_dragun125_x 2 -> 0; clipping abramsx 8 -> 1,
+// bmp3m_dragun125_x 2 -> 1, t62mv1_x 2 -> 0, t90m_proryv 1 -> 0, t72b3m 7 -> 6 (the station's Kord replaces the 0.8 m
+// bar). What remains is decor, tow cables, racks, jerrycans, light guards and the Oplot-M's own roof station.
+// 2026-10-08, round 5's stowage batches 2a and 2b over 3b and the guns helper's head 863dd3711 (side loads clear the
+// turret, banks seated to their wall, decor kept off the guns' bodies; tow-cable eyes, lamp guards, the can strap and
+// the rack crate): floating 0, clipping 6 (23 tanks), measured on the merged tree.
+const KNOWN_FLOATING = Object.freeze({});
+const KNOWN_CLIPPING = Object.freeze({
+  // main's own Oplot-M roof station (muzzle sleeve, trunnions, ammunition-box lid: 3), and the banks no wall seat
+  // backs, which keep the old fan so their sockets hold: the Oplot-M's pair ahead of its side screens and the
+  // T-72B3M's left (+X) bank
+  ua_t84_oplot_m: 5, t72b3m: 1,
 });
 
 function accessoryKind(object) {
@@ -38,8 +65,11 @@ function accessoryKind(object) {
   return /_ghillie_/.test(object.name) ? null : kind;
 }
 
-/** The accessory pieces of one built tank that touch nothing within TOUCH_M. */
-function floatingPieces(root) {
+/**
+ * The accessory pieces of one built tank that touch nothing within TOUCH_M (floating), and those in contact only because
+ * an edge crosses another piece's triangle (clipping).
+ */
+function contactCensus(root) {
   root.traverse((o) => { if (o.isLOD && o.levels?.length) o.levels.forEach((level, i) => { level.object.visible = i === 0; }); });
   root.updateMatrixWorld(true);
   const tris = [], pieces = [];
@@ -62,12 +92,17 @@ function floatingPieces(root) {
     const local = new Map();
     for (let i = 0; i < n; i++) {
       const r = find(i);
-      if (!local.has(r)) { local.set(r, pieces.length); pieces.push({ mesh: o.name, kind, verts: [], box: new THREE.Box3() }); }
+      if (!local.has(r)) { local.set(r, pieces.length); pieces.push({ mesh: o.name, kind, verts: [], tris: [], box: new THREE.Box3() }); }
       const piece = pieces[local.get(r)]; piece.verts.push(world[i]); piece.box.expandByPoint(world[i]);
     }
-    for (let t = 0; t < corners; t += 3) tris.push({ piece: local.get(find(at(t))), a: world[at(t)], b: world[at(t + 1)], c: world[at(t + 2)] });
+    for (let t = 0; t < corners; t += 3) {
+      const piece = local.get(find(at(t)));
+      pieces[piece].tris.push(tris.length);
+      tris.push({ piece, a: world[at(t)], b: world[at(t + 1)], c: world[at(t + 2)] });
+    }
   });
   const grid = new Map();
+  const cell = (v) => grid.get(`${Math.floor(v.x / CELL_M)},${Math.floor(v.y / CELL_M)},${Math.floor(v.z / CELL_M)}`) ?? [];
   tris.forEach((t, i) => {
     // registered in every cell within TOUCH_M of the triangle, so a vertex finds a triangle across a cell border
     const box = new THREE.Box3().setFromPoints([t.a, t.b, t.c]).expandByScalar(TOUCH_M);
@@ -77,13 +112,14 @@ function floatingPieces(root) {
           const key = `${x},${y},${z}`; if (!grid.has(key)) grid.set(key, []); grid.get(key).push(i);
         }
   });
-  const triangle = new THREE.Triangle(), closest = new THREE.Vector3();
-  const out = [];
+  const triangle = new THREE.Triangle(), closest = new THREE.Vector3(), q = new THREE.Vector3();
+  const ray = new THREE.Ray(), hit = new THREE.Vector3(), dir = new THREE.Vector3();
+  const floating = [], clipping = [];
   pieces.forEach((piece, pi) => {
     if (!piece.kind) return;
     let best = Infinity;
     for (const v of piece.verts) {
-      for (const ti of grid.get(`${Math.floor(v.x / CELL_M)},${Math.floor(v.y / CELL_M)},${Math.floor(v.z / CELL_M)}`) ?? []) {
+      for (const ti of cell(v)) {
         const t = tris[ti]; if (t.piece === pi) continue;
         triangle.set(t.a, t.b, t.c); triangle.closestPointToPoint(v, closest);
         best = Math.min(best, v.distanceTo(closest));
@@ -91,37 +127,66 @@ function floatingPieces(root) {
       }
       if (best <= TOUCH_M) break;
     }
-    if (best > TOUCH_M) out.push({ ...piece, gap: best });
+    if (best <= TOUCH_M) return;
+    // every edge sampled every SAMPLE_M: a sample within TOUCH_M of another piece is contact along that edge; an edge
+    // that crosses another piece's triangle is contact by clipping
+    let crosses = false;
+    for (const ti0 of piece.tris) {
+      const t0 = tris[ti0];
+      for (const [p0, p1] of [[t0.a, t0.b], [t0.b, t0.c], [t0.c, t0.a]]) {
+        const len = p0.distanceTo(p1);
+        if (len < 1e-6) continue;
+        dir.subVectors(p1, p0).divideScalar(len);
+        ray.set(p0, dir);
+        const steps = Math.max(1, Math.ceil(len / SAMPLE_M));
+        for (let k = 0; k <= steps; k++) {
+          q.lerpVectors(p0, p1, k / steps);
+          for (const ti of cell(q)) {
+            const t = tris[ti]; if (t.piece === pi) continue;
+            triangle.set(t.a, t.b, t.c); triangle.closestPointToPoint(q, closest);
+            best = Math.min(best, q.distanceTo(closest));
+            if (!crosses && ray.intersectTriangle(t.a, t.b, t.c, false, hit) && hit.distanceTo(p0) <= len) crosses = true;
+          }
+        }
+      }
+    }
+    if (best > TOUCH_M) floating.push({ ...piece, gap: best });
+    else if (crosses) clipping.push({ ...piece, gap: best });
   });
-  return { checked: pieces.filter((p) => p.kind).length, floating: out };
+  return { checked: pieces.filter((p) => p.kind).length, floating, clipping };
 }
 
 const warn = console.warn;
 console.warn = () => {};
 const restoreCanvas = installCanvasFixture();
-const counts = {};
+const counts = {}, clips = {};
 const report = [];
 let checked = 0;
+const line = (id, what, f) => {
+  const c = f.box.getCenter(new THREE.Vector3());
+  return `${id} ${what} ${f.kind} ${f.mesh} at ${c.toArray().map((x) => x.toFixed(2)).join(',')}: nearest ${Number.isFinite(f.gap) ? `${(f.gap * 100).toFixed(1)} cm` : '> 10 cm'}`;
+};
 try {
   for (const id of IDS) {
     const tank = createTank(id, null, { camoSeed: 4242, quality: 'high', decor: true, staticPreview: true });
     try {
-      const result = floatingPieces(tank.root);
+      const result = contactCensus(tank.root);
       checked += result.checked;
       counts[id] = result.floating.length;
-      for (const f of result.floating) {
-        const c = f.box.getCenter(new THREE.Vector3());
-        report.push(`${id} ${f.kind} ${f.mesh} at ${c.toArray().map((x) => x.toFixed(2)).join(',')}: nearest ${Number.isFinite(f.gap) ? `${(f.gap * 100).toFixed(1)} cm` : '> 10 cm'}`);
-      }
+      clips[id] = result.clipping.length;
+      for (const f of result.floating) report.push(line(id, 'floating', f));
+      for (const f of result.clipping) report.push(line(id, 'clipping', f));
     } finally { tank.dispose(); }
   }
 } finally { restoreCanvas(); console.warn = warn; }
-if (process.env.ACCESSORY_CONTACT_PRINT) console.log(JSON.stringify(counts));
+if (process.env.ACCESSORY_CONTACT_PRINT) console.log(JSON.stringify({ floating: counts, clipping: clips }), '\n' + report.join('\n'));
 for (const id of IDS) {
   assert.ok((counts[id] ?? 0) <= (KNOWN_FLOATING[id] ?? 0),
     `${id}: ${counts[id]} accessory piece(s) touch nothing within ${TOUCH_M * 1000} mm (known ${KNOWN_FLOATING[id] ?? 0}):\n  `
-    + report.filter((line) => line.startsWith(`${id} `)).join('\n  '));
+    + report.filter((entry) => entry.startsWith(`${id} floating `)).join('\n  '));
+  assert.ok((clips[id] ?? 0) <= (KNOWN_CLIPPING[id] ?? 0),
+    `${id}: ${clips[id]} accessory piece(s) touch only by crossing another piece's surface (known ${KNOWN_CLIPPING[id] ?? 0}):\n  `
+    + report.filter((entry) => entry.startsWith(`${id} clipping `)).join('\n  '));
 }
-const total = Object.values(counts).reduce((a, b) => a + b, 0);
-const known = Object.values(KNOWN_FLOATING).reduce((a, b) => a + b, 0);
-console.log(`accessoryContact: ${IDS.length} tanks, ${checked} accessory pieces, ${total} touch nothing within ${TOUCH_M * 1000} mm (ratchet ${known})`);
+const sum = (o) => Object.values(o).reduce((a, b) => a + b, 0);
+console.log(`accessoryContact: ${IDS.length} tanks, ${checked} accessory pieces, ${sum(counts)} touch nothing within ${TOUCH_M * 1000} mm (ratchet ${sum(KNOWN_FLOATING)}), ${sum(clips)} touch only by clipping (ratchet ${sum(KNOWN_CLIPPING)})`);

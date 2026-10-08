@@ -1,3 +1,4 @@
+import { createThermalVehicles } from '../engine/thermalVehicles.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type {
   PerspectiveCamera,
@@ -68,6 +69,8 @@ interface CombatWarmCompositionOptions {
 }
 
 interface CombatWarmComposition {
+  thermalVehicles: ReturnType<typeof createThermalVehicles>;
+  warmVisionSteps(): Generator<void>;
   combatWarm: CombatWarmCoordinator;
   warmRender: OffscreenSceneWarmer;
   deploymentShadowWarm: DeploymentShadowWarmOwner;
@@ -118,6 +121,7 @@ export function createCombatWarmComposition({
   publishStudioTrace,
   devTrace = null,
 }: CombatWarmCompositionOptions): CombatWarmComposition {
+  const thermalVehicles = createThermalVehicles();
   let destructionWarmed = false;
   const warmRender = createOffscreenSceneWarmer(renderer, scene, camera, 0.125);
   const deploymentShadowWarm = createDeploymentShadowWarmOwner({
@@ -130,6 +134,30 @@ export function createCombatWarmComposition({
     noteFovPrimed,
     simDt,
   });
+
+  const warmVisionSteps = function* (): Generator<void> {
+    yield* thermalVehicles.warmSteps(game.tanks, game.player?.team, function* (root) {
+      const steps = (function* () {
+        yield* forwardProgramWarm.initializeSteps(root);
+        // Bind uniforms and buffers using the actual scene lights and HDR target.
+        yield* createIsolatedForwardWarmBatches({ scene, root, warmRender, cohortSize: Infinity });
+      })();
+      try {
+        for (;;) {
+          // Enemy visuals may be staged off-scene until first spotted. Attach
+          // only during this private synchronous transaction, never at a yield.
+          const detached = !root.parent;
+          let done = false;
+          try {
+            if (detached) scene.add(root);
+            done = !!steps.next().done;
+          } finally { if (detached) scene.remove(root); }
+          if (done) break;
+          yield;
+        }
+      } finally { steps.return(undefined); }
+    });
+  };
 
   let combatWarm!: CombatWarmCoordinator;
   const createContext = (): CombatWarmRuntimeContext => ({
@@ -172,6 +200,7 @@ export function createCombatWarmComposition({
     camera,
     getBattleVisuals,
     combatWarm,
+    warmVisionSteps,
     warmBattleTerrainTiles: (yieldForBudget) => battleWarm.warmBattleTerrainTiles({
       game,
       world: getWorld(),
@@ -199,6 +228,8 @@ export function createCombatWarmComposition({
   });
 
   return {
+    thermalVehicles,
+    warmVisionSteps,
     combatWarm,
     warmRender,
     deploymentShadowWarm,
@@ -208,6 +239,7 @@ export function createCombatWarmComposition({
     setDestructionWarmed: (warmed) => { destructionWarmed = warmed; },
     isDestructionWarmed: () => destructionWarmed,
     resetRendererWarmState() {
+      thermalVehicles.invalidateWarm();
       destructionWarmed = false;
       battleWarm.invalidate();
       forwardProgramWarm.invalidate();
