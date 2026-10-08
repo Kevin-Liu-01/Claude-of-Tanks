@@ -352,12 +352,22 @@ function captureContext(seed) {
   assert.ok(shader.uniforms.uStructMask && shader.uniforms.uStructClock, 'the mask uniforms join the program');
   assert.ok(/attribute float aDamage;/.test(shader.vertexShader) && /aDamage \+ 0\.5 \) \) - 1/.test(shader.vertexShader),
     'the vertex reads aDamage as structure index + 1 (0 untouched)');
-  assert.equal(shader.vertexShader.match(/vStructCut = 0\.0;/g).length, 1, 'patched once');
+  assert.equal(shader.vertexShader.match(/int sid = int\( floor\( aDamage/g).length, 1, 'patched once');
   assert.ok(/USE_BATCHING[\s\S]*batchingMatrix[\s\S]*inverse\( mat3\( sw \) \)/.test(shader.vertexShader),
     'world space through the batching matrix, the displacement carried back');
-  assert.ok(shader.vertexShader.indexOf('#include <batching_vertex>') < shader.vertexShader.indexOf('vStructCut = 0.0;'),
+  assert.ok(shader.vertexShader.indexOf('#include <batching_vertex>') < shader.vertexShader.indexOf('int sid = int'),
     'the patch reads batchingMatrix after three defines it');
-  assert.ok(/if \( vStructCut > 0\.5 \) discard;/.test(shader.fragmentShader), 'a fallen structure is discarded');
+  assert.ok(/t >= 2\.40[\s\S]*transformed = \( inverse\( sw \) \* vec4\( SB\.xyz, 1\.0 \) \)\.xyz;/.test(shader.vertexShader),
+    'a fallen structure folds onto its pivot (no discard for it)');
+  // the phone tier cuts no holes: its fragment shader is left alone (no discard: its early depth and HSR stay)
+  const phoneMask = createStructureMask(16, { holes: false });
+  const pm = new THREE.MeshStandardMaterial();
+  phoneMask.patch(pm);
+  const pshader = { uniforms: {}, vertexShader: '#include <common>\nvoid main() {\n#include <begin_vertex>\n}',
+    fragmentShader: '#include <common>\nvoid main() {\n gl_FragColor = vec4(1.0);\n}' };
+  pm.onBeforeCompile(pshader, null);
+  assert.ok(!/discard/.test(pshader.fragmentShader) && /inverse\( sw \)/.test(pshader.vertexShader), 'the phone falls, uncut');
+  assert.notEqual(pm.customProgramCacheKey(), material.customProgramCacheKey(), 'its own program');
   assert.ok(/vStructHoles > 0\.5[\s\S]*along < -hn\.z \|\| along > hn\.w[\s\S]*discard/.test(shader.fragmentShader),
     'a fragment inside a hole\'s cylinder (outside..depth along the face normal) is discarded');
   assert.ok(/flat varying float vStructSid;/.test(shader.vertexShader) && /flat varying float vStructSid;/.test(shader.fragmentShader),
@@ -369,7 +379,7 @@ function captureContext(seed) {
   const dshader = { uniforms: {}, vertexShader: '#include <common>\nvoid main() {\n#include <batching_vertex>\n#include <begin_vertex>\n#include <project_vertex>\n}',
     fragmentShader: '#include <common>\nvoid main() {\n gl_FragColor = packDepthToRGBA( 0.5 );\n}' };
   depth.onBeforeCompile(dshader, null);
-  assert.ok(/vStructCut = 0\.0;/.test(dshader.vertexShader) && /discard/.test(dshader.fragmentShader), 'the depth pass sinks and opens too');
+  assert.ok(/int sid = int/.test(dshader.vertexShader) && /discard/.test(dshader.fragmentShader), 'the depth pass sinks and opens too');
   mask.reset();
   assert.equal(data[o], 0, 'reset stands every structure up');
 }

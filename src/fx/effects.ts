@@ -984,7 +984,7 @@ function* createFxSteps(
   // once) and what its stage builders write (rims, rooms, remnants, the pile) in its own materials. A phone that kept
   // a collapsed building standing would show a wall its hull drives through. Only the falling pieces scale by tier.
   const craters: CraterMarks | null = createCraterMarks();
-  const structMask: StructureMask | null = createStructureMask();
+  const structMask: StructureMask | null = createStructureMask(4096, { holes: mediaTier });
   const structDebris: StructureDebris | null = createStructureDebris({
     now: () => particles.getTime(), scene: engineCtx.scene ?? null, groundY: (x, z) => groundY(x, z),
     poolCapacity: mediaTier ? 96 : 24, pieceCap: mediaTier ? 1024 : 160,

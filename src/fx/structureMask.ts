@@ -14,8 +14,9 @@
  *    courses and the dark room behind it come through the debris writers;
  *  - collapse: from its start time the building comes down into its own dust plume over COLLAPSE_S — the storeys
  *    crumble apart (cells of the walls drift and drop, the upper ones most), the whole leans a few degrees toward the
- *    blow about its base and sinks gravity-eased — and is discarded at the end (the core's rubble heap is the ground
- *    then); a settled collapse (a late joiner, a migration) is gone at once.
+ *    blow about its base and sinks gravity-eased — and at the end its vertices fold onto the pivot (the core's rubble
+ *    heap is the ground then; no fragment discard for it); a settled collapse (a late joiner, a migration) is gone at
+ *    once.
  *
  * Ten texels per structure: A = (collapse start on the fx clock or 0, height m, blow dir x, blow dir z),
  * B = (base pivot x, y, z, hole count), then per hole C = (centre x, y, z, radius m) and N = (outward normal x, z,
@@ -48,22 +49,23 @@ vec3 fxStructHash3( vec3 c ) {
 }
 `;
 
-const VERT_PARS = /* glsl */ `
+// The vertex patch: every tier. The fall ends with the structure's vertices folded onto its pivot (zero-area
+// triangles the rasteriser drops), not with a fragment discard: an opaque bucket that can discard loses its early
+// depth (and a phone's hidden-surface removal) on every draw.
+const vertPars = (holes: boolean): string => /* glsl */ `
 attribute float aDamage;
 uniform highp sampler2D uStructMask;
 uniform float uStructClock;
-varying float vStructCut;
-varying vec3 vStructPos;
+${holes ? `varying vec3 vStructPos;
 flat varying float vStructSid;
-flat varying float vStructHoles;
+flat varying float vStructHoles;` : ''}
 ${HASH}
 `;
 
-const VERT_BODY = /* glsl */ `
-vStructCut = 0.0;
-vStructPos = vec3( 0.0 );
+const vertBody = (holes: boolean): string => /* glsl */ `
+${holes ? `vStructPos = vec3( 0.0 );
 vStructSid = -1.0;
-vStructHoles = 0.0;
+vStructHoles = 0.0;` : ''}
 {
   int sid = int( floor( aDamage + 0.5 ) ) - 1;
   if ( sid >= 0 ) {
@@ -75,15 +77,18 @@ vStructHoles = 0.0;
       sw = sw * instanceMatrix;
     #endif
     vec3 wp = ( sw * vec4( transformed, 1.0 ) ).xyz;
-    vStructPos = wp;
-    vStructSid = float( sid );
     int base = sid * ${STRIDE};
     vec4 SA = texelFetch( uStructMask, ivec2( base % ${TEX_W}, base / ${TEX_W} ), 0 );
     vec4 SB = texelFetch( uStructMask, ivec2( ( base + 1 ) % ${TEX_W}, ( base + 1 ) / ${TEX_W} ), 0 );
-    vStructHoles = SB.w;
+    ${holes ? `vStructPos = wp;
+    vStructSid = float( sid );
+    vStructHoles = SB.w;` : ''}
     if ( SA.x > 0.0 ) {
       float t = uStructClock - SA.x;
-      if ( t > 0.0 ) {
+      if ( t >= ${COLLAPSE_S.toFixed(2)} ) {
+        // down: every vertex onto the pivot (the stubs and the pile are the stage builder's own meshes)
+        transformed = ( inverse( sw ) * vec4( SB.xyz, 1.0 ) ).xyz;
+      } else if ( t > 0.0 ) {
         float k = clamp( t / ${COLLAPSE_S.toFixed(2)}, 0.0, 1.0 );
         float fall = k * k;
         float H = SA.y;
@@ -107,23 +112,22 @@ vStructHoles = 0.0;
         // sink into the plume (the dust hides where it meets the ground)
         p.y -= fall * H * 0.96;
         transformed += inverse( mat3( sw ) ) * ( piv + p - wp );
-        if ( t >= ${COLLAPSE_S.toFixed(2)} ) vStructCut = 1.0;
       }
     }
   }
 }
 `;
 
+// The hole cut: the desktop tiers only (the one discard the patch adds; a phone shows the builder's rim and room on
+// the standing wall instead of cutting it).
 const FRAG_PARS = /* glsl */ `
 uniform highp sampler2D uStructMask;
-varying float vStructCut;
 varying vec3 vStructPos;
 flat varying float vStructSid;
 flat varying float vStructHoles;
 ${HASH}
 `;
 const FRAG_BODY = /* glsl */ `
-if ( vStructCut > 0.5 ) discard;
 if ( vStructHoles > 0.5 ) {
   int hb = int( vStructSid + 0.5 ) * ${STRIDE} + 2;
   // brick-sized cells of the wall break out at different radii: a blocky, ragged hole
@@ -168,8 +172,10 @@ export interface StructureMask {
   readonly capacity: number;
 }
 
-/** A float DataTexture of `capacity` structures (STRIDE texels each). */
-export function createStructureMask(capacity = 4096): StructureMask {
+/** A float DataTexture of `capacity` structures (STRIDE texels each); `holes`: cut holes (the desktop tiers). */
+export function createStructureMask(capacity = 4096, { holes = true }: { holes?: boolean } = {}): StructureMask {
+  const VERT_PARS = vertPars(holes), VERT_BODY = vertBody(holes);
+  const cacheKey = holes ? '|fx-structure-mask-holes' : '|fx-structure-mask';
   const texels = capacity * STRIDE;
   const rows = Math.max(1, Math.ceil(texels / TEX_W));
   const data = new Float32Array(TEX_W * rows * 4);
@@ -200,11 +206,13 @@ export function createStructureMask(capacity = 4096): StructureMask {
       shader.uniforms.uStructClock = uniforms.uStructClock;
       shader.vertexShader = injectAfter(shader.vertexShader, '#include <common>', VERT_PARS)
         .replace('#include <begin_vertex>', `#include <begin_vertex>\n${VERT_BODY}`);
-      shader.fragmentShader = injectAfter(shader.fragmentShader, '#include <common>', FRAG_PARS)
-        .replace(/void\s+main\s*\(\s*\)\s*\{/, (m) => `${m}\n${FRAG_BODY}`);
+      if (holes) {
+        shader.fragmentShader = injectAfter(shader.fragmentShader, '#include <common>', FRAG_PARS)
+          .replace(/void\s+main\s*\(\s*\)\s*\{/, (m) => `${m}\n${FRAG_BODY}`);
+      }
     };
     const priorKey = material.customProgramCacheKey?.bind(material);
-    material.customProgramCacheKey = () => `${priorKey ? priorKey() : ''}|fx-structure-mask`;
+    material.customProgramCacheKey = () => `${priorKey ? priorKey() : ''}${cacheKey}`;
     material.needsUpdate = true;
   }
 
