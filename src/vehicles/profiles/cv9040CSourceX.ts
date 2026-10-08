@@ -4,6 +4,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // The C's appliqué cheek packets, 40 mm mount and troop-cell roof are authored
 // independently of the later Mk IV X. See the dated reference packet.
 import * as THREE from 'three';
+import { sectionSolid } from './sectionSolid.ts';
 import { KIT, convexSlab } from './kit.ts';
 import { chassisLoft, armorLoft, sideWall, openTube, optic, antenna, deckGrille, turretEquipment } from './europeSourcePrimitives.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
@@ -107,9 +108,19 @@ function turret(P: TankBuilderPort): void {
 }
 
 function gun(P: TankBuilderPort): void {
-  // The wide rectangular rocking shield belongs to the gun, not the cheeks.
-  P.addGunExtra(box(.51,.47,.61),0,0,.09);
+  // A clipped rocking armor mask fills the throat between the fixed ears.
+  // The inclined upper/lower returns and narrow side bevels form real stock,
+  // with a transverse bearing at the rotation axis rather than a bare cube.
+  const mask = sectionSolid([
+    {z:-.30,ring:[[-.195,-.245],[.195,-.245],[.265,-.175],[.265,.175],[.195,.245],[-.195,.245],[-.265,.175],[-.265,-.175]]},
+    {z:.405,ring:[[-.17,-.205],[.17,-.205],[.225,-.15],[.225,.15],[.17,.205],[-.17,.205],[-.225,.15],[-.225,-.15]]},
+  ]);
+  mask.userData.cv9040GunRole = 'beveled-rocking-mantlet';
+  P.addGunExtra(mask);
+  P.addGunExtra(cylX(.14,.65,P.q?24:16),0,0,0);
   P.addGunExtra(cylZ(.12,.29,20),0,0,.52);
+  for (const side of [-1,1]) for (const y of [-.125,.125])
+    P.addGunExtraDark(cylZ(.014,.012,8),side*.177,y,.412);
   P.add('gun',cylZ(.070,1.22,P.q?24:12),0,0,1.23);
   P.add('gun',cylZ(.052,.64,P.q?24:12),0,0,2.15);
   openTube(P,.067,2.43,2.75,.020);
