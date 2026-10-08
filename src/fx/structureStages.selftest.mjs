@@ -236,9 +236,10 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
       position: sTrim.mesh.geometry.getAttribute('position'), bucket: 'regionalTrim', partClass: 'trim', first, count })),
   ];
   const seam = createStructureDamageSeam(9, 'cottage', null, sAnatomy, sSpans);
-  // the kit's storeyDown (facades' heap on the floor line), stood in for: one mound in the band, laid as the fall's run
-  let heapRuns = [];
-  seam.storeyDown = (storeyIdx, seed, out) => {
+  // the kit's storeyDown (facades' heap on the floor line), stood in for: one mound in the band, laid as the fall's run;
+  // the runs standing when it is called are not the heap (a kit's own panel fall may lay its stub and room first)
+  let heapBefore = new Set();
+  const layHeap = (storeyIdx, out) => {
     const m = out.mesh, y0 = sAnatomy.storeys[storeyIdx].y0;
     if (m.begin('regionalPlaster', 'rubble')) {
       const ring = [[-4, -3], [4, -3], [4, 3], [-4, 3]].map(([x, z]) => m.vertex(x, y0 + 0.05, z, 0, 1, 0, 0, 0, 0.6, 0.55, 0.5));
@@ -247,6 +248,10 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
       m.end();
     }
     return { cuts: [], hides: [] };
+  };
+  seam.storeyDown = (storeyIdx, seed, out) => {
+    heapBefore = new Set(debris.group.children);
+    return layHeap(storeyIdx, out);
   };
   const wallBefore = Float32Array.from(sWall.mesh.geometry.getAttribute('position').array);
   const roofBefore = Float32Array.from(sRoof.mesh.geometry.getAttribute('position').array);
@@ -309,9 +314,8 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   // ceiling lid over the storey below), what stood on it lowered by the storey's height (the chimney's top), the roof
   // riding down whole; the ground storey stands, the kit's heap on the floor line stands
   for (const n of ['front', 'right', 'back']) stages.breach(fall(1, n), seam);
-  const before = new Set(tagged());
   stages.breach(fall(1, 'left', { storeyDown: true }), seam);
-  heapRuns = tagged().filter((m) => !before.has(m));
+  const heapRuns = tagged().filter((m) => !heapBefore.has(m));
   w = sWall.mesh.geometry.getAttribute('position').array;
   for (const n of names) {
     const [f, cnt] = rangeOf(1, n);
@@ -360,6 +364,60 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   assert.deepEqual(Array.from(sWall.mesh.geometry.getAttribute('position').array), Array.from(wallBefore), 'the walls come back whole');
   assert.deepEqual(Array.from(sRoof.mesh.geometry.getAttribute('position').array), Array.from(roofBefore), 'the roof comes back');
   assert.deepEqual(Array.from(sTrim.mesh.geometry.getAttribute('position').array), Array.from(trimBefore), 'the dressing comes back');
+  // 6. the roof falls first, its wreckage laid (an eave band on the plate, a rafter hanging to the top storey's floor),
+  // then the top storey drops under it: the wreckage is no storey's, so it rides down by the clamp's law (over the band
+  // down by the storey's height, in it onto the floor line), nothing of it below the line; each panel before the last
+  // lays its stub, the last, falling with its storey, throws its pieces only, and the storey takes the earlier stubs
+  {
+    const seamC = createStructureDamageSeam(9, 'cottage', null, sAnatomy, sSpans);
+    const kitSectionDown = seamC.sectionDown;
+    const box = (m, x0, y0, z0, x1, y1, z1) => {
+      const v = [];
+      for (const y of [y0, y1]) for (const z of [z0, z1]) for (const x of [x0, x1]) v.push(m.vertex(x, y, z, 0, 1, 0, 0, 0, 0.4, 0.3, 0.2));
+      for (const [a, b, cc] of [[0, 1, 3], [0, 3, 2], [4, 6, 7], [4, 7, 5], [0, 4, 5], [0, 5, 1], [2, 3, 7], [2, 7, 6], [0, 2, 6], [0, 6, 4],
+        [1, 5, 7], [1, 7, 3]]) m.triangle(v[a], v[b], v[cc]);
+    };
+    seamC.sectionDown = (section, seed, out) => {
+      const result = kitSectionDown.call(seamC, section, seed, out);
+      if (section === 8) {
+        if (out.mesh.begin('regionalTrim', 'remnant')) {
+          box(out.mesh, -5, 5.9, 3.6, 5, 6.1, 4);       // the eave band on the front plate
+          box(out.mesh, 2, 3.2, 3.5, 2.2, 6.0, 3.7);    // a rafter hanging from the plate to near the top storey's floor
+          out.mesh.end();
+        }
+      } else if (out.mesh.begin('regionalPlaster', 'remnant')) {
+        box(out.mesh, -0.5, 3, 3.6, 0.5, 4, 4);          // a stand-in stub (only its run counts)
+        out.mesh.end();
+      }
+      return result;
+    };
+    seamC.storeyDown = (storeyIdx, seed, out) => layHeap(storeyIdx, out);
+    const newRuns = (act) => { const b = new Set(tagged()); act(); return tagged().filter((m) => !b.has(m)); };
+    const wreck = newRuns(() => stages.breach({ ...sBase, section: 8, sectionKind: 'roof', x: placement.x, y: placement.y + 7,
+      z: placement.z, y0: placement.y + 6, y1: placement.y + 8.4 }, seamC)).find((m) => m.name === 'fx-structure-remnant-regionalTrim');
+    assert.ok(wreck && wreck.visible, 'the roof\'s wreckage laid');
+    const stubRuns = [];
+    for (const n of ['front', 'right', 'back']) stubRuns.push(...newRuns(() => stages.breach(fall(1, n), seamC)));
+    assert.ok(stubRuns.filter((m) => m.name === 'fx-structure-remnant-regionalPlaster').length === 3, 'each panel before the last lays its stub');
+    const last = newRuns(() => stages.breach(fall(1, 'left', { storeyDown: true }), seamC));
+    assert.ok(last.length === 1 && /^fx-structure-rubble-/.test(last[0].name) && last[0].visible,
+      `the panel falling with its storey lays no runs (pieces only); the storey's heap stands (${last.map((m) => m.name)})`);
+    assert.ok(stubRuns.every((m) => !m.visible), 'the storey takes its panels\' stubs');
+    assert.ok(wreck.visible, 'the roof\'s wreckage stands (it is no storey\'s)');
+    const wp = wreck.geometry.getAttribute('position');
+    const ys = [...Array(wp.count).keys()].map((i) => wp.getY(i) - placement.y);
+    assert.ok(Math.min(...ys) >= 3 - 1e-4, `nothing of it below the floor line (${Math.min(...ys).toFixed(3)})`);
+    assert.ok(Math.abs(Math.max(...ys) - 3.1) < 1e-4, `the eave band's top rides down by the storey's height (${Math.max(...ys).toFixed(3)})`);
+    // the rafter (its vertices at body x 2..2.2) lies on the line
+    const onLine = [...Array(wp.count).keys()].filter((i) => {
+      const wx = wp.getX(i) - placement.x, wz = wp.getZ(i) - placement.z;
+      const bx = wx * c - wz * s;
+      return bx > 1.9 && bx < 2.3 && Math.abs(wp.getY(i) - placement.y - 3) < 1e-4;
+    });
+    assert.equal(onLine.length, 8, 'the hanging rafter lies on the floor line');
+    stages.reset();
+    mask.reset();
+  }
   // with sections on, a fresh structure's 'breached' stage cuts no synthetic hole either
   const seamB = createStructureDamageSeam(9, 'cottage', null, sAnatomy, sSpans);
   mask.reset();
