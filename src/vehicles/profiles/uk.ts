@@ -12,7 +12,7 @@ import { weaponAssembly } from './weaponStock.ts';
 // challenger1 moved to profiles/challenger.ts (§5.75 family-module split) —
 // that module imports this file's shared UK kit (export block at the tail).
 import * as THREE from 'three';
-import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
@@ -4397,10 +4397,12 @@ function buildChieftainUpper2026(
   // cheeks.  These returns create the source U-shaped gun aperture in the same
   // structural bucket as the primary body.  The fitted armor plates above it
   // remain independent, so neither variant relies on the shell to close holes.
+  // Bound each return by its original eight corners: directly joining the
+  // offset rings folds the inner side through itself beside the aperture.
   const frontArmorBucket = 'turret';
   const buildChieftainUpper2026TurretStage4 = (): void => {
     for (const s of [-1, 1]) {
-      P.add(frontArmorBucket, slab(
+      P.add(frontArmorBucket, convexSlab(
         [s * 0.14, 0.17, 1.48], [s * 0.43, 0.20, 1.42],
         [s * 0.40, 0.50, 0.91], [s * 0.23, 0.48, 0.94],
         [s * 0.13, 0.35, 1.18], [s * 0.40, 0.43, 1.08],

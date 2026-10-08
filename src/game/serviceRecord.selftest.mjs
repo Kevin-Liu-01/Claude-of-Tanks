@@ -115,7 +115,12 @@ world.clock = 20; fire(11); hit(11, 'e2', 2000, { destroyed: true, flightDistM: 
 world.clock = 31; fire(12); hit(12, 'e3', 2000, { destroyed: true, flightDistM: 100 }); kill('e3');
 world.clock = 40; fire(13); // misses
 world.clock = 50; fire(14); hit(14, 'e4', 300);
-for (let i = 0; i < 5; i++) bus.emit('shell:hit', { attackerId: 'e4', targetId: 'me', damage: 0, kind: 'ricochet' });
+for (const caliberMm of [7.62,12.7,14.5]) for (let i=0;i<30;i++)
+  bus.emit('shell:hit',{attackerId:'e4',targetId:'me',damage:0,kind:'ricochet',caliberMm});
+assert.ok(!medalsLive().includes('steel_wall'),'90 machine-gun blocks cannot award Steel Wall');
+for (let i = 0; i < 4; i++) bus.emit('shell:hit', { attackerId: 'e4', targetId: 'me', damage: 0, kind: 'ricochet',caliberMm:120 });
+assert.ok(!medalsLive().includes('steel_wall'),'MG rounds cannot fill the fifth qualifying hit');
+bus.emit('shell:hit',{attackerId:'e4',targetId:'me',damage:0,kind:'nonpen',caliberMm:150,guided:true});
 bus.emit('shell:hit', { attackerId: 'e4', targetId: 'me', damage: 1900, targetHpAfter: 100, targetMaxHp: 2000, kind: 'pen' });
 world.hp = 0.05;
 assert.ok(!medalsLive().includes('first_blood'), 'someone else drew first blood');

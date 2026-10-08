@@ -2,6 +2,7 @@
 // source turret and9 of12 primary hull pieces remain exact; three hidden
 // receiving pieces are fitted to the wider links. Detail dimensions are game authoring, not metrology.
 import * as THREE from 'three';
+import { addRearFieldStowage } from './rearFieldStowage.ts';
 import { KIT, FITTINGS } from './kit.ts';
 import { ARIETE_C2_ERA } from './arieteC2Era.ts';
 import { markEraHitFaces } from './eraHitFaces.ts';
@@ -131,6 +132,7 @@ export function buildArieteC2X(P: TankBuilderPort): void {
   P.muzzleZ *= 1.22;
   gunnerSight(P); panoramicSight(P); commanderWeapon(P); coolingDeck(P); protection(P); reactiveArmor(P);
   enlargeArieteXFamily(P);
+  addRearFieldStowage(P);
   P.hullG.userData.arieteC2Derivation = Object.freeze({ base: 'ariete_c1_x',
     originalPrimaryBodyRetained: false, unchangedPrimaryHullPieces: 9,
     primaryBodyChanges: ['closed lower-tub receiving walls', 'two skirt-carrier inner faces'],

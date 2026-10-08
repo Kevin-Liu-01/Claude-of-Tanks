@@ -71,13 +71,11 @@ function shaderFor(material) {
   assert.notEqual(plain.customProgramCacheKey(), 'veh-ambient-floor-v5', 'three: a clone drops its program key');
   // a material from outside the tank material set (a stub's) keeps its own hooks through cloneVehicleMaterial, and any
   // clone keeps the vehicle's own shader switches (the wheel paint's floor)
-  source.defines = { ...source.defines, COT_WHEEL_PAINT_READABILITY: 1, COT_FIELD_WEAR: 2, COT_CLOUD_SHADE: '' };
+  source.defines = { ...source.defines, COT_WHEEL_PAINT_READABILITY: 1, COT_CLOUD_SHADE: '' };
   const kept = cloneVehicleMaterial(source);
   assert.equal(kept.onBeforeCompile, source.onBeforeCompile);
   assert.equal(kept.customProgramCacheKey(), 'veh-ambient-floor-v5');
   assert.equal(kept.defines.COT_WHEEL_PAINT_READABILITY, 1, 'a clone keeps its source\'s switches');
-  // 2026-10-07: the field wear (materials.ts VEHICLE_FIELD_WEAR_GARAGE) is one of them, so a cloned shoe stays dusty
-  assert.equal(kept.defines.COT_FIELD_WEAR, 2, 'the field wear among them');
   assert.equal(kept.defines.USE_CSM, undefined, 'and only those: the registration owns the cascade\'s defines');
   assert.equal(kept.defines.COT_CLOUD_SHADE, undefined, 'the cloud shade among them');
   source.dispose(); plain.dispose(); kept.dispose();

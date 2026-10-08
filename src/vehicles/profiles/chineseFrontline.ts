@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, muzzleTipDot } from './kit.ts';
 import {
   chevronSurfacePanel,
+  chineseArrowCassette,
   closedIntegratedChevron,
   interpolateChevronStation,
   type ChevronStation,
@@ -349,7 +350,7 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
           chevronStations.at(-1)!.x, startT);
         const endX = THREE.MathUtils.lerp(chevronStations[0].x,
           chevronStations.at(-1)!.x, endT);
-        const panel=chevronSurfacePanel(
+        const panel=variant==='vt4a1'?chineseArrowCassette(chevronStations,side,startX,endX):chevronSurfacePanel(
           interpolateChevronStation(chevronStations, startX),
           interpolateChevronStation(chevronStations, endX),
           side,

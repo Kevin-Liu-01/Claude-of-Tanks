@@ -35,13 +35,18 @@ const IDS = Object.freeze([
 // the ratchets: floating and clipping accessory pieces per tank; any other tank is held to 0. Round 4's census at
 // fcc68d78b (cell borders searched, edges sampled) found 13 and 49; round 5's stowage pass (2026-10-08) took them to 12
 // and 22: smoke brackets laid on the cheek, hung loads' wall feet under their arms, cans racks' straps clear of the
-// cans, tool and cable clamps under straps, the bucket's ears on its wall, the crate's flasks under its lid
+// cans, tool and cable clamps under straps, the bucket's ears on its wall, the crate's flasks under its lid.
+// 2026-10-08, over push 3b (main's 5f8eefaa4 field upgrades): the Oplot-M's floating fender piece is gone (1 -> 0), and
+// its clipping took 4 -> 8: the three overlaps main's own roof station is built with (the muzzle sleeve over the barrel,
+// the trunnions through the cradle shroud, the ammunition-box lid seated on the box; a station is a fitting, so this
+// receipt reads it) and the second decor smoke bank, which main's screens and cage-wing legs moved forward along the
+// cheek, its bracket set into the armour like every other bank's (round 5's seat lays it flush there too).
 const KNOWN_FLOATING = Object.freeze({
   type99a: 1, abramsx: 8, fv510_milan: 1, bmp3m_dragun125_x: 2,
 });
 const KNOWN_CLIPPING = Object.freeze({
-  t90m_proryv: 1, m60a1: 1, leclerc: 1, t72b3m: 2, m1a2_tusk: 1, abramsx: 7, m46_patton: 4, bmp3m_dragun125_x: 1,
-  t62mv1_x: 2, griffin_viper: 2,
+  t90m_proryv: 1, ua_t84_oplot_m: 8, m60a1: 1, leclerc: 1, t72b3m: 2, m1a2_tusk: 1, abramsx: 7, m46_patton: 4,
+  bmp3m_dragun125_x: 1, t62mv1_x: 2, griffin_viper: 2,
 });
 
 function accessoryKind(object) {
