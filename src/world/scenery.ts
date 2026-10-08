@@ -31,7 +31,7 @@ import { buildConductor, buildPylon, SCENERY_DESTRUCTIBLE_TYPES } from './maps/s
 import { buildFieldWorks, type FieldWorksBuilt, type FieldWorksKeepOut, type FieldWorksReceipt, type FieldWorksRect } from './fieldWorks.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
 import { ASSAULT_TRENCH, planAssaultTrenchLines } from '../sim/assaultLines.ts';
-import { createMatchPlacement, matchPlacementAnchors, type MatchPlacement, type PlacementTerrain } from '../sim/matchPlacement.ts';
+import { createMatchPlacement, deploymentClearings, matchPlacementAnchors, type MatchPlacement, type PlacementTerrain } from '../sim/matchPlacement.ts';
 import {
   FIELD_FORMS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, rockReach, type GroundCoverHole, type SceneryConfig,
 } from './sceneryPlan.ts';
@@ -348,6 +348,9 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
 
   // ---- rock fields: formations scattered over a hillside, the steeper ground first, clear of each other and the trees
   const standingSites: Array<{ x: number; z: number; r: number }> = stoneJobs.map((job) => ({ x: job.spec.x, z: job.spec.z, r: rockReach(job.spec) }));
+  // symmetric deployments (modes lane, 2026-10-08): both sides' deployment slots keep the pads' clearing (sim/matchPlacement.ts)
+  const [player, ...enemies] = ctx.spawns;
+  const deploymentSlots = player ? deploymentClearings(ctx.heightField as unknown as PlacementTerrain, { player, enemies }) : [];
   const treeNear = (x: number, z: number, r: number): boolean => {
     for (const tree of ctx.trees ?? []) {
       const cx = (tree.min[0] + tree.max[0]) * 0.5, cz = (tree.min[2] + tree.max[2]) * 0.5;
@@ -393,6 +396,13 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
       // formation where the ground falls away past a talus slope. Its draws are taken, so the field's later candidates
       // keep their seats.
       if (talus !== null && !restsOnTalus(ground, x, z, reach, talus)) continue;
+      // symmetric deployments: a formation in a deployment slot's clearing is left out after its draws, counted and spaced
+      // as if it stood, so every other formation of the field keeps its seat (the pads keep theirs by the admission)
+      if (deploymentSlots.some((slot) => Math.hypot(x - slot.x, z - slot.z) < SPAWN_CLEAR + reach)) {
+        standingSites.push({ x, z, r: reach });
+        placed++;
+        continue;
+      }
       const built = buildRockFormation({ form, geology: field.geology, x, z, radius: r, height, yawDeg, tone: field.tone, shed: 0.6 },
         ground, noise, mulberry32(stream), { mobile: ctx.mobile });
       if (!built.geometry) continue;

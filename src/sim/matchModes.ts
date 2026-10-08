@@ -558,11 +558,13 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     zones,
     ball,
     goals,
-    // tactical map 2026-09-15: the team spawn centres (the flag bases / goals stand on them in
-    // CTF and Turbo Ball; Zone Control marks both, the co-op modes only the human side)
-    spawns: (['alpha', 'bravo'] as const).filter((team) => teams[team].length > 0).map((team) => ({
-      team, x: centers[team].x, y: terrainHeight(centers[team].x, centers[team].z) + 0.1, z: centers[team].z,
-    })),
+    // tactical map 2026-09-15: the team spawn centres (Zone Control marks both, the co-op modes only the human side;
+    // CTF and Turbo Ball mark their bases instead). Symmetric deployments (2026-10-08): the centroid of the side's
+    // deployment slots in use, from the same placement call that seats its tanks (sim/deployment.ts).
+    spawns: (['alpha', 'bravo'] as const).filter((team) => teams[team].length > 0).map((team) => {
+      const at = placement ? placement.deploymentCenter(team, teams[team].length) : centers[team];
+      return { team, x: at.x, y: terrainHeight(at.x, at.z) + 0.1, z: at.z };
+    }),
     horde: id === 'endless_horde' || id === 'frontline_assault' ? {
       wave, alive: 0, total: 0, nextWaveInS: 0, healChance: 0,
     } : null,
