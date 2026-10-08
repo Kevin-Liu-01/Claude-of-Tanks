@@ -1923,6 +1923,7 @@ const battlePresentation = createBattlePresentationRuntime({
 // terrain, FX and first-frame warm order plus cancellation/fallback policy.
 const soloBattleDeployment = createSoloBattleDeploymentAccess({
   options: () => ({
+    warmVisionSteps: combatWarmComposition.warmVisionSteps,
     game,
     renderer,
     scene,
@@ -2987,6 +2988,7 @@ let shotHudFrame = false;
 
 let lastAuxiliaryNight: boolean | null = null;
 const mainFrame = createMainFrameRuntime({
+  thermalVehicles: combatWarmComposition.thermalVehicles,
   scene,
   camera,
   game,
