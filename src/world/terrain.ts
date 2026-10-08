@@ -5871,7 +5871,9 @@ void splatCompute() {
       float upper = smoothstep(-uFormation.z, uFormation.z, fy);
       // (the Redrock lane, 2026-10-07: each formation is a colour on the rock's own luminance — a pale sandstone a buff or
       // cream, not a lighter red; Redrock, the one map with a formation, sets both)
-      float formL = dot(a.rgb, vec3(0.30, 0.59, 0.11));
+      // (round 10, the gauntlet's wave on Redrock: the tiers' ledges, sunlit over a shadowed face, took the pale tint on
+      // their bright planar sample to near white — the luminance the tint reads is capped at a red sandstone's)
+      float formL = min(dot(a.rgb, vec3(0.30, 0.59, 0.11)), 0.2);
       vec3 formCol = mix(mix(a.rgb, formL * uFormationLow.rgb, uFormationLow.w),
                          mix(a.rgb, formL * uFormationUp.rgb, uFormationUp.w), upper);
       a.rgb = mix(a.rgb, formCol, max(fR, steep));
