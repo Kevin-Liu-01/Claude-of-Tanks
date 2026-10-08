@@ -732,14 +732,13 @@ function addType90APackage(P: JapaneseBuilderPort): void {
     for (let i = 0; i < 6; i++) cassette(P, 'hull', side * 1.70, 1.07,
       1.78 - i * 0.70, 0.055, 0.40, 0.62, null, false);
   }
-  // Large panoramic thermal head and shielded low roof weapon.
+  // Large panoramic thermal head. 2026-10-08 (the owner's field standard in main 6763d7cc0, the coordinator's ruling on
+  // the lane's audit): the package's shielded roof MAG and its ring are gone. A Type 90 carries one roof weapon, the
+  // M2 on its pintle between the commander's and gunner's hatches, beside the Type 74 coax, and the MAG stood 0.7 m from it.
   P.add('turret', box(0.48, 0.075, 0.46), -0.55, 0.86, -0.22);
   P.add('turretDetail', box(0.38, 0.34, 0.35), -0.55, 1.04, -0.18, -0.05, 0, 0);
   P.add('turretDark', box(0.28, 0.18, 0.032), -0.55, 1.06, 0.03);
   P.add('turretGlass', box(0.20, 0.11, 0.022), -0.55, 1.06, 0.055);
-  P.add('turret', cylY(0.27, 0.29, 0.075, 18), 0.50, 0.86, -0.48);
-  P.add('turretDark', torus(0.25, 0.014, 18), 0.50, 0.91, -0.48);
-  roofWeapon(P, 0.50, 0.92, -0.48, 9010, 0.82, -0.04);
 
   // The donor's broad welded roof remains the correct Type 90 family mass,
   // but the A package needs a visible service grammar at garage distance.

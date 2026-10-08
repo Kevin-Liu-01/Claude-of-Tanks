@@ -1937,6 +1937,7 @@ function addChallenger2WeaponTowerMg(
   P: ChallengerBuilderPort,
   stationX: (value: number) => number,
   stationY: (value: number) => number,
+  trueScale = false,
 ): THREE.Group {
   const { box, cylX } = KIT;
   const stationMg = new THREE.Group();
@@ -1955,11 +1956,18 @@ function addChallenger2WeaponTowerMg(
     stationMg.add(mesh);
     return mesh;
   };
-  stationPart(box(0.18, 0.080, 0.15), 0.775, 0.905, 0.20,
+  // 2026-10-08 (the owner's calibre-true standard in main 6763d7cc0, applied inside his own station on the coordinator's
+  // ruling): on the working station (the 2E's and the Ukrainian CR2's) the L37A2 takes a GPMG's proportions. The source's
+  // 0.18 m receiver left only 0.29 m of its true 0.628 m barrel in view, a 0.63 m gun where a butt-less vehicle GPMG runs
+  // 1.0-1.1 m. Its 0.40 m receiver now runs rearward from the barrel's base, so 0.55 m of barrel shows, with the
+  // ammunition box, feed, back plate and cradle pins following it. The muzzle datum (height and direction) is unchanged.
+  const receiverX = trueScale ? 0.41 : 0.775, receiverL = trueScale ? 0.40 : 0.18;
+  const receiverFront = receiverX + receiverL / 2, receiverRear = receiverX - receiverL / 2;
+  stationPart(box(receiverL, 0.080, 0.15), receiverX, 0.905, 0.20,
     P.mats.dark, 'challenger2BrowningDerivedReceiver');
-  stationPart(box(0.16, 0.014, 0.13), 0.775, 0.952, 0.205);
-  stationPart(box(0.014, 0.056, 0.10), 0.868, 0.905, 0.20);
-  stationPart(box(0.055, 0.020, 0.085), 0.665, 0.918, 0.20);
+  stationPart(box(receiverL - 0.02, 0.014, 0.13), receiverX, 0.952, 0.205);
+  stationPart(box(0.014, 0.056, 0.10), trueScale ? receiverFront + 0.007 : 0.868, 0.905, 0.20);
+  stationPart(box(0.055, 0.020, 0.085), trueScale ? receiverRear - 0.0225 : 0.665, 0.918, 0.20);
   // round 5 (2026-10-08, the fleet lane's circular-cap audit): the barrel's muzzle stands 8 mm out of its sleeve; the two
   // end caps shared the sleeve's plane and fought
   stationPart(cylX(0.018, 0.628, P.q ? 16 : 12), 0.844, 0.925, 0.20,
@@ -1969,15 +1977,16 @@ function addChallenger2WeaponTowerMg(
   }
   // Neutral ammunition box and a visible linked feed terminate at the
   // receiver and remain gunmetal regardless of the vehicle camouflage.
-  stationPart(box(0.13, 0.12, 0.16), 0.755, 0.892, 0.33);
-  stationPart(box(0.12, 0.012, 0.15), 0.755, 0.958, 0.33);
+  const feedX = trueScale ? 0.48 : 0.755;
+  stationPart(box(0.13, 0.12, 0.16), feedX, 0.892, 0.33);
+  stationPart(box(0.12, 0.012, 0.15), feedX, 0.958, 0.33);
   for (let index = 0; index < 5; index++) {
     const t = index / 4;
-    stationPart(box(0.024, 0.022, 0.018), 0.785,
+    stationPart(box(0.024, 0.022, 0.018), feedX + 0.03,
       0.928 - Math.sin(t * Math.PI) * 0.010, 0.285 - t * 0.065);
   }
   for (const side of [-1, 1]) {
-    stationPart(box(0.020, 0.020, 0.095), 0.650,
+    stationPart(box(0.020, 0.020, 0.095), trueScale ? receiverFront - 0.02 : 0.650,
       0.887, 0.20 + side * 0.052);
   }
   stationMg.userData.hasConnectedFeed = true;
@@ -2004,7 +2013,7 @@ function buildChallenger2WeaponTower(
     muzzle:[stationX(.775),stationY(.925),.575],
   }) : null;
   addChallenger2WeaponTowerCradle(P, stationX, stationY);
-  const stationMg=addChallenger2WeaponTowerMg(P, stationX, stationY);
+  const stationMg=addChallenger2WeaponTowerMg(P, stationX, stationY, automatic);
   if(station){
     delete stationMg.userData.fittingRoot;
     delete stationMg.userData.fitting;
@@ -2335,21 +2344,14 @@ function buildChallenger2VariantPackage(
         };
         buildChallenger2VariantPackageTurretStage5();
         const loaderMgSeatY = loaderCupolaBaseY + 0.13 + 0.040 - 0.005;
-        const commanderMgSeatY = commanderCupolaBaseY + 0.15 + 0.040 - 0.005;
-        const rearMgCarrierY = 0.4116;
-        const rearMgSeatY = rearMgCarrierY - 0.005;
+        // 2026-10-08 (the owner's field standard in main 6763d7cc0, the coordinator's ruling on the lane's audit): the
+        // CR2E's weapons are the loader's L37A2 GPMG on his cupola and the remote station slaved to the commander's sight
+        // (the weapon tower below; the owner activated it on the 2E and the Ukrainian CR2). The commander's shielded crew
+        // M2 duplicated that station on his side and the aft-facing MAG on the bustle has no real mount, so both are gone.
         const buildChallenger2VariantPackageAssemblyStage9 = (): void => {
           cr2MountedMg(P, { x: -0.58, y: loaderMgSeatY, z: -0.74, cls: 'mag', seed: 51, rotationY: -0.18 });
         };
         buildChallenger2VariantPackageAssemblyStage9();
-        const buildChallenger2VariantPackageAssemblyStage10 = (): void => {
-          cr2MountedMg(P, { x: 0.56, y: commanderMgSeatY, z: -0.60, cls: 'm2', seed: 52, rotationY: 0.16, shield: true });
-        };
-        buildChallenger2VariantPackageAssemblyStage10();
-        const buildChallenger2VariantPackageAssemblyStage11 = (): void => {
-          cr2MountedMg(P, { x: 0.05, y: rearMgSeatY, z: -1.55, cls: 'mag', seed: 53, rotationY: Math.PI });
-        };
-        buildChallenger2VariantPackageAssemblyStage11();
         const towerReceipt = buildChallenger2WeaponTower(P, {
           centerX: 0,
           seatY: 0.500,
@@ -2360,19 +2362,17 @@ function buildChallenger2VariantPackage(
             { label: `${variant}-loader-cupola`, carrierY: loaderCupolaCarrierY, bottomY: loaderCupolaBaseY },
             { label: `${variant}-commander-cupola`, carrierY: commanderCupolaCarrierY, bottomY: commanderCupolaBaseY },
             { label: `${variant}-loader-machine-gun`, carrierY: loaderMgSeatY + 0.005, bottomY: loaderMgSeatY },
-            { label: `${variant}-commander-machine-gun`, carrierY: commanderMgSeatY + 0.005, bottomY: commanderMgSeatY },
-            { label: `${variant}-rear-machine-gun`, carrierY: rearMgCarrierY, bottomY: rearMgSeatY },
             { label: `${variant}-weapon-tower`, carrierY: towerReceipt.roofCarrierY,
               bottomY: towerReceipt.baseBottomY },
           );
         };
         buildChallenger2VariantPackageReceiptStage2();
         const buildChallenger2VariantPackageGunStage1 = (): void => {
-          receipt.mannedMachineGuns = 4;
+          receipt.mannedMachineGuns = 2;
         };
         buildChallenger2VariantPackageGunStage1();
         const buildChallenger2VariantPackageGunStage2 = (): void => {
-          receipt.bridgedMachineGunBarrels = 2;
+          receipt.bridgedMachineGunBarrels = 1;
         };
         buildChallenger2VariantPackageGunStage2();
         const buildChallenger2VariantPackageTurretStage6 = (): void => {
@@ -2448,7 +2448,7 @@ function buildChallenger2VariantPackage(
         };
         buildChallenger2VariantPackageTurretStage7();
         const buildChallenger2VariantPackageAssemblyStage15 = (): void => {
-          receipt.roofAttachmentCount = 9;
+          receipt.roofAttachmentCount = 7;
         };
         buildChallenger2VariantPackageAssemblyStage15();
         const buildChallenger2VariantPackageHullStage2 = (): void => {

@@ -281,15 +281,9 @@ function addUkrainianBradleyPackage(P: AfvBuilderPort): void {
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 2.12, d: 0.46, h: 0.30, fill: 0.72, rails: 3, seed: 3210,
   }), 0, 0.45, -1.35);
-  // The pintle ring previously floated 31.75 cm above the donor roof. A
-  // tapered commander pedestal now carries it from the 0.565 m roof plane
-  // to the ring underside without lowering the weapon or obscuring the
-  // Bradley's hatch/periscope silhouette.
-  const roofY = 0.565;
-  const mgRingBottomY = 0.8825;
-  P.addCupola('turret', KIT.cylY(0.23, 0.18, mgRingBottomY - roofY, 18),
-    -0.42, (roofY + mgRingBottomY) / 2, -0.42);
-  roofMG(P, -0.42, 0.92, -0.42, 3220, 'mag', -0.08, 0.76);
+  // 2026-10-08 (the owner's field standard in main 6763d7cc0, the coordinator's ruling on the lane's audit): no roof
+  // pintle. The Ukrainian M2A2 ODS-SA's weapons are the 25 mm Bushmaster, the M240C coax and TOW; the commander's
+  // pedestal and pintle MAG that stood here are gone, and the M240 stowed on the bustle rail stays as the crew's dismount gun.
   radioPair(P, 0.78, -1.40, 3230, 0.98);
   smokePair(P, 1.00, 0.62, 0.18, 4, 3240);
   P.decal('turret', 'number', 'UA B3', 0.21, [-1.24, 0.42, -0.52], -Math.PI / 2);
@@ -799,10 +793,10 @@ function addM3A3Turret(P: AfvBuilderPort): void {
   P.add('turretDetail', box(0.035, 0.28, 0.58), 0.74, 0.48, -1.20,
     0, 0, 0.54);
 
-  // Roof weapons and dense service equipment.  Both weapons sit on the
-  // hatch rings above, carry armor shields and ammunition, and point on
-  // slightly different forward arcs rather than sharing one overlapping run.
-  roofMG(P, 0.34, 0.86, -0.47, 3614, 'm2', 0.14, 0.68);
+  // Roof weapon and dense service equipment. 2026-10-08 (the owner's field standard in main 6763d7cc0, the
+  // coordinator's ruling on the lane's audit): the M3A3's armament is the 25 mm, the M240C coax and TOW, and no .50
+  // rides its turret, so the hatch-ring M2 is gone. The shielded M240 on the other hatch ring stays as the vehicle's
+  // one roof gun (the fleet's §B3 rule that every vehicle shows a machine gun).
   roofMG(P, -0.31, 0.86, -0.36, 3616, 'mag', -0.16, 0.58);
   for (const [x, z, yaw] of [
     [-0.62, -0.76, -0.08], [0.62, -0.82, 0.08],

@@ -1238,7 +1238,7 @@ function addPL01RemoteWeaponStation(P: PolishBuilderPort, context: PL01BuildCont
 
 function addPL01RoofSuite(P: PolishBuilderPort, context: PL01BuildContext): void {
   const { box, cylY, cylZ, torus } = KIT;
-  const { is105, shellY, turretHeightScale, turretRoofLocalY } = context;
+  const { shellY, turretHeightScale, turretRoofLocalY } = context;
   // smoke banks: recessed multi-tube blocks on the tail deck (print
   // ExplosionTubes — held under the roof band)
   for (const s of [-1, 1]) {
@@ -1288,14 +1288,9 @@ function addPL01RoofSuite(P: PolishBuilderPort, context: PL01BuildContext): void
       -0.05, s * 0.16, 0);
   }
 
-  // A compact loader weapon supplements the powered remote station. Both
-  // remain turret children and traverse with the rebuilt shell.
-  const loaderMG = FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.48, elev: 0.05,
-    ammo: true, shield: true, ring: { r: 0.12, stubs: 3 }, seed: is105 ? 1064 : 1063,
-  });
-  loaderMG.name = 'pl01_loader_mg';
-  mount(P, 'turret', loaderMG, 0.61, roofY + 0.11, -0.48, [0, 0.08, 0]);
+  // 2026-10-08 (the owner's field standard in main 6763d7cc0, the coordinator's ruling on the lane's audit): no loader
+  // weapon. The PL-01's secondary armament was its one remote module (a 7.62 or 12.7 mm gun or a 40 mm launcher) for a
+  // crew of three with no loader, so the compact pintle MAG that stood beside the station is gone from both marks.
 
   // Short antenna whips, lifting eyes, and service boxes complete the roof.
   for (const [x, z, h, rake] of [[-0.88, -1.72, 0.42, -0.05], [0.86, -1.88, 0.36, 0.05]]) {

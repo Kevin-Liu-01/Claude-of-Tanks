@@ -1,6 +1,7 @@
 import { buildT80UK } from './t80ukRenewal.ts';
 import { buildAmx30Casting } from './amx30X.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 // Euro/Asia-moderns family procedural profiles (fidelity oracles:
 // ariete-dustymojito, char_leclerc_andertan, t80u_javanilga, recovered
 // type90, type74-nullops). Owned by the misc/Euro-Asia family agent.
@@ -1699,46 +1700,23 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
       // 2026-10-07 (tank-accessories round 4, wave 217: "thin rod barrels on box receivers with no cradle, box, belt or
       // feed cover"): both roof guns carry their feed again; the round-4 gun hangs its can, belt and tray on its left
       // (inboard here, over the mid roof, clear of the front column window the old right-hand can poked).
-      const anf1 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.18, seed: 11, scale: 0.78, ammo: true, barrelBridge: true });
-      anf1.name = 'leclercRoofAnf1';
-      anf1.position.set(-0.85, 0.610, 0.413);
-      anf1.userData.roofContactY = 0.610;
-      P.turretG.add(anf1);
+      // 2026-10-08 (the owner's field standard, main 6763d7cc0, and the coordinator's ruling): a Leclerc carries one roof
+      // 7.62 (remote, at the commander's hand) beside its 12.7 coax. The S2 keeps it here; on the S1 and the XLR the
+      // owner's roof RWS takes its place (the XLR's RWS replaced the roof 7.62), so they carry no ANF1.
+      if (!centeredRoofStations) {
+        const anf1 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.18, seed: 11, scale: 0.78, ammo: true, barrelBridge: true });
+        anf1.name = 'leclercRoofAnf1';
+        anf1.position.set(-0.85, 0.610, 0.413);
+        anf1.userData.roofContactY = 0.610;
+        P.turretG.add(anf1);
+      }
     }
-    // §5.14 ORDER: 12.7 mm M2 on the roof, FORWARD rest (§5.07 CROWS-FORWARD
-    // law — pintleMG default aim is +z). Seated right-forward on the MID roof
-    // beside the sight cluster: receiver band lands in the same ref 2.41-2.43
-    // side-col class the ANF1/block already own (side masks image both
-    // flanks); foot sunk 2 cm into the mid roof (priced-furniture-swap law),
-    // tone dark per MG PHYSICS pale-deck polarity.
-    {
-      // Disable-run receipts (loop 3/4): the first seat (0.92/0.59/0.36,
-      // scale 0.82, elev -0.06, ammo can ON) cost EXACTLY -0.4 headline
-      // (turret -0.7, stations -1.6; IR caps + left cable + coax hood free).
-      // Re-tuned per the ANF1's own priced lessons: barrel DROOPED under the
-      // cluster crest (matched-envelope law), ammo can OFF (flat pouch on the
-      // roof instead), scale 0.76, foot sunk to 0.575 — receiver band ~2.40
-      // inside the ref's own 2.37-2.42 cluster window at z_w 0.16..0.46.
-      // 2026-10-07 (round 4, wave 217): the M2 takes its can, belt and feed tray (on its left, outboard); the XLR and
-      // AMX-56 centred roof stations keep it off, where the can would stand in their sight cluster.
-      // 2026-10-08 (tank-accessories round 5; wave 257 on the Leclerc: "a 12.7 mm M2-style weapon where a Leclerc
-      // normally carries a 7.62 mm"; "the gun barrel merges in silhouette with the smoke-launcher tubes behind it, and
-      // the gun stands on a thin round post with only a bare green ammo can and no cradle or ring"): the roof gun is
-      // the 7.62 GPMG at true scale (the Leclerc's 12.7 is its coaxial). Its foot stood 0.2 m down inside the HL-70
-      // housing's outboard edge, so only the cradle showed above the lid; it now stands on the housing's lid plate
-      // (top 0.791) on a ring mount, its post 4 cm risen in a sleeve, and the barrel rides 0.14 m higher, clear of the
-      // smoke tubes' line. Moved from (0.88, 0.575, 0.36) to (0.70, 0.789, 0.38); the AMX-56, whose dual sight box
-      // covers that lid, carries it on the box's top (0.84) at (0.62, 0.838, 0.18) without the riser.
-      const amx56Seat = variant === 'amx56';
-      const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.08, seed: 17, scale: 1.0,
-        ammo: !centeredRoofStations, riser: amx56Seat ? 0 : 0.04, ring: { r: 0.15, stubs: 3 } });
-      m2.name = 'leclercRoofGpmg';
-      if (amx56Seat) m2.position.set(0.62, 0.838, 0.18);
-      else m2.position.set(0.70, 0.789, 0.38);
-      P.turretG.add(m2);
-      P.add('turretDark', box(0.10, 0.02, 0.14), 0.70, 0.62, 0.10);              // flat 12.7 ammo pouch on the mid roof
-    }
-    P.add('turretDark', box(0.11, 0.02, 0.16), -0.68, 0.62, 0.32);               // ANF1 ammo pouch reseated FLAT on the mid roof (top 2.23w)
+    // 2026-10-08 (the owner's field standard in main 6763d7cc0, the coordinator's ruling on the lane's audit): the second
+    // roof gun is gone from every Leclerc. Owner order §5.14 (2026-08-07: "also add machine guns and lights and other
+    // equipment") had the France agent seat a 12.7 mm M2 right-forward on the mid roof; wave 257 made it a 7.62 GPMG on
+    // the HL-70 lid, which left two roof 7.62s where a Leclerc carries one. The order stays answered by the S2's ANF1,
+    // the S1's and XLR's roof RWS and the 12.7 coax.
+    if (!centeredRoofStations) P.add('turretDark', box(0.11, 0.02, 0.16), -0.68, 0.62, 0.32); // ANF1 ammo pouch reseated FLAT on the mid roof (top 2.23w)
     P.add('turretDetail', box(0.105, 0.09, 0.12), 0.8875, LH + 0.03, -0.822);    // sight/mount block (carries the priced 2.427w front line; WIDENED x 0.835..0.94 so col 0.916 — ref 2.41 — stays covered after the MG left. 90-ladder r1: z_w -0.862..-0.982 — the old -0.80 front edge printed 2.42 into side col -0.802 [ref roof 2.355]; the block now hides under the mast columns' 2.53 line)
     periscope(P, 'turretDetail', -0.35, 0.60, -0.28, 0.3);
     P.add('turretDetail', box(0.09, 0.104, 0.12), -0.215, 0.70, -0.10);          // 90-ladder r1: loader periscope housing — base on the 2.248 channel, crown 2.352 = the ref's 2.351 line on front cols -0.182/-0.222 (left-only; the print's right side stays low)                       // (france round: head FLUSH over the new high cap — the 0.762 reseat printed +0.10 over the ref's 2.36 band on the -0.38 side cols)
@@ -2006,6 +1984,10 @@ function buildLeclercXLR(P: MiscBuilderPort): void {
   const xlrShoeTopY = 0.807;
   const xlrBodyH = 0.18;
   const xlrBodyTopY = 0.987;
+  // 2026-10-08 (the owner's 2A5M precedent in main 6763d7cc0: activate the original station, do not remove it): the
+  // owner's roof RWS (refactored 2026-08-29) is the XLR's working roof weapon; its shoe, body, sight and shield are the
+  // station's stock. Gameplay change: functional roof guns 0 -> 1.
+  const finishXlrRws = captureAuxiliaryStock(P, 'leclercXlrRoofRwsGun');
   P.addEquipment('turret', cylY(0.27, 0.27, xlrShoeH, 16),
     xlrRwsX, xlrRoofY + xlrShoeH / 2, xlrRwsZ);
   P.addEquipment('turret', box(0.42, xlrBodyH, 0.42),
@@ -2017,12 +1999,14 @@ function buildLeclercXLR(P: MiscBuilderPort): void {
   P.addEquipment('turret', box(0.50, 0.28, 0.045),
     xlrRwsX, 1.0395, 0.01, -0.18, 0, 0);
   {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.08, seed: 104, scale: 0.78, ammo: true });
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.08, seed: 104, scale: 0.78, ammo: true,
+      remoteControlled: true });
     mg.name = 'leclercXlrRoofRwsGun';
     mg.position.set(xlrRwsX, xlrBodyTopY, -0.17);
     mg.userData.mountContactY = xlrBodyTopY;
     P.turretG.add(mg);
   }
+  finishXlrRws();
   // The marked periscope block previously started at 0.795 m. Lower it so
   // its 70 mm housing bottoms exactly on the same 0.752 m roof plateau.
   periscope(P, 'turretDetail', 0.18, 0.787, 0.14, -0.10);
@@ -2123,17 +2107,22 @@ function buildAMX56(P: MiscBuilderPort): void {
   P.add('turretGlass', box(0.25, 0.13, 0.025), 0.62, 0.745, 0.395);
   const amxRwsX = -0.67;
   const amxRwsZ = -0.33;
+  // 2026-10-08 (the owner's 2A5M precedent in main 6763d7cc0): the owner's roof RWS (refactored 2026-08-29) is the S1's
+  // working roof weapon, its base, body, sight and shield the station's stock. Gameplay change: functional 0 -> 1.
+  const finishAmxRws = captureAuxiliaryStock(P, 'amx56RoofRwsGun');
   P.addEquipment('turret', cylY(0.24, 0.24, 0.08, 16), amxRwsX, 0.792, amxRwsZ);
   P.addEquipment('turret', box(0.40, 0.18, 0.38), amxRwsX, 0.922, -0.25);
   P.add('turretGlass', box(0.15, 0.10, 0.025), amxRwsX, 0.942, -0.04);
   P.addEquipment('turret', box(0.52, 0.30, 0.045), amxRwsX, 1.052, -0.025, -0.16, 0, 0);
   {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'heavy', tone: 'dark', elev: 0.06, seed: 56, scale: 0.82, ammo: true });
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'heavy', tone: 'dark', elev: 0.06, seed: 56, scale: 0.82, ammo: true,
+      remoteControlled: true });
     mg.name = 'amx56RoofRwsGun';
     mg.position.set(amxRwsX, 1.012, -0.23);
     mg.userData.mountContactY = 1.012;
     P.turretG.add(mg);
   }
+  finishAmxRws();
   periscope(P, 'turretDetail', 0.12, 0.683, -0.18, 0.12);
   P.turretG.userData.amx56RoofAssembly = {
     gunnerSightRoofY: 0.610,
