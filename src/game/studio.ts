@@ -5,7 +5,9 @@ import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
 import { BATTLE_TIMES, type BattleTimeOfDay } from '../engine/battleWeatherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
-import { MUNITION_PROFILES, type MunitionClass } from '../sim/destructionEvents.ts';
+import {
+  DESTRUCTION_BUS_EVENTS, MUNITION_PROFILES, type MunitionClass, type StructureStage, type StructureStageEvent,
+} from '../sim/destructionEvents.ts';
 /**
  * studio.ts — SCENE STUDIO: an in-game staging rig for composing shots.
  *
@@ -254,6 +256,8 @@ interface StudioEffectParams {
   caliberMm?: number;
   /** explosion: a munition class (sim/destructionEvents.ts) and its charge, kg TNT (default: the class's nominal) */
   munition?: string;
+  /** structure: the stage the building nearest the effect point crosses ('damaged', 'breached', 'collapsed') */
+  stage?: string;
   chargeKg?: number;
   cause?: string;
   count?: number;
@@ -1543,6 +1547,47 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return true;
   }
 
+  /**
+   * destruction-fx lane: the building nearest the point crosses a damage stage, as the core's sim announces one in
+   * battle (sim/destructionEvents.ts StructureStageEvent, from the world seam's anatomy: footprint, height, blow), so
+   * the Studio films a breach and a collapse in the building's own geometry. Presentation only: the Studio's world
+   * keeps its collision. params: stage, munition, cause ('blast' | 'kinetic' | 'ram'), dirDeg (the blow's heading).
+   */
+  const studioStages = new Map<number, StructureStage>();
+  function fireStructure({ position, params }: StudioEffectExecution): boolean {
+    const w = getWorld() as unknown as {
+      getObstacles?(): readonly { min: readonly number[]; max: readonly number[]; structureIdx?: number; structureRole?: string }[];
+      structureDamage?(id: number): { anatomy: { massClass: string; placement: { x: number; y: number; z: number; yaw: number };
+        w: number; d: number; h: number } } | null;
+    } | null;
+    if (!w?.getObstacles || !w.structureDamage) return false;
+    let best = -1, bestD = Infinity;
+    for (const rec of w.getObstacles()) {
+      if (typeof rec.structureIdx !== 'number' || rec.structureRole === 'fixed') continue;
+      const cx = (rec.min[0] + rec.max[0]) / 2, cz = (rec.min[2] + rec.max[2]) / 2;
+      const d = Math.hypot(cx - position.x, cz - position.z);
+      if (d < bestD) { bestD = d; best = rec.structureIdx; }
+    }
+    const seam = best >= 0 ? w.structureDamage(best) : null;
+    if (!seam) return false;
+    const a = seam.anatomy;
+    const stage = (params.stage === 'damaged' || params.stage === 'breached' ? params.stage : 'collapsed') as StructureStage;
+    const munition = (typeof params.munition === 'string' && params.munition in MUNITION_PROFILES ? params.munition : 'he') as MunitionClass;
+    const cause = params.cause === 'ram' || params.cause === 'kinetic' ? params.cause : 'blast';
+    const heading = (params.dirDeg ?? 0) * DEG;
+    const e: StructureStageEvent = {
+      structureId: best, massClass: a.massClass as StructureStageEvent['massClass'],
+      cx: a.placement.x, cz: a.placement.z, hw: a.w / 2, hd: a.d / 2, yaw: a.placement.yaw,
+      baseY: a.placement.y, topY: a.placement.y + a.h,
+      stage, previous: studioStages.get(best) ?? 'intact', cause, munition: cause === 'ram' ? null : munition,
+      x: position.x, y: position.y, z: position.z, dirX: Math.sin(heading), dirZ: Math.cos(heading),
+      points: 100, integrity: stage === 'collapsed' ? 0 : stage === 'breached' ? 0.35 : 0.7,
+    };
+    studioStages.set(best, stage);
+    fxBus.emit(DESTRUCTION_BUS_EVENTS.stage, e);
+    return true;
+  }
+
   function fireTankKill({ actor, params }: StudioEffectExecution): boolean {
     if (!actor) return false;
     _v2.copy(actor.state.pos);
@@ -1737,6 +1782,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     impact: (execution) => fireImpact(execution, 'pen', 120, [0, 1, 0]),
     sparks: (execution) => fireImpact(execution, 'ricochet', 100, [0, 1, 0]),
     explosion: fireExplosion,
+    structure: fireStructure,
     tank_kill: fireTankKill,
     dust: fireDust,
     engine_smoke: fireEngineSmoke,
@@ -1947,6 +1993,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     ensureFxBus();
     shells.length = 0;
     fx.resetAll();
+    studioStages.clear();
     fx.resetSeed(seed);
     fx.setFrozen(false);
     clockMs = 0;
@@ -3327,6 +3374,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     effectLog.length = 0;
     activeEffectIds.clear();
     fx.resetAll();
+    studioStages.clear();
     fx.setFrozen(false);
     timeScale = 1;
     camera.rotation.z = 0; // no roll may leak into game cameras

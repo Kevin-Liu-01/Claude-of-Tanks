@@ -251,6 +251,7 @@ neither, the panel marker (or the ground ahead of the camera) is used.
 | `burning` | actor | `off` | Additive keyed fire and smoke column over the current mesh state. |
 | `detrack` | actor | `side`: `L`/`R` | thrown-track visual + link/spark/dust burst |
 | `firing_moment` | actor | `ageS` (default 0.05), `caliberMm`, `shellType` | the composed frozen firing still (contract `combat_firing` language) |
+| `structure` | point | `stage`: `damaged` / `breached` / `collapsed` (default), `munition` (the blow's class, default `he`), `cause` (`blast` / `kinetic` / `ram`), `dirDeg` (the blow's heading) | the building nearest the point crosses that stage as the battle's sim announces one (a jumped stage lays the one it skipped): its breach rim and room, its fall and pile in its own materials, its dust. Presentation only: the Studio's collision is untouched; a scene load stands it up again |
 | `explosion_moment` | point/actor | `ageS` (default 0.6) | the composed frozen destruction still |
 | `mg_burst` | actor | `count` (default 7), `gapM` (chain spacing, default 7), `spreadDeg`, `caliberMm` (default 12.7), `speedMps` | Coaxial machine-gun flash and a deterministic sequence of small-caliber tracers along the gun line. |
 | `barrage` | point/actor | `count` (default 5), `radiusM` (default 10), `size`: `small`/`medium`/`mixed` (default), `seedDeg` | Deterministic ring of artillery ground bursts around the anchor. |
