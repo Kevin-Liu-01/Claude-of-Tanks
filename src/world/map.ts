@@ -38,7 +38,7 @@ import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
 import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
-import { setShadowCasterProfile } from '../engine/renderLayers.ts';
+import { setShadowCasterCascades, setShadowCasterProfile } from '../engine/renderLayers.ts';
 import { BANK_MAX_M, type FieldBankCrests } from './fieldWorks.ts';
 import {
   createObstacleGrid,
@@ -390,6 +390,8 @@ function bindGroundBanks(terrain: TerrainRoot, propsGroup: THREE.Group): void {
   mesh.receiveShadow = true;
   // (b34: the stone-free maps' earthwork mounds stand taller than a bank)
   setShadowCasterProfile(mesh, { heightM: Math.max(BANK_MAX_M, (propsGroup.userData.groundBanksHeightM as number | undefined) ?? 0) });
+  // (b37) low earth (a metre of bank, two of a mound): its shadow in the near cascades only, as the low destructibles'
+  setShadowCasterCascades(mesh, 0b0011);
   propsGroup.add(mesh);
 }
 

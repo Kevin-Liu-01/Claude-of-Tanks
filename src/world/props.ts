@@ -39,7 +39,7 @@ export function environmentRichness(): number { return getDeviceTier() === 'mobi
 function richCount(n: number | undefined, fallback = 0): number { return Math.round((n ?? fallback) * environmentRichness()); }
 import { markShadowOnly, setShadowCasterCascades, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
-import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
+import { destructibleCastsShadow, destructibleShadowCascades } from './destructibleRenderPolicy.ts';
 import {
   applySourcedBuildings, applySourcedRock, sourcedStoneIsBrick, type BuildingPaletteId, type SourcedTerrainSettings,
   type SourcedTextureApplicationOptions,
@@ -9464,6 +9464,9 @@ ${snowCap ? `
     else imI.computeBoundingSphere();
     imI.name = 'destructible-' + kind;
     if (castsDynamicShadow) setShadowCasterProfile(imI, { heightM: casterHeightM(geoI, pool.mats4), instanced: true }); // round 79
+    // (b37) low dressing's shadow in the near cascades only (destructibleRenderPolicy.ts destructibleShadowCascades)
+    const shadowCascades = castsDynamicShadow ? destructibleShadowCascades(meta) : null;
+    if (shadowCascades !== null) setShadowCasterCascades(imI, shadowCascades);
     if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imI, true);
     group.add(imI);
     pool.imI = imI;
@@ -9478,6 +9481,7 @@ ${snowCap ? `
       imB.frustumCulled = false; // slots appended over the battle
       imB.name = 'destructible-' + kind + '-broken';
       if (castsDynamicShadow) setShadowCasterProfile(imB, { heightM: casterHeightM(geoB, pool.mats4), instanced: true }); // round 79
+      if (shadowCascades !== null) setShadowCasterCascades(imB, shadowCascades);
       if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imB, false);
       group.add(imB);
       pool.imB = imB;
@@ -9517,6 +9521,7 @@ ${snowCap ? `
         const heaps = new THREE.Mesh(merged, mats.rock);
         heaps.name = 'props-scenery-gromace';
         setShadowCasterProfile(heaps, profile);
+        setShadowCasterCascades(heaps, 0b0011); // (b37: low heaps, the near cascades only)
         heaps.castShadow = true;
         heaps.receiveShadow = true;
         heaps.matrixAutoUpdate = false;
