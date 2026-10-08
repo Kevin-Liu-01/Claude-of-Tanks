@@ -38,6 +38,7 @@ import { OVERCAST_DIRECT_CUT_SHARED, resolveDeckClosure, resolveOvercast, type L
 import { registerRetainedObject3DResources } from '../../engine/resourceLifetime.ts';
 import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
 import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, type CanyonGround } from '../horizonRedrock.ts';
+import { shapeJebelSkyline } from '../horizonJebelSkyline.ts';
 import { buildHorizonRockfield } from '../horizonRockfield.ts';
 import {
   type HorizonReliefBake, type HorizonReliefCharacter, type HorizonReliefCover, type HorizonReliefField, type HorizonReliefSettings,
@@ -2203,6 +2204,9 @@ export function sampleHorizonGeometry(
   if (!canyonOutland) drainSteps(carveHorizonEscarpmentsSteps(ring, horizon, mapId, style, seed));
   continueHorizonGround(ring, ground, canyonOutland);
   if (canyonOutland) drainSteps(carveHorizonEscarpmentsSteps(ring, horizon, mapId, style, seed));
+  // the borders lane (2026-10-08, gauntlet wave 270): Redrock's enclosing walls crest in domed heads and saddles past the
+  // near band — a chain of jebels, not one level rampart (horizonJebelSkyline.ts; the basin stays enclosed)
+  if (canyonOutland) shapeJebelSkyline(ring, ((seed ^ 0x5B71) ^ idHash(mapId)) >>> 0);
   if (horizon.roadPasses !== false) openRoadPasses(ring, ground);
   if (horizon.summitCap) capHorizonSummits(ring, horizon.summitCap, ((seed ^ 0x5C4D) ^ idHash(mapId)) >>> 0, HORIZON_SEGMENTS);
   if (horizon.dam) carveHorizonDamCanyon(ring, horizon.dam, HORIZON_SEGMENTS);
@@ -3656,6 +3660,9 @@ export function* buildHorizonRingSteps(
   if (!canyonOutland) yield* carveHorizonEscarpmentsSteps(ring, H, mapId, style, seed);
   continueHorizonGround(ring, ground, canyonOutland);
   if (canyonOutland) yield* carveHorizonEscarpmentsSteps(ring, H, mapId, style, seed);
+  // the borders lane (2026-10-08, gauntlet wave 270): Redrock's enclosing walls crest in domed heads and saddles past the
+  // near band — a chain of jebels, not one level rampart (horizonJebelSkyline.ts; the basin stays enclosed)
+  if (canyonOutland) shapeJebelSkyline(ring, ((seed ^ 0x5B71) ^ idHash(mapId)) >>> 0);
   if (H.roadPasses !== false) openRoadPasses(ring, ground);
   // the map-revival lane (2026-10-06): the outer ranges capped into mesas (horizonTablelands.ts), then the dam's canyon
   // and its reservoir as the ring's water (horizonDam.ts)
