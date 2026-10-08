@@ -9,14 +9,18 @@
 // shell rays that met one passing no stone, the tops 0.6 m too high, and 2,419 stones over 0.45 m tall with no collider.
 //
 // A stone's colliders now come from its own mesh, placed (its placement matrix) over its own ground:
-//   movement  the convex hull of the stone where it stands between ROCK_CONTACT_FLOOR_M and ROCK_CONTACT_TOP_M over the
-//             ground under it (the skirt below the floor lies under a hull's tracks), to its real top;
+//   movement  nested columns from the record's floor (round 2, 2026-10-08: movementTiers): the first the stone's whole
+//             ground outline, toe and tail included, to ROCK_TIER_FIRST_M over its lowest point; each next one the hull
+//             of the stone above its tier, ROCK_TIER_STEP_M higher, up to ROCK_CONTACT_TOP_M over the ground; the last
+//             to the stone's real top, so a hull's floor on the stone steps as the stone does;
 //   shells    the exposed stone in horizontal slabs from its lowest exposed point to its top (the ranged convex parts the
 //             shards already carry, 'w'): a slab grows to ROCK_SHELL_BAND_M while the stone's section keeps
 //             ROCK_SHELL_KEEP of the widest section inside it, so the slabs thin over the stone's dome, and each takes the
 //             hull of the stone's section ROCK_SHELL_SECTION_AT of the way up it — a rounded boulder narrows toward its
 //             top, and a shell over its shoulder flies on (the audit's rays: 2-3 % of the rays that meet a stone or its
 //             collider stopped 10+ cm clear of the stone, 1-2 % passing 10+ cm of it unstopped; the legacy prism 70 %);
+//             and a toe ring (ROCK_TOE_M over its lowest point, all the stone there) where the stone flares at its
+//             foot past its lowest slab's section;
 //   none      for a stone that rises less than ROCK_DRIVE_OVER_M above its ground: a hull rolls over it.
 // Pure and deterministic: no randomness, the same arithmetic on every tier (the collision form is the desktop form), and
 // every outline to the centimetre.
@@ -25,17 +29,30 @@ import { convexOutlineInPlace, setCompoundShape, setConvexShape, type CollisionR
 
 /** A stone rising less than this above the ground under it is driven over: no collider (a hull's belly line). */
 export const ROCK_DRIVE_OVER_M = 0.45;
-/** The movement footprint is the stone between this height over its ground (the tank-contact band's floor)... */
-export const ROCK_CONTACT_FLOOR_M = 0.2;
-/** ...and this one (the tallest hull's roof: a hoodoo's cap above it is a shell's business, not a hull's). */
+/** The movement columns hold the stone up to this height over its ground (the tallest hull's roof: a hoodoo's cap
+ * above it is a shell's business, not a hull's; the overlay's legend says so). */
 export const ROCK_CONTACT_TOP_M = 3;
 /**
- * A formation's movement footprint starts higher (the hitbox lane, 2026-10-08): its pieces flare at their feet (a
- * ledge's toe, a slab's buried edge, a hoodoo's skirt) and the hull of the band from the stone's floor spans the ground
- * between the toes. From here, still under the drive-over line, the outlines follow the stone: the formations' empty
- * ground plus uncovered stone fell on every formation map (tools/world-collider-audit.mjs --families=formations).
+ * The movement tiers (the hitbox lane, round 2, 2026-10-08; fit waves 263 and 271: "build the movement volume from the
+ * same stepped slices"). One prism of the stone's widest girth to its top stood a hull a metre short of a dome's
+ * shoulder, boxed the air over a ledge's low slabs and drew a hoodoo's flared foot up its whole stem, and its band from
+ * 0.2 m left a stone's toe and tail to a hull's tracks. The first tier's top over the stone's lowest point: past a
+ * hull's step-up (0.55 m) with 15 cm to spare, so a hull on level ground meets the stone's ground outline as a wall and
+ * climbs onto the first tier only from ground that rises toward it (a column is a floor within the step-up and is stood
+ * on by the same rule, collision.ts hullPassesObstacleTop and structureSupport.ts).
  */
-const FORMATION_CONTACT_FLOOR_M = 0.35;
+export const ROCK_TIER_FIRST_M = 0.7;
+/** Each tier above the first. */
+const ROCK_TIER_STEP_M = 0.6;
+/** A last tier thinner than this joins the one under it. */
+const ROCK_TIER_LAST_MIN_M = 0.25;
+/** Corners a tier above the first keeps at most (the first, the ground outline, keeps ROCK_HULL_POINTS). */
+const ROCK_TIER_POINTS = 8;
+/** The shells' toe ring: the stone up to this height over its lowest point (wave 263: a snow boulder's foot stood up to
+ * 0.5 m outside its lowest slab, which takes the section 35 % up it)... */
+const ROCK_TOE_M = 0.25;
+/** ...a part only where it holds this much more than that slab's outline (a dome that does not flare adds none). */
+const ROCK_TOE_GAIN = 1.05;
 /** The tallest a shell slab grows (m). (The audit's sweep on Titan's and Saltwind's stones: 0.6 m slabs of six corners
  * stop the same share of shells on the stone as 0.4 m slabs of eight, 2.3 % of the rays 10+ cm clear, in 30 % fewer
  * shard bytes.) */
@@ -98,8 +115,11 @@ export interface RockBand {
 }
 
 export interface RockCollisionProfile {
-  /** The movement footprint (world [x, z, ...]). */
+  /** The movement footprint (world [x, z, ...]): the stone's ground outline, the first tier's. */
   contact: number[];
+  /** The movement tiers, bottom up: nested columns (each inside the one under it), `y0` its tier's floor, `y1` its top
+   * (the record's parts reach down to the record's floor: applyRockCollisionProfile). */
+  tiers: RockBand[];
   /** The stone's highest point (world y, to the centimetre). */
   top: number;
   /** Its tallest rise above the ground under it (m). */
@@ -120,6 +140,8 @@ export interface RockBandOptions {
   crownM2?: number;
   /** Corners a slab's outline at most. */
   points?: number;
+  /** The movement tiers' step above the first (ROCK_TIER_STEP_M). */
+  tierStep?: number;
 }
 
 /** The local vertices and unique edges of a stone's (indexed) form geometry. */
@@ -372,21 +394,6 @@ function placeSurface(
   return { wx, wy, wz, rise, edges, top, exposed, low };
 }
 
-/** Gather into the scratch the surface where its rise lies in [riseMin, riseMax]: the vertices there and the points where
- * an edge crosses either bound (the hull of these is the hull of every edge's stretch in the band). */
-function gatherRiseBand(s: PlacedSurface, riseMin: number, riseMax: number): void {
-  const { wx, wz, rise, edges } = s;
-  for (let v = 0; v < rise.length; v++) if (rise[v] >= riseMin && rise[v] <= riseMax) pushPoint(wx[v], wz[v]);
-  for (let k = 0; k < edges.length; k += 2) {
-    const a = edges[k], b = edges[k + 1], ra = rise[a], rb = rise[b];
-    for (const bound of [riseMin, riseMax]) {
-      if ((ra - bound) * (rb - bound) >= 0) continue;
-      const t = (bound - ra) / (rb - ra);
-      pushPoint(wx[a] + (wx[b] - wx[a]) * t, wz[a] + (wz[b] - wz[a]) * t);
-    }
-  }
-}
-
 /** Gather into the scratch the surface's section at height y over its ground (rise >= 0), from the candidate edges. */
 function gatherSection(s: PlacedSurface, y: number, candidates: Int32Array, from: number, to: number): void {
   const { wx, wy, wz, rise, edges } = s;
@@ -402,19 +409,88 @@ function gatherSection(s: PlacedSurface, y: number, candidates: Int32Array, from
 
 /** Gather into the scratch the stone over its ground between heights y0 and y1 (every edge's stretch there). */
 function gatherSlab(s: PlacedSurface, y0: number, y1: number): void {
+  gatherBox(s, y0, y1, 0, Infinity);
+}
+
+/** Gather into the scratch the surface between world heights y0 and y1 whose rise over its ground lies in [r0, r1]
+ * (every edge's stretch inside both ranges; allocation-free, a placed stone's tiers cut it a few times). */
+function gatherBox(s: PlacedSurface, y0: number, y1: number, r0: number, r1: number): void {
   const { wx, wy, wz, rise, edges } = s;
   for (let k = 0; k < edges.length; k += 2) {
     const a = edges[k], b = edges[k + 1];
     let t0 = 0, t1 = 1;
-    for (const [va, vb, lo, hi] of [[wy[a], wy[b], y0, y1], [rise[a], rise[b], 0, Infinity]] as const) {
-      if (va === vb) { if (va < lo || va > hi) { t0 = 1; t1 = 0; } continue; }
-      const ta = (lo - va) / (vb - va), tb = (hi - va) / (vb - va);
+    const ya = wy[a], yb = wy[b], ra = rise[a], rb = rise[b];
+    if (ya === yb) {
+      if (ya < y0 || ya > y1) continue;
+    } else {
+      const ta = (y0 - ya) / (yb - ya), tb = (y1 - ya) / (yb - ya);
+      t0 = Math.max(t0, Math.min(ta, tb)); t1 = Math.min(t1, Math.max(ta, tb));
+    }
+    if (ra === rb) {
+      if (ra < r0 || ra > r1) continue;
+    } else {
+      const ta = (r0 - ra) / (rb - ra), tb = (r1 - ra) / (rb - ra);
       t0 = Math.max(t0, Math.min(ta, tb)); t1 = Math.min(t1, Math.max(ta, tb));
     }
     if (t0 > t1) continue;
     pushPoint(wx[a] + (wx[b] - wx[a]) * t0, wz[a] + (wz[b] - wz[a]) * t0);
     if (t1 !== t0) pushPoint(wx[a] + (wx[b] - wx[a]) * t1, wz[a] + (wz[b] - wz[a]) * t1);
   }
+}
+
+/** A convex outline clipped to another (Sutherland-Hodgman; either winding), to the centimetre; null when nothing of it
+ * lies inside. */
+function clipConvexTo(subject: number[], clip: readonly number[]): number[] | null {
+  let wind = 0;
+  for (let i = 0; i < clip.length; i += 2) {
+    const j = (i + 2) % clip.length;
+    wind += clip[i] * clip[j + 1] - clip[j] * clip[i + 1];
+  }
+  const w = wind >= 0 ? 1 : -1;
+  let poly = subject;
+  for (let i = 0; i < clip.length && poly.length >= 6; i += 2) {
+    const j = (i + 2) % clip.length;
+    const ax = clip[i], az = clip[i + 1], ex = clip[j] - ax, ez = clip[j + 1] - az;
+    if (ex === 0 && ez === 0) continue;
+    const side = (x: number, z: number): number => w * (ex * (z - az) - ez * (x - ax));
+    const out: number[] = [];
+    for (let k = 0; k < poly.length; k += 2) {
+      const l = (k + 2) % poly.length;
+      const px = poly[k], pz = poly[k + 1], qx = poly[l], qz = poly[l + 1];
+      const sp = side(px, pz), sq = side(qx, qz);
+      if (sp >= 0) out.push(px, pz);
+      if ((sp >= 0) !== (sq >= 0)) { const t = sp / (sp - sq); out.push(px + (qx - px) * t, pz + (qz - pz) * t); }
+    }
+    poly = out;
+  }
+  if (poly.length < 6) return null;
+  const rounded: number[] = [];
+  for (let i = 0; i < poly.length; i += 2) rounded.push(Math.round(poly[i] * 100) / 100, Math.round(poly[i + 1] * 100) / 100);
+  const outline = convexRounded(rounded);
+  return outline.length >= 6 && polygonArea(outline) >= ROCK_MIN_PART_M2 ? outline : null;
+}
+
+/**
+ * The movement tiers of a placed surface (round 2): nested columns, each the hull of all the stone over its ground at and
+ * above its tier's floor up to `riseMax` over the ground (ROCK_TIER_FIRST_M, then every `step`), clipped to the column
+ * under it; the last one's top the stone's own. Empty when no stone stands over the ground.
+ */
+function movementTiers(s: PlacedSurface, riseMax: number, step = ROCK_TIER_STEP_M): RockBand[] {
+  const floors: number[] = [s.low];
+  for (let y = s.low + ROCK_TIER_FIRST_M; y < s.top - ROCK_TIER_LAST_MIN_M; y += step) floors.push(y);
+  const tiers: RockBand[] = [];
+  let under: number[] | null = null;
+  for (let k = 0; k < floors.length; k++) {
+    gatherBox(s, floors[k], Infinity, 0, riseMax);
+    let points = scratchHullOf(k === 0 ? ROCK_HULL_POINTS : ROCK_TIER_POINTS);
+    if (points && under) points = clipConvexTo(points, under);
+    if (!points) break;
+    tiers.push({ points, y0: Math.round(floors[k] * 100) / 100, y1: Math.round((k + 1 < floors.length ? floors[k + 1] : s.top) * 100) / 100 });
+    under = points;
+  }
+  // (a stone taller than the band: its last column reaches its own top, so a hull on its crown stands on it)
+  if (tiers.length) tiers[tiers.length - 1].y1 = Math.round(s.top * 100) / 100;
+  return tiers;
 }
 
 /** The surface's edges bucketed by the height intervals [low + k step, low + (k + 1) step) they reach (CSR). */
@@ -530,9 +606,8 @@ export function rockCollisionProfile(
 ): RockCollisionProfile | null {
   const s = placeSurface(form.positions, form.edges, matrix, groundAt);
   if (!(s.exposed >= ROCK_DRIVE_OVER_M) || !Number.isFinite(s.low) || !(s.top > s.low)) return null;
-  gatherRiseBand(s, ROCK_CONTACT_FLOOR_M, ROCK_CONTACT_TOP_M);
-  const contact = scratchHullOf(ROCK_HULL_POINTS);
-  if (!contact) return null;
+  const tiers = movementTiers(s, ROCK_CONTACT_TOP_M, options.tierStep ?? ROCK_TIER_STEP_M);
+  if (!tiers.length) return null;
   // a stone turned about the vertical and scaled (the placements' law): its sections are the form's, scaled — read from
   // the form's table; any other placement cuts the stone itself
   const e = matrix;
@@ -540,7 +615,15 @@ export function rockCollisionProfile(
   const areaScale = Math.hypot(e[0], e[2]) * Math.hypot(e[8], e[10]);
   const bands = shellBands(s, options, upright ? (y: number) => formSectionArea(form, (y - e[13]) / e[5]) * areaScale : null);
   if (!bands.length) return null;
-  return { contact, top: bands[bands.length - 1].y1, exposed: s.exposed, bands };
+  // the toe ring (round 2): where the stone flares at its foot past its lowest slab's section, all of it there
+  if (s.top - s.low > ROCK_TOE_M) {
+    gatherSlab(s, s.low, s.low + ROCK_TOE_M);
+    const toe = scratchHullOf(ROCK_SHELL_POINTS);
+    if (toe && polygonArea(toe) > ROCK_TOE_GAIN * polygonArea(bands[0].points)) {
+      bands.unshift({ points: toe, y0: bands[0].y0, y1: Math.round((s.low + ROCK_TOE_M) * 100) / 100 });
+    }
+  }
+  return { contact: tiers[0].points, tiers, top: bands[bands.length - 1].y1, exposed: s.exposed, bands };
 }
 
 function centroid(points: readonly number[]): [number, number] {
@@ -555,16 +638,24 @@ function rangedPart(points: number[], y0: number, y1: number): SimpleCollisionSh
   return { kind: 'convex', cx, cz, points: points.slice(), y0, y1 };
 }
 
+/** A record's movement tiers as its parts: nested columns, each from the record's floor `floorY` to its own top. */
+function tierParts(tiers: readonly RockBand[], floorY: number): SimpleCollisionShape[] {
+  return tiers.map((tier) => rangedPart(tier.points, floorY, tier.y1));
+}
+
 /**
- * Shape a stone's records from its profile: the movement record the contact footprint from `seatY` (the seat under the
- * stone, as the legacy record kept it, so the standing rule reads the stone's whole height) to its top; the shell record
- * its slabs. Records keep their identity, kind and crush policy.
+ * Shape a stone's records from its profile: the movement record its tiers, each a column from `seatY` (the seat under
+ * the stone, as the legacy record kept it, so the standing rule reads the stone's whole height) to the tier's top; the
+ * shell record its slabs. Records keep their identity, kind and crush policy.
  */
 export function applyRockCollisionProfile(
   obstacle: CollisionRecord, collider: CollisionRecord, profile: RockCollisionProfile, seatY: number,
 ): void {
-  setConvexShape(obstacle, profile.contact.slice());
-  obstacle.min[1] = Math.min(seatY, profile.bands[0].y0);
+  const floorY = Math.min(seatY, profile.bands[0].y0, profile.tiers[0].y0);
+  // (one tier: a convex record from the floor to the stone's top, the same column)
+  if (profile.tiers.length === 1) setConvexShape(obstacle, profile.tiers[0].points.slice());
+  else setCompoundShape(obstacle, tierParts(profile.tiers, floorY));
+  obstacle.min[1] = floorY;
   obstacle.max[1] = profile.top;
   setCompoundShape(collider, profile.bands.map((band) => rangedPart(band.points, band.y0, band.y1)));
   collider.min[1] = profile.bands[0].y0;
@@ -627,20 +718,56 @@ function mergeOutlines(items: Outline[], limit: number, corners: number): Outlin
   return list;
 }
 
-/** A rock formation's colliders: the movement footprint's outlines and the shell slabs' ranged outlines. */
+/** A rock formation's colliders: the movement tiers and footprint and the shell slabs' ranged outlines. */
 export interface FormationCollisionProfile {
-  /** Convex outlines (world [x, z, ...]) of the standing stone between the contact floor and the contact top. */
+  /** Convex outlines (world [x, z, ...]) of the blocks' ground outlines (their first tiers; one inside another adds
+   * none). */
   contact: number[][];
+  /** Every block's movement tiers (movementTiers: nested columns per block), at most FORMATION_MAX_PARTS. */
+  tiers: RockBand[];
   bands: RockBand[];
   top: number;
   low: number;
 }
 
+/** A formation's movement tiers: each block's own (movementTiers), coarser while they would overflow a record, then one
+ * column a block (its ground outline to its top), then the least wasteful merges of those. */
+function formationTiers(surfaces: readonly PlacedSurface[]): RockBand[] {
+  for (const step of [ROCK_TIER_STEP_M, ROCK_TIER_STEP_M * 1.5, ROCK_TIER_STEP_M * 2.25, Infinity]) {
+    const tiers = surfaces.flatMap((s) => {
+      const blockTiers = movementTiers(s, ROCK_CONTACT_TOP_M, step);
+      // (one column a block: its ground outline to its own top)
+      if (step === Infinity && blockTiers.length) return [{ ...blockTiers[0], y1: blockTiers[blockTiers.length - 1].y1 }];
+      return blockTiers;
+    });
+    if (tiers.length <= FORMATION_MAX_PARTS) return tiers;
+    if (step !== Infinity) continue;
+    // more blocks than parts: the least wasteful merges, each merged column to the taller top
+    const items = tiers.map((tier) => ({ outline: outlineOf(tier.points), y0: tier.y0, y1: tier.y1 }));
+    while (items.length > FORMATION_MAX_PARTS) {
+      let bestI = -1, bestJ = -1, bestWaste = Infinity, best: Outline | null = null;
+      for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
+        for (const o of [items[i].outline, items[j].outline]) for (let k = 0; k < o.points.length; k += 2) pushPoint(o.points[k], o.points[k + 1]);
+        const points = scratchHullOf(ROCK_HULL_POINTS);
+        if (!points) continue;
+        const joined = outlineOf(points), waste = joined.area - items[i].outline.area - items[j].outline.area;
+        if (waste < bestWaste) { bestWaste = waste; bestI = i; bestJ = j; best = joined; }
+      }
+      if (!best) break;
+      items[bestI] = { outline: best, y0: Math.min(items[bestI].y0, items[bestJ].y0), y1: Math.max(items[bestI].y1, items[bestJ].y1) };
+      items.splice(bestJ, 1);
+    }
+    return items.slice(0, FORMATION_MAX_PARTS).map((item) => ({ points: item.outline.points, y0: item.y0, y1: item.y1 }));
+  }
+  return [];
+}
+
 /**
- * The colliders of a formation's standing pieces (world-space geometries): the contact band and equal shell slabs, in
- * each every piece's own outline (in a slab a piece that spans it takes its section ROCK_SHELL_SECTION_AT of the way up,
- * the stone's law; a piece that starts or ends inside it, all of it there), each block keeping its own outline (one
- * inside another adds none; MERGE_WASTE_M2). Null when nothing rises past the drive-over line.
+ * The colliders of a formation's standing pieces (world-space geometries): every block's own movement tiers
+ * (formationTiers) and equal shell slabs, in each every piece's own outline (in a slab a piece that spans it takes its
+ * section ROCK_SHELL_SECTION_AT of the way up, the stone's law; a piece that starts or ends inside it, all of it there),
+ * each block keeping its own outline (one inside another adds none; MERGE_WASTE_M2). Null when nothing rises past the
+ * drive-over line.
  */
 export function formationCollisionProfile(
   pieces: readonly BufferGeometry[], groundAt: (x: number, z: number) => number,
@@ -653,14 +780,16 @@ export function formationCollisionProfile(
   const top = Math.max(...surfaces.map((s) => s.top));
   const low = Math.min(...surfaces.map((s) => s.low));
   if (!(top > low)) return null;
-  const contactOutlines: Outline[] = [];
+  const tiers = formationTiers(surfaces);
+  if (!tiers.length) return null;
+  // (the ground outlines: each block's first column, all of it over the ground within the band)
+  const grounds: Outline[] = [];
   for (const s of surfaces) {
-    gatherRiseBand(s, FORMATION_CONTACT_FLOOR_M, ROCK_CONTACT_TOP_M);
+    gatherBox(s, s.low, Infinity, 0, ROCK_CONTACT_TOP_M);
     const points = scratchHullOf(ROCK_HULL_POINTS);
-    if (points) contactOutlines.push(outlineOf(points));
+    if (points) grounds.push(outlineOf(points));
   }
-  const contact = mergeOutlines(contactOutlines, FORMATION_MAX_PARTS, ROCK_HULL_POINTS).map((o) => o.points);
-  if (!contact.length) return null;
+  const contact = mergeOutlines(grounds, FORMATION_MAX_PARTS, ROCK_HULL_POINTS).map((o) => o.points);
   const bins = surfaces.map((s) => binEdges(s, s.low, s.top));
   const slabOutlines = (y0: number, y1: number): Outline[] => {
     const out: Outline[] = [];
@@ -684,23 +813,22 @@ export function formationCollisionProfile(
       }
     }
     if (bands.length <= FORMATION_MAX_PARTS || count === 1) {
-      return { contact, bands: bands.slice(0, FORMATION_MAX_PARTS), top: Math.round(top * 100) / 100, low: Math.round(low * 100) / 100 };
+      return { contact, tiers, bands: bands.slice(0, FORMATION_MAX_PARTS), top: Math.round(top * 100) / 100, low: Math.round(low * 100) / 100 };
     }
   }
 }
 
 /**
- * Shape a formation's records from its profile: the movement record its contact outlines from `floorY` (the ground
- * under it less half a metre, as the legacy mass kept it) to its top; the shell record its ranged slab outlines.
+ * Shape a formation's records from its profile: the movement record its blocks' tiers, each a column from `floorY` (the
+ * ground under it less half a metre, as the legacy mass kept it) to the tier's top; the shell record its ranged slab
+ * outlines.
  */
 export function applyFormationCollision(
   obstacle: CollisionRecord, collider: CollisionRecord, profile: FormationCollisionProfile, floorY: number,
 ): void {
-  setCompoundShape(obstacle, profile.contact.map((points) => {
-    const [cx, cz] = centroid(points);
-    return { kind: 'convex', cx, cz, points: points.slice() };
-  }));
-  obstacle.min[1] = Math.min(floorY, profile.low);
+  const recordFloor = Math.min(floorY, profile.low);
+  setCompoundShape(obstacle, tierParts(profile.tiers, recordFloor));
+  obstacle.min[1] = recordFloor;
   obstacle.max[1] = profile.top;
   setCompoundShape(collider, profile.bands.map((band) => rangedPart(band.points, band.y0, band.y1)));
   collider.min[1] = profile.low;
