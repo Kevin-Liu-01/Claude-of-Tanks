@@ -22,7 +22,7 @@ import {
 } from '../../sim/destructionEvents.ts';
 import { resetStructureRecords } from '../../sim/destructionMatch.ts';
 import { createStructureDamage, STAGE_ORDER, type StructureDamage, type StructureState } from '../../sim/structureDamage.ts';
-import { sectionKind, sectionNormal, sectionSpan } from '../../sim/structureSections.ts';
+import { sectionKind, sectionNormal, sectionSpan, storeyDownAt } from '../../sim/structureSections.ts';
 import {
   createDeformedHeightField, createTerrainDeformation, rubbleHeightFor, type DeformableHeightField, type TerrainDeformation,
 } from '../../sim/terrainDeformation.ts';
@@ -57,6 +57,8 @@ export interface DestructionMirror {
   applyBreachEvent(payload: Record<string, unknown>): StructureState | null;
   /** This world's structure for an authority id, when known (the same id where the layouts agree), else null. */
   localId(authorityId: number): number | null;
+  /** The match plays sections (its ruleset's `destruction.sections`): every stage this mirror raises says so (P2). */
+  setSections(on: boolean): void;
 }
 
 const finite = (value: unknown, fallback = 0): number => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
@@ -95,6 +97,7 @@ export function createDestructionMirror(world: MirrorWorld | null, bus: MirrorBu
   }
   let idsShared = true;
   let settledUpTo = 0;
+  let sectionsOn = false;
 
   function byIdentity(cx: number, cz: number, massClass: unknown): StructureState | null {
     if (!structures) return null;
@@ -152,6 +155,7 @@ export function createDestructionMirror(world: MirrorWorld | null, bus: MirrorBu
       x: finite(payload?.x, structure.cx), y: finite(payload?.y, structure.baseY), z: finite(payload?.z, structure.cz),
       dirX: finite(payload?.dirX, 0), dirZ: finite(payload?.dirZ, 1),
       points: finite(payload?.points, 0), integrity: finite(payload?.integrity, 0),
+      ...(sectionsOn || payload?.sections === true ? { sections: true } : {}),
       ...(settled ? { settled: true } : {}),
     };
     bus.emit(DESTRUCTION_BUS_EVENTS.stage, event);
@@ -176,6 +180,7 @@ export function createDestructionMirror(world: MirrorWorld | null, bus: MirrorBu
       section, sectionKind: sectionKind(sections, section), y0: span.y0, y1: span.y1,
       hole: entry.sectionDown ? 255 : entry.hole, x: entry.x, y: entry.y, z: entry.z, nx: normal.x, ny: normal.y, nz: normal.z,
       radiusM: entry.sectionDown ? 0 : entry.radiusM, munition, sectionDown: entry.sectionDown,
+      ...(entry.sectionDown && storeyDownAt(sections, section) ? { storeyDown: true } : {}),
       ...(settled ? { settled: true } : {}),
     };
     bus.emit(DESTRUCTION_BUS_EVENTS.breach, event);
@@ -202,6 +207,9 @@ export function createDestructionMirror(world: MirrorWorld | null, bus: MirrorBu
       if (stage !== 'damaged' && stage !== 'breached' && stage !== 'collapsed') return null;
       apply(structure, stage, false, payload);
       return structure;
+    },
+    setSections(on) {
+      sectionsOn = on === true;
     },
     localId(authorityId) {
       if (!structures || !Number.isSafeInteger(authorityId)) return null;

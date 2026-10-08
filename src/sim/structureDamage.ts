@@ -28,7 +28,7 @@ import type {
 import { blastReachM, structureBlastPoints } from './munitionBlast.ts';
 import {
   attachOpenings, blastHoleRadiusM, cascadeFalls, createStructureSections, fellSection, holeRadiusFor, MIN_HOLE_M, NO_HOLE,
-  openHole, sectionAt, sectionCentre, sectionKind, sectionNormal, sectionSpan, shapeArea,
+  openHole, sectionAt, sectionCentre, sectionKind, sectionNormal, sectionSpan, shapeArea, storeyDownAt,
   type StructureSections,
 } from './structureSections.ts';
 import { structureOpeningAt, STRUCTURE_HOLES_PER_SECTION } from '../world/collision.ts';
@@ -431,6 +431,7 @@ export function createStructureDamage(
       baseY: structure.baseY, topY: structure.topY,
       section, sectionKind: sectionKind(sections, section), y0: span.y0, y1: span.y1, hole,
       x, y, z, nx: normal.x, ny: normal.y, nz: normal.z, radiusM, munition, sectionDown,
+      ...(sectionDown && storeyDownAt(sections, section) ? { storeyDown: true } : {}),
     };
   }
 
@@ -486,6 +487,7 @@ export function createStructureDamage(
       stage: STAGE_ORDER[stage], previous: STAGE_ORDER[previous],
       cause: blow.cause, munition: blow.munition, x: blow.x, y: blow.y, z: blow.z, dirX: blow.dirX, dirZ: blow.dirZ,
       points, integrity: structure.maxHp > 0 ? Math.max(0, structure.hp / structure.maxHp) : 0,
+      ...(sectionsOn ? { sections: true } : {}),
     };
   }
 

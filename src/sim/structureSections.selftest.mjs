@@ -148,6 +148,8 @@ const state = (s) => JSON.stringify({ holes: [...s.holes], down: [...s.down], co
   for (const [x, z] of [[4, 0], [-4, 0], [0, 5]]) table.applyPoints(s0, 1e3, blow(x, 4, z));
   const storeyFall = drain(table);
   assert.deepEqual(storeyFall.map((e) => e.section), [6, 7, 4, 5], 'three faces fall, then the fourth with them');
+  assert.deepEqual(storeyFall.map((e) => e.storeyDown === true), [false, false, false, true], 'the fourth completes the storey');
+  assert.ok(roofFall.every((e) => !e.storeyDown) && !down.storeyDown, 'a panel or the roof alone completes none');
   assert.equal(sections.capY, 2.75, 'the upper storey dropped');
   assert.equal(ray(colliders, 20, 3.5, 2, -1, 0, 0), Infinity, 'where it stood, rays pass');
   assert.equal(ray(colliders, 20, 2, 2, -1, 0, 0), 24, 'the ground storey\'s open panel still shows the far wall');
@@ -227,6 +229,25 @@ const state = (s) => JSON.stringify({ holes: [...s.holes], down: [...s.down], co
   assert.equal(seen.length, breaches.length, 'the log adds only what the events did not carry');
   assert.equal(state(mirror.structures.structures[0].sections), authority, 'the peer opens the same');
   assert.ok(seen.slice(events.length).every((event) => event.settled), 'the log\'s are laid down settled');
+  // a match with sections says so on its stages (the presentation then cuts no hole of a breached stage's own)
+  const stages = [];
+  match.drainEvents(stages);
+  const stageLog = log.filter((entry) => entry.kind === 'stage');
+  assert.ok(stageLog.length > 0, 'the house crossed stages');
+  const authorityStages = [];
+  const again = house(0, 'setpiece');
+  const replay = createDestructionMatch({ rules, obstacles: again.obstacles, colliders: again.colliders });
+  replay.shellWorldHit(he, again.colliders[0], 0.5, 1.6, 5, 0, -1);
+  for (let i = 0; i < 6; i++) replay.shellWorldHit(he, again.colliders[0], 3, 1.6 + i * 0.6, -4, 0, 1);
+  replay.step();
+  replay.drainEvents(authorityStages);
+  assert.ok(authorityStages.length > 0 && authorityStages.every((event) => event.sections === true), 'stage events carry sections');
+  const stageSeen = [];
+  const flagged = createDestructionMirror({ getObstacles: () => house(0, 'setpiece').obstacles, getColliders: () => [] },
+    { emit: (type, payload) => { if (type === 'structure:stage') stageSeen.push(payload); } });
+  flagged.setSections(true);
+  flagged.applyLog(stageLog, () => false);
+  assert.ok(stageSeen.length > 0 && stageSeen.every((event) => event.sections === true), 'a mirror told the ruleset plays sections says so too');
   const late = house(0, 'setpiece');
   const lateSeen = [];
   const lateMirror = createDestructionMirror({ getObstacles: () => late.obstacles, getColliders: () => late.colliders },

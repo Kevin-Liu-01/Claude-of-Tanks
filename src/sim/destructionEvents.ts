@@ -158,6 +158,9 @@ export interface StructureStageEvent extends StructureIdentity {
   points: number;
   /** Hit-point share left after the blow, 0..1 (0 when collapsed). */
   integrity: number;
+  /** The match plays sections (P2): its holes and falls arrive as their own `structure:breach` events, so a `breached`
+   * stage cuts no hole of its own. */
+  sections?: boolean;
   /** State older than this viewer's view (a late joiner, a reconnect, a migration): lay it at its final pose. */
   settled?: boolean;
 }
@@ -192,6 +195,9 @@ export interface StructureBreachEvent extends StructureIdentity {
   munition: MunitionClass | null;
   /** The section fell (a roof dropping, an upper storey after it, a wall panel gone): partial collapse. */
   sectionDown: boolean;
+  /** This fall completed its storey (P2): the roof and every storey above are down and so are all four of this storey's
+   * faces — everything above its floor line `y0` is gone, its floor slab with it (the ground storey keeps its stubs). */
+  storeyDown?: boolean;
   settled?: boolean;
 }
 

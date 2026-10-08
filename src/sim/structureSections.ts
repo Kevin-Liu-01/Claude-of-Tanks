@@ -296,6 +296,17 @@ export function cascadeFalls(sections: StructureSections, out: number[]): number
   }
 }
 
+/** Whether a wall section's fall completed its storey: the roof and all four of the storey's faces down, and nothing
+ * standing above its floor line (capY at its floor, or the ground storey's stubs). */
+export function storeyDownAt(sections: StructureSections, section: number): boolean {
+  const s = sections;
+  if (section < 0 || section >= s.storeys * 4 || !s.down[s.storeys * 4]) return false;
+  const storey = Math.floor(section / 4);
+  if (!(s.down[storey * 4] && s.down[storey * 4 + 1] && s.down[storey * 4 + 2] && s.down[storey * 4 + 3])) return false;
+  const floor = storey === 0 ? s.baseY + STRUCTURE_WALL_STUB_M : s.baseY + storey * s.storeyH;
+  return s.capY <= floor + 1e-9;
+}
+
 /** Point every shell band of the structure at its openings (idempotent). */
 export function attachOpenings(sections: StructureSections): void {
   if (sections.attached) return;

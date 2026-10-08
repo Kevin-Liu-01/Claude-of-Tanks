@@ -393,6 +393,8 @@ export function createBattlePresentation({
     if (own && !spectator) viewerTeam = own.team;
     game.gameMode = rosterContext.mode || 'standard';
     game.ruleset = rulesetFromWelcome(rosterContext.rulesetJson, game.gameMode);
+    // P2: a match that plays sections sends its holes and falls as breaches; its stages say so to the presentation
+    destruction.setSections(game.ruleset.destruction?.sections === true);
     rosterReady = rosterReady.then(() => prepareRoster(entries, rosterContext));
     return rosterReady;
   }
