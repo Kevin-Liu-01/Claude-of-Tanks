@@ -128,9 +128,10 @@ the stand weight itself in `bake.canopy` (before the canopy's fade-in), the ring
 face trees stand in it (Verdant's stood 56 % in crops before). The stands' share there follows the map's own woods
 (`borderLandform` `forest`) where it is under 0.3 (Tarkhan's 7 % steppe no longer turns to 42 % forest a kilometre
 out); `borderFarmsteads.selftest.mjs` pins the coherence on Ironworks. The hedges past the edge (`borderHedgerows.ts`)
-are strings of bushes, not prisms: a station every 4 m with its own crown height and girth, a rounded section closed at
-every run's ends, normals out and up as a crown's, the ring forest's crown tones (the first rim broadleaf with a palette);
-one draw, the farmsteads' program (`borderHedgerows.selftest.mjs`). The polar and alpine
+are strings of bushes, not prisms: round crowns 4.5-9 m apart over the hedge's body, drawn on stations every 2 m within
+260 m of the edge (4 m beyond), a rounded section closed at every run's ends, normals out and up as a crown's, the ring
+forest's crown tones (the first rim broadleaf with a palette); one draw, the farmsteads' program
+(`borderHedgerows.selftest.mjs`). The polar and alpine
 couloirs are cut at the depth the round-72 field's radial ribs had (30 / 26 m over 280 / 260 m: the faces' ribs).
 `horizon.reliefCover` overrides a map's cover. Road passes (`openRoadPasses`, after the border's hand-over): a road
 exit (terrain.ts `roadExitAt`, ~720 m) that runs on into the authored ranges gets a valley along its line — floor the

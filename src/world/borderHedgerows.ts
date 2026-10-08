@@ -8,8 +8,8 @@
 //
 // (the borders lane, 2026-10-08, the PR head's border census: Verdant's hedges stood in the middle distance as "dark
 // flat slabs" — (40, 55, 57) against a shaded crown's (51, 73, 57) — and Tarkhan's as smooth lime-green tubes lying
-// on the gold steppe) A bush line is a string of crowns, not a prism: its stations every 4 m (the traced line's 8 m
-// halved), each a crown's own height and girth, so the crest rises and dips from bush to bush over its slower swell;
+// on the gold steppe) A bush line is a string of crowns, not a prism: round crowns 4.5-9 m apart, each its own height
+// and shade, over the hedge's body and its slower swell, drawn on stations every 2 m near the edge (4 m farther out);
 // its section rounded — foot, a shoulder bulging at three fifths of the height, the crest — and every run closed at
 // its ends; its normals turned out and up from the line as a crown's are (a shaded side keeps the sky's light, the
 // lumps catch the sun along the crest); its tone a crown's: darker at the foot and between the bushes, lit at the
@@ -40,8 +40,13 @@ export interface BorderHedgerowOptions {
 
 const PRESENCE = 0.32;
 const HALF_FOOT_M = 1.3;
-/** A hedge's stations: the traced line's points (~8 m) and the midpoint between each pair. */
-const HEDGE_SUBDIVIDE = 2;
+/** A hedge's stations: the traced line's points (~8 m) cut in four (every 2 m, so a crown's round top is drawn) where the
+ * run passes within HEDGE_FINE_OUT_M of the square's edge, in two (every 4 m, its crowns no narrower than a station's
+ * reach) farther out, where a crown is a few pixels across from anywhere a tank can stand. */
+const HEDGE_SUBDIVIDE_NEAR = 4;
+const HEDGE_SUBDIVIDE_FAR = 2;
+const HEDGE_FINE_OUT_M = 260;
+const SQUARE_EDGE_M = 512;
 
 function mulberry32(a: number): () => number {
   return function () {
@@ -91,15 +96,36 @@ function buildHedges(options: BorderHedgerowOptions): THREE.Mesh | null {
       const tint = rng() * 2 - 1, phase = rng() * 100, leanK = 0.6 + rng() * 0.8;
       // the stations: each traced point and the midpoints between them, the presence interpolated
       const pts: { x: number; z: number; w: number }[] = [];
+      let nearest = Infinity;
+      for (let k = start; k < end; k++) nearest = Math.min(nearest, Math.max(Math.abs(line.xs[k]), Math.abs(line.zs[k])) - SQUARE_EDGE_M);
+      const sub = nearest < HEDGE_FINE_OUT_M ? HEDGE_SUBDIVIDE_NEAR : HEDGE_SUBDIVIDE_FAR;
       for (let k = start; k < end; k++) {
-        for (let q = 0; q < HEDGE_SUBDIVIDE; q++) {
+        for (let q = 0; q < sub; q++) {
           if (k === end - 1 && q > 0) break;
-          const f = q / HEDGE_SUBDIVIDE, k1 = Math.min(end - 1, k + 1);
+          const f = q / sub, k1 = Math.min(end - 1, k + 1);
           pts.push({ x: line.xs[k] + (line.xs[k1] - line.xs[k]) * f, z: line.zs[k] + (line.zs[k1] - line.zs[k]) * f,
             w: line.w[k] + (line.w[k1] - line.w[k]) * f });
         }
       }
-      const m = pts.length, step = 8 / HEDGE_SUBDIVIDE;
+      const m = pts.length, step = 8 / sub;
+      // the crowns along the run: a bush every 4.5-9 m, its round top (a half-ellipse over 50-70 % of the spacing either side)
+      // on the hedge's body (half the crest), each its own height and shade
+      const crowns: { c: number; r: number; h: number; shade: number }[] = [];
+      for (let c = rng() * 4; c < (m - 1) * step + 6; c += 4.5 + rng() * 4.5) {
+        const gap = 4.5 + rng() * 4.5;
+        // (never under 1.6 stations either side: a narrower one is drawn as a spike)
+        crowns.push({ c, r: Math.max(1.6 * step, gap * (0.5 + rng() * 0.2)), h: 0.80 + rng() * 0.42, shade: 0.86 + rng() * 0.30 });
+      }
+      const crownAt = (sArc: number): { lift: number; shade: number } => {
+        let lift = 0.5, shade = 0.92;
+        for (const cr of crowns) {
+          const d = (sArc - cr.c) / cr.r;
+          if (d <= -1 || d >= 1) continue;
+          const top = cr.h * Math.sqrt(1 - d * d);
+          if (top > lift) { lift = top; shade = cr.shade; }
+        }
+        return { lift, shade };
+      };
       const stations: (HedgeStation | null)[] = [];
       for (let k = 0; k < m; k++) {
         const p = pts[k];
@@ -111,13 +137,15 @@ function buildHedges(options: BorderHedgerowOptions): THREE.Mesh | null {
         // the slow swell along the line (tens of metres) and each bush's own crown over it
         const s = k * step + phase;
         const swell = 0.5 + 0.30 * Math.sin(s * 0.19) + 0.16 * Math.sin(s * 0.071 + 1.7);
-        const bush = rng();
-        const endTaper = Math.min(1, (k + 0.5) / 2.5, (m - 1 - k + 0.5) / 2.5);
+        const endTaper = Math.min(1, (k * step + 2) / 10, ((m - 1 - k) * step + 2) / 10);
         const presence = Math.min(1, (p.w - PRESENCE) / (1 - PRESENCE) * 1.6);
-        const crest = (hLo + (hHi - hLo) * swell) * (0.78 + 0.34 * bush) * (0.30 + 0.70 * endTaper) * (0.55 + 0.45 * presence);
-        const half = HALF_FOOT_M * (0.75 + 0.35 * swell + 0.25 * rng()) * (0.45 + 0.55 * endTaper);
-        stations.push({ x: p.x, z: p.z, nx: -tz, nz: tx, tx, tz, g, crest, half, lean: (swell - 0.5) * 0.5 * leanK + (rng() - 0.5) * 0.35,
-          shade: 0.90 + 0.22 * bush + 0.10 * (rng() - 0.5) });
+        // (the crest a string of crowns 4.5-9 m apart over the hedge's body, not a wavy embankment: the PR head's census and
+        // this lane's render at 120 and 300 m)
+        const { lift, shade } = crownAt(k * step);
+        const crest = (hLo + (hHi - hLo) * swell) * lift * (0.30 + 0.70 * endTaper) * (0.55 + 0.45 * presence);
+        const half = HALF_FOOT_M * (0.75 + 0.35 * swell) * (0.70 + 0.36 * lift) * (0.45 + 0.55 * endTaper);
+        stations.push({ x: p.x, z: p.z, nx: -tz, nz: tx, tx, tz, g, crest, half, lean: (swell - 0.5) * 0.5 * leanK + (rng() - 0.5) * 0.25,
+          shade: shade * (0.95 + 0.10 * rng()) });
       }
       // the rings of five vertices — left foot, left shoulder, crest, right shoulder, right foot — and the closing tips
       let prev: number[] | null = null;

@@ -1,5 +1,6 @@
 // The border hedgerows (borderHedgerows.ts): a bush line is a closed string of crowns wound outward — its stations every
-// 4 m, its crest rising and dipping from bush to bush, lit at the crest and dark at the foot, its normals out and up —
+// 2 m, its crest rising over each round crown and dipping between them, lit at the crest and dark at the foot, its
+// normals out and up —
 // and a karst field's wall stays the low grey prism it was.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -51,28 +52,51 @@ for (let t = 0; t < I.length; t += 3) {
 assert.ok(outward >= faces * 0.99, `faces wound outward (${outward} of ${faces})`);
 assert.equal(agree, faces, 'every vertex normal above the ground on the side its face shows');
 
-// the stations every 4 m: ~5 vertices a station over ~(39 traced points x 2) stations, ~8 faces a segment
-assert.ok(P.length / 3 >= 5 * 70 && P.length / 3 <= 5 * 80 + 8, `stations every 4 m (${P.length / 3} vertices)`);
-assert.ok(faces <= 8 * 80 + 16, `the bush line's cost stays a few faces a metre (${faces})`);
+// the stations every 2 m: 5 vertices a station over ~(37 traced segments x 4) stations, 8 faces a segment
+assert.ok(P.length / 3 >= 5 * 140 && P.length / 3 <= 5 * 160 + 8, `stations every 2 m (${P.length / 3} vertices)`);
+assert.ok(faces <= 8 * 160 + 16, `the bush line's cost stays four faces a metre (${faces})`);
 
-// the crest: 1-5.3 m over the ground, rising and dipping from bush to bush (not one smooth swell)
-const crests = [];
+// the crest: 1-5.7 m over the ground, rising over each crown and dipping between them (not one smooth swell). The crest
+// vertices are the ones on the line (a crest leans at most a third of a metre off it; a shoulder stands half a metre out
+// and more), ordered along it by arc length
+const arcOf = (x, z) => {
+  let best = Infinity, arc = 0, acc = 0;
+  for (let i = 0; i + 1 < xs.length; i++) {
+    const ax = xs[i], az = zs[i], bx = xs[i + 1], bz = zs[i + 1], L = Math.hypot(bx - ax, bz - az);
+    const t = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / (L * L)));
+    const d = Math.hypot(ax + (bx - ax) * t - x, az + (bz - az) * t - z);
+    if (d < best) { best = d; arc = acc + t * L; }
+    acc += L;
+  }
+  return { d: best, arc };
+};
+const crestPts = [];
 for (let i = 0; i < P.length / 3; i++) {
+  const { d, arc } = arcOf(P[i * 3], P[i * 3 + 2]);
   const y = P[i * 3 + 1] - ground(P[i * 3], P[i * 3 + 2]);
-  if (N[i * 3 + 1] > 0.9) crests.push(y);
+  if (d < 0.42 && y > 0.5) crestPts.push([arc, y]);
 }
-assert.ok(crests.length > 60, 'every station carries a crest vertex');
-const interior = crests.slice(4, -4);
-assert.ok(Math.max(...interior) <= 4.6 * 1.13 + 0.01 && Math.min(...interior) >= 0.9, `crest heights ${Math.min(...interior).toFixed(2)}-${Math.max(...interior).toFixed(2)} m`);
+crestPts.sort((a, b) => a[0] - b[0]);
+const crests = crestPts.map((c) => c[1]);
+assert.ok(crests.length > 120, `every station carries a crest vertex (${crests.length})`);
+// (the interior of each run: away from its tapered ends and the gate between the two runs)
+const interior = crestPts.filter(([arc]) => (arc > 14 && arc < 148) || (arc > 172 && arc < 296)).map((c) => c[1]);
+assert.ok(Math.max(...interior) <= 4.6 * 1.22 + 0.01 && Math.min(...interior) >= 0.9, `crest heights ${Math.min(...interior).toFixed(2)}-${Math.max(...interior).toFixed(2)} m`);
 let turns = 0;
 for (let i = 1; i + 1 < interior.length; i++) if ((interior[i] - interior[i - 1]) * (interior[i + 1] - interior[i]) < 0) turns++;
-assert.ok(turns >= interior.length * 0.25, `the crest rises and dips from bush to bush (${turns} turns over ${interior.length} stations)`);
+// (a crown every 4.5-9 m: a rise and a dip each, every 2-5 stations)
+assert.ok(turns >= interior.length * 0.2, `the crest rises over each crown and dips between (${turns} turns over ${interior.length} stations)`);
+// and round, not spiked: no crest vertex stands more than 0.9 m over both its neighbours
+let spikes = 0;
+for (let i = 1; i + 1 < interior.length; i++) if (interior[i] - Math.max(interior[i - 1], interior[i + 1]) > 0.9) spikes++;
+assert.equal(spikes, 0, 'the crowns are round, not spikes');
 
 // the tone: the crest lighter than the foot (luminance of the vertex colours), the shaded side not black
 let crestL = 0, footL = 0, nc = 0, nf = 0;
 for (let i = 0; i < P.length / 3; i++) {
   const l = 0.2126 * C[i * 3] + 0.7152 * C[i * 3 + 1] + 0.0722 * C[i * 3 + 2];
-  if (N[i * 3 + 1] > 0.9) { crestL += l; nc++; } else if (P[i * 3 + 1] < ground(P[i * 3], P[i * 3 + 2])) { footL += l; nf++; }
+  if (arcOf(P[i * 3], P[i * 3 + 2]).d < 0.42 && P[i * 3 + 1] - ground(P[i * 3], P[i * 3 + 2]) > 0.5) { crestL += l; nc++; }
+  else if (P[i * 3 + 1] < ground(P[i * 3], P[i * 3 + 2])) { footL += l; nf++; }
 }
 crestL /= nc; footL /= nf;
 assert.ok(crestL > footL * 1.6, `the crest lit over the foot (${crestL.toFixed(3)} vs ${footL.toFixed(3)} linear)`);
@@ -81,6 +105,13 @@ assert.ok(footL > 0.02, `the foot keeps the foliage's dark green, not black (${f
 let minUp = 1;
 for (let i = 0; i < N.length; i += 3) minUp = Math.min(minUp, N[i + 1]);
 assert.ok(minUp > 0.45, `a shaded side keeps the sky's light (lowest normal y ${minUp.toFixed(2)})`);
+
+// far out (past 260 m from the square's edge) the stations are every 4 m: half the faces of the same run near the edge
+{
+  const fx = xs.map((x) => x + 400), far = buildBorderHedgerows({ seed: 7, lines: [{ xs: fx, zs, w }], groundAt: ground, palette });
+  const farFaces = far.geometry.index.count / 3;
+  assert.ok(farFaces < faces * 0.6 && farFaces > faces * 0.4, `a far run every 4 m (${farFaces} faces vs ${faces} near)`);
+}
 
 // deterministic
 const again = buildBorderHedgerows({ seed: 7, lines: [{ xs, zs, w }], groundAt: ground, palette });
