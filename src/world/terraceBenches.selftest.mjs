@@ -94,9 +94,16 @@ assert.ok(kept.length === 1 && kept[0].settlement === 1, 'Orchard keeps one terr
 const flat = createHeightField(1337, { ...config, terrain: { ...config.terrain,
   terraces: config.terrain.terraces.map((zone) => zone.settlement ? { ...zone, settlement: undefined } : zone) } });
 const v = config.terrain.village;
+// (the zone's ramped tracks, (4) below, are graded through the benches: their bands are left out here)
+const trackBands = (kept[0].ramps ?? []).flatMap((track) => track.nodes.slice(1).map((b, i) => ({ a: track.nodes[i], b,
+  reach: (track.halfWidth ?? 1.6) + (track.feather ?? 2) + 0.5 })));
+const nearTrack = (x, z) => trackBands.some(({ a: [ax, az], b: [bx, bz], reach }) => {
+  const dx = bx - ax, dz = bz - az, t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz)));
+  return Math.hypot(x - ax - dx * t, z - az - dz * t) < reach;
+});
 let inVillage = 0, keptLevel = 0, flatLevel = 0;
 for (let z = -440; z <= 440; z += 2.3) for (let x = -440; x <= 440; x += 2.3) {
-  if (x < v.x0 || x > v.x1 || z < v.z0 || z > v.z1 || now._roadDist(x, z) < 20) continue;
+  if (x < v.x0 || x > v.x1 || z < v.z0 || z > v.z1 || now._roadDist(x, z) < 20 || nearTrack(x, z)) continue;
   const zone = kept[0], pad = zone.feather + 8;
   if (![[0, 0], [pad, 0], [-pad, 0], [0, pad], [0, -pad]].every(([dx, dz]) => inside(zone.polygon, x + dx, z + dz))) continue;
   inVillage++;
@@ -105,4 +112,42 @@ for (let z = -440; z <= 440; z += 2.3) for (let x = -440; x <= 440; x += 2.3) {
 }
 assert.ok(inVillage > 500, `samples of the village hill's zone inside the settlement (${inVillage})`);
 assert.ok(keptLevel > inVillage * 0.3 && flatLevel < inVillage * 0.02, `kept in the settlement the hill's benches lie at their levels (${keptLevel} of ${inVillage}; without the opt-in ${flatLevel})`);
-console.log(`terraceBenches.selftest: Orchard's benches at their levels ${levelNow} of ${samples} core samples (before ${levelWas}); off the terraces ${offSame} of ${off} samples unchanged to the bit, the rest within ${offMax.toExponential(1)} m; the village hill's zone kept in the settlement ${keptLevel} of ${inVillage} on a level (${flatLevel} without the opt-in); no other map has terrace zones PASS`);
+// ---- (4) the zone's ramped tracks (TerraceZoneConfig.ramps, Orchard round 5: the village's mule track, graded through the
+// benches from the cross road to the church square): every leg within a laden mule's grade; along each leg, away from its
+// ends and the roads' shoulders, the ground lies at the track's height and level across its band; off the bands the
+// ground is the stepped hill's to the bit
+const tracks = kept[0].ramps ?? [];
+assert.equal(tracks.length, 1, 'the village hill carries its mule track');
+const unramped = createHeightField(1337, { ...config, terrain: { ...config.terrain,
+  terraces: config.terrain.terraces.map((zone) => zone.ramps ? { ...zone, ramps: undefined } : zone) } });
+let stations = 0, trackMax = 0, gradeMax = 0;
+for (const track of tracks) {
+  const half = track.halfWidth ?? 1.6, reach = half + (track.feather ?? 2);
+  for (let i = 0; i + 1 < track.nodes.length; i++) {
+    const [ax, az, ay] = track.nodes[i], [bx, bz, by] = track.nodes[i + 1];
+    const len = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / len, uz = (bz - az) / len;
+    gradeMax = Math.max(gradeMax, Math.abs(by - ay) / len);
+    // (a station within another leg's band is a switchback's or a bend's, where the legs' heights are blended)
+    const others = trackBands.filter(({ a, b }) => !(a === track.nodes[i] && b === track.nodes[i + 1]));
+    const alone = (x, z) => others.every(({ a: [px, pz], b: [qx, qz], reach: r }) => {
+      const dx = qx - px, dz = qz - pz, u = Math.max(0, Math.min(1, ((x - px) * dx + (z - pz) * dz) / (dx * dx + dz * dz)));
+      return Math.hypot(x - px - dx * u, z - pz - dz * u) >= r + half;
+    });
+    for (let t = reach; t <= len - reach; t += 0.5) {
+      const x = ax + ux * t, z = az + uz * t, y = ay + ((by - ay) * t) / len;
+      if (now._roadDist(x, z) < 24 || !alone(x, z)) continue;
+      stations++;
+      for (const o of [-half * 0.9, 0, half * 0.9]) trackMax = Math.max(trackMax, Math.abs(now.getHeightAt(x - uz * o, z + ux * o) - y));
+    }
+  }
+}
+assert.ok(gradeMax <= 0.15, `every leg within a laden mule's grade (steepest ${gradeMax.toFixed(3)})`);
+assert.ok(stations > 100 && trackMax < 0.02, `the track lies at its height, level across its band (${stations} stations, within ${trackMax.toFixed(4)} m)`);
+let offBand = 0, offBandSame = 0;
+for (let z = -90; z <= 30; z += 1.3) for (let x = -190; x <= -75; x += 1.3) {
+  if (nearTrack(x, z)) continue;
+  offBand++;
+  if (now.getHeightAt(x, z) === unramped.getHeightAt(x, z)) offBandSame++;
+}
+assert.ok(offBand > 5000 && offBandSame === offBand, `off the track's bands the hill is unchanged (${offBandSame} of ${offBand} to the bit)`);
+console.log(`terraceBenches.selftest: Orchard's benches at their levels ${levelNow} of ${samples} core samples (before ${levelWas}); off the terraces ${offSame} of ${off} samples unchanged to the bit, the rest within ${offMax.toExponential(1)} m; the village hill's zone kept in the settlement ${keptLevel} of ${inVillage} on a level (${flatLevel} without the opt-in); the mule track at its height across its band at ${stations} stations (within ${trackMax.toFixed(4)} m, steepest leg ${gradeMax.toFixed(3)}), the hill off its bands unchanged at ${offBandSame} of ${offBand}; no other map has terrace zones PASS`);

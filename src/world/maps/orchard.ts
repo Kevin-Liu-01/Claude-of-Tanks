@@ -25,11 +25,11 @@ import { roundRoadBends } from './roadBends.ts';
 // retaining wall above (props.maxSpread: a house's back stands in the riser behind it). Laid out by the lane's village
 // packer from each site's own kit footprint (the house's record at yaw 0).
 const VILLAGE_SITES = [
-  // the church on the hilltop, its campanile on the nave's front corner, its door east on a small square
+  // the church on the hilltop, its campanile on the nave's front corner, its door east on the square
   { structure: 'church', x: -144.0, z: -10.0, yawDeg: 90.0, terrace: true },
-  // the two dar fronts on the hilltop's east edge, their triple arches to the junction
-  { structure: 'farmhouse', x: -122.0, z: 7.5, yawDeg: 45.0, terrace: true },
-  { structure: 'farmhouse', x: -122.0, z: -28, yawDeg: 135.0, terrace: true },
+  // the two dar fronts flanking the stepped lane's head, their triple arches down the lane to the cross road
+  { structure: 'farmhouse', x: -111.04, z: -2.5, yawDeg: 89.0, terrace: true },
+  { structure: 'farmhouse', x: -106.82, z: -27.11, yawDeg: 119.0, terrace: true },
   // the hilltop's north row, facing the church across its lane
   { structure: 'adobe', x: -161.82, z: 1.0, yawDeg: 180.0, terrace: true },
   { structure: 'cottage', x: -154.85, z: 1.0, yawDeg: 180.0, terrace: true },
@@ -39,30 +39,29 @@ const VILLAGE_SITES = [
   { structure: 'cottage', x: -161.44, z: -21.0, yawDeg: 0.0, terrace: true },
   { structure: 'adobe', x: -154.22, z: -21.0, yawDeg: 0.0, terrace: true },
   { structure: 'adobe', x: -146.77, z: -21.0, yawDeg: 0.0, terrace: true },
-  { structure: 'adobe', x: -138.97, z: -21.0, yawDeg: 0.0, terrace: true },
   // the upper bench (13 m), fronts out, backs to the hilltop's retaining wall
-  { structure: 'cottage', x: -115.18, z: -13.41, yawDeg: 98.5, terrace: true },
-  { structure: 'adobe', x: -132.48, z: 12.14, yawDeg: 14.0, terrace: true },
-  { structure: 'cottage', x: -141.12, z: 10.88, yawDeg: -8.5, terrace: true },
-  // the middle bench (10.4 m) round the hill's east face
-  { structure: 'adobe', x: -161.7, z: -34.11, yawDeg: -135.5, terrace: true },
-  { structure: 'adobe', x: -153.22, z: -36.36, yawDeg: -150.0, terrace: true },
-  { structure: 'cottage', x: -142.59, z: -37.42, yawDeg: -170.5, terrace: true },
-  { structure: 'adobe', x: -134.08, z: -37.89, yawDeg: 172.0, terrace: true },
-  { structure: 'granary', x: -112.39, z: -30.37, yawDeg: 128.5, terrace: true },
-  { structure: 'adobe', x: -109.9, z: -23.7, yawDeg: 116.0, terrace: true },
-  { structure: 'cottage', x: -104.46, z: -15.91, yawDeg: 100.0, terrace: true },
-  { structure: 'adobe', x: -103.84, z: -8.51, yawDeg: 87.5, terrace: true },
-  { structure: 'cottage', x: -106.26, z: -1.5, yawDeg: 75.0, terrace: true },
+  { structure: 'adobe', x: -125.92, z: -25.19, yawDeg: 141.5, terrace: true },
+  { structure: 'cottage', x: -122.29, z: 2.49, yawDeg: 51.5, terrace: true },
+  { structure: 'adobe', x: -127.59, z: 9.18, yawDeg: 28.5, terrace: true },
+  { structure: 'cottage', x: -136.56, z: 10.56, yawDeg: 4.0, terrace: true },
+  // the middle bench (10.4 m)
+  { structure: 'adobe', x: -161.49, z: -34.32, yawDeg: -136.0, terrace: true },
+  { structure: 'adobe', x: -152.99, z: -36.49, yawDeg: -150.5, terrace: true },
+  { structure: 'cottage', x: -113.0, z: 8.84, yawDeg: 53.0, terrace: true },
   // the lower bench (7.8 m)
-  { structure: 'granary', x: -158.65, z: -42.42, yawDeg: -147.5, terrace: true },
-  { structure: 'adobe', x: -116.41, z: -37.14, yawDeg: 141.5, terrace: true },
-  { structure: 'cottage', x: -103.78, z: 8.58, yawDeg: 61.5, terrace: true },
+  { structure: 'adobe', x: -96.88, z: -11.8, yawDeg: 92.5, terrace: true },
+  { structure: 'granary', x: -96.3, z: -3.4, yawDeg: 81.0, terrace: true },
+  { structure: 'adobe', x: -100.56, z: 1.81, yawDeg: 72.5, terrace: true },
 ] as const;
 
 export default {
   id: 'orchard', name: 'Orchard Valley',
   blurb: 'Terraced orchard rows, cedar groves and a quiet bathhouse village along a winding valley road',
+  // (round 5, the coordinator's ruling: the band holds on the condition that the lanes exist on the ground — the stepped
+  // lane and the mule stair, props.landmarks)
+  layoutBrief: { bands: {
+    orphanBuildingShare: { band: [null, 0.45], reason: "a Chouf hill village: its houses stand on the hill's terraces 40 to 85 m from the valley's roads, reached by stepped lanes; the brief's 60 m measures a village on the flat" },
+  } },
   terrain: {
     hillScale: 1.0, microScale: 0.72, rimH: 32,
     // (round 5) the levelled ground drawn west over the knob's east face, where the village hill stands on it
@@ -75,7 +74,11 @@ export default {
       { polygon: [[-430, -260], [-135, -260], [-135, 260], [-430, 260]], feather: 30, stepM: 2.6 },
       { polygon: [[135, -260], [430, -260], [430, 260], [135, 260]], feather: 30, stepM: 2.6 },
       // (round 5) the village hill's terraces, kept inside the settlement (zone 1's disc, north of z 24, left level)
-      { polygon: [[-185, -82], [-80, -82], [-80, 24], [-185, 24]], feather: 8, stepM: 2.6, settlement: 1 },
+      // (the village's lanes, round 5) its mule track graded through the benches from the cross road to the church
+      // square: along the hill's foot, two hairpins, up under the upper bench and in at the square's south side, no leg
+      // over 0.15 (the mule stair's landmarks lie on it)
+      { polygon: [[-185, -82], [-80, -82], [-80, 24], [-185, 24]], feather: 8, stepM: 2.6, settlement: 1,
+        ramps: [{ halfWidth: 1.6, feather: 2, nodes: [[-100.5, -57, 1.18], [-143, -57, 4.64], [-145, -53.5, 4.64], [-114, -41, 9.19], [-116, -37.5, 9.19], [-140, -31.5, 12.8], [-137.72, -28.84, 12.8], [-128, -17.5, 14.2]] }] },
     ],
     // (round 2, gauntlet wave 123: the buildings "set on lawns"): the village ground in its plots — the walled yards,
     // kitchen gardens and threshing floors running back from the lanes (terrain.ts createVillagePlotWear)
@@ -133,6 +136,36 @@ export default {
     landscapeWoods: { zone: 0.40, slopeDeg: 12, merge: 30 },
     // (round 5) the olive rows on the village hill's terraces stand inside the village's ground, clear of its houses
     authoredInSettlement: {},
+    // (round 5) the village's lanes (props.landmarks: the stepped lane, the mule stair, the church square) clear of the
+    // sward, the scrub and the trees: a chain of discs along each, 2.5 m apart
+    avoid: [
+      { x: -123.45, z: -13.63, r: 2.2 }, { x: -121.08, z: -14.22, r: 2.2 }, { x: -118.71, z: -14.81, r: 2.2 },
+      { x: -116.34, z: -15.4, r: 2.2 }, { x: -113.97, z: -15.99, r: 2.2 }, { x: -111.61, z: -16.58, r: 2.2 },
+      { x: -109.24, z: -17.17, r: 2.2 }, { x: -106.87, z: -17.76, r: 2.2 }, { x: -104.5, z: -18.35, r: 2.2 },
+      { x: -102.13, z: -18.95, r: 2.2 }, { x: -99.76, z: -19.54, r: 2.2 }, { x: -97.39, z: -20.13, r: 2.2 },
+      { x: -95.02, z: -20.72, r: 2.2 }, { x: -92.66, z: -21.31, r: 2.2 }, { x: -90.29, z: -21.9, r: 2.2 },
+      { x: -87.92, z: -22.49, r: 2.2 }, { x: -85.55, z: -23.08, r: 2.2 }, { x: -83.18, z: -23.67, r: 2.2 },
+      { x: -100.5, z: -57.0, r: 2.2 }, { x: -103.0, z: -57.0, r: 2.2 }, { x: -105.5, z: -57.0, r: 2.2 },
+      { x: -108.0, z: -57.0, r: 2.2 }, { x: -110.5, z: -57.0, r: 2.2 }, { x: -113.0, z: -57.0, r: 2.2 },
+      { x: -115.5, z: -57.0, r: 2.2 }, { x: -118.0, z: -57.0, r: 2.2 }, { x: -120.5, z: -57.0, r: 2.2 },
+      { x: -123.0, z: -57.0, r: 2.2 }, { x: -125.5, z: -57.0, r: 2.2 }, { x: -128.0, z: -57.0, r: 2.2 },
+      { x: -130.5, z: -57.0, r: 2.2 }, { x: -133.0, z: -57.0, r: 2.2 }, { x: -135.5, z: -57.0, r: 2.2 },
+      { x: -138.0, z: -57.0, r: 2.2 }, { x: -140.5, z: -57.0, r: 2.2 }, { x: -143.0, z: -57.0, r: 2.2 },
+      { x: -144.0, z: -55.25, r: 2.2 }, { x: -145.0, z: -53.5, r: 2.2 }, { x: -142.79, z: -52.61, r: 2.2 },
+      { x: -140.57, z: -51.71, r: 2.2 }, { x: -138.36, z: -50.82, r: 2.2 }, { x: -136.14, z: -49.93, r: 2.2 },
+      { x: -133.93, z: -49.04, r: 2.2 }, { x: -131.71, z: -48.14, r: 2.2 }, { x: -129.5, z: -47.25, r: 2.2 },
+      { x: -127.29, z: -46.36, r: 2.2 }, { x: -125.07, z: -45.46, r: 2.2 }, { x: -122.86, z: -44.57, r: 2.2 },
+      { x: -120.64, z: -43.68, r: 2.2 }, { x: -118.43, z: -42.79, r: 2.2 }, { x: -116.21, z: -41.89, r: 2.2 },
+      { x: -114.0, z: -41.0, r: 2.2 }, { x: -115.0, z: -39.25, r: 2.2 }, { x: -116.0, z: -37.5, r: 2.2 },
+      { x: -118.4, z: -36.9, r: 2.2 }, { x: -120.8, z: -36.3, r: 2.2 }, { x: -123.2, z: -35.7, r: 2.2 },
+      { x: -125.6, z: -35.1, r: 2.2 }, { x: -128.0, z: -34.5, r: 2.2 }, { x: -130.4, z: -33.9, r: 2.2 },
+      { x: -132.8, z: -33.3, r: 2.2 }, { x: -135.2, z: -32.7, r: 2.2 }, { x: -137.6, z: -32.1, r: 2.2 },
+      { x: -140.0, z: -31.5, r: 2.2 }, { x: -138.86, z: -30.17, r: 2.2 }, { x: -137.72, z: -28.84, r: 2.2 },
+      { x: -136.1, z: -26.95, r: 2.2 }, { x: -134.48, z: -25.06, r: 2.2 }, { x: -132.86, z: -23.17, r: 2.2 },
+      { x: -131.24, z: -21.28, r: 2.2 }, { x: -129.62, z: -19.39, r: 2.2 }, { x: -128.0, z: -17.5, r: 2.2 },
+      { x: -128.9, z: -13.1, r: 4.2 }, { x: -128.9, z: -6.9, r: 4.2 }, { x: -123.7, z: -13.1, r: 4.2 },
+      { x: -123.7, z: -6.9, r: 4.2 },
+    ],
     belts: [
       { x0: -206, z0: -96, x1: -92, z1: -68, gap: 17, jitter: 0.8, species: 'oak' },
       { x0: -204, z0: -44, x1: -104, z1: -22, gap: 17, jitter: 0.8, species: 'oak' },
@@ -170,12 +203,29 @@ export default {
     landmarks: [
       { kind: 'path', x: 17.5, z: 5, yawDeg: 142, ground: 'veto', name: "the fountain's square", params: { length: 11, width: 11, surface: 'stone' } },
       { kind: 'fountain', x: 17.5, z: 5, yawDeg: 142, ground: 'veto', name: 'the Ottoman fountain', params: { style: 'ottoman', radius: 3 } },
+      // (round 5; the coordinator's condition for the village's orphan band: "the stepped lanes must exist on the ground,
+      // so the houses read as connected rather than stranded … paths, stairs and a ramped mule track from the cross road
+      // up to the church square") the village's lanes: the stepped lane straight up the east face from the cross road's
+      // bend to the square, between the two dar fronts (stone steps on the road's bank and on every riser, the terraces'
+      // treads its landings); the mule stair up the south face on the graded track (terrain.terraces ramps) — a curb
+      // across it at every riser and a long earth tread behind, its hairpins and its last bend landings; the paved square
+      // before the church door
+      { kind: 'stairway', x: -103.31, z: -18.65, yawDeg: -76.0, name: "the stepped lane from the cross road to the church square", params: { length: 41.5, width: 2.4 } },
+      { kind: 'stairway', x: -121.05, z: -57.0, yawDeg: -90.0, name: "the mule stair along the hill's foot", params: { length: 41.1, width: 2.6, steps: 'cordonata', surface: 'earth', rise: 0.14, steep: 0.04 } },
+      { kind: 'path', x: -144.0, z: -55.25, yawDeg: -29.74, name: "the mule stair's lower hairpin", params: { length: 7.23, width: 3.4, surface: 'earth' } },
+      { kind: 'stairway', x: -129.5, z: -47.25, yawDeg: 68.04, name: "the mule stair's second flight, up the south-east face", params: { length: 30.63, width: 2.6, steps: 'cordonata', surface: 'earth', rise: 0.14, steep: 0.04 } },
+      { kind: 'path', x: -115.0, z: -39.25, yawDeg: -29.74, name: "the mule stair's upper hairpin", params: { length: 7.23, width: 3.4, surface: 'earth' } },
+      { kind: 'stairway', x: -128.0, z: -34.5, yawDeg: -75.96, name: "the mule stair's third flight, under the upper bench", params: { length: 21.94, width: 2.6, steps: 'cordonata', surface: 'earth', rise: 0.14, steep: 0.04 } },
+      { kind: 'path', x: -138.86, z: -30.17, yawDeg: 40.6, name: "the mule stair's landing under the square", params: { length: 6.7, width: 3.4, surface: 'earth' } },
+      { kind: 'stairway', x: -132.01, z: -22.18, yawDeg: 40.6, name: "the mule stair's last flight, up to the church square", params: { length: 14.74, width: 2.6, steps: 'cordonata', surface: 'earth', rise: 0.14, steep: 0.04 } },
+      { kind: 'path', x: -126.3, z: -10, yawDeg: 90, name: 'the church square', params: { length: 10.6, width: 12.5, surface: 'stone' } },
     ],
     // the map-revival lane (2026-10-05): the Chouf kit (maps/regional/chouf.ts) builds the plan in the mountain
     // village's sandstone, every building where it stood
     architecture: 'chouf',
-    // (round 5) no roadside plan: the houses strewn along the roads round the junction are the village on its hill
-    plan: [],
+    // (round 5) no roadside houses: the houses strewn along the roads round the junction are the village on its hill;
+    // the hammam keeps the plan's first seat on the bathhouse street south of the junction (the valley's public bath)
+    plan: ['bathhouse'],
     maxSpread: 3.0,
     // (round 4; the landmarks lane lays the square's setts out to the house fronts round its sabil — the rectangle
     // (5.7, 3.2) (18.7, 13.3) (29.6, -0.8) (16.7, -10.9), yaw 142 — and this lane closes it) the houses that close the
