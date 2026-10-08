@@ -190,7 +190,8 @@ function dwelling(ctx: RegionalBuildContext, opts: { storeys?: number; shop?: bo
     eaveCourse(sink, frame);
     if (stairSide) balatura(sink, frame.faces.right, D * 0.26, frame.floors[1], 1);
     if (facadeOn()) dressedStone(sink, frame, rendered);
-    if (!st.mobile) {
+    // (the dressing draws the build stream: a phone draws it as the desktop does, PartSink.dressing)
+    sink.dressing(st.mobile, () => {
       if (aerial) tvAerial(sink, frame, aerialZ, rng);
       if (lantern) {
         const door = openings[0], f = frame.faces.front, u = door.u + (door.u > 0 ? -1 : 1) * (door.w / 2 + 0.45);
@@ -209,7 +210,7 @@ function dwelling(ctx: RegionalBuildContext, opts: { storeys?: number; shop?: bo
           pottedPlant(sink, f.origin[0] + f.out[0] * 0.75 + f.u[0] * u, p, f.origin[2] + f.out[2] * 0.75 + f.u[2] * u, 0.32, rng);
         }
       }
-    }
+    });
     if (opts.tavern) {
       // a vine trained on a trellis across the street gable over the door (an odrina on posts would stand in the
       // street: the house fills its plot)

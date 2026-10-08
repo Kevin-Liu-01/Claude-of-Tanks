@@ -120,7 +120,7 @@ const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpC = new THREE.V
  * never print the same tile at the same wall position.
  */
 export class PartSink {
-  private readonly groups = new Map<string, Accumulator>();
+  private groups = new Map<string, Accumulator>();
   /** triangles emitted so far (structural + decor) */
   triangles = 0;
   /** an optional placement of everything emitted (a wing built in its own frame): rotation about Y + offset */
@@ -139,6 +139,19 @@ export class PartSink {
   near<T>(body: () => T): T {
     this.nearDepth++;
     try { return body(); } finally { this.nearDepth--; }
+  }
+
+  /**
+   * Dressing a phone leaves out, drawn as the desktop draws it (docs/DESTRUCTION.md §8.4: a phone's collision is the
+   * desktop's, index for index). On a desktop this is `body()`. On a phone `body` runs too, so every stream it draws
+   * (the build stream, the look stream) stands where the desktop's does when the structure draws its next solid, but
+   * nothing it emits is kept.
+   */
+  dressing(mobile: boolean, body: () => void): void {
+    if (!mobile) { body(); return; }
+    const kept = this.groups, triangles = this.triangles;
+    this.groups = new Map();
+    try { body(); } finally { this.groups = kept; this.triangles = triangles; }
   }
 
   /** Emit `body` with every point turned `yaw` about Y and moved by (x, y, z); UVs stay in the body's own frame. */

@@ -1,3 +1,4 @@
+import {addRearFieldStowage} from './rearFieldStowage.ts';
 // Owner-requested Chinese concept family: Russian running gear and hulls with
 // Type 96B-derived welded turrets. These are game designs, not historical models.
 import {KIT} from './kit.ts';
@@ -56,6 +57,7 @@ function build(P:TankBuilderPort,variant:Variant):void {
     attachedCage(P,'turret',[0,.26,-2.56],2.35,.48,.32);
     supportedSensor(P,[-.22,.94,-1.13],.55);
   }
+  if(variant==='feng')addRearFieldStowage(P);
   P.topY=3.016-frame.turret[1];
   P.hullG.userData.familyRebuild={donor:variant==='long'?'t72b3_x':variant==='feng'?'t80u_x':'t72b3m_x',turret:'type96b_x',variant,revision:1};
 }

@@ -520,6 +520,18 @@ roof weathers down its slope: chalky toward the ridge, rust and grime along the 
 the lived-in parts a kit uses (window boxes, the bench by the door, a woodpile, the roof ladder, an aerial); they are
 dressing (no collision) and the phones leave them out, so the collision a host certifies is tier-independent.
 
+**What a phone leaves out it still draws.** A phone's collision is the desktop's, index for index (docs/DESTRUCTION.md
+§8.4): the authority reads a phone's destroyed list by index only when the two layouts agree. A phone leaves its
+dressing out through `PartSink.dressing(mobile, body)`, never by skipping the code: on a desktop it is `body()`; on a
+phone `body` runs and nothing it emits is kept, so every stream the dressing draws (the build stream, the look stream)
+stands where the desktop's does when the building draws its next solid. Before this (October 8), a phone that skipped
+a framed gable's windows drew the Franconian hoist dormer at another place along the roof (15 Steinburg row houses),
+and one that skipped the Sarajevan roof's aerial and two-fifths of its shell pocks raised the collapsed end's piers to
+other heights (9 Ruinspires blocks). A count a phone thins (shell pocks, headstones, slabs) is drawn whole and only its
+first share emitted. `phoneIdentity.selftest.mjs` builds every kit's every builder at both tiers: the solids byte for
+byte and the build, look and weather streams' draws the same. A branch that draws no stream (a railing, louvres, a
+lattice) may stay a plain `if (!mobile)`.
+
 **Fine joinery and its draw distance.** What a long view cannot resolve is fine joinery (`EmitOptions.fine` in
 `geometry.ts`): window frames and glazing bars, shutter rails, door panels and battens, downpipes, and the sides and
 caps of every framing member, shutter leaf, jetty joist, dressed surround, sill, door frame, quoin and string course
