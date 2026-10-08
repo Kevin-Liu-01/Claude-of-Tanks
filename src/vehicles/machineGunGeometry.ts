@@ -268,7 +268,10 @@ export function addPintleMount(context: PintleLayout): void {
     if (near) parts.add(weaponSlot, cylX(0.016 * s, 0.008 * s, 8), side * (cx + 0.009 * s), colTop + 0.105 * s, 0.065 * s);
   }
   parts.add(weaponSlot, block(2 * cx + 0.012 * s, 0.010 * s, 0.15 * s), 0, Math.max(colTop + 0.04 * s, bodyBottom - 0.005 * s), 0.035 * s);
-  parts.add(weaponSlot, cylX(0.009 * s, 2 * cx + 0.026 * s, 8), 0, colTop + 0.105 * s, 0.065 * s);
+  // fleet lane 2026-10-08 (circular-cap audit, 232 findings on 91 hulls): the pin used to end exactly on its heads' outer
+  // faces, two coincident discs on each side; it now ends 2 mm inside the heads (still 5 mm past the cheek where a coarse
+  // level draws no heads)
+  parts.add(weaponSlot, cylX(0.009 * s, 2 * cx + 0.022 * s, 8), 0, colTop + 0.105 * s, 0.065 * s);
   if (near) parts.add(weaponSlot, place(block(0.010 * s, 0.055 * s, 0.012 * s), 0, 0, 0, 0.5, 0, 0),
     cx + 0.013 * s, colTop + 0.075 * s, -0.01 * s);
   if (context.classKey === 'nsvt') addNsvtMountFurniture(context);
