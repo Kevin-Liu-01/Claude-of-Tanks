@@ -35,7 +35,9 @@ export type GrowthSpecies = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus
   | 'ash'
   // shrub-only forms (treeBiomes.ts `shrub`): the broom scrub of a volcanic upland; trees round 5: the longleaf's
   // grass-stage seedlings on a cutover — never a tree slot
-  | 'broom' | 'longleafSeedling' | 'buddleia';
+  | 'broom' | 'longleafSeedling' | 'buddleia'
+  // the trees lane (2026-10-08, the gauntlet's wave 278 on Saltmere Bay): the Breton coast's gorse, a wind-shorn cushion
+  | 'gorse';
 type Rng = () => number;
 
 export const GROWTH_SPECIES: readonly GrowthSpecies[] = Object.freeze([
@@ -165,6 +167,16 @@ interface GrowthProfile {
    * radius (m) of a clump's rhizome base — each culm rises from its own seat on that disc, leaning out from it.
    */
   clumpR?: number;
+  /**
+   * The trees lane (2026-10-08, the gauntlet's wave 278 on Saltmere Bay: the shrubs "sparse clusters of flat cut-out leaf
+   * cards on bare sticks ... stickers rather than wind-pruned coastal scrub"): a shrub form grown as a clipped cushion
+   * (shrub-only; growShrubSkeleton) — `density` times a shrub's sprays at `size` times their length, the mound `height`
+   * times a shrub's, its shell clipped smooth (`clip` the superellipse exponent, a shrub's 2; `lobes` the share of its
+   * lobing kept), one or two broad low stools leaning out of it; `shorn` the salt wind's shear — the windward side (local
+   * -x) cut down and in, the crest swept to leeward (vegetation.ts turns each field cushion's +x to its place's leeward,
+   * treeBiomes.ts TreeBiome.wind; the understorey, sheltered under the wood, grows unshorn).
+   */
+  cushion?: Readonly<{ density: number; size: number; height: number; clip: number; lobes: number; shorn: number }>;
   /**
    * Trees lane: each near variant's own shape over the profile (the Streuobst form's plum, apple and pear), grown at the
    * variant's age as every profile is; unset, the variants are the profile at three ages.
@@ -433,6 +445,18 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     droop: 0.3, upturn: 0.1, sidePerM: 1.2, sideAngle: 0.6, sideRatio: 0.5, sideDroop: 0.4, twigPerM: 0,
     leafOrder: 1, leafPerM: 4, leafFrom: 0, spray: [0.75, 1.1], aspect: 0.62, habit: 'spray', tipSprays: 1,
     cardBend: 0.42, flatRoll: 0.6, flatDroop: 0, bark: 2, barkTint: [0.44, 0.40, 0.34], barkTopTint: null,
+  }),
+  // the trees lane (2026-10-08, the gauntlet's wave 278 on Saltmere Bay): the gorse of the Breton coast (Ulex europaeus,
+  // the ajonc of the landes and the cliff tops) — a dense cushion of short prickly shoots, clipped smooth and swept to
+  // leeward by the salt wind, only ever grown as a shrub (growShrubSkeleton reads the cushion, the aspect, the bend)
+  gorse: P({
+    family: 'broadleaf', height: 1.6, heightSpread: 0.14, trunkR: 0.05, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.05, crownR: 1.2,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.3, angleLow: 0.6, angleHigh: 0.3,
+    droop: 0.05, upturn: 0.3, sidePerM: 1.0, sideAngle: 0.4, sideRatio: 0.5, sideDroop: 0, twigPerM: 0,
+    leafOrder: 1, leafPerM: 4, leafFrom: 0, spray: [0.45, 0.65], aspect: 0.82, habit: 'upright', tipSprays: 1,
+    cardBend: 0.06, flatRoll: 0.6, flatDroop: 0, bark: 2, barkTint: [0.40, 0.36, 0.30], barkTopTint: null,
+    cushion: Object.freeze({ density: 1.6, size: 0.72, height: 0.78, clip: 3, lobes: 0.35, shorn: 0.5 }),
   }),
   // the broom scrub of Las Cañadas (retama del Teide, codeso): a shrub of leafless-looking green-grey switches, only ever
   // grown as a shrub (growShrubSkeleton reads the aspect, the bend and the family); the tree fields mirror the birch's
@@ -1424,11 +1448,13 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
   const conifer = profile.family === 'conifer';
   // narrow sprays (birch, willow) come more to a shrub and a little wider, so its shell closes as a broad spray's does
   const narrow = Math.min(1, profile.aspect / 0.8);
-  const count = Math.round(GROWTH_SHRUB_SPRAYS[kind] * Math.min(4 / 3, 1 / narrow));
+  // the trees lane (2026-10-08, wave 278): a cushion form's denser, smaller sprays, lower clipped mound and its shear
+  const cushion = profile.cushion;
+  const count = Math.round(GROWTH_SHRUB_SPRAYS[kind] * Math.min(4 / 3, 1 / narrow) * (cushion?.density ?? 1));
   const widen = Math.sqrt(1 / Math.max(0.75, narrow));
   // the envelope: radius and height, its widest level; a conifer's top runs to a point (the superellipse exponent)
-  const R = (under ? 0.64 : 0.9) * (conifer ? 0.9 : 1), H = (under ? 0.98 : 1.36) * (conifer ? 1.1 : 1);
-  const c0 = conifer ? H * 0.22 : H * 0.32, Hc = H - c0, pow = conifer ? 1.25 : 2;
+  const R = (under ? 0.64 : 0.9) * (conifer ? 0.9 : 1), H = (under ? 0.98 : 1.36) * (conifer ? 1.1 : 1) * (cushion?.height ?? 1);
+  const c0 = conifer ? H * 0.22 : H * 0.32, Hc = H - c0, pow = conifer ? 1.25 : cushion?.clip ?? 2;
   const golden = Math.PI * (3 - Math.sqrt(5));
   const s0 = Math.sin(-0.4), s1 = Math.sin(1.5);
   // Ground lane (2026-10-03, the gauntlet: "bushes are near-identical round green balls"): a field bush is a union of
@@ -1441,10 +1467,12 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
   if (!under) {
     // trees round 4 (the gauntlet's wave 46: "lettuce heads", "topiary"): three to five stools of their own sizes and
     // heights, further out — a lumpier, lopsided thicket
-    const stools = 3 + ((rng() * 3) | 0), a0 = rng() * Math.PI * 2;
+    // (a cushion: one or two broad, low stools close in, the mound's own shoulders)
+    const stools = cushion ? 1 + ((rng() * 2) | 0) : 3 + ((rng() * 3) | 0), a0 = rng() * Math.PI * 2;
     for (let i = 0; i < stools; i++) {
       const a = a0 + i * (Math.PI * 2 / stools) + (rng() - 0.5) * 1.1;
-      const d = R * (0.46 + rng() * 0.36), r = R * (0.36 + rng() * 0.3), h = H * (0.42 + rng() * 0.5);
+      const d = R * (cushion ? 0.3 + rng() * 0.3 : 0.46 + rng() * 0.36), r = R * (cushion ? 0.55 + rng() * 0.25 : 0.36 + rng() * 0.3);
+      const h = H * (cushion ? 0.55 + rng() * 0.3 : 0.42 + rng() * 0.5);
       const cc0 = conifer ? h * 0.22 : h * 0.32;
       clumps.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, R: r, c0: cc0, Hc: h - cc0, lobe1: rng() * Math.PI * 2,
         lobe2: rng() * Math.PI * 2, az0: rng() * Math.PI * 2, n: 0 });
@@ -1474,7 +1502,9 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
       let P = v3(0, 0, 0), nOut = v3(0, 1, 0), cx = 1, cz = 0, elev = 0;
       for (let attempt = 0; attempt < 6; attempt++) {
         const az = q.az0 + j * golden + (rng() - 0.5) * (attempt ? 1.6 : 0.3);
-        const lobe = (1 + 0.11 * Math.sin(3 * az + q.lobe1) + 0.07 * Math.sin(5 * az + q.lobe2)) * (0.92 + rng() * 0.16);
+        // (a cushion's shell clipped smooth: its lobing at cushion.lobes)
+        const lobe = (cushion ? 1 + (0.11 * Math.sin(3 * az + q.lobe1) + 0.07 * Math.sin(5 * az + q.lobe2)) * cushion.lobes
+          : 1 + 0.11 * Math.sin(3 * az + q.lobe1) + 0.07 * Math.sin(5 * az + q.lobe2)) * (0.92 + rng() * 0.16);
         cx = Math.cos(az); cz = Math.sin(az);
         // the envelope point at the spray's elevation from the clump's heart (c0 up its axis): a (super)ellipse over c0,
         // a wall under it down to the ground; its outward normal (the gradient)
@@ -1502,6 +1532,17 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
           }
         }
       }
+      // the salt wind's shear (cushion.shorn; a field cushion, never the understorey under a wood): the windward side
+      // (local -x) cut down and in, the crest swept to leeward; the clipped face looks up the wind
+      if (cushion?.shorn && !under) {
+        // the top a wedge: full height at the leeward edge, falling across the mound to under half at the windward one
+        // (the wind clips a cushion's surface into one slope up from its windward foot); the windward side pulled in,
+        // the leeward a little out; the clipped surface's normal turned up the wind by its slope
+        const sh = cushion.shorn, w = Math.max(-1, Math.min(1, -P.x / R)), cut = Math.max(0, w), lee = Math.max(0, -w);
+        const wedge = (w + 1) / 2;
+        P = v3(P.x * (1 - 0.28 * sh * cut) * (1 + 0.12 * sh * lee), P.y * (1 - 0.9 * sh * wedge), P.z);
+        nOut = norm(v3(nOut.x - 0.6 * sh * wedge * Math.max(0, nOut.y), nOut.y + 0.25 * sh * wedge, nOut.z));
+      }
       let tUp = v3(up.x - nOut.x * nOut.y, up.y - nOut.y * nOut.y, up.z - nOut.z * nOut.y);
       tUp = Math.hypot(tUp.x, tUp.y, tUp.z) < 0.2 ? v3(-cz, 0, cx) : norm(tUp);
       tUp = norm(rotate(tUp, nOut, (rng() - 0.5) * (conifer ? 2.2 : 1.5)));
@@ -1511,7 +1552,8 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
         tUp.z * Math.cos(beta) + nOut.z * Math.sin(beta));
       if (conifer) axis = v3(axis.x, axis.y * 0.45 - 0.12, axis.z);
       axis = norm(axis);
-      const length = (under ? 0.55 : 0.72) * GROWTH_SHRUB_SPRAY_SCALE * (0.75 + rng() * 0.5) * (elev > 1.1 ? 0.86 : 1);
+      const length = (under ? 0.55 : 0.72) * GROWTH_SHRUB_SPRAY_SCALE * (0.75 + rng() * 0.5) * (elev > 1.1 ? 0.86 : 1)
+        * (cushion?.size ?? 1);
       const seat = v3(P.x - axis.x * length * 0.42 - nOut.x * 0.04, Math.max(-0.02, P.y - axis.y * length * 0.42 - nOut.y * 0.04),
         P.z - axis.z * length * 0.42 - nOut.z * 0.04);
       let face = v3(nOut.x - axis.x * dot(nOut, axis), nOut.y - axis.y * dot(nOut, axis), nOut.z - axis.z * dot(nOut, axis));

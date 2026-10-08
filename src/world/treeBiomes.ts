@@ -72,6 +72,12 @@ export interface TreeBiome {
    * species — the Las Cañadas broom an ash-dulled grey-green, not the slot palette's green.
    */
   shrubColour?: Readonly<TreeBiomeColour>;
+  /**
+   * The trees lane (2026-10-08, the gauntlet's wave 278 on Saltmere Bay): the place's prevailing wind — the compass
+   * bearing it blows toward (0 = +z, 90 = +x) — that a wind-shorn shrub form's field cushions lean along (treeGrowth.ts
+   * cushion.shorn; vegetation.ts turns each one's leeward side to it, within a few degrees).
+   */
+  wind?: Readonly<{ towardDeg: number }>;
 }
 
 /** A biome's foliage colour defaults (vegetation.ts VegetationPalette's colour fields). */
@@ -112,6 +118,15 @@ const SONORAN_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
 });
 
 /** The holm oak's dull dark grey-green (its leaves' felted grey undersides): two thirds of a leaf's saturation. */
+/**
+ * The trees lane (2026-10-08, wave 278): the gorse's dark, faintly blue green — the card tint at a low saturation over the
+ * atlas's own spines and flowers (its tone untouched: the bush slot's oak palette would yellow them).
+ */
+const GORSE_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.27, cardSat: 0.15,
+  texTone: (h: number, s: number, l: number): [number, number, number] => [h, s, l],
+});
+
 const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   cardHue: 0.25, cardSat: 0.09,
   texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.68), l],
@@ -156,7 +171,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   orchard: B('the Chouf, Mount Lebanon', { cedar: { form: 'lebanonCedar' }, pine: { form: 'aleppoPine' },
     oak: { form: 'olive', colour: OLIVE_FOLIAGE } }),
   // the Breton bocage: oak and sweet chestnut along the hedgebanks (the maritime pine stays a pine)
-  coastal: B('the Breton bocage, Brittany', { cedar: { form: 'chestnut' } }),
+  // (the trees lane, 2026-10-08, the gauntlet's wave 278: the shrubs "stickers rather than wind-pruned coastal scrub" —
+  // the coast's gorse, dark and prickly, clipped into cushions and swept inland by the wind off the bay on the east edge)
+  coastal: Object.freeze({ ...B('the Breton bocage, Brittany', { cedar: { form: 'chestnut' } }, 'gorse'),
+    shrubColour: GORSE_FOLIAGE, wind: Object.freeze({ towardDeg: 270 }) }),
   // the Fulda Gap: beech woods with spruce, oak and birch
   frontier: B('the Fulda Gap, Hesse', { pine: { form: 'beech' }, aspen: { form: 'birch', leaves: true } }),
   // Prokhorovka: birch and oak shelterbelts, poplars along the tracks (the map's willow and pine slots grow as birches:
@@ -339,4 +357,9 @@ export function treeBiomeColour(mapId: string | null | undefined): Readonly<Tree
 /** Trees round 4: the colour of a place's shrubs over the bush slot's palette (TreeBiome.shrubColour), or none. */
 export function treeBiomeShrubColour(mapId: string | null | undefined): Readonly<TreeBiomeColour> | null {
   return (mapId ? TREE_BIOMES[mapId]?.shrubColour : null) ?? null;
+}
+
+/** The trees lane (2026-10-08, wave 278): the bearing a place's wind blows toward (TreeBiome.wind), or null. */
+export function treeBiomeWindToward(mapId: string | null | undefined): number | null {
+  return (mapId ? TREE_BIOMES[mapId]?.wind?.towardDeg : null) ?? null;
 }

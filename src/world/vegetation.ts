@@ -47,7 +47,7 @@ import { resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees, type AuthoredTreeFeature,
 } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeColour, treeBiomeDenseStands, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeSnagValue, treeBiomeUpland, treeBiomeWoodForm, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeColour, treeBiomeDenseStands, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeSnagValue, treeBiomeUpland, treeBiomeWoodForm, treeBiomeWindToward, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -7276,6 +7276,12 @@ function* vegetationBuildSteps(
     const shrubForm = grownTrees ? veg.shrubForm ?? treeBiomeShrub(cfg?.id) : null;
     const shrubGrowth: GrowthSpecies = bushSpecies === 'willow' && veg.willowForm === 'tidalMangrove' ? 'mangrove'
       : shrubForm ?? (grownTrees ? formOf(bushSpecies)?.form : null) ?? bushSpecies;
+    // the trees lane (2026-10-08, the gauntlet's wave 278 on Saltmere Bay): a wind-shorn cushion (treeGrowth.ts
+    // cushion.shorn) grows its leeward side on its local +x; each field cushion turns that side to its place's wind
+    // (treeBiomes.ts TreeBiome.wind), within ±14° — the yaw the bush always drew, so every seeded stream is unchanged
+    const windToward = grownTrees ? treeBiomeWindToward(cfg?.id) : null;
+    const shornYaw = windToward !== null && TREE_GROWTH_PROFILES[shrubGrowth]?.cushion?.shorn
+      ? THREE.MathUtils.degToRad(windToward) - Math.PI / 2 : null;
     // (trees lane, 2026-10-05: on a bare map a deciduous shrub stands bare, its winter twigs or canes)
     const bushPal = grownTrees
       ? bareFormPalette(treeBiomePalette(palOf(bushSpecies), shrubColour ? { colour: shrubColour } : null, false, treeBiomeColour(cfg?.id)),
@@ -7379,7 +7385,8 @@ function* vegetationBuildSteps(
       // genuinely occluded (knee-high shrubs sold zero visual concealment)
       // r5: size keyed to the clump core — 2-3x spread, big growth at centers
       const sc = (1.6 + rng() * 1.6) * (0.7 + clump * 0.45);
-      _q.setFromAxisAngle(_up, rng() * Math.PI * 2);
+      const yawDraw = rng();
+      _q.setFromAxisAngle(_up, shornYaw === null ? yawDraw * Math.PI * 2 : shornYaw + (yawDraw - 0.5) * 0.5);
       // ground lane (2026-10-03, the gauntlet: bushes were "near-identical round green balls"): each shrub its own shape —
       // an oval footprint (the across axis 72–100 % of the cover axis, so it never leaves its cover disc), a crown a
       // little lower or taller, and a lean of up to 6° about its own long axis; position-hashed, no seeded draw

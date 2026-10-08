@@ -28,6 +28,8 @@ export type SprayKind = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus' | 
   | 'longleafPine' | 'longleafSeedling' | 'lebanonCedar' | 'sugi' | 'redPine'
   // trees round 5: the ruderal buddleia of waste ground, slag and rail sidings (a shrub form)
   | 'buddleia'
+  // the trees lane (2026-10-08, the gauntlet's wave 278): the gorse of the Breton coast (a shrub form)
+  | 'gorse'
   // the winter kinds (a map's `vegetation.bare`): the oak's and the poplar's bare twigs, the buddleia's winter canes
   | 'oak-bare' | 'poplar-bare' | 'buddleia-bare'
   // the Streuobst meadow orchard's fruit trees (one form: apple, pear and plum sprays on its tiles)
@@ -35,7 +37,8 @@ export type SprayKind = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus' | 
 export const SPRAY_KINDS: readonly SprayKind[] = Object.freeze(['oak', 'poplar', 'willow', 'acacia', 'eucalyptus',
   'birch', 'aspen', 'birch-bare', 'spruce', 'fir', 'pine', 'cedar', 'cypress', 'mangrove',
   'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'broom', 'juniper', 'pinyon',
-  'longleafPine', 'longleafSeedling', 'lebanonCedar', 'sugi', 'redPine', 'buddleia', 'oak-bare', 'poplar-bare', 'buddleia-bare', 'apple']);
+  'longleafPine', 'longleafSeedling', 'lebanonCedar', 'sugi', 'redPine', 'buddleia', 'oak-bare', 'poplar-bare', 'buddleia-bare', 'apple',
+  'gorse']);
 /** Tiles per side of every spray atlas. */
 export const SPRAY_ATLAS_TILES = 2;
 // the winter kinds' opaque shares (measured as the table's)
@@ -44,6 +47,8 @@ const POPLAR_BARE_COVERAGE = 0.118;
 const BUDDLEIA_BARE_COVERAGE = 0.084;
 // the orchard atlas' opaque share (measured as the table's)
 const APPLE_COVERAGE = 0.222;
+// the gorse atlas' opaque share (measured as the table's)
+const GORSE_COVERAGE = 0.296;
 /**
  * Trees round 2 (2026-10-03): each atlas's opaque share, the mean alpha over its painted 512 px atlas
  * (treeCrownShading.selftest.mjs paints them again and holds the table to it). The crown shadow hull's porosity reads
@@ -56,7 +61,7 @@ export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.
   broom: 0.125, juniper: 0.256, pinyon: 0.074,
   longleafPine: 0.169, longleafSeedling: 0.216, lebanonCedar: 0.21, sugi: 0.187, redPine: 0.099, buddleia: 0.133,
   'oak-bare': OAK_BARE_COVERAGE, 'poplar-bare': POPLAR_BARE_COVERAGE, 'buddleia-bare': BUDDLEIA_BARE_COVERAGE,
-  apple: APPLE_COVERAGE,
+  apple: APPLE_COVERAGE, gorse: GORSE_COVERAGE,
 });
 
 /**
@@ -121,6 +126,8 @@ const LEAF_COLOR: Readonly<Record<SprayKind, LeafColor>> = Object.freeze({
   longleafSeedling: { hue: 0.265, sat: 0.4, light: 0.21 },
   // the buddleia's grey-green, felted leaves
   buddleia: { hue: 0.25, sat: 0.2, light: 0.21 },
+  // the trees lane (2026-10-08): the gorse's dark, faintly blue-green spines
+  gorse: { hue: 0.27, sat: 0.34, light: 0.15 },
   // the winter kinds: the oak's grey-brown twigs, the poplar's olive-brown shoots, the buddleia's dry rust-brown
   // panicles on pale canes
   'oak-bare': { hue: 0.075, sat: 0.1, light: 0.2 },
@@ -1304,9 +1311,71 @@ function paintOrchardTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ti
   return twigs;
 }
 
+/**
+ * The trees lane (2026-10-08, the gauntlet's wave 278 on Saltmere Bay: the shrubs "sparse clusters of flat cut-out leaf
+ * cards on bare sticks ... stickers rather than wind-pruned coastal scrub"): a gorse sprig (Ulex europaeus, the ajonc of
+ * the Breton coast) — a stiff woody shoot from the seat with short side shoots crowding up it, every shoot clothed in
+ * dense, short, sharp spines standing out at about forty-five degrees (gorse has no leaf blade: the spines are the
+ * alpha, a prickly mass), the sprig's heart in their shade, and yellow pea flowers clustered in the axils near the tips.
+ */
+function paintGorseTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[][] {
+  const base = LEAF_COLOR.gorse;
+  // a fan of three stiff shoots from the seat (the cushion's surface is their crowded tips), each crowded with side
+  // shoots standing well out, so the sprig fills its tile as a prickly mass, not a lone stem
+  const leaders: Pt[][] = [];
+  for (const fan of [-0.55, 0, 0.55]) {
+    const lean = fan + (rng() - 0.5) * 0.3;
+    leaders.push(twigPoints({ x: S * (0.5 + fan * 0.08), y: S * 0.96 }, -Math.PI / 2 + lean, S * (fan === 0 ? 0.8 : 0.66 + rng() * 0.08),
+      lean * 0.5, 10));
+  }
+  const shoots: Pt[][] = [...leaders];
+  for (const main of leaders) {
+    const sides = 5 + ((rng() * 3) | 0);
+    for (let k = 0; k < sides; k++) {
+      const at = pointAt(main, 0.2 + (k + rng() * 0.7) / sides * 0.7), side = k % 2 === 0 ? -1 : 1;
+      shoots.push(twigPoints(at.p, at.a + side * (0.6 + rng() * 0.45), S * (0.17 + rng() * 0.12) * (1.15 - (k / sides) * 0.5),
+        -side * 0.35, 6));
+    }
+  }
+
+  // the sprig's shaded heart, the mass the spines close over
+  paintSprayBody(ctx, shoots, S * 0.085, base, 0.9, 0.1);
+  // the woody shoots, grey-brown
+  for (const sh of shoots) taperStroke(ctx, sh, leaders.includes(sh) ? S * 0.011 : S * 0.007, S * 0.003, css(0.09, 0.2, 0.16));
+  // the spines: dense, short, stiff strokes standing out both sides of every shoot, the younger ones lighter
+  for (const sh of shoots) {
+    const n = Math.round((leaders.includes(sh) ? 60 : 32) * (0.85 + rng() * 0.3));
+    for (let k = 0; k < n; k++) {
+      const t = 0.06 + rng() * 0.94, at = pointAt(sh, t), side = rng() < 0.5 ? -1 : 1;
+      const a = at.a + side * (0.5 + rng() * 0.5), L = S * (0.03 + rng() * 0.03) * (1.1 - t * 0.3);
+      ctx.strokeStyle = css(base.hue + (rng() - 0.5) * 0.03, base.sat * (0.85 + rng() * 0.3), base.light * (0.7 + rng() * 0.5 + t * 0.25));
+      ctx.lineWidth = Math.max(1, S * (0.005 + rng() * 0.004));
+      ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(at.p.x, at.p.y); ctx.lineTo(at.p.x + Math.cos(a) * L, at.p.y + Math.sin(a) * L); ctx.stroke();
+    }
+  }
+  // the flowers: yellow pea flowers in twos and threes in the axils of the shoots' outer halves, a few still in bud
+  for (const sh of shoots) {
+    const clusters = (rng() * 3.4) | 0;
+    for (let k = 0; k < clusters; k++) {
+      const at = pointAt(sh, 0.5 + rng() * 0.48), n = 2 + ((rng() * 2) | 0);
+      for (let f = 0; f < n; f++) {
+        const r = S * (0.011 + rng() * 0.007), bud = rng() < 0.25;
+        ctx.fillStyle = css(0.13 + (rng() - 0.5) * 0.02, bud ? 0.7 : 0.88, bud ? 0.4 : 0.52 + rng() * 0.1);
+        ctx.beginPath();
+        ctx.ellipse(at.p.x + (rng() - 0.5) * S * 0.035, at.p.y + (rng() - 0.5) * S * 0.035, bud ? r * 0.6 : r, (bud ? r * 0.6 : r) * 0.72,
+          rng() * Math.PI, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+  return shoots;
+}
+
 const ROUND5_PAINTERS: Readonly<Partial<Record<SprayKind, (ctx: CanvasRenderingContext2D, S: number, rng: Rng, tile?: number) => Pt[][]>>> = Object.freeze({
   apple: paintOrchardTile,
   buddleia: paintBuddleiaTile,
+  gorse: paintGorseTile,
   longleafPine: (ctx, S, rng) => paintBrushTile(ctx, S, rng, 'longleafPine'),
   redPine: (ctx, S, rng) => paintBrushTile(ctx, S, rng, 'redPine'),
   sugi: paintSugiTile,

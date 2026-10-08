@@ -1327,6 +1327,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // p2 trees lane (2026-10-01): the grown near trees, their branch-spray atlases and the build's routing
     'src/world/treeGrowth.selftest.mjs',
     'src/world/treeCrownShading.selftest.mjs',
+    // the trees lane (2026-10-08, the gauntlet's wave 278): Saltmere's shrubs the coast's gorse, swept inland by the wind
+    'src/world/coastalScrub.selftest.mjs',
     // trees round 2b (2026-10-03): where trees stand: woodland edges and verges, Wadi Rum's groves, the palms' sites
     'src/world/treeSpacing.selftest.mjs',
     // the trees lane (2026-10-07, wave 223): a wood species' field trees among three open crowns, their seats unmoved

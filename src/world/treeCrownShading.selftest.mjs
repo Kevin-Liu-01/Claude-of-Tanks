@@ -18,7 +18,7 @@ import {
 import { makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, SPRAY_KINDS } from './treeSprayAtlas.ts';
 import { LOD_SHADOW_FADE_ATTRIBUTE } from '../engine/lodShadowFade.ts';
 import { growShrubSkeleton } from './treeGrowth.ts';
-import { TREE_BIOMES, treeBiomeArid, treeBiomeColour, treeBiomeIsOpen, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, uplandBandOf, uplandZoneAllows } from './treeBiomes.ts';
+import { TREE_BIOMES, treeBiomeArid, treeBiomeColour, treeBiomeIsOpen, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWindToward, uplandBandOf, uplandZoneAllows } from './treeBiomes.ts';
 import { BARE_SPRAY_KINDS, bareFormPalette, grownFormSprayKind, grownTintLaw } from './vegetation.ts';
 import { TREE_SPECIES } from './treeSpecies.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
@@ -419,6 +419,47 @@ assert.ok(!GROWTH_SPECIES.includes('broom'), 'the broom is a shrub form, never a
     assert.ok(violet > 0.05 * opaque && violet < 0.5 * opaque, `the buddleia's tile carries its purple panicles (${violet} of ${opaque} texels)`);
   } finally { globalThis.document = savedDocument; globalThis.ImageData = savedImageData; }
 }
+// the trees lane (2026-10-08, the gauntlet's wave 278 on Saltmere Bay: the shrubs "sparse clusters of flat cut-out leaf
+// cards on bare sticks ... stickers rather than wind-pruned coastal scrub"): the gorse, a shrub form grown as a clipped
+// cushion — deterministic, half again a shrub's sprays at under four fifths their length, lower than a shrub's mound,
+// the salt wind's shear cutting its windward side (local -x) down under the leeward crest, the understorey (sheltered
+// under a wood) unshorn; its tile prickly green with yellow pea flowers. Saltmere's shrubs grow as it, swept inland.
+{
+  assert.ok(!GROWTH_SPECIES.includes('gorse'), 'the gorse is a shrub form, never a tree slot');
+  const gorse = growShrubSkeleton('gorse', 'bush', mulberry32(9)), shrub = growShrubSkeleton('oak', 'bush', mulberry32(9));
+  assert.deepEqual(gorse, growShrubSkeleton('gorse', 'bush', mulberry32(9)), 'the gorse grows deterministically');
+  assert.ok(gorse.leaves.length >= 1.5 * shrub.leaves.length, `a dense cushion: ${gorse.leaves.length} sprays against a shrub's ${shrub.leaves.length}`);
+  const meanLength = (sk) => sk.leaves.reduce((a, l) => a + l.length, 0) / sk.leaves.length;
+  assert.ok(meanLength(gorse) < 0.8 * meanLength(shrub), 'its sprays small');
+  assert.ok(gorse.leaves.every((l) => l.y >= -0.0601), 'its sprays on the ground, never in it');
+  const tipY = (l) => l.y + l.ay * l.length;
+  const crest = (sk, side) => Math.max(...sk.leaves.filter((l) => side * l.x > 0.25 * sk.crown.r).map(tipY));
+  assert.ok(gorse.height < 0.85 * shrub.height, `lower than a shrub's mound (${gorse.height.toFixed(2)} against ${shrub.height.toFixed(2)})`);
+  assert.ok(crest(gorse, -1) < 0.85 * crest(gorse, 1),
+    `the windward side cut down under the leeward crest (${crest(gorse, -1).toFixed(2)} against ${crest(gorse, 1).toFixed(2)})`);
+  const under = growShrubSkeleton('gorse', 'understorey', mulberry32(9));
+  assert.ok(crest(under, -1) > 0.8 * crest(under, 1) && crest(under, 1) > 0.8 * crest(under, -1), 'the understorey grows unshorn');
+  assert.equal(treeBiomeShrub('coastal'), 'gorse', 'Saltmere\'s scrub is the coast\'s gorse');
+  assert.equal(treeBiomeWindToward('coastal'), 270, 'swept inland, west, by the wind off the bay on the east edge');
+  const savedDocument = globalThis.document, savedImageData = globalThis.ImageData;
+  globalThis.ImageData = ImageData;
+  globalThis.document = { createElement() { return createCanvas(1, 1); } };
+  try {
+    const image = makeSprayAtlas('gorse', mulberry32(7), 512, null, 0).image;
+    const data = image.getContext ? image.getContext('2d').getImageData(0, 0, image.width, image.height).data : image.data;
+    let opaque = 0, yellow = 0, green = 0;
+    const c = new THREE.Color(), hsl = { h: 0, s: 0, l: 0 };
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 200) continue;
+      opaque++;
+      c.setRGB(data[i] / 255, data[i + 1] / 255, data[i + 2] / 255).getHSL(hsl);
+      if (hsl.h > 0.1 && hsl.h < 0.18 && hsl.s > 0.6 && hsl.l > 0.35) yellow++;
+      else if (hsl.h > 0.2 && hsl.h < 0.4) green++;
+    }
+    assert.ok(yellow > 0.01 * opaque && yellow < 0.25 * opaque, `the gorse's tile carries its yellow flowers (${yellow} of ${opaque} texels)`);
+    assert.ok(green > 0.6 * opaque, `the gorse's spines dark green (${green} of ${opaque} texels)`);
+  } finally { globalThis.document = savedDocument; globalThis.ImageData = savedImageData; }
+}
 
 // trees round 4 (the ground lane on Obsidian Caldera's establishing view: the broom "saturated green" on the ash plain):
 // a place's shrub colour (TreeBiome.shrubColour) wins over the bush slot's palette. Las Cañadas named the only one, the
@@ -434,7 +475,9 @@ assert.ok(!GROWTH_SPECIES.includes('broom'), 'the broom is a shrub form, never a
   assert.equal(pal.cardSat, ash.cardSat, 'the shrub colour wins over the slot palette\'s named saturation');
   assert.strictEqual(pal.texTone, ash.texTone, 'and its tone');
   assert.equal(treeBiomeShrubColour('caldera'), null, 'Aso\'s grassland scrub keeps the slot\'s green');
-  assert.deepEqual(MAP_IDS.filter((id) => treeBiomeShrubColour(id)), [], 'no place names a shrub colour');
+  // (the trees lane, 2026-10-08, the gauntlet's wave 278: Saltmere's gorse names its dark green over the oak slot's
+  // yellowed scrub palette)
+  assert.deepEqual(MAP_IDS.filter((id) => treeBiomeShrubColour(id)), ['coastal'], 'Saltmere\'s gorse names the one shrub colour');
 }
 
 // trees round 5 (2026-10-05, the gauntlet's wave 98 on the near field bush: "lobed leaf cards two to four times life
