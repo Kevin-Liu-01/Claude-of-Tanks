@@ -105,9 +105,9 @@ assert.equal((main.match(/pendingTerrainVariant = terrainVariantFor\(/g) ?? []).
 assert.match(session, /const terrainVariant: TerrainVariant = terrainVariantFor\(active\.mode\)/, 'and the network session');
 for (const source of [main, session]) assert.doesNotMatch(source, /'frontline_assault' \? 'assault-trenches'/);
 
-// ---- a desktop client's variant world shares the authority's indices now (a phone's still does not)
+// ---- a client's variant world shares the authority's indices now, a phone's too (it places what the desktop places)
 assert.equal(createAuthorityObstacles({ layoutTier: 'desktop', terrainVariant: VARIANT, getObstacles: () => [] }).shared, true);
-assert.equal(createAuthorityObstacles({ layoutTier: 'mobile', terrainVariant: VARIANT, getObstacles: () => [] }).shared, false);
+assert.equal(createAuthorityObstacles({ layoutTier: 'mobile', terrainVariant: VARIANT, getObstacles: () => [] }).shared, true);
 
 console.log(`frontlineVariant: Frontline plays '${VARIANT}' (no other mode a variant); the dedicated and browser hosts build `
   + `${MAP}'s variant manifest (${trenches.getObstacles().length} obstacles, wire ${variantKinds.barbedwire}, sandbag walls `

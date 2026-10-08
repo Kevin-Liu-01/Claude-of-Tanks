@@ -472,7 +472,7 @@ already built it; the hosts built the base map — hulls on uncarved ground, non
 Verdant the variant differs by 3,390 obstacle records each way: the carving moves every placement after it). Now the
 browser host (`loadCollisionWorld(…, { variant })`) and the dedicated actor (`createDedicatedWorldCollision(…,
 { variant })`) load the variant's own shard over the variant's field, so a desktop client of either shares the
-authority's indices (`authorityObstacles`: only the mobile tier lays out otherwise, until its placement split). The
+authority's indices (`authorityObstacles`; a phone's too since its placement split, below). The
 clients choose the battlefield from the same table (`main.ts` for the solo battle, `mp/session/browserComposition.ts`
 for the network session: `terrainVariantFor`), so client, browser host and dedicated actor agree by construction. The
 33 variant shards are 55 MB of JSON (17 MB compressed) beside the base 50 MB, published content-addressed under
@@ -487,13 +487,18 @@ phone's saving is in how a record draws, never in which records stand.
 
 - Every desktop layout is unchanged, byte for byte, on all 33 maps.
 - At the phone tier, 22 of 33 maps equal the desktop's shards index for index, and every concealer matches on every map.
-- The other 11 wait on two kits that still lay records out by tier:
-  - the scenery lane's rock formations, which draw fewer stones on a phone and so other masses (Badlands, Coastal,
-    Desert, Frontier, Monsoon, Orchard, Reservoir, Saltwind, Steinburg, Verdant);
-  - the regional rowhouses, whose phone builds move their bands (Franconian on Steinburg, Sarajevan on Ruinspires).
-- The check: `node tools/capture-world-collision-manifests.mjs --tier=mobile`. Receipt (three clean maps):
+- The other 11 waited on two kits that laid records out by tier, both fixed by their lanes:
+  - the scenery lane's rock formations, which drew fewer stones on a phone and so other masses (Badlands, Coastal,
+    Desert, Frontier, Monsoon, Orchard, Reservoir, Saltwind, Steinburg, Verdant): `visual/scenery-phone-masses`
+    16469bc6a, a phone's formations collide with the desktop's stone set;
+  - the regional rowhouses, whose phone builds moved their bands (Franconian on Steinburg, Sarajevan on Ruinspires):
+    `visual/facades-phone-bands` c4c542d44, a phone's kit builds run their dressing muted, so the streams stay aligned.
+- With both on this core, the phone tier matches **33 of 33** shards (2026-10-08). The check: `node
+  tools/capture-world-collision-manifests.mjs --tier=mobile`. Receipt (three clean maps):
   `src/world/phoneLayoutIdentity.selftest.mjs`.
-- `authorityObstacles` keeps a phone on identities until all 33 match.
+- `authorityObstacles` shares the indices on a phone now. An event whose record at its index is another prop still turns
+  that off and finds its prop by identity, so a layout that drifts again degrades to the identity path. This needs both
+  fixes in the build: land them before or with this flip.
 
 ### 8.5 Budget
 
