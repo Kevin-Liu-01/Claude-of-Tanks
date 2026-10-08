@@ -63,9 +63,13 @@ import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSp
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
-import { liftFieldStoneMean, paintFieldStoneBuffers, type FieldStoneLithology } from './fieldStoneSurface.ts';
+import {
+  FIELD_STONE_PRINT_SEED, liftFieldStoneMean, paintFieldStoneBuffers as paintFieldStoneBuffersInline, type FieldStoneBuffers,
+  type FieldStoneLithology,
+} from './fieldStoneSurface.ts';
 import { paintDryWallBuffers } from './fieldWallFace.ts';
-import { paintHayBuffers } from './hayPrint.ts';
+import { HAY_PRINT_SEED, paintHayBuffers as paintHayBuffersInline } from './hayPrint.ts';
+import { surfacePaintKey, type SurfacePaintPrefetch, type SurfacePaintRequest } from './surfacePaintPrefetch.ts';
 import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, type HaystackStyle } from './maps/haystackKit.ts';
 import { STRUCTURE_VARIANTS } from './maps/regional/ksarGate.ts'; // b16: the ksar gate post for the checkpoint hut
 import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
@@ -139,6 +143,7 @@ import {
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreckSteps, bakeWreckDebris, type WreckBake } from './wrecks.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
+import type { WreckBakePrefetch } from './wreckBakePrefetch.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
 import { mergeWreckGeometries } from './exactWreckGeometry.ts';
 import { fitWallSpan, wallIslandEdges, type WallSpan } from './wallSpanPlacement.ts';
@@ -734,6 +739,8 @@ interface PropsBuildSlice {
   progress?: boolean;
   tankBuilder?: string;
   wreckBake?: { specId: string; options: { seed: number; pop: boolean }; result: WreckBake | null };
+  /** (the time-to-battle lane) a fixed-input print the async build may hand in painted ahead (surfacePaintPrefetch.ts) */
+  surfacePaint?: { key: string; result: Record<string, unknown> | null };
   stage?: string;
 }
 
@@ -749,6 +756,10 @@ interface PropsBuildDetail {
   maxSliceMs: number;
   slowest: Array<{ stage: string; ms: number }>;
   propModelsAwait?: PropsAwaitTiming & { startMs: number; endMs: number };
+  /** the planned wreck bakes the world build started with the terrain (wreckBakePrefetch.ts) */
+  wreckPrefetch?: import('./wreckBakePrefetch.ts').WreckBakePrefetchStats;
+  /** the fixed-input prints painted ahead by the surface paint worker (surfacePaintPrefetch.ts) */
+  surfacePaints?: SurfacePaintPrefetch['stats'];
   awaitTimings: {
     clock: 'performance.now';
     sliceTicks: PropsAwaitTiming;
@@ -1096,6 +1107,38 @@ function makeStraw(
     normal: normalFromHeight(hgt, s, 2.4, anisotropy),
     surface: surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.88, roughMax: 1.0, aoMin: 0.74 }),
   };
+}
+
+/**
+ * (the time-to-battle lane, 2026-10-07) The fixed-input prints: the async build hands a print in painted ahead by the
+ * surface paint worker when the prefetch holds these exact arguments (surfacePaintPrefetch.ts — the same painter, the
+ * same texels); otherwise, and always in the synchronous build, it is painted here as before.
+ */
+function* paintedAhead<T>(key: string, paint: () => Generator<unknown, T, void>): Generator<PropsBuildSlice, T, void> {
+  const request: NonNullable<PropsBuildSlice['surfacePaint']> = { key, result: null };
+  yield { fine: true, progress: false, stage: `paint-ahead:${key}`, surfacePaint: request };
+  if (request.result) return request.result as unknown as T;
+  return (yield* paint() as Generator<PropsBuildSlice, T, void>);
+}
+function* paintHayBuffers(size = 512, seed = HAY_PRINT_SEED): Generator<PropsBuildSlice, { px: Uint8ClampedArray; hgt: Float32Array }, void> {
+  return yield* paintedAhead(surfacePaintKey('hay', size, seed), () => paintHayBuffersInline(size, seed));
+}
+function* paintFieldStoneBuffers(size = 512, seed = FIELD_STONE_PRINT_SEED, lithology: FieldStoneLithology = 'fieldstone'):
+  Generator<PropsBuildSlice, FieldStoneBuffers, void> {
+  return yield* paintedAhead(surfacePaintKey('fieldStone', size, seed, lithology), () => paintFieldStoneBuffersInline(size, seed, lithology));
+}
+
+/** The fixed-input prints a map's props build will paint (the surface paint prefetch starts them with the terrain). */
+export function plannedSurfacePaints(cfg: PropsMapConfig | null): SurfacePaintRequest[] {
+  const mobile = getDeviceTier() === 'mobile';
+  const size = mobile ? 256 : 512;
+  const mapId = cfg ? cfg.id : 'verdant';
+  const wallStyle = (cfg?.props as { wallStyle?: string } | undefined)?.wallStyle;
+  const requests: SurfacePaintRequest[] = [{ kind: 'hay', size, seed: HAY_PRINT_SEED }];
+  if (!(wallStyle === 'adobe' || sourcedStoneIsBrick(mapId))) {
+    requests.push({ kind: 'fieldStone', size, seed: FIELD_STONE_PRINT_SEED, lithology: rockLithologyFor(mapId) === 'chalk' ? 'chalk' : 'fieldstone' });
+  }
+  return requests;
 }
 
 /**
@@ -2971,6 +3014,41 @@ export function createProps(
   return r.value;
 }
 
+/** One wreck bake a map's props build asks the worker for: the donor and its seeded options. */
+export interface WreckBakeRequestRecord { specId: string; seed: number; pop: boolean }
+
+/**
+ * The wreck bakes a map's props build requests of the worker, in order (the time-to-battle lane, 2026-10-07): the
+ * worker-wreck build drained with each request answered by `bake` (the worker's own bake, run where the caller likes).
+ * tools/wreck-bake-plan.mjs records them per map so the browser can start those bakes when the world build starts,
+ * beside the terrain and vegetation, instead of one by one inside the props build (src/world/wreckBakePrefetch.ts).
+ */
+export async function recordWreckBakeRequests(
+  heightField: HeightField,
+  engineCtx: EngineContext,
+  seed: number,
+  cfg: PropsMapConfig | null,
+  vegetation: FisheryVegetation | null,
+  bake: (specId: string, options: { seed: number; pop: boolean }) => Promise<WreckBake | null>,
+): Promise<WreckBakeRequestRecord[]> {
+  const requests: WreckBakeRequestRecord[] = [];
+  const g = propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation, true);
+  let r = g.next();
+  try {
+    while (!r.done) {
+      const request = r.value?.wreckBake;
+      if (request) {
+        requests.push({ specId: request.specId, seed: request.options.seed, pop: request.options.pop });
+        request.result = await bake(request.specId, request.options);
+      }
+      r = g.next();
+    }
+  } finally {
+    if (!r.done) g.return(undefined as never);
+  }
+  return requests;
+}
+
 /**
  * perf-r3 (play-session probe): chunked twin of {@link createProps} — the
  * one-call build was a single ~1.6 s task behind the loading bar. Awaits
@@ -2988,6 +3066,8 @@ export async function createPropsAsync(
   tick: ((done: number, total: number) => Promise<void> | void) | null = null,
   fineSlices = false,
   vegetation: FisheryVegetation | null = null,
+  wreckPrefetch: WreckBakePrefetch | null = null,
+  surfacePrefetch: SurfacePaintPrefetch | null = null,
 ): Promise<PropsRuntime> {
   // IteratorClose must reach delegated builders when an awaited import/tick
   // rejects. Use the standard iterator return() contract: no final runtime is
@@ -3035,6 +3115,13 @@ export async function createPropsAsync(
       synchronousMs += sliceMs;
       const step = r.value;
       slices.push({ stage: step?.stage || `slice-${slices.length}`, ms: sliceMs });
+      if (step?.surfacePaint && surfacePrefetch) {
+        // (the time-to-battle lane) a print painted ahead with the terrain; a failed one is painted where it stands
+        const ahead = surfacePrefetch.take(step.surfacePaint.key);
+        if (ahead) {
+          try { step.surfacePaint.result = await ahead; } catch { step.surfacePaint.result = null; }
+        }
+      }
       if (step?.tankBuilder && !wreckWorker) {
         const startedAt = performance.now();
         await ensureTankBuilder(step.tankBuilder);
@@ -3044,8 +3131,24 @@ export async function createPropsAsync(
         const request = step.wreckBake;
         const startedAt = performance.now();
         const checkpointsBefore = awaitTimings.wreckCheckpoints.totalMs;
-        request.result = await wreckWorker.bake(request.specId, request.options,
-          () => observeTick(awaitTimings.wreckCheckpoints));
+        // (the time-to-battle lane) a bake the world build started with the terrain (wreckBakePrefetch.ts): the same
+        // donor, seed and pop through the same worker code — taken here, waited for with the same checkpoints
+        const planned = wreckPrefetch?.take(request.specId, request.options) ?? null;
+        let fromPlan = false;
+        if (planned) {
+          let settled = false, failed = false;
+          let value: WreckBake | null = null;
+          planned.then((baked) => { settled = true; value = baked; }, () => { settled = true; failed = true; });
+          while (!settled) {
+            await new Promise<void>((resolve) => { setTimeout(resolve, 30); });
+            if (!settled) await observeTick(awaitTimings.wreckCheckpoints);
+          }
+          if (!failed) { request.result = value; fromPlan = true; }
+        }
+        if (!fromPlan) {
+          request.result = await wreckWorker.bake(request.specId, request.options,
+            () => observeTick(awaitTimings.wreckCheckpoints));
+        }
         const endMs = recordPropsAwait(awaitTimings.wreckBakes, startedAt);
         // Inclusive elapsed time includes nested checkpoints, worker transfer
         // and main-thread hydration. It is not worker CPU time or network time.
@@ -3073,6 +3176,8 @@ export async function createPropsAsync(
       maxSliceMs: slowest[0]?.ms || 0,
       slowest,
       awaitTimings,
+      ...(wreckPrefetch ? { wreckPrefetch: { ...wreckPrefetch.stats } } : {}),
+      ...(surfacePrefetch ? { surfacePaints: { ...surfacePrefetch.stats } } : {}),
     };
     return runtime;
   } finally {

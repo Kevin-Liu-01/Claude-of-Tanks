@@ -1415,6 +1415,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/wreckDiscardedPaint.selftest.mjs',
     'src/world/wreckBakeWire.selftest.mjs',
     'src/world/wreckBakeClient.selftest.mjs',
+    'src/world/wreckBakePrefetch.selftest.mjs',
+    'src/world/surfacePaintPrefetch.selftest.mjs',
     'src/world/wreckBakeWorker.selftest.mjs',
     'src/world/exactWreckGeometry.selftest.mjs',
     'src/world/topple.selftest.mjs',

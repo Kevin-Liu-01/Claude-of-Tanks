@@ -178,6 +178,11 @@ for (const failureAt of ['tick', 'bake', 'import']) {
       createVegetationAsync: async () => { clock += 30; return {}; },
       createPropsAsync: async () => { events.push('props'); clock += 5; return props; },
       assembleWorld: () => { events.push('assemble'); return world; },
+      // (2026-10-07, the time-to-battle lane) the wrapper starts the planned wreck bakes and the fixed-input prints beside
+      // the terrain (wreckBakePrefetch.ts, surfacePaintPrefetch.ts); none here, so the props build bakes and paints itself
+      startPlannedWreckBakes: () => null,
+      startSurfacePaints: () => null,
+      plannedSurfacePaints: () => [],
       performance: { now: () => clock },
     };
     const run = new Function(...Object.keys(ports), code + '\nreturn createMapAsync;')(...Object.values(ports));
