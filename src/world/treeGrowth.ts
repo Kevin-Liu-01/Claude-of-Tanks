@@ -27,6 +27,8 @@ export type GrowthSpecies = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus
   | 'longleafPine' | 'lebanonCedar' | 'sugi' | 'redPine'
   // the trees lane (2026-10-05): the Streuobst meadow orchard's fruit tree (Frontier Basin; its variants apple, pear, plum)
   | 'apple'
+  // the trees lane (2026-10-08, the gauntlet's waves 282/283a on Redrock Divide): Wadi Rum's acacia (Acacia tortilis)
+  | 'tortilis'
   // shrub-only forms (treeBiomes.ts `shrub`): the broom scrub of a volcanic upland; trees round 5: the longleaf's
   // grass-stage seedlings on a cutover — never a tree slot
   | 'broom' | 'longleafSeedling' | 'buddleia';
@@ -35,7 +37,7 @@ type Rng = () => number;
 export const GROWTH_SPECIES: readonly GrowthSpecies[] = Object.freeze([
   'oak', 'poplar', 'willow', 'acacia', 'eucalyptus', 'pine', 'spruce', 'fir', 'cedar', 'cypress', 'birch', 'aspen', 'palm', 'snag',
   'mangrove', 'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'juniper', 'pinyon',
-  'longleafPine', 'lebanonCedar', 'sugi', 'redPine', 'apple',
+  'longleafPine', 'lebanonCedar', 'sugi', 'redPine', 'apple', 'tortilis',
 ]);
 
 /** How a crown envelope narrows from its base (t = 0) to its top (t = 1): the radius fraction at t. */
@@ -132,6 +134,12 @@ interface GrowthProfile {
    */
   fountain?: boolean;
   /**
+   * The trees lane (2026-10-08, the gauntlet's waves 282/283a on Redrock Divide): the form's own share of the near leaf
+   * budget (GROWTH_LEAF_BUDGET; unset, a conifer's GROWTH_CONIFER_LEAF_SHARE or a broadleaf's whole budget) — a sparse
+   * crown's sprays (the Wadi Rum acacia's half) thinned evenly as every crown's are.
+   */
+  leafShare?: number;
+  /**
    * Trees round 5 (the gauntlet's wave 98: Frontier's spruce "a smooth, uniform green cone with no needle-cluster
    * silhouette or branching"): how ragged a whorled crown's tiers grow, 0..1 (unset 0) — each whorl reaching its own
    * share of the cone and each limb in it its own share again, so the outline is serrated by limbs standing out and
@@ -201,6 +209,21 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     droop: 0.22, upturn: 0.0, sidePerM: 2.8, sideAngle: 1.15, sideRatio: 0.95, sideDroop: 2.4, twigPerM: 0,
     leafOrder: 2, leafPerM: 4.6, leafFrom: 0.25, spray: [1.05, 1.6], aspect: 0.46, habit: 'hanging', tipSprays: 1,
     cardBend: 0.05, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.44, 0.40, 0.34], barkTopTint: null,
+  }),
+  // the trees lane (2026-10-08, the gauntlet's waves 282/283a on Redrock Divide: the acacias "lime-green, puffy savanna
+  // canopies, far too lush for Wadi Rum"): the Wadi Rum acacia (Acacia raddiana / tortilis) — forked near the sand into
+  // a few spreading, crooked stems under one flat, thin umbrella; its small leaflets sparse (half the savanna acacia's
+  // sprays a metre, smaller), so the forks and twigs show through and under it; a few limbs dead and grey; its leaves a
+  // dark dust-dulled grey-green, darker than the savanna acacia's lit value (vegetation.ts paints it the acacia's
+  // bipinnate atlas, grownFormSprayKind; treeBiomes.ts its colour)
+  tortilis: P({
+    family: 'broadleaf', height: 5.0, heightSpread: 0.14, trunkR: 0.22, form: 'decurrent',
+    forkAt: [0.14, 0.24], scaffolds: [3, 5], scaffoldAngle: [0.65, 1.0], crownBase: 0.7, crownR: 3.7,
+    envelope: 'umbrella', whorled: false, perWhorl: [1, 1], spacing: 0.6, angleLow: 1.35, angleHigh: 1.15,
+    droop: 0.1, upturn: 0.15, sidePerM: 1.6, sideAngle: 1.05, sideRatio: 0.6, sideDroop: 0.0, twigPerM: 2.4,
+    leafOrder: 2, leafPerM: 2.3, leafFrom: 0.4, spray: [0.5, 0.78], aspect: 0.95, habit: 'flat', tipSprays: 1,
+    cardBend: 0.04, flatRoll: 0.4, flatDroop: 0.0, foliageBand: 0.75, bark: 4, barkTint: [0.36, 0.31, 0.27], barkTopTint: null,
+    foliageValue: 1.05, gnarl: 0.45, deadwood: 0.12, leafShare: 0.5,
   }),
   acacia: P({
     family: 'broadleaf', height: 6.2, heightSpread: 0.10, trunkR: 0.28, form: 'decurrent',
@@ -1564,7 +1587,8 @@ export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: Grow
   // the budgets: a grown crown keeps its silhouette at a bounded card and tube count — surplus sprays are thinned
   // evenly along the seat order (each survivor grows by the area it inherits) and the thinnest side shoots stop being
   // tubes (their sprays still seat on them)
-  const leafBudget = Math.round(GROWTH_LEAF_BUDGET[mobile ? 'mobile' : 'desktop'] * (profile.family === 'conifer' ? GROWTH_CONIFER_LEAF_SHARE : 1));
+  const leafBudget = Math.round(GROWTH_LEAF_BUDGET[mobile ? 'mobile' : 'desktop']
+    * (profile.leafShare ?? (profile.family === 'conifer' ? GROWTH_CONIFER_LEAF_SHARE : 1)));
   if (leaves.length > leafBudget) {
     // Trees round 2 (2026-10-03): the survivors cover the crown evenly (thinEvenly) — a dense whorl or a crowded limb
     // gives up sprays, a sparse apex or an outer twig keeps them — and grow only a little by the area they inherit

@@ -74,6 +74,16 @@ const ARID_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
 });
 
 /**
+ * The trees lane (2026-10-08, the gauntlet's waves 282/283a on Redrock Divide: "lime-green, puffy savanna canopies"):
+ * Acacia raddiana's dust-dulled grey-green at Wadi Rum — the arid tone darker and a touch bluer, under a nearly neutral
+ * card tint (the Saharan maps keep ARID_FOLIAGE).
+ */
+const RADDIANA_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.27, cardSat: 0.05,
+  texTone: (_h: number, s: number, l: number): [number, number, number] => [0.28, Math.min(1, s * 0.26), Math.min(1, l * 0.9)],
+});
+
+/**
  * The olive's silver: a grey-green a little toward blue at a fifth of a leaf's saturation, the leaves' pale undersides
  * in the light (wave 26 on Saltwind Narrows: "uniform mid-green oak type with no olive-grey tone").
  */
@@ -136,7 +146,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   verdant: B('Prokhorovka, Kursk oblast', { pine: { form: 'birch', leaves: true }, willow: { form: 'birch', leaves: true } }),
   // Wadi Rum: sparse, dust-dulled umbrella acacias (and the spring's palms) over white-broom scrub (Retama raetam: the
   // map's oak bushes read as lawn shrubs on the sand)
-  badlands: B('Wadi Rum, Jordan', { cedar: { form: 'acacia' }, oak: { form: 'acacia' } }, 'broom', ARID_FOLIAGE, true),
+  // (the trees lane, 2026-10-08, the gauntlet's waves 282/283a: the acacias "lime-green, puffy savanna canopies, far too
+  // lush for Wadi Rum" — every acacia slot grows as Wadi Rum's flat, sparse Acacia raddiana / tortilis, in its own colour)
+  badlands: B('Wadi Rum, Jordan', { acacia: { form: 'tortilis', colour: RADDIANA_FOLIAGE }, cedar: { form: 'tortilis', colour: RADDIANA_FOLIAGE },
+    oak: { form: 'tortilis', colour: RADDIANA_FOLIAGE } }, 'broom', ARID_FOLIAGE, true),
   // a Saharan wadi: date palms and acacias (the map's oak palette dusts them already; the defaults fill any slot it misses)
   // (trees round 3, the gauntlet's wave 31: the wadi's shrubs were "bright green balls" — a Saharan wadi's scrub is the
   // white broom, Retama raetam, grey-green switches, as Wadi Rum's)

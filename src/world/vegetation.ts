@@ -2487,6 +2487,9 @@ export const BARE_SPRAY_KINDS: Readonly<Partial<Record<GrowthSpecies, SprayKind>
 export function grownFormSprayKind(growth: GrowthSpecies, palette: VegetationPalette = {}): SprayKind {
   if (palette.bare === true && BARE_SPRAY_KINDS[growth]) return BARE_SPRAY_KINDS[growth]!;
   if (growth === 'birch' || growth === 'aspen') return palette.birchLeaves === true ? growth : 'birch-bare';
+  // the trees lane (2026-10-08, waves 282/283a): Wadi Rum's acacia paints the acacia's bipinnate leaflets (its own colour
+  // from its biome slot, treeBiomes.ts)
+  if (growth === 'tortilis') return 'acacia';
   return growth as SprayKind;
 }
 
@@ -7046,6 +7049,7 @@ function* vegetationBuildSteps(
         foliage.castShadow = false;
         foliage.receiveShadow = canopyShadowReceive; // round 77: received once per cluster, never per fragment
         foliage.userData.treeLod = 'near';
+        foliage.userData.treeSpecies = sp; // (trees lane, 2026-10-08: the pool's slot, for the receipts and probes)
         const pool: TreeMesh[] = [trunk, foliage];
         const open = treeGeoOpen[sp]?.[variant];
         if (open) { trunk.userData.formAlt = formAlternate(open.trunk, trunk.geometry); foliage.userData.formAlt = formAlternate(open.cards, foliage.geometry); }
