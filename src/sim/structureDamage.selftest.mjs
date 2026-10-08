@@ -183,16 +183,16 @@ for (const yaw of [0, 0.4, 1.2, Math.PI / 2, 2.6, -0.7]) {
   const damage = createStructureDamage(obstacles, colliders);
   for (const structure of damage.structures) damage.applyPoints(structure, 1e6, blowAt(structure.cx, 1, structure.cz));
   const ticks = [];
-  for (let tick = 0; tick < 4; tick++) {
+  for (let tick = 0; tick < 6; tick++) {
     damage.step();
     const events = [];
     damage.drainEvents(events);
     ticks.push(events.map((e) => `${e.structureId}:${e.stage}`));
   }
-  assert.equal(COLLAPSES_PER_TICK, 2);
+  assert.equal(COLLAPSES_PER_TICK, 1);
   assert.equal(STAGE_EVENTS_PER_TICK, 4);
   const collapsesPerTick = ticks.map((events) => events.filter((e) => e.endsWith('collapsed')).length);
-  assert.deepEqual(collapsesPerTick, [2, 2, 1, 0], 'two swaps a tick, the fifth in the third');
+  assert.deepEqual(collapsesPerTick, [1, 1, 1, 1, 1, 0], 'one swap a tick, the fifth in the fifth');
   assert.ok(collapsesPerTick.every((n) => n <= COLLAPSES_PER_TICK), `collapse swaps per tick ${collapsesPerTick}`);
   assert.equal(ticks.flat().filter((e) => e.endsWith('collapsed')).length, 5, 'every collapse arrives');
   const order = ticks.flat().filter((e) => e.endsWith('collapsed')).map((e) => Number(e.split(':')[0]));

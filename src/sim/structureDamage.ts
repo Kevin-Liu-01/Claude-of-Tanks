@@ -39,8 +39,9 @@ const HP_FLOOR = 10;
 /** Ram pricing (§4.4): energy under this does nothing; above it, one structure point per this many kJ. */
 const RAM_THRESHOLD_KJ = 40;
 const RAM_KJ_PER_POINT = 48;
-/** Collision swaps per fixed step (§5): a third collapse waits a tick. */
-export const COLLAPSES_PER_TICK = 2;
+/** Collision swaps per fixed step (§5, §10): a collapse's work (the swap, the heap, the route grid's refresh round it) is
+ * about 1–4 ms of CPU, so a second collapse in the same tick waits for the next (16.7 ms later). */
+export const COLLAPSES_PER_TICK = 1;
 /** Stage events per fixed step besides collapses (§8.5): the overflow is reported in the next tick. */
 export const STAGE_EVENTS_PER_TICK = 4;
 /** Blast query buckets (§10). */
