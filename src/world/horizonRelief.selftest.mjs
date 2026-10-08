@@ -13,6 +13,7 @@ import { RING_RELIEF_SHADE } from './horizonAutumnGround.ts';
 import { HORIZON_FAR_FOOT_M, HORIZON_FAR_ROWS, HORIZON_FAR_SEGMENTS, resolveFarRangeAmp, sampleHorizonFarRange } from './horizonFarRange.ts';
 import { Matrix4, Texture, Vector3, Vector4 } from 'three';
 import { HORIZON_SEGMENTS, buildHorizonRing, resolveHorizonLightingGains, sampleHorizonGeometry } from './maps/horizon.ts';
+import { HORIZON_FACE_FOREST_M } from './horizonVista.ts';
 import { seaOpeningWeight } from './edgeWater.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { createHeightField } from './terrain.ts';
@@ -416,6 +417,21 @@ for(const id of MAP_IDS) {
       }
     }
     assert.ok(range > 50, `a green map's near ranges still carry range-class trees (${range})`);
+    // the borders lane (2026-10-08; owner 2026-09-12: "distant treelines across the full height of mountain faces"): the
+    // ranges' faces past the range class's reach carry the relief bake's stands as trees — their own pool, from the
+    // hand-over radius to the bake's outer edge, under the treeline (the bake's stands stop there, horizonRelief.ts)
+    let face = 0;
+    const treelineM = Math.min(getMapConfig('longleaf').horizon.treeline, 1.2) * maxH;
+    for (const child of forest.children) {
+      if (!child.name.endsWith('-face')) continue;
+      for (let i = 0; i < child.count; i++) {
+        child.getMatrixAt(i, m); v.setFromMatrixPosition(m); face++;
+        const r = Math.hypot(v.x, v.z);
+        assert.ok(r >= HORIZON_FACE_FOREST_M[0] - 0.01 && r <= HORIZON_RELIEF_BAKE_R1 + 0.01, `face tree on the ranges' faces (${r.toFixed(0)} m)`);
+        assert.ok(v.y + 0.4 <= treelineM * 1.08 + 2, `face tree under the treeline (${(v.y + 0.4).toFixed(0)} of ${treelineM.toFixed(0)} m)`);
+      }
+    }
+    assert.ok(face > 1000, `a green map's range faces carry their stands as trees (${face})`);
     const shader = { uniforms: {}, vertexShader: '#include <common>\n#include <project_vertex>', fragmentShader: '#include <common>\n#include <lights_physical_pars_fragment>\n#include <map_fragment>' };
     forest.userData.horizonForestHook(shader);
     assert.ok(!shader.fragmentShader.includes('vfHigh') && !shader.fragmentShader.includes('uVfFog'), 'fallback crowns use camera-distance scene fog without a second map-radius wash');

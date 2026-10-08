@@ -75,6 +75,17 @@ runtime, the activation runtime's precompile). `horizonForestImpostors.selftest.
 law section pin the seam. The ring's class shapes draw from their own streams (seed and class, never the placement
 stream), so a change to the ring's heights moves and re-thins trees without re-rolling a shape;
 `horizonForestShapes.selftest.mjs` pins it on Railyard's ring raised 3 %.
+The borders lane (2026-10-08; the owner, 2026-09-12: "distant treelines across the full height of mountain faces, in
+several irregular forest belts from lower slopes"): the ranges' faces past the range class's 880 m carry the relief
+bake's stands as trees — the bake keeps its forest weight per texel (`HorizonReliefBake.canopy`), `buildHorizonForest`
+seats a face class on it from 840–940 m out to the bake's 1560 m (`faceCanopyAt`, its own placement stream and its own
+`-face` pools, so the band and range classes keep every draw), under a budget of 12k that contracts the stands to their
+cores (ranked by stand weight with a little key mixed in) rather than thinning them into a dusting; the impostors redraw
+them in the species' existing draws. The stands themselves climb the gullies and the lee faces (the map's prevailing
+wind, `treeClimate.ts resolveTreeWind`) and end in a ragged treeline (±10 % of its altitude by the hollows, ±6 % by the
+wind, two noise octaves); `reliefCover.overSnow` lets a winter map's stands keep to the treeline over the snowline.
+`horizonRelief.selftest.mjs` pins the face class on Longleaf's ring (its radii, its treeline), `horizonResources` its
+budget.
 The mountains lane (2026-10-02, "clouds are the bar; mountains, horizons and terrain must match"): `horizonMassif.ts`
 (THREE-free) carves the ranged rings' composition — each row's relief smoothed along the row — by an eroded landform (a
 Clay-John-style dendritic drainage cut into a smooth base, mean one, the summits through a soft knee), and each

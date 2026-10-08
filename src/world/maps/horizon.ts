@@ -41,9 +41,10 @@ import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, t
 import { buildHorizonRockfield } from '../horizonRockfield.ts';
 import {
   type HorizonReliefBake, type HorizonReliefCharacter, type HorizonReliefCover, type HorizonReliefField, type HorizonReliefSettings,
-  bakeHorizonReliefSteps, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
+  HORIZON_RELIEF_BAKE_R1, bakeHorizonReliefSteps, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
 } from '../horizonRelief.ts';
 import { buildHorizonFarRange } from '../horizonFarRange.ts';
+import { resolveTreeWind } from '../treeClimate.ts';
 import { type HorizonPanoramaCharacter, createHorizonPanorama, type HorizonPanoramaRegional } from '../horizonPanorama.ts';
 import { type MassifSettings, carveMassifRingSteps, createMassifField, cutMassifCanyonsSteps } from '../horizonMassif.ts';
 import { type EscarpmentSettings, carveEscarpmentRingSteps, createEscarpmentField } from '../horizonEscarpment.ts';
@@ -2725,6 +2726,21 @@ export function resolveHorizonLightingGains(lighting: HorizonLighting): { ambien
 }
 
 /** Round 72: the surface atlas as a GPU texture — linear data, angle repeats, radius clamps, mips for the far rows. */
+/** The borders lane (2026-10-08): the bake's forest weight (0..1) at a world point, bilinear over its angle x radius grid. */
+function horizonCanopySampler(bake: HorizonReliefBake): (x: number, z: number) => number {
+  const canopy = bake.canopy!, W = bake.width, H = bake.height, dr = (bake.r1 - bake.r0) / H;
+  return (x: number, z: number): number => {
+    let a = Math.atan2(z, x); if (a < 0) a += Math.PI * 2;
+    const fi = (a / (Math.PI * 2)) * W - 0.5, fj = (Math.hypot(x, z) - bake.r0) / dr - 0.5;
+    if (fj < 0 || fj > H - 1) return 0;
+    const i0 = ((Math.floor(fi) % W) + W) % W, i1 = (i0 + 1) % W, j0 = Math.floor(fj), j1 = Math.min(H - 1, j0 + 1);
+    const ti = fi - Math.floor(fi), tj = fj - j0;
+    const top = canopy[j0 * W + i0] + (canopy[j0 * W + i1] - canopy[j0 * W + i0]) * ti;
+    const bottom = canopy[j1 * W + i0] + (canopy[j1 * W + i1] - canopy[j1 * W + i0]) * ti;
+    return (top + (bottom - top) * tj) / 255;
+  };
+}
+
 function makeReliefTexture(bake: HorizonReliefBake): THREE.DataTexture {
   const texture = new THREE.DataTexture(bake.data, bake.width, bake.height, THREE.RGBAFormat, THREE.UnsignedByteType);
   texture.wrapS = THREE.RepeatWrapping;
@@ -3710,6 +3726,8 @@ export function* buildHorizonRingSteps(
     // its parcels the ring's farmland, so the bake adds no second pattern
     woodsAt: borderLand?.getBorderWoodsAt ? (x: number, z: number) => (borderLand.getBorderWoodsAt as (x: number, z: number) => number)(x, z) : null,
     fields: !borderLand?._borderParcelAt,
+    // the borders lane (2026-10-08): the forest climbs the lee faces (the map's prevailing wind, the one its trees sway in)
+    windDir: (() => { const wind = resolveTreeWind(cfg as Parameters<typeof resolveTreeWind>[0]); return [wind.dirX, wind.dirZ] as const; })(),
   }, bakeField, [lx, ly, lz]) : null;
   // detail-texture UVs: u wraps the ring, v = absolute altitude fraction so
   // strata/snow features in the texture land at constant world height
@@ -3912,6 +3930,8 @@ export function* buildHorizonRingSteps(
     }
     return rowSurface(x, z);
   } : undefined;
+  // the borders lane (2026-10-08): the relief bake's stands (its canopy weight, angle x radius) as a world sampler
+  const faceCanopyAt = reliefBake?.canopy ? horizonCanopySampler(reliefBake) : null;
   const forestGroup = buildHorizonForest({
     columns: HORIZON_SEGMENTS, rows, positions: pos, heights: hs, forestCover, maxHeight: maxH, treeline, snowline,
     forest: forestC, fog: fogC, seed: ((seed ^ 0x51F0) ^ idHash(mapId)) >>> 0,
@@ -3941,6 +3961,8 @@ export function* buildHorizonRingSteps(
         seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.03 ? 1 : 0,
         roadClearAt ? roadClearAt(x, z) : 0) } : {}),
     ...(treeRows.length && rowGroundAt ? { treeRows, rowGroundAt } : {}),
+    // the borders lane (2026-10-08): the ranges' faces carry the bake's stands as trees, past the range class's reach
+    ...(faceCanopyAt ? { faceCanopyAt, faceInstances: 12000, faceRadius: HORIZON_RELIEF_BAKE_R1 } : {}),
     haze: (vistaUniforms?.uVHaze?.value as number | undefined) ?? haze,
     palettes: {
       conifer: rimConiferLead ? vegetation?.palettes?.[rimConiferLead]?.canopy : undefined,
