@@ -2360,6 +2360,28 @@ export function resetVehicleGround(): void {
   VEHICLE_GROUND.uVehUp.value.set(0, 1, 0);
 }
 
+// Fleet lane 2026-10-08 (media lane: "in-game camo renders much lighter than the catalog swatches"; the K2 X in
+// sig_k2b, a dark digital, rendered as a blue-grey base with near-white blotches): every vehicle material authors its
+// share of the sky's image-based light (envMapIntensity: armour paint 0.5, barrel 0.45, fittings and wheel paint 0.25,
+// track steel 0.1 ...), the trims that keep matte field paint off the "milky pastel" wash. three never applied them: a
+// standard material without its own envMap reads the scene environment, and the renderer then overwrites the
+// material's envMapIntensity uniform with scene.environmentIntensity on every draw (WebGLRenderer setProgram), so every
+// vehicle took the full sky light, the largest light term on a sunlit plate in this engine (sky light off: the K2 X's
+// sunlit flank 187 -> 80 display luma, sun off: 187 -> 161; material envMapIntensity 0: no change at all). The hook
+// below scales the image-based light the material receives (diffuse irradiance, specular radiance and the clearcoat
+// lobe) by its own authored value on top of the scene's intensity, so time of day and weather still drive it.
+/** The live image-based-light scale of one vehicle material: its authored envMapIntensity, 1 where it authors none
+ * (or carries its own envMap, which three already scales by it). */
+function vehicleEnvScaleUniform(material: THREE.Material): { readonly value: number } {
+  const surface = material as THREE.Material & { envMap?: THREE.Texture | null; envMapIntensity?: number };
+  return {
+    get value(): number {
+      const v = surface.envMapIntensity;
+      return surface.envMap || typeof v !== 'number' || !Number.isFinite(v) ? 1 : Math.max(0, v);
+    },
+  };
+}
+
 /**
  * Shader hook: clamp `reflectedLight.indirectDiffuse` to an albedo-scaled,
  * view-dependent floor. Chain via `setupShadowMaterial(mat,
@@ -2371,7 +2393,21 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   bindVehicleReadabilityUniform(shader.uniforms);
   shader.uniforms.uVehGround = VEHICLE_GROUND.uVehGround;
   shader.uniforms.uVehUp = VEHICLE_GROUND.uVehUp;
-  shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\n${shader.fragmentShader}`;
+  // the material's image-based-light scale (vehicleEnvScaleUniform): createTankMaterials binds each material's own;
+  // anything compiled through the bare hook keeps the scene's full sky light, as before
+  shader.uniforms.uVehEnvScale ??= { value: 1 };
+  shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\nuniform float uVehEnvScale;\n${shader.fragmentShader}`;
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '#include <lights_fragment_maps>',
+    `#include <lights_fragment_maps>
+#if defined( USE_ENVMAP ) && defined( STANDARD ) && defined( RE_IndirectDiffuse ) && defined( RE_IndirectSpecular )
+	iblIrradiance *= uVehEnvScale;
+	radiance *= uVehEnvScale;
+	#ifdef USE_CLEARCOAT
+	clearcoatRadiance *= uVehEnvScale;
+	#endif
+#endif`,
+  );
   // Owner 2026-10-02 ("shadows on tanks make them look a lil flat"): vehicle pixels add VEHICLE_ALPHA_TAG to the lit
   // materials' 2 + sun visibility in the scene target's alpha, so the aerial pass can give vehicles alone their
   // cavity occlusion (engine/vehicleOcclusion.ts). Same guard as the lighting.ts write it extends.
@@ -2610,8 +2646,15 @@ export function createTankMaterials(
   const shadowSetup = engineCtx?.setupShadowMaterial;
   const shadowHookSupported = supportsShadowHook(engineCtx);
   const setup = <T extends THREE.Material>(material: T): T => {
-    if (shadowHookSupported && shadowSetup) shadowSetup(material, vehicleAmbientFloorHook);
-    else material.onBeforeCompile = vehicleAmbientFloorHook;
+    // each material (and each clone cloneVehicleMaterial registers here) scales the sky light by its own authored
+    // envMapIntensity, read live (vehicleEnvScaleUniform)
+    const envScale = vehicleEnvScaleUniform(material);
+    const hook = (shader: MaterialShader): void => {
+      vehicleAmbientFloorHook(shader);
+      shader.uniforms.uVehEnvScale = envScale;
+    };
+    if (shadowHookSupported && shadowSetup) shadowSetup(material, hook);
+    else material.onBeforeCompile = hook;
     material.customProgramCacheKey = () => 'veh-ambient-floor-v5';
     VEHICLE_MATERIAL_SETUP.set(material, setup); // cloneVehicleMaterial re-registers its clones the same way
     return material;
