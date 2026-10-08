@@ -4,10 +4,14 @@
  *
  * Every ground-cover tier bakes its instance heights from the base field. Once the battle's overlay digs a crater
  * (sim/terrainDeformation.ts), the cover follows one law:
- * - inside 0.9 R of a crater the cover is gone (the blast stripped it; the FX lane's churned soil shows there);
- * - everywhere else the overlay reaches (the bowl's last tenth, the thrown rim out to 1.6 R, a rubble heap and its
- *   skirt) it is re-seated: its height is the base height + `offsetAt` — grass on the rim stands on the rim, a trunk in
- *   the bowl wall roots into it. A rubble heap clears nothing (the building's pile covers it).
+ * - inside 1.15 R of a crater the cover is gone: the blast stripped the bowl and the rim's thrown earth buried its
+ *   crest (crater round 3, 2026-10-08: wave 276 found bright untouched grass up to the bowl's edge, hiding the rim and
+ *   the FX lane's churned soil from the player's eye height);
+ * - round that the tall grass lies low out to 1.6 × the cleared radius (1.84 R, `squashAt`), as round a presentation
+ *   hole: flattened outward by the blast, over the FX lane's ejecta apron;
+ * - everywhere the overlay reaches (the rim's flank out to 2 R, a rubble heap and its skirt) the cover is re-seated: its
+ *   height is the base height + `offsetAt` — grass on the flank stands on it, a trunk in the bowl wall roots into it.
+ *   A rubble heap clears nothing (the building's pile covers it).
  *
  * One law object per world, synced once a frame from the bound overlay (map.ts, right after the terrain's own sync);
  * each tier keeps a follower — the stamps it has applied, and the epoch they belong to — and applies only the new
@@ -16,8 +20,9 @@
  */
 import { stampBounds, type TerrainDeformation } from '../sim/terrainDeformation.ts';
 
-/** The share of a crater's radius its blast clears of cover (the bowl reaches at least 0.92 R round its ragged edge). */
-export const CRATER_COVER_CLEAR = 0.9;
+/** The share of a crater's radius its blast clears of cover: the bowl and its crest (the bowl's ragged edge lies within
+ * 0.92–1.08 R, the crest on it). */
+export const CRATER_COVER_CLEAR = 1.15;
 
 const BUCKET_M = 16, HALF_M = 512, BUCKETS = (HALF_M * 2) / BUCKET_M;
 const bucketOf = (v: number): number => {
@@ -66,7 +71,7 @@ export function createGroundCoverCraters(): GroundCoverCraters {
   let overlay: TerrainDeformation | null = null;
   // `count` is the law's entries (the followers' index: overlay stamps and presentation holes in arrival order);
   // `overlayCount` the overlay's stamps indexed so far
-  let epoch = 0, count = 0, overlayCount = 0, revision = 0;
+  let epoch = 0, count = 0, overlayCount = 0, revision = 0, presentationHoles = 0;
   // the presentation holes' rings (x, z, r) and, per 16 m bucket, the rings that reach it
   const rings: number[] = [];
   const ringBuckets: Array<number[] | undefined> = new Array(BUCKETS * BUCKETS);
@@ -84,6 +89,20 @@ export function createGroundCoverCraters(): GroundCoverCraters {
     for (let i = 0; i < ringBuckets.length; i++) if (ringBuckets[i]) ringBuckets[i]!.length = 0;
     count = 0;
     overlayCount = 0;
+    presentationHoles = 0;
+  }
+
+  /** The ring round a cleared disc of radius r the tall grass lies low in (to r · CRATER_COVER_RING). */
+  function addRing(x: number, z: number, r: number): void {
+    const reach = r * CRATER_COVER_RING;
+    const at = rings.length;
+    rings.push(x, z, r);
+    for (let bz = bucketOf(z - reach); bz <= bucketOf(z + reach); bz++) {
+      for (let bx = bucketOf(x - reach); bx <= bucketOf(x + reach); bx++) {
+        const k = bz * BUCKETS + bx;
+        (ringBuckets[k] ??= []).push(at);
+      }
+    }
   }
 
   function addDisc(x: number, z: number, r: number): void {
@@ -103,7 +122,9 @@ export function createGroundCoverCraters(): GroundCoverCraters {
     reaches.push(box[0], box[1], box[2], box[3]);
     count++;
     if (stamp.kind !== 'crater') return;
+    // the bowl and its crest cleared, the tall grass laid low round them (inside the stamp's 2.2 R reach box)
     addDisc(stamp.x, stamp.z, stamp.radiusM * CRATER_COVER_CLEAR);
+    addRing(stamp.x, stamp.z, stamp.radiusM * CRATER_COVER_CLEAR);
   }
 
   return {
@@ -136,15 +157,9 @@ export function createGroundCoverCraters(): GroundCoverCraters {
       const reach = r * CRATER_COVER_RING;
       reaches.push(x - reach, z - reach, x + reach, z + reach);
       count++;
+      presentationHoles++;
       addDisc(x, z, r);
-      const at = rings.length;
-      rings.push(x, z, r);
-      for (let bz = bucketOf(z - reach); bz <= bucketOf(z + reach); bz++) {
-        for (let bx = bucketOf(x - reach); bx <= bucketOf(x + reach); bx++) {
-          const k = bz * BUCKETS + bx;
-          (ringBuckets[k] ??= []).push(at);
-        }
-      }
+      addRing(x, z, r);
     },
     squashAt(x, z) {
       if (!rings.length) return 1;
@@ -161,7 +176,7 @@ export function createGroundCoverCraters(): GroundCoverCraters {
       return f;
     },
     resetHoles() {
-      if (!rings.length) return;
+      if (!presentationHoles) return;
       if (count) epoch++;
       clear();
       revision = overlay ? overlay.revision - overlay.stamps.length : 0;

@@ -38,8 +38,18 @@ assert.ok(overlay.addCrater(C.x, C.z, C.r, +(0.35 * C.r).toFixed(3), +(0.12 * C.
 overlay.addRubble(-60, 40, 5, 7, 0.3, 1.6);
 law.sync(overlay);
 assert.equal(law.count, 2);
-assert.equal(law.holeAt(C.x + 0.89 * C.r, C.z), true, 'inside 0.9 R: cleared');
-assert.equal(law.holeAt(C.x + 0.91 * C.r, C.z), false, 'past 0.9 R: re-seated');
+assert.equal(law.holeAt(C.x + (CRATER_COVER_CLEAR - 0.01) * C.r, C.z), true, 'inside the bowl and its crest: cleared');
+assert.equal(law.holeAt(C.x + (CRATER_COVER_CLEAR + 0.01) * C.r, C.z), false, 'past them: re-seated');
+// crater round 3: round the cleared disc the tall grass lies low, 0.42 at its edge, whole by 1.6 times it
+{
+  const edge = CRATER_COVER_CLEAR * C.r;
+  assert.ok(Math.abs(law.squashAt(C.x + edge, C.z) - 0.42) < 1e-9, 'the ring laid low at the cleared edge');
+  assert.ok(law.squashAt(C.x + edge * 1.3, C.z) > 0.42 && law.squashAt(C.x + edge * 1.3, C.z) < 1, 'rising out through it');
+  assert.equal(law.squashAt(C.x + edge * 1.6 + 0.01, C.z), 1, 'whole past 1.6 times the cleared radius');
+  const b = law.bounds(0, [0, 0, 0, 0]);
+  assert.ok(b[2] >= C.x + edge * 1.6 && b[0] <= C.x - edge * 1.6, 'the ring inside the stamp\'s reach (the followers re-read it)');
+  assert.equal(law.squashAt(-60, 40), 1, 'a rubble heap lays nothing low');
+}
 assert.equal(law.holeAt(-60, 40), false, 'a rubble heap clears nothing');
 for (const [x, z] of [[C.x + 3, C.z + 1], [C.x - 4.5, C.z], [-58, 42]]) assert.equal(law.liftAt(x, z), overlay.offsetAt(x, z), 'the lift is the overlay');
 assert.ok(law.touches(C.x - 1, C.z - 1, C.x + 1, C.z + 1) && !law.touches(300, 300, 310, 310), 'touches reads the reaches');
@@ -75,7 +85,7 @@ for (const name of ['near', 'far']) {
   for (let i = 0; i < mesh.count; i++) {
     const x = m[i * 16 + 12], z = m[i * 16 + 14], d = Math.hypot(x - C.x, z - C.z);
     if (d < CRATER_COVER_CLEAR * C.r) {
-      assert.equal(b[i * 4 + 1], 0, `${name}: no blade stands inside 0.9 R`);
+      assert.equal(b[i * 4 + 1], 0, `${name}: no blade stands inside the cleared bowl and crest`);
       cleared++;
     } else if (reach(x, z)) {
       rimWorst = Math.max(rimWorst, Math.abs(m[i * 16 + 13] - (snap.m[i * 16 + 13] + overlay.offsetAt(x, z))));
