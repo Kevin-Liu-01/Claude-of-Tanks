@@ -84,6 +84,7 @@ async function enterBattle({ specId, mapId, opponents }) {
     t0, openMs: Math.round(openMs), phase: D.game.phase, preBattleS: D.game.preBattleS,
     trace: window.__BATTLE_LOAD ?? null, world: window.__WORLD_LOAD ?? null, minimap: window.__MINIMAP_LOAD ?? null,
     prefetch: window.__WORLD_PREFETCH ?? null, startBattle: window.__START_BATTLE_TIMINGS ?? null, combatWarm: window.__COMBAT_WARM ?? null,
+    topMask: window.__TOP_MASK_LOAD ?? null,
     programsBefore: programs0, programsAtOpen: R.info.programs?.length ?? null, glAtOpen: diff(gl0, gl1),
     slowProgramQueries: window.__TTB.slowQueries.filter((q) => q.at >= t0),
     longTasks: { n: lt.length, ms: Math.round(lt.reduce((s, [, d]) => s + d, 0)), max: lt.reduce((m, [, d]) => Math.max(m, d), 0) },
