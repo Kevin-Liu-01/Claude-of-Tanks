@@ -936,6 +936,12 @@ export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, Cupola
   topY: number;
   fixedMount: boolean;
   postAssemble: ((rig: TankRig) => void) | null;
+  /**
+   * Steps that run after postAssemble, in the order they were added (round 5, 2026-10-08): equipment laid against the
+   * finished armour (a camouflage suit, ghillieSuit.ts) adds itself here, so no profile's own postAssemble chain is
+   * wrapped or replaced, and it always runs after them.
+   */
+  readonly afterAssemble: Array<(rig: TankRig) => void>;
   addMudguard(
     label: string,
     bucket: string,
@@ -7102,6 +7108,7 @@ function* createTankOwnedSteps(
     // that need to regroup their own authored pieces without touching the
     // shared articulation rig (gunG remains independently pitchable).
     postAssemble: null,
+    afterAssemble: [],
     add(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       const part = xform(geo, x, y, z, rx, ry, rz, s);
       // Destructible clusters are gameplay ERA. Route every authored layer
@@ -8003,6 +8010,7 @@ function* createTankOwnedSteps(
   if (typeof P.postAssemble === 'function') {
     P.postAssemble({ root, hullG, turretG, gunG, recoilG });
   }
+  for (const step of P.afterAssemble) step({ root, hullG, turretG, gunG, recoilG });
 
   // ---- physically seated vehicle markings ----
   // Resolve these after all profile-owned regrouping so the support ray sees
