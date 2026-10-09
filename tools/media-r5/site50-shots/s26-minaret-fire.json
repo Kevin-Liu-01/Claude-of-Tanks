@@ -99,45 +99,6 @@
    "tMs": 0
   },
   {
-   "id": "beat1-shot",
-   "type": "fire",
-   "actor": "foe1",
-   "params": {
-    "slot": 0,
-    "tracer": true,
-    "recoil": true
-   },
-   "tMs": 840
-  },
-  {
-   "id": "beat1-boom",
-   "type": "explosion",
-   "at": [
-    185.86,
-    54.69
-   ],
-   "params": {
-    "size": "large",
-    "cause": "shot"
-   },
-   "tMs": 950
-  },
-  {
-   "id": "beat1-debris",
-   "type": "debris",
-   "at": [
-    185.86,
-    54.69
-   ],
-   "params": {
-    "count": 34,
-    "speedMps": 15,
-    "hot": 0.4,
-    "scale": 1.1
-   },
-   "tMs": 980
-  },
-  {
    "id": "fx4",
    "type": "fire",
    "actor": "hero",
@@ -236,45 +197,6 @@
     "scale": 1.1
    },
    "tMs": 3740
-  },
-  {
-   "id": "beat3-shot",
-   "type": "fire",
-   "actor": "foe1",
-   "params": {
-    "slot": 0,
-    "tracer": true,
-    "recoil": true
-   },
-   "tMs": 4540
-  },
-  {
-   "id": "beat3-boom",
-   "type": "explosion",
-   "at": [
-    138.42,
-    79.97
-   ],
-   "params": {
-    "size": "large",
-    "cause": "shot"
-   },
-   "tMs": 4650
-  },
-  {
-   "id": "beat3-debris",
-   "type": "debris",
-   "at": [
-    138.42,
-    79.97
-   ],
-   "params": {
-    "count": 34,
-    "speedMps": 15,
-    "hot": 0.4,
-    "scale": 1.1
-   },
-   "tMs": 4680
   }
  ],
  "storyboard": {
@@ -3857,27 +3779,30 @@
   "fps": 30,
   "shutterDeg": 60,
   "samples": 8,
-  "maxSamples": 48,
-  "filter": "gaussian",
-  "shake": 1,
-  "speed": []
+  "maxSamples": 48
  },
  "picture": {
   "preset": "cinematic",
+  "dof": {
+   "enabled": false
+  },
+  "chromaticAberration": 0,
+  "vignette": {
+   "amount": 0.22,
+   "roundness": 0.55,
+   "softness": 0.65
+  },
+  "grain": {
+   "amount": 0.05,
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
   "exposure": -0.4,
   "contrast": 1.12,
   "streaks": {
    "amount": 0.22,
    "length": 0.6
-  },
-  "chromaticAberration": 0,
-  "vignette": {
-   "amount": 0.22,
-   "softness": 0.65
-  },
-  "grain": {
-   "amount": 0.05,
-   "color": 0.1
   }
  },
  "meta": {
@@ -3909,7 +3834,7 @@
     "stabilised: hero on foe0, ally1 on foe1"
    ]
   },
-  "beats": 3
+  "beats": 1
  },
  "crushes": [
   {
@@ -3945,5 +3870,12 @@
    ],
    "heightM": 0.94
   }
+ ],
+ "still": {
+  "tMs": 1680,
+  "exposureMs": 2
+ },
+ "stillsExtra": [
+  700
  ]
 }

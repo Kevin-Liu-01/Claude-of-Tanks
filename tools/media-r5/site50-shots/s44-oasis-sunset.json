@@ -3872,20 +3872,14 @@
   "fps": 30,
   "shutterDeg": 60,
   "samples": 8,
-  "maxSamples": 48,
-  "filter": "gaussian",
-  "shake": 1,
-  "speed": []
+  "maxSamples": 48
  },
  "picture": {
   "preset": "golden-hour",
-  "exposure": -0.4,
-  "contrast": 1.12,
-  "toe": 0.25,
-  "streaks": {
-   "amount": 0.22,
-   "length": 0.6
+  "dof": {
+   "enabled": false
   },
+  "chromaticAberration": 0,
   "vignette": {
    "amount": 0.22,
    "roundness": 0.55,
@@ -3893,8 +3887,17 @@
   },
   "grain": {
    "amount": 0.05,
-   "color": 0.1
-  }
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
+  "contrast": 1.12,
+  "toe": 0.25,
+  "streaks": {
+   "amount": 0.22,
+   "length": 0.6
+  },
+  "exposure": -0.4
  },
  "meta": {
   "n": 44,
@@ -4005,5 +4008,12 @@
    ],
    "heightM": 1.12
   }
+ ],
+ "still": {
+  "tMs": 3300,
+  "exposureMs": 2
+ },
+ "stillsExtra": [
+  600
  ]
 }

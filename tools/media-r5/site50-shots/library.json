@@ -43,6 +43,12 @@
      "sha256": "e95f26333a28692930163b5c0018a0b829fa1c91b61278bba956c12b351a669f",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "fa95bbdefe937a781626df7a2a0d0baa0f7c4fc1c3e933cece2a08d6e300fda7",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -166,6 +172,12 @@
      "sha256": "9494d60413aa72133e8f736309d498515bd37157f461d3f255965ce862c609d2",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "af751366acfe3cb382d1d53763ffdb5230c29f4e5a3a7b7e0a48cd5cd6611fd5",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -289,6 +301,12 @@
      "sha256": "cffea674f840bf4bf5e10cb6b6ce81f69d790f5e65980a0da5aa8a87c4778121",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "a123eb7856561924c0a11faed7e0fb162f846b61d2dda4fe820a8a59270c20cd",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -412,6 +430,12 @@
      "sha256": "687b4c6ddfc899cc7d82a505f26a14a83d66b3919404af5d059c169927c6a985",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "7d2c47bf6bc0f236995184a95448505e4ce1e644a476a27107642b0e11f75c9d",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -535,6 +559,12 @@
      "sha256": "982f27e67766fe491fade45d48a8ade8fb156c0277c82be5dcf5d4dcc6daf5ba",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "3e4f8fbc2ce517cc813e9514e6930ce40e997b6a4a31f3b600b68bb397a3afca",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -658,6 +688,12 @@
      "sha256": "17d4451f47d39b5ca143d989d497abd051a5de60d0c228a70012674b2970c962",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "c1747164a099c4486af9475ee6c11f137c6ffb40f460c8cf8d63f709135d84f9",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -734,7 +770,7 @@
    },
    "turrets": "flank",
    "still": {
-    "tMs": 4380,
+    "tMs": 4900,
     "exposureMs": 2
    }
   },
@@ -787,6 +823,12 @@
      "sha256": "68490cafefc3b10a8707abfa38a0a1cf69f89b80e0a09cc874612fb87b84c138",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "d65b440fcd2266a823479c009beca0c2deb54c0dfeb2b36dc067c5bd6c5c800e",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -903,6 +945,12 @@
      "sha256": "865307b397da7f94c0f0a90eb1e2cb7b2ee94ca5563f74952f39cb43095c15fd",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "2edcf9123585d6d863a28f91d9c017e9a2600195095d9c4a08372c7c4e2c5ea9",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1025,6 +1073,12 @@
      "sha256": "bc383c3a6c066220e222c52ce847a37dd74fb2f0cd92059c7ab4eb84c70968d8",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "b48f8543d3569e85639138a4b89d492d8b58da841dd218a6bd31e974b36e6a42",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1135,6 +1189,12 @@
      "sha256": "710402465daa955a1fb66a4045b8fca216b660ef6cffa779593f140402bac894",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "656994d7b574cf620c3fcbfe4ed8bfaaed2eab798c43d075c7ddb7d5847e9a8b",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1244,6 +1304,12 @@
      "sha256": "16352f974176480b54a13af6cc0ad4c2676938283ed8fbb492d5b88f2e119013",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "151d02a92801880640d3460eb0dbe0d7983f1ddffe4639e5bc8c30329f4590e7",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1347,6 +1413,12 @@
      "sha256": "74f8d170d750d579054b73d3ab22c0a7f230a58d947db08d680d076e76ea41e1",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "aacf0ad875cb239de8abdb69e486bab886596946b30e31ff953b11e8abf13cd9",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1456,6 +1528,12 @@
      "sha256": "64ee175f9d5f41856a3833333f48beb40674a8ccc0cb2e83158762e4cdf8751d",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "4098955c06b3fdd0b387ec9a104bc88fea2f755bc521141f22657552525388f8",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1565,6 +1643,12 @@
      "sha256": "ba7b4af1cca0abc04d0d49a194ed6dfdf291dd91e97409d322ec445e971d5280",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "dc5a38437d053fc47143e70845db13177c702dfbc369eda7335b76b1ef220666",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1662,6 +1746,12 @@
      "sha256": "1b87ca7b4d21484fcc17efd2016796b571a855e47e0d2febca25007f81b30593",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "bd72dbe1ccaed7b19b50f9b5337a35c3fcf44d8013b4bd8848558da66081fa98",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1765,6 +1855,12 @@
      "sha256": "8aa3ef766a76fae1bf416e811911b4d9d62f3f235ed20a14774f2fe7ce209eac",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "f167a3ce44a819c3ea3c3f96d712d7b3bd09ac356d087a686fe9c1d3fe24ea0d",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1868,6 +1964,12 @@
      "sha256": "f75e1ffcf4823b305135a84cef638e294efce9ecc92050568f6697e326d9f886",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "fa5d735d27ce79860ba83e0bb7b5caf49e9b15425f8da2b48b5b0f7d77e85083",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1965,6 +2067,12 @@
      "sha256": "e3867e47ced718f9030210e3960c7626085d308d73118136835976f99f159659",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "2dea579d014986b62203f7c0ed04bf440462258b42044610c1b525c1745dddda",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2062,6 +2170,12 @@
      "sha256": "9d306f6f57143d016ff7f0bcaba8f5b7551fd7c2fb11e6ad6b7bf25c3b37c863",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "0a8b68f3e26fa71ed7ba8de28489f2d7f952bc2ae685ed63c74432976bbfa948",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2159,6 +2273,12 @@
      "sha256": "096797d16b9ae3cc020f283ac2d404878cec06effc49caab8523c3c53c37e0af",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "749179599e3b3a0155fe4ff3f00d88ca61fe5eba0ba8bbf3b20fdb73a52c0191",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2262,6 +2382,12 @@
      "sha256": "95b79e7f3772ae8277603dc26b7dee398d19f43e088788cf8108deff8daa399a",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "133fd10e757eb397994310383556992472ea0d8e6d5452294b4bbdf507ce2edc",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2359,6 +2485,12 @@
      "sha256": "36e53834698acc5c5ef5d1fac012fcfc3d7cf5f61847dc7ed582402b99341e94",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "bb8789a44e462ad64a28cc2e113435adb9a5a855e535ef8cfea509fbec2fcf34",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2462,6 +2594,12 @@
      "sha256": "b81fa62c84f7d8faa158d837a92a209dabfc30667a81305a52b36815b1b72e3b",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "6192513c437c968f57933b25ceedb745da0253107d93f93e51d18392b89121fb",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2559,6 +2697,12 @@
      "sha256": "2dfb38be4e5688744f58a91b07a35ee263841497d42ea86619d26366a57cc348",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "4ad30670a207172fc1217fa75e76941f4c56a0dd40abd234f4637ca3c9a7ea0f",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2656,6 +2800,12 @@
      "sha256": "8177215bf7d8647448229b09a6ed30f769a2673382135867d019566f52dad5d1",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "a61eab481cfc094ede4d35ee8bb34e3455cab553fc9c0e0be8a0525b047552a2",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2759,6 +2909,12 @@
      "sha256": "f78afa9ca0be56474d675a317ef10457f926e6799215204b223f833047a77f13",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "080f72ab582a2cc84a81648b582c82cb647585439acde0a56fdc0f781ecae3fb",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2850,6 +3006,12 @@
      "sha256": "115daafc076f48253c546945820d9158d66e7575041ff243e7620886a4b51984",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "30398e0a4f3590807f5aa5883421f74d7b54d21c246ac680993fee9394016618",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2953,6 +3115,12 @@
      "sha256": "3590c18cb27f1e12d07948ed43c30b53f698190af238162a5c3ca8e85289e2b0",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "cb1306dee4dccda6e1ab66c2d62bf06b67e3ea1b1541e3b8d8a42fbf051e2058",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3050,6 +3218,12 @@
      "sha256": "c24d26f159641758ea172f40d2531701f21d596b2255b3799dd5ae86ec90bd09",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "85dbe62f9c985070959f77d374bb76cc51f452507ffc24e7ea1f8e8d8174e1f7",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3159,6 +3333,12 @@
      "sha256": "0b304a587377f818e0e16a1f8f48f731d09f74d1daa007eb02b88106f0d3111c",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "bb506ab286ef05654df8965ddc79be485219e3afc8e19ff69ea9be3bfd9eaa18",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3209,7 +3389,7 @@
    },
    "turrets": "flank",
    "still": {
-    "tMs": 3100,
+    "tMs": 3280,
     "exposureMs": 2
    }
   },
@@ -3268,6 +3448,12 @@
      "sha256": "d566a044a572d8d4cf72717f49921068b019f3616ba9b8146e271cf2ea2b0cd5",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "12f1af000536a64e51327ec094c5ce455ced6bb4ae6995bde1972bf9ff8bdc9c",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3365,6 +3551,12 @@
      "sha256": "52e11ab0749aa883842abd989a0ab713504b210b29594af6d871f5d73e11386d",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "dcf10f602b90706a58fb14cecfd895cdf6e4d49a592f8df158232dddddfbc147",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3468,6 +3660,12 @@
      "sha256": "8cae10c8e0c987fe07f71ed0f3dac38be0b7e4ecb9e1cdc32f2f9602ae7ca9ae",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "a37d48afea88c6de07abf9f528518651fd7605a72e25a3a2220910f49e7ad964",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3565,6 +3763,12 @@
      "sha256": "6779377332b2386776c35a27268a2c9a699499a79812d9d859f654c00b79bc5b",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "b7d16dbd4d9c724989f736517e7b7081555fd5e5bed9edc5e81cab2c00112fff",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3668,6 +3872,12 @@
      "sha256": "e21c7392bee6bcd53dbf4436fa2e8183d80750e6364767106a1e21dd9f4f7f96",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "1123ccecf6df830e9009e7ebcc88074c2d2d05c40e4f9a797a79ba766a185ec3",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3771,6 +3981,12 @@
      "sha256": "2c805c331252c5c5b764038f7a4852a0500a9dddc68c08c37f190c0d9a8411ae",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "c776eb0533318eb866b835c423ec0416780a9a2294bdb8c7907050a78439d6f1",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3874,6 +4090,12 @@
      "sha256": "05174e65b18d8a36541e5a9b1a6005bb1a0cca07328e9627c44a2059ee2b2f18",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "6b665e10fc4a63aa9c47f77b8b19765ff99bcab51001a0101739bbbcdd20a9d0",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3971,6 +4193,12 @@
      "sha256": "5edc4bd8934258a0b6c4ffbdc233cf98d76284cf4db7c5f026b9f417cb82ed3a",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "46244db3313c33bd53b5fc31ec78a6cce412eb65e75b6de576818ad31b7650d9",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -4068,6 +4296,12 @@
      "sha256": "46f5422ac1400df3cd75b46d72e56bac0ad41994b001ed7deda14f3eb3e1ef63",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "d37c70dfbceb5903da79e1d36542f61fd3e65b22d8714cb7cf7f42bf4698c5c4",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -4171,6 +4405,12 @@
      "sha256": "5b9f4f87fcdc3b8c3dc08e62e3e0dc20f6aebd22f37104cde7200515a0cd322c",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "65394b204f2cb31ccbcaab97aa49de4799889051a64d2c2d8a3b2761b7b2b582",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -4281,6 +4521,12 @@
      "sha256": "8d93d31e0b3489c65ed59efe309bca9e3ede7660def374697d738f5e471b8f06",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "ccdfb512432db10c0b9b97602460223eb46dd3c4db29c39049209a34e3b68d2b",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -4378,6 +4624,12 @@
      "sha256": "0762638ac3cc13d51a7165e80cd52a5c1d5fffaff9f3602d345e97891338abfd",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "83232305a75ae00134d479688a4b5bcc9761c96b4a87b246459a1b4830da48ee",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -4481,6 +4733,12 @@
      "sha256": "2d83c2ad475485fd06cb0c7f748491fb8f2c67e4f3234d4bd8aad2047e973308",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "187347b3572d66d05d4324cb70eec88ff07a5fd31c1386d4c517edd0d02d7a5c",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -4578,6 +4836,12 @@
      "sha256": "1ebffe5a7bd8095319126c2acd35f47816c8e8da7c43931afe4153aef2202fe7",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "efec3b31e1fa7ee2b1dfc0f0efc09b1b5138a3760733ee21b165b347e2174ecf",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -4693,6 +4957,12 @@
      "sha256": "fc4017941fa6ffc13a023ca92c4b5f05af48c8dc09aa5e52f2fd63420395d456",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "0d7b54998c330bb3bf7bcd7e75baffbde1a7af11aab6e92c08a411d8f59403a4",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -4809,6 +5079,12 @@
      "sha256": "403350d51a29d60bf2e50d3d76296897d1807263236dafe54913385cd42a9808",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "b1c647bf9c7ede59d2bb23c9b17e033b82f0c06b1e4d27f924ab394b1083ecd4",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -4919,6 +5195,12 @@
      "sha256": "400831cb57e3dec86433372d800f617953ea42baeb5508585c26142207f66528",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "ccf1fd56944a4553a294b3d7ee82f69bdf5c52bc917e1ab36013ad65fe3f9449",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -5022,6 +5304,12 @@
      "sha256": "76bc96a85b46091347933af423d084f9c0b333f5259b6f917b5eeb74dd3082c0",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "116e02da1253d96961957aca1eb1ac9b8b8a0bf185fb5e52f898d0a130485a90",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -5131,6 +5419,12 @@
      "sha256": "dedefc21afa5bb495543970d55d0499e74d0771c7fcbd31799626e50564b252d",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "f33dd63921c38c19de2f273ca6d5f20cd704521ff88814d4baf05fcf8478fe84",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -5247,6 +5541,12 @@
      "sha256": "0b16fd80d8c598a74542e3ae319d28f4decde3c4eb915f1764dd9c88deeffba7",
      "at": "2026-10-09T23:32:29.487Z",
      "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "e2a027f7d0dc7dba8d46832d38490327edc12aedb29c3c5c48361532b06a1e3b",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [

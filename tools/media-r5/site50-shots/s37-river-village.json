@@ -113,45 +113,6 @@
    "tMs": 0
   },
   {
-   "id": "beat1-shot",
-   "type": "fire",
-   "actor": "foe1",
-   "params": {
-    "slot": 0,
-    "tracer": true,
-    "recoil": true
-   },
-   "tMs": 840
-  },
-  {
-   "id": "beat1-boom",
-   "type": "explosion",
-   "at": [
-    3.32,
-    -3.38
-   ],
-   "params": {
-    "size": "large",
-    "cause": "shot"
-   },
-   "tMs": 950
-  },
-  {
-   "id": "beat1-debris",
-   "type": "debris",
-   "at": [
-    3.32,
-    -3.38
-   ],
-   "params": {
-    "count": 34,
-    "speedMps": 15,
-    "hot": 0.4,
-    "scale": 1.1
-   },
-   "tMs": 980
-  },
-  {
    "id": "fx4",
    "type": "fire",
    "actor": "hero",
@@ -4619,26 +4580,29 @@
   "fps": 30,
   "shutterDeg": 60,
   "samples": 8,
-  "maxSamples": 48,
-  "filter": "gaussian",
-  "shake": 1,
-  "speed": []
+  "maxSamples": 48
  },
  "picture": {
   "preset": "cinematic",
-  "exposure": 0.05,
-  "streaks": {
-   "amount": 0.22,
-   "length": 0.6
+  "dof": {
+   "enabled": false
   },
   "chromaticAberration": 0,
   "vignette": {
    "amount": 0.22,
+   "roundness": 0.55,
    "softness": 0.65
   },
   "grain": {
    "amount": 0.05,
-   "color": 0.1
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
+  "exposure": 0.05,
+  "streaks": {
+   "amount": 0.22,
+   "length": 0.6
   }
  },
  "meta": {
@@ -4670,7 +4634,7 @@
     "stabilised: hero on foe0, ally1 on foe1, ally2 on foe0"
    ]
   },
-  "beats": 3
+  "beats": 2
  },
  "crushes": [
   {
@@ -4827,5 +4791,12 @@
    ],
    "heightM": 0.72
   }
+ ],
+ "still": {
+  "tMs": 1480,
+  "exposureMs": 2
+ },
+ "stillsExtra": [
+  4700
  ]
 }

@@ -184,8 +184,8 @@
    "id": "beat2-boom",
    "type": "explosion",
    "at": [
-    148.6,
-    -67.78
+    133.4,
+    -76.89
    ],
    "params": {
     "size": "large",
@@ -197,8 +197,8 @@
    "id": "beat2-debris",
    "type": "debris",
    "at": [
-    148.6,
-    -67.78
+    133.4,
+    -76.89
    ],
    "params": {
     "count": 34,
@@ -223,8 +223,8 @@
    "id": "beat3-boom",
    "type": "explosion",
    "at": [
-    169.35,
-    -70.04
+    171.88,
+    -75.29
    ],
    "params": {
     "size": "large",
@@ -236,8 +236,8 @@
    "id": "beat3-debris",
    "type": "debris",
    "at": [
-    169.35,
-    -70.04
+    171.88,
+    -75.29
    ],
    "params": {
     "count": 34,
@@ -3828,27 +3828,30 @@
   "fps": 30,
   "shutterDeg": 60,
   "samples": 8,
-  "maxSamples": 48,
-  "filter": "gaussian",
-  "shake": 1,
-  "speed": []
+  "maxSamples": 48
  },
  "picture": {
   "preset": "cinematic",
+  "dof": {
+   "enabled": false
+  },
+  "chromaticAberration": 0,
+  "vignette": {
+   "amount": 0.22,
+   "roundness": 0.55,
+   "softness": 0.65
+  },
+  "grain": {
+   "amount": 0.05,
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
   "exposure": -0.4,
   "contrast": 1.12,
   "streaks": {
    "amount": 0.22,
    "length": 0.6
-  },
-  "chromaticAberration": 0,
-  "vignette": {
-   "amount": 0.22,
-   "softness": 0.65
-  },
-  "grain": {
-   "amount": 0.05,
-   "color": 0.1
   }
  },
  "meta": {
@@ -3916,5 +3919,12 @@
    ],
    "heightM": 1
   }
+ ],
+ "still": {
+  "tMs": 2160,
+  "exposureMs": 2
+ },
+ "stillsExtra": [
+  400
  ]
 }

@@ -146,45 +146,6 @@
    "tMs": 0
   },
   {
-   "id": "beat1-shot",
-   "type": "fire",
-   "actor": "foe1",
-   "params": {
-    "slot": 0,
-    "tracer": true,
-    "recoil": true
-   },
-   "tMs": 840
-  },
-  {
-   "id": "beat1-boom",
-   "type": "explosion",
-   "at": [
-    -84.89,
-    4.15
-   ],
-   "params": {
-    "size": "large",
-    "cause": "shot"
-   },
-   "tMs": 950
-  },
-  {
-   "id": "beat1-debris",
-   "type": "debris",
-   "at": [
-    -84.89,
-    4.15
-   ],
-   "params": {
-    "count": 34,
-    "speedMps": 15,
-    "hot": 0.4,
-    "scale": 1.1
-   },
-   "tMs": 980
-  },
-  {
    "id": "fx6",
    "type": "fire",
    "actor": "hero",
@@ -323,8 +284,8 @@
    "id": "beat3-boom",
    "type": "explosion",
    "at": [
-    -77.83,
-    52.02
+    -95.26,
+    71.3
    ],
    "params": {
     "size": "large",
@@ -336,8 +297,8 @@
    "id": "beat3-debris",
    "type": "debris",
    "at": [
-    -77.83,
-    52.02
+    -95.26,
+    71.3
    ],
    "params": {
     "count": 34,
@@ -5417,20 +5378,14 @@
   "fps": 30,
   "shutterDeg": 60,
   "samples": 8,
-  "maxSamples": 48,
-  "filter": "gaussian",
-  "shake": 1,
-  "speed": []
+  "maxSamples": 48
  },
  "picture": {
   "preset": "golden-hour",
-  "exposure": 0.3,
-  "contrast": 1.1,
-  "toe": 0.25,
-  "streaks": {
-   "amount": 0.22,
-   "length": 0.6
+  "dof": {
+   "enabled": false
   },
+  "chromaticAberration": 0,
   "vignette": {
    "amount": 0.22,
    "roundness": 0.55,
@@ -5438,8 +5393,17 @@
   },
   "grain": {
    "amount": 0.05,
-   "color": 0.1
-  }
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
+  "contrast": 1.1,
+  "toe": 0.25,
+  "streaks": {
+   "amount": 0.22,
+   "length": 0.6
+  },
+  "exposure": 0.3
  },
  "meta": {
   "n": 20,
@@ -5470,7 +5434,14 @@
     "stabilised: hero on foe0, ally1 on foe1, ally2 on foe2"
    ]
   },
-  "beats": 3
+  "beats": 2
  },
- "crushes": []
+ "crushes": [],
+ "still": {
+  "tMs": 1380,
+  "exposureMs": 2
+ },
+ "stillsExtra": [
+  3100
+ ]
 }
