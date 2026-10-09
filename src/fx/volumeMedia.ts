@@ -31,6 +31,7 @@
  * pooled puffs there).
  */
 import * as THREE from 'three';
+import { CLOUD_SHADE_PARS_GLSL, createCloudShadeUniforms, type CloudShadeUniforms } from '../engine/cloudShadeMap.ts';
 import { LATE_FX_LAYER } from './layers.ts';
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -189,6 +190,8 @@ varying float vFade;
 varying float vParticleDepth;
 varying float vFeather;
 varying vec2 vDetail;
+varying float vSunVis;
+${CLOUD_SHADE_PARS_GLSL}
 ${FOG_PARS_V}
 void main() {
   float life = aVL.w;
@@ -196,7 +199,7 @@ void main() {
   if ( life <= 0.0 || age < 0.0 || age > life ) {
     vUvA = vec2( 0.0 ); vUvB = vec2( 0.0 ); vTiles = vec4( 0.0 ); vBlend = 0.0; vColor = vec4( 0.0 ); vDetail = vec2( 0.0 );
     vW = vec4( 0.0 ); vWfb = vec2( 0.0 ); vHeat = 0.0; vMirror = 1.0; vT = 0.0; vFade = 1.0; vParticleDepth = 1e9;
-    vFeather = 1.0; vGlow = 0.0;
+    vFeather = 1.0; vGlow = 0.0; vSunVis = 1.0;
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
     #ifdef USE_FOG
       vFogDepth = 1.0;
@@ -281,6 +284,9 @@ void main() {
     gl += gk.y * q * q * exp( -dot( gd, gd ) / max( gk.x * gk.x, 1e-3 ) );
   }
   vGlow = gl;
+  // (fx 8c) the sun the clouds leave this puff: the lit world's own cloud shade (cloudShadeMap.ts), one fetch at the
+  // puff's centre per vertex, so a cloud's shadow sliding over the battlefield dims its smoke and dust with the ground
+  vSunVis = cotCloudSun( center );
   vFeather = clamp( size * 0.22, 0.5, 6.0 );
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   vParticleDepth = -mvPosition.z;
@@ -300,6 +306,7 @@ uniform vec3 uSunCol;     // sun irradiance / pi (gained)
 uniform vec3 uSkyCol;     // sky irradiance / pi, desaturated (gained)
 uniform vec3 uGroundCol;  // ground pole / pi
 uniform vec4 uGrade;      // alpha gain, emission gain, back-scatter gain, multiple-scatter lift
+uniform vec4 uGrade2;     // ground-bounce gain, unused...
 uniform sampler2D uSceneDepth;
 uniform vec2 uSoftViewport;
 uniform float uCameraNear;
@@ -322,6 +329,7 @@ varying float vFade;
 varying float vParticleDepth;
 varying float vFeather;
 varying float vGlow;
+varying float vSunVis;
 ${FOG_PARS_F}
 float softDepthFadeV() {
   vec2 suv = gl_FragCoord.xy / max( uSoftViewport, vec2( 1.0 ) );
@@ -375,18 +383,24 @@ void main() {
   float front = 1.0 - 0.5 * cov;
   float back = clamp( tau * ( 1.0 - cov ) / max( cov, 1e-3 ), 0.0, 1.0 );
   float sunL = ( vW.x * R + vW.y * L + vW.z * U + vW.w * D + vWfb.x * front + vWfb.y * back * uGrade.z )
-    * ( 0.88 + 0.24 * dn );
+    * ( 0.88 + 0.24 * dn ) * vSunVis;
   float skyL = 0.5 * U + 0.15 * ( R + L ) + 0.2 * front;
   // multiple scattering: bright media (dust, powder, spray) lift their shaded side; soot stays dark
   float albedoL = dot( vColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
-  float ms = uGrade.w * smoothstep( 0.08, 0.5, albedoL );
+  float bright = smoothstep( 0.08, 0.5, albedoL );
+  float ms = uGrade.w * bright;
   sunL = mix( sunL, sqrt( sunL ), ms );
   skyL = mix( skyL, sqrt( skyL ), ms * 0.6 );
+  // the ground's light: the underside sees the ground as the top sees the sky; (fx 8c, the critics after atmos r2: "a
+  // cool white wall in the desert that ignores warm light") a bright medium scatters it through its whole body as it
+  // does the sky's, so a white screen over sand takes the sand's warmth in its shade, and dust over green turf its green
+  float gndL = mix( 0.35 * D + 0.1, 0.5 * D + 0.12 * ( R + L ) + 0.18, bright );
+  gndL = mix( gndL, sqrt( gndL ), ms * 0.6 ) * uGrade2.x;
   // dark media take the sky neutral: soot scatters what little it does without the sky's blue (round 4: a rocket's
   // smoke read as blue ghosts), bright dust keeps a little of it
   float skyLum = dot( uSkyCol, vec3( 0.2126, 0.7152, 0.0722 ) );
   vec3 skyC = mix( vec3( skyLum ), uSkyCol, smoothstep( 0.04, 0.3, albedoL ) );
-  vec3 col = vColor.rgb * ( uSunCol * sunL + skyC * skyL + uGroundCol * ( 0.35 * D + 0.1 ) );
+  vec3 col = vColor.rgb * ( uSunCol * sunL + skyC * skyL + uGroundCol * gndL );
   // fire inside the medium: the baked temperature x the puff's heat, on a blackbody ramp; the soot it lights
   float tb = B.g * B.g;
   float h = clamp( tb * vHeat, 0.0, 1.6 );
@@ -448,7 +462,7 @@ function groundWindFromAloft(speedAloft: number): number {
 /** Diagnostic grade (live-tunable through group.userData.volumeTune; play values below). */
 // skySat 0.22 -> 0.12 (wave 273: thinning dust turned bluish)
 const DEFAULT_TUNE = Object.freeze({ sun: 1.0, sky: 1.0, skySat: 0.12, alpha: 1.0, glow: 1.0, back: 1.6, ms: 0.55, detail: 0.55,
-  warp: 0.16 });
+  warp: 0.16, ground: 1.0 });
 
 interface VolumeMediaOptions {
   soft: SoftParticleUniforms;
@@ -573,6 +587,11 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
   const uSkyCol = { value: new THREE.Vector3(0.3, 0.32, 0.35) };
   const uGroundCol = { value: new THREE.Vector3(0.14, 0.13, 0.11) };
   const uGrade = { value: new THREE.Vector4(1, 1, DEFAULT_TUNE.back, DEFAULT_TUNE.ms) };
+  const uGrade2 = { value: new THREE.Vector4(DEFAULT_TUNE.ground, 0, 0, 0) };
+  // the lit world's cloud shade (lighting.ts publishes one set of uniform objects on the scene; volumetricClouds.ts
+  // refreshes them): bound by reference so the media take the same shadow the ground does; off without the layer
+  const cloudShade: CloudShadeUniforms = (o.scene?.userData as { cloudShadeUniforms?: CloudShadeUniforms } | undefined)
+    ?.cloudShadeUniforms ?? createCloudShadeUniforms();
   const totalRows = VOLUME_ATLAS.bands * VOLUME_ATLAS.rowsPerBand;
   const bandWarp: THREE.Vector4[] = [];
   for (let b = 0; b < VOLUME_ATLAS.bands; b++) bandWarp.push(new THREE.Vector4(1, 0, 0, 0));
@@ -593,7 +612,8 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     vertexShader: VOLUME_VERT,
     fragmentShader: VOLUME_FRAG,
     uniforms: Object.assign(THREE.UniformsUtils.clone(THREE.UniformsLib.fog), {
-      uTime, uWind, uSunDir, uSunCol, uSkyCol, uGroundCol, uGrade,
+      uTime, uWind, uSunDir, uSunCol, uSkyCol, uGroundCol, uGrade, uGrade2,
+      tCotCloudShade: cloudShade.tCotCloudShade, uCotCloudShade: cloudShade.uCotCloudShade, uCotCloudSun: cloudShade.uCotCloudSun,
       uMapA: mapA, uMapB: mapB,
       uAtlas: { value: new THREE.Vector4(VOLUME_ATLAS.columns, totalRows, VOLUME_ATLAS.rowsPerBand, VOLUME_ATLAS.frames) },
       uFlowScale: { value: VOLUME_ATLAS.flowScale },
@@ -730,6 +750,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
       uGroundCol.value.set(gr, gg, gb);
     }
     uGrade.value.set(tune.alpha, tune.glow, tune.back, tune.ms);
+    uGrade2.value.x = tune.ground;
     uDetailK.value = tune.detail;
     uWarpK.value = tune.warp;
     const surfaceWind = ud?.surfaceWind;

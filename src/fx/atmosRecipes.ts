@@ -26,14 +26,16 @@ import { linearHex } from './surfaceLooks.ts';
 type Rgb = readonly [number, number, number];
 const TAU = Math.PI * 2;
 
-/** The dense fresh screen: red-phosphorus and multispectral smoke is white (an albedo near a cloud's). */
-const SCREEN_WHITE: Rgb = linearHex(0xdcdedc);
+/** The dense fresh screen: red-phosphorus and multispectral smoke is white (an albedo near a cloud's); (fx 8c, the
+ *  critics: "a cool white wall in the desert") a warm white — phosphorus smoke carries a faint cream, never the
+ *  green-grey cast 0xdcdedc had */
+const SCREEN_WHITE: Rgb = linearHex(0xdfdcd5);
 /** The screen as it thins: a little greyer, never blue (the media's shaded sky is desaturated). */
-const SCREEN_AGED: Rgb = linearHex(0xc4c7c6);
+const SCREEN_AGED: Rgb = linearHex(0xc9c5be);
 /** The burst's own white, a shade brighter than the wall it becomes. */
-const BURST_WHITE: Rgb = linearHex(0xeeeeea);
+const BURST_WHITE: Rgb = linearHex(0xefece4);
 /** The launch wisp behind a grenade in flight: the fuse's thin grey-white smoke. */
-const WISP_GREY: Rgb = linearHex(0xb8bab6);
+const WISP_GREY: Rgb = linearHex(0xbcb9b2);
 const FLASH_WARM: readonly [number, number, number] = [1, 0.9, 0.7];
 const FLASH_DEEP: readonly [number, number, number] = [1, 0.55, 0.2];
 const PELLET: readonly [number, number, number] = [1, 0.82, 0.55];
