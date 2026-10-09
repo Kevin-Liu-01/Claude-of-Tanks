@@ -21,10 +21,14 @@
 // - age at every distance (the lead's round 5 brief, from the media lane's blind pairs: "clean hulls"): grime gathered
 //   in the recesses (at the foot of whatever stands on the deck, the fenders and the turret roof, round the turret's
 //   foot, under the overhangs and in the wheel bays), dark worn edges along the fender lips and the rear deck's edge,
-//   and varied specular (the paint's sheen broken up, polished walkways and raised tops), all large-scale values on
-//   the hull frame and planes measured at build end, band-limited by the pixel's footprint;
-// - it darkens freely but never lightens a surface by more than about a third: the running gear stays darker than the
-//   paint under every soil and in shade (the readability floor scales a shaded texel's light by its albedo);
+//   and varied specular (the paint's sheen broken up, rubbed walkways and raised tops), all large-scale values on the
+//   hull frame and planes measured at build end, band-limited by the pixel's footprint;
+// - darkening-first (round 5's GPU frames: green schemes "washed" paler and creamier in the Garage and on Verdant and
+//   Sirocco while tan ones held): the wear tints toward the soil and darkens, never lifts a painted plate past its own
+//   value (only the thick mud low down sets its own, and snow whitens), never drops painted metal more than 0.06 below
+//   its own roughness (a polished walkway caught the showroom's sky near white), and lifts the running gear by a third
+//   at most, so it stays darker than the paint under every soil and in shade (the readability floor scales a shaded
+//   texel's light by its albedo);
 // - priced for the 14 v 14 frame: no texture, sampler, define or program key; seven vec4 and a vec3 uniform (the soil per
 //   battle, the role, hull frame, planes and soot source per draw), three vec4 varyings, one 2D value-noise octave
 //   where the coat, film or soot can show, a second and the runs' 3D octave only up close (never on the running gear),
@@ -52,6 +56,10 @@ interface VehicleFieldSoil {
   readonly settle: Rgb;
   /** How much of it settles, 0..1. */
   readonly settleAmount: number;
+  /** How far the wear may lighten a painted surface, as a share of its own value: snow alone whitens a hull (0.6);
+   * everywhere else 0, the wear darkens and tints toward the soil and never lifts a dark scheme past its own value
+   * (round 5's GPU frames: a pale film and a polished sheen "washed" the Leopard's, the T-72's and the T-90M's green). */
+  readonly lift: number;
 }
 
 type FieldClimate = 'vegetated' | 'arid' | 'snow';
@@ -126,14 +134,15 @@ const toLuma = (c: Rgb, lo: number, hi: number): Rgb => {
 /**
  * The vehicle's soil from its battlefield's ground. Farmland and meadow: the soil itself, darkened wet low on the
  * running gear (held to a readable 0.06-0.14 luminance and greyed: wave 265 wants "darker, wetter earth", not a black
- * void; on the dark tyres and track it reads lighter than the rubber), drying to a mid grey-brown up the hull (0.1 and
- * up, still far darker than round 4's cream), and its fine dust (a grey-brown two to three times the soil's value) on
- * the decks.
+ * void; on the dark tyres and track it reads lighter than the rubber), drying to a mid grey-brown up the hull (0.08 and
+ * up, still far darker than round 4's cream), and its fine dust on the decks: the soil's own brown at 0.1-0.2, thinner
+ * the wetter the ground (round 5: a grey film at 0.12 washed the T-72B3M's dark green on Verdant).
  * Arid (wave 265: "tan-on-tan erases the form ... dust there needs VALUE contrast"): the contrast is a darker oily grime
  * packed on the running gear and the lowest plates (two fifths of the sand's value), a greyed dust a shade under the
  * paint above it and a faint film on the decks (the round 5 GPU frames: a pale film washed the tan hull near white).
- * Snow: packed snow and dirt in the running gear, dark slush thrown up the hull, fresh snow on the decks. The shader
- * caps how far any of it lightens a surface (FIELD_WEAR_CORE_GLSL), so dark gear stays dark whatever the soil.
+ * Snow: packed snow and dirt in the running gear, dark slush thrown up the hull, fresh snow on the decks (snow alone
+ * may lighten a hull: `lift`). The shader caps how far any of it lightens a surface (FIELD_WEAR_CORE_GLSL): a painted
+ * plate never past its own value off snow, and dark gear stays dark whatever the soil.
  */
 function deriveVehicleFieldSoil({ dirt, ground: base, climate, wet }: FieldGround): VehicleFieldSoil {
   if (climate === 'arid') {
@@ -143,21 +152,23 @@ function deriveVehicleFieldSoil({ dirt, ground: base, climate, wet }: FieldGroun
     return Object.freeze({
       deep: desat(scale(dirt, 0.4), 0.35), wet: Math.min(wet, 0.2),
       splash: desat(scale(base, 0.7), 0.4),
-      settle: desat(scale(base, 0.88), 0.45), settleAmount: 0.35,
+      settle: desat(scale(base, 0.88), 0.45), settleAmount: 0.35, lift: 0,
     });
   }
   if (climate === 'snow') {
     return Object.freeze({
       deep: mixRgb(base, dirt, 0.65), wet,
       splash: scale(desat(dirt, 0.45), 1.1),
-      settle: scale(base, 0.96), settleAmount: 0.75,
+      settle: scale(base, 0.96), settleAmount: 0.75, lift: 0.6,
     });
   }
-  const dust = desat(scale(dirt, 2.6), 0.3);
+  // (round 5's battle frames: a grey dust film at 0.12 "washed" the T-72B3M's dark green on Verdant: the film is the
+  // soil's own brown, at most a mid tone, and thinner the wetter the ground)
+  const dust = desat(scale(dirt, 2.4), 0.2);
   return Object.freeze({
     deep: desat(scale(toLuma(dirt, 0.06, 0.14), 0.9), 0.25), wet,
-    splash: desat(toLuma(scale(dirt, 2.2), 0.1, 0.3), 0.3),
-    settle: toLuma(dust, 0.12, 0.4), settleAmount: 0.8 - 0.25 * wet,
+    splash: desat(toLuma(scale(dirt, 2.2), 0.08, 0.3), 0.3),
+    settle: toLuma(dust, 0.1, 0.2), settleAmount: 0.75 - 0.4 * wet, lift: 0,
   });
 }
 
@@ -174,21 +185,22 @@ export function vehicleFieldSoil(mapId: string | null | undefined): VehicleField
 }
 
 /**
- * The Garage's light neutral film (no battlefield yet: the showroom shows the vehicle, not a map). Its packed coat is a
- * dark dry grime, a little above the tyre rubber's value: the tracks and tyres (which wear the deep coat all round) stay
- * dark under the showroom lights, the fleet lane's running-gear target (wave 269: tyres that lifted to light grey read
- * as "flat tan wheel dishes"), while a light dust rises up the lower hull and settles on the decks.
+ * The Garage's neutral film (no battlefield yet: the showroom shows the vehicle, not a map). Its packed coat is a dark
+ * dry grime, a little above the tyre rubber's value: the tracks and tyres (which wear the deep coat all round) stay dark
+ * under the showroom lights, the fleet lane's running-gear target (wave 269: tyres that lifted to light grey read as
+ * "flat tan wheel dishes"), while a mid grey-brown dust rises up the lower hull and settles on the decks (round 5's
+ * Garage frames: a lighter film and a polished sheen turned the Leopard's light camouflage near white).
  */
 const GARAGE_SOIL: VehicleFieldSoil = Object.freeze({
-  deep: [0.042, 0.039, 0.035] as Rgb, wet: 0, splash: [0.2, 0.185, 0.16] as Rgb,
-  settle: [0.25, 0.23, 0.2] as Rgb, settleAmount: 0.6,
+  deep: [0.042, 0.039, 0.035] as Rgb, wet: 0, splash: [0.12, 0.112, 0.098] as Rgb,
+  settle: [0.15, 0.14, 0.122] as Rgb, settleAmount: 0.6, lift: 0,
 });
 
 const BATTLE = { deep: new THREE.Vector4(), splash: new THREE.Vector4(), settle: new THREE.Vector4() };
 const GARAGE = { deep: new THREE.Vector4(), splash: new THREE.Vector4(), settle: new THREE.Vector4() };
 function packSoil(out: typeof BATTLE, s: VehicleFieldSoil): void {
   out.deep.set(s.deep[0], s.deep[1], s.deep[2], s.wet);
-  out.splash.set(s.splash[0], s.splash[1], s.splash[2], 0);
+  out.splash.set(s.splash[0], s.splash[1], s.splash[2], s.lift);
   out.settle.set(s.settle[0], s.settle[1], s.settle[2], s.settleAmount);
 }
 packSoil(BATTLE, vehicleFieldSoil('verdant'));
@@ -213,7 +225,8 @@ export const VEHICLE_FIELD_WEAR_UNIFORMS = Object.freeze({
   // none
   uVehWearSoot: { value: new THREE.Vector4(0, 0, 0, 0) },
   uVehWearSootAxis: { value: new THREE.Vector4(0, 0, 1, 1) },
-  // per battle (Garage: the neutral film): deep coat (rgb, wetness), thrown coat (rgb, unused), film (rgb, amount)
+  // per battle (Garage: the neutral film): deep coat (rgb, wetness), thrown coat (rgb, how far the wear may lighten a
+  // surface), film (rgb, amount)
   uVehWearDeep: { value: new THREE.Vector4().copy(BATTLE.deep) },
   uVehWearSplash: { value: new THREE.Vector4().copy(BATTLE.splash) },
   uVehWearSettle: { value: new THREE.Vector4().copy(BATTLE.settle) },
@@ -738,14 +751,16 @@ ${FIELD_WEAR_NOISE_GLSL}`;
  * 0.5 at range), wearStrength, wearRole, wearHull, wearPlanes, wearSoot, wearSootAxis, soilDeep, soilSplash, soilSettle.
  * In and out: wearAlbedo (linear), wearRough, wearMetal.
  * Order: the thrown coat and the settled film; at every distance, the recess grime, the worn edges, the paint's sheen
- * breakup and the polished walkways and raised tops (large-scale values on the measured hull frame, band-limited by the
+ * breakup and the rubbed walkways and raised tops (large-scale values on the measured hull frame, band-limited by the
  * footprint); up close, track iron and bare steel worn smooth, chips along the plate's relief and in the walkways, grime
  * and rust runs; then a cap on how far all of it may lighten the surface, and last the soot of the exhaust or the
- * muzzle. Round 5's GPU review (2026-10-08): every breakup is soft-edged and
- * low-contrast (a thresholded fine octave drew "digital camo" blotches on the M60A1's mud flaps), the spatter dots are
- * gone ("ink-blot specks"), and nothing may lighten a surface by more than about a third: the vehicle readability floor
- * scales a shaded texel's light by its albedo over its paint's mean, so a coat that lit the dark track band drew "the
- * cream outline round the tracks" in shade.
+ * muzzle. Round 5's GPU reviews (2026-10-08): every breakup is soft-edged and low-contrast (a thresholded fine octave
+ * drew "digital camo" blotches on the M60A1's mud flaps), the spatter dots are gone ("ink-blot specks"), and the wear is
+ * darkening-first: it never lifts a painted plate past its own value (the thick mud low down and snow excepted) nor
+ * drops painted metal more than 0.06 below its own roughness, and the running gear lifts by a third at most. The
+ * readability floor scales a shaded texel's light by its albedo over its paint's mean, so a coat that lit the dark track
+ * band drew "the cream outline round the tracks" in shade; a pale film, grime in the soil's own value and a polished
+ * sheen "washed" the green schemes in the Garage and on Verdant and Sirocco, while the tan ones held.
  */
 export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
 	float wearL0 = dot( wearAlbedo, vec3( 0.2126, 0.7152, 0.0722 ) );
@@ -756,6 +771,9 @@ export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
 	// the coat's top line wanders with the low octave and hangs in soft runs up close
 	float lineH = wearH - wearBack * 0.35 + ( n1 - 0.5 ) * 0.6 + ( runs - 0.5 ) * 0.24 + ( n2 - 0.5 ) * 0.05;
 	float gearCoat = step( 1.5, wearRole.z ) * ( 1.0 - step( 2.5, wearRole.z ) * step( wearRole.z, 3.5 ) );
+	// the value the wear may not lighten past (see the cap below): the paint's own, or where a thick deep coat hides a
+	// painted plate, the mud's
+	float wearRefL = wearL0;
 	if ( lineH < 1.45 ) {
 		// thrown up off the tracks; the running gear (classes 2, 4 and 5) keeps its packed deep colour all round
 		float coat = 1.0 - smoothstep( 0.2, 1.45, lineH );
@@ -765,6 +783,7 @@ export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
 		float cover = clamp( coat + ( ( n2 - 0.5 ) * 0.3 + ( runs - 0.5 ) * 0.3 ) * coat * ( 1.0 - coat ) * 4.0, 0.0, 1.0 );
 		cover *= 0.85 + 0.3 * clamp( - wearUp, 0.0, 1.0 ) + 0.15 * clamp( wearUp, 0.0, 1.0 ) + 0.2 * wearBack;
 		float coatAmt = clamp( cover * wearStrength * wearRole.x, 0.0, 1.0 );
+		wearRefL = mix( wearL0, max( wearL0, dot( coatCol, vec3( 0.2126, 0.7152, 0.0722 ) ) ), coatAmt * deep * ( 1.0 - gearCoat ) );
 		wearAlbedo = mix( wearAlbedo, coatCol, coatAmt * 0.85 );
 		wearRough = mix( wearRough, mix( 1.0, 0.35, soilDeep.a * deep ), coatAmt );
 		wearMetal = mix( wearMetal, 0.0, coatAmt );
@@ -784,6 +803,7 @@ export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
 	float useAmt = useAge * step( 0.05, wearHull.z );
 	float walkway = 0.0;
 	if ( useAmt > 0.0 && gearCoat < 0.5 ) {
+		float roughUse0 = wearRough;
 		float upright = 1.0 - smoothstep( 0.45, 0.7, abs( wearUp ) );
 		// where things stand on the deck and the fenders: inside the hull's outline (clear of the rear plate, the bow's
 		// plates, the hull sides and the skirts, which only pass through those heights), so a plate that runs past a plane
@@ -795,9 +815,10 @@ export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
 		// grime in the recesses: at the foot of every wall standing on the deck, the fenders or the turret roof, and round
 		// the turret's own foot (the ring's gap, hatch and box corners, the hull side's foot along the fender), under the
 		// overhangs (the bustle, the mantlet, the sponsons) and in the wheel bays (the hull's own sides inboard of the
-		// tracks); the battlefield's dried soil, matte: darker than a tan hull, browner than a dark green one (a multiply
-		// alone barely read on dark camouflage). Every band's ramps widen with the pixel's footprint and keep its area, so
-		// far off a thin one settles to a faint wide one, never a flicker.
+		// tracks); a matte multiply toward the battlefield soil's hue: darker and browner on every scheme, never paler
+		// (round 5's battle frames: grime in the soil's own value lifted the T-72B3M's dark green to a creamy wash). Every
+		// band's ramps widen with the pixel's footprint and keep its area, so far off a thin one settles to a faint wide
+		// one, never a flicker.
 		vec2 baseSoft = vec2( 0.004, 0.05 );
 		float base = max( cotWearBand( wearH, wearHull.z + 0.006, wearHull.z + 0.07, baseSoft, wearFoot ) * inboard,
 			cotWearBand( wearH, wearPlanes.x + 0.006, wearPlanes.x + 0.07, baseSoft, wearFoot ) * onFender );
@@ -813,25 +834,29 @@ export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
 			* ( 1.0 - smoothstep( wearPlanes.x - 0.15, wearPlanes.x - 0.03, wearH ) );
 		float grime = clamp( max( max( base * upright * 0.8, under * 0.6 ), bay * 0.55 ) * ( 0.8 + 0.4 * n1 ), 0.0, 1.0 )
 			* useAmt * wearRole.x;
-		vec3 grimeCol = mix( soilSplash.rgb, soilDeep.rgb, 0.35 ) * 0.9;
-		wearAlbedo = mix( wearAlbedo, grimeCol, grime * 0.85 );
+		float lumDeep = max( dot( soilDeep.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ), 0.01 );
+		vec3 grimeTint = mix( vec3( 0.55 ), soilDeep.rgb * ( 0.55 / lumDeep ), 0.8 );
+		wearAlbedo *= mix( vec3( 1.0 ), grimeTint, grime );
 		wearRough = mix( wearRough, 0.82, grime * 0.7 );
 		wearMetal = mix( wearMetal, 0.0, grime );
 		// worn edges, broken along their length by the low octave: the fender lips (the hull's outermost width at the
-		// fenders' top) and the rear deck's edge with the rear plate's top; the paint worn through to dark steel with a
-		// dull sheen (never a light line: wave 264's outline)
+		// fenders' top) and the rear deck's edge with the rear plate's top; the paint worn through to dark steel, barely
+		// glossier than the paint (never a light line or a sheen: wave 264's outline, round 5's Garage frames)
 		float lip = cotWearBand( abs( wearAcross ), wearHull.w - 0.075, wearHull.w + 0.05, vec2( 0.012, 0.0 ), wearFoot )
 			* cotWearBand( wearH, wearPlanes.x - 0.09, wearPlanes.x + 0.012, vec2( 0.03, 0.006 ), wearFoot );
 		float sternEdge = cotWearBand( wearAlong, wearHull.x - 0.05, wearHull.x + 0.07, vec2( 0.0, 0.015 ), wearFoot )
 			* cotWearBand( wearH, wearHull.z - 0.07, wearHull.z + 0.012, vec2( 0.025, 0.006 ), wearFoot );
 		float edge = max( lip, sternEdge ) * smoothstep( 0.36, 0.64, n1 ) * isPaint * useAmt;
 		wearAlbedo = mix( wearAlbedo, vec3( 0.06, 0.057, 0.053 ), edge * 0.75 );
-		wearRough = mix( wearRough, 0.48, edge * 0.75 );
-		wearMetal = mix( wearMetal, 0.45, edge * 0.75 );
-		// varied specular at every distance: the paint's sheen breaks up with the low octave (chalky and smoother
-		// patches); boots and hands polish the walkways (the front fenders and the glacis top, the rear deck's edge) and
-		// the raised tops just above the deck and the turret roof (hatch rims and lids, box lids)
-		wearRough = clamp( wearRough + ( n1 - 0.5 ) * 0.16 * isPaint * useAmt, 0.04, 1.0 );
+		wearRough = mix( wearRough, 0.6, edge * 0.75 );
+		wearMetal = mix( wearMetal, 0.35, edge * 0.75 );
+		// varied specular at every distance, never a sheen: the paint's own breaks up with the low octave (chalky patches,
+		// a few a touch smoother); boots and hands darken the walkways (the front fenders and the glacis top, the rear
+		// deck's edge) and the raised tops just above the deck and the turret roof (hatch rims and lids, box lids) and
+		// leave them only a touch glossier. Round 5's Garage frames: a walkway polished to 0.52 and greyed toward its
+		// own value caught the showroom's sky across the Leopard's whole glacis and turned its light camouflage near
+		// white; painted metal now drops at most 0.06 below its own roughness.
+		wearRough = clamp( wearRough + ( n1 - 0.35 ) * 0.12 * isPaint * useAmt, 0.04, 1.0 );
 		walkway = isPaint * smoothstep( 0.8, 0.95, wearUp ) * smoothstep( 0.7, 0.9, wearH )
 			* ( 1.0 - smoothstep( wearHull.z + 0.05, wearHull.z + 0.3, wearH ) )
 			* max( smoothstep( wearHull.y - 1.7, wearHull.y - 0.8, wearAlong ), 1.0 - smoothstep( wearHull.x + 0.5, wearHull.x + 1.0, wearAlong ) )
@@ -839,10 +864,10 @@ export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
 		float raised = smoothstep( 0.8, 0.95, wearUp ) * smoothstep( 0.3, 0.6, n1 ) * isPaint * useAmt * max(
 			cotWearBand( wearH, wearHull.z + 0.02, wearHull.z + 0.14, vec2( 0.006, 0.03 ), wearFoot ) * inboard,
 			step( 0.05, wearPlanes.y ) * cotWearBand( wearH, wearPlanes.y + 0.02, wearPlanes.y + 0.14, vec2( 0.006, 0.03 ), wearFoot ) );
-		float rubLuma = dot( wearAlbedo, vec3( 0.2126, 0.7152, 0.0722 ) );
-		wearAlbedo = mix( wearAlbedo, mix( wearAlbedo, vec3( rubLuma ), 0.25 ) * 0.92, walkway * 0.7 );
-		wearRough = mix( wearRough, 0.52, max( walkway, raised ) * 0.7 );
-		wearMetal = mix( wearMetal, 0.25, raised * 0.4 );
+		wearAlbedo *= ( 1.0 - walkway * 0.15 ) * ( 1.0 - raised * 0.1 );
+		wearRough -= max( walkway, raised ) * 0.05;
+		wearMetal = mix( wearMetal, 0.15, raised * 0.3 );
+		wearRough = max( wearRough, roughUse0 - 0.06 - ( 1.0 - isPaint ) );
 	}
 	if ( wearNear > 0.0 ) {
 		float isIron = step( 1.5, wearRole.z ) * step( wearRole.z, 2.5 );
@@ -867,11 +892,17 @@ export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
 		vec3 streakTint = mix( vec3( 0.74, 0.72, 0.69 ), vec3( 0.8, 0.67, 0.55 ), smoothstep( 0.6, 0.8, n1 ) );
 		wearAlbedo *= mix( vec3( 1.0 ), streakTint, streak * 0.45 );
 	}
-	// the wear darkens freely but lightens a surface by at most about a third: dark gear stays dark (under every soil and
-	// in shade, where the readability floor scales a texel's light by its albedo over its paint's mean), and a pale soil
-	// tints a deck rather than washing it white
+	// the wear darkens freely but never pales a surface: a painted plate keeps at most its own value (or, low down where
+	// a thick deep coat hides it, the mud's: the dust graded up from the running gear), lifted only by snow (0.6; 0 on
+	// every other soil: the film and the grime tint toward the soil, never lift a dark green past its own value); the
+	// running gear may lift by a third (its mud on black rubber, accepted since round 5's first frames; under snow by the
+	// snow's lift) but no further: dark gear stays dark under
+	// every soil and in shade, where the readability floor scales a texel's light by its albedo over its paint's mean
+	// (round 5: a coat that lit the track band drew "the cream outline round the tracks"; a pale film and grime in the
+	// soil's own value "washed" dark camouflage)
 	float wearL = dot( wearAlbedo, vec3( 0.2126, 0.7152, 0.0722 ) );
-	wearAlbedo *= min( 1.0, ( wearL0 * 1.35 + 0.01 ) / max( wearL, 0.0001 ) );
+	float wearCapL = max( wearRefL * ( 1.0 + soilSplash.a ) + 0.01 * soilSplash.a, gearCoat * ( wearL0 * 1.35 + 0.01 ) );
+	wearAlbedo *= min( 1.0, wearCapL / max( wearL, 0.0001 ) );
 	if ( wearSootIn ) {
 		// the bound source's soot: the exhaust's fan or the muzzle's carbon (the glue tests its reach)
 		float sootLen = max( wearSootAxis.w, 0.05 );

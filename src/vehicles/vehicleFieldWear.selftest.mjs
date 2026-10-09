@@ -135,7 +135,7 @@ for (let i = 0; i < 64; i++) {
   assert.ok(jump < 0.06 && hi - lo > 0.4, `the runs' octave is smooth and varied (step ${jump.toFixed(3)}, range ${(hi - lo).toFixed(2)})`);
 }
 const core = parseGlsl(FIELD_WEAR_CORE_GLSL);
-const soilVec = (s) => ({ soilDeep: [...s.deep, s.wet], soilSplash: [...s.splash, 0], soilSettle: [...s.settle, s.settleAmount] });
+const soilVec = (s) => ({ soilDeep: [...s.deep, s.wet], soilSplash: [...s.splash, s.lift], soilSettle: [...s.settle, s.settleAmount] });
 const PAINT = [1, 1, 1, 1], IRON = [0.9, 0, 2, 0.6], STEEL = [0.9, 0.8, 3, 1];
 // (a hull 7 m long, its deck at 1.5 m, its fenders at 1.05 m and 1.8 m out, its turret roof at 2.05 m and the turret's
 // foot at 1.52 m; the base pixel sits over the fenders, outboard of the wheel bays and inboard of the fender lip)
@@ -234,14 +234,23 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
     const up = run({ wearRole: role, wearUp: 1, wearH: 0.85, ...desertSoil, wearAlbedo: [0.03, 0.03, 0.03] });
     assert.ok(luma(up.wearAlbedo) <= 0.03 * 1.35 + 0.01 + 1e-9, 'no film, and no lightening past the cap, on the running gear');
   }
-  // every soil, every role: the wear lightens a dark surface by at most a third (the readability floor scales a shaded
-  // texel's light by its albedo over its paint's mean, so a lit-up track band drew a cream outline in shade)
+  // darkening-first, every soil, every role (round 5's GPU frames: a pale film, soil-valued grime and a polished sheen
+  // "washed" the green schemes; a coat that lit the track band drew a cream outline in shade, where the readability
+  // floor scales a texel's light by its albedo over its paint's mean): the running gear lifts by a third at most (snow's
+  // lift where larger); a painted or soft surface never past its own value above the thick mud (snow alone whitens, by
+  // 0.6), and down in the thick mud at most to the mud's own value
   for (const soil of ['verdant', 'desert', 'winter', 'moon', 'mars']) {
+    const s = vehicleFieldSoil(soil);
     for (const role of [PAINT, IRON, STEEL, [0.9, 0, 4, 0.6], [0.75, 0, 5, 0.6], [0.85, 1, 0, 0.8]]) {
-      for (const h of [0.1, 0.6, 1.2, 2.2]) for (const up of [-1, 0, 1]) {
-        const dark = [0.012, 0.0123, 0.0116];
-        const o = run({ wearRole: role, wearUp: up, wearH: h, wearN1: 0.9, wearN2: 0.9, wearRuns: 0.9, ...soilVec(vehicleFieldSoil(soil)), wearAlbedo: dark });
-        assert.ok(luma(o.wearAlbedo) <= luma(dark) * 1.35 + 0.01 + 1e-9, `${soil}: the wear never lights a dark surface up (${role}, h ${h}, up ${up})`);
+      const gear = role[2] === 2 || role[2] === 4 || role[2] === 5;
+      for (const albedo of [[0.012, 0.0123, 0.0116], [0.04, 0.06, 0.025], [0.12, 0.16, 0.07]]) {
+        for (const h of [0.1, 0.6, 1.2, 1.53, 2.2]) for (const up of [-1, 0, 1]) for (const n of [0.1, 0.9]) {
+          const o = run({ wearRole: role, wearUp: up, wearH: h, wearN1: n, wearN2: n, wearRuns: n, ...soilVec(s), wearAlbedo: albedo, wearAcross: 0.5 });
+          const L0 = luma(albedo), mud = Math.max(luma(s.deep), luma(s.splash));
+          const lifted = (ref) => ref * (1 + s.lift) + 0.01 * s.lift;
+          const cap = gear ? Math.max(L0 * 1.35 + 0.01, lifted(L0)) : lifted(h >= 0.9 ? L0 : Math.max(L0, mud));
+          assert.ok(luma(o.wearAlbedo) <= cap + 1e-9, `${soil}: the wear never pales a surface (${role}, ${albedo}, h ${h}, up ${up}, n ${n})`);
+        }
       }
     }
   }
@@ -266,7 +275,9 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   assert.ok(smooth.wearMetal < 0.1, 'no chips on a plain plate');
   const walk = run({ wearH: 1.45, wearUp: 1, wearAlong: 3.3, wearN1: 0.8, wearN2: 0.6 });
   const midDeck = run({ wearH: 1.45, wearUp: 1, wearAlong: 0.2, wearN1: 0.8, wearN2: 0.6 });
-  assert.ok(walk.wearRough < midDeck.wearRough - 0.05, 'boots rub the walkway by the bow smoother than the middle of the deck');
+  assert.ok(luma(walk.wearAlbedo) < luma(midDeck.wearAlbedo) * 0.9 && walk.wearRough < midDeck.wearRough - 0.02
+    && walk.wearRough >= midDeck.wearRough - 0.06 - 1e-9,
+    'boots darken the walkway by the bow and leave it only a touch smoother than the middle of the deck (never a sheen)');
   // grime runs: on a vertical painted plate only where the runs crest and the low octave allows, soft, a multiply
   const runAt = (runs, n1, up = 0) => run({ wearH: 1.6, wearUp: up, wearN1: n1, wearRuns: runs });
   const flatPlate = run({ wearH: 1.6, wearUp: 0, wearN1: 0.8, wearRuns: 0.5, wearRole: [1, 1, 0, 1] });
@@ -312,11 +323,11 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   assert.ok(lum(underside) < lum(run({ wearH: 2.0, wearUp: -1, wearFoot: FAR, ...desertTan, wearHull: [0, 0, 0, 0] })) * 0.8, 'under the bustle');
   const bayIn = run({ wearH: 0.6, wearAcross: 0.9, wearFoot: FAR, ...desertTan }), bayOut = run({ wearH: 0.6, wearAcross: 1.6, wearFoot: FAR, ...desertTan });
   assert.ok(lum(bayIn) < lum(bayOut) * 0.85, 'the wheel bays: the hull\'s own sides inboard of the tracks');
-  // on a dark green hull the grime reads by hue: the farmland's dried earth, browner, within a quarter of the paint's value
+  // on a dark green hull the grime reads by hue as well: the farmland's earth, browner and darker, never paler
   const green = [0.07, 0.09, 0.04], gIn = run({ wearH: 1.53, wearAcross: 0.5, wearFoot: FAR, wearAlbedo: green });
   const gOut = run({ wearH: 1.53, wearAcross: 0.5, wearFoot: FAR, wearAlbedo: green, wearHull: [-3.4, 3.6, 1.2, 1.8], wearPlanes: [1.05, 2.05, 0, 0] });
-  assert.ok(gIn.wearAlbedo[0] / gIn.wearAlbedo[1] > gOut.wearAlbedo[0] / gOut.wearAlbedo[1] * 1.15 && Math.abs(lum(gIn) / lum(gOut) - 1) < 0.25,
-    'on dark green the corner grime reads browner, not just darker');
+  assert.ok(gIn.wearAlbedo[0] / gIn.wearAlbedo[1] > gOut.wearAlbedo[0] / gOut.wearAlbedo[1] * 1.1 && lum(gIn) < lum(gOut),
+    'on dark green the corner grime reads browner and darker, never paler');
   const rearIn = run({ wearH: 0.6, wearAcross: 0.9, wearFront: -1, wearBack: 1, wearFoot: FAR });
   const rearOut = run({ wearH: 0.6, wearAcross: 1.6, wearFront: -1, wearBack: 1, wearFoot: FAR });
   assert.ok(Math.abs(lum(rearIn) - lum(rearOut)) < 1e-9, 'not the rear plate (it faces the stern, not a bay)');
@@ -329,8 +340,10 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   // light line
   const lipAt = (across, n1, over = {}) => run({ wearH: 1.03, wearUp: 1, wearAcross: across, wearN1: n1, wearFoot: FAR, ...over });
   const lip = lipAt(1.77, 0.8), inboard = lipAt(1.5, 0.8);
-  assert.ok(lum(lip) < lum(inboard) * 0.8 && lip.wearMetal > inboard.wearMetal + 0.15 && lip.wearRough < inboard.wearRough - 0.1,
-    `the fender lip worn to dark steel with a sheen at 40 m (${lum(lip).toFixed(3)} vs ${lum(inboard).toFixed(3)})`);
+  const unworn = lipAt(1.77, 0.8, { wearRole: [1, 1, 0, 1] }); // (no paint use-wear: the roughness the coat and film left)
+  assert.ok(lum(lip) < lum(inboard) * 0.8 && lip.wearMetal > inboard.wearMetal + 0.15 && lip.wearRough < inboard.wearRough - 0.02
+    && lip.wearRough >= unworn.wearRough - 0.06 - 1e-9,
+    `the fender lip worn to dark steel at 40 m, at most a touch glossier (${lum(lip).toFixed(3)} vs ${lum(inboard).toFixed(3)})`);
   assert.ok(Math.abs(lum(lipAt(1.77, 0.2)) - lum(lipAt(1.5, 0.2))) < 0.002, 'broken along its length by the low octave');
   const tan = [0.40, 0.33, 0.22], dark = [0.02, 0.022, 0.018];
   assert.ok(lum(lipAt(1.77, 0.8, { wearAlbedo: tan })) < luma(tan) * 0.6, 'on a tan hull a dark worn line');
@@ -354,15 +367,25 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
       `a ${hi - lo} m band keeps its area far off (${a.sum.toFixed(4)} -> ${b.sum.toFixed(4)} -> ${c.sum.toFixed(4)}, peak ${a.peak.toFixed(2)} -> ${c.peak.toFixed(2)})`);
   }
   assert.ok(lum(lipAt(1.77, 0.8, { wearFoot: 0.08 })) > lum(lipAt(1.77, 0.8, { wearFoot: 0.004 })), 'the lip dims far off');
-  // (3) varied specular at 40 m: the wet coat low, the dust film on the deck, the polished walkway by the bow, the worn
-  // edge, the paint's own breakup
+  // (3) varied specular at 40 m, never a sheen on paint: the wet coat low, the matte dust film on the deck, the rubbed
+  // walkway by the bow and the raised tops a touch smoother, the paint's own breakup (chalky patches)
   const rough = (over) => run({ wearFoot: FAR, ...over }).wearRough;
   const lowCoat = rough({ wearH: 0.15 }), film = rough({ wearH: 1.3, wearUp: 1, wearAlong: 0.2, wearN1: 0.8 });
   const walkway = rough({ wearH: 1.3, wearUp: 1, wearAlong: 3.1, wearN1: 0.8 });
-  assert.ok(lowCoat < 0.6 && film > 0.75 && walkway < film - 0.15, `wet coat ${lowCoat.toFixed(2)}, film ${film.toFixed(2)}, walkway ${walkway.toFixed(2)}`);
-  assert.ok(Math.abs(rough({ wearH: 2.2, wearN1: 0.15 }) - rough({ wearH: 2.2, wearN1: 0.85 })) > 0.08, 'the paint\'s sheen breaks up at 40 m');
-  const raisedTop = rough({ wearH: 2.1, wearUp: 1, wearN1: 0.8 }), roofTop = rough({ wearH: 2.05, wearUp: 1, wearN1: 0.8 });
-  assert.ok(raisedTop < roofTop - 0.1, 'a raised top just above the roof (a hatch rim or lid) is polished');
+  assert.ok(lowCoat < 0.6 && film > 0.75 && walkway < film - 0.02 && walkway >= film - 0.06 - 1e-9,
+    `wet coat ${lowCoat.toFixed(2)}, film ${film.toFixed(2)}, walkway ${walkway.toFixed(2)}`);
+  assert.ok(Math.abs(rough({ wearH: 2.2, wearN1: 0.15 }) - rough({ wearH: 2.2, wearN1: 0.85 })) > 0.07, 'the paint\'s sheen breaks up at 40 m');
+  assert.ok(rough({ wearH: 2.2, wearN1: 0.15 }) >= BASE.wearRough - 0.06, 'the breakup is mostly chalky, never a polish');
+  const raisedTop = run({ wearFoot: FAR, wearH: 2.1, wearUp: 1, wearN1: 0.8 }), roofTop = run({ wearFoot: FAR, wearH: 2.3, wearUp: 1, wearN1: 0.8 });
+  assert.ok(raisedTop.wearRough < roofTop.wearRough - 0.02 && luma(raisedTop.wearAlbedo) < luma(roofTop.wearAlbedo) * 0.97,
+    'a raised top just above the roof (a hatch rim or lid) is rubbed darker and a touch smoother');
+  // the Garage (round 5's first Garage frames: a walkway polished to 0.52 and greyed caught the showroom's sky across the
+  // Leopard's glacis): on a light green the walkway only darkens and never drops more than 0.06 in roughness
+  const lightGreen = [0.16, 0.22, 0.1];
+  const gWalk = run({ wearH: 1.3, wearUp: 1, wearAlong: 3.1, wearN1: 0.8, wearStrength: VEHICLE_FIELD_WEAR_GARAGE, ...soilVec(vehicleFieldSoil('verdant')), wearAlbedo: lightGreen, wearRough: 0.7 });
+  const gDeck = run({ wearH: 1.3, wearUp: 1, wearAlong: 0.2, wearN1: 0.8, wearStrength: VEHICLE_FIELD_WEAR_GARAGE, ...soilVec(vehicleFieldSoil('verdant')), wearAlbedo: lightGreen, wearRough: 0.7 });
+  assert.ok(luma(gWalk.wearAlbedo) <= luma(lightGreen) + 1e-9 && luma(gWalk.wearAlbedo) < luma(gDeck.wearAlbedo) && gWalk.wearRough >= gDeck.wearRough - 0.06 - 1e-9,
+    'the Garage walkway on a light green: darker, never paler, never a sheen');
   // the Garage's light film keeps the use-wear near full (age, not the battlefield)
   const garage = (over) => lum(wall(1.53, { wearStrength: VEHICLE_FIELD_WEAR_GARAGE, ...over }));
   assert.ok(garage({}) < garage(deckless) * 0.82, 'the Garage shows the recess grime too');

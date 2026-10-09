@@ -418,19 +418,23 @@ materials only the gun draws with read the muzzle, the rest the exhaust), placed
 distance (the lead's round 5 brief: the media lane's blind pairs called the hulls clean): grime at the foot of whatever
 stands on the deck and the fenders (inside the hull's outline only, so the rear plate, the bow's plates and the skirts,
 which merely run past those heights, never take a stripe), on the turret roof (true walls only) and round the turret's
-foot, under the overhangs and in the wheel bays, in the battlefield's dried soil colour (a multiply alone barely read on
-dark green camouflage; the soil darkens a tan hull and browns a green one); dark worn edges along the fender lips and
-the rear deck's edge; the paint's sheen broken up with polished walkways and raised tops. Every thin band widens with
-the pixel's footprint and keeps its area (`cotWearBand`). A broad band down a cast turret's shoulder read as a smear in
-the sheet and was dropped. The role's
+foot, under the overhangs and in the wheel bays, a matte multiply toward the soil's hue (darker and browner on every
+scheme: grime in the soil's own value lifted dark green to a creamy wash); dark worn edges along the fender lips and
+the rear deck's edge; the paint's sheen broken up (mostly chalky) with rubbed walkways and raised tops, darker and at
+most 0.06 smoother. Every thin band widens with the pixel's footprint and keeps its area (`cotWearBand`). A broad band
+down a cast turret's shoulder read as a smear in the sheet and was dropped. The role's
 z picks the use-wear class (1 painted metal: chips along the normal-map relief, rubbed walkways at the bow and the stern,
 thin grime runs; 2 track iron: up-facing faces worn smooth; 3 bare steel: contact spots worn smooth; 4 rubber and the
 scrolling band, 5 wheels), its w the soot it takes; classes 2, 4 and 5 keep the dark packed coat all round and take no
 film. Round 5's first GPU frames (M60A1 on Sirocco) set three laws: the coat's breakup is soft-edged and low-contrast
 (a thresholded octave read as camouflage), the desert's contrast is darker grime low with only a tint on the decks
-(a pale film washed the tank white), and the wear never lightens a surface by more than about a third (the
-readability floor scales a shaded texel's light by its albedo over the paint's mean, so a lit-up track band drew a
-cream outline round the tracks). Marks darken or multiply; the fine marks resolve only up close.
+(a pale film washed the tank white), and the running gear lifts by a third at most (the readability floor scales a
+shaded texel's light by its albedo over the paint's mean, so a lit-up track band drew a cream outline round the
+tracks). The second GPU round (Garage, Verdant, Sirocco) made the wear darkening-first: green schemes washed paler and
+creamier under the film, soil-valued grime and a polished walkway that caught the showroom's sky, while tan schemes
+held. A painted plate is never lifted past its own value (`VehicleFieldSoil.lift` is 0 off snow; only the thick mud
+low down sets its own value), and painted metal never drops more than 0.06 below its own roughness. Marks darken or
+multiply; the fine marks resolve only up close.
 The shared checkout often contains active tank-generation WIP. Never stage
 builders, profiles, icons, GLBs, or generated geometry ledgers by directory.
 Chassis closure (FSP-05, 2026-09-25): a mirrored `for s of [-1, 1]` slab, a
