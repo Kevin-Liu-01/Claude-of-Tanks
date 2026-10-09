@@ -3557,8 +3557,8 @@ function* propsBuildSteps(
     // shaded face's light with them, three times deeper shade than the ground beside them; engine/materialEnvIntensity.ts
     // now applies an authored value, so a trim here is a real, visible change.)
     // capped (AA glass spec 4eccce8 — glints above 1.0 crossed the 1.78 bloom threshold; the post-side firefly clamp is a
-    // safety net, not a design allowance). A cap, not a value: a style's own lower share stays (Ruinspires' 0.22 glazing,
-    // structureInstanceAppearance.ts), which the trims' revival (engine/materialEnvIntensity.ts) now applies.
+    // safety net, not a design allowance). A cap, not a value: a style's own lower share would stay, and the trims' revival
+    // (engine/materialEnvIntensity.ts) applies it (wave 309: Ruinspires' 0.22 read as black voids, so its style takes 1).
     mats.glass.envMapIntensity = Math.min(mats.glass.envMapIntensity, 1.0);
     // map revival lane 2 (2026-10-05): a kit's finer, shallower render (ArchitectureSurfaces.relief; absent: unchanged)
     const relief = regionalArchitecture?.surfaces.relief;
