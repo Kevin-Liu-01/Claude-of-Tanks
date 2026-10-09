@@ -1,0 +1,325 @@
+{
+ "map": "ruinspires",
+ "timeOfDay": "dusk",
+ "productionFormat": "landscape",
+ "fx": {
+  "quality": "cinematic"
+ },
+ "seed": 415,
+ "actors": [
+  {
+   "id": "t14_x",
+   "name": "hero",
+   "pos": [
+    -200,
+    -116
+   ],
+   "facingDeg": 0,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2905,
+   "state": "intact"
+  },
+  {
+   "id": "t90m_x",
+   "name": "ally1",
+   "pos": [
+    -198.08,
+    -131.2
+   ],
+   "facingDeg": 0,
+   "turretDeg": -1.33,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2906,
+   "state": "intact"
+  },
+  {
+   "id": "t14_x",
+   "name": "ally2",
+   "pos": [
+    -200.2,
+    -150.92
+   ],
+   "facingDeg": 0,
+   "turretDeg": 0.98,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2907,
+   "state": "intact"
+  },
+  {
+   "id": "leo2a6_x",
+   "name": "foe0",
+   "pos": [
+    -200,
+    24
+   ],
+   "facingDeg": 180,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 5395,
+   "state": "burning",
+   "stateAgeS": 30,
+   "smoking": true,
+   "authoredSmoking": false,
+   "authoredBurning": false
+  },
+  {
+   "id": "m1a2_x",
+   "name": "foe1",
+   "pos": [
+    -200.48,
+    33.99
+   ],
+   "facingDeg": 179.7,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 5396,
+   "state": "intact"
+  }
+ ],
+ "effects": [
+  {
+   "id": "fx1",
+   "type": "burning",
+   "actor": "foe0",
+   "params": {},
+   "tMs": 0
+  },
+  {
+   "id": "fx2",
+   "type": "engine_smoke",
+   "actor": "foe0",
+   "params": {},
+   "tMs": 0
+  }
+ ],
+ "storyboard": {
+  "version": 2,
+  "durationMs": 1600,
+  "shots": [
+   {
+    "id": "cam-0",
+    "label": "t0",
+    "tMs": 0,
+    "pos": [
+     -204,
+     1.701805542672893,
+     -108
+    ],
+    "lookAt": [
+     -200,
+     3.2980658531188967,
+     -114
+    ],
+    "fov": 50,
+    "rollDeg": 14,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-1",
+    "label": "t250",
+    "tMs": 250,
+    "pos": [
+     -204,
+     1.701805542672893,
+     -108
+    ],
+    "lookAt": [
+     -200,
+     3.2980658531188967,
+     -114
+    ],
+    "fov": 50,
+    "rollDeg": 14,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-2",
+    "label": "t500",
+    "tMs": 500,
+    "pos": [
+     -204,
+     1.701805542672893,
+     -108
+    ],
+    "lookAt": [
+     -200,
+     3.2980658531188967,
+     -114
+    ],
+    "fov": 50,
+    "rollDeg": 14,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-3",
+    "label": "t750",
+    "tMs": 750,
+    "pos": [
+     -204,
+     1.701805542672893,
+     -108
+    ],
+    "lookAt": [
+     -200,
+     3.2980658531188967,
+     -114
+    ],
+    "fov": 50,
+    "rollDeg": 14,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-4",
+    "label": "t1000",
+    "tMs": 1000,
+    "pos": [
+     -204,
+     1.701805542672893,
+     -108
+    ],
+    "lookAt": [
+     -200,
+     3.2980658531188967,
+     -114
+    ],
+    "fov": 50,
+    "rollDeg": 14,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-5",
+    "label": "t1250",
+    "tMs": 1250,
+    "pos": [
+     -204,
+     1.701805542672893,
+     -108
+    ],
+    "lookAt": [
+     -200,
+     3.298065853118897,
+     -114
+    ],
+    "fov": 50,
+    "rollDeg": 14,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-6",
+    "label": "t1500",
+    "tMs": 1500,
+    "pos": [
+     -204,
+     1.701805542672893,
+     -108
+    ],
+    "lookAt": [
+     -200,
+     3.298065853118897,
+     -114
+    ],
+    "fov": 50,
+    "rollDeg": 14,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-7",
+    "label": "t1600",
+    "tMs": 1600,
+    "pos": [
+     -204,
+     1.701805542672893,
+     -108
+    ],
+    "lookAt": [
+     -200,
+     3.2980658531188967,
+     -114
+    ],
+    "fov": 50,
+    "rollDeg": 14,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   }
+  ],
+  "cameraCues": [],
+  "actorTracks": []
+ },
+ "camera": {
+  "mode": "fly",
+  "pos": [
+   -204,
+   1.7,
+   -108
+  ],
+  "yawDeg": -33.69,
+  "pitchDeg": 12.48,
+  "rollDeg": 14,
+  "fov": 50,
+  "lookAt": [
+   -193.17,
+   6.02,
+   -124.25
+  ]
+ },
+ "fxTime": 0,
+ "timeScale": 0,
+ "film": {
+  "fps": 30,
+  "shutterDeg": 60,
+  "samples": 8,
+  "maxSamples": 48,
+  "filter": "gaussian",
+  "shake": 1,
+  "speed": []
+ },
+ "picture": {
+  "preset": "steel",
+  "exposure": 0.45,
+  "chromaticAberration": 0,
+  "vignette": {
+   "roundness": 0.55,
+   "softness": 0.6
+  },
+  "grain": {
+   "amount": 0.08,
+   "color": 0.15
+  }
+ },
+ "meta": {
+  "frame": 39,
+  "id": "b39-dutch",
+  "technique": "Dutch angle",
+  "title": "T-14 Armata at a 14 degree Dutch tilt in the Ruinspires",
+  "set": "ruinspires-dusk-avenue",
+  "map": "ruinspires",
+  "time": "dusk",
+  "film": null,
+  "hero": "t14_x",
+  "heroName": "T-14 Armata",
+  "exposureMs": 8,
+  "tMs": 1000
+ },
+ "crushes": []
+}

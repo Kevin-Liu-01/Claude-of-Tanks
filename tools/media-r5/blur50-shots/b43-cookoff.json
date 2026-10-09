@@ -1,0 +1,305 @@
+{
+ "map": "badlands",
+ "timeOfDay": "golden",
+ "light": {
+  "sunAzimuthDeg": 253.9
+ },
+ "productionFormat": "landscape",
+ "fx": {
+  "quality": "cinematic"
+ },
+ "seed": 420,
+ "actors": [
+  {
+   "id": "leclerc_x",
+   "name": "hero",
+   "pos": [
+    -150,
+    60
+   ],
+   "facingDeg": 160,
+   "turretDeg": -2.39,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2940,
+   "state": "intact"
+  },
+  {
+   "id": "m1a2_sepv3_x",
+   "name": "ally1",
+   "pos": [
+    -142.74,
+    72.22
+   ],
+   "facingDeg": 160,
+   "turretDeg": 5.64,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2941,
+   "state": "intact"
+  },
+  {
+   "id": "t90m_x",
+   "name": "foe0",
+   "pos": [
+    -122.56,
+    -6.63
+   ],
+   "facingDeg": -22.39,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 5460,
+   "state": "intact"
+  }
+ ],
+ "effects": [
+  {
+   "id": "fx1",
+   "type": "fire",
+   "actor": "hero",
+   "params": {
+    "slot": 0,
+    "tracer": true,
+    "recoil": true
+   },
+   "tMs": 300
+  },
+  {
+   "id": "fx2",
+   "type": "impact",
+   "actor": "foe0",
+   "params": {
+    "kind": "pen",
+    "caliberMm": 120
+   },
+   "tMs": 380
+  },
+  {
+   "id": "fx3",
+   "type": "tank_kill",
+   "actor": "foe0",
+   "params": {
+    "cause": "ammorack",
+    "pop": true
+   },
+   "tMs": 430
+  },
+  {
+   "id": "fx4",
+   "type": "debris",
+   "actor": "foe0",
+   "params": {
+    "count": 30,
+    "speedMps": 18,
+    "hot": 0.6,
+    "scale": 1
+   },
+   "tMs": 450
+  }
+ ],
+ "storyboard": {
+  "version": 2,
+  "durationMs": 1400,
+  "shots": [
+   {
+    "id": "cam-0",
+    "label": "t0",
+    "tMs": 0,
+    "pos": [
+     -111.19624365301084,
+     6.9898794719815704,
+     6.016034849563901
+    ],
+    "lookAt": [
+     -122.55547181819412,
+     9.137600282620905,
+     -6.631808266608388
+    ],
+    "fov": 34,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-1",
+    "label": "t250",
+    "tMs": 250,
+    "pos": [
+     -111.19624365301084,
+     6.9898794719815704,
+     6.016034849563901
+    ],
+    "lookAt": [
+     -122.55547181819412,
+     9.137600282620905,
+     -6.631808266608388
+    ],
+    "fov": 34,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-2",
+    "label": "t500",
+    "tMs": 500,
+    "pos": [
+     -111.19624365301084,
+     6.989879471981572,
+     6.016034849563901
+    ],
+    "lookAt": [
+     -122.55547181819412,
+     9.137600282620905,
+     -6.631808266608388
+    ],
+    "fov": 34,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-3",
+    "label": "t750",
+    "tMs": 750,
+    "pos": [
+     -111.19624365301084,
+     6.989879471981572,
+     6.016034849563901
+    ],
+    "lookAt": [
+     -122.55547181819412,
+     9.137600282620905,
+     -6.631808266608388
+    ],
+    "fov": 34,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-4",
+    "label": "t1000",
+    "tMs": 1000,
+    "pos": [
+     -111.19624365301084,
+     6.989879471981572,
+     6.016034849563901
+    ],
+    "lookAt": [
+     -122.55547181819412,
+     9.137600282620905,
+     -6.631808266608388
+    ],
+    "fov": 34,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-5",
+    "label": "t1250",
+    "tMs": 1250,
+    "pos": [
+     -111.19624365301084,
+     6.989879471981571,
+     6.016034849563901
+    ],
+    "lookAt": [
+     -122.55547181819412,
+     9.137600282620905,
+     -6.631808266608388
+    ],
+    "fov": 34,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-6",
+    "label": "t1400",
+    "tMs": 1400,
+    "pos": [
+     -111.19624365301084,
+     6.9898794719815704,
+     6.016034849563901
+    ],
+    "lookAt": [
+     -122.55547181819412,
+     9.137600282620905,
+     -6.631808266608388
+    ],
+    "fov": 34,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   }
+  ],
+  "cameraCues": [],
+  "actorTracks": []
+ },
+ "camera": {
+  "mode": "fly",
+  "pos": [
+   -111.2,
+   6.99,
+   6.02
+  ],
+  "yawDeg": 41.93,
+  "pitchDeg": 7.2,
+  "rollDeg": 0,
+  "fov": 34,
+  "lookAt": [
+   -124.45,
+   9.5,
+   -8.75
+  ]
+ },
+ "fxTime": 0,
+ "timeScale": 0,
+ "film": {
+  "fps": 30,
+  "shutterDeg": 60,
+  "samples": 8,
+  "maxSamples": 48,
+  "filter": "gaussian",
+  "shake": 1,
+  "speed": []
+ },
+ "picture": {
+  "preset": "cinematic",
+  "saturation": 0.92,
+  "chromaticAberration": 0,
+  "vignette": {
+   "amount": 0.32
+  },
+  "grain": {
+   "amount": 0.08,
+   "size": 1.1,
+   "color": 0.15
+  }
+ },
+ "meta": {
+  "frame": 43,
+  "id": "b43-cookoff",
+  "technique": "Explosion",
+  "title": "Ammunition cook-off: the T-90M turret leaves the hull",
+  "set": "redrock-golden-kill",
+  "map": "badlands",
+  "time": "golden",
+  "film": null,
+  "hero": "leclerc_x",
+  "heroName": "Leclerc XLR",
+  "exposureMs": 16,
+  "tMs": 640
+ },
+ "crushes": []
+}

@@ -1,0 +1,469 @@
+{
+ "map": "verdant",
+ "timeOfDay": "day",
+ "productionFormat": "landscape",
+ "fx": {
+  "quality": "cinematic"
+ },
+ "seed": 419,
+ "actors": [
+  {
+   "id": "t90m_x",
+   "name": "hero",
+   "pos": [
+    -80.1,
+    59.8
+   ],
+   "facingDeg": 263.8,
+   "turretDeg": -2.79,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2933,
+   "state": "intact"
+  },
+  {
+   "id": "t14_x",
+   "name": "ally1",
+   "pos": [
+    -66.35,
+    71.13
+   ],
+   "facingDeg": 263.8,
+   "turretDeg": -1.94,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2934,
+   "state": "intact"
+  },
+  {
+   "id": "t90m_x",
+   "name": "ally2",
+   "pos": [
+    -64.11,
+    51.48
+   ],
+   "facingDeg": 263.8,
+   "turretDeg": -2.22,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2935,
+   "state": "intact"
+  },
+  {
+   "id": "t14_x",
+   "name": "ally3",
+   "pos": [
+    -55.31,
+    81.6
+   ],
+   "facingDeg": 263.8,
+   "turretDeg": -11.92,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2936,
+   "state": "intact"
+  },
+  {
+   "id": "kurganets25_x",
+   "name": "ally4",
+   "pos": [
+    -47.01,
+    42.27
+   ],
+   "facingDeg": 263.8,
+   "turretDeg": 13.26,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2937,
+   "state": "intact"
+  },
+  {
+   "id": "leo2a6_x",
+   "name": "foe0",
+   "pos": [
+    -156.76,
+    51.01
+   ],
+   "facingDeg": 81.01,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 5447,
+   "state": "burning",
+   "stateAgeS": 30,
+   "authoredBurning": false
+  },
+  {
+   "id": "m1a2_x",
+   "name": "foe1",
+   "pos": [
+    -165.94,
+    56.7
+   ],
+   "facingDeg": 87.81,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 5448,
+   "state": "wrecked-burnt",
+   "stateAgeS": 30,
+   "smoking": true,
+   "burning": true,
+   "authoredSmoking": false,
+   "authoredBurning": false
+  },
+  {
+   "id": "leo2a5_x",
+   "name": "foe2",
+   "pos": [
+    -161.24,
+    34.11
+   ],
+   "facingDeg": 74.37,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 5449,
+   "state": "intact"
+  }
+ ],
+ "effects": [
+  {
+   "id": "fx1",
+   "type": "burning",
+   "actor": "foe0",
+   "params": {},
+   "tMs": 0
+  },
+  {
+   "id": "fx2",
+   "type": "burning",
+   "actor": "foe1",
+   "params": {},
+   "tMs": 0
+  },
+  {
+   "id": "fx3",
+   "type": "engine_smoke",
+   "actor": "foe1",
+   "params": {},
+   "tMs": 0
+  },
+  {
+   "id": "fx4",
+   "type": "explosion",
+   "at": [
+    -20,
+    40
+   ],
+   "params": {
+    "size": "large"
+   },
+   "tMs": 1800
+  }
+ ],
+ "storyboard": {
+  "version": 2,
+  "durationMs": 2600,
+  "shots": [
+   {
+    "id": "cam-0",
+    "label": "t0",
+    "tMs": 0,
+    "pos": [
+     -74.78336879614068,
+     5.762383856524792,
+     61.785807805944366
+    ],
+    "lookAt": [
+     -160.06407454060934,
+     4.914442647556228,
+     55.13665539940745
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-1",
+    "label": "t250",
+    "tMs": 250,
+    "pos": [
+     -74.78336879614068,
+     5.762383856524792,
+     61.785807805944366
+    ],
+    "lookAt": [
+     -160.06407454060934,
+     4.914442647556228,
+     55.13665539940745
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-2",
+    "label": "t500",
+    "tMs": 500,
+    "pos": [
+     -74.78336879614068,
+     5.762383856524792,
+     61.785807805944366
+    ],
+    "lookAt": [
+     -160.06407454060934,
+     4.914442647556228,
+     55.13665539940745
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-3",
+    "label": "t750",
+    "tMs": 750,
+    "pos": [
+     -74.78336879614068,
+     5.762383856524792,
+     61.785807805944366
+    ],
+    "lookAt": [
+     -160.06407454060934,
+     4.914442647556228,
+     55.13665539940745
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-4",
+    "label": "t1000",
+    "tMs": 1000,
+    "pos": [
+     -74.78336879614068,
+     5.762383856524792,
+     61.785807805944366
+    ],
+    "lookAt": [
+     -160.06407454060934,
+     4.914442647556228,
+     55.13665539940745
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-5",
+    "label": "t1250",
+    "tMs": 1250,
+    "pos": [
+     -74.78336879614068,
+     5.762383856524792,
+     61.785807805944366
+    ],
+    "lookAt": [
+     -160.06407454060934,
+     4.914442647556228,
+     55.13665539940745
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-6",
+    "label": "t1500",
+    "tMs": 1500,
+    "pos": [
+     -74.78336879614068,
+     5.762383856524792,
+     61.785807805944366
+    ],
+    "lookAt": [
+     -160.06407454060934,
+     4.914442647556228,
+     55.13665539940745
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-7",
+    "label": "t1750",
+    "tMs": 1750,
+    "pos": [
+     -74.78336879614068,
+     5.762383856524792,
+     61.785807805944366
+    ],
+    "lookAt": [
+     -160.06407454060934,
+     4.914442647556228,
+     55.13665539940745
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-8",
+    "label": "t2000",
+    "tMs": 2000,
+    "pos": [
+     -74.78336879614068,
+     5.762383856524792,
+     61.785807805944366
+    ],
+    "lookAt": [
+     -160.06407454060934,
+     4.914442647556228,
+     55.13665539940745
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-9",
+    "label": "t2250",
+    "tMs": 2250,
+    "pos": [
+     -74.78336879614068,
+     5.762383856524792,
+     61.785807805944366
+    ],
+    "lookAt": [
+     -160.06407454060934,
+     4.914442647556228,
+     55.13665539940745
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-10",
+    "label": "t2500",
+    "tMs": 2500,
+    "pos": [
+     -74.78336879614068,
+     5.762383856524792,
+     61.785807805944366
+    ],
+    "lookAt": [
+     -160.06407454060934,
+     4.914442647556228,
+     55.13665539940745
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-11",
+    "label": "t2600",
+    "tMs": 2600,
+    "pos": [
+     -74.78336879614068,
+     5.762383856524792,
+     61.785807805944366
+    ],
+    "lookAt": [
+     -160.06407454060934,
+     4.914442647556228,
+     55.13665539940745
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   }
+  ],
+  "cameraCues": [],
+  "actorTracks": []
+ },
+ "camera": {
+  "mode": "fly",
+  "pos": [
+   -74.78,
+   5.76,
+   61.79
+  ],
+  "yawDeg": 85.54,
+  "pitchDeg": -0.57,
+  "rollDeg": 0,
+  "fov": 30,
+  "lookAt": [
+   -94.72,
+   5.56,
+   60.23
+  ]
+ },
+ "fxTime": 0,
+ "timeScale": 0,
+ "film": {
+  "fps": 30,
+  "shutterDeg": 60,
+  "samples": 8,
+  "maxSamples": 48,
+  "filter": "gaussian",
+  "shake": 1,
+  "speed": []
+ },
+ "picture": {
+  "preset": "cinematic",
+  "exposure": 0.05,
+  "chromaticAberration": 0,
+  "vignette": {
+   "amount": 0.32
+  },
+  "grain": {
+   "amount": 0.08,
+   "size": 1.1,
+   "color": 0.15
+  }
+ },
+ "meta": {
+  "frame": 42,
+  "id": "b42-ots",
+  "technique": "Over the shoulder",
+  "title": "Over the T-90M's turret toward the burning line",
+  "set": "verdant-day-assault",
+  "map": "verdant",
+  "time": "day",
+  "film": null,
+  "hero": "t90m_x",
+  "heroName": "T-90M",
+  "exposureMs": 8,
+  "tMs": 2100
+ },
+ "crushes": []
+}

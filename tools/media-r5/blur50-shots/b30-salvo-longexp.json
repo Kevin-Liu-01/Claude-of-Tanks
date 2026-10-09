@@ -1,0 +1,389 @@
+{
+ "map": "foundry",
+ "timeOfDay": "night",
+ "productionFormat": "landscape",
+ "fx": {
+  "quality": "cinematic"
+ },
+ "seed": 413,
+ "actors": [
+  {
+   "id": "t14_x",
+   "name": "hero",
+   "pos": [
+    40,
+    -150
+   ],
+   "facingDeg": 0,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2891,
+   "state": "intact"
+  },
+  {
+   "id": "t90m_x",
+   "name": "ally1",
+   "pos": [
+    54,
+    -152
+   ],
+   "facingDeg": 0,
+   "turretDeg": 4,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2892,
+   "state": "intact"
+  },
+  {
+   "id": "t14_x",
+   "name": "ally2",
+   "pos": [
+    26,
+    -153
+   ],
+   "facingDeg": 0,
+   "turretDeg": -5,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2893,
+   "state": "intact"
+  },
+  {
+   "id": "t90m_x",
+   "name": "ally3",
+   "pos": [
+    68,
+    -156
+   ],
+   "facingDeg": 0,
+   "turretDeg": 4,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2894,
+   "state": "intact"
+  }
+ ],
+ "effects": [
+  {
+   "id": "fx1",
+   "type": "flare",
+   "at": [
+    40,
+    -60
+   ],
+   "params": {
+    "heightM": 110,
+    "burnS": 40,
+    "intensity": 1.3,
+    "driftMps": 1.2,
+    "fallMps": 2.6,
+    "color": "white",
+    "launch": false
+   },
+   "tMs": 0
+  },
+  {
+   "id": "fx2",
+   "type": "fire_field",
+   "at": [
+    60,
+    -110
+   ],
+   "params": {
+    "radiusM": 5,
+    "durationS": 30,
+    "intensity": 1,
+    "smoke": true
+   },
+   "tMs": 0
+  },
+  {
+   "id": "fx3",
+   "type": "fire",
+   "actor": "hero",
+   "params": {
+    "slot": 0,
+    "tracer": true,
+    "recoil": true
+   },
+   "tMs": 1000
+  },
+  {
+   "id": "fx4",
+   "type": "fire",
+   "actor": "ally1",
+   "params": {
+    "slot": 0,
+    "tracer": true,
+    "recoil": true
+   },
+   "tMs": 1100
+  },
+  {
+   "id": "fx5",
+   "type": "fire",
+   "actor": "ally2",
+   "params": {
+    "slot": 0,
+    "tracer": true,
+    "recoil": true
+   },
+   "tMs": 1200
+  },
+  {
+   "id": "fx6",
+   "type": "fire",
+   "actor": "ally3",
+   "params": {
+    "slot": 0,
+    "tracer": true,
+    "recoil": true
+   },
+   "tMs": 1300
+  }
+ ],
+ "storyboard": {
+  "version": 2,
+  "durationMs": 1800,
+  "shots": [
+   {
+    "id": "cam-0",
+    "label": "t0",
+    "tMs": 0,
+    "pos": [
+     34,
+     2.105859635108125,
+     -128
+    ],
+    "lookAt": [
+     46,
+     3.118696395195726,
+     -150
+    ],
+    "fov": 40,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-1",
+    "label": "t250",
+    "tMs": 250,
+    "pos": [
+     34,
+     2.105859635108125,
+     -128
+    ],
+    "lookAt": [
+     46,
+     3.118696395195726,
+     -150
+    ],
+    "fov": 40,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-2",
+    "label": "t500",
+    "tMs": 500,
+    "pos": [
+     34,
+     2.105859635108125,
+     -128
+    ],
+    "lookAt": [
+     46,
+     3.118696395195726,
+     -150
+    ],
+    "fov": 40,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-3",
+    "label": "t750",
+    "tMs": 750,
+    "pos": [
+     34,
+     2.105859635108125,
+     -128
+    ],
+    "lookAt": [
+     46,
+     3.118696395195726,
+     -150
+    ],
+    "fov": 40,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-4",
+    "label": "t1000",
+    "tMs": 1000,
+    "pos": [
+     34,
+     2.105859635108125,
+     -128
+    ],
+    "lookAt": [
+     46,
+     3.118696395195726,
+     -150
+    ],
+    "fov": 40,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-5",
+    "label": "t1250",
+    "tMs": 1250,
+    "pos": [
+     34,
+     2.105859635108125,
+     -128
+    ],
+    "lookAt": [
+     46,
+     3.118696395195726,
+     -150
+    ],
+    "fov": 40,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-6",
+    "label": "t1500",
+    "tMs": 1500,
+    "pos": [
+     34,
+     2.105859635108125,
+     -128
+    ],
+    "lookAt": [
+     46,
+     3.118696395195726,
+     -150
+    ],
+    "fov": 40,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-7",
+    "label": "t1750",
+    "tMs": 1750,
+    "pos": [
+     34,
+     2.105859635108125,
+     -128
+    ],
+    "lookAt": [
+     46,
+     3.118696395195726,
+     -150
+    ],
+    "fov": 40,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-8",
+    "label": "t1800",
+    "tMs": 1800,
+    "pos": [
+     34,
+     2.105859635108125,
+     -128
+    ],
+    "lookAt": [
+     46,
+     3.118696395195726,
+     -150
+    ],
+    "fov": 40,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   }
+  ],
+  "cameraCues": [],
+  "actorTracks": []
+ },
+ "camera": {
+  "mode": "fly",
+  "pos": [
+   34,
+   2.11,
+   -128
+  ],
+  "yawDeg": -28.61,
+  "pitchDeg": 2.31,
+  "rollDeg": 0,
+  "fov": 40,
+  "lookAt": [
+   43.57,
+   2.91,
+   -145.54
+  ]
+ },
+ "fxTime": 0,
+ "timeScale": 0,
+ "film": {
+  "fps": 30,
+  "shutterDeg": 60,
+  "samples": 8,
+  "maxSamples": 48,
+  "filter": "gaussian",
+  "shake": 1,
+  "speed": []
+ },
+ "picture": {
+  "preset": "ember",
+  "chromaticAberration": 0,
+  "vignette": {
+   "amount": 0.32
+  },
+  "grain": {
+   "amount": 0.08,
+   "size": 1.1,
+   "color": 0.15
+  }
+ },
+ "meta": {
+  "frame": 30,
+  "id": "b30-salvo-longexp",
+  "technique": "Long exposure",
+  "title": "Four T-14 and T-90M guns in one half-second frame",
+  "set": "ironworks-night-yard",
+  "map": "foundry",
+  "time": "night",
+  "film": null,
+  "hero": "t14_x",
+  "heroName": "T-14 Armata",
+  "exposureMs": 450,
+  "tMs": 1180
+ },
+ "crushes": []
+}
