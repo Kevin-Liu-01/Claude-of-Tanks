@@ -16,21 +16,9 @@ const TARGETS = Object.freeze({
     loaderVariant: 'tusk-lags-loader',
     sizeStandard: 'm1a3-full-tower', scale: 1.28, minimumWidth: 0.84, minimumHeight: 0.82,
   }),
-  leo2a6m: Object.freeze({
-    variant: 'a6m-arctic', mount: [-0.72, 0.795, -1.52],
-    sizeStandard: 'leopard-reduced-tower', scale: 0.92, towerRiseM: 0.10,
-    minimumWidth: 0.80, minimumHeight: 0.60,
-  }),
-  leo2a5_a5nl: Object.freeze({
-    variant: 'a5nl-low', mount: [-0.62, 0.759, -1.35],
-    sizeStandard: 'leopard-reduced-tower', scale: 0.86, towerRiseM: 0.08,
-    minimumWidth: 0.72, minimumHeight: 0.52,
-  }),
-  leo2a7v: Object.freeze({
-    variant: 'a7v-low', mount: [0.72, 0.67, -1.48],
-    sizeStandard: 'leopard-reduced-tower', scale: 1.12, towerRiseM: 0.14,
-    minimumWidth: 0.88, minimumHeight: 0.72,
-  }),
+  // 2026-10-08 (the owner's field standard in main 6763d7cc0: no duplicate weapons; the coordinator's ruling on the
+  // tank-accessories lane's audit): the Leopard 2A6M, 2A5NL and 2A7V towers are gone. Each stood under a metre from
+  // the hull's own station (the A6M RCWS, the loader's gun now activated, the activated FLW 200).
   k2b: Object.freeze({
     variant: 'korean-twin', mount: [0.70, 0.70, -0.68],
     sizeStandard: 'k2b-compact-tower', scale: 1.14, towerRiseM: 0.12,
@@ -248,7 +236,7 @@ for (const [id, expected] of Object.entries(TARGETS)) {
   }
 }
 
-assert.equal(new Set(Object.values(TARGETS).map(({ variant }) => variant)).size, 8,
-  'all eight hosts receive visibly distinct open-yoke variants');
+assert.equal(new Set(Object.values(TARGETS).map(({ variant }) => variant)).size, 5,
+  'all five hosts receive visibly distinct open-yoke variants (2026-10-08: three Leopard duplicates gone)');
 
-console.log('openYokeRwsFleet.selftest: eight host-sized AbramsX-style turret stations pass');
+console.log('openYokeRwsFleet.selftest: five host-sized AbramsX-style turret stations pass');

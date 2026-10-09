@@ -175,25 +175,25 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       },
       {
         "kind": "insignia",
-        "parent": "hull",
+        "parent": "turret",
         "size": 0.25,
         "pos": [
-          -1.78584,
-          0.6534714,
-          -1.5805999
+          1.1271144,
+          0.0545034,
+          -1.8460627
         ],
         "quaternion": [
-          -0.0042087,
-          -0.7070943,
-          -0.0042087,
-          0.7070943
+          -0.0067154,
+          0.7671494,
+          0.0056147,
+          0.6414088
         ],
-        "surfaceMesh": "hull",
+        "surfaceMesh": "turret",
         "anchorProfile": "leo2a4",
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": null
+        "maximumSurfaceErrorM": 0.6128749
       }
     ]
   },
@@ -713,6 +713,28 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
     "schemaVersion": 1,
     "seats": [
       {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.24,
+        "pos": [
+          -1.6764028,
+          1.5839525,
+          -1.502
+        ],
+        "quaternion": [
+          -0.0922659,
+          -0.7010613,
+          -0.0922659,
+          0.7010613
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "leo2a6_ua",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.007019
+      },
+      {
         "kind": "insignia",
         "parent": "turret",
         "size": 0.24,
@@ -733,28 +755,6 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
         "maximumSurfaceErrorM": 0.3119488
-      },
-      {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.24,
-        "pos": [
-          -1.586,
-          0.4116,
-          -1.301
-        ],
-        "quaternion": [
-          0,
-          -0.7071068,
-          0,
-          0.7071068
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "leo2a6_ua",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 6,
-        "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.0597
       }
     ]
   }

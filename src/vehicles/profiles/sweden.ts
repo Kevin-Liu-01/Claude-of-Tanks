@@ -265,7 +265,8 @@ function addStrv81Package(P: SwedishBuilderPort): void {
 }
 
 function buildStrv81(P: SwedishBuilderPort): void {
-  centurionBuild(P, 3);
+  // one roof gun: the package's cupola Ksp 58, not the Mk.3's low-stowed MAG as well (the owner's field standard)
+  centurionBuild(P, 3, { stowedLoaderMag: false });
   addStrv81Package(P);
   // The oracle has a squat cast fighting compartment. Scale the complete
   // turret-owned assembly about its ring, then cancel that scale on the gun

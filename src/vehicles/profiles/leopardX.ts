@@ -333,6 +333,7 @@ function mg(P: TankBuilderPort, d: Datum, x: number, y: number, z: number, remot
   lengthScale = 1, heightScale = 1, automatic = remote): void {
   equip(P, d, 'turretDetail', cylY(.12, .15, remote ? .23 : .105, 20), x, y + (remote ? .11 : .05), z);
   // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the source-measured roof stations beside these guns (feed-side collision census).
+  // 2026-10-08 (owner, 6763d7cc0): `automatic` makes the gun a working remote station (the 2A5M's original 7.62 mm)
   const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: .76, sourceScale: true, remoteControlled: automatic,
     tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, seed: 260905, feed: 'right' });
   weapon.name = `${P.spec.id}RoofMachineGun`;
@@ -1017,9 +1018,10 @@ function a4RemoteMount(P:TankBuilderPort,d:Datum): void {
   // cheeks and from the outboard receiver/ammunition body.
   equip(P,d,'turretDetail',box(.55891,.12256,.40355),.73998,2.7160,-.9222);
   for(const x of [.634,.854]) equip(P,d,'turretDetail',box(.024,.185,.266),x,2.868,-.929);
-  // Launch night 2026-10-08 (ta4 on push 5's receipt): the round-4 shift (-.925/1.609) answered a crew butt that push 5's
-  // automatic station no longer has; on push 5's gun it put the receiver's rear at -1.147 against the source's -1.214.
-  // The station is push 5's again, the owner's -.969/1.713 (leopardX.selftest, "source RWS receiver rear station").
+  // 2026-10-08 (owner, 6763d7cc0): the original 7.62 mm station is activated (automatic), its support captured. A remote
+  // station's gun has no crew butt, so the owner's own seat and stretch put its receiver back on the source stations
+  // (push 5's leopardX receipt: rear -1.214, barrel -0.087). The lane's round-4 forward shift (-0.925, stretch 1.609)
+  // corrected a crew gun's butt growth and does not apply to the activated station.
   mg(P,d,.766,2.79,-.969,false,1.713,.74,true);
   a4OutboardReceiver(P,d);
   equip(P,d,'turretDetail',box(.257,.184,.306),.381,3.005,-1.055);

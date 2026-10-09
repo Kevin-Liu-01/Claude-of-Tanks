@@ -76,6 +76,17 @@ assert.ok(!frag.includes('uVehicleShadeModel'), 'one shade model, no A/B branch'
 const unbound = before.uniforms;
 assert.equal(unbound.uVehGround.value.y, -1e5, 'tooling paths with no vehicle root keep a far-below origin (no darkening)');
 assert.deepEqual(unbound.uVehUp.value.toArray(), [0, 1, 0]);
+// Fleet lane 2026-10-08 (camo far lighter than its swatch): three overwrites a material's envMapIntensity with the
+// scene's environmentIntensity whenever it reads the scene environment, so the vehicle trims never applied. The hook
+// scales the image-based light (diffuse irradiance, specular radiance, clearcoat) by uVehEnvScale after three gathers
+// it; the bare hook keeps the full sky light (1), and createTankMaterials binds each material's own trim (below).
+once('uniform float uVehEnvScale;\n', 'the image-based-light scale is declared once');
+once('\tiblIrradiance *= uVehEnvScale;\n\tradiance *= uVehEnvScale;\n', 'the sky diffuse and specular light take it');
+once('\tclearcoatRadiance *= uVehEnvScale;\n', 'and the clearcoat lobe');
+assert.ok(frag.indexOf('iblIrradiance *= uVehEnvScale;') > frag.indexOf('#include <lights_fragment_maps>')
+  && frag.indexOf('iblIrradiance *= uVehEnvScale;') < frag.indexOf('#include <lights_fragment_end>'),
+  'after three gathers the sky light and before it is applied');
+assert.equal(unbound.uVehEnvScale.value, 1, 'the bare hook (thumbnails, hand-hooked profile clones) keeps the full sky light');
 
 try {
   const materialVersion = material.version;
@@ -148,6 +159,7 @@ const bound = [];
 const grounds = new Set(), groundProbe = new Map();
 const roles = new Set();
 const materials = new Set();
+const trimmed = new Map();
 let csmCallbacks = 0;
 const csmContext = {
   setupShadowMaterial(entry, hook) {
@@ -191,6 +203,14 @@ try {
           assert.equal(entry.defines.USE_CSM, 1, `${object.name}: wheel role must preserve shadow defines`);
           assert.equal(shader.uniforms.csmTestWitness.value, 1, 'readability chains through shadow callback');
         }
+        // the factory's own registration (createTankMaterials and every cloneVehicleMaterial clone) scales the sky
+        // light by the material's authored trim; hand-hooked profile clones keep the full sky light
+        if (entry.customProgramCacheKey() === 'veh-ambient-floor-v5') {
+          const expected = entry.envMap ? 1 : entry.envMapIntensity;
+          assert.equal(shader.uniforms.uVehEnvScale.value, expected,
+            `${id}/${object.name} (${entry.name}): the sky light takes the material's own envMapIntensity`);
+          if (expected < 1) trimmed.set(entry.userData.appearanceRole ?? entry.name, { entry, shader });
+        }
         roles.add(entry.userData.appearanceRole);
         grounds.add(shader.uniforms.uVehGround);
         if (!groundProbe.has(id)) groundProbe.set(id, { object, root: visual.root, shader });
@@ -218,6 +238,19 @@ try {
   for (const role of ['armorPaint', 'tireRubber', 'wheelPaint', 'trackPad']) {
     assert.ok(roles.has(role), `${role}: real material callback covered`);
   }
+  for (const role of ['armorPaint', 'wheelPaint']) {
+    assert.ok(trimmed.has(role), `${role}: its authored sky-light trim reaches the shader`);
+  }
+  {
+    // read live: a profile that sets envMapIntensity after creation (a mud rim, a worn clone) needs no recompile
+    const { entry, shader } = trimmed.get('armorPaint');
+    const authored = entry.envMapIntensity, version = entry.version;
+    entry.envMapIntensity = 0.3;
+    assert.equal(shader.uniforms.uVehEnvScale.value, 0.3, 'the trim is read at draw time');
+    entry.envMapIntensity = authored;
+    assert.equal(shader.uniforms.uVehEnvScale.value, authored);
+    assert.equal(entry.version, version, 'no needsUpdate or program change');
+  }
   for (const scale of [.12, 1, .12, 1]) {
     setVehicleReadabilityScale(scale);
     for (const item of bound) {
@@ -232,4 +265,4 @@ try {
   restoreCanvas();
 }
 assert.equal(getVehicleReadabilityScale(), 1);
-console.log('vehicleReadability.selftest: form-fill floors, ground occlusion, kept safeguards, shared current/future/gear uniforms, per-draw ground reference, strict input and exact reset PASS');
+console.log('vehicleReadability.selftest: form-fill floors, ground occlusion, kept safeguards, shared current/future/gear uniforms, per-draw ground reference, per-material sky-light trims, strict input and exact reset PASS');
