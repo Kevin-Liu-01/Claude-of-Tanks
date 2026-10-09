@@ -412,6 +412,22 @@ function captureContext(seed) {
     assert.match(mat.vertexShader, /\* \( 0\.050 \* size \* min\( age, 4\.0 \) \);/, 'eddies push a puff about by its size as it ages');
     assert.match(mat.fragmentShader, /vec2 warp = wn \* tileSize \* uWarpK \* \( 0\.5 \+ 0\.8 \* vT \);/, 'the lookup is warped: no clean round ball');
     assert.match(mat.fragmentShader, /float core = smoothstep\( 0\.3, 0\.85, tb \);/, 'a hot core inside a sooty shell');
+    // (fx 8c) the media take the lit world's light: the clouds' shade on the sun (one fetch per vertex at the puff's
+    // centre, through the same uniform objects the ground reads), and a bright medium's shade lit by the ground as by the
+    // sky (the critics: "a cool white wall in the desert that ignores warm light")
+    assert.match(mat.vertexShader, /vSunVis = cotCloudSun\( center \);/, 'the clouds shade the sun on every puff');
+    assert.match(mat.fragmentShader, /\* \( 0\.88 \+ 0\.24 \* dn \) \* vSunVis;/, 'the cloud shade dims the sun term');
+    assert.match(mat.fragmentShader, /float gndL = mix\( 0\.35 \* D \+ 0\.1, 0\.5 \* D \+ 0\.12 \* \( R \+ L \) \+ 0\.18, bright \);/,
+      'a bright medium takes the ground\'s light through its body');
+    assert.match(mat.fragmentShader, /uGroundCol \* gndL/, 'the ground term carries that weight');
+    const shared = { tCotCloudShade: { value: null }, uCotCloudShade: { value: new THREE.Vector4() },
+      uCotCloudSun: { value: new THREE.Vector4() } };
+    const sceneU = new THREE.Scene();
+    sceneU.userData.cloudShadeUniforms = shared;
+    const matS = createVolumeMedia({ soft: softU, now: () => 0, capacity: 16, scene: sceneU }).group.children[0].material;
+    assert.ok(matS.uniforms.tCotCloudShade === shared.tCotCloudShade && matS.uniforms.uCotCloudShade === shared.uCotCloudShade
+      && matS.uniforms.uCotCloudSun === shared.uCotCloudSun, 'the cloud shade is the scene\'s own uniform objects (one update reaches the media)');
+    assert.equal(mat.uniforms.uCotCloudShade.value.w, 0, 'no published shade: the media stand in full sun');
     // the CPU twin carries the shear (the sort's depth)
     const rec = new Float32Array(32);
     rec[1] = 2; rec[5] = 4; rec[8] = 1; rec[9] = 1; rec[10] = 1;
