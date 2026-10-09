@@ -488,21 +488,10 @@ function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trop
   const put=(slot:string,g:THREE.BufferGeometry,x:number,y:number,z:number,rx=0,ry=0,rz=0)=>topPart(P,MK4,slot,g,x,y,z,rx,ry,rz);
   P.addCupola('turret',cylY(.34,.25,8),-.635,2.550-MK4.y,.046-MK4.z);
   put('turretDetail',cylY(.31,.052,8),-.635,2.676,.046);
-  // 2026-10-08 (round 5; wave 257 on the Merkava 4 Trophy: "the periscope blocks around the octagonal cupola stick out
-  // like stuck-on stubs"): the eight periscope heads stood radially at the octagon's corners. Each now sits across the
-  // centre of its face in the cupola's upper band, 12 mm proud, with its window in smoked glass, and the hatch on the
-  // top plate carries its lid, hinge block and grab handle.
-  const apothem=.34*Math.cos(Math.PI/8);
   for(let i=0;i<8;i++){
-    const a=Math.PI/8+i*Math.PI/4, c=Math.cos(a), sn=Math.sin(a);
-    const head=apothem-.0225+.012;
-    put('turretDark',box(.045,.055,.12),-.635+c*head,2.642,.046+sn*head,0,-a);
-    put('turretGlass',box(.006,.030,.090),-.635+c*(apothem+.0125),2.644,.046+sn*(apothem+.0125),0,-a);
+    const a=i*Math.PI/4,x=-.635+Math.cos(a)*.31,z=.046+Math.sin(a)*.31;
+    put('turretDark',box(.13,.063,.027),x,2.645,z,0,-a);
   }
-  put('turretDetail',cylY(.225,.022,24),-.635,2.713,.046);
-  put('turretDetail',box(.12,.034,.05),-.635,2.719,.046-.235);
-  for(const dx of[-.055,.055])put('turretDark',box(.012,.030,.012),-.635+dx,2.739,.046+.12);
-  put('turretDark',box(.122,.012,.012),-.635,2.760,.046+.12);
   put('turretDetail',cylY(.23,.3015,24),.507,2.6823,-.516);
   put('turretDark',box(.26,.12,.016),.507,2.727,-.278);
   put('turretGlass',box(.20,.075,.009),.507,2.736,-.266);
@@ -580,7 +569,7 @@ function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trop
   }
   for(const x of[-.82038,.89347])put('turretDetail',box(.21,.29,.26),x,2.527,-3.015);
   merkava4Basket(P);
-  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:1.0,remoteControlled:true,seed:444,tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:candidate==='merkava4_trophy'}); // true scale (round 3; was 1.48, a 115 % GPMG)
+  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:1.48,remoteControlled:true,seed:444,tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:candidate==='merkava4_trophy'});
   const mgSeatY={merkava4_x:2.577,merkava4_trophy:2.400}[candidate];
   mg.position.set(-.83,mgSeatY-MK4.y,-.752-MK4.z);P.turretG.add(mg);
 }
@@ -628,40 +617,18 @@ function merkava4Basket(P: TankBuilderPort): void {
 }
 
 function merkava4CoaxMount(P: TankBuilderPort): void {
-  // 2026-10-08 (round 5, wave 257 on the Merkava 4: the over-gun M2 "perched on a stack of rounded camo-painted blocks
-  // instead of a cradle"; "standing on two stacked rounded slabs instead of a real pintle"): the mount is machined
-  // gunmetal with square edges (the gun mount's dark stock), and the gun lies in a cradle: the saddle, a floor plate
-  // under the receiver's forward half, a cheek either side with its bolt heads, and the trunnion pin through both. The
-  // cheeks stop under the feed tray, so the belt from the can on the gun's left runs over them into the feedway. Every
-  // block keeps its round-3 seat, and the dark stock keeps the painted blocks' place in the gun's shadow.
-  const put=(g:THREE.BufferGeometry,x:number,y:number,z:number)=>P.addEquipment('gunMountDark',g,x,y-1.9934619,z-1.93);
-  const block=(w:number,h:number,d:number,sz=1)=>new THREE.BoxGeometry(w,h,d,1,1,sz);
+  const put=(g:THREE.BufferGeometry,x:number,y:number,z:number)=>P.addEquipment('gunMount',g,x,y-1.9934619,z-1.93);
   // Source coax has a long receiver stock and an offset two-post cradle.
   // These parts move with the pitching mount, not with cannon recoil.
-  // (round 3: the long receiver stock and the twin tubes over the rear block read as a second gun beside the M2,
-  // which now lies in this cradle itself; the cradle's rear block, posts and rails stay, and a saddle carries the
-  // receiver from the rail top (2.445) to its underside (2.539).)
-  put(block(.14716,.12013,.16549),.02212,2.59413,.94149);
-  put(block(.10,.10,.36,3),.02212,2.492,1.32);
-  put(block(.27459,.13384,.07214),.02212,2.32365,1.37610);
+  put(box(.0742,.11095,.58784),.02212,2.59413,1.31816);
+  put(box(.14716,.12013,.16549),.02212,2.59413,.94149);
+  for(const x of[-.03881,.08305])put(cylZ(.02583,.25099,14),x,2.71433,.88842);
+  put(box(.12537,.06696,.04155),.02212,2.69890,1.00530);
+  put(box(.27459,.13384,.07214),.02212,2.32365,1.37610);
   put(cylY(.0226,.11067,14),.02212,2.36305,1.07010);
-  put(block(.13742,.05403,.43933,4),.02212,2.41759,1.19975);
+  put(box(.13742,.05403,.43933),.02212,2.41759,1.19975);
   put(cylY(.02061,.10961,14),.02212,2.46520,1.58029);
-  put(block(.16092,.09972,.26879,2),.06785,2.47435,1.44589);
-  const cx=.02212, cheekX=.059+.004+.006;
-  put(block(.150,.014,.20,2),cx,2.532,1.44);
-  for(const side of[-1,1]){
-    put(block(.012,.09,.16,2),cx+side*cheekX,2.545,1.48);
-    for(const [dy,dz] of[[-.025,-.05],[-.025,.05],[.025,-.05],[.025,.05]])
-      put(cylX(.0065,.008,8),cx+side*(cheekX+.008),2.545+dy,1.48+dz);
-  }
-  put(cylX(.014,.168,12),cx,2.565,1.50);
-  const previous=P.postAssemble;
-  P.postAssemble=rig=>{
-    previous?.(rig);
-    const dark=rig.gunG.getObjectByName('gunMountDark');
-    if(dark)dark.userData.preserveRecoilShadowSource=true;
-  };
+  put(box(.16092,.09972,.26879),.06785,2.47435,1.44589);
 }
 
 type TrophyConfiguration = 'mk4'|'barak'|'namer';
@@ -692,15 +659,6 @@ function addTrophySuite(P: TankBuilderPort, frame: Frame, configuration: TrophyC
     }
     const launcherZ=(frontZ+rearZ)*.5;
     put('turretDetail',box(.28,.20,.36),side*(sideX-.16),roof+.02,launcherZ);
-    if(configuration==='mk4'){
-      // 2026-10-07 (tank-accessories round 4, wave 217: "the six-tube launcher box hangs in mid-air above the
-      // commander's MG, with background visible between them"): the outboard launcher stood 0.36 m over the sloping
-      // turret side between the radar pedestals. A pedestal now carries it down into the side armour (its foot
-      // embedded where the side falls to 2.11-2.24) and a cantilever arm ties its inboard edge back to the roof
-      // shoulder; both stay 0.8 m outboard of the commander's gun and its elevation arc.
-      put('turretDetail',box(.14,.40,.24),side*1.52,roof-.25,launcherZ);
-      put('turretDetail',box(.28,.07,.16),side*1.37,roof-.115,launcherZ);
-    }
     for(let row=0;row<2;row++)for(let i=0;i<3;i++)
       put('turretDark',cylZ(.033,.20,12),side*(sideX-.16)+(i-1)*.075,roof+.055+row*.075,launcherZ+.14,0,side*.12);
   }
@@ -1112,17 +1070,8 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
     P.addEquipment('gunDark',cylX(.010,.125,10),.013,.112,worldZ-1.93);
   }
   if(candidate!=='merkava4_barak'){
-    // 2026-10-07 (tank-accessories round 3): the critics read "two full-size machine guns crowded onto a single shared
-    // pintle" over the mantlet: the M2's own pintle column stood on the mantlet in front of the source cradle's long
-    // receiver stock and its twin cradle tubes. The over-gun M2 is one weapon in the source cradle: no second pintle,
-    // its receiver laid where the stock was (underside y 2.539, centre z 1.318 world), true scale.
-    // 2026-10-08 (round 5; wave 257 on the Merkava 4 Trophy: "a plain dark-grey box receiver and smooth tube with no
-    // ammunition box, feed chute, cocking handle or barrel-jacket holes, perched on a stack of rounded camo-painted
-    // blocks instead of a cradle"): the M2 carries its can and belt on its left, and its cradle is machined gunmetal.
-    const coax=FITTINGS.pintleMG({mats:P.mats,cls:'m2',scale:1.0,seed:445,tone:'two-tone',ammo:true,shield:false,ring:false,
-      mount:'external-cradle'});
-    coax.name='merkava4OverGunM2';
-    coax.position.set(.0221,2.539-1.9934619,1.318-.06-1.93);P.gunG.add(coax);
+    const coax=FITTINGS.pintleMG({mats:P.mats,cls:'m2',scale:1.10,seed:445,tone:'two-tone',ammo:false,shield:false,ring:false});
+    coax.position.set(.0221,.26418,-.3127);P.gunG.add(coax);
   }
   if(candidate!=='merkava4_barak')merkava4CoaxMount(P);
   P.muzzleZ=2.8755;P.topY=2.75-MK4.y;

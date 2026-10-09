@@ -11,10 +11,7 @@ const barakStations = [
     .map(([x,z,a]) => [x+Math.sin(a)*.051,2.687,z+Math.cos(a)*.051]),
   [.5577,2.721,-.703],[-.6673,2.612,.101],
 ].map(([x,y,z]) => [x,y-1.605,z+.3906]);
-// 2026-10-08 (tank-accessories round 5, wave 257): the Mk 4 Trophy's eight cupola periscope heads carry their windows in
-// turret glass (the Barak's cupola apertures are its sight parts too), so it publishes its two sights and eight
-// periscopes.
-const expected = { merkava4_barak: 7, merkava4_trophy: 10, namer_ifv: 3 };
+const expected = { merkava4_barak: 7, merkava4_trophy: 2, namer_ifv: 3 };
 function verify(id, parts) {
   const optics = parts.filter(p => p.module === 'optics');
   assert.equal(optics.length, expected[id], `${id}: actual sight-part count`);

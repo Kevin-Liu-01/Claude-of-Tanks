@@ -100,13 +100,12 @@ function roofMG(
   cls = 'mag',
   yaw = 0,
   scale = 0.82,
-  feed?: 'left' | 'right',
 ): void {
   P.add('turret', KIT.cylY(0.18, 0.20, 0.075, 16), x, y, z);
   P.add('turretDark', KIT.cylY(0.15, 0.17, 0.020, 16), x, y + 0.047, z);
   mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls, tone: 'two-tone', scale, elev: 0.10,
-    shield: true, ammo: true, ring: { r: 0.16, stubs: 3 }, seed, feed,
+    shield: true, ammo: true, ring: { r: 0.16, stubs: 3 }, seed,
   }), x, y + 0.07, z, [0, yaw, 0]);
 }
 
@@ -622,7 +621,7 @@ function addMarderCastTurret(P: AfvBuilderPort): void {
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 0.90, d: 0.28, h: 0.20, fill: 0.66, rails: 3, seed: 3497,
   }), 0, 0.47, -0.86);
-  roofMG(P, 0.30, 0.475, -0.48, 3500, 'mg3', 0.05, 0.62);                      // §B3 MG law (seated on the cast)
+  roofMG(P, 0.30, 0.475, -0.48, 3500, 'mag', 0.05, 0.62);                      // §B3 MG law (seated on the cast)
   for (const sde of [-1, 1]) {
     P.add('turret', box(0.12, 0.20, 0.34), sde * 0.60, 0.30, -0.44, 0, 0, sde * 0.10); // smoke collar seats
     mount(P, 'turret', FITTINGS.smokeBank({
@@ -1413,7 +1412,7 @@ function addPumaOraclePackage(P: AfvBuilderPort): void {
   // pose once the §5.249 print restore re-framed the render). Both re-seat
   // on real surfaces: MG pot buried into the roof at its own z, whips onto
   // the bustle roof plate (§B5 physical-seat law).
-  roofMG(P, -0.38, 0.735, -0.48, 3700, 'mg3', -0.04, 0.74);
+  roofMG(P, -0.38, 0.735, -0.48, 3700, 'mag', -0.04, 0.74);
   radioPair(P, 0.79, -1.20, 3710, 0.55);
   P.add('turret', KIT.box(0.28, 0.07, 0.28), 0.42, 0.90, -0.18);
   P.add('turretDetail', KIT.cylY(0.12, 0.14, 0.32, 14), 0.42, 1.09, -0.18);
@@ -1625,10 +1624,7 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
     }
   }
 
-  // 2026-10-07 (tank-accessories round 4): the NSVT's box takes the gun's left (the NSV feeds from either side). On its
-  // right it hung through the bustle's jerrycans (109 triangles inside the box region in the feed-side collision census,
-  // 107 before round 4); on the left the region is clear (0).
-  roofMG(P, -0.30, 0.91, -0.60, 3801, 'nsvt', -0.05, 0.76, 'left');
+  roofMG(P, -0.30, 0.91, -0.60, 3801, 'nsvt', -0.05, 0.76);
 
   // Rear equipment: backing plate buried into the base-skirt slope, deep
   // bustle rack seated on the slab top, cans left / spare links right.

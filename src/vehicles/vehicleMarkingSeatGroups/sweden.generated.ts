@@ -134,31 +134,9 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.27,
         "pos": [
-          -1.6120037,
-          1.8124046,
-          -0.0140223
-        ],
-        "quaternion": [
-          0.3350778,
-          -0.6307997,
-          0.3283201,
-          0.618078
-        ],
-        "surfaceMesh": "hull",
-        "anchorProfile": "strv103a",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
-      },
-      {
-        "kind": "designation",
-        "parent": "hull",
-        "size": 0.27,
-        "pos": [
           -0.946,
           1.2504251,
-          3.0426999
+          2.8628999
         ],
         "quaternion": [
           0,
@@ -172,6 +150,28 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
         "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.27,
+        "pos": [
+          -1.5578577,
+          1.4613903,
+          3.0433702
+        ],
+        "quaternion": [
+          0.4148907,
+          -0.5215389,
+          0.4641508,
+          0.5834612
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "strv103a",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 8,
+        "visibilityRatio": 0.8888889,
+        "maximumSurfaceErrorM": 0.0123292
       }
     ]
   },
@@ -205,22 +205,22 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.27,
         "pos": [
-          -1.2555408,
+          1.2555408,
           1.483121,
           -3.2399685
         ],
         "quaternion": [
           0.3313208,
-          -0.5665081,
-          0.3809145,
+          0.5665081,
+          -0.3809145,
           0.6513057
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "strv103",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 6,
-        "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.6676509
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0022385
       }
     ]
   },

@@ -5,8 +5,6 @@ import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT as UNTYPED_KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
-import { DRUM_ISSUE_PAINTS, barkLog, fabricRollParts, fuelDrumParts, latheY, place, sweptTube } from '../accessoryPrimitives.ts';
-import { vehicleAmbientFloorHook } from '../materials.ts';
 import { pushConvexQuad } from '../factoryGeometry.ts';
 import { clippedArmorSkin } from './armorFaceSampling.ts';
 import { buildPT91MPendekar } from './pt91mPendekar.ts';
@@ -768,7 +766,6 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
   weaponYaw = 0,
   weaponClass = 'kord',
   includeRace = true,
-  openWeaponBay = false,
   weaponName,
   receiptKey,
 }: {
@@ -782,8 +779,6 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
   weaponYaw?: number;
   weaponClass?: 'kord' | 'nsvt';
   includeRace?: boolean;
-  /** Seat the gun in an open yoke on a low pedestal instead of burying its receiver in the armored head. */
-  openWeaponBay?: boolean;
   weaponName: string;
   receiptKey: string;
 }): THREE.Group {
@@ -812,72 +807,21 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
 
   const finishStation = ['t90','t90m_proryv'].includes(P.spec.id)
     ? captureAuxiliaryStock(P,weaponName) : null;
-  // The open bay's deck top, where its cheek plates stand (round 5).
-  let deckTopY: number | null = null;
-  if (openWeaponBay) {
-    // 2026-10-07 (tank-accessories round 3): the critics read the T-90M station as "a stack of plain boxes around a
-    // bare tube": the Kord's receiver, feed and can sat inside the 0.34 m head box and only the barrel showed. The head
-    // becomes a low pedestal and deck under the gun's own cradle, so the receiver, feed cover, can and belt stand in
-    // the open yoke between the armored cheek plates, beside the sight and the ammunition housing.
-    const pedestalTopY = weaponFootY + 0.012;
-    P.addEquipment('turret', box(fit(0.36), pedestalTopY - (foundationTopY - fitY(0.02)), fit(0.34)),
-      x, (pedestalTopY + foundationTopY - fitY(0.02)) * 0.5, z + fit(0.04), 0, yaw, 0);
-    // 2026-10-08 (tank-accessories round 5, the contact receipt: the cheek plates hung beside the deck, their
-    // corners touching nothing within 15 mm): the deck spans the cheeks, and the cheeks stand on it.
-    P.add('turretDark', box(fit(0.58), 0.018, fit(0.38)), x, pedestalTopY + 0.004, z + fit(0.04), 0, yaw, 0);
-    deckTopY = pedestalTopY + 0.013;
-  } else {
-    P.addEquipment('turret', box(fit(0.40), fitY(0.34), fit(0.36)),
-      x, headCenterY, z + fit(0.04), 0, yaw, 0);
-    P.add('turretDark', box(fit(0.44), fitY(0.045), fit(0.40)),
-      x, headCenterY + fitY(0.19), z + fit(0.04), 0, yaw, 0);
-  }
+  P.addEquipment('turret', box(fit(0.40), fitY(0.34), fit(0.36)),
+    x, headCenterY, z + fit(0.04), 0, yaw, 0);
+  P.add('turretDark', box(fit(0.44), fitY(0.045), fit(0.40)),
+    x, headCenterY + fitY(0.19), z + fit(0.04), 0, yaw, 0);
   for (const side of [-1, 1]) {
-    // On the open bay the plate's lowest (inboard) corner sits 3 mm into the deck: half its rotated height below
-    // its centre is h/2 cos(a) + w/2 sin(a).
-    const lean = side * fit(0.08), plateH = fitY(0.27);
-    const cheekY = deckTopY === null ? headCenterY + fitY(0.06)
-      : deckTopY - 0.003 + plateH / 2 * Math.cos(lean) + fit(0.035) * Math.abs(Math.sin(lean));
-    P.addEquipment('turret', box(fit(0.070), plateH, fit(0.28)),
-      x + side * fit(0.23), cheekY, z + fit(0.10),
-      0, yaw, lean);
-    // round 5: the plate's bolt heads, two rows of two on its outer face
-    for (const by of [-0.3, 0.3]) for (const bz of [-0.09, 0.09]) {
-      const ly = by * plateH;
-      P.add('turretDark', KIT.cylX(fit(0.011), fit(0.012), 6),
-        x + side * (fit(0.23) + fit(0.035) * Math.cos(lean) - ly * Math.sin(Math.abs(lean)) + fit(0.004)),
-        cheekY + ly * Math.cos(lean), z + fit(0.10) + bz * scale, 0, yaw, 0);
-    }
+    P.addEquipment('turret', box(fit(0.070), fitY(0.27), fit(0.28)),
+      x + side * fit(0.23), headCenterY + fitY(0.06), z + fit(0.10),
+      0, yaw, side * fit(0.08));
   }
   P.addEquipment('turret', box(fit(0.19), fitY(0.21), fit(0.22)),
     x + fit(0.27), headCenterY - fitY(0.02), z + fit(0.21), 0, yaw, 0);
   P.add('turretGlass', box(fit(0.13), fitY(0.13), fit(0.014)),
     x + fit(0.27), headCenterY, z + fit(0.328), 0, yaw, 0);
-  // 2026-10-08 (tank-accessories round 5; wave 254 on the T-90M: "a stack of blunt slabs (flat side boxes, a
-  // camo-painted sensor block and a bare tube barrel) with no cabling, optics glass, ammunition feed chute or
-  // fasteners"): the sight's window sits in a dark bezel under a sun hood with the rangefinder's port beside it, the
-  // sight and the work light carry their cables down to the station's base, the ammunition housing shows its lid seam
-  // and latches, and the armoured plates carry their bolt heads.
-  P.add('turretDark', box(fit(0.155), fitY(0.155), fit(0.012)), x + fit(0.27), headCenterY, z + fit(0.322), 0, yaw, 0);
-  P.add('turretDark', box(fit(0.21), fitY(0.016), fit(0.07)), x + fit(0.27), headCenterY + fitY(0.088), z + fit(0.345),
-    -0.18, yaw, 0);
-  P.add('turretDark', KIT.cylZ(fit(0.022), fit(0.02), 10), x + fit(0.27) + fit(0.062), headCenterY - fitY(0.07), z + fit(0.326),
-    0, yaw, 0);
-  P.add('turretGlass', KIT.cylZ(fit(0.014), fit(0.008), 10), x + fit(0.27) + fit(0.062), headCenterY - fitY(0.07), z + fit(0.336),
-    0, yaw, 0);
-  P.add('turretDark', sweptTube([[x + fit(0.27) + fit(0.07), headCenterY - fitY(0.08), z + fit(0.11)],
-    [x + fit(0.27) + fit(0.105), headCenterY - fitY(0.10), z + fit(0.05)],
-    [x + fit(0.27) + fit(0.105), foundationTopY + fitY(0.02), z + fit(0.0)],
-    [x + fit(0.24), foundationTopY - fitY(0.01), z - fit(0.02)]], fit(0.011), 6, 10));
   P.addEquipment('turret', box(fit(0.22), fitY(0.18), fit(0.28)),
     x - fit(0.27), headCenterY - fitY(0.04), z - fit(0.01), 0, yaw, 0);
-  P.add('turretDark', box(fit(0.226), fitY(0.012), fit(0.286)), x - fit(0.27), headCenterY + fitY(0.035), z - fit(0.01), 0, yaw, 0);
-  for (const dz of [-0.09, 0.09]) {
-    P.add('turretDark', box(fit(0.03), fitY(0.05), fit(0.012)), x - fit(0.27), headCenterY + fitY(0.02),
-      z - fit(0.01) + fit(0.14) + fit(0.004), 0, yaw, 0);
-    P.add('turretDark', box(fit(0.012), fitY(0.05), fit(0.03)), x - fit(0.27) - fit(0.114), headCenterY + fitY(0.02),
-      z - fit(0.01) + dz * scale, 0, yaw, 0);
-  }
   // A protected coaxial work light gives every family station a readable
   // purpose at gallery distance without turning its weapon or optic into a
   // camouflage-painted lump. The housing and lens remain external equipment.
@@ -885,9 +829,6 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
     x - fit(0.25), headCenterY + fitY(0.08), z + fit(0.25), 0, yaw, 0);
   P.add('turretGlass', KIT.cylZ(fit(0.054), fit(0.012), 14),
     x - fit(0.25), headCenterY + fitY(0.08), z + fit(0.294), 0, yaw, 0);
-  P.add('turretDark', sweptTube([[x - fit(0.25), headCenterY + fitY(0.06), z + fit(0.215)],
-    [x - fit(0.25), headCenterY + fitY(0.04), z + fit(0.15)], [x - fit(0.26), headCenterY + fitY(0.05), z + fit(0.11)]],
-    fit(0.009), 6, 8));
 
   finishStation?.();
   const weapon = FITTINGS.pintleMG({
@@ -927,7 +868,6 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
     includeRace,
     foundationTopY,
     weaponFootY,
-    openWeaponBay,
     heightScale,
     structuralFoundation: true,
     separateManualWeaponStations: 0,
@@ -4782,9 +4722,8 @@ function finishT90BaseAuthored(P: T90BuilderPort): void {
     yaw: 0,
     scale: 0.98,
     heightScale: 1.10,
-    weaponScale: 1.0,
+    weaponScale: 1.12,
     weaponYaw: 0,
-    openWeaponBay: true,
     weaponName: 't90Ru417AutomatedKord',
     receiptKey: 't90Ru417AutomatedStationReceipt',
   });
@@ -6745,7 +6684,7 @@ function addT90MProryvGlacisRelikt(P: T90BuilderPort): void {
 }
 
 function replaceT90MProryvHull(P: T90BuilderPort): void {
-  const { box, cylY, torus, buildRunningGear, discardRunningGear } = KIT;
+  const { box, cylX, cylY, torus, buildRunningGear, discardRunningGear } = KIT;
 
   // Remove the calibration-era hull and every direct fitting/gear child.
   // The replacement below is a complete repository-authored chassis, not a
@@ -6758,7 +6697,7 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
   // renders, so it is the only one it registers and records.
   discardRunningGear(P);
   P.clear(
-    'hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth', 'hullCanvasPale',
+    'hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth',
     'hullGlass', 'hullShadow', 'hullTrack', 'hullTrackDetailL',
     'hullTrackDetailR', 'hullTrackTrimL', 'hullTrackTrimR',
     'hullRunningGearDetail', 'hullRunningGearDark', 'spareTrack',
@@ -6895,53 +6834,20 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
     // Fixed rear fuel drums sit on the transom cradle below the rotating
     // magazine. Their forward arcs overlap the backed hull rear and the
     // full straps return into a broad lower shoe.
-    // 2026-10-07 (tank-accessories round 3: the canvas-green cylinders read as smooth green pipes): steel drums with
-    // rolled chimes and two rolling hoops. Round 4 (wave 214: "glossy horizontal banding, and stark white blotches on
-    // the end caps that read as emblems"): the drums are painted as drums, in the scheme's solid matte equipment paint
-    // (FSP-06 fitting paint), never the hull's digital camouflage; two raised straps with buckles replace the hidden
-    // blocks inside the shell, and the outer head carries its bung caps.
-    // Round 5 (2026-10-08; wave 269: "a bright orange plastic-looking cylinder at the rear left"): the scheme's fitting
-    // paint read orange under the warm key. The drums take issue paints (DRUM_ISSUE_PAINTS: a dull green each, never the
-    // same), bold rims and ribs, rust where the straps chafe and a fuel stain, in the vertex-coloured draw the log uses.
-    const drum = fuelDrumParts({ r: 0.20, len: 0.72, straps: [0.15, 0.85], buckleAt: 2.62, bungHead: s > 0 ? 1 : -1,
-      detail: P.q === false ? 0 : 1, bold: true, paint: DRUM_ISSUE_PAINTS[s > 0 ? 1 : 2], seed: 7811 + (s > 0 ? 1 : 0) });
-    const alongX = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => place(geometry, -0.36, 0, 0, 0, 0, -Math.PI / 2);
-    P.add('hullBark', alongX(drum.body), s * 0.62, 1.46, -3.44);
-    for (const part of [...drum.straps, ...drum.hardware]) P.add('hullDark', alongX(part), s * 0.62, 1.46, -3.44);
+    P.add('hullCloth', cylX(0.20, 0.72, 14), s * 0.62, 1.46, -3.44);
+    for (const x of [s * 0.35, s * 0.66, s * 0.92]) P.add('hullDark', box(0.035, 0.26, 0.30), x, 1.46, -3.44);
     P.add('hullDark', box(0.78, 0.055, 0.24), s * 0.62, 1.315, -3.39);
     P.add('hullDark', torus(0.095, 0.020, 14), s * 0.82, 0.62, -3.36, Math.PI / 2, 0, 0);
     P.add('hullDetail', box(0.18, 0.12, 0.035), s * 1.27, 1.00, -3.36);
     P.add('hullGlass', box(0.10, 0.07, 0.010), s * 1.27, 1.03, -3.388);
   }
-  {
-    // the unditching log: barked trunk, knots, pale sawn ends with their rings (accessoryPrimitives.barkLog), not a
-    // canvas-green pipe (round 3). Round 4 (2026-10-07, wave 214: "a smooth orange or peach tube. Give it bark, end
-    // grain and a darker brown"): the deep-furrowed trunk with its own baked wood colours in the vertex-coloured log
-    // wood (hullBark): grey-brown bark, pale sapwood ends round a warmer heart, darker rings, one draw.
-    const log = barkLog({ len: 1.48, r: 0.105, seed: 7790, detail: P.q === false ? 0 : 1, relief: 2, tinted: true });
-    for (const part of [log.bark, ...(log.stub ? [log.stub] : []), ...log.ends, ...log.grain]) P.add('hullBark', part, 0, 0.79, -3.42);
-    // Round 5 (2026-10-08; wave 255: "the log bundle is identical smooth dowels"): five square dark collars stood round
-    // the log like a row of dowel ends. It rides on two steel bands seated on the trunk's own radius, each held to the
-    // transom by a welded lug above it.
-    for (const x of [-0.46, 0.44]) {
-      const band = log.radiusAt((x + 0.74) / 1.48) * 1.09;
-      P.add('hullDark', place(latheY([[band, 0], [band + 0.006, 0.003], [band + 0.006, 0.029], [band, 0.032]],
-        P.q === false ? 10 : 14), x - 0.016, 0, 0, 0, 0, -Math.PI / 2), 0, 0.79, -3.42);
-      P.add('hullDark', box(0.05, 0.05, 0.075), x, 0.79 + band * 0.72, -3.37);
-    }
-  }
-  // Round 3 (2026-10-07, critics: "the tow cable droops in a free arc below the rear plate ... held by no clips or
-  // hooks"): the cable is stowed ON the transom. It runs eye to eye between the two tow hooks along the plate's lower
-  // band, under the roll's strap shoes, and four bolted clips hold it to the plate.
+  P.add('hullCloth', cylX(0.105, 1.48, 14), 0, 0.79, -3.42);
+  for (const x of [-1.05, -0.50, 0.05, 0.60, 1.15]) P.add('hullDark', box(0.045, 0.25, 0.24), x, 0.79, -3.42);
   const rearCable = FITTINGS.towCable({
-    mats: P.mats, eyes: true, r: 0.018,
-    pts: [[-0.82, 0.68, -3.365], [-0.42, 0.665, -3.372], [0, 0.66, -3.374], [0.42, 0.665, -3.372], [0.82, 0.68, -3.365]], seed: 91,
+    mats: P.mats, eyes: false, r: 0.018,
+    pts: [[-1.02, 0.62, -3.39], [-0.52, 0.48, -3.43], [0, 0.43, -3.44], [0.52, 0.48, -3.43], [1.02, 0.62, -3.39]], seed: 91,
   });
   P.hullG.add(rearCable);
-  for (const x of [-0.62, -0.21, 0.21, 0.62]) {
-    P.add('hullDark', box(0.05, 0.055, 0.016), x, 0.665, -3.346);                // clip saddle bolted to the plate
-    P.add('hullDark', box(0.05, 0.012, 0.05), x, 0.692, -3.372);                 // clip strap over the cable
-  }
 }
 
 function addT90MProryvTurretFoundation(P: T90BuilderPort): void {
@@ -7171,10 +7077,8 @@ function addT90MProryvBustleAndRoof(P: T90BuilderPort): void {
     yaw: 0,
     scale: 1.04,
     heightScale: 1.42,
-    // true scale (round 3): the 1.12 Kord read as "an oversized, uncooled tube indistinguishable from a cannon"
-    weaponScale: 1.0,
+    weaponScale: 1.12,
     weaponYaw: 0,
-    openWeaponBay: true,
     weaponName: 't90mProryvRemoteKord',
     receiptKey: 't90mProryvAutomatedStationReceipt',
   });
@@ -7293,13 +7197,7 @@ function enhanceT90MProryvSurface2026(P: T90BuilderPort): void {
   const cradleReturnZ = bustleRearFaceZ - 0.11;
   const crossShoeZ = bustleRearFaceZ - 0.05;
   const uprightReturnZ = bustleRearFaceZ - 0.08;
-  if (P.q === false) P.add('turretCloth', cylX(rearAssemblyRadiusM, 1.42, 16), 0, 0.45, rearAssemblyZ);
-  else {
-    // the rolled cover pinched under its four bands, its rolled ends wound (round 3: a 16-sided cylinder before)
-    const roll = fabricRollParts(1.42, rearAssemblyRadiusM, [-0.58, -0.20, 0.20, 0.58], 24, 8132);
-    P.add('turretCloth', roll.body, 0, 0.45, rearAssemblyZ);
-    for (const end of roll.ends) P.add('turretDark', end, 0, 0.45, rearAssemblyZ);
-  }
+  P.add('turretCloth', cylX(rearAssemblyRadiusM, 1.42, 16), 0, 0.45, rearAssemblyZ);
   for (const x of [-0.58, -0.20, 0.20, 0.58]) {
     P.add('turretDark', box(0.040, 0.42, 0.18), x, 0.45, rearAssemblyZ);
     P.add('turretDetail', box(0.045, 0.055, 0.34), x, 0.30, cradleReturnZ);
@@ -7515,12 +7413,7 @@ function refineT90MProryvArmor2026(P: T90BuilderPort): void {
     P.addEquipment('turret', box(w, 0.11, d), x, y + 0.035, z);
     P.add('turretDark', box(w * 0.76, 0.012, 0.030), x, y + 0.096, z + d * 0.34);
   }
-  if (P.q === false) P.add('turretCloth', cylX(0.105, 0.90, 14), 0.10, 0.84, -2.13);
-  else {
-    const roll = fabricRollParts(0.90, 0.105, [-0.32, 0, 0.32], 18, 8348);
-    P.add('turretCloth', roll.body, 0.10, 0.84, -2.13);
-    for (const end of roll.ends) P.add('turretDark', end, 0.10, 0.84, -2.13);
-  }
+  P.add('turretCloth', cylX(0.105, 0.90, 14), 0.10, 0.84, -2.13);
   for (const x of [-0.22, 0.10, 0.42]) P.add('turretDark', box(0.035, 0.23, 0.18), x, 0.84, -2.13);
 
   // Roof armor and equipment: low structural collars remain hittable;
@@ -7604,10 +7497,8 @@ function buildT90MProryvNative2026(P: T90BuilderPort): void {
   // The extra 40 mm also keeps the visibly thicker instanced shoes clear of
   // the front shoulder and rear sponson undersides under full-course sweep.
   const rideHeightIncreaseM = 0.16;
-  // (2026-10-07: the unditching log's pale sawn ends ride in hullCanvasPale and rise with it; round 4: the rear fuel
-  // drums' shells ride in hullFittingPaint and the whole log in hullBark)
   P.offsetBuckets([
-    'hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth', 'hullCanvasPale', 'hullFittingPaint', 'hullBark',
+    'hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth',
     'hullGlass', 'hullShadow', 'hullTrack', 'hullTrackDetailL',
     'hullTrackDetailR', 'hullTrackTrimL', 'hullTrackTrimR', 'spareTrack',
     'hullEquipment', 'hullCupola',

@@ -56,11 +56,8 @@ function commanderWeapon(P: TankBuilderPort): void {
   add(P, 'turretDetail', cylY(.055, .071, .100, P.q ? 16 : 10), x, 2.051, z);
   // Same two-tone M2 fitting as K2 Black Panther X, at 70% installed size.
   // The family enlargement is applied afterwards, so compensate here once.
-  // 2026-10-07 (tank-accessories round 4): the K2's station weapon is the crewless remote form (solenoid, the
-  // station's right-hand feed, no crew sights) since round 3; the copy takes that same form as a fixed fitting
-  // (remoteWeapon), so it stays the K2's complete stock without becoming a counted roof gun.
   const gun = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone',
-    scale: 1.275, ammo: true, shield: false, ring: false, seed: 2042, remoteWeapon: true });
+    scale: 1.275, ammo: true, shield: false, ring: false, seed: 2042 });
   gun.scale.setScalar(.70 / S);
   gun.name = 'arieteC2CommanderK2';
   gun.userData.roofWeapon = { donor: 'k2_x', relativeScale: .70, decorative: true };

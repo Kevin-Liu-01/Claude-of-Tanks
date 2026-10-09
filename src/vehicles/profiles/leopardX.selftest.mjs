@@ -389,10 +389,9 @@ for (const [id, source] of Object.entries(sources)) {
         `${id}: broad optic bearing ends below the narrow raised head`);
       near(ray(get('turretDetail'),[-.28,4,-.37],[0,-1,0])?.y??NaN,3.01667,.007,
         `${id}: actual source upper optic head elevation`);
-      // 2026-10-08 (tank-accessories round 4): the marked discharger tubes merge into the matte fitting paint
-      near(ray(get('turretFittingPaint'),[-3,2.08,-1.21],[1,0,0])?.x??NaN,-1.39724,.009,
+      near(ray(get('turretDetail'),[-3,2.08,-1.21],[1,0,0])?.x??NaN,-1.39724,.009,
         `${id}: source asymmetric negative-side smoke tube station`);
-      near(ray(get('turretFittingPaint'),[-3,2.08,-.85],[1,0,0])?.x??NaN,-1.40530,.009,
+      near(ray(get('turretDetail'),[-3,2.08,-.85],[1,0,0])?.x??NaN,-1.40530,.009,
         `${id}: source negative-side smoke-bank fan angle`);
       near(ray(get('turretDetail'),[-.962,2.70,0],[0,0,-1])?.z??NaN,-1.73477,.005,
         `${id}: source slender antenna neck, not a generic broad tower`);

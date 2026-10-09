@@ -138,12 +138,8 @@ for(const quality of ['high','low'])for(const id of ids){
    assert.equal(mesh.userData.continuityRole,'open-lattice');
    const net=tank.root.getObjectByName(id+'_ghillie_'+owner+'_net');
    assert(net&&net.parent.name==='rig_'+owner,id+': physical net follows '+owner);
-   // 2026-10-08 (tank-accessories round 5, merging push 3): the lane's suit builder ties all its garnish into one
-   // card draw per owner, named _leaves (ghillieSuit.ts, 2026-10-05); main's split _light/_dark layers are gone. Its
-   // garnish is bunches tied at points along the nets (critic waves 253 and 269 against a dense uniform card layer: "a
-   // hedge sculpture", "fish scales"), so a dozen bunches (300 vertices) is physical leaves, not a painted net
-   const leaf=tank.root.getObjectByName(id+'_ghillie_'+owner+'_leaves');
-   assert(leaf?.geometry.attributes.position.count>300,id+': physical leaves tied on, not only painted net');
+   const leaf=tank.root.getObjectByName(id+'_ghillie_'+owner+'_light');
+   assert(leaf?.geometry.attributes.position.count>1000,id+': dense physical leaves, not only painted net');
   }
   const cfg=NATIONAL_UKRAINE_GHILLIE[id];
   assert.equal(cfg.hull.top,undefined,id+': hatch and engine deck remain open');

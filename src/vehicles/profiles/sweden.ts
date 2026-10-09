@@ -208,11 +208,9 @@ function addStrv81Package(P: SwedishBuilderPort): void {
   // Low Swedish commander cupola, Ksp 58 and twin radio cadence.
   P.add('turret', cylY(0.27, 0.29, 0.08, 18), -0.47, 0.93, -0.52);
   P.add('turretDark', KIT.torus(0.26, 0.014, 18), -0.47, 0.98, -0.52);
-  // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the cupola and its vision blocks
-  // (feed-side collision census).
   mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.80,
-    elev: 0.08, shield: true, ammo: true, seed: 8120, feed: 'right',
+    elev: 0.08, shield: true, ammo: true, seed: 8120,
   }), -0.47, 0.94, -0.52, [0, -0.05, 0]);
   P.add('turret', box(0.34, 0.09, 0.32), 0.47, 0.91, -0.36);
   P.add('turretDetail', cylY(0.12, 0.14, 0.25, 14), 0.47, 1.06, -0.36);
@@ -763,36 +761,13 @@ function buildStrv103A(P: SwedishBuilderPort): void {
   P.add('hullDark', box(0.32, 0.02, 0.36), 0.62, 2.15, -0.94);
   P.add('hullGlass', box(0.20, 0.075, 0.022), 0.62, 2.06, -0.73);
   P.add('hull', cylY(0.26, 0.28, 0.11, 16), 0.28, 1.93, -0.40);               // commander cupola (right)
+  P.add('hullDark', torus(0.26, 0.015, 16), 0.28, 2.00, -0.40);
   P.add('hull', cylY(0.145, 0.145, 0.045, 14), 0.28, 2.045, -0.40);           // cupola crown at the 2.16 cap
-  // 2026-10-07 (tank-accessories round 4, wave 216: "a thin rod on a box bracket, on a bare ring floating round the
-  // cupola with no supports"): the two dark round tori that stood proud of the cupola's rim and crown become flat
-  // machined rings seated on them (a chamfered race with its bolt circle), carried at the rim on four welded
-  // brackets; the Ksp 58 leaves the plinth beside the cupola for a pintle on the cupola's own race, at true scale
-  // (it was 0.70 of a GPMG, drawn on the 0.60 floor), on its cradle with the round-4 can, belt, sights and shield.
-  const strv103aRace = (rIn: number, rOut: number, h: number, y: number): THREE.BufferGeometry => {
-    const c = Math.min(0.005, (rOut - rIn) * 0.3);
-    const lathe = new THREE.LatheGeometry([[rIn, 0], [rOut, 0], [rOut, h - c], [rOut - c, h], [rIn + c, h], [rIn, h - c], [rIn, 0]]
-      .map(([r, yy]) => new THREE.Vector2(r, yy)), P.q ? 28 : 16);
-    lathe.translate(0, y, 0);
-    return lathe;
-  };
-  P.add('hullDark', strv103aRace(0.232, 0.272, 0.014, 0), 0.28, 1.985, -0.40);
-  P.add('hullDark', strv103aRace(0.128, 0.156, 0.012, 0), 0.28, 2.0675, -0.40);
-  for (let k = 0; k < 4; k++) {
-    const a = 0.4 + k * Math.PI / 2;
-    P.add('hullDetail', box(0.03, 0.045, 0.05), 0.28 + Math.cos(a) * 0.275, 1.968, -0.40 + Math.sin(a) * 0.275, 0, -a, 0);
-  }
-  for (let k = 0; k < 12; k++) {
-    const a = k * Math.PI / 6;
-    P.add('hullDark', cylY(0.006, 0.006, 0.006, 6), 0.28 + Math.cos(a) * 0.252, 2.002, -0.40 + Math.sin(a) * 0.252);
-  }
-  // 2026-10-08 (tank-accessories round 5; wave 256 on the Strv 103A: "a plain dark rod through a box between two slotted
-  // plates, with no receiver detail, feed tray, belt, ammunition box or muzzle device"): the shield's leaves stand
-  // 0.14 m (the low shield), so the receiver's feed cover, the can on the gun's left and its belt read over them.
+  P.add('hullDark', torus(0.15, 0.013, 14), 0.28, 2.065, -0.40);
   mount(P, 'hull', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 1.0,
-    elev: 0.04, shield: 'low', ammo: true, seed: 10430,
-  }), 0.40, 1.999, -0.24, [0, 0.05, 0]);                                      // commander Ksp 58 on the cupola race
+    mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.70,
+    elev: 0.04, shield: true, ammo: true, seed: 10430,
+  }), 0.52, 1.94, -0.18, [0, 0.05, 0]);                                       // commander Ksp 58 (crown <= 2.16 cap)
   P.add('hull', sph(0.155, 14, Math.PI / 2), -0.52, 1.87, -0.30);             // fixed observation dome (left)
   P.add('hullDark', torus(0.14, 0.012, 12), -0.52, 1.925, -0.30);
   P.addEquipment('hull', box(0.34, 0.14, 0.36), -0.66, 1.92, -0.98);          // driver/gunner sight box (left)

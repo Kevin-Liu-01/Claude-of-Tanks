@@ -34,7 +34,6 @@ import {
   torus, xform,
 } from './factoryGeometry.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
-import { applyCamoPanels } from './camoPanels.ts';
 import {
   createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial,
@@ -73,14 +72,6 @@ import {
 import { deduplicateEraSurfaces } from './eraSurfaceDeduplication.ts';
 import { createInvocationEraWholeReuse } from './eraWholeFitReuse.ts';
 import { EquipmentDamage, markEquipmentLid, type EquipmentDamageEvent } from './equipmentDamage.ts';
-import {
-  block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndLayers, rolledEndSpiral, roundBar, sweptTube,
-  type FabricSpec,
-} from './accessoryPrimitives.ts';
-import { jerrycanParts } from './accessoryKits.ts';
-import {
-  addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, createPintleLayout,
-} from './machineGunGeometry.ts';
 import { disposeOwnedFittingGeometry } from './ownedFittingGeometry.ts';
 import { presentationAnchorFor } from './presentationAnchors.generated.ts';
 import {
@@ -148,8 +139,6 @@ interface TankMaterials {
   /** FSP-06: pale sand-khaki canvas for desert / IDF soft kit (materials.ts). */
   canvasPale: THREE.MeshStandardMaterial;
   wood: THREE.MeshStandardMaterial;
-  /** Round 4 (2026-10-07): vertex-coloured log wood (bark, sawn ends, rings) for unditching logs (materials.ts). */
-  bark: THREE.MeshStandardMaterial;
   burnt: THREE.MeshStandardMaterial;
   trackL: THREE.MeshStandardMaterial;
   trackR: THREE.MeshStandardMaterial;
@@ -936,12 +925,6 @@ export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, Cupola
   topY: number;
   fixedMount: boolean;
   postAssemble: ((rig: TankRig) => void) | null;
-  /**
-   * Steps that run after postAssemble, in the order they were added (round 5, 2026-10-08): equipment laid against the
-   * finished armour (a camouflage suit, ghillieSuit.ts) adds itself here, so no profile's own postAssemble chain is
-   * wrapped or replaced, and it always runs after them.
-   */
-  readonly afterAssemble: Array<(rig: TankRig) => void>;
   addMudguard(
     label: string,
     bucket: string,
@@ -1241,7 +1224,7 @@ interface AuthoredRange {
 }
 
 type RigGroupKey = 'hullG' | 'turretG' | 'recoilG' | 'gunG' | 'barrel0G' | 'barrel1G';
-type TankMaterialKey = 'hull' | 'rubber' | 'detail' | 'dark' | 'wood' | 'bark' | 'canvasCloth' | 'canvasPale'
+type TankMaterialKey = 'hull' | 'rubber' | 'detail' | 'dark' | 'wood' | 'canvasCloth' | 'canvasPale'
   | 'glass' | 'barrel' | 'spareTrack' | 'shadow' | 'wheels';
 type BucketDefinition = readonly [RigGroupKey, TankMaterialKey];
 type OriginalMaterialRecord = [VehicleMesh, THREE.Material | THREE.Material[], boolean];
@@ -5968,22 +5951,64 @@ function periscope(
 
 function pintleMG(builder: object, x: number, y: number, z: number, big = true): void {
   const P = requireGeometryAddPort(builder);
-  // The generic profile builder's roof gun (profiles/kit.ts addTurretAccessories,
-  // reached only by a profile with no authored builder that sets `mg`; no
-  // shipping profile does today) is the fleet's one Browning-family
-  // construction (machineGunGeometry.ts, 2026-10-05): bearing -> spindle ->
-  // fork -> trunnion, pressed receiver, feed cover, grips, jacket and muzzle
-  // device, and (heavy) the can and belt, all in the turret's gunmetal bucket.
-  const parts = {
-    add(_slot: string, geometry: THREE.BufferGeometry, gx = 0, gy = 0, gz = 0, rx = 0, ry = 0, rz = 0) {
-      P.add('turretDark', xform(geometry, gx, gy, gz, rx, ry, rz), x, y, z);
-    },
-  };
-  const layout = createPintleLayout({ cls: big ? 'heavy' : 'mag', scale: big ? 1 : 0.96, ammo: big }, parts);
-  addPintleMount(layout);
-  addPintleReceiver(layout);
-  addPintleBarrel(layout);
-  addPintleAmmo(layout);
+  const s = big ? 1 : 0.75;
+  const trunnionY = y + 0.235 * s;
+  const receiverY = trunnionY + 0.035 * s;
+  const receiverZ = z + 0.055 * s;
+
+  // Compact Browning-derived fallback used by the generic profile builder.
+  // It deliberately mirrors the authored fitting's bearing -> bridge -> fork
+  // -> trunnion load path so no tank falls back to the old block-on-a-stick.
+  P.add('turretDark', cylY(0.040 * s, 0.050 * s, 0.022 * s, 12), x, y + 0.011 * s, z);
+  P.add('turretDark', torus(0.041 * s, 0.007 * s, 16), x, y + 0.024 * s, z);
+  P.add('turretDark', cylY(0.020 * s, 0.026 * s, 0.155 * s, 10), x, y + 0.1015 * s, z);
+  P.add('turretDark', box(0.125 * s, 0.040 * s, 0.130 * s), x, y + 0.196 * s, z + 0.012 * s);
+  for (const side of [-1, 1]) {
+    P.add('turretDark', box(0.020 * s, 0.085 * s, 0.095 * s),
+      x + side * 0.048 * s, y + 0.217 * s, z + 0.044 * s, side * 0.05, 0, 0);
+  }
+  P.add('turretDark', cylX(0.026 * s, 0.130 * s, 10), x, trunnionY, z + 0.060 * s);
+
+  P.add('turretDark', box(0.115 * s, 0.095 * s, 0.46 * s), x, receiverY, receiverZ);
+  P.add('turretDark', box(0.106 * s, 0.018 * s, 0.405 * s),
+    x, receiverY + 0.0565 * s, receiverZ + 0.004 * s);
+  P.add('turretDark', box(0.020 * s, 0.065 * s, 0.245 * s),
+    x + 0.068 * s, receiverY, receiverZ - 0.025 * s);
+  P.add('turretDark', box(0.052 * s, 0.017 * s, 0.075 * s),
+    x - 0.083 * s, receiverY + 0.018 * s, receiverZ - 0.018 * s);
+  for (const side of [-1, 1]) {
+    P.add('turretDark', box(0.018 * s, 0.024 * s, 0.095 * s),
+      x + side * 0.035 * s, receiverY - 0.018 * s, receiverZ - 0.29 * s,
+      side * 0.08, 0, 0);
+  }
+
+  const jacketZ = receiverZ + 0.300 * s;
+  P.add('turretDark', cylZ(0.034 * s, 0.16 * s, 12),
+    x, receiverY + 0.005 * s, jacketZ, -0.08, 0, 0);
+  for (let index = 0; index < 4; index++) {
+    P.add('turretDark', torus(0.0345 * s, 0.004 * s, 10),
+      x, receiverY + (0.010 + index * 0.003) * s,
+      jacketZ - 0.050 * s + index * 0.038 * s, -0.08, 0, 0);
+  }
+  P.add('turretDark', cylZ(0.020 * s, 0.54 * s, 10),
+    x, receiverY + 0.030 * s, receiverZ + 0.650 * s, -0.08, 0, 0);
+  P.add('turretDark', cylZ(0.034 * s, 0.080 * s, 12),
+    x, receiverY + 0.052 * s, receiverZ + 0.960 * s, -0.08, 0, 0);
+
+  if (big) {
+    const ammoX = x - 0.125 * s;
+    P.add('turretDark', box(0.115 * s, 0.120 * s, 0.230 * s),
+      ammoX, receiverY - 0.010 * s, receiverZ - 0.005 * s);
+    P.add('turretDark', box(0.120 * s, 0.015 * s, 0.240 * s),
+      ammoX, receiverY + 0.057 * s, receiverZ - 0.005 * s);
+    for (let index = 0; index < 5; index++) {
+      const t = index / 4;
+      P.add('turretDark', box(0.018 * s, 0.026 * s, 0.024 * s),
+        ammoX + (0.020 + t * 0.072) * s,
+        receiverY + (0.025 + t * 0.010) * s,
+        receiverZ + (0.075 + t * 0.070) * s, 0, 0, -0.10 + t * 0.15);
+    }
+  }
 }
 
 function smokeCluster(
@@ -6067,94 +6092,109 @@ function openRackGrid(
   return geometry;
 }
 
-// 2026-10-05 (tank-accessories lane): the profiles' soft stowage in the sewn grammar of the newest equipment
-// (accessoryPrimitives.ts): a folded canvas bundle, a duffel or a field ruck built as a fabric loft inside the
-// authored w x h x d envelope, seated on the envelope's base, its webbing straps cinching the fabric. Random draws
-// and the authored seats are unchanged.
-const STOWAGE_PROFILES = ['folded-canvas', 'duffel', 'field-ruck'] as const;
-
-function stowageFabricSpec(style: number, width: number, height: number, depth: number, seg = 10): FabricSpec {
-  const len = Math.max(width, depth), cross = Math.min(width, depth);
-  const shape = style === 0
-    ? { exponent: 6, endScale: 0.86, endLength: 0.08, flatten: 0.5, wrinkle: 0.03, cinch: [-len * 0.28, len * 0.28], cinchDepth: 0.07 }
-    : style === 1
-      ? { exponent: 2.6, endScale: 0.6, endLength: 0.14, flatten: 0.3, wrinkle: 0.05, cinch: [-len * 0.28, len * 0.28] }
-      : { exponent: 3.6, endScale: 0.72, endLength: 0.14, flatten: 0.38, wrinkle: 0.04, cinch: [-len * 0.18, len * 0.22], cinchDepth: 0.06 };
-  // a fabric section stands (2 + wrinkle - 0.82 flatten) half-heights tall on its pressed base; fill the authored height
-  const crossFill = style === 2 ? cross - 2 * stowagePocketHalf(cross) * 0.9 : cross;
-  return { len, hw: crossFill / 2 / (1 + shape.wrinkle), hh: height / (2 + shape.wrinkle - 0.82 * shape.flatten),
-    seg, stations: 5, seed: 11 + style * 7, ...shape };
+function stowageBody(style: number, width: number, height: number, depth: number): THREE.BufferGeometry {
+  const body = style === 0
+    ? box(width, height, depth)
+    : xform(sph(0.5, 12), 0, 0, 0, 0, 0, 0, [
+      width * (style === 1 ? 0.98 : 0.92),
+      height * 0.94,
+      depth * (style === 1 ? 0.96 : 0.90),
+    ]);
+  body.userData.designFamily = 'cot-soft-stowage-v2';
+  body.userData.fabricProfile = ['folded-canvas', 'duffel', 'field-ruck'][style];
+  return body;
 }
 
-function stowagePocketHalf(cross: number): number { return Math.min(0.05, cross * 0.11); }
-
-/** Orient a +Z fabric part to the envelope's long axis and lift it so the bag's base sits on the envelope's floor. */
-function seatStowagePart(geometry: THREE.BufferGeometry, alongX: boolean, lift: number): THREE.BufferGeometry {
-  if (alongX) place(geometry, 0, 0, 0, 0, Math.PI / 2, 0);
-  geometry.translate(0, lift, 0);
-  return geometry;
+function addStowageFlap(
+  P: EquipmentBuilderPort,
+  bucket: string,
+  style: number,
+  x: number,
+  y: number,
+  z: number,
+  width: number,
+  height: number,
+  depth: number,
+  yaw: number,
+): void {
+  const isRuck = style === 2;
+  const flapDepth = isRuck ? depth * 0.64 : depth * 1.04;
+  P.addEquipment(
+    bucket,
+    box(width * (isRuck ? 0.76 : 1.04), height * 0.16, flapDepth),
+    x, y + height * 0.46, z + (isRuck ? depth * 0.08 : 0), 0, yaw, -0.025,
+  );
 }
 
-/**
- * Soft goods never take the hull's camouflage projection (2026-10-07, tank-accessories round 4; wave 217 on the
- * T-72B3M: "the bedrolls wear the hull's camo decal"): a pack, bedroll or tarp authored into a camouflaged bucket
- * rides the owner's canvas bucket instead (FSP-06 cloth role); every other bucket is kept as authored.
- */
-function softGoodsBucket(bucket: string): string {
-  if (!CAMO_BUCKETS.has(bucket)) return bucket;
-  return bucket.startsWith('turret') ? 'turretCloth' : bucket.startsWith('gun') ? 'gunMountCloth' : 'hullCloth';
+function addStowageStyleDetails(
+  P: EquipmentBuilderPort,
+  bucket: string,
+  darkBucket: string,
+  style: number,
+  x: number,
+  y: number,
+  z: number,
+  width: number,
+  height: number,
+  depth: number,
+  yaw: number,
+): void {
+  if (style === 2) {
+    for (const side of [-1, 1]) {
+      addEquipmentLocal(P, bucket, box(width * 0.18, height * 0.42, depth * 0.34),
+        x, y, z, yaw, side * width * 0.46, -height * 0.08, -depth * 0.02);
+    }
+  } else if (style === 1) {
+    P.addEquipment(darkBucket, box(width * 0.34, 0.026, 0.026),
+      x, y + height * 0.50, z - depth * 0.02, 0, yaw, 0);
+  }
 }
+
+function addStowageStraps(
+  P: EquipmentBuilderPort,
+  darkBucket: string,
+  x: number,
+  y: number,
+  z: number,
+  width: number,
+  height: number,
+  depth: number,
+  yaw: number,
+): void {
+  const along = depth >= width;
+  for (const fraction of [-0.28, 0.28]) {
+    const strap = along
+      ? box(width * 1.06, height * 1.04, 0.028)
+      : box(0.028, height * 1.04, depth * 1.06);
+    strap.userData.designFamily = 'cot-webbing-strap-v2';
+    addEquipmentLocal(P, darkBucket, strap, x, y + height * 0.02, z, yaw,
+      along ? 0 : fraction * width, 0, along ? fraction * depth : 0);
+    addEquipmentLocal(P, darkBucket, box(0.07, 0.018, 0.055),
+      x, y + height * 0.54, z, yaw,
+      along ? fraction * width * 0.10 : fraction * width,
+      0,
+      along ? fraction * depth : fraction * depth * 0.10);
+  }
+}
+
 function stowage(
   builder: object,
-  authoredBucket: string,
+  bucket: string,
   rngSource: RuntimeValue,
   spots: readonly StowageSpot[],
 ): void {
   const P = requireEquipmentBuilderPort(builder);
   const rng = requireRng(rngSource);
-  const bucket = softGoodsBucket(authoredBucket);
   // Shared soft-kit vocabulary. Seeded shape selection keeps fleet-wide
   // variation deterministic while preserving each authored cargo envelope.
   const dark = bucket.startsWith('turret') ? 'turretDark' : 'hullDark';
   for (const [x, y, z, w, h, d] of spots) {
     const yaw = (rng() - 0.5) * 0.12;
     const style = Math.min(2, Math.floor(rng() * 3));
-    // 2026-10-07 (round 3): fourteen sides at full geometry quality (ten read as facets up close); the low tier keeps ten
-    const spec = stowageFabricSpec(style, w, h, d, P.q === false ? 10 : 14);
-    const alongX = w >= d;
-    const body = fabricBody(spec);
-    body.computeBoundingBox();
-    const lift = -h / 2 - body.boundingBox!.min.y;
-    const top = lift + body.boundingBox!.max.y;
-    seatStowagePart(body, alongX, lift);
-    body.userData.designFamily = 'cot-soft-stowage-v3';
-    body.userData.fabricProfile = STOWAGE_PROFILES[style];
-    P.addEquipment(bucket, body, x, y, z, 0, yaw, 0);
-    for (const station of spec.cinch ?? []) {
-      const strap = seatStowagePart(fabricStrap(spec, station), alongX, lift);
-      strap.userData.designFamily = 'cot-webbing-strap-v3';
-      P.addEquipment(dark, strap, x, y, z, 0, yaw, 0);
-    }
-    if (style === 2) {
-      // the ruck's lid: a thin pad over its top end; and two side pockets half sunk into its flanks
-      const flap: FabricSpec = { len: spec.hw * 1.8, hw: spec.len * 0.16, hh: h * 0.07, exponent: 3, endScale: 0.8,
-        endLength: 0.1, flatten: 0.6, wrinkle: 0.03, seg: 8, stations: 4, seed: spec.seed! + 3 };
-      const flapGeometry = place(fabricBody(flap), 0, top - 0.02, spec.len * 0.3, 0, Math.PI / 2, 0);
-      P.addEquipment(bucket, seatStowagePart(flapGeometry, alongX, 0), x, y, z, 0, yaw, 0);
-      const pocketHalf = stowagePocketHalf(Math.min(w, d));
-      for (const side of [-1, 1]) {
-        const pocket: FabricSpec = { len: spec.len * 0.36, hw: pocketHalf, hh: h * 0.24, exponent: 3.4,
-          endScale: 0.7, endLength: 0.2, flatten: 0.3, wrinkle: 0.03, seg: 6, stations: 3, seed: spec.seed! + 7 + side };
-        const pocketGeometry = place(fabricBody(pocket), side * (spec.hw + pocketHalf * 0.25), -h * 0.12, -spec.len * 0.02);
-        P.addEquipment(bucket, seatStowagePart(pocketGeometry, alongX, 0), x, y, z, 0, yaw, 0);
-      }
-    } else if (style === 1) {
-      // the duffel's carry handle: a flattened webbing loop on top
-      const span = spec.len * 0.3, foot = top - 0.012;
-      const handle = sweptTube([[0, foot, -span / 2], [0, foot + 0.022, -span * 0.3],
-        [0, foot + 0.022, span * 0.3], [0, foot, span / 2]], 0.006, 4, 6);
-      P.addEquipment(dark, seatStowagePart(handle, alongX, 0), x, y, z, 0, yaw, 0);
-    }
+    P.addEquipment(bucket, stowageBody(style, w, h, d), x, y, z, 0, yaw, 0);
+    addStowageFlap(P, bucket, style, x, y, z, w, h, d, yaw);
+    addStowageStyleDetails(P, bucket, dark, style, x, y, z, w, h, d, yaw);
+    addStowageStraps(P, dark, x, y, z, w, h, d, yaw);
   }
 }
 
@@ -6191,104 +6231,94 @@ function jerryCan(
   // Fuel cans are issued and restrained as a close pair. Keep that invariant
   // in the lowest-level prop primitive so older hand-authored placements and
   // newer fitting/decor manifests cannot silently reintroduce a lone can.
-  // 2026-10-05: the fleet's one pressed 20 L can (accessoryKits.ts jerrycanParts: filleted body, the
-  // stamped X on the outer broad face, the three-grip handle comb, the spout) on two cradle rails; the
-  // same seats and footprint, inside the old shoulder line.
-  // 2026-10-07 (round 3): the low geometry tier takes the shared can's coarse level (body and handle block)
   for (const [pairIndex, localX] of [-0.095, 0.095].entries()) {
-    const can = jerrycanParts(1, [localX < 0 ? -1 : 1], P.q !== false);
-    can.body.userData.designFamily = 'cot-field-jerry-can-v3';
-    can.body.userData.stampedRibs = 4;
-    can.body.userData.bridgeHandles = 3;
-    can.body.userData.threadedSpout = true;
-    can.body.userData.paired = true;
-    can.body.userData.pairSize = 2;
-    can.body.userData.pairIndex = pairIndex;
-    for (const part of [can.body, ...can.stamps, can.spine, ...can.grips]) {
-      addEquipmentLocal(P, bucket, part, x, y - 0.24, z, yaw, localX, 0, 0);
+    const body = box(0.16, 0.40, 0.34);
+    body.userData.designFamily = 'cot-field-jerry-can-v2';
+    body.userData.stampedRibs = 4;
+    body.userData.bridgeHandles = 3;
+    body.userData.threadedSpout = true;
+    body.userData.paired = true;
+    body.userData.pairSize = 2;
+    body.userData.pairIndex = pairIndex;
+    addEquipmentLocal(P, bucket, body, x, y - 0.02, z, yaw, localX, 0, 0);
+    addEquipmentLocal(P, bucket, box(0.145, 0.08, 0.29), x, y + 0.20, z, yaw,
+      localX, 0, 0);                                                          // pressed shoulder
+    for (const face of [-1, 1]) {
+      for (const diagonal of [-1, 1]) {
+        addEquipmentLocal(P, dark, box(0.026, 0.31, 0.014), x, y - 0.02, z, yaw,
+          localX, 0, face * 0.174, 0, 0, diagonal * 0.42);                    // stamped X ribs
+      }
     }
-    if (can.spout) addEquipmentLocal(P, dark, can.spout, x, y - 0.24, z, yaw, localX, 0, 0); // spout and cap
-    for (const rail of [-0.105, 0.105]) {
-      addEquipmentLocal(P, dark, block(0.19, 0.022, 0.045), x, y - 0.231, z, yaw, localX, 0, rail); // cradle rails
+    for (const hx of [-0.048, 0.048]) {
+      addEquipmentLocal(P, dark, box(0.024, 0.075, 0.026), x, y, z, yaw,
+        localX + hx, 0.245, -0.015);
     }
+    addEquipmentLocal(P, dark, box(0.12, 0.024, 0.026), x, y, z, yaw,
+      localX, 0.282, -0.015);                                                 // bridge handle
+    addEquipmentLocal(P, dark, cylY(0.025, 0.028, 0.045, 10), x, y, z, yaw,
+      localX + 0.045, 0.275, 0.09);                                           // threaded cap
+    addEquipmentLocal(P, dark, box(0.18, 0.025, 0.22), x, y - 0.23, z, yaw,
+      localX, 0, 0);                                                          // retaining foot / cradle contact
   }
 }
 function tarpRoll(
-  builder: object, authoredBucket: string, x: number, y: number, z: number,
+  builder: object, bucket: string, x: number, y: number, z: number,
   len: number, r = 0.1, alongX = true, seg = 10,
 ): void {
   const P = requireEquipmentBuilderPort(builder);
-  const bucket = softGoodsBucket(authoredBucket);
-  // 2026-10-05: a firm rolled tarp loft (round sections, flat rolled ends) cinched by
-  // two webbing straps, the rolled spiral showing at each end; same axis and envelope.
-  // 2026-10-07 (tank-accessories round 3: "rolls with eight visible facets"): at full geometry quality a roll draws
-  // at least eighteen sides and its rolled ends wind as a spiral; the low tier keeps its authored count and layers.
-  const full = P.q !== false;
-  const spec: FabricSpec = { len, hw: r, hh: r, exponent: 2.1, endScale: 0.92, endLength: 0.04, flatten: 0,
-    wrinkle: 0.03, seg: full ? Math.max(18, seg) : Math.max(8, seg), stations: 4, cinch: [-len * 0.3, len * 0.3],
-    cinchDepth: 0.1, seed: 71 };
-  const orient = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => (alongX ? place(geometry, 0, 0, 0, 0, Math.PI / 2, 0) : geometry);
-  const roll = orient(fabricBody(spec));
-  roll.userData.designFamily = 'cot-rolled-fabric-v3';
+  const roll = alongX ? cylX(r, len, seg) : cylZ(r, len, seg);
+  roll.userData.designFamily = 'cot-rolled-fabric-v2';
   roll.userData.endSeams = 2;
   roll.userData.cinchStraps = 2;
   P.addEquipment(bucket, roll, x, y, z);
   const dark = bucket.startsWith('turret') ? 'turretDark' : 'hullDark';
-  for (const station of spec.cinch ?? []) P.addEquipment(dark, orient(fabricStrap(spec, station)), x, y, z); // straps
-  if (full) {
-    for (const end of [-1, 1] as const) P.addEquipment(dark, orient(rolledEndSpiral(r * 0.92, end * len / 2, end, 20)), x, y, z);
-  } else {
-    for (const layer of rolledEndLayers(r, len)) P.addEquipment(dark, orient(layer), x, y, z);  // rolled layers at the ends
+  for (const f of [-0.3, 0.3]) {
+    P.addEquipment(dark, alongX
+      ? xform(cylX(r * 1.06, 0.03, seg), 0, 0, 0)
+      : xform(cylZ(r * 1.06, 0.03, seg), 0, 0, 0),
+      x + (alongX ? f * len : 0), y, z + (alongX ? 0 : f * len));    // straps
   }
+  for (const end of [-1, 1]) {
+    P.addEquipment(dark, alongX ? cylX(r * 0.80, 0.014, seg) : cylZ(r * 0.80, 0.014, seg),
+      x + (alongX ? end * len * 0.505 : 0), y,
+      z + (alongX ? 0 : end * len * 0.505));                                 // rolled end seam
+  }
+  P.addEquipment(dark, box(alongX ? len * 0.34 : 0.024, 0.018,
+    alongX ? 0.024 : len * 0.34), x, y + r * 0.88, z);                        // folded flap / tied edge
 }
 function ammoCan(
   builder: object, bucket: string, x: number, y: number, z: number, yaw = 0,
 ): void {
   const P = requireEquipmentBuilderPort(builder);
   const dark = bucket.startsWith('turret') ? 'turretDark' : 'hullDark';
-  // 2026-10-05: a pressed can (filleted corners), gasketed lid, over-centre latches,
-  // hinge barrels, folding handle and pressed side ribs; same seat and footprint.
-  const body = moldedBox(0.14, 0.20, 0.30, 0.012, 1, 0.007);
-  body.userData.designFamily = 'cot-ammo-can-v3';
+  const body = box(0.14, 0.20, 0.30);
+  body.userData.designFamily = 'cot-ammo-can-v2';
   body.userData.latches = 2;
   body.userData.hinges = 2;
   body.userData.carryHandle = true;
   P.addEquipment(bucket, body, x, y, z, 0, yaw, 0);
-  // The lid stays a plain box: equipment damage folds marked lids by a BoxGeometry's vertex layout (equipmentDamage.ts).
-  P.addEquipment(bucket, markEquipmentLid(box(0.155, 0.028, 0.315)), x, y + 0.11, z, 0, yaw, 0); // gasketed lid
-  // 2026-10-07 (round 3: the critics read flush latches and hinges as molded-on texture): the over-centre levers stand
-  // two centimetres off their base plates with keepers on the lid, and the hinge barrels ride on leaves; the low
-  // geometry tier keeps its lighter latch blocks and barrels
-  if (P.q === false) {
-    for (const side of [-1, 1]) {
-      addEquipmentLocal(P, dark, block(0.024, 0.072, 0.02), x, y, z, yaw, side * 0.045, 0.035, 0.158); // latches
-      addEquipmentLocal(P, dark, roundBar([-0.02, 0, 0], [0.02, 0, 0], 0.012, 6), x, y, z, yaw,
-        side * 0.045, 0.08, -0.158);                                                                  // hinge barrels
-      addEquipmentLocal(P, bucket, block(0.01, 0.15, 0.22), x, y, z, yaw, side * 0.072, -0.005, 0); // pressed side ribs
-    }
-  } else for (const side of [-1, 1]) {
-    addEquipmentLocal(P, dark, block(0.034, 0.05, 0.006), x, y, z, yaw, side * 0.045, 0.03, 0.153);    // latch plates
-    addEquipmentLocal(P, dark, moldedBox(0.024, 0.07, 0.016, 0.005, 0, 0.004), x, y, z, yaw,
-      side * 0.045, 0.04, 0.165);                                                                      // latch levers
-    addEquipmentLocal(P, dark, block(0.03, 0.02, 0.014), x, y, z, yaw, side * 0.045, 0.112, 0.163);    // lid keepers
-    addEquipmentLocal(P, dark, roundBar([-0.024, 0, 0], [0.024, 0, 0], 0.014, 8), x, y, z, yaw,
-      side * 0.045, 0.098, -0.166);                                                                    // hinge barrels
-    addEquipmentLocal(P, dark, block(0.042, 0.04, 0.005), x, y, z, yaw, side * 0.045, 0.072, -0.153); // hinge leaves
-    addEquipmentLocal(P, bucket, block(0.012, 0.15, 0.22), x, y, z, yaw, side * 0.073, -0.005, 0); // pressed side ribs
+  P.addEquipment(bucket, markEquipmentLid(box(0.155, 0.028, 0.315)), x, y + 0.11, z, 0, yaw, 0); // rolled lid lip
+  for (const side of [-1, 1]) {
+    addEquipmentLocal(P, dark, box(0.026, 0.075, 0.024), x, y, z, yaw,
+      side * 0.045, 0.035, 0.158);                                            // twin over-center latches
+    addEquipmentLocal(P, dark, cylX(0.014, 0.04, 8), x, y, z, yaw,
+      side * 0.045, 0.08, -0.158);                                            // rear hinge barrels
   }
-  addEquipmentLocal(P, dark, sweptTube([[0, 0.125, -0.045], [0, 0.15, -0.03], [0, 0.15, 0.03], [0, 0.125, 0.045]], 0.007, 4, 6),
-    x, y, z, yaw, 0, 0.03, 0);                                                                       // folding carry handle
+  for (const side of [-1, 1]) {
+    addEquipmentLocal(P, dark, box(0.018, 0.06, 0.018), x, y, z, yaw,
+      side * 0.046, 0.16, 0);
+  }
+  addEquipmentLocal(P, dark, box(0.11, 0.018, 0.018), x, y, z, yaw,
+    0, 0.19, 0);                                                              // folding carry handle
+  for (const side of [-1, 1]) {
+    addEquipmentLocal(P, dark, box(0.012, 0.17, 0.24), x, y, z, yaw,
+      side * 0.071, -0.005, 0);                                               // pressed side ribs
+  }
 }
 function shovelTool(builder: object, x: number, y: number, z: number, len = 0.95): void {
   const P = requireGeometryAddPort(builder);
-  // 2026-10-05: a round ash shaft ending in its D-grip and a dished, pointed blade; the same run and seat.
-  const grip = 0.075, gripEnd = -len / 2 + 0.02;
-  P.add('hullWood', roundBar([0, 0, gripEnd + grip], [0, 0, len / 2], 0.016, P.q ? 6 : 4), x, y, z);
-  P.add('hullWood', sweptTube([[-0.012, 0, gripEnd + grip], [-0.045, 0, gripEnd + grip * 0.55], [-0.04, 0, gripEnd],
-    [0.04, 0, gripEnd], [0.045, 0, gripEnd + grip * 0.55], [0.012, 0, gripEnd + grip]], 0.011, 4, 8), x, y, z);
-  const blade = latheY([[0.0005, 0], [0.055, 0.02], [0.058, 0.14], [0.036, 0.2], [0.0005, 0.22]], P.q ? 8 : 5);
-  blade.scale(1, 1, 0.14);
-  P.add('hullDark', place(blade, 0, 0.004, len * 0.55 - 0.11, Math.PI / 2, 0, 0), x, y, z);
+  P.add('hullWood', box(0.035, 0.025, len), x, y, z);
+  P.add('hullDark', box(0.11, 0.03, 0.22), x, y, z + len * 0.55);
 }
 function spareTrackStrip(
   builder: object, bucket: string, x: number, y: number, z: number,
@@ -6581,8 +6611,6 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   // fitting paint for small painted steel accessories (jerry cans) that a projected camouflage tile would
   // splash at hull scale. Greeble-class like the other cloth buckets.
   hullCanvasPale: ['hullG', 'canvasPale'], hullFittingPaint: ['hullG', 'detail'],
-  // Round 4 (2026-10-07): unditching logs in their own vertex-coloured wood (bark, sawn ends and rings in one draw).
-  hullBark: ['hullG', 'bark'],
   turret: ['turretG', 'hull'], turretCupola: ['turretG', 'hull'], turretHatch: ['turretG', 'hull'],
   turretExternalArmor: ['turretG', 'hull'], turretEquipment: ['turretG', 'hull'],
   turretDetail: ['turretG', 'hull'], turretDark: ['turretG', 'dark'],
@@ -6596,7 +6624,7 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   // the flat detail tone read as bare grey primer on every X study.
   turretOpenLattice: ['turretG', 'hull'], turretOpenLatticeDark: ['turretG', 'dark'],
   turretCloth: ['turretG', 'canvasCloth'], turretGlass: ['turretG', 'glass'],
-  turretCanvasPale: ['turretG', 'canvasPale'], turretFittingPaint: ['turretG', 'detail'], turretBark: ['turretG', 'bark'],
+  turretCanvasPale: ['turretG', 'canvasPale'], turretFittingPaint: ['turretG', 'detail'],
   gun: ['recoilG', 'barrel'], gunDark: ['recoilG', 'dark'], gunMount: ['gunG', 'hull'],
   gunMountDark: ['gunG', 'dark'], gunMountCloth: ['gunG', 'canvasCloth'],
   // Continuous mantlet boots are silhouette skin, not distant-LOD stowage.
@@ -6659,11 +6687,6 @@ const CAMO_BUCKETS = new Set([
   'turret', 'turretCupola', 'turretHatch', 'turretExternalArmor',
   'turretEquipment', 'gun', 'gunMount',
 ]);
-/** Round 4 (2026-10-07): the matte fitting-paint bucket a smoke discharger tube in a paint-only camo bucket rides. */
-const SMOKE_TUBE_PAINT_BUCKET: Readonly<Record<string, string>> = Object.freeze({
-  hullDetail: 'hullFittingPaint', hullPaintedDetail: 'hullFittingPaint',
-  turretDetail: 'turretFittingPaint', turretPaintedDetail: 'turretFittingPaint',
-});
 /** FSP-06 (tools/material-roles-audit.mjs): the material key a bucket merges into, or null for an unknown bucket.
  * `hull`/`barrel` carry the camouflage map; `wheels`/`detail`/`canvasCloth` are scheme-tinted solids; the rest are
  * fixed non-camouflage finishes. Read-only view of BUCKET_DEF for diagnostics. */
@@ -6832,7 +6855,6 @@ function createNonRenderingTankMaterials(camoUvScale = CAMO_UV_REPEATS_PER_M): T
     canvasCloth: make(0x41452f),
     canvasPale: make(0x66604a),
     wood: make(0x5b4732),
-    bark: make(0x4a3c2e),
     burnt: make(0x171713),
     trackL: make(0x2d302b),
     trackR: make(0x2d302b),
@@ -7055,8 +7077,6 @@ function* createTankOwnedSteps(
   gunG.add(recoilG);
 
   const buckets: Record<string, THREE.BufferGeometry[]> = {};
-  // Discharger tubes add() sends to the owner's fitting paint once the profile is done (SMOKE_TUBE_PAINT_BUCKET).
-  const smokeTubesForFittingPaint = new Set<THREE.BufferGeometry>();
   const mudguardParts: MudguardPart[] = [];
   const moduleVisualParts = new Map<THREE.BufferGeometry, string>();
   const eraClusters = new Map<string, EraClusterRange>();
@@ -7108,7 +7128,6 @@ function* createTankOwnedSteps(
     // that need to regroup their own authored pieces without touching the
     // shared articulation rig (gunG remains independently pitchable).
     postAssemble: null,
-    afterAssemble: [],
     add(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       const part = xform(geo, x, y, z, rx, ry, rz, s);
       // Destructible clusters are gameplay ERA. Route every authored layer
@@ -7120,18 +7139,11 @@ function* createTankOwnedSteps(
         ?? (activeDestructibleCluster
           ? (bucket.startsWith('turret') ? 'turret' : 'hull')
           : null);
-      // 2026-10-07 (tank-accessories round 4; wave 217 on the Merkava 4: "the smoke-grenade tubes render as bright
-      // polished chrome pipes"): a discharger tube authored into a camouflaged paint-only bucket takes the scheme's
-      // solid matte fitting paint (the camo bucket's clearcoat and 1.3 normal scale on a 4 cm tube read as chrome);
-      // armour and equipment-role buckets keep their tubes (hit roles and equipment damage are unchanged). The tube
-      // stays in its authored bucket until the profile is done (smokeTubesForFittingPaint, moved after the builder):
-      // a rebuild that clears, offsets or scales that bucket by name must still find it there.
-      const smokeTube = !eraOwner && (part.userData.smokeAperture || part.userData.openSmokeAperture);
-      const targetBucket = eraOwner ? `${eraOwner}ExternalArmor` : bucket;
+      const targetBucket = eraOwner
+        ? `${eraOwner}ExternalArmor`
+        : bucket;
       (buckets[targetBucket] || (buckets[targetBucket] = [])).push(part);
-      const paintBucket = smokeTube ? SMOKE_TUBE_PAINT_BUCKET[bucket] : undefined;
-      if (paintBucket) smokeTubesForFittingPaint.add(part);
-      partCensus?.(paintBucket ?? targetBucket, part, 'add');
+      partCensus?.(targetBucket, part, 'add');
       if (activeDestructibleCluster) {
         destructiblePartCluster.set(part, activeDestructibleCluster);
         const destructibleOwner = bucket.startsWith('turret') ? 'turret' : 'hull';
@@ -7413,20 +7425,6 @@ function* createTankOwnedSteps(
     resizeAuthoredVehicle(P, sizeFactor);
   } else if (builder) Reflect.apply(builder, undefined, [P]);
   else buildCommunityPlaceholder(P);
-  // Round 4 (2026-10-07): the discharger tubes add() marked for the matte fitting paint move now, once the profile
-  // is done. Moved at add() time they escaped every later bucket operation: the Chieftain Mk 5 and Mk 10 rebuild
-  // clears turretDetail before its upper turret and squashes the turret's height by bucket, so the donor bank
-  // survived beside the new one (24 launch sockets, not 12) and the new bank escaped the squash.
-  if (smokeTubesForFittingPaint.size) {
-    for (const [source, target] of Object.entries(SMOKE_TUBE_PAINT_BUCKET)) {
-      const list = buckets[source];
-      if (!list?.some((part) => smokeTubesForFittingPaint.has(part))) continue;
-      const tubes = list.filter((part) => smokeTubesForFittingPaint.has(part));
-      buckets[source] = list.filter((part) => !smokeTubesForFittingPaint.has(part));
-      (buckets[target] || (buckets[target] = [])).push(...tubes);
-    }
-    smokeTubesForFittingPaint.clear();
-  }
   const coreAuthoredFinishedAt = performance.now();
 
   // Native profiles often author visible ERA as irregular wedges, lids and
@@ -7830,10 +7828,6 @@ function* createTankOwnedSteps(
       boxUV(merged, CAMO_UV_REPEATS_PER_M);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
-      // 2026-10-07 (round 4, wave 214: "a flat sticker across every surface, including the gun barrel wrap and
-      // hull boxes"): bolted-on boxes, bins and sleeve sections take their own window of the pattern and their own
-      // paint tone (camoPanels.ts); the armour shell keeps the one continuous projection.
-      applyCamoPanels(merged, list, bucket);
     }
     recordAuthoredRanges(merged, authoredRanges);
     weaponDamage.bind(list, merged);
@@ -8010,7 +8004,6 @@ function* createTankOwnedSteps(
   if (typeof P.postAssemble === 'function') {
     P.postAssemble({ root, hullG, turretG, gunG, recoilG });
   }
-  for (const step of P.afterAssemble) step({ root, hullG, turretG, gunG, recoilG });
 
   // ---- physically seated vehicle markings ----
   // Resolve these after all profile-owned regrouping so the support ray sees
@@ -9848,7 +9841,7 @@ function* createTankOwnedSteps(
     const tailDecorStartedAt = performance.now();
     yield* prepareTankDecorationSteps({
       root, hullG, turretG, spec, engineCtx, disposables,
-      opts: { proceduralOnly, decor: opts.decor, geometryQuality },
+      opts: { proceduralOnly, decor: opts.decor },
       isDestroyed: () => destroyed,
     }, legacyDecoration);
     const tailDecorFinishedAt = performance.now();
