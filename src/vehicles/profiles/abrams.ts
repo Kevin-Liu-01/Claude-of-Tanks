@@ -322,6 +322,9 @@ interface AbramsLoaderWeaponReceipt {
   pintleZ: number;
   pintleBottomY: number;
   pintleTopY: number;
+  /** The cradle floor the receiver rests on (the shared Browning construction's load path). */
+  cradleBottomY: number;
+  cradleTopY: number;
   receiverBottomY: number;
   receiverY: number;
   americanWeaponStandard: string;
@@ -3074,6 +3077,8 @@ function tejasRoofKit(
           pintleZ: baseZ,
           pintleBottomY: baseY,
           pintleTopY: baseY + datum.pintleTopY,
+          cradleBottomY: baseY + datum.cradleBottomY,
+          cradleTopY: baseY + datum.cradleTopY,
           receiverBottomY: baseY + datum.receiverBottomY,
           receiverY,
           americanWeaponStandard: 'sheridan-m2hb-v2',
@@ -3134,6 +3139,8 @@ function tejasRoofKit(
             pintleZ,
             pintleBottomY,
             pintleTopY: pintleBottomY + datum.pintleTopY,
+            cradleBottomY: pintleBottomY + datum.cradleBottomY,
+            cradleTopY: pintleBottomY + datum.cradleTopY,
             receiverBottomY: pintleBottomY + datum.receiverBottomY,
             receiverY: pintleBottomY + datum.receiverY,
             americanWeaponStandard: 'sheridan-m2hb-v2',

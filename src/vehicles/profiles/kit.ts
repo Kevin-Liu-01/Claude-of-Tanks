@@ -1667,9 +1667,17 @@ function assembleAmericanM2(context: AmericanM2BuildContext, layout: PintleLayou
   fitting.userData.barrelAxisLocal = [0, 0, 1];
   fitting.userData.barrelElevationRad = 0;
   // the shared datum, so hosts publish receipts measured on the built gun: the pintle's top, the receiver's
-  // underside, the receiver datum centre and the bore height above the mounting foot
+  // underside, the receiver datum centre and the bore height above the mounting foot.
+  // fleet fix 2026-10-09: the pintle's top is its yoke head (addPintleMount's bridge block over the spindle,
+  // colTop + 0.045 s), not the bare spindle top (colTop) under it, and the cradle floor the receiver rests on is
+  // published with it: spindle -> yoke head -> cradle floor -> receiver is one load path (the yoke head reaches 7 mm
+  // into the cradle floor; the floor's top is the receiver's underside), measured on the built M1A2 loader gun.
+  const cradleTopY = Math.max(layout.colTop + 0.04 * layout.s, layout.bodyBottom - 0.005 * layout.s) + 0.005 * layout.s;
   fitting.userData.mountDatum = Object.freeze({
-    pintleTopY: layout.colTop, receiverBottomY: layout.bodyBottom, receiverY: layout.recY, boreY: layout.trunY,
+    pintleTopY: layout.colTop + 0.045 * layout.s,
+    cradleBottomY: cradleTopY - 0.010 * layout.s,
+    cradleTopY,
+    receiverBottomY: layout.bodyBottom, receiverY: layout.recY, boreY: layout.trunY,
   });
   return fitting;
 }

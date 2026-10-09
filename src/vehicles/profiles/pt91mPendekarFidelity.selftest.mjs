@@ -115,9 +115,16 @@ for(const quality of['high','low']){
   const smoke=darkParts.filter(p=>{const c=p.bounds.getCenter(new T.Vector3()).add(new T.Vector3(...DATUMS.turretPivot));return Math.abs(c.x)>1.1&&Math.abs(c.x)<1.45&&c.y>1.7&&c.y<2.1&&c.z>-.3&&c.z<.1;});
   assert.equal(smoke.length,12,'both complete smoke banks');
   const detailStock=detailParts.flatMap(p=>componentTriangles(p));
-  const lens=selectComponent(components(tank.root.getObjectByName('turretGlass')),[.25,.145,.022],'recessed primary sight lens'),carrier=selectComponent(darkParts,[.31,.18,.036],'sight lens carrier');
-  assert.ok(stockCrosses(componentTriangles(lens),componentTriangles(carrier))&&stockCrosses(componentTriangles(carrier),detailStock),'optic carrier physically joins lens to armored hood');
-  assert.equal(stockCrosses(componentTriangles(lens),detailStock),false,'recessed lens needs a real carrier instead of floating inside its hood');
+  // Fleet round 1 (tankFactoryCore armouredGlassSurround): the authored .25 x .145 pane is cut into its inset window and
+  // four flush 16 mm frame bars (turretDetail, one ring: the bars share their corners) inside the pane's own box; the
+  // bars are the pane, not the hood.
+  const lens=selectComponent(components(tank.root.getObjectByName('turretGlass')),[.25-.032,.145-.032,.022],'recessed primary sight lens'),carrier=selectComponent(darkParts,[.31,.18,.036],'sight lens carrier');
+  const pane=lens.bounds.clone().expandByVector(new T.Vector3(.016+1e-6,.016+1e-6,1e-6)),paneBars=detailParts.filter(p=>pane.containsBox(p.bounds));
+  const frameBounds=paneBars.reduce((b,p)=>b.union(p.bounds),new T.Box3());
+  assert.ok(paneBars.length>=1&&frameBounds.getSize(new T.Vector3()).distanceTo(new T.Vector3(.25,.145,.022))<.00001,'primary sight pane frame takes the outer ring of its authored box');
+  const hoodStock=detailParts.filter(p=>!paneBars.includes(p)).flatMap(p=>componentTriangles(p));
+  assert.ok(stockCrosses(componentTriangles(lens),componentTriangles(carrier))&&stockCrosses(componentTriangles(carrier),hoodStock),'optic carrier physically joins lens to armored hood');
+  assert.equal(stockCrosses(componentTriangles(lens),hoodStock),false,'recessed lens needs a real carrier instead of floating inside its hood');
   const handles=detailParts.filter(p=>p.bounds.getSize(new T.Vector3()).distanceTo(new T.Vector3(.10,.035,.05))<.00001);assert.equal(handles.length,2);
   for(const handle of handles){const others=detailParts.filter(p=>p!==handle).flatMap(p=>componentTriangles(p));assert.ok(stockCrosses(componentTriangles(handle),others),'hatch handle physically enters its lid');checks++;}checks+=2;
   for(const tube of smoke){assert.ok(stockCrosses(componentTriangles(tube),detailStock),'every closed smoke tube enters a finite mounting ladder');checks++;}
