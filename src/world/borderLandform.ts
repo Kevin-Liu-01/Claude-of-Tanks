@@ -165,7 +165,7 @@ const MAP_BORDERS: Readonly<Record<string, Partial<BorderLandformSettings>>> = {
   fjord: { forest: 0.42, fields: 0.1, farms: 5, buildings: 'nordic' },
   delta: { enclosure: 0.08, hillHeight: 0.6, reachM: 360, rimFloor: 0.15, wavelengthM: 700, forest: 0.26, hedgerows: 0.35, fields: 0.55, crops: 'polder', farms: 10, buildings: 'tropical', erosion: 0 },
   monsoon: { forest: 0.6, fields: 0.25, farms: 6, buildings: 'tropical', farRiseM: 80 },
-  alpine: { forest: 0.32, fields: 0.05, farRiseM: 80 },
+  alpine: { forest: 0.32, fields: 0.05 },
   caldera: { forest: 0.06, terrace: 0.55, ridged: 0.45, hedgerows: 0, fields: 0, farms: 1, farmBuildings: false },
   foundry: { forest: 0.2, hedgerows: 0.55, fields: 0.55, farms: 8 },
   ruinspires: { forest: 0.1, hedgerows: 0.2, fields: 0.1, farms: 3, farmBuildings: false },
