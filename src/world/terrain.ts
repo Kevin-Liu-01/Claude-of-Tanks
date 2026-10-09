@@ -7560,6 +7560,52 @@ function terrainIndexPoolReceipt(pool: TerrainIndexPool): {
   };
 }
 
+/** The Redrock lane, round 11d (the gauntlet's waves 298b and 314: "bright white streaks and smears running down" the
+ * shaded ravine wall, "white flecks along its crest"): a joint's V side or a ledge's tread turned to a sun its wall is turned
+ * from lies in the wall's own shadow — the sun reaches it only through the rock — but the shadow map's texels, metres wide
+ * at a ravine's range, cannot see a 2 m notch, and the vertex normal lit it full: a sunlit sliver down every joint of a
+ * backlit wall, near white at the backlit exposure. Where the wall's 8 m normal (the folds' heights) is turned from the
+ * sun or grazing it, a vertex keeps no more of the sun than its wall: the normal's sun-ward excess over the wall's is
+ * dropped. A sunlit wall's notches, the domes and the floor are untouched; the joints keep their shade from the sky. */
+interface JebelLit { clamp(x: number, z: number, nrm: Float32Array, o: number): void }
+function makeJebelLit(heights: Float32Array, n: number, origin: number, step: number, sun: THREE.Vector3): JebelLit {
+  const gx = new Float32Array(n * n), gz = new Float32Array(n * n);
+  const h = (i: number, j: number) => heights[Math.max(0, Math.min(n - 1, j)) * n + Math.max(0, Math.min(n - 1, i))];
+  for (let j = 0; j < n; j++) {
+    for (let i = 0; i < n; i++) {
+      gx[j * n + i] = (h(i + 1, j) - h(i - 1, j)) / (2 * step);
+      gz[j * n + i] = (h(i, j + 1) - h(i, j - 1)) / (2 * step);
+    }
+  }
+  const lx = sun.x, ly = sun.y, lz = sun.z;
+  const bilerp = (g: Float32Array, i0: number, j0: number, fu: number, fv: number) => {
+    const a = g[j0 * n + i0], b = g[j0 * n + i0 + 1], c = g[(j0 + 1) * n + i0], d = g[(j0 + 1) * n + i0 + 1];
+    return (a + (b - a) * fu) * (1 - fv) + (c + (d - c) * fu) * fv;
+  };
+  return {
+    clamp(x, z, nrm, o) {
+      const fy = nrm[o + 1];
+      if (fy >= 0.92) return; // the floor, the domes' tops and the benches (under ~23 degrees): untouched
+      const u = (x - origin) / step, v = (z - origin) / step;
+      const i0 = Math.max(0, Math.min(n - 2, Math.floor(u))), j0 = Math.max(0, Math.min(n - 2, Math.floor(v)));
+      const fu = Math.max(0, Math.min(1, u - i0)), fv = Math.max(0, Math.min(1, v - j0));
+      const mx = -bilerp(gx, i0, j0, fu, fv), mz = -bilerp(gz, i0, j0, fu, fv);
+      const ml = 1 / Math.sqrt(mx * mx + 1 + mz * mz);
+      // the wall: an 8 m normal steeper than ~30 degrees; turned from the sun or grazing it (its sun cosine under 0.2)
+      const wall = 1 - Math.max(0, Math.min(1, (ml - 0.72) / 0.16));
+      const dM = (mx * lx + ly + mz * lz) * ml;
+      const t = Math.max(0, Math.min(1, (dM + 0.05) / 0.25)), backlit = 1 - t * t * (3 - 2 * t);
+      const fx = nrm[o], fz = nrm[o + 2];
+      const f = Math.max(0, (fy - 0.8) / 0.12), steep = 1 - f * f * (3 - 2 * f); // eased out from ~37 to ~23 degrees
+      const excess = (fx * lx + fy * ly + fz * lz - Math.max(dM, 0)) * wall * backlit * steep;
+      if (excess <= 0) return;
+      const ax = fx - lx * excess, ay = fy - ly * excess, az = fz - lz * excess;
+      const al = 1 / Math.sqrt(ax * ax + ay * ay + az * az);
+      nrm[o] = ax * al; nrm[o + 1] = ay * al; nrm[o + 2] = az * al;
+    },
+  };
+}
+
 function* buildChunkGeometrySteps(
   hf: HeightField,
   cx0: number,
@@ -7571,6 +7617,7 @@ function* buildChunkGeometrySteps(
   rowsPerSlice = 8,
   foldAt: ((x: number, z: number) => number) | null = null,
   shoreAt: ((x: number, z: number) => number) | null = null,
+  jebelLit: JebelLit | null = null,
 ): Generator<TerrainBuildProgress, THREE.BufferGeometry, void> {
   const n = segs + 1, step = CHUNK_SIZE / segs;
   const stride = FINE_SEGS / segs;
@@ -7612,6 +7659,7 @@ function* buildChunkGeometrySteps(
       const nx = (hl - hr) * inv2e, nz = (hd - hu) * inv2e;
       const il = 1 / Math.sqrt(nx * nx + 1 + nz * nz);
       nrm[vi * 3] = nx * il; nrm[vi * 3 + 1] = il; nrm[vi * 3 + 2] = nz * il;
+      if (jebelLit) jebelLit.clamp(wx, wz, nrm, vi * 3);
       vi++;
     }
     return vi;
@@ -7810,6 +7858,7 @@ function* terrainBuildSteps(
   // chunk vertex carries as its `fold` byte and the tall-grass tier reads through `_foldAt`; a height field without
   // heights (receipt sandboxes) bakes nothing and the vertices carry zeros.
   let foldAt: ((x: number, z: number) => number) | null = null;
+  let jebelLit: JebelLit | null = null;
   if (typeof heightField.getHeightAt === 'function') {
     const FOLD_STEP = 8, FOLD_MARGIN = 3;
     const FOLD_N = MAP_SIZE / FOLD_STEP + 1 + 2 * FOLD_MARGIN;
@@ -7842,6 +7891,7 @@ function* terrainBuildSteps(
       return (a + (b - a) * fu) * (1 - fv) + (c + (d - c) * fu) * fv;
     };
     heightField._foldAt = foldAt;
+    if (cfg?.splat?.jebelFace) jebelLit = makeJebelLit(foldHeights, FOLD_N, FOLD_ORIGIN, FOLD_STEP, skySunDirection(cfg.sky));
   }
   // Ground lane (2026-10-03): the vegetation's woods mask (vegetation.ts _woodsMask, 256² over the square) lands in the
   // noise texture's free blue channel — one 4 m texel per mask cell, the field read at the square's own scale — and on
@@ -8032,7 +8082,7 @@ function* terrainBuildSteps(
       const lods: Array<THREE.BufferGeometry | null> = [null, null, null];
       for (const level of initialLevels) {
         const geometry = yield* buildChunkGeometrySteps(
-          heightField, cx0, cz0, LOD_SEGS[level], fine, progress, terrainIndexPool, 8, foldAt, shoreAt,
+          heightField, cx0, cz0, LOD_SEGS[level], fine, progress, terrainIndexPool, 8, foldAt, shoreAt, jebelLit,
         );
         lods[level] = geometry;
         retainedLodGeometries.add(geometry);
@@ -8155,7 +8205,7 @@ function* terrainBuildSteps(
       c.fine = yield* buildFineGridSteps(heightField, c.cx0, c.cz0, null, 1);
     }
     const geometry = yield* buildChunkGeometrySteps(
-      heightField, c.cx0, c.cz0, LOD_SEGS[job.level], c.fine, null, terrainIndexPool, 1, foldAt, shoreAt,
+      heightField, c.cx0, c.cz0, LOD_SEGS[job.level], c.fine, null, terrainIndexPool, 1, foldAt, shoreAt, jebelLit,
     );
     // Publish only a complete geometry. Skirts, topology and bounds stay exact;
     // a camera move while rows were being built cannot mount an obsolete LOD.
