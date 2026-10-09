@@ -22,7 +22,7 @@ interface VehicleGroundWorld {
   queryObstacles?: ObstacleQuery | null;
 }
 
-export type VehicleGroundSampler = ((x: number, z: number, ceiling?: number) => number) & {
+type VehicleGroundSampler = ((x: number, z: number, ceiling?: number) => number) & {
   prepareHull(x: number, z: number, reachM: number): void;
 };
 
