@@ -5,7 +5,7 @@
  * A Studio scene films what a battle does: a round striking a wall opens the sim's hole there (or brings its section
  * down — a wall panel to its stub, the roof, a storey after it), a later round traced through the world (whose raycast
  * reads the openings) flies through the hole and strikes the far wall's inner face, and a building takes its stages and
- * comes down. This runs one destruction match (sim/destructionMatch.ts, sections on, whatever the battle switch says)
+ * comes down. This runs one destruction match (sim/destructionMatch.ts, sections on unless the scene films the battle's P1)
  * over the Studio world's own records and raises its events on the Studio's bus under the names the solo step raises
  * them (`structure:stage`, `structure:breach`), so the presentation draws exactly what a battle would. `reset` stands
  * every building up again (a scene load, the Studio's exit).
@@ -48,8 +48,14 @@ export interface StudioDestruction {
 }
 
 export interface StudioDestructionOptions {
-  /** The battle's destruction block to film (the standard ruleset's); sections are on in the Studio regardless. */
+  /** The battle's destruction block to film (the standard ruleset's). */
   rules: DestructionRules;
+  /**
+   * Sections (P2) on or off: on by default (the motion strips film the cascade); a scene that films what a battle plays
+   * today (`destruction: { sections: false }`, every battle mode's switch) runs the P1 rules, so a collapse is the
+   * crumble front over the whole building, not a storey cascade.
+   */
+  sections?: boolean;
   /** The map's walls (structureMaterial.ts): a ram's and a hole's material. */
   wallMaterial?: StructureMaterial;
   /** The ground overlay a collapse raises its rubble mound on, as a battle's does (the Studio's own, bound to its world
@@ -60,7 +66,7 @@ export interface StudioDestructionOptions {
 export function createStudioDestruction(world: StudioWorld, bus: StudioBus, options: StudioDestructionOptions): StudioDestruction {
   const obstacles = world.getObstacles();
   const colliders = world.getColliders ? world.getColliders() : [];
-  const rules: DestructionRules = { ...options.rules, structures: true, sections: true };
+  const rules: DestructionRules = { ...options.rules, structures: true, sections: options.sections !== false };
   const stages: StructureStageEvent[] = [];
   const breaches: StructureBreachEvent[] = [];
   const build = (): DestructionMatch => {

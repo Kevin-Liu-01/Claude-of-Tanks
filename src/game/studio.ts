@@ -419,6 +419,8 @@ interface StudioSceneInput {
   camera?: CameraConfig;
   fxTime?: number;
   timeScale?: number;
+  /** The Studio's destruction (game/studioDestruction.ts): `sections: false` films the battle's P1 rules. */
+  destruction?: { sections?: boolean };
 }
 
 interface EnterOptions {
@@ -557,7 +559,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let frameDirty = true;
   let cameraDirty = true;
   let poolSweepAcc = 0;
-  let sceneMeta = { seed: 5000 };
+  let sceneMeta: { seed: number; sections: boolean } = { seed: 5000, sections: true };
   let selectedEffect: StudioEffectRecord | null = null;
   let storyboard: Storyboard = normalizeStoryboard();
   let selectedShotId: string | null = null;
@@ -1916,13 +1918,15 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   /** The Studio's destruction match over the world it shows (game/studioDestruction.ts), made for each world. */
   let studioSim: StudioDestruction | null = null;
   let studioSimWorld: WorldRuntime | null = null;
+  /** The sections switch the current match was made with (a scene that changes it gets a new match). */
+  let studioSimSections = true;
   /** The Studio destruction's raised events, with the Studio clock they were raised at (cleared with the fx runtime). */
   const studioSimLog: Array<{ tMs: number; event: string; structureId: number | null; section: number | null; hole: number | null;
     stage: string | null; sectionDown: boolean; storeyDown: boolean }> = [];
   function studioDestructionNow(): StudioDestruction | null {
     const w = getWorld();
     if (!w) return null;
-    if (studioSimWorld !== w) {
+    if (studioSimWorld !== w || studioSimSections !== sceneMeta.sections) {
       ensureFxBus();
       // every stage and breach it raises is logged with the Studio's clock (a capture tool reads which events each frame
       // presented: __STUDIO.destructionEvents) and goes on to the fx bus
@@ -1941,8 +1945,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         rules: matchRulesetFor('standard').destruction,
         wallMaterial: wallMaterialForStyle(architectureStyleOf(getMapConfig(w.mapId))),
         ground: studioGround,
+        sections: sceneMeta.sections,
       });
       studioSimWorld = w;
+      studioSimSections = sceneMeta.sections;
     }
     return studioSim;
   }
@@ -3407,6 +3413,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       camera: getCamera(),
       fxTime: Math.round(clockMs),
       timeScale,
+      ...(sceneMeta.sections ? {} : { destruction: { sections: false } }),
     };
   }
 
@@ -3422,6 +3429,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     yieldForFrameBudget: () => Promise<void>,
   ): Promise<void> {
     sceneMeta.seed = json.seed != null ? json.seed : 5000;
+    sceneMeta.sections = json.destruction?.sections !== false;
     timeScale = 0;
     clearActors();
     resetFx(sceneMeta.seed);
