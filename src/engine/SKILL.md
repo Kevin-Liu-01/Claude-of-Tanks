@@ -77,3 +77,8 @@ GTAO/post composition before changing quality or refresh policy.
 Garage and battle have different active worlds/lights. A lower draw count is
 not a win if it causes first-use shader or transition spikes. Passive Garage
 dwell must not construct a battlefield or retain resources without a ceiling.
+A material's `envMapIntensity` only reaches the screen through
+`setupShadowMaterial` (`materialEnvIntensity.ts`): three overwrites the uniform
+with `scene.environmentIntensity` for every material that reads the scene
+environment. Below 1 it takes a share of the sky light, which is 80–99 % of a
+shaded matte face's light, so a trim is a visible change, not a no-op.
