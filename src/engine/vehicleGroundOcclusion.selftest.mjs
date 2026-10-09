@@ -511,10 +511,15 @@ assert.ok(g.includes(`float t = clamp( ( z - b3.z ) / max( b3.w - b3.z, 1e-4 ), 
   && g.includes('+ dot( k1, max( 1.0 - abs( t - vec4( 4.0, 5.0, 6.0, 7.0 ) ), 0.0 ) );'), 'the knots, linear between');
 assert.ok(g.includes('int rk = i * 4 + ( q.x < 0.0 ? 0 : 2 );') && g.includes('float run = cotVgRun( uVehGroundR[ rk ], uVehGroundR[ rk + 1 ], q.z, b3 );'),
   'the run on the pixel\'s side');
-assert.ok(g.includes(`ho = max( ho, smoothstep( ${f4(-GROUND_AO_CONTACT_EDGE_M)}, ${f4(GROUND_AO_CONTACT_EDGE_M)}, laneD )`)
-  && g.includes(`* smoothstep( 0.0, ${f4(GROUND_AO_CONTACT_EDGE_M)}, min( q.z - b1.x, b1.y - q.z ) )`)
-  && g.includes(`* ( 1.0 - smoothstep( ${f4(GROUND_AO_CONTACT_FULL_M)}, ${f4(GROUND_AO_CONTACT_GAP_M)}, b0.w + run + ramp - q.y ) ) );`),
+assert.ok(g.includes(`float lane = smoothstep( ${f4(-GROUND_AO_CONTACT_EDGE_M)}, ${f4(GROUND_AO_CONTACT_EDGE_M)}, laneD )`)
+  && g.includes(`* smoothstep( 0.0, ${f4(GROUND_AO_CONTACT_EDGE_M)}, min( q.z - b1.x, b1.y - q.z ) );`)
+  && g.includes(`ho = max( ho, lane * ( 1.0 - smoothstep( ${f4(GROUND_AO_CONTACT_FULL_M)}, ${f4(GROUND_AO_CONTACT_GAP_M)}, b0.w + run + ramp - q.y ) ) );`),
   'the ground a track covers, by its gap under the drawn run');
+// (2026-10-09, the cost lane) the knots are read only in a track's lane: the shoe test's branch and the contact's, never
+// for every pixel the hull reaches
+assert.equal((g.match(/float run = cotVgRun\( uVehGroundR\[ rk \], uVehGroundR\[ rk \+ 1 \], q\.z, b3 \);/g) ?? []).length, 2, 'two lazy run reads');
+assert.ok(g.indexOf('float run = cotVgRun( uVehGroundR[ rk ]') > g.indexOf('if ( sunVis < 0.0 && laneD >')
+  && g.lastIndexOf('float run = cotVgRun( uVehGroundR[ rk ]') > g.indexOf('if ( lane > 0.0 ) {'), 'each read inside its lane branch');
 assert.ok(!g.includes('smoothstep( -0.005, 0.005, laneD )') && !g.includes('0.3000, max( max( b3.z - q.z'), 'the rigid print is gone');
 assert.ok(g.includes('float loR = max( b0.w + cotVgRun( uVehGroundR[ i * 4 + 2 ], uVehGroundR[ i * 4 + 3 ], q.z, b3 ), c );')
   && g.includes('float loL = max( b0.w + cotVgRun( uVehGroundR[ i * 4 ], uVehGroundR[ i * 4 + 1 ], q.z, b3 ), c );'),

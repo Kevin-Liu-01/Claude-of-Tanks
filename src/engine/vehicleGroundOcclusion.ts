@@ -794,12 +794,13 @@ ${GLSL_HULL_EDGES}
         // lit, is never one; grass under a wrap stays a receiver)
         if ( q.y > b0.y + 0.02 && dOut < ${f(GROUND_AO_HULL_SKIN_M)} ) continue;
         float laneD = 0.5 * ( b2.w - b2.z ) - abs( abs( q.x ) - 0.5 * ( b2.z + b2.w ) );
-        // the run on q's side as drawn this frame (the road wheels' travel the band follows; tankFactoryCore.ts)
+        // the run on q's side as drawn this frame (the road wheels' travel the band follows; tankFactoryCore.ts), read
+        // only where a pixel stands in a track's lane: the shoe test here, the contact below (2026-10-09, the cost lane:
+        // every pixel in the hull's reach read the knots and kept them live through the solid's terms)
         int rk = i * 4 + ( q.x < 0.0 ? 0 : 2 );
-        float run = cotVgRun( uVehGroundR[ rk ], uVehGroundR[ rk + 1 ], q.z, b3 );
-        float past = max( max( b3.z - q.z, q.z - b3.w ), 0.0 );
-        float ramp = ( q.z < b3.z ? b3.x : b3.y ) * past;
         if ( sunVis < 0.0 && laneD > ${f(-GROUND_AO_LANE_MARGIN_M)} && q.y < b0.z + ${f(GROUND_AO_RUN_END_M)} && q.z > b1.x && q.z < b1.y ) {
+          float run = cotVgRun( uVehGroundR[ rk ], uVehGroundR[ rk + 1 ], q.z, b3 );
+          float ramp = ( q.z < b3.z ? b3.x : b3.y ) * max( max( b3.z - q.z, q.z - b3.w ), 0.0 );
           if ( q.y >= b0.w + run + max( ${f(GROUND_AO_SHOE_FLOOR_M)}, ramp - ${f(GROUND_AO_RAMP_TOL_M)} ) ) continue;
         }
         if ( !haveN ) { haveN = true; if ( sunVis >= 0.0 ) N = cotNormalAt( uv, P ); }
@@ -828,9 +829,14 @@ ${GLSL_HULL_EDGES}
         ho *= 1.0 - smoothstep( H * ${f(GROUND_AO_REACH[0])}, H * ${f(GROUND_AO_REACH[1])}, dOut );
         // the ground a track covers where its run meets it (its shoes' gaps, their foot): by the ground's gap under the
         // run's lower edge as drawn (the wraps' ramp past the ground run), full at contact, soft at the lane's edges
-        ho = max( ho, smoothstep( ${f(-GROUND_AO_CONTACT_EDGE_M)}, ${f(GROUND_AO_CONTACT_EDGE_M)}, laneD )
-          * smoothstep( 0.0, ${f(GROUND_AO_CONTACT_EDGE_M)}, min( q.z - b1.x, b1.y - q.z ) )
-          * ( 1.0 - smoothstep( ${f(GROUND_AO_CONTACT_FULL_M)}, ${f(GROUND_AO_CONTACT_GAP_M)}, b0.w + run + ramp - q.y ) ) );
+        // (only a pixel in the lane reads the run: ho is never negative, so outside it the max keeps ho as it was)
+        float lane = smoothstep( ${f(-GROUND_AO_CONTACT_EDGE_M)}, ${f(GROUND_AO_CONTACT_EDGE_M)}, laneD )
+          * smoothstep( 0.0, ${f(GROUND_AO_CONTACT_EDGE_M)}, min( q.z - b1.x, b1.y - q.z ) );
+        if ( lane > 0.0 ) {
+          float run = cotVgRun( uVehGroundR[ rk ], uVehGroundR[ rk + 1 ], q.z, b3 );
+          float ramp = ( q.z < b3.z ? b3.x : b3.y ) * max( max( b3.z - q.z, q.z - b3.w ), 0.0 );
+          ho = max( ho, lane * ( 1.0 - smoothstep( ${f(GROUND_AO_CONTACT_FULL_M)}, ${f(GROUND_AO_CONTACT_GAP_M)}, b0.w + run + ramp - q.y ) ) );
+        }
         // the belly's strength under the hull, the walls' beside it, blended across the footprint's edge
         float sd = dOut + min( max( dd.x, dd.y ), 0.0 );
         float inside = 1.0 - smoothstep( ${f(-GROUND_AO_EDGE_M)}, ${f(GROUND_AO_EDGE_M)}, sd );
