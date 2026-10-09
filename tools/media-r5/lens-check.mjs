@@ -244,7 +244,10 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
     // the escorts: one is sliced when its box crosses the frame's side edge with at least a quarter of its width inside
     // and it stands half the hero's height or more; stacked when it stands behind the hero and half its box or more
     // lies inside the hero's
-    let sliced = 0, stacked = 0;
+    // and `overlap` (composition wave c4: "a follower stacked behind the turret, the two silhouettes fused"): the largest
+    // share of an escort's box (one farther than the hull) inside the hull's, and `turretOverlap`, inside the hull box's
+    // upper 45 % (the turret's band)
+    let sliced = 0, stacked = 0, overlap = 0, turretOverlap = 0;
     for (const e of escorts) {
       let ex = e.actor.pos[0], ez = e.actor.pos[1], eyaw = (e.actor.facingDeg ?? 0) * Math.PI / 180;
       if (e.keys?.length) { if (!sampleActorTrack(e.keys, t, e.pose)) continue; ex = e.pose.x; ez = e.pose.z; eyaw = (e.pose.facingDeg ?? 0) * Math.PI / 180; }
@@ -261,6 +264,10 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
       if (box && Math.hypot(ex - cam.x, ez - cam.z) > distM) {
         const ox = Math.min(ex1, box[2]) - Math.max(ex0, box[0]), oy = Math.min(ey1, box[3]) - Math.max(ey0, box[1]);
         if (ox > 0 && oy > 0 && ox * oy >= 0.5 * width * (ey1 - ey0)) stacked++;
+        const area = Math.max(1e-6, width * (ey1 - ey0));
+        if (ox > 0 && oy > 0) overlap = Math.max(overlap, (ox * oy) / area);
+        const band = box[3] - (box[3] - box[1]) * 0.45, ty = Math.min(ey1, box[3]) - Math.max(ey0, band);
+        if (ox > 0 && ty > 0) turretOverlap = Math.max(turretOverlap, (ox * ty) / area);
       }
     }
     // a merger (composition waves c2-c3: about a quarter of the critics' notes have a pole, a lamp or a pylon "rising
@@ -283,7 +290,7 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
       }
     }
     perSample.push({ tMs: t, seen: inView, centred, clear: !isBlocked && blockedRays === 0, distM: +distM.toFixed(1),
-      muzzle: muzzleS ? muzzleS.map((v) => +v.toFixed(3)) : null, gunRoom, sliced, stacked, merger, mergerKind,
+      muzzle: muzzleS ? muzzleS.map((v) => +v.toFixed(3)) : null, gunRoom, sliced, stacked, overlap: +overlap.toFixed(3), turretOverlap: +turretOverlap.toFixed(3), merger, mergerKind,
       box, whole, size: box ? +((box[3] - box[1]) / 2).toFixed(3) : 0, fore: { share: +foreShare.toFixed(3), kind: foreKind, zone: +zoneShare.toFixed(3), zoneKind, clutter: +clutter.toFixed(3), clutterKind },
       at: [+x.toFixed(2), +z.toFixed(2)], eye: [+cam.x.toFixed(2), +cam.y.toFixed(2), +cam.z.toFixed(2)], facing,
       pitchDeg: +(Math.asin(Math.max(-1, Math.min(1, fw[1]))) * 180 / Math.PI).toFixed(1), heightM: +(cam.y - model.heightAt(cam.x, cam.z)).toFixed(1) });
