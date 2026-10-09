@@ -663,6 +663,37 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   assert.equal(dark.ports.trace.status, 'failed');
 }
 
+// ------------------------------------------------------------ only the watchdog's own verdict blocks entry (2026-10-09, R047)
+// The probe draws offscreen and reads its own target: a page hidden behind another tab, with no frame presented since
+// the countdown began (the frame waits take their hidden fallback), measured 18.9 on the R047 repro and entered. A
+// low-light round's verdict carries the diagnostic scale it was measured under (sunset 0.165: 14.8-20.7, was 3.8-4.7 and
+// refused). Neither visibility nor presented frames may turn a healthy verdict into the refusal above.
+{
+  const previousDocument = globalThis.document;
+  globalThis.document = { visibilityState: 'hidden', hidden: true, hasFocus: () => false };
+  const verdicts = [];
+  try {
+    for (const verdict of [{ before: 18.9, after: null, rescued: false, stage: null },
+      { before: 14.8, after: null, rescued: false, stage: null, nightRadianceScale: 0.494 / 3 }]) {
+      const hidden = createHarness({ blackWatchdog: async () => { verdicts.push(verdict); return verdict; } });
+      const hiddenRoom = makeRoomSession(hidden.calls);
+      const hiddenEntry = hidden.composition.beginRoom({ role: 'client', session: hiddenRoom, lobbyState: hiddenRoom.lobby });
+      const hiddenOwner = hidden.sessions[0];
+      await hiddenOwner.enter({ matchStart: matchStart(1, 'verdant'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });
+      await hiddenOwner.welcome();
+      hiddenOwner.frame(frame());
+      assert.equal(await hiddenEntry, true, `a healthy verdict (${verdict.before}) enters with the page hidden`);
+      assert.equal(hidden.ports.failure ?? null, null, 'no entry failure is recorded');
+      assert.equal(hidden.ports.trace.status, 'complete');
+      assert.deepEqual(hidden.ports.trace.blackCheck, verdict, 'the trace keeps the verdict and the scale it was measured under');
+    }
+    assert.equal(verdicts.length, 2, 'one watchdog run per entry, no visibility gate in front of it');
+  } finally {
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+  }
+}
+
 // ------------------------------------------------------------ the room closing mid-battle: clear input, return to the Garage, the failure panel
 {
   const kicked = createHarness();
