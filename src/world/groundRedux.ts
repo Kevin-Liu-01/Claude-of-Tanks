@@ -72,6 +72,9 @@ export interface GroundReduxProfile {
   midAlbedo: number;
   /** Round 73b: the snow drifts' shaded lee edge (0 off the snow maps). */
   driftEdge: number;
+  /** Ground lane (2026-10-07, wave 235's Whiteout): the wind's work in the snow's own tone at ground scale — sastrugi,
+   * crust plates and drift tails that read under an overcast sky, where the drift normals read as nothing (0 = off). */
+  snowWind?: number;
   /** Terrain v2 (2026-10-01, grounded realism): slope exposure — how strongly a slope turned to the map's sun dries
    * and pales and a slope turned away holds moisture (0 = off, 1.3 max), and which ecology answers it: `vegetated`
    * (straw on the sun side, moss on the shade side), `arid` (bleach vs varnish), `snow` (crust vs powder). */
@@ -236,7 +239,9 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   // reeds at the spring's waterline, a trace of their meadow on the dry banks: 0.05, was 0.2)
   oasis: { ...ARID, windRipple: 0.4, swashPeriodS: 0, swashReachM: 2.5, swashStrength: 0.5, swashLines: 0.3, grass: reed(0.5, 1.4, 0.85, 0.05) },
   // trees round 2b (2026-10-03, gauntlet wave 28): Whiteout Station stands on an ice sheet — no sward through the ice
-  whiteout: { ...SNOW, scree: 0.3, grass: null },
+  // (2026-10-07, wave 235: "a flat, nearly textureless blue-grey snow sheet with no wind drifts, sastrugi, tracks" — the
+  // whiteout's overcast leaves the drift normals unlit) the wind's work in the snow's tone
+  whiteout: { ...SNOW, scree: 0.3, grass: null, snowWind: 1 },
   orchard: { ...TEMPERATE, scree: 0.2, grass: meadow(0.9, 0.8) },
   longleaf: { ...TEMPERATE, scree: 0.2, grass: savanna(0.7, 0.75) },
   mangrove: { ...COAST, swashPeriodS: 6.5, swashReachM: 3, swashStrength: 0.9, rimTint: MOSS, grass: reed(0.7, 1.5, 0.85, 0.45) },
@@ -282,7 +287,7 @@ export function groundReduxUniformValues(profile: GroundReduxProfile): {
       Number.isFinite(profile.swashStrength) ? Math.min(1.6, Math.max(0, profile.swashStrength)) : 0,
       clamp01(profile.swashLines),
     ],
-    reduxSnow: [clamp01(profile.snowMacro), clamp01(profile.snowRipple), 0],
+    reduxSnow: [clamp01(profile.snowMacro), clamp01(profile.snowRipple), clamp01(profile.snowWind ?? 0)],
     reduxB: [clamp01(profile.lip), clamp01(profile.verge), clamp01(profile.rim), clamp01(profile.midAlbedo)],
     reduxC: [tint(profile.rimTint?.[0] ?? 1), tint(profile.rimTint?.[1] ?? 1), tint(profile.rimTint?.[2] ?? 1), clamp01(profile.driftEdge)],
     // terrain v2: exposure strength, the climate class (0 vegetated, 1 arid, 2 snow), the bed irregularity, the patchwork

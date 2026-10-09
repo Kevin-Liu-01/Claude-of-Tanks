@@ -199,4 +199,21 @@ assert.ok(!/uniform sampler2D uPress|uniform sampler2D uRedux/.test(material), '
 // 6. The budgets the perf bench compares against (docs/MAP-BEAUTIFICATION.md round 73).
 assert.deepEqual({ ...GROUND_REDUX_BUDGET }, { terrainGpuMs: 0.8, tallGrassGpuMs: 1.0, shorelineGpuMs: 0.2, cpuMs: 0.2, drawCalls: 6, terrainSamplers: 16, terrainDeclaredSamplers: 10 });
 
+// 7. 2026-10-07 (wave 235's Whiteout, "a flat, nearly textureless blue-grey snow sheet with no wind drifts, sastrugi,
+// tracks"): the wind's work in the snow's own tone is the map's share, packed in the snow vector's free slot — the
+// whiteout alone; every other map's snow (and every map's vector) as it was, so its block is never entered elsewhere
+for (const id of MAP_IDS) {
+  const z = groundReduxUniformValues(resolveGroundReduxProfile(id)).reduxSnow[2];
+  assert.equal(z, id === 'whiteout' ? 1 : 0, `${id}: the snow's wind tone ${id === 'whiteout' ? 'on' : 'off'}`);
+}
+{
+  const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const at = terrain.indexOf('if (uReduxSnow.z > 0.001) {');
+  assert.ok(at > 0 && terrain.indexOf('float snowW = uReduxSnow.z * meadowG * (1.0 - fR) * (1.0 - roadCore);', at) > at,
+    'the wind tone is gated on the map\'s share and stays off rock and roads');
+  const blk = terrain.slice(at, terrain.indexOf('\n  }\n', at));
+  assert.ok(['float v1 = tileVis(0.6), v2 = tileVis(3.0);', 'tileVis(1.5);', 'tileVis(0.8);', 'tileVis(4.0);'].every((t) => blk.includes(t)),
+    'every one of its patterns fades by the footprint');
+}
+
 console.log(`groundRedux.selftest: ${MAP_IDS.length} map profiles, uniform packing (seven vectors), the quality knob, the terrain material's redux contract (ten samplers, v43, the borders, the strand in metres on the shore byte) and the budgets pinned`);
