@@ -241,6 +241,14 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     }
     return wall;
   }
+  /** A place on a bank's stretch of the wall (into `at`): `along` the row from (x0, z0), back (< 0) or ahead (> 0), and
+   *  `deep` across it (toward the launcher or away, along the row's normal there: its two directions turned a quarter). */
+  const at={x:0,z:0};
+  function spot(w:Float32Array,o:number,along:number,deep:number,x0:number,z0:number):void{
+    const ux=along<0?w[o]!:w[o+3]!,uz=along<0?w[o+1]!:w[o+4]!,d=Math.abs(along);
+    const nx=w[o+4]!-w[o+1]!,nz=w[o]!-w[o+3]!,nl=Math.hypot(nx,nz)||1;
+    at.x=x0+ux*d+nx/nl*deep;at.z=z0+uz*d+nz/nl*deep;
+  }
   /** Emit one bank's schedule over screen ages (from, to]: births backdated to their own times (to = now). */
   function mediaBank(C:BlastContext,screen:SmokeScreen,bank:number,st:MediaScreenState,from:number,to:number){
     const born=screen.born,tLand=bankLandAge(screen,bank);
@@ -268,16 +276,8 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     // the bank's settled centre (its full growth, 2.2 s after landing, drifted as the simulation drifts it)
     smokeVolume(screen,born+tLand+2.2,bank-2,volume,ports.ground);
     const cx=volume.x,cz=volume.z;
-    // the bank's stretch of the wall (wallStretches): back toward one neighbour, ahead toward the other; `deep` is across
-    // the row (toward the launcher or away)
+    // the bank's stretch of the wall (wallStretches): back toward one neighbour, ahead toward the other
     const w=st.wall,o=bank*6,back=w[o+2]!,ahead=w[o+5]!,span=back+ahead;
-    const spot=(along:number,deep:number,x0:number,z0:number,out:{x:number;z:number})=>{
-      const ux=along<0?w[o]!:w[o+3]!,uz=along<0?w[o+1]!:w[o+4]!,d=Math.abs(along);
-      // across: the row's normal at this bank (its two directions' bisector, turned a quarter)
-      const nx=w[o+4]!-w[o+1]!,nz=w[o]!-w[o+3]!,nl=Math.hypot(nx,nz)||1;
-      out.x=x0+ux*d+nx/nl*deep;out.z=z0+uz*d+nz/nl*deep;
-    };
-    const at={x:0,z:0};
     // 3. the bloom: lobes out of the burst to their places along the bank's stretch of the wall, crowns over its middle
     const feet=Math.max(1,Math.round(span/WALL_PITCH_M)),crowns=Math.max(1,Math.round(2*share)),lobes=feet+crowns;
     for(let j=0,foot=0,crowned=0;j<lobes;j++){
@@ -287,7 +287,7 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       if(!(t>from&&t<=to)||LOBE_END_S<=to)continue;
       const R=puffRandom(slotSeed(born,lx,lz,bank,100+j));
       const along=crown?(R()-.5)*Math.min(4,span*.5):-back+(slot+.5)*span/feet+(R()-.5)*1.2;
-      spot(along,crown?(R()-.5)*1.5:(R()-.5)*3.2,cx,cz,at);
+      spot(w,o,along,crown?(R()-.5)*1.5:(R()-.5)*3.2,cx,cz);
       lobe.x0=lx;lobe.y0=ly+.6;lobe.z0=lz;
       lobe.tx=at.x;lobe.tz=at.z;
       lobe.ty=ports.ground(lobe.tx,lobe.tz)+(crown?3.0+R()*.6:1.8+R()*.9);
@@ -306,7 +306,7 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       if(t+life<to)continue;
       const R=puffRandom(slotSeed(born,lx,lz,bank,200+j));
       smokeVolume(screen,born+t,bank-2,volume,ports.ground);
-      spot(-back+R()*span,(R()-.5)*.3*volume.radius,volume.x,volume.z,at);
+      spot(w,o,-back+R()*span,(R()-.5)*.3*volume.radius,volume.x,volume.z);
       const x=at.x,z=at.z;
       smokeBankBody(C,R,x,ports.ground(x,z)+1.5+R()*2.0,z,8+R()*2.5,life,Math.min(.75,Math.max(.3,(BODY_ERODE_S-t)/life)),t-to);
     }
@@ -328,7 +328,7 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       if(!(t>from&&t<=to)||t>=SCREEN_END_S-1)continue;
       const R=puffRandom(slotSeed(born,lx,lz,bank,400+j));
       smokeVolume(screen,born+t,bank-2,volume,ports.ground);
-      spot(-back+R()*span,(R()-.5)*.25*volume.radius,volume.x,volume.z,at);
+      spot(w,o,-back+R()*span,(R()-.5)*.25*volume.radius,volume.x,volume.z);
       const x=at.x,z=at.z;
       smokeScreenHaze(C,R,x,ports.ground(x,z)+2.0+R()*1.2,z,SMOKE_WIND_X,SMOKE_WIND_Z,SCREEN_END_S-t,t-to);
     }

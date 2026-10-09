@@ -228,7 +228,7 @@ export function smokeScreenHaze(C: BlastContext, R: () => number, x: number, y: 
   m.drag = 0.05; m.rise = 0.04; m.windK = 0; m.grav = 0;
   m.life = life; m.size0 = 9; m.size1 = 13 + R() * 2.5; m.growExp = 1.4;
   m.rot = (R() - 0.5) * 0.6; m.spin = (R() - 0.5) * 0.02;
-  look(C, SCREEN_AGED, SCREEN_AGED, 0.34, 0.3, 0.5);
+  look(C, SCREEN_AGED, SCREEN_AGED, 0.34, 1.0, 0.5);
   book(C, R, 'billow', life * 1.1, 24 + Math.floor(R() * 20), 1.45 + R() * 0.3);
   C.media(m);
 }
