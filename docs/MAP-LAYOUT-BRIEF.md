@@ -695,6 +695,27 @@ as dots, not render):
   (lightness 0.58, Steinburg's `tones.plaster`). The photo render set is off for this kit. Round seven's relief is
   retired.
 
+Round ten (gauntlet waves 296 and 301, both critics, October 8-9: houses "stand on bare dirt or lawn with a hard line",
+framing "thin painted red lines", "one repeating oversized brick tile", "blotchy brown staining", "pasted brick-patch
+decals"):
+- Wall grime: the props' grime hook darkened 1-3 m world blotches by up to a fifth over every wall. A kit's walls now
+  take `wallGrimeHook` (props.ts) instead: the tone clouds at ±5 % and the rain's runs 10-30 cm wide down the wall's
+  own horizontal. Verdant is excluded.
+- Render losses: no build draws them on a style with the ground craft (`ArchitectureStyle.groundCraft`, default on). The
+  weathering pass's damp band carries the wall foot.
+- The wall foot (`facadeGroundCraft`):
+  - a plinth's water table, 4.5 cm proud and a shade paler, its top the doors' threshold;
+  - an 80 cm apron with the grass held off it;
+  - 1.5 m door paths.
+- Fachwerk: members stand 5 cm proud (a member is set 2 cm into the wall, so 35 mm stood only 15 mm proud). Posts are
+  19 cm (corner posts 23 cm) and rails 16 cm. A 13 cm shade band sits under every rail and plate.
+- Dressed ashlar: courses of 18-28 cm and blocks of 36-73 cm. Its grime clouds are at two fifths and its runs at half.
+- Quoins: 33-34 cm courses of long and short stones. The Hessian Buntsandstein is a third less saturated. A Fachwerk
+  door's surround is paler than its wall.
+- The gate: `KIT_LEGACY_MAPS` (`maps/regional/index.ts`) takes a listed map's kit back to the older layers. That means no
+  strip, apron or water table; plain losses; roofs without their age; the straw print on thatch; and the props' grime.
+  It is the ruling for a map whose view drops against the release.
+
 **The skyline kit.** October 5, 2026 (facades & skyline lane). `src/world/maps/regional/skyline.ts` is a grammar of
 tall and big buildings a city kit puts in its builders map, each fitted to the plan plot it replaces: `decoTower` (the
 Bund's inter-war tower: a granite podium of tall openings, continuous piers over recessed spandrels in setbacks with
