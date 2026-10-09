@@ -4320,7 +4320,10 @@ function* vegetationBuildSteps(
       const steepK = smoothstepJs(0.04, 0.20, 1 - normalY) * swardSlopeK[2];
       if (clJ < 0.55 * steepK) return null;
       sy *= 1 - 0.30 * steepK;
-      const nn = heightField.getNormalAt(x, z), tilt = Math.hypot(nn.x, nn.z);
+      // (perf lane, 2026-10-09; R262) the slope's facing comes from the contact normal read above, the normal
+      // tallGrass.ts admit tests — not four more analytic heights per tuft (~45 % of Monsoon's vegetation build)
+      const nn = heightField.getContactNormalAt ? _contactNormal : heightField.getNormalAt(x, z);
+      const tilt = Math.hypot(nn.x, nn.z);
       if (tilt > 1e-4) {
         dry = Math.max(dry, Math.max(0, (nn.x * swardSlopeK[0] + nn.z * swardSlopeK[1]) / tilt)
           * smoothstepJs(0.03, 0.16, 1 - normalY) * 0.55 * swardSlopeK[2]);
