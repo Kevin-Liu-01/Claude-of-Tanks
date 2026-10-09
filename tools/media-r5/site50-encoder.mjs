@@ -25,10 +25,25 @@ const ready = () => {
   return readdirSync(films).filter((id) => /^s\d\d-/.test(id)).sort().filter((id) => complete(receipt(join(films, id)), 'films')
     && complete(receipt(join(renders, 'stills', id)), 'stills'));
 };
-// done when its landscape loop is newer than the take's film receipt and its 4K still is delivered
+// done when its landscape loop is newer than the take's render and its 4K still is delivered. The render's time is its
+// newest kept frame (the review frames stay after the master): the film receipt is no clock, since cinema re-saves every
+// receipt of a batch when the batch ends (launch day: S04's loop, encoded during its own lease, read as undelivered and
+// spent its second try). A take with no kept frames falls back to its receipt.
+const newestFrameMs = (id) => {
+  let newest = 0;
+  const dir = join(renders, 'films', id, 'films');
+  if (!existsSync(dir)) return 0;
+  for (const d of readdirSync(dir, { withFileTypes: true })) {
+    if (!d.isDirectory()) continue;
+    for (const f of readdirSync(join(dir, d.name))) if (/^frame-\d{5}\.png$/.test(f)) newest = Math.max(newest, statSync(join(dir, d.name, f)).mtimeMs);
+  }
+  return newest;
+};
 const delivered = (id) => {
   const mp4 = join(deliver, id, `${id}.mp4`), rec = join(renders, 'films', id, 'cinema-receipt.json');
-  return existsSync(mp4) && existsSync(rec) && statSync(mp4).mtimeMs > statSync(rec).mtimeMs && existsSync(join(deliver, id, `${id}-4k.png`));
+  if (!existsSync(mp4) || !existsSync(join(deliver, id, `${id}-4k.png`))) return false;
+  const rendered = newestFrameMs(id) || (existsSync(rec) ? statSync(rec).mtimeMs : 0);
+  return rendered > 0 && statSync(mp4).mtimeMs > rendered;
 };
 // a take's master, or its kept frames (more than the review frames cinema keeps)
 const filmsOf = (id) => join(renders, 'films', id, 'films');
