@@ -1,3 +1,4 @@
+import { addModernFieldCage } from './modernFieldCage.ts';
 import { beginAuxiliaryStation, captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // src/vehicles/profiles/challenger.ts — the Challenger family profile module
@@ -2671,26 +2672,6 @@ function buildChallenger3XTurretEra(
   }
 }
 
-function buildChallenger3XRemoteWeapons(
-  P: ChallengerBuilderPort,
-  receipt: Challenger3XReceipt,
-): void {
-  const { box, cylY, cylZ, frustum } = KIT;
-  for (const side of [-1, 1]) {
-    const x = side * 1.48;
-    P.addEquipment('turret', box(0.32, 0.36, 0.52), side * 1.38, 0.48, -0.78);
-    P.addEquipment('turret', frustum(0.24, 0.34, -0.34, 0.20, 0.28, -0.28, 0, 0.34),
-      x, 0.67, -0.45);
-    P.add('turretDark', cylY(0.16, 0.18, 0.10, 12), x, 0.54, -0.64);
-    P.add('turretDark', cylZ(0.052, 1.30, 12), x, 0.73, 0.35);
-    P.add('turretDetail', cylZ(0.072, 0.24, 12), x, 0.73, -0.16);
-    P.add('turretDark', box(0.13, 0.13, 0.09), x, 0.73, 1.03);
-    P.add('turretGlass', box(0.13, 0.09, 0.014), x - side * 0.17, 0.67, -0.29,
-      0, side * Math.PI / 2, 0);
-    receipt.autocannonStations++;
-  }
-}
-
 function buildChallenger3XSensors(
   P: ChallengerBuilderPort,
   receipt: Challenger3XReceipt,
@@ -2771,10 +2752,8 @@ function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
   // plane, rather than a pair of rectangular applique slabs.
   buildChallenger3XTurretEra(P, receipt);
 
-  // Two independent 30 mm stations key into the turret shoulders. Their
-  // roots overlap the armor wall and their barrels overlap their receivers,
-  // so the pair reads as machinery carried by the turret instead of props.
-  buildChallenger3XRemoteWeapons(P, receipt);
+  // The owner removed the two nonfunctional shoulder cannons. The live
+  // Protector/M2 station remains the vehicle's roof weapon.
 
   // Oversized left-cheek searchlight with a buried shoe and protected lens.
   buildChallenger3XSensors(P, receipt);
@@ -4363,6 +4342,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     P.turretG.scale.y *= 1.40;
     P.gunG.scale.y *= 1 / 1.40;
     P.topY = 1.03;
+    if(P.spec.id==='ua_challenger2')addModernFieldCage(P);
     scaleChallenger2Family(P);
   };
   buildChallenger2MarkingsStage1();
@@ -5143,6 +5123,7 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
     // geometry — never floated mid-air)
     P.decal('hull', 'soot', null, 0.42, [-0.45, 1.10, -3.962], Math.PI);
     P.topY = 1.05;
+    if(P.spec.id==='challenger_3x')addModernFieldCage(P);
     scaleChallenger3Family(P);
   };
   buildChallenger3MarkingsStage1();

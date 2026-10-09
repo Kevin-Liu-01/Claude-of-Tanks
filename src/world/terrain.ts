@@ -71,6 +71,14 @@ import {
   tileableTorusNoise as torusNoise,
 } from './proceduralTexture.ts';
 
+/** The installed horizon ring's builder (horizonRingHook.ts): this module never imports the visual horizon. It sits
+ * above the chunk section on purpose: receipts that compile the chunk section on its own (from the CHUNKS constant to
+ * the end) supply their own buildHorizonRingSteps stub, which a later declaration would override. Keep the chunk
+ * constant's declaration text out of this note: those receipts find the section by its first occurrence. */
+function buildHorizonRingSteps(...args: Parameters<HorizonRing['buildHorizonRingSteps']>): ReturnType<HorizonRing['buildHorizonRingSteps']> {
+  return horizonRing().buildHorizonRingSteps(...args);
+}
+
 type GroundType = 'hard' | 'medium' | 'soft';
 type RoadPoint = [number, number];
 type RoadLine = RoadPoint[];
@@ -523,6 +531,8 @@ export interface HeightField {
   getHeightAtFast(x: number, z: number): number;
   /** Near-mesh triangle surface shared by movement and visible suspension. */
   getContactHeightAt?(x: number, z: number): number;
+  /** That triangle's unit normal into `out` (terrainContactSurface.ts normalAt): the slope the player sees. */
+  getContactNormalAt?<T extends { x: number; y: number; z: number }>(x: number, z: number, out: T): T;
   warmFastTilesAround(points: readonly TerrainWarmPoint[]): Generator<number, void, void>;
   getNormalAt(x: number, z: number): THREE.Vector3;
   getGroundType(x: number, z: number): GroundType;
@@ -2770,6 +2780,7 @@ function* heightFieldBuildSteps(
     : outlandHeightAt;
   return {
     getHeightAt, getHeightAtFast, getContactHeightAt, warmFastTilesAround, getNormalAt, getGroundType, getDriveGroundType,
+    getContactNormalAt: getContactHeightAt.normalAt,
     getOutlandHeightAt: publicOutlandHeightAt,
     ...(railCuttings !== null ? { getOutlandSeatWeightAt: (x: number, z: number): number =>
       railCuttingSeatWeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt, railOpenLines) } : {}),
@@ -7463,9 +7474,10 @@ function* buildChunkGeometrySteps(
 // ---------------------------------------------------------------------------
 // Horizon mountain ring — per-map styled skylines with baked sun shading,
 // altitude-banded rock detail texture, snow caps and aerial perspective.
-// Lives in ./maps/horizon.ts (imported above); do NOT reintroduce the old
-// inline low-poly ring here — the map configs (cfg.horizon.style/snowline/
-// banding/treeline) target the styled builder.
+// Lives in ./maps/horizon.ts, which installs it through horizonRingHook.ts
+// (never imported here: the authority's height field must not carry it); do
+// NOT reintroduce the old inline low-poly ring here — the map configs
+// (cfg.horizon.style/snowline/banding/treeline) target the styled builder.
 // ---------------------------------------------------------------------------
 
 /**
@@ -7528,11 +7540,6 @@ export async function buildTerrainMeshesAsync(
       try { g.return?.(); } catch { /* preserve the original pacing failure */ }
     }
   }
-}
-
-/** The installed horizon ring's builder (horizonRingHook.ts): this module never imports the visual horizon. */
-function buildHorizonRingSteps(...args: Parameters<HorizonRing['buildHorizonRingSteps']>): ReturnType<HorizonRing['buildHorizonRingSteps']> {
-  return horizonRing().buildHorizonRingSteps(...args);
 }
 
 function* terrainBuildSteps(

@@ -4089,6 +4089,11 @@ function* vegetationBuildSteps(
   const _landScratch: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, sU: 0, sV: 0, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
     boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0, urban: 0 };
   const landUseAt = heightField._landUseAt ?? null;
+  // the time-to-battle lane (2026-10-08; the coordinator's ruling: grass follows the ground the player sees): a tuft's
+  // slope is the rendered near terrain's (the height field's contact surface: the triangle under it, its vertices kept
+  // for the field's life and shared with movement), not the analytic normal's four heights 1.2 m out; a field without
+  // one (the sandboxed harnesses' stubs) keeps the analytic normal
+  const _contactNormal = { x: 0, y: 1, z: 0 };
   // ground lane: the canopy's cover (set once the trees are placed; null before — a tuft built earlier ignores it)
   let woodsCoverAt: ((x: number, z: number) => number) | null = null;
   // r5 terrain_environment: map-authored no-vegetation discs (desert uses one
@@ -4219,15 +4224,15 @@ function* vegetationBuildSteps(
     // stray outliers between the clumps
     if (!resolveTuftScale(sn, clJ, roll, varJ)) return null;
     const sxzMul = _tuftScaleScratch[0], syMul = _tuftScaleScratch[1];
-    // PERF (performance_budget r6): slope test LAST — it is the expensive
-    // predicate (4 heightAt samples for the central-difference normal) and
-    // every cull above it is pure math over (x, z, the 8 pre-drawn rng
-    // values). All 8 rng draws happen unconditionally at the top of this
-    // function, so test ORDER cannot shift the rng stream: exactly the same
-    // candidate set is accepted with exactly the same appearance — the
-    // rejected majority just stops paying the 4-sample normal probe
-    // (measured: 1.26 M candidates per boot on verdant).
-    const normalY = heightField.getNormalAt(x, z).y;
+    // PERF (performance_budget r6): slope test LAST — it is the dearest
+    // predicate and every cull above it is pure math over (x, z, the 8
+    // pre-drawn rng values). All 8 rng draws happen unconditionally at the
+    // top of this function, so test ORDER cannot shift the rng stream
+    // (measured: 1.26 M candidates per boot on verdant). The slope is the
+    // rendered near terrain's (2026-10-08, _contactNormal above).
+    const normalY = heightField.getContactNormalAt
+      ? heightField.getContactNormalAt(x, z, _contactNormal).y
+      : heightField.getNormalAt(x, z).y;
     // ground lane: inside a cultivated field (past its grass margin) the tuft is the crop — none on a plough, a few on
     // a track, short straw on stubble, gold on ripe grain (crop ids: landUse.ts LAND_CROP). The fields keep to the
     // ground the terrain draws them on (its landW; tallGrass.ts admit reads the same gate): off the villages, the
@@ -7252,8 +7257,16 @@ function* vegetationBuildSteps(
     const shrubGrowth: GrowthSpecies = bushSpecies === 'willow' && veg.willowForm === 'tidalMangrove' ? 'mangrove'
       : shrubForm ?? (grownTrees ? formOf(bushSpecies)?.form : null) ?? bushSpecies;
     // (trees lane, 2026-10-05: on a bare map a deciduous shrub stands bare, its winter twigs or canes)
+    // (trees lane, 2026-10-08, the gauntlet's wave 260 on Hostomel's handcart: the near bush "flat olive-brown leaf cards
+    // with dark outlines, a heap of paper cut-outs"): a shrub grown as its bush slot's own leafy form takes that form's
+    // leaves as the slot's trees do (grownDefinition: treeBiomePalette's leafy form) — the birch slot's leafy birch on
+    // Hostomel and the reservoir drew its leaf sprays in the bare winter birch's twig brown (grownTintLaw's birch without
+    // leaves); a map's own shrub form keeps its own palette, and the place's shrub colour still wins
+    const bushSlotLeaves = grownTrees && !shrubForm && formOf(bushSpecies)?.leaves === true;
+    const bushFormTerms = bushSlotLeaves || shrubColour
+      ? { ...(bushSlotLeaves ? { leaves: true } : {}), ...(shrubColour ? { colour: shrubColour } : {}) } : null;
     const bushPal = grownTrees
-      ? bareFormPalette(treeBiomePalette(palOf(bushSpecies), shrubColour ? { colour: shrubColour } : null, false, treeBiomeColour(cfg?.id)),
+      ? bareFormPalette(treeBiomePalette(palOf(bushSpecies), bushFormTerms, false, treeBiomeColour(cfg?.id)),
         shrubGrowth, bareMap)
       : palOf(bushSpecies);
     const shrubMats = shrubMaterials(shrubForm, bushPal);

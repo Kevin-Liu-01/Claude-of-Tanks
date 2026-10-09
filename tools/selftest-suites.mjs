@@ -761,6 +761,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/deferredCombatWarmRuntime.selftest.mjs',
     'src/game/studioAccess.selftest.mjs',
     'src/game/studioEntry.selftest.mjs',
+    // 2026-10-08 (fix/studio-world-step): an export step advances the props' clock and syncs the drawn ground
+    'src/game/studioWorldStep.selftest.mjs',
     'src/game/stateCore.selftest.mjs',
     'src/game/startupIntent.selftest.mjs',
     'src/game/selectedVehicleSelection.selftest.mjs',
@@ -836,6 +838,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/oasisShoreline.selftest.mjs',
     'src/world/authoredLakeComposition.selftest.mjs',
     'src/world/treePoolCapacity.selftest.mjs',
+    // the trees lane (2026-10-08, wave 260): a bush grown as its slot's leafy birch draws its leaves as the slot's trees do
+    'src/world/leafyBush.selftest.mjs',
     'src/vehicles/vehicleNightLighting.selftest.mjs',
     'src/engine/battleAtmosphereAccess.selftest.mjs',
     'tools/daynight-atmosphere-probe.selftest.mjs',

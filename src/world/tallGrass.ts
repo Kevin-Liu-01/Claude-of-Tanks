@@ -25,6 +25,7 @@ interface TallGrassField {
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
   getNormalAt?(x: number, z: number): { x: number; y: number; z: number };
+  getContactNormalAt?<T extends { x: number; y: number; z: number }>(x: number, z: number, out: T): T;
   getGroundType?(x: number, z: number): 'hard' | 'medium' | 'soft';
   getWaterMaskAt?(x: number, z: number): number;
   _roadDist?(x: number, z: number): number;
@@ -459,6 +460,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
   // ground lane (2026-10-03): the map's field system (the height field's landUse.ts hook) — inside a field the sward
   // stands as its crop
   const _field = createLandFieldSample();
+  const _contactN = { x: 0, y: 1, z: 0 }; // (the rendered near terrain's normal, reused)
   const blocked = options.blocked ?? null;
   const tier = options.tier ?? getDeviceTier();
   // `?tallgrass=off` and `?ground=legacy` (the same-build A/B the round's captures compare against) keep the tier off
@@ -622,7 +624,12 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       keep *= (1 + 0.3 * hollow) * (1 - 0.3 * crest);
       heightScale *= (1 + 0.25 * hollow) * (1 - 0.15 * crest);
     }
-    const n = outside ? ringNormalAt(x, z, ringY) : field.getNormalAt ? field.getNormalAt(x, z) : null;
+    // (the time-to-battle lane, 2026-10-08, with the ground lane: the rendered near terrain's slope, as the tufts read it
+    // — the land use's slope fade, the steep cut and the tundra lee alike; a stub field keeps the analytic normal; past
+    // the square's edge the ring's own normal, the borders lane)
+    const n = outside ? ringNormalAt(x, z, ringY)
+      : field.getContactNormalAt ? field.getContactNormalAt(x, z, _contactN)
+      : field.getNormalAt ? field.getNormalAt(x, z) : null;
     if (b.kind === 'tundra') {
       // round 73b: dead sedge keeps to the hollows and the lee sides, in clumps (the ~10–20 m patches of the terrain's
       // own n1 field) — a carpet of scattered sticks in the snow was the round-73 read; on open, windward ground a
