@@ -47,10 +47,17 @@ const HANDRAIL = material('steel', linearHex(0xc4c2ba), 0.5, 0.4, 0, 0.8);
 /** Round 5 (wave 278: the V60 "a flat red box with blank dark window cut-outs, no louvres… plain black disc wheels"; the
  * stock's baked material reads colours alone, so its detail is told in shades): the cab glass catching the sky, its
  * rubber and aluminium frames, the louvres' black frames and pale slats, the tyres' white-painted rims. */
-const V60_GLASS = material('glass', linearHex(0x4a5864), 0.1, 0, 0, 0.3);
-const V60_GLASS_HI = material('glass', linearHex(0x8a9aa4), 0.1, 0, 0, 0.3);
+// (round 6, wave 285: "grey glazing with painted white glare slashes", "louvres drawn as pink stripes in dark frames")
+// the glass dark and glossy, set back behind a rubber seal that stands 4 cm proud (the reveal does the reading); the
+// louvres modelled: slats tilted out over a black void inside a raised frame, all in the body's red
+const V60_GLASS = material('glass', linearHex(0x1c2329), 0.08, 0, 0, 0.3);
+const V60_SEAL = material('rubber', [0.028, 0.027, 0.026], 0.75, 0, 0, 0.8);
 const V60_FRAME = material('steel', linearHex(0xb8b6ae), 0.5, 0.4, 0, 0.6);
-const LOUVRE_SLAT = material('paint', linearHex(0xa04a44), 0.6, 0, 0, 0.8);
+const LOUVRE_SLAT = material('paint', linearHex(0x82262a), 0.6, 0.05, 0, 1);
+const LOUVRE_VOID = material('trim', [0.012, 0.011, 0.011], 0.9, 0, 0, 0.6);
+// (round 6: "clean flat red", "toy-red") the paint's value broken up: sun-faded on the upper panels, dirtier low down
+const V60_RED_FADE = material('paint', linearHex(0x8e3c37), 0.66, 0.02, 0, 1);
+const V60_RED_DIRT = material('paint', linearHex(0x561a1b), 0.72, 0.02, 0, 1);
 const TYRE_WHITE = material('paint', linearHex(0xd8d6ce), 0.6, 0, 0, 0.6);
 /** Round 4: the buffer heads' greased faces, worn bright. */
 const BUFFER_FACE = material('steel', linearHex(0x8e8a82), 0.4, 0.6, 0, 0.6);
@@ -62,7 +69,10 @@ const COAL = material('cargo', [0.016, 0.0155, 0.015], 0.62, 0, 0, 0.3);
 // heap faces the whole sky (the stock's baked material reads colours alone, no gloss), so coal-black albedos: at 0.05
 // the top read as light grey gravel in hold 11
 // (a soft mosaic: the lumps' relief carries the read, the two shades only break up the faces)
-const COAL_FACE = material('cargo', [0.02, 0.0195, 0.019], 0.42, 0, 0, 0.3);
+// (round 6, wave 285: "coal glint") the lumps' faces glossier, so the sun glints on them; the heap's own face one
+// smooth surface a little glossy (its relief carries the lumps)
+const COAL_FACE = material('cargo', [0.022, 0.0215, 0.021], 0.3, 0.08, 0, 0.3);
+const COAL_HEAP = material('cargo', [0.018, 0.0175, 0.017], 0.45, 0.05, 0, 0.3);
 const COAL_DULL = material('cargo', [0.013, 0.0125, 0.012], 0.68, 0, 0, 0.3);
 // (round 3: running gear, lettering) worn running gear a shade off the black frame so it reads under it; the stencils
 const GEAR_STEEL = material('steel', linearHex(0x4a4640), 0.55, 0.4, 0, 0.8);
@@ -102,6 +112,19 @@ function face4(mesh: VehicleMesh, p: Vec3[], n: Vec3, m: Mat): void {
   mesh.tri(v[0], v[2], v[3]);
 }
 
+/** A material's colour scaled by `f` (one object per shade). */
+const SHADES = new WeakMap<Mat, Map<number, Mat>>();
+function shadeOf(m: Mat, f: number): Mat {
+  let byF = SHADES.get(m);
+  if (!byF) { byF = new Map(); SHADES.set(m, byF); }
+  let out = byF.get(f);
+  if (!out) {
+    out = material(m.role, [Math.min(1, m.rgb[0] * f), Math.min(1, m.rgb[1] * f), Math.min(1, m.rgb[2] * f)], m.rough, m.metal, m.paint, m.weather);
+    byF.set(f, out);
+  }
+  return out;
+}
+
 /** Deterministic hash in [0, 1) of two integers. */
 function hash2(a: number, b: number): number {
   let h = (Math.imul(a | 0, 374761393) + Math.imul(b | 0, 668265263)) >>> 0;
@@ -120,7 +143,7 @@ function weatherPanel(mesh: VehicleMesh, coarse: boolean, side: number, xFace: n
   mesh.dressing(() => {
     const n: Vec3 = [side, 0, 0], xs = side * (xFace + 0.003);
     // two bands, the paler dust higher and the grime under it, each edge a smooth wander (cosine-eased knots)
-    const m = Math.max(4, Math.round((z1 - z0) / 0.75)), sub = 2;
+    const m = Math.max(5, Math.round((z1 - z0) / 0.55)), sub = 2;
     const edge = (t: number, base: number, amp: number, salt: number): number => {
       const k = Math.floor(t), f = t - k, e = (1 - Math.cos(f * Math.PI)) / 2;
       return base + amp * ((1 - e) * hash2(k, seed + salt) + e * hash2(k + 1, seed + salt));
@@ -136,13 +159,26 @@ function weatherPanel(mesh: VehicleMesh, coarse: boolean, side: number, xFace: n
         face4(mesh, [[x, y0 + 0.02, za], [x, y0 + 0.02, zb], [x, hb, zb], [x, ha, za]], n, mat);
       }
     }
-    const count = Math.round((z1 - z0) / 0.5);
+    // (round 6, wave 285: "identical dark inverted triangles repeated under every rib", "stamped drip wedges") the
+    // streaks run where the water ran, not one a bay: each wanders a little as it falls in two lengths, thin where it
+    // leaves the rail, widest a third of the way down, dying out; a paler halo round the wider ones' darker core; some start lower,
+    // from a fitting, and some are short; two shades of the stain
+    const count = Math.round((z1 - z0) / 0.4);
     for (let k = 0; k < count; k++) {
-      if (hash2(k, seed) < 0.3) continue;
-      const z = z0 + (k + 0.15 + 0.7 * hash2(k, seed + 1)) * ((z1 - z0) / count);
-      const len = (0.2 + 0.6 * hash2(k, seed + 2)) * (y1 - y0), w = 0.03 + 0.07 * hash2(k, seed + 3);
-      const top = y1 - 0.05, bottom = Math.max(y0 + 0.1, top - len);
-      face4(mesh, [[xs, top, z - w / 2], [xs, top, z + w / 2], [xs, bottom, z + w * 0.1], [xs, bottom, z - w * 0.1]], n, streak);
+      if (hash2(k, seed) < 0.4) continue;
+      const z = z0 + (k + 0.1 + 0.8 * hash2(k, seed + 1)) * ((z1 - z0) / count);
+      const len = (0.15 + 0.75 * hash2(k, seed + 2) ** 1.5) * (y1 - y0), wMax = 0.02 + 0.07 * hash2(k, seed + 3);
+      const top = y1 - 0.04 - (hash2(k, seed + 4) < 0.25 ? (y1 - y0) * 0.3 * hash2(k, seed + 5) : 0);
+      const bottom = Math.max(y0 + 0.08, top - len);
+      const ws = [wMax * 0.35, wMax, wMax * 0.15];
+      const ys = [top, top - (top - bottom) * 0.35, bottom];
+      const dz = [0, (hash2(k, seed + 6) - 0.5) * 0.03, (hash2(k, seed + 7) - 0.5) * 0.05];
+      const core = hash2(k, seed + 9) < 0.5 ? streak : shadeOf(streak, 0.8), halo = shadeOf(streak, 1.35);
+      for (let q = 0; q < 2; q++) {
+        const za = z + dz[q], zb = z + dz[q + 1];
+        if (wMax > 0.045) face4(mesh, [[xs, ys[q], za - ws[q] * 0.8], [xs, ys[q], za + ws[q] * 0.8], [xs, ys[q + 1], zb + ws[q + 1] * 0.8], [xs, ys[q + 1], zb - ws[q + 1] * 0.8]], n, halo);
+        face4(mesh, [[xs + side * 0.0012, ys[q], za - ws[q] * 0.4], [xs + side * 0.0012, ys[q], za + ws[q] * 0.4], [xs + side * 0.0012, ys[q + 1], zb + ws[q + 1] * 0.4], [xs + side * 0.0012, ys[q + 1], zb - ws[q + 1] * 0.4]], n, core);
+      }
     }
   });
 }
@@ -286,7 +322,20 @@ function walkwayRails(mesh: VehicleMesh, coarse: boolean, xs: readonly number[],
  * relief at two scales, `lumps` irregular lumps (rough octahedra, never cubes) bedded over it, and coal spilled on the
  * top rails and its dust streaked down the sides (`spill`: the walls' outer face, x).
  */
-interface CoalHeapOptions { grid?: readonly [number, number]; peaks?: number; lumps?: number; spill?: number }
+interface CoalHeapOptions { grid?: readonly [number, number]; peaks?: number; lumps?: number; spill?: number;
+  /** (round 6) how far the coal falls below the rims at the walls (m): the heap rises from inside the wagon. */
+  dip?: number;
+  /** (round 6) how deep the saddles between the chute dumps go (0..1 of the rise). */
+  saddle?: number }
+
+/** Smooth value noise in [0, 1): hashed lattice values, smoothstep-blended. */
+function valueNoise2(x: number, z: number, seed: number): number {
+  const ix = Math.floor(x), iz = Math.floor(z), fx = x - ix, fz = z - iz;
+  const sx = fx * fx * (3 - 2 * fx), sz = fz * fz * (3 - 2 * fz);
+  const h = (a: number, b: number) => hash2(a * 7919 + seed * 104729, b);
+  const a = h(ix, iz), b = h(ix + 1, iz), c = h(ix, iz + 1), d = h(ix + 1, iz + 1);
+  return (a + (b - a) * sx) + ((c + (d - c) * sx) - (a + (b - a) * sx)) * sz;
+}
 
 /** A rough lump: an octahedron with every vertex pulled in or out, flat-shaded facets (8 triangles). */
 function coalLump(mesh: VehicleMesh, x: number, y: number, z: number, r: number, seed: number, m: Mat, m2: Mat): void {
@@ -314,20 +363,26 @@ function coalHeap(mesh: VehicleMesh, coarse: boolean, top: number, frameHalf: nu
   const lenZ = frameHalf * 2 - 0.25, widX = W - 0.2;
   const heightAt = (x: number, z: number): number => {
     const u = z / lenZ + 0.5, v = x / widX + 0.5;
+    const sd = o.saddle ?? 0.2;
     const along = Math.pow(Math.sin(Math.min(1, Math.max(0, u)) * Math.PI), 0.4)
-      * (peaks ? 0.8 + 0.2 * Math.cos((u * peaks - 0.5) * Math.PI * 2) : 1);
+      * (peaks ? 1 - sd + sd * Math.cos((u * peaks - 0.5) * Math.PI * 2) : 1);
     const ridge = Math.sin(Math.min(1, Math.max(0, v)) * Math.PI) * along;
+    // (round 6, wave 285: "level with the wagon rims instead of heaped") the coal dips under the rims at the walls
+    const dip = (o.dip ?? 0) * (1 - Math.pow(Math.sin(Math.min(1, Math.max(0, v)) * Math.PI), 0.5));
     const broad = Math.sin(z * 2.2 + x * 3.2 + seed) * 0.04 + Math.sin(z * 5.5 - x * 4.2 + seed * 1.7) * 0.025;
     const fine = coarse ? 0 : Math.sin(z * 11.3 + x * 7.9 + seed * 2.3) * 0.022 + Math.sin(z * 8.1 - x * 13.7 + seed * 0.7) * 0.018
       + (peaks ? (hash2(Math.round(z * 9), Math.round(x * 9) + seed) - 0.5) * 0.05 : 0);
-    return top - sink + ridge * rise + (broad + fine) * Math.max(0.35, ridge);
+    // (round 6: "a visible square tile pattern") the lumps' relief from a hashed field of bumps at two sizes, smooth
+    // between the grid's points, instead of facets in two shades
+    const lumpy = coarse || !o.lumps ? 0 : (valueNoise2(x * 7.5, z * 7.5, seed) - 0.5) * 0.09 + (valueNoise2(x * 17, z * 17, seed + 5) - 0.5) * 0.045;
+    return top - sink - dip + ridge * rise + (broad + fine) * Math.max(0.35, ridge) + lumpy;
   };
   // (round 3, wave 234: "a smooth black cap") the heap faces up (i runs along z, j along x: i x j is up); it was
   // flipped, so the game culled it from above and the wagon's black floor showed between the lumps
   mesh.grid(nu, nv, (i, j, out) => {
     const z = (i / nu - 0.5) * lenZ, x = (j / nv - 0.5) * widX;
     out[0] = x; out[1] = heightAt(x, z); out[2] = z;
-  }, (i, j) => (coarse ? COAL : hash2(i + seed * 31, j) < 0.45 ? COAL_FACE : COAL_DULL));
+  }, (i, j) => (coarse ? COAL : o.lumps ? COAL_HEAP : hash2(i + seed * 31, j) < 0.45 ? COAL_FACE : COAL_DULL));
   if (coarse) return;
   // loose lumps lying on the heap: rough blocks tumbled every way, a few the size of two fists
   mesh.dressing(() => {
@@ -336,7 +391,7 @@ function coalHeap(mesh: VehicleMesh, coarse: boolean, top: number, frameHalf: nu
       for (let k = 0; k < o.lumps; k++) {
         const u = (k + 0.5) / o.lumps, v = (k * 0.618034 + seed * 0.13) % 1;
         const z = (u - 0.5) * lenZ * 0.92, x = (v - 0.5) * widX * 0.86;
-        const r = 0.035 + 0.075 * Math.pow(hash2(k, seed + 5), 2);
+        const r = 0.03 + 0.1 * Math.pow(hash2(k, seed + 5), 2.2);
         coalLump(mesh, x, heightAt(x, z) + r * 0.2, z, r, seed * 97 + k * 13, COAL_FACE, COAL_DULL);
       }
       if (o.spill !== undefined) {
@@ -697,7 +752,7 @@ function omm(mesh: VehicleMesh, coarse: boolean): void {
   // the load: coal heaped over the top rails, a ridge along the middle; round 5 (wave 278: "a flat dark-grey lid flush
   // with the sides… black cubes"): it comes up to the rims and crowns 0.35 m over them in three chute dumps, granular,
   // its lumps rough, some spilled on the rails and its dust down the sides
-  coalHeap(mesh, coarse, top, frameHalf, W, 0.05, 0.42, 1, { grid: [34, 16], peaks: 3, lumps: 96, spill: hw + 0.07 });
+  coalHeap(mesh, coarse, top, frameHalf, W, 0.05, 0.42, 1, { grid: [40, 18], peaks: 3, lumps: 160, spill: hw + 0.07, dip: 0.2, saddle: 0.4 });
 }
 
 function g10(mesh: VehicleMesh, coarse: boolean): void {
@@ -847,6 +902,34 @@ function tank(mesh: VehicleMesh, coarse: boolean): void {
  * A hood (or a cab) with its roof's edges rounded (round 4, wave 260: the V60 "a flat-shaded red box"): its section
  * swept along z from z0 to z1 and both ends closed, `rc` the roof edges' radius; it stands on y0, h tall, w wide.
  */
+/**
+ * Round 6 (wave 285): a cab window's surround standing proud of the wall, so the glass reads set back: the rubber seal
+ * round the glass, the aluminium frame round that, each with its reveal back to the wall. `n` the wall's outward axis
+ * ([±1, 0, 0] a side, [0, 0, ±1] an end), `d` the wall's coordinate on it, (u, y) the window's centre along the wall
+ * (z on a side, x on an end), `w` x `h` the glass (dressing).
+ */
+function sealFrame(mesh: VehicleMesh, n: Vec3, d: number, u: number, y: number, w: number, h: number): void {
+  const sideWall = n[0] !== 0, sgn = sideWall ? n[0] : n[2];
+  const P = (out: number, uu: number, yy: number): Vec3 => (sideWall ? [d + sgn * out, yy, uu] : [uu, yy, d + sgn * out]);
+  const ring = (inset: number, width: number, depth: number, m: Mat) => {
+    const u0 = u - w / 2 - inset - width, u1 = u + w / 2 + inset + width, y0 = y - h / 2 - inset - width, y1 = y + h / 2 + inset + width;
+    const iu0 = u0 + width, iu1 = u1 - width, iy0 = y0 + width, iy1 = y1 - width;
+    // the face (four strips)
+    face4(mesh, [P(depth, u0, y0), P(depth, u1, y0), P(depth, u1, iy0), P(depth, u0, iy0)], n, m);
+    face4(mesh, [P(depth, u0, iy1), P(depth, u1, iy1), P(depth, u1, y1), P(depth, u0, y1)], n, m);
+    face4(mesh, [P(depth, u0, iy0), P(depth, iu0, iy0), P(depth, iu0, iy1), P(depth, u0, iy1)], n, m);
+    face4(mesh, [P(depth, iu1, iy0), P(depth, u1, iy0), P(depth, u1, iy1), P(depth, iu1, iy1)], n, m);
+    // the reveal from the face back to the wall, facing the glass (its top face down into shade)
+    const uAxis: Vec3 = sideWall ? [0, 0, 1] : [1, 0, 0];
+    face4(mesh, [P(0, iu0, iy1), P(0, iu1, iy1), P(depth, iu1, iy1), P(depth, iu0, iy1)], [0, -1, 0], V60_SEAL);
+    face4(mesh, [P(0, iu0, iy0), P(0, iu1, iy0), P(depth, iu1, iy0), P(depth, iu0, iy0)], [0, 1, 0], m);
+    face4(mesh, [P(0, iu0, iy0), P(0, iu0, iy1), P(depth, iu0, iy1), P(depth, iu0, iy0)], uAxis, m);
+    face4(mesh, [P(0, iu1, iy0), P(0, iu1, iy1), P(depth, iu1, iy1), P(depth, iu1, iy0)], [-uAxis[0], 0, -uAxis[2]], m);
+  };
+  ring(0, 0.025, 0.02, V60_SEAL);
+  ring(0.025, 0.035, 0.04, V60_FRAME);
+}
+
 function roundedHood(mesh: VehicleMesh, coarse: boolean, z0: number, z1: number, y0: number, h: number, w: number, rc: number, m: Mat): void {
   const n = coarse ? 2 : 4, section: [number, number][] = [[w / 2, 0]];
   for (let k = 0; k <= n; k++) { const a = (k / n) * (Math.PI / 2); section.push([w / 2 - rc + Math.cos(a) * rc, h - rc + Math.sin(a) * rc]); }
@@ -929,16 +1012,61 @@ function v60(mesh: VehicleMesh, coarse: boolean): void {
   const RC = 0.3;
   const hood = (z0: number, z1: number, h: number, w: number) => {
     roundedHood(mesh, coarse, z0, z1, frameTop, h, w, RC, V60_RED);
-    // its louvres: (round 5, wave 278: "no louvres") a black panel per door, eight pale slats across it, so the grilles
-    // read at a yard's distance
+    // its louvres: (round 5, wave 278: "no louvres") one per door; (round 6, wave 285: "louvres drawn as pink stripes
+    // in dark frames") modelled: a black void, a frame standing 2.5 cm proud round it, and eight slats in the body's
+    // red tilted out and down across it (each a lit face and a shadowed lip), so the light falls between them
     if (!coarse) mesh.dressing(() => {
       for (const side of [1, -1]) for (let k = 0; k < Math.floor((z1 - z0) / 0.7); k++) {
-        const zc = z0 + 0.35 + k * 0.7, yc = frameTop + h * 0.5, hh = h * 0.21, x = side * (w / 2 + 0.004), n: Vec3 = [side, 0, 0];
-        face4(mesh, [[x, yc - hh, zc - 0.25], [x, yc - hh, zc + 0.25], [x, yc + hh, zc + 0.25], [x, yc + hh, zc - 0.25]], n, FRAME_BLACK);
-        const xs = side * (w / 2 + 0.008);
+        const zc = z0 + 0.35 + k * 0.7, yc = frameTop + h * 0.5, hh = h * 0.21, n: Vec3 = [side, 0, 0];
+        const xb = side * (w / 2 + 0.003), xf = side * (w / 2 + 0.028), za = zc - 0.25, zb = zc + 0.25, ya = yc - hh, yb = yc + hh, t = 0.035;
+        face4(mesh, [[xb, ya, za], [xb, ya, zb], [xb, yb, zb], [xb, yb, za]], n, LOUVRE_VOID);
+        // the frame: its face, and its reveal inward to the void
+        face4(mesh, [[xf, ya - t, za - t], [xf, ya - t, zb + t], [xf, ya, zb + t], [xf, ya, za - t]], n, V60_RED);
+        face4(mesh, [[xf, yb, za - t], [xf, yb, zb + t], [xf, yb + t, zb + t], [xf, yb + t, za - t]], n, V60_RED);
+        face4(mesh, [[xf, ya, za - t], [xf, ya, za], [xf, yb, za], [xf, yb, za - t]], n, V60_RED);
+        face4(mesh, [[xf, ya, zb], [xf, ya, zb + t], [xf, yb, zb + t], [xf, yb, zb]], n, V60_RED);
+        face4(mesh, [[xb, yb, za], [xb, yb, zb], [xf, yb, zb], [xf, yb, za]], [0, -1, 0], V60_RED_DIRT);
+        face4(mesh, [[xb, ya, za], [xb, ya, zb], [xf, ya, zb], [xf, ya, za]], [0, 1, 0], V60_RED);
+        face4(mesh, [[xb, ya, za], [xb, yb, za], [xf, yb, za], [xf, ya, za]], [0, 0, 1], V60_RED_DIRT);
+        face4(mesh, [[xb, ya, zb], [xb, yb, zb], [xf, yb, zb], [xf, ya, zb]], [0, 0, -1], V60_RED_DIRT);
+        // the slats: the top edge at the void, the lower edge out at the frame's face
+        const pitch = (yb - ya) / 8, drop = pitch * 0.9, xi = side * (w / 2 + 0.006), xo = side * (w / 2 + 0.025);
+        const nOut = unit([side * drop, xo * side - xi * side, 0]);
         for (let s2 = 0; s2 < 8; s2++) {
-          const y0 = yc - hh + 0.04 + (s2 / 8) * (2 * hh - 0.04), y1 = y0 + (2 * hh - 0.08) / 16;
-          face4(mesh, [[xs, y0, zc - 0.22], [xs, y0, zc + 0.22], [xs, y1, zc + 0.22], [xs, y1, zc - 0.22]], n, LOUVRE_SLAT);
+          const ys = yb - s2 * pitch - 0.004, ye = ys - drop;
+          face4(mesh, [[xi, ys, za], [xi, ys, zb], [xo, ye, zb], [xo, ye, za]], nOut, LOUVRE_SLAT);
+          face4(mesh, [[xo, ye, za], [xo, ye, zb], [xi, ye + 0.004, zb], [xi, ye + 0.004, za]], [0, -1, 0], V60_RED_DIRT);
+        }
+      }
+    });
+    // (round 6: "clean flat red") the paint's value: faded where the sun and the washing reach (the upper panels, over
+    // the louvres), dirtier below them, in irregular patches
+    if (!coarse) mesh.dressing(() => {
+      for (const side of [1, -1]) {
+        const x = side * (w / 2 + 0.0075), n: Vec3 = [side, 0, 0], yc = frameTop + h * 0.5, hh = h * 0.21;
+        const bands: Array<[number, number, Mat]> = [[yc + hh + 0.06, frameTop + h - RC - 0.02, V60_RED_FADE], [frameTop + 0.14, yc - hh - 0.06, V60_RED_DIRT]];
+        for (const [b0, b1, m] of bands) {
+          if (b1 - b0 < 0.08) continue;
+          const count = Math.max(2, Math.round((z1 - z0) / 0.9));
+          for (let k = 0; k < count; k++) {
+            if (hash2(k, Math.round(z0 * 10) + (side > 0 ? 301 : 303) + (m === V60_RED_FADE ? 0 : 7)) < 0.3) continue;
+            const zc = z0 + (k + 0.5) * ((z1 - z0) / count) + (hash2(k, 311) - 0.5) * 0.3, half = 0.18 + 0.25 * hash2(k, 313);
+            const y0 = b0 + (b1 - b0) * 0.15 * hash2(k, 317), y1 = b1 - (b1 - b0) * 0.2 * hash2(k, 319);
+            // a fan from the patch's centre round seven ragged points (star-shaped, so the fan never folds)
+            const ring: Vec3[] = [];
+            for (let q = 0; q < 7; q++) {
+              const a = (q / 7) * Math.PI * 2, rr = 0.7 + 0.3 * hash2(q, k * 7 + 331);
+              ring.push([x, (y0 + y1) / 2 + Math.sin(a) * (y1 - y0) / 2 * rr, Math.max(z0 + 0.06, Math.min(z1 - 0.06, zc + Math.cos(a) * half * rr))]);
+            }
+            const centre: Vec3 = [x, (y0 + y1) / 2, Math.max(z0 + 0.06, Math.min(z1 - 0.06, zc))];
+            const forward = dotV(crossV(sub(ring[0], centre), sub(ring[1], centre)), n) > 0;
+            for (let q = 0; q < 7; q++) {
+              const a = ring[q], b = ring[(q + 1) % 7];
+              const va = mesh.vert(centre[0], centre[1], centre[2], n[0], n[1], n[2], m), vb = mesh.vert(a[0], a[1], a[2], n[0], n[1], n[2], m);
+              const vc = mesh.vert(b[0], b[1], b[2], n[0], n[1], n[2], m);
+              if (forward) mesh.tri(va, vb, vc); else mesh.tri(va, vc, vb);
+            }
+          }
         }
       }
     });
@@ -972,15 +1100,9 @@ function v60(mesh: VehicleMesh, coarse: boolean): void {
   for (const side of [1, -1]) {
     for (const z of [-1.35, -0.3]) {
       mesh.box(side * ((W - 0.1) / 2 + 0.006), cabTop - 0.75, z, 0.012, 0.75, 0.75, V60_GLASS, 0);
-      // (round 5) its frame and the sky's highlight across it, so it reads as glass and not a hole
-      if (!coarse) mesh.dressing(() => {
-        const x = side * ((W - 0.1) / 2 + 0.014), n: Vec3 = [side, 0, 0], y0 = cabTop - 1.125, y1 = cabTop - 0.375, za = z - 0.375, zb = z + 0.375, t = 0.04;
-        face4(mesh, [[x, y0, za], [x, y0, zb], [x, y0 + t, zb], [x, y0 + t, za]], n, V60_FRAME);
-        face4(mesh, [[x, y1 - t, za], [x, y1 - t, zb], [x, y1, zb], [x, y1, za]], n, V60_FRAME);
-        face4(mesh, [[x, y0, za], [x, y0, za + t], [x, y1, za + t], [x, y1, za]], n, V60_FRAME);
-        face4(mesh, [[x, y0, zb - t], [x, y0, zb], [x, y1, zb], [x, y1, zb - t]], n, V60_FRAME);
-        face4(mesh, [[x, y0 + 0.2, za + 0.12], [x, y0 + 0.32, za + 0.12], [x, y1 - 0.12, zb - 0.2], [x, y1 - 0.24, zb - 0.2]], n, V60_GLASS_HI);
-      });
+      // (round 5) its frame; (round 6, wave 285: "grey glazing with painted white glare slashes") the glare gone, the
+      // glass set back behind its rubber seal and the aluminium frame standing 4 cm proud, the reveal shadowed
+      if (!coarse) mesh.dressing(() => sealFrame(mesh, [side, 0, 0], side * ((W - 0.1) / 2 + 0.012), z, cabTop - 0.75, 0.75, 0.75));
     }
     // the cab door's grab handles either side of it
     if (!coarse) mesh.dressing(() => {
@@ -991,13 +1113,7 @@ function v60(mesh: VehicleMesh, coarse: boolean): void {
     for (const x of [-0.85, 0.85]) {
       const zf = end > 0 ? cz1 + 0.006 : cz0 - 0.006;
       mesh.box(x, cabTop - 0.7, zf, 0.6, 0.65, 0.012, V60_GLASS, 0);
-      if (!coarse) mesh.dressing(() => {
-        const z = end > 0 ? cz1 + 0.014 : cz0 - 0.014, n: Vec3 = [0, 0, end], y0 = cabTop - 1.025, y1 = cabTop - 0.375, xa = x - 0.3, xb = x + 0.3, t = 0.04;
-        face4(mesh, [[xa, y0, z], [xb, y0, z], [xb, y0 + t, z], [xa, y0 + t, z]], n, V60_FRAME);
-        face4(mesh, [[xa, y1 - t, z], [xb, y1 - t, z], [xb, y1, z], [xa, y1, z]], n, V60_FRAME);
-        face4(mesh, [[xa, y0, z], [xa + t, y0, z], [xa + t, y1, z], [xa, y1, z]], n, V60_FRAME);
-        face4(mesh, [[xb - t, y0, z], [xb, y0, z], [xb, y1, z], [xb - t, y1, z]], n, V60_FRAME);
-      });
+      if (!coarse) mesh.dressing(() => sealFrame(mesh, [0, 0, end], end > 0 ? cz1 + 0.012 : cz0 - 0.012, x, cabTop - 0.7, 0.6, 0.65));
     }
   }
   // the buffer beams' warning stripes

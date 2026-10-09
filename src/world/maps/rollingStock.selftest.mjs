@@ -41,7 +41,7 @@ for (const kind of Object.keys(ROLLING_STOCK_LENGTH)) {
     // rounded hoods, rails and three lamps an end (round 4, wave 260) at that too
     // (round 5, wave 278) the Omm's heap at a granular grain, its rough lumps and its spill: a coal wagon at 6000 too
     // and the V60 at 6500: its louvres, framed glass, sand boxes, white tyre rims and soot (round 5, wave 278)
-    const budget = kind === 'v60' ? 6500 : SOVIET.has(kind) || kind === 'omm' ? 6000 : 5000;
+    const budget = kind === 'v60' ? 7600 : kind === 'omm' ? 7000 : SOVIET.has(kind) ? 6400 : 5000;
     assert.ok(tris <= budget, `${kind}: ${tris} triangles within the budget (${budget})`);
     const again = buildRollingStock(kind);
     assert.equal(digest(again), digest(g), `${kind}: a rebuild is byte-identical`);
