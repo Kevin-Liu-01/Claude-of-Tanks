@@ -103,6 +103,55 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
   const perBank = crowded.puffs.length / smokeBankCount(salvo('m1a1'));
   assert.ok(perBank < at60.puffs.length / banks, `crowded banks share their lobes (${perBank.toFixed(1)} vs ${(at60.puffs.length / banks).toFixed(1)} a bank)`);
   assert.ok(crowded.puffs.length <= 520, `a whole 24-tube screen stays bounded (${crowded.puffs.length} puffs over 18 s)`);
+  // (r2, wave 311) the launch: a white puff at every bank's tube as its grenade leaves
+  for (const sc of [screen, salvo('m1a1')]) {
+    const r = run(sc, 1 / 60);
+    const launches = r.puffs.filter((p) => Math.abs(p.birth - (sc.born + 0.02)) < 1e-6 && p.windK === 0.5);
+    assert.equal(launches.length, smokeBankCount(sc), `a launch puff at every bank's tube (${launches.length})`);
+  }
+  // (r2, wave 311: "a gap exactly where the tank stands") one continuous wall wherever the simulation blocks: seen from
+  // the launcher, every bearing whose wall point lies inside a bank's envelope is covered by a settled lobe's billow
+  // (the inner 5 m of its ~10 m card); a gap the simulation itself leaves open stays open. (Every smoke-equipped vehicle
+  // passes with the base and the fanned launchers alike: widest gap 2.6 m and 0 m, where the old ring of lobes left up to
+  // 10 m and 4.3 m.)
+  for (const id of ['leo2a6', 'm1a1', 'm1a2', 't90', 'amx40', 'pt91m']) {
+    const sc = salvo(id);
+    const r = run(sc, 1 / 60);
+    const src = sc.source, ox = src ? src[1] : sc.x, oz = src ? src[3] : sc.z;
+    const n = smokeBankCount(sc);
+    const centres = Array.from({ length: n }, (_, b) => { smokeVolume(sc, sc.born + 6, b - 2, vol, () => 0); return [vol.x, vol.z, vol.radius]; });
+    const feet = r.puffs.filter((p) => p.windK === 0 && p.drag >= 1).map((p) => {
+      const x = p.x + p.vx / p.drag, z = p.z + p.vz / p.drag, rr = Math.hypot(x - ox, z - oz);
+      return { r: rr, b: Math.atan2(x - ox, z - oz), h: Math.atan2(2.5, rr) };
+    }).sort((a, b) => (a.b - a.h) - (b.b - b.h));
+    let gap = 0, reach = -Infinity, reachR = 0;
+    for (const f of feet) {
+      if (reach > -Infinity && f.b - f.h > reach) {
+        const mb = (f.b - f.h + reach) / 2, mr = (f.r + reachR) / 2, mx = ox + Math.sin(mb) * mr, mz = oz + Math.cos(mb) * mr;
+        if (centres.some(([cx, cz, rr]) => Math.hypot(mx - cx, mz - cz) <= rr * 0.8)) gap = Math.max(gap, (f.b - f.h - reach) * mr);
+      }
+      if (f.b + f.h > reach) { reach = f.b + f.h; reachR = f.r; }
+    }
+    assert.ok(gap <= 3, `${id}: the wall's widest uncovered stretch inside the envelope is ${gap.toFixed(1)} m`);
+  }
+  // (r2, wave 311: "see-through by 15 s") the fade follows the simulation's sight-blocking density: every lobe holds to
+  // 13.5 s and is gone by 16.6 s (the density's blocking floor); a thin haze tail drifts on inside the envelope and
+  // ends with the screen
+  {
+    const holdAge = 13.4, blockEnd = 16.6;
+    const lobes = at60.puffs.filter((p) => p.windK === 0 && p.drag >= 1);
+    assert.ok(lobes.every((p) => p.birth + p.life >= screen.born + holdAge), 'every lobe holds while the density does');
+    assert.ok(lobes.every((p) => p.birth + p.life <= screen.born + blockEnd + 1e-6), 'and none outlasts the blocking');
+    const hazes = at60.puffs.filter((p) => p.windK === 0 && p.drag < 0.2);
+    assert.ok(hazes.length >= banks, `a haze tail in every bank (${hazes.length})`);
+    for (const p of hazes) {
+      assert.ok(p.birth >= screen.born + 13 - 1e-6 && p.density <= 0.4, 'the tail is thin and late');
+      assert.ok(p.birth + p.life <= screen.born + SMOKE_DURATION_S + 1e-6, 'it ends with the screen');
+      const inside = Array.from({ length: banks }, (_, b) => { smokeVolume(screen, p.birth, b - 2, vol, () => 0); return [vol.x, vol.z, vol.radius]; })
+        .some(([cx, cz, rr]) => Math.hypot(p.x - cx, p.z - cz) <= rr);
+      assert.ok(inside, 'the tail is born inside the drifting envelope');
+    }
+  }
   // reset forgets the screens: a rematch draws nothing old
   const clock = { now: screen.born + 2 };
   const rec = recorder(clock);
@@ -112,5 +161,5 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
   const before = rec.puffs.length;
   fx.reset(); clock.now += 1; fx.update();
   assert.equal(rec.puffs.length, before, 'reset drops every screen');
-  console.log(`auxiliaryPresentation media: ${at60.puffs.length} puffs for a ${banks}-bank screen, frame-rate independent (20/60/144 fps), inside the envelope, late join, crowd share (${crowded.puffs.length} for 14 banks), reset passed`);
+  console.log(`auxiliaryPresentation media: ${at60.puffs.length} puffs for a ${banks}-bank screen, frame-rate independent (20/60/144 fps), inside the envelope, late join, crowd share (${crowded.puffs.length} for 14 banks), launch puffs, one continuous wall, fade to the blocking floor with a haze tail, reset passed`);
 }

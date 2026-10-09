@@ -87,6 +87,24 @@ export function smokeGrenadeWisp(C: BlastContext, R: () => number, x: number, y:
 }
 
 /**
+ * (r2, wave 311: "rows of tiny black dots that burst into dark smoke") the launch at the tube: the expelling charge
+ * throws a short white-grey puff out after the grenade (vx, vy, vz its flight), which stalls within a metre or two.
+ */
+export function smokeLaunchPuff(C: BlastContext, R: () => number, x: number, y: number, z: number,
+  vx: number, vy: number, vz: number, bo: number): void {
+  const m = C.m;
+  const v = Math.hypot(vx, vy, vz) || 1, k = 2.6 / v;
+  m.x = x; m.y = y; m.z = z; m.birthOffset = bo;
+  m.vx = vx * k + (R() - 0.5) * 0.4; m.vy = vy * k + 0.3; m.vz = vz * k + (R() - 0.5) * 0.4;
+  m.drag = 2.2; m.rise = 0.12; m.windK = 0.5; m.grav = 0;
+  m.life = 1.5 + R() * 0.5; m.size0 = 0.45; m.size1 = 1.9 + R() * 0.6; m.growExp = 2.6;
+  m.rot = (R() - 0.5) * 0.7; m.spin = (R() - 0.5) * 0.12;
+  look(C, BURST_WHITE, WISP_GREY, 0.62, 0.0, 0.4);
+  book(C, R, 'billow', 1.9, 4 + Math.floor(R() * 10), 1.05);
+  C.media(m);
+}
+
+/**
  * A grenade's burst where it lands (x, gy the ground there, z): the pop — a dense white ball thrown out in lobes — a
  * short warm flash, burning pellets arcing out and white streamers left along their arcs. `k` thins the pellets and
  * streamers where many grenades burst together (1 alone .. ~0.25 in a 24-tube salvo).
@@ -193,6 +211,25 @@ export function smokeBankBody(C: BlastContext, R: () => number, x: number, y: nu
   // fades in from inside the wall, never popping on at its edge
   look(C, SCREEN_WHITE, SCREEN_AGED, 0.9, 0.7, fadeOut);
   book(C, R, 'billow', life * (0.9 + R() * 0.2), Math.floor(R() * 16), 1.1 + R() * 0.3);
+  C.media(m);
+}
+
+/**
+ * (r2, wave 311: "gone by 18 s with no residual haze") the screen's tail: a broad, thin, see-through veil left in the
+ * bank as its wall erodes, drifting with the simulation's own breeze (wx, wz: it stays inside the drifting envelope)
+ * and fraying away by the screen's end. Its density hides nothing: the simulation stops blocking sight by then.
+ */
+export function smokeScreenHaze(C: BlastContext, R: () => number, x: number, y: number, z: number, wx: number,
+  wz: number, life: number, bo: number): void {
+  const m = C.m;
+  m.x = x; m.y = y; m.z = z; m.birthOffset = bo;
+  // a near-constant drift (drag 0.05 keeps ~90 % of it over the tail's few seconds)
+  m.vx = wx * 1.1 + (R() - 0.5) * 0.15; m.vy = 0.05 + R() * 0.06; m.vz = wz * 1.1 + (R() - 0.5) * 0.15;
+  m.drag = 0.05; m.rise = 0.04; m.windK = 0; m.grav = 0;
+  m.life = life; m.size0 = 9; m.size1 = 13 + R() * 2.5; m.growExp = 1.4;
+  m.rot = (R() - 0.5) * 0.6; m.spin = (R() - 0.5) * 0.02;
+  look(C, SCREEN_AGED, SCREEN_AGED, 0.34, 0.3, 0.5);
+  book(C, R, 'billow', life * 1.1, 24 + Math.floor(R() * 20), 1.45 + R() * 0.3);
   C.media(m);
 }
 

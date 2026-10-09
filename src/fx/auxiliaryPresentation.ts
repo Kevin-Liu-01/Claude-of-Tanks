@@ -1,12 +1,12 @@
 import { restoreSmokeScreen } from '../sim/smokeReceipt.ts';
 import * as THREE from 'three';
 import { auxiliaryCapabilities, SMOKE_DURATION_S, type AuxiliaryState, type SmokeScreen } from '../sim/auxiliarySystems.ts';
-import {smokeVolume, smokeBankCount, type SmokeVolume} from '../sim/smokeScreen.ts';
+import {smokeVolume, smokeBankCount, SMOKE_WIND_X, SMOKE_WIND_Z, type SmokeVolume} from '../sim/smokeScreen.ts';
 import { smokeCanisterPosition, SMOKE_GRAVITY_MPS2, type SmokeCanister } from '../sim/smokeBallistics.ts';
 import type { BlastContext } from './blastRecipes.ts';
 import {
-  puffRandom, slotSeed, smokeBankBody, smokeBankLobe, smokeBankWisp, smokeGrenadeBurst, smokeGrenadeWisp,
-  type SmokeLobeInput,
+  puffRandom, slotSeed, smokeBankBody, smokeBankLobe, smokeBankWisp, smokeGrenadeBurst, smokeGrenadeWisp, smokeLaunchPuff,
+  smokeScreenHaze, type SmokeLobeInput,
 } from './atmosRecipes.ts';
 
 export interface AuxiliaryVisualEntity {
@@ -39,20 +39,29 @@ interface Ports {
 const WISP_EVERY_S = 0.1;
 /** at most this many banks trail wisps (a 24-tube salvo's arcs overlap: a few trails read as all of them) */
 const WISP_BANKS = 6;
-/** bloom: lobes per bank when it stands alone (crowded banks share theirs: crowdShare), born this far apart */
-const LOBES = 6;
+/** bloom: lobes are born this far apart, the foot lobes first with a crown every third (any prefix mixes both) */
 const LOBE_EVERY_S = 0.09;
-/** the lobes' order: low lobes round the foot first, the crowns among them (any prefix mixes both) */
-const LOBE_CROWN: readonly boolean[] = [false, false, true, false, false, true];
 /** body puffs keep the wall dense while the lobes age; wisps tear off its top in the scene's wind */
 const BODY_START_S = 2.4, BODY_EVERY_S = 1.6, BODIES = 6;
 const TOP_START_S = 3.0, TOP_EVERY_S = 2.4, TOPS = 4;
 /** the screen's own end on its age (the simulation's density reaches 0 at 18 s): nothing outlives it */
 const SCREEN_END_S = SMOKE_DURATION_S - 0.2;
-/** lobes hold until this age and erode from LOBE_ERODE_S; the sim's fade runs 13.5 s to 18 s */
-const LOBE_END_S = 15.2, LOBE_ERODE_S = 12.0;
+/** (r2, wave 311: "see-through by 15 s") the wall holds dense while the simulation's density does (to 13.5 s), and its
+ *  lobes erode away as the density falls to the sight-blocking floor (0.22 at ~16.6 s): what blocks sight looks dense,
+ *  and what no longer blocks is gone */
+const LOBE_END_S = 16.6, LOBE_ERODE_S = 13.5;
+/** the bodies thin from the same age */
+const BODY_ERODE_S = 14.0;
+/** the haze tail: a thin, see-through veil left inside each bank as the wall erodes, drifting with the simulation's
+ *  breeze until the screen's end (it hides nothing: the density no longer blocks sight by then) */
+const HAZE_START_S = 13.2, HAZE_EVERY_S = 0.8, HAZES = 2;
 /** banks closer than this share their lobes and body puffs (one wall, not a stack of cards) */
 const CROWD_M = 12;
+/** (r2, wave 311: "a gap exactly where the tank stands") the banks of a salvo, in their order across the launcher's arc,
+ *  draw one continuous wall: each bank's foot lobes stand along its own stretch of the row (half way to each neighbour,
+ *  at most WALL_REACH_M: never past what its envelope covers; the row's ends reach WALL_END_M), one lobe per
+ *  WALL_PITCH_M, so a bank beside a wide gap fills it and a bank among close neighbours does not pile up */
+const WALL_REACH_M = 7, WALL_END_M = 6, WALL_PITCH_M = 2.8;
 
 interface MediaScreenState {
   /** the screen age (s) the schedule has been emitted up to */
@@ -61,6 +70,9 @@ interface MediaScreenState {
   share: Float32Array;
   /** per bank: whether it trails wisps in flight */
   wisps: Uint8Array;
+  /** (r2) per bank: its stretch of the wall, from its landing toward its neighbours along the row (m, unit direction):
+   *  back (lx, lz, extent) and ahead (rx, rz, extent) */
+  wall: Float32Array;
   seen: boolean;
 }
 interface Actor {
@@ -78,7 +90,8 @@ interface Actor {
 export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
   const casings=new THREE.InstancedMesh(new THREE.CylinderGeometry(.014,.014,.085,6),new THREE.MeshStandardMaterial({color:0xbfa35f,metalness:.7,roughness:.38}),96);
   casings.name='auxiliaryEjectedCases';casings.count=0;casings.frustumCulled=false;parent.add(casings);
-  const grenades=new THREE.InstancedMesh(new THREE.CylinderGeometry(.075,.075,.28,8),
+  // (r2, wave 311: "rows of tiny black dots") a 76 mm grenade at its own size, not twice it
+  const grenades=new THREE.InstancedMesh(new THREE.CylinderGeometry(.038,.038,.2,8),
     new THREE.MeshStandardMaterial({color:0xa8ad8f,metalness:.35,roughness:.6}),256);
   grenades.name='auxiliarySmokeCanisters';grenades.count=0;grenades.frustumCulled=false;parent.add(grenades);
   const pool=Array.from({length:96},()=>({p:new THREE.Vector3(),v:new THREE.Vector3(),age:9}));
@@ -197,7 +210,36 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       for(let j=0;j<n;j++)if(j!==i)crowd+=Math.max(0,1-Math.hypot(xs[i]!-xs[j]!,zs[i]!-zs[j]!)/CROWD_M);
       share[i]=1/crowd;wisps[i]=i%stride===0&&screen.canisters?1:0;
     }
-    return {emittedTo:-1,share,wisps,seen:true};
+    return {emittedTo:-1,share,wisps,wall:wallStretches(screen,xs,zs),seen:true};
+  }
+  /** Each bank's stretch of the wall: the banks ordered across the launcher's arc (their flights' bearings off its
+   *  facing; a legacy arc's by bank), each reaching half way to its neighbours along the row. */
+  function wallStretches(screen:SmokeScreen,xs:Float32Array,zs:Float32Array):Float32Array{
+    const n=xs.length,wall=new Float32Array(n*6);
+    const bearing=(i:number)=>{
+      const shot=screen.canisters?.[screen.banks?.[i] ?? -1];
+      if(!shot)return i;
+      let a=Math.atan2(shot[3],shot[5])-screen.yaw;
+      while(a>Math.PI)a-=2*Math.PI;while(a<=-Math.PI)a+=2*Math.PI;
+      return a;
+    };
+    const order=Array.from({length:n},(_,i)=>i).sort((a,b)=>bearing(a)-bearing(b)||a-b);
+    for(let k=0;k<n;k++){
+      const i=order[k]!,p=k>0?order[k-1]!:-1,q=k<n-1?order[k+1]!:-1;
+      // across the bank's own flight, for a row's end (or a bank alone)
+      const shot=screen.canisters?.[screen.banks?.[i] ?? -1];
+      let fx=Math.sin(screen.yaw),fz=Math.cos(screen.yaw);
+      if(shot){const h=Math.hypot(shot[3],shot[5]);if(h>1e-3){fx=shot[3]/h;fz=shot[5]/h;}}
+      let bx=fz,bz=-fx,be=WALL_END_M,ax=-fz,az=fx,ae=WALL_END_M;
+      const dq=q>=0?Math.hypot(xs[q]!-xs[i]!,zs[q]!-zs[i]!):0,dp=p>=0?Math.hypot(xs[p]!-xs[i]!,zs[p]!-zs[i]!):0;
+      if(q>=0&&dq>.05){ax=(xs[q]!-xs[i]!)/dq;az=(zs[q]!-zs[i]!)/dq;ae=Math.min(WALL_REACH_M,dq/2);}
+      if(p>=0&&dp>.05){bx=(xs[p]!-xs[i]!)/dp;bz=(zs[p]!-zs[i]!)/dp;be=Math.min(WALL_REACH_M,dp/2);}
+      // a row's end continues its neighbour's line outward
+      if(p<0&&q>=0&&dq>.05){bx=-ax;bz=-az;}
+      if(q<0&&p>=0&&dp>.05){ax=-bx;az=-bz;}
+      wall.set([bx,bz,be,ax,az,ae],i*6);
+    }
+    return wall;
   }
   /** Emit one bank's schedule over screen ages (from, to]: births backdated to their own times (to = now). */
   function mediaBank(C:BlastContext,screen:SmokeScreen,bank:number,st:MediaScreenState,from:number,to:number){
@@ -205,10 +247,15 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     const shot=bankLanding(screen,bank);
     const lx=landing.x,ly=landing.y,lz=landing.z;
     const share=st.share[bank]!;
-    // 0-1. the launch puff at the tube and the wisps behind the lead grenade in flight
+    // 0. (r2, wave 311: "rows of tiny black dots") the launch: a white puff at every bank's tube as its grenade leaves
+    if(shot&&.02>from&&.02<=to){
+      smokeCanisterPosition(shot,.02,landing);
+      smokeLaunchPuff(C,puffRandom(slotSeed(born,lx,lz,bank,0)),landing.x,landing.y,landing.z,shot[3],shot[4],shot[5],.02-to);
+    }
+    // 1. the wisps behind the lead grenades in flight
     if(shot&&st.wisps[bank]){
-      for(let k=0;k*WISP_EVERY_S<tLand;k++){
-        const t=k===0?.02:k*WISP_EVERY_S;
+      for(let k=1;k*WISP_EVERY_S<tLand;k++){
+        const t=k*WISP_EVERY_S;
         if(!(t>from&&t<=to)||t+1.7<to)continue;
         smokeCanisterPosition(shot,t,landing);
         smokeGrenadeWisp(C,puffRandom(slotSeed(born,lx,lz,bank,k)),landing.x,landing.y,landing.z,t-to);
@@ -221,18 +268,28 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     // the bank's settled centre (its full growth, 2.2 s after landing, drifted as the simulation drifts it)
     smokeVolume(screen,born+tLand+2.2,bank-2,volume,ports.ground);
     const cx=volume.x,cz=volume.z;
-    const phase=puffRandom(slotSeed(born,lx,lz,bank,99))()*Math.PI*2;
-    // 3. the bloom: lobes out of the burst to their places round the bank's foot, crowns over them
-    const lobes=Math.max(2,Math.round(LOBES*share));
-    for(let j=0;j<lobes;j++){
+    // the bank's stretch of the wall (wallStretches): back toward one neighbour, ahead toward the other; `deep` is across
+    // the row (toward the launcher or away)
+    const w=st.wall,o=bank*6,back=w[o+2]!,ahead=w[o+5]!,span=back+ahead;
+    const spot=(along:number,deep:number,x0:number,z0:number,out:{x:number;z:number})=>{
+      const ux=along<0?w[o]!:w[o+3]!,uz=along<0?w[o+1]!:w[o+4]!,d=Math.abs(along);
+      // across: the row's normal at this bank (its two directions' bisector, turned a quarter)
+      const nx=w[o+4]!-w[o+1]!,nz=w[o]!-w[o+3]!,nl=Math.hypot(nx,nz)||1;
+      out.x=x0+ux*d+nx/nl*deep;out.z=z0+uz*d+nz/nl*deep;
+    };
+    const at={x:0,z:0};
+    // 3. the bloom: lobes out of the burst to their places along the bank's stretch of the wall, crowns over its middle
+    const feet=Math.max(1,Math.round(span/WALL_PITCH_M)),crowns=Math.max(1,Math.round(2*share)),lobes=feet+crowns;
+    for(let j=0,foot=0,crowned=0;j<lobes;j++){
+      const crown=crowned<crowns&&(j%3===2||foot>=feet);
+      const slot=crown?crowned++:foot++;
       const t=tLand+.04+j*LOBE_EVERY_S;
       if(!(t>from&&t<=to)||LOBE_END_S<=to)continue;
       const R=puffRandom(slotSeed(born,lx,lz,bank,100+j));
-      const crown=LOBE_CROWN[j%LOBE_CROWN.length]!;
-      const a=phase+j*2.39996+(R()-.5)*.5;
-      const rho=crown?R()*2.5:5.2+R()*1.8;
+      const along=crown?(R()-.5)*Math.min(4,span*.5):-back+(slot+.5)*span/feet+(R()-.5)*1.2;
+      spot(along,crown?(R()-.5)*1.5:(R()-.5)*3.2,cx,cz,at);
       lobe.x0=lx;lobe.y0=ly+.6;lobe.z0=lz;
-      lobe.tx=cx+Math.cos(a)*rho;lobe.tz=cz+Math.sin(a)*rho;
+      lobe.tx=at.x;lobe.tz=at.z;
       lobe.ty=ports.ground(lobe.tx,lobe.tz)+(crown?3.0+R()*.6:1.8+R()*.9);
       lobe.size=crown?8.6+R()*1.4:9.6+R()*2.0;
       lobe.life=LOBE_END_S-t;
@@ -249,9 +306,9 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       if(t+life<to)continue;
       const R=puffRandom(slotSeed(born,lx,lz,bank,200+j));
       smokeVolume(screen,born+t,bank-2,volume,ports.ground);
-      const a=R()*Math.PI*2,rho=R()*.55*volume.radius;
-      const x=volume.x+Math.cos(a)*rho,z=volume.z+Math.sin(a)*rho;
-      smokeBankBody(C,R,x,ports.ground(x,z)+1.5+R()*2.0,z,8+R()*2.5,life,Math.min(.6,Math.max(.3,(13-t)/life)),t-to);
+      spot(-back+R()*span,(R()-.5)*.3*volume.radius,volume.x,volume.z,at);
+      const x=at.x,z=at.z;
+      smokeBankBody(C,R,x,ports.ground(x,z)+1.5+R()*2.0,z,8+R()*2.5,life,Math.min(.75,Math.max(.3,(BODY_ERODE_S-t)/life)),t-to);
     }
     // 5. wisps torn off its top into the scene's wind
     const tops=Math.max(1,Math.round(TOPS*share)),topEvery=TOP_EVERY_S*TOPS/tops;
@@ -263,6 +320,17 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       const a=R()*Math.PI*2,rho=R()*.4*volume.radius;
       const x=volume.x+Math.cos(a)*rho,z=volume.z+Math.sin(a)*rho;
       smokeBankWisp(C,R,x,ports.ground(x,z)+4.6+R()*1.0,z,t-to);
+    }
+    // 6. (r2) the haze tail: as the wall erodes, a thin veil left in the bank drifts on with the simulation's breeze
+    const hazes=Math.max(1,Math.round(HAZES*share));
+    for(let j=0;j<hazes;j++){
+      const t=Math.max(tLand+4,HAZE_START_S+j*HAZE_EVERY_S*HAZES/hazes);
+      if(!(t>from&&t<=to)||t>=SCREEN_END_S-1)continue;
+      const R=puffRandom(slotSeed(born,lx,lz,bank,400+j));
+      smokeVolume(screen,born+t,bank-2,volume,ports.ground);
+      spot(-back+R()*span,(R()-.5)*.25*volume.radius,volume.x,volume.z,at);
+      const x=at.x,z=at.z;
+      smokeScreenHaze(C,R,x,ports.ground(x,z)+2.0+R()*1.2,z,SMOKE_WIND_X,SMOKE_WIND_Z,SCREEN_END_S-t,t-to);
     }
   }
   function mediaScreen(screen:SmokeScreen,now:number){
