@@ -62,7 +62,7 @@ import { oceanSpectrumSteps, resolveOceanState, type OceanConfig, type OceanSpec
 import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
 import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
-import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
+import { cinderYardWeedsAt, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
@@ -585,6 +585,9 @@ export interface HeightField {
   _landUseAt?(x: number, z: number, out: LandFieldSample): LandFieldSample;
   /** Ground lane (2026-10-03): the canopy's cover (0..1) once the vegetation is placed (terrain applyWoodsMask). */
   _woodsAt?(x: number, z: number): number;
+  /** Ground lane (2026-10-08): a cinder yard's weed clumps (groundRedux.ts cinderYardWeedsAt, 0..1) — present only on a
+   * map whose ground profile floors its village in cinder; the tall grass and the tufts keep to them inside the yard. */
+  _yardWeedsAt?(x: number, z: number): number;
   /** The maps-and-layouts lane (2026-10-03): the authored landforms' geological zones at (x, z), each 0..1 —
    * [lava flow, cinder cone, talus fan] (landformGeology.ts geologyZoneWeights); absent on a map without them. */
   _geologyZoneAt?(x: number, z: number, out: GeologyZones): GeologyZones;
@@ -2819,6 +2822,9 @@ function* heightFieldBuildSteps(
     // `?ground=legacy` draws no fields and grows no crops
     ...(landUseProfile && !legacyGroundLanes ? { _landUseAt: (x: number, z: number, out: LandFieldSample): LandFieldSample =>
       landUseAt(landUseProfile, x, z, out) } : {}),
+    // ground lane (2026-10-08, the gauntlet's wave 260): a cinder yard's weeds in clumps, on the map whose ground profile
+    // floors its village so (Cinder Junction); `?ground=legacy` grows the old scatter
+    ...((resolveGroundReduxProfile(cfg?.id).cinderYard ?? 0) > 0 && !legacyGroundLanes ? { _yardWeedsAt: cinderYardWeedsAt } : {}),
     // Frontline Assault trenches (assault-trenches variant), null on the standard field.
     assaultTrenchLines: trenchPlan(),
     // Field trenches on every standard field (2026-09-17), also on the assault variant clear of its sector lines.
@@ -3935,6 +3941,8 @@ uniform float uRoadPuddle; // ground lane: the map's share of the ruts' puddles 
 uniform float uPavedRock;
 uniform vec4 uPaveSlab;   // maps lane B (2026-10-03): airfield concrete (slab m, joint half-width m, stains, tyres); x 0 = off
 uniform vec4 uTownPave;   // map revival lane 2 (2026-10-05): the paved town rect (centre xz, half-size xz); z 0 = off
+// ground lane (2026-10-08): the village is a rail yard floored in cinder (groundRedux.ts cinderYard, Cinder Junction); 0 = off
+uniform float uYardCinder;
 uniform vec4 uSaltCrust;  // maps lane B (2026-10-03): a sor's salt crust (on, polygon cell m, damp margin, unused)
 uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
@@ -4017,6 +4025,7 @@ float gFieldWater = 0.0;     // ground lane: a flooded paddy's or a polder ditch
 float gCropW = 0.0;          // ground lane: a sown field's weight (not pasture or hay): the sward's own relief stands down there
 float gSoilW = 0.0;          // ground lane: a bare field's weight (plough, terra rossa, a vineyard's earth, slag, ballast, gravel)
 float gLaneSheen = 0.0;      // ground lane (wave 86): a field track's pressed lane floor (its faint satin in the roughness stage)
+float gYardOil = 0.0;        // ground lane (2026-10-08): a cinder yard's oil stains (a satin in the roughness stage)
 vec3 gMeadowTint = vec3(1.0); // ground lane: the meadow's macro tint the base took (a field divides it back out)
 varying float vFold;         // round 73: the baked fold attribute (−1 crest .. +1 hollow) the chunk vertices carry
 float gFoldAO = 1.0;         // round 73: indirect occlusion in the folds, read by the aomap hook
@@ -4826,9 +4835,79 @@ void splatCompute() {
     float sunSide = smoothstep(0.15, 0.65, dot(wn, uSunDirW));
     fD = smoothstep(0.70, 0.95, fD) * mix(0.45, 1.0, sunSide);
   }
+  // ground lane (2026-10-08, the gauntlet's wave 260 on Cinder Junction's yard: "a dead-flat plane of dark mulch with
+  // evenly spaced identical grass blades" — the dirt photo's forest litter, its twigs and leaf, on a rail yard): a yard's
+  // floor is cinder, the engines' ash and clinker spread and trodden, in its own patches — coal dust black where the coal
+  // was handled, the spent ash a paler grey where it lay and dried, rust off the scrap and the brake blocks — with oil
+  // where the engines stood, and its clinker near the camera (the works' slag grain). The yard is the village mask's on a
+  // map whose ground profile floors it so (groundRedux.ts cinderYard); 0 everywhere else, and the block is skipped.
+  float yardW = uYardCinder * smoothstep(0.10, 0.55, mk.a);
+  float cinN = 0.5, cinVis = 0.0;
   if (fD > 0.002 && keepM * (1.0 - seaSand) > 0.002) {
     vec4 aD = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);
     aD.rgb *= uSoilTint; // (wave 79: the place's own soil, not the strand's sand)
+    if (yardW > 0.002) {
+      vec3 dM = uMeanD.rgb * uSoilTint;
+      // the photo's litter at a sixth of its contrast near the camera, where its twigs read as twigs (the grain below
+      // takes their place), and at four fifths of it from ~8 m, where what is left of them is the ground's texture (the
+      // anisotropic tap keeps it across a grazing view, where no procedural term of this block survives the footprint);
+      // most of its brown taken out, a shade darker
+      // (the lab's second and third frames, the yard's low view: a sixth, then a half, left the floor from 5 m on one flat
+      // grey plane)
+      vec3 cin = dM + (aD.rgb - dM) * mix(0.16, 0.80, smoothstep(0.012, 0.035, gFootM));
+      // (a cinder's grey is a little warm — the lab's cold grey read as asphalt)
+      cin = mix(cin, vec3(reduxLuma(cin)), 0.6) * vec3(0.88, 0.85, 0.83);
+      // the floor's own lumps and hollows, trodden and spread: ~25 cm and ~60 cm of tone (the noise with no period), a
+      // twelfth each way, faded before they can shimmer; and its ~3 m spreads, darker and paler by a sixth, which still
+      // read at a grazing 30 m where the finer terms are gone
+      vec2 yL = nzq(uv, 0.90, vec2(0.41, 0.19));
+      vec2 yM = nzq(uv, 0.071, vec2(0.67, 0.31));
+      cin *= 1.0 + ((yL.x - 0.5) * 0.34 * tileVis(0.25) + (yL.y - 0.5) * 0.30 * tileVis(0.6) + (yM.x - 0.5) * 0.36 * tileVis(3.0));
+      // the patches (~8 m, the noise with no period): coal dust, dried ash, rust
+      vec2 yP = nzq(uv, 0.021, vec2(0.17, 0.43));
+      float coal = smoothstep(0.56, 0.78, yP.x);
+      float ash = smoothstep(0.58, 0.80, 1.0 - yP.x) * smoothstep(0.30, 0.62, yP.y);
+      float rust = smoothstep(0.62, 0.82, yP.y) * (1.0 - coal);
+      cin *= mix(1.0, 0.48, coal);
+      cin = mix(cin, vec3(reduxLuma(dM) * 1.65) * vec3(1.0, 0.98, 0.95), ash * 0.62);
+      cin *= mix(vec3(1.0), vec3(1.30, 0.98, 0.76), rust * 0.55);
+      // the oil: stains a metre or two across where the engines stood — kept to some stretches of the yard (the ~14 m
+      // field), ragged at their edges (a 16 cm read), black and a little smooth, faded before their edges can shimmer
+      float oilY = smoothstep(0.70, 0.82, nz(uv, 0.083, vec2(0.61, 0.29)).g + (nz(uv, 0.61, vec2(0.23, 0.77)).r - 0.5) * 0.22)
+        * smoothstep(0.42, 0.66, n1) * tileVis(1.5);
+      cin *= 1.0 - 0.5 * oilY;
+      // the grain near the camera: cinder and ash in ~3 cm grains, each its own tone (a few rusty, a few pale ash), the
+      // gaps between them dark and each grain's face its own tilt (the clinker's relief, below) — the nearest of a
+      // jittered cell grid's points by an integer hash (exact anywhere on the map), faded to the pattern's mean while a
+      // grain still spans two or three pixels
+      cinVis = 1.0 - smoothstep(0.012, 0.028, gFootM);
+      if (cinVis > 0.001) {
+        vec2 gq = uv / 0.03, gc = floor(gq), gf = gq - gc;
+        float d1 = 9.0, d2 = 9.0;
+        vec2 h1 = vec2(0.5);
+        for (int j = -1; j <= 1; j++) {
+          for (int i = -1; i <= 1; i++) {
+            vec2 o = vec2(float(i), float(j));
+            uvec2 q = uvec2(ivec2(gc + o) + ivec2(1 << 20)) * uvec2(1597334673u, 3812015801u);
+            uint hn = (q.x ^ q.y) * 1597334673u;
+            vec2 h = vec2(uvec2(hn, hn * 16807u) >> 8u) * (1.0 / 16777216.0);
+            vec2 r = o + 0.15 + 0.70 * h - gf;
+            float d = dot(r, r);
+            if (d < d1) { d2 = d1; d1 = d; h1 = h; } else if (d < d2) { d2 = d; }
+          }
+        }
+        // (the lab's second frames: every grain one size, packed edge to edge, read as a mosaic) a third of the cells are
+        // the fines between the grains — the ash's own tone, no edge, no face
+        float fines = step(0.10, h1.y) * step(h1.y, 0.42);
+        float gap = (1.0 - smoothstep(0.03, 0.10 + 0.12 * h1.x, sqrt(d2) - sqrt(d1))) * (1.0 - fines);
+        vec3 gTone = vec3(mix(0.68 + 0.64 * h1.x, 0.97, fines)) * (1.0 - 0.50 * gap);
+        gTone *= h1.y > 0.88 ? vec3(1.28, 0.96, 0.74) : h1.y < 0.10 ? vec3(1.30) : vec3(1.0);
+        cin *= mix(vec3(1.0), gTone / 0.95, cinVis);
+        cinN = mix(h1.x * 0.5 + h1.y * 0.5, 0.5, fines);
+      }
+      aD.rgb = mix(aD.rgb, cin, yardW);
+      gYardOil = oilY * yardW;
+    }
     // ground lane: under thin snow the ground that shows is the winter sward — flattened straw and heather, a dull
     // khaki — not the photo's brown mud
     if (uReduxD.y > 1.5) {
@@ -4844,6 +4923,12 @@ void splatCompute() {
     }
     a = mix(a, aD, fD);
     if (nrmOn) n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), fD);
+    // (the cinder yard: the photo's twig relief mostly flattened, the grains' faces in its place)
+    if (nrmOn && yardW > 0.002) {
+      float yd = yardW * fD;
+      n.xy = mix(n.xy, vec2(0.5), 0.7 * yd) + vec2(cinN - 0.5, fract(cinN * 7.31) - 0.5) * 0.45 * cinVis * yd;
+    }
+    gYardOil *= fD;
   }
   if (seaSand > 0.003) { // maps r1: bare shoreline apron under the surf line
     a = mix(a, groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB), seaSand);
@@ -6831,6 +6916,8 @@ void splatCompute() {
   gSplatRough = mix(gSplatRough, 0.92, gStrandFoam); // round 73b: the foam line is matte
   gSplatRough = mix(gSplatRough, 0.62, gScour * 0.55); // round 73b: the wind-scoured crust takes a satin sheen
   gSplatRough = mix(gSplatRough, 0.74, gLaneSheen * 0.6); // ground lane (wave 86): a track lane's pressed floor, a faint satin
+  // ground lane (2026-10-08): a cinder yard's oil, a satin (never a mirror), off the roads and the hardstands laid over it
+  gSplatRough = mix(gSplatRough, 0.58, gYardOil * 0.8 * (1.0 - fR) * (1.0 - fMs) * (1.0 - roadCore));
   gSplatRough = mix(gSplatRough, gSplatRough * 0.93, hollow * uReduxFold.x * (1.0 - fMs));
   gSplatRough = mix(gSplatRough, 1.0, gCinderW); // ground lane (wave 62): the cinder's glitter was a sheen on black — none
   // (and the "white specular glints" on the cone's lower third were the detail normals' sun-facing facets lit full on a
@@ -7071,12 +7158,15 @@ function* createSplatMaterialSteps(
   // strength on a map without a row)
   const landUseProfile = resolveLandUseProfile(mapId);
   const landUse = landUseUniformValues(landUseProfile);
+  // ground lane (2026-10-08): the village floored in cinder (groundRedux.ts cinderYard: Cinder Junction's yard)
+  let yardCinder = Math.min(1, Math.max(0, groundProfile.cinderYard ?? 0));
   // `?ground=legacy`: every redux term at zero on the same build — the round's before / after captures A/B against it
   if (typeof location !== 'undefined' && /[?&]ground=legacy(&|$)/.test(location.search ?? '')) {
     redux.reduxA.fill(0); redux.reduxFold.fill(0); redux.reduxSwash.fill(0); redux.reduxSnow.fill(0);
     redux.reduxB.fill(0); redux.reduxC.fill(0); // round 73b
     redux.reduxD.fill(0); // terrain v2
     landUse.landA[0] = 0; // ground lane: no fields
+    yardCinder = 0;
   }
   // ground lane (2026-10-03, the GPU fix): the land use baked once from its CPU twin at the interior mask's texel scale
   // (landUse.ts bakeLandUseSteps), stacked under the ground mask below (stackLandUseBake) — 64 rows a build step
@@ -7165,6 +7255,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uTownPave = { value: S.townPaving ? new THREE.Vector4((town.x0 + town.x1) / 2, (town.z0 + town.z1) / 2,
       (town.x1 - town.x0) / 2, (town.z1 - town.z0) / 2) : new THREE.Vector4(0, 0, 0, 0) };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
+    shader.uniforms.uYardCinder = { value: yardCinder };
     shader.uniforms.uWornDirtStrength = { value: clamp(S.wornDirtStrength ?? 0.84, 0, 1) };
     shader.uniforms.uShoulderDirt = { value: clamp(S.shoulderDirt ?? 1, 0, 1) };
     shader.uniforms.uLaneK = { value: roadLaneSharpness(mask.image.width) }; // road pass 2026-09-12

@@ -88,6 +88,11 @@ export interface GroundReduxProfile {
    * black and red cinder streaked down the fall line on the cones' flanks, talus aprons at their feet — keyed to the
    * slopes and folds of the landforms, not to a wind (the material's uReduxFold.w). */
   volcanic?: number;
+  /** Ground lane (2026-10-08, the gauntlet's wave 260 on Cinder Junction): the map's village is a rail yard floored in
+   * cinder — the material draws ash, clinker, coal dust, rust and oil there (uYardCinder) and the tiers that grow on
+   * the ground come up in weed clumps (cinderYardWeedsAt, the height field's `_yardWeedsAt`) instead of a scatter.
+   * 0 = off (every other map), 1 = the yard. */
+  cinderYard?: number;
   /** The tall-grass biome, or null for a map with no sward (arid, Mars). */
   grass: TallGrassBiome | null;
 }
@@ -207,7 +212,7 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   // maps lane B (2026-10-03, gauntlet wave 28): the river's margin is a steady damp bank with a wrack line and reeds
   autumn: { ...STILL_WATER, scree: 0.3, grass: meadow(1.0, 0.9, { base: [0.135, 0.108, 0.042], tip: [0.26, 0.21, 0.08], dry: [0.30, 0.23, 0.08], reedMargin: 0.5 }) },
   steppe: { ...TEMPERATE, foldMoist: 0.5, scree: 0.2, grass: steppe(1.2) },
-  railyard: { ...TEMPERATE, scree: 0.15, grass: verge(0.55) },
+  railyard: { ...TEMPERATE, scree: 0.15, grass: verge(0.55), cinderYard: 1 },
   frontier: { ...TEMPERATE, foldMoist: 0.55, scree: 0.3, grass: savanna(0.85) },
   fjord: { ...COAST, swashPeriodS: 9.5, swashReachM: 4, swashStrength: 1.0, scree: 0.4, grass: dune(0.5) },
   delta: { ...STILL_WATER, rimTint: MOSS, grass: reed(0.75, 1.6, 0.85, 0.5) },
@@ -250,6 +255,37 @@ const DEFAULT_PROFILE: GroundReduxProfile = Object.freeze({ ...TEMPERATE, grass:
 
 export function groundReduxProfileIds(): string[] {
   return Object.keys(PROFILES);
+}
+
+/**
+ * Ground lane (2026-10-08, the gauntlet's wave 260 on Cinder Junction's yard: "evenly spaced, saturated green
+ * single-blade sprites that look like seedlings in a ploughed field, not weeds in a cinder yard"): a cinder yard's
+ * weeds come up in clumps — a metre or two across, a few to every ten metres, ragged at their edges — and nothing grows
+ * on the trodden cinder between them. The clump's weight at (x, z), 0..1: three value noises, 2.6 m, 1.7 m and 0.9 m,
+ * each on its own turned grid (no clump squared to the axes), summed and cut at 0.60–0.72 — about a seventh of the floor
+ * (an integer position hash: the client, the host and the receipts read the same field). The tall grass and the tufts
+ * keep to it inside the yard (the height field's `_yardWeedsAt` on a map whose profile has a cinder yard).
+ */
+export function cinderYardWeedsAt(x: number, z: number): number {
+  const v = yardValueNoise((0.799 * x - 0.602 * z) / 2.6, (0.602 * x + 0.799 * z) / 2.6, 0x5c1d) * 0.55
+    + yardValueNoise((0.934 * x + 0.358 * z) / 1.7, (-0.358 * x + 0.934 * z) / 1.7, 0x2b7e) * 0.30
+    + yardValueNoise((0.326 * x - 0.946 * z) / 0.9, (0.946 * x + 0.326 * z) / 0.9, 0x7d31) * 0.15;
+  const t = Math.min(1, Math.max(0, (v - 0.60) / 0.12));
+  return t * t * (3 - 2 * t);
+}
+function yardValueNoise(fx: number, fz: number, salt: number): number {
+  const ix = Math.floor(fx), iz = Math.floor(fz);
+  const tx = fx - ix, tz = fz - iz;
+  const sx = tx * tx * (3 - 2 * tx), sz = tz * tz * (3 - 2 * tz);
+  const h = (a: number, b: number): number => {
+    let k = Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1) ^ salt;
+    k = Math.imul(k ^ (k >>> 15), 0x85ebca6b);
+    k = Math.imul(k ^ (k >>> 13), 0xc2b2ae35);
+    return ((k ^ (k >>> 16)) >>> 0) / 4294967295;
+  };
+  const a = h(ix, iz) + (h(ix + 1, iz) - h(ix, iz)) * sx;
+  const b = h(ix, iz + 1) + (h(ix + 1, iz + 1) - h(ix, iz + 1)) * sx;
+  return a + (b - a) * sz;
 }
 
 /** The map's row, or the temperate defaults with no sward. */

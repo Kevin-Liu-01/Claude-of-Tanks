@@ -56,6 +56,7 @@ import {
   rockAngularityFor, rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts'; // round 75 item 6
 import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
+import { applyRailBallastHook } from './railBallast.ts'; // the ground lane (wave 234): the rail kit's crushed-stone bed
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
 import { composeLandmarks } from './landmarks/compose.ts'; // the landmarks lane, 2026-10-05
 import type { LandmarkPlacement } from './landmarks/types.ts';
@@ -3656,6 +3657,9 @@ function* propsBuildSteps(
       vertexColors: true, roughness: 0.95, metalness: 0,
     }),
     baked: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 }),
+    // the ground lane (wave 234): the rail kit's bed and shoulders, the baked material's tones under crushed stone and
+    // the track's grime (railBallast.ts; its parts' UVs carry their place across the track)
+    ballast: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.94, metalness: 0 }),
     // the scenery lane (after wave 57): the telegraph poles' weathered timber, painted by its hook (poleTimber.ts)
     pole: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }),
     // Round 75: painted corrugated steel — the atlas luminance under a vertex-colour livery, its ORM blue channel
@@ -3727,6 +3731,8 @@ function* propsBuildSteps(
     // safety net, not a design allowance). A cap, not a value: a style's own lower share would stay, and the trims' revival
     // (engine/materialEnvIntensity.ts) applies it (wave 309: Ruinspires' 0.22 read as black voids, so its style takes 1).
     mats.glass.envMapIntensity = Math.min(mats.glass.envMapIntensity, 1.0);
+    // (the ground lane's rail ballast authored 0.4 on a branch where no trim applied; it takes the full sky as every
+    // other surface here does, the look its wave 300 judged)
     // map revival lane 2 (2026-10-05): a kit's finer, shallower render (ArchitectureSurfaces.relief; absent: unchanged)
     const relief = regionalArchitecture?.surfaces.relief;
     if (relief) {
@@ -3822,6 +3828,8 @@ ${snowCap ? `
   // the telegraph poles (the scenery lane, after wave 57): creosote-dark to silvered timber, grain, checks, a stained foot;
   // the dusty maps' sun-bleached
   const poleHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyPoleTimberHook(shader, rockDressing.dust >= 0.5); };
+  // the ground lane (wave 234): the track bed's crushed stone, its four-foot's oil and cinder, the rails' rust
+  const ballastHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRailBallastHook(shader, true, !snowCap); };
   // the scenery lane (wave 48, "the same stone pattern clearly tiles going right"): a run repeats the kit's one wall
   // module, so the field print's window shifts along the wall by a hash of each module's place (sixteen steps of seven
   // sixteenths of a tile, u only: the print's bands lie in v) — every module's stones take tones of their own. Only the
@@ -3863,6 +3871,7 @@ ${snowCap ? `
       engineCtx.setupShadowMaterial(material,
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
           : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook
+            : materialKind === 'ballast' ? ballastHook
             : materialKind === 'fieldMud' ? mudHook : grimeHook);
       // (the hessian is the canvas's shader with another map, and the hay the straw's: they share their programs; the
       // field print has its own, for the modules' shifted windows, and the mud print its own, for its world-space
@@ -3878,6 +3887,8 @@ ${snowCap ? `
     plaster: [], plaster2: [], plaster3: [], stone: [], fieldStone: [], fieldMud: [], roof: [], wood: [], dark: [],
     glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [], structureWood: [],
     regionalPlaster: [], regionalPlaster2: [], regionalPlaster3: [], regionalStone: [], regionalRoof: [],
+    // (the phones keep the rail bed on the baked material: no ballast program there)
+    ...(mobileProps ? {} : { ballast: [] }),
   };
   // the scenery lane (2026-10-03): a map whose field walls are its own rock tints their rubble print (Saltwind: the
   // karst limestone of its outcrops, for its dry-stone walls and their posts). Never the stone print: a regional kit

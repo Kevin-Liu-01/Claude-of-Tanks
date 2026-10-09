@@ -1265,6 +1265,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainMaterialV2.selftest.mjs',
     'src/world/groundPressure.selftest.mjs',
     'src/world/tallGrass.selftest.mjs',
+    'src/world/cinderYard.selftest.mjs', // ground lane (2026-10-08, wave 260): Cinder Junction's cinder yard and its weed clumps
     'src/world/landUse.selftest.mjs', // ground lane (2026-10-03): the field system and its CPU twin
     'src/world/landUseBake.selftest.mjs', // ground lane (2026-10-03): the land use baked under the ground mask
     'src/world/roadLookupGrid.selftest.mjs',
@@ -1420,6 +1421,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/mooredHullMotion.selftest.mjs',
     'src/world/maps/railWashout.selftest.mjs',
     'src/world/maps/railCoalStockpiles.selftest.mjs',
+    'src/world/railBallast.selftest.mjs', // ground lane (2026-10-08, waves 234/278/285): the rail kit's ballast bed
     'src/world/maps/archedBridgeCollision.selftest.mjs',
     'src/world/railSpurs.selftest.mjs',
     'src/world/railCutting.selftest.mjs',
