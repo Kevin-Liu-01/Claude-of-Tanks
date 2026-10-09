@@ -205,7 +205,14 @@ assert.equal(lakeField._noVeg(300, 340), false);
   const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
   assert.ok(terrain.includes('apronK = smoothstep(0.30, 0.85, mk.r + (apronN - 0.5) * 0.60 * tileVis(4.8)) * padK;'), 'the pad\'s edge: into the spill, ragged');
   assert.ok(terrain.includes('rut = max(rut, padRut * rutAmp * 1.2);'), 'its ruts are the road\'s for the puddles');
-  assert.ok(terrain.includes('a.rgb *= 1.0 - padRut * 0.36;') && terrain.includes('n.xy -= padRutN * 0.35;'), 'they darken its ground and groove it');
+  assert.ok(terrain.includes('a.rgb *= 1.0 - padRut * 0.20;') && terrain.includes('n.xy -= padRutN * 0.35;'), 'they darken its ground and groove it');
   assert.ok(terrain.includes('lane * rutAmp * 1.25 + padRut * 1.10'), 'and on snow they are slush');
+  // 2026-10-09 (roads lane; the gauntlet's "near-black swirl apron" on Frontier): a family's heading is a constant — any
+  // heading read off noise is multiplied by |wp| in q = dot(wp, dir) and draws that noise's contours, a rut every metre —
+  // its lines wander only on the slow field b (features past 26 m), and its tracks are single vehicles' pairs per strip
+  assert.ok(terrain.includes('float t = 0.62 + float(k) * 1.15;') && !/float th = [^;]*nz\(/.test(terrain),
+    'the pad ruts\' families keep fixed headings');
+  assert.ok(terrain.includes('float q = dot(wp.xz, dP) + 3.5 * (nz(uv, 0.0024,') && terrain.includes('float gauge = ch.y > 0.45 ? 2.9 : 1.8;'),
+    'their lines wander slowly and hold one vehicle\'s pair per strip');
 }
 console.log('hardstandSurface.selftest: local rotated exclusions, remote road controls, additive water and the pads\' worn ground passed');

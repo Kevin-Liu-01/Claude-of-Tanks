@@ -4642,16 +4642,24 @@ void splatCompute() {
   float padRut = 0.0;
   vec2 padRutN = vec2(0.0);
   if (apronK > 0.003) {
-    float th = 0.6 + 2.4 * nz(uv, 0.006, vec2(0.31, 0.77)).r;
+    // roads lane (2026-10-09; the gauntlet's "near-black swirl apron" on Frontier, Monsoon's "dead-flat brown plane"):
+    // each family keeps one heading — a heading read off metre-scale noise turned q = dot(wp, dir), |wp| some 300 m,
+    // into that noise's own contour lines, a swirl of ruts every metre that blackened the whole pad. A family's lines
+    // wander 3.5 m over tens of metres (field b at 0.0024: features past 26 m), and its tracks are single vehicles' pairs —
+    // a tank's 2.9 m gauge or a lorry's 1.8 m, at a random place in each 9–12 m strip, a quarter of the strips empty —
+    // each coming and going along its line over 5–20 m (field b at 0.012), not a comb of ruts every 3 m
     float rutVis = smoothstep(0.12, 0.40, 0.30 / max(gFootM, 1e-3)); // gone as the footprint outgrows a rut
     for (int k = 0; k < 2; k++) {
-      float t = th + float(k) * 1.15;
+      float t = 0.62 + float(k) * 1.15;
       vec2 dP = vec2(-sin(t), cos(t)); // across the family's lines
-      float q = dot(wp.xz, dP) + 5.0 * (nz(uv, 0.017, vec2(0.53 + float(k) * 0.21, 0.29)).g - 0.5);
-      float per = 6.0 + 1.5 * float(k); // (a vehicle every few metres: the lab's 9.5 m read as two thin lines)
-      float f = fract(q / per) * per;
-      float r1 = (f - 3.0) / 0.30, r2 = (f - 5.9) / 0.30;
-      float pres = smoothstep(0.34, 0.58, nz(uv, 0.043, vec2(0.11 + float(k) * 0.37, 0.83)).r) * rutVis;
+      float q = dot(wp.xz, dP) + 3.5 * (nz(uv, 0.0024, vec2(0.53 + float(k) * 0.21, 0.29)).g - 0.5);
+      float per = 9.0 + 3.0 * float(k);
+      vec2 ch = cellHash2(vec2(floor(q / per), 41.0 + float(k) * 13.0));
+      float gauge = ch.y > 0.45 ? 2.9 : 1.8;
+      float f = fract(q / per) * per - (0.9 + ch.x * (per - gauge - 1.8)); // (3 sigma clear of the strip's edges)
+      float r1 = f / 0.30, r2 = (f - gauge) / 0.30;
+      float pres = smoothstep(0.40, 0.62, nz(uv, 0.012, vec2(0.11 + float(k) * 0.37, 0.83)).g)
+        * step(0.25, fract(ch.x * 7.31 + ch.y)) * rutVis;
       float e1 = exp(-r1 * r1), e2 = exp(-r2 * r2);
       padRut = max(padRut, (e1 + e2) * pres);
       padRutN += dP * (r1 * e1 + r2 * e2) * pres;
@@ -6493,7 +6501,7 @@ void splatCompute() {
       }
       // (a pad's vehicle ruts darken its packed ground here: a road's own wheel lanes give way to their trodden middle
       // past a 0.08 m footprint, which a pad seen low across its 30-60 m loses at once)
-      a.rgb *= 1.0 - padRut * 0.36;
+      a.rgb *= 1.0 - padRut * 0.20; // (roads lane: the rut tone below darkens them a second time)
       // (and the ground the tracks churned: darker, damper patches along them)
       a.rgb *= 1.0 - 0.14 * apronK * smoothstep(0.50, 0.80, nzq(uv, 0.12, vec2(0.37, 0.61)).x) * (1.0 - gRoadTex);
       // The sourced dirt normal contains deep clod/pothole forms intended for
