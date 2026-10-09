@@ -442,6 +442,8 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     sceneryTrees: [], shapePolygons, polygonGap,
     // nor one on a match objective's disc (props.ts hulkOnObjective): the fixture's map has none
     mapId: 'fixture', MATCH_OBJECTIVE_LAYOUTS: {},
+    // nor one in a deployment slot's clearing (2026-10-08, a10a37b37): the fixture's map has no deployment slots
+    deploymentSlots: [], DEPLOYMENT_CLEAR_M: 20,
   };
   const api = new Function('dependencies', `
     const { ${Object.keys(dependencies).join(', ')} } = dependencies;
