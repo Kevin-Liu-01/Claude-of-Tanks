@@ -166,7 +166,7 @@ interface StudioGameState {
 
 interface StudioFxRuntime {
   bindBus(bus: ReturnType<typeof createBus>): void;
-  resetAll(): void;
+  resetAll(options?: { running?: boolean }): void;
   resetSeed(seed: number): void;
   resetClock(atTimeS?: number): void;
   setFrozen(frozen: boolean): void;
@@ -2847,7 +2847,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function resetFxRuntime(seed = sceneMeta.seed || 5000) {
     ensureFxBus();
     shells.length = 0;
-    fx.resetAll();
+    // a scene's hulls are already running: no engine cold-start cough at every load (atmospherics r2, wave 311)
+    fx.resetAll({ running: true });
     // The fx clock restarts with the timeline: replays (seek, load, film) must
     // not inherit the page's history in clock-phased shading.
     fx.resetClock(0);

@@ -640,6 +640,119 @@ export function plateBurst(C: BlastContext, I: PlateBurstInput): void {
   if (I.ground) dustSurge(C, I.x, C.groundY(I.x, I.z), I.z, Math.max(0.8, s * 0.8), I.ground, bo + 0.02);
 }
 
+/** The kinetic results on armour that armorHit draws (the battle's shell:hit kinds; HE and shaped charges are plateBurst). */
+export type ArmorHitKind = 'pen' | 'nonpen' | 'ricochet' | 'spaced' | 'era';
+
+interface ArmorHitInput {
+  x: number; y: number; z: number;
+  /** the struck plate's outward normal */
+  nx: number; ny: number; nz: number;
+  caliberMm: number;
+  kind: ArmorHitKind;
+  birthOffset?: number;
+}
+
+/** ERA cassettes' dark olive steel. */
+const ERA_CASE: Rgb = [0.05, 0.055, 0.035];
+
+/**
+ * A kinetic round's hit on armour, past the additive pop and sparks the caller draws (owner 2026-10-08: every effect on
+ * the media layer): a penetration drives a dark jet of spall and pulverised armour out of the hole along the plate's
+ * normal, which stalls within a couple of metres and drifts off thinning, rings the hole with a thin armour-dust ring in
+ * the plate's plane, and throws lit steel chips that fall and lie; a non-penetration leaves a pale puff of paint and
+ * dust; a ricochet a faint scuff; spaced armour a grey puff and torn sheet; an ERA cassette a dark blast and its
+ * fragments. Sized by the calibre (120 mm: 1).
+ */
+export function armorHit(C: BlastContext, I: ArmorHitInput): void {
+  const R = C.rand;
+  const m = C.m;
+  const bo = I.birthOffset ?? 0;
+  const s = Math.max(0.3, Math.min(1.6, I.caliberMm / 120));
+  const sq = Math.sqrt(s);
+  const dk = C.distBoost(I.x, I.y, I.z);
+  const nl = Math.hypot(I.nx, I.ny, I.nz) || 1;
+  const nx = I.nx / nl, ny = I.ny / nl, nz = I.nz / nl;
+  // a basis in the plate's plane
+  let ux = -nz, uy = 0, uz = nx;
+  if (ux * ux + uz * uz < 1e-4) { ux = 1; uy = 0; uz = 0; }
+  const ul = Math.hypot(ux, uy, uz); ux /= ul; uy /= ul; uz /= ul;
+  const wx = ny * uz - nz * uy, wy = nz * ux - nx * uz, wz = nx * uy - ny * ux;
+  // a direction in a cone of half-angle `cone` round the normal
+  let dx = 0, dy = 0, dz = 0;
+  const coneDir = (cone: number): void => {
+    const a = R() * TAU, t = cone * Math.sqrt(R()), st = Math.sin(t), ct = Math.cos(t);
+    dx = nx * ct + (ux * Math.cos(a) + wx * Math.sin(a)) * st;
+    dy = ny * ct + (uy * Math.cos(a) + wy * Math.sin(a)) * st;
+    dz = nz * ct + (uz * Math.cos(a) + wz * Math.sin(a)) * st;
+  };
+  const puffs = (n: number, cone: number, v0: number, v1: number, life0: number, life1: number, size1: number,
+    c0: Rgb, c1: Rgb, density: number, hot: number): void => {
+    for (let i = 0; i < n; i++) {
+      coneDir(cone);
+      const v = (v0 + (v1 - v0) * R()) * sq;
+      place(m, I.x + nx * 0.15, I.y + ny * 0.15, I.z + nz * 0.15, bo + R() * 0.02);
+      // driven out hard, stalled within a couple of metres by the air, then a little lift and the wind
+      move(m, dx * v, dy * v + 0.3, dz * v, 4.5, 0.3, 0.8, 0);
+      const life = life0 + (life1 - life0) * R();
+      shape(m, life, 0.25 * s * dk, size1 * (0.8 + 0.4 * R()) * s * dk, 2.6, R);
+      look(m, c0, c1, density, 0.0, 0.45);
+      book(m, 'burst', R, life);
+      heat(m, i < hot ? 0.5 : 0, 8);
+      C.media(m);
+    }
+  };
+  const chips = (n: number, cone: number, v0: number, v1: number, size: number, col: Rgb, hot: number,
+    shapeA: ChunkShape, shapeB: ChunkShape): void => {
+    for (let i = 0; i < n; i++) {
+      coneDir(cone);
+      const v = v0 + (v1 - v0) * R();
+      chunk(C, i % 2 === 0 ? shapeA : shapeB, I.x + nx * 0.05, I.y + ny * 0.05, I.z + nz * 0.05, dx * v, dy * v + 2, dz * v,
+        size * (0.6 + 0.8 * R()) * sq * dk, col, 8 + R() * 5, i < hot ? 0.9 : 0.25 * R(), bo + R() * 0.02);
+    }
+  };
+  const darkSpall: Rgb = [SOOT[0] * 1.1, SOOT[1] * 1.1, SOOT[2] * 1.1];
+  switch (I.kind) {
+    case 'pen': {
+      // the jet of spall and armour dust out of the hole, dark at its heart
+      puffs(7, 0.24, 8, 15, 1.6, 2.4, 1.1, darkSpall, mix3(SMOKE_AGED, SOOT, 0.35), 0.85, 2);
+      // the thin armour-dust ring round the hole, in the plate's plane
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * TAU + (R() - 0.5) * 0.8;
+        const rx = ux * Math.cos(a) + wx * Math.sin(a), ry = uy * Math.cos(a) + wy * Math.sin(a);
+        const rz = uz * Math.cos(a) + wz * Math.sin(a);
+        const v = (3 + 2.5 * R()) * sq;
+        place(m, I.x + rx * 0.25 + nx * 0.1, I.y + ry * 0.25 + ny * 0.1, I.z + rz * 0.25 + nz * 0.1, bo + 0.01);
+        move(m, rx * v + nx * 0.6, ry * v + ny * 0.6 + 0.3, rz * v + nz * 0.6, 3.5, 0.2, 0.9, 0);
+        const life = 1.0 + 0.6 * R();
+        shape(m, life, 0.2 * s * dk, (0.8 + 0.4 * R()) * s * dk, 2.2, R);
+        look(m, mix3(SMOKE_AGED, BLAST_RESIDUE, 0.4), SMOKE_AGED, 0.35, 0.0, 0.4);
+        book(m, 'burst', R, life, 2);
+        heat(m, 0, 1);
+        C.media(m);
+      }
+      chips(6, 0.45, 9, 18, 0.07, STEEL, 2, 'shard', 'sheet');
+      break;
+    }
+    case 'nonpen':
+      // paint, scale and dust knocked off the face
+      puffs(2, 0.5, 3, 5, 1.1, 1.5, 0.8, mix3(SMOKE_AGED, BLAST_RESIDUE, 0.3), SMOKE_AGED, 0.5, 0);
+      chips(2, 0.7, 5, 10, 0.04, STEEL, 0, 'shard', 'shard');
+      break;
+    case 'ricochet':
+      puffs(1, 0.6, 2, 3, 0.8, 1.1, 0.6, SMOKE_AGED, SMOKE_AGED, 0.35, 0);
+      break;
+    case 'spaced':
+      puffs(2, 0.4, 4, 7, 1.3, 1.8, 0.9, BLAST_RESIDUE, mix3(BLAST_RESIDUE, SMOKE_AGED, 0.5), 0.55, 1);
+      chips(3, 0.6, 6, 12, 0.08, STEEL, 1, 'sheet', 'sheet');
+      break;
+    case 'era':
+      // the cassette's charge: a dark blast thrown off the plate, its fragments
+      puffs(4, 0.35, 6, 12, 2.0, 3.0, 1.7, SOOT, mix3(SOOT, SMOKE_AGED, 0.45), 0.9, 2);
+      chips(6, 0.6, 10, 18, 0.12, ERA_CASE, 3, 'sheet', 'brick');
+      break;
+  }
+}
+
 /** Fragments of a nearby burst striking a hull: a few sparks and a puff of paint and dust off the plate. */
 export function fragmentStrike(C: BlastContext, x: number, y: number, z: number, nx: number, ny: number, nz: number,
   bo = 0): void {

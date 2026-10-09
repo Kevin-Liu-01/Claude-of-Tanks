@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { VOLUME_ATLAS, createVolumeMedia, makeVolumePuff, volumePositionAt } from './volumeMedia.ts';
 import { createDebrisChunks, makeChunkPiece, CHUNK_SHAPES } from './debrisChunks.ts';
 import { groundBurst, kineticStrike, muzzleBlast, killFireball, columnPuff, dustSurge, isExplosive, blastScale, craterEjecta,
-  trackSkirt, exhaustPuff } from './blastRecipes.ts';
+  trackSkirt, exhaustPuff, armorHit } from './blastRecipes.ts';
 import { SURFACE_KINDS, SURFACE_LOOKS, classifyTerrain, surfaceForMaterial, linearHex } from './surfaceLooks.ts';
 import { mulberry32 } from './particles.ts';
 import { structureStageFx, propBreakFx, lookForStruckKind, breachBlowFor, lookFromAnatomy, wallStrike, sectionFallFx } from './structureFx.ts';
@@ -299,6 +299,27 @@ function captureContext(seed) {
   kineticStrike(k.ctx, { x: 0, y: 0, z: 0, dx: 1, dy: -0.1, dz: 0, caliberMm: 120, munition: 'kinetic', surface: 'soil' });
   assert.equal(k.log.flash + k.log.fire, 0, 'a kinetic strike neither flashes nor burns');
   assert.ok(k.log.media.length > 0 && k.log.chunk.length > 0, 'it throws soil and clods');
+  // (owner 2026-10-08: every effect on the media layer) a kinetic round on armour, past the caller's pop and sparks: a
+  // penetration's dark spall jet along the plate's normal that stalls and drifts, the armour-dust ring in the plate's
+  // plane, lit steel chips that fall and lie; a non-penetration's pale puff; ERA's dark blast and cassette fragments
+  {
+    const hit = (kind) => { const c = captureContext(11); armorHit(c.ctx, { x: 0, y: 1.5, z: 0, nx: 1, ny: 0, nz: 0, caliberMm: 120, kind }); return c.log; };
+    const lumOf = (m) => 0.2126 * m.r0 + 0.7152 * m.g0 + 0.0722 * m.b0;
+    const pen = hit('pen');
+    const jet = pen.media.filter((m) => m.vx > 4 && Math.hypot(m.vy - 0.3, m.vz) <= Math.tan(0.25) * m.vx + 1e-6);
+    assert.ok(jet.length >= 7 && jet.every((m) => lumOf(m) < 0.06 && m.drag >= 4 && m.life >= 1.5), `a penetration's dark spall jet (${jet.length})`);
+    const ring = pen.media.filter((m) => Math.abs(m.vx) < 1.2 && Math.hypot(m.vy, m.vz) > 2);
+    assert.equal(ring.length, 6, 'the armour-dust ring in the plate\'s plane');
+    assert.ok(pen.chunk.length >= 6 && pen.chunk.every((k) => k.life >= 8 && k.vx > 0), 'lit steel chips thrown off the plate that lie');
+    assert.ok(pen.chunk.filter((k) => k.heat > 0.5).length === 2, 'two of them hot');
+    const non = hit('nonpen');
+    assert.ok(non.media.length === 2 && non.media.every((m) => lumOf(m) > 0.1), 'a non-penetration\'s pale puff');
+    assert.ok(hit('ricochet').media.length === 1 && hit('ricochet').chunk.length === 0, 'a ricochet\'s faint scuff');
+    const era = hit('era');
+    assert.ok(era.media.length === 4 && era.media.every((m) => lumOf(m) < 0.06), 'ERA\'s dark blast');
+    assert.ok(era.chunk.length === 6 && era.chunk.some((k) => k.shape === 'brick'), 'and its cassette\'s fragments');
+    assert.deepEqual(hit('pen'), hit('pen'), 'seeded: the same hit twice');
+  }
   const mg = captureContext(9);
   kineticStrike(mg.ctx, { x: 0, y: 0, z: 0, dx: 1, dy: 0, dz: 0, caliberMm: 12.7, munition: 'small_arms', surface: 'soil' });
   assert.ok(mg.log.media.length <= 3 && Math.max(...mg.log.media.map((m) => m.size1)) < 1, 'a bullet kicks a fist of dust');
