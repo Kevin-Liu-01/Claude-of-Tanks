@@ -12,6 +12,7 @@ import {
   createHeightFieldAsync,
   buildTerrainMeshes,
   buildTerrainMeshesAsync,
+  finishHorizonRingAsync,
   sampleSplatNoise,
 } from './terrain.ts';
 // The visual horizon installs the ring the terrain meshes are built with (horizonRingHook.ts).
@@ -35,12 +36,15 @@ import {
 } from './props.ts';
 import { createGroundLitter, groundLitterProfile, type GroundLitterConfig } from './groundLitter.ts';
 import type { CrushableRecord } from './props.ts';
-import { getMapConfig, type BattlefieldMapConfig } from './maps/index.ts';
+import type { BattlefieldMapConfig } from './maps/index.ts';
 import { createGroundCoverClearance } from './groundCoverClearance.ts';
 import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
 import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
+import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
+import { supplyHorizonRing, withdrawHorizonRing } from './horizonRingHook.ts';
+import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
 import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
 import { startSurfacePaints } from './surfacePaintPrefetch.ts';
 import {
@@ -57,9 +61,6 @@ type EngineContext = Parameters<typeof buildTerrainMeshes>[1] &
   /** Releases a lit material from the cascaded-shadow setup (main.ts engine context). */
   releaseShadowMaterial?(material: THREE.Material): void;
 };
-
-/** The catalog config plus the runtime-only assault-trenches flag. */
-type BuildMapConfig = BattlefieldMapConfig & { assaultTrenches?: boolean };
 
 interface WorldOptions {
   mapId?: string;
@@ -257,9 +258,7 @@ export function createMap(
   { mapId = 'verdant', seed = 1337, terrainVariant }: WorldOptions = {},
 ): WorldRuntime {
   const engineCtx = engineContext as EngineContext;
-  const config: BuildMapConfig = terrainVariant === 'assault-trenches'
-    ? { ...getMapConfig(mapId), assaultTrenches: true }
-    : getMapConfig(mapId);
+  const config: BuildMapConfig = worldBuildConfig(mapId, terrainVariant);
   const heightField = createHeightField(seed, config);
   const terrain = requireTerrainRoot(buildTerrainMeshes(heightField, engineCtx, config));
   const vegetation = createVegetation(heightField, engineCtx, 2001, config);
@@ -287,9 +286,7 @@ export async function createMapAsync(
   { fineSlices = false }: WorldSlicingOptions = {},
 ): Promise<WorldRuntime> {
   const engineCtx = engineContext as EngineContext;
-  const config: BuildMapConfig = terrainVariant === 'assault-trenches'
-    ? { ...getMapConfig(mapId), assaultTrenches: true }
-    : getMapConfig(mapId);
+  const config: BuildMapConfig = worldBuildConfig(mapId, terrainVariant);
   // Transfer/decompress the exact authored sandbag and utility-pole streams
   // while terrain and vegetation occupy the main thread. Previously their
   // 1.2 MB numeric JSON lived inside the map JavaScript chunk and had to be
@@ -302,6 +299,13 @@ export async function createMapAsync(
   const wreckPrefetch = seed === 1337 ? startPlannedWreckBakes(mapId, terrainVariant) : null;
   // (and the props build's fixed-input prints — the straw's, the dry-stone walls' — in the surface paint worker)
   const surfacePrefetch = typeof Worker === 'undefined' ? null : startSurfacePaints(plannedSurfacePaints(config));
+  // (and the horizon ring's geometry pipeline in its own worker, supplied to the terrain build through the ring's hook and
+  // taken after its chunks; a rematch on the same map takes the kept ring instead — horizonRingPrefetch.ts)
+  const ringSource = startHorizonRingBuild({
+    mapId, terrainVariant: terrainVariant ?? null, fieldSeed: seed, ringSeed: 1337, vista: getDeviceTier() !== 'mobile',
+    debugColors: !!(globalThis as typeof globalThis & { __HORIZON_DEBUG?: boolean }).__HORIZON_DEBUG,
+  });
+  supplyHorizonRing(ringSource);
   let completed = false;
   try {
     const step = async (label: string, fraction: number): Promise<void> => {
@@ -347,6 +351,11 @@ export async function createMapAsync(
         startMs: propModelsAwaitStart, endMs: propModelsAwaitEnd };
     }
     await step('Sealing the battlefield', 0.96);
+    // (the time-to-battle lane, 2026-10-08) the horizon ring last: the worker started with this build has had the whole
+    // build to answer (terrain.ts finishHorizonRingAsync: built here meanwhile if it has not); its source and timing for
+    // the load probes, beside the terrain's streaming record
+    await finishHorizonRingAsync(terrain, sub('Sealing the battlefield', 0.96, 0.99), fineSlices);
+    terrain.userData.horizonRingLoad = ringSource.stats;
     const world = assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
     world._buildDetail = {
       vegetation: vegetation._buildDetail || null,
@@ -359,6 +368,8 @@ export async function createMapAsync(
     // the planned wreck bakes nobody took (a cancelled build, a request the plan did not hold) and their worker go
     wreckPrefetch?.dispose();
     surfacePrefetch?.dispose();
+    withdrawHorizonRing(ringSource);
+    ringSource.dispose();
     if (!completed) {
       try { terrainSources.cancel?.(); } catch { /* preserve the original build failure */ }
     }

@@ -1392,6 +1392,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/edgeWater.selftest.mjs',
   'src/world/autumnHorizonSeam.selftest.mjs',
     'src/world/horizonSeamSampler.selftest.mjs', // the time-to-battle lane (2026-10-08): the seam byte for byte with half the samples
+    'src/world/horizonRingWorker.selftest.mjs', // the time-to-battle lane (2026-10-08): the ring's pipeline in a worker, worker against inline on every map
     'src/world/horizonMesaTexture.selftest.mjs',
     'src/world/horizonNoiseSampling.selftest.mjs',
     'src/world/horizonMesaSurface.selftest.mjs',

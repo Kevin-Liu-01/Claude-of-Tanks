@@ -21,9 +21,9 @@ import {
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalette, sourcedTerrainLayerPlanned, sourcedTerrainLayerSet,
   type TerrainPaletteId, type TerrainSourcePreparation } from './sourcedTextures.ts';
-import type { HorizonMapConfig } from './maps/horizon.ts';
+import type { HorizonMapConfig, HorizonRingPipeline } from './maps/horizon.ts';
 // The visual horizon installs its ring (horizonRingHook.ts); the authority's height field must not carry it.
-import { horizonRing, type HorizonRing } from './horizonRingHook.ts';
+import { horizonRing, horizonRingSupplyFor, type HorizonRing } from './horizonRingHook.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { onPresetChange, resolvePresetName, texSize } from '../engine/quality.ts';
 import { terrainWallSkyLift } from '../engine/groundBounce.ts';
@@ -7649,6 +7649,14 @@ export function buildTerrainMeshes(
   const g = terrainBuildSteps(heightField, engineCtx, cfg);
   let r = g.next();
   while (!r.done) r = g.next();
+  // (2026-10-08) a supplied build left its horizon ring for the world build's end (finishHorizonRingAsync); a synchronous
+  // build has no such end, so it finishes the ring here
+  const stage = r.value.userData.finishHorizonRing as (() => Generator<TerrainBuildProgress, void, void>) | undefined;
+  if (stage) {
+    delete r.value.userData.finishHorizonRing;
+    const steps = stage();
+    while (!steps.next().done) { /* drained */ }
+  }
   return r.value;
 }
 
@@ -7695,6 +7703,40 @@ export async function buildTerrainMeshesAsync(
   }
 }
 
+/**
+ * The world build's last terrain step (2026-10-08, the time-to-battle lane): the horizon ring a supplied build left on
+ * the terrain group (terrainBuildSteps: userData.finishHorizonRing), drained with the build's pacing; a no-op for any
+ * other group.
+ */
+export async function finishHorizonRingAsync(
+  group: THREE.Group, tick: TerrainBuildTick | null = null, fineSlices = false,
+): Promise<void> {
+  const stage = group.userData.finishHorizonRing as (() => Generator<TerrainBuildProgress, void, void>) | undefined;
+  if (!stage) return;
+  delete group.userData.finishHorizonRing;
+  const steps = stage();
+  let completed = false;
+  try {
+    let step = steps.next();
+    while (!step.done) {
+      if (tick && (fineSlices || step.value[2])) await tick(step.value[0], step.value[1]);
+      step = steps.next();
+    }
+    completed = true;
+  } finally {
+    // a cancelled build (its pacing threw): close the stage's private continuations
+    if (!completed) { try { steps.return?.(); } catch { /* preserve the original failure */ } }
+  }
+}
+
+// (buildHorizonRingSteps, the installed ring's builder, sits above the chunk section: d6103be04)
+/** The installed ring's geometry pipeline (the perf lane, 2026-10-08): the ring built where it stands. */
+function horizonRingGeometrySteps(
+  ...args: Parameters<HorizonRing['horizonRingGeometrySteps']>
+): ReturnType<HorizonRing['horizonRingGeometrySteps']> {
+  return horizonRing().horizonRingGeometrySteps(...args);
+}
+
 function* terrainBuildSteps(
   heightField: HeightField,
   engineCtx: TerrainEngineContext,
@@ -7704,15 +7746,6 @@ function* terrainBuildSteps(
 ): Generator<TerrainBuildProgress, THREE.Group, void> {
   const group = new THREE.Group();
   group.name = 'terrain';
-  // every ring face draws with this battlefield's terrain material (bindAutumnHorizonGround below, continuousGround)
-  const horizonSteps = buildHorizonRingSteps(engineCtx, cfg, 1337, heightField, { terrainBound: true });
-  let horizonStep = horizonSteps.next();
-  while (!horizonStep.done) {
-    yield [0, CHUNKS * CHUNKS + 2, false];
-    horizonStep = horizonSteps.next();
-  }
-  group.add(horizonStep.value);
-  yield [0, CHUNKS * CHUNKS + 2, true]; // horizon ring built — splat bake gets its own slice
   // round 40: where the square's water reaches the edge the ring opens to a sea apron (edgeWater.ts); the terrain
   // material renders those ring faces as open water and the shallow-water sheet continues over them
   const seaOpenings = cfg?.splat?.seaLake && !heightField._layout.terrain.frozenMarshes
@@ -7862,101 +7895,6 @@ function* terrainBuildSteps(
       };
     }
   }
-  // The continued coast uses the same strand distances as the playable shore.
-  // Leaving the ring's default attribute at zero made the sand/wrack band stop
-  // on an exact square even when the bank geometry was continuous.
-  if (shoreAt && horizonStep.value.userData.horizonRing) {
-    const geometry = horizonStep.value.geometry;
-    const position = geometry.getAttribute('position');
-    const shore = new Uint8Array(position.count);
-    for (let i = 0; i < position.count; i++) {
-      const metres = shoreAt(position.getX(i), position.getZ(i));
-      shore[i] = metres >= 32 ? 0 : 255 - Math.round(Math.max(0, metres) * (255 / 32));
-    }
-    geometry.setAttribute('shore', new THREE.BufferAttribute(shore, 1, true));
-  }
-  // The map-borders lane (2026-10-03): the roads that leave the square run on across the ring — the carriageway rides
-  // the ring's vertices as [signed offset from the exit line, presence] (terrain.ts roadExits); set before the seam's
-  // refinement, which carries every attribute into its new vertices
-  if (heightField._roadExitAt && horizonStep.value.userData.horizonRing) {
-    const geometry = horizonStep.value.geometry;
-    const position = geometry.getAttribute('position');
-    const exitAttr = new Float32Array(position.count * 2);
-    const hit: [number, number] = [0, 0];
-    // the exits as they lie on this ring (horizon.ts: each runs out at the foot of the ranges unless they open a pass)
-    const ringExits = (horizonStep.value.userData.horizonRing as { roadExits?: RoadExitsOnRing | null }).roadExits;
-    const exitAt = ringExits ? ringExits.at : heightField._roadExitAt;
-    let any = false;
-    for (let i = 0; i < position.count; i++) {
-      exitAt(position.getX(i), position.getZ(i), hit);
-      exitAttr[i * 2] = hit[0]; exitAttr[i * 2 + 1] = hit[1];
-      if (hit[1] > 0) any = true;
-    }
-    if (any) geometry.setAttribute('roadExit', new THREE.BufferAttribute(exitAttr, 2));
-  }
-  // The map-borders lane (2026-10-03, owner: "rolling ground with field patterns"): the farmland past the edge in
-  // parcels between the hedgerows — each ring vertex carries its field's crop, premultiplied (borderLandform.ts parcelTintAt)
-  if (heightField._borderParcelAt && horizonStep.value.userData.horizonRing) {
-    const geometry = horizonStep.value.geometry;
-    const position = geometry.getAttribute('position');
-    const tintAttr = new Float32Array(position.count * 4);
-    const tint: [number, number, number, number] = [0, 0, 0, 1];
-    let any = false;
-    for (let i = 0; i < position.count; i++) {
-      heightField._borderParcelAt(position.getX(i), position.getZ(i), tint);
-      tintAttr.set(tint, i * 4);
-      if (tint[3] < 1) any = true;
-    }
-    if (any) geometry.setAttribute('borderTint', new THREE.BufferAttribute(tintAttr, 4));
-  }
-  // ... and a railway's open line past the edge (terrain.ts railExitAt): its ballast rides the ring's vertices as
-  // [signed offset from the line, presence]
-  if (heightField._railExitAt && horizonStep.value.userData.horizonRing) {
-    const geometry = horizonStep.value.geometry;
-    const position = geometry.getAttribute('position');
-    const railAttr = new Float32Array(position.count * 2);
-    const hit: [number, number] = [0, 0];
-    let any = false;
-    for (let i = 0; i < position.count; i++) {
-      heightField._railExitAt(position.getX(i), position.getZ(i), hit, position.getY(i));
-      railAttr[i * 2] = hit[0]; railAttr[i * 2 + 1] = hit[1];
-      if (hit[1] > 0) any = true;
-    }
-    if (any) geometry.setAttribute('railExit', new THREE.BufferAttribute(railAttr, 2));
-  }
-  // ... and the farm tracks down some of the field boundaries (borderLandform.ts trackAt): per family the metres from the
-  // nearest track and its boundary, so the shader draws a 3 m dirt track beside the hedge
-  if (heightField._borderTrackAt && horizonStep.value.userData.horizonRing) {
-    const geometry = horizonStep.value.geometry;
-    const position = geometry.getAttribute('position');
-    const trackAttr = new Float32Array(position.count * 4);
-    const track: [number, number, number, number] = [0, 0, 0, 0];
-    let any = false;
-    for (let i = 0; i < position.count; i++) {
-      heightField._borderTrackAt(position.getX(i), position.getZ(i), track);
-      trackAttr.set(track, i * 4);
-      if (track[0] > 0) any = true;
-    }
-    if (any) geometry.setAttribute('borderTrack', new THREE.BufferAttribute(trackAttr, 4));
-  }
-  // All surrounding ground shares the live terrain material. Its distant
-  // detail is controlled by screen footprint, not a map-boundary switch.
-  {
-    const horizonMesh = horizonStep.value;
-    const ringInfo = horizonMesh.userData.horizonRing as { columns?: number; ridgeRow?: number } | undefined;
-    // only a real ring reports its topology; a horizon-less build (receipt sandboxes, headless audits) has no bands
-    if (ringInfo) {
-      bindAutumnHorizonGround(horizonMesh, mat, splatTextures, {
-        columns: ringInfo.columns ?? horizonRing().HORIZON_SEGMENTS, bands: Math.max(2, ringInfo.ridgeRow ?? 3),
-        continuousGround: true, ground: heightField,
-      });
-      // Curvature also controls turf moisture and ambient light. A missing
-      // attribute reset both at the map edge even with identical materials.
-      if (foldAt) continueHorizonFold(horizonMesh.geometry, foldAt);
-      // ground albedo mean → meadow tint (round 29); rock albedo mean → rock and scree tints (round 35)
-      void materialStep.value.sourcedReady?.then(() => refreshHorizonGroundTone(horizonMesh, splatTextures[0], splatTextures[4]));
-    }
-  }
   // Alternative LOD geometries are retained in `chunks` even when another
   // level is mounted on the mesh. Register the complete live set so world
   // eviction releases uploaded dormant buffers as well as the visible tree.
@@ -8014,6 +7952,142 @@ function* terrainBuildSteps(
     }
   }
   for (let cz = 0; cz < CHUNKS; cz++) yield* buildTerrainRow(cz);
+  // (the time-to-battle lane, 2026-10-08) the horizon ring: its geometry pipeline (maps/horizon.ts horizonRingGeometrySteps),
+  // then its material half, its attribute passes and its binding. A world build that supplies the ring through its hook
+  // (map.ts, horizonRingHook.ts: a worker started with the build, or the kept ring of a rematch — horizonRingPrefetch.ts)
+  // finishes it last, after the vegetation and the props (finishHorizonRingAsync), so the worker has the whole build to
+  // answer; nothing waits for it — the pipeline is built here meanwhile when it has not answered, and its answer is taken
+  // the moment it arrives. Any other build makes the ring here, after the chunks. The ring reads nothing the chunks, the
+  // water, the vegetation or the props write, and stays the terrain's first child: the same ring.
+  const ringSource = horizonRingSupplyFor(cfg);
+  function* horizonRingStage(): Generator<TerrainBuildProgress, void, void> {
+    let ringPipeline: HorizonRingPipeline | null = ringSource ? ringSource.take() : null;
+    if (ringSource && !ringPipeline) {
+      const pipelineSteps = horizonRingGeometrySteps(cfg, 1337, heightField, {
+        vista: ringSource.request.vista, debugColors: ringSource.request.debugColors,
+      });
+      let pipelineStep = pipelineSteps.next();
+      while (!pipelineStep.done) {
+        yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
+        // the worker answered meanwhile: its pipeline (the same arrays; the steps made here are dropped)
+        ringPipeline = ringSource.take();
+        if (ringPipeline) break;
+        pipelineStep = pipelineSteps.next();
+      }
+      if (!ringPipeline) {
+        ringPipeline = (pipelineStep as IteratorReturnResult<HorizonRingPipeline>).value;
+        ringSource.remember(ringPipeline);
+      }
+    }
+    // every ring face draws with this battlefield's terrain material (bindAutumnHorizonGround below, continuousGround)
+    const horizonSteps = buildHorizonRingSteps(engineCtx, cfg, 1337, heightField, { terrainBound: true, geometry: ringPipeline });
+    let horizonStep = horizonSteps.next();
+    while (!horizonStep.done) {
+      yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
+      horizonStep = horizonSteps.next();
+    }
+    group.add(horizonStep.value);
+    // (the terrain's first child, where it stood when it was built before the chunks)
+    group.children.unshift(group.children.pop()!);
+    yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, true]; // horizon ring built
+    // The continued coast uses the same strand distances as the playable shore.
+    // Leaving the ring's default attribute at zero made the sand/wrack band stop
+    // on an exact square even when the bank geometry was continuous.
+    if (shoreAt && horizonStep.value.userData.horizonRing) {
+      const geometry = horizonStep.value.geometry;
+      const position = geometry.getAttribute('position');
+      const shore = new Uint8Array(position.count);
+      for (let i = 0; i < position.count; i++) {
+        const metres = shoreAt(position.getX(i), position.getZ(i));
+        shore[i] = metres >= 32 ? 0 : 255 - Math.round(Math.max(0, metres) * (255 / 32));
+      }
+      geometry.setAttribute('shore', new THREE.BufferAttribute(shore, 1, true));
+    }
+    // The map-borders lane (2026-10-03): the roads that leave the square run on across the ring — the carriageway rides
+    // the ring's vertices as [signed offset from the exit line, presence] (terrain.ts roadExits); set before the seam's
+    // refinement, which carries every attribute into its new vertices
+    if (heightField._roadExitAt && horizonStep.value.userData.horizonRing) {
+      const geometry = horizonStep.value.geometry;
+      const position = geometry.getAttribute('position');
+      const exitAttr = new Float32Array(position.count * 2);
+      const hit: [number, number] = [0, 0];
+      // the exits as they lie on this ring (horizon.ts: each runs out at the foot of the ranges unless they open a pass)
+      const ringExits = (horizonStep.value.userData.horizonRing as { roadExits?: RoadExitsOnRing | null }).roadExits;
+      const exitAt = ringExits ? ringExits.at : heightField._roadExitAt;
+      let any = false;
+      for (let i = 0; i < position.count; i++) {
+        exitAt(position.getX(i), position.getZ(i), hit);
+        exitAttr[i * 2] = hit[0]; exitAttr[i * 2 + 1] = hit[1];
+        if (hit[1] > 0) any = true;
+      }
+      if (any) geometry.setAttribute('roadExit', new THREE.BufferAttribute(exitAttr, 2));
+    }
+    // The map-borders lane (2026-10-03, owner: "rolling ground with field patterns"): the farmland past the edge in
+    // parcels between the hedgerows — each ring vertex carries its field's crop, premultiplied (borderLandform.ts parcelTintAt)
+    if (heightField._borderParcelAt && horizonStep.value.userData.horizonRing) {
+      const geometry = horizonStep.value.geometry;
+      const position = geometry.getAttribute('position');
+      const tintAttr = new Float32Array(position.count * 4);
+      const tint: [number, number, number, number] = [0, 0, 0, 1];
+      let any = false;
+      for (let i = 0; i < position.count; i++) {
+        heightField._borderParcelAt(position.getX(i), position.getZ(i), tint);
+        tintAttr.set(tint, i * 4);
+        if (tint[3] < 1) any = true;
+      }
+      if (any) geometry.setAttribute('borderTint', new THREE.BufferAttribute(tintAttr, 4));
+    }
+    // ... and a railway's open line past the edge (terrain.ts railExitAt): its ballast rides the ring's vertices as
+    // [signed offset from the line, presence]
+    if (heightField._railExitAt && horizonStep.value.userData.horizonRing) {
+      const geometry = horizonStep.value.geometry;
+      const position = geometry.getAttribute('position');
+      const railAttr = new Float32Array(position.count * 2);
+      const hit: [number, number] = [0, 0];
+      let any = false;
+      for (let i = 0; i < position.count; i++) {
+        heightField._railExitAt(position.getX(i), position.getZ(i), hit, position.getY(i));
+        railAttr[i * 2] = hit[0]; railAttr[i * 2 + 1] = hit[1];
+        if (hit[1] > 0) any = true;
+      }
+      if (any) geometry.setAttribute('railExit', new THREE.BufferAttribute(railAttr, 2));
+    }
+    // ... and the farm tracks down some of the field boundaries (borderLandform.ts trackAt): per family the metres from the
+    // nearest track and its boundary, so the shader draws a 3 m dirt track beside the hedge
+    if (heightField._borderTrackAt && horizonStep.value.userData.horizonRing) {
+      const geometry = horizonStep.value.geometry;
+      const position = geometry.getAttribute('position');
+      const trackAttr = new Float32Array(position.count * 4);
+      const track: [number, number, number, number] = [0, 0, 0, 0];
+      let any = false;
+      for (let i = 0; i < position.count; i++) {
+        heightField._borderTrackAt(position.getX(i), position.getZ(i), track);
+        trackAttr.set(track, i * 4);
+        if (track[0] > 0) any = true;
+      }
+      if (any) geometry.setAttribute('borderTrack', new THREE.BufferAttribute(trackAttr, 4));
+    }
+    // All surrounding ground shares the live terrain material. Its distant
+    // detail is controlled by screen footprint, not a map-boundary switch.
+    {
+      const horizonMesh = horizonStep.value;
+      const ringInfo = horizonMesh.userData.horizonRing as { columns?: number; ridgeRow?: number } | undefined;
+      // only a real ring reports its topology; a horizon-less build (receipt sandboxes, headless audits) has no bands
+      if (ringInfo) {
+        bindAutumnHorizonGround(horizonMesh, mat, splatTextures, {
+          columns: ringInfo.columns ?? horizonRing().HORIZON_SEGMENTS, bands: Math.max(2, ringInfo.ridgeRow ?? 3),
+          continuousGround: true, ground: heightField,
+        });
+        // Curvature also controls turf moisture and ambient light. A missing
+        // attribute reset both at the map edge even with identical materials.
+        if (foldAt) continueHorizonFold(horizonMesh.geometry, foldAt);
+        // ground albedo mean → meadow tint (round 29); rock albedo mean → rock and scree tints (round 35)
+        void materialStep.value.sourcedReady?.then(() => refreshHorizonGroundTone(horizonMesh, splatTextures[0], splatTextures[4]));
+      }
+    }
+  }
+  if (ringSource) group.userData.finishHorizonRing = horizonRingStage;
+  else yield* horizonRingStage();
   if (cfg?.splat?.seaLake && !heightField._layout.terrain.frozenMarshes) {
     const waterSteps = shallowWaterGeometrySteps(heightField);
     let step = waterSteps.next();
