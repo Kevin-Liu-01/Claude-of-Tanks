@@ -81,6 +81,11 @@ export interface LightModel {
    * sun takes uniformly; a deck with gaps casts the rest as the cloud shade map's pattern (the sun out in its gaps).
    */
   deckClosure: number;
+  /**
+   * 2026-10-09 (the shadows lane): the share of the clear beam the deck passes where it is thickest (resolveDeckBeam;
+   * 0 for an open sky, a legacy rig or a thick deck) — a thin deck keeps a circumsolar glow an occluder hides.
+   */
+  deckBeam: number;
   /** Horizontal illuminance (luminance, light units) the exposure law meters. */
   illuminance: number;
   /** Linear exposure multiplier applied before the tone curve (post.ts). */
@@ -247,6 +252,7 @@ function legacyModel(preset: LightModelPreset): LightModel {
     groundRadiance: [0, 0, 0],
     overcast: resolveOvercast(preset),
     deckClosure: 1,
+    deckBeam: 0,
     illuminance: EXPOSURE_REFERENCE_ILLUMINANCE,
     exposure: lightTune('LEGACY_EXPOSURE', LEGACY_EXPOSURE) * (preset.postExposure ?? 1),
     whiteBalance: [1, 1, 1],

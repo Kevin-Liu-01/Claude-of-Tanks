@@ -395,6 +395,7 @@ function resolveGrounded(
       * avgIntensity * avgColor[c] * sinEl / (Math.PI * Math.max(envDiffuseGain, 1e-3)))) as unknown as Rgb,
     overcast,
     deckClosure: close,
+    deckBeam: thin,
     illuminance,
     exposure,
     whiteBalance: whiteBalanceGains(L.warmth ?? 0),
