@@ -77,9 +77,25 @@ export function readContainers(parts: Readonly<Record<string, readonly BufferGeo
       for (let i = 0; i < col.count; i++) { r += col.getX(i); gg += col.getY(i); b += col.getZ(i); }
       tint = [r / col.count, gg / col.count, b / col.count];
     }
-    out.push({ c: [ca * ax - cb * az, (y0 + y1) / 2, ca * az + cb * ax], a: long ? [-az, 0, ax] : [ax, 0, az], hl, hh: h / 2, hw, tint, up: y0 > 1 });
+    const c: Vec3 = [ca * ax - cb * az, (y0 + y1) / 2, ca * az + cb * ax];
+    // (dcore 2026-10-09, wave 294a: "re-emerges as one clean, square, grey-white corrugated block") a box whose livery
+    // is its atlas's (white vertex colours) or that has none would crush in plain grey-white steel: it takes a livery of
+    // the yard's own instead, picked by its place (the same on every peer)
+    if (!col || Math.min(tint[0], tint[1], tint[2]) > 0.7) tint = LIVERIES[liveryIndex(c)];
+    out.push({ c, a: long ? [-az, 0, ax] : [ax, 0, az], hl, hh: h / 2, hw, tint, up: y0 > 1 });
   }
   return out.length ? out : null;
+}
+
+/** Shipping liveries (linear): line blue, rust red, green, orange, slate, ochre, maroon, grey-green. */
+const LIVERIES: readonly Rgb[] = [
+  [0.07, 0.19, 0.39], [0.25, 0.045, 0.024], [0.05, 0.15, 0.042], [0.53, 0.14, 0.024], [0.11, 0.15, 0.17],
+  [0.48, 0.29, 0.042], [0.16, 0.024, 0.024], [0.13, 0.17, 0.11],
+];
+function liveryIndex(c: Vec3): number {
+  let h = 0x811c9dc5;
+  for (const v of [Math.round(c[0] * 10), Math.round(c[1] * 10), Math.round(c[2] * 10)]) { h ^= v & 0xffff; h = Math.imul(h, 0x01000193); h ^= v >>> 16; h = Math.imul(h, 0x01000193); }
+  return (h >>> 0) % LIVERIES.length;
 }
 
 export function containersOf(anatomy: StructureDamageAnatomy): readonly ContainerBox[] | null {
