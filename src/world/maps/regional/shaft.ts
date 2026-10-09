@@ -112,8 +112,12 @@ export function collapseShaft(anatomy: StructureDamageAnatomy, seed: number, out
   const top = (x: number, z: number): number => { const m = mound(x, z); return m + HEAP_LIFT_M * Math.max(0, Math.min(1, (m - 0.12) / 0.5)); };
   const slots = anatomy.rubble.filter((s) => s.share > 0.005);
   heapSkin(mesh, anatomy, slots, top, cx, cz, rng);
-  // 3. the fall: the drums along a line from the stump, out of the foot's reach
-  const ang = rng() * Math.PI * 2, axis: Vec3 = [Math.cos(ang), 0, Math.sin(ang)];
+  // 3. the fall: the drums along a line from the stump, out of the foot's reach — the line it toppled along when the
+  //    presentation names it (the blow's direction, body frame: structureStages structureTopple), else its own
+  const ang = rng() * Math.PI * 2;
+  const given = (out as Writers & { fallAxis?: [number, number] }).fallAxis;
+  const gl = given ? Math.hypot(given[0], given[1]) : 0;
+  const axis: Vec3 = given && gl > 1e-3 ? [given[0] / gl, 0, given[1] / gl] : [Math.cos(ang), 0, Math.sin(ang)];
   const foot = Math.max(b0.faces[0].width, b0.faces[1].width) / 2;
   let along = foot + 0.3 + rng() * 0.5, from = b0.y0 + stumpH + Math.max(0, mound(cx, cz));
   const wall: FractureSlot = b0.faces[0].layers[b0.faces[0].layers.length - 1] ?? anatomy.rubble[0];

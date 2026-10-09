@@ -332,7 +332,7 @@ export interface DebrisChunks {
 
 /** Capacities per shape (desktop); the phone tier halves them. (Round 7: a burst throws 100-300 clods that lie ~20 s.) */
 const CAPACITY: Readonly<Record<ChunkShape, number>> = Object.freeze({
-  clod: 1536, stone: 512, brick: 256, splinter: 192, shard: 192, sheet: 96,
+  clod: 1536, stone: 768, brick: 512, splinter: 256, shard: 256, sheet: 128,
 });
 
 export function createDebrisChunks(o: { seed: number; now: () => number; scene?: THREE.Scene | null; tier?: 'mobile' | 'desktop' }): DebrisChunks {

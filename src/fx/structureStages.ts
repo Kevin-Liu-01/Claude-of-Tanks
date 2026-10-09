@@ -31,7 +31,9 @@ import {
 } from '../world/destructionKit.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import { breachBlowFor } from './structureFx.ts';
-import { COLLAPSE_S, STAGE_RUN_TAG, collapseFrontTime, collapseWallHeight, holeOutlinePhase01, type StructureMask } from './structureMask.ts';
+import {
+  COLLAPSE_S, STAGE_RUN_TAG, collapseFrontTime, collapseWallHeight, holeOutlinePhase01, toppleLandS, type StructureMask,
+} from './structureMask.ts';
 import type { StructureDebris } from './structureDebris.ts';
 import type { StructureScars } from './structureScars.ts';
 
@@ -47,6 +49,38 @@ export interface StructureStages {
   reset(): void;
   /** receipts: buildings falling, part ranges flattened, spans whose original positions are kept, storeys dropping */
   stats(): { falling: number; flattened: number; kept: number; dropping: number };
+}
+
+/** A shaft's topple (structureMask toppleLandS): the hinge over its foot, the fall's world direction and its landing. */
+export interface StructureTopple {
+  hingeM: number;
+  dirX: number;
+  dirZ: number;
+  /** s after the blow: it lies on the ground and the kit's drums take its place */
+  landS: number;
+  /** how far along the ground it reaches from its foot (m) */
+  lengthM: number;
+}
+/** The hinge a shaft breaks at over its foot (the kit's stump stands 1.2 to 3.5 m: the shaft goes over above it). */
+const TOPPLE_HINGE_M = 1.5;
+/**
+ * A collapse that topples (dcore 2026-10-09): a shaft (the regional kit's stack, water tower, minaret or tower: its
+ * anatomy carries a shaft plan) goes over in the blow's direction (the event's; a blow without one, a direction of its
+ * own seed), about the leading edge of its foot; null for anything else, and after the P2 cascade (its bands are down).
+ */
+export function structureTopple(anatomy: StructureDamageSeam['anatomy'] | null | undefined, e: StructureStageEvent): StructureTopple | null {
+  if (!anatomy || (e as StructureStageEvent & { sections?: boolean }).sections === true) return null;
+  const plan = anatomy.kitPlan as { damage?: { shaft?: unknown } } | undefined;
+  if (!plan?.damage?.shaft) return null;
+  const H = Math.max(1, e.topY - e.baseY);
+  let dx = Number.isFinite(e.dirX) ? e.dirX : 0, dz = Number.isFinite(e.dirZ) ? e.dirZ : 0;
+  let dl = Math.hypot(dx, dz);
+  if (!(dl > 1e-3)) {
+    const ang = damageRng(damageSeed(anatomy.seed, 11))() * Math.PI * 2;
+    dx = Math.cos(ang); dz = Math.sin(ang); dl = 1;
+  }
+  const hingeM = Math.min(TOPPLE_HINGE_M, H * 0.2);
+  return { hingeM, dirX: dx / dl, dirZ: dz / dl, landS: toppleLandS(H, hingeM), lengthM: H - hingeM };
 }
 
 export interface StructureStagesOptions {
@@ -686,12 +720,14 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           yaw: a.placement.yaw } : { eaveM: 0, halfW: e.hw, halfD: e.hd, yaw: e.yaw };
         // after the P2 cascade (sections on) every storey is down already: what stands folds quickly under the final dust
         const cascaded = (e as StructureStageEvent & { sections?: boolean }).sections === true;
-        mask.collapse(e.structureId, o.now(), Math.max(1, e.topY - e.baseY), e.dirX, e.dirZ, e.cx, e.baseY, e.cz, settled, fall,
-          cascaded ? 0.25 : undefined);
+        // a shaft goes over whole in the blow's direction (structureTopple), not down its own front
+        const topple = structureTopple(a, e);
+        mask.collapse(e.structureId, o.now(), Math.max(1, e.topY - e.baseY), topple ? topple.dirX : e.dirX, topple ? topple.dirZ : e.dirZ,
+          e.cx, e.baseY, e.cz, settled, topple ? { ...fall, toppleHingeM: topple.hingeM } : fall, cascaded ? 0.25 : undefined);
         o.scars?.clearStructure(e.structureId);
         if (seam) {
           if (settled) seam.touchShadows();
-          else falling.push({ seam, until: o.now() + ((e as StructureStageEvent & { sections?: boolean }).sections === true ? 0.3 : COLLAPSE_S) });
+          else falling.push({ seam, until: o.now() + (cascaded ? 0.3 : topple ? topple.landS + 0.3 : COLLAPSE_S) });
         }
       }
       if (!seam) return;
@@ -712,8 +748,19 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         // after the P2 cascade the storeys threw their own pieces as they dropped: the kit lays its pile, stubs and
         // chimneys at once and throws none (its writer's capacity 0); otherwise the pile shows under the falling walls and
         // the walls' own pieces leave the crumble front
+        const topple = structureTopple(seam.anatomy, e);
         if ((e as StructureStageEvent & { sections?: boolean }).sections === true) {
           run(seam, 0, settled, (out) => seam.collapse(stageSeed(3), out), false, undefined, false, true);
+        } else if (topple) {
+          // a shaft: its stump, the heap round its foot and its drums along the fall line show as it lands, where it
+          // lies (the kit reads the fall's line, body frame, off its writers); no front, so no crumble
+          const { yaw } = seam.anatomy.placement;
+          const c = Math.cos(yaw), sn = Math.sin(yaw);
+          const axis: [number, number] = [topple.dirX * c - topple.dirZ * sn, topple.dirX * sn + topple.dirZ * c];
+          run(seam, topple.landS, settled, (out) => {
+            (out as DamageWriters & { fallAxis?: [number, number] }).fallAxis = axis;
+            return seam.collapse(stageSeed(3), out);
+          }, false);
         } else {
           run(seam, 0.7, settled, (out) => seam.collapse(stageSeed(3), out), false);
           if (!settled) crumble(seam, e);

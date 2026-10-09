@@ -67,6 +67,23 @@ export function collapseFrontTime(h: number, heightM: number): number {
   const k = Math.min(1, Math.max(0, 1 - h / Math.max(0.5, heightM)));
   return FRONT_T0 + FRONT_T * Math.pow(k, 1 / 1.5);
 }
+/**
+ * A shaft topples (dcore 2026-10-09, wave 294b: "the stack telescopes straight down into the ground... it never actually
+ * topples"): a stack, a water tower, a minaret or a tower breaks a metre or two over its foot and goes over whole, about
+ * the leading edge of its foot, in the blow's direction — slow at first, then fast (a rod falling about its base,
+ * θ(u) = 0.25 (cosh u - 1) + 0.05 u with u = ω (t - TOPPLE_T0), ω = √(1.5 g / L) for the length L over the hinge, ω no
+ * less than TOPPLE_MIN_OMEGA so a tall one lands within the fall); it lies at TOPPLE_LIE rad and the kit's broken drums
+ * take its place (structureStages lays them at the landing). The mask's F texel carries the hinge as -(1 + hinge m).
+ */
+export const TOPPLE_T0 = 0.15;
+const TOPPLE_U_LAND = 2.555;
+const TOPPLE_MIN_OMEGA = 0.82;
+export const TOPPLE_LIE = 1.5;
+/** A shaft's toppling, as the mask and the stages share it: when it lies on the ground (s after the blow). */
+export function toppleLandS(heightM: number, hingeM: number): number {
+  const omega = Math.max(TOPPLE_MIN_OMEGA, Math.sqrt(14.7 / Math.max(2, heightM - hingeM)));
+  return TOPPLE_T0 + TOPPLE_U_LAND / omega;
+}
 /** Added to a structure's tag on a stage builder's own runs (they fall with the building; holes never cut them). */
 export const STAGE_RUN_TAG = 32768;
 
@@ -121,12 +138,41 @@ vStructRoof = 0.0;` : ''}
     vStructHoles = stageRun ? 0.0 : SB.w;` : ''}
     if ( SA.x > 0.0 ) {
       float t = uStructClock - SA.x;
-      if ( t >= ${COLLAPSE_S.toFixed(2)} ) {
+      int fi = base + ${F_TEXEL};
+      vec4 SF = texelFetch( uStructMask, ivec2( fi % ${TEX_W}, fi / ${TEX_W} ), 0 );
+      // a shaft topples (F.x = -(1 + hinge)): it lies at its landing and the kit's drums take its place then
+      bool topple = SF.x < 0.0;
+      float hinge = -SF.x - 1.0;
+      float omega = max( ${TOPPLE_MIN_OMEGA.toFixed(3)}, sqrt( 14.7 / max( 2.0, SA.y - hinge ) ) );
+      float endT = topple ? ${TOPPLE_T0.toFixed(3)} + ${TOPPLE_U_LAND.toFixed(3)} / omega + 0.12 : ${COLLAPSE_S.toFixed(2)};
+      if ( t >= endT ) {
         // down: every vertex onto the pivot (the stubs and the pile are the stage builder's own meshes)
         transformed = ( inverse( sw ) * vec4( SB.xyz, 1.0 ) ).xyz;
+      } else if ( t > 0.0 && topple ) {
+        // over about the leading edge of its foot, toward the blow (A.zw); the upper courses lag behind a little and
+        // break, so the shaft bends as it goes; it settles onto the ground as it lands
+        vec3 piv = SB.xyz;
+        vec3 p = wp - piv;
+        vec2 d = vec2( SA.z, SA.w );
+        if ( dot( d, d ) < 0.25 ) d = vec2( 1.0, 0.0 );
+        d = normalize( d );
+        float q = p.y - hinge;
+        if ( q > 0.0 ) {
+          float e = max( SF.y, SF.z );
+          float s0 = dot( p.xz, d ) - e;
+          vec2 lat = p.xz - d * dot( p.xz, d );
+          float u = omega * max( 0.0, t - ${TOPPLE_T0.toFixed(3)} );
+          float th = min( ${TOPPLE_LIE.toFixed(2)}, 0.25 * ( cosh( u ) - 1.0 ) + 0.05 * u );
+          float L = max( 2.0, SA.y - hinge );
+          th = min( ${TOPPLE_LIE.toFixed(2)} + 0.06, th * ( 1.0 + 0.1 * smoothstep( 0.5 * L, L, q ) ) );
+          float c = cos( th ), sn = sin( th );
+          float s1 = s0 * c + q * sn;
+          float q1 = q * c - s0 * sn;
+          float sink = hinge * smoothstep( 0.55, 1.0, th / ${TOPPLE_LIE.toFixed(2)} );
+          p = vec3( lat.x + d.x * ( s1 + e ), hinge + q1 - sink, lat.y + d.y * ( s1 + e ) );
+          transformed += inverse( mat3( sw ) ) * ( piv + p - wp );
+        }
       } else if ( t > 0.0 ) {
-        int fi = base + ${F_TEXEL};
-        vec4 SF = texelFetch( uStructMask, ivec2( fi % ${TEX_W}, fi / ${TEX_W} ), 0 );
         float H = SA.y;
         vec3 piv = SB.xyz;
         vec3 p = wp - piv;
@@ -236,7 +282,7 @@ export interface StructureMask {
    *  eaves at 0.8 of the height, the roof's sag even). */
   collapse(structureId: number, startS: number, heightM: number, dirX: number, dirZ: number,
     pivotX: number, baseY: number, pivotZ: number, settled?: boolean,
-    fall?: { eaveM: number; halfW: number; halfD: number; yaw: number }, quickS?: number): void;
+    fall?: { eaveM: number; halfW: number; halfD: number; yaw: number; toppleHingeM?: number }, quickS?: number): void;
   /**
    * A hole through the structure: the builder's cut in the world (centre, radius m, the face's outward normal, depth m
    * into the wall, m outside it), in the next of its MAX_HOLES slots (a ring: a fifth hole replaces the first).
@@ -327,7 +373,9 @@ export function createStructureMask(capacity = 4096, { holes = true }: { holes?:
       data[o + 4] = pivotX; data[o + 5] = baseY; data[o + 6] = pivotZ;
       touch(t, 2);
       const f = (t + F_TEXEL) * 4;
-      data[f] = fall && fall.eaveM > 0 ? Math.min(fall.eaveM, Math.max(0.5, heightM)) : 0;
+      // a shaft's topple carries its hinge as -(1 + hinge m) (no roof rides a shaft's front: it goes over whole)
+      data[f] = fall && fall.toppleHingeM !== undefined && fall.toppleHingeM >= 0 ? -(1 + fall.toppleHingeM)
+        : fall && fall.eaveM > 0 ? Math.min(fall.eaveM, Math.max(0.5, heightM)) : 0;
       data[f + 1] = fall ? Math.max(0.5, fall.halfW) : 0;
       data[f + 2] = fall ? Math.max(0.5, fall.halfD) : 0;
       data[f + 3] = fall ? fall.yaw : 0;

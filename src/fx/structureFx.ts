@@ -236,7 +236,7 @@ function piece(C: BlastContext, look: StructureLook, x: number, y: number, z: nu
  * or null for the masonry fallback.
  */
 export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: StructureLook | null, crumbled = false,
-  eaveM: number | null = null): void {
+  eaveM: number | null = null, topple: ToppleFx | null = null): void {
   if (e.settled) return;
   const L = look ?? FALLBACK_LOOK;
   const R = C.rand;
@@ -268,11 +268,12 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     for (let i = 0; i < pieces; i++) {
       const a = R() * TAU, v = (3 + R() * 7) * k;
       piece(C, L, e.x, e.y, e.z, -dirX * v * 0.7 + Math.cos(a) * v * 0.4, 1.5 + R() * 4, -dirZ * v * 0.7 + Math.sin(a) * v * 0.4,
-        0.08 + R() * (breach ? 0.3 : 0.16), 3 + R() * 2, R() * 0.06);
+        0.08 + R() * (breach ? 0.3 : 0.16), 14 + R() * 6, R() * 0.06);
     }
     return;
   }
   if (e.stage !== 'collapsed') return;
+  if (topple) { toppleFx(C, e, L, dust, topple); return; }
   // --- the collapse (round 7, wave 277: "the dust rises afterwards instead of coming out of a falling structure", "cream
   // rather than brick-tinged", "round balls and translucent blue-grey cards"). The mask drops the roof into the building
   // and brings the walls down from the top along the crumble front (structureMask collapseFront, ~3.5 s), the stages
@@ -363,6 +364,69 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     const life = 8 + R() * 3;
     puff(C, wx, e.baseY + Math.max(0.6, collapseFront(at, wallH) * 0.6), wz, (R() - 0.5) * 1.2, 0.6 + R() * 0.6, (R() - 0.5) * 1.2,
       1.3, 0.35 + R() * 0.3, 0.9, life, 0.22 * span * dk, (0.42 + R() * 0.14) * span * dk, tintDark, tinted, 0.6, life, 2, at);
+  }
+}
+
+/** A shaft's fall as the stages lay it (structureStages structureTopple): its world direction, landing and reach. */
+export interface ToppleFx { dirX: number; dirZ: number; landS: number; lengthM: number; hingeM: number }
+
+/**
+ * A shaft goes over (dcore 2026-10-09, wave 294b: "the stack telescopes straight down... the dust is a small white cotton
+ * puff at the base"): its foot blows out low as the blow breaks it, a little grit streams off it as it swings, and as it
+ * lands it throws one long wall of dust up off the whole fall line, rolling out to both sides and rising slowly, with
+ * its broken courses bouncing out along the line. In the shaft's own colour.
+ */
+function toppleFx(C: BlastContext, e: StructureStageEvent, L: StructureLook, powder: Rgb, f: ToppleFx): void {
+  const R = C.rand;
+  const tinted = brickDust(L, powder, _tint);
+  const dark: Rgb = [tinted[0] * 0.62, tinted[1] * 0.6, tinted[2] * 0.58];
+  const dk = C.distBoost(e.cx, e.baseY, e.cz);
+  const dx = f.dirX, dz = f.dirZ, tx = -dz, tz = dx;
+  const foot = Math.max(1, Math.max(e.hw, e.hd));
+  // 1. the foot blows out: low and outward, most of it away from the blow's side
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * TAU + R() * 0.6;
+    const ox = Math.cos(a), oz = Math.sin(a);
+    const v = 2.5 + R() * 2.5 + Math.max(0, ox * dx + oz * dz) * 2;
+    const life = 6 + R() * 2;
+    puff(C, e.cx + ox * foot, e.baseY + 0.6 + R() * f.hingeM, e.cz + oz * foot, ox * v, 0.4 + R() * 0.5, oz * v, 2.0, 0.15,
+      0.9, life, 1.0 * dk, (3.2 + R() * 1.4) * dk, dark, tinted, 0.6, life, 1, R() * 0.12, 1.4 + R() * 0.4);
+  }
+  // 2. grit off the swinging shaft, dropping behind it along the line
+  for (let i = 0; i < 5; i++) {
+    const along = foot + (0.2 + 0.6 * R()) * f.lengthM * 0.6;
+    const life = 4 + R() * 1.5;
+    puff(C, e.cx + dx * along * 0.5, e.baseY + f.hingeM + f.lengthM * (0.3 + 0.4 * R()), e.cz + dz * along * 0.5,
+      dx * 1.2, -1.2 - R(), dz * 1.2, 1.8, 0.05, 0.9, life, 0.6 * dk, (2.2 + R()) * dk, tinted, tinted, 0.35, life, 1,
+      f.landS * (0.45 + 0.35 * R()));
+  }
+  // 3. the landing: one long wall of dust up off the whole line, rolling out to both sides, rising and spreading slowly
+  const n = Math.max(5, Math.round(f.lengthM / 2.2));
+  for (let i = 0; i < n; i++) {
+    const along = foot + ((i + R() * 0.6) / n) * f.lengthM;
+    const x = e.cx + dx * along, z = e.cz + dz * along;
+    const gy = C.groundY(x, z);
+    for (const side of [-1, 1]) {
+      const v = 3 + R() * 3;
+      const life = 9 + R() * 4;
+      puff(C, x + tx * side * 0.8, gy + 0.7, z + tz * side * 0.8, tx * side * v + dx * (R() - 0.3) * 2, 0.5 + R() * 0.6,
+        tz * side * v + dz * (R() - 0.3) * 2, 1.9, 0.3 + R() * 0.25, 0.9, life, 1.6 * dk, (5.5 + R() * 2.5) * dk,
+        dark, tinted, 0.62, life, 1, f.landS + (along / Math.max(1, f.lengthM + foot)) * 0.12 + R() * 0.1, 1.6 + R() * 0.5);
+    }
+    // the cloud's body rising off the line, slower and lighter
+    const life = 12 + R() * 4;
+    puff(C, x, gy + 1.2, z, (R() - 0.5) * 0.8, 0.7 + R() * 0.5, (R() - 0.5) * 0.8, 1.2, 0.5 + R() * 0.3, 1.0, life,
+      2.0 * dk, (7 + R() * 3) * dk, tinted, tinted, 0.42, life, 2, f.landS + 0.3 + R() * 0.5);
+  }
+  // 4. its broken courses bouncing out along the line as it lands
+  const pieces = Math.round(Math.min(48, 10 + f.lengthM * 1.2));
+  for (let i = 0; i < pieces; i++) {
+    const along = foot + R() * f.lengthM;
+    const x = e.cx + dx * along, z = e.cz + dz * along;
+    const v = 2 + R() * 5;
+    const side = R() < 0.5 ? -1 : 1;
+    piece(C, L, x, C.groundY(x, z) + 0.6, z, tx * side * v * 0.6 + dx * v * 0.5, 2 + R() * 4, tz * side * v * 0.6 + dz * v * 0.5,
+      0.12 + R() * 0.3, 16 + R() * 6, f.landS + R() * 0.1);
   }
 }
 
@@ -464,7 +528,10 @@ export function wallStrike(C: BlastContext, x: number, y: number, z: number, nx:
     lp.alpha = 1; lp.grav = 0; lp.birthOffset = bo;
     C.flash(lp);
     // (b4: the struck wall flooded orange from a light a metre off it) the light stands off the face
-    C.lightPulse(x + nx * 1.6, y + 0.5, z + nz * 1.6, Math.min(1.3, 0.4 + 0.3 * k), 0);
+    // (dcore 2026-10-09, waves 294a/b: "an orange light wash on an intact wall", lingering 2-11 s over a volley) a flash,
+    // not the kill light's 1.9 s decay: a fifth of a second, front-loaded, so the wall reads in its own colour again
+    // before the dust has spread
+    C.lightPulse(x + nx * 1.6, y + 0.5, z + nz * 1.6, Math.min(0.9, 0.3 + 0.25 * k), 0, 0.2);
     // the detonation's own fire and smoke on the face, as a ground burst has them: a hot billow cooling to residue in
     // half a second, then the residue's grey smoke drifting off
     for (let i = 0; i < 2; i++) {
@@ -499,7 +566,7 @@ export function wallStrike(C: BlastContext, x: number, y: number, z: number, nx:
   for (let i = 0; i < pieces; i++) {
     const v = (explosive ? 5 + R() * 9 : 3 + R() * 5) * Math.sqrt(k);
     piece(C, L, x + nx * 0.1, y + ny * 0.1, z + nz * 0.1, (nx + (R() - 0.5) * 0.9) * v, (ny + 0.3 + R() * 0.6) * v,
-      (nz + (R() - 0.5) * 0.9) * v, 0.05 + R() * (explosive ? 0.22 : 0.1), 2.5 + R() * 2, R() * 0.03);
+      (nz + (R() - 0.5) * 0.9) * v, 0.05 + R() * (explosive ? 0.22 : 0.1), 12 + R() * 6, R() * 0.03);
   }
 }
 

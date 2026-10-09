@@ -47,7 +47,7 @@ import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, markKindFor, type CraterClimate, type CraterMarks } from './craterMarks.ts';
 import { lookForStruckKind, lookFromAnatomy, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
 import { createStructureMask, type StructureMask } from './structureMask.ts';
-import { createStructureStages, type StructureStages } from './structureStages.ts';
+import { createStructureStages, structureTopple, type StructureStages } from './structureStages.ts';
 import { createStructureScars, type StructureScars } from './structureScars.ts';
 import { createStructureDebris, type StructureDebris } from './structureDebris.ts';
 import type { StructureDamageSeam, StructureMaterialInfo } from '../world/structureDamageSeam.ts';
@@ -5215,7 +5215,11 @@ function* createFxSteps(
         if (e.settled) return;
         const anat = stageSeam?.anatomy;
         const eaveM = anat?.roof ? anat.placement.y + anat.roof.eaveY - e.baseY : null;
-        if (blast) structureStageFx(blast, e, lookOf(e.structureId), !!stages && !!stageSeam, eaveM);
+        if (blast) {
+          // a shaft goes over in the blow's direction (structureStages structureTopple): its dust falls along that line
+          const topple = e.stage === 'collapsed' ? structureTopple(anat, e) : null;
+          structureStageFx(blast, e, lookOf(e.structureId), !!stages && !!stageSeam, eaveM, topple);
+        }
         else phoneStageBeat(e);
       });
       bus.on(DESTRUCTION_BUS_EVENTS.breach, (payload) => {
