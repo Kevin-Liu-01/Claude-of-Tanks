@@ -184,7 +184,9 @@ assert.match(hud,
 assert.doesNotMatch(hud, /cot-bounce|showBounceMessage|BOUNCE_TEXT/,
   'ricochets must not create a second generic toast beside the hit marker and combat record');
 assert.match(hud,
-  /if \(hit\.damage > 0\)[\s\S]*document\.body\.classList\.contains\('cot-touch-layout'\)[\s\S]*outcome\.label[\s\S]*else \{ d\.remove\(\); return; \}/,
+  // (2026-10-09: main's rapid-fire consolidation, 7095d2058, returns before a desktop zero-damage label is made; the
+  // touch layout's one compact outcome label is painted in the zero-damage branch)
+  /if \(!\(hit\.damage > 0\) && !document\.body\.classList\.contains\('cot-touch-layout'\)\) return;[\s\S]*if \(hit\.damage > 0\)[\s\S]*\} else \{[\s\S]*outcome\.label/,
   'desktop zero-damage results must use the ballistic card only while touch retains one compact impact label');
 assert.doesNotMatch(hud, /d\.textContent = '(?:RICOCHET|NO PENETRATION|ABSORBED)'/,
   'HUD result copy must come from the shared hit-outcome registry');
