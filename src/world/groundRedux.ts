@@ -181,8 +181,11 @@ const ARID: Omit<GroundReduxProfile, 'grass'> = {
 };
 // ground lane (2026-10-03, the gauntlet: "a featureless grey-white plane... no drifts, crust, tracks or depth"): the
 // wind-carved sastrugi and drift waves read under the camera (snowRipple 0.16 → 0.26)
+// (2026-10-07, wave 182's Frosthollow bird: the folds were the open snow's largest albedo pattern — its hollows a few per
+// cent darker and tinted green by the turf's moisture law) a snow-filled hollow is not damp ground: no fold moisture on the
+// snow maps; the hollows keep their occlusion (foldAO) and the crests their bleaching
 const SNOW: Omit<GroundReduxProfile, 'grass'> = {
-  ...TEMPERATE, heightBlend: 0.5, glint: 0.9, snowRipple: 0.26, snowMacro: 0.6, foldMoist: 0.22, foldAO: 0.6, foldCrest: 0.3,
+  ...TEMPERATE, heightBlend: 0.5, glint: 0.9, snowRipple: 0.26, snowMacro: 0.6, foldMoist: 0, foldAO: 0.6, foldCrest: 0.3,
   lip: 0.4, verge: 0.3, rim: 0.5, rimTint: HOAR, midAlbedo: 0.6, driftEdge: 1.0, exposure: 0.7, climate: 'snow', patchwork: 0.6,
 };
 // ground lane (2026-10-03, Caldera's gauntlet: "dunes on a volcanic basin — one monotone tan-brown in uniform wind-ripple

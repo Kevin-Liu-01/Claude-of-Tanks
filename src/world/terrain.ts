@@ -5580,12 +5580,20 @@ void splatCompute() {
     // round 73b: the drift is a sawtooth — a long stoss slope climbing to a sharp lee crest that drops in a fifth of
     // the wavelength — so the drifts carry an EDGE (a shaded lee face under the lit crest line) that reads at range in
     // albedo where the normal has mipped away; round 73's sine was one more soft undulation
-    float dwave = fract(sph * 0.0669 * (0.78 + 0.44 * n2) + n1 * 0.9 + n2w * 0.5); // the wavelength swings ±22 % per ~320 m cell, the phase on two fields
+    float dFreq = 0.0669 * (0.78 + 0.44 * n2); // the wavelength swings ±22 % per ~320 m cell
+    float dwave = fract(sph * dFreq + n1 * 0.9 + n2w * 0.5); // the phase on two fields
     float drift = (dwave < 0.8 ? dwave / 0.8 : (1.0 - dwave) / 0.2) * 2.0 - 1.0;
+    // ground lane (2026-10-07, wave 182's Frosthollow bird under the overcast: "dark wiggly lines" over the open snow) —
+    // the lee band and the sawtooth's drop span a fifth of the wave (2–4 m), and out to 420 m they were drawn unfiltered:
+    // past a pixel or two of footprint they aliased into thin dark lines. Filtered to the pixel's footprint along the
+    // wind as the other far terms are (stripeAA): the drop eases to the wave's own fundamental (0.744 · cos, its crest at
+    // 0.65 of the wave), the wave to its mean as its whole period nears the pixel, the lee band to its mean (0.12)
+    float edgeAA = stripeAA(0.2 / dFreq, swind);
+    drift = mix(0.744 * cos(6.2832 * (dwave - 0.65)), drift, edgeAA) * stripeAA(1.0 / dFreq, swind);
     float driftD = 1.0 - smoothstep(120.0, 420.0, effDist);
     float sw = uReduxSnow.y * meadowG * (1.0 - fR) * (1.0 - triW) * (1.0 - roadCore);
     n.xy += swind * clamp(sast * 0.5 + drift * driftD * 0.9, -0.3, 0.3) * sw;
-    float lee = smoothstep(0.78, 0.84, dwave) * (1.0 - smoothstep(0.88, 0.98, dwave));
+    float lee = mix(0.12, smoothstep(0.78, 0.84, dwave) * (1.0 - smoothstep(0.88, 0.98, dwave)), edgeAA);
     a.rgb *= 1.0 + drift * 0.05 * sw * smoothstep(40.0, 120.0, effDist) * driftD;
     a.rgb *= 1.0 - lee * 0.13 * sw * uReduxC.w * smoothstep(15.0, 50.0, effDist) * (0.6 + 0.4 * n1hs);
   }
