@@ -242,7 +242,11 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   orchard: { ...TEMPERATE, scree: 0.2, grass: meadow(0.9, 0.8) },
   longleaf: { ...TEMPERATE, scree: 0.2, grass: savanna(0.7, 0.75) },
   mangrove: { ...COAST, swashPeriodS: 6.5, swashReachM: 3, swashStrength: 0.9, rimTint: MOSS, grass: reed(0.7, 1.5, 0.85, 0.45) },
-  saltwind: { ...COAST, swashPeriodS: 7.5, swashReachM: 4.5, swashStrength: 1.6, scree: 0.2, grass: dune(0.6) },
+  // (wave 177 and 2026-10-08's wave 287, Saltwind: "thick, evenly spaced and plastic-looking" blades over a "lush
+  // lawn-green carpet") the karst's sward is a garrigue's — the marram's backshore law (dense by the water, thin inland),
+  // its blades thinner and shorter, cured yellow-grey rather than grey-green
+  saltwind: { ...COAST, swashPeriodS: 7.5, swashReachM: 4.5, swashStrength: 1.6, scree: 0.2,
+    grass: { ...dune(0.5, 0.62), widthM: 0.032, base: [0.125, 0.115, 0.062], tip: [0.24, 0.22, 0.13], dry: [0.30, 0.26, 0.15] } },
   reservoir: { ...STILL_WATER, scree: 0.3, grass: meadow(0.8, 0.85, { reedMargin: 0.5 }) },
   mars: { ...ARID, foldMoist: 0, exposure: 0.5, grass: null },
   moon: { ...ARID, foldMoist: 0, exposure: 0, windRipple: 0, grass: null }, // airless regolith: no weathering follows the sun, no wind ripples

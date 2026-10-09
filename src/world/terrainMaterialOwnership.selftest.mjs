@@ -236,14 +236,17 @@ function checkLandUseCut(text) {
   // the camera only, Medium and High: the crop's own grain)
   // (2026-10-05, Ruinspires' hardstanding: its grain and stains, Medium and High; its cracks, High; Ironworks' slag,
   // ballast and gravel: their stones' grain, one read, High, near, on a works' ground)
-  assert.deepEqual(reads, ['groundSamp', 'nz', 'nz', 'nz', 'nz', 'nz', ...Array(7).fill('nzq'), 'textureLod'],
-    'the block reads six noise fields, the canopy\'s two near reads, the hardstanding\'s three, the stones\' one, the bend\'s coarse level and the soil (the bake is lu_field\'s)');
+  // (2026-10-08, waves 177/287, Saltwind: the karst's grazing is garrigue — its tussocks' bare soil one more field of the
+  // noise, Medium up, on a karst pasture only)
+  assert.deepEqual(reads, ['groundSamp', 'nz', 'nz', 'nz', 'nz', 'nz', ...Array(8).fill('nzq'), 'textureLod'],
+    'the block reads seven noise fields, the canopy\'s two near reads, the hardstanding\'s three, the stones\' one, the bend\'s coarse level and the soil (the bake is lu_field\'s)');
   assert.ok(!/fieldN/.test(block), 'no round noise patch varies a field: its tone is its fold and its own draw');
   for (const [gate, read] of [
     ['float nBend = bendW > 0.001 && uLandTier > 1.5 ? ', 'textureLod(uNoise, uvW * 0.0021 + vec2(0.47, 0.13), 4.0)'],
     ['if (luEdge && luNear > 0.001 && uLandTier > 1.5) nEdge = mix(vec3(0.5), vec3(', 'nzq(uvW, 0.045, vec2(0.21, 0.83))'],
     ['if (soilRead && luNear > 0.001 && uLandTier > 1.5) soil = mix(uMeanD, ', 'groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB)'],
-    ['float karstStone = uLandTier > 0.5 ? ', 'smoothstep(0.62, 0.80, nzq(uvW, 0.61'],
+    ['float karstStone = 0.0; if (uLandTier > 0.5) { vec2 sq = ', 'nzq(uvW, 0.61, vec2(0.37, 0.71))'],
+    ['float bareG = uLandTier > 0.5 ? ', 'smoothstep(0.52, 0.72, nzq(uvW, 0.29'],
     ['float bare = uLandTier > 0.5 ? ', 'smoothstep(0.52, 0.72, nzq(uvW, 0.11'],
     ['if (crop > 0.5 && crop < 3.5 && uLandTier > 0.5 && gFootM < 0.04) { vec2 uE = vec2(0.8090 * uv.x - 0.5878 * uv.y, 0.5878 * uv.x + 0.8090 * uv.y); float ear = ',
       'nz(uv, 1.7, vec2(0.31, 0.77))'],
