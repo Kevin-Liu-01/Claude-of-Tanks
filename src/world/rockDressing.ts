@@ -23,7 +23,7 @@ import { settledPaint, surfacePaintKey } from './surfacePaintPrefetch.ts';
 type ToneFunction = (hue: number, saturation: number, lightness: number) => readonly [number, number, number];
 
 /** The rock a battlefield's boulders are made of: what their forms and their detail tile draw. */
-export type BoulderLithology = 'granite' | 'gneiss' | 'sandstone' | 'limestone' | 'slate' | 'basalt' | 'chalk';
+export type BoulderLithology = 'granite' | 'gneiss' | 'sandstone' | 'limestone' | 'slate' | 'basalt' | 'chalk' | 'greywacke' | 'karst';
 
 export interface RockDressing {
   /** Moss / lichen weight on the shaded and upward faces (0 on snow and arid maps). */
@@ -48,6 +48,17 @@ export interface RockDressing {
   beds: readonly [number, number, number, number];
   /** The stone's fabric (b18): the cross-bedded laminae, the foliation's bands, the quartz veins, the sand's grain. */
   fabric: readonly [number, number, number, number];
+  /** (b46) the moss's side: 0 the fixed weather side, 1 the faces the map's sun leaves (moss on the north faces). */
+  mossNorth: number;
+  /** (b46) the turf at the foot (linear) and its share against the soil band (0: the soil band alone). */
+  turf: readonly [number, number, number];
+  turfShare: number;
+  /** (b46) the karst's rain flutes, its solution pits and its terra rossa pockets (0 on every other stone). */
+  karst: readonly [number, number, number];
+  /** (b46) the streaks' multiplier: desert varnish's brown, the karst's grey-black runoff. */
+  streak: readonly [number, number, number];
+  /** (b46) the bed's lip against the usual: 1 everywhere a wave has not asked for the stone to sit deeper. */
+  bedLip: number;
 }
 
 // lichen species (sRGB): the grey-green foliose and crustose, the yellow-green map lichen, the orange Xanthoria of
@@ -61,6 +72,12 @@ interface RockClimate {
   /** cover, species A, species B, A's share */
   lichen: readonly [number, number, number, number];
   varnish?: number;
+  /** (b46) the moss keeps to the faces the map's sun leaves (its north faces), not the fixed weather side */
+  mossNorth?: number;
+  /** (b46) the meadow's turf at the foot (sRGB) and its share: the ground's own grass up the stone, not a soil band */
+  turf?: readonly [number, number];
+  /** (b46) the bed's lip against the usual (props.ts buildRockBeds): the ground built higher up the stone's foot */
+  bedLip?: number;
 }
 
 /** The battlefields' rock; a map absent here is dry temperate granite (a little moss, grey lichen, no dust). */
@@ -77,8 +94,14 @@ const ROCK_CLIMATE: Readonly<Record<string, RockClimate>> = Object.freeze({
   polders: { moss: 0.65, dust: 0, lith: 'granite', lichen: [0.22, GREY_GREEN, ORANGE, 0.6] },
   orchard: { moss: 0.7, dust: 0, lith: 'granite', lichen: [0.2, GREY_GREEN, PALE, 0.65] },
   longleaf: { moss: 0.75, dust: 0, lith: 'sandstone', lichen: [0.19, GREY_GREEN, PALE, 0.7] },
-  reservoir: { moss: 0.7, dust: 0, lith: 'slate', lichen: [0.21, GREY_GREEN, YELLOW_GREEN, 0.6] },
-  saltwind: { moss: 0.55, dust: 0, lith: 'limestone', lichen: [0.26, ORANGE, PALE, 0.5] },
+  // (b46; gauntlet wave 287, both critics: "smooth domes or lozenges with no fracture faces", "no moss, lichen, grass or
+  // litter climbing them"): the Eifel's own stone, the Devonian greywacke of the Rur valley — dark, hard, blocky and
+  // jointed — its north faces mossed in the wet upland, grey-green crusts on its tops, the turf of the meadow at its foot
+  reservoir: { moss: 0.95, dust: 0, lith: 'greywacke', lichen: [0.22, GREY_GREEN, YELLOW_GREEN, 0.6], mossNorth: 1, turf: [0x4d5a2e, 0.85], bedLip: 2.6 },
+  // (b46; wave 287: "karst limestone, fluted and pitted, grey-white, with rubble and red soil pocketed against it") the
+  // Dalmatian kamenjar: sharp grey-white limestone, its crown fluted by the rain (rillenkarren) and pitted, dark runoff
+  // streaks down its steep faces, pale and black crusts, terra rossa in its hollows and at its foot
+  saltwind: { moss: 0.1, dust: 0, lith: 'karst', lichen: [0.24, PALE, BLACK, 0.62], varnish: 0.22, turf: [0x66603a, 0.9], bedLip: 2.0 },
   frontier: { moss: 0.5, dust: 0, lith: 'sandstone', lichen: [0.15, ORANGE, GREY_GREEN, 0.55], varnish: 0.07 },
   alpine: { moss: 0.45, dust: 0, lith: 'gneiss', lichen: [0.19, YELLOW_GREEN, BLACK, 0.55] },
   urban: { moss: 0.3, dust: 0.1, lith: 'granite', lichen: [0.07, PALE, ORANGE, 0.7] },
@@ -122,6 +145,9 @@ const LITHOLOGY_PHOTO: Readonly<Record<BoulderLithology, readonly [number, numbe
   // (b18; wave 121: Verdant's "smooth grey granite texture reads as neither chalk nor any local field stone": the
   // photographed stone's crystalline mottle softer on the chalk, its pores and grain its own — LITHOLOGY_FABRIC)
   chalk: [0.55, 0.1, 0.7],
+  // (b46) the greywacke hard and dark, its photo's structure whole; the karst limestone smooth between its flutes and pits
+  greywacke: [1.05, 0.2, 0.95],
+  karst: [0.8, 0.12, 0.8],
 });
 
 /**
@@ -136,6 +162,9 @@ const LITHOLOGY_SURFACE: Readonly<Record<BoulderLithology, readonly [number, num
   limestone: [0, 0.35, 0.5],
   slate: [0, 0, 0],
   chalk: [1, 0.45, 1],
+  greywacke: [0, 0, 0],
+  // (b46) the karst's grey rind on its tops; its soil is pocketed (uRockKarst), never a band
+  karst: [0, 0.4, 0],
 });
 
 /**
@@ -154,6 +183,8 @@ const LITHOLOGY_FABRIC: Readonly<Record<BoulderLithology, readonly [number, numb
   limestone: [0, 0, 0, 0],
   slate: [0, 0, 0, 0],
   chalk: [0, 0, 0, 0.6],
+  greywacke: [0, 0, 0, 0.75],
+  karst: [0, 0, 0, 0],
 });
 
 /**
@@ -205,6 +236,12 @@ export function rockDressingFor(mapId: string, dirtTone: ToneFunction | null | u
     surface: LITHOLOGY_SURFACE[climate.lith],
     beds: rockBedsFor(climate),
     fabric: LITHOLOGY_FABRIC[climate.lith],
+    mossNorth: climate.mossNorth ?? 0,
+    turf: climate.turf ? linearOf(climate.turf[0]) : [0, 0, 0],
+    turfShare: climate.turf ? climate.turf[1] : 0,
+    karst: climate.lith === 'karst' ? [1, 1, 1] : [0, 0, 0],
+    streak: climate.lith === 'karst' ? [0.5, 0.51, 0.53] : [0.36, 0.29, 0.25],
+    bedLip: climate.bedLip ?? 1,
   };
 }
 
@@ -257,6 +294,8 @@ const KIND_SHAPES: Readonly<Record<BoulderKindName, BoulderKindShape>> = Object.
  */
 const LITHOLOGY_CUTS: Readonly<Record<BoulderLithology, {
   fractures: readonly [number, number]; notch: number; notches: number; bed: readonly [number, number] | null;
+  /** (b46) the breaks' and notches' arris against the usual (1), and how much deeper the breaks cut (unit space) */
+  crisp?: number; cut?: number;
 }>> = Object.freeze({
   granite: { fractures: [2, 3], notch: 0.35, notches: 1, bed: null },
   gneiss: { fractures: [2, 3], notch: 0.4, notches: 1, bed: null },
@@ -265,6 +304,9 @@ const LITHOLOGY_CUTS: Readonly<Record<BoulderLithology, {
   limestone: { fractures: [2, 3], notch: 0.65, notches: 2, bed: [0.18, 0.28] },
   slate: { fractures: [2, 3], notch: 0.45, notches: 1, bed: null },
   chalk: { fractures: [2, 3], notch: 0.5, notches: 1, bed: null },
+  // (b46) the greywacke's thick beds and its joints break it into blocks; the karst steps along its beds and splits
+  greywacke: { fractures: [3, 4], notch: 0.6, notches: 1, bed: [0.34, 0.5], crisp: 0.6, cut: 0.06 },
+  karst: { fractures: [3, 4], notch: 0.8, notches: 2, bed: [0.22, 0.34], crisp: 0.55, cut: 0.08 },
 });
 
 /** A fresh fracture's arris: the smooth maximum's width between the weathered mass and the break (unit space). */
@@ -291,7 +333,7 @@ export function beddingParting(k: number): number {
 }
 
 /** The kinds a lithology's three variants take, and how broadly its weather rounds them (the chalk softest). */
-const LITHOLOGY_FORMS: Readonly<Record<BoulderLithology, { kinds: readonly [BoulderKindName, BoulderKindName, BoulderKindName]; soft: number }>> = Object.freeze({
+const LITHOLOGY_FORMS: Readonly<Record<BoulderLithology, { kinds: readonly [BoulderKindName, BoulderKindName, BoulderKindName]; soft: number; lumps?: number; round?: number }>> = Object.freeze({
   granite: { kinds: ['block', 'rounded', 'slab'], soft: 1 },
   gneiss: { kinds: ['block', 'rounded', 'slab'], soft: 0.9 },
   basalt: { kinds: ['block', 'rounded', 'block'], soft: 0.85 },
@@ -300,6 +342,9 @@ const LITHOLOGY_FORMS: Readonly<Record<BoulderLithology, { kinds: readonly [Boul
   slate: { kinds: ['slab', 'block', 'slab'], soft: 0.7 },
   // (b12: the marshmallow — two of three rounded, the softest weather — gives way to fractured blocks and a slab)
   chalk: { kinds: ['block', 'rounded', 'slab'], soft: 0.95 },
+  // (b46; wave 287: "smooth domes or lozenges") hard stones the weather rounds little: crisp arrises, a lighter lump
+  greywacke: { kinds: ['block', 'slab', 'block'], soft: 0.5, lumps: 0.55, round: 0.045 },
+  karst: { kinds: ['block', 'block', 'slab'], soft: 0.45, lumps: 0.95, round: 0.04 },
 });
 
 /** The kind (an index into BOULDER_KINDS) a map's variant is built as. */
@@ -367,6 +412,8 @@ function jointPlanes(kind: BoulderKindName, rng: () => number): JointPlane[] {
 /** A form's breaks: its fresh fractures, its stepped notches (a bed plane and a joint plane each) and its bedding. */
 interface BoulderCuts {
   fractures: JointPlane[];
+  /** (b46) the arris of the breaks and the notches against the usual */
+  crisp: number;
   notches: Array<readonly [JointPlane, JointPlane]>;
   /** The beds' unit normal and thickness (unit space) and the partings' salt (an offset in bed thicknesses), or null. */
   bedding: { n: readonly [number, number, number]; thickness: number; salt: number } | null;
@@ -396,7 +443,7 @@ function boulderCuts(kind: BoulderKindName, lithology: BoulderLithology, variant
     const e = i === 0 ? range(0.42, 0.85) : range(0.14, 0.42), az = az0 + (i === 0 ? 0 : (i === 1 ? 1 : -1) * range(1.31, 1.75));
     // (a corestone's weather rounds it well inside its joints' support: its breaks cut deeper to reach it)
     const deeper = kind === 'rounded' ? 0.08 : 0;
-    fractures.push(supportPlane(kind, Math.cos(e) * Math.cos(az), Math.sin(e), Math.cos(e) * Math.sin(az), (i === 0 ? range(0.74, 0.84) : range(0.8, 0.9)) - deeper, 1));
+    fractures.push(supportPlane(kind, Math.cos(e) * Math.cos(az), Math.sin(e), Math.cos(e) * Math.sin(az), (i === 0 ? range(0.74, 0.84) : range(0.8, 0.9)) - deeper - (law.cut ?? 0), 1));
   }
   let bedding: BoulderCuts['bedding'] = null;
   if (law.bed) {
@@ -433,7 +480,7 @@ function boulderCuts(kind: BoulderKindName, lithology: BoulderLithology, variant
     const joint = supportPlane(kind, Math.cos(e) * Math.cos(az), Math.sin(e), Math.cos(e) * Math.sin(az), reach, BOULDER_NOTCH_FRESH);
     notches.push([bed, joint]);
   }
-  return { fractures, notches, bedding };
+  return { fractures, notches, bedding, crisp: law.crisp ?? 1 };
 }
 
 /**
@@ -514,19 +561,19 @@ function notchRadius(bed: JointPlane, joint: JointPlane, kn: number, ux: number,
 function cutRadius(
   planes: readonly JointPlane[], cuts: BoulderCuts, k: number, ux: number, uy: number, uz: number, weights: Float64Array | null,
 ): number {
-  const tMass = massRadius(planes, cuts.fractures, k, BOULDER_FRACTURE_ROUND, ux, uy, uz, weights);
+  const tMass = massRadius(planes, cuts.fractures, k, BOULDER_FRACTURE_ROUND * cuts.crisp, ux, uy, uz, weights);
   if (!cuts.notches.length) return tMass;
   let tNotch = Infinity, which = -1, bedShare = 0;
   const share = [0];
   for (let i = 0; i < cuts.notches.length; i++) {
-    const t = notchRadius(cuts.notches[i][0], cuts.notches[i][1], BOULDER_NOTCH_ROUND, ux, uy, uz, share);
+    const t = notchRadius(cuts.notches[i][0], cuts.notches[i][1], BOULDER_NOTCH_ROUND * cuts.crisp, ux, uy, uz, share);
     if (t < tNotch) { tNotch = t; which = i; bedShare = share[0]; }
   }
   if (!Number.isFinite(tNotch)) {
     if (weights) for (let i = planes.length + cuts.fractures.length; i < weights.length; i++) weights[i] = 0;
     return tMass;
   }
-  const low = Math.min(tMass, tNotch), w = BOULDER_NOTCH_ROUND;
+  const low = Math.min(tMass, tNotch), w = BOULDER_NOTCH_ROUND * cuts.crisp;
   const eMass = Math.exp(-(tMass - low) / w), eNotch = Math.exp(-(tNotch - low) / w);
   const t = low - w * Math.log(eMass + eNotch);
   if (weights) {
@@ -622,14 +669,16 @@ export function buildBoulderForm(
   // the grid: eight cells a face on the desktop, five on a phone, whose coarser rows round the arrises a third wider
   // (a cell must not straddle an arris's whole turn)
   const n = subdiv >= 6 ? 8 : 5;
-  const round = Math.max(n < 8 ? 0.11 : 0.08, shape.round * LITHOLOGY_FORMS[lithology].soft * (n < 8 ? 1.35 : 1));
+  const hardRound = LITHOLOGY_FORMS[lithology].round;
+  const round = n >= 8 && hardRound ? hardRound : Math.max(n < 8 ? 0.11 : 0.08, shape.round * LITHOLOGY_FORMS[lithology].soft * (n < 8 ? 1.35 : 1));
   const planes = jointPlanes(kind, rng);
   const cuts = boulderCuts(kind, lithology, variant, rng);
   // every plane in the order the weights run: the joints, the fractures, each notch's bed and joint
   const all: readonly JointPlane[] = [...planes, ...cuts.fractures, ...cuts.notches.flat()];
   const tones = all.map(() => rng() * 2 - 1);
   const salt = variant * 11.3 + rng() * 40;
-  const [lumpA, lumpB, lumpC] = shape.lumps;
+  const lumpK = LITHOLOGY_FORMS[lithology].lumps ?? 1;
+  const [lumpA, lumpB, lumpC] = shape.lumps.map((share) => share * lumpK);
   const out = [0, 0, 0];
   const scratch = new Float64Array(all.length);
   let lumpAt = 0;
@@ -788,10 +837,16 @@ export function buildBoulderForm(
  * The lithologies' base tones (sRGB HSL) under a map's rock tone law: a weathered grey; the chalk a warm off-white
  * (wave 66 read the grey of the round before as "slate-blue … painted concrete" against Verdant's golden grass).
  */
+/** (b46) how much paler a fresh break is than the weathered skin (the hard stones' breaks read clearly). */
+const LITHOLOGY_FRESH_L: Readonly<Partial<Record<BoulderLithology, number>>> = Object.freeze({ greywacke: 0.14, karst: 0.12 });
+
 const LITHOLOGY_TONE: Readonly<Partial<Record<BoulderLithology, readonly [number, number, number]>>> = Object.freeze({
   // (b12: an albedo of 0.6 to 0.7, not snow's: a cooler, greyer off-white; a fresh fracture a shade paler, to 0.76)
   // (b18; wave 121, "a smooth grey granite texture ... neither chalk nor any local field stone": a little warmer)
   chalk: [0.11, 0.2, 0.6],
+  // (b46) the greywacke a dark green-grey; the karst a pale grey under Saltwind's own tone law
+  greywacke: [0.22, 0.06, 0.27],
+  karst: [0.1, 0.03, 0.34],
 });
 
 /**
@@ -810,7 +865,7 @@ export function paintBoulder(form: BoulderForm, tone: ToneFunction | null | unde
     // (b12: a fresh break gathers no grime, so the hollow's darkening keeps to the weathered skin: a chalk fracture reads
     // white even where its cut lies in a hollow of the mass)
     // (b14: a fresh break a shade paler and cleaner than the weathered skin, so the eye reads the break)
-    const l = bl + p.getY(i) * 0.04 + up * up * 0.1 + form.facet[i] * 0.025 + fresh * 0.08 + worn * 0.03 - hollow * (chalk ? 0.2 : 0.05) * (1 - fresh);
+    const l = bl + p.getY(i) * 0.04 + up * up * 0.1 + form.facet[i] * 0.025 + fresh * (LITHOLOGY_FRESH_L[lithology] ?? 0.08) + worn * 0.03 - hollow * (chalk ? 0.2 : 0.05) * (1 - fresh);
     let h = bh + form.facet[i] * 0.008, s = bs * (1 - fresh * 0.5) * (1 - hollow * (chalk ? 0.85 : 0.3));
     let lt = clamp(l, 0.15, chalk ? 0.76 : bl > 0.4 ? 0.82 : 0.5);
     if (tone) { const t = tone(h, s, lt); h = t[0]; s = t[1]; lt = clamp(t[2], 0, 1); }
@@ -964,7 +1019,7 @@ export function* paintRockDetailBuffers(
   const cavity = new Float32Array(s * s);
   const pit = { d1: 0, d2: 0, id: 0 };
   const cell = { d1: 0, d2: 0, id: 0 }, colony = { d1: 0, d2: 0, id: 0 };
-  const lineWeight = { granite: 0.75, gneiss: 0.6, sandstone: 0.55, limestone: 0.8, slate: 0.6, basalt: 0.7, chalk: 0.3 }[lithology];
+  const lineWeight = { granite: 0.75, gneiss: 0.6, sandstone: 0.55, limestone: 0.8, slate: 0.6, basalt: 0.7, chalk: 0.3, greywacke: 0.7, karst: 0.85 }[lithology];
   for (let y = 0; y < s; y++) {
     for (let x = 0; x < s; x++) {
       const u = (x + 0.5) / s, v = (y + 0.5) / s, i = y * s + x, j = i * 4;
@@ -986,17 +1041,17 @@ export function* paintRockDetailBuffers(
           const band = Math.sin((v * 7 + tileableTorusNoise(noi, u, v, 2, 2, 419) * 0.35) * Math.PI * 2);
           lum += Math.sign(band) * Math.pow(Math.abs(band), 0.5) * 0.09;
         }
-      } else if (lithology === 'sandstone') {
+      } else if (lithology === 'sandstone' || lithology === 'greywacke') {
         // a fine sand grain and nothing ruled (b14; waves 57 and 96: "evenly spaced painted strata lines", "a striped
         // cushion"): the beds are the stone's own, drawn in its frame by the material (ROCK_BEDS_GLSL)
         const sand = tileableTorusNoise(noi, u, v, 61, 61, 439) * 0.5 + 0.5;
         lum += (sand - 0.5) * 0.08;
         height += (sand - 0.5) * 0.06;
-      } else if (lithology === 'limestone' || lithology === 'basalt') {
-        // limestone's solution pits, basalt's gas vesicles: small dark round hollows
+      } else if (lithology === 'limestone' || lithology === 'karst' || lithology === 'basalt') {
+        // limestone's solution pits, basalt's gas vesicles: small dark round hollows (b46: the karst's pits closer)
         const basalt = lithology === 'basalt';
         cellular(u, v, basalt ? 44 : 26, 443, cell);
-        const pit = hash3(cell.id, 3, 449) < (basalt ? 0.45 : 0.3) ? 1 - clamp((cell.d1 - (basalt ? 0.14 : 0.11)) / 0.06, 0, 1) : 0;
+        const pit = hash3(cell.id, 3, 449) < (basalt ? 0.45 : lithology === 'karst' ? 0.42 : 0.3) ? 1 - clamp((cell.d1 - (basalt ? 0.14 : 0.11)) / 0.06, 0, 1) : 0;
         lum -= pit * (basalt ? 0.36 : 0.3);
         height -= pit * 0.45;
         if (!basalt) lum += (grain - 0.5) * -0.06; // smoother than the rest
@@ -1271,6 +1326,7 @@ function mustReplace(src: string, anchor: string, replacement: string): string {
  */
 export function applyRockShaderHook(
   shader: RockShader, dressing: RockDressing, lichenTile: THREE.Texture | null = null, stoneMean: THREE.Vector3 | null = null,
+  sunXZ: readonly [number, number] | null = null,
 ): void {
   shader.uniforms.uRockMoss = { value: dressing.moss };
   shader.uniforms.uRockDust = { value: dressing.dust };
@@ -1284,16 +1340,25 @@ export function applyRockShaderHook(
   shader.uniforms.uRockSurface = { value: new THREE.Vector3(...dressing.surface) };
   shader.uniforms.uRockBeds = { value: new THREE.Vector4(...dressing.beds) };
   shader.uniforms.uRockFabric = { value: new THREE.Vector4(...dressing.fabric) };
+  // (b46) the moss's side, the turf at the foot, the karst's terms and the streaks' tint
+  const sunL = sunXZ ? Math.hypot(sunXZ[0], sunXZ[1]) : 0;
+  shader.uniforms.uRockMossNorth = { value: sunL > 1e-6 ? dressing.mossNorth : 0 };
+  shader.uniforms.uRockSunXZ = { value: new THREE.Vector2(sunL > 1e-6 ? sunXZ![0] / sunL : 0.55, sunL > 1e-6 ? sunXZ![1] / sunL : -0.83) };
+  shader.uniforms.uRockTurf = { value: new THREE.Vector4(...dressing.turf, dressing.turfShare) };
+  shader.uniforms.uRockKarst = { value: new THREE.Vector3(...dressing.karst) };
+  shader.uniforms.uRockStreak = { value: new THREE.Vector3(...dressing.streak) };
   // the stone's linear mean, per channel: the procedural stand-in's mid grey until the photographed stone lands (its
   // owner updates the vector in place, sourcedTextures.ts applySourcedRock)
   shader.uniforms.uRockStoneMean = { value: stoneMean ?? new THREE.Vector3(0.214, 0.214, 0.214) };
   shader.vertexShader = mustReplace(shader.vertexShader, 'varying vec3 vGrimeW;\nvarying vec3 vGrimeN;',
-    'varying vec3 vGrimeW;\nvarying vec3 vGrimeN;\nattribute float aRockGround;\nvarying float vRockAbove;\nvarying float vRockSeed;\nattribute vec4 aRockFace;\nvarying vec4 vRockFace;\n#ifdef USE_INSTANCING\nattribute vec2 aRockSlope;\n#endif');
+    'varying vec3 vGrimeW;\nvarying vec3 vGrimeN;\nattribute float aRockGround;\nvarying float vRockAbove;\nvarying float vRockSeed;\nattribute vec4 aRockFace;\nvarying vec4 vRockFace;\nvarying vec3 vRockC;\n#ifdef USE_INSTANCING\nattribute vec2 aRockSlope;\n#endif');
   shader.vertexShader = mustReplace(shader.vertexShader, '  vGrimeN = normalize(mat3(modelMatrix) * gn);\n}', /* glsl */`  vGrimeN = normalize(mat3(modelMatrix) * gn);
   vRockAbove = vGrimeW.y - aRockGround;
   vRockFace = aRockFace;
   vRockSeed = -1.0;
+  vRockC = vGrimeW;
   #ifdef USE_INSTANCING
+  vRockC = (modelMatrix * instanceMatrix[3]).xyz;
   // a boulder's ground: the plane through its centre's ground along the slope under it; and its own hash
   vRockAbove -= dot(aRockSlope, vGrimeW.xz - (modelMatrix * instanceMatrix[3]).xz);
   vRockSeed = fract(sin(dot(instanceMatrix[3].xz, vec2(12.9898, 78.233))) * 43758.5453);
@@ -1313,6 +1378,12 @@ uniform sampler2D uRockLichenTile;
 uniform vec3 uRockPhoto;
 uniform vec3 uRockSurface;
 uniform vec3 uRockStoneMean;
+uniform float uRockMossNorth;
+uniform vec2 uRockSunXZ;
+uniform vec4 uRockTurf;
+uniform vec3 uRockKarst;
+uniform vec3 uRockStreak;
+varying vec3 vRockC;
 ${ROCK_BEDS_COMMON_GLSL}`);
   // the stone in the map slot, triplanar (order-free): the map's terrain rock layer, photographed (sourcedTextures.ts
   // applySourcedRock; the procedural tile until it loads), divided by its own mean, so it multiplies its structure into
@@ -1335,6 +1406,7 @@ vec3 rockTp = abs(rockR * vGrimeN); rockTp = rockTp * rockTp * rockTp * rockTp; 
 float rockDetail = 0.8;
 float rockBump = 0.0; // (b14) the honeycomb's relief, metres, for the normal stage
 vec2 rockBedDh = vec2(0.0); // (b14) the partings' relief, its screen gradient (metres a pixel)
+vec3 rockFluteN = vec3(0.0); // (b46) the karst's flutes and pits, a world-space tilt of the normal
 #ifdef USE_MAP
 {
   vec3 rockPhoto = texture2D(map, rockPw.yz).rgb * rockTp.x + texture2D(map, rockPw.xz).rgb * rockTp.y + texture2D(map, rockPw.xy).rgb * rockTp.z;
@@ -1355,7 +1427,7 @@ vec2 rockBedDh = vec2(0.0); // (b14) the partings' relief, its screen gradient (
   vec3 rockTz = texture2D(normalMap, rockPw.xy).xyz * 2.0 - 1.0;
   vec3 rockPert = vec3(0.0, rockTx.x, rockTx.y) * rockTp.x + vec3(rockTy.x, 0.0, rockTy.y) * rockTp.y + vec3(rockTz.x, rockTz.y, 0.0) * rockTp.z;
   rockPert = transpose(rockR) * rockPert; // (the perturbation drawn in the boulder's frame, turned back to the world)
-  vec3 rockN = normalize(normalize(vGrimeN) + rockPert * uRockPhoto.z);
+  vec3 rockN = normalize(normalize(vGrimeN) + rockPert * uRockPhoto.z + rockFluteN);
   normal = normalize((viewMatrix * vec4(rockN, 0.0)).xyz);
 }
 #endif
@@ -1407,7 +1479,7 @@ ${ROCK_FABRIC_GLSL}
       float streak = smoothstep(0.53, 0.66, runs) * (0.45 + 0.55 * hang);
       float varnish = uRockVarnish * steep * ((0.3 + 0.4 * hang) * 0.5 + streak * 1.6) * (1.0 - 0.85 * vRockFace.z)
         * smoothstep(0.15, 0.7, vRockAbove);
-      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.36, 0.29, 0.25), clamp(varnish, 0.0, 0.85));
+      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * uRockStreak, clamp(varnish, 0.0, 0.85));
     }
     // the lichen (wave 57: "pasted flecks", "evenly scattered confetti spots"): colonies grow in clusters, a few patches
     // to a rock where the cluster field allows, on its tops and its weather side (none under), merging where they are
@@ -1431,6 +1503,44 @@ ${ROCK_FABRIC_GLSL}
       lichenColor = mix(lichenColor, diffuseColor.rgb, 0.3);
       diffuseColor.rgb = mix(diffuseColor.rgb, lichenColor, lichen * (0.42 + 0.26 * fract(lc.y * 7.0)));
     }
+    // (b46; wave 287: "karst limestone, fluted and pitted ... with rubble and red soil pocketed against it") the rain's
+    // flutes, rillenkarren: narrow grooves running down from the crown on the sloping upper faces, their crests sharp, a
+    // hand's breadth to a palm apart round the stone; the solution pits on the upward faces; the terra rossa the rain
+    // washes into the hollows and banks against the foot
+    if (uRockKarst.x > 0.0) {
+      vec2 kRel = vGrimeW.xz - vRockC.xz;
+      float kR = max(length(kRel), 0.15);
+      float kTheta = atan(kRel.y, kRel.x);
+      // (the flutes run down the fall lines, which radiate from the crown: a phase by the angle round the stone alone, so a
+      // groove keeps its line from the crown to the flank; some three dozen round it, a hand apart at a stone's shoulder)
+      float kPhase = kTheta * 34.0 + vRockSeed * 40.0 + (texture2D(uGrime, vec2(kTheta * 0.7, kR * 0.5 + vRockSeed)).r - 0.5) * 1.6;
+      float kSlope = smoothstep(0.22, 0.5, vGrimeN.y) * (1.0 - smoothstep(0.86, 0.97, vGrimeN.y));
+      float kHigh = smoothstep(0.25, 0.7, vRockFace.y) * smoothstep(0.2, 0.55, vRockAbove);
+      float kRun = smoothstep(0.35, 0.75, texture2D(uGrime, vec2(kTheta * 1.3 + vRockSeed * 5.0, vGrimeW.y * 0.4)).g);
+      float kMask = uRockKarst.x * kSlope * kHigh * (0.45 + 0.55 * kRun) * (1.0 - 0.7 * vRockFace.z);
+      float kWave = sin(kPhase);
+      float kGroove = 1.0 - pow(abs(kWave), 0.6);
+      diffuseColor.rgb *= 1.0 - 0.3 * kMask * kGroove;
+      // the pans: shallow solution dishes on the level tops, darker where the rain stands in them
+      float kPan = uRockKarst.y * smoothstep(0.9, 0.97, vGrimeN.y) * smoothstep(0.55, 0.72, texture2D(uGrime, vGrimeW.xz * 0.8 + vRockSeed).b);
+      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.62, 0.64, 0.6), kPan * 0.75);
+      vec3 kAround = normalize(vec3(-kRel.y, 0.0, kRel.x));
+      rockFluteN += kAround * (cos(kPhase) * sign(kWave) * 0.45 * kMask);
+      // the pits: the honeycomb's cells, small and round, on the upward faces
+      vec3 kPw = rockPw * 3.3 + vec3(0.21, 0.57, 0.33);
+      float kCav = texture2D(uRockLichenTile, kPw.yz).b * rockTp.x + texture2D(uRockLichenTile, kPw.xz).b * rockTp.y + texture2D(uRockLichenTile, kPw.xy).b * rockTp.z;
+      float kPit = uRockKarst.y * smoothstep(0.62, 0.8, kCav) * smoothstep(0.35, 0.75, vGrimeN.y) * smoothstep(0.1, 0.4, vRockAbove) * (1.0 - vRockFace.z);
+      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.5, kPit * 0.8);
+      // the terra rossa: banked against the foot, ragged, and in the hollows of the lower half
+      float kN = texture2D(uGrime, vGrimeW.xz * 1.7 + vGrimeW.y * 0.6).r;
+      float kRound = texture2D(uGrime, vec2(kTheta * 0.48 + vRockSeed * 3.0, vRockSeed * 7.0)).r;
+      float kFoot = (1.0 - smoothstep(0.03, 0.08 + 0.3 * kN, vRockAbove)) * smoothstep(0.52, 0.66, kRound);
+      float kHollow = vRockFace.w * smoothstep(0.5, 0.72, kN) * (1.0 - smoothstep(0.25, 0.9, vRockAbove));
+      float kSoil = uRockKarst.z * clamp(kFoot + kHollow, 0.0, 1.0);
+      // (terra rossa: a deep brick-red clay, duller than the map's dirt tone)
+      vec3 kRossa = uRockSoil * vec3(0.78, 0.62, 0.58) * (0.85 + 0.3 * kN);
+      diffuseColor.rgb = mix(diffuseColor.rgb, kRossa, kSoil * 0.9);
+    }
   }
   // a snow map's boulders carry the snow on their tops and shelves, laid after their tone (the grime hook's snow lies
   // under the vertex tone, which a dark stone would darken away)
@@ -1441,13 +1551,18 @@ ${ROCK_FABRIC_GLSL}
   }
   // moss on the shaded side and the tops of wet maps, in the tile's grain
   vec2 flank = normalize(vGrimeN.xz + vec2(1e-4, 0.0));
-  float shaded = 0.5 - 0.5 * dot(flank, vec2(0.55, -0.83));
+  // (b46; wave 287: "moss and lichen on the north faces") on a map that asks, the side its sun leaves
+  float shaded = 0.5 - 0.5 * dot(flank, uRockMossNorth > 0.0 ? uRockSunXZ : vec2(0.55, -0.83));
   // (gauntlet wave 29, Saltmere Bay's tor: "near-black slabs": the moss keeps to the damp ground a metre or two up; a
   // tall rock's tops dry in the wind and carry the lichen its own tone paints, not moss)
-  float mossMask = uRockMoss * smoothstep(0.15, 0.85, shaded * 0.6 + max(0.0, vGrimeN.y) * 0.7)
-    * smoothstep(0.32, 0.72, texture2D(uGrime, vGrimeW.xz * 0.55 + vGrimeW.y * 0.31).g)
+  float mossFace = mix(shaded * 0.6 + max(0.0, vGrimeN.y) * 0.7,
+    smoothstep(0.45, 0.95, shaded) * (1.0 - 0.55 * smoothstep(0.55, 0.9, vGrimeN.y)) + 0.35 * (1.0 - smoothstep(0.1, 0.45, vRockAbove)), uRockMossNorth);
+  float mossMask = uRockMoss * smoothstep(0.15, 0.85, mossFace)
+    * smoothstep(0.32 + 0.08 * uRockMossNorth, 0.72 - 0.04 * uRockMossNorth, texture2D(uGrime, vGrimeW.xz * 0.55 + vGrimeW.y * 0.31).g)
     * (1.0 - 0.75 * smoothstep(0.9, 2.6, vRockAbove)) * (vRockSeed >= 0.0 ? 1.0 - 0.8 * vRockFace.z : 1.0);
-  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.17, 0.23, 0.09) * (0.6 + 0.7 * rockDetail), mossMask * 0.85);
+  // (b46) a cushion's two greens: the dark of its body and the yellow-green of its tips, in the grime's grain
+  vec3 mossColor = mix(vec3(0.17, 0.23, 0.09), vec3(0.24, 0.30, 0.08), uRockMossNorth * smoothstep(0.45, 0.75, texture2D(uGrime, vGrimeW.xz * 2.1 + vGrimeW.y * 1.7).r));
+  diffuseColor.rgb = mix(diffuseColor.rgb, mossColor * (0.6 + 0.7 * rockDetail), mossMask * 0.85);
   // dust: a pale cap on the upward faces and a skirt at the base of arid maps
   float dustMask = uRockDust * (0.4 * smoothstep(0.35, 0.9, vGrimeN.y) + 0.6 * (1.0 - smoothstep(0.0, 1.1, vRockAbove)));
   diffuseColor.rgb = mix(diffuseColor.rgb, uRockSoil * 1.35, dustMask * 0.65);
@@ -1461,8 +1576,17 @@ ${ROCK_FABRIC_GLSL}
   float splashN = texture2D(uGrime, vec2(vGrimeW.x + vGrimeW.z, vGrimeW.y) * 5.7 + vGrimeW.xz * 0.9).r;
   float splashH = 1.0 - smoothstep(soilEdge, soilEdge + 0.32, vRockAbove);
   float splash = smoothstep(0.6 - 0.1 * splashH, 0.66 - 0.1 * splashH, splashN) * splashH;
-  float soilMask = max(soilBand, splash * 0.75) * (0.62 + 0.38 * texture2D(uGrime, vGrimeW.xz * 1.3).r);
-  diffuseColor.rgb = mix(diffuseColor.rgb, uRockSoil, soilMask * 0.92);
+  float soilMask = max(soilBand, splash * 0.75 * (1.0 - 0.7 * uRockTurf.w)) * (0.62 + 0.38 * texture2D(uGrime, vGrimeW.xz * 1.3).r);
+  diffuseColor.rgb = mix(diffuseColor.rgb, uRockSoil, soilMask * 0.92 * (1.0 - uRockTurf.w));
+  if (uRockTurf.w > 0.0) {
+    // (b46; wave 287: "a clean dark base line", "no grass or litter climbing them"; Sonnet: "a pinkish-brown rim") the
+    // meadow's own turf up the foot on a grassy map: blades of their own heights, a hand to a span up, over the soil band
+    float bladeN = texture2D(uGrime, vec2((vGrimeW.x - vGrimeW.z) * 11.0, vGrimeW.y * 0.7 + vRockSeed)).g;
+    float bladeTop = (0.05 + 0.26 * bladeN * bladeN + soilTop * 0.3) * uRockTurf.w;
+    float blade = 1.0 - smoothstep(bladeTop - 0.02, bladeTop + 0.01, vRockAbove);
+    vec3 turf = uRockTurf.rgb * (0.7 + 0.55 * bladeN) * (0.8 + 0.3 * texture2D(uGrime, vGrimeW.xz * 3.1).g);
+    diffuseColor.rgb = mix(diffuseColor.rgb, turf, max(blade, soilBand * 0.85) * uRockTurf.w);
+  }
   // and a boulder darkens where it meets the ground (the occlusion of the turf and the soil round its foot); on a dusty
   // map less and softer (b12, wave 72 on Redrock: "a uniformly dark crisp ring"): drifted sand fills the foot and
   // takes the light, the darkening fading over half a metre

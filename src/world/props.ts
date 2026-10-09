@@ -3688,7 +3688,11 @@ ${snowCap ? `
   // Round 75 item 6: the boulders' dressing (moss on wet maps, dust on arid ones, the soil skirt everywhere; the scenery
   // lane, 2026-10-04: the map's beds, lichen and varnish, the contact darkening)
   const rockDressing = rockDressingFor(mapId, P.rockSoilTone ?? null, snowCap);
-  const rockHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRockShaderHook(shader, rockDressing, rockDetail.lichen, rockStoneMean); };
+  // (b46) the map's sun round the horizon (the sky.ts convention: x = sin(azimuth), z = cos(azimuth)): its north faces,
+  // where the moss keeps on a map that asks
+  const rockSunAz = (((cfg as { sky?: { sunAzimuthDeg?: number } } | null)?.sky?.sunAzimuthDeg) ?? 140) * Math.PI / 180;
+  const rockSunXZ: readonly [number, number] = [Math.sin(rockSunAz), Math.cos(rockSunAz)];
+  const rockHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRockShaderHook(shader, rockDressing, rockDetail.lichen, rockStoneMean, rockSunXZ); };
   // the telegraph poles (the scenery lane, after wave 57): creosote-dark to silvered timber, grain, checks, a stained foot;
   // the dusty maps' sun-bleached
   const poleHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyPoleTimberHook(shader, rockDressing.dust >= 0.5); };
@@ -6682,8 +6686,10 @@ ${snowCap ? `
             lip = size * (0.07 + 0.16 * windward * windward) * (0.8 + 0.4 * wobble);
             width = 0.35 + size * 0.6 * windward * windward + 0.1 * wobble;
           } else {
-            lip = size * (0.035 + 0.05 * wobble);
-            width = 0.24 + 0.2 * size + 0.12 * wobble;
+            // (b46; wave 287: "no burial ... turf and litter riding up the sides") a map's stone may sit deeper: its bed's
+            // lip climbs higher up the foot and falls away over a wider fillet (rockDressing bedLip; 1 elsewhere)
+            lip = size * (0.035 + 0.05 * wobble) * rockDressing.bedLip;
+            width = (0.24 + 0.2 * size + 0.12 * wobble) * (1 + 0.45 * (rockDressing.bedLip - 1));
           }
           const r = radius[k], theta = local[k * 3], toWorld = local[k * 3 + 1];
           // (the lip never climbs past where the stone draws in: at most where its section is 85 % of its foot's)
