@@ -95,6 +95,15 @@ interface MaterialBasePaintEntry<C extends MaterialCanvas> {
   feats: PlateFeatures | null;
 }
 
+/**
+ * Launch night 2026-10-08 (the coordinator's markings audit): a randomly drawn hull number never comes out 14, 18 or 88,
+ * numbers used as hate codes. Only those three values move, each to the next number, and no extra random draw is made,
+ * so every other hull keeps exactly the number it had.
+ */
+const CODED_HULL_NUMBERS: ReadonlySet<number> = new Set([14, 18, 88]);
+export function safeHullNumber(drawn: number): number {
+  return CODED_HULL_NUMBERS.has(drawn) ? drawn + 1 : drawn;
+}
 export const ALBEDO_SIZE = 2048;
 export const MAP_SIZE = 1024;
 
@@ -2431,7 +2440,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       band(cx, cy, S * 0.11, red, 0.94);               // main stripe
       band(cx + nx * S * 0.095, cy + ny * S * 0.095, S * 0.035, red, 0.94);
       band(cx - nx * S * 0.075, cy - ny * S * 0.075, S * 0.012, blk, 0.9);
-      const num = String(1 + ((rng() * 98) | 0));
+      const num = String(safeHullNumber(1 + ((rng() * 98) | 0)));
       const roundel = (x: number, y: number, r: number): void => {
         const disc = new Path2D();
         disc.arc(x, y, r, 0, Math.PI * 2);
@@ -2582,7 +2591,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       band2.moveTo(x1, -S * 0.1);
       band2.lineTo(x1, S * 1.1);
       strokeWrapped(ctx, S, band2, rgb(white, 0.82), S * 0.035);
-      const num = String(100 + ((rng() * 899) | 0));   // tactical number
+      const num = String(safeHullNumber(100 + ((rng() * 899) | 0)));   // tactical number
       ctx.save();
       ctx.font = `900 ${Math.round(S * 0.17)}px 'ABC Monument Grotesk', sans-serif`;
       ctx.textAlign = 'center';
@@ -2705,7 +2714,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       paintUsmcDust();
       const paintUsmcNumber = (): void => {
         ctx.save();
-        const num2 = String(10 + ((rng() * 89) | 0));
+        const num2 = String(safeHullNumber(10 + ((rng() * 89) | 0)));
         ctx.font = `900 ${Math.round(S * 0.13)}px 'ABC Monument Grotesk', sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
