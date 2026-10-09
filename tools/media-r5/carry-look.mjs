@@ -22,6 +22,15 @@ for (const f of readdirSync(resolvedDir).filter((f) => f.endsWith('.resolved.jso
   for (const a of res.actors) if (camo.has(a.name)) { if (camo.get(a.name) === undefined) delete a.camo; else a.camo = camo.get(a.name); }
   for (const k of ['film', 'picture', 'still', 'stillsExtra']) { if (src[k] === undefined) delete res[k]; else res[k] = src[k]; }
   res.meta = { ...res.meta, paint: src.meta?.paint, still: src.meta?.still, ...(src.meta?.stillsExtra ? { stillsExtra: src.meta.stillsExtra } : {}) };
+  // Effect names (2026-10-08): the Studio fires each name once, and a resolve exports the names it gave. The source's own
+  // names (the staged beats', site50.mjs beat<n>-…) are carried on by type, time and place, so a resolve made while the
+  // beats were named fx<n> loses its clashes. A name still used twice stops the run, since one of the two would never fire.
+  const effectKey = (e) => `${e.type}|${Math.round(e.tMs ?? 0)}|${JSON.stringify(e.at ?? null)}|${e.actor ?? ''}`;
+  const sourceNames = new Map((src.effects ?? []).filter((e) => e.id).map((e) => [effectKey(e), e.id]));
+  for (const e of res.effects ?? []) { const name = sourceNames.get(effectKey(e)); if (name) e.id = name; }
+  const names = (res.effects ?? []).map((e) => e.id).filter(Boolean);
+  const twice = [...new Set(names.filter((n, k) => names.indexOf(n) !== k))];
+  if (twice.length) throw new Error(`${id}: effects share the names ${twice.join(', ')}; one of each would never fire`);
   writeFileSync(join(outDir, f), JSON.stringify(res));
   // the source beside it, for cinema-jobs (picture, still moments)
   copyFileSync(srcFile, join(outDir, `${id}.scene.json`));

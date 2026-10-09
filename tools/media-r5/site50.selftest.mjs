@@ -192,6 +192,19 @@ assert.ok(lensAngles >= 4, `the hero's barrel angles at the lens in at least fou
     covered += n; total += BEAT_MS.length;
     assert.ok(n >= 1, `${scene.meta.id}: a burst in the frame at one beat at least (${cov})`);
   }
+  // every effect fires: the Studio names an unnamed effect fx<n> as it loads them in time order (an explicit fx<n> moves
+  // its counter on) and fires each name once (studio.ts makeEffectRecord, nextPendingEffect), so no two may share a name
+  for (const shot of SHOTS) {
+    const scene = siteScene(shot);
+    let seq = 1;
+    const names = [...(scene.effects ?? [])].sort((a, b) => (a.tMs ?? 0) - (b.tMs ?? 0)).map((e) => {
+      const id = e.id || `fx${seq++}`, m = /^fx(\d+)$/.exec(id);
+      if (m) seq = Math.max(seq, Number(m[1]) + 1);
+      return id;
+    });
+    const twice = names.filter((id, k) => names.indexOf(id) !== k);
+    assert.equal(twice.length, 0, `${scene.meta.id}: effects share the Studio names ${[...new Set(twice)].join(', ')}, so one of each never fires`);
+  }
   if (total) assert.ok(covered / total >= 0.85, `a burst in the frame at 85 % of the beats (${covered}/${total})`);
 }
 console.log(`site50.selftest: ${SHOTS.length} shots (${KINDS.map(k => `${byKind[k]} ${k}`).join(', ')}) on ${maps.size} battlefields at ${[...times].join(', ')}`);

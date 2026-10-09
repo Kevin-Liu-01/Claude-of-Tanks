@@ -193,7 +193,7 @@ function stageBeats(scene, world) {
   if (!shots.length || !heroKeys?.length || !heroActor) return 0;
   const [hl, hw, reach = hl + 2.4] = hullOf(heroActor.id);
   const deadBy = (name, t) => scene.effects.some((e) => e.actor === name && e.tMs <= t && /^(tank_kill|burning)$/.test(e.type));
-  let added = 0, nextId = 1 + Math.max(0, ...scene.effects.map((e) => Number(/^fx(\d+)$/.exec(e.id ?? '')?.[1] ?? 0)));
+  let added = 0;
   const covered = beatCoverage(scene, world);
   for (const [i, T] of BEAT_MS.entries()) {
     // a burst already live in the frame carries the beat
@@ -233,9 +233,12 @@ function stageBeats(scene, world) {
     }
     if (!spot) continue;
     const tb = T - 450, foe = scene.actors.find((a) => a.name.startsWith('foe') && !deadBy(a.name, tb));
-    if (foe) scene.effects.push({ ...fire(foe.name, tb - 110), id: `fx${nextId++}` });
-    scene.effects.push({ ...blast(spot, tb, 'large', { cause: 'shot' }), id: `fx${nextId++}` });
-    scene.effects.push({ ...debris(spot, tb + 30, { count: 34, speedMps: 15, hot: 0.4, scale: 1.1 }), id: `fx${nextId++}` });
+    // Named beat<n>-…: the Studio names an unnamed effect fx<n> as it loads the scene's effects in time order and fires
+    // each name once, so an explicit fx<n> could take a planned effect's name and one of the two would never fire (r11
+    // drew 12 of 17 staged beats not at all, 2026-10-08).
+    if (foe) scene.effects.push({ ...fire(foe.name, tb - 110), id: `beat${i + 1}-shot` });
+    scene.effects.push({ ...blast(spot, tb, 'large', { cause: 'shot' }), id: `beat${i + 1}-boom` });
+    scene.effects.push({ ...debris(spot, tb + 30, { count: 34, speedMps: 15, hot: 0.4, scale: 1.1 }), id: `beat${i + 1}-debris` });
     added++;
   }
   if (added) scene.effects.sort((a, b) => a.tMs - b.tMs);
