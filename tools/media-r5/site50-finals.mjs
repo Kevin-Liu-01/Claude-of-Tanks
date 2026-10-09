@@ -171,9 +171,20 @@ const makeMasters = part => new Promise((done, fail) => {
   child.on('exit', code => { if (code !== 0) console.log(`[finals] masters for ${[...part][0]}… exited ${code}; the run goes on`); done(); });
   child.on('error', fail);
 });
+// renders/pause-encodes (the release candidate's CPU quiet period, 2026-10-09): no site formats start while it exists;
+// the GPU leases and the masters (which free the kept frames' disk) go on
+const encodePauseFile = join(renders, 'pause-encodes');
+const waitEncodePause = async () => {
+  let said = false;
+  while (existsSync(encodePauseFile)) {
+    if (!said) { console.log(`[finals] site formats paused while ${encodePauseFile} exists ${new Date().toTimeString().slice(0, 8)}`); said = true; }
+    await new Promise(resolve => setTimeout(resolve, 10000));
+  }
+  if (said) console.log(`[finals] site formats resumed ${new Date().toTimeString().slice(0, 8)}`);
+};
 const encodeLoops = part => {
   const masters = masterAfter ? (masterChain = masterChain.then(() => makeMasters(part))) : Promise.resolve();
-  encodeChain = Promise.all([encodeChain, masters]).then(() => new Promise((done, fail) => {
+  encodeChain = Promise.all([encodeChain, masters]).then(waitEncodePause).then(() => new Promise((done, fail) => {
     console.log(`[finals] loops for ${[...part][0]}… (background)`);
     const child = spawn('nice', ['-n', '15', 'node', join(TOOL, 'site-loops.mjs'), renders, deliver, [...part].join(','),
       ...('keep-film-masters' in flags ? [] : ['--drop-film-masters'])], { stdio: 'inherit' });
