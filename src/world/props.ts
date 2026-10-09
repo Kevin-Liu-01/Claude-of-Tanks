@@ -77,6 +77,14 @@ import {
   registerPaintNoise, settledPaint, surfacePaintKey, type SurfacePaintPrefetch, type SurfacePaintRequest,
 } from './surfacePaintPrefetch.ts';
 import { paintStructureDetailBuffers, type StructureDetailBuffers } from './structureDetailTile.ts';
+// (the facades lane, 2026-10-09, r10vx) Verdant's kit, its surfaces and its structure wood as the release carries them
+import { paintStructureDetailBuffers as paintReleaseStructureDetail } from './structureDetailTileRelease.ts';
+import {
+  makeRegionalRoof as makeReleaseRoof, makeRegionalStone as makeReleaseStone, paintLimewash as paintReleaseLimewash,
+} from './regionalSurfacesRelease.ts';
+import {
+  RELEASE_KOLKHOZ_STYLE, VERDANT_RELEASE_MAP, buildReleaseParts, rebuildReleaseStructure, releaseGardenParts,
+} from './maps/regional/release/index.ts';
 import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, type HaystackStyle } from './maps/haystackKit.ts';
 import { periodClutterTypes } from './maps/periodClutterKit.ts';
 import { STRUCTURE_VARIANTS } from './maps/regional/ksarGate.ts'; // b16: the ksar gate post for the checkpoint hut
@@ -991,7 +999,17 @@ function makePlaster(
   // the facades lane (2026-10-05): a kit's tone may name its render's painter — the khatas' lime-wash brushed over mud
   // plaster (regionalSurfaces.ts paintLimewash), matt and soft where this canvas reads as pebble-dash; (2026-10-08) a town's
   // lime render (paintLimeRender; Steinburg's stucco read "speckled": this canvas's 6 cm bumps shade as dots from the street)
-  const paint = (tone as { paint?: { kind: 'limewash' | 'limeRender'; seed: number } } | null)?.paint;
+  const paint = (tone as { paint?: { kind: 'limewash' | 'limeRender'; seed: number; release?: true } } | null)?.paint;
+  if (paint?.release) {
+    // (r10vx) a release kit's lime-wash, painted as the release paints it
+    const lime = paintReleaseLimewash(s, paint.seed);
+    applyTone(lime.px, tone);
+    return {
+      albedo: toTexture(lime.px, s, { srgb: true, anisotropy }),
+      normal: sharedSurface?.normal ?? normalFromHeight(lime.hgt, s, 0.8, anisotropy),
+      surface: sharedSurface?.surface ?? surfaceFromHeight(lime.hgt, s, anisotropy, { roughMin: 0.9, roughMax: 0.98, aoMin: 0.9 }),
+    };
+  }
   if (paint) {
     let byPaint = paintedRenders.get(noi);
     if (!byPaint) paintedRenders.set(noi, byPaint = new Map());
@@ -1463,11 +1481,13 @@ export function makeStructureDetail(
   noi: SimplexNoise,
   anisotropy: number,
   kind: 'wood' | 'canvas' | 'steel',
+  release = false,
 ): GeneratedSurfaceTextures {
   // (the time-to-battle lane, 2026-10-08) the tile the surface paint worker painted ahead for this build's noise and kind
   // (surfacePaintPrefetch.ts settledPaint: the same painter, structureDetailTile.ts), or painted here
   const ahead = settledPaint(noi, (seed) => surfacePaintKey({ kind: 'structureDetail', detail: kind, noiseSeed: seed })) as StructureDetailBuffers | null;
-  const { size: s, px, hgt, rust } = ahead ?? paintStructureDetailBuffers(noi, kind);
+  // (r10vx) a map whose kit is the release's paints the release's tile (the prefetched one is the current painter's)
+  const { size: s, px, hgt, rust } = release ? paintReleaseStructureDetail(noi, kind) : ahead ?? paintStructureDetailBuffers(noi, kind);
   // the rust mask rides the ORM blue channel the weathering hook reads (steel atlas convention, round 75)
   const surface = rust
     ? surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.50, roughMax: 0.86, aoMin: 0.76, rust })
@@ -3593,8 +3613,28 @@ function* propsBuildSteps(
   const town = P.town ? { ...v, ...P.town } : v;
 
   // regional-buildings lane: the map's architecture kit (maps/regional/index.ts) — its default tones sit under the map's
-  const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
-  if (regionalArchitecture?.surfaces.tones) P.tones = { ...regionalArchitecture.surfaces.tones, ...(P.tones || {}) };
+  // (the facades lane, 2026-10-09, r10vx: the ruling for tonight's deploy if Verdant drops under both round ten and r10v)
+  // Verdant's kit is the release's own (maps/regional/release): its builders, kernel, surfaces and structure wood, so
+  // none of the craft rounds three to ten reaches the owner's favourite village
+  const releaseKit = mapId === VERDANT_RELEASE_MAP && P.architecture === 'kolkhoz';
+  const regionalArchitecture = releaseKit
+    ? RELEASE_KOLKHOZ_STYLE as unknown as ReturnType<typeof resolveRegionalArchitecture>
+    : resolveRegionalArchitecture(P.architecture);
+  const rebuildKit: typeof rebuildRegionalStructure = releaseKit
+    ? (rebuildReleaseStructure as unknown as typeof rebuildRegionalStructure) : rebuildRegionalStructure;
+  if (regionalArchitecture?.surfaces.tones) {
+    const kitTones: Record<string, unknown> = { ...regionalArchitecture.surfaces.tones };
+    // (r10vx) a release kit's painted tones carry the release's painter
+    if (releaseKit) {
+      for (const [key, tone] of Object.entries(kitTones)) {
+        const paint = (tone as { paint?: { kind: string; seed: number } } | null)?.paint;
+        if (typeof tone !== 'function' || !paint) continue;
+        const own = tone as (h: number, s: number, l: number) => readonly [number, number, number];
+        kitTones[key] = Object.assign((h: number, s: number, l: number) => own(h, s, l), { paint: { ...paint, release: true } });
+      }
+    }
+    P.tones = { ...(kitTones as typeof regionalArchitecture.surfaces.tones), ...(P.tones || {}) };
+  }
   // the facades lane (2026-10-08): a kit's render painter (surfaces.render) paints each render family the map tones, under
   // that tone — the primary on its seed, plaster2 and plaster3 on the next (plaster3 borrows plaster2's relief below)
   const kitRender = regionalArchitecture?.surfaces.render;
@@ -3644,12 +3684,12 @@ function* propsBuildSteps(
     T.plaster3 || _tShift(T.plaster, -0.035, 0.72, 0.84), pouredConcrete ? null : plaster2);
   yield { fine: true };
   const roofT = regionalArchitecture
-    ? yield* makeRegionalRoof(regionalArchitecture.surfaces.roof.kind, regionalArchitecture.surfaces.roof.tint, aniso)
+    ? yield* (releaseKit ? makeReleaseRoof : makeRegionalRoof)(regionalArchitecture.surfaces.roof.kind, regionalArchitecture.surfaces.roof.tint, aniso)
     : makeRoofTiles(noi, aniso, T.roof || null);
   yield { fine: true };
   const stone = regionalArchitecture
-    ? yield* makeRegionalStone(regionalArchitecture.surfaces.stone.kind, regionalArchitecture.surfaces.stone.tint, aniso, undefined,
-      regionalArchitecture.surfaces.stone.dressed)
+    ? yield* (releaseKit ? makeReleaseStone : makeRegionalStone)(regionalArchitecture.surfaces.stone.kind,
+      regionalArchitecture.surfaces.stone.tint, aniso, undefined, regionalArchitecture.surfaces.stone.dressed)
     : yield* makeStone(noi, aniso, T.stone || null);
   yield { fine: true, stage: 'stone-maps' };
   const wood = makeWood(noi, aniso, T.wood || null);
@@ -3658,7 +3698,7 @@ function* propsBuildSteps(
   yield { fine: true };
   const hay = yield* makeHay(aniso, T.straw || null, getDeviceTier() === 'mobile' ? 256 : 512);
   yield { fine: true };
-  const structureWood = makeStructureDetail(noi, aniso, 'wood');
+  const structureWood = makeStructureDetail(noi, aniso, 'wood', releaseKit);
   yield { fine: true };
   const structureCanvas = makeStructureDetail(noi, aniso, 'canvas');
   const burlap = makeBurlapDetail(aniso); // the sandbags' hessian (the scenery lane, wave 52)
@@ -4019,7 +4059,8 @@ ${snowCap ? `
   const mudHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyMudWallHook(shader, mudShape); };
   // (round 7) a kit's tile sheet — the regional roofs' and, on a kit's map, the base roofs' (the same sheet) — half a mip
   // softer (applyTileLodBias)
-  const tileBiased = (kind: string) => kind === 'regionalRoof' || (kind === 'roof' && !!regionalArchitecture);
+  // (r10vx) a release kit's map samples its sheets as the release does
+  const tileBiased = (kind: string) => !releaseKit && (kind === 'regionalRoof' || (kind === 'roof' && !!regionalArchitecture));
   const roofHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyTileLodBias(shader, ROOF_TILE_LOD_BIAS); };
   function installSurfaceShaderHooks(): void {
     for (const [materialKind, material] of Object.entries(mats)) {
@@ -4709,7 +4750,7 @@ ${snowCap ? `
     const carriageway = fromRoad && P.roadBuildingClearance ? carriagewayFootprint(tmp, info, px, pz, rot) : null;
     if (regionalArchitecture && !regionalDonor) {
       // (a building a carriageway may still move takes no ground: its strip lies level)
-      const rebuilt = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
+      const rebuilt = rebuildKit(regionalArchitecture, structureId, tmp, info, wallBucket,
         { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun,
           ground: fromRoad && P.roadBuildingClearance ? undefined : regionalGround(px, pz, rot, fit.y + 0.05) }, px, pz, rot);
       if (rebuilt) {
@@ -4815,7 +4856,7 @@ ${snowCap ? `
     const carriageway = (P.roadBuildingClearance ? carriagewayFootprint(tmp, info, entry.x, entry.z, entry.rot) : null)
       ?? (footprintWet(entry.x, entry.z, info.w, info.d, entry.rot) ? footprintOf(tmp, info) : null);
     if (regionalArchitecture && !regionalDonor) {
-      tmp = rebuildRegionalStructure(regionalArchitecture, entry.structure, tmp, info, entry.wall,
+      tmp = rebuildKit(regionalArchitecture, entry.structure, tmp, info, entry.wall,
         { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun,
           ground: P.roadBuildingClearance ? undefined : regionalGround(entry.x, entry.z, entry.rot, fit.y + 0.05) },
         entry.x, entry.z, entry.rot) ?? tmp;
@@ -4957,7 +4998,7 @@ ${snowCap ? `
         jitterBuildingUvs(tmp, stream);
         if (footprintWet(entry.x, entry.z, info.w, info.d, entry.rot)) continue;
         if (regionalArchitecture) {
-          tmp = rebuildRegionalStructure(regionalArchitecture, entry.ruined ? 'ruin' : 'rowhouse', tmp, info, entry.wall,
+          tmp = rebuildKit(regionalArchitecture, entry.ruined ? 'ruin' : 'rowhouse', tmp, info, entry.wall,
             { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun }, entry.x, entry.z, entry.rot) ?? tmp;
         }
         addStructureCollision(entry.ruined ? 'ruin' : 'rowhouse', tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);
@@ -5077,7 +5118,7 @@ ${snowCap ? `
       jitterBuildingUvs(tmp);
       // regional-buildings lane: the street row's draws and pose are settled; the map's kit swaps in its row house
       if (regionalArchitecture) {
-        tmp = rebuildRegionalStructure(regionalArchitecture, ruined ? 'ruin' : 'rowhouse', tmp, info, rowWall,
+        tmp = rebuildKit(regionalArchitecture, ruined ? 'ruin' : 'rowhouse', tmp, info, rowWall,
           { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun, ground: regionalGround(x, z, rot, fit.y + 0.05) }, x, z, rot) ?? tmp;
       }
       addStructureCollision(ruined ? 'ruin' : 'rowhouse', tmp, x, fit.y + 0.05, z, rot);
@@ -8443,7 +8484,10 @@ ${snowCap ? `
             // (the shed's strip holes wait for the shed to keep to its plot)
             ground: regionalGround(x, z, yaw, fit.y + 0.05, shedHoles),
           };
-          const parts = buildRegionalParts(style, ctx, streamFrom(hashSeed(`${style.id}:yardshed-weather:${mapId}`, seed, x, z, yaw)));
+          const parts = releaseKit
+            ? buildReleaseParts(style as unknown as Parameters<typeof buildReleaseParts>[0], ctx as unknown as Parameters<typeof buildReleaseParts>[1],
+              streamFrom(hashSeed(`${style.id}:yardshed-weather:${mapId}`, seed, x, z, yaw))) as unknown as ReturnType<typeof buildRegionalParts>
+            : buildRegionalParts(style, ctx, streamFrom(hashSeed(`${style.id}:yardshed-weather:${mapId}`, seed, x, z, yaw)));
           const solid = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
           for (const list of Object.values(parts)) for (const g of list) {
             if (g.userData.noCollision) continue;
@@ -8472,7 +8516,8 @@ ${snowCap ? `
         const { x, z, yaw, w, d } = plan.garden;
         const fit = groundFit(x, z, w, d, yaw);
         if (fit.spread <= 0.5) {
-          const parts = (yard.graves ? graveParts : gardenParts)(w, d, mulberry32(hashSeed(`${style.id}:garden:${mapId}`, seed, x, z)), fit.spread);
+          const parts = (yard.graves ? graveParts : releaseKit ? releaseGardenParts : gardenParts)(w, d,
+            mulberry32(hashSeed(`${style.id}:garden:${mapId}`, seed, x, z)), fit.spread);
           _quat.setFromAxisAngle(_upAxis, yaw);
           _mat4.compose(_posv.set(x, fit.y + fit.spread, z), _quat, _one);
           mergeInto(buckets, parts as unknown as PropsBuckets, _mat4);
@@ -9902,7 +9947,7 @@ ${snowCap ? `
   // more on a map with thatch. The bales, stooks and stacks keep the straw print.
   {
     // (round 10) a map gated back to the older craft keeps the straw print on its thatch (KIT_LEGACY_MAPS)
-    const kitThatch = kitLegacy(mapId) ? [] : buckets.straw.filter((g) => g.userData.regional === true);
+    const kitThatch = kitLegacy(mapId) || releaseKit ? [] : buckets.straw.filter((g) => g.userData.regional === true);
     if (kitThatch.length) {
       buckets.straw = buckets.straw.filter((g) => g.userData.regional !== true);
       buckets.thatch = kitThatch;
