@@ -536,18 +536,18 @@ export function kineticStrike(C: BlastContext, I: StrikeInput): void {
   const fl = Math.hypot(fx, fz);
   if (fl > 1e-3) { fx /= fl; fz /= fl; } else { fx = 0; fz = 0; }
   if (I.surface === 'water') { splash(C, I.x, by, I.z, s, bo); return; }
-  // a spray of soil thrown up along the ricochet line (round 7, wave 276: stretched cards read as "capsule pods"):
-  // small round puffs launched together at continuous speeds, so they fill one narrow spray from the ground up
-  const spurtN = small ? 2 : Math.round(4 + s * 4);
+  // a spray of soil standing up along the ricochet line (tall, narrow, overlapping: round 3's round spurts read as a
+  // row of small balls)
+  const spurtN = small ? 2 : Math.round(2 + s * 2);
   for (let i = 0; i < spurtN; i++) {
-    const u = (i + R()) / spurtN;
     const fwd = 0.35 + R() * 0.5;
-    const v = (small ? 5 : 6 + 10 * u) * Math.sqrt(s) * L.heightK;
-    place(m, I.x + fx * 0.1 * i, by + 0.1, I.z + fz * 0.1 * i, bo + R() * 0.02);
-    move(m, (fx * fwd + (R() - 0.5) * 0.3) * v, v * (0.8 + R() * 0.4), (fz * fwd + (R() - 0.5) * 0.3) * v, 2.6, 0.1, 0.6, -6);
-    shape(m, (small ? 0.8 : 1.3) + R() * 0.5, 0.25 * s * dk, (small ? 1.4 : 0.9 + R() * 0.5) * s * dk * Math.sqrt(L.dustK), 2.2, R);
-    look(m, i === 0 ? L.ejecta : mix3(L.ejecta, L.dust, 0.35 + 0.3 * u), L.dust, 0.92, 0.0, 0.45);
-    book(m, 'burst', R, 2.0, 2);
+    const v = (small ? 5 : 9 + R() * 6) * Math.sqrt(s) * L.heightK;
+    place(m, I.x + fx * 0.15 * i, by + 0.1, I.z + fz * 0.15 * i, bo + R() * 0.02);
+    move(m, (fx * fwd + (R() - 0.5) * 0.4) * v, v * (0.8 + R() * 0.4), (fz * fwd + (R() - 0.5) * 0.4) * v, 2.6, 0.1, 0.6, -5);
+    shape(m, (small ? 0.8 : 1.6) + R() * 0.6, 0.35 * s * dk, (1.6 + R() * 0.6) * s * dk * Math.sqrt(L.dustK), 2.2, R);
+    look(m, i === 0 ? L.ejecta : mix3(L.ejecta, L.dust, 0.5), L.dust, 0.9, 0.0, 0.4);
+    book(m, 'burst', R, 2.2, 3);
+    card(m, 0.55 + R() * 0.15, R, 0.15);
     heat(m, 0, 1);
     C.media(m);
   }
@@ -561,9 +561,9 @@ export function kineticStrike(C: BlastContext, I: StrikeInput): void {
   C.media(m);
   if (L.chunkK > 0 && !small) {
     const shapeId: ChunkShape = I.surface === 'rock' || I.surface === 'concrete' ? 'stone' : 'clod';
-    const n = Math.round((8 + 14 * s) * L.chunkK);
+    const n = Math.round((3 + 5 * s) * L.chunkK);
     for (let i = 0; i < n; i++) {
-      const a = R() * TAU, v = (3 + 9 * Math.pow(R(), 1.6)) * Math.sqrt(s);
+      const a = R() * TAU, v = (4 + R() * 8) * Math.sqrt(s);
       chunk(C, shapeId, I.x, by + 0.15, I.z, (Math.cos(a) * 0.6 + fx) * v * 0.7, (0.6 + R() * 0.8) * v,
         (Math.sin(a) * 0.6 + fz) * v * 0.7, (0.04 + R() * 0.08) * s * L.chunkScale + 0.02, L.chunk, 10 + R() * 6, 0, bo);
     }

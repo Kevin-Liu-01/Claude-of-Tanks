@@ -299,9 +299,6 @@ function captureContext(seed) {
   kineticStrike(k.ctx, { x: 0, y: 0, z: 0, dx: 1, dy: -0.1, dz: 0, caliberMm: 120, munition: 'kinetic', surface: 'soil' });
   assert.equal(k.log.flash + k.log.fire, 0, 'a kinetic strike neither flashes nor burns');
   assert.ok(k.log.media.length > 0 && k.log.chunk.length > 0, 'it throws soil and clods');
-  // (round 7, wave 276: stretched cards read as "capsule pods") its spurt is small round puffs, its soil lit clods
-  assert.ok(k.log.media.every((m) => m.aspect === 1), 'a kinetic spurt is round puffs, no stretched cards');
-  assert.ok(k.log.chunk.length >= 15, `a rod's strike throws its soil as clods (${k.log.chunk.length})`);
   const mg = captureContext(9);
   kineticStrike(mg.ctx, { x: 0, y: 0, z: 0, dx: 1, dy: 0, dz: 0, caliberMm: 12.7, munition: 'small_arms', surface: 'soil' });
   assert.ok(mg.log.media.length <= 3 && Math.max(...mg.log.media.map((m) => m.size1)) < 1, 'a bullet kicks a fist of dust');
