@@ -40,6 +40,7 @@ import {
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial,
 } from './materials.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
+import { VEHICLE_FIELD_WEAR_GARAGE, installVehicleFieldWear } from './vehicleFieldWear.ts';
 import { applyInteriorFills } from './interiorFills.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
 import { measureNearShadowCasterWork } from './shadowCasterWork.ts';
@@ -1547,7 +1548,9 @@ function installVehicleGroundReference(root: THREE.Object3D): void {
     if (!(object as THREE.Mesh).isMesh) return;
     const before = object.onBeforeRender, after = object.onAfterRender;
     object.onBeforeRender = function vehicleGroundBefore(...args: Parameters<THREE.Object3D['onBeforeRender']>) {
-      setVehicleGroundFromRoot(root);
+      // (round 5 field wear, 2026-10-08: the drawn material picks its coat, film, use-wear and soot source; the render's
+      // frame counter places the root's frame and soot sources once per frame, materials.ts)
+      setVehicleGroundFromRoot(root, args[4], args[0]?.info?.render?.frame ?? -1);
       before.apply(this, args);
     };
     object.onAfterRender = function vehicleGroundAfter(...args: Parameters<THREE.Object3D['onAfterRender']>) {
@@ -4616,8 +4619,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     // shoe geometry has a vertex-color attribute; enabling vertexColors would
     // multiply the palette by the missing attribute's black default.
     padMat.vertexColors = false;
-    padMat.roughness=0.97;
-    padMat.metalness=0.08;
+    // Round 5 per-material surfaces (2026-10-08): the shoes are the track iron they were cloned from (materials.ts
+    // trackLink: dull worn steel, roughness 0.88 x map, metalness 0.2); the old 0.97 / 0.08 overrides kept them out of it.
     padMat.userData = { ...(padMat.userData || {}), appearanceRole: 'trackPad',
       appearanceColorSource: 'instance-palette' };
     padMat.name = 'cot:track-pad';
@@ -9018,6 +9021,7 @@ function* createTankOwnedSteps(
      * normal battle build would have produced.
      */
     prepareForSimulation() {
+      root.userData.fieldWear = 1; // battle wears the battlefield's soil in full (vehicleFieldWear.ts)
       if (this.contactGeom) return this.contactGeom;
       const prepared = composeContactGeom(measureRestContact(root));
       if (!prepared) return null;
@@ -9760,6 +9764,7 @@ function* createTankOwnedSteps(
      * layer must be cleared before the garage render loop stops syncing it.
      */
     resetForGaragePresentation() {
+      root.userData.fieldWear = VEHICLE_FIELD_WEAR_GARAGE; // the showroom's light neutral film (vehicleFieldWear.ts)
       this.resetDestroyed();
       groundSampler = null;
       gearAccumDt = 0;
@@ -9875,6 +9880,9 @@ function* createTankOwnedSteps(
     // Align complete banks before static batching can flatten their socket owners.
     alignSmokeBanks(root);
     retainCombatLods(root);
+    // 2026-10-08 (round 5 field wear, vehicleFieldWear.ts): the hull frame (stern, bow, deck, half width), the exhaust and
+    // the muzzle the use-wear reads, measured from the unbatched plates
+    installVehicleFieldWear(root, specId);
 
     if ((geometryQuality === 'low' && !deferStaticBatch) || batchStatic) {
       const mobileBatchParents = [hullG, turretG, gunG, recoilG];
@@ -9982,6 +9990,9 @@ function* createTankOwnedSteps(
       depthLayers = mergeBattleStaticRuns(depthLayers, staticDrawMerge === 'translations');
     }
     installCoplanarDepthLayers(root, depthLayers);
+    // 2026-10-08 (round 5 field wear, vehicleFieldWear.ts): the Garage showroom build wears a light neutral film, a
+    // battle build its battlefield's soil (prepareForSimulation and resetForGaragePresentation switch it)
+    root.userData.fieldWear = staticPreview ? VEHICLE_FIELD_WEAR_GARAGE : 1;
     // after the static merge, so the merged draws carry it too; it wraps the layer hook, as on main
     installVehicleGroundReference(root);
     const tailFinalizeFinishedAt = performance.now();

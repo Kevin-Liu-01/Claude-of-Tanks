@@ -396,10 +396,45 @@ narrow, saturated mark over the paint. A new weathering mark multiplies (or dark
 and falls off softly at its sides.
 Field wear (2026-10-07/08): the round 2-4 wear (a height-graded dust, mud and soot shader term behind `COT_FIELD_WEAR`,
 baked edge chips in the plate painter, a decor dust ramp) was stripped before batch 5: blind waves 240 and 264 scored
-it flat up close ("a gravity-blind overlay"), although wave 265 found it helped at battle distance. The redesign
-(per-material surfaces, dust and wet earth graded up from the running gear in the map's soil colour, wear where use puts
-it, contact occlusion, readable at 15-60 m, priced under cost rule v3) lands on its own wave; the stripped code is at
-95afc36d6 for reference.
+it flat up close ("a gravity-blind overlay"), although wave 265 found it helped at battle distance; the stripped code
+is at 95afc36d6 for reference. Round 5 (2026-10-08) rebuilt it in `vehicleFieldWear.ts`, uniform-driven inside
+`vehicleAmbientFloorHook`: no define, sampler or program key, so a new vehicle material needs nothing. The battlefield's
+soil follows its terrain (`VEHICLE_FIELD_GROUNDS`: each map's dirt and ground layers as the terrain measures them;
+`vehicleFieldWear.selftest.mjs` recomputes them from the photos and the plan, so a ground retint fails there until the
+vehicles follow) and is set by `setCamoBiome`. Each draw binds its root's strength (`root.userData.fieldWear`: 1 in
+battle, `VEHICLE_FIELD_WEAR_GARAGE` with the Garage's neutral film, 0 none: tooling that needs a clean vehicle sets 0)
+and its material's role (`vehicleFieldWearRole`: the appearance role or decor family; alpha-cut cards take none; opt a
+material out with `userData.cotWearRole = 'none'`). The pattern rides each mesh's own frame in metres with a per-instance offset
+(identical panels never repeat one pattern), the vehicle frame (height, up, stern) comes from the vertex stage, the
+runs lie across each face level with the ground (never along a mesh's own axis: a turned mesh drew diagonal bars), and
+every octave settles to its mean before it can sparkle. Use-wear reads what `installVehicleFieldWear` publishes at
+build end (before static batching): the hull frame measured from the unbatched plates (the stern and bow stations, the
+engine deck and the half width) and the planes things stand on (the fenders' top, the turret roof and the turret's foot,
+each its bin's area-weighted mean height), the exhaust (rear deck and plate, or the left flank for the T-54/55/62,
+T-64/72/90, PT-91, M-84 and BMPT lineage) and `rig_muzzle`. Every per-draw value is the root's or the material's, never
+the drawn object's: three uploads a material's uniforms only when the material changes between draws, so a value set
+for one object goes stale inside a run of draws sharing that material. So the soot source is chosen per material (the
+materials only the gun draws with read the muzzle, the rest the exhaust), placed once per rendered frame. At every
+distance (the lead's round 5 brief: the media lane's blind pairs called the hulls clean): grime at the foot of whatever
+stands on the deck and the fenders (inside the hull's outline only, so the rear plate, the bow's plates and the skirts,
+which merely run past those heights, never take a stripe), on the turret roof (true walls only) and round the turret's
+foot, under the overhangs and in the wheel bays, a matte multiply toward the soil's hue (darker and browner on every
+scheme: grime in the soil's own value lifted dark green to a creamy wash); dark worn edges along the fender lips and
+the rear deck's edge; the paint's sheen broken up (mostly chalky) with rubbed walkways and raised tops, darker and at
+most 0.06 smoother. Every thin band widens with the pixel's footprint and keeps its area (`cotWearBand`). A broad band
+down a cast turret's shoulder read as a smear in the sheet and was dropped. The role's
+z picks the use-wear class (1 painted metal: chips along the normal-map relief, rubbed walkways at the bow and the stern,
+thin grime runs; 2 track iron: up-facing faces worn smooth; 3 bare steel: contact spots worn smooth; 4 rubber and the
+scrolling band, 5 wheels), its w the soot it takes; classes 2, 4 and 5 keep the dark packed coat all round and take no
+film. Round 5's first GPU frames (M60A1 on Sirocco) set three laws: the coat's breakup is soft-edged and low-contrast
+(a thresholded octave read as camouflage), the desert's contrast is darker grime low with only a tint on the decks
+(a pale film washed the tank white), and the running gear lifts by a third at most (the readability floor scales a
+shaded texel's light by its albedo over the paint's mean, so a lit-up track band drew a cream outline round the
+tracks). The second GPU round (Garage, Verdant, Sirocco) made the wear darkening-first: green schemes washed paler and
+creamier under the film, soil-valued grime and a polished walkway that caught the showroom's sky, while tan schemes
+held. A painted plate is never lifted past its own value (`VehicleFieldSoil.lift` is 0 off snow; only the thick mud
+low down sets its own value), and painted metal never drops more than 0.06 below its own roughness. Marks darken or
+multiply; the fine marks resolve only up close.
 The shared checkout often contains active tank-generation WIP. Never stage
 builders, profiles, icons, GLBs, or generated geometry ledgers by directory.
 Chassis closure (FSP-05, 2026-09-25): a mirrored `for s of [-1, 1]` slab, a

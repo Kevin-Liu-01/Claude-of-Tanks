@@ -1331,6 +1331,8 @@ interface DecorMaterials {
  * the old 0x161d23 folded into the steel draw as a dark navy the probe flagged blue on the Challenger 1's sights).
  */
 const DECOR_GLASS = 0x171b17;
+/** Decor tyre rubber: the vehicle tyres' own (materials.ts `rubber`; round 5, 2026-10-08: 0x1b1c1b, was 0x232425). */
+const DECOR_RUBBER = 0x1b1c1b;
 
 /**
  * Issue paints of 200 L drums (round 5, 2026-10-08): olive drab, dark green, field grey and sand, linear multipliers on
@@ -1485,10 +1487,13 @@ function buildDecorMaterials(
     } : { color: equipmentPalette.steel, roughness: 0.86, metalness: 0.06, vertexColors: true, envMapIntensity: 0.35 }),
     // dark oily gunmetal: MGs, cables, tools, shackles, track links
     // 2026-10-06 (round 2): matte, oily steel; at 0.62 roughness and 0.35 metalness thin handles read as mirror chrome
+    // 2026-10-08 (round 5 per-material surfaces; wave 264: "nothing reads as steel, rubber or canvas"): the vehicle's
+    // own gunmetal response, a third metallic at 0.7 (was 0.78 / 0.16 / 0.35), so a tool head or a shackle takes a soft
+    // steel gleam; still a step rougher and less metallic than round 2's chrome handles.
     steel: () => painted({
-      color: equipmentPalette.steel, roughness: 0.78, metalness: 0.16,
+      color: equipmentPalette.steel, roughness: 0.7, metalness: 0.32,
       roughnessMap: canPaint ? getSharedRoughnessTexture(spec) : undefined,
-      vertexColors: true, envMapIntensity: 0.35,
+      vertexColors: true, envMapIntensity: 0.3,
     }),
     // round 4 (2026-10-07): matte, greyer, weathered issue-crate wood (was 0x97815f, roughness 0.9, a warm stain that
     // read as varnished mahogany): woodTex's grey-brown ground x a near-neutral multiplier, about #5f5648 in all
@@ -1496,17 +1501,19 @@ function buildDecorMaterials(
       map: woodTex(), color: 0xaca8a5, roughness: 0.96, metalness: 0.0,
       vertexColors: true, envMapIntensity: 0.08,
     }),
+    // round 5 (2026-10-08): woven cloth mirrors almost none of the sky (0.06, was 0.12 / 0.1), dead matte beside paint
     canvas: () => painted({
       map: weaveTex(), color: equipmentPalette.canvas, roughness: 0.96, metalness: 0.0,
-      vertexColors: true, envMapIntensity: 0.12,
+      vertexColors: true, envMapIntensity: 0.06,
     }),
     burlap: () => painted({
       map: weaveTex(), color: equipmentPalette.burlap, roughness: 0.98, metalness: 0.0,
-      vertexColors: true, envMapIntensity: 0.1,
+      vertexColors: true, envMapIntensity: 0.06,
     }),
+    // round 5: the vehicle tyres' satin rubber (materials.ts 0x1b1c1b / 0.8, a little sky; was 0x232425 / 0.94 / 0.04 / 0.12)
     rubber: () => ({
-      color: 0x232425, roughness: 0.94, metalness: 0.04,
-      vertexColors: true, envMapIntensity: 0.12,
+      color: DECOR_RUBBER, roughness: 0.8, metalness: 0.0,
+      vertexColors: true, envMapIntensity: 0.28,
     }),
     cans: () => painted({ // authored-color hardware (jerrycans): tint baked per piece
       map: fieldHardwareTex(), color: 0xffffff, roughness: 0.82, metalness: 0.07,
@@ -4233,11 +4240,11 @@ const RESIDENT_FAMILIES: ReadonlySet<DecorMaterialKey> = new Set<DecorMaterialKe
 /**
  * Small flat-colour families folded into a host family's draw (2026-10-05 draw audit: a searchlight's glass or a
  * spare wheel's tyre each opened a draw of its own). The vertex-colour multiplier keeps the colour: optic glass
- * (0x161d23) in the gunmetal steel draw, over the nation's steel colour; tyre rubber (0x232425) in the painted-
+ * (0x161d23) in the gunmetal steel draw, over the nation's steel colour; tyre rubber (DECOR_RUBBER) in the painted-
  * hardware draw, over the hardware map's ground (#cbc9c1). Linear values.
  */
 function decorFamilyFolds(palette: FleetEquipmentPalette): ReadonlyMap<DecorMaterialKey, { to: DecorMaterialKey; k: readonly [number, number, number] }> {
-  const steel = new THREE.Color(palette.steel), glass = new THREE.Color(DECOR_GLASS), rubber = new THREE.Color(0x232425);
+  const steel = new THREE.Color(palette.steel), glass = new THREE.Color(DECOR_GLASS), rubber = new THREE.Color(DECOR_RUBBER);
   const ground = new THREE.Color(0xcbc9c1);
   return new Map<DecorMaterialKey, { to: DecorMaterialKey; k: readonly [number, number, number] }>([
     ['lens', { to: 'steel', k: [glass.r / steel.r, glass.g / steel.g, glass.b / steel.b] }],

@@ -35,6 +35,10 @@ export {
   CLAUDE_CODE_MARK, CLAUDE_SPARK_MARK, fillHeightNormalRows, applyPatchRoughnessPixels,
 } from './materialPainter.ts';
 import { bindVehicleReadabilityUniform } from './vehicleReadability.ts';
+import {
+  FIELD_WEAR_FRAGMENT, FIELD_WEAR_FRAGMENT_PARS, FIELD_WEAR_VERTEX, FIELD_WEAR_VERTEX_PARS, VEHICLE_FIELD_WEAR_UNIFORMS,
+  bindVehicleFieldWear, setVehicleFieldSoil, vehicleWearFrameOf,
+} from './vehicleFieldWear.ts';
 import { VEHICLE_ALPHA_TAG } from '../engine/vehicleOcclusion.ts';
 
 export {
@@ -1266,6 +1270,10 @@ export function clearCamoOverrides() { CAMO_OVERRIDE.clear(); }
 /** Point 'auto' selections at a battlefield biome (call before a battle). */
 export function setCamoBiome(mapId: string): void {
   activeBiome = autoCamoBiomeId(mapId);
+  // 2026-10-08 (round 5 field wear, vehicleFieldWear.ts): battle builds wear this battlefield's soil. Every battle start
+  // (solo, shot-mode staging, multiplayer activation, the Studio) and the Garage's map picker already route their map
+  // through here, so the coat follows the map with no new wiring.
+  setVehicleFieldSoil(mapId);
 }
 
 /** The tank's effective selection: a battle override first, else the saved pick. */
@@ -2347,14 +2355,22 @@ const VEHICLE_GROUND = Object.freeze({
   uVehGround: { value: new THREE.Vector4(0, VEHICLE_GROUND_IDLE_Y, 0, 0) },
   uVehUp: { value: new THREE.Vector3(0, 1, 0) },
 });
-/** Point the ground occlusion at a vehicle root (its origin is the ground contact; its +Y the hull's up axis). */
-export function setVehicleGroundFromRoot(root: THREE.Object3D): void {
-  const e = root.matrixWorld.elements;
-  VEHICLE_GROUND.uVehGround.value.set(e[12], e[13], e[14], 1);
-  const n = Math.hypot(e[4], e[5], e[6]) || 1;
-  VEHICLE_GROUND.uVehUp.value.set(e[4] / n, e[5] / n, e[6] / n);
+/**
+ * Point the ground occlusion at a vehicle root (its origin is the ground contact; its +Y the hull's up axis).
+ * 2026-10-08 (round 5 field wear, vehicleFieldWear.ts): the root's frame is placed once per rendered frame
+ * (vehicleWearFrameOf: `frame` is the render's frame counter, -1 places it every call); its w carries the root's
+ * field-wear strength (`root.userData.fieldWear`: 1 in battle with the battlefield's soil, VEHICLE_FIELD_WEAR_GARAGE on
+ * the Garage showroom build with its neutral film; a root without it wears 1). The drawn material selects how much coat,
+ * film and use-wear its surface takes and which soot source it reads (every value is the root's or the material's:
+ * three uploads a material's uniforms only when the material changes between draws).
+ */
+export function setVehicleGroundFromRoot(root: THREE.Object3D, material?: THREE.Material | null, frame = -1): void {
+  const state = vehicleWearFrameOf(root, frame);
+  VEHICLE_GROUND.uVehGround.value.copy(state.ground);
+  VEHICLE_GROUND.uVehUp.value.copy(state.up);
+  bindVehicleFieldWear(state, material);
 }
-/** Release it: anything drawn without a vehicle root sees a far-below ground (no darkening). */
+/** Release it: anything drawn without a vehicle root sees a far-below ground (no darkening) and wears no field wear. */
 export function resetVehicleGround(): void {
   VEHICLE_GROUND.uVehGround.value.set(0, VEHICLE_GROUND_IDLE_Y, 0, 0);
   VEHICLE_GROUND.uVehUp.value.set(0, 1, 0);
@@ -2393,10 +2409,26 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   bindVehicleReadabilityUniform(shader.uniforms);
   shader.uniforms.uVehGround = VEHICLE_GROUND.uVehGround;
   shader.uniforms.uVehUp = VEHICLE_GROUND.uVehUp;
-  // the material's image-based-light scale (vehicleEnvScaleUniform): createTankMaterials binds each material's own;
-  // anything compiled through the bare hook keeps the scene's full sky light, as before
+  // 2026-10-08 (round 5 field wear, vehicleFieldWear.ts): the coat and the film of the battlefield's soil, graded up
+  // from the ground contact, and the use-wear. Uniforms only (shared objects: the soil per battle, the role per draw),
+  // so the program keys and variants are unchanged; the paint takes the wear before any light reads it.
+  shader.uniforms.uVehWearRole = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearRole;
+  shader.uniforms.uVehWearFwd = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearFwd;
+  shader.uniforms.uVehWearHull = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearHull;
+  shader.uniforms.uVehWearPlanes = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearPlanes;
+  shader.uniforms.uVehWearSoot = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearSoot;
+  shader.uniforms.uVehWearSootAxis = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearSootAxis;
+  shader.uniforms.uVehWearDeep = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearDeep;
+  shader.uniforms.uVehWearSplash = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearSplash;
+  shader.uniforms.uVehWearSettle = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearSettle;
+  shader.vertexShader = `${FIELD_WEAR_VERTEX_PARS}${shader.vertexShader}`.replace(
+    '#include <begin_vertex>', `#include <begin_vertex>${FIELD_WEAR_VERTEX}`);
+  // the material's image-based-light scale (vehicleEnvScaleUniform; the fleet lane's eae5eb98a): createTankMaterials
+  // binds each material's own; anything compiled through the bare hook keeps the scene's full sky light, as before
   shader.uniforms.uVehEnvScale ??= { value: 1 };
-  shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\nuniform float uVehEnvScale;\n${shader.fragmentShader}`;
+  shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\nuniform float uVehEnvScale;\n${FIELD_WEAR_FRAGMENT_PARS}${shader.fragmentShader}`;
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '#include <normal_fragment_maps>', `#include <normal_fragment_maps>${FIELD_WEAR_FRAGMENT}`);
   shader.fragmentShader = shader.fragmentShader.replace(
     '#include <lights_fragment_maps>',
     `#include <lights_fragment_maps>
@@ -2747,8 +2779,16 @@ export function createTankMaterials(
   stampSchemeFinish(wheelsRecessed);
   // camo_spotting r3: lifted off near-black so lighting models tire rings
   // instead of silhouetting them (Tiger bullseye critique).
+  // Per-material surfaces (2026-10-08, tank-accessories round 5; wave 264, both critics: "paint, steel, rubber and
+  // canvas share one flat matte finish", "nothing reads as steel, rubber or canvas"): each role answers light its own
+  // way. Rubber is the darkest neutral on the vehicle with a soft satin sheen: rougher than paint's grazing film would
+  // allow it to mirror (0.86, was 0.96 under the full-strength sky, envMapIntensity 1, which laid a grey wash over every
+  // tyre and flap in shade); the sun now draws a soft highlight along a tyre's curve and the sky stays out of it.
+  // 2026-10-08 (round 5 with the fleet lane's running-gear rebuild; wave 269, a third time: "flat tan wheel dishes ...
+  // pale-plank tracks"): the tyres darker still (0x1b1c1b, was 0x292a28) and a touch wetter (0.8): the readability floor
+  // and the soft sheen keep the tyre rings modelled, and the field wear's earth on them reads lighter than the rubber.
   const rubber = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x292a28, roughness: 0.96, metalness: 0.0,
+    color: 0x1b1c1b, roughness: 0.8, metalness: 0.0, envMapIntensity: 0.28,
   })));
   // Accessories must never read as raw #000 blockout: scheme-tinted fittings
   // and gunmetal hardware, both with roughness variation.
@@ -2792,8 +2832,13 @@ export function createTankMaterials(
     // r3: hue pulled off the blue-grey — 0x33383a leaned navy under the sky
     // env and cool key light; neutral warm gunmetal keeps fittings in the
     // same family as the dust/steel gear.
-    color: 0x36342f, roughness: 0.9, metalness: 0.18, roughnessMap: roughTex,
-    envMapIntensity: 0.22,
+    // Round 5 per-material surfaces (2026-10-08; wave 264: "no difference between steel, rubber and stowage"): oily
+    // gun steel is half metallic and smoother than paint (0.68 x the roughness map, ~0.57; was 0.9 / 0.18 / 0.22, the
+    // matte paint's own response), so a muzzle brake, a machine-gun body or a tool handle catches a soft metallic gleam
+    // along its curve. Its dark base keeps the reflectance near the paint's at normal incidence (no sky mirror on the
+    // flat grille bases the r9 note guards) and the roughness stays well above round 2's "mirror chrome" handles.
+    color: 0x36342f, roughness: 0.68, metalness: 0.42, roughnessMap: roughTex,
+    envMapIntensity: 0.32,
   })));
   // Individual track-link pads: worn dusty steel, clearly lighter than the
   // shadowed band behind them so the run reads as articulated links up close.
@@ -2817,9 +2862,13 @@ export function createTankMaterials(
   // elsewhere on the same vehicle"): 0x46423a link pads bounced to pale sand
   // under direct sun while the band texture stayed near-black — one run read
   // as two materials. Pads pulled down into the band's own tonal family.
+  // Round 5 per-material surfaces (2026-10-08): worn iron rather than painted plastic, a fifth metallic and a step
+  // smoother (0.88 x the map; was 0.95 / 0.08), so links, ribs, shoes (the pad clone follows it now) and sprocket teeth
+  // take a dull steel sheen where the sun rakes them without lifting the crests (wave 269: "pale-plank tracks"); the sky
+  // response stays cut (0.1) for the r10 / tank_models r1 blue-tint reasons above.
   const trackLink = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x353634, roughness: 0.95, metalness: 0.08, roughnessMap: roughTex,
-    envMapIntensity: 0.08,
+    color: 0x353634, roughness: 0.88, metalness: 0.2, roughnessMap: roughTex,
+    envMapIntensity: 0.1,
   })));
   // Spare track links carried as stowage/armor: dark oily track steel — the
   // light-grey trackLink shade read as unpainted plastic sprue racked on the
@@ -2828,8 +2877,10 @@ export function createTankMaterials(
     // r3: roughness floor raised / metalness cut — with the multiplying
     // roughnessMap the 0.85 base dipped to sparkling flecks on idler/sprocket
     // recess faces (the T-90M "navy sparkle" read under the closeup key).
-    color: 0x353634, roughness: 0.94, metalness: 0.08, roughnessMap: roughTex,
-    envMapIntensity: 0.06,
+    // Round 5 (2026-10-08): the same worn iron as the live links (0.88 / 0.2 / 0.1, was 0.94 / 0.08 / 0.06), above
+    // the 0.85 base whose map dips sparkled.
+    color: 0x353634, roughness: 0.88, metalness: 0.2, roughnessMap: roughTex,
+    envMapIntensity: 0.1,
   })));
   // Optics / headlight lenses: smoked dark-olive glass (round 3, 2026-10-07). The old smooth blue-grey MIRROR
   // (0x2a3540, metalness 0.85, full env) fired the PMREM sky as the most saturated blue on the vehicle. Critics:
@@ -2867,8 +2918,11 @@ export function createTankMaterials(
     color: usesSchemeTintedCanvas
       ? new THREE.Color(cssRGB(canvasRgbOf(patVis)))
       : 0x42452f,
+    // Round 5 per-material surfaces (2026-10-08; wave 264: "no material difference between rubber, steel and canvas"):
+    // woven cotton duck scatters light and mirrors none of the sky, so cloth keeps a tenth of it (0.1, was 0.25, the
+    // painted fittings' own response): bags, tarps and bedrolls go dead matte beside the paint's soft grazing sheen.
     roughness: 0.97, metalness: 0.0,
-    bumpMap: roughTex, bumpScale: 0.5, envMapIntensity: 0.25,
+    bumpMap: roughTex, bumpScale: 0.5, envMapIntensity: 0.1,
     // sealed check 2026-09-13: cloth is thin and seen from both sides —
     // single-sided ghillie strips, tarps and aprons vanished from behind and
     // exposed the hull through the suit as the camera orbited.
@@ -2890,7 +2944,7 @@ export function createTankMaterials(
   // under the hull's value on Sinai Grey (#6f7566) so it reads as kit, not as a lit hull face.
   const canvasPale = track(setup(new THREE.MeshStandardMaterial({
     color: 0x66604a, roughness: 0.97, metalness: 0.0,
-    bumpMap: roughTex, bumpScale: 0.5, envMapIntensity: 0.25,
+    bumpMap: roughTex, bumpScale: 0.5, envMapIntensity: 0.1, // round 5: dead-matte cloth, as the OD canvas above
     side: THREE.DoubleSide,
   })));
   for (const rec of paintableRecs) shared.paintable.add(rec);
