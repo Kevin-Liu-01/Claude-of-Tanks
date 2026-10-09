@@ -84,6 +84,10 @@ interface SceneryRockField {
   talusDeg?: number | null;
   /** Discs [x, z, r] the field leaves bare (a dune is steep but it is sand). */
   avoid?: ReadonlyArray<readonly [number, number, number]>;
+  /** Formations under this radius (m) take the phones' facet count on every tier (the Redrock lane, round 11e: a field
+   *  of many small talus stones costs the frame what a few big blocks do; the stones' outlines and collision are the
+   *  same, their facets fewer). Absent: the tier's own count. */
+  leanUnder?: number;
   tone?: readonly [number, number, number];
   name?: string;
 }

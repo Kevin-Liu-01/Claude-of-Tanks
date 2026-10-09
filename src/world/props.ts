@@ -304,6 +304,9 @@ interface InhabitSettings {
   jeeps?: number;
   drumClusters?: number;
   looseClutter?: number;
+  /** The loose roadside kinds, six of them (the Redrock lane, round 11e: a list of the default's length draws the same
+   *  sites and members, so only the kinds change). Absent: the map family's own mix. */
+  looseKinds?: readonly [string, string, string, string, string, string];
   camps?: number;
   carts?: number;
   modernClutter?: number | Record<string, number>;
@@ -5698,7 +5701,7 @@ ${snowCap ? `
     const isIndustrial = mapId === 'urban' || mapId === 'railyard' || mapId === 'foundry' || mapId === 'caldera'
       || mapId === 'copper_mesa' || mapId === 'airfield' || mapId === 'whiteout';
     const isDry = mapId === 'desert' || mapId === 'badlands' || mapId === 'frontier' || mapId === 'oasis';
-    const looseKinds = isIndustrial ? industrialLoose : isDry ? dryLoose : ruralLoose;
+    const looseKinds: readonly string[] = inh.looseKinds ?? (isIndustrial ? industrialLoose : isDry ? dryLoose : ruralLoose);
     const looseCap = richCount(inh.looseClutter, P.streetRows ? 20 : P.plan.length >= 14 ? 18 : 14);
     const loosePlacement = { authoredSites: looseCap, acceptedSites: 0, placedMembers: 0, kinds: [] as string[] };
     const placedLooseKinds = new Set<string>();

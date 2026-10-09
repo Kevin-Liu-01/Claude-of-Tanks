@@ -7568,7 +7568,8 @@ function terrainIndexPoolReceipt(pool: TerrainIndexPool): {
  * sun or grazing it, a vertex keeps no more of the sun than its wall: the normal's sun-ward excess over the wall's is
  * dropped. A sunlit wall's notches, the domes and the floor are untouched; the joints keep their shade from the sky. */
 interface JebelLit { clamp(x: number, z: number, nrm: Float32Array, o: number): void }
-function makeJebelLit(heights: Float32Array, n: number, origin: number, step: number, sun: THREE.Vector3): JebelLit {
+function makeJebelLit(heights: Float32Array, fold: Float32Array, n: number, origin: number, step: number,
+  sun: THREE.Vector3): JebelLit {
   const gx = new Float32Array(n * n), gz = new Float32Array(n * n);
   const h = (i: number, j: number) => heights[Math.max(0, Math.min(n - 1, j)) * n + Math.max(0, Math.min(n - 1, i))];
   for (let j = 0; j < n; j++) {
@@ -7585,10 +7586,13 @@ function makeJebelLit(heights: Float32Array, n: number, origin: number, step: nu
   return {
     clamp(x, z, nrm, o) {
       const fy = nrm[o + 1];
-      if (fy >= 0.92) return; // the floor, the domes' tops and the benches (under ~23 degrees): untouched
       const u = (x - origin) / step, v = (z - origin) / step;
       const i0 = Math.max(0, Math.min(n - 2, Math.floor(u))), j0 = Math.max(0, Math.min(n - 2, Math.floor(v)));
       const fu = Math.max(0, Math.min(1, u - i0)), fv = Math.max(0, Math.min(1, v - j0));
+      // (round 11e, wave 314's "white flecks along its crest": the notches' floors at a backlit crest, near flat and lit
+      // full) a near-flat facet counts as the wall's on its convex edge — the folds' crest — never at its foot or on a top
+      const c = Math.max(0, Math.min(1, (-bilerp(fold, i0, j0, fu, fv) - 0.08) / 0.22)), crest = c * c * (3 - 2 * c);
+      if (fy >= 0.92 && crest <= 0) return; // the floor, the domes' tops and the benches (under ~23 degrees): untouched
       const mx = -bilerp(gx, i0, j0, fu, fv), mz = -bilerp(gz, i0, j0, fu, fv);
       const ml = 1 / Math.sqrt(mx * mx + 1 + mz * mz);
       // the wall: an 8 m normal steeper than ~30 degrees; turned from the sun or grazing it (its sun cosine under 0.2)
@@ -7596,7 +7600,8 @@ function makeJebelLit(heights: Float32Array, n: number, origin: number, step: nu
       const dM = (mx * lx + ly + mz * lz) * ml;
       const t = Math.max(0, Math.min(1, (dM + 0.05) / 0.25)), backlit = 1 - t * t * (3 - 2 * t);
       const fx = nrm[o], fz = nrm[o + 2];
-      const f = Math.max(0, (fy - 0.8) / 0.12), steep = 1 - f * f * (3 - 2 * f); // eased out from ~37 to ~23 degrees
+      const f = Math.min(1, Math.max(0, (fy - 0.8) / 0.12));
+      const steep = Math.max(1 - f * f * (3 - 2 * f), crest); // eased out from ~37 to ~23 degrees, but for the crest's
       const excess = (fx * lx + fy * ly + fz * lz - Math.max(dM, 0)) * wall * backlit * steep;
       if (excess <= 0) return;
       const ax = fx - lx * excess, ay = fy - ly * excess, az = fz - lz * excess;
@@ -7891,7 +7896,9 @@ function* terrainBuildSteps(
       return (a + (b - a) * fu) * (1 - fv) + (c + (d - c) * fu) * fv;
     };
     heightField._foldAt = foldAt;
-    if (cfg?.splat?.jebelFace) jebelLit = makeJebelLit(foldHeights, FOLD_N, FOLD_ORIGIN, FOLD_STEP, skySunDirection(cfg.sky));
+    if (cfg?.splat?.jebelFace) {
+      jebelLit = makeJebelLit(foldHeights, foldGrid, FOLD_N, FOLD_ORIGIN, FOLD_STEP, skySunDirection(cfg.sky));
+    }
   }
   // Ground lane (2026-10-03): the vegetation's woods mask (vegetation.ts _woodsMask, 256² over the square) lands in the
   // noise texture's free blue channel — one 4 m texel per mask cell, the field read at the square's own scale — and on
