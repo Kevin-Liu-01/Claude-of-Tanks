@@ -84,7 +84,7 @@ for (const seed of [1, 7, 2024]) {
   // (the Redrock lane, round 9: Redrock's checkpoints are the Wadi Rum kit's own fuel and water post now — the gauntlet's
   // wave 261 read the gate post at its fuel points as "a plain tan cube" — and its pillboxes the desert post's sangar)
   // (round 10: the barrack and the post on the map's plaster, its desert and camp tents the Bedouin's: wadiRumPosts.ts)
-  assert.match(badlands, /structureVariants: \{ bunker: 'sangar', quonsethut: 'rumbarrack', checkpointhut: 'rumpost', deserttent: 'bedouintent', tent: 'bedouincamp' \},/,
+  assert.match(badlands, /structureVariants: \{ bunker: 'sangar', quonsethut: 'rumbarrack', checkpointhut: 'rumpost', motorpool: 'rumshed',\n\s*deserttent: 'bedouintent', tent: 'bedouincamp' \},/,
     'Redrock: its pillboxes the sangar, its checkpoints the Desert Patrol\'s post, its barrack and tents the Wadi Rum ones');
   assert.ok(STRUCTURE_VARIANTS.rumpost && !REGIONAL_DESTRUCTIBLE_TYPES.wadirum, 'Redrock: its checkpoints the post on the map\'s plaster (no timber-printed kit variant)');
   assert.ok(STRUCTURE_VARIANTS.sangar, 'the variant table names the sangar');

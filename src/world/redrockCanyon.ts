@@ -11,6 +11,8 @@ const REDROCK_CANYON = Object.freeze({
   // over the floor (splat.formation draws its boundary just above it), a narrow bench, then the Umm Ishrin's sheer red cliff with
   // buttress masses, flutes, chimneys and bedding ledges, under a skyline of beehive domes.
   disiTopM: 9,
+  /** The pale upper formation's contact (m; badlands.ts splat.formation atY): the joints run shallow above it. */
+  paleContactM: 56,
   // The heads close each mouth with the tallest massifs (their height over the side walls'): the views past both
   // mouths end on jebels, not on a low sand rise.
   headLiftM: 70,
@@ -52,16 +54,28 @@ function wander(t: number, salt: number): number {
  * joints, each joint a V re-entrant 1.2-3.6 m deep (sharp at its root), and each column a face of its own standing up to
  * 1.1 m back of its neighbours, eased across the joint's V so the ground stays continuous — metres the face stands back
  * at s. */
+// (round 11, the gauntlet's wave 282: "a smooth rubbery slab with hairline drawn cracks", "no joint-bounded columns" —
+// the joints 4.5-25 m apart, three in five a cleft 2.5-8 m deep and 2.4-4.6 m to each side, the rest 0.8-2 m; each column
+// up to 2.6 m back of its neighbours)
+// (round 11b, the gauntlet's wave 298b: "streaked with bright white smears down its fins", "spattered with bright white
+// blotches and vertical drips" on the backlit walls — the deep clefts' and set-back columns' sides turned to the sun on a
+// face turned from it, lit cream-white; the pale drips and the talus sand made no difference (the overnight diagnosis
+// captures). The joints at round 10's spacing again, every one a shallow V 0.9-2.4 m deep over 2.2-3.6 m to each side
+// (its sides at most ~47 degrees off the face), each column up to 1.1 m back; the debris cones keep to three joints in five)
 const JOINT_W = 12;
 function jointBoundary(j: number, salt: number): number { return (j + 0.6 * (hash(j, salt + 41) - 0.5)) * JOINT_W; }
+/** Joint k's depth (m). */
+function jointDepth(k: number, salt: number): number {
+  return 0.9 + 1.5 * hash(k, salt + 42);
+}
 function jointSetback(s: number, salt: number): number {
   let j = Math.floor(s / JOINT_W);
   if (s < jointBoundary(j, salt)) j--; else if (s >= jointBoundary(j + 1, salt)) j++;
   const b0 = jointBoundary(j - 1, salt), b1 = jointBoundary(j, salt), b2 = jointBoundary(j + 1, salt), b3 = jointBoundary(j + 2, salt);
   // each joint's half-width, at most 0.45 of the narrower column beside it (so a column's two V's never meet)
-  const halfL = Math.min(2 + 1.4 * hash(j, salt + 44), 0.45 * Math.min(b1 - b0, b2 - b1));
-  const halfR = Math.min(2 + 1.4 * hash(j + 1, salt + 44), 0.45 * Math.min(b2 - b1, b3 - b2));
-  const col = (k: number) => 1.1 * hash(k, salt + 43), depth = (k: number) => 1.2 + 2.4 * hash(k, salt + 42);
+  const halfL = Math.min(2.2 + 1.4 * hash(j, salt + 44), 0.45 * Math.min(b1 - b0, b2 - b1));
+  const halfR = Math.min(2.2 + 1.4 * hash(j + 1, salt + 44), 0.45 * Math.min(b2 - b1, b3 - b2));
+  const col = (k: number) => 1.1 * hash(k, salt + 43), depth = (k: number) => jointDepth(k, salt);
   const dl = s - b1, dr = b2 - s;
   let back = col(j);
   if (dl < halfL) back += (col(j - 1) - col(j)) * 0.5 * (1 - dl / halfL);
@@ -70,9 +84,15 @@ function jointSetback(s: number, salt: number): number {
 }
 
 /** The face's bedding tiers (round 10, the gauntlet's wave 270: "no bedding", "bedding ledges in relief, breaking the
- * flutes into tiers"): the rise in beds of ~6-17 m, each a riser at ~82 degrees (a smoothstep: its foot and its nose
- * rounded) under a ledge 0.8-3.4 m deep, the top bed running out to the lip. tieredFace gives the height over the face's
- * foot at setback x; tierRunOf the face's whole run. Bed thicknesses and ledge depths wander along the wall. */
+ * flutes into tiers"): the rise in beds of ~6-17 m, each a riser at ~81 degrees under a ledge, the top bed running out to
+ * the lip. tieredFace gives the height over the face's foot at setback x; tierRunOf the face's whole run. Bed thicknesses
+ * and ledge depths wander along the wall. */
+// (round 11, roadContinuity's 2 mm seam probe on the ravine walls: a riser's slope along the wall is its slope into the
+// wall times the plan slope of whatever sets the face back there, a joint's V or a gully. The round-10 risers were
+// smoothsteps over 14 % of a bed, 84.7 degrees at their steepest, and a joint's V on a gully took them past 86: each riser
+// is an eased trapezoid over 16 % of its bed now — its foot and nose eased over an eighth of it each, straight between,
+// 82 degrees at the steepest — so the beds keep their crisp noses and the face its height field's continuity)
+const TIER_RISER = 0.16, TIER_EASE = 0.12;
 // (six beds on every face whatever its rise — a count rounded from the rise jumped where the rise crossed a half bed, and
 // the face and its lip jumped with it)
 const TIER_N = 6;
@@ -83,22 +103,29 @@ function tierLayout(rise: number, s: number, salt: number): number {
   for (let k = 0; k < n; k++) { _tierT[k] = 0.65 + 0.7 * wander(s / 47 + k * 1.37, salt + 50 + k); sum += _tierT[k]; }
   for (let k = 0; k < n; k++) {
     _tierT[k] *= rise / sum;
-    _tierL[k] = k < n - 1 ? 0.8 + 2.6 * wander(s / 39 + k * 2.11, salt + 70 + k) : 0;
+    // (round 11, the gauntlet's wave 282: "no bedding ledges" — most beds part on a shallow ledge, 0.4-1.6 m, and a bed
+    // here and there, for a stretch of the wall, on a deep one, up to 6 m, that casts its shadow)
+    // (round 11b, wave 298b: the deep ledges' treads, sunlit over a backlit face, were the "white blotches" — 2.8 m at most)
+    const deep = wander(s / 90 + k * 3.1, salt + 80 + k), prominent = deep * deep * (3 - 2 * deep);
+    _tierL[k] = k < n - 1 ? 0.4 + 1.2 * wander(s / 39 + k * 2.11, salt + 70 + k) + 1.2 * Math.max(0, prominent - 0.55) / 0.45 : 0;
   }
   return n;
 }
 function tierRunOf(rise: number, s: number, salt: number): number {
   const n = tierLayout(rise, s, salt);
   let run = 0;
-  for (let k = 0; k < n; k++) run += 0.14 * _tierT[k] + _tierL[k];
+  for (let k = 0; k < n; k++) run += TIER_RISER * _tierT[k] + _tierL[k];
   return run;
 }
 function tieredFace(x: number, rise: number, s: number, salt: number): number {
   const n = tierLayout(rise, s, salt);
   let x0 = 0, z0 = 0;
   for (let k = 0; k < n; k++) {
-    const a = 0.14 * _tierT[k];
-    if (x < x0 + a) { const u = Math.max(0, (x - x0) / a); return z0 + _tierT[k] * u * u * (3 - 2 * u); }
+    const a = TIER_RISER * _tierT[k];
+    if (x < x0 + a) {
+      const u = Math.max(0, (x - x0) / a), e = TIER_EASE, q = 2 * e * (1 - e);
+      return z0 + _tierT[k] * (u < e ? u * u / q : u > 1 - e ? 1 - (1 - u) * (1 - u) / q : (u - e / 2) / (1 - e));
+    }
     x0 += a; z0 += _tierT[k];
     if (x < x0 + _tierL[k]) return z0;
     x0 += _tierL[k];
@@ -139,6 +166,22 @@ function gullyCone(s: number, salt: number): number {
   return cone;
 }
 
+/** The debris cone under each deep joint (round 11, the gauntlet's wave 282: "its toe meets the sand along a hard straight
+ * line with no talus, fallen blocks or sand ramp"): metres it raises the talus head at s, spreading 2.5 cleft half-widths
+ * to each side of the joint. */
+function jointCone(s: number, salt: number): number {
+  let j = Math.floor(s / JOINT_W);
+  if (s < jointBoundary(j, salt)) j--; else if (s >= jointBoundary(j + 1, salt)) j++;
+  let cone = 0;
+  for (let k = j - 1; k <= j + 2; k++) {
+    if (hash(k, salt + 45) >= 0.6) continue;
+    const half = 2.5 * (2.4 + 2.2 * hash(k, salt + 44)), q = (s - jointBoundary(k, salt)) / half;
+    if (q * q >= 1) continue;
+    cone = Math.max(cone, (2 + 4 * hash(k, salt + 46)) * (1 - q * q) ** 2);
+  }
+  return cone;
+}
+
 /** One field of domes on a jittered grid of `cell` metres: their union in metres at (d, s), radius r0..r0+rv, height
  * h0..h0+hv (shares of H) and at most capR of the radius. (Round 9, the gauntlet: "sawtooth rows of sharp spikes" — a
  * beehive 15 m tall on an 8 m radius stood a tooth: each dome now rounds over, cos(pi/2 r^1.6), no taller than about
@@ -173,9 +216,14 @@ function domes(u: number, v: number, back: number, H: number, detail: number): n
   const rim = detail * (1 - ramp(28, 52, back)), massif = ramp(12, 40, back);
   // (round 10: the rim's beehives fewer and broader, 11-27 m across their bases and of more varied height — at 24 m cells
   // and 9-17 m radii a row of like domes stood along every crest as teeth)
-  return Math.max(rim > 0 ? rim * domeField(u, v, H, 34, 11, 16, 0.05, 0.15, 0.55, 401) : 0,
-    massif > 0 ? massif * domeField(u, v, H, 68, 24, 18, 0.05, 0.11, 0.42, 406) : 0);
+  // (round 11, the gauntlet's wave 282: "one continuous flat-topped wall ... no domed summits", "beehive banding": the
+  // domes taller, and banded in rounded 4 m steps)
+  const h = Math.max(rim > 0 ? rim * domeField(u, v, H, 34, 11, 18, 0.06, 0.2, 0.6, 401) : 0,
+    massif > 0 ? massif * domeField(u, v, H, 68, 24, 22, 0.06, 0.15, 0.5, 406) : 0);
+  return h - BEEHIVE_A * 0.5 * (1 - Math.cos((2 * Math.PI * h) / BEEHIVE_P));
 }
+/** The beehive bands on the domes (round 11): their period (m) and their amplitude (m, under P / pi: monotonic). */
+const BEEHIVE_P = 4, BEEHIVE_A = 1.0;
 
 /** The lip depth of the last jebelSection call (its cliff's top, metres from the toe), and the same without the flutes:
  * the domes stand behind the second (round 9: a dome masked at every flute's lip stood a row of teeth on the crest). */
@@ -196,8 +244,10 @@ function jebelSection(d: number, s: number, H: number, detail: number, apron: nu
   const soft = 1 - detail;
   // the talus apron: fallen blocks and banked sand, concave, about 35 degrees at its head — and under each gully a cone of
   // what fell down it (round 9)
-  const cone = fine * gullyCone(s, salt);
-  const talusW = 7 + 6 * w1 + 8 * apron + 6 * soft + 1.2 * cone, talusH = 3 + 2.5 * w2 + cone;
+  // (round 11: and under every deep joint a smaller cone, and the toe's line wandering a few metres in and out between)
+  const cone = fine * (gullyCone(s, salt) + 0.85 * jointCone(s, salt));
+  const toe = fine * 3.2 * (wander(s / 11 + 2.2, salt + 47) - 0.5);
+  const talusW = Math.max(3, 7 + 6 * w1 + 8 * apron + 6 * soft + 1.2 * cone + toe), talusH = 3 + 2.5 * w2 + cone;
   // the Disi base: steep at its foot, rounding over into the bench; its top wanders along the wall (round 9: the bench at
   // one height was a ruled line along every wall)
   const disiTop = Math.max(talusH + 3, Math.min(H * 0.45, REDROCK_CANYON.disiTopM + 5 * (w3 - 0.5)
@@ -219,7 +269,10 @@ function jebelSection(d: number, s: number, H: number, detail: number, apron: nu
   const benchW = 2 + 9 * w3;
   const bench = disiEnd + benchW + 8 * wander(s / 52 + 1.9, salt + 3);
   // (round 10: the face cut back at its joints, and stepped in bedding tiers, both the playable terrain's: `fine`)
-  const gully = fine * chimney(s, salt), joint = fine * jointSetback(s, salt), foot0 = bench + gully, foot = foot0 + joint;
+  // (round 11, roadContinuity's seam probe: a joint inside a gully is one cut with it — the deeper set-back of the two,
+  // not their sum, whose plan slopes stacked)
+  const gully = fine * chimney(s, salt), joint = fine * jointSetback(s, salt), foot0 = bench + gully;
+  const foot = bench + Math.max(gully, joint);
   // near vertical over most of its height: a 78-82 degree face rounding at its foot and its lip (the ring's soft
   // section), or the tiers' risers and ledges (the playable terrain's)
   const rise = H - disiTop - 0.8, runSoft = Math.max(4, rise * (0.19 + 0.55 * soft));
@@ -239,8 +292,11 @@ function jebelSection(d: number, s: number, H: number, detail: number, apron: nu
     if (fine > 0) y += (tieredFace(t * runTier, rise, s, salt) / rise - y) * fine;
     return y;
   };
-  // the joints fade over the face's top quarter, so the crest is one line over the columns, not a tooth at every joint
-  const yJ = face(d - foot), y0 = face(d - foot0), w = ramp(0.68, 0.96, y0);
+  // the joints fade over the face's top quarter, so the crest is one line over the columns, not a tooth at every joint;
+  // (round 11, the coordinator: the backlit "white blotches" were the sunlit walls of the joints' V's in the pale upper
+  // formation) and above the formations' contact (badlands.ts formation atY, 56 m) they keep a third of their depth
+  const yJ = face(d - foot), y0 = face(d - foot0), hy0 = disiTop + 0.8 + rise * y0;
+  const w = Math.max(ramp(0.68, 0.96, y0), 0.66 * ramp(REDROCK_CANYON.paleContactM - 6, REDROCK_CANYON.paleContactM + 10, hy0));
   const y = yJ + (y0 - yJ) * w;
   return Math.min(H, Math.max(cleft, disiTop + 0.8 + rise * y));
 }

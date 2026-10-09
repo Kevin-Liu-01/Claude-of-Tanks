@@ -52,7 +52,9 @@ export default {
     // (round 10, the gauntlet's wave 270 at the outpost: the square's patches "a large dark-brown blotch ... a pasted stain
     // or fake shadow" — the packed earth fainter and its patches softer: three fifths of the apron, a third mottled)
     hardstands: [
-      { x: 8, z: 0, width: 60, length: 60, yawDeg: 0, grade: 0, paint: { cover: 0.6, mottle: 0.35 } },
+      // (round 11, the gauntlet's wave 282: "a huge empty sand lot with a large blotchy red stain" — the square's packed
+      // earth a trace, unmottled)
+      { x: 8, z: 0, width: 60, length: 60, yawDeg: 0, grade: 0, paint: { cover: 0.25, mottle: 0 } },
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): tilted 7 % down to the east with its ground
       { x: -122, z: 21, width: 60, length: 60, yawDeg: -87, level: 6.2, grade: 0.07, paint: { cover: 0.6, mottle: 0.35 } },
       { x: 138, z: -21, width: 60, length: 60, yawDeg: 0, grade: 0, paint: { cover: 0.6, mottle: 0.35 } },
@@ -90,12 +92,17 @@ export default {
           ...pair({ kind: 'knoll', x, z, rx, rz, height, corridorScale: 1, union: true, geology: { profile: 'inselberg' as const,
             outline: 0.16, foot: 0.68, footVary: 0.08, apron: 0.22, rim: 0.8, capDrop: 0.2,
             bosses: { count: 4, heightM: 6, radius: 0.42 },
-            flutes: { count: 15, depth: 0.55, joints: true }, tiers: { count: 3, ledge: 0.32 }, rough: 0.06, boulders: 24,
+            // (round 11, the gauntlet's wave 282: "earth heaps", "Play-Doh lumps with painted squiggle cracks", "a soft
+            // rounded pyramid": the beehive banding over cap and wall, four tiers, the joints cut as clefts into the cap)
+            // (and "a fine crumbly speckle", "orange-peel crust": the surface's roughness a third)
+            flutes: { count: 15, depth: 0.3, joints: true }, tiers: { count: 4, ledge: 0.32 }, beehive: { bands: 8, strength: 0.8 },
+            rough: 0.02, boulders: 24,
             gullies: { count: 8, depthM: 6, width: 0.2 }, fans: { reach: 0.12, heightM: 0.6 } } }),
           ...pair({ kind: 'knoll', x: lx, z: lz, rx: lrx, rz: lrz, height: Math.round(height * 0.65), corridorScale: 1, union: true,
             geology: { profile: 'inselberg' as const, outline: 0.18, foot: 0.64, footVary: 0.09, apron: 0.24, rim: 0.78,
               capDrop: 0.18, bosses: { count: 2, heightM: 4, radius: 0.45 },
-              flutes: { count: 11, depth: 0.55, joints: true }, tiers: { count: 2, ledge: 0.32 }, rough: 0.06, boulders: 12,
+              flutes: { count: 11, depth: 0.3, joints: true }, tiers: { count: 3, ledge: 0.32 }, beehive: { bands: 6, strength: 0.8 },
+              rough: 0.02, boulders: 12,
               gullies: { count: 5, depthM: 4, width: 0.2 }, fans: { reach: 0.12, heightM: 0.5 } } }),
           // the sand ramp: wind-blown sand banked against the wall, falling away from it
           ...(rampDeg === null ? [] : pairBar({ kind: 'ridge', x: x + Math.cos(ramp) * reach, z: z + Math.sin(ramp) * reach,
@@ -132,13 +139,14 @@ export default {
     // joints, as Copper Mesa's), and the tile keeps its grain and broad beds without the stamped lines
     // (the Redrock lane: the walls are sheer now, so the beds, joints and varnish the material draws on cliffs show — at the
     // quiet wash's ceiling, 0.13, with the joints and varnish raised by wallWeather below)
-    roadTint: [0.78, 0.61, 0.51], strata: 0.13, sandstoneMarkers: 0, sandMacro: 0.9,
+    // (round 11, the gauntlet's wave 282: the tracks "crisp graded bands, not braided sand tracks" — nearer the sand's tone)
+    roadTint: [0.84, 0.66, 0.55], strata: 0.13, sandstoneMarkers: 0, sandMacro: 0.9,
     // (round 10, the gauntlet's wave 270: "swirly red blotches like painted decals", "a large dark-brown pasted stain" at
     // the outpost, "a featureless sand plane with no ripples", the road "a soft smear with no ruts") the worn sand
     // patches a third as strong and the outpost's wear a third, both in a sandier soil; the near ripples on the loose sand
     // sheets at a working strength (the dune bedforms stay at the quiet wash's 0.06); the tracks' wheel lanes worn deep
     // and dark, gravel on their crowns
-    wornDirtStrength: 0.3, townWear: 0.35, soilTint: [1.10, 1.03, 0.94], rippleNear: 0.42, roadRuts: [2.6, 0.24, 0.8],
+    wornDirtStrength: 0.3, townWear: 0.35, soilTint: [1.10, 1.03, 0.94], rippleNear: 0.26, roadRuts: [2.6, 0.16, 1.0],
     // Wadi Rum's two formations: the Umm Ishrin's red-brown cliffs, and over them the Ordovician Disi sandstone, pale cream,
     // weathered into the domes and beehives on the jebels' tops (the far jebels draw the same, horizonPanorama.ts v3b).
     // (The Redrock lane, 2026-10-07: the contact at y 98 — the east wall's highest beehives and the canyon heads' upper
@@ -149,15 +157,21 @@ export default {
     // (round 10, the gauntlet's wave 270: "no cream caprock" — at 98 m only the heads reached the Disi: the contact comes
     // down to 56 m, so the high walls' upper faces and every dome on them are the pale sandstone, cream to near white,
     // over the red cliffs; the floor's inselbergs stand wholly in the red)
-    formation: { atFrac: 0.9, atY: 56, wobbleM: 6, lowerTint: [1.42, 0.97, 0.74, 0.12], upperTint: [1.94, 1.60, 1.26, 0.74],
-      edgeM: 3 },
+    // (round 11, the gauntlet's wave 282: "a hard horizontal paint-line between a pale grey cap and a saturated red
+    // body", "a saturated brick hue that reads as laterite mud", "crushed in shadow" — the red lighter and less
+    // saturated over a third of the rock, the pale a warmer cream; the contact ragged over 12 m with a 32 m wander of its
+    // own, over a 5 m band; terrain.ts hangs pale drips and dark varnish below it)
+    formation: { atFrac: 0.9, atY: 56, wobbleM: 12, lowerTint: [1.5, 1.04, 0.82, 0.3], upperTint: [1.9, 1.62, 1.32, 0.74],
+      edgeM: 5 },
     // (the Redrock lane: the domes' caps, the walls' benches and the jebels' tops are bare rock — the floor, the dunes and
     // the ramps lie below 13 m, the Disi bench at 10-16 m, the domes' caps at 20-38 m)
     caprockY: [13, 16],
     // (the Redrock lane: the faces keep their joints and varnish under the map's own sun, a head-on light included)
     // (round 9, the gauntlet's wave 261: "dark rectangular blotches stamped over the wall face", "a hard diagonal light-dark
     // seam" — the joint blocks' 9 x 5 m tone steps: none; the bedding is relief now, jebelFace below)
-    wallWeather: [0, 0.7],
+    // (round 11, the gauntlet's wave 282: "airbrushed dark smudges" — the old weathering streaks off: the varnish is
+    // jebelFace's, from the contact down)
+    wallWeather: [0, 0],
     // Wadi Rum's faces: vertical flutes, the honeycomb low on the near faces, desert varnish down them (terrain.ts uJebelFace)
     jebelFace: [1, 1, 1],
     // An alluvial wash has faint wind-scoured patches, not floor-wide dunes. (The Redrock lane, 2026-10-07, owner: "redrock
@@ -236,7 +250,9 @@ export default {
     // panelled box" — the light families' timber print — and the camp tent "a plain box": the barrack and the post on the
     // map's plaster, a stone core under a broken render, and the desert and camp tents the Bedouin's goat-hair bayt
     // al-sha'ar, maps/regional/wadiRumPosts.ts)
-    structureVariants: { bunker: 'sangar', quonsethut: 'rumbarrack', checkpointhut: 'rumpost', deserttent: 'bedouintent', tent: 'bedouincamp' },
+    // (round 11, the gauntlet's wave 282: "a blue-roofed shelter" — the motor pools the Desert Patrol's vehicle shade)
+    structureVariants: { bunker: 'sangar', quonsethut: 'rumbarrack', checkpointhut: 'rumpost', motorpool: 'rumshed',
+      deserttent: 'bedouintent', tent: 'bedouincamp' },
     // Three strongpoint pairs, each the other's rotation about the outpost: a cistern yard in each flank lane, a
     // lookout in front of the outpost on each side, and a fuel point by each deployment's flank track.
     tacticalBeats: [
@@ -301,17 +317,19 @@ export default {
       { form: 'outcrop', geology: 'sandstone', tone: WADI_RUM_STONE, x: -54, z: 330, radius: 3.4, height: 7, yawDeg: 210, name: 'the north pillar rock' },
     ],
     rockFields: [
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -40, z: -318, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.65], ['scree', 0.35]], name: 'the ledges round the south gate dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 56, z: 318, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.65], ['scree', 0.35]], name: 'the ledges round the north gate dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -118, z: -128, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.65], ['scree', 0.35]], name: 'the ledges round the south-west lane dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 134, z: 128, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.65], ['scree', 0.35]], name: 'the ledges round the north-east lane dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 96, z: -112, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.65], ['scree', 0.35]], name: 'the ledges round the south-east lane dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -80, z: 112, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.65], ['scree', 0.35]], name: 'the ledges round the north-west lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -40, z: -318, radius: 58, count: 8, slopeBias: 0.85, size: [1.6, 5.5], forms: [['outcrop', 0.6], ['scree', 0.4]], name: 'the ledges round the south gate dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 56, z: 318, radius: 58, count: 8, slopeBias: 0.85, size: [1.6, 5.5], forms: [['outcrop', 0.6], ['scree', 0.4]], name: 'the ledges round the north gate dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -118, z: -128, radius: 58, count: 8, slopeBias: 0.85, size: [1.6, 5.5], forms: [['outcrop', 0.6], ['scree', 0.4]], name: 'the ledges round the south-west lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 134, z: 128, radius: 58, count: 8, slopeBias: 0.85, size: [1.6, 5.5], forms: [['outcrop', 0.6], ['scree', 0.4]], name: 'the ledges round the north-east lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 96, z: -112, radius: 58, count: 8, slopeBias: 0.85, size: [1.6, 5.5], forms: [['outcrop', 0.6], ['scree', 0.4]], name: 'the ledges round the south-east lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -80, z: 112, radius: 58, count: 8, slopeBias: 0.85, size: [1.6, 5.5], forms: [['outcrop', 0.6], ['scree', 0.4]], name: 'the ledges round the north-west lane dome' },
+      // (round 11, the gauntlet's wave 282: "no fallen blocks or talus at its toe" — seven blocks a field, 1.5-7 m; the domes'
+      // ledge fields eight, down to 1.6 m)
       // (round 10, the gauntlet's wave 270: the walls meet the plain "with no talus apron" — fallen blocks of the bedded
       // sandstone on the talus at four places along each wall, the east wall's and their turns about the outpost on the
       // west, 2.5-7 m stones and scree, kept to the talus by the field's own 35 degree law)
       ...[[257, -320], [260, -50], [251, 50], [348, 320]].flatMap(([x, z]) => pair({ geology: 'sandstone' as const, tone: WADI_RUM_STONE,
-        x, z, radius: 24, count: 4, slopeBias: 0.9, size: [2.5, 7] as [number, number],
+        x, z, radius: 26, count: 7, slopeBias: 0.9, size: [1.5, 7] as [number, number],
         forms: [['outcrop', 0.55], ['scree', 0.45]] as [string, number][], name: 'the talus under the wall' })),
     ],
     landmarks: [

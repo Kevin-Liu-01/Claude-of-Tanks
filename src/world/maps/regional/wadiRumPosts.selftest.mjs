@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DESTRUCTIBLE_BUILDING_TYPES } from '../structureKit.ts';
 import { DESTRUCTIBLE_TYPES } from '../inhabitKit.ts';
-import { BEDOUIN_CAMP_TENT, BEDOUIN_TENT, RUM_BARRACK, RUM_POST } from './wadiRumPosts.ts';
+import { BEDOUIN_CAMP_TENT, BEDOUIN_TENT, RUM_BARRACK, RUM_POST, RUM_SHED } from './wadiRumPosts.ts';
 import { STRUCTURE_VARIANTS } from './ksarGate.ts';
 
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -23,6 +23,8 @@ const lum = (c, i) => 0.2126 * c.getX(i) + 0.7152 * c.getY(i) + 0.0722 * c.getZ(
 const CASES = [
   ['rumbarrack', RUM_BARRACK, DESTRUCTIBLE_BUILDING_TYPES.quonsethut, 2200],
   ['rumpost', RUM_POST, DESTRUCTIBLE_BUILDING_TYPES.checkpointhut, 1700],
+  // (round 11: the motor pool's vehicle shade, "a blue-roofed shelter" no more)
+  ['rumshed', RUM_SHED, DESTRUCTIBLE_BUILDING_TYPES.motorpool, 2000],
   ['bedouintent', BEDOUIN_TENT, DESTRUCTIBLE_BUILDING_TYPES.deserttent, 1100],
   ['bedouincamp', BEDOUIN_CAMP_TENT, DESTRUCTIBLE_TYPES.tent, 800],
 ];
@@ -92,7 +94,7 @@ for (const [name, variant, w, d] of [['rumbarrack', RUM_BARRACK, 4.6, 11.0], ['r
 
 // ------------------------------------------------------------------------------- 3. the tents
 for (const [name, variant] of [['bedouintent', BEDOUIN_TENT], ['bedouincamp', BEDOUIN_CAMP_TENT]]) {
-  assert.equal(variant.mat, 'structureCanvas', `${name}: on the canvas weave`);
+  assert.equal(variant.mat, 'burlap', `${name}: on the hessian's weave (round 11: goat hair, not canvas)`);
   const g = variant.build(mulberry32(3)), p = g.attributes.position, c = g.attributes.color;
   g.computeBoundingBox();
   const top = g.boundingBox.max.y, hw = g.boundingBox.max.x;
@@ -119,8 +121,8 @@ for (const [name, variant] of [['bedouintent', BEDOUIN_TENT], ['bedouincamp', BE
 // ------------------------------------------------------------------------------- 5. Redrock adopts them by name
 {
   const badlands = readFileSync(new URL('../badlands.ts', import.meta.url), 'utf8');
-  assert.match(badlands, /structureVariants: \{ bunker: 'sangar', quonsethut: 'rumbarrack', checkpointhut: 'rumpost', deserttent: 'bedouintent', tent: 'bedouincamp' \},/,
-    'Redrock: its barrack, posts, desert tents and camp tents the Wadi Rum ones');
+  assert.match(badlands, /structureVariants: \{ bunker: 'sangar', quonsethut: 'rumbarrack', checkpointhut: 'rumpost', motorpool: 'rumshed',\n\s*deserttent: 'bedouintent', tent: 'bedouincamp' \},/,
+    'Redrock: its barrack, posts, vehicle shades, desert tents and camp tents the Wadi Rum ones');
   assert.match(badlands, /destructibleBuildings: \['deserttent', 'motorpool', 'quonsethut', 'checkpointhut'\],/, 'the families keep their keys (and every later seat)');
 }
 console.log('wadiRumPosts.selftest: the barrack and the post rendered over stone on the map\'s plaster (holes to the stone, dark openings, steel doors, lintels, parapets), the goat-hair tents (black, sagging, open-fronted on their rugs, the qata inside), inside their families\' footprints and draws, Redrock\'s by name');
