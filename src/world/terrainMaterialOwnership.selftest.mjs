@@ -29,7 +29,7 @@ async function compile(text) {
   const body = `const clamp = (x,a,b) => Math.max(a,Math.min(b,x));
     const mix = (a,b,w) => a*(1-w)+b*w;
     const max = Math.max;
-    export function sample({fD,fR,fMs,projW,roadCore,dNear2,farM,dn2,gnF,gl2,glM,gLum,gCropW,gSoilW}) {
+    export function sample({fD,fR,fMs,projW,roadCore,dNear2,farM,dn2,gnF,gl2,glM,gLum,gCropW,gCropReliefW,gSoilW}) {
       ${declarations}
       return {nearG,farG,nearN:${normalTerm(text, 'dn2')},nearA:${nearAlbedo(text)},
         farN:${normalTerm(text, 'gnF')},farA:${farAlbedo(text)}};
@@ -39,7 +39,7 @@ async function compile(text) {
 const fields = ['fD', 'fR', 'fMs', 'projW', 'roadCore'];
 const ports = overrides => ({ fD: 0, fR: 0, fMs: 0, projW: 0, roadCore: 0,
   dNear2: .73, farM: .61, dn2: { xy: -.7 }, gnF: { xy: .4 },
-  gl2: .8, glM: .2, gLum: .7, gCropW: 0, gSoilW: 0, ...overrides });
+  gl2: .8, glM: .2, gLum: .7, gCropW: 0, gCropReliefW: 0, gSoilW: 0, ...overrides });
 function close(a, b, label) {
   assert.ok(Number.isFinite(a) && Math.abs(a - b) <= 2e-14, `${label}: ${a} != ${b}`);
 }
@@ -94,13 +94,18 @@ function checkFractional(sample) {
 // (gSoilW) draws no near blades and none of the far turf (farmland: its relief is its furrows and clods), a sown crop
 // (gCropW) keeps 40 % of the near grass detail and 15 % of the far turf; with neither (every map without a field system)
 // the response above is unchanged
+// (wave 274) the relief's share is gCropReliefW — a sown field's gCropW, but none on a young green crop, a short leafy sward
+// whose ground keeps the sward's whole relief (terrainSurfaceDetail pins the weight)
 function checkLandCover(sample) {
-  const base = sample(ports()), soil = sample(ports({ gSoilW: 1 })), crop = sample(ports({ gCropW: 1 }));
+  const base = sample(ports()), soil = sample(ports({ gSoilW: 1 })), crop = sample(ports({ gCropW: 1, gCropReliefW: 1 }));
   assert.equal(soil.nearG, 0, 'a turned field draws no near blades');
   close(soil.farG, 0, 'a turned field keeps none of the far turf');
   close(crop.nearG, base.nearG * 0.4, 'a sown field keeps 40 % of the near grass detail');
   close(crop.farG, base.farG * 0.15, 'a sown field keeps 15 % of the far turf');
-  for (const key of ['gCropW', 'gSoilW']) for (let v = 0; v < 1; v += 0.125) {
+  const young = sample(ports({ gCropW: 1, gCropReliefW: 0 }));
+  close(young.nearG, base.nearG, 'a young green crop keeps the near grass detail');
+  close(young.farG, base.farG, 'and the far turf');
+  for (const key of ['gCropReliefW', 'gSoilW']) for (let v = 0; v < 1; v += 0.125) {
     const lo = sample(ports({ [key]: v })), hi = sample(ports({ [key]: v + 0.125 }));
     assert.ok(hi.nearG <= lo.nearG && hi.farG <= lo.farG, `${key} attenuates the meadow's detail monotonically`);
   }
@@ -112,8 +117,10 @@ function checkSourceContract(text) {
   // competition between ambient wear, shoulder and town wear is unchanged.
   // (wave 71, the ground lane: a meadow's worn patch is grazed turf with its soil at the trodden core — wornCore; the
   // arid maps' sand and the snow maps' scoured crests keep the whole patch)
+  // (2026-10-07, the ground lane's pads: a hardstand pad is the carriageway's packed ground, so the shoulder's dirt
+  // stands down over the pad's stamp — apronRim — or a ring of bare ground outlined it; hardstandSurface pins the pad)
   assert.equal(compact(scalar(text, 'fD')),
-    'clamp(max(wornCore*uWornDirtStrength,max(shoulder*uShoulderDirt,mk.a*uTownWear*(0.35+0.65*n1))),0.0,1.0)',
+    'clamp(max(wornCore*uWornDirtStrength,max(shoulder*uShoulderDirt*(1.0-apronRim),mk.a*uTownWear*(0.35+0.65*n1))),0.0,1.0)',
     'authored dirt/road/town blend policy unchanged');
   assert.equal(compact(scalar(text, 'wornCore')),
     '(uSandMacro>0.001||uReduxD.y>1.5)?worn:smoothstep(0.78,1.0,n2w+(n1w-0.5)*0.45)',
@@ -189,6 +196,9 @@ function checkSourceContract(text) {
     // ground lane (2026-10-08): the village floored in cinder (groundRedux.ts cinderYard: Cinder Junction's yard; scalar,
     // no sampler)
     'uYardCinder',
+    // ground lane (2026-10-08, wave 274): the thatch and soil under a thick sward near the camera (groundRedux.ts thatch;
+    // scalar, no sampler)
+    'uThatch',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);

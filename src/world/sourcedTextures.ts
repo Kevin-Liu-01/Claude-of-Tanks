@@ -131,6 +131,16 @@ const TERRAIN_PLAN = {
     D: { set: 'dirt', desat: 0.55, tint: [0.46, 0.40, 0.37], roughMul: 1.3 },
     R: 'rock', M: null,
   },
+  // ground lane (2026-10-07, wave 248, Tidegate Polders: the plough "jet-black, like cinder or asphalt", the banks "near-black,
+  // textureless slabs at the water's edge", the lanes "a uniform near-black tar strip" — all three were Verdant's black
+  // earth, which the polders borrowed with Verdant's palette): the Scheldt polders' marine clay. The dirt photo greyed by
+  // two thirds and tinted to a cool grey-brown (linear ~0.13 / 0.115 / 0.092, luminance ~0.115: twice the chernozem's),
+  // so the turned clay, the banks' mud and the clay lanes read as clay; the grass and the rock are Verdant's
+  polders: {
+    G: { set: 'grass', tint: [0.86, 0.91, 0.80], roughMul: 1.25 },
+    D: { set: 'dirt', desat: 0.65, tint: [0.74, 0.78, 0.745], roughMul: 1.3 },
+    R: 'rock', M: null,
+  },
   desert: {
     // G was 'dryGrass' (withered_grass photo set): its dense dark straw
     // mottle covered ~80% of the map and read as baked film-grain speckle
