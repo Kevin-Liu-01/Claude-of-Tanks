@@ -24,7 +24,7 @@
  * cascade's storeys come down over gravity's time, sqrt(2 h / g), not in one frame).
  */
 import * as THREE from 'three';
-import type { StructureBreachEvent, StructureStageEvent } from '../sim/destructionEvents.ts';
+import type { MunitionClass, StructureBreachEvent, StructureStageEvent } from '../sim/destructionEvents.ts';
 import {
   damageRng, damageSeed, type DamageFace, type DamageRole, type DamageStageResult, type DamageStorey, type DamageWriters,
   type DebrisShape, type FractureMaterial, type FractureSlot,
@@ -42,6 +42,15 @@ export interface StructureStages {
   stage(e: StructureStageEvent, seam: StructureDamageSeam | null): void;
   /** A P2 hole or section fall, with its structure's seam (a fall: the kit's section dropped, its intact parts clamped). */
   breach(e: StructureBreachEvent, seam: StructureDamageSeam | null): void;
+  /**
+   * A round burst on a standing structure (P1, sections off: dcore 2026-10-09, waves 294a/b "hits read as an orange
+   * light on an intact wall — no punched hole, no thrown debris"): the kit's own breach at the burst, sized by the round
+   * (strikeHoleRadius), its rim in the wall's courses, the room behind it and its pieces thrown — the presentation's, as
+   * the P1 breach stage's hole is (a late joiner sees the stage's). At most STRIKE_HOLES of them a building (the mask
+   * keeps four), one per place; none once the sim cuts its own holes (sections on) or it is coming down.
+   */
+  strike(structureId: number, seam: StructureDamageSeam | null, x: number, y: number, z: number, dirX: number, dirZ: number,
+    munition: MunitionClass, chargeKg: number): void;
   /** Per render frame: touch the casters of every building still falling. */
   update(): void;
   shiftTime(delta: number): void;
@@ -49,6 +58,21 @@ export interface StructureStages {
   reset(): void;
   /** receipts: buildings falling, part ranges flattened, spans whose original positions are kept, storeys dropping */
   stats(): { falling: number; flattened: number; kept: number; dropping: number };
+}
+
+/** Strike holes a standing building takes (the mask keeps MAX_HOLES: one is left for the breach stage's). */
+const STRIKE_HOLES = 3;
+/** A burst's hole on a wall (P1 strike holes): smaller than the breach stage's blow (structureFx breachBlowFor) — a
+ *  tank's HE round punches through a metre, a howitzer's or a missile's more; under a kilogram of charge, a pock. */
+export function strikeHoleRadius(munition: MunitionClass, chargeKg: number): number {
+  if (!(chargeKg > 0)) return 0;
+  const r = munition === 'howitzer' || munition === 'missile' ? 1.5
+    : munition === 'rocket' || munition === 'hesh' ? 1.2
+      : munition === 'he' ? 0.55 + 0.25 * Math.min(2, Math.sqrt(chargeKg))
+        : munition === 'atgm' || munition === 'heat' || munition === 'drone_fpv' ? 0.6
+          : munition === 'autocannon_he' ? 0.32
+            : 0.4;
+  return chargeKg < 0.3 ? Math.min(r, 0.35) : r;
 }
 
 /** A shaft's topple (structureMask toppleLandS): the hinge over its foot, the fall's world direction and its landing. */
@@ -343,6 +367,38 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   }
   /** Structures that have had a real P2 hole: a P1 'breached' stage cuts them no synthetic one. */
   const realHoles = new Set<number>();
+  /** P1: the holes punched in a standing building (strike holes and the breach stage's), world points; and the buildings
+   *  coming down (no more holes in them). */
+  const punched = new Map<number, Array<[number, number, number]>>();
+  const downed = new Set<number>();
+  /** P2's sections seen on a building (a stage or a breach that says so): its holes are the sim's, never a strike's. */
+  const sectionsSeen = new Set<number>();
+  interface PendingStrike {
+    structureId: number; seam: StructureDamageSeam; x: number; y: number; z: number; dirX: number; dirZ: number;
+    munition: MunitionClass; chargeKg: number; at: number;
+  }
+  const pendingStrikes: PendingStrike[] = [];
+  /** The wait before a strike's hole is punched (s): the burst's flash covers it, the step's own events land first. */
+  const STRIKE_WAIT_S = 0.08;
+  function punch(p: PendingStrike): void {
+    const { structureId, seam, x, y, z } = p;
+    if (realHoles.has(structureId) || sectionsSeen.has(structureId) || downed.has(structureId)) return;
+    const list = punched.get(structureId);
+    if ((list?.length ?? 0) >= STRIKE_HOLES || nearPunched(structureId, x, y, z, 1.2)) return;
+    const radiusM = strikeHoleRadius(p.munition, p.chargeKg);
+    const cause = p.munition === 'kinetic' || p.munition === 'autocannon_ap' ? 'kinetic' : 'blast';
+    const spec = seam.holeAt(x, y, z, radiusM, p.dirX, p.dirZ, p.munition, cause, 1 + (list?.length ?? 0));
+    if (!spec) return;
+    finishFalls(structureId);
+    notePunched(structureId, x, y, z);
+    run(seam, 0, false, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
+  }
+  const nearPunched = (id: number, x: number, y: number, z: number, within: number): boolean =>
+    (punched.get(id) ?? []).some(([hx, hy, hz]) => Math.hypot(hx - x, hy - y, hz - z) < within);
+  const notePunched = (id: number, x: number, y: number, z: number): void => {
+    const list = punched.get(id);
+    if (list) list.push([x, y, z]); else punched.set(id, [[x, y, z]]);
+  };
   /** The kit sections that have fallen, per structure: a section falls once (facades 2026-10-08: two of the sim's
    *  3.2 m bands on a wall that is one part from foot to eave map to one kit section; the second event lays nothing). */
   const fallenSections = new Map<number, Set<number>>();
@@ -711,6 +767,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   return {
     stage(e, seam) {
       finishFalls(e.structureId);
+      if ((e as StructureStageEvent & { sections?: boolean }).sections === true) sectionsSeen.add(e.structureId);
       const settled = e.settled === true;
       if (e.stage === 'collapsed') {
         // the roof drops into it and the walls come down along the crumble front over COLLAPSE_S, then it is gone
@@ -738,11 +795,16 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       }
       // with sections on (the match's ruleset), the struck section's own holes are the breach: no synthetic one
       const sections = (e as StructureStageEvent & { sections?: boolean }).sections === true || realHoles.has(e.structureId);
-      if (e.stage === 'breached' && !sections) {
+      // (a round's own strike hole there is the breach already: no second hole on top of it)
+      if (e.stage === 'breached' && !sections && (settled || !nearPunched(e.structureId, e.x, e.y, e.z, 2))) {
         const blow = breachBlowFor(e);
         const spec = seam.holeAt(blow.x, blow.y, blow.z, blow.radiusM, e.dirX, e.dirZ, e.munition, e.cause, 0);
-        if (spec) run(seam, 0, settled, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
+        if (spec) {
+          notePunched(e.structureId, e.x, e.y, e.z);
+          run(seam, 0, settled, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
+        }
       }
+      if (e.stage === 'collapsed') downed.add(e.structureId);
       // a collapse's stubs and pile show under the walls as they come down; the walls' own pieces leave the front
       if (e.stage === 'collapsed') {
         // after the P2 cascade the storeys threw their own pieces as they dropped: the kit lays its pile, stubs and
@@ -767,8 +829,15 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         }
       }
     },
+    strike(structureId, seam, x, y, z, dirX, dirZ, munition, chargeKg) {
+      // punched a moment later, under the burst's flash: the same step's stage and breach events land first (with
+      // sections on the sim's own hole is the hole; a collapse takes the building down instead)
+      if (!seam || !(strikeHoleRadius(munition, chargeKg) > 0)) return;
+      pendingStrikes.push({ structureId, seam, x, y, z, dirX, dirZ, munition, chargeKg, at: o.now() });
+    },
     breach(e, seam) {
       finishFalls(e.structureId);
+      sectionsSeen.add(e.structureId);
       if (!seam) return;
       const settled = e.settled === true;
       const cause = e.munition === 'kinetic' || e.munition === 'autocannon_ap' ? 'kinetic' : 'blast';
@@ -835,6 +904,15 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (changed) seam.touchShadows();
     },
     update() {
+      if (pendingStrikes.length) {
+        const t = o.now();
+        let k = 0;
+        for (const p of pendingStrikes) {
+          if (t - p.at >= STRIKE_WAIT_S) punch(p);
+          else pendingStrikes[k++] = p;
+        }
+        pendingStrikes.length = k;
+      }
       if (storeyFalls.length) {
         const t = o.now();
         let k = 0;
@@ -854,6 +932,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       falling.length = k;
     },
     shiftTime(delta) {
+      for (const p of pendingStrikes) p.at += delta;
       for (const f of falling) f.until += delta;
       for (const f of storeyFalls) f.t0 += delta;
     },
@@ -867,6 +946,10 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       }
       originals.clear();
       realHoles.clear();
+      punched.clear();
+      downed.clear();
+      sectionsSeen.clear();
+      pendingStrikes.length = 0;
       fallenSections.clear();
       flattened.length = 0;
       flattenedSpans = new WeakSet();
