@@ -8,6 +8,19 @@ import {
   registerProfiledBuilders,
   robustFloorY,
 } from './tankFactoryCore.ts';
+import { attachTankDecorations, attachTankDecorationsSteps } from './decorations.ts';
+import { staticImportClosure } from '../../tools/static-import-closure.mjs';
+
+// 2026-10-09 (perf lane, boot diet): the core reaches the decoration system only through its configuration, so the
+// garage boot (main.ts -> fleetFactory.ts -> tankFactoryCore.ts) carries none of decorations.ts, its kits, foliage
+// cards and spray atlas; fleetFactory.ts loads them beside the profile kit.
+const coreClosure = staticImportClosure('src/vehicles/tankFactoryCore.ts',
+  { root: new URL('../..', import.meta.url).pathname });
+for (const lazy of ['src/vehicles/decorations.ts', 'src/vehicles/accessoryKits.ts', 'src/vehicles/vehicleFoliage.ts',
+  'src/world/treeSprayAtlas.ts']) {
+  assert.equal(coreClosure.has(lazy), false, `${lazy} stays out of the tank factory core's static imports`);
+}
+const decorations = { attachTankDecorations, attachTankDecorationsSteps };
 
 function referenceRobustFloorY(values) {
   const sorted = values.slice().sort((a, b) => a - b);
@@ -104,10 +117,22 @@ assert.throws(
 );
 
 const noOp = () => {};
+const fittings = { spareTrackLinks: noOp, antennaWhip: noOp, pintleMG: noOp };
+assert.throws(
+  () => configureTankFactory({ canonicalBuilderPacks: [], profiledBuilders: {}, fittings }),
+  /Missing tank decoration entry attachTankDecorations/,
+  'a configuration without the decoration system is refused, never a silently bare fleet',
+);
+assert.throws(
+  () => configureTankFactory({ canonicalBuilderPacks: [], profiledBuilders: {}, fittings,
+    decorations: { attachTankDecorations } }),
+  /Missing tank decoration entry attachTankDecorationsSteps/,
+);
 configureTankFactory({
   canonicalBuilderPacks: [],
   profiledBuilders: {},
-  fittings: { spareTrackLinks: noOp, antennaWhip: noOp, pintleMG: noOp },
+  fittings,
+  decorations,
 });
 assert.throws(
   () => registerCanonicalBuilders('invalid', { deferred: null }),
@@ -173,4 +198,4 @@ try {
   else delete performance.now;
 }
 
-console.log('tankFactoryCore.selftest: configuration guards, core builder, exact bounded stage accounting passed');
+console.log('tankFactoryCore.selftest: configuration guards, decoration seam, core builder, exact bounded stage accounting passed');

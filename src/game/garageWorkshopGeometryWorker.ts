@@ -6,6 +6,7 @@ import {
   registerProfiledBuilders,
 } from '../vehicles/tankFactoryCore.ts';
 import { createProfileBuilders } from '../vehicles/profileBuilderAdapter.ts';
+import { attachTankDecorations, attachTankDecorationsSteps } from '../vehicles/decorations.ts';
 import {
   FITTINGS,
   buildDonorVariant,
@@ -20,7 +21,12 @@ import { TANK_SPECS } from '../vehicles/specs.ts';
 // This worker owns only the five Garage exhibit families. Importing the
 // browser fleet facade here made Vite copy every playable family into a 5 MB
 // worker even though 129 of them can never enter a maintenance bay.
-configureTankFactory({ canonicalBuilderPacks: [], profiledBuilders: {}, fittings: FITTINGS });
+configureTankFactory({
+  canonicalBuilderPacks: [],
+  profiledBuilders: {},
+  fittings: FITTINGS,
+  decorations: { attachTankDecorations, attachTankDecorationsSteps },
+});
 registerCanonicalBuilders('garage-modern3', MODERN3_BUILDERS);
 registerProfiledBuilders(createProfileBuilders({
   ...T90_PROFILES,

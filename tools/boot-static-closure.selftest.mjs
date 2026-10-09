@@ -59,6 +59,12 @@ const FORBIDDEN = Object.freeze({
   'src/sim/damage.ts': 'combat resolution is battle-only',
   'src/vehicles/auxiliaryInventory.generated.ts':
     '217 kB of mount geometry; the garage reads src/ui/garageAuxiliarySummary.generated.ts and combat anatomy src/vehicles/auxiliaryRoofGuns.generated.ts',
+  // 2026-10-09 (perf lane, boot diet; R262): the decoration system loads beside the profile kit in fleetFactory.ts's
+  // ensureFactoryReady and reaches tankFactoryCore.ts through configureTankFactory({ decorations }).
+  'src/vehicles/decorations.ts': 'the decoration system (stowage, nets, ghillies) loads with the profile kit',
+  'src/vehicles/accessoryKits.ts': 'the accessory kits ride with the decoration system; the core builds its can from accessoryPrimitives.ts',
+  'src/vehicles/vehicleFoliage.ts': 'vehicle foliage cards ride with the decoration system',
+  'src/world/treeSprayAtlas.ts': 'the spray atlas belongs to the vehicle foliage and the battle vegetation',
 });
 const boot = staticImportClosure('src/main.ts', { root: ROOT });
 assert.ok(boot.size > 200, `the walker reached only ${boot.size} modules from src/main.ts`);

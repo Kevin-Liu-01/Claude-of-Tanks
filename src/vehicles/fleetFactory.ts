@@ -62,11 +62,20 @@ let factoryReadyPromise: Promise<void> | null = null;
 function ensureFactoryReady(): Promise<void> {
   if (factoryReady) return Promise.resolve();
   if (!factoryReadyPromise) {
-    factoryReadyPromise = import('./profiles/kit.ts').then((kit) => {
+    // The decoration system (kits, foliage cards, spray atlas) loads beside the profile kit, outside the garage
+    // boot graph (perf lane 2026-10-09): no tank builds before this gate resolves.
+    factoryReadyPromise = Promise.all([
+      import('./profiles/kit.ts'),
+      import('./decorations.ts'),
+    ]).then(([kit, decorations]) => {
       configureTankFactory({
         canonicalBuilderPacks: [],
         profiledBuilders: {},
         fittings: kit.FITTINGS,
+        decorations: {
+          attachTankDecorations: decorations.attachTankDecorations,
+          attachTankDecorationsSteps: decorations.attachTankDecorationsSteps,
+        },
       });
       profileKit = kit;
       factoryReady = true;

@@ -75,10 +75,9 @@ import { deduplicateEraSurfaces } from './eraSurfaceDeduplication.ts';
 import { createInvocationEraWholeReuse } from './eraWholeFitReuse.ts';
 import { EquipmentDamage, markEquipmentLid, type EquipmentDamageEvent } from './equipmentDamage.ts';
 import {
-  block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndLayers, rolledEndSpiral, roundBar, sweptTube,
-  type FabricSpec,
+  block, fabricBody, fabricStrap, jerrycanParts, latheY, moldedBox, place, rolledEndLayers, rolledEndSpiral, roundBar,
+  sweptTube, type FabricSpec,
 } from './accessoryPrimitives.ts';
-import { jerrycanParts } from './accessoryKits.ts';
 import {
   addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, createPintleLayout,
 } from './machineGunGeometry.ts';
@@ -92,7 +91,16 @@ import {
 // createTank (see the seam near the GLB-swap block). Procedural/metrology
 // builds skip it by default so parity boards measure bare silhouettes;
 // presentation callers may explicitly opt in with decor:true.
-import { attachTankDecorations, attachTankDecorationsSteps, type DecorationAttachmentArgs } from './decorations.ts';
+// 2026-10-09 (perf lane, boot diet; R262 load time): the decoration system and
+// its kits, foliage cards and spray atlas (~160 kB raw) are not in the garage
+// boot. No tank builds before configureTankFactory, so the configuration hands
+// the core the decoration entry points (fleetFactory.ts loads them beside the
+// profile kit; tankFactory.ts and the workshop worker import them eagerly).
+import type {
+  attachTankDecorations as AttachTankDecorations,
+  attachTankDecorationsSteps as AttachTankDecorationsSteps,
+  DecorationAttachmentArgs,
+} from './decorations.ts';
 // effects_combat r5 ANIMATION CLOCK: the self-timed visual timelines (gun
 // recuperator, turret-pop arc, wreck char/ember cooldown) now age against
 // the shared fx clock — see src/fx/clock.ts. Live play is identical (the
@@ -125,6 +133,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 const D2R = Math.PI / 180;
 const SIM_STEP = 1 / 60;
 let factoryConfigured = false;
+let factoryDecorations: TankDecorationRuntime | null = null;
 type Rng = () => number;
 type Side = -1 | 1;
 type GeometryScale = number | readonly [number, number, number];
@@ -163,10 +172,17 @@ interface TankMaterials {
   dispose(): void;
 }
 
+/** The decoration system's two entry points (src/vehicles/decorations.ts), handed over by configureTankFactory. */
+interface TankDecorationRuntime {
+  attachTankDecorations: typeof AttachTankDecorations;
+  attachTankDecorationsSteps: typeof AttachTankDecorationsSteps;
+}
+
 interface FactoryConfiguration {
   canonicalBuilderPacks: Array<readonly [string, TankBuilderRecord]>;
   profiledBuilders?: TankBuilderRecord;
   fittings: Record<string, FactoryFitting>;
+  decorations: TankDecorationRuntime;
 }
 
 interface FactoryGunSpec extends FleetGunSpec {
@@ -6567,6 +6583,13 @@ function requireFactoryFittings(fittings: FactoryConfiguration['fittings']): voi
   }
 }
 
+function requireFactoryDecorations(decorations: FactoryConfiguration['decorations']): TankDecorationRuntime {
+  for (const name of ['attachTankDecorations', 'attachTankDecorationsSteps'] as const) {
+    if (typeof decorations?.[name] !== 'function') throw new TypeError(`Missing tank decoration entry ${name}`);
+  }
+  return decorations;
+}
+
 function registerConfiguredBuilders(
   canonicalEntries: readonly [string, TankBuilder][],
   profileEntries: readonly [string, TankBuilder][],
@@ -6591,12 +6614,15 @@ export function configureTankFactory({
   canonicalBuilderPacks,
   profiledBuilders,
   fittings,
+  decorations,
 }: FactoryConfiguration): void {
   if (factoryConfigured) throw new Error('Tank factory is already configured');
   const canonicalEntries = collectCanonicalBuilderEntries(canonicalBuilderPacks);
   const profileEntries = collectProfileBuilderEntries(profiledBuilders);
   requireFactoryFittings(fittings);
+  const decorationRuntime = requireFactoryDecorations(decorations);
   registerConfiguredBuilders(canonicalEntries, profileEntries);
+  factoryDecorations = decorationRuntime;
   factoryConfigured = true;
 }
 
@@ -7081,6 +7107,8 @@ function* prepareTankDecorationSteps(
 ): Generator<void, void, void> {
   const root = args.root;
   let workMs = 0, yieldMs = 0, checkpointCount = 0;
+  // createTankOwnedSteps refuses to run before configureTankFactory, which set these.
+  const { attachTankDecorations, attachTankDecorationsSteps } = factoryDecorations as TankDecorationRuntime;
   if (legacyDecoration) {
     const startedAt = performance.now();
     attachTankDecorations(args);

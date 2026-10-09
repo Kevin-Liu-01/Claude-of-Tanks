@@ -17,6 +17,7 @@ import { MODERN2_BUILDERS } from './modern2.ts';
 import './modern1.ts';
 import { CHALLENGER_BUILDERS } from './profiles/challenger.ts';
 import { FITTINGS } from './profiles/kit.ts';
+import { attachTankDecorations, attachTankDecorationsSteps } from './decorations.ts';
 import { PROFILED_BUILDERS } from './profiledProcedurals.ts';
 import { VEHICLE_MARKING_SEATS } from './vehicleMarkingSeats.generated.ts';
 import { registerVehicleMarkingSeatRecords } from './vehicleMarkingSeatRegistry.ts';
@@ -48,6 +49,7 @@ configureTankFactory({
   ],
   profiledBuilders: PROFILED_BUILDERS,
   fittings: FITTINGS,
+  decorations: { attachTankDecorations, attachTankDecorationsSteps },
 });
 
 export { KIT, bucketMaterialKey, createTank } from './tankFactoryCore.ts';

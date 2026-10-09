@@ -9,11 +9,13 @@
 // the same envelope from fewer segments, without the small hardware. Random draws happen before any detail branch,
 // so both levels of one piece always agree (the placement engine seats the coarse copy with the near copy's matrix).
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
-  barkLog, block, fabricBody, fabricSleeve, fabricStrap, hash01, latheY, moldedBox, place, rolledEndSpiral, roundBar, sweptTube,
-  withBoxUV, type AccessoryDetail, type FabricSpec, type XY,
+  barkLog, block, fabricBody, fabricSleeve, fabricStrap, hash01, jerrycanParts, latheY, moldedBox, place, rolledEndSpiral, roundBar,
+  sweptTube, withBoxUV, type AccessoryDetail, type FabricSpec, type XY,
 } from './accessoryPrimitives.ts';
+// The fleet's one can lives with the shared primitives so the tank factory core (garage boot) builds it without this
+// module, its foliage cards and the spray atlas (perf lane 2026-10-09, boot diet); the kits keep importing it from here.
+export { jerrycanParts } from './accessoryPrimitives.ts';
 import { FoliageCardBuffer, foliageCardPoints, type FoliageCard } from './vehicleFoliage.ts';
 
 export type RGB = readonly [number, number, number];
@@ -212,60 +214,6 @@ function steelChest(P: AccessoryPainter, c: CaseSpec): void {
  * the broad faces, the three-handle comb across the top and the offset spout. `outer` picks which broad face carries
  * the stamped X (the hidden inner faces of a pair carry none).
  */
-/** The fleet's one 20 L jerrycan as role-tagged parts, so the decor kit, the profile kit and the fittings share it. */
-export interface JerrycanParts {
-  readonly body: THREE.BufferGeometry;
-  /** the stamped X on each requested broad face (near level only) */
-  readonly stamps: readonly THREE.BufferGeometry[];
-  /** the pressed handle spine (near), or the coarse level's one handle block */
-  readonly spine: THREE.BufferGeometry;
-  readonly grips: readonly THREE.BufferGeometry[];
-  readonly spout: THREE.BufferGeometry | null;
-}
-
-/**
- * A pressed 20 L can, base on y = 0, broad faces on +-X, spout on the forward (+Z) shoulder: filleted body, the
- * stamped X on the requested broad faces (-1, +1), the three-grip handle comb on its spine, and the spout with its
- * bayonet cap. `nearLevel` false returns the coarse can: body and one handle block.
- */
-export function jerrycanParts(scale = 1, faces: readonly number[] = [-1, 1], nearLevel = true): JerrycanParts {
-  const t = 0.165 * scale, h = 0.44 * scale, w = 0.345 * scale;
-  const shell = place(moldedBox(t, h, w, 0.022 * scale, nearLevel ? 1 : 0, 0.012 * scale), 0, h / 2, 0);
-  if (!nearLevel) {
-    const spine = place(moldedBox(t * 0.5, 0.03 * scale, w * 0.62, 0, 0, 0.004), 0, h + 0.015 * scale, -w * 0.06);
-    return { body: shell, stamps: [], spine, grips: [], spout: null };
-  }
-  // 2026-10-07 (tank-accessories round 3: the blind critics read the cans as car batteries — a block with a few studs on
-  // top): the welded seam where the two pressed halves meet stands proud round the narrow faces, the stamped X stands a
-  // centimetre proud so its flanks shade, three arched handles span the top and the spout carries its cap's clamp lever.
-  const seam = place(moldedBox(0.012 * scale, h + 0.008 * scale, w + 0.008 * scale, 0, 0, 0.003 * scale), 0, h / 2, 0);
-  const body = mergeGeometries([shell, seam], false) ?? shell;
-  if (body !== shell) shell.dispose();
-  seam.dispose();
-  const diag = Math.atan2(h * 0.62, w * 0.62);
-  const ribLen = Math.hypot(h * 0.62, w * 0.62);
-  const stamps: THREE.BufferGeometry[] = [];
-  for (const f of faces) {
-    for (const s of [-1, 1]) {
-      stamps.push(place(block(0.016 * scale, ribLen, 0.034 * scale), f * (t / 2 + 0.002 * scale), h * 0.47, 0,
-        s * (Math.PI / 2 - diag), 0, 0));
-    }
-  }
-  // handle comb: a pressed spine along the top and three arched grips across it, behind the spout, their feet welded on
-  const spine = place(block(t * 0.42, 0.022 * scale, w * 0.5), 0, h + 0.006 * scale, -w * 0.17);
-  const grips = [-0.125, -0.06, 0.005].map((z) => sweptTube([
-    [-t * 0.34, h - 0.003 * scale, z * scale], [-t * 0.27, h + 0.036 * scale, z * scale],
-    [t * 0.27, h + 0.036 * scale, z * scale], [t * 0.34, h - 0.003 * scale, z * scale]], 0.0075 * scale, 4, 4));
-  // spout and bayonet cap on the forward shoulder, the cap's clamp lever folded down its side
-  const spoutBody = latheY([[0.024, 0], [0.026, 0.03], [0.03, 0.034], [0.03, 0.05], [0.001, 0.052]], 6);
-  const lever = place(block(0.012, 0.042, 0.016), 0.034, 0.03, 0);
-  const merged = mergeGeometries([spoutBody, lever], false);
-  const spout = place(merged ?? spoutBody, 0, h - 0.02 * scale, w * 0.36, 0.42, 0, 0, scale);
-  if (merged) spoutBody.dispose();
-  lever.dispose();
-  return { body, stamps, spine, grips, spout };
-}
-
 export function jerrycan(P: AccessoryPainter, x: number, rgb: RGB, scale = 1, outer: -1 | 0 | 1 = 0): void {
   const can = jerrycanParts(scale, outer === 0 ? [-1, 1] : [outer], near(P));
   P.paint(can.body.translate(x, 0, 0), rgb, 0.28);
