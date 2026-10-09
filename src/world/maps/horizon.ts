@@ -3882,6 +3882,9 @@ export function* buildHorizonRingSteps(
   // moved or lower sun, then restores the original. The Studio reaches the bake through the ring, never by import: a
   // Studio import would split this chunk's horizon modules into chunks of their own.
   if (reliefBake) {
+    // (the ring worker builds the geometry, and its bake's field, off this thread: the field is the same seeded noise
+    // horizonRingGeometrySteps baked with, rebuilt here from the ring's context)
+    const bakeField = reliefField ?? createHorizonReliefField(((seed ^ 0x7E11) ^ idHash(mapId)) >>> 0, reliefSettings);
     Object.defineProperty(mesh.userData, 'horizonReliefSource', {
       value: { field: bakeField, maxHeight: maxH, columns: HORIZON_SEGMENTS, bake: bakeHorizonRelief }, enumerable: false,
     });
