@@ -812,9 +812,11 @@ const GOODS: readonly Rgb[] = [[0.62, 0.18, 0.14], [0.2, 0.3, 0.52], [0.78, 0.7,
   [0.85, 0.82, 0.74], [0.42, 0.3, 0.22], [0.55, 0.6, 0.62]];
 
 /**
- * The painted emblem on an inn's hanging sign (wave 150: "a blank inn sign"): a gilded star (two crossed triangles) in
- * a painted border on both faces of the board. (u, y) the board's centre on the wall face, `out` its centre's
- * distance from the wall, `half` half its thickness, `w` × `h` its face (w along the wall's normal).
+ * The painted emblem on an inn's hanging sign (wave 150: "a blank inn sign"): a gilded beer tankard under its head of
+ * foam, its lid and handle, in a painted border on both faces of the board. (u, y) the board's centre on the wall face,
+ * `out` its centre's distance from the wall, `half` half its thickness, `w` × `h` its face (w along the wall's normal).
+ * (The facades lane, 2026-10-08: it was a gilded star of two crossed triangles, a brewer's star by intent, which yellow
+ * on a dark board in a German village of the war years reads as the yellow star of the persecution. Never a hexagram.)
  */
 export function innEmblem(sink: PartSink, face: Face, u: number, y: number, out: number, half: number, w: number, h: number): void {
   const gold: Rgb = [0.78, 0.6, 0.22], rim: Rgb = [0.1, 0.08, 0.06];
@@ -827,12 +829,16 @@ export function innEmblem(sink: PartSink, face: Face, u: number, y: number, out:
     const r = Math.min(w, h) * 0.32, cy = y;
     faceSlab(sink, 'structureWood', f, [[c - w / 2 + 0.03, cy - h / 2 + 0.03], [c + w / 2 - 0.03, cy - h / 2 + 0.03], [c + w / 2 - 0.03, cy + h / 2 - 0.03], [c - w / 2 + 0.03, cy + h / 2 - 0.03]],
       half, 0.004, { colour: rim, fine: 'near' });
-    for (const turn of [0, Math.PI]) {
-      const tri: Array<[number, number]> = [0, 1, 2].map((k) => {
-        const a = turn + Math.PI / 2 + k * Math.PI * 2 / 3;
-        return [c + Math.cos(a) * r, cy + Math.sin(a) * r] as [number, number];
-      });
-      faceSlab(sink, 'structureWood', f, tri, half + 0.004, 0.003, { colour: gold, fine: 'near' });
+    // the tankard: its body, the lid's rim over it, the foam heaped over the rim, the handle's three bars on one side
+    const rect = (u0: number, y0: number, u1: number, y1: number): Array<[number, number]> =>
+      [[c + u0 * r, cy + y0 * r], [c + u1 * r, cy + y0 * r], [c + u1 * r, cy + y1 * r], [c + u0 * r, cy + y1 * r]];
+    const foam: Rgb = [0.9, 0.86, 0.74];
+    for (const [poly, colour] of [
+      [rect(-0.55, -0.8, 0.4, 0.55), gold], [rect(-0.62, 0.55, 0.47, 0.66), gold],
+      [rect(-0.5, 0.66, 0.36, 0.86), foam], [rect(-0.3, 0.86, 0.12, 0.98), foam],
+      [rect(0.4, 0.3, 0.82, 0.44), gold], [rect(0.4, -0.52, 0.82, -0.38), gold], [rect(0.68, -0.52, 0.82, 0.44), gold],
+    ] as Array<[Array<[number, number]>, Rgb]>) {
+      faceSlab(sink, 'structureWood', f, poly, half + 0.004, 0.003, { colour, fine: 'near' });
     }
   }
 }
