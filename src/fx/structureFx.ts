@@ -228,6 +228,10 @@ function piece(C: BlastContext, look: StructureLook, x: number, y: number, z: nu
   k.scale = scale; k.groundY = C.groundY(x, z); k.drag = 0.2;
   const tint = 0.82 + R() * 0.36;
   k.r = s.color[0] * tint; k.g = s.color[1] * tint; k.b = s.color[2] * tint; k.heat = 0; k.seed = R();
+  // (the battle strips: a stack's burst strewed the yard with white confetti) a sunlit fleck of plaster or tile reads as
+  // paper: no thrown piece brighter than weathered render
+  const lum = 0.2126 * k.r + 0.7152 * k.g + 0.0722 * k.b;
+  if (lum > 0.3) { const q = 0.3 / lum; k.r *= q; k.g *= q; k.b *= q; }
   C.chunk(k);
 }
 
@@ -437,11 +441,13 @@ function toppleFx(C: BlastContext, e: StructureStageEvent, L: StructureLook, pow
 function brickDust(look: StructureLook, powder: Rgb, out: [number, number, number]): Rgb {
   let main = look.rubble[0];
   for (const s of look.rubble) if (s.share > main.share) main = s;
-  out[0] = powder[0] + (main.color[0] * 0.85 - powder[0]) * 0.4;
-  out[1] = powder[1] + (main.color[1] * 0.85 - powder[1]) * 0.4;
-  out[2] = powder[2] + (main.color[2] * 0.85 - powder[2]) * 0.4;
+  // (dcore 2026-10-09, waves 294a/b: "white cotton puffs", "cream") nearer the rubble's own hue and darker: the volume
+  // medium's sun and sky lift it a long way, so a brick building's cloud reads brick-brown, a stone one's grey-buff
+  out[0] = powder[0] + (main.color[0] * 0.85 - powder[0]) * 0.55;
+  out[1] = powder[1] + (main.color[1] * 0.85 - powder[1]) * 0.55;
+  out[2] = powder[2] + (main.color[2] * 0.85 - powder[2]) * 0.55;
   const lum = 0.2126 * out[0] + 0.7152 * out[1] + 0.0722 * out[2];
-  if (lum > 0.34) { const k = 0.34 / lum; out[0] *= k; out[1] *= k; out[2] *= k; }
+  if (lum > 0.25) { const k = 0.25 / lum; out[0] *= k; out[1] *= k; out[2] *= k; }
   return out;
 }
 const _tint: [number, number, number] = [0, 0, 0];
@@ -533,7 +539,9 @@ export function wallStrike(C: BlastContext, x: number, y: number, z: number, nx:
     // (dcore 2026-10-09, waves 294a/b: "an orange light wash on an intact wall", lingering 2-11 s over a volley) a flash,
     // not the kill light's 1.9 s decay: a fifth of a second, front-loaded, so the wall reads in its own colour again
     // before the dust has spread
-    C.lightPulse(x + nx * 1.6, y + 0.5, z + nz * 1.6, Math.min(0.9, 0.3 + 0.25 * k), 0, 0.2);
+    // (the battle strips, b2: a 0.2 s pulse at the kill light's strength still painted the facade and the street orange in
+    // the frame after each hit) dimmer, shorter and nearer white: the detonation's flash, never a lamp
+    C.lightPulse(x + nx * 1.6, y + 0.5, z + nz * 1.6, Math.min(0.5, 0.18 + 0.14 * k), 0, 0.14, 0xffc898);
     // the detonation's own fire and smoke on the face, as a ground burst has them: a hot billow cooling to residue in
     // half a second, then the residue's grey smoke drifting off
     for (let i = 0; i < 2; i++) {
