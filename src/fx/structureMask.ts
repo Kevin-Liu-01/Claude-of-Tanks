@@ -204,7 +204,9 @@ vStructRoof = 0.0;` : ''}
           // roof's wreck settles into the heap rather than lying on it, so the fold takes nothing the eye still sees
           // (wave 322: "the roof skin vanishes" — flattened to a third of its pitch, a lid at the eaves the eye lost) it keeps
           // most of its pitch as it rides the front down, tilting toward the side that falls first
-          p.y = max( p.y - drop, front + ( p.y - eave ) * 0.75 - 2.4 * u * u );
+          // (wave 326: "the back-wall remnant disappears" — the gable and the roof stood a metre and more over the heap
+          // until the fold took them) their pitch closes as the front comes down: at the base they lie on the heap
+          p.y = max( p.y - drop, front + ( p.y - eave ) * 0.75 * ( 1.0 - u * u ) - 1.2 * u * u );
         }${holes ? '' : `
         else if ( p.y > front ) {
           // the phone tier cuts nothing: the wall above the front folds down onto it

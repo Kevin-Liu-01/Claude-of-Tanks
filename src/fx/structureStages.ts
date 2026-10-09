@@ -552,7 +552,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   // (dcore 2026-10-09, the battle strips: a punched hole's room read as a pale grey-white blob in a stone wall) dimmer
   // (wave 322: "glowing white bars and dots" — a light floor slab behind a hole at 1.9x its tint bloomed in the sun) at its
   // own tint, never brighter: the dark interiors stay dim through their small light of their own
-  const roomMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(1, 1, 1), roughness: 1, metalness: 0,
+  // (wave 326: still "a glowing white bar along a storey seam" — the floor slab over a hole, cream in the sun) the room
+  // at six tenths of its tint: in shade, as a room's inside is
+  const roomMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(0.6, 0.6, 0.6), roughness: 1, metalness: 0,
     vertexColors: true, envMapIntensity: 0, emissive: new THREE.Color(0.016, 0.014, 0.012) });
   roomMaterial.name = 'fx-structure-room';
   mask.patch(roomMaterial);
