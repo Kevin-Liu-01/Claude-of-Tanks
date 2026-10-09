@@ -60,43 +60,21 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
     "seats": [
       {
         "kind": "designation",
-        "parent": "turret",
-        "size": 0.24,
+        "parent": "hull",
+        "size": 0.23,
         "pos": [
-          -1.3662963,
-          0.42,
-          -0.9808373
+          1.636,
+          1.222,
+          -2.8586
         ],
         "quaternion": [
           0,
-          -0.7548321,
+          0.7071068,
           0,
-          0.655918
+          0.7071068
         ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "authored-surface-seat",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
-      },
-      {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.24,
-        "pos": [
-          1.3662963,
-          0.42,
-          -0.9808373
-        ],
-        "quaternion": [
-          0,
-          0.7548321,
-          0,
-          0.655918
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "authored-surface-seat",
+        "surfaceMesh": "hull",
+        "anchorProfile": "pt91_twardy",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -107,22 +85,22 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.23,
         "pos": [
-          1.4276893,
+          -1.4519581,
           0.4329621,
-          -0.5451846
+          -0.37297
         ],
         "quaternion": [
           0,
-          0.7548321,
+          -0.7548321,
           0,
           0.655918
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "pt91_twardy",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.0228431
       }
     ]
   },

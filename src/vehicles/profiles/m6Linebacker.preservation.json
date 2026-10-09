@@ -5,27 +5,26 @@
       "id": "m3a3_bradley",
       "quality": "high",
       "scope": "hull-gear",
-      "sha256": "d4bdefcb5aa40703294f8567d55e2024d16fd28be1165a6a03d3fa144470757e"
+      "sha256": "28a8c1a77411ad4e69d2d50a8fbce863449e3163d248793c6cebfb2274be8191"
     },
     {
       "id": "m3a3_bradley",
       "quality": "low",
       "scope": "hull-gear",
-      "sha256": "82dfd81d0d3c7250b366e7782dd0046903563bc3a4899f53eb7c90fcbd6083da"
+      "sha256": "871e30fe33895eaf14de15eda9b73af1e66943faff13fae9b5344d8c1337a05e"
     },
     {
       "id": "ua_m2a3_bradley",
       "quality": "high",
       "scope": "all",
-      "sha256": "fbbbcee9289b42e7992df2e65d4857ae8018d5a0d39cb2cc373ac0572a90b5b6"
+      "sha256": "9fa1294c12c812fcdb6b1fcc079a53a43b3526d0dfed50aa76965a1b979cc61f"
     },
     {
       "id": "ua_m2a3_bradley",
       "quality": "low",
       "scope": "all",
-      "sha256": "a0dcfbcf6bf3d8108701ad2bd8568fd56027ead4b0b5c71b7a1b299f5f6399c5"
+      "sha256": "0bea31d917f39687c66f42ae5eb6fd59bb78bef84b17a5aeba37ae7b32689748"
     }
   ],
-  "note": "Preservation rebased to deployed base-shell repair: corrected Bradley hull bow triangulation, independently measured from the untouched production source clone before M3 gun lowering.",
-  "markingSeats": "2026-10-06 integration: receipt builds read the generated vehicle marking seats (visual/receipt-seats, dcaa99ae3), stored at 7 digits. The two ua_m2a3_bradley 'all' rows re-pinned: every chassis, turret and gear mesh and both decal geometries are byte-identical to 3d0c3c50e; only vehicleMarking_insignia/designation transforms (HIGH) and their quads in the LOW hull static batch (LOW) differ, by at most 1.2e-7 m."
+  "note": "Preservation rebased to deployed base-shell repair: corrected Bradley hull bow triangulation, independently measured from the untouched production source clone before M3 gun lowering. 2026-10-06: m3a3_bradley hull-gear re-pinned over the accessory lane's closed primitive shells (latheY end caps add 228 hullDark vertices, fabricStrap's buried-edge band removes 132 hullCloth vertices); the chassis is otherwise unchanged. 2026-10-07 (tank-accessories round 3): m3a3_bradley hull-gear (high) and ua_m2a3_bradley (high, low) re-pinned over the shared kit's round-3 props: fourteen-sided soft stowage and eighteen-sided tarp rolls with spiral ends at full geometry quality, the jerrycan's seam bead, raised X and arched handles, the ammo can's proud latches and hinge leaves, and the stowage rack's sixteen-sided rolls; the m3a3 low tier is unchanged and the chassis is otherwise unchanged. Later on 2026-10-07 (round 3, bowed whips): ua_m2a3_bradley (high, low) re-pinned again over the shared fitting whip (accessoryKits.ts whipAntennaParts): its four fitting_antennaWhip pairs grow from 216/36 to 486/180 vertices (tapered bowed rod, four-coil spring in the pot); every other mesh of both tiers is byte-identical. 2026-10-07 (tank-accessories round 4, camouflage panels): all four rows re-pinned over camoPanels.ts: the gun, hullDetail, turretDetail and turretEquipment buckets take per-panel uv phases and paint tones and the external-armour buckets per-cassette tones; only their uv and color attributes move (attribute digests against 6753ef5eb), every position, normal and index is byte-identical. Later on 2026-10-07 (round 4, spare track links): ua_m2a3_bradley (high, low) re-pinned over FITTINGS.spareTrackLinks, whose links are now shoe plates between round hinge barrels with grousers, end connectors and wedge-bolt heads, held by bolted clamp bars on brackets (fitting_spareTrackLinks_spareTrack 288 -> 1,920 and _detail 216 -> 720 vertices, same two slots); every other mesh of both tiers is byte-identical to the camouflage-panel pin. Later on 2026-10-07 (tank-accessories round 4 integration, visual/tank-accessories-r4): ua_m2a3_bradley (high, low) re-pinned over the lane's round-4 machine guns and stowage racks, which the camouflage helper's pin (taken on its own branch, before the integration) did not carry: the two browningDerivedMachineGunBody meshes grow 5,382 -> 5,502 and 5,910 -> 6,390 vertices (the rebuilt M2: true barrel, feed cover, sight), the pintle gun's cartridges 720 -> 480 and detail 1,536 -> 1,152 vertices with its ammo can's positions, and FITTINGS.stowageRack's round-tube frame and settled loads (canvasCloth 564 -> 660 and 2,664 -> 3,612, dark 2,160 -> 3,228 and 4,248 -> 6,168 vertices; its detail mesh folds into them, so 90 -> 89 meshes high and 87 -> 86 low); every other mesh of both tiers is byte-identical. m3a3_bradley is unchanged. 2026-10-08 (tank-accessories round 5: the machine guns at true size on the shared construction, r5/guns 8c6fca407): the donor ua_m2a3_bradley digests re-pinned, its roof and pintle guns following the shared machine-gun construction; m3a3_bradley unchanged."
 }

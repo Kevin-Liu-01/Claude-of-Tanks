@@ -3531,7 +3531,8 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
   fv510PhotoBuildAssemblyStage7();
   // ---- pintle GPMG at the commander's station (§B3 decoration minimum;
   // sky-backed -> two-tone per MG PHYSICS) ----
-  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0.10, scale: 0.85, seed: 3 });
+  // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the turret roof behind the commander's station (feed-side collision census).
+  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0.10, scale: 0.85, seed: 3, feed: 'right' });
   const fv510PhotoBuildMarkingsStage1 = (): void => {
     mg.position.set(0.50, 0.50, -0.44);
     mg.rotation.y = Math.PI * 0.82;
