@@ -568,8 +568,100 @@ do not move), it is desktop only (a phone's build is byte for byte its craftless
 stream (index.ts forks it from the wear seed) or hashes positions, so a kit's build and look streams draw exactly as
 often with it as without it. Its fine metal and render work (hangers, fittings, streaks, the edges of trims) join the
 fine-detail cells: on a desktop build `structureMetal` and the three `regionalPlaster` buckets batch like the timber and
-stone (the metal's batch takes the place of its always-drawn mesh). A new part follows the same laws: decor, behind
-`facadeOn()`, no draw from `ctx.rng` or `ctx.variant`.
+stone (the metal's batch takes the place of its always-drawn mesh). Its finest pieces are near fine joinery
+(`EmitOptions.fine: 'near'`, `fineSides: 'near'`, or a whole call inside `PartSink.near`: a flower box, a shop's
+lettering, a gutter's hangers and fittings, the sills' dirt runs, the attic and dormer lights' frames, the sides and
+tops of trims): they merge by 40 m cell and show within half the fine-detail distance (60 m at High), so a street view
+draws them and the town beyond it does not (Steinburg's chase view drew 164k of the craft's fine triangles, 124k of
+them past 80 m; the near tier leaves 56k). Paint (bands, Faschen, the plinth's band) and pilasters stay with the kit's
+fine joinery, at the full distance.
+
+Round three (wave 172, October 6): a quoin turning a corner (`dressedQuoin`, and the corners of a rendered tower
+shaft) wraps one whole stone of the style's own tile — `regionalSurfaces.ts masonryLayout` gives the tile's blocks,
+and the quoin's two outer faces map a block clear of its joints, per quoin and per building — so the wall's courses no
+longer run across it; the geometry is the plain quoin's. A render loss (`spallRender` on the first render family) shows
+its masonry ringed by the brown base coat and a stain fading into the render (`layeredLoss`; the rings grow only as
+far as the wall and its openings leave room). A house on a plinth gets a drip strip of its plinth's stone round the
+wall foot, darkest against the wall, and a short path out from each ground-floor door (`groundSkirt`;
+`HouseSpec.skirt`: a khata's trodden clay; fine dressing). Both lie on the ground (October 7, wave 199: "no plinth,
+path or splash zone"): props.ts hands each kit build the rendered terrain under it in the building's frame
+(`RegionalBuildContext.ground`: the contact surface, over the seat), the strip runs in pieces of at most 1.5 m with
+every corner 3 cm over it (a path 4 cm), and its ground grows no grass, tall grass or litter (discs along the strip and
+over each path, held with the yards' holes; `sceneryPlan.ts withGroundCoverHoles` grids a list past 64 holes). The
+weathering's wall-foot band never cuts a part laid on the ground (`EmitOptions.ground`: it faces up and takes no damp).
+A bare build (the receipts) keeps the level strip with its lip. A khata's shutters carry raised stiles, rails and an applied motif, and its nalichnik boards are carved: a
+backing board for range, near the camera a frame round a sunk field with the rosettes proud of both (`carvedBoard`).
+The plaster tile's normal map is a first-party derivative of Plaster 007's (`Plaster007_1K-JPG_NormalGL-smooth.jpg`):
+the tile's rows of blocky losses read as carved glyphs on the ksar walls (wave 174) and are taken out, the trowel
+undulation and the grain kept. A new part follows the same laws: decor, behind `facadeOn()`, no draw from
+`ctx.rng` or `ctx.variant`.
+
+No two houses alike (October 7, wave 184 on Saltmere's bourg: "identical clone houses, same chimney count and window
+and shutter layout every time"). A kit's house-to-house variation draws from the look stream (`ctx.variant`), not the
+build stream. The Breton dwelling (cottage, tavern, cornershop) varies, house to house:
+- storey heights (the eaves and ridges step between neighbours);
+- window size;
+- bays: two to four down a long wall and one to three in a bourg house's street gable, irregularly spaced, the upper
+  floor over the lower or not;
+- the door's place;
+- one or two gable-end stacks: in either gable, on the apex or off it, of a height;
+- dormers on some bourg houses;
+- a lean-to against the back gable on some deep plots, the house standing forward to leave it the plot's back
+  (`breton.ts dwelling`, `bays`, `leanTo`).
+This is structure, so a phone builds it too, and the collision shards follow it.
+
+Round four (wave 199, October 7: round three scored 4.85):
+- The Hessian red sandstone was read as "brick at roughly twice real size, thick pale mortar, pillow-faced". It is now
+  squared stone: courses of 23-44 cm and blocks of 0.4-1.0 m, some split, under tight joints in the stone's own tone
+  (`MasonryRecipe.mortarOfStone`), nearly flat-faced (`faceRamp`), with softer normal relief.
+- Steinburg's dressed stone was read as "heavy dark outlines". Its joints are thinner and in the stone's tone, and its
+  blocks are less patchy.
+- A shop window is glass, never a drawn curtain, and holds a display: goods on the bottom rail and on a shelf
+  (`shopDisplay`).
+- The yard gardens are cabbage heads and rounded leafy ridges, not boxes.
+- The window boxes are a cushion of leaves with trailing stems and geranium heads in clusters.
+- The hollyhocks and hydrangeas are mounds and flower discs (`dressing.ts mound`, `bloomDisc`). Their draws from the
+  build stream are the boxes' they replace.
+- A render loss takes its own shape by kind: a band at the wall foot, a tongue under a sill, a lobed scar. A khata's
+  loss shows ochre daub, not a grey blob.
+- A rendered tower's quoins run long and short by turns.
+
+Round five (wave 199's remaining "wallpaper" reads, October 7), texture only:
+- The render no longer prints Plaster 007's broad blotches. `Plaster007_1K-JPG_Color-even.jpg` is a first-party
+  derivative (docs/ATTRIBUTION.md): a periodic FFT high-pass takes 70 % of the broad luminance blotching out and pulls
+  the chroma 80 % toward the tile's mean, keeping the grain. A wall's variation comes from the craft's own weathering.
+- A kit's thatched roofs ("thatch that reads like carpet") take `props.ts makeThatch`: one combed coat per course, six
+  wandering courses down a 2.2 m tile, the straw's own strands and a slow drift of tone along the ridge, in the straw
+  print's palette. At the merge they leave the straw bucket for a mesh of their own (`buckets.thatch`) under the
+  straw's program key. The bales, stooks and stacks keep their own prints.
+
+Round six (wave 241, October 7: the facade items an eye at the street reads on Steinburg, Frontier and Verdant):
+- The Fachwerk is jointed (`house.ts H.strut`, `H.beside`, `H.panel`; `hessian.ts joinery`). A brace is cut to its
+  panel, its ends flush against the posts, sill and rails it is tenoned into, never lapped over them. An Andreaskreuz is
+  one brace whole with the other halved into it. The corner posts are the stouter, and every rail stops at their face.
+  The gable stands on a sill of its own; its side posts rise to the collar, which is tenoned into the king post. The
+  gable's braces stand in their own panels, beside its windows, which are framed by breast and head rails like the
+  wall's. With the craft each timber takes a shade of its own, and the rails' and braces' tenons show their oak pegs,
+  near the camera only and below 4.2 m (`PEG_TOP`).
+- The structure wood is hewn oak: 256 px over the same 1.82 m tile (`regionalSurfaces.ts paintTimberGrain`), with
+  latewood lines every 2.5 mm, figure streaks, drying checks and silvered grain. Its knots sit on the boards only. A
+  framing member's uv never reaches them, nor the old tile's plank seams. Steinburg's oxbloods are a fifth darker and
+  less orange.
+- The windows:
+  - an old pane leans its own degree or two, so each window reflects a different sky;
+  - in a reveal the frame is shaded darkest under the soffit;
+  - a sill lays its shadow on a rendered or masonry wall (`openings.ts sillShadow`);
+  - a town's two-light upper casements take their transom.
+- The masonry:
+  - ashlar is tooled (Scharrierung) inside a smooth margin, with its joints run true, an arris broken here and there
+    and a joint's mortar lost;
+  - brick keeps its 24 x 7 cm scale with a nearly flat face, a few clinkers and spalled corners;
+  - the brick's and the sandstone's normal relief is a third shallower.
+- The roofs:
+  - every roof has an age (`weather.ts roofAge`): an old roof is darker and browner;
+  - its moss grows along the eaves, thicker on the slope turned from the map's sun (`RegionalBuildContext.sunAzimuthDeg`);
+  - the ridge and hip caps, bedded in mortar, are darker and lichened;
+  - the plain tiles carry the odd replaced or sooted tile, lichen rosettes and moss under the tails.
 
 **The skyline kit.** October 5, 2026 (facades & skyline lane). `src/world/maps/regional/skyline.ts` is a grammar of
 tall and big buildings a city kit puts in its builders map, each fitted to the plan plot it replaces: `decoTower` (the
@@ -600,6 +692,13 @@ sown crop rows stop at its fence. Every element is checked on its own and skippe
 where it does not fit. No house body or plot moves. The props group carries the counts (`userData.regionalYards`),
 `yards.selftest.mjs` holds the planner's clearances, and a kit that adopts yards regenerates its map's shard and re-pins
 its census (obstacles rise by the modules, gates and sheds).
+
+**The churchyard.** A kit that names `churchyard` (a `YardStyle` with `graves` and `keepFront`: the Hessian and the
+Franconian kits) walls one round its church on a map that opts in (props `churchyard: true`): the yards' planner and
+clearances on the church's freest side but its front (the door's side, the approach), the kit's stone wall with a gate,
+and graves where a yard has its beds (`graveParts`: kerbed beds under slabs, stone crosses and iron crosses; dressing,
+left out on phones). It runs after the house yards on a stream of its own, so they stand as before; the props group
+carries its counts (`userData.regionalChurchyards`), and a map that opts in regenerates its shard and re-pins its census.
 
 **Adding a builder or a kit.** A builder is `(ctx) => RegionalParts`: build within `ctx.info.w × ctx.info.d`, door
 side +z unless the base builder's frontage says otherwise, draw only from `ctx.rng`, and keep tier-dependent parts to
