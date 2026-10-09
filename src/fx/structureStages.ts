@@ -897,7 +897,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     strike(structureId, seam, x, y, z, dirX, dirZ, munition, chargeKg) {
       // punched a moment later, under the burst's flash: the same step's stage and breach events land first (with
       // sections on the sim's own hole is the hole; a collapse takes the building down instead)
-      if (!seam || !(strikeHoleRadius(munition, chargeKg) > 0)) return;
+      // (the phone tier draws scars, not cuts, and its event-time budget is small: a strike there stays the wall's burst)
+      if (!seam || o.scars || !(strikeHoleRadius(munition, chargeKg) > 0)) return;
       pendingStrikes.push({ structureId, seam, x, y, z, dirX, dirZ, munition, chargeKg, at: o.now() });
     },
     breach(e, seam) {
