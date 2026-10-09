@@ -49,11 +49,13 @@ const IDS = Object.freeze([
 // turret, banks seated to their wall, decor kept off the guns' bodies; tow-cable eyes, lamp guards, the can strap and
 // the rack crate): floating 0, clipping 6 (23 tanks), measured on the merged tree.
 const KNOWN_FLOATING = Object.freeze({});
+// 2026-10-09 (launch RC): the field roof station's parts are seated face to face (profiles/fieldRoofWeapon.ts), which
+// clears leo2_revolution's 30 mm station (3, never ratcheted) and the Oplot-M's 12.7 mm one (3), and zero-area triangles
+// no longer turn a distance into NaN, which had held the Oplot-M's pair of banks ahead of its side screens as clipping:
+// the Oplot-M 5 -> 0
 const KNOWN_CLIPPING = Object.freeze({
-  // main's own Oplot-M roof station (muzzle sleeve, trunnions, ammunition-box lid: 3), and the banks no wall seat
-  // backs, which keep the old fan so their sockets hold: the Oplot-M's pair ahead of its side screens and the
-  // T-72B3M's left (+X) bank
-  ua_t84_oplot_m: 5, t72b3m: 1,
+  // the bank no wall seat backs, which keeps the old fan so its sockets hold: the T-72B3M's left (+X) bank
+  t72b3m: 1,
 });
 
 function accessoryKind(object) {
@@ -104,6 +106,10 @@ function contactCensus(root) {
   const grid = new Map();
   const cell = (v) => grid.get(`${Math.floor(v.x / CELL_M)},${Math.floor(v.y / CELL_M)},${Math.floor(v.z / CELL_M)}`) ?? [];
   tris.forEach((t, i) => {
+    // 2026-10-09 (launch RC): a zero-area triangle (the collapsed centre of a fan-capped tube, measuredPrimitives'
+    // blindTube) has no surface to touch or cross, and its closest point is NaN, which made every distance it entered NaN
+    // (leo2_revolution's 30 mm station barrel was reported as clipping, "nearest > 10 cm")
+    if (new THREE.Triangle(t.a, t.b, t.c).getArea() < 1e-12) return;
     // registered in every cell within TOUCH_M of the triangle, so a vertex finds a triangle across a cell border
     const box = new THREE.Box3().setFromPoints([t.a, t.b, t.c]).expandByScalar(TOUCH_M);
     for (let x = Math.floor(box.min.x / CELL_M); x <= Math.floor(box.max.x / CELL_M); x++)
