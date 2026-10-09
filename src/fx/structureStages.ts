@@ -53,11 +53,10 @@ export interface StructureStages {
     munition: MunitionClass, chargeKg: number): void;
   /**
    * The combat warm (before reveal; dcore 2026-10-09, the collapse spike: the first collapse compiled its programs
-   * mid-battle): a building's first damage draws its runs in the world's bucket materials on plain meshes (a fine-detail
-   * bucket's batched material among them), the room behind a hole, a fallback bucket's material and the pieces' pool
-   * material. One small run per bucket at `at` (`buckets`: the world's), a room, a fallback run and a piece of every
-   * shape, through the stage writers, unculled, so the warm's private render compiles each program a stage can ask for.
-   * The caller resets the fx after its render (resetAll stands everything up again). Returns the runs laid.
+   * mid-battle): a building's first damage draws two programs the world does not — the room behind a hole and the
+   * pieces' pool material (its runs draw in the world's own bucket materials). A room run at `at` (in the first of
+   * `buckets`, the world's) and one piece, through the stage writers, unculled, so the warm's private render compiles
+   * them. The caller resets the fx after its render (resetAll stands everything up again). Returns the runs laid.
    */
   warm(at: { x: number; y: number; z: number }, buckets: Iterable<string>): number;
   /** Per render frame: touch the casters of every building still falling. */
@@ -928,18 +927,11 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         out.mesh.triangle(a, b, c);
         out.mesh.end();
       };
-      // (the deployment's covered compile: a run per world bucket cost seconds of battle entry — each bucket's plain
-      // variant — and the spike's first collapse asked for none of them: the world draws them already) the first bucket
-      // only, the room and the fallback
-      tri(list[0] ?? 'stone', 'rim', 0);
-      tri(list[0] ?? 'stone', 'room', 1);
-      // a bucket no world mesh draws: the builders' fallback material
-      tri('fx-structure-warm', 'rubble', 2);
-      const shapes: DebrisShape[] = ['chunk', 'brick', 'block', 'stone', 'plate', 'splinter', 'beam', 'tile', 'slate', 'sheet', 'shard',
-        'clod', 'straw', 'rebar'];
-      for (const bucket of [list[0] ?? 'stone', 'fx-structure-warm']) {
-        for (const shape of shapes) out.pieces.push(bucket, shape, 0, 0, 0.5, 0, 0, 0, 0, 1, 0.2, 0.2, 0.2, 0.5, 0.5, 0.5, 0, 0, 0);
-      }
+      // (the deployment's covered compile: a run per world bucket cost seconds of battle entry, and the spike's first
+      // collapse compiled exactly two programs the world had not: the room behind a hole and the pieces' material) the
+      // room and one piece, nothing else (R262: the warm keeps battle entry within half a second)
+      tri(list[0] ?? 'stone', 'room', 0);
+      out.pieces.push(list[0] ?? 'stone', 'chunk', 0, 0, 0.5, 0, 0, 0, 0, 1, 0.2, 0.2, 0.2, 0.5, 0.5, 0.5, 0, 0, 0);
       const made = debris.commit();
       for (const mesh of made) mesh.frustumCulled = false;
       return made.length;
