@@ -48,7 +48,7 @@ import {
   insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees, type AuthoredTreeFeature,
 } from './authoredTreePlacement.ts';
 import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
-import { resolveGroundReduxProfile } from './groundRedux.ts';
+import { resolveGroundReduxProfile, swardShadeUniform } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import type { PropsMapConfig } from './props.ts';
@@ -3925,7 +3925,8 @@ function* vegetationBuildSteps(
   ) };
   const uMoss = { value: resolveTrunkMoss(cfg) };
   // ground lane (2026-10-06): the sward's own shade on the tufts' cards (as the tall grass's)
-  const uSwardShade = { value: new THREE.Vector4(SWARD_SHADE.extinction, SWARD_SHADE.rootSun, SWARD_SHADE.rootSky, SWARD_SHADE.rootLift) };
+  // (2026-10-08) as the map's profile has it (Verdant: neutral, the owner's light touch — groundRedux.ts swardShade)
+  const uSwardShade = { value: new THREE.Vector4(...swardShadeUniform(cfg?.id, SWARD_SHADE)) };
   // trees round 4 (the cost hold): fine wood's reach from the camera (GROWTH_WOOD_FINE_FAR; the phones keep their trunks)
   const uWoodFineFar = { value: mobileTier ? 1e9 : GROWTH_WOOD_FINE_FAR };
   // trees round 4 (the cost hold): a small shrub's thinning (FOLIAGE_SHRUB_THIN; 0 thins none — the phones)

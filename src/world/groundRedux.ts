@@ -90,6 +90,10 @@ export interface GroundReduxProfile {
    * everywhere; a pasture's cured blades the same. 1 = on (every vegetated
    * map), 0 = the old even scatter (Verdant: the owner's light touch keeps its pixels; a map with no row). */
   strawPatches?: number;
+  /** Ground lane (2026-10-08, the coordinator's ruling on group 4): the sward's own shade (tallGrass.ts SWARD_CANOPY_GLSL,
+   * both grass tiers) — 1 or absent = on, 0 = its uniform neutral (the owner's light touch on Amberford keeps its
+   * blades' old light; a wave that shows the shade helps elsewhere with no harm may propose Verdant separately). */
+  swardShade?: number;
   /** Ground lane (2026-10-03): a volcanic basin's zoning (0 = off, 1 = full): pumice and ash on the level ground,
    * black and red cinder streaked down the fall line on the cones' flanks, talus aprons at their feet — keyed to the
    * slopes and folds of the landforms, not to a wind (the material's uReduxFold.w). */
@@ -207,7 +211,7 @@ const STILL_WATER: Omit<GroundReduxProfile, 'grass'> = {
 /** Every battlefield's row (an unknown id runs TEMPERATE with no sward). */
 const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   // (2026-10-08: the straw patches off — the owner's light touch on Amberford keeps its tufts' and blades' old scatter)
-  verdant: { ...TEMPERATE, scree: 0.25, grass: meadow(1.0), strawPatches: 0 },
+  verdant: { ...TEMPERATE, scree: 0.25, grass: meadow(1.0), strawPatches: 0, swardShade: 0 },
   desert: { ...ARID, grass: null },
   winter: { ...SNOW, scree: 0.35, grass: tundra(0.35) },
   urban: { ...TEMPERATE, scree: 0.15, grass: verge(0.5) },
@@ -261,6 +265,17 @@ export function groundReduxProfileIds(): string[] {
 /** The map's row, or the temperate defaults with no sward. */
 export function resolveGroundReduxProfile(mapId: string | null | undefined): GroundReduxProfile {
   return PROFILES[mapId ?? ''] ?? DEFAULT_PROFILE;
+}
+
+/**
+ * Ground lane (2026-10-08): the sward's own shade for a map, as the grass tiers' uSwardShade (extinction, the root's sun
+ * floor, the root's sky, the root's albedo lift) — the tiers' own values where the profile keeps it on, else the neutral
+ * (0, rootSun, 1, 1): no extinction, the full sky and no lift, so every factor the shade applies is 1.
+ */
+export function swardShadeUniform(mapId: string | null | undefined,
+  on: { extinction: number; rootSun: number; rootSky: number; rootLift: number }): [number, number, number, number] {
+  return (resolveGroundReduxProfile(mapId).swardShade ?? 1) > 0
+    ? [on.extinction, on.rootSun, on.rootSky, on.rootLift] : [0, on.rootSun, 1, 1];
 }
 
 /**

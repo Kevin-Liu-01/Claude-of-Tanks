@@ -392,5 +392,16 @@ assert.equal(PRESETS.mobile.tallGrass, undefined, 'the mobile tier keeps today\'
     'a lower sun parts the tip from the foot more; the light rises up the blade');
   assert.ok(sh.rootSky >= 0.5 && sh.rootLift >= 1, 'the root keeps half its sky or more; the lift never darkens');
   assert.deepEqual(grass.swardShade.value.toArray(), [sh.extinction, sh.rootSun, sh.rootSky, sh.rootLift], 'the tall grass publishes its shade');
+  // (2026-10-08, the coordinator's ruling on group 4) Verdant keeps its blades' old light: the owner's light touch sets
+  // the shade neutral there — no extinction, the full sky, no lift, so every factor SWARD_CANOPY_GLSL applies is 1 —
+  // while every other map with a sward takes it; the tufts (vegetation.ts) read the same profile
+  const verdantGrass = createTallGrass(field, { seed: 11, tier: 'desktop', mapId: 'verdant', biome: meadow, blocked, qualityScale: () => 1 });
+  assert.deepEqual(verdantGrass.swardShade.value.toArray(), [0, sh.rootSun, 1, 1], 'Verdant: the sward\'s own shade neutral');
+  verdantGrass.dispose();
+  const frontierGrass = createTallGrass(field, { seed: 11, tier: 'desktop', mapId: 'frontier', biome: meadow, blocked, qualityScale: () => 1 });
+  assert.deepEqual(frontierGrass.swardShade.value.toArray(), [sh.extinction, sh.rootSun, sh.rootSky, sh.rootLift], 'Frontier: the shade on');
+  frontierGrass.dispose();
+  assert.ok(vegetationSource.includes('const uSwardShade = { value: new THREE.Vector4(...swardShadeUniform(cfg?.id, SWARD_SHADE)) };'),
+    'the tufts take the same per-map shade');
 }
 console.log('tallGrass.selftest: blade geometry, gates, a settled ring (exclusions, hollows, shoulders, tints), determinism, the quality knob, streaming, the reed margin, the tundra clumps, the shader, the sward shade, the engine hooks and the world wiring passed');

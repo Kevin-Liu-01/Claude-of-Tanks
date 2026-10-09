@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { getDeviceTier, getPreset } from '../engine/quality.ts';
 import { createGroundPressureField, type GroundDisturbance, type GroundPressureField } from './groundPressure.ts';
-import { resolveGroundReduxProfile, tallGrassQualityScale, type TallGrassBiome } from './groundRedux.ts';
+import { resolveGroundReduxProfile, swardShadeUniform, tallGrassQualityScale, type TallGrassBiome } from './groundRedux.ts';
 import { createLandFieldSample, LAND_CROP, landWeedShare, type LandFieldSample } from './landUse.ts';
 
 // Round 73 (2026-09-25, the ground redux; owner: "add tall grass that interacts with tanks"): the tall-grass tier.
@@ -506,6 +506,8 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
   const group = new THREE.Group();
   group.name = 'tall-grass';
   const shared = makeSharedUniforms();
+  // (2026-10-08) the sward's own shade as the map's profile has it (Verdant: neutral, the owner's light touch)
+  shared.uSwardShade.value.set(...swardShadeUniform(options.mapId, TALL_GRASS.swardShade));
   if (biome) {
     shared.uWindDir.value.set(biome.windDir[0], biome.windDir[1]).normalize();
     shared.uGrassBase.value.set(biome.base[0], biome.base[1], biome.base[2]);
