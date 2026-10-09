@@ -15,7 +15,9 @@ function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
 }
 
-const nipa = (pitch: number): RoofSpec => ({ kind: 'gable', pitchDeg: pitch, eave: 0.6, verge: 0.4, thickness: 0.26, bucket: 'straw', ridge: 'round', thatch: 'rows' });
+// (the facades lane, 2026-10-08; gauntlet wave 260: "brown shingle gable roofs") an atap of nipa leaf: the kit's thatch print
+// is the nipa's (surfaces.thatch), its eave one thick frayed course, no course lips up the slope
+const nipa = (pitch: number): RoofSpec => ({ kind: 'gable', pitchDeg: pitch, eave: 0.6, verge: 0.4, thickness: 0.26, bucket: 'straw', ridge: 'round', thatch: 'nipa' });
 const tole = (pitch: number, kind: RoofSpec['kind'] = 'gable'): RoofSpec => ({ kind, pitchDeg: pitch, eave: 0.5, verge: 0.35, thickness: 0.06, bucket: 'roof', ridge: 'saddle' });
 
 /** Board-shuttered window openings (no glass in the stilt houses): a dark opening, a frame, a propped shutter. */
@@ -62,7 +64,7 @@ function stiltHouse(ctx: RegionalBuildContext, opts: { lift?: number } = {}): Re
   const roof = thatched ? nipa(30 + rng() * 6) : tole(20 + rng() * 6);
   emitRoof(sink, roofGeometry(W, D, top, roof), roof);
   const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-  veranda(sink, front, lift, top - 0.05, W, 1.3, post, { bucket: thatched ? 'straw' : 'roof' });
+  veranda(sink, front, lift, top - 0.05, W, 1.3, post, thatched ? { bucket: 'straw', thatch: 'nipa' } : { bucket: 'roof' });
   ladder(sink, { ...front, origin: [0, 0, D / 2 + 1.3] }, W * 0.3, 0, lift + 0.16, shade(post, 0.9));
   wetYard(sink, ctx);
   return sink.finish();
@@ -255,6 +257,7 @@ export const MEKONG_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
     roof: { kind: 'sheet', tint: [0.62, 0.64, 0.65] },
     stone: { kind: 'block', tint: [0.62, 0.61, 0.58] },
     sourced: { plaster: false, wood: true },
+    thatch: { kind: 'nipa' },
     tones: {
       plaster: (_h, s, l) => [0.12, Math.min(1, s * 0.3 + 0.05), Math.min(1, l * 1.18 + 0.08)],
       plaster2: (_h, s, l) => [0.53, Math.min(1, s * 0.4 + 0.12), Math.min(1, l * 1.15 + 0.1)],

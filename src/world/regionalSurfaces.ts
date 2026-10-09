@@ -224,6 +224,72 @@ export function paintLimeRender(s: number, seed: number): { px: Uint8ClampedArra
   return { px, hgt };
 }
 
+/**
+ * Nipa-palm thatch, the Mekong delta's atap (the facades lane, 2026-10-08; gauntlet wave 260 on Mangrove Reach: the Ca Mau
+ * hamlet's roofs read as "brown shingle gable roofs": the straw print's 37 cm courses under a darkened straw tone). An
+ * atap roof is nipa leaflets folded over a rib and stitched into panels, laid in rows with a hand's width of each showing,
+ * so the roof reads as a fine ribbing of grey-tan leaf down the slope, never as courses of shingles:
+ *   - sixteen rows a tile (13.75 cm of each showing), the butt line wandering a little along the ridge;
+ *   - each row a run of leaflets hanging down the slope, 56 a tile (3.9 cm), staggered against the row above and
+ *     overlapping their neighbours: each its own length (the ends ragged, never a line of scales), tone and lean, its
+ *     veins fine fibres down it, a faint light midrib;
+ *   - between the tips, the leaf of the row beneath in the shadow of the one over it, and the top of every row shaded by
+ *     the butt ends above it;
+ *   - the weather: old leaf gone silver-grey in broad clouds, rain streaks down the slope, and here and there a panel
+ *     replaced in fresher tan.
+ * In the thatch print's convention (props.ts makeThatch): x down the slope (the tile's u), y along the ridge, a 512 px tile
+ * 2.2 m of roof. Seamless (whole rows and leaflets a tile, periodic lattices). Its colour is the nipa's own weathered
+ * grey-tan, which the map's straw tone then tones; the height carries the rows' overlap, the leaflets' camber and the gaps.
+ */
+export function paintNipaThatch(s: number, seed: number): { px: Uint8ClampedArray; hgt: Float32Array } {
+  const px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
+  const ROWS = 16, LEAVES = 56;
+  // the silvering: broad clouds whose lattice lies off the tile's axes (an integer shear keeps the field seamless)
+  const silver = field(s, 128, 2, 4, seed + 5, [1, 1, -1, 1]);
+  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
+    const i = y * s + x, j = i * 4;
+    // the row: t runs 0 at its top to 1 at its butt line, which wanders along the ridge
+    const cu = x / s * ROWS + (pnoise2(x, y, s, 2, 12, seed + 3) - 0.5) * 0.36 + (pnoise2(x, y, s, 2, 40, seed + 4) - 0.5) * 0.1;
+    const c = Math.floor(cu), t = cu - c, cw = ((c % ROWS) + ROWS) % ROWS;
+    // its leaflets, staggered against the row above by half a leaflet and a jitter of the row's own
+    const lv = y / s * LEAVES + cw * 0.5 + hash2(cw, 0, seed + 7) * 0.4;
+    const l = Math.floor(lv), lw = ((l % LEAVES) + LEAVES) % LEAVES;
+    const h1 = hash2(lw, cw, seed + 11), h2 = hash2(lw, cw, seed + 13), h3 = hash2(lw, cw, seed + 17);
+    // across the leaflet (0 on its midrib), its centre leaning a little down its length
+    const g = lv - l - 0.5 - (h3 - 0.5) * 0.3 * t;
+    // a ragged end: the leaflets stop at very different lengths, overlapping their neighbours with little gap, each
+    // narrowing to its point over the last third of its run
+    const reach = 0.62 + h1 * 0.38, half = 0.44 + h2 * 0.1;
+    const w = half * Math.sqrt(clamp((reach - t) / 0.3));
+    const across = Math.abs(g) / Math.max(w, 1e-3);
+    const leaf = t < reach && across < 1;
+    // the butt ends of the row above shade this row's top
+    const shade = 1 - 0.16 * (1 - smooth(0, 0.3, t));
+    // replaced panels: a run of four rows over a fifth of the tile, fresher tan
+    const fresh = hash2(Math.floor(cw / 4), Math.floor(y / s * 5), seed + 19) < 0.14 ? 1 : 0;
+    const old = silver(x, y), streak = pnoise2(x, y, s, 2, 48, seed + 9);
+    // the leaf's veins: fine fibres down the slope
+    const fibre = pnoise2(x, y, s, 4, 448, seed + 21);
+    const hue = 0.094 + h1 * 0.012 + fresh * 0.014;
+    let sat = 0.2 + h2 * 0.06 + fresh * 0.1 - old * 0.1, light: number;
+    if (leaf) {
+      const camber = 1 - 0.14 * across * across;
+      const rib = Math.abs(g) < 0.05 ? 0.025 : 0;
+      light = ((0.47 + (h1 - 0.5) * 0.1 + (fibre - 0.5) * 0.08 + (streak - 0.5) * 0.07 + (old - 0.5) * 0.08 + fresh * 0.03) * camber
+        + rib) * shade;
+      hgt[i] = clamp(0.32 + t * 0.42 + (1 - across * across) * 0.14 + rib * 1.6);
+    } else {
+      // the leaf of the row beneath, deep in the shadow of this one
+      light = (0.24 + (h2 - 0.5) * 0.04) * shade;
+      sat *= 0.75;
+      hgt[i] = clamp(0.06 + t * 0.12);
+    }
+    _lime.setHSL(hue - old * 0.008, clamp(sat), clamp(light));
+    px[j] = _lime.r * 255; px[j + 1] = _lime.g * 255; px[j + 2] = _lime.b * 255; px[j + 3] = 255;
+  }
+  return { px, hgt };
+}
+
 // ------------------------------------------------------------------------------------------------ roofs
 
 /** Plain clay tiles (Biberschwanz): double-lap courses, each offset half a tile, a segmental tail on every tile. */

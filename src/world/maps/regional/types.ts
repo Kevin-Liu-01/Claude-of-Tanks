@@ -97,6 +97,9 @@ export interface ArchitectureSurfaces {
    *  them (props.ts; regionalSurfaces.ts paintLimeRender): the primary family on `seed`, plaster2 and plaster3 on one seed
    *  between them (plaster3 borrows plaster2's relief). Absent, each canvas is its tone's painter or the plain render. */
   render?: { kind: 'limeRender'; seed: number };
+  /** the facades lane (2026-10-08; gauntlet wave 260): the print of the kit's thatched roofs (props.ts makeThatch): 'nipa',
+   *  the Mekong delta's atap of nipa-palm leaf (regionalSurfaces.ts paintNipaThatch). Absent, the straw thatch print. */
+  thatch?: { kind: 'nipa' };
 }
 
 export interface ArchitectureStyle {

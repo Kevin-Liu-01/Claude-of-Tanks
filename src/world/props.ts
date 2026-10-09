@@ -18,7 +18,7 @@ import {
   textureFromRgbaPixels as toTexture,
   tileableTorusNoise as torusN,
 } from './proceduralTexture.ts';
-import { paintLimeRender, paintLimewash } from './regionalSurfaces.ts'; // a kit's render painters (makePlaster; the facades lane)
+import { paintLimeRender, paintLimewash, paintNipaThatch } from './regionalSurfaces.ts'; // a kit's render and thatch painters (the facades lane)
 import { graveParts } from './maps/regional/yards.ts'; // a churchyard's graves (placeYards; the facades lane)
 import type { YardStyle } from './maps/regional/types.ts';
 import { applyTone, terrainNearMeshHeightAt, type HeightField, type TerrainLayout } from './terrain.ts';
@@ -1203,8 +1203,20 @@ function makeStraw(
  * The colour is the straw print's own family and mean (makeStraw's hue, saturation and lightness, under the map's
  * straw tone): the structure changes, not the palette. Every pattern is periodic in the tile (integer counts, wrapped
  * lattices), so it tiles without a seam.
+ * A kit may give its thatch its own print (ArchitectureSurfaces.thatch): 'nipa', the Mekong delta's atap of nipa-palm leaf
+ * (regionalSurfaces.ts paintNipaThatch; the facades lane, 2026-10-08, gauntlet wave 260: the Ca Mau hamlet's straw print
+ * read as "brown shingle gable roofs"), in the same tile convention under the same tone.
  */
-function makeThatch(anisotropy: number, tone: ToneFunction | null, seed: number): GeneratedSurfaceTextures {
+function makeThatch(anisotropy: number, tone: ToneFunction | null, seed: number, kind?: 'nipa'): GeneratedSurfaceTextures {
+  if (kind === 'nipa') {
+    const nipa = paintNipaThatch(512, seed);
+    applyTone(nipa.px, tone);
+    return {
+      albedo: toTexture(nipa.px, 512, { srgb: true, anisotropy }),
+      normal: normalFromHeight(nipa.hgt, 512, 2.0, anisotropy),
+      surface: surfaceFromHeight(nipa.hgt, 512, anisotropy, { roughMin: 0.84, roughMax: 1.0, aoMin: 0.66 }),
+    };
+  }
   const s = 512, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
   const hash = (a: number, b: number, c: number): number => {
     let h = (Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1) ^ Math.imul(c | 0, 0x9e3779b1) ^ seed) >>> 0;
@@ -4454,6 +4466,26 @@ ${snowCap ? `
     // court donors keep theirs: later passes re-seat those exact parts)
     const regionalDonor = (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery)
       || (!!foundryDonors && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === bi && site.kind === structureId));
+    // (the facades lane, 2026-10-08; gauntlet wave 260 on Mangrove Reach: its shed read as "Western clapboard") the wharf
+    // fishery stands its boards upright. The wharf keeps the base fishery's own parts and re-seats exactly them
+    // (mangroveFisheryWharf.ts), so the Mekong kit cannot rebuild it: only the texture of its timber walls and gables turns
+    // a quarter (u, v -> v, -u: a turn, not a mirror, so the planks' relief keeps its light) and the photo set's planks
+    // stand on end, a Ca Mau fish shed's boarding. Wall faces only: the roof, the deck's top and the short posts keep
+    // theirs (the wharf stretches the posts' v down to the mud). No position, normal, index or part changes.
+    if (regionalArchitecture?.id === 'mekong' && mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery) {
+      for (const g of tmp.wood ?? []) {
+        g.computeBoundingBox();
+        const box = g.boundingBox;
+        const uv = g.getAttribute('uv'), normal = g.getAttribute('normal');
+        if (!box || box.min.y < 0 || box.max.y - box.min.y < 1 || !uv || !normal) continue;
+        for (let i = 0; i < uv.count; i++) {
+          if (Math.abs(normal.getY(i)) >= 0.5) continue;
+          const u = uv.getX(i), v = uv.getY(i);
+          uv.setXY(i, v, -u);
+        }
+        uv.needsUpdate = true;
+      }
+    }
     let body: { minX: number; maxX: number; minZ: number; maxZ: number } | null = null;
     // a building that stands in a carriageway is packed for the move after every settlement building stands; whether it
     // stands there, and the footprint it moves with, are the base geometry's, so a kit never changes which buildings move
@@ -9318,7 +9350,7 @@ ${snowCap ? `
     if (kitThatch.length) {
       buckets.straw = buckets.straw.filter((g) => g.userData.regional !== true);
       buckets.thatch = kitThatch;
-      const thatch = makeThatch(aniso, T.straw || null, (seed ^ 0x7a7c4) >>> 0);
+      const thatch = makeThatch(aniso, T.straw || null, (seed ^ 0x7a7c4) >>> 0, regionalArchitecture?.surfaces.thatch?.kind);
       const material = new THREE.MeshStandardMaterial({ map: thatch.albedo, normalMap: thatch.normal,
         roughnessMap: thatch.surface, aoMap: thatch.surface, roughness: 1, metalness: 0 });
       material.aoMapIntensity = 0.82;

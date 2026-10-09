@@ -37,9 +37,10 @@ export interface RoofSpec {
   decor?: boolean;
   /**
    * a straw roof's thatch craft (facade.ts thatchCourses, desktop): the eaves beaten into steps of butt ends and course
-   * lines up the slope ('stepped', the default), the course lines alone ('rows': a palm or grass thatch), or none
+   * lines up the slope ('stepped', the default), the course lines alone ('rows': a palm or grass thatch), a thick frayed
+   * eave course alone ('nipa': an atap of nipa leaf, whose fine rows are the print's), or none
    */
-  thatch?: 'stepped' | 'rows' | 'none';
+  thatch?: 'stepped' | 'rows' | 'nipa' | 'none';
 }
 
 export interface StoreySpec {
@@ -645,7 +646,8 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
     if (bucket === 'straw' && !roof.decor && roof.thatch !== 'none' && facadeOn()) {
       const top = (p: Vec3): Vec3 => [p[0] + n[0] * t, p[1] + n[1] * t, p[2] + n[2] * t];
       thatchCourses(sink, bucket, top([side * (s + e), lo, side * D]), top([side * (s + e), lo, -side * D]),
-        top([0, ridgeY, side * ridgeHalf]), top([0, ridgeY, -side * ridgeHalf]), n, { verges: roof.kind === 'gable', stepped: roof.thatch !== 'rows' });
+        top([0, ridgeY, side * ridgeHalf]), top([0, ridgeY, -side * ridgeHalf]), n,
+        { verges: roof.kind === 'gable', stepped: roof.thatch !== 'rows' && roof.thatch !== 'nipa', nipa: roof.thatch === 'nipa' });
     }
   }
   if (roof.kind !== 'gable' && ridgeHalf < D - 1e-6) {
@@ -663,7 +665,8 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
       if (bucket === 'straw' && !roof.decor && roof.thatch !== 'none' && facadeOn()) {
         const top = (p: Vec3): Vec3 => [p[0] + n[0] * t, p[1] + n[1] * t, p[2] + n[2] * t];
         const apex = top([0, ridgeY, end * ridgeHalf]);
-        thatchCourses(sink, bucket, top([end * xC, yC, end * D]), top([-end * xC, yC, end * D]), apex, apex, n, { stepped: roof.thatch !== 'rows' });
+        thatchCourses(sink, bucket, top([end * xC, yC, end * D]), top([-end * xC, yC, end * D]), apex, apex, n,
+          { stepped: roof.thatch !== 'rows' && roof.thatch !== 'nipa', nipa: roof.thatch === 'nipa' });
       }
       // hip caps along both hip lines (round 6: bedded in mortar, lichened, as the ridge)
       for (const sx of [1, -1]) {
