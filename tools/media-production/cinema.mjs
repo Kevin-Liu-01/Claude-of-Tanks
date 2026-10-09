@@ -149,6 +149,10 @@ for (const raw of rawJobs) jobs.push(await prepareJob(raw));
 // Frames stream to disk through the private dev server: the browser encodes
 // PNGs off its main thread (canvas.toBlob) and POSTs raw bytes, avoiding a
 // base64 round trip through the DevTools protocol for every 4K frame.
+// COT_CINEMA_UPLOADS (default 2): how many frames may be encoding and uploading at once. A 4K PNG takes longer to encode
+// than the frame takes to render (launch day: 0.49 s render, 1.41 s wall per frame at two in flight), and Chrome encodes
+// blobs in parallel, so a larger window lets the GPU run ahead; the PNG bytes are the same.
+const maxUploads = Math.max(1, Math.min(12, Math.floor(Number(process.env.COT_CINEMA_UPLOADS)) || 2));
 const token = digest(Buffer.from(`${process.pid}:${Date.now()}`)).slice(0, 16);
 let frameDir = null;
 const framePlugin = {
@@ -270,7 +274,7 @@ try {
         const started = Date.now();
         for (let index = 0; index < frames; index++) {
           if (interrupted) throw Error('Capture interrupted');
-          const info = await page.evaluate(async ({ index, token }) => {
+          const info = await page.evaluate(async ({ index, token, maxUploads }) => {
             const S = window.__STUDIO, canvas = window.__DEBUG.renderer.domElement;
             const t0 = performance.now();
             const frame = S.renderFilmFrame();
@@ -283,13 +287,13 @@ try {
             }, 'image/png'));
             pending.add(upload);
             upload.finally(() => pending.delete(upload));
-            while (pending.size > 2) await Promise.race(pending);
+            while (pending.size > maxUploads) await Promise.race(pending);
             // Grained, smoky 1080p frames encode to ~5-8 MB PNGs and Chrome keeps each uploaded blob until a collection:
             // 198 of them overran its blob store (net::ERR_BLOB_OUT_OF_MEMORY, 2026-10-02). Every tenth frame, let the
             // uploads land and collect.
             if (index % 10 === 9) { await Promise.all([...pending]); globalThis.gc?.(); }
             return { ...frame, renderMs };
-          }, { index, token });
+          }, { index, token, maxUploads });
           if (Math.abs(info.timelineMs - plan.frameTimelineMs(index)) > 1e-6) throw Error('The frame clock drifted from the film plan');
           row.frames.push({ frame: index, filmMs: +info.filmTimeMs.toFixed(4), timelineMs: +info.timelineMs.toFixed(4),
             openMs: +info.openMs.toFixed(4), closeMs: +info.closeMs.toFixed(4), samples: info.samples,
