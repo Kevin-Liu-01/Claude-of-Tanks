@@ -1262,6 +1262,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/killPresentation.selftest.mjs',
     'src/ui/shotInfo.selftest.mjs',
     'src/ui/shotReadoutPolicy.selftest.mjs',
+    'src/ui/damageNumberBurst.selftest.mjs',
     'src/ui/finalBlow.selftest.mjs',
     'src/ui/battleHudAccess.selftest.mjs',
     'src/ui/minimapAssetRuntime.selftest.mjs',
