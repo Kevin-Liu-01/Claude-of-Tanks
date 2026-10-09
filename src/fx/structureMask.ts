@@ -294,6 +294,8 @@ export interface StructureMask {
    */
   addHole(structureId: number, x: number, y: number, z: number, radiusM: number, nx: number, nz: number,
     depthM: number, outsideM?: number, phase01?: number): number;
+  /** The holes a structure has cut so far (up to MAX_HOLES: a fifth replaces the first). */
+  holes(structureId: number): number;
   /** A storey dropped (world y): the holes centred in its band [y0, y1] go with it, those above come down by `dropM`
    *  with the walls they were cut in. */
   moveHoles(structureId: number, y0: number, y1: number, dropM: number): void;
@@ -404,6 +406,9 @@ export function createStructureMask(capacity = 4096, { holes = true }: { holes?:
         touch(id * STRIDE + 1, 1);
       }
       return s;
+    },
+    holes(id) {
+      return inRange(id) ? holeCount[id] : 0;
     },
     moveHoles(id, y0, y1, dropM) {
       if (!inRange(id)) return;

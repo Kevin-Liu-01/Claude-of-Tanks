@@ -32,7 +32,7 @@ import {
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import { breachBlowFor } from './structureFx.ts';
 import {
-  COLLAPSE_S, STAGE_RUN_TAG, collapseFrontTime, collapseWallHeight, holeOutlinePhase01, toppleLandS, type StructureMask,
+  COLLAPSE_S, MAX_HOLES, STAGE_RUN_TAG, collapseFrontTime, collapseWallHeight, holeOutlinePhase01, toppleLandS, type StructureMask,
 } from './structureMask.ts';
 import type { StructureDebris } from './structureDebris.ts';
 import type { StructureScars } from './structureScars.ts';
@@ -397,6 +397,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   function punch(p: PendingStrike): void {
     const { structureId, seam, x, y, z } = p;
     if (realHoles.has(structureId) || sectionsSeen.has(structureId) || downed.has(structureId)) return;
+    // (the battle strips, b3: a strike's hole healed over when later cuts — the damaged stage's spalls — took its slot in
+    // the mask's ring) a strike never takes a slot another cut holds, and leaves one for the breach stage
+    if (mask.holes(seam.structureIdx) >= MAX_HOLES - 1) return;
     const list = punched.get(structureId);
     if ((list?.length ?? 0) >= STRIKE_HOLES || nearPunched(structureId, x, y, z, 1.2)) return;
     const radiusM = strikeHoleRadius(p.munition, p.chargeKg);
@@ -530,7 +533,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   // reflection, falling and folding with its building like every standing run
   // (wave 277: a breach read as "a black blot") the room behind a hole is dim, not black: daylight falls in through the
   // hole and the windows and bounces off its floor and far wall — its interior tint lifted, a little light of its own
-  const roomMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(3.2, 3.2, 3.2), roughness: 1, metalness: 0,
+  // (dcore 2026-10-09, the battle strips: a punched hole's room read as a pale grey-white blob in a stone wall) dimmer
+  const roomMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(1.9, 1.9, 1.9), roughness: 1, metalness: 0,
     vertexColors: true, envMapIntensity: 0, emissive: new THREE.Color(0.016, 0.014, 0.012) });
   roomMaterial.name = 'fx-structure-room';
   mask.patch(roomMaterial);
