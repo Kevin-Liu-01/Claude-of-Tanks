@@ -494,6 +494,8 @@ export interface FxRuntime {
   loosePropHit(pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
   propCrush(pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
   propBreak(kind: string, pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
+  /** The combat warm: a building's first damage's programs (structureStages.warm) at `pos`; resetAll clears it. */
+  warmStructures(pos: THREE.Vector3): number;
   setFrozen(frozen: boolean, atTimeS?: number | null): void;
   resetSeed(seed: number): void;
   /** Pin the shared fx clock to exactly `atTimeS` (every live stamp keeps its age). */
@@ -6046,6 +6048,10 @@ function* createFxSteps(
      * @param {THREE.Vector3} dir tank travel direction (unit-ish, XZ)
      * @param {number} [heightM=6] prop height (scales the splinter throw)
      */
+    warmStructures(pos: THREE.Vector3): number {
+      attachWorld();
+      return stages ? stages.warm(pos, bucketMaterials.keys()) : 0;
+    },
     propCrush(pos: THREE.Vector3, dir: THREE.Vector3, heightM = 6): void {
       const gy = groundY(pos.x, pos.z);
       // base dust burst

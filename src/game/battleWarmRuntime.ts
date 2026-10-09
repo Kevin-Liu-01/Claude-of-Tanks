@@ -581,6 +581,8 @@ interface StudioFxPort extends BattleFxPort {
     heightM: number,
   ): void;
   propCrush(position: Vector3, direction: Vector3, heightM: number): void;
+  /** A building's first damage's programs (fx/structureStages.ts warm): laid at `position`, cleared by resetAll. */
+  warmStructures?(position: Vector3): number;
 }
 
 interface BattlePostPort {
@@ -1485,6 +1487,9 @@ function* warmCombatDestructionEffectSteps(
       yield;
     }
     fx.propCrush(position, context.scratch3, 7);
+    yield;
+    // (dcore 2026-10-09: the first collapse compiled its programs mid-battle) a building's runs, room and pieces
+    try { fx.warmStructures?.(position); } catch (_) { /* warm only */ }
     yield;
     try { fx.update(0.016, game.shells ?? [], camera); } catch (_) { /* warm only */ }
     post.prepareSoftParticles();
