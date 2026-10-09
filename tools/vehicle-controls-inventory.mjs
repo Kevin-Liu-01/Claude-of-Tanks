@@ -3,6 +3,8 @@ import { writeFileSync, readFileSync } from 'node:fs';
 import { createTank } from '../src/vehicles/tankFactory.ts';
 import { ALL_TANK_IDS } from '../src/vehicles/specs.ts';
 import { smokeSocketsFor } from '../src/vehicles/vehicleAuxiliaryGeometry.ts';
+// 2026-10-08: each launcher's tubes fan across its side's arc as the real launchers do (src/vehicles/smokeFan.ts)
+import { fanSmokeMounts } from '../src/vehicles/smokeFan.ts';
 const check=process.argv.includes('--check');
 const rows={}; const bad=[];const missing=[];
 const round=a=>a.map(x=>+x.toFixed(4));
@@ -39,7 +41,7 @@ for(const id of ALL_TANK_IDS){
    guns.push({collisionParts,name:o.name,owner,position:round(new THREE.Vector3().setFromMatrixPosition(m).toArray()),caliberMm:o.userData.caliberMm||12.7,muzzle:o.userData.auxiliaryMuzzle??[0,o.userData.barrelAxisLocalY,o.userData.muzzleLocalZ],pivot:o.userData.auxiliaryPivot,scale:new THREE.Vector3().setFromMatrixScale(m).toArray(),rotation:new THREE.Quaternion().setFromRotationMatrix(m.clone().extractRotation(m)).toArray()});
   }
  });
- rows[id]={turretPivot:round(turret.position.toArray()),smoke,guns,lights:!!tank.root.userData.nightLightCoverage?.headlights};
+ rows[id]={turretPivot:round(turret.position.toArray()),smoke:fanSmokeMounts(id,smoke),guns,lights:!!tank.root.userData.nightLightCoverage?.headlights};
  if(!rows[id].lights)missing.push({id,name:'driving lights'});
  tank.dispose?.();
 }

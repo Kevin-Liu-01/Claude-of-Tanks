@@ -49,6 +49,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/nationalPolandProtection.selftest.mjs',
     'src/vehicles/nationalRoof.selftest.mjs',
     'src/sim/smokeBallistics.selftest.mjs',
+    'src/vehicles/smokeFan.selftest.mjs',
+    'src/sim/smokeScreenCover.selftest.mjs',
     'src/fx/auxiliaryPresentation.selftest.mjs',
     'src/fx/projectileTracers.selftest.mjs',
     'src/ui/vehicleControlCooldown.selftest.mjs',
