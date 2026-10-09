@@ -179,7 +179,15 @@ vStructRoof = 0.0;` : ''}
         float eave = SF.x > 0.0 ? SF.x : 0.8 * H;
         // the crumble front (m over the base): it leaves the eaves (the walls' top) at FRONT_T0, gravity-eased down to
         // the base; the roof drops onto it at once
-        float u = clamp( ( t - ${FRONT_T0.toFixed(2)} ) / ${FRONT_T.toFixed(2)}, 0.0, 1.0 );
+        // (dcore 2026-10-09, wave 322: a rammed house's struck wall stood round the hull) the side the blow struck comes
+        // down first: its front runs up to 1.8x as fast as the far side's
+        float side = 0.0;
+        {
+          vec2 bd = vec2( SA.z, SA.w );
+          float bl = length( bd );
+          if ( bl > 0.5 ) side = clamp( dot( p.xz, -bd / bl ) / max( max( SF.y, SF.z ), 1.0 ), 0.0, 1.0 );
+        }
+        float u = clamp( ( t - ${FRONT_T0.toFixed(2)} ) / ${FRONT_T.toFixed(2)} * ( 1.0 + 0.8 * side ), 0.0, 1.0 );
         float front = eave * ( 1.0 - pow( u, 1.5 ) );
         float roof = step( eave - 0.05, p.y );
         if ( roof > 0.5 ) {
@@ -192,7 +200,9 @@ vStructRoof = 0.0;` : ''}
           float drop = 4.9 * tr * tr + 1.4 * mid * smoothstep( 0.0, 0.5, tr );
           // (dcore 2026-10-09, waves 294a/b: debris vanishing in view at the swap) as the front reaches the base the
           // roof's wreck settles into the heap rather than lying on it, so the fold takes nothing the eye still sees
-          p.y = max( p.y - drop, front + ( p.y - eave ) * 0.3 - 2.4 * u * u );
+          // (wave 322: "the roof skin vanishes" — flattened to a third of its pitch, a lid at the eaves the eye lost) it keeps
+          // most of its pitch as it rides the front down, tilting toward the side that falls first
+          p.y = max( p.y - drop, front + ( p.y - eave ) * 0.75 - 2.4 * u * u );
         }${holes ? '' : `
         else if ( p.y > front ) {
           // the phone tier cuts nothing: the wall above the front folds down onto it

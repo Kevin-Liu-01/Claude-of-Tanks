@@ -694,7 +694,7 @@ function captureContext(seed) {
   // (the phone folds them onto it)
   assert.ok(/float front = eave \* \( 1\.0 - pow\( u, 1\.5 \) \);/.test(shader.vertexShader)
     // (dcore 2026-10-09: the wreck settles into the heap as the front reaches the base: a term in u², the front's progress)
-    && /p\.y = max\( p\.y - drop, front \+ \( p\.y - eave \) \* 0\.3( - [0-9.]+ \* u \* u)? \);/.test(shader.vertexShader),
+    && /p\.y = max\( p\.y - drop, front \+ \( p\.y - eave \) \* 0\.[0-9]+( - [0-9.]+ \* u \* u)? \);/.test(shader.vertexShader),
     'the roof rides the front down');
   assert.ok(/vStructFront < 1e8 && vStructRoof < 0\.5[\s\S]*vStructPos\.y > vStructFront \+ 1\.1 \* col \+ 0\.45 \* cell[\s\S]*discard/.test(shader.fragmentShader),
     'the desktop cuts the wall above the ragged front');

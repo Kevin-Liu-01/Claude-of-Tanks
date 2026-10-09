@@ -546,7 +546,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   // (wave 277: a breach read as "a black blot") the room behind a hole is dim, not black: daylight falls in through the
   // hole and the windows and bounces off its floor and far wall — its interior tint lifted, a little light of its own
   // (dcore 2026-10-09, the battle strips: a punched hole's room read as a pale grey-white blob in a stone wall) dimmer
-  const roomMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(1.9, 1.9, 1.9), roughness: 1, metalness: 0,
+  // (wave 322: "glowing white bars and dots" — a light floor slab behind a hole at 1.9x its tint bloomed in the sun) at its
+  // own tint, never brighter: the dark interiors stay dim through their small light of their own
+  const roomMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(1, 1, 1), roughness: 1, metalness: 0,
     vertexColors: true, envMapIntensity: 0, emissive: new THREE.Color(0.016, 0.014, 0.012) });
   roomMaterial.name = 'fx-structure-room';
   mask.patch(roomMaterial);
@@ -844,7 +846,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (e.stage === 'breached' && !sections && (settled || !nearPunched(e.structureId, e.x, e.y, e.z, 2))) {
         const blow = breachBlowFor(e);
         // a ram's breach is the hull's way in: wider than the hull is high
-        const radiusM = e.cause === 'ram' ? Math.max(blow.radiusM, 1.9) : blow.radiusM;
+        const radiusM = e.cause === 'ram' ? Math.max(blow.radiusM, 2.4) : blow.radiusM;
         const spec = seam.holeAt(blow.x, blow.y, blow.z, radiusM, e.dirX, e.dirZ, e.munition, e.cause, 0);
         if (spec) {
           notePunched(e.structureId, e.x, e.y, e.z);
@@ -859,7 +861,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         // in through the struck face and out through the far one along the hull's heading (a hull that brings it down
         // keeps going: the authority's ramThrough), so it never drives through a standing wall while the front comes down
         const blow = breachBlowFor(e);
-        const r = Math.max(blow.radiusM, 1.9);
+        const r = Math.max(blow.radiusM, 2.4);
         const a = seam.anatomy;
         const c = Math.cos(a.placement.yaw), sn = Math.sin(a.placement.yaw);
         const dl = Math.hypot(e.dirX || 0, e.dirZ || 0) || 1;

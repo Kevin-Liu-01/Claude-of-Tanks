@@ -81,7 +81,8 @@ export function readContainers(parts: Readonly<Record<string, readonly BufferGeo
     // (dcore 2026-10-09, wave 294a: "re-emerges as one clean, square, grey-white corrugated block") a box whose livery
     // is its atlas's (white vertex colours) or that has none would crush in plain grey-white steel: it takes a livery of
     // the yard's own instead, picked by its place (the same on every peer)
-    if (!col || Math.min(tint[0], tint[1], tint[2]) > 0.7) tint = LIVERIES[liveryIndex(c)];
+    // (wave 322: "a container swapped for a grey gridded block") a neutral grey livery too: the atlas carries the paint
+    if (!col || Math.max(tint[0], tint[1], tint[2]) - Math.min(tint[0], tint[1], tint[2]) < 0.06) tint = LIVERIES[liveryIndex(c)];
     out.push({ c, a: long ? [-az, 0, ax] : [ax, 0, az], hl, hh: h / 2, hw, tint, up: y0 > 1 });
   }
   return out.length ? out : null;
