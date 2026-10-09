@@ -311,7 +311,10 @@ export function collapseContainers(anatomy: StructureDamageAnatomy, seed: number
           const x = b.c[0] + a2[0] * i * b.hl + w2[0] * hx, z = b.c[2] + a2[2] * i * b.hl + w2[2] * hx;
           return [x, ground(x, z) + (u2 - minU), z];
         };
-        deformedBox(mesh, corner, 0.06 + rng() * 0.08, 0.06 + rng() * 0.1, b.tint);
+        // (wave 326: the tipped box read as "a clean grey gridded block" — it fell a storey) buckled and caved where it
+        // landed, dulled by the dust
+        const dull: Rgb = [b.tint[0] * 0.7, b.tint[1] * 0.66, b.tint[2] * 0.62];
+        deformedBox(mesh, corner, 0.22 + rng() * 0.2, 0.3 + rng() * 0.3, dull);
       }
     }
   }

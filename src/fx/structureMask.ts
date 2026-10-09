@@ -189,7 +189,7 @@ vStructRoof = 0.0;` : ''}
           float bl = length( bd );
           if ( bl > 0.5 ) side = clamp( dot( p.xz, -bd / bl ) / max( max( SF.y, SF.z ), 1.0 ), 0.0, 1.0 );
         }
-        float u = clamp( ( t - ${FRONT_T0.toFixed(2)} ) / ${FRONT_T.toFixed(2)} * ( 1.0 + 0.8 * side ), 0.0, 1.0 );
+        float u = clamp( ( t - ${FRONT_T0.toFixed(2)} * ( 1.0 - side ) ) / ${FRONT_T.toFixed(2)} * ( 1.0 + 0.8 * side ), 0.0, 1.0 );
         float front = eave * ( 1.0 - pow( u, 1.5 ) );
         float roof = step( eave - 0.05, p.y );
         if ( roof > 0.5 ) {

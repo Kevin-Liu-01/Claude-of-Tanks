@@ -850,7 +850,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (e.stage === 'breached' && !sections && (settled || !nearPunched(e.structureId, e.x, e.y, e.z, 2))) {
         const blow = breachBlowFor(e);
         // a ram's breach is the hull's way in: wider than the hull is high
-        const radiusM = e.cause === 'ram' ? Math.max(blow.radiusM, 2.4) : blow.radiusM;
+        const radiusM = e.cause === 'ram' ? Math.max(blow.radiusM, 3.2) : blow.radiusM;
         const spec = seam.holeAt(blow.x, blow.y, blow.z, radiusM, e.dirX, e.dirZ, e.munition, e.cause, 0);
         if (spec) {
           notePunched(e.structureId, e.x, e.y, e.z);
@@ -865,7 +865,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         // in through the struck face and out through the far one along the hull's heading (a hull that brings it down
         // keeps going: the authority's ramThrough), so it never drives through a standing wall while the front comes down
         const blow = breachBlowFor(e);
-        const r = Math.max(blow.radiusM, 2.4);
+        const r = Math.max(blow.radiusM, 3.2);
         const a = seam.anatomy;
         const c = Math.cos(a.placement.yaw), sn = Math.sin(a.placement.yaw);
         const dl = Math.hypot(e.dirX || 0, e.dirZ || 0) || 1;
