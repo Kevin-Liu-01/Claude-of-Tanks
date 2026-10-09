@@ -20,7 +20,7 @@ import type { StructureBreachEvent, StructureStageEvent } from '../sim/destructi
 import type { BlastContext } from './blastRecipes.ts';
 import type { ChunkShape } from './debrisChunks.ts';
 import { linearHex } from './surfaceLooks.ts';
-import { collapseFront, collapseFrontTime, collapseWallHeight } from './structureMask.ts';
+import { collapseFrontTime, collapseWallHeight } from './structureMask.ts';
 
 type Rgb = readonly [number, number, number];
 const TAU = Math.PI * 2;
@@ -376,7 +376,7 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
 }
 
 /** A shaft's fall as the stages lay it (structureStages structureTopple): its world direction, landing and reach. */
-export interface ToppleFx { dirX: number; dirZ: number; landS: number; lengthM: number; hingeM: number }
+interface ToppleFx { dirX: number; dirZ: number; landS: number; lengthM: number; hingeM: number }
 
 /**
  * A shaft goes over (dcore 2026-10-09, wave 294b: "the stack telescopes straight down... the dust is a small white cotton

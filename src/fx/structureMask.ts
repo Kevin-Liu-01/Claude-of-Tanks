@@ -75,10 +75,10 @@ export function collapseFrontTime(h: number, heightM: number): number {
  * less than TOPPLE_MIN_OMEGA so a tall one lands within the fall); it lies at TOPPLE_LIE rad and the kit's broken drums
  * take its place (structureStages lays them at the landing). The mask's F texel carries the hinge as -(1 + hinge m).
  */
-export const TOPPLE_T0 = 0.15;
+const TOPPLE_T0 = 0.15;
 const TOPPLE_U_LAND = 2.555;
 const TOPPLE_MIN_OMEGA = 0.82;
-export const TOPPLE_LIE = 1.5;
+const TOPPLE_LIE = 1.5;
 /** A shaft's toppling, as the mask and the stages share it: when it lies on the ground (s after the blow). */
 export function toppleLandS(heightM: number, hingeM: number): number {
   const omega = Math.max(TOPPLE_MIN_OMEGA, Math.sqrt(14.7 / Math.max(2, heightM - hingeM)));

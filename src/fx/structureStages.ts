@@ -78,7 +78,7 @@ function dampPieces(out: DamageWriters, k: number): DamageWriters {
 const STRIKE_HOLES = 3;
 /** A burst's hole on a wall (P1 strike holes): smaller than the breach stage's blow (structureFx breachBlowFor) — a
  *  tank's HE round punches through a metre, a howitzer's or a missile's more; under a kilogram of charge, a pock. */
-export function strikeHoleRadius(munition: MunitionClass, chargeKg: number): number {
+function strikeHoleRadius(munition: MunitionClass, chargeKg: number): number {
   if (!(chargeKg > 0)) return 0;
   const r = munition === 'howitzer' || munition === 'missile' ? 1.5
     : munition === 'rocket' || munition === 'hesh' ? 1.2
@@ -90,7 +90,7 @@ export function strikeHoleRadius(munition: MunitionClass, chargeKg: number): num
 }
 
 /** A shaft's topple (structureMask toppleLandS): the hinge over its foot, the fall's world direction and its landing. */
-export interface StructureTopple {
+interface StructureTopple {
   hingeM: number;
   dirX: number;
   dirZ: number;
