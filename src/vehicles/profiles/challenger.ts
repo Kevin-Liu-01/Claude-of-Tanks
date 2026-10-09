@@ -1000,9 +1000,43 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     // receiver-MASS read (top 0.861 keeps 17 mm under the 0.878 plateau line
     // so the close-roof peek never re-tops a side column).
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.06, scale: 0.92, seed: 7 });
-      mg.position.set(-0.73, 0.80, 0.02);
+      // 2026-10-07 (tank-accessories round 3): "seen from directly above, the turret roof shows no machine gun at
+      // either hatch" -- the r10 pose hid the gun under the plateau line. The loader's L37 now stands on its own pintle
+      // on the loader's hatch ring (rim top 0.88, outboard-rear quadrant), at true scale: the counter-scale undoes the
+      // turret's (1.12, 0.84, 1) installed stretch so the receiver and barrel keep their real section. The gun's right
+      // side clears the NBC pack (x -0.65) and its muzzle stops short of the left roof block (z 1.00).
+      // 2026-10-07 (round 4, blind-critic wave 214: "no MG reading at all in the hero, rear or turret-top views; the
+      // commander's and loader's L37s need to break the turret silhouette"): the pintle takes a 10 cm riser, so the
+      // receiver, can and belt stand clear of the NBC pack (top 0.935) and the bore (~2.68 m world) rides over the
+      // commander's sight hood (2.59 m): the gun breaks the turret's far skyline in the hero view instead of hiding
+      // behind the hood.
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.06, scale: 1.0, seed: 7, riser: 0.10 });
+      mg.name = 'challenger1LoaderL37';
+      mg.position.set(-0.74, 0.876, -0.15);
       mg.rotation.y = -0.06;
+      mg.scale.set(1 / 1.12, 1 / 0.84, 1);
+      P.turretG.add(mg);
+    }
+    {
+      // 2026-10-07 (round 4, wave 214): the second L37. The low right roof (top 0.73 behind the gunner's cowl) carried
+      // no station, so the commander's L37 had nowhere to stand. A cupola ring with its hatch and two vision blocks
+      // now stands there (equipment, never armour: it does not change the turret shell), and the L37 rides a pintle on
+      // the ring's outboard-rear rim on a 10 cm riser, true scale and counter-scaled against the turret's (1.12, 0.84,
+      // 1) installed stretch like the loader's gun. Its can and belt face outboard (the L7's left-hand feed), its
+      // barrel runs forward over the hatch, and the bore (~2.61 m world) clears the cowl and the low roof's vent and
+      // periscope ports; the ring keeps clear of the vent (z 0.05) and the rear whip (x 0.95).
+      P.addEquipment('turret', cylY(0.26, 0.28, 0.12, P.q ? 22 : 14), 0.50, 0.735, -0.25);
+      P.add('turretDetail', cylY(0.215, 0.222, 0.03, P.q ? 20 : 12), 0.50, 0.805, -0.25);
+      P.add('turretDark', box(0.05, 0.012, 0.04), 0.50, 0.826, -0.25);
+      for (const [vx, vz, vry] of [[0.36, -0.08, 0.5], [0.66, -0.08, -0.5]]) {
+        P.add('turretDark', box(0.10, 0.06, 0.07), vx, 0.80, vz, 0, vry, 0);
+        P.add('turretGlass', box(0.075, 0.034, 0.012), vx, 0.80, vz + 0.035, 0, vry, 0);
+      }
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 1.0, seed: 8, riser: 0.10 });
+      mg.name = 'challenger1CommanderL37';
+      mg.position.set(0.70, 0.795, -0.40);
+      mg.rotation.y = 0.05;
+      mg.scale.set(1 / 1.12, 1 / 0.84, 1);
       P.turretG.add(mg);
     }
     // r10b (uk round 5 — the rear-view MG presentation order): AMMO CLUSTER
@@ -1926,7 +1960,9 @@ function addChallenger2WeaponTowerMg(
   stationPart(box(0.16, 0.014, 0.13), 0.775, 0.952, 0.205);
   stationPart(box(0.014, 0.056, 0.10), 0.868, 0.905, 0.20);
   stationPart(box(0.055, 0.020, 0.085), 0.665, 0.918, 0.20);
-  stationPart(cylX(0.018, 0.62, P.q ? 16 : 12), 0.84, 0.925, 0.20,
+  // round 5 (2026-10-08, the fleet lane's circular-cap audit): the barrel's muzzle stands 8 mm out of its sleeve; the two
+  // end caps shared the sleeve's plane and fought
+  stationPart(cylX(0.018, 0.628, P.q ? 16 : 12), 0.844, 0.925, 0.20,
     P.mats.dark, 'challenger2BrowningDerivedBarrel');
   for (const sleeveX of [0.62, 0.69, 0.76]) {
     stationPart(cylX(0.022, 0.020, P.q ? 16 : 12), sleeveX, 0.925, 0.20);
@@ -4818,7 +4854,11 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       P.add('turretDark', box(0.022, 0.02, 2.35), s * 1.645, 0.67, -1.575, 0, 0, s * 0.53); // panel ribs
       P.add('turretDark', box(0.022, 0.02, 2.35), s * 1.695, 0.585, -1.575, 0, 0, s * 0.53);
       P.add('turretDark', box(0.03, 0.18, 0.18), s * 1.575, 0.58, -0.22, 0, s * 0.35, 0);   // fwd radar
-      P.add('turretGlass', box(0.012, 0.14, 0.14), s * 1.60, 0.58, -0.21, 0, s * 0.35, 0);
+      // the radar's aperture keeps its whole face: its 18 cm housing is already its frame (tankFactoryCore.ts
+      // armouredGlassSurround leaves an aperture panel alone)
+      const aperture = box(0.012, 0.14, 0.14);
+      aperture.userData.apertureFrame = 'housing';
+      P.add('turretGlass', aperture, s * 1.60, 0.58, -0.21, 0, s * 0.35, 0);
       P.add('turretDark', box(0.03, 0.18, 0.18), s * 1.53, 0.57, -2.78, 0, -s * 0.35, 0);   // rear radar
     }
     // RWS (PROTECTOR-class, §H.4 UK grammar: M2 12.7 on the remote mount)

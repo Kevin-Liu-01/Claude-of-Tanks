@@ -9,7 +9,7 @@
 // raster is the raster itself.
 import assert from 'node:assert/strict';
 import { createCanvas, Path2D, DOMMatrix, ImageData } from '@napi-rs/canvas';
-import { createCatalogCamoPainter } from './catalogCamoPainter.ts';
+import { createCatalogCamoPainter, DIGITAL_TONE_LUMA_FLOOR, liftDigitalTone } from './catalogCamoPainter.ts';
 import { createMaterialPainter } from './materialPainter.ts';
 import { resolveCamoVisual, camoPatternIdHash, camoPatternStreamSeed } from './materials.ts';
 Object.assign(globalThis, { Path2D, DOMMatrix, ImageData });
@@ -90,12 +90,66 @@ for (const id of FIELDS) {
   const a = paint('amoeba', 1024).data, b = paint('amoeba', 1024).data;
   assert.deepEqual(a, b, 'repeatable paint');
 }
-// the digital patterns stay pixel art: hard blocks, no blended texels
+// the digital patterns stay pixel art. 2026-10-07 (tank-accessories lane, round 3; critics: "jagged stair-stepping",
+// "a large black camo blob with uniform stair-stepped edges", "blown-up low-resolution images"): the cells are drawn
+// by box coverage (catalogCamoPainter.ts paintPixels), so a blended texel is one a cell edge crosses and nothing else
+// (this used to read "no blended texels": nearest-neighbour cells 25 or 26 texels wide with aliased edges); the
+// boundaries break into pixel clusters (fragmentPixelEdges: stray pixels and teeth, where the smooth fields left almost
+// none: 0-5 isolated cells of 6,400 on these patterns); and no tone is near-black (liftDigitalTone).
+const luma = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
 for (const id of ['digital', 'digitaldesert']) {
-  const { data, visual } = paint(id, 1024);
-  const tone = tones(data, 1024, paletteOf(visual));
-  const blended = tone.reduce((n, t) => n + (t < 0 ? 1 : 0), 0) / tone.length;
-  assert.ok(blended < 0.002, `${id}: the pixel pattern keeps hard pixels (${(100 * blended).toFixed(3)} % blended)`);
+  const visual = resolveCamoVisual(spec, id);
+  const n = Math.round(80 / Math.max(.85, visual.digitalCellK || 1)); // paintField's pixel raster across the tile
+  const palette = paletteOf(visual).map(liftDigitalTone);
+  for (const c of palette) assert.ok(luma(c) >= DIGITAL_TONE_LUMA_FLOOR - 0.5, `${id}: tone ${c} is not near-black`);
+  for (const size of [1024, 2048]) {
+    const tone = tones(paint(id, size).data, size, palette);
+    const crossed = (at) => Math.floor(at * n / size) !== Math.floor((at + 1) * n / size - 1e-9);
+    let blended = 0, stray = 0, crossedTexels = 0;
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      const onEdge = crossed(x) || crossed(y);
+      if (onEdge) crossedTexels++;
+      if (tone[y * size + x] >= 0) continue;
+      blended++;
+      if (!onEdge) stray++;
+    }
+    assert.equal(stray, 0, `${id}/${size}: every blended texel is one a cell edge crosses (${stray} of ${blended} are not)`);
+    assert.ok(blended < crossedTexels, `${id}/${size}: cells keep their own tone between their edges`);
+  }
+  const raster = tones(paint(id, n).data, n, palette);
+  let isolated = 0;
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const k = raster[y * n + x];
+    if (k < 0) continue;
+    if ([raster[y * n + (x + 1) % n], raster[y * n + (x + n - 1) % n], raster[((y + 1) % n) * n + x],
+      raster[((y + n - 1) % n) * n + x]].every((other) => other !== k)) isolated++;
+  }
+  assert.ok(isolated / (n * n) > 0.005, `${id}: the boundaries break into pixel clusters (${isolated} stray cells of ${n * n})`);
+}
+// 2026-10-07 (Challenger 1: the stripes "tile visibly: regular, evenly spaced green and black bands"): the service
+// stripes' spacing breathes across the tile. Along every fourth column, the spacing between successive stripe centres
+// (the Challenger 3 service coat measured cv 0.14 with three equal bands in every column).
+{
+  const size = 192, { data, visual } = paint('service_challenger_3', size);
+  const tone = tones(data, size, paletteOf(visual));
+  const spacings = [], counts = new Set();
+  for (let x = 0; x < size; x += 4) {
+    const band = (y) => tone[(((y % size) + size) % size) * size + x] === 1;
+    const centres = [];
+    for (let y = 0; y < size; y++) {
+      if (!band(y) || band(y - 1)) continue;
+      let run = 0;
+      while (run < size && band(y + run)) run++;
+      if (run >= 3) centres.push(y + run / 2);
+    }
+    counts.add(centres.length);
+    for (let k = 0; k < centres.length; k++) spacings.push((centres[(k + 1) % centres.length] - centres[k] + size) % size || size);
+  }
+  const mean = spacings.reduce((s, v) => s + v, 0) / spacings.length;
+  const cv = Math.sqrt(spacings.reduce((s, v) => s + (v - mean) ** 2, 0) / spacings.length) / mean;
+  assert.ok(cv > 0.25, `service stripes: band spacing varies across the tile (cv ${cv.toFixed(3)})`);
+  assert.ok(counts.size > 1, `service stripes: bands fork and merge (stripes per column: ${[...counts].join(', ')})`);
 }
 console.log(`camoFieldEdges.selftest: ${FIELDS.length} field camouflages draw one-texel boundaries at 1024 and 2048 with the raster's `
-  + 'shapes and coverage, repeatable; the digital patterns keep their pixels PASS');
+  + 'shapes and coverage, repeatable; the digital patterns keep crisp box-covered pixels with clustered edges and no '
+  + 'near-black tone; the service stripes vary their spacing PASS');

@@ -52,14 +52,24 @@ for (const kept of ['vehFill = min( vehFill, 0.30 / vehLuma );', 'vehFill *= mix
 // the deep-shade floor: the map's last mip is the paint reference, each texel lands in proportion to its own paint and
 // the lift runs along the albedo; the old one-luminance hue lift is gone
 assert.match(frag, /#ifdef USE_MAP\n\t\tvehRefL = max\( dot\( textureLod\( map, vMapUv, 16\.0 \)\.rgb \* diffuse, /, 'a painted map references its mean paint');
-once('float vehTargetL = vehFloorL * vehLuma / vehRefL;', 'each texel lands in proportion to its paint');
+once('float vehTargetL = vehFloorL * vehLuma / max( vehRefL, 0.120 );', 'each texel lands in proportion to its paint, against a mid-olive reference at most');
 once('reflectedLight.indirectDiffuse += material.diffuseColor * ( ( vehTargetL - vehOutL ) / vehLuma );', 'the lift runs along the albedo');
 assert.ok(!frag.includes('vehTint'), 'no one-luminance hue lift');
 // the same law on the CPU: desert dark / base / pale tones (linear luma) under the 0.21 canopy floor
-const deepShade = (texelL, meanL, floorL = 0.21) => floorL * texelL / meanL;
+const deepShade = (texelL, meanL, floorL = 0.21) => floorL * texelL / Math.max(meanL, 0.12);
 const desert = [0.11, 0.27, 0.41].map(l => deepShade(l, 0.25));
 assert.ok(desert[2] / desert[0] > 3.5, `the pale tone stays ${(desert[2] / desert[0]).toFixed(1)}x the dark tone (it was 1x)`);
 assert.ok(Math.abs(deepShade(0.25, 0.25) - 0.21) < 1e-9, 'the mean paint lands where every texel used to');
+// Fleet lane 2026-10-08 (the coordinator's ruling on the s13 sunset renders): a dark scheme's mean no longer lands on the
+// floor itself, so it stays darker in shade; paints at or above the 0.12 reference keep the law exactly
+assert.equal(deepShade(0.3, 0.3), 0.21 * 0.3 / 0.3, 'a light scheme: unchanged');
+assert.equal(deepShade(0.12, 0.12), 0.21, 'at the reference: unchanged');
+const darkDigital = [0.019, 0.040, 0.090, 0.136].map(l => deepShade(l, 0.049)); // sig_k2b: dark, base, mid, light; mean 0.049
+assert.ok(Math.abs(deepShade(0.049, 0.049) - 0.21 * 0.049 / 0.12) < 1e-12, 'a dark digital mean lands by its own albedo');
+assert.ok(darkDigital[3] < 0.21 * 0.136 / 0.049 * 0.5, 'its light patch no longer lifts toward near-white');
+assert.ok(darkDigital[3] / darkDigital[0] > 7, 'and the scheme keeps its contrast');
+const olive = deepShade(0.07, 0.07);
+assert.ok(olive >= 0.115 && olive <= 0.21, `gameplay_feel's calibrated dark olive stays inside its band (${olive.toFixed(3)})`);
 once('float vehHeight = dot( vehWorldPos - uVehGround.xyz, uVehUp );', 'ground occlusion measures height along the vehicle axis');
 assert.match(frag, /reflectedLight\.indirectDiffuse \*= mix\( 0\.\d+, 1\.0,\s*smoothstep\( 0\.\d+, 1\.\d+, vehHeight \) \);/, 'indirect light falls toward the ground');
 assert.ok(!frag.includes('uVehicleShadeModel'), 'one shade model, no A/B branch');
