@@ -841,6 +841,8 @@ interface PropsBuildDetail {
   wreckPrefetch?: import('./wreckBakePrefetch.ts').WreckBakePrefetchStats;
   /** the fixed-input prints painted ahead by the surface paint worker (surfacePaintPrefetch.ts) */
   surfacePaints?: SurfacePaintPrefetch['stats'];
+  /** (the wreck-worker lane) the bakes the worker could not deliver, baked on the main thread; missing: no wreck */
+  wreckFallbacks?: { count: number; missing: number; reason: string };
   awaitTimings: {
     clock: 'performance.now';
     sliceTicks: PropsAwaitTiming;
@@ -3278,11 +3280,15 @@ export async function createPropsAsync(
     wreckBakes: { count: 0, totalMs: 0, maxMs: 0 },
     wreckRowsLimit: 32, wreckRowsDropped: 0, wreckRows: [],
   };
+  const wreckFallbacks = { count: 0, missing: 0 };
   let synchronousMs = 0;
   let nextStartedAt = performance.now();
   let r: IteratorResult<PropsBuildSlice | undefined, PropsRuntime> | null = null;
   let i = 0;
   const total = fineSlices ? 180 : 9;
+  // (the wreck-worker lane, 2026-10-09) a tick that failed (a cancelled or failed build) ends the build: a wreck bake
+  // that rejects after one is never taken for a worker failure and baked again
+  let tickFailed = false;
   const observeTick = (timing: PropsAwaitTiming): Promise<void> | void => {
     if (!tick) return;
     const startedAt = performance.now();
@@ -3291,14 +3297,19 @@ export async function createPropsAsync(
       const pending = tick?.(i, total);
       // Observe settlement without wrapping the returned promise or inserting
       // another awaited hop into the caller's original pacing continuation.
-      if (pending && typeof pending.then === 'function') void pending.then(settled, settled);
+      if (pending && typeof pending.then === 'function') void pending.then(settled, () => { tickFailed = true; settled(); });
       else settled();
       return pending;
     } catch (error) {
+      tickFailed = true;
       settled();
       throw error;
     }
   };
+  // (the wreck-worker lane) once a worker bake fails (the prefetch's or this build's: a worker that failed to start,
+  // went silent or reported an error), the rest of this build bakes its wrecks on the main thread
+  let wreckWorkerFailure: unknown = null;
+  const wreckCheckpoint = (): Promise<void> | void => observeTick(awaitTimings.wreckCheckpoints);
   try {
     r = g.next();
     // (the time-to-battle lane, 2026-10-08) with the map's planned bakes already running in the prefetch's own worker, this
@@ -3329,20 +3340,36 @@ export async function createPropsAsync(
         // (the time-to-battle lane) a bake the world build started with the terrain (wreckBakePrefetch.ts): the same
         // donor, seed and pop through the same worker code — taken here, waited for with the same checkpoints
         const planned = wreckPrefetch?.take(request.specId, request.options) ?? null;
-        let fromPlan = false;
+        let baked = false;
         if (planned) {
-          let settled = false, failed = false;
-          let value: WreckBake | null = null;
-          planned.then((baked) => { settled = true; value = baked; }, () => { settled = true; failed = true; });
+          let settled = false;
+          let value: WreckBake | null = null, failure: unknown = null;
+          planned.then((result) => { settled = true; value = result; }, (error) => { settled = true; failure = error ?? 'failed'; });
           while (!settled) {
             await new Promise<void>((resolve) => { setTimeout(resolve, 30); });
-            if (!settled) await observeTick(awaitTimings.wreckCheckpoints);
+            if (!settled) await wreckCheckpoint();
           }
-          if (!failed) { request.result = value; fromPlan = true; }
+          if (failure === null) { request.result = value; baked = true; } else wreckWorkerFailure ??= failure;
         }
-        if (!fromPlan) {
-          request.result = await wreckWorker.bake(request.specId, request.options,
-            () => observeTick(awaitTimings.wreckCheckpoints));
+        if (!baked && wreckWorkerFailure === null) {
+          try {
+            request.result = await wreckWorker.bake(request.specId, request.options, wreckCheckpoint);
+            baked = true;
+          } catch (error) {
+            // a cancelled build stays cancelled; only the worker's own failure falls back
+            if (tickFailed) throw error;
+            wreckWorkerFailure = error ?? 'failed';
+          }
+        }
+        if (!baked) {
+          // (the wreck-worker lane, 2026-10-09) the worker never decides whether a battle starts: the same request is
+          // baked here, on the main thread (bakeWreckOnMainThread)
+          if (!wreckFallbacks.count++) {
+            console.warn(`[props] the wreck worker failed (${describePropsFailure(wreckWorkerFailure)}); `
+              + 'this map\'s wrecks are baked on the main thread');
+          }
+          request.result = await bakeWreckOnMainThread(request, wreckCheckpoint);
+          if (!request.result) wreckFallbacks.missing++;
         }
         const endMs = recordPropsAwait(awaitTimings.wreckBakes, startedAt);
         // Inclusive elapsed time includes nested checkpoints, worker transfer
@@ -3373,11 +3400,51 @@ export async function createPropsAsync(
       awaitTimings,
       ...(wreckPrefetch ? { wreckPrefetch: { ...wreckPrefetch.stats } } : {}),
       ...(surfacePrefetch ? { surfacePaints: { ...surfacePrefetch.stats } } : {}),
+      ...(wreckFallbacks.count ? { wreckFallbacks: { ...wreckFallbacks,
+        reason: describePropsFailure(wreckWorkerFailure) } } : {}),
     };
     return runtime;
   } finally {
     closeIncompletePropsBuild(!!r?.done, g, sourceAbort);
     wreckWorker?.dispose();
+  }
+}
+
+function describePropsFailure(failure: unknown): string {
+  return failure instanceof Error ? failure.message : String(failure);
+}
+
+/**
+ * (the wreck-worker lane, 2026-10-09) A wreck bake the worker could not deliver — a worker that failed to start or to
+ * load its donor, went silent past its timeout, or replied with an error — baked on the main thread: the worker's own
+ * bake (wreckBakeWorker.ts: the donor's builder, then bakeTankWreck with an empty engine context) through its
+ * cooperative twin, the same donor, seed, pop and remnant paint, so the same wreck. The wait between its slices is the
+ * worker wait's checkpoint (pacing, cancellation). A donor that cannot be built here either places no wreck at that
+ * site (null, as a failed bake always has).
+ */
+async function bakeWreckOnMainThread(
+  request: NonNullable<PropsBuildSlice['wreckBake']>,
+  checkpoint: () => Promise<void> | void,
+): Promise<WreckBake | null> {
+  try {
+    await ensureTankBuilder(request.specId);
+  } catch (error) {
+    console.warn(`[props] no wreck of ${request.specId}: its builder did not load (${describePropsFailure(error)})`);
+    return null;
+  }
+  const steps = bakeTankWreckSteps({}, request.specId, request.options);
+  let completed = false;
+  try {
+    let step = steps.next();
+    while (!step.done) {
+      await checkpoint();
+      step = steps.next();
+    }
+    completed = true;
+    return step.value;
+  } finally {
+    // a cancelled build closes the bake: its temporary tank and partial geometry are released
+    if (!completed) steps.return(null);
   }
 }
 
