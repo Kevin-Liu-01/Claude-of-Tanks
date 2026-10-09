@@ -854,7 +854,8 @@ export function waterBurst(C: BlastContext, I: GroundBurstInput): void {
   const wy = I.y;
   const dk = C.distBoost(I.x, wy, I.z);
   lightPuff(C, 'flash', I.x, wy + 0.5 * s, I.z, 0, 0.5, 0, 0.06, 1.2 * s * dk, 3.2 * s * dk, FLASH_WHITE, FLASH_ORANGE, 0.8, 0, bo);
-  C.lightPulse(I.x, wy + 2 * s, I.z, 0.4 + 0.2 * s, 0);
+  // (fx 8) a flash's quarter second in the burst's hue (it took the kill light's 1.9 s orange decay)
+  C.lightPulse(I.x, wy + 2 * s, I.z, Math.min(0.6, 0.3 + 0.15 * s), 0, 0.25, BURST_LIGHT_HEX);
   // the column: dense white spray thrown straight up; it tops out and collapses
   const colN = Math.round(4 + 2 * s);
   for (let i = 0; i < colN; i++) {

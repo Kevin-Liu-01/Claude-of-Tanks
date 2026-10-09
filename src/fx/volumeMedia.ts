@@ -396,6 +396,9 @@ void main() {
   // does the sky's, so a white screen over sand takes the sand's warmth in its shade, and dust over green turf its green
   float gndL = mix( 0.35 * D + 0.1, 0.5 * D + 0.12 * ( R + L ) + 0.18, bright );
   gndL = mix( gndL, sqrt( gndL ), ms * 0.6 ) * uGrade2.x;
+  // the sky's share of that shade gives way a little to the ground's, so the shade changes hue more than level (a
+  // brighter shade would flatten dust into cotton balls)
+  skyL *= 1.0 - 0.15 * bright;
   // dark media take the sky neutral: soot scatters what little it does without the sky's blue (round 4: a rocket's
   // smoke read as blue ghosts), bright dust keeps a little of it
   float skyLum = dot( uSkyCol, vec3( 0.2126, 0.7152, 0.0722 ) );
