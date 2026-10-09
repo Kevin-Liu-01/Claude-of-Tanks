@@ -51,6 +51,15 @@ export interface StructureStages {
    */
   strike(structureId: number, seam: StructureDamageSeam | null, x: number, y: number, z: number, dirX: number, dirZ: number,
     munition: MunitionClass, chargeKg: number): void;
+  /**
+   * The combat warm (before reveal; dcore 2026-10-09, the collapse spike: the first collapse compiled its programs
+   * mid-battle): a building's first damage draws its runs in the world's bucket materials on plain meshes (a fine-detail
+   * bucket's batched material among them), the room behind a hole, a fallback bucket's material and the pieces' pool
+   * material. One small run per bucket at `at` (`buckets`: the world's), a room, a fallback run and a piece of every
+   * shape, through the stage writers, unculled, so the warm's private render compiles each program a stage can ask for.
+   * The caller resets the fx after its render (resetAll stands everything up again). Returns the runs laid.
+   */
+  warm(at: { x: number; y: number; z: number }, buckets: Iterable<string>): number;
   /** Per render frame: touch the casters of every building still falling. */
   update(): void;
   shiftTime(delta: number): void;
@@ -897,6 +906,33 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           if (!settled) crumble(seam, e);
         }
       }
+    },
+    warm(at, buckets) {
+      const list = [...buckets].filter((bucket) => !!o.materialFor?.(bucket));
+      const resolve = (bucket: string, role?: DamageRole): THREE.Material => role === 'room' ? roomMaterial
+        : o.materialFor?.(bucket) ?? fallbackFor(bucket);
+      const out = debris.begin({ x: at.x, y: at.y, z: at.z, yaw: 0 }, resolve, 0, false, { tag: STAGE_RUN_TAG + 1 });
+      const tri = (bucket: string, role: DamageRole, k: number): void => {
+        if (!out.mesh.begin(bucket, role)) return;
+        const x = (k % 8) * 0.4, y = Math.floor(k / 8) * 0.4;
+        const a = out.mesh.vertex(x, y, 0, 0, 0, 1, 0, 0, 1, 1, 1);
+        const b = out.mesh.vertex(x + 0.3, y, 0, 0, 0, 1, 1, 0, 1, 1, 1);
+        const c = out.mesh.vertex(x, y + 0.3, 0, 0, 0, 1, 0, 1, 1, 1, 1);
+        out.mesh.triangle(a, b, c);
+        out.mesh.end();
+      };
+      list.forEach((bucket, k) => tri(bucket, 'rim', k));
+      tri(list[0] ?? 'stone', 'room', list.length);
+      // a bucket no world mesh draws: the builders' fallback material
+      tri('fx-structure-warm', 'rubble', list.length + 1);
+      const shapes: DebrisShape[] = ['chunk', 'brick', 'block', 'stone', 'plate', 'splinter', 'beam', 'tile', 'slate', 'sheet', 'shard',
+        'clod', 'straw', 'rebar'];
+      for (const bucket of [list[0] ?? 'stone', 'fx-structure-warm']) {
+        for (const shape of shapes) out.pieces.push(bucket, shape, 0, 0, 0.5, 0, 0, 0, 0, 1, 0.2, 0.2, 0.2, 0.5, 0.5, 0.5, 0, 0, 0);
+      }
+      const made = debris.commit();
+      for (const mesh of made) mesh.frustumCulled = false;
+      return made.length;
     },
     strike(structureId, seam, x, y, z, dirX, dirZ, munition, chargeKg) {
       // punched a moment later, under the burst's flash: the same step's stage and breach events land first (with

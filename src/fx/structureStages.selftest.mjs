@@ -603,4 +603,43 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   assert.equal(stages.stats().falling, 0, 'nothing to touch');
 }
 
-console.log('structureStages selftest: damaged glass hidden and restored, breach cut on the struck face, a collapse touched every frame it falls, settled and jumped stages, holes kept to the ring — ok');
+// ---- the combat warm (dcore 2026-10-09, the collapse spike: the first collapse compiled its programs mid-battle): every
+// program a building's first damage, breach, strike hole and collapse draw with — a material on an object kind, as three
+// keys its programs — is one the warm drew before reveal
+{
+  const m2 = createStructureMask(64);
+  let t2 = 500;
+  const d2 = createStructureDebris({ now: () => t2, groundY: () => 2 });
+  const plaster = new THREE.MeshStandardMaterial({ name: 'regionalPlaster', vertexColors: true });
+  const glassM = new THREE.MeshPhysicalMaterial({ name: 'glass', transmission: 0.2 });
+  const roofM = new THREE.MeshStandardMaterial({ name: 'regionalRoof', vertexColors: true, map: new THREE.Texture() });
+  const stoneM = new THREE.MeshStandardMaterial({ name: 'stone', map: new THREE.Texture() });
+  const world = { regionalPlaster: plaster, glass: glassM, regionalRoof: roofM, stone: stoneM };
+  for (const m of Object.values(world)) m2.patch(m);
+  const wallMesh = new THREE.Mesh(wall.mesh.geometry, plaster), glassMesh = new THREE.Mesh(glass.mesh.geometry, glassM);
+  const spans2 = spans.map((sp) => ({ ...sp, mesh: sp.bucket === 'glass' ? glassMesh : wallMesh }));
+  const st2 = createStructureStages({ mask: m2, debris: d2, now: () => t2, materialFor: (bucket) => world[bucket] ?? null });
+  const programKey = (o) => {
+    const m = Array.isArray(o.material) ? o.material[0] : o.material;
+    const kind = o.isBatchedMesh ? 'batch' : o.isInstancedMesh ? 'instanced' : o.geometry?.isInstancedBufferGeometry ? 'instancedGeometry' : 'mesh';
+    const shader = m.isShaderMaterial ? `${m.vertexShader.length}:${m.fragmentShader.length}` : '';
+    return [kind, m.type, m.vertexColors, !!m.map, m.transparent, m.side, m.customProgramCacheKey?.() ?? '', shader].join('|');
+  };
+  const drawn = () => { const keys = new Set(); d2.group.traverse((o) => { if (o.isMesh) keys.add(programKey(o)); }); return keys; };
+  const laid = st2.warm({ x: 40, y: 2, z: -30 }, Object.keys(world));
+  assert.ok(laid >= Object.keys(world).length + 2, `the warm lays a run per bucket, a room and a fallback run (${laid})`);
+  const warmKeys = drawn();
+  d2.group.traverse((o) => { if (o.isMesh && !o.geometry?.isInstancedBufferGeometry) assert.equal(o.frustumCulled, false, 'a warm run is never culled from the warm\'s render'); });
+  st2.reset(); d2.reset(); m2.reset();
+  const seam2 = createStructureDamageSeam(7, 'cottage', null, anatomy, spans2);
+  const [fx2, , fz2] = toWorld(1, 2, 4.2);
+  const seen = new Set();
+  const note = (label) => { for (const k of drawn()) { seen.add(k); assert.ok(warmKeys.has(k), `${label} draws a program the warm did not: ${k}`); } };
+  st2.stage({ ...base, stage: 'damaged', previous: 'intact', x: fx2, y: 4, z: fz2, dirX: 0, dirZ: 1 }, seam2); note('a damaged stage');
+  st2.strike(7, seam2, fx2, 4, fz2, 0, 1, 'he', 4); t2 += 0.2; st2.update(); note('a strike hole');
+  st2.stage({ ...base, stage: 'breached', previous: 'damaged', x: fx2, y: 2.2, z: fz2, dirX: -s, dirZ: -c }, seam2); note('a breach');
+  st2.stage({ ...base, stage: 'collapsed', previous: 'breached', x: fx2, y: 2.2, z: fz2, dirX: -s, dirZ: -c }, seam2); note('a collapse');
+  assert.ok(seen.size >= 3, `the stages drew runs, pieces and the room (${seen.size} programs)`);
+}
+
+console.log('structureStages selftest: damaged glass hidden and restored, breach cut on the struck face, a collapse touched every frame it falls, settled and jumped stages, holes kept to the ring, the combat warm draws every program a first collapse asks for — ok');
