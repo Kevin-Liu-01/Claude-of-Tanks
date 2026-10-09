@@ -65,7 +65,7 @@ import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSp
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
-import { FORT_PRINT_MEAN, FORT_PRINT_SEED, buildPillbox, fortFor, pillboxFooting } from './maps/fortKit.ts'; // the fortifications lane: the pillbox
+import { FORT_PRINT_MEAN, FORT_PRINT_SEED, buildPillbox, fortFor, pillboxContactProxy, pillboxFooting } from './maps/fortKit.ts'; // the fortifications lane: the pillbox
 import {
   FIELD_STONE_PRINT_SEED, liftFieldStoneMean, paintFieldStoneBuffers as paintFieldStoneBuffersInline, type FieldStoneBuffers,
   type FieldStoneLithology,
@@ -153,7 +153,8 @@ import {
 const HEDGEHOG_SLAB_M = 0.35;
 const _hedgehogBeam = new THREE.Matrix4(), _hedgehogTilt = new THREE.Matrix4();
 /** Pooled kinds whose shell records are the slabs of their own geometry (the hitbox lane, 2026-10-07). */
-export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall']);
+// (the fortifications lane, 2026-10-09, with the hitbox lane: and the pillbox, its berm's slope and its body met as drawn)
+export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall', 'bunker']);
 import {
   appendStructureCollisionBand, applyStructureCollisionBand,
   deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
@@ -4116,6 +4117,13 @@ ${snowCap ? `
     // own variant (the sangar) still wins below.
     ...(fort ? { bunker: {
       ...DESTRUCTIBLE_TYPES.bunker, mat: 'fortConcrete',
+      // the movement footprint: the body and the bank where it stands 0.35 m and more (no stop at a toe a hull climbs)
+      contactBand: (() => {
+        const proxy = pillboxContactProxy(fort.style, fort.tones, fort.seed);
+        const band = deriveRuntimeStructureContactBand({ baked: [proxy] });
+        proxy.dispose();
+        return band;
+      })(),
       build: (rng: () => number) => { DESTRUCTIBLE_TYPES.bunker.build(rng).dispose(); return buildPillbox(fort.style, fort.tones, fort.seed, false); },
       broken: (rng: () => number) => { DESTRUCTIBLE_TYPES.bunker.broken!(rng).dispose(); return buildPillbox(fort.style, fort.tones, fort.seed, true); },
     } } : {}),

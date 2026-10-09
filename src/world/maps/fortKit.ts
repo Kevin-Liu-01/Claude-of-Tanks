@@ -552,6 +552,8 @@ interface BermSpec {
   /** a broken work: the bank slumped (none higher than `cap`) and cratered */
   slump: number;
   cap: number;
+  /** the contact proxy (pillboxContactProxy): the bank ends where it falls below this height, straight down there */
+  clip?: number;
 }
 
 /** The ring parameters out from the wall (share of the run) and the bank's height there (share of its height). */
@@ -600,6 +602,19 @@ function bermGrid(B: BermSpec): { samples: PerimeterSample[]; grid: V3[][]; hs: 
       row.push([x, y, z]);
     }
     grid.push(row);
+  }
+  if (B.clip !== undefined) {
+    // the movement footprint's bank: a hull drives up a toe lower than this, so the footprint ends at the contour
+    const yc = B.grade + B.clip;
+    for (const row of grid) {
+      let k = 0;
+      while (k + 1 < BERM_T.length && row[k + 1][1] >= yc) k++;
+      const a = row[k], b = row[Math.min(k + 1, BERM_T.length - 1)];
+      const f = a[1] <= yc || b[1] >= a[1] ? 0 : clamp01((a[1] - yc) / (a[1] - b[1]));
+      const cut: V3 = a[1] <= yc ? [row[0][0], yc, row[0][2]] : [a[0] + (b[0] - a[0]) * f, yc, a[2] + (b[2] - a[2]) * f];
+      for (let r = k + 1; r < BERM_T.length; r++) row[r] = [cut[0], cut[1], cut[2]];
+      row[BERM_T.length] = [cut[0], B.grade - 0.75, cut[2]];
+    }
   }
   return { samples, grid, hs };
 }
@@ -679,7 +694,7 @@ function edgeRole(_nx: number, nz: number): 'front' | 'rear' | 'flank' {
   return 'flank';
 }
 
-interface BuildOpts { tones: FortTones; seed: number; broken: boolean }
+interface BuildOpts { tones: FortTones; seed: number; broken: boolean; clip?: number }
 
 interface ConcreteSlit { edge: number; s: number; y: number; w: number; h: number; steps: number; plate: boolean }
 interface ConcreteLayout {
@@ -894,7 +909,7 @@ function buildConcretePillbox(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): 
   }
 
   // ---- the berm
-  berm(m, concreteBermSpec(style, L, T, O.seed, O.broken));
+  berm(m, { ...concreteBermSpec(style, L, T, O.seed, O.broken), clip: O.clip });
 
   // ---- the destroyed state's rubble, at a real volume, in the concrete's own colours (none higher than a hull crosses)
   if (O.broken) rubble(m, plan, O, rng);
@@ -924,7 +939,7 @@ function concreteBermSpec(style: 'regelbau' | 'dot' | 'hex', L: ConcreteLayout, 
         const facing = s.nx * sl.nx + s.nz * sl.nz;
         if (facing < 0.7) continue;
         const du = Math.abs((s.x - sl.x) * -sl.nz + (s.z - sl.z) * sl.nx);
-        h = Math.min(h, (sl.y - sl.hh - 0.18 - GRADE) + smooth(sl.hw + 0.1, sl.hw + 1.0, du) * 2);
+        h = Math.min(h, (sl.y - sl.hh - 0.18 - GRADE) + smooth(sl.hw + 0.05, sl.hw + 0.7, du) * 2);
       }
       return Math.max(0, h);
     },
@@ -1176,7 +1191,7 @@ function buildLogEarthPillbox(O: BuildOpts): THREE.BufferGeometry {
     }
   }
   // the bank all round to the slit, open at the rear door
-  berm(m, logEarthBermSpec(T, O.seed, O.broken));
+  berm(m, { ...logEarthBermSpec(T, O.seed, O.broken), clip: O.clip });
   if (O.broken) {
     for (let i = 0; i < 10; i++) lump(m, (rng() - 0.5) * 4, GRADE + 0.08, (rng() - 0.5) * 3.4, 0.3 + rng() * 0.4, 0.22, 0.3 + rng() * 0.4, rng, (p) => mul(T.earth, 0.8 + vnoise(p[0], 0, p[2], 0.2, 5) * 0.3), false);
   }
@@ -1231,6 +1246,9 @@ export const FORT_MAPS: Readonly<Record<string, FortMapEntry>> = Object.freeze({
   cliffbridge: { style: 'hex', c: 0x9a948a, e: 0x7a6650, t: 0x857a52, k: 0xa39466, age: 0.75, arid: true },
   orchard: { style: 'hex', c: 0x9a948a, e: 0x7a6450, t: 0x7f7650, k: 0x9e9168, age: 0.6, arid: true },
   saltwind: { style: 'hex', c: 0x9c978d, e: 0x7a6a56, t: 0x7c7752, k: 0x9b9270, age: 0.6, arid: true },
+  // the Western Desert's round concrete posts (the Italian and Libyan pillboxes), sand banked high against them
+  desert: { style: 'hex', c: 0xa39a8a, e: 0x9c8466, t: 0xae9a78, k: 0xb8a482, age: 0.65, arid: true },
+  oasis: { style: 'hex', c: 0xa69d8c, e: 0xa48c6c, t: 0xb9a37e, k: 0xc4ae88, age: 0.7, arid: true },
   // log and earth: the DZOT, the Japanese bunker, the maneuvers' dugout, the modern timber position
   verdant: { style: 'logearth', c: 0x8e8a82, e: 0x4f4232, t: 0x5e6c34, k: 0x8b8650, w: 0x5a4936, age: 0.4 },
   monsoon: { style: 'logearth', c: 0x8a877f, e: 0x5a4632, t: 0x4f6430, k: 0x6d7a3f, w: 0x5d4b38, age: 0.4 },
@@ -1267,6 +1285,18 @@ export function pillboxFooting(style: PillboxStyle, tones: FortTones, seed: numb
   return samples.map((s, i) => ({ rows: grid[i], nx: s.nx, nz: s.nz, h: hs[i] }));
 }
 export const FORT_GRADE = GRADE;
+
+/**
+ * The intact pillbox with its bank cut off where it falls under `clip` metres (FORT_CONTACT_FLOOR_M): the movement
+ * footprint's source (props.ts contactBand), so a hull is stopped by the bank where it stands higher than a hull
+ * climbs, not at its toe (the hitbox lane's formations rule, FORMATION_CONTACT_FLOOR_M). Shells meet the drawn
+ * geometry's own slabs.
+ */
+export function pillboxContactProxy(style: PillboxStyle, tones: FortTones, seed: number): THREE.BufferGeometry {
+  const O = { tones, seed, broken: false, clip: FORT_CONTACT_FLOOR_M };
+  return style === 'logearth' ? buildLogEarthPillbox(O) : buildConcretePillbox(style, O);
+}
+export const FORT_CONTACT_FLOOR_M = 0.35;
 
 /** Default tones (a temperate map); props.ts passes each map's. */
 export const TEMPERATE_TONES: FortTones = {
