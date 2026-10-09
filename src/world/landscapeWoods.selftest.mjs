@@ -60,7 +60,8 @@ try {
     return lo / heights.length + 0.5 * Math.min(1, grade / grade0);
   };
   const build = (vegetation) => createVegetation(field, { setupShadowMaterial() {} }, 2001, { ...cfg, vegetation: { ...cfg.vegetation, ...vegetation } });
-  const plain = build({}), wooded = build({ landscapeWoods: LW }), replay = build({ landscapeWoods: LW });
+  // (Frontier round 4 sets the hook on the map itself: the field law's woods are the map with the hook taken off)
+  const plain = build({ landscapeWoods: undefined }), wooded = build({ landscapeWoods: LW }), replay = build({ landscapeWoods: LW });
   try {
     assert.equal(plain.group.userData.landscapeWoods, undefined, 'unset: no landscape census');
     const census = wooded.group.userData.landscapeWoods;
