@@ -120,6 +120,8 @@ const CIRRUS_WARP_M = 2600;
 const CLOUD_BOIL_M_PER_S = 0.7;
 /** 2026-10-01: the trails' upper drift and the boil wrap here (m): whole tiles of every field they read. */
 const CLOUD_UPPER_WRAP_M = 600000;
+/** A night storm's lightning: its sequence's seed and its first strike (s); a capture restarts the sequence (setCaptureTime). */
+const CLOUD_FLASH_SEED = 0x2f6b4a1d, CLOUD_FLASH_FIRST_S = 3;
 /**
  * A drift kept inside (-w, w) (2026-10-02): continuous through zero and a whole wrap at +-w. The positive modulo it
  * replaces jumped a whole wrap on the first frame after a capture zeroed the drifts (the census and the shot tools
@@ -1563,9 +1565,9 @@ export class VolumetricCloudLayer {
   private readonly upperDrift = new THREE.Vector2();
   /** 2026-10-02: the aerial pass's haze-layer datum (the ground under the camera, post.ts uHazeDatum); NaN until a frame passes it. */
   private hazeDatum = Number.NaN;
-  private flashSeed = 0x2f6b4a1d;
+  private flashSeed = CLOUD_FLASH_SEED;
   private flashClock = 0;
-  private flashNext = 3;
+  private flashNext = CLOUD_FLASH_FIRST_S;
   private flashAge = 1e3;
   private flashStrokes = 0;
   private flashPeak = 0;
@@ -1793,16 +1795,33 @@ export class VolumetricCloudLayer {
     const preset = this.preset;
     if (!preset) return;
     const wrap = (value: number, tile: number): number => ((value % tile) + tile) % tile;
-    const travel = preset.windSpeed * Math.max(0, timeS);
+    const t = Math.max(0, timeS);
+    const travel = preset.windSpeed * t;
     const wdx = Math.cos(preset.windDirRad), wdz = Math.sin(preset.windDirRad);
     this.weatherShift.set(wrap(-wdx * travel, CLOUD_WEATHER_TILE_M), wrap(-wdz * travel, CLOUD_WEATHER_TILE_M));
     this.noiseShift.x = wrap(-wdx * travel * 0.8, CLOUD_SHAPE_TILE_STRATUS_M);
     this.noiseShift.z = wrap(-wdz * travel * 0.8, CLOUD_SHAPE_TILE_STRATUS_M);
-    this.cirrusShift.x = wrap(-2 * travel, CLOUD_CIRRUS_TILE_M);
+    this.cirrusShift.set(wrap(-2 * travel, CLOUD_CIRRUS_TILE_M), 0);
+    // (2026-10-09) The billows' boil and the contrails' upper drift come from scene time too, wrapped as live frames
+    // wrap them (their lookups do not tile, so a wrap is a seam). Before, a film started from whatever the page had
+    // accumulated before it, and two renders of one scene drew different clouds and cloud shadows.
+    this.noiseShift.y = wrapDrift(-CLOUD_BOIL_M_PER_S * (1 - 0.8 * preset.stratiform) * t, CLOUD_UPPER_WRAP_M);
+    const ux = Math.cos(preset.cirrusAngleRad), uz = Math.sin(preset.cirrusAngleRad);
+    this.upperDrift.set(wrapDrift(-ux * preset.windSpeed * 2 * t, CLOUD_UPPER_WRAP_M), wrapDrift(-uz * preset.windSpeed * 2 * t, CLOUD_UPPER_WRAP_M));
+    // the shade map is cut at this drift on the next render, not at whichever drift its every-eighth-frame refresh held
+    this.farShadeValid = false;
     if (!restart) return;
     this.frame = 0;
     this.traces = 0;
     this.hasPrev = false;
+    this.historyIndex = 0;
+    // a night storm's lightning runs its sequence from the take's start
+    this.flashSeed = CLOUD_FLASH_SEED;
+    this.flashClock = 0;
+    this.flashNext = CLOUD_FLASH_FIRST_S;
+    this.flashAge = 1e3;
+    this.flashStrokes = 0;
+    this.flashPeak = 0;
     this.resetHistory();
   }
 
