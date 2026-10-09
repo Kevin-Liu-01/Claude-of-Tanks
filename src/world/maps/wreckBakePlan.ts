@@ -35,7 +35,7 @@ export const WRECK_BAKE_PLAN: Readonly<Record<string, WreckBakeRows>> = {
   titan_gorge: [['m60a1', 2002, 1], ['m48', 2133, 0], ['m551_sheridan', 2264, 1], ['m47_patton', 2395, 1], ['m47_patton', 2526, 0], ['m60a1', 2657, 0], ['m48', 2788, 1], ['m551_sheridan', 2919, 0]],
   urban: [['leo2a4', 2002, 1], ['t72m1_jaguar', 2133, 1], ['t72m1_jaguar', 2264, 0], ['marder1a3', 2395, 0], ['bmp2', 2526, 1], ['bmp2', 2657, 0], ['leo1a5', 2788, 1], ['m1a1', 2919, 1]],
   verdant: [['kv2', 2002, 1], ['kv2', 2133, 0]],
-  whiteout: [['leo1a5', 2002, 1], ['leo1a5', 2133, 0], ['m48', 2264, 1], ['strv103', 2395, 0], ['t80b', 2526, 0], ['bmp2', 2657, 0]],
+  whiteout: [['leo1a5', 2002, 1], ['leo1a5', 2133, 0], ['m48', 2264, 1], ['strv103', 2395, 0], ['t80b', 2526, 0], ['bmp2', 2657, 1], ['bmp2', 2788, 0]],
   winter: [],
 };
 /** Where a variant's requests differ from its fallback (resolveWreckBakeRows): <map>@mobile, @assault, @assault-mobile. */
