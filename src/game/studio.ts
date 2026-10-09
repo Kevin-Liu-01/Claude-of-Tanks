@@ -279,6 +279,8 @@ interface StudioEffectParams {
   isPlayer?: boolean;
   kind?: string;
   normal?: readonly number[];
+  /** an impact's offset from its anchor (m, world axes): a hit on a hull's face, not its centre */
+  offset?: readonly number[];
   off?: boolean;
   pop?: boolean;
   radiusM?: number;
@@ -1527,6 +1529,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     normal: readonly [number, number, number],
   ): boolean {
     const { actor, position, params } = execution;
+    // destruction-fx (2026-10-08): an offset from the anchor (m, world axes), so a strip can land a hit on a hull's face
+    // rather than at its centre (the anchor of an actor's effects)
+    const offset = params.offset;
+    if (Array.isArray(offset) && offset.length === 3 && offset.every((v) => Number.isFinite(v))) {
+      position.x += offset[0]; position.y += offset[1]; position.z += offset[2];
+    }
     const impactNormal = params.normal || normal;
     _v2.set(impactNormal[0], impactNormal[1], impactNormal[2]).normalize();
     fxBus.emit('shell:hit', {
