@@ -439,7 +439,8 @@ export interface FxRuntime {
   resetSeed(seed: number): void;
   /** Pin the shared fx clock to exactly `atTimeS` (every live stamp keeps its age). */
   resetClock(atTimeS?: number): void;
-  resetAll(): void;
+  /** `running`: the hulls are already running (a Studio scene), so no engine coughs a cold start */
+  resetAll(options?: { running?: boolean }): void;
   composeFiringMoment(moment: FiringMoment): void;
   composeExplosionMoment(moment: ExplosionMoment): void;
   cinematicPort(): FxCinematicPort;
@@ -5524,12 +5525,14 @@ function* createFxSteps(
     },
 
     /** Kill all particles, tracers, decals, timers, emitters and lights. */
-    resetAll() {
+    resetAll(options?: { running?: boolean }) {
       replaySuppressed = false;
       auxiliary?.reset(); drones.reset();
       particles.resetAll();
       lastTickS = particles.getTime();
-      battleFreshS = 0; // fresh battle — arm the flyby exhaust start-up burst
+      // fresh battle — arm the flyby exhaust start-up burst (atmospherics r2, wave 311: not for a Studio scene, whose hulls
+      // are already running: its cough read as the smoke launch "bursting into dark brown-black smoke")
+      battleFreshS = options?.running ? 999 : 0;
       staticTracers.length = 0;
       trails.clear();
       guidedTrails.clear();
