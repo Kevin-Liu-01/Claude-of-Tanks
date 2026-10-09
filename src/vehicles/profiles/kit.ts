@@ -2831,11 +2831,18 @@ function fittingSpareTrackLinks(opts: FittingOptions = {}): THREE.Group {
   }
   const connectorX = width / 2 - Math.min(0.016, width * 0.16);
   const connectorW = Math.min(0.032, width * 0.3);
+  // fleet lane 2026-10-08 (circular-cap audit, the BMP-2's course): below a 0.156 m pitch two neighbours' hinge barrels
+  // overlapped, their end discs one coplanar overlap; there the neighbours share one barrel on the joint between them,
+  // as a track's links share their pin, and only the course's two ends keep a barrel of their own
+  const barrelR = 0.0215, barrelZ = 0.0565;
+  const sharedHinge = pitch < 2 * (barrelZ + barrelR);
   for (let k = 0; k < links; k++) {
     const z = (k - (links - 1) / 2) * pitch;
     parts.add('spareTrack', box(width * 0.94, 0.026, 0.118), 0, -0.0095, z);               // shoe plate
     for (const side of [-1, 1]) {
-      parts.add('spareTrack', cylX(0.0215, width * 0.9, 8), 0, 0, z + side * 0.0565);      // hinge barrels
+      const inner = side > 0 ? k < links - 1 : k > 0;
+      if (!sharedHinge || !inner) parts.add('spareTrack', cylX(barrelR, width * 0.9, 8), 0, 0, z + side * barrelZ); // hinge barrels
+      else if (side > 0) parts.add('spareTrack', cylX(barrelR, width * 0.9, 8), 0, 0, z + pitch / 2);                // the shared joint
       parts.add('spareTrack', box(connectorW, 0.05, 0.14), side * connectorX, 0, z);       // end connector
       parts.add('spareTrack', cylY(0.011, 0.011, 0.01, 6), side * connectorX, 0.03, z);    // wedge-bolt head
     }
