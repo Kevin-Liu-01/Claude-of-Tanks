@@ -9,7 +9,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import ts from 'typescript-compiler-api';
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, TREE_SPECIES } from './treeSpecies.ts';
 import { bendMangroveRoot, shapeMangroveFarStem } from './tidalMangrove.ts';
-import { treeBiomeColour, treeBiomePalette, treeBiomeSlot, treeBiomeWoodSpread } from './treeBiomes.ts';
+import { treeBiomeColour, treeBiomePalette, treeBiomeSlot, treeBiomeTransmission, treeBiomeWoodSpread } from './treeBiomes.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { HORIZON_FOREST_IMPOSTOR_SKY_FILL, HORIZON_FOREST_IMPOSTOR_THIN, HORIZON_FOREST_IMPOSTOR_WRAP } from './horizonForestImpostors.ts';
 import * as growth from './treeGrowth.ts';
@@ -128,6 +128,8 @@ function compile(input = text, mode = 'current') {
     crownLobes: growth.crownLobes, crownSurfaceNormal: growth.crownSurfaceNormal, treeBiomeSlot, treeBiomePalette, treeBiomeColour,
     // trees round 5: a closed wood's species grow forest-grown near variants (the wood spread opens the rule)
     treeBiomeWoodSpread,
+    // (2026-10-08: a place's leaf transmission)
+    treeBiomeTransmission,
     GROWTH_CROWN_SHADING: growth.GROWTH_CROWN_SHADING,
     // trees round 4: a birch's dark collar (its stem's foot)
     GROWTH_BIRCH_FOOT: growth.GROWTH_BIRCH_FOOT,
