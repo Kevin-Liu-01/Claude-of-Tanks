@@ -410,6 +410,11 @@ interface SplatConfig {
    * layer drawn as a sor's salt crust — white-grey salt with faint desiccation polygons (`crackM` across) over the
    * floor, the damp darker silt of its margin (`damp`, 0..1) outside the crust. */
   saltCrust?: { crackM?: number; damp?: number };
+  /** Ground lane (2026-10-06, the arid lane's request for Titan Gorge's Monument Valley tracks): washboard on the map's
+   * dirt roads — corrugation ripples across the carriageway every `spacingM` metres (0.6–0.9 real), deepest in the wheel
+   * lanes, coming and going along the road (`strength` 0..1). Read on a styled road net only (the path's heading:
+   * terrain.roads.pathStyles), on its dirt carriageways. */
+  washboard?: { strength: number; spacingM?: number };
   roadTexMix?: number;
   townWear?: number;
   iceDrift?: number;
@@ -3918,6 +3923,7 @@ uniform float uRoadPuddle; // ground lane: the map's share of the ruts' puddles 
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
 uniform float uPavedRock;
 uniform vec4 uPaveSlab;   // maps lane B (2026-10-03): airfield concrete (slab m, joint half-width m, stains, tyres); x 0 = off
+uniform vec2 uWashboard;  // ground lane (2026-10-06): a dirt road's corrugation (strength, crest spacing m); x 0 = off
 uniform vec4 uTownPave;   // map revival lane 2 (2026-10-05): the paved town rect (centre xz, half-size xz); z 0 = off
 uniform vec4 uSaltCrust;  // maps lane B (2026-10-03): a sor's salt crust (on, polygon cell m, damp margin, unused)
 uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
@@ -5050,7 +5056,10 @@ void splatCompute() {
       // (the tier, landUseTierOf: Low reads the bake alone, Medium adds the field's wet and dry, High everything)
       // (farmland: the rows' bend is a field's contour over tens of metres — one coarse read of the noise, no detail
       // octave: at its own level of detail the 77 m read wobbled the furrows into wood grain beside the tank)
-      float nBend = bendW > 0.001 && uLandTier > 1.5 ? textureLod(uNoise, uvW * 0.0021 + vec2(0.47, 0.13), 4.0).r : 0.5;
+      // (2026-10-06, the urban fast path: a town's lots are 8–24 m across — the rows' bend over tens of metres never shows
+      // in one, so an urban land use skips its read)
+      bool luUrb = uLandE.w > 0.5;
+      float nBend = bendW > 0.001 && uLandTier > 1.5 && !luUrb ? textureLod(uNoise, uvW * 0.0021 + vec2(0.47, 0.13), 4.0).r : 0.5;
       float crop, edgeM, track, jit, hedgeL; vec2 rowDir;
       lu_decode(wp.xz, luA, luB, luK, luT, crop, edgeM, track, rowDir, jit, hedgeL);
       landW *= step(crop, 30.5); // (a zoned land use's texel in no zone — landUse.ts LAND_CROP_NONE: no field there)
@@ -5069,7 +5078,9 @@ void splatCompute() {
       bool luEdge = bnd < 1.5 && edgeM < 9.0 + 1.3 * uLandB.y;
       float luNear = 1.0 - smoothstep(1.0, 2.0, gFootM);
       vec3 nEdge = vec3(0.5); // the wander, the headland's width, the hedge bank's break
-      if (luEdge && luNear > 0.001 && uLandTier > 1.5) nEdge = mix(vec3(0.5), vec3(nzq(uvW, 0.045, vec2(0.21, 0.83)).y,
+      // (the urban fast path: a lot ends on its line — its wander a sixth of a field's, no headland and no hedge bank — so
+      // an urban land use's edge zone reads none of the three)
+      if (luEdge && luNear > 0.001 && uLandTier > 1.5 && !luUrb) nEdge = mix(vec3(0.5), vec3(nzq(uvW, 0.045, vec2(0.21, 0.83)).y,
         nzq(uvW, 0.031, vec2(0.11, 0.59)).y, nzq(uvW, 0.17, vec2(0.83, 0.37)).x), luNear);
       bool soilCrop = (crop > 3.5 && crop < 4.5) || (crop > 6.5 && crop < 8.5) || (crop > 10.5 && crop < 12.5) || (crop > 16.5 && crop < 17.5);
       // (the soil is read where it is drawn — a soil crop but the flooded paddy's water, a track's ruts (not a polder's
@@ -5304,23 +5315,32 @@ void splatCompute() {
         vec2 hq = vec2(dot(wp.xz, rowDir), dot(wp.xz, vec2(-rowDir.y, rowDir.x)));
         bool concretePour = fract(jit * 7.31 + 0.13) > 0.64;
         vec3 hard = concretePour ? vec3(0.150, 0.147, 0.140) : vec3(0.084, 0.084, 0.087);
-        float hGrain = uLandTier > 0.5 ? nz(uv, 1.9, vec2(0.31, 0.57)).r : 0.5;
+        // (the urban fast path: each pattern is drawn while its period spans pixels and stands at its mean past that — the
+        // grain's read skipped once its half metre is under ~4 px, the slabs' and the repairs' tones by their cells')
+        bool hFast = luUrb; // (every hardstanding is a town's; the old path kept for any other)
+        float hGrain = uLandTier > 0.5 && (!hFast || tileVis(0.53) > 0.004) ? nz(uv, 1.9, vec2(0.31, 0.57)).r : 0.5;
         hard *= 0.92 + 0.16 * hGrain;
         if (concretePour) {
           vec2 sl = fract(hq / 4.0);
           vec2 sd = min(sl, 1.0 - sl) * 4.0;
           hard *= 1.0 - 0.45 * (1.0 - smoothstep(0.02, 0.05 + gFootM, min(sd.x, sd.y))) * tileVis(4.0);
-          hard *= 0.92 + 0.16 * cellHash2(floor(hq / 4.0) + vec2(jit * 97.0, 3.0)).x;
+          float slabV = hFast ? tileVis(4.0) : 1.0;
+          float slabH = slabV > 0.004 ? cellHash2(floor(hq / 4.0) + vec2(jit * 97.0, 3.0)).x : 0.5;
+          hard *= 0.92 + 0.16 * mix(0.5, slabH, slabV);
         }
         vec2 hp = hq / vec2(5.2, 3.1), hpI = floor(hp), hpF = fract(hp);
-        vec2 hh = cellHash2(hpI + vec2(91.0 + jit * 53.0, 13.0));
+        // (past its cells' visibility a repaired surface is its mean: three tenths repaired, half of them darker, half paler)
+        float repV = hFast ? tileVis(3.1) : 1.0;
+        vec2 hh = repV > 0.004 ? cellHash2(hpI + vec2(91.0 + jit * 53.0, 13.0)) : vec2(1.0, 0.0);
         float repair = step(hh.x, 0.30);
         vec2 he = min(hpF, 1.0 - hpF) * vec2(5.2, 3.1);
         float seamH = (1.0 - smoothstep(0.03, 0.06 + gFootM, min(he.x, he.y))) * repair * tileVis(0.6);
-        hard = mix(hard, hh.y > 0.5 ? hard * 0.78 : mix(hard, vec3(0.13, 0.128, 0.122), 0.5), repair);
+        vec3 hardMean = hard * (0.70 + 0.30 * 0.5 * (0.78 + 0.5)) + 0.30 * 0.5 * 0.5 * vec3(0.13, 0.128, 0.122);
+        hard = mix(hardMean, mix(hard, hh.y > 0.5 ? hard * 0.78 : mix(hard, vec3(0.13, 0.128, 0.122), 0.5), repair), repV);
         hard *= 1.0 - 0.45 * seamH;
-        float crackH = uLandTier > 1.5 ? (1.0 - smoothstep(0.0, 0.02 + gFootM, abs(nz(uv, 0.9, vec2(0.71, 0.29)).r - 0.5) * 0.12))
-          * (1.0 - repair) * tileVis(0.5) : 0.0;
+        float crackV = tileVis(0.5);
+        float crackH = uLandTier > 1.5 && (!hFast || crackV > 0.004) ? (1.0 - smoothstep(0.0, 0.02 + gFootM, abs(nz(uv, 0.9, vec2(0.71, 0.29)).r - 0.5) * 0.12))
+          * (1.0 - repair) * crackV : 0.0;
         hard = mix(hard * (1.0 - 0.45 * crackH), vec3(0.060, 0.070, 0.036), crackH * 0.35 * (1.0 - smoothstep(0.03, 0.08, gFootM)));
         float hStain = uLandTier > 0.5 ? smoothstep(0.62, 0.82, nzq(uv, 0.17, vec2(0.37, 0.83)).x) : 0.0;
         hard *= 1.0 - 0.22 * hStain;
@@ -5362,7 +5382,8 @@ void splatCompute() {
       // golden wheat field") a worked field's edge is a feature: inside its grass margin lies the headland, 3–5.5 m where
       // the drill turned — the crop pressed flat and thinner with the soil showing in it, and the turning wheels' two arcs
       // along the edge (the tall-grass tier flattens and weeds the same strip; the margin itself grows rank and tall)
-      if (bnd < 0.5 && crop > 0.5 && water < 0.5 && luEdge && uLandTier > 0.5) {
+      // (the urban fast path: a lot ends on its line, a kerb or a fence — no drill turned in it, so no headland)
+      if (bnd < 0.5 && crop > 0.5 && water < 0.5 && luEdge && uLandTier > 0.5 && !luUrb) {
         float headW = 3.0 + 2.5 * nEdge.y;
         float into = edgeW - marginM;
         float headL = inField * (1.0 - smoothstep(headW - 1.2, headW, into)) * (1.0 - track);
@@ -6148,6 +6169,21 @@ void splatCompute() {
     a.rgb *= 1.0 - min(mix(rut, trodMid * 0.55, laneFar), 1.0) * mix(0.34, 0.26, gRoadTex);
     a.a = mix(a.a, a.a * 0.86, rut * (1.0 - gRoadTex));
     a.rgb *= 1.0 + crown * 0.05 * (1.0 - gRoadTex);
+    // Ground lane (2026-10-06, the arid lane: "washboard corrugation on Titan Gorge's dirt roads — the ripples run across
+    // the carriageway, perpendicular to travel, about 0.6–0.9 m apart"): a desert dirt road's washboard — the crests
+    // across the road along the styled path's heading, their spacing wandering a little along it, deepest in the wheel
+    // lanes and fading toward the verges, strong down one stretch and nearly gone on the next; a relief in the light with
+    // the crests a shade paler with dust and the troughs darker, faded where a crest spans a pixel (a dirt carriageway
+    // on a styled net only: every other road and map as it was)
+    if (uWashboard.x > 0.001 && uRoadClass.z > 0.5 && gRoadTex < 0.5 && roadCore > 0.003) {
+      float wbVis = tileVis(uWashboard.y);
+      float wbAmp = uWashboard.x * roadCore * (0.45 + 0.55 * lane) * smoothstep(0.30, 0.62, n2 * 0.6 + n1 * 0.4) * wbVis;
+      if (wbAmp > 0.002) {
+        float wbPh = dot(wp.xz, gRoadDir) * (6.2832 / uWashboard.y) + (n1 - 0.5) * 5.0;
+        a.rgb *= 1.0 + sin(wbPh) * 0.07 * wbAmp;
+        if (nrmOn) n.xy += gRoadDir * cos(wbPh) * 0.16 * wbAmp;
+      }
+    }
     if (gRoadTex > 0.01) {
       // r5: HARDER pavement edge (0.10-0.26 with less noise wobble) — paved
       // town streets end at a kerb line, they do not alpha-fade into lawn.
@@ -7089,6 +7125,7 @@ function* createSplatMaterialSteps(
     // maps lane B (2026-10-03): airfield concrete and a sor's salt crust (both off unless the map authors them)
     shader.uniforms.uPaveSlab = { value: new THREE.Vector4(S.pavement ? S.pavement.slabM : 0, S.pavement?.jointM ?? 0.04,
       S.pavement?.stains ?? 1, S.pavement?.tyres ?? 1) };
+    shader.uniforms.uWashboard = { value: new THREE.Vector2(clamp(S.washboard?.strength ?? 0, 0, 1), clamp(S.washboard?.spacingM ?? 0.75, 0.4, 1.5)) };
     shader.uniforms.uSaltCrust = { value: new THREE.Vector4(S.saltCrust ? 1 : 0, S.saltCrust?.crackM ?? 1.8,
       S.saltCrust?.damp ?? 1, 0) };
     // r2: agrarian field patchwork — only sensible on temperate farmland maps

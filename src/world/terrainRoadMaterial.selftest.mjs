@@ -82,4 +82,21 @@ assert.match(terrainSource, /if \(vRoadExit\.y > 0\.002\) \{\s*float dE = abs\(v
 assert.match(terrainSource, /attribute vec2 roadExit;\\nvarying vec2 vRoadExit;/, 'the exit attribute is a vertex attribute (a geometry without it reads no road)');
 assert.doesNotMatch(terrainSource, /mk = mix\(mk, vec4\(0\.0, 0\.0, mk\.b, 0\.0\), outsideW\);/, 'the old all-channel 36 m fade is gone');
 
+// 2026-10-06 (the arid lane: washboard on Titan Gorge's tracks): the corrugation reads the styled net's heading — so only a
+// styled dirt carriageway takes it, on a map that asks for it (splat.washboard) — fades where a crest spans a pixel, and
+// every other map binds strength 0 (its shader path skipped). Titan's five tracks are styled dirt (their look the map's
+// own packed earth) and carry it at 0.75 m.
+assert.ok(terrainSource.includes('if (uWashboard.x > 0.001 && uRoadClass.z > 0.5 && gRoadTex < 0.5 && roadCore > 0.003) {'),
+  'the washboard runs on a styled dirt carriageway only, on a map that asks for it');
+assert.match(terrainSource, /float wbVis = tileVis\(uWashboard\.y\);/, 'the crests fade as their spacing nears a pixel');
+assert.match(terrainSource, /float wbPh = dot\(wp\.xz, gRoadDir\) \* \(6\.2832 \/ uWashboard\.y\)/, 'the crests run across the path\'s heading');
+assert.ok(terrainSource.includes('shader.uniforms.uWashboard = { value: new THREE.Vector2(clamp(S.washboard?.strength ?? 0, 0, 1), clamp(S.washboard?.spacingM ?? 0.75, 0.4, 1.5)) };'),
+  'strength 0 unless a map asks; spacing clamped to 0.4–1.5 m');
+{
+  const titan = await readFile(new URL('./maps/titanGorge.ts', import.meta.url), 'utf8');
+  assert.match(titan, /pathStyles: \[\{ surface: 'dirt' \}, \{ surface: 'dirt' \}, \{ surface: 'dirt' \}, \{ surface: 'dirt' \}, \{ surface: 'dirt' \}\]/,
+    'Titan Gorge\'s five tracks are styled dirt (the heading under them)');
+  assert.match(titan, /washboard: \{ strength: 1, spacingM: 0\.75 \}/, 'Titan Gorge carries the washboard at 0.75 m');
+}
+
 console.log('terrainRoadMaterial self-test passed');
