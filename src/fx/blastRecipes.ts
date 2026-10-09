@@ -241,70 +241,80 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   const D = 3.9 * Math.pow(kg, 0.32) * (shaped ? 0.7 : 1) * (thermobaric ? 1.35 : 1);
   if (heavy || s >= 1.6) C.shockRing(I.x, I.z, 0.5 + 0.38 * s, Math.min(1.3, 0.55 + 0.28 * s), Math.max(0, -bo));
 
-  // 1. the flash (it lasts long enough to land on a 10 fps frame) and the fireball: the charge's width, swelling out of
-  // one core in a tenth of a second, cooling to dark smoke and soil inside a quarter
-  // (round 7c, DVIDS 954922: the charge's dome is white-hot on the event frame and full and saturated a frame later;
-  // ours had cooled away by +0.1 s) the dome holds ~0.15 s
-  lightPuff(C, 'flash', I.x, by + 0.3 * D, I.z, 0, 0.8, 0, 0.15, 0.7 * D * dk, 1.25 * D * dk, FLASH_WHITE, FLASH_ORANGE, 1, 0, bo);
-  const fireN = shaped ? 2 : heavy ? 5 : 3;
+  // 1. the flash and the fireball. (fx 8, the blind critics after 7d/7e: "a hard white sprite birth flash over a flat
+  // orange ground disc that still glows at 0.5 s"; DVIDS 954922: the charge's dome is white-hot on the event frame,
+  // full and orange a frame later, and by +0.3 s only an orange heart is left inside grey smoke) the dome IS the
+  // fireball medium: born white-hot at most of the charge's width, cooling to an orange heart within two frames and to
+  // soot inside a third. The additive flash is only the air's glow round the dome — soft, dim, gone within a frame —
+  // and the additive fire is a few small tongues at the heart (never a sprite pair over the dome)
+  lightPuff(C, 'flash', I.x, by + 0.45 * D, I.z, 0, 0.6, 0, 0.07, 1.0 * D * dk, 1.45 * D * dk, FLASH_WHITE, FLASH_ORANGE,
+    0.42, 0, bo);
+  const fireN = shaped ? 1 : heavy ? 3 : 2;
   for (let i = 0; i < fireN; i++) {
-    const a = R() * TAU, v = (2 + R() * 3) * sq;
-    lightPuff(C, 'fire', I.x + Math.cos(a) * 0.08 * D, by + 0.25 * D, I.z + Math.sin(a) * 0.08 * D,
-      Math.cos(a) * v, v * 0.8 + 1, Math.sin(a) * v, 0.2 + R() * 0.1, 0.3 * D * dk, (0.6 + R() * 0.15) * D * dk,
-      mix3(FIRE_HOT, FIRE_DEEP, 0.3), FIRE_DEEP, 0.8, 1.5, bo + 0.005);
+    const a = R() * TAU, v = (1.5 + R() * 2) * sq;
+    lightPuff(C, 'fire', I.x + Math.cos(a) * 0.08 * D, by + 0.3 * D, I.z + Math.sin(a) * 0.08 * D,
+      Math.cos(a) * v, v * 0.8 + 1, Math.sin(a) * v, 0.12 + R() * 0.05, 0.2 * D * dk, (0.38 + R() * 0.1) * D * dk,
+      FIRE_DEEP, FIRE_DEEP, 0.55, 1.5, bo + 0.01);
   }
   const ballN = thermobaric ? 5 : heavy ? 4 : shaped ? 2 : 3;
-  const ballC0: Rgb = shaped || thermobaric ? SOOT : mix3b(SOOT, L.ejecta, 0.55);
+  // (fx 8) the fireball's own soot is the burst's smoke, not a brown ball of soil beside it
+  const ballC0: Rgb = SOOT;
   for (let i = 0; i < ballN; i++) {
     const a = R() * TAU;
-    place(m, I.x + Math.cos(a) * 0.1 * D, by + (0.18 + 0.2 * R()) * D, I.z + Math.sin(a) * 0.1 * D, bo - 0.01);
-    move(m, Math.cos(a) * 0.8 * D, (0.8 + R() * 0.6) * D * (shaped ? 1.5 : 1), Math.sin(a) * 0.8 * D, 3.2,
-      thermobaric ? 1.6 : 0.5, 0.5, 0);
-    const life = thermobaric ? 3.0 + R() * 0.6 : 1.4 + R() * 0.5;
-    shape(m, life, 0.45 * D * dk, (0.85 + 0.25 * R()) * D * dk, 5, R);
+    place(m, I.x + Math.cos(a) * 0.1 * D, by + (0.22 + 0.16 * R()) * D, I.z + Math.sin(a) * 0.1 * D, bo - 0.01);
+    move(m, Math.cos(a) * 0.8 * D, (0.8 + R() * 0.6) * D * (shaped ? 1.4 : 1), Math.sin(a) * 0.8 * D, 3.4,
+      thermobaric ? 1.6 : 0.55, 0.5, 0);
+    const life = thermobaric ? 3.0 + R() * 0.6 : 1.5 + R() * 0.5;
+    // born near its full width: the dome is full on the event frame and a frame later
+    shape(m, life, 0.62 * D * dk, (0.95 + 0.2 * R()) * D * dk, 5, R);
     look(m, ballC0, mix3(ballC0, SMOKE_AGED, 0.35), 0.95, 0.0, 0.5);
     book(m, 'billow', R, life);
-    // white-orange for the shaped charge's sharp flash, orange for HE (mostly hidden in its own soil), rolling for the
-    // thermobaric rocket; (round 7c) still glowing orange inside its smoke at +0.3 s, as the real charges do
-    heat(m, thermobaric ? 1.45 : shaped ? 1.3 : 1.12, thermobaric ? 1.6 : shaped ? 9 : heavy ? 5 : 6);
+    // white-hot on the event frame (the blackbody ramp's top), an orange heart at +0.1 s, soot by +0.3 s; the
+    // thermobaric rocket's ball rolls on
+    heat(m, thermobaric ? 1.45 : 1.55, thermobaric ? 1.6 : shaped ? 11 : heavy ? 7 : 9);
     C.media(m);
   }
-  // the light: on the ground for ~0.2 s (a bright ground takes far less of it), and inside the burst's own medium
+  // the light: on the ground for a moment (a bright ground takes far less of it) and inside the burst's own medium for
+  // a moment — (fx 8) brief and dim enough that no orange disc stands on the ground or over the sheet after the flash
   const albedoK = I.surface === 'snow' ? 0.3 : I.surface === 'sand' ? 0.5 : hard ? 0.6 : 1;
-  C.lightPulse(I.x, by + 0.6 * D, I.z, Math.min(0.75, 0.25 + 0.14 * s) * albedoK, 0, heavy ? 0.32 : shaped ? 0.16 : 0.22,
+  C.lightPulse(I.x, by + 0.6 * D, I.z, Math.min(0.45, 0.15 + 0.09 * s) * albedoK, 0, heavy ? 0.2 : shaped ? 0.1 : 0.13,
     BURST_LIGHT_HEX);
-  C.glow(I.x, by + 0.4 * D, I.z, 1.3 * D, heavy ? 1.1 : shaped ? 0.7 : 0.9, heavy ? 0.42 : shaped ? 0.22 : 0.3, bo);
+  C.glow(I.x, by + 0.45 * D, I.z, 0.9 * D, heavy ? 0.6 : shaped ? 0.4 : 0.5, heavy ? 0.24 : shaped ? 0.12 : 0.16, bo);
 
   // 1b. (round 7c, DVIDS 954922: by +0.3 s the fireball is inside its own smoke, a lobed grey-brown cloud that keeps
   // climbing on its heat for seconds, leaning downwind and thinning; b8a's stopped as a tan haystack on the ground) the
   // explosive's smoke: puffs born out of the cooling fireball and driven up by its heat, the upper ones faster so the
   // cloud stretches into a lobed column, each glowing a moment at its heart
   // (7d: separate blue-grey lobes from ~2.4 s) more, smaller puffs overlapping into one lobed mass
-  const smokeN = thermobaric || heavy ? 14 : shaped ? 6 : 10;
+  const smokeN = thermobaric || heavy ? 14 : shaped ? 6 : 12;
   // (on snow, the dark soil it throws from under the snow: HE on snow is dark smoke over white powder)
   const snowy = I.surface === 'snow';
   const soilC = snowy ? UNDER_SNOW_SOIL : L.ejecta;
-  // (wave 293: "separate brown and blue-grey balls") born a dark soot-brown with the soil's dust in it, and every smoke
-  // puff of the burst (the explosive's and the column's) ages to the same warm grey-brown
-  const smokeC0: Rgb = shaped || thermobaric ? SOOT
-    : snowy ? mixInto(_e, SOOT, soilC, 0.35) : mixInto(_e, mixInto(_e, SOOT, soilC, 0.45), L.dust, 0.2);
+  // (wave 293 and the critics after 7d/7e: "the HE cloud splitting into brown balls and separate blue-grey balls") ONE
+  // palette for every smoke puff of the burst — the explosive's, the column's fine soil, the shaped charge's spike —
+  // born a dark grey-brown (the explosive's grey residue with the soil in it) and ageing to one warm grey
+  const smokeC0: Rgb = shaped || thermobaric ? mixInto(_e, SOOT, soilC, 0.2)
+    : mixInto(_e, mixInto(_e, SOOT, soilC, 0.3), BLAST_RESIDUE, 0.25);
   const smokeAged: Rgb = snowy ? mixInto(_f, SMOKE_AGED, soilC, 0.2)
-    : mixInto(_f, mixInto(_f, SMOKE_AGED, L.dust, 0.3), soilC, 0.12);
+    : mixInto(_f, mixInto(_f, SMOKE_AGED, L.dust, 0.25), soilC, 0.08);
   for (let i = 0; i < smokeN; i++) {
     const u = (i + R()) / smokeN;
-    const a = R() * TAU, r = R() * 0.25 * D;
-    place(m, I.x + Math.cos(a) * r, by + (0.25 + 0.45 * u) * D, I.z + Math.sin(a) * r, bo + 0.06 + 0.12 * u);
-    const lift = (2.4 + 1.8 * u) * sq * (heavy ? 1.3 : 1) * (shaped ? 0.8 : 1);
-    // (wave 293) it billows outward as it climbs, not up a chimney
-    const out = (0.8 + 1.4 * R()) * sq;
-    move(m, Math.cos(a) * out, lift, Math.sin(a) * out, 1.1, (0.35 + 0.25 * u) * Math.sqrt(sq), 1.0, 0);
+    const a = R() * TAU, r = R() * 0.3 * D;
+    place(m, I.x + Math.cos(a) * r, by + (0.2 + 0.5 * u) * D, I.z + Math.sin(a) * r, bo + 0.04 + 0.1 * u);
+    const lift = (2.6 + 1.2 * u) * sq * (heavy ? 1.3 : 1) * (shaped ? 0.8 : 1);
+    // (wave 293) it billows outward as it climbs, not up a chimney; (fx 8) wider, so the lobes swell into one mass
+    const out = (1.2 + 1.6 * R()) * sq;
+    // (fx 8: the split) every puff climbs at nearly one rate and takes one share of the wind, so the cloud rises and
+    // leans as one lobed mass through +4 s instead of its upper puffs sailing off downwind as a second cloud
+    move(m, Math.cos(a) * out, lift, Math.sin(a) * out, 1.3, (0.42 + 0.14 * u) * Math.sqrt(sq), 0.85, 0);
     // (DVIDS 954922: still a thin grey cloud drifting high at +7 s) it thins out over ten seconds or so
     const life = (9 + 4 * R()) * (heavy ? 1.3 : 1) * (shaped ? 0.8 : 1);
-    // (wave 293: the real cloud has grown about eight-fold by +2 s) most of its swelling in its first two seconds
-    shape(m, life, 0.35 * D * dk, (1.15 + 0.5 * u + 0.3 * R()) * D * dk, 3.2, R);
-    look(m, smokeC0, smokeAged, 0.92, 0.0, 0.55);
+    // (wave 293 and fx 8: the real cloud has grown about eight-fold in area by +2 s) born at a third of the fireball's
+    // width and swelling fast: most of its growth in its first two seconds
+    shape(m, life, 0.32 * D * dk, (1.5 + 0.35 * u + 0.3 * R()) * D * dk, 3.8, R);
+    look(m, smokeC0, smokeAged, 0.9, 0.0, 0.55);
     book(m, 'billow', R, life);
-    heat(m, 0.32, 4.5);
+    heat(m, 0.3, 4.5);
     C.media(m);
   }
 
@@ -336,6 +346,10 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     const wx = ay * uz - az * uy, wy = az * ux - ax * uz, wz = ax * uy - ay * ux;
     // (b8: a chain of separate grey balls) bigger puffs, launched closer in speed, overlap from the ground to the top
     // (round 7c, b8a: still a string of beads) twice as many, larger: their dark hearts merge into one jet
+    // (fx 8, the critics after 7d/7e: "the ATGM plume a rigid narrow column of stacked brown lumps") the jet still drives
+    // the spike up a narrow line, but it is a turbulent plume: its puffs are born spread across the hole and staggered
+    // over the first tenth of a second (never one stack launched on one beat), swell fast so their union is one
+    // ragged body within a second, lean off with the wind as they stall, and the column's top spreads out
     const spikeN = fpv ? 14 : 20;
     const vMax = (fpv ? 22 : 30) * sq * L.heightK;
     for (let i = 0; i < spikeN; i++) {
@@ -344,27 +358,46 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
       const dxs = ax * ct + (ux * Math.cos(az2) + wx * Math.sin(az2)) * st;
       const dys = ay * ct + (uy * Math.cos(az2) + wy * Math.sin(az2)) * st;
       const dzs = az * ct + (uz * Math.cos(az2) + wz * Math.sin(az2)) * st;
-      const v = vMax * (0.45 + 0.55 * u);
-      place(m, I.x + (R() - 0.5) * 0.3, by + 0.25, I.z + (R() - 0.5) * 0.3, bo + R() * 0.03);
-      move(m, dxs * v, dys * v, dzs * v, 2.8, 0.25, 0.6, -2.5);
-      // (wave 293: "a man's width across that stops growing") as narrow at birth, then it keeps swelling all its life
+      const v = vMax * (0.42 + 0.58 * u) * (0.9 + 0.2 * R());
+      const off = (0.35 + 0.5 * u) * s;
+      place(m, I.x + (R() - 0.5) * off, by + 0.25 + R() * 0.4, I.z + (R() - 0.5) * off, bo + R() * 0.1);
+      move(m, dxs * v, dys * v, dzs * v, 2.8, 0.3, 0.9, -2.5);
+      // (wave 293: "a man's width across that stops growing") it keeps swelling all its life, most of it early
       const life = 5.0 + R() * 2.0;
-      const size1 = (3.0 + 1.6 * u + R() * 0.6) * s * dk;
-      shape(m, life, size1 * 0.3, size1, 1.4, R);
-      // dense enough that no sky shows through (b8: thin puffs read blue-grey)
-      look(m, mix3b(SOOT, L.ejecta, 0.3 + 0.3 * R()), mix3(SOOT, SMOKE_AGED, 0.45), 1.0, 0.0, 0.55);
+      const size1 = (2.8 + 2.0 * u + R() * 0.8) * s * dk;
+      shape(m, life, size1 * 0.32, size1, 2.2, R);
+      // dense enough that no sky shows through (b8: thin puffs read blue-grey); the burst's one grey-brown
+      look(m, mix3b(smokeC0, L.ejecta, 0.15 + 0.2 * R()), smokeAged, 1.0, 0.0, 0.55);
       book(m, 'burst', R, life, 1);
       heat(m, i < 2 ? 0.5 : 0, 6);
+      C.media(m);
+    }
+    // the top of the column spreads as it stalls: a few soft lobes born up the spike, rolling out sideways and leaning
+    // off downwind, so the plume ends in a ragged crown rather than its last lump
+    const crownN = fpv ? 3 : 4;
+    const crownH = (fpv ? 4.5 : 7.5) * sq * L.heightK;
+    for (let i = 0; i < crownN; i++) {
+      const a = (i / crownN) * TAU + (R() - 0.5) * 1.2;
+      place(m, I.x + ax * crownH * 0.5, by + crownH * (0.75 + 0.3 * R()), I.z + az * crownH * 0.5, bo + 0.25 + R() * 0.2);
+      const out = (1.6 + R() * 1.4) * sq;
+      move(m, Math.cos(a) * out, 0.6 + R() * 0.6, Math.sin(a) * out, 1.2, 0.35, 0.95, 0);
+      const life = 6.0 + R() * 2.0;
+      const size1 = (4.2 + R() * 1.6) * s * dk;
+      shape(m, life, size1 * 0.35, size1, 2.6, R);
+      look(m, smokeC0, smokeAged, 0.85, 0.2, 0.5);
+      book(m, 'billow', R, life);
+      heat(m, 0, 1);
       C.media(m);
     }
     // the burnt liner and the explosive's smoke at its foot: dark grey-black, low and dense
     for (let i = 0; i < 2; i++) {
       const a = R() * TAU;
       place(m, I.x + Math.cos(a) * 0.3, by + 0.5, I.z + Math.sin(a) * 0.3, bo + 0.02);
-      move(m, Math.cos(a) * 1.4, 1.6 + R(), Math.sin(a) * 1.4, 1.8, 0.35, 0.8, 0);
+      // (fx 8) it rises and leans with the rest of the burst's smoke, in its one palette
+      move(m, Math.cos(a) * 1.4, 1.6 + R(), Math.sin(a) * 1.4, 1.8, (0.42 + 0.14 * R()) * Math.sqrt(sq), 0.85, 0);
       const life = 5.0 + R() * 2.0;
       shape(m, life, 0.8 * s * dk, (3.0 + R() * 1.0) * s * dk, 2.0, R);
-      look(m, SOOT, mix3(SOOT, SMOKE_AGED, 0.45), 0.85, 0.0, 0.45);
+      look(m, SOOT, smokeAged, 0.85, 0.0, 0.45);
       book(m, 'billow', R, life);
       heat(m, 0.5, 4.0);
       C.media(m);
@@ -382,10 +415,12 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     // together, swelling fast, so their union is one column from the ground to its top; the spray round it: smaller
     // puffs thrown wider (to ~25°) that arc over and fall back
     const kEarth = Math.min(1.2, 0.5 + 0.5 * L.chunkK + 0.3 * (L.dustK - 1));
-    const coreN = Math.round((10 + 6 * s) * (heavy ? 1.4 : 1) * kEarth);
+    // (fx 8, the critics after 7d/7e: "no dense dark earth column with arcing clods") more of the core, tighter, the
+    // soil darkened by the explosive's soot, and it falls back into the burst's own grey-brown rather than drying to tan
+    const coreN = Math.round((13 + 7 * s) * (heavy ? 1.4 : 1) * kEarth);
     for (let i = 0; i < coreN; i++) {
       const u = (i + R()) / coreN;
-      const a = R() * TAU, tilt = 0.17 * Math.sqrt(R());
+      const a = R() * TAU, tilt = 0.14 * Math.sqrt(R());
       const v = vTop * (0.35 + 0.65 * u);
       const st = Math.sin(tilt), ct = Math.cos(tilt);
       place(m, I.x + (R() - 0.5) * 0.4 * s, by + 0.4, I.z + (R() - 0.5) * 0.4 * s, bo + R() * 0.02);
@@ -393,8 +428,9 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
       const life = 1.7 + R() * 0.7 + (heavy ? 0.4 : 0);
       const size1 = (1.9 + 1.2 * u + R() * 0.6) * Math.pow(s, 0.85) * dk * (heavy ? 1.2 : 1);
       shape(m, life, size1 * 0.45, size1, 3.2, R);
-      const c0 = I.surface === 'snow' && i % 2 === 0 ? UNDER_SNOW_SOIL : L.ejecta;
-      look(m, c0, mix3(c0, L.dust, 0.5), 1.0, 0.0, 0.6);
+      const soil = I.surface === 'snow' && i % 2 === 0 ? UNDER_SNOW_SOIL : L.ejecta;
+      const c0 = snowy ? soil : mix3b(soil, SOOT, 0.3);
+      look(m, c0, mix3(c0, smokeAged, 0.4), 1.0, 0.0, 0.6);
       book(m, 'burst', R, life, 1);
       heat(m, 0, 1);
       C.media(m);
@@ -409,25 +445,26 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
       const life = 1.3 + R() * 0.6;
       const size1 = (0.9 + R() * 0.6) * s * dk;
       shape(m, life, size1 * 0.4, size1, 2.6, R);
-      const c0 = I.surface === 'snow' && i % 2 === 0 ? UNDER_SNOW_SOIL : L.ejecta;
-      look(m, c0, mix3(c0, L.dust, 0.45), 1.0, 0.0, 0.6);
+      const soil = I.surface === 'snow' && i % 2 === 0 ? UNDER_SNOW_SOIL : L.ejecta;
+      const c0 = snowy ? soil : mix3b(soil, SOOT, 0.2);
+      look(m, c0, mix3(c0, smokeAged, 0.4), 1.0, 0.0, 0.6);
       book(m, 'burst', R, life, 1);
       heat(m, 0, 1);
       C.media(m);
     }
-    // the fine dust left standing where the earth passed: the column's foot it rises out of and falls back into
+    // the fine soil left standing where the earth passed, up the column's height (fx 8: never at its foot — the critics
+    // after 7d/7e still saw "tan haystack dust mounds" there): the column's body it rises out of and falls back into,
+    // in the burst's one grey-brown, drifting with the cloud
     const colTop = 0.3 * vTop;
     const pillarN = heavy ? 3 : 2;
     for (let i = 0; i < pillarN; i++) {
-      const h = (0.12 + 0.3 * (i + R() * 0.5) / pillarN) * colTop;
+      const h = (0.3 + 0.35 * (i + R() * 0.5) / pillarN) * colTop;
       place(m, I.x + (R() - 0.5) * 0.6 * s, by + h, I.z + (R() - 0.5) * 0.6 * s, bo + 0.15 + R() * 0.15);
-      move(m, (R() - 0.5) * 0.6, 0.6 + R() * 0.6, (R() - 0.5) * 0.6, 1.4, 0.12, 0.9, 0);
+      move(m, (R() - 0.5) * 0.6, 0.6 + R() * 0.6, (R() - 0.5) * 0.6, 1.4, 0.2, 0.85, 0);
       const life = (4.2 + R() * 1.5) * L.hang;
-      const size1 = (1.7 + 0.7 * R()) * s * dk * (heavy ? 1.3 : 1);
+      const size1 = (1.9 + 0.7 * R()) * s * dk * (heavy ? 1.3 : 1);
       shape(m, life, size1 * 0.5, size1, 2.2, R);
-      // (wave 293: "a tan haystack mound") the soil's own dark, thinner
-      look(m, mix3(L.ejecta, L.dust, 0.3), mix3b(mix3b(L.ejecta, L.dust, 0.5), SMOKE_AGED, 0.35),
-        Math.min(0.45, 0.28 * dustK + 0.1), 0.15, 0.45);
+      look(m, mix3(smokeC0, L.ejecta, 0.3), smokeAged, Math.min(0.5, 0.3 * dustK + 0.15), 0.15, 0.45);
       book(m, 'burst', R, life, 3);
       heat(m, 0, 1);
       C.media(m);
@@ -438,12 +475,13 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     for (let i = 0; i < colSmokeN; i++) {
       const h = (0.35 + 0.5 * (i + R() * 0.6) / colSmokeN) * colTop;
       place(m, I.x + (R() - 0.5) * 0.8 * s, by + h, I.z + (R() - 0.5) * 0.8 * s, bo + 0.3 + R() * 0.25);
-      move(m, (R() - 0.5) * 0.8, 0.4 + R() * 0.5, (R() - 0.5) * 0.8, 1.2, 0.2 + 0.15 * R(), 1.0, 0);
-      const life = (6 + R() * 2.5) * L.hang * (heavy ? 1.2 : 1);
-      const size1 = (2.2 + 0.8 * R()) * s * dk * (heavy ? 1.3 : 1);
-      shape(m, life, size1 * 0.45, size1, 1.8, R);
-      const soil = I.surface === 'snow' && i % 2 === 0 ? UNDER_SNOW_SOIL : L.ejecta;
-      look(m, mix3(soil, SMOKE_AGED, 0.35), smokeAged, 0.75, 0.12, 0.5);
+      // (fx 8: the split) it climbs and leans with the explosive's smoke, so the two are one cloud
+      move(m, (R() - 0.5) * 0.8, 0.5 + R() * 0.5, (R() - 0.5) * 0.8, 1.2, (0.42 + 0.14 * R()) * Math.sqrt(sq), 0.85, 0);
+      const life = (7 + R() * 2.5) * L.hang * (heavy ? 1.2 : 1);
+      const size1 = (2.6 + 0.9 * R()) * s * dk * (heavy ? 1.3 : 1);
+      shape(m, life, size1 * 0.4, size1, 2.6, R);
+      const soil = I.surface === 'snow' && i % 2 === 0 ? UNDER_SNOW_SOIL : smokeC0;
+      look(m, mix3(soil, smokeAged, 0.25), smokeAged, 0.8, 0.12, 0.5);
       book(m, 'billow', R, life);
       heat(m, 0, 1);
       C.media(m);
@@ -459,9 +497,14 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     const coneC = shaped ? 0.25 : heavy ? 0.6 : 0.55;
     for (let i = 0; i < n; i++) {
       const a = R() * TAU, tilt = coneC * Math.pow(R(), 0.7);
-      const v = vC * (0.25 + 0.75 * Math.pow(R(), 2.2));
-      const big = R() < 0.04;
-      const sc = (big ? 0.16 + R() * 0.14 : 0.04 + Math.pow(R(), 2.2) * 0.16) * sq * L.chunkScale * dk;
+      // (fx 8: "no ... arcing clods") one in eleven is a big lump thrown high on a long arc out of the column, clear of
+      // the cloud, where the eye follows it over and down
+      // (a shaped charge digs little: its few big lumps stay low)
+      const big = R() < (shaped ? 0.04 : 0.09);
+      const high = big && !shaped;
+      const v = vC * (high ? 0.75 + 0.45 * R() : 0.25 + 0.75 * Math.pow(R(), 2.2));
+      const sc = (high ? 0.18 + R() * 0.18 : big ? 0.16 + R() * 0.14 : 0.04 + Math.pow(R(), 2.2) * 0.16) * sq
+        * L.chunkScale * dk;
       const soil = I.surface === 'snow' && i % 3 === 0;
       chunk(C, shapeId, I.x + (R() - 0.5) * 0.5 * s, by + 0.3, I.z + (R() - 0.5) * 0.5 * s,
         Math.cos(a) * Math.sin(tilt) * v, Math.cos(tilt) * v + 1, Math.sin(a) * Math.sin(tilt) * v,
@@ -469,27 +512,25 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     }
   }
 
-  // 3. the dust the blast raised over its footprint: low and wide, out past the fireball, drifting downwind and thinning
-  // (wave 276: the dust that ages and drifts reads) — never a mound (round 7c: b8a's dense dome of tan puffs sat on the
-  // ground for eight seconds, a haystack; DVIDS 954922's dust is a thin grey-brown sheet under the climbing smoke)
-  const cloudN = Math.round(5 + 2 * s);
-  const top = (shaped ? 1.8 : 2.6) * s * L.heightK * (heavy ? 1.6 : 1);
-  // (7d: still tan mounds to ~4 s) half as dense again, born wider and thrown out faster, greyer, shorter-lived
-  // (wave 293: "a tan haystack mound with a crisp rim ... a thin dark soil-coloured sheet") the soil's own dark brown,
-  // in the soft-edged medium (the burst flipbook's rim is crisp)
+  // 3. the dust the blast raised over its footprint: a thin sheet lying along the ground, racing out well past the
+  // fireball, stalling and lingering for seconds while it drifts downwind and thins (wave 276: the dust that ages and
+  // drifts reads). (fx 8: after 7d/7e the critics still saw "tan haystack dust mounds"; DVIDS 954922's dust is a pale
+  // sheet hugging the ground, wider than the cloud by +2 s and still lying there at +4 s) the sheet's cards are short —
+  // a metre or three tall — and three to four times as wide, centred low so the ground's soft depth fade swallows their
+  // lower half: nothing stands up off the ground as a mound
+  const sheetN = Math.round(7 + 2 * s);
   const hazeC1 = mix3b(mix3b(L.ejecta, L.dust, 0.5), SMOKE_AGED, 0.35);
-  for (let i = 0; i < cloudN; i++) {
-    const a = R() * TAU, r = (0.5 + 1.4 * R()) * s;
-    const h = (0.1 + 0.3 * R()) * top;
-    place(m, I.x + Math.cos(a) * r, by + 0.3 + h * 0.2, I.z + Math.sin(a) * r, bo + 0.04 + R() * 0.1);
-    move(m, Math.cos(a) * 4.5 * sq, (0.4 + h * 0.25) * sq, Math.sin(a) * 4.5 * sq, 1.5, 0.04 + R() * 0.06, 1.0, 0);
-    const size1 = (3.2 + R() * 2.4) * s * Math.sqrt(dustK) * dk * (heavy ? 1.25 : 1);
-    const life = (3.5 + R() * 2) * Math.min(1.6, sq) * L.hang;
-    shape(m, life, size1 * 0.35, size1, 2.0, R);
-    look(m, mix3(L.ejecta, L.dust, 0.4), hazeC1, Math.min(0.42, 0.28 * dustK + 0.08), 0.05, 0.35);
+  for (let i = 0; i < sheetN; i++) {
+    const a = (i / sheetN) * TAU + (R() - 0.5) * (TAU / sheetN) * 1.4, r = (0.4 + 0.8 * R()) * s;
+    const size1 = (1.3 + R() * 0.6) * s * Math.sqrt(dustK) * dk * (heavy ? 1.25 : 1);
+    place(m, I.x + Math.cos(a) * r, by + 0.22 * size1, I.z + Math.sin(a) * r, bo + 0.03 + R() * 0.08);
+    const v = (5 + 3 * R()) * sq;
+    move(m, Math.cos(a) * v, 0.15 + R() * 0.1, Math.sin(a) * v, 1.3, 0.02 + R() * 0.03, 1.0, 0);
+    const life = (4.5 + R() * 2) * Math.min(1.4, sq) * L.hang;
+    shape(m, life, size1 * 0.4, size1, 2.0, R);
+    look(m, mix3(L.ejecta, L.dust, 0.45), hazeC1, Math.min(0.3, 0.18 * dustK + 0.08), 0.05, 0.4);
     book(m, 'billow', R, life);
-    card(m, 1.5 + R() * 0.35, R, 0.2);
-    m.spin = (R() - 0.5) * 0.1;
+    card(m, 3.4 + R() * 0.8, R, 0.05);
     heat(m, 0, 1);
     C.media(m);
   }
@@ -508,8 +549,9 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     const size1 = (1.6 + R() * 0.8) * s * Math.sqrt(L.dustK) * dk * (shaped ? 0.75 : 1);
     shape(m, life, size1 * 0.3, size1, 1.8, R);
     look(m, mix3(L.ejecta, L.dust, 0.5), mix3b(mix3b(L.ejecta, L.dust, 0.6), SMOKE_AGED, 0.3),
-      Math.min(0.38, 0.22 * L.dustK + 0.08) * (shaped ? 0.8 : 1), 0.0, 0.35);
-    book(m, 'burst', R, life * 1.2, 2);
+      Math.min(0.32, 0.19 * L.dustK + 0.07) * (shaped ? 0.8 : 1), 0.0, 0.35);
+    // (wave 293: "a crisp rim") the soft-edged medium
+    book(m, 'billow', R, life * 1.2, 2);
     card(m, 3.0 + R() * 0.8, R, 0.04);
     heat(m, 0, 1);
     C.media(m);
@@ -662,7 +704,10 @@ export function plateBurst(C: BlastContext, I: PlateBurstInput): void {
     C.media(m);
   }
   sparkSpray(C, I.x, I.y, I.z, nx, ny, nz, Math.round(14 + 8 * s), 20 * Math.sqrt(s), 1.2, 0.45, 0.026, bo);
-  C.lightPulse(I.x + nx, I.y + 1.5, I.z + nz, Math.min(1.4, 0.4 + 0.3 * s), 0);
+  // (fx 8, the killcam critics after 7d/7e: "a flat salmon wash over the tank at 0.6-1.8 s") the hit's light is the
+  // flash's, gone in a quarter second in the burst's warm hue — it took the kill light's 1.9 s orange decay at full peak,
+  // 1.5 m over the hull it struck
+  C.lightPulse(I.x + nx, I.y + 1.5, I.z + nz, Math.min(0.7, 0.3 + 0.2 * s), 0, 0.25, BURST_LIGHT_HEX);
   if (I.ground) dustSurge(C, I.x, C.groundY(I.x, I.z), I.z, Math.max(0.8, s * 0.8), I.ground, bo + 0.02);
 }
 
@@ -995,18 +1040,22 @@ export function killFireball(C: BlastContext, x: number, y: number, z: number, r
   // 1. the fire: lobes swelling fast out of the hull, hot at the heart, burnt out to soot by ~1.5 s
   const n = rack ? 7 : 5;
   for (let i = 0; i < n; i++) {
-    const a = (i / n) * TAU + (R() - 0.5) * 1.2, b = 0.35 + R() * 0.9, v = (4 + R() * 6) * S;
+    // (fx 8, the killcam critics after 7d/7e: "black smoke hanging in front of the camera instead of climbing away")
+    // the lobes are driven up more than out — a fireball climbs on its own heat — so nothing thrown sideways stalls
+    // round a close camera
+    const a = (i / n) * TAU + (R() - 0.5) * 1.2, b = 0.3 + R() * 0.7, v = (2.5 + R() * 3.5) * S;
     place(m, x + (R() - 0.5) * 1.8, y + (R() - 0.2) * 1.4, z + (R() - 0.5) * 1.8, bo - R() * 0.03);
-    move(m, Math.cos(a) * Math.sin(b) * v, (3.5 + R() * 4) * S, Math.sin(a) * Math.sin(b) * v, 1.8, 2.6 * S, 0.45, 0);
+    move(m, Math.cos(a) * Math.sin(b) * v, (4.5 + R() * 4) * S, Math.sin(a) * Math.sin(b) * v, 1.8, 3.2 * S, 0.6, 0);
     // lobes of different sizes, so their union is lumpy rather than one smooth ball
     const size1 = (5.5 + R() * 4.5) * S * dk;
-    const life = 3.4 + R() * 1.6;
+    const life = 2.8 + R() * 1.2;
     shape(m, life, size1 * 0.5, size1, 4, R);
-    look(m, SOOT, mix3(SOOT, SMOKE_AGED, 0.2), 0.97, 0.0, 0.6);
+    look(m, SOOT, mix3(SOOT, SMOKE_AGED, 0.2), 0.97, 0.0, 0.5);
     book(m, 'billow', R, life);
     // orange-yellow at the heart (round 4 and b5: never white — at heat ~2 the blackbody ramp saturates), and gone
-    // fast: a long dull glow read as brown smoke
-    heat(m, 1.15 + R() * 0.15, 1.0);
+    // fast: a long dull glow read as brown smoke; (fx 8: "a flat salmon wash over the tank at 0.6-1.8 s") an orange
+    // heart for half a second, burnt out to soot by ~1 s
+    heat(m, 1.15 + R() * 0.15, 2.4);
     C.media(m);
   }
   // 2. the soot: black smoke rolling out of the top of the fire over the first second, climbing and spreading
@@ -1014,8 +1063,10 @@ export function killFireball(C: BlastContext, x: number, y: number, z: number, r
   for (let i = 0; i < sn; i++) {
     const a = R() * TAU;
     place(m, x + (R() - 0.5) * 2.0, y + 1.5 + R() * 2.0 * S, z + (R() - 0.5) * 2.0, bo + 0.2 + i * (0.6 / sn) + R() * 0.1);
-    move(m, Math.cos(a) * 1.5 * S, (4 + R() * 3) * S, Math.sin(a) * 1.5 * S, 1.2, 3.0 + R() * 1.2, 0.7, 0);
-    const size1 = (8 + R() * 6) * S * dk;
+    // (fx 8) it climbs away hard and leans off with the wind: a column going up out of the frame, not a pall hanging
+    // round the camera
+    move(m, Math.cos(a) * 1.2 * S, (5 + R() * 3) * S, Math.sin(a) * 1.2 * S, 1.2, 4.2 + R() * 1.4, 1.0, 0);
+    const size1 = (6.5 + R() * 4.5) * S * dk;
     const life = 6 + R() * 3;
     shape(m, life, size1 * 0.35, size1, 2.2, R);
     look(m, SOOT, mix3(SOOT, SMOKE_AGED, 0.3), 0.9, 0.15, 0.55);

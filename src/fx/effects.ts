@@ -640,6 +640,8 @@ const EXPLOSION_LIGHT_S = 1.9;
 const EXPLOSION_LIGHT_PEAK = 520;
 /** The explosion light's kill orange (effects r5: 0xff9a52 -> 0xff7f38); a burst's pulse may carry its own hue. */
 const EXPLOSION_LIGHT_HEX = 0xff7f38;
+/** (fx 8) a media kill's light pool: the fireball's warm yellow-orange, not the long orange of the kill light */
+const KILL_POOL_LIGHT_HEX = 0xffa458;
 // 40 (was 30) + a 35 s smolder tail (r7: "battlefield shows no lasting
 // evidence a tank just died" — WoT wrecks pump a column for 20 s+ and
 // smolder for the rest of the match).
@@ -3619,8 +3621,12 @@ function* createFxSteps(
       if (rack) emitDestructionHatchSlab(pos, gy, cy, birthOffset);
       // (wave 266: a flat orange disc flooded the ground round the hull, five times the sun under the light) the fireball
       // is what glows; the light it throws on the ground is a warm pool that dies with it
-      flashLight(lightStates[1], _sv.set(pos.x, cy + 4.2, pos.z),
-        EXPLOSION_LIGHT_PEAK * (burn ? 0.2 : rack ? 0.42 : 0.3), Math.max(0, -birthOffset));
+      // (fx 8, the killcam critics after 7d/7e: "a flat salmon wash over the tank at 0.6-1.8 s") the pool dies with the
+      // fireball's own heat — under a second, a warm yellow-orange — instead of the kill light's 1.9 s orange decay; the
+      // hull fire's own flicker carries the light after it
+      flashLight(lightStates[1], _sv.set(pos.x, cy + 3.2, pos.z),
+        EXPLOSION_LIGHT_PEAK * (burn ? 0.2 : rack ? 0.42 : 0.3), Math.max(0, -birthOffset), burn ? 0.9 : 0.7, 2.2,
+        KILL_POOL_LIGHT_HEX);
       // the column takes hold out of the fireball's soot over the first seconds (round 2 backdated it, so a column stood
       // over the hull in the kill's first frame; wave 266: six bodies on a fixed beat rose as a chain of beads)
       const colScale = (burn ? 1.45 : 1.3) * dk;
