@@ -61,6 +61,11 @@ interface RockClimate {
   /** cover, species A, species B, A's share */
   lichen: readonly [number, number, number, number];
   varnish?: number;
+  /** The Redrock lane (round 10, the gauntlet's wave 270: "smooth egg-shaped / jelly-bean / pillow / dough-ball boulders"):
+   * 0..1 how freshly broken a map's stones are — the arrises crisper (the weather's rounding down to a third), the
+   * weathered lumps down to two fifths, up to two more fracture faces and every stone notched at its beds. Absent = 0
+   * (every other map, draw for draw). */
+  angular?: number;
 }
 
 /** The battlefields' rock; a map absent here is dry temperate granite (a little moss, grey lichen, no dust). */
@@ -91,7 +96,7 @@ const ROCK_CLIMATE: Readonly<Record<string, RockClimate>> = Object.freeze({
   steppe: { moss: 0.15, dust: 0.4, lith: 'granite', lichen: [0.15, ORANGE, GREY_GREEN, 0.5], varnish: 0.06 },
   airfield: { moss: 0.2, dust: 0.4, lith: 'granite', lichen: [0.12, GREY_GREEN, ORANGE, 0.6], varnish: 0.05 },
   desert: { moss: 0, dust: 0.8, lith: 'sandstone', lichen: [0.03, BLACK, ORANGE, 0.6], varnish: 0.33 },
-  badlands: { moss: 0, dust: 0.8, lith: 'sandstone', lichen: [0.03, BLACK, ORANGE, 0.6], varnish: 0.3 },
+  badlands: { moss: 0, dust: 0.8, lith: 'sandstone', lichen: [0.03, BLACK, ORANGE, 0.6], varnish: 0.3, angular: 1 },
   copper_mesa: { moss: 0, dust: 0.75, lith: 'sandstone', lichen: [0.04, ORANGE, BLACK, 0.5], varnish: 0.3 },
   titan_gorge: { moss: 0, dust: 0.7, lith: 'sandstone', lichen: [0.04, BLACK, ORANGE, 0.6], varnish: 0.27 },
   oasis: { moss: 0, dust: 0.7, lith: 'sandstone', lichen: [0.04, ORANGE, BLACK, 0.5], varnish: 0.24 },
@@ -174,6 +179,11 @@ function rockBedsFor(climate: RockClimate): [number, number, number, number] {
 /** The battlefield's boulder lithology (the detail tile is drawn for it). */
 export function rockLithologyFor(mapId: string): BoulderLithology {
   return (ROCK_CLIMATE[mapId] ?? DEFAULT_CLIMATE).lith;
+}
+
+/** How freshly broken a map's stones are (RockClimate.angular; 0 on every map that sets none). */
+export function rockAngularityFor(mapId: string): number {
+  return Math.max(0, Math.min(1, (ROCK_CLIMATE[mapId] ?? DEFAULT_CLIMATE).angular ?? 0));
 }
 
 const _soil = new THREE.Color();
@@ -381,8 +391,12 @@ interface BoulderCuts {
  * crown's height) and a joint leaning back 15 to 30 degrees, taken out — a ledge stepping down the crown on that side.
  * Every draw from `rng`.
  */
-function boulderCuts(kind: BoulderKindName, lithology: BoulderLithology, variant: number, rng: () => number): BoulderCuts {
-  const law = LITHOLOGY_CUTS[lithology];
+function boulderCuts(kind: BoulderKindName, lithology: BoulderLithology, variant: number, rng: () => number,
+  angular = 0): BoulderCuts {
+  const base = LITHOLOGY_CUTS[lithology];
+  // (an angular map's stones: up to two more fracture faces, and every one notched at its beds)
+  const law = angular > 0 ? { ...base, fractures: [base.fractures[0] + Math.round(2 * angular), base.fractures[1] + Math.round(2 * angular)] as const,
+    notch: Math.max(base.notch, angular) } : base;
   const [, sy] = KIND_SHAPES[kind].size;
   const range = (lo: number, hi: number): number => lo + rng() * (hi - lo);
   const jitter = (a: number): number => (rng() * 2 - 1) * a;
@@ -614,7 +628,7 @@ export const BOULDER_SEAT_Y = 0;
 
 export function buildBoulderForm(
   variant: number, noise: SimplexNoise, rng: () => number, hull: readonly number[], subdiv = 6, topY = 0,
-  kindIndex = variant % 3, lithology: BoulderLithology = 'granite',
+  kindIndex = variant % 3, lithology: BoulderLithology = 'granite', angular = 0,
 ): BoulderForm {
   const kind = BOULDER_KINDS[kindIndex] ?? BOULDER_KINDS[0];
   const shape = KIND_SHAPES[kind];
@@ -622,14 +636,16 @@ export function buildBoulderForm(
   // the grid: eight cells a face on the desktop, five on a phone, whose coarser rows round the arrises a third wider
   // (a cell must not straddle an arris's whole turn)
   const n = subdiv >= 6 ? 8 : 5;
-  const round = Math.max(n < 8 ? 0.11 : 0.08, shape.round * LITHOLOGY_FORMS[lithology].soft * (n < 8 ? 1.35 : 1));
+  // (an angular map's arrises a third as round, down to the grid's own floor: RockClimate.angular)
+  const round = Math.max(n < 8 ? 0.11 : 0.08, shape.round * LITHOLOGY_FORMS[lithology].soft * (n < 8 ? 1.35 : 1))
+    * (1 - 0.66 * angular);
   const planes = jointPlanes(kind, rng);
-  const cuts = boulderCuts(kind, lithology, variant, rng);
+  const cuts = boulderCuts(kind, lithology, variant, rng, angular);
   // every plane in the order the weights run: the joints, the fractures, each notch's bed and joint
   const all: readonly JointPlane[] = [...planes, ...cuts.fractures, ...cuts.notches.flat()];
   const tones = all.map(() => rng() * 2 - 1);
   const salt = variant * 11.3 + rng() * 40;
-  const [lumpA, lumpB, lumpC] = shape.lumps;
+  const lumpK = 1 - 0.6 * angular, [lumpA, lumpB, lumpC] = shape.lumps.map((v) => v * lumpK);
   const out = [0, 0, 0];
   const scratch = new Float64Array(all.length);
   let lumpAt = 0;

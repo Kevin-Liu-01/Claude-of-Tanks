@@ -220,6 +220,13 @@ interface VegetationConfig {
    * candidate. Absent = no balance (every other map).
    */
   coverHalvesAbout?: { x: number; z: number };
+  /**
+   * The Redrock lane (round 10, 2026-10-08; the gauntlet's wave 270 on Redrock's low sand view: "tall, flat cross-card
+   * blades far out of scale", the nearest object a sprite): the map's tufts' height, a factor on every tuft's (a dry
+   * tuft stands half as tall again as a green one, and the hyper-arid floor's are all dry). A test on a drawn size, no
+   * draw: unset, every map's tufts are as before.
+   */
+  tuftHeight?: number;
   clusterScrub?: number;
   /**
    * Trees lane (2026-10-06, the coordinator's ruling on the gauntlet's wave 178: "the meadows are peppered with isolated
@@ -4197,6 +4204,7 @@ function* vegetationBuildSteps(
     let dry = terrainDryness(x, z, roll, carpet);
     if (dry < 0) return null;
     if (dry > 0) sy *= 1.5;
+    if (veg.tuftHeight !== undefined) sy *= veg.tuftHeight;
     // ground lane: little sward grows in a stand's shade — the forest floor is litter (the terrain draws it). The
     // carpet only: it always streams after the build (the clearance seal), while the midfield chunks are built partly
     // before the trees stand (the first-view ring, every chunk in a capture build) and partly after (the deferred

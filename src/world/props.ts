@@ -53,7 +53,7 @@ import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructu
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import {
   applyRockShaderHook, boulderKindFor, boulderSectionRadius, boulderSections, buildBoulderForm, createRockDepthMaterial, makeRockDetail, paintBoulder,
-  rockDressingFor, rockLithologyFor,
+  rockAngularityFor, rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts'; // round 75 item 6
 import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
@@ -532,7 +532,9 @@ interface PropsSettings {
   industrialCladding?: 'brick' | 'steel';
   /** Round 75: the yard dressing budget (pieces) around the industrial structures; default 4.5 a structure, at most 140. */
   yardDressing?: number;
-  /** Round 75 item 6: derived at build from the map's splat dirt tone — the boulders' soil skirt (never authored). */
+  /** Round 75 item 6: derived at build from the map's splat dirt tone — the boulders' soil skirt. The Redrock lane (round
+   * 9): a map whose boulders lie on sand, not soil, authors its sand's tone here (Redrock's red dirt drew a stamped red
+   * blotch under every boulder on the orange sand). */
   rockSoilTone?: ToneFunction | null;
   inhabit?: InhabitSettings;
   wallStyle?: string;
@@ -3434,7 +3436,8 @@ function* propsBuildSteps(
     ...((cfg && cfg.props) || {}),
   };
   // round 75 item 6: the boulders' soil skirt follows the map's dirt tone (a splat law, never authored on props)
-  P.rockSoilTone = (cfg as { splat?: { dirtTone?: ToneFunction } } | null)?.splat?.dirtTone ?? null;
+  P.rockSoilTone = (cfg as { props?: { rockSoilTone?: ToneFunction } } | null)?.props?.rockSoilTone
+    ?? (cfg as { splat?: { dirtTone?: ToneFunction } } | null)?.splat?.dirtTone ?? null;
   const mapId = cfg ? cfg.id : 'verdant';
   const rng = mulberry32(seed);
   const detailUvRng = () => 0.5;
@@ -6328,7 +6331,8 @@ ${snowCap ? `
     let legacyTop = 0;
     for (let i = 0; i < p.count; i++) legacyTop = Math.max(legacyTop, p.getY(i));
     const lithology = rockLithologyFor(mapId);
-    const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(lithology, vi), lithology);
+    const angular = rockAngularityFor(mapId);
+    const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(lithology, vi), lithology, angular);
     paintBoulder(form, P.rockTone, lithology);
     rockGeos.push(form.geometry);
     // (the desktop form on every tier, so every host derives the same colliders; its own stream, so no draw moves)
@@ -6338,7 +6342,7 @@ ${snowCap ? `
     rockForms.push(rockFormOf(collisionForm));
     if (collisionForm !== form.geometry) collisionForm.dispose();
     if (!mobileProps) {
-      const far = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 4, legacyTop, boulderKindFor(lithology, vi), lithology);
+      const far = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 4, legacyTop, boulderKindFor(lithology, vi), lithology, angular);
       paintBoulder(far, P.rockTone, lithology);
       rockGeosFar.push(far.geometry);
     }

@@ -290,7 +290,8 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
   assert.ok(jv.jebelNearM >= HORIZON_PANORAMA.shellM && jv.jebelNearM <= 3500 && jv.jebelM >= 600,
     'jebel: the massifs from about 3 km, past the shell, tall enough to stand over the ring');
   const redrock = readFileSync(new URL('./maps/badlands.ts', import.meta.url), 'utf8');
-  assert.ok(/panorama: \{ regional: 'jebel', air: 0\.\d+, fillLaw: 1 \}/.test(redrock),
+  // (the Redrock lane, round 9: the far massifs' own knobs may follow — fewer, domed, more deeply varnished)
+  assert.ok(/panorama: \{ regional: 'jebel', air: 0\.\d+, fillLaw: 1[ ,}]/.test(redrock),
     'Redrock\'s far air thinner than the law\'s σ (desert air is clear), the band under the massifs the plain\'s own sand');
   // v3b: Wadi Rum's tones from the plain's own sand (the pair of 8248ca70b: "pale grey-white castles", the domes brighter
   // than the sky above them) — the varnished walls about a third of the sand's albedo, redder-brown; the pale Disi only

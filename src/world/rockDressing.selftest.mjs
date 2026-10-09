@@ -524,7 +524,8 @@ assert.throws(() => applyRockShaderHook({ uniforms: {}, vertexShader: '#include 
 // --- the producer
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const hullAt = source.indexOf('rockHulls.push(hull); // the collision proxy');
-assert.ok(hullAt > 0 && hullAt < source.indexOf('const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(lithology, vi), lithology);'), 'the legacy hull is taken before the form is fitted inside it, as the map\'s rock breaks');
+// (the Redrock lane, round 10: the form takes the map's angularity too, RockClimate.angular)
+assert.ok(hullAt > 0 && hullAt < source.indexOf('const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(lithology, vi), lithology, angular);'), 'the legacy hull is taken before the form is fitted inside it, as the map\'s rock breaks');
 assert.match(source, /paintBoulder\(form, P\.rockTone, lithology\);\n\s*rockGeos\.push\(form\.geometry\);/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockGround', new THREE\.InstancedBufferAttribute\(ground, 1\)\)/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockSlope', new THREE\.InstancedBufferAttribute\(slope, 2\)\)/, 'every boulder the slope of its ground');
@@ -624,7 +625,7 @@ assert.match(source, /const heightM = \(box\.max\.y - Math\.max\(box\.min\.y, -0
 // the desktop form near the camera and the phone form past ROCK_FAR_M, both into the near cascades; the far cascades
 // the phone form of every loose rock from a shadow-only pool; the crushable rocks pinned to the first near slots;
 // the pools whole from the build, repartitioned with hysteresis when the camera has moved 8 m
-assert.match(source, /if \(!mobileProps\) \{\n\s*const far = buildBoulderForm\(vi, noi, mulberry32\(seed \+ 60 \+ vi\), hull, 4, legacyTop, boulderKindFor\(lithology, vi\), lithology\);/,
+assert.match(source, /if \(!mobileProps\) \{\n\s*const far = buildBoulderForm\(vi, noi, mulberry32\(seed \+ 60 \+ vi\), hull, 4, legacyTop, boulderKindFor\(lithology, vi\), lithology, angular\);/,
   'the far form is the same rock at the phone\'s tier');
 assert.match(source, /const ROCK_FAR_M = 60;/);
 assert.match(source, /const ROCK_NEAR_CASCADES = 0b0011, ROCK_FAR_CASCADES = 0b1100;/);
