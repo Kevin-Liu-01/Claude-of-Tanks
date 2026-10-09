@@ -2291,6 +2291,13 @@ const VEHICLE_FORM_LENS = 0.28;
 // The deep-shade floor's paint reference: the last mip of a painted map is the tile's mean paint (a 2048 tile has
 // eleven levels; textureLod clamps to the last one).
 const VEHICLE_PAINT_MEAN_LOD = 16;
+// Fleet lane 2026-10-08 (the coordinator's ruling on the media lane's s13 sunset renders): the floor law above brought every
+// scheme's MEAN paint to the same luminance, so a dark scheme was lifted toward mid-grey in deep shade and its light patches
+// to near-white (sig_k2b on the K2 X: shaded front p50 57 display luma with the floors, 27 without, the ground 26). A paint
+// darker than this mid-olive mean takes a received-light floor instead: its texels land in proportion to their own albedo
+// against this reference, so a dark scheme stays darker in shade while staying readable; paints at or above it keep the law
+// exactly (gameplay_feel's calibrated dark olive, about 0.07, still lands near 0.12 inside its 0.115-0.21 band).
+const VEHICLE_FLOOR_PAINT_REF = 0.12;
 const VEHICLE_GROUND_DARK = 0.66;
 const VEHICLE_GROUND_H0 = 0.12;
 const VEHICLE_GROUND_H1 = 1.75;
@@ -2498,7 +2505,8 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 		#ifdef USE_MAP
 		vehRefL = max( dot( textureLod( map, vMapUv, ${VEHICLE_PAINT_MEAN_LOD.toFixed(1)} ).rgb * diffuse, vec3( 0.2126, 0.7152, 0.0722 ) ), 0.001 );
 		#endif
-		float vehTargetL = vehFloorL * vehLuma / vehRefL;
+		// a paint darker than VEHICLE_FLOOR_PAINT_REF lands by its own albedo (a received-light floor): dark schemes stay dark
+		float vehTargetL = vehFloorL * vehLuma / max( vehRefL, ${VEHICLE_FLOOR_PAINT_REF.toFixed(3)} );
 		if ( vehOutL < vehTargetL ) {
 			reflectedLight.indirectDiffuse += material.diffuseColor * ( ( vehTargetL - vehOutL ) / vehLuma );
 		}
