@@ -314,14 +314,19 @@ for (const [id, source] of Object.entries(sources)) {
       assert.equal(hits.length,0,`${id}: stand-off space between cage and side armor is actual exterior air`);
     }
     if(id==='leo2a4m_x') {
+      // Main's field corrections (6763d7cc0, the owner's): the duplicate 30 mm cannon is gone and the original 7.62 mm
+      // station is the live remote weapon, its support stock (cradle, cheeks, outboard receiver, sensor box) captured with
+      // it (auxiliaryStation.ts captureAuxiliaryStock). That stock is now the station's own yawing mesh rather than part of
+      // the turret's merged detail, and the mount's bounds include it; the same geometry is measured where it now lives.
+      const stationDetail=get(`${id}RoofMachineGun_yaw_turretDetail`);
       for(const [x,y] of [[.90,3.03976],[1.00,3.01360],[1.10,2.97733]])
-        near(ray(get('turretDetail'),[x,4,-.90],[0,-1,0])?.y??NaN,y,.004,
+        near(ray(stationDetail,[x,4,-.90],[0,-1,0])?.y??NaN,y,.004,
           `${id}: source separate RWS outboard sloping body at x=${x}`);
-      near(ray(get('turretDetail'),[.50,4,-.85],[0,-1,0])?.y??NaN,2.77643,.003,
+      near(ray(stationDetail,[.50,4,-.85],[0,-1,0])?.y??NaN,2.77643,.003,
         `${id}: measured full-width low RWS cradle is present independently of the MG`);
       near(ray(get('turretDark'),[-.954,3,0],[0,0,-1])?.z??NaN,-2.04698,.009,
         `${id}: source straight tapered antenna at fixed height`);
-      const weaponBounds=new THREE.Box3().setFromObject(roofGun);
+      const weaponBounds=new THREE.Box3().setFromObject(roofGun.getObjectByName('auxiliaryWeaponPitch'));
       near(weaponBounds.min.z,-1.214,.022,`${id}: source RWS receiver rear station`);
       near(weaponBounds.max.z,-.087,.022,`${id}: source RWS full barrel station`);
       near(weaponBounds.max.y,3.03048,.02,`${id}: source RWS receiver elevation`);

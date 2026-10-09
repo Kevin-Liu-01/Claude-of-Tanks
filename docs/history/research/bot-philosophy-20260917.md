@@ -50,3 +50,35 @@ the suspect rule.
 - Sidescrape proper (wall-hugging with the hull at 60°+) needs a wall query; the angle reaction is the open-field
   approximation.
 - Reaction telemetry in the headless battle probe (`.qa-dev/mode-loop.mjs`) to tune durations against real fights.
+
+## Addenda (2026-10-07, bots lane)
+
+### The last run
+
+A bot never idles for minutes. The empty-rack retirement (round 62: ram when the ram law lets the rammer survive,
+otherwise keep 240 m from every enemy) leaves the finish to the team. On Tidegate Polders pacing tail seed 41000 (the
+scenery lane's stone-free tree) the last bravo bot, an AFT-10 at 8 % of its hull with its eight HJ-10s spent, retired
+248 m from the idle host and faced it, the host in sight and its gun silent, from 330 s to the 900 s cap. This decides
+the open 2026-10-03 question of what ends that standoff: with no teammate left that can fire (wrecks and empty racks
+do not count) and a passive target (still hull, silent gun), the run the ram law refuses is taken anyway, at full
+speed (`lastRunDue` in `src/game/ai.ts`; receipt `src/game/ai.lastRun.selftest.mjs`; docs/BOT-TACTICS.md). An armed
+teammate, or a target that moves or fires, keeps the retirement.
+
+### Known gap: rounds into terrain on a clear sight lane (parked)
+
+Measured on 12 base-tree pacing matches (sample 0 of Polders, Verdant, Urban, Steppe, Fjord, Monsoon, Foundry, Titan
+Gorge, Airfield, Orchard, Saltwind and Cliffbridge on integ/push3-stage 43e91f222): of 461 bot rounds, 315 (68.3 %)
+reached a hull, 79 (17.1 %) landed within 10 m of the target's range, 9 (2.0 %) left no event, and **58 (12.6 %)
+struck terrain (44) or a prop (14) more than 10 m short of the target while the bot's sight ray and its gun lane
+were both clear**. For **38 of them (8.2 % of all rounds) the straight line from the real muzzle to the lay point
+was already blocked when the round left** (10 of the 38 within 40 m of the muzzle, the median block at 98 m). All but
+one were barrel rounds. The other was the Polders AFT-10's first HJ-10: it struck a dyke crest 36 m out, past a lane
+that cleared the crest by 0.04 m from the gun pivot while the launcher tip sat 0.19 m lower.
+
+Why the gates pass: `src/sim/botGunLane.ts` traces the nominal lane from the barrel muzzle to the visible
+**turret top** (0.85 of the target's height), deliberately not to the lay point ("intentional misses retain their
+ordinary cost"). The lay point (the probed zone plus the tier's sampled error) can sit lower. The probe's zone
+visibility (`probeCandidateVisible`) casts from the gun pivot above the hull centre, not from the muzzle or a launcher
+tip. A crest between them that the turret-top lane clears takes the round laid lower. Closing the gap would change
+the fire decision in most matches, and with it the pacing set and the moving-battle hit rate (authoritativeBots,
+ceiling 0.76), so it is parked for its own lane rather than fixed with the last run.

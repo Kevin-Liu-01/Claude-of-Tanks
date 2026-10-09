@@ -14,6 +14,8 @@ import {
   buildTerrainMeshesAsync,
   sampleSplatNoise,
 } from './terrain.ts';
+// The visual horizon installs the ring the terrain meshes are built with (horizonRingHook.ts).
+import './maps/horizon.ts';
 // Round 73 (2026-09-25): the tall-grass tier and the pressure field its blades bend to
 import { createTallGrass, type TallGrass } from './tallGrass.ts';
 import type { GroundDisturbance } from './groundPressure.ts';
@@ -28,6 +30,7 @@ import type { HorizonPanoramaHandle } from './horizonPanorama.ts';
 import {
   createProps,
   createPropsAsync,
+  plannedSurfacePaints,
   preloadPropModels,
 } from './props.ts';
 import { createGroundLitter, groundLitterProfile, type GroundLitterConfig } from './groundLitter.ts';
@@ -38,6 +41,8 @@ import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
 import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
+import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
+import { startSurfacePaints } from './surfacePaintPrefetch.ts';
 import {
   createObstacleGrid,
   rayCollisionRecord,
@@ -206,6 +211,20 @@ export interface WorldRuntime {
   /** Round 77c: bake the vegetation's impostor atlas under cover (the activation / solo loading warm). */
   warmImpostors(): boolean;
   setWindTime(timeSeconds: number): void;
+  /**
+   * The props' own clock (hinge topples, loose bodies, pole LOD) advanced by `deltaSeconds`, as `update` does it. A frame
+   * stepped without an update — the Studio's export steps, and its playback, whose update runs at dt 0 — calls this every
+   * fixed step, or a prop felled in a clip never animates its fall (fix/studio-world-step, 2026-10-08).
+   */
+  updateProps(deltaSeconds: number, cameraPosition: THREE.Vector3): void;
+  /**
+   * The drawn ground follows what it is bound to now (fix/studio-world-step, 2026-10-08): the terrain's
+   * `syncGroundOverlay` hook (a deformed ground's chunks, when a module installs one) and its `followGroundOverlay` hook
+   * (the ground cover over them). `update` reaches the same through its LOD walk; a frame rendered without an update (the
+   * Studio's export steps and captures) calls this, or a crater dug mid-clip never reaches the picture. O(1) when nothing
+   * is new; a no-op on a world with no such hooks.
+   */
+  syncGround(): void;
   /** Water pass 6/7: the vehicles in the water this frame (footprint, heading, speed -> wake). No-op on maps without water. */
   setWaterDisturbances(sources: readonly WaterDisturbance[]): void;
   resetWater(): void;
@@ -278,6 +297,11 @@ export async function createMapAsync(
   const propModelsReady = preloadPropModels();
   const terrainConfig: TerrainMapConfig = config;
   const terrainSources = prepareSourcedTerrain(config.id, terrainConfig.splat || {}, { worker: true });
+  // (the time-to-battle lane, 2026-10-07) the map's planned wreck bakes start in their own worker now, beside the
+  // terrain and the vegetation, instead of one by one inside the props build (wreckBakePrefetch.ts)
+  const wreckPrefetch = seed === 1337 ? startPlannedWreckBakes(mapId, terrainVariant) : null;
+  // (and the props build's fixed-input prints — the straw's, the dry-stone walls' — in the surface paint worker)
+  const surfacePrefetch = typeof Worker === 'undefined' ? null : startSurfacePaints(plannedSurfacePaints(config));
   let completed = false;
   try {
     const step = async (label: string, fraction: number): Promise<void> => {
@@ -314,7 +338,7 @@ export async function createMapAsync(
     await propModelsReady;
     const propModelsAwaitEnd = performance.now();
     const props = await createPropsAsync(heightField, engineCtx, 2002, config,
-      sub('Placing structures', 0.82, 0.96), fineSlices, vegetation);
+      sub('Placing structures', 0.82, 0.96), fineSlices, vegetation, wreckPrefetch, surfacePrefetch);
     if (props._buildDetail) {
       const elapsedMs = propModelsAwaitEnd - propModelsAwaitStart;
       // Time at the consumer's await, not the overlapped archive transfer's
@@ -332,6 +356,9 @@ export async function createMapAsync(
     completed = true;
     return world;
   } finally {
+    // the planned wreck bakes nobody took (a cancelled build, a request the plan did not hold) and their worker go
+    wreckPrefetch?.dispose();
+    surfacePrefetch?.dispose();
     if (!completed) {
       try { terrainSources.cancel?.(); } catch { /* preserve the original build failure */ }
     }
@@ -439,7 +466,11 @@ function assembleWorld(
     // the regional-buildings lane (2026-10-03): nor through a kit house's yard (props.ts placeRegionalYards)
     ...((props.group.userData.regionalYardHoles as GroundCoverHole[] | undefined) ?? []),
   ];
-  const groundCoverClearance = () => withGroundCoverHoles(createGroundCoverClearance(queryObstacles), groundCoverHoles);
+  // the hitbox lane (2026-10-07): the stones' colliders are their own now (props.ts refitRockColliders); the ground cover
+  // keeps the footprints it was sealed against through their cosmetic twins, so no tuft, stone or shrub moves with them
+  const rockGroundCover = (props.group.userData.rockGroundCover as CollisionRecord[] | undefined) ?? [];
+  const queryGroundCover = rockGroundCover.length ? createObstacleGrid([...obstacles, ...rockGroundCover]) : queryObstacles;
+  const groundCoverClearance = () => withGroundCoverHoles(createGroundCoverClearance(queryGroundCover), groundCoverHoles);
   // Keep the synchronous seal visible in load diagnostics: it runs after the
   // sliced vegetation builder, so its work is not in that builder's timings.
   const groundCoverSealStarted = performance.now();
@@ -741,6 +772,11 @@ function assembleWorld(
     warmImpostors: () => { bakePanorama(); return vegetation.warmImpostors(); },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
     setWindTime(t: number) { vegetation.setWindTime(t); terrain.userData.setWaterTime?.(t); tallGrass.setWindTime(t); },
+    updateProps(dt: number, cameraPos: THREE.Vector3) { if (props.updateProps) props.updateProps(dt, cameraPos); },
+    syncGround() {
+      (terrain.userData.syncGroundOverlay as (() => void) | undefined)?.();
+      (terrain.userData.followGroundOverlay as (() => void) | undefined)?.();
+    },
     setWaterDisturbances(sources) { terrain.userData.setWaterDisturbances?.(sources); },
     resetWater() { terrain.userData.resetWater?.(); },
     advanceWater(dt, x, z) { terrain.userData.updateWater?.(dt, x, z); },
