@@ -1622,7 +1622,13 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
   // 2026-10-07 (tank-accessories round 4): the NSVT's box takes the gun's left (the NSV feeds from either side). On its
   // right it hung through the bustle's jerrycans (109 triangles inside the box region in the feed-side collision census,
   // 107 before round 4); on the left the region is clear (0).
-  roofMG(P, -0.30, 0.91, -0.60, 3801, 'nsvt', -0.05, 0.76, 'left');
+  // 2026-10-09 (launch RC; missionAttachmentMechanical.selftest, "actual stand including braces is clear"): at its true
+  // calibre the NSVT parked facing forward lay under the braced drone stand, the BMPT's only seat that clears the twin
+  // 30 mm envelope (gen-mission-attachment-seats; a grid search over the roof found no other). The pintle keeps its gun
+  // and moves 15 cm right and 2 cm forward on the rear roof, off the jerrycans and the left whip it stood in. The gun is
+  // parked in travel lock, facing rear-right over the bustle (yaw 2.30), with its box on the right. Edge crossings of the
+  // station into other turret stock fall from 327 to 12, where the barrel rests on the stowage rack's rail.
+  roofMG(P, -0.15, 0.91, -0.58, 3801, 'nsvt', 2.30, 0.76, 'right');
 
   // Rear equipment: backing plate buried into the base-skirt slope, deep
   // bustle rack seated on the slab top, cans left / spare links right.
