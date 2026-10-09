@@ -5032,6 +5032,8 @@ function* createFxSteps(
 
   const auxiliary = auxiliaryEntities && auxiliaryTime ? createAuxiliaryPresentation(group, {
     entities: auxiliaryEntities, time: auxiliaryTime, ground: groundY, visible: auxiliaryVisible,
+    // atmospherics lane: the smoke screen on the media layer (desktop tiers; null on the phone tier)
+    blast,
     report: (id,p,caliber) => auxiliaryReport?.(id,p,caliber),
     flash: (p,d,caliber) => { spawnMuzzleFlash(p,d,caliber,0); },
     smoke: (p,scale,density=1,life=2.4,wind=false) => {

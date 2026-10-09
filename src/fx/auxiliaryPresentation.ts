@@ -2,7 +2,12 @@ import { restoreSmokeScreen } from '../sim/smokeReceipt.ts';
 import * as THREE from 'three';
 import { auxiliaryCapabilities, SMOKE_DURATION_S, type AuxiliaryState, type SmokeScreen } from '../sim/auxiliarySystems.ts';
 import {smokeVolume, smokeBankCount, type SmokeVolume} from '../sim/smokeScreen.ts';
-import { smokeCanisterPosition, SMOKE_GRAVITY_MPS2 } from '../sim/smokeBallistics.ts';
+import { smokeCanisterPosition, SMOKE_GRAVITY_MPS2, type SmokeCanister } from '../sim/smokeBallistics.ts';
+import type { BlastContext } from './blastRecipes.ts';
+import {
+  puffRandom, slotSeed, smokeBankBody, smokeBankLobe, smokeBankWisp, smokeGrenadeBurst, smokeGrenadeWisp,
+  type SmokeLobeInput,
+} from './atmosRecipes.ts';
 
 export interface AuxiliaryVisualEntity {
   id: string;
@@ -21,6 +26,42 @@ interface Ports {
   flash(position: THREE.Vector3, direction: THREE.Vector3, caliber: number): void;
   smoke(position: THREE.Vector3, scale: number, density?:number, life?:number, wind?:boolean): void;
   ground(x:number,z:number): number;
+  /** The media layer (desktop tiers): when given, screens are drawn as simulated smoke (atmosRecipes.ts) and the pooled
+   *  `smoke` port is not used for them. The phone tier passes none and keeps the pooled sprites. */
+  blast?: BlastContext | null;
+}
+
+// ---- the media screen's schedule (atmospherics lane, 2026-10-08) -----------------------------------------------
+// Each bank's puffs are emitted at fixed times of its own life (seconds after its grenade lands: the simulation's
+// growth clock), each from its own seeded stream: the same screen draws the same cloud at any frame rate, and a screen
+// first seen late (a joiner, a frame hitch, a killcam cut) is filled in with every puff still alive, backdated.
+/** in flight: a wisp behind each bank's lead grenade this often (s of flight) */
+const WISP_EVERY_S = 0.1;
+/** at most this many banks trail wisps (a 24-tube salvo's arcs overlap: a few trails read as all of them) */
+const WISP_BANKS = 6;
+/** bloom: lobes per bank when it stands alone (crowded banks share theirs: crowdShare), born this far apart */
+const LOBES = 6;
+const LOBE_EVERY_S = 0.09;
+/** the lobes' order: low lobes round the foot first, the crowns among them (any prefix mixes both) */
+const LOBE_CROWN: readonly boolean[] = [false, false, true, false, false, true];
+/** body puffs keep the wall dense while the lobes age; wisps tear off its top in the scene's wind */
+const BODY_START_S = 2.4, BODY_EVERY_S = 1.6, BODIES = 6;
+const TOP_START_S = 3.0, TOP_EVERY_S = 2.4, TOPS = 4;
+/** the screen's own end on its age (the simulation's density reaches 0 at 18 s): nothing outlives it */
+const SCREEN_END_S = SMOKE_DURATION_S - 0.2;
+/** lobes hold until this age and erode from LOBE_ERODE_S; the sim's fade runs 13.5 s to 18 s */
+const LOBE_END_S = 15.2, LOBE_ERODE_S = 12.0;
+/** banks closer than this share their lobes and body puffs (one wall, not a stack of cards) */
+const CROWD_M = 12;
+
+interface MediaScreenState {
+  /** the screen age (s) the schedule has been emitted up to */
+  emittedTo: number;
+  /** per bank: its share of the lobes and bodies (1 alone, ~0.25 in a long row of banks) */
+  share: Float32Array;
+  /** per bank: whether it trails wisps in flight */
+  wisps: Uint8Array;
+  seen: boolean;
 }
 interface Actor {
   root: THREE.Object3D;
@@ -91,7 +132,8 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     animateRoofWeapon(entity,actor,state,visible,dt);
     actor.shots=state.shots;
     if(visible&&state.smoke&&state.smoke.born!==actor.smokeBorn){
-      if(ports.time()-state.smoke.born<.6){
+      // the media screen draws its own launch puffs (its schedule); the phone tier keeps these
+      if(!blast&&ports.time()-state.smoke.born<.6){
         for(const shot of state.smoke.canisters??[]){
           position.set(shot[0],shot[1],shot[2]);
           ports.smoke(position,.12,.3,.65);
@@ -125,6 +167,126 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     return count;
   }
 
+  // ---- the media screen (desktop tiers): see the schedule above and atmosRecipes.ts ---------------------------------
+  const blast=ports.blast??null;
+  const mediaScreens=new Map<SmokeScreen,MediaScreenState>();
+  const landing={x:0,y:0,z:0};
+  const lobe:SmokeLobeInput={x0:0,y0:0,z0:0,tx:0,ty:0,tz:0,size:1,life:1,fadeOut:.5,crown:false,bo:0};
+
+  /** A bank's lead grenade and where it lands (`landing`), or null for a receipt without flights (the legacy arc). */
+  function bankLanding(screen:SmokeScreen,bank:number):SmokeCanister|null{
+    const shot=screen.canisters?.[screen.banks?.[bank] ?? -1] ?? null;
+    if(shot){smokeCanisterPosition(shot,shot[6],landing);return shot;}
+    smokeVolume(screen,screen.born+bankLandAge(screen,bank),bank-2,volume,ports.ground);
+    landing.x=volume.x;landing.z=volume.z;landing.y=ports.ground(volume.x,volume.z);
+    return null;
+  }
+  /** The screen age a bank's growth starts at: its grenade's contact, or the legacy arc's stagger. */
+  function bankLandAge(screen:SmokeScreen,bank:number):number{
+    const shot=screen.canisters?.[screen.banks?.[bank] ?? -1];
+    return shot ? shot[6] : .85+Math.abs(bank-2)*.06;
+  }
+  function mediaState(screen:SmokeScreen):MediaScreenState{
+    const n=smokeBankCount(screen);
+    const xs=new Float32Array(n),zs=new Float32Array(n);
+    for(let i=0;i<n;i++){bankLanding(screen,i);xs[i]=landing.x;zs[i]=landing.z;}
+    const share=new Float32Array(n),wisps=new Uint8Array(n);
+    const stride=Math.max(1,Math.ceil(n/WISP_BANKS));
+    for(let i=0;i<n;i++){
+      let crowd=1;
+      for(let j=0;j<n;j++)if(j!==i)crowd+=Math.max(0,1-Math.hypot(xs[i]!-xs[j]!,zs[i]!-zs[j]!)/CROWD_M);
+      share[i]=1/crowd;wisps[i]=i%stride===0&&screen.canisters?1:0;
+    }
+    return {emittedTo:-1,share,wisps,seen:true};
+  }
+  /** Emit one bank's schedule over screen ages (from, to]: births backdated to their own times (to = now). */
+  function mediaBank(C:BlastContext,screen:SmokeScreen,bank:number,st:MediaScreenState,from:number,to:number){
+    const born=screen.born,tLand=bankLandAge(screen,bank);
+    const shot=bankLanding(screen,bank);
+    const lx=landing.x,ly=landing.y,lz=landing.z;
+    const share=st.share[bank]!;
+    // 0-1. the launch puff at the tube and the wisps behind the lead grenade in flight
+    if(shot&&st.wisps[bank]){
+      for(let k=0;k*WISP_EVERY_S<tLand;k++){
+        const t=k===0?.02:k*WISP_EVERY_S;
+        if(!(t>from&&t<=to)||t+1.7<to)continue;
+        smokeCanisterPosition(shot,t,landing);
+        smokeGrenadeWisp(C,puffRandom(slotSeed(born,lx,lz,bank,k)),landing.x,landing.y,landing.z,t-to);
+      }
+    }
+    // 2. the burst where it lands
+    if(tLand>from&&tLand<=to&&tLand+3.9>=to){
+      smokeGrenadeBurst(C,puffRandom(slotSeed(born,lx,lz,bank,50)),lx,ports.ground(lx,lz),lz,share,tLand-to);
+    }
+    // the bank's settled centre (its full growth, 2.2 s after landing, drifted as the simulation drifts it)
+    smokeVolume(screen,born+tLand+2.2,bank-2,volume,ports.ground);
+    const cx=volume.x,cz=volume.z;
+    const phase=puffRandom(slotSeed(born,lx,lz,bank,99))()*Math.PI*2;
+    // 3. the bloom: lobes out of the burst to their places round the bank's foot, crowns over them
+    const lobes=Math.max(2,Math.round(LOBES*share));
+    for(let j=0;j<lobes;j++){
+      const t=tLand+.04+j*LOBE_EVERY_S;
+      if(!(t>from&&t<=to)||LOBE_END_S<=to)continue;
+      const R=puffRandom(slotSeed(born,lx,lz,bank,100+j));
+      const crown=LOBE_CROWN[j%LOBE_CROWN.length]!;
+      const a=phase+j*2.39996+(R()-.5)*.5;
+      const rho=crown?R()*2.5:5.2+R()*1.8;
+      lobe.x0=lx;lobe.y0=ly+.6;lobe.z0=lz;
+      lobe.tx=cx+Math.cos(a)*rho;lobe.tz=cz+Math.sin(a)*rho;
+      lobe.ty=ports.ground(lobe.tx,lobe.tz)+(crown?3.0+R()*.6:1.8+R()*.9);
+      lobe.size=crown?8.6+R()*1.4:9.6+R()*2.0;
+      lobe.life=LOBE_END_S-t;
+      lobe.fadeOut=Math.min(.9,Math.max(.3,(LOBE_ERODE_S-t)/lobe.life));
+      lobe.crown=crown;lobe.bo=t-to;
+      smokeBankLobe(C,R,lobe);
+    }
+    // 4. the body: puffs swelling in inside the (drifting) bank, keeping it dense while the lobes age
+    const bodies=Math.max(1,Math.round(BODIES*share)),bodyEvery=BODY_EVERY_S*BODIES/bodies;
+    for(let j=0;j<bodies;j++){
+      const t=tLand+BODY_START_S+j*bodyEvery;
+      if(!(t>from&&t<=to)||t>=SCREEN_END_S)continue;
+      const life=Math.min(7.2,SCREEN_END_S-t);
+      if(t+life<to)continue;
+      const R=puffRandom(slotSeed(born,lx,lz,bank,200+j));
+      smokeVolume(screen,born+t,bank-2,volume,ports.ground);
+      const a=R()*Math.PI*2,rho=R()*.55*volume.radius;
+      const x=volume.x+Math.cos(a)*rho,z=volume.z+Math.sin(a)*rho;
+      smokeBankBody(C,R,x,ports.ground(x,z)+1.5+R()*2.0,z,8+R()*2.5,life,Math.min(.6,Math.max(.3,(13-t)/life)),t-to);
+    }
+    // 5. wisps torn off its top into the scene's wind
+    const tops=Math.max(1,Math.round(TOPS*share)),topEvery=TOP_EVERY_S*TOPS/tops;
+    for(let j=0;j<tops;j++){
+      const t=tLand+TOP_START_S+j*topEvery;
+      if(!(t>from&&t<=to)||t+6.5<to||t>=SCREEN_END_S-4)continue;
+      const R=puffRandom(slotSeed(born,lx,lz,bank,300+j));
+      smokeVolume(screen,born+t,bank-2,volume,ports.ground);
+      const a=R()*Math.PI*2,rho=R()*.4*volume.radius;
+      const x=volume.x+Math.cos(a)*rho,z=volume.z+Math.sin(a)*rho;
+      smokeBankWisp(C,R,x,ports.ground(x,z)+4.6+R()*1.0,z,t-to);
+    }
+  }
+  function mediaScreen(screen:SmokeScreen,now:number){
+    let st=mediaScreens.get(screen);
+    if(!st){st=mediaState(screen);mediaScreens.set(screen,st);}
+    st.seen=true;
+    const age=Math.min(now-screen.born,SCREEN_END_S);
+    if(!(age>st.emittedTo))return;
+    const from=st.emittedTo;st.emittedTo=age;
+    for(let bank=0;bank<smokeBankCount(screen);bank++)mediaBank(blast!,screen,bank,st,from,age);
+  }
+  /** Screens no longer published are forgotten (the match list keeps 18 s; a rematch clears it). */
+  function pruneMediaScreens(){
+    for(const [screen,st] of mediaScreens){if(!st.seen)mediaScreens.delete(screen);else st.seen=false;}
+  }
+
+  /** One screen this frame: its grenades in flight, then its smoke (the media's schedule, else the pooled puffs). */
+  function screenFrame(screen:SmokeScreen,now:number,trail:boolean,emitPuff:boolean,count:number):number{
+    count=smokeFrame(screen,now,trail&&!blast,count);
+    if(blast)mediaScreen(screen,now);
+    else if(emitPuff)puff(screen,now);
+    return count;
+  }
+
   function updateCasings(dt:number){
       let count=0;
       for(const item of pool){
@@ -153,17 +315,18 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       if(emitPuff)lastPuff=now;if(trail)lastTrail=now;
       let count=0;
       if(networkScreens)for(const screen of networkScreens){
-        count=smokeFrame(screen,now,trail,count);if(emitPuff)puff(screen,now);
+        count=screenFrame(screen,now,trail,emitPuff,count);
       }else for(const entity of ports.entities()){
         const screen=entity.combat?.auxiliary?.smoke;if(!screen)continue;
-        count=smokeFrame(screen,now,trail,count);if(emitPuff)puff(screen,now);
+        count=screenFrame(screen,now,trail,emitPuff,count);
       }
+      if(blast)pruneMediaScreens();
       grenades.count=count;if(count)grenades.instanceMatrix.needsUpdate=true;
       updateCasings(dt);
     },
     reset(){
       for(const a of actors.values()){if(a.gun)a.gun.quaternion.copy(a.rest);if(a.weapon){a.weapon.rotation.x=0;a.weapon.position.copy(a.restWeapon);}}
-      actors.clear();networkScreens=null;lastTime=-1;lastPuff=-1;lastTrail=-1;grenades.count=0;for(const item of pool)item.age=9;casings.count=0;
+      actors.clear();networkScreens=null;mediaScreens.clear();lastTime=-1;lastPuff=-1;lastTrail=-1;grenades.count=0;for(const item of pool)item.age=9;casings.count=0;
     },
   };
 }
