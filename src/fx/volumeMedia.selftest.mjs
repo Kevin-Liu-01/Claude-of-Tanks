@@ -323,6 +323,20 @@ function captureContext(seed) {
     assert.ok(era.chunk.length === 6 && era.chunk.some((k) => k.shape === 'brick'), 'and its cassette\'s fragments');
     assert.deepEqual(hit('pen'), hit('pen'), 'seeded: the same hit twice');
   }
+  // (round 8, DVIDS 930318) a burst in water: a column of many puffs filling it from the water to its top, falling back,
+  // and a spiky crown; no stack of big balls
+  {
+    const c = captureContext(12);
+    groundBurst(c.ctx, { x: 0, y: 0, z: 0, munition: 'he', chargeKg: 3.5, surface: 'water' });
+    const col = c.log.media.filter((m) => m.grav <= -9 && Math.hypot(m.vx, m.vz) <= Math.tan(0.13) * m.vy + 1e-6);
+    assert.ok(col.length >= 20 && col.every((m) => m.size1 <= 3.8), `a water column of ${col.length} overlapping puffs, none a big ball`);
+    const kd = (m) => Math.max(m.drag, 1e-3);
+    const top = (m) => { let y = -1e9; for (let t = 0; t <= m.life; t += 0.02) y = Math.max(y, m.y + (m.vy) * (1 - Math.exp(-kd(m) * t)) / kd(m) - 4.9 * t * t); return y; };
+    const tops = col.map(top);
+    assert.ok(Math.min(...tops) < 0.5 * Math.max(...tops) && Math.max(...tops) > 9, `it fills from the water to ${Math.max(...tops).toFixed(1)} m`);
+    const crown = c.log.media.filter((m) => m.grav <= -9 && Math.hypot(m.vx, m.vz) > Math.tan(0.07) * m.vy && m.size1 < 1.8);
+    assert.ok(crown.length >= 6, `a spiky crown of ${crown.length} jets`);
+  }
   const mg = captureContext(9);
   kineticStrike(mg.ctx, { x: 0, y: 0, z: 0, dx: 1, dy: 0, dz: 0, caliberMm: 12.7, munition: 'small_arms', surface: 'soil' });
   assert.ok(mg.log.media.length <= 3 && Math.max(...mg.log.media.map((m) => m.size1)) < 1, 'a bullet kicks a fist of dust');

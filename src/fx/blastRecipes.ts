@@ -784,15 +784,33 @@ export function waterBurst(C: BlastContext, I: GroundBurstInput): void {
   const dk = C.distBoost(I.x, wy, I.z);
   lightPuff(C, 'flash', I.x, wy + 0.5 * s, I.z, 0, 0.5, 0, 0.06, 1.2 * s * dk, 3.2 * s * dk, FLASH_WHITE, FLASH_ORANGE, 0.8, 0, bo);
   C.lightPulse(I.x, wy + 2 * s, I.z, 0.4 + 0.2 * s, 0);
-  // the column: dense white spray thrown straight up; it tops out and collapses
-  const colN = Math.round(4 + 2 * s);
+  // the column (round 8, DVIDS 930318: white jets driven up together in under a second into one tall narrow column that
+  // falls back as a curtain over seconds; ours was four to six big round balls): many smaller puffs launched together
+  // at continuous speeds up a tight cone, so their union fills the column from the water to its top, then falls back
+  const vTop = 26 * sq;
+  const colN = Math.round(14 + 6 * s);
   for (let i = 0; i < colN; i++) {
-    const a = R() * TAU, tilt = Math.pow(R(), 2) * 0.18, v = (16 + R() * 10) * sq;
-    place(m, I.x + (R() - 0.5) * 0.6 * s, wy + 0.3, I.z + (R() - 0.5) * 0.6 * s, bo + R() * 0.04);
-    move(m, Math.cos(a) * Math.sin(tilt) * v, Math.cos(tilt) * v, Math.sin(a) * Math.sin(tilt) * v, 1.3, 0, 0.3, -9.8);
-    shape(m, 1.7 + R() * 0.7, 1.0 * s * dk, (3.2 + R() * 1.2) * s * dk, 2.2, R);
-    look(m, L.ejecta, L.dust, 0.92, 0.0, 0.55);
-    book(m, 'burst', R, 2.4, 2);
+    const u = (i + R()) / colN;
+    const a = R() * TAU, tilt = 0.12 * Math.sqrt(R()), v = vTop * (0.35 + 0.65 * u);
+    place(m, I.x + (R() - 0.5) * 0.5 * s, wy + 0.3, I.z + (R() - 0.5) * 0.5 * s, bo + R() * 0.03);
+    move(m, Math.cos(a) * Math.sin(tilt) * v, Math.cos(tilt) * v, Math.sin(a) * Math.sin(tilt) * v, 1.2, 0, 0.3, -9.8);
+    const life = 2.2 + R() * 1.0;
+    shape(m, life, 0.5 * s * dk, (1.3 + 0.9 * u + 0.3 * R()) * s * dk, 2.6, R);
+    look(m, L.ejecta, L.dust, 0.92, 0.0, 0.5);
+    book(m, 'burst', R, life, 1);
+    heat(m, 0, 1);
+    C.media(m);
+  }
+  // its spiky crown: thin fast jets thrown a little wider
+  const spikeN = Math.round(6 + 3 * s);
+  for (let i = 0; i < spikeN; i++) {
+    const a = R() * TAU, tilt = 0.08 + 0.17 * R(), v = vTop * (0.85 + 0.25 * R());
+    place(m, I.x + (R() - 0.5) * 0.4 * s, wy + 0.3, I.z + (R() - 0.5) * 0.4 * s, bo + R() * 0.03);
+    move(m, Math.cos(a) * Math.sin(tilt) * v, Math.cos(tilt) * v, Math.sin(a) * Math.sin(tilt) * v, 1.0, 0, 0.3, -9.8);
+    const life = 1.8 + R() * 0.7;
+    shape(m, life, 0.3 * s * dk, (0.7 + 0.3 * R()) * s * dk, 2.4, R);
+    look(m, L.ejecta, L.dust, 0.85, 0.0, 0.5);
+    book(m, 'burst', R, life, 1);
     heat(m, 0, 1);
     C.media(m);
   }
