@@ -146,6 +146,101 @@ function clearBursts(scene, world) {
   }
   return moved;
 }
+/**
+ * Action beats (composition wave c4, 2026-10-08: most of the critics' frames were drive-bys, "a tank driving with no shot,
+ * target or hit"; over waves c2-c3 a burst in the frame lifted a frame's staging from 4.56 to 6.25). At each third of the
+ * loop (BEAT_MS), unless a burst is already live in the frame (from its start to 1.2 s on), an incoming round lands where
+ * the lens shows it: a live foe fires, and the shell bursts 0.45 s before the beat ahead of the hero's gun on screen (its
+ * lead room first, the other side after), 12-28 m beyond the hull and 3.5-13 m to its side: on dry open ground, clear of
+ * the hull's box on screen, off the lens's line (so the stills' burst rule, the hull's reach and the lens's line, holds).
+ * Its debris follows; the film's sound places it as any burst. Returns the number of beats added.
+ */
+export const BEAT_MS = [1400, 3300, 5100];
+const BURST_TYPES = /^(explosion|barrage|tank_kill)$/;
+/** The lens at `t` as a projection to the frame's -1..1 (null behind the lens), or null with no rail there. */
+function lensAt(shots, t) {
+  const cam = {};
+  if (!sampleCameraRail(shots, t, cam)) return null;
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const f = [cam.lookX - cam.x, cam.lookY - cam.y, cam.lookZ - cam.z], fl = Math.hypot(...f) || 1, fw = f.map((v) => v / fl);
+  const rl = Math.hypot(fw[2], fw[0]) || 1, right = [-fw[2] / rl, 0, fw[0] / rl];
+  const up = [right[1] * fw[2] - right[2] * fw[1], right[2] * fw[0] - right[0] * fw[2], right[0] * fw[1] - right[1] * fw[0]];
+  const ty = Math.tan((cam.fov ?? 40) * Math.PI / 360), tx = ty * 16 / 9;
+  return { cam, right, screen: (q) => { const d = [q[0] - cam.x, q[1] - cam.y, q[2] - cam.z], depth = dot(d, fw); return depth > 0.5 ? { x: dot(d, right) / depth / tx, y: dot(d, up) / depth / ty } : null; } };
+}
+/** Where an effect stands at `t`: its placed point, or its actor's on the timeline. */
+function effectAt(scene, e, t) {
+  if (Array.isArray(e.at)) return [e.at[0], e.at[1]];
+  const keys = e.actor && scene.storyboard?.actorTracks?.find((k) => k.actor === e.actor)?.keys, q = {};
+  if (keys?.length && sampleActorTrack(keys, t, q)) return [q.x, q.z];
+  return scene.actors.find((x) => x.name === e.actor)?.pos ?? null;
+}
+/** The beats a take's frame carries: at each of BEAT_MS, whether a burst (from its start to 1.2 s on) is in the frame. */
+export function beatCoverage(scene, world) {
+  const shots = absoluteShots(scene, world);
+  return BEAT_MS.map((T) => {
+    const lens = lensAt(shots, T);
+    return !!lens && (scene.effects ?? []).some((e) => {
+      if (!BURST_TYPES.test(e.type) || e.tMs > T || e.tMs < T - 1200) return false;
+      const p = effectAt(scene, e, T), q = p && lens.screen([p[0], world.heightAt(p[0], p[1]) + 2, p[1]]);
+      return !!q && Math.abs(q.x) <= 0.9 && Math.abs(q.y) <= 0.9;
+    });
+  });
+}
+function stageBeats(scene, world) {
+  const shots = absoluteShots(scene, world), heroKeys = scene.storyboard?.actorTracks?.find((t) => t.actor === 'hero')?.keys;
+  const heroActor = scene.actors.find((a) => a.name === 'hero');
+  if (!shots.length || !heroKeys?.length || !heroActor) return 0;
+  const [hl, hw, reach = hl + 2.4] = hullOf(heroActor.id);
+  const deadBy = (name, t) => scene.effects.some((e) => e.actor === name && e.tMs <= t && /^(tank_kill|burning)$/.test(e.type));
+  let added = 0, nextId = 1 + Math.max(0, ...scene.effects.map((e) => Number(/^fx(\d+)$/.exec(e.id ?? '')?.[1] ?? 0)));
+  const covered = beatCoverage(scene, world);
+  for (const [i, T] of BEAT_MS.entries()) {
+    // a burst already live in the frame carries the beat
+    if (covered[i]) continue;
+    const lens = lensAt(shots, T), pose = {};
+    if (!lens || !sampleActorTrack(heroKeys, T, pose)) continue;
+    const { cam, right, screen } = lens;
+    // the hull's box on screen and the side its gun points to
+    const yaw = (pose.facingDeg ?? 0) * Math.PI / 180, fx = Math.sin(yaw), fz = Math.cos(yaw), gy = world.heightAt(pose.x, pose.z);
+    let x0 = Infinity, x1 = -Infinity;
+    for (const [a, b] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) for (const h of [0, 2.6]) {
+      const q = screen([pose.x + fx * hl * a + fz * hw * b, gy + h, pose.z + fz * hl * a - fx * hw * b]);
+      if (q) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); }
+    }
+    if (!(x1 > x0)) continue;
+    const gunYaw = yaw + (pose.turretDeg ?? 0) * Math.PI / 180;
+    const muzzle = screen([pose.x + Math.sin(gunYaw) * reach, gy + 2, pose.z + Math.cos(gunYaw) * reach]);
+    const mid = (x0 + x1) / 2, gunSide = muzzle ? Math.sign(muzzle.x - mid) || 1 : 1;
+    const ux0 = pose.x - cam.x, uz0 = pose.z - cam.z, ul = Math.hypot(ux0, uz0) || 1, ux = ux0 / ul, uz = uz0 / ul;
+    const nx = -uz, nz = ux, near = [];
+    let spot = null;
+    for (const side of [gunSide, -gunSide]) {
+      // a street's facades leave only its own line: nearer the hull's track and further down it, last
+      for (const [d, lat] of [[17, 10], [17, 7], [17, 13], [12, 10], [12, 7], [12, 13], [22, 10], [22, 7], [22, 13], [17, 5], [22, 5], [28, 5], [28, 3.5], [22, 3.5]]) {
+        // screen x grows along `right`: pick the lateral sign that lands on this side of the frame
+        const s = Math.sign(nx * right[0] + nz * right[2]) * side;
+        const px = pose.x + ux * d + nx * lat * s, pz = pose.z + uz * d + nz * lat * s;
+        if (world.wetAt(px, pz) > 0.3) continue;
+        world.query(px - 3, pz - 3, px + 3, pz + 3, near);
+        if (near.some((r) => r.max[1] - r.min[1] > 1.2 && r.kind !== 'bridge')) continue;
+        const q = screen([px, world.heightAt(px, pz) + 2.5, pz]);
+        if (!q || Math.abs(q.x) > 0.8 || q.y < -0.7 || q.y > 0.75 || (q.x > x0 - 0.08 && q.x < x1 + 0.08)) continue;
+        spot = [+px.toFixed(2), +pz.toFixed(2)];
+        break;
+      }
+      if (spot) break;
+    }
+    if (!spot) continue;
+    const tb = T - 450, foe = scene.actors.find((a) => a.name.startsWith('foe') && !deadBy(a.name, tb));
+    if (foe) scene.effects.push({ ...fire(foe.name, tb - 110), id: `fx${nextId++}` });
+    scene.effects.push({ ...blast(spot, tb, 'large', { cause: 'shot' }), id: `fx${nextId++}` });
+    scene.effects.push({ ...debris(spot, tb + 30, { count: 34, speedMps: 15, hot: 0.4, scale: 1.1 }), id: `fx${nextId++}` });
+    added++;
+  }
+  if (added) scene.effects.sort((a, b) => a.tMs - b.tMs);
+  return added;
+}
 const knockout = (shooter, target, tMs) => [fire(shooter, tMs), pen(target, tMs + 90), kill(target, tMs + 210), debris(target, tMs + 230, { count: 44, speedMps: 20, hot: 0.7, scale: 1.2 })];
 // lenses: the Open Graph high three-quarter (over the hero's right shoulder, the hull big in the lower frame, the fight
 // ahead behind it) and the Steinburg high rear quarter (over the engine deck, down the street); k = -1 mirrors sides.
@@ -572,6 +667,7 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
   // two rounds left in its effects spun the Studio's page at 100 % CPU in two engine-review runs)
   const staged = new Set(scene.actors.map((a) => a.name));
   scene.effects = scene.effects.filter((e) => !e.actor || staged.has(e.actor));
+  const beats = burstWorld ? stageBeats(scene, burstWorld) : 0;
   if (set.allowWater) for (const a of scene.actors) a.allowWater = true;
   const az = LIGHT_READY ? sunFor(scene, film.sun ?? set.sun, time) : null;
   if (az != null) scene.light = { ...(scene.light ?? {}), sunAzimuthDeg: az };
@@ -588,7 +684,7 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
   scene.meta = { n, id: `s${String(n).padStart(2, '0')}-${id}`, kind, title, set: set.id, map: set.map, time, hero, heroName: CAST_NAMES[hero]?.[0] ?? hero,
     loopMs: LOOP_MS, xfadeMs: XFADE_MS, still: scene.still ?? still, ...(scene.stillsExtra ? { stillsExtra: scene.stillsExtra } : {}),
     paint: { unit: base.camo, enemy: base.enemies ? base.enemies.camo ?? base.camo : null },
-    turrets: { style, plan: choreo.notes }, ...(cameraFix ? { cameraFix } : {}) };
+    turrets: { style, plan: choreo.notes }, ...(cameraFix ? { cameraFix } : {}), ...(beats ? { beats } : {}) };
   return scene;
 }
 

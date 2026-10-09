@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { MAP_IDS } from '../../src/world/maps/mapIds.ts';
 import { CAST } from './cast.mjs';
 import { isBuiltInCamoId } from '../../src/vehicles/camoPolicy.ts';
-import { DUR, KINDS, LOOP_MS, PAINT, SHOTS, XFADE_MS, siteScene } from './site50.mjs';
+import { BEAT_MS, DUR, KINDS, LOOP_MS, PAINT, SHOTS, XFADE_MS, beatCoverage, siteScene } from './site50.mjs';
 import { blockedFraction, heroInFrameFraction } from './camera-clearance.mjs';
 import { propProblems, routeProblems, waterBlocks } from './route-check.mjs';
 import { worldModel } from './world-model.mjs';
@@ -178,4 +178,20 @@ for (const shot of SHOTS) {
 assert.ok(flankSwings >= 10, `the hero's gun swings out across the frame in at least ten shots (${flankSwings})`);
 assert.ok(wideWingmen >= 15, `wingmen watch their own sectors in at least fifteen places (${wideWingmen})`);
 assert.ok(lensAngles >= 4, `the hero's barrel angles at the lens in at least four close holds (${lensAngles})`);
+// the action beats (composition wave c4: drive-bys with no shot, target or hit; 23 of the 150 beat moments carried a
+// burst in the frame before the staging pass): a burst in the frame at nearly every third of the loop, none without one
+{
+  let covered = 0, total = 0;
+  const models = new Map();
+  for (const shot of SHOTS) {
+    const scene = siteScene(shot);
+    if (!models.has(scene.map)) { const f = featuresOf(scene.map); models.set(scene.map, f ? worldModel(f) : null); }
+    const world = models.get(scene.map);
+    if (!world || !scene.storyboard?.actorTracks?.length) continue;
+    const cov = beatCoverage(scene, world), n = cov.filter(Boolean).length;
+    covered += n; total += BEAT_MS.length;
+    assert.ok(n >= 1, `${scene.meta.id}: a burst in the frame at one beat at least (${cov})`);
+  }
+  if (total) assert.ok(covered / total >= 0.85, `a burst in the frame at 85 % of the beats (${covered}/${total})`);
+}
 console.log(`site50.selftest: ${SHOTS.length} shots (${KINDS.map(k => `${byKind[k]} ${k}`).join(', ')}) on ${maps.size} battlefields at ${[...times].join(', ')}`);
