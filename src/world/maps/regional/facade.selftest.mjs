@@ -316,8 +316,8 @@ console.log('facade surfaces: the nipa atap deterministic, seamless, sixteen lea
   assert.ok(skirted >= 8, `the kits' plinthed houses lay their strips on the ground (${skirted})`);
   for (const must of ['kolkhoz/cottage', 'franconian/rowhouse']) assert.ok(kinds.has(must), `${must} lays its strip on the ground`);
   // the runs follow the ground in pieces no longer than 1.5 m along the wall (a corner's mitre and a piece's diagonal
-  // are longer: the strip is 0.45 m across)
-  assert.ok(longest <= Math.hypot(1.5, 0.45) + 0.45 + 1e-3, `the strip's pieces stay short (${longest.toFixed(3)} m)`);
+  // are longer: the strip is 0.45 m across, round ten's apron 0.8 m on a style with the ground craft)
+  assert.ok(longest <= Math.hypot(1.5, 0.8) + 0.8 + 1e-3, `the strip's pieces stay short (${longest.toFixed(3)} m)`);
   // the admission: gridded (past 64 holes) and scanned answer alike, on and around every hole, at a blade's radii
   const scan = (x, z, radius) => allHoles.some((h) => (x - h.x) ** 2 + (z - h.z) ** 2 < (h.r + radius) ** 2);
   const holed = withGroundCoverHoles(() => false, allHoles), few = withGroundCoverHoles(() => false, allHoles.slice(0, 20));

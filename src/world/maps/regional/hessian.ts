@@ -60,6 +60,8 @@ export function withPalette(p: FachwerkPalette, builder: RegionalBuilder): Regio
   };
 }
 const ZINC = rgb(0x8c9193);
+/** (round 10) a dressed surround's stone over the coursed wall's: paler, a little cooler (a multiplier of the stone tint) */
+const DRESSING_TINT: Rgb = [1.16, 1.13, 1.08];
 const GATE = rgb(0x7a5d44);
 
 export interface HessianState {
@@ -75,7 +77,12 @@ export interface HessianState {
   look: () => number;
 }
 
-const OUT = 0.035, POST = 0.17;
+// (the facades lane, round 10; gauntlet wave 301 on Steinburg and Frontier: "framing is thin painted red lines on flat
+// infill rather than timbers with depth", "a rigid grid of thin red lines with no timber relief") a member is set 2 cm
+// into the wall (PartSink.member's embed), so at 35 mm its face stood 15 mm proud — 3 mm over a panel's wash: the
+// timbers now stand 5 cm proud of the daub (an oak frame's face a hand's breadth ahead of an infill weathered back),
+// the posts 19 cm and the rails 16 cm wide, as a house's 20-24 cm oak reads once its arrises are worn
+const OUT = 0.07, POST = 0.19, RAIL = 0.16;
 const SW: RegionalBucket = 'structureWood';
 
 export function stateFor(ctx: RegionalBuildContext, rng: () => number): HessianState {
@@ -109,11 +116,20 @@ export function stateFor(ctx: RegionalBuildContext, rng: () => number): HessianS
  */
 function panelWash(sink: PartSink, face: Face, st: HessianState, a: number, b: number, ya: number, yb: number): void {
   const roll = st.look(), k = st.look();
-  if (roll >= 0.5 || b - a < 0.2 || yb - ya < 0.2) return;
-  const shadeK = k < 0.3 ? 1.06 + k * 0.2 : 0.8 + (k - 0.3) * 0.2;
+  if (b - a < 0.2 || yb - ya < 0.2) return;
+  const washed = roll < 0.5;
+  const shadeK = washed ? (k < 0.3 ? 1.06 + k * 0.2 : 0.8 + (k - 0.3) * 0.2) : 1;
   // 12 mm proud: resolved by the depth buffer to ~250 m (3 mm fought the infill from ~150 m)
-  const P = (u: number, y: number) => H.facePoint(face, u, y, 0.012);
-  sink.quad(st.infill, P(a + 0.01, ya + 0.01), P(b - 0.01, ya + 0.01), P(b - 0.01, yb - 0.01), P(a + 0.01, yb - 0.01), { decor: true, shade: shadeK });
+  const P = (u: number, y: number, o = 0.012) => H.facePoint(face, u, y, o);
+  // (round 10) the shadow the rail or plate over the panel throws on it — the frame standing 5 cm proud reads by the
+  // shade under its members (the near sun is high: the posts' sides take the shade sideways from the cascades): a band
+  // 13 cm deep under the panel's head, darkest against the timber, over the panel's own wash or the bare daub (fine
+  // dressing on a bare panel: out of the shadow maps and drawn near the camera; a washed panel's band with its wash)
+  const band = Math.min(0.13, (yb - ya) * 0.3), top = yb - 0.01, foot = top - band;
+  if (washed) sink.quad(st.infill, P(a + 0.01, ya + 0.01), P(b - 0.01, ya + 0.01), P(b - 0.01, foot), P(a + 0.01, foot), { decor: true, shade: shadeK });
+  sink.quad(st.infill, P(a + 0.01, foot, 0.013), P(b - 0.01, foot, 0.013), P(b - 0.01, top, 0.013), P(a + 0.01, top, 0.013), {
+    decor: true, ...(washed ? {} : { fine: true }), shadeAt: (p: Vec3) => (p[1] > foot + band * 0.5 ? shadeK * 0.58 : shadeK),
+  });
 }
 
 /**
@@ -182,7 +198,7 @@ function framing(sink: PartSink, face: Face, rect: WallRect, openings: Opening[]
     }
   }
   // (round 6) the corner posts are the stouter: every rail and brace stops at the face of the post it is tenoned into
-  const width = (i: number) => (i === 0 || i === all.length - 1 ? 0.21 : POST);
+  const width = (i: number) => (i === 0 || i === all.length - 1 ? 0.23 : POST);
   for (let i = 0; i < all.length; i++) {
     H.post(sink, SW, face, all[i], yA, yB, width(i), OUT, j.tone());
   }
@@ -192,7 +208,7 @@ function framing(sink: PartSink, face: Face, rect: WallRect, openings: Opening[]
     if (b - a < 0.12) continue;
     // a rail tenoned into the posts either side, a peg through each post's face beside it
     const rail = (y: number) => {
-      H.rail(sink, SW, face, a, b, y, 0.14, OUT, j.tone());
+      H.rail(sink, SW, face, a, b, y, RAIL, OUT, j.tone());
       j.peg(a - 0.045, y);
       j.peg(b + 0.045, y);
     };
@@ -374,8 +390,11 @@ export function hessianDialect(st: HessianState): HouseDialect {
         }
         return;
       }
+      // (round 10; wave 301 on a Steinburg door: "a flat plank panel in a plain rectangular hole with no stone surround,
+      // threshold or step": the surround stood in the ashlar's own print and tone) the door's dressed surround paler and
+      // cleaner than the coursed wall round it, as a mason's finer-tooled jambs and lintel are
       doorUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, {
-        leaf: st.door, frame: { bucket: 'stone', width: 0.2, out: 0.1 }, transom: o.h > 2.25,
+        leaf: st.door, frame: { bucket: 'stone', width: 0.2, out: 0.1, ...(facadeOn() ? { tint: DRESSING_TINT } : {}) }, transom: o.h > 2.25,
         steps: { bucket: 'stone' }, leafKind: st.rng() < 0.6 ? 'panel' : 'plank',
       }, frame.floors[o.storey] + o.y0);
     },
@@ -810,14 +829,15 @@ const church: RegionalBuilder = (ctx) => {
       }, st.rng, 0.25),
       door: () => {},
     });
-    // sandstone quoins at the nave corners
+    // sandstone quoins at the nave corners (round 10; wave 301: "oversized ... toy blocks": a church's quoins 34 cm
+    // courses, long and short stones of 54 and 30 cm)
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-      for (let y = 0.6, k = 0; y < wallH + 0.4; y += 0.42, k++) {
+      for (let y = 0.6, k = 0; y < wallH + 0.3; y += 0.355, k++) {
         const long = (k + (sx * sz > 0 ? 0 : 1)) % 2 === 0;
-        const xIn = long ? 0.62 : 0.32, zIn = long ? 0.32 : 0.62;
+        const xIn = long ? 0.54 : 0.3, zIn = long ? 0.3 : 0.54;
         const xa = sx > 0 ? naveW / 2 - xIn : -naveW / 2 - 0.04, xb = sx > 0 ? naveW / 2 + 0.04 : -naveW / 2 + xIn;
         const za = sz > 0 ? naveD / 2 - zIn : -naveD / 2 - 0.04, zb = sz > 0 ? naveD / 2 + 0.04 : -naveD / 2 + zIn;
-        dressedQuoin(sink, 'stone', xa, y, za, xb, y + 0.4, zb, sx, sz, { decor: true });
+        dressedQuoin(sink, 'stone', xa, y, za, xb, y + 0.335, zb, sx, sz, { decor: true });
       }
     }
   });
@@ -943,7 +963,10 @@ export const HESSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
   region: 'Osthessen (Fulda Gap, Hünfeld basin): Fachwerk villages on Buntsandstein',
   surfaces: {
     roof: { kind: 'beavertail', tint: [0.50, 0.25, 0.17] },
-    stone: { kind: 'sandstone', tint: [0.58, 0.36, 0.30] },
+    // (the facades lane, round 10; wave 301 on the Frontier church: "oversized, saturated red-brick quoins and door
+    // surround that read as toy blocks against plain render") the Buntsandstein a third less saturated, at the same
+    // light: the weathered red-brown of an old church's dressings, not a fresh-cut red
+    stone: { kind: 'sandstone', tint: [0.52, 0.39, 0.34] },
     sourced: { plaster: true, wood: true },
   },
   builders: HESSIAN_BUILDERS,

@@ -178,7 +178,7 @@ import type { UtilityNetwork } from './utilityNetwork.ts';
 import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildContext, type StructureDimensions } from './maps/exteriorDetailKit.ts';
 // regional-buildings lane (2026-10-03): the map's regional architecture kit replaces each placed building's geometry
 // after its placement is settled (maps/regional/index.ts) and paints the kit's roof and masonry (regionalSurfaces.ts)
-import { buildRegionalParts, rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
+import { buildRegionalParts, kitLegacy, rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
 import { YARD_SHED, gardenParts, planYard, yardKeepOut, type YardWorld } from './maps/regional/yards.ts';
 import { hashSeed, streamFrom } from './maps/regional/geometry.ts';
 import type { RegionalBuildContext, RegionalGround } from './maps/regional/types.ts';
@@ -3721,7 +3721,18 @@ function* propsBuildSteps(
   // wall tops, chimneys, carts, sourced baked models and rocks all carry a
   // slope-masked snow load, while vertical faces keep their material.
   const snowCap = mapId === 'winter' || !!P.snowCap;
-  const grimeHook: MaterialShaderHook = (shader) => {
+  // (the facades lane, round 10; gauntlet wave 301 on Steinburg's render: "blotchy brown staining", "cloud-like blotch
+  // noise standing in for lime render"; on its ashlar: "the same dark grime blotch in every block") a kit's walls keep the
+  // neighbourhood drift but not the props' grime: the 1-3 m blotches darkening a fifth (gB) and the clouds swinging the
+  // tone by 15 % (gA) were the stains, laid over the render's own mottling and the stone's own soiling. Their tone swings
+  // a twentieth, and the rain's runs streak the face instead: 10-30 cm wide, metres long, a few per cent darker. Not on
+  // Verdant (the owner's favourite village keeps its look).
+  const grimeHook: MaterialShaderHook = (shader) => grimeShader(shader, false);
+  const wallGrimeHook: MaterialShaderHook = (shader) => grimeShader(shader, true);
+  const wallGrime = !!regionalArchitecture && mapId !== 'verdant' && !kitLegacy(mapId);
+  const isKitWall = (kind: string) => wallGrime && (kind === 'regionalPlaster' || kind === 'regionalPlaster2'
+    || kind === 'regionalPlaster3' || kind === 'regionalStone');
+  function grimeShader(shader: MaterialShader, walls: boolean): void {
     shader.uniforms.uGrime = { value: grimeTex };
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
       '#include <common>\nvarying vec3 vGrimeW;\nvarying vec3 vGrimeN;');
@@ -3741,9 +3752,13 @@ function* propsBuildSteps(
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <map_fragment>', /* glsl */`#include <map_fragment>
 {
   float gA = texture2D(uGrime, vGrimeW.xz * 0.021 + vGrimeW.y * 0.013).r;
+${walls ? `
+  float gR = texture2D(uGrime, vec2((vGrimeW.x + vGrimeW.z) * 0.7, vGrimeW.y * 0.05)).g;
+  diffuseColor.rgb *= 0.95 + gA * 0.10;
+  diffuseColor.rgb *= 1.0 - smoothstep(0.6, 0.92, gR) * 0.07 * (1.0 - abs(vGrimeN.y));` : `
   float gB = texture2D(uGrime, vec2(vGrimeW.x + vGrimeW.z, vGrimeW.y * 1.7) * 0.055).g;
   diffuseColor.rgb *= 0.84 + gA * 0.30;
-  diffuseColor.rgb *= 1.0 - smoothstep(0.58, 0.95, gB) * 0.20;
+  diffuseColor.rgb *= 1.0 - smoothstep(0.58, 0.95, gB) * 0.20;`}
   // r3 terrain_environment: smooth ~25-60 m warm/cool + value drift so
   // adjacent buildings stop sharing one identical facade/roof tone (the
   // "whole town shares 3-4 materials" tell). Low frequency = no seams
@@ -3781,7 +3796,7 @@ ${snowCap ? `
     diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.795, 0.835, 0.90), sw * 0.88);
   }` : ''}
 }`);
-  };
+  }
   // Round 75 item 6: the boulders' dressing (moss on wet maps, dust on arid ones, the soil skirt everywhere; the scenery
   // lane, 2026-10-04: the map's beds, lichen and varnish, the contact darkening)
   const rockDressing = rockDressingFor(mapId, P.rockSoilTone ?? null, snowCap);
@@ -3831,16 +3846,18 @@ ${snowCap ? `
   const roofHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyTileLodBias(shader, ROOF_TILE_LOD_BIAS); };
   function installSurfaceShaderHooks(): void {
     for (const [materialKind, material] of Object.entries(mats)) {
-      engineCtx.setupShadowMaterial(material,
+      // (round 7) a kit's tile sheet takes the biased roof hook; (round 10) a kit's walls the walls' grime
+      const kitHook = tileBiased(materialKind) ? roofHook : isKitWall(materialKind) ? wallGrimeHook : null;
+      engineCtx.setupShadowMaterial(material, kitHook ?? (
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
           : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook
-            : materialKind === 'fieldMud' ? mudHook : tileBiased(materialKind) ? roofHook : grimeHook);
+            : materialKind === 'fieldMud' ? mudHook : grimeHook));
       // (the hessian is the canvas's shader with another map, and the hay the straw's: they share their programs; the
       // field print has its own, for the modules' shifted windows, and the mud print its own, for its world-space
       // weathering)
       const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind === 'hay' ? 'straw' : materialKind;
       // (round 7: a biased roof is its own program, so a map without a kit never reuses a kit map's)
-      const biasKey = tileBiased(materialKind) ? '-lodb' : '';
+      const biasKey = (tileBiased(materialKind) ? '-lodb' : '') + (isKitWall(materialKind) ? '-wall' : '');
       material.customProgramCacheKey = () =>
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : '') + biasKey; // round 75: the weathering law
     }
@@ -9346,7 +9363,8 @@ ${snowCap ? `
   // their own. Its material is the straw's shader under the straw's program key, so it compiles nothing new: one draw
   // more on a map with thatch. The bales, stooks and stacks keep the straw print.
   {
-    const kitThatch = buckets.straw.filter((g) => g.userData.regional === true);
+    // (round 10) a map gated back to the older craft keeps the straw print on its thatch (KIT_LEGACY_MAPS)
+    const kitThatch = kitLegacy(mapId) ? [] : buckets.straw.filter((g) => g.userData.regional === true);
     if (kitThatch.length) {
       buckets.straw = buckets.straw.filter((g) => g.userData.regional !== true);
       buckets.thatch = kitThatch;
@@ -9454,8 +9472,10 @@ ${snowCap ? `
       // the batch draws through its own copy of the bucket's material: one material shared by a batched and a plain
       // mesh re-resolves its program at every switch between them (three's batching parameter), several times a frame
       const batchMaterial = mats[key].clone();
-      engineCtx.setupShadowMaterial(batchMaterial, grimeHook);
-      batchMaterial.customProgramCacheKey = () => 'world-props-' + key + '-v7' + (snowCap ? 's' : '') + '-batch';
+      // (round 10) a kit wall's batch wears its walls' grime (wallGrimeHook), as its plain mesh does
+      const wallBatch = isKitWall(key);
+      engineCtx.setupShadowMaterial(batchMaterial, wallBatch ? wallGrimeHook : grimeHook);
+      batchMaterial.customProgramCacheKey = () => 'world-props-' + key + '-v7' + (snowCap ? 's' : '') + '-batch' + (wallBatch ? '-wall' : '');
       retainedSurfaceMaterials.push(batchMaterial);
       const batch = new THREE.BatchedMesh(parts.length, vertices, Math.max(indices, 1), batchMaterial);
       batch.name = 'props-bucket-' + key + '-batch';

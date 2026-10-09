@@ -26,6 +26,10 @@ export interface FacadeContext {
   stone?: { kind: StoneSurfaceKind; dressed?: boolean };
   /** the ground the placed building stands on (RegionalBuildContext.ground; absent in a bare build) */
   ground?: RegionalGround;
+  /** (round 10) the style's ground craft (ArchitectureStyle.groundCraft): false keeps round 9's wall foot */
+  groundCraft?: boolean;
+  /** (round 10) the map's kit gated back to the craft's older layers (maps/regional/index.ts KIT_LEGACY_MAPS) */
+  legacy?: boolean;
 }
 let facadeContext: FacadeContext | null = null;
 
@@ -45,6 +49,24 @@ export function setFacadeCraft(on: boolean): void {
 /** True on a desktop kit build: the facade craft is built. A phone, or a build outside a kit, keeps the plain parts. */
 export function facadeOn(): boolean {
   return craftEnabled && facadeContext?.tier === 'desktop';
+}
+
+/** True on a desktop kit build whose style takes round 10's wall foot (ArchitectureStyle.groundCraft, default on). */
+export function facadeGroundCraft(): boolean {
+  return facadeOn() && facadeContext?.groundCraft !== false;
+}
+
+/** True in a kit build on a map gated back to the craft's older layers (maps/regional/index.ts KIT_LEGACY_MAPS). */
+export function facadeLegacy(): boolean {
+  return facadeContext?.legacy === true;
+}
+
+/**
+ * True in a kit build (any tier, craft or none) whose style takes round 10's wall foot: its render losses are drawn by
+ * no build, so the craft never takes away what the plain build drew (facade.selftest: the craft only adds).
+ */
+export function styleGroundCraft(): boolean {
+  return !!facadeContext && facadeContext.groundCraft !== false;
 }
 
 /** The ground under the building being built (the wall-foot strip lies on it), or null: a bare build lays it level. */

@@ -106,14 +106,15 @@ const townHouse: RegionalBuilder = (ctx) => {
         });
       }
     }
-    // rendered fronts: sandstone quoins and a cornice
+    // rendered fronts: sandstone quoins and a cornice (round 10; wave 301: quoins "about three times real size": 33 cm
+    // courses of long and short stones, 50 and 30 cm)
     if (!framed) {
       const b = frame.bodies[0];
       for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]] as const) {
         const x = sx > 0 ? b.x1 : b.x0, z = sz > 0 ? b.z1 : b.z0;
-        for (let y = 0.4, k = 0; y < frame.eaveY - 0.3; y += 0.42, k++) {
-          const lx = k % 2 ? 0.32 : 0.56, lz = k % 2 ? 0.56 : 0.32;
-          dressedQuoin(sink, 'stone', sx > 0 ? x - lx : x - 0.035, y, sz > 0 ? z - lz : z - 0.035, sx > 0 ? x + 0.035 : x + lx, y + 0.4, sz > 0 ? z + 0.035 : z + lz, sx, sz, { decor: true });
+        for (let y = 0.4, k = 0; y < frame.eaveY - 0.3; y += 0.35, k++) {
+          const lx = k % 2 ? 0.3 : 0.5, lz = k % 2 ? 0.5 : 0.3;
+          dressedQuoin(sink, 'stone', sx > 0 ? x - lx : x - 0.035, y, sz > 0 ? z - lz : z - 0.035, sx > 0 ? x + 0.035 : x + lx, y + 0.33, sz > 0 ? z + 0.035 : z + lz, sx, sz, { decor: true });
         }
       }
     }

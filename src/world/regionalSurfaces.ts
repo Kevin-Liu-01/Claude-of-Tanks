@@ -626,9 +626,14 @@ const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze
 // next's, the broad grime clouds lighter: the soiling runs and the joints' shadow carry the wall
 // (round 6; wave 241: "a cartoon ashlar ... with painted-on bevels and no tooling, staining or mortar loss") each stone
 // tooled inside its margin, an arris broken here and there, a joint's mortar lost
-const DRESSED: Partial<MasonryRecipe> = Object.freeze({ courseMin: 56, courseMax: 88, blockMin: 115, blockMax: 230, mortar: 0.8,
-  mortarTint: [0.42, 0.39, 0.36] as Tint, mortarOfStone: 0.7, spread: 0.1, hue: 0.04, relief: 0.35, pillow: 0.12, faceRamp: 0.16,
-  speckle: 0.04, lichen: 0.22, grime: 0.55, rubble: 0.15, bedding: 0.05, mottle: 0.36, streaks: 0.55, tooling: 0.55, margin: 8, chips: 0.2,
+// (the facades lane, round 10; wave 301 on Steinburg's ground storeys: "one repeating oversized orange-brick tile", "a
+// coarse block texture with dark grime blotches repeated on every block", "the same dark grime blotch in every block")
+// the ashlar a fifth smaller — courses of 18-28 cm, blocks of 36-73 cm, a Franconian town's dressed Sandstein — and its
+// soiling a wash, not a blotch: the grime clouds (a third of a metre, so one in every stone and the same one every
+// tile) at two fifths and the rain runs at half; the world's own runs (props.ts wallGrimeHook) streak the wall
+const DRESSED: Partial<MasonryRecipe> = Object.freeze({ courseMin: 46, courseMax: 72, blockMin: 92, blockMax: 186, mortar: 0.8,
+  mortarTint: [0.42, 0.39, 0.36] as Tint, mortarOfStone: 0.7, spread: 0.12, hue: 0.04, relief: 0.35, pillow: 0.12, faceRamp: 0.16,
+  speckle: 0.04, lichen: 0.22, grime: 0.22, rubble: 0.15, bedding: 0.05, mottle: 0.3, streaks: 0.28, tooling: 0.55, margin: 7, chips: 0.2,
   raked: 0.25 });
 
 /** One course of a stone tile's layout: its rows (canvas px, from the top) and its blocks' columns. */

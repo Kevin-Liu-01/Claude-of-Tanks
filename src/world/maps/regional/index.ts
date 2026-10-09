@@ -44,6 +44,18 @@ import type { ArchitectureStyle, BaseBounds, RegionalBuildContext, RegionalGroun
 
 export type { ArchitectureStyle } from './types.ts';
 
+/**
+ * (the facades lane, round 10, 2026-10-09) the maps whose kit is gated back to the craft's older layers: no wall-foot
+ * apron, strip or water table, the plain render losses, the roofs weathered without their age, the straw print on the
+ * thatch, and the props' own grime on the walls (facade.ts facadeLegacy; props.ts, weather.ts). A map lands here when
+ * its view drops in a gauntlet wave against the release; empty, every kit map takes the whole craft
+ */
+export const KIT_LEGACY_MAPS: ReadonlySet<string> = new Set<string>([]);
+/** True when a map's kit is gated back (KIT_LEGACY_MAPS). */
+export function kitLegacy(mapId: string): boolean {
+  return KIT_LEGACY_MAPS.has(mapId);
+}
+
 const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   hessian: HESSIAN_STYLE,
   savoyard: SAVOYARD_STYLE,
@@ -118,8 +130,10 @@ export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildC
   const wearSeed = Math.floor(weatherRng() * 4294967296);
   // (and the facade craft's slot, house.ts withWear: window heads, thatch courses, gutter brackets ... on desktop builds, its
   // choices from a stream of its own forked from the same seed — the build, look, wear and weather streams draw as before)
+  const legacy = kitLegacy(ctx.mapId);
   const wear = { amount: style.wear ?? 0.2, rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0),
-    facade: { tier: ctx.tier, rng: streamFrom((wearSeed ^ 0x6a09e667) >>> 0), stone: style.surfaces.stone, ground: ctx.ground } };
+    facade: { tier: ctx.tier, rng: streamFrom((wearSeed ^ 0x6a09e667) >>> 0), stone: style.surfaces.stone, ground: ctx.ground,
+      groundCraft: style.groundCraft !== false && !legacy, legacy } };
   const tints = pickWeatherTints(palette, weatherRng);
   // (the facades lane, round 6) the sun's horizontal direction in the building's frame: the slopes turned from it
   // weather greener (a world direction turned back through the building's yaw, as props.ts places it)
@@ -128,7 +142,7 @@ export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildC
     return [wx * c - wz * s, wx * s + wz * c] as const;
   })() : null;
   const parts = weatherRegionalParts(withWear(wear, () => builder(ctx)), tints,
-    { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint, sun });
+    { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint, sun, legacy });
   // map revival lane 2 (2026-10-05): a style's finer render (surfaces.relief) — the walls' tile repeats plasterUv times as
   // often; absent, every UV stays as it was
   const relief = style.surfaces.relief;

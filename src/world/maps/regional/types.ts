@@ -120,6 +120,12 @@ export interface ArchitectureStyle {
   churchyard?: YardStyle;
   /** the yards round the kit's houses (yards.ts): absent, the houses stand in the open ground as before */
   yard?: YardStyle;
+  /**
+   * (the facades lane, round 10) the foot of the kit's houses as round 10 lays it — a plinth's water table, a wider apron
+   * at the wall foot and longer door paths, the render's losses up the walls drawn no more (house.ts); false keeps the
+   * foot as round 9 laid it (Verdant's khatas, the owner's favourite village). Absent: on
+   */
+  groundCraft?: boolean;
 }
 
 /**
