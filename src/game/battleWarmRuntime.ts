@@ -1406,6 +1406,11 @@ export function* createCombatOpeningWarmSteps(
       fx.dust(position, direction, 1);
       fx.exhaust(position, 1, true);
       yield;
+      // (dcore 2026-10-09, the collapse spike: the rare warm had not run when a battle's first building came down, and
+      // its first damage compiled the room, the pieces and the runs' programs mid-battle) a building's stage programs
+      // in the opening warm, before reveal
+      try { fx.warmStructures?.(position); } catch (_) { /* warm only */ }
+      yield;
       markEffectDetail('openingEffects');
       try { fx.update(0.016, game.shells ?? [], camera); } catch (_) { /* warm only */ }
       const softParticlesAt = performance.now();
