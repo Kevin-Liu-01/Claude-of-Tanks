@@ -222,7 +222,7 @@ export function createStructureGroundOcclusion(
       if (disposed || !ready) return;
       fade = instant || SGO_FADE_IN_S <= 0 ? 1 : Math.min(1, fade + Math.max(0, dt) / SGO_FADE_IN_S);
       pollT += Math.max(0, dt);
-      if (pollT >= SGO_POLL_S || instant) { pollT = 0; poll(); }
+      if (pollT >= SGO_POLL_S) { pollT = 0; poll(); }
     },
     flush(renderer: THREE.WebGLRenderer) {
       if (!uploadedOnce) {

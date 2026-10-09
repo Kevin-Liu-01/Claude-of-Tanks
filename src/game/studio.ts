@@ -4263,6 +4263,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       }
       progress(0.92, 'Settling actors');
       for (const actor of actors) settleActor(actor);
+      // (2026-10-09, the shadows lane) the ground occlusion's bake (structureGroundOcclusion.ts) lands before the scene is
+      // ready, at full strength: a film never shows it fading in
+      const groundOcclusion = getWorld()?.groundOcclusion ?? null;
+      if (groundOcclusion) {
+        groundOcclusion.setInstant(true);
+        await Promise.race([groundOcclusion.whenReady(), new Promise((resolve) => { setTimeout(resolve, 30000); })]);
+      }
       const world = getWorld();
       if (world) world.setWindTime(0.35 + clockMs / 1000);
       panel.refreshAll();
