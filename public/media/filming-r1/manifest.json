@@ -68,6 +68,17 @@
           "bytes": 2425082,
           "source": "site50/review-r7/s05-barn-advance.mp4",
           "sourceSha256": "96b320e50d6e7ba5"
+        },
+        "final": {
+          "video": "/media/filming-r1/s05-barn-advance-final.mp4",
+          "poster": "/media/filming-r1/s05-barn-advance-final.webp",
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "seconds": 6,
+          "bytes": 3420109,
+          "source": "site50/deliver-r13/s05-barn-advance/s05-barn-advance.mp4",
+          "sourceSha256": "db7d9e6626394fac"
         }
       },
       "scene": {
@@ -79,19 +90,19 @@
       },
       "frames": {
         "image": "/media/filming-r1/s05-barn-advance-frames.webp",
-        "from": "review3",
+        "from": "final",
         "times": [
           0,
           2.2,
           4.37,
-          6.53
+          5.97
         ],
         "width": 1920,
         "height": 270
       },
       "thumb": {
         "image": "/media/filming-r1/s05-barn-advance-thumb.webp",
-        "from": "review3"
+        "from": "final"
       }
     },
     {
@@ -400,6 +411,17 @@
           "bytes": 2304237,
           "source": "site50/review-r7/s04-column-under-fire.mp4",
           "sourceSha256": "9389c1a9a98e46ea"
+        },
+        "final": {
+          "video": "/media/filming-r1/s04-column-under-fire-final.mp4",
+          "poster": "/media/filming-r1/s04-column-under-fire-final.webp",
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "seconds": 6,
+          "bytes": 3663674,
+          "source": "site50/deliver-r13/s04-column-under-fire/s04-column-under-fire.mp4",
+          "sourceSha256": "3dd537a88cd77cef"
         }
       },
       "scene": {
@@ -411,19 +433,19 @@
       },
       "frames": {
         "image": "/media/filming-r1/s04-column-under-fire-frames.webp",
-        "from": "review3",
+        "from": "final",
         "times": [
           0,
           2.2,
           4.37,
-          6.53
+          5.97
         ],
         "width": 1920,
         "height": 270
       },
       "thumb": {
         "image": "/media/filming-r1/s04-column-under-fire-thumb.webp",
-        "from": "review3"
+        "from": "final"
       }
     },
     {
@@ -713,5 +735,5 @@
       "bytes": 68116
     }
   ],
-  "videoBytes": 54164620
+  "videoBytes": 61248403
 }
