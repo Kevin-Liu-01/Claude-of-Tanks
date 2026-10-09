@@ -15,7 +15,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { DESTRUCTIBLE_BUILDING_TYPES } from '../structureKit.ts';
 import { DESERT_SANGAR } from './desertSangar.ts';
-import { BEDOUIN_CAMP_TENT, BEDOUIN_TENT, RUM_BARRACK, RUM_POST } from './wadiRumPosts.ts';
+import { BEDOUIN_CAMP_TENT, BEDOUIN_TENT, RUM_BARRACK, RUM_POST, RUM_SHED } from './wadiRumPosts.ts';
 
 type Rng = () => number;
 
@@ -185,4 +185,4 @@ export const KSAR_GATE_POST = Object.freeze({
  * and fuel post for the Quonset hut and the checkpoint hut, the Bedouin's goat-hair tents for the desert and camp tents,
  * wadiRumPosts.ts). */
 export const STRUCTURE_VARIANTS = Object.freeze({ ksargate: KSAR_GATE_POST, sangar: DESERT_SANGAR, rumbarrack: RUM_BARRACK,
-  rumpost: RUM_POST, bedouintent: BEDOUIN_TENT, bedouincamp: BEDOUIN_CAMP_TENT });
+  rumpost: RUM_POST, rumshed: RUM_SHED, bedouintent: BEDOUIN_TENT, bedouincamp: BEDOUIN_CAMP_TENT });

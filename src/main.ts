@@ -63,7 +63,7 @@ import { createRenderer } from './engine/renderer.ts';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
   mountDiagOverlay, runSceneBlackWatchdogAsync, reclaimShadows, scheduleSceneWatchdog, runSceneWatchdogNow,
-  type SceneWatchdogResult,
+  battleProbeRadianceScale, type SceneWatchdogResult,
 } from './engine/deviceDiag.ts';
 import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
@@ -73,7 +73,7 @@ import {
 import { createSky, DEFAULT_SKY_PRESET } from './engine/sky.ts';
 import { deriveCloudLayerPreset } from './engine/cloudPresets.ts';
 import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
-import { loadGroundedLightModel } from './engine/lightModelCore.ts';
+import { EXPOSURE_REFERENCE_ILLUMINANCE, loadGroundedLightModel } from './engine/lightModelCore.ts';
 import { loadCloudscapeLayers } from './engine/cloudPresets.ts';
 import { battlePreferences } from './game/battlePreferences.ts';
 import { createFrontlineAtmosphereAccess } from './world/frontlineAtmosphereAccess.ts';
@@ -1572,8 +1572,11 @@ const frontline = createFrontlineAtmosphereAccess(() => ({
   getSpawns: () => currentWorld()?.spawnPoints ?? null,
 }));
 function currentSceneWatchdogOptions() {
-  return game.phase === 'battle' && battleAtmosphere.current?.weather?.timeOfDay === 'night'
-    ? { nightRadianceScale: battleWatchdogRadianceScale } : {};
+  if (game.phase !== 'battle') return {};
+  if (battleAtmosphere.current?.weather?.timeOfDay === 'night') return { nightRadianceScale: battleWatchdogRadianceScale };
+  // 2026-10-09 (the MP-entry lane): a low sun or a closed deck draws the probe under the light model's metered ratio
+  const lowLightScale = battleProbeRadianceScale(scene.userData.lightModel?.illuminance, EXPOSURE_REFERENCE_ILLUMINANCE);
+  return lowLightScale === null ? {} : { nightRadianceScale: lowLightScale };
 }
 const nightLighting = createNightLightingAccess({
   scene,

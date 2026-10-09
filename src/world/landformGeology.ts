@@ -65,6 +65,12 @@ export interface LandformGeology {
    * each a steep riser under a narrow ledge, the ledges a share of the wall's width (`ledge`, default 0.3 of a tier's
    * run). Absent: one smooth wall (the horizon's far jebels and every other inselberg). */
   tiers?: { count: number; ledge?: number };
+  /**
+   * The Redrock lane (round 11, the gauntlet's wave 282: "earth heaps", "Play-Doh lumps"): Wadi Rum's beehive banding —
+   * `bands` horizontal bands over the inselberg's height above its apron, each a rounded step where the profile steepens
+   * and eases (strength 0..1 of the most a monotonic profile allows). Absent: no banding.
+   */
+  beehive?: { bands: number; strength?: number };
   /** cone: the crater's rim as a fraction of the radius, its depth in metres and an optional breach bearing in
    * degrees (0 = local +x, counter-clockwise towards local +z). */
   crater?: { rim: number; depthM: number; breachDeg?: number };
@@ -278,8 +284,16 @@ const JEBEL_CAP_DROP = 0.08;
  * then a concave talus apron `apron` high at the foot thinning to the plain at the toe.
  */
 export function inselbergSection(q: number, foot: number, apron: number, crown = 4, rim = 0,
-  capDrop = JEBEL_CAP_DROP, tiers = 0, ledge = 0.3): number {
+  capDrop = JEBEL_CAP_DROP, tiers = 0, ledge = 0.3, bands = 0, bandStrength = 0.8): number {
   if (q >= 1) return 0;
+  if (bands >= 2) {
+    // the beehive bands: over the height above the apron, h' = h - A (1 - cos(2 pi n u)) / 2 with A pi n < 1, so the profile
+    // stays monotonic while its slope swings band by band (a rounded step every 1/n of the height)
+    const h = inselbergSection(q, foot, apron, crown, rim, capDrop, tiers, ledge);
+    if (h <= apron) return h;
+    const u = (h - apron) / (1 - apron), amp = Math.min(0.95, Math.max(0, bandStrength)) / (Math.PI * bands);
+    return apron + (1 - apron) * (u - amp * 0.5 * (1 - Math.cos(2 * Math.PI * bands * u)));
+  }
   if (rim > 0) {
     const top = foot * rim;
     if (q <= top) return 1 - capDrop * (q / top) ** 2;
@@ -318,7 +332,9 @@ function inselbergFoot(geology: LandformGeology, theta: number, salt: number): [
         const at = k + 0.5 + 0.7 * (hash2(slot, 5, salt + 37) - 0.5), half = 0.12 + 0.15 * hash2(slot, 6, salt + 37);
         notch = Math.max(notch, Math.max(0, 1 - Math.abs(u - at) / half) * (0.45 + 0.55 * hash2(slot, 7, salt + 37)));
       }
-      wall -= notch * depth * (1 - rim) * wall;
+      // (round 11: a jointed wall's clefts bite into the cap as well — the loaves of a beehive massif — the rim taking at
+      // most two fifths of their depth, where a fluted wall's grooves keep to the wall below the rim)
+      wall -= notch * depth * (1 - 0.4 * rim) * wall;
     } else {
       // a groove where cos peaks: a rounded notch half a flute wide, the wall standing at its line between the grooves
       const phase = (theta / TAU) * count + hash2(count, 3, salt + 37);
@@ -357,7 +373,7 @@ function profileOf(q: number, geology: LandformGeology, height: number, fallback
   if (profile === 'inselberg' && foot) {
     return inselbergSection(q, foot[0], foot[1], Math.max(1.5, geology.crown ?? 4), jebelRim(geology),
       Math.max(0, Math.min(0.4, geology.capDrop ?? JEBEL_CAP_DROP)), geology.tiers?.count ?? 0,
-      Math.max(0, Math.min(0.6, geology.tiers?.ledge ?? 0.3)));
+      Math.max(0, Math.min(0.6, geology.tiers?.ledge ?? 0.3)), geology.beehive?.bands ?? 0, geology.beehive?.strength ?? 0.8);
   }
   if (profile === 'butte') return butteProfile(q, geology);
   if (profile === 'cone') return coneProfile(q, geology, height);

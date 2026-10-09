@@ -29,6 +29,8 @@ function studioTimeline(staged) {
     clampStudioTime: (v, d) => Math.max(0, Math.min(Number(d), Number(v) || 0)),
     advanceFx: (ms) => { ports.clock.ms += ms; }, applyStoryboardActors: () => {}, applyStoryboardFrame: () => {},
     getWorld: () => null, rebuildEffects: () => {},
+    // (2026-10-09, media r5: a step also plays the felled trees' crushes and moves the Studio's lamps with the camera)
+    advanceCrushes: () => {}, ctx: {}, camera: { position: null },
     findActor: (ref) => (staged.includes(ref) ? { name: ref } : null),
     makeEffectRecord: (e, tMs) => ({ ...e, id: `fx${ports.effectLog.length}`, tMs }),
     fireEffect: (e) => {
@@ -44,7 +46,7 @@ function studioTimeline(staged) {
   const code = stripTypeScriptTypes(`
     function make(ports) {
       const { effectLog, activeEffectIds, clampStudioTime, advanceFx, applyStoryboardActors, applyStoryboardFrame, getWorld,
-        rebuildEffects, findActor, makeEffectRecord, fireEffect, console } = ports;
+        rebuildEffects, findActor, makeEffectRecord, fireEffect, console, advanceCrushes, ctx, camera } = ports;
       let storyboard = ports.storyboard;
       let timeScale = 1;
       const state = ports.clock;

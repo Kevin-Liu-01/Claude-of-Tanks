@@ -4036,6 +4036,7 @@ float gFieldWater = 0.0;     // ground lane: a flooded paddy's or a polder ditch
 float gCropW = 0.0;          // ground lane: a sown field's weight (not pasture or hay): the sward's own relief stands down there
 float gCropReliefW = 0.0;    // ground lane (wave 274): gCropW for the sward's relief — none on a young green crop (a short sward)
 float gSoilW = 0.0;          // ground lane: a bare field's weight (plough, terra rossa, a vineyard's earth, slag, ballast, gravel)
+float gJebelMatte = 0.0;     // the Redrock lane, round 11b: a jebel face's weight (its sheen cut in the aomap stage)
 float gLaneSheen = 0.0;      // ground lane (wave 86): a field track's pressed lane floor (its faint satin in the roughness stage)
 float gYardOil = 0.0;        // ground lane (2026-10-08): a cinder yard's oil stains (a satin in the roughness stage)
 vec3 gMeadowTint = vec3(1.0); // ground lane: the meadow's macro tint the base took (a field divides it back out)
@@ -4324,34 +4325,44 @@ vec3 jebelFaceV2(float u, float y, float ph, float nearW, float tafW, float foot
   if (uj < c0) { j -= 1.0; c0 = (j + 0.7 * (jh1(j * 1.37 + 8.0) - 0.5)) * W; }
   float c1 = (j + 1.0 + 0.7 * (jh1((j + 1.0) * 1.37 + 8.0) - 0.5)) * W;
   if (uj >= c1) { j += 1.0; c0 = c1; c1 = (j + 1.0 + 0.7 * (jh1((j + 1.0) * 1.37 + 8.0) - 0.5)) * W; }
-  float dl = uj - c0, dr = c1 - uj, hw = max(0.32, 2.0 * footM);
-  // (the crack shows where the bed still holds it: two beds in three along each joint's line)
-  float pl = step(0.33, jh1(j * 7.7 + k * 1.3)), pr = step(0.33, jh1((j + 1.0) * 7.7 + k * 1.3));
+  // (round 11, the gauntlet's wave 282: "hairline drawn cracks" — the terrain's own clefts carry the joints now: here a
+  // soft dark seam half a metre to a metre wide on about half the beds' stretches of each line, turned a little)
+  float dl = uj - c0, dr = c1 - uj, hw = max(0.5, 3.0 * footM);
+  float pl = step(0.55, jh1(j * 7.7 + k * 1.3)), pr = step(0.55, jh1((j + 1.0) * 7.7 + k * 1.3));
   float vl = pl * clamp(1.0 - dl / hw, 0.0, 1.0), vr = pr * clamp(1.0 - dr / hw, 0.0, 1.0);
-  float tu = -0.5 * pl * step(dl, hw) + 0.5 * pr * step(dr, hw);
-  shade *= (1.0 - 0.45 * vl * vl) * (1.0 - 0.45 * vr * vr);
+  float tu = -0.35 * pl * step(dl, hw) + 0.35 * pr * step(dr, hw);
+  shade *= (1.0 - 0.3 * vl * vl) * (1.0 - 0.3 * vr * vr);
   // the column's own face: a lean and a shade per column, whole down the cliff
   tu += (jh1(j * 3.3 + 1.9) - 0.5) * 0.22;
+  // (round 11, the gauntlet's wave 282: "no fluting") its flutes: one to three rounded grooves across the column, each
+  // column its own count, depth and phase, in the red below the pale formation (whose domes are not fluted)
+  float fu = clamp((uj - c0) / max(c1 - c0, 0.5), 0.0, 1.0), fn = 1.0 + floor(3.0 * jh1(j * 4.9 + 0.3));
+  float fA = 0.3 * jh1(j * 8.3 + 2.6) * (1.0 - smoothstep(46.0, 60.0, y)) * smoothstep(0.0, 0.12, fu) * smoothstep(0.0, 0.12, 1.0 - fu);
+  tu += fA * sin(6.2831853 * (fn * fu + 0.5 * jh1(j * 2.2 + 5.1)));
   tv += (jh1(j * 5.9 + 0.4) - 0.5) * 0.05;
   shade *= 0.95 + 0.10 * jh1(j * 2.9 + 6.1);
   // the honeycomb: pits in 1.3 m cells, in patches
   if (tafW > 0.003) {
-    vec2 p = vec2(u, yb) / 1.3, cell = floor(p);
+    // (round 11, the gauntlet's wave 282: "a stamped pattern of evenly sized, evenly spaced elliptical pits, like Swiss
+    // cheese", "pale decals" — each stretch of rock its own cell size, 1-2.2 m; a pit in two cells of five; most pits
+    // small, a few large; dark in their hollows; in patches)
+    float cs = 1.0 + 1.2 * jh1(floor(u / 13.0) * 5.7 + floor(yb / 9.0) * 3.3 + 0.7);
+    vec2 p = vec2(u, yb) / cs, cell = floor(p);
     // (not 'patch': a word GLSL ES 3.00 reserves for future use, so the program would not compile)
-    float pitPatch = smoothstep(0.35, 0.75, jh1(floor(u / 9.0) * 3.1 + floor(yb / 7.0) * 7.3 + 1.9));
+    float pitPatch = smoothstep(0.45, 0.8, jh1(floor(u / 7.0) * 3.1 + floor(yb / 5.0) * 7.3 + 1.9));
     for (int i = -1; i <= 1; i++) for (int m = -1; m <= 1; m++) {
       vec2 c = cell + vec2(float(i), float(m));
       float hc = jh1(c.x * 12.9 + c.y * 78.2);
-      if (hc < 0.42) continue;
-      vec2 ctr = c + 0.5 + 0.7 * (vec2(jh1(c.x * 3.9 + c.y * 1.7), jh1(c.x * 5.3 + c.y * 9.1)) - 0.5);
-      float R = 0.17 + 0.28 * jh1(c.x * 7.1 + c.y * 2.3);
+      if (hc < 0.6) continue;
+      vec2 ctr = c + 0.5 + 0.8 * (vec2(jh1(c.x * 3.9 + c.y * 1.7), jh1(c.x * 5.3 + c.y * 9.1)) - 0.5);
+      float rk = jh1(c.x * 7.1 + c.y * 2.3), R = 0.1 + 0.42 * rk * rk;
       vec2 dpv = p - ctr;
       float r = length(dpv) / R;
       if (r < 1.0) {
         float wpit = tafW * pitPatch;
         tu -= dpv.x / R * 0.9 * wpit;
         tv -= dpv.y / R * 0.9 * wpit;
-        shade *= 1.0 - wpit * 0.5 * (1.0 - r * r);
+        shade *= 1.0 - wpit * 0.78 * (1.0 - r * r);
       }
     }
   }
@@ -4711,6 +4722,14 @@ void splatCompute() {
   // "pink contour marbling on sand" (desert critique). Rock now takes over
   // from ~37 deg; the 30-37 deg band stays sand (ripples own it).
   fR = max(fR, smoothstep(0.20, 0.42, slopeR) * (1.0 - mkB * 0.85) * 0.95 * rockGate);
+  // (the Redrock lane, round 11, the gauntlet's wave 282: the talus "a painted triangle laid on the wall with a seam where
+  // it meets the sand" — on a jebel-face map the talus band under the walls, below 13-20 m, is sand drifted between its
+  // blocks: the rock gives way to sand in ragged patches 4-20 m across, so the rock's edge wanders up and down the slope)
+  if (uJebelFace.x > 0.0) {
+    float talusBand = smoothstep(0.16, 0.26, slopeR) * (1.0 - smoothstep(0.40, 0.55, slopeR)) * (1.0 - smoothstep(13.0, 20.0, wp.y));
+    float drift = nz(wp.xz, 0.11, vec2(0.27, 0.61)).b * 0.6 + n1h * 0.4;
+    fR *= 1.0 - talusBand * (1.0 - smoothstep(0.38, 0.62, drift)) * 0.85;
+  }
   // ground lane (wave 65): the caprock is rock whatever its slope — its ledges and tops — a little sand in its hollows
   fR = max(fR, gRingCap * rockGate * (0.72 + 0.28 * smoothstep(0.30, 0.70, n1h)));
   // the Redrock lane: the square's own caprock (splat.caprockY) — the jebels' and domes' tops are bare rock, not sand
@@ -6012,11 +6031,13 @@ void splatCompute() {
   // the normal and the albedo (jebelFaceV2) — on the walls and the domes alike, to ~600 m
   if (uJebelFace.y > 0.0 && steepW > 0.0) {
     float jw = steepW * fR * (1.0 - gSnowRock) * (1.0 - smoothstep(380.0, 640.0, camDist));
+    gJebelMatte = steepW * fR * (1.0 - gSnowRock);
     if (jw > 0.002) {
       // (its own slow phase field, not the crag's read: a cliff's joints and its buttresses wander independently)
       float fpx = nz(gWallUVx, 0.0031, vec2(0.29, 0.83)).r, fpz = nz(gWallUVz, 0.0031, vec2(0.29, 0.83)).r;
       float nearJ = 1.0 - smoothstep(30.0, 80.0, camDist);
-      float tafJ = uJebelFace.z * (1.0 - smoothstep(40.0, 85.0, camDist)) * (1.0 - smoothstep(26.0, 40.0, wp.y));
+      // (round 11: the honeycomb low on the walls and the domes' feet, where the salts work — not over whole domes)
+      float tafJ = uJebelFace.z * (1.0 - smoothstep(40.0, 85.0, camDist)) * (1.0 - smoothstep(9.0, 17.0, wp.y));
       float yJ = wp.y - gBedWob;
       vec3 jx = vec3(0.0, 0.0, 1.0), jz = vec3(0.0, 0.0, 1.0);
       if (gWallW < 0.997) jx = jebelFaceV2(gWallUVx.x, yJ, fpx, nearJ, tafJ, gFootM);
@@ -6087,8 +6108,20 @@ void splatCompute() {
     // ground lane: two formations — under the boundary (wandering with the beds and its own ±m) the paler, harder
     // sandstone, above it the redder; the step is one bed thick, and it reads on the rock wherever the rock shows
     if (uFormation.x > -1e8 && max(fR, steep) > 0.0) {
-      float fy = bedY - uFormation.x + (nz(wp.xz, 0.0071, vec2(0.83, 0.41)).g - 0.5) * 2.0 * uFormation.y;
+      float fy = bedY - uFormation.x + (nz(wp.xz, 0.0071, vec2(0.83, 0.41)).g - 0.5) * 2.0 * uFormation.y
+        + (nz(wp.xz, 0.031, vec2(0.17, 0.53)).g - 0.5) * 0.7 * uFormation.y;
       float upper = smoothstep(-uFormation.z, uFormation.z, fy);
+      // (round 11, the gauntlet's wave 282: "one hard, smeared horizontal band running straight across every wall segment
+      // at the same height" — the contact ragged at a 140 m and a 32 m wander, and on the walls the pale formation's wash
+      // hanging below it in drips, a metre or two wide and 3-14 m long, down the fall line)
+      if (steep > 0.0 && fy < 0.0 && fy > -16.0) {
+        float lodP = max(0.0, gNoiseLog + log2(0.09));
+        float drip = mix(textureLod(uNoise, gWallUVx * vec2(0.09, 0.0) + vec2(0.41, 0.77), lodP).r,
+                         textureLod(uNoise, gWallUVz * vec2(0.09, 0.0) + vec2(0.41, 0.77), lodP).r, gWallW);
+        float dlen = 3.0 + 11.0 * mix(textureLod(uNoise, gWallUVx * vec2(0.023, 0.0) + vec2(0.63, 0.12), lodP).g,
+                                      textureLod(uNoise, gWallUVz * vec2(0.023, 0.0) + vec2(0.63, 0.12), lodP).g, gWallW);
+        upper = max(upper, smoothstep(0.62, 0.84, drip) * (1.0 - smoothstep(0.3 * dlen, dlen, -fy)) * steep * 0.85);
+      }
       // (the Redrock lane, 2026-10-07: each formation is a colour on the rock's own luminance — a pale sandstone a buff or
       // cream, not a lighter red; Redrock, the one map with a formation, sets both)
       // (round 10, the gauntlet's wave on Redrock: the tiers' ledges, sunlit over a shadowed face, took the pale tint on
@@ -7112,8 +7145,11 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
   // sun goes now — the perturbation's component along the sun's heading, where it is positive — so no grain catches the
   // sun its slope is turned from, while every other tilt still shades the sky's and the bounce's light
   vec3 pN = vec3(dN.x, dN.z, dN.y) * dk; // the detail perturbation in world axes (horizontal: the third channel is unused)
-  if (uReduxFold.w > 0.001) {
-    float avert = (1.0 - smoothstep(-0.06, 0.32, dot(gN, uSunDirW))) * uReduxFold.w;
+  // (the Redrock lane, round 11b, the gauntlet's wave 298b: "bright white jagged flecks" on the backlit jebel faces —
+  // the joints' and honeycomb's detail facets tilted to a sun the face is turned from: a jebel face takes the same law)
+  float avertW = max(uReduxFold.w, gJebelMatte);
+  if (avertW > 0.001) {
+    float avert = (1.0 - smoothstep(-0.06, 0.32, dot(gN, uSunDirW))) * avertW;
     vec2 sH = uSunDirW.xz / max(length(uSunDirW.xz), 1e-4);
     pN.xz -= sH * max(dot(pN.xz, sH), 0.0) * avert;
   }
@@ -7566,7 +7602,11 @@ function* createSplatMaterialSteps(
       // own colour; a turned field's clods mask most of that sheen, so its specular light keeps three tenths (wave 88: at
       // half the sky's blue still turned the warm earth maroon) — gSoilW: the plough, the terra rossa, a vineyard's earth,
       // slag and ballast
-      + '\nreflectedLight.directSpecular *= 1.0 - 0.7 * gSoilW; reflectedLight.indirectSpecular *= 1.0 - 0.7 * gSoilW;');
+      + '\nreflectedLight.directSpecular *= 1.0 - 0.7 * gSoilW; reflectedLight.indirectSpecular *= 1.0 - 0.7 * gSoilW;'
+      // the Redrock lane, round 11b (the gauntlet's wave 298b: "white smears down its fins" on the backlit walls): a fin's
+      // side seen edge-on against the sun took the grazing Fresnel sheen of the sun and the bright sky by it, near white
+      // over the red; dry sandstone is matte — a jebel face keeps a tenth of its specular light (gJebelMatte)
+      + '\nreflectedLight.directSpecular *= 1.0 - 0.9 * gJebelMatte; reflectedLight.indirectSpecular *= 1.0 - 0.9 * gJebelMatte;');
     if (seaOpenings.length) shader.fragmentShader = fadeDistantCoastShadows(shader.fragmentShader, 'vWPos');
   };
   // the scenery lane (visual/shadow-bias, 2026-10-04): the ground casts no shadow (its chunks and the horizon ring that
@@ -7749,6 +7789,52 @@ function terrainIndexPoolReceipt(pool: TerrainIndexPool): {
   };
 }
 
+/** The Redrock lane, round 11d (the gauntlet's waves 298b and 314: "bright white streaks and smears running down" the
+ * shaded ravine wall, "white flecks along its crest"): a joint's V side or a ledge's tread turned to a sun its wall is turned
+ * from lies in the wall's own shadow — the sun reaches it only through the rock — but the shadow map's texels, metres wide
+ * at a ravine's range, cannot see a 2 m notch, and the vertex normal lit it full: a sunlit sliver down every joint of a
+ * backlit wall, near white at the backlit exposure. Where the wall's 8 m normal (the folds' heights) is turned from the
+ * sun or grazing it, a vertex keeps no more of the sun than its wall: the normal's sun-ward excess over the wall's is
+ * dropped. A sunlit wall's notches, the domes and the floor are untouched; the joints keep their shade from the sky. */
+interface JebelLit { clamp(x: number, z: number, nrm: Float32Array, o: number): void }
+function makeJebelLit(heights: Float32Array, n: number, origin: number, step: number, sun: THREE.Vector3): JebelLit {
+  const gx = new Float32Array(n * n), gz = new Float32Array(n * n);
+  const h = (i: number, j: number) => heights[Math.max(0, Math.min(n - 1, j)) * n + Math.max(0, Math.min(n - 1, i))];
+  for (let j = 0; j < n; j++) {
+    for (let i = 0; i < n; i++) {
+      gx[j * n + i] = (h(i + 1, j) - h(i - 1, j)) / (2 * step);
+      gz[j * n + i] = (h(i, j + 1) - h(i, j - 1)) / (2 * step);
+    }
+  }
+  const lx = sun.x, ly = sun.y, lz = sun.z;
+  const bilerp = (g: Float32Array, i0: number, j0: number, fu: number, fv: number) => {
+    const a = g[j0 * n + i0], b = g[j0 * n + i0 + 1], c = g[(j0 + 1) * n + i0], d = g[(j0 + 1) * n + i0 + 1];
+    return (a + (b - a) * fu) * (1 - fv) + (c + (d - c) * fu) * fv;
+  };
+  return {
+    clamp(x, z, nrm, o) {
+      const fy = nrm[o + 1];
+      if (fy >= 0.92) return; // the floor, the domes' tops and the benches (under ~23 degrees): untouched
+      const u = (x - origin) / step, v = (z - origin) / step;
+      const i0 = Math.max(0, Math.min(n - 2, Math.floor(u))), j0 = Math.max(0, Math.min(n - 2, Math.floor(v)));
+      const fu = Math.max(0, Math.min(1, u - i0)), fv = Math.max(0, Math.min(1, v - j0));
+      const mx = -bilerp(gx, i0, j0, fu, fv), mz = -bilerp(gz, i0, j0, fu, fv);
+      const ml = 1 / Math.sqrt(mx * mx + 1 + mz * mz);
+      // the wall: an 8 m normal steeper than ~30 degrees; turned from the sun or grazing it (its sun cosine under 0.2)
+      const wall = 1 - Math.max(0, Math.min(1, (ml - 0.72) / 0.16));
+      const dM = (mx * lx + ly + mz * lz) * ml;
+      const t = Math.max(0, Math.min(1, (dM + 0.05) / 0.25)), backlit = 1 - t * t * (3 - 2 * t);
+      const fx = nrm[o], fz = nrm[o + 2];
+      const f = Math.max(0, (fy - 0.8) / 0.12), steep = 1 - f * f * (3 - 2 * f); // eased out from ~37 to ~23 degrees
+      const excess = (fx * lx + fy * ly + fz * lz - Math.max(dM, 0)) * wall * backlit * steep;
+      if (excess <= 0) return;
+      const ax = fx - lx * excess, ay = fy - ly * excess, az = fz - lz * excess;
+      const al = 1 / Math.sqrt(ax * ax + ay * ay + az * az);
+      nrm[o] = ax * al; nrm[o + 1] = ay * al; nrm[o + 2] = az * al;
+    },
+  };
+}
+
 function* buildChunkGeometrySteps(
   hf: HeightField,
   cx0: number,
@@ -7760,6 +7846,7 @@ function* buildChunkGeometrySteps(
   rowsPerSlice = 8,
   foldAt: ((x: number, z: number) => number) | null = null,
   shoreAt: ((x: number, z: number) => number) | null = null,
+  jebelLit: JebelLit | null = null,
 ): Generator<TerrainBuildProgress, THREE.BufferGeometry, void> {
   const n = segs + 1, step = CHUNK_SIZE / segs;
   const stride = FINE_SEGS / segs;
@@ -7801,6 +7888,7 @@ function* buildChunkGeometrySteps(
       const nx = (hl - hr) * inv2e, nz = (hd - hu) * inv2e;
       const il = 1 / Math.sqrt(nx * nx + 1 + nz * nz);
       nrm[vi * 3] = nx * il; nrm[vi * 3 + 1] = il; nrm[vi * 3 + 2] = nz * il;
+      if (jebelLit) jebelLit.clamp(wx, wz, nrm, vi * 3);
       vi++;
     }
     return vi;
@@ -8032,6 +8120,7 @@ function* terrainBuildSteps(
   // chunk vertex carries as its `fold` byte and the tall-grass tier reads through `_foldAt`; a height field without
   // heights (receipt sandboxes) bakes nothing and the vertices carry zeros.
   let foldAt: ((x: number, z: number) => number) | null = null;
+  let jebelLit: JebelLit | null = null;
   if (typeof heightField.getHeightAt === 'function') {
     const FOLD_STEP = 8, FOLD_MARGIN = 3;
     const FOLD_N = MAP_SIZE / FOLD_STEP + 1 + 2 * FOLD_MARGIN;
@@ -8064,6 +8153,7 @@ function* terrainBuildSteps(
       return (a + (b - a) * fu) * (1 - fv) + (c + (d - c) * fu) * fv;
     };
     heightField._foldAt = foldAt;
+    if (cfg?.splat?.jebelFace) jebelLit = makeJebelLit(foldHeights, FOLD_N, FOLD_ORIGIN, FOLD_STEP, skySunDirection(cfg.sky));
   }
   // Ground lane (2026-10-03): the vegetation's woods mask (vegetation.ts _woodsMask, 256² over the square) lands in the
   // noise texture's free blue channel — one 4 m texel per mask cell, the field read at the square's own scale — and on
@@ -8159,7 +8249,7 @@ function* terrainBuildSteps(
       const lods: Array<THREE.BufferGeometry | null> = [null, null, null];
       for (const level of initialLevels) {
         const geometry = yield* buildChunkGeometrySteps(
-          heightField, cx0, cz0, LOD_SEGS[level], fine, progress, terrainIndexPool, 8, foldAt, shoreAt,
+          heightField, cx0, cz0, LOD_SEGS[level], fine, progress, terrainIndexPool, 8, foldAt, shoreAt, jebelLit,
         );
         lods[level] = geometry;
         retainedLodGeometries.add(geometry);
@@ -8419,7 +8509,7 @@ function* terrainBuildSteps(
       c.fine = yield* buildFineGridSteps(heightField, c.cx0, c.cz0, null, 1);
     }
     const geometry = yield* buildChunkGeometrySteps(
-      heightField, c.cx0, c.cz0, LOD_SEGS[job.level], c.fine, null, terrainIndexPool, 1, foldAt, shoreAt,
+      heightField, c.cx0, c.cz0, LOD_SEGS[job.level], c.fine, null, terrainIndexPool, 1, foldAt, shoreAt, jebelLit,
     );
     // Publish only a complete geometry. Skirts, topology and bounds stay exact;
     // a camera move while rows were being built cannot mount an obsolete LOD.

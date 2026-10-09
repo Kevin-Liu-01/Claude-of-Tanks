@@ -38,14 +38,17 @@ const blockHouse: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
   const W = Math.max(5.0, ctx.info.w - 0.3), D = Math.max(5.4, ctx.info.d - 0.3);
-  const rendered = ctx.wallBucket !== 'stone' && rng() < 0.7;
-  const wall: RegionalBucket = rendered ? (ctx.wallBucket as RegionalBucket) : 'stone';
+  // (round 11, the gauntlet's wave 282: "cinder-block cubes with a regular brick-pattern skin" — every house rendered;
+  // the draw that chose bare block stays, so the rest of the house draws as before)
+  if (ctx.wallBucket !== 'stone') rng();
+  const wall: RegionalBucket = ctx.wallBucket === 'stone' ? 'plaster' : ctx.wallBucket as RegionalBucket;
   const door = pick(rng, STEEL_DOORS);
   const style: WindowStyle = { frame: rgb(0x5a5e60), frameWidth: 0.05, frameOut: 0.04, bars: 'six', surround: null, sill: { bucket: 'plaster', out: 0.06 }, shutters: null };
   const count = rng() < 0.3 ? 2 : 1;
   const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * W * 0.3, w: 1.0, y0: 0, h: 2.1 }];
   for (let i = 0; i < count; i++) for (const face of ['front', 'left', 'right', 'back'] as const) {
-    for (const o of windowRhythm(face, i, face === 'front' || face === 'back' ? W : D, { w: 0.9, h: 1.0, sill: 1.1, spacing: 2.6, margin: 1.0, max: 2,
+    // (round 11: "almost no openings" — a window every 2.2 m, up to three a face)
+    for (const o of windowRhythm(face, i, face === 'front' || face === 'back' ? W : D, { w: 0.9, h: 1.0, sill: 1.1, spacing: 2.2, margin: 0.9, max: 3,
       avoid: face === 'front' && i === 0 ? [[openings[0].u - 0.8, openings[0].u + 0.8]] : [] })) if (face !== 'back' || rng() < 0.5) openings.push(o);
   }
   const dialect: HouseDialect = {
@@ -99,7 +102,8 @@ const fort: RegionalBuilder = (ctx) => {
   const t = 0.9, h = 5.0, wall: RegionalBucket = 'plaster';
   // the foot sand-scoured and darker, the courses paling a little up the wall (a per-corner occlusion the weathering
   // pass folds in), each wall a slightly different lot of stone
-  const scour = (p: Vec3) => (p[1] < 0.2 ? 0.78 : p[1] < 1.1 ? 0.88 : 1.0);
+  // (round 11, the gauntlet's wave 282: "a hard, grime-free base line on the sand" — the foot darker and higher)
+  const scour = (p: Vec3) => (p[1] < 0.25 ? 0.64 : p[1] < 1.1 ? 0.8 : p[1] < 1.9 ? 0.91 : 1.0);
   const lot = (): Rgb => { const k = 0.94 + rng() * 0.12; return [k * 1.02, k, k * 0.97]; };
   const span = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number) => {
     sink.span(wall, x0, y0, z0, x1, y1, z1, { shadeAt: scour, tint: lot() });
@@ -123,7 +127,7 @@ const fort: RegionalBuilder = (ctx) => {
       holes.push([cu, y0 + (y1 - y0) * rng() * rng(), (0.5 + rng() * 1.3) * size, (0.35 + rng() * 0.8) * size]);
     }
     const rows = Math.max(1, Math.round((y1 - y0) / 0.35)), dy = (y1 - y0) / rows;
-    const cols = Math.max(1, Math.round((u1 - u0) / 0.3)), du = (u1 - u0) / cols;
+    const cols = Math.max(1, Math.round((u1 - u0) / 0.2)), du = (u1 - u0) / cols;
     for (let r = 0; r < rows; r++) {
       const y = y0 + (r + 0.5) * dy;
       for (let c = 0, run = -1; c <= cols; c++) {
@@ -146,7 +150,10 @@ const fort: RegionalBuilder = (ctx) => {
   };
   // a stone core on its footing (the footing a hand proud of the wall and knee-high)
   const core = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number) => {
-    sink.span('stone', x0, y0, z0, x1, y1, z1, { shadeAt: scour, tint: lot() });
+    // (round 11, the gauntlet's wave 282: the holes "hard-edged rectangular stone-block decals" — the core is the render's
+    // brown coat, darker and redder, where the finish coat has fallen; the footing stays the coursed stone)
+    const coat = lot();
+    sink.span('plaster', x0, y0, z0, x1, y1, z1, { shadeAt: scour, tint: [coat[0] * 0.74, coat[1] * 0.63, coat[2] * 0.54] });
     sink.span('stone', x0 - 0.07, -0.3, z0 - 0.07, x1 + 0.07, 0.55 + rng() * 0.25, z1 + 0.07, { shadeAt: scour, tint: lot() });
   };
   const gateW = 3.2, gateH = 3.9, gateTowerW = 6.0, proud = 0.7;
@@ -190,8 +197,9 @@ const fort: RegionalBuilder = (ctx) => {
   // (the merlons each a little different, worn at their tops, one in nine fallen)
   const merlon = (x0: number, z0: number, x1: number, z1: number, y = h + 0.18) => {
     if (rng() < 0.11) return;
-    const inset = rng() * 0.06;
-    sink.span(wall, x0 + inset, y, z0 + inset, x1 - inset, y + 0.7 + rng() * 0.25, z1 - inset, { decor: true, tint: lot() });
+    // (round 11, the gauntlet's wave 282: "identical oversized cube merlons" — smaller, each its own width and height)
+    const inset = 0.05 + rng() * 0.12;
+    sink.span(wall, x0 + inset, y, z0 + inset, x1 - inset, y + 0.5 + rng() * 0.35, z1 - inset, { decor: true, tint: lot() });
   };
   for (let x = -W / 2 + 0.3; x < W / 2 - 0.9; x += 1.5) {
     merlon(x, -D / 2 - 0.08, x + 0.8, -D / 2 + 0.42);
@@ -276,11 +284,13 @@ const fort: RegionalBuilder = (ctx) => {
   // Jordan's flag (round 10, the coordinator: the old red rectangle at the hoist made it the Emirates'): black, white and
   // green bands, and at the hoist a red triangle reaching half the fly with a white seven-pointed star in it
   const flag: Array<[number, Rgb]> = [[0, rgb(0x1a1a1a)], [1, rgb(0xeeece6)], [2, rgb(0x14753c)]];
-  for (const [band, colour] of flag) sink.span('structureWood', 0.06, gth + 6.3 - band * 0.42 - 0.42, gz - 0.97, 2.0, gth + 6.3 - band * 0.42, gz - 0.95, { colour, decor: true });
+  // (round 11, the gauntlet's wave 282: the flag "lacks the Jordanian red chevron" at the fort's distance — half as large
+  // again: 2.9 x 1.8 m, its bands 0.6 m)
+  for (const [band, colour] of flag) sink.span('structureWood', 0.06, gth + 6.3 - band * 0.6 - 0.6, gz - 0.97, 2.96, gth + 6.3 - band * 0.6, gz - 0.95, { colour, decor: true });
   {
-    const fz = gz - 0.976, mid = gth + 5.67, red = rgb(0xc4142c), white = rgb(0xf4f2ec);
-    sink.prism('structureWood', [[0.06, gth + 5.04, fz], [1.03, mid, fz], [0.06, gth + 6.3, fz]], [0, 0, 1], 0.032, { colour: red, decor: true });
-    const sx = 0.06 + 0.97 / 3, sz = fz - 0.002, ro = 0.13, ri = 0.058;
+    const fz = gz - 0.976, mid = gth + 5.4, red = rgb(0xc4142c), white = rgb(0xf4f2ec);
+    sink.prism('structureWood', [[0.06, gth + 4.5, fz], [1.51, mid, fz], [0.06, gth + 6.3, fz]], [0, 0, 1], 0.032, { colour: red, decor: true });
+    const sx = 0.06 + 1.45 / 3, sz = fz - 0.002, ro = 0.19, ri = 0.085;
     const star = (k: number, r: number): Vec3 => [sx + r * Math.sin((k * Math.PI) / 7), mid + r * Math.cos((k * Math.PI) / 7), sz];
     const inner = Array.from({ length: 7 }, (_, i) => star(2 * i + 1, ri));
     sink.prism('structureWood', inner.slice().reverse(), [0, 0, 1], 0.036, { colour: white, decor: true });

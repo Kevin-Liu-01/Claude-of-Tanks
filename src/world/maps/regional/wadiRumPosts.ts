@@ -37,7 +37,8 @@ const PALM_RIB: Rgb = [0.74, 0.63, 0.46];
 /** The steel doors, painted green or blue as the village's are. */
 const DOORS: readonly Rgb[] = [[0.24, 0.44, 0.38], [0.26, 0.36, 0.56], [0.42, 0.44, 0.44]];
 /** The colours multiplying the canvas print: the goat hair's two blacks, the rugs, the qata's bands, the poles. */
-const GOAT: readonly Rgb[] = [[0.115, 0.098, 0.088], [0.155, 0.128, 0.108], [0.135, 0.112, 0.098]];
+// (round 11, the gauntlet's wave 282: "a modern grey dome tent" — the goat hair blacker, on the hessian's weave)
+const GOAT: readonly Rgb[] = [[0.085, 0.072, 0.065], [0.115, 0.095, 0.08], [0.1, 0.083, 0.073]];
 const RUG: readonly Rgb[] = [[0.62, 0.16, 0.13], [0.5, 0.22, 0.12], [0.2, 0.18, 0.3]];
 const QATA: readonly Rgb[] = [[0.86, 0.8, 0.68], [0.6, 0.15, 0.12], [0.12, 0.1, 0.09], [0.86, 0.8, 0.68], [0.6, 0.15, 0.12], [0.86, 0.8, 0.68]];
 const POLE: Rgb = [0.5, 0.38, 0.26];
@@ -254,6 +255,64 @@ export function buildRumPost(rng: Rng): THREE.BufferGeometry {
 }
 
 /** The post shelled: a corner standing over a low heap of its render and stone, the drums scattered. */
+/** The shade's measures (m): its back wall's run along z, its depth across x (the open front at +x), its eaves. */
+const SW = 8.6, SD = 11.6, SH = 3.5;
+
+/** The Desert Patrol's vehicle shade (round 11, the motor pool's family on Redrock): a rendered block back wall, low side
+ *  walls, timber posts along the open front, a timber frame under a palm-rib roof falling to the front, drums and a box. */
+export function buildRumShed(rng: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const back = -SW / 2;
+  // the back wall and the side walls: stone cores on their footing, the render broken on their outer faces
+  parts.push(block(0.7, 0.75, SD + 0.2, back + 0.25, -0.3, 0, STONE, rng, 0.05));
+  parts.push(block(0.5, SH + 0.15, SD, back + 0.25, 0, 0, STONE, rng, 0.03));
+  renderFace(parts, 'x', -1, back, -SD / 2 - 0.05, SD / 2 + 0.05, 0.45, SH + 0.1, [], 2, rng);
+  renderFace(parts, 'x', 1, back + 0.5, -SD / 2 + 0.3, SD / 2 - 0.3, 0.45, SH + 0.1, [], 1, rng);
+  for (const s of [-1, 1]) {
+    parts.push(block(SW * 0.55, 1.25, 0.4, back + SW * 0.275, 0, s * (SD / 2 - 0.2), STONE, rng, 0.03));
+    renderFace(parts, 'z', s, s * SD / 2, back, back + SW * 0.55, 0.3, 1.25, [], 1, rng);
+  }
+  // the front posts and the frame: a beam along the front, rafters back to the wall, falling 0.5 m to the front
+  const front = SW / 2 - 0.35, frontH = SH - 0.5;
+  for (let z = -SD / 2 + 0.4; z <= SD / 2 - 0.39; z += (SD - 0.8) / 3) parts.push(block(0.2, frontH, 0.2, front, 0, z, TIMBER, rng, 0.08));
+  parts.push(block(0.24, 0.22, SD - 0.4, front, frontH, 0, TIMBER, rng, 0.06));
+  // (each built about its own middle, turned to the roof's fall, then set in place)
+  const fall = -Math.atan2(0.5, SW - 1.0);
+  for (let z = -SD / 2 + 0.6; z <= SD / 2 - 0.59; z += 1.6) {
+    const r = block(SW - 0.6, 0.14, 0.14, 0, -0.07, 0, TIMBER, rng, 0.06);
+    r.rotateZ(fall);
+    parts.push(r.translate(0.05, frontH + 0.47, z));
+  }
+  // the palm-rib roof: ribs laid front to back over the rafters, a hand apart, each a shade of its own
+  for (let z = -SD / 2 + 0.1; z <= SD / 2 - 0.1; z += 0.16) {
+    const rib = block(SW - 0.2, 0.05, 0.1, 0, -0.025, 0, PALM_RIB, rng, 0.12);
+    rib.rotateZ(fall);
+    parts.push(rib.translate(0.1, frontH + 0.6, z));
+  }
+  // the pool's drums under the roof and its timber box by the back wall
+  for (const [x, z, c] of [[-1.6, -3.7, [0.36, 0.44, 0.28]], [-1.0, -3.9, [0.56, 0.3, 0.22]], [-1.5, 3.6, [0.36, 0.44, 0.28]]] as const) {
+    parts.push(drum(x, 0, z, c, rng));
+  }
+  parts.push(block(2.4, 0.9, 0.7, back + 1.2, 0, 0.8, TIMBER, rng, 0.08));
+  return merge(parts.map((g) => dampFoot(g, 0.8)));
+}
+
+/** The shade shelled: the back wall's stumps and its footing, the roof's ribs and timber strewn, the drums down. */
+export function buildRumShedBroken(rng: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [block(0.7, 0.5, SD + 0.2, -SW / 2 + 0.25, -0.3, 0, STONE, rng, 0.05)];
+  for (let z = -SD / 2 + 0.8; z < SD / 2 - 0.8; z += 2.0) {
+    if (rng() < 0.35) continue;
+    parts.push(block(0.5, 0.5 + rng() * 1.8, 1.8, -SW / 2 + 0.25, 0, z, rng() < 0.5 ? RENDER : STONE, rng, 0.05));
+  }
+  for (let i = 0; i < 14; i++) {
+    const b = block(2 + rng() * 3, 0.08, 0.14, 0, 0, 0, rng() < 0.6 ? PALM_RIB : TIMBER, rng, 0.1);
+    b.rotateY(rng() * Math.PI);
+    parts.push(b.translate((rng() - 0.5) * (SW - 3), 0.05 + rng() * 0.25, (rng() - 0.5) * (SD - 3)));
+  }
+  parts.push(drum(1.0, 0, -2.0, [0.36, 0.44, 0.28], rng, true), drum(-0.8, 0, 2.6, [0.56, 0.3, 0.22], rng, true));
+  return merge(parts.map((g) => dampFoot(g, 0.8)));
+}
+
 export function buildRumPostBroken(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [block(PW + 0.2, 0.55, PD + 0.2, 0, -0.3, 0, STONE, rng, 0.05)];
   parts.push(block(1.4, 1.5, 0.36, -PW / 2 + 0.7, 0, -PD / 2 + 0.18, RENDER, rng, 0.04));
@@ -271,9 +330,10 @@ export function buildRumPostBroken(rng: Rng): THREE.BufferGeometry {
  *  front and back eaves, the pole stations, the sag between them, the stakes' reach. */
 type TentPlan = { w: number; l: number; ridge: number; front: number; back: number; poles: number; sag: number; stakeX: number; stakeZ: number };
 /** The lookouts' and outposts' tent (inside the desert tent's 3.10 x 4.4 m half extents and 3.4 m height). */
-const BIG_TENT: TentPlan = { w: 5.0, l: 8.0, ridge: 2.45, front: 1.75, back: 1.15, poles: 3, sag: 0.24, stakeX: 3.0, stakeZ: 4.3 };
+const BIG_TENT: TentPlan = { w: 5.0, l: 8.2, ridge: 2.2, front: 1.6, back: 1.0, poles: 3, sag: 0.26, stakeX: 3.0, stakeZ: 4.35 };
 /** A camp's tent (inside the camp tent's 1.28 x 1.90 m half extents and 2.1 m height). */
-const CAMP_TENT: TentPlan = { w: 2.1, l: 3.3, ridge: 1.8, front: 1.3, back: 0.85, poles: 2, sag: 0.13, stakeX: 1.24, stakeZ: 1.86 };
+// (round 11: lower and longer — a black tent's long low line, not a dome)
+const CAMP_TENT: TentPlan = { w: 2.2, l: 3.5, ridge: 1.5, front: 1.12, back: 0.7, poles: 2, sag: 0.16, stakeX: 1.25, stakeZ: 1.88 };
 
 /** A double-sided sheet over a grid of points (i across, j along): smooth normals from the grid, a colour per strip `i`. */
 function sheet(points: (i: number, j: number) => [number, number, number], ni: number, nj: number,
@@ -405,6 +465,7 @@ function mulberry32(a: number): Rng {
 
 /** The families they stand in for. */
 const QUONSET = DESTRUCTIBLE_BUILDING_TYPES.quonsethut, HUT = DESTRUCTIBLE_BUILDING_TYPES.checkpointhut;
+const MOTOR_POOL = DESTRUCTIBLE_BUILDING_TYPES.motorpool;
 const DESERT_TENT = DESTRUCTIBLE_BUILDING_TYPES.deserttent, CAMP = DESTRUCTIBLE_TYPES.tent;
 
 /** A family's variant on another surface and build: its class, contact, collider, extents, resistance and crush threshold,
@@ -423,7 +484,8 @@ function variantOf<B extends { cls: string; contact: string; collider?: boolean;
 
 export const RUM_BARRACK = variantOf(QUONSET, 'regionalPlaster', buildRumBarrack, buildRumBarrackBroken, 0x7b4a11, 0.05);
 export const RUM_POST = variantOf(HUT, 'regionalPlaster', buildRumPost, buildRumPostBroken, 0x7b4a21, 0.05);
-export const BEDOUIN_TENT = variantOf(DESERT_TENT, 'structureCanvas', (rng) => buildBedouinTent(BIG_TENT, rng),
+export const RUM_SHED = variantOf(MOTOR_POOL, 'regionalPlaster', buildRumShed, buildRumShedBroken, 0x7b4a51, 0.05);
+export const BEDOUIN_TENT = variantOf(DESERT_TENT, 'burlap', (rng) => buildBedouinTent(BIG_TENT, rng),
   (rng) => buildBedouinTentBroken(BIG_TENT, rng), 0x7b4a31, 0.04);
-export const BEDOUIN_CAMP_TENT = variantOf(CAMP, 'structureCanvas', (rng) => buildBedouinTent(CAMP_TENT, rng),
+export const BEDOUIN_CAMP_TENT = variantOf(CAMP, 'burlap', (rng) => buildBedouinTent(CAMP_TENT, rng),
   (rng) => buildBedouinTentBroken(CAMP_TENT, rng), 0x7b4a41, 0.04);

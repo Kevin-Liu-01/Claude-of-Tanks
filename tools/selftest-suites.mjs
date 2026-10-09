@@ -1492,6 +1492,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/wreckBakePrefetch.selftest.mjs',
     'src/world/surfacePaintPrefetch.selftest.mjs',
     'src/world/wreckBakeWorker.selftest.mjs',
+    'src/world/wreckWorkerFallback.selftest.mjs', // 2026-10-09: a failed or silent wreck worker never fails the props build
     'src/world/exactWreckGeometry.selftest.mjs',
     'src/world/topple.selftest.mjs',
     'src/world/loosePropPhysics.selftest.mjs',
@@ -1507,6 +1508,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/killPresentation.selftest.mjs',
     'src/ui/shotInfo.selftest.mjs',
     'src/ui/shotReadoutPolicy.selftest.mjs',
+    'src/ui/damageNumberBurst.selftest.mjs',
     'src/ui/finalBlow.selftest.mjs',
     'src/ui/battleHudAccess.selftest.mjs',
     'src/ui/minimapAssetRuntime.selftest.mjs',
