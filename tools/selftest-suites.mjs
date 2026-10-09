@@ -651,6 +651,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/rosterRotationMemory.selftest.mjs',
     'src/game/waveFormationSplit.selftest.mjs',
     'src/game/battleSides.selftest.mjs',
+    // 2026-10-08 (modes lane): the solo sim and the host seat every side on the same deployment slots.
+    'src/game/deploymentParity.selftest.mjs',
     'src/game/rosterVisualStaging.selftest.mjs',
     'src/game/rosterPresentation.selftest.mjs',
     'src/presentation/publicCopy.selftest.mjs',
@@ -1034,14 +1036,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/navigationLiquidSafety.selftest.mjs',
     'src/sim/navigationLiquidStart.selftest.mjs',
     'src/sim/bridgeDeckNavigation.selftest.mjs',
-    'src/sim/formationPlacement.selftest.mjs',
+    // 2026-10-08 (modes lane): symmetric deployments on every map — rotations, clear, spaced, seated as is.
+    'src/sim/deployment.selftest.mjs',
     'src/sim/matchModes.selftest.mjs',
     // 2026-10-03 (bots lane): the frontline attack regroups before the last sector.
     'src/sim/frontlineRegroup.selftest.mjs',
     'src/sim/matchRuleset.selftest.mjs',
     'src/sim/assaultLines.selftest.mjs',
     'src/sim/matchPlacement.selftest.mjs',
-    'src/sim/spawnPads.selftest.mjs',
     'src/sim/authoritativeMatch.selftest.mjs',
     'src/sim/authoritativeBotControls.selftest.mjs',
     'src/sim/ai.aim.selftest.mjs',
