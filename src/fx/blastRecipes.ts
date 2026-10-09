@@ -914,6 +914,32 @@ export function muzzleBlast(C: BlastContext, I: MuzzleInput): void {
         heat(m, 0, 1);
         C.media(m);
       }
+      // (round 8, DVIDS 883259: an Abrams firing on sand raises a grey-tan cloud round the whole hull that climbs to three
+      // or four times its height in three seconds and rolls on; DVIDS 966637: an M777 on grass, a brown cloud ahead of the
+      // muzzle that is a faint haze by +2.4 s) on dry ground the blast also raises a cloud round the muzzle's ground point
+      // and the hull's front that climbs and rolls out downwind, by the ground's blast dust (sand most, dirt a little)
+      const dry = k - 0.6;
+      if (dry > 0) {
+        const cn = Math.round(2 + 5 * Math.min(1.2, dry));
+        const heading = Math.atan2(I.dz, I.dx);
+        for (let i = 0; i < cn; i++) {
+          const a = heading + (R() - 0.5) * 3.8;
+          const r = 1.0 + R() * 3.0;
+          const back = (R() - 0.3) * 2.5;
+          const px = I.x + Math.cos(a) * r - I.dx * back, pz = I.z + Math.sin(a) * r - I.dz * back;
+          place(m, px, C.groundY(px, pz) + 0.6, pz, bo + 0.04 + R() * 0.2);
+          const v = (2.5 + 3 * R()) * Math.sqrt(k);
+          move(m, Math.cos(a) * v, 0.8 + 0.8 * R(), Math.sin(a) * v, 1.6, (0.35 + 0.35 * R()) * Math.min(1.5, k), 1.0, 0);
+          const life = (2 + 4 * Math.min(1.2, dry) + 1.5 * R()) * L.hang;
+          const size1 = (3.2 + 2 * R()) * Math.min(1.6, k) * Math.sqrt(s);
+          shape(m, life, 1.2, size1, 1.9, R);
+          look(m, mix3(L.dust, L.ejecta, 0.2), L.dust, Math.min(0.55, 0.22 + 0.2 * k) * att, 0.08, 0.45);
+          book(m, 'burst', R, life, 3);
+          card(m, 1.1 + R() * 0.3, R, 0.2);
+          heat(m, 0, 1);
+          C.media(m);
+        }
+      }
     }
   }
 }

@@ -358,6 +358,19 @@ function captureContext(seed) {
   const mzHigh = captureContext(2);
   muzzleBlast(mzHigh.ctx, { x: 0, y: 9, z: 0, dx: 1, dy: 0, dz: 0, caliberMm: 120, surface: 'sand' });
   assert.ok(!mzHigh.log.media.some((m) => m.medium === 'burst'), 'a high muzzle lifts none');
+  // (round 8, DVIDS 883259 / 966637) on dry ground the blast raises a cloud that climbs and rolls on, sand most; grass none
+  {
+    const cloud = (log) => log.media.filter((m) => m.medium === 'burst' && m.rise >= 0.3 && m.life >= 3);
+    const sandC = cloud(mz.log);
+    assert.ok(sandC.length >= 5 && Math.max(...sandC.map((m) => m.size1)) > 5 && Math.max(...sandC.map((m) => m.life)) > 6,
+      `a 120 mm on sand raises a climbing cloud (${sandC.length} puffs)`);
+    const soilMz = captureContext(2);
+    muzzleBlast(soilMz.ctx, { x: 0, y: 2.2, z: 0, dx: 1, dy: 0, dz: 0, caliberMm: 120, surface: 'soil' });
+    const grassMz = captureContext(2);
+    muzzleBlast(grassMz.ctx, { x: 0, y: 2.2, z: 0, dx: 1, dy: 0, dz: 0, caliberMm: 120, surface: 'grass' in SURFACE_LOOKS ? 'grass' : 'mud' });
+    assert.ok(cloud(soilMz.log).length < sandC.length && cloud(soilMz.log).length >= 2, 'dirt a smaller one');
+    assert.equal(cloud(grassMz.log).length, 0, 'wet or grassed ground only its sheet');
+  }
   const kf = captureContext(4);
   killFireball(kf.ctx, 0, 1, 0, true, 0);
   columnPuff(kf.ctx, 0, 0, 0, 1, 1.3, 0);
