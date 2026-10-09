@@ -731,7 +731,7 @@ function captureContext(seed) {
   assert.ok(/else if \( p\.y > front \) \{[\s\S]*p\.y = front;/.test(pshader.vertexShader), 'the phone folds its walls onto the front');
   assert.notEqual(pm.customProgramCacheKey(), material.customProgramCacheKey(), 'its own program');
   assert.ok(/vStructHoles > 0\.5[\s\S]*along < -hn\.z \|\| along > outside[\s\S]*discard/.test(shader.fragmentShader)
-    && /float th = atan\( lateral\.y, dot\( lateral\.xz, vec2\( hn\.y, -hn\.x \) \) \);/.test(shader.fragmentShader)
+    && /float thx = dot\( lateral\.xz, vec2\( hn\.y, -hn\.x \) \);[\s\S]*float th = abs\( lateral\.y \) \+ abs\( thx \) > 1e-6 \? atan\( lateral\.y, thx \) : 0\.0;/.test(shader.fragmentShader)
     && /fxCrack = max\( fxCrack,/.test(shader.fragmentShader),
     'a fragment inside a hole\'s cylinder (outside..depth along the face normal) is discarded');
   // the cracks darken the surface's own colour at the end of its program (where three dithers it; a depth program has none)
@@ -741,7 +741,7 @@ function captureContext(seed) {
     const ls = { uniforms: {}, vertexShader: '#include <common>\nvoid main() {\n#include <begin_vertex>\n}',
       fragmentShader: '#include <common>\nvoid main() {\n gl_FragColor = vec4(1.0);\n#include <dithering_fragment>\n}' };
     lit.onBeforeCompile(ls, null);
-    assert.ok(/gl_FragColor\.rgb \*= 1\.0 - 0\.8 \* fxCrack;\n#include <dithering_fragment>/.test(ls.fragmentShader), 'cracks darken the face');
+    assert.ok(/gl_FragColor\.rgb \*= 1\.0 - 0\.8 \* clamp\( fxCrack, 0\.0, 1\.0 \);\n#include <dithering_fragment>/.test(ls.fragmentShader), 'cracks darken the face');
   }
   assert.ok(/flat varying float vStructSid;/.test(shader.vertexShader) && /flat varying float vStructSid;/.test(shader.fragmentShader),
     'the structure index reaches the fragment unblended');
@@ -833,4 +833,26 @@ function captureContext(seed) {
   assert.equal(po.pieces.capacity, 3);
 }
 
+// (2026-10-08, the owner's "black screens" on preview 4) one bad pixel never becomes a black frame: every effect shader
+// writes finite colour only, the late composite and the bloom prefilter pass finite values, the media thin as the camera
+// enters them (judged from a puff's centre against its size), and three's point falloff floors at 0.25 m
+{
+  const media = await readFile(new URL('./volumeMedia.ts', import.meta.url), 'utf8');
+  assert.match(media, /float near = smoothstep\( uNearFade\.x \+ 0\.25 \* size, uNearFade\.y \+ 0\.6 \* size, distance\( center, cameraPosition \) \);/,
+    'a big puff thins as the camera enters it (no flat dark card over the frame)');
+  for (const [file, re] of [['./volumeMedia.ts', /col = min\( col, vec3\( 4096\.0 \) \);\n\s*if \( !\( abs\( col\.r \) < 6\.0e4/],
+    ['./debrisChunks.ts', /if \( !\( abs\( col\.r \) < 6\.0e4 && abs\( col\.g \) < 6\.0e4 && abs\( col\.b \) < 6\.0e4 \) \) discard;/],
+    ['./structureDebris.ts', /if \( !\( abs\( col\.r \) < 6\.0e4 && abs\( col\.g \) < 6\.0e4 && abs\( col\.b \) < 6\.0e4 \) \) discard;/],
+    ['./craterMarks.ts', /float ang = r > 1e-5 \? atan\( vDisc\.y, vDisc\.x \) : 0\.0;[\s\S]*if \( !\( abs\( col\.r \) < 6\.0e4/]]) {
+    assert.match(await readFile(new URL(file, import.meta.url), 'utf8'), re, `${file}: finite colour only`);
+  }
+  const post = await readFile(new URL('../engine/post.ts', import.meta.url), 'utf8');
+  assert.match(post, /fragmentShader: LATE_FX_FINITE_COPY_FRAGMENT,/, 'the late composite copies finite values only');
+  assert.match(post, /vec3 bloomIn = vec3\( abs\( texel\.r \) < 6\.0e4 \? texel\.r : 0\.0,/, 'the bloom prefilter takes finite values only');
+  const rend = await readFile(new URL('../engine/renderer.ts', import.meta.url), 'utf8');
+  assert.match(rend, /limitPointLightFalloff\(\);\n\s*renderer\.domElement\.addEventListener\('webglcontextlost'/, 'the falloff floor is set when the renderer is made');
+  assert.match(rend, /'max\( pow\( lightDistance, decayExponent \), 0\.0625 \)'/, 'at 0.25 m (16x, not 100x)');
+  const three = await import('three');
+  assert.match(three.ShaderChunk.lights_pars_begin, /max\( pow\( lightDistance, decayExponent \), 0\.01 \)/, "three's own floor is the one replaced");
+}
 console.log('volumeMedia selftest: atlases, ledger, layout, bake determinism, pool sort and bounds, recipes, surfaces, chunks, structures, craters, structure mask, structure debris — ok');
