@@ -1,3 +1,4 @@
+import { lathedWheelSection } from './lathedWheelStock.ts';
 import { VEHICLE_HULL_LENGTH_FACTORS } from '../vehicleSizePolicy.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 // Strictly typed family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
@@ -3792,10 +3793,8 @@ function addT90SMLegacyTurretShell(P: T90BuilderPort): T90SMLegacyTurretContext 
   P.add('turretGlass', box(0.08, 0.055, 0.008), -0.28, 0.675, 0.139);
   P.add('turretDark', cylY(0.17, 0.17, 0.012, 16), 0.33, 0.591, -0.16);
   P.add('turret', cylY(0.155, 0.17, 0.075, 16), 0.33, 0.6325, -0.16);   // gunner cupola drum
-  P.add('turretDark', cylY(0.17, 0.17, 0.014, 16), 0.33, 0.677, -0.16); // rim (top 2.084 = the ref slice-6 right rim)
-  // lid 2 mm proud of the rim (fleet lane 2026-10-07: flush, its top disc and the rim's shared one plane and fought in
-  // depth: the circularCapOverlap finding)
-  P.add('turret', cylY(0.132, 0.132, 0.012, 16), 0.33, 0.680, -0.16);
+  P.add('turretDark', lathedWheelSection([[-.007,.132],[-.007,.17],[.007,.17],[.007,.132]],16).rotateZ(Math.PI/2), 0.33, 0.677, -0.16); // rim (top 2.084 = the ref slice-6 right rim)
+  P.add('turret', cylY(0.132, 0.132, 0.012, 16), 0.33, 0.678, -0.16);   // lid flush
   P.add('turretDetail', box(0.10, 0.022, 0.03), -0.395, 0.596, 0.315);  // hatch hinge
   P.add('turretDetail', box(0.09, 0.022, 0.03), 0.33, 0.596, 0.03);
   for (const s of [-1, 1]) {

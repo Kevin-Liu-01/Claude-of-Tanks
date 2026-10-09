@@ -82,6 +82,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/armorSurfaceGroup.selftest.mjs',
     'src/vehicles/calibrationStockGeometry.selftest.mjs',
     'src/vehicles/physicalMuzzleBore.selftest.mjs',
+    'src/vehicles/carvedMuzzleBore.selftest.mjs',
     'src/vehicles/profiles/lathedWheelStock.selftest.mjs',
     'src/vehicles/profiles/kf41LynxWheelStock.selftest.mjs',
     'src/vehicles/nationWheelSets.selftest.mjs',

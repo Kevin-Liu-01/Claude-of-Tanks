@@ -15,6 +15,7 @@ import { markSmokeTube, alignSmokeBanks, transferSmokeSockets } from './vehicleA
 // independent (see docs/SYSTEMS.md).
 
 import * as THREE from 'three';
+import { installCarvedMuzzleBore, verifyCarvedMuzzleBore } from './carvedMuzzleBore.ts';
 import { vehicleProvenance } from '../authorship.ts';
 import { isBattleShareableMesh, shareBattleGeometry } from './battleGeometrySharing.ts';
 import { mergeContiguousStaticRuns, type CoplanarLayerRecord } from './staticDrawMerge.ts';
@@ -2626,6 +2627,10 @@ function idlerGeo(
       0, Math.sin(a) * r * 0.48, Math.cos(a) * r * 0.48));
   }
   const boltCount = pattern?.endFasteners ?? 8;
+  // Keep the heads on the exposed dish, outside the raised hub's 0.26r
+  // footprint. A fixed 22 mm head crossed that edge on small idlers and
+  // competed with the hub cap in the same plane. Preserve the flush plane.
+  const boltRadius = Math.min(0.022, r * 0.035);
   for (let k = 0; k < boltCount; k++) {                  // dark bolt heads on the dish
     const a = (k / boltCount) * Math.PI * 2 + 0.2;
     // Fleet lane round 1 (2026-10-07): the heads stand 6 mm proud of the hub drum's end face. Ending in its plane,
@@ -2633,7 +2638,8 @@ function idlerGeo(
     // in depth on every idler (the inherited fleetPass circularCapOverlap red, 157 hulls at LOW).
     // and on a small idler (or a many-bolt pattern) the heads keep a gap: neighbours at 0.30·r used to overlap
     // edge to edge in one plane (Leopard 2A6 UA's front idler).
-    const headR = Math.min(0.022, (Math.PI * 2 * r * 0.30 / boltCount) * 0.42);
+    // (push 7 RC: main's a28e4d8e6 bounds the head by the dish, boltRadius above; the head takes the smaller of the two)
+    const headR = Math.min(boltRadius, (Math.PI * 2 * r * 0.30 / boltCount) * 0.42);
     dark.push(xform(cylX(headR, w + hD * 1.6 + 0.012, 6),
       0, Math.sin(a) * r * 0.30, Math.cos(a) * r * 0.30));
   }
@@ -4185,10 +4191,24 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     cylX(bossRadius * 0.67, bossWidth, Math.max(8, suspensionPattern.armSegments)),
     cylX(bossRadius * 0.30, bossWidth * 1.12, 8),
   ]);
+  // Paired arms may share one fixed hull bearing. Emit that physical boss
+  // once; each moving axle still owns its independent instance.
+  const anchorBosses = new Map<string, number>();
+  let jointCount = 0;
+  const suspensionJointIndices = suspensionEntries.map(link => {
+    const x = suspensionDimensions ? link.side * suspensionDimensions.anchorBossCenterAbsXM : link.x;
+    const key = `${x},${link.anchorY},${link.anchorZ}`;
+    let anchor = anchorBosses.get(key);
+    if (anchor === undefined) {
+      anchor = jointCount++;
+      anchorBosses.set(key, anchor);
+    }
+    return { anchor, axle: jointCount++ };
+  });
   const suspensionJointIM = new THREE.InstancedMesh(
     suspensionJointGeo,
     mats.dark || mats.spareTrack || mats.wheelsRecessed,
-    suspensionEntries.length * 2,
+    jointCount,
   );
   const buildRunningGearReceiptStage6 = (): void => {
     suspensionJointIM.name = 'gearSuspensionJointBosses';
@@ -4243,8 +4263,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       _m.compose(_v, _q, _s);
       suspensionIM.setMatrixAt(i, _m);
 
-      placeSuspensionBoss(i * 2, link, false, link.anchorY, link.anchorZ);
-      placeSuspensionBoss(i * 2 + 1, link, true, axleY, axleZ);
+      placeSuspensionBoss(suspensionJointIndices[i].anchor, link, false, link.anchorY, link.anchorZ);
+      placeSuspensionBoss(suspensionJointIndices[i].axle, link, true, axleY, axleZ);
     }
     suspensionIM.instanceMatrix.needsUpdate = true;
     suspensionJointIM.instanceMatrix.needsUpdate = true;
@@ -8266,17 +8286,10 @@ function* createTankOwnedSteps(
   muzzle.name = 'rig_muzzle';
   muzzle.position.set(0, 0, P.muzzleZ);
   recoilG.add(muzzle);
-  // Fleet muzzle-bore fallback. Profile-authored lips stay authoritative;
-  // older solid-cap builds receive a mask-neutral dark throat attached to
-  // the recoil/FX anchor, and sourced GLB swaps re-seat the same fallback
-  // from their real tube-tip vertices.
-  // Normalize profile-authored bore furniture before installing the fleet
-  // mouth. A few composite family builders inherit the same muzzle helper
-  // twice, while many older helpers bury their disc partly behind a retained
-  // solid cap. Rendering those pieces directly causes z-fighting, clipped
-  // crescents, or a black plate apparently floating in front of the tube.
-  // Their nearest pair still supplies an exact per-profile seating anchor,
-  // but the one universal annulus/disc assembly owns the visible mouth.
+  // Fleet physical bores preserve verified authored interiors. Legacy solid
+  // tips are opened at their measured terminal face, with an inward wall and
+  // recessed backstop. Old rim/disc helpers provide seating datums only:
+  // retaining their front masks would cap the aperture or cause z-fighting.
   root.updateMatrixWorld(true);
   const muzzleWorld = recoilG.localToWorld(new THREE.Vector3(0, 0, P.muzzleZ));
   const authoredRims: THREE.Object3D[] = [];
@@ -8333,13 +8346,9 @@ function* createTankOwnedSteps(
   if (physicalBore) root.userData.physicalMuzzleBore = { ...physicalBore, frame: recoilG.name, muzzleZ: P.muzzleZ };
   const nominalMuzzleOuterR = Math.max(0.014, (armor.gunBarrel.radiusM || 0.04) * 0.92);
   const caliberRadius = Math.max(0.004, (spec.gun.caliberMm || 20) / 2000);
-  const authoredBoreSegments = Number(spec.gun.muzzleBoreSegments);
-  const boreSegments = Number.isInteger(authoredBoreSegments)
-    ? THREE.MathUtils.clamp(authoredBoreSegments, 12, 32)
-    : spec.gun.caliberMm <= 40 ? 12 : 18;
   // TWIN-BORE KNOB (owner order 2026-08-17, "2 shooting holes for both its
   // barrels"): `spec.gun.muzzles = [{x,y}, ...]` (recoil-local lateral
-  // offsets at the muzzle plane) installs one rim/annulus/disc assembly PER
+  // offsets at the muzzle plane) installs one physical aperture PER
   // barrel tip, each measured and seated independently at its own axis.
   // ABSENT => one assembly is still created on the authored/center axis, but
   // it now inherits the physical terminal tube/brake radius and lip plane.
@@ -8352,6 +8361,7 @@ function* createTankOwnedSteps(
   // mid-stroke sample rides the recoiled tube. gunMuzzleWorld(out, i) reads
   // them; the absent-knob fleet keeps the exact legacy center anchor.
   const muzzleTips: THREE.Object3D[] = [];
+  const carvedMuzzleFrames: THREE.Object3D[] = [];
   root.updateMatrixWorld(true);
   const muzzleCourseContext = (index: number) => {
     const def = muzzleDefs[index];
@@ -8469,7 +8479,7 @@ function* createTankOwnedSteps(
         // Several source-study barrels model an open sleeve around an inner
         // bore tube whose floor disc sits 25-32 cm behind the mouth. That
         // floor is a center-spanning cap, but the visible mouth is the tube
-        // edge: seating the bore at the floor left a deep hollow throat.
+        // edge: the floor is a depth datum, not the terminal mouth plane.
         // Prefer the edge whenever the cap lies deeper than a real
         // counterbore behind it.
         const edgeWorld = surface.localToWorld(new THREE.Vector3(axisLocal.x, axisLocal.y, profile.z));
@@ -8527,7 +8537,7 @@ function* createTankOwnedSteps(
     // instead of the fitted radius. The M60A2's 152 mm launcher inside a .158 collar read the
     // donor 105 mm tube's 118 mm hole (radialRatio .37) under the nominal clamp, and the 0.94
     // face fit would have painted .1485 of the collar dark. The declaration is still clamped
-    // inside the measured face and the ring keeps its 2 % overlap over the disc.
+    // inside the measured face, retaining native metal around the aperture.
     const muzzleOuterR = physicalBore?.outerRadiusM ?? Math.max(0.006, Math.min(
       capFitOuterR,
       declaredMouth?.outerRadiusM ?? (validAuthoredOuterR || nominalMuzzleOuterR),
@@ -8535,170 +8545,59 @@ function* createTankOwnedSteps(
     const muzzleInnerR = physicalBore?.innerRadiusM ?? (declaredMouth
       ? Math.min(declaredMouth.innerRadiusM, muzzleOuterR * 0.98)
       : Math.max(muzzleOuterR * 0.46, Math.min(muzzleOuterR * 0.72, caliberRadius)));
-    const muzzleRimR = physicalBore
-      ? Math.min(muzzleOuterR * .12, (muzzleOuterR-muzzleInnerR) * .4)
-      : Math.max(0.001, muzzleOuterR * 0.12);
-    // Owner 2026-09-22 ("the point of adding holes instead of carving them into
-    // the barrel is that we save on triangles ... make sure were saving the
-    // triangles here"): the added hole is the minimal construction. One flat
-    // dark ring is both the lip and the annular face (2N) at the lip front, the
-    // near-black disc (N) sits just behind it, and an open throat sleeve (2N)
-    // is added only when the authored tube stops short of the marker: 3N–5N
-    // per mouth instead of the former 13N–15N (a 10N torus lip plus a separate
-    // 2N annulus). The ring starts at the disc radius so the two overlap by
-    // 2 %: a hairline gap between separate meshes can expose legacy solid-cap
-    // triangles on small-caliber, low-segment barrels. A verified physical
-    // recess keeps only the shadow disc at its floor: its own annulus and
-    // inward wall are the visible mouth, so the barrel-paint duplicates that
-    // used to sit 0.5 mm ahead of them are gone.
-    const boreDiscGeo = new THREE.CircleGeometry(muzzleInnerR * 1.02, boreSegments);
-    const boreRimGeo = physicalBore
-      ? null
-      : new THREE.RingGeometry(muzzleInnerR, muzzleOuterR, boreSegments);
-    disposables.push(boreDiscGeo);
-    if (boreRimGeo) disposables.push(boreRimGeo);
-
-    // terminal-surface-fit-r2: the visible mouth ends at the ballistic
-    // muzzle marker. Authored tubes that stop short of it (the fleet lip
-    // has completed a 20 mm shortfall on many X tubes) are finished by the
-    // dark lip and, beyond one lip radius, a dark throat sleeve; tubes that
-    // already reach the marker keep the lip 0.9 mm proud, so no vehicle
-    // grows past its authored/official envelope. The annulus and disc sit
-    // a fraction of a millimetre behind the lip front, depth-safe.
-    const seatedFaceParentZ = physicalBore ? boreBaseZ : (capSelection.faceParentZ
-      ?? authoredFaceParentZ
-      ?? boreBaseZ);
-    const markerGapM = Math.min(0.06, Math.max(0, -seatedFaceParentZ));
-    // Three seats. A tube already at the marker keeps its lip mostly
-    // inside itself, 0.9 mm proud, with the mouth on that face. A tube
-    // that stops short (the fleet's 0.28 R lip convention, typically
-    // 20 mm) keeps the published r1 lip: rear 0.04 R ahead of the tube
-    // end, front no further than the marker, mouth 1.2 mm inside. A tube
-    // that stops further short than that lip can reach is completed by a
-    // dark throat sleeve so the lip and mouth still finish at the marker.
-    const lipRimR = muzzleRimR;
-    const classicLipAdvanceM = THREE.MathUtils.clamp(muzzleOuterR * 0.16, 0.0035, 0.016);
-    let lipAdvanceM: number, annulusForwardM: number, discForwardM: number;
-    if (markerGapM < 0.003) {
-      lipAdvanceM = 0.0009 - lipRimR;
-      annulusForwardM = 0.0006;
-      discForwardM = 0.0003;
-    } else if (classicLipAdvanceM + lipRimR >= markerGapM - 0.003) {
-      // Capped at 0.9 mm past the marker so a lip that meets the marker
-      // still stands proud of a tube whose true face is that plane.
-      lipAdvanceM = Math.min(classicLipAdvanceM, markerGapM + 0.0009 - lipRimR);
-      annulusForwardM = 0.0022;
-      discForwardM = 0.0012;
-    } else {
-      lipAdvanceM = markerGapM - lipRimR;
-      annulusForwardM = markerGapM - 0.0004;
-      discForwardM = markerGapM - 0.0008;
+    if (!physicalBore) {
+      // Preserve the actual terminal stock and cut its aperture. The old
+      // front-mounted black disc/ring/sleeve is replaced by one recessed wall.
+      const faceZ = capSelection.faceParentZ ?? authoredFaceParentZ ?? boreBaseZ;
+      const depth = THREE.MathUtils.clamp(muzzleInnerR * 3, .06, .20);
+      const bore = new THREE.Group();
+      bore.name = `muzzleBoreShadowFallback${suffix}`;
+      bore.position.set(boreX, boreY, faceZ);
+      bore.userData.cannonBore = true;
+      bore.userData.physicalMouth = true;
+      boreParent.add(bore);
+      root.updateMatrixWorld(true);
+      const cost = installCarvedMuzzleBore([primarySurfaceRoot, hullG], bore, muzzleInnerR, depth, mats.dark, disposables, mats.shadow);
+      carvedMuzzleFrames.push(bore);
+      bore.userData.muzzleSeatReceipt = Object.freeze({
+        revision: 'carved-physical-recess-r1', supportSource,
+        supportOuterRadiusM: supportOuterR, outerRadiusM: muzzleOuterR,
+        innerRadiusM: muzzleInnerR, physicalInnerRadiusM: muzzleInnerR,
+        physicalBoreDepthM: depth, radialRatio: muzzleOuterR / supportOuterR,
+        physicalRimProjectionM: 0, measuredProjectionM: 0, measuredOuterRadiusM: supportOuterR,
+        lipFrontM: 0, lipAdvanceM: 0, annulusForwardM: 0, discForwardM: -depth,
+        markerGapM: boreBaseZ - faceZ, ...cost,
+      });
+      if (def) {
+        const tip = new THREE.Object3D(); tip.name = `rig_muzzle_tip_${mi}`;
+        tip.position.set(boreX, boreY, boreBaseZ + capOffset);
+        boreParent.add(tip); muzzleTips.push(tip);
+      }
+      continue;
     }
-    // A verified physical tube retains its actual depth. The black finish
-    // sits 0.5 mm ahead of its real backstop, avoiding coplanar flicker.
-    if (physicalBore) discForwardM = -physicalBore.depthM + .0005;
-    const lipFrontM = lipAdvanceM + lipRimR;
-    // The flat ring replaced the former torus (owner 2026-09-22); lipRimR now
-    // only names the lip-front offset the r2 seats were published with, so
-    // every seat keeps its receipt values. The dark ring is the annular face
-    // too, so the annulus plane is the lip front (terminal-surface-fit-r3).
-    if (!physicalBore) annulusForwardM = lipFrontM;
-    // Open-ended sleeve from the authored tube end to the ring whenever the
-    // tube stops short of the marker; a flush tube's 0.9 mm proud ring needs
-    // none. It never caps the dark disc behind it.
-    const boreThroatGeo = !physicalBore && lipFrontM > 0.003
-      ? new THREE.CylinderGeometry(muzzleOuterR, muzzleOuterR,
-        lipFrontM, boreSegments, 1, true).rotateX(Math.PI / 2)
-      : null;
-    if (boreThroatGeo) disposables.push(boreThroatGeo);
-    const fallbackBore = new THREE.Group();
-    fallbackBore.name = `muzzleBoreShadowFallback${suffix}`;
-    fallbackBore.userData.cannonBore = true;
-    // A verified physical recess is its own rim: the census counts this
-    // mouth as a physical bore instead of demanding a fallback Rim mesh.
-    fallbackBore.userData.physicalMouth = !!physicalBore;
-    fallbackBore.userData.caliberMm = spec.gun.caliberMm;
-    fallbackBore.userData.capOffsetM = capOffset;
-    fallbackBore.userData.muzzleSeatDebug = {
-      supportSource: capSelection.supportSource, recoilZ: capSelection.recoilZ,
-      faceParentZ: capSelection.faceParentZ, authoredFaceParentZ, muzzleZ: P.muzzleZ,
-    };
-    fallbackBore.userData.muzzleSeatReceipt = Object.freeze({
-      revision: physicalBore ? 'physical-recess-r1' : 'terminal-surface-fit-r3',
-      ...(physicalBore && physicalBoreEvidence ? {
-        physicalBoreDepthM: physicalBore.depthM,
-        measuredMinimumDepthM: physicalBoreEvidence.minimumDepthM,
-        measuredMaximumRimOffsetM: physicalBoreEvidence.maximumRimOffsetM,
-        measuredOuterRadiusM: physicalBoreEvidence.measuredOuterRadiusM,
-        physicalInnerRadiusM: physicalBore.innerRadiusM,
-        physicalRimProjectionM: physicalBore.rimProjectionM ?? 0,
-        measuredProjectionM: physicalBoreEvidence.measuredProjectionM,
-      } : {}),
-      supportSource,
-      ...(declaredMouth ? {
-        mouthSource: 'declared-bore',
-        declaredOuterRadiusM: declaredMouth.outerRadiusM,
-        declaredInnerRadiusM: declaredMouth.innerRadiusM,
-        innerRadiusM: muzzleInnerR,
-      } : {}),
-      supportOuterRadiusM: supportOuterR,
-      outerRadiusM: muzzleOuterR,
-      radialRatio: muzzleOuterR / supportOuterR,
-      lipAdvanceM,
-      rimRadiusM: lipRimR,
-      lipFrontM,
-      markerGapM,
-      annulusForwardM,
-      discForwardM,
+    // An authored physical barrel already owns its rim, wall and floor.
+    // Keep only its receipt frame; do not draw a second black floor over it.
+    const bore = new THREE.Group();
+    bore.name = `muzzleBoreShadowFallback${suffix}`;
+    bore.position.set(boreX, boreY, boreBaseZ);
+    bore.userData.cannonBore = true;
+    bore.userData.physicalMouth = true;
+    bore.userData.muzzleSeatReceipt = Object.freeze({
+      revision: 'physical-recess-r2', supportSource,
+      physicalBoreDepthM: physicalBore.depthM,
+      measuredMinimumDepthM: physicalBoreEvidence?.minimumDepthM,
+      measuredMaximumRimOffsetM: physicalBoreEvidence?.maximumRimOffsetM,
+      measuredOuterRadiusM: physicalBoreEvidence?.measuredOuterRadiusM,
+      measuredProjectionM: physicalBoreEvidence?.measuredProjectionM,
+      physicalRimProjectionM: physicalBore.rimProjectionM ?? 0,
+      physicalInnerRadiusM: physicalBore.innerRadiusM,
+      supportOuterRadiusM: supportOuterR, outerRadiusM: muzzleOuterR,
+      radialRatio: 1, lipAdvanceM: 0, rimRadiusM: 0, lipFrontM: 0,
+      markerGapM: 0, annulusForwardM: 0, discForwardM: -physicalBore.depthM,
     });
-    fallbackBore.position.set(boreX, boreY, seatedFaceParentZ + lipAdvanceM);
-    fallbackBore.visible = true;
-
-    const boreRim = boreRimGeo ? new THREE.Mesh(boreRimGeo, mats.dark) : null;
-    if (boreRim) {
-      boreRim.name = `muzzleBoreShadowFallbackRim${suffix}`;
-      boreRim.userData.cannonBoreFallbackPart = true;
-      boreRim.userData.cannonBorePrimaryPart = true;
-      // The flat ring is the lip front and the annular face in one plane.
-      boreRim.position.z = annulusForwardM - lipAdvanceM;
-      boreRim.visible = true;
-    }
-    if (boreThroatGeo) {
-      // Dark sleeve from the authored tube end to the ring: the completed
-      // muzzle reads as one tube instead of a floating ring.
-      const boreThroat = new THREE.Mesh(boreThroatGeo, mats.dark);
-      boreThroat.name = `muzzleBoreShadowFallbackThroat${suffix}`;
-      boreThroat.userData.cannonBoreFallbackPart = true;
-      boreThroat.position.z = (lipRimR - lipAdvanceM) / 2;
-      boreThroat.castShadow = false;
-      boreThroat.receiveShadow = true;
-      fallbackBore.add(boreThroat);
-    }
-    const boreDisc = new THREE.Mesh(boreDiscGeo, mats.shadow);
-    boreDisc.name = `muzzleBoreShadowFallbackDisc${suffix}`;
-    boreDisc.userData.cannonBoreFallbackPart = true;
-    boreDisc.userData.cannonBorePrimaryPart = true;
-    // Keep the dark disc barely proud of retained legacy cap triangles while
-    // recessing it behind the lip. This removes the former 32 mm floating
-    // plate without introducing z-fighting or depth-test leakage.
-    boreDisc.position.z = discForwardM - lipAdvanceM;
-    boreDisc.visible = true;
-    for (const part of [boreRim, boreDisc]) {
-      if (!part) continue;
-      part.castShadow = false;
-      part.receiveShadow = true;
-      fallbackBore.add(part);
-    }
-    boreParent.add(fallbackBore);
-    fallbackBore.visible = true;
-    if (def) {
-      const tip = new THREE.Object3D();
-      tip.name = `rig_muzzle_tip_${mi}`;
-      tip.position.set(boreX, boreY, boreBaseZ + capOffset);
-      boreParent.add(tip);
-      muzzleTips.push(tip);
-    }
+    boreParent.add(bore);
   }
+
   const turretTop = new THREE.Object3D();
   turretTop.position.set(0, P.topY, 0);
   turretG.add(turretTop);
@@ -10031,6 +9930,10 @@ function* createTankOwnedSteps(
       // Final stock includes generated gun fills and fixed pitch-owned parts.
       // Neither may re-cap the recoil-owned aperture that was verified earlier.
       root.userData.physicalMuzzleBoreVerification = verifyPhysicalMuzzleBore(gunG, P.muzzleZ, physicalBore);
+    }
+    if (opts.geometryReceipt) for (const frame of carvedMuzzleFrames) {
+      const evidence = verifyCarvedMuzzleBore(root, frame);
+      frame.userData.muzzleSeatReceipt = Object.freeze({...frame.userData.muzzleSeatReceipt, ...evidence});
     }
     const tailFillsFinishedAt = performance.now();
 
