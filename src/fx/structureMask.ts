@@ -244,7 +244,9 @@ if ( vStructHoles > 0.5 ) {
     vec3 lateral = dd - vec3( hn.x, 0.0, hn.y ) * along;
     // the outline the kit's rim follows (destructionKit holeOutlineK: 0.8 + 0.2 sin(3θ + φ) + 0.12 sin(5θ + 2φ), θ from
     // the face's u = (n.z, -n.x), φ the hole's own phase), its blocky cells on top
-    float th = atan( lateral.y, dot( lateral.xz, vec2( hn.y, -hn.x ) ) );
+    // (2026-10-08) atan(0, 0) is undefined on the hole's own axis
+    float thx = dot( lateral.xz, vec2( hn.y, -hn.x ) );
+    float th = abs( lateral.y ) + abs( thx ) > 1e-6 ? atan( lateral.y, thx ) : 0.0;
     float ph = pk > 0.5 ? ( pk - 1.0 ) / 255.0 * 6.2832 : fxStructHash3( floor( hc.xyz * 3.1 ) ).y * 6.2832;
     float lobe = 0.8 + 0.2 * sin( 3.0 * th + ph ) + 0.12 * sin( 5.0 * th + 2.0 * ph );
     float rl = length( lateral );
@@ -269,7 +271,7 @@ if ( vStructHoles > 0.5 ) {
 `;
 // the cracks darken the face's own colour at the end of the surface program (a depth program has no colour: none there)
 const FRAG_TAIL = /* glsl */ `
-gl_FragColor.rgb *= 1.0 - 0.8 * fxCrack;
+gl_FragColor.rgb *= 1.0 - 0.8 * clamp( fxCrack, 0.0, 1.0 );
 #include <dithering_fragment>
 `;
 

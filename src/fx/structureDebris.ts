@@ -174,7 +174,8 @@ void main() {
   float landed = moving * step( c.y, rest );
   c.y = moving > 0.5 ? max( c.y, rest ) : c.y;
   // tumble about an axis from the piece's own seed (its start quaternion), damped once it lies
-  vec3 axis = normalize( vec3( aQ.y + 0.31, aQ.z - 0.17, aQ.x + 0.23 ) );
+  vec3 axisRaw = vec3( aQ.y + 0.31, aQ.z - 0.17, aQ.x + 0.23 );
+  vec3 axis = axisRaw / max( length( axisRaw ), 1e-4 );
   float ang = aSS.w * ( landed > 0.5 ? min( age, 0.6 ) : age ) * moving;
   vec3 lp = position * aSS.xyz;
   // (round 7) a landed piece lies most of its life, then settles into the ground over the last third; the last few
@@ -239,6 +240,8 @@ void main() {
     #endif
     col = mix( col, fogColor, fogFactor );
   #endif
+  // (2026-10-08, the owner's black screens) finite colour only
+  if ( !( abs( col.r ) < 6.0e4 && abs( col.g ) < 6.0e4 && abs( col.b ) < 6.0e4 ) ) discard;
   gl_FragColor = vec4( col, 1.0 );
 }
 `;
