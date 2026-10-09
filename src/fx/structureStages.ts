@@ -115,15 +115,18 @@ interface StructureTopple {
 const TOPPLE_HINGE_M = 1.5;
 /**
  * A collapse that topples (dcore 2026-10-09): a shaft (the regional kit's stack, water tower, minaret or tower: its
- * anatomy carries a shaft plan) goes over in the blow's direction (the event's; a blow without one, a direction of its
- * own seed), about the leading edge of its foot; null for anything else, and after the P2 cascade (its bands are down).
+ * anatomy carries a shaft plan) goes over toward the blow (against the event's direction: the struck side's foot is
+ * gone; a blow without one, a direction of its own seed), about the leading edge of its foot; null for anything else, and after the P2 cascade (its bands are down).
  */
 export function structureTopple(anatomy: StructureDamageSeam['anatomy'] | null | undefined, e: StructureStageEvent): StructureTopple | null {
   if (!anatomy || (e as StructureStageEvent & { sections?: boolean }).sections === true) return null;
   const plan = anatomy.kitPlan as { damage?: { shaft?: unknown } } | undefined;
   if (!plan?.damage?.shaft) return null;
   const H = Math.max(1, e.topY - e.baseY);
-  let dx = Number.isFinite(e.dirX) ? e.dirX : 0, dz = Number.isFinite(e.dirZ) ? e.dirZ : 0;
+  // (wave 322: "the fallen shaft disappears" — it went over away from the shooter, behind its own stump and dust) a round
+  // that blows out the foot on the struck side takes that side's support away: the shaft leans into the gap and goes
+  // over toward the blow, where the shooter sees it fall
+  let dx = Number.isFinite(e.dirX) ? -e.dirX : 0, dz = Number.isFinite(e.dirZ) ? -e.dirZ : 0;
   let dl = Math.hypot(dx, dz);
   if (!(dl > 1e-3)) {
     const ang = damageRng(damageSeed(anatomy.seed, 11))() * Math.PI * 2;
