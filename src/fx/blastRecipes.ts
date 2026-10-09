@@ -271,19 +271,21 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // climbing on its heat for seconds, leaning downwind and thinning; b8a's stopped as a tan haystack on the ground) the
   // explosive's smoke: puffs born out of the cooling fireball and driven up by its heat, the upper ones faster so the
   // cloud stretches into a lobed column, each glowing a moment at its heart
-  const smokeN = thermobaric || heavy ? 9 : shaped ? 4 : 6;
+  // (7d: separate blue-grey lobes from ~2.4 s) more, smaller puffs overlapping into one lobed mass
+  const smokeN = thermobaric || heavy ? 14 : shaped ? 6 : 10;
   // (on snow, the dark soil it throws from under the snow: HE on snow is dark smoke over white powder)
   const smokeC0: Rgb = shaped || thermobaric ? SOOT : mix3b(SOOT, I.surface === 'snow' ? UNDER_SNOW_SOIL : L.ejecta, 0.35);
   for (let i = 0; i < smokeN; i++) {
     const u = (i + R()) / smokeN;
     const a = R() * TAU, r = R() * 0.25 * D;
     place(m, I.x + Math.cos(a) * r, by + (0.25 + 0.45 * u) * D, I.z + Math.sin(a) * r, bo + 0.06 + 0.12 * u);
-    const lift = (2.2 + 2.8 * u) * sq * (heavy ? 1.3 : 1) * (shaped ? 0.8 : 1);
-    move(m, Math.cos(a) * (0.5 + R()) * sq, lift, Math.sin(a) * (0.5 + R()) * sq, 1.1, (0.3 + 0.45 * u) * Math.sqrt(sq), 1.0, 0);
+    const lift = (2.4 + 1.8 * u) * sq * (heavy ? 1.3 : 1) * (shaped ? 0.8 : 1);
+    move(m, Math.cos(a) * (0.5 + R()) * sq, lift, Math.sin(a) * (0.5 + R()) * sq, 1.1, (0.35 + 0.25 * u) * Math.sqrt(sq), 1.0, 0);
     // (DVIDS 954922: still a thin grey cloud drifting high at +7 s) it thins out over ten seconds or so
     const life = (9 + 4 * R()) * (heavy ? 1.3 : 1) * (shaped ? 0.8 : 1);
-    shape(m, life, 0.4 * D * dk, (1.0 + 0.6 * u + 0.3 * R()) * D * dk, 1.7, R);
-    look(m, smokeC0, mix3(SMOKE_AGED, L.dust, 0.45), 0.92, 0.0, 0.55);
+    shape(m, life, 0.35 * D * dk, (0.75 + 0.45 * u + 0.25 * R()) * D * dk, 1.7, R);
+    // aged to a neutral grey-brown: the soil's own dark in it keeps the sky's blue out of its shaded side
+    look(m, smokeC0, mix3(SMOKE_AGED, I.surface === 'snow' ? UNDER_SNOW_SOIL : L.ejecta, 0.2), 0.92, 0.0, 0.55);
     book(m, 'billow', R, life);
     heat(m, 0.32, 4.5);
     C.media(m);
@@ -452,18 +454,19 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // ground for eight seconds, a haystack; DVIDS 954922's dust is a thin grey-brown sheet under the climbing smoke)
   const cloudN = Math.round(5 + 2 * s);
   const top = (shaped ? 1.8 : 2.6) * s * L.heightK * (heavy ? 1.6 : 1);
-  const hazeC1 = mix3b(L.dust, SMOKE_AGED, 0.25);
+  // (7d: still tan mounds to ~4 s) half as dense again, born wider and thrown out faster, greyer, shorter-lived
+  const hazeC1 = mix3b(L.dust, SMOKE_AGED, 0.45);
   for (let i = 0; i < cloudN; i++) {
-    const a = R() * TAU, r = (0.3 + 0.9 * R()) * s;
-    const h = (0.1 + 0.4 * R()) * top;
-    place(m, I.x + Math.cos(a) * r, by + 0.3 + h * 0.25, I.z + Math.sin(a) * r, bo + 0.04 + R() * 0.1);
-    move(m, Math.cos(a) * 3.2 * sq, (0.5 + h * 0.3) * sq, Math.sin(a) * 3.2 * sq, 1.5, 0.04 + R() * 0.08, 1.0, 0);
+    const a = R() * TAU, r = (0.5 + 1.4 * R()) * s;
+    const h = (0.1 + 0.3 * R()) * top;
+    place(m, I.x + Math.cos(a) * r, by + 0.3 + h * 0.2, I.z + Math.sin(a) * r, bo + 0.04 + R() * 0.1);
+    move(m, Math.cos(a) * 4.5 * sq, (0.4 + h * 0.25) * sq, Math.sin(a) * 4.5 * sq, 1.5, 0.04 + R() * 0.06, 1.0, 0);
     const size1 = (3.2 + R() * 2.4) * s * Math.sqrt(dustK) * dk * (heavy ? 1.25 : 1);
-    const life = (6 + R() * 3) * Math.min(1.6, sq) * L.hang;
+    const life = (4 + R() * 2.5) * Math.min(1.6, sq) * L.hang;
     shape(m, life, size1 * 0.35, size1, 2.0, R);
-    look(m, mix3(L.dust, L.ejecta, 0.3), hazeC1, Math.min(0.62, 0.42 * dustK + 0.12), 0.05, 0.38);
+    look(m, mix3(L.dust, SMOKE_AGED, 0.2), hazeC1, Math.min(0.42, 0.28 * dustK + 0.08), 0.05, 0.35);
     book(m, 'burst', R, life);
-    card(m, 1.35 + R() * 0.4, R, 0.2);
+    card(m, 1.5 + R() * 0.35, R, 0.2);
     m.spin = (R() - 0.5) * 0.1;
     heat(m, 0, 1);
     C.media(m);
@@ -482,7 +485,7 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     const life = (2.2 + R() * 1.0) * (shaped ? 0.85 : 1) * Math.max(0.7, L.hang);
     const size1 = (1.6 + R() * 0.8) * s * Math.sqrt(L.dustK) * dk * (shaped ? 0.75 : 1);
     shape(m, life, size1 * 0.3, size1, 1.8, R);
-    look(m, mix3(L.ejecta, L.dust, 0.7), L.dust, Math.min(0.5, 0.3 * L.dustK + 0.1) * (shaped ? 0.8 : 1), 0.0, 0.35);
+    look(m, mix3(L.ejecta, L.dust, 0.7), mix3b(L.dust, SMOKE_AGED, 0.3), Math.min(0.38, 0.22 * L.dustK + 0.08) * (shaped ? 0.8 : 1), 0.0, 0.35);
     book(m, 'burst', R, life * 1.2, 2);
     card(m, 3.0 + R() * 0.8, R, 0.04);
     heat(m, 0, 1);
