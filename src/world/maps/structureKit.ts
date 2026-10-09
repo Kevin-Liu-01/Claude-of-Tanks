@@ -2185,6 +2185,48 @@ function makeAndalusianAperos(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('fieldhut', out);
 }
 
+/**
+ * A Ca Mau house on stilts by its canal (the facades lane, 2026-10-08; gauntlet wave 260 on Mangrove Reach: "Western
+ * clapboard bungalows with brown shingle gable roofs", the generic wetland stilt house): a plank room raised on posts over
+ * the bank, under a low roof of corrugated iron gone grey and rusty; a veranda on the canal side under the roof's run, its
+ * ladder down the side to the bund, and the glazed water jars by its foot. Inside the stilt house family's box (the
+ * destructible's collision is the family's).
+ */
+function makeMekongStiltHouse(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], wd = REGIONAL_PAL.mekongPlank, iron = REGIONAL_PAL.lyellIron;
+  const lift = 1.7, w = 5.4, d = 6.6, wallH = 2.45, roofH = 1.05, cz = -1.1, vz = 1.6;
+  // the posts under the room and the veranda, the deck over them
+  for (const x of [-w / 2 + 0.2, 0, w / 2 - 0.2]) {
+    for (const z of [cz - d / 2 + 0.2, cz - d / 6, cz + d / 6, cz + d / 2 - 0.2, cz + d / 2 + vz - 0.1]) {
+      colored(out, box(0.16, lift + 0.06, 0.16).translate(x, (lift + 0.06) / 2, z), wd[2], rng);
+    }
+  }
+  colored(out, slab(w + 0.3, 0.12, d + vz).translate(0, lift + 0.06, cz + vz / 2), wd[1], rng);
+  const y0 = lift + 0.12;
+  // the plank room, its gable ends, the iron roof low over it and its run over the veranda
+  colored(out, box(w, wallH, d).translate(0, y0 + wallH / 2, cz), wd[0], rng, 0.1);
+  for (const z of [cz + d / 2 - 0.06, cz - d / 2 + 0.06]) colored(out, gable(w, roofH, 0.12).translate(0, y0 + wallH, z), wd[0], rng);
+  colored(out, gable(w + 1.25, roofH + 0.22, d + vz + 0.7).translate(0, y0 + wallH - 0.14, cz + vz / 2 + 0.1), iron[0], rng, 0.16);
+  for (const x of [-w / 2 + 0.25, w / 2 - 0.25]) colored(out, box(0.14, wallH, 0.14).translate(x, y0 + wallH / 2, cz + d / 2 + vz - 0.1), wd[2], rng);
+  colored(out, box(w + 0.2, 0.08, 0.08).translate(0, y0 + 0.9, cz + d / 2 + vz - 0.1), wd[1], rng); // the veranda's rail
+  // the door and the shuttered windows on the veranda, a window on the side
+  colored(out, box(0.9, 1.9, 0.06).translate(-0.9, y0 + 0.95, cz + d / 2 + 0.03), 0x2a2018, rng, 0.04);
+  colored(out, markWorldAperture(box(1.0, 0.8, 0.06), [0, 0, 1]).translate(1.2, y0 + 1.35, cz + d / 2 + 0.03), 0x52656a, rng, 0.04);
+  colored(out, markWorldAperture(box(0.06, 0.8, 1.0), [1, 0, 0]).translate(w / 2 + 0.03, y0 + 1.35, cz - 1.0), 0x52656a, rng, 0.04);
+  // the ladder down the veranda's side to the bund: a stringer from the ground to the deck's edge, rungs across it
+  const lx = w / 2 + 0.35, lz = cz + d / 2 + vz * 0.5;
+  const stringer = box(0.1, lift + 0.5, 0.1);
+  stringer.rotateZ(-0.28);
+  colored(out, stringer.translate(lx, (lift + 0.5) / 2 - 0.02, lz - 0.32), wd[2], rng); // (its foot on the bund, not in it)
+  colored(out, stringer.clone().translate(0, 0, 0.64), wd[2], rng);
+  for (let i = 0; i < 5; i++) colored(out, box(0.1, 0.07, 0.74).translate(lx + 0.38 - i * 0.1, 0.3 + i * 0.33, lz), wd[1], rng);
+  // the glazed water jars by the ladder's foot
+  for (const [x, z, k] of [[w / 2 - 0.5, lz + 1.05, 1], [w / 2 - 1.15, lz + 1.1, 0.82]] as const) {
+    colored(out, cylinder(0.3 * k, 0.22 * k, 0.72 * k, 10).translate(x, 0.36 * k, z), 0x6e4128, rng, 0.06);
+  }
+  return mergeConnectedStructure('stilthouse', out);
+}
+
 /** A shrimp-pond guard hut on tall stilts: a small plank room on posts under nipa, its ladder down to the bund. */
 function makeMekongPondHut(rng: Rng): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], th = REGIONAL_PAL.nipa, wd = REGIONAL_PAL.mekongPlank;
@@ -2298,10 +2340,12 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
       guardpost: variant('guardpost', REGIONAL_PAL.cal, makeAndalusianCaseta),
       fieldhut: variant('fieldhut', REGIONAL_PAL.cal, makeAndalusianAperos),
     }),
-    // the stilt house keeps the generic wetland family (already a plank house on posts); the barn and the shack go
+    // (the facades lane, 2026-10-08; wave 260: the generic wetland stilt house read as a Western clapboard bungalow) the
+    // stilt house the Ca Mau house on posts under rusted iron, beside the nipa long house and the pond hut
     mekong: Object.freeze({
       longhouse: variant('longhouse', REGIONAL_PAL.mekongPlank, makeMekongLongHouse),
       fishershack: variant('fishershack', REGIONAL_PAL.mekongPlank, makeMekongPondHut),
+      stilthouse: variant('stilthouse', REGIONAL_PAL.mekongPlank, makeMekongStiltHouse),
     }),
     // Queenstown (Copper Mesa Mine): the works' iron sheds for the steel shelter and the block garage
     queenstown: Object.freeze({

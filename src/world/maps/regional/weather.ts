@@ -151,6 +151,8 @@ export interface WeatherOptions {
   mossTint?: Rgb;
   /** the sun's horizontal direction in the building's frame (x, z), or null: a slope turned from it grows more */
   sun?: readonly [number, number] | null;
+  /** (round 10) a map gated back to the older craft (KIT_LEGACY_MAPS): its roofs weathered without their age */
+  legacy?: boolean;
 }
 
 /**
@@ -191,12 +193,19 @@ export function weatherRegionalParts(parts: RegionalParts, tints: WeatherTints, 
             // (the facades lane, round 6; gauntlet wave 241: "unweathered clay roofs", "one clean terracotta tile texture
             // with only value shifts between houses") the roof's age: an old roof darker and browner, its moss and lichen
             // grown thick along the eaves, and thicker on the slope turned from the sun; a new one bright and clean
-            const away = sun && ny > 0.3 && ny < 0.995 ? Math.max(0, -(v.n[0] * sun[0] + v.n[2] * sun[1]) / Math.hypot(v.n[0], v.n[2])) : 0.4;
-            const growth = moss * (0.3 + 0.7 * age) * (0.55 + 0.9 * away);
-            k = (0.8 + 0.2 * smooth(0, 0.6, t)) * (1.05 - 0.2 * age);
-            const m = Math.min(0.9, growth * (1 - smooth(0, 0.5, t)) * (ny > 0.3 ? 1 : 0.4));
-            const brown = age * 0.18;
-            c = [tint[0] * (1 + (MOSS[0] - 1) * m) * (1 - brown * 0.5), tint[1] * (1 + (MOSS[1] - 1) * m), tint[2] * (1 + (MOSS[2] - 1) * m) * (1 + brown * 0.3)];
+            if (options.legacy) {
+              // (round 10, a gated map) the roof as the craft weathered it before its age: moss along the eaves alone
+              k = 0.8 + 0.2 * smooth(0, 0.6, t);
+              const m = moss * 0.6 * (1 - smooth(0, 0.45, t)) * (ny > 0.3 ? 1 : 0.4);
+              c = [tint[0] * (1 + (MOSS[0] - 1) * m), tint[1] * (1 + (MOSS[1] - 1) * m), tint[2] * (1 + (MOSS[2] - 1) * m)];
+            } else {
+              const away = sun && ny > 0.3 && ny < 0.995 ? Math.max(0, -(v.n[0] * sun[0] + v.n[2] * sun[1]) / Math.hypot(v.n[0], v.n[2])) : 0.4;
+              const growth = moss * (0.3 + 0.7 * age) * (0.55 + 0.9 * away);
+              k = (0.8 + 0.2 * smooth(0, 0.6, t)) * (1.05 - 0.2 * age);
+              const m = Math.min(0.9, growth * (1 - smooth(0, 0.5, t)) * (ny > 0.3 ? 1 : 0.4));
+              const brown = age * 0.18;
+              c = [tint[0] * (1 + (MOSS[0] - 1) * m) * (1 - brown * 0.5), tint[1] * (1 + (MOSS[1] - 1) * m), tint[2] * (1 + (MOSS[2] - 1) * m) * (1 + brown * 0.3)];
+            }
           }
         } else if (ny > 0.6) k = 1;
         else if (ny < -0.6) k = 0.62;
