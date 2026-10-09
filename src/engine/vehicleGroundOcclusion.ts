@@ -80,14 +80,43 @@ export const GROUND_AO_HULL_SKIN_M = 0.12;
  * the track's lower edge — the contact plane (less GROUND_AO_SHOE_FLOOR_M's centimetre) along the ground run, the wraps'
  * measured ramp past it (less GROUND_AO_RAMP_TOL_M). A lit pixel (the terrain) is never a shoe (lab6, 2026-10-03: snow
  * standing over a height threshold behind a pitched hull's track ends was skipped and stayed lit; a shoe's foot darkened
- * as ground drew a black line under lab8's tracks), and grass under a wrap's ramp stays a receiver. Under the ground run the shoes cover the ground (seen through their gaps and at their foot, the track's
- * contact line): it keeps no sky, and takes it back over GROUND_AO_TRACK_LIFTOFF_M past the run as the track lifts off.
+ * as ground drew a black line under lab8's tracks), and grass under a wrap's ramp stays a receiver. Where the run meets
+ * the ground the shoes cover it (seen through their gaps and at their foot, the track's contact line): it keeps no sky.
+ *
+ * 2026-10-08 (the contact-shadow lane; the owner: "fix the contact shadows for tracks on ground which are staticly on
+ * ground and look bad"): that contact used to be a rigid print of the rest pose — every ground pixel in the shoe lane
+ * along the run was black (a 5 mm edge), however far under the track it lay, and the darkness faded only 0.3 m past the
+ * run's ends. On a crest or over a hollow, where the run lifts off, a track-wide black rectangle slid over the ground
+ * with the hull. The contact now follows the run as it is drawn this frame: the track's lower edge is the rest floor plus
+ * the road wheels' travel (the band's bottom run follows it; runningGearGroundRun in tankFactoryCore.ts, sampled at
+ * GROUND_AO_RUN_KNOTS knots per side), the wraps' ramp past it, and a ground pixel is dark by its gap under that edge:
+ * whole at contact (within GROUND_AO_CONTACT_FULL_M), gone GROUND_AO_CONTACT_GAP_M under it; the lane's edges soften
+ * over GROUND_AO_CONTACT_EDGE_M either side of the shoes' faces (the crease beside a track is darker than open ground,
+ * never a ruled line). The sky the hull solid hides from the ground under a lifted run stays the solid's (its terms read
+ * each pixel's own height), and the side gaps between the runs open under a lifted run (runGapOcclusion stands each run
+ * on its drawn lower edge). A thrown track's side meets no ground (GROUND_AO_NO_RUN_M).
  */
 const GROUND_AO_CONTACT_MARGIN_M = 0.03;
 const GROUND_AO_SHOE_FLOOR_M = -0.01;
 const GROUND_AO_RAMP_TOL_M = 0.03;
 const GROUND_AO_LANE_MARGIN_M = 0.02;
-const GROUND_AO_TRACK_LIFTOFF_M = 0.3;
+/**
+ * A track's contact darkness is whole while the ground lies within GROUND_AO_CONTACT_FULL_M under the run's lower edge
+ * (the shoes' grousers and pads, the terrain's facets: on the battle maps the drawn run stands within ±4 cm of the
+ * rendered ground, p05–p95 over 144 run samples of eight hulls, the contact lane's 2026-10-08 probe) and gone where it
+ * lies GROUND_AO_CONTACT_GAP_M under it.
+ */
+export const GROUND_AO_CONTACT_FULL_M = 0.02;
+export const GROUND_AO_CONTACT_GAP_M = 0.08;
+/** The contact lane's edges soften from this far (m) outside the shoes' faces to as far inside them. */
+export const GROUND_AO_CONTACT_EDGE_M = 0.05;
+/** The drawn run's travel reaches the shader at this many knots evenly along each ground run (linear between; two vec4). */
+export const GROUND_AO_RUN_KNOTS = 8;
+/** At most this many road wheels a side are read from the gear (runningGearGroundRun; two units a side on a four-track). */
+const GROUND_AO_RUN_WHEELS = 32;
+/** The travel (m) a side carries whose run meets no ground (a thrown track: its band is hidden) — no contact, no shoe,
+ * no side gap closed there. */
+export const GROUND_AO_NO_RUN_M = 10;
 /** The wraps' rise per metre past the ground run where no shoe measures it. */
 const GROUND_AO_RAMP_FALLBACK = 0.6;
 /** The wraps reach this far (m) past the shoes' measured ends. */
@@ -124,6 +153,13 @@ interface VehicleGroundHull {
 }
 
 interface VehicleGroundStrengths { readonly belly: number; readonly wall: number; }
+
+/**
+ * The ground runs as drawn this frame (root frame): per side (left: x < 0) the run's lower edge over the contact plane at
+ * GROUND_AO_RUN_KNOTS knots evenly over the ground run cz0..cz1 — the road wheels' travel the band's bottom run follows
+ * (tankFactoryCore.ts runningGearGroundRun), GROUND_AO_NO_RUN_M where no run meets the ground. Absent: the rest pose.
+ */
+interface VehicleGroundRuns { readonly left: ArrayLike<number>; readonly right: ArrayLike<number>; }
 
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
 const smoothstep = (a: number, b: number, x: number): number => {
@@ -230,27 +266,53 @@ export function vehicleGroundStrengths(
   };
 }
 
-/** The track's lower edge over the contact plane at z: the floor along the ground run, the wraps' ramp past it. */
-export function trackFloorAt(z: number, h: VehicleGroundHull): number {
+/**
+ * The drawn run's travel over the contact plane at z on one side (−1: left, x < 0; 1: right): its knots evenly over the
+ * ground run, linear between (the GLSL's hat weights), held past its ends; 0 at rest.
+ */
+export function runTravelAt(side: number, z: number, h: VehicleGroundHull, runs?: VehicleGroundRuns | null): number {
+  if (!runs) return 0;
+  const k = side < 0 ? runs.left : runs.right;
+  const t = clamp01((z - h.cz0) / Math.max(h.cz1 - h.cz0, 1e-4)) * (GROUND_AO_RUN_KNOTS - 1);
+  let travel = 0;
+  for (let i = 0; i < GROUND_AO_RUN_KNOTS; i++) travel += (k[i] ?? 0) * Math.max(0, 1 - Math.abs(t - i));
+  return travel;
+}
+
+/**
+ * The track's lower edge over the contact plane at z, less the shoe test's tolerances: the floor along the ground run
+ * (raised by the run's drawn travel), the wraps' ramp past it.
+ */
+export function trackFloorAt(z: number, h: VehicleGroundHull, travel = 0): number {
   const past = Math.max(h.cz0 - z, z - h.cz1, 0);
-  return Math.max(GROUND_AO_SHOE_FLOOR_M, (z < h.cz0 ? h.sr : h.sf) * past - GROUND_AO_RAMP_TOL_M);
+  return travel + Math.max(GROUND_AO_SHOE_FLOOR_M, (z < h.cz0 ? h.sr : h.sf) * past - GROUND_AO_RAMP_TOL_M);
 }
 
 /**
  * A pixel that is one of the hull's own track shoes (see GROUND_AO_SHOE_FLOOR_M): `card` — it has no sun state (the
- * shoes' material writes none; a lit pixel is never a shoe).
+ * shoes' material writes none; a lit pixel is never a shoe) — over the run as it is drawn.
  */
-export function isRunShoe(q: Vec3Like, h: VehicleGroundHull, card: boolean): boolean {
+export function isRunShoe(q: Vec3Like, h: VehicleGroundHull, card: boolean, runs?: VehicleGroundRuns | null): boolean {
   if (!card || Math.abs(Math.abs(q.x) - 0.5 * (h.xi + h.xo)) >= 0.5 * (h.xo - h.xi) + GROUND_AO_LANE_MARGIN_M
     || q.y >= h.yt + GROUND_AO_RUN_END_M || q.z <= h.fz0 || q.z >= h.fz1) return false;
-  return q.y >= h.y0 + trackFloorAt(q.z, h);
+  return q.y >= h.y0 + trackFloorAt(q.z, h, runTravelAt(q.x, q.z, h, runs));
 }
 
-/** The ground under a track's ground run (the shoes cover it): 1 in the lane along the run, back to 0 past it as the
- * track lifts off. */
-export function underTrackOcclusion(q: Vec3Like, h: VehicleGroundHull): number {
-  const lane = smoothstep(-0.005, 0.005, 0.5 * (h.xo - h.xi) - Math.abs(Math.abs(q.x) - 0.5 * (h.xi + h.xo)));
-  return lane * (1 - smoothstep(0, GROUND_AO_TRACK_LIFTOFF_M, Math.max(h.cz0 - q.z, q.z - h.cz1, 0)));
+/**
+ * The ground a track covers where its run meets it (its shoes' gaps, their foot): by the ground's gap under the run's
+ * lower edge as it is drawn — the floor raised by the run's travel, the wraps' ramp past the ground run — whole within
+ * GROUND_AO_CONTACT_FULL_M of it (or where the ground stands into the run), gone GROUND_AO_CONTACT_GAP_M under it; the
+ * lane's edges soft over
+ * ± GROUND_AO_CONTACT_EDGE_M of the shoes' faces, its ends at the hull's.
+ */
+export function underTrackOcclusion(q: Vec3Like, h: VehicleGroundHull, runs?: VehicleGroundRuns | null): number {
+  const laneD = 0.5 * (h.xo - h.xi) - Math.abs(Math.abs(q.x) - 0.5 * (h.xi + h.xo));
+  const lane = smoothstep(-GROUND_AO_CONTACT_EDGE_M, GROUND_AO_CONTACT_EDGE_M, laneD)
+    * smoothstep(0, GROUND_AO_CONTACT_EDGE_M, Math.min(q.z - h.fz0, h.fz1 - q.z));
+  if (lane <= 0) return 0;
+  const past = Math.max(h.cz0 - q.z, q.z - h.cz1, 0);
+  const edge = h.y0 + runTravelAt(q.x, q.z, h, runs) + (q.z < h.cz0 ? h.sr : h.sf) * past;
+  return lane * (1 - smoothstep(GROUND_AO_CONTACT_FULL_M, GROUND_AO_CONTACT_GAP_M, edge - q.y));
 }
 
 /**
@@ -259,13 +321,15 @@ export function underTrackOcclusion(q: Vec3Like, h: VehicleGroundHull): number {
  * (the rest of the run hides only sky the hull already hides). Zero outside the runs' inner faces; past the ground run
  * faded in over GROUND_AO_GAP_FADE_M from them.
  */
-export function runGapOcclusion(q: Vec3Like, n: Vec3Like, h: VehicleGroundHull, c: number): number {
+export function runGapOcclusion(q: Vec3Like, n: Vec3Like, h: VehicleGroundHull, c: number, runs?: VehicleGroundRuns | null): number {
   if (Math.abs(q.x) >= h.xi) return 0;
-  const belly = hullBottomAt(q.z, h), lo = Math.max(h.y0, c);
+  const belly = hullBottomAt(q.z, h);
   const wrap = smoothstep(-0.04, 0, Math.max(h.cz0 - q.z, q.z - h.cz1) - GROUND_AO_CONTACT_MARGIN_M);
   const fade = 1 + (smoothstep(0, GROUND_AO_GAP_FADE_M, h.xi - Math.abs(q.x)) - 1) * wrap;
   let occ = 0;
   for (const side of [1, -1]) {
+    // each run from its lower edge as drawn beside the receiver (the ground under a lifted run lets the gap's sky through)
+    const lo = Math.max(h.y0 + runTravelAt(side, q.z, h, runs), c);
     const top = q.y + (belly - q.y) * (h.xi - side * q.x) / (h.hx - side * q.x);
     if (top <= lo) continue;
     occ += boxSkyOcclusion({ x: q.x - side * 0.5 * (h.xi + h.xo), y: q.y - 0.5 * (lo + top), z: q.z - 0.5 * (h.cz0 + h.cz1) }, n,
@@ -280,17 +344,17 @@ export function runGapOcclusion(q: Vec3Like, n: Vec3Like, h: VehicleGroundHull, 
  * ground its tracks cover, and the belly's or the walls' strength by the receiver's place across the footprint's edge.
  */
 export function vehicleGroundOcclusionLocal(
-  q: Vec3Like, n: Vec3Like, h: VehicleGroundHull, strengths: VehicleGroundStrengths, card = false,
+  q: Vec3Like, n: Vec3Like, h: VehicleGroundHull, strengths: VehicleGroundStrengths, card = false, runs: VehicleGroundRuns | null = null,
 ): number {
   const H = h.yt - h.y0;
   const dx = Math.abs(q.x) - h.hx, dz = Math.abs(q.z - 0.5 * (h.fz0 + h.fz1)) - 0.5 * (h.fz1 - h.fz0);
   const dOut = Math.hypot(Math.max(dx, 0), Math.max(dz, 0));
   if (dOut > H * GROUND_AO_REACH[1] || q.y > h.yt || q.y < h.y0 - H * GROUND_AO_REACH[1]) return 0;
   if (q.y > h.yb + 0.02 && dOut < GROUND_AO_HULL_SKIN_M) return 0;
-  if (isRunShoe(q, h, card)) return 0;
+  if (isRunShoe(q, h, card, runs)) return 0;
   const c = q.y - GROUND_AO_CLIP_SLACK_M * (1 - n.y);
   const reach = 1 - smoothstep(H * GROUND_AO_REACH[0], H * GROUND_AO_REACH[1], dOut);
-  const occ = Math.max(reach * (hullSkyOcclusion(q, n, h, c) + runGapOcclusion(q, n, h, c)), underTrackOcclusion(q, h));
+  const occ = Math.max(reach * (hullSkyOcclusion(q, n, h, c) + runGapOcclusion(q, n, h, c, runs)), underTrackOcclusion(q, h, runs));
   const sd = dOut + Math.min(Math.max(dx, dz), 0);
   const s = strengths.wall + (strengths.belly - strengths.wall) * (1 - smoothstep(-GROUND_AO_EDGE_M, GROUND_AO_EDGE_M, sd));
   return Math.min(occ, 1) * s;
@@ -310,6 +374,8 @@ export interface VehicleGroundOcclusionUniforms {
   uVehGroundM: THREE.IUniform<THREE.Vector4[]>;
   /** Per hull, four vec4: (hx, yb, yt, y0), (fz0, fz1, pz0, pz1), (hr, hf, xi, xo), (sr, sf, cz0, cz1) — the root frame. */
   uVehGroundB: THREE.IUniform<THREE.Vector4[]>;
+  /** Per hull, four vec4: the left run's eight knots, then the right's (VehicleGroundRuns, root frame). */
+  uVehGroundR: THREE.IUniform<THREE.Vector4[]>;
   /** The interreflection's inputs: the ground's albedo, the hull's, the belly's view of open ground, the shaded ground. */
   uVehGroundLight: THREE.IUniform<THREE.Vector4>;
 }
@@ -320,6 +386,7 @@ export function createVehicleGroundOcclusionUniforms(): VehicleGroundOcclusionUn
     uVehGround: { value: 0 },
     uVehGroundM: { value: rows(3) },
     uVehGroundB: { value: rows(4) },
+    uVehGroundR: { value: Array.from({ length: GROUND_AO_MAX_HULLS * 4 }, () => new THREE.Vector4(0, 0, 0, 0)) },
     uVehGroundLight: { value: new THREE.Vector4(GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_HULL_ALBEDO, GROUND_AO_BELLY_VIEW, GROUND_AO_UNDER_GROUND) },
   };
 }
@@ -527,9 +594,65 @@ export function measureVehicleGroundHull(root: THREE.Object3D): VehicleGroundHul
       && candidate.cz1 > candidate.cz0 && Object.values(candidate).every(finite);
     shape = valid ? Object.freeze(candidate) : null;
   }
+  // the object that publishes the drawn ground runs (the hull group: tankFactoryCore.ts runningGearGroundRun), read live
+  // each frame (a rebuilt gear republishes it there)
+  let runOwner: THREE.Object3D | null = null;
+  if (shape) root.traverse((object) => {
+    if (!runOwner && typeof (object.userData as { runningGearGroundRun?: unknown }).runningGearGroundRun === 'function') runOwner = object;
+  });
+  root.userData.groundAoRunOwner = runOwner;
   root.userData.groundAoShape = shape;
   root.userData.groundAoShapeFor = cg;
   return shape;
+}
+
+type GroundRunReader = (side: -1 | 1, out: Float32Array) => number;
+const RUN_SIDES = [-1, 1] as const;
+const _runPairs = new Float32Array(GROUND_AO_RUN_WHEELS * 2);
+const _runFrame = new THREE.Matrix4();
+const _runKnots = new Float32Array(GROUND_AO_RUN_KNOTS);
+
+/**
+ * One side's knots (root frame) from the gear's drawn run: the hull-local (z, travel) pairs the reader writes, linear
+ * between the wheels and held past the end ones, at each knot's z mapped into the hull's frame; e10/e14 the hull frame's
+ * z scale and offset in the root's, e5 its y scale. No pairs: no run meets the ground on that side.
+ */
+function sampleRunKnots(read: GroundRunReader, side: -1 | 1, h: VehicleGroundHull, e10: number, e14: number, e5: number, out: Float32Array): void {
+  const n = read(side, _runPairs);
+  if (!(n > 0)) { out.fill(GROUND_AO_NO_RUN_M); return; }
+  for (let k = 0; k < GROUND_AO_RUN_KNOTS; k++) {
+    const z = (h.cz0 + (k / (GROUND_AO_RUN_KNOTS - 1)) * (h.cz1 - h.cz0) - e14) / e10;
+    let travel: number;
+    if (z <= _runPairs[0]) travel = _runPairs[1];
+    else if (z >= _runPairs[(n - 1) * 2]) travel = _runPairs[(n - 1) * 2 + 1];
+    else {
+      let i = 1;
+      while (i < n - 1 && _runPairs[i * 2] < z) i++;
+      const z0 = _runPairs[(i - 1) * 2], z1 = _runPairs[i * 2], t = z1 > z0 ? (z - z0) / (z1 - z0) : 1;
+      travel = _runPairs[(i - 1) * 2 + 1] + t * (_runPairs[i * 2 + 1] - _runPairs[(i - 1) * 2 + 1]);
+    }
+    out[k] = Number.isFinite(travel) ? e5 * travel : 0;
+  }
+}
+
+/** A hull's runs into its four knot rows (left two, right two): the drawn run where the gear publishes it, else the rest
+ * pose (zero travel). In place. */
+function writeRunKnots(root: THREE.Object3D, h: VehicleGroundHull, rows: readonly THREE.Vector4[], at: number): void {
+  const owner = root.userData.groundAoRunOwner as THREE.Object3D | null | undefined;
+  const read = owner ? (owner.userData as { runningGearGroundRun?: unknown }).runningGearGroundRun : null;
+  const frame = typeof read === 'function' && owner ? rootFrameMatrix(owner, root, _runFrame) : null;
+  const e = frame?.elements;
+  if (!e || !(Math.abs(e[10]) > 1e-6) || !Number.isFinite(e[5])) {
+    for (let r = 0; r < 4; r++) rows[at + r].set(0, 0, 0, 0);
+    return;
+  }
+  // a mirrored hull frame swaps which side lies at −x in the root's
+  for (const side of RUN_SIDES) {
+    sampleRunKnots(read as GroundRunReader, (e[0] < 0 ? -side : side) as -1 | 1, h, e[10], e[14], e[5], _runKnots);
+    const row = at + (side < 0 ? 0 : 2);
+    rows[row].set(_runKnots[0], _runKnots[1], _runKnots[2], _runKnots[3]);
+    rows[row + 1].set(_runKnots[4], _runKnots[5], _runKnots[6], _runKnots[7]);
+  }
 }
 
 const _world = new THREE.Matrix4(), _inv = new THREE.Matrix4();
@@ -563,6 +686,7 @@ export function updateVehicleGroundOcclusionUniforms(
       u.uVehGroundB.value[n * 4 + 1].set(h.fz0, h.fz1, h.pz0, h.pz1);
       u.uVehGroundB.value[n * 4 + 2].set(h.hr, h.hf, h.xi, h.xo);
       u.uVehGroundB.value[n * 4 + 3].set(h.sr, h.sf, h.cz0, h.cz1);
+      writeRunKnots(root, h, u.uVehGroundR.value, n * 4);
       n++;
     }
   }
@@ -590,7 +714,15 @@ export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
     uniform float uVehGround;
     uniform vec4 uVehGroundM[ ${GROUND_AO_MAX_HULLS * 3} ];
     uniform vec4 uVehGroundB[ ${GROUND_AO_MAX_HULLS * 4} ];
+    uniform vec4 uVehGroundR[ ${GROUND_AO_MAX_HULLS * 4} ];
     uniform vec4 uVehGroundLight;
+    // the drawn run's travel at z (root frame): its eight knots k0, k1 evenly over the ground run b3.z..b3.w, linear
+    // between (hat weights), held past its ends
+    float cotVgRun( vec4 k0, vec4 k1, float z, vec4 b3 ) {
+      float t = clamp( ( z - b3.z ) / max( b3.w - b3.z, 1e-4 ), 0.0, 1.0 ) * ${(GROUND_AO_RUN_KNOTS - 1).toFixed(1)};
+      return dot( k0, max( 1.0 - abs( t - vec4( 0.0, 1.0, 2.0, 3.0 ) ), 0.0 ) )
+           + dot( k1, max( 1.0 - abs( t - vec4( 4.0, 5.0, 6.0, 7.0 ) ), 0.0 ) );
+    }
     // one silhouette edge of Lambert's projected solid angle (a, b relative to the receiver; their lengths cancel)
     float cotVgEdge( vec3 a, vec3 b, vec3 n ) {
       vec3 c = cross( a, b );
@@ -662,9 +794,13 @@ ${GLSL_HULL_EDGES}
         // lit, is never one; grass under a wrap stays a receiver)
         if ( q.y > b0.y + 0.02 && dOut < ${f(GROUND_AO_HULL_SKIN_M)} ) continue;
         float laneD = 0.5 * ( b2.w - b2.z ) - abs( abs( q.x ) - 0.5 * ( b2.z + b2.w ) );
+        // the run on q's side as drawn this frame (the road wheels' travel the band follows; tankFactoryCore.ts)
+        int rk = i * 4 + ( q.x < 0.0 ? 0 : 2 );
+        float run = cotVgRun( uVehGroundR[ rk ], uVehGroundR[ rk + 1 ], q.z, b3 );
+        float past = max( max( b3.z - q.z, q.z - b3.w ), 0.0 );
+        float ramp = ( q.z < b3.z ? b3.x : b3.y ) * past;
         if ( sunVis < 0.0 && laneD > ${f(-GROUND_AO_LANE_MARGIN_M)} && q.y < b0.z + ${f(GROUND_AO_RUN_END_M)} && q.z > b1.x && q.z < b1.y ) {
-          float past = max( max( b3.z - q.z, q.z - b3.w ), 0.0 );
-          if ( q.y >= b0.w + max( ${f(GROUND_AO_SHOE_FLOOR_M)}, ( q.z < b3.z ? b3.x : b3.y ) * past - ${f(GROUND_AO_RAMP_TOL_M)} ) ) continue;
+          if ( q.y >= b0.w + run + max( ${f(GROUND_AO_SHOE_FLOOR_M)}, ramp - ${f(GROUND_AO_RAMP_TOL_M)} ) ) continue;
         }
         if ( !haveN ) { haveN = true; if ( sunVis >= 0.0 ) N = cotNormalAt( uv, P ); }
         vec3 n = normalize( vec3( dot( m0.xyz, N ), dot( m1.xyz, N ), dot( m2.xyz, N ) ) );
@@ -677,20 +813,24 @@ ${GLSL_HULL_EDGES}
           float gap = 0.0;
           float zc = clamp( q.z, b1.x, b1.y );
           float belly = min( b0.z, b0.y + max( 0.0, max( b2.x * ( b1.z - zc ), b2.y * ( zc - b1.w ) ) ) );
-          float lo = max( b0.w, c );
+          // each run from its lower edge as drawn beside q (the ground under a lifted run lets the gap's sky through)
+          float loR = max( b0.w + cotVgRun( uVehGroundR[ i * 4 + 2 ], uVehGroundR[ i * 4 + 3 ], q.z, b3 ), c );
+          float loL = max( b0.w + cotVgRun( uVehGroundR[ i * 4 ], uVehGroundR[ i * 4 + 1 ], q.z, b3 ), c );
           float topR = q.y + ( belly - q.y ) * ( b2.z - q.x ) / ( b0.x - q.x );
-          if ( topR > lo ) gap += cotVgBox( vec3( q.x - 0.5 * ( b2.z + b2.w ), q.y - 0.5 * ( lo + topR ), q.z - 0.5 * ( b3.z + b3.w ) ), n,
-            vec3( 0.5 * ( b2.w - b2.z ), 0.5 * ( topR - lo ), 0.5 * ( b3.w - b3.z ) ) );
+          if ( topR > loR ) gap += cotVgBox( vec3( q.x - 0.5 * ( b2.z + b2.w ), q.y - 0.5 * ( loR + topR ), q.z - 0.5 * ( b3.z + b3.w ) ), n,
+            vec3( 0.5 * ( b2.w - b2.z ), 0.5 * ( topR - loR ), 0.5 * ( b3.w - b3.z ) ) );
           float topL = q.y + ( belly - q.y ) * ( b2.z + q.x ) / ( b0.x + q.x );
-          if ( topL > lo ) gap += cotVgBox( vec3( q.x + 0.5 * ( b2.z + b2.w ), q.y - 0.5 * ( lo + topL ), q.z - 0.5 * ( b3.z + b3.w ) ), n,
-            vec3( 0.5 * ( b2.w - b2.z ), 0.5 * ( topL - lo ), 0.5 * ( b3.w - b3.z ) ) );
+          if ( topL > loL ) gap += cotVgBox( vec3( q.x + 0.5 * ( b2.z + b2.w ), q.y - 0.5 * ( loL + topL ), q.z - 0.5 * ( b3.z + b3.w ) ), n,
+            vec3( 0.5 * ( b2.w - b2.z ), 0.5 * ( topL - loL ), 0.5 * ( b3.w - b3.z ) ) );
           float wrap = smoothstep( -0.04, 0.0, max( b3.z - q.z, q.z - b3.w ) - ${f(GROUND_AO_CONTACT_MARGIN_M)} );
           ho += gap * mix( 1.0, smoothstep( 0.0, ${f(GROUND_AO_GAP_FADE_M)}, b2.z - abs( q.x ) ), wrap );
         }
         ho *= 1.0 - smoothstep( H * ${f(GROUND_AO_REACH[0])}, H * ${f(GROUND_AO_REACH[1])}, dOut );
-        // the ground under a track's ground run: its shoes cover it (their gaps, their foot)
-        ho = max( ho, smoothstep( -0.005, 0.005, laneD )
-          * ( 1.0 - smoothstep( 0.0, ${f(GROUND_AO_TRACK_LIFTOFF_M)}, max( max( b3.z - q.z, q.z - b3.w ), 0.0 ) ) ) );
+        // the ground a track covers where its run meets it (its shoes' gaps, their foot): by the ground's gap under the
+        // run's lower edge as drawn (the wraps' ramp past the ground run), full at contact, soft at the lane's edges
+        ho = max( ho, smoothstep( ${f(-GROUND_AO_CONTACT_EDGE_M)}, ${f(GROUND_AO_CONTACT_EDGE_M)}, laneD )
+          * smoothstep( 0.0, ${f(GROUND_AO_CONTACT_EDGE_M)}, min( q.z - b1.x, b1.y - q.z ) )
+          * ( 1.0 - smoothstep( ${f(GROUND_AO_CONTACT_FULL_M)}, ${f(GROUND_AO_CONTACT_GAP_M)}, b0.w + run + ramp - q.y ) ) );
         // the belly's strength under the hull, the walls' beside it, blended across the footprint's edge
         float sd = dOut + min( max( dd.x, dd.y ), 0.0 );
         float inside = 1.0 - smoothstep( ${f(-GROUND_AO_EDGE_M)}, ${f(GROUND_AO_EDGE_M)}, sd );
