@@ -1366,6 +1366,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/horizonPanoramaDeck.selftest.mjs',
     // the mountains lane (2026-10-05): and its cloud composite the cloud dome's (volumetricClouds.ts keeps it inline too)
     'src/world/horizonPanoramaClouds.selftest.mjs',
+    // the nightsky lane (2026-10-08): the far country re-baked under a battle's sunset and night (the owner: "the far skybox
+    // is still like glowing") — the bake's own light and haze statements per map, against the sky above and the near ground
+    'src/world/horizonPanoramaRelight.selftest.mjs',
     'src/world/horizonCliffNormals.selftest.mjs', // the mountains lane (2026-10-04): the ring's cliffs take their geometry's normals
     'src/world/horizonCloudShade.selftest.mjs',
     'src/world/horizonRockfield.selftest.mjs',

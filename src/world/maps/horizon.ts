@@ -3859,6 +3859,9 @@ export function* buildHorizonRingSteps(
         overcast: resolveOvercast({ ...((cfg?.sky ?? {}) as LightModelPreset), cloudscape: (cfg as { clouds?: LightModelPreset['cloudscape'] } | null | undefined)?.clouds ?? null }),
         // the aerial pass's haze datum, the ground under the camera (post.ts setGroundHeightSource takes the same field)
         groundAt: ground ? (x: number, z: number) => ground.getHeightAt(x, z) : null,
+        // (the nightsky lane, 2026-10-08) the map's sky block with its cloudscape: the day light its gains follow, which
+        // relight() measures a battle's sunset or night against
+        lightPreset: deckPreset,
       }, farRange);
       mesh.add(panorama.mesh);
       mesh.userData.horizonPanorama = panorama;
