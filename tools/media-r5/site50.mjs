@@ -237,8 +237,10 @@ function stageBeats(scene, world) {
     // each name once, so an explicit fx<n> could take a planned effect's name and one of the two would never fire (r11
     // drew 12 of 17 staged beats not at all, 2026-10-08).
     if (foe) scene.effects.push({ ...fire(foe.name, tb - 110), id: `beat${i + 1}-shot` });
-    scene.effects.push({ ...blast(spot, tb, 'large', { cause: 'shot' }), id: `beat${i + 1}-boom` });
-    scene.effects.push({ ...debris(spot, tb + 30, { count: 34, speedMps: 15, hot: 0.4, scale: 1.1 }), id: `beat${i + 1}-debris` });
+    // placed in the hero's frame like the plan's own bursts (heroRel: the lab moves them with the cameras when autoPlace
+    // moves the hero)
+    scene.effects.push({ ...blast(spot, tb, 'large', { cause: 'shot' }), id: `beat${i + 1}-boom`, heroRel: true });
+    scene.effects.push({ ...debris(spot, tb + 30, { count: 34, speedMps: 15, hot: 0.4, scale: 1.1 }), id: `beat${i + 1}-debris`, heroRel: true });
     added++;
   }
   if (added) scene.effects.sort((a, b) => a.tMs - b.tMs);
