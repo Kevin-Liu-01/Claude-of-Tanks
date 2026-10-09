@@ -208,7 +208,7 @@ vStructRoof = 0.0;` : ''}
           // the phone tier cuts nothing: the wall above the front folds down onto it
           p.y = front;
         }`}
-        ${holes ? `vStructFront = piv.y + front;
+        ${holes ? `vStructFront = u > 0.0 ? piv.y + front : 1e9;
         vStructRoof = roof;` : ''}
         transformed += inverse( mat3( sw ) ) * ( piv + p - wp );
       }
@@ -229,7 +229,9 @@ varying float vStructRoof;
 ${HASH}
 `;
 const FRAG_BODY = /* glsl */ `
-if ( vStructFront < 1e8 && vStructRoof < 0.5 ) {
+// (dcore 2026-10-09, wave 322: "the roof skin vanishes" at a collapse's first frame) nothing is cut before the front
+// leaves the eaves, and never a fragment of a triangle that reaches the roof (its eave band rides with it)
+if ( vStructFront < 1e8 && vStructRoof < 0.02 ) {
   // the crumble front, ragged: columns of the wall ~2.4 m wide stand at different heights, and block-sized cells break
   // away above and below the line (the pieces the stage throws leave from here)
   float col = fxStructHash3( floor( vec3( vStructPos.x, 0.0, vStructPos.z ) * 0.42 ) ).x - 0.5;
