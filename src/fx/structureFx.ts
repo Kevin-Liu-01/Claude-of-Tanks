@@ -316,6 +316,9 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
   // foot, large overlapping puffs that grow fast, climb, spread and thin.
   const wallH = collapseWallHeight(height, eaveM);
   const frontEnd = collapseFrontTime(0, wallH);
+  // (the battle strips, final: a gable house's cloud stayed a few small puffs) the low cloud is the size of what fell, not
+  // of a narrow footprint's half width: a tall narrow house throws as much dust as a squat wide one
+  const low = Math.max(span, 0.45 * wallH + 2, 4.5);
   // 1. the roof drops in: the air inside goes up out of the top, darker
   for (let i = 0; i < 4; i++) {
     const lx = (R() * 2 - 1) * e.hw * 0.6, lz = (R() * 2 - 1) * e.hd * 0.6;
@@ -334,7 +337,7 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     const h = wallH * (0.08 + 0.84 * (i + R()) / skirtN);
     const at = Math.min(frontEnd + 0.3, collapseFrontTime(h, wallH) + Math.sqrt((2 * h) / 9.8));
     puff(C, p[0] + p[2] * 0.6, e.baseY + 0.45, p[1] + p[3] * 0.6, p[2] * v, 0.35 + R() * 0.4, p[3] * v, 2.0, 0.25, 0.9,
-      life, 0.5 * span * dk, (1.0 + R() * 0.3) * span * dk, tintDark, tinted, 0.5, life, 1, at, 2.0 + R() * 0.5, 4.5);
+      life, 0.5 * low * dk, (1.0 + R() * 0.3) * low * dk, tintDark, tinted, 0.5, life, 1, at, 2.0 + R() * 0.5, 4.5);
   }
   // a little shed off the crumbling line as it passes (the dust rides the falling courses down)
   const BAND = 1.8;
@@ -371,7 +374,7 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     const at = frontEnd * 0.55 + (i / massN) * (frontEnd * 0.45 + 0.8) + R() * 0.3;
     const life = 10 + R() * 1.5;
     puff(C, wx, e.baseY + 0.9, wz, (R() - 0.5) * 1.0, 0.8 + R() * 0.6, (R() - 0.5) * 1.0,
-      1.3, 0.5 + R() * 0.3, 1.0, life, 0.55 * span * dk, (1.3 + R() * 0.3) * span * dk, tintDark, tinted, 0.38, life, 2, at, 1, 4.5);
+      1.3, 0.5 + R() * 0.3, 1.0, life, 0.55 * low * dk, (1.3 + R() * 0.3) * low * dk, tintDark, tinted, 0.42, life, 2, at, 1, 4.5);
   }
 }
 

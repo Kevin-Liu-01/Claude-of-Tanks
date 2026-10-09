@@ -62,12 +62,15 @@ export interface StructureStages {
 
 /** The writers with their thrown pieces slowed to `k` of the kit's speed, never thrown upward faster than a metre a
  *  second (a collapse's pieces drop off the walls; they are not blown out). */
-function dampPieces(out: DamageWriters, k: number): DamageWriters {
+function dampPieces(out: DamageWriters, k: number, maxY = Infinity): DamageWriters {
   const p = out.pieces;
   const pieces = {
+    // (the battle strips, final: a gable house's roof pieces hung in a spray over its ridge as the mask dropped the roof
+    // into the walls) none leaves above the eaves: the roof's own fall to its pieces' line is the mask's
     push: (bucket: string, shape: DebrisShape, variant: number, px: number, py: number, pz: number, qx: number, qy: number,
       qz: number, qw: number, sx: number, sy: number, sz: number, r: number, g: number, b: number, vx: number, vy: number,
-      vz: number): boolean => p.push(bucket, shape, variant, px, py, pz, qx, qy, qz, qw, sx, sy, sz, r, g, b, vx * k, Math.min(1, vy * k), vz * k),
+      vz: number): boolean => p.push(bucket, shape, variant, px, Math.min(py, maxY), pz, qx, qy, qz, qw, sx, sy, sz, r, g, b,
+      vx * k, Math.min(1, vy * k), vz * k),
     get count() { return p.count; },
     get capacity() { return p.capacity; },
   };
@@ -889,7 +892,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         } else {
           // (dcore 2026-10-09, waves 294a/b: "flat carpets spread metres across the street") the walls' pieces topple
           // off them and land at their foot: the kit's throw at 0.55 of its speed, never up
-          run(seam, 0.7, settled, (out) => seam.collapse(stageSeed(3), dampPieces(out, 0.55)), false);
+          const eaveY = seam.anatomy.roof ? seam.anatomy.roof.eaveY : Infinity;
+          run(seam, 0.7, settled, (out) => seam.collapse(stageSeed(3), dampPieces(out, 0.55, eaveY)), false);
           if (!settled) crumble(seam, e);
         }
       }
