@@ -100,14 +100,18 @@ const STREAK_MAX_M = 42;
 const BURNOUT_S = 0.14;
 
 // Colours (linear): the core is the hot compound (whitish through the tone curve), the halo its saturated light.
-const RED_CORE: readonly number[] = [1.0, 0.42, 0.17], RED_HALO: readonly number[] = [1.0, 0.11, 0.03];
-const GREEN_CORE: readonly number[] = [0.5, 1.0, 0.4], GREEN_HALO: readonly number[] = [0.1, 1.0, 0.18];
+// (fx 8, the critics after atmos r2: "neon-green T-90M") as cameras record them: strontium burns an orange-red with a
+// pink-white heart; the Soviet-lineage barium compound a pale yellow-green (the T-46 trace on film), never a neon
+// emerald; a tank round's trace a deep orange
+const RED_CORE: readonly number[] = [1.0, 0.48, 0.22], RED_HALO: readonly number[] = [1.0, 0.16, 0.05];
+const GREEN_CORE: readonly number[] = [0.78, 1.0, 0.5], GREEN_HALO: readonly number[] = [0.42, 0.85, 0.2];
 const TANK_CORE: readonly number[] = [1.0, 0.6, 0.3], TANK_HALO: readonly number[] = [1.0, 0.27, 0.07];
-// the day cores: the compound's own colour, saturated (strontium red-orange, barium green, a tank tracer's orange)
-const RED_DAY: readonly number[] = [1.0, 0.16, 0.03], GREEN_DAY: readonly number[] = [0.22, 1.0, 0.12];
+// the day cores: the compound's own colour, saturated (strontium red-orange, barium yellow-green, a tank tracer's orange)
+const RED_DAY: readonly number[] = [1.0, 0.22, 0.05], GREEN_DAY: readonly number[] = [0.6, 1.0, 0.24];
 const TANK_DAY: readonly number[] = [1.0, 0.3, 0.07];
-// the strike's sparks: hot yellow-orange grains
-const SPARK_CORE: readonly number[] = [1.0, 0.62, 0.26];
+// the strike's sparks: (fx 8, "dull cream sparks") white-yellow hot grains with an orange halo
+const SPARK_CORE: readonly number[] = [1.0, 0.8, 0.45];
+const SPARK_HALO: readonly number[] = [1.0, 0.42, 0.1];
 /** sparks in flight at once (a pooled record each; the oldest is reused past it) */
 const SPARK_CAPACITY = 96;
 
@@ -268,14 +272,21 @@ void main() {
   float dx = max( 0.0, max( -vLocal.x, vLocal.x - vLen ) );
   float d = length( vec2( dx, vLocal.y ) );
   float t = vLen > 0.5 ? clamp( vLocal.x / vLen, 0.0, 1.0 ) : 1.0;
-  // the smear: even along its length (a point light moving through the exposure), its tail end soft
-  float smear = smoothstep( 0.0, 0.22, t );
-  float core = 1.0 - smoothstep( max( vHalfW - 0.7, 0.0 ), vHalfW + 0.7, d );
-  // the round itself: the brightest point, at the head
+  // (fx 8, the critics after atmos r2: "even-width white-cored rods with no hot head and fading tail") the burning
+  // compound is a point at the head; the smear behind it is the exposure's record of that point, and a real trace on
+  // film is brightest and widest where the round is and thins and dims back along its tail (the charge flickers and
+  // the eye and the sensor keep less of where it was): radiance and width both taper from the head to the tail
+  float tailK = 0.1 + 0.9 * pow( t, 1.7 );
+  float hw = vHalfW * ( 0.4 + 0.6 * t );
+  float core = 1.0 - smoothstep( max( hw - 0.7, 0.0 ), hw + 0.7, d );
+  // the round itself: the brightest point, at the head, burning whiter than its trace
   float dh = length( vec2( vLocal.x - vLen, vLocal.y ) );
-  float bead = exp( -dh * dh / max( vHalfW * vHalfW * 3.0, 0.6 ) );
-  float halo = exp( -d * d / max( vHaloR * vHaloR, 0.25 ) ) * ( 0.45 + 0.55 * smear );
-  vec3 col = vCore.rgb * ( core * ( 0.4 + 0.6 * smear ) + bead * vCore.a ) + vHalo * halo;
+  float bead = exp( -dh * dh / max( vHalfW * vHalfW * 4.0, 0.8 ) );
+  float hr = vHaloR * ( 0.55 + 0.45 * t );
+  float halo = exp( -d * d / max( hr * hr, 0.25 ) ) * ( 0.2 + 0.8 * tailK );
+  float peak = max( vCore.r, max( vCore.g, vCore.b ) );
+  vec3 hot = mix( vCore.rgb, vec3( peak ), 0.45 );
+  vec3 col = vCore.rgb * core * tailK + hot * bead * vCore.a + vHalo * halo;
   #ifdef USE_FOG
     #ifdef FOG_EXP2
       float fogFactor = 1.0 - exp( -fogDensity * fogDensity * vFogDepth * vFogDepth );
@@ -401,7 +412,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     const cls = r.cls;
     write4(r.hx, r.hy, r.hz, r.tx, r.ty, r.tz, cls.halfWidthPx * (1 + DAY_WIDTH_K * (1 - dark)) * (1 + 0.3 * wobble),
       cls.haloPx * (0.45 + 0.55 * dark), r.day, r.core, cls.core * k, r.halo, cls.halo * (HALO_DAY + (1 - HALO_DAY) * dark) * k,
-      cls === TANK ? 1.6 : 1.1);
+      cls === TANK ? 2.4 : 1.8);
   }
   /** One capsule: head and tail (m), half width and halo radius (1080p px), the core (its day colour by day, its hot
    *  night colour in the dark) at radiance coreK, the halo at haloK, the head's bead gain. */
@@ -461,13 +472,14 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       spark(x, y + 0.05, z, hx * v * Math.cos(up), Math.abs(dy) * 0.2 * v + v * Math.sin(up), hz * v * Math.cos(up),
         0.25 + R() * 0.2, r.cls.core * 0.75, r.cls.halfWidthPx, r.day, r.core, r.halo, true);
     }
-    const grains = tank ? 7 : 3;
+    // (fx 8, "dull cream sparks") more grains, brighter and a little longer-lived: a strike's spray reads at range
+    const grains = tank ? 11 : 5;
     for (let g = 0; g < grains; g++) {
       const a = R() * Math.PI * 2, up = 0.35 + R() * 0.55, v = (tank ? 22 : 12) + R() * (tank ? 40 : 24);
       // thrown back up out of the strike, leaning the way the round came in
       const ex = Math.cos(a) * (1 - up) * v - dx * v * 0.25, ez = Math.sin(a) * (1 - up) * v - dz * v * 0.25;
-      spark(x, y + 0.04, z, ex, up * v, ez, (tank ? 0.1 : 0.07) + R() * (tank ? 0.14 : 0.08), tank ? 3.6 : 3.0, 0.6,
-        SPARK_CORE, SPARK_CORE, TANK_HALO, false);
+      spark(x, y + 0.04, z, ex, up * v, ez, (tank ? 0.12 : 0.07) + R() * (tank ? 0.16 : 0.08), tank ? 7.5 : 5.5, 0.75,
+        SPARK_CORE, SPARK_CORE, SPARK_HALO, false);
     }
   }
   /** Draw the live sparks (each a streak of the exposure behind it, fading). */
@@ -493,8 +505,8 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
         write4(hx, hy, hz, tx, ty, tz, s.w * (1 + DAY_WIDTH_K * (1 - dark)), 5.5 * (0.45 + 0.55 * dark), s.day, s.core, k,
           s.halo, 0.16 * (HALO_DAY + (1 - HALO_DAY) * dark) * (1 - u), 1.1);
       } else {
-        write4(hx, hy, hz, tx, ty, tz, s.w, 2.5 * (0.5 + 0.5 * dark), SPARK_CORE, SPARK_CORE, k, s.halo,
-          0.05 * (0.4 + 0.6 * dark) * (1 - u), 0.6);
+        write4(hx, hy, hz, tx, ty, tz, s.w, 3.2 * (0.5 + 0.5 * dark), SPARK_CORE, SPARK_CORE, k, s.halo,
+          0.09 * (0.5 + 0.5 * dark) * (1 - u), 1.4);
       }
     }
   }
