@@ -3124,7 +3124,7 @@ window.__SHOTS = {
     const [{ setShotView }] = await Promise.all([import('./dev/shotRuntime.ts'), loadGroundedLightModel(), loadCloudscapeLayers()]);
     // (the staged map's open sky takes the grounded light model and its cloudscape, as a battle's does: the boot weight)
     type ShotRuntimeContext = Parameters<typeof setShotView>[1];
-    return setShotView(name, checkedIntegrationPort<ShotRuntimeContext>({
+    const staged = await setShotView(name, checkedIntegrationPort<ShotRuntimeContext>({
       preloadSoloBattleRuntime,
       preloadBattleClientRuntime,
       ensureBattleHud,
@@ -3196,6 +3196,14 @@ window.__SHOTS = {
       'ensureFullFleet', 'ensureFxRuntime', 'ensureKillcamRuntime',
       'switchMap', 'setupBattle', 'getWorld', 'getHud', 'getFx', 'getKillcam',
     ]));
+    // (2026-10-09, the shadows lane) a staged map's ground occlusion (structureGroundOcclusion.ts) lands before any frame
+    // is taken, at full strength: the worker's bake is what the capture waits for, never a fade
+    const groundOcclusion = currentWorld()?.groundOcclusion ?? null;
+    if (groundOcclusion) {
+      groundOcclusion.setInstant(true);
+      await Promise.race([groundOcclusion.whenReady(), new Promise((resolve) => { setTimeout(resolve, 30000); })]);
+    }
+    return staged;
   },
 };
 

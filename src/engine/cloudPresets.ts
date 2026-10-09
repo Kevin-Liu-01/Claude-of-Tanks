@@ -53,6 +53,8 @@ export interface CloudLayerPreset {
    * stratiform deck by its gaps (1 at a coverage under CLOUD_LAYER_RULES.deckClosedCoverage[0], 0 over [1]), none at night.
    */
   shadowPattern: number;
+  /** 2026-10-09 (the shadows lane): the share of the clear beam a deck's thickest cell passes (CloudscapeConfig.deckBeam). */
+  deckBeam?: number;
   /** Alpha test on the equalised coverage field for the shadow footprint (the cloud's dense core). */
   shadowThreshold: number;
   /** Round 71: the cloud type range the weather's vigour channel maps between (0 stratus, 0.5 cumulus, 1 cumulonimbus). */
@@ -361,7 +363,7 @@ export function deriveCloudLayerPreset(sky: CloudLayerSkyInput): CloudLayerPrese
 /** A stable key of everything the layer's uniforms and shadow caster read (a preset change re-keys the history). */
 export function cloudLayerKey(p: CloudLayerPreset): string {
   return [p.regime, p.coverage, p.baseM, p.thicknessM, p.towers, p.stratiform, p.fieldMix, p.density, ...p.tint,
-    p.windDirRad, p.windSpeed, ...p.offset, p.clearRadiusM, p.shadow ? 1 : 0, p.shadowPattern ?? 0, p.shadowThreshold,
+    p.windDirRad, p.windSpeed, ...p.offset, p.clearRadiusM, p.shadow ? 1 : 0, p.shadowPattern ?? 0, p.deckBeam ?? 0, p.shadowThreshold,
     ...p.typeRange, p.anvil, p.wispiness, p.shearM, p.streets, p.cirrus, p.cirrusAngleRad, p.cirrusAltM, p.cirrusDensity,
     p.sunGain, p.ambientScale, p.farBand, p.farBandAltM, p.scud, p.cells, p.cellM, p.deckLight, p.undulatus, p.interior, p.lumps ?? 0, p.baseFlat ?? 0, p.cluster ?? 0, p.deckDetail ?? 0,
     p.timeOfDay, p.contrails, p.contrailAge, p.rain, p.virga, p.fogBank, p.fogBankTopM, ...p.groundGlow, ...p.keyTint,

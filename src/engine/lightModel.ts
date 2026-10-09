@@ -266,7 +266,7 @@ export function atmosphereTransmittance(p: AtmosphereParams, mu: number, steps =
  * is the irradiance luminance — exactly how the map presets write `sunIntensity` / `sunColorHex`.
  */
 export function deriveSun(
-  p: AtmosphereParams, overcast: number, solar = LIGHT_SOLAR_IRRADIANCE,
+  p: AtmosphereParams, overcast: number, solar = LIGHT_SOLAR_IRRADIANCE, beamFloor = 0,
 ): { intensity: number; color: Rgb; colorHex: number } {
   const T = atmosphereTransmittance(p, p.sunDir[1]);
   const lumT = luminance(T);
@@ -279,7 +279,9 @@ export function deriveSun(
   const color: Rgb = [mixed[0] / peak, mixed[1] / peak, mixed[2] / peak];
   const colorHex = linearToHex(color);
   const quantized = hexToLinear(colorHex);
-  const irradiance = lightTune('LIGHT_SOLAR_IRRADIANCE', solar) * lumT * (1 - lightTune('OVERCAST_DIRECT_CUT', OVERCAST_DIRECT_CUT) * o);
+  // (2026-10-09, the shadows lane) a thin deck passes at least its beam (CloudscapeConfig.deckBeam): the cut stops there
+  const irradiance = lightTune('LIGHT_SOLAR_IRRADIANCE', solar) * lumT * Math.max(1 - lightTune('OVERCAST_DIRECT_CUT', OVERCAST_DIRECT_CUT) * o,
+    clamp(beamFloor, 0, 1));
   return { intensity: irradiance / luminance(quantized), color: quantized, colorHex };
 }
 
@@ -309,15 +311,19 @@ function resolveGrounded(
   overcast: number,
   night: number,
   closure = 1,
+  deckBeam = 0,
 ): LightModel {
   const L = preset.lighting ?? {};
   // (2026-10-05, the skies lane: a deck with gaps) the sun the cascades carry takes the overcast's cut only by the deck's
   // closure (lightModelCore.ts resolveDeckClosure) — in a gap it is the clear sun, and the cloud shade map's pattern
   // shades the cells — while the light the camera meters, the ground's radiance and the deck's return take the average
   // cut (`derived`), so the exposure and the open ground's mean level hold
-  const derived = deriveSun(params, overcast);
+  // (2026-10-09, the shadows lane: a thin deck — resolveDeckBeam — passes at least deckBeam of the clear beam, uniformly
+  // under a closed deck, in the cells of a deck with gaps; the meter and the ground's radiance take the same floor)
+  const thin = clamp(deckBeam, 0, 1);
+  const derived = deriveSun(params, overcast, LIGHT_SOLAR_IRRADIANCE, thin);
   const close = clamp(closure, 0, 1);
-  const beam = close < 1 ? deriveSun(params, overcast * close) : derived;
+  const beam = close < 1 ? deriveSun(params, overcast * close, LIGHT_SOLAR_IRRADIANCE, thin) : derived;
   // the night: the dome dimmed to a moonlit sky. The direct light is the authored moon there, the derived sun by day,
   // blended by the night amount (the presets sit at its ends: day and sunset 0, the night preset 1)
   const moon = sun ? { intensity: sun.intensity, color: hexToLinear(sun.colorHex) } : { intensity: derived.intensity, color: derived.color };
@@ -344,7 +350,9 @@ function resolveGrounded(
   // (2026-10-04) the beam a deck cuts past the glow's calibration comes down diffused (OVERCAST_DIRECT_CUT): by day the
   // horizontal light it took from the sun returns in the glow, so the exposure and the open ground's level hold while
   // the faces and cast shadows the point sun modelled lose it (QA: OVERCAST_BEAM_DIFFUSE 0 drops it)
-  const beamDiffused = Math.max(0, lightTune('OVERCAST_DIRECT_CUT', OVERCAST_DIRECT_CUT) - OVERCAST_DIFFUSED_FROM) * clamp(overcast, 0, 1)
+  // (2026-10-09: a thin deck's beam is not cut, so none of it comes down diffused — the cut stops at 1 − deckBeam)
+  const oc = clamp(overcast, 0, 1);
+  const beamDiffused = Math.max(0, Math.min(lightTune('OVERCAST_DIRECT_CUT', OVERCAST_DIRECT_CUT) * oc, 1 - thin) - OVERCAST_DIFFUSED_FROM * oc)
     * clearSun * sinEl * (1 - night) * lightTune('OVERCAST_BEAM_DIFFUSE', 1);
   // (2026-10-05: a thick deck passes less — OVERCAST_THICK_CUT over the overcast's last stretch)
   const thick = 1 - lightTune('OVERCAST_THICK_CUT', OVERCAST_THICK_CUT) * smoothstep(lightTune('OVERCAST_THICK_FROM', OVERCAST_THICK_FROM), 1, overcast);

@@ -2231,7 +2231,9 @@ export class VolumetricCloudLayer {
     (this.farShadeMaterial.uniforms.uFarShadeRect.value as THREE.Vector3).copy(rect);
     // (a deck's cell is optically thick: CLOUD_LAYER_RULES.deckShadowCore; a deck closing toward no gaps casts less of its
     // pattern as the light model's uniform cut takes over — the two complementary over the closing coverage)
-    const core = preset.shadow ? lightTune('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE) : lightTune('CLOUD_DECK_SHADOW_CORE', CLOUD_LAYER_RULES.deckShadowCore);
+    // (2026-10-09, the shadows lane: a thin deck — CloudscapeConfig.deckBeam — passes that share of the beam in its cells)
+    const core = preset.shadow ? lightTune('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE)
+      : Math.min(lightTune('CLOUD_DECK_SHADOW_CORE', CLOUD_LAYER_RULES.deckShadowCore), 1 - (preset.deckBeam ?? 0));
     const pattern = preset.shadow ? preset.shadowPattern : preset.shadowPattern * (lightTune('DECK_PATTERN', 1) > 0 ? 1 : 0);
     (this.farShadeMaterial.uniforms.uShadeLook.value as THREE.Vector3).set(core * pattern,
       lightTune('CLOUD_SHADOW_SHIFT', 0), lightTune('CLOUD_SHADOW_SOFT', CLOUD_SHADOW_SOFT));

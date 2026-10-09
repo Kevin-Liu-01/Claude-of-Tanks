@@ -42,6 +42,7 @@ import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
 import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
+import { createStructureGroundOcclusion, type StructureGroundOcclusionHandle } from '../engine/structureGroundOcclusion.ts';
 import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
 import { supplyHorizonRing, withdrawHorizonRing } from './horizonRingHook.ts';
 import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
@@ -169,6 +170,8 @@ export interface WorldRuntime {
   heightField: WorldHeightField;
   minimapTextureState: SourcedTextureState;
   raycast(origin: THREE.Vector3, direction: THREE.Vector3, maxDistance: number): WorldRayHit | null;
+  /** 2026-10-09 (the shadows lane): the ground's sky beside the solids (structureGroundOcclusion.ts); null on the phones. */
+  groundOcclusion: StructureGroundOcclusionHandle | null;
   getObstacles(): CollisionRecord[];
   getColliders(): CollisionRecord[];
   queryObstacles: ObstacleQuery;
@@ -473,6 +476,14 @@ function assembleWorld(
 
   const obstacles = [...props.obstacles, ...vegetation.treeObstacles];
   const colliders = [...props.colliders, ...vegetation.treeObstacles];
+  // 2026-10-09 (the shadows lane): the ground's sky beside the world's standing solids (structureGroundOcclusion.ts) —
+  // baked in a worker from the movement obstacles (the ground-bearing solids; trees stay out) while the battle entry
+  // warms, read by the aerial pass on the desktop tiers; a map's sky.lighting.groundOcclusion scales it (0: off)
+  const groundOcclusionScale = (config.sky as { lighting?: { groundOcclusion?: number } } | undefined)?.lighting?.groundOcclusion ?? 1;
+  const groundOcclusion: StructureGroundOcclusionHandle | null = getDeviceTier() !== 'mobile' && groundOcclusionScale > 0
+    && (engineCtx as { renderer?: THREE.WebGLRenderer }).renderer
+    ? createStructureGroundOcclusion(props.obstacles, { group, scale: groundOcclusionScale }) : null;
+  if (groundOcclusion) engineCtx.scene.userData.structureGroundOcclusion = groundOcclusion;
   // 2026-10-07 (the map-vehicles lane): the moored hulls stand in the water as a standing tank does, and lap it
   // through the same disturbance sources the vehicles feed (props.ts waterContacts); they follow the frame's own sources
   // (the vehicles keep the first slots), into one reused list, and stand from the first frame and after a reset
@@ -663,6 +674,10 @@ function assembleWorld(
     terrainVariant: config.assaultTrenches ? 'assault-trenches' : null,
     dispose() {
       terrain.userData.cancelSourcedTextures?.();
+      if (groundOcclusion) {
+        if (engineCtx.scene.userData.structureGroundOcclusion === groundOcclusion) delete engineCtx.scene.userData.structureGroundOcclusion;
+        groundOcclusion.dispose();
+      }
       unregisterDestructibles();
       vegetation.dispose();
       litter.dispose();
@@ -680,6 +695,7 @@ function assembleWorld(
     /** Round 73: the tall-grass tier (diagnostics and the round's probes: state, meshes, the press field). */
     _tallGrass: tallGrass,
     raycast,
+    groundOcclusion,
     /** @returns {Array<{min:number[],max:number[]}>} static obstacle AABBs */
     getObstacles: () => obstacles,
     /** Shell/LOS cover records; exposed for deterministic server manifests. */
@@ -798,6 +814,11 @@ function assembleWorld(
       litter.update(cameraPos);
       tallGrass.update(dt, cameraPos, focusPos, cameraFwd); // round 73: the sward's ring, wind and press
       if (props.updateProps) props.updateProps(dt, cameraPos); // pole LOD + hinge-topple anims
+      if (groundOcclusion) {
+        // (2026-10-09) the world being updated is the one on screen: its ground occlusion is the pass's
+        engineCtx.scene.userData.structureGroundOcclusion = groundOcclusion;
+        groundOcclusion.update(dt);
+      }
     },
     /**
      * Build exact terrain lookahead meshes in an explicitly bounded batch.

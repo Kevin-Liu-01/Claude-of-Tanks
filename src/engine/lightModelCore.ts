@@ -193,6 +193,21 @@ export function resolveDeckClosure(preset: LightModelPreset, patterned: boolean)
   return smoothstep(DECK_CLOSED_COVERAGE[0], DECK_CLOSED_COVERAGE[1], scape.coverage ?? row?.coverage ?? 0);
 }
 /**
+ * 2026-10-09 (the shadows lane; owner: "shadows are still really bad on maps like whiteout"): the share of the clear beam
+ * a stratiform deck still passes where it is thickest (CloudscapeConfig.deckBeam), by day. Whiteout's closed deck cut the
+ * cascades' sun to 2 % of its beam (lit and shaded snow 1.02 : 1) and Frosthollow's cells to 10 %: a thin polar stratus
+ * keeps the sun as a bright patch and soft directional shadows. Only a deck carries it (a cloud-shadow regime casts its
+ * own cells); 0 for an authored overcast or a legacy deck.
+ */
+export function resolveDeckBeam(preset: LightModelPreset): number {
+  const scape = preset.cloudscape;
+  if (!scape || !(lightTune('DECK_BEAM', 1) > 0)) return 0;
+  const row = scape.regime ? CLOUDSCAPE_REGIMES[scape.regime] : null;
+  if (scape.shadow ?? row?.shadow ?? true) return 0;
+  const beam = scape.deckBeam;
+  return typeof beam === 'number' && Number.isFinite(beam) ? clamp(beam, 0, 1) : 0;
+}
+/**
  * The direct cut of a closed deck at overcast 1 — lightModel.ts OVERCAST_DIRECT_CUT, here for the modules that build
  * before the grounded model loads (the far ranges, maps/horizon.ts); lightModel.selftest pins the two equal.
  */
@@ -246,7 +261,7 @@ function legacyModel(preset: LightModelPreset): LightModel {
 /** The grounded model's resolver (lightModel.ts): an open sky's light from its atmosphere and summary. */
 export type GroundedLightResolver = (
   preset: LightModelPreset, params: AtmosphereParams, sky: LightModelSky, sun: { intensity: number; colorHex: number } | null,
-  overcast: number, night: number, closure?: number,
+  overcast: number, night: number, closure?: number, deckBeam?: number,
 ) => LightModel;
 /** What the core hands the grounded model on install, so its chunk imports nothing at runtime: atmosphere.ts's medium
  * and transmittance march, the default ground and the exposure meter's reference. */
@@ -289,6 +304,6 @@ export function resolveLightModel(
   patterned = false,
 ): LightModel {
   return params && sky && grounded && !isGalaxySky(preset)
-    ? grounded(preset, params, sky, sun, resolveOvercast(preset), nightOf(preset), resolveDeckClosure(preset, patterned))
+    ? grounded(preset, params, sky, sun, resolveOvercast(preset), nightOf(preset), resolveDeckClosure(preset, patterned), resolveDeckBeam(preset))
     : legacyModel(preset);
 }
