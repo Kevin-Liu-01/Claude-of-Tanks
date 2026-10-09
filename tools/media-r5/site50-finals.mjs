@@ -6,7 +6,7 @@
 //   node tools/media-r5/site50-finals.mjs <resolvedDir> [--only=s01,s02] [--chunk=10] [--film-resolution=2160]
 //     [--still-supersample=1.5] [--film-master=prores|none] [--keep-film-masters] [--skip-films] [--skip-stills] [--skip-loops]
 //     [--min-free-gb=6] [--keep-place[=<stamp ms>]] [--lease-min=45] [--yield-holds=2] [--yield-fifo2=<runner.json>] [--film-proxy=false]
-//     [--order=s01,s04,…] [--portrait]
+//     [--order=s01,s04,…] [--portrait] [--master-after]
 // The disk is shared with other sessions: a chunk starts only while --min-free-gb is free (a 2160p take with its formats
 // is ~0.35 GB); below it the run stops once the encodes in flight finish, and a re-run resumes where it stopped.
 // --film-master=none renders no ProRes master: site-loops encodes from the 2160p H.264 proxy (crf 14, ~97 Mbit/s), so
@@ -125,7 +125,12 @@ const freeGb = () => { const s = statfsSync(renders); return (s.bavail * s.bsize
 // the film the cut links (motion/sync-footage.mjs) and no master, stills or site formats.
 const portrait = 'portrait' in flags;
 if (portrait) Object.assign(flags, { 'skip-stills': 'true', 'skip-loops': 'true' });
-const filmKind = portrait ? 'films-portrait' : 'films', filmArgs = portrait ? ['--formats=portrait', '--master=none'] : [`--master=${flags['film-master'] ?? 'prores'}`];
+// --master-after (launch night, 2026-10-09): the films render their frames only, and each chunk's masters are made from
+// the kept frames outside the GPU lease (film-master.mjs, at once and apart from the slower site formats), since the
+// master's encode and its counted probe held the lease as long as the frames themselves on a loaded machine
+const masterAfter = 'master-after' in flags && !portrait;
+const filmKind = portrait ? 'films-portrait' : 'films';
+const filmArgs = portrait ? ['--formats=portrait', '--master=none'] : masterAfter ? ['--master=none', '--proxy=false', '--keep-frames=true'] : [`--master=${flags['film-master'] ?? 'prores'}`];
 const filmJobs = join(renders, portrait ? 'jobs-portrait.json' : 'jobs-films.json'), stillJobs = join(renders, 'jobs-stills.json');
 if (!('skip-films' in flags)) run('film jobs', 'node', [join(TOOL, 'cinema-jobs.mjs'), 'films', resolved, join(renders, filmKind), filmJobs, `--resolution=${flags['film-resolution'] ?? 2160}`, ...filmArgs, ...(flags['film-proxy'] === 'false' && !portrait ? ['--proxy=false'] : []), ...only]);
 if (!('skip-stills' in flags)) run('still jobs', 'node', [join(TOOL, 'cinema-jobs.mjs'), 'blur', resolved, join(renders, 'stills'), stillJobs, '--resolution=2160', `--supersample=${flags['still-supersample'] ?? 1.5}`, ...only]);
@@ -157,8 +162,18 @@ const ids = [...new Set([...films, ...stills].map(idOf))].sort((a, b) => rank(a)
 // the encode two chunks back is done: at most two chunks of 2160p ProRes masters (~0.77 GB a take) wait on disk.
 const encoders = [];
 let encodeChain = Promise.resolve();
+// --master-after: each chunk's masters on a chain of their own, started as the chunk renders, so the kept frames (about
+// 4 GB a 2160p take) never wait behind the previous chunk's formats; the chunk's formats wait for its masters
+let masterChain = Promise.resolve();
+const makeMasters = part => new Promise((done, fail) => {
+  console.log(`[finals] masters for ${[...part][0]}… (background)`);
+  const child = spawn('nice', ['-n', '15', 'node', join(TOOL, 'film-master.mjs'), renders, [...part].join(',')], { stdio: 'inherit' });
+  child.on('exit', code => { if (code !== 0) console.log(`[finals] masters for ${[...part][0]}… exited ${code}; the run goes on`); done(); });
+  child.on('error', fail);
+});
 const encodeLoops = part => {
-  encodeChain = encodeChain.then(() => new Promise((done, fail) => {
+  const masters = masterAfter ? (masterChain = masterChain.then(() => makeMasters(part))) : Promise.resolve();
+  encodeChain = Promise.all([encodeChain, masters]).then(() => new Promise((done, fail) => {
     console.log(`[finals] loops for ${[...part][0]}… (background)`);
     const child = spawn('nice', ['-n', '15', 'node', join(TOOL, 'site-loops.mjs'), renders, deliver, [...part].join(','),
       ...('keep-film-masters' in flags ? [] : ['--drop-film-masters'])], { stdio: 'inherit' });
