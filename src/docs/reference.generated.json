@@ -1508,7 +1508,7 @@
       "view": 400,
       "smoke": 16,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1529,7 +1529,7 @@
       "view": 405,
       "smoke": 36,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1550,7 +1550,7 @@
       "view": 410,
       "smoke": 40,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1739,7 +1739,7 @@
       "view": 430,
       "smoke": 30,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1760,7 +1760,7 @@
       "view": 405,
       "smoke": 30,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
