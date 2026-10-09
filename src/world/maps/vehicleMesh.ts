@@ -34,6 +34,12 @@ export interface VehicleMaterial {
   readonly paint: number;
   /** How readily dirt, dust and rust settle on it (glass and lamps little, body and chassis fully). */
   readonly weather: number;
+  /**
+   * (round 6, 2026-10-08) The paint-detail tile's scale on it (1: a tile every 1.18 m). Glass takes none (0: one texel,
+   * so its reflection is not broken into "camouflage-like blotches"); a long flat panel a finer grain (its dents read as
+   * "lumpy skin" at the tile's own size).
+   */
+  readonly grain?: number;
 }
 
 export function material(role: MaterialRole, rgb: readonly [number, number, number], rough: number, metal = 0,
@@ -467,10 +473,11 @@ export class VehicleMesh {
       const px = position[v * 3], py = position[v * 3 + 1], pz = position[v * 3 + 2];
       const nx = normal[v * 3], ny = normal[v * 3 + 1], nz = normal[v * 3 + 2];
       const ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz);
-      if (ax >= ay && ax >= az) { uv[v * 2] = pz * 0.85; uv[v * 2 + 1] = py * 0.85; }
-      else if (ay >= az) { uv[v * 2] = px * 0.85; uv[v * 2 + 1] = pz * 0.85; }
-      else { uv[v * 2] = px * 0.85; uv[v * 2 + 1] = py * 0.85; }
       const m = this.materials[this.mat[v]];
+      const g = 0.85 * (m.grain ?? (m.role === 'glass' ? 0 : 1));
+      if (ax >= ay && ax >= az) { uv[v * 2] = pz * g; uv[v * 2 + 1] = py * g; }
+      else if (ay >= az) { uv[v * 2] = px * g; uv[v * 2 + 1] = pz * g; }
+      else { uv[v * 2] = px * g; uv[v * 2 + 1] = py * g; }
       const out = shadeVertex(m, px, py, pz, ny, ao[v], weathering);
       color[v * 3] = out[0]; color[v * 3 + 1] = out[1]; color[v * 3 + 2] = out[2];
       surf[v * 3] = Math.round(out[3] * 255); surf[v * 3 + 1] = Math.round(out[4] * 255); surf[v * 3 + 2] = Math.round(out[5] * 255);

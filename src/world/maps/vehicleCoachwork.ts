@@ -27,6 +27,8 @@ export const CHROME = material('chrome', [0.60, 0.60, 0.58], 0.22, 1, 0, 0.5);
 export const BRIGHT = material('chrome', [0.48, 0.48, 0.46], 0.34, 0.85, 0, 0.6);
 export const RUBBER = material('rubber', [0.028, 0.027, 0.026], 0.92, 0, 0, 0.9);
 export const TYRE_WALL = material('rubber', [0.040, 0.038, 0.036], 0.86, 0, 0, 0.9);
+/** Round 6: a tread block's worn face, a grey lighter than the grooves between. */
+const TREAD_FACE = material('rubber', [0.07, 0.068, 0.064], 0.8, 0, 0, 0.9);
 export const TRIM = material('trim', [0.032, 0.032, 0.033], 0.55, 0, 0, 0.7);
 export const UNDER = material('under', [0.034, 0.031, 0.029], 0.9, 0, 0, 1);
 export const INTERIOR = material('interior', [0.028, 0.026, 0.025], 0.9, 0, 0, 0.2);
@@ -713,6 +715,25 @@ export function wheel(mesh: VehicleMesh, x: number, y: number, z: number, side: 
     const tread = spec.coarse ? undefined : (k: number, sIdx: number) => ((k === 2 || k === 3) ? (sIdx % 2 === 0 ? 1.0 : 0.982) : 1);
     mesh.lathe(tyre, spec.coarse ? segs : segs * 2, (k) => (spec.coarse ? (k === 1 ? RUBBER : TYRE_WALL) : k >= 1 && k <= 3 ? RUBBER : TYRE_WALL),
       tread ? { radial: tread } : {});
+    // (round 6, wave 285: "plain treadless disc wheels") a truck's crown in cross-country blocks told in shades,
+    // staggered either side of the centre, their worn faces a grey lighter than the grooves (a car keeps its fine
+    // tread in the crown's relief)
+    if (!spec.coarse && (spec.style === 'truck' || spec.style === 'disc' || spec.style === 'spoke')) {
+      const n = 24, rows = [[-0.3, -0.02], [0.02, 0.3]];
+      rows.forEach(([u0, u1], row) => {
+        for (let k = 0; k < n; k++) {
+          if ((k + row) % 2 === 1) continue;
+          const a0 = ((k + 0.12) / n) * Math.PI * 2, a1 = ((k + 0.88) / n) * Math.PI * 2, rr2 = r + 0.003;
+          const p = (x: number, a: number): Vec3 => [x * w, Math.cos(a) * rr2, Math.sin(a) * rr2];
+          const am = (a0 + a1) / 2, nrm: Vec3 = [0, Math.cos(am), Math.sin(am)];
+          const q: Vec3[] = [p(u0, a0), p(u1, a0), p(u1, a1), p(u0, a1)];
+          const ex = q[1][0] - q[0][0], ey = q[1][1] - q[0][1], ez = q[1][2] - q[0][2];
+          const fx = q[2][0] - q[0][0], fy = q[2][1] - q[0][1], fz = q[2][2] - q[0][2];
+          const d = (ey * fz - ez * fy) * nrm[0] + (ez * fx - ex * fz) * nrm[1] + (ex * fy - ey * fx) * nrm[2];
+          mesh.polygon(d < 0 ? [q[0], q[3], q[2], q[1]] : q, TREAD_FACE);
+        }
+      });
+    }
   }
   // rim: a dish from the bead seat into the hub
   const rimMat = spec.rimMat ?? RIM_STEEL;
