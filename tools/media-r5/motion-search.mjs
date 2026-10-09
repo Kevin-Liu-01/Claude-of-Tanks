@@ -30,6 +30,9 @@ const DUR = 6600, TOWNS = new Set(['urban']);
 // the spread penalty per earlier use of a move family (USAGE_W; 0.5 until composition wave c1 narrowed the moves that
 // frame well, when 0.9 keeps the fifty from settling on three low moves)
 const USAGE_W = Number(process.env.USAGE_W ?? 0.5);
+const OCCLUDE_MS = Number(process.env.OCCLUDE_MS ?? 300);
+// the longest span of consecutive samples passing `test`, in ms (one sample alone is 0)
+const longestRun = (samples, test) => { let best = 0, from = null; for (const q of samples) { if (test(q)) { from ??= q.tMs; best = Math.max(best, q.tMs - from); } else from = null; } return best; };
 const rad = (d) => d * Math.PI / 180;
 const MOTION_FIELDS = ['speed', 'curveDegS', 'foeSpeed', 'pinMs', 'cam', 'turrets', 'guns', 'turretKeys', 'turretSweep', 'keepWidth', 'frame', 'lookFrame', 'ease', 'stepMs'];
 
@@ -370,6 +373,9 @@ for (const [n, id, kind, title, set, film, still] of SHOTS) {
         const blocked = Math.max(footprintBlocked, lensSeen?.blocked ?? 0);
         const fr = lensSeen ? framing(lensSeen) : { sweet: 0, bad: 1 };
         if (fr.bad > 0.5) { reject('framing: half the take outside the critics\' bar'); continue; }
+        // (2026-10-09: S17, S30 and S40 hid the hero behind bushes for 0.6–0.9 s, which a wave's per-take mean forgives and
+        // a loop on the site does not) the hero more than half behind the foreground for OCCLUDE_MS (300) is a defect
+        if (longestRun(lensSeen?.perSample ?? [], (q) => (q.fore?.share ?? 0) > 0.5) >= OCCLUDE_MS) { reject('the hero behind the foreground'); continue; }
         const m = metrics(scene), range = m.far / Math.max(3, m.near), road = family.startsWith('road');
         // a FLANK take swings the hero's gun out across the frame (site50.selftest: 40° off the hull in ten takes); the
         // stabilised aim sets that angle from where the foes stand, so a route that brings it scores
