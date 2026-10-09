@@ -455,7 +455,7 @@ export function createGarageStage(
   // structure barely visible without flattening the keyed lighting.
   const floorTex = track(canvasTexture(makeFloorTexture(rng), { aniso }));
   const floorMat = shadowMat(new THREE.MeshStandardMaterial({
-    map: floorTex, roughness: 0.62, metalness: 0.08, envMapIntensity: 0.55,
+    map: floorTex, roughness: 0.62, metalness: 0.08, // (2026-10-08: the full sky light it always took; materialEnvIntensity.ts)
     emissive: 0x11151a, emissiveIntensity: 0.5,
   }));
   track(floorMat);
@@ -710,7 +710,7 @@ export function createGarageStage(
   paintPodiumTexture();
   const podTopMat = shadowMat(new THREE.MeshStandardMaterial({
     map: track(canvasTexture(podTopC, { aniso })),
-    color: 0xffffff, roughness: 0.64, metalness: 0.1, envMapIntensity: 0.5,
+    color: 0xffffff, roughness: 0.64, metalness: 0.1,
   }));
   track(podSideMat); track(podTopMat);
   const podium = new THREE.Mesh(
@@ -754,7 +754,7 @@ export function createGarageStage(
   const wallTexBase = makeWallTexture(rng);
   const wallMat = shadowMat(new THREE.MeshStandardMaterial({
     map: track(canvasTexture(wallTexBase, { aniso, repeat: [3, 1] })),
-    roughness: 0.78, metalness: 0.25, envMapIntensity: 0.35,
+    roughness: 0.78, metalness: 0.25,
     emissive: 0x0d1115, emissiveIntensity: 0.45,
   }));
   track(wallMat);

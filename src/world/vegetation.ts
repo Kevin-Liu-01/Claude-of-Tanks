@@ -3670,7 +3670,7 @@ export function createGarageTreeKit(
     roughness: 1,
     metalness: 0,
   });
-  foliageMaterial.envMapIntensity = 0.85;
+  // (2026-10-08: the leaves take the sky's full light, as the battlefield's do; materialEnvIntensity.ts)
   engineCtx.setupShadowMaterial?.(trunkMaterial);
   engineCtx.setupShadowMaterial?.(foliageMaterial);
   return {
@@ -5075,7 +5075,10 @@ function* vegetationBuildSteps(
     vertexColors: true, roughness: 0.92, metalness: 0.0,
   });
   barkMat.normalScale.set(0.85, 0.85);
-  barkMat.envMapIntensity = 0.85;
+  // (2026-10-08, the world-ibl lane: bark, crowns, leaves and shrubs take the sky's full image-based light. Their trims —
+  // bark 0.85, far canopy 0.80, leaves and shrubs 0.75 — never applied (three overwrote them with the scene's intensity),
+  // so every approved crown was lit at the full sky; the shaded clusters' sky dim is cotLeafSky below.
+  // engine/materialEnvIntensity.ts now applies an authored value.)
   engineCtx.setupShadowMaterial(barkMat, barkHook);
   barkMat.customProgramCacheKey = () => 'world-tree-bark-v12'; // trees lane: the near dissolve only as the camera grazes bark (round 4: fine wood's reach; round 77: the wind law and the moss)
   barkMat.userData.cotWoodFineFar = uWoodFineFar; // the frame probe's same-page A/B (its wood-fine toggle)
@@ -5088,7 +5091,6 @@ function* vegetationBuildSteps(
   // FrontSide culled half of them at any azimuth (closed lobe canopies are
   // unaffected beyond a little overdraw)
   canopyFarMat.side = THREE.DoubleSide;
-  canopyFarMat.envMapIntensity = 0.80; // vista pass (2026-09-19): 1.35 read as pale mint at range; round 77: 1.08 → 0.80, the lobes' sphere normals now carry a shade side and the fill flattened it
   // r4 terrain_environment: the far-LOD lobes were SMOOTH-SHADED SOLIDS —
   // beyond 260 m every crown read as a "playdough broccoli" blob with a
   // clean round silhouette (the single loudest AAA failure in the critique).
@@ -5450,7 +5452,6 @@ function* vegetationBuildSteps(
         map: foliageTex[sp], alphaTest: 0.38, alphaToCoverage: true, side: THREE.DoubleSide,
         vertexColors: true, roughness: 1.0, metalness: 0.0,
       });
-      fm.envMapIntensity = 0.75; // keep ambient on shaded leaves — no black cards (round 77: 0.85 → 0.75, the cascades now shade the crowns)
       // Round 77b: the class's detail tile as the card's normal map (desktop; the mobile library returns null and the
       // phones keep the flat card program). The tile is a material property, so every species shares one program.
       // trees round 2: a slot grown as a form of another family takes that family's detail (grownDefinition)
@@ -7257,7 +7258,6 @@ function* vegetationBuildSteps(
     const material = new THREE.MeshStandardMaterial({
       map, alphaTest: 0.38, alphaToCoverage: true, side: THREE.DoubleSide, vertexColors: true, roughness: 1.0, metalness: 0.0,
     });
-    material.envMapIntensity = 0.75;
     const tile = leafDetail.texture(leafDetail.classOf('oak', pal));
     if (tile) { material.normalMap = tile; material.normalScale.set(LEAF_DETAIL_NORMAL_SCALE, LEAF_DETAIL_NORMAL_SCALE); }
     material.defines = { ...(material.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: GROWN_CROWN_TRANSMISSION.toFixed(2),

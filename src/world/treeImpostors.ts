@@ -470,7 +470,7 @@ export function createTreeImpostorLibrary(options: TreeImpostorOptions): TreeImp
     map: albedo.texture, vertexColors: true, alphaTest: TREE_IMPOSTOR_ALPHA_TEST, alphaToCoverage: true,
     side: THREE.DoubleSide, roughness: 1.0, metalness: 0.0,
   });
-  material.envMapIntensity = 0.80; // the far canopy's sky fill
+  material.envMapIntensity = 1.0; // the far canopy's sky fill (2026-10-08: the full sky, as it always drew; materialEnvIntensity.ts)
   material.customProgramCacheKey = () => TREE_IMPOSTOR_PROGRAM_KEY;
   options.setupMaterial(material, impostorHook);
 

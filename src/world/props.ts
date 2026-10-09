@@ -3682,19 +3682,16 @@ function* propsBuildSteps(
     // texture"): the field print's occlusion takes half the skylight in a joint, not four fifths, so a wall's shaded face
     // keeps its stones (the sunlit face, lit directly, hardly changes)
     if (mats.fieldStone) mats.fieldStone.aoMapIntensity = 0.5;
-    // (measured, b6c: the environment's share of a shaded face's light is small — 1.6 of it moved the Verdant corner's
-    // shaded face from luma 64 to 65, its contrast unchanged — so the field print keeps the default; the shade is the
-    // hemisphere's)
-    mats.steel.envMapIntensity = 0.42; // round 75: painted sheet, a little sky on the crests
-    mats.rock.envMapIntensity = 0.35; // no white env-specular sparkle at distance
-    mats.baked.envMapIntensity = 0.5; // flat-shaded sourced models: no spec sparkle
-    mats.pole.envMapIntensity = 0.4; // dry, checked timber
-    mats.vehicle.envMapIntensity = 0.58;
-    mats.structureWood.envMapIntensity = 0.34;
-    mats.structureCanvas.envMapIntensity = 0.22;
-    mats.burlap.envMapIntensity = 0.18;
-    mats.structureMetal.envMapIntensity = 0.48;
-    mats.glass.envMapIntensity = 1.0; // capped (AA glass spec 4eccce8 — glints
+    // (2026-10-08, the world-ibl lane: every surface here takes the sky's full image-based light, the share the grounded
+    // light model calibrates the shade with. The trims these materials used to author (steel 0.42, rock 0.35, baked 0.5,
+    // pole 0.4, vehicle 0.58, structure wood 0.34, canvas 0.22, burlap 0.18, structure metal 0.48) never applied: three
+    // overwrote them with the scene's intensity, so the approved look is the full sky. Honored, they took 82-99 % of a
+    // shaded face's light with them, three times deeper shade than the ground beside them; engine/materialEnvIntensity.ts
+    // now applies an authored value, so a trim here is a real, visible change.)
+    // capped (AA glass spec 4eccce8 — glints above 1.0 crossed the 1.78 bloom threshold; the post-side firefly clamp is a
+    // safety net, not a design allowance). A cap, not a value: a style's own lower share would stay, and the trims' revival
+    // (engine/materialEnvIntensity.ts) applies it (wave 309: Ruinspires' 0.22 read as black voids, so its style takes 1).
+    mats.glass.envMapIntensity = Math.min(mats.glass.envMapIntensity, 1.0);
     // map revival lane 2 (2026-10-05): a kit's finer, shallower render (ArchitectureSurfaces.relief; absent: unchanged)
     const relief = regionalArchitecture?.surfaces.relief;
     if (relief) {
@@ -3705,8 +3702,6 @@ function* propsBuildSteps(
     }
   }
   configureSurfaceMaterials();
-  // above this crossed the 1.78 bloom threshold; the post-side firefly clamp
-  // is a safety net, not a design allowance)
 
   // Empty geometry buckets still have CSM-registered materials; shader-only
   // uGrime is also invisible to a mesh/material-property traversal. Declare
@@ -7403,7 +7398,7 @@ ${snowCap ? `
       map: cropTex, alphaTest: 0.42, alphaToCoverage: true, side: THREE.DoubleSide,
       vertexColors: true, roughness: 1.0, metalness: 0.0,
     });
-    cropMat.envMapIntensity = 0.5;
+    // (2026-10-08: the crops take the sky's full light, as they always drew; their 0.5 trim never applied, materialEnvIntensity.ts)
     engineCtx.setupShadowMaterial(cropMat, cropAttributeNormal);
     cropMat.customProgramCacheKey = () => 'world-crop-authored-normal-v1';
     const merged = mergeGeometries(cropGeos, false);
