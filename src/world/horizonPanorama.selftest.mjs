@@ -92,13 +92,34 @@ const ringEdge = (() => {
   for (const name of ['uPanoSkyline', 'uPanoHaze', 'uPanoHazeAnti', 'uPanoHazeToward', 'uPanoSunH', 'uPanoHazeChroma']) {
     assert.ok(name in shader.uniforms && new RegExp(`uniform [^;]*\\b${name}\\b`).test(frag), `the shell declares and binds ${name}`);
   }
-  assert.ok(frag.includes('if (skyline.a < 0.0 || panoUv.y <= skyline.a) discard;'), 'a hole under the skyline, or a column with no land, stays open');
-  assert.ok(frag.includes('bool apron = vPanoApron > 0.5 && e > 0.0;') && frag.includes('if (vd.y >= 0.0 || !(apron || uPanoHaze.w > 0.5)) discard;'),
-    'only a ray under the camera\'s own horizontal takes ground (the apron over the eye\'s horizon, else the far earth under the law); a camera looking up at the shell\'s sky sees it open');
-  assert.ok(frag.includes('vec3 T = hazeTransmittance(uPanoHaze.x, reach, layer, uPanoHazeChroma);')
-    && frag.includes('inScatter = max((screen - aerialT * (1.0 - Tp)) / max(Tp, vec3(0.05)), vec3(0.0));')
-    && frag.includes('ground = ground * T + inScatter * (1.0 - T);'),
-    'the far earth takes the map\'s law over its reach, into the colour the aerial pass turns into the screen\'s own horizon');
+  // (the borders lane, 2026-10-08; gauntlet wave 286b's high overviews: "a pale translucent rectangular slab with a hard
+  // vertical edge", the curtains over Nordhavn's inlets) — each texel the colour of what stands there
+  assert.ok(frag.includes('if (vd.y >= 0.0) discard;') && frag.includes('bool overLand = landCol && panoUv.y > skyline.a;')
+    && frag.includes('if (vPanoApron > 0.5 && e > 0.0) {') && frag.includes('if (!overLand) discard;') && frag.includes('if (uPanoHaze.w < 0.5) discard;'),
+    'only a ray under the camera\'s own horizontal takes ground: the apron over the eye\'s horizon over a column\'s land (a hole under its skyline and an open-sea column stay open), else the far earth under the law; a camera looking up at the shell\'s sky sees it open');
+  assert.ok(frag.includes('float disc = tanD * tanD - 2.0 * h / 6371000.0;') && frag.includes('if (disc <= 0.0) discard;')
+    && frag.includes('float x = 2.0 * h / (tanD + sqrt(disc));'),
+    'the far earth\'s ground distance is the earth\'s own (the datum\'s sphere), and over the true horizon\'s dip the ray meets no ground: the dome');
+  // the ground distance as the shell takes it: flat close in, the horizon's distance √(2hR) at the dip, none over it
+  {
+    const R = 6371000, ground = (h, tanD) => { const disc = tanD * tanD - 2 * h / R; return disc <= 0 ? null : 2 * h / (tanD + Math.sqrt(disc)); };
+    assert.ok(Math.abs(ground(300, 0.2) - 300 / 0.2) / (300 / 0.2) < 0.001, 'a steep ray meets the ground where the flat earth would');
+    const dip = Math.sqrt(2 * 300 / R);
+    assert.ok(Math.abs(ground(300, dip * (1 + 1e-9)) - Math.sqrt(2 * 300 * R)) < 200 && ground(300, dip * 0.999) === null,
+      `from 300 m the horizon lies ${(dip * 180 / Math.PI).toFixed(2)} degrees under the horizontal, ${(Math.sqrt(2 * 300 * R) / 1000).toFixed(1)} km out; over it no ground`);
+  }
+  assert.ok(frag.includes('if (length(cameraPosition.xz + rd.xz / flatL * x) < 3904.0) discard;') && frag.includes('if (!landCol && under.a < 0.004) discard;'),
+    'the far earth\'s sea starts where the game\'s own water stops being opaque (the sea apron\'s fade); a column with no land and no open sea near it stays open');
+  assert.ok(frag.includes('reachLand = max(0.0, slant - sx * sqrt(1.0 + sTan * sTan));') && frag.includes('float reachSea = max(0.0, slant - length(vd)), reachLand = reachSea;'),
+    'the land hazes over its reach past the ground its skyline\'s ray meets (no step at the skyline), the sea over its reach past the shell');
+  assert.ok(frag.includes('inScatter = max((screen - aerialT * (1.0 - Tp)) / max(Tp, vec3(0.05)), vec3(0.0));')
+    && frag.includes('vec3 landFill = land * TL + inScatter * (1.0 - TL);')
+    && frag.includes('vec3 seaFill = mirror * vec3(0.80, 0.85, 0.93) * TS + inScatter * (1.0 - TS);')
+    && frag.includes('mirror = atmoKnee(panoDeckGrey(atmoSky(mdir), mdir)) * uAtmoIntensity;'),
+    'the far earth takes the map\'s law over its reach into the colour the aerial pass turns into the screen\'s own horizon: the land under the rim, the sea the sky\'s mirror a little under it');
+  assert.ok(frag.includes('diffuseColor.rgb *= mix(landFill, seaFill, landCol && !overLand ? 1.0 : under.a);'),
+    'land and sea feather across an opening\'s edge columns by the share of open-sea columns within 2.8 degrees; a hole under a skyline is sea');
+  assert.ok(frag.includes('if (vPanoApron > 0.01 && fl > 1e-6 && fh > 0.866 * fl) discard;'), 'an apron face steeper than 60 degrees is a sheet: not drawn');
   // the screen's horizon: the dome as sky.ts draws it (its own lookup, greyed by the deck — the dome's greying on the
   // dome's uniforms, horizonPanoramaDeck.selftest.mjs — the knee, the intensity), toward the aerial pass's target as the
   // deck closes; the aerial pass's target and transmittance as post.ts lays them
@@ -117,13 +138,17 @@ const ringEdge = (() => {
   handle.mesh.onBeforeRender(null, { userData: {} }, { position: new THREE.Vector3(0, 300, 0) });
   assert.equal(air.uPanoSkyOn.value, 0, 'no published sky: the bake\'s own target');
   const skyline = HORIZON_PANORAMA_SHADERS.skyline;
-  assert.ok(skyline && skyline.includes('if (c.a >= 0.5) { found = vec4(c.rgb / c.a, v); break; }') && skyline.includes('vec4 found = vec4(0.0, 0.0, 0.0, -1.0);'),
+  assert.ok(skyline && skyline.includes('if (c.a >= 0.5) { found = vec4(c.rgb / c.a, v); rim = float(j); break; }') && skyline.includes('vec4 found = vec4(0.0, 0.0, 0.0, -1.0);'),
     'the skyline pass: per column the highest opaque texel, out of the premultiplication, or -1 where no land');
+  assert.ok(skyline.includes('for (int k = 3; k <= 24; k++) {') && skyline.includes('if (c.a >= 0.5) { sum += c.rgb / c.a; n += 1.0; }')
+    && skyline.includes("float open = found.a < 0.0 && texture2D(uEdge, vec2(vUv.x, 0.5)).g > 0.5 ? -2.0 : -1.0;"),
+    'its second row: the land 0.15 to 1.2 degrees under the rim (the column\'s own lit country, not its crest), and an open-sea column (no land, the ring\'s sea under it) told from a far country under the deck');
   assert.ok(HORIZON_PANORAMA_SHADERS.skylineBlur?.includes('for (int k = -64; k <= 64; k++)') && HORIZON_PANORAMA_SHADERS.skylineBlur.includes('if (c.a >= 0.0) { sum += c.rgb; n += 1.0; }')
-    && HORIZON_PANORAMA_SHADERS.skylineBlur.includes('float stride = vUv.y < 0.5 ? 1.0 : 16.0;'),
-    'its colour averaged among the columns with land, over 2.8 degrees either side and over 45 degrees, so no column stands as a bar');
-  assert.ok(frag.includes('ground = mix(ground, wide, smoothstep(0.0, 0.0087, e - mix(uPanoElev.x, uPanoElev.y, skyline.a)));'),
-    'the far earth\'s land is the wide average half a degree over the skyline, so no column\'s colour stands as a bar up to the horizon');
+    && HORIZON_PANORAMA_SHADERS.skylineBlur.includes('float stride = mod(row, 2.0) < 0.5 ? 1.0 : 16.0;')
+    && HORIZON_PANORAMA_SHADERS.skylineBlur.includes('row < 1.5 ? own.a : row < 2.5 ? seaN / 129.0 : landN / 129.0'),
+    'the rim and the land under it averaged among the columns with land, over 2.8 degrees either side and over 45 degrees, so no column stands as a bar; the shares of open-sea and land columns within 2.8 degrees');
+  assert.ok(frag.includes('max(smoothstep(0.0, 0.0087, e - skyE), 1.0 - smoothstep(0.05, 0.3, underWide.a))'),
+    'the far earth\'s land is the wide average half a degree over the skyline (and where few columns near hold land), so no column\'s colour stands as a bar up to the horizon');
   const src = readFileSync(new URL('./horizonPanorama.ts', import.meta.url), 'utf8');
   assert.ok(src.includes('air.uPanoHaze.value.set(haze.sigma * ch.air, haze.invScale, hazeDatumM, 1);'), 'the bake hands the shell the far path\'s σ (the map\'s air share), the layer and the datum');
   assert.ok(src.includes('air.uPanoHaze.value.set(0, 0, 0, 0);'), 'no law (its own air): no far earth');
@@ -156,11 +181,54 @@ const ringEdge = (() => {
     const i = row * strideN + k, j = i - strideN;
     assert.ok(Math.hypot(pos.getX(i), pos.getZ(i)) >= Math.hypot(pos.getX(j), pos.getZ(j)) - 1e-3, 'over the opening too the shell never folds back');
   }
+  // (the borders lane, 2026-10-08) the edge row pulled in to seaEdgeMaxM stands on the ring's own surface there, its rows
+  // walked along the column — not on the last row's height carried in from 4.35 km
+  const along = 50 + (0.4 - 50) * (P.seaEdgeMaxM - 1160) / (4350 - 1160);
   for (let k = 100; k < 140; k++) {
     const r = Math.hypot(pos.getX(k), pos.getZ(k));
-    assert.ok(Math.abs(r - P.seaEdgeMaxM) < 1e-2 && Math.abs(pos.getY(k) - (0.4 - 0.05)) < 1e-3,
-      'over the opening the edge row stands on the marine faces at seaEdgeMaxM');
+    assert.ok(Math.abs(r - P.seaEdgeMaxM) < 1e-2 && Math.abs(pos.getY(k) - (along - 0.05)) < 1e-3,
+      `over the opening the edge row stands on the ring's own surface at seaEdgeMaxM (${pos.getY(k).toFixed(2)} m)`);
   }
+  geometry.dispose();
+}
+// --- an inlet whose far shore rises at the ring's last row (Nordhavn: 150-170 m at 4.35 km): the shell stands no sheet
+// facing the battlefield — wave 286b's "pale translucent rectangular slabs ... a box wall" over the fjord's bird view: the
+// last row's height pulled in to 3.2 km over the ring's own water, and the apron's fall by row over the last 120 m beside
+// the inlets (the borders lane, 2026-10-08) ---------------------------------------------------------------------------
+{
+  const inlet = (() => {
+    const rows = 4, positions = new Float32Array(n * rows * 3), heights = new Float32Array(n * rows);
+    for (let row = 0; row < rows; row++) for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2, open = k >= 100 && k < 140 && row >= 2;
+      const r = open ? (row === 2 ? 2400 : 4350) : 1300 + row * 60, i = row * n + k;
+      positions[i * 3] = Math.cos(a) * r; positions[i * 3 + 2] = Math.sin(a) * r;
+      // the inlet: water across the opening out to its far shore at the last row, 160 m high; the land beside it 150 m
+      heights[i] = positions[i * 3 + 1] = open ? (row === 2 ? -6 : 160) : 150 + row * 4;
+    }
+    return { columns: n, positions, heights };
+  })();
+  const geometry = buildHorizonPanoramaShellGeometry(inlet), pos = geometry.getAttribute('position');
+  const rowsN = 1 + P.apronM.length + P.wallElevDeg.length, strideN = n + 1;
+  let steep = 0, highEdge = 0;
+  for (let k = 0; k < n; k++) {
+    if (k >= 100 && k < 140) highEdge = Math.max(highEdge, pos.getY(k));
+    for (let row = 0; row < 1 + P.apronM.length; row++) {
+      const a = row * strideN + k, b = a + strideN;
+      for (const [i0, i1, i2] of [[a, b, a + 1], [a + 1, b, b + 1]]) {
+        const A = new THREE.Vector3().fromBufferAttribute(pos, i0), B = new THREE.Vector3().fromBufferAttribute(pos, i1), C = new THREE.Vector3().fromBufferAttribute(pos, i2);
+        const nrm = new THREE.Vector3().subVectors(B, A).cross(new THREE.Vector3().subVectors(C, A));
+        const fl = nrm.length(), fh = Math.hypot(nrm.x, nrm.z);
+        if (fl < 1e-6) continue;
+        const cx = (A.x + B.x + C.x) / 3, cz = (A.z + B.z + C.z) / 3;
+        const radial = Math.abs((nrm.x * cx + nrm.z * cz) / (fh * Math.hypot(cx, cz) || 1));
+        // a sheet the shader keeps: steeper than 60 degrees and not radial (the radial-sheet test discards those)
+        if (fh > 0.866 * fl && radial >= 0.45 && row < P.apronM.length) steep++;
+      }
+    }
+  }
+  const across = -6 + (160 + 6) * (P.seaEdgeMaxM - 2400) / (4350 - 2400);
+  assert.ok(Math.abs(highEdge - (across - 0.05)) < 1e-3, `over the inlet the edge row stands on the ring's surface at seaEdgeMaxM (${highEdge.toFixed(1)} m), not on its far shore (160 m)`);
+  assert.equal(steep, 0, 'no apron face steeper than 60 degrees faces the battlefield beside or over the inlet');
   geometry.dispose();
 }
 
@@ -483,7 +551,7 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
   assert.equal(handle.ensureBaked(renderer), true, 'a capable renderer bakes');
   assert.equal(handle.setGroundTone(new THREE.Color(0.5, 0.5, 0.5), null), false, 'a tone after the bake is not taken (a re-bake would hitch a frame)');
   const renders = renderer.calls.filter((c) => c[0] === 'render');
-  assert.deepEqual(renders.map((c) => c[1]), [`${P.gridA}x${P.gridR}`, `${P.gridA}x${P.gridR}`, `${P.width}x${P.height}`, `${P.width}x1`, `${P.width}x2`],
+  assert.deepEqual(renders.map((c) => c[1]), [`${P.gridA}x${P.gridR}`, `${P.gridA}x${P.gridR}`, `${P.width}x${P.height}`, `${P.width}x2`, `${P.width}x4`],
     'five passes: the heights, their light, the strip, its skyline per column and that skyline\'s colour averaged round the compass (near and wide)');
   assert.deepEqual(renderer.state(), before, 'the renderer\'s target, clear colour and alpha and auto-clear are restored');
   assert.equal(handle.mesh.visible, true, 'the shell shows once baked');
