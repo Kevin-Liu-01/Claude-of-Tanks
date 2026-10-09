@@ -31,6 +31,12 @@
      "sha256": "ce9861e89596de9e46f420d4fe362824e5335497cc122665cee43365a49182e7",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "c94f6f44dca3afd83a2e05ceaf1dfb44c21e190095eec92da23c1f46b0f94533",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -102,13 +108,13 @@
    "time": "day",
    "hero": "leo2a6_x",
    "paint": {
-    "unit": "flecktarn",
+    "unit": "paint_marder2",
     "enemy": "sig_t90a"
    },
    "turrets": "sectors",
    "still": {
     "tMs": 3480,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s02-factory-road": {
@@ -142,6 +148,12 @@
      "sha256": "3f74d05c4c3cc0e1b48a9d2b6a35f6d9d7ed88b7da90b254a414458b15857c30",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "820538eeb036924cdbaa048c8aba98566840f99996684d763bb92ed302377f57",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -213,13 +225,13 @@
    "time": "day",
    "hero": "m1a2_tusk_x",
    "paint": {
-    "unit": "berlin",
+    "unit": "paint_m1a1",
     "enemy": "service_soviet_coldwar"
    },
    "turrets": "flank",
    "still": {
     "tMs": 3980,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s03-square-pass": {
@@ -253,6 +265,12 @@
      "sha256": "5ebd9c6a04fbf55f9669ce3c53663da9931342c885c4d721daf40dcf3f502fe1",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "0300cf57f5791578e1886d55afcc483e66afaf5b4af835136c1552a6e9f5ffba",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -324,13 +342,13 @@
    "time": "day",
    "hero": "leclerc_x",
    "paint": {
-    "unit": "urbanblock",
+    "unit": "sig_leclerc",
     "enemy": "sig_t90"
    },
    "turrets": "sectors",
    "still": {
     "tMs": 3300,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s04-column-under-fire": {
@@ -364,6 +382,12 @@
      "sha256": "3cbfa464e8427d3a7cff1a284021d42a5c1ec0932b2a75dacc122bf4ef686640",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "ad9c85461b478a9e6c0ae375f1b29536133b4417a54ee5783c8d86c85320e1d5",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -441,7 +465,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 2700,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s05-barn-advance": {
@@ -586,6 +610,12 @@
      "sha256": "2c2b5f3f0ed4427910e2e0960b6ebfcabce3d53697ac6371c5c8004e178aa877",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "183158bc801a1dd3d80971da3876825476d6cc9a151d8b323ca7419efa5fdd89",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -657,13 +687,13 @@
    "time": "day",
    "hero": "kf51_x",
    "paint": {
-    "unit": "splinter",
+    "unit": "sig_kf51b",
     "enemy": "sig_t90a_vladimir"
    },
    "turrets": "flank",
    "still": {
     "tMs": 4380,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s07-lake-shellfire": {
@@ -697,6 +727,12 @@
      "sha256": "f9d0fa4a3c4b0c2290949c1aacbc2d25a55b161a41ee713f76f1473d39795a72",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "a2ca045cd0764e576655cb8c9eaf8966bad5932d6243a3e23dcab3cfaccaefb4",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -755,13 +791,13 @@
    "time": "day",
    "hero": "strv122_x",
    "paint": {
-    "unit": "winterbands",
+    "unit": "service_strv122",
     "enemy": "service_soviet_coldwar"
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 2900,
-    "exposureMs": 8
+    "tMs": 3060,
+    "exposureMs": 2
    }
   },
   "s08-market-push": {
@@ -795,6 +831,12 @@
      "sha256": "69ade091116b35f027e4c16edf6af2ffb0be6f0124a1abaf6e6da15c0a0bfbae",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "61c4c6d84e3d56175799896278d6db284f0e76327cdb6f81655f8445a4c6ec23",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -848,18 +890,18 @@
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
-   "title": "An M1A2 Abrams column pushes through the market street of Sunscar Oasis",
+   "title": "An M6 Linebacker leads an Abrams column through the market street of Sunscar Oasis",
    "map": "oasis",
    "time": "day",
-   "hero": "m1a2_x",
+   "hero": "m6_linebacker",
    "paint": {
-    "unit": "chocchip",
+    "unit": "paint_m6_linebacker",
     "enemy": "sig_t90ms"
    },
    "turrets": "flank",
    "still": {
     "tMs": 3680,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s09-harbor-run": {
@@ -893,6 +935,12 @@
      "sha256": "97c53b53aa24dc013ca6e86732ec123c44156d6eb09478c6675196e0f96814c3",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "abb502c35d86ecfb50438d39ca4212e50f41b414b7372b8c37c9d542df45f627",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -956,8 +1004,8 @@
    },
    "turrets": "flank",
    "still": {
-    "tMs": 4400,
-    "exposureMs": 8
+    "tMs": 4180,
+    "exposureMs": 2
    }
   },
   "s10-ford-shellfire": {
@@ -991,6 +1039,12 @@
      "sha256": "1f7e8a8d1bdfe6fdfa1ac655fd458f549ec3f5844aa7f289e07cf599ac55105d",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "9aedf37c39f8e488d398162cff1535920849f8801176fc28daf9bab1e6b9446b",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -1042,7 +1096,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 4480,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s11-container-rows": {
@@ -1076,6 +1130,12 @@
      "sha256": "1ed7c522376da1d160f1ba963f8b58ed3d57ce9a8135fd80b2cfa53060db891c",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "76c3693452a626826376e40d21c215cbaf167df1fc411cfd8703d3889ea35a86",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -1127,7 +1187,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 3980,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s12-gantry-advance": {
@@ -1161,6 +1221,12 @@
      "sha256": "d704addbc7e0ca7633d3b29d5df33fc411ff1e4ae1a17f2b775f5b4637f802cf",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "e8877e86b642516347380fd69d496fe4871f94350c7d2532fbce1dbe19f74f90",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -1212,7 +1278,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 3380,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s13-farm-race": {
@@ -1246,6 +1312,12 @@
      "sha256": "dbc031a262d4f62a94ddcf26517b4a4f3c28bb4a97b4b6b1dc8d488096d02b43",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "f30a7feebee37d4552a066678a4e1bd696bbc64661bc465f3c20a056f57fbc8a",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -1296,8 +1368,8 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 2900,
-    "exposureMs": 8
+    "tMs": 3380,
+    "exposureMs": 2
    }
   },
   "s14-snow-push": {
@@ -1331,6 +1403,12 @@
      "sha256": "23d25f101067d0c82757aaed250b3cf94e09ee46235eb1be11bbfe76b67d16e6",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "7a891ac0db81be3499dd35ba3c5ff3d2d24c2b3c0f9d90e7f45a2ebd4d2ccdef",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -1376,13 +1454,13 @@
    "time": "day",
    "hero": "t80u_x",
    "paint": {
-    "unit": "winter",
+    "unit": "service_soviet_coldwar",
     "enemy": "merdcwinter"
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 4400,
-    "exposureMs": 8
+    "tMs": 3680,
+    "exposureMs": 2
    }
   },
   "s15-orchard-column": {
@@ -1416,6 +1494,12 @@
      "sha256": "9bcf8b9a02d1373bfa1ae9df18837cf6eac290710cbc0c8dfcf633a245289457",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "314f7b3f84029ecccff3a72b2f9c05eb43ec487af688011429f75342366c0977",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -1461,13 +1545,13 @@
    "time": "day",
    "hero": "ariete_c1_x",
    "paint": {
-    "unit": "autumn",
+    "unit": "service_ariete_c1",
     "enemy": "service_soviet_coldwar"
    },
    "turrets": "flank",
    "still": {
-    "tMs": 2900,
-    "exposureMs": 8
+    "tMs": 3000,
+    "exposureMs": 2
    }
   },
   "s16-street-duel": {
@@ -1501,6 +1585,12 @@
      "sha256": "3e48deb03dc80e9d5912c7cfa3226a160d03dfd81da8e98fb02f108809429ce5",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "267919af2127e6cb1dbabb2c04b6fc4cbf2e84aeccb95d5657a4e200a2ddba5e",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -1541,18 +1631,18 @@
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
-   "title": "Street duel at night: a KF51 Panther trades fire down a Steinburg street",
+   "title": "Street duel at night: a Griffin trades fire with a T-80U down a Steinburg street",
    "map": "urban",
    "time": "night",
    "hero": "griffin50_x",
    "paint": {
-    "unit": "dazzle",
+    "unit": "paint_griffin_viper",
     "enemy": "sig_t90a"
    },
    "turrets": "lens",
    "still": {
     "tMs": 4460,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s17-crossroads-fire": {
@@ -1586,6 +1676,12 @@
      "sha256": "733444abbd7a2ddf3c95d477c9b9ac68b376c13cc51ddf1981a48cbe72e09439",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "5e01cd62b77657fddc88e558ea46754c4a2d4bc0ec1f29149a9fd0af3ad92a55",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -1637,7 +1733,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 1380,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s18-street-knockout": {
@@ -1665,6 +1761,12 @@
      "sha256": "81baac80c47e7d28e13787e2eb7b84f76ba4aa3f07a10b136552febb5e6caabc",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "0076eb6c43092eb250bc6ad5af46baee6c454792b3e3dfe9c2ba10f833143d5f",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -1710,13 +1812,13 @@
    "time": "night",
    "hero": "leo2a6m_x",
    "paint": {
-    "unit": "digitaldesert",
+    "unit": "service_leo2a6m",
     "enemy": "service_soviet_coldwar"
    },
    "turrets": "sectors",
    "still": {
     "tMs": 2060,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s19-roof-tiles": {
@@ -1750,6 +1852,12 @@
      "sha256": "25a17705960d360a158e86e86376d39339c48f2d35d38652a5ac436fd4e2d9a5",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "0c543412ecfcd646603d26fe191c6e10b3697cae98da1a728258dfb9153a8856",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -1790,7 +1898,7 @@
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
-   "title": "Roof tiles rain down as a Leopard 2A6 fires up the street",
+   "title": "Roof tiles rain down as a PL-01 fires up the street",
    "map": "urban",
    "time": "day",
    "hero": "pl01_105",
@@ -1801,7 +1909,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 2680,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s20-road-return-fire": {
@@ -1835,6 +1943,12 @@
      "sha256": "dc0c6974b382ee3110f1bd8dd6b6819501e6a4c7d6e6ae696dc552a04aa24ced",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "48c8995b5d4dc8ef6b893580cd515ec70d4a69a7996c20592bf2abb5c310d7dc",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -1875,7 +1989,7 @@
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
-   "title": "A T-90M column returns fire across the fields at sunset",
+   "title": "A Challenger 2 leads a Ukrainian column returning fire across the fields at sunset",
    "map": "verdant",
    "time": "sunset",
    "hero": "ua_challenger2",
@@ -1886,7 +2000,7 @@
    "turrets": "lens",
    "still": {
     "tMs": 1380,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s21-fields-assault": {
@@ -1920,6 +2034,12 @@
      "sha256": "8b2790d13a17ff8a3c2ca3ae9d28ee429ce7df17564c3e3a6fd84ddc0a6cea7c",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "c0d3c6fd8048b5093358881def2a30e29310ae34c3e744cd2c5f154fea58a866",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -1971,7 +2091,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 3720,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s22-walking-barrage": {
@@ -1999,6 +2119,12 @@
      "sha256": "f85cf4f6a28e9208e9e011589465cf18657ee8cb82d2f4234753cec22d91c6a0",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "1b33c5bba6cd8812535f6b863f13b1d513bacbf4beb27f956336cb250dce0423",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -2049,8 +2175,8 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 3700,
-    "exposureMs": 8
+    "tMs": 3000,
+    "exposureMs": 2
    }
   },
   "s23-village-crossroads": {
@@ -2084,6 +2210,12 @@
      "sha256": "14a9109087f0478442c1d7f236aca266ca4a00ba862da0691bbfb36bf85b705e",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "03ca4f4bda7aca8c706b39b9b02171c815e7bb6bc3551649ae46466310246cc1",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -2124,7 +2256,7 @@
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
-   "title": "T-14 and T-90M tanks hold the village crossroads",
+   "title": "A T-80U Husarz and a PL-01 hold the village crossroads",
    "map": "verdant",
    "time": "day",
    "hero": "pl_t80u_modern",
@@ -2135,7 +2267,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 1580,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s24-ice-duel": {
@@ -2169,6 +2301,12 @@
      "sha256": "66d04c5920a0945849ebae355e198b2b94446ab0fff68ae747d0dd04a8409067",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "26d8d2ab88f7d2a4951b96b5000a5824b62a72b6e4bd9b66a9436d35d1c78186",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -2214,13 +2352,13 @@
    "time": "day",
    "hero": "fv510_milan_x",
    "paint": {
-    "unit": "merdcwinter",
+    "unit": "paint_ares_apc_x",
     "enemy": "sig_t90a_vladimir"
    },
    "turrets": "sectors",
    "still": {
     "tMs": 1860,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s25-alpine-village": {
@@ -2254,6 +2392,12 @@
      "sha256": "19a53df81aea0d9e1a3beb8f1d77601aa4ecfa287a4f4e6d64555a4db24ee800",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "e92bf609d34ae2536e29b6082dc652d5848624a72193e267d20f7fb6ca7ed5e0",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -2299,13 +2443,13 @@
    "time": "day",
    "hero": "leo2a5_x",
    "paint": {
-    "unit": "washworn",
+    "unit": "service_leo2a4m",
     "enemy": "service_soviet_coldwar"
    },
    "turrets": "flank",
    "still": {
     "tMs": 3280,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s26-minaret-fire": {
@@ -2339,6 +2483,12 @@
      "sha256": "ec54dbcc14eff4ca5160ff6bade425e4cfba408d2a0fa2c2627e0ba9946db555",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "eee7ef6febabaf705fdb24d7ee2a3928556bf1576a4ae7a505ba52143e078ad4",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -2390,7 +2540,7 @@
    "turrets": "lens",
    "still": {
     "tMs": 1680,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s27-caravanserai-kill": {
@@ -2418,6 +2568,12 @@
      "sha256": "29555b11c0c109fb11709745c4db5d492021b6059eccf894c55c21baeb92c49f",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "1ad0280df1af96b28cb9a72350e93ac308cd9808f2ce3ac215235ba454028181",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -2469,7 +2625,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 2160,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s28-fjord-village": {
@@ -2503,6 +2659,12 @@
      "sha256": "8b2a723da09756083d5b15bcbce8465b59039cb9125ac962047745426b714186",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "31675b7c38dc441f63cd706ca1117b594d31a2785099371695c96b1549075b2d",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -2543,7 +2705,7 @@
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
-   "title": "A Stridsvagn 122 and a CV9040C hold the fjord village",
+   "title": "A Challenger 2E and a Challenger 3 hold the fjord village",
    "map": "fjord",
    "time": "day",
    "hero": "challenger2e",
@@ -2554,7 +2716,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 3380,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s29-fjord-road-kill": {
@@ -2582,6 +2744,12 @@
      "sha256": "c173d5a443046835c4184aa57e3695441d7557056b541dd164afe8e0f600f000",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "15e7a4b0a564d1bae6ee59c4e31b712177c98e4bb5e36ff29050f5872749b397",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -2627,13 +2795,13 @@
    "time": "day",
    "hero": "leo2a4m_x",
    "paint": {
-    "unit": "tigerstripe",
+    "unit": "service_marder1a3",
     "enemy": "sig_t90a_vladimir"
    },
    "turrets": "sectors",
    "still": {
     "tMs": 1960,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s30-temple-village": {
@@ -2667,6 +2835,12 @@
      "sha256": "ae4d710d7dd5ecbd66813f199d002e995d5382c05f070e7177656e2b6ec9f749",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "5ea53aa969a2088fe30940aac2f51fd282a40d8fbcbaaa86a241403e959a3b8d",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -2712,13 +2886,13 @@
    "time": "morning",
    "hero": "k1a1_x",
    "paint": {
-    "unit": "jungleops",
+    "unit": "sig_k1a1",
     "enemy": "sig_t72m1_jaguar"
    },
    "turrets": "flank",
    "still": {
     "tMs": 3280,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s31-ford-fire": {
@@ -2752,6 +2926,12 @@
      "sha256": "5aa1486b04256116c8246adf9bb927a8ecff76b33cd2f08403f7d8ffe7289129",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "2bb89573c80f32f6d235ecc0fac8c69291c13755cda243b54db5ec8ef8c28a45",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -2802,8 +2982,8 @@
    },
    "turrets": "lens",
    "still": {
-    "tMs": 1780,
-    "exposureMs": 8
+    "tMs": 2400,
+    "exposureMs": 2
    }
   },
   "s32-yard-salvo": {
@@ -2837,6 +3017,12 @@
      "sha256": "7d3187d0a2dc5576715eff4e468eaccb43d6209e9b250778416ddedf79faea3c",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "18f16ea66d998780b18cd4f229b7869f6f6c81b3a37bd2f7ac3dd2e9f8154a32",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -2887,8 +3073,8 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 1200,
-    "exposureMs": 8
+    "tMs": 1380,
+    "exposureMs": 2
    }
   },
   "s33-water-tower": {
@@ -2922,6 +3108,12 @@
      "sha256": "77ea3d02c948ed78e7a2d1b9e2adf69d52804b0db21dfbc2e35a2edaffb80636",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "3c7ae7d787448d83bebf5ecc4ded30d9b88c2ac0f6c8dd1ce1fb54052bb64c6b",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -2972,8 +3164,8 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 3500,
-    "exposureMs": 8
+    "tMs": 3680,
+    "exposureMs": 2
    }
   },
   "s34-furnace-salvo": {
@@ -3001,6 +3193,12 @@
      "sha256": "23bea972bc9f932d77975e2a684e45b7a4b708e7eeea434750c40a7825860a44",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "3941f7e78d6fa92a0a981a786763cff57de2cf7500799be83c10e561e807b0ea",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -3041,7 +3239,7 @@
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
-   "title": "T-14 Armatas fire a rippling salvo in the Ironworks yard at night",
+   "title": "TOS-1A launchers fire a rippling salvo in the Ironworks yard at night",
    "map": "foundry",
    "time": "night",
    "hero": "tos1a_tagil",
@@ -3052,7 +3250,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 1180,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s35-farm-village": {
@@ -3086,6 +3284,12 @@
      "sha256": "be7fea883e100f1b0d37ff22e6718af0a8c931e5c1e5d7c97152cdd0ef62f83a",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "f971374acdefe4cf07c9cd73cffa2e11a5e8b6a35417a62a8c159e9beec4484f",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -3137,7 +3341,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 3380,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s36-barn-knockout": {
@@ -3165,6 +3369,12 @@
      "sha256": "72b8fc004ed0558e848d4a4a4327fd99ec11483fb2679d0c1e623c530bc8ef83",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "c1227e1d7d6465bbbe42317dcd0d3edd4d4101a2eecd07d0daabee314f9d29c4",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -3210,13 +3420,13 @@
    "time": "morning",
    "hero": "type10_x",
    "paint": {
-    "unit": "amoeba",
+    "unit": "sig_type10b",
     "enemy": "paint_ru_t80u_modern"
    },
    "turrets": "sectors",
    "still": {
     "tMs": 2060,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s37-river-village": {
@@ -3250,6 +3460,12 @@
      "sha256": "45b66aea615cd296009ebc4f945da709dfc97154fe1e35c91d7c2e51b2123b8f",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "4fd5642c4cf11562bc1d57409d1e532ad1b8ef8798f53ff7ab5131bc977026b6",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -3290,7 +3506,7 @@
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
-   "title": "ZTZ-100 tanks fight through the river village of the Jade River Delta",
+   "title": "A VT-4A1 and a ZTZ-100 fight through the river village of the Jade River Delta",
    "map": "delta",
    "time": "morning",
    "hero": "vt4a1",
@@ -3301,7 +3517,7 @@
    "turrets": "lens",
    "still": {
     "tMs": 1480,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s38-church-knockout": {
@@ -3329,6 +3545,12 @@
      "sha256": "6e6a578286ce6a6c94712705e88a72f3d4957269725602c1a259d1bcdd3e591c",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "8894473182cb4dfd178abab1692ed7482939aa4ec0c940df5d038bb585a0ec45",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -3374,13 +3596,13 @@
    "time": "night",
    "hero": "t90a_vladimir_x",
    "paint": {
-    "unit": "ardennes44",
+    "unit": "sig_t90a_vladimir",
     "enemy": "merdcwinter"
    },
    "turrets": "sectors",
    "still": {
     "tMs": 2060,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s39-lakeside-village": {
@@ -3414,6 +3636,12 @@
      "sha256": "73d2e80698042d44096967dbb1012f1b86bf079a98a0b782728121c41c27ac8d",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "7329ac482d3514ddf6a49a6dedf40fbd39ac94a7c6be83d3eb687e96b619f34c",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -3459,13 +3687,13 @@
    "time": "day",
    "hero": "chieftain_mk10_x",
    "paint": {
-    "unit": "dpm",
+    "unit": "paint_chieftain5",
     "enemy": "sig_t90a"
    },
    "turrets": "flank",
    "still": {
     "tMs": 3380,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s40-rooftop-smoke": {
@@ -3499,6 +3727,12 @@
      "sha256": "ff894fc8de2f141710dcad593cbc42ad236b154eb47fd08173a2a31fcd23a33f",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "3c0cbf8b7eadd96963a3ca21ac11d9d20ee5c167b7fc09b1784aee6da001407c",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -3562,8 +3796,8 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 3300,
-    "exposureMs": 8
+    "tMs": 3500,
+    "exposureMs": 2
    }
   },
   "s41-church-tower": {
@@ -3597,6 +3831,12 @@
      "sha256": "95b3a9d52047338c7e451ce0cd8ba0567dbd230f1a5e8e07382c05f7e452965b",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "9c594437f79b68631cd8aa64d5abf1031f57e6aa3ee49b3133ec2cf287f2f1f5",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -3637,7 +3877,7 @@
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
-   "title": "The night street fight seen from the church tower",
+   "title": "A Leopard 2A6 UA halts in Steinburg's night street fight",
    "map": "urban",
    "time": "night",
    "hero": "leo2a6_ua",
@@ -3648,7 +3888,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 2700,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s42-assault-above": {
@@ -3682,6 +3922,12 @@
      "sha256": "bc3f7ce757916179949c0cdc91924a88d8febb929f2ad531ec0701b98cd13326",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "3f1bff1a5b518bc366b8559159df7cd6e78d30277b677a32c890fecbd98928c5",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -3733,7 +3979,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 3300,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s43-lake-crane": {
@@ -3767,6 +4013,12 @@
      "sha256": "3c766ea578d686e3c4f68859777ada180f1600651fc70f4724ef622a490dce40",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "08a0f963d0f346fe665bb6c070862ef84d7458b47a81391fde5c395fef0a9d75",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -3818,7 +4070,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 4600,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s44-oasis-sunset": {
@@ -3852,6 +4104,12 @@
      "sha256": "f545a4183f0e6e3c25eebd31d5cad39a60384e7f3551b21975efb27def5040fa",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "6f4cc0102c5b1223a98878b5e2c49c5efd17b93782448e9c55880c4ef11b64af",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -3903,7 +4161,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 3300,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s45-harbor-wide": {
@@ -3943,6 +4201,12 @@
      "sha256": "5efec03f41f852920088881065abe7026fded9577095deebdf18c36e0f233ad2",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "9c9488a61abcbf707f86cb1de43127a42aa5069e574cd1988908203c1b70f537",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -4001,13 +4265,13 @@
    "time": "golden",
    "hero": "ajax_x",
    "paint": {
-    "unit": "naval",
+    "unit": "sig_ares_apc_x",
     "enemy": "sig_t90a"
    },
    "turrets": "flank",
    "still": {
     "tMs": 3300,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s46-river-drone": {
@@ -4041,6 +4305,12 @@
      "sha256": "1398230b5c94a0052056cce830bf5d2058c0435d69a4d2d192d6e1064fef9f34",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "916a897ab63eb6d828726d3012ce32e7bfdb803ecd18939ae2b59a8fbb1ff342",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -4099,13 +4369,13 @@
    "time": "day",
    "hero": "aft10_x",
    "paint": {
-    "unit": "tropic",
+    "unit": "paint_cn_t80u_modern",
     "enemy": "rasputitsa"
    },
    "turrets": "sectors",
    "still": {
     "tMs": 3300,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s47-ironworks-crane": {
@@ -4133,6 +4403,12 @@
      "sha256": "3ba5fa63b23a45ddbd6b54f507c2ee79dd3943936a14f79fdd076e2edbcba9ec",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "ee8968215f4ca8e41108abb2679497f27c5d20e2e07268554db1096676f991b1",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -4184,7 +4460,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 4600,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s48-delta-crane": {
@@ -4212,6 +4488,12 @@
      "sha256": "8d5450ce49f437829b41408b9ec2817b1b2780827ecb0f87ba6c857bd6408a6a",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "b3cbbd3f0e5188840b9c605ac55f6dd3308e54169ff8f21ebd5e7258329569bf",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -4263,7 +4545,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 4600,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s49-orchard-sunset": {
@@ -4303,6 +4585,12 @@
      "sha256": "1d90bf66dac66f2c1ee2833eab5dc6fe84a7ef1bc354a1c35fc2932adaa0956b",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "39ba41f2601b0f3bd29aaba539a93b8da9813801bb3f7ba8a4b9ba100ba2e213",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -4361,13 +4649,13 @@
    "time": "day",
    "hero": "amx30_x",
    "paint": {
-    "unit": "oakleaf",
+    "unit": "sig_amx10p",
     "enemy": "service_soviet_coldwar"
    },
    "turrets": "sectors",
    "still": {
     "tMs": 3300,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s50-reservoir-crane": {
@@ -4401,6 +4689,12 @@
      "sha256": "ccdd3722353584a271d910bf5450c2a232898a0473c9afd35630333f7be1bc3e",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "e6df893d943b75e9ae9cf5d9206854dfe711ebbb56c9f9157fe04c076e8f1e10",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
     }
    ],
    "renders": [
@@ -4451,8 +4745,8 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 4600,
-    "exposureMs": 8
+    "tMs": 4100,
+    "exposureMs": 2
    }
   }
  }
