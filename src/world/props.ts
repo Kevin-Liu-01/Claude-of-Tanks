@@ -7947,6 +7947,9 @@ ${snowCap ? `
       const objectiveDiscs: readonly (readonly [number, number, number])[] = [
         ...(objectiveLayout?.zones ?? []).map((zone) => [zone.x, zone.z, 30 + 3] as const),
         ...(objectiveLayout?.kickoff ? [[objectiveLayout.kickoff.x, objectiveLayout.kickoff.z, 12 + 3] as const] : []),
+        // (2026-10-08, over modes' symmetric deployments) nor in a deployment slot's clearing, which every placed
+        // destructible keeps (addDestructible's veto: DEPLOYMENT_CLEAR_M and its radius); Delta's Type 59 stood 2.75 m in one
+        ...deploymentSlots.map((slot) => [slot.x, slot.z, DEPLOYMENT_CLEAR_M] as const),
       ];
       function hulkOnObjective(x: number, z: number, r: number): boolean {
         return objectiveDiscs.some(([cx, cz, radius]) => Math.hypot(x - cx, z - cz) < radius + r);
@@ -9398,6 +9401,15 @@ ${snowCap ? `
       const body = bodyAt(cart, x, z);
       const approach = approachAt(cart, x, z);
       let met = false;
+      // (2026-10-08, over modes' symmetric deployments) its placing kept it out of every deployment slot's clearing
+      // (addDestructible's veto); a seat it slides to does too: the way out is straight away from the slot
+      for (const slot of deploymentSlots) {
+        const dx = x - slot.x, dz = z - slot.z, d = Math.hypot(dx, dz), reach = DEPLOYMENT_CLEAR_M + cart.r;
+        if (d >= reach) continue;
+        if (!seen) return true;
+        met = true;
+        seen(d > 1e-6 ? dx / d : 1, d > 1e-6 ? dz / d : 0, reach - d);
+      }
       for (const n of nearOf.get(cart)!) {
         if (n.parked && (n.parked.dropped || n.parked === cart)) continue;
         // (round 5) a cart keeps half a metre of air to anything over half a metre tall (a trunk, a wall, a barrier, a
