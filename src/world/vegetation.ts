@@ -20,6 +20,7 @@ import {
   type TreeSpecies,
 } from './treeSpecies.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
+import { deploymentClearings } from '../sim/matchPlacement.ts';
 import { createStructureClearances, excludeStructureVegetation, excludeVegetation, overlapsStructureClearance,
   placedStructureClearances } from './vegetationClearance.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
@@ -5611,6 +5612,12 @@ function* vegetationBuildSteps(
   const authoredTreeDonors = veg.authoredTrees || veg.tidalTrees ? new Set<TreeRecord>() : null;
   const treeObstacles: TreeObstacle[] = [];
   const protectedSpawns = [L.spawns.player, ...L.spawns.enemies];
+  // Symmetric deployments (modes lane, 2026-10-08): both sides' deployment slots keep the clearings the pads keep
+  // (sim/matchPlacement.ts deploymentClearings). The seeded passes still test the pads alone (a rejected candidate
+  // would shift every later draw); the trees standing within 26 m of a slot drop after every placement (excludeVegetation
+  // below), and the draw-free tests — the understorey's admission, the snags' hash — read the slots beside the pads.
+  const deploymentSlots = deploymentClearings(heightField);
+  const spawnClearings = [...protectedSpawns, ...deploymentSlots];
   /** Rim-forest clearance around every spawn: tank + chase camera, not a meadow (was 36 m, see placeRimForest). */
   const RIM_SPAWN_CLEARANCE_M = 20;
   // SPOTTING WIRING: concealment discs {x,z,r,add} sampled by the spotting
@@ -5677,9 +5684,14 @@ function* vegetationBuildSteps(
     return (x - halvesAbout!.x) * halvesAxis[0] + (z - halvesAbout!.z) * halvesAxis[1] < 0 ? 0 : 1;
   }
   const _coverHalves = [0, 0];
-  function countTreeHalves(): void {
+  // (symmetric deployments: the last evening counts without the trees the deployment clearings drop after it)
+  function countTreeHalves(withoutClearings = false): void {
     _coverHalves[0] = 0; _coverHalves[1] = 0;
-    for (const t of trees) if (Math.max(Math.abs(t.x), Math.abs(t.z)) <= PLAYABLE_HALF_EXTENT_M) _coverHalves[coverHalf(t.x, t.z)]++;
+    for (const t of trees) {
+      if (Math.max(Math.abs(t.x), Math.abs(t.z)) > PLAYABLE_HALF_EXTENT_M) continue;
+      if (withoutClearings && !isClearOfSpawns(t.x, t.z, deploymentSlots, 26)) continue;
+      _coverHalves[coverHalf(t.x, t.z)]++;
+    }
   }
   function treeHalfAhead(x: number, z: number): boolean {
     if (!halvesAbout || Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M) return false;
@@ -6627,12 +6639,13 @@ function* vegetationBuildSteps(
     if (!halvesAbout) return;
     const arid = treeBiomeArid(cfg?.id);
     for (let i = 0; i < 2400; i++) {
-      countTreeHalves();
+      countTreeHalves(true);
       if (Math.abs(_coverHalves[0] - _coverHalves[1]) <= 1) return;
       const r = keyedStream(13, i);
       const seat = seatInHalf((r() * 2 - 1) * 460, (r() * 2 - 1) * 460, _coverHalves[0] < _coverHalves[1] ? 0 : 1);
       const x = seat[0], z = seat[1], species = pickSpecies(veg.loneMix, r());
       if (arid && hollowDepthAt(x, z) < 1.2) continue;
+      if (!isClearOfSpawns(x, z, deploymentSlots, 26)) continue;
       if (!uplandZoneOk(x, z, species)) continue;
       if (addTree(x, z, species, r)) trees[trees.length - 1].field = true;
     }
@@ -6801,15 +6814,28 @@ function* vegetationBuildSteps(
   }
   placeTidalTrees();
   let rootDecalOrdinals: Map<TreeRecord,number> | null = null;
-  if (placementAdmission || roadBlockedRimTrees.size) {
+  const inDeploymentClearing = (tree: TreeRecord): boolean => !isClearOfSpawns(tree.x, tree.z, deploymentSlots, 26);
+  const clearsDeployment = trees.some(inDeploymentClearing);
+  const clearedHedgeTrees = clearsDeployment ? trees.reduce((n, t) => n + (t.hedgeRow && inDeploymentClearing(t) ? 1 : 0), 0) : 0;
+  if (placementAdmission || roadBlockedRimTrees.size || clearsDeployment) {
     rootDecalOrdinals=new Map(trees.map((tree,index)=>[tree,index]));
+  }
+  if (placementAdmission || roadBlockedRimTrees.size) {
     group.userData.roadPlacementClearance={rejectedTrees:excludeVegetation(
       trees,treeObstacles,concealers,tree=>roadBlockedRimTrees.has(tree)
         || newlyUnsafeRoadSite(tree.x,tree.z,9,.82),group.userData.tidalMangroves)};
   }
+  // symmetric deployments: the trees within a deployment slot's clearing, after every seeded pass (the root decals keep
+  // their stream through rootDecalOrdinals, as for the road clearance)
+  group.userData.deploymentClearance = { slots: deploymentSlots.length, rejectedTrees: clearsDeployment
+    ? excludeVegetation(trees, treeObstacles, concealers, inDeploymentClearing, group.userData.tidalMangroves) : 0 };
   roadBlockedRimTrees.clear();
-  // (trees lane: the hedge trees still standing once the structure, road and tidal passes have taken theirs)
-  if (group.userData.hedgeTrees) group.userData.hedgeTrees.standing = trees.reduce((n, t) => n + (t.hedgeRow ? 1 : 0), 0);
+  // (trees lane: the hedge trees still standing once the structure, road and tidal passes have taken theirs; the
+  // deployment clearings' share counted apart)
+  if (group.userData.hedgeTrees) {
+    group.userData.hedgeTrees.standing = trees.reduce((n, t) => n + (t.hedgeRow ? 1 : 0), 0);
+    group.userData.hedgeTrees.clearings = clearedHedgeTrees;
+  }
   // Each LOD is a trunk mesh (opaque bark) + a card mesh (alpha foliage) sharing
   // the same instance matrices.
   const _whiteScratch = new THREE.Color(1, 1, 1);
@@ -6828,7 +6854,7 @@ function* vegetationBuildSteps(
     for (let i = 0; i < trees.length; i++) {
       const t = trees[i];
       if (t.species === 'palm' || (t.species === 'willow' && veg.willowForm === 'tidalMangrove')) continue;
-      if (!isClearOfSpawns(t.x, t.z, protectedSpawns, 45)) continue;
+      if (!isClearOfSpawns(t.x, t.z, spawnClearings, 45)) continue;
       const middle = 1 - smoothstepJs(180, 470, Math.hypot(t.x, t.z));
       if (treePositionNoise(t.x, t.z, 9) >= snagShare * (0.35 + 1.3 * middle)) continue;
       const e = t.mat.elements;
@@ -7536,7 +7562,7 @@ function* vegetationBuildSteps(
         if (heightField._roadDist(x, z) < 6 || admission()._roadDist(x, z) < 6) return false;
         if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
         if (admission().getNormalAt(x, z).y < 0.78 || heightField.getNormalAt(x, z).y < 0.78) return false;
-        if (!isClearOfSpawns(x, z, protectedSpawns, 20)) return false;
+        if (!isClearOfSpawns(x, z, spawnClearings, 20)) return false;
         if (x > v.x0 - 12 && x < v.x1 + 12 && z > v.z0 - 12 && z < v.z1 + 12) return false;
         return !overlapsStructureClearance(structureClearances, x, z, 1.4 * sc);
       };

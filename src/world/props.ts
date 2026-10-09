@@ -198,6 +198,7 @@ import type { RegionalBuildContext } from './maps/regional/types.ts';
 import { makeRegionalConcrete, makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
 import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
+import { deploymentClearings } from '../sim/matchPlacement.ts';
 import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). The exact float/index streams live in a gzip-packed
@@ -911,6 +912,9 @@ export interface PropsRuntime {
 // The scenery lane's landmark kinds follow the inhabiting kit's, so no existing kind moves (2026-10-03).
 // (b15: the regions' field stacks after the scenery's kinds — they are the haystack pass's, not landmarks)
 const PROP_TYPE_REGISTRY: Readonly<Record<string, PropsDestructibleMeta>> = { ...DESTRUCTIBLE_TYPES, ...SCENERY_DESTRUCTIBLE_TYPES, ...HAYSTACK_DESTRUCTIBLE_TYPES };
+/** Symmetric deployments (2026-10-08): a scatter destructible stands its own radius and this far off a deployment slot,
+ * as the field scatter, the piles and the decals keep 18-20 m off the pads. */
+const DEPLOYMENT_CLEAR_M = 20;
 
 function canvas2d(
   canvas: HTMLCanvasElement,
@@ -3402,6 +3406,10 @@ function* propsBuildSteps(
   const rng = mulberry32(seed);
   const detailUvRng = () => 0.5;
   const L = heightField._layout;
+  // Symmetric deployments (modes lane, 2026-10-08): both sides' deployment slots keep the clearings the pads keep
+  // (sim/matchPlacement.ts deploymentClearings). The seeded passes test the pads as before; the scatter a pass would
+  // stand round a slot is left out AFTER its draws (addDestructible's veto, tryRock), so nothing else moves.
+  const deploymentSlots = deploymentClearings(heightField);
   const noVeg = heightField._noVeg || (() => false);
   const noi = new SimplexNoise({ random: mulberry32(seed + 7) });
   registerPaintNoise(noi, seed + 7); // (its tiles may come painted ahead: surfacePaintPrefetch.ts)
@@ -3994,6 +4002,11 @@ ${snowCap ? `
   const landmarkVetoes: Array<{ x: number; z: number; c: number; s: number; hw: number; hd: number }> = [];
   const landmarkVetoed: Record<string, number> = {};
   let landmarkFurniture = false;
+  // the scatter round a deployment slot (a building, a regional structure and a set piece's furniture keep their seats:
+  // a slot they stand on moves off them with its rotated partner in the match placement)
+  const deploymentVetoed: Record<string, number> = {};
+  const structureKinds = new Set([...Object.keys(DESTRUCTIBLE_BUILDING_TYPES),
+    ...Object.values(REGIONAL_DESTRUCTIBLE_TYPES).flatMap((region) => Object.keys(region))]);
   function addDestructible(
     kind: string,
     x: number,
@@ -4014,6 +4027,14 @@ ${snowCap ? `
           landmarkVetoed[kind] = (landmarkVetoed[kind] ?? 0) + 1;
           return { kind, cls: meta.cls, x, y, z, yaw, sc, r, h: meta.h * sc, slot: -1, state: 0, ob: null, groundSupport: null };
         }
+      }
+    }
+    if (deploymentSlots.length && !landmarkFurniture && !structureKinds.has(kind)) {
+      const meta = resolveDestructibleMeta(destructibleContext, kind), r = meta.r * sc, reach = DEPLOYMENT_CLEAR_M + r;
+      for (const slot of deploymentSlots) {
+        if ((x - slot.x) ** 2 + (z - slot.z) ** 2 >= reach * reach) continue;
+        deploymentVetoed[kind] = (deploymentVetoed[kind] ?? 0) + 1;
+        return { kind, cls: meta.cls, x, y, z, yaw, sc, r, h: meta.h * sc, slot: -1, state: 0, ob: null, groundSupport: null };
       }
     }
     return addDestructibleRecord(
@@ -6381,6 +6402,8 @@ ${snowCap ? `
     for (let i = 0; i < hull.length; i += 2) hullReach = Math.max(hullReach, Math.hypot(hull[i], hull[i + 1]));
     const reach = hullReach * sc;
     if (!discClearOfRoadCore(heightField, x, z, reach)) return true;
+    // symmetric deployments: a scatter boulder in a deployment slot's clearing is left out the same way (the pads' 16 m)
+    if (!tactical && deploymentSlots.some((slot) => Math.hypot(x - slot.x, z - slot.z) < 16)) return true;
     // The talus law (rockTalusDeg, default 35 degrees): a boulder whose footprint falls away more steeply than a talus
     // slope — on a wall, astride a ledge's lip or on a narrow bench — slides down its fall line to the first ground it
     // rests on (2 m steps, 40 m at most), every site rule rechecked; left out the same way only when none holds. The
@@ -7924,6 +7947,9 @@ ${snowCap ? `
       const objectiveDiscs: readonly (readonly [number, number, number])[] = [
         ...(objectiveLayout?.zones ?? []).map((zone) => [zone.x, zone.z, 30 + 3] as const),
         ...(objectiveLayout?.kickoff ? [[objectiveLayout.kickoff.x, objectiveLayout.kickoff.z, 12 + 3] as const] : []),
+        // (2026-10-08, over modes' symmetric deployments) nor in a deployment slot's clearing, which every placed
+        // destructible keeps (addDestructible's veto: DEPLOYMENT_CLEAR_M and its radius); Delta's Type 59 stood 2.75 m in one
+        ...deploymentSlots.map((slot) => [slot.x, slot.z, DEPLOYMENT_CLEAR_M] as const),
       ];
       function hulkOnObjective(x: number, z: number, r: number): boolean {
         return objectiveDiscs.some(([cx, cz, radius]) => Math.hypot(x - cx, z - cz) < radius + r);
@@ -9102,6 +9128,7 @@ ${snowCap ? `
   landmarkFurniture = false;
   // (what the veto left out, by kind, on the receipt: the authoring sees what a vetoed piece displaced)
   if (landmarkVetoes.length && group.userData.landmarks) group.userData.landmarks.vetoed = { ...landmarkVetoed };
+  group.userData.deploymentClearance = { slots: deploymentSlots.length, vetoed: { ...deploymentVetoed } };
 
   // All seeded decoration has finished. Relocate accepted records before
   // merging, pool collider refits and spatial indexing; never resample RNG.
@@ -9378,6 +9405,15 @@ ${snowCap ? `
       const body = bodyAt(cart, x, z);
       const approach = approachAt(cart, x, z);
       let met = false;
+      // (2026-10-08, over modes' symmetric deployments) its placing kept it out of every deployment slot's clearing
+      // (addDestructible's veto); a seat it slides to does too: the way out is straight away from the slot
+      for (const slot of deploymentSlots) {
+        const dx = x - slot.x, dz = z - slot.z, d = Math.hypot(dx, dz), reach = DEPLOYMENT_CLEAR_M + cart.r;
+        if (d >= reach) continue;
+        if (!seen) return true;
+        met = true;
+        seen(d > 1e-6 ? dx / d : 1, d > 1e-6 ? dz / d : 0, reach - d);
+      }
       for (const n of nearOf.get(cart)!) {
         if (n.parked && (n.parked.dropped || n.parked === cart)) continue;
         // (round 5) a cart keeps half a metre of air to anything over half a metre tall (a trunk, a wall, a barrier, a

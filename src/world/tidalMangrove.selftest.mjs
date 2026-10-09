@@ -600,7 +600,9 @@ for (const seed of [1337, 2025, 7719]) {
   console.log(seed, JSON.stringify(after.group.userData.tidalMangroves.map(({ treeIndices, ...r }) => r)));
   assert.equal(after.trees.length, before.trees.length);
   assert.equal(after.preRoad.trees, before.preRoad.trees, 'tidal composition keeps the control admission before road clearance');
-  assert.equal(after.trees.length, after.preRoad.trees - after.group.userData.roadPlacementClearance.rejectedTrees);
+  // (symmetric deployments, modes lane 2026-10-08: the deployment slots' clearings drop their trees after the road's)
+  assert.equal(after.trees.length, after.preRoad.trees - after.group.userData.roadPlacementClearance.rejectedTrees
+    - after.group.userData.deploymentClearance.rejectedTrees);
   assert.equal(after.treeObstacles.length, before.treeObstacles.length);
   assert.equal(after.preRoad.obstacles, before.preRoad.obstacles, 'tidal composition keeps the control obstacle admission');
   assert.equal(after.concealers.length, before.concealers.length);
