@@ -221,9 +221,10 @@ export interface BorderLandform {
    * no crop), the colour
    * as a multiple of the local sward's luminance (CROPS); faded in over the first 40 m past the edge (no plain band
    * after the square's own fields), off the woods and the crests. Zero wherever there are no fields — a geometry without
-   * the attribute reads the same.
+   * the attribute reads the same. `woods` (0..1) stands in for the border's own woods where the caller's stands take
+   * over from them (past the ring's hand-over, terrain.ts: the relief bake's stands).
    */
-  parcelTintAt(x: number, z: number, out: [number, number, number, number]): [number, number, number, number];
+  parcelTintAt(x: number, z: number, out: [number, number, number, number], woods?: number): [number, number, number, number];
   /**
    * The farm tracks past the edge, as the ring's borderTrack attribute: per field family, [1000 + signed metres from the
    * nearest track's centre line divided by the tracks' presence (so a fading track narrows), that track's boundary
@@ -639,12 +640,13 @@ export function createBorderLandform(
       }
       return out;
     },
-    parcelTintAt(x: number, z: number, out: [number, number, number, number]): [number, number, number, number] {
+    parcelTintAt(x: number, z: number, out: [number, number, number, number], woods?: number): [number, number, number, number] {
       out[0] = 0; out[1] = 0; out[2] = 0; out[3] = 1;
+      const wood = woods ?? woodsAt(x, z);
       if (landUse) {
         // a land-use map: the material draws the map's own fields past the edge; the attribute carries only where they
         // may lie — off the woods, thinning onto the crests (no fade: the fields run straight across the edge)
-        out[3] = 1 - (1 - woodsAt(x, z)) * (1 - 0.7 * smoothstep(0.62, 0.92, hillsAt(x, z)));
+        out[3] = 1 - (1 - wood) * (1 - 0.7 * smoothstep(0.62, 0.92, hillsAt(x, z)));
         return out;
       }
       if (settings.fields <= 0) return out;
@@ -652,7 +654,7 @@ export function createBorderLandform(
       const fade = smoothstep(0, 40, edgeOut);
       if (fade <= 0) return out;
       // farmland keeps to the gentler ground: off the woods, thinning onto the crests of the hills
-      const w0 = Math.min(1, settings.fields * 1.25) * fade * (1 - woodsAt(x, z)) * (1 - 0.7 * smoothstep(0.62, 0.92, hillsAt(x, z)));
+      const w0 = Math.min(1, settings.fields * 1.25) * fade * (1 - wood) * (1 - 0.7 * smoothstep(0.62, 0.92, hillsAt(x, z)));
       if (w0 <= 0.002) return out;
       const { a, b } = fieldCoords(x, z);
       const id = fieldCell(a, 0) * 7919 + fieldCell(b, 1) * 104729;

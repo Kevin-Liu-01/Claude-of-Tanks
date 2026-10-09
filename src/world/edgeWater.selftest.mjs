@@ -110,6 +110,11 @@ assert.ok(coastalDerived.length >= 1 && coastalDerived.every((o) => Math.abs(o.a
 const coastalResolved = resolveSeaOpenings(getMapConfig('coastal').horizon.seaOpening, coastal, 'coastal');
 assert.equal(coastalResolved.length, 1, 'the authored aperture absorbs the derived east run');
 assert.equal(coastalResolved[0].source, 'authored');
+// the borders lane (2026-10-08, the owner's "evident right angle with shore and water at the border", Saltmere Bay): the
+// authored opening takes its measured mouth banks too, so the coast past the edge continues the bay's own shore (the
+// mouth-continuity laws below run on it) instead of the sector's straight banks
+assert.ok(coastalResolved[0].bankProfile && coastalResolved[0].bankProfile[1] > coastalResolved[0].bankProfile[0] + 100,
+  `the authored opening carries its measured banks: ${JSON.stringify(coastalResolved[0].bankProfile)}`);
 // Saltwind: the hooked bay meets the west edge; until round 40 the ring showed a beach past it.
 const saltwind = createHeightField(1337, getMapConfig('saltwind'));
 const saltwindOpenings = resolveSeaOpenings(getMapConfig('saltwind').horizon?.seaOpening, saltwind, 'saltwind');

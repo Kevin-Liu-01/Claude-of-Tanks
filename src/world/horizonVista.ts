@@ -683,6 +683,9 @@ interface HorizonForestOptions {
   /** The map-borders lane: the border's hedgerows (borderLandform.ts hedgeAt, 0..1) — tree lines along the field
    * boundaries past the edge. */
   hedgeAt?: (x: number, z: number) => number;
+  /** The borders lane (2026-10-08): 0..1, how open the ground is to a lone tree — the border's crops keep their
+   * interiors clear (a field tree stands on a boundary, never mid-field, as in the square), a pasture half so. */
+  loneAt?: (x: number, z: number) => number;
   /** Strength of the per-fragment aerial haze toward the fog tint (the ring's own uVHaze). */
   haze?: number;
   /** Textures created here join the ring's retained list. */
@@ -696,7 +699,23 @@ interface HorizonForestOptions {
    * stands in the budget. `rowGroundAt` is the ring's own surface (NaN where it has none). */
   treeRows?: readonly HorizonTreeRow[];
   rowGroundAt?: (x: number, z: number) => number;
+  /**
+   * The borders lane (2026-10-08; owner, 2026-09-12: "distant treelines across the full height of mountain faces, in
+   * several irregular forest belts from lower to mid slopes"): the relief bake's forest weight at a world point (0..1,
+   * horizonRelief.ts HorizonReliefBake `canopy`) — the stands its canopy darkens on the ranges' faces. When given, the
+   * faces past the range class's reach (HORIZON_FACE_FOREST_M) carry trees on those stands, to `faceRadius`, under their
+   * own budget `faceInstances` (the range class's 880 m / half-height / snow-map limits are the range class's alone: the
+   * bake's stands already stop at the treeline, under the snow and on the cliffs).
+   */
+  faceCanopyAt?: (x: number, z: number) => number;
+  faceInstances?: number;
+  faceRadius?: number;
 }
+
+/** The borders lane: the radii over which the face trees take over from the range class (horizonVista.ts, 880 m). */
+export const HORIZON_FACE_FOREST_M: readonly [number, number] = [840, 940];
+/** The face class's candidate density: one candidate per this many m² of a face's ground (before its stand weight). */
+const HORIZON_FACE_CANDIDATE_M2 = 55;
 
 /** A row of trees along a polyline: its presence per point (0..1), spacing, offsets across it, scale range and conifers. */
 export interface HorizonTreeRow {
@@ -883,6 +902,10 @@ interface ForestPlacement {
   beyond: number;
   /** 2 rich near class (casts shadows), 1 rim band, 0 ranges. */
   detail: number;
+  /** The borders lane: a face tree (the ranges' faces past the range class's reach, on the relief bake's stands). */
+  face?: boolean;
+  /** The borders lane: a face tree's stand weight (the bake's canopy there, 0..1) — the budget keeps the stands' cores. */
+  stand?: number;
   variant: number; tone: number;
   /** thinning key. */
   key: number;
@@ -911,6 +934,7 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
   const { columns: n, rows, positions, heights, maxHeight, treeline, snowline, fog, seed } = options;
   if (treeline < 0.14 || options.maxInstances <= 0) return null;
   const rng = tileRng((seed ^ 0xF0E5) >>> 0);
+  const faceRng = tileRng((seed ^ 0xFACE5) >>> 0);
   const coniferPal: HorizonForestSpeciesPalette = { ...HORIZON_FOREST_CONIFER_PALETTE, ...(options.palettes?.conifer ?? {}) };
   const broadleafPal: HorizonForestSpeciesPalette = { ...HORIZON_FOREST_BROADLEAF_PALETTE, ...(options.palettes?.broadleaf ?? {}) };
   const nearDepth = options.nearDepth ?? 300;
@@ -920,6 +944,14 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
   const rowRadius = (row: number, column: number): number => {
     const i = row * n + column;
     return Math.hypot(positions[i * 3], positions[i * 3 + 2]);
+  };
+  // the borders lane (2026-10-08, Nordhavn: its sea opening holds column 0, whose rows stretch out to 4.3 km, so the
+  // column-0 radius passed the face reach at row ~100 while the row's mountains stood at 1.06-1.4 km — no face tree
+  // above 125 m): the face loop runs while any column of a row is inside the reach
+  const rowMinRadius = (row: number): number => {
+    let r = Infinity;
+    for (let column = 0; column < n; column++) r = Math.min(r, rowRadius(row, column));
+    return r;
   };
   const smoothstep = (a: number, b: number, x: number): number => {
     const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -996,9 +1028,50 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
     woodsCut = share <= 0 ? Infinity : samples.length ? samples[Math.min(samples.length - 1, Math.floor((1 - share) * samples.length))] : -Infinity;
   }
   const surface = { x: 0, y: 0, z: 0, slope: 0 };
+  // the borders lane: the face trees (their own list and budget, keyed apart from the range class)
+  const faceCanopyAt = options.faceCanopyAt ?? null;
+  const faceRadius = faceCanopyAt ? Math.max(options.maxRadius, options.faceRadius ?? options.maxRadius) : options.maxRadius;
+  const faceCandidates: ForestPlacement[] = [];
+  // (the round's frozen census, Nordhavn: 12,000 face trees at one candidate per 55 m² of stand fill 0.66 km² — a
+  // quarter of its 2.3 km² of stands — and the cores-first budget gave all of them to the lowest, densest stands: no
+  // tree above half the treeline, the upper belts bare canopy) the candidates' density follows the budget: a first pass
+  // measures the stands the faces offer (the same faces, the same acceptance at each face's centre), and the second
+  // draws about 1.25 budgets of candidates over them, so the budget trims only the stands' margins and every belt, low
+  // and high, keeps its trees (7.4 m apart where the stands are few, 11-15 m on the most wooded rings)
+  const faceBudgetN = Math.max(0, options.faceInstances ?? 0);
+  let faceDensity = 1;
+  if (faceCanopyAt && faceBudgetN > 0) {
+    let expected = 0;
+    for (let row = 1; row < rows.length - 1; row++) {
+      if (rows[row].skirt && rows[row + 1].skirt) continue;
+      if (rowMinRadius(row) > faceRadius) break;
+      if (row < ridgeRow) continue;
+      for (let column = 0; column < n; column++) {
+        const k1 = (column + 1) % n;
+        const i00 = row * n + column, i01 = row * n + k1, i10 = (row + 1) * n + column, i11 = (row + 1) * n + k1;
+        const rise = (heights[i10] + heights[i11]) * 0.5 - (heights[i00] + heights[i01]) * 0.5;
+        if (rise < -0.5) continue;
+        const dx = positions[i10 * 3] - positions[i00 * 3], dz = positions[i10 * 3 + 2] - positions[i00 * 3 + 2];
+        const radialSpan = Math.hypot(dx, dz);
+        if (Math.abs(rise) / Math.max(1, radialSpan) > 1.0) continue;
+        const cx = (positions[i00 * 3] + positions[i11 * 3]) * 0.5, cz = (positions[i00 * 3 + 2] + positions[i11 * 3 + 2]) * 0.5;
+        const r = Math.hypot(cx, cz);
+        if (r < HORIZON_FACE_FOREST_M[0] - 40 || r > faceRadius) continue;
+        const area = radialSpan * Math.hypot(positions[i01 * 3] - positions[i00 * 3], positions[i01 * 3 + 2] - positions[i00 * 3 + 2]);
+        expected += (area / HORIZON_FACE_CANDIDATE_M2) * smoothstep(0.18, 0.75, faceCanopyAt(cx, cz))
+          * smoothstep(HORIZON_FACE_FOREST_M[0], HORIZON_FACE_FOREST_M[1], r);
+      }
+    }
+    if (expected > 0) faceDensity = Math.min(1, (faceBudgetN * 1.25) / expected);
+  }
   for (let row = 1; row < rows.length - 1; row++) {
     if (rows[row].skirt && rows[row + 1].skirt) continue;
-    if (rowRadius(row, 0) > options.maxRadius) break;
+    // (the column-0 radius bounds the row everywhere but the corners, which reach about 1.4 x further: the loop runs on to
+    // the face reach so the corners' faces are visited, and each face below checks its own radius)
+    const rowR = rowRadius(row, 0);
+    if ((faceCanopyAt ? rowMinRadius(row) : rowR) > faceRadius) break;
+    // (the range class keeps the rows it had: none past the row whose column 0 left the face reach)
+    const faceOnly = rowR > options.maxRadius;
     const band = row < ridgeRow;
     for (let column = 0; column < n; column++) {
       const k1 = (column + 1) % n;
@@ -1012,6 +1085,37 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
       const slope = Math.abs(rise) / Math.max(1, radialSpan);
       if (slope > (band ? 1.15 : 1.0)) continue;
       const faceBeyond = beyondRim(positions[i00 * 3], positions[i00 * 3 + 2]);
+      // the borders lane: the face trees, on the bake's stands past the range class's reach. Their draws come from a
+      // stream of their own (faceRng), so the band and range classes keep every placement and every draw they had.
+      if (faceCanopyAt && !band) {
+        const faceR = Math.hypot(positions[i00 * 3], positions[i00 * 3 + 2]);
+        if (faceR >= HORIZON_FACE_FOREST_M[0] - 40 && faceR <= faceRadius) {
+          let fc = (area / HORIZON_FACE_CANDIDATE_M2) * faceDensity;
+          fc = Math.floor(fc) + (faceRng() < fc - Math.floor(fc) ? 1 : 0);
+          for (let t = 0; t < fc; t++) {
+            const u = faceRng(), w = faceRng(), keep = faceRng(), scaleRoll = faceRng(), yaw = faceRng(), kind = faceRng(), tone = faceRng(), key = faceRng();
+            sampleHorizonFace(positions, heights, i00, i01, i10, i11, u, w, surface);
+            const { x, y, z, slope: faceSlope } = surface;
+            const radius = Math.hypot(x, z);
+            if (radius > faceRadius || faceSlope > 1.0 || y < 1.0) continue;
+            // the hand-over from the range class (whose trees stand inside 880 m): a soft ramp, no seam
+            const take = smoothstep(HORIZON_FACE_FOREST_M[0], HORIZON_FACE_FOREST_M[1], radius);
+            if (take <= 0) continue;
+            if (options.clearAt && options.clearAt(x, z) > 0.5) continue;
+            const stand = faceCanopyAt(x, z);
+            // the stands' interiors close (a wood, not a scatter), their margins thin (the canopy weight's ramp)
+            if (keep > smoothstep(0.18, 0.75, stand) * take) continue;
+            faceCandidates.push({
+              // (the range class's stature spread: the impostors size every ring tree against the ring's mean scale, so a
+              // taller face class would shrink the band's trees by the red line)
+              x, y: y - 0.4, z, scale: 0.9 + scaleRoll * 0.55, yaw: yaw * Math.PI * 2, conifer: kind < options.coniferShare,
+              band: false, beyond: beyondRim(x, z), detail: 0, variant: tone < 0.5 ? 0 : 1, tone: 0.82 + tone * 0.3, key, face: true,
+              stand,
+            });
+          }
+        }
+      }
+      if (faceOnly) continue;
       // one candidate per ~45 m² of rim band, ~90 m² of near range face, ~160 m² beyond 450 m
       let count = area / (band ? 45 : faceBeyond < 450 ? 90 : 160);
       count = Math.floor(count) + (rng() < count - Math.floor(count) ? 1 : 0);
@@ -1033,7 +1137,7 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
         // border landform now shapes (its hills reach 330–820 m out); a lone tree stands in the open
         if (bandShare !== undefined) {
           // (a lone field tree's chance follows the country: a wooded valley has more of them than a steppe)
-          const lone = 0.045 * bandShare;
+          const lone = 0.045 * bandShare * (options.loneAt ? options.loneAt(x, z) : 1);
           // (the hedges' bush lines are geometry now, borderHedgerows.ts: the ring forest stands only their standards)
           if (options.woodsAt) stand *= Math.max(lone, options.woodsAt(x, z), options.hedgeAt ? options.hedgeAt(x, z) * 0.35 : 0);
           else {
@@ -1104,7 +1208,7 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
       }
     }
   }
-  if (candidates.length === 0) return null;
+  if (candidates.length === 0 && faceCandidates.length === 0) return null;
   // Budget: the rim band keeps up to three quarters of the instances, thinned uniformly by key so the whole
   // perimeter stays covered; the ranges take the rest. The band trees nearest the edge become the rich near class.
   const thin = (list: ForestPlacement[], budget: number): ForestPlacement[] =>
@@ -1114,7 +1218,14 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
   const byDepth = bandKept.slice().sort((a, b) => a.beyond - b.beyond);
   for (let i = 0; i < byDepth.length; i++) byDepth[i].detail = i < maxNear && byDepth[i].beyond < nearDepth ? 2 : 1;
   for (const placement of rangeKept) placement.detail = 0;
-  const placements = bandKept.concat(rangeKept);
+  // the borders lane: the face trees under their own budget. Thinning them uniformly dusted every face with lone trees
+  // (Frosthollow: 31k candidates kept at a twelfth); the budget instead contracts the stands to their cores — the
+  // candidates ranked by their stand weight, a little of their key mixed in so the stands' edges stay ragged — so a wood
+  // stays a closed wood and the open faces between the belts stay open
+  const faceBudget = faceBudgetN;
+  const faceKept = faceCandidates.length <= faceBudget ? faceCandidates
+    : faceCandidates.slice().sort((a, b) => ((b.stand ?? 0) + b.key * 0.14) - ((a.stand ?? 0) + a.key * 0.14)).slice(0, faceBudget);
+  const placements = bandKept.concat(rangeKept, faceKept);
   const nearCount = placements.filter((placement) => placement.detail === 2).length;
   const group = new THREE.Group();
   group.name = 'horizon-forest';
@@ -1192,7 +1303,10 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
       });
     }
     species.push({ name: `horizon-forest-${kind}-band`, shadow: false, tree: build(1, -1), own: placements.filter((p) => p.conifer === conifer && p.detail === 1) });
-    species.push({ name: `horizon-forest-${kind}-range`, shadow: false, tree: build(0, -1), own: placements.filter((p) => p.conifer === conifer && p.detail === 0) });
+    species.push({ name: `horizon-forest-${kind}-range`, shadow: false, tree: build(0, -1), own: placements.filter((p) => p.conifer === conifer && p.detail === 0 && !p.face) });
+    // the borders lane: the face trees' own pool (the range lobe's shape; on the desktop tier the impostors redraw them in
+    // the species' existing draws)
+    species.push({ name: `horizon-forest-${kind}-face`, shadow: false, tree: build(0, -1), own: placements.filter((p) => p.conifer === conifer && p.face === true) });
   }
   const matrix = new THREE.Matrix4(), quaternion = new THREE.Quaternion(), scaleV = new THREE.Vector3(), positionV = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0);
@@ -1246,7 +1360,9 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
     near: nearCount,
     band: bandKept.length,
     range: rangeKept.length,
+    face: faceKept.length,
     candidates: candidates.length,
+    faceCandidates: faceCandidates.length,
     placements: packed,
     tone: { fog: [fog.r, fog.g, fog.b], haze: hazeStrength, maxHeight: Math.max(1, maxHeight) },
   };

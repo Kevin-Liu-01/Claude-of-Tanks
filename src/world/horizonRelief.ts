@@ -137,6 +137,12 @@ export interface HorizonReliefCover {
   /** The beds' thickness scale (1: 3–14 m, the tablelands' laminae; the mountain characters' rock bands, read at one to
    * three kilometres, are several times thicker). */
   bedScale?: number;
+  /**
+   * The borders lane (2026-10-08): true where the country's forest stands on snow-covered ground (a winter map below
+   * its treeline, Podhale's spruce under the Tatra): the stands keep to the treeline and ignore the snowline. Default
+   * false (a stand stops under the snow, the summer ranges' law).
+   */
+  overSnow?: boolean;
 }
 
 // round 72b: the far range's own haze is a fifth to a third (was half to two thirds) — the post pass's ring distance law
@@ -556,6 +562,11 @@ interface HorizonReliefBakeInput {
   woodsAt?: ((x: number, z: number) => number) | null;
   /** false where the border's own farmland parcels tint the ring (terrain.ts _borderParcelAt): no baked parcels. */
   fields?: boolean;
+  /**
+   * The borders lane (2026-10-08): the map's prevailing wind (unit xz, the direction it blows TOWARD; treeClimate.ts
+   * resolveTreeWind): the forest climbs higher on the lee faces and holds back on the windward shoulders. Absent: no aspect.
+   */
+  windDir?: readonly [number, number] | null;
 }
 
 export interface HorizonReliefBake {
@@ -567,6 +578,14 @@ export interface HorizonReliefBake {
   r0: number;
   r1: number;
   gradScale: number;
+  /**
+   * The borders lane (2026-10-08): the landcover's stand weight per texel (0..255: the stands the canopy darkens, the
+   * border's woods handing over to the ranges' own over HORIZON_STAND_HANDOVER_M, before the canopy's fade-in under the
+   * range trees), or null where the bake lays no stands — the ring forest seats its face trees on the same stands
+   * (horizonVista.ts buildHorizonForest `faceCanopyAt`) and past the hand-over its band and range trees, the parcels
+   * (terrain.ts) and the hedges (maps/horizon.ts) keep to them, so the land past the border is one woods field.
+   */
+  canopy: Uint8Array | null;
   stats: { aoMean: number; shadowMean: number; gradP95: number; fineRangeM: number; passMs: [number, number, number] };
 }
 
@@ -626,6 +645,7 @@ interface DrainageInput {
   settings: HorizonReliefSettings; seed: number;
   treelineM: number | null; snowlineM: number | null;
   woodsAt: ((x: number, z: number) => number) | null; fields: boolean;
+  windDir: readonly [number, number] | null;
 }
 
 /**
@@ -640,7 +660,7 @@ interface DrainageInput {
  *    thinning to the treeline and stopped under the snow, beyond the ring forest; their crowns grain the relief; field
  *    parcels (a rotated grid, a tone per parcel) on the gentle open ground.
  */
-function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Generator<void, { canopyLight: Float32Array | null; canopyH: Float32Array | null }, void> {
+function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Generator<void, { canopyLight: Float32Array | null; canopyH: Float32Array | null; canopyW: Uint8Array | null }, void> {
   const { W, H, r0, dr, macro, marine, settings: s, seed } = input;
   const d = s.drainage as HorizonReliefDrainage;
   const TAU = Math.PI * 2;
@@ -726,6 +746,7 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
   const c = woods;
   const canopyLight = woods || rock ? new Float32Array(W * H).fill(1) : null;
   const canopyH = woods ? new Float32Array(W * H) : null;
+  const canopyW = woods ? new Uint8Array(W * H) : null;
   // the beds: a thickness and a tone per bed, by world height (the escarpment's own stair is 120–200 m; these are its
   // laminae), warped a few metres so a bed wanders along the wall
   const bedTone = new Float32Array(512), bedTop = new Float32Array(513);
@@ -791,7 +812,12 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
         const wx = x + noise.noise(x / 380 + 9.1, z / 380 - 2.3) * 120, wz = z + noise.noise(x / 380 - 6.7, z / 380 + 5.5) * 120;
         const nA = noise.noise(wx / 420 + 3.3, wz / 420 - 8.1), nB = noise.noise(wx / 160 - 11.7, wz / 160 + 4.9), nC = noise.noise(wx / 45 + 21.1, wz / 45 + 13.3);
         const field = nA * 0.55 + nB * 0.30 + nC * 0.15;
-        const bias = (c.forest - 0.5) * 1.0 + 0.20 * smoothstep(0.08, 0.40, slope) + 0.25 * hollow;
+        // the borders lane (2026-10-08; the owner, 2026-09-12: "several irregular forest belts from lower slopes"): the
+        // lee faces hold their woods (the face's fall line against the prevailing wind: +1 turned from it, -1 into it),
+        // the windward shoulders thin
+        const lee = input.windDir && slope > 0.02
+          ? clamp((g[0] * -input.windDir[0] + g[1] * -input.windDir[1]) / slope, -1, 1) * smoothstep(0.05, 0.25, slope) : 0;
+        const bias = (c.forest - 0.5) * 1.0 + 0.20 * smoothstep(0.08, 0.40, slope) + 0.25 * hollow + 0.12 * lee;
         // the border's woods (its parcels between the hedgerows) carry the stands across the borders band; past it, on the
         // ranges' faces, the stands are the field's own (gauntlet wave 6, Verdant's edge-n: a woodland parcel's straight
         // edges drawn up the mountain read as "a translucent blue-grey band smeared diagonally across the mountain")
@@ -799,9 +825,18 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
         const borderW = input.woodsAt ? 1 - smoothstep(HORIZON_STAND_HANDOVER_M[0], HORIZON_STAND_HANDOVER_M[1], r) : 0;
         let stand = borderW > 0.001 ? natural + (input.woodsAt!(x, z) - natural) * borderW : natural;
         stand *= 1 - smoothstep(0.80, 1.10, slope); // no stand on a cliff
-        if (top !== null) stand *= 1 - smoothstep(top * 0.86, top * 1.02, h0 + nC * 0.06 * top);
-        if (snow !== null) stand *= 1 - smoothstep(snow - 60, snow - 10, h0 + nB * 20);
+        // the borders lane (2026-10-08): a ragged treeline — tongues of forest up the gullies and the lee faces, the
+        // spurs and the windward shoulders bare below it (±10 % and ±6 % of its altitude), its 160 m field breaking it
+        // into fingers and islands as well as the 45 m one
+        if (top !== null) {
+          const reach = h0 - (0.10 * hollow + 0.06 * lee) * top + (nC * 0.06 + nB * 0.05) * top;
+          stand *= 1 - smoothstep(top * 0.82, top * 1.02, reach);
+        }
+        if (snow !== null && !c.overSnow) stand *= 1 - smoothstep(snow - 60, snow - 10, h0 + nB * 20);
         const forestW = stand * nearW * land;
+        // (the stand itself, before the canopy's own fade-in under the range trees and the seam's: the one woods field past
+        // the border's hand-over that the parcels, the hedges and the ring's trees all keep to)
+        if (canopyW) canopyW[idx] = Math.round(clamp(stand * (1 - marine[idx]), 0, 1) * 255);
         // the crowns: a 9–16 m grain in the relief and a mottle in the light where the canopy stands (no finer: the atlas
         // is read at its top level, three to five metres a texel, and a finer grain would shimmer); the canopy's own
         // height (16 m, its crowns 3 m either way) stands in the occlusion and the sun searches, so a stand's edge
@@ -838,7 +873,7 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
     }
     if ((j & 7) === 7) yield;
   }
-  return { canopyLight, canopyH };
+  return { canopyLight, canopyH, canopyW };
 }
 
 /**
@@ -901,15 +936,15 @@ export function* bakeHorizonReliefSteps(
   const fine = new Float32Array(W * H);
   let fineMin = Infinity, fineMax = -Infinity;
   // the mountains lane (2026-10-03): the landcover's light factor per texel (1 = open ground), or null without cover
-  let canopyLight: Float32Array | null = null, canopyH: Float32Array | null = null;
+  let canopyLight: Float32Array | null = null, canopyH: Float32Array | null = null, canopyW: Uint8Array | null = null;
   const arcAt = (r: number): number => r * TAU / W;
   if (s.drainage) {
     const surface = yield* drainageAndCoverSteps({
       W, H, r0, dr, macro, marine, settings: s, seed: (input.seed ?? 0x5eed) >>> 0,
       treelineM: input.treelineM ?? null, snowlineM: input.snowlineM ?? null,
-      woodsAt: input.woodsAt ?? null, fields: input.fields !== false,
+      woodsAt: input.woodsAt ?? null, fields: input.fields !== false, windDir: input.windDir ?? null,
     }, fine);
-    canopyLight = surface.canopyLight; canopyH = surface.canopyH;
+    canopyLight = surface.canopyLight; canopyH = surface.canopyH; canopyW = surface.canopyW;
     for (let idx = 0; idx < W * H; idx++) { const v = fine[idx]; if (v < fineMin) fineMin = v; if (v > fineMax) fineMax = v; }
   } else {
     // pass 2: the fine relief over the macro (concavity and steepness from the macro's radial second and first
@@ -1095,7 +1130,7 @@ export function* bakeHorizonReliefSteps(
   const t3 = now();
   grads.sort((a, b) => a - b);
   return {
-    width: W, height: H, data, r0, r1, gradScale,
+    width: W, height: H, data, r0, r1, gradScale, canopy: canopyW,
     stats: {
       aoMean: aoSum, shadowMean: shSum,
       gradP95: grads.length ? grads[Math.min(grads.length - 1, Math.floor(grads.length * 0.95))] : 0,

@@ -43,7 +43,21 @@ interface TallGrassField {
   _yardWeedsAt?(x: number, z: number): number;
   /** Ground lane (2026-10-08): the sward follows its ground — the map's sun (unit xz) and the law's strength. */
   _swardSlope?: readonly [number, number, number];
+  // the borders lane (2026-10-08): the land past the square — the drawn ring's surface, its water, woods, hedges, crops and
+  // the exits' carriageways (terrain.ts), so the sward runs on across the red line
+  _ringSurfaceAt?(x: number, z: number): number;
+  getOutlandWaterAt?(x: number, z: number): { wetness: number; level: number } | null;
+  getBorderWoodsAt?(x: number, z: number): number;
+  getBorderHedgeAt?(x: number, z: number): number;
+  _borderParcelAt?(x: number, z: number, out: [number, number, number, number]): [number, number, number, number];
+  _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
+  _railExitAt?(x: number, z: number, out: [number, number], surfaceY?: number): [number, number];
 }
+
+/** The borders lane (2026-10-08): how far past the square's edge the sward grows on the ring's near band (m). The square's
+ * own last band (474–512 m) grows it as the square does; past the edge the ring's surface carries it. */
+export const TALL_GRASS_OUTSIDE_M = 120;
+const SQUARE_EDGE_M = 511.5;
 
 type TallGrassBlocked = (x: number, y: number, z: number, height: number, radius: number) => boolean;
 
@@ -512,6 +526,18 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
 
   const heightAt = (x: number, z: number): number =>
     field.getHeightAtFast ? field.getHeightAtFast(x, z) : field.getHeightAt(x, z);
+  // the borders lane: scratch for the queries past the square, and the ring surface's normal (its slope 2 m either way)
+  const _exitScratch: [number, number] = [0, 0];
+  const _parcelScratch: [number, number, number, number] = [0, 0, 0, 1];
+  const _ringNormal = { x: 0, y: 1, z: 0 };
+  function ringNormalAt(x: number, z: number, y: number): { x: number; y: number; z: number } {
+    const at = field._ringSurfaceAt!, e = 2;
+    let ex = at(x + e, z), wx = at(x - e, z), nz = at(x, z + e), sz = at(x, z - e);
+    if (!Number.isFinite(ex)) ex = y; if (!Number.isFinite(wx)) wx = y; if (!Number.isFinite(nz)) nz = y; if (!Number.isFinite(sz)) sz = y;
+    const hx = (ex - wx) / (2 * e), hz = (nz - sz) / (2 * e), l = Math.hypot(hx, 1, hz);
+    _ringNormal.x = -hx / l; _ringNormal.y = 1 / l; _ringNormal.z = -hz / l;
+    return _ringNormal;
+  }
   const _splat: SplatNoiseSample = { n1: 0, n2: 0, mA: 0 };
   let quality = -1;
   let generation = 0;
@@ -525,18 +551,39 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
   function admit(ring: Ring, list: number[], x: number, z: number, rng: () => number): void {
     const b = biome!;
     const roll = rng(), yawR = rng(), hR = rng(), wR = rng(), tintR = rng(), rnd = rng();
-    if (Math.max(Math.abs(x), Math.abs(z)) > 474) return;
-    let keep = 1;
+    const edgeR = Math.max(Math.abs(x), Math.abs(z));
+    // the borders lane (2026-10-08): the sward stopped 4 m past the playable edge (474 m), a line where the grass ended
+    // across every view out of the square. The square's last band grows it as the rest of the square does and, where the
+    // field carries the drawn ring's surface, the ring's near band past the edge does too: the square's own queries end
+    // at its edge (its masks clamp there), so past it the ring's surface and slope, the coast's water, the border's woods,
+    // hedges and crops and the exits' carriageways stand in for them; the sward thins out over its last 70 m.
+    const outside = edgeR > SQUARE_EDGE_M;
+    if (outside && !(field._ringSurfaceAt && edgeR <= SQUARE_EDGE_M + TALL_GRASS_OUTSIDE_M)) return;
+    let keep = outside ? 1 - smoothstep(TALL_GRASS_OUTSIDE_M - 60, TALL_GRASS_OUTSIDE_M, edgeR - SQUARE_EDGE_M) : 1;
+    let ringY = Number.NaN;
+    if (outside) {
+      ringY = field._ringSurfaceAt!(x, z);
+      if (!Number.isFinite(ringY)) return;
+      if (field._roadExitAt) {
+        field._roadExitAt(x, z, _exitScratch);
+        if (_exitScratch[1] > 0.1 && Math.abs(_exitScratch[0]) < TALL_GRASS.roadKeepOutM + 2.2 * swardNoise(x, z, 2.2, 0x7a11)) return;
+      }
+      if (field._railExitAt) {
+        field._railExitAt(x, z, _exitScratch, ringY);
+        if (_exitScratch[1] > 0.1 && Math.abs(_exitScratch[0]) < 4.5) return;
+      }
+      if (field.getBorderHedgeAt && field.getBorderHedgeAt(x, z) > 0.45) return; // a hedge's bush line stands there
+    }
     const roadD = field._roadDist ? field._roadDist(x, z) : 1e9;
     // ground lane (2026-10-03): the sward meets a road on a ragged line — it stands back from the carriageway by up to
     // 2.2 m more in trodden bays along it (a 2.2 m noise), never one ruled keep-out line; it never comes nearer
     const keepOut = TALL_GRASS.roadKeepOutM + (roadD < TALL_GRASS.roadShoulderM + 3 ? swardNoise(x, z, 2.2, 0x7a11) * 2.2 : 0);
     if (roadD < keepOut) return;
     if (roadD < TALL_GRASS.roadShoulderM) keep *= (roadD - keepOut) / (TALL_GRASS.roadShoulderM - keepOut);
-    if (field._noVeg && field._noVeg(x, z)) return;
-    const ground = field.getGroundType ? field.getGroundType(x, z) : 'medium';
+    if (!outside && field._noVeg && field._noVeg(x, z)) return;
+    const ground = outside ? 'medium' : field.getGroundType ? field.getGroundType(x, z) : 'medium';
     if (ground === 'hard') return;
-    const water = field.getWaterMaskAt ? field.getWaterMaskAt(x, z) : 0;
+    const water = outside ? Math.min(1, field.getOutlandWaterAt?.(x, z)?.wetness ?? 0) : field.getWaterMaskAt ? field.getWaterMaskAt(x, z) : 0;
     let heightScale = 1;
     let reedTint = 0;
     // round 73b: reeds are a MARGIN — densest at the waterline (mask 0.04–0.10), thinning to nothing by 0.40, so a lake
@@ -555,10 +602,10 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     } else {
       if (ground === 'soft') keep *= 0.35;
       // marram: dense on the backshore (the strand's own wetness ramp, above the waterline), sparse inland
-      if (b.kind === 'dune' && field._waterWetnessAt) keep *= 0.4 + 1.6 * smoothstep(0.03, 0.30, field._waterWetnessAt(x, z));
+      if (b.kind === 'dune' && !outside && field._waterWetnessAt) keep *= 0.4 + 1.6 * smoothstep(0.03, 0.30, field._waterWetnessAt(x, z));
     }
     let yardDry = 0, yardFringe = false;
-    if (field._villageMask && field._villageMask(x, z) > 0.35) {
+    if (!outside && field._villageMask && field._villageMask(x, z) > 0.35) {
       if (field._yardWeedsAt) {
         // (2026-10-08, the gauntlet's wave 260 on Cinder Junction: "evenly spaced, saturated green single-blade sprites
         // … not weeds in a cinder yard") a cinder yard's weeds stand in their clumps (groundRedux.ts cinderYardWeedsAt),
@@ -596,15 +643,17 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       keep *= 0.55 + 0.9 * smoothstep(0.30, 0.75, sn.n1);
     }
     let hollow = 0, crest = 0;
-    if (field._foldAt) {
+    if (!outside && field._foldAt) {
       const f = field._foldAt(x, z);
       hollow = smoothstep(0.1, 0.6, f); crest = smoothstep(0.1, 0.6, -f);
       keep *= (1 + 0.3 * hollow) * (1 - 0.3 * crest);
       heightScale *= (1 + 0.25 * hollow) * (1 - 0.15 * crest);
     }
     // (the time-to-battle lane, 2026-10-08, with the ground lane: the rendered near terrain's slope, as the tufts read it
-    // — the land use's slope fade, the steep cut and the tundra lee alike; a stub field keeps the analytic normal)
-    const n = field.getContactNormalAt ? field.getContactNormalAt(x, z, _contactN)
+    // — the land use's slope fade, the steep cut and the tundra lee alike; a stub field keeps the analytic normal; past
+    // the square's edge the ring's own normal, the borders lane)
+    const n = outside ? ringNormalAt(x, z, ringY)
+      : field.getContactNormalAt ? field.getContactNormalAt(x, z, _contactN)
       : field.getNormalAt ? field.getNormalAt(x, z) : null;
     if (b.kind === 'tundra') {
       // round 73b: dead sedge keeps to the hollows and the lee sides, in clumps (the ~10–20 m patches of the terrain's
@@ -639,7 +688,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     let pastureDry = -1;
     if (field._landUseAt && b.kind !== 'reed' && b.kind !== 'tundra') {
       field._landUseAt(x, z, _field);
-      const vm = field._villageMask ? field._villageMask(x, z) : 0;
+      const vm = !outside && field._villageMask ? field._villageMask(x, z) : 0;
       const slopeN = n ? 1 - n.y : 0;
       // (an urban land use — Ruinspires — lies inside the village too: landUse.ts LandUseProfile.urban)
       const landW = (1 - smoothstep(0.05, 0.30, vm) * (1 - _field.urban)) * smoothstep(5.0, 8.0, roadD) * (1 - smoothstep(0.04, 0.10, slopeN))
@@ -726,7 +775,21 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     }
     // ground lane (2026-10-03): a wild sward grows in tussocks with thinner ground between them, and stands tall in
     // some patches and grazed short in others; a sown crop stands even (no tussocks there)
-    if (field._woodsAt) keep *= 1 - 0.85 * field._woodsAt(x, z); // a stand's shade: litter, little sward
+    if (outside) {
+      if (field.getBorderWoodsAt) keep *= 1 - 0.85 * field.getBorderWoodsAt(x, z); // the border's woods: a stand's shade
+      // (a map without a land use: the border's own crops past the edge, borderLandform.ts parcelTintAt — the crop's
+      // colour as a multiple of the sward's luminance; a plough grows nothing)
+      if (!field._landUseAt && field._borderParcelAt && !cropTint) {
+        field._borderParcelAt(x, z, _parcelScratch);
+        const w = 1 - _parcelScratch[3];
+        if (w > 0.3) {
+          const cr = _parcelScratch[0] / w, cg = _parcelScratch[1] / w, cb = _parcelScratch[2] / w;
+          if (0.2126 * cr + 0.7152 * cg + 0.0722 * cb < 0.6) return;
+          const tipL = 0.2126 * b.tip[0] + 0.7152 * b.tip[1] + 0.0722 * b.tip[2];
+          cropTint = [Math.min(4, cr * tipL / b.tip[0]), Math.min(4, cg * tipL / b.tip[1]), Math.min(4, cb * tipL / b.tip[2])];
+        }
+      }
+    } else if (field._woodsAt) keep *= 1 - 0.85 * field._woodsAt(x, z); // a stand's shade: litter, little sward
     if (!cropTint && b.kind !== 'reed') {
       keep *= 0.30 + 0.70 * smoothstep(0.28, 0.72, swardNoise(x, z, 1.7, 0x51a7));
       heightScale *= 0.62 + 0.76 * swardNoise(x, z, 9, 0x2c3d);
@@ -738,10 +801,10 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     }
     if (roll > keep) return;
     if (n && n.y < TALL_GRASS.minSlopeY) return;
-    const y = heightAt(x, z);
+    const y = outside ? ringY : heightAt(x, z);
     if (yardFringe && !blocked!(x, y, z, 0.3, 1.0)) return;
     const heightM = Math.min(1.9, b.heightM * heightScale * (1 + b.heightVar * (2 * hR - 1)));
-    if (blocked && blocked(x, y, z, heightM, 0.12)) return;
+    if (!outside && blocked && blocked(x, y, z, heightM, 0.12)) return;
     const widthM = b.widthM * (ring.far ? TALL_GRASS.farWidth : 1) * (0.8 + 0.4 * wR);
     // the tint: a per-clump luminance jitter, straw on the terrain's dry patches, deeper green in the hollows
     const dry = Math.max(pastureDry >= 0 ? pastureDry : splatNoise ? smoothstep(0.55, 0.85, _splat.mA) : 0, grazed * 0.45, yardDry, slopeDry);

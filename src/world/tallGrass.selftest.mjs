@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
-  SHADED_SWARD_GLSL, TALL_GRASS, buildTallGrassClumpGeometry, buildTallGrassFarGeometry, createTallGrass, tallGrassShaderSource,
+  SHADED_SWARD_GLSL, TALL_GRASS, TALL_GRASS_OUTSIDE_M, buildTallGrassClumpGeometry, buildTallGrassFarGeometry, createTallGrass, tallGrassShaderSource,
 } from './tallGrass.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { MAP_IDS } from './maps/catalog.ts';
@@ -346,5 +346,51 @@ assert.equal(PRESETS.mobile.tallGrass, undefined, 'the mobile tier keeps today\'
     assert.ok(source.replace(/\s+/g, '').includes("replace('#include<lights_fragment_end>',`#include<lights_fragment_end>\\n${SHADED_SWARD_GLSL}`)"),
       'appended after the chunk (after the engine\'s shadow dim and bounce), not before it');
   }
+}
+// the borders lane (2026-10-08): the sward runs on across the red line. A camera at the playable edge: the square's last
+// band (474–512 m) grows blades as the square does, and past the edge the ring's near band does — on the drawn ring's
+// surface, off its water, its exits' carriageways and its hedges, thinning out by TALL_GRASS_OUTSIDE_M; a field without
+// the ring's surface grows nothing past the edge (the old line stays where nothing carries it)
+{
+  const ringY = (x, z) => 0.6 + (Math.max(Math.abs(x), Math.abs(z)) - 512) * 0.02;
+  const edgeField = {
+    getHeightAt: () => 0.4, getNormalAt: () => ({ x: 0, y: 1, z: 0 }), getGroundType: () => 'medium', getWaterMaskAt: () => 0,
+    _roadDist: () => 1e9,
+    _ringSurfaceAt: ringY,
+    getOutlandWaterAt: (x, z) => (x > 512 && z > 60 ? { wetness: 1, level: 0 } : null),       // the sea past the edge's north half
+    _roadExitAt: (x, z, out) => { out[0] = z - 20; out[1] = x > 512 ? 1 : 0; return out; },     // an exit along z = 20
+    getBorderHedgeAt: (x, z) => (x > 560 && Math.abs(z + 40) < 1.5 ? 1 : 0),                     // a hedge along z = -40
+  };
+  const edgeCam = new THREE.Vector3(466, 3, 0);
+  const census = (fieldUnderTest) => {
+    const g = createTallGrass(fieldUnderTest, { seed: 5, tier: 'desktop', biome: meadow, qualityScale: () => 1 });
+    settle(g, edgeCam, 2000);
+    const out = { rim: 0, past: 0, beyond: 0, wet: 0, road: 0, hedge: 0, offSurface: 0 };
+    for (const mesh of [g.near, g.far]) {
+      for (const [x, y, z] of roots(mesh)) {
+        const r = Math.max(Math.abs(x), Math.abs(z));
+        if (r > 474 && r <= 512) out.rim++;
+        if (r <= 512) continue;
+        out.past++;
+        if (r > 512 + TALL_GRASS_OUTSIDE_M) out.beyond++;
+        if (x > 512 && z > 60) out.wet++;
+        if (Math.abs(z - 20) < TALL_GRASS.roadKeepOutM) out.road++;
+        if (x > 560 && Math.abs(z + 40) < 1.5) out.hedge++;
+        if (Math.abs(y - ringY(x, z)) > 1e-4) out.offSurface++;
+      }
+    }
+    g.dispose();
+    return out;
+  };
+  const withRing = census(edgeField);
+  assert.ok(withRing.rim > 500, `the square's last band grows its sward (${withRing.rim} blades past 474 m)`);
+  assert.ok(withRing.past > 500, `the ring's near band grows the sward past the edge (${withRing.past})`);
+  assert.equal(withRing.beyond, 0, 'none past the outside reach');
+  assert.equal(withRing.wet, 0, 'none on the sea past the edge');
+  assert.equal(withRing.road, 0, 'none on the exit\'s carriageway');
+  assert.equal(withRing.hedge, 0, 'none in a hedge\'s bush line');
+  assert.equal(withRing.offSurface, 0, 'every blade past the edge stands on the drawn ring\'s surface');
+  const { _ringSurfaceAt, ...noRing } = edgeField;
+  assert.equal(census(noRing).past, 0, 'without the ring\'s surface nothing grows past the edge');
 }
 console.log('tallGrass.selftest: blade geometry, gates, a settled ring (exclusions, hollows, shoulders, tints), determinism, the quality knob, streaming, the reed margin, the tundra clumps, the shader, the engine hooks and the world wiring passed');

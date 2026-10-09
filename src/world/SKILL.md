@@ -29,9 +29,14 @@ shallow-water field it reads for wakes, churn and splashes (null on the mobile t
 props and toppling own their visual/runtime layers; `groundRedux.ts` (THREE-free) holds every map's ground profile
 (the terrain material's transition / fold / snow / strand knobs and the tall-grass biome — never a map-config edit),
 `tallGrass.ts` the instanced blade rings the hulls press flat through `groundPressure.ts` (a world-anchored GPU field,
-null on mobile and in receipts); every terrain chunk vertex carries a `fold` byte (the relief's curvature) and, on the
+null on mobile and in receipts) — the borders lane (2026-10-08): the sward and the midfield tufts grow to the square's
+edge, and the tall grass on over the ring's near band for `TALL_GRASS_OUTSIDE_M` (the drawn ring's surface,
+`horizonSurface.ts ringMeshSurfaceSampler` on the height field as `_ringSurfaceAt`, and the border's water, woods,
+hedges, crops and exits standing in for the square's clamped masks); every terrain chunk vertex carries a `fold` byte (the relief's curvature) and, on the
 sea and lake maps, a `shore` byte (metres landward of the waterline from the shoreline contours, inverted so a geometry
-without it reads as far) that the material's strand runs up (round 73b); `wrecks.ts` owns typed,
+without it reads as far) that the material's strand runs up (round 73b) — on the ring too, where its own headlands and
+bays in a sea opening measure their waterline from its vertices (`horizonSurface.ts ringWaterlineMetres`, the borders
+lane 2026-10-08: Nordhavn's headland had no wet band); `wrecks.ts` owns typed,
 deterministic static tank-wreck and zero-extra-draw-call debris baking.
 `maps/regional/` holds the regional architecture kits (2026-10-03): a map's `props.architecture` names one, and after
 each planned building's placement settles the kit replaces its geometry with the region's version inside the same
@@ -77,6 +82,17 @@ runtime, the activation runtime's precompile). `horizonForestImpostors.selftest.
 law section pin the seam. The ring's class shapes draw from their own streams (seed and class, never the placement
 stream), so a change to the ring's heights moves and re-thins trees without re-rolling a shape;
 `horizonForestShapes.selftest.mjs` pins it on Railyard's ring raised 3 %.
+The borders lane (2026-10-08; the owner, 2026-09-12: "distant treelines across the full height of mountain faces, in
+several irregular forest belts from lower slopes"): the ranges' faces past the range class's 880 m carry the relief
+bake's stands as trees — the bake keeps its forest weight per texel (`HorizonReliefBake.canopy`), `buildHorizonForest`
+seats a face class on it from 840–940 m out to the bake's 1560 m (`faceCanopyAt`, its own placement stream and its own
+`-face` pools, so the band and range classes keep every draw), under a budget of 12k that contracts the stands to their
+cores (ranked by stand weight with a little key mixed in) rather than thinning them into a dusting; the impostors redraw
+them in the species' existing draws. The stands themselves climb the gullies and the lee faces (the map's prevailing
+wind, `treeClimate.ts resolveTreeWind`) and end in a ragged treeline (±10 % of its altitude by the hollows, ±6 % by the
+wind, two noise octaves); `reliefCover.overSnow` lets a winter map's stands keep to the treeline over the snowline.
+`horizonRelief.selftest.mjs` pins the face class on Longleaf's ring (its radii, its treeline), `horizonResources` its
+budget.
 The mountains lane (2026-10-02, "clouds are the bar; mountains, horizons and terrain must match"): `horizonMassif.ts`
 (THREE-free) carves the ranged rings' composition — each row's relief smoothed along the row — by an eroded landform (a
 Clay-John-style dendritic drainage cut into a smooth base, mean one, the summits through a soft knee), and each
@@ -106,7 +122,18 @@ shader, sampler or draw). `horizonRelief.selftest.mjs` pins the encoding, the pr
 alignment on oblique flanks (the round-72 field fails it) and where the stands may stand. Where the map-borders lane's
 landform is in, the stands follow its woods field (`getBorderWoodsAt`) across the hand-over where the ring's range trees
 stand (`HORIZON_STAND_HANDOVER_M`, 720-880 m) and its parcels replace the baked ones; past it the stands are the
-ranges' own (a woodland parcel's straight edges drawn up a face read as a band, gauntlet wave 6). The polar and alpine
+ranges' own (a woodland parcel's straight edges drawn up a face read as a band, gauntlet wave 6). Past the hand-over's
+start those stands are the one woods field of the land past the border (the borders lane, 2026-10-08): the bake keeps
+the stand weight itself in `bake.canopy` (before the canopy's fade-in), the ring carries it as
+`userData.horizonRing.standAt`, and the farmsteads' yards, the hedges, the ring forest's woods and the parcels
+(terrain.ts `_borderParcelAt(..., woods)`) all keep to it — no field is sown under a stand the canopy darkens, and the
+face trees stand in it (Verdant's stood 56 % in crops before). The stands' share there follows the map's own woods
+(`borderLandform` `forest`) where it is under 0.3 (Tarkhan's 7 % steppe no longer turns to 42 % forest a kilometre
+out); `borderFarmsteads.selftest.mjs` pins the coherence on Ironworks. The hedges past the edge (`borderHedgerows.ts`)
+are strings of bushes, not prisms: round crowns 4.5-9 m apart over the hedge's body, drawn on stations every 2 m within
+260 m of the edge (4 m beyond), a rounded section closed at every run's ends, normals out and up as a crown's, the ring
+forest's crown tones (the first rim broadleaf with a palette); one draw, the farmsteads' program
+(`borderHedgerows.selftest.mjs`). The polar and alpine
 couloirs are cut at the depth the round-72 field's radial ribs had (30 / 26 m over 280 / 260 m: the faces' ribs).
 `horizon.reliefCover` overrides a map's cover. Road passes (`openRoadPasses`, after the border's hand-over): a road
 exit (terrain.ts `roadExitAt`, ~720 m) that runs on into the authored ranges gets a valley along its line — floor the

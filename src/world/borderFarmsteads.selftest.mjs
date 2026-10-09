@@ -79,8 +79,44 @@ assert.equal(resolveBorderArchitecture('winter', undefined, true), null, 'no kit
     'in the generic colours');
 }
 const foundry = getMapConfig('foundry');
-const foundryFarms = buildHorizonRing(null, foundry, 1337, createHeightField(1337, foundry)).getObjectByName('border-farmsteads');
+const foundryField = createHeightField(1337, foundry);
+const foundryRing = buildHorizonRing(null, foundry, 1337, foundryField);
+const foundryFarms = foundryRing.getObjectByName('border-farmsteads');
 assert.ok(foundryFarms, 'Ironworks has hamlets past its edge');
+{
+  // the borders lane (2026-10-08, Verdant's face trees 56 % in crops): past the ring's hand-over (720 m) the land past the
+  // border is one woods field — the relief bake's stands (maps/horizon.ts standAt) — which the parcels keep off, the
+  // ring's trees stand in and the farmsteads' yards stay out of
+  const { HORIZON_STAND_HANDOVER_M } = await import('./horizonRelief.ts');
+  const { Matrix4, Vector3 } = await import('three');
+  const standAt = foundryRing.userData.horizonRing.standAt;
+  assert.equal(typeof standAt, 'function', 'the ring carries its stands');
+  const tint = [0, 0, 0, 1];
+  const cropAt = (x, z) => 1 - foundryField._borderParcelAt(x, z, tint, Math.hypot(x, z) > HORIZON_STAND_HANDOVER_M[0] ? standAt(x, z) : undefined)[3];
+  const forest = foundryRing.getObjectByName('horizon-forest');
+  const m = new Matrix4(), v = new Vector3();
+  let past = 0, inCrop = 0;
+  for (const child of forest.children) {
+    if (!/-(range|face|band)$/.test(child.name)) continue;
+    for (let i = 0; i < child.count; i++) {
+      child.getMatrixAt(i, m); v.setFromMatrixPosition(m);
+      if (Math.hypot(v.x, v.z) < HORIZON_STAND_HANDOVER_M[1]) continue;
+      past++;
+      if (cropAt(v.x, v.z) > 0.5) inCrop++;
+    }
+  }
+  assert.ok(past > 500, `Ironworks' ring stands trees past the hand-over (${past})`);
+  assert.ok(inCrop <= past * 0.03, `the ring's trees past the hand-over stand in its woods, not its crops (${inCrop} of ${past})`);
+  // and a stand past the hand-over sows no field: where the stand is closed the parcel's crop is gone
+  let closed = 0, sown = 0;
+  for (let a = 0; a < 720; a++) for (const r of [900, 1000, 1100]) {
+    const x = Math.cos(a * Math.PI / 360) * r, z = Math.sin(a * Math.PI / 360) * r;
+    if (standAt(x, z) < 0.9) continue;
+    closed++;
+    if (cropAt(x, z) > 0.1) sown++;
+  }
+  assert.ok(closed > 50 && sown === 0, `no crop under a closed stand past the hand-over (${sown} of ${closed})`);
+}
 const tris = foundryFarms.geometry.getAttribute('position').count / 3;
 assert.ok(tris <= 70000, `the hamlets stay a background (${tris} triangles in one draw)`);
 assert.ok(tris > 10000, `the kit's buildings, not the generic boxes (~650 triangles a map): ${tris}`);

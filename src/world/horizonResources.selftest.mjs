@@ -619,10 +619,13 @@ try {
     assert.ok(treeline, `${mapId}: forested ridge clusters remain present`);
     const forest = mesh.getObjectByName('horizon-forest');
     assert.ok(forest, `${mapId}: the vista pass stands real trees on the near faces`);
-    assert.ok(forest.userData.horizonForest.instances > 400 && forest.userData.horizonForest.instances <= 8000,
-      `${mapId}: the ring forest is bounded (${forest.userData.horizonForest.instances} instances)`);
-    // two species x (two rich near variants + the band class + the range class): the near meshes cast shadows
-    assert.ok(forest.children.length >= 2 && forest.children.length <= 8, `${mapId}: one instanced mesh per species and detail class (${forest.children.length})`);
+    // (the borders lane, 2026-10-08: the ranges' faces carry the relief bake's stands as trees under their own budget,
+    // horizonVista.ts faceInstances — at most 12000 beside the band and range classes' 8000)
+    const ringForest = forest.userData.horizonForest;
+    assert.ok(ringForest.instances > 400 && ringForest.instances - (ringForest.face ?? 0) <= 8000 && (ringForest.face ?? 0) <= 12000,
+      `${mapId}: the ring forest is bounded (${ringForest.instances} instances, ${ringForest.face ?? 0} on the faces)`);
+    // two species x (two rich near variants + the band, range and face classes): the near meshes cast shadows
+    assert.ok(forest.children.length >= 2 && forest.children.length <= 10, `${mapId}: one instanced mesh per species and detail class (${forest.children.length})`);
     assert.ok(forest.userData.horizonForest.band > forest.userData.horizonForest.range,
       `${mapId}: the rim band carries most of the ring forest (${forest.userData.horizonForest.band} band / ${forest.userData.horizonForest.range} range)`);
     assert.ok(forest.userData.horizonForest.near > 100, `${mapId}: the rim band carries the rich near species (${forest.userData.horizonForest.near})`);

@@ -41,9 +41,10 @@ import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, t
 import { buildHorizonRockfield } from '../horizonRockfield.ts';
 import {
   type HorizonReliefBake, type HorizonReliefCharacter, type HorizonReliefCover, type HorizonReliefField, type HorizonReliefSettings,
-  bakeHorizonRelief, bakeHorizonReliefSteps, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
+  HORIZON_RELIEF_BAKE_R1, HORIZON_STAND_HANDOVER_M, bakeHorizonRelief, bakeHorizonReliefSteps, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
 } from '../horizonRelief.ts';
 import { buildHorizonFarRange } from '../horizonFarRange.ts';
+import { resolveTreeWind } from '../treeClimate.ts';
 import { type HorizonPanoramaCharacter, createHorizonPanorama, type HorizonPanoramaRegional } from '../horizonPanorama.ts';
 import { type MassifSettings, carveMassifRingSteps, createMassifField, cutMassifCanyonsSteps } from '../horizonMassif.ts';
 import { type EscarpmentSettings, carveEscarpmentRingSteps, createEscarpmentField } from '../horizonEscarpment.ts';
@@ -2748,6 +2749,21 @@ export function horizonSkyTint(fog: THREE.Color): THREE.Vector3 {
 }
 
 /** Round 72: the surface atlas as a GPU texture — linear data, angle repeats, radius clamps, mips for the far rows. */
+/** The borders lane (2026-10-08): the bake's forest weight (0..1) at a world point, bilinear over its angle x radius grid. */
+function horizonCanopySampler(bake: HorizonReliefBake): (x: number, z: number) => number {
+  const canopy = bake.canopy!, W = bake.width, H = bake.height, dr = (bake.r1 - bake.r0) / H;
+  return (x: number, z: number): number => {
+    let a = Math.atan2(z, x); if (a < 0) a += Math.PI * 2;
+    const fi = (a / (Math.PI * 2)) * W - 0.5, fj = (Math.hypot(x, z) - bake.r0) / dr - 0.5;
+    if (fj < 0 || fj > H - 1) return 0;
+    const i0 = ((Math.floor(fi) % W) + W) % W, i1 = (i0 + 1) % W, j0 = Math.floor(fj), j1 = Math.min(H - 1, j0 + 1);
+    const ti = fi - Math.floor(fi), tj = fj - j0;
+    const top = canopy[j0 * W + i0] + (canopy[j0 * W + i1] - canopy[j0 * W + i0]) * ti;
+    const bottom = canopy[j1 * W + i0] + (canopy[j1 * W + i1] - canopy[j1 * W + i0]) * ti;
+    return (top + (bottom - top) * tj) / 255;
+  };
+}
+
 function makeReliefTexture(bake: HorizonReliefBake): THREE.DataTexture {
   const texture = new THREE.DataTexture(bake.data, bake.width, bake.height, THREE.RGBAFormat, THREE.UnsignedByteType);
   texture.wrapS = THREE.RepeatWrapping;
@@ -3715,17 +3731,31 @@ export function* horizonRingGeometrySteps(
   const borderLand = ground as (CanyonGround & {
     getBorderWoodsAt?: (x: number, z: number) => number; _borderParcelAt?: unknown;
   }) | undefined;
+  // the borders lane (2026-10-08, the face trees on Tarkhan's steppe: its outland 7 % woods to the hand-over, then the
+  // rolling character's 42 % stands — blobs of forest a kilometre out on the open steppe): past the hand-over the
+  // ranges' stands keep the map's own woods share where its country is sparser than its relief character's (the
+  // border landform's `forest`, the share its near outland is wooded; from 0.3 up the character's cover stands, below it
+  // the cover's forest scales with the share: the stands past 880 m then cover about 1.3 x the share, as Verdant's 36 %
+  // woods carry 48 % stands — Tarkhan's 7 % takes 9 %, Ironworks' 20 % 27 %, Sunscar's 2 % none)
+  const reliefCoverBase: Partial<HorizonReliefCover> | null | undefined = H.reliefCover === false ? null
+    : H.reliefCover ? { forest: 0, canopy: 0.5, fields: 0, ...reliefSettings.cover, ...H.reliefCover } : undefined;
+  const coverForest = (reliefCoverBase === undefined ? reliefSettings.cover : reliefCoverBase)?.forest ?? 0;
+  const borderForestShare = borderLand?.getBorderWoodsAt
+    ? resolveBorderLandform(style, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border, mapId).forest : null;
+  const reliefCover = borderForestShare !== null && coverForest > 0 && borderForestShare < 0.3
+    ? { ...(reliefCoverBase ?? reliefSettings.cover), forest: coverForest * borderForestShare / 0.3 } : reliefCoverBase;
   const reliefBake: HorizonReliefBake | null = vista ? yield* bakeHorizonReliefSteps({
     columns: HORIZON_SEGMENTS, rowCount: rows.length, positions: pos, heights: hs, maxHeight: maxH, marine: sea.weight,
     seed: ((seed ^ 0x7E11) ^ idHash(mapId)) >>> 0,
     treelineM: treeline > 0 ? Math.min(treeline, 1.2) * maxH : 0,
     snowlineM: snowline <= 1 ? snowline * maxH : null,
-    cover: H.reliefCover === false ? null
-      : H.reliefCover ? { forest: 0, canopy: 0.5, fields: 0, ...reliefSettings.cover, ...H.reliefCover } : undefined,
+    cover: reliefCover as HorizonReliefCover | null | undefined,
     // the map-borders lane's land use where it is in (feature-detected on the ground): its woods are the stands' field and
     // its parcels the ring's farmland, so the bake adds no second pattern
     woodsAt: borderLand?.getBorderWoodsAt ? (x: number, z: number) => (borderLand.getBorderWoodsAt as (x: number, z: number) => number)(x, z) : null,
     fields: !borderLand?._borderParcelAt,
+    // the borders lane (2026-10-08): the forest climbs the lee faces (the map's prevailing wind, the one its trees sway in)
+    windDir: (() => { const wind = resolveTreeWind(cfg as Parameters<typeof resolveTreeWind>[0]); return [wind.dirX, wind.dirZ] as const; })(),
   }, bakeField, [lx, ly, lz]) : null;
   // detail-texture UVs: u wraps the ring, v = absolute altitude fraction so
   // strata/snow features in the texture land at constant world height
@@ -3961,6 +3991,18 @@ export function* buildHorizonRingSteps(
   const rimConiferLead = leadOf(true), rimBroadleaf = leadOf(false);
   const horizonVista = mat.userData.horizonVista as { uniforms: Record<string, THREE.IUniform>; canopyMean?: THREE.Vector3 } | undefined;
   const vistaUniforms = horizonVista?.uniforms;
+  // the borders lane (2026-10-08): the relief bake's stands (its canopy weight, angle x radius) as a world sampler — the
+  // border's own woods to 720 m, the ranges' stands past 880 m (horizonRelief.ts HORIZON_STAND_HANDOVER_M). Past the
+  // hand-over's start they are the border's woods for everything the ring lays there — the farmsteads' yards, the hedges,
+  // the ring's trees, the parcels (terrain.ts) — so a wood the canopy darkens is the wood the trees stand in and no field
+  // is sown under it (Verdant's face trees stood 56 % in crops, its parcels under the stands' canopy)
+  const borderWoodsAt = ground?.getBorderWoodsAt;
+  const parcelTintAt = (ground as { _borderParcelAt?: (x: number, z: number, out: [number, number, number, number], woods?: number)
+    => [number, number, number, number] } | undefined)?._borderParcelAt ?? null;
+  const standAt = reliefBake?.canopy ? horizonCanopySampler(reliefBake) : null;
+  mesh.userData.horizonRing.standAt = standAt;
+  const woodsPastHandOver = standAt && borderWoodsAt ? (x: number, z: number): number =>
+    (Math.hypot(x, z) > HORIZON_STAND_HANDOVER_M[0] ? standAt(x, z) : borderWoodsAt(x, z)) : borderWoodsAt;
   // The map-borders lane (2026-10-03): the farmsteads' yards are chosen before the forest, which stands their shelter
   // trees (borderFarmsteads.ts farmsteadTreesAt); the buildings follow below
   const farmSpec = ground?._borderFarmsteads;
@@ -3970,7 +4012,7 @@ export function* buildHorizonRingSteps(
     return {
       seed: ((seed ^ 0xFA4D) ^ idHash(mapId)) >>> 0, style: farmSpec.style, count: farmSpec.count, fieldAngle: farmSpec.fieldAngle,
       groundAt: ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs),
-      woodsAt: (x: number, z: number) => ground.getBorderWoodsAt?.(x, z) ?? 0,
+      woodsAt: (x: number, z: number) => woodsPastHandOver?.(x, z) ?? 0,
       blockedAt: (x: number, z: number) => Math.max(ground.getOutlandSeatWeightAt?.(x, z) ?? 0, ground.getOutlandWaterAt?.(x, z)?.wetness ?? 0,
         seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.01 ? 1 : 0),
       ...(roadExitAt ? { roadDistanceAt: (x: number, z: number) => (roadExitAt(x, z, exit)[1] > 0.05 ? Math.abs(exit[0]) : Infinity) } : {}),
@@ -3981,11 +4023,11 @@ export function* buildHorizonRingSteps(
     };
   })() : null;
   const farmSites = farmOptions ? selectFarmsteadSites(farmOptions) : [];
-  const borderWoodsAt = ground?.getBorderWoodsAt;
   // the hedged stretches of the field boundaries past the edge, on the ring's continued ground (not on the ranges, the sea,
   // the water or a railway's right of way)
   const hedgeLines = vista && ground?._borderHedgeLines ? ground._borderHedgeLines(900, (x, z) =>
     (ground.getBorderHandOverAt?.(x, z) ?? 1) > 0.5 && !(seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.01)
+    && !(standAt && Math.hypot(x, z) > HORIZON_STAND_HANDOVER_M[0] && standAt(x, z) > 0.5)
     && (ground.getOutlandWaterAt?.(x, z)?.wetness ?? 0) < 0.05 && (ground.getOutlandSeatWeightAt?.(x, z) ?? 0) < 0.05
     && !(roadClearAt && roadClearAt(x, z) > 0.5)) : [];
   const treeRows = vista && ground ? borderTreeRows(((seed ^ 0x7E55) ^ idHash(mapId)) >>> 0, hedgeLines,
@@ -3998,6 +4040,7 @@ export function* buildHorizonRingSteps(
     }
     return rowSurface(x, z);
   } : undefined;
+  const faceCanopyAt = standAt;
   const forestGroup = buildHorizonForest({
     columns: HORIZON_SEGMENTS, rows, positions: pos, heights: hs, forestCover, maxHeight: maxH, treeline, snowline,
     forest: forestC, fog: fogC, seed: ((seed ^ 0x51F0) ^ idHash(mapId)) >>> 0,
@@ -4009,9 +4052,16 @@ export function* buildHorizonRingSteps(
     maxInstances: vista ? (reliefCharacter === 'polar' ? 1600 : 8000) : 0, maxRadius: 1050, nearDepth: 300, ridgeRow,
     // the map-borders lane (2026-10-03): the band's woods take the border landform's share (no hedge round the square)
     bandShare: resolveBorderLandform(style, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border, mapId).forest,
-    ...(borderWoodsAt ? { woodsAt: farmSites.length
-      ? (x: number, z: number) => Math.max(borderWoodsAt(x, z), farmsteadTreesAt(farmSites, x, z)) : borderWoodsAt } : {}),
+    ...(woodsPastHandOver ? { woodsAt: farmSites.length
+      ? (x: number, z: number) => Math.max(woodsPastHandOver(x, z), farmsteadTreesAt(farmSites, x, z)) : woodsPastHandOver } : {}),
     ...(ground?.getBorderHedgeAt ? { hedgeAt: ground.getBorderHedgeAt } : {}),
+    // (the borders lane, 2026-10-08: Verdant's and Tarkhan's lone trees stood evenly over their crops — parkland — where
+    // the square's field trees keep to the boundaries) a lone tree keeps out of a crop's interior
+    ...(parcelTintAt ? { loneAt: (() => {
+      const tint: [number, number, number, number] = [0, 0, 0, 1];
+      return (x: number, z: number): number => parcelTintAt(x, z, tint,
+        standAt && Math.hypot(x, z) > HORIZON_STAND_HANDOVER_M[0] ? standAt(x, z) : undefined)[3];
+    })() } : {}),
     detailNoise: mat.userData.horizonDetailNoise as DetailNoiseSampler,
     // round 72c: the stands follow the coarse relief (clumps in the hollows, gaps on the crests, a wandering treeline)
     ...(reliefField ? { reliefAt: (x: number, z: number) => reliefField.low(x, z) / Math.max(1, reliefField.settings.lowAmpM) } : {}),
@@ -4027,6 +4077,8 @@ export function* buildHorizonRingSteps(
         seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.03 ? 1 : 0,
         roadClearAt ? roadClearAt(x, z) : 0) } : {}),
     ...(treeRows.length && rowGroundAt ? { treeRows, rowGroundAt } : {}),
+    // the borders lane (2026-10-08): the ranges' faces carry the bake's stands as trees, past the range class's reach
+    ...(faceCanopyAt ? { faceCanopyAt, faceInstances: 12000, faceRadius: HORIZON_RELIEF_BAKE_R1 } : {}),
     haze: (vistaUniforms?.uVHaze?.value as number | undefined) ?? haze,
     palettes: {
       conifer: rimConiferLead ? vegetation?.palettes?.[rimConiferLead]?.canopy : undefined,
@@ -4054,9 +4106,14 @@ export function* buildHorizonRingSteps(
   // hedged stretches of the field boundaries past the edge (hedgeLines, traced before the forest, which stands their
   // belts and the roads' avenues)
   if (hedgeLines.length) {
+    // (the borders lane, 2026-10-08: Tarkhan's lead broadleaf, the poplar, has no crown palette of its own, so its hedges
+    // took the default lime over a gold steppe beside its olive-gold oaks) the hedge takes the crowns of the first rim
+    // broadleaf, by share, that carries a palette
+    const hedgeCanopy = rimMix.filter(([species]) => !isConifer(species)).slice().sort((a, b) => b[1] - a[1])
+      .map(([species]) => vegetation?.palettes?.[species]?.canopy).find((canopy) => canopy);
     const hedges = buildBorderHedgerows({
       seed: ((seed ^ 0x4ED9) ^ idHash(mapId)) >>> 0, lines: hedgeLines, groundAt: ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs),
-      palette: horizonBroadleafPalette(rimBroadleaf ? vegetation?.palettes?.[rimBroadleaf]?.canopy : undefined),
+      palette: horizonBroadleafPalette(hedgeCanopy),
     });
     if (hedges) {
       const setup = (_engineCtx as { setupShadowMaterial?: (material: THREE.Material, extraHook?: null) => THREE.Material } | null)?.setupShadowMaterial;

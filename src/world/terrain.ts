@@ -2,7 +2,8 @@ import { smoothRoadGradesByDistance, blendRoadNetworkGrades } from './maps/roadG
 import { fadeDistantCoastShadows } from './coastShadow.ts';
 import { bindAutumnHorizonGround, refreshHorizonGroundTone } from './horizonAutumnGround.ts';
 import { continueHorizonFold } from './horizonSeam.ts';
-import { continuedGroundAt } from './horizonSurface.ts';
+import { continuedGroundAt, ringMeshSurfaceSampler, ringWaterlineMetres } from './horizonSurface.ts';
+import { HORIZON_STAND_HANDOVER_M } from './horizonRelief.ts';
 import { planAssaultTrenchLines, planFieldTrenchLines, assaultTeamCenters, assaultTrenchCarveDepth, FIELD_TRENCH, type AssaultTrenchPlan } from '../sim/assaultLines.ts';
 import type { NavigationWaterPolicy } from '../sim/botRoutePlanner.ts';
 // src/world/terrain.ts — 1 km simplex heightfield + chunked LOD meshes + splat-blended
@@ -533,7 +534,7 @@ export interface HeightField {
   /** The map-borders lane: the border's hedgerows (0 … 1 on a field boundary's tree line past the edge). */
   getBorderHedgeAt?(x: number, z: number): number;
   /** The map-borders lane: the crop of the field past the edge, premultiplied by its weight (the ring's borderTint). */
-  _borderParcelAt?(x: number, z: number, out: [number, number, number, number]): [number, number, number, number];
+  _borderParcelAt?(x: number, z: number, out: [number, number, number, number], woods?: number): [number, number, number, number];
   /** The map-borders lane: the hedged stretches of the field boundaries past the edge (borderHedgerows.ts). */
   _borderHedgeLines?(maxOut: number, keep?: (x: number, z: number) => boolean): { xs: number[]; zs: number[]; w: number[] }[];
   /** The map-borders lane: the farmsteads past the edge (borderFarmsteads.ts), built with the ring. */
@@ -604,6 +605,9 @@ export interface HeightField {
   /** The map-borders lane: a railway's open line past the edge on the ring — [signed offset (m), presence], faded where
    * the ring's own height there (`surfaceY`) leaves the line's bed. */
   _railExitAt?(x: number, z: number, out: [number, number], surfaceY?: number): [number, number];
+  /** The borders lane (2026-10-08): the drawn horizon ring's surface height past the square (NaN off the ring), set
+   * once the ring is built (terrain.ts terrainBuildSteps); absent on a field without a built ring. */
+  _ringSurfaceAt?(x: number, z: number): number;
   _layout: TerrainLayout;
   /** Frontline Assault trench plan carved into this field (assault-trenches variant), else null. */
   assaultTrenchLines?: AssaultTrenchPlan | null;
@@ -8308,16 +8312,26 @@ function* terrainBuildSteps(
     group.add(horizonStep.value);
     // (the terrain's first child, where it stood when it was built before the chunks)
     group.children.unshift(group.children.pop()!);
+    // the borders lane (2026-10-08): the drawn ring's surface past the square, for what grows on it across the red line
+    // (tallGrass.ts: the sward runs on over the ring's near band instead of stopping 4 m past the playable edge)
+    {
+      const ringPosition = (horizonStep.value as THREE.Mesh).geometry?.getAttribute?.('position') as THREE.BufferAttribute | undefined;
+      if (ringPosition) heightField._ringSurfaceAt = ringMeshSurfaceSampler(ringPosition, horizonRing().HORIZON_SEGMENTS);
+    }
     yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, true]; // horizon ring built
     // The continued coast uses the same strand distances as the playable shore.
     // Leaving the ring's default attribute at zero made the sand/wrack band stop
     // on an exact square even when the bank geometry was continuous.
-    if (shoreAt && horizonStep.value.userData.horizonRing) {
+    // (the borders lane, 2026-10-08: and the ring's own coast — a headland or a bay it draws in a sea opening, where the
+    // contours above know of no shore — measures its waterline from its own vertices, horizonSurface.ts ringWaterlineMetres)
+    const ringUv = horizonStep.value.userData.horizonRing ? horizonStep.value.geometry.getAttribute('uv') : null;
+    const ringCoast = seaOpenings.length && ringUv ? ringWaterlineMetres(horizonStep.value.geometry.getAttribute('position'), ringUv, horizonRing().HORIZON_SEGMENTS) : null;
+    if ((shoreAt || ringCoast) && horizonStep.value.userData.horizonRing) {
       const geometry = horizonStep.value.geometry;
       const position = geometry.getAttribute('position');
       const shore = new Uint8Array(position.count);
       for (let i = 0; i < position.count; i++) {
-        const metres = shoreAt(position.getX(i), position.getZ(i));
+        const metres = Math.min(shoreAt ? shoreAt(position.getX(i), position.getZ(i)) : 32, ringCoast ? ringCoast[i] : 32);
         shore[i] = metres >= 32 ? 0 : 255 - Math.round(Math.max(0, metres) * (255 / 32));
       }
       geometry.setAttribute('shore', new THREE.BufferAttribute(shore, 1, true));
@@ -8348,9 +8362,15 @@ function* terrainBuildSteps(
       const position = geometry.getAttribute('position');
       const tintAttr = new Float32Array(position.count * 4);
       const tint: [number, number, number, number] = [0, 0, 0, 1];
+      // (the borders lane, 2026-10-08: past the hand-over the ranges' own stands — the relief bake's, which its canopy
+      // shades and the face trees stand in — took the parcels' crops over them, a wood sown with wheat, while the border's
+      // own woods out there kept the fields off bare sward) past 720 m the fields keep off the bake's stands instead, which
+      // hand over from the border's woods to the ranges' own (maps/horizon.ts standAt, horizonRelief.ts)
+      const standAt = (horizonStep.value.userData.horizonRing as { standAt?: ((x: number, z: number) => number) | null }).standAt ?? null;
       let any = false;
       for (let i = 0; i < position.count; i++) {
-        heightField._borderParcelAt(position.getX(i), position.getZ(i), tint);
+        const x = position.getX(i), z = position.getZ(i);
+        heightField._borderParcelAt(x, z, tint, standAt && Math.hypot(x, z) > HORIZON_STAND_HANDOVER_M[0] ? standAt(x, z) : undefined);
         tintAttr.set(tint, i * 4);
         if (tint[3] < 1) any = true;
       }
