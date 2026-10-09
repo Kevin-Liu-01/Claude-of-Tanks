@@ -147,6 +147,8 @@ void main() {
     #endif
     col = mix( col, fogColor, fogFactor );
   #endif
+  // (2026-10-08, the owner's black screens) finite colour only
+  if ( !( abs( col.r ) < 6.0e4 && abs( col.g ) < 6.0e4 && abs( col.b ) < 6.0e4 ) ) discard;
   gl_FragColor = vec4( col, 1.0 );
 }
 `;

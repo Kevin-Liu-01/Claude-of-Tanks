@@ -130,7 +130,8 @@ void main() {
   float seed = vInfo.w;
   vec2 so = vec2( fract( seed * 7.13 ), fract( seed * 3.71 ) ) * 40.0;
   float r = length( vDisc );
-  float ang = atan( vDisc.y, vDisc.x );
+  // (2026-10-08) atan(0, 0) is undefined (NaN on some drivers) at the disc's centre
+  float ang = r > 1e-5 ? atan( vDisc.y, vDisc.x ) : 0.0;
   bool crater = vShape.w > 0.0;
   // the mark's kind: 0 a kinetic gouge, 1 an HE burst (a crater or its mark), 2 a shaped charge's scar, 3 HESH's mark
   float kind = vInfo.z;
@@ -245,6 +246,8 @@ void main() {
     #endif
     col = mix( col, fogColor, fogFactor );
   #endif
+  // (2026-10-08, the owner's black screens) finite colour only
+  if ( !( abs( col.r ) < 6.0e4 && abs( col.g ) < 6.0e4 && abs( col.b ) < 6.0e4 && abs( a ) < 6.0e4 ) ) discard;
   gl_FragColor = vec4( col, a );
 }
 `;

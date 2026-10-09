@@ -262,7 +262,10 @@ void main() {
   // the fade-out dissolves the medium from its thin edges inward (the fragment shader's erosion), so a dying puff never
   // lingers as a uniformly faded ghost of its own silhouette
   vFade = smoothstep( aHT.z, 1.0, t );
-  float near = smoothstep( uNearFade.x, uNearFade.y, distance( wpos, cameraPosition ) );
+  // (2026-10-08, the owner's "black screens") the medium thins as the camera enters it, judged from the puff's centre
+  // against its own size: a corner's distance let a big dark puff round the camera (the 7c smoke reaches ~11 m on a
+  // 125 mm burst, ~19 m on a 152 mm) draw one flat dark card over the whole frame for seconds
+  float near = smoothstep( uNearFade.x + 0.25 * size, uNearFade.y + 0.6 * size, distance( center, cameraPosition ) );
   vColor = vec4( mix( aCA.rgb, aCB.rgb, smoothstep( 0.0, 1.0, t ) ), aCA.w * fadeIn * near );
   vHeat = aHT.x * exp( -aHT.y * age );
   // the bursts' light inside the medium: each recent burst lights the puffs round it for a moment, falling off with the
@@ -405,6 +408,10 @@ void main() {
     #endif
     col = mix( col, fogColor, fogFactor );
   #endif
+  // (2026-10-08, the owner's black screens) the emission stays far inside half-float range, and a NaN or Inf fragment
+  // is dropped rather than written (the late composite's guard is the backstop behind this one)
+  col = min( col, vec3( 4096.0 ) );
+  if ( !( abs( col.r ) < 6.0e4 && abs( col.g ) < 6.0e4 && abs( col.b ) < 6.0e4 && abs( a ) < 6.0e4 ) ) discard;
   gl_FragColor = vec4( col, min( a, 1.0 ) );
 }
 `;

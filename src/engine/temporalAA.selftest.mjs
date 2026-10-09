@@ -47,7 +47,13 @@ assert.match(TAA_RESOLVE_FRAGMENT, /clamp\(tmw\(max\(hs\.rgb, vec3\(0\.0\)\)\), 
 assert.match(TAA_RESOLVE_FRAGMENT, /depthMismatch/, 'history is rejected when its stored depth disagrees');
 assert.match(TAA_RESOLVE_FRAGMENT, /depth >= 1\.0 \|\| pc\.w <= 0\.0/, 'sky and behind-camera samples take the current frame');
 assert.match(TAA_RESOLVE_FRAGMENT, /vec3 tmw\(vec3 c\) \{ return c \/ \(1\.0 \+ max/, 'luminance weighting bounds HDR sparkles');
-assert.match(TAA_RESOLVE_FRAGMENT, /gl_FragColor = vec4\(itmw\(mix\(now, hist, w\)\), linearDepth01\(depth\)\);/, 'the resolve stores linear depth beside the colour (half-float alpha keeps relative precision there)');
+assert.match(TAA_RESOLVE_FRAGMENT, /gl_FragColor = vec4\(finite3\(itmw\(mix\(now, hist, w\)\)\), linearDepth01\(depth\)\);/, 'the resolve stores linear depth beside the colour (half-float alpha keeps relative precision there)');
+// (2026-10-08, the owner's black screens) one NaN or Inf pixel never reaches the history: Inf turns NaN in tmw, and a
+// NaN history pixel stays NaN through mix() for good (NaN x 0), which bloom spreads over the frame
+assert.match(TAA_RESOLVE_FRAGMENT, /vec3 finite3\(vec3 c\) \{\n\s*return vec3\(abs\(c\.r\) < 6\.0e4 \? c\.r : 0\.0,/, 'a finite guard (comparisons with NaN are false)');
+assert.match(TAA_RESOLVE_FRAGMENT, /vec3 now = tmw\(max\(finite3\(texture2D\(tNow, vUv\)\.rgb\), vec3\(0\.0\)\)\);/, 'the current frame is read finite');
+assert.match(TAA_RESOLVE_FRAGMENT, /vec3 c = tmw\(max\(finite3\(texture2D\(tNow, vUv \+ vec2/, 'its neighbourhood too');
+assert.match(TAA_RESOLVE_FRAGMENT, /hs = vec4\(finite3\(hs\.rgb\), abs\(hs\.a\) < 6\.0e4 \? hs\.a : 0\.0\);/, 'and the history');
 assert.match(TAA_RESOLVE_FRAGMENT, /abs\(hs\.a - expectedPrevLinear\)\n\s*> max\(0\.0200, expectedPrevLinear \* 0\.100\)/, 'rejection is a floor plus a relative share of linear depth — loose, because the neighbourhood clip already bounds ghosting and foliage disoccludes every pixel');
 
 // pass lifecycle: history targets, texel uniform, size changes reseed, disposal

@@ -1865,8 +1865,10 @@ function* createFxSteps(
       // (round 7, wave 276: the ground burst's light lay on the ground as a flat orange wash for 800 ms) a pulse may
       // carry its own short decay; the kill light keeps the long one; (round 7c) and its own hue
       const pw = durS ? 2 : undefined;
-      if (delayS <= 0) { flashLight(lightStates[1], _pulseV.set(x, y, z), EXPLOSION_LIGHT_PEAK * peakK, -delayS, durS, pw, hex); return; }
-      timers.push({ t: delayS, fn: () => flashLight(lightStates[1], _pulseV.set(x, y, z), EXPLOSION_LIGHT_PEAK * peakK, 0, durS, pw, hex) });
+      // (2026-10-08, the owner's black screens) never brighter than the kill light itself (a hull burst asked 1.4x)
+      const k = Math.min(1, Math.max(0, peakK));
+      if (delayS <= 0) { flashLight(lightStates[1], _pulseV.set(x, y, z), EXPLOSION_LIGHT_PEAK * k, -delayS, durS, pw, hex); return; }
+      timers.push({ t: delayS, fn: () => flashLight(lightStates[1], _pulseV.set(x, y, z), EXPLOSION_LIGHT_PEAK * k, 0, durS, pw, hex) });
     },
     glow: (x: number, y: number, z: number, radiusM: number, peak: number, durS: number, birthOffset: number) => {
       if (replaySuppressed) return;
