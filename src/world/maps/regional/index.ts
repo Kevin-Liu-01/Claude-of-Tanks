@@ -50,7 +50,8 @@ export type { ArchitectureStyle } from './types.ts';
  * thatch, and the props' own grime on the walls (facade.ts facadeLegacy; props.ts, weather.ts). A map lands here when
  * its view drops in a gauntlet wave against the release; empty, every kit map takes the whole craft
  */
-export const KIT_LEGACY_MAPS: ReadonlySet<string> = new Set<string>([]);
+// (2026-10-09, the release's wave: the owner's favourite village keeps the look it ships with) Verdant
+export const KIT_LEGACY_MAPS: ReadonlySet<string> = new Set<string>(['verdant']);
 /** True when a map's kit is gated back (KIT_LEGACY_MAPS). */
 export function kitLegacy(mapId: string): boolean {
   return KIT_LEGACY_MAPS.has(mapId);
