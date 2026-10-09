@@ -309,30 +309,32 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     return;
   }
   // (dcore 2026-10-09, waves 294a/b: "collapse dust = small white or opaque orange puffs, not one cloud that rises,
-  // spreads and thins"; the battle strips: a few separate puffs over a falling house) one cloud, born from the fall: the
-  // air the roof drives out of the top as it drops in, the skirt the walls pour out of their foot all round as the front
-  // comes down, rolling out low and wide, and the body rising off the pile as one mass, spreading and thinning over a
-  // quarter of a minute. Few large overlapping puffs, never a ring of small ones.
+  // spreads and thins"; the battle strips: a few separate puffs over a falling house) one cloud, born from the fall,
+  // that never hides the walls coming down (round 7, wave 277: "a grey ball hid the building as it came down"): the air
+  // the roof drives out of the top as it drops in, small; the skirt the walls pour out of their foot all round as the
+  // front comes down, low, rolling out wide; and the body rising off the pile as the last courses land, born at the
+  // foot, large overlapping puffs that grow fast, climb, spread and thin.
   const wallH = collapseWallHeight(height, eaveM);
-  const S = Math.max(3, span);
   const frontEnd = collapseFrontTime(0, wallH);
-  // 1. the roof drops in: the air inside goes up out of the top, darker, and climbs
+  // 1. the roof drops in: the air inside goes up out of the top, darker
   for (let i = 0; i < 4; i++) {
     const lx = (R() * 2 - 1) * e.hw * 0.6, lz = (R() * 2 - 1) * e.hd * 0.6;
-    const life = 12 + R() * 4;
+    const life = 7 + R() * 3;
     puff(C, e.cx + lx * cosY + lz * sinY, e.baseY + wallH * (0.75 + 0.2 * R()), e.cz - lx * sinY + lz * cosY,
-      (R() - 0.5) * 1.5, 1.6 + R() * 1.2, (R() - 0.5) * 1.5, 1.4, 0.6, 1.0, life, 0.6 * S * dk, (1.5 + R() * 0.4) * S * dk,
+      (R() - 0.5) * 1.5, 1.4 + R() * 1.0, (R() - 0.5) * 1.5, 1.4, 0.6, 1.0, life, 0.25 * span * dk, (0.45 + R() * 0.12) * span * dk,
       tintDark, tinted, 0.5, life, 2, 0.3 + R() * 0.5, 1, 4.5);
   }
-  // 2. the walls pour their dust out of their foot as the front comes down: a low skirt all round, rolling out wide
-  const skirtN = Math.max(8, Math.min(18, Math.round(perim / 3.5)));
+  // 2. the walls pour their dust out of their foot as the front comes down: a low skirt all round, rolling out wide,
+  //    each band's as its pieces land
+  const skirtN = Math.max(10, Math.min(20, Math.round(perim / 3)));
   for (let i = 0; i < skirtN; i++) {
     footprintEdge(e, cosY, sinY, perim, (i + R()) / skirtN, p);
     const v = 3 + R() * 3;
-    const life = 10 + R() * 4;
-    const at = collapseFrontTime(wallH * (0.6 - 0.55 * R()), wallH) + 0.3;
-    puff(C, p[0] + p[2] * 0.6, e.baseY + 0.8, p[1] + p[3] * 0.6, p[2] * v, 0.35 + R() * 0.4, p[3] * v, 2.0, 0.25, 0.9,
-      life, 0.55 * S * dk, (1.15 + R() * 0.3) * S * dk, tintDark, tinted, 0.6, life, 1, Math.min(frontEnd, at), 1.5 + R() * 0.4, 4.5);
+    const life = 9 + R() * 2.5;
+    const h = wallH * (0.08 + 0.84 * (i + R()) / skirtN);
+    const at = Math.min(frontEnd + 0.3, collapseFrontTime(h, wallH) + Math.sqrt((2 * h) / 9.8));
+    puff(C, p[0] + p[2] * 0.6, e.baseY + 0.45, p[1] + p[3] * 0.6, p[2] * v, 0.35 + R() * 0.4, p[3] * v, 2.0, 0.25, 0.9,
+      life, 0.5 * span * dk, (1.1 + R() * 0.35) * span * dk, tintDark, tinted, 0.6, life, 1, at, 2.0 + R() * 0.5, 4.5);
   }
   // a little shed off the crumbling line as it passes (the dust rides the falling courses down)
   const BAND = 1.8;
@@ -343,7 +345,7 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     footprintEdge(e, cosY, sinY, perim, R(), p);
     const life = 4 + R() * 1.5;
     puff(C, p[0] + p[2] * 0.3, e.baseY + h, p[1] + p[3] * 0.3, p[2] * 0.6, -1.2 - R() * 0.6, p[3] * 0.6,
-      1.8, 0.05, 0.9, life, 0.2 * S * dk, (0.5 + R() * 0.15) * S * dk, tinted, tinted, 0.4, life, 1, tb + R() * 0.15);
+      1.8, 0.05, 0.9, life, 0.2 * span * dk, (0.42 + R() * 0.12) * span * dk, tinted, tinted, 0.4, life, 1, tb + R() * 0.15);
   }
   // the walls' pieces off the front when no stage builder throws them (a building the world has no seam for: the
   // stages throw a seamed building's own, in its buckets — `crumbled`)
@@ -361,15 +363,15 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
       }
     }
   }
-  // 3. the body: one mass rising off the pile as the walls come down, spreading and thinning slowly
-  const massN = Math.round(Math.min(12, 6 + perim / 8));
+  // 3. the body: one mass rising off the pile as the last courses land, born at its foot, spreading and thinning
+  const massN = Math.round(Math.min(12, 7 + perim / 8));
   for (let i = 0; i < massN; i++) {
     const lx = (R() * 2 - 1) * e.hw * 0.75, lz = (R() * 2 - 1) * e.hd * 0.75;
     const wx = e.cx + lx * cosY + lz * sinY, wz = e.cz - lx * sinY + lz * cosY;
-    const at = 0.9 + (i / massN) * (frontEnd - 0.6) + R() * 0.3;
-    const life = 15 + R() * 4;
-    puff(C, wx, e.baseY + Math.max(1, collapseFront(at, wallH) * 0.7), wz, (R() - 0.5) * 1.0, 0.7 + R() * 0.6, (R() - 0.5) * 1.0,
-      1.3, 0.45 + R() * 0.3, 1.0, life, 0.75 * S * dk, (1.7 + R() * 0.4) * S * dk, tintDark, tinted, 0.48, life, 2, at, 1, 4.5);
+    const at = frontEnd * 0.55 + (i / massN) * (frontEnd * 0.45 + 0.8) + R() * 0.3;
+    const life = 10 + R() * 1.5;
+    puff(C, wx, e.baseY + 0.9, wz, (R() - 0.5) * 1.0, 0.8 + R() * 0.6, (R() - 0.5) * 1.0,
+      1.3, 0.5 + R() * 0.3, 1.0, life, 0.6 * span * dk, (1.6 + R() * 0.4) * span * dk, tintDark, tinted, 0.5, life, 2, at, 1, 4.5);
   }
 }
 
