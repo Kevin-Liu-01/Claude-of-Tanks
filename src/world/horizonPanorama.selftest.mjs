@@ -184,20 +184,20 @@ const ringEdge = (() => {
     const i = row * strideN + k, j = i - strideN;
     assert.ok(Math.hypot(pos.getX(i), pos.getZ(i)) >= Math.hypot(pos.getX(j), pos.getZ(j)) - 1e-3, 'over the opening too the shell never folds back');
   }
-  // (the borders lane, 2026-10-08) the edge row pulled in to seaEdgeMaxM stands on the ring's own surface there, its rows
-  // walked along the column — not on the last row's height carried in from 4.35 km
-  const along = 50 + (0.4 - 50) * (P.seaEdgeMaxM - 1160) / (4350 - 1160);
+  // (the borders lane, 2026-10-08) the edge row pulled in to seaEdgeMaxM stands at the lower of the marine faces' own
+  // height and the ring's surface there (its rows walked along the column): here the marine faces, as before
+  const along = Math.min(0.4, 50 + (0.4 - 50) * (P.seaEdgeMaxM - 1160) / (4350 - 1160));
   for (let k = 100; k < 140; k++) {
     const r = Math.hypot(pos.getX(k), pos.getZ(k));
     assert.ok(Math.abs(r - P.seaEdgeMaxM) < 1e-2 && Math.abs(pos.getY(k) - (along - 0.05)) < 1e-3,
-      `over the opening the edge row stands on the ring's own surface at seaEdgeMaxM (${pos.getY(k).toFixed(2)} m)`);
+      `over the opening the edge row stands on the marine faces at seaEdgeMaxM (${pos.getY(k).toFixed(2)} m)`);
   }
   geometry.dispose();
 }
 // --- an inlet whose far shore rises at the ring's last row (Nordhavn: 150-170 m at 4.35 km): the shell stands no sheet
 // facing the battlefield — wave 286b's "pale translucent rectangular slabs ... a box wall" over the fjord's bird view: the
 // last row's height pulled in to 3.2 km over the ring's own water, and the apron's fall by row over the last 120 m beside
-// the inlets (the borders lane, 2026-10-08) ---------------------------------------------------------------------------
+// the inlets (the borders lane, 2026-10-08): the edge row at the lower of the two, the fall never steeper than 30 degrees
 {
   const inlet = (() => {
     const rows = 4, positions = new Float32Array(n * rows * 3), heights = new Float32Array(n * rows);
@@ -229,7 +229,7 @@ const ringEdge = (() => {
       }
     }
   }
-  const across = -6 + (160 + 6) * (P.seaEdgeMaxM - 2400) / (4350 - 2400);
+  const across = Math.min(160, -6 + (160 + 6) * (P.seaEdgeMaxM - 2400) / (4350 - 2400));
   assert.ok(Math.abs(highEdge - (across - 0.05)) < 1e-3, `over the inlet the edge row stands on the ring's surface at seaEdgeMaxM (${highEdge.toFixed(1)} m), not on its far shore (160 m)`);
   assert.equal(steep, 0, 'no apron face steeper than 60 degrees faces the battlefield beside or over the inlet');
   geometry.dispose();

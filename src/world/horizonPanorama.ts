@@ -32,6 +32,8 @@ import { SEA_APRON_OUTER_RADIUS_M, type SeaOpening } from './edgeWater.ts';
 import type { HorizonReliefCharacter } from './horizonRelief.ts';
 
 const DEG = Math.PI / 180;
+/** the steepest the shell's apron falls on to the wall's foot (tan 30 degrees) */
+const APRON_SLOPE_MAX = Math.tan(30 * DEG);
 /** the earth's radius (m): the far earth's ground distance along a ray, its horizon's dip √(2h/R) */
 const EARTH_R = '6371000.0';
 /** where the game's own sea stops being opaque (m from the centre: the sea apron's fade, shallowWater.ts) — the far
@@ -489,7 +491,8 @@ export function buildHorizonPanoramaShellGeometry(ringEdge: HorizonPanoramaOptio
   const SPAN = 24, outerR = new Float32Array(n), runMax = new Float32Array(n), baseR = new Float32Array(n);
   for (let c = 0; c < n; c++) outerR[c] = Math.min(P.seaEdgeMaxM, Math.hypot(ringEdge.positions[(start + c) * 3], ringEdge.positions[(start + c) * 3 + 2]));
   // the edge row's height: the ring's last row — or, where a sea opening carries the ring's marine rows on past
-  // seaEdgeMaxM, the ring's own surface at seaEdgeMaxM along the column (its rows walked inward from the last). The last
+  // seaEdgeMaxM, the lower of it and the ring's own surface at seaEdgeMaxM along the column (its rows walked inward from
+  // the last). The last
   // row's height pulled in to seaEdgeMaxM stood the far shore's land (Nordhavn: 150-170 m at 4.35 km) 1.1 km nearer, over
   // the ring's own fjord, and the apron fell from it to the shell's foot in 120 m: steep sheets facing the battlefield,
   // which the radial-sheet test cannot catch (the borders lane, 2026-10-08; gauntlet wave 286b, the fjord's bird and apron
@@ -505,7 +508,10 @@ export function buildHorizonPanoramaShellGeometry(ringEdge: HorizonPanoramaOptio
       if (r0 > P.seaEdgeMaxM) continue;
       const j = i + n, r1 = Math.hypot(ringEdge.positions[j * 3], ringEdge.positions[j * 3 + 2]);
       const t = r1 > r0 ? (P.seaEdgeMaxM - r0) / (r1 - r0) : 1;
-      edgeH[c] = ringEdge.heights[i] + (ringEdge.heights[j] - ringEdge.heights[i]) * Math.min(1, Math.max(0, t));
+      // (never above the last row's own height: at an opening's edge columns the surface at seaEdgeMaxM is the headland's
+      // land, and an edge row raised onto it stood the apron's first faces radially, a hole the radial-sheet test cut —
+      // Saltmere's bird view, a white wedge at the headland's end)
+      edgeH[c] = Math.min(ringEdge.heights[last], ringEdge.heights[i] + (ringEdge.heights[j] - ringEdge.heights[i]) * Math.min(1, Math.max(0, t)));
       break;
     }
   }
@@ -536,16 +542,19 @@ export function buildHorizonPanoramaShellGeometry(ringEdge: HorizonPanoramaOptio
     const foot = Math.min(ehs, 20) - 25;
     // the wall's radius (its foot ends the apron)
     const R = Math.max(P.shellM, edgeR + 160);
-    // the apron falls by its distance out from the edge row to the wall, not by a fixed share per row: beside a sea
-    // opening the running maximum pushes its rows out to the wall, 40 m apart, and a share per row dropped two thirds of
-    // the fall over the last 120 m — sheets facing the battlefield, under the radial-sheet test's reach (Nordhavn's land
-    // columns beside its inlets; the borders lane, 2026-10-08, gauntlet wave 286b)
-    const r0 = Math.hypot(ex, ez);
-    P.apronM.forEach((r, j) => {
-      const rr = Math.max(r, edgeR + 40 * (j + 1));
-      const t = Math.min(1, Math.max(0, (rr - r0) / Math.max(1, R - r0)));
-      put(ca * rr, ehs + (foot - ehs) * t, sa * rr);
-    });
+    // the apron's fall never steeper than 30 degrees, row to row and on to the wall's foot: beside a sea opening the running maximum
+    // pushes its rows out to the wall, 40 m apart, and a fixed share per row dropped two thirds of the fall over the last
+    // 120 m — sheets facing the battlefield, under the radial-sheet test's reach (Nordhavn's land columns beside its
+    // inlets; the borders lane, 2026-10-08, gauntlet wave 286b). A row with room to fall keeps its share (every apron
+    // away from an opening is as it was)
+    const apronR = P.apronM.map((r, j) => Math.max(r, edgeR + 40 * (j + 1)));
+    const apronY = P.apronM.map((_, j) => ehs + (foot - ehs) * (j + 1) / (P.apronM.length + 1));
+    // (from the wall's foot inward: each row at most 30 degrees over the next — rows crowded 40 m apart fell 55 m)
+    for (let j = apronY.length - 1; j >= 0; j--) {
+      const below = j === apronY.length - 1 ? foot : apronY[j + 1], beyond = j === apronY.length - 1 ? R : apronR[j + 1];
+      apronY[j] = Math.min(apronY[j], below + APRON_SLOPE_MAX * Math.max(0, beyond - apronR[j]));
+    }
+    apronR.forEach((rr, j) => put(ca * rr, apronY[j], sa * rr));
     // the wall: at the shell radius, rows at the strip's elevations as seen from the eye
     for (const deg of P.wallElevDeg) put(ca * R, Math.max(foot, P.eyeY + Math.tan(deg * DEG) * R), sa * R);
   }
