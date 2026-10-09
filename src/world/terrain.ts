@@ -6931,7 +6931,9 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
   vec3 pN = vec3(dN.x, dN.z, dN.y) * dk; // the detail perturbation in world axes (horizontal: the third channel is unused)
   // (the Redrock lane, round 11b, the gauntlet's wave 298b: "bright white jagged flecks" on the backlit jebel faces —
   // the joints' and honeycomb's detail facets tilted to a sun the face is turned from: a jebel face takes the same law)
-  float avertW = max(uReduxFold.w, gJebelMatte);
+  // (round 11f, wave 324: "white spikes and flecks along the wall toes" — the sand aprons' ripple crests and grains on
+  // the toes' shaded slopes, lit full; on Redrock (uJebelFace.x) every surface turned from the sun takes it)
+  float avertW = max(max(uReduxFold.w, gJebelMatte), uJebelFace.x);
   if (avertW > 0.001) {
     float avert = (1.0 - smoothstep(-0.06, 0.32, dot(gN, uSunDirW))) * avertW;
     vec2 sH = uSunDirW.xz / max(length(uSunDirW.xz), 1e-4);
@@ -7591,8 +7593,13 @@ function makeJebelLit(heights: Float32Array, fold: Float32Array, n: number, orig
       const fu = Math.max(0, Math.min(1, u - i0)), fv = Math.max(0, Math.min(1, v - j0));
       // (round 11e, wave 314's "white flecks along its crest": the notches' floors at a backlit crest, near flat and lit
       // full) a near-flat facet counts as the wall's on its convex edge — the folds' crest — never at its foot or on a top
-      const c = Math.max(0, Math.min(1, (-bilerp(fold, i0, j0, fu, fv) - 0.08) / 0.22)), crest = c * c * (3 - 2 * c);
-      if (fy >= 0.92 && crest <= 0) return; // the floor, the domes' tops and the benches (under ~23 degrees): untouched
+      const fv0 = bilerp(fold, i0, j0, fu, fv);
+      const c = Math.max(0, Math.min(1, (-fv0 - 0.08) / 0.22)), crest = c * c * (3 - 2 * c);
+      // (round 11f, wave 324's "white spikes along the wall toes": a coarse toe triangle spanning floor and wall carried
+      // its floor vertex's up-facing normal, sun-lit through the shadow map's leak at the foot — a pale spike of lit sand
+      // up the wall) the wall's foot, the folds' hollow under it, lies in its shadow too: its vertices take the clamp
+      const k = Math.max(0, Math.min(1, (fv0 - 0.08) / 0.22)), foot = k * k * (3 - 2 * k);
+      if (fy >= 0.92 && crest <= 0 && foot <= 0) return; // the floor, the domes' tops and the benches: untouched
       const mx = -bilerp(gx, i0, j0, fu, fv), mz = -bilerp(gz, i0, j0, fu, fv);
       const ml = 1 / Math.sqrt(mx * mx + 1 + mz * mz);
       // the wall: an 8 m normal steeper than ~30 degrees; turned from the sun or grazing it (its sun cosine under 0.2)
@@ -7601,7 +7608,7 @@ function makeJebelLit(heights: Float32Array, fold: Float32Array, n: number, orig
       const t = Math.max(0, Math.min(1, (dM + 0.05) / 0.25)), backlit = 1 - t * t * (3 - 2 * t);
       const fx = nrm[o], fz = nrm[o + 2];
       const f = Math.min(1, Math.max(0, (fy - 0.8) / 0.12));
-      const steep = Math.max(1 - f * f * (3 - 2 * f), crest); // eased out from ~37 to ~23 degrees, but for the crest's
+      const steep = Math.max(1 - f * f * (3 - 2 * f), crest, foot); // eased out from ~37 to ~23 degrees, but for the crest's and the foot's
       const excess = (fx * lx + fy * ly + fz * lz - Math.max(dM, 0)) * wall * backlit * steep;
       if (excess <= 0) return;
       const ax = fx - lx * excess, ay = fy - ly * excess, az = fz - lz * excess;
