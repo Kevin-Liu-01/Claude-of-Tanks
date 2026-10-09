@@ -132,7 +132,9 @@ const lock = createCaptureLock();
 // --yield-holds since this lab's last release, rather than counting lock directories, which other lanes' holds also make.
 const FIFO2 = args['yield-fifo2'] ?? null;
 const fifo2Holds = () => { try { const n = Number(JSON.parse(readFileSync(FIFO2, 'utf8')).holds); return Number.isFinite(n) ? n : null; } catch { return null; } };
-let fifo2Base = FIFO2 ? fifo2Holds() : null;
+// --yield-fifo2-base=<n>: the service's count when this lane's last hold ended (a run started later would count from a
+// hold that began after it, one too many)
+let fifo2Base = FIFO2 ? (args['yield-fifo2-base'] != null ? Number(args['yield-fifo2-base']) : fifo2Holds()) : null;
 if (FIFO2) {
   const releaseLock = lock.release.bind(lock);
   lock.release = (...a) => { fifo2Base = fifo2Holds() ?? fifo2Base; return releaseLock(...a); };
