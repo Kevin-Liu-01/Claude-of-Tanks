@@ -157,6 +157,10 @@ function clearBursts(scene, world) {
  */
 export const BEAT_MS = [1400, 3300, 5100];
 const DUST_MS = 1500, DUST_R = 8;
+// wave s3 (2026-10-09): both critics preferred the frames with a staged burst (Opus 14 of 19 pairs, 8 of 9 at the beat;
+// Sonnet 19 of 19), and Opus marked one down where it stacked on the hero's own muzzle blast (S37), sat behind the turret
+// once the lens had moved (S13), crowded another tank (S09) or left its column cut by the frame's corner (S05)
+const SHOT_CLEAR_MS = [150, 500], FIREBALL_MS = 500, EDGE = { x: 0.78, y: 0.6 }, EDGE_LOOSE = { x: 0.8, y: 0.75 }, OTHER_DX = 0.12;
 const BURST_TYPES = /^(explosion|barrage|tank_kill)$/;
 /** The lens at `t` as a projection to the frame's -1..1 (null behind the lens), or null with no rail there. */
 function lensAt(shots, t) {
@@ -194,38 +198,58 @@ function stageBeats(scene, world) {
   if (!shots.length || !heroKeys?.length || !heroActor) return 0;
   const [hl, hw, reach = hl + 2.4] = hullOf(heroActor.id);
   const deadBy = (name, t) => scene.effects.some((e) => e.actor === name && e.tMs <= t && /^(tank_kill|burning)$/.test(e.type));
-  let added = 0;
   const covered = beatCoverage(scene, world);
-  for (const [i, T] of BEAT_MS.entries()) {
-    // a burst already live in the frame carries the beat
-    if (covered[i]) continue;
-    const lens = lensAt(shots, T), pose = {};
-    if (!lens || !sampleActorTrack(heroKeys, T, pose)) continue;
-    const { cam, right, screen } = lens;
-    // the hull's box on screen and the side its gun points to
-    const yaw = (pose.facingDeg ?? 0) * Math.PI / 180, fx = Math.sin(yaw), fz = Math.cos(yaw), gy = world.heightAt(pose.x, pose.z);
-    let x0 = Infinity, x1 = -Infinity;
+  const heroShots = scene.effects.filter((e) => e.type === 'fire' && e.actor === 'hero').map((e) => e.tMs);
+  // the hull's box on screen (its x span) for a lens and a pose
+  const hullSpan = (screen, p) => {
+    const yaw = (p.facingDeg ?? 0) * Math.PI / 180, sx = Math.sin(yaw), sz = Math.cos(yaw), g = world.heightAt(p.x, p.z);
+    let a0 = Infinity, a1 = -Infinity;
     for (const [a, b] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) for (const h of [0, 2.6]) {
-      const q = screen([pose.x + fx * hl * a + fz * hw * b, gy + h, pose.z + fz * hl * a - fx * hw * b]);
-      if (q) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); }
+      const c = screen([p.x + sx * hl * a + sz * hw * b, g + h, p.z + sz * hl * a - sx * hw * b]);
+      if (c) { a0 = Math.min(a0, c.x); a1 = Math.max(a1, c.x); }
     }
-    if (!(x1 > x0)) continue;
+    return a1 > a0 ? [a0, a1] : null;
+  };
+  // A spot where an incoming round lands at beat i, or null. Strict, the s3 rules hold; loose (a take that would carry no
+  // beat at all), the frame's edges and the hull's later span are the pre-s3 ones.
+  const place = (i, strict) => {
+    const T = BEAT_MS[i], tb = T - 450;
+    if (heroShots.some((t) => t >= tb - SHOT_CLEAR_MS[0] && t <= tb + SHOT_CLEAR_MS[1])) return null;
+    const lens = lensAt(shots, T), pose = {};
+    if (!lens || !sampleActorTrack(heroKeys, T, pose)) return null;
+    const { cam, right, screen } = lens;
+    const span = hullSpan(screen, pose);
+    if (!span) return null;
+    const [x0, x1] = span, edge = strict ? EDGE : EDGE_LOOSE;
+    const yaw = (pose.facingDeg ?? 0) * Math.PI / 180, gy = world.heightAt(pose.x, pose.z);
     const gunYaw = yaw + (pose.turretDeg ?? 0) * Math.PI / 180;
     const muzzle = screen([pose.x + Math.sin(gunYaw) * reach, gy + 2, pose.z + Math.cos(gunYaw) * reach]);
     const mid = (x0 + x1) / 2, gunSide = muzzle ? Math.sign(muzzle.x - mid) || 1 : 1;
     const ux0 = pose.x - cam.x, uz0 = pose.z - cam.z, ul = Math.hypot(ux0, uz0) || 1, ux = ux0 / ul, uz = uz0 / ul;
     const nx = -uz, nz = ux, near = [];
+    // the other tanks on screen at the beat (escorts and foes; not infantry or trucks)
+    const others = [];
+    for (const track of scene.storyboard?.actorTracks ?? []) {
+      if (track.actor === 'hero' || !scene.actors.some((a) => a.name === track.actor && !/^(infantry|truck|car)/.test(a.id ?? ''))) continue;
+      const p = {};
+      if (!sampleActorTrack(track.keys, T, p)) continue;
+      const c = screen([p.x, world.heightAt(p.x, p.z) + 1.5, p.z]);
+      if (c) others.push(c);
+    }
     // A burst's dust spreads for a second and a half: through it the spot stays DUST_R further from the lens than the hero,
-    // so the cloud stays behind it (2026-10-09: S01's beat at 3.3 s filled the frame with dust as its lens passed the spot).
-    const clearAfter = (px, pz, from) => {
-      for (let t = from; t <= from + DUST_MS; t += 100) {
+    // so the cloud stays behind it (S01's beat at 3.3 s filled the frame with dust as its lens passed the spot); and through
+    // the fireball's first FIREBALL_MS it stays off the hull's span on screen (S13's sat behind the turret once the lens moved).
+    const clearAfter = (px, pz) => {
+      for (let t = tb; t <= tb + DUST_MS; t += 100) {
         const l = lensAt(shots, t), p = {};
         if (!l || !sampleActorTrack(heroKeys, t, p)) continue;
         if (Math.hypot(px - l.cam.x, pz - l.cam.z) < Math.hypot(p.x - l.cam.x, p.z - l.cam.z) + DUST_R) return false;
+        if (!strict || t > tb + FIREBALL_MS) continue;
+        const sp = hullSpan(l.screen, p), c = l.screen([px, world.heightAt(px, pz) + 2.5, pz]);
+        if (sp && c && c.x > sp[0] && c.x < sp[1]) return false;
       }
       return true;
     };
-    let spot = null;
     for (const side of [gunSide, -gunSide]) {
       // a street's facades leave only its own line: nearer the hull's track and further down it, last
       for (const [d, lat] of [[17, 10], [17, 7], [17, 13], [12, 10], [12, 7], [12, 13], [22, 10], [22, 7], [22, 13], [17, 5], [22, 5], [28, 5], [28, 3.5], [22, 3.5]]) {
@@ -235,16 +259,19 @@ function stageBeats(scene, world) {
         if (world.wetAt(px, pz) > 0.3) continue;
         world.query(px - 3, pz - 3, px + 3, pz + 3, near);
         if (near.some((r) => r.max[1] - r.min[1] > 1.2 && r.kind !== 'bridge')) continue;
+        // in the frame with room above for its column, off the hull's box, and not stacked on another tank
         const q = screen([px, world.heightAt(px, pz) + 2.5, pz]);
-        if (!q || Math.abs(q.x) > 0.8 || q.y < -0.7 || q.y > 0.75 || (q.x > x0 - 0.08 && q.x < x1 + 0.08)) continue;
-        if (!clearAfter(px, pz, T - 450)) continue;
-        spot = [+px.toFixed(2), +pz.toFixed(2)];
-        break;
+        if (!q || Math.abs(q.x) > edge.x || q.y < -0.7 || q.y > edge.y || (q.x > x0 - 0.08 && q.x < x1 + 0.08)) continue;
+        if (others.some((c) => Math.abs(c.x - q.x) < OTHER_DX)) continue;
+        if (!clearAfter(px, pz)) continue;
+        return [+px.toFixed(2), +pz.toFixed(2)];
       }
-      if (spot) break;
     }
-    if (!spot) continue;
-    const tb = T - 450, foe = scene.actors.find((a) => a.name.startsWith('foe') && !deadBy(a.name, tb));
+    return null;
+  };
+  let added = 0;
+  const stage = (i, spot) => {
+    const tb = BEAT_MS[i] - 450, foe = scene.actors.find((a) => a.name.startsWith('foe') && !deadBy(a.name, tb));
     // Named beat<n>-…: the Studio names an unnamed effect fx<n> as it loads the scene's effects in time order and fires
     // each name once, so an explicit fx<n> could take a planned effect's name and one of the two would never fire (r11
     // drew 12 of 17 staged beats not at all, 2026-10-08).
@@ -254,6 +281,16 @@ function stageBeats(scene, world) {
     scene.effects.push({ ...blast(spot, tb, 'large', { cause: 'shot' }), id: `beat${i + 1}-boom`, heroRel: true });
     scene.effects.push({ ...debris(spot, tb + 30, { count: 34, speedMps: 15, hot: 0.4, scale: 1.1 }), id: `beat${i + 1}-debris`, heroRel: true });
     added++;
+  };
+  for (const i of BEAT_MS.keys()) {
+    // a burst already live in the frame carries the beat
+    if (covered[i]) continue;
+    const spot = place(i, true);
+    if (spot) stage(i, spot);
+  }
+  // a take with no burst in the frame at any beat gets one under the looser rules
+  if (!covered.some(Boolean) && !added) {
+    for (const i of BEAT_MS.keys()) { const spot = place(i, false); if (spot) { stage(i, spot); break; } }
   }
   if (added) scene.effects.sort((a, b) => a.tMs - b.tMs);
   return added;

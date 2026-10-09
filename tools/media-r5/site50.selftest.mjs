@@ -205,6 +205,8 @@ assert.ok(lensAngles >= 4, `the hero's barrel angles at the lens in at least fou
     const twice = names.filter((id, k) => names.indexOf(id) !== k);
     assert.equal(twice.length, 0, `${scene.meta.id}: effects share the Studio names ${[...new Set(twice)].join(', ')}, so one of each never fires`);
   }
-  if (total) assert.ok(covered / total >= 0.85, `a burst in the frame at 85 % of the beats (${covered}/${total})`);
+  // (wave s3, 2026-10-09: placement over count — the bursts that stacked on the hero's shot, sat behind the turret, crowded
+  // another tank or left their column cut by the frame went; 112 of 150 beats carry one)
+  if (total) assert.ok(covered / total >= 0.7, `a burst in the frame at 70 % of the beats (${covered}/${total})`);
 }
 console.log(`site50.selftest: ${SHOTS.length} shots (${KINDS.map(k => `${byKind[k]} ${k}`).join(', ')}) on ${maps.size} battlefields at ${[...times].join(', ')}`);
