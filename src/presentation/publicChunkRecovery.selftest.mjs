@@ -4,12 +4,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { installPublicChunkRecovery } from './publicChunkRecovery.ts';
 
-function harness({ href = 'https://cot.test/docs/rendering', storageBlocked = false, fetchOk = true, stored = null } = {}) {
+function harness({ href = 'https://cot.test/docs/rendering', storageBlocked = false, fetchOk = true, stored = null, owner } = {}) {
   const listeners = new Map();
   const storage = new Map(stored ? [['cot.publicChunkRecovery.v1', JSON.stringify(stored)]] : []);
   const h = { listeners, storage, replaced: [], fetched: [], history: [], pendingFetch: [] };
   const scope = {
-    addEventListener: (type, fn) => listeners.set(type, fn),
+    ...(owner ? { __COT_CHUNK_RECOVERY: owner } : {}),
+    addEventListener: (type, fn) => { assert.equal(listeners.has(type), false, `one ${type} listener`); listeners.set(type, fn); },
     location: { href, replace: (url) => h.replaced.push(url) },
     history: { replaceState: (_d, _u, url) => { h.history.push(url); scope.location.href = url; } },
     sessionStorage: {
@@ -22,6 +23,7 @@ function harness({ href = 'https://cot.test/docs/rendering', storageBlocked = fa
     },
   };
   installPublicChunkRecovery(scope);
+  h.scope = scope;
   h.fire = (type, event = {}) => {
     let prevented = false;
     listeners.get(type)?.({ ...event, preventDefault() { prevented = true; } });
@@ -102,18 +104,33 @@ function harness({ href = 'https://cot.test/docs/rendering', storageBlocked = fa
   assert.equal(h.replaced.length, 1);
 }
 
-// 7. Wiring: the public entries without an inline guard install it; the documents with one never get a second guard.
-const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
-for (const entry of ['./publicPages.ts', '../docs/topics.ts']) {
-  assert.match(read(entry), /^\s*installPublicChunkRecovery\(\);$/m, `${entry} installs the public chunk recovery`);
+// 7. A document whose inline guard owns recovery keeps it; a second install on one document is a no-op.
+{
+  const gallery = harness({ owner: 'gallery' });
+  assert.equal(gallery.listeners.size, 0, 'the Gallery inline guard stays the only one');
+  gallery.fire('vite:preloadError', {});
+  await gallery.settle();
+  assert.equal(gallery.replaced.length, 0);
+  const page = harness();
+  assert.equal(page.scope.__COT_CHUNK_RECOVERY, 'public', 'the public guard claims the document');
+  installPublicChunkRecovery(page.scope);
+  assert.equal(page.listeners.size, 2, 'installing twice adds no listener');
 }
-assert.doesNotMatch(read('./publicNav.ts'), /publicChunkRecovery/, 'publicNav also runs on the game and Gallery documents');
-assert.doesNotMatch(read('../gallery/gallery.ts'), /publicChunkRecovery/, 'the Gallery owns its inline guard');
-assert.match(read('../../site/gallery.html'), /vite:preloadError/, 'the Gallery inline guard is still there');
-assert.match(read('../../index.html'), /vite:preloadError/, 'the game inline guard is still there');
+
+// 8. Wiring: publicNav.ts (every public page's shared entry, so no request of its own) installs it; the Gallery, which
+// also loads publicNav, claims recovery inline before any module runs; the game document never loads publicNav.
+const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
+assert.match(read('./publicNav.ts'), /^installPublicChunkRecovery\(\);$/m, 'publicNav installs the public chunk recovery');
+const galleryHtml = read('../../site/gallery.html');
+const marker = galleryHtml.indexOf("globalThis.__COT_CHUNK_RECOVERY = 'gallery';");
+assert.ok(marker > 0 && marker < galleryHtml.indexOf('<script type="module"'), 'the Gallery claims recovery before its modules');
+assert.match(galleryHtml, /vite:preloadError/, 'the Gallery inline guard is still there');
+const gameHtml = read('../../index.html');
+assert.match(gameHtml, /vite:preloadError/, 'the game inline guard is still there');
+assert.doesNotMatch(gameHtml, /src="\/src\/presentation\/publicNav\.ts"/, 'the game document does not load publicNav');
 for (const page of ['../../site/home.html', '../../site/docs.html', '../../site/docs-topic.html', '../../site/docs-rendering.html']) {
-  assert.match(read(page), /src="\/src\/(?:presentation\/publicPages|docs\/topics)\.ts"/, `${page} loads a guarded entry`);
+  assert.match(read(page), /<script type="module" src="\/src\/presentation\/publicNav\.ts"><\/script>/, `${page} loads publicNav`);
   assert.doesNotMatch(read(page), /vite:preloadError/, `${page} has no inline guard of its own`);
 }
 
-console.log('publicChunkRecovery.selftest: one reload per deploy incident, no loop, Vite still sees the failure, wired on home, docs and topics');
+console.log('publicChunkRecovery.selftest: one reload per deploy incident, no loop, Vite still sees the failure, installed by publicNav on home, the manual and its topics, the Gallery keeps its own guard');

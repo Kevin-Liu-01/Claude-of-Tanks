@@ -1,8 +1,5 @@
 import { mountDocsIcons, type DocsIconKey } from './docsIcons.ts';
 import { t } from '../ui/i18n.ts';
-import { installPublicChunkRecovery } from '../presentation/publicChunkRecovery.ts';
-
-installPublicChunkRecovery();
 
 type TopicSection = readonly [string, ...string[]];
 type TopicMedia = readonly [string, string];

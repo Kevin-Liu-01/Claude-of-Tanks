@@ -9,7 +9,9 @@ import {
   resolveLocalePath,
   synchronizeLocaleRoute,
 } from '../ui/localeRouting.ts';
+import { installPublicChunkRecovery } from './publicChunkRecovery.ts';
 
+installPublicChunkRecovery();
 installResponsiveLayout();
 const localeRouteChanged = synchronizeLocaleRoute(getLocale());
 if (!localeRouteChanged) {

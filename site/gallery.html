@@ -7,6 +7,8 @@
     // deployment pin. If an old pin or cached document names removed hashes,
     // recover onto one coherent deployment without asking users to clear data.
     (() => {
+      // publicNav.ts, which this page also loads, leaves recovery to this guard (src/presentation/publicChunkRecovery.ts)
+      globalThis.__COT_CHUNK_RECOVERY = 'gallery';
       const KEY = 'cot.galleryRecovery.v1';
       const MAX_AUTO_RELOADS = 2;
       let navigating = false;
