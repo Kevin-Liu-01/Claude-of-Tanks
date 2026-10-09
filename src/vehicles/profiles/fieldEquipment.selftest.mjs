@@ -4,7 +4,8 @@ import {createTank} from '../tankFactory.ts';
 import {topIndex} from '../roofSweep.test-support.mjs';
 import {auxiliaryCapabilities} from '../auxiliaryInventory.ts';
 import {auxiliaryWeaponProfile} from '../auxiliaryWeapons.ts';
-const targets=[['griffin50_x','Griffin 50 mm remote 30 mm cannon',30],['leo2a4m_x','Leopard 2A5M remote 30 mm cannon',30],['leo2a5_x','Leopard 2A5 remote 30 mm cannon',30],['leclerc_x','Leclerc XLR remote 30 mm cannon',30],['ua_t84_oplot_m','Oplot-M protected heavy machine gun',12.7]];
+import {VEHICLE_SIZE_FACTORS} from '../vehicleSizePolicy.ts';
+const targets=[['griffin50_x','Griffin 50 mm remote 30 mm cannon',30],['leo2a7v_x','Leopard 2A7V remote 30 mm cannon',30],['leo2_revolution','Leopard 2 Revolution remote 30 mm cannon',30],['leo2a5_x','Leopard 2A5 remote 30 mm cannon',30],['leclerc_x','Leclerc XLR remote 30 mm cannon',30],['ua_t84_oplot_m','Oplot-M protected heavy machine gun',12.7]];
 for(const quality of ['high','low'])for(const [id,name,caliber] of targets){
  const registered=auxiliaryCapabilities({id})?.guns.find(g=>g.name===name);
  assert.equal(registered?.caliberMm,caliber,`${id}: combat registry enables the authored cannon`);
@@ -69,5 +70,42 @@ for(const quality of ['high','low'])for(const id of rearIds){
    assert(hit&&Math.abs(hit.point.z-a[2])<.001,`${id}: brackets have a real hull receiver`);
   }
   console.log(id,quality,'exposed rear cans, log and measured hull contacts PASS');
+ }finally{mat.dispose();tank.dispose()}
+}
+// Owner-requested attachment revisions: retain real contact and articulation.
+for(const quality of ['high','low'])for(const id of ['leo2a4m_x','leo2a5_x','ua_t84_oplot_m','ua_challenger2','leo2a6_ua','m1a3','challenger_3x','challenger1_x','ru_t80u_modern','ru_t72b3m_modern','cn_t72b3m_modern']){
+ const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242}),mat=new MeshBasicMaterial({side:DoubleSide});
+ try{
+  const turret=tank.root.getObjectByName('rig_turret'),body=new Mesh(turret.getObjectByName('turret').geometry,mat);body.updateMatrixWorld();
+  if(id==='leo2a4m_x'){
+   const guns=[];turret.traverse(o=>{if(o.userData.remoteControlled&&o.userData.firingAxis==='+Z')guns.push(o)});
+   assert.equal(guns.length,1,'A5M keeps exactly its original weapon');assert.equal(guns[0].name,'leo2a4m_xRoofMachineGun');assert.equal(guns[0].userData.caliberMm,7.62);
+   const stock=turret.getObjectByName('leo2a4m_xRoofMachineGun_yaw_turretDetail');
+   assert(stock,'original mount and sights follow the functioning gun');
+  }
+  if(id==='leo2a5_x'||id==='ua_t84_oplot_m'){
+   let weapon;turret.traverse(o=>{if(o.userData.fieldWeaponScale)weapon=o});
+   assert.deepEqual(weapon.scale.toArray(),Array(3).fill(id==='leo2a5_x'?.7:.9),'requested weapon reduction');
+  }
+  const cage=turret.userData.modernFieldCage;
+  if(['ua_challenger2','leo2a6_ua','m1a3','challenger_3x','challenger1_x'].includes(id)){
+   assert.equal(cage.panels,6);assert.equal(cage.anchors.length,12);
+   for(const anchor of cage.anchors){
+    const [x,y,z]=anchor.map(v=>v*(VEHICLE_SIZE_FACTORS[id]??1));
+    const side=Math.sign(x),hit=new Raycaster(new Vector3(x+side*.1,y,z),new Vector3(-side,0,0),0,.15).intersectObject(body)[0];
+    assert(hit&&Math.abs(hit.point.x-x)<.002,`${id}: cage bracket meets actual shell`);
+   }
+   assert(turret.getObjectByName('turretOpenLattice'),'physical open cage stock exists');
+  }
+  if(['ru_t80u_modern','ru_t72b3m_modern','cn_t72b3m_modern'].includes(id)){
+   const receipt=turret.userData.cheekOptics;assert.equal(receipt.anchors.length,2);
+   const lens=new Mesh(turret.getObjectByName('turretGlass').geometry,mat);lens.updateMatrixWorld();
+   for(const [x,y,z]of receipt.anchors){
+    assert.equal(Math.abs(x),.9);assert.equal(y,.43);
+    const hit=new Raycaster(new Vector3(x,y,z+.6),new Vector3(0,0,-1),0,.4).intersectObject(lens)[0];
+    assert(hit&&hit.point.z>z+.35,`${id}: paired exposed optics beside the gun`);
+   }
+  }
+  console.log(id,quality,'requested station, cage and cheek-optic revisions PASS');
  }finally{mat.dispose();tank.dispose()}
 }
