@@ -81,6 +81,52 @@ for (let i = 0; i < 100; i++) contact(10.1, 20.2);
 assert.equal(calls, before, 'hot contact reads never reevaluate procedural terrain');
 assert.equal(contact(600, 0), 300, 'outland queries are not clamped to the boundary');
 
+// perf lane (2026-10-09, R262): the terrain build's fine grids seed the contact vertices. The seeded surface is the
+// unseeded one bit for bit (the same function at the same coordinates), and a seeded chunk never samples again.
+{
+  const real = createHeightField(1337, getMapConfig('monsoon'));
+  let evaluations = 0;
+  const counted = (x, z) => { evaluations++; return real.getHeightAt(x, z); };
+  const seeded = createTerrainContactSampler(counted);
+  const fresh = createTerrainContactSampler((x, z) => real.getHeightAt(x, z));
+  const stub = { getHeightAt: counted, _seedContactGrid: seeded.seedFineGrid };
+  const STEP = 128 / 96, out = { x: 0, y: 0, z: 0 }, ref = { x: 0, y: 0, z: 0 };
+  // an interior chunk, the last chunk of both rows (it owns its far edge) and a chunk at the near corner
+  for (const [cx0, cz0] of [[-128, -128], [384, 384], [-512, 256]]) {
+    drain(api.buildFineGridSteps(stub, cx0, cz0));
+    const sampledByGrid = evaluations;
+    const lastX = cx0 === 384 ? 96 : 95, lastZ = cz0 === 384 ? 96 : 95;
+    let points = 0;
+    for (let kz = 0; kz < lastZ; kz += 3) {
+      for (let kx = 0; kx < lastX; kx += 2) {
+        // a vertex, and a point inside its cell on each triangle half
+        for (const [fx, fz] of [[0, 0], [.31, .27], [.83, .74]]) {
+          const x = cx0 + (kx + fx) * STEP, z = cz0 + (kz + fz) * STEP;
+          assert.equal(Object.is(seeded(x, z), fresh(x, z)), true, `seeded height ${cx0},${cz0} at ${x},${z}`);
+          seeded.normalAt(x, z, out); fresh.normalAt(x, z, ref);
+          assert.deepEqual([out.x, out.y, out.z], [ref.x, ref.y, ref.z], `seeded normal ${cx0},${cz0} at ${x},${z}`);
+          points++;
+        }
+      }
+    }
+    assert.ok(points > 1000);
+    assert.equal(evaluations, sampledByGrid, `chunk ${cx0},${cz0}: its contact reads sample nothing after its fine grid`);
+  }
+  // only a fine grid of the shape terrain.ts builds, on a chunk corner, seeds anything
+  const strict = createTerrainContactSampler(counted);
+  const grid = new Float64Array(99 * 99).fill(1e6);
+  strict.seedFineGrid(-128.5, -128, grid, 99);
+  strict.seedFineGrid(-128, -128, grid, 98);
+  strict.seedFineGrid(512, -128, grid, 99);
+  const beforeStrict = evaluations;
+  assert.ok(strict(-120.3, -110.7) < 1e5, 'a misaligned, misshaped or off-square grid is ignored');
+  assert.ok(evaluations > beforeStrict, 'and the vertices are sampled as before');
+  // the production height field publishes the seam, and the terrain build's fine grid feeds it
+  assert.equal(typeof real._seedContactGrid, 'function', 'createHeightField publishes the contact seam');
+  assert.match(source, /hf\._seedContactGrid\?\.\(cx0, cz0, hgrid, pn\);\s*return \{ hgrid, pn, stepF \};/,
+    'buildFineGridSteps hands every finished grid to the contact surface');
+}
+
 // Deliberately disagreeing surfaces catch a wrapper silently reverting to the
 // old cache. Exercise the actual movement integrator and roof support too.
 const spec = {

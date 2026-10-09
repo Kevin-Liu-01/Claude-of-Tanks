@@ -545,6 +545,8 @@ export interface HeightField {
   getContactHeightAt?(x: number, z: number): number;
   /** That triangle's unit normal into `out` (terrainContactSurface.ts normalAt): the slope the player sees. */
   getContactNormalAt?<T extends { x: number; y: number; z: number }>(x: number, z: number, out: T): T;
+  /** A chunk's fine height grid handed to the contact surface (terrainContactSurface.ts seedFineGrid). */
+  _seedContactGrid?(cx0: number, cz0: number, grid: ArrayLike<number>, pitch: number): void;
   warmFastTilesAround(points: readonly TerrainWarmPoint[]): Generator<number, void, void>;
   getNormalAt(x: number, z: number): THREE.Vector3;
   getGroundType(x: number, z: number): GroundType;
@@ -2796,6 +2798,7 @@ function* heightFieldBuildSteps(
   return {
     getHeightAt, getHeightAtFast, getContactHeightAt, warmFastTilesAround, getNormalAt, getGroundType, getDriveGroundType,
     getContactNormalAt: getContactHeightAt.normalAt,
+    _seedContactGrid: getContactHeightAt.seedFineGrid,
     getOutlandHeightAt: publicOutlandHeightAt,
     ...(railCuttings !== null ? { getOutlandSeatWeightAt: (x: number, z: number): number =>
       railCuttingSeatWeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt, railOpenLines) } : {}),
@@ -7693,6 +7696,9 @@ function* buildFineGridSteps(
         : LIVE_TERRAIN_CHECKPOINT;
     }
   }
+  // perf lane (2026-10-09, R262): the contact surface's vertices in this chunk are these heights (the same function at
+  // the same coordinates): the grass scatter's slope tests and the movement read them instead of sampling again.
+  hf._seedContactGrid?.(cx0, cz0, hgrid, pn);
   return { hgrid, pn, stepF };
 }
 

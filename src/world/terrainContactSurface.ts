@@ -15,6 +15,14 @@ export interface TerrainContactSampler {
    * normal's four heights.
    */
   normalAt<T extends { x: number; y: number; z: number }>(x: number, z: number, out: T): T;
+  /**
+   * Adopt one terrain chunk's fine height grid as that chunk's vertices (perf lane, 2026-10-09; R262 battle entry).
+   * terrain.ts buildFineGridSteps evaluates the same height function at the same coordinates this sampler's vertices
+   * do (-HALF + chunk * CHUNK + k * STEP, in that order of operations), so the grass, the tall grass and the movement
+   * read the heights the mesh build already paid for instead of evaluating each vertex again. `grid` is the fine grid
+   * (pitch SEGMENTS + 3: one padding row and column before the chunk's first vertex); any other shape is ignored.
+   */
+  seedFineGrid(cx0: number, cz0: number, grid: ArrayLike<number>, pitch: number): void;
 }
 
 export function createTerrainContactSampler(
@@ -81,6 +89,26 @@ export function createTerrainContactSampler(
     const inverse = 1 / Math.hypot(sx, 1, sz);
     out.x = -sx * inverse; out.y = inverse; out.z = -sz * inverse;
     return out;
+  };
+  const CHUNKS = SIZE / CHUNK;
+  sample.seedFineGrid = (cx0, cz0, grid, pitch) => {
+    const chunkX = Math.round((cx0 + HALF) / CHUNK), chunkZ = Math.round((cz0 + HALF) / CHUNK);
+    if (pitch !== SEGMENTS + 3 || grid.length < pitch * pitch) return;
+    if (chunkX < 0 || chunkX >= CHUNKS || chunkZ < 0 || chunkZ >= CHUNKS) return;
+    if (cx0 !== -HALF + chunkX * CHUNK || cz0 !== -HALF + chunkZ * CHUNK) return;
+    // A chunk's far edge row is the next chunk's first (vertex() takes its coordinate from that chunk); only the last
+    // chunk of a row owns its edge.
+    const lastX = chunkX === CHUNKS - 1 ? SEGMENTS : SEGMENTS - 1;
+    const lastZ = chunkZ === CHUNKS - 1 ? SEGMENTS : SEGMENTS - 1;
+    for (let kz = 0; kz <= lastZ; kz++) {
+      const rowStart = (chunkZ * SEGMENTS + kz) * N + chunkX * SEGMENTS, gridRow = (kz + 1) * pitch + 1;
+      for (let kx = 0; kx <= lastX; kx++) {
+        const i = rowStart + kx, byte = i >>> 3, bit = 1 << (i & 7);
+        if (ready[byte] & bit) continue;
+        heights[i] = grid[gridRow + kx];
+        ready[byte] |= bit;
+      }
+    }
   };
   return sample;
 }
