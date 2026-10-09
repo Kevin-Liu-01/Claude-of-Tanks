@@ -265,7 +265,10 @@ void main() {
   // (2026-10-08, the owner's "black screens") the medium thins as the camera enters it, judged from the puff's centre
   // against its own size: a corner's distance let a big dark puff round the camera (the 7c smoke reaches ~11 m on a
   // 125 mm burst, ~19 m on a 152 mm) draw one flat dark card over the whole frame for seconds
-  float near = smoothstep( uNearFade.x + 0.25 * size, uNearFade.y + 0.6 * size, distance( center, cameraPosition ) );
+  // (a negative near distance selects the per-corner law before it, for an A/B of the two: the black-screen probe)
+  float near = uNearFade.x < 0.0
+    ? smoothstep( -uNearFade.x, uNearFade.y, distance( wpos, cameraPosition ) )
+    : smoothstep( uNearFade.x + 0.25 * size, uNearFade.y + 0.6 * size, distance( center, cameraPosition ) );
   vColor = vec4( mix( aCA.rgb, aCB.rgb, smoothstep( 0.0, 1.0, t ) ), aCA.w * fadeIn * near );
   vHeat = aHT.x * exp( -aHT.y * age );
   // the bursts' light inside the medium: each recent burst lights the puffs round it for a moment, falling off with the

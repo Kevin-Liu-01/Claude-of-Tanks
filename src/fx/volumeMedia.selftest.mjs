@@ -865,7 +865,7 @@ function captureContext(seed) {
 // enters them (judged from a puff's centre against its size), and three's point falloff floors at 0.25 m
 {
   const media = await readFile(new URL('./volumeMedia.ts', import.meta.url), 'utf8');
-  assert.match(media, /float near = smoothstep\( uNearFade\.x \+ 0\.25 \* size, uNearFade\.y \+ 0\.6 \* size, distance\( center, cameraPosition \) \);/,
+  assert.match(media, /: smoothstep\( uNearFade\.x \+ 0\.25 \* size, uNearFade\.y \+ 0\.6 \* size, distance\( center, cameraPosition \) \);/,
     'a big puff thins as the camera enters it (no flat dark card over the frame)');
   for (const [file, re] of [['./volumeMedia.ts', /col = min\( col, vec3\( 4096\.0 \) \);\n\s*if \( !\( abs\( col\.r \) < 6\.0e4/],
     ['./debrisChunks.ts', /if \( !\( abs\( col\.r \) < 6\.0e4 && abs\( col\.g \) < 6\.0e4 && abs\( col\.b \) < 6\.0e4 \) \) discard;/],
