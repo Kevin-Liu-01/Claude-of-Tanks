@@ -118,6 +118,14 @@ const SCOUT_FN = async (mapId, opts) => {
 };
 
 // --- run ----------------------------------------------------------------------
+// --lens-k=<k>[,<id prefix>:<k>…] (a portrait or square reframing's lens factor; launch night, 2026-10-09: the portraits
+// take 1.2 and S06 1.4, in one run)
+const lensParts = String(args['lens-k'] ?? '').split(',').filter(Boolean);
+const lensFor = (name) => {
+  let k = null;
+  for (const part of lensParts) { const m = /^([^:]+):(.+)$/.exec(part); if (!m) k = Number(part); else if (name.startsWith(m[1])) return Number(m[2]); }
+  return k;
+};
 const lock = createCaptureLock();
 // --yield-fifo2=<fifo2 runner.json> (the coordinator's overnight pacing, 2026-10-08: one media hold of at most 20 minutes
 // for every two holds of the capture service): a later lease waits for that service's own hold count to rise by
@@ -325,7 +333,7 @@ try {
       // a budget lease is also checked between jobs, so a map with many takes never holds the line past its budget
       if (BUDGET_MS && !holding) { await take(LOCK_WAIT); holding = true; heldSince = Date.now(); }
       try {
-        if (args.format) { job.scene.__format = args.format; if (args['lens-k']) job.scene.__lensK = Number(args['lens-k']); }
+        if (args.format) { job.scene.__format = args.format; const k = lensFor(job.name); if (k != null) job.scene.__lensK = k; }
         await page.evaluate(scene => {
           const H = (x, z) => window.__DEBUG.world.heightField.getHeightAt(x, z);
           const sb = scene.storyboard;

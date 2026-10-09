@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 // Link final film proxies into the motion projects' assets/shots/<id>.mp4 (landscape; portrait as <id>-p.mp4): hard
 // links, since 2160p proxies copied into five projects would fill the disk (a copy when a link cannot be made).
-//   node tools/media-r5/motion/sync-footage.mjs [finalRoot=shots/media-r5/final]
+//   node tools/media-r5/motion/sync-footage.mjs [finalRoot=shots/media-r5/final] [--renders=renders,renders-r13]
+// --renders (launch night, 2026-10-09): the site fifty's render folders, in order, a later folder's takes replacing an
+// earlier one's (each finals round renders into its own folder: site50-finals.mjs --tag).
 import { readdirSync, existsSync, copyFileSync, linkSync, mkdirSync, statSync, unlinkSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { FINAL as DEFAULT_FINAL, MOTION } from '../paths.mjs';
-const FINAL = resolve(process.argv[2] ?? DEFAULT_FINAL);
+const argv = process.argv.slice(2), flags = Object.fromEntries(argv.filter(a => a.startsWith('--')).map(a => a.slice(2).split('=')));
+const FINAL = resolve(argv.find(a => !a.startsWith('--')) ?? DEFAULT_FINAL);
+const RENDERS = String(flags.renders ?? 'renders').split(',').filter(Boolean);
 const projects = ['trailer-24h', 'cut-30', 'vertical-15', 'lineup', 'studio-feature'];
 let n = 0;
 const place = (from, to) => { if (existsSync(to)) unlinkSync(to); try { linkSync(from, to); } catch { copyFileSync(from, to); } };
@@ -24,8 +28,8 @@ for (const kind of ['films', 'films-v2', 'films-portrait', 'films-portrait3']) {
 }
 // The site fifty's takes (site50-finals.mjs: site50/renders/films/<id>/films/*-proxy.mp4) feed the round-2 cuts
 // under their own ids (s01-main-street-push ...); portrait takes render to site50/renders/films-portrait/<id>.
-for (const [kind, suffix] of [['films', ''], ['films-portrait', '-p']]) {
-  const root = join(FINAL, '..', 'site50', 'renders', kind); if (!existsSync(root)) continue;
+for (const renders of RENDERS) for (const [kind, suffix] of [['films', ''], ['films-portrait', '-p']]) {
+  const root = join(FINAL, '..', 'site50', renders, kind); if (!existsSync(root)) continue;
   for (const id of readdirSync(root).filter(d => /^s\d\d-/.test(d))) {
     const fd = join(root, id, 'films'); if (!existsSync(fd)) continue;
     const proxy = readdirSync(fd).find(f => f.endsWith('-proxy.mp4')); if (!proxy) continue;

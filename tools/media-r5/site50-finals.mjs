@@ -6,7 +6,7 @@
 //   node tools/media-r5/site50-finals.mjs <resolvedDir> [--only=s01,s02] [--chunk=10] [--film-resolution=2160]
 //     [--still-supersample=1.5] [--film-master=prores|none] [--keep-film-masters] [--skip-films] [--skip-stills] [--skip-loops]
 //     [--min-free-gb=6] [--keep-place[=<stamp ms>]] [--lease-min=45] [--yield-holds=2] [--yield-fifo2=<runner.json>] [--film-proxy=false]
-//     [--order=s01,s04,…]
+//     [--order=s01,s04,…] [--portrait]
 // The disk is shared with other sessions: a chunk starts only while --min-free-gb is free (a 2160p take with its formats
 // is ~0.35 GB); below it the run stops once the encodes in flight finish, and a re-run resumes where it stopped.
 // --film-master=none renders no ProRes master: site-loops encodes from the 2160p H.264 proxy (crf 14, ~97 Mbit/s), so
@@ -120,8 +120,14 @@ const only = flags.only ? [`--only=${flags.only}`] : [];
 const chunk = Math.max(1, Number(flags.chunk ?? 10));
 const minFreeGb = Number(flags['min-free-gb'] ?? 6);
 const freeGb = () => { const s = statfsSync(renders); return (s.bavail * s.bsize) / 1e9; };
-const filmJobs = join(renders, 'jobs-films.json'), stillJobs = join(renders, 'jobs-stills.json');
-if (!('skip-films' in flags)) run('film jobs', 'node', [join(TOOL, 'cinema-jobs.mjs'), 'films', resolved, join(renders, 'films'), filmJobs, `--resolution=${flags['film-resolution'] ?? 2160}`, `--master=${flags['film-master'] ?? 'prores'}`, ...(flags['film-proxy'] === 'false' ? ['--proxy=false'] : []), ...only]);
+// --portrait (launch night, 2026-10-09): the portrait takes of vertical-15, from a lab resolve made with --format=portrait
+// (each shot's lens widened so the hero keeps its width): films only, into films-portrait/<id>, with cinema's proxy as
+// the film the cut links (motion/sync-footage.mjs) and no master, stills or site formats.
+const portrait = 'portrait' in flags;
+if (portrait) Object.assign(flags, { 'skip-stills': 'true', 'skip-loops': 'true' });
+const filmKind = portrait ? 'films-portrait' : 'films', filmArgs = portrait ? ['--formats=portrait', '--master=none'] : [`--master=${flags['film-master'] ?? 'prores'}`];
+const filmJobs = join(renders, portrait ? 'jobs-portrait.json' : 'jobs-films.json'), stillJobs = join(renders, 'jobs-stills.json');
+if (!('skip-films' in flags)) run('film jobs', 'node', [join(TOOL, 'cinema-jobs.mjs'), 'films', resolved, join(renders, filmKind), filmJobs, `--resolution=${flags['film-resolution'] ?? 2160}`, ...filmArgs, ...(flags['film-proxy'] === 'false' && !portrait ? ['--proxy=false'] : []), ...only]);
 if (!('skip-stills' in flags)) run('still jobs', 'node', [join(TOOL, 'cinema-jobs.mjs'), 'blur', resolved, join(renders, 'stills'), stillJobs, '--resolution=2160', `--supersample=${flags['still-supersample'] ?? 1.5}`, ...only]);
 const films = 'skip-films' in flags ? [] : JSON.parse(readFileSync(filmJobs, 'utf8'));
 const stills = 'skip-stills' in flags ? [] : JSON.parse(readFileSync(stillJobs, 'utf8'));
@@ -154,7 +160,7 @@ let encodeChain = Promise.resolve();
 const encodeLoops = part => {
   encodeChain = encodeChain.then(() => new Promise((done, fail) => {
     console.log(`[finals] loops for ${[...part][0]}… (background)`);
-    const child = spawn('nice', ['-n', '10', 'node', join(TOOL, 'site-loops.mjs'), renders, deliver, [...part].join(','),
+    const child = spawn('nice', ['-n', '15', 'node', join(TOOL, 'site-loops.mjs'), renders, deliver, [...part].join(','),
       ...('keep-film-masters' in flags ? [] : ['--drop-film-masters'])], { stdio: 'inherit' });
     // a take whose formats fail is logged, not fatal: the run goes on and a re-run of site-loops redoes it
     child.on('exit', code => { if (code !== 0) console.log(`[finals] loops for ${[...part][0]}… exited ${code}; the run goes on`); done(); });
@@ -213,29 +219,29 @@ for (let i = 0; i < ids.length; i += chunk) {
   if (!part.size) continue;
   // cinema.mjs reads resume per job: a re-run keeps every finished film and still
   const all = [...part].flatMap(id => [...films.filter(j => idOf(j) === id), ...stills.filter(j => idOf(j) === id)]);
-  await renderJobs(`chunk ${k + 1} (${[...part][0]}…)`, all, join(renders, `jobs-chunk-${String(k).padStart(2, '0')}.json`));
+  await renderJobs(`chunk ${k + 1} (${[...part][0]}…)`, all, join(renders, `jobs-${portrait ? 'portrait-' : ''}chunk-${String(k).padStart(2, '0')}.json`));
   if (!('skip-loops' in flags)) encodeLoops(part);
 }
 // The deferred pass: a held take renders once it is off the defer list, from its scene as staged and resolved now.
 for (const id of [...held]) {
   if (isDeferred(id)) { console.log(`[finals] ${id}: still deferred; re-run the finals once its scene is resolved`); continue; }
   copyFileSync(join(scenes, `${id}.json`), join(resolved, `${id}.scene.json`));
-  const filmFile = join(renders, `jobs-films-${id}.json`), stillFile = join(renders, `jobs-stills-${id}.json`);
-  run(`film job ${id}`, 'node', [join(TOOL, 'cinema-jobs.mjs'), 'films', resolved, join(renders, 'films'), filmFile, `--resolution=${flags['film-resolution'] ?? 2160}`,
-    `--master=${flags['film-master'] ?? 'prores'}`, ...(flags['film-proxy'] === 'false' ? ['--proxy=false'] : []), `--only=${id}`]);
-  run(`still jobs ${id}`, 'node', [join(TOOL, 'cinema-jobs.mjs'), 'blur', resolved, join(renders, 'stills'), stillFile, '--resolution=2160',
+  const filmFile = join(renders, `jobs-${portrait ? 'portrait' : 'films'}-${id}.json`), stillFile = join(renders, `jobs-stills-${id}.json`);
+  run(`film job ${id}`, 'node', [join(TOOL, 'cinema-jobs.mjs'), 'films', resolved, join(renders, filmKind), filmFile, `--resolution=${flags['film-resolution'] ?? 2160}`,
+    ...filmArgs, ...(flags['film-proxy'] === 'false' && !portrait ? ['--proxy=false'] : []), `--only=${id}`]);
+  if (!portrait) run(`still jobs ${id}`, 'node', [join(TOOL, 'cinema-jobs.mjs'), 'blur', resolved, join(renders, 'stills'), stillFile, '--resolution=2160',
     `--supersample=${flags['still-supersample'] ?? 1.5}`, `--only=${id}`]);
-  const jobsNow = [...JSON.parse(readFileSync(filmFile, 'utf8')), ...JSON.parse(readFileSync(stillFile, 'utf8'))];
+  const jobsNow = [...JSON.parse(readFileSync(filmFile, 'utf8')), ...(portrait ? [] : JSON.parse(readFileSync(stillFile, 'utf8')))];
   // the re-planned take replaces this run's entries for it, so the retry pass retries the rebuilt jobs
   for (const list of [films, stills]) for (let j = list.length - 1; j >= 0; j--) if (idOf(list[j]) === id) list.splice(j, 1);
   for (const job of jobsNow) (job.film === 'false' ? stills : films).push(job);
-  await renderJobs(`deferred ${id}`, jobsNow, join(renders, `jobs-deferred-${id}.json`));
+  await renderJobs(`deferred ${id}`, jobsNow, join(renders, `jobs-deferred-${portrait ? 'portrait-' : ''}${id}.json`));
   held.delete(id);
   if (!('skip-loops' in flags)) encodeLoops(new Set([id]));
 }
 // The retry pass: each failed job once more, by itself, in a fresh browser; its take's formats follow if it renders.
 for (const job of [...films, ...stills].filter(j => failed.has(j.out))) {
-  const file = join(renders, `jobs-retry-${idOf(job)}-${job.film === 'false' ? 'stills' : 'film'}.json`);
+  const file = join(renders, `jobs-retry-${idOf(job)}-${job.film === 'false' ? 'stills' : portrait ? 'portrait' : 'film'}.json`);
   writeFileSync(file, JSON.stringify([{ ...job, resume: 'true' }], null, 1));
   await waitPause();
   if (keepPlace && existsSync(leaseMark)) await yieldGpu();
