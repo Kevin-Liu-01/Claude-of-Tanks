@@ -126,6 +126,17 @@
    "tMs": 3400
   },
   {
+   "id": "beat3-shot",
+   "type": "fire",
+   "actor": "foe1",
+   "params": {
+    "slot": 0,
+    "tracer": true,
+    "recoil": true
+   },
+   "tMs": 4540
+  },
+  {
    "id": "fx6",
    "type": "fire",
    "actor": "hero",
@@ -135,6 +146,34 @@
     "recoil": true
    },
    "tMs": 4600
+  },
+  {
+   "id": "beat3-boom",
+   "type": "explosion",
+   "at": [
+    -17.23,
+    -112.21
+   ],
+   "params": {
+    "size": "large",
+    "cause": "shot"
+   },
+   "tMs": 4650
+  },
+  {
+   "id": "beat3-debris",
+   "type": "debris",
+   "at": [
+    -17.23,
+    -112.21
+   ],
+   "params": {
+    "count": 34,
+    "speedMps": 15,
+    "hot": 0.4,
+    "scale": 1.1
+   },
+   "tMs": 4680
   }
  ],
  "storyboard": {
@@ -3715,7 +3754,7 @@
  "timeScale": 0,
  "film": {
   "fps": 30,
-  "shutterDeg": 90,
+  "shutterDeg": 60,
   "samples": 8,
   "maxSamples": 48,
   "filter": "gaussian",
@@ -3767,7 +3806,8 @@
    "plan": [
     "stabilised: hero on foe0, ally1 on foe1"
    ]
-  }
+  },
+  "beats": 1
  },
  "crushes": []
 }

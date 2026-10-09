@@ -4504,7 +4504,7 @@
  "timeScale": 0,
  "film": {
   "fps": 30,
-  "shutterDeg": 90,
+  "shutterDeg": 60,
   "samples": 8,
   "maxSamples": 48,
   "filter": "gaussian",

@@ -67,6 +67,34 @@
    "tMs": 900
   },
   {
+   "id": "beat1-boom",
+   "type": "explosion",
+   "at": [
+    7.52,
+    73.71
+   ],
+   "params": {
+    "size": "large",
+    "cause": "shot"
+   },
+   "tMs": 950
+  },
+  {
+   "id": "beat1-debris",
+   "type": "debris",
+   "at": [
+    7.52,
+    73.71
+   ],
+   "params": {
+    "count": 34,
+    "speedMps": 15,
+    "hot": 0.4,
+    "scale": 1.1
+   },
+   "tMs": 980
+  },
+  {
    "id": "fx4",
    "type": "explosion",
    "at": [
@@ -93,6 +121,34 @@
     "scale": 1.1
    },
    "tMs": 1730
+  },
+  {
+   "id": "beat2-boom",
+   "type": "explosion",
+   "at": [
+    17.08,
+    100.87
+   ],
+   "params": {
+    "size": "large",
+    "cause": "shot"
+   },
+   "tMs": 2850
+  },
+  {
+   "id": "beat2-debris",
+   "type": "debris",
+   "at": [
+    17.08,
+    100.87
+   ],
+   "params": {
+    "count": 34,
+    "speedMps": 15,
+    "hot": 0.4,
+    "scale": 1.1
+   },
+   "tMs": 2880
   },
   {
    "id": "fx6",
@@ -1526,7 +1582,8 @@
    "plan": [
     "hero sector 0° ±4° · no shots"
    ]
-  }
+  },
+  "beats": 2
  },
  "crushes": [
   {

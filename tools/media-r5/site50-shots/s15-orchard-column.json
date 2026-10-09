@@ -123,6 +123,45 @@
    "tMs": 700
   },
   {
+   "id": "beat1-shot",
+   "type": "fire",
+   "actor": "foe1",
+   "params": {
+    "slot": 0,
+    "tracer": true,
+    "recoil": true
+   },
+   "tMs": 840
+  },
+  {
+   "id": "beat1-boom",
+   "type": "explosion",
+   "at": [
+    -51.26,
+    25.47
+   ],
+   "params": {
+    "size": "large",
+    "cause": "shot"
+   },
+   "tMs": 950
+  },
+  {
+   "id": "beat1-debris",
+   "type": "debris",
+   "at": [
+    -51.26,
+    25.47
+   ],
+   "params": {
+    "count": 34,
+    "speedMps": 15,
+    "hot": 0.4,
+    "scale": 1.1
+   },
+   "tMs": 980
+  },
+  {
    "id": "fx5",
    "type": "fire",
    "actor": "foe1",
@@ -162,6 +201,45 @@
    "tMs": 1840
   },
   {
+   "id": "beat2-shot",
+   "type": "fire",
+   "actor": "foe1",
+   "params": {
+    "slot": 0,
+    "tracer": true,
+    "recoil": true
+   },
+   "tMs": 2740
+  },
+  {
+   "id": "beat2-boom",
+   "type": "explosion",
+   "at": [
+    -47.78,
+    6.26
+   ],
+   "params": {
+    "size": "large",
+    "cause": "shot"
+   },
+   "tMs": 2850
+  },
+  {
+   "id": "beat2-debris",
+   "type": "debris",
+   "at": [
+    -47.78,
+    6.26
+   ],
+   "params": {
+    "count": 34,
+    "speedMps": 15,
+    "hot": 0.4,
+    "scale": 1.1
+   },
+   "tMs": 2880
+  },
+  {
    "id": "fx8",
    "type": "fire",
    "actor": "hero",
@@ -171,6 +249,45 @@
     "recoil": true
    },
    "tMs": 3500
+  },
+  {
+   "id": "beat3-shot",
+   "type": "fire",
+   "actor": "foe1",
+   "params": {
+    "slot": 0,
+    "tracer": true,
+    "recoil": true
+   },
+   "tMs": 4540
+  },
+  {
+   "id": "beat3-boom",
+   "type": "explosion",
+   "at": [
+    -38.99,
+    -22.82
+   ],
+   "params": {
+    "size": "large",
+    "cause": "shot"
+   },
+   "tMs": 4650
+  },
+  {
+   "id": "beat3-debris",
+   "type": "debris",
+   "at": [
+    -38.99,
+    -22.82
+   ],
+   "params": {
+    "count": 34,
+    "speedMps": 15,
+    "hot": 0.4,
+    "scale": 1.1
+   },
+   "tMs": 4680
   }
  ],
  "storyboard": {
@@ -4528,7 +4645,7 @@
  "timeScale": 0,
  "film": {
   "fps": 30,
-  "shutterDeg": 90,
+  "shutterDeg": 60,
   "samples": 8,
   "maxSamples": 48,
   "filter": "gaussian",
@@ -4580,7 +4697,8 @@
    "plan": [
     "stabilised: hero on foe0, ally1 on foe1, ally2 on foe0"
    ]
-  }
+  },
+  "beats": 3
  },
  "crushes": [
   {

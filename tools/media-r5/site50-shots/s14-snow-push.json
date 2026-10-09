@@ -118,6 +118,34 @@
    "tMs": 0
   },
   {
+   "id": "beat1-boom",
+   "type": "explosion",
+   "at": [
+    -102.9,
+    -122.5
+   ],
+   "params": {
+    "size": "large",
+    "cause": "shot"
+   },
+   "tMs": 950
+  },
+  {
+   "id": "beat1-debris",
+   "type": "debris",
+   "at": [
+    -102.9,
+    -122.5
+   ],
+   "params": {
+    "count": 34,
+    "speedMps": 15,
+    "hot": 0.4,
+    "scale": 1.1
+   },
+   "tMs": 980
+  },
+  {
    "id": "fx6",
    "type": "mg_burst",
    "actor": "ally1",
@@ -164,6 +192,34 @@
     "recoil": true
    },
    "tMs": 3600
+  },
+  {
+   "id": "beat3-boom",
+   "type": "explosion",
+   "at": [
+    -102.16,
+    -57.85
+   ],
+   "params": {
+    "size": "large",
+    "cause": "shot"
+   },
+   "tMs": 4650
+  },
+  {
+   "id": "beat3-debris",
+   "type": "debris",
+   "at": [
+    -102.16,
+    -57.85
+   ],
+   "params": {
+    "count": 34,
+    "speedMps": 15,
+    "hot": 0.4,
+    "scale": 1.1
+   },
+   "tMs": 4680
   }
  ],
  "storyboard": {
@@ -3796,7 +3852,8 @@
    "plan": [
     "stabilised: hero on foe0, ally1 on foe1"
    ]
-  }
+  },
+  "beats": 2
  },
  "crushes": [
   {
