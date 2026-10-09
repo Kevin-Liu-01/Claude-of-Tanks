@@ -4,6 +4,7 @@
 // draws unchanged — the new builds spend exactly the retired builds' draws, so every later pool and placement keeps its
 // draws, and the crates stay inside the record's reach and height.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { AMMOBOX_LEGACY, DESTRUCTIBLE_TYPES } from './inhabitKit.ts';
 
@@ -76,5 +77,15 @@ for (let seed = 1; seed <= 24; seed++) {
   assert.ok(yellow >= 400 && olive >= 150 && worn >= 150 && steel >= 60,
     `the livery: stencilled markings (${yellow}), the olive (${olive}), the paint worn to the wood (${worn}), the hardware (${steel})`);
   g.dispose();
+}
+// (b45; launch night) the phone keeps the legacy crates: props.ts resolves the kind to the 72-triangle builders on the
+// baked finish when the props build for a phone, the same draws either way
+{
+  const props = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
+  assert.match(props, /\.\.\.\(mobileProps \? \{ ammobox: \{ \.\.\.DESTRUCTIBLE_TYPES\.ammobox, mat: 'baked' as const, build: AMMOBOX_LEGACY\.build, broken: AMMOBOX_LEGACY\.broken \} \} : \{\}\),/,
+    'a phone draws the legacy crates');
+  const tri = (g) => (g.index ? g.index.count : g.attributes.position.count) / 3;
+  const phone = tri(AMMOBOX_LEGACY.build(mulberry32(5)));
+  assert.ok(phone <= 96, `the phone's stack cheap (${phone} triangles)`);
 }
 console.log('ammoCrates self-test passed: the record and the draws kept, the crates within reach and height on the ground, one resting on two, their markings and wear');
