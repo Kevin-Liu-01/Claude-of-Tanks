@@ -104,6 +104,88 @@ export default {
     // M48, Sweden's Strv 103, the Soviet T-80B and BMP-2
     tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['leo1a5', 'm48', 'strv103', 't80b', 'bmp2'] },
     inhabit: { stalls: 0, benches: 2, coreClutter: 20, sleds: 10, drums: 8, trucks: 5, jeeps: 4, drumClusters: 5, camps: 2, modernClutter: 20, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
+    // the map-content lane (2026-10-09; owner: "some maps like whiteout crossing and mesa mines look unfinished and so
+    // empty"; the census: 67 % of the playable square more than 30 m from anything standing, the station one strip along
+    // the service street). Reference: DYE-M, the Distant Early Warning Line's main station at Cape Dyer on Baffin Island,
+    // as it stood in 1985 (landmarks/stations.ts): the module train on its stilts with the search radar's radome at its
+    // east end, the POL tank farms, the tropospheric-scatter billboards on the high ground facing the next stations east
+    // (Greenland) and west, the guyed masts. Set into the finished map (ground 'veto': every pass after them draws as
+    // before and only what would stand on a piece's ground is left out); off the zone discs, the pads and the field works.
+    landmarks: [
+      // the station: the module train with the search radar at its east end, the fuel caches by its doors
+      { kind: 'moduleTrain', x: -30, z: -30, yawDeg: 0, params: { modules: 8 }, ground: 'veto', name: 'the module train' },
+      { kind: 'radomeTower', x: 6, z: -29, yawDeg: 0, ground: 'veto', name: 'the search radar' },
+      { kind: 'drumCache', x: 40, z: -62, yawDeg: 0, ground: 'veto', name: 'the station fuel cache' },
+      // the POL tank farms: the main farm south-east of the melt pan, the motor pool's and the north berm's tanks
+      { kind: 'fuelTankFarm', x: 110, z: -150, yawDeg: 0, ground: 'veto', name: 'the POL tank farm' },
+      { kind: 'drumCache', x: 140, z: -170, yawDeg: 90, ground: 'veto', name: 'the tank farm drums' },
+      { kind: 'fuelTankFarm', x: -240, z: -185, yawDeg: 90, params: { tanks: 2, radius: 4, height: 6 }, ground: 'veto', name: 'the motor pool tanks' },
+      { kind: 'fuelTankFarm', x: 60, z: 236, yawDeg: 0, params: { tanks: 2, radius: 4, height: 6 }, ground: 'veto', name: 'the north tanks' },
+      // the billboards on the high ground, facing the next stations east (Greenland) and west along the line
+      { kind: 'troposcatter', x: 342, z: 22, yawDeg: 90, ground: 'veto', name: 'the east billboards (south)' },
+      { kind: 'troposcatter', x: 342, z: 56, yawDeg: 90, ground: 'veto', name: 'the east billboards (north)' },
+      { kind: 'troposcatter', x: -376, z: 6, yawDeg: -90, ground: 'veto', name: 'the west billboards (south)' },
+      { kind: 'troposcatter', x: -376, z: 40, yawDeg: -90, ground: 'veto', name: 'the west billboards (north)' },
+      // the masts
+      { kind: 'guyedMast', x: 370, z: 200, ground: 'veto', name: 'the north-east mast' },
+      { kind: 'guyedMast', x: -190, z: -252, ground: 'veto', name: 'the south-west mast' },
+      { kind: 'guyedMast', x: 190, z: -252, params: { height: 30 }, ground: 'veto', name: 'the south-east mast' },
+      // the Jamesway camps out on the tundra (the summer survey and the billboard crews), each with its fuel cache
+      { kind: 'jamesway', x: -232, z: 196, yawDeg: 0, ground: 'veto', name: 'the north-west camp (west hut)' },
+      { kind: 'jamesway', x: -214, z: 196, yawDeg: 0, ground: 'veto', name: 'the north-west camp (east hut)' },
+      { kind: 'jamesway', x: -196, z: 230, yawDeg: 0, ground: 'veto', name: 'the north-west camp (north hut)' },
+      { kind: 'drumCache', x: -250, z: 228, yawDeg: 0, ground: 'veto', name: 'the north-west camp drums' },
+      { kind: 'jamesway', x: 330, z: 300, yawDeg: 20, ground: 'veto', name: 'the north-east camp (west hut)' },
+      { kind: 'jamesway', x: 350, z: 296, yawDeg: 20, ground: 'veto', name: 'the north-east camp (east hut)' },
+      { kind: 'drumCache', x: 340, z: 322, yawDeg: 20, ground: 'veto', name: 'the north-east camp drums' },
+      { kind: 'jamesway', x: 320, z: -350, yawDeg: -30, ground: 'veto', name: 'the south-east camp (west hut)' },
+      { kind: 'jamesway', x: 340, z: -340, yawDeg: -30, ground: 'veto', name: 'the south-east camp (east hut)' },
+      { kind: 'drumCache', x: 300, z: -330, yawDeg: 60, ground: 'veto', name: 'the south-east camp drums' },
+      { kind: 'jamesway', x: -400, z: -400, yawDeg: 10, ground: 'veto', name: 'the dump hut' },
+      { kind: 'drumCache', x: -380, z: -380, yawDeg: 0, params: { rows: 4, columns: 10 }, ground: 'veto', name: 'the dump drums' },
+      // the west strip's camps, the airstrip beacon, the south and south-east camps, the dump's tanks
+      { kind: 'jamesway', x: -430, z: -230, yawDeg: 0, ground: 'veto', name: 'the west camp (south hut)' },
+      { kind: 'jamesway', x: -412, z: -230, yawDeg: 0, ground: 'veto', name: 'the west camp (north hut)' },
+      { kind: 'drumCache', x: -430, z: -258, yawDeg: 0, ground: 'veto', name: 'the west camp drums' },
+      { kind: 'jamesway', x: -425, z: 120, yawDeg: 0, ground: 'veto', name: 'the billboard camp (west hut)' },
+      { kind: 'jamesway', x: -407, z: 120, yawDeg: 0, ground: 'veto', name: 'the billboard camp (east hut)' },
+      { kind: 'drumCache', x: -416, z: 145, yawDeg: 0, ground: 'veto', name: 'the billboard camp drums' },
+      { kind: 'guyedMast', x: -420, z: 330, params: { height: 30 }, ground: 'veto', name: 'the beacon mast' },
+      { kind: 'jamesway', x: 420, z: 420, yawDeg: 90, ground: 'veto', name: 'the north-east outpost' },
+      { kind: 'drumCache', x: 250, z: 330, yawDeg: 30, ground: 'veto', name: 'the north road cache' },
+      { kind: 'jamesway', x: 220, z: -400, yawDeg: 0, ground: 'veto', name: 'the south-east survey hut' },
+      { kind: 'drumCache', x: 240, z: -410, yawDeg: 90, ground: 'veto', name: 'the south-east survey drums' },
+      { kind: 'drumCache', x: 300, z: 120, yawDeg: 0, ground: 'veto', name: 'the east road cache' },
+      { kind: 'jamesway', x: 40, z: -420, yawDeg: 90, ground: 'veto', name: 'the south camp hut' },
+      { kind: 'drumCache', x: 70, z: -415, yawDeg: 0, ground: 'veto', name: 'the south camp drums' },
+      { kind: 'fuelTankFarm', x: -330, z: -330, yawDeg: 0, params: { tanks: 2, radius: 4, height: 6 }, ground: 'veto', name: 'the dump tanks' },
+      { kind: 'jamesway', x: 200, z: 60, yawDeg: 90, ground: 'veto', name: 'the melt pan hut' },
+      { kind: 'drumCache', x: 210, z: 40, yawDeg: 0, ground: 'veto', name: 'the melt pan drums' },
+      // the drift fences across the wind, windward of the station's roads
+      { kind: 'snowFence', x: 0, z: -200, yawDeg: 0, ground: 'veto', name: 'the south drift fence' },
+      { kind: 'snowFence', x: 160, z: -210, yawDeg: 10, ground: 'veto', name: 'the south-east drift fence' },
+      { kind: 'snowFence', x: 0, z: 190, yawDeg: 0, ground: 'veto', name: 'the north drift fence' },
+      { kind: 'snowFence', x: -170, z: 160, yawDeg: -10, ground: 'veto', name: 'the north-west drift fence' },
+      { kind: 'snowFence', x: 400, z: -150, yawDeg: 90, ground: 'veto', name: 'the east drift fence' },
+      { kind: 'snowFence', x: -420, z: -100, yawDeg: 90, ground: 'veto', name: 'the west drift fence' },
+    ],
+    // the station's machines (vehicleSetPiecesWorks.ts): the Bv 206 carriers, the Sno-Cats and the D8 dozers that kept the
+    // roads and the drifts open (the arctic1980s fleet's trucks and pickups stay the inhabit pass's)
+    vehicleSetPieces: [
+      { kind: 'bv206', x: -8, z: -12, yawDeg: 80 }, { kind: 'bv206', x: -72, z: -64, yawDeg: 90 },
+      { kind: 'snocat', x: 18, z: -62, yawDeg: -60 }, { kind: 'd8h', x: 132, z: -126, yawDeg: 30 },
+      { kind: 'snocat', x: -212, z: -22, yawDeg: 170 }, { kind: 'bv206', x: -236, z: -138, yawDeg: 10 },
+      { kind: 'd8h', x: -58, z: 246, yawDeg: 200 }, { kind: 'bv206', x: 312, z: 40, yawDeg: 2 },
+      { kind: 'snocat', x: -344, z: 62, yawDeg: 20 }, { kind: 'd8h', x: 168, z: 206, yawDeg: 120 },
+      { kind: 'bv206', x: -248, z: 208, yawDeg: 0 }, { kind: 'snocat', x: 318, z: 316, yawDeg: 110 },
+      { kind: 'bv206', x: 300, z: -350, yawDeg: -20 },
+      { kind: 'snocat', x: -400, z: -250, yawDeg: 40 }, { kind: 'bv206', x: -395, z: 140, yawDeg: 160 },
+      { kind: 'd8h', x: 230, z: 300, yawDeg: 60 }, { kind: 'snocat', x: 200, z: -380, yawDeg: 20 },
+      { kind: 'bv206', x: 290, z: -60, yawDeg: 180 }, { kind: 'snocat', x: 100, z: -330, yawDeg: 300 },
+      { kind: 'd8h', x: -300, z: -300, yawDeg: 30 },
+      // the dump's burnt-out carrier
+      { kind: 'bv206', x: -410, z: -380, yawDeg: 70, wrecked: true },
+    ],
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the flattest ring's tone grain 0.35 -> 0.60
   // round 49 (2026-09-23): the layers probe (ring mesh hidden: skyline ratio 1.005 -> 1.009, edge row unchanged) shows

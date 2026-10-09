@@ -12,10 +12,12 @@
 import * as THREE from 'three';
 import { VehicleMesh, linearHex, material, vehicleWeathering, type Vec3, type VehicleMaterial } from './vehicleMesh.ts';
 import { cabLoft, roundLamp, type CabFace } from './vehicleCoachwork.ts';
+import { bv206, dozer, haulpak, snocat } from './vehicleSetPiecesWorks.ts';
 
 type Mat = VehicleMaterial;
 
-export type SetPieceKind = 'lrv' | 'k2tram' | 'stz3' | 'an26';
+// (the map-content lane, 2026-10-09: a polar station's and a mine's working vehicles, vehicleSetPiecesWorks.ts)
+export type SetPieceKind = 'lrv' | 'k2tram' | 'stz3' | 'an26' | 'bv206' | 'snocat' | 'd8h' | 'haulpak';
 
 /** One authored vehicle: where it stands and how it heads (degrees, 0 = +Z), whole or wrecked. */
 export interface VehicleSetPiece {
@@ -33,6 +35,10 @@ export const SET_PIECE_SIZE: Readonly<Record<SetPieceKind, { hw: number; hl: num
   k2tram: { hw: 1.25, hl: 10.2, h: 3.15, collider: true },
   stz3: { hw: 0.93, hl: 1.85, h: 2.0, collider: true },
   an26: { hw: 2.65, hl: 13.2, h: 5.2, collider: true },
+  bv206: { hw: 0.95, hl: 3.45, h: 2.5, collider: true },
+  snocat: { hw: 1.25, hl: 2.75, h: 2.75, collider: true },
+  d8h: { hw: 1.95, hl: 2.9, h: 3.4, collider: true },
+  haulpak: { hw: 2.3, hl: 3.95, h: 4.6, collider: true },
 };
 
 // ---------------------------------------------------------------------------------------------------- materials
@@ -519,6 +525,10 @@ export function buildSetPiece(kind: SetPieceKind, opts: { wrecked?: boolean; coa
   else if (kind === 'k2tram') { k2tram(mesh, coarse); wheels = [7.95, 6.05, 0.95, -0.95, -6.05, -7.95].map((z) => ({ z, y: 0.35, r: 0.35 })); }
   else if (kind === 'stz3') { stz3(mesh, coarse); wheels = [{ z: -1.18, y: 0.47, r: 0.33 }, { z: 0, y: 0.2, r: 0.5 }]; }
   else if (kind === 'an26') { an26(mesh, coarse, !!opts.wrecked); }
+  else if (kind === 'bv206') bv206(mesh, coarse, 'orange');
+  else if (kind === 'snocat') snocat(mesh, coarse);
+  else if (kind === 'd8h') dozer(mesh, coarse);
+  else if (kind === 'haulpak') haulpak(mesh, coarse, !opts.wrecked);
   else throw new Error(`buildSetPiece: ${kind} is not built yet`);
   const lunar = kind === 'lrv';
   const g = mesh.build(vehicleWeathering({

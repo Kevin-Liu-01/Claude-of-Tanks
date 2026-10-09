@@ -178,6 +178,51 @@ export default {
     // AS1
     tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['centurion5', 'leo1a5'] },
     inhabit: { stalls: 0, benches: 2, coreClutter: 22, drums: 12, trucks: 7, jeeps: 3, drumClusters: 6, camps: 2, modernClutter: 6, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
+    // the map-content lane (2026-10-09; owner: "some maps like whiteout crossing and mesa mines look unfinished and so
+    // empty"; the census: the town stood in the east corner and 42 % of the playable square lay more than 30 m from
+    // anything standing — the pit, its rims and the haul roads bare). The Mount Lyell company's works as they stood in
+    // 1976 (landmarks/mining.ts): the North and Prince Lyell headframes over their shafts with their winding houses, the
+    // east shaft, the conveyors up from the open cut to their ore bins, the ore cars on the spurs, the fuel tanks of the
+    // haul workshops, the radio mast on the west rim. Set into the finished map (ground 'veto'), off the zones and pads.
+    landmarks: [
+      { kind: 'headframe', x: 20, z: 200, yawDeg: 180, ground: 'veto', name: 'the North Lyell headframe' },
+      { kind: 'headframe', x: 20, z: -210, yawDeg: 0, ground: 'veto', name: 'the Prince Lyell headframe' },
+      { kind: 'headframe', x: 300, z: -140, yawDeg: 90, params: { height: 17, paint: 'black' }, ground: 'veto', name: 'the east shaft' },
+      { kind: 'conveyor', x: 10, z: -40, yawDeg: 90, ground: 'veto', name: 'the open cut conveyor' },
+      { kind: 'oreBin', x: 44, z: -40, yawDeg: 90, ground: 'veto', name: 'the open cut ore bin' },
+      { kind: 'conveyor', x: -20, z: 160, yawDeg: 90, params: { length: 52, head: 9 }, ground: 'veto', name: 'the north conveyor' },
+      { kind: 'oreBin', x: 14, z: 160, yawDeg: 90, params: { height: 12 }, ground: 'veto', name: 'the north ore bin' },
+      { kind: 'oreBin', x: 60, z: -150, yawDeg: 0, ground: 'veto', name: 'the town ore bin' },
+      { kind: 'oreCars', x: 90, z: -250, yawDeg: 90, ground: 'veto', name: 'the south spur' },
+      { kind: 'oreCars', x: -60, z: 260, yawDeg: 90, params: { cars: 5 }, ground: 'veto', name: 'the north spur' },
+      { kind: 'fuelTankFarm', x: -130, z: -200, yawDeg: 0, params: { tanks: 2, radius: 4, height: 6 }, ground: 'veto', name: 'the haul workshop tanks' },
+      { kind: 'fuelTankFarm', x: 280, z: 250, yawDeg: 0, params: { tanks: 2, radius: 4, height: 6 }, ground: 'veto', name: 'the north depot tanks' },
+      { kind: 'guyedMast', x: -300, z: -60, params: { height: 30 }, ground: 'veto', name: 'the west rim radio mast' },
+      // the old workings on the rims (the company's earlier shafts, their headframes left standing), the open cut's west
+      // conveyor up to its bin, the spurs on the east haul road and below the south-west rim, the east radio mast
+      { kind: 'headframe', x: -280, z: -300, yawDeg: 200, params: { height: 16, paint: 'black' }, ground: 'veto', name: 'the south-west old shaft' },
+      { kind: 'headframe', x: -400, z: 260, yawDeg: 90, params: { height: 15, paint: 'black' }, ground: 'veto', name: 'the north-west old shaft' },
+      { kind: 'conveyor', x: -140, z: 80, yawDeg: 0, ground: 'veto', name: 'the west conveyor' },
+      { kind: 'oreBin', x: -140, z: 116, yawDeg: 0, ground: 'veto', name: 'the west ore bin' },
+      { kind: 'oreCars', x: 390, z: 40, yawDeg: 0, ground: 'veto', name: 'the east spur' },
+      { kind: 'oreCars', x: -300, z: -250, yawDeg: 30, params: { cars: 4 }, ground: 'veto', name: 'the south-west spur' },
+      { kind: 'oreBin', x: 380, z: -340, yawDeg: 0, ground: 'veto', name: 'the south-east ore bin' },
+      { kind: 'guyedMast', x: 400, z: -80, params: { height: 30 }, ground: 'veto', name: 'the east radio mast' },
+    ],
+    // the open cut's machines (vehicleSetPiecesWorks.ts): the Haulpak dump trucks on the haul roads and in the cut, the
+    // D8 dozers on the benches (the australia1970s fleet's town vehicles stay the inhabit pass's)
+    vehicleSetPieces: [
+      { kind: 'haulpak', x: -110, z: -40, yawDeg: 30 }, { kind: 'haulpak', x: -20, z: 70, yawDeg: 200 },
+      { kind: 'haulpak', x: -150, z: -10, yawDeg: 100, wrecked: true }, { kind: 'haulpak', x: 200, z: -270, yawDeg: 40 },
+      { kind: 'haulpak', x: 40, z: -30, yawDeg: 0 }, { kind: 'haulpak', x: -200, z: 160, yawDeg: 300 },
+      { kind: 'haulpak', x: 390, z: -250, yawDeg: 170 }, { kind: 'haulpak', x: -380, z: -200, yawDeg: 20 },
+      { kind: 'd8h', x: -180, z: 90, yawDeg: 60 }, { kind: 'd8h', x: 40, z: -100, yawDeg: 250 }, { kind: 'd8h', x: 380, z: 300, yawDeg: 10 },
+      { kind: 'haulpak', x: -60, z: 100, yawDeg: 70 }, { kind: 'haulpak', x: -260, z: -200, yawDeg: 10 },
+      { kind: 'haulpak', x: -330, z: -320, yawDeg: 120, wrecked: true }, { kind: 'haulpak', x: -360, z: 330, yawDeg: 30 },
+      { kind: 'haulpak', x: -420, z: 200, yawDeg: 160 }, { kind: 'haulpak', x: 120, z: 220, yawDeg: 270 },
+      { kind: 'haulpak', x: 160, z: 280, yawDeg: 0 }, { kind: 'haulpak', x: 370, z: -400, yawDeg: 200 },
+      { kind: 'd8h', x: 400, z: 60, yawDeg: 90 }, { kind: 'd8h', x: 390, z: 140, yawDeg: 200 }, { kind: 'd8h', x: -60, z: -160, yawDeg: 20 },
+    ],
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): banding 0.26 — the ore benches inside the square
   // are the most strongly bedded cliffs in the game; the ring behind them ran on the style default 0.16

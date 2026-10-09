@@ -4,7 +4,7 @@
 import type { LandmarkKind, LandmarkParams, LandmarkPlacement } from './types.ts';
 import type { StructureClearance } from '../vegetationClearance.ts';
 
-type LandmarkFamily = 'bridge' | 'monument' | 'park' | 'gate' | 'tower' | 'civic' | 'wreck' | 'harbour';
+type LandmarkFamily = 'bridge' | 'monument' | 'park' | 'gate' | 'tower' | 'civic' | 'wreck' | 'harbour' | 'works';
 
 interface LandmarkKindSpec {
   family: LandmarkFamily;
@@ -220,6 +220,44 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // a collective farm's grain store (zernosklad): a long single-storey store, its loading doors and ramps on the front
   granary: { family: 'civic', defaults: { length: 30, width: 11, walls: 'brick' },
     footprint: (p) => [num(p, 'length') / 2 + 0.8, num(p, 'width') / 2 + 2.6] },
+  // ------------------------------------------------------------------------------------------------ works (stations.ts)
+  // the map-content lane (2026-10-09): a polar station's works. The radome's sphere may overhang its tower building; the
+  // billboard reaches from its struts' anchors behind to its feed tower before it (the focus of its curved face)
+  radomeTower: { family: 'works', defaults: { side: 9, height: 8, radius: 5.2 },
+    footprint: (p) => { const r = Math.max(num(p, 'side') / 2, num(p, 'radius')); return [r + 1.0, r + 1.8]; } },
+  troposcatter: { family: 'works', drapes: true, defaults: { width: 18, height: 14, clearance: 2.5 },
+    footprint: (p) => {
+      const hw = num(p, 'width') / 2, sag = num(p, 'width') * 0.1, rake = Math.min(0.5 * num(p, 'height') + 2, 10);
+      const fz = Math.min(hw * hw / (4 * sag) - sag * 0.5, 0.9 * hw + 2);
+      return [hw + 0.6, Math.max(fz + 0.7, sag * 0.5 + 0.3 + rake + 0.5)];
+    } },
+  guyedMast: { family: 'works', drapes: true, defaults: { height: 36, face: 1.2, guys: 0.36 },
+    footprint: (p) => { const g = Math.max(0.2, num(p, 'guys')) * num(p, 'height') + 0.6; return [g, g]; } },
+  moduleTrain: { family: 'works', defaults: { modules: 8, length: 7.4, width: 9, height: 3.4, stilts: 0.9 },
+    footprint: (p) => [Math.round(num(p, 'modules')) * num(p, 'length') / 2 + 0.4, num(p, 'width') / 2 + 2.2] },
+  fuelTankFarm: { family: 'works', drapes: true, defaults: { tanks: 4, columns: 2, radius: 5, height: 7.5 },
+    footprint: (p) => {
+      const n = Math.round(num(p, 'tanks')), cols = Math.min(n, Math.max(1, Math.round(num(p, 'columns')))), rows = Math.ceil(n / cols);
+      const pitch = 2 * num(p, 'radius') + 3;
+      return [(cols - 1) * pitch / 2 + num(p, 'radius') + 2.8, (rows - 1) * pitch / 2 + num(p, 'radius') + 3.4];
+    } },
+  // (a Jamesway hut; a fuel cache and a drift fence are the props' own drums and fence modules: all dressing)
+  jamesway: { family: 'works', defaults: { length: 14.6, width: 4.9 },
+    footprint: (p) => [num(p, 'width') / 2 + 0.4, num(p, 'length') / 2 + 1.7] },
+  drumCache: { family: 'works', drapes: true, dressing: () => true, defaults: { rows: 3, columns: 8 },
+    footprint: (p) => [(Math.round(num(p, 'columns')) - 1) * 0.37 + 2.4, Math.max(2.2, (Math.round(num(p, 'rows')) - 1) * 0.37 + 0.6)] },
+  snowFence: { family: 'works', drapes: true, dressing: () => true, defaults: { length: 60 },
+    footprint: (p) => [Math.max(2.5, Math.floor(num(p, 'length') / 2.5) * 1.25) + 0.2, 0.6] },
+  // a mine's works (mining.ts): the headframe stands over its shaft with its winding house behind (the piece centred on
+  // both); the conveyor's bents and end houses are its movement record, so it spans the ground between them
+  headframe: { family: 'works', drapes: true, defaults: { height: 20, paint: 'oxide' },
+    footprint: (p) => [5.2, 0.25 * num(p, 'height') + 9.8] },
+  oreBin: { family: 'works', drapes: true, defaults: { width: 7, depth: 6, clearance: 5.4, height: 13 },
+    footprint: (p) => [num(p, 'width') / 2 + 0.7, num(p, 'depth') / 2 + 0.7] },
+  conveyor: { family: 'works', drapes: true, defaults: { length: 56, width: 2.6, head: 10, tail: 2.2 },
+    footprint: (p) => [Math.max(2.6, num(p, 'width') / 2 + 0.9), num(p, 'length') / 2 + 0.3] },
+  oreCars: { family: 'works', drapes: true, defaults: { cars: 6, gauge: 1.067 },
+    footprint: (p) => [1.3, (Math.round(num(p, 'cars')) * 3 + 4.6) / 2 + 1.6] },
 });
 
 /** A placement's parameters over its kind's defaults. An unknown kind fails closed. */
