@@ -2605,9 +2605,15 @@ function idlerGeo(
       0, Math.sin(a) * r * 0.48, Math.cos(a) * r * 0.48));
   }
   const boltCount = pattern?.endFasteners ?? 8;
+  // 2026-10-08 (circular-cap lint): the bolt heads ended on the raised hub drum's cap plane, so each head's dark disc
+  // overlapped the painted hub disc in one plane and z-fought (150 hulls); they stand 4 mm proud of the hub face now.
+  // On a small idler with many fasteners (12 hulls: Leopard 2 family, Type 89/90, Strv 103A, UDES 03) neighbouring
+  // heads overlapped each other in that plane; a head's radius now stays inside half the spacing between centres.
+  const BOLT_PROUD_M = 0.004;
+  const boltR = Math.min(0.022, r * 0.30 * Math.sin(Math.PI / boltCount) * 0.92);
   for (let k = 0; k < boltCount; k++) {                  // dark bolt heads on the dish
     const a = (k / boltCount) * Math.PI * 2 + 0.2;
-    dark.push(xform(cylX(0.022, w + hD * 1.6, 6),
+    dark.push(xform(cylX(boltR, w + hD * 1.6 + 2 * BOLT_PROUD_M, 6),
       0, Math.sin(a) * r * 0.30, Math.cos(a) * r * 0.30));
   }
   return { body: mergeAll(body), dark: mergeAll(dark) };
