@@ -1,6 +1,6 @@
 # Fleet physical cannon bores — 2026-10-09
 
-Status: source repair committed; owner authorized publishing with the remaining checks incomplete on 2026-10-09. Generated assets and full release qualification remain follow-up work.
+Status: deployed as version `v1.0.0+ge502c7670` (deployment 206). Owner authorized publication with incomplete checks on 2026-10-09. Generated assets and full release qualification remain follow-up work.
 
 ## Construction
 
