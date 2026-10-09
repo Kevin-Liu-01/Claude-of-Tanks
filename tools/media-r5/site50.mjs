@@ -156,6 +156,7 @@ function clearBursts(scene, world) {
  * Its debris follows; the film's sound places it as any burst. Returns the number of beats added.
  */
 export const BEAT_MS = [1400, 3300, 5100];
+const DUST_MS = 1500, DUST_R = 8;
 const BURST_TYPES = /^(explosion|barrage|tank_kill)$/;
 /** The lens at `t` as a projection to the frame's -1..1 (null behind the lens), or null with no rail there. */
 function lensAt(shots, t) {
@@ -214,6 +215,16 @@ function stageBeats(scene, world) {
     const mid = (x0 + x1) / 2, gunSide = muzzle ? Math.sign(muzzle.x - mid) || 1 : 1;
     const ux0 = pose.x - cam.x, uz0 = pose.z - cam.z, ul = Math.hypot(ux0, uz0) || 1, ux = ux0 / ul, uz = uz0 / ul;
     const nx = -uz, nz = ux, near = [];
+    // A burst's dust spreads for a second and a half: through it the spot stays DUST_R further from the lens than the hero,
+    // so the cloud stays behind it (2026-10-09: S01's beat at 3.3 s filled the frame with dust as its lens passed the spot).
+    const clearAfter = (px, pz, from) => {
+      for (let t = from; t <= from + DUST_MS; t += 100) {
+        const l = lensAt(shots, t), p = {};
+        if (!l || !sampleActorTrack(heroKeys, t, p)) continue;
+        if (Math.hypot(px - l.cam.x, pz - l.cam.z) < Math.hypot(p.x - l.cam.x, p.z - l.cam.z) + DUST_R) return false;
+      }
+      return true;
+    };
     let spot = null;
     for (const side of [gunSide, -gunSide]) {
       // a street's facades leave only its own line: nearer the hull's track and further down it, last
@@ -226,6 +237,7 @@ function stageBeats(scene, world) {
         if (near.some((r) => r.max[1] - r.min[1] > 1.2 && r.kind !== 'bridge')) continue;
         const q = screen([px, world.heightAt(px, pz) + 2.5, pz]);
         if (!q || Math.abs(q.x) > 0.8 || q.y < -0.7 || q.y > 0.75 || (q.x > x0 - 0.08 && q.x < x1 + 0.08)) continue;
+        if (!clearAfter(px, pz, T - 450)) continue;
         spot = [+px.toFixed(2), +pz.toFixed(2)];
         break;
       }
