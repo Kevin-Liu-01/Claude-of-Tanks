@@ -248,7 +248,8 @@ function captureContext(seed) {
   }
   // the ring: many low wide cards racing out, stalling and thinning within ~2-3 s (no old surge of mounds)
   for (const [name, log, n] of [['125 mm', a, 16], ['ATGM', atgmLog, 10]]) {
-    const ring = log.media.filter((m) => m.aspect >= 2.8 && m.grav === 0);
+    // (fx 8) the lingering ground sheet is as wide but outlives the ring: the ring is the cards gone within ~3.5 s
+    const ring = log.media.filter((m) => m.aspect >= 2.8 && m.grav === 0 && m.life <= 3.5);
     assert.ok(ring.length >= n, `${name}: a ring of ${ring.length} cards`);
     assert.ok(ring.every((m) => Math.hypot(m.vx, m.vz) >= 7 && m.drag >= 3 && m.density <= 0.5 && m.life <= 3.5),
       `${name}: it races out, stalls, and thins within ~3 s`);
@@ -273,7 +274,11 @@ function captureContext(seed) {
     const sm = log.media.filter((m) => m.medium === 'billow' && m.heat > 0 && m.heat < 1 && m.rise >= 0.3 && m.life >= 5);
     assert.ok(sm.length >= n, `${name}: ${sm.length} puffs of the explosive's lasting smoke`);
     assert.ok(sm.every((m) => lum0(m) < 0.1 && m.vy > 1.5), `${name}: its smoke is dark and climbs`);
-    assert.ok(Math.max(...sm.map((m) => m.rise)) > 1.3 * Math.min(...sm.map((m) => m.rise)), `${name}: its upper puffs climb faster`);
+    // (fx 8, the critics after 7d/7e: "the HE cloud splitting into brown balls and separate blue-grey balls") its upper
+    // puffs climb a little faster, so the cloud stretches into lobes, but within one band: no second cloud sails off
+    const riseK = Math.max(...sm.map((m) => m.rise)) / Math.min(...sm.map((m) => m.rise));
+    assert.ok(riseK > 1.1 && riseK < 1.45, `${name}: its upper puffs climb a little faster, as one cloud (${riseK.toFixed(2)})`);
+    assert.ok(new Set(sm.map((m) => m.windK)).size === 1, `${name}: every puff of its smoke takes one share of the wind`);
   }
   // (wave 293: "separate brown and blue-grey balls ... one lobed grey-brown cloud growing about eight-fold by +2 s") the
   // HE smoke swells most in its first seconds, and all its smoke ages to one colour
@@ -289,11 +294,20 @@ function captureContext(seed) {
     const at = (t) => m.size0 + (m.size1 - m.size0) * (1 - Math.pow(1 - Math.min(1, t / m.life), m.growExp));
     assert.ok(m.life >= 5 && at(4.4) > 1.25 * at(1.4), 'the ATGM column keeps growing');
   }
-  // the footprint dust is a low wide haze, never a mound: wider than tall, at most ~0.6 dense, not lifting off
-  const haze = a.media.filter((m) => m.medium === 'billow' && m.aspect >= 1.3 && m.aspect < 1.9 && m.grav === 0);
-  assert.ok(haze.length >= 7 && haze.every((m) => m.density <= 0.45 && m.rise <= 0.15), `a low haze of ${haze.length} wide puffs`);
-  // (wave 293: "a tan haystack mound with a crisp rim") the soil's dark, in the soft-edged medium, gone within ~7 s
-  assert.ok(haze.every((m) => lum0(m) < 0.12 && m.life <= 7), 'the footprint haze is a thin dark soil-coloured sheet');
+  // the footprint dust is a thin sheet lying along the ground, never a mound (wave 293: "a tan haystack mound with a
+  // crisp rim"; fx 8, the critics after 7d/7e: still "tan haystack dust mounds"; DVIDS 954922: a pale sheet hugging the
+  // ground, wider than the cloud by +2 s and still lying there at +4 s): short wide cards centred low, thin, in the
+  // soft-edged medium, thrown out past the fireball, lingering for seconds without lifting off
+  const sheet = a.media.filter((m) => m.medium === 'billow' && m.aspect >= 3 && m.grav === 0 && m.life > 3.5);
+  assert.ok(sheet.length >= 7, `a ground sheet of ${sheet.length} cards`);
+  assert.ok(sheet.every((m) => m.density <= 0.3 && m.rise <= 0.06 && m.size1 <= 3.5 && m.y <= 0.3 * m.size1 + 1e-6),
+    'the sheet is thin, short and centred low (its lower half in the ground)');
+  assert.ok(sheet.every((m) => Math.hypot(m.vx, m.vz) >= 5 && m.life >= 4.5 && m.life <= 9),
+    'it races out past the fireball and lingers four to nine seconds');
+  assert.ok(sheet.every((m) => lum0(m) < 0.12), 'in the soil\'s own dark');
+  // nothing cold stands up off the ground as a mound: every cold dust or smoke card taller than ~3 m is up the column
+  const mound = a.media.filter((m) => m.heat === 0 && m.grav === 0 && m.aspect < 3 && m.size1 > 3 && m.y < 1.5);
+  assert.equal(mound.length, 0, `no dust mound at the burst's foot (${mound.length})`);
   assert.ok(a.media.filter((m) => m.medium === 'burst' && m.aspect >= 1 && m.aspect < 1.5 && m.grav === 0 && m.life > 5)
     .every((m) => m.rise <= 0.25), 'the dust cloud does not lift off');
   assert.ok(atgmLog.media.some((m) => m.medium === 'billow' && m.r0 < 0.06 && m.heat < 1), 'a shaped charge is born in its own dark smoke');
@@ -452,8 +466,11 @@ function captureContext(seed) {
   fragmentStrike(C, 190, G + 1, 390, 1, 0, 0, 0);
   killFireball(C, 190, G + 1.2, 390, false, 0);
   const digest = createHash('sha256').update(JSON.stringify(calls)).digest('hex').slice(0, 16);
-  assert.equal(`${calls.length} ${draws} ${digest}`, '131 1628 ff1a722a5e1070b2',
-    "the killcam's recipes are round 7c's to the last draw (re-pin only for a deliberate change to the kill path)");
+  // (fx 8, re-pinned deliberately: the killcam critics after 7d/7e — "a flat salmon wash over the tank at 0.6-1.8 s",
+  // "black smoke hanging in front of the camera instead of climbing away" — the kill fireball cools within a second and
+  // its soot climbs away; the HE hit's light on the hull is the flash's quarter second. Same calls, same draws.)
+  assert.equal(`${calls.length} ${draws} ${digest}`, '131 1628 516c8ca45f2d59fa',
+    "the killcam's recipes are round 8's to the last draw (re-pin only for a deliberate change to the kill path)");
 }
 
 // ---- 5. surfaces --------------------------------------------------------------------------------------------------
