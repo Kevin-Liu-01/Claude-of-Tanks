@@ -6,7 +6,7 @@
 //   node tools/media-r5/site50-finals.mjs <resolvedDir> [--only=s01,s02] [--chunk=10] [--film-resolution=2160]
 //     [--still-supersample=1.5] [--film-master=prores|none] [--keep-film-masters] [--skip-films] [--skip-stills] [--skip-loops]
 //     [--min-free-gb=6] [--keep-place[=<stamp ms>]] [--lease-min=45] [--yield-holds=2] [--yield-fifo2=<runner.json>] [--film-proxy=false]
-//     [--order=s01,s04,…] [--portrait] [--master-after]
+//     [--order=s01,s04,…] [--portrait] [--master-after] [--masters-in-flight=2]
 // The disk is shared with other sessions: a chunk starts only while --min-free-gb is free (a 2160p take with its formats
 // is ~0.35 GB); below it the run stops once the encodes in flight finish, and a re-run resumes where it stopped.
 // --film-master=none renders no ProRes master: site-loops encodes from the 2160p H.264 proxy (crf 14, ~97 Mbit/s), so
@@ -236,7 +236,10 @@ for (let i = 0; i < ids.length; i += chunk) {
   const k = i / chunk;
   // (the wait bounds the masters on disk when the encodes drop them; kept masters, or none, need no wait, and a starved
   // encode under a loaded machine must not hold the GPU work back: 2026-10-07, load average 450)
-  if (flags['film-master'] !== 'none' && !('keep-film-masters' in flags) && k >= 2 && encoders[k - 2]) await encoders[k - 2];
+  // --masters-in-flight=N (2): how many chunks' masters may wait for their site formats (a 2160p master is ~0.77 GB);
+  // raised while renders/pause-encodes holds the formats, so the GPU work goes on
+  const inFlight = Math.max(1, Number(flags['masters-in-flight'] ?? 2));
+  if (flags['film-master'] !== 'none' && !('keep-film-masters' in flags) && k >= inFlight && encoders[k - inFlight]) await encoders[k - inFlight];
   if (freeGb() < minFreeGb) {
     await Promise.all(encoders);
     throw new Error(`${freeGb().toFixed(1)} GB free, under --min-free-gb=${minFreeGb}: stopped before chunk ${k + 1} of ${Math.ceil(ids.length / chunk)}`);
