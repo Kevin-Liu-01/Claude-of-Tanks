@@ -53,6 +53,8 @@ const BRASS = material('chrome', linearHex(0xa8863e), 0.35, 0.8, 0, 0.4);
 /** Round 5 (wave 278: the Breton cart "spotless uniform flat blue… no mud, chipping or scuffing"): paint worn to the grey
  *  wood at the edges and corners. */
 const PAINT_CHIP = material('wood', linearHex(0x8a8274), 0.9, 0, 0, 1);
+/** Round 6: the road's mud dried on a cart's foot. */
+const ROAD_MUD = material('paint', linearHex(0x4e4232), 0.95, 0, 0, 1);
 // round 4 (wave 260: the Glacier Pass hay "a blotchy green-and-tan pattern that reads as a camouflage tarpaulin"): the
 // straw a warm tan, never olive, and the heap's three shades close (its texture is the straw laid over it, not patches)
 const HAY_A = material('cargo', linearHex(0xb39a62), 0.97, 0, 0, 0.5);
@@ -617,7 +619,7 @@ function crate(c: Ctx, x: number, y: number, z: number, w: number, h: number, d:
  * shoulders and across its top, down to the deck on the other, at z. `layers` lists each tier's half-width and top from
  * the bottom up (narrowing), `baseY` the deck under it (dressing; desktop).
  */
-function lashStack(c: Ctx, z: number, baseY: number, layers: readonly (readonly [number, number])[], r = 0.013): void {
+function lashStack(c: Ctx, z: number, baseY: number, layers: readonly (readonly [number, number])[], r = 0.017): void {
   if (c.coarse) return;
   const e = r + 0.004, half: Vec3[] = [[layers[0][0] + 0.05, baseY + 0.01, z]];
   layers.forEach(([hw, top], i) => {
@@ -840,10 +842,22 @@ function charrette(c: Ctx, s: CharretteSpec): Assembly {
   const wear = panel && !c.coarse ? () => c.mesh.dressing(() => {
     for (const sx of [-1, 1]) {
       const x = sx * (hw + 0.0005), n: Vec3 = [sx, 0, 0], yTop = floorY + 0.012 + s.sideH;
-      for (let k = 0; k < 6; k++) {
-        const z0 = -hl + 0.1 + (k / 6) * (s.bedL - 0.2) + hash01(k, c.seed + 401 + sx) * 0.12, len = 0.06 + 0.14 * hash01(k, c.seed + 403 + sx);
-        const d = 0.012 + 0.03 * hash01(k, c.seed + 405 + sx);
-        face4(c.mesh, [[x, yTop - d, z0], [x, yTop - d * 0.4, z0 + len], [x, yTop, z0 + len], [x, yTop, z0]], n, PAINT_CHIP);
+      // (round 6, wave 285: "spotless", "new and unworn" blue paint) worn deeper and wider along the top edge, a scrape
+      // or two down the side where loads were dragged, and the road's mud splashed along the foot
+      for (let k = 0; k < 9; k++) {
+        const z0 = -hl + 0.06 + (k / 9) * (s.bedL - 0.16) + hash01(k, c.seed + 401 + sx) * 0.08, len = 0.08 + 0.2 * hash01(k, c.seed + 403 + sx);
+        const d = 0.02 + 0.05 * hash01(k, c.seed + 405 + sx);
+        face4(c.mesh, [[x, yTop - d, z0], [x, yTop - d * 0.35, z0 + len], [x, yTop, z0 + len], [x, yTop, z0]], n, PAINT_CHIP);
+      }
+      for (let k = 0; k < 2; k++) {
+        const zc = -hl * 0.6 + k * hl * 1.1 + (hash01(k, c.seed + 411 + sx) - 0.5) * 0.2, yc = floorY + 0.06 + s.sideH * (0.3 + 0.4 * hash01(k, c.seed + 413 + sx));
+        const w = 0.12 + 0.12 * hash01(k, c.seed + 415 + sx), h = 0.012 + 0.012 * hash01(k, c.seed + 417 + sx);
+        face4(c.mesh, [[x, yc - h, zc - w], [x, yc - h * 0.5, zc + w], [x, yc + h, zc + w * 0.9], [x, yc + h * 0.4, zc - w * 0.8]], n, PAINT_CHIP);
+      }
+      for (let k = 0; k < 7; k++) {
+        const zc = -hl + 0.05 + (k / 7) * (s.bedL - 0.1) + hash01(k, c.seed + 421 + sx) * 0.1, w = 0.06 + 0.12 * hash01(k, c.seed + 423 + sx);
+        const top = floorY + 0.03 + 0.05 + 0.1 * hash01(k, c.seed + 425 + sx);
+        face4(c.mesh, [[x + sx * 0.0005, floorY + 0.03, zc - w], [x + sx * 0.0005, floorY + 0.03, zc + w], [x + sx * 0.0005, top - 0.03, zc + w * 0.6], [x + sx * 0.0005, top, zc - w * 0.4]], n, ROAD_MUD);
       }
       for (const end of [-1, 1]) {
         const z = end * (hl - 0.004), w = 0.05 + 0.04 * hash01(end + 2, c.seed + 407 + sx);

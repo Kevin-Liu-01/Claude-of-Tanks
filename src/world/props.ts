@@ -9364,7 +9364,11 @@ ${snowCap ? `
       // where a horse stands (a wagon, a hay sledge); a man pulling a sled by its rope 2.25 m, and a hand cart's is
       // pushed from between its handles, a man's width and a pace beyond them (the lane rule alone dropped 5 of
       // Cliffbridge's 35 parked carts from its lanes and steps)
-      const man = record.kind === 'handcart', lane = man ? Math.max(hw, 0.45) + 0.15 : Math.max(hw, 0.6) + 0.25;
+      // (round 6, wave 285: the horn sled's "horns are jammed against the birch trunk", which stood 3 cm clear of its
+      // lane, and one 6 cm clear still reads jammed from behind) a sled's puller walks at its horns with his arms out
+      // and the rope's slack either side: three-quarters of a metre clear of them
+      const man = record.kind === 'handcart', sled = record.kind === 'sled';
+      const lane = man ? Math.max(hw, 0.45) + 0.15 : Math.max(hw, 0.6) + (sled ? 0.75 : 0.25);
       const out = [rect(-lane, lane, hl, hl + (man ? 1.2 : record.kind === 'sled' ? 2.25 : 2.75))];
       if (type.runners) out.push(rect(-hw - 0.25, hw + 0.25, -hl - 4, -hl));
       return out;
