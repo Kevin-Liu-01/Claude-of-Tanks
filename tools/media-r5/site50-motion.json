@@ -5328,7 +5328,7 @@
   }
  },
  "38": {
-  "note": "road0+10/stop at 9 m/s; pullZoomL; 1 tanks",
+  "note": "road0+10/stop at 9 m/s; pullZoomL; 1 tanks (lens nudged: lift +0.6)",
   "rail": "spline",
   "travelS": 1.5,
   "count": 1,
@@ -5370,7 +5370,7 @@
     "lookFrame": "travel",
     "orbit": -15,
     "radius": 10,
-    "lift": 1.6,
+    "lift": 2.2,
     "fov": 40,
     "lookHero": [
      0,
@@ -5384,7 +5384,7 @@
     "lookFrame": "travel",
     "orbit": -22,
     "radius": 19,
-    "lift": 2.4,
+    "lift": 3,
     "fov": 25,
     "lookHero": [
      0,
@@ -5398,7 +5398,7 @@
     "lookFrame": "travel",
     "orbit": -28,
     "radius": 31,
-    "lift": 3.2,
+    "lift": 3.8000000000000003,
     "fov": 16,
     "lookHero": [
      0,
