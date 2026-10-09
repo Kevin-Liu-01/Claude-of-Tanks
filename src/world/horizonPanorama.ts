@@ -32,6 +32,16 @@ import { SEA_APRON_OUTER_RADIUS_M, type SeaOpening } from './edgeWater.ts';
 import type { HorizonReliefCharacter } from './horizonRelief.ts';
 
 const DEG = Math.PI / 180;
+/** the steepest the shell's apron falls on to the wall's foot (tan 30 degrees) */
+const APRON_SLOPE_MAX = Math.tan(30 * DEG);
+/** the earth's radius (m): the far earth's ground distance along a ray, its horizon's dip √(2h/R) */
+const EARTH_R = '6371000.0';
+/** where the game's own sea stops being opaque (m from the centre: the sea apron's fade, shallowWater.ts) — the far
+ * earth's sea takes over past it */
+const SEA_FADE_M = (SEA_APRON_OUTER_RADIUS_M - 192).toFixed(1);
+/** a calm sea's far band against the sky over it: a little under it and bluer (shallowWater.ts WATER_ENV_GRAZING: 4-5 L*
+ * under the sky at the horizon) */
+const SEA_MIRROR = '0.80, 0.85, 0.93';
 
 /** The panorama's frame: the annulus it bakes, the shell it is shown on, the eye it is baked from, the strip. */
 export const HORIZON_PANORAMA = Object.freeze({
@@ -480,11 +490,36 @@ export function buildHorizonPanoramaShellGeometry(ringEdge: HorizonPanoramaOptio
   // a ring without openings stays within 1.6 km, so its shell is unchanged
   const SPAN = 24, outerR = new Float32Array(n), runMax = new Float32Array(n), baseR = new Float32Array(n);
   for (let c = 0; c < n; c++) outerR[c] = Math.min(P.seaEdgeMaxM, Math.hypot(ringEdge.positions[(start + c) * 3], ringEdge.positions[(start + c) * 3 + 2]));
+  // the edge row's height: the ring's last row — or, where a sea opening carries the ring's marine rows on past
+  // seaEdgeMaxM, the lower of it and the ring's own surface at seaEdgeMaxM along the column (its rows walked inward from
+  // the last). The last
+  // row's height pulled in to seaEdgeMaxM stood the far shore's land (Nordhavn: 150-170 m at 4.35 km) 1.1 km nearer, over
+  // the ring's own fjord, and the apron fell from it to the shell's foot in 120 m: steep sheets facing the battlefield,
+  // which the radial-sheet test cannot catch (the borders lane, 2026-10-08; gauntlet wave 286b, the fjord's bird and apron
+  // views: "pale translucent rectangular slabs ... a box wall standing where mountain walls should continue")
+  const edgeH = new Float32Array(n);
+  for (let c = 0; c < n; c++) {
+    const last = start + c;
+    const lr = Math.hypot(ringEdge.positions[last * 3], ringEdge.positions[last * 3 + 2]);
+    edgeH[c] = ringEdge.heights[last];
+    if (lr <= P.seaEdgeMaxM) continue;
+    for (let i = last - n; i >= 0; i -= n) {
+      const r0 = Math.hypot(ringEdge.positions[i * 3], ringEdge.positions[i * 3 + 2]);
+      if (r0 > P.seaEdgeMaxM) continue;
+      const j = i + n, r1 = Math.hypot(ringEdge.positions[j * 3], ringEdge.positions[j * 3 + 2]);
+      const t = r1 > r0 ? (P.seaEdgeMaxM - r0) / (r1 - r0) : 1;
+      // (never above the last row's own height: at an opening's edge columns the surface at seaEdgeMaxM is the headland's
+      // land, and an edge row raised onto it stood the apron's first faces radially, a hole the radial-sheet test cut —
+      // Saltmere's bird view, a white wedge at the headland's end)
+      edgeH[c] = Math.min(ringEdge.heights[last], ringEdge.heights[i] + (ringEdge.heights[j] - ringEdge.heights[i]) * Math.min(1, Math.max(0, t)));
+      break;
+    }
+  }
   for (let c = 0; c < n; c++) { let m = 0; for (let d = -SPAN; d <= SPAN; d++) m = Math.max(m, outerR[((c + d) % n + n) % n]); runMax[c] = m; }
   for (let c = 0; c < n; c++) { let sum = 0; for (let d = -SPAN; d <= SPAN; d++) sum += runMax[((c + d) % n + n) % n]; baseR[c] = sum / (2 * SPAN + 1); }
   for (let k = 0; k <= n; k++) {
     const c = k % n, i = start + c;
-    const rx = ringEdge.positions[i * 3], rz = ringEdge.positions[i * 3 + 2], eh = ringEdge.heights[i];
+    const rx = ringEdge.positions[i * 3], rz = ringEdge.positions[i * 3 + 2], eh = edgeH[c];
     const a = Math.atan2(rz, rx), ca = Math.cos(a), sa = Math.sin(a);
     // (over a sea opening the edge row stands on the ring's marine faces at seaEdgeMaxM; they run on under the apron)
     const er = Math.hypot(rx, rz), ek = er > P.seaEdgeMaxM ? P.seaEdgeMaxM / er : 1;
@@ -502,16 +537,25 @@ export function buildHorizonPanoramaShellGeometry(ringEdge: HorizonPanoramaOptio
     // nine columns (the outer row is jagged column to column, and the apron reads the atlas by its own elevation from
     // the eye: a jagged apron read a different atlas row per column, one streak each, where a low ring shows it)
     let ehs = 0;
-    for (let d = -4; d <= 4; d++) ehs += ringEdge.heights[start + ((c + d) % n + n) % n];
+    for (let d = -4; d <= 4; d++) ehs += edgeH[((c + d) % n + n) % n];
     ehs /= 9;
     const foot = Math.min(ehs, 20) - 25;
-    P.apronM.forEach((r, j) => {
-      const rr = Math.max(r, edgeR + 40 * (j + 1));
-      const t = (j + 1) / (P.apronM.length + 1);
-      put(ca * rr, ehs + (foot - ehs) * t, sa * rr);
-    });
-    // the wall: at the shell radius, rows at the strip's elevations as seen from the eye
+    // the wall's radius (its foot ends the apron)
     const R = Math.max(P.shellM, edgeR + 160);
+    // the apron's fall never steeper than 30 degrees, row to row and on to the wall's foot: beside a sea opening the running maximum
+    // pushes its rows out to the wall, 40 m apart, and a fixed share per row dropped two thirds of the fall over the last
+    // 120 m — sheets facing the battlefield, under the radial-sheet test's reach (Nordhavn's land columns beside its
+    // inlets; the borders lane, 2026-10-08, gauntlet wave 286b). A row with room to fall keeps its share (every apron
+    // away from an opening is as it was)
+    const apronR = P.apronM.map((r, j) => Math.max(r, edgeR + 40 * (j + 1)));
+    const apronY = P.apronM.map((_, j) => ehs + (foot - ehs) * (j + 1) / (P.apronM.length + 1));
+    // (from the wall's foot inward: each row at most 30 degrees over the next — rows crowded 40 m apart fell 55 m)
+    for (let j = apronY.length - 1; j >= 0; j--) {
+      const below = j === apronY.length - 1 ? foot : apronY[j + 1], beyond = j === apronY.length - 1 ? R : apronR[j + 1];
+      apronY[j] = Math.min(apronY[j], below + APRON_SLOPE_MAX * Math.max(0, beyond - apronR[j]));
+    }
+    apronR.forEach((rr, j) => put(ca * rr, apronY[j], sa * rr));
+    // the wall: at the shell radius, rows at the strip's elevations as seen from the eye
     for (const deg of P.wallElevDeg) put(ca * R, Math.max(foot, P.eyeY + Math.tan(deg * DEG) * R), sa * R);
   }
   const indices: number[] = [];
@@ -773,47 +817,92 @@ ${HAZE_LAW_GLSL}`)
         vec3 fn = cross(dFdx(vPanoWorld), dFdy(vPanoWorld));
         float fl = length(fn), fh = length(fn.xz);
         if (fl > 1e-6 && fh > 0.5 * fl && abs(dot(fn.xz / fh, normalize(vPanoWorld.xz - uPanoEye.xz + vec2(1e-3)))) < 0.45) discard;
+        // (the borders lane, 2026-10-08) an apron face steeper than 60 degrees is a sheet, not ground — the ring's own
+        // land beside a sea opening falling to the shell's foot within a few tens of metres (Nordhavn's inlets, wave
+        // 286b's "pale translucent rectangular slabs"): not drawn, the ring's own rows stand behind it
+        if (vPanoApron > 0.01 && fl > 1e-6 && fh > 0.866 * fl) discard;
         vec3 d = vPanoWorld - uPanoEye;
         float e = atan(d.y, length(d.xz));
         vec2 panoUv = vec2(vPanoU, clamp((e - uPanoElev.x) / (uPanoElev.y - uPanoElev.x), 0.002, 0.998));
         vec4 pano = texture2D(map, panoUv);
         if (pano.a < 0.5) {
-          // over its column's skyline: open (the sky), unless the shell is ground for this camera, on a ray under the
-          // camera's own horizontal — the apron over the bake eye's horizon, or the far earth. A hole under the skyline
-          // (the open water the game draws, the band over a sea's ring) stays open, as does a column with no land; a
-          // camera looking up at the shell's sky (every ground and tank-height view) sees it open as before
-          vec4 skyline = texture2D(uPanoSkyline, vec2(vPanoU, 0.25));
-          if (skyline.a < 0.0 || panoUv.y <= skyline.a) discard;
+          // over its column's skyline: open (the sky), unless the shell is ground for this camera — a ray under the
+          // camera's own horizontal and under the true horizon's dip — the apron over the bake eye's horizon, or the far
+          // earth past the strip; a camera looking up at the shell's sky (every ground and tank-height view) sees it open
+          // as before. Each in the colour of what stands there (the borders lane, 2026-10-08; gauntlet wave 286b's high
+          // overviews, "a pale translucent rectangular slab with a hard vertical edge", "slabs ... like a wall of
+          // curtains": the column's pale rim hazed to one flat panel up to the camera's own horizontal, the open-sea
+          // columns beside it discarded to the dome):
+          //  - the land: the column's own lit country just under its rim (the bake's skyline pass, so it takes the light
+          //    the atlas is baked under, a night's too), through the law over the ground the ray meets past the ground
+          //    its skyline's own ray meets (the rim carries the air to there): no step at the skyline, the land receding;
+          //  - the sea, in an open-sea column and in a hole under a skyline, past the game's own water (the sea apron,
+          //    opaque to ${SEA_FADE_M} m from the centre; inside it the water shows through): the sky's mirror at grazing
+          //    incidence (a calm sea's far band sits a little under the sky over it, bluer: shallowWater.ts), through the
+          //    same law over the ray's reach past the shell;
+          //  - feathered across an opening's edge columns by the share of open-sea columns within 2.8 degrees;
+          //  - the ray's ground distance the earth's own: it meets the datum's sphere 2h / (tan δ + √(tan²δ − 2h/R)) out,
+          //    and over the dip, √(2h/R) (0.56 degrees from 300 m), none — the sky the dome draws there.
+          vec4 skyline = texture2D(uPanoSkyline, vec2(vPanoU, 0.125));
           vec3 vd = vPanoWorld - cameraPosition;
-          bool apron = vPanoApron > 0.5 && e > 0.0;
-          if (vd.y >= 0.0 || !(apron || uPanoHaze.w > 0.5)) discard;
-          vec3 ground = pow(max(skyline.rgb, vec3(0.0)), vec3(2.2));
-          if (!apron) {
-            // (its land the column's skyline right over it, the wide average above: one colour per column, constant up
-            // the ray, stood as bars to the horizon in the clear air — Verdant and Oasis in the lab)
-            vec3 wide = pow(max(texture2D(uPanoSkyline, vec2(vPanoU, 0.75)).rgb, vec3(0.0)), vec3(2.2));
-            // the far earth: the law over the reach past the strip (its far country already carries the air to 9 km)
-            // at which the camera's ray meets the ground, the layer's density between there and the ray's height at
-            // the strip's end, toward the column's own target
+          if (vd.y >= 0.0) discard;
+          bool landCol = skyline.a >= 0.0;
+          bool overLand = landCol && panoUv.y > skyline.a;
+          vec4 under = texture2D(uPanoSkyline, vec2(vPanoU, 0.625));
+          vec4 underWide = texture2D(uPanoSkyline, vec2(vPanoU, 0.875));
+          float skyE = mix(uPanoElev.x, uPanoElev.y, max(skyline.a, 0.0));
+          // (the land over 2.8 degrees, the 45-degree average from half a degree over the skyline — one column's colour
+          // constant up the ray stood as a bar to the horizon in the clear air, Verdant and Oasis in the lab — and where
+          // few columns within 2.8 degrees hold land)
+          vec3 land = mix(pow(max(under.rgb, vec3(0.0)), vec3(2.2)), pow(max(underWide.rgb, vec3(0.0)), vec3(2.2)),
+            max(smoothstep(0.0, 0.0087, e - skyE), 1.0 - smoothstep(0.05, 0.3, underWide.a)));
+          if (vPanoApron > 0.5 && e > 0.0) {
+            // the apron over the bake eye's horizon: ground at its own distance (the aerial pass hazes it); under a
+            // skyline (the water the game draws) and over an open-sea column it stays open
+            if (!overLand) discard;
+            diffuseColor.rgb *= land;
+          } else {
+            if (uPanoHaze.w < 0.5) discard;
             vec3 rd = vd / length(vd);
-            float meet = (cameraPosition.y - uPanoHaze.z) / max(-rd.y, 1e-5);
-            float stripEnd = min(meet, ${P.outerM.toFixed(1)});
-            float reach = max(0.0, meet - ${P.outerM.toFixed(1)});
-            float layer = hazeLayerMean(max(cameraPosition.y + rd.y * stripEnd - uPanoHaze.z, 0.0) * uPanoHaze.y, 0.0);
-            vec3 T = hazeTransmittance(uPanoHaze.x, reach, layer, uPanoHazeChroma);
+            float flatL = max(length(rd.xz), 1e-5);
+            float h = max(cameraPosition.y - uPanoHaze.z, 0.5);
+            float tanD = -rd.y / flatL;
+            float disc = tanD * tanD - 2.0 * h / ${EARTH_R};
+            if (disc <= 0.0) discard;
+            float x = 2.0 * h / (tanD + sqrt(disc));
+            float slant = x * sqrt(1.0 + tanD * tanD);
+            bool seaRay = !overLand;
+            if (seaRay) {
+              // (a column with no land and no open sea near it — a far country under the cloud deck — stays open)
+              if (!landCol && under.a < 0.004) discard;
+              if (length(cameraPosition.xz + rd.xz / flatL * x) < ${SEA_FADE_M}) discard;
+            }
+            float reachSea = max(0.0, slant - length(vd)), reachLand = reachSea;
+            if (landCol) {
+              vec3 sp = vec3(vPanoWorld.x, uPanoEye.y + tan(skyE) * length(vPanoWorld.xz - uPanoEye.xz), vPanoWorld.z) - cameraPosition;
+              float sFlat = max(length(sp.xz), 1e-5), sTan = -sp.y / sFlat, sDisc = sTan * sTan - 2.0 * h / ${EARTH_R};
+              float sx = sTan > 0.0 && sDisc > 0.0 ? 2.0 * h / (sTan + sqrt(sDisc)) : x;
+              reachLand = max(0.0, slant - sx * sqrt(1.0 + sTan * sTan));
+            }
+            float layer = hazeLayerMean(max(vPanoWorld.y - uPanoHaze.z, 0.0) * uPanoHaze.y, 0.0);
+            vec3 TL = hazeTransmittance(uPanoHaze.x, reachLand, layer, uPanoHazeChroma);
+            vec3 TS = hazeTransmittance(uPanoHaze.x, reachSea, layer, uPanoHazeChroma);
             float a = vPanoU * 6.2831853;
             float toward = 0.5 + 0.5 * (cos(a) * uPanoSunH.x + sin(a) * uPanoSunH.y);
-            ground = mix(ground, wide, smoothstep(0.0, 0.0087, e - mix(uPanoElev.x, uPanoElev.y, skyline.a)));
-            // toward the horizontal the land goes into the screen's own horizon (the pairs of bfc773bb1 and f61a53f3d:
-            // the law's target from the bake, and the atmosphere's summary bands, both landed 0.08-0.27 over the sky
-            // the frames show). It is the dome as sky.ts draws it just over the horizon — the sky-view LUT on this
-            // bearing, greyed by the deck (the dome's own greying on the dome's own uniforms), through the knee, at
-            // the sky's intensity — drawn toward the aerial pass's target as the overcast closes (the cloud layer's far
-            // rows, pulled to that target, are the horizon under a deck). The in-scatter target is the colour the
-            // aerial pass turns into it: its own target along this fragment's ray and its own transmittance over the
-            // camera's distance (σ, the layer from the ground under the camera, the per-channel extinction)
+            // toward the horizon the land and the sea go into the screen's own horizon (the pairs of bfc773bb1 and
+            // f61a53f3d: the law's target from the bake, and the atmosphere's summary bands, both landed 0.08-0.27 over the
+            // sky the frames show). It is the dome as sky.ts draws it just over the horizon — the sky-view LUT on this
+            // bearing, greyed by the deck (the dome's own greying on the dome's own uniforms), through the knee, at the
+            // sky's intensity — drawn toward the aerial pass's target as the overcast closes (the cloud layer's far rows,
+            // pulled to that target, are the horizon under a deck). The in-scatter target is the colour the aerial pass
+            // turns into it: its own target along this fragment's ray and its own transmittance over the camera's
+            // distance (σ, the layer from the ground under the camera, the per-channel extinction)
             vec3 inScatter = mix(uPanoHazeAnti, uPanoHazeToward, toward * toward);
+            // the sky the sea mirrors: the law's target without a published sky, else the dome on the mirrored ray
+            vec3 mirror = inScatter;
             if (uPanoSkyOn > 0.5) {
+              vec3 mdir = normalize(vec3(rd.x, -rd.y, rd.z));
+              mirror = atmoKnee(panoDeckGrey(atmoSky(mdir), mdir)) * uAtmoIntensity;
               const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
               vec3 skyT = atmoSkyVisible(normalize(vec3(rd.x, max(rd.y, 0.02), rd.z)));
               float tintL = max(dot(uPanoTint, LUMA), 1e-4);
@@ -846,9 +935,10 @@ ${HAZE_LAW_GLSL}`)
               vec3 Tp = hazeTransmittance(uPanoSigmaPost, length(vd), postLayer, uPanoHazeChroma);
               inScatter = max((screen - aerialT * (1.0 - Tp)) / max(Tp, vec3(0.05)), vec3(0.0));
             }
-            ground = ground * T + inScatter * (1.0 - T);
+            vec3 landFill = land * TL + inScatter * (1.0 - TL);
+            vec3 seaFill = mirror * vec3(${SEA_MIRROR}) * TS + inScatter * (1.0 - TS);
+            diffuseColor.rgb *= mix(landFill, seaFill, landCol && !overLand ? 1.0 : under.a);
           }
-          diffuseColor.rgb *= ground;
         } else {
           // the atlas holds display-encoded colour (more precision in the shadows), premultiplied so its filtered edge
           // samples carry no black from the sky texels: divided back out, then back to linear
@@ -870,7 +960,7 @@ ${HAZE_LAW_GLSL}`)
       }
       #endif`);
   };
-  material.customProgramCacheKey = () => 'horizon-panorama-v4';
+  material.customProgramCacheKey = () => 'horizon-panorama-v5';
   return { material, air };
 }
 
@@ -1266,42 +1356,67 @@ float farField(vec2 p) {
 `;
 
 /** pass 4: per strip column, its highest opaque texel — its colour (display-encoded, out of the premultiplication) and
- *  its v; v -1 where the column holds no land */
+ *  its v; v -1 where the column holds no land. Its second row (the borders lane, 2026-10-08, the far earth): the land
+ *  just under that rim — the mean of the opaque texels 0.15 to 1.2 degrees under it, the column's own lit country rather
+ *  than its crest (a sunlit or snow-capped rim, and the palest of its air) — and, where the column holds no land, -2
+ *  for open sea (the ring's sea weight under it) and -1 otherwise (a far country under the cloud deck) */
 const SKYLINE_FRAGMENT = /* glsl */`
 precision highp float;
 varying vec2 vUv;
 uniform sampler2D uStrip;
+uniform sampler2D uEdge;
 uniform float uRows;
 void main() {
   vec4 found = vec4(0.0, 0.0, 0.0, -1.0);
+  float rim = -1.0;
   for (int j = 0; j < 4096; j++) {
     if (float(j) >= uRows) break;
     float v = (uRows - float(j) - 0.5) / uRows;
     vec4 c = textureLod(uStrip, vec2(vUv.x, v), 0.0);
-    if (c.a >= 0.5) { found = vec4(c.rgb / c.a, v); break; }
+    if (c.a >= 0.5) { found = vec4(c.rgb / c.a, v); rim = float(j); break; }
   }
-  gl_FragColor = found;
+  if (vUv.y < 0.5) { gl_FragColor = found; return; }
+  vec3 sum = vec3(0.0);
+  float n = 0.0;
+  if (rim >= 0.0) {
+    for (int k = 3; k <= 24; k++) {
+      float j = rim + float(k);
+      if (j >= uRows) break;
+      vec4 c = textureLod(uStrip, vec2(vUv.x, (uRows - j - 0.5) / uRows), 0.0);
+      if (c.a >= 0.5) { sum += c.rgb / c.a; n += 1.0; }
+    }
+  }
+  float open = found.a < 0.0 && texture2D(uEdge, vec2(vUv.x, 0.5)).g > 0.5 ? -2.0 : -1.0;
+  gl_FragColor = vec4(n > 0.0 ? sum / n : found.rgb, found.a < 0.0 ? open : found.a);
 }
 `;
 
 /** pass 5: the skyline's colour averaged among the columns that hold land, each column keeping its own v — row 0 over 2.8
  *  degrees either side (one bright peak's column would stand as a bar up the far earth), row 1 over 45 degrees (the far
- *  earth's land past the strip: the clear air carried row 0's bars to the horizon, Verdant and Oasis in the lab) */
+ *  earth's land past the strip: the clear air carried row 0's bars to the horizon, Verdant and Oasis in the lab). Rows 2
+ *  and 3 (the borders lane, 2026-10-08): the land under the rim the same way, over 2.8 and 45 degrees, row 2 keeping the
+ *  share of open-sea columns within 2.8 degrees and row 3 the share of land ones (the far earth feathers its land and its
+ *  sea across an opening's edge columns by them) */
 const SKYLINE_BLUR_FRAGMENT = /* glsl */`
 precision highp float;
 varying vec2 vUv;
 uniform sampler2D uSkyline;
 uniform float uColumns;
 void main() {
-  vec4 own = textureLod(uSkyline, vec2(vUv.x, 0.5), 0.0);
-  float stride = vUv.y < 0.5 ? 1.0 : 16.0;
+  float row = floor(vUv.y * 4.0);
+  float src = row < 1.5 ? 0.25 : 0.75;
+  vec4 own = textureLod(uSkyline, vec2(vUv.x, src), 0.0);
+  float stride = mod(row, 2.0) < 0.5 ? 1.0 : 16.0;
   vec3 sum = vec3(0.0);
-  float n = 0.0;
+  float n = 0.0, landN = 0.0, seaN = 0.0;
   for (int k = -64; k <= 64; k++) {
-    vec4 c = textureLod(uSkyline, vec2(vUv.x + float(k) * stride / uColumns, 0.5), 0.0);
+    vec4 c = textureLod(uSkyline, vec2(vUv.x + float(k) * stride / uColumns, src), 0.0);
     if (c.a >= 0.0) { sum += c.rgb; n += 1.0; }
+    float near = textureLod(uSkyline, vec2(vUv.x + float(k) / uColumns, 0.75), 0.0).a;
+    landN += near >= 0.0 ? 1.0 : 0.0;
+    seaN += near < -1.5 ? 1.0 : 0.0;
   }
-  gl_FragColor = vec4(n > 0.0 ? sum / n : own.rgb, own.a);
+  gl_FragColor = vec4(n > 0.0 ? sum / n : own.rgb, row < 1.5 ? own.a : row < 2.5 ? seaN / 129.0 : landN / 129.0);
 }
 `;
 
@@ -2062,9 +2177,9 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     // shade map and the knob is on; QA: PANO_CLOUD_SHADE 0 bakes none)
     const auxRT = options.cloudShade && STRIP_AUX_FRAGMENT && lightTune('PANO_CLOUD_SHADE', 1) > 0
       ? target(Math.max(64, res.width >> 2), Math.max(16, res.height >> 2), THREE.HalfFloatType, false) : null;
-    const skylineRawRT = target(res.width, 1, THREE.HalfFloatType, false);
+    const skylineRawRT = target(res.width, 2, THREE.HalfFloatType, false);
     skylineRawRT.texture.minFilter = skylineRawRT.texture.magFilter = THREE.NearestFilter;
-    const skylineRT = target(res.width, 2, THREE.HalfFloatType, false);
+    const skylineRT = target(res.width, 4, THREE.HalfFloatType, false);
     skylineRT.texture.name = 'horizon-panorama-skyline';
     const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
     quad.frustumCulled = false;
