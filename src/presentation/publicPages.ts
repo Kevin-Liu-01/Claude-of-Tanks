@@ -1,5 +1,8 @@
+import { installPublicChunkRecovery } from './publicChunkRecovery.ts';
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
 import { t } from '../ui/i18n.ts';
+
+installPublicChunkRecovery();
 
 const responsiveLayout = installResponsiveLayout();
 const isCompactSurface = (): boolean => {
