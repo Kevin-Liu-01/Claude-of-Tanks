@@ -431,7 +431,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     }
     finishFalls(structureId);
     notePunched(structureId, x, y, z);
-    run(seam, 0, false, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
+    // (wave 322 / the stack strips: a strike's pieces strewed the yard thirty metres out like confetti) at half the kit's
+    // throw, never up: they fall out of the hole and lie at the wall's foot
+    run(seam, 0, false, (out) => seam.breach(spec, dampPieces(out, 0.5)), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
   }
   const nearPunched = (id: number, x: number, y: number, z: number, within: number): boolean =>
     (punched.get(id) ?? []).some(([hx, hy, hz]) => Math.hypot(hx - x, hy - y, hz - z) < within);
@@ -831,7 +833,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         o.scars?.clearStructure(e.structureId);
         if (seam) {
           if (settled) seam.touchShadows();
-          else falling.push({ seam, until: o.now() + (cascaded ? 0.3 : topple ? topple.landS + 0.3 : COLLAPSE_S) });
+          else falling.push({ seam, until: o.now() + (cascaded ? 0.3 : topple ? topple.landS + 1.7 : COLLAPSE_S) });
         }
       }
       if (!seam) return;

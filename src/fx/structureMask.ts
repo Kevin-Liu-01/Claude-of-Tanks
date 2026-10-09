@@ -144,7 +144,9 @@ vStructRoof = 0.0;` : ''}
       bool topple = SF.x < 0.0;
       float hinge = -SF.x - 1.0;
       float omega = max( ${TOPPLE_MIN_OMEGA.toFixed(3)}, sqrt( 14.7 / max( 2.0, SA.y - hinge ) ) );
-      float toppleEnd = topple ? ${TOPPLE_T0.toFixed(3)} + ${TOPPLE_U_LAND.toFixed(3)} / omega + 0.12 : 1e9;
+      // (wave 322: "the fallen shaft disappears") it lies a second and a half in its landing dust before the kit's drums,
+      // laid at the landing beside it, are all that is left
+      float toppleEnd = topple ? ${TOPPLE_T0.toFixed(3)} + ${TOPPLE_U_LAND.toFixed(3)} / omega + 1.5 : 1e9;
       if ( t >= ${COLLAPSE_S.toFixed(2)} || t >= toppleEnd ) {
         // down: every vertex onto the pivot (the stubs and the pile are the stage builder's own meshes)
         transformed = ( inverse( sw ) * vec4( SB.xyz, 1.0 ) ).xyz;

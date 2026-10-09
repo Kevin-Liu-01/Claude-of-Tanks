@@ -118,7 +118,9 @@ export function lookFromAnatomy(anatomy: AnatomyLike | null | undefined): Struct
   for (const slot of anatomy.rubble) {
     if (!(slot.share > 0)) continue;
     const t = slot.tint;
-    const white = Math.min(t[0], t[1], t[2]) > 0.85;
+    // (wave 322: a brick stack's dust and chips came out white) a textured bucket's tint is a light weathering wash
+    // over its map, not its colour: anything this pale takes the material's own
+    const white = Math.min(t[0], t[1], t[2]) > 0.6;
     const base = FRACTURE_BASE[slot.material] ?? FALLBACK_LOOK.rubble[1]!.color;
     rubble.push({ material: slot.material, color: white ? base : [t[0], t[1], t[2]], share: slot.share });
   }
