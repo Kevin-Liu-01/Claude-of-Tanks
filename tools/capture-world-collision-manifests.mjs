@@ -120,8 +120,21 @@ if (options.node) {
   const index = JSON.parse(readFileSync(new URL('index.json', collisionManifestDirectory), 'utf8'));
   let drifted = 0;
   const { decodeCollisionManifest } = await import('../server/collisionManifestCodec.ts');
+  // 2026-10-07 (map-vehicles lane): COT_DRAWN_GEOMETRY_SHAPE=1 (the drift receipt sets it) also walks every node of
+  // the built props and vegetation that holds a geometry for V8's fast properties (src/world/geometryStreams.ts), on
+  // this same build, so the shape check costs no second world build; one line per map, read by the receipt
+  const shape = process.env.COT_DRAWN_GEOMETRY_SHAPE === '1' ? await import('../src/world/geometryStreams.test-support.mjs') : null;
+  const inspect = shape ? ({ mapId, flora, dressing }) => {
+    const offenders = [];
+    const walked = shape.auditDrawnGeometry(flora.group, 'vegetation', offenders)
+      + shape.auditDrawnGeometry(dressing.group, 'props', offenders);
+    let standIns = 0;
+    dressing.group.traverse((node) => { if (/^destructible-.+-shadow$/.test(node.name)) standIns++; });
+    console.log(`drawn-shape ${mapId}: ${walked} walked, ${standIns} stand-ins, ${offenders.length} offenders`
+      + (offenders.length ? ` (${offenders.slice(0, 6).join('; ')})` : ''));
+  } : undefined;
   for (const mapId of options.mapIds) {
-    const data = await buildWorldCollisionData(mapId);
+    const data = await buildWorldCollisionData(mapId, { inspect });
     if (!options.check) { publish(mapId, data); continue; }
     const encoded = encodeCollisionManifest(readCollisionManifest(data));
     const text = JSON.stringify(encoded);

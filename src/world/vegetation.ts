@@ -6,6 +6,7 @@
 // Contract: docs/ARCHITECTURE.md §3.2; visuals per docs/research/graphics-aaa.md §8.
 
 import * as THREE from 'three';
+import { keepStreams } from './geometryStreams.ts';
 import { RAIL_CUTTING_SEED_NORMAL_Y, railCuttingSeedAdmits } from './railSpurs.ts';
 import { shapeFarTreeBase } from './farTreeBase.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -2851,7 +2852,7 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   const hue0 = pal.cardHue ?? hueBase, sat0 = pal.cardSat ?? satBase;
   // a palm's frond atlas holds one frond (makePalmFrondAtlas); its dead fronds (shade 0) are straw-brown
   const palm = profile.family === 'palm';
-  const cards = weldGrownGeometry(emitLeafCards(skeleton, {
+  let cards = weldGrownGeometry(emitLeafCards(skeleton, {
     tiles: palm ? 1 : SPRAY_ATLAS_TILES, rng: mulberry32((seed ^ 0x5eed) >>> 0), rows: growthCardRows(profile.family),
     stemWidth: GROWTH_CROWN_STEM_WIDTH,
     tint(shade, site, r) {
@@ -2870,7 +2871,9 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
     },
   }));
   // trees round 2: a palm's fronds keep their authored arch — no billboard frame (foliageWindHook COT_LEAF_BILLBOARD)
-  if (palm) { cards.deleteAttribute('aAxis'); cards.deleteAttribute('aLeaf'); }
+  // (built fresh without the frame's two streams, never trimmed with deleteAttribute: the cards are drawn every frame,
+  // and an attributes object that lost keys slows three's per-frame update of every geometry, geometryStreams.ts)
+  if (palm) cards = keepStreams(cards, Object.keys(cards.attributes).filter((name) => name !== 'aAxis' && name !== 'aLeaf'));
   // the crown's own shadow hull rides on the trunk (createTreeMeshPools builds the pool's proxy from it); a mangrove's
   // stilt arches cast with it
   // trees round 2: the hull's wood, then its crown masses, each with the share of the sun its sprays let through (the

@@ -7,6 +7,7 @@ import { box, jitterUV } from './propGeometry.ts';
 import { boxClearOfPoints, boxClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
 import { terrainNearMeshHeightAt } from './terrain.ts';
 import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.ts';
+import { polygonGap, shapePolygons } from './parkedVehicleSeparation.ts';
 
 // Execute the actual public scheduling wrapper with an owned generator fixture.
 // Geometry/output equivalence is separately checked by the whole-world profile;
@@ -296,13 +297,14 @@ for (const failureAt of ['tick', 'import', 'generator']) {
   const end = source.indexOf('\n      function* placeWreck(', begin);
   assert.ok(begin > 0 && end > begin);
   const code = stripTypeScriptTypes(source.slice(begin, end));
-  const make = (cache, disposed) => new Function('bakeCache', 'workerWrecks', 'seed', 'disposeWreckGeometry',
-    code + '\nreturn bakeFor;')(cache, true, 2002, geo => disposed.push(geo));
+  // P4 (the map-vehicles lane): a bake request carries the paint the map's tanks wore (wrecks.ts wreckRemnantPaint)
+  const make = (cache, disposed) => new Function('bakeCache', 'workerWrecks', 'seed', 'disposeWreckGeometry', 'wreckRemnantPaint', 'mapId',
+    code + '\nreturn bakeFor;')(cache, true, 2002, geo => disposed.push(geo), (id) => (id === 'verdant' ? 0x4e5834 : -1), 'verdant');
   const cache = new Map(), disposed = [], geo = {}, shadowGeo = {};
   const bake = make(cache, disposed);
   const abandoned = bake('k2', true);
   const step = abandoned.next().value;
-  assert.deepEqual(step.wreckBake.options, { seed: 2002, pop: true });
+  assert.deepEqual(step.wreckBake.options, { seed: 2002, pop: true, remnant: 0x4e5834 });
   step.wreckBake.result = { geo, shadowGeo };
   abandoned.return();
   assert.deepEqual(disposed, [geo, shadowGeo]);
@@ -435,6 +437,11 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     THREE, placeWreckCollision, placeWreckShellCollision, _quat: Object.assign(new THREE.Quaternion(), { setFromUnitVectors() { return this; } }), _upAxis: {},
     _posv: { set() { return this; } },
     setObbShape: record => record, cloneCollisionRecord: record => structuredClone(record),
+    // (2026-10-08) a hulk refuses a seat that meets a tall solid or a tree (props.ts hulkMeetsTallSolid): the fixture's
+    // ground holds neither
+    sceneryTrees: [], shapePolygons, polygonGap,
+    // nor one on a match objective's disc (props.ts hulkOnObjective): the fixture's map has none
+    mapId: 'fixture', MATCH_OBJECTIVE_LAYOUTS: {},
   };
   const api = new Function('dependencies', `
     const { ${Object.keys(dependencies).join(', ')} } = dependencies;
