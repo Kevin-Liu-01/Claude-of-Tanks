@@ -17,6 +17,7 @@ const entrypoints = [
   'site/docs-audio.html',
   'site/docs-interface.html',
   'site/docs-studio.html',
+  'site/docs-filming.html',
   'site/gallery.html',
 ];
 

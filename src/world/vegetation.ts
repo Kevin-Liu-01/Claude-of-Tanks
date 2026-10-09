@@ -388,6 +388,8 @@ export interface VegetationRuntime {
   /** Fell a trunk toward (dx, dz); `settled` lays it at its final pose at once (state that fell before this viewer looked). */
   crushTree(record: TreeObstacle, dx: number, dz: number, settled?: boolean): boolean;
   resetToppled(): void;
+  /** Step only the felled trunks' falls by `dt` (update runs them; the Scene Studio runs them on its timeline). */
+  advanceToppled(dt: number): void;
   _clusters: VegetationDisc[];
   /** Trees round 2: the fraction of a stand's own outline a point stands at (the receipts' woodlot law). */
   _standOutline(index: number, x: number, z: number): number;
@@ -8489,7 +8491,7 @@ function* vegetationBuildSteps(
   }
   rimTrees.length = 0;
   return { group, update, dispose, getGrassWorkState, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
-    crushTree, resetToppled, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
+    crushTree, resetToppled, advanceToppled: (dt: number) => { if (treeCrushAnims.length) updateTreeCrush(dt); }, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _woodsMask: woodsMask,
     _rimMix: veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,
     warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false) };

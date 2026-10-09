@@ -195,7 +195,7 @@ process.chdir(ROOT); // vite.config.ts resolves its inputs from the working dire
 const { default: config } = await import(pathToFileURL(resolve(ROOT, 'vite.config.ts')).href);
 const pages = htmlInputs(config);
 const topicPages = pages.filter((file) => /^site\/docs-[a-z]+\.html$/.test(file));
-assert.equal(topicPages.length, 13, `the manual topics and their fallback: ${topicPages.join(', ')}`);
+assert.equal(topicPages.length, 14, `the thirteen manual topics and their fallback: ${topicPages.join(', ')}`);
 const en = readJson('src/ui/i18nCatalog.en-US.json');
 const zh = readJson('src/ui/i18nCatalog.zh-CN.json');
 const real = scanPageCatalogs({ root: ROOT, pages, english: en });

@@ -110,6 +110,7 @@ Primary policy links:
 - Audio and battlefield FX: https://cot.kevinliu.studio/docs/audio
 - Interface and controls: https://cot.kevinliu.studio/docs/interface
 - Scene Studio and capture: https://cot.kevinliu.studio/docs/studio
+- Filming the media: https://cot.kevinliu.studio/docs/filming
 - Repository: https://github.com/Kevin-Liu-01/Claude-of-Tanks
 - Creator: https://github.com/Kevin-Liu-01
 - Sitemap: https://cot.kevinliu.studio/sitemap.xml

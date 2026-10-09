@@ -1779,7 +1779,8 @@ export class LateFxPass extends Pass {
   readonly copyQuad: FullScreenQuad;
   directColorSource: SceneAerialPass | null = null;
   sceneMatrixSource: SceneAAPass | null = null;
-  private readonly renderSceneView: LateFxSceneView;
+  /** Also the Studio cinema lens's FX coverage view (cinemaPost.ts): one stateless view of the same scene. */
+  readonly renderSceneView: LateFxSceneView;
 
   constructor(
     scene: THREE.Scene,

@@ -38,6 +38,8 @@ killcam-aware handoff to the after-action report;
 paint;
 `studioPanel.ts` owns the typed Scene Studio workspace, actor/effect/timeline
 controls, capture/export surface, and production archive;
+`studioPicturePanel.ts` owns its Picture section (look, grade/finish sliders,
+letterbox, depth of field), a thin view over `__STUDIO.setPicture()`;
 `settings.ts` and `touchControls.ts` own input-facing UI; `transition.ts`,
 `battleLoad.ts`, and `endScreen.ts` own flow beats.
 `i18n.ts` owns locale detection and runtime formatting; the paired

@@ -70,7 +70,8 @@ import {
   reportSustainedOverload, setPresetName, setMobilePresetName,
   noteGpuRenderer, getDeviceTier, shouldReleaseInactivePhaseGpu, applyGraphicsRecovery, onPresetChange,
 } from './engine/quality.ts';
-import { createSky } from './engine/sky.ts';
+import { createSky, DEFAULT_SKY_PRESET } from './engine/sky.ts';
+import { deriveCloudLayerPreset } from './engine/cloudPresets.ts';
 import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
 import { loadGroundedLightModel } from './engine/lightModelCore.ts';
 import { loadCloudscapeLayers } from './engine/cloudPresets.ts';
@@ -3260,8 +3261,12 @@ await bootStage('post', async () => {
 // window.__STUDIO (schema in docs/STUDIO.md). main.ts only hands it these
 // integration seams plus the one tick() branch above — entry keys, panel,
 // actors, effects, capture all live in the studio module.
+let studioLightRuntime: Promise<import('./game/studioLightRuntime.ts').StudioLightRuntime> | null = null;
+let studioLightLive: import('./game/studioLightRuntime.ts').StudioLightRuntime | null = null;
 const studioAccess = createStudioAccess({
-  loadModule: () => import('./game/studio.ts'),
+  // the Studio's own catalog strings, which the game's catalogs leave out, load beside its chunk
+  loadModule: () => Promise.all([import('./game/studio.ts'), import('./ui/studioStrings.ts').then((strings) => strings.ensureStudioStrings())])
+    .then(([module]) => module),
   preloadFxModule,
   ensureFxRuntime,
   prepareRuntime: () => lighting.setFarCascadeDormant(false),
@@ -3275,14 +3280,50 @@ const studioAccess = createStudioAccess({
     }),
     setWorldDormant,
     setGarageSpots, setGarageSunTrim, enterGarage,
-    prepareStudioAtmosphere: async (time: import('./engine/battleWeatherPolicy.ts').BattleTimeOfDay) => {
-      await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, [time]);
+    // media r5: Studio times of day and sun direction. The battle owner keeps the authored day (its Garage-return
+    // reset restores the sky); the demand-loaded Studio light runtime applies the plan over it and restores the
+    // world's baked horizon light on exit.
+    prepareStudioAtmosphere: async (
+      time: import('./game/studioLight.ts').StudioTimeOfDay,
+      light: import('./game/studioLight.ts').StudioLight | null = null,
+    ) => {
+      await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, ['day']);
+      studioLightRuntime ??= import('./game/studioLightRuntime.ts').then(({ createStudioLightRuntime }) => {
+        const runtime = createStudioLightRuntime({
+          scene,
+          getWorld: currentWorld,
+          cloudIdentity: (authored) => {
+            const layer = deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...authored } as Parameters<typeof deriveCloudLayerPreset>[0]);
+            return { offset: [layer.offset[0], layer.offset[1]], windDirRad: layer.windDirRad };
+          },
+          applySky: (preset, keyDirection) => {
+            sky.applyPreset(preset, scene);
+            lighting.setSun(keyDirection ?? sky.sunDir, preset);
+            battleWatchdogRadianceScale = preset.skyIntensity ?? 1;
+            baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
+            worldRuntime.markEnvironmentPrepared(currentWorld());
+          },
+          resetTemporalHistory: () => post.taa?.resetHistory(),
+          nightLightBudget: () => getDeviceTier() === 'mobile' ? { spotLights: 2, pointLights: 1 } : { spotLights: 4, pointLights: 2 },
+        });
+        studioLightLive = runtime;
+        return runtime;
+      }).catch((error: unknown) => {
+        studioLightRuntime = null; // a failed chunk fetch stays retryable
+        throw error;
+      });
+      return (await studioLightRuntime).apply(time, light);
     },
+    restoreStudioAtmosphere: () => studioLightLive?.restore(),
+    getStudioLight: () => studioLightLive,
     warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
     // main.ts owns both direct boot and the first lazy F8 handoff.
     autoEnter: false,
     fx: studioFx,
+    // Studio never enters scoped sniper view, so the permanent sniper fill is
+    // idle there: lend it for flares/night firelight (scene light count fixed).
+    borrowLight: () => sniperFill.light,
   }),
   getPhase: () => game.phase,
   keyTarget: window,

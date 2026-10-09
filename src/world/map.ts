@@ -191,6 +191,13 @@ export interface WorldRuntime {
     options?: { settled?: boolean },
   ): boolean;
   resetDestructibles(): void;
+  /**
+   * Step only the destruction's clock — props' falls, tosses and loose dressing, the felled trunks — by `dt` seconds
+   * (2026-10-06: the Scene Studio's hulls crush what they overrun on its timeline, its world update held at dt 0).
+   */
+  advanceDestruction(dt: number): void;
+  /** The felled trees' falls alone (the Studio: its props fall on their own clock, updateProps). */
+  advanceToppledVegetation(dt: number): void;
   spawnPoints: {
     player: { pos: [number, number, number]; yaw?: number };
     enemies: Array<{ pos: [number, number, number]; yaw?: number }>;
@@ -747,6 +754,11 @@ function assembleWorld(
       if (props.resetDestructibles) props.resetDestructibles();
       if (vegetation.resetToppled) vegetation.resetToppled();
     },
+    advanceDestruction: (dt: number) => {
+      props.advanceDestructibles?.(dt);
+      vegetation.advanceToppled?.(dt);
+    },
+    advanceToppledVegetation: (dt: number) => { vegetation.advanceToppled?.(dt); },
     spawnPoints,
     /** @returns {{roads:Array, buildings:Array, tacticalBeats:Array, treeClusters:Array, waterOrSoft:Array}} minimap features */
     getMinimapFeatures: () => ({

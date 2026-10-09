@@ -7499,6 +7499,11 @@ function* createSplatMaterialSteps(
     shader.uniforms.uRoadRuts = { value: new THREE.Vector3(...(S.roadRuts ?? [1, 0, 0])) };
     // round 42: the sun the vista ring shades with, and the sky-light weight for steep faces turned from it
     shader.uniforms.uSunDirW = { value: skySunDirection(sky) };
+    // media r5: the first compile's sun uniform is shared by every later program variant (a light-count recompile
+    // included), so Scene Studio can turn the wall sky light with a moved sun and restore it; battles keep the
+    // authored value in it, exactly as each compile computed before
+    if (mat.userData.sunDirUniform) Object.assign(shader.uniforms, { uSunDirW: mat.userData.sunDirUniform });
+    else mat.userData.sunDirUniform = shader.uniforms.uSunDirW;
     // (2026-10-04: the light rig's live gain — round 42's on the legacy rig, none on the grounded rig, groundBounce.ts
     // WALL_SKY_LIFT_LEGACY; a map's own splat.wallSkyLift stays its own on both)
     shader.uniforms.uWallSkyLift = S.wallSkyLift != null ? { value: S.wallSkyLift } : terrainWallSkyLift;
