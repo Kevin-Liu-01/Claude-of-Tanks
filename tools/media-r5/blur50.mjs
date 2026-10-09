@@ -54,10 +54,11 @@ export const FRAMES = [
   S(18, 'b18-crane-ice', 'Crane rise', 'Crane rising behind the column: the lake opens beneath the KF51s',
     { set: 'glacier-dawn-lake', film: 't06-lake-crane', tMs: 2200, exposureMs: 33 }),
   // 2026-10-08 (the fifty frames' review on PR #9's maps): the set's gorge-wide pan held the hero 111 m out, a sliver on
-  // the deck. Now from the gorge itself: a long lens 60 m off the viaduct and 7 m under its deck (top 1.7 m, absolute
-  // heights), panning up at the column against the sky with the arches below
-  S(19, 'b19-viaduct-pan', 'Panning shot', 'C2 Ariete column on the 200 m viaduct, panned from the gorge',
-    { set: 'aegis-morning-viaduct', shot: { durMs: 3200, speed: 6, absY: true, cam: RIG.pan({ side: -60, along: 6, lift: -5, fov: 13, look: [0, 4, 3.2] }) }, tMs: 1600, exposureMs: 40 }),
+  // the deck; a lens 7 m under the deck then saw only the viaduct's side wall with a turret over it. Now across the
+  // gorge just over the deck (top 1.7 m, absolute heights): a 14° lens 60 m off, 4 m over the deck, panning with the
+  // column over the parapet
+  S(19, 'b19-viaduct-pan', 'Panning shot', 'C2 Ariete column on the 200 m viaduct, panned from across the gorge',
+    { set: 'aegis-morning-viaduct', shot: { durMs: 3200, speed: 6, absY: true, cam: RIG.pan({ side: -60, along: 6, lift: 6, fov: 14, look: [0, 4, 3.0] }) }, tMs: 1600, exposureMs: 40 }),
   S(20, 'b20-fireball-silhouette', 'Explosion', 'HE fireball over the Verdant farmsteads as the T-14 line advances',
     { set: 'verdant-day-assault', lineup: [CAST.t14, CAST.t90m, CAST.t14, CAST.t90m, CAST.kurganets], picture: { preset: 'ember', exposure: -0.35 }, shot: still(1700, { side: 1, along: -24, lift: 0.45, fov: 30, lookHero: [0, 70, 9] }, { effects: [huge(H(0, 72), 900), boom(H(-16, 60), 1100, 'large')] }), tMs: 1250, exposureMs: 8 }),
 
