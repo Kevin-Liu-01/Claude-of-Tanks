@@ -5247,7 +5247,11 @@ void splatCompute() {
         float kP = 0.86 + 0.28 * fract(jit * 5.77 + 0.29);
         // (2026-10-06, the cost trim: the furrows' wander along their run and their depth's stretches — four sines a
         // fragment, wave 86's — are gone again; the rows keep their field-by-field widths and phase)
-        float acrossP = (across + (n1 - 0.5) * 0.9 + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kP + jit * 9.7;
+        // (2026-10-08, waves 285–286a on Amberford and Steinburg: "wavy, meandering black ripples like wind-blown sand
+        // rather than straight furrows", "dune corduroy") the phase took ±0.45 m of the material's n1 noise, whose power
+        // sits at 0.7–2.7 m — more than half a 0.8 m furrow, so every furrow meandered along its run every metre or two.
+        // A plough's line is straight over metres; it bends only with the field (the rows' bend above, tens of metres).
+        float acrossP = (across + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kP + jit * 9.7;
         float furrowVis = uLandTier > 0.5 ? stripeAA(0.8 * kP, acrossDir) : 0.0;
         rows = sin(acrossP * 7.854) * 0.16 * furrowVis + sin(acrossP * 3.927 + jit * 2.0) * 0.07 * stripeAA(1.6 * kP, acrossDir)
           + bandAA(acrossP * 1.963 + jit * 3.0, 3.2 * kP, acrossDir) * 0.11
@@ -5311,7 +5315,8 @@ void splatCompute() {
         cropCol = mix(cropCol, vec3(0.17, 0.165, 0.155) * bright, karstStone * 0.65 * tileVis(0.8));
         cropCol = mix(cropCol, mix(cropCol, vec3(reduxLuma(cropCol)), 0.12), 1.0 - tileVis(0.8)); // the stones' grey in the far average
         float kR = 0.86 + 0.28 * fract(jit * 5.77 + 0.29);
-        float acrossR = (across + (n1 - 0.5) * 0.9 + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kR + jit * 9.7;
+        // (2026-10-08: the plough's law — the furrows straight along their run, no metre-scale meander from n1)
+        float acrossR = (across + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kR + jit * 9.7;
         rows = sin(acrossR * 7.854) * 0.10 * tileVis(0.8 * kR) + sin(acrossR * 0.483 + jit * 6.0) * 0.06 * tileVis(13.0 * kR);
         // the turned red earth's relief is its furrows, not the sward's blade strokes (as the plough's, a little softer)
         // (a breath of relief, broken along its run: wave 8's "unnaturally regular striped banding" was this field's)
@@ -5540,14 +5545,19 @@ void splatCompute() {
           // catches the sun. A sun at the horizon or below shades no wall.
           float sA = dot(uSunDirW.xz, vW);
           float sunW = smoothstep(0.02, 0.15, uSunDirW.y);
-          float wallT = smoothstep(0.45, 0.65, aq) * (1.0 - smoothstep(0.92, 1.08, aq));
+          // (2026-10-08, waves 285–286a: "two hard black lines run edge to edge", "the wheel ruts are two hard black crack
+          // lines rather than soft muddy tracks") the wall turned from the sun was darkened twice — by its relief normal
+          // (below: a ~19° tilt off the sun) and by 0.45 of its colour here — over a band of 0.2 half-widths, so it drew an
+          // ink line one or two pixels wide. The relief now carries the wall's own shade over a wider wall (0.40–1.05 of
+          // a half-width), its colour a quarter darker at most, and the floor's shadow has a soft penumbra.
+          float wallT = smoothstep(0.35, 0.70, aq) * (1.0 - smoothstep(0.90, 1.15, aq));
           float faceSun = -sign(qx) * sA;
-          float wallDark = wallT * smoothstep(0.0, 0.5, -faceSun) * 0.45; // (wave 88: "only a hairline edge" at 0.30)
+          float wallDark = wallT * smoothstep(0.0, 0.5, -faceSun) * 0.22;
           float wallLit = wallT * smoothstep(0.0, 0.5, faceSun) * 0.08;
           float sLq = 0.10 * abs(sA) / max(uSunDirW.y, 0.08) / lw;
-          float sh = (sA > 0.0 ? smoothstep(1.0 - sLq - 0.30, 1.0 - sLq + 0.10, qx) : 1.0 - smoothstep(-1.0 + sLq - 0.10, -1.0 + sLq + 0.30, qx))
-            * (1.0 - smoothstep(0.85, 1.05, aq));
-          float shade = mix(min(0.25 * sLq, 0.32), max(sh * 0.34, wallDark), wallVis) * brk * sunW; // unresolved: its mean
+          float sh = (sA > 0.0 ? smoothstep(1.0 - sLq - 0.40, 1.0 - sLq + 0.25, qx) : 1.0 - smoothstep(-1.0 + sLq - 0.25, -1.0 + sLq + 0.40, qx))
+            * (1.0 - smoothstep(0.85, 1.10, aq));
+          float shade = mix(min(0.22 * sLq, 0.26), max(sh * 0.28, wallDark), wallVis) * brk * sunW; // unresolved: its mean
           vec3 laneCol = mix(trodden * 0.86, damp, floorM * wetF) * (1.0 - shade) * (1.0 + wallLit * wallVis * brk * sunW);
           float laneW = bandT * landW * laneM * use;
           // the band: the trodden soil on the lanes' verges (the crown between them keeps its grass), then the lanes;
@@ -5558,11 +5568,12 @@ void splatCompute() {
           a.a = mix(a.a, a.a * mix(0.86, 0.70, floorM), laneW);
           gLaneSheen = laneW * floorM; // (wave 86: "no compacted sheen") the pressed floor's faint satin, in the roughness stage
           if (nrmOn && bandT * landW > 0.01 && wallVis > 0.001) {
-            // the cross-section's slope along vW (m per m): the walls rise 8 cm over half a half-width, the berm 2 cm — a
-            // breath of it in the relief (the walls' light is the sun's own, above), broken with the walls
-            float tw = clamp((aq - 0.5) * 2.0, 0.0, 1.0);
+            // the cross-section's slope along vW (m per m): the walls rise 8 cm over 0.65 of a half-width (2026-10-08: was
+            // half a half-width — a steeper, narrower wall that drew as a line), the berm 2 cm — a breath of it in the
+            // relief (the walls' light is the sun's own, above), broken with the walls
+            float tw = clamp((aq - 0.40) / 0.65, 0.0, 1.0);
             float tb1 = clamp((qx - 0.95) * 5.0, 0.0, 1.0), tb2 = clamp((qx - 1.35) * 2.5, 0.0, 1.0);
-            float hx = (sign(qx) * 0.08 * 12.0 * tw * (1.0 - tw) + 0.02 * (30.0 * tb1 * (1.0 - tb1) - 15.0 * tb2 * (1.0 - tb2))) / lw;
+            float hx = (sign(qx) * 0.08 * 9.23 * tw * (1.0 - tw) + 0.02 * (30.0 * tb1 * (1.0 - tb1) - 15.0 * tb2 * (1.0 - tb2))) / lw;
             n.xy = mix(n.xy, vec2(0.5), 0.6 * laneW) - vW * (0.32 * hx * wallVis * bandT * landW * use * brk);
           }
         }
