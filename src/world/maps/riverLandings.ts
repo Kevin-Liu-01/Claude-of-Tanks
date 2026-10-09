@@ -107,6 +107,18 @@ export function planRiverLanding(
   };
 }
 
+/**
+ * Whether a landing's beached boat may sit at (x, z) in place of its planned seat: the planner's own seat checks — dry
+ * ground clear of every lake's shore band, above the water; on a sea strand off the wet band and 7 m off a road. The
+ * map-vehicles lane (2026-10-06) slides a seat along the shore to clear a tree's trunk (maps/mapKits.ts).
+ */
+export function landingBoatSeatOk(heightField: LandingHeightField, lakes: readonly LandingLake[], landing: RiverLanding,
+  x: number, z: number): boolean {
+  if (sampleShorelineMask([], lakes, x, z) > 0.02) return false;
+  if (landing.shore) return heightField.getWaterMaskAt(x, z) === 0 && heightField._roadDist(x, z) >= 7;
+  return heightField.getHeightAt(x, z) > landing.waterLevel + 0.05;
+}
+
 /** Round 58: a landing on a sea strand — the jetty from the strand law, the beached boat hauled up the dry strand
  * behind the gangway's foot (3.5 m landward of it, 3 m to the side, parallel to the shore), so the high-water mark
  * beside the landing stays free for the wrack line's timber and crate; never in the wet band or the water. */

@@ -7,11 +7,22 @@ import { box, jitterUV } from './propGeometry.ts';
 import { boxClearOfPoints, boxClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
 import { terrainNearMeshHeightAt } from './terrain.ts';
 import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.ts';
+import { polygonGap, shapePolygons } from './parkedVehicleSeparation.ts';
 
 // Execute the actual public scheduling wrapper with an owned generator fixture.
 // Geometry/output equivalence is separately checked by the whole-world profile;
 // this test isolates awaited failure and IteratorClose propagation.
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+// (b44) props.ts contactDarkeningMaterial and its shader-anchor helper, sliced and evaluated over the real THREE
+function contactMaterialFromSource() {
+  const slice = (head, tail) => {
+    const at = source.indexOf(head), end = source.indexOf(tail, at);
+    assert.ok(at >= 0 && end > at, `props.ts: ${head}`);
+    return source.slice(at, end + tail.length);
+  };
+  return new Function('THREE', stripTypeScriptTypes(slice('function _mustReplace(src: string, anchor: string, replacement: string): string {', '\n}\n')
+    + slice('function contactDarkeningMaterial(tex: THREE.Texture): THREE.MeshBasicMaterial {', '\n  return mat;\n}\n')) + '\nreturn contactDarkeningMaterial;')(THREE);
+}
 const start = source.indexOf('export async function createPropsAsync(');
 const end = source.indexOf('\nfunction* propsBuildSteps(', start);
 assert.ok(start >= 0 && end > start);
@@ -169,6 +180,10 @@ for (const failureAt of ['tick', 'bake', 'import']) {
     const height = { _layout: { spawns: { player: {} } } };
     const ports = {
       getMapConfig: () => ({ id: 'urban', splat: {} }),
+      // (2026-10-08, the time-to-battle lane) the world build's config (worldBuildConfig.ts) and the horizon ring's
+      // prefetch, supplied to the terrain build through the ring's hook: none here
+      worldBuildConfig: () => ({ id: 'urban', splat: {} }), getDeviceTier: () => 'desktop',
+      startHorizonRingBuild: () => ({ stats: {}, dispose() {} }), supplyHorizonRing: () => {}, withdrawHorizonRing: () => {}, finishHorizonRingAsync: async () => {},
       preloadPropModels: () => { events.push('archive-request'); return archive.promise; },
       prepareSourcedTerrain: () => ({ cancel() { cancelled++; } }),
       createHeightFieldAsync: async () => { clock += 10; return height; },
@@ -296,13 +311,14 @@ for (const failureAt of ['tick', 'import', 'generator']) {
   const end = source.indexOf('\n      function* placeWreck(', begin);
   assert.ok(begin > 0 && end > begin);
   const code = stripTypeScriptTypes(source.slice(begin, end));
-  const make = (cache, disposed) => new Function('bakeCache', 'workerWrecks', 'seed', 'disposeWreckGeometry',
-    code + '\nreturn bakeFor;')(cache, true, 2002, geo => disposed.push(geo));
+  // P4 (the map-vehicles lane): a bake request carries the paint the map's tanks wore (wrecks.ts wreckRemnantPaint)
+  const make = (cache, disposed) => new Function('bakeCache', 'workerWrecks', 'seed', 'disposeWreckGeometry', 'wreckRemnantPaint', 'mapId',
+    code + '\nreturn bakeFor;')(cache, true, 2002, geo => disposed.push(geo), (id) => (id === 'verdant' ? 0x4e5834 : -1), 'verdant');
   const cache = new Map(), disposed = [], geo = {}, shadowGeo = {};
   const bake = make(cache, disposed);
   const abandoned = bake('k2', true);
   const step = abandoned.next().value;
-  assert.deepEqual(step.wreckBake.options, { seed: 2002, pop: true });
+  assert.deepEqual(step.wreckBake.options, { seed: 2002, pop: true, remnant: 0x4e5834 });
   step.wreckBake.result = { geo, shadowGeo };
   abandoned.return();
   assert.deepEqual(disposed, [geo, shadowGeo]);
@@ -435,6 +451,13 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     THREE, placeWreckCollision, placeWreckShellCollision, _quat: Object.assign(new THREE.Quaternion(), { setFromUnitVectors() { return this; } }), _upAxis: {},
     _posv: { set() { return this; } },
     setObbShape: record => record, cloneCollisionRecord: record => structuredClone(record),
+    // (2026-10-08) a hulk refuses a seat that meets a tall solid or a tree (props.ts hulkMeetsTallSolid): the fixture's
+    // ground holds neither
+    sceneryTrees: [], shapePolygons, polygonGap,
+    // nor one on a match objective's disc (props.ts hulkOnObjective): the fixture's map has none
+    mapId: 'fixture', MATCH_OBJECTIVE_LAYOUTS: {},
+    // nor one in a deployment slot's clearing (2026-10-08, a10a37b37): the fixture's map has no deployment slots
+    deploymentSlots: [], DEPLOYMENT_CLEAR_M: 20,
   };
   const api = new Function('dependencies', `
     const { ${Object.keys(dependencies).join(', ')} } = dependencies;
@@ -620,6 +643,8 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     ROCK_PATCH_SHARES: JSON.parse(/const ROCK_PATCH_SHARES: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1]),
     CONTACT_PATCH_RINGS: JSON.parse(/const CONTACT_PATCH_RINGS: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1]),
     rockBedShades: [],
+    // (b44) the contact layer's own material: a multiplicative darkening of the ground (props.ts), sliced with its helper
+    contactDarkeningMaterial: contactMaterialFromSource(),
     foundryDonors: foundry ? [{ feature: buildingFeatures[0] }] : null,
   };
   const api = new Function(...Object.keys(dependencies), stripTypeScriptTypes(
@@ -669,6 +694,12 @@ for (const [streetRows, foundry, options] of [
     advanceFoundationInputs(after, iterator);
     assert.deepEqual(iterator.next(), { done: false, value: { fine: true, progress: false, stage: 'ground-foundations' } });
     assert.deepEqual(after.kinds(), streetRows ? ['ground-contact', 'apron'] : ['ground-contact']);
+    // (b44) the contact layer darkens the ground (a multiplicative, unlit, premultiplied blend); the aprons stay lit
+    for (const mesh of after.group.children) {
+      const contact = mesh.userData.terrainDecalKind === 'ground-contact';
+      assert.equal(mesh.material.blending === THREE.MultiplyBlending && mesh.material.isMeshBasicMaterial === true, contact,
+        `${mesh.userData.terrainDecalKind}: ${contact ? 'the contact darkening' : 'a lit decal'}`);
+    }
     assert.equal(after.randoms.length, 0, 'scar RNG has not started at the first boundary');
     assert.deepEqual(iterator.next(), { done: false, value: { fine: true, progress: false, stage: 'ground-scars' } });
     assert.equal(after.kinds().includes('crater'), !options.rejectCourtyards);

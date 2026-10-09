@@ -143,8 +143,9 @@ export default {
       { x: 303, z: -72, towardDeg: 179, count: 4, radius: 6, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders under the east plateau, north' },
       { x: 313, z: -76, towardDeg: 179, count: 5, radius: 6, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders on the plateau\'s lip' },
     ],
-    tankWrecks: { era: 'modern', count: 5, debris: true,
-      ids: ['k1a1', 'type99a', 'k2', 'bmp3', 'type90'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
+    // front's war; the war shows through the burnt period trucks and carts
+    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
     inhabit: { stalls: 1, benches: 3, coreClutter: 20, bales: 6, troughs: 2, laundry: 2, handcarts: 3, carts: 3, trucks: 5, jeeps: 4, drumClusters: 5, camps: 3, modernClutter: 20, looseClutter: 20, roadFence: 'fenceplank', yardFence: 'fencerail' },
   },
   // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Eifel's slate. The

@@ -1,5 +1,5 @@
 // tools/audio/elevenlabs.mjs — the ElevenLabs client shared by the audio
-// generators (sound effects, crew voices, casting).
+// generators (sound effects, crew voices, casting, the media films' music).
 //
 // - The key comes from ELEVENLABS_API_KEY or the file named by
 //   ELEVENLABS_API_KEY_FILE. It is never printed, logged or written anywhere
@@ -176,6 +176,36 @@ export async function speech({ voiceId, text, modelId = 'eleven_v4', languageCod
   writeFileSync(file, data);
   writeFileSync(`${file}.json`, JSON.stringify({ voiceId, body, outputFormat, take, ...meta, generatedAt: new Date().toISOString() }, null, 1));
   ledger({ kind: 'tts', key, cost: meta.cost, maxConcurrency: meta.maxConcurrency, model: modelId, chars: text.length });
+  return { file, cost: meta.cost, cached: false };
+}
+
+/**
+ * A composition plan from a prompt (free of credits, rate-limited). The media films build their own plans from their
+ * cue sheets; this is for checking a plan's shape against the model. Returns the plan.
+ */
+export async function musicPlan({ prompt, lengthMs = null, modelId = 'music_v2_5', sourcePlan = null }) {
+  const body = { prompt, model_id: modelId, ...(lengthMs ? { music_length_ms: lengthMs } : {}), ...(sourcePlan ? { source_composition_plan: sourcePlan } : {}) };
+  const { data } = await limit(() => request('POST', '/v1/music/plan', { json: body, label: 'music plan' }));
+  return data;
+}
+
+/**
+ * One music take (Eleven Music) from a composition plan: { chunks } for music_v2 / music_v2_5, { positive_global_styles,
+ * negative_global_styles, sections } for music_v1. `seed` makes a plan reproducible; `take` separates retries of the
+ * same request in the cache. Returns { file, cost, cached }.
+ */
+export async function music({ plan, modelId = 'music_v2_5', seed = null, take = 0, outputFormat = 'mp3_48000_320' }) {
+  const body = { composition_plan: plan, model_id: modelId, ...(seed != null ? { seed } : {}) };
+  const key = digest({ body, outputFormat, take });
+  const file = cached('music', key, extensionFor(outputFormat));
+  if (existsSync(file)) return { file, cost: 0, cached: true };
+  const { data, meta } = await limit(() => request('POST', '/v1/music', {
+    query: { output_format: outputFormat }, json: body, binary: true, label: 'music',
+  }));
+  writeFileSync(file, data);
+  writeFileSync(`${file}.json`, JSON.stringify({ body, outputFormat, take, ...meta, generatedAt: new Date().toISOString() }, null, 1));
+  const lengthMs = (plan.chunks ?? plan.sections ?? []).reduce((sum, part) => sum + (part.duration_ms || 0), 0);
+  ledger({ kind: 'music', key, cost: meta.cost, maxConcurrency: meta.maxConcurrency, model: modelId, ms: lengthMs });
   return { file, cost: meta.cost, cached: false };
 }
 

@@ -247,8 +247,18 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/autoloader.selftest.mjs',
     'src/sim/weaponReload.selftest.mjs',
     'src/game/studioTimeline.selftest.mjs',
+    'src/game/studioCrush.selftest.mjs',
+    'src/game/studioSceneLink.selftest.mjs',
+    'src/ui/studioPlanView.selftest.mjs',
+    'src/game/studioFilmPlan.selftest.mjs',
+    'src/game/studioFilmSupport.selftest.mjs',
+    'src/engine/filmDepthProbe.selftest.mjs',
+    'src/game/studioFilmMux.selftest.mjs',
+    'src/game/studioFilmAudio.selftest.mjs',
+    'src/game/studioPicture.selftest.mjs',
     'src/game/studioProduction.selftest.mjs',
     'src/game/studioProductionPersistence.selftest.mjs',
+    'src/game/studioLight.selftest.mjs',
     'src/ui/studioProductionPanel.selftest.mjs',
     'tools/media-production/campaign.selftest.mjs',
     'tools/media-production/campaignPublication.selftest.mjs',
@@ -256,6 +266,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-production/campaignArtwork.selftest.mjs',
     'src/game/studioRecording.selftest.mjs',
     'src/game/studioActorSupport.selftest.mjs',
+    'src/game/studioFxSettings.selftest.mjs',
+    'src/game/studioTrackDust.selftest.mjs',
+    'src/fx/cinematicFx.selftest.mjs',
+    'src/fx/cinematicShotBlast.selftest.mjs',
+    'src/fx/shellBurstColumn.selftest.mjs',
     'tools/studio-example-scenarios.selftest.mjs',
     'src/vehicles/spareTrackAttachment.selftest.mjs',
     'src/vehicles/turretBarrelCircularity.selftest.mjs',
@@ -539,6 +554,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-01: one fleet on every path (each facade alone, every saved spec digested).
     'src/vehicles/fleetParity.selftest.mjs',
     'tools/media-production/pipeline.selftest.mjs',
+    'tools/media-r5/motion-type.selftest.mjs',
+    'tools/media-r5/site50.selftest.mjs',
+    'tools/media-r5/motion.selftest.mjs',
+    'tools/media-r5/world-model.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'tools/tool-only-public-files.selftest.mjs',
     'server/processShutdown.selftest.mjs',
@@ -598,6 +617,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/groundBounce.selftest.mjs',
     'src/engine/sunShafts.selftest.mjs',
     'src/engine/lensFlare.selftest.mjs',
+    'src/engine/cinemaPost.selftest.mjs',
     'src/engine/adaptiveQualityPolicy.selftest.mjs',
     'src/engine/postViewportScale.selftest.mjs',
     'src/engine/postFrameAccounting.selftest.mjs',
@@ -651,6 +671,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/rosterRotationMemory.selftest.mjs',
     'src/game/waveFormationSplit.selftest.mjs',
     'src/game/battleSides.selftest.mjs',
+    // 2026-10-08 (modes lane): the solo sim and the host seat every side on the same deployment slots.
+    'src/game/deploymentParity.selftest.mjs',
     'src/game/rosterVisualStaging.selftest.mjs',
     'src/game/rosterPresentation.selftest.mjs',
     'src/presentation/publicCopy.selftest.mjs',
@@ -665,6 +687,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/gt-enforcement.selftest.mjs',
     'src/docs/docsIcons.selftest.mjs',
     'src/docs/topics.selftest.mjs',
+    'src/docs/filming.selftest.mjs',
     'tools/generate-manual-reference.selftest.mjs',
     'src/productStats.selftest.mjs',
     'src/ui/garageDossier.selftest.mjs',
@@ -683,15 +706,21 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/runtimeStyles.selftest.mjs',
     'src/ui/topAccentBorders.selftest.mjs',
     'src/vehicles/camoPolicy.selftest.mjs',
+    // 2026-10-07 (tank-accessories round 3): AUTO paints each nation's own scheme for the battlefield's environment
+    'src/vehicles/autoCamoNational.selftest.mjs',
+    'src/vehicles/battleTheatreCamo.selftest.mjs',
     'src/vehicles/authoredPaintCatalog.selftest.mjs',
     'src/vehicles/customCamoCanvas.selftest.mjs',
     'src/vehicles/factoryCamo.selftest.mjs',
     'src/vehicles/camoPatternSeed.selftest.mjs',
     'src/vehicles/camoWorldScale.selftest.mjs',
+    // 2026-10-07 (tank-accessories round 4): bolted-on boxes, bins and sleeve sections as their own camouflage panels
+    'src/vehicles/camoPanels.selftest.mjs',
     'src/vehicles/brandCamo.selftest.mjs',
     'src/vehicles/catalogCamoPainter.selftest.mjs',
     // 2026-10-04 (the vehicle-look lane): the field camouflages' boundaries at the tile's own resolution
     'src/vehicles/camoFieldEdges.selftest.mjs',
+    'src/vehicles/camoPatchFields.selftest.mjs',
     'src/vehicles/vehicleMarkingsCanvas.selftest.mjs',
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
@@ -763,6 +792,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioEntry.selftest.mjs',
     // 2026-10-08 (fix/studio-world-step): an export step advances the props' clock and syncs the drawn ground
     'src/game/studioWorldStep.selftest.mjs',
+    // 2026-10-08 (destruction core lane): an effect naming an actor the scene does not stage never hangs a film
+    'src/game/studioOrphanEffect.selftest.mjs',
     'src/game/stateCore.selftest.mjs',
     'src/game/startupIntent.selftest.mjs',
     'src/game/selectedVehicleSelection.selftest.mjs',
@@ -849,6 +880,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/vehicleReadability.selftest.mjs',
     // 2026-10-04 (the vehicle-look lane): a cloned vehicle material (the track shoes) joins its source's cascade registration
     'src/vehicles/vehicleMaterialClone.selftest.mjs',
+    'src/vehicles/fleetRoundOneSurfaces.selftest.mjs',
     'src/engine/skyCloudBake.selftest.mjs',
     'src/engine/skyHorizonCache.selftest.mjs',
     'src/engine/skyEnvironmentCache.selftest.mjs',
@@ -889,6 +921,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/renderScalePolicy.selftest.mjs',
     'src/engine/shadowStability.selftest.mjs',
     'src/engine/shadowReceiverOnly.selftest.mjs', // 2026-10-04 (visual/shadow-bias): the ground takes no caster's acne terms
+    'src/engine/materialEnvIntensity.selftest.mjs', // 2026-10-08 (visual/world-ibl-trim): a material's own share of the sky light
     'src/engine/shadowFitCache.selftest.mjs',
     'src/engine/shadowRefresh.selftest.mjs',
     'src/engine/shadowStaticCache.selftest.mjs', // 2026-10-02: the static shadow-caster cache (P20)
@@ -1038,14 +1071,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/navigationLiquidSafety.selftest.mjs',
     'src/sim/navigationLiquidStart.selftest.mjs',
     'src/sim/bridgeDeckNavigation.selftest.mjs',
-    'src/sim/formationPlacement.selftest.mjs',
+    // 2026-10-08 (modes lane): symmetric deployments on every map — rotations, clear, spaced, seated as is.
+    'src/sim/deployment.selftest.mjs',
     'src/sim/matchModes.selftest.mjs',
     // 2026-10-03 (bots lane): the frontline attack regroups before the last sector.
     'src/sim/frontlineRegroup.selftest.mjs',
     'src/sim/matchRuleset.selftest.mjs',
     'src/sim/assaultLines.selftest.mjs',
     'src/sim/matchPlacement.selftest.mjs',
-    'src/sim/spawnPads.selftest.mjs',
     'src/sim/authoritativeMatch.selftest.mjs',
     'src/sim/authoritativeBotControls.selftest.mjs',
     'src/sim/ai.aim.selftest.mjs',
@@ -1131,6 +1164,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/wheelPaintFloor.selftest.mjs',
     'src/vehicles/runningGearFinish.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
+    'src/vehicles/accessoryMaterials.selftest.mjs',
+    // 2026-10-05 (tank-accessories lane): decor draws per tank at or below their count before the accessory rebuild
+    'src/vehicles/decorDrawBudget.selftest.mjs',
+    // 2026-10-08 (tank-accessories round 5): every accessory piece touches the vehicle within 15 mm (a ratchet to zero)
+    'src/vehicles/accessoryContact.selftest.mjs',
     'src/vehicles/profiles/leopard2A6UA.selftest.mjs',
     'src/vehicles/profiles/type99Armor.selftest.mjs',
     'src/vehicles/profiles/merkavaGunCradle.selftest.mjs',
@@ -1241,13 +1279,17 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/roadDistanceField.selftest.mjs',
     'src/world/fieldTrenchTerrain.selftest.mjs',
     'src/world/frontlineAtmosphere.selftest.mjs',
+    'src/world/flyoverAircraft.selftest.mjs',
     'src/world/groundLitter.selftest.mjs',
     // round 73 (2026-09-25): the ground redux — the profile table and material contract, the pressure field, the tall-grass tier
     'src/world/groundRedux.selftest.mjs',
     'src/world/terrainMaterialV2.selftest.mjs',
     'src/world/groundPressure.selftest.mjs',
     'src/world/tallGrass.selftest.mjs',
+    'src/world/cinderYard.selftest.mjs', // ground lane (2026-10-08, wave 260): Cinder Junction's cinder yard and its weed clumps
+    'src/world/swardTerrain.selftest.mjs', // ground lane (2026-10-08, wave 274): the field gate's band, the sward on its slopes, the thatch
     'src/world/landUse.selftest.mjs', // ground lane (2026-10-03): the field system and its CPU twin
+    'src/world/saltwindSoil.selftest.mjs', // ground lane (2026-10-08, waves 286b/287): Saltwind's terra rossa, footing and garrigue
     'src/world/landUseBake.selftest.mjs', // ground lane (2026-10-03): the land use baked under the ground mask
     'src/world/roadLookupGrid.selftest.mjs',
     'src/world/roadAuthoredExits.selftest.mjs',
@@ -1293,8 +1335,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/fieldWalls.selftest.mjs',
     // the scenery lane (b15, wave 106): the regions' field stacks and the straw props' hay print
     'src/world/haystacks.selftest.mjs',
+    'src/world/maps/periodClutter.selftest.mjs',
     // the scenery lane (b16, wave 121): the ksar gate post in place of the steel checkpoint hut on Desert and Redrock
     'src/world/maps/regional/ksarGate.selftest.mjs',
+    'src/world/maps/regional/wadiRumPosts.selftest.mjs',
     'src/world/wireMaterial.selftest.mjs',
     'src/world/maps/fieldWallDressing.selftest.mjs',
     'src/world/steelAtlasDemand.selftest.mjs',
@@ -1360,6 +1404,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/horizonPanoramaDeck.selftest.mjs',
     // the mountains lane (2026-10-05): and its cloud composite the cloud dome's (volumetricClouds.ts keeps it inline too)
     'src/world/horizonPanoramaClouds.selftest.mjs',
+    // the nightsky lane (2026-10-08): the far country re-baked under a battle's sunset and night (the owner: "the far skybox
+    // is still like glowing") — the bake's own light and haze statements per map, against the sky above and the near ground
+    'src/world/horizonPanoramaRelight.selftest.mjs',
     'src/world/horizonCliffNormals.selftest.mjs', // the mountains lane (2026-10-04): the ring's cliffs take their geometry's normals
     'src/world/horizonCloudShade.selftest.mjs',
     'src/world/horizonRockfield.selftest.mjs',
@@ -1369,6 +1416,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/edgeWater.selftest.mjs',
   'src/world/autumnHorizonSeam.selftest.mjs',
     'src/world/horizonSeamSampler.selftest.mjs', // the time-to-battle lane (2026-10-08): the seam byte for byte with half the samples
+    'src/world/horizonRingWorker.selftest.mjs', // the time-to-battle lane (2026-10-08): the ring's pipeline in a worker, worker against inline on every map
     'src/world/horizonMesaTexture.selftest.mjs',
     'src/world/horizonNoiseSampling.selftest.mjs',
     'src/world/horizonMesaSurface.selftest.mjs',
@@ -1387,11 +1435,16 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/riverLandings.selftest.mjs',
     'src/world/maps/riverReedContact.selftest.mjs',
     'src/world/maps/beachedBoat.selftest.mjs',
+    'src/world/maps/boatHulls.selftest.mjs',
+    'src/world/maps/cartKit.selftest.mjs',
+    'src/world/maps/rollingStock.selftest.mjs',
+    'src/world/maps/vehicleSetPieces.selftest.mjs',
     'src/world/maps/strandWrack.selftest.mjs',
     'src/world/maps/shoreJetty.selftest.mjs',
     'src/world/maps/mooredHullMotion.selftest.mjs',
     'src/world/maps/railWashout.selftest.mjs',
     'src/world/maps/railCoalStockpiles.selftest.mjs',
+    'src/world/railBallast.selftest.mjs', // ground lane (2026-10-08, waves 234/278/285): the rail kit's ballast bed
     'src/world/maps/archedBridgeCollision.selftest.mjs',
     'src/world/railSpurs.selftest.mjs',
     'src/world/railCutting.selftest.mjs',
@@ -1446,6 +1499,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propPlacement.selftest.mjs',
     'src/world/wallSpanPlacement.selftest.mjs',
     'src/world/civilianVehicles.selftest.mjs',
+    'src/world/parkedVehicleSeparation.selftest.mjs',
     'src/ui/contextInfo.selftest.mjs',
     'src/ui/endOverlayRuntime.selftest.mjs',
     'src/ui/endScreen.selftest.mjs',
@@ -1530,6 +1584,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-texture-source.browser.selftest.mjs',
     'tools/sourced-building-source.browser.selftest.mjs',
     'tools/horizon-panorama-bake.browser.selftest.mjs',
+    // the drawn-geometry shape's control and garages (the maps ride on collisionManifestDrift, the tanks on fleetPassHigh)
+    'src/world/maps/drawnGeometryShape.selftest.mjs',
     'tools/props-build-profile.selftest.mjs',
     'tools/wreck-build-profile.selftest.mjs',
     'tools/wreck-paint-bench.selftest.mjs',

@@ -26,8 +26,9 @@ function assertNightMasks(root){
   });
 }
 // Canonical shoes take their colour from the instance palette over an exactly
-// white base; a second dark multiplier or a missing vertex-colour request would
-// blacken them. Actual surface/ballistics tests always use this white base.
+// white base, times their own worn-steel vertex colours; a second dark multiplier
+// or a stream without the colours would blacken them. Actual surface/ballistics
+// tests always use this white base.
 const SHOE_NAMES=['gearTrackPads','gearTrackPadsSimplified'];
 function trackShoeMaterial(root){
   const shoes=[];
@@ -47,12 +48,17 @@ function trackShoeMaterial(root){
   assert.equal(material.userData.appearanceRole,'trackPad');
   assert.equal(material.userData.appearanceColorSource,'instance-palette');
   assert.deepEqual(material.color.toArray(),[1,1,1],'actual shoe base must remain exactly white');
-  assert.equal(material.vertexColors,false,'missing vertex colors must not blacken instance-colored shoes');
+  // Fleet lane round 1 (2026-10-07): the shoes read worn-steel vertex colours under the palette (bakeTrackShoeWear);
+  // both streams must carry them or the palette would multiply by black.
+  assert.equal(material.vertexColors,true,'canonical shoes read their worn-steel vertex colours');
+  for(const mesh of shoes)assert.ok(mesh.geometry.getAttribute('color')?.count===mesh.geometry.getAttribute('position').count,
+    `${mesh.name} carries its worn-steel vertex colours`);
   for(const mesh of shoes){
     assert.equal(mesh.material,material,'near and far shoes share their actual material');
     assert.equal(mesh.isInstancedMesh,true);
     assert.ok(mesh.count>0&&mesh.instanceColor?.count>=mesh.count,'every shoe has an instance palette entry');
-    assert.equal(mesh.geometry.getAttribute('color'),undefined,'shoe stock has no vertex-color multiplier');
+    assert.equal(mesh.geometry.getAttribute('color')?.count,mesh.geometry.getAttribute('position').count,
+      'shoe stock carries exactly one worn-steel colour per vertex');
   }
   root.traverse(mesh=>{
     if(!mesh.isMesh)return;

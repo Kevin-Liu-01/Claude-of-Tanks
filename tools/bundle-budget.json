@@ -32,7 +32,7 @@
       "requests": 6,
       "raw": 17986,
       "gzip": 6828,
-      "brotli": 5966
+      "brotli": 6000
     },
     "cn": {
       "requests": 128,

@@ -14,6 +14,7 @@ import { createMachineGunAttachmentAudit } from './profiles/machineGunAttachment
 import { createTrackEndWrapAudit } from './trackEndWrap.test-support.mjs';
 import { createWheelQualityAudit } from './wheelQualityAudit.test-support.mjs';
 import { createSurfaceMarkupFleetAudit } from '../gallery/surfaceMarkupFleetAudit.test-support.mjs';
+import { createDrawnGeometryShapeAudit } from '../world/geometryStreams.test-support.mjs';
 import { createTrackContactDerivationAudit } from './trackContactDerivationAudit.test-support.mjs';
 import { createRunningGearRegistrationAudit } from './runningGearRegistrationAudit.test-support.mjs';
 
@@ -47,6 +48,8 @@ await runFleetPass({
   ids: new Set([...ALL_TANK_IDS, ...DEVELOPMENT_TANK_IDS]),
   audits: [
     { name: 'fleetGeometryLedger', create: () => createFleetGeometryLedgerPassAudit(BUILD) },
+    // every drawn geometry keeps fast attribute objects (no deleteAttribute on what the renderer draws; reads only)
+    { name: 'drawnGeometryShape', create: createDrawnGeometryShapeAudit },
     // 2026-10-04: the development hulls too register exactly the running-gear units they draw
     { name: 'runningGearRegistration', create: createRunningGearRegistrationAudit },
     { name: 'circularCapOverlap', create: () => createCircularCapAudit({ quality: 'high' }) },

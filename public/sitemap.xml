@@ -239,4 +239,18 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/studio" />
     <lastmod>2026-09-08</lastmod>
   </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/docs/filming</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/filming" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/cn/docs/filming</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://cot.kevinliu.studio/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://cot.kevinliu.studio/cn/docs/filming" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cot.kevinliu.studio/docs/filming" />
+    <lastmod>2026-09-08</lastmod>
+  </url>
 </urlset>

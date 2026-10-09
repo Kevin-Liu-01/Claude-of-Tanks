@@ -132,5 +132,56 @@ sampleCameraCues(cinematic.cameraCues, 750, repeat);
 assert.deepEqual(repeat, cueFrame, 'scrubbing back yields the same deterministic cue');
 assert.equal(cueFrame.fovKickDeg, 2.25);
 assert.equal(sampleCameraCues(cinematic.cameraCues, 1600, cueFrame), false);
+// Film attack: the impulse starts from rest and matches the live kick once the attack has passed.
+{
+  const first = cinematic.cameraCues[0];
+  const live = { rightM: 0, upM: 0, forwardM: 0, rollDeg: 0, fovKickDeg: 0 };
+  const film = { rightM: 0, upM: 0, forwardM: 0, rollDeg: 0, fovKickDeg: 0 };
+  sampleCameraCues(cinematic.cameraCues, first.tMs, film, 12);
+  assert.ok([film.rightM, film.upM, film.forwardM, film.rollDeg, film.fovKickDeg].every((v) => v === 0), 'a film jolt starts from rest');
+  sampleCameraCues(cinematic.cameraCues, first.tMs + 6, film, 12);
+  sampleCameraCues(cinematic.cameraCues, first.tMs + 6, live, 0);
+  assert.ok(Math.abs(film.fovKickDeg) < Math.abs(live.fovKickDeg), 'the attack eases the kick in');
+  sampleCameraCues(cinematic.cameraCues, first.tMs + 20, film, 12);
+  sampleCameraCues(cinematic.cameraCues, first.tMs + 20, live, 0);
+  assert.deepEqual(film, live, 'after the attack the film and live impulses agree');
+}
 assert(Object.values(cueFrame).every((v) => v === 0), 'finished cues reset all reused scratch values');
-console.log('studioTimeline.selftest: legacy rails/cuts, v2 round trips, Bezier rails, tangent-aligned drive and deterministic cues passed');
+
+// Spline rails (2026-10-05): a dense, unevenly spaced rail of keys (the shot tools sample a 3D camera track onto the
+// 32-key cap) flies through every key with continuous velocity in position, aim and lens, where linear segments kink and
+// smooth's eased aim stops at every key.
+{
+  const track = (t) => [12 * Math.sin(t / 900), 4 + 3 * Math.sin(t / 1300), 12 * Math.cos(t / 900)];
+  const aim = (t) => [Math.sin(t / 700) * 5, 1.5, 20 + t / 400];
+  const times = [0, 180, 420, 600, 900, 1250, 1400, 1800, 2300, 2500, 3000];
+  const splineRail = normalizeStoryboard({
+    version: 2, durationMs: 3000,
+    shots: times.map((tMs, i) => ({ id: `k${i}`, tMs, pos: track(tMs), lookAt: aim(tMs), fov: 30 + tMs / 150,
+      rollDeg: 14 * Math.sin(tMs / 600), transition: 'spline' })),
+  });
+  assert.ok(splineRail.shots.every((shot) => shot.transition === 'spline'), 'spline survives normalization');
+  assert.deepEqual(normalizeStoryboard(JSON.parse(JSON.stringify(splineRail))), splineRail, 'spline rails round trip');
+  const s = {}, before = {}, after = {};
+  for (const [i, t] of times.entries()) {
+    sampleCameraRail(splineRail.shots, t, s);
+    const p = track(t), l = aim(t);
+    assert.ok(Math.hypot(s.x - p[0], s.y - p[1], s.z - p[2]) < 1e-9 && Math.hypot(s.lookX - l[0], s.lookY - l[1], s.lookZ - l[2]) < 1e-9,
+      `the spline passes through key ${i}`);
+  }
+  const velocity = (t, h) => {
+    sampleCameraRail(splineRail.shots, t - h, before);
+    sampleCameraRail(splineRail.shots, t + h, after);
+    return [after.x - before.x, after.y - before.y, after.z - before.z, after.lookX - before.lookX, after.fov - before.fov,
+      after.rollDeg - before.rollDeg].map((d) => d / (2 * h));
+  };
+  for (const t of times.slice(1, -1)) {
+    const left = velocity(t - 0.6, 0.5), right = velocity(t + 0.6, 0.5);
+    const scale = Math.max(1e-6, ...left.map(Math.abs));
+    assert.ok(left.every((v, k) => Math.abs(v - right[k]) <= scale * 0.02 + 1e-6), `velocity is continuous across the key at ${t} ms`);
+  }
+  const eased = splineRail.shots.map((shot) => ({ ...shot, transition: 'smooth' }));
+  const easedAim = (t) => { sampleCameraRail(eased, t - 0.5, before); sampleCameraRail(eased, t + 0.5, after); return Math.abs(after.lookX - before.lookX); };
+  assert.ok(easedAim(900) < 1e-3 && Math.abs(velocity(900, 0.5)[3]) > 1e-3, 'smooth eases the aim to a stop at a key; spline keeps it moving');
+}
+console.log('studioTimeline.selftest: legacy rails/cuts, v2 round trips, Bezier and spline rails, tangent-aligned drive and deterministic cues passed');

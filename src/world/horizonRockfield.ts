@@ -196,7 +196,7 @@ export function buildHorizonRockfield(options: HorizonRockfieldOptions): THREE.G
   const group = new THREE.Group();
   group.name = 'horizon-rocks';
   const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0 });
-  material.envMapIntensity = 0.9;
+  // (2026-10-08: the full sky, as the battlefield's rocks take it; the 0.9 it authored never applied, materialEnvIntensity.ts)
   // Standard scene fog measures distance from the camera. Additional haze
   // by map radius made nearby outland rocks abruptly pale at the boundary.
   material.customProgramCacheKey = () => 'horizon-rockfield-v2';

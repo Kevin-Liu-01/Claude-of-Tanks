@@ -610,7 +610,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     // registration residual — receipts banked, this seat is the measured
     // dims-100 + curve-neutral exchange (§5.265/§5.290).
     if (!c2) {
-      const commanderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
+      const commanderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone',
         elev: 0, shield: false, scale: 0.62, seed: 44 });
       commanderMg.name = 'arieteC1CommanderMg';
       addFitting(P, 'turret', commanderMg, 0.68, 0.87, L(-0.24), [0, 0.35, 0]);
@@ -787,7 +787,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       buildArieteMkMarkingsCourse1();
     } else {
       const buildArieteMkMarkingsCourse2 = (): void => {
-        const loaderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
+        const loaderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone',
           elev: 0, shield: false, scale: 0.62, seed: 45 });
         loaderMg.name = 'arieteC1LoaderMg';
         addFitting(P, 'turret', loaderMg, -0.42, 0.87, L(-0.60), [0, 2.9, 0]);
