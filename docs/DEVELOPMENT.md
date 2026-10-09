@@ -910,26 +910,34 @@ the ground cover's cosmetic twin and is measured beside it); `--families=records
 build, its index entry printed as an `ENTRY` line.
 
 A stone's colliders come from its own mesh (`src/world/rockCollision.ts`, receipt
-`rockCollision.selftest.mjs`): the movement footprint is the stone between 0.2 and 3 m over its
-ground, to its real top; the shell and sight colliders are ranged slabs of the stone's sections
-('w' parts, no format change); a stone rising less than 0.45 m is driven over and has none, and the
-crushable small rocks stop shells like the other dense crushable cover. `props.ts` keeps the legacy
-records through every placement pass and refits them once all have run, so no prop moves.
+`rockCollision.selftest.mjs`): the movement record is the stone's tiers (round 2), nested columns
+from the record's floor, the first the stone's whole ground outline (toe and tail included) to 0.7 m
+over its lowest point, each next one the stone above it 0.6 m higher, up to 3 m over the ground, the
+last to its real top, so a hull meets the stone where the eye sees it meet the ground and its floor
+on the stone steps as the stone does (a column within a hull's step-up is stood on and is a floor by
+the same rule); the shell and sight colliders are ranged slabs of the stone's sections ('w' parts,
+no format change) with a toe ring where the stone flares at its foot; a stone rising less than 0.45
+m is driven over and has none, and the crushable small rocks stop shells like the other dense
+crushable cover. `props.ts` keeps the legacy records through every placement pass and refits them
+once all have run, so no prop moves.
 
 The props' leaning solids take shell slabs the same way (`src/world/slabCollision.ts`): a sandbag
 stack's shell record is its own geometry's slabs (it published none, so shells passed 70-96 % of the
 stacks), a tank wreck's the convex hull of its hull and turret vertices cut in 0.5 m slabs (the
 movement record stays the solids' prisms, a hull's floor), each hedgehog beam its own slabs, and a
 pylon leg its footing and the strut's slabs to the leg's end (the lattice's 4-6 cm braces carry
-none). A formation's standing blocks keep their own outlines, its movement footprint the stone from
-0.35 m (its pieces flare at their feet; its loose pieces, fewer on phones, carry none, so every tier
-lays the same colliders), and `--families=formations` holds them to the legacy hull by the map's
-union of formation stone (the `scenery-union` row: empty ground plus uncovered stone). A stone a
-hull drives over has no collider and a shell aimed at it meets the ground behind it
-(`rockDriveOver.selftest.mjs`); a crushed stone stops no shell from the tick it is crushed
-(`crushableClutter.selftest.mjs`). Where the stones' own colliders left a sector under the layout
-brief's cover band, `props.coverOutcrops` places authored crescents of the map's own boulders (hard
-cover, on their own seeded draws so no other stone moves).
+none). A formation's standing blocks keep their own outlines and their own tiers (its loose pieces,
+fewer on phones, carry none, so every tier lays the same colliders), and `--families=formations`
+holds them to the legacy hull by the map's union of formation stone (the `scenery-union` row: empty
+ground plus uncovered stone). A stone a hull drives over has no collider and a shell aimed at it
+meets the ground behind it (`rockDriveOver.selftest.mjs`); a crushed stone stops no shell from the
+tick it is crushed (`crushableClutter.selftest.mjs`). Where the stones' own colliders left a sector
+under the layout brief's cover band or a map's fights off balance, the map authors cover as scenery
+formations of its own stone (`scenery.rocks`): Reservoir's slate crags, and fields of fractured
+blocks (`form: 'blocks'`: size-graded, a third to over half sunk, a skirt of chips) of the Moon's
+and Mars's breccia (dust banked at the foot, no lichen) and of the other maps' own rock. They are
+placed after every prop and skip nothing a prop stands on (the scenery receipt names an overlap), so
+a site is chosen clear.
 
 Every convex part is convex in fact: `collision.ts convexOutlineInPlace` drops the repeated corners
 and those that turn against the outline's winding when a shape is set and when a shard is decoded
@@ -940,9 +948,10 @@ through its middle stopping on it.
 
 To see the colliders in the game, `window.__DEBUG.colliderOverlay({ x, z, radius })` draws every
 record round a point (orange movement, cyan shells and sight; a stretch a mesh hides faint and
-dashed; `null` removes it), and `tools/visual-census.mjs capture --overlay=colliders[:<radius>]`
-shoots each view a second time with it (`<view>-colliders.png`); `--pose=<map>/<name>:...` binds an
-authored pose to one map.
+dashed; a stone's tiers stacked; a legend in the corner says the movement record stands to a hull's
+roof, so an overhang above it is shells' only; `null` removes it), and `tools/visual-census.mjs
+capture --overlay=colliders[:<radius>]` shoots each view a second time with it
+(`<view>-colliders.png`); `--pose=<map>/<name>:...` binds an authored pose to one map.
 
 The garage allied-nation selector has a DOM regression fixture in
 `tools/allied-nation.browser.mjs`. The spectator controls have desktop, portrait
