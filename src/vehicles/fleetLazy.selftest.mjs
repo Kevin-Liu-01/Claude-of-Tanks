@@ -41,6 +41,12 @@ const anatomyRegistryUrl = pathToFileURL(join(here, 'combatAnatomyCalibrationReg
 const facadeSource = await readFile(join(here, 'fleetFactory.ts'), 'utf8');
 assert.doesNotMatch(facadeSource, /from ['"]\.\/modern[12]\.js['"]/,
   'browser fleet facade must not statically import combined legacy builders');
+// perf lane (2026-10-09): a family's chunks load beside the profile kit and the decoration system; only its registration
+// waits for the configured factory (whenConfigured), so the Garage's first vehicle is one network round trip nearer
+assert.match(facadeSource, /pending = GROUP_LOADERS\[group\]\(\)\.then\(/, 'ensureGroup starts the family loader at once');
+assert.doesNotMatch(facadeSource, /ensureFactoryReady\(\)\.then\(\(\) => GROUP_LOADERS/, 'no family waits for the kit before loading');
+assert.doesNotMatch(facadeSource.slice(facadeSource.indexOf('const GROUP_LOADERS')), /\.then\(\(?[^)]*\)? => \{\s*registerCanonicalBuilders/,
+  'a loader registering canonical builders does so inside whenConfigured');
 await runFleetSweep(`
   import assert from 'node:assert/strict';
   const fleet = await import(${JSON.stringify(facadeUrl)});

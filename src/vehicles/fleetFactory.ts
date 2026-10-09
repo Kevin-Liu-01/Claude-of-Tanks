@@ -87,9 +87,24 @@ function ensureFactoryReady(): Promise<void> {
   return factoryReadyPromise;
 }
 
-function registerProfiles(profiles: VehicleProfileRecord): void {
+// A family registers once the factory is configured, but its chunks load meanwhile: ensureGroup starts them beside the
+// profile kit and the decoration system instead of after them (perf lane 2026-10-09: one network round trip fewer
+// before the Garage's first vehicle on a slow link). Each loader's registration keeps its order (canonical, then profiles).
+function whenConfigured(register: () => void): Promise<void> {
+  return ensureFactoryReady().then(register);
+}
+
+function registerProfilesNow(profiles: VehicleProfileRecord): void {
   if (!profileKit) throw new Error('Profile kit is not loaded');
   registerProfiledBuilders(createProfileBuilders(profiles, profileKit));
+}
+
+function registerProfiles(profiles: VehicleProfileRecord): Promise<void> {
+  return whenConfigured(() => registerProfilesNow(profiles));
+}
+
+function registerCanonical(packName: string, builders: Parameters<typeof registerCanonicalBuilders>[1]): Promise<void> {
+  return whenConfigured(() => registerCanonicalBuilders(packName, builders));
 }
 
 const GROUP_LOADERS = Object.freeze({
@@ -157,20 +172,20 @@ const GROUP_LOADERS = Object.freeze({
     import('./profiles/chineseFrontline.ts'),
     import('./profiles/object695X.ts'),
   ])
-    .then(([canonical, profiles, frontline, object695]) => {
+    .then(([canonical, profiles, frontline, object695]) => whenConfigured(() => {
       registerCanonicalBuilders('modern2', canonical.MODERN2_BUILDERS);
-      registerProfiles({ ...profiles.CHINA_PROFILES, ...frontline.CHINESE_FRONTLINE_PROFILES, ...object695.OBJECT695_X_PROFILES });
-    }),
+      registerProfilesNow({ ...profiles.CHINA_PROFILES, ...frontline.CHINESE_FRONTLINE_PROFILES, ...object695.OBJECT695_X_PROFILES });
+    })),
   franceCore: () => import('./france.ts')
-    .then((mod) => registerCanonicalBuilders('france', mod.FRANCE_BUILDERS)),
+    .then((mod) => registerCanonical('france', mod.FRANCE_BUILDERS)),
   modern3Core: () => import('./modern3.ts')
-    .then((mod) => registerCanonicalBuilders('modern3', mod.MODERN3_BUILDERS)),
+    .then((mod) => registerCanonical('modern3', mod.MODERN3_BUILDERS)),
   misc: () => import('./profiles/misc.ts').then((mod) => registerProfiles(mod.MISC_PROFILES)),
   uk: () => import('./profiles/uk.ts').then((mod) => registerProfiles(mod.UK_PROFILES)),
-  challenger: () => import('./profiles/challenger.ts').then((mod) => {
+  challenger: () => import('./profiles/challenger.ts').then((mod) => whenConfigured(() => {
     registerCanonicalBuilders('challenger', mod.CHALLENGER_BUILDERS);
-    registerProfiles(mod.CHALLENGER_PROFILES);
-  }),
+    registerProfilesNow(mod.CHALLENGER_PROFILES);
+  })),
   leopard: () => import('./profiles/leopard.ts').then((mod) => registerProfiles(mod.LEOPARD_PROFILES)),
   italy: () => import('./profiles/italy.ts').then((mod) => registerProfiles(mod.ITALY_PROFILES)),
   sweden: () => Promise.all([
@@ -216,7 +231,7 @@ function ensureGroup(group: FleetGroup | undefined): Promise<void> {
   if (!group || readyGroups.has(group)) return ensureFactoryReady();
   let pending = groupPromises.get(group);
   if (!pending) {
-    pending = ensureFactoryReady().then(() => GROUP_LOADERS[group]()).then(() => {
+    pending = GROUP_LOADERS[group]().then(() => {
       readyGroups.add(group);
     }).catch((error) => {
       groupPromises.delete(group);
