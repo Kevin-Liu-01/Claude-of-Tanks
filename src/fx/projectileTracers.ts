@@ -40,8 +40,12 @@ interface TracerShell {
   spec?: { type?: string; caliberMm?: number; tracer?: string; name?: string } | null;
 }
 
-/** The firing vehicle, as the tracer's ammunition lineage needs it. */
-interface TracerShooter { id?: string; nation?: string }
+/** The firing vehicle, as the tracer's ammunition lineage (and, for a networked round, its weapon) needs it. */
+interface TracerShooter {
+  id?: string;
+  nation?: string;
+  gun?: { caliberMm?: number; shells?: readonly { type?: string }[] } | null;
+}
 
 interface TracerOptions {
   shooter(id: ShellKey | undefined): TracerShooter | null | undefined;
@@ -103,6 +107,24 @@ export function tracerClassFor(caliberMm: number, lineage: 'east' | 'nato'): Tra
   if (caliberMm < 15) return lineage === 'east' ? MG_EAST : MG_NATO;
   if (caliberMm < 45) return AUTOCANNON;
   return TANK;
+}
+
+/**
+ * A round's calibre: its own when it carries one (the solo battle's and the Studio's shells), else (a networked round:
+ * the wire sends its type, not its calibre) the firing vehicle's main gun when that gun fires this type, and a roof
+ * machine gun's for an AP round the main gun does not fire.
+ */
+export function tracerCaliber(spec: TracerShell['spec'], shooter: TracerShooter | null | undefined): number {
+  const own = spec?.caliberMm;
+  if (typeof own === 'number' && Number.isFinite(own) && own > 0) return own;
+  const type = spec?.type ?? '';
+  const gun = shooter?.gun;
+  const main = gun?.caliberMm;
+  if (typeof main === 'number' && Number.isFinite(main) && main > 0) {
+    if (type !== 'AP' || (gun?.shells ?? []).some((s) => s?.type === 'AP')) return main;
+    return 12.7;
+  }
+  return type === 'AP' ? 12.7 : 100;
 }
 
 /** Whether the nth round (0-based) a gun fires carries a tracer: the first of each beltEvery. */
@@ -311,7 +333,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       hx: 0, hy: 0, hz: 0, tx: 0, ty: 0, tz: 0, k: 0 };
     const who = o.shooter(shell.shooterId);
     const lineage = tracerLineage(who);
-    const cal = shell.spec?.caliberMm ?? 100;
+    const cal = tracerCaliber(shell.spec, who);
     const cls = tracerClassFor(cal, lineage);
     // the belt: a per-weapon round count (the shooter's gun of this calibre: a coax and a main gun are two belts), so a
     // burst shows its tracers at the belt's own rhythm

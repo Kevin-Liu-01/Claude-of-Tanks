@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
-  beltCarriesTracer, createProjectileTracers, tracerClassFor, tracerLineage,
+  beltCarriesTracer, createProjectileTracers, tracerCaliber, tracerClassFor, tracerLineage,
 } from './projectileTracers.ts';
 
 // ammunition lineage: green for Soviet-lineage ammunition, red for NATO's and everyone else's
@@ -20,6 +20,15 @@ assert.equal(cannon.beltEvery, 4);
 assert.equal(tank.beltEvery, 1, 'every tank round carries its tracer');
 assert.ok(mg.burnS >= 2 && mg.burnS <= 4 && tank.burnS >= 2 && tank.burnS <= 5, 'tracers burn for a few seconds');
 assert.deepEqual([0, 1, 2, 3, 4, 5, 9, 10].map((i) => beltCarriesTracer(i, 5)), [true, false, false, false, false, true, false, true]);
+
+// a networked round carries its type, not its calibre: the shooter's main gun when it fires that type, else the roof
+// machine gun's
+const abrams = { gun: { caliberMm: 120, shells: [{ type: 'APFSDS' }, { type: 'HEAT' }] } };
+assert.equal(tracerCaliber({ type: 'APFSDS' }, abrams), 120);
+assert.equal(tracerCaliber({ type: 'AP' }, abrams), 12.7, "an AP round an Abrams' main gun does not fire is its roof gun's");
+assert.equal(tracerCaliber({ type: 'AP' }, { gun: { caliberMm: 30, shells: [{ type: 'AP' }, { type: 'HE' }] } }), 30);
+assert.equal(tracerCaliber({ type: 'AP', caliberMm: 7.62 }, abrams), 7.62, 'a round that carries its calibre keeps it');
+assert.equal(tracerCaliber({ type: 'HE' }, null), 100);
 
 // the runtime
 const scene = new THREE.Scene();
