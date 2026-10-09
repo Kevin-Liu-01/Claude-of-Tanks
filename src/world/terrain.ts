@@ -5086,7 +5086,11 @@ void splatCompute() {
       // pixel or two, so a field ends on its edge seen from the ridge
       // (never wider than the near field's 4 m: the interior's exact skip below holds at every footprint)
       float fadeM = min(4.0, mix(4.0, max(0.6, 1.5 * gFootM), smoothstep(0.12, 0.60, gFootM)));
-      float inField = bnd > 1.5 ? smoothstep(bnd > 2.5 ? 0.95 : 0.50, bnd > 2.5 ? 1.45 : 0.85, edgeM)
+      // (2026-10-08, wave 287, Saltwind: the red field "a flat decal with hard edges") a karst field's red earth ends
+      // raggedly against its margin — ±0.4 m by the breaker and the metre noise, over 0.9 m — where no wall stands over
+      // the line (most of a wall's line is hidden under it where one does); a paddy's bund keeps its line
+      float inField = bnd > 2.5 ? smoothstep(0.85, 1.75, edgeM + (n1h - 0.5) * 0.45 + (n1 - 0.5) * 0.40)
+                    : bnd > 1.5 ? smoothstep(0.50, 0.85, edgeM)
                                 : smoothstep(marginM, marginM + fadeM, edgeW);
       // (2026-10-05, Ruinspires' lab: an urban land use's lots are 8–24 m across, and a field's 4 m ragged thinning into
       // its margin left most of a lot the margin's — its hardstanding showed nowhere) a lot ends on its line, as a kerb,
@@ -5143,6 +5147,16 @@ void splatCompute() {
       if (crop < 0.5) {
         // pasture: half the meadows are hay — mown in stripes up and down the field
         rows = jit > 0.5 ? sin(across * 2.094) * 0.06 * tileVis(3.0) : 0.0;
+        // (wave 177 and 2026-10-08's wave 287, Saltwind: "a lush lawn-green carpet", "patchy dry grass and scrub") a
+        // karst's grazing is garrigue, never mown: cured yellow-grey grass in tussocks over the thin red-brown soil, which
+        // shows between them in patches of decimetres (a fifth of its far mean)
+        if (bnd > 2.5) {
+          rows = 0.0;
+          float bareVis = tileVis(1.5);
+          float bareG = uLandTier > 0.5 ? smoothstep(0.52, 0.72, nzq(uvW, 0.29, vec2(0.61, 0.17)).x) : 0.0;
+          vec3 redSoil = soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(2.11, 1.24, 1.04) * 0.095 * bright;
+          cropCol = mix(vec3(2.30, 2.10, 1.30) * baseL * bright, redSoil, bareG * 0.70 * bareVis + 0.20 * (1.0 - bareVis));
+        }
       } else if (crop < 1.5) {
         // albedo calibration (with the light lane): a ripe crop is cured straw, 0.20–0.25 against the sward's ~0.075
         cropCol = vec3(1.375, 0.994, 0.399) * baseL * 2.8 * bright; // ripe wheat
@@ -5238,12 +5252,30 @@ void splatCompute() {
         // limestone"; the coordinator: the calibrated red "reads too light and desaturated from above") the red earth
         // deeper and redder (~0.22 / 0.064 / 0.032 over the sand's hue, luminance ~0.095), its stones' grey a smaller
         // share of its far mean
-        cropCol = soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(1.75, 0.62, 0.45) * 0.105 * bright;
-        float karstStone = uLandTier > 0.5 ? smoothstep(0.62, 0.80, nzq(uvW, 0.61, vec2(0.37, 0.71)).x) * smoothstep(0.35, 0.70, nzq(uvW, 0.043, vec2(0.13, 0.29)).y) : 0.0;
-        cropCol = mix(cropCol, vec3(0.17, 0.165, 0.155) * bright, karstStone * 0.65 * tileVis(0.8));
-        cropCol = mix(cropCol, mix(cropCol, vec3(reduxLuma(cropCol)), 0.12), 1.0 - tileVis(0.8)); // the stones' grey in the far average
+        // (2026-10-08, waves 286b–287 on Saltwind: "a flat, saturated red or vermilion decal", "one flat, saturated
+        // orange-red in every frame"; it rendered ~104 / 49 / 29 sRGB, saturation 0.72 — red 3.4× its green in albedo)
+        // Dalmatian terra rossa is a deeper rust or brick red-brown, dulled by dust and broken by limestone: the base a
+        // dusty brick (~0.265 / 0.128 / 0.074 over the sand's hue: red 2.1× its green, green 1.7× its blue — never the
+        // bluer mauve of wave 83, 1.6 / 1.33), its dry crust paler and a third greyer on the crowns of the noise and the
+        // damp ground a shade darker (decimetres to metres), and the plough's limestone over about a third of the field
+        // near the camera — pale cream-grey clasts in drifts — and a fifth of its far mean. No new reads: the crust is
+        // the breaker's and n2's, the clasts the two noise reads the stones always took.
+        cropCol = soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(2.11, 1.24, 1.04) * 0.105 * bright;
+        float crust = smoothstep(0.42, 0.78, n1h);
+        cropCol = mix(cropCol * (0.88 + 0.10 * n2), mix(cropCol, vec3(reduxLuma(cropCol)), 0.32) * 1.14, crust);
+        vec3 clast = vec3(0.215, 0.205, 0.182) * bright;
+        float karstStone = 0.0;
+        if (uLandTier > 0.5) {
+          vec2 sq = nzq(uvW, 0.61, vec2(0.37, 0.71));
+          float drift = smoothstep(0.20, 0.60, nzq(uvW, 0.043, vec2(0.13, 0.29)).y);
+          karstStone = max(smoothstep(0.50, 0.66, sq.x) * (0.40 + 0.60 * drift), smoothstep(0.64, 0.74, sq.y) * 0.65);
+        }
+        float clastVis = tileVis(0.8);
+        cropCol = mix(cropCol, clast, karstStone * 0.85 * clastVis);
+        cropCol = mix(cropCol, clast, 0.18 * (1.0 - clastVis)); // the clasts' share of the far mean
         float kR = 0.86 + 0.28 * fract(jit * 5.77 + 0.29);
-        float acrossR = (across + (n1 - 0.5) * 0.9 + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kR + jit * 9.7;
+        // (2026-10-08: the plough's law — the furrows straight along their run, no metre-scale meander from n1)
+        float acrossR = (across + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kR + jit * 9.7;
         rows = sin(acrossR * 7.854) * 0.10 * tileVis(0.8 * kR) + sin(acrossR * 0.483 + jit * 6.0) * 0.06 * tileVis(13.0 * kR);
         // the turned red earth's relief is its furrows, not the sward's blade strokes (as the plough's, a little softer)
         // (a breath of relief, broken along its run: wave 8's "unnaturally regular striped banding" was this field's)
@@ -5255,7 +5287,8 @@ void splatCompute() {
         // (the saltwind sky-w pair, wave 5 and hold 3: "a red-and-green striped crop texture" — a lawn-green canopy band
         // over bare red earth, half and half: a vine's canopy is a dusty olive, about 0.7 m of a 2.2 m row, the
         // inter-row carries its weeds and dust, and the canopy shades a strip of it)
-        vec3 earth = bnd > 2.5 ? soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(1.80, 0.62, 0.45) * 0.105 : soilF * 0.85;
+        // (2026-10-08: the karst's red earth the terra rossa's dusty brick, as above)
+        vec3 earth = bnd > 2.5 ? soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(2.11, 1.24, 1.04) * 0.105 : soilF * 0.85;
         earth = mix(earth, aF * vec3(1.10, 1.02, 0.80), 0.30);
         vec3 vine = vec3(0.860, 1.300, 0.560) * baseL * bright;
         float vf = fract(across / 2.2 + jit);
@@ -5405,10 +5438,17 @@ void splatCompute() {
         // places, its foot shaded on the field side (the round-2 chase frame: a pale unbroken strip read as a painted
         // path — the walls themselves are the scenery lane's to raise on this grid)
         // (wave 8: "separated by uniform pale-gray lines") a shade darker, more broken, grown over in more places
-        float wall = (1.0 - smoothstep(0.30, 0.52, edgeM)) * (1.0 - track) * (0.25 + 0.75 * smoothstep(0.38, 0.62, n1h));
-        vec3 stone = vec3(0.195, 0.190, 0.180) * (0.70 + 0.40 * fract(n1h * 7.3)) * (1.0 - 0.35 * smoothstep(0.55, 0.80, n1));
-        a.rgb = mix(a.rgb, stone, wall * landW);
-        a.rgb *= 1.0 - 0.22 * (smoothstep(0.55, 0.75, edgeM) * (1.0 - smoothstep(0.85, 1.35, edgeM))) * landW;
+        // (2026-10-08, wave 287, Saltwind's close view: "a grey seam strip along its front edge") the scenery lane's walls
+        // keep off the boulders, their aprons, the roads and the objective discs (fieldWorks.ts), so on many lines no wall
+        // stands over this footing, and its unbroken band (a quarter strength at its weakest) read as a seam. It is the
+        // clearance stones a karst field's edge carries with or without its wall: rubble in clumps with gaps between
+        // them (about half the line bare, over decimetres and metres), the field's clasts' cream-grey, and the foot's
+        // shade only where the stones lie
+        float rubble = smoothstep(0.46, 0.66, n1h) * (0.45 + 0.55 * smoothstep(0.30, 0.70, n1));
+        float wall = (1.0 - smoothstep(0.30, 0.55, edgeM + (n1h - 0.5) * 0.25)) * (1.0 - track) * rubble;
+        vec3 stone = vec3(0.215, 0.205, 0.182) * (0.72 + 0.36 * fract(n1h * 7.3)) * (1.0 - 0.30 * smoothstep(0.55, 0.80, n1));
+        a.rgb = mix(a.rgb, stone, wall * landW * 0.85);
+        a.rgb *= 1.0 - 0.18 * (smoothstep(0.55, 0.75, edgeM) * (1.0 - smoothstep(0.85, 1.35, edgeM))) * rubble * landW;
       }
       if (track > 0.01 && uLandTier > 0.5) {
         if (bnd > 0.5 && bnd < 1.5) {
