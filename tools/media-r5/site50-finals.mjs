@@ -5,7 +5,8 @@
 // site-loops.mjs for every format (it drops each ProRes film master once its formats are written; the disk is tight).
 //   node tools/media-r5/site50-finals.mjs <resolvedDir> [--only=s01,s02] [--chunk=10] [--film-resolution=2160]
 //     [--still-supersample=1.5] [--film-master=prores|none] [--keep-film-masters] [--skip-films] [--skip-stills] [--skip-loops]
-//     [--min-free-gb=6] [--keep-place[=<stamp ms>]] [--lease-min=45] [--yield-holds=2] [--film-proxy=false]
+//     [--min-free-gb=6] [--keep-place[=<stamp ms>]] [--lease-min=45] [--yield-holds=2] [--yield-fifo2=<runner.json>] [--film-proxy=false]
+//     [--order=s01,s04,…]
 // The disk is shared with other sessions: a chunk starts only while --min-free-gb is free (a 2160p take with its formats
 // is ~0.35 GB); below it the run stops once the encodes in flight finish, and a re-run resumes where it stopped.
 // --film-master=none renders no ProRes master: site-loops encodes from the 2160p H.264 proxy (crf 14, ~97 Mbit/s), so
@@ -70,21 +71,50 @@ const lease = keepPlace ? [`--ticket-stamp=${stamp}`, `--lease-min=${leaseMin}`]
 // The next lease starts once the last yielded hold has begun, so its ticket, back at the stamp, is first in line when
 // that hold ends. With nobody waiting and the lock free for a minute (five at most), the finals go on.
 const yieldHolds = Math.max(0, Number(flags['yield-holds'] ?? 2));
+// --yield-fifo2=<fifo2 runner.json> (the coordinator's overnight pacing, 2026-10-08: one media hold of at most 20 minutes
+// for every two holds of the capture service): count that service's own holds since the last lease ended, rather than
+// lock directories, which other lanes' holds also make.
+const fifo2 = flags['yield-fifo2'] ?? null;
+const fifo2Holds = () => { try { const n = Number(JSON.parse(readFileSync(fifo2, 'utf8')).holds); return Number.isFinite(n) ? n : null; } catch { return null; } };
+let fifo2Base = null;
 const queue = createCaptureLock();
 const holdId = () => { try { const s = statSync(CAPTURE_LOCK_DIR); return `${s.ino}:${s.birthtimeMs}`; } catch { return null; } };
+// The share changes overnight without a restart (the coordinator's pacing, 2026-10-08: two holds of the capture service
+// per media hold until 05:00, one after, and none during push 7's browser receipts): renders/yield-holds, when present,
+// replaces --yield-holds at every lease, and while renders/pause exists no new lease starts.
+const yieldHoldsFile = join(renders, 'yield-holds'), pauseFile = join(renders, 'pause');
+const holdsWanted = () => { try { const n = Number(readFileSync(yieldHoldsFile, 'utf8').trim()); return Number.isFinite(n) ? Math.max(0, n) : yieldHolds; } catch { return yieldHolds; } };
+async function waitPause() {
+  let said = false;
+  while (existsSync(pauseFile) && !stopping) {
+    if (!said) { console.log(`[finals] paused while ${pauseFile} exists ${new Date().toTimeString().slice(0, 8)}`); said = true; }
+    await new Promise(resolve => setTimeout(resolve, 5000));
+  }
+  if (said) console.log(`[finals] resumed ${new Date().toTimeString().slice(0, 8)}`);
+}
 async function yieldGpu() {
+  const yieldHolds = holdsWanted();
+  if (!yieldHolds) return;
   const seen = new Set();
-  let freeSince = Date.now();
+  let freeSince = Date.now(), served = 0, readAt = 0;
   for (;;) {
     if (stopping) return;
     const id = holdId();
     if (id) { seen.add(id); freeSince = Date.now(); }
-    if (seen.size >= yieldHolds) break;
+    if (fifo2 && Date.now() - readAt > 5000) {
+      readAt = Date.now();
+      const now = fifo2Holds();
+      // (a relaunch counts from its first look; a restarted runner counts from zero again)
+      if (now != null && (fifo2Base == null || now < fifo2Base)) fifo2Base = now;
+      served = now != null ? now - fifo2Base : 0;
+    }
+    if ((fifo2 ? served : seen.size) >= yieldHolds) break;
     const free = id ? 0 : Date.now() - freeSince;
     if ((free > 60000 && queue.waiting() === 0) || free > 300000) break;
     await new Promise(resolve => setTimeout(resolve, 200));
   }
-  console.log(`[finals] yielded to ${seen.size} hold${seen.size === 1 ? '' : 's'}; rejoining the queue at ${stamp}`);
+  const yielded = fifo2 ? `${served} fifo2 hold${served === 1 ? '' : 's'} (${seen.size} in all)` : `${seen.size} hold${seen.size === 1 ? '' : 's'}`;
+  console.log(`[finals] yielded to ${yielded}; rejoining the queue at ${stamp} ${new Date().toTimeString().slice(0, 8)}`);
 }
 const only = flags.only ? [`--only=${flags.only}`] : [];
 const chunk = Math.max(1, Number(flags.chunk ?? 10));
@@ -111,7 +141,11 @@ const done = job => {
 };
 // an earlier lease of this run (also before a relaunch): yield before the next one
 const leaseMark = join(renders, 'last-lease');
-const ids = [...new Set([...films, ...stills].map(idOf))].sort();
+// --order=s01,s04,… (launch night, 2026-10-08: the films' takes first, so their re-cuts start while the rest render): ids
+// matching an earlier prefix render first; the rest follow in id order.
+const order = String(flags.order ?? '').split(',').map(p => p.trim()).filter(Boolean);
+const rank = id => { const i = order.findIndex(p => id.startsWith(p)); return i < 0 ? order.length : i; };
+const ids = [...new Set([...films, ...stills].map(idOf))].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
 // one lease per chunk: its films and stills together; its formats encode on the CPU while the next chunk renders. The
 // encodes run one chunk at a time and niced (other sessions time frames on this machine), and a chunk renders only once
 // the encode two chunks back is done: at most two chunks of 2160p ProRes masters (~0.77 GB a take) wait on disk.
@@ -147,11 +181,14 @@ async function renderJobs(label, all, file) {
     if (!jobs.length) { if (leaseNo === 1) console.log(`[finals] ${label}: rendered in an earlier run`); return; }
     if (leaseNo > 8) throw new Error(`${label}: still pending after 8 leases`);
     writeFileSync(file, JSON.stringify(jobs, null, 1));
+    await waitPause();
     if (keepPlace && existsSync(leaseMark)) await yieldGpu();
+    await waitPause();
     const code = await cinema(`${label}, ${jobs.length} jobs${leaseNo > 1 ? `, lease ${leaseNo}` : ''}`,
       ['tools/media-production/cinema.mjs', `--jobs=${file}`, `--cache-dir=${cacheDir}`, '--resume=true', ...lease]);
     // (a run stopped by a signal may never have held the lock: no mark, so a restart does not yield first)
     if (!stopping) writeFileSync(leaseMark, new Date().toISOString());
+    if (fifo2) fifo2Base = fifo2Holds() ?? fifo2Base;
     if (stopping) throw new Error(`stopped by a signal in ${label}`);
     if (code === 75 && keepPlace) continue; // lease over: the remaining jobs rejoin the queue at the stamp
     if (code === 0) continue; // every job rendered: the next pass finds nothing pending
@@ -200,9 +237,12 @@ for (const id of [...held]) {
 for (const job of [...films, ...stills].filter(j => failed.has(j.out))) {
   const file = join(renders, `jobs-retry-${idOf(job)}-${job.film === 'false' ? 'stills' : 'film'}.json`);
   writeFileSync(file, JSON.stringify([{ ...job, resume: 'true' }], null, 1));
+  await waitPause();
   if (keepPlace && existsSync(leaseMark)) await yieldGpu();
+  await waitPause();
   const code = await cinema(`retry ${nameOf(job)}`, ['tools/media-production/cinema.mjs', `--jobs=${file}`, `--cache-dir=${cacheDir}`, '--resume=true', ...lease]);
   if (!stopping) writeFileSync(leaseMark, new Date().toISOString());
+  if (fifo2) fifo2Base = fifo2Holds() ?? fifo2Base;
   if (stopping) throw new Error(`stopped by a signal in the retry of ${nameOf(job)}`);
   if (done(job)) {
     failed.delete(job.out);
