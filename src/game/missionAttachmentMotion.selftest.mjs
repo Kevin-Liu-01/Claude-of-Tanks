@@ -52,16 +52,19 @@ root.traverse(o=>{if(o.isMesh)o.geometry.dispose();});material.dispose();
 // Permanent armor may support a dock, but replaceable equipment cannot.
 // Exercise the exact finite Kunlun region and foot insertion with independently
 // authored solid steel; changing the ID, mesh role or patch must reject it.
+// The fixture carriers have the shape collectMissionStock reads (an id and a
+// turreted armor record, as in mission-attachment-support.selftest.mjs): the
+// casemate traverse limit reads spec.armor before any dock is measured.
 {
  const root=new Group(),turret=new Group();turret.name='rig_turret';root.add(turret);
  const steel=new Mesh(new BoxGeometry(.50,.06,.70),new MeshBasicMaterial());
  steel.name='turretExternalArmor';steel.position.set(-1.39,.70,-.45);turret.add(steel);root.updateMatrixWorld(true);
- const spec={id:'cn_t72b3m_modern'},candidate={frame:'turret',x:-1.40,z:-.45,width:.34,depth:.32,footX:.108,footZ:.09};
+ const spec={id:'cn_t72b3m_modern',armor:{turretless:false}},candidate={frame:'turret',x:-1.40,z:-.45,width:.34,depth:.32,footX:.108,footZ:.09};
  const stock=collectMissionStock({root},'turret',-Infinity,false,spec),seat=nativeSupportedSeat(stock,candidate);
  assert.ok(seat,'four feet seat on the known welded housing');
  assert.ok(Math.abs(seat.supportY[0]-.73)<1e-7);assert.equal(nativeMissionCollision(stock,seat),null,'only the finite foot insertion is allowed');
  assert.equal(nativeRoofHeight(stock,-1.59,-.45),-Infinity,'full pad footprint must fit inside the structural support region');
- assert.equal(nativeSupportedSeat(collectMissionStock({root},'turret',-Infinity,false,{id:'unrelated'}),candidate),null,'unrelated external armor is not automatically support');
+ assert.equal(nativeSupportedSeat(collectMissionStock({root},'turret',-Infinity,false,{id:'unrelated',armor:{turretless:false}}),candidate),null,'unrelated external armor is not automatically support');
  steel.name='turretDetail';root.updateMatrixWorld(true);
  assert.equal(nativeSupportedSeat(collectMissionStock({root},'turret',-Infinity,false,spec),candidate),null,'a service crate cannot masquerade as structural armor');
  steel.geometry.dispose();steel.material.dispose();

@@ -1541,6 +1541,8 @@ const battleAtmosphere = createBattleAtmosphereAccess(() => ({
   getWorldRoot: () => currentWorld()?.group ?? null,
   // 2026-10-01 (engine/lightModel.ts): the vehicles' readability lift follows the applied light
   getLightReadability: () => (scene.userData.lightModel as { vehicleReadability?: number } | undefined)?.vehicleReadability ?? 1,
+  // 2026-10-08 (the nightsky lane): the far panorama re-bakes under the applied light inside the covered prepare
+  getRenderer: () => renderer,
   getAuthoredPreset: () => {
     const config: MapCompositionConfig | undefined = currentWorld()?.config;
     if (!config) return {};

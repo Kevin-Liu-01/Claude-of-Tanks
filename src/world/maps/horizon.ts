@@ -54,6 +54,7 @@ import { buildBorderFarmsteads, farmsteadTreesAt, resolveBorderArchitecture, rin
 import { buildBorderHedgerows } from '../borderHedgerows.ts';
 import { type HorizonDamSettings, buildHorizonDam, carveHorizonDamCanyon, floodHorizonDamReservoir } from '../horizonDam.ts';
 import { type HorizonSummitCapSettings, capHorizonSummits } from '../horizonTablelands.ts';
+import { installHorizonRing } from '../horizonRingHook.ts';
 import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend, seaCoastDistanceAt, mergeSeaWetness } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
@@ -3882,6 +3883,9 @@ export function* buildHorizonRingSteps(
         overcast: resolveOvercast({ ...((cfg?.sky ?? {}) as LightModelPreset), cloudscape: (cfg as { clouds?: LightModelPreset['cloudscape'] } | null | undefined)?.clouds ?? null }),
         // the aerial pass's haze datum, the ground under the camera (post.ts setGroundHeightSource takes the same field)
         groundAt: ground ? (x: number, z: number) => ground.getHeightAt(x, z) : null,
+        // (the nightsky lane, 2026-10-08) the map's sky block with its cloudscape: the day light its gains follow, which
+        // relight() measures a battle's sunset or night against
+        lightPreset: deckPreset,
       }, farRange);
       mesh.add(panorama.mesh);
       mesh.userData.horizonPanorama = panorama;
@@ -4103,3 +4107,6 @@ export function buildHorizonRing(
   while (!step.done) step = steps.next();
   return step.value;
 }
+
+// terrain.ts builds its meshes with this ring without importing it (horizonRingHook.ts).
+installHorizonRing({ HORIZON_SEGMENTS, buildHorizonRingSteps });

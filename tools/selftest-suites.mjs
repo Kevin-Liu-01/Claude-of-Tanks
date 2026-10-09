@@ -671,6 +671,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/rosterRotationMemory.selftest.mjs',
     'src/game/waveFormationSplit.selftest.mjs',
     'src/game/battleSides.selftest.mjs',
+    // 2026-10-08 (modes lane): the solo sim and the host seat every side on the same deployment slots.
+    'src/game/deploymentParity.selftest.mjs',
     'src/game/rosterVisualStaging.selftest.mjs',
     'src/game/rosterPresentation.selftest.mjs',
     'src/presentation/publicCopy.selftest.mjs',
@@ -788,6 +790,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/deferredCombatWarmRuntime.selftest.mjs',
     'src/game/studioAccess.selftest.mjs',
     'src/game/studioEntry.selftest.mjs',
+    // 2026-10-08 (fix/studio-world-step): an export step advances the props' clock and syncs the drawn ground
+    'src/game/studioWorldStep.selftest.mjs',
+    // 2026-10-08 (destruction core lane): an effect naming an actor the scene does not stage never hangs a film
+    'src/game/studioOrphanEffect.selftest.mjs',
     'src/game/stateCore.selftest.mjs',
     'src/game/startupIntent.selftest.mjs',
     'src/game/selectedVehicleSelection.selftest.mjs',
@@ -863,6 +869,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/oasisShoreline.selftest.mjs',
     'src/world/authoredLakeComposition.selftest.mjs',
     'src/world/treePoolCapacity.selftest.mjs',
+    // the trees lane (2026-10-08, wave 260): a bush grown as its slot's leafy birch draws its leaves as the slot's trees do
+    'src/world/leafyBush.selftest.mjs',
     'src/vehicles/vehicleNightLighting.selftest.mjs',
     'src/engine/battleAtmosphereAccess.selftest.mjs',
     'tools/daynight-atmosphere-probe.selftest.mjs',
@@ -1061,14 +1069,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/navigationLiquidSafety.selftest.mjs',
     'src/sim/navigationLiquidStart.selftest.mjs',
     'src/sim/bridgeDeckNavigation.selftest.mjs',
-    'src/sim/formationPlacement.selftest.mjs',
+    // 2026-10-08 (modes lane): symmetric deployments on every map — rotations, clear, spaced, seated as is.
+    'src/sim/deployment.selftest.mjs',
     'src/sim/matchModes.selftest.mjs',
     // 2026-10-03 (bots lane): the frontline attack regroups before the last sector.
     'src/sim/frontlineRegroup.selftest.mjs',
     'src/sim/matchRuleset.selftest.mjs',
     'src/sim/assaultLines.selftest.mjs',
     'src/sim/matchPlacement.selftest.mjs',
-    'src/sim/spawnPads.selftest.mjs',
     'src/sim/authoritativeMatch.selftest.mjs',
     'src/sim/authoritativeBotControls.selftest.mjs',
     'src/sim/ai.aim.selftest.mjs',
@@ -1269,6 +1277,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/roadDistanceField.selftest.mjs',
     'src/world/fieldTrenchTerrain.selftest.mjs',
     'src/world/frontlineAtmosphere.selftest.mjs',
+    'src/world/flyoverAircraft.selftest.mjs',
     'src/world/groundLitter.selftest.mjs',
     // round 73 (2026-09-25): the ground redux — the profile table and material contract, the pressure field, the tall-grass tier
     'src/world/groundRedux.selftest.mjs',
@@ -1321,6 +1330,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/fieldWalls.selftest.mjs',
     // the scenery lane (b15, wave 106): the regions' field stacks and the straw props' hay print
     'src/world/haystacks.selftest.mjs',
+    'src/world/maps/periodClutter.selftest.mjs',
     // the scenery lane (b16, wave 121): the ksar gate post in place of the steel checkpoint hut on Desert and Redrock
     'src/world/maps/regional/ksarGate.selftest.mjs',
     'src/world/wireMaterial.selftest.mjs',
@@ -1388,6 +1398,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/horizonPanoramaDeck.selftest.mjs',
     // the mountains lane (2026-10-05): and its cloud composite the cloud dome's (volumetricClouds.ts keeps it inline too)
     'src/world/horizonPanoramaClouds.selftest.mjs',
+    // the nightsky lane (2026-10-08): the far country re-baked under a battle's sunset and night (the owner: "the far skybox
+    // is still like glowing") — the bake's own light and haze statements per map, against the sky above and the near ground
+    'src/world/horizonPanoramaRelight.selftest.mjs',
     'src/world/horizonCliffNormals.selftest.mjs', // the mountains lane (2026-10-04): the ring's cliffs take their geometry's normals
     'src/world/horizonCloudShade.selftest.mjs',
     'src/world/horizonRockfield.selftest.mjs',
@@ -1415,6 +1428,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/riverLandings.selftest.mjs',
     'src/world/maps/riverReedContact.selftest.mjs',
     'src/world/maps/beachedBoat.selftest.mjs',
+    'src/world/maps/boatHulls.selftest.mjs',
+    'src/world/maps/cartKit.selftest.mjs',
+    'src/world/maps/rollingStock.selftest.mjs',
+    'src/world/maps/vehicleSetPieces.selftest.mjs',
     'src/world/maps/strandWrack.selftest.mjs',
     'src/world/maps/shoreJetty.selftest.mjs',
     'src/world/maps/mooredHullMotion.selftest.mjs',
@@ -1473,6 +1490,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propPlacement.selftest.mjs',
     'src/world/wallSpanPlacement.selftest.mjs',
     'src/world/civilianVehicles.selftest.mjs',
+    'src/world/parkedVehicleSeparation.selftest.mjs',
     'src/ui/contextInfo.selftest.mjs',
     'src/ui/endOverlayRuntime.selftest.mjs',
     'src/ui/endScreen.selftest.mjs',
@@ -1557,6 +1575,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-texture-source.browser.selftest.mjs',
     'tools/sourced-building-source.browser.selftest.mjs',
     'tools/horizon-panorama-bake.browser.selftest.mjs',
+    // the drawn-geometry shape's control and garages (the maps ride on collisionManifestDrift, the tanks on fleetPassHigh)
+    'src/world/maps/drawnGeometryShape.selftest.mjs',
     'tools/props-build-profile.selftest.mjs',
     'tools/wreck-build-profile.selftest.mjs',
     'tools/wreck-paint-bench.selftest.mjs',

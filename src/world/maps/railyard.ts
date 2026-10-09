@@ -46,13 +46,47 @@ function siding(offsetM: number): [number, number][] {
   return [[-236, lineZ(-236) + Math.sign(offsetM) * 2.3], [-204, lineZ(-204) + offsetM * 0.45], [-172, lineZ(-172) + offsetM],
     [172, lineZ(172) + offsetM], [204, lineZ(204) + offsetM * 0.45], [236, lineZ(236) + Math.sign(offsetM) * 2.3]];
 }
+// 2026-10-06 (the map-vehicles lane, P5): the yard's standing stock, as the Bundesbahn left a coalfield yard in the
+// 1960s — a cut of Omm coal wagons under their loads, two tank wagons, G 10 vans, and a V 60 shunter with its wagon —
+// each cut on a north siding with its twin turned through 180 degrees on the south one, so the yard's cover keeps the
+// map's rotational symmetry. The station square and the throats stay clear (every cut stands 60-170 m out along the
+// straight between the throats) and a gap of 20 m or more lies between cuts for a hull to cross the yard.
+const STOCK_LENGTH: Readonly<Record<string, number>> = { omm: 10.0, g10: 9.1, tank: 9.0, v60: 10.45 };
+/** Distance along a siding's path from its first point to the point over easting x (on its straight). */
+function sidingDistanceAt(path: readonly (readonly [number, number])[], x: number): number {
+  let walked = 0;
+  for (let i = 1; i < path.length; i++) {
+    const [ax, az] = path[i - 1], [bx, bz] = path[i];
+    const run = Math.hypot(bx - ax, bz - az);
+    if (x <= bx) return walked + run * ((x - ax) / (bx - ax));
+    walked += run;
+  }
+  return walked;
+}
+type StockCut = { fromX: number; kinds: readonly string[] };
+/** A north siding's cuts and their 180-degree twins on the south one (the order reversed, the vehicles turned). */
+type StockSpur = { path: [number, number][]; stock: { atM: number; kinds: readonly string[]; facingBack?: boolean }[] };
+function stockPair(offsetM: number, cuts: readonly StockCut[]): [StockSpur, StockSpur] {
+  const north = siding(offsetM), south = siding(-offsetM);
+  const total = sidingDistanceAt(south, 236);
+  const northStock = cuts.map((cut) => ({ atM: sidingDistanceAt(north, cut.fromX), kinds: cut.kinds }));
+  const southStock = cuts.map((cut) => {
+    const length = cut.kinds.reduce((sum, kind) => sum + STOCK_LENGTH[kind], 0);
+    return { atM: total - sidingDistanceAt(north, cut.fromX) - length, kinds: [...cut.kinds].reverse(), facingBack: true };
+  });
+  return [{ path: north, stock: northStock }, { path: south, stock: southStock }];
+}
+const [STOCK_9N, STOCK_9S] = stockPair(9, [{ fromX: 72, kinds: ['omm', 'omm', 'omm'] }, { fromX: -122, kinds: ['tank', 'tank'] }]);
+const [STOCK_15N, STOCK_15S] = stockPair(15, [{ fromX: -166, kinds: ['g10', 'g10'] }]);
+const [STOCK_21N, STOCK_21S] = stockPair(21, [{ fromX: 122, kinds: ['omm', 'v60'] }]);
+
 const RAIL_SPURS = [
   { path: mainLine(2.3, 1, true), cutting: { from: [PORTAL_X, lineZ(PORTAL_X)] as [number, number] } },
   { path: mainLine(-2.3, 1, false) },
   { path: mainLine(-2.3, -1, true), cutting: { from: [-PORTAL_X, lineZ(-PORTAL_X)] as [number, number] } },
   { path: mainLine(2.3, -1, false) },
-  { path: siding(9) }, { path: siding(15) }, { path: siding(21) },
-  { path: siding(-9) }, { path: siding(-15) }, { path: siding(-21) },
+  STOCK_9N, STOCK_15N, STOCK_21N,
+  STOCK_9S, STOCK_15S, STOCK_21S,
   { path: [[64, lineZ(64) - 30], [180, lineZ(180) - 34]] as [number, number][], bufferStop: 'end' as const,
     coalStage: { side: -1 as const, fromM: 4, toM: 40 } },
   { path: [[-64, lineZ(-64) + 30], [-180, lineZ(-180) + 34]] as [number, number][], bufferStop: 'end' as const,
@@ -260,10 +294,9 @@ export default {
     lampposts: true, hedgehogs: 8,
     // Legacy-map quality backport: modern hulks on the yard aprons (baked roster tanks) —
     // the armor that fought over the railhead
-    tankWrecks: {
-      era: 'modern', count: 6, debris: true,
-      ids: ['k1a1', 'type90', 'kf51', 'challenger2', 'leclerc', 'leo2a7v'],
-    },
+    // the map-vehicles lane (2026-10-06, the period ruling): a German coalfield junction in the 1960s: the
+    // Bundeswehr's M48s and M47s, the Rhine Army's Centurions
+    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['m48', 'centurion5', 'm47_patton'] },
     sandbagLines: 10,
     // world-dressing r1: brick yard walls; industrial inhabitants — oil-drum
     // ranks + pallet/crate stacks along the aprons, benches by the depot

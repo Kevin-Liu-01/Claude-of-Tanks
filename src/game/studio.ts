@@ -2325,7 +2325,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           emitDamageSmoke(exactShells ? Math.max(0, (k * gridMs - previousMs) / 1000) : 0);
         }
       } else emitDamageSmoke(0);
+      // the props' own clock on the Studio's (fix/studio-world-step, 2026-10-08): the render loop's world update runs at
+      // dt 0 and an export step runs none, so a felled prop's topple and the loose bodies advance here, step by step
+      getWorld()?.updateProps?.(dt, camera.position);
     }
+    // the drawn ground follows what was dug or raised this step (an export step and a capture run no world update)
+    getWorld()?.syncGround?.();
     fx.update(dt, shells, camera, resolveFxSubject);
     // the held (frozen) frame: blue-hour / night lamps nearest the camera (playback updates in advanceTimeline)
     if (dt === 0) ctx.getStudioLight?.()?.update(camera.position);
@@ -2500,6 +2505,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       advanceFx(Math.max(0, due.tMs - clockMs));
       applyStoryboardActors(due.tMs, 0);
       fireEffect(due, { record: false, refresh: false });
+      // its moment has passed whether it fired or not: an effect whose handler bails (its actor gone) was offered again at
+      // the same time forever, spinning a film capture at 100 % CPU (the media lane, 2026-10-08)
+      activeEffectIds.add(due.id);
       due = nextPendingEffect(target);
     }
     advanceFx(Math.max(0, target - clockMs));
@@ -2651,17 +2659,19 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (prop.dynamic && fx.loosePropHit) fx.loosePropHit(_crushPos, _crushDir, prop.h);
     else fx.propCrush?.(_crushPos, _crushDir, prop.h);
   }
-  /** Playback from `fromMs` to `toMs`: each crush fires at its own time and the falls run exactly to `toMs`. */
+  /** Playback from `fromMs` to `toMs`: each crush fires at its own time. The props' falls run on the props' own clock (stepFx's
+   *  updateProps, PR #9's studio world step), the felled trees' here, exactly to `toMs`; advancing the whole destruction
+   *  here as well would run every prop's topple twice per step. */
   function advanceCrushes(fromMs: number, toMs: number): void {
     const world = getWorld();
     if (!world) return;
     syncCrushPlan(world);
     let cursor = fromMs;
     for (let next = crushes.nextTime(); next <= toMs; next = crushes.nextTime()) {
-      if (next > cursor) { world.advanceDestruction((next - cursor) / 1000); cursor = next; }
+      if (next > cursor) { world.advanceToppledVegetation?.((next - cursor) / 1000); cursor = next; }
       crushes.advanceTo(world, next, crushBurst);
     }
-    if (toMs > cursor) world.advanceDestruction((toMs - cursor) / 1000);
+    if (toMs > cursor) world.advanceToppledVegetation?.((toMs - cursor) / 1000);
   }
   /** Studio exit: the battlefield's props stand again before it can host anything else, and the plan is forgotten. */
   function releaseCrushes(): void {
@@ -4068,6 +4078,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   function replaceLoadEffects(json: StudioSceneInput, fxMs: number): void {
     const effects = (json.effects || [])
+      // an effect naming an actor the scene does not stage cannot fire: dropped, with a warning (the media lane's
+      // s38-church-knockout named an ally1 it never staged)
+      .filter((effect: StudioEffectInput) => {
+        if (effect.actor == null || findActor(effect.actor)) return true;
+        console.warn(`[studio] ${effect.type} at ${effect.tMs || 0} ms names actor ${String(effect.actor)}, which the scene does not stage: dropped`);
+        return false;
+      })
       .map((effect: StudioEffectInput): StudioEffectInput & { tMs: number } => ({
         ...effect,
         tMs: clampStudioTime(effect.tMs || 0, storyboard.durationMs),

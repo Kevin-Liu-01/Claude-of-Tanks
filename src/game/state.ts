@@ -44,7 +44,6 @@ import type {
 import {
   applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap,
   rulesetLoadout, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
-import { allySpawnPoint, reuseSpawnPad } from '../sim/spawnPads.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
 import {
   DEFAULT_BRAIN_SETTINGS, readBrainSettings, readTeamArrangement, type BrainSettings,
@@ -533,8 +532,7 @@ const COMBAT_SEED = 6000;
 const FIRE_TICK_S = 0.5;
 // The battle clock is the ruleset's (sim/matchRuleset.ts timeLimitS: 15:00 for Standard, none for
 // Horde, 12:00 lost-on-expiry for a campaign sortie); the HUD counts the same value down.
-// Allied bots seat around the player pad and a side larger than the map's enemy pads re-uses them on a
-// compact ring: sim/spawnPads.ts (sides, owner 2026-09-18) — the authored 7v7 wedge stays the first six slots.
+// Both sides seat on the symmetric deployment's slots (sim/deployment.ts through the match placement), any side size.
 
 // module-scope scratch — no per-frame allocation
 const _muzzle = new THREE.Vector3();
@@ -823,36 +821,20 @@ interface OpeningLane {
   side: number;
 }
 
-function selectAllySpawn(context: BattleSpawnContext): SpawnPoint {
-  const { world } = context;
-  const playerSpawn = world.spawnPoints.player;
-  // the authored wedge for the first six, lateral and forward slots past them (sim/spawnPads.ts)
-  const point = allySpawnPoint({ x: playerSpawn.pos[0], z: playerSpawn.pos[2], yaw: playerSpawn.yaw }, context.allyIndex++);
-  return {
-    pos: [point.x, world.heightField.getHeightAt(point.x, point.z), point.z],
-    yaw: playerSpawn.yaw,
-  };
-}
-
-function selectEnemySpawn(context: BattleSpawnContext): SpawnPoint {
-  const { enemies } = context.world.spawnPoints;
-  const index = context.enemyIndex++;
-  const pad = enemies[index % enemies.length];
-  const reuse = Math.floor(index / enemies.length);
-  if (reuse === 0) return pad;
-  // sides (2026-09-18): a side larger than the map's pads re-uses them on the compact offset ring instead of
-  // asking the placement search to scatter every extra vehicle around pad 0
-  const point = reuseSpawnPad({ x: pad.pos[0], z: pad.pos[2], yaw: pad.yaw }, reuse);
-  return { pos: [point.x, context.world.heightField.getHeightAt(point.x, point.z), point.z], yaw: pad.yaw };
-}
-
+/**
+ * Symmetric deployments (sim/deployment.ts, modes lane 2026-10-08): the player takes the allied side's slot 0, allied
+ * bots the slots after it, hostiles the enemy side's slots in order — each enemy slot the exact rotation of the allied
+ * slot with its index about the anchors' midpoint. The authority (sim/authoritativeMatch.ts) seats a side through the
+ * same placement call, so a solo battle and a hosted one deploy alike.
+ */
 function selectEntitySpawn(
   context: BattleSpawnContext,
   isPlayer: boolean,
   isAlly: boolean,
 ): SpawnPoint {
-  if (isPlayer) return context.world.spawnPoints.player;
-  return isAlly ? selectAllySpawn(context) : selectEnemySpawn(context);
+  const team = isPlayer || isAlly ? 'alpha' : 'bravo';
+  const slot = context.placement.deploymentSlot(team, team === 'alpha' ? context.allyIndex++ : context.enemyIndex++);
+  return { pos: [slot.x, context.world.heightField.getHeightAt(slot.x, slot.z), slot.z], yaw: slot.yaw };
 }
 
 function initializeBattleEntity(
