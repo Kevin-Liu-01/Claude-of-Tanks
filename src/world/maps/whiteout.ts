@@ -97,6 +97,8 @@ export default {
     industrialCladding: 'steel', // round 75: a polar station's halls are corrugated sheet, not brick
     yardDressing: 60, // round 75: a snowed-in station keeps its yards sparse
     snowCap: true, extraKits: ['winterLake'], wallStyle: 'fieldstone', wallStoneChance: 0.78,
+    // the map-revival lane (round 2, 2026-10-09): the station's buildings banked in drifts, its corridors ploughed
+    buildingDrifts: true, ploughBanks: true,
     wallRuns: [[-148, -76, -148, -16, 2], [-148, 20, -148, 84, 3], [-66, -58, -4, -58, 2], [-66, 52, -4, 52, 3], [-26, 296, 56, 296, 2], [316, 0, 316, 74, 2]],
     well: false, hayCrates: false, fences: true, telegraph: false, carts: false, logs: true,
     rocks: 136, outcrops: 22, craters: 50, rubblePiles: 12, sandbagLines: 16, hedgehogs: 12,

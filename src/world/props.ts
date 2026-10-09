@@ -83,6 +83,8 @@ import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_
 import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
 import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
 import { buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
+import { buildBuildingDrifts, buildPloughBanks } from './maps/buildingSnowDrifts.ts'; // (the map-revival lane, round 2)
+import { structureCollisionOpenIds } from './maps/structureCollision.ts';
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
 import type { WaterDisturbance } from './shallowWater.ts';
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
@@ -502,6 +504,12 @@ interface PropsSettings {
   monument: boolean;
   townCraters: boolean;
   snowCap?: boolean;
+  /** The map-revival lane (round 2, 2026-10-09; gauntlet waves 319/320 on Whiteout: buildings "float on a featureless flat
+   * snow plane with no plough banks or drifts"): on a snow map, the drifts its wind banks against every closed building
+   * (maps/buildingSnowDrifts.ts) and the windrows along its ploughed roads inside the settlement, on the walls' drift
+   * mesh. Opt-in per map. */
+  buildingDrifts?: boolean;
+  ploughBanks?: boolean;
   streetRowsAfterLandmarks?: boolean;
   /** The maps-and-layouts lane (2026-10-03): a roadside or block-fill building whose footprint stands in a carriageway
    * (within the layout brief's 3.5 m road core of a road's line) moves, once every settlement building stands, by the
@@ -9853,6 +9861,16 @@ ${snowCap ? `
     }
   }
   yield* mergeMaterialBuckets();
+  // the map-revival lane (round 2): a snow map's drifts against its buildings and windrows along its ploughed roads join
+  // the walls' drifts (maps/buildingSnowDrifts.ts)
+  if (snowCap && (P.buildingDrifts || P.ploughBanks)) {
+    const roadDistAt = (x: number, z: number): number => heightField._roadDist(x, z);
+    if (P.buildingDrifts) {
+      wallDressing.drifts.push(...buildBuildingDrifts(heightField, buildingFeatures,
+        { open: structureCollisionOpenIds, roadDist: roadDistAt, mobile: mobileProps }));
+    }
+    if (P.ploughBanks) wallDressing.drifts.push(...buildPloughBanks(heightField, L.roads, town, roadDistAt, { mobile: mobileProps }));
+  }
   // the scenery lane (wave 34): the snow drifts banked against the walls draw as one mesh of their own on the plaster
   // (a drift is a low ramp: it receives the cascades and casts none), so a frame can show and hide them
   if (wallDressing.drifts.length) {
