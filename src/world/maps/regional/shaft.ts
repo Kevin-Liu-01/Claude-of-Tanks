@@ -162,11 +162,14 @@ export function collapseShaft(anatomy: StructureDamageAnatomy, seed: number, out
   for (let i = 0; i < out.pieces.capacity; i++) {
     const t = rng(), slot = slots[Math.floor(rng() * slots.length)] ?? wall;
     if (!slot) break;
-    const x = cx + axis[0] * reach * t, z = cz + axis[2] * reach * t, y = 0.5 + (1 - t) * 0.5 * H + rng() * 2;
+    // (dcore 2026-10-09) a shaft the presentation toppled lies on the ground when this is laid: its courses burst off
+    // the line where it struck, low; otherwise they rain down it from the height they fell from
+    const x = cx + axis[0] * reach * t, z = cz + axis[2] * reach * t;
+    const y = given ? 0.4 + rng() * 1.2 : 0.5 + (1 - t) * 0.5 * H + rng() * 2;
     const spin = rng() * Math.PI * 2, shape = slot.material === 'brick' ? 'brick' : slot.material === 'adobe' ? 'clod' : slot.material === 'plaster' ? 'plate' : 'block';
     if (!out.pieces.push(slot.bucket, shape, Math.floor(rng() * 4), x, y, z, 0, Math.sin(spin / 2), 0, Math.cos(spin / 2),
       0.18 + rng() * 0.2, 0.09 + rng() * 0.1, 0.12 + rng() * 0.16, slot.tint[0], slot.tint[1], slot.tint[2],
-      axis[0] * (1 + rng() * 2) + (rng() - 0.5), -1 - rng() * 2, axis[2] * (1 + rng() * 2) + (rng() - 0.5))) break;
+      axis[0] * (1 + rng() * 2) + (rng() - 0.5), given ? 0.5 + rng() * 2.5 : -1 - rng() * 2, axis[2] * (1 + rng() * 2) + (rng() - 0.5))) break;
   }
   return { cuts: [], hides: [{ section: null, partClass: null }] };
 }
