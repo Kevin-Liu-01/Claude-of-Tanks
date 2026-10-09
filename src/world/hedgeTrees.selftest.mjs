@@ -55,8 +55,10 @@ try {
       'every tree before the hedges as the plain map placed it');
     const census = hedged.group.userData.hedgeTrees;
     assert.equal(census.standing, rows.length, 'the census counts the trees still standing');
-    assert.ok(census.planted >= census.standing && census.planted - census.standing <= 0.02 * census.planted,
-      `a few at most taken by the structure and road passes (${census.planted} planted, ${census.standing} standing)`);
+    // (symmetric deployments, modes lane 2026-10-08: the deployment slots' clearings take theirs too, counted apart)
+    const passes = census.planted - census.standing - census.clearings;
+    assert.ok(census.planted >= census.standing && census.clearings >= 0 && passes >= 0 && passes <= 0.02 * census.planted,
+      `a few at most taken by the structure and road passes (${census.planted} planted, ${census.standing} standing, ${census.clearings} in the deployment clearings)`);
     assert.ok(census.lines > 50 && census.gates === census.lines && census.km > 5, `the hedged field ends read (${JSON.stringify(census)})`);
     assert.ok(census.perKm > 15 && census.perKm < 1000 / hedge.spacingM * 1.4, `trees per hedge km at the spacing (${census.perKm})`);
     assert.deepEqual(digest(hedged), digest(replay), 'deterministic');

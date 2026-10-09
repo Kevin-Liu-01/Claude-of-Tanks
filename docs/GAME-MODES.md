@@ -289,11 +289,16 @@ the rule-card lines (`rules.line.marsCaches` / `marsCachesOff`).
   `BATTLE_FIELD_LIMIT` in `sim/matchRuleset.ts` caps the field, the player included: the enemy count
   typed is kept and the allied bots yield. The limit was set from the desktop-tier field probe on
   2026-09-18 (`docs/PERFORMANCE.md` "Field size"). The wave modes keep their own panel (allied bots
-  0–6, pool, first wave, nation) and rooms keep `teamSize`. Seating: the authored 7v7 wedge stays the
-  first six allied slots; further allied bots take lateral and forward slots around the player pad —
-  never further back, the southern-spawn maps have no room there — and a side larger than the map's
-  seven enemy pads re-uses them on a compact offset ring (`sim/spawnPads.ts`, shared by the solo sim
-  and the authority); the placement search still resolves obstacles and neighbours. The HUD ears pack
+  0–6, pool, first wave, nation) and rooms keep `teamSize`. Seating (symmetric deployments, modes
+  lane 2026-10-08): both sides deploy in one formation, each bravo slot the 180° rotation of its
+  alpha slot about the anchors' midpoint (`sim/deployment.ts`, resolved on the world by
+  `sim/matchPlacement.ts` `deploymentSlot`, the one call the solo sim and the authority make). A map
+  whose enemy pads spread past 60 m deploys both sides as that arc; compact pads deploy both as a
+  4 + 3 block at the player pad; slots past the base stand a spacing (15 m) behind it. A slot that
+  meets water, a cliff, soft ground or a solid moves with its partner by the rotated displacement, so
+  the pair stays a rotation; the world keeps its spawn clearings round both sides' first fourteen
+  slots (`deploymentClearings`), and the minimap's spawn marker is the side's slot centroid. Receipts:
+  `sim/deployment.selftest.mjs` (33 maps), `game/deploymentParity.selftest.mjs` (solo = host). The HUD ears pack
   their rows past ten vehicles a side, and the loading screen's reveal budget grows with the field
   (`game/battleEntryLifecycle.ts` `revealTimeoutForField`: 1.5 s for 7 v 7, +120 ms per further
   vehicle — a 14 v 14 first frame outran the fixed budget and bounced the entry back to the Garage).
