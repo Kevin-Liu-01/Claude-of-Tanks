@@ -37,6 +37,8 @@ interface TallGrassField {
   _foldAt?(x: number, z: number): number;
   /** Ground lane (2026-10-03): the field the terrain draws here (landUse.ts); absent on a map without fields. */
   _landUseAt?(x: number, z: number, out: LandFieldSample): LandFieldSample;
+  /** Ground lane (2026-10-08): the sward's dry patch (groundRedux.ts strawPatchWeight, 0..1); absent on Verdant. */
+  _strawPatchAt?(x: number, z: number): number;
   /** Ground lane (2026-10-03): the canopy's cover (0..1) — little sward grows in a stand's shade. */
   _woodsAt?(x: number, z: number): number;
 }
@@ -689,7 +691,13 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     if (blocked && blocked(x, y, z, heightM, 0.12)) return;
     const widthM = b.widthM * (ring.far ? TALL_GRASS.farWidth : 1) * (0.8 + 0.4 * wR);
     // the tint: a per-clump luminance jitter, straw on the terrain's dry patches, deeper green in the hollows
-    const dry = Math.max(pastureDry >= 0 ? pastureDry : splatNoise ? smoothstep(0.55, 0.85, _splat.mA) : 0, grazed * 0.45);
+    // (2026-10-08, wave 260 — Saltmere: "bright-yellow grass clumps dotted evenly across"; the railyard's drays) on a map
+    // with straw patches a pasture's cured blades gather in the sward's dry patches — its own draw thrice there, under
+    // half of it elsewhere, the same on the whole — and a wild sward's blades cure there by half
+    const straw = field._strawPatchAt ? field._strawPatchAt(x, z) : -1;
+    if (straw >= 0 && pastureDry >= 0) pastureDry = Math.min(0.85, pastureDry * (0.45 + 2.9 * straw));
+    const dry = Math.max(pastureDry >= 0 ? pastureDry : splatNoise ? smoothstep(0.55, 0.85, _splat.mA) : 0, grazed * 0.45,
+      straw > 0 ? 0.5 * straw : 0);
     const lum = 0.82 + 0.36 * tintR;
     const r = (b.tip[0] * (1 - dry) + b.dry[0] * dry) / b.tip[0];
     const g = (b.tip[1] * (1 - dry) + b.dry[1] * dry) / b.tip[1];

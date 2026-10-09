@@ -64,6 +64,7 @@ import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaB
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
+import { strawPatchWeight } from './groundRedux.ts'; // ground lane (2026-10-08): the sward's straw patches
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -575,6 +576,9 @@ export interface HeightField {
   /** The maps-and-layouts lane (2026-10-03): the authored landforms' geological zones at (x, z), each 0..1 —
    * [lava flow, cinder cone, talus fan] (landformGeology.ts geologyZoneWeights); absent on a map without them. */
   _geologyZoneAt?(x: number, z: number, out: GeologyZones): GeologyZones;
+  /** Ground lane (2026-10-08): the sward's dry patch at (x, z) (groundRedux.ts strawPatchWeight, 0..1) — present on a
+   * map whose ground profile has `strawPatches`; the tufts and the tall grass cure their straw there. */
+  _strawPatchAt?(x: number, z: number): number;
   /** The map-borders lane (2026-10-03): the ring's carriageway attribute — [signed offset from a road exit line (m), presence]. */
   _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
   /** The map-borders lane: the roads that leave the square, as their exit lines past the edge (40 m steps, ~720 m). */
@@ -2812,6 +2816,9 @@ function* heightFieldBuildSteps(
     fieldTrenchLines: fieldTrenchPlan(),
     // Keep pavement clear without excluding vegetation along unrelated roads.
     _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,
+    // ground lane (2026-10-08, the gauntlet's wave 260: "evenly spaced identical dry sprigs"): the sward's straw in its dry
+    // patches, on a map whose ground profile has them (Verdant opts out); `?ground=legacy` keeps the old scatter
+    ...((resolveGroundReduxProfile(cfg?.id).strawPatches ?? 0) > 0 && !legacyGroundLanes ? { _strawPatchAt: strawPatchWeight } : {}),
     // round 67: the cut faces' seeding weight, read on the uncut ground like the exclusion
     ...(railCuttings !== null ? { _batterSeedAt: (x: number, z: number): number =>
       railCuttingFaceSeedAt(railCuttings, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8, railOpenLines) } : {}),

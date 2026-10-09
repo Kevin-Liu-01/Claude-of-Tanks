@@ -4144,6 +4144,9 @@ function* vegetationBuildSteps(
     if (dirtPatch > 0.55 && roll < (carpet ? 0.4 : 0.75)) return true;
     return !carpet && splat.n1 < 0.34 && clusterRoll > 0.25 + splat.n1;
   }
+  // ground lane (2026-10-08, the gauntlet's wave 260): the sward's straw patches (the height field's hook,
+  // groundRedux.ts strawPatchWeight) — absent on Verdant, whose tufts keep the old one-in-six scatter
+  const strawPatchAt = heightField._strawPatchAt ?? null;
   function resolveTuftScale(
     splat: ReturnType<typeof sampleSplatNoise>,
     clusterRoll: number,
@@ -4207,7 +4210,11 @@ function* vegetationBuildSteps(
     // among green ones"; Verdant's "flat, oversaturated neon … no yellow or brown mixing"): a summer sward is part cured
     // wherever it stands — a tuft in six carries last season's straw (a hash of the tuft's own draws: the stream is
     // unchanged)
-    if (((hueJ * 13.7 + varJ * 5.3) % 1) < 0.17) dry = Math.max(dry, 0.6);
+    // (2026-10-08, wave 260 — the railyard's drays, Hostomel: "evenly spaced identical dry sprigs") on a map with straw
+    // patches the same share of straw stands in the sward's dry patches (a fifth of the ground): three tufts in four there,
+    // one in thirty elsewhere
+    const straw = strawPatchAt !== null ? strawPatchAt(x, z) : -1;
+    if (((hueJ * 13.7 + varJ * 5.3) % 1) < 0.17 * (straw >= 0 ? 0.2 + 4.2 * straw : 1)) dry = Math.max(dry, 0.6);
     // r7: carpet cull 0.6 -> 0.4 — the near dirt patches punched hard bald
     // holes in the hero grass ring and the exposed albedo read as "flat
     // mottled texture up to the tracks"; keep them THINNER, not bare
@@ -4301,7 +4308,10 @@ function* vegetationBuildSteps(
     // saturated green across the entire map" critique. sn.mA is the CPU twin
     // of that shader field: tufts standing on a dry patch swing toward
     // yellow-brown straw, so the patchwork reads at every distance.
-    const dryPatch = pastureDry >= 0 ? pastureDry : smoothstepJs(0.54, 0.85, sn.mA);
+    // (2026-10-08: on a map with straw patches a pasture's straw gathers in them as its blades' does — tallGrass.ts admit —
+    // and the wild sward's tufts take half the patch's straw)
+    if (straw >= 0 && pastureDry >= 0) pastureDry = Math.min(0.85, pastureDry * (0.45 + 2.9 * straw));
+    const dryPatch = pastureDry >= 0 ? pastureDry : straw > 0 ? Math.max(smoothstepJs(0.54, 0.85, sn.mA), 0.5 * straw) : smoothstepJs(0.54, 0.85, sn.mA);
     th -= dryPatch * 0.075;
     ts *= 1 - dryPatch * 0.30;
     tl += dryPatch * 0.05;
