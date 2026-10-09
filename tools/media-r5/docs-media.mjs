@@ -2,7 +2,7 @@
 // docs-media.mjs — the field manual's Filming page media (public/media/filming-r1/): eight site-fifty takes at every
 // stage their rounds went through, re-encoded for the page, with a manifest recording each file's source.
 //
-//   node tools/media-r5/docs-media.mjs [--ids=s05,s22] [--stages=final,review2] [--force] [--dry-run]
+//   node tools/media-r5/docs-media.mjs [--ids=s05,s22] [--stages=final,review2] [--final=deliver-r13] [--force] [--dry-run]
 // --force re-encodes the selected stages (all by default); the frames strip, the cards and the figures follow.
 //
 // A take ships each stage whose source exists under shots/media-r5/; src/docs/filming.ts lists what shipped and
@@ -42,7 +42,8 @@ export const DOCS_STAGES = {
   previz: { src: (id) => `previz50-r6/${id}.mp4`, size: [1280, 720], crf: 26 },
   review2: { src: (id) => `site50/review-r6/${id}.mp4`, size: null, crf: 26 },
   review3: { src: (id) => `site50/review-r7/${id}.mp4`, size: null, crf: 26 },
-  final: { src: (id) => `site50/deliver-r7/${id}/${id}.mp4`, size: [1920, 1080], crf: 24 },
+  // --final=deliver-r13 (launch night, 2026-10-09: each finals round delivers into its own folder)
+  final: { src: (id) => `site50/${arg('final') ?? 'deliver-r7'}/${id}/${id}.mp4`, size: [1920, 1080], crf: 24 },
 };
 // The frames strip and the picker card come from the latest engine render a take has.
 export const ENGINE_LATEST = ['final', 'review3', 'review2', 'review1'];
