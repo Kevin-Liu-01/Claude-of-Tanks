@@ -529,8 +529,49 @@ assert.match(source, /paintBoulder\(form, P\.rockTone, lithology\);\n\s*rockGeos
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockGround', new THREE\.InstancedBufferAttribute\(ground, 1\)\)/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockSlope', new THREE\.InstancedBufferAttribute\(slope, 2\)\)/, 'every boulder the slope of its ground');
 assert.match(source, /const rockContact = !snowCap && rockDressing\.dust < 0\.5;/, 'a contact patch round every boulder, but on snow and sand');
-assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(conformedDisc\(spot\.x, spot\.z, spot\.r, \[[^\]]*\], true, ROCK_PATCH\)\);\n\s*yield \{ fine: true, progress: false, stage: 'ground-foundation-instances' \};/,
+assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(conformedDisc\(spot\.x, spot\.z, spot\.r, \[[^\]]*\], true, ROCK_PATCH, CONTACT_STRENGTH\.rock\)\);\n\s*yield \{ fine: true, progress: false, stage: 'ground-foundation-instances' \};/,
   'the contact patches go to the ground decals, conformed to the drawn mesh, one private input and checkpoint each');
+// (b44; wave 272: the boulders' "flat tan disc … like a cookie-cutter decal") the contact layer darkens the ground it lies
+// on: each kind's strength in its patch's vertex RGB, the material a multiplicative darkening, unlit, no fog of its own,
+// gone by 160 m, no shadow — and its output law: the target × mix(1, the grey, a)
+{
+  const strength = /const CONTACT_STRENGTH = Object\.freeze\(\{ rock: ([\d.]+), prop: ([\d.]+), stack: ([\d.]+), foundation: ([\d.]+) \}\);/.exec(source);
+  assert.ok(strength, 'a strength for every kind of contact');
+  const [rock, prop, stack, foundation] = strength.slice(1).map(Number);
+  assert.ok(rock === 1 && prop < rock && stack < rock && foundation < prop, `a boulder's foot full, a prop's and a stack's less, a foundation's least (${rock}, ${prop}, ${stack}, ${foundation})`);
+  for (const [who, call] of [['a foundation', /Math\.max\(building\.w, building\.d\) \* 1\.2, \[[^\]]*\], false, FULL_PATCH, CONTACT_STRENGTH\.foundation\)\);/],
+    ['a crushable prop', /conformedDisc\(prop\.x, prop\.z, 1\.15, \[[^\]]*\], false, FULL_PATCH, CONTACT_STRENGTH\.prop\)\);/],
+    ['a field stack', /conformedDisc\(stack\.x, stack\.z, stack\.r, \[[^\]]*\], false, FULL_PATCH, CONTACT_STRENGTH\.stack\)\);/]]) {
+    assert.match(source, call, `${who}'s patch at its strength`);
+  }
+  assert.match(source, /const tint = shares \? new Float32Array\(nv \* 4\)\.fill\(strength\) : null;/, 'the strength in the vertex RGB, the shares in its alpha');
+  assert.match(source, /const mat: THREE\.Material = groundContact \? contactDarkeningMaterial\(tex\) : new THREE\.MeshStandardMaterial\(\{/, 'the contact layer on its own material');
+  const at = source.indexOf('function contactDarkeningMaterial(tex: THREE.Texture): THREE.MeshBasicMaterial {');
+  assert.ok(at > 0, 'the contact material');
+  const body = source.slice(at, source.indexOf('\n}\n', at));
+  for (const want of ['transparent: true', 'depthWrite: false', 'fog: false', 'toneMapped: false', 'blending: THREE.MultiplyBlending', 'premultipliedAlpha: true', 'vertexColors: true']) {
+    assert.ok(body.includes(want), `the contact material: ${want}`);
+  }
+  const law = /float cotContactA = clamp\(diffuseColor\.a \* ([\d.]+) \* vColor\.r, 0\.0, ([\d.]+)\) \* \(1\.0 - smoothstep\(([\d.]+), ([\d.]+), vCotContactDist\)\);\n  gl_FragColor = vec4\(([\d.]+), ([\d.]+), ([\d.]+), cotContactA\);/.exec(body);
+  assert.ok(law, 'the darkening law in the shader');
+  const [gain, cap, fade0, fade1, gr, gg, gb] = law.slice(1).map(Number);
+  assert.ok(cap <= 0.85 && fade1 <= 200 && fade0 < fade1, `a cap (${cap}) and a fade by ${fade1} m`);
+  assert.ok(gr < 0.7 && gr >= gg && gg >= gb && gb > 0.4, `a faintly warm grey (${gr}, ${gg}, ${gb})`);
+  // the blend three runs for MultiplyBlending with premultiplied alpha (WebGLState: DST_COLOR, ONE_MINUS_SRC_ALPHA):
+  // target × (rgb·a) + target × (1 − a) = target × mix(1, rgb, a): the ground keeps its own colour, darker by a
+  const ground = [0.31, 0.12, 0.06];
+  for (const a of [0, 0.25, 0.8]) {
+    const out = ground.map((t, i) => t * [gr, gg, gb][i] * a + t * (1 - a));
+    const want = ground.map((t, i) => t * (1 + ([gr, gg, gb][i] - 1) * a));
+    assert.ok(out.every((v, i) => Math.abs(v - want[i]) < 1e-12), 'the target times mix(1, the grey, a)');
+    assert.ok(Math.abs(out[0] / out[1] - (ground[0] / ground[1]) * (1 + (gr - 1) * a) / (1 + (gg - 1) * a)) < 1e-12, 'its hue the ground\'s, a breath warmer');
+  }
+  // (the patch's densest texel is 0.94 opaque; a boulder's outer ring carries the full share there)
+  assert.ok(gain * 0.94 * rock >= cap, `a boulder's patch reaches the cap where it is densest (gain ${gain})`);
+  assert.ok(gain * 0.3 * 0.94 * rock < cap, 'its inner ring (share 0.3) stays under it');
+  // the rim: the texture's ragged alpha falls to nothing there whatever the share, so the patch has no edge
+  assert.match(source, /gradient\.addColorStop\(1, 'rgba\(82,68,45,0\)'\);/, 'the contact texture clear at its rim');
+}
 // (b12, after the Coastal re-shoot: a 2-3 px crease at a stone's foot where the patch's inner ring showed past a bank's
 // lip) a boulder's patch lightens toward the stone, its outer shadow whole; the contact layer carries the shares in its
 // vertex alpha, the other decals keep their geometry

@@ -2512,6 +2512,38 @@ function applyDecalRaggedEdge(
   }
 }
 
+/**
+ * The scenery lane (b44; gauntlet wave 272 on Reservoir and Saltwind: each boulder "sits on a flat tan disc that rings
+ * its base like a cookie-cutter decal", "a conspicuous pale-tan ring or dish"): the props' ground-contact layer — the
+ * boulders' contact patches and the shades over their beds, the crushables', the field stacks' and the foundations'
+ * discs — darkens the ground it lies on instead of laying a soil of its own over it. The fixed brown soil, lit by the
+ * full sun with no shadow, read as a pale tan ring over a red karst soil, a shaded forest floor or a meadow. Now: the
+ * drawn ground multiplied by a faintly warm grey, by the layer's alpha (the decal texture's ragged profile × the ring's
+ * share in the vertex alpha) × the kind's strength (the vertex red, conformedDisc), so the ground keeps its own colour,
+ * grain and light, darker toward the foot, and the patch has no edge (its alpha falls to nothing at the rim). Unlit, no
+ * fog of its own (a fogged far patch would tint the haze), gone by 160 m, receiving no shadow (the shadow audits).
+ */
+function contactDarkeningMaterial(tex: THREE.Texture): THREE.MeshBasicMaterial {
+  const mat = new THREE.MeshBasicMaterial({
+    map: tex, transparent: true, depthWrite: false, fog: false, toneMapped: false,
+    blending: THREE.MultiplyBlending, premultipliedAlpha: true, vertexColors: true,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+  });
+  mat.onBeforeCompile = (shader) => {
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>', '#include <common>\nvarying float vCotContactDist;');
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <project_vertex>', '#include <project_vertex>\nvCotContactDist = -mvPosition.z;');
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nvarying float vCotContactDist;');
+    // (MultiplyBlending: the target × (rgb·a + 1 − a) of the premultiplied output — the ground × mix(1, the grey, a))
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <premultiplied_alpha_fragment>', /* glsl */`{
+  float cotContactA = clamp(diffuseColor.a * 2.5 * vColor.r, 0.0, 0.8) * (1.0 - smoothstep(80.0, 160.0, vCotContactDist));
+  gl_FragColor = vec4(0.56, 0.53, 0.49, cotContactA);
+}
+#include <premultiplied_alpha_fragment>`);
+  };
+  mat.customProgramCacheKey = () => 'props-contact-darkening-v1';
+  return mat;
+}
+
 function makeGroundDecalTexture(
   noise: SimplexNoise,
   anisotropy: number,
@@ -8514,6 +8546,10 @@ ${snowCap ? `
     // contact). Only the contact layer passes shares; the other decals keep their geometry as it was.
     const FULL_PATCH: readonly number[] = [1, 1, 1, 1];
     const ROCK_PATCH = ROCK_PATCH_SHARES; // (b16: the bed shades take the same, buildRockBeds)
+    // (b44) each kind's share of the contact layer's darkening, carried in the patch's vertex RGB (the contact material
+    // reads its red): a boulder's foot full (its bed's shades too: they carry 1), a crushable prop's and a field stack's
+    // less, a building's foundation least (its walls stand on it, and a village keeps its yards' own ground)
+    const CONTACT_STRENGTH = Object.freeze({ rock: 1, prop: 0.75, stack: 0.75, foundation: 0.45 });
     function conformedDisc(
       x: number,
       z: number,
@@ -8521,12 +8557,14 @@ ${snowCap ? `
       profile: readonly number[],
       onMesh = false,
       shares: readonly number[] | null = null,
+      strength = 1,
     ): THREE.BufferGeometry {
       const rings = CONTACT_PATCH_RINGS, segs = 18;
       const nv = 1 + (rings.length - 1) * segs;
       const pos = new Float32Array(nv * 3);
       const uv = new Float32Array(nv * 2);
-      const tint = shares ? new Float32Array(nv * 4).fill(1) : null;
+      // (the alpha of every vertex is its ring's share, written below; the RGB the kind's strength)
+      const tint = shares ? new Float32Array(nv * 4).fill(strength) : null;
       const groundAt = onMesh ? meshHeightAt : groundHeightAt;
       pos[0] = x; pos[1] = groundAt(x, z) + profile[0]; pos[2] = z;
       uv[0] = 0.5; uv[1] = 0.5;
@@ -8608,12 +8646,13 @@ ${snowCap ? `
       decalKind?: string;
     } = {}) {
       if (geos.length === 0) return null;
-      const mat = new THREE.MeshStandardMaterial({
+      // (b44) the contact layer darkens the ground it lies on (contactDarkeningMaterial); the other decals are lit
+      const mat: THREE.Material = groundContact ? contactDarkeningMaterial(tex) : new THREE.MeshStandardMaterial({
         map: tex, transparent: true, depthWrite: false,
         roughness: 0.97, metalness: 0,
         polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
       });
-      if (receiveShadow) engineCtx.setupShadowMaterial(mat);
+      if (receiveShadow && !groundContact) engineCtx.setupShadowMaterial(mat as THREE.MeshStandardMaterial);
       // (the contact layer's per-ring shares ride its vertex alpha)
       if (geos[0].getAttribute('color')) mat.vertexColors = true;
       const mesh = new THREE.Mesh(mergeGeometries(geos, false), mat);
@@ -8644,20 +8683,20 @@ ${snowCap ? `
             building.w / 2 + 2.8, building.d / 2 + 2.8, building.rot || 0));
         } else {
           dirtDiscs.push(conformedDisc(building.x, building.z,
-            Math.max(building.w, building.d) * 1.2, [0.05, 0.05, 0.05, 0.04], false, FULL_PATCH));
+            Math.max(building.w, building.d) * 1.2, [0.05, 0.05, 0.05, 0.04], false, FULL_PATCH, CONTACT_STRENGTH.foundation));
         }
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       for (const prop of crushables) {
-        dirtDiscs.push(conformedDisc(prop.x, prop.z, 1.15, [0.05, 0.05, 0.04, 0.03], false, FULL_PATCH));
+        dirtDiscs.push(conformedDisc(prop.x, prop.z, 1.15, [0.05, 0.05, 0.04, 0.03], false, FULL_PATCH, CONTACT_STRENGTH.prop));
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       for (const stack of stackSpots) {
-        dirtDiscs.push(conformedDisc(stack.x, stack.z, stack.r, [0.05, 0.05, 0.04, 0.03], false, FULL_PATCH));
+        dirtDiscs.push(conformedDisc(stack.x, stack.z, stack.r, [0.05, 0.05, 0.04, 0.03], false, FULL_PATCH, CONTACT_STRENGTH.stack));
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       for (const spot of rockSpots) {
-        dirtDiscs.push(conformedDisc(spot.x, spot.z, spot.r, [0.04, 0.04, 0.04, 0.03], true, ROCK_PATCH));
+        dirtDiscs.push(conformedDisc(spot.x, spot.z, spot.r, [0.04, 0.04, 0.04, 0.03], true, ROCK_PATCH, CONTACT_STRENGTH.rock));
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       // (b16) and over each bed, its patch's soil where the bed stands above the ground the disc lies on
