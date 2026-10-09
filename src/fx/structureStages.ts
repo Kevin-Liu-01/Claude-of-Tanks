@@ -586,7 +586,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     const bdx = ((e.dirX || 0) * c - (e.dirZ || 0) * sn) / dl, bdz = ((e.dirX || 0) * sn + (e.dirZ || 0) * c) / dl;
     const rng = damageRng(damageSeed(a.seed, 7, e.structureId));
     const bands = Math.max(1, Math.ceil(H / CRUMBLE_BAND));
-    const spacing = 1.2;
+    // (dcore 2026-10-09, the battle strips: the falling walls threw a cloud of large blocks that lay as a carpet) fewer,
+    // a little smaller: the pile is the kit's heap, the pieces its fall
+    const spacing = 1.7;
     for (let b = 0; b < bands; b++) {
       const h1 = H - b * CRUMBLE_BAND, h0 = Math.max(0, h1 - CRUMBLE_BAND);
       const y0 = baseRel + h0, y1 = baseRel + h1;
@@ -612,7 +614,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
               const slot: FractureSlot = face.layers.length > 1 && rng() < 0.35 ? face.layers[face.layers.length - 1]! : face.layers[0]!;
               const shape = shapeOfMaterial(slot.material);
               const flat = shape === 'plate' || shape === 'sheet' || shape === 'tile' || shape === 'slate';
-              const size = (shape === 'beam' ? 1.4 : 0.75) * (0.75 + rng() * 0.5);
+              const size = (shape === 'beam' ? 1.3 : 0.6) * (0.7 + rng() * 0.6);
               const inset = thick * 0.5;
               const px = face.origin[0] + face.u[0] * u - face.out[0] * inset;
               const pz = face.origin[2] + face.u[2] * u - face.out[2] * inset;
@@ -821,6 +823,17 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         }
       }
       if (e.stage === 'collapsed') downed.add(e.structureId);
+      // (dcore 2026-10-09, wave 294a: "the tank sits inside the unbroken wall for ~900 ms") a ram that brings a building
+      // down opens the hull's way through at once (the breach stage's ram blow, a little wider than the hull is high),
+      // while the rest comes down along the front
+      if (e.stage === 'collapsed' && e.cause === 'ram' && !settled && !sections && !structureTopple(seam.anatomy, e)) {
+        const blow = breachBlowFor(e);
+        const spec = seam.holeAt(blow.x, blow.y, blow.z, Math.max(blow.radiusM, 1.9), e.dirX, e.dirZ, e.munition, e.cause, 0);
+        if (spec) {
+          notePunched(e.structureId, e.x, e.y, e.z);
+          run(seam, 0, false, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
+        }
+      }
       // a collapse's stubs and pile show under the walls as they come down; the walls' own pieces leave the front
       if (e.stage === 'collapsed') {
         // after the P2 cascade the storeys threw their own pieces as they dropped: the kit lays its pile, stubs and

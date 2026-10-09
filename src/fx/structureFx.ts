@@ -186,12 +186,12 @@ function footprintEdge(e: StructureStageEvent, cosY: number, sinY: number, perim
 
 function puff(C: BlastContext, x: number, y: number, z: number, vx: number, vy: number, vz: number, drag: number,
   rise: number, windK: number, life: number, size0: number, size1: number, c0: Rgb, c1: Rgb, density: number,
-  play: number, start: number, bo: number, aspect = 1): void {
+  play: number, start: number, bo: number, aspect = 1, grow = 2.6): void {
   const m = C.m;
   const R = C.rand;
   m.x = x; m.y = y; m.z = z; m.birthOffset = bo;
   m.vx = vx; m.vy = vy; m.vz = vz; m.drag = drag; m.rise = rise; m.windK = windK; m.grav = 0;
-  m.life = life; m.size0 = size0; m.size1 = size1; m.growExp = 2.6; m.rot = (R() - 0.5) * 0.7; m.spin = (R() - 0.5) * 0.1;
+  m.life = life; m.size0 = size0; m.size1 = size1; m.growExp = grow; m.rot = (R() - 0.5) * 0.7; m.spin = (R() - 0.5) * 0.1;
   m.r0 = c0[0]; m.g0 = c0[1]; m.b0 = c0[2]; m.r1 = c1[0]; m.g1 = c1[1]; m.b1 = c1[2];
   m.density = density; m.fadeIn = 0.08; m.fadeOut = 0.45;
   m.medium = 'burst'; m.variant = Math.floor(R() * 4); m.mirror = R() < 0.5; m.playSeconds = play; m.startFrame = start;
@@ -321,8 +321,8 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     const lx = (R() * 2 - 1) * e.hw * 0.6, lz = (R() * 2 - 1) * e.hd * 0.6;
     const life = 12 + R() * 4;
     puff(C, e.cx + lx * cosY + lz * sinY, e.baseY + wallH * (0.75 + 0.2 * R()), e.cz - lx * sinY + lz * cosY,
-      (R() - 0.5) * 1.5, 1.6 + R() * 1.2, (R() - 0.5) * 1.5, 1.4, 0.6, 1.0, life, 0.45 * S * dk, (1.3 + R() * 0.4) * S * dk,
-      tintDark, tinted, 0.5, life, 2, 0.3 + R() * 0.5);
+      (R() - 0.5) * 1.5, 1.6 + R() * 1.2, (R() - 0.5) * 1.5, 1.4, 0.6, 1.0, life, 0.6 * S * dk, (1.5 + R() * 0.4) * S * dk,
+      tintDark, tinted, 0.5, life, 2, 0.3 + R() * 0.5, 1, 4.5);
   }
   // 2. the walls pour their dust out of their foot as the front comes down: a low skirt all round, rolling out wide
   const skirtN = Math.max(8, Math.min(18, Math.round(perim / 3.5)));
@@ -332,7 +332,7 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     const life = 10 + R() * 4;
     const at = collapseFrontTime(wallH * (0.6 - 0.55 * R()), wallH) + 0.3;
     puff(C, p[0] + p[2] * 0.6, e.baseY + 0.8, p[1] + p[3] * 0.6, p[2] * v, 0.35 + R() * 0.4, p[3] * v, 2.0, 0.25, 0.9,
-      life, 0.35 * S * dk, (0.95 + R() * 0.3) * S * dk, tintDark, tinted, 0.6, life, 1, Math.min(frontEnd, at), 1.5 + R() * 0.4);
+      life, 0.55 * S * dk, (1.15 + R() * 0.3) * S * dk, tintDark, tinted, 0.6, life, 1, Math.min(frontEnd, at), 1.5 + R() * 0.4, 4.5);
   }
   // a little shed off the crumbling line as it passes (the dust rides the falling courses down)
   const BAND = 1.8;
@@ -369,7 +369,7 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     const at = 0.9 + (i / massN) * (frontEnd - 0.6) + R() * 0.3;
     const life = 15 + R() * 4;
     puff(C, wx, e.baseY + Math.max(1, collapseFront(at, wallH) * 0.7), wz, (R() - 0.5) * 1.0, 0.7 + R() * 0.6, (R() - 0.5) * 1.0,
-      1.3, 0.45 + R() * 0.3, 1.0, life, 0.5 * S * dk, (1.45 + R() * 0.4) * S * dk, tintDark, tinted, 0.48, life, 2, at);
+      1.3, 0.45 + R() * 0.3, 1.0, life, 0.75 * S * dk, (1.7 + R() * 0.4) * S * dk, tintDark, tinted, 0.48, life, 2, at, 1, 4.5);
   }
 }
 
