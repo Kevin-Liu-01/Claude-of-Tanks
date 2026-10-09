@@ -12,7 +12,7 @@ import { createCanvas, loadImage } from '@napi-rs/canvas';
 
 const ROOT = process.cwd();
 const { createCaptureLock, CAPTURE_LOCK_DIR, ticketAt } = await import(join(ROOT, 'tools/capture-lock.mjs'));
-const args = Object.fromEntries(process.argv.slice(2).map(a => { const m = /^--([a-z-]+)=(.*)$/.exec(a); if (!m) throw Error('bad arg ' + a); return [m[1], m[2]]; }));
+const args = Object.fromEntries(process.argv.slice(2).map(a => { const m = /^--([a-z0-9-]+)=(.*)$/.exec(a); if (!m) throw Error('bad arg ' + a); return [m[1], m[2]]; }));
 const out = resolve(args.out ?? 'shots/media-r5/lab');
 const WIDTH = Number(args.width ?? 960);
 const ASPECT = Number(args.aspect ?? 16 / 9);
