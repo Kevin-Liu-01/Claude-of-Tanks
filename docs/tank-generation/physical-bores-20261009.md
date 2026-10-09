@@ -1,6 +1,6 @@
 # Fleet physical cannon bores — 2026-10-09
 
-Status: implemented in the vehicle repair worktree; publication and final release checks pending.
+Status: source repair committed; owner authorized publishing with the remaining checks incomplete on 2026-10-09. Generated assets and full release qualification remain follow-up work.
 
 ## Construction
 
@@ -24,3 +24,7 @@ Local raw evidence is under `.qa-dev/physical-bores/`: `final-fleet.json`, `rete
 ## Outstanding
 
 Exact before/after fleet triangle census, rendered all-fleet and oblique checks, generated anatomy/assets/ledger refresh, complete test suite, release gate, and deployment verification. Earlier generated receipts predate this conversion and cannot certify it. Prior unrelated contact repairs remain in this batch and must be distinguished from the bore conversion when reporting aggregate savings. No failed reference comparison is reclassified by these bore checks.
+
+## Publication scope
+
+The owner renewed “go ahead” after disclosure that 440 bore geometry cases pass but the complete suite, image refresh, triangle comparison and release checks are incomplete. This publication contains the source repairs and their tests. Unfinished generated refresh outputs stay in the authoring worktree for a separately validated follow-up. No all-tests-pass or net triangle-saving claim is made.
