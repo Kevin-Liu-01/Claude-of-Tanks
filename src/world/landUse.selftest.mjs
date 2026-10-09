@@ -6,8 +6,9 @@
 import assert from 'node:assert/strict';
 import {
   createLandFieldSample, LAND_CROP, LAND_CROP_ALBEDO, LAND_CROP_GROWTH, LAND_USE_GLSL, landUseAt, landUseBoundary,
-  landUseProfileIds, landUseUniformValues, resolveLandUseProfile,
+  landUseProfileIds, landUseUniformValues, landWeedShare, resolveLandUseProfile,
  inLandZone } from './landUse.ts';
+import { readFileSync } from 'node:fs';
 import { MAP_IDS } from './maps/catalog.ts';
 
 // the table: real maps, packing in range, zero strength without a row
@@ -193,4 +194,44 @@ assert.ok(marginPts / n > 0.01 && marginPts / n < 0.15, `margins ring the fields
   assert.ok(!/sampler2D/.test(LAND_USE_GLSL), 'the field layout takes no sampler (the material sits at 16 units)');
 }
 
-console.log(`landUse: ${landUseProfileIds().length} map row(s), ${fields.size} Amberford fields, crops ${[...hist.entries()].sort().map(([c, k]) => `${c}:${(k / n * 100).toFixed(0)}%`).join(' ')}, tracks agree across their boundary, the GLSL reads the bake PASS; no GPU/art claim`);
+// (2026-10-07, wave 237: Frontier's stubble "sprinkled with evenly spaced hair-plug grass tufts") a sown field's weeds —
+// the share of both grass tiers' blades and tufts that stand as the sward instead of the crop — are one law
+// (landWeedShare): an eighth of a field's interior and up to 0.85 toward its edge everywhere; on a profile with
+// `weedPatches` (Frontier only) they gather in ragged patches — most of the interior nearly clean, a fifth of it weedy —
+// at the same mean. Every other map's share is the even one it was judged with. No GPU or art claim.
+{
+  const sw = createLandFieldSample();
+  let rng = 0x77e1d5;
+  const rnd = () => { rng = (Math.imul(rng, 1664525) + 1013904223) >>> 0; return rng / 4294967296; };
+  const patchy = landUseProfileIds().filter((id) => resolveLandUseProfile(id).weedPatches);
+  assert.deepEqual(patchy, ['frontier'], 'the patches are opted into by Frontier alone');
+  for (const id of landUseProfileIds()) {
+    const prof = resolveLandUseProfile(id);
+    let nI = 0, sumI = 0, clean = 0, weedy = 0, worstEven = 0;
+    for (let k = 0; k < 60000; k++) {
+      const x = (rnd() - 0.5) * 1000, z = (rnd() - 0.5) * 1000;
+      landUseAt(prof, x, z, sw);
+      if (!sw.active || !sw.sward || sw.crop === LAND_CROP.pasture || sw.track > 0.5 || sw.edgeM < sw.marginM) continue;
+      const w = landWeedShare(sw, x, z), into = sw.edgeM - sw.marginM;
+      assert.ok(w >= 0 && w <= 0.85 + 1e-9, `${id}: a share in [0, 0.85] (${w})`);
+      if (!prof.weedPatches) {
+        const even = 0.12 + 0.73 * (1 - Math.min(1, Math.max(0, into / 3)) ** 2 * (3 - 2 * Math.min(1, Math.max(0, into / 3))));
+        worstEven = Math.max(worstEven, Math.abs(w - even));
+      }
+      if (into > 3) { nI++; sumI += w; if (w < 0.03) clean++; if (w > 0.3) weedy++; }
+    }
+    if (!prof.weedPatches) { assert.ok(worstEven < 1e-12, `${id}: the even share as judged (worst ${worstEven})`); continue; }
+    const mean = sumI / nI;
+    assert.ok(nI > 2000 && Math.abs(mean - 0.12) < 0.012, `${id}: an eighth of the interior on the mean (${mean.toFixed(4)})`);
+    assert.ok(clean / nI > 0.45, `${id}: most of the interior nearly clean (${(clean / nI).toFixed(3)})`);
+    assert.ok(weedy / nI > 0.12 && weedy / nI < 0.32, `${id}: a fifth of it weedy (${(weedy / nI).toFixed(3)})`);
+  }
+  const compactW = (t) => t.replace(/\s+/g, ' ');
+  const tall = compactW(readFileSync(new URL('./tallGrass.ts', import.meta.url), 'utf8'));
+  const veg = compactW(readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8'));
+  assert.ok(tall.includes('const weedP = landWeedShare(_field, x, z);'), 'the tall grass draws its weeds by the law');
+  assert.ok(veg.includes('if (((hueJ * 7.31 + lumJ * 3.17) % 1) >= landWeedShare(f, x, z)) crop = f.crop;'), 'the tufts draw theirs by it');
+  assert.ok(!/0\.12 \+ 0\.73 \* \(1 - smoothstep/.test(tall + veg), 'no tier keeps a share of its own');
+}
+
+console.log(`landUse: ${landUseProfileIds().length} map row(s), ${fields.size} Amberford fields, crops ${[...hist.entries()].sort().map(([c, k]) => `${c}:${(k / n * 100).toFixed(0)}%`).join(' ')}, tracks agree across their boundary, the weeds one law (Frontier's in patches), the GLSL reads the bake PASS; no GPU/art claim`);
