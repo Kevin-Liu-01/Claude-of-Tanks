@@ -4016,6 +4016,7 @@ float gRoadPuddle = 0.0;     // ground lane: water standing in a road's ruts (sm
 float gFieldWater = 0.0;     // ground lane: a flooded paddy's or a polder ditch's water (smooth in the roughness stage)
 float gCropW = 0.0;          // ground lane: a sown field's weight (not pasture or hay): the sward's own relief stands down there
 float gSoilW = 0.0;          // ground lane: a bare field's weight (plough, terra rossa, a vineyard's earth, slag, ballast, gravel)
+float gJebelMatte = 0.0;     // the Redrock lane, round 11b: a jebel face's weight (its sheen cut in the aomap stage)
 float gLaneSheen = 0.0;      // ground lane (wave 86): a field track's pressed lane floor (its faint satin in the roughness stage)
 vec3 gMeadowTint = vec3(1.0); // ground lane: the meadow's macro tint the base took (a field divides it back out)
 varying float vFold;         // round 73: the baked fold attribute (−1 crest .. +1 hollow) the chunk vertices carry
@@ -5823,6 +5824,7 @@ void splatCompute() {
   // the normal and the albedo (jebelFaceV2) — on the walls and the domes alike, to ~600 m
   if (uJebelFace.y > 0.0 && steepW > 0.0) {
     float jw = steepW * fR * (1.0 - gSnowRock) * (1.0 - smoothstep(380.0, 640.0, camDist));
+    gJebelMatte = steepW * fR * (1.0 - gSnowRock);
     if (jw > 0.002) {
       // (its own slow phase field, not the crag's read: a cliff's joints and its buttresses wander independently)
       float fpx = nz(gWallUVx, 0.0031, vec2(0.29, 0.83)).r, fpz = nz(gWallUVz, 0.0031, vec2(0.29, 0.83)).r;
@@ -6927,8 +6929,11 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
   // sun goes now — the perturbation's component along the sun's heading, where it is positive — so no grain catches the
   // sun its slope is turned from, while every other tilt still shades the sky's and the bounce's light
   vec3 pN = vec3(dN.x, dN.z, dN.y) * dk; // the detail perturbation in world axes (horizontal: the third channel is unused)
-  if (uReduxFold.w > 0.001) {
-    float avert = (1.0 - smoothstep(-0.06, 0.32, dot(gN, uSunDirW))) * uReduxFold.w;
+  // (the Redrock lane, round 11b, the gauntlet's wave 298b: "bright white jagged flecks" on the backlit jebel faces —
+  // the joints' and honeycomb's detail facets tilted to a sun the face is turned from: a jebel face takes the same law)
+  float avertW = max(uReduxFold.w, gJebelMatte);
+  if (avertW > 0.001) {
+    float avert = (1.0 - smoothstep(-0.06, 0.32, dot(gN, uSunDirW))) * avertW;
     vec2 sH = uSunDirW.xz / max(length(uSunDirW.xz), 1e-4);
     pN.xz -= sH * max(dot(pN.xz, sH), 0.0) * avert;
   }
@@ -7368,7 +7373,11 @@ function* createSplatMaterialSteps(
       // own colour; a turned field's clods mask most of that sheen, so its specular light keeps three tenths (wave 88: at
       // half the sky's blue still turned the warm earth maroon) — gSoilW: the plough, the terra rossa, a vineyard's earth,
       // slag and ballast
-      + '\nreflectedLight.directSpecular *= 1.0 - 0.7 * gSoilW; reflectedLight.indirectSpecular *= 1.0 - 0.7 * gSoilW;');
+      + '\nreflectedLight.directSpecular *= 1.0 - 0.7 * gSoilW; reflectedLight.indirectSpecular *= 1.0 - 0.7 * gSoilW;'
+      // the Redrock lane, round 11b (the gauntlet's wave 298b: "white smears down its fins" on the backlit walls): a fin's
+      // side seen edge-on against the sun took the grazing Fresnel sheen of the sun and the bright sky by it, near white
+      // over the red; dry sandstone is matte — a jebel face keeps a tenth of its specular light (gJebelMatte)
+      + '\nreflectedLight.directSpecular *= 1.0 - 0.9 * gJebelMatte; reflectedLight.indirectSpecular *= 1.0 - 0.9 * gJebelMatte;');
     if (seaOpenings.length) shader.fragmentShader = fadeDistantCoastShadows(shader.fragmentShader, 'vWPos');
   };
   // the scenery lane (visual/shadow-bias, 2026-10-04): the ground casts no shadow (its chunks and the horizon ring that

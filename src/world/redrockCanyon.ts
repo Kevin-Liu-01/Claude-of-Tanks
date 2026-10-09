@@ -57,20 +57,25 @@ function wander(t: number, salt: number): number {
 // (round 11, the gauntlet's wave 282: "a smooth rubbery slab with hairline drawn cracks", "no joint-bounded columns" —
 // the joints 4.5-25 m apart, three in five a cleft 2.5-8 m deep and 2.4-4.6 m to each side, the rest 0.8-2 m; each column
 // up to 2.6 m back of its neighbours)
-const JOINT_W = 15;
-function jointBoundary(j: number, salt: number): number { return (j + 0.7 * (hash(j, salt + 41) - 0.5)) * JOINT_W; }
-/** Whether joint k is a deep cleft (three in five) and its depth (m). */
+// (round 11b, the gauntlet's wave 298b: "streaked with bright white smears down its fins", "spattered with bright white
+// blotches and vertical drips" on the backlit walls — the deep clefts' and set-back columns' sides turned to the sun on a
+// face turned from it, lit cream-white; the pale drips and the talus sand made no difference (the overnight diagnosis
+// captures). The joints at round 10's spacing again, every one a shallow V 0.9-2.4 m deep over 2.2-3.6 m to each side
+// (its sides at most ~47 degrees off the face), each column up to 1.1 m back; the debris cones keep to three joints in five)
+const JOINT_W = 12;
+function jointBoundary(j: number, salt: number): number { return (j + 0.6 * (hash(j, salt + 41) - 0.5)) * JOINT_W; }
+/** Joint k's depth (m). */
 function jointDepth(k: number, salt: number): number {
-  return hash(k, salt + 45) < 0.6 ? 2.5 + 5.5 * hash(k, salt + 42) : 0.8 + 1.2 * hash(k, salt + 42);
+  return 0.9 + 1.5 * hash(k, salt + 42);
 }
 function jointSetback(s: number, salt: number): number {
   let j = Math.floor(s / JOINT_W);
   if (s < jointBoundary(j, salt)) j--; else if (s >= jointBoundary(j + 1, salt)) j++;
   const b0 = jointBoundary(j - 1, salt), b1 = jointBoundary(j, salt), b2 = jointBoundary(j + 1, salt), b3 = jointBoundary(j + 2, salt);
   // each joint's half-width, at most 0.45 of the narrower column beside it (so a column's two V's never meet)
-  const halfL = Math.min(2.4 + 2.2 * hash(j, salt + 44), 0.45 * Math.min(b1 - b0, b2 - b1));
-  const halfR = Math.min(2.4 + 2.2 * hash(j + 1, salt + 44), 0.45 * Math.min(b2 - b1, b3 - b2));
-  const col = (k: number) => 2.6 * hash(k, salt + 43), depth = (k: number) => jointDepth(k, salt);
+  const halfL = Math.min(2.2 + 1.4 * hash(j, salt + 44), 0.45 * Math.min(b1 - b0, b2 - b1));
+  const halfR = Math.min(2.2 + 1.4 * hash(j + 1, salt + 44), 0.45 * Math.min(b2 - b1, b3 - b2));
+  const col = (k: number) => 1.1 * hash(k, salt + 43), depth = (k: number) => jointDepth(k, salt);
   const dl = s - b1, dr = b2 - s;
   let back = col(j);
   if (dl < halfL) back += (col(j - 1) - col(j)) * 0.5 * (1 - dl / halfL);
@@ -100,8 +105,9 @@ function tierLayout(rise: number, s: number, salt: number): number {
     _tierT[k] *= rise / sum;
     // (round 11, the gauntlet's wave 282: "no bedding ledges" — most beds part on a shallow ledge, 0.4-1.6 m, and a bed
     // here and there, for a stretch of the wall, on a deep one, up to 6 m, that casts its shadow)
+    // (round 11b, wave 298b: the deep ledges' treads, sunlit over a backlit face, were the "white blotches" — 2.8 m at most)
     const deep = wander(s / 90 + k * 3.1, salt + 80 + k), prominent = deep * deep * (3 - 2 * deep);
-    _tierL[k] = k < n - 1 ? 0.4 + 1.2 * wander(s / 39 + k * 2.11, salt + 70 + k) + 4.4 * Math.max(0, prominent - 0.55) / 0.45 : 0;
+    _tierL[k] = k < n - 1 ? 0.4 + 1.2 * wander(s / 39 + k * 2.11, salt + 70 + k) + 1.2 * Math.max(0, prominent - 0.55) / 0.45 : 0;
   }
   return n;
 }
