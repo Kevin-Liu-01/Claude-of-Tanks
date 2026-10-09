@@ -124,6 +124,14 @@ export interface BorderLandformSettings {
    */
   farmBuildings?: boolean;
   /**
+   * The borders lane (round 5, 2026-10-08; the gauntlet's waves 286a-d at every map's corners and edges: "the crest across
+   * the centre ends against bare sky with only a few lone lollipop trees standing on it, so the land beyond simply
+   * vanishes"): metres the country rises past the near band (from 120 m past the edge, full by 520 m, the ring's own rows:
+   * maps/horizon.ts liftFarCountry, the crests the whole of it and the valleys a third), so the land and woods beyond a
+   * near crest stand into view in layers. Default 0; an inland map's (no sea opening).
+   */
+  farRiseM?: number;
+  /**
    * The rim as it stood before the border landform (the classic S-curve and the plateau rimH over the geology past the
    * edge, the old 140–460 m ring hand-over, no woods field): the receipts that replay a pre-landform failure build
    * their predecessor and current fields with it. Not a map setting.
@@ -145,7 +153,7 @@ const STYLE_DEFAULTS: Readonly<Record<string, BorderLandformSettings>> = {
  * valleys and logging country, tablelands and canyons, mountain valleys. A map config's `terrain.border` overrides it.
  */
 const MAP_BORDERS: Readonly<Record<string, Partial<BorderLandformSettings>>> = {
-  verdant: { forest: 0.36, hedgerows: 0.85, fields: 0.75, farms: 12 },
+  verdant: { forest: 0.36, hedgerows: 0.85, fields: 0.75, farms: 12, farRiseM: 40 },
   desert: { forest: 0.03, enclosure: 0.5, hedgerows: 0, fields: 0, farms: 4, buildings: 'arid' },
   winter: { forest: 0.44, hedgerows: 0.2, fields: 0.1, farms: 6, buildings: 'winter' },
   urban: { forest: 0.28, hedgerows: 0.5, fields: 0.45, farms: 14 },
