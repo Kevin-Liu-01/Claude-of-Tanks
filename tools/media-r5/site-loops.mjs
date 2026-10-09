@@ -21,7 +21,8 @@
 // --stills-only delivers the stills (and the scene) without the video and GIF encodes: for takes whose formats are
 // written and whose ProRes masters are gone (re-encoding them from the H.264 proxy would cost quality).
 // rendersRoot holds the cinema outputs as films/<id>/ (cinema-jobs films) and stills/<id>/ (cinema-jobs blur).
-// --drop-film-masters deletes each ProRes film master once its formats are written (the proxy stays).
+// --drop-film-masters deletes each ProRes film master once its formats are written (the proxy stays; a take rendered
+// without one gets it from the master first).
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, copyFileSync, statSync, unlinkSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -134,7 +135,17 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
     writeFileSync(join(out, `${id}-close.webp`), c.toBuffer('image/webp', 92));
     Object.assign(files, { close4k: `${id}/${id}-close-4k.png`, close4kJpg: `${id}/${id}-close-4k.jpg`, close: `${id}/${id}-close.webp` });
   }
-  if (filmMaster && flags.has('--drop-film-masters') && !stillsOnly) unlinkSync(filmMaster);
+  if (filmMaster && flags.has('--drop-film-masters') && !stillsOnly) {
+    // the raw take stays for the films' cuts (motion/sync-footage.mjs links <stem>-proxy.mp4): a finals run without
+    // cinema's proxy (--film-proxy=false, launch night 2026-10-08: its encode held the GPU lease ~5 min a take) gets it
+    // here, on the CPU, from the master and with cinema's settings, before the master goes
+    const proxy = filmMaster.replace(/-master\.mov$/, '-proxy.mp4');
+    if (proxy !== filmMaster && !existsSync(proxy)) {
+      ff('-i', filmMaster, '-vf', 'format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '14', '-profile:v', 'high', '-pix_fmt', 'yuv420p',
+        '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', '-color_range', 'tv', '-movflags', '+faststart', proxy);
+    }
+    unlinkSync(filmMaster);
+  }
   const size = f => statSync(join(deliver, f)).size, mb = k => files[k] ? `${(size(files[k]) / 1e6).toFixed(1)} MB` : '—';
   rows.push({ id, loopS: L, files, bytes: Object.fromEntries(Object.entries(files).map(([k, f]) => [k, size(f)])) });
   console.log(`${id}: loop ${L}s${uhd ? ' (2160p)' : ''}; 4k ${mb('mp4k')}, mp4 ${mb('mp4')}, webm ${mb('webm')}, mobile ${mb('mobile')}, gif ${mb('gif')}, share ${mb('gifShare')}${still ? ', still' : ', no still yet'}`);
