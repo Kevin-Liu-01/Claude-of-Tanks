@@ -816,7 +816,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       // (a round's own strike hole there is the breach already: no second hole on top of it)
       if (e.stage === 'breached' && !sections && (settled || !nearPunched(e.structureId, e.x, e.y, e.z, 2))) {
         const blow = breachBlowFor(e);
-        const spec = seam.holeAt(blow.x, blow.y, blow.z, blow.radiusM, e.dirX, e.dirZ, e.munition, e.cause, 0);
+        // a ram's breach is the hull's way in: wider than the hull is high
+        const radiusM = e.cause === 'ram' ? Math.max(blow.radiusM, 1.9) : blow.radiusM;
+        const spec = seam.holeAt(blow.x, blow.y, blow.z, radiusM, e.dirX, e.dirZ, e.munition, e.cause, 0);
         if (spec) {
           notePunched(e.structureId, e.x, e.y, e.z);
           run(seam, 0, settled, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
@@ -827,10 +829,27 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       // down opens the hull's way through at once (the breach stage's ram blow, a little wider than the hull is high),
       // while the rest comes down along the front
       if (e.stage === 'collapsed' && e.cause === 'ram' && !settled && !sections && !structureTopple(seam.anatomy, e)) {
+        // in through the struck face and out through the far one along the hull's heading (a hull that brings it down
+        // keeps going: the authority's ramThrough), so it never drives through a standing wall while the front comes down
         const blow = breachBlowFor(e);
-        const spec = seam.holeAt(blow.x, blow.y, blow.z, Math.max(blow.radiusM, 1.9), e.dirX, e.dirZ, e.munition, e.cause, 0);
-        if (spec) {
-          notePunched(e.structureId, e.x, e.y, e.z);
+        const r = Math.max(blow.radiusM, 1.9);
+        const a = seam.anatomy;
+        const c = Math.cos(a.placement.yaw), sn = Math.sin(a.placement.yaw);
+        const dl = Math.hypot(e.dirX || 0, e.dirZ || 0) || 1;
+        const dx = (e.dirX || 0) / dl, dz = (e.dirZ || 0) / dl;
+        const wx = blow.x - a.placement.x, wz = blow.z - a.placement.z;
+        const bx = wx * c - wz * sn, bz = wx * sn + wz * c, bdx = dx * c - dz * sn, bdz = dx * sn + dz * c;
+        const hw = a.w / 2, hd = a.d / 2;
+        const tx = bdx > 1e-3 ? (hw - bx) / bdx : bdx < -1e-3 ? (-hw - bx) / bdx : Infinity;
+        const tz = bdz > 1e-3 ? (hd - bz) / bdz : bdz < -1e-3 ? (-hd - bz) / bdz : Infinity;
+        const through = Math.min(tx, tz);
+        // (the breach stage the same blow raised has opened the way in already)
+        const ways: Array<[number, number, number]> = nearPunched(e.structureId, e.x, e.y, e.z, 1.5) ? [] : [[blow.x, blow.z, 0]];
+        if (Number.isFinite(through) && through > 1) ways.push([blow.x + dx * through, blow.z + dz * through, 1]);
+        for (const [hx, hz, hole] of ways) {
+          const spec = seam.holeAt(hx, blow.y, hz, r, e.dirX, e.dirZ, e.munition, e.cause, hole);
+          if (!spec) continue;
+          notePunched(e.structureId, hx, blow.y, hz);
           run(seam, 0, false, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
         }
       }
