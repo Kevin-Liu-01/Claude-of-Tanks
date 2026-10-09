@@ -1936,18 +1936,18 @@ const capWarmWheelSaturation = (c: Rgb): Rgb => {
   return [mid + (c[0] - mid) * k, mid + (c[1] - mid) * k, mid + (c[2] - mid) * k];
 };
 const wheelRgbOf = (v: MaterialVisual): Rgb => {
-  // r3: dust-mix cut 0.22 -> 0.12 and darkened — painted gear leaned BEIGE
-  // under a warm key (the T-90M idler "beige rim" read); wheels now stay in
-  // the scheme's tonal family with only a hint of dust.
-  // camo_spotting r5: winter gear mixes toward cold slush-grey instead of
-  // warm road dust — whitewashed wheels rode the same tan drift as the hull.
+  // Launch night 2026-10-08 (wave 289, every critic in all four parts: "road wheels read as bare cream or beige
+  // plastic"; the coordinator: "wheel discs in the vehicle's base paint, hull hue and value"): the dishes take the
+  // hull's own tone (wheelToneOf: the base coat, toward the patch mean on pixel schemes) under a light grime (x0.94).
+  // The r3 road-dust mix (12 % of #766e56) and its extra darkening (x0.84) are gone. They had pulled every dark
+  // scheme's gear toward khaki, and the old dust-ward floor then landed it on one beige grey, #504e3c, for every
+  // hull. Winter and worn-wash gear keep their thinner, 15 % darker coat (camo_spotting r2).
   const wash = v.scheme === 'winter' || v.scheme === 'washworn'; // camo r8
-  const dust: Rgb = wash ? [102, 107, 110] : [118, 110, 86];
-  const c = scale3(mix(scale3(wheelToneOf(v), 0.92), dust, 0.12), 0.84);
+  const c = scale3(wheelToneOf(v), wash ? 0.94 * 0.85 : 0.94);
   // 2026-09-14 owner: dark schemes pushed the dish paint down to the tire's value and the wheels
   // read as one flat grey disc. The paint keeps the scheme's family but never drops below the
-  // fleet wheel-paint floor (see wheelPaintFloor.ts).
-  return liftSrgbToWheelFloor(capWarmWheelSaturation(wash ? scale3(c, 0.85) : c));
+  // fleet wheel-paint floor (wheelPaintFloor.ts), which now lifts it in its own hue.
+  return liftSrgbToWheelFloor(capWarmWheelSaturation(c));
 };
 // Recessed interleaved-row wheels bake their own occlusion: same scheme paint
 // dropped toward shadow so the Schachtellaufwerk rows separate (r5). Kept at
@@ -2755,11 +2755,15 @@ export function createTankMaterials(
   // GGX to ~0.3 pockets, and envMapIntensity 0.55 mirrored the blue PMREM sky
   // off every dish in the wheel-bay shade. Painted road wheels are dusty
   // matte — roughness up, env cut to the trackLink level.
+  // Launch night 2026-10-08 (worldibl's shade read of the M1A2 with the trims live: the dishes at 0.25 fell 28 % to
+  // below the terrain's shade; the fleet wheel close-ups: at 0.25 an M1's shaded dishes sit at 0.69 of the skirt paint
+  // beside them, at 0.5 at 0.94): the dishes take the hull's own sky trim, 0.5, so painted wheels read as the hull's
+  // paint in the same light (the recessed rows 0.4, keeping their 0.8 share).
   const wheels = track(setup(new THREE.MeshStandardMaterial({
     color: new THREE.Color(cssRGB(wheelRgbOf(patVis))),
     roughness: 0.92, metalness: 0.08, roughnessMap: roughTex,
     normalMap: normalTex, normalScale: new THREE.Vector2(0.4, 0.4),
-    envMapIntensity: 0.25,
+    envMapIntensity: 0.5,
   })));
   wheels.defines = { ...wheels.defines, COT_WHEEL_PAINT_READABILITY: 1 };
   stampSchemeFinish(wheels);
@@ -2769,14 +2773,17 @@ export function createTankMaterials(
     color: new THREE.Color(cssRGB(wheelDarkRgbOf(patVis))),
     roughness: 0.94, metalness: 0.06, roughnessMap: roughTex,
     normalMap: normalTex, normalScale: new THREE.Vector2(0.4, 0.4),
-    envMapIntensity: 0.2,
+    envMapIntensity: 0.4,
   })));
   wheelsRecessed.defines = { ...wheelsRecessed.defines, COT_WHEEL_PAINT_READABILITY: 1 };
   stampSchemeFinish(wheelsRecessed);
   // camo_spotting r3: lifted off near-black so lighting models tire rings
   // instead of silhouetting them (Tiger bullseye critique).
+  // Launch night 2026-10-08 (wave 289: "no rubber tyres"; the coordinator: "real road-wheel tyres are near-black under
+  // dust, so dusty dark grey is right and pale grey is not"): the tyres had three's default sky reflection (1), which
+  // mirrored the sky round every tread and read pale grey. Dusty rubber takes 0.3 of it.
   const rubber = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x292a28, roughness: 0.96, metalness: 0.0,
+    color: 0x292a28, roughness: 0.96, metalness: 0.0, envMapIntensity: 0.3,
   })));
   // Fleet lane 2026-10-08: the wheel insets (lightening holes, hub wells, bolt heads in the well) take the rubber's paint
   // with a cavity's light (COT_GEAR_CAVITY) and little of the sky, so a hole reads as a hole in the Garage and the field.
