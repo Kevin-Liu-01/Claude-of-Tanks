@@ -575,6 +575,9 @@ export interface HeightField {
   /** The maps-and-layouts lane (2026-10-03): the authored landforms' geological zones at (x, z), each 0..1 —
    * [lava flow, cinder cone, talus fan] (landformGeology.ts geologyZoneWeights); absent on a map without them. */
   _geologyZoneAt?(x: number, z: number, out: GeologyZones): GeologyZones;
+  /** Ground lane (2026-10-08, wave 274): the sward follows its ground (groundRedux.ts swardSlope) — the map's sun in world
+   * xz (unit) and the law's strength; present only on a map whose profile has it. */
+  _swardSlope?: readonly [number, number, number];
   /** The map-borders lane (2026-10-03): the ring's carriageway attribute — [signed offset from a road exit line (m), presence]. */
   _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
   /** The map-borders lane: the roads that leave the square, as their exit lines past the edge (40 m steps, ~720 m). */
@@ -2812,6 +2815,12 @@ function* heightFieldBuildSteps(
     fieldTrenchLines: fieldTrenchPlan(),
     // Keep pavement clear without excluding vegetation along unrelated roads.
     _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,
+    // ground lane (2026-10-08, wave 274's Monsoon slope): the sward follows its slopes and the map's sun, on a map whose
+    // ground profile asks it; `?ground=legacy` keeps the even carpet
+    ...((resolveGroundReduxProfile(cfg?.id).swardSlope ?? 0) > 0 && !legacyGroundLanes ? { _swardSlope: ((): readonly [number, number, number] => {
+      const sun = skySunDirection(cfg?.sky), l = Math.hypot(sun.x, sun.z) || 1;
+      return Object.freeze([sun.x / l, sun.z / l, Math.min(1, resolveGroundReduxProfile(cfg?.id).swardSlope ?? 0)] as const);
+    })() } : {}),
     // round 67: the cut faces' seeding weight, read on the uncut ground like the exclusion
     ...(railCuttings !== null ? { _batterSeedAt: (x: number, z: number): number =>
       railCuttingFaceSeedAt(railCuttings, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8, railOpenLines) } : {}),
@@ -3919,6 +3928,8 @@ uniform float uRoadPuddle; // ground lane: the map's share of the ruts' puddles 
 uniform float uPavedRock;
 uniform vec4 uPaveSlab;   // maps lane B (2026-10-03): airfield concrete (slab m, joint half-width m, stains, tyres); x 0 = off
 uniform vec4 uTownPave;   // map revival lane 2 (2026-10-05): the paved town rect (centre xz, half-size xz); z 0 = off
+// ground lane (2026-10-08, wave 274): the thatch and soil under a thick sward near the camera (groundRedux.ts thatch); 0 = off
+uniform float uThatch;
 uniform vec4 uSaltCrust;  // maps lane B (2026-10-03): a sor's salt crust (on, polygon cell m, damp margin, unused)
 uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
@@ -3999,6 +4010,7 @@ float gStrandFoam = 0.0;     // round 73b: the foam line the last run-up left (m
 float gRoadPuddle = 0.0;     // ground lane: water standing in a road's ruts (smooth in the roughness stage)
 float gFieldWater = 0.0;     // ground lane: a flooded paddy's or a polder ditch's water (smooth in the roughness stage)
 float gCropW = 0.0;          // ground lane: a sown field's weight (not pasture or hay): the sward's own relief stands down there
+float gCropReliefW = 0.0;    // ground lane (wave 274): gCropW for the sward's relief — none on a young green crop (a short sward)
 float gSoilW = 0.0;          // ground lane: a bare field's weight (plough, terra rossa, a vineyard's earth, slag, ballast, gravel)
 float gLaneSheen = 0.0;      // ground lane (wave 86): a field track's pressed lane floor (its faint satin in the roughness stage)
 vec3 gMeadowTint = vec3(1.0); // ground lane: the meadow's macro tint the base took (a field divides it back out)
@@ -4504,7 +4516,46 @@ void splatCompute() {
   // patch). The arid maps' sand patches and the snow maps' scoured crests keep the whole patch.
   float wornCore = (uSandMacro > 0.001 || uReduxD.y > 1.5) ? worn : smoothstep(0.78, 1.0, n2w + (n1w - 0.5) * 0.45);
   float grazeT = worn - wornCore;
-  float fD = clamp(max(wornCore * uWornDirtStrength, max(shoulder * uShoulderDirt, mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
+  // Ground lane (2026-10-07, wave 182's Frosthollow bird view: "dark untextured rectangles" — the two 56 m graded
+  // hardstands the zone discs sit on): a hardstand is stamped as the carriageway's full coverage (R) with no centreline
+  // near it (G 0, hardstandSurface.ts), so the whole pad was shoulder and none of it road — the dirt layer laid bare
+  // over 56 m, which a snow map's wear lets through as bare ground. A pad is graded road ground: the carriageway's own
+  // packed surface (dW below: the map's packed earth, or on a snow map packed, trodden snow) with no wheel lanes, ruts
+  // or crown (they follow a centreline), and its feather the ground around it — the shoulder's dirt stands down over the
+  // whole pad (a ring of bare ground outlined it). A paved map's pads stay paved; a road crossing a pad keeps its own
+  // paint (its centreline's G)
+  float padK = (1.0 - smoothstep(0.05, 0.25, mk.g)) * (1.0 - step(0.5, gRoadTex));
+  float apronK = smoothstep(0.50, 0.90, mk.r) * padK;
+  float apronRim = smoothstep(0.04, 0.50, mk.r) * padK;
+  // (2026-10-07, wave 235's Monsoon chase: "a flat, uniform brown dirt plane … cut by a ruler-straight edge against a flat
+  // green strip"; Whiteout's "no … tracks") a pad's edge is broken into the turf in tongues within its feather (the
+  // stamp's own spill already wanders 0–4 m out), and the pad is worked ground: the tracks of the vehicles that formed up
+  // on it — pairs of ruts 0.6 m wide, 2.9 m apart, along two families of gently curving lines that come and go across it.
+  // Its ruts are the road's ruts: darkened as a road's wheel lanes are, puddled on a wet map, slush on a snow map
+  float apronN = nz(uv, 0.21, vec2(0.13, 0.71)).r * 0.6 + n1h * 0.4;
+  apronK = smoothstep(0.30, 0.85, mk.r + (apronN - 0.5) * 0.60 * tileVis(4.8)) * padK; // (into the stamp's spill: its tongues)
+  float padRut = 0.0;
+  vec2 padRutN = vec2(0.0);
+  if (apronK > 0.003) {
+    float th = 0.6 + 2.4 * nz(uv, 0.006, vec2(0.31, 0.77)).r;
+    float rutVis = smoothstep(0.12, 0.40, 0.30 / max(gFootM, 1e-3)); // gone as the footprint outgrows a rut
+    for (int k = 0; k < 2; k++) {
+      float t = th + float(k) * 1.15;
+      vec2 dP = vec2(-sin(t), cos(t)); // across the family's lines
+      float q = dot(wp.xz, dP) + 5.0 * (nz(uv, 0.017, vec2(0.53 + float(k) * 0.21, 0.29)).g - 0.5);
+      float per = 6.0 + 1.5 * float(k); // (a vehicle every few metres: the lab's 9.5 m read as two thin lines)
+      float f = fract(q / per) * per;
+      float r1 = (f - 3.0) / 0.30, r2 = (f - 5.9) / 0.30;
+      float pres = smoothstep(0.34, 0.58, nz(uv, 0.043, vec2(0.11 + float(k) * 0.37, 0.83)).r) * rutVis;
+      float e1 = exp(-r1 * r1), e2 = exp(-r2 * r2);
+      padRut = max(padRut, (e1 + e2) * pres);
+      padRutN += dP * (r1 * e1 + r2 * e2) * pres;
+    }
+    padRut *= apronK;
+    padRutN *= apronK;
+    rut = max(rut, padRut * rutAmp * 1.2);
+  }
+  float fD = clamp(max(wornCore * uWornDirtStrength, max(shoulder * uShoulderDirt * (1.0 - apronRim), mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
   float fM = mkB;
   // marsh/ice sheets only live on near-flat ground: without this the graded
   // banks around a frozen lake inherit the sheet's glossy blue ice response
@@ -4950,6 +5001,23 @@ void splatCompute() {
     * mix(vec3(1.0), uTintC, smoothstep(0.52, 0.9, meadowC) * (0.21 + 0.16 * n1) * meadowG)
     * mix(0.93 + meadowC * 0.14, 1.0, projW);
   a.rgb *= gMeadowTint;
+  // ground lane (2026-10-08, the gauntlet's wave 274 on Monsoon Ridge's foot: "a smooth, flat, saturated lawn-green surface
+  // with no soil, litter or dry thatch" between the tufts): under a thick sward the ground is last season's thatch — dead
+  // blades lying flat, a dull straw-brown — and the dark soil between the tussocks, not lawn. Where the sward stands thick
+  // (the tall grass's own density field: n1), in patches of ~0.5–1.5 m; at a distance the blades' tops carry the
+  // hillside's green and the ground between them shows less, so it eases to under half by 120 m (never to nothing: a
+  // ring of brown round the camera would follow it)
+  if (uThatch > 0.001 && meadowG > 0.002) {
+    vec2 thQ = nzq(uv, 0.55, vec2(0.21, 0.67));
+    float thW = uThatch * meadowG * mix(1.0, 0.45, smoothstep(30.0, 120.0, camDist)) * (0.35 + 0.65 * smoothstep(0.30, 0.75, n1))
+      * (1.0 - fR) * (1.0 - roadCore);
+    if (thW > 0.002) {
+      vec3 thatchCol = vec3(0.118, 0.098, 0.052) * (0.85 + 0.30 * thQ.y);
+      vec3 soilCol = uMeanD.rgb * uSoilTint * 0.80;
+      vec3 under = mix(thatchCol, soilCol, smoothstep(0.58, 0.82, thQ.x));
+      a.rgb = mix(a.rgb, under, thW * (0.50 + 0.35 * smoothstep(0.30, 0.70, thQ.x)));
+    }
+  }
   // ground lane: the earthworks' bank — patchy dug soil between the turf the bank keeps (bankSoil, above), in the
   // ground plane on a gentle bank and the walls' projection on a steep one, so its texels never stretch downslope
   if (bankSoil > 0.003) {
@@ -5375,6 +5443,10 @@ void splatCompute() {
       // (the verdant establishing pair, hold 3: a turned field read as gravel or crumpled paper — the meadow's blade,
       // tussock and coarse-turf relief and their photo tone ran on under the soil; a sown field carries its own rows)
       gCropW = (crop > 0.5 && (crop < 12.5 || crop > 13.5)) ? inField * landW : 0.0;
+      // (wave 274, Verdant's slope: a young crop's "bald, flat olive ground" between its tufts) a young green crop is a
+      // short leafy sward: its ground keeps the sward's own blade, tussock and turf relief (a pasture's and a hay meadow's
+      // do); its meadow patches, worn lips and sheet stay down with every sown field's (gCropW)
+      gCropReliefW = (crop > 2.5 && crop < 3.5) ? 0.0 : gCropW;
       gSoilW = ((crop > 3.5 && crop < 4.5) || (crop > 10.5 && crop < 12.5) || (crop > 14.5 && crop < 16.5) || (crop > 18.5 && crop < 19.5))
         ? inField * landW : 0.0;
       gFieldWater = water * inField * landW;
@@ -6041,7 +6113,7 @@ void splatCompute() {
       // Detail belongs to the remaining base layer. Reapplying turf after
       // the dirt/rock blend made worked yards inherit the meadow's grain.
       // The same coverage also keeps base snow/sand off exposed soil/rock.
-      float nearG = openNear2 * meadowG * (1.0 - fR) * (1.0 - max(gSoilW, 0.6 * gCropW)); // ground lane: no blades on a turned field
+      float nearG = openNear2 * meadowG * (1.0 - fR) * (1.0 - max(gSoilW, 0.6 * gCropReliefW)); // ground lane: no blades on a turned field
       n.xy += dn2.xy * 0.75 * nearG; // relief pass 2 (2026-09-12): the full 1049e4e blade/clod relief
       // zero-mean albedo octave: deep-mip sample = local tile mean, so the
       // modulation is exposure-neutral on every map palette (sand vs turf)
@@ -6055,7 +6127,7 @@ void splatCompute() {
   // ~1.1 m carries the 26–150 m band (open ground, off the carriageway), fading out before the far band's own relief.
   {
     float dMidN = smoothstep(20.0, 40.0, camDist) * (1.0 - smoothstep(110.0, 190.0, camDist)) * uReduxA.y; // round 73b: 26–150 → 20–190 m
-    dMidN *= 1.0 - max(0.85 * gCropW, gSoilW); // ground lane: the tussock octave is the sward's (none on turned earth)
+    dMidN *= 1.0 - max(0.85 * gCropReliefW, gSoilW); // ground lane: the tussock octave is the sward's (none on turned earth)
     dMidN *= tileVis(1.075); // ground lane: its 1.08 m tile, seen from a raised camera, was the gauntlet's moiré
     if (dMidN > 0.003) {
       vec3 dnM = texture2D(uNrmG, uv * 0.93).xyz * 2.0 - 1.0;
@@ -6075,7 +6147,7 @@ void splatCompute() {
     // dark wheel ruts, damp borders. uRoadTex (0..1) cross-fades to PAVED
     // town streets: the rock layer (cobble/sett) laid across the full
     // carriageway at every distance, ruts nearly gone.
-    float dW = roadCore * 0.9 * (1.0 - gRoadTex);
+    float dW = max(roadCore, apronK) * 0.9 * (1.0 - gRoadTex); // (a pad is the carriageway's packed ground too)
     // Build the compacted core from a deliberately low-frequency dirt
     // sample. Keeping only a quarter of the underlying terrain preserves
     // local variation without baking the source texture's AO/cavity blobs
@@ -6095,10 +6167,15 @@ void splatCompute() {
       // wheel tracks and spattered between them
       if (uReduxD.y > 1.5) {
         vec3 packedSnow = uMeanG.rgb * vec3(0.84, 0.85, 0.87) * (0.94 + 0.12 * n1h);
-        float slush = clamp(lane * rutAmp * 1.25 + crown * 0.10 + (roadBite.y + 0.5) * 0.18, 0.0, 1.0);
+        float slush = clamp(lane * rutAmp * 1.25 + padRut * 1.10 + crown * 0.10 + (roadBite.y + 0.5) * 0.18, 0.0, 1.0);
         roadCol = mix(packedSnow, roadCol * 1.05, slush);
       }
       a.rgb = mix(a.rgb, roadCol, dW);
+      // (a pad's vehicle ruts darken its packed ground here: a road's own wheel lanes give way to their trodden middle
+      // past a 0.08 m footprint, which a pad seen low across its 30-60 m loses at once)
+      a.rgb *= 1.0 - padRut * 0.36;
+      // (and the ground the tracks churned: darker, damper patches along them)
+      a.rgb *= 1.0 - 0.14 * apronK * smoothstep(0.50, 0.80, nzq(uv, 0.12, vec2(0.37, 0.61)).x) * (1.0 - gRoadTex);
       // The sourced dirt normal contains deep clod/pothole forms intended for
       // open ground. Repeating it at full strength down a road produced the
       // alternating chain of black ovals visible in Verdant. Use a strongly
@@ -6283,6 +6360,8 @@ void splatCompute() {
       a.rgb = mix(a.rgb, gravE.rgb * vec3(1.02, 0.97, 0.88), gravSpill * 0.5);
     }
   }
+  // (a pad's ruts: two grooves across each line, their walls turned to the light)
+  if (nrmOn && padRut > 0.003) n.xy -= padRutN * 0.35;
   // wheel-lane relief and tyre streaks from the distance field: its gradient
   // is the across-road direction and the lane profile's analytic slope shapes
   // two smooth grooves, so a straight road carries no per-texel bumps.
@@ -6550,7 +6629,7 @@ void splatCompute() {
     }
     // coarse turf relief at range (all maps): the far band keeps macro
     // normal structure where the per-texel detail normals have faded out
-    float farG = farM * (1.0 - fR) * meadowG * (1.0 - roadCore) * (1.0 - max(0.85 * gCropW, gSoilW)); // ground lane: nor the coarse turf
+    float farG = farM * (1.0 - fR) * meadowG * (1.0 - roadCore) * (1.0 - max(0.85 * gCropReliefW, gSoilW)); // ground lane: nor the coarse turf
     if (farG > 0.003) {
       // Coarse turf is low relief, not another giant clod normal. Albedo
       // retains the source detail while the actual hills own broad shading.
@@ -6919,8 +6998,11 @@ function* createSplatMaterialSteps(
   // strength on a map without a row)
   const landUseProfile = resolveLandUseProfile(mapId);
   const landUse = landUseUniformValues(landUseProfile);
+  // ground lane (2026-10-08, wave 274): the thatch under a thick sward (groundRedux.ts thatch)
+  let thatchV = Math.min(1, Math.max(0, groundProfile.thatch ?? 0));
   // `?ground=legacy`: every redux term at zero on the same build — the round's before / after captures A/B against it
   if (typeof location !== 'undefined' && /[?&]ground=legacy(&|$)/.test(location.search ?? '')) {
+    thatchV = 0;
     redux.reduxA.fill(0); redux.reduxFold.fill(0); redux.reduxSwash.fill(0); redux.reduxSnow.fill(0);
     redux.reduxB.fill(0); redux.reduxC.fill(0); // round 73b
     redux.reduxD.fill(0); // terrain v2
@@ -7011,6 +7093,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uTownPave = { value: S.townPaving ? new THREE.Vector4((town.x0 + town.x1) / 2, (town.z0 + town.z1) / 2,
       (town.x1 - town.x0) / 2, (town.z1 - town.z0) / 2) : new THREE.Vector4(0, 0, 0, 0) };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
+    shader.uniforms.uThatch = { value: thatchV };
     shader.uniforms.uWornDirtStrength = { value: clamp(S.wornDirtStrength ?? 0.84, 0, 1) };
     shader.uniforms.uShoulderDirt = { value: clamp(S.shoulderDirt ?? 1, 0, 1) };
     shader.uniforms.uLaneK = { value: roadLaneSharpness(mask.image.width) }; // road pass 2026-09-12

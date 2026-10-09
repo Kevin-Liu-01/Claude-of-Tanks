@@ -63,10 +63,13 @@ assert.match(source,
 // ground lane (2026-10-03): the land use owns its share too — a turned field (gSoilW) clears the near turf, a sown crop
 // (gCropW) keeps 40 % of it; a sown crop leaves the far turf 15 % and a turned field none (terrainMaterialOwnership
 // pins the response)
-assert.match(source, /float nearG = openNear2 \* meadowG \* \(1\.0 - fR\) \* \(1\.0 - max\(gSoilW, 0\.6 \* gCropW\)\);/,
+// (wave 274) the relief reads gCropReliefW: a sown field's weight, but a young green crop's ground keeps the sward's relief
+assert.match(source, /gCropReliefW = \(crop > 2\.5 && crop < 3\.5\) \? 0\.0 : gCropW;/,
+  'the relief\'s field weight is the sown field\'s, none on a young green crop');
+assert.match(source, /float nearG = openNear2 \* meadowG \* \(1\.0 - fR\) \* \(1\.0 - max\(gSoilW, 0\.6 \* gCropReliefW\)\);/,
   'near turf relief uses existing dirt/projected/liquid coverage plus rock exclusion and the land use\'s cover');
 assert.match(source,
-  /float farG = farM \* \(1\.0 - fR\) \* meadowG \* \(1\.0 - roadCore\) \* \(1\.0 - max\(0\.85 \* gCropW, gSoilW\)\);/,
+  /float farG = farM \* \(1\.0 - fR\) \* meadowG \* \(1\.0 - roadCore\) \* \(1\.0 - max\(0\.85 \* gCropReliefW, gSoilW\)\);/,
   'distant turf relief inherits actual liquid coverage through meadowG and excludes other material owners and the fields');
 assert.match(source,
   /mb \+ mix\(0\.85, 1\.6, min\(mb \* 0\.5, 1\.0\)\)/,
