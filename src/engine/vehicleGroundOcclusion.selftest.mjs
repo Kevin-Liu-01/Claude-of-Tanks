@@ -10,11 +10,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
-  GROUND_AO_BELLY_VIEW, GROUND_AO_CARD_AMBIENT_SHARE, GROUND_AO_CLIP_SLACK_M, GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_EDGE_M,
-  GROUND_AO_FADE_M, GROUND_AO_GAP_FADE_M, GROUND_AO_HULL_ALBEDO, GROUND_AO_HULL_SKIN_M, GROUND_AO_MAX_HULLS, GROUND_AO_RANGE_M,
-  GROUND_AO_REACH, GROUND_AO_UNDER_GROUND, VEHICLE_GROUND_OCCLUSION_GLSL, boxSkyOcclusion, combineVehicleGroundOcclusion,
+  GROUND_AO_BELLY_VIEW, GROUND_AO_CARD_AMBIENT_SHARE, GROUND_AO_CLIP_SLACK_M, GROUND_AO_CONTACT_EDGE_M, GROUND_AO_CONTACT_FULL_M,
+  GROUND_AO_CONTACT_GAP_M, GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_EDGE_M, GROUND_AO_FADE_M, GROUND_AO_GAP_FADE_M, GROUND_AO_HULL_ALBEDO,
+  GROUND_AO_HULL_SKIN_M, GROUND_AO_MAX_HULLS, GROUND_AO_NO_RUN_M, GROUND_AO_RANGE_M, GROUND_AO_REACH, GROUND_AO_RUN_KNOTS,
+  GROUND_AO_UNDER_GROUND, VEHICLE_GROUND_OCCLUSION_GLSL, boxSkyOcclusion, combineVehicleGroundOcclusion,
   createVehicleGroundOcclusionUniforms, hullBottomAt, hullProxyOf, hullSkyOcclusion, isRunShoe, measureVehicleGroundHull, trackFloorAt,
-  runGapOcclusion, underTrackOcclusion, updateVehicleGroundOcclusionUniforms, vehicleGroundOcclusionLocal, vehicleGroundStrengths,
+  runGapOcclusion, runTravelAt, underTrackOcclusion, updateVehicleGroundOcclusionUniforms, vehicleGroundOcclusionLocal,
+  vehicleGroundStrengths,
 } from './vehicleGroundOcclusion.ts';
 import { T90M, T90M_RUN_TOP, UNION_POINTS } from './vehicleGroundOcclusion.test-support.mjs';
 import {
@@ -173,12 +175,38 @@ near(trackFloorAt(T.cz1 + 0.5, T), T.sf * 0.5 - 0.03, 1e-12, 'the front ramp');
 assert.ok(!isRunShoe({ x: 1.5, y: 0.09, z: T.cz0 - 0.5 }, T, false) && F(1.5, T.cz0 - 0.5, 0.09) > 0.5, 'the terrain under a pitched track end');
 assert.ok(!isRunShoe({ x: T.xo + 0.01, y: 0.06, z: 0 }, T, false), 'the snow over a sunk track\'s foot');
 assert.ok(!isRunShoe({ x: 1.5, y: 0.1, z: T.cz0 - 0.5 }, T, true) && C(1.5, T.cz0 - 0.5, 0.1) > 0.5, 'a grass blade under the rear ramp');
-// under the floor a lane pixel is ground: under the ground run the shoes cover it (their gaps, their foot: the contact
-// line) and it keeps no sky; past the run it takes its sky back as the track lifts off
+// under the floor a lane pixel is ground: where the run meets it the shoes cover it (their gaps, their foot: the contact
+// line) and it keeps no sky; by its gap under the run's lower edge it takes its sky back. 2026-10-08 (the contact-shadow
+// lane; the owner: "contact shadows for tracks on ground which are staticly on ground and look bad"): the old print kept
+// the whole lane black at any depth under the run, and 0.3 m past its ends whatever the wraps' height
 assert.ok(!isRunShoe({ x: 1.5, y: 0, z: 0 }, T, false) && F(1.5, 0) === 1 && underTrackOcclusion({ x: 1.5, y: 0, z: 0 }, T) === 1, 'the ground under the ground run');
-assert.ok(F(1.5, 0, -0.13) === 1, 'and under a hull that rides high (the battle visuals\' 12–14 cm float, 2026-10-03)');
-near(underTrackOcclusion({ x: 1.5, y: 0, z: T.cz1 + 0.15 }, T), 0.5, 1e-9, 'half lifted off 0.15 m past the run');
-assert.equal(underTrackOcclusion({ x: 1.5, y: 0, z: T.cz1 + 0.3 }, T), 0, 'lifted off');
+assert.equal(underTrackOcclusion({ x: 1.5, y: 0.03, z: 0 }, T), 1, 'the ground standing into the run');
+assert.equal(underTrackOcclusion({ x: 1.5, y: -GROUND_AO_CONTACT_FULL_M, z: 0 }, T), 1, 'whole within the shoes\' grousers and the facets');
+near(underTrackOcclusion({ x: 1.5, y: -0.5 * (GROUND_AO_CONTACT_FULL_M + GROUND_AO_CONTACT_GAP_M), z: 0 }, T), 0.5, 1e-9, 'half midway');
+assert.equal(underTrackOcclusion({ x: 1.5, y: -GROUND_AO_CONTACT_GAP_M, z: 0 }, T), 0, 'none a gap under the run');
+assert.ok(GROUND_AO_CONTACT_FULL_M <= 0.02 && GROUND_AO_CONTACT_GAP_M <= 0.08, 'gone within a few centimetres');
+const liftedRun = F(1.5, 0, -0.13);
+assert.ok(liftedRun > 0.6 && liftedRun < 0.8, `under a run 13 cm over the ground, only the solid's share (${liftedRun.toFixed(3)}; the old print: 1)`);
+const halfPast = 0.5 * (GROUND_AO_CONTACT_FULL_M + GROUND_AO_CONTACT_GAP_M);
+near(underTrackOcclusion({ x: 1.5, y: 0, z: T.cz1 + halfPast / T.sf }, T), 0.5, 1e-9, 'half where the front wrap stands midway over the ground');
+near(underTrackOcclusion({ x: 1.5, y: 0, z: T.cz0 - halfPast / T.sr }, T), 0.5, 1e-9, 'and the rear');
+assert.equal(underTrackOcclusion({ x: 1.5, y: 0, z: T.cz1 + GROUND_AO_CONTACT_GAP_M / T.sf }, T), 0, 'lifted off (the old print: 0.3 m past the run)');
+assert.equal(underTrackOcclusion({ x: 1.5, y: T.sr * 1.2, z: T.cz0 - 1.2 }, T), 1, 'the ground rising into the rear wrap');
+assert.equal(underTrackOcclusion({ x: 1.5, y: 3, z: T.fz1 + 0.01 }, T), 0, 'nothing past the hull\'s ends');
+// the lane's edges soft over ± GROUND_AO_CONTACT_EDGE_M of the shoes' faces (the old 5 mm edge ruled a line)
+near(underTrackOcclusion({ x: T.xo, y: 0, z: 0 }, T), 0.5, 1e-9, 'half at the outer face');
+near(underTrackOcclusion({ x: T.xi, y: 0, z: 0 }, T), 0.5, 1e-9, 'and the inner');
+assert.equal(underTrackOcclusion({ x: T.xo + GROUND_AO_CONTACT_EDGE_M, y: 0, z: 0 }, T), 0, 'none past the soft edge');
+assert.equal(underTrackOcclusion({ x: T.xo - GROUND_AO_CONTACT_EDGE_M, y: 0, z: 0 }, T), 1, 'whole inside it');
+{
+  let worstEdge = 0;
+  for (let x = T.xo - 0.1, prev = null; x <= T.xo + 0.1; x += 0.001) {
+    const v = underTrackOcclusion({ x, y: 0, z: 0 }, T);
+    if (prev !== null) worstEdge = Math.max(worstEdge, Math.abs(v - prev));
+    prev = v;
+  }
+  assert.ok(worstEdge < 0.02, `the lane's edge is soft: worst 1 mm change ${worstEdge.toFixed(4)} (the old 5 mm edge: 0.15)`);
+}
 // lab4's two strips (2026-10-03): the ground under a rear wrap and the ground just past the shoes are receivers
 assert.ok(!isRunShoe({ x: 1.5, y: 0, z: T.cz0 - 0.5 }, T, false) && F(1.5, T.cz0 - 0.5) > 0.6, `the ground under the rear wrap (${F(1.5, T.cz0 - 0.5).toFixed(3)})`);
 assert.ok(!isRunShoe({ x: T.xo + 0.01, y: 0, z: 0 }, T, false) && F(T.xo + 0.01, 0) > 0.5 && F(T.xo + 0.01, 0) < 0.9, 'the ground just past the shoes');
@@ -190,8 +218,9 @@ for (const [line, label] of [[(t) => [0, T.fz0 - 0.9 + t], 'the rear end'], [(t)
   let prev = null, worstStep = 0;
   for (let t = 0; t <= 1.7; t += 0.001) {
     const [x, z] = line(t);
-    // the track's footprint (the ground its shoes cover, ± 6 mm of its lane's edges): a geometric edge, like the shoes
-    if (Math.abs(Math.abs(x) - 0.5 * (T.xi + T.xo)) < 0.5 * (T.xo - T.xi) + 0.006 && z > T.cz0 - 0.3 && z < T.cz1 + 0.3) { prev = null; continue; }
+    // the track's footprint (the ground its shoes cover, over its lane's soft edges; their own steepness is pinned above)
+    if (Math.abs(Math.abs(x) - 0.5 * (T.xi + T.xo)) < 0.5 * (T.xo - T.xi) + GROUND_AO_CONTACT_EDGE_M + 0.001
+      && z > T.cz0 - 0.3 && z < T.cz1 + 0.3) { prev = null; continue; }
     const v = F(x, z);
     if (prev !== null) worstStep = Math.max(worstStep, Math.abs(v - prev));
     prev = v;
@@ -206,6 +235,65 @@ for (let lift = 0, prev = 2; lift < 1.5; lift += 0.1) {
   const o = vehicleGroundOcclusionLocal({ x: 0.3, y: 0, z: -0.5 }, UP, raised, ONE);
   assert.ok(o < prev, `the belly's middle falls as the hull rises (${lift.toFixed(1)} m: ${o.toFixed(4)})`);
   prev = o;
+}
+
+// ---- 4b. the runs as they are drawn this frame (2026-10-08, the contact-shadow lane): each side's lower edge over the
+// contact plane at GROUND_AO_RUN_KNOTS knots evenly over the ground run (the road wheels' travel the band follows),
+// linear between, held past the ends; the contact, the shoes and the side gaps all stand on it
+const K = GROUND_AO_RUN_KNOTS, REST = Object.freeze(Array(K).fill(0));
+const knotZ = (i) => T.cz0 + (i / (K - 1)) * (T.cz1 - T.cz0);
+const FR = (x, z, y, runs, card = false) => vehicleGroundOcclusionLocal({ x, y, z }, UP, T, ONE, card, runs);
+{
+  const ramp = { left: REST, right: Array.from({ length: K }, (_, i) => 0.01 * i) };
+  for (let i = 0; i < K; i++) near(runTravelAt(1, knotZ(i), T, ramp), 0.01 * i, 1e-12, `knot ${i}`);
+  near(runTravelAt(1, 0.5 * (knotZ(2) + knotZ(3)), T, ramp), 0.025, 1e-12, 'linear between knots');
+  near(runTravelAt(1, T.cz0 - 1, T, ramp), 0, 1e-12, 'held past the rear'); near(runTravelAt(1, T.cz1 + 1, T, ramp), 0.07, 1e-12, 'and the front');
+  assert.equal(runTravelAt(-1, 0, T, ramp), 0, 'each side its own'); assert.equal(runTravelAt(1, 0, T, null), 0, 'none at rest');
+  for (const [x, z, y, card] of [[1.5, 0, 0, false], [1.5, 0, -0.05, false], [T.xo + 0.02, 1, 0, false], [0.4, 0.5, 0, false], [1.6, 0.4, T.cz0 - 0.5, true]]) {
+    near(FR(x, z, y, { left: REST, right: REST }, card), FR(x, z, y, null, card), 1e-12, `zero travel is the rest pose at ${x}, ${y}, ${z}`);
+  }
+}
+{
+  // a crest under the right run: its front half lifted 10 cm (the wheels drooping off the crest's far side), the rear on
+  // the ground — the old print stayed whole under the lifted half
+  const crest = { left: REST, right: Array.from({ length: K }, (_, i) => (i >= K / 2 ? 0.1 : 0)) };
+  assert.equal(underTrackOcclusion({ x: 1.5, y: 0, z: knotZ(K - 1) }, T, crest), 0, 'the lifted front half: no contact');
+  assert.equal(underTrackOcclusion({ x: 1.5, y: 0, z: knotZ(1) }, T, crest), 1, 'the rear half on the ground: contact');
+  assert.equal(underTrackOcclusion({ x: -1.5, y: 0, z: knotZ(K - 1) }, T, crest), 1, 'the other run on the ground');
+  const under = FR(1.5, knotZ(K - 1), 0, crest);
+  assert.ok(under > 0.6 && under < 0.85, `the ground under the lifted half keeps the solid's share (${under.toFixed(3)})`);
+  // a hollow under the left run: its middle drooped 6 cm onto ground 6 cm under the contact plane — the contact follows
+  // it down (at rest that ground would read as lifted off)
+  const hollow = { left: Array.from({ length: K }, (_, i) => (i >= 2 && i <= 5 ? -0.06 : 0)), right: REST };
+  assert.equal(underTrackOcclusion({ x: -1.5, y: -0.06, z: knotZ(3) }, T, hollow), 1, 'the run drooped into the hollow: contact');
+  assert.ok(underTrackOcclusion({ x: -1.5, y: -0.06, z: knotZ(3) }, T) < 0.5, 'the rest pose would have lifted it off');
+  // continuous along a run over the crest's knee (the knots are linear, the gap law smooth)
+  let worstRun = 0;
+  for (let z = T.cz0, prev = null; z <= T.cz1; z += 0.001) {
+    const v = FR(1.5, z, 0, crest);
+    if (prev !== null) worstRun = Math.max(worstRun, Math.abs(v - prev));
+    prev = v;
+  }
+  assert.ok(worstRun < 0.01, `along the run over the crest's knee: no step (worst 1 mm change ${worstRun.toFixed(4)})`);
+  // the shoes follow the drawn run: a shoe of the drooped run under the rest floor is still a shoe, and grass under a
+  // lifted run is a receiver, not a shoe
+  assert.ok(isRunShoe({ x: -1.5, y: -0.05, z: knotZ(3) }, T, true, hollow) && !isRunShoe({ x: -1.5, y: -0.05, z: knotZ(3) }, T, true),
+    'a shoe of the drooped run under the rest floor');
+  assert.ok(!isRunShoe({ x: 1.5, y: 0.05, z: knotZ(K - 1) }, T, true, crest) && isRunShoe({ x: 1.5, y: 0.05, z: knotZ(K - 1) }, T, true),
+    'a grass blade under the lifted run is a receiver');
+  near(trackFloorAt(0, T, 0.1), 0.1 - 0.01, 1e-12, 'the floor rides the run\'s travel');
+  // the side gaps stand each run on its drawn lower edge: a lifted run lets the gap's sky through
+  const q = { x: T.xi - 0.05, y: 0, z: knotZ(K - 1) };
+  assert.ok(runGapOcclusion(q, UP, T, 0, crest) < 0.5 * runGapOcclusion(q, UP, T, 0),
+    `a lifted run closes less of its side gap (${runGapOcclusion(q, UP, T, 0, crest).toFixed(4)} against ${runGapOcclusion(q, UP, T, 0).toFixed(4)} at rest)`);
+  near(runGapOcclusion({ x: -0.9, y: 0, z: knotZ(K - 1) }, UP, T, 0, crest), runGapOcclusion({ x: -0.9, y: 0, z: knotZ(K - 1) }, UP, T, 0), 0.002,
+    'the far side barely changes (its own run rests; only the lifted run\'s share)');
+  // a thrown track (its band hidden): no run meets the ground on that side — no contact, no shoe, its side gap open
+  const thrown = { left: REST, right: Array(K).fill(GROUND_AO_NO_RUN_M) };
+  assert.equal(underTrackOcclusion({ x: 1.5, y: 0, z: 0 }, T, thrown), 0, 'no contact under a thrown track');
+  assert.ok(!isRunShoe({ x: 1.5, y: 0.06, z: 0 }, T, true, thrown), 'no shoes there');
+  assert.ok(runGapOcclusion({ x: 0.9, y: 0, z: 0 }, UP, T, 0, thrown) < 0.5 * runGapOcclusion({ x: 0.9, y: 0, z: 0 }, UP, T, 0), 'its side gap open');
+  assert.equal(underTrackOcclusion({ x: -1.5, y: 0, z: 0 }, T, thrown), 1, 'the other run still on the ground');
 }
 
 // ---- 5. the interreflection: what a blocked direction keeps (the belly enclosure, the walls), first order
@@ -329,6 +417,57 @@ assert.equal(u.uVehGround.value, 3, 'a hidden hull casts nothing'); nearRoot.vis
 updateVehicleGroundOcclusionUniforms(u, policy.selected, false);
 assert.equal(u.uVehGround.value, 0, 'the lever off: no hulls');
 
+{
+  // the drawn runs: the gear publishes them on its hull group (tankFactoryCore.ts runningGearGroundRun: (z, travel) pairs
+  // a side, hull-local), read each frame into eight knots a side through the hull group's own frame in the root's (a
+  // re-seated donor hull, a shortened one); without the reader the rest pose, a side with no pairs no run at all
+  const { root } = builtHull('runs');
+  const hullG = root.children[0];
+  hullG.position.set(0, 0.05, 0.2); hullG.scale.set(1, 1.1, 0.94);
+  const wheels = { [-1]: [[-2, 0], [-1, 0.02], [0, 0.04], [1, 0.06], [2, 0.08]], [1]: [[-2, 0.1], [2, -0.1]] };
+  let thrownRight = false;
+  hullG.userData.runningGearGroundRun = (side, out) => {
+    if (side === 1 && thrownRight) return 0;
+    wheels[side].forEach(([z, t], i) => { out[i * 2] = z; out[i * 2 + 1] = t; });
+    return wheels[side].length;
+  };
+  const h = measureVehicleGroundHull(root);
+  assert.equal(root.userData.groundAoRunOwner, hullG, 'the hull group publishes the runs');
+  const ur = createVehicleGroundOcclusionUniforms();
+  const runRow = ur.uVehGroundR.value[0];
+  assert.equal(ur.uVehGroundR.value.length, GROUND_AO_MAX_HULLS * 4, 'four vec4 a hull (eight knots a side)');
+  const interp = (pairs, z) => {
+    if (z <= pairs[0][0]) return pairs[0][1];
+    if (z >= pairs[pairs.length - 1][0]) return pairs[pairs.length - 1][1];
+    let i = 1; while (pairs[i][0] < z) i++;
+    const [z0, t0] = pairs[i - 1], [z1, t1] = pairs[i];
+    return t0 + (t1 - t0) * (z - z0) / (z1 - z0);
+  };
+  const knotsOf = (u2, side) => [...u2.uVehGroundR.value[side < 0 ? 0 : 2].toArray(), ...u2.uVehGroundR.value[side < 0 ? 1 : 3].toArray()];
+  updateVehicleGroundOcclusionUniforms(ur, [{ root }], true);
+  assert.equal(ur.uVehGroundR.value[0], runRow, 'knot rows reused');
+  for (const side of [-1, 1]) {
+    const knots = knotsOf(ur, side);
+    for (let k = 0; k < K; k++) {
+      const zRoot = h.cz0 + (k / (K - 1)) * (h.cz1 - h.cz0);
+      near(knots[k], 1.1 * interp(wheels[side], (zRoot - 0.2) / 0.94), 1e-6, `side ${side} knot ${k}: the wheels' travel at its z, in the root's metres`);
+    }
+  }
+  wheels[-1][2][1] = 0.12; // a wheel rides up a stone: the next frame reads it
+  updateVehicleGroundOcclusionUniforms(ur, [{ root }], true);
+  assert.ok(Math.max(...knotsOf(ur, -1)) > 1.1 * 0.07, 'read each frame');
+  thrownRight = true;
+  updateVehicleGroundOcclusionUniforms(ur, [{ root }], true);
+  assert.deepEqual(knotsOf(ur, 1), Array(K).fill(GROUND_AO_NO_RUN_M), 'a thrown track\'s side: no run');
+  assert.ok(knotsOf(ur, -1).some((v) => v !== 0 && v !== GROUND_AO_NO_RUN_M), 'the other side still drawn');
+  delete hullG.userData.runningGearGroundRun;
+  updateVehicleGroundOcclusionUniforms(ur, [{ root }], true);
+  assert.deepEqual([...knotsOf(ur, -1), ...knotsOf(ur, 1)], Array(2 * K).fill(0), 'no reader: the rest pose');
+  const bare = builtHull('no-gear').root;
+  measureVehicleGroundHull(bare);
+  assert.equal(bare.userData.groundAoRunOwner, null, 'a hull without the reader');
+}
+
 // ---- 8. tier gating: the block rides the vehicle-occlusion lever, never on the phones or under ?fx=off
 for (const name of ['ultra', 'high']) assert.equal(resolvePostLightFx(PRESETS[name], 'desktop', null).vehicleOcclusion, true, `${name} runs it`);
 for (const name of ['low', 'mobile-low', 'mobile', 'mobile-high']) assert.equal(!!resolvePostLightFx(PRESETS[name], 'desktop', null).vehicleOcclusion, false, `${name} never does`);
@@ -362,9 +501,24 @@ assert.ok(g.indexOf('if ( !haveN )') > g.lastIndexOf('continue;'), 'the depth no
 assert.ok(g.includes(`if ( q.y > b0.y + 0.02 && dOut < ${f4(GROUND_AO_HULL_SKIN_M)} ) continue;`), 'the hull\'s own skin is skipped');
 assert.ok(g.includes('float laneD = 0.5 * ( b2.w - b2.z ) - abs( abs( q.x ) - 0.5 * ( b2.z + b2.w ) );')
   && g.includes('if ( sunVis < 0.0 && laneD > -0.0200 && q.y < b0.z + 0.0400 && q.z > b1.x && q.z < b1.y ) {')
-  && g.includes('if ( q.y >= b0.w + max( -0.0100, ( q.z < b3.z ? b3.x : b3.y ) * past - 0.0300 ) ) continue;'),
-  'and the shoes: no sun state, in their lane, over the track\'s lower edge');
-assert.ok(g.includes('ho = max( ho, smoothstep( -0.005, 0.005, laneD )'), 'the ground under the tracks\' ground run');
+  && g.includes('if ( q.y >= b0.w + run + max( -0.0100, ramp - 0.0300 ) ) continue;'),
+  'and the shoes: no sun state, in their lane, over the track\'s lower edge as drawn');
+// (2026-10-08) the runs as drawn: eight knots a side, the hat weights runTravelAt mirrors, the contact by the gap under
+// the run's lower edge with soft lane edges, each side gap standing on its own run
+assert.match(g, new RegExp(`uniform vec4 uVehGroundR\\[ ${GROUND_AO_MAX_HULLS * 4} \\];`));
+assert.ok(g.includes(`float t = clamp( ( z - b3.z ) / max( b3.w - b3.z, 1e-4 ), 0.0, 1.0 ) * ${(K - 1).toFixed(1)};`)
+  && g.includes('return dot( k0, max( 1.0 - abs( t - vec4( 0.0, 1.0, 2.0, 3.0 ) ), 0.0 ) )')
+  && g.includes('+ dot( k1, max( 1.0 - abs( t - vec4( 4.0, 5.0, 6.0, 7.0 ) ), 0.0 ) );'), 'the knots, linear between');
+assert.ok(g.includes('int rk = i * 4 + ( q.x < 0.0 ? 0 : 2 );') && g.includes('float run = cotVgRun( uVehGroundR[ rk ], uVehGroundR[ rk + 1 ], q.z, b3 );'),
+  'the run on the pixel\'s side');
+assert.ok(g.includes(`ho = max( ho, smoothstep( ${f4(-GROUND_AO_CONTACT_EDGE_M)}, ${f4(GROUND_AO_CONTACT_EDGE_M)}, laneD )`)
+  && g.includes(`* smoothstep( 0.0, ${f4(GROUND_AO_CONTACT_EDGE_M)}, min( q.z - b1.x, b1.y - q.z ) )`)
+  && g.includes(`* ( 1.0 - smoothstep( ${f4(GROUND_AO_CONTACT_FULL_M)}, ${f4(GROUND_AO_CONTACT_GAP_M)}, b0.w + run + ramp - q.y ) ) );`),
+  'the ground a track covers, by its gap under the drawn run');
+assert.ok(!g.includes('smoothstep( -0.005, 0.005, laneD )') && !g.includes('0.3000, max( max( b3.z - q.z'), 'the rigid print is gone');
+assert.ok(g.includes('float loR = max( b0.w + cotVgRun( uVehGroundR[ i * 4 + 2 ], uVehGroundR[ i * 4 + 3 ], q.z, b3 ), c );')
+  && g.includes('float loL = max( b0.w + cotVgRun( uVehGroundR[ i * 4 ], uVehGroundR[ i * 4 + 1 ], q.z, b3 ), c );'),
+  'each side gap from its own run\'s drawn lower edge');
 
 // ---- 10. the wiring: the router's selection, the aerial pass's order, the lever, the ground's albedo
 const post = here('./post.ts'), lighting = here('./lighting.ts');
@@ -382,4 +536,4 @@ assert.match(post, /const groundRho = groundModel\?\.mode === 'physical'\s*\? 0\
   'the grounded model\'s ground albedo (luminance), the default on the legacy rig');
 assert.equal(GROUND_AO_DEFAULT_ALBEDO, 0.25);
 
-console.log(`vehicleGroundOcclusion.selftest: box and hull-solid sky shares (closed forms, ray caster), the law against the union of the hull and both runs (${unionRows.join('; ')}; 0.3 m beside: union ${unionBeside.toFixed(3)}, old sum ${oldSum.toFixed(3)}; grid worst ${worst.toFixed(3)}, beside the wraps ${worstWrap.toFixed(3)}), the T-90M's shape (belly ${F(0, 0).toFixed(3)}), the interreflection (snow belly keeps ${visSnow(0, 0).toFixed(3)}, sand ${visSand.toFixed(3)}), the measured solid, the router-fed in-place uniforms, the gating, the GLSL's structure and the wiring PASS`);
+console.log(`vehicleGroundOcclusion.selftest: box and hull-solid sky shares (closed forms, ray caster), the law against the union of the hull and both runs (${unionRows.join('; ')}; 0.3 m beside: union ${unionBeside.toFixed(3)}, old sum ${oldSum.toFixed(3)}; grid worst ${worst.toFixed(3)}, beside the wraps ${worstWrap.toFixed(3)}), the T-90M's shape (belly ${F(0, 0).toFixed(3)}), the contact by the gap under the drawn run (a run 13 cm up keeps the solid's ${liftedRun.toFixed(3)}; crest, hollow, thrown track, soft lane edges), the interreflection (snow belly keeps ${visSnow(0, 0).toFixed(3)}, sand ${visSand.toFixed(3)}), the measured solid, the router-fed in-place uniforms, the gating, the GLSL's structure and the wiring PASS`);

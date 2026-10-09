@@ -5398,6 +5398,27 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     z: w.z, x: w.x, y: w.y, r: w.r, off: w.off || 0, voff: w.voff || 0, layer: w.i,
     source: !!w.suspensionSource, rec: !!w.rec,
   }));
+  // 2026-10-08 (the contact-shadow lane): the ground run as it is drawn this frame, without allocating — the side's road
+  // wheels in z order as (z, travel) pairs, hull-local metres, the travel the band's bottom run follows (deformBand; on
+  // distant gear updated at 15 or 30 Hz it holds between updates, as the drawn band does). The aerial pass's ground
+  // occlusion (vehicleGroundOcclusion.ts) reads it each frame so the darkening under a track follows where the run
+  // actually meets the ground. Returns the pairs written (out holds at most out.length / 2). Every unit on the hull joins
+  // in (the t95 four-track builds two a side on one hullG: each unit appends to the one before and the pairs are put back
+  // in z order), and a thrown track's side gives none of this unit's (its band is hidden: no run meets the ground there).
+  const priorGroundRun = hullG.userData.runningGearGroundRun as ((side: Side, out: Float32Array) => number) | undefined;
+  hullG.userData.runningGearGroundRun = (side: Side, out: Float32Array): number => {
+    const before = typeof priorGroundRun === 'function' ? priorGroundRun(side, out) : 0;
+    if (side < 0 ? brokenL : brokenR) return before;
+    const ws = suspWheels[side];
+    const n = Math.min(before + ws.length, out.length >> 1);
+    for (let i = before; i < n; i++) {
+      const w = ws[i - before], z = w.z, off = w.voff || 0;
+      let j = i;
+      for (; j > 0 && out[(j - 1) * 2] > z; j--) { out[j * 2] = out[(j - 1) * 2]; out[j * 2 + 1] = out[(j - 1) * 2 + 1]; }
+      out[j * 2] = z; out[j * 2 + 1] = off;
+    }
+    return n;
+  };
   const gearUnit: RunningGearUnit = {
     unitId: runningGearUnitId,
     contactGeom: gearContactGeom,
@@ -5744,6 +5765,7 @@ function discardRunningGear(builder: object): void {
   for (const key of [
     'runningGearReceipts', 'wheelPatternReceipts', 'trackPatternReceipts', 'nativeWheelPatterns',
     'nativeTrackPatterns', 'nativeRoadWheelStations', 'runningGearEndRelays', 'runningGearRoadWheels',
+    'runningGearGroundRun',
   ]) delete P.hullG.userData[key];
 }
 
