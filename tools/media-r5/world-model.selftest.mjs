@@ -163,4 +163,10 @@ const inLine = lensReport(parkedAt(-6, 40, fixedAt([-6, 1.6, 26], [-6, 1.4, 40])
 assert.ok(inLine.merger === 1 && inLine.mergerKind === 'lamp', `the lamp behind the turret merges with it (${JSON.stringify([inLine.merger, inLine.mergerKind])})`);
 assert.equal(lensReport(parkedAt(-6, 40, fixedAt([2, 1.6, 26], [-6, 1.4, 40])), model).perSample[0].merger, 0, 'seen from aside it stands clear');
 
+// A hull on a bridge stands on its deck (2026-10-08: the cliffbridge viaduct's hero was placed on the gorge floor): over
+// the deck's footprint a deck top 3 m over the ground is the support, beside it the ground is.
+const bridged = worldModel({ ...features, obstacles: [...features.obstacles, { k: 'bridge', b: [-3, -30, 80, 3, 3, 95] }] });
+assert.equal(bridged.supportAt(0, 85), 3, 'on the deck');
+assert.ok(Math.abs(bridged.supportAt(8, 85)) < 1e-9, 'beside it, the ground');
+
 console.log('world-model.selftest: pass');

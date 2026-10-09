@@ -174,15 +174,29 @@ try {
   process.on('SIGTERM', stop); process.on('SIGINT', stop);
   browser = await puppeteer.launch({ headless: true, protocolTimeout: 600000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] });
-  const page = await browser.newPage();
+  let page = null;
   const errors = [];
-  page.on('pageerror', e => errors.push(String(e)));
-  page.on('console', m => { if (m.type() === 'error' && !/favicon/.test(m.text())) errors.push(m.text()); });
-  await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: 1 });
   const maps = [...new Set([...featureMaps, ...scoutMaps, ...jobs.map(j => j.map)])];
   const first = maps[0] ?? 'verdant';
-  await page.goto(`http://127.0.0.1:${port}/?studio=1&nosplash=1&tier=desktop&map=${first}&diag`, { waitUntil: 'domcontentloaded', timeout: 240000 });
-  await page.waitForFunction(() => window.__STUDIO?.active && window.__GAME_READY, { timeout: 240000 });
+  // the boot, three tries on a fresh page 20 s apart (2026-10-08: under a load average of 500 a cold boot's prop archive
+  // fetch failed and its frame detached, ending a 13-map survey the moment its lease was taken; another timed out)
+  for (let attempt = 1; ; attempt++) {
+    page = await browser.newPage();
+    page.on('pageerror', e => errors.push(String(e)));
+    page.on('console', m => { if (m.type() === 'error' && !/favicon/.test(m.text())) errors.push(m.text()); });
+    await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: 1 });
+    try {
+      await page.goto(`http://127.0.0.1:${port}/?studio=1&nosplash=1&tier=desktop&map=${first}&diag`, { waitUntil: 'domcontentloaded', timeout: 240000 });
+      await page.waitForFunction(() => window.__STUDIO?.active && window.__GAME_READY, { timeout: 240000 });
+      break;
+    } catch (error) {
+      if (attempt >= 3 || stopping) throw error;
+      console.error(`[lab] boot ${attempt} failed (${String(error?.message ?? error).split('\n')[0]}); a fresh page in 20 s`);
+      await page.close().catch(() => {});
+      errors.length = 0;
+      await new Promise((r) => setTimeout(r, 20000));
+    }
+  }
   // a budget lease starts at the boot's own acquisition and runs on into the first maps (2026-10-06: releasing after
   // the boot cost a whole trip round a 30-ticket line before the first map); --lease=map and job keep their release
   if (PER_JOB || (PER_MAP && !BUDGET_MS)) lock.release();
@@ -521,7 +535,8 @@ try {
           const sight = await page.evaluate(() => {
             const D = window.__DEBUG, W = D.world, cam = D.camera.position;
             const hero = window.__STUDIO.listActors()[0]; if (!hero) return null;
-            const H = W.heightField.getHeightAt(hero.pos[0], hero.pos[1]);
+            // the hull's own height (a viaduct's deck, not the gorge under it; 2026-10-08), the ground when unknown
+            const H = Number.isFinite(hero.y) ? hero.y : W.heightField.getHeightAt(hero.pos[0], hero.pos[1]);
             const tx = hero.pos[0] - cam.x, ty = H + 1.8 - cam.y, tz = hero.pos[1] - cam.z, d = Math.hypot(tx, ty, tz);
             const o = cam.clone(), dir = cam.clone().set(tx / d, ty / d, tz / d);
             const hit = W.raycast(o, dir, d);

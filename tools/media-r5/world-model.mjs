@@ -100,7 +100,20 @@ export function worldModel(features) {
     }
     return out;
   }
-  const model = { records, query, heightAt, slopeAt, wetAt, hullContacts, crushes, shrubs, queryShrubs, size: features.size };
+  // where a hull stands (2026-10-08: on the cliffbridge viaduct the lens check placed the hero on the gorge floor, 30 m
+  // under the deck it drives): a bridge's deck where one spans the point well over the ground or over water (the Studio
+  // seats hulls on decks, studioActorSupport.ts studioSupportBelly), the ground otherwise
+  const bridges = records.filter((r) => r.kind === 'bridge');
+  const supportAt = (x, z) => {
+    const g = heightAt(x, z);
+    let top = g;
+    for (const r of bridges) {
+      if (x < r.min[0] || x > r.max[0] || z < r.min[2] || z > r.max[2]) continue;
+      if (r.max[1] > g + 1.5 || (r.max[1] > g && wetAt(x, z) > 0.3)) top = Math.max(top, r.max[1]);
+    }
+    return top;
+  };
+  const model = { records, query, heightAt, supportAt, slopeAt, wetAt, hullContacts, crushes, shrubs, queryShrubs, size: features.size };
   models.set(features, model);
   return model;
 }

@@ -105,7 +105,7 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
     now = t;
     let x = heroActor.pos[0], z = heroActor.pos[1], yaw = (heroActor.facingDeg ?? 0) * Math.PI / 180;
     if (heroKeys?.length && sampleActorTrack(heroKeys, t, pose)) { x = pose.x; z = pose.z; yaw = (pose.facingDeg ?? 0) * Math.PI / 180; }
-    const gy = model.heightAt(x, z), fx = Math.sin(yaw), fz = Math.cos(yaw);
+    const gy = (model.supportAt ?? model.heightAt)(x, z), fx = Math.sin(yaw), fz = Math.cos(yaw);
     const eye = [cam.x, cam.y, cam.z];
     const points = [
       [x, gy + 1.4, z],
@@ -248,7 +248,7 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
     for (const e of escorts) {
       let ex = e.actor.pos[0], ez = e.actor.pos[1], eyaw = (e.actor.facingDeg ?? 0) * Math.PI / 180;
       if (e.keys?.length) { if (!sampleActorTrack(e.keys, t, e.pose)) continue; ex = e.pose.x; ez = e.pose.z; eyaw = (e.pose.facingDeg ?? 0) * Math.PI / 180; }
-      const egy = model.heightAt(ex, ez), efx = Math.sin(eyaw), efz = Math.cos(eyaw), [ehl, ehw] = e.dims;
+      const egy = (model.supportAt ?? model.heightAt)(ex, ez), efx = Math.sin(eyaw), efz = Math.cos(eyaw), [ehl, ehw] = e.dims;
       let ex0 = Infinity, ex1 = -Infinity, ey0 = Infinity, ey1 = -Infinity, front = true;
       for (const [a, b] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) for (const h of [0, 2.6]) {
         const q = screenOf([ex + efx * ehl * a + efz * ehw * b, egy + h, ez + efz * ehl * a - efx * ehw * b]);

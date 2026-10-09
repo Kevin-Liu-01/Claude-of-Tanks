@@ -4604,6 +4604,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     listActors: () => actors.map((a, i) => ({
       index: i, uid: a.uid, name: a.name, id: a.specId,
       pos: [r2(a.timelineX), r2(a.timelineZ)],
+      // where the hull stands (a bridge deck, not the ground under it), for shot tools' sightlines
+      y: r2(a.state.pos.y),
       facingDeg: r2(a.state.yaw / DEG), turretDeg: r2(a.state.turretYaw / DEG),
       gunDeg: r2(a.state.gunPitch / DEG), state: a.stateName,
       smoking: !!a.smoking, burning: !!a.burning,
