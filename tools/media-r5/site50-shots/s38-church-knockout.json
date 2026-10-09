@@ -141,26 +141,6 @@
     "scale": 1.2
    },
    "tMs": 2130
-  },
-  {
-   "id": "fx9",
-   "type": "fire",
-   "actor": "ally1",
-   "params": {
-    "slot": 0,
-    "tracer": true,
-    "recoil": true
-   },
-   "tMs": 3800
-  },
-  {
-   "id": "fx10",
-   "type": "mg_burst",
-   "actor": "ally1",
-   "params": {
-    "count": 9
-   },
-   "tMs": 4800
   }
  ],
  "storyboard": {

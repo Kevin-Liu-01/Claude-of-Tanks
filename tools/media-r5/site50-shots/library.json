@@ -733,6 +733,12 @@
      "sha256": "a2ca045cd0764e576655cb8c9eaf8966bad5932d6243a3e23dcab3cfaccaefb4",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "d926a2b7108d7c045b8c4281c10b2b1b1ece06fbeb17c95f24e2a24acb2d01a7",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -796,7 +802,7 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 3060,
+    "tMs": 4500,
     "exposureMs": 2
    }
   },
@@ -837,6 +843,12 @@
      "sha256": "61c4c6d84e3d56175799896278d6db284f0e76327cdb6f81655f8445a4c6ec23",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "2b74ef28540377691285d2f4f9345f7c066951303afe50da013a45f1c5d1ce19",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -941,6 +953,12 @@
      "sha256": "abb502c35d86ecfb50438d39ca4212e50f41b414b7372b8c37c9d542df45f627",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "ac1f815a082eb9105106c9ee252c222cefb1440acf7e5077a161d189d4e44b68",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -1136,6 +1154,12 @@
      "sha256": "76c3693452a626826376e40d21c215cbaf167df1fc411cfd8703d3889ea35a86",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "ac4e85f6e31239b387ef23b15298652a7dcaf6cec1868d1619cdec7f13cd68e8",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -1186,7 +1210,7 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 3980,
+    "tMs": 4500,
     "exposureMs": 2
    }
   },
@@ -1227,6 +1251,12 @@
      "sha256": "e8877e86b642516347380fd69d496fe4871f94350c7d2532fbce1dbe19f74f90",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "bb9afcee73774fa0b5b5b68f52c5d5dbe060d70ed4a37cab9a9c6811cafb88e3",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -1277,7 +1307,7 @@
    },
    "turrets": "flank",
    "still": {
-    "tMs": 3380,
+    "tMs": 4600,
     "exposureMs": 2
    }
   },
@@ -1318,6 +1348,12 @@
      "sha256": "f30a7feebee37d4552a066678a4e1bd696bbc64661bc465f3c20a056f57fbc8a",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "828959f3cafb0eebcea52047fb4440c078ac4edb69ade6871e6a49681cd22fdf",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -1368,7 +1404,7 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 3380,
+    "tMs": 4300,
     "exposureMs": 2
    }
   },
@@ -1409,6 +1445,12 @@
      "sha256": "7a891ac0db81be3499dd35ba3c5ff3d2d24c2b3c0f9d90e7f45a2ebd4d2ccdef",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "24221e62e9315b1b632ea8b38588019f80faab3aed4bbd0ba81aaa88a5157cce",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -1591,6 +1633,12 @@
      "sha256": "267919af2127e6cb1dbabb2c04b6fc4cbf2e84aeccb95d5657a4e200a2ddba5e",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "1df7e13b6bf309154f6ac105c64496f87d8599c30812e4284aeeefcccdfef0bb",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -1682,6 +1730,12 @@
      "sha256": "5e01cd62b77657fddc88e558ea46754c4a2d4bc0ec1f29149a9fd0af3ad92a55",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "b3eb515a6bc540c005f1d8e4b2f25505ea7cd19635dbe758408e4a745793d908",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -2040,6 +2094,12 @@
      "sha256": "c0d3c6fd8048b5093358881def2a30e29310ae34c3e744cd2c5f154fea58a866",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "66aeccdffbee85c68d638fb570dcc302c79a16f5a84f664a05615aa976c7aad2",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -2090,7 +2150,7 @@
    },
    "turrets": "flank",
    "still": {
-    "tMs": 3720,
+    "tMs": 4200,
     "exposureMs": 2
    }
   },
@@ -2216,6 +2276,12 @@
      "sha256": "03ca4f4bda7aca8c706b39b9b02171c815e7bb6bc3551649ae46466310246cc1",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "d64993123e49248b3780f42df16313487d95a28c5eb122aa48448f024fcacb04",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -2489,6 +2555,12 @@
      "sha256": "eee7ef6febabaf705fdb24d7ee2a3928556bf1576a4ae7a505ba52143e078ad4",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "f30ba67115c400109fee2411a36a1b754bb8935362b5dd4c4dc5880e7b50da7d",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -2665,6 +2737,12 @@
      "sha256": "31675b7c38dc441f63cd706ca1117b594d31a2785099371695c96b1549075b2d",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "bb9e9e32a1bbe791dfa81b95a21d92141b03d246850480770b73033baadf568e",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -2750,6 +2828,12 @@
      "sha256": "15e7a4b0a564d1bae6ee59c4e31b712177c98e4bb5e36ff29050f5872749b397",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "6b333e273a34152fd6e09cd8ee11b24b62a986a59d8aea7b76bfdf29b4dd7e85",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -2841,6 +2925,12 @@
      "sha256": "5ea53aa969a2088fe30940aac2f51fd282a40d8fbcbaaa86a241403e959a3b8d",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "5077e8f75b7ebfc482f85fa81ab9a09811839d08c7d740c9dbccb5bcfcb81cbf",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -2891,7 +2981,7 @@
    },
    "turrets": "flank",
    "still": {
-    "tMs": 3280,
+    "tMs": 2600,
     "exposureMs": 2
    }
   },
@@ -2932,6 +3022,12 @@
      "sha256": "2bb89573c80f32f6d235ecc0fac8c69291c13755cda243b54db5ec8ef8c28a45",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "3f0458bb9520bd637008d7fec460390114ab43ba8b6cb7f26cb7bf3be0437b00",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -2982,7 +3078,7 @@
    },
    "turrets": "lens",
    "still": {
-    "tMs": 2400,
+    "tMs": 1780,
     "exposureMs": 2
    }
   },
@@ -3114,6 +3210,12 @@
      "sha256": "3c7ae7d787448d83bebf5ecc4ded30d9b88c2ac0f6c8dd1ce1fb54052bb64c6b",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "45cfdf9a523c4747675571feae32f861827f3a436835ade5ad90b05b1a40039d",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -3199,6 +3301,12 @@
      "sha256": "3941f7e78d6fa92a0a981a786763cff57de2cf7500799be83c10e561e807b0ea",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "e39ed2adc1fe39e241203b9227b0deb1202d493da565f29c9ca2596e044400f4",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -3375,6 +3483,12 @@
      "sha256": "c1227e1d7d6465bbbe42317dcd0d3edd4d4101a2eecd07d0daabee314f9d29c4",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "cf6ef9b99794a1f3d76561715826b09727fcb7fd146b83388603dc7c082b3f9f",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -3551,6 +3665,12 @@
      "sha256": "8894473182cb4dfd178abab1692ed7482939aa4ec0c940df5d038bb585a0ec45",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "3b5fc3bcc23b4f5dba50f0ef2af22e6884ca459b1a543db6aefeb9c3aae42a5c",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -3733,6 +3853,12 @@
      "sha256": "3c0cbf8b7eadd96963a3ca21ac11d9d20ee5c167b7fc09b1784aee6da001407c",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "1fb972aee1d9bd498cdd7431187e6e25f5f200df3b27fd8be9085cb40656e7f2",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -3796,7 +3922,7 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 3500,
+    "tMs": 3300,
     "exposureMs": 2
    }
   },
@@ -4019,6 +4145,12 @@
      "sha256": "08a0f963d0f346fe665bb6c070862ef84d7458b47a81391fde5c395fef0a9d75",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "3ab52c66f5887a67a6a6746ca31d1b474a575421dd863d6b37e6e3766d247093",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -4207,6 +4339,12 @@
      "sha256": "9c9488a61abcbf707f86cb1de43127a42aa5069e574cd1988908203c1b70f537",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "d634681dc74f58bbcd0b6803f912ec073ad81cdedeb9dc7d20b351fcd4e5873d",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -4270,7 +4408,7 @@
    },
    "turrets": "flank",
    "still": {
-    "tMs": 3300,
+    "tMs": 3000,
     "exposureMs": 2
    }
   },
@@ -4311,6 +4449,12 @@
      "sha256": "916a897ab63eb6d828726d3012ce32e7bfdb803ecd18939ae2b59a8fbb1ff342",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "01658d007365b5898d9d9c04da541c1ccac89e080e56f40efaddbfafa42f85a0",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -4374,7 +4518,7 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 3300,
+    "tMs": 3000,
     "exposureMs": 2
    }
   },
@@ -4409,6 +4553,12 @@
      "sha256": "ee8968215f4ca8e41108abb2679497f27c5d20e2e07268554db1096676f991b1",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "c1d93beb8ec25f6cc9f13096374ba4904bf63f7b7ca1d294cc2b84065958952a",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -4494,6 +4644,12 @@
      "sha256": "b3cbbd3f0e5188840b9c605ac55f6dd3308e54169ff8f21ebd5e7258329569bf",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "4d614fc0fccff351d6833936afcb35387f1290b28f0716747c3b78425a477e1c",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
@@ -4591,6 +4747,12 @@
      "sha256": "39ba41f2601b0f3bd29aaba539a93b8da9813801bb3f7ba8a4b9ba100ba2e213",
      "at": "2026-10-09T23:32:24.024Z",
      "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "a9bc2a5883e131fccd35bef612230538d971ed9505196bf33fdb07c863e9f05f",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
     }
    ],
    "renders": [
