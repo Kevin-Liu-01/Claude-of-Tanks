@@ -339,7 +339,8 @@ export function framingFaults(scene, report) {
  * shrubs, not a street's frontages; clutter >= 0.02 or the zone under the hull >= 0.005 marks the critics' FOREGROUND
  * flag at precision 0.73-0.81 against a base rate of 0.33, and costs a good frame 0.37) or an escort sliced by the
  * frame's side (0.54). `gunTight`: under 0.1 of the frame ahead of the muzzle (64-88 % of such frames drew CUT or
- * EDGE_SQUEEZE, though their scores held).
+ * EDGE_SQUEEZE; a frame's score held, but each of the four c3 re-plans whose tight-gun share rose to 0.88-1.00 lost
+ * 0.33-1.00 as a take).
  */
 export function framingScore(report, { version = 2 } = {}) {
   const ps = report.perSample, n = ps.length || 1;

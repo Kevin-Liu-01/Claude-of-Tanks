@@ -367,8 +367,9 @@ for (const [n, id, kind, title, set, film, still] of SHOTS) {
         // framing leads (composition wave c1): the sweet share and the bad share outweigh the motion terms, whose range
         // and climb rewards (which drove the lens up into the look-down) are capped low
         // framing v3's flaws (composition wave c3: clutter in the foreground and sliced escorts cost a good frame half a
-        // point; a gun jammed against the edge drew the critics' notes)
-        const score = 4 * fr.sweet - 3 * fr.bad - 1.75 * (fr.flaw ?? 0) - 0.5 * (fr.gunTight ?? 0) + 1.0 * Math.min(range, 3) / 3 + 0.2 * Math.min(m.climb, 10) / 10 + 0.8 * m.front + 0.4 * Math.min(m.speed, speed) / speed + 0.3 * closing
+        // point; a gun jammed against the edge for most of a take cost it: the four re-plans whose share of tight-gun
+        // samples rose to 0.88-1.00 all lost 0.33-1.00, and at 1.5 the search score tracks c3's takes best, rank 0.57)
+        const score = 4 * fr.sweet - 3 * fr.bad - 1.75 * (fr.flaw ?? 0) - 1.5 * (fr.gunTight ?? 0) + 1.0 * Math.min(range, 3) / 3 + 0.2 * Math.min(m.climb, 10) / 10 + 0.8 * m.front + 0.4 * Math.min(m.speed, speed) / speed + 0.3 * closing
           + 0.3 * inFrame - 2 * blocked - USAGE_W * (usage.get(moveFamily) ?? 0) - 0.15 * (usage.get(routeFamily) ?? 0) + (scene.meta.cameraFix ? -0.2 : 0) + (road && town ? 0.15 : 0)
           - 1 * (setUse.get(setKeys(n, family, lens)[0]) ?? 0) - 3 * (setUse.get(setKeys(n, family, lens)[1]) ?? 0) - 1.5 * (setUse.get(setKeys(n, family, lens)[2]) ?? 0)
           + 0.6 * flankSwing;
