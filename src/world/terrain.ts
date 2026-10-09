@@ -7999,7 +7999,7 @@ function* terrainBuildSteps(
       try { pending.return?.(); } catch { /* preserve the original pacing failure */ }
     }
   }
-  const { material: mat, textures: splatTextures } = materialStep.value;
+  const { material: mat, textures: splatTextures, sourcedReady } = materialStep.value;
   // ground lane: the two-formation bedrock's boundary at its share of the field's height span (S.formation)
   {
     const form = (cfg?.splat as { formation?: TerrainFormation } | undefined)?.formation;
@@ -8306,7 +8306,8 @@ function* terrainBuildSteps(
         // attribute reset both at the map edge even with identical materials.
         if (foldAt) continueHorizonFold(horizonMesh.geometry, foldAt);
         // ground albedo mean → meadow tint (round 29); rock albedo mean → rock and scree tints (round 35)
-        void materialStep.value.sourcedReady?.then(() => refreshHorizonGroundTone(horizonMesh, splatTextures[0], splatTextures[4]));
+        // (the ring's stage is a hoisted generator: it reads the material's promise, not the narrowed step)
+        void sourcedReady?.then(() => refreshHorizonGroundTone(horizonMesh, splatTextures[0], splatTextures[4]));
       }
     }
   }
