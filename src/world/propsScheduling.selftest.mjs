@@ -18,7 +18,8 @@ const end = source.indexOf('\nfunction* propsBuildSteps(', start);
 assert.ok(start >= 0 && end > start);
 const wrapper = stripTypeScriptTypes(source.slice(start, end)).replace('export ', '');
 function fixture(steps, acquire = async () => {}, close = () => {}, workerClient = null,
-  now = () => performance.now()) {
+  now = () => performance.now(),
+  mainBake = function* () { throw new Error('unexpected main-thread wreck bake'); }) {
   const events = [], runtime = {}, args = [];
   const nested = (function* () {
     try {
@@ -32,8 +33,8 @@ function fixture(steps, acquire = async () => {}, close = () => {}, workerClient
     return yield* nested;
   }
   const run = new Function('propsBuildSteps', 'ensureTankBuilder', 'Worker', 'createWreckBakeClient', 'performance',
-    wrapper + '\nreturn createPropsAsync;')(build, acquire,
-    workerClient ? function Worker() {} : undefined, () => workerClient, { now });
+    'bakeTankWreckSteps', wrapper + '\nreturn createPropsAsync;')(build, acquire,
+    workerClient ? function Worker() {} : undefined, () => workerClient, { now }, mainBake);
   return { run, events, runtime, args };
 }
 
@@ -234,15 +235,27 @@ for (const failureAt of ['tick', 'bake', 'import']) {
   assert.deepEqual(calls, [['t90m', request.options], 'disposed']);
 }
 {
+  // (the wreck-worker lane, 2026-10-09) a failed worker bake no longer fails the build: the same request is baked on the
+  // main thread (src/world/wreckWorkerFallback.selftest.mjs drives the real client's failure modes)
   const failure = new Error('worker transfer failed');
   let disposed = 0;
   const client = { prepare() {}, async bake() { throw failure; }, dispose() { disposed++; } };
-  const f = fixture([{ fine: true, wreckBake: { specId: 'k2', options: {}, result: null } }],
-    undefined, undefined, client);
-  await assert.rejects(f.run({}, {}, 2002, null, null, true), error => error === failure);
+  const request = { specId: 'k2', options: { seed: 7, pop: true }, result: null };
+  const fallback = { specId: 'k2', mainThread: true };
+  const acquired = [];
+  const f = fixture([{ fine: true, wreckBake: request }], async (id) => { acquired.push(id); }, undefined, client,
+    undefined, function* (ctx, id, options) {
+      assert.deepEqual([ctx, id, options], [{}, 'k2', request.options], 'the worker\'s own bake of the same request');
+      yield { fine: true, progress: false };
+      return fallback;
+    });
+  const warn = console.warn; console.warn = () => {};
+  try { await f.run({}, {}, 2002, null, null, true); } finally { console.warn = warn; }
+  assert.equal(request.result, fallback);
+  assert.deepEqual(acquired, ['k2'], 'the donor builder loads on the main thread for the fallback only');
   assert.equal(disposed, 1);
-  assert.deepEqual(f.events.map(([event]) => event), ['work', 'closed']);
-  assert.equal(f.args[0][6].signal.aborted, true, 'failed worker await cancels this build source consumer');
+  assert.deepEqual(f.events.map(([event]) => event), ['work', 'complete', 'closed']);
+  assert.equal(f.args[0][6].signal.aborted, false, 'a worker failure no longer cancels this build');
 }
 {
   // (the time-to-battle lane, 2026-10-08) the map's planned bakes already run in the prefetch's own worker: this build's

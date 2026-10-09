@@ -66,6 +66,10 @@ export function startWreckBakePrefetch(
   const stats: WreckBakePrefetchStats = { planned: 0, taken: 0, missed: 0, settled: 0, failed: 0, doneMs: 0 };
   const startedAt = now();
   let disposed = false;
+  // (the wreck-worker lane, 2026-10-09) after one failed bake the rest of the plan is not started: a worker that cannot
+  // start or went silent would otherwise cost each planned bake its own timeout, and the props build waits on them
+  // (it bakes what the plan could not deliver itself, props.ts)
+  let stopped = false;
   let chain: Promise<unknown> = Promise.resolve();
   client.prepare();
   for (const [specId, seed, pop] of rows) {
@@ -74,12 +78,13 @@ export function startWreckBakePrefetch(
     stats.planned++;
     const job = chain.then(() => {
       if (disposed) throw new Error('Wreck prefetch disposed');
+      if (stopped) throw new Error('Wreck prefetch stopped after a failed bake');
       return client.bake(specId, { seed, pop: !!pop }, () => undefined);
     }).finally(() => {
       stats.settled++;
       stats.doneMs = Math.round(now() - startedAt);
     });
-    job.catch(() => { stats.failed++; });
+    job.catch(() => { stats.failed++; stopped = true; });
     chain = job.catch(() => null);
     pending.set(key, job);
   }
