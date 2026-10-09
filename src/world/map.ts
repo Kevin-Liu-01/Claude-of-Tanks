@@ -42,7 +42,7 @@ import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
 import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
-import { createStructureGroundOcclusion, type StructureGroundOcclusionHandle } from '../engine/structureGroundOcclusion.ts';
+import { SGO_PROTECTED_MAPS, createStructureGroundOcclusion, type StructureGroundOcclusionHandle } from '../engine/structureGroundOcclusion.ts';
 import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
 import { supplyHorizonRing, withdrawHorizonRing } from './horizonRingHook.ts';
 import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
@@ -479,7 +479,9 @@ function assembleWorld(
   // 2026-10-09 (the shadows lane): the ground's sky beside the world's standing solids (structureGroundOcclusion.ts) —
   // baked in a worker from the movement obstacles (the ground-bearing solids; trees stay out) while the battle entry
   // warms, read by the aerial pass on the desktop tiers; a map's sky.lighting.groundOcclusion scales it (0: off)
-  const groundOcclusionScale = (config.sky as { lighting?: { groundOcclusion?: number } } | undefined)?.lighting?.groundOcclusion ?? 1;
+  // (the owner's protected maps keep today's look: SGO_PROTECTED_MAPS)
+  const groundOcclusionScale = SGO_PROTECTED_MAPS.has(config.id) ? 0
+    : (config.sky as { lighting?: { groundOcclusion?: number } } | undefined)?.lighting?.groundOcclusion ?? 1;
   const groundOcclusion: StructureGroundOcclusionHandle | null = getDeviceTier() !== 'mobile' && groundOcclusionScale > 0
     && (engineCtx as { renderer?: THREE.WebGLRenderer }).renderer
     ? createStructureGroundOcclusion(props.obstacles, { group, scale: groundOcclusionScale }) : null;

@@ -178,7 +178,9 @@ export default {
     outlandRocks: 0.1, forestHex: 0x33473a, rockHex: 0x6d7068, haze: 0.98, grain: 0.5,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'ash-veil', nightGlow: 0.7, nightGlowHex: 0xffc890 },
+  // (2026-10-09, the shadows lane: deckBeam — the veil's cells took 90 % of the sun over half the creek while the camera
+  // metered open sun; a smoke veil is thin and passes part of the beam)
+  clouds: { regime: 'ash-veil', nightGlow: 0.7, nightGlowHex: 0xffc890, deckBeam: 0.4 },
   sky: {
     sunElevationDeg: 18, sunAzimuthDeg: 242, turbidity: 8.4, rayleigh: 1.3,
     mieCoefficient: 0.013, mieDirectionalG: 0.88, fogDensity: 0.00082,
