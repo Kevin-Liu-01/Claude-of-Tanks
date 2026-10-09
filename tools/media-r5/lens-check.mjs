@@ -263,8 +263,27 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
         if (ox > 0 && oy > 0 && ox * oy >= 0.5 * width * (ey1 - ey0)) stacked++;
       }
     }
+    // a merger (composition waves c2-c3: about a quarter of the critics' notes have a pole, a lamp or a pylon "rising
+    // straight out of the turret"): a tall thin record standing behind the hull whose line on screen passes through the
+    // turret, the middle half of the hull's box across, from under the box's top to over it
+    let merger = 0, mergerKind = null;
+    if (box) {
+      const mid = (box[0] + box[2]) / 2, span = (box[2] - box[0]) * 0.25;
+      // only the corridor behind the hull can hold one: 150 m on from it, 30 m either side
+      const ux = x - cam.x, uz = z - cam.z, ul = Math.hypot(ux, uz) || 1, fx2 = x + ux / ul * 150, fz2 = z + uz / ul * 150;
+      model.query(Math.min(x, fx2) - 30, Math.min(z, fz2) - 30, Math.max(x, fx2) + 30, Math.max(z, fz2) + 30, nearby);
+      for (const r of nearby) {
+        const h = r.max[1] - r.min[1], w = Math.max(r.max[0] - r.min[0], r.max[2] - r.min[2]);
+        if (h < 4 || w > 2.5 || r.treeIdx != null || crushed(r)) continue;
+        const cx = (r.min[0] + r.max[0]) / 2, cz = (r.min[2] + r.max[2]) / 2;
+        if (Math.hypot(cx - cam.x, cz - cam.z) < distM + 1) continue;
+        const top = screenOf([cx, r.max[1], cz]), foot = screenOf([cx, r.min[1], cz]);
+        if (!top || !foot || Math.abs(top[0] - mid) > span) continue;
+        if (top[1] > box[3] && foot[1] < box[3]) { merger = 1; mergerKind = r.kind; break; }
+      }
+    }
     perSample.push({ tMs: t, seen: inView, centred, clear: !isBlocked && blockedRays === 0, distM: +distM.toFixed(1),
-      muzzle: muzzleS ? muzzleS.map((v) => +v.toFixed(3)) : null, gunRoom, sliced, stacked,
+      muzzle: muzzleS ? muzzleS.map((v) => +v.toFixed(3)) : null, gunRoom, sliced, stacked, merger, mergerKind,
       box, whole, size: box ? +((box[3] - box[1]) / 2).toFixed(3) : 0, fore: { share: +foreShare.toFixed(3), kind: foreKind, zone: +zoneShare.toFixed(3), zoneKind, clutter: +clutter.toFixed(3), clutterKind },
       at: [+x.toFixed(2), +z.toFixed(2)], eye: [+cam.x.toFixed(2), +cam.y.toFixed(2), +cam.z.toFixed(2)], facing,
       pitchDeg: +(Math.asin(Math.max(-1, Math.min(1, fw[1]))) * 180 / Math.PI).toFixed(1), heightM: +(cam.y - model.heightAt(cam.x, cam.z)).toFixed(1) });
@@ -340,7 +359,9 @@ export function framingFaults(scene, report) {
  * flag at precision 0.73-0.81 against a base rate of 0.33, and costs a good frame 0.37) or an escort sliced by the
  * frame's side (0.54). `gunTight`: under 0.1 of the frame ahead of the muzzle (64-88 % of such frames drew CUT or
  * EDGE_SQUEEZE; a frame's score held, but each of the four c3 re-plans whose tight-gun share rose to 0.88-1.00 lost
- * 0.33-1.00 as a take).
+ * 0.33-1.00 as a take). `merger`: a pole or lamp behind the hull rising out of its turret (the lens report's merger:
+ * 21 of the 28 frames it marks carry a critic's note of it, and it finds 56 % of the notes naming a pole, lamp or wire;
+ * smoke, chimneys and spires it cannot see; a good frame loses 0.1).
  */
 export function framingScore(report, { version = 2 } = {}) {
   const ps = report.perSample, n = ps.length || 1;
@@ -366,7 +387,8 @@ export function framingScore(report, { version = 2 } = {}) {
     || edge(p) > 0.5 || (p.box && p.box[1] > -0.3)).length / n;
   const flaw = ps.filter((p) => (p.fore?.clutter ?? 0) >= 0.02 || (p.fore?.zone ?? 0) >= 0.005 || p.sliced > 0).length / n;
   const gunTight = ps.filter((p) => p.gunRoom != null && p.gunRoom < 0.1).length / n;
-  return { sweet, bad, flaw, gunTight };
+  const merger = ps.filter((p) => p.merger > 0).length / n;
+  return { sweet, bad, flaw, gunTight, merger };
 }
 
 /**

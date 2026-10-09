@@ -157,5 +157,10 @@ assert.ok(room15.gunRoom > 0.15 && room15.gunRoom < 0.4 && room15.muzzle[0] < 0,
 const room10 = lensReport(parkedAt(0, 30, fixedAt([0, 1.6, 20], [0, 1.2, 30])), model).perSample[0];
 assert.ok(room10.gunRoom < 0, `from 10 m the muzzle is past the edge (${room10.gunRoom})`);
 assert.equal(room15.sliced, 0, 'no escort, none sliced');
+// A merger (composition waves c2-c3: poles "rising straight out of the turret"): the 7 m lamp at (-6, 50) stands 10 m
+// behind a hull parked at (-6, 40); seen down that line it rises out of the turret, seen from 8 m aside it does not.
+const inLine = lensReport(parkedAt(-6, 40, fixedAt([-6, 1.6, 26], [-6, 1.4, 40])), model).perSample[0];
+assert.ok(inLine.merger === 1 && inLine.mergerKind === 'lamp', `the lamp behind the turret merges with it (${JSON.stringify([inLine.merger, inLine.mergerKind])})`);
+assert.equal(lensReport(parkedAt(-6, 40, fixedAt([2, 1.6, 26], [-6, 1.4, 40])), model).perSample[0].merger, 0, 'seen from aside it stands clear');
 
 console.log('world-model.selftest: pass');
