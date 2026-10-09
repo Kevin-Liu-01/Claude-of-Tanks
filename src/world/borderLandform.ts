@@ -124,6 +124,14 @@ export interface BorderLandformSettings {
    */
   farmBuildings?: boolean;
   /**
+   * The borders lane (round 5, 2026-10-08; the gauntlet's waves 286a-d at every map's corners and edges: "the crest across
+   * the centre ends against bare sky with only a few lone lollipop trees standing on it, so the land beyond simply
+   * vanishes"): metres the country rises past the near band (from 120 m past the edge, full by 520 m, the ring's own rows:
+   * maps/horizon.ts liftFarCountry, the crests the whole of it and the valleys a third), so the land and woods beyond a
+   * near crest stand into view in layers. Default 0; an inland map's (no sea opening).
+   */
+  farRiseM?: number;
+  /**
    * The rim as it stood before the border landform (the classic S-curve and the plateau rimH over the geology past the
    * edge, the old 140–460 m ring hand-over, no woods field): the receipts that replay a pre-landform failure build
    * their predecessor and current fields with it. Not a map setting.
@@ -145,19 +153,19 @@ const STYLE_DEFAULTS: Readonly<Record<string, BorderLandformSettings>> = {
  * valleys and logging country, tablelands and canyons, mountain valleys. A map config's `terrain.border` overrides it.
  */
 const MAP_BORDERS: Readonly<Record<string, Partial<BorderLandformSettings>>> = {
-  verdant: { forest: 0.36, hedgerows: 0.85, fields: 0.75, farms: 12 },
+  verdant: { forest: 0.36, hedgerows: 0.85, fields: 0.75, farms: 12, farRiseM: 40 },
   desert: { forest: 0.03, enclosure: 0.5, hedgerows: 0, fields: 0, farms: 4, buildings: 'arid' },
   winter: { forest: 0.44, hedgerows: 0.2, fields: 0.1, farms: 6, buildings: 'winter' },
-  urban: { forest: 0.28, hedgerows: 0.5, fields: 0.45, farms: 14 },
+  urban: { forest: 0.28, hedgerows: 0.5, fields: 0.45, farms: 14, farRiseM: 40 },
   coastal: { forest: 0.24, enclosure: 0.36, hedgerows: 0.55, fields: 0.5, farms: 9 },
   autumn: { forest: 0.42, enclosure: 0.5, hedgerows: 0.9, fields: 0.8, farms: 12 },
   steppe: { enclosure: 0.12, hillHeight: 1.25, reachM: 340, rimFloor: 0.18, wavelengthM: 760, forest: 0.07, hedgerows: 0.55, fields: 0.85, crops: 'steppe', farms: 10, buildings: 'steppe' },
   railyard: { forest: 0.22, hedgerows: 0.55, fields: 0.6, farms: 9 },
-  frontier: { forest: 0.36, enclosure: 0.5, hedgerows: 0.6, fields: 0.6, farms: 10 },
+  frontier: { forest: 0.36, enclosure: 0.5, hedgerows: 0.6, fields: 0.6, farms: 10, farRiseM: 40 },
   fjord: { forest: 0.42, fields: 0.1, farms: 5, buildings: 'nordic' },
   delta: { enclosure: 0.08, hillHeight: 0.6, reachM: 360, rimFloor: 0.15, wavelengthM: 700, forest: 0.26, hedgerows: 0.35, fields: 0.55, crops: 'polder', farms: 10, buildings: 'tropical', erosion: 0 },
-  monsoon: { forest: 0.6, fields: 0.25, farms: 6, buildings: 'tropical' },
-  alpine: { forest: 0.32, fields: 0.05 },
+  monsoon: { forest: 0.6, fields: 0.25, farms: 6, buildings: 'tropical', farRiseM: 80 },
+  alpine: { forest: 0.32, fields: 0.05, farRiseM: 80 },
   caldera: { forest: 0.06, terrace: 0.55, ridged: 0.45, hedgerows: 0, fields: 0, farms: 1, farmBuildings: false },
   foundry: { forest: 0.2, hedgerows: 0.55, fields: 0.55, farms: 8 },
   ruinspires: { forest: 0.1, hedgerows: 0.2, fields: 0.1, farms: 3, farmBuildings: false },

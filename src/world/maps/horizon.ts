@@ -1120,6 +1120,28 @@ function refineCoastRows(ring: HorizonRingGeometry, openings: readonly HorizonSe
   ring.rows = rows; ring.positions = new Float32Array(positions); ring.heights = new Float32Array(heights);
 }
 
+/**
+ * The borders lane (round 5, 2026-10-08; the gauntlet's waves 286a-d: "the land beyond simply vanishes" behind a near
+ * crest): the country past the near band rises by `riseM` (borderLandform.ts farRiseM) — nothing within 120 m of the
+ * square's edge, all of it from 520 m — on the ring's land (the sea's and the water's rows keep their level), the crests
+ * the whole rise and the valleys a third of it, so a range keeps its low passes while the far ridges and their woods stand
+ * up over the near crest, layer behind layer, instead of sky.
+ */
+function liftFarCountry(ring: HorizonRingGeometry, riseM: number): void {
+  if (!(riseM > 0)) return;
+  const crest = Math.max(1, ring.maxHeight * 0.7);
+  for (let i = HORIZON_SEGMENTS; i < ring.heights.length; i++) {
+    const x = ring.positions[i * 3], z = ring.positions[i * 3 + 2];
+    const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 512;
+    const h = ring.heights[i];
+    if (edgeOut <= 120 || h < 0.5) continue;
+    ring.heights[i] = h + riseM * smoothstep(120, 520, edgeOut) * (0.35 + 0.65 * smoothstep(0, crest, h));
+    ring.positions[i * 3 + 1] = ring.heights[i];
+  }
+  ring.maxHeight = 1;
+  for (const height of ring.heights) ring.maxHeight = Math.max(ring.maxHeight, height);
+}
+
 /** Continue the actual geology through the boundary before the distant
  * ridges take over. The edge residual carries roads and conditioned ground
  * into the exterior without a step. Redrock uses one regional canyon field. */
@@ -2206,6 +2228,10 @@ export function sampleHorizonGeometry(
   const canyonOutland = mapId === 'badlands' && horizon.redrockCanyon !== false;
   if (!canyonOutland) drainSteps(carveHorizonEscarpmentsSteps(ring, horizon, mapId, style, seed));
   continueHorizonGround(ring, ground, canyonOutland);
+  // (the borders lane, round 5) the country past the near band rises on an inland map (waves 286a-d)
+  if (!canyonOutland && !openings.length) {
+    liftFarCountry(ring, resolveBorderLandform(style, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border, mapId).farRiseM ?? 0);
+  }
   if (canyonOutland) drainSteps(carveHorizonEscarpmentsSteps(ring, horizon, mapId, style, seed));
   if (horizon.roadPasses !== false) openRoadPasses(ring, ground);
   if (horizon.summitCap) capHorizonSummits(ring, horizon.summitCap, ((seed ^ 0x5C4D) ^ idHash(mapId)) >>> 0, HORIZON_SEGMENTS);
@@ -3661,6 +3687,10 @@ export function* buildHorizonRingSteps(
   const canyonOutland = mapId === 'badlands' && H.redrockCanyon !== false;
   if (!canyonOutland) yield* carveHorizonEscarpmentsSteps(ring, H, mapId, style, seed);
   continueHorizonGround(ring, ground, canyonOutland);
+  // (the borders lane, round 5) the country past the near band rises on an inland map (waves 286a-d)
+  if (!canyonOutland && !seaOpenings.length) {
+    liftFarCountry(ring, resolveBorderLandform(style, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border, mapId).farRiseM ?? 0);
+  }
   if (canyonOutland) yield* carveHorizonEscarpmentsSteps(ring, H, mapId, style, seed);
   if (H.roadPasses !== false) openRoadPasses(ring, ground);
   // the map-revival lane (2026-10-06): the outer ranges capped into mesas (horizonTablelands.ts), then the dam's canyon
