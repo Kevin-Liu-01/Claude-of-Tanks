@@ -54,6 +54,13 @@ interface TopPanel {
    * away from, with a bough standing out of it). Omitted on a turret roof, a seeded few; a hull deck carries none.
    */
   tents?: readonly (readonly [number, number, number])[];
+  /**
+   * 2026-10-09 (launch RC; ghillieSuit.selftest, "suit triangles pass into the cage"): an unseated net's floor over the
+   * surface its probe reports, in metres. Where the net sags off its supports onto something under it, it rests on that
+   * at this loft instead of sinking into it. A cage wing's laid net sets it: at the edge of the cut round ua_t80u_modern's
+   * drone dock, the net sagging into the opening ran its edge through the row tube beneath it.
+   */
+  restOnProbeM?: number;
 }
 
 interface SidePanel {
@@ -71,6 +78,14 @@ interface SidePanel {
    * edge — from its top (outAt(z, 1), topAt(z)) up and inboard to the roof net's edge (inAt(z), yAt(z)).
    */
   shoulder?: { readonly z0: number; readonly z1: number; inAt(z: number): number; yAt(z: number): number };
+  /**
+   * 2026-10-09 (launch RC; nationalUkraineProtection.selftest, the continuous main-gun envelope): the drape is tied
+   * under the rail it hangs from and never rolls over that rail's top. Its probe-placed section is cut at topAt(z), so
+   * the cloth starts at its authored top line, inside the lashings that bind it to the rail. Push 3b's Ukrainian hull
+   * screens set their headers to just clear the gun's outer traverse reach. A net rolled over a header's top stood
+   * inside that sweep on three of the four hulls.
+   */
+  tiedTop?: boolean;
 }
 
 interface FacePanel {
@@ -838,6 +853,19 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
       const crease = Math.max(0, 1 - Math.abs(fold) / 0.18) ** 2;
       y[j * NX + i] = best + rim[j * NX + i]
         + reliefK * (0.004 * (1 + clothNoise(x, z, 0.55, s)) + 0.002 * (1 + clothNoise(x, z, 0.19, s + 17)) + 0.03 * crease);
+      if (panel.restOnProbeM !== undefined && probe) {
+        // the surface under the point and under the grid lines to its neighbours (a tube between two points holds up the
+        // cloth's edge across it, not just a point on it)
+        const cx = (x1 - x0) / nx, cz = (z1 - z0) / nz;
+        let under = probe.top(x, z);
+        for (let f = 0.1; f <= 1 + 1e-9; f += 0.1) {
+          for (const [px, pz] of [[x + cx * f, z], [x - cx * f, z], [x, z + cz * f], [x, z - cz * f]]) {
+            const t = probe.top(px, pz);
+            if (t !== null && (under === null || t > under)) under = t;
+          }
+        }
+        if (under !== null) y[j * NX + i] = Math.max(y[j * NX + i], under + panel.restOnProbeM);
+      }
     }
   }
   const heightAt = (x: number, z: number): number | null => {
@@ -1257,6 +1285,27 @@ function curtainSampler(columns: Array<{ a: number; pts: Point3[]; normals: Poin
   };
 }
 
+/**
+ * A hanging section below the height y (a drape tied under its rail, SidePanel.tiedTop): the part over and above the
+ * rail is cut away and the cloth starts where its section crosses y. Null when less than one segment remains.
+ */
+function sectionBelow(sec: { pts: Array<[number, number]>; corner: number }, y: number):
+  { pts: Array<[number, number]>; corner: number } | null {
+  if (sec.pts.every((p) => p[1] <= y)) return sec;
+  const pts: Array<[number, number]> = [];
+  for (let k = 0; k < sec.pts.length; k++) {
+    const [o, u] = sec.pts[k];
+    if (u > y) continue;
+    if (!pts.length && k > 0) {
+      const [po, pu] = sec.pts[k - 1];
+      const f = (pu - y) / ((pu - u) || 1);
+      if (u < y - 1e-4) pts.push([po + (o - po) * f, y]);
+    }
+    pts.push([o, u]);
+  }
+  return pts.length >= 2 ? { pts, corner: 0 } : null;
+}
+
 /** Metres of bare run a mission dock keeps either side of it in a wing's drape. */
 const DOCK_CLEAR_M = 0.03;
 
@@ -1311,10 +1360,11 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
       const start = roofEdge(z);
       const yFrom = start ? start.up : topAt(z) + 0.05;
       if (support.fitted) return fittedSection((yy) => probe.side(yy, z, side), start, yFrom, hemY);
-      return curtainSection((yy) => probe.side(yy, z, side), (o) => support.roof(side * o, z) ?? (() => {
+      const sec = curtainSection((yy) => probe.side(yy, z, side), (o) => support.roof(side * o, z) ?? (() => {
         const r = probe.topNear(side * o, z, 0.03);
         return r === null ? null : r + DRAPE_GAP_M;
       })(), start, yFrom, hemY, HANG_GAP_M, start ? -Infinity : outAt(z, 1) - FLANK_REACH_M, (o) => probe.top(side * o, z));
+      return panel.tiedTop && sec ? sectionBelow(sec, topAt(z)) : sec;
     },
     fallback(z, t) {
       const top = topAt(z), bottom = hem(z);
@@ -2330,7 +2380,13 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
       // them rests on their bars and sags through between them (83 crossings). The owner's rule for cages ("the cage bars
       // stay visible", 2026-09-15): the flank drapes keep to the bustle corner and the right front, and over the panels'
       // run the roof net ends at the basket rails.
-      side: [-1, 1].flatMap((side) => ([[-3.30, -2.85], ...(side > 0 ? [[0.17, 1.05]] : [])] as [number, number][]).map(([z0, z1]) => ({
+      // 2026-10-09 (launch RC; ghillieSuit.selftest, "suit pieces touch nothing within 15 mm"): the bustle corners carry
+      // no flank drape. Between the rear cage's corner post (z -3.57) and the flank cage's last post (z -2.85) there is no
+      // rail, and the bustle wall stands 0.6 m inboard (x 1.05 to 1.26). The armour probe found nothing to hold the
+      // corner drapes, so all but their last station hung on the authored line, a curtain in the air at x 1.87 that was
+      // held only by its end column rolled over the flank cage's post, 2.0 cm off it. The roof net and the rear face net
+      // still cover the bustle.
+      side: [-1, 1].flatMap((side) => ((side > 0 ? [[0.17, 1.05]] : []) as [number, number][]).map(([z0, z1]) => ({
         side, z0, z1,
         topAt: () => 0.93, bottomAt: (z: number) => 0.50 + Math.sin(z * 3.4) * 0.035,
         outAt: (_z: number, t: number) => 1.87 + (1 - t) * 0.03, seed: 307 + side + (z0 > 0 ? 4 : 0) }))),
@@ -2704,7 +2760,7 @@ function cageWingCloths(wing: CageWing, index: number, cfg: GhillieConfig, armou
     x0: Math.min(xa, xb), x1: Math.max(xa, xb), z0: wing.z0 - 0.015, z1: wing.z1 + 0.015,
     nx: Math.max(4, Math.round((wing.outer - wing.inner) / 0.08)), nz: Math.max(8, Math.round((wing.z1 - wing.z0) / 0.08)),
     yAt: () => wing.y + 0.008 + DRAPE_GAP_M, holes: cageOpenings(wing, armour, gunFloor, dock), seed, tents: [],
-    garnishRiseM: 0.12, garnishOpeningMarginM: 0.07, reliefScale: 0.6, rimScale: 0.35,
+    garnishRiseM: 0.12, garnishOpeningMarginM: 0.07, reliefScale: 0.6, rimScale: 0.35, restOnProbeM: FITTED_GAP_M,
   }, cfg, support, uvk);
   // the highest thing standing outboard of the outer tube's line below it at a station (a side screen's top rail)
   const below = (z: number): number => {
