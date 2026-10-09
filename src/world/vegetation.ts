@@ -48,7 +48,7 @@ import {
   insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees, type AuthoredTreeFeature,
 } from './authoredTreePlacement.ts';
 import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
-import { resolveGroundReduxProfile, swardShadeUniform } from './groundRedux.ts';
+import { resolveGroundReduxProfile, swardClumpKeep, swardShadeUniform, swardStandHeight } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import type { PropsMapConfig } from './props.ts';
@@ -4180,6 +4180,10 @@ function* vegetationBuildSteps(
   // ground lane (2026-10-08, the gauntlet's wave 260): the sward's straw patches (the height field's hook,
   // groundRedux.ts strawPatchWeight) — absent on Verdant, whose tufts keep the old one-in-six scatter
   const strawPatchAt = heightField._strawPatchAt ?? null;
+  // ground lane (2026-10-08, waves 285-287: "identical, evenly spaced tufts"): a dense sward's tussocks and stands (the
+  // height field's hook, groundRedux.ts swardClumpWeight; the tall grass reads the same field) — absent on Verdant
+  const swardClumpAt = heightField._swardClumpAt ?? null;
+  const _clumpScratch: [number, number] = [0, 0];
   function resolveTuftScale(
     splat: ReturnType<typeof sampleSplatNoise>,
     clusterRoll: number,
@@ -4260,6 +4264,15 @@ function* vegetationBuildSteps(
     // mask so growth clusters in hollows and along moisture lines, with only
     // stray outliers between the clumps
     if (!resolveTuftScale(sn, clJ, roll, varJ)) return null;
+    // (2026-10-08, waves 285-287: "a carpet of identical, evenly spaced blade cards") a dense sward stands in tussocks
+    // with thin gaps between them, and in taller and shorter stands: a tuft in a gap is kept about four times in ten,
+    // every tuft in a tussock (swardClumpKeep), its height the stand's (swardStandHeight, 0.62-1: it only shortens). The keep is a hash
+    // of the tuft's own draws, so the stream is unchanged; the sparse biomes keep resolveTuftScale's clumps
+    if (swardClumpAt !== null && veg.grassDensity >= 0.5) {
+      swardClumpAt(x, z, _clumpScratch);
+      if (((hueJ * 3.71 + clJ * 9.13 + roll * 5.27) % 1) > swardClumpKeep(_clumpScratch[0])) return null;
+      sy *= swardStandHeight(_clumpScratch[1]);
+    }
     const sxzMul = _tuftScaleScratch[0], syMul = _tuftScaleScratch[1];
     // PERF (performance_budget r6): slope test LAST — it is the dearest
     // predicate and every cull above it is pure math over (x, z, the 8

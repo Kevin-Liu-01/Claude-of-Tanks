@@ -7,6 +7,7 @@ import { buildGrassTuftGeometry, mulberry32 } from './vegetation.ts';
 import { advanceGrassChunkWork, createGrassChunkWork } from './grassChunkWork.ts';
 import { advanceGrassCarpetWork, createGrassCarpetWork } from './grassCarpetWork.ts';
 import { landWeedShare } from './landUse.ts';
+import { swardClumpKeep, swardStandHeight } from './groundRedux.ts'; // the ground lane (2026-10-08): the sward's tussocks and stands
 import longleaf from './maps/longleaf.ts';
 import verdant from './maps/verdant.ts';
 
@@ -30,7 +31,8 @@ const stages = [
 function compile(legacy) {
   const body = legacy ? stages.replace(treatment, '') : stages;
   return new Function('THREE', 'sampleSplatNoise', 'buildGrassTuftGeometry',
-    'advanceGrassChunkWork', 'createGrassChunkWork', 'advanceGrassCarpetWork', 'createGrassCarpetWork', 'landWeedShare', `return (${stripTypeScriptTypes(`
+    'advanceGrassChunkWork', 'createGrassChunkWork', 'advanceGrassCarpetWork', 'createGrassCarpetWork', 'landWeedShare',
+    'swardClumpKeep', 'swardStandHeight', `return (${stripTypeScriptTypes(`
     function build(heightField, config, mobileTier, mulberry32, groundCoverBlocked = null) {
       ${section('const HALF = 512;', 'function treePositionNoise(')}
       const seed = 2001, group = new THREE.Group(), veg = { avoid: null, ...config.vegetation }, deferFarGrass = false;
@@ -56,7 +58,8 @@ function compile(legacy) {
       return { chunk, carpetCell, rebuildCarpet, carpetSets, carpetWork, group, grassVariants, stubbleHeightScale, makeTuft };
     }
   `)});`)(THREE, sampleSplatNoise, buildGrassTuftGeometry,
-    advanceGrassChunkWork, createGrassChunkWork, advanceGrassCarpetWork, createGrassCarpetWork, landWeedShare);
+    advanceGrassChunkWork, createGrassChunkWork, advanceGrassCarpetWork, createGrassCarpetWork, landWeedShare,
+    swardClumpKeep, swardStandHeight);
 }
 const build = compile(false), buildLegacy = compile(true);
 

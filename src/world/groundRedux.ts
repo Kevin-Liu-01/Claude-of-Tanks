@@ -94,6 +94,12 @@ export interface GroundReduxProfile {
    * both grass tiers) — 1 or absent = on, 0 = its uniform neutral (the owner's light touch on Amberford keeps its
    * blades' old light; a wave that shows the shade helps elsewhere with no harm may propose Verdant separately). */
   swardShade?: number;
+  /** Ground lane (2026-10-08, waves 285-287: "a carpet of identical, evenly spaced blade cards", "evenly sprinkled
+   * identical tufts" — Reservoir's hay meadow, Hostomel, the Finistere coast, Steinburg): a dense sward's structure —
+   * tussocks of ~1-2 m with thin gaps between them and taller and shorter stands over ~8 m (swardClumpWeight, the
+   * height field's `_swardClumpAt`); both grass tiers keep and size their blades by it. 1 = on, absent or 0 = the old
+   * even scatter (Verdant: the owner's light touch; the arid, snow and reed rows keep their own laws). */
+  swardClump?: number;
   /** Ground lane (2026-10-03): a volcanic basin's zoning (0 = off, 1 = full): pumice and ash on the level ground,
    * black and red cinder streaked down the fall line on the cones' flanks, talus aprons at their feet — keyed to the
    * slopes and folds of the landforms, not to a wind (the material's uReduxFold.w). */
@@ -182,7 +188,7 @@ const TEMPERATE: Omit<GroundReduxProfile, 'grass'> = {
   foldMoist: 0.7, foldAO: 0.5, foldCrest: 0.5, swashPeriodS: 0, swashReachM: 2.5, swashStrength: 0, swashLines: 0,
   lip: 0.8, verge: 0.8, rim: 0.7, rimTint: LICHEN, midAlbedo: 1.0, driftEdge: 0,
   exposure: 0.9, climate: 'vegetated', bedIrregularity: 1, patchwork: 1, windRipple: 1,
-  strawPatches: 1, // ground lane (2026-10-08): the straw in the sward's dry patches (Verdant opts out)
+  strawPatches: 1, swardClump: 1, // ground lane (2026-10-08): the straw in the sward's dry patches (Verdant opts out)
 };
 // the arid maps' worn-sand patches take a gentler transition (the owner's history with black contours on sand): the
 // hard-edge share on Sirocco's chase view went 8 → 22 % at 0.45 with no grass in the frame; the lip stays low there
@@ -195,6 +201,7 @@ const ARID: Omit<GroundReduxProfile, 'grass'> = {
 const SNOW: Omit<GroundReduxProfile, 'grass'> = {
   ...TEMPERATE, heightBlend: 0.5, glint: 0.9, snowRipple: 0.26, snowMacro: 0.6, foldMoist: 0.22, foldAO: 0.6, foldCrest: 0.3,
   lip: 0.4, verge: 0.3, rim: 0.5, rimTint: HOAR, midAlbedo: 0.6, driftEdge: 1.0, exposure: 0.7, climate: 'snow', patchwork: 0.6,
+  swardClump: 0, // (the tundra's sedge keeps its own lee-and-hollow clumps: tallGrass.ts)
 };
 // ground lane (2026-10-03, Caldera's gauntlet: "dunes on a volcanic basin — one monotone tan-brown in uniform wind-ripple
 // corrugation"): a volcanic basin's rock greyed by lichen. The VOLCANIC profile it was made for (Las Cañadas: no wind's
@@ -211,7 +218,7 @@ const STILL_WATER: Omit<GroundReduxProfile, 'grass'> = {
 /** Every battlefield's row (an unknown id runs TEMPERATE with no sward). */
 const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   // (2026-10-08: the straw patches off — the owner's light touch on Amberford keeps its tufts' and blades' old scatter)
-  verdant: { ...TEMPERATE, scree: 0.25, grass: meadow(1.0), strawPatches: 0, swardShade: 0 },
+  verdant: { ...TEMPERATE, scree: 0.25, grass: meadow(1.0), strawPatches: 0, swardShade: 0, swardClump: 0 },
   desert: { ...ARID, grass: null },
   winter: { ...SNOW, scree: 0.35, grass: tundra(0.35) },
   urban: { ...TEMPERATE, scree: 0.15, grass: verge(0.5) },
@@ -292,6 +299,32 @@ export function strawPatchWeight(x: number, z: number): number {
     + strawValueNoise((0.28 * x + 0.96 * z) / 4.3, (-0.96 * x + 0.28 * z) / 4.3, 0x6c3b) * 0.4;
   const t = Math.min(1, Math.max(0, (v - 0.58) / 0.12));
   return t * t * (3 - 2 * t);
+}
+/**
+ * Ground lane (2026-10-08, waves 285-287): a dense sward's structure at (x, z), into `out` — [0] the tussock weight
+ * (0..1: ~1.6 m and ~0.7 m value noises on their own turned grids, cut at 0.34-0.64, so about a quarter of the ground
+ * is gap and a third tussock), [1] the stand weight (0..1: an ~8 m value noise, the taller and the shorter grass). An
+ * integer position hash, so the client, the host and the receipts read the same field. The grass tiers keep a blade
+ * in a gap about four times in ten and every blade in a tussock (vegetation.ts makeTuft, tallGrass.ts admit), and set
+ * its height by the stand (0.62-1).
+ */
+export function swardClumpWeight(x: number, z: number, out: [number, number]): [number, number] {
+  const t = strawValueNoise((0.8 * x + 0.6 * z) / 1.6, (-0.6 * x + 0.8 * z) / 1.6, 0x51c3) * 0.65
+    + strawValueNoise((0.31 * x - 0.95 * z) / 0.7, (0.95 * x + 0.31 * z) / 0.7, 0x2b7d) * 0.35;
+  const tt = Math.min(1, Math.max(0, (t - 0.34) / 0.30));
+  out[0] = tt * tt * (3 - 2 * tt);
+  const st = Math.min(1, Math.max(0, (strawValueNoise((0.96 * x + 0.28 * z) / 8, (-0.28 * x + 0.96 * z) / 8, 0x7e05) - 0.25) / 0.5));
+  out[1] = st * st * (3 - 2 * st);
+  return out;
+}
+/** The tussock keep law both grass tiers apply (a blade in a gap ~0.4, in a tussock 1). */
+export function swardClumpKeep(tussock: number): number {
+  return Math.min(1, 0.40 + 0.75 * tussock);
+}
+/** The stand's height law both grass tiers apply (0.62 in a short stand, the blade's own height in a tall one: it only
+ * ever shortens, so every authored height cap — the logging yards' stubble, the wall feet — still holds). */
+export function swardStandHeight(stand: number): number {
+  return 0.62 + 0.38 * stand;
 }
 function strawValueNoise(fx: number, fz: number, salt: number): number {
   const ix = Math.floor(fx), iz = Math.floor(fz);

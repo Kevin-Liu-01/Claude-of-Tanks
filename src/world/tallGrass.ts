@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { getDeviceTier, getPreset } from '../engine/quality.ts';
 import { createGroundPressureField, type GroundDisturbance, type GroundPressureField } from './groundPressure.ts';
-import { resolveGroundReduxProfile, swardShadeUniform, tallGrassQualityScale, type TallGrassBiome } from './groundRedux.ts';
+import { resolveGroundReduxProfile, swardClumpKeep, swardShadeUniform, swardStandHeight, tallGrassQualityScale, type TallGrassBiome } from './groundRedux.ts';
 import { createLandFieldSample, LAND_CROP, landWeedShare, type LandFieldSample } from './landUse.ts';
 
 // Round 73 (2026-09-25, the ground redux; owner: "add tall grass that interacts with tanks"): the tall-grass tier.
@@ -39,6 +39,8 @@ interface TallGrassField {
   _landUseAt?(x: number, z: number, out: LandFieldSample): LandFieldSample;
   /** Ground lane (2026-10-08): the sward's dry patch (groundRedux.ts strawPatchWeight, 0..1); absent on Verdant. */
   _strawPatchAt?(x: number, z: number): number;
+  /** Ground lane (2026-10-08): a dense sward's tussocks and stands (groundRedux.ts swardClumpWeight); absent on Verdant. */
+  _swardClumpAt?(x: number, z: number, out: [number, number]): [number, number];
   /** Ground lane (2026-10-03): the canopy's cover (0..1) — little sward grows in a stand's shade. */
   _woodsAt?(x: number, z: number): number;
 }
@@ -497,6 +499,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
   // stands as its crop
   const _field = createLandFieldSample();
   const _contactN = { x: 0, y: 1, z: 0 }; // (the rendered near terrain's normal, reused)
+  const _clump: [number, number] = [0, 0]; // (the sward's tussock and stand weights, reused: groundRedux.ts swardClumpWeight)
   const blocked = options.blocked ?? null;
   const tier = options.tier ?? getDeviceTier();
   // `?tallgrass=off` and `?ground=legacy` (the same-build A/B the round's captures compare against) keep the tier off
@@ -622,6 +625,15 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
         grazed = dirtPatch;
       }
       keep *= 0.55 + 0.9 * smoothstep(0.30, 0.75, sn.n1);
+    }
+    // (2026-10-08, waves 285-287: Reservoir's hay meadow "a carpet of identical, evenly spaced blade cards") a dense
+    // sward's tussocks and stands (groundRedux.ts swardClumpWeight; the tufts read the same field): a blade in a gap kept
+    // about four times in ten, every blade in a tussock, its height the stand's — the reeds, the tundra's sedge and the
+    // crops keep their own laws
+    if (field._swardClumpAt && (b.kind === 'meadow' || b.kind === 'steppe' || b.kind === 'savanna' || b.kind === 'verge' || b.kind === 'dune')) {
+      field._swardClumpAt(x, z, _clump);
+      keep *= swardClumpKeep(_clump[0]);
+      heightScale *= swardStandHeight(_clump[1]);
     }
     let hollow = 0, crest = 0;
     if (field._foldAt) {

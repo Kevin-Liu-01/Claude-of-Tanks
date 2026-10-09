@@ -64,7 +64,7 @@ import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaB
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
-import { strawPatchWeight } from './groundRedux.ts'; // ground lane (2026-10-08): the sward's straw patches
+import { strawPatchWeight, swardClumpWeight } from './groundRedux.ts'; // ground lane (2026-10-08): the sward's straw patches and clumps
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -579,6 +579,9 @@ export interface HeightField {
   /** Ground lane (2026-10-08): the sward's dry patch at (x, z) (groundRedux.ts strawPatchWeight, 0..1) — present on a
    * map whose ground profile has `strawPatches`; the tufts and the tall grass cure their straw there. */
   _strawPatchAt?(x: number, z: number): number;
+  /** Ground lane (2026-10-08): a dense sward's tussocks and stands at (x, z) (groundRedux.ts swardClumpWeight: [tussock,
+   * stand], 0..1 each) — present on a map whose ground profile has `swardClump`; both grass tiers keep and size by it. */
+  _swardClumpAt?(x: number, z: number, out: [number, number]): [number, number];
   /** The map-borders lane (2026-10-03): the ring's carriageway attribute — [signed offset from a road exit line (m), presence]. */
   _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
   /** The map-borders lane: the roads that leave the square, as their exit lines past the edge (40 m steps, ~720 m). */
@@ -2819,6 +2822,7 @@ function* heightFieldBuildSteps(
     // ground lane (2026-10-08, the gauntlet's wave 260: "evenly spaced identical dry sprigs"): the sward's straw in its dry
     // patches, on a map whose ground profile has them (Verdant opts out); `?ground=legacy` keeps the old scatter
     ...((resolveGroundReduxProfile(cfg?.id).strawPatches ?? 0) > 0 && !legacyGroundLanes ? { _strawPatchAt: strawPatchWeight } : {}),
+    ...((resolveGroundReduxProfile(cfg?.id).swardClump ?? 0) > 0 && !legacyGroundLanes ? { _swardClumpAt: swardClumpWeight } : {}),
     // round 67: the cut faces' seeding weight, read on the uncut ground like the exclusion
     ...(railCuttings !== null ? { _batterSeedAt: (x: number, z: number): number =>
       railCuttingFaceSeedAt(railCuttings, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8, railOpenLines) } : {}),
