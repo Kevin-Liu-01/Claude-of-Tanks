@@ -137,7 +137,16 @@ export interface HorizonReliefCover {
   /** The beds' thickness scale (1: 3–14 m, the tablelands' laminae; the mountain characters' rock bands, read at one to
    * three kilometres, are several times thicker). */
   bedScale?: number;
+  /** The horizons lane (2026-10-09, the owner's R023: "distant treelines across the full height of mountain faces ...
+   * several irregular forest belts from lower slopes through mid-slopes"): 0..1, how far a mountain face's forest
+   * breaks into belts — open bands across the face at wandering heights (subalpine meadow, a rock band) that come and go
+   * along the range, the avalanche paths and stream gullies cleared down the steep faces, the crests and shoulders bare,
+   * and krummholz clumps up to the forest's own line. 0 (or absent): the stand field alone, as before. */
+  belts?: number;
 }
+
+/** The belts' open bands: their heights as shares of the forest's own line (each wanders and shifts per map). */
+const BELT_GAPS_Q: readonly number[] = [0.3, 0.52, 0.72];
 
 // round 72b: the far range's own haze is a fifth to a third (was half to two thirds) — the post pass's ring distance law
 // (post.ts AERIAL_RING_*) hazes it again on top, and the two together left the ranges at a fifth of the near contrast at
@@ -179,7 +188,8 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
     drainage: { wavelengthM: 260, octaves: 3, depthM: 26, gain: 0.55, slopeStrength: 3.0, branch: 1.6, grainM: 0.6 },
     // (gauntlet wave 18: the mountain characters' bands read as contours where they lay level and even — fainter, and
     // dipping and wandering with their thickness below)
-    cover: { forest: 0.62, canopy: 0.5, fields: 0, varnish: 0.06, beds: 0.12, bedScale: 3.5 },
+    // (the horizons lane, 2026-10-09: R023's belts across the faces)
+    cover: { forest: 0.62, canopy: 0.5, fields: 0, varnish: 0.06, beds: 0.12, bedScale: 3.5, belts: 1 },
   },
   // wooded hills: rounded billows with spurs, shallow drainage
   rolling: {
@@ -591,18 +601,34 @@ export const HORIZON_RELIEF_AO_POWER = 1.4;
 export const HORIZON_RELIEF_AO_DEPTH = 0.8;
 export const HORIZON_RELIEF_SUN_DEPTH = 0.85;
 
-/** The occlusion texel whose program factor is `ao`'s times `light` (clamped where the program's range ends). */
-export function encodeCanopyAo(ao: number, light: number): number {
-  const k = HORIZON_RELIEF_AO_DEPTH * HORIZON_RELIEF_SHADE;
-  const factor = (1 - (1 - Math.pow(clamp(ao, 0, 1), HORIZON_RELIEF_AO_POWER)) * k) * light;
-  return Math.pow(1 - clamp((1 - factor) / k, 0, 1), 1 / HORIZON_RELIEF_AO_POWER);
+/**
+ * The horizons lane (2026-10-09; gauntlet wave 288, Steinburg's and the fjord's ranges "a flat dark mountain silhouette, no
+ * texture"): the share of the program's range the ring binds a character's atlas at. At 0.7 the program darkens a texel
+ * to 0.44 (occlusion) and 0.40 (sun) of its light at most, and a wooded mountain face's canopy (half the light) over its
+ * folds' occlusion and its ridges' shadows reached that floor wherever it stood: the whole forested face one clamped
+ * tone, the relief under it gone. A character listed here binds its atlas at a wider share; the bake encodes every texel
+ * against it — the open ground to the very factor the 0.7 share gave it (no change in the folds' or the shadows' depth),
+ * the canopy over it to its own factor times the canopy's light, now inside the range — so a forested face keeps its
+ * lit and shaded sides. Characters not listed keep 0.7 and their atlases byte for byte.
+ */
+export const HORIZON_RELIEF_SHADE_BY_CHARACTER: Readonly<Partial<Record<HorizonReliefCharacter, number>>> = Object.freeze({ alpine: 1 });
+export function horizonReliefShade(character: HorizonReliefCharacter | undefined | null): number {
+  return (character ? HORIZON_RELIEF_SHADE_BY_CHARACTER[character] : undefined) ?? HORIZON_RELIEF_SHADE;
 }
 
-/** The sun-visibility texel whose program factor is `sun`'s times `light`. */
-export function encodeCanopySun(sun: number, light: number): number {
-  const k = HORIZON_RELIEF_SUN_DEPTH * HORIZON_RELIEF_SHADE;
+/** The occlusion texel whose program factor (at `shade`, the ring's binding share) is the factor `ao`'s gave at the base
+ * share, times `light` (clamped where the program's range ends). */
+export function encodeCanopyAo(ao: number, light: number, shade: number = HORIZON_RELIEF_SHADE): number {
+  const k = HORIZON_RELIEF_AO_DEPTH * HORIZON_RELIEF_SHADE, kb = HORIZON_RELIEF_AO_DEPTH * shade;
+  const factor = (1 - (1 - Math.pow(clamp(ao, 0, 1), HORIZON_RELIEF_AO_POWER)) * k) * light;
+  return Math.pow(1 - clamp((1 - factor) / kb, 0, 1), 1 / HORIZON_RELIEF_AO_POWER);
+}
+
+/** The sun-visibility texel whose program factor (at `shade`) is the base share's factor of `sun`, times `light`. */
+export function encodeCanopySun(sun: number, light: number, shade: number = HORIZON_RELIEF_SHADE): number {
+  const k = HORIZON_RELIEF_SUN_DEPTH * HORIZON_RELIEF_SHADE, kb = HORIZON_RELIEF_SUN_DEPTH * shade;
   const factor = (1 - (1 - clamp(sun, 0, 1)) * k) * light;
-  return 1 - clamp((1 - factor) / k, 0, 1);
+  return 1 - clamp((1 - factor) / kb, 0, 1);
 }
 
 /** Integer hash to 0..1 (the field parcels). */
@@ -801,6 +827,31 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
         stand *= 1 - smoothstep(0.80, 1.10, slope); // no stand on a cliff
         if (top !== null) stand *= 1 - smoothstep(top * 0.86, top * 1.02, h0 + nC * 0.06 * top);
         if (snow !== null) stand *= 1 - smoothstep(snow - 60, snow - 10, h0 + nB * 20);
+        // (the horizons lane, 2026-10-09: R023's belts — gauntlet wave 288, "a flat dark mountain silhouette, no texture":
+        // the stand field's bias left a mountain face one unbroken canopy from the foot to the forest's line, which the air
+        // at a kilometre and more turns into one dark sheet)
+        const belts = c.belts ?? 0;
+        if (belts > 0 && top !== null && top > 1 && stand > 0.001) {
+          const q = h0 / top;
+          // the open bands at wandering heights (a 640 m swell and a 210 m ragged edge in the band's height), each coming
+          // and going along the range (a 900 m field per band), so no band runs level round a massif
+          const qw = q + noise.noise(x / 640 + 31.7, z / 640 - 12.9) * 0.09 + noise.noise(x / 210 - 8.3, z / 210 + 19.1) * 0.035;
+          let gap = 0;
+          for (let k = 0; k < BELT_GAPS_Q.length; k++) {
+            const ck = BELT_GAPS_Q[k] + (hashCell(k, 41, seed) - 0.5) * 0.08;
+            const wk = 0.05 + 0.03 * hashCell(k, 43, seed);
+            const on = smoothstep(-0.3, 0.25, noise.noise(x / 900 + 7.1 * k + 3.3, z / 900 - 5.3 * k + 1.9));
+            gap = Math.max(gap, on * (1 - smoothstep(wk * 0.5, wk, Math.abs(qw - ck))));
+          }
+          // the avalanche paths and the stream gullies: the couloirs' troughs down the steep faces cleared
+          const chute = smoothstep(0.2, 0.6, -couloir / Math.max(0.5, d.depthM)) * smoothstep(0.26, 0.5, slope);
+          // the crests and the shoulders bare (wind, thin soil)
+          const crest = smoothstep(0.15, 0.6, -hollow);
+          const open = Math.max(0.92 * gap, 0.88 * chute, 0.55 * crest);
+          // the krummholz: past seven tenths of the forest's line, clumps thinning out to it
+          const krumm = q > 0.68 ? smoothstep(0, 0.35, nC * 0.6 + nB * 0.4 + (0.98 - q) * 2.2) : 1;
+          stand *= (1 - belts * open) * (1 - belts * (1 - krumm));
+        }
         const forestW = stand * nearW * land;
         // the crowns: a 9–16 m grain in the relief and a mottle in the light where the canopy stands (no finer: the atlas
         // is read at its top level, three to five metres a texel, and a finer grain would shimmer); the canopy's own
@@ -1056,6 +1107,8 @@ export function* bakeHorizonReliefSteps(
     if ((jh & 7) === 7) yield;
   }
   // the fine gradient at full resolution, the occlusion and the sun bilinear from the half grid
+  // (the horizons lane: the character's binding share; the base share's atlas stays byte for byte)
+  const shade = horizonReliefShade(s.character), wideShade = shade !== HORIZON_RELIEF_SHADE;
   const half = (grid: Float32Array, i: number, j: number): number => {
     const fx = (i - 0.5) * 0.5, fy = (j - 0.5) * 0.5;
     let x0 = Math.floor(fx), y0 = Math.floor(fy);
@@ -1082,9 +1135,10 @@ export function* bakeHorizonReliefSteps(
       data[idx * 4] = clamp(Math.round((gx / gradScale * 0.5 + 0.5) * 255), 0, 255);
       data[idx * 4 + 1] = clamp(Math.round((gz / gradScale * 0.5 + 0.5) * 255), 0, 255);
       let aoOut = half(aoGrid, i, j), sunOut = half(sunGrid, i, j);
-      if (canopyLight && canopyLight[idx] < 0.999) {
-        aoOut = encodeCanopyAo(aoOut, canopyLight[idx]);
-        sunOut = encodeCanopySun(sunOut, canopyLight[idx]);
+      const light = canopyLight ? canopyLight[idx] : 1;
+      if (light < 0.999 || wideShade) {
+        aoOut = encodeCanopyAo(aoOut, light, shade);
+        sunOut = encodeCanopySun(sunOut, light, shade);
       }
       data[idx * 4 + 2] = clamp(Math.round(aoOut * 255), 0, 255);
       data[idx * 4 + 3] = clamp(Math.round(sunOut * 255), 0, 255);

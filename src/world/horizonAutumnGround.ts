@@ -1,7 +1,7 @@
 import { BufferAttribute, Color, type Material, type Mesh, type MeshStandardMaterial, type Texture, type Vector3, type WebGLRenderer } from 'three';
 import { refineHorizonGroundSeam } from './horizonSeam.ts';
 import type { CanyonGround } from './horizonRedrock.ts';
-import { HORIZON_RELIEF_SHADE } from './horizonRelief.ts';
+import { HORIZON_RELIEF_SHADE, horizonReliefShade, type HorizonReliefCharacter } from './horizonRelief.ts';
 
 const RETAINED = new WeakMap<Mesh, Texture[]>();
 /** Keep the existing live ownership array, including the original detail atlas. */
@@ -119,14 +119,17 @@ function bindRingReliefAtlas(mesh: Mesh, vistaMaterial: Material, terrainMateria
   // the occlusion to 14 % and the cast shadows to 15 %: past the live cascades (about a kilometre) the ranges had no
   // shadow at all, and a valley read as light as the ridge above it. The amplitude is now the shading's
   // (RING_RELIEF_SHADE) and the gradient scale divides by the same factor, so the gradient's share is unchanged.
-  ring.uRingReliefAmp.value = amp * RING_RELIEF_SHADE;
-  ring.uRingReliefGrad.value = ((vista.uniforms.uVReliefGrad?.value as number | undefined) ?? 1) * RING_RELIEF_GRADIENT / RING_RELIEF_SHADE;
+  // (the horizons lane, 2026-10-09: a character the bake encodes at a wider share binds its atlas at that share —
+  // horizonRelief.ts HORIZON_RELIEF_SHADE_BY_CHARACTER; the gradient's share stays the same)
+  const character = (mesh.userData.horizonRing as { relief?: string } | undefined)?.relief;
+  const shade = horizonReliefShade(character as HorizonReliefCharacter | undefined);
+  ring.uRingReliefAmp.value = amp * shade;
+  ring.uRingReliefGrad.value = ((vista.uniforms.uVReliefGrad?.value as number | undefined) ?? 1) * RING_RELIEF_GRADIENT / shade;
   // terrain v3 (2026-10-02, the ring lab: zeroing the atlas removed the chevrons on Sirocco Wadi's far ranges and the
   // dimples on Copper Mesa's walls): the atlas's fine relief is a slope's detail; on the tablelands' and the martian
   // scarps' flanks and walls its gradient printed those patterns, so there it fades over the face's own slope from 20°
   // to 41° (the caps and floors keep it, and the occlusion and the cast shadows keep their weight everywhere). The
   // snow, alpine, rolling and coastal ranges keep it in full: their ridges are its relief.
-  const character = (mesh.userData.horizonRing as { relief?: string } | undefined)?.relief;
   const wallBand = character ? RING_RELIEF_WALL_BAND[character] : undefined;
   const wall = ring.uRingReliefWall?.value as { set(x: number, y: number): void } | undefined;
   if (wall) wall.set(...(wallBand ?? RING_RELIEF_WALL_NONE));
