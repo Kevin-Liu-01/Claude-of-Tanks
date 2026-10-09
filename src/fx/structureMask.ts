@@ -190,7 +190,9 @@ vStructRoof = 0.0;` : ''}
           float mid = 1.0 - clamp( max( abs( bx ) / max( SF.y, 0.5 ), abs( bz ) / max( SF.z, 0.5 ) ), 0.0, 1.0 );
           float tr = max( 0.0, t - 0.2 );
           float drop = 4.9 * tr * tr + 1.4 * mid * smoothstep( 0.0, 0.5, tr );
-          p.y = max( p.y - drop, front + ( p.y - eave ) * 0.3 );
+          // (dcore 2026-10-09, waves 294a/b: debris vanishing in view at the swap) as the front reaches the base the
+          // roof's wreck settles into the heap rather than lying on it, so the fold takes nothing the eye still sees
+          p.y = max( p.y - drop, front + ( p.y - eave ) * 0.3 - 1.6 * u * u );
         }${holes ? '' : `
         else if ( p.y > front ) {
           // the phone tier cuts nothing: the wall above the front folds down onto it

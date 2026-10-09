@@ -693,7 +693,9 @@ function captureContext(seed) {
   // round 7 (wave 277): the roof drops and rides the crumble front; the desktop cuts the walls above the ragged front
   // (the phone folds them onto it)
   assert.ok(/float front = eave \* \( 1\.0 - pow\( u, 1\.5 \) \);/.test(shader.vertexShader)
-    && /p\.y = max\( p\.y - drop, front \+ \( p\.y - eave \) \* 0\.3 \);/.test(shader.vertexShader), 'the roof rides the front down');
+    // (dcore 2026-10-09: the wreck settles into the heap as the front reaches the base: a term in u², the front's progress)
+    && /p\.y = max\( p\.y - drop, front \+ \( p\.y - eave \) \* 0\.3( - [0-9.]+ \* u \* u)? \);/.test(shader.vertexShader),
+    'the roof rides the front down');
   assert.ok(/vStructFront < 1e8 && vStructRoof < 0\.5[\s\S]*vStructPos\.y > vStructFront \+ 1\.1 \* col \+ 0\.45 \* cell[\s\S]*discard/.test(shader.fragmentShader),
     'the desktop cuts the wall above the ragged front');
   // the phone tier cuts no holes: its fragment shader is left alone (no discard: its early depth and HSR stay)
