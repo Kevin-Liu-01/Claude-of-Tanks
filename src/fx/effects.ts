@@ -5303,6 +5303,8 @@ function* createFxSteps(
         fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
       });
       onFxEvent(bus, 'shell:hit', (e) => {
+        // atmospherics lane: a round that ends on the hull strikes there (a ricochet flies on, its tracer tumbling)
+        if (e.kind !== 'ricochet') tracers.strike(e.shellId, e.pos);
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
         _v4.set(e.normal[0], e.normal[1], e.normal[2]);
         if (e.targetId) lastKnownPos.set(e.targetId, [e.pos[0], e.pos[1], e.pos[2]]);
@@ -5358,6 +5360,7 @@ function* createFxSteps(
         }
       });
       onFxEvent(bus, 'shell:expired', (e) => {
+        tracers.strike(e.shellId, e.pos, !!e.hitWater); // atmospherics lane: the tracer's last dash and its strike
         // world-dressing r1: close out the shell's destructible-prop story —
         // (1) sweep the UNSWEPT remainder of its flight (tail -> expiry
         // point; a fast shell can live for fewer sim ticks than one render

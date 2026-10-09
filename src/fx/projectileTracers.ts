@@ -16,6 +16,10 @@
  *   - a round that skips off armour or the ground tumbles: its tracer flickers as it spins and wobbles off at its new
  *     angle (the simulation reflects the round; this draws the tumble);
  *   - the charge burns for a few seconds only, so a long shot goes dark before it lands.
+ * (r2, the blind waves 310a/310b) The charge lights a few metres past the muzzle and the trace is a short dash behind
+ * its hot point (a tank round's dart never a lit rod from the muzzle); by day the point is a warm red-orange, not a
+ * white glare (the hot white core is the dark's); a round that strikes draws its last dash into the strike and throws a
+ * brief spray of sparks there, a machine-gun round often skipping off on a ricochet.
  *
  * One instanced draw for every tracer (a capsule quad per round, built in screen space so its width is in pixels),
  * additive, depth-tested against the world in the late effects pass, no per-frame allocation (a pooled record per
@@ -68,15 +72,26 @@ interface TracerClass {
   /** linear radiance of the core and of the halo's peak at night (by day the halo keeps HALO_DAY of it) */
   core: number;
   halo: number;
+  /** the charge lights this far past the muzzle (m): nothing is drawn nearer the gun */
+  igniteM: number;
+  /** the streak's longest (m): a dash behind the hot point, never a lit rod */
+  streakMaxM: number;
 }
 
 // Classes by calibre: rifle and heavy machine guns, autocannons, tank guns.
-const MG_NATO: TracerClass = { beltEvery: 5, burnS: 2.8, halfWidthPx: 0.85, haloPx: 5.5, core: 2.4, halo: 0.16 };
+const MG_NATO: TracerClass = { beltEvery: 5, burnS: 2.8, halfWidthPx: 0.85, haloPx: 5.5, core: 2.4, halo: 0.16,
+  igniteM: 4, streakMaxM: 24 };
 const MG_EAST: TracerClass = { ...MG_NATO, beltEvery: 4 };
-const AUTOCANNON: TracerClass = { beltEvery: 4, burnS: 3.4, halfWidthPx: 1.05, haloPx: 6.5, core: 2.8, halo: 0.18 };
-const TANK: TracerClass = { beltEvery: 1, burnS: 3.6, halfWidthPx: 1.35, haloPx: 8, core: 3.4, halo: 0.2 };
-/** the halo's share by day (a bright scene: the spark alone reads) */
-const HALO_DAY = 0.3;
+const AUTOCANNON: TracerClass = { beltEvery: 4, burnS: 3.4, halfWidthPx: 1.05, haloPx: 6.5, core: 2.8, halo: 0.18,
+  igniteM: 6, streakMaxM: 24 };
+// (r2, wave 310b: "a long rod anchored to the muzzle") a tank round's trace: a short dash behind the dart's hot point
+const TANK: TracerClass = { beltEvery: 1, burnS: 3.6, halfWidthPx: 1.35, haloPx: 8, core: 3.4, halo: 0.2,
+  igniteM: 10, streakMaxM: 12 };
+/** the halo's share by day (a bright scene: the spark alone reads; r2: enough of it to tint the point) */
+const HALO_DAY = 0.5;
+/** (r2, wave 310a: "by day a pale pinprick or a white orb, no warm colour") by day the core burns at this share of its
+ *  night radiance, in its saturated day colour (the tone curve bleaches a brighter point to white), a little wider */
+const DAY_CORE_K = 0.45, DAY_WIDTH_K = 0.4;
 /** exposure (s) the streak is smeared over: a day camera's 1/60 s, opening to 1/36 s in the dark */
 const EXPOSURE_DAY_S = 1 / 60, EXPOSURE_NIGHT_S = 1 / 36;
 /** the streak never reaches back past the muzzle, nor longer than this (m) */
@@ -88,6 +103,13 @@ const BURNOUT_S = 0.14;
 const RED_CORE: readonly number[] = [1.0, 0.42, 0.17], RED_HALO: readonly number[] = [1.0, 0.11, 0.03];
 const GREEN_CORE: readonly number[] = [0.5, 1.0, 0.4], GREEN_HALO: readonly number[] = [0.1, 1.0, 0.18];
 const TANK_CORE: readonly number[] = [1.0, 0.6, 0.3], TANK_HALO: readonly number[] = [1.0, 0.27, 0.07];
+// the day cores: the compound's own colour, saturated (strontium red-orange, barium green, a tank tracer's orange)
+const RED_DAY: readonly number[] = [1.0, 0.16, 0.03], GREEN_DAY: readonly number[] = [0.22, 1.0, 0.12];
+const TANK_DAY: readonly number[] = [1.0, 0.3, 0.07];
+// the strike's sparks: hot yellow-orange grains
+const SPARK_CORE: readonly number[] = [1.0, 0.62, 0.26];
+/** sparks in flight at once (a pooled record each; the oldest is reused past it) */
+const SPARK_CAPACITY = 96;
 
 /** Soviet-lineage ammunition (green tracers): these nations' own vehicles, and the Soviet-design hulls others field. */
 const EAST_NATIONS = new Set(['Russia', 'USSR', 'USSR/Russia', 'RU', 'China', 'CN', 'North Korea', 'DPRK', 'Belarus', 'Iran', 'Syria']);
@@ -137,11 +159,26 @@ interface RoundRecord {
   lit: boolean;
   cls: TracerClass;
   core: readonly number[];
+  day: readonly number[];
   halo: readonly number[];
   seed: number;
   seen: boolean;
   /** last frame's head and streak tail (drawn once more after the round ends, so a short life still shows) */
   hx: number; hy: number; hz: number; tx: number; ty: number; tz: number; k: number;
+  /** last frame's speed (m/s) */
+  speed: number;
+}
+
+/** A spark (or a ricochet) thrown off a strike: a short streak on a ballistic arc, dying out. */
+interface Spark {
+  x: number; y: number; z: number; vx: number; vy: number; vz: number;
+  /** effects clock at birth (s), its life (s), core radiance, half width (1080p px) */
+  t0: number; life: number; k: number; w: number;
+  day: readonly number[];
+  core: readonly number[];
+  halo: readonly number[];
+  /** a ricochet: a lit round skipping off (its tracer's colour and halo, the exposure's smear) */
+  ricochet: boolean;
 }
 
 const VERT = /* glsl */ `
@@ -261,10 +298,13 @@ interface ProjectileTracers {
   write(shell: TracerShell): void;
   /** close the frame: rounds not seen draw their last streak once more, then go */
   end(): void;
+  /** a round struck at `pos` (its terrain, prop or armour hit): its last dash reaches into the strike and, when its
+   *  tracer still burns, the strike throws sparks (none off water) */
+  strike(id: ShellKey | undefined, pos: readonly number[], water?: boolean): void;
   reset(): void;
   active(): boolean;
   /** receipts: tracer rounds drawn this frame, rounds tracked */
-  stats(): { drawn: number; tracked: number; dark: number };
+  stats(): { drawn: number; tracked: number; dark: number; sparks: number };
 }
 
 export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
@@ -329,8 +369,8 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
   function record(shell: TracerShell): RoundRecord {
     let r = records.get(shell.id);
     if (r) return r;
-    r = free.pop() ?? { id: 0, lit: false, cls: TANK, core: TANK_CORE, halo: TANK_HALO, seed: 0, seen: false,
-      hx: 0, hy: 0, hz: 0, tx: 0, ty: 0, tz: 0, k: 0 };
+    r = free.pop() ?? { id: 0, lit: false, cls: TANK, core: TANK_CORE, day: TANK_DAY, halo: TANK_HALO, seed: 0,
+      seen: false, hx: 0, hy: 0, hz: 0, tx: 0, ty: 0, tz: 0, k: 0, speed: 0 };
     const who = o.shooter(shell.shooterId);
     const lineage = tracerLineage(who);
     const cal = tracerCaliber(shell.spec, who);
@@ -345,9 +385,9 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     r.id = shell.id;
     r.cls = cls;
     r.lit = beltCarriesTracer(index, cls.beltEvery);
-    if (cls === TANK) { r.core = TANK_CORE; r.halo = TANK_HALO; }
-    else if (lineage === 'east') { r.core = GREEN_CORE; r.halo = GREEN_HALO; }
-    else { r.core = RED_CORE; r.halo = RED_HALO; }
+    if (cls === TANK) { r.core = TANK_CORE; r.day = TANK_DAY; r.halo = TANK_HALO; }
+    else if (lineage === 'east') { r.core = GREEN_CORE; r.day = GREEN_DAY; r.halo = GREEN_HALO; }
+    else { r.core = RED_CORE; r.day = RED_DAY; r.halo = RED_HALO; }
     const h = typeof shell.id === 'number' ? shell.id : hashKey(shell.id);
     r.seed = ((Math.imul(h | 0, 0x9e3779b1) >>> 0) % 10007) / 10007;
     r.seen = false;
@@ -357,19 +397,106 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
   }
 
   function put(r: RoundRecord, k: number, wobble: number): void {
-    if (n >= capacity || !(k > 0.001)) return;
-    const i = n * 4;
+    if (!(k > 0.001)) return;
     const cls = r.cls;
-    const haloK = cls.halo * (HALO_DAY + (1 - HALO_DAY) * dark) * k;
-    const coreK = cls.core * k;
-    head.array[i] = r.hx; head.array[i + 1] = r.hy; head.array[i + 2] = r.hz; head.array[i + 3] = cls.halfWidthPx * (1 + 0.3 * wobble);
-    tail.array[i] = r.tx; tail.array[i + 1] = r.ty; tail.array[i + 2] = r.tz;
-    tail.array[i + 3] = cls.haloPx * (0.45 + 0.55 * dark);
-    core.array[i] = r.core[0]! * coreK; core.array[i + 1] = r.core[1]! * coreK; core.array[i + 2] = r.core[2]! * coreK;
-    core.array[i + 3] = cls === TANK ? 1.6 : 1.1;
-    halo.array[i] = r.halo[0]! * haloK; halo.array[i + 1] = r.halo[1]! * haloK; halo.array[i + 2] = r.halo[2]! * haloK;
+    write4(r.hx, r.hy, r.hz, r.tx, r.ty, r.tz, cls.halfWidthPx * (1 + DAY_WIDTH_K * (1 - dark)) * (1 + 0.3 * wobble),
+      cls.haloPx * (0.45 + 0.55 * dark), r.day, r.core, cls.core * k, r.halo, cls.halo * (HALO_DAY + (1 - HALO_DAY) * dark) * k,
+      cls === TANK ? 1.6 : 1.1);
+  }
+  /** One capsule: head and tail (m), half width and halo radius (1080p px), the core (its day colour by day, its hot
+   *  night colour in the dark) at radiance coreK, the halo at haloK, the head's bead gain. */
+  function write4(hx: number, hy: number, hz: number, tx: number, ty: number, tz: number, halfW: number, haloR: number,
+    dayRgb: readonly number[], nightRgb: readonly number[], coreK: number, haloRgb: readonly number[], haloK: number,
+    bead: number): void {
+    if (n >= capacity) return;
+    const i = n * 4;
+    const kd = coreK * DAY_CORE_K * (1 - dark), kn = coreK * dark;
+    head.array[i] = hx; head.array[i + 1] = hy; head.array[i + 2] = hz; head.array[i + 3] = halfW;
+    tail.array[i] = tx; tail.array[i + 1] = ty; tail.array[i + 2] = tz; tail.array[i + 3] = haloR;
+    core.array[i] = dayRgb[0]! * kd + nightRgb[0]! * kn;
+    core.array[i + 1] = dayRgb[1]! * kd + nightRgb[1]! * kn;
+    core.array[i + 2] = dayRgb[2]! * kd + nightRgb[2]! * kn;
+    core.array[i + 3] = bead;
+    halo.array[i] = haloRgb[0]! * haloK; halo.array[i + 1] = haloRgb[1]! * haloK; halo.array[i + 2] = haloRgb[2]! * haloK;
     halo.array[i + 3] = 0;
     n++;
+  }
+
+  // ---- the strike's sparks and ricochets (r2): a fixed pool, each spark a short streak on its arc ----
+  const sparks: Spark[] = Array.from({ length: SPARK_CAPACITY }, () => ({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0,
+    t0: 0, life: 0, k: 0, w: 0, day: SPARK_CORE, core: SPARK_CORE, halo: RED_HALO, ricochet: false }));
+  let sparkCursor = 0, sparksLive = 0;
+  /** a deterministic stream for one strike (the round's seed): no Math.random in what a replay redraws */
+  function strikeRandom(seed: number): () => number {
+    let a = (Math.imul((seed * 10007) | 0, 0x9e3779b1) ^ 0x5bd1e995) | 0;
+    return () => {
+      a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function spark(x: number, y: number, z: number, vx: number, vy: number, vz: number, life: number, k: number, w: number,
+    dayRgb: readonly number[], coreRgb: readonly number[], haloRgb: readonly number[], ricochet: boolean): void {
+    const s = sparks[sparkCursor]!;
+    sparkCursor = (sparkCursor + 1) % SPARK_CAPACITY;
+    s.x = x; s.y = y; s.z = z; s.vx = vx; s.vy = vy; s.vz = vz;
+    s.t0 = o.now(); s.life = life; s.k = k; s.w = w; s.day = dayRgb; s.core = coreRgb; s.halo = haloRgb;
+    s.ricochet = ricochet;
+  }
+  /** The strike's spray: a few grains thrown up and back off the surface, and (a machine-gun or autocannon round, more
+   *  often than not) the round itself skipping off on a ricochet, its tracer still burning. */
+  function strikeSpray(r: RoundRecord, x: number, y: number, z: number): void {
+    const R = strikeRandom(r.seed + 0.37);
+    const len = Math.hypot(r.hx - r.tx, r.hy - r.ty, r.hz - r.tz) || 1;
+    const dx = (r.hx - r.tx) / len, dy = (r.hy - r.ty) / len, dz = (r.hz - r.tz) / len;
+    const tank = r.cls === TANK;
+    if (!tank && R() < 0.6) {
+      // the ricochet: on along the ground's plane, kicked up 8-30 degrees, swung up to 25 degrees off the line, a third
+      // to a half of its speed
+      const yaw = (R() - 0.5) * 0.87, up = 0.14 + R() * 0.38, v = r.speed * (0.32 + R() * 0.18);
+      const c = Math.cos(yaw), sn = Math.sin(yaw);
+      let hx = dx * c - dz * sn, hz = dx * sn + dz * c;
+      const hl = Math.hypot(hx, hz) || 1; hx /= hl; hz /= hl;
+      spark(x, y + 0.05, z, hx * v * Math.cos(up), Math.abs(dy) * 0.2 * v + v * Math.sin(up), hz * v * Math.cos(up),
+        0.25 + R() * 0.2, r.cls.core * 0.75, r.cls.halfWidthPx, r.day, r.core, r.halo, true);
+    }
+    const grains = tank ? 7 : 3;
+    for (let g = 0; g < grains; g++) {
+      const a = R() * Math.PI * 2, up = 0.35 + R() * 0.55, v = (tank ? 22 : 12) + R() * (tank ? 40 : 24);
+      // thrown back up out of the strike, leaning the way the round came in
+      const ex = Math.cos(a) * (1 - up) * v - dx * v * 0.25, ez = Math.sin(a) * (1 - up) * v - dz * v * 0.25;
+      spark(x, y + 0.04, z, ex, up * v, ez, (tank ? 0.1 : 0.07) + R() * (tank ? 0.14 : 0.08), tank ? 3.6 : 3.0, 0.6,
+        SPARK_CORE, SPARK_CORE, TANK_HALO, false);
+    }
+  }
+  /** Draw the live sparks (each a streak of the exposure behind it, fading). */
+  function drawSparks(): void {
+    const t = o.now();
+    const exposureS = EXPOSURE_DAY_S + (EXPOSURE_NIGHT_S - EXPOSURE_DAY_S) * dark;
+    sparksLive = 0;
+    for (const s of sparks) {
+      if (!(s.life > 0)) continue;
+      const a = t - s.t0;
+      if (a < 0 || a > s.life) { if (a > s.life) s.life = 0; continue; }
+      sparksLive++;
+      const g = 9.81;
+      const hx = s.x + s.vx * a, hy = s.y + s.vy * a - 0.5 * g * a * a, hz = s.z + s.vz * a;
+      // the smear: the exposure's worth of its path behind it, never back past its birth
+      const back = Math.min(exposureS, a + 1 / 240);
+      const tx = hx - s.vx * back, ty = hy - (s.vy - g * a) * back, tz = hz - s.vz * back;
+      const u = a / s.life;
+      // a grain dies fast and twinkles; a ricochet's tracer burns on, tumbling, and dims as it flies off
+      const k = s.ricochet ? s.k * (1 - u) * (0.55 + 0.45 * Math.abs(Math.sin(a * 37 + s.x)))
+        : s.k * (1 - u) * (1 - u) * (0.6 + 0.4 * Math.abs(Math.sin(a * 90 + s.x)));
+      if (s.ricochet) {
+        write4(hx, hy, hz, tx, ty, tz, s.w * (1 + DAY_WIDTH_K * (1 - dark)), 5.5 * (0.45 + 0.55 * dark), s.day, s.core, k,
+          s.halo, 0.16 * (HALO_DAY + (1 - HALO_DAY) * dark) * (1 - u), 1.1);
+      } else {
+        write4(hx, hy, hz, tx, ty, tz, s.w, 2.5 * (0.5 + 0.5 * dark), SPARK_CORE, SPARK_CORE, k, s.halo,
+          0.05 * (0.4 + 0.6 * dark) * (1 - u), 0.6);
+      }
+    }
   }
 
   // hoisted Map callbacks: the per-frame walks allocate nothing
@@ -377,7 +504,8 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
   const release = (r: RoundRecord): void => { r.k = 0; free.push(r); };
   const retire = (r: RoundRecord, id: ShellKey): void => {
     if (r.seen) return;
-    if (r.lit && r.k > 0) put(r, r.k * 0.6, 0);
+    // its last dash once more (moved into its strike when one was reported), then the record is reused
+    if (r.lit && r.k > 0) put(r, r.k * 0.8, 0);
     records.delete(id);
     release(r);
   };
@@ -412,7 +540,11 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
         wobble = Math.sin(t * 23 + r.seed * 11);
       }
       const exposureS = EXPOSURE_DAY_S + (EXPOSURE_NIGHT_S - EXPOSURE_DAY_S) * dark;
-      const len = Math.min(STREAK_MAX_M, speed * exposureS, Math.max(0.05, shell.distM ?? STREAK_MAX_M));
+      // (r2) the charge lights a little past the muzzle: dark before, and the smear never reaches back past that point
+      const flown = Number.isFinite(shell.distM) ? (shell.distM as number) : Infinity;
+      const alight = flown - r.cls.igniteM;
+      if (!(alight > 0)) { r.k = 0; return; }
+      const len = Math.min(STREAK_MAX_M, r.cls.streakMaxM, speed * exposureS, Math.max(0.05, alight));
       const inv = speed > 1e-3 ? len / speed : 0;
       r.hx = shell.pos.x; r.hy = shell.pos.y; r.hz = shell.pos.z;
       r.tx = shell.pos.x - v.x * inv; r.ty = shell.pos.y - v.y * inv; r.tz = shell.pos.z - v.z * inv;
@@ -422,12 +554,26 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
         r.tx += -v.z / Math.max(speed, 1e-3) * sw; r.tz += v.x / Math.max(speed, 1e-3) * sw; r.ty += 0.12 * len * Math.cos(t * 19 + r.seed * 5);
       }
       r.k = k;
+      r.speed = speed;
       put(r, k, tumbling ? wobble : 0);
+    },
+    strike(id, pos, water = false) {
+      if (id == null) return;
+      const r = records.get(id);
+      if (!r || !r.lit || !(r.k > 0)) return;
+      const x = pos[0] ?? r.hx, y = pos[1] ?? r.hy, z = pos[2] ?? r.hz;
+      if (!Number.isFinite(x + y + z)) return;
+      // the last dash, moved along its line to end in the strike (not left short of it: wave 310b's "the dart and its
+      // trail disagree")
+      const ox = x - r.hx, oy = y - r.hy, oz = z - r.hz;
+      r.hx = x; r.hy = y; r.hz = z; r.tx += ox; r.ty += oy; r.tz += oz;
+      if (!water) strikeSpray(r, x, y, z);
     },
     end() {
       // a round that ended since the last frame draws its last streak once more (a fast round born and gone between
       // two frames still leaves its line), then its record is reused
       records.forEach(retire);
+      drawSparks();
       geo.instanceCount = n;
       mesh.visible = n > 0;
       if (n > 0 || drawnLast > 0) for (const a of attrs) a.needsUpdate = true;
@@ -437,12 +583,14 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       records.forEach(release);
       records.clear();
       beltCount.clear();
+      for (const sp of sparks) sp.life = 0;
+      sparkCursor = 0; sparksLive = 0;
       n = 0; drawnLast = 0;
       geo.instanceCount = 0;
       mesh.visible = false;
     },
-    active: () => geo.instanceCount > 0,
-    stats: () => ({ drawn: geo.instanceCount, tracked: records.size, dark }),
+    active: () => geo.instanceCount > 0 || sparksLive > 0,
+    stats: () => ({ drawn: geo.instanceCount, tracked: records.size, dark, sparks: sparksLive }),
   };
 }
 
