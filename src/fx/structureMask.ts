@@ -189,7 +189,7 @@ vStructRoof = 0.0;` : ''}
           float bl = length( bd );
           if ( bl > 0.5 ) side = clamp( dot( p.xz, -bd / bl ) / max( max( SF.y, SF.z ), 1.0 ), 0.0, 1.0 );
         }
-        float u = clamp( ( t - ${FRONT_T0.toFixed(2)} ) / ${FRONT_T.toFixed(2)} * ( 1.0 + 0.8 * side ), 0.0, 1.0 );
+        float u = clamp( ( t - ${FRONT_T0.toFixed(2)} * ( 1.0 - side ) ) / ${FRONT_T.toFixed(2)} * ( 1.0 + 0.8 * side ), 0.0, 1.0 );
         float front = eave * ( 1.0 - pow( u, 1.5 ) );
         float roof = step( eave - 0.05, p.y );
         if ( roof > 0.5 ) {
@@ -204,7 +204,9 @@ vStructRoof = 0.0;` : ''}
           // roof's wreck settles into the heap rather than lying on it, so the fold takes nothing the eye still sees
           // (wave 322: "the roof skin vanishes" — flattened to a third of its pitch, a lid at the eaves the eye lost) it keeps
           // most of its pitch as it rides the front down, tilting toward the side that falls first
-          p.y = max( p.y - drop, front + ( p.y - eave ) * 0.75 - 2.4 * u * u );
+          // (wave 326: "the back-wall remnant disappears" — the gable and the roof stood a metre and more over the heap
+          // until the fold took them) their pitch closes as the front comes down: at the base they lie on the heap
+          p.y = max( p.y - drop, front + ( p.y - eave ) * 0.75 * ( 1.0 - u * u ) - 1.2 * u * u );
         }${holes ? '' : `
         else if ( p.y > front ) {
           // the phone tier cuts nothing: the wall above the front folds down onto it
