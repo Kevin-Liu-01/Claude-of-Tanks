@@ -1,0 +1,115 @@
+{
+ "title": "Around the Clock — 15s vertical",
+ "bpm": 96,
+ "durationSec": 15,
+ "lufs": -14,
+ "musicDb": -3,
+ "sfxDb": -1,
+ "fadeOutSec": 1,
+ "progression": [
+  "Dm",
+  "Dm",
+  "Bb",
+  "Bb",
+  "F",
+  "F",
+  "C",
+  "C"
+ ],
+ "motif": [
+  "A4",
+  "D5",
+  "C5",
+  "A4"
+ ],
+ "sections": [
+  {
+   "name": "title",
+   "fromBar": 0,
+   "toBar": 0,
+   "layers": [
+    "drone",
+    "ticks8"
+   ],
+   "gainDb": -4
+  },
+  {
+   "name": "fast",
+   "fromBar": 1,
+   "toBar": 3,
+   "layers": [
+    "taiko2",
+    "pulse16",
+    "open",
+    "hats16",
+    "toms",
+    "rim"
+   ],
+   "gainDb": -1
+  },
+  {
+   "name": "end",
+   "fromBar": 4,
+   "toBar": 5,
+   "layers": [
+    "drone",
+    "ticks"
+   ],
+   "gainDb": -4
+  }
+ ],
+ "hits": [
+  {
+   "kind": "braam",
+   "t": 0.05,
+   "chord": "Dm",
+   "sec": 3.5
+  },
+  {
+   "kind": "boom",
+   "t": 0.05,
+   "sec": 3
+  },
+  {
+   "kind": "braam",
+   "t": 2.5,
+   "chord": "Bb",
+   "sec": 3
+  },
+  {
+   "kind": "braam",
+   "t": 5,
+   "chord": "F",
+   "sec": 3
+  },
+  {
+   "kind": "riser",
+   "t": 10,
+   "sec": 2.5
+  },
+  {
+   "kind": "braam",
+   "t": 7.5,
+   "chord": "C",
+   "sec": 3
+  },
+  {
+   "kind": "braam",
+   "t": 10,
+   "chord": "Dm",
+   "sec": 4.5
+  },
+  {
+   "kind": "boom",
+   "t": 10,
+   "sec": 4
+  },
+  {
+   "kind": "stop",
+   "t": 14.4
+  }
+ ],
+ "ducks": [],
+ "sfx": [],
+ "rampSec": 0.3
+}

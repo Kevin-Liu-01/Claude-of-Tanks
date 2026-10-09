@@ -886,6 +886,11 @@ export interface PropsRuntime {
   destructibles: DestructibleRecord[];
   looseRecords: DestructibleRecord[];
   updateProps(deltaSeconds: number, cameraPosition?: THREE.Vector3 | null): void;
+  /**
+   * Step only the destruction's own clock — the falls, tosses and loose dressing, the drum blasts — by `deltaSeconds`
+   * (updateProps runs it after the LOD work; the Scene Studio runs it on its timeline, its world update held at 0).
+   */
+  advanceDestructibles(deltaSeconds: number): void;
   resetDestructibles(): void;
   tankWreckSpots: TankWreckSpot[];
   utilityNetwork: UtilityNetwork | null;
@@ -10780,6 +10785,15 @@ ${snowCap ? `
         else mesh.matrixWorld.copy(mesh.matrix);
       }
     }
+    if (stepDestruction(dt)) updatePoleLod(cameraPos);
+  }
+
+  /**
+   * The destruction's own clock (2026-10-06, split out of updateProps for the Scene Studio, whose hulls crush what
+   * they overrun on its timeline while its world update holds dt at 0): the kind-burst budget, the drum blasts, the
+   * loose dressing and the crush animations. Returns whether a crush animation ran (a toppled pole needs its LOD).
+   */
+  function stepDestruction(dt: number): boolean {
     fxBudget = 6; // per-frame kind-burst cap refill
     // DESTRUCTIBLES r1: deferred explosive-drum blasts (max 2/tick so chains
     // ripple instead of detonating as one frame spike)
@@ -10790,7 +10804,7 @@ ${snowCap ? `
       shellImpact(bl.x, bl.y, bl.z, { r: 5.4, he: true, cause: 'blast' });
     }
     updateLooseProps(dt);
-    if (!crushAnims.length) return; // zero per-frame cost when idle
+    if (!crushAnims.length) return false; // zero per-frame cost when idle
     for (let k = crushAnims.length - 1; k >= 0; k--) {
       const a = crushAnims[k];
       if (!a.placement) {
@@ -10823,7 +10837,10 @@ ${snowCap ? `
       poseToppled(a, ang);
       if (a.t >= 1.1) crushAnims.splice(k, 1);
     }
-    updatePoleLod(cameraPos);
+    return true;
+  }
+  function advanceDestructibles(dt: number): void {
+    if (stepDestruction(dt)) updatePoleLod(null);
   }
 
   /**
@@ -10916,7 +10933,7 @@ ${snowCap ? `
   ]);
   nearMeshVertexHeights = null; // (a query after the build asks the field)
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible,
-    destructibles, looseRecords, updateProps, resetDestructibles, tankWreckSpots, utilityNetwork,
+    destructibles, looseRecords, updateProps, advanceDestructibles, resetDestructibles, tankWreckSpots, utilityNetwork,
     utilityPolePlacements, decorationGroundingReceipts,
     sourcedTexturesReady, registerDestructibles, waterContacts,
     getLoosePropStats: () => ({ total: looseRecords.length, active: activeLoose.length }),

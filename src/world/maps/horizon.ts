@@ -41,7 +41,7 @@ import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, t
 import { buildHorizonRockfield } from '../horizonRockfield.ts';
 import {
   type HorizonReliefBake, type HorizonReliefCharacter, type HorizonReliefCover, type HorizonReliefField, type HorizonReliefSettings,
-  bakeHorizonReliefSteps, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
+  bakeHorizonRelief, bakeHorizonReliefSteps, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
 } from '../horizonRelief.ts';
 import { buildHorizonFarRange } from '../horizonFarRange.ts';
 import { type HorizonPanoramaCharacter, createHorizonPanorama, type HorizonPanoramaRegional } from '../horizonPanorama.ts';
@@ -2730,6 +2730,20 @@ export function resolveHorizonLightingGains(lighting: HorizonLighting): { ambien
   };
 }
 
+/**
+ * Round 72: the sky's chroma for the faces turned from the sun — the fog tint (the rendered sky's horizon average:
+ * blue-grey under a clear sky, warm grey under an overcast) normalised to unit luminance and pushed a little, since
+ * the tint is pale and a shaded face should still read as sky-lit. The tint is re-normalised to unit luminance after
+ * the push, so a shaded face changes hue, never brightness (a saturated blue fog pushed a face's blue to 1.8 x and
+ * washed the ranges pale). Shared with Scene Studio's relight (media r5).
+ */
+export function horizonSkyTint(fog: THREE.Color): THREE.Vector3 {
+  const fogLuma = Math.max(1e-3, fog.r * 0.2126 + fog.g * 0.7152 + fog.b * 0.0722);
+  const skyTint = new THREE.Vector3(
+    Math.max(0.4, 1 + (fog.r / fogLuma - 1) * 1.25), Math.max(0.4, 1 + (fog.g / fogLuma - 1) * 1.25), Math.max(0.4, 1 + (fog.b / fogLuma - 1) * 1.25));
+  return skyTint.divideScalar(Math.max(1e-3, skyTint.x * 0.2126 + skyTint.y * 0.7152 + skyTint.z * 0.0722));
+}
+
 /** Round 72: the surface atlas as a GPU texture — linear data, angle repeats, radius clamps, mips for the far rows. */
 function makeReliefTexture(bake: HorizonReliefBake): THREE.DataTexture {
   const texture = new THREE.DataTexture(bake.data, bake.width, bake.height, THREE.RGBAFormat, THREE.UnsignedByteType);
@@ -2942,7 +2956,7 @@ function* buildHorizonMaterialSteps({
       };
       mat.userData.horizonDetailNoise = detailNoise;
       mat.userData.horizonDetail2 = detail2;
-      mat.userData.horizonVista = { uniforms: carried, base: base.clone(), canopyMean: canopyTile.canopyMean };
+      mat.userData.horizonVista = { uniforms: carried, base: base.clone(), canopyMean: canopyTile.canopyMean, skyTint: horizonSkyTint };
       mat.userData.horizonTerrainBound = true;
       return mat;
     }
@@ -2960,10 +2974,7 @@ function* buildHorizonMaterialSteps({
     if (reliefTexture) retainedTextures.push(reliefTexture);
     // (the tint is re-normalised to unit luminance after the push, so a shaded face changes hue, never brightness —
     // a saturated blue fog pushed a face's blue to 1.8 x and washed the ranges pale)
-    const fogLuma = Math.max(1e-3, fog.r * 0.2126 + fog.g * 0.7152 + fog.b * 0.0722);
-    const skyTint = new THREE.Vector3(
-      Math.max(0.4, 1 + (fog.r / fogLuma - 1) * 1.25), Math.max(0.4, 1 + (fog.g / fogLuma - 1) * 1.25), Math.max(0.4, 1 + (fog.b / fogLuma - 1) * 1.25));
-    skyTint.divideScalar(Math.max(1e-3, skyTint.x * 0.2126 + skyTint.y * 0.7152 + skyTint.z * 0.0722));
+    const skyTint = horizonSkyTint(fog);
     const vistaUniforms: Record<string, THREE.IUniform> = tiles ? {
       // round 72: the surface atlas (angle x radius), its radius window and gradient scale; 0 amplitude without a bake
       uVRelief: { value: reliefTexture ?? new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1) },
@@ -3018,7 +3029,11 @@ function* buildHorizonMaterialSteps({
     } : {};
     mat.userData.horizonDetailNoise = detailNoise;
     mat.userData.horizonDetail2 = detail2; // round 72: the far range's mottle reads the same tile
-    if (tiles) mat.userData.horizonVista = { uniforms: vistaUniforms, base: base.clone(), canopyMean: tiles.canopyMean };
+    if (tiles) mat.userData.horizonVista = { uniforms: vistaUniforms, base: base.clone(), canopyMean: tiles.canopyMean, skyTint: horizonSkyTint };
+    // media r5: the ring's sun uniform is one shared object (every compile reads it), so Scene Studio can relight the
+    // baked ring for a moved sun and restore it; the battle value is the authored map sun, as before
+    const sunDirUniform = { value: new THREE.Vector3(lx, ly, lz) };
+    mat.userData.horizonSunDir = sunDirUniform;
     mat.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, vistaUniforms);
       shader.uniforms.uNearDetail = { value: nearDetail };
@@ -3032,7 +3047,7 @@ function* buildHorizonMaterialSteps({
       shader.uniforms.uSnowTint = { value: snowTint };
       shader.uniforms.uSnowFrag = { value: snowFrag };
       shader.uniforms.uDetail2 = { value: detail2 };
-      shader.uniforms.uSunDirW = { value: new THREE.Vector3(lx, ly, lz) };
+      shader.uniforms.uSunDirW = sunDirUniform;
       shader.uniforms.uFragRel = { value: fragRel };
       shader.uniforms.uSlopeSplat = { value: slopeSplat };
       shader.uniforms.uMaxH = { value: maxH * 1.0 };
@@ -3812,6 +3827,15 @@ export function* buildHorizonRingSteps(
     // the map-borders lane: the road exits on this ring, for the carriageway attribute (terrain.ts)
     roadExits: ringExits,
   };
+  // media r5: the bake's relief field (a small noise object, non-enumerable so userData dumps stay JSON) with the bake
+  // itself and the ring's column count — Scene Studio re-bakes the atlas's sun visibility from the ring geometry for a
+  // moved or lower sun, then restores the original. The Studio reaches the bake through the ring, never by import: a
+  // Studio import would split this chunk's horizon modules into chunks of their own.
+  if (reliefBake) {
+    Object.defineProperty(mesh.userData, 'horizonReliefSource', {
+      value: { field: bakeField, maxHeight: maxH, columns: HORIZON_SEGMENTS, bake: bakeHorizonRelief }, enumerable: false,
+    });
+  }
   // Round 72: the far range — the peaks behind the ring (1.9–3.3 km, inside the cloud dome and the camera's far
   // plane), one unlit vertex-shaded draw with its own aerial perspective; capped under a map's low cloud deck
   if (vista && H.farRange !== false && reliefSettings.far) {

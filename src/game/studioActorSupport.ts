@@ -2,6 +2,8 @@ import {
   createTankState, resetTankVerticalState, updateTank, SIM_DT,
   type MovementEntity, type MovementHeightField,
 } from '../sim/movement.ts';
+import { structureTopAt } from '../sim/structureSupport.ts';
+import type { CollisionRecord } from '../world/collision.ts';
 
 /** Discard prior suspension history at replay start, retaining only explicit
  * authored hydraulic staging rather than the previous dynamic state. */
@@ -48,3 +50,20 @@ export function conformStudioActor(
     input.aimLocked = aimLocked; actor.rigidGear = priorRigid;
   }
 }
+
+/** Ride the deck, not the bed: a Studio hull staged over a bridge seats on the deck's standable top, while every
+ * other primitive keeps the battle rule (only tops below the belly + step-up are stood on). Returns the belly line
+ * to hand to the structure support field's beginHull. `records` may hold any primitives near (x, z). */
+export function studioSupportBelly(
+  records: readonly CollisionRecord[], x: number, z: number, bellyY: number,
+  scratch: CollisionRecord[] = [],
+): number {
+  scratch.length = 0;
+  for (const record of records) if (record.kind === 'bridge') scratch.push(record);
+  if (!scratch.length) return bellyY;
+  const deckTop = structureTopAt(scratch, scratch.length, x, z, Infinity);
+  return deckTop === -Infinity ? bellyY : Math.max(bellyY, deckTop + STUDIO_DECK_BELLY_CLEARANCE_M);
+}
+
+/** Belly clearance above a deck top for the seating solve (the hull settles onto the deck from just above it). */
+const STUDIO_DECK_BELLY_CLEARANCE_M = 0.25;
