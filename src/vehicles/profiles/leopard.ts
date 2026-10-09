@@ -12807,7 +12807,7 @@ function addLeo2A6MRoofRCWS(P: TankBuilderPort) {
   // gun still bears directly on the station housing. 2026-10-06: the loaded
   // feed's belt arcs 1 cm over the old crown (0.303 vs 0.293 at this scale),
   // so the feet sink 1 cm further (crown 1.238 under the 1.24 budget).
-  const weaponFootY = 0.935;
+  const weaponFootY = 0.930;
   const remoteMachineGun = FITTINGS.pintleMG({ remoteControlled: true,
     mats: P.mats,
     cls: 'm2',
