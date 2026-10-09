@@ -334,7 +334,7 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     const h = wallH * (0.08 + 0.84 * (i + R()) / skirtN);
     const at = Math.min(frontEnd + 0.3, collapseFrontTime(h, wallH) + Math.sqrt((2 * h) / 9.8));
     puff(C, p[0] + p[2] * 0.6, e.baseY + 0.45, p[1] + p[3] * 0.6, p[2] * v, 0.35 + R() * 0.4, p[3] * v, 2.0, 0.25, 0.9,
-      life, 0.5 * span * dk, (1.1 + R() * 0.35) * span * dk, tintDark, tinted, 0.6, life, 1, at, 2.0 + R() * 0.5, 4.5);
+      life, 0.5 * span * dk, (1.0 + R() * 0.3) * span * dk, tintDark, tinted, 0.5, life, 1, at, 2.0 + R() * 0.5, 4.5);
   }
   // a little shed off the crumbling line as it passes (the dust rides the falling courses down)
   const BAND = 1.8;
@@ -371,7 +371,7 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     const at = frontEnd * 0.55 + (i / massN) * (frontEnd * 0.45 + 0.8) + R() * 0.3;
     const life = 10 + R() * 1.5;
     puff(C, wx, e.baseY + 0.9, wz, (R() - 0.5) * 1.0, 0.8 + R() * 0.6, (R() - 0.5) * 1.0,
-      1.3, 0.5 + R() * 0.3, 1.0, life, 0.6 * span * dk, (1.6 + R() * 0.4) * span * dk, tintDark, tinted, 0.5, life, 2, at, 1, 4.5);
+      1.3, 0.5 + R() * 0.3, 1.0, life, 0.55 * span * dk, (1.3 + R() * 0.3) * span * dk, tintDark, tinted, 0.38, life, 2, at, 1, 4.5);
   }
 }
 
@@ -445,11 +445,15 @@ function brickDust(look: StructureLook, powder: Rgb, out: [number, number, numbe
   for (const s of look.rubble) if (s.share > main.share) main = s;
   // (dcore 2026-10-09, waves 294a/b: "white cotton puffs", "cream") nearer the rubble's own hue and darker: the volume
   // medium's sun and sky lift it a long way, so a brick building's cloud reads brick-brown, a stone one's grey-buff
-  out[0] = powder[0] + (main.color[0] * 0.85 - powder[0]) * 0.55;
-  out[1] = powder[1] + (main.color[1] * 0.85 - powder[1]) * 0.55;
-  out[2] = powder[2] + (main.color[2] * 0.85 - powder[2]) * 0.55;
-  const lum = 0.2126 * out[0] + 0.7152 * out[1] + 0.0722 * out[2];
-  if (lum > 0.25) { const k = 0.25 / lum; out[0] *= k; out[1] *= k; out[2] *= k; }
+  // (the battle strips, b3: a brick farmhouse's cloud came out salmon-orange) a third of the way to the rubble's hue,
+  // then a third of its saturation taken back: brick dust is a reddish grey-tan, never a dyed orange
+  out[0] = powder[0] + (main.color[0] * 0.85 - powder[0]) * 0.35;
+  out[1] = powder[1] + (main.color[1] * 0.85 - powder[1]) * 0.35;
+  out[2] = powder[2] + (main.color[2] * 0.85 - powder[2]) * 0.35;
+  let lum = 0.2126 * out[0] + 0.7152 * out[1] + 0.0722 * out[2];
+  for (let i = 0; i < 3; i++) out[i] = out[i] * 0.7 + lum * 0.3;
+  lum = 0.2126 * out[0] + 0.7152 * out[1] + 0.0722 * out[2];
+  if (lum > 0.26) { const k = 0.26 / lum; out[0] *= k; out[1] *= k; out[2] *= k; }
   return out;
 }
 const _tint: [number, number, number] = [0, 0, 0];
