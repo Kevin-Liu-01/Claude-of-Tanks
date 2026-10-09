@@ -547,7 +547,7 @@ export function innSign(sink: PartSink, frame: HouseFrame, st: HessianState): vo
   faceBox(sink, 'dark', face, u, y, 0.45, 0.06, 0.06, 0.9, { decor: true });
   faceBox(sink, 'dark', face, u, y - 0.25, 0.65, 0.04, 0.5, 0.04, { decor: true });
   faceBox(sink, SW, face, u, y - 0.62, 0.8, 0.06, 0.55, 0.62, { colour: shade(st.door, 1.2), decor: true });
-  // (facade craft, desktop) the sign painted: a gilded star in a dark border, on both faces
+  // (facade craft, desktop) the sign painted: a gilded tankard under its foam in a dark border, on both faces
   if (facadeOn()) innEmblem(sink, face, u, y - 0.62, 0.8, 0.03, 0.62, 0.55);
 }
 
