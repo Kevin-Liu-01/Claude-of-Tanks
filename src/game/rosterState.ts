@@ -644,6 +644,11 @@ export function autoCamoIdsForBattle(
   mapId: string,
   randomize: boolean,
   battleOrdinal: number,
+  // Fleet lane (2026-10-08; the coordinator after wave 258: "background tanks on Verdant's summer grass spattered with
+  // bright white blobs"): a bot that rolls to keep its own paint keeps it only when that paint suits the map's theatre
+  // (materials.ts camoSelectionSuitsTheatre); otherwise it takes AUTO like the rest. The roll itself is unchanged, so
+  // a roster's draws stay where they were.
+  keepsOwnPaint: (specId: string) => boolean = () => true,
 ) {
   if (!randomize) return [];
   const camoRng = mulberry32(8600 + battleOrdinal);
@@ -652,7 +657,7 @@ export function autoCamoIdsForBattle(
   for (const ent of participants) {
     if (ent.specId === playerSpecId) continue;
     const roll = camoRng();
-    if (forceAuto || roll < 0.6) autoIds.push(ent.specId);
+    if (forceAuto || roll < 0.6 || !keepsOwnPaint(ent.specId)) autoIds.push(ent.specId);
   }
   return autoIds;
 }
@@ -672,10 +677,11 @@ export function planBattleCamoOverrides(
   slots: number | null = null,
   formationLead: number | null = null,
   alliedSlots: number | null = null,
+  keepsOwnPaint: (specId: string) => boolean = () => true,
 ) {
   const battleOrdinal = game.battleCount + 1;
   const participants = pickBattleParticipants(game, playerSpecId, randomize, battleOrdinal, preferredNations, slots, formationLead, alliedSlots);
   return autoCamoIdsForBattle(
-    participants, playerSpecId, mapId, randomize, battleOrdinal,
+    participants, playerSpecId, mapId, randomize, battleOrdinal, keepsOwnPaint,
   );
 }

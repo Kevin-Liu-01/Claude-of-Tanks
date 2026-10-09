@@ -19,7 +19,6 @@ import { Euler, Matrix4, Quaternion, Vector3 } from 'three';
 import { getSpec } from '../vehicles/specs.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import { getMapConfig } from '../world/maps/index.ts';
-import { reuseSpawnPad } from './spawnPads.ts';
 import type { BattlefieldMapConfig } from '../world/maps/index.ts';
 import { createHeightField, createLayout } from '../world/terrain.ts';
 import type { HeightField, TerrainLayout } from '../world/terrain.ts';
@@ -120,7 +119,7 @@ import {
   applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetLoadout, type MatchRuleset,
   type RulesetPhysics,
 } from './matchRuleset.ts';
-import { createMatchPlacement, matchPlacementAnchors, placementTankRadius } from './matchPlacement.ts';
+import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from './matchPlacement.ts';
 import type {
   GameModeId,
   MatchModeController,
@@ -498,7 +497,7 @@ function makeInput(): AuthoritativeInput {
 function spawnFor(
   index: number,
   team: Team,
-  layout: TerrainLayout,
+  placement: MatchPlacement,
   override?: AuthoritativeSpawn,
 ): Required<AuthoritativeSpawn> {
   if (override && Number.isFinite(override.x) && Number.isFinite(override.z)) {
@@ -508,41 +507,11 @@ function spawnFor(
       yaw: finite(override.yaw, team === TEAM_ALPHA ? 0 : Math.PI),
     };
   }
-  if (team === TEAM_ALPHA) {
-    const base = layout.spawns.player;
-    const row = Math.floor(index / 4);
-    const col = index % 4;
-    const formation = base.formation;
-    if (formation) {
-      const { columnSpacingM, rowSpacingM } = formation;
-      if (!Number.isFinite(columnSpacingM) || columnSpacingM <= 0
-        || !Number.isFinite(rowSpacingM) || rowSpacingM <= 0) {
-        throw new TypeError('spawn formation spacing must be finite and positive');
-      }
-      const yaw = finite(base.yaw, 0);
-      const right = (col - 1.5) * columnSpacingM;
-      const back = row * rowSpacingM;
-      const sin = Math.sin(yaw), cos = Math.cos(yaw);
-      return {
-        x: base.x + right * cos - back * sin,
-        z: base.z - right * sin - back * cos,
-        yaw,
-      };
-    }
-    return {
-      x: base.x + (col - 1.5) * 8,
-      z: base.z - row * 10,
-      yaw: finite(base.yaw, 0),
-    };
-  }
-  const pads = layout.spawns.enemies;
-  const base = pads[index % pads.length]!;
-  // World layout already authors every enemy pad toward the opposing spawn.
-  // Adding PI here made browser-hosted/dedicated Bravo tanks deploy backwards.
-  // A side larger than the pads re-uses them on the compact offset ring (sides 2026-09-18,
-  // sim/spawnPads.ts) instead of stacking every eighth vehicle on pad 0 again.
-  const point = reuseSpawnPad({ x: base.x, z: base.z, yaw: finite(base.yaw, Math.PI) }, Math.floor(index / pads.length));
-  return { x: point.x, z: point.z, yaw: point.yaw };
+  // Symmetric deployments (sim/deployment.ts, modes lane 2026-10-08): slot k of a side, the exact rotation of the other
+  // side's slot k about the anchors' midpoint, resolved on this world by the match placement. The solo sim
+  // (game/state.ts) seats its tanks through the same placement call.
+  const slot = placement.deploymentSlot(team, index);
+  return { x: slot.x, z: slot.z, yaw: slot.yaw };
 }
 
 function botOpeningGoal(
@@ -828,7 +797,7 @@ export function createAuthoritativeMatch({
     if (team === TEAM_SPECTATOR) return;
     const spec = getSpec(String(record.specId || ''));
     if (!spec) throw new TypeError(`unknown vehicle spec: ${String(record.specId)}`);
-    const preferred = spawnFor(teamIndex[team]++, team, layout, record.spawn);
+    const preferred = spawnFor(teamIndex[team]++, team, placement, record.spawn);
     const explicit = !!record.spawn && Number.isFinite(record.spawn.x) && Number.isFinite(record.spawn.z);
     const pad = placement.spawn(preferred, id, placementTankRadius(spec), explicit);
     _spawn.set(pad.x, heightField.getHeightAt(pad.x, pad.z), pad.z);

@@ -2264,6 +2264,8 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
     siwa: Object.freeze({
       checkpointhut: variant('checkpointhut', REGIONAL_PAL.kershef, makeSiwaGuardHut),
     }),
+    // (Wadi Rum's barrack and post are the map's own structure variants on its plaster since the Redrock lane's round 10:
+    // maps/regional/wadiRumPosts.ts, named in badlands.ts props.structureVariants)
     // the Col du Mont-Cenis, 1945: the pass's refuge is a casemate of the Vallo Alpino
     savoyard: Object.freeze({
       alpinerefuge: variant('alpinerefuge', REGIONAL_PAL.concrete, makeSavoyardCasemate, 'metal'),

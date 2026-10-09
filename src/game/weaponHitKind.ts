@@ -12,3 +12,10 @@ export function weaponHitKind(hit: WeaponHitIdentity): WeaponHitKind {
   if (Number.isFinite(hit.caliberMm) && hit.caliberMm! > 0 && hit.caliberMm! < 20) return 'machineGun';
   return 'cannon';
 }
+
+/** Small-calibre automatic weapons share burst feedback. Keep this separate
+ * from medal identity: autocannons still count as cannons, not machine guns. */
+export function isRapidFireHit(hit: WeaponHitIdentity): boolean {
+  return weaponHitKind(hit) !== 'missile' && Number.isFinite(hit.caliberMm)
+    && hit.caliberMm! > 0 && hit.caliberMm! < 60;
+}

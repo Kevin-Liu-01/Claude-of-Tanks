@@ -20,10 +20,9 @@ const get = (name) => {
 };
 const hullNet = get('leo2a4_ghillie_hull_net');
 const turretNet = get('leo2a4_ghillie_turret_net');
-get('leo2a4_ghillie_hull_light');
-get('leo2a4_ghillie_hull_dark');
-get('leo2a4_ghillie_turret_light');
-get('leo2a4_ghillie_turret_dark');
+// 2026-10-05 (tank-accessories lane): the suit runs on the shared builder; its garnish is one spray-card draw per owner
+get('leo2a4_ghillie_hull_leaves');
+get('leo2a4_ghillie_turret_leaves');
 
 const belongsTo = (object, parent) => {
   for (let node = object; node; node = node.parent) if (node === parent) return true;
@@ -42,8 +41,8 @@ assert.ok(hullBounds.min.y >= 0.56,
 
 const completeGhillie = new THREE.Box3();
 for (const name of [
-  'leo2a4_ghillie_hull_net', 'leo2a4_ghillie_hull_light', 'leo2a4_ghillie_hull_dark',
-  'leo2a4_ghillie_turret_net', 'leo2a4_ghillie_turret_light', 'leo2a4_ghillie_turret_dark',
+  'leo2a4_ghillie_hull_net', 'leo2a4_ghillie_hull_leaves',
+  'leo2a4_ghillie_turret_net', 'leo2a4_ghillie_turret_leaves',
 ]) completeGhillie.union(new THREE.Box3().setFromObject(get(name)));
 assert.ok(completeGhillie.min.x >= -1.85 && completeGhillie.max.x <= 1.85,
   'broken-outline leaves remain inside the certified 3.70 m A4 width');
@@ -65,15 +64,26 @@ const topHit = (object, x, z) => new THREE.Raycaster(
 ).intersectObject(object, false)[0];
 const turretArmor = tank.root.getObjectByName('turret');
 const hullArmor = tank.root.getObjectByName('hull');
-const turretClothHit = topHit(turretNet, 0, -0.90);
-const turretArmorHit = topHit(turretArmor, 0, -0.90);
-assert.ok(turretClothHit && turretArmorHit
-  && turretClothHit.point.y - turretArmorHit.point.y >= 0.05,
-'turret shroud is a separately suspended cloth layer with a visible air gap');
-const hullClothHit = topHit(hullNet, 0, -3.20);
-const hullArmorHit = topHit(hullArmor, 0, -3.20);
-assert.ok(hullClothHit && hullArmorHit && hullClothHit.point.y - hullArmorHit.point.y >= 0.04,
-  'hull blanket floats above the deck instead of re-skinning the armor surface');
+// 2026-10-08 (tank-accessories round 5): the suit is laid against the assembled armour. A heavy garnished net rests on
+// the plate between what holds it up (the rolls bunched round the openings, the sticks pushed under it on the crown,
+// its own folds and creases) and sags back onto the plate between them, so one sample point no longer measures its
+// stand-off (the round-4 slab floated at one height, which the critics read as "shrink-wrapped" and "a fence"). The
+// shroud is still its own suspended layer: around each sample it never sinks into the armour, and it stands clear of
+// it — 5 cm on the crown, 3 cm on the deck — somewhere within 35 cm.
+const clothGaps = (cloth, armor, cx, cz) => {
+  const gaps = [];
+  for (let dx = -0.35; dx <= 0.351; dx += 0.07) for (let dz = -0.35; dz <= 0.351; dz += 0.07) {
+    const c = topHit(cloth, cx + dx, cz + dz), a = topHit(armor, cx + dx, cz + dz);
+    if (c && a) gaps.push(c.point.y - a.point.y);
+  }
+  return gaps;
+};
+const crownGaps = clothGaps(turretNet, turretArmor, 0, -0.90);
+assert.ok(crownGaps.length > 20 && Math.min(...crownGaps) > 0.003 && Math.max(...crownGaps) >= 0.05,
+  `turret shroud is a separately suspended cloth layer with a visible air gap (${Math.min(...crownGaps).toFixed(3)}..${Math.max(...crownGaps).toFixed(3)} m)`);
+const deckGaps = clothGaps(hullNet, hullArmor, 0, -3.20);
+assert.ok(deckGaps.length > 20 && Math.min(...deckGaps) > 0.003 && Math.max(...deckGaps) >= 0.03,
+  `hull blanket floats above the deck instead of re-skinning the armor surface (${Math.min(...deckGaps).toFixed(3)}..${Math.max(...deckGaps).toFixed(3)} m)`);
 
 const gunCorridorHits = new THREE.Raycaster(
   new THREE.Vector3(0, 1.90, 6), new THREE.Vector3(0, 0, -1), 0, 10,

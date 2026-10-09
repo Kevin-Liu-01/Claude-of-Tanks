@@ -1,0 +1,18 @@
+{
+  "release": "Around the Clock",
+  "facts": [
+    { "value": "219", "label": "first-party tanks" },
+    { "value": "33", "label": "battlefields" },
+    { "value": "7", "label": "times of day in Scene Studio" },
+    { "value": "7v7", "label": "multiplayer" },
+    { "value": "60 Hz", "label": "simulation" },
+    { "value": "Free", "label": "in the browser · no install" }
+  ],
+  "boilerplate": {
+    "One line": "Claude of Tanks is a free, browser-native armored combat game with 219 first-party tanks, 33 battlefields and a built-in Scene Studio for directing your own war films.",
+    "Short": "Claude of Tanks runs entirely in the browser: no install, no account. Every one of its 219 tanks is built in-engine from first-party procedural geometry, with real armor, internal modules, ammunition and crew. Shells fly on physical ballistics; penetrations knock out engines and fuel, detonate ammunition racks, throw turrets and leave burning wrecks.",
+    "Long": "Fight across 33 battlefields, from frozen alpine lakes and desert wadis to coastal towns, an industrial foundry, Mars and the Moon, solo against bots or in 7v7 multiplayer. Scene Studio, built into the game, lets anyone stage tanks and effects, block camera moves on a timeline, pick any hour from dawn to blue hour to moonlit night, grade the picture with film looks and depth of field, and export motion-blurred films. Claude of Tanks is created by Kevin B. Liu.",
+    "About this kit": "Every image and film in this kit is rendered in-engine by the game's own renderer through Scene Studio: staged scenes, not recorded matches. Tanks, environments, lighting and effects are the game's own first-party assets. Music and sound design are original, procedurally synthesized for this release, with the game's own combat sound effects."
+  },
+  "footer": "In-engine footage · Scene Studio · Claude of Tanks · cot.kevinliu.studio"
+}

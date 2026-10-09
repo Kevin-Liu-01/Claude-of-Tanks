@@ -116,16 +116,21 @@ export default {
     // (0.55 / 0.42 / 0.22), so where it is drawn as the land's soil — the worn ground, verges, tracks — it takes the
     // karst's terra rossa; the strand and the white gravel roads keep the sand. (wave 83: "pastel pink, mauve and beige
     // rather than rust-red terra rossa" — the dull brick ~0.16 / 0.10 / 0.075 read mauve) a red-brown, ~0.20 / 0.088 / 0.048
-    soilTint: [0.37, 0.21, 0.22] },
+    // (2026-10-08, waves 286b-287: "one flat, saturated orange-red") a dusty brick red-brown, the terra rossa field's own
+    // base (terrain.ts): ~0.25 / 0.126 / 0.075 — red 2.0x its green, green 1.7x its blue, a third less saturated
+    soilTint: [0.46, 0.30, 0.34] },
   vegetation: {
     species: ['cedar', 'acacia', 'pine'], clusterMix: [['cedar', 0.46], ['acacia', 0.38], ['pine', 0.16]],
     loneMix: [['acacia', 0.50], ['cedar', 0.32], ['pine', 0.18]], rimMix: [['cedar', 0.5], ['pine', 0.3], ['acacia', 0.2]],
     // map pass 2026-09-12: limestone-terrace identity — scrub, pale rock and
     // outcrops instead of a green pasture (establishing shot read as generic);
     // tree and rock counts stay at the environmentExpansion first-pass ceilings.
-    clusterCount: 34, loneCount: 52, rimCount: 62, grassDensity: 0.68, bushCount: 1.3, bushSpecies: 'acacia', clusterScrub: 1.9,
+    clusterCount: 34, loneCount: 52, rimCount: 62, grassDensity: 0.52, bushCount: 1.3, bushSpecies: 'acacia', clusterScrub: 1.9,
     // ground lane: the tufts a garrigue's dry grey-olive, not a meadow's green
-    tuftTone: (_h: number, s: number, l: number) => [0.17, s * 0.55, l * 0.96],
+    // (wave 177 and 2026-10-08's wave 287: "thick, evenly spaced and plastic-looking" blades, a "lush lawn-green
+    // carpet") the cards' own paint cured yellow-grey as well as their tint, and fewer of them
+    grassTexTone: (_h: number, s: number, l: number) => [0.135, Math.min(1, s * 0.45), Math.min(1, l * 0.98 + 0.06)],
+    tuftTone: (_h: number, s: number, l: number) => [0.14, s * 0.45, Math.min(1, l * 0.96 + 0.04)],
   },
   props: {
     // regional-buildings lane: the Dalmatian limestone kit (maps/regional/dalmatian.ts)
@@ -175,8 +180,9 @@ export default {
       [60, -150, 140, -160, 2], [60, 170, 140, 180, 2]],
     well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
     haystacks: 8, rocks: 188, outcrops: 30, craters: 48, rubblePiles: 12, cropFields: 4, sandbagLines: 14, hedgehogs: 8,
-    tankWrecks: { era: 'modern', count: 5, debris: true,
-      ids: ['ariete', 'leclerc_xlr', 'm60a3', 'merkava4b', 'm2a2_bradley'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): Dalmatia in the 1990s: the M-84's parent T-72M1, the
+    // T-55 (its Type 59 copy) and the BMP
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['t72m1_jaguar', 'type59', 'bmp2'] },
     inhabit: { stalls: 4, benches: 4, coreClutter: 22, pots: 8, laundry: 4, handcarts: 4, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 2, modernClutter: 18, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencepicket' },
   },
   // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the karst. Bare limestone

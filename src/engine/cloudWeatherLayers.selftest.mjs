@@ -140,6 +140,8 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   // (2026-10-02: a capture zeroes the drifts; the positive modulo jumped a whole wrap on the next frame — a seam for the
   // boiling noise, whose vertical period follows the slab's thickness — and every captured cloud ghosted)
   assert.ok(!/% (CLOUD_[A-Z_]+_M|wrap) \+ (CLOUD_[A-Z_]+_M|wrap)\)/.test(layerSrc), 'no drift wraps by a positive modulo');
+  // (2026-10-09, media r5's scene-time clouds: Clouds 2.0's scene setter wraps every drift with wrapDrift inside
+  // .set(...) calls, so the frame step's eight assignments stay the count)
   assert.equal(layerSrc.match(/= wrapDrift\(/g)?.length, 8, 'the weather, noise (with the boil), cirrus and upper drifts run through zero');
   assert.ok(layerSrc.includes('(m.uShapeShift.value as THREE.Vector3).copy(ns);'), 'the medium\'s shape rides the same drift');
 }

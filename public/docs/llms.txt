@@ -17,6 +17,7 @@
 - [Audio and battlefield FX](https://cot.kevinliu.studio/docs/audio): Weapon reports and distance, hits heard at the target, engines and tracks, national crew radio, ambience, mode sounds, and Sound settings.
 - [Interface and controls](https://cot.kevinliu.studio/docs/interface): Garage, HUD, aiming feedback, ammunition, killcam, spectator mode, reports, settings, desktop input, and touch.
 - [Scene Studio and capture](https://cot.kevinliu.studio/docs/studio): Scene data, maps, vehicles, cameras, effects, timeline, stills, GIFs, video, and review workflow.
+- [Filming the media](https://cot.kevinliu.studio/docs/filming): Shots written as code, motion search, schematic previz, engine reviews and fixes, supersampled 4K finals, stills, and the films' sound.
 
 ## Related
 
