@@ -155,7 +155,6 @@ function fachwerkWall(sink: PartSink, face: Face, rect: WallRect, openings: Open
 /** The framed wall's members and panel washes between its sill beam and plate (fachwerkWall on a desktop). */
 function framing(sink: PartSink, face: Face, rect: WallRect, openings: Opening[], st: HessianState): void {
   const { u0, u1, y0, y1 } = rect;
-  const tc = { colour: st.timber, decor: true };
   const yA = y0 + 0.18, yB = y1 - 0.16;
   const j = joinery(sink, face, st.timber);
   // a burnt opening's soot climbs the panels round it: a panel wash would paint over it
