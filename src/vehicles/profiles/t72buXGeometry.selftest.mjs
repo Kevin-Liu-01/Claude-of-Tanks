@@ -1,3 +1,4 @@
+import {assertHollowMuzzle} from '../../../tools/physical-muzzle.test-support.mjs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
@@ -28,18 +29,8 @@ function frames(t){
 function bore(t){
   const gun=t.root.getObjectByName('gun'),all=opaque(t.root);
   near(new THREE.Box3().setFromObject(gun).max.z,SOURCE.muzzle,.000003,'actual closed stock terminal plane');
-  for(const [x,y]of [[0,0],[.03,0],[-.03,0],[0,.03],[0,-.03]]){
-    const ray=new THREE.Raycaster(new THREE.Vector3(SOURCE.gun[0]+x,SOURCE.gun[1]+y,SOURCE.muzzle+.2),new THREE.Vector3(0,0,-1),0,.5);
-    // 2026-09-22 (owner: "the point of adding holes instead of carving them into the barrel is that
-    // we save on triangles"): the metal tube is closed at its source tip. The measured 0.1058 m source
-    // bore (SOURCE.floor 6.453155544449773, radius .0625; docs/references/tanks/t72bu_x.source-measurements.json)
-    // stays recorded here as the fidelity evidence; the former recess sat entirely behind the fallback disc.
-    near(ray.intersectObject(gun,false)[0]?.point.z,SOURCE.muzzle,.00002,`metal tube closed at the source tip (recorded bore floor ${SOURCE.floor})`);
-    const hit=ray.intersectObjects(all,false)[0];assert.equal(hit?.object.name,'muzzleBoreShadowFallbackDisc');
-    // Visible mouth disc seats at the tube edge (owner direction 2026-09-11);
-    // the physical source bore depth is asserted separately above.
-    near(hit?.point.z,SOURCE.muzzle+.0003,.00002,'complete opaque gun seats its shared mouth lining at the tube edge');
-  }assert.ok(measureTurretBarrelCircularity(t,{requireMeasurement:true}).pass,'physically circular125mm stock');
+  assertHollowMuzzle(t.root,SOURCE.muzzle);
+  assert.ok(measureTurretBarrelCircularity(t,{requireMeasurement:true}).pass,'physically circular125mm stock');
 }
 function sourceForms(t){
   const hull=t.root.getObjectByName('hull');
@@ -84,4 +75,4 @@ for(const quality of ['high','low']){
   const t=createTank('t72bu_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{t.root.updateMatrixWorld(true);frames(t);bore(t);sourceForms(t);gearAndEra(t);}finally{t.dispose();}
 }
-console.log('t72buXGeometry: actual high/low source joints, closed tip over the recorded bore depth, crowns/drum air, native wheels and reactive backing pass; full visual gates separate');
+console.log('t72buXGeometry: actual high/low source joints, physical opening and recessed floor, crowns/drum air, native wheels and reactive backing pass; full visual gates separate');

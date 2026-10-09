@@ -45,7 +45,7 @@ assert.equal(count('skirt-cassette-stud'), 32);
 // cage rework (owner 2026-09-15, evening): posts on bolted base plates, a bent frame, welded lattice,
 // mesh walls on the flanks and the rear, struts to the rack
 assert.equal(count('cage-post'), 8); assert.equal(count('cage-foot'), 8); assert.equal(count('cage-bolt'), 32);
-assert.equal(count('cage-arm'), 8); assert.equal(count('cage-brace'), 8); assert.equal(count('cage-frame'), 8);
+assert.equal(count('cage-arm'), 6, 'six separate arms; two posts connect directly to the existing bend crossbar'); assert.equal(count('cage-brace'), 8); assert.equal(count('cage-frame'), 8);
 assert.equal(count('cage-rod'), 34 + 22, 'bent longitudinal rods and transverse rods over the whole roof');
 assert.equal(count('cage-mesh'), 22 * 2 + 17, 'flank and rear mesh rods'); assert.equal(count('cage-rail'), 5);
 assert.equal(count('cage-strut'), 2, 'struts tie the cage to the rack');
@@ -75,6 +75,10 @@ for (const foot of parts.filter((p) => p.part === 'cage-foot')) {
   const post = parts.find((p) => p.part === 'cage-post' && Math.abs((p.min[0] + p.max[0]) / 2 - (foot.min[0] + foot.max[0]) / 2) < .03
     && Math.abs((p.min[2] + p.max[2]) / 2 - (foot.min[2] + foot.max[2]) / 2) < .03);
   assert.ok(post && post.min[1] + TURRET[1] - turretRoofY(cx, cz) < .012, 'the post starts on its base plate');
+  const top = [(post.min[0] + post.max[0]) / 2, post.max[1], (post.min[2] + post.max[2]) / 2];
+  assert.ok(parts.some(p => ['cage-arm', 'cage-frame'].includes(p.part)
+    && top.every((v, axis) => v >= p.min[axis] - 1e-5 && v <= p.max[axis] + 1e-5)),
+  'every post must physically meet an arm or the full-width crossbar');
 }
 const cageFrame = parts.filter((p) => p.part === 'cage-frame');
 assert.ok(Math.min(...cageFrame.map((p) => p.min[1])) + turretFrameY > 3.10, 'the cage roof clears the commander\'s weapon station');

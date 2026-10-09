@@ -1,3 +1,4 @@
+import { lathedWheelSection } from './lathedWheelStock.ts';
 import { addModernFieldCage } from './modernFieldCage.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Leopard 2 lineage + KF51 procedural profiles (fidelity oracles:
@@ -5309,7 +5310,8 @@ export function buildLeo2A5(builder: object) {
     // 2.077..1.909 — the bare tube end AA-faded to 2.049..1.881, and a first
     // round cylZ collar overshot to 2.105. Asymmetric box: authored
     // 1.92..2.085 reads exactly the ref band (inside the ref box lid 6.031)
-    P.add('gun', KIT.box(0.19, 0.165, 0.11), 0, 0.0225, 4.51);
+    // Keep the full face around the bore: the generic box bevel cut into its lower rim.
+    P.add('gun', new THREE.BoxGeometry(0.19, 0.165, 0.11), 0, 0.0225, 4.51);
     // §B3.1 MUZZLE BORE (shadow-named mechanism, 3fca39b): rim + shadow disc
     // on the face-block front plane (4.565), riding the +0.012 tube axis.
     muzzleBore(P, { z: 4.565, r: 0.095, y: 0.012 });
@@ -5535,7 +5537,7 @@ export function buildLeo2A5(builder: object) {
               // r 0.32/0.315 — a 0.355 first cut bottomed 0.735 and cost 4 front
               // columns 0.08 each vs the ref's 0.787 line; 0.32 bottoms 0.77.
               [KIT.xform(KIT.cylX(0.320, 0.012, P.q ? 26 : 18), s * 1.730, 1.09, -3.19), discFace],   // sprocket face disc
-              [KIT.xform(KIT.cylX(0.290, 0.004, P.q ? 24 : 16), s * 1.7365, 1.09, -3.19), discDark],  // rim seam ring
+              [KIT.xform(lathedWheelSection([[-.002, .130], [-.002, .290], [.002, .290], [.002, .130]], P.q ? 24 : 16), s * 1.7365, 1.09, -3.19), discDark],  // rim seam ring
               [KIT.xform(KIT.cylX(0.130, 0.014, 12), s * 1.7315, 1.09, -3.19), discDark],             // hub cap
               [KIT.xform(KIT.cylX(0.315, 0.012, P.q ? 26 : 18), s * 1.7315, 1.11, 3.48), discFace],   // idler face disc
               [KIT.xform(KIT.cylX(0.285, 0.004, P.q ? 24 : 16), s * 1.738, 1.11, 3.48), discDark],

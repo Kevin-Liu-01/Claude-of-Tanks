@@ -1,3 +1,4 @@
+import { lathedWheelSection } from './lathedWheelStock.ts';
 import { addModernFieldCage } from './modernFieldCage.ts';
 import { beginAuxiliaryStation, captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
@@ -1893,8 +1894,9 @@ function addChallenger2WeaponTowerCradle(
     stationX(0.775), stationY(0.855), 0.282);
   P.addEquipment('turret', box(0.11, 0.105, 0.20),
     stationX(0.80), stationY(0.865), 0.20);
-  P.add('turretDark', cylX(0.022, 0.34, P.q ? 16 : 10),
-    stationX(0.98), stationY(0.910), 0.20);
+  // Coaxial jacket with an open bore: its flush rim surrounds the MG barrel.
+  P.add('turretDark', lathedWheelSection([[-.17,.018],[-.17,.022],[.17,.022],[.17,.018]], P.q ? 16 : 12),
+    stationX(0.98), stationY(0.925), 0.20);
   P.add('turretDark', cylX(0.034, 0.065, P.q ? 16 : 10),
     stationX(1.16), stationY(0.830), 0.20);
 }
