@@ -361,6 +361,9 @@ export interface VegetationRuntime {
   /** Checkpoint-only accounting; never force-drains unfinished visible grass. */
   getGrassWorkState(): VegetationGrassWorkState;
   setGroundCoverClearance(blocked: GroundCoverBlocked): void;
+  /** Ground lane (2026-10-06): the tufts' own shade (SWARD_CANOPY_GLSL: extinction, root sun, root sky, root lift);
+   * a probe or the census may set it. */
+  readonly swardShade: { value: THREE.Vector4 };
   update(
     deltaSeconds: number,
     cameraPosition: THREE.Vector3,
@@ -455,6 +458,25 @@ float cotShade = 1.0 - clamp( cotSunVis, 0.0, 1.0 );
 float cotShade = 1.0;
 #endif
 reflectedLight.indirectDiffuse = mix( cotIrr, vec3( cotL ) * vec3( 1.05, 1.0, 0.86 ), 0.75 * cotShade ) * cotAlb; }`;
+// the sward's own shade (copies of tallGrass.ts SWARD_LIFT_GLSL and SWARD_CANOPY_GLSL, and of TALL_GRASS.swardShade's
+// numbers; tallGrass.selftest pins them equal): a tuft's card height for cotSwardT
+const SWARD_LIFT_GLSL = /* glsl */ `diffuseColor.rgb *= mix( uSwardShade.w, 1.0, cotSwardT );`;
+const SWARD_CANOPY_GLSL = /* glsl */ `{
+#if defined( USE_CSM ) && defined( CSM_CASCADES )
+float cotSinE = uCotBounceSun.y;
+#else
+float cotSinE = 0.55;
+#endif
+float cotQ = uSwardShade.x / max( cotSinE, 0.25 );
+float cotE = exp( -cotQ );
+float cotI0 = cotQ > 1e-3 ? ( 1.0 - cotE ) / cotQ : 1.0;
+float cotI1 = cotQ > 1e-3 ? ( 1.0 - cotE * ( 1.0 + cotQ ) ) / ( cotQ * cotQ ) : 0.5;
+float cotPenMean = ( cotI0 - 0.72 * ( cotI0 - cotI1 ) ) / 0.64;
+float cotVis = 1.0 - smoothstep( 0.15, 0.40, fwidth( cotSwardT ) );
+float cotPen = exp( -cotQ * ( 1.0 - cotSwardT ) );
+reflectedLight.directDiffuse *= mix( 1.0, mix( uSwardShade.y, 1.0, cotPen ) / mix( uSwardShade.y, 1.0, cotPenMean ), cotVis );
+reflectedLight.indirectDiffuse *= mix( 1.0, mix( uSwardShade.z, 1.0, pow( cotSwardT, 0.7 ) ) / mix( uSwardShade.z, 1.0, 0.5024 ), cotVis ); }`;
+const SWARD_SHADE = Object.freeze({ extinction: 1.2, rootSun: 0.35, rootSky: 0.6, rootLift: 1.0 } as const);
 const HALF = 512;
 const CHUNKS = 8, CHUNK_SIZE = 128;
 // Performance pass: terrain splat/detail already carries the meadow at range;
@@ -3902,6 +3924,8 @@ function* vegetationBuildSteps(
     TREE_WIND_FLUTTER_M * treeWind.strength * (mobileTier ? TREE_WIND_MOBILE_SCALE.flutter : 1),
   ) };
   const uMoss = { value: resolveTrunkMoss(cfg) };
+  // ground lane (2026-10-06): the sward's own shade on the tufts' cards (as the tall grass's)
+  const uSwardShade = { value: new THREE.Vector4(SWARD_SHADE.extinction, SWARD_SHADE.rootSun, SWARD_SHADE.rootSky, SWARD_SHADE.rootLift) };
   // trees round 4 (the cost hold): fine wood's reach from the camera (GROWTH_WOOD_FINE_FAR; the phones keep their trunks)
   const uWoodFineFar = { value: mobileTier ? 1e9 : GROWTH_WOOD_FINE_FAR };
   // trees round 4 (the cost hold): a small shrub's thinning (FOLIAGE_SHRUB_THIN; 0 thins none — the phones)
@@ -3938,8 +3962,10 @@ function* vegetationBuildSteps(
     shader.uniforms.uGrassFar = { value: farDist };
     shader.uniforms.uSniperFade = uSniperFade;
     shader.uniforms.uCamFwd = uCamFwd;
+    shader.uniforms.uSwardShade = uSwardShade;
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
       '#include <common>\nuniform float uWindTime;\nuniform vec3 uCamPos;\nuniform float uGrassFar;\nuniform float uSniperFade;\nuniform vec3 uCamFwd;');
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nuniform vec4 uSwardShade;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`
       #include <begin_vertex>
       vec3 cotGrassRoot;
@@ -3996,12 +4022,14 @@ function* vegetationBuildSteps(
       #if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA )
         if (vColor.r < 0.0) diffuseColor.rgb = -vColor.rgb * (dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)) / 0.28);
         else diffuseColor *= vColor;
-      #endif`);
+      #endif
+      float cotSwardT = clamp( vMapUv.y, 0.0, 1.0 );
+      ${SWARD_LIFT_GLSL}`);
     // ground lane (2026-10-03, waves 13/14: "grass in shadow turns a saturated teal or indigo"): the shaded sward's light
     // as the tall grass takes it — the same text as tallGrass.ts SHADED_SWARD_GLSL (tallGrass.selftest compares them; a
     // copy keeps the carpet's module free of the tall-grass tier): after the chunk, as far as the blade is in shadow
     if (shader.fragmentShader.includes('#include <lights_fragment_end>')) {
-      shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_end>', `#include <lights_fragment_end>\n${SHADED_SWARD_GLSL}`);
+      shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_end>', `#include <lights_fragment_end>\n${SHADED_SWARD_GLSL}\n${SWARD_CANOPY_GLSL}`);
     }
     useAttributeNormal(shader);
     mipAlphaGuard(shader); // aa-r1: distance-stable blade coverage
@@ -4055,10 +4083,14 @@ function* vegetationBuildSteps(
         // thin blades survive their deep mips and the far fields keep the dark
         // tuft cover the 1049e4e pastures showed to ~300 m; the near carpet
         // keeps the crisp 0.44 edge beside the tracks.
-        // v8/v7: root-anchored shadow lookup; v9/v8 (ground lane): the crop tuft's colour branch; v10/v9: the shaded sky light desaturated
-        matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v11', 0.34),
-        matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v10'),
+        // v8/v7: root-anchored shadow lookup; v9/v8 (ground lane): the crop tuft's colour branch; v10/v9: the shaded sky light desaturated;
+        // v12/v11 (ground lane, 2026-10-06): the sward's own shade
+        matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v12', 0.34),
+        matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v11'),
       });
+      // ground lane (2026-10-06): the tufts' own shade, for a probe or the census
+      grassVariants[gv].matMid.userData.swardShade = uSwardShade;
+      grassVariants[gv].matNear.userData.swardShade = uSwardShade;
       yield { stage: 'grassPrep', fine: true };
     }
   }
@@ -8429,7 +8461,7 @@ function* vegetationBuildSteps(
     }
   }
   rimTrees.length = 0;
-  return { group, update, dispose, getGrassWorkState, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
+  return { group, update, dispose, getGrassWorkState, setWindTime, setSniperFade, setGroundCoverClearance, swardShade: uSwardShade, treeObstacles, concealers,
     crushTree, resetToppled, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _woodsMask: woodsMask,
     _rimMix: veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,

@@ -37,6 +37,8 @@ function compile(legacy) {
       const L = heightField._layout, noVeg = heightField._noVeg, _c = new THREE.Color();
       ${section('  const grassPerChunk =', '  const uWindTime =')}
       const grassVariants = [], grassTex = [null, null], grassFadeEnd = GRASS_FADE_END;
+      // the sward's own shade (visual/ground-blade-shade): the material uniform the variants carry
+      const uSwardShade = { value: new THREE.Vector4() };
       const makeTuftFarGeometry = (w, h) => buildGrassTuftGeometry(w, h, 1, 1.5);
       const makeGrassMaterial = () => new THREE.MeshLambertMaterial();
       ${section('  function* buildGrassVariants():', '  yield* buildGrassVariants();')}

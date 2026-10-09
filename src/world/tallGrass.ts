@@ -103,6 +103,9 @@ export interface TallGrass {
   /** Sniper scope: fade the blades inside the corridor (0 = arcade, 1 = scoped). */
   setSniperFade(fraction: number, immediate?: boolean): void;
   getState(): TallGrassState;
+  /** Ground lane (2026-10-06): the sward's own shade (SWARD_CANOPY_GLSL) — (extinction, the root's sun floor, the root's
+   * sky, the root's albedo lift), shared by both rings; a probe or the census may set it. */
+  readonly swardShade: { value: THREE.Vector4 };
   dispose(): void;
 }
 
@@ -114,7 +117,7 @@ export const TALL_GRASS = Object.freeze({
                       // of Tarkhan's 44 k clumps sat over the tier's 1 ms budget on the toggle bench)
     fade: Object.freeze([-1, 0, 38, 46] as const), // (in0, in1, out0, out1) m — a strict in-ramp (smoothstep needs edge0 < edge1)
     cap: 56000,       // Tarkhan's 1.2 × steppe filled 40 000 and dropped its ring's far cells (the first sheets)
-    programKey: 'world-tall-grass-near-v4', // v3 (ground lane): the shaded sward's light neutralised after the chunk; v4: the blade's lean
+    programKey: 'world-tall-grass-near-v5', // v3 (ground lane): the shaded sward's light neutralised after the chunk; v4: the blade's lean; v5: the sward's own shade
   }),
   far: Object.freeze({
     cellM: 24,
@@ -122,7 +125,7 @@ export const TALL_GRASS = Object.freeze({
     perM2: 0.20,      // single wide blades per square metre (0.30 on the first sheet massed into a dark carpet at 30–120 m)
     fade: Object.freeze([34, 46, 192, 240] as const),
     cap: 84000,       // covers all 529 cells at the maximum 1.3 density without dropping the outer ring
-    programKey: 'world-tall-grass-far-v5', // v4 (ground lane): the shaded sward's light neutralised after the chunk; v5: the blade's lean
+    programKey: 'world-tall-grass-far-v6', // v4 (ground lane): the shaded sward's light neutralised after the chunk; v5: the blade's lean; v6: the sward's own shade
   }),
   /** Blade width multiplier of the far ring (one strip carries the read), the root-to-tip gradient exponents and the
    * far ring's lift: the near clump keeps a dark root; the far blade — seen from above, mostly root in screen space,
@@ -135,6 +138,11 @@ export const TALL_GRASS = Object.freeze({
   bladeLift: Object.freeze({ near: 1.0, far: 1.2 } as const),
   /** How much darker a crushed blade stays while the bruise lasts (the lane behind the tracks). */
   crushDarken: 0.28,
+  /** Ground lane (2026-10-06, blade-scale shadowing): the sward's own shade (SWARD_CANOPY_GLSL) — the sun's extinction
+   * down the canopy (per blade height, at a zenith sun; the path lengthens as 1 / sin of the sun's elevation), the sun's
+   * floor at the root (no blade goes black: wave 71's "black stems"), the sky a root still sees, and the root's albedo
+   * lift (the share of the old base-to-tip gradient the light now carries). */
+  swardShade: Object.freeze({ extinction: 1.2, rootSun: 0.35, rootSky: 0.6, rootLift: 1.0 } as const),
   cacheCells: 720,  // the 529-cell far ring plus recently visited columns; bounded and larger than the active ring
   // a 12 m column of near cells (~4.7 k candidates at density 1) refills in ~40 frames at this budget — ahead of a
   // hull at road speed — for a fraction of the frame's CPU; a cold ring (the first frames) takes the larger one
@@ -258,6 +266,8 @@ interface SharedUniforms {
   uGrassTip: { value: THREE.Vector3 };
   /** Ground lane: the biome's cured-blade colour (its `dry`), the colour a dead blade takes from the tip down. */
   uGrassDry: { value: THREE.Vector3 };
+  /** Ground lane (2026-10-06): the sward's own shade — TALL_GRASS.swardShade (extinction, root sun, root sky, root lift). */
+  uSwardShade: { value: THREE.Vector4 };
 }
 
 /** The shaded sward's light (both grass tiers append it after `lights_fragment_end`): see tallGrassHook. */
@@ -268,6 +278,39 @@ float cotShade = 1.0 - clamp( cotSunVis, 0.0, 1.0 );
 float cotShade = 1.0;
 #endif
 reflectedLight.indirectDiffuse = mix( cotIrr, vec3( cotL ) * vec3( 1.05, 1.0, 0.86 ), 0.75 * cotShade ) * cotAlb; }`;
+
+/**
+ * Ground lane (2026-10-06, blade-scale shadowing; both grass tiers carry the same two lines — vegetation.ts keeps a copy,
+ * tallGrass.selftest compares them). A sward shades itself: the sun reaches a blade's height cotSwardT (0 root .. 1 tip)
+ * through the blades above it, Beer–Lambert down the canopy, the path lengthening as the sun drops (1 / sin of its
+ * elevation, the rig's uCotBounceSun.y, held at 0.25 under ~15° so a low sun's sward is not halved — the trees lane's
+ * review), floored at the root (uSwardShade.y: no blade goes black); the sky a blade sees
+ * narrows toward the root (uSwardShade.z there). The albedo's own base-to-tip gradient gives back uSwardShade.w at the
+ * root (SWARD_LIFT_GLSL, in color_fragment), as the light now carries that share. ALU only.
+ * (hold 62's census, Verdant chase: drawn as a plain loss the shade darkened the near sward a quarter for +1 % of local
+ * contrast) Each term is divided by its own mean over the blade's area — a blade narrows 72 % to its tip (the strip's
+ * taper), so the mean weights t by (1 − 0.72 t): the sun's exactly ((I0 − 0.72 (I0 − I1)) / 0.64 with I0 = (1 − e^−q) / q,
+ * I1 = (1 − e^−q (1 + q)) / q² of the extinction q at that sun), the sky's t^0.7 at 0.5024 — so the shade moves light
+ * from a blade's foot to its tip and keeps the sward's tone (hold 64: the height-mean left the near sward 6 % dark).
+ * And a blade the pixel spans (its height fraction changing by 0.15–0.40 a pixel) takes its mean: no shimmer at range
+ * (hold 64: +1–2 points of the one-pixel jitter's flips).
+ */
+export const SWARD_LIFT_GLSL = /* glsl */ `diffuseColor.rgb *= mix( uSwardShade.w, 1.0, cotSwardT );`;
+export const SWARD_CANOPY_GLSL = /* glsl */ `{
+#if defined( USE_CSM ) && defined( CSM_CASCADES )
+float cotSinE = uCotBounceSun.y;
+#else
+float cotSinE = 0.55;
+#endif
+float cotQ = uSwardShade.x / max( cotSinE, 0.25 );
+float cotE = exp( -cotQ );
+float cotI0 = cotQ > 1e-3 ? ( 1.0 - cotE ) / cotQ : 1.0;
+float cotI1 = cotQ > 1e-3 ? ( 1.0 - cotE * ( 1.0 + cotQ ) ) / ( cotQ * cotQ ) : 0.5;
+float cotPenMean = ( cotI0 - 0.72 * ( cotI0 - cotI1 ) ) / 0.64;
+float cotVis = 1.0 - smoothstep( 0.15, 0.40, fwidth( cotSwardT ) );
+float cotPen = exp( -cotQ * ( 1.0 - cotSwardT ) );
+reflectedLight.directDiffuse *= mix( 1.0, mix( uSwardShade.y, 1.0, cotPen ) / mix( uSwardShade.y, 1.0, cotPenMean ), cotVis );
+reflectedLight.indirectDiffuse *= mix( 1.0, mix( uSwardShade.z, 1.0, pow( cotSwardT, 0.7 ) ) / mix( uSwardShade.z, 1.0, 0.5024 ), cotVis ); }`;
 
 /** The blade shader: every dimension from the instance attribute, the press from the field, the shadow at the root. */
 function tallGrassHook(shared: SharedUniforms, fade: readonly [number, number, number, number], bendRad: number,
@@ -283,6 +326,7 @@ function tallGrassHook(shared: SharedUniforms, fade: readonly [number, number, n
     shader.uniforms.uGrassBase = shared.uGrassBase;
     shader.uniforms.uGrassTip = shared.uGrassTip;
     shader.uniforms.uGrassDry = shared.uGrassDry;
+    shader.uniforms.uSwardShade = shared.uSwardShade;
     shader.uniforms.uGrassFade = { value: new THREE.Vector4(fade[0], fade[1], fade[2], fade[3]) };
     shader.uniforms.uBend = { value: bendRad };
     shader.uniforms.uBladeGamma = { value: bladeGamma };
@@ -366,7 +410,7 @@ varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;`);
       #endif
       #include <shadowmap_vertex>`);
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\nuniform vec3 uGrassBase; uniform vec3 uGrassTip; uniform vec3 uGrassDry; uniform float uBladeGamma; uniform float uBladeLift; varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;');
+      '#include <common>\nuniform vec3 uGrassBase; uniform vec3 uGrassTip; uniform vec3 uGrassDry; uniform float uBladeGamma; uniform float uBladeLift; uniform vec4 uSwardShade; varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;');
     // both faces of a strip light the same way (no back-face flip) and the root is dark under the sward
     // ground lane (2026-10-03, waves 13/14: "grass in shadow turns a saturated teal or indigo" — the tank's shadow on the
     // sward): a shaded blade's light is the sky's own — strongly blue, cooled again by the engine's shadow dim, and a 1.4
@@ -377,12 +421,14 @@ varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;`);
     // engine's dim and bounce (a lit program carries the anchor; the receipts' bare stand-ins do not).
     if (shader.fragmentShader.includes('#include <lights_fragment_end>')) {
       shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_end>',
-        `#include <lights_fragment_end>\n${SHADED_SWARD_GLSL}`);
+        `#include <lights_fragment_end>\n${SHADED_SWARD_GLSL}\n${SWARD_CANOPY_GLSL}`);
     }
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <normal_fragment_begin>',
       '#include <normal_fragment_begin>\nnormal = normalize( vNormal );\nnonPerturbedNormal = normal;');
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <color_fragment>',
       `#include <color_fragment>\ndiffuseColor.rgb *= mix(uGrassBase, uGrassTip, pow(vBladeT, uBladeGamma)) * uBladeLift * (1.0 - ${TALL_GRASS.crushDarken.toFixed(2)} * vBladeCrush);`
+      // ground lane (2026-10-06): the blade's height for the sward's own shade, and the root's albedo lift
+      + `\nfloat cotSwardT = clamp( vBladeT, 0.0, 1.0 );\n${SWARD_LIFT_GLSL}`
       // ground lane: a sward is never one green — each blade a shade lighter or darker, a fifth cured to straw from the
       // tip down (the dead leaves of last season standing in the new)
       + `\n{ float cure = smoothstep(0.78, 0.84, vBladeTone) * (0.55 + 0.45 * vBladeT);`
@@ -416,6 +462,8 @@ function makeSharedUniforms(): SharedUniforms {
     uGrassBase: { value: new THREE.Vector3(0.052, 0.078, 0.030) },
     uGrassTip: { value: new THREE.Vector3(0.092, 0.160, 0.045) },
     uGrassDry: { value: new THREE.Vector3(0.27, 0.22, 0.095) },
+    uSwardShade: { value: new THREE.Vector4(TALL_GRASS.swardShade.extinction, TALL_GRASS.swardShade.rootSun,
+      TALL_GRASS.swardShade.rootSky, TALL_GRASS.swardShade.rootLift) },
   };
 }
 const GROUND_PRESSURE_WINDOW_FALLBACK = 96;
@@ -474,6 +522,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     if (options.setupMaterial) options.setupMaterial(material, hook);
     else material.onBeforeCompile = hook as unknown as THREE.MeshLambertMaterial['onBeforeCompile'];
     material.customProgramCacheKey = () => programKey;
+    material.userData.swardShade = shared.uSwardShade; // (a probe or the census sets the sward's own shade through it)
     materials.push(material);
     return material;
   }
@@ -886,6 +935,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       if (immediate) shared.uSniperFade.value = sniperTarget;
     },
     getState,
+    swardShade: shared.uSwardShade,
     dispose,
   };
 }
