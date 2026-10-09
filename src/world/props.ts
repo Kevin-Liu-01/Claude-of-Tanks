@@ -65,7 +65,7 @@ import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSp
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
-import { FORT_PRINT_MEAN, FORT_PRINT_SEED, buildPillbox, fortFor } from './maps/fortKit.ts'; // the fortifications lane: the pillbox
+import { FORT_PRINT_MEAN, FORT_PRINT_SEED, buildPillbox, fortFor, pillboxFooting } from './maps/fortKit.ts'; // the fortifications lane: the pillbox
 import {
   FIELD_STONE_PRINT_SEED, liftFieldStoneMean, paintFieldStoneBuffers as paintFieldStoneBuffersInline, type FieldStoneBuffers,
   type FieldStoneLithology,
@@ -7984,6 +7984,82 @@ ${snowCap ? `
     }
   }
   placeFieldWorks();
+
+  // the fortifications lane (2026-10-09; gauntlet wave 315: pillboxes "on brown plinths or on flat brown patches that
+  // look pasted onto the grass", "weak footing"): each pillbox's earth bank meets the battlefield through the ground's
+  // own material, a fillet from the bank's toe (fortKit.ts pillboxFooting: the same rows the bank is built from) out
+  // over the terrain, so the bank grows out of the ground round it. Merged into the boulders' bed cells (the ground's
+  // material, one draw a 512 m cell), on desktop as the beds are. The fillet stands under the bank's toe height and
+  // the toe keeps its place when the bank slumps (a broken pillbox), so neither state leaves a lip in the air.
+  if (fort && !mobileProps && P.structureVariants?.bunker === undefined) {
+    const footing = pillboxFooting(fort.style, fort.tones, fort.seed);
+    const meshAt = (x: number, z: number): number => terrainNearMeshHeightAt(nearMeshVertexHeight, x, z);
+    const foldAt = (heightField as { _foldAt?: (x: number, z: number) => number })._foldAt;
+    const foldByte = (x: number, z: number): number => {
+      if (!foldAt) return 0;
+      const f = foldAt(x, z);
+      return Math.max(-127, Math.min(127, Math.round((f > 1 ? 1 : f < -1 ? -1 : f) * 127)));
+    };
+    const fillets: THREE.BufferGeometry[] = [];
+    for (const rec of destructibles) {
+      if (rec.kind !== 'bunker') continue;
+      const c = Math.cos(rec.yaw), sn = Math.sin(rec.yaw);
+      const toWorld = (p: readonly number[]): [number, number, number] => [rec.x + p[0] * c + p[2] * sn, rec.y + p[1], rec.z - p[0] * sn + p[2] * c];
+      const pos: number[] = [], fold: number[] = [], idx: number[] = [];
+      const RINGS = 5;
+      for (const f of footing) {
+        // the bank's surface near its toe (t 0.88 and 1.0), then out over the ground, the last ring tucked under it
+        const inner = toWorld(f.rows[5]), toe = toWorld(f.rows[6]);
+        const ox = f.nx * c + f.nz * sn, oz = -f.nx * sn + f.nz * c;
+        const ring: Array<[number, number, number]> = [
+          [inner[0], Math.max(inner[1], meshAt(inner[0], inner[2])) + 0.02, inner[2]],
+          [toe[0], Math.max(toe[1], meshAt(toe[0], toe[2])) + 0.025, toe[2]],
+          [toe[0] + ox * 0.4, 0, toe[2] + oz * 0.4],
+          [toe[0] + ox * 0.85, 0, toe[2] + oz * 0.85],
+          [toe[0] + ox * 1.3, 0, toe[2] + oz * 1.3],
+        ];
+        ring[2][1] = meshAt(ring[2][0], ring[2][2]) + 0.03;
+        ring[3][1] = meshAt(ring[3][0], ring[3][2]) + 0.012;
+        ring[4][1] = meshAt(ring[4][0], ring[4][2]) - 0.05;
+        for (const q of ring) { pos.push(q[0], q[1], q[2]); fold.push(foldByte(q[0], q[2])); }
+      }
+      const K = footing.length;
+      for (let k = 0; k < K; k++) {
+        const a = k * RINGS, b = ((k + 1) % K) * RINGS;
+        for (let j = 0; j < RINGS - 1; j++) idx.push(a + j, a + j + 1, b + j, a + j + 1, b + j + 1, b + j);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('fold', new THREE.BufferAttribute(Int8Array.from(fold), 1, true));
+      g.setIndex(idx);
+      g.computeVertexNormals();
+      // wound to face up, and the ground's slope laws read near-ground normals (the b44 fillet lesson: a fillet lit by
+      // its own steep normal lost the fields and drew a tan ring): two fifths of its own form over the ground's up
+      const nrm = g.getAttribute('normal') as THREE.BufferAttribute;
+      let up = 0;
+      for (let i = 0; i < nrm.count; i++) up += nrm.getY(i);
+      if (up < 0) { for (let i = 0; i < idx.length; i += 3) { const t = idx[i + 1]; idx[i + 1] = idx[i + 2]; idx[i + 2] = t; } g.setIndex(idx); g.computeVertexNormals(); }
+      for (let i = 0; i < nrm.count; i++) {
+        const nx = nrm.getX(i) * 0.4, ny = nrm.getY(i) * 0.4 + 0.6, nz = nrm.getZ(i) * 0.4, l = Math.hypot(nx, ny, nz) || 1;
+        nrm.setXYZ(i, nx / l, ny / l, nz / l);
+      }
+      g.computeBoundingSphere();
+      fillets.push(g);
+    }
+    if (fillets.length) {
+      const beds = (group.userData.rockBeds as THREE.BufferGeometry[] | undefined) ?? [];
+      for (const g of fillets) {
+        const cg = g.boundingSphere!.center, key = bedCellKey(cg.x, cg.z);
+        const at = beds.findIndex((b) => { if (!b.boundingSphere) b.computeBoundingSphere(); return bedCellKey(b.boundingSphere!.center.x, b.boundingSphere!.center.z) === key; });
+        const host = at >= 0 ? beds[at] : null;
+        const merged = host && host.index && host.getAttribute('normal') && host.getAttribute('fold') && Object.keys(host.attributes).length === 3
+          ? mergeGeometries([host, g], false) : null;
+        if (host && merged) { host.dispose(); g.dispose(); merged.computeBoundingSphere(); beds[at] = merged; }
+        else beds.push(g);
+      }
+      group.userData.rockBeds = beds;
+    }
+  }
 
   // --- knocked-out TANK WRECKS: real roster vehicles, baked static ----------
   yield;

@@ -558,8 +558,8 @@ interface BermSpec {
 const BERM_T = [0, 0.14, 0.32, 0.52, 0.72, 0.88, 1.0, 1.1];
 const bermProfile = (t: number): number => (t >= 1 ? 0 : Math.pow(Math.cos(t * Math.PI / 2), 1.25));
 
-/** The earth banked against the walls: rings out from the wall, its toe sunk below grade (a skirt), turf and earth. */
-function berm(m: Mesh, B: BermSpec): void {
+/** The berm's rings round the plan (its samples, the rows out from the wall to the skirt, the smoothed heights). */
+function bermGrid(B: BermSpec): { samples: PerimeterSample[]; grid: V3[][]; hs: number[] } {
   const samples = perimeter(B.plan, 0.32);
   const K = samples.length, R = BERM_T.length + 1;
   const grid: V3[][] = [];
@@ -582,10 +582,12 @@ function berm(m: Mesh, B: BermSpec): void {
         const d = t * run + (t > 0 ? jitter * 0.22 * t : -0.03);
         let hh = h0 * bermProfile(t);
         if (t > 0 && t < 1) hh += (vnoise(s.x * 3.7, t * 4, s.z * 3.7, 0.7, B.seed + 5) - 0.5) * 0.09 * Math.min(1, h0 * 2);
-        if (B.slump > 0) {
-          // slumped: the crest down to the cap, the bank spread a little, a crater bite in the front
-          const crater = smooth(1.4, 0.2, Math.hypot(s.x - 1.2, s.z - 2.6)) * B.slump;
-          hh = Math.min(hh * (1 - 0.45 * B.slump) * (1 - crater * 0.6), B.cap * (1 - 0.15 * t));
+        if (B.slump > 0 && t < 0.86) {
+          // slumped: the crest down to the cap, a crater bite in the front; the toe (where the ground's fillet meets it,
+          // props.ts) stays as it lay
+          const crater = smooth(1.4, 0.2, Math.hypot(s.x - 1.2, s.z - 2.6)) * B.slump * (1 - t);
+          const toe = h0 * bermProfile(0.86);
+          hh = Math.max(toe, Math.min(hh * (1 - 0.45 * B.slump) * (1 - crater * 0.6), B.cap * (1 - 0.15 * t)));
         }
         x = s.x + s.nx * d; z = s.z + s.nz * d;
         y = B.grade + (t >= 1.05 ? -0.06 : hh);
@@ -599,6 +601,13 @@ function berm(m: Mesh, B: BermSpec): void {
     }
     grid.push(row);
   }
+  return { samples, grid, hs };
+}
+
+/** The earth banked against the walls: rings out from the wall, its toe sunk below grade (a skirt), turf and earth. */
+function berm(m: Mesh, B: BermSpec): void {
+  const { samples, grid, hs } = bermGrid(B);
+  const K = samples.length, R = BERM_T.length + 1;
   // smooth normals over the grid
   const nrm: V3[][] = grid.map((row, i) => row.map((_, r) => {
     const a = grid[(i + 1) % K][r], b = grid[(i - 1 + K) % K][r];
@@ -672,14 +681,14 @@ function edgeRole(_nx: number, nz: number): 'front' | 'rear' | 'flank' {
 
 interface BuildOpts { tones: FortTones; seed: number; broken: boolean }
 
-/**
- * The Regelbau casemate (and the hexagonal and DOT forms through `form`): the body with its embrasures, the slab, the
- * entrance, the berm and the roof's turf. `broken`: the destroyed state of the same work.
- */
-function buildConcretePillbox(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): THREE.BufferGeometry {
-  const m = new Mesh();
-  const rng = mulberry32(O.seed);
-  const T = O.tones;
+interface ConcreteSlit { edge: number; s: number; y: number; w: number; h: number; steps: number; plate: boolean }
+interface ConcreteLayout {
+  plan: Plan; wallTop: number; slab: number; overhang: number;
+  slits: Weather['slits']; slitList: ConcreteSlit[]; doorEdge: number; doorS: number; doorLen: number;
+}
+
+/** A concrete form's plan, heights, embrasures and door (no draws: the builders and the footing read the same). */
+function concreteLayout(style: 'regelbau' | 'dot' | 'hex'): ConcreteLayout {
   const plan = ensureOutward(style === 'hex' ? polygon(6, 2.62) : style === 'dot' ? roundFront(5.1, 4.3) : chamferedRect(5.0, 4.4, 0.42));
   const wallTop = style === 'dot' ? 1.72 : style === 'hex' ? 1.78 : 1.84;
   const slab = style === 'dot' ? 0.72 : style === 'hex' ? 0.5 : 0.6;
@@ -687,8 +696,7 @@ function buildConcretePillbox(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): 
   const k = plan.length;
   // the embrasures: per edge, by role
   const slits: Weather['slits'] = [];
-  type Slit = { edge: number; s: number; y: number; w: number; h: number; steps: number; plate: boolean };
-  const slitList: Slit[] = [];
+  const slitList: ConcreteSlit[] = [];
   let doorEdge = -1, doorS = 0, doorLen = 0;
   for (let i = 0; i < k; i++) {
     const a = plan[i], b = plan[(i + 1) % k], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -712,6 +720,20 @@ function buildConcretePillbox(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): 
     const ux = (b[0] - a[0]) / len, uz = (b[1] - a[1]) / len;
     slits.push({ x: a[0] + ux * sl.s, y: sl.y, z: a[1] + uz * sl.s, hw: sl.w / 2, hh: sl.h / 2, nx: -uz, nz: ux });
   }
+  return { plan, wallTop, slab, overhang, slits, slitList, doorEdge, doorS, doorLen };
+}
+
+/**
+ * The Regelbau casemate (and the hexagonal and DOT forms through `form`): the body with its embrasures, the slab, the
+ * entrance, the berm and the roof's turf. `broken`: the destroyed state of the same work.
+ */
+function buildConcretePillbox(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): THREE.BufferGeometry {
+  const m = new Mesh();
+  const rng = mulberry32(O.seed);
+  const T = O.tones;
+  const L = concreteLayout(style);
+  const { plan, wallTop, slab, overhang, slits, slitList, doorEdge, doorS, doorLen } = L;
+  const k = plan.length;
   const W: Weather = { tones: T, drip: wallTop, slits, grade: GRADE, seed: (O.seed * 31) ^ 0x51ab, burn: O.broken ? 1 : 0 };
   const conc = concreteShade(W);
   const reveal = revealShade(W, conc);
@@ -872,12 +894,23 @@ function buildConcretePillbox(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): 
   }
 
   // ---- the berm
+  berm(m, concreteBermSpec(style, L, T, O.seed, O.broken));
+
+  // ---- the destroyed state's rubble, at a real volume, in the concrete's own colours (none higher than a hull crosses)
+  if (O.broken) rubble(m, plan, O, rng);
+
+  return m.geometry();
+}
+
+/** A concrete form's berm: to the sill in front (cut down under each embrasure), higher on the flanks, open behind. */
+function concreteBermSpec(style: 'regelbau' | 'dot' | 'hex', L: ConcreteLayout, T: FortTones, seed: number, broken: boolean): BermSpec {
+  const { plan, slits } = L;
   const hFront = style === 'dot' ? 1.15 : style === 'hex' ? 0.78 : 0.98;
   const hFlank = style === 'dot' ? 1.3 : style === 'hex' ? 0.88 : 1.16;
   const notch = slits.filter((sl) => edgeRole(sl.nx, sl.nz) !== 'rear');
-  berm(m, {
-    plan, run: style === 'dot' ? 1.3 : 1.42, grade: GRADE, seed: O.seed + 111, tones: T,
-    slump: O.broken ? 1 : 0, cap: 0.48,
+  return {
+    plan, run: style === 'dot' ? 1.3 : 1.42, grade: GRADE, seed: seed + 111, tones: T,
+    slump: broken ? 1 : 0, cap: 0.48,
     height: (s) => {
       const role = edgeRole(s.nx, s.nz);
       let h = role === 'front' ? hFront : role === 'flank' ? hFlank : 0;
@@ -895,12 +928,7 @@ function buildConcretePillbox(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): 
       }
       return Math.max(0, h);
     },
-  });
-
-  // ---- the destroyed state's rubble, at a real volume, in the concrete's own colours (none higher than a hull crosses)
-  if (O.broken) rubble(m, plan, O, rng);
-
-  return m.geometry();
+  };
 }
 
 /** A blast wall: a slab on its foot `len` long along `u`, its face toward `n`. */
@@ -1088,22 +1116,35 @@ function rubble(m: Mesh, plan: Plan, O: BuildOpts, rng: Rng): void {
 // ---------------------------------------------------------------------------------------------------------------
 // the log-and-earth bunker (DZOT, the Japanese bunker, the maneuvers' dugout)
 
+const LOG_W = 4.6, LOG_D = 3.8, LOG_SLIT_Y = 0.86, LOG_SLIT_HW = 0.85, LOG_SLIT_HH = 0.15;
+function logEarthBermSpec(T: FortTones, seed: number, broken: boolean): BermSpec {
+  return {
+    plan: ensureOutward(chamferedRect(LOG_W + 0.4, LOG_D + 0.4, 0.3)), run: 1.4, grade: GRADE, seed: seed + 11, tones: T,
+    slump: broken ? 1 : 0, cap: 0.48,
+    height: (s) => {
+      const role = edgeRole(s.nx, s.nz);
+      if (role === 'rear') return Math.abs(s.x) > 1.1 ? 0.95 * smooth(1.1, 1.9, Math.abs(s.x)) : 0;
+      if (role === 'front') return Math.abs(s.x) < LOG_SLIT_HW + 0.4 ? LOG_SLIT_Y - LOG_SLIT_HH - 0.1 : 1.1;
+      return 1.15;
+    },
+  };
+}
+
 function buildLogEarthPillbox(O: BuildOpts): THREE.BufferGeometry {
   const m = new Mesh();
   const rng = mulberry32(O.seed);
   const T = O.tones;
-  const W = 4.6, D = 3.8, X = W / 2, Z = D / 2;
-  const plan = ensureOutward(chamferedRect(W + 0.4, D + 0.4, 0.3));
+  const W = LOG_W, D = LOG_D, X = W / 2, Z = D / 2;
   const bark: Shade = (p) => mul(T.timber, 0.75 + vnoise(p[0] * 1.3, p[1] * 6, p[2] * 1.3, 0.25, O.seed + 3) * 0.45);
-  const endGrain: Shade = () => mix(T.timber, [0.32, 0.25, 0.16], 0.55);
+  const endGrain: Shade = (p) => mul(mix(T.timber, [0.2, 0.15, 0.09], 0.4), 0.8 + vnoise(p[0] * 7, p[1] * 7, p[2] * 7, 0.3, O.seed + 5) * 0.35);
   const r = 0.13;
   const wallTop = 1.32;
-  const slitY = 0.86, slitHW = 0.85, slitHH = 0.15;
+  const slitY = LOG_SLIT_Y, slitHW = LOG_SLIT_HW, slitHH = LOG_SLIT_HH;
   // walls of horizontal logs: front (+z) with the slit, the flanks, the rear with the doorway gap
   const courses = Math.floor((wallTop - FOOT * 0.3) / (2 * r * 0.92));
   for (let cI = 0; cI < courses; cI++) {
     const y = FOOT * 0.3 + r + cI * 2 * r * 0.92;
-    if (O.broken && y > 0.62 + (cI % 2) * 0.12) continue;
+    if (O.broken && y > 0.36 + (cI % 2) * 0.08) continue;
     const j = (rng() - 0.5) * 0.12;
     // front: two logs either side of the slit where the slit's course runs
     if (Math.abs(y - slitY) < slitHH + r * 0.5) {
@@ -1123,13 +1164,9 @@ function buildLogEarthPillbox(O: BuildOpts): THREE.BufferGeometry {
       const x = -X - 0.1 + (i * (W + 0.2)) / 17;
       log(m, [x, wallTop + r, -Z - 0.35], [x, wallTop + r, Z + 0.45], r * 0.95, 6, bark, endGrain);
     }
-    // the mound over the roof
-    const mound: BermSpec = {
-      plan: ensureOutward(chamferedRect(W - 0.2, D - 0.2, 0.5)), run: 1.0, grade: wallTop + 2 * r, seed: O.seed + 7, tones: T,
-      slump: 0, cap: 9, height: () => 0.62,
-    };
-    berm(m, mound);
-    roofCover(m, ensureOutward(chamferedRect(W - 0.2, D - 0.2, 0.5)), wallTop + 2 * r + 0.55, 0.12, 0.0, T, O.seed + 9);
+    // the earth over the roof: a turfed dome from the eaves (the roof logs' ends left showing at the front) to 0.6 m
+    const roofPlan: Plan = ensureOutward([[-X - 0.3, -Z - 0.3], [X + 0.3, -Z - 0.3], [X + 0.3, Z + 0.05], [-X - 0.3, Z + 0.05]]);
+    roofCover(m, roofPlan, wallTop + 2 * r - 0.04, 0.62, -0.06, T, O.seed + 9);
   } else {
     // the roof down: logs fallen in and thrown, splintered
     for (let i = 0; i < 12; i++) {
@@ -1139,15 +1176,7 @@ function buildLogEarthPillbox(O: BuildOpts): THREE.BufferGeometry {
     }
   }
   // the bank all round to the slit, open at the rear door
-  berm(m, {
-    plan, run: 1.4, grade: GRADE, seed: O.seed + 11, tones: T, slump: O.broken ? 1 : 0, cap: 0.48,
-    height: (s) => {
-      const role = edgeRole(s.nx, s.nz);
-      if (role === 'rear') return Math.abs(s.x) > 1.1 ? 0.95 * smooth(1.1, 1.9, Math.abs(s.x)) : 0;
-      if (role === 'front') return Math.abs(s.x) < slitHW + 0.4 ? slitY - slitHH - 0.1 : 1.1;
-      return 1.15;
-    },
-  });
+  berm(m, logEarthBermSpec(T, O.seed, O.broken));
   if (O.broken) {
     for (let i = 0; i < 10; i++) lump(m, (rng() - 0.5) * 4, GRADE + 0.08, (rng() - 0.5) * 3.4, 0.3 + rng() * 0.4, 0.22, 0.3 + rng() * 0.4, rng, (p) => mul(T.earth, 0.8 + vnoise(p[0], 0, p[2], 0.2, 5) * 0.3), false);
   }
@@ -1225,6 +1254,19 @@ export function fortFor(mapId: string): { style: PillboxStyle; tones: FortTones;
       bag: hexLin(e.b ?? W_BAG), age: e.age, arid: !!e.arid },
   };
 }
+
+/**
+ * The footing of a map's intact pillbox, in its own frame (+z forward, y over its base): per perimeter sample of its
+ * berm, the bank's surface points out from the wall (rows t = BERM_T: the crest at the wall to the toe and the skirt)
+ * and the outward direction; where there is no bank (the open rear), the wall's foot. props.ts lays the ground's own
+ * material over the toe from these (a fillet from the bank onto the terrain), so the bank grows out of the ground.
+ */
+export function pillboxFooting(style: PillboxStyle, tones: FortTones, seed: number): Array<{ rows: V3[]; nx: number; nz: number; h: number }> {
+  const B = style === 'logearth' ? logEarthBermSpec(tones, seed, false) : concreteBermSpec(style, concreteLayout(style), tones, seed, false);
+  const { samples, grid, hs } = bermGrid(B);
+  return samples.map((s, i) => ({ rows: grid[i], nx: s.nx, nz: s.nz, h: hs[i] }));
+}
+export const FORT_GRADE = GRADE;
 
 /** Default tones (a temperate map); props.ts passes each map's. */
 export const TEMPERATE_TONES: FortTones = {
