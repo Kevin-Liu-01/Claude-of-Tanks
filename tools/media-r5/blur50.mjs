@@ -53,8 +53,11 @@ export const FRAMES = [
     { set: 'monsoon-morning-ford', shot: { durMs: 2400, speed: 8, cam: RIG.follow({ side: [8.4, 8.1], along: [1.2, 0.8], lift: 0.4, fov: 30, look: [0, -0.8, 0.55] }) }, tMs: 1300, exposureMs: 33 }),
   S(18, 'b18-crane-ice', 'Crane rise', 'Crane rising behind the column: the lake opens beneath the KF51s',
     { set: 'glacier-dawn-lake', film: 't06-lake-crane', tMs: 2200, exposureMs: 33 }),
+  // 2026-10-08 (the fifty frames' review on PR #9's maps): the set's gorge-wide pan held the hero 111 m out, a sliver on
+  // the deck. Now from the gorge itself: a long lens 60 m off the viaduct and 7 m under its deck (top 1.7 m, absolute
+  // heights), panning up at the column against the sky with the arches below
   S(19, 'b19-viaduct-pan', 'Panning shot', 'C2 Ariete column on the 200 m viaduct, panned from the gorge',
-    { set: 'aegis-morning-viaduct', film: 't07-viaduct-pan', tMs: 1600, exposureMs: 40 }),
+    { set: 'aegis-morning-viaduct', shot: { durMs: 3200, speed: 6, absY: true, cam: RIG.pan({ side: -60, along: 6, lift: -5, fov: 13, look: [0, 4, 3.2] }) }, tMs: 1600, exposureMs: 40 }),
   S(20, 'b20-fireball-silhouette', 'Explosion', 'HE fireball over the Verdant farmsteads as the T-14 line advances',
     { set: 'verdant-day-assault', lineup: [CAST.t14, CAST.t90m, CAST.t14, CAST.t90m, CAST.kurganets], picture: { preset: 'ember', exposure: -0.35 }, shot: still(1700, { side: 1, along: -24, lift: 0.45, fov: 30, lookHero: [0, 70, 9] }, { effects: [huge(H(0, 72), 900), boom(H(-16, 60), 1100, 'large')] }), tMs: 1250, exposureMs: 8 }),
 
@@ -123,8 +126,10 @@ export const FRAMES = [
     { set: 'verdant-day-assault', shot: still(2600, { side: -1.4, along: -5.5, lift: 3.0, fov: 30, lookHero: [-4, 80, 2] }, { effects: [burn('foe0', 0), burn('foe1', 0), smoke('foe1', 0), boom([-20, 40], 1800, 'large')] }), tMs: 2100, exposureMs: 8 }),
   S(43, 'b43-cookoff', 'Explosion', 'Ammunition cook-off: the T-90M turret leaves the hull',
     { set: 'redrock-golden-kill', shot: still(1400, { side: 18, along: 64, lift: 1.6, fov: 34, lookHero: [3, 72, 3] }, { effects: [fire('hero', 300), pen('foe0', 380), kill('foe0', 430), debris('foe0', 450)] }), tMs: 640, exposureMs: 16 }),
+  // 2026-10-08: the hero sat 47 m down the deck, small; now a worm's view 1.2 m over the deck (top 1.7 m) 18 m ahead, the
+  // parapets converging on the column behind it
   S(44, 'b44-leading-lines', 'Leading lines', 'Parapets converge on the C2 Ariete column across the Aegis viaduct',
-    { set: 'aegis-morning-viaduct', shot: { durMs: 1600, speed: 3, absY: true, cam: hold({ side: 0.6, along: 34, lift: 4.3, fov: 30, lookHero: [0, -14, 3.4] }) }, tMs: 1000, exposureMs: 8 }),
+    { set: 'aegis-morning-viaduct', shot: { durMs: 1600, speed: 3, absY: true, cam: hold({ side: 0.4, along: 18, lift: 2.9, fov: 34, lookHero: [0, -12, 2.6] }) }, tMs: 1000, exposureMs: 8 }),
   S(45, 'b45-symmetry', 'Symmetry', 'Head-on down the Kestrel runway: SEPv3 and Leopard 2A7V in perfect symmetry',
     { set: 'kestrel-dawn-runway', lineup: [CAST.sepv3, CAST.leo], formation: [[-6, 0], [6, 0]], shot: still(1600, { side: 6, along: 30, lift: 1.2, fov: 22, lookHero: [6, 0, 1.6] }), tMs: 1000, exposureMs: 8 }),
   S(46, 'b46-reflection', 'Reflection', 'KF51 Panther mirrored in the frozen lake',
