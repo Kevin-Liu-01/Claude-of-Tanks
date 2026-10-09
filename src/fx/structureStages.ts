@@ -60,6 +60,20 @@ export interface StructureStages {
   stats(): { falling: number; flattened: number; kept: number; dropping: number };
 }
 
+/** The writers with their thrown pieces slowed to `k` of the kit's speed, never thrown upward faster than a metre a
+ *  second (a collapse's pieces drop off the walls; they are not blown out). */
+function dampPieces(out: DamageWriters, k: number): DamageWriters {
+  const p = out.pieces;
+  const pieces = {
+    push: (bucket: string, shape: DebrisShape, variant: number, px: number, py: number, pz: number, qx: number, qy: number,
+      qz: number, qw: number, sx: number, sy: number, sz: number, r: number, g: number, b: number, vx: number, vy: number,
+      vz: number): boolean => p.push(bucket, shape, variant, px, py, pz, qx, qy, qz, qw, sx, sy, sz, r, g, b, vx * k, Math.min(1, vy * k), vz * k),
+    get count() { return p.count; },
+    get capacity() { return p.capacity; },
+  };
+  return Object.assign(Object.create(Object.getPrototypeOf(out) as object) as DamageWriters, out, { pieces });
+}
+
 /** Strike holes a standing building takes (the mask keeps MAX_HOLES: one is left for the breach stage's). */
 const STRIKE_HOLES = 3;
 /** A burst's hole on a wall (P1 strike holes): smaller than the breach stage's blow (structureFx breachBlowFor) — a
@@ -583,7 +597,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
             if (fy1 <= y0 || fy0 >= y1 || !face.layers.length) continue;
             const thick = face.layers.reduce((sum, l) => sum + l.thicknessM, 0) || 0.3;
             const yaw = Math.atan2(face.out[0], face.out[2]);
-            const push = 0.35 + Math.max(0, -(face.out[0] * bdx + face.out[2] * bdz)) * 1.4;
+            const push = 0.3 + Math.max(0, -(face.out[0] * bdx + face.out[2] * bdz)) * 0.9;
             const n = Math.max(1, Math.round(face.width / spacing));
             for (let i = 0; i < n; i++) {
               // (a tier with small pools throws its share of them)
@@ -593,7 +607,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
               // nothing falls out of a window or a door
               const fy = y - fy0;
               if (face.openings.some((op) => Math.abs(u - op.u) < op.w / 2 && fy > op.y0 && fy < op.y0 + op.h)) continue;
-              const slot: FractureSlot = face.layers.length > 1 && rng() < 0.3 ? face.layers[0]! : face.layers[face.layers.length - 1]!;
+              // (dcore 2026-10-09, waves 294a/b: "pale popcorn chips far paler than the red facade") the wall's own
+              // face most (its skin: the brick, the stone, the timber and infill), its core the rest
+              const slot: FractureSlot = face.layers.length > 1 && rng() < 0.35 ? face.layers[face.layers.length - 1]! : face.layers[0]!;
               const shape = shapeOfMaterial(slot.material);
               const flat = shape === 'plate' || shape === 'sheet' || shape === 'tile' || shape === 'slate';
               const size = (shape === 'beam' ? 1.4 : 0.75) * (0.75 + rng() * 0.5);
@@ -824,7 +840,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
             return seam.collapse(stageSeed(3), out);
           }, false);
         } else {
-          run(seam, 0.7, settled, (out) => seam.collapse(stageSeed(3), out), false);
+          // (dcore 2026-10-09, waves 294a/b: "flat carpets spread metres across the street") the walls' pieces topple
+          // off them and land at their foot: the kit's throw at 0.55 of its speed, never up
+          run(seam, 0.7, settled, (out) => seam.collapse(stageSeed(3), dampPieces(out, 0.55)), false);
           if (!settled) crumble(seam, e);
         }
       }
