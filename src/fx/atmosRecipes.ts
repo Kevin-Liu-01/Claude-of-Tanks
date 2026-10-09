@@ -27,9 +27,9 @@ type Rgb = readonly [number, number, number];
 const TAU = Math.PI * 2;
 
 /** The dense fresh screen: red-phosphorus and multispectral smoke is white (an albedo near a cloud's). */
-export const SCREEN_WHITE: Rgb = linearHex(0xdcdedc);
+const SCREEN_WHITE: Rgb = linearHex(0xdcdedc);
 /** The screen as it thins: a little greyer, never blue (the media's shaded sky is desaturated). */
-export const SCREEN_AGED: Rgb = linearHex(0xc4c7c6);
+const SCREEN_AGED: Rgb = linearHex(0xc4c7c6);
 /** The burst's own white, a shade brighter than the wall it becomes. */
 const BURST_WHITE: Rgb = linearHex(0xeeeeea);
 /** The launch wisp behind a grenade in flight: the fuse's thin grey-white smoke. */

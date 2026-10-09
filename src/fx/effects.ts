@@ -1,4 +1,6 @@
 import { createAuxiliaryPresentation, type AuxiliaryVisualEntity } from './auxiliaryPresentation.ts';
+// atmospherics lane: rounds in flight (tracers); the old ribbon block below stays for the gunship and the composer
+import { createProjectileTracers } from './projectileTracers.ts';
 import {SMOKE_WIND_X, SMOKE_WIND_Z} from '../sim/smokeScreen.ts';
 import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
 /**
@@ -1189,6 +1191,21 @@ function* createFxSteps(
   tracerMesh.renderOrder = 24;
   tracerMesh.layers.set(LATE_FX_LAYER);
   group.add(tracerMesh);
+  // ---- atmospherics lane (begin): the projectile tracers (projectileTracers.ts) draw every ballistic round in flight
+  // (belt mix, ammunition colour, light-keyed halo, tumble, burnout); the shooter resolves through this frame's subject
+  // resolver (the Studio's actors) and else the battle's entities
+  let tracerSubject: ((id: string) => FxEntity | null) | null = null;
+  const tracers = createProjectileTracers({
+    shooter: (id) => {
+      if (id == null) return null;
+      const subject = (tracerSubject ? tracerSubject(String(id)) : null) ?? decalEntityFor(id);
+      return subject?.spec ?? null;
+    },
+    scene: engineCtx.scene ?? null,
+    now: () => particles.getTime(),
+  });
+  group.add(tracers.mesh);
+  // ---- atmospherics lane (end)
 
   // Guided missiles need a readable projectile, not only the same short
   // ribbon used by supersonic shells. These two instanced pools draw a pale
@@ -1417,6 +1434,7 @@ function* createFxSteps(
     isActive: () => particles.softParticles.isActive()
       || (vol ? vol.isActive() : false)
       || tracerGeo.instanceCount > 0
+      || tracers.active() // atmospherics lane
       || atgmBodies.count > 0
       || shockRings.some(isRingVisible)
       || muzzleRings.some(isRingVisible),
@@ -4128,6 +4146,7 @@ function* createFxSteps(
 
   function writeLiveShellTracers(shells: LiveShell[], camera: THREE.Camera): number {
     drones.begin(particles.getTime());
+    tracers.begin(); // atmospherics lane
     let tracerCount = 0;
     liveAtgmCount = 0;
     renderedAtgmTrailSegments = 0;
@@ -4149,6 +4168,8 @@ function* createFxSteps(
       const aerial = aerialTracerProfile(shell.spec?.reloadGroup) ??
         (decalEntityFor(shell.shooterId)?.aerial?.kind === 'gunship'
           ? aerialTracerProfile(guided ? 'gunship-missile' : tracerId === 'HE' ? 'gunship-howitzer' : 'gunship-cannon') : null);
+      // atmospherics lane: a ballistic round's tracer (not a missile, rocket or the gunship's)
+      if (!guided && !aerial) { tracers.write(shell); continue; }
       const preset = aerial ?? TRACER_PRESETS[tracerId ?? 'AP'];
       const speed = shell.vel.length();
       const length = aerial ? aerialTracerLength(aerial, speed, shell.distM ?? 0) : Math.min(
@@ -4163,6 +4184,7 @@ function* createFxSteps(
       }
       tracerCount = writeShellBolt(shell, camera, preset, guided, tracerCount, aerial);
     }
+    tracers.end(); // atmospherics lane
     drones.end();
     return tracerCount;
   }
@@ -5179,6 +5201,7 @@ function* createFxSteps(
     ): void {
       attachWorld();
       resolvePendingHe();
+      tracerSubject = resolveSubject; // atmospherics lane: the tracers' shooter lookup
       particles.update(dt);
       structMask?.setClock(particles.getTime());
       stages?.update();
@@ -6144,6 +6167,7 @@ function* createFxSteps(
       trails.clear();
       guidedTrails.clear();
       tracerGeo.instanceCount = 0;
+      tracers.reset(); // atmospherics lane
       liveAtgmCount = 0;
       atgmBodies.count = 0;
       atgmFlares.count = 0;
