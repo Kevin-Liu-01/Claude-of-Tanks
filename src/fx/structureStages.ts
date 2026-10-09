@@ -923,10 +923,13 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         out.mesh.triangle(a, b, c);
         out.mesh.end();
       };
-      list.forEach((bucket, k) => tri(bucket, 'rim', k));
-      tri(list[0] ?? 'stone', 'room', list.length);
+      // (the deployment's covered compile: a run per world bucket cost seconds of battle entry — each bucket's plain
+      // variant — and the spike's first collapse asked for none of them: the world draws them already) the first bucket
+      // only, the room and the fallback
+      tri(list[0] ?? 'stone', 'rim', 0);
+      tri(list[0] ?? 'stone', 'room', 1);
       // a bucket no world mesh draws: the builders' fallback material
-      tri('fx-structure-warm', 'rubble', list.length + 1);
+      tri('fx-structure-warm', 'rubble', 2);
       const shapes: DebrisShape[] = ['chunk', 'brick', 'block', 'stone', 'plate', 'splinter', 'beam', 'tile', 'slate', 'sheet', 'shard',
         'clod', 'straw', 'rebar'];
       for (const bucket of [list[0] ?? 'stone', 'fx-structure-warm']) {

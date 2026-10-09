@@ -627,8 +627,11 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   };
   const drawn = () => { const keys = new Set(); d2.group.traverse((o) => { if (o.isMesh) keys.add(programKey(o)); }); return keys; };
   const laid = st2.warm({ x: 40, y: 2, z: -30 }, Object.keys(world));
-  assert.ok(laid >= Object.keys(world).length + 2, `the warm lays a run per bucket, a room and a fallback run (${laid})`);
+  assert.ok(laid >= 3, `the warm lays a bucket run, a room and a fallback run (${laid})`);
+  // the world draws every bucket material on its own plain meshes already (its programs compile with the world): the
+  // warm adds what only a stage draws
   const warmKeys = drawn();
+  for (const m of Object.values(world)) warmKeys.add(programKey(new THREE.Mesh(new THREE.BufferGeometry(), m)));
   d2.group.traverse((o) => { if (o.isMesh && !o.geometry?.isInstancedBufferGeometry) assert.equal(o.frustumCulled, false, 'a warm run is never culled from the warm\'s render'); });
   st2.reset(); d2.reset(); m2.reset();
   const seam2 = createStructureDamageSeam(7, 'cottage', null, anatomy, spans2);
