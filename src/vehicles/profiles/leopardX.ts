@@ -1017,11 +1017,10 @@ function a4RemoteMount(P:TankBuilderPort,d:Datum): void {
   // cheeks and from the outboard receiver/ammunition body.
   equip(P,d,'turretDetail',box(.55891,.12256,.40355),.73998,2.7160,-.9222);
   for(const x of [.634,.854]) equip(P,d,'turretDetail',box(.024,.185,.266),x,2.868,-.929);
-  // 2026-10-07 (tank-accessories round 4): the same round-3 butt growth (4.2 cm local, 7.2 cm under the 1.713 stretch)
-  // put the RWS receiver's rear station at -1.276 (source -1.214). The gun moves 4.4 cm forward, onto the source
-  // pedestal's own centre (-0.926), and the stretch drops to 1.609: rear -1.214, barrel -0.087 again. The owner's
-  // field corrections (main 6763d7cc0) activate this original 7.62 mm station (automatic).
-  mg(P,d,.766,2.79,-.925,false,1.609,.74,true);
+  // Launch night 2026-10-08 (ta4 on push 5's receipt): the round-4 shift (-.925/1.609) answered a crew butt that push 5's
+  // automatic station no longer has; on push 5's gun it put the receiver's rear at -1.147 against the source's -1.214.
+  // The station is push 5's again, the owner's -.969/1.713 (leopardX.selftest, "source RWS receiver rear station").
+  mg(P,d,.766,2.79,-.969,false,1.713,.74,true);
   a4OutboardReceiver(P,d);
   equip(P,d,'turretDetail',box(.257,.184,.306),.381,3.005,-1.055);
   equip(P,d,'turretDark',box(.204,.138,.014),.381,3.005,-.897);
