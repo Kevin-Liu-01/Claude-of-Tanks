@@ -8408,6 +8408,10 @@ function* terrainBuildSteps(
   }
   if (ringSource) group.userData.finishHorizonRing = horizonRingStage;
   else yield* horizonRingStage();
+  // ground lane (2026-10-08, crater-render-spec §B): the chunks for the battle's ground overlay — the world installs
+  // terrainCraterMesh.ts on them (syncGroundOverlay / adoptTerrainGeometry hooks below; its lattice constants are this
+  // file's, pinned by terrainCraterMesh.selftest)
+  group.userData.terrainChunks = chunks;
   if (cfg?.splat?.seaLake && !heightField._layout.terrain.frozenMarshes) {
     const waterSteps = shallowWaterGeometrySteps(heightField);
     let step = waterSteps.next();
@@ -8514,6 +8518,9 @@ function* terrainBuildSteps(
     // Publish only a complete geometry. Skirts, topology and bounds stay exact;
     // a camera move while rows were being built cannot mount an obsolete LOD.
     c.lods[job.level] = geometry;
+    // ground lane (crater-render-spec §B): a level built after stamps is patched by the stamps that reach its chunk
+    // before it can be mounted — it then equals one patched in place, bit for bit
+    (group.userData.adoptTerrainGeometry as ((index: number, level: number) => void) | undefined)?.(job.index, job.level);
     retainedLodGeometries.add(geometry);
     if (c.lods.every(Boolean)) c.fine = null;
     streamStats.streamedGeometryCount++;
@@ -8552,6 +8559,9 @@ function* terrainBuildSteps(
     return completed;
   };
   group.userData.updateLOD = (camPos: THREE.Vector3): void => {
+    // ground lane (crater-render-spec §B): the battle's ground overlay first — its new stamps reach the drawn ground in
+    // the frame they land, before any decal or dressing reads it (an O(1) check when nothing moved)
+    (group.userData.syncGroundOverlay as (() => void) | undefined)?.();
     for (const c of chunks) {
       const d = Math.hypot(camPos.x - c.cx, camPos.z - c.cz);
       const want = terrainLodForDistance(d, c.level);

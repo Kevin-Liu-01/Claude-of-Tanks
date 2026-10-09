@@ -41,6 +41,7 @@ import type {
   WorldActivationOptions,
 } from './world/worldActivationRuntime.ts';
 import type { PlayerBattleActions } from './game/playerBattleActions.ts';
+import type { FxWorldSeam } from './fx/effects.ts';
 import type { BattleVisualStreamer } from './game/battleVisualStreamer.ts';
 import type {
   MainEntity,
@@ -236,7 +237,7 @@ import { clearMatchSession, createBus, createGameState } from './game/stateCore.
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { matchRulesetFor } from './sim/matchRuleset.ts';
+import { matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
 import { normalizeGameMode } from './sim/matchModes.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
@@ -696,6 +697,8 @@ const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
       // window.__DEBUG lookup silently dropped all marks whenever diagnostics
       // were not installed, including incoming hits on the player's tank.
       resolveEntity: (targetId) => resolveFxSubject(String(targetId)),
+      // destruction-fx: the world whose structure materials take the collapse patch (world.patchStructureMaterials)
+      world: () => (currentWorld() as unknown as FxWorldSeam | null) ?? null,
     }, createOpaqueLoadingYielder(6, 16, { yieldFrame: nextPaintFrame }));
     live.bindBus(bus);
     // createPost runs during garage boot, before this demand-loaded graph
@@ -2280,7 +2283,7 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
       ports: {
         lifecycle: battleEntryLifecycle,
         // a world laid out otherwise than the host's manifest reads the destroyed list through the manifest's identities
-        load: { ...options.load, loadAuthorityObstacles: (mapId, signal) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal }) },
+        load: { ...options.load, loadAuthorityObstacles: (mapId, signal, variant) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal, variant }) },
         roster: options.roster,
         scene: {
           engineCtx,
@@ -2622,7 +2625,7 @@ function beginBattleEntry(
 ) {
   // batch 19 (2026-09-14): the Garage BATTLE button is a free sortie in the chosen rules — a Frontline
   // Assault pick carves the trenches like a ladder launch does (it used to reach the field without them)
-  pendingTerrainVariant = options?.gameMode === 'frontline_assault' ? 'assault-trenches' : null;
+  pendingTerrainVariant = terrainVariantFor(options?.gameMode); // the mode's battlefield, as the authority builds it
   pendingCampaignOperationId = null;
   return soloBattleEntry.begin(specId, mapId, options);
 }
@@ -2640,7 +2643,7 @@ async function beginSoloBattle({
   gameMode = 'standard',
   campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
-  pendingTerrainVariant = gameMode === 'frontline_assault' ? 'assault-trenches' : null;
+  pendingTerrainVariant = terrainVariantFor(gameMode);
   // campaign slice 5: the mission brief names the ladder operation when the sortie came from it
   pendingCampaignOperationId = gameMode === 'frontline_assault' ? campaignOperationId : null;
   // batch 19: a ladder operation always fights on its own map, whatever the Garage has selected

@@ -103,6 +103,8 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
     exteriorChimneyTops: () => [], carryExteriorChimneyTops() {},
     // round 67 (2026-09-24): the frame update poses the moored hulls the build detached; none in this fixture.
     mooredHulls: [],
+    // destruction (2026-10-07, §16): the runtime's tail reads every structure's placement back; no structures here
+    structurePlacements: new Map(), structureDamage: new Map(), structureSpans: new Map(), structureMaterials: [],
   };
   const runtime = compileFunction(runtimeBody, Object.keys(context),
     { filename: 'props.ts:production-destructible-runtime' })(...Object.values(context));
