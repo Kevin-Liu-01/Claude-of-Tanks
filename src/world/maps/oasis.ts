@@ -78,6 +78,8 @@ export default {
     palmFallback: 'acacia',
   },
   props: {
+    // (the fortifications lane, 2026-10-09: the field works' pillbox is the desert post's sangar, in the kershef render)
+    structureVariants: { bunker: 'sangar' },
     // the map-revival lane (2026-10-05): the town is Siwa's, in the siwa variant of the ksar kit (maps/regional/ksar.ts)
     architecture: 'siwa',
     sourcedPalette: 'desert',
