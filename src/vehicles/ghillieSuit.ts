@@ -1052,8 +1052,8 @@ interface CurtainSpec {
   hem(a: number): number;
   /** owner-local position of (station, out, up). */
   place(a: number, out: number, up: number): Point3;
-  /** Optional cell mask in (station, up). */
-  keep?(a: number, up: number): boolean;
+  /** Optional cell mask in (station, up); a0 and a1 are the cell's own station span. */
+  keep?(a: number, up: number, a0: number, a1: number): boolean;
   readonly maxOut: number;
   readonly seed: number;
   /** Fold depth multiplier (a tied-down face drape folds little). */
@@ -1188,7 +1188,7 @@ function buildCurtain(spec: CurtainSpec, uvk: number, uvOffset: [number, number]
     const aA = station(c), aB = station(c + 1);
     for (let r = 0; r < rows; r++) {
       const upMid = (sections[c].up[r] + sections[c].up[r + 1] + sections[c + 1].up[r] + sections[c + 1].up[r + 1]) / 4;
-      if (spec.keep && !spec.keep((aA + aB) / 2, upMid)) continue;
+      if (spec.keep && !spec.keep((aA + aB) / 2, upMid, aA, aB)) continue;
       // the hem row tears here and there
       if (r === rows - 1 && noise01(c + spec.seed, spec.seed + 7) < 0.17) continue;
       const A = vertex[c][r], B = vertex[c + 1][r], C = vertex[c + 1][r + 1], D = vertex[c][r + 1];
@@ -1257,13 +1257,20 @@ function curtainSampler(columns: Array<{ a: number; pts: Point3[]; normals: Poin
   };
 }
 
+/** Metres of bare run a mission dock keeps either side of it in a wing's drape. */
+const DOCK_CLEAR_M = 0.03;
+
 function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, uvk: number,
-  gunFloor: ((x: number, z: number) => number) | null = null): ClothSurface {
+  gunFloor: ((x: number, z: number) => number) | null = null, dock: THREE.Box3 | null = null): ClothSurface {
   const { side, z0, z1, topAt, bottomAt, outAt, shoulder } = panel;
   // 2026-10-08 (the lane lead, the owner's field standard "weapons clear of cages and nets"): a roof gun standing at the
   // flank's edge (the PT-91 Twardy's NSVT on its cupola ring) keeps the drape's roll under it. Over the drape's run in
   // from the edge, a column's cells reaching within 2 cm of the standing gun's floor are left out, so the net's top stops
   // under the gun instead of rolling over the roof through it.
+  // 2026-10-08 (the lane lead, over push 5's regenerated drone-dock seats): a drape hung on a roof-cage wing that carries
+  // a mission dock is cut away over the dock's run, top to hem (missionAttachmentReceiver.selftest, ua_t80u_modern: Zoria's
+  // bearers rest on the wing's outer tube, where the drape's roll came over it); the pieces either side hang on their own
+  const dockSide = dock && Math.sign(dock.min.x + dock.max.x) === side ? dock : null;
   const runFloor = gunFloor ? (z: number): number => {
     let low = Infinity;
     for (let o = outAt(z, 1) + 0.05; o > outAt(z, 1) - 0.6; o -= 0.04) low = Math.min(low, gunFloor(side * o, z));
@@ -1314,7 +1321,9 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
       return [Math.min(outAt(z, t), maxOut), THREE.MathUtils.lerp(bottom, top, t)];
     },
     place: (z, out, up) => [side * out, up, z],
-    ...(runFloor ? { keep: (z: number, up: number): boolean => up < runFloor(z) - 0.02 } : {}),
+    ...(runFloor || dockSide ? { keep: (z: number, up: number, za: number, zb: number): boolean =>
+      (!runFloor || up < runFloor(z) - 0.02)
+      && !(dockSide && Math.max(za, zb) > dockSide.min.z - DOCK_CLEAR_M && Math.min(za, zb) < dockSide.max.z + DOCK_CLEAR_M) } : {}),
   };
   const { geometry, columns } = buildCurtain(spec, uvk, panelUvOffset(panel, cfg.seed), side < 0);
   const underTurret = support.hull && !support.turretless, topRow = curtainTopAt(columns);
@@ -2609,13 +2618,18 @@ const FIXED_BIN = 0.04;
  * Openings a wing's net is cut round: anything of the turret standing up through its lattice (a sight's head), and the
  * part of the wing a roof gun sweeps low over.
  */
-function cageOpenings(wing: CageWing, armour: SurfaceProbe | null, gunFloor: (x: number, z: number) => number): Point2[][] {
+function cageOpenings(wing: CageWing, armour: SurfaceProbe | null, gunFloor: (x: number, z: number) => number,
+  dock: THREE.Box3 | null = null): Point2[][] {
   const step = 0.04, s = wing.flank;
   const blocked: Array<[number, number]> = [];
+  // 2026-10-08 (the lane lead, over push 5's regenerated drone-dock seats): a mission dock seated on the wing holds no
+  // cloth; its receiver keeps clear of the wing's net (missionAttachmentReceiver.selftest, ua_t80u_modern)
+  const onDock = (x: number, z: number): boolean => !!dock
+    && x >= dock.min.x - 0.02 && x <= dock.max.x + 0.02 && z >= dock.min.z - 0.02 && z <= dock.max.z + 0.02;
   for (let a = wing.inner - 0.06; a <= wing.outer + 0.06; a += step) {
     for (let z = wing.z0 - 0.06; z <= wing.z1 + 0.06; z += step) {
       const t = armour ? armour.top(s * a, z) : null;
-      if ((t !== null && t > wing.y - 0.025) || gunFloor(s * a, z) < wing.y + WING_GUN_CLEAR_M) blocked.push([s * a, z]);
+      if ((t !== null && t > wing.y - 0.025) || gunFloor(s * a, z) < wing.y + WING_GUN_CLEAR_M || onDock(s * a, z)) blocked.push([s * a, z]);
     }
   }
   return openingsRound(blocked, step);
@@ -2672,7 +2686,7 @@ function weaponOpenings(panel: TopPanel, probe: SurfaceProbe | null, gunFloor: (
 const WING_GUN_CLEAR_M = 0.1;
 
 function cageWingCloths(wing: CageWing, index: number, cfg: GhillieConfig, armour: SurfaceProbe | null, uvk: number,
-  gunFloor: (x: number, z: number) => number): ClothSurface[] {
+  gunFloor: (x: number, z: number) => number, dock: THREE.Box3 | null = null): ClothSurface[] {
   const s = wing.flank, seed = cfg.seed + 7919 * (index + 1);
   // a wing a roof gun traverses low over is left bare for it (more than a third of its lattice under the sweep)
   let swept = 0, samples = 0;
@@ -2689,7 +2703,7 @@ function cageWingCloths(wing: CageWing, index: number, cfg: GhillieConfig, armou
   laid = topCloth({
     x0: Math.min(xa, xb), x1: Math.max(xa, xb), z0: wing.z0 - 0.015, z1: wing.z1 + 0.015,
     nx: Math.max(4, Math.round((wing.outer - wing.inner) / 0.08)), nz: Math.max(8, Math.round((wing.z1 - wing.z0) / 0.08)),
-    yAt: () => wing.y + 0.008 + DRAPE_GAP_M, holes: cageOpenings(wing, armour, gunFloor), seed, tents: [],
+    yAt: () => wing.y + 0.008 + DRAPE_GAP_M, holes: cageOpenings(wing, armour, gunFloor, dock), seed, tents: [],
     garnishRiseM: 0.12, garnishOpeningMarginM: 0.07, reliefScale: 0.6, rimScale: 0.35,
   }, cfg, support, uvk);
   // the highest thing standing outboard of the outer tube's line below it at a station (a side screen's top rail)
@@ -2713,7 +2727,7 @@ function cageWingCloths(wing: CageWing, index: number, cfg: GhillieConfig, armou
     outAt: () => wing.outer + 0.035,
     // it comes over the outer tube from the net's edge just inside it, wherever the net is cut further in
     shoulder: { z0: wing.z0, z1: wing.z1, inAt: () => wing.outer - 0.03, yAt: () => wing.y + 0.03 },
-  }, cfg, support, uvk);
+  }, cfg, support, uvk, null, dock);
   // garnish never reaches into a tube or in over the corridor: over the frame it stays above the tubes' tops (a strip
   // drooping off the wing's front edge passed through its frame tube between two of its points), and the drape's
   // garnish stays outside the outer tube
@@ -2802,7 +2816,7 @@ function addGhillieOwner(
   const surfaces: ClothSurface[] = [...tops];
   for (const panel of panels.side ?? []) surfaces.push(sideCloth(panel, cfg, support, uvk, gunFloor?.standing ?? null));
   for (const panel of panels.face ?? []) surfaces.push(faceCloth(panel, cfg, support, uvk));
-  if (leafy && cage.length && gunFloor) cage.forEach((wing, i) => surfaces.push(...cageWingCloths(wing, i, cfg, probe, uvk, gunFloor)));
+  if (leafy && cage.length && gunFloor) cage.forEach((wing, i) => surfaces.push(...cageWingCloths(wing, i, cfg, probe, uvk, gunFloor, dock)));
   if (gunFloor || dock) {
     const inColumn = (p: readonly number[]): boolean => !!dock && p[1] > dock.min.y - 0.05
       && p[0] > dock.min.x - 0.12 && p[0] < dock.max.x + 0.12 && p[2] > dock.min.z - 0.12 && p[2] < dock.max.z + 0.12;
