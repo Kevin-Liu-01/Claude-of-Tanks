@@ -81,7 +81,8 @@ export function readContainers(parts: Readonly<Record<string, readonly BufferGeo
     // (dcore 2026-10-09, wave 294a: "re-emerges as one clean, square, grey-white corrugated block") a box whose livery
     // is its atlas's (white vertex colours) or that has none would crush in plain grey-white steel: it takes a livery of
     // the yard's own instead, picked by its place (the same on every peer)
-    if (!col || Math.min(tint[0], tint[1], tint[2]) > 0.7) tint = LIVERIES[liveryIndex(c)];
+    // (wave 322: "a container swapped for a grey gridded block") a neutral grey livery too: the atlas carries the paint
+    if (!col || Math.max(tint[0], tint[1], tint[2]) - Math.min(tint[0], tint[1], tint[2]) < 0.06) tint = LIVERIES[liveryIndex(c)];
     out.push({ c, a: long ? [-az, 0, ax] : [ax, 0, az], hl, hh: h / 2, hw, tint, up: y0 > 1 });
   }
   return out.length ? out : null;
@@ -278,7 +279,9 @@ export function collapseContainers(anatomy: StructureDamageAnatomy, seed: number
       const w = across(b);
       if (!b.up) {
         // crushed where it stood: the roof down by a third to a half (one end lower), skewed a little along the blow
-        const crushA = 0.32 + rng() * 0.2, crushB = 0.4 + rng() * 0.18, skew = (rng() - 0.5) * 0.35, lean = (rng() - 0.5) * 0.25;
+        // (dcore 2026-10-09, wave 322: "a container swapped for a clean grey gridded block") crushed hard enough to read
+        // from the ground: the roof down by a half to two thirds at one end, the box skewed and leaning
+        const crushA = 0.45 + rng() * 0.2, crushB = 0.55 + rng() * 0.15, skew = (rng() - 0.5) * 0.8, lean = (rng() - 0.5) * 0.7;
         const corner = (i: number, j: number, k: number): Vec3 => {
           const along = i * b.hl * (0.98 + rng() * 0.02), side = j * b.hw;
           const x = b.c[0] + b.a[0] * along + w[0] * side, z = b.c[2] + b.a[2] * along + w[2] * side;
@@ -286,7 +289,9 @@ export function collapseContainers(anatomy: StructureDamageAnatomy, seed: number
           const drop = (i < 0 ? crushA : crushB) * 2 * b.hh;
           return [x + b.a[0] * skew + w[0] * lean, ground(x, z) + 2 * b.hh - drop, z + b.a[2] * skew + w[2] * lean];
         };
-        deformedBox(mesh, corner, 0.12 + rng() * 0.14, 0.15 + rng() * 0.2, b.tint);
+        // its sides buckled out a hand to two, its paint dulled by the dust and scorched where it split
+        const dull: Rgb = [b.tint[0] * 0.72, b.tint[1] * 0.68, b.tint[2] * 0.64];
+        deformedBox(mesh, corner, 0.3 + rng() * 0.25, 0.35 + rng() * 0.3, dull);
       } else {
         // tipped off the stack: rolled onto its side beside it, or canted on the ground there, and turned a little. Its
         // cross-section (across, up) turns about its long axis (a rotation keeps every side's winding outward), then sits

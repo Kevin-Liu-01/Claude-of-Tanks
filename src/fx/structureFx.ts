@@ -118,7 +118,9 @@ export function lookFromAnatomy(anatomy: AnatomyLike | null | undefined): Struct
   for (const slot of anatomy.rubble) {
     if (!(slot.share > 0)) continue;
     const t = slot.tint;
-    const white = Math.min(t[0], t[1], t[2]) > 0.85;
+    // (wave 322: a brick stack's dust and chips came out white) a textured bucket's tint is a light weathering wash
+    // over its map, not its colour: anything this pale takes the material's own
+    const white = Math.min(t[0], t[1], t[2]) > 0.6;
     const base = FRACTURE_BASE[slot.material] ?? FALLBACK_LOOK.rubble[1]!.color;
     rubble.push({ material: slot.material, color: white ? base : [t[0], t[1], t[2]], share: slot.share });
   }
@@ -231,7 +233,7 @@ function piece(C: BlastContext, look: StructureLook, x: number, y: number, z: nu
   // (the battle strips: a stack's burst strewed the yard with white confetti) a sunlit fleck of plaster or tile reads as
   // paper: no thrown piece brighter than weathered render
   const lum = 0.2126 * k.r + 0.7152 * k.g + 0.0722 * k.b;
-  if (lum > 0.3) { const q = 0.3 / lum; k.r *= q; k.g *= q; k.b *= q; }
+  if (lum > 0.2) { const q = 0.2 / lum; k.r *= q; k.g *= q; k.b *= q; }
   C.chunk(k);
 }
 
@@ -421,13 +423,13 @@ function toppleFx(C: BlastContext, e: StructureStageEvent, L: StructureLook, pow
       const v = 3 + R() * 3;
       const life = 9 + R() * 4;
       puff(C, x + tx * side * 0.8, gy + 0.7, z + tz * side * 0.8, tx * side * v + dx * (R() - 0.3) * 2, 0.5 + R() * 0.6,
-        tz * side * v + dz * (R() - 0.3) * 2, 1.9, 0.3 + R() * 0.25, 0.9, life, 1.6 * dk, (5.5 + R() * 2.5) * dk,
-        dark, tinted, 0.62, life, 1, f.landS + (along / Math.max(1, f.lengthM + foot)) * 0.12 + R() * 0.1, 1.6 + R() * 0.5);
+        tz * side * v + dz * (R() - 0.3) * 2, 1.9, 0.3 + R() * 0.25, 0.9, life, 1.2 * dk, (3.6 + R() * 1.6) * dk,
+        dark, tinted, 0.42, life, 1, f.landS + 0.15 + (along / Math.max(1, f.lengthM + foot)) * 0.12 + R() * 0.1, 1.8 + R() * 0.5);
     }
     // the cloud's body rising off the line, slower and lighter
     const life = 12 + R() * 4;
-    puff(C, x, gy + 1.2, z, (R() - 0.5) * 0.8, 0.7 + R() * 0.5, (R() - 0.5) * 0.8, 1.2, 0.5 + R() * 0.3, 1.0, life,
-      2.0 * dk, (7 + R() * 3) * dk, tinted, tinted, 0.42, life, 2, f.landS + 0.3 + R() * 0.5);
+    puff(C, x, gy + 2.0, z, (R() - 0.5) * 0.8, 0.8 + R() * 0.5, (R() - 0.5) * 0.8, 1.2, 0.6 + R() * 0.3, 1.0, life,
+      1.6 * dk, (5 + R() * 2) * dk, tinted, tinted, 0.3, life, 2, f.landS + 0.5 + R() * 0.5);
   }
   // 4. its broken courses bouncing out along the line as it lands
   const pieces = Math.round(Math.min(48, 10 + f.lengthM * 1.2));

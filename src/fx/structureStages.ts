@@ -431,7 +431,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     }
     finishFalls(structureId);
     notePunched(structureId, x, y, z);
-    run(seam, 0, false, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
+    // (wave 322 / the stack strips: a strike's pieces strewed the yard thirty metres out like confetti) at half the kit's
+    // throw, never up: they fall out of the hole and lie at the wall's foot
+    run(seam, 0, false, (out) => seam.breach(spec, dampPieces(out, 0.5)), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
   }
   const nearPunched = (id: number, x: number, y: number, z: number, within: number): boolean =>
     (punched.get(id) ?? []).some(([hx, hy, hz]) => Math.hypot(hx - x, hy - y, hz - z) < within);
@@ -546,7 +548,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   // (wave 277: a breach read as "a black blot") the room behind a hole is dim, not black: daylight falls in through the
   // hole and the windows and bounces off its floor and far wall — its interior tint lifted, a little light of its own
   // (dcore 2026-10-09, the battle strips: a punched hole's room read as a pale grey-white blob in a stone wall) dimmer
-  const roomMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(1.9, 1.9, 1.9), roughness: 1, metalness: 0,
+  // (wave 322: "glowing white bars and dots" — a light floor slab behind a hole at 1.9x its tint bloomed in the sun) at its
+  // own tint, never brighter: the dark interiors stay dim through their small light of their own
+  const roomMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(1, 1, 1), roughness: 1, metalness: 0,
     vertexColors: true, envMapIntensity: 0, emissive: new THREE.Color(0.016, 0.014, 0.012) });
   roomMaterial.name = 'fx-structure-room';
   mask.patch(roomMaterial);
@@ -829,7 +833,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         o.scars?.clearStructure(e.structureId);
         if (seam) {
           if (settled) seam.touchShadows();
-          else falling.push({ seam, until: o.now() + (cascaded ? 0.3 : topple ? topple.landS + 0.3 : COLLAPSE_S) });
+          else falling.push({ seam, until: o.now() + (cascaded ? 0.3 : topple ? topple.landS + 1.7 : COLLAPSE_S) });
         }
       }
       if (!seam) return;
@@ -844,7 +848,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (e.stage === 'breached' && !sections && (settled || !nearPunched(e.structureId, e.x, e.y, e.z, 2))) {
         const blow = breachBlowFor(e);
         // a ram's breach is the hull's way in: wider than the hull is high
-        const radiusM = e.cause === 'ram' ? Math.max(blow.radiusM, 1.9) : blow.radiusM;
+        const radiusM = e.cause === 'ram' ? Math.max(blow.radiusM, 2.4) : blow.radiusM;
         const spec = seam.holeAt(blow.x, blow.y, blow.z, radiusM, e.dirX, e.dirZ, e.munition, e.cause, 0);
         if (spec) {
           notePunched(e.structureId, e.x, e.y, e.z);
@@ -859,7 +863,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         // in through the struck face and out through the far one along the hull's heading (a hull that brings it down
         // keeps going: the authority's ramThrough), so it never drives through a standing wall while the front comes down
         const blow = breachBlowFor(e);
-        const r = Math.max(blow.radiusM, 1.9);
+        const r = Math.max(blow.radiusM, 2.4);
         const a = seam.anatomy;
         const c = Math.cos(a.placement.yaw), sn = Math.sin(a.placement.yaw);
         const dl = Math.hypot(e.dirX || 0, e.dirZ || 0) || 1;
@@ -921,10 +925,13 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         out.mesh.triangle(a, b, c);
         out.mesh.end();
       };
-      list.forEach((bucket, k) => tri(bucket, 'rim', k));
-      tri(list[0] ?? 'stone', 'room', list.length);
+      // (the deployment's covered compile: a run per world bucket cost seconds of battle entry — each bucket's plain
+      // variant — and the spike's first collapse asked for none of them: the world draws them already) the first bucket
+      // only, the room and the fallback
+      tri(list[0] ?? 'stone', 'rim', 0);
+      tri(list[0] ?? 'stone', 'room', 1);
       // a bucket no world mesh draws: the builders' fallback material
-      tri('fx-structure-warm', 'rubble', list.length + 1);
+      tri('fx-structure-warm', 'rubble', 2);
       const shapes: DebrisShape[] = ['chunk', 'brick', 'block', 'stone', 'plate', 'splinter', 'beam', 'tile', 'slate', 'sheet', 'shard',
         'clod', 'straw', 'rebar'];
       for (const bucket of [list[0] ?? 'stone', 'fx-structure-warm']) {
