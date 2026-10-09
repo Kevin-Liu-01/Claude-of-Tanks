@@ -166,6 +166,18 @@ const lowMoves = (kind) => [1, -1].flatMap((s) => [
     { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 18, radius: 10, lift: 1.8, fov: 38, lookHero: [0, 0.5, 2.4] },
     { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 30, radius: 13, lift: 2.2, fov: 31, lookHero: [0, 0.5, 2.4] },
     { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 40, radius: 16, lift: 2.6, fov: 26, lookHero: [0, 0.5, 2.4] }]],
+  // composition wave c3 (2026-10-08): the critics' 7.0-7.5 frames held an elevated three-quarter as well as the low lens
+  // (3.9-4.9 m up looking down 14-17°, the hull 11-14 m out), and the c3 re-plans that held the gun against the frame's
+  // edge lost points: the lens rides 4.5-5.5 m up off the front quarter and aims 2.5-3 m ahead of the hull, so the
+  // gun points into the frame
+  [`raised34${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 32, radius: 12.5, lift: 4.6, fov: 38, lookHero: [0, 2.5, 2.2] },
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 42, radius: 13.5, lift: 5, fov: 37, lookHero: [0, 2.5, 2.2] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 52, radius: 14.5, lift: 5.4, fov: 36, lookHero: [0, 2.5, 2.2] }]],
+  [`raisedLead34${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 22, radius: 12, lift: 4.2, fov: 37, lookHero: [0, 3, 2.2] },
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 30, radius: 13.5, lift: 4.9, fov: 36, lookHero: [0, 3, 2.2] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 40, radius: 15, lift: 5.6, fov: 35, lookHero: [0, 3, 2.2] }]],
   ...(kind === 'scene' || kind === 'battle' ? [[`teleTrack${s > 0 ? 'R' : 'L'}`, [
     { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 40, radius: 30, lift: 6, fov: 26, lookHero: [0, 2, 1.2] },
     { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 58, radius: 25, lift: 7.5, fov: 27, lookHero: [0, 1.5, 1.2] },
