@@ -168,16 +168,18 @@ const lowMoves = (kind) => [1, -1].flatMap((s) => [
     { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 40, radius: 16, lift: 2.6, fov: 26, lookHero: [0, 0.5, 2.4] }]],
   // composition wave c3 (2026-10-08): the critics' 7.0-7.5 frames held an elevated three-quarter as well as the low lens
   // (3.9-4.9 m up looking down 14-17°, the hull 11-14 m out), and the c3 re-plans that held the gun against the frame's
-  // edge lost points: the lens rides 4.5-5.5 m up off the front quarter and aims 2.5-3 m ahead of the hull, so the
-  // gun points into the frame
-  [`raised34${s > 0 ? 'R' : 'L'}`, [
-    { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 32, radius: 12.5, lift: 4.6, fov: 38, lookHero: [0, 2.5, 2.2] },
-    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 42, radius: 13.5, lift: 5, fov: 37, lookHero: [0, 2.5, 2.2] },
-    { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 52, radius: 14.5, lift: 5.4, fov: 36, lookHero: [0, 2.5, 2.2] }]],
-  [`raisedLead34${s > 0 ? 'R' : 'L'}`, [
-    { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 22, radius: 12, lift: 4.2, fov: 37, lookHero: [0, 3, 2.2] },
-    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 30, radius: 13.5, lift: 4.9, fov: 36, lookHero: [0, 3, 2.2] },
-    { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 40, radius: 15, lift: 5.6, fov: 35, lookHero: [0, 3, 2.2] }]],
+  // edge lost points. The lens rides 4-6.5 m up off the front quarter and aims 2.5 m ahead of the hull, so the gun points
+  // into the frame; and it travels close to far (the owner's motion note, 2026-10-05) as a dolly zoom, 18 m to 10.5 m or
+  // back with the lens opening as it closes (distance × tan(fov / 2) held), so the hull keeps its size: a static
+  // elevated orbit at 12-15 m won 12 of c4's 19 searches before it was replaced, at a range of 1.25
+  [`raisedPush34${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 42, radius: 18, lift: 6.4, fov: 26, lookHero: [0, 2.5, 2.2] },
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 34, radius: 14, lift: 5.2, fov: 32.6, lookHero: [0, 2.5, 2.2] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 26, radius: 10.5, lift: 4.2, fov: 41.3, lookHero: [0, 2.5, 2.2] }]],
+  [`raisedPull34${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 24, radius: 10.5, lift: 4.2, fov: 41.3, lookHero: [0, 2.5, 2.2] },
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 34, radius: 14, lift: 5.2, fov: 32.6, lookHero: [0, 2.5, 2.2] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 44, radius: 18, lift: 6.4, fov: 26, lookHero: [0, 2.5, 2.2] }]],
   ...(kind === 'scene' || kind === 'battle' ? [[`teleTrack${s > 0 ? 'R' : 'L'}`, [
     { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 40, radius: 30, lift: 6, fov: 26, lookHero: [0, 2, 1.2] },
     { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 58, radius: 25, lift: 7.5, fov: 27, lookHero: [0, 1.5, 1.2] },

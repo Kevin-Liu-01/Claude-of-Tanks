@@ -351,8 +351,9 @@ export function framingFaults(scene, report) {
  * c2's frames it did not predict the critics' FOREGROUND flag (thin poles and trees across the hull), and it rose with
  * composition (+0.24: houses framing a street).
  * v3 (wave c3, 2026-10-08; held against the lens record and scores of waves c1-c3's 374 frames): sweet keeps v2's low
- * lens and adds an elevated three-quarter, 3.5-6.5 m up looking down 8-20° at a hull 10-16 m out and 45-68 % of the
- * frame's height (the critics' 7.0-7.5 frames held both; such frames scored 5.72, v2's sweet 5.52), so bad moves its
+ * lens and adds an elevated three-quarter, 3.5-7 m up looking down 8-20° at a hull 10-19 m out and 45-68 % of the
+ * frame's height (the critics' 7.0-7.5 frames held both, 11-14 m out; such frames scored 5.72, v2's sweet 5.52; out to
+ * 19 m so an elevated dolly zoom's long end, the hull held at that size by the longer lens, counts), so bad moves its
  * pitch limit to -22°. Two flaws come back as rates of their own, not as bad: they cost a good frame half a point, where
  * bad geometry costs two (v2's bad frames 3.74, its sweet 5.52). `flaw`: clutter in the foreground (props, low cover,
  * shrubs, not a street's frontages; clutter >= 0.02 or the zone under the hull >= 0.005 marks the critics' FOREGROUND
@@ -379,8 +380,8 @@ export function framingScore(report, { version = 2 } = {}) {
     return { sweet, bad };
   }
   const low = (p) => p.heightM <= 3 && p.pitchDeg >= -6 && p.size >= 0.4 && p.size <= 0.68;
-  const raised = (p) => p.heightM > 3.5 && p.heightM <= 6.5 && p.pitchDeg >= -20 && p.pitchDeg <= -8 && p.size >= 0.45 && p.size <= 0.68
-    && p.distM >= 10 && p.distM <= 16;
+  const raised = (p) => p.heightM > 3.5 && p.heightM <= 7 && p.pitchDeg >= -20 && p.pitchDeg <= -8 && p.size >= 0.45 && p.size <= 0.68
+    && p.distM >= 10 && p.distM <= 19;
   const sweet = ps.filter((p) => p.seen && p.whole && (low(p) || raised(p)) && p.box && p.box[1] <= -0.5 && edge(p) <= 0.35
     && Math.abs(p.facing ?? 0) >= 0.15).length / n;
   const bad = ps.filter((p) => !p.seen || p.pitchDeg < -22 || p.heightM > 8 || p.size < 0.3 || (!p.whole && p.size < 0.58)

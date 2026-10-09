@@ -627,7 +627,7 @@
   }
  },
  "5": {
-  "note": "road1+50 at 15 m/s; leadRevealR",
+  "note": "road1+50 at 15 m/s; raisedPull34L",
   "rail": "spline",
   "travelS": 1.5,
   "routes": {
@@ -723,65 +723,56 @@
     "tMs": 0,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": 8,
-    "radius": 9,
-    "lift": 1.5,
-    "fov": 34,
+    "orbit": -24,
+    "radius": 10.5,
+    "lift": 4.2,
+    "fov": 41.3,
     "lookHero": [
      0,
-     0,
-     1.8
+     2.5,
+     2.2
     ]
    },
    {
-    "tMs": 2310,
+    "tMs": 3300,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": 19.4,
-    "radius": 14.4,
-    "lift": 2.7,
-    "fov": 36,
+    "orbit": -34,
+    "radius": 14,
+    "lift": 5.2,
+    "fov": 32.6,
     "lookHero": [
      0,
-     2,
-     1.8
-    ]
-   },
-   {
-    "tMs": 4620,
-    "frame": "travel",
-    "lookFrame": "travel",
-    "orbit": 36.5,
-    "radius": 32.45,
-    "lift": 13.75,
-    "fov": 38,
-    "lookHero": [
-     0,
-     -4,
-     1.4
+     2.5,
+     2.2
     ]
    },
    {
     "tMs": "end",
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": 46,
-    "radius": 50,
-    "lift": 26,
-    "fov": 42,
+    "orbit": -44,
+    "radius": 18,
+    "lift": 6.4,
+    "fov": 26,
     "lookHero": [
      0,
-     -12,
-     0.8
+     2.5,
+     2.2
     ]
    }
   ],
   "checks": {
-   "lens": "9–50 m",
-   "climb": 24.6,
+   "lens": "10–18 m",
+   "climb": 2.2,
    "front": 1,
    "inFrame": 1,
-   "blocked": 0,
+   "blocked": 0.04,
+   "sweet": 0.49,
+   "bad": 0,
+   "flaw": 0.22,
+   "gunTight": 0,
+   "merger": 0,
    "candidates": 3
   }
  },
@@ -1205,7 +1196,7 @@
   }
  },
  "9": {
-  "note": "advance[20,-80]/column at 15 m/s; dollyZoom34L",
+  "note": "advance[20,-80]/column at 15 m/s; dollyZoom34L (lens nudged: radius +1)",
   "rail": "spline",
   "travelS": 1.5,
   "routes": {
@@ -1296,7 +1287,7 @@
     "frame": "travel",
     "lookFrame": "travel",
     "orbit": -28,
-    "radius": 9,
+    "radius": 10,
     "lift": 1.8,
     "fov": 40,
     "lookHero": [
@@ -1310,7 +1301,7 @@
     "frame": "travel",
     "lookFrame": "travel",
     "orbit": -32,
-    "radius": 17,
+    "radius": 18,
     "lift": 2.2,
     "fov": 21.8,
     "lookHero": [
@@ -1324,7 +1315,7 @@
     "frame": "travel",
     "lookFrame": "travel",
     "orbit": -36,
-    "radius": 28,
+    "radius": 29,
     "lift": 2.8,
     "fov": 13.4,
     "lookHero": [
@@ -1461,47 +1452,31 @@
   }
  },
  "11": {
-  "note": "road0+30 at 15 m/s; orbitLowR",
+  "note": "flank-left[45,25]/fan at 15 m/s; raisedPush34L",
   "rail": "spline",
   "travelS": 1.5,
   "routes": {
    "hero": {
     "pts": [
      [
-      -0.6,
-      -31.1
+      45,
+      25
      ],
      [
-      1.1,
-      -15.5
+      15.5,
+      35.4
      ],
      [
-      1.2,
-      0
+      -16.5,
+      34
      ],
      [
-      -0.5,
-      15.6
+      -45.1,
+      48.2
      ],
      [
-      -4.3,
-      30.7
-     ],
-     [
-      -8.1,
-      45.7
-     ],
-     [
-      -11.9,
-      60.7
-     ],
-     [
-      -15.7,
-      75.7
-     ],
-     [
-      -19.2,
-      90.5
+      -76.3,
+      50.8
      ]
     ],
     "speed": 15
@@ -1509,84 +1484,52 @@
    "ally1": {
     "pts": [
      [
-      -8.5,
-      -47.5
+      60.8,
+      31.9
      ],
      [
-      -3.9,
-      -32.7
+      30.7,
+      39.9
      ],
      [
-      -1.5,
-      -17.9
+      3.5,
+      55.7
      ],
      [
-      -1.4,
-      -2.4
+      -27.5,
+      61.1
      ],
      [
-      -2.4,
-      12.6
-     ],
-     [
-      -6.2,
-      27.6
-     ],
-     [
-      -10,
-      42.6
-     ],
-     [
-      -13.8,
-      57.6
-     ],
-     [
-      -17.6,
-      72.7
+      -55.7,
+      74.3
      ]
     ],
-    "speed": 15.4
+    "speed": 15.6
    },
    "ally2": {
     "pts": [
      [
-      -11.2,
-      -65.5
+      56.6,
+      12.3
      ],
      [
-      -6.6,
-      -50.7
+      25.9,
+      17.3
      ],
      [
-      -2,
-      -35.9
+      -5.4,
+      13.8
      ],
      [
-      1.2,
-      -20.5
+      -36,
+      21.6
      ],
      [
-      1.4,
-      -5
-     ],
-     [
-      0.9,
-      10.8
-     ],
-     [
-      -2.9,
-      25.9
-     ],
-     [
-      -6.7,
-      40.9
-     ],
-     [
-      -10.5,
-      55.9
+      -67.1,
+      20.9
      ]
     ],
-    "speed": 15.4
+    "speed": 15.6
    }
   },
   "aim": {
@@ -1599,82 +1542,57 @@
     "tMs": 0,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -55,
-    "radius": 12,
-    "lift": 1.6,
-    "fov": 40,
+    "orbit": -42,
+    "radius": 18,
+    "lift": 6.4,
+    "fov": 26,
     "lookHero": [
      0,
-     2,
-     1.6
-    ]
-   },
-   {
-    "tMs": 1650,
-    "frame": "travel",
-    "lookFrame": "travel",
-    "orbit": -22.5,
-    "radius": 12.78125,
-    "lift": 2.053125,
-    "fov": 39.5,
-    "lookHero": [
-     0,
-     2,
-     1.50625
+     2.5,
+     2.2
     ]
    },
    {
     "tMs": 3300,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": 10,
-    "radius": 14.5,
-    "lift": 3.05,
-    "fov": 39,
+    "orbit": -34,
+    "radius": 14,
+    "lift": 5.2,
+    "fov": 32.6,
     "lookHero": [
      0,
-     2,
-     1.3
-    ]
-   },
-   {
-    "tMs": 4950,
-    "frame": "travel",
-    "lookFrame": "travel",
-    "orbit": 42.5,
-    "radius": 16.21875,
-    "lift": 4.046875,
-    "fov": 38.5,
-    "lookHero": [
-     0,
-     2,
-     1.09375
+     2.5,
+     2.2
     ]
    },
    {
     "tMs": "end",
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": 75,
-    "radius": 17,
-    "lift": 4.5,
-    "fov": 38,
+    "orbit": -26,
+    "radius": 10.5,
+    "lift": 4.2,
+    "fov": 41.3,
     "lookHero": [
      0,
-     2,
-     1
+     2.5,
+     2.2
     ]
    }
   ],
   "checks": {
-   "lens": "12–17 m",
-   "climb": 2.9,
+   "lens": "11–18 m",
+   "climb": 2.2,
    "front": 1,
    "inFrame": 1,
    "blocked": 0,
-   "sweet": 0.96,
-   "bad": 0.01,
-   "candidates": 84
+   "sweet": 0.9,
+   "bad": 0,
+   "flaw": 0,
+   "gunTight": 0,
+   "merger": 0,
+   "candidates": 140
   }
  },
  "12": {
@@ -1867,7 +1785,7 @@
   }
  },
  "13": {
-  "note": "advance[0,-110]/column at 15 m/s; trackLowL",
+  "note": "advance[0,-50]/column at 15 m/s; raisedPush34L",
   "rail": "spline",
   "travelS": 1.5,
   "routes": {
@@ -1875,23 +1793,23 @@
     "pts": [
      [
       0,
-      -110
+      -50
      ],
      [
       4,
-      -79
+      -19
      ],
      [
       -4,
-      -48
+      12
      ],
      [
       4,
-      -17
+      43
      ],
      [
       0,
-      14
+      74
      ]
     ],
     "speed": 15
@@ -1902,58 +1820,61 @@
     "tMs": 0,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -32,
-    "radius": 17,
-    "lift": 2.2,
-    "fov": 36,
+    "orbit": -42,
+    "radius": 18,
+    "lift": 6.4,
+    "fov": 26,
     "lookHero": [
      0,
-     1.5,
-     1.4
+     2.5,
+     2.2
     ]
    },
    {
     "tMs": 3300,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -62,
-    "radius": 11,
-    "lift": 1.6,
-    "fov": 40,
+    "orbit": -34,
+    "radius": 14,
+    "lift": 5.2,
+    "fov": 32.6,
     "lookHero": [
      0,
-     1,
-     1.5
+     2.5,
+     2.2
     ]
    },
    {
     "tMs": "end",
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -38,
-    "radius": 19,
-    "lift": 3,
-    "fov": 36,
+    "orbit": -26,
+    "radius": 10.5,
+    "lift": 4.2,
+    "fov": 41.3,
     "lookHero": [
      0,
-     1.5,
-     1.3
+     2.5,
+     2.2
     ]
    }
   ],
   "checks": {
-   "lens": "11–19 m",
-   "climb": 1.4,
+   "lens": "11–18 m",
+   "climb": 2.2,
    "front": 1,
    "inFrame": 1,
    "blocked": 0,
-   "sweet": 1,
+   "sweet": 0.93,
    "bad": 0,
-   "candidates": 46
+   "flaw": 0.39,
+   "gunTight": 0.15,
+   "merger": 0,
+   "candidates": 28
   }
  },
  "14": {
-  "note": "road0+30/stop at 15 m/s; orbitLowR",
+  "note": "road0+30/stop at 15 m/s; raisedPull34L",
   "rail": "spline",
   "travelS": 1.5,
   "routes": {
@@ -2047,82 +1968,57 @@
     "tMs": 0,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -55,
-    "radius": 12,
-    "lift": 1.6,
-    "fov": 40,
+    "orbit": -24,
+    "radius": 10.5,
+    "lift": 4.2,
+    "fov": 41.3,
     "lookHero": [
      0,
-     2,
-     1.6
-    ]
-   },
-   {
-    "tMs": 1650,
-    "frame": "travel",
-    "lookFrame": "travel",
-    "orbit": -22.5,
-    "radius": 12.78125,
-    "lift": 2.053125,
-    "fov": 39.5,
-    "lookHero": [
-     0,
-     2,
-     1.50625
+     2.5,
+     2.2
     ]
    },
    {
     "tMs": 3300,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": 10,
-    "radius": 14.5,
-    "lift": 3.05,
-    "fov": 39,
+    "orbit": -34,
+    "radius": 14,
+    "lift": 5.2,
+    "fov": 32.6,
     "lookHero": [
      0,
-     2,
-     1.3
-    ]
-   },
-   {
-    "tMs": 4950,
-    "frame": "travel",
-    "lookFrame": "travel",
-    "orbit": 42.5,
-    "radius": 16.21875,
-    "lift": 4.046875,
-    "fov": 38.5,
-    "lookHero": [
-     0,
-     2,
-     1.09375
+     2.5,
+     2.2
     ]
    },
    {
     "tMs": "end",
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": 75,
-    "radius": 17,
-    "lift": 4.5,
-    "fov": 38,
+    "orbit": -44,
+    "radius": 18,
+    "lift": 6.4,
+    "fov": 26,
     "lookHero": [
      0,
-     2,
-     1
+     2.5,
+     2.2
     ]
    }
   ],
   "checks": {
-   "lens": "12–17 m",
-   "climb": 2.9,
+   "lens": "10–18 m",
+   "climb": 2.2,
    "front": 1,
    "inFrame": 1,
-   "blocked": 0.03,
-   "sweet": 0.24,
-   "bad": 0.09,
-   "candidates": 18
+   "blocked": 0,
+   "sweet": 1,
+   "bad": 0,
+   "flaw": 0.09,
+   "gunTight": 0,
+   "merger": 0.55,
+   "candidates": 26
   }
  },
  "15": {
@@ -2599,7 +2495,7 @@
   }
  },
  "18": {
-  "note": "flank-right[-55,0]/column at 9 m/s; streetPullZoomL",
+  "note": "flank-right[-55,0]/column at 9 m/s; raisedPull34L",
   "rail": "spline",
   "travelS": 1.5,
   "routes": {
@@ -2663,54 +2559,57 @@
     "tMs": 0,
     "frame": "travel",
     "lookFrame": "travel",
-    "side": -0.8,
-    "along": 9,
-    "lift": 1.6,
-    "fov": 40,
+    "orbit": -24,
+    "radius": 10.5,
+    "lift": 4.2,
+    "fov": 41.3,
     "lookHero": [
      0,
-     0,
-     1.6
+     2.5,
+     2.2
     ]
    },
    {
     "tMs": 3300,
     "frame": "travel",
     "lookFrame": "travel",
-    "side": -1.2,
-    "along": 18,
-    "lift": 2.2,
-    "fov": 26,
+    "orbit": -34,
+    "radius": 14,
+    "lift": 5.2,
+    "fov": 32.6,
     "lookHero": [
      0,
-     0,
-     1.5
+     2.5,
+     2.2
     ]
    },
    {
     "tMs": "end",
     "frame": "travel",
     "lookFrame": "travel",
-    "side": -1.5,
-    "along": 30,
-    "lift": 3,
-    "fov": 16,
+    "orbit": -44,
+    "radius": 18,
+    "lift": 6.4,
+    "fov": 26,
     "lookHero": [
      0,
-     0,
-     1.4
+     2.5,
+     2.2
     ]
    }
   ],
   "checks": {
-   "lens": "9–30 m",
-   "climb": 1.4,
+   "lens": "11–18 m",
+   "climb": 2.2,
    "front": 1,
    "inFrame": 1,
    "blocked": 0,
-   "sweet": 0.73,
-   "bad": 0.18,
-   "candidates": 30
+   "sweet": 1,
+   "bad": 0,
+   "flaw": 0.42,
+   "gunTight": 0.16,
+   "merger": 0,
+   "candidates": 49
   }
  },
  "19": {
@@ -3214,7 +3113,7 @@
   }
  },
  "22": {
-  "note": "flank-left[45,25]/column at 15 m/s; orbitLowR",
+  "note": "flank-left[45,25]/column at 15 m/s; raisedPush34L",
   "rail": "spline",
   "travelS": 1.5,
   "routes": {
@@ -3356,82 +3255,57 @@
     "tMs": 0,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -55,
-    "radius": 12,
-    "lift": 1.6,
-    "fov": 40,
+    "orbit": -42,
+    "radius": 18,
+    "lift": 6.4,
+    "fov": 26,
     "lookHero": [
      0,
-     2,
-     1.6
-    ]
-   },
-   {
-    "tMs": 1650,
-    "frame": "travel",
-    "lookFrame": "travel",
-    "orbit": -22.5,
-    "radius": 12.78125,
-    "lift": 2.053125,
-    "fov": 39.5,
-    "lookHero": [
-     0,
-     2,
-     1.50625
+     2.5,
+     2.2
     ]
    },
    {
     "tMs": 3300,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": 10,
-    "radius": 14.5,
-    "lift": 3.05,
-    "fov": 39,
+    "orbit": -34,
+    "radius": 14,
+    "lift": 5.2,
+    "fov": 32.6,
     "lookHero": [
      0,
-     2,
-     1.3
-    ]
-   },
-   {
-    "tMs": 4950,
-    "frame": "travel",
-    "lookFrame": "travel",
-    "orbit": 42.5,
-    "radius": 16.21875,
-    "lift": 4.046875,
-    "fov": 38.5,
-    "lookHero": [
-     0,
-     2,
-     1.09375
+     2.5,
+     2.2
     ]
    },
    {
     "tMs": "end",
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": 75,
-    "radius": 17,
-    "lift": 4.5,
-    "fov": 38,
+    "orbit": -26,
+    "radius": 10.5,
+    "lift": 4.2,
+    "fov": 41.3,
     "lookHero": [
      0,
-     2,
-     1
+     2.5,
+     2.2
     ]
    }
   ],
   "checks": {
-   "lens": "12–17 m",
-   "climb": 2.9,
+   "lens": "11–18 m",
+   "climb": 2.2,
    "front": 1,
    "inFrame": 1,
    "blocked": 0,
-   "sweet": 0.99,
+   "sweet": 0.55,
    "bad": 0,
-   "candidates": 22
+   "flaw": 0.15,
+   "gunTight": 0,
+   "merger": 0,
+   "candidates": 29
   }
  },
  "23": {
@@ -4314,7 +4188,7 @@
   }
  },
  "30": {
-  "note": "flank-left[45,25]/column at 15 m/s; lead34L",
+  "note": "flank-left[45,25]/column at 15 m/s; orbitLowL",
   "rail": "spline",
   "travelS": 1.5,
   "routes": {
@@ -4378,82 +4252,113 @@
     "tMs": 0,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -18,
-    "radius": 10,
-    "lift": 1.8,
-    "fov": 38,
+    "orbit": 55,
+    "radius": 12,
+    "lift": 1.6,
+    "fov": 40,
     "lookHero": [
      0,
-     0.5,
-     2.4
+     2,
+     1.6
+    ]
+   },
+   {
+    "tMs": 1650,
+    "frame": "travel",
+    "lookFrame": "travel",
+    "orbit": 22.5,
+    "radius": 12.78125,
+    "lift": 2.053125,
+    "fov": 39.5,
+    "lookHero": [
+     0,
+     2,
+     1.50625
     ]
    },
    {
     "tMs": 3300,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -30,
-    "radius": 13,
-    "lift": 2.2,
-    "fov": 31,
+    "orbit": -10,
+    "radius": 14.5,
+    "lift": 3.05,
+    "fov": 39,
     "lookHero": [
      0,
-     0.5,
-     2.4
+     2,
+     1.3
+    ]
+   },
+   {
+    "tMs": 4950,
+    "frame": "travel",
+    "lookFrame": "travel",
+    "orbit": -42.5,
+    "radius": 16.21875,
+    "lift": 4.046875,
+    "fov": 38.5,
+    "lookHero": [
+     0,
+     2,
+     1.09375
     ]
    },
    {
     "tMs": "end",
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -40,
-    "radius": 16,
-    "lift": 2.6,
-    "fov": 26,
+    "orbit": -75,
+    "radius": 17,
+    "lift": 4.5,
+    "fov": 38,
     "lookHero": [
      0,
-     0.5,
-     2.4
+     2,
+     1
     ]
    }
   ],
   "checks": {
-   "lens": "10–16 m",
-   "climb": 0.8,
+   "lens": "12–17 m",
+   "climb": 2.9,
    "front": 1,
    "inFrame": 1,
    "blocked": 0,
-   "sweet": 0.52,
-   "bad": 0.15,
-   "candidates": 8
+   "sweet": 0.28,
+   "bad": 0.24,
+   "flaw": 0.39,
+   "gunTight": 0,
+   "merger": 0,
+   "candidates": 1
   }
  },
  "31": {
-  "note": "flank-right[-55,0]/column at 15 m/s; orbit34L",
+  "note": "arc-left[25,-40]/fan at 14 m/s; raisedPush34L",
   "rail": "spline",
   "travelS": 1.5,
   "routes": {
    "hero": {
     "pts": [
      [
-      -55,
-      0
+      25,
+      -40
      ],
      [
-      -23.8,
-      2.5
+      19.5,
+      -9.2
      ],
      [
-      4.8,
-      16.8
+      -5.4,
+      12.7
      ],
      [
-      36.8,
-      15.4
+      -24.3,
+      37
      ],
      [
-      66.3,
-      25.8
+      -55.8,
+      44.4
      ]
     ],
     "speed": 15
@@ -4461,24 +4366,24 @@
    "ally1": {
     "pts": [
      [
-      -71.2,
-      -5.5
+      35,
+      -54
      ],
      [
-      -41.5,
-      3.7
+      28.5,
+      -23.6
      ],
      [
-      -10,
-      4.7
+      22.4,
+      6.6
      ],
      [
-      19.2,
-      16.6
+      -0.9,
+      28.8
      ],
      [
-      50.1,
-      20.3
+      -23,
+      49.7
      ]
     ],
     "speed": 15.6
@@ -4493,54 +4398,57 @@
     "tMs": 0,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -20,
-    "radius": 11,
-    "lift": 1.7,
-    "fov": 38,
+    "orbit": -42,
+    "radius": 18,
+    "lift": 6.4,
+    "fov": 26,
     "lookHero": [
      0,
-     1,
-     2.4
+     2.5,
+     2.2
     ]
    },
    {
     "tMs": 3300,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -50,
-    "radius": 10,
-    "lift": 2,
-    "fov": 38,
+    "orbit": -34,
+    "radius": 14,
+    "lift": 5.2,
+    "fov": 32.6,
     "lookHero": [
      0,
-     1,
-     2.4
+     2.5,
+     2.2
     ]
    },
    {
     "tMs": "end",
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -75,
-    "radius": 12,
-    "lift": 2.4,
-    "fov": 38,
+    "orbit": -26,
+    "radius": 10.5,
+    "lift": 4.2,
+    "fov": 41.3,
     "lookHero": [
      0,
-     1,
-     2.4
+     2.5,
+     2.2
     ]
    }
   ],
   "checks": {
-   "lens": "10–12 m",
-   "climb": 0.7,
+   "lens": "11–18 m",
+   "climb": 2.2,
    "front": 1,
    "inFrame": 1,
    "blocked": 0,
-   "sweet": 0.69,
-   "bad": 0.01,
-   "candidates": 130
+   "sweet": 0.94,
+   "bad": 0,
+   "flaw": 0,
+   "gunTight": 0,
+   "merger": 0,
+   "candidates": 136
   }
  },
  "32": {
@@ -5047,7 +4955,7 @@
   }
  },
  "35": {
-  "note": "arc-right[-25,-40]/fan at 14 m/s; pushZoomR",
+  "note": "arc-right[-25,-40]/fan at 14 m/s; pullZoomL",
   "rail": "spline",
   "travelS": 1.5,
   "routes": {
@@ -5111,22 +5019,22 @@
     "tMs": 0,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": 38,
-    "radius": 32,
-    "lift": 3.2,
-    "fov": 16,
+    "orbit": -15,
+    "radius": 10,
+    "lift": 1.6,
+    "fov": 40,
     "lookHero": [
      0,
      0.5,
-     1.4
+     1.5
     ]
    },
    {
     "tMs": 3300,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": 28,
-    "radius": 20,
+    "orbit": -22,
+    "radius": 19,
     "lift": 2.4,
     "fov": 25,
     "lookHero": [
@@ -5139,42 +5047,49 @@
     "tMs": "end",
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": 18,
-    "radius": 11,
-    "lift": 1.8,
-    "fov": 38,
+    "orbit": -28,
+    "radius": 31,
+    "lift": 3.2,
+    "fov": 16,
     "lookHero": [
      0,
      0.5,
-     1.5
+     1.4
     ]
    }
   ],
   "checks": {
-   "lens": "11–32 m",
-   "climb": 1.4,
+   "lens": "10–31 m",
+   "climb": 1.6,
    "front": 1,
    "inFrame": 1,
    "blocked": 0,
-   "sweet": 1,
+   "sweet": 0.42,
    "bad": 0,
-   "candidates": 39
+   "flaw": 0.21,
+   "gunTight": 0,
+   "merger": 0,
+   "candidates": 35
   }
  },
  "36": {
-  "note": "flank-left[45,25]/fan/stop at 0 m/s; dollyZoom34L",
+  "note": "arc-right[-25,-40]/fan/stop at 11 m/s; raisedPull34L",
   "rail": "spline",
   "travelS": 1.5,
   "routes": {
    "hero": {
     "pts": [
      [
-      45,
-      25
+      -25,
+      -40
      ],
      [
-      32.1,
-      29.5
+      -11.9,
+      -11.6
+     ],
+     [
+      -2.5,
+      13.7
      ]
     ],
     "speed": 15,
@@ -5183,16 +5098,27 @@
    "ally1": {
     "pts": [
      [
-      60.8,
-      31.9
+      -15,
+      -54
      ],
      [
-      36.3,
-      38.4
+      -5.5,
+      -24.3
+     ],
+     [
+      18.2,
+      -2.6
+     ],
+     [
+      39,
+      20.1
+     ],
+     [
+      69.3,
+      29.8
      ]
     ],
-    "speed": 15.6,
-    "stop": true
+    "speed": 15.6
    }
   },
   "aim": {
@@ -5204,58 +5130,61 @@
     "tMs": 0,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -28,
-    "radius": 9,
-    "lift": 1.8,
-    "fov": 40,
+    "orbit": -24,
+    "radius": 10.5,
+    "lift": 4.2,
+    "fov": 41.3,
     "lookHero": [
      0,
-     0.5,
-     2.4
+     2.5,
+     2.2
     ]
    },
    {
     "tMs": 3300,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -32,
-    "radius": 17,
-    "lift": 2.2,
-    "fov": 21.8,
+    "orbit": -34,
+    "radius": 14,
+    "lift": 5.2,
+    "fov": 32.6,
     "lookHero": [
      0,
-     0.5,
-     2.4
+     2.5,
+     2.2
     ]
    },
    {
     "tMs": "end",
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -36,
-    "radius": 28,
-    "lift": 2.8,
-    "fov": 13.4,
+    "orbit": -44,
+    "radius": 18,
+    "lift": 6.4,
+    "fov": 26,
     "lookHero": [
      0,
-     0.5,
-     2.4
+     2.5,
+     2.2
     ]
    }
   ],
   "checks": {
-   "lens": "9–28 m",
-   "climb": 1,
+   "lens": "11–18 m",
+   "climb": 2.2,
    "front": 1,
    "inFrame": 1,
    "blocked": 0,
-   "sweet": 0.7,
-   "bad": 0.09,
-   "candidates": 94
+   "sweet": 0.93,
+   "bad": 0,
+   "flaw": 0,
+   "gunTight": 0,
+   "merger": 0,
+   "candidates": 92
   }
  },
  "37": {
-  "note": "flank-right[-60,-25]/column at 15 m/s; trackLowL",
+  "note": "flank-right[-60,-25]/column at 15 m/s; raisedPush34R",
   "rail": "spline",
   "travelS": 1.5,
   "routes": {
@@ -5345,54 +5274,57 @@
     "tMs": 0,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -32,
-    "radius": 17,
-    "lift": 2.2,
-    "fov": 36,
+    "orbit": 42,
+    "radius": 18,
+    "lift": 6.4,
+    "fov": 26,
     "lookHero": [
      0,
-     1.5,
-     1.4
+     2.5,
+     2.2
     ]
    },
    {
     "tMs": 3300,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -62,
-    "radius": 11,
-    "lift": 1.6,
-    "fov": 40,
+    "orbit": 34,
+    "radius": 14,
+    "lift": 5.2,
+    "fov": 32.6,
     "lookHero": [
      0,
-     1,
-     1.5
+     2.5,
+     2.2
     ]
    },
    {
     "tMs": "end",
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -38,
-    "radius": 19,
-    "lift": 3,
-    "fov": 36,
+    "orbit": 26,
+    "radius": 10.5,
+    "lift": 4.2,
+    "fov": 41.3,
     "lookHero": [
      0,
-     1.5,
-     1.3
+     2.5,
+     2.2
     ]
    }
   ],
   "checks": {
-   "lens": "11–19 m",
-   "climb": 1.4,
+   "lens": "10–18 m",
+   "climb": 2.2,
    "front": 1,
    "inFrame": 1,
    "blocked": 0,
    "sweet": 0.72,
-   "bad": 0.06,
-   "candidates": 13
+   "bad": 0,
+   "flaw": 0.18,
+   "gunTight": 0,
+   "merger": 0,
+   "candidates": 17
   }
  },
  "38": {
@@ -6428,31 +6360,31 @@
   }
  },
  "45": {
-  "note": "arc-left[25,-40]/column at 14 m/s; pushZoom34L",
+  "note": "diagonal-left[40,-90]/fan at 15 m/s; track34L",
   "rail": "spline",
   "travelS": 1.5,
   "routes": {
    "hero": {
     "pts": [
      [
-      25,
-      -40
+      40,
+      -90
      ],
      [
-      19.5,
-      -9.2
+      25.5,
+      -62.3
      ],
      [
-      -5.4,
-      12.7
+      1.2,
+      -41.5
      ],
      [
-      -24.3,
-      37
+      -10.1,
+      -11.5
      ],
      [
-      -55.8,
-      44.4
+      -31.1,
+      11.6
      ]
     ],
     "speed": 15
@@ -6460,24 +6392,24 @@
    "ally1": {
     "pts": [
      [
-      27,
-      -57
+      56.2,
+      -95.7
      ],
      [
-      16.3,
-      -27.8
+      39.6,
+      -69.3
      ],
      [
-      6.1,
-      1.3
+      30.5,
+      -39.2
      ],
      [
-      -20.1,
-      20
+      11.5,
+      -14.1
      ],
      [
-      -44.8,
-      37.7
+      -0.1,
+      14.8
      ]
     ],
     "speed": 15.6
@@ -6485,24 +6417,24 @@
    "ally2": {
     "pts": [
      [
-      23,
-      -74
+      39.8,
+      -107.2
      ],
      [
-      17.7,
-      -43.3
+      20.7,
+      -82.6
      ],
      [
-      -2.8,
-      -18.5
+      -4.5,
+      -63.8
      ],
      [
-      -20.1,
-      6.9
+      -21.6,
+      -37.3
      ],
      [
-      -48.8,
-      20.7
+      -44.8,
+      -16.5
      ]
     ],
     "speed": 15.6
@@ -6518,27 +6450,27 @@
     "tMs": 0,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -40,
-    "radius": 28,
-    "lift": 2.8,
-    "fov": 13.4,
+    "orbit": -38,
+    "radius": 12.5,
+    "lift": 2,
+    "fov": 36,
     "lookHero": [
      0,
-     0.5,
-     2.4
+     1.2,
+     2.5
     ]
    },
    {
     "tMs": 3300,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -34,
-    "radius": 17,
-    "lift": 2.2,
-    "fov": 21.8,
+    "orbit": -55,
+    "radius": 10,
+    "lift": 1.7,
+    "fov": 38,
     "lookHero": [
      0,
-     0.5,
+     1,
      2.4
     ]
    },
@@ -6546,26 +6478,29 @@
     "tMs": "end",
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -28,
-    "radius": 9,
-    "lift": 1.8,
-    "fov": 40,
+    "orbit": -42,
+    "radius": 13,
+    "lift": 2.2,
+    "fov": 36,
     "lookHero": [
      0,
-     0.5,
-     2.4
+     1.2,
+     2.5
     ]
    }
   ],
   "checks": {
-   "lens": "9–28 m",
-   "climb": 1,
+   "lens": "10–13 m",
+   "climb": 0.5,
    "front": 1,
    "inFrame": 1,
    "blocked": 0,
-   "sweet": 0.66,
-   "bad": 0.06,
-   "candidates": 633
+   "sweet": 0.81,
+   "bad": 0.01,
+   "flaw": 0.06,
+   "gunTight": 0,
+   "merger": 0,
+   "candidates": 722
   }
  },
  "46": {
@@ -6853,7 +6788,7 @@
   }
  },
  "48": {
-  "note": "flank-right[-60,-25]/column at 15 m/s; orbit34L",
+  "note": "flank-right[-60,-25]/column at 15 m/s; trackLowL",
   "rail": "spline",
   "travelS": 1.5,
   "routes": {
@@ -6943,54 +6878,57 @@
     "tMs": 0,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -20,
-    "radius": 11,
-    "lift": 1.7,
-    "fov": 38,
+    "orbit": -32,
+    "radius": 17,
+    "lift": 2.2,
+    "fov": 36,
     "lookHero": [
      0,
-     1,
-     2.4
+     1.5,
+     1.4
     ]
    },
    {
     "tMs": 3300,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -50,
-    "radius": 10,
-    "lift": 2,
-    "fov": 38,
+    "orbit": -62,
+    "radius": 11,
+    "lift": 1.6,
+    "fov": 40,
     "lookHero": [
      0,
      1,
-     2.4
+     1.5
     ]
    },
    {
     "tMs": "end",
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -75,
-    "radius": 12,
-    "lift": 2.4,
-    "fov": 38,
+    "orbit": -38,
+    "radius": 19,
+    "lift": 3,
+    "fov": 36,
     "lookHero": [
      0,
-     1,
-     2.4
+     1.5,
+     1.3
     ]
    }
   ],
   "checks": {
-   "lens": "10–12 m",
-   "climb": 0.7,
+   "lens": "11–19 m",
+   "climb": 1.4,
    "front": 1,
    "inFrame": 1,
    "blocked": 0,
-   "sweet": 0.4,
-   "bad": 0.24,
-   "candidates": 18
+   "sweet": 0.27,
+   "bad": 0.19,
+   "flaw": 0.21,
+   "gunTight": 0,
+   "merger": 0,
+   "candidates": 17
   }
  },
  "49": {
@@ -7135,7 +7073,7 @@
   }
  },
  "50": {
-  "note": "advance[0,-50]/column at 15 m/s; swoopLowL",
+  "note": "advance[0,-50]/column at 15 m/s; raisedPull34L",
   "rail": "spline",
   "travelS": 1.5,
   "routes": {
@@ -7199,82 +7137,57 @@
     "tMs": 0,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -25,
-    "radius": 30,
-    "lift": 7,
-    "fov": 34,
+    "orbit": -24,
+    "radius": 10.5,
+    "lift": 4.2,
+    "fov": 41.3,
     "lookHero": [
      0,
-     13.5,
-     1
+     2.5,
+     2.2
     ]
    },
    {
-    "tMs": 1997,
+    "tMs": 3300,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -45,
-    "radius": 18.45,
-    "lift": 3.6799999999999997,
-    "fov": 37,
+    "orbit": -34,
+    "radius": 14,
+    "lift": 5.2,
+    "fov": 32.6,
     "lookHero": [
      0,
-     5.5,
-     1.4
-    ]
-   },
-   {
-    "tMs": 3630,
-    "frame": "travel",
-    "lookFrame": "travel",
-    "orbit": -70,
-    "radius": 11,
-    "lift": 2.2,
-    "fov": 40,
-    "lookHero": [
-     0,
-     1.5,
-     1.6
-    ]
-   },
-   {
-    "tMs": 5115,
-    "frame": "travel",
-    "lookFrame": "travel",
-    "orbit": -100,
-    "radius": 14.5,
-    "lift": 2.6,
-    "fov": 39,
-    "lookHero": [
-     0,
-     1.5,
-     1.6
+     2.5,
+     2.2
     ]
    },
    {
     "tMs": "end",
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": -118,
+    "orbit": -44,
     "radius": 18,
-    "lift": 3,
-    "fov": 38,
+    "lift": 6.4,
+    "fov": 26,
     "lookHero": [
      0,
-     7.5,
-     1.2
+     2.5,
+     2.2
     ]
    }
   ],
   "checks": {
-   "lens": "11–30 m",
-   "climb": 4.8,
-   "front": 0.66,
+   "lens": "11–18 m",
+   "climb": 2.2,
+   "front": 1,
    "inFrame": 1,
    "blocked": 0,
-   "sweet": 0.27,
-   "bad": 0.39,
-   "candidates": 12
+   "sweet": 1,
+   "bad": 0,
+   "flaw": 0.33,
+   "gunTight": 0,
+   "merger": 0,
+   "candidates": 20
   }
  }
 }
