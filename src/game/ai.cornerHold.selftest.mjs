@@ -87,16 +87,10 @@ function replay(seconds) {
   // the recorded route from waypoint 1 on: (25, -150), (25, -225), (25, -250), (0, -275)
   ctl.setWaypoints([[M(25), -150], [M(25), -225], [M(25), -250], [0, -275]], { loop: false });
   const steers = [];
-  const corners = []; // each corner the plan steers for, with when it was chosen
   let left = null;
   for (let i = 0; i < seconds / SIM_DT; i++) {
     ctl.update(SIM_DT, 300 + i * SIM_DT);
     steers.push(bot.input.steer);
-    const info = ctl.debugInfo();
-    const last = corners[corners.length - 1];
-    if (info.routeCornerX != null && (!last || Math.hypot(info.routeCornerX - last.x, info.routeCornerZ - last.z) > 1)) {
-      corners.push({ t: i * SIM_DT, x: info.routeCornerX, z: info.routeCornerZ });
-    }
     updateTank(bot, FIELD, SIM_DT, null);
     const p = bot.state.pos;
     const out = PUSH_M * Math.min(1, Math.max(0, wrap(YAW_PRESSED - bot.state.yaw) / YAW_TURN));
@@ -110,19 +104,7 @@ function replay(seconds) {
     }
     if (left === null && Math.hypot(p.x - A.x, p.z - A.z) > 3) left = i * SIM_DT;
   }
-  return { steers, left, corners };
-}
-
-/** Corners taken back: chosen again within `withinS` of being given up for another. */
-function takeBacks(corners, withinS) {
-  const back = [];
-  for (let i = 2; i < corners.length; i++) {
-    for (let j = i - 2; j >= 0; j--) {
-      if (corners[i].t - corners[j + 1].t > withinS) break;
-      if (Math.hypot(corners[i].x - corners[j].x, corners[i].z - corners[j].z) < 1) { back.push(corners[i].t); break; }
-    }
-  }
-  return back;
+  return { steers, left };
 }
 
 /** The times (s) the steering reverses (|steer| > 0.3 on either side) before `toS`. */
@@ -139,16 +121,13 @@ function reversals(steers, toS) {
 
 console.log('[1] a hull pressed against a boulder does not take back the corner it just gave up');
 {
-  const { steers, left, corners } = replay(8);
+  const { steers, left } = replay(8);
   const at = reversals(steers, 6);
-  // it gave the first corner up at 0.6 s and took it back at 1.8 s (the north-east lane blocked again); the recheck
-  // at 2.4 s would give it up once more, and the hold refuses that. Read from the plan itself (destruction core lane,
-  // 2026-10-08): with corners chosen clear of every solid the first choice is kept from the start, the hull wedges on
-  // the rock and the stuck recovery's reverse turns it out at 2.0 s, a steering reversal that is no take-back.
-  const taken = takeBacks(corners, 2);
-  ok(taken.length <= 1, `a corner given up is taken back at most once (the next flip is refused): ` +
-    `${taken.map((t) => t.toFixed(2)).join(', ') || 'none'} (corners ` +
-    `${corners.map((c) => `${c.x.toFixed(1)},${c.z.toFixed(1)}@${c.t.toFixed(1)}`).join(' ')})`);
+  // it gives the first corner up at 0.6 s and takes it back at 1.8 s (the north-east lane blocked again); the
+  // recheck at 2.4 s would give it up once more
+  const taken = at.filter((t) => t > 1.9 && t < 3);
+  ok(taken.length === 0, `no reversal from 1.9 to 3 s, where the recheck would undo the last choice ` +
+    `(${taken.map((t) => t.toFixed(2)).join(', ') || 'none'})`);
   ok(at.length <= 4, `at most four reversals in 6 s (${at.length}; one every 0.6 s before)`);
   const leftAt = left === null ? 'never' : `${left.toFixed(1)} s`;
   ok(left !== null && left < 8, `it leaves the boulder (3 m off it at ${leftAt})`);
