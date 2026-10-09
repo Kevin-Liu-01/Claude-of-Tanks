@@ -52,13 +52,16 @@ const RUSTY = material('steel', [0.09, 0.06, 0.04], 0.75, 0.25, 0, 1);
 // wheel discs, with no wire-mesh wheels, gold foil, hand controller or dust coating"; the painted bucket reads colours
 // alone, so the materials tell it in shades): the zinc-coated piano wire bright, the weave's gaps dark; the titanium
 // chevrons brighter still; the Kapton foil in two golds as it crinkles; the umbrella dish's silvered mesh pale
-// (round 5, wave 278: "chunky checkerboard drums for wheels") the weave's check finer and close in shade: a mesh's grain,
-// not a chessboard
-const WIRE_BRIGHT = material('steel', [0.5, 0.505, 0.51], 0.5, 0.8, 0, 0.5);
-const WIRE_GAP = material('trim', [0.38, 0.38, 0.385], 0.8, 0, 0, 0.6);
 const TITANIUM_BRIGHT = material('chrome', [0.62, 0.62, 0.6], 0.3, 0.9, 0, 0.4);
 const GOLD_DIM = material('chrome', [0.36, 0.22, 0.045], 0.35, 0.9, 0, 0.2);
-const DISH_MESH = material('paint', linearHex(0xd8d8d2), 0.5, 0.2, 0, 0.5);
+// round 6 (wave 285: "the checkerboard wheel reads wrong; use the woven wire-mesh tyre with chevron treads and deep black
+// shadows"; the dish "a flat brown ellipse" where the gold open-mesh umbrella stood): the weave a dark tyre (the shadowed
+// inside seen through the open mesh) crossed by fine bright wires running both ways round it, the titanium chevrons over
+// half the tread; the umbrella a gold mesh whose open weave shows its lit face from behind too
+const WIRE_DEEP = material('trim', [0.03, 0.03, 0.032], 0.7, 0, 0, 0.5);
+const WIRE_STRAND = material('steel', [0.3, 0.305, 0.31], 0.45, 0.85, 0, 0.5);
+const DISH_GOLD = material('chrome', [0.62, 0.48, 0.2], 0.4, 0.75, 0, 0.3);
+const DISH_GAP = material('chrome', [0.3, 0.22, 0.08], 0.5, 0.6, 0, 0.3);
 const SEAT_WEB_DARK = material('canvas', linearHex(0x8c8c86), 0.85, 0, 0, 0.5);
 
 const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -170,23 +173,33 @@ function lrv(mesh: VehicleMesh, coarse: boolean): void {
     // (round 4, wave 260: "solid dark wheel discs… no wire-mesh wheels") the woven tyre: bright wire and the dark of
     // its weave's gaps in a fine check round the tread, the shoulders and the side walls down to the hub (one grey on
     // mobile); the hub a small spun disc inside it
-    const prof: readonly (readonly [number, number])[] = [[R * 0.42, -0.115], [R * 0.6, -0.115], [R * 0.78, -0.115], [R - 0.03, -0.115],
-      [R, -0.08], [R, -0.027], [R, 0.027], [R, 0.08], [R - 0.03, 0.115], [R * 0.78, 0.115], [R * 0.6, 0.115], [R * 0.42, 0.115]];
-    const tyreSegs = coarse ? 14 : 64;
+    // (round 6) the side walls in five courses and the tread in four, so the weave's wires cross in diamonds a few
+    // centimetres across: a dark tyre with fine strands both ways round it (every fourth course on each diagonal)
+    const prof: readonly (readonly [number, number])[] = [[R * 0.42, -0.115], [R * 0.53, -0.115], [R * 0.64, -0.115], [R * 0.75, -0.115],
+      [R * 0.86, -0.115], [R - 0.03, -0.115], [R, -0.08], [R, -0.04], [R, 0], [R, 0.04], [R, 0.08], [R - 0.03, 0.115], [R * 0.86, 0.115],
+      [R * 0.75, 0.115], [R * 0.64, 0.115], [R * 0.53, 0.115], [R * 0.42, 0.115]];
+    const tyreSegs = coarse ? 14 : 48;
+    const strand = (i: number, j: number) => (i + j) % 4 === 0 || (((i - j) % 4) + 4) % 4 === 0;
     mesh.grid(prof.length - 1, tyreSegs, (i, j, out) => {
       const a = (j / tyreSegs) * Math.PI * 2;
       out[0] = prof[i][1]; out[1] = Math.cos(a) * prof[i][0]; out[2] = Math.sin(a) * prof[i][0];
-    }, (i, j) => (coarse ? WIRE_MESH : (i + j) % 2 ? WIRE_BRIGHT : WIRE_GAP), { closeV: true, creaseI: [3, 4, 7, 8], flip: true });
-    if (!coarse) {
-      for (let k = 0; k < 18; k++) {
-        mesh.push().rotateX((k / 18) * Math.PI * 2);
-        mesh.dressing(() => {
-          mesh.box(0.04, R + 0.005, 0, 0.11, 0.01, 0.04, TITANIUM_BRIGHT, 0);
-          mesh.box(-0.04, R + 0.005, 0.02, 0.11, 0.01, 0.04, TITANIUM_BRIGHT, 0);
-        });
-        mesh.pop();
+    }, (i, j) => (coarse ? WIRE_MESH : strand(i, j) ? WIRE_STRAND : WIRE_DEEP), { closeV: true, creaseI: [5, 6, 10, 11], flip: true });
+    if (!coarse) mesh.dressing(() => {
+      // the titanium chevrons riveted over the tread: thirty Vs round it, each arm a plate 3 cm wide from the tread's
+      // middle back to its shoulder, half the tread's face bright (a plate's face and its leading lip)
+      const N = 30, w = 0.03 / R, back = 0.16, rr = R + 0.006;
+      const at = (x: number, a: number, r = rr): Vec3 => [x, Math.cos(a) * r, Math.sin(a) * r];
+      for (let k = 0; k < N; k++) {
+        const a = (k / N) * Math.PI * 2;
+        for (const side of [1, -1]) {
+          const p0 = at(0, a - w / 2), p1 = at(0, a + w / 2), p2 = at(side * 0.1, a + back + w / 2), p3 = at(side * 0.1, a + back - w / 2);
+          const am = a + back / 2;
+          face4(mesh, [p0, p1, p2, p3], [0, Math.cos(am), Math.sin(am)], TITANIUM_BRIGHT);
+          face4(mesh, [at(0, a + w / 2, R), at(0, a + w / 2), at(side * 0.1, a + back + w / 2), at(side * 0.1, a + back + w / 2, R)],
+            [0, -Math.sin(am), Math.cos(am)], TITANIUM_BRIGHT);
+        }
       }
-    }
+    });
     // the spoke ring and the hub drive
     mesh.lathe([[0.0001, 0.07], [R * 0.43, 0.05], [R * 0.43, 0.0], [0.0001, -0.02]], coarse ? 10 : 14, () => ALU, { flip: true });
     mesh.lathe([[0.0001, -0.2], [0.09, -0.2], [0.11, -0.05], [0.0001, -0.05]], 10, () => ALU_DULL);
@@ -244,15 +257,39 @@ function lrv(mesh: VehicleMesh, coarse: boolean): void {
   // (round 4, wave 260: "a dark flat dish") the umbrella's silvered mesh pale and deeper, its eight ribs and the rim
   for (let k = 0; k <= 5; k++) { const r = 0.45 * (k / 5); dish.push([Math.max(0.0001, r), 0.21 * (r / 0.45) ** 2]); }
   mesh.push().rotateZ(Math.PI / 2);
-  mesh.lathe(dish.map(([r, x]) => [r, x] as [number, number]), coarse ? 10 : 16, () => DISH_MESH);
-  // (round 5, wave 278: "an opaque brown disc for its dish") the umbrella's back as pale as its face: it is the same
-  // silvered mesh, and the shadowed underside read brown
-  mesh.lathe(dish.map(([r, x]) => [r, x - 0.006] as [number, number]), coarse ? 10 : 16, () => DISH_MESH, { flip: true });
+  // (round 6, wave 285: "a flat brown ellipse") a gold mesh in its gores, the open weave between the ribs a deeper gold;
+  // the concave face (+x here: the sky's side) as it is; from below the open mesh shows that lit face, so the underside
+  // takes the face's normals (wound to face down), and the ribs run under it
+  const dishSegs = coarse ? 10 : 24;
+  mesh.grid(dish.length - 1, dishSegs, (i, j, out) => {
+    const a = (j / dishSegs) * Math.PI * 2;
+    out[0] = dish[i][1]; out[1] = Math.cos(a) * dish[i][0]; out[2] = Math.sin(a) * dish[i][0];
+  }, (i, j) => (coarse ? DISH_GOLD : (i + j) % 3 === 0 ? DISH_GAP : DISH_GOLD), { closeV: true });
+  {
+    const segs = dishSegs, ring = (i: number, j: number): Vec3 => {
+      const a = (j / segs) * Math.PI * 2, r = dish[i][0];
+      return [dish[i][1] - 0.006, Math.cos(a) * r, Math.sin(a) * r];
+    };
+    // the face's normal at (i, j): the paraboloid x = 0.21 (r / 0.45)^2 opening toward +x
+    const faceN = (i: number, j: number): Vec3 => {
+      const a = (j / segs) * Math.PI * 2, slope = (2 * 0.21 * dish[i][0]) / (0.45 * 0.45);
+      return unit([1, -slope * Math.cos(a), -slope * Math.sin(a)]);
+    };
+    for (let i = 0; i < dish.length - 1; i++) for (let j = 0; j < segs; j++) {
+      const m = coarse ? DISH_GOLD : (i + j) % 3 === 0 ? DISH_GAP : DISH_GOLD;
+      const q = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]] as const;
+      const v = q.map(([a, b]) => { const pt = ring(a, b), n = faceN(a, b); return mesh.vert(pt[0], pt[1], pt[2], n[0], n[1], n[2], m); });
+      // wound to face -x (the back), whatever its normals say
+      const p0 = ring(i, j), p1 = ring(i + 1, j), p2 = ring(i + 1, j + 1);
+      const back = dotV(crossV(sub(p1, p0), sub(p2, p0)), [-1, 0, 0]) > 0;
+      if (back) { mesh.tri(v[0], v[1], v[2]); mesh.tri(v[0], v[2], v[3]); } else { mesh.tri(v[0], v[2], v[1]); mesh.tri(v[0], v[3], v[2]); }
+    }
+  }
   if (!coarse) mesh.dressing(() => {
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2, rib: Vec3[] = [];
-      for (const r of [0.04, 0.24, 0.45]) rib.push([0.21 * (r / 0.45) ** 2 + 0.006, Math.cos(a) * r, Math.sin(a) * r]);
-      mesh.tube(rib, 0.006, 3, ALU_DULL, { caps: false });
+      for (const r of [0.04, 0.24, 0.45]) rib.push([0.21 * (r / 0.45) ** 2 - 0.014, Math.cos(a) * r, Math.sin(a) * r]);
+      mesh.tube(rib, 0.008, 3, ALU, { caps: false });
     }
   });
   mesh.pop();
