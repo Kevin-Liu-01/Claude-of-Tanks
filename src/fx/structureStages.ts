@@ -401,8 +401,19 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     if ((list?.length ?? 0) >= STRIKE_HOLES || nearPunched(structureId, x, y, z, 1.2)) return;
     const radiusM = strikeHoleRadius(p.munition, p.chargeKg);
     const cause = p.munition === 'kinetic' || p.munition === 'autocannon_ap' ? 'kinetic' : 'blast';
-    const spec = seam.holeAt(x, y, z, radiusM, p.dirX, p.dirZ, p.munition, cause, 1 + (list?.length ?? 0));
+    let spec = seam.holeAt(x, y, z, radiusM, p.dirX, p.dirZ, p.munition, cause, 1 + (list?.length ?? 0));
     if (!spec) return;
+    // (the battle strips, b3: a sheet hall's torn sheet curled up past its eaves round a hole at the wall's head) a
+    // strike's hole stands inside its face: smaller where the face is tight round it, none where a pock cannot fit
+    const face = seam.anatomy.storeys[spec.storey]?.faces.find((f) => f.name === spec!.face);
+    if (face) {
+      const fit = Math.min(spec.y - 0.25, face.height - spec.y - 0.35, face.width / 2 - Math.abs(spec.u) - 0.25);
+      if (fit < 0.35) return;
+      if (fit < spec.radiusM) {
+        spec = seam.holeAt(x, y, z, fit, p.dirX, p.dirZ, p.munition, cause, 1 + (list?.length ?? 0));
+        if (!spec) return;
+      }
+    }
     finishFalls(structureId);
     notePunched(structureId, x, y, z);
     run(seam, 0, false, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
