@@ -94,6 +94,8 @@ interface SharedTextureEntry {
   feats: PlateFeatures | null;
   patternId: MaterialPatternId;
   paintable: Set<PaintableRecord>;
+  /** Equipment painted for this entry's scheme (followVehicleScheme): told the new scheme on every repaint. */
+  schemeFollowers?: Set<(vis: MaterialVisual) => void>;
   quality: MaterialTextureQuality;
   camoCanvas: HTMLCanvasElement;
   normalCanvas: HTMLCanvasElement;
@@ -157,60 +159,62 @@ function makeCanvas(w: number, h: number): HTMLCanvasElement {
 const materialPainter = createMaterialPainter(makeCanvas);
 const { mulberry32, hexToRgb, mix, scale3, paintCamo, paintRoughness, paintPatchRoughness, exposureTrim } = materialPainter;
 
-// One track texture: 4 link rows per repeat, chevron/waffle grousers.
+// One track texture: 4 link rows per repeat.
+// Fleet lane round 1 (2026-10-08; the fleet audit's Garage running gear): the band's visible face is the track's INNER
+// run, the face the road wheels roll on (the shoes' pads cover its outer face), yet it carried the outer chevron
+// grousers, so the bottom run read as pale chevron planks. Each link now shows the inner surface: the joint and its pin
+// bosses, bolted end connectors at both edges, two road-wheel paths worn bright along the travel either side of the
+// guide-horn row, and the horn's shadow. Same warm manganese ramp (r3: never polished silver).
 function paintTrack(rng: Rng): HTMLCanvasElement {
   const S = texSize(512); // shared/repeating track tile keeps the world-scale budget
   const c = makeCanvas(S, S);
   const ctx = canvas2d(c);
-  // r3 (critic: Tiger "track links are bright sparkly silver-gray instead of
-  // dark manganese steel", T-90M idler "navy-blue sparkle"): the old cool
-  // blue-grey ramp read as polished silver under the field sun. Warm dark
-  // manganese-iron ramp with an earth cast; wear highlights cut below.
-  ctx.fillStyle = '#332f2a';
+  ctx.fillStyle = '#2a2824';
   ctx.fillRect(0, 0, S, S);
   const rows = 4, rh = S / rows;
   for (let r = 0; r < rows; r++) {
     const y = r * rh;
-    // link body shading
+    // link body: dark oily steel, a touch lighter across the middle of the link
     const g = ctx.createLinearGradient(0, y, 0, y + rh);
-    g.addColorStop(0, '#494439');
-    g.addColorStop(0.45, '#3a362e');
-    g.addColorStop(0.5, '#211f1a');
-    g.addColorStop(0.55, '#3c382f');
-    g.addColorStop(1, '#302d26');
+    g.addColorStop(0, '#2e2b25');
+    g.addColorStop(0.5, '#3a362f');
+    g.addColorStop(1, '#2c2924');
     ctx.fillStyle = g;
-    ctx.fillRect(0, y + 4, S, rh - 8);
-    // pin gap + end-connector bumps
-    ctx.fillStyle = '#0d0c0a';
-    ctx.fillRect(0, y, S, 6);
-    ctx.fillStyle = '#403c33';
-    for (let x = 0; x < S; x += S / 8) ctx.fillRect(x + 4, y, S / 16, 5);
-    // chevron grouser
-    ctx.strokeStyle = '#524d40';
-    ctx.lineWidth = 14;
-    ctx.beginPath();
-    ctx.moveTo(S * 0.08, y + rh * 0.72);
-    ctx.lineTo(S * 0.5, y + rh * 0.3);
-    ctx.lineTo(S * 0.92, y + rh * 0.72);
-    ctx.stroke();
-    ctx.strokeStyle = '#211f19';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(S * 0.08, y + rh * 0.78);
-    ctx.lineTo(S * 0.5, y + rh * 0.36);
-    ctx.lineTo(S * 0.92, y + rh * 0.78);
-    ctx.stroke();
-    // guide horn shadow (center)
-    ctx.fillStyle = '#0f0e0b';
-    ctx.fillRect(S * 0.46, y + rh * 0.15, S * 0.08, rh * 0.5);
-    // wear highlights on contact ridge — dull burnished steel, not silver
-    // sparkle (r3: alpha halved, count trimmed, warm dust tint)
-    ctx.fillStyle = 'rgba(148,138,118,0.26)';
-    for (let i = 0; i < 20; i++) ctx.fillRect(rng() * S, y + rh * (0.28 + rng() * 0.1), 5 + rng() * 14, 3);
-    // mud/rust — heavier, the run should read dragged through earth
-    ctx.fillStyle = 'rgba(92,70,44,0.32)';
-    for (let i = 0; i < 52; i++) {
-      ctx.beginPath(); ctx.arc(rng() * S, y + rng() * rh, 2 + rng() * 8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(0, y + 5, S, rh - 10);
+    // the joint between two links and the pin's round bosses at both ends of it
+    ctx.fillStyle = '#0c0b09';
+    ctx.fillRect(0, y, S, 7);
+    ctx.fillStyle = '#56514a';
+    for (const bx of [0.11, 0.89]) { ctx.beginPath(); ctx.arc(S * bx, y + 3.5, rh * 0.085, 0, Math.PI * 2); ctx.fill(); }
+    // bolted end connectors over the pin ends
+    ctx.fillStyle = '#433f37';
+    ctx.fillRect(0, y + 8, S * 0.075, rh - 16);
+    ctx.fillRect(S * 0.925, y + 8, S * 0.075, rh - 16);
+    ctx.fillStyle = '#5b564b';
+    ctx.fillRect(0, y + 8, S * 0.075, 3);
+    ctx.fillRect(S * 0.925, y + 8, S * 0.075, 3);
+    // the road-wheel paths, worn bright along the travel either side of the guide-horn row
+    for (const [x0, x1] of [[0.16, 0.42], [0.58, 0.84]]) {
+      const w = ctx.createLinearGradient(S * x0, 0, S * x1, 0);
+      w.addColorStop(0, '#36332c');
+      w.addColorStop(0.5, '#59544a');
+      w.addColorStop(1, '#36332c');
+      ctx.fillStyle = w;
+      ctx.fillRect(S * x0, y + 8, S * (x1 - x0), rh - 16);
+      ctx.fillStyle = 'rgba(168,158,136,0.20)';
+      for (let i = 0; i < 10; i++) ctx.fillRect(S * (x0 + rng() * (x1 - x0)), y + 9, 2, (rh - 18) * (0.4 + rng() * 0.6));
+    }
+    // the guide horn's shadow in the middle of the link, its lit leading edge
+    ctx.fillStyle = '#0e0d0a';
+    ctx.fillRect(S * 0.455, y + rh * 0.18, S * 0.09, rh * 0.56);
+    ctx.fillStyle = '#4a453b';
+    ctx.fillRect(S * 0.455, y + rh * 0.18, S * 0.09, 3);
+    // mud and rust in the joints and along the edges, lighter on the polished paths
+    ctx.fillStyle = 'rgba(92,70,44,0.30)';
+    for (let i = 0; i < 40; i++) {
+      const edge = rng() < 0.6;
+      const x = edge ? (rng() < 0.5 ? rng() * 0.16 : 0.84 + rng() * 0.16) * S : rng() * S;
+      ctx.beginPath(); ctx.arc(x, y + rng() * rh, 2 + rng() * 7, 0, Math.PI * 2); ctx.fill();
     }
   }
   return c;
@@ -1873,19 +1877,39 @@ const wheelToneOf = (v: MaterialVisual): Rgb => {
   const k = (v.scheme === 'digital' || v.scheme === 'fleck') ? 0.6 : 0.3;
   return mix(base, mean, k);
 };
+/**
+ * Round 4 (2026-10-07; wave 215 on the M60A1, then in the US desert service coat: "the running gear reads as
+ * brass-coloured, star-spoked toy rims"): a sand coat darkened into its gear tone turns bronze (the desert service
+ * coat's #b09466 lands at #806d4d, HSL saturation 0.25 at lightness 0.40). Painted gear in a warm tone (hue 15-60
+ * degrees: sand, khaki, brown) keeps at most this HSL saturation: dusty paint, not polished brass. Hue and HSL lightness
+ * are kept; the olive and green coats sit under it and are unchanged (9 of the 118 catalog coats move, all sand or
+ * khaki-brown).
+ */
+const WHEEL_WARM_MAX_SATURATION = 0.16;
+const capWarmWheelSaturation = (c: Rgb): Rgb => {
+  const max = Math.max(c[0], c[1], c[2]), min = Math.min(c[0], c[1], c[2]), d = (max - min) / 255;
+  if (d <= 0) return c;
+  const l = (max + min) / 510, s = d / (1 - Math.abs(2 * l - 1));
+  let h = max === c[0] ? ((c[1] - c[2]) / (max - min)) % 6 : max === c[1] ? (c[2] - c[0]) / (max - min) + 2
+    : (c[0] - c[1]) / (max - min) + 4;
+  h = h * 60 < 0 ? h * 60 + 360 : h * 60;
+  if (h < 15 || h > 60 || s <= WHEEL_WARM_MAX_SATURATION) return c;
+  const mid = (max + min) / 2, k = WHEEL_WARM_MAX_SATURATION / s;
+  return [mid + (c[0] - mid) * k, mid + (c[1] - mid) * k, mid + (c[2] - mid) * k];
+};
 const wheelRgbOf = (v: MaterialVisual): Rgb => {
-  // r3: dust-mix cut 0.22 -> 0.12 and darkened — painted gear leaned BEIGE
-  // under a warm key (the T-90M idler "beige rim" read); wheels now stay in
-  // the scheme's tonal family with only a hint of dust.
-  // camo_spotting r5: winter gear mixes toward cold slush-grey instead of
-  // warm road dust — whitewashed wheels rode the same tan drift as the hull.
+  // Launch night 2026-10-08 (wave 289, every critic in all four parts: "road wheels read as bare cream or beige
+  // plastic"; the coordinator: "wheel discs in the vehicle's base paint, hull hue and value"): the dishes take the
+  // hull's own tone (wheelToneOf: the base coat, toward the patch mean on pixel schemes) under a light grime (x0.94).
+  // The r3 road-dust mix (12 % of #766e56) and its extra darkening (x0.84) are gone. They had pulled every dark
+  // scheme's gear toward khaki, and the old dust-ward floor then landed it on one beige grey, #504e3c, for every
+  // hull. Winter and worn-wash gear keep their thinner, 15 % darker coat (camo_spotting r2).
   const wash = v.scheme === 'winter' || v.scheme === 'washworn'; // camo r8
-  const dust: Rgb = wash ? [102, 107, 110] : [118, 110, 86];
-  const c = scale3(mix(scale3(wheelToneOf(v), 0.92), dust, 0.12), 0.84);
+  const c = scale3(wheelToneOf(v), wash ? 0.94 * 0.85 : 0.94);
   // 2026-09-14 owner: dark schemes pushed the dish paint down to the tire's value and the wheels
   // read as one flat grey disc. The paint keeps the scheme's family but never drops below the
-  // fleet wheel-paint floor (see wheelPaintFloor.ts).
-  return liftSrgbToWheelFloor(wash ? scale3(c, 0.85) : c);
+  // fleet wheel-paint floor (wheelPaintFloor.ts), which now lifts it in its own hue.
+  return liftSrgbToWheelFloor(capWarmWheelSaturation(c));
 };
 // Recessed interleaved-row wheels bake their own occlusion: same scheme paint
 // dropped toward shadow so the Schachtellaufwerk rows separate (r5). Kept at
@@ -1947,6 +1971,30 @@ function retintEntryFittings(entry: SharedTextureEntry, vis: MaterialVisual): vo
     paintKitCanvas(entry.kitCanvas, vis);
     entry.kitTex.needsUpdate = true;
   }
+  for (const follow of entry.schemeFollowers ?? []) follow(vis);
+}
+
+/**
+ * Round 5 (2026-10-08, the nets lane): equipment painted for the scheme its vehicle wears (a camouflage suit's net and
+ * garnish, the decor's nets: woodland, desert or snow) follows a pattern switch, which repaints the shared entry in
+ * place without rebuilding the tank. `follow` runs at once with the scheme the vehicle wears now and again on every
+ * repaint or restore of its entry until `owner` is disposed. The entry is the one `vehicle` (one of the vehicle's
+ * scheme-painted materials, such as its wheel paint) belongs to, or by spec id the first live entry of that vehicle.
+ * Returns false when there is none (a build without paint: node receipts, the non-rendering material set).
+ */
+export function followVehicleScheme(vehicle: THREE.Material | string, owner: THREE.Material,
+  follow: (vis: MaterialVisual) => void): boolean {
+  let entry: SharedTextureEntry | null = null;
+  for (const candidate of TEX_CACHE.values()) {
+    if (typeof vehicle === 'string' ? candidate.spec.id === vehicle && candidate.refs > 0
+      : [...candidate.paintable].some((rec) => rec.m === vehicle)) { entry = candidate; break; }
+  }
+  if (!entry) return false;
+  const followers = entry.schemeFollowers ?? (entry.schemeFollowers = new Set());
+  followers.add(follow);
+  owner.addEventListener('dispose', () => followers.delete(follow));
+  follow(patternVisual(entry.spec, entry.patternId));
+  return true;
 }
 
 // ---- camo r4: instant pattern switching (owner ask 2026-08-07) ------------
@@ -2291,7 +2339,23 @@ const VEHICLE_FORM_LENS = 0.28;
 // The deep-shade floor's paint reference: the last mip of a painted map is the tile's mean paint (a 2048 tile has
 // eleven levels; textureLod clamps to the last one).
 const VEHICLE_PAINT_MEAN_LOD = 16;
+// Fleet lane 2026-10-08 (the coordinator's ruling on the media lane's s13 sunset renders): the floor law above brought every
+// scheme's MEAN paint to the same luminance, so a dark scheme was lifted toward mid-grey in deep shade and its light patches
+// to near-white (sig_k2b on the K2 X: shaded front p50 57 display luma with the floors, 27 without, the ground 26). A paint
+// darker than this mid-olive mean takes a received-light floor instead: its texels land in proportion to their own albedo
+// against this reference, so a dark scheme stays darker in shade while staying readable; paints at or above it keep the law
+// exactly (gameplay_feel's calibrated dark olive, about 0.07, still lands near 0.12 inside its 0.115-0.21 band).
+const VEHICLE_FLOOR_PAINT_REF = 0.12;
 const VEHICLE_GROUND_DARK = 0.66;
+/**
+ * Fleet lane 2026-10-08 (the fleet audit: the T-90 X road wheels' lightening holes read as flat grey discs under the
+ * Garage key and fill): the share of an open face's direct and indirect light that reaches a wheel inset at the bottom
+ * of its hole or well (COT_GEAR_CAVITY, the insets' rubber).
+ */
+// round 2 (2026-10-08; waves 264-269: "lightening holes are painted grey circles with no depth"): a hole's floor keeps a
+// fifth of the direct light and a sixth of the sky, so it reads near-black behind the lit rim of its wall
+const GEAR_CAVITY_DIRECT = 0.2;
+const GEAR_CAVITY_INDIRECT = 0.16;
 const VEHICLE_GROUND_H0 = 0.12;
 const VEHICLE_GROUND_H1 = 1.75;
 const VEHICLE_GROUND_IDLE_Y = -1e5;
@@ -2313,6 +2377,28 @@ export function resetVehicleGround(): void {
   VEHICLE_GROUND.uVehUp.value.set(0, 1, 0);
 }
 
+// Fleet lane 2026-10-08 (media lane: "in-game camo renders much lighter than the catalog swatches"; the K2 X in
+// sig_k2b, a dark digital, rendered as a blue-grey base with near-white blotches): every vehicle material authors its
+// share of the sky's image-based light (envMapIntensity: armour paint 0.5, barrel 0.45, fittings and wheel paint 0.25,
+// track steel 0.1 ...), the trims that keep matte field paint off the "milky pastel" wash. three never applied them: a
+// standard material without its own envMap reads the scene environment, and the renderer then overwrites the
+// material's envMapIntensity uniform with scene.environmentIntensity on every draw (WebGLRenderer setProgram), so every
+// vehicle took the full sky light, the largest light term on a sunlit plate in this engine (sky light off: the K2 X's
+// sunlit flank 187 -> 80 display luma, sun off: 187 -> 161; material envMapIntensity 0: no change at all). The hook
+// below scales the image-based light the material receives (diffuse irradiance, specular radiance and the clearcoat
+// lobe) by its own authored value on top of the scene's intensity, so time of day and weather still drive it.
+/** The live image-based-light scale of one vehicle material: its authored envMapIntensity, 1 where it authors none
+ * (or carries its own envMap, which three already scales by it). */
+function vehicleEnvScaleUniform(material: THREE.Material): { readonly value: number } {
+  const surface = material as THREE.Material & { envMap?: THREE.Texture | null; envMapIntensity?: number };
+  return {
+    get value(): number {
+      const v = surface.envMapIntensity;
+      return surface.envMap || typeof v !== 'number' || !Number.isFinite(v) ? 1 : Math.max(0, v);
+    },
+  };
+}
+
 /**
  * Shader hook: clamp `reflectedLight.indirectDiffuse` to an albedo-scaled,
  * view-dependent floor. Chain via `setupShadowMaterial(mat,
@@ -2324,7 +2410,21 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   bindVehicleReadabilityUniform(shader.uniforms);
   shader.uniforms.uVehGround = VEHICLE_GROUND.uVehGround;
   shader.uniforms.uVehUp = VEHICLE_GROUND.uVehUp;
-  shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\n${shader.fragmentShader}`;
+  // the material's image-based-light scale (vehicleEnvScaleUniform): createTankMaterials binds each material's own;
+  // anything compiled through the bare hook keeps the scene's full sky light, as before
+  shader.uniforms.uVehEnvScale ??= { value: 1 };
+  shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\nuniform float uVehEnvScale;\n${shader.fragmentShader}`;
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '#include <lights_fragment_maps>',
+    `#include <lights_fragment_maps>
+#if defined( USE_ENVMAP ) && defined( STANDARD ) && defined( RE_IndirectDiffuse ) && defined( RE_IndirectSpecular )
+	iblIrradiance *= uVehEnvScale;
+	radiance *= uVehEnvScale;
+	#ifdef USE_CLEARCOAT
+	clearcoatRadiance *= uVehEnvScale;
+	#endif
+#endif`,
+  );
   // Owner 2026-10-02 ("shadows on tanks make them look a lil flat"): vehicle pixels add VEHICLE_ALPHA_TAG to the lit
   // materials' 2 + sun visibility in the scene target's alpha, so the aerial pass can give vehicles alone their
   // cavity occlusion (engine/vehicleOcclusion.ts). Same guard as the lighting.ts write it extends.
@@ -2462,7 +2562,8 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 		#ifdef USE_MAP
 		vehRefL = max( dot( textureLod( map, vMapUv, ${VEHICLE_PAINT_MEAN_LOD.toFixed(1)} ).rgb * diffuse, vec3( 0.2126, 0.7152, 0.0722 ) ), 0.001 );
 		#endif
-		float vehTargetL = vehFloorL * vehLuma / vehRefL;
+		// a paint darker than VEHICLE_FLOOR_PAINT_REF lands by its own albedo (a received-light floor): dark schemes stay dark
+		float vehTargetL = vehFloorL * vehLuma / max( vehRefL, ${VEHICLE_FLOOR_PAINT_REF.toFixed(3)} );
 		if ( vehOutL < vehTargetL ) {
 			reflectedLight.indirectDiffuse += material.diffuseColor * ( ( vehTargetL - vehOutL ) / vehLuma );
 		}
@@ -2475,7 +2576,17 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 		float vehHeight = dot( vehWorldPos - uVehGround.xyz, uVehUp );
 		reflectedLight.indirectDiffuse *= mix( ${VEHICLE_GROUND_DARK.toFixed(3)}, 1.0,
 			smoothstep( ${VEHICLE_GROUND_H0.toFixed(3)}, ${VEHICLE_GROUND_H1.toFixed(3)}, vehHeight ) );
-	}`,
+	}
+	#ifdef COT_GEAR_CAVITY
+	{
+		// fleet lane 2026-10-08: a wheel inset sits at the bottom of a lightening hole or hub well, whose walls take most
+		// of the light that reaches an open face (GEAR_CAVITY_*), after every lift above
+		reflectedLight.directDiffuse *= ${GEAR_CAVITY_DIRECT.toFixed(3)};
+		reflectedLight.directSpecular *= ${GEAR_CAVITY_DIRECT.toFixed(3)};
+		reflectedLight.indirectDiffuse *= ${GEAR_CAVITY_INDIRECT.toFixed(3)};
+		reflectedLight.indirectSpecular *= ${GEAR_CAVITY_INDIRECT.toFixed(3)};
+	}
+	#endif`,
   );
 }
 
@@ -2520,10 +2631,15 @@ const VEHICLE_MATERIAL_SETUP = new WeakMap<THREE.Material, <T extends THREE.Mate
  * paint's floor). The cascade's defines (USE_CSM, CSM_*, COT_CLOUD_SHADE) belong to the registration and come back
  * with it.
  */
-const VEHICLE_SHADER_SWITCHES = ['COT_WHEEL_PAINT_READABILITY'] as const;
+const VEHICLE_SHADER_SWITCHES = ['COT_WHEEL_PAINT_READABILITY', 'COT_GEAR_CAVITY'] as const;
 
-/** Clone a vehicle material into its source's cascade registration, readability hook, program key and switches. */
-export function cloneVehicleMaterial<T extends THREE.Material>(source: T): T {
+/**
+ * Clone a vehicle material into its source's cascade registration, readability hook, program key and switches.
+ * `configure` runs on the clone before it is registered (2026-10-05, tank-accessories lane): an alpha-tested clone
+ * (an equipment leaf or net card) sets its map and alphaTest there, so the cascade setup builds the map's
+ * coverage-preserving mip chain exactly as it does for a foliage material.
+ */
+export function cloneVehicleMaterial<T extends THREE.Material>(source: T, configure?: (clone: T) => void): T {
   const clone = source.clone() as T;
   const sourceDefines = (source as { defines?: Record<string, unknown> }).defines;
   for (const key of VEHICLE_SHADER_SWITCHES) {
@@ -2531,6 +2647,7 @@ export function cloneVehicleMaterial<T extends THREE.Material>(source: T): T {
     const target = clone as { defines?: Record<string, unknown> };
     target.defines = { ...target.defines, [key]: sourceDefines[key] };
   }
+  configure?.(clone);
   const setup = VEHICLE_MATERIAL_SETUP.get(source);
   if (setup) return setup(clone);
   // a material from outside createTankMaterials (a stub's, a receipt's): it keeps its hooks, which a plain clone drops
@@ -2557,8 +2674,15 @@ export function createTankMaterials(
   const shadowSetup = engineCtx?.setupShadowMaterial;
   const shadowHookSupported = supportsShadowHook(engineCtx);
   const setup = <T extends THREE.Material>(material: T): T => {
-    if (shadowHookSupported && shadowSetup) shadowSetup(material, vehicleAmbientFloorHook);
-    else material.onBeforeCompile = vehicleAmbientFloorHook;
+    // each material (and each clone cloneVehicleMaterial registers here) scales the sky light by its own authored
+    // envMapIntensity, read live (vehicleEnvScaleUniform)
+    const envScale = vehicleEnvScaleUniform(material);
+    const hook = (shader: MaterialShader): void => {
+      vehicleAmbientFloorHook(shader);
+      shader.uniforms.uVehEnvScale = envScale;
+    };
+    if (shadowHookSupported && shadowSetup) shadowSetup(material, hook);
+    else material.onBeforeCompile = hook;
     material.customProgramCacheKey = () => 'veh-ambient-floor-v5';
     VEHICLE_MATERIAL_SETUP.set(material, setup); // cloneVehicleMaterial re-registers its clones the same way
     return material;
@@ -2631,11 +2755,15 @@ export function createTankMaterials(
   // GGX to ~0.3 pockets, and envMapIntensity 0.55 mirrored the blue PMREM sky
   // off every dish in the wheel-bay shade. Painted road wheels are dusty
   // matte — roughness up, env cut to the trackLink level.
+  // Launch night 2026-10-08 (worldibl's shade read of the M1A2 with the trims live: the dishes at 0.25 fell 28 % to
+  // below the terrain's shade; the fleet wheel close-ups: at 0.25 an M1's shaded dishes sit at 0.69 of the skirt paint
+  // beside them, at 0.5 at 0.94): the dishes take the hull's own sky trim, 0.5, so painted wheels read as the hull's
+  // paint in the same light (the recessed rows 0.4, keeping their 0.8 share).
   const wheels = track(setup(new THREE.MeshStandardMaterial({
     color: new THREE.Color(cssRGB(wheelRgbOf(patVis))),
     roughness: 0.92, metalness: 0.08, roughnessMap: roughTex,
     normalMap: normalTex, normalScale: new THREE.Vector2(0.4, 0.4),
-    envMapIntensity: 0.25,
+    envMapIntensity: 0.5,
   })));
   wheels.defines = { ...wheels.defines, COT_WHEEL_PAINT_READABILITY: 1 };
   stampSchemeFinish(wheels);
@@ -2645,15 +2773,24 @@ export function createTankMaterials(
     color: new THREE.Color(cssRGB(wheelDarkRgbOf(patVis))),
     roughness: 0.94, metalness: 0.06, roughnessMap: roughTex,
     normalMap: normalTex, normalScale: new THREE.Vector2(0.4, 0.4),
-    envMapIntensity: 0.2,
+    envMapIntensity: 0.4,
   })));
   wheelsRecessed.defines = { ...wheelsRecessed.defines, COT_WHEEL_PAINT_READABILITY: 1 };
   stampSchemeFinish(wheelsRecessed);
   // camo_spotting r3: lifted off near-black so lighting models tire rings
   // instead of silhouetting them (Tiger bullseye critique).
+  // Launch night 2026-10-08 (wave 289: "no rubber tyres"; the coordinator: "real road-wheel tyres are near-black under
+  // dust, so dusty dark grey is right and pale grey is not"): the tyres had three's default sky reflection (1), which
+  // mirrored the sky round every tread and read pale grey. Dusty rubber takes 0.3 of it.
   const rubber = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x292a28, roughness: 0.96, metalness: 0.0,
+    color: 0x292a28, roughness: 0.96, metalness: 0.0, envMapIntensity: 0.3,
   })));
+  // Fleet lane 2026-10-08: the wheel insets (lightening holes, hub wells, bolt heads in the well) take the rubber's paint
+  // with a cavity's light (COT_GEAR_CAVITY) and little of the sky, so a hole reads as a hole in the Garage and the field.
+  const rubberCavity = track(setup(new THREE.MeshStandardMaterial({
+    color: 0x292a28, roughness: 0.98, metalness: 0.0, envMapIntensity: 0.15,
+  })));
+  rubberCavity.defines = { ...rubberCavity.defines, COT_GEAR_CAVITY: 1 };
   // Accessories must never read as raw #000 blockout: scheme-tinted fittings
   // and gunmetal hardware, both with roughness variation.
   // r9 (camo white-deck major): the old 0.66-roughness/0.28-metalness combo
@@ -2735,9 +2872,19 @@ export function createTankMaterials(
     color: 0x353634, roughness: 0.94, metalness: 0.08, roughnessMap: roughTex,
     envMapIntensity: 0.06,
   })));
-  // Optics / headlight lenses: smooth glass with a dark blue-grey tint.
+  // Optics / headlight lenses: smoked dark-olive glass (round 3, 2026-10-07). The old smooth blue-grey MIRROR
+  // (0x2a3540, metalness 0.85, full env) fired the PMREM sky as the most saturated blue on the vehicle. Critics:
+  // T-90M "the optics are flat, saturated royal-blue patches", Oplot "the saturated blue box on the turret roof",
+  // Type 99A "flat cyan/blue rectangular patches ... leftover UI or placeholder texture". The Pershing, Challenger
+  // and Leopard families had each patched it locally (the 'glass calm-down' lineage). The shared lens now takes
+  // that smoked tint fleet-wide: a dark faintly green body, a soft sheen at close range, and almost no sky mirror.
+  // Round 4 (2026-10-07; wave 215 on the Type 99A turret top: "the periscope or sight housings beside the machine gun
+  // show perfectly flat blue glass with no reflection", on its broad forward windows seen from above): at grazing
+  // incidence the round-3 pane still mirrored about twice as much sky as it showed paint (three's DFG terms at N.V
+  // 0.1-0.2: sky 0.058-0.068 against paint 0.029), one flat patch of sky blue. Matte smoked glass: rougher, almost
+  // dielectric, a quarter of the sky (sky:paint 0.43 at grazing, 0.12 face-on), the same smoked tint.
   const glass = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x2a3540, roughness: 0.12, metalness: 0.85,
+    color: 0x343b34, roughness: 0.58, metalness: 0.08, envMapIntensity: 0.16,
   })));
   // Gun tube: painted in the vehicle scheme like the hull — crews paint the
   // tube, only the muzzle brake stays bare steel (routed to the dark bucket).
@@ -2789,8 +2936,19 @@ export function createTankMaterials(
   })));
   for (const rec of paintableRecs) shared.paintable.add(rec);
   const wood = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x6b543a, roughness: 0.88, metalness: 0.0,
+    // round 4 (2026-10-07; wave 215 on the M60A1: "the crate reads as varnished mahogany furniture"): matte, greyer,
+    // weathered issue-crate wood (was 0x6b543a, a warm stain at roughness 0.88 under the full sky env)
+    color: 0x5f5648, roughness: 0.95, metalness: 0.0, envMapIntensity: 0.12,
     bumpMap: roughTex, bumpScale: 0.3,
+  })));
+  // Unditching logs (2026-10-07, tank-accessories round 4; wave 214 on the T-90M: "a smooth orange or peach tube. Give
+  // it bark, end grain and a darker brown"; wave 216 on the PT-91: "a smooth brown tub"): the plain wood tone above lit
+  // to peach under the warm key and could not tell bark from end grain. Logs carry their own linear wood colours in
+  // the vertex colour (accessoryPrimitives.barkLog `tinted`: grey-brown furrowed bark, pale sapwood round a warmer
+  // heart, darker rings), over a white, fully matte, sky-blind base; sawn ends, rings and bark share this one draw.
+  const bark = track(setup(new THREE.MeshStandardMaterial({
+    color: 0xffffff, vertexColors: true, roughness: 0.97, metalness: 0.0,
+    bumpMap: roughTex, bumpScale: 0.6, envMapIntensity: 0.18,
   })));
   // Charred wreck: a baked scorched variant of the CAMO map (soot blotches +
   // rising streaks over the darkened pattern) instead of the r2 flat clay
@@ -2924,6 +3082,7 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   tagVehicleMaterial(wheels, 'wheelPaint', 'wheel-paint');
   tagVehicleMaterial(wheelsRecessed, 'wheelPaint', 'wheel-paint-recessed');
   tagVehicleMaterial(rubber, 'tireRubber', 'tire-rubber');
+  tagVehicleMaterial(rubberCavity, 'tireRubber', 'tire-rubber-cavity');
   tagVehicleMaterial(detail, 'fittingPaint', 'fitting-paint');
   tagVehicleMaterial(dark, 'gunmetal', 'gunmetal');
   tagVehicleMaterial(shadow, 'gearShadow', 'gear-shadow');
@@ -2934,6 +3093,7 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   tagVehicleMaterial(canvasCloth, 'canvas', 'canvas');
   tagVehicleMaterial(canvasPale, 'canvasPale', 'canvas-pale');
   tagVehicleMaterial(wood, 'wood', 'wood');
+  tagVehicleMaterial(bark, 'wood', 'bark');
   tagVehicleMaterial(burnt, 'burnt', 'burnt');
   tagVehicleMaterial(trackL, 'trackBand', 'track-band-left');
   tagVehicleMaterial(trackR, 'trackBand', 'track-band-right');
@@ -2957,8 +3117,8 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   }
 
   return {
-    hull, wheels, wheelsRecessed, rubber, detail, dark, shadow, trackLink, spareTrack, glass, barrel,
-    canvasCloth, canvasPale, wood, burnt,
+    hull, wheels, wheelsRecessed, rubber, rubberCavity, detail, dark, shadow, trackLink, spareTrack, glass, barrel,
+    canvasCloth, canvasPale, wood, bark, burnt,
     trackL, trackR, trackTexL, trackTexR,
     trackLinkM: 0.165 * 4, // meters of track per full texture repeat (4 links)
     prepareBurnt,

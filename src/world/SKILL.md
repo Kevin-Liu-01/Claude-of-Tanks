@@ -22,7 +22,9 @@ allocation-free chase-camera occlusion focus passed to an active world,
 `terrainLodPolicy.ts` owns typed allocation-free visible/prefetch scheduling,
 `liveHeightFieldProxy.ts` selects cached live versus exact authoring queries,
 `collision.ts` owns strict allocation-free broad phase and narrow-phase shape
-contracts, `maps/` owns layouts, `shallowWater.ts` owns the lake/sea sheet and `waterRipples.ts` the world-anchored GPU
+contracts (every convex part convex in fact: `convexOutlineInPlace`), `rockCollision.ts` derives every stone's and
+rock formation's colliders from its own mesh and `slabCollision.ts` the shell slabs of the props' leaning solids (wrecks,
+hedgehog beams, pylon legs; all audited by `tools/world-collider-audit.mjs`), `maps/` owns layouts, `shallowWater.ts` owns the lake/sea sheet and `waterRipples.ts` the world-anchored GPU
 shallow-water field it reads for wakes, churn and splashes (null on the mobile tier and in receipts), and vegetation,
 props and toppling own their visual/runtime layers; `groundRedux.ts` (THREE-free) holds every map's ground profile
 (the terrain material's transition / fold / snow / strand knobs and the tall-grass biome — never a map-config edit),
@@ -124,6 +126,16 @@ it): an apron off the ring's outer edge and a wall at 2.6 km, sampling the atlas
 scene fog off as on the round-72 range. The world bakes it under the loading cover (`map.ts` warmImpostors) or on the
 first update, again after a GPU suspension disposes the atlas; until then the round-72 far range draws (receipts, no
 float targets). `horizon.panorama: false` keeps the old range; an object overrides the character's far knobs.
+Time of day (the nightsky lane, 2026-10-08; the owner: "on sunsets and nights, the far skybox is still like glowing"): the
+bake is lit by the map's authored day and drawn unlit, so the battle atmosphere re-bakes it under the light it applies
+(`battleAtmosphereRuntime.ts` relightHorizonPanoramas → the handle's `relight(renderer)`, inside the covered prepare and
+the Studio's time switch; about 60-75 ms per change, none by day): the key light's direction (long shadows at sunset,
+the moon at night), the strip's sun, sky and bounce terms scaled per channel by the live light over the day light the
+gains were tuned under (`horizonPanoramaRelight`, the day rebuilt with the grounded model from the sky the first bake
+saw), a level far face held to the battlefield's level ground and never lit brighter than it, and the haze from the live
+sky. By day the relight is the identity (no re-bake); a relit shell skips the old night dim (×0.20).
+`horizonPanoramaRelight.selftest.mjs` runs the strip's own light and haze statements per map against the sky and the near
+ground.
 Layers (the panorama lab, the real ring baked in-page on SwiftShader, measured the far country above the ring's own
 skyline from the eye on 14-35 % of bearings): the edge texture's alpha carries that skyline (`horizonRingSkylineTan`,
 compass-smoothed), and past ~3.5 km the far country rises to stand a wandering margin above it (-0.9..+4.3°, never into
@@ -414,3 +426,9 @@ the server collision manifest after changing authored obstacles or cover.
 <!-- agent-docs:fill:gotchas -->
 The garage keeps the battle world dormant. Do not wake or build heavy map work
 on the garage boot path. AI navigation must use traversability, not visuals.
+The horizon ring, its far range and the terrain's wall sky light bake the map's
+authored sun at build. Scene Studio relights a cached battlefield through the
+objects they publish (`material.userData.horizonSunDir`, `horizonFarShading`,
+`sunDirUniform`, the ring's non-enumerable `horizonReliefSource`) and restores
+them on exit; keep those uniform objects shared by every compile when editing
+these materials, or a Studio time leaves a stale sun behind.

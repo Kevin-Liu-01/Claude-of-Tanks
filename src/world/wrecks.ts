@@ -35,15 +35,21 @@ import {
 } from './exactWreckGeometry.ts';
 import { createTank } from '../vehicles/fleetFactory.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
-import { collectWreckSolids } from './wreckCollision.ts';
+import { collectWreckShellSolids, collectWreckSolids } from './wreckCollision.ts';
 
 export interface WreckOptions {
   seed?: number;
   pop?: boolean;
+  /** The paint the tank wore (sRGB hex; the map's camouflage family, wreckRemnantPaint): patches survive the burn on
+   * the lower flanks. Unset: char and oxide only. */
+  remnant?: number;
 }
 
 export interface WreckBake {
   solids: number[][];
+  /** The hull's and turret's convex-hull corners for the shell record (wreckCollision.ts collectWreckShellSolids; the
+   * hitbox lane, 2026-10-08); a bake without them keeps the movement solids for shells too. */
+  shellSolids?: number[][];
   geo: THREE.BufferGeometry;
   shadowGeo: THREE.BufferGeometry | null;
   hx: number;
@@ -258,12 +264,24 @@ function mergeRequired(
   return merged;
 }
 
+// The burn's other tones (the map-vehicles lane, P4, 2026-10-06), all inside the char band's value so a sunlit hulk
+// still reads burnt, never tan: the brown oxide a hot hull takes on its flanks, the grey of burnt-off paint on the roof
+// and deck, soot streaked up the sides, and patches of the paint the tank wore surviving low on its flanks.
+const WRECK_OXIDE: readonly [number, number, number] = [0.105, 0.052, 0.028];
+const WRECK_ASH: readonly [number, number, number] = [0.098, 0.094, 0.088];
+
+/** A coarse cell value (blotches a cell's size, blended across each triangle by the vertex colours). */
+function wreckCell(px: number, py: number, pz: number, scale: number, salt: number): number {
+  return hash3(Math.round(px * scale) * 0.73 + salt, Math.round(py * scale) * 0.61 - salt * 0.5, Math.round(pz * scale) * 0.79 + salt * 0.25);
+}
+
 function wreckVertexColor(
   px: number,
   py: number,
   pz: number,
   up: number,
   rustPhase: number,
+  remnant: readonly [number, number, number] | null,
   color: [number, number, number],
 ): readonly [number, number, number] {
   const panel = hash3(
@@ -281,15 +299,53 @@ function wreckVertexColor(
     return color;
   }
   const level = 0.046 + panel * 0.022 + grain * 0.017 + up * up * 0.020;
-  color[0] = level * 1.05;
-  color[1] = level;
-  color[2] = level * 0.93;
+  let r = level * 1.05, g = level, b = level * 0.93;
+  const mix = (target: readonly [number, number, number], t: number) => {
+    r += (target[0] - r) * t; g += (target[1] - g) * t; b += (target[2] - b) * t;
+  };
+  // heat oxide in broad blotches down the flanks (less on the faces the sky sees)
+  const oxide = wreckCell(px, py, pz, 1.25, rustPhase);
+  if (oxide > 0.52) mix(WRECK_OXIDE, ((oxide - 0.52) / 0.48) * 0.85 * (1 - up * 0.6));
+  // the paint it wore, surviving in patches low on the flanks where the fire ran thinnest
+  if (remnant && up < 0.55 && py < 1.35) {
+    const keep = wreckCell(px, py, pz, 1.7, rustPhase * 0.37 + 5.1);
+    const low = py < 0.9 ? 1 : (1.35 - py) / 0.45;
+    if (keep > 0.5) mix(remnant, Math.min(1, ((keep - 0.5) / 0.3)) * 0.9 * low);
+  }
+  // burnt-off paint gone to grey ash on the roof and deck
+  if (up > 0.7 && py > 1.2) {
+    const ash = wreckCell(px, py, pz, 2.1, rustPhase * 0.53 + 9.7);
+    if (ash > 0.55) mix(WRECK_ASH, ((ash - 0.55) / 0.45) * 0.55 * (up - 0.7) / 0.3);
+  }
+  // soot streaked up the sides from the hatches and the engine deck
+  if (up < 0.3) {
+    const streak = hash3(Math.round(px * 7) * 0.31 + rustPhase, Math.round(py * 0.9) * 0.29, Math.round(pz * 7) * 0.37);
+    if (streak > 0.72) { const k = 1 - 0.38 * ((streak - 0.72) / 0.28); r *= k; g *= k; b *= k; }
+  }
+  color[0] = r;
+  color[1] = g;
+  color[2] = b;
   return color;
+}
+
+/** sRGB hex to the painter's linear triple, darkened and dulled as fire leaves paint. */
+function remnantLinear(hex: number | undefined): readonly [number, number, number] | null {
+  if (hex === undefined) return null;
+  const c = (v: number) => { const s = v / 255; return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
+  const lin: [number, number, number] = [c((hex >> 16) & 255), c((hex >> 8) & 255), c(hex & 255)];
+  const grey = (lin[0] + lin[1] + lin[2]) / 3;
+  // dulled a little toward grey and darkened by the smoke: a light paint (sand, whitewash) more, so it stays a patch of
+  // dirty paint on a dark hull, never a tan one
+  const dark = Math.min(0.85, 0.11 / Math.max(0.02, grey));
+  // and never brighter, channel by channel, than the char band's brightest (only the rust is brighter)
+  return [Math.min(0.11, (lin[0] * 0.8 + grey * 0.2) * dark), Math.min(0.104, (lin[1] * 0.8 + grey * 0.2) * dark),
+    Math.min(0.0965, (lin[2] * 0.8 + grey * 0.2) * dark)];
 }
 
 function* paintWreckGeometrySteps(
   merged: THREE.BufferGeometry,
   rustPhase: number,
+  remnant: readonly [number, number, number] | null = null,
 ): Generator<WreckGeometryBuildSlice, void, void> {
   const position = merged.attributes.position;
   const normal = merged.attributes.normal;
@@ -304,6 +360,7 @@ function* paintWreckGeometrySteps(
       position.getZ(i),
       Math.max(0, normal.getY(i)),
       rustPhase,
+      remnant,
       scratchColor,
     );
     colors[i * 3] = color[0];
@@ -331,16 +388,19 @@ function wreckBakeResult(
   merged: THREE.BufferGeometry,
   shadowGeo: THREE.BufferGeometry | null,
   solids: number[][],
+  shellSolids: number[][] | null = null,
 ): WreckBake {
   merged.computeBoundingBox();
   const bounds = merged.boundingBox;
   if (!bounds) throw new Error('wreck bounds unavailable');
   const baseY = bounds.min.y;
   for (const solid of solids) for (let i = 1; i < solid.length; i += 3) solid[i] -= baseY;
+  for (const solid of shellSolids ?? []) for (let i = 1; i < solid.length; i += 3) solid[i] -= baseY;
   merged.translate(0, -bounds.min.y, 0);
   shadowGeo?.translate(0, -bounds.min.y, 0);
   return {
     solids,
+    ...(shellSolids ? { shellSolids } : {}),
     geo: merged,
     shadowGeo,
     hx: (bounds.max.x - bounds.min.x) / 2,
@@ -431,6 +491,7 @@ function* buildTankWreckSteps(
     const root = visual.root;
     root.updateMatrixWorld(true);
     const solids = collectWreckSolids(root);
+    const shellSolids = collectWreckShellSolids(root);
     const rootInv = root.matrixWorld.clone().invert();
     yield { fine: true, stage: 'construct' };
     const { geos, proxyGeos } = yield* collectWreckGeometrySteps(root, rootInv, owner);
@@ -451,10 +512,10 @@ function* buildTankWreckSteps(
     // RGB is determined by these exact position/normal words. Paint only the
     // first-occurrence representatives, retaining the original corner index.
     const preparedForPaint = yield* compactWreckGeometryForPaintSteps(merged);
-    yield* paintWreckGeometrySteps(merged, rustPhase);
+    yield* paintWreckGeometrySteps(merged, rustPhase, remnantLinear(opts.remnant));
     if (!preparedForPaint) yield* compactWreckGeometrySteps(merged);
     const shadowGeo = yield* mergeShadowGeometrySteps(proxyGeos, owner);
-    const result = wreckBakeResult(merged, shadowGeo, solids);
+    const result = wreckBakeResult(merged, shadowGeo, solids, shellSolids);
     yield { fine: true, stage: 'finalize' };
     owner.geometries.delete(merged);
     if (shadowGeo) owner.geometries.delete(shadowGeo);
@@ -476,6 +537,22 @@ function* buildTankWreckSteps(
  */
 export function wreckPool(era: string): string[] {
   return resolveWreckRoster(era);
+}
+
+/**
+ * The paint a map's wrecks wore (sRGB), by its field: the green of the field maps, the sand of the deserts and the
+ * red rock, the whitewash of the snow, the grey of the cities and the works, the brown of the autumn woods.
+ */
+export function wreckRemnantPaint(mapId: string): number {
+  switch (mapId) {
+    case 'desert': case 'oasis': case 'badlands': case 'steppe': case 'titan_gorge': case 'skybridge': case 'copper_mesa':
+    case 'orchard': case 'mars': return 0x9a8456;
+    case 'winter': case 'whiteout': case 'alpine': return 0xc4c2b8;
+    case 'urban': case 'railyard': case 'ruinspires': case 'blackglass': case 'foundry': case 'caldera': return 0x5c5e5a;
+    case 'autumn': return 0x5e5236;
+    case 'moon': return 0x8c8c88;
+    default: return 0x4e5834;
+  }
 }
 
 function debrisBaseColor(

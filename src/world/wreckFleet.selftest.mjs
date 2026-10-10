@@ -12,7 +12,10 @@ assert.equal(typeof globalThis.OffscreenCanvas, 'undefined', 'No offscreen paint
 const FLOAT32_SLACK = 8 * 2 ** -23;
 // Direct envelope of the existing char and rust branches; allow Float32 storage
 // and normalization roundoff, but not a brighter replacement paint palette.
-const RGB_MIN = [0.046 * 1.05, 0.046, 0.046 * 0.93];
+// P4 (the map-vehicles lane, 2026-10-06): the burn's other tones stay inside the same maximum (oxide, ash and the
+// surviving paint are capped to the char band's brightest per channel), and go darker than the old floor: soot
+// streaks take a side to 62 % and the oxide and surviving paint pull the blue under the char floor's.
+const RGB_MIN = [0.015, 0.015, 0.012];
 const RGB_MAX = [(0.085 + 0.075) * 1.75, (0.085 + 0.075) * 0.9,
   (0.046 + 0.022 + 0.017 + 0.020) * 0.93];
 const REPEATS = [

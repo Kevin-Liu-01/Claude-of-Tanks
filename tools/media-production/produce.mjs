@@ -6,15 +6,16 @@ import { resolve, join, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createCaptureLock } from '../capture-lock.mjs';
 import { MAP_IDS } from '../../src/world/maps/catalog.ts';
-import { waterScene, frameScene } from './recipes.mjs';
+import { waterScene, frameScene, MAP_SUN_MODES } from './recipes.mjs';
 import { productionPreset } from '../../src/game/studioProduction.ts';
+import { STUDIO_TIMES } from '../../src/game/studioLight.ts';
 import { digest, sourceDigest, verifyFile, contactSheet, writeReviewPage, promoCard, saveReviewCapture } from './pipeline.mjs';
 
-const help = 'npm run media:capture -- --task=all|maps|shore|landscape|settlements|video --maps=id,id --times=day,sunset,night --formats=landscape,portrait,square --out=shots/production-current --resume=true\nOptional: --scene=scene.json OR --preset=steel-pursuit|desert-crossfire|coast-recon --fps=24|30|60 --frames=240 --width=1920 --start-ms=0';
+const help = `npm run media:capture -- --task=all|maps|shore|landscape|settlements|video --maps=id,id --times=${STUDIO_TIMES.join(',')} --formats=landscape,portrait,square --out=shots/production-current --resume=true\nOptional: --scene=scene.json OR --preset=steel-pursuit|desert-crossfire|coast-recon --fps=24|30|60 --frames=240 --width=1920 --start-ms=0\nMaps task: --sun=${MAP_SUN_MODES.join('|')} sets the sun's bearing against each overview camera (back = backlit). --port=5378 serves the capture on another port.`;
 if (process.argv.includes('--help')) { console.log(help); process.exit(0); }
 const args = Object.fromEntries(process.argv.slice(2).map(arg => {
   const match = /^--([a-z-]+)=(.+)$/.exec(arg);
-  if (!match || !['task','maps','out','times','width','fps','frames','resume','scene','formats','preset','start-ms'].includes(match[1])) throw Error(help);
+  if (!match || !['task','maps','out','times','width','fps','frames','resume','scene','formats','preset','start-ms','sun','port'].includes(match[1])) throw Error(help);
   return [match[1], match[2]];
 }));
 const task = args.task ?? 'all';
@@ -28,9 +29,13 @@ const formats = args.formats?.split(',') ?? ['landscape'];
 const out = resolve(args.out ?? 'shots/production-current');
 const fps = Number(args.fps ?? 30), width = Number(args.width ?? 1920), frames = Number(args.frames ?? 6 * fps);
 const startMs = Number(args['start-ms'] ?? 0);
+const sun = args.sun ?? 'map', port = Number(args.port ?? 5378);
+if (!MAP_SUN_MODES.includes(sun) || (sun !== 'map' && !['maps','all'].includes(task))) throw Error(`--sun=${MAP_SUN_MODES.join('|')} applies to the map overviews; a film carries its scene's light block`);
+if (!Number.isInteger(port) || port < 1024 || port > 65535) throw Error('Invalid --port');
 if (!Number.isFinite(startMs) || startMs < 0 || startMs + (frames - 1) * 1000 / fps > (preset?.durationMs ?? 20000)) throw Error('Capture range exceeds the production timeline');
 const validList = (list, allowed) => list.length && new Set(list).size === list.length && list.every(id => allowed.includes(id));
-if (!['all','maps','shore','landscape','settlements','video'].includes(task) || !validList(maps, MAP_IDS) || !validList(times,['day','sunset','night'])
+if (!['all','maps','shore','landscape','settlements','video'].includes(task) || !validList(maps, MAP_IDS) || !validList(times,STUDIO_TIMES)
+    || !filmTimes.every(time => STUDIO_TIMES.includes(time))
     || !validList(formats,['landscape','portrait','square'])) throw Error('Invalid or duplicate capture selection');
 if (![24,30,60].includes(fps) || !Number.isInteger(width) || width < 640 || width > 3840 || width % 32
     || !Number.isInteger(frames) || frames < 1 || frames > 20 * fps) throw Error('Invalid dimensions, frame rate or frame count');
@@ -39,7 +44,7 @@ if (task === 'video' && !customScene && (maps.length !== 1 || maps[0] !== (prese
 mkdirSync(out, { recursive:true });
 const receiptFile = join(out, `${task}-receipt.json`);
 const fingerprint = sourceDigest();
-const config = { task, maps, times, filmTimes, formats, fps, width, frames, scene:customScene, preset: preset?.id ?? null, startMs };
+const config = { task, maps, times, filmTimes, formats, fps, width, frames, scene:customScene, preset: preset?.id ?? null, startMs, ...(sun !== 'map' ? { sun } : {}) };
 let receipt;
 if (args.resume === 'true' && existsSync(receiptFile)) {
   receipt = JSON.parse(readFileSync(receiptFile, 'utf8'));
@@ -139,7 +144,7 @@ const stop=()=>{interrupted=true;void browser?.close().catch(()=>{});};
 process.once('SIGINT',stop);process.once('SIGTERM',stop);
 const lease=setInterval(()=>lock.refresh?.(),30000);lease.unref();
 try {
-  server=await createServer({root:process.cwd(),logLevel:'error',server:{host:'127.0.0.1',port:5378,strictPort:true,hmr:false,watch:{ignored:['**/*']}}}); await server.listen();
+  server=await createServer({root:process.cwd(),logLevel:'error',server:{host:'127.0.0.1',port,strictPort:true,hmr:false,watch:{ignored:['**/*']}}}); await server.listen();
   // Our signal handler owns shutdown and the receipt/lock finally block.
   // Puppeteer's default SIGTERM handler exits before that cleanup can run.
   browser=await puppeteer.launch({headless:true,handleSIGINT:false,handleSIGTERM:false,handleSIGHUP:false,protocolTimeout:300000,args:['--use-gl=angle','--enable-webgl','--no-sandbox','--disable-dev-shm-usage']});
@@ -152,7 +157,7 @@ try {
     await page.setViewport({width:1280,height:720,deviceScaleFactor:1});
     const row={map,stills:[],shore:[],videos:[],posters:[]}; receipt.maps.push(row); save();
     try {
-      await page.goto(`http://127.0.0.1:5378/?studio=1&nosplash=1&tier=desktop&map=${map}&diag`,{waitUntil:'domcontentloaded',timeout:180000});
+      await page.goto(`http://127.0.0.1:${port}/?studio=1&nosplash=1&tier=desktop&map=${map}&diag`,{waitUntil:'domcontentloaded',timeout:180000});
       await page.waitForFunction(()=>window.__STUDIO?.active&&window.__GAME_READY,{timeout:180000});
       await page.evaluate(async()=>{
         const {awaitMapCaptureReadiness}=await import('/src/dev/mapCaptureReadiness.ts');
@@ -162,9 +167,9 @@ try {
       });
       row.renderer=await page.evaluate(()=>{const r=window.__DEBUG.renderer,gl=r.getContext(),e=gl.getExtension('WEBGL_debug_renderer_info');return {gpu:e?gl.getParameter(e.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),maxTextureSize:r.capabilities.maxTextureSize};});
       if (task==='maps'||task==='all'||task==='landscape'||task==='settlements') for (const time of times) {
-        const scene=await page.evaluate(async time=>{const {mapScene}=await import('/tools/media-production/recipes.mjs');return mapScene(window.__DEBUG.world,time);},time);
+        const scene=await page.evaluate(async ({time,sun})=>{const {mapScene}=await import('/tools/media-production/recipes.mjs');return mapScene(window.__DEBUG.world,time,sun);},{time,sun});
         await page.evaluate(scene=>window.__STUDIO.load(scene),scene); await prepareView(page); await settle(page);
-        const name=map==='verdant'?'battlefield':`battlefield_${map}`,suffix=time==='day'?'':`-${time}`;
+        const name=map==='verdant'?'battlefield':`battlefield_${map}`,suffix=(time==='day'?'':`-${time}`)+(sun==='map'?'':`-${sun}`);
         const file=savePng(join(out,'maps',`${name}${suffix}.png`),await capture(page,3840,2160));
         Object.assign(file,{scene,timeOfDay:time,label:`${map} · ${time}`}); row.stills.push(file);
         writeFileSync(join(out,'maps',`${name}${suffix}.json`),JSON.stringify(scene,null,2)+'\n');

@@ -5,8 +5,9 @@
 // the street or eaves-fronted with dormers, a hoist gable for the loft. The framing and openings are the Fachwerk kit's
 // (hessian.ts) under a Franconian palette; the rows replace the street rows and the block-fill row houses.
 import { PartSink, faceBox, pick, rgb, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
-import { doorCanopy, facadeOn, facadeRng, gableWindows, paintSurround, roofDormers, trimRun, windowHead } from './facade.ts';
+import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
+import { flowerBox } from './dressing.ts';
+import { doorCanopy, dressedQuoin, facadeOn, facadeRng, gableWindows, paintSurround, roofDormers, trimRun, windowHead } from './facade.ts';
 import { windowUnit } from './openings.ts';
 import {
   bindFachwerk, hessianDialect, houseUvOffset, roofFor, stateFor, withPalette, type FachwerkPalette,
@@ -14,8 +15,10 @@ import {
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 export const FRANCONIAN_PALETTE: FachwerkPalette = Object.freeze({
-  // Franconian framing runs to oxblood and deep brown, the doors to green and red
-  timbers: [0x7c3527, 0x6a2c22, 0x5c4434, 0x8c4c32].map(rgb),
+  // Franconian framing runs to oxblood and deep brown, the doors to green and red (the facades lane, round 6; wave 241 on
+  // Steinburg: "the saturated vermilion-orange timber ... oxblood or dark brown is the period colour") — the reds a
+  // fifth darker and less orange, the oxide-and-blood paint dulled by its years
+  timbers: [0x66302a, 0x582a24, 0x5a4334, 0x6c3f32].map(rgb),
   frame: rgb(0xcfcabd),
   doors: [0x426b49, 0x7a3024, 0x6a4b33, 0x4f6274].map(rgb),
   shutters: [0x4a7451, 0x7a3a2a, 0x667a86].map(rgb),
@@ -73,26 +76,45 @@ const townHouse: RegionalBuilder = (ctx) => {
     }, hessianDialect(st));
     if (!framed && facadeOn()) townFront(sink, frame, streetFace, gableFront, render, st.door);
     if (facadeOn()) townDormers(sink, frame, gableFront, framed ? st.infill : render, st);
+    // (facade craft, desktop; wave 150 named a jettied corner house's flower boxes as what works) geraniums in boxes
+    // under most of the upper storeys' street windows on about half the houses, from the facade stream
+    if (facadeOn()) {
+      const f = facadeRng();
+      if (f() < 0.55) {
+        const box = pick(f, TOWN_BOXES), bloom = pick(f, TOWN_BLOOMS);
+        for (const o of frame.spec.openings) {
+          if (o.face !== streetFace || o.kind !== 'window' || o.state || o.storey < 1 || o.storey > 2 || f() > 0.75) continue;
+          flowerBox(sink, storeyFaces(frame, o.storey)[streetFace], o.u, frame.floors[o.storey] + o.y0, o.w, box, bloom, f, true);
+        }
+      }
+    }
     // (facade craft, desktop; wave 116 read "blank gables") the attic's windows in a rendered gable — a framed gable's
     // timbers carry its own — clear of the street gable's loft door
     if (facadeOn() && !framed && frame.roof.gable) {
       const top = frame.bodies[frame.bodies.length - 1], cx = (top.x0 + top.x1) / 2, cz = (top.z0 + top.z1) / 2, hd = (top.z1 - top.z0) / 2;
-      // (no sill: an attic light's sill would add to Steinburg's shadow casters, near their cap)
-      const f = facadeRng(), style = { ...st.window, shutters: null, bars: 'two' as const, sill: null };
+      // (no sill: an attic light's sill would add to Steinburg's shadow casters, near their cap; wave 150 read windows
+      // "set flush in the wall": each in a painted Fasche, its frame standing well out of the render)
+      const f = facadeRng(), fasche = pick(f, FASCHEN);
+      const style = { ...st.window, shutters: null, bars: 'two' as const, sill: null, frameOut: Math.max(st.window.frameOut, 0.07) };
       for (const end of [1, -1] as const) {
         const face: Face = { origin: [cx, 0, cz + end * hd], u: [end, 0, 0], out: [0, 0, end], width: top.x1 - top.x0 };
-        gableWindows(frame.roof.gable, frame.eaveY, frame.roof.ridgeY, gableFront && end > 0 ? 1.1 : 0,
-          (u, y, w, h) => windowUnit(sink, face, u, y, w, h, style, f, 0.25));
+        gableWindows(frame.roof.gable, frame.eaveY, frame.roof.ridgeY, gableFront && end > 0 ? 1.1 : 0, (u, y, w, h) => {
+          // (the attic light's frame and bars draw near the camera only: PartSink.near)
+          sink.near(() => windowUnit(sink, face, u, y, w, h, style, f, 0.25));
+          // (paint in the first render family: its fine paint draws by the fine-detail cells, out of the shadow maps)
+          paintSurround(sink, 'plaster', face, u, y, w, h, 0.12, fasche);
+        });
       }
     }
-    // rendered fronts: sandstone quoins and a cornice
+    // rendered fronts: sandstone quoins and a cornice (round 10; wave 301: quoins "about three times real size": 33 cm
+    // courses of long and short stones, 50 and 30 cm)
     if (!framed) {
       const b = frame.bodies[0];
       for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]] as const) {
         const x = sx > 0 ? b.x1 : b.x0, z = sz > 0 ? b.z1 : b.z0;
-        for (let y = 0.4, k = 0; y < frame.eaveY - 0.3; y += 0.42, k++) {
-          const lx = k % 2 ? 0.32 : 0.56, lz = k % 2 ? 0.56 : 0.32;
-          sink.quoin('stone', sx > 0 ? x - lx : x - 0.035, y, sz > 0 ? z - lz : z - 0.035, sx > 0 ? x + 0.035 : x + lx, y + 0.4, sz > 0 ? z + 0.035 : z + lz, sx, sz, { decor: true });
+        for (let y = 0.4, k = 0; y < frame.eaveY - 0.3; y += 0.35, k++) {
+          const lx = k % 2 ? 0.3 : 0.5, lz = k % 2 ? 0.5 : 0.3;
+          dressedQuoin(sink, 'stone', sx > 0 ? x - lx : x - 0.035, y, sz > 0 ? z - lz : z - 0.035, sx > 0 ? x + 0.035 : x + lx, y + 0.33, sz > 0 ? z + 0.035 : z + lz, sx, sz, { decor: true });
         }
       }
     }
@@ -115,6 +137,10 @@ const townHouse: RegionalBuilder = (ctx) => {
   else sink.placed(Math.PI / 2, 0, 0, 0, build);
   return sink.finish();
 };
+
+/** The town's window boxes and their geraniums (facade craft). */
+const TOWN_BOXES: readonly Rgb[] = [0x4a3a2c, 0x3e5a3a, 0x6a4a30, 0x2e3e52].map(rgb);
+const TOWN_BLOOMS: readonly Rgb[] = [0xc0242a, 0xd23a5a, 0xc8462e, 0xe0e0d8].map(rgb);
 
 /** Faschen: the render bands painted round a town house's windows, lighter or darker than its render, or a colour. */
 const FASCHEN: readonly Rgb[] = [[1.3, 1.28, 1.22], [0.72, 0.71, 0.68], [1.14, 0.84, 0.6], [0.86, 0.6, 0.5], [0.8, 0.9, 0.8], [1.25, 1.18, 1.05]];
@@ -184,9 +210,18 @@ export const FRANCONIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
     roof: { kind: 'beavertail', tint: [0.42, 0.28, 0.22] },
     // (wave 116: "oversized clean ashlar") the town's dressed stone smaller and soiled, the Hessian villages' kept
     stone: { kind: 'sandstone', tint: [0.64, 0.52, 0.42], dressed: true },
-    sourced: { plaster: true, wood: true },
+    // (the facades lane, 2026-10-08; the media lane's critics on Steinburg: the stucco "speckled", dots rather than render;
+    // round 7 had halved the photo render's relief) the walls are a hand-floated lime render, broadly mottled, painted
+    // for the street (regionalSurfaces.ts paintLimeRender), its three families under the map's tones; the photo render
+    // set is off here (its 2.4 m tile repeated a lichen motif down every wall), so is round 7's relief (the painter's own
+    // relief is the float's slow undulation)
+    sourced: { plaster: false, wood: true },
+    render: { kind: 'limeRender', seed: 0x5e1b },
   },
   builders: FRANCONIAN_BUILDERS,
+  // the churchyard on the church's freest side but its front, walled in stone, its graves in place of the yards' beds
+  // (yards.ts; a map opts in: props `churchyard: true`; the facades lane, 2026-10-06)
+  churchyard: { kinds: ['church'], fence: 'wallstone', gate: 'gate', shed: null, garden: false, graves: true, keepFront: true },
   // render in cream, ochre and pale pink; roofs from a few fresher red ones through brown to the grey-brown and dark
   // patina of old tiles (the cooler multipliers take the red out as well as the light)
   weather: {

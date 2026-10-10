@@ -610,7 +610,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     // registration residual — receipts banked, this seat is the measured
     // dims-100 + curve-neutral exchange (§5.265/§5.290).
     if (!c2) {
-      const commanderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
+      const commanderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone',
         elev: 0, shield: false, scale: 0.62, seed: 44 });
       commanderMg.name = 'arieteC1CommanderMg';
       addFitting(P, 'turret', commanderMg, 0.68, 0.87, L(-0.24), [0, 0.35, 0]);
@@ -787,7 +787,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       buildArieteMkMarkingsCourse1();
     } else {
       const buildArieteMkMarkingsCourse2 = (): void => {
-        const loaderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
+        const loaderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone',
           elev: 0, shield: false, scale: 0.62, seed: 45 });
         loaderMg.name = 'arieteC1LoaderMg';
         addFitting(P, 'turret', loaderMg, -0.42, 0.87, L(-0.60), [0, 2.9, 0]);
@@ -1097,7 +1097,7 @@ function buildCarro45T(P: ItalyBuilderPort): void {
     z,
     ring: [[-w, bottom], [w, bottom], [w, belt], [roofW, right],
       [0.44, crown], [-0.44, crown], [-roofW, left], [-w, belt]],
-  })));
+  })), { sideQuadDiagonal: 'convex' });
   // Use the actual triangulated surface to seat roof fittings, including the
   // lower right shoulder. This is construction-time work, never a frame update.
   const roofProbe = new THREE.Mesh(crown, new THREE.MeshBasicMaterial());
@@ -1119,7 +1119,7 @@ function buildCarro45T(P: ItalyBuilderPort): void {
       ].map(({ z, w, roofW, top, innerTop, belt }) => {
         const ring: [number, number][] = [[0.44, 0.03], [w, 0.03], [w, belt], [roofW, top], [0.44, innerTop]];
         return { z, ring: side > 0 ? ring : ring.map(([x, y]): [number, number] => [-x, y]).reverse() };
-      })));
+      }), { sideQuadDiagonal: 'convex' }));
     }
     // The former driver seam/periscopes hovered over the nose and gun bay.
     // Seat them behind its opening on the continuous front roof instead.

@@ -83,7 +83,8 @@ assert.equal(new Set(maps.map(({ terrain }) => JSON.stringify(terrain.roads))).s
   'every battlefield authors its own road graph');
 assert.equal(new Set(maps.map(({ terrain }) => JSON.stringify(terrain.landforms))).size, 10,
   'every battlefield authors its own macro relief instead of copying a palette');
-assert.equal(new Set(maps.map(({ props }) => JSON.stringify(props.plan))).size, 10,
+// (a settlement authored as planned sites — Kestrel Airfield's, Copper Mesa's since its round 3 — has its mix there)
+assert.equal(new Set(maps.map(({ props }) => JSON.stringify([props.plan, (props.plannedSites ?? []).map((site) => site.structure)]))).size, 10,
   'each settlement has its own occupational building mix');
 
 for (const config of maps) {
@@ -171,11 +172,17 @@ for (const config of maps) {
   // A settlement authored as planned sites (Kestrel Airfield, 2026-10-02: thirteen rotation pairs, where the roadside
   // plan had stacked its buildings along the first roads) counts them with the plan, within the old airfield's 16 plan
   // buildings and 6 sites plus two pairs.
+  // (2026-10-07, the map-revival lane's Copper Mesa round 3, gauntlet wave 132: "no street grid, no rows of cottages and
+  // no density": Queenstown authored lot by lot — 28 cottage rows on a main street, two back streets and the north town,
+  // the hotel twice, two ruins and the works — within 40; its frame cost is the cost probe's, not this ceiling's)
   const plannedSites = config.props.plannedSites?.length ?? 0;
   const settlement = config.props.plan.length + plannedSites;
-  assert.ok(settlement >= 16 && settlement <= (plannedSites ? 26 : 18), `${label}: bounded settlement plan`);
+  const settlementCeiling = label === 'copper_mesa' ? 40 : plannedSites ? 26 : 18;
+  assert.ok(settlement >= 16 && settlement <= settlementCeiling, `${label}: bounded settlement plan`);
   assert.ok(config.props.rocks <= 224 && config.props.outcrops <= 42, `${label}: bounded geological dressing`);
-  assert.equal(config.props.tankWrecks.count, 5, `${label}: fixed five-wreck authoring budget`);
+  // the map-vehicles lane (2026-10-06, the period ruling): five period hulks, or none on a 1944 front the public fleet
+  // has no tank of (mapQuality.selftest)
+  assert.equal(config.props.tankWrecks.count, config.props.tankWrecks.era === 'ww2' ? 0 : 5, `${label}: fixed five-wreck authoring budget`);
   assert.ok(config.props.inhabit.looseClutter <= 22 && config.props.inhabit.modernClutter <= 22,
     `${label}: bounded inhabited-detail pools`);
   assert.ok(config.sky.fogDensity <= 0.00072 && config.sky.fogMix <= 0.56,

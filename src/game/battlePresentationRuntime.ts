@@ -2,7 +2,7 @@ import { applyJuggernautScale } from '../sim/juggernautScale.ts';
 import { syncTankEnergyVisual, clearJuggernautVisual, TANK_ENERGY, type TankEnergyStyle } from './juggernautVisual.ts';
 import type { MatchModePresentationState } from '../sim/matchModes.ts';
 import type { ArmorEnvelope } from '../vehicles/specHelpers.ts';
-import { syncMissionAttachment } from './missionAttachmentVisual.ts';
+import type { syncMissionAttachment as SyncMissionAttachment } from './missionAttachmentVisual.ts';
 import { syncGunshipVisual, hideGunshipVisual } from './gunshipVisual.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 import {
@@ -16,6 +16,18 @@ import {
 import type { BattleClientAccess } from './battleClientAccess.ts';
 import type { TankPresentationTracker } from './presentationPose.ts';
 import type { GameState } from './stateCore.ts';
+
+// The mission-attachment visual is battle-only (2026-10-07): its seats read the vehicle auxiliary inventory and weapons
+// (sim/missionAttachment.ts, main c6b60311c), about 400 kB that a static import here put in the garage boot
+// (boot-static-closure, the bundle budget). It loads with the battle's FX graph — the FX gate in main.ts awaits
+// loadMissionAttachmentVisual before any battle, Studio or shot frame — and a tank can carry no mount before it lands.
+let syncMissionAttachment: typeof SyncMissionAttachment | null = null;
+let missionAttachmentVisualLoad: Promise<void> | null = null;
+export function loadMissionAttachmentVisual(): Promise<void> {
+  return missionAttachmentVisualLoad ??= import('./missionAttachmentVisual.ts').then((module) => {
+    syncMissionAttachment = module.syncMissionAttachment;
+  });
+}
 
 interface TankState {
   pos: Vector3;
@@ -70,7 +82,7 @@ interface SpottingState {
 
 interface VehicleFx {
   dust(position: Vector3, forward: Vector3, intensity: number): void;
-  exhaust(position: Vector3, load: number, diesel: boolean): void;
+  exhaust(position: Vector3, load: number, diesel: boolean, velocity?: Vector3 | null, forward?: Vector3 | null): void;
   loosePropHit?(position: Vector3, direction: Vector3, height: number): void;
   propCrush(position: Vector3, direction: Vector3, height: number): void;
 }
@@ -145,6 +157,7 @@ export function createBattlePresentationRuntime({
   const OFFSCREEN_PRESENTATION_INTERVAL_S = 1 / 30;
   const detailScreenPosition = new Vector3();
   const forward = new Vector3();
+  const exhaustVelocity = new Vector3();
   const right = new Vector3();
   const effectPosition = new Vector3();
   const travelDirection = new Vector3();
@@ -248,7 +261,8 @@ export function createBattlePresentationRuntime({
       syncTankEnergyVisual(visual.root,entity.spec.dims,modeAura?1.12:state.modeScale??1,
         entity.combat?.destroyed?0:entity.combat?.hp??1,entity.combat?.maxHp??1,dtFrame??0,!modeAura,style);
     } else clearJuggernautVisual(visual.root);
-    syncMissionAttachment(visual.root,entity.spec,entity.aerial,!!entity.combat?.destroyed);
+    if (syncMissionAttachment) syncMissionAttachment(visual.root,entity.spec,entity.aerial,!!entity.combat?.destroyed);
+    else if (entity.aerial) void loadMissionAttachmentVisual();
     if (entity.aerial?.kind === 'gunship') syncGunshipVisual(visual.root, state.pos, state.yaw, dtFrame ?? 0, !entity.isPlayer && visual.root.visible);
     else hideGunshipVisual(visual.root);
   };
@@ -354,10 +368,14 @@ export function createBattlePresentationRuntime({
     effectPosition.copy(presented.pos)
       .addScaledVector(forward, -dimensions.hullLengthM * 0.42);
     effectPosition.y += dimensions.heightM * 0.72;
+    // the hull's own motion (the plume streams off the deck under way and bends with the wind: fx round 7b)
+    exhaustVelocity.copy(forward).multiplyScalar(presented.speed || 0);
     fx.exhaust(
       effectPosition,
       load,
       !battleClient.isPostwarVehicleEra(entity.spec.era),
+      exhaustVelocity,
+      forward,
     );
   };
 

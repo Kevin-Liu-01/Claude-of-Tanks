@@ -675,7 +675,8 @@ for (const mapId of maps.MAP_IDS) {
   if (rock) assert.ok(rock.castShadow && rock.receiveShadow, `${mapId}: the rock mesh casts and receives`);
   // no tree trunk stands inside a scenery rock's standing mass (a mass is a feature's when its centre is within 10 m of
   // the feature's; another lane's convex solids — the jebels' boulder aprons — are not this receipt's)
-  const masses = dressing.obstacles.filter((r) => r.shape2?.kind === 'convex' && !r.crushable && r.kind === undefined && r.max[1] - r.min[1] > 2.4);
+  // (2026-10-07, the hitbox lane: a formation's movement record is its blocks' own outlines, a compound when they part)
+  const masses = dressing.obstacles.filter((r) => (r.shape2?.kind === 'convex' || r.shape2?.kind === 'compound') && !r.crushable && r.kind === undefined && r.max[1] - r.min[1] > 2.4);
   for (const tree of flora.treeObstacles) {
     const x = (tree.min[0] + tree.max[0]) / 2, z = (tree.min[2] + tree.max[2]) / 2;
     for (const mass of masses) {
@@ -724,8 +725,8 @@ assert.match(propsSource, /if \(wallB === 'fieldStone'\) wallDressing\.stoneUv\(
 assert.match(propsSource, /mesh\.name = 'props-sandbag-beds';/, 'the nests\' bedding draws as one mesh of its own');
 assert.equal((propsSource.match(/cls: 'break', mat: 'burlap', contact: 'ob'/g) ?? []).length, 3, 'the three stacks draw the hessian (wave 52)');
 assert.match(propsSource, /materialKind === 'burlap' \? 'structureCanvas'/, 'the hessian shares the canvas program');
-assert.match(propsSource, /materialKind === 'fieldStone' \? fieldStoneHook : materialKind === 'pole' \? poleHook\s*: materialKind === 'fieldMud' \? mudHook : grimeHook/,
-  'the field print has its own hook (wave 48), the telegraph poles theirs (after wave 57), and the mud print its own (b14)');
+assert.match(propsSource, /materialKind === 'fieldStone' \? fieldStoneHook : materialKind === 'pole' \? poleHook\s*(?:: materialKind === 'ballast' \? ballastHook\s*)?: materialKind === 'fieldMud' \? mudHook : grimeHook/,
+  'the field print has its own hook (wave 48), the telegraph poles theirs (after wave 57), the rail kit\'s ballast its own (the ground lane, wave 234) and the mud print its own (b14)');
 assert.match(propsSource, /vMapUv \+= cotStoneShift;/, 'each wall module shifts its print window along the wall (wave 48: "the coursing visibly repeats")');
 assert.match(propsSource, /bedSandbagNest\(kind, sx, sz, yaw \+ sideIndex \* 0\.12, 1\.18, \[fwdX, fwdZ\]\);/, 'a redoubt\'s stacks are bedded, their spoil thrown forward');
 assert.match(propsSource, /bedSandbagNest\(kind, bx, bz, moduleYaw, moduleScale, \[fx, fz\]\);/, 'a breastwork\'s modules are bedded toward the threat');

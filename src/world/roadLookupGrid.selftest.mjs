@@ -285,6 +285,10 @@ function mapFixture(fine, fail = false) {
   const events = [], fractions = [], failure = new Error('cancel map surveying');
   const dependencies = {
     getMapConfig: () => urban, preloadPropModels: () => Promise.resolve(), prepareSourcedTerrain: () => ({}),
+    // (2026-10-08, the time-to-battle lane) the world build's config (worldBuildConfig.ts) and the horizon ring's prefetch,
+    // supplied to the terrain build through the ring's hook (horizonRingPrefetch.ts, horizonRingHook.ts): none here
+    worldBuildConfig: () => urban, getDeviceTier: () => 'desktop',
+    startHorizonRingBuild: () => ({ stats: {}, dispose() {} }), supplyHorizonRing: () => {}, withdrawHorizonRing: () => {}, finishHorizonRingAsync: async () => {},
     createHeightField() { assert.equal(fine, false); events.push('sync-field'); return field; },
     async createHeightFieldAsync(_seed, _config, tick) {
       assert.equal(fine, true); events.push('field-start');
@@ -296,6 +300,9 @@ function mapFixture(fine, fail = false) {
     async createVegetationAsync(actual) { assert.equal(actual, field); events.push('vegetation'); return {}; },
     async createPropsAsync(actual) { assert.equal(actual, field); events.push('props'); return {}; },
     assembleWorld(_engine, _config, actual) { assert.equal(actual, field); events.push('assembled'); return {}; },
+    // (2026-10-07, the time-to-battle lane) the planned wreck bakes and fixed-input prints the wrapper starts beside the
+    // terrain (wreckBakePrefetch.ts, surfacePaintPrefetch.ts): none here
+    startPlannedWreckBakes: () => null, startSurfacePaints: () => null, plannedSurfacePaints: () => [],
   };
   const run = new Function(...Object.keys(dependencies), stripTypeScriptTypes(mapAsync).replace('export ', '')
     + '\nreturn createMapAsync;')(...Object.values(dependencies));

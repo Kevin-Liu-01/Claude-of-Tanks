@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { getDeviceTier } from '../engine/quality.ts';
+import { createCraterFollower, followCraters, type GroundCoverCraters } from './groundCoverCraters.ts';
 
 // environment density pass (2026-09-12): the ground litter tier. The maps read
 // bare because nothing smaller than a bush ever sat on the ground — the pebble
@@ -74,6 +75,9 @@ interface GroundLitter {
   readonly meshes: readonly [THREE.InstancedMesh, THREE.InstancedMesh, THREE.InstancedMesh];
   update(cameraPosition: { x: number; z: number }): void;
   getState(): GroundLitterState;
+  /** Ground lane (crater-render-spec §C): a crater's cleared bowl takes no litter, the rest lies on base + offsetAt
+   * (the ring republishes from its base cells when a stamp reaches it; map.ts calls this once a frame). */
+  followCraters(law: GroundCoverCraters): void;
   dispose(): void;
 }
 
@@ -436,8 +440,14 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
           const matrices = mesh.instanceMatrix.array as Float32Array;
           const colors = mesh.instanceColor!.array as Float32Array;
           for (let at = 0; at + PACK <= packed.length && totals[kind] < CAP; at += PACK) {
+            // (crater-render-spec §C) a crater's cleared bowl takes no litter; the rest lies on base + offsetAt
+            let lift = 0;
+            if (craterLaw?.active) {
+              if (craterLaw.holeAt(packed[at], packed[at + 2])) continue;
+              lift = craterLaw.liftAt(packed[at], packed[at + 2]);
+            }
             const index = totals[kind]++;
-            _p.set(packed[at], packed[at + 1], packed[at + 2]);
+            _p.set(packed[at], packed[at + 1] + lift, packed[at + 2]);
             _q.set(packed[at + 3], packed[at + 4], packed[at + 5], packed[at + 6]);
             _s.set(packed[at + 7], packed[at + 8], packed[at + 9]);
             _m.compose(_p, _q, _s);
@@ -460,6 +470,19 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
     }
     publishes++;
     published = true;
+  }
+
+  // ground lane (crater-render-spec §C): the battle's craters; a stamp the ring reaches republishes it from its base cells
+  let craterLaw: GroundCoverCraters | null = null;
+  const craterFollower = createCraterFollower();
+  const RING_REACH_M = (GROUND_LITTER.ring + 1) * GROUND_LITTER.cellM;
+  function followCraterLaw(law: GroundCoverCraters): void {
+    craterLaw = law;
+    if (!enabled) return;
+    followCraters(law, craterFollower, () => { published = false; }, (x0, z0, x1, z1) => {
+      const cx = (cellX + 0.5) * GROUND_LITTER.cellM, cz = (cellZ + 0.5) * GROUND_LITTER.cellM;
+      if (x1 >= cx - RING_REACH_M && x0 <= cx + RING_REACH_M && z1 >= cz - RING_REACH_M && z0 <= cz + RING_REACH_M) published = false;
+    });
   }
 
   function update(cameraPosition: { x: number; z: number }): void {
@@ -500,5 +523,5 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
     group.removeFromParent();
   }
 
-  return { group, meshes, update, getState, dispose };
+  return { group, meshes, update, getState, followCraters: followCraterLaw, dispose };
 }

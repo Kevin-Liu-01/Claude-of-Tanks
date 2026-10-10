@@ -3,44 +3,44 @@
   "headroom": 0.03,
   "pages": {
     "game": {
-      "requests": 127,
-      "raw": 3630567,
-      "gzip": 1108427,
-      "brotli": 939418,
-      "entryRaw": 813429,
-      "entryBrotli": 242039
+      "requests": 128,
+      "raw": 3851669,
+      "gzip": 1187589,
+      "brotli": 1005949,
+      "entryRaw": 818369,
+      "entryBrotli": 244533
     },
     "home": {
       "requests": 8,
-      "raw": 75246,
-      "gzip": 24782,
-      "brotli": 21112
+      "raw": 48451,
+      "gzip": 16493,
+      "brotli": 14236
     },
     "docs": {
       "requests": 13,
-      "raw": 193096,
-      "gzip": 53061,
-      "brotli": 45518
+      "raw": 177809,
+      "gzip": 46871,
+      "brotli": 40339
     },
     "gallery": {
-      "requests": 73,
-      "raw": 2095054,
-      "gzip": 601464,
-      "brotli": 507034
+      "requests": 77,
+      "raw": 2343635,
+      "gzip": 688561,
+      "brotli": 580479
     },
     "notFound": {
       "requests": 6,
-      "raw": 17986,
-      "gzip": 6828,
-      "brotli": 5966
+      "raw": 18513,
+      "gzip": 7017,
+      "brotli": 6156
     },
     "cn": {
-      "requests": 128,
-      "raw": 3925953,
-      "gzip": 1214309,
-      "brotli": 1023501,
-      "entryRaw": 813429,
-      "entryBrotli": 242039
+      "requests": 129,
+      "raw": 4164793,
+      "gzip": 1299831,
+      "brotli": 1095247,
+      "entryRaw": 818369,
+      "entryBrotli": 244533
     }
   }
 }

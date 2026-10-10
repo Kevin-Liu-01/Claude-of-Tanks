@@ -1124,7 +1124,7 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
   // lobe read as pale mint crowns beside the square's rich green ones across the red line (Saltmere's west edge:
   // ring crowns HSL L 0.31 / sat 0.24 against the square's 0.20 / 0.31 at the same distance). Same response now.
   const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1.0, metalness: 0 });
-  material.envMapIntensity = 1.08;
+  // (2026-10-08: the full sky, as the far tier takes it; the 1.08 it authored never applied, materialEnvIntensity.ts)
   material.side = THREE.DoubleSide;
   let canopyDetail = options.canopyDetail;
   if (!canopyDetail) {

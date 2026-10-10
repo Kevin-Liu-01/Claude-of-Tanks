@@ -95,6 +95,15 @@ interface MaterialBasePaintEntry<C extends MaterialCanvas> {
   feats: PlateFeatures | null;
 }
 
+/**
+ * Launch night 2026-10-08 (the coordinator's markings audit): a randomly drawn hull number never comes out 14, 18 or 88,
+ * numbers used as hate codes. Only those three values move, each to the next number, and no extra random draw is made,
+ * so every other hull keeps exactly the number it had.
+ */
+const CODED_HULL_NUMBERS: ReadonlySet<number> = new Set([14, 18, 88]);
+export function safeHullNumber(drawn: number): number {
+  return CODED_HULL_NUMBERS.has(drawn) ? drawn + 1 : drawn;
+}
 export const ALBEDO_SIZE = 2048;
 export const MAP_SIZE = 1024;
 
@@ -476,10 +485,13 @@ export function createMaterialPainter<C extends MaterialCanvas>(
     for (let i = 0; i < nV; i++) {
       f.vLines.push({ p: (i + 0.12 + rng() * 0.76) / nV, weld: rng() < 0.42, bolts: rng() < 0.35, gaps: mkGaps() });
     }
-    // bolt rings (hatch / plate access circles)
+    // bolt rings (hatch / plate access circles). Fleet lane round 1 (2026-10-08; the fleet audit's T-90M X skirts): the
+    // tile placed two to four of these at random in every 2 m repeat, so they landed on skirts, glacis plates and gun
+    // shields alike and repeated down a hull side like stamped decals. Access plates and hatches are modelled where they
+    // are; the tile keeps its seams, welds and bolt lines. The draws stay (every later feature keeps its place).
     const nR = 2 + ((rng() * 3) | 0);
     for (let i = 0; i < nR; i++) {
-      f.rings.push({ x: 0.1 + rng() * 0.8, y: 0.1 + rng() * 0.8, r: 0.022 + rng() * 0.03, n: 8 + ((rng() * 6) | 0) });
+      void [rng(), rng(), rng(), rng()];
     }
     // chips clustered near lines and edges
     // r8: 260 chips with bright glints read as white speckle noise at
@@ -2422,7 +2434,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       band(cx, cy, S * 0.11, red, 0.94);               // main stripe
       band(cx + nx * S * 0.095, cy + ny * S * 0.095, S * 0.035, red, 0.94);
       band(cx - nx * S * 0.075, cy - ny * S * 0.075, S * 0.012, blk, 0.9);
-      const num = String(1 + ((rng() * 98) | 0));
+      const num = String(safeHullNumber(1 + ((rng() * 98) | 0)));
       const roundel = (x: number, y: number, r: number): void => {
         const disc = new Path2D();
         disc.arc(x, y, r, 0, Math.PI * 2);
@@ -2573,7 +2585,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       band2.moveTo(x1, -S * 0.1);
       band2.lineTo(x1, S * 1.1);
       strokeWrapped(ctx, S, band2, rgb(white, 0.82), S * 0.035);
-      const num = String(100 + ((rng() * 899) | 0));   // tactical number
+      const num = String(safeHullNumber(100 + ((rng() * 899) | 0)));   // tactical number
       ctx.save();
       ctx.font = `900 ${Math.round(S * 0.17)}px 'ABC Monument Grotesk', sans-serif`;
       ctx.textAlign = 'center';
@@ -2696,7 +2708,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       paintUsmcDust();
       const paintUsmcNumber = (): void => {
         ctx.save();
-        const num2 = String(10 + ((rng() * 89) | 0));
+        const num2 = String(safeHullNumber(10 + ((rng() * 89) | 0)));
         ctx.font = `900 ${Math.round(S * 0.13)}px 'ABC Monument Grotesk', sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -3049,7 +3061,6 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         }
       }
     };
-    paintPanelLines();
     // weld beads: dashed light/dark stitch straddling the line
     const weldDash = (horiz: boolean, l: PlateLine): void => {
       const p = l.p;
@@ -3072,7 +3083,6 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       for (const line of feats.hLines) if (line.weld) weldDash(true, line);
       for (const line of feats.vLines) if (line.weld) weldDash(false, line);
     };
-    paintWelds();
     // bolts along lines: dome highlight + drop shadow
     const bolt = (x: number, y: number, r: number): void => {
       ctx.fillStyle = 'rgba(8,8,6,0.5)';
@@ -3113,9 +3123,6 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         }
       }
     };
-    paintHorizontalLineBolts();
-    paintVerticalLineBolts();
-    paintRingBolts();
 
     const paintGrimeBlotches = (): void => {
       for (let i = 0; i < 16; i++) {
@@ -3127,7 +3134,6 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         ctx.fillRect(x - r, y - r, r * 2, r * 2);
       }
     };
-    paintGrimeBlotches();
     // dust + dark oil streaks (canvas +y == world down on side plates).
     // Light dust streaks stay near the base hue and low alpha: 240 strokes of
     // brightened weather tone at 0.13 glazed a pastel film over the pattern —
@@ -3142,7 +3148,6 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (rng() - .5) * (finishedPaint ? S * .006 : 8), y + len); ctx.stroke();
       }
     };
-    paintDustAndOilStreaks();
     // paint chips — dark pit with a worn-metal glint above (from plan).
     // r10 ("flour dust" critique): glints tinted toward dust ochre keyed to the
     // base color and cut ~50% — the old cool near-white pips read as a uniform
@@ -3159,14 +3164,27 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         }
       }
     };
-    paintChips();
-    // rust weeps from plan sources + below some bolts.
+    // rust weeps from plan sources + below some bolts. 2026-10-06 (wave 165, Challenger 1: "a bright vertical
+    // orange sliver splits the dark mantlet cheek like an unresolved texture seam"). The old weep was a 1.4-3 px
+    // orange stroke laid OVER the paint. On a black camo band it lit up as a one-texel line that repeated with
+    // the 2 m tile. A weep is a stain in the paint, so it now MULTIPLIES a warm rust-brown: it darkens and warms
+    // whatever it runs over, nearly vanishing on black and showing as a brown run on green or sand. Nested
+    // passes around a core of at least 2.5 mm fall off softly to each side and fade in from the source, so the
+    // weep never reads as a seam line or a hard-edged bar at close range.
     const weep = (x: number, y: number, len: number, w: number): void => {
-      const g = ctx.createLinearGradient(x, y, x, y + len);
-      g.addColorStop(0, 'rgba(122,64,28,0.42)');
-      g.addColorStop(1, 'rgba(122,64,28,0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(x, y, Math.max(1.4, w), len);
+      const core = Math.max(S / 820, w * 1.6);
+      const prevOp = ctx.globalCompositeOperation;
+      ctx.globalCompositeOperation = 'multiply';
+      for (const [spread, alpha] of [[3.0, 0.08], [2.2, 0.1], [1.5, 0.13], [1.0, 0.2]] as const) {
+        const width = core * spread;
+        const g = ctx.createLinearGradient(x, y, x, y + len);
+        g.addColorStop(0, `rgba(150,112,82,${alpha * 0.5})`);
+        g.addColorStop(0.12, `rgba(150,112,82,${alpha})`);
+        g.addColorStop(1, 'rgba(150,112,82,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(x - width / 2, y, width, len);
+      }
+      ctx.globalCompositeOperation = prevOp;
     };
     const paintRustWeeps = (): void => {
       for (const streak of feats.streaks) {
@@ -3183,6 +3201,15 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         }
       }
     };
+    // The overlay in its original order (each painter above draws in turn from the plan and the stream).
+    paintPanelLines();
+    paintWelds();
+    paintHorizontalLineBolts();
+    paintVerticalLineBolts();
+    paintRingBolts();
+    paintGrimeBlotches();
+    paintDustAndOilStreaks();
+    paintChips();
     paintRustWeeps();
     return canvas;
   }

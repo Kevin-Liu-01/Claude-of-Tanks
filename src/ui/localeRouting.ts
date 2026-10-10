@@ -28,6 +28,7 @@ type PublicRouteId =
   | 'docsAudio'
   | 'docsInterface'
   | 'docsStudio'
+  | 'docsFilming'
   | 'notFound';
 
 export interface PublicRouteRecord {
@@ -56,6 +57,7 @@ export const PUBLIC_ROUTE_RECORDS: readonly PublicRouteRecord[] = Object.freeze(
   { id: 'docsAudio', pathname: '/docs/audio', sourceHtml: 'docs-audio.html', localizedHtml: 'docs-audio.html', indexable: true },
   { id: 'docsInterface', pathname: '/docs/interface', sourceHtml: 'docs-interface.html', localizedHtml: 'docs-interface.html', indexable: true },
   { id: 'docsStudio', pathname: '/docs/studio', sourceHtml: 'docs-studio.html', localizedHtml: 'docs-studio.html', indexable: true },
+  { id: 'docsFilming', pathname: '/docs/filming', sourceHtml: 'docs-filming.html', localizedHtml: 'docs-filming.html', indexable: true },
   { id: 'notFound', pathname: '/404', sourceHtml: '404.html', localizedHtml: '404.html', indexable: false },
 ] satisfies readonly PublicRouteRecord[]);
 

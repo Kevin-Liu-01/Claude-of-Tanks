@@ -24,7 +24,7 @@ import { CLOUD_CONTRAIL_MAX } from './cloudWeatherLayers.ts';
 // the count a map authors (what the layer derives with the contrail switch on)
 const authoredContrails = (id) => Math.round(Math.min(1, Math.max(0, getMapConfig(id)?.clouds?.contrails ?? 0)) * CLOUD_CONTRAIL_MAX);
 import {
-  VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
+  VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_CAPTURE_SETTLE_FRAMES, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
 } from './volumetricClouds.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
@@ -69,7 +69,7 @@ assert.equal(cloudCameraCut(0, .36, 1, 1), true, 'large camera turn rebuilds');
     else layer.since++;
   };
   assert.equal(layer.settleForCapture(camera),true);
-  assert.equal(traces,67);assert.equal(layer.captureFramesRemaining,0);
+  assert.equal(traces,3+CLOUD_CAPTURE_SETTLE_FRAMES);assert.ok(CLOUD_CAPTURE_SETTLE_FRAMES>=256,'a still settles to near the live steady state');assert.equal(layer.captureFramesRemaining,0);
   assert.equal(layer.settleForCapture(camera),false,'settled movie frames do no extra traces');
   layer.rebuild=0;layer.since=0;layer.frozen=true;
   assert.equal(layer.settleForCapture(camera),false,'capture respects an intentionally frozen layer');
@@ -553,5 +553,35 @@ assert.match(layerSource, /t\.uDeckLobe\.value = lightTune\('CLOUD_DECK_SUN_LOBE
   for (let i = 0; i < n; i++) { const c = -1 + 2 * (i + 0.5) / n; mean += (1 + 0.2 * (dual(c, 0.6) * 4 * Math.PI - 1)) / n; }
   assert.ok(Math.abs(mean - 1) < 1e-3, `the lobe's mean over the sky ${mean.toFixed(4)}`);
   assert.ok(1 + 0.2 * (dual(1, 0.6) * 4 * Math.PI - 1) > 2, 'toward the sun the diffused sun more than doubles');
+}
+// 2026-10-09: a capture's clouds are a function of its scene time alone. Two layers whose live pages ran different
+// histories (the drift, the billows' boil, the contrails' upper drift, the shade map's refresh age, a storm's lightning)
+// hold the same cloud state after setCaptureTime(t, true), so two renders of one scene draw the same clouds and cloud
+// shadows (the media lane's engine reviews r10 and r11 drew S35's field in cloud shadow once and in sun once).
+{
+  const preset = deriveCloudLayerPreset(skyOf('verdant'));
+  const make = () => { const l = new VolumetricCloudLayer({}, new THREE.Scene(), {}, new THREE.Vector3(1, 1, 1)); l.setPreset(preset); return l; };
+  const a = make(), b = make();
+  b.weatherShift.set(1234, -567); b.noiseShift.set(89, 4321, -12); b.cirrusShift.set(2222, 3); b.upperDrift.set(-9876, 543);
+  Object.assign(b, { farShadeValid: true, farShadeAge: 5, flashSeed: 7, flashClock: 2.5, flashNext: 11, flashAge: 0.1, flashStrokes: 2, flashPeak: 0.8, historyIndex: 1, frame: 13 });
+  const state = (l) => JSON.stringify([l.weatherShift, l.noiseShift, l.cirrusShift, l.upperDrift, l.farShadeValid, l.flashSeed, l.flashClock,
+    l.flashNext, l.flashAge, l.flashStrokes, l.flashPeak, l.historyIndex, l.frame, l.traces]);
+  for (const t of [0, 1.234, 4.7]) {
+    a.setCaptureTime(t, true);
+    b.setCaptureTime(t, true);
+    assert.equal(state(b), state(a), `the clouds at ${t} s are the scene's, whatever the page drew before`);
+    // a later sample of the take (no restart): the drift follows the time and the shade map is cut again
+    a.setCaptureTime(t + 0.033);
+    b.setCaptureTime(t + 0.033);
+    assert.equal(state(b), state(a), `and at ${t + 0.033} s`);
+    assert.equal(b.farShadeValid, false, 'a capture sample re-cuts the shade map at its own drift');
+  }
+  a.setCaptureTime(0, true);
+  const boil0 = a.noiseShift.y, trail0 = a.upperDrift.x;
+  a.setCaptureTime(6, true);
+  assert.ok(Math.abs(a.noiseShift.y - boil0) > 1, 'the billows turn over with scene time');
+  assert.ok(Math.abs(a.upperDrift.x - trail0) > 1 || Math.abs(Math.cos(preset.cirrusAngleRad)) < 1e-6, 'the contrails drift with scene time');
+  a.dispose();
+  b.dispose();
 }
 console.log('volumetricClouds.selftest: the cut ray opaque (no disc through a closed deck), the forward lobe of a deck PASS');

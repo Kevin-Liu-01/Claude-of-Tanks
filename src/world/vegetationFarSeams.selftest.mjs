@@ -1,4 +1,5 @@
 import { shapeFarTreeBase } from './farTreeBase.ts';
+import { keepStreams } from './geometryStreams.ts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
@@ -119,6 +120,8 @@ function compile(input = text, mode = 'current') {
     growTreeSkeleton: growth.growTreeSkeleton, emitBranchGeometry: growth.emitBranchGeometry, emitLeafCards: growth.emitLeafCards,
     emitCrownShadowHull: growth.emitCrownShadowHull, GROWTH_TUBE_SIDES: growth.GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES: growth.TREE_GROWTH_PROFILES,
     weldGrownGeometry: growth.weldGrownGeometry, canopySkyOcclusion: growth.canopySkyOcclusion, GROWTH_CANOPY_AO: growth.GROWTH_CANOPY_AO,
+    // a palm's cards are built fresh without the billboard frame's two streams (geometryStreams.ts, 2026-10-07)
+    keepStreams,
     growthCrownAttachments: growth.growthCrownAttachments, growthCardRows: growth.growthCardRows,
     GROWTH_CROWN_STEM_WIDTH: growth.GROWTH_CROWN_STEM_WIDTH,
     // trees round 2 (2026-10-03): the crowns' lobes and hull normal (the shrubs' shade, the snow load) and the map's biome

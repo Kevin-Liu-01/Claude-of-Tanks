@@ -51,7 +51,7 @@ const PORT_SPAN = 20;
 const GAME_QUERY = 'nosplash=1&tier=desktop';
 const COMMANDS = Object.freeze(['capture', 'metrics', 'sheets', 'index', 'report', 'compare']);
 const FLAGS = Object.freeze({
-  capture: ['root', 'out', 'set', 'maps', 'views', 'pose', 'serve', 'port', 'batch', 'budget-min', 'lock-timeout-min', 'settle-ms', 'probe-lock'],
+  capture: ['root', 'out', 'set', 'maps', 'views', 'pose', 'serve', 'port', 'batch', 'budget-min', 'lock-timeout-min', 'settle-ms', 'probe-lock', 'overlay'],
   metrics: ['out', 'force'], sheets: ['out'], index: ['out'], report: ['out', 'force'], compare: ['a', 'b', 'out'],
 });
 const NUMERIC = new Set(['port', 'batch', 'budget-min', 'lock-timeout-min', 'settle-ms']);
@@ -61,8 +61,8 @@ const BOOLEANS = new Set(['force']);
 export const CENSUS_HELP = `node tools/${TOOL}.mjs <command> [--flag=value ...]
 
   capture  --out=<dir> [--root=<checkout>] [--set=core|border|border2] [--maps=a,b] [--views=a,b|none] [--serve=dist|dev]
-           [--pose=name:cx,cy,cz:ax,ay,az[+name:…]] [--port=5421] [--batch=<n>] [--budget-min=<m>]
-           [--lock-timeout-min=30] [--settle-ms=1200] [--probe-lock=<dir>]
+           [--pose=[map/]name:cx,cy,cz:ax,ay,az[+…]] [--port=5421] [--batch=<n>] [--budget-min=<m>]
+           [--lock-timeout-min=30] [--settle-ms=1200] [--probe-lock=<dir>] [--overlay=colliders[:<radius m>]]
            Shoot ${CENSUS_VIEWS.map((v) => v.name).join(', ')} of every registered map (or --maps) into <out>/frames
            and merge each map into <out>/census.json. --set=border shoots the border set instead (the eye-height and
            60 m views of the four edges and four corners from inside the square, and a high oblique across the
@@ -73,7 +73,9 @@ export const CENSUS_HELP = `node tools/${TOOL}.mjs <command> [--flag=value ...]
            takes it only at the FIFO head (tools/visual-census-lock.mjs); without it the caller holds any session mutex.
            --pose adds authored table views (camera and look point, each height over the ground beneath it) after the
            set's views, for a landform no fixed view frames; --views=none shoots only those. --pose=maps shoots each
-           map's own views (tools/visual-census-map-poses.mjs) on that map only.
+           map's own views (tools/visual-census-map-poses.mjs) on that map only. --overlay=colliders also shoots each
+           view with the world's collider view drawn over it (src/dev/colliderOverlay.ts: the records within the radius,
+           default 30 m, of the view's look point; orange movement, cyan shells) as frames/<map>/<view>-colliders.png.
   metrics  --out=<dir> [--force]      per-frame metrics into census.json (only frames without them unless --force)
   sheets   --out=<dir>                contact sheets: one per view (every map), one per map (every view)
   index    --out=<dir>                <out>/index.md (keeps the hand-written visual read between its markers)
@@ -98,14 +100,26 @@ export function parseCensusPoses(raw) {
   }
   return raw.split('+').map((spec) => {
     const parts = spec.split(':');
-    const name = parts[0], cam = (parts[1] ?? '').split(',').map(Number), at = (parts[2] ?? '').split(',').map(Number);
+    // (the hitbox lane, 2026-10-07) `map/name:…` binds a view to one map of a several-map run
+    const bound = /^([a-z][a-z0-9_]*)\/(.+)$/.exec(parts[0]);
+    const name = bound ? bound[2] : parts[0], cam = (parts[1] ?? '').split(',').map(Number), at = (parts[2] ?? '').split(',').map(Number);
     if (parts.length !== 3 || !/^[a-z][a-z0-9-]*$/.test(name) || cam.length !== 3 || at.length !== 3
       || ![...cam, ...at].every(Number.isFinite)) {
-      throw new Error(`--pose needs name:cx,cy,cz:ax,ay,az (got "${spec}")`);
+      throw new Error(`--pose needs [map/]name:cx,cy,cz:ax,ay,az (got "${spec}")`);
     }
     return Object.freeze({ name, kind: 'table', label: `${name} (authored pose)`, cam: Object.freeze(cam),
-      at: Object.freeze(at), fov: CENSUS_FOV, authored: true });
+      at: Object.freeze(at), fov: CENSUS_FOV, authored: true, ...(bound ? { map: bound[1] } : {}) });
   });
+}
+
+/** --overlay=colliders[:<radius>] (the hitbox lane, 2026-10-07): a second frame of each view with the collider view. */
+export function parseCensusOverlay(raw) {
+  if (raw === undefined) return null;
+  const match = /^colliders(?::(\d+(?:\.\d+)?))?$/.exec(raw);
+  if (!match) throw new Error(`--overlay needs colliders or colliders:<radius m> (got "${raw}")`);
+  const radius = match[1] === undefined ? 30 : Number(match[1]);
+  if (!(radius > 0 && radius <= 200)) throw new Error(`--overlay radius must be in (0, 200] m, got ${radius}`);
+  return Object.freeze({ kind: 'colliders', radius });
 }
 
 /** The views one map shoots: every fixed and explicit --pose view, and of --pose=maps only that map's own. */
@@ -157,13 +171,18 @@ export function parseCensusArgs(argv) {
     const none = values.views?.length === 1 && values.views[0] === 'none';
     if (none && !poses.length) throw new Error('--views=none needs at least one --pose');
     const views = [...(none ? [] : selectCensusViews(values.views, set)), ...poses];
-    const names = views.map((view) => view.name);
-    if (new Set(names).size !== names.length) throw new Error(`Duplicate census view name in ${names.join(', ')}`);
+    // (a view bound to a map shares its name space with that map's other views only)
+    const names = views.map((view) => (view.map ? `${view.map}/${view.name}` : view.name));
+    const globals = new Set(views.filter((view) => !view.map).map((view) => view.name));
+    if (new Set(names).size !== names.length || views.some((view) => view.map && globals.has(view.name))) {
+      throw new Error(`Duplicate census view name in ${names.join(', ')}`);
+    }
     Object.assign(options, {
       root: path.resolve(values.root ?? process.cwd()), set, maps: values.maps ?? null, views,
       serve, port, batch: values.batch ?? null, budgetMin: values['budget-min'] ?? null,
       lockTimeoutMin: values['lock-timeout-min'] ?? 30, settleMs: values['settle-ms'] ?? 1200,
       probeLock: values['probe-lock'] ? path.resolve(values['probe-lock']) : null,
+      overlay: parseCensusOverlay(values.overlay),
       argv: [...argv],
     });
   }
@@ -516,7 +535,14 @@ async function planViews(page, views, player) {
   return { plans, layout: { buildings: data.buildings.length, clusters: data.clusters.length, water: data.water.length, roads: data.roads.length, concealers: data.concealers.length } };
 }
 
-async function shootView(page, out, mapId, view, plan, settleMs) {
+/** The look point of the posed view (or of the staged camera, 20 m ahead) for the collider overlay. */
+function pageLookPoint() {
+  const D = window.__DEBUG, cam = D.camera, V = cam.position.constructor;
+  const ahead = cam.getWorldDirection(new V()).multiplyScalar(20).add(cam.position);
+  return [ahead.x, ahead.y, ahead.z];
+}
+
+async function shootView(page, out, mapId, view, plan, settleMs, overlay = null) {
   const t = {}; let mark = Date.now();
   const lap = (key) => { t[key] = Date.now() - mark; mark = Date.now(); };
   const posed = await page.evaluate(poseScript(plan.pose));
@@ -541,7 +567,19 @@ async function shootView(page, out, mapId, view, plan, settleMs) {
   mkdirSync(path.join(out, 'frames', mapId), { recursive: true });
   await within(page.screenshot({ path: path.join(out, rel), type: 'png' }), 120000, 'screenshot');
   lap('screenshotMs');
-  return { file: rel, pose: posed.resolved, cloudsReset: posed.clouds, terrainSettle: terrain, impostors, cloudSettle: clouds, state, timings: t };
+  let overlaid = null;
+  if (overlay) {
+    const at = posed.resolved?.at ?? await page.evaluate(pageLookPoint);
+    const records = await page.evaluate((o) => window.__DEBUG.colliderOverlay(o), { x: at[0], z: at[2], radius: overlay.radius });
+    await page.evaluate(pageFrames, 3);
+    const file = path.posix.join('frames', mapId, `${view.name}-colliders.png`);
+    await within(page.screenshot({ path: path.join(out, file), type: 'png' }), 120000, 'screenshot');
+    await page.evaluate(() => window.__DEBUG.colliderOverlay(null));
+    overlaid = { file, at, radius: overlay.radius, records };
+    lap('overlayMs');
+  }
+  return { file: rel, pose: posed.resolved, cloudsReset: posed.clouds, terrainSettle: terrain, impostors, cloudSettle: clouds, state, timings: t,
+    ...(overlaid ? { overlay: overlaid } : {}) };
 }
 
 // ---------------------------------------------------------------------------------------------- capture run
@@ -655,7 +693,7 @@ async function shootWithRetry(page, options, mapId, view, plan) {
   let lastError = null;
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const shot = await shootView(page, options.out, mapId, view, plan, options.settleMs);
+      const shot = await shootView(page, options.out, mapId, view, plan, options.settleMs, options.overlay);
       return { status: 'ok', attempts: attempt, selection: plan.selection ?? null, ...shot };
     } catch (error) {
       lastError = String(error?.message || error).slice(0, 300);

@@ -88,6 +88,15 @@ import {
   assert.notEqual(casterSignature(mesh), s4, 'a material version change does');
   mesh.castShadow = false;
   assert.notEqual(casterSignature(mesh), casterSignature(Object.assign(mesh, { castShadow: true })));
+  // destruction (2026-10-07): a shape only the GPU changes (the structure mask on a props bucket) reaches the hash
+  // through the owner's epoch, bumped on every frame it changes (world structureDamage(id).touchShadows())
+  const s6 = casterSignature(mesh);
+  mesh.userData.cotShadowEpoch = 1;
+  const s7 = casterSignature(mesh);
+  assert.notEqual(s7, s6, 'a shadow epoch bump does');
+  assert.equal(casterSignature(mesh), s7, 'and holds until the next bump');
+  mesh.userData.cotShadowEpoch = 2;
+  assert.notEqual(casterSignature(mesh), s7);
 }
 
 // ---------------------------------------------------------------------------------------------- the two passes
@@ -214,9 +223,20 @@ const copies = (log) => log.filter((e) => e.kind === 'copy').map((e) => `${e.fro
   r = frame(f, cache);
   assert.equal(renders(r.log).length, 1, 'one change is one re-render');
 
+  // a forced frame redraws every cascade the ordinary way (2026-10-08: a shot-mode page forces every frame, and the cache's
+  // two passes and copy for a layer the next forced frame discards cost 4.4 ms of GPU a frame), then one re-render
   r = frame(f, cache, { forced: true });
-  assert.equal(renders(r.log).length, 2, 'a forced frame re-renders');
+  assert.equal(r.handled, false, 'a forced frame renders the ordinary way');
+  assert.deepEqual(renders(r.log).map((e) => e.drawn), [['terrain', 'trees', 'moored-hull', 'crate', 'tank-proxy']]);
+  assert.deepEqual(copies(r.log), [], 'no copy on a forced frame');
+  r = frame(f, cache, { forced: true });
+  assert.equal(r.handled, false, 'nor on the forced frames after it');
+  assert.equal(cache.telemetry().forcedFrames, 2);
+  r = frame(f, cache);
+  assert.equal(renders(r.log).length, 2, 'the first unforced frame re-renders the static layer, once');
   assert.equal(cache.telemetry().lastRebuildReason, 'forced');
+  r = frame(f, cache);
+  assert.equal(renders(r.log).length, 1, 'and the next reuses it');
 
   // the moored hull bobs every frame: first one re-render, then it leaves the static layer for good
   const bob = () => { f.hull.position.y += 0.01; f.hull.updateMatrixWorld(); };
@@ -335,4 +355,4 @@ const copies = (log) => log.filter((e) => e.kind === 'copy').map((e) => `${e.fro
   assert.match(lighting, /invalidateShadowMaps\(\): void \{[\s\S]{0,140}staticShadowCache\?\.dispose\(\)/);
 }
 
-console.log('shadow static cache: pose/content/forced invalidation, two-pass render, promotion and demotion, the settle rule, arming, fail-open, router PASS');
+console.log('shadow static cache: pose/content invalidation, forced frames the ordinary way, two-pass render, promotion and demotion, the settle rule, arming, fail-open, router PASS');

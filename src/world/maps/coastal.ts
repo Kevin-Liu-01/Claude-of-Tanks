@@ -254,10 +254,11 @@ export default {
     haystacks: 14, rocks: 262, outcrops: 30, craters: 30, rubblePiles: 0,
     // DESTRUCTIBLES r1: modern hulks on the shore road (baked roster tanks)
     // + landing-defense dressing (hedgehog obstacles, sandbag lines)
-    tankWrecks: {
-      era: 'modern', count: 5, debris: true,
-      ids: ['m2a2_bradley', 'bmp3', 'merkava3d', 'ariete', 'type10'],
-    },
+    // the map-vehicles lane (2026-10-06, the period ruling): Brittany in the 1960s: the French Army's AMX-30s and
+    // M47 Pattons
+    // the present-day coast (the coordinator, 2026-10-08: its civilians the Breton coast's today): a present-day cast,
+    // the French Leclerc and a CV90 beside a T-90M, a BMP-3 and a Leopard 2A7V
+    tankWrecks: { era: 'modern', count: 5, debris: true, ids: ['leclerc', 't90m', 'cv90', 'bmp3', 'leo2a7v'] },
     sandbagLines: 10,
     hedgehogs: 7,
     // world-dressing r1: harbor-village inhabitants — fish-crate/barrel

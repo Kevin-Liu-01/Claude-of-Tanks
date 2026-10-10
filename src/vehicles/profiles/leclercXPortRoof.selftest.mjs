@@ -2,9 +2,13 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { fieldKitCensus, fieldKitFilter } from '../fieldKitSurface.test-support.mjs';
 
-const ray = (meshes, origin, direction, far = 10) => new THREE.Raycaster(
-  new THREE.Vector3(...origin), new THREE.Vector3(...direction), 0, far).intersectObjects(meshes, false)[0];
+// Source witnesses read the first source surface: main's field kit (5f8eefaa4) puts a remote 30 mm station over
+// the port roof and screens and pads on the flanks; the census filter skips them.
+let kit;
+const ray = (meshes, origin, direction, far = 10) => kit.hits(new THREE.Raycaster(
+  new THREE.Vector3(...origin), new THREE.Vector3(...direction), 0, far), meshes)[0];
 
 function heldOutSurfaces(all) {
   // These first-surface witnesses are independent of the assembly's loft
@@ -52,11 +56,17 @@ function wellAirAndContact(all, turret, detail) {
 }
 
 for (const quality of ['high', 'low']) {
-  const tank = createTank('leclerc_x', null, {quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false});
+  const census = fieldKitCensus();
+  const tank = createTank('leclerc_x', null, {quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false,
+    partCensus: census.partCensus});
+  kit = fieldKitFilter(tank.root, census);
   try {
     tank.root.updateMatrixWorld(true);
     const all = [];
     tank.root.traverse(m => {if (m.isMesh && !m.name.startsWith('procShadow_') && !m.userData.vehicleMarking) all.push(m);});
+    // The kit is real and really covers a witness: an unfiltered ray stops on the roof station first.
+    const covering = new THREE.Raycaster(new THREE.Vector3(-.98, 3, .245), new THREE.Vector3(0, -1, 0), 0, 10).intersectObjects(all, false)[0];
+    assert.ok(kit.kitObject(covering?.object), `${quality}: the field roof weapon covers the port roof witness`);
     heldOutSurfaces(all);
     const turret = tank.root.getObjectByName('turret'), detail = tank.root.getObjectByName('turretDetail');
     wellAirAndContact(all, turret, detail);
@@ -69,6 +79,6 @@ for (const quality of ['high', 'low']) {
     tank.root.updateMatrixWorld(true);
     near(ray(all, [p.x, 2.4, p.z], [0, -1, 0])?.point.y, p.y, .000001,
       'actual well follows turret yaw independently of gun elevation');
-  } finally {tank.dispose();}
+  } finally {tank.dispose();kit.dispose();}
 }
 console.log('leclercXPortRoof: high/low held-out source surfaces, genuine recessed floor/air, actual support and yaw ownership pass');
