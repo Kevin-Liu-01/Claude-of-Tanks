@@ -8,7 +8,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  TAKRAM_SETTLE_FRAMES, takramLayersFor, takramNoiseVolume, takramQualityFor, takramResolutionScale, takramWorldToECEF,
+  TAKRAM_EXPOSURE, TAKRAM_SETTLE_FRAMES, takramCalibration, takramLayersFor, takramNoiseVolume, takramQualityFor, takramResolutionScale, takramWorldToECEF,
 } from './takramClouds.ts';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -86,6 +86,16 @@ assert.equal(takramResolutionScale(''), 1);
 assert.equal(takramResolutionScale('?clouds=takram&takramScale=0.5'), 0.5);
 assert.equal(takramResolutionScale('?takramScale=7'), 1);
 assert.ok(TAKRAM_SETTLE_FRAMES >= 32, 'a still settles at least two Bayer cycles');
+const cal0 = takramCalibration('');
+assert.equal(cal0.exposure, TAKRAM_EXPOSURE);
+assert.equal(cal0.coverage.size, 0);
+const cal1 = takramCalibration('?clouds=takram&takramExposure=3.25&takramCov=fair-weather-cumulus:1.2;stratocumulus-deck:0.8;*:1.05;bad:x');
+assert.equal(cal1.exposure, 3.25);
+assert.equal(cal1.coverage.get('fair-weather-cumulus'), 1.2);
+assert.equal(cal1.coverage.get('stratocumulus-deck'), 0.8);
+assert.equal(cal1.coverage.get('*'), 1.05);
+assert.ok(!cal1.coverage.has('bad'));
+assert.equal(takramCalibration('?takramCov=a:99').coverage.get('a'), 3, 'factors are clamped');
 
 // the noise volume: slice 0 the tile, each slice the tile shifted by the golden ratio (mod 1)
 const small = new Uint8Array(128 * 128);

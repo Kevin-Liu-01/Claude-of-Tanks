@@ -66,6 +66,23 @@ export function takramQualityFor(preset: string): CloudsQualityPreset {
   return preset === 'low' ? 'low' : preset === 'medium' ? 'medium' : 'high';
 }
 
+/**
+ * The trial's calibration knobs from the URL (the stills jobs pass what the smoke frames measured): `takramExposure=<x>`
+ * (Takram's units → ours; default TAKRAM_EXPOSURE) and `takramCov=<regime>:<factor>;...` (a per-regime factor on the
+ * mapped coverage, so a map's sky holds about the cloud fraction our layer gives it; `*` matches any regime).
+ */
+export function takramCalibration(search: string): { exposure: number; coverage: ReadonlyMap<string, number> } {
+  const q = new URLSearchParams(search);
+  const e = Number(q.get('takramExposure'));
+  const coverage = new Map<string, number>();
+  for (const part of (q.get('takramCov') ?? '').split(';')) {
+    const [regime, value] = part.split(':');
+    const f = Number(value);
+    if (regime && Number.isFinite(f) && f > 0) coverage.set(regime.trim(), Math.min(3, Math.max(0.25, f)));
+  }
+  return { exposure: Number.isFinite(e) && e > 0 ? e : TAKRAM_EXPOSURE, coverage };
+}
+
 /** The `?takramScale=` resolution scale (Takram's default 1: its output at our scene resolution, the trace at 1/16). */
 export function takramResolutionScale(search: string): number {
   const v = Number(new URLSearchParams(search).get('takramScale'));
@@ -237,6 +254,8 @@ export class TakramTrial {
   failed: string | null = null;
   /** Live-tunable for the calibration (QA): Takram's units → ours. */
   exposure = TAKRAM_EXPOSURE;
+  /** The per-regime coverage factors (`?takramCov=`). */
+  private readonly coverageFactors: ReadonlyMap<string, number>;
   /** Updates since the last reset (the capture settle counts these). */
   since = 0;
   /** Takram ran this frame (else our own layer drew). */
@@ -263,6 +282,9 @@ export class TakramTrial {
 
   constructor(renderer: THREE.WebGLRenderer, search: string) {
     this.renderer = renderer;
+    const calibration = takramCalibration(search);
+    this.exposure = calibration.exposure;
+    this.coverageFactors = calibration.coverage;
     this.rotation.setFromMatrix4(this.worldToECEF);
     const effect = new CloudsEffect(new THREE.PerspectiveCamera());
     this.effect = effect;
@@ -289,7 +311,7 @@ export class TakramTrial {
       uniforms: { tOverlay: { value: null }, uExposure: { value: this.exposure } },
     });
     this.shadeMaterial = new THREE.ShaderMaterial({
-      name: 'TakramCloudShade', glslVersion: THREE.GLSL3, vertexShader: QUAD_VERTEX, fragmentShader: SHADE_FRAGMENT,
+      name: 'TakramCloudShade', vertexShader: QUAD_VERTEX, fragmentShader: SHADE_FRAGMENT,
       depthTest: false, depthWrite: false, blending: THREE.NoBlending,
       uniforms: {
         tShadow: { value: null }, uShadowMatrices: { value: this.shadowMatrices }, uShadowIntervals: { value: this.shadowIntervals },
@@ -341,7 +363,7 @@ export class TakramTrial {
 
   /** The preset's layers, coverage and wind (on a new preset key only). */
   applyPreset(preset: CloudLayerPreset): boolean {
-    const key = `${preset.baseM}|${preset.thicknessM}|${preset.stratiform}|${preset.coverage}|${preset.cirrus}|${preset.cirrusAltM}|${preset.windSpeed}|${preset.windDirRad}|${preset.offset[0]}|${preset.offset[1]}`;
+    const key = `${preset.regime}|${preset.baseM}|${preset.thicknessM}|${preset.stratiform}|${preset.coverage}|${preset.cirrus}|${preset.cirrusAltM}|${preset.windSpeed}|${preset.windDirRad}|${preset.offset[0]}|${preset.offset[1]}`;
     if (key === this.presetKey) return false;
     this.presetKey = key;
     const { layers, coverage } = takramLayersFor(preset);
@@ -353,7 +375,8 @@ export class TakramTrial {
         shapeAmount: spec.shapeAmount, shapeDetailAmount: spec.shapeDetailAmount, shadow: spec.shadow,
       });
     }
-    effect.coverage = coverage;
+    const factor = this.coverageFactors.get(String(preset.regime)) ?? this.coverageFactors.get('*') ?? 1;
+    effect.coverage = Math.min(0.98, Math.max(0.02, coverage * factor));
     // the wind: shapes and details advect with it through ECEF; the weather drifts at its tile scale
     const wx = Math.cos(preset.windDirRad) * preset.windSpeed, wz = Math.sin(preset.windDirRad) * preset.windSpeed;
     const w = this.windWorld.set(wx, 0, wz).applyMatrix3(this.rotation);
