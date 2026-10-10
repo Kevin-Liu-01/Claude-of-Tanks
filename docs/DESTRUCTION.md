@@ -58,9 +58,9 @@ From the fleet specs, `matchRuleset.ts`, `auxiliaryWeapons.ts` and `equipment.ts
   (cause `fire`) have no blast in the simulation today (the cook-off is presentation only).
 - No artillery, mortars or air strikes exist.
 
-Found on the way (fixed in P1 with receipts): the bunker (`crushMin: 999`, "shells stop on" it) is missing from
-`collision.ts`'s dense-cover list, so every shell passes through and breaks it; the sandbag kinds publish no shell
-collider at all.
+Found on the way: the bunker (`crushMin: 999`, "shells stop on" it) was missing from `collision.ts`'s dense-cover
+list, so every shell passed through and broke it; the sandbag kinds published no shell collider at all. The bunker is
+fixed on 2026-10-09 as fortified cover (§4.6).
 
 ## 3. Structural model
 
@@ -309,6 +309,18 @@ depth = 0.35·R,  rim = 0.12·R,  seed = the authority RNG's next u16
 TOS rocket: 2.0 m. Kinetic and small-arms rounds dig nothing. A crater with `R < 1.6 m` (less than 1.2 terrain lattice
 cells) is a presentation-only mark (`deforms: false`); on hard road ground the depth halves; on water or a bridge deck
 nothing deforms.
+
+### 4.6 Fortified cover: the pillbox (2026-10-09)
+
+The pillbox (`bunker`, `world/collision.ts isFortifiedCoverKind`) is reinforced concrete: it stops every round (dense
+cover) and every hull (no held press, no overrun), and only accumulated heavy blows bring it down
+(`sim/fortifiedCover.ts`, one ledger a match in the solo step and the authority, booked by prop index). A blow is priced
+by this section's laws in structure points: an explosive round's contact blast plus its penetrator's strike, under a
+4 SP floor nothing; a ram's energy above reinforced concrete's 1.1 MJ scuff at 40 kJ a point. It falls at 30.6 SP (two
+and a half contact bursts of the nominal 3.5 kg tank HE round): 125/120 mm HE on the third hit, 120 mm HEAT the fourth,
+152 mm HE or HESH the second, a 60 t hull at 9 m/s in one ram; kinetic rods, autocannon and machine-gun fire never. A
+burst beside it does not fell it (§6's light props); the bots route and steer round it (`hullYieldingRecord`). A host
+migration's new authority starts a fresh ledger. Receipt: `src/sim/fortifiedCover.selftest.mjs`.
 
 ## 5. Damage stages per mass class
 

@@ -130,6 +130,7 @@ import type {
 } from './matchModes.ts';
 import type { SpecialActionState } from './specialActionPolicy.ts';
 import { createDestructionMatch } from './destructionMatch.ts';
+import { createFortifiedCoverLedger, isFortifiedCoverRecord } from './fortifiedCover.ts';
 import type {
   DestructionLogEntry, StructureBreachEvent, StructureStageEvent, TerrainCraterEvent,
 } from './destructionEvents.ts';
@@ -780,6 +781,9 @@ export function createAuthoritativeMatch({
     ? rulesetOption : matchRulesetFor(normalizedGameMode);
   // an explicit battleLimitS (tests, tooling) wins; otherwise the ruleset's clock (null = no clock)
   const clockLimitS = battleLimitS !== BATTLE_LIMIT_S ? battleLimitS : (ruleset.timeLimitS ?? Infinity);
+  // the pillboxes' damage (sim/fortifiedCover.ts): every round stops on one, and accumulated heavy blows bring it down;
+  // the solo step keeps the same ledger (game/state.ts game._fortified)
+  const fortified = createFortifiedCoverLedger();
   // destruction (docs/DESTRUCTION.md, 2026-10-07): the match's structures, priced by the munition catalog; the solo
   // step owns the same object (game/state.ts) and calls it at the same moments
   const destruction = createDestructionMatch({
@@ -1124,7 +1128,17 @@ export function createAuthoritativeMatch({
   function obstacleIsPressedThrough(
     entity: AuthoritativeEntity,
     obstacle: AuthoritativeObstacle,
+    pushX: number,
+    pushZ: number,
   ): boolean {
+    // a pillbox yields to no press and no overrun: only a ram heavy enough, on what it has taken (sim/fortifiedCover.ts)
+    if (isFortifiedCoverRecord(obstacle)) {
+      const length = Math.hypot(pushX, pushZ);
+      if (length <= 1e-9) return false;
+      const state = entity.state;
+      const closing = Math.max(0, -state.speed * (Math.sin(state.yaw) * pushX + Math.cos(state.yaw) * pushZ) / length);
+      return fortified.ram(obstacle, entity.spec.weightTons, closing, timeS);
+    }
     if (Math.abs(entity.state.speed) > (obstacle.crushMin ?? CRUSH_MIN_MPS)) return true;
     if (Math.abs(entity.input.throttle || 0) <= 0.35) return false;
     if (timeS - (obstacle._pressT || -1e9) > CRUSH_PRESS_GAP_S) obstacle._pressS = 0;
@@ -1195,7 +1209,7 @@ export function createAuthoritativeMatch({
         obstacle, outPush, spanBottom, spanTop, clearBottom,
       );
       if (!pushed) continue;
-      if (!obstacle.crushable || !obstacleIsPressedThrough(entity, obstacle)) {
+      if (!obstacle.crushable || !obstacleIsPressedThrough(entity, obstacle, outPush.x - beforeX, outPush.z - beforeZ)) {
         // destruction (docs/DESTRUCTION.md §4.4): a structure this ram brings down yields, as a crushed prop does
         if (obstacle.structureIdx !== undefined && destruction.enabled) {
           const keep = structureYield(entity, obstacle, outPush.x - beforeX, outPush.z - beforeZ);
@@ -1385,7 +1399,8 @@ export function createAuthoritativeMatch({
     worldCollision.queryObstacles(x - radius, z - radius, x + radius, z + radius, blastCandidates);
     blastFelled.length = 0;
     for (const obstacle of blastCandidates) {
-      if (!obstacle.crushable || obstacle.crushed || obstacle.min[1] > y + radius) continue;
+      // a pillbox takes a burst on its face as a hit (destroyShellObstacle), never a fall to a burst beside it
+      if (!obstacle.crushable || obstacle.crushed || obstacle.min[1] > y + radius || isFortifiedCoverRecord(obstacle)) continue;
       const cx = (obstacle.min[0] + obstacle.max[0]) * 0.5, cz = (obstacle.min[2] + obstacle.max[2]) * 0.5;
       if (Math.hypot(cx - x, cz - z) <= radius) blastFelled.push(obstacle);
     }
@@ -1869,6 +1884,8 @@ export function createAuthoritativeMatch({
   function destroyShellObstacle(shell: DamageShell, worldHit: WorldTrace): void {
     const obstacle = obstacleForWorldHit(worldHit);
     if (!obstacle?.crushable) return;
+    // a pillbox stops the round and falls only to accumulated heavy damage (sim/fortifiedCover.ts), as the solo step's
+    if (isFortifiedCoverRecord(obstacle) && !fortified.shellHit(obstacle, shell.spec)) return;
     const shotX = shell.pos.x - shell.prevPos.x;
     const shotZ = shell.pos.z - shell.prevPos.z;
     const shotLength = Math.hypot(shotX, shotZ) || 1;
