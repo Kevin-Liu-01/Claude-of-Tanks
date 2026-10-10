@@ -78,6 +78,8 @@ async function fixtureModule(mode = 'current') {
     const ${variable('autumnCropRows')};
     let ${variable('autumnFieldContext')}, ${variable('autumnFieldStart')}, ${variable('autumnFieldEnd')};
     const ${variable('placeFieldObjects')};
+    // the crop plots' land-use sample (props.ts: a map with fields seats its standing grain in a wheat or barley field)
+    const ${variable('cropLandSample')};
     ${nested}
     ${declaration('appendCropRows')}
     ${finalizer}

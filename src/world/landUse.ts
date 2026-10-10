@@ -417,6 +417,8 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   },
   // (Orchard Valley has no row: its karst fields (2026-10-05) laid a cadastral quilt over the Chouf's terraces and most
   // of the establishing view's cost; the coordinator dropped it on 2026-10-06, and the terraces carry the valley's ground)
+  // (Amberford has no row: its openfield strips (2026-10-05) carried most of the establishing view's cost (the land-use
+  // toggle 1.2-1.6 ms of +1.98); the coordinator dropped it on 2026-10-07, as Orchard's, and the kit stays)
 });
 
 /** The map's land use, or null (no fields). */

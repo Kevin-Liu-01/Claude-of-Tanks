@@ -13,7 +13,7 @@
 import type * as THREE from 'three';
 import { getDeviceTier } from '../../../engine/quality.ts';
 import { hashSeed, streamFrom, REGIONAL_BUCKETS, type RegionalParts } from './geometry.ts';
-import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts, type WeatherTints } from './weather.ts';
+import { DEFAULT_WEATHER, paintRatio, pickWeatherTints, weatherRegionalParts, type WeatherTints } from './weather.ts';
 import { withHousePlans, withWear, type HousePlan } from './house.ts';
 import { registerHouseDamageKits } from './damage.ts';
 import { setKitPlanReader } from '../../destructionKit.ts';
@@ -43,6 +43,7 @@ import { SARAJEVO_STYLE } from './sarajevo.ts';
 import { ANDALUSIAN_STYLE } from './andalusian.ts';
 import { CHOUF_STYLE } from './chouf.ts';
 import { TSELINA_STYLE } from './tselina.ts';
+import { LORRAIN_STYLE } from './lorrain.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext, RegionalGround } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
@@ -88,6 +89,7 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   andalusian: ANDALUSIAN_STYLE,
   chouf: CHOUF_STYLE,
   tselina: TSELINA_STYLE,
+  lorrain: LORRAIN_STYLE,
 });
 
 export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLES));
@@ -125,6 +127,14 @@ function measure(buckets: Buckets): BaseBounds {
     }
   }
   return b;
+}
+
+/** A folding kit's third-paint ratio, once per kit (weather.ts paintRatio of its own surfaces.tones). */
+const folds = new WeakMap<ArchitectureStyle, ReturnType<typeof paintRatio>>();
+function foldOf(style: ArchitectureStyle): ReturnType<typeof paintRatio> {
+  let fold = folds.get(style);
+  if (!fold) { fold = paintRatio(style.surfaces.tones?.plaster2, style.surfaces.tones?.plaster3); folds.set(style, fold); }
+  return fold;
 }
 
 /**
@@ -171,7 +181,10 @@ export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildC
     return [wx * c - wz * s, wx * s + wz * c] as const;
   })() : null;
   const [built, houses] = withHousePlans(() => withWear(wear, () => builder(ctx)));
-  const parts = weatherRegionalParts(built, tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint, sun, legacy });
+  // (the map-revival lane, 2026-10-07: a kit that folds its third plaster paint into its second's bucket,
+  // ArchitectureStyle.foldThirdPlaster, by the colour of its own two paints)
+  const parts = weatherRegionalParts(built, tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint, sun, legacy,
+    ...(style.foldThirdPlaster ? { plaster3Fold: foldOf(style) } : {}) });
   KIT_PLANS.set(parts, { kind: 'regional-house', style: style.id, builder: ctx.structureId, houses, tints, info: ctx.info });
   // map revival lane 2 (2026-10-05): a style's finer render (surfaces.relief) — the walls' tile repeats plasterUv times as
   // often; absent, every UV stays as it was

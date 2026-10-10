@@ -11,6 +11,21 @@
 // the east; the manor park with its lake lies north-east. The autumn palette,
 // sky, vegetation species, prop tones, minimap and river material are the
 // round-1 identity and are unchanged.
+//
+// Reference: the Moselle valley of Lorraine between Pont-à-Mousson and Metz in the autumn of 1944, where the Third
+// Army forced the river at Dornot and Arnaville under the Metz forts and fought on the plateau at Arracourt: a walled
+// market town on the river's rise above its stone bridge, the Côtes de Moselle (a wooded limestone escarpment cut by
+// dry combes) along the valley's side, a château park with its pond, mirabelle orchards on the terraces, and the
+// village street of the maison lorraine — deep houses under one low roof of canal tiles, their eaves fronts to the
+// street with the barn's arched cart door beside the dwelling's, ochre and cream crépi with the golden Jaumont
+// limestone of Metz at every door and window.
+//
+// 2026-10-05 (the map-revival lane; the owner: "make sure all maps look completely new and revitalized like verdant"):
+// the town is built in that construction (maps/regional/lorrain.ts) — every building where it stood: the maisons
+// lorraines and their farms, the granges, the church with its slate spire, the chapel's bell-cote, the mairie-école,
+// the covered market and the arcaded row on the square, the round tower of the wall, the bakehouses and woodsheds,
+// the shelled houses — with the gardens walled behind the houses; stone calvaries stand at the bridgehead and the
+// cross lanes.
 
 import { gully } from './geology.ts';
 import { createMarshChannel } from './marshChannel.ts';
@@ -80,6 +95,78 @@ const RIVER = createMarshChannel(RIVER_STATIONS, 0.5).map(station => ({ ...stati
 // The walled town on the north-bank rise; its market square is the crossroads
 // where the coach road meets the mill lane and the manor lane.
 const TOWN = { x0: -200, x1: -20, z0: 20, z1: 190 };
+
+// The street village (the map-revival lane, round 5, 2026-10-09; gauntlet wave 319: "a scatter of free-standing cottages
+// on an open meadow … no contiguous street frontage, yards or lanes"). A Lorraine village-rue: along the town's four
+// street arms from the square, both sides, a continuous frontage of terraced houses and long farmhouses (the dwelling,
+// the barn door and the stable under one roof, its long side on the street), eaves to the street, each behind its open
+// usoir — the beaten fore-yard between the house fronts and the carriageway where the dung heap, the woodpile and the
+// cart stand (the kit's dressing). Lanes break the rows into blocks; the square and the gates stay open. Every plot is a
+// terrace site (props.ts plannedSites: its own stream, its author holds the footprints apart), its plot the kit's.
+const SQUARE = { x: -110, z: 100, r: 30 };
+/** The four arms: the coach road south and north of the square, the mill lane west, the north lane east. */
+const STREET_ARMS: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
+  [[-110, 100], [-90, 40], [-53, -33]],
+  [[-110, 100], [-130, 170], [-150, 240]],
+  [[-110, 100], [-180, 60], [-230, 0]],
+  [[-110, 100], [-30, 140], [60, 165]],
+];
+/** From the road's line to the frontage: the carriageway's half width and the usoir (5-8 m). */
+const USOIR_FRONT_M = [9.0, 11.5] as const;
+const GATE_CLEAR_M = 10, LANE_EVERY_M = [48, 70] as const, LANE_M = 6;
+/** The square's two composed buildings, pinned on its edges facing it (the facades lane's ask): the church on the north
+ * edge between the coach road's north arm and the north lane, the inn on the west edge between the coach road and the
+ * mill lane; the rows keep their distance (r). */
+const SQUARE_SEATS = [
+  { structure: 'church', x: -98.4, z: 131.9, yawDeg: -160, r: 17 },
+  { structure: 'tavern', x: -137.2, z: 112.7, yawDeg: 115, r: 12 },
+] as const;
+function villageHash(a: number, b: number): number {
+  let k = Math.imul(Math.round(a * 10) | 0, 0x27d4eb2d) ^ Math.imul(Math.round(b * 10) | 0, 0x165667b1) ^ 0x6a17;
+  k = Math.imul(k ^ (k >>> 15), 0x85ebca6b); k = Math.imul(k ^ (k >>> 13), 0xc2b2ae35);
+  return ((k ^ (k >>> 16)) >>> 0) / 4294967296;
+}
+function streetVillage(): Array<{ structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number }; terrace: true }> {
+  const sites: Array<{ structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number }; terrace: true }> =
+    SQUARE_SEATS.map(({ structure, x, z, yawDeg }) => ({ structure, x, z, yawDeg, terrace: true as const }));
+  const inTown = (x: number, z: number, m: number) => x > TOWN.x0 + m && x < TOWN.x1 - m && z > TOWN.z0 + m && z < TOWN.z1 - m;
+  for (const [ai, arm] of STREET_ARMS.entries()) {
+    const cum = [0];
+    for (let i = 1; i < arm.length; i++) cum.push(cum[i - 1] + Math.hypot(arm[i][0] - arm[i - 1][0], arm[i][1] - arm[i - 1][1]));
+    const at = (d: number): [number, number, number, number] => {
+      let i = 1;
+      while (i < cum.length - 1 && cum[i] < d) i++;
+      const seg = cum[i] - cum[i - 1], t = (d - cum[i - 1]) / seg;
+      const [ax, az] = arm[i - 1], [bx, bz] = arm[i];
+      return [ax + (bx - ax) * t, az + (bz - az) * t, (bx - ax) / seg, (bz - az) / seg];
+    };
+    for (const side of [-1, 1] as const) {
+      let d = SQUARE.r + 4, nextLane = d + LANE_EVERY_M[0] + villageHash(ai, side) * (LANE_EVERY_M[1] - LANE_EVERY_M[0]);
+      let k = 0;
+      while (d < cum[cum.length - 1]) {
+        const u = villageHash(ai * 31 + side, k++);
+        // a long farmhouse two plots in five, a terraced house otherwise
+        const farm = u < 0.4;
+        const w = farm ? 13.5 + villageHash(k, ai) * 3.5 : 6.8 + villageHash(k, ai) * 2.4;
+        const depth = farm ? 9.0 + villageHash(ai, k) * 1.6 : 8.4 + villageHash(ai, k) * 2.8;
+        if (d + w > nextLane) { d = nextLane + LANE_M; nextLane = d + LANE_EVERY_M[0] + u * (LANE_EVERY_M[1] - LANE_EVERY_M[0]); continue; }
+        const [rx, rz, tx, tz] = at(d + w / 2);
+        const nx = tz * side, nz = -tx * side; // this side's normal, away from the road
+        const front = USOIR_FRONT_M[0] + villageHash(rx, rz) * (USOIR_FRONT_M[1] - USOIR_FRONT_M[0]);
+        const x = rx + nx * (front + depth / 2), z = rz + nz * (front + depth / 2);
+        const reach = Math.hypot(w, depth) / 2;
+        if (!inTown(x, z, GATE_CLEAR_M + reach * 0.6) || Math.hypot(x - SQUARE.x, z - SQUARE.z) < SQUARE.r + reach
+          || SQUARE_SEATS.some((seat) => Math.hypot(x - seat.x, z - seat.z) < seat.r + reach)) { d += w; continue; }
+        // the front (local +z) faces the road: yaw turns +z onto (-nx, -nz)
+        const yawDeg = Math.atan2(-nx, -nz) * 180 / Math.PI;
+        sites.push({ structure: farm ? 'farmhouse' : 'rowhouse', x: +x.toFixed(2), z: +z.toFixed(2), yawDeg: +yawDeg.toFixed(1),
+          plot: { w: +w.toFixed(2), d: +depth.toFixed(2) }, terrace: true });
+        d += w + 0.25;
+      }
+    }
+  }
+  return sites;
+}
 
 export default {
   id: 'autumn',
@@ -314,15 +401,24 @@ export default {
   },
 
   props: {
+    // the map-revival lane (2026-10-05): the Lorraine kit (maps/regional/lorrain.ts) builds the plan in the Moselle
+    // valley's construction, every building where it stood
+    architecture: 'lorrain',
     // round 48: a market town's plan — the church and the inn on the square,
     // a Norman tower keep, the market hall and rows, shops, granaries and
     // cottages; consumed along the town's three streets, the remainder fills
     // the blocks between them
-    plan: ['tavern', 'cottage', 'church', 'cornershop', 'market', 'marketRow', 'cottage', 'tower',
+    // (the map-revival lane, round 5: the church and the inn stand pinned on the square, SQUARE_SEATS)
+    plan: ['cottage', 'cornershop', 'market', 'marketRow', 'cottage', 'tower',
       'granary', 'cottage', 'schoolhouse', 'farmhouse', 'cottage', 'chapel', 'barn', 'cottage',
       'cornershop', 'cottage', 'ruin', 'cottage', 'granary', 'cottage', 'farmhouse', 'woodshed',
       'cottage', 'barn'],
     blockFill: true,
+    // the map-revival lane (round 5): the street village's frontage (streetVillage above) stands first; the plan's other
+    // buildings then take the blocks behind it
+    plannedSites: streetVillage(),
+    // the rise the town stands on: a long farmhouse steps its plinth over up to 2.1 m of fall (the default 1.7 refused two)
+    maxSpread: 2.1,
     monument: true, // the market cross on the square
     destructibleBuildings: ['fieldhut', 'leanto', 'longhouse', 'commandtent'],
     tacticalBeats: [
@@ -383,6 +479,17 @@ export default {
       trucks: 3, jeeps: 1, drumClusters: 3, camps: 2,
       modernClutter: { barrier: 4, roadsign: 4, cone: 6, transformer: 3, cablespool: 3 },
     },
+  },
+
+  // the map-revival lane (2026-10-05; the scenery lane's generators, world/scenery.ts): the Lorraine crossroads'
+  // calvaries in the golden Jaumont limestone — at the bridgehead on the town side and at the cross lanes south of the
+  // river — and an iron field cross on the sunken lane
+  scenery: {
+    landmarks: [
+      { kind: 'calvary', x: -44, z: -20, yawDeg: 30, geology: 'limestone', tone: [0.11, 0.32, 0.62], name: 'the calvary at the bridgehead' },
+      { kind: 'calvary', x: 142, z: -158, yawDeg: -60, geology: 'limestone', tone: [0.11, 0.32, 0.62], name: 'the calvary at the cross lanes' },
+      { kind: 'waysidecross', x: -255, z: -318, yawDeg: 24, name: 'the field cross on the sunken lane' },
+    ],
   },
 
   horizon: {
