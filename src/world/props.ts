@@ -87,6 +87,8 @@ import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_
 import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
 import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
 import { buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
+import { buildBuildingDrifts, buildPloughBanks } from './maps/buildingSnowDrifts.ts'; // (the map-revival lane, round 2)
+import { structureCollisionOpenIds } from './maps/structureCollision.ts';
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
 import type { WaterDisturbance } from './shallowWater.ts';
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
@@ -537,6 +539,14 @@ interface PropsSettings {
   monument: boolean;
   townCraters: boolean;
   snowCap?: boolean;
+  /** The map-revival lane (round 2, 2026-10-09; gauntlet waves 319/320 on Whiteout: buildings "float on a featureless flat
+   * snow plane with no plough banks or drifts"): on a snow map, the drifts its wind banks against every closed building
+   * (maps/buildingSnowDrifts.ts) and the windrows along its ploughed roads inside the settlement, as fillets of the ground
+   * drawn with the terrain's material (round 2b). Opt-in per map. */
+  buildingDrifts?: boolean;
+  ploughBanks?: boolean;
+  /** (round 2b) the landmark kinds that are closed shells on the ground and take drifts (every other landmark none). */
+  driftLandmarks?: readonly string[];
   streetRowsAfterLandmarks?: boolean;
   /** The maps-and-layouts lane (2026-10-03): a roadside or block-fill building whose footprint stands in a carriageway
    * (within the layout brief's 3.5 m road core of a road's line) moves, once every settlement building stands, by the
@@ -7319,6 +7329,17 @@ ${snowCap ? `
   // (b14) every boulder's bed, for the world to draw with the ground's own material (map.ts assembleWorld)
   if (!mobileProps) group.userData.rockBeds = yield* buildRockBeds();
   rockClutter.clear();
+  // the map-revival lane (round 2b, wave 335): a snow map's lee drifts against its closed buildings and the windrows along
+  // its ploughed roads, as fillets of the snow itself (maps/buildingSnowDrifts.ts): merged with the turf below into the
+  // beds' cells, drawn with the terrain's own material — its albedo, grain, tone and light — on the desktop
+  if (snowCap && !mobileProps && (P.buildingDrifts || P.ploughBanks)) {
+    const roadDistAt = (x: number, z: number): number => heightField._roadDist(x, z);
+    if (P.buildingDrifts) {
+      wallDressing.turfs.push(...buildBuildingDrifts(heightField, buildingFeatures,
+        { open: structureCollisionOpenIds, landmarkAllow: new Set(P.driftLandmarks ?? []), roadDist: roadDistAt }));
+    }
+    if (P.ploughBanks) wallDressing.turfs.push(...buildPloughBanks(heightField, L.roads, town, roadDistAt));
+  }
   // (b18) and the turf banked against the dry-stone walls' feet, the same ground material's: (b37) merged into its cell's
   // bed, one geometry a 512 m cell for both (bedCellKey), so a cell costs one draw, not two
   if (wallDressing.turfs.length) {

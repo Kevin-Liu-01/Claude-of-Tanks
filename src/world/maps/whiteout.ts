@@ -68,7 +68,10 @@ export default {
     // 2026-10-03 (maps lane B, the gauntlet's "dull blue-grey plaster"): snow is near neutral, and under overcast its
     // blue comes only from open sky (the skies lane's lighting side). The macro tints go from B/R 1.06 (A) and
     // 1.17 (B) to 1.04, at the same luminance (Rec. 709: A 1.039, B 0.873). C was already 1.03.
-    iceDrift: 0.3, tintA: [1.021, 1.041, 1.062], tintB: [0.858, 0.875, 0.893], tintC: [1.05, 1.06, 1.08], roadTint: [0.67, 0.70, 0.72], midRelief: 0.45 },
+    // (the map-revival lane, round 2b, 2026-10-10; the stranded DEW Line round's ground values, gauntlet wave 224: the macro
+    // blotches read as "a camouflage pattern") B lifted halfway to A (0.873 -> 0.937 luminance), the wind's drift across the
+    // ice half again (0.3 -> 0.5)
+    iceDrift: 0.5, tintA: [1.021, 1.041, 1.062], tintB: [0.929, 0.938, 0.947], tintC: [1.05, 1.06, 1.08], roadTint: [0.67, 0.70, 0.72], midRelief: 0.45 },
   vegetation: {
     grassTexTone: winter.vegetation.grassTexTone, tuftTone: winter.vegetation.tuftTone,
     // A few sheltered firs break up the spruce/birch silhouette without
@@ -97,6 +100,10 @@ export default {
     industrialCladding: 'steel', // round 75: a polar station's halls are corrugated sheet, not brick
     yardDressing: 60, // round 75: a snowed-in station keeps its yards sparse
     snowCap: true, extraKits: ['winterLake'], wallStyle: 'fieldstone', wallStoneChance: 0.78,
+    // the map-revival lane (round 2, 2026-10-09; 2b after wave 335): the station's buildings banked in drifts, its
+    // corridors ploughed — and of the set pieces only the closed shells on the ground (the module train, the radome
+    // tower's base, the Jamesway huts; the map-content lane's list): no bank round a mast, a frame or a bunded tank farm
+    buildingDrifts: true, ploughBanks: true, driftLandmarks: ['moduleTrain', 'radomeTower', 'jamesway'],
     wallRuns: [[-148, -76, -148, -16, 2], [-148, 20, -148, 84, 3], [-66, -58, -4, -58, 2], [-66, 52, -4, 52, 3], [-26, 296, 56, 296, 2], [316, 0, 316, 74, 2]],
     well: false, hayCrates: false, fences: true, telegraph: false, carts: false, logs: true,
     rocks: 136, outcrops: 22, craters: 50, rubblePiles: 12, sandbagLines: 16, hedgehogs: 12,
