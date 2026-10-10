@@ -119,9 +119,9 @@ export function createMissionCradleGeometry(seat:MissionAttachment, paint:number
    // is a separate mesh. A base boss bolts it to the side plate.
    const px = sx * CLAMP_X + dx, pz = (j ? 1 : -1) * CLAMP_Z + dz;
    c.cylinder(.009, .007, 12, 'y', px, PLATE_TOP + .0035, pz, dark);
-   c.post(.0045, px, PLATE_TOP + .007, .021, pz, STEEL_DARK);
-   c.post(.0045, px, .021, .039, pz, STEEL_DARK);
-   c.post(.0045, px, .039, CLAMP_TOP - .004, pz, STEEL_DARK);
+   c.post(.0055, px, PLATE_TOP + .007, .021, pz, STEEL_DARK);
+   c.post(.0055, px, .021, .039, pz, STEEL_DARK);
+   c.post(.0055, px, .039, CLAMP_TOP - .004, pz, STEEL_DARK);
    // Leg: round tube standoff under a bolted top flange; the supported foot follows the measured roof.
    const index = i * 2 + j, foot = seat.y - (seat.supportY?.[index] ?? seat.y - .045);
    c.box(.036, .006, .040, x, PLATE_BOTTOM - .003, z, dark);
@@ -169,16 +169,17 @@ export function missionHoldDownPivots(seat:MissionAttachment):{x:number;z:number
 }
 /** Height of the clamp heads' pivot (the post's top). */
 export const MISSION_HOLD_DOWN_Y = CLAMP_TOP - .004;
-/** One clamp head about its pivot: a hook arm that reaches over the skid along local -x with a lip down past its
- * crown, and the red quick-release knob on the post. Vertex-coloured, worn like the dock. */
+/** One clamp head about its pivot: a red hook arm that reaches over the skid along local -x, a lip down past the
+ * skid's crown and a rubber pad bearing on it, and the red quick-release knob on the post. Painted release red so the
+ * hold-down reads before a lift-off; vertex-coloured, worn like the dock. */
 export function createMissionHoldDownGeometry():THREE.BufferGeometry {
  const c = new CradleBuilder();
- c.cylinder(.0058, .006, 12, 'y', 0, .003, 0, STEEL_DARK);
- c.span(-.034, .0, -.0075, .0, .006, .0075, STEEL_DARK);
- c.span(-.034, -.009, -.0075, -.029, .0, .0075, STEEL_DARK);
- c.span(-.029, -.0035, -.0075, -.0235, .0, .0075, RUBBER);
- c.cylinder(.0068, .008, 12, 'y', 0, .010, 0, RELEASE);
- c.cylinder(.0035, .003, 8, 'y', 0, .0155, 0, shade(RELEASE, .7));
+ c.cylinder(.0068, .007, 12, 'y', 0, .0035, 0, STEEL_DARK);
+ c.span(-.038, .0, -.0075, .0, .0095, .0075, RELEASE);
+ c.span(-.038, -.008, -.0075, -.032, .0, .0075, RELEASE);
+ c.span(-.032, -.0035, -.0068, -.025, .0, .0068, RUBBER);
+ c.cylinder(.0068, .008, 12, 'y', 0, .0135, 0, shade(RELEASE, .82));
+ c.cylinder(.0035, .003, 8, 'y', 0, .019, 0, STEEL_DARK);
  const geometry = c.merge();
  weatherVertexColors(geometry, .22, -1, .45);
  return geometry;

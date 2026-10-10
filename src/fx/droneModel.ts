@@ -48,7 +48,7 @@ const ARM_Y0 = .029, ARM_Y1 = .045, MOUNT_Y = .021;
 const MOTORS = [[-1,-1],[-1,1],[1,-1],[1,1]] as const;
 // Matte black carbon and printed TPU, anodised metal and glass share four merged materials; colour rides in vertex colours.
 const CARBON = 0x1d1f21, TPU = 0x18191b, PCB = 0x1c3a2b, WIRE = 0x141516, WIRE_RED = 0x6e1f17,
- WIRE_WHITE = 0xcfccc2, RUBBER = 0x121314, STRAP = 0x151617, BUCKLE = 0x8e3024, COPPER = 0x7a4a2a, STEEL = 0x7d8084,
+ WIRE_WHITE = 0xcfccc2, RUBBER = 0x121314, STRAP = 0x151617, BUCKLE = 0x8e3024, COPPER = 0x5a3a24, STEEL = 0x7d8084,
  BLACK_ANODE = 0x1b1d20, BELL = 0x2b2e33, BELL_RING = 0x8f9399, VENT = 0x0a0b0c, FIBER = 0xd8d4c6, HAZARD = 0xb8902a,
  PROP = 0x3a3f45, PROP_TIP = 0xb0b4b8;
 const DUST = 0x6e6556;
@@ -199,8 +199,9 @@ interface AirframeBuckets { carbon:Bucket; paint:Bucket; metal:Bucket; glass:Buc
 function addMotor(b:AirframeBuckets,x:number,z:number):void {
  const base = ARM_Y1, top = base + .0705;
  b.metal.add(lathe([[0, base],[.045, base],[.047, base + .003],[.047, base + .008],[.041, base + .0105],[0, base + .0105]], 16, 'y', x, 0, z), BLACK_ANODE);
- b.metal.add(cylinder(.0375, .0375, .013, 12, x, base + .0165, z), COPPER);
- b.metal.add(lathe([[0, base + .019],[.047, base + .019],[.0495, base + .024],[.0495, base + .059],[.046, base + .066],[.031, top],[0, top]], 18, 'y', x, 0, z), BELL);
+ // The windings show only in the narrow gap between the stator base and the bell, as on the real motor.
+ b.metal.add(cylinder(.0395, .0395, .006, 12, x, base + .0125, z), COPPER);
+ b.metal.add(lathe([[0, base + .0145],[.047, base + .0145],[.0495, base + .019],[.0495, base + .059],[.046, base + .066],[.031, top],[0, top]], 18, 'y', x, 0, z), BELL);
  b.metal.add(cylinder(.0425, .0438, .0018, 18, x, base + .0676, z, true), BELL_RING);
  for (let i = 0; i < 6; i++) {
   const angle = i * Math.PI / 3 + Math.PI / 6;
@@ -433,10 +434,11 @@ function buildDroneModelKit(design:DroneDesign):DroneModelKit {
  for (const geometry of [body, equipment, metal, lens]) geometry.scale(DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE);
  const rotor = createRotor(PROP_R).scale(DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE);
  const rotorBlur = createRotorBlur(PROP_R).scale(DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE);
- // Matte composite and satin anodised metal: carbon and printed parts scatter, metal keeps a soft machined highlight.
+ // Matte composite and matte anodised metal: carbon and printed parts scatter; the metal keeps a soft machined highlight
+ // without mirroring the sky (a bright bell or belly read as chrome).
  const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .74, metalness: .03 });
  const equipmentMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .8, metalness: .02 });
- const metalMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .48, metalness: .55 });
+ const metalMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .6, metalness: .35 });
  const lensMaterial = new THREE.MeshStandardMaterial({ color: 0x2f4a56, emissive: 0x0b1f28, roughness: .08, metalness: .55 });
  const rotorMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .55, metalness: .02, side: THREE.DoubleSide });
  const blurMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, transparent: true, depthWrite: false, roughness: .7, metalness: 0, side: THREE.DoubleSide });
