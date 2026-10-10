@@ -433,48 +433,72 @@ function dressSiegeStreets(ctx: TramContext, keep: YardKeepOut | null, limit = 3
   const roads = ctx.L.roads ?? [];
   const hf = ctx.heightField;
   const mobile = getDeviceTier() === 'mobile';
-  const records = [...(ctx.obstacles ?? []), ...(ctx.colliders ?? [])];
+  // the facades' fall lies against the facades: it may touch a building's footprint, never another solid placed so far
+  // (a wreck, a container screen, the sandbags), never the objective ground, never a road's core
+  const solids = [...(ctx.obstacles ?? []), ...(ctx.colliders ?? [])].filter((r) => r.kind !== 'structure');
   const sink = new PartSink([0, 0]);
-  const clearAt = (x: number, z: number, r: number) => clears(records, x, z, r, r, 1, 0, 0.2)
-    && clearOfKeepOut(keep, x, z, r, r, 1, 0);
+  const clearAt = (x: number, z: number, r: number, tx = 1, tz = 0) => clears(solids, x, z, r, r, tx, tz, 0.15)
+    && clearOfKeepOut(keep, x, z, r, r, tx, tz) && clearOfRoads(roads, x, z, r, r * 0.6, tx, tz);
   for (const [ri, line] of roads.entries()) {
     if (!line || line.length < 2) continue;
-    const st = resample(line, mobile ? 4.5 : 2.5, limit);
+    const st = resample(line, mobile ? 4.0 : 2.0, limit);
     for (const s of st) {
       for (const side of [-1, 1]) {
-        // the heaps keep to their clumps: a heart of rubble here, a clear stretch there
-        const ox = s.x + s.nx * side * KERB_M, oz = s.z + s.nz * side * KERB_M;
-        const w = clumpNoise(ox, oz, 9, 0x51e9 + ri);
-        if (w < 0.52) continue;
         const look = streamFrom(hashSeed('sarajevo-kerb', ri, Math.round(s.s * 10), side));
-        if (look() > (w - 0.52) * 2.6) continue;
-        const across = 0.5 + look() * 1.6, along = (look() - 0.5) * 1.8;
-        const x = ox + s.nx * side * across + s.tx * along, z = oz + s.nz * side * across + s.tz * along;
-        if (!clearAt(x, z, 0.9)) continue;
-        const yaw = Math.atan2(s.tz, s.tx) * -1 + (look() - 0.5) * 0.4;
-        sink.placed(yaw, x, hf.getHeightAt(x, z), z, () => kerbHeap(sink, look, 0.7 + look() * 0.7 * w, mobile));
+        // the heaps keep to their clumps (a heart of rubble here, a swept stretch there), most of a street's length
+        const fx = s.x + s.nx * side * (KERB_M + 1.6), fz = s.z + s.nz * side * (KERB_M + 1.6);
+        const w = clumpNoise(fx, fz, 11, 0x51e9 + ri);
+        if (w > 0.38 && look() < (w - 0.38) * 2.4) {
+          // against the frontage: 0.6-2.4 m in from the kerb's line, the heap's long side along the street
+          const across = 0.6 + look() * 1.8, along = (look() - 0.5) * 1.6;
+          const x = s.x + s.nx * side * (KERB_M + across) + s.tx * along, z = s.z + s.nz * side * (KERB_M + across) + s.tz * along;
+          if (clearAt(x, z, 0.9, s.tx, s.tz)) {
+            const yaw = -Math.atan2(s.tz, s.tx) + (look() - 0.5) * 0.3;
+            sink.placed(yaw, x, hf.getHeightAt(x, z), z, () => kerbHeap(sink, look, 1.0 + look() * 1.1 * w, mobile));
+          }
+        }
+        // the gutter's litter: masonry chips and plaster flakes washed against the kerb, 4.4-4.9 m off the line
+        if (!mobile && w > 0.3 && look() < 0.55) {
+          const g = KERB_M - 0.2 - look() * 0.5, along = (look() - 0.5) * 1.8;
+          const x = s.x + s.nx * side * g + s.tx * along, z = s.z + s.nz * side * g + s.tz * along;
+          if (clears(solids, x, z, 0.4, 0.4, s.tx, s.tz, 0.1) && clearOfKeepOut(keep, x, z, 0.4, 0.4, s.tx, s.tz)) {
+            sink.placed(look() * 6.28, x, hf.getHeightAt(x, z), z, () => {
+              for (let k = 0, n = 2 + ((look() * 4) | 0); k < n; k++) {
+                const ww = 0.08 + look() * 0.22, hh = 0.04 + look() * 0.09, dd = 0.06 + look() * 0.18;
+                const px = (look() - 0.5) * 0.9, pz = (look() - 0.5) * 0.5;
+                sink.span('structureMetal', px - ww / 2, -0.03, pz - dd / 2, px + ww / 2, hh, pz + dd / 2,
+                  { colour: shade(look() < 0.7 ? SPALL : BRICK, 0.7 + look() * 0.4), decor: true });
+              }
+            });
+          }
+        }
       }
     }
   }
-  // the boulevard's stumps (road 0): a tree's pit every 11 m along both pavements, most of them cut
+  // the boulevard's stumps (road 0): two trees a catenary bay, between its poles (dressTramBoulevard: a pole every 34 m
+  // from the line's start on the same two-metre stations), in the pavement just behind the kerb, most of them cut
   const boulevard = roads[0];
   if (boulevard && boulevard.length > 1) {
-    for (const s of resample(boulevard, 11, limit)) {
+    const bst = resample(boulevard, 2.0, limit);
+    for (const [i, s] of bst.entries()) {
+      const bay = i % Math.round(SPAN / 2);
+      if (bay !== 6 && bay !== 11) continue;
       for (const side of [-1, 1]) {
-        const look = streamFrom(hashSeed('sarajevo-stump', Math.round(s.s), side));
-        if (look() < 0.28) continue;
-        const x = s.x + s.nx * side * (KERB_M + 1.3), z = s.z + s.nz * side * (KERB_M + 1.3);
-        if (!clearAt(x, z, 0.5)) continue;
+        const look = streamFrom(hashSeed('sarajevo-stump', i, side));
+        if (look() < 0.18) continue;
+        const off = KERB_M + 0.6;
+        const x = s.x + s.nx * side * off, z = s.z + s.nz * side * off;
+        if (!clears(solids, x, z, 0.45, 0.45, 1, 0, 0.15) || !clearOfKeepOut(keep, x, z, 0.45, 0.45, 1, 0)) continue;
         sink.placed(look() * 6.28, x, hf.getHeightAt(x, z), z, () => stump(sink, look));
       }
     }
   }
-  // the screens: where another road leaves the boulevard, sheets hung on a wire across its mouth, 2.8-6 m up
+  // the screens: where another road leaves the boulevard, sheets hung on a wire across its mouth, 2.8-6.6 m up
   if (boulevard && !mobile) {
     for (const [ri, line] of roads.entries()) {
       if (ri === 0 || !line || line.length < 2) continue;
       for (const s of resample(line, 2.0, limit)) {
-        // the first stretch of the side street within 14-20 m of the boulevard's line
+        // the first stretch of the side street 13-19 m from the boulevard's line
         let best = Infinity;
         for (let i = 0; i + 1 < boulevard.length; i++) {
           const [ax, az] = boulevard[i], [bx, bz] = boulevard[i + 1];
@@ -482,21 +506,23 @@ function dressSiegeStreets(ctx: TramContext, keep: YardKeepOut | null, limit = 3
           const t = Math.max(0, Math.min(1, ((s.x - ax) * dx + (s.z - az) * dz) / l2));
           best = Math.min(best, Math.hypot(s.x - ax - dx * t, s.z - az - dz * t));
         }
-        if (best < 15 || best > 17) continue;
+        if (best < 13 || best > 19) continue;
         const look = streamFrom(hashSeed('sarajevo-screen', ri, Math.round(s.x), Math.round(s.z)));
-        if (look() < 0.35) continue;
-        const half = 7.0, y = hf.getHeightAt(s.x, s.z), top = 6.0 + look() * 0.6;
+        if (look() < 0.1) break;
+        const half = 7.4, y = hf.getHeightAt(s.x, s.z), top = 6.2 + look() * 0.4;
         const yaw = -Math.atan2(s.nz, s.nx);
         sink.placed(yaw, s.x, y, s.z, () => {
-          sink.member('structureMetal', [-half, top, 0], [half, top - 0.25, 0], 0.03, 0.03, [0, 0, 1], { colour: WIRE, decor: true, shadow: true }, 0);
-          let u = -half + 0.3;
-          while (u < half - 0.6) {
-            const w = 1.2 + look() * 2.0, h = 2.4 + look() * 1.0;
-            if (look() < 0.82) {
-              const c = SHEETS[(look() * SHEETS.length) | 0];
-              sink.span('structureMetal', u, top - h, -0.01 - look() * 0.05, Math.min(half - 0.3, u + w), top - 0.05, 0.01, { colour: shade(c, 0.85 + look() * 0.2), decor: true, shadow: true });
-            }
-            u += w + 0.05 + look() * 0.5;
+          // the wire from facade to facade, sagging; the sheets on it, overlapping, their lower edges ragged
+          sink.member('structureMetal', [-half, top, 0], [0, top - 0.35, 0], 0.03, 0.03, [0, 0, 1], { colour: WIRE, decor: true, shadow: true }, 0);
+          sink.member('structureMetal', [0, top - 0.35, 0], [half, top, 0], 0.03, 0.03, [0, 0, 1], { colour: WIRE, decor: true, shadow: true }, 0);
+          let u = -half + 0.2;
+          while (u < half - 0.5) {
+            const w = 1.4 + look() * 2.2, h = 2.6 + look() * 1.2;
+            const sag = 0.35 * (1 - Math.abs(u + w / 2) / half);
+            const c = SHEETS[(look() * SHEETS.length) | 0];
+            sink.span('structureMetal', u, top - sag - h, -0.02 - look() * 0.04, Math.min(half - 0.2, u + w), top - sag - 0.04, 0.02,
+              { colour: shade(c, 0.85 + look() * 0.2), decor: true, shadow: true });
+            u += w - 0.15 + look() * 0.3;
           }
         });
         break; // one screen a side street's mouth
