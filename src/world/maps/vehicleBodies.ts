@@ -5,6 +5,7 @@
 // (KamAZ, TAM, Isuzu) — with their cargo bodies: wooden drop sides, a canvas tilt over hoops, a box van, a flatbed with
 // its load, a tanker, log bunks.
 
+import { ShapeUtils, Vector2 } from 'three';
 import { material, linearHex, type VehicleMesh, type VehicleMaterial, type Vec3 } from './vehicleMesh.ts';
 import {
   PAINT, GLASS, CHROME, BRIGHT, TRIM, UNDER, INTERIOR, LAMP, LAMP_RED, LAMP_AMBER, STEEL, RIM_STEEL, WOOD, CANVAS, RUBBER,
@@ -190,7 +191,25 @@ function tub(mesh: VehicleMesh, zF: number, zB: number, hw: number, bottom: numb
   mesh.mirrored(() => {
     mesh.grid(zs.length - 1, nj, (i, j, out) => { out[0] = secs[i][j][0]; out[1] = secs[i][j][1]; out[2] = zs[i]; },
       (_i, j) => (j < 2 ? UNDER : j >= 8 ? inner : outer), { creaseJ: [1, 2, 3, 6, 8, 9] });
+    // Sealed lane 2026-10-10 (owner: "some vehicles are see through"): the loft's end sections were open, so the wall
+    // and the floor slab showed their hollow, the sky through a jeep's tail and scuttle and a bed's floor ends. Each
+    // end is capped with its own section, a millimetre inside the parts that face it (the tail panel, the scuttle).
+    capSection(mesh, secs[0], zs[0] - 0.001, 1, outer);
+    capSection(mesh, secs[secs.length - 1], zs[zs.length - 1] + 0.001, -1, outer);
   });
+}
+
+/** A flat cap over one loft section (x, y points, a simple polygon) at z, facing +z (dir 1) or -z (dir -1). */
+function capSection(mesh: VehicleMesh, section: readonly (readonly [number, number])[], z: number, dir: 1 | -1, m: VehicleMaterial): void {
+  const contour = section.map(([x, y]) => new Vector2(x, y));
+  const verts = section.map(([x, y]) => mesh.vert(x, y, z, 0, 0, dir, m));
+  for (const [a, b, c] of ShapeUtils.triangulateShape(contour, [])) {
+    const [ax, ay] = section[a], [bx, by] = section[b], [cx, cy] = section[c];
+    const facing = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+    if (Math.abs(facing) < 1e-12) continue;
+    if (facing * dir > 0) mesh.tri(verts[a], verts[b], verts[c]);
+    else mesh.tri(verts[a], verts[c], verts[b]);
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------- pickups

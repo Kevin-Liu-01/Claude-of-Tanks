@@ -55,6 +55,7 @@ export interface WreckBake {
   hx: number;
   hz: number;
   h: number;
+  /** The props placement budget's count for this hulk (wrecks.ts budgetTriDelta: unchanged by the sealed lane's fixes). */
   tris: number;
 }
 
@@ -74,6 +75,11 @@ type DebrisFamily = 'char' | 'rust' | 'rubber';
 interface WreckGeometrySet {
   geos: THREE.BufferGeometry[];
   proxyGeos: THREE.BufferGeometry[];
+  /** Root-frame bounds of the parts that burn away: the hulk keeps their footprint, so placement and collision hold. */
+  burntAway: THREE.Box3;
+  /** Triangles the placement budget still counts (burnt-away parts in, second canvas faces out): every map seats the
+   * same hulks it seated before the sealed lane's bake fixes. */
+  budgetTriDelta: number;
 }
 
 function mulberry32(a: number): () => number {
@@ -163,10 +169,36 @@ function isSimplifiedTrackReplacement(mesh: THREE.Mesh): boolean {
     && !!mesh.parent?.children.some((child) => child.name === 'gearTrackPadsSimplified');
 }
 
+// Sealed lane 2026-10-10 (owner: "some vehicles are see through"): a burnt hulk keeps no camouflage suit. Baked into
+// the one-sided props material its draped net read as an opaque sheet open from every side but one (the Leopard 2A4
+// hulk showed the sky through 12,000 px of the 33 sealed views).
+const WRECK_BURNT_AWAY = /_ghillie_/;
+// Canvas is drawn double-sided on the live vehicle (materials.ts canvasCloth/canvasPale): its tarps, aprons and boots
+// are one surface. The hulk's material is one-sided, so they bake with both windings.
+const WRECK_TWO_SIDED = /^(?:hull|turret|gunMount)(?:Cloth|CanvasPale|CanvasSkin)$/;
+
 function isDiscardedWreckPart(mesh: THREE.Mesh, root: THREE.Object3D): boolean {
   if (isSimplifiedTrackReplacement(mesh)) return true;
   if (mesh.name !== 'gearTrackPadsSimplified' && !chainVisible(mesh, root)) return true;
   return WRECK_FINE_GEAR.test(mesh.name || '');
+}
+
+/** The other face of a one-surface part: reversed triangles with reversed normals (the clone is bake-owned). */
+function reversedWreckGeometry(geometry: THREE.BufferGeometry, owner: WreckBakeOwner): THREE.BufferGeometry {
+  const back = geometry.index ? geometry.toNonIndexed() : geometry.clone();
+  owner.geometries.add(back);
+  for (const attribute of Object.values(back.attributes) as THREE.BufferAttribute[]) {
+    const size = attribute.itemSize, array = attribute.array;
+    for (let corner = 0; corner + 2 < attribute.count; corner += 3) {
+      for (let k = 0; k < size; k++) {
+        const b = (corner + 1) * size + k, c = (corner + 2) * size + k;
+        const t = array[b]; array[b] = array[c]; array[c] = t;
+      }
+    }
+  }
+  const normal = back.getAttribute('normal') as THREE.BufferAttribute | undefined;
+  if (normal) for (let i = 0; i < normal.array.length; i++) normal.array[i] = -normal.array[i];
+  return back;
 }
 
 function* appendWreckMeshGeometrySteps(
@@ -178,6 +210,27 @@ function* appendWreckMeshGeometrySteps(
   owner: WreckBakeOwner,
 ): Generator<WreckGeometryBuildSlice, void, void> {
   if (!mesh.geometry?.attributes?.position || isDiscardedWreckPart(mesh, root)) return;
+  if (WRECK_BURNT_AWAY.test(mesh.name || '')) {
+    // the exact bounds the baked part would have given (the same clone and float transform), then dropped
+    const relative = new THREE.Matrix4().multiplyMatrices(rootInv, mesh.matrixWorld);
+    const transforms: THREE.Matrix4[] = [];
+    if (mesh instanceof THREE.InstancedMesh) {
+      const instance = new THREE.Matrix4();
+      for (let i = 0; i < Math.min(mesh.count, 400); i++) {
+        mesh.getMatrixAt(i, instance);
+        transforms.push(new THREE.Matrix4().multiplyMatrices(relative, instance));
+      }
+    } else transforms.push(relative);
+    for (const transform of transforms) {
+      const part = cloneWreckGeometry(mesh.geometry, transform, owner);
+      part.computeBoundingBox();
+      if (part.boundingBox) target.burntAway.union(part.boundingBox);
+      target.budgetTriDelta += ((part.index?.count ?? part.attributes.position.count) / 3) | 0;
+      owner.geometries.delete(part);
+      part.dispose();
+    }
+    return;
+  }
   const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
   if (material?.colorWrite === false) {
     target.proxyGeos.push(cloneWreckGeometry(mesh.geometry,
@@ -192,10 +245,19 @@ function* appendWreckMeshGeometrySteps(
   }
   if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
   mesh.geometry.boundingBox?.getSize(size);
-  if (Math.hypot(size.x, size.y, size.z) < WRECK_MIN_PART_DIAGONAL_M) return;
-  target.geos.push(cloneWreckGeometry(mesh.geometry,
+  // The carved muzzle's wall and backstop close the aperture cut from the barrel's own face: never a small part.
+  const small = Math.hypot(size.x, size.y, size.z) < WRECK_MIN_PART_DIAGONAL_M;
+  if (small && !mesh.userData.carvedBoreStock) return;
+  const baked = cloneWreckGeometry(mesh.geometry,
     new THREE.Matrix4().multiplyMatrices(rootInv, mesh.matrixWorld),
-    owner));
+    owner);
+  target.geos.push(baked);
+  if (small) target.budgetTriDelta -= ((baked.index?.count ?? baked.attributes.position.count) / 3) | 0;
+  if (WRECK_TWO_SIDED.test(mesh.name || '')) {
+    const back = reversedWreckGeometry(baked, owner);
+    target.geos.push(back);
+    target.budgetTriDelta -= (back.attributes.position.count / 3) | 0;
+  }
 }
 
 function* collectWreckGeometrySteps(
@@ -203,7 +265,7 @@ function* collectWreckGeometrySteps(
   rootInv: THREE.Matrix4,
   owner: WreckBakeOwner,
 ): Generator<WreckGeometryBuildSlice, WreckGeometrySet, void> {
-  const target: WreckGeometrySet = { geos: [], proxyGeos: [] };
+  const target: WreckGeometrySet = { geos: [], proxyGeos: [], burntAway: new THREE.Box3(), budgetTriDelta: 0 };
   const size = new THREE.Vector3();
   // Match Object3D.traverse's pre-order without retaining a callback stack
   // across checkpoints. This private settled hierarchy cannot change owners.
@@ -389,15 +451,27 @@ function wreckBakeResult(
   shadowGeo: THREE.BufferGeometry | null,
   solids: number[][],
   shellSolids: number[][] | null = null,
+  burntAway: THREE.Box3 | null = null,
+  budgetTriDelta = 0,
 ): WreckBake {
   merged.computeBoundingBox();
-  const bounds = merged.boundingBox;
-  if (!bounds) throw new Error('wreck bounds unavailable');
-  const baseY = bounds.min.y;
+  const own = merged.boundingBox;
+  if (!own) throw new Error('wreck bounds unavailable');
+  const burnt = burntAway && !burntAway.isEmpty() ? burntAway : null;
+  const baseY = burnt ? Math.min(own.min.y, burnt.min.y) : own.min.y;
   for (const solid of solids) for (let i = 1; i < solid.length; i += 3) solid[i] -= baseY;
   for (const solid of shellSolids ?? []) for (let i = 1; i < solid.length; i += 3) solid[i] -= baseY;
-  merged.translate(0, -bounds.min.y, 0);
-  shadowGeo?.translate(0, -bounds.min.y, 0);
+  merged.translate(0, -baseY, 0);
+  shadowGeo?.translate(0, -baseY, 0);
+  // the translate recomputed the geometry's own box from its float positions; the burnt-away parts join it exactly as
+  // their translated float positions would have (fround(y - baseY)), so every placement field is the one it was
+  const bounds = merged.boundingBox!.clone();
+  if (burnt) {
+    bounds.union(new THREE.Box3(
+      new THREE.Vector3(burnt.min.x, Math.fround(burnt.min.y - baseY), burnt.min.z),
+      new THREE.Vector3(burnt.max.x, Math.fround(burnt.max.y - baseY), burnt.max.z),
+    ));
+  }
   return {
     solids,
     ...(shellSolids ? { shellSolids } : {}),
@@ -406,7 +480,7 @@ function wreckBakeResult(
     hx: (bounds.max.x - bounds.min.x) / 2,
     hz: (bounds.max.z - bounds.min.z) / 2,
     h: bounds.max.y - bounds.min.y,
-    tris: ((merged.index?.count ?? merged.attributes.position.count) / 3) | 0,
+    tris: (((merged.index?.count ?? merged.attributes.position.count) / 3) | 0) + budgetTriDelta,
   };
 }
 
@@ -494,7 +568,7 @@ function* buildTankWreckSteps(
     const shellSolids = collectWreckShellSolids(root);
     const rootInv = root.matrixWorld.clone().invert();
     yield { fine: true, stage: 'construct' };
-    const { geos, proxyGeos } = yield* collectWreckGeometrySteps(root, rootInv, owner);
+    const { geos, proxyGeos, burntAway, budgetTriDelta } = yield* collectWreckGeometrySteps(root, rootInv, owner);
     if (!geos.length) throw new Error('no bakeable geometry');
     const normalized = yield* normalizeGeometrySetSteps(geos, true, owner);
     const merged = mergeRequired(normalized, 'merge failed');
@@ -515,7 +589,7 @@ function* buildTankWreckSteps(
     yield* paintWreckGeometrySteps(merged, rustPhase, remnantLinear(opts.remnant));
     if (!preparedForPaint) yield* compactWreckGeometrySteps(merged);
     const shadowGeo = yield* mergeShadowGeometrySteps(proxyGeos, owner);
-    const result = wreckBakeResult(merged, shadowGeo, solids, shellSolids);
+    const result = wreckBakeResult(merged, shadowGeo, solids, shellSolids, burntAway, budgetTriDelta);
     yield { fine: true, stage: 'finalize' };
     owner.geometries.delete(merged);
     if (shadowGeo) owner.geometries.delete(shadowGeo);

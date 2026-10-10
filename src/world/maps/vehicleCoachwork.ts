@@ -721,6 +721,10 @@ export function wheel(mesh: VehicleMesh, x: number, y: number, z: number, side: 
     ? [[rr, -w * 0.4], [rr * 1.04, -w * 0.38], [rr * 1.04, face], [rr * 0.9, face - 0.02], [rr * 0.5, face - 0.04], [rr * 0.3, face - 0.02]]
     : [[rr * 0.99, face], [rr * 0.9, face - 0.02], [rr * 0.55, face - 0.045], [rr * 0.3, face - 0.02]];
   mesh.lathe(rim, segs, () => rimMat);
+  // Sealed lane 2026-10-10: the tyre (and a burnt-out wheel's bare rim) was open on its inboard side, so a wheel seen
+  // from under the vehicle or through the far arch showed the sky through its hollow. A flat back disc closes it.
+  const back: [number, number][] = spec.bare ? [[0.0001, -w * 0.4], [rr, -w * 0.4]] : [[0.0001, -w * 0.45], [rr * 0.97, -w * 0.45]];
+  mesh.lathe(back, segs, () => rimMat);
   if (spec.style === 'hubcap' || spec.style === 'car') {
     const cap: [number, number][] = [[rr * 0.62, face - 0.03], [rr * 0.5, face + 0.008], [rr * 0.25, face + 0.03], [0.0001, face + 0.036]];
     mesh.lathe(cap, segs, () => (spec.style === 'hubcap' ? CHROME : rimMat));
@@ -747,6 +751,7 @@ export function wheel(mesh: VehicleMesh, x: number, y: number, z: number, side: 
     // the inner twin: mostly hidden behind the outer tyre, so a plain turn without the tread
     mesh.push().translate(-w * 1.04, 0, 0);
     mesh.lathe([[rr * 0.97, -w * 0.45], [r, -w * 0.32], [r, w * 0.32], [r * 0.9, w * 0.5]], segs, (k) => (k === 1 ? RUBBER : TYRE_WALL));
+    mesh.lathe([[0.0001, -w * 0.45], [rr * 0.97, -w * 0.45]], segs, () => rimMat);
     mesh.pop();
   }
   mesh.pop();
