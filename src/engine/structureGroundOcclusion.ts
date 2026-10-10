@@ -27,6 +27,12 @@ import { VEHICLE_ALPHA_MIN } from './vehicleOcclusion.ts';
 import { lightTune } from './lightModelCore.ts';
 
 /** The pass applies the term out to this distance, fading over the last SGO_RANGE_FADE_M (m). */
+/**
+ * 2026-10-10 (the gauntlet's wave 342a): maps whose ground occlusion waits for a round of their own. Whiteout's closed
+ * deck read "flips between flat shadowless snow and sharp sunny-day shadows" with "dirty contact on the station modules"
+ * under r1, so it keeps main's look (no deck beam, no baked term) until its soft-light round is waved alone.
+ */
+export const SGO_GATED_MAPS: ReadonlySet<string> = new Set(['whiteout']);
 export const SGO_RANGE_M = 220;
 export const SGO_RANGE_FADE_M = 70;
 /** Receivers up to this far over the occluder's base take the term whole, fading to none SGO_GATE_SOFT_M higher (m). */

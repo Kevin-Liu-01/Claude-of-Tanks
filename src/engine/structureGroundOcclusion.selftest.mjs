@@ -11,7 +11,7 @@ import {
   SGO_BASE_WRAP_M, SGO_HALF_M, SGO_REACH_H, SGO_REACH_MAX_M, SGO_SIZE, SGO_TEXEL_M, bakeStructureGroundOcclusion, packOccluders,
   prismSkyOcclusion, sgoRectOf, shapeFootprint,
 } from './structureGroundOcclusionBake.ts';
-import { STRUCTURE_GROUND_OCCLUSION_GLSL, SGO_GATE_M, SGO_RETURN } from './structureGroundOcclusion.ts';
+import { STRUCTURE_GROUND_OCCLUSION_GLSL, SGO_GATED_MAPS, SGO_GATE_M, SGO_RETURN } from './structureGroundOcclusion.ts';
 import { loadGroundedLightModel, resolveDeckBeam, resolveLightModel, luminance } from './lightModelCore.ts';
 import { deriveSun, OVERCAST_DIRECT_CUT } from './lightModel.ts';
 import { skyPresetToAtmosphere } from './atmosphere.ts';
@@ -139,16 +139,21 @@ assert.match(runtime, /renderer\.copyTextureToTexture\(src, texture, null, new T
 await loadGroundedLightModel();
 const irr = [0.11, 0.125, 0.16];
 const whiteout = getMapConfig('whiteout');
-const wSky = { ...DEFAULT_SKY_PRESET, ...whiteout.sky, cloudscape: whiteout.clouds };
-assert.ok(whiteout.clouds.deckBeam > 0.3 && whiteout.clouds.deckBeam < 0.6, 'Whiteout\'s stratus is thin');
-assert.equal(resolveDeckBeam(wSky), whiteout.clouds.deckBeam);
-assert.equal(resolveDeckBeam({ ...wSky, cloudscape: { ...whiteout.clouds, regime: 'fair-weather-cumulus' } }), 0, 'a cloud-shadow regime casts its own cells');
+// (wave 342a) Whiteout keeps main's look until its own round: no deck beam, no baked term; the law is pinned on its
+// stratus with a thin deck's beam as the round will author it
+assert.equal(resolveDeckBeam({ ...DEFAULT_SKY_PRESET, ...whiteout.sky, cloudscape: whiteout.clouds }), 0, 'Whiteout gated: main\'s closed deck');
+assert.ok(SGO_GATED_MAPS.has('whiteout'), 'and no baked ground term there');
+assert.match(read('../world/map.ts'), /const groundOcclusionScale = SGO_GATED_MAPS\.has\(config\.id\) \? 0/, 'the world honours the gate');
+const deck = { ...whiteout.clouds, deckBeam: 0.45 };
+const wSky = { ...DEFAULT_SKY_PRESET, ...whiteout.sky, cloudscape: deck };
+assert.equal(resolveDeckBeam(wSky), deck.deckBeam);
+assert.equal(resolveDeckBeam({ ...wSky, cloudscape: { ...deck, regime: 'fair-weather-cumulus' } }), 0, 'a cloud-shadow regime casts its own cells');
 const wAtmo = skyPresetToAtmosphere(wSky);
 const thin = resolveLightModel(wSky, wAtmo, { irradianceRaw: irr }, null, true);
-const thick = resolveLightModel({ ...wSky, cloudscape: { ...whiteout.clouds, deckBeam: 0 } }, wAtmo, { irradianceRaw: irr }, null, true);
+const thick = resolveLightModel({ ...wSky, cloudscape: { ...deck, deckBeam: 0 } }, wAtmo, { irradianceRaw: irr }, null, true);
 assert.equal(thin.overcast, 1, 'still a closed deck');
 const clear = deriveSun(wAtmo, 0);
-near(thin.sunIntensity * luminance(thin.sunColor) / (clear.intensity * luminance(clear.color)), whiteout.clouds.deckBeam, 0.02, 'the cascades carry deckBeam of the clear beam');
+near(thin.sunIntensity * luminance(thin.sunColor) / (clear.intensity * luminance(clear.color)), deck.deckBeam, 0.02, 'the cascades carry deckBeam of the clear beam');
 near(thick.sunIntensity * luminance(thick.sunColor) / (clear.intensity * luminance(clear.color)), 1 - OVERCAST_DIRECT_CUT, 0.005, 'without it the closed deck\'s few per cent');
 const sinEl = Math.max(0, wAtmo.sunDir[1]);
 const ratio = (m) => (m.sunIntensity * luminance(m.sunColor) * sinEl + m.hemiIntensity + Math.PI * luminance(irr) * m.envIntensity * m.envDiffuseGain)
