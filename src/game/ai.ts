@@ -2775,9 +2775,18 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // A contact below this is a scuff: a 50 t hull at 1.5 m/s carries 56 kJ, under 1 point over a shed's 30 kJ scuff
   // (sim/structureDamage.ts RAM_SCUFF_KJ), so a hull may creep up to a wall but never drive into one
   const SOLID_CREEP_MPS = 1.5;
+  // The pivot's own speed (gameplay lane, 2026-10-09; botModes Aegis Crossing Turbo Ball, seed 57001, on the tree that
+  // first carried these rules). The pivot's 0.3 drive held for the whole turn, and at Turbo Ball's 1.85x speed it
+  // rolled a T-90M from 2.9 to 8.6 m/s in 2.3 s on full steer: at 0.6 g the turn heeled the hull 0.5-0.9 rad, carried
+  // it 6 m off the bank beside the bridge onto the gorge's 55-degree side, and it rolled down it (a 31 m/s landing,
+  // 896 points). A pivot never drives faster than this: above it the drive is cut and the hull coasts into the turn
+  // (no brake: a scout swinging onto a contact at 14 m/s keeps its way on, ai.underFire's fresh-contact case).
+  // A standard pivot rolls at 3-4 m/s (see PIVOT_CLEAR_M), so the cap binds where the mode's speed or a running start
+  // carries the hull faster.
+  const PIVOT_ROLL_MAX_MPS = 4;
   const ownHalfLengthM = (): number => (spec.dims.hullLengthM || spec.dims.lengthM || 6) * 0.5;
   const routeSolids: AiObstacle[] = [];
-  let cornersCrowded = 0, pivotCreeps = 0, solidBrakes = 0, gunNudgeAtS = -Infinity;
+  let cornersCrowded = 0, pivotCreeps = 0, pivotRollCuts = 0, solidBrakes = 0, gunNudgeAtS = -Infinity;
 
   let routeOutcome = 'none'; // probe-visible: the last plan's outcome (short, clear, blocked)
 
@@ -3193,6 +3202,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         input.throttle = 0;
         input.brake = true;
         pivotCreeps++;
+        return false;
+      }
+      // A pivot is a turn in place, and its drive only breaks friction: above PIVOT_ROLL_MAX_MPS it is cut (see there).
+      if (Math.abs(st.speed) > PIVOT_ROLL_MAX_MPS) {
+        input.throttle = 0;
+        pivotRollCuts++;
         return false;
       }
       input.throttle = 0.3;
@@ -6332,7 +6347,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       objectiveShifts, objectiveShifting, zoneHoldMoves,
       routeCornerX: routeActive ? +routeCorner.x.toFixed(2) : null,
       routeCornerZ: routeActive ? +routeCorner.z.toFixed(2) : null, routeCornerFlips,
-      driveGoalX, driveGoalZ, driveGoalAgeS: nowS - driveGoalAtS, steerGoalX, steerGoalZ, cornersCrowded, pivotCreeps, solidBrakes, routeOutcome,
+      driveGoalX, driveGoalZ, driveGoalAgeS: nowS - driveGoalAtS, steerGoalX, steerGoalZ, cornersCrowded, pivotCreeps, pivotRollCuts, solidBrakes, routeOutcome,
       objectiveShiftX: objectiveShifting ? +objectiveShiftPoint.x.toFixed(1) : null,
       objectiveShiftZ: objectiveShifting ? +objectiveShiftPoint.z.toFixed(1) : null,
       zoneHoldX: Number.isFinite(zoneHoldForX) ? +zoneHold.x.toFixed(1) : null,
