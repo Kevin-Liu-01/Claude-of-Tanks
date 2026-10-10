@@ -246,6 +246,9 @@ export default {
     banding: 0.20,
     // (round 3: the desert air is clear; the ranges keep their red sandstone rather than greying to the fog's mauve)
     forestHex: 0x3c4237, rockHex: 0x80604d, haze: 0.62, grain: 0.62,
+    // the horizons lane (2026-10-09): the ring atlas's terms off the chasm's and the tables' sheer walls (drawn down each
+    // wall as vertical streaks and blocks over its own beds; horizonRelief.ts walls)
+    reliefCover: { walls: 1 },
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'fair-weather-cumulus', baseM: 700, coverage: 0.42, farBand: 0.5, streets: 0.3, virga: 0.5, rain: 0.2 },

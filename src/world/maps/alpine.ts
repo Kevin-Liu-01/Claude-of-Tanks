@@ -194,6 +194,12 @@ export default {
   horizon: {
     baseHex: 0x708397, amp: 1.42, style: 'alpine', treeline: 0.80, snowline: 0.72,
     forestHex: 0x29434a, rockHex: 0x88929d, haze: 0.91, grain: 0.52,
+    // the horizons lane (2026-10-09; the owner: Glacier Pass "hasn't been updated at all"): the ring atlas's forest in
+    // belts up the faces, bound at the full share so a wooded slope keeps its light and shade, and its terms off the
+    // massifs' walls (they streaked down the cliffs as a grey wash); the far ranges' snow off their steep faces, so their
+    // rock shows between the snowfields (horizonRelief.ts HorizonReliefCover, horizonPanorama.ts snowSlide)
+    reliefCover: { belts: 1, shade: 1, walls: 1 },
+    panorama: { snowSlide: 1 },
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'towering-cumulus', coverage: 0.26, baseM: 1900, thicknessM: 900, towers: 0.3, anvil: 0, shear: 0.1, streets: 0, fieldMix: 0.92, windSpeed: 4, cirrus: 0.3, farBand: 0.5, rain: 0.15 },

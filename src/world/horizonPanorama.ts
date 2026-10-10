@@ -124,6 +124,11 @@ export interface HorizonPanoramaCharacter {
    * pressing under the ring's skyline (that cut a near massif's top dead flat, gauntlet wave 50: "near-rectangular blocks
    * with dead-flat tops"), so this keeps them past the shell, where the shell's parallax stays small */
   jebelNearM: number;
+  /** The horizons lane (2026-10-09, Glacier Pass's far ranges: white meringue peaks, no rock): 0..1, how far the snow
+   * slides off the steep faces — 0 holds it up to 0.3-0.5 of slope (1 - n.y, about 45-60 degrees), 1 lets it go from
+   * 0.17-0.33 (about 34-48 degrees, where real alpine faces shed it), so the ranges' rock, its beds and its couloirs show
+   * between the snowfields */
+  snowSlide: number;
 }
 
 /** The knobs most characters leave at rest: open sea, no tree canopy, the eroded mesa's profile, no isolated peaks. */
@@ -135,6 +140,7 @@ const PANO_EXTRAS = Object.freeze({
   air: 1, fillLaw: 0, rockFloor: -1, scrub: 0, ownRock: 0,
   jebelShare: 0, jebelM: 0, jebelRadiusM: 900, jebelFoot: 0.66, jebelRim: 0.86, jebelApron: 0.18,
   jebelFlutes: 16, jebelFluteDepth: 0.5, jebelBossM: 0, jebelFootVary: 0.14, jebelVarnish: 0, jebelNearM: 0,
+  snowSlide: 0,
 });
 
 /** Maps lane A's sheer jebel (landformGeology.ts inselbergSection with a rim, origin/visual/maps-layouts ca018e38e):
@@ -825,7 +831,26 @@ ${HAZE_LAW_GLSL}`)
         float e = atan(d.y, length(d.xz));
         vec2 panoUv = vec2(vPanoU, clamp((e - uPanoElev.x) / (uPanoElev.y - uPanoElev.x), 0.002, 0.998));
         vec4 pano = texture2D(map, panoUv);
-        if (pano.a < 0.5) {
+        // (the horizons lane, 2026-10-09; gauntlet wave 313, Nordhavn's bird and apron views: "pale vertical sheets ...
+        // pillars hanging down from a flat slab to the far headlands") the parallax over the water: the wall paints the
+        // far shore as the bake eye saw it, 30 m up. From a camera well above the eye, a wall texel over an opening's
+        // water whose camera ray meets the sea before it reaches that texel's own land (the bake's distance, the aux
+        // pass) shows the water between, not the far shore stood up on the wall as a curtain: it takes the far earth's
+        // law, as the open texels do. A camera at the eye's height or under it, and every column without open sea
+        // near it, sees the wall as before (and so does a shell without the aux pass: an unbound sampler is 1 x 1).
+        bool parallaxOpen = false;
+        if (pano.a >= 0.5 && vPanoApron < 0.5 && cameraPosition.y > uPanoEye.y + 30.0 && textureSize(uPanoAux, 0).x > 1) {
+          vec4 auxP = texture2D(uPanoAux, panoUv);
+          float seaNear = texture2D(uPanoSkyline, vec2(vPanoU, 0.625)).a;
+          if (auxP.b > 0.5 && seaNear > 0.02) {
+            vec3 vdP = vPanoWorld - cameraPosition;
+            float tanDP = -vdP.y / max(length(vdP.xz), 1e-3);
+            float xP = tanDP > 1e-5 ? max(cameraPosition.y - uPanoHaze.z, 0.5) / tanDP : 1e9;
+            float azP = vPanoU * 6.2831853;
+            parallaxOpen = xP < 0.92 * length(vec2(cos(azP), sin(azP)) * (auxP.r / auxP.b * 10000.0) - cameraPosition.xz);
+          }
+        }
+        if (pano.a < 0.5 || parallaxOpen) {
           // over its column's skyline: open (the sky), unless the shell is ground for this camera — a ray under the
           // camera's own horizontal and under the true horizon's dip — the apron over the bake eye's horizon, or the far
           // earth past the strip; a camera looking up at the shell's sky (every ground and tank-height view) sees it open
@@ -960,7 +985,7 @@ ${HAZE_LAW_GLSL}`)
       }
       #endif`);
   };
-  material.customProgramCacheKey = () => 'horizon-panorama-v5';
+  material.customProgramCacheKey = () => 'horizon-panorama-v6';
   return { material, air };
 }
 
@@ -1522,7 +1547,7 @@ uniform vec2 uElev;
 uniform sampler2D uEdge;
 uniform vec4 uShore;      // the far shore's height share (0: open sea), the channel's distance (m), its coastal range's share
 uniform vec4 uTrees;      // the far field's canopy (m), the forest's slope limit, a dry coast's scrub
-uniform vec4 uAir;        // the far path's share of the law's σ, the fill's law (0 / 1), the bare rock's floor (a share of the relief)
+uniform vec4 uAir;        // the far path's share of the law's σ, the fill's law (0 / 1), the bare rock's floor (a share of the relief), the snow's slide off the steep faces
 uniform vec4 uHaze;       // the shared haze law (hazeLaw.ts): σ (1/m), 1 / the layer's scale height, the datum (m), on
 uniform vec3 uHazeChroma; // its per-channel extinction
 uniform vec3 uHazeAnti, uHazeToward; // its in-scatter target at the horizon away from the sun and toward it
@@ -1628,7 +1653,8 @@ vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   col = mix(col, uScree, smoothstep(0.12, 0.24, slope) * (1.0 - rockW) * (1.0 - vegW) * 0.7);
   // snow above the snowline on the slopes that hold it
   // (no snow holds on a peak's steep faces)
-  if (uChar3.x < 1.5) col = mix(col, uSnow, smoothstep(uChar3.x - 0.05, uChar3.x + 0.12, hT + 0.06 * n1) * (1.0 - smoothstep(0.3, 0.5, slope)) * (1.0 - 0.9 * peak * smoothstep(0.03, 0.12, slope)));
+  // (the horizons lane: the snow slides off the steep faces from a lower slope where a map asks — uAir.w, snowSlide)
+  if (uChar3.x < 1.5) col = mix(col, uSnow, smoothstep(uChar3.x - 0.05, uChar3.x + 0.12, hT + 0.06 * n1) * (1.0 - smoothstep(mix(0.3, 0.17, uAir.w), mix(0.5, 0.33, uAir.w), slope + 0.05 * uAir.w * n1)) * (1.0 - 0.9 * peak * smoothstep(0.03, 0.12, slope)));
   col *= 1.0 + 0.08 * n1;
   // the sun with its cast shadows, the sky with its occlusion
   float ndl = max(0.0, dot(n, uSun));
@@ -2135,7 +2161,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       uChar4: { value: new THREE.Vector4(ch.strata, options.deckBaseM, ch.ampM, ch.farRise) },
       uShore: { value: new THREE.Vector4(ch.shore, ch.shoreM, ch.shoreRange, 0) },
       uTrees: { value: new THREE.Vector4(ch.trees, ch.forestSlope, ch.scrub, 0) },
-      uAir: { value: new THREE.Vector4(ch.air, ch.fillLaw, ch.rockFloor, 0) },
+      uAir: { value: new THREE.Vector4(ch.air, ch.fillLaw, ch.rockFloor, ch.snowSlide) },
       uMesa: { value: new THREE.Vector4(ch.mesaTalusM, ch.mesaTalusShare, ch.mesaCliffM, ch.mesaFluteM) },
       uPeaks: { value: new THREE.Vector4(ch.peakShare, ch.peakM, ch.peakRadiusM, ch.peakSharp) },
       uJebel: { value: new THREE.Vector4(ch.jebelShare, ch.jebelM, ch.jebelRadiusM, ch.jebelBossM) },

@@ -1,7 +1,7 @@
 import { BufferAttribute, Color, type Material, type Mesh, type MeshStandardMaterial, type Texture, type Vector3, type WebGLRenderer } from 'three';
 import { refineHorizonGroundSeam } from './horizonSeam.ts';
 import type { CanyonGround } from './horizonRedrock.ts';
-import { HORIZON_RELIEF_SHADE, horizonReliefShade, type HorizonReliefCharacter } from './horizonRelief.ts';
+import { HORIZON_RELIEF_SHADE } from './horizonRelief.ts';
 
 const RETAINED = new WeakMap<Mesh, Texture[]>();
 /** Keep the existing live ownership array, including the original detail atlas. */
@@ -119,10 +119,11 @@ function bindRingReliefAtlas(mesh: Mesh, vistaMaterial: Material, terrainMateria
   // the occlusion to 14 % and the cast shadows to 15 %: past the live cascades (about a kilometre) the ranges had no
   // shadow at all, and a valley read as light as the ridge above it. The amplitude is now the shading's
   // (RING_RELIEF_SHADE) and the gradient scale divides by the same factor, so the gradient's share is unchanged.
-  // (the horizons lane, 2026-10-09: a character the bake encodes at a wider share binds its atlas at that share —
-  // horizonRelief.ts HORIZON_RELIEF_SHADE_BY_CHARACTER; the gradient's share stays the same)
-  const character = (mesh.userData.horizonRing as { relief?: string } | undefined)?.relief;
-  const shade = horizonReliefShade(character as HorizonReliefCharacter | undefined);
+  // (the horizons lane, 2026-10-09: an atlas the bake encoded at a wider share binds at that share — horizonRelief.ts
+  // HorizonReliefCover.shade; the gradient's share stays the same)
+  const ringData = mesh.userData.horizonRing as { relief?: string; reliefShade?: number } | undefined;
+  const character = ringData?.relief;
+  const shade = ringData?.reliefShade ?? RING_RELIEF_SHADE;
   ring.uRingReliefAmp.value = amp * shade;
   ring.uRingReliefGrad.value = ((vista.uniforms.uVReliefGrad?.value as number | undefined) ?? 1) * RING_RELIEF_GRADIENT / shade;
   // terrain v3 (2026-10-02, the ring lab: zeroing the atlas removed the chevrons on Sirocco Wadi's far ranges and the

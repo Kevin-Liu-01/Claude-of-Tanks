@@ -225,6 +225,9 @@ export default {
     // walls (the style default 0.16 gave the canyon's own bedded rock the faintest beds of any mesa ring)
     banding: 0.24,
     forestHex: 0x4d3829, rockHex: 0xa74f32, haze: 0.82, grain: 0.68,
+    // the horizons lane (2026-10-09): the ring atlas's terms off the tables' sheer walls — laid by angle and radius, they
+    // were drawn down each wall as vertical streaks and blocks over the walls' own beds (horizonRelief.ts walls)
+    reliefCover: { walls: 1 },
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   // 2026-10-04 (its establishing view: a blue hole in a deck its lighting runs at overcast 1.00): a dense overcast is

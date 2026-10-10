@@ -3874,6 +3874,8 @@ export function* buildHorizonRingSteps(
     columns: HORIZON_SEGMENTS, ridgeRow,
     // round 72: the character and the bake's measurements, for the probes and the receipts
     relief: reliefCharacter, reliefBake: reliefBake ? { width: reliefBake.width, height: reliefBake.height, ...reliefBake.stats } : null,
+    // (the horizons lane) the share the atlas was encoded for, which the terrain program binds it at
+    reliefShade: reliefBake?.shade,
     // the map-borders lane: the road exits on this ring, for the carriageway attribute (terrain.ts)
     roadExits: ringExits,
   };
