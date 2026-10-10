@@ -11,6 +11,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/fleetPassHigh.selftest.mjs',
     'tools/wheel-axial-extents.selftest.mjs',
     'src/vehicles/fleetPassLow.selftest.mjs',
+    // 2026-10-10: every Leopard 2A5-family spec at both qualities across camouflage seeds; markExact on a duplicate three
+    'src/vehicles/leopard2A5Family.selftest.mjs',
     // 2026-09-29: the three receipts of 0e5fc79e2 sit after the four whole-fleet CPU scans the receipt pins first (runner admission).
     'src/sim/modeConfiguration.selftest.mjs',
     'src/sim/sixModes.selftest.mjs',
