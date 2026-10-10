@@ -97,7 +97,8 @@ const dispose = (built) => { for (const list of Object.values(built.buckets)) fo
 
 // ------------------------------------------------------------------ the yards: slab, no spur, deterministic track
 // (2026-10-01: Cinder Junction's yard is authored spurs now — its own section below)
-for (const mapId of ['foundry', 'caldera', 'skybridge']) {
+// (batch 4: Skybridge round 3, e53ee9c50 — Page never had a railway, so its yard is gone)
+for (const mapId of ['foundry', 'caldera']) {
   const field = createHeightField(1337, getMapConfig(mapId));
   assert.equal(field._layout.railSpurs, undefined, `${mapId}: a yard authors no spur`);
   const built = build(mapId, field, 1337), again = build(mapId, field, 1337);
@@ -244,7 +245,11 @@ let junctionSummary = '';
       }
     }
     assert.equal(built.obstacles.filter((record) => record.kind === 'tunnel-portal').length, 0, 'no tunnel portal');
-    assert.equal(built.obstacles.length, coal.length, 'nothing else on the line publishes collision');
+    // P5 (the map-vehicles lane): the standing rolling stock carries one solid record a vehicle, nothing else does
+    const stock = built.obstacles.filter((record) => record.kind === 'rolling-stock');
+    assert.equal(stock.length, authored.reduce((n, spur) => n + (spur.stock ?? []).reduce((m, cut) => m + cut.kinds.length, 0), 0),
+      'one record for each standing vehicle');
+    assert.equal(built.obstacles.length, coal.length + stock.length, 'nothing else on the line publishes collision');
     junctionSummary = `Cinder Junction ${authored.length} spurs / ${built.parts.slab.length} slabs / ${coal.length} coal heaps`;
   } finally { dispose(built); dispose(again); }
 }
@@ -256,4 +261,4 @@ for (const mapId of MAP_IDS) {
   assert.equal(cfg.terrain?.railSpurs, undefined, `${mapId}: no authored spur`);
   assert.equal(createLayout(cfg).railSpurs, undefined, `${mapId}: no layout key`);
 }
-console.log(`railSpurs.selftest: resampler (yard rule + even split), berth, dry-span reduction; three yards deterministic with their 0.16 m slab; Tarkhan siding 92 spans / 184 rails / 276 sleepers / 1 stop bedded with no gap to the map edge, then ${RAIL_OPEN_KIT_M / RAIL_SPUR_LAY_M} spans on the open line past the edge (no record); ${junctionSummary}; ${MAP_IDS.length - 2} other layouts carry no spur`);
+console.log(`railSpurs.selftest: resampler (yard rule + even split), berth, dry-span reduction; two yards deterministic with their 0.16 m slab; Tarkhan siding 92 spans / 184 rails / 276 sleepers / 1 stop bedded with no gap to the map edge, then ${RAIL_OPEN_KIT_M / RAIL_SPUR_LAY_M} spans on the open line past the edge (no record); ${junctionSummary}; ${MAP_IDS.length - 2} other layouts carry no spur`);

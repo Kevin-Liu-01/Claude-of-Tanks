@@ -169,8 +169,10 @@ try {
   const verdant = buildHorizonRing(null, getMapConfig('verdant'), 1337);
   assert.equal(verdant.getObjectByName('horizon-rocks'), undefined, 'a wooded map keeps its ring forest, no rockfield');
   assert.ok(verdant.getObjectByName('horizon-forest'), 'Verdant still stands its ring forest');
-  const copper = buildHorizonRing(null, getMapConfig('copper_mesa'), 1337);
-  assert.ok(copper.getObjectByName('horizon-rocks'), 'every mesa outland carries rocks');
+  // (batch 4: Copper Mesa is Queenstown under the West Coast Range, an alpine ring since maps-copper_mesa eb50bd75f; the
+  // second mesa outland checked is Monument Valley's)
+  const titan = buildHorizonRing(null, getMapConfig('titan_gorge'), 1337);
+  assert.ok(titan.getObjectByName('horizon-rocks'), 'every mesa outland carries rocks');
   console.log(`horizonRockfield.selftest: Redrock outland carries ${census.instances} boulders (${census.near} near), synthetic ring ${placed.length}, wooded maps none`);
 } finally {
   if (previousDocument === undefined) delete globalThis.document;

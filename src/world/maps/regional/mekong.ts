@@ -15,7 +15,7 @@ function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
 }
 
-const nipa = (pitch: number): RoofSpec => ({ kind: 'gable', pitchDeg: pitch, eave: 0.6, verge: 0.4, thickness: 0.26, bucket: 'straw', ridge: 'round' });
+const nipa = (pitch: number): RoofSpec => ({ kind: 'gable', pitchDeg: pitch, eave: 0.6, verge: 0.4, thickness: 0.26, bucket: 'straw', ridge: 'round', thatch: 'rows' });
 const tole = (pitch: number, kind: RoofSpec['kind'] = 'gable'): RoofSpec => ({ kind, pitchDeg: pitch, eave: 0.5, verge: 0.35, thickness: 0.06, bucket: 'roof', ridge: 'saddle' });
 
 /** Board-shuttered window openings (no glass in the stilt houses): a dark opening, a frame, a propped shutter. */
@@ -75,15 +75,16 @@ function stiltHouse(ctx: RegionalBuildContext, opts: { lift?: number } = {}): Re
  * tried here and dropped: the base plots end under the veranda, so it never fitted.)
  */
 function wetYard(sink: PartSink, ctx: RegionalBuildContext): void {
-  if (ctx.tier === 'mobile') return;
-  const look = ctx.variant;
-  const mx = ctx.info.w / 2 - 0.15, mz = ctx.info.d / 2 - 0.15;
-  // the mud: a slab whose top stands 3 cm over the plot's ground, deep enough to show on its low side
-  sink.span('structureWood', -mx, -0.3, -mz, mx, 0.03, mz, { colour: rgb(0x3a3024), decor: true });
-  for (let k = 0; k < 3; k++) {
-    const x = (look() - 0.5) * mx * 1.4, z = (look() - 0.5) * mz * 1.2, a = 0.5 + look() * 0.9, b = 0.4 + look() * 0.7;
-    sink.span('glass', x - a, 0.03, z - b, x + a, 0.042, z + b, { decor: true });
-  }
+  sink.dressing(ctx.tier === 'mobile', () => {
+    const look = ctx.variant;
+    const mx = ctx.info.w / 2 - 0.15, mz = ctx.info.d / 2 - 0.15;
+    // the mud: a slab whose top stands 3 cm over the plot's ground, deep enough to show on its low side
+    sink.span('structureWood', -mx, -0.3, -mz, mx, 0.03, mz, { colour: rgb(0x3a3024), decor: true });
+    for (let k = 0; k < 3; k++) {
+      const x = (look() - 0.5) * mx * 1.4, z = (look() - 0.5) * mz * 1.2, a = 0.5 + look() * 0.9, b = 0.4 + look() * 0.7;
+      sink.span('glass', x - a, 0.03, z - b, x + a, 0.042, z + b, { decor: true });
+    }
+  });
 }
 
 /**

@@ -27,7 +27,9 @@ export const GUNSHIP_WEAPONS = Object.freeze([
   shell('152 mm Howitzer', 'HE', 152, 110, 110, 1500, 800, { reloadS: 3.5, reloadGroup: 'gunship-howitzer', blastRadiusM: 22, soundProfile: 'gunship-howitzer' }),
   shell('Guided Missile', 'HE', 180, 320, 320, 1600, 400, { guided: true, reloadS: 7, reloadGroup: 'gunship-missile', blastRadiusM: 18, soundProfile: 'gunship-missile' }),
 ]);
-export const DRONE_WARHEAD = shell('FPV warhead', 'HE', 152, 95, 95, 1400, 42, { tracer: 'DRONE', gravityScale: 0, maxLifetimeS: AERIAL_RULES.drone.batteryS });
+// Fictional single-charge anti-armor payload: uses the same ERA, spaced armor
+// and penetration rules as other shaped charges, rather than an artillery blast.
+export const DRONE_WARHEAD = shell('FPV shaped charge', 'HEAT', 90, 350, 350, 1400, 42, { tracer: 'DRONE', gravityScale: 0, maxLifetimeS: AERIAL_RULES.drone.batteryS });
 
 type RulesetAmmo = 'spec' | 'he_only' | 'unlimited';
 type RulesetTimeout = 'draw' | 'defeat';
@@ -37,8 +39,15 @@ interface AssaultRules {
   readonly initialActive: number;
   /** Extra defenders per sector from the operation's difficulty. */
   readonly extraDefenders: number;
-  /** Hit-point scale added per sector taken. */
+  /** Hit-point scale added per sector taken, up to the last sector. */
   readonly hpPerLine: number;
+  /**
+   * Hit-point scale of the last sector's counter-attack, in place of 1 + sectors taken × hpPerLine (1.32 on the third
+   * sector). Modes lane, 2026-10-08 (owner decision: the attackers should win 40–55 % of bot tests): the attack took
+   * the first two sectors every time and lost most matches at the third, where five fresh defenders at 1.32× met the
+   * four survivors; 1.15× is the decision's first knob.
+   */
+  readonly finalLineHp: number;
   /** Hit-point scale added by the operation's difficulty (applies to every defender). */
   readonly difficultyHp: number;
   /** Seconds the last sector must be held. */
@@ -115,6 +124,8 @@ export interface TeamArrangement {
   readonly waveSize?: number | null;
   /** Enemy nation id (game/teamArrangement.ts ENEMY_NATION_OPTIONS) or null for a mixed force. */
   readonly enemyNation?: string | null;
+  /** Solo allied bots follow the selected player's nation. */
+  readonly alliedNation?: 'player' | null;
   /** Mars mode only: the gravity world and boost-cache cadence (MARS_GRAVITY_OPTIONS / MARS_CACHE_OPTIONS). */
   readonly marsGravity?: MarsGravityId | null;
   readonly marsCaches?: MarsCachesId | null;
@@ -278,6 +289,7 @@ export interface MatchRuleset {
   readonly horde: HordeRules | null;
   /** Enemy nation id the roster fills from first (co-op modes; null = mixed / the operation decides). */
   readonly enemyNation: string | null;
+  readonly alliedNation?: 'player' | null;
 }
 
 export interface CampaignRulesetInput {
@@ -328,7 +340,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   frontline_assault: Object.freeze({
     ...STANDARD, mode: 'frontline_assault', respawnS: null, timeLimitS: 720, timeout: 'defeat',
     allies: 3, enemies: 10,
-    assault: Object.freeze({ initialActive: 3, extraDefenders: 0, hpPerLine: 0.16, difficultyHp: 0, holdS: 20 }),
+    assault: Object.freeze({ initialActive: 3, extraDefenders: 0, hpPerLine: 0.16, finalLineHp: 1.15, difficultyHp: 0, holdS: 20 }),
   }),
   // Mars mode (owner 2026-09-18): Olympus Basin's own physics — 0.38 g, a 6.5 m/s jump, +25 % speed, tougher
   // hulls, a lighter recoil launch than Turbo Ball — on the zone objective with 6 s respawns and a
@@ -410,6 +422,7 @@ export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangemen
   const enemies = input.enemies == null ? null : clampInt(input.enemies, TEAM_ARRANGEMENT_LIMITS.enemies[mode]);
   const waveSize = mode === 'endless_horde' && input.waveSize != null
     ? clampInt(input.waveSize, TEAM_ARRANGEMENT_LIMITS.waveSize) : null;
+  const alliedNation = input.alliedNation === 'player' ? 'player' : null;
   const enemyNation = typeof input.enemyNation === 'string' && /^[a-z_]{2,24}$/.test(input.enemyNation) ? input.enemyNation : null;
   const marsGravity = mode === 'mars' && isMarsGravityId(input.marsGravity) ? input.marsGravity : null;
   const marsCaches = mode === 'mars' && isMarsCachesId(input.marsCaches) ? input.marsCaches : null;
@@ -426,9 +439,10 @@ export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangemen
     const sides = rulesetSides({ allies, enemies });
     if (sides.allies + sides.enemies + 1 > BATTLE_FIELD_LIMIT) allies = Math.max(0, BATTLE_FIELD_LIMIT - 1 - sides.enemies);
   }
-  if (allies == null && enemies == null && waveSize == null && enemyNation == null && marsGravity == null && marsCaches == null && scoreTarget == null && respawnS == null && waveStep == null && holdS == null && juggernautRole == null) return null;
+  if (allies == null && enemies == null && waveSize == null && enemyNation == null && alliedNation == null && marsGravity == null && marsCaches == null && scoreTarget == null && respawnS == null && waveStep == null && holdS == null && juggernautRole == null) return null;
   return Object.freeze({
     allies, enemies, waveSize, enemyNation,
+    ...(alliedNation ? { alliedNation } : {}),
     ...(juggernautRole ? { juggernautRole } : {}),
     ...(scoreTarget != null ? { scoreTarget } : {}), ...(respawnS != null ? { respawnS } : {}),
     ...(waveStep != null ? { waveStep } : {}), ...(holdS != null ? { holdS } : {}),
@@ -488,6 +502,7 @@ export function matchRulesetFor(
         ? Object.freeze({ ...ruleset.assault, holdS: arranged.holdS }) : ruleset.assault,
       allies: arranged.allies ?? ruleset.allies,
       enemies: arranged.enemies ?? ruleset.enemies,
+      ...(arranged.alliedNation ? { alliedNation: arranged.alliedNation } : {}),
       // a campaign operation's formation is not overridden by the free-sortie nation setting
       enemyNation: campaign?.enemy ? ruleset.enemyNation : (arranged.enemyNation ?? ruleset.enemyNation),
       horde: ruleset.horde && (arranged.waveSize != null || arranged.waveStep != null)
@@ -514,6 +529,17 @@ export function matchRulesetFor(
   }
   if (ruleset.infection) ruleset = { ...ruleset, enemies: Math.max(3, arranged?.enemies ?? 4) };
   return ruleset === base ? base : Object.freeze(ruleset);
+}
+
+/**
+ * Hull scale a Frontline counter-attack arrives with on sector `line` (0-based) of `lines`: 1 + line × hpPerLine on
+ * the way in, finalLineHp on the last sector, plus the operation's difficulty on every one.
+ */
+export function assaultWaveHealthScale(rules: AssaultRules, line: number, lines: number): number {
+  const index = Math.max(0, Math.floor(line));
+  // the opening wave is never the counter-attack, even on a one-sector front
+  const base = index > 0 && index >= lines - 1 ? rules.finalLineHp : 1 + index * rules.hpPerLine;
+  return base + rules.difficultyHp;
 }
 
 /** Hostiles the Horde fields on a wave (1-based), before the pool caps it. */

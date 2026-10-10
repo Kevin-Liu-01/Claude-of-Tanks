@@ -102,7 +102,11 @@ console.log('[5] Steinburg: the two pockets the battles found, and a sweep of th
     Math.max(x0, x1) + 30, Math.max(z0, z1) + 30, []);
   for (const [label, start, goal] of [
     ['the block with a 0.6 m gap', { x: -75, z: -45 }, { x: -50, z: -75 }],
-    ['the courtyard', { x: -14, z: 50 }, { x: -36, z: 279 }],
+    // Steinburg's hill-town plan (2026-10-05, the map-revival lane) replaced the old courtyard: its yard is now the one
+    // behind the north lane's rows (14 of 16 rays meet cover within 22 m), left by its west opening. The edge-offset
+    // containment this receipt measures with overstates a rotated corner (a rectangle's corner reaches 1.41 times the
+    // margin), so a leg passing under one reads short of the clearance it keeps: re-point a pocket, not the planner.
+    ['the courtyard', { x: -18, z: 50 }, { x: -36, z: 279 }],
   ]) {
     const route = plan(navigation, start, goal);
     let least = Infinity, prev = start;

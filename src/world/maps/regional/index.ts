@@ -16,6 +16,7 @@ import { hashSeed, streamFrom, REGIONAL_BUCKETS, type RegionalParts } from './ge
 import { DEFAULT_WEATHER, paintRatio, pickWeatherTints, weatherRegionalParts } from './weather.ts';
 import { withWear } from './house.ts';
 import { HESSIAN_STYLE } from './hessian.ts';
+import { SAVOYARD_STYLE } from './savoyard.ts';
 import { DALMATIAN_STYLE } from './dalmatian.ts';
 import { BRETON_STYLE } from './breton.ts';
 import { KOLKHOZ_STYLE } from './kolkhoz.ts';
@@ -24,11 +25,21 @@ import { EIFEL_STYLE } from './eifel.ts';
 import { MEKONG_STYLE } from './mekong.ts';
 import { BENGAL_STYLE } from './bengal.ts';
 import { FRANCONIAN_STYLE } from './franconian.ts';
-import { KSAR_STYLE } from './ksar.ts';
+import { KSAR_STYLE, SIWA_STYLE } from './ksar.ts';
 import { WADIRUM_STYLE } from './wadirum.ts';
 import { RUHR_STYLE } from './ruhr.ts';
 import { KOHIMA_STYLE } from './kohima.ts';
 import { HOSTOMEL_STYLE } from './hostomel.ts';
+import { KYUSHU_STYLE } from './kyushu.ts';
+import { QUEENSTOWN_STYLE } from './queenstown.ts';
+import { GLENCANYON_STYLE } from './glencanyon.ts';
+import { NAVAJO_STYLE } from './navajo.ts';
+import { SAAR_STYLE } from './saar.ts';
+import { SHANGHAI_STYLE } from './shanghai.ts';
+import { LONGLEAF_STYLE } from './longleaf.ts';
+import { SARAJEVO_STYLE } from './sarajevo.ts';
+import { ANDALUSIAN_STYLE } from './andalusian.ts';
+import { CHOUF_STYLE } from './chouf.ts';
 import { LORRAIN_STYLE } from './lorrain.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext } from './types.ts';
 
@@ -36,6 +47,7 @@ export type { ArchitectureStyle } from './types.ts';
 
 const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   hessian: HESSIAN_STYLE,
+  savoyard: SAVOYARD_STYLE,
   dalmatian: DALMATIAN_STYLE,
   breton: BRETON_STYLE,
   kolkhoz: KOLKHOZ_STYLE,
@@ -45,10 +57,21 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   bengal: BENGAL_STYLE,
   franconian: FRANCONIAN_STYLE,
   ksar: KSAR_STYLE,
+  siwa: SIWA_STYLE,
   wadirum: WADIRUM_STYLE,
   ruhr: RUHR_STYLE,
   kohima: KOHIMA_STYLE,
   hostomel: HOSTOMEL_STYLE,
+  kyushu: KYUSHU_STYLE,
+  queenstown: QUEENSTOWN_STYLE,
+  glencanyon: GLENCANYON_STYLE,
+  navajo: NAVAJO_STYLE,
+  saar: SAAR_STYLE,
+  shanghai: SHANGHAI_STYLE,
+  longleaf: LONGLEAF_STYLE,
+  sarajevo: SARAJEVO_STYLE,
+  andalusian: ANDALUSIAN_STYLE,
+  chouf: CHOUF_STYLE,
   lorrain: LORRAIN_STYLE,
 });
 
@@ -103,13 +126,27 @@ export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildC
   if (!builder) throw new Error(`${style.id} has no ${ctx.structureId}`);
   // war wear (burnt and boarded windows, stripped roof patches) draws from its own fork of the weather stream
   const wearSeed = Math.floor(weatherRng() * 4294967296);
-  const wear = { amount: style.wear ?? 0.2, rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0) };
+  // (and the facade craft's slot, house.ts withWear: window heads, thatch courses, gutter brackets ... on desktop builds, its
+  // choices from a stream of its own forked from the same seed — the build, look, wear and weather streams draw as before)
+  const wear = { amount: style.wear ?? 0.2, rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0),
+    facade: { tier: ctx.tier, rng: streamFrom((wearSeed ^ 0x6a09e667) >>> 0) } };
   const tints = pickWeatherTints(palette, weatherRng);
   // (the map-revival lane, 2026-10-07: a kit that folds its third plaster paint into its second's bucket,
   // ArchitectureStyle.foldThirdPlaster, by the colour of its own two paints)
   const parts = weatherRegionalParts(withWear(wear, () => builder(ctx)), tints, style.foldThirdPlaster
     ? { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint, plaster3Fold: foldOf(style) }
     : { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
+  // map revival lane 2 (2026-10-05): a style's finer render (surfaces.relief) — the walls' tile repeats plasterUv times as
+  // often; absent, every UV stays as it was
+  const relief = style.surfaces.relief;
+  if (relief) {
+    for (const name of ['regionalPlaster', 'regionalPlaster2', 'regionalPlaster3'] as const) {
+      for (const geometry of parts[name]) {
+        const uv = geometry.getAttribute('uv');
+        for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * relief.plasterUv, uv.getY(i) * relief.plasterUv);
+      }
+    }
+  }
   // a phone never builds the fine joinery (geometry.ts EmitOptions.fine: frames, glazing bars, rails, door panels);
   // it is dressing, so the collision stays the desktop's
   if (ctx.tier === 'mobile') {

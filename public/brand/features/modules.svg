@@ -1,10 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Internal tank modules">
-  <path d="M6 37h43l8 9-5 10H12L6 49Z" fill="none" stroke="#edf3f7" stroke-width="3" stroke-linejoin="round"/>
-  <path d="M16 30h25l8 7H11Z" fill="none" stroke="#edf3f7" stroke-width="3" stroke-linejoin="round"/>
-  <circle cx="19" cy="43" r="6" fill="#45c7ff"/>
-  <path d="M29 38h8v11h-8Z" fill="#f0a030"/>
-  <path d="m45 38 4 7h-8Z" fill="#ff4d62"/>
-  <path d="M15 56h36" stroke="#edf3f7" stroke-width="3" stroke-linecap="round"/>
-  <path d="M19 24V9m0 0-4 5m4-5 4 5" fill="none" stroke="#45c7ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M33 24V9m0 0-4 5m4-5 4 5" fill="none" stroke="#f0a030" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Internal tank systems and removable modules">
+<defs>
+ <linearGradient id="steel" x2=".3" y2="1"><stop stop-color="#4d687b"/><stop offset=".5" stop-color="#263e50"/><stop offset="1" stop-color="#12202d"/></linearGradient>
+ <linearGradient id="cyan" x2=".3" y2="1"><stop stop-color="#99e7ff"/><stop offset="1" stop-color="#2385b3"/></linearGradient>
+ <linearGradient id="amber" x2=".2" y2="1"><stop stop-color="#ffda88"/><stop offset="1" stop-color="#dc881c"/></linearGradient>
+ <linearGradient id="red" x2=".3" y2="1"><stop stop-color="#ff9eaa"/><stop offset="1" stop-color="#c9304c"/></linearGradient>
+</defs>
+<g stroke-linecap="round" stroke-linejoin="round"><path d="M6 36H46L57 43 52 55H13L6 47Z" fill="url(#steel)" stroke="#edf3f7" stroke-width="2"/><path d="M13 35 20 28H40L47 35" fill="none" stroke="#edf3f7" stroke-width="2"/><path d="M12 40H49V50H14Z" fill="#0b131c" stroke="#7893a5" stroke-width="1"/><circle cx="21" cy="45" r="4.4" fill="url(#cyan)" stroke="none" stroke-width="1.5"/><path d="M30 40H36V50H30Z" fill="url(#amber)" stroke="none" stroke-width="2"/><path d="M42 40 47 48H39Z" fill="url(#red)" stroke="none" stroke-width="2"/><path d="M20 24V7M15 12 20 7 25 12" fill="none" stroke="#45c7ff" stroke-width="2.3"/><path d="M36 24V7M31 12 36 7 41 12" fill="none" stroke="#f0a030" stroke-width="2.3"/><path d="M15 57H49" fill="none" stroke="#7893a5" stroke-width="1.5"/></g>
 </svg>

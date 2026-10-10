@@ -32,10 +32,14 @@ const authoredBudgets = {
   polders: { roadNodes: 157, wallM: 409, beltTrees: 41, trees: [42, 64, 72], grass: 1.02, rocks: 112, outcrops: 12, plan: 18 },
   copper_mesa: { roadNodes: 166, wallM: 405, beltTrees: 0, trees: [22, 32, 40], grass: 0.36, rocks: 224, outcrops: 42, plan: 16 },
   airfield: { roadNodes: 184, wallM: 403, beltTrees: 0, trees: [26, 42, 80], grass: 0.72, rocks: 98, outcrops: 12, plan: 16 },
-  oasis: { roadNodes: 152, wallM: 421, beltTrees: 29, trees: [24, 28, 30], grass: 0.5, rocks: 144, outcrops: 24, plan: 18 },
+  // (batch 4: maps-oasis round 2, c97a5723d: Siwa's palm groves at 32 clusters and its shore palms planted closer, 13-14 m
+  // apart, 38 in the two rows; wave 125 passed and its cost accepted)
+  oasis: { roadNodes: 152, wallM: 421, beltTrees: 38, trees: [32, 28, 30], grass: 0.5, rocks: 144, outcrops: 24, plan: 18 },
   whiteout: { roadNodes: 150, wallM: 420, beltTrees: 0, trees: [8, 12, 20], grass: 0.2, rocks: 136, outcrops: 22, plan: 16 },
   orchard: { roadNodes: 156, wallM: 884, beltTrees: 61, trees: [42, 38, 88], grass: 0.95, rocks: 138, outcrops: 20, plan: 18 },
-  longleaf: { roadNodes: 157, wallM: 432, beltTrees: 62, trees: [62, 86, 104], grass: 1, rocks: 164, outcrops: 24, plan: 18 },
+  // (batch 4: maps-longleaf round 2, e90520dbf: the creek bottom's hardwoods planted along the basin's two banks, two more
+  // rows: 118 seats before their skips; wave 144 passed and its cost accepted on census)
+  longleaf: { roadNodes: 157, wallM: 432, beltTrees: 118, trees: [62, 86, 104], grass: 1, rocks: 164, outcrops: 24, plan: 18 },
   mangrove: { roadNodes: 156, wallM: 410, beltTrees: 29, trees: [58, 78, 84], grass: 1.06, rocks: 114, outcrops: 12, plan: 18 },
   saltwind: { roadNodes: 154, wallM: 440, beltTrees: 0, trees: [34, 52, 62], grass: 0.68, rocks: 188, outcrops: 30, plan: 18 },
   reservoir: { roadNodes: 165, wallM: 421, beltTrees: 0, trees: [66, 98, 108], grass: 0.96, rocks: 194, outcrops: 32, plan: 18 },
@@ -79,7 +83,8 @@ assert.equal(new Set(maps.map(({ terrain }) => JSON.stringify(terrain.roads))).s
   'every battlefield authors its own road graph');
 assert.equal(new Set(maps.map(({ terrain }) => JSON.stringify(terrain.landforms))).size, 10,
   'every battlefield authors its own macro relief instead of copying a palette');
-assert.equal(new Set(maps.map(({ props }) => JSON.stringify(props.plan))).size, 10,
+// (a settlement authored as planned sites — Kestrel Airfield's, Copper Mesa's since its round 3 — has its mix there)
+assert.equal(new Set(maps.map(({ props }) => JSON.stringify([props.plan, (props.plannedSites ?? []).map((site) => site.structure)]))).size, 10,
   'each settlement has its own occupational building mix');
 
 for (const config of maps) {
@@ -167,11 +172,17 @@ for (const config of maps) {
   // A settlement authored as planned sites (Kestrel Airfield, 2026-10-02: thirteen rotation pairs, where the roadside
   // plan had stacked its buildings along the first roads) counts them with the plan, within the old airfield's 16 plan
   // buildings and 6 sites plus two pairs.
+  // (2026-10-07, the map-revival lane's Copper Mesa round 3, gauntlet wave 132: "no street grid, no rows of cottages and
+  // no density": Queenstown authored lot by lot — 28 cottage rows on a main street, two back streets and the north town,
+  // the hotel twice, two ruins and the works — within 40; its frame cost is the cost probe's, not this ceiling's)
   const plannedSites = config.props.plannedSites?.length ?? 0;
   const settlement = config.props.plan.length + plannedSites;
-  assert.ok(settlement >= 16 && settlement <= (plannedSites ? 26 : 18), `${label}: bounded settlement plan`);
+  const settlementCeiling = label === 'copper_mesa' ? 40 : plannedSites ? 26 : 18;
+  assert.ok(settlement >= 16 && settlement <= settlementCeiling, `${label}: bounded settlement plan`);
   assert.ok(config.props.rocks <= 224 && config.props.outcrops <= 42, `${label}: bounded geological dressing`);
-  assert.equal(config.props.tankWrecks.count, 5, `${label}: fixed five-wreck authoring budget`);
+  // the map-vehicles lane (2026-10-06, the period ruling): five period hulks, or none on a 1944 front the public fleet
+  // has no tank of (mapQuality.selftest)
+  assert.equal(config.props.tankWrecks.count, config.props.tankWrecks.era === 'ww2' ? 0 : 5, `${label}: fixed five-wreck authoring budget`);
   assert.ok(config.props.inhabit.looseClutter <= 22 && config.props.inhabit.modernClutter <= 22,
     `${label}: bounded inhabited-detail pools`);
   assert.ok(config.sky.fogDensity <= 0.00072 && config.sky.fogMix <= 0.56,
@@ -194,8 +205,10 @@ assert.ok(oasis.terrain.dunes && oasis.terrain.lakes.length === 1
 assert.ok(whiteout.terrain.frozenMarshes && whiteout.props.snowCap && whiteout.vegetation.clusterCount <= 8,
   'polar station is exposed snow country rather than an alpine forest');
 assert.equal(orchard.vegetation.belts.length, 6, 'orchard has six deliberately planted contour rows');
-assert.ok(longleaf.vegetation.belts.length === 2 && longleaf.vegetation.avoid.length === 6 && longleaf.props.logs,
-  'logging valley has a cleared harvest swath, two planted edges and timber dressing');
+// (batch 4: maps-longleaf round 2, e90520dbf, adds the creek bottom's two hardwood rows to the two planted edges)
+assert.ok(longleaf.vegetation.belts.length === 4 && longleaf.vegetation.belts.filter((belt) => belt.species === 'oak').length === 2
+  && longleaf.vegetation.avoid.length === 6 && longleaf.props.logs,
+  'logging valley has a cleared harvest swath, two planted edges, the creek bottom\'s hardwood rows and timber dressing');
 assert.ok(mangrove.terrain.lakes.length === 26 && mangrove.props.plan.includes('fishery'),
   'estuary islands carry multiple ford channels and fishing livelihoods');
 assert.ok(saltwind.terrain.lakes.every(({ x }) => x < -400), 'saltwind water opens onto the western map edge');

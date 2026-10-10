@@ -1,3 +1,5 @@
+import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.ts';
+import { boxCorners, convexSlabs, slabParts } from './slabCollision.ts';
 // src/world/props.ts — rocks, ~10-building village, walls and cover props.
 // Contract: docs/ARCHITECTURE.md §3.2. All geometry composed BufferGeometry,
 // all textures canvas-generated, everything merged into few draw calls.
@@ -16,6 +18,7 @@ import {
   textureFromRgbaPixels as toTexture,
   tileableTorusNoise as torusN,
 } from './proceduralTexture.ts';
+import { paintLimewash } from './regionalSurfaces.ts'; // a kit's lime-wash render (makePlaster; the facades lane)
 import { applyTone, terrainNearMeshHeightAt, type HeightField, type TerrainLayout } from './terrain.ts';
 import { authoredRoadStationCount, authoredRoadStationIndex, buildingRoadStationIndices } from './maps/roadStations.ts';
 import { roadSettlementJunction } from './roadSettlementJunction.ts';
@@ -48,18 +51,40 @@ import { dressMapExtras, type AnimatedDressing } from './maps/mapKits.ts'; // co
 import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNeeded, type SteelAtlasTextures } from './propsSteelAtlas.ts'; // round 75
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
-import { applyRockShaderHook, boulderKindFor, buildBoulderForm, makeRockDetail, paintBoulder, rockDressingFor, rockLithologyFor } from './rockDressing.ts'; // round 75 item 6
+import {
+  applyRockShaderHook, boulderKindFor, boulderSectionRadius, boulderSections, buildBoulderForm, createRockDepthMaterial, makeRockDetail, paintBoulder,
+  rockAngularityFor, rockDressingFor, rockLithologyFor,
+} from './rockDressing.ts'; // round 75 item 6
 import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
+import { applyRailBallastHook } from './railBallast.ts'; // the ground lane (wave 234): the rail kit's crushed-stone bed
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
+import { composeLandmarks } from './landmarks/compose.ts'; // the landmarks lane, 2026-10-05
+import type { LandmarkPlacement } from './landmarks/types.ts';
+import { buildFieldWallFineSteps, type FieldWallFineSource } from './fieldWorks.ts'; // b17: the walls stone by stone near the camera
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
-import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
+import {
+  FIELD_STONE_PRINT_SEED, liftFieldStoneMean, paintFieldStoneBuffers as paintFieldStoneBuffersInline, type FieldStoneBuffers,
+  type FieldStoneLithology,
+} from './fieldStoneSurface.ts';
+import { paintDryWallBuffers } from './fieldWallFace.ts';
+import { HAY_PRINT_SEED, paintHayBuffers as paintHayBuffersInline } from './hayPrint.ts';
+import {
+  registerPaintNoise, settledPaint, surfacePaintKey, type SurfacePaintPrefetch, type SurfacePaintRequest,
+} from './surfacePaintPrefetch.ts';
+import { paintStructureDetailBuffers, type StructureDetailBuffers } from './structureDetailTile.ts';
+import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, type HaystackStyle } from './maps/haystackKit.ts';
+import { periodClutterTypes } from './maps/periodClutterKit.ts';
+import { STRUCTURE_VARIANTS } from './maps/regional/ksarGate.ts'; // b16: the ksar gate post for the checkpoint hut
+import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
+import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_SETTLE_M } from './stoneWallShader.ts';
 import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
 import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
 import { buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
+import type { WaterDisturbance } from './shallowWater.ts';
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
 // world-dressing r1: building-catalog extension + destructible small props
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
@@ -67,14 +92,28 @@ import {
   ADOBE_UV_PER_M,
   COURSED_WALLSTONE,
   DESTRUCTIBLE_TYPES,
+  DRY_STONE_KIND,
   FENCE_SEG,
   WALL_SEG,
   bSandbagBroken,
   type DestructiblePropType,
   buildAdobePilaster,
   buildDryStoneWallHead,
+  civilianVehicleTypes,
 } from './maps/inhabitKit.ts';
-import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
+import { CIVILIAN_VEHICLE_RECEIPTS, pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
+import { CART_RECEIPTS } from './maps/cartKit.ts';
+import { RUNNER_SNOW_SINK_M } from './maps/cartBodies.ts';
+// the map-vehicles lane (2026-10-05): the vehicles' surface stream and liveries, their ground-contact patches
+import { applyVehicleSurfaceHook, VEHICLE_SURFACE_PROGRAM } from './maps/vehicleSurface.ts';
+import {
+  boatMudHoles, buildBoatMud, buildBoatMudRims, buildHullWaterRings, buildRunnerTracks, buildVehicleContactShadows,
+  vehicleShadowCaster,
+} from './maps/vehicleContactShadow.ts';
+import {
+  CART_SLIDE_MAX_M, PARKED_VEHICLE_CLEARANCE, polygonGap, seatCartsClear, separateParkedVehicles, shapePolygons, VEHICLE_SLIDE_MAX_M,
+  type FootprintPolygon,
+} from './parkedVehicleSeparation.ts';
 import {
   boxClearOfPoints, boxClearOfRoadCore, discClearOfRoadCore, sharpRoadBends, shiftClearOfRoadCore,
 } from './roadFootprint.ts';
@@ -101,16 +140,26 @@ import {
   resolveLoosePropObstacle, resolveLoosePropPair, stepLoosePropBody,
 } from './loosePropPhysics.ts';
 import {
-  cloneCollisionRecord, convexHull2, setCircleShape, setCompoundShape, setConvexShape, setObbShape,
-  type SimpleCollisionShape,
+  cloneCollisionRecord, collisionFootprintContainsPoint, convexHull2, setCircleShape, setCompoundShape, setConvexShape,
+  setObbShape, type SimpleCollisionShape,
 } from './collision.ts';
+import {
+  applyRockCollisionProfile, localShellSlabs, placeLocalShellSlabs, rockCollisionProfile, rockFormOf, rockGroundAt,
+  rockStaysCrushable,
+  type RockCollisionProfile, type RockForm,
+} from './rockCollision.ts'; // the hitbox lane, 2026-10-07
+/** A hedgehog beam's slabs are at most this tall (m; the hitbox lane, 2026-10-07). */
+const HEDGEHOG_SLAB_M = 0.35;
+const _hedgehogBeam = new THREE.Matrix4(), _hedgehogTilt = new THREE.Matrix4();
+/** Pooled kinds whose shell records are the slabs of their own geometry (the hitbox lane, 2026-10-07). */
+export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall']);
 import {
   appendStructureCollisionBand, applyStructureCollisionBand,
   deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
   deriveRuntimeStructureContactBand,
 } from './structureCollision.ts';
 import {
-  attachGroundCoverSolidProfile, createGroundCoverSolidProfile, GROUND_COVER_PLACEMENT_BYTES,
+  attachGroundCoverSolidProfile, createGroundCoverSolidProfile, GROUND_COVER_PLACEMENT_BYTES, letGroundCoverLap,
   type GroundCoverSolidProfile,
 } from './groundCoverClearance.ts';
 import {
@@ -122,8 +171,10 @@ import {
   pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
-import { bakeTankWreckSteps, bakeWreckDebris } from './wrecks.ts';
+import { bakeTankWreckSteps, bakeWreckDebris, wreckRemnantPaint, type WreckBake } from './wrecks.ts';
+import type { VehicleSetPiece } from './maps/vehicleSetPieces.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
+import type { WreckBakePrefetch } from './wreckBakePrefetch.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
 import { mergeWreckGeometries } from './exactWreckGeometry.ts';
 import { fitWallSpan, wallIslandEdges, type WallSpan } from './wallSpanPlacement.ts';
@@ -146,8 +197,10 @@ import { buildRegionalParts, rebuildRegionalStructure, resolveRegionalArchitectu
 import { YARD_SHED, gardenParts, planYard, yardKeepOut, type YardWorld } from './maps/regional/yards.ts';
 import { hashSeed, streamFrom } from './maps/regional/geometry.ts';
 import type { RegionalBuildContext } from './maps/regional/types.ts';
-import { makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
+import { makeRegionalConcrete, makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
 import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
+import { deploymentClearings } from '../sim/matchPlacement.ts';
+import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
 import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). The exact float/index streams live in a gzip-packed
@@ -217,6 +270,22 @@ interface SurfaceTextureOptions {
   aoMin?: number;
 }
 
+/** The field walls' cells and their two batches, the near form's and the far form's (b13; updateFieldWallLod). */
+interface FieldWallLod {
+  near: THREE.BatchedMesh | null;
+  far: THREE.BatchedMesh | null;
+  cells: Array<{
+    box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }; near: number; far: number; nearShown: boolean;
+    /** (b17) The cell's key, and its stone form while the camera is near (built on demand; false: built, nothing in it). */
+    key: number; stones: THREE.Mesh | false | null; midShown: boolean;
+  }>;
+  /** (b17) What the stone forms are built from (null on a phone), and the walls' material they share. */
+  fine: FieldWallFineSource | null;
+  material: THREE.Material;
+  /** (b17) The cells that want their stone form and have none yet, at the last switch (map.ts getFieldWallWorkState). */
+  pending?: number;
+}
+
 interface GeneratedSurfaceTextures {
   albedo: THREE.Texture;
   normal: THREE.Texture;
@@ -267,6 +336,19 @@ interface InhabitSettings {
   doorsteps?: number;
   woodpiles?: number;
   gateStacks?: number;
+}
+
+/** An authored outcrop: `count` boulders on a crescent of `radius` m round (x, z), bulging toward `towardDeg` (degrees,
+ * atan2(dz, dx)); the boulders' scales between `scaleMin` and `scaleMax`. */
+interface CoverOutcropSettings {
+  x: number;
+  z: number;
+  towardDeg?: number;
+  count?: number;
+  radius?: number;
+  scaleMin?: number;
+  scaleMax?: number;
+  name?: string;
 }
 
 interface TacticalOutcropSettings {
@@ -333,7 +415,20 @@ interface PropsSettings {
   /** Maps lane B (2026-10-03): `plot` sizes the site — metres across (x) and deep (z) before the yaw — for a builder
    * that honours one (the warehouse; the Hostomel kit raises its barrel-vault cargo hangar on a warehouse plot 21 m
    * wide or more). */
-  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number } }[];
+  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number };
+    /** The landmarks lane (2026-10-05): a set piece (props.landmarks) stands on this site instead. The site keeps its plan
+     * draws, spacing and footprint (every later building, yard and clutter piece stays where it was); its geometry and
+     * collision are the piece's. */
+    vacated?: boolean;
+    /** map revival lane 2 (2026-10-05): a house in an authored street wall (Aegis Crossing's Ronda streets). It stands
+     * within a metre of its neighbours, inside the spacing disc every earlier building keeps, so that check passes it:
+     * its author holds the footprints apart. It draws from a stream of its own (its index in the plan), so every
+     * placement after it keeps its seat. Every other site keeps the check and the shared stream. */
+    terrace?: boolean }[];
+  /** The map-revival lane (2026-10-07, Orchard round 4): the planned sites stand after the roadside plan has placed every
+   * building (they close a square between its houses), so the plan places exactly as it did without them. Unset: the
+   * sites stand first, as before. */
+  plannedSitesAfterPlan?: boolean;
   /** Maps lane B (2026-10-03, Nordhavn Fjord): the settlement the props dress — its roadside and block-fill buildings,
    * its plaza (the road crossing nearest cx, cz), street furniture and clutter — when it is not the whole ground the
    * terrain's village rect grades (a harbour town on the quay of a graded valley floor). Default: the village rect. */
@@ -349,6 +444,18 @@ interface PropsSettings {
    * building's kind and final pose as that build placed it. They stand there whatever the ground has become, and the
    * light-building pass draws nothing. */
   townLightPlan?: readonly TownLightEntry[];
+  /** The street rows of a recorded settlement (maps/townPlans.generated.ts TOWN_ROW_PLANS; the map-revival lane,
+   * 2026-10-05): each row building's pose, plot, wall, ruin and the props stream's state before its builder, and its
+   * rubble's seat, size and the street stream's state before it. They stand there whatever the ground has become, and
+   * the street-row pass draws nothing. */
+  townRowPlan?: readonly TownRowEntry[];
+  /**
+   * The map-revival lane (2026-10-05, Suzhou Creek): a water course (the map's liquid marsh chain) laid through a
+   * recorded settlement (townPlan, townRowPlan, townLightPlan). What its water reaches leaves it: a planned building is
+   * packed for the carriageway post-pass (its new place dry, looked for out to 80 m), a street row or a light building
+   * is left out. Every other recorded building stands where it stood. Default off.
+   */
+  settlementOverWater?: boolean;
   tones: Record<string, ToneFunction | null | undefined>;
   rockTone: ToneFunction | null;
   wallStoneChance: number;
@@ -368,8 +475,18 @@ interface PropsSettings {
   /** environment density pass 2 (2026-09-12): buildings that get bales and crates around them (was a fixed 5). */
   hayCrateSites?: number;
   haystacks: number;
+  /** b15: the region's field stack (maps/haystackKit.ts HAYSTACK_STYLE_BY_MAP gives the map's; 'none' draws none). */
+  haystackStyle?: HaystackStyle;
+  /**
+   * b16 (gauntlet wave 121: "a modern prefab with blue glass windows" at Sirocco Wadi's gates): a region's own build in
+   * place of a generic light kind under the same key — its footprint, ground fit and beats kept (maps/regional
+   * ksarGate.ts STRUCTURE_VARIANTS: { checkpointhut: 'ksargate' }).
+   */
+  structureVariants?: Readonly<Record<string, keyof typeof STRUCTURE_VARIANTS>>;
   rocks: number;
   outcrops: number;
+  /** Authored hard-cover outcrops (the hitbox lane, 2026-10-08; placeCoverOutcrops). */
+  coverOutcrops?: readonly CoverOutcropSettings[];
   craters: number;
   rubblePiles: number;
   wrecks: number;
@@ -416,20 +533,31 @@ interface PropsSettings {
   industrialCladding?: 'brick' | 'steel';
   /** Round 75: the yard dressing budget (pieces) around the industrial structures; default 4.5 a structure, at most 140. */
   yardDressing?: number;
-  /** Round 75 item 6: derived at build from the map's splat dirt tone — the boulders' soil skirt (never authored). */
+  /** Round 75 item 6: derived at build from the map's splat dirt tone — the boulders' soil skirt. The Redrock lane (round
+   * 9): a map whose boulders lie on sand, not soil, authors its sand's tone here (Redrock's red dirt drew a stamped red
+   * blotch under every boulder on the orange sand). */
   rockSoilTone?: ToneFunction | null;
   inhabit?: InhabitSettings;
   wallStyle?: string;
   sandbagLines?: number;
   /** Field works between the spawns (breastwork + wire + pillbox); every map, default 3 (2026-09-17). */
   fieldWorks?: number;
+  /** The Redrock lane (2026-10-07): the field works' pillboxes keep their 8 m square off every trunk the vegetation
+   *  planted (a pillbox stood in Redrock's west spring with three palm trunks through its roof). Opt-in: the same overlap
+   *  stands on Alpine, Caldera, Delta, Frontier, Steppe and Verdant, whose shards and pacing move with it. */
+  pillboxClearOfTrees?: boolean;
   tankWrecks?: TankWreckSettings;
+  /** The map-vehicles lane (P5): single vehicles the map authors at a spot (maps/vehicleSetPieces.ts), laid by the kits. */
+  vehicleSetPieces?: readonly VehicleSetPiece[];
   rockSink?: number;
   /** The steepest ground a boulder rests on, degrees (landformGeology.ts restsOnTalus; the mountains lane, 2026-10-04,
    *  gauntlet wave 48 on Redrock: boulders hanging on the jebels' walls). Default TALUS_DEG (35); null: no limit. */
   rockTalusDeg?: number | null;
   extraKits?: readonly string[] | null;
   riverLandings?: readonly RiverLandingAnchor[];
+  /** The landmarks lane (2026-10-05): the map's set pieces — bridges, monuments, squares, gates, towers and civic
+   * buildings (src/world/landmarks/) — placed once the settlement stands, before every scatter pass. */
+  landmarks?: readonly LandmarkPlacement[];
 }
 
 /** One planned building as a recorded build seated it (PropsMapConfig.townPlan; maps/townPlans.generated.ts): its
@@ -440,6 +568,14 @@ export interface TownPlanEntry {
 
 /** One light (destructible) building as a recorded build seated it (PropsMapConfig.townLightPlan): its kind and pose. */
 export interface TownLightEntry { kind: string; x: number; z: number; rot: number; }
+
+/** One street-row building as a recorded build seated it (PropsMapConfig.townRowPlan): its pose, its plot, whether it
+ * stood ruined, its wall, the props stream's state before its builder, and its rubble's seat, size and the street
+ * stream's state before it (absent when it spilled none). */
+export interface TownRowEntry {
+  x: number; z: number; rot: number; w: number; d: number; ruined: boolean; wall: string; rng: number;
+  rubbleX?: number; rubbleZ?: number; rubbleR?: number; rubbleRng?: number;
+}
 
 export interface PropsMapConfig {
   id: string;
@@ -454,6 +590,8 @@ interface PlacedBuilding {
   rot: number;
   /** Round 75: the plan id of a planned building (the yard dressing reads it); other placements carry none. */
   kind?: string;
+  /** The landmarks lane (2026-10-05): a set piece's kind (landmarks/plan.ts) — a footprint, not a planned building. */
+  landmark?: string;
 }
 
 interface TacticalBeatFeature {
@@ -469,6 +607,8 @@ interface PlacedRadius {
   x: number;
   z: number;
   rr: number;
+  /** A set piece's reserved ground (the landmarks pass): kept clear by every later pass, never dressed as a yard. */
+  landmark?: true;
 }
 
 interface DecorationGroundingReceipt {
@@ -543,6 +683,25 @@ interface PropsCollisionRecord extends CollisionRecord {
   hedgehogId?: number;
 }
 
+/** One placed stone and its records (the hitbox lane, 2026-10-07): the legacy ones the placement passes read, then the
+ * profile of its own mesh they are refitted to (props.ts settleRockColliders, refitRockColliders). */
+interface RockSeat {
+  vv: number;
+  placement: THREE.Matrix4;
+  x: number;
+  y: number;
+  z: number;
+  sc: number;
+  sink: number;
+  tactical: boolean;
+  rec: CollisionRecord | null;
+  col: CollisionRecord | null;
+  clutter: CrushableClutter | null;
+  profile: RockCollisionProfile | null;
+  /** Records the stone had none of: they join the lists at the refit. */
+  added?: boolean;
+}
+
 interface GroundSupportRecord {
   y?: number;
   min: number;
@@ -587,6 +746,8 @@ interface DestructibleRecord {
   looseListed?: boolean;
   _dKey?: string;
   _destructibleIndex?: number;
+  /** The parked-vehicle separation found this vehicle no clear seat: out of play (no obstacle, no instance). */
+  dropped?: boolean;
 }
 
 interface LooseDestructibleRecord extends DestructibleRecord {
@@ -659,6 +820,8 @@ interface PropsBuildSlice {
   progress?: boolean;
   tankBuilder?: string;
   wreckBake?: { specId: string; options: { seed: number; pop: boolean }; result: WreckBake | null };
+  /** (the time-to-battle lane) a fixed-input print the async build may hand in painted ahead (surfacePaintPrefetch.ts) */
+  surfacePaint?: { key: string; result: Record<string, unknown> | null };
   stage?: string;
 }
 
@@ -674,6 +837,12 @@ interface PropsBuildDetail {
   maxSliceMs: number;
   slowest: Array<{ stage: string; ms: number }>;
   propModelsAwait?: PropsAwaitTiming & { startMs: number; endMs: number };
+  /** the planned wreck bakes the world build started with the terrain (wreckBakePrefetch.ts) */
+  wreckPrefetch?: import('./wreckBakePrefetch.ts').WreckBakePrefetchStats;
+  /** the fixed-input prints painted ahead by the surface paint worker (surfacePaintPrefetch.ts) */
+  surfacePaints?: SurfacePaintPrefetch['stats'];
+  /** (the wreck-worker lane) the bakes the worker could not deliver, baked on the main thread; missing: no wreck */
+  wreckFallbacks?: { count: number; missing: number; reason: string };
   awaitTimings: {
     clock: 'performance.now';
     sliceTicks: PropsAwaitTiming;
@@ -704,15 +873,6 @@ interface TankWreckSpot {
   supportMaxFloat: number;
 }
 
-interface WreckBake {
-  geo: THREE.BufferGeometry;
-  shadowGeo: THREE.BufferGeometry | null;
-  hx: number;
-  hz: number;
-  h: number;
-  tris: number;
-}
-
 export interface PropsRuntime {
   group: THREE.Group;
   obstacles: PropsCollisionRecord[];
@@ -731,6 +891,11 @@ export interface PropsRuntime {
   destructibles: DestructibleRecord[];
   looseRecords: DestructibleRecord[];
   updateProps(deltaSeconds: number, cameraPosition?: THREE.Vector3 | null): void;
+  /**
+   * Step only the destruction's own clock — the falls, tosses and loose dressing, the drum blasts — by `deltaSeconds`
+   * (updateProps runs it after the LOD work; the Scene Studio runs it on its timeline, its world update held at 0).
+   */
+  advanceDestructibles(deltaSeconds: number): void;
   resetDestructibles(): void;
   tankWreckSpots: TankWreckSpot[];
   utilityNetwork: UtilityNetwork | null;
@@ -740,6 +905,12 @@ export interface PropsRuntime {
   /** Register only after assembly succeeds; return an identity-safe disposer. */
   registerDestructibles(): () => void;
   getLoosePropStats(): { total: number; active: number };
+  /**
+   * 2026-10-07 (the map-vehicles lane): the moored hulls standing in the water, as the water's disturbance sources a
+   * standing hull makes (shallowWater.ts WaterDisturbance): the world appends them to the vehicles' so the sheet laps
+   * and glints round each hull (map.ts setWaterDisturbances).
+   */
+  waterContacts: WaterDisturbance[];
   features: {
     buildings: PlacedBuilding[];
     tacticalBeats: TacticalBeatFeature[];
@@ -750,7 +921,11 @@ export interface PropsRuntime {
 }
 
 // The scenery lane's landmark kinds follow the inhabiting kit's, so no existing kind moves (2026-10-03).
-const PROP_TYPE_REGISTRY: Readonly<Record<string, PropsDestructibleMeta>> = { ...DESTRUCTIBLE_TYPES, ...SCENERY_DESTRUCTIBLE_TYPES };
+// (b15: the regions' field stacks after the scenery's kinds — they are the haystack pass's, not landmarks)
+const PROP_TYPE_REGISTRY: Readonly<Record<string, PropsDestructibleMeta>> = { ...DESTRUCTIBLE_TYPES, ...SCENERY_DESTRUCTIBLE_TYPES, ...HAYSTACK_DESTRUCTIBLE_TYPES };
+/** Symmetric deployments (2026-10-08): a scatter destructible stands its own radius and this far off a deployment slot,
+ * as the field scatter, the piles and the decals keep 18-20 m off the pads. */
+const DEPLOYMENT_CLEAR_M = 20;
 
 function canvas2d(
   canvas: HTMLCanvasElement,
@@ -794,6 +969,9 @@ function surfaceFromHeight(h: Float32Array, s: number, anisotropy: number, {
 }
 
 const _col = new THREE.Color();
+/** (the time-to-battle lane, 2026-10-08) the untoned render a props build's noise paints: every render family paints the
+ * same one (plaster, plaster2 and plaster3 differ only in tone), so it is painted once per build and copied */
+const plasterBases = new WeakMap<SimplexNoise, { px: Uint8ClampedArray; hgt: Float32Array }>();
 
 function makePlaster(
   noi: SimplexNoise,
@@ -802,17 +980,36 @@ function makePlaster(
   sharedSurface: Pick<GeneratedSurfaceTextures, 'normal' | 'surface'> | null = null,
 ): GeneratedSurfaceTextures {
   const s = 256, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
-  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
-    const i = y * s + x, j = i * 4;
-    const n1 = noi.noise(x * 0.045, y * 0.045) * 0.5 + 0.5;
-    const n2 = noi.noise(x * 0.16 + 40, y * 0.16 - 21) * 0.5 + 0.5;
-    const stain = smoothstep(0.55, 0.9, noi.noise(x * 0.02 - 90, y * 0.05 + 33) * 0.5 + 0.5);
-    const streak = smoothstep(0.60, 0.92, noi.noise(x * 0.11 + 250, y * 0.018 - 7) * 0.5 + 0.5);
-    // weathered plaster: mid albedo so full sun never blows it to white
-    const l = 0.44 + n1 * 0.08 + n2 * 0.04 - stain * 0.15 - streak * 0.08;
-    _col.setHSL(0.085, 0.13 - stain * 0.05, l);
-    px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255; px[j + 3] = 255;
-    hgt[i] = n1 * 0.5 + n2 * 0.5;
+  // the facades lane (2026-10-05): a kit's tone may name its render's painter — the khatas' lime-wash brushed over mud
+  // plaster (regionalSurfaces.ts paintLimewash), matt and soft where this canvas reads as pebble-dash
+  const paint = (tone as { paint?: { kind: 'limewash'; seed: number } } | null)?.paint;
+  if (paint?.kind === 'limewash') {
+    const lime = paintLimewash(s, paint.seed);
+    applyTone(lime.px, tone);
+    return {
+      albedo: toTexture(lime.px, s, { srgb: true, anisotropy }),
+      normal: sharedSurface?.normal ?? normalFromHeight(lime.hgt, s, 0.8, anisotropy),
+      surface: sharedSurface?.surface ?? surfaceFromHeight(lime.hgt, s, anisotropy, { roughMin: 0.9, roughMax: 0.98, aoMin: 0.9 }),
+    };
+  }
+  const painted = plasterBases.get(noi);
+  if (painted) {
+    px.set(painted.px);
+    hgt.set(painted.hgt);
+  } else {
+    for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
+      const i = y * s + x, j = i * 4;
+      const n1 = noi.noise(x * 0.045, y * 0.045) * 0.5 + 0.5;
+      const n2 = noi.noise(x * 0.16 + 40, y * 0.16 - 21) * 0.5 + 0.5;
+      const stain = smoothstep(0.55, 0.9, noi.noise(x * 0.02 - 90, y * 0.05 + 33) * 0.5 + 0.5);
+      const streak = smoothstep(0.60, 0.92, noi.noise(x * 0.11 + 250, y * 0.018 - 7) * 0.5 + 0.5);
+      // weathered plaster: mid albedo so full sun never blows it to white
+      const l = 0.44 + n1 * 0.08 + n2 * 0.04 - stain * 0.15 - streak * 0.08;
+      _col.setHSL(0.085, 0.13 - stain * 0.05, l);
+      px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255; px[j + 3] = 255;
+      hgt[i] = n1 * 0.5 + n2 * 0.5;
+    }
+    plasterBases.set(noi, { px: px.slice(), hgt: hgt.slice() });
   }
   applyTone(px, tone);
   return {
@@ -1020,26 +1217,129 @@ function makeStraw(
 }
 
 /**
+ * (the time-to-battle lane, 2026-10-07) The fixed-input prints: the async build hands a print in painted ahead by the
+ * surface paint worker when the prefetch holds these exact arguments (surfacePaintPrefetch.ts — the same painter, the
+ * same texels); otherwise, and always in the synchronous build, it is painted here as before.
+ */
+function* paintedAhead<T>(key: string, paint: () => Generator<unknown, T, void>): Generator<PropsBuildSlice, T, void> {
+  const request: NonNullable<PropsBuildSlice['surfacePaint']> = { key, result: null };
+  yield { fine: true, progress: false, stage: `paint-ahead:${key}`, surfacePaint: request };
+  if (request.result) return request.result as unknown as T;
+  return (yield* paint() as Generator<PropsBuildSlice, T, void>);
+}
+function* paintHayBuffers(size = 512, seed = HAY_PRINT_SEED): Generator<PropsBuildSlice, { px: Uint8ClampedArray; hgt: Float32Array }, void> {
+  return yield* paintedAhead(surfacePaintKey({ kind: 'hay', size, seed }), () => paintHayBuffersInline(size, seed));
+}
+function* paintFieldStoneBuffers(size = 512, seed = FIELD_STONE_PRINT_SEED, lithology: FieldStoneLithology = 'fieldstone'):
+  Generator<PropsBuildSlice, FieldStoneBuffers, void> {
+  return yield* paintedAhead(surfacePaintKey({ kind: 'fieldStone', size, seed, lithology }), () => paintFieldStoneBuffersInline(size, seed, lithology));
+}
+
+/** The fixed-input prints a map's props build will paint (the surface paint prefetch starts them with the terrain). */
+export function plannedSurfacePaints(cfg: PropsMapConfig | null, propsSeed = 2002): SurfacePaintRequest[] {
+  const mobile = getDeviceTier() === 'mobile';
+  const size = mobile ? 256 : 512;
+  const mapId = cfg ? cfg.id : 'verdant';
+  const wallStyle = (cfg?.props as { wallStyle?: string } | undefined)?.wallStyle;
+  // (2026-10-08) and the tiles it paints from its noise (seed + 7) — all in the order the build reaches them: the straw,
+  // the building kit's three detail tiles, the rock tile, the dry-stone print
+  const noiseSeed = propsSeed + 7;
+  const requests: SurfacePaintRequest[] = [
+    { kind: 'hay', size, seed: HAY_PRINT_SEED },
+    { kind: 'structureDetail', detail: 'wood', noiseSeed },
+    { kind: 'structureDetail', detail: 'canvas', noiseSeed },
+    { kind: 'structureDetail', detail: 'steel', noiseSeed },
+    { kind: 'rockDetail', lithology: rockLithologyFor(mapId), noiseSeed },
+  ];
+  if (!(wallStyle === 'adobe' || sourcedStoneIsBrick(mapId))) {
+    requests.push({ kind: 'fieldStone', size, seed: FIELD_STONE_PRINT_SEED, lithology: rockLithologyFor(mapId) === 'chalk' ? 'chalk' : 'fieldstone' });
+  }
+  return requests;
+}
+
+/**
+ * The scenery lane (b15; gauntlet wave 106 on the field haystack: "a bare textureless dark cone"): the straw props'
+ * print (hayPrint.ts) under the map's straw tone — a bale's packed straw, a stack's face drawn down in locks, a thatched
+ * crown's courses and a stack pole's grey timber, four bands of one tile, painted the GPU's way round. Phones paint it
+ * at half size (the same straw). Its own material (mats.hay) on the straw destructibles only: the thatched roofs and the
+ * winter reeds tile their UVs across the whole tile and keep the straw print's uniform stalks (makeStraw).
+ */
+function* makeHay(
+  anisotropy: number,
+  tone: ToneFunction | null,
+  size: number,
+): Generator<PropsBuildSlice, GeneratedSurfaceTextures, void> {
+  const { px, hgt } = yield* paintHayBuffers(size);
+  applyTone(px, tone);
+  return {
+    albedo: toTexture(px, size, { srgb: true, anisotropy }),
+    normal: normalFromHeight(hgt, size, 2.2 * size / 512, anisotropy),
+    surface: surfaceFromHeight(hgt, size, anisotropy, { roughMin: 0.86, roughMax: 1.0, aoMin: 0.7 }),
+  };
+}
+
+/**
+ * The scenery lane (b13): a painted print's rows reversed for the upload. The field-stone and mud painters lay their
+ * bands with v running down the image from row 0 (fieldStoneSurface.ts, fieldMudSurface.ts), but a canvas texture is
+ * flipped on upload, row 0 landing at v = 1: the geometry's hearting band read a stone's skin, a seventh of the face
+ * stones read the hearting's voids, and the mud walls' plain band read the brick courses. Reversed here, the GPU's v is
+ * the painter's v; the painters and their receipts keep their convention.
+ */
+function flipPrintRows<T extends Uint8ClampedArray | Float32Array>(data: T, size: number, channels: number): T {
+  const row = size * channels;
+  for (let y = 0; y < size >> 1; y++) {
+    const a = y * row, b = (size - 1 - y) * row;
+    for (let k = 0; k < row; k++) { const t = data[a + k]; data[a + k] = data[b + k]; data[b + k] = t; }
+  }
+  return data;
+}
+
+/**
  * The scenery lane (2026-10-03): the dry-stone field walls' print (fieldStoneSurface.ts) under the map's stone tone —
  * one stone's skin over its face band (the module's face stones are geometry, each a window of it; wave 34 read a
  * printed rubble on them as "stamped flagstone with dark outlines") and the hearting's packing stones and voids over a
  * band the core maps. Its palette is the stone print's law, so the tone and a masonry tint give the walls the colour
  * they had, lifted where a dark tone would black them out. Phones paint it at half size (the same stones).
+ * (b18; gauntlet wave 121, Verdant's yard walls "coal or slate bricks rather than the chalk ... of the Belgorod region":
+ * on a chalk map the walls are its chalk, painted for itself and never toned — the map's stone tone is its houses'.)
  */
 function* makeFieldStone(
   anisotropy: number,
   tone: ToneFunction | null,
   size: number,
+  lithology: FieldStoneLithology = 'fieldstone',
 ): Generator<PropsBuildSlice, GeneratedSurfaceTextures, void> {
-  const { px, hgt } = yield* paintFieldStoneBuffers(size);
-  applyTone(px, tone);
-  liftFieldStoneMean(px, size); // (wave 34: never darker than a fieldstone, whatever the map's stone tone)
+  const { px, hgt } = yield* paintFieldStoneBuffers(size, undefined, lithology);
+  if (lithology !== 'chalk') {
+    applyTone(px, tone);
+    liftFieldStoneMean(px, size); // (wave 34: never darker than a fieldstone, whatever the map's stone tone)
+  }
   yield { fine: true, stage: 'field-stone-tone' };
+  flipPrintRows(px, size, 4); flipPrintRows(hgt, size, 1); // (b13: the GPU's v is the painter's v)
   return {
     albedo: toTexture(px, size, { srgb: true, anisotropy }),
     // (a stone's skin, not stones: a gentle relief, and the occlusion the geometry's own gaps give)
     normal: normalFromHeight(hgt, size, 2.2 * size / 512, anisotropy),
     surface: surfaceFromHeight(hgt, size, anisotropy, { roughMin: 0.8, roughMax: 0.98, aoMin: 0.72 }),
+  };
+}
+
+/**
+ * The scenery lane (b13; gauntlet wave 87, Saltwind's field walls "cast concrete rather than a drystone wall"): the
+ * field works' dry-stone walls' face print (fieldWallFace.ts) — rough courses of limestone between dark dry joints,
+ * crusted with lichen, and a top stone's skin for the crown. Neutral: the walls' vertex tone is the map's. Phones
+ * paint it at half size (the same stones).
+ */
+function* makeDryWall(
+  anisotropy: number,
+  size: number,
+): Generator<PropsBuildSlice, GeneratedSurfaceTextures, void> {
+  const { px, hgt } = yield* paintDryWallBuffers(size);
+  return {
+    albedo: toTexture(px, size, { srgb: true, anisotropy }),
+    // (stones standing out of dark joints: a firmer relief than a stone's skin)
+    normal: normalFromHeight(hgt, size, 3.2 * size / 512, anisotropy),
+    surface: surfaceFromHeight(hgt, size, anisotropy, { roughMin: 0.82, roughMax: 1.0, aoMin: 0.55 }),
   };
 }
 
@@ -1058,6 +1358,7 @@ function* makeFieldMud(
   applyTone(px, tone);
   if (earth) tintFieldMudToEarth(px, size, earth); // (wave 34: the walls and the mud at their feet are the map's earth)
   yield { fine: true, stage: 'field-mud-tone' };
+  flipPrintRows(px, size, 4); flipPrintRows(hgt, size, 1); // (b13: the GPU's v is the painter's v)
   return {
     albedo: toTexture(px, size, { srgb: true, anisotropy }),
     normal: normalFromHeight(hgt, size, 2.4 * size / 512, anisotropy),
@@ -1065,68 +1366,15 @@ function* makeFieldMud(
   };
 }
 
-// Neutral detail atlases for the vertex-colored destructible building kit.
-// Their RGB stays close to white so the kit palette remains authoritative;
-// the texture contributes grain/weave/corrugation and its normal map adds the
-// readable material response that flat vertex colors could not provide.
-function sampleStructureDetail(
-  noi: SimplexNoise,
-  kind: 'wood' | 'canvas' | 'steel',
-  x: number,
-  y: number,
-  sample: Float32Array,
-): void {
-  const grain = noi.noise(x * 0.17 + (kind === 'steel' ? 70 : 11), y * 0.06 - 31)
-    * 0.5 + 0.5;
-  if (kind === 'wood') {
-    const plank = (x % 28) / 28;
-    const seam = plank < 0.07 ? 1 : 0;
-    const rings = Math.sin(y * 0.11 + noi.noise(x * 0.08, y * 0.018) * 4) * 0.5 + 0.5;
-    sample[0] = seam ? 0.08 : 0.46 + rings * 0.38;
-    sample[1] = (0.86 + grain * 0.13) * (seam ? 0.68 : 1);
-  } else if (kind === 'canvas') {
-    const warp = Math.sin(x * Math.PI * 0.52) * 0.5 + 0.5;
-    const weft = Math.sin(y * Math.PI * 0.52) * 0.5 + 0.5;
-    sample[0] = warp * 0.45 + weft * 0.45 + grain * 0.10;
-    sample[1] = 0.88 + sample[0] * 0.10;
-  } else {
-    // Round 75: the light kit's sheet steel is a trapezoidal corrugation (the 256 px tile is 1.82 m of sheet at the
-    // kit's 0.55 uv/m, so a 27 px period is the 0.19 m pitch of profiled cladding) with a panel seam every 0.91 m,
-    // a rivet line under each seam, scratches, and a rust mask in sample[2] along the seams and the bottom lap.
-    const p = ((x / 27) % 1 + 1) % 1;
-    const corrugation = p < 0.34 ? 1 : p < 0.5 ? 1 - (p - 0.34) / 0.16 : p < 0.84 ? 0 : (p - 0.84) / 0.16;
-    // a three-texel seam ramp: the surface receipt keeps every normal within 32 degrees of the wall plane
-    const seamStep = x % 128;
-    const seam = seamStep < 3 ? 1 - seamStep / 3 : 0;
-    const rivet = !seam && seamStep >= 4 && seamStep < 8 && ((y + 6) % 24) < 5 ? 1 : 0;
-    const scratch = smoothstep(0.72, 0.94,
-      noi.noise(x * 0.09 + 91, y * 0.31 - 17) * 0.5 + 0.5);
-    const lap = ((y % 128) < 3) ? 1 : 0;
-    const rust = smoothstep(0.55, 0.9, noi.noise(x * 0.05 + 3, y * 0.05 - 41) * 0.5 + 0.5) * (seam || lap ? 0.9 : 0.25)
-      + ((noi.noise(x * 0.4 + 17, y * 0.4 + 9) * 0.5 + 0.5) > 0.86 ? 0.7 : 0);
-    sample[0] = corrugation * 0.72 + grain * 0.10 + 0.12 - seam * 0.30 - lap * 0.22 - rivet * 0.12;
-    sample[1] = 0.92 + corrugation * 0.06 - scratch * 0.08 - seam * 0.25 - lap * 0.12 + rivet * 0.05;
-    sample[2] = clamp(rust, 0, 1);
-  }
-}
-
 export function makeStructureDetail(
   noi: SimplexNoise,
   anisotropy: number,
   kind: 'wood' | 'canvas' | 'steel',
 ): GeneratedSurfaceTextures {
-  const s = kind === 'steel' ? 256 : 128, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
-  const rust = kind === 'steel' ? new Float32Array(s * s) : null;
-  const sample = new Float32Array(3);
-  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
-    const i = y * s + x, j = i * 4;
-    sample[2] = 0;
-    sampleStructureDetail(noi, kind, x, y, sample);
-    const v = clamp(sample[1], 0.55, 1) * 255;
-    px[j] = v; px[j + 1] = v; px[j + 2] = v; px[j + 3] = 255;
-    hgt[i] = sample[0];
-    if (rust) rust[i] = sample[2];
-  }
+  // (the time-to-battle lane, 2026-10-08) the tile the surface paint worker painted ahead for this build's noise and kind
+  // (surfacePaintPrefetch.ts settledPaint: the same painter, structureDetailTile.ts), or painted here
+  const ahead = settledPaint(noi, (seed) => surfacePaintKey({ kind: 'structureDetail', detail: kind, noiseSeed: seed })) as StructureDetailBuffers | null;
+  const { size: s, px, hgt, rust } = ahead ?? paintStructureDetailBuffers(noi, kind);
   // the rust mask rides the ORM blue channel the weathering hook reads (steel atlas convention, round 75)
   const surface = rust
     ? surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.50, roughMax: 0.86, aoMin: 0.76, rust })
@@ -2274,6 +2522,38 @@ function applyDecalRaggedEdge(
   }
 }
 
+/**
+ * The scenery lane (b44; gauntlet wave 272 on Reservoir and Saltwind: each boulder "sits on a flat tan disc that rings
+ * its base like a cookie-cutter decal", "a conspicuous pale-tan ring or dish"): the props' ground-contact layer — the
+ * boulders' contact patches and the shades over their beds, the crushables', the field stacks' and the foundations'
+ * discs — darkens the ground it lies on instead of laying a soil of its own over it. The fixed brown soil, lit by the
+ * full sun with no shadow, read as a pale tan ring over a red karst soil, a shaded forest floor or a meadow. Now: the
+ * drawn ground multiplied by a faintly warm grey, by the layer's alpha (the decal texture's ragged profile × the ring's
+ * share in the vertex alpha) × the kind's strength (the vertex red, conformedDisc), so the ground keeps its own colour,
+ * grain and light, darker toward the foot, and the patch has no edge (its alpha falls to nothing at the rim). Unlit, no
+ * fog of its own (a fogged far patch would tint the haze), gone by 160 m, receiving no shadow (the shadow audits).
+ */
+function contactDarkeningMaterial(tex: THREE.Texture): THREE.MeshBasicMaterial {
+  const mat = new THREE.MeshBasicMaterial({
+    map: tex, transparent: true, depthWrite: false, fog: false, toneMapped: false,
+    blending: THREE.MultiplyBlending, premultipliedAlpha: true, vertexColors: true,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+  });
+  mat.onBeforeCompile = (shader) => {
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>', '#include <common>\nvarying float vCotContactDist;');
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <project_vertex>', '#include <project_vertex>\nvCotContactDist = -mvPosition.z;');
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nvarying float vCotContactDist;');
+    // (MultiplyBlending: the target × (rgb·a + 1 − a) of the premultiplied output — the ground × mix(1, the grey, a))
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <premultiplied_alpha_fragment>', /* glsl */`{
+  float cotContactA = clamp(diffuseColor.a * 2.5 * vColor.r, 0.0, 0.8) * (1.0 - smoothstep(80.0, 160.0, vCotContactDist));
+  gl_FragColor = vec4(0.56, 0.53, 0.49, cotContactA);
+}
+#include <premultiplied_alpha_fragment>`);
+  };
+  mat.customProgramCacheKey = () => 'props-contact-darkening-v1';
+  return mat;
+}
+
 function makeGroundDecalTexture(
   noise: SimplexNoise,
   anisotropy: number,
@@ -2463,6 +2743,46 @@ function resolveDestructibleMeta(
   return meta;
 }
 
+const CART_KINDS: ReadonlySet<string> = new Set(Object.keys(CART_RECEIPTS));
+/**
+ * The records seated on the ground under their footprint, tilted to it (cartGroundPose): the carts, and since
+ * 2026-10-08 the parked vehicles (the map-vehicles lane's placement audit over the merge: seated level at the lowest
+ * ground under them, 382 vehicles over 33 maps stood with a corner 0.2-1.9 m inside the slope uphill, their wheels cut
+ * by it). A vehicle with an authored tilt keeps it.
+ */
+const GROUND_POSED_KINDS: ReadonlySet<string> = new Set([...CART_KINDS, ...Object.keys(CIVILIAN_VEHICLE_RECEIPTS)]);
+
+interface CartGroundPose { y: number; tiltX: number; tiltZ: number; min: number; max: number; steep: boolean }
+
+/**
+ * A cart's seat on the ground under its footprint (wave 211: a hay sledge on a 19-degree bank, seated level at its
+ * lowest corner, had its runners buried uphill and its downhill side in the air): the plane through the ground at its
+ * four corners, pitch and roll each clamped at 12 degrees (the integrator's ruling, 2026-10-07), its centre at the
+ * plane's height there. `steep`: the plane itself tilts past the cap (a road-cart station refuses such a seat).
+ */
+function cartGroundPose(heightField: Pick<HeightField, 'getHeightAt'>, x: number, z: number, yaw: number, hw: number,
+  hl: number): CartGroundPose {
+  const max = (12 * Math.PI) / 180, c = Math.cos(yaw), s = Math.sin(yaw);
+  const at = (lx: number, lz: number) => heightField.getHeightAt(x + lx * c + lz * s, z - lx * s + lz * c);
+  const fl = at(-hw, hl), fr = at(hw, hl), bl = at(-hw, -hl), br = at(hw, -hl);
+  const pitch = Math.atan2((fl + fr) / 2 - (bl + br) / 2, 2 * hl), roll = Math.atan2((fr + br) / 2 - (fl + bl) / 2, 2 * hw);
+  const clamp = (v: number) => Math.max(-max, Math.min(max, v));
+  // three's 'YXZ' order: a positive X turn dips the cart's nose (+z), a positive Z turn lifts its right side (+x)
+  return {
+    y: (fl + fr + bl + br) / 4, tiltX: -clamp(pitch), tiltZ: clamp(roll),
+    min: Math.min(fl, fr, bl, br), max: Math.max(fl, fr, bl, br),
+    steep: Math.atan(Math.hypot(Math.tan(pitch), Math.tan(roll))) > max,
+  };
+}
+
+/**
+ * How far a cart sits into the ground under it: 3 cm, and a sled on snow (its runners recorded: cartKit.ts) the runners'
+ * own sink deeper (round 4, wave 260: "no runner sink"; cartBodies.ts runnerLips presses the snow up round them).
+ */
+function cartSink(meta: { runners?: unknown }): number {
+  return 0.03 + (meta.runners ? RUNNER_SNOW_SINK_M : 0);
+}
+
 function groundDestructiblePlacement(
   heightField: HeightField,
   meta: PropsDestructibleMeta,
@@ -2646,9 +2966,15 @@ function addDestructibleRecord(
   tiltZ = 0,
 ): DestructibleRecord {
   const meta = resolveDestructibleMeta(context, kind);
-  const placement = groundDestructiblePlacement(
-    context.heightField, meta, x, y, z, yaw, scale, tiltX, tiltZ,
-  );
+  let placement: GroundedDestructiblePlacement;
+  if (GROUND_POSED_KINDS.has(kind) && tiltX === 0 && tiltZ === 0) {
+    // a cart or a parked vehicle sits on the ground under it, tilted to it (cartGroundPose), a few centimetres into it
+    const pose = cartGroundPose(context.heightField, x, z, yaw, (meta.hw ?? meta.r) * scale, (meta.hl ?? meta.r) * scale);
+    tiltX = pose.tiltX; tiltZ = pose.tiltZ;
+    placement = { y: pose.y - cartSink(meta), support: { mode: 'pitched', min: pose.min, max: pose.max, spread: pose.max - pose.min } };
+  } else {
+    placement = groundDestructiblePlacement(context.heightField, meta, x, y, z, yaw, scale, tiltX, tiltZ);
+  }
   const pool = ensureDestructiblePool(context, kind, meta);
   context.euler.set(tiltX, yaw, tiltZ, 'YXZ');
   context.quaternion.setFromEuler(context.euler);
@@ -2712,6 +3038,57 @@ function relocateAutumnHarvestRecord(context: DestructibleBuildContext, record: 
   record.ob.min[1] = placement.y; record.ob.max[1] = placement.y + record.h;
   const extents = getDestructibleContactExtents(pool.meta, record.sc, record.yaw, record.r);
   applyDestructibleObstacleShape(record.ob, pool.meta, record, extents);
+}
+
+/** Move an accepted, unfinalized vehicle record to a seat (parkedVehicleSeparation.ts): its record, slot matrix, ground
+ * support, obstacle and collider; the pools' refit later fits both to the seat as to any other. */
+function relocateParkedVehicleRecord(context: DestructibleBuildContext, record: DestructibleRecord, x: number, z: number): void {
+  const pool = context.pools.get(record.kind);
+  const matrix = pool?.mats4[record.slot];
+  if (!pool || !matrix || pool.records[record.slot] !== record || pool.imI || pool.imB || record.state !== 0 || !record.ob
+      || record.body || record.loopRef) {
+    throw new Error('Parked-vehicle separation requires an unfinalized vehicle obstacle');
+  }
+  const meta = resolveDestructibleMeta(context, record.kind);
+  let placement: GroundedDestructiblePlacement;
+  if (GROUND_POSED_KINDS.has(record.kind)) {
+    // a cart or a vehicle slid to a clear seat takes that seat's ground pose (cartGroundPose), as it took its first one
+    const pose = cartGroundPose(context.heightField, x, z, record.yaw, (meta.hw ?? meta.r) * record.sc, (meta.hl ?? meta.r) * record.sc);
+    placement = { y: pose.y - cartSink(meta), support: { mode: 'pitched', min: pose.min, max: pose.max, spread: pose.max - pose.min } };
+    context.euler.set(pose.tiltX, record.yaw, pose.tiltZ, 'YXZ');
+    context.quaternion.setFromEuler(context.euler);
+    matrix.compose(_posv.set(x, placement.y, z), context.quaternion, _scalev.set(record.sc, record.sc, record.sc));
+  } else {
+    placement = groundDestructiblePlacement(context.heightField, meta, x, context.heightField.getHeightAt(x, z) - 0.04, z,
+      record.yaw, record.sc, 0, 0);
+    matrix.setPosition(x, placement.y, z);
+  }
+  record.x = x; record.z = z; record.y = placement.y;
+  record.groundSupport = placement.support;
+  const extents = getDestructibleContactExtents(meta, record.sc, record.yaw, record.r);
+  for (const obstacle of [record.ob, record.col]) {
+    if (!obstacle) continue;
+    obstacle.min[1] = placement.y; obstacle.max[1] = placement.y + record.h;
+    applyDestructibleObstacleShape(obstacle as PropsCollisionRecord, meta, record, extents);
+  }
+}
+
+/** Take an accepted, unfinalized vehicle record out of play (no clear seat): its obstacle and collider leave the
+ * lists, its slot is scaled to nothing and the record is marked dropped (the contact layer skips it). */
+function dropParkedVehicleRecord(context: DestructibleBuildContext, record: DestructibleRecord): void {
+  const pool = context.pools.get(record.kind);
+  const matrix = pool?.mats4[record.slot];
+  if (!pool || !matrix || pool.records[record.slot] !== record || pool.imI || pool.imB || record.state !== 0 || !record.ob) {
+    throw new Error('Parked-vehicle separation requires an unfinalized vehicle obstacle');
+  }
+  matrix.scale(new THREE.Vector3(1e-4, 1e-4, 1e-4)); // the props' collapsed slot (a crushed instance's scale)
+  const at = context.obstacles.indexOf(record.ob as PropsCollisionRecord);
+  if (at >= 0) context.obstacles.splice(at, 1);
+  if (record.col) {
+    const ci = context.colliders.indexOf(record.col);
+    if (ci >= 0) context.colliders.splice(ci, 1);
+  }
+  record.dropped = true;
 }
 
 function autumnHarvestDonors(records: readonly DestructibleRecord[], first: number,
@@ -2829,6 +3206,43 @@ export function createProps(
   return r.value;
 }
 
+/** One wreck bake a map's props build asks the worker for: the donor and its seeded options. */
+interface WreckBakeRequestRecord { specId: string; seed: number; pop: boolean }
+
+/**
+ * The wreck bakes a map's props build requests of the worker, in order (the time-to-battle lane, 2026-10-07): the
+ * worker-wreck build drained with each request answered by `bake` (the worker's own bake, run where the caller likes),
+ * up to the end of the wreck pass ('wrecks-finalized': nothing after it asks for a bake). tools/wreck-bake-plan.mjs
+ * records them per map so the browser can start those bakes when the world build starts, beside the terrain and
+ * vegetation, instead of one by one inside the props build (src/world/wreckBakePrefetch.ts).
+ */
+export async function recordWreckBakeRequests(
+  heightField: HeightField,
+  engineCtx: EngineContext,
+  seed: number,
+  cfg: PropsMapConfig | null,
+  vegetation: FisheryVegetation | null,
+  bake: (specId: string, options: { seed: number; pop: boolean }) => Promise<WreckBake | null>,
+): Promise<WreckBakeRequestRecord[]> {
+  const requests: WreckBakeRequestRecord[] = [];
+  const g = propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation, true);
+  let r = g.next();
+  try {
+    while (!r.done) {
+      const request = r.value?.wreckBake;
+      if (request) {
+        requests.push({ specId: request.specId, seed: request.options.seed, pop: request.options.pop });
+        request.result = await bake(request.specId, request.options);
+      }
+      if (r.value?.stage === 'wrecks-finalized') break;
+      r = g.next();
+    }
+  } finally {
+    if (!r.done) g.return(undefined as never);
+  }
+  return requests;
+}
+
 /**
  * perf-r3 (play-session probe): chunked twin of {@link createProps} — the
  * one-call build was a single ~1.6 s task behind the loading bar. Awaits
@@ -2846,6 +3260,8 @@ export async function createPropsAsync(
   tick: ((done: number, total: number) => Promise<void> | void) | null = null,
   fineSlices = false,
   vegetation: FisheryVegetation | null = null,
+  wreckPrefetch: WreckBakePrefetch | null = null,
+  surfacePrefetch: SurfacePaintPrefetch | null = null,
 ): Promise<PropsRuntime> {
   // IteratorClose must reach delegated builders when an awaited import/tick
   // rejects. Use the standard iterator return() contract: no final runtime is
@@ -2864,11 +3280,15 @@ export async function createPropsAsync(
     wreckBakes: { count: 0, totalMs: 0, maxMs: 0 },
     wreckRowsLimit: 32, wreckRowsDropped: 0, wreckRows: [],
   };
+  const wreckFallbacks = { count: 0, missing: 0 };
   let synchronousMs = 0;
   let nextStartedAt = performance.now();
   let r: IteratorResult<PropsBuildSlice | undefined, PropsRuntime> | null = null;
   let i = 0;
   const total = fineSlices ? 180 : 9;
+  // (the wreck-worker lane, 2026-10-09) a tick that failed (a cancelled or failed build) ends the build: a wreck bake
+  // that rejects after one is never taken for a worker failure and baked again
+  let tickFailed = false;
   const observeTick = (timing: PropsAwaitTiming): Promise<void> | void => {
     if (!tick) return;
     const startedAt = performance.now();
@@ -2877,22 +3297,37 @@ export async function createPropsAsync(
       const pending = tick?.(i, total);
       // Observe settlement without wrapping the returned promise or inserting
       // another awaited hop into the caller's original pacing continuation.
-      if (pending && typeof pending.then === 'function') void pending.then(settled, settled);
+      if (pending && typeof pending.then === 'function') void pending.then(settled, () => { tickFailed = true; settled(); });
       else settled();
       return pending;
     } catch (error) {
+      tickFailed = true;
       settled();
       throw error;
     }
   };
+  // (the wreck-worker lane) once a worker bake fails (the prefetch's or this build's: a worker that failed to start,
+  // went silent or reported an error), the rest of this build bakes its wrecks on the main thread
+  let wreckWorkerFailure: unknown = null;
+  const wreckCheckpoint = (): Promise<void> | void => observeTick(awaitTimings.wreckCheckpoints);
   try {
     r = g.next();
-    wreckWorker?.prepare();
+    // (the time-to-battle lane, 2026-10-08) with the map's planned bakes already running in the prefetch's own worker, this
+    // build's worker starts only for a request the plan does not hold (bake() starts it), not a second copy of the donor
+    // builders up front
+    if (!wreckPrefetch) wreckWorker?.prepare();
     while (!r.done) {
       const sliceMs = performance.now() - nextStartedAt;
       synchronousMs += sliceMs;
       const step = r.value;
       slices.push({ stage: step?.stage || `slice-${slices.length}`, ms: sliceMs });
+      if (step?.surfacePaint && surfacePrefetch) {
+        // (the time-to-battle lane) a print painted ahead with the terrain; a failed one is painted where it stands
+        const ahead = surfacePrefetch.take(step.surfacePaint.key);
+        if (ahead) {
+          try { step.surfacePaint.result = await ahead; } catch { step.surfacePaint.result = null; }
+        }
+      }
       if (step?.tankBuilder && !wreckWorker) {
         const startedAt = performance.now();
         await ensureTankBuilder(step.tankBuilder);
@@ -2902,8 +3337,40 @@ export async function createPropsAsync(
         const request = step.wreckBake;
         const startedAt = performance.now();
         const checkpointsBefore = awaitTimings.wreckCheckpoints.totalMs;
-        request.result = await wreckWorker.bake(request.specId, request.options,
-          () => observeTick(awaitTimings.wreckCheckpoints));
+        // (the time-to-battle lane) a bake the world build started with the terrain (wreckBakePrefetch.ts): the same
+        // donor, seed and pop through the same worker code — taken here, waited for with the same checkpoints
+        const planned = wreckPrefetch?.take(request.specId, request.options) ?? null;
+        let baked = false;
+        if (planned) {
+          let settled = false;
+          let value: WreckBake | null = null, failure: unknown = null;
+          planned.then((result) => { settled = true; value = result; }, (error) => { settled = true; failure = error ?? 'failed'; });
+          while (!settled) {
+            await new Promise<void>((resolve) => { setTimeout(resolve, 30); });
+            if (!settled) await wreckCheckpoint();
+          }
+          if (failure === null) { request.result = value; baked = true; } else wreckWorkerFailure ??= failure;
+        }
+        if (!baked && wreckWorkerFailure === null) {
+          try {
+            request.result = await wreckWorker.bake(request.specId, request.options, wreckCheckpoint);
+            baked = true;
+          } catch (error) {
+            // a cancelled build stays cancelled; only the worker's own failure falls back
+            if (tickFailed) throw error;
+            wreckWorkerFailure = error ?? 'failed';
+          }
+        }
+        if (!baked) {
+          // (the wreck-worker lane, 2026-10-09) the worker never decides whether a battle starts: the same request is
+          // baked here, on the main thread (bakeWreckOnMainThread)
+          if (!wreckFallbacks.count++) {
+            console.warn(`[props] the wreck worker failed (${describePropsFailure(wreckWorkerFailure)}); `
+              + 'this map\'s wrecks are baked on the main thread');
+          }
+          request.result = await bakeWreckOnMainThread(request, wreckCheckpoint);
+          if (!request.result) wreckFallbacks.missing++;
+        }
         const endMs = recordPropsAwait(awaitTimings.wreckBakes, startedAt);
         // Inclusive elapsed time includes nested checkpoints, worker transfer
         // and main-thread hydration. It is not worker CPU time or network time.
@@ -2931,11 +3398,53 @@ export async function createPropsAsync(
       maxSliceMs: slowest[0]?.ms || 0,
       slowest,
       awaitTimings,
+      ...(wreckPrefetch ? { wreckPrefetch: { ...wreckPrefetch.stats } } : {}),
+      ...(surfacePrefetch ? { surfacePaints: { ...surfacePrefetch.stats } } : {}),
+      ...(wreckFallbacks.count ? { wreckFallbacks: { ...wreckFallbacks,
+        reason: describePropsFailure(wreckWorkerFailure) } } : {}),
     };
     return runtime;
   } finally {
     closeIncompletePropsBuild(!!r?.done, g, sourceAbort);
     wreckWorker?.dispose();
+  }
+}
+
+function describePropsFailure(failure: unknown): string {
+  return failure instanceof Error ? failure.message : String(failure);
+}
+
+/**
+ * (the wreck-worker lane, 2026-10-09) A wreck bake the worker could not deliver — a worker that failed to start or to
+ * load its donor, went silent past its timeout, or replied with an error — baked on the main thread: the worker's own
+ * bake (wreckBakeWorker.ts: the donor's builder, then bakeTankWreck with an empty engine context) through its
+ * cooperative twin, the same donor, seed, pop and remnant paint, so the same wreck. The wait between its slices is the
+ * worker wait's checkpoint (pacing, cancellation). A donor that cannot be built here either places no wreck at that
+ * site (null, as a failed bake always has).
+ */
+async function bakeWreckOnMainThread(
+  request: NonNullable<PropsBuildSlice['wreckBake']>,
+  checkpoint: () => Promise<void> | void,
+): Promise<WreckBake | null> {
+  try {
+    await ensureTankBuilder(request.specId);
+  } catch (error) {
+    console.warn(`[props] no wreck of ${request.specId}: its builder did not load (${describePropsFailure(error)})`);
+    return null;
+  }
+  const steps = bakeTankWreckSteps({}, request.specId, request.options);
+  let completed = false;
+  try {
+    let step = steps.next();
+    while (!step.done) {
+      await checkpoint();
+      step = steps.next();
+    }
+    completed = true;
+    return step.value;
+  } finally {
+    // a cancelled build closes the bake: its temporary tank and partial geometry are released
+    if (!completed) steps.return(null);
   }
 }
 
@@ -2983,7 +3492,7 @@ function* propsBuildSteps(
     buildingLat: [10, 4], sideSkip: 0.25, maxSpread: 1.7, spacingPad: 9,
     wallRuns: null, well: true, hayCrates: true, fences: true,
     telegraph: true, carts: true, logs: true, logCount: 26, hayCrateSites: 5,
-    haystacks: 15, rocks: 170, outcrops: 16, craters: 30, rubblePiles: 0,
+    haystacks: 0, rocks: 170, outcrops: 16, craters: 30, rubblePiles: 0,
     wrecks: 4, // r7: burned-out vehicle hulks along the roads (contested read)
     // r6 terrain_environment dressing passes (per-biome, see map configs):
     // cropFields = standing crop-row plots on open farmland; lampposts =
@@ -3000,13 +3509,32 @@ function* propsBuildSteps(
     ...((cfg && cfg.props) || {}),
   };
   // round 75 item 6: the boulders' soil skirt follows the map's dirt tone (a splat law, never authored on props)
-  P.rockSoilTone = (cfg as { splat?: { dirtTone?: ToneFunction } } | null)?.splat?.dirtTone ?? null;
+  P.rockSoilTone = (cfg as { props?: { rockSoilTone?: ToneFunction } } | null)?.props?.rockSoilTone
+    ?? (cfg as { splat?: { dirtTone?: ToneFunction } } | null)?.splat?.dirtTone ?? null;
   const mapId = cfg ? cfg.id : 'verdant';
   const rng = mulberry32(seed);
   const detailUvRng = () => 0.5;
   const L = heightField._layout;
+  // Symmetric deployments (modes lane, 2026-10-08): both sides' deployment slots keep the clearings the pads keep
+  // (sim/matchPlacement.ts deploymentClearings). The seeded passes test the pads as before; the scatter a pass would
+  // stand round a slot is left out AFTER its draws (addDestructible's veto, tryRock), so nothing else moves.
+  const deploymentSlots = deploymentClearings(heightField);
   const noVeg = heightField._noVeg || (() => false);
   const noi = new SimplexNoise({ random: mulberry32(seed + 7) });
+  registerPaintNoise(noi, seed + 7); // (its tiles may come painted ahead: surfacePaintPrefetch.ts)
+  // (the time-to-battle lane, 2026-10-08) the near terrain mesh's vertex heights, each asked of the field once per build:
+  // the rock beds, the ground contact patches and the wall turf all conform to that grid (terrain.ts
+  // terrainNearMeshHeightAt) and asked its vertices 182 k times on Verdant, 174 k of them again. The field's own heights
+  // by their exact coordinates (the build changes no height), so the same values; released when the build returns.
+  let nearMeshVertexHeights: Map<number, Map<number, number>> | null = new Map();
+  const nearMeshVertexHeight = (px: number, pz: number): number => {
+    if (!nearMeshVertexHeights || px === 0 || pz === 0) return heightField.getHeightAt(px, pz);
+    let row = nearMeshVertexHeights.get(px);
+    if (!row) nearMeshVertexHeights.set(px, row = new Map());
+    let h = row.get(pz);
+    if (h === undefined) row.set(pz, h = heightField.getHeightAt(px, pz));
+    return h;
+  };
   const aniso = engineCtx.anisotropy ?? 4;
   const group = new THREE.Group();
   group.name = 'props';
@@ -3038,25 +3566,35 @@ function* propsBuildSteps(
       Math.max(0, Math.min(1, bs * ds)),
       Math.max(0, Math.min(1, bl * dl))];
   };
-  const plaster2 = makePlaster(noi, aniso, T.plaster2 || _tShift(T.plaster, +0.022, 1.1, 0.90));
+  // the map-revival lane (2026-10-05, Skybridge round 2): a kit that pours its concrete paints plaster2 as that
+  // concrete (glencanyon: board-formed, its formwork's boards, lift lines and tie holes), toned as the render was
+  const plaster2Tone = T.plaster2 || _tShift(T.plaster, +0.022, 1.1, 0.90);
+  const pouredConcrete = regionalArchitecture?.surfaces.concrete;
+  const plaster2 = pouredConcrete
+    ? yield* makeRegionalConcrete(pouredConcrete, (px) => { applyTone(px, plaster2Tone); }, aniso)
+    : makePlaster(noi, aniso, plaster2Tone);
   yield { fine: true };
   // These two procedural variants differ only in albedo tone. Share their
   // immutable relief within this props owner; retained materials deduplicate
   // final disposal. Primary plaster stays exclusive for sourced image swaps.
+  // (a poured plaster2's relief is the formwork's: plaster3 keeps a render's own)
   const plaster3 = makePlaster(noi, aniso,
-    T.plaster3 || _tShift(T.plaster, -0.035, 0.72, 0.84), plaster2);
+    T.plaster3 || _tShift(T.plaster, -0.035, 0.72, 0.84), pouredConcrete ? null : plaster2);
   yield { fine: true };
   const roofT = regionalArchitecture
     ? yield* makeRegionalRoof(regionalArchitecture.surfaces.roof.kind, regionalArchitecture.surfaces.roof.tint, aniso)
     : makeRoofTiles(noi, aniso, T.roof || null);
   yield { fine: true };
   const stone = regionalArchitecture
-    ? yield* makeRegionalStone(regionalArchitecture.surfaces.stone.kind, regionalArchitecture.surfaces.stone.tint, aniso)
+    ? yield* makeRegionalStone(regionalArchitecture.surfaces.stone.kind, regionalArchitecture.surfaces.stone.tint, aniso, undefined,
+      regionalArchitecture.surfaces.stone.dressed)
     : yield* makeStone(noi, aniso, T.stone || null);
   yield { fine: true, stage: 'stone-maps' };
   const wood = makeWood(noi, aniso, T.wood || null);
   yield { fine: true };
   const straw = makeStraw(noi, aniso, T.straw || null);
+  yield { fine: true };
+  const hay = yield* makeHay(aniso, T.straw || null, getDeviceTier() === 'mobile' ? 256 : 512);
   yield { fine: true };
   const structureWood = makeStructureDetail(noi, aniso, 'wood');
   yield { fine: true };
@@ -3107,7 +3645,7 @@ function* propsBuildSteps(
   // a map whose walls are mud or brick keeps them on the stone print and paints nothing.
   const fieldWallBucket = P.wallStyle === 'adobe' || sourcedStoneIsBrick(mapId) ? 'stone' : 'fieldStone';
   const fieldStone = fieldWallBucket === 'fieldStone'
-    ? yield* makeFieldStone(aniso, T.stone || null, mobileProps ? 256 : 512)
+    ? yield* makeFieldStone(aniso, T.stone || null, mobileProps ? 256 : 512, rockLithologyFor(mapId) === 'chalk' ? 'chalk' : 'fieldstone')
     : stone;
   // (and a mud-walled map's walls their own worn render over their courses, not the house plaster)
   const adobeWallBucket = P.wallStyle === 'adobe' ? 'fieldMud' : 'plaster';
@@ -3180,6 +3718,10 @@ function* propsBuildSteps(
       emissiveIntensity: windowStyle.curtainEmissiveIntensity }),
     straw: new THREE.MeshStandardMaterial({ map: straw.albedo, normalMap: straw.normal,
       roughnessMap: straw.surface, aoMap: straw.surface, roughness: 1, metalness: 0 }),
+    // (b15) the straw destructibles — bales, stooks, the field stacks — wear the hay print's bands (makeHay); the
+    // straw bucket (thatched roofs, reeds) keeps the straw print. The same shader as the straw (its program)
+    hay: new THREE.MeshStandardMaterial({ map: hay.albedo, normalMap: hay.normal,
+      roughnessMap: hay.surface, aoMap: hay.surface, roughness: 1, metalness: 0 }),
     // round 75 item 6: the tile rides the map slots so the library owns it; the rock hook samples it triplanar
     // (a displaced sphere has no UVs), the vertex tone stays the stone's colour
     rock: new THREE.MeshStandardMaterial({
@@ -3187,6 +3729,9 @@ function* propsBuildSteps(
       vertexColors: true, roughness: 0.95, metalness: 0,
     }),
     baked: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 }),
+    // the ground lane (wave 234): the rail kit's bed and shoulders, the baked material's tones under crushed stone and
+    // the track's grime (railBallast.ts; its parts' UVs carry their place across the track)
+    ballast: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.94, metalness: 0 }),
     // the scenery lane (after wave 57): the telegraph poles' weathered timber, painted by its hook (poleTimber.ts)
     pole: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }),
     // Round 75: painted corrugated steel — the atlas luminance under a vertex-colour livery, its ORM blue channel
@@ -3241,36 +3786,41 @@ function* propsBuildSteps(
   };
   function configureSurfaceMaterials(): void {
     for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'fieldMud', 'wood',
-      'straw', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
+      'straw', 'hay', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
       if (mats[key]) mats[key].aoMapIntensity = 0.82;
     }
     // the scenery lane (wave 52, Verdant's village wall: its face in shade "a flat extruded slab with a near-black blocky
     // texture"): the field print's occlusion takes half the skylight in a joint, not four fifths, so a wall's shaded face
     // keeps its stones (the sunlit face, lit directly, hardly changes)
     if (mats.fieldStone) mats.fieldStone.aoMapIntensity = 0.5;
-    // (measured, b6c: the environment's share of a shaded face's light is small — 1.6 of it moved the Verdant corner's
-    // shaded face from luma 64 to 65, its contrast unchanged — so the field print keeps the default; the shade is the
-    // hemisphere's)
-    mats.steel.envMapIntensity = 0.42; // round 75: painted sheet, a little sky on the crests
-    mats.rock.envMapIntensity = 0.35; // no white env-specular sparkle at distance
-    mats.baked.envMapIntensity = 0.5; // flat-shaded sourced models: no spec sparkle
-    mats.pole.envMapIntensity = 0.4; // dry, checked timber
-    mats.vehicle.envMapIntensity = 0.58;
-    mats.structureWood.envMapIntensity = 0.34;
-    mats.structureCanvas.envMapIntensity = 0.22;
-    mats.burlap.envMapIntensity = 0.18;
-    mats.structureMetal.envMapIntensity = 0.48;
-    mats.glass.envMapIntensity = 1.0; // capped (AA glass spec 4eccce8 — glints
+    // (2026-10-08, the world-ibl lane: every surface here takes the sky's full image-based light, the share the grounded
+    // light model calibrates the shade with. The trims these materials used to author (steel 0.42, rock 0.35, baked 0.5,
+    // pole 0.4, vehicle 0.58, structure wood 0.34, canvas 0.22, burlap 0.18, structure metal 0.48) never applied: three
+    // overwrote them with the scene's intensity, so the approved look is the full sky. Honored, they took 82-99 % of a
+    // shaded face's light with them, three times deeper shade than the ground beside them; engine/materialEnvIntensity.ts
+    // now applies an authored value, so a trim here is a real, visible change.)
+    // capped (AA glass spec 4eccce8 — glints above 1.0 crossed the 1.78 bloom threshold; the post-side firefly clamp is a
+    // safety net, not a design allowance). A cap, not a value: a style's own lower share would stay, and the trims' revival
+    // (engine/materialEnvIntensity.ts) applies it (wave 309: Ruinspires' 0.22 read as black voids, so its style takes 1).
+    mats.glass.envMapIntensity = Math.min(mats.glass.envMapIntensity, 1.0);
+    // (the ground lane's rail ballast authored 0.4 on a branch where no trim applied; it takes the full sky as every
+    // other surface here does, the look its wave 300 judged)
+    // map revival lane 2 (2026-10-05): a kit's finer, shallower render (ArchitectureSurfaces.relief; absent: unchanged)
+    const relief = regionalArchitecture?.surfaces.relief;
+    if (relief) {
+      for (const key of ['regionalPlaster', 'regionalPlaster2', 'regionalPlaster3'] as const) {
+        mats[key].normalScale.set(relief.normal, relief.normal);
+        mats[key].aoMapIntensity = relief.ao;
+      }
+    }
   }
   configureSurfaceMaterials();
-  // above this crossed the 1.78 bloom threshold; the post-side firefly clamp
-  // is a safety net, not a design allowance)
 
   // Empty geometry buckets still have CSM-registered materials; shader-only
   // uGrime is also invisible to a mesh/material-property traversal. Declare
   // both on their world owner so eviction releases every shadow registration
   // and texture, while GPU suspension retains the same reusable CPU objects.
-  const retainedSurfaceMaterials = Object.values(mats);
+  const retainedSurfaceMaterials: THREE.Material[] = Object.values(mats);
   registerRetainedObject3DResources(group, {
     materials: retainedSurfaceMaterials, textures: [grimeTex, rockDetail.lichen],
   });
@@ -3350,12 +3900,18 @@ ${snowCap ? `
   // the telegraph poles (the scenery lane, after wave 57): creosote-dark to silvered timber, grain, checks, a stained foot;
   // the dusty maps' sun-bleached
   const poleHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyPoleTimberHook(shader, rockDressing.dust >= 0.5); };
+  // the ground lane (wave 234): the track bed's crushed stone, its four-foot's oil and cinder, the rails' rust
+  const ballastHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRailBallastHook(shader, true, !snowCap); };
   // the scenery lane (wave 48, "the same stone pattern clearly tiles going right"): a run repeats the kit's one wall
   // module, so the field print's window shifts along the wall by a hash of each module's place (sixteen steps of seven
   // sixteenths of a tile, u only: the print's bands lie in v) — every module's stones take tones of their own. Only the
   // instanced modules shift; the merged heads and foot stones keep their windows.
+  // (b14; gauntlet wave 97: "a dead-level top", "stacked ... slabs"): and the dry-stone modules' stones settle, their
+  // copes drop and lichen grows by world place (stoneWallShader.ts); the module's top is the pool geometry's
+  const stoneShape: THREE.IUniform<THREE.Vector4> = { value: new THREE.Vector4(1.15, STONE_SETTLE_M, snowCap ? 0 : 1, 0) };
   const fieldStoneHook: MaterialShaderHook = (shader) => {
     grimeHook(shader);
+    applyStoneWallHook(shader, stoneShape);
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <uv_vertex>', /* glsl */`#include <uv_vertex>
 #ifdef USE_INSTANCING
 {
@@ -3375,14 +3931,24 @@ ${snowCap ? `
 }
 #endif`);
   };
+  // the scenery lane (b14; gauntlet wave 97: the mud walls' "wave-top silhouette and rust-colored staining repeat
+  // identically roughly eight times across the frame", "stamped rectangle decals"): the pool draws one module for every
+  // module, so the mud material lays the crown's slumps, the render's losses over the courses and the rain's stains in
+  // world space (mudWallShader.ts). The module's top and shoulder are the pool geometry's (set when it is built); the
+  // shadow pass runs the same crown (its depth material).
+  const mudShape: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3(1.2, 0.66, MUD_SLUMP_M) };
+  const mudHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyMudWallHook(shader, mudShape); };
   function installSurfaceShaderHooks(): void {
     for (const [materialKind, material] of Object.entries(mats)) {
       engineCtx.setupShadowMaterial(material,
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
-          : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook : grimeHook);
-      // (the mud print is the plaster material's shader with another map, the hessian the canvas's: they share their
-      // programs; the field print has its own, for the modules' shifted windows)
-      const programKind = materialKind === 'fieldMud' ? 'plaster' : materialKind === 'burlap' ? 'structureCanvas' : materialKind;
+          : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook
+            : materialKind === 'ballast' ? ballastHook
+            : materialKind === 'fieldMud' ? mudHook : grimeHook);
+      // (the hessian is the canvas's shader with another map, and the hay the straw's: they share their programs; the
+      // field print has its own, for the modules' shifted windows, and the mud print its own, for its world-space
+      // weathering)
+      const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind === 'hay' ? 'straw' : materialKind;
       material.customProgramCacheKey = () =>
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
@@ -3393,6 +3959,8 @@ ${snowCap ? `
     plaster: [], plaster2: [], plaster3: [], stone: [], fieldStone: [], fieldMud: [], roof: [], wood: [], dark: [],
     glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [], structureWood: [],
     regionalPlaster: [], regionalPlaster2: [], regionalPlaster3: [], regionalStone: [], regionalRoof: [],
+    // (the phones keep the rail bed on the baked material: no ballast program there)
+    ...(mobileProps ? {} : { ballast: [] }),
   };
   // the scenery lane (2026-10-03): a map whose field walls are its own rock tints their rubble print (Saltwind: the
   // karst limestone of its outcrops, for its dry-stone walls and their posts). Never the stone print: a regional kit
@@ -3472,21 +4040,24 @@ ${snowCap ? `
   // (props-models.json) — they cannot live in inhabitKit (no bakedGeometry
   // there). Same meta shape; the shared broken state is the burst-bag heap.
   // keep 0.97: driving a sandbag line barely registers on the speedo.
+  // (the hitbox lane, 2026-10-07: and a stack stops shells and sight lines — collision.ts names sandbags dense cover, but
+  // the stacks published no shell record, so 70-94 % of the rays through a stack passed it; their shell records are the
+  // stack's own slabs, refitDestructibleColliders)
   // the scenery lane (2026-10-03): the stacks are laid bag by bag in the sourced models' envelopes (maps/sceneryKit.ts
   // buildSandbagStack) on the hessian (wave 52); a breached stack still spends the old remnant's draws
   const LOCAL_TYPES: Record<string, PropsDestructibleMeta> = {
     sandbagbig: {
-      cls: 'break', mat: 'burlap', contact: 'ob', r: 2.0, h: 1.35, keep: 0.97,
+      cls: 'break', mat: 'burlap', contact: 'ob', collider: true, r: 2.0, h: 1.35, keep: 0.97,
       build: () => buildSandbagStack('sandbagbig'),
       broken: (rng) => buildSandbagHeap('sandbagbig', () => bSandbagBroken(rng).dispose()),
     },
     sandbagsmall: {
-      cls: 'break', mat: 'burlap', contact: 'ob', r: 1.7, h: 1.05, keep: 0.975,
+      cls: 'break', mat: 'burlap', contact: 'ob', collider: true, r: 1.7, h: 1.05, keep: 0.975,
       build: () => buildSandbagStack('sandbagsmall'),
       broken: (rng) => buildSandbagHeap('sandbagsmall', () => bSandbagBroken(rng).dispose()),
     },
     sandbagwall: {
-      cls: 'break', mat: 'burlap', contact: 'ob', r: 1.5, h: 1.0, keep: 0.975,
+      cls: 'break', mat: 'burlap', contact: 'ob', collider: true, r: 1.5, h: 1.0, keep: 0.975,
       build: () => buildSandbagStack('sandbagwall'),
       broken: (rng) => buildSandbagHeap('sandbagwall', () => bSandbagBroken(rng).dispose()),
     },
@@ -3501,11 +4072,29 @@ ${snowCap ? `
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
+    // the map-vehicles lane (2026-10-05): the eight vehicle roles as the map's fleet builds them (same records)
+    ...civilianVehicleTypes(mapId, mobileProps),
+    // (b42, the scenery lane; wave 260's "misplaced modern caravan" on Frosthollow) a map with a period draws each modern
+    // roadside kind that came into use after it in its period form, at the same seats (maps/periodClutterKit.ts); its
+    // keys (barrier, roadsign, cone, transformer, cablespool) never meet the vehicle roles' on any map (batch 6 merge)
+    ...periodClutterTypes(mapId),
+    // (b16) and the map's own variants by name, last (the ksar gate post at Sirocco Wadi's and Redrock's gates)
+    ...Object.fromEntries(Object.entries(P.structureVariants ?? {}).map(([key, name]) => {
+      const variant = STRUCTURE_VARIANTS[name];
+      if (!variant) throw new Error(`world/props: unknown structure variant ${name} for ${key}`);
+      return [key, variant];
+    })),
   };
   /** The dry-stone module with the winter's snow load along its top (fieldWallDressing.ts; one stream of its own). */
   function snowLoadedWallstone(buildRng: () => number): THREE.BufferGeometry {
     const wall = DESTRUCTIBLE_TYPES.wallstone.build(buildRng);
     const snow = buildSnowLoad(wall, 0x5a0c1, { seamless: true });
+    // (b14: the snow load settles with the wall vertex by vertex: its stone tag is the snow's kind)
+    if (wall.getAttribute('aStone')) {
+      const n = snow.attributes.position.count, tag = new Float32Array(n * 4);
+      for (let i = 0; i < n; i++) tag[i * 4 + 3] = DRY_STONE_KIND.snow;
+      snow.setAttribute('aStone', new THREE.BufferAttribute(tag, 4));
+    }
     const loaded = mergeGeometries([wall.index ? wall.toNonIndexed() : wall, snow], false);
     wall.dispose(); snow.dispose();
     if (!loaded) throw new Error('props: the snow-loaded wall merge produced no geometry');
@@ -3524,6 +4113,18 @@ ${snowCap ? `
     quaternion: _dq,
     euler: _de,
   };
+  // The landmarks lane (round 2, 2026-10-06): the ground of the set pieces set into a finished map (a placement's
+  // `ground: 'veto'`, landmarks/compose.ts). The passes after the composer draw as on the map without them; what they
+  // would stand on a piece's ground is left out here — its draws already taken, and no record, pool slot, body or
+  // contact made — so nothing else they place moves for the piece. The pieces' own furniture is exempt.
+  const landmarkVetoes: Array<{ x: number; z: number; c: number; s: number; hw: number; hd: number }> = [];
+  const landmarkVetoed: Record<string, number> = {};
+  let landmarkFurniture = false;
+  // the scatter round a deployment slot (a building, a regional structure and a set piece's furniture keep their seats:
+  // a slot they stand on moves off them with its rotated partner in the match placement)
+  const deploymentVetoed: Record<string, number> = {};
+  const structureKinds = new Set([...Object.keys(DESTRUCTIBLE_BUILDING_TYPES),
+    ...Object.values(REGIONAL_DESTRUCTIBLE_TYPES).flatMap((region) => Object.keys(region))]);
   function addDestructible(
     kind: string,
     x: number,
@@ -3534,6 +4135,26 @@ ${snowCap ? `
     tiltX = 0,
     tiltZ = 0,
   ): DestructibleRecord {
+    if (landmarkVetoes.length && !landmarkFurniture) {
+      // (what stands on the ground: its centre inside, or within half a metre of the edge — a long wall or fence module
+      // whose end only touches a piece keeps its place, so a run is not opened beside the piece)
+      const meta = resolveDestructibleMeta(destructibleContext, kind), r = meta.r * sc, reach = Math.min(r, 0.5);
+      for (const v of landmarkVetoes) {
+        const dx = x - v.x, dz = z - v.z;
+        if (Math.abs(dx * v.c - dz * v.s) < v.hw + reach && Math.abs(dx * v.s + dz * v.c) < v.hd + reach) {
+          landmarkVetoed[kind] = (landmarkVetoed[kind] ?? 0) + 1;
+          return { kind, cls: meta.cls, x, y, z, yaw, sc, r, h: meta.h * sc, slot: -1, state: 0, ob: null, groundSupport: null };
+        }
+      }
+    }
+    if (deploymentSlots.length && !landmarkFurniture && !structureKinds.has(kind)) {
+      const meta = resolveDestructibleMeta(destructibleContext, kind), r = meta.r * sc, reach = DEPLOYMENT_CLEAR_M + r;
+      for (const slot of deploymentSlots) {
+        if ((x - slot.x) ** 2 + (z - slot.z) ** 2 >= reach * reach) continue;
+        deploymentVetoed[kind] = (deploymentVetoed[kind] ?? 0) + 1;
+        return { kind, cls: meta.cls, x, y, z, yaw, sc, r, h: meta.h * sc, slot: -1, state: 0, ob: null, groundSupport: null };
+      }
+    }
     return addDestructibleRecord(
       destructibleContext, kind, x, y, z, yaw, sc, tiltX, tiltZ,
     );
@@ -3794,6 +4415,17 @@ ${snowCap ? `
   const builders = P.plan.map((n) => BUILDER_BY_NAME[n] || makeCottage);
   let bi = 0;
   const placedB: PlacedRadius[] = [];
+  // props.settlementOverWater (Suzhou Creek): whether a footprint (grown by a metre) reaches the course's water
+  const overWater = !!P.settlementOverWater;
+  const footprintWet = (x: number, z: number, w: number, d: number, rot: number): boolean => {
+    if (!overWater) return false;
+    const c = Math.cos(rot), sn = Math.sin(rot);
+    for (const a of [-1, -0.5, 0, 0.5, 1]) for (const b of [-1, -0.5, 0, 0.5, 1]) {
+      const lx = a * (w / 2 + 1), lz = b * (d / 2 + 1);
+      if (heightField.getWaterMaskAt(x + lx * c + lz * sn, z - lx * sn + lz * c) > 0) return true;
+    }
+    return false;
+  };
   function collectTacticalReservations(): PlacedRadius[] {
     const result: PlacedRadius[] = [];
     for (const beat of [...(P.tacticalBeats || []), ...(P.orbitalSettlement || [])]) {
@@ -3845,8 +4477,8 @@ ${snowCap ? `
   const carriagewayPackets: CarriagewayPacket[] = [];
   /** A building's footprint as its geometry stands (wings and porches reach past the kit's nominal size) when it stands
    * in a carriageway, else null. */
-  function carriagewayFootprint(tmp: PropsBuckets, info: { w: number; d: number }, x: number, z: number,
-    rot: number): { w: number; d: number } | null {
+  /** A building's whole footprint (its plot or its geometry's reach about the origin, whichever is larger). */
+  function footprintOf(tmp: PropsBuckets, info: { w: number; d: number }): { w: number; d: number } {
     let w = info.w, d = info.d;
     for (const geometry of Object.values(tmp).flat()) {
       if (!geometry.boundingBox) geometry.computeBoundingBox();
@@ -3855,12 +4487,17 @@ ${snowCap ? `
       w = Math.max(w, 2 * Math.max(Math.abs(bounds.min.x), Math.abs(bounds.max.x)));
       d = Math.max(d, 2 * Math.max(Math.abs(bounds.min.z), Math.abs(bounds.max.z)));
     }
+    return { w, d };
+  }
+  function carriagewayFootprint(tmp: PropsBuckets, info: { w: number; d: number }, x: number, z: number,
+    rot: number): { w: number; d: number } | null {
+    const { w, d } = footprintOf(tmp, info);
     return buildingFootprintClearsRoads({ x, z, rot }, w, d, roads, CARRIAGEWAY_CORE) ? null : { w, d };
   }
   const roadClearanceMoves: { kind: string; from: [number, number]; to: [number, number] | null }[] = [];
   if (P.roadBuildingClearance) group.userData.roadClearanceMoves = roadClearanceMoves;
   function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,
-    fromRoad = false, plot?: { w: number; d: number }): boolean {
+    fromRoad = false, plot?: { w: number; d: number }, vacated = false, stream: Rng = rng): boolean {
     let tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
       glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
@@ -3869,14 +4506,14 @@ ${snowCap ? `
     attachStructureBuildContext(tmp, plot ? { ...structureContext, plot } : structureContext);
     const builder = explicitStructure ? BUILDER_BY_NAME[explicitStructure] : builders[bi];
     if (!builder) throw new Error(`Unknown planned structure ${structureId}`);
-    const wallBucket = pickWall(rng);
-    const info = builder(rng, tmp, wallBucket);
+    const wallBucket = pickWall(stream);
+    const info = builder(stream, tmp, wallBucket);
     if (tmp.steel?.length) ensureSteelAtlas('plan:' + structureId);
     addCatalogExterior(tmp, { id: structureId, info, variant: bi,
       bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
     let fit = groundFit(px, pz, info.w, info.d, rot);
     if (fit.spread > P.maxSpread) return false;
-    jitterBuildingUvs(tmp);
+    jitterBuildingUvs(tmp, stream);
     // Keep the original eligibility/build/UV draws. Only an already accepted
     // ordinary roadside building can change parcel-facing; block fill and
     // authored landmark/wharf/court owners never enter this branch.
@@ -3959,6 +4596,15 @@ ${snowCap ? `
         if (Number.isFinite(b.minX)) body = b;
       }
     }
+    if (vacated) {
+      // a set piece stands here (the landmarks lane): the plan's draws were taken and the site keeps its footprint, its
+      // geometry and collision are dropped
+      for (const list of Object.values(tmp)) for (const geometry of list as THREE.BufferGeometry[]) geometry.dispose();
+      buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot, kind: structureId });
+      placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
+      if (!explicitStructure) bi++;
+      return true;
+    }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
     const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
     const chimneysBefore = carriageway ? exteriorChimneyTops(buckets).length : 0;
@@ -4035,7 +4681,9 @@ ${snowCap ? `
     const regionalDonor = !!foundryDonors
       && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === entry.planIndex && site.kind === entry.structure);
     // (the carriageway footprint is the base geometry's, as for a generated building)
-    const carriageway = P.roadBuildingClearance ? carriagewayFootprint(tmp, info, entry.x, entry.z, entry.rot) : null;
+    // (props.settlementOverWater: one the course's water reaches is packed alike, its new place dry)
+    const carriageway = (P.roadBuildingClearance ? carriagewayFootprint(tmp, info, entry.x, entry.z, entry.rot) : null)
+      ?? (footprintWet(entry.x, entry.z, info.w, info.d, entry.rot) ? footprintOf(tmp, info) : null);
     if (regionalArchitecture && !regionalDonor) {
       tmp = rebuildRegionalStructure(regionalArchitecture, entry.structure, tmp, info, entry.wall,
         { mapId, snowCap: structureContext.snowCap, seed }, entry.x, entry.z, entry.rot) ?? tmp;
@@ -4069,13 +4717,23 @@ ${snowCap ? `
     }
     bi = builders.length;
   }
-  for (const site of P.townPlan?.length ? [] : P.plannedSites ?? []) {
+  for (const [index, site] of (P.townPlan?.length || P.plannedSitesAfterPlan ? [] : P.plannedSites ?? []).entries()) {
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
-    if (!isRoadBuildingSiteClear(site.x, site.z)) continue;
-    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot);
+    if (!site.terrace && !isRoadBuildingSiteClear(site.x, site.z)) continue;
+    // a terrace house draws from a stream of its own (its index in the plan): every later placement keeps its seat
+    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot,
+      site.vacated, site.terrace ? mulberry32(seed + 104729 * (index + 1)) : rng);
     yield { fine: true };
   }
   yield* placeRoadBuildings();
+  // (the map-revival lane, 2026-10-07) the sites that close a square stand last, between the plan's houses
+  for (const [index, site] of (P.plannedSitesAfterPlan ? P.plannedSites ?? [] : []).entries()) {
+    if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
+    if (!site.terrace && !isRoadBuildingSiteClear(site.x, site.z)) continue;
+    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot,
+      site.vacated, site.terrace ? mulberry32(seed + 104729 * (index + 1)) : rng);
+    yield { fine: true };
+  }
 
   // heaped masonry chunks + a jutting charred beam (shared by the street
   // rubble scatter and the collapsed rowhouse slots).
@@ -4152,6 +4810,37 @@ ${snowCap ? `
   // heights/facades, the odd collapsed slot spilling rubble into the street ---
   function* placeStreetRows(): Generator<PropsBuildSlice, void, void> {
     if (!P.streetRows) return;
+    // a recorded settlement's rows stand at their recorded poses from their own streams, and the pass draws nothing
+    // (props.townRowPlan; props.settlementOverWater leaves out a row its water reaches, and its rubble)
+    if (P.townRowPlan) {
+      for (const entry of P.townRowPlan) {
+        const stream = mulberry32(entry.rng);
+        let tmp: PropsBuckets = {
+          plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
+          glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
+        };
+        const info = entry.ruined ? makeRuin(stream, tmp)
+          : makeRowhouse(stream, tmp, entry.wall, { w: entry.w, d: entry.d, lowContrastTrim: mapId === 'ruinspires' });
+        const fit = groundFit(entry.x, entry.z, info.w, info.d, entry.rot);
+        jitterBuildingUvs(tmp, stream);
+        if (footprintWet(entry.x, entry.z, info.w, info.d, entry.rot)) continue;
+        if (regionalArchitecture) {
+          tmp = rebuildRegionalStructure(regionalArchitecture, entry.ruined ? 'ruin' : 'rowhouse', tmp, info, entry.wall,
+            { mapId, snowCap: structureContext.snowCap, seed }, entry.x, entry.z, entry.rot) ?? tmp;
+        }
+        addStructureCollision(entry.ruined ? 'ruin' : 'rowhouse', tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);
+        _quat.setFromAxisAngle(_upAxis, entry.rot);
+        _mat4.compose(_posv.set(entry.x, fit.y + 0.05, entry.z), _quat, _one);
+        mergeInto(buckets, tmp, _mat4);
+        buildingFeatures.push({ x: entry.x, z: entry.z, w: info.w, d: info.d, rot: entry.rot });
+        placedB.push({ x: entry.x, z: entry.z, rr: Math.max(info.w, info.d) * 0.75 });
+        if (entry.rubbleRng !== undefined && entry.rubbleX !== undefined && entry.rubbleZ !== undefined && entry.rubbleR !== undefined) {
+          addRubblePile(entry.rubbleX, entry.rubbleZ, entry.rubbleR, mulberry32(entry.rubbleRng));
+        }
+        yield { fine: true };
+      }
+      return;
+    }
     const srng = mulberry32(seed + 505);
     interface StreetBounds { x: number; z: number; hx: number; hz: number }
     type RoadPoint = [number, number, number, number];
@@ -4422,6 +5111,7 @@ ${snowCap ? `
       let target: { x: number; z: number } | null = null;
       const clearsAt = (x: number, z: number): boolean => {
         if (x < v.x0 || x > v.x1 || z < v.z0 || z > v.z1 || noVeg(x, z)) return false;
+        if (footprintWet(x, z, w, d, source.rot)) return false;
         if (!buildingFootprintClearsRoads({ x, z, rot: source.rot }, w, d, roads, CARRIAGEWAY_CLEARANCE)) return false;
         if (groundFit(x, z, w, d, source.rot).spread > P.maxSpread || conflictsTacticalReservation(x, z)) return false;
         const footprint = { x, z, w, d, rot: source.rot };
@@ -4432,7 +5122,8 @@ ${snowCap ? `
       if (authored && clearsAt(authored.to[0], authored.to[1])) target = { x: authored.to[0], z: authored.to[1] };
       const turns = [0];
       for (let k = 1; k <= 12; k++) turns.push(k * Math.PI / 12, -k * Math.PI / 12);
-      for (let step = 1; step <= 60 && !target; step++) {
+      // (props.settlementOverWater: a building the course's water reaches looks out to 80 m for dry ground)
+      for (let step = 1; step <= (overWater ? 160 : 60) && !target; step++) {
         const dist = step * 0.5;
         for (const turn of turns) {
           const c = Math.cos(turn), sn = Math.sin(turn);
@@ -4460,6 +5151,29 @@ ${snowCap ? `
     carriagewayPackets.length = 0;
   }
   moveBuildingsOffCarriageways();
+
+  // The landmarks lane (2026-10-05): the map's set pieces (src/world/landmarks/compose.ts), once the settlement, the
+  // strongpoints and the light buildings stand (so none of those moves for a piece: the composer refuses a piece on
+  // their solids) and before every scatter pass, which keeps off the ground each piece reserves. Built from streams of
+  // their own; a map without set pieces runs nothing there.
+  function* placeLandmarks(): Generator<PropsBuildSlice, void, void> {
+    if (!P.landmarks?.length) return;
+    const receipt = yield* composeLandmarks({
+      mapId, landmarks: P.landmarks, heightField, spawns: [L.spawns.player, ...L.spawns.enemies],
+      obstacles, colliders, architecture: regionalArchitecture, snowCap: structureContext.snowCap, seed,
+      hardKinds: new Set(Object.keys(DESTRUCTIBLE_BUILDING_TYPES)),
+      tier: mobileProps ? 'mobile' : 'desktop',
+      merge: (parts, matrix) => mergeInto(buckets, parts as unknown as PropsBuckets, matrix),
+      reserve: (x, z, r) => { placedB.push({ x, z, rr: r, landmark: true }); },
+      veto: (x, z, yaw, hw, hd) => { landmarkVetoes.push({ x, z, c: Math.cos(yaw), s: Math.sin(yaw), hw, hd }); },
+      publish: (x, z, w, d, rot, kind) => { buildingFeatures.push({ x, z, w, d, rot, landmark: kind }); },
+      // a piece's benches and lamps join the props' destructibles once every seeded pass is done (below): so the pools
+      // and records every later pass makes keep their order, and their arrangements, as on the map without the piece
+      addDestructible: (kind, x, y, z, yaw, scale) => { landmarkDestructibles.push([kind, x, y, z, yaw, scale]); },
+    });
+    group.userData.landmarks = receipt;
+  }
+  const landmarkDestructibles: Array<[string, number, number, number, number, number]> = [];
 
   // the scenery lane (wave 34, "a stacked prop on a bare mound — no berm, trench or spilled sand"): each nest's spoil
   // banked against it and the spill of a burst bag (sceneryKit.ts buildSandbagBedding), a stream of its own named by
@@ -4547,6 +5261,8 @@ ${snowCap ? `
         const meta = DESTRUCTIBLE_BUILDING_TYPES[entry.kind];
         if (!meta) continue;
         const fit = groundFit(entry.x, entry.z, meta.hw * 2, meta.hl * 2, entry.rot);
+        // (props.settlementOverWater: one the course's water reaches is left out)
+        if (footprintWet(entry.x, entry.z, meta.hw * 2, meta.hl * 2, entry.rot)) continue;
         addDestructible(entry.kind, entry.x, fit.y + 0.04, entry.z, entry.rot);
         buildingFeatures.push({ x: entry.x, z: entry.z, w: meta.hw * 2, d: meta.hl * 2, rot: entry.rot });
         placedB.push({ x: entry.x, z: entry.z, rr: Math.hypot(meta.hw, meta.hl) * 0.72 });
@@ -4603,6 +5319,8 @@ ${snowCap ? `
     }
   }
   yield* placeDestructibleBuildings();
+  // the set pieces (placeLandmarks above), on the ground the settlement, the strongpoints and the light buildings left
+  yield* placeLandmarks();
 
   // --- yard set-dressing (r2 terrain_environment): woodpiles, barrels and
   // short garden-fence runs around every free-standing building. The village
@@ -4778,6 +5496,7 @@ ${snowCap ? `
       }
     };
     for (const building of placedB) {
+      if (building.landmark) continue; // a set piece keeps its own ground (the landmarks pass)
       placeYardFirewood(building);
       placeYardBarrels(building);
       placeYardTrough(building);
@@ -4804,10 +5523,19 @@ ${snowCap ? `
   // stay static dressing (they anchor breach lips visually), as does the
   // authored gapAt breach (crumbled courses + tumbled blocks).
   // the scenery lane (wave 20, "how things meet the ground"): the walls' feet, drifts and snow loads (fieldWallDressing.ts)
+  // (b18; gauntlet wave 121, Verdant's yard walls: "it meets the turf in a clean line with no settling or weeds at its
+  // foot") the soil and turf banked against the dry-stone walls' feet (fieldWallDressing buildWallTurf), for the
+  // ground's own material beside the boulders' beds — not on a snow map (its drifts), a sandy one (its dust), a
+  // brick-print one (its coursed module), nor the phones
+  const wallTurfOn = !mobileProps && !snowCap && rockDressing.dust < 0.5 && !sourcedStoneIsBrick(mapId);
+  const turfFoldAt = (heightField as { _foldAt?: (x: number, z: number) => number })._foldAt ?? null;
   const wallDressing = createWallDressing({
     ground: heightField, snow: snowCap, mobile: mobileProps, adobeBucket: adobeWallBucket, mudUv: ADOBE_UV_PER_M,
     plainV: adobeWallBucket === 'fieldMud' ? FIELD_MUD_PLAIN_V : undefined,
     sand: adobeWallBucket === 'fieldMud' && !!mudEarthOfGround((cfg as { sky?: { lighting?: { groundAlbedoHex?: number } } } | null)?.sky?.lighting?.groundAlbedoHex),
+    turf: wallTurfOn ? {
+      meshAt: (x, z) => terrainNearMeshHeightAt(nearMeshVertexHeight, x, z), foldAt: turfFoldAt,
+    } : undefined,
   });
   function addWallRun(
     x0: number,
@@ -5134,8 +5862,11 @@ ${snowCap ? `
     const placeSoukObjects = (): void => {
       const potCount = richCount(inh.pots ?? 0);
       if (potCount <= 0) return;
+      // the buildings alone: a set piece's reserved ground (the landmarks pass) is no doorstep, and counting it among the
+      // buildings would turn every pick after it — a map's pots, then the rest of the dressing stream
+      const soukSites = placedB.some((b) => b.landmark) ? placedB.filter((b) => !b.landmark) : placedB;
       for (let t = 0, placed = 0; t < potCount * 16 && placed < potCount; t++) {
-        const pb = placedB.length ? placedB[(drng() * placedB.length) | 0] : null;
+        const pb = soukSites.length ? soukSites[(drng() * soukSites.length) | 0] : null;
         if (!pb) break;
         const a = drng() * Math.PI * 2, r = pb.rr + 0.8 + drng() * 2.6;
         const x = pb.x + Math.cos(a) * r, z = pb.z + Math.sin(a) * r;
@@ -5396,6 +6127,7 @@ ${snowCap ? `
     const hayCrateSites = Math.max(0, Math.round(P.hayCrateSites ?? HAY_CRATE_SITES[mapId] ?? 5));
     for (let i = 0; P.hayCrates && i < Math.min(hayCrateSites, placedB.length); i++) {
       const pb = placedB[i];
+      if (pb.landmark) continue;
       const n = 1 + ((rng() * 3) | 0);
       for (let k = 0; k < n; k++) {
         const a = rng() * Math.PI * 2, r = pb.rr + 2 + rng() * 4;
@@ -5648,6 +6380,10 @@ ${snowCap ? `
   // for the far rocks and the far shadow cascades
   const rockGeosFar: THREE.BufferGeometry[] = [];
   const rockHulls: number[][] = [];
+  // the hitbox lane (2026-10-07): each variant's collision form (rockCollision.ts) and every stone's seat; the colliders
+  // come from the stone's own mesh once every placement pass has run (refitRockColliders)
+  const rockForms: RockForm[] = [];
+  const rockSeats: RockSeat[] = [];
   function buildRockVariants(): void {
   for (let vi = 0; vi < 3; vi++) {
     const g = mergeVertices(new THREE.IcosahedronGeometry(1, vi === 2 ? 3 : 2));
@@ -5670,7 +6406,7 @@ ${snowCap ? `
     const projected: Array<[number, number]> = [];
     for (let i = 0; i < p.count; i++) projected.push([p.getX(i), p.getZ(i)]);
     const hull = convexHull2(projected);
-    rockHulls.push(hull); // the collision proxy: the legacy hull, unchanged (the shards carry it)
+    rockHulls.push(hull); // the collision proxy of the placement laws (the road core, the talus, the no-overlap law); the colliders are the stone's own (rockCollision.ts)
     // the scenery lane (wave 52, "low-poly polyhedra … a hard diagonal shading seam … none sunk into the ground"): the
     // visual rock is a block its joints cut and the weather rounded (rockDressing.ts buildBoulderForm: the smooth maximum
     // of its joint planes, lumped, its foot flared under the ground line, the surface's own normals), fitted inside the
@@ -5678,11 +6414,18 @@ ${snowCap ? `
     let legacyTop = 0;
     for (let i = 0; i < p.count; i++) legacyTop = Math.max(legacyTop, p.getY(i));
     const lithology = rockLithologyFor(mapId);
-    const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(lithology, vi), lithology);
+    const angular = rockAngularityFor(mapId);
+    const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(lithology, vi), lithology, angular);
     paintBoulder(form, P.rockTone, lithology);
     rockGeos.push(form.geometry);
+    // (the desktop form on every tier, so every host derives the same colliders; its own stream, so no draw moves)
+    const collisionForm = mobileProps
+      ? buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 6, legacyTop, boulderKindFor(lithology, vi), lithology).geometry
+      : form.geometry;
+    rockForms.push(rockFormOf(collisionForm));
+    if (collisionForm !== form.geometry) collisionForm.dispose();
     if (!mobileProps) {
-      const far = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 4, legacyTop, boulderKindFor(lithology, vi), lithology);
+      const far = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 4, legacyTop, boulderKindFor(lithology, vi), lithology, angular);
       paintBoulder(far, P.rockTone, lithology);
       rockGeosFar.push(far.geometry);
     }
@@ -5758,17 +6501,19 @@ ${snowCap ? `
     slopePref: boolean,
     sink = 0.22,
     tactical = false,
+    // (the hitbox lane, 2026-10-08: an authored outcrop draws on its own stream, so no stone placed after it moves)
+    draw: Rng = rng,
   ): boolean {
-    const vv = (rng() * 3) | 0;
-    const yawR = rng() * Math.PI * 2;
-    const sc = scMin + Math.pow(rng(), 1.6) * (scMax - scMin);
+    const vv = (draw() * 3) | 0;
+    const yawR = draw() * Math.PI * 2;
+    const sc = scMin + Math.pow(draw(), 1.6) * (scMax - scMin);
     if (!rockSiteOpen(x, z)) return false;
     if (slopePref) {
       const steep = heightField.getNormalAt(x, z).y < 0.93;
-      if (!steep && rng() > 0.30) return false; // prefer rocky slopes
+      if (!steep && draw() > 0.30) return false; // prefer rocky slopes
     }
     // (the stone's height scale, drawn where the seat's matrix always drew it, so a re-site takes no draw of its own)
-    const scaleY = sc * (0.8 + rng() * 0.35);
+    const scaleY = sc * (0.8 + draw() * 0.35);
     // The boulder keeps its whole footprint (the collision hull) out of the road core. One that would reach into it is
     // left out, its draws still taken and its count kept, so every later placement keeps its seat.
     const hull = rockHulls[vv];
@@ -5776,6 +6521,8 @@ ${snowCap ? `
     for (let i = 0; i < hull.length; i += 2) hullReach = Math.max(hullReach, Math.hypot(hull[i], hull[i + 1]));
     const reach = hullReach * sc;
     if (!discClearOfRoadCore(heightField, x, z, reach)) return true;
+    // symmetric deployments: a scatter boulder in a deployment slot's clearing is left out the same way (the pads' 16 m)
+    if (!tactical && deploymentSlots.some((slot) => Math.hypot(x - slot.x, z - slot.z) < 16)) return true;
     // The talus law (rockTalusDeg, default 35 degrees): a boulder whose footprint falls away more steeply than a talus
     // slope — on a wall, astride a ledge's lip or on a narrow bench — slides down its fall line to the first ground it
     // rests on (2 m steps, 40 m at most), every site rule rechecked; left out the same way only when none holds. The
@@ -5798,16 +6545,26 @@ ${snowCap ? `
     }
     const y = heightField.getHeightAt(x, z) - sink * sc;
     _quat.setFromAxisAngle(_upAxis, yawR);
-    _mat4.compose(_posv.set(x, y, z), _quat, _scalev.set(sc, scaleY, sc));
+    // (b14; Sonnet, wave 97: "the smaller boulders … identical in shape and size") one of the stone's horizontal axes
+    // drawn in by its place's hash, to three quarters: three forms read as many, and the stone stays inside the hull its
+    // collider carries (no draw, so every later placement keeps its seat)
+    const stretchRoll = Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1;
+    const stretch = 0.74 + 0.26 * ((stretchRoll * 7.31) % 1);
+    _mat4.compose(_posv.set(x, y, z), _quat, _scalev.set(stretchRoll < 0.5 ? sc * stretch : sc, scaleY, stretchRoll < 0.5 ? sc : sc * stretch));
     const placement = _mat4.clone();
     rockPlacements[vv].push(placement);
     addPlacedRock(x, z, reach, footprint);
+    // (the hitbox lane: every stone's seat; the records below are the legacy ones every placement pass reads)
+    const seat: RockSeat = { vv, placement, x, y, z, sc, sink, tactical, rec: null, col: null, clutter: null, profile: null };
+    rockSeats.push(seat);
     // sink <= 0.5: half-drifted surface rocks keep their cover role; only the
     // deep-embedded ground-clutter class (0.60) is drive-over
     if (sc >= 1.25 && sink <= 0.5) {
       // The old square ±1.15*scale AABB made its four empty corners solid;
       // at a 3 m outcrop that stopped a hull more than a metre from the
       // visible stone. Use the displaced mesh's actual projected convex hull.
+      // (the hitbox lane, 2026-10-07: the legacy record every later placement pass reads; refitRockColliders gives it the
+      // stone's own colliders once they have all run)
       const c = Math.cos(yawR), s = Math.sin(yawR);
       const local = rockHulls[vv];
       const points = new Array(local.length);
@@ -5820,10 +6577,13 @@ ${snowCap ? `
         { min: [x, y, z], max: [x, y + sc * 1.1, z] }, points);
       const col = cloneCollisionRecord(rec);
       obstacles.push(rec); colliders.push(col);
+      letGroundCoverLap(rec); // (b14: the turf grows against the stone's foot)
+      seat.rec = rec; seat.col = col;
       if (isLooseSurfaceRock(sc, sink, tactical)) {
         rec.kind = col.kind = 'small-rock';
         const clutter = new CrushableClutter('small-rock', x, y + sink * sc, z, sc, sc * 1.1, [rec], [col]);
         rockClutter.set(placement, clutter); pendingClutter.push(clutter);
+        seat.clutter = clutter;
       }
     }
     return true;
@@ -5862,12 +6622,17 @@ ${snowCap ? `
     }));
     const onTree = (x: number, z: number): boolean => trunks.some((t) => Math.abs(x - t.x) < t.reach
       && Math.abs(z - t.z) < t.reach && Math.hypot(x - t.x, z - t.z) < t.reach);
+    // (b12, wave 72 on Redrock: the fallen blocks "soap bars" — angular, size-graded, half-buried, sand drifted) the talus
+    // sorted by size as a rockfall sorts it, the small blocks near the wall's foot and the big ones rolled out to the toe;
+    // on a dusty map the drifted sand holds them deeper
+    const apronSink = rockDressing.dust >= 0.5 ? 0.4 : 0.3;
     for (const form of forms) {
       const count = form.geology?.boulders ?? 0;
       for (let i = 0, placed = 0; i < count * 6 && placed < count; i++) {
-        const [x, z] = geologyBoulderSite(form, rng(), rng());
+        const u = rng(), reach = rng();
+        const [x, z] = geologyBoulderSite(form, u, reach);
         if (onTree(x, z)) continue;
-        if (tryRock(x, z, 0.9, 3.0, false, 0.3)) placed++;
+        if (tryRock(x, z, 0.9 * (0.7 + 0.6 * reach), 3.0 * (0.6 + 0.6 * reach), false, apronSink)) placed++;
       }
     }
   }
@@ -5912,8 +6677,60 @@ ${snowCap ? `
   }
   }
   scatterBoulderOutcrops();
+  // The hitbox lane (2026-10-08): the layout brief's cover where the stones' own colliders left a sector short of it
+  // (the cover the legacy records' empty corners had counted; docs/MAP-LAYOUT-BRIEF.md, tools/map-layout-metrics.mjs):
+  // authored outcrops of the map's own boulders, each a crescent bulging toward its threat as a tactical beat's does,
+  // hard cover (never crushable), on their own seeded draws so no stone placed before or after them moves.
+  function placeCoverOutcrops(): void {
+    (P.coverOutcrops ?? []).forEach((spot, index) => {
+      const draw = mulberry32(seed + 7919 + index * 104729);
+      const count = spot.count ?? 4, radius = spot.radius ?? 6;
+      const toward = THREE.MathUtils.degToRad(spot.towardDeg ?? 0);
+      for (let i = 0; i < count; i++) {
+        const arc = count === 1 ? 0 : (i / (count - 1) - 0.5) * Math.PI * 0.8;
+        const rr = radius * (0.72 + 0.28 * Math.abs(Math.sin(i * 2.17 + index)));
+        tryRock(spot.x + Math.cos(toward + arc) * rr, spot.z + Math.sin(toward + arc) * rr,
+          spot.scaleMin ?? 1.6, spot.scaleMax ?? 3.0, false, 0.24, true, draw);
+      }
+    });
+  }
+  placeCoverOutcrops();
 
   yield { fine: true, stage: 'boulder-outcrops' };
+  // The hitbox lane (2026-10-07; owner: "rock hitboxes are way too big and inaccurate"): every stone's colliders from its
+  // own mesh over its own ground (rockCollision.ts). The legacy records stand through every placement pass below, so no
+  // prop moves; refitRockColliders swaps these profiles in once all of them have run. Here, before the pools are laid,
+  // the crushable class follows the stones that keep a collider: a stone a hull drives over drops its clutter, and a
+  // stone that rises past the drive-over line with no collider (a small or a deep-set one) becomes a crushable rock.
+  function* settleRockColliders(): Generator<PropsBuildSlice, void, void> {
+    const groundAt = rockGroundAt(heightField);
+    let settled = 0;
+    for (const seat of rockSeats) {
+      // (a tenth of a millisecond a stone or less: a loading frame carries 48 of them at most, 5-13 ms on a desktop core)
+      if (++settled % 48 === 0) yield { fine: true, progress: false, stage: 'rock-colliders' };
+      seat.profile = rockCollisionProfile(rockForms[seat.vv], seat.placement.elements, groundAt);
+      if (!seat.profile) {
+        if (seat.clutter) {
+          rockClutter.delete(seat.placement);
+          const at = pendingClutter.indexOf(seat.clutter);
+          if (at >= 0) pendingClutter.splice(at, 1);
+          seat.clutter = null;
+        }
+        continue;
+      }
+      if (seat.rec) continue;
+      const rec: CollisionRecord = { min: [seat.x, seat.y, seat.z], max: [seat.x, seat.y, seat.z] };
+      const col: CollisionRecord = { min: [seat.x, seat.y, seat.z], max: [seat.x, seat.y, seat.z] };
+      seat.rec = rec; seat.col = col; seat.added = true;
+      if (rockStaysCrushable(seat.sc, seat.tactical)) {
+        rec.kind = col.kind = 'small-rock';
+        const clutter = new CrushableClutter('small-rock', seat.x, seat.y + seat.sink * seat.sc, seat.z, seat.sc, seat.sc * 1.1, [rec], [col]);
+        rockClutter.set(seat.placement, clutter); pendingClutter.push(clutter);
+        seat.clutter = clutter;
+      }
+    }
+  }
+  yield* settleRockColliders();
   function instantiateRockVariants(): void {
   for (let vi = 0; vi < 3; vi++) {
     if (rockPlacements[vi].length === 0) continue;
@@ -5926,11 +6743,15 @@ ${snowCap ? `
     for (let k = 0; k < hull.length; k += 2) reach = Math.max(reach, Math.hypot(hull[k], hull[k + 1]));
     for (let i = 0; i < ground.length; i++) {
       const e = rockPlacements[vi][i].elements, x = e[12], z = e[14];
-      const r = Math.max(0.5, reach * Math.hypot(e[0], e[1], e[2]));
+      const r = Math.max(0.5, reach * Math.max(Math.hypot(e[0], e[1], e[2]), Math.hypot(e[8], e[9], e[10])));
       ground[i] = heightField.getHeightAt(x, z);
       slope[i * 2] = (heightField.getHeightAt(x + r, z) - heightField.getHeightAt(x - r, z)) / (2 * r);
       slope[i * 2 + 1] = (heightField.getHeightAt(x, z + r) - heightField.getHeightAt(x, z - r)) / (2 * r);
-      if (rockContact) rockSpots.push({ x, z, r: r * (1.22 + 0.16 * ((Math.imul(i + 1, 0x9e3779b1) >>> 0) / 4294967296)) });
+      if (rockContact) {
+        const spot = { x, z, r: r * (1.22 + 0.16 * ((Math.imul(i + 1, 0x9e3779b1) >>> 0) / 4294967296)) };
+        rockSpots.push(spot);
+        rockSpotOf.set(rockPlacements[vi][i], spot);
+      }
     }
     // round 79; the scenery lane: the height a shadow can show, from the deepest seat (0.6 of a scale under the centre),
     // not the skirt the rock carries deep under the ground
@@ -5942,6 +6763,8 @@ ${snowCap ? `
       const mesh = new THREE.InstancedMesh(geometry, mats.rock, count);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
+      // (b14, wave 96: "an 8-16 px seam of lit sand" at a stone's shaded foot) drawn a little inside itself in the shadows
+      mesh.customDepthMaterial = rockDepth;
       mesh.matrixAutoUpdate = false;
       mesh.name = name; // round 75: the probes and captures find the boulders by name
       return mesh;
@@ -6011,21 +6834,261 @@ ${snowCap ? `
     }
   }
   }
+  /**
+   * The scenery lane (b14; gauntlet wave 97: "no burial, soil lip, or grass and moss creeping up its skirt", "sitting on
+   * the dune along a clean seam instead of in drifted sand"): every boulder's bed — the ground built up against its
+   * foot: a soil lip all round, uneven; on a sandy map the sand drifted up its windward side and trailing in its lee
+   * (the map's wind, its ripples' rippleDir); on a snowy map the snow banked the same way. A ring of the ground's own
+   * surface round the stone: from inside the stone (hidden) out along each of 24 directions — the stone's face at the
+   * lip's height (its section there, boulderSections; the lip never climbs where the stone draws in), then the lip
+   * falling away as a fillet to 5 cm under the drawn ground a lip's width out (the ground covers its edge, and the two
+   * cross steeply enough to keep their depths apart) — conformed to the nearest terrain mesh at every vertex. Merged
+   * world-space geometry in 256 m cells, which the world draws with the terrain's material, so the bed's colour, grain
+   * and light are the ground's at that place; it casts nothing. Not under the crushable stones (a tank flattens them),
+   * nor on the phones.
+   */
+  /**
+   * (b37; the whole-PR census: "rock-beds" 0 -> 9-21 colour-pass draws a view, each on the terrain's heavy ground
+   * material) the beds' and the wall-foot turf's cells: 512 m, one geometry a cell for both — up to four on a map, two or
+   * three in a view (bedCellKey)
+   */
+  const BED_CELL_M = 512;
+  const bedCellKey = (x: number, z: number): number => Math.floor((x + 512) / BED_CELL_M) * 64 + Math.floor((z + 512) / BED_CELL_M);
+  function* buildRockBeds(): Generator<PropsBuildSlice, THREE.BufferGeometry[], void> {
+    const SEGMENTS = 24, RINGS = 5;
+    const meshAt = (x: number, z: number): number => terrainNearMeshHeightAt(nearMeshVertexHeight, x, z);
+    const ripple = (cfg as { splat?: { rippleDir?: readonly [number, number] } } | null)?.splat?.rippleDir ?? [0.8, 0.6];
+    const windL = Math.hypot(ripple[0], ripple[1]) || 1, wx = ripple[0] / windL, wz = ripple[1] / windL;
+    const sandy = rockDressing.dust >= 0.5, snowy = snowCap;
+    const sections = rockGeos.map((g) => boulderSections(g));
+    // (b16) the ground's fold under every vertex, as the terrain's chunks carry it (terrain.ts: one normalised byte, -1
+    // crest .. +1 hollow): the ground material's hollow moisture, fold occlusion and crest dryness read it, so a bed
+    // without it drew the plain ground round a stone that sits in a hollow or on a crest
+    const foldAt = (heightField as { _foldAt?: (x: number, z: number) => number })._foldAt;
+    const foldByte = (x: number, z: number): number => {
+      if (!foldAt) return 0;
+      const f = foldAt(x, z);
+      return Math.max(-127, Math.min(127, Math.round((f > 1 ? 1 : f < -1 ? -1 : f) * 127)));
+    };
+    const cells = new Map<number, { pos: number[]; fold: number[]; idx: number[] }>();
+    const radius = new Float64Array(SEGMENTS), ground = new Float64Array(SEGMENTS), local = new Float64Array(SEGMENTS * 3);
+    let built = 0;
+    for (let vi = 0; vi < 3; vi++) {
+      for (const placement of rockPlacements[vi]) {
+        if (rockClutter.has(placement)) continue;
+        const e = placement.elements, px = e[12], py = e[13], pz = e[14];
+        const sx = Math.hypot(e[0], e[1], e[2]), sy = Math.hypot(e[4], e[5], e[6]), sz = Math.hypot(e[8], e[9], e[10]);
+        const c = e[0] / sx, sn = -e[2] / sx; // the yaw's cosine and sine (three's rotation about +y)
+        const salt = Math.abs(Math.sin(px * 3.1 + pz * 7.7) * 4375.85) % 1;
+        // the stone's foot round it: its section at the ground under each direction (twice: the ground where the face is)
+        let meanR = 0;
+        for (let k = 0; k < SEGMENTS; k++) {
+          const phi = (k / SEGMENTS) * Math.PI * 2, dx = Math.cos(phi), dz = Math.sin(phi);
+          const lx = c * dx - sn * dz, lz = sn * dx + c * dz;
+          const ux = lx / sx, uz = lz / sz, toWorld = 1 / Math.hypot(ux, uz), theta = Math.atan2(uz, ux);
+          let r = boulderSectionRadius(sections[vi], (meshAt(px, pz) - py) / sy, theta) * toWorld, g = 0;
+          for (let it = 0; it < 2; it++) {
+            g = meshAt(px + dx * r, pz + dz * r);
+            r = boulderSectionRadius(sections[vi], (g - py) / sy, theta) * toWorld;
+          }
+          radius[k] = r; ground[k] = g; local[k * 3] = theta; local[k * 3 + 1] = toWorld; local[k * 3 + 2] = 0;
+          meanR += r / SEGMENTS;
+        }
+        if (meanR < 0.3) continue;
+        const size = Math.min(1.2, Math.max(0.35, meanR / 1.2));
+        const key = bedCellKey(px, pz);
+        let cell = cells.get(key);
+        if (!cell) cells.set(key, cell = { pos: [], fold: [], idx: [] });
+        const base = cell.pos.length / 3;
+        // (b16) the stone's contact patch over its bed: the disc's soil at the same place (its uv and its share of the
+        // darkness at the same distance from its centre), a few centimetres over the bed's rings from the face out, gone
+        // where the bed has sunk under the ground the disc itself lies on
+        const spot = rockContact ? rockSpotOf.get(placement) : undefined;
+        const shadePos: number[] = [], shadeUv: number[] = [], shadeTint: number[] = [];
+        for (let k = 0; k < SEGMENTS; k++) {
+          const phi = (k / SEGMENTS) * Math.PI * 2, dx = Math.cos(phi), dz = Math.sin(phi);
+          const windward = Math.max(0, -(dx * wx + dz * wz)), lee = Math.max(0, dx * wx + dz * wz);
+          const wobble = 0.5 + 0.3 * Math.sin(phi * 2 + salt * 6.3) + 0.2 * Math.sin(phi * 3 + salt * 17.1);
+          let lip: number, width: number;
+          if (sandy) {
+            lip = size * (0.04 + 0.2 * windward * windward + 0.07 * lee * lee * lee) * (0.8 + 0.4 * wobble);
+            width = 0.3 + size * (0.9 * windward * windward + 0.6 * lee * lee * lee) + 0.1 * wobble;
+          } else if (snowy) {
+            lip = size * (0.07 + 0.16 * windward * windward) * (0.8 + 0.4 * wobble);
+            width = 0.35 + size * 0.6 * windward * windward + 0.1 * wobble;
+          } else {
+            lip = size * (0.035 + 0.05 * wobble);
+            width = 0.24 + 0.2 * size + 0.12 * wobble;
+          }
+          const r = radius[k], theta = local[k * 3], toWorld = local[k * 3 + 1];
+          // (the lip never climbs past where the stone draws in: at most where its section is 85 % of its foot's)
+          let atLip = boulderSectionRadius(sections[vi], (ground[k] + lip - py) / sy, theta) * toWorld;
+          for (let it = 0; it < 4 && atLip < r * 0.85; it++) {
+            lip *= 0.6;
+            atLip = boulderSectionRadius(sections[vi], (ground[k] + lip - py) / sy, theta) * toWorld;
+          }
+          // the face at the lip's top, a hair inside the stone, and the ring inside it
+          const face = atLip - 0.015;
+          const ringR = [face * 0.7, face, r + width * 0.25, r + width * 0.55, r + width];
+          const ringY = [lip, lip, lip * 0.5625, lip * 0.2025, -0.05];
+          for (let j = 0; j < RINGS; j++) {
+            const x = px + dx * ringR[j], z = pz + dz * ringR[j], y = (j < 2 ? ground[k] : meshAt(x, z)) + ringY[j];
+            cell.pos.push(x, y, z);
+            cell.fold.push(foldByte(x, z));
+            if (spot && j >= 1) {
+              const rho = Math.hypot(x - spot.x, z - spot.z) / spot.r;
+              shadePos.push(x, y + 0.03, z);
+              const toRim = rho > 1 ? 1 / rho : 1; // (past the rim, where the shade is clear, the disc's edge texel)
+              shadeUv.push(0.5 + 0.5 * toRim * (x - spot.x) / spot.r, 0.5 + 0.5 * toRim * (z - spot.z) / spot.r);
+              shadeTint.push(1, 1, 1, j === RINGS - 1 ? 0 : contactShare(rho));
+            }
+          }
+        }
+        for (let k = 0; k < SEGMENTS; k++) {
+          const a = base + k * RINGS, b = base + ((k + 1) % SEGMENTS) * RINGS;
+          for (let j = 0; j < RINGS - 1; j++) cell.idx.push(a + j, b + j, a + j + 1, a + j + 1, b + j, b + j + 1);
+        }
+        if (spot) {
+          const rings = RINGS - 1, idx: number[] = [];
+          for (let k = 0; k < SEGMENTS; k++) {
+            const a = k * rings, b = ((k + 1) % SEGMENTS) * rings;
+            for (let j = 0; j < rings - 1; j++) idx.push(a + j, b + j, a + j + 1, a + j + 1, b + j, b + j + 1);
+          }
+          const shade = new THREE.BufferGeometry();
+          shade.setAttribute('position', new THREE.Float32BufferAttribute(shadePos, 3));
+          shade.setAttribute('uv', new THREE.Float32BufferAttribute(shadeUv, 2));
+          shade.setAttribute('color', new THREE.Float32BufferAttribute(shadeTint, 4));
+          shade.setIndex(idx);
+          shade.computeVertexNormals();
+          rockBedShades.push(shade);
+        }
+        if (++built % 48 === 0) yield { fine: true, progress: false, stage: 'rock-beds' };
+      }
+    }
+    const out: THREE.BufferGeometry[] = [];
+    for (const { pos, fold, idx } of cells.values()) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geometry.setAttribute('fold', new THREE.BufferAttribute(Int8Array.from(fold), 1, true));
+      geometry.setIndex(idx);
+      geometry.computeVertexNormals();
+      geometry.computeBoundingSphere();
+      out.push(geometry);
+    }
+    return out;
+  }
+
   // the scenery lane (wave 57, "a ruler-straight base line on the grass with no soil collar"): every boulder's contact
   // patch, a ragged disc of soil a fifth to a third wider than its reach, to the ground decals below (none on a snow map,
   // where the snow lies against the stone, nor on sand, where the dust skirt meets the dune)
   const rockContact = !snowCap && rockDressing.dust < 0.5;
   const rockSpots: Array<{ x: number; z: number; r: number }> = [];
+  // (b16; gauntlet wave 121: boulders "on pale halos or texture seams") each stone's contact patch by its placement, and
+  // the patch carried over its bed: the bed (the ground's own material, risen round the foot) hid the patch's inner rings
+  // and showed the clean ground as a pale ring between the stone and its soil. The patch's rings and their shares of its
+  // darkness are the disc's (conformedDisc, ROCK_PATCH); a shade over the bed takes the same at the same place
+  const rockSpotOf = new Map<THREE.Matrix4, { x: number; z: number; r: number }>();
+  const CONTACT_PATCH_RINGS: readonly number[] = [0, 0.4, 0.7, 1.0];
+  const ROCK_PATCH_SHARES: readonly number[] = [0.3, 0.35, 0.5, 1];
+  const rockBedShades: THREE.BufferGeometry[] = [];
+  /** The contact patch's share of its darkness at a distance from its centre (a share of its radius): the disc's rings'
+   * shares, linear between them as the disc's triangles draw them, none past its rim. */
+  function contactShare(rho: number): number {
+    if (rho >= 1) return 0;
+    for (let i = 1; i < CONTACT_PATCH_RINGS.length; i++) {
+      if (rho <= CONTACT_PATCH_RINGS[i]) {
+        const t = (rho - CONTACT_PATCH_RINGS[i - 1]) / (CONTACT_PATCH_RINGS[i] - CONTACT_PATCH_RINGS[i - 1]);
+        return ROCK_PATCH_SHARES[i - 1] + (ROCK_PATCH_SHARES[i] - ROCK_PATCH_SHARES[i - 1]) * t;
+      }
+    }
+    return 0;
+  }
+  const rockDepth = createRockDepthMaterial();
+  retainedSurfaceMaterials.push(rockDepth);
   const rockLod: RockLodPools[] = [];
   instantiateRockVariants();
+  // (b14) every boulder's bed, for the world to draw with the ground's own material (map.ts assembleWorld)
+  if (!mobileProps) group.userData.rockBeds = yield* buildRockBeds();
   rockClutter.clear();
+  // (b18) and the turf banked against the dry-stone walls' feet, the same ground material's: (b37) merged into its cell's
+  // bed, one geometry a 512 m cell for both (bedCellKey), so a cell costs one draw, not two
+  if (wallDressing.turfs.length) {
+    const byCell = new Map<number, THREE.BufferGeometry[]>();
+    const add = (g: THREE.BufferGeometry) => {
+      if (!g.boundingSphere) g.computeBoundingSphere();
+      const c = g.boundingSphere!.center, key = bedCellKey(c.x, c.z), list = byCell.get(key);
+      if (list) list.push(g); else byCell.set(key, [g]);
+    };
+    for (const bed of (group.userData.rockBeds as THREE.BufferGeometry[] | undefined) ?? []) add(bed);
+    for (const turf of wallDressing.turfs) add(turf);
+    const beds: THREE.BufferGeometry[] = [];
+    for (const list of byCell.values()) {
+      const merged = list.length === 1 ? list[0] : mergeGeometries(list, false);
+      if (!merged) { beds.push(...list); continue; }
+      if (merged !== list[0]) for (const g of list) g.dispose();
+      merged.computeBoundingSphere();
+      beds.push(merged);
+    }
+    group.userData.rockBeds = beds;
+    wallDressing.turfs.length = 0;
+  }
 
   yield { fine: true, stage: 'rock-instances' };
 
   // --- field haystacks: classic WoT soft-cover silhouettes in the open ---
   const stackSpots: Array<{ x: number; z: number; r: number }> = []; // r6: fed to the grounding-decal pass below
+  // b15 (gauntlet wave 106: the cone "a leftover debug marker"): the region's own stack where its fields stack hay
+  // (maps/haystackKit.ts), none where they do not — the default; a map that authors a count and no region keeps the cone
+  // (the steppe, whose rick is the maps lane's). The draws stay as they were — the authored count's, or the old default's
+  // fifteen — so every later placement keeps its seat; a stack the region does not build, or one too big for its site,
+  // takes its draws and stands nowhere.
+  const authoredHaystacks = (cfg as { props?: { haystacks?: number } } | null)?.props?.haystacks;
+  const haystackStyle: HaystackStyle = P.haystackStyle ?? HAYSTACK_STYLE_BY_MAP[mapId] ?? (authoredHaystacks !== undefined ? 'haystack' : 'none');
+  const haystackDraws = authoredHaystacks ?? 15;
   function placeFieldHaystacks(): void {
-  for (let i = 0, placed = 0; i < P.haystacks * 22 && placed < P.haystacks; i++) {
+  const form = haystackStyle === 'none' ? null : HAYSTACK_STYLE_KINDS[haystackStyle];
+  const meta = form ? PROP_TYPE_REGISTRY[form.kind] : null;
+  /**
+   * A region's stack stands where its builder would have built it: on the most level ground within fourteen metres of
+   * its seat — the seat itself if the ground under its foot is within 0.35 m from side to side, else the levellest of
+   * sixteen stands round it within 0.6 m — clear of the village, the spawns and the road by its reach; null where none
+   * is. The ground under the foot: eight points round a round stack's foot, a hooiberg's or a Diemen's corners and
+   * sides. No draws (every later placement keeps its seat).
+   */
+  function haystackStand(x0: number, z0: number, yaw: number, sc: number): { x: number; z: number; y: number } | null {
+    if (!meta) return null;
+    const box = meta.hw != null && meta.hl != null, footR = ((meta.collisionR ?? meta.r) + 0.25) * sc;
+    const hw = (meta.hw ?? 0) * sc, hl = (meta.hl ?? 0) * sc, c = Math.cos(yaw), s = Math.sin(yaw);
+    let best: { x: number; z: number; y: number } | null = null, bestSpread = 0.6;
+    for (let k = 0; k < 17; k++) {
+      const ring = k === 0 ? 0 : k <= 8 ? 7 : 14, a = ((k - 1) % 8) * (Math.PI / 4) + (k > 8 ? Math.PI / 8 : 0);
+      const x = x0 + Math.cos(a) * ring, z = z0 + Math.sin(a) * ring;
+      if (Math.abs(x) > 430 || Math.abs(z) > 430) continue;
+      if (x > v.x0 - 10 && x < v.x1 + 10 && z > v.z0 - 10 && z < v.z1 + 10) continue;
+      if (heightField._roadDist(x, z) < Math.max(9, 6 + meta.r * sc)) continue;
+      if (heightField.getGroundType(x, z) === 'soft' || noVeg(x, z)) continue;
+      if (heightField.getNormalAt(x, z).y < 0.92) continue;
+      if ([L.spawns.player, ...L.spawns.enemies].some((spawn) => Math.hypot(x - spawn.x, z - spawn.z) < 18)) continue;
+      const y = heightField.getHeightAt(x, z);
+      let lo = y, hi = y;
+      for (let p = 0; p < 8; p++) {
+        let px: number, pz: number;
+        if (box) {
+          const u = [1, 1, -1, -1, 1, -1, 0, 0][p] * hw, w = [1, -1, 1, -1, 0, 0, 1, -1][p] * hl;
+          px = x + u * c + w * s; pz = z - u * s + w * c;
+        } else {
+          px = x + Math.cos((p * Math.PI) / 4) * footR; pz = z + Math.sin((p * Math.PI) / 4) * footR;
+        }
+        const h = heightField.getHeightAt(px, pz);
+        lo = Math.min(lo, h); hi = Math.max(hi, h);
+      }
+      const spread = hi - lo;
+      if (k === 0 && spread <= 0.35) return { x, z, y };
+      if (spread < bestSpread) { bestSpread = spread; best = { x, z, y }; }
+    }
+    return best;
+  }
+  for (let i = 0, placed = 0; i < haystackDraws * 22 && placed < haystackDraws; i++) {
     const x = (rng() * 2 - 1) * 430, z = (rng() * 2 - 1) * 430;
     if (x > v.x0 - 10 && x < v.x1 + 10 && z > v.z0 - 10 && z < v.z1 + 10) continue;
     if (heightField._roadDist(x, z) < 9) continue;
@@ -6042,9 +7105,13 @@ ${snowCap ? `
     // through cosmetically instead of being EATEN (the old collider made a
     // hay pile stop AP rounds; colliders are gone for hay).
     const sc = 0.85 + rng() * 0.4;
-    addDestructible('haystack', x, y - 0.10, z, rng() * Math.PI * 2, sc);
-    stackSpots.push({ x, z, r: 1.9 * sc * 1.5 });
+    const yaw = rng() * Math.PI * 2;
     placed++;
+    if (!form || !meta) continue;
+    const stand = form.kind === 'haystack' ? { x, z, y } : haystackStand(x, z, yaw, sc);
+    if (!stand) continue;
+    addDestructible(form.kind, stand.x, stand.y - 0.10, stand.z, yaw, sc);
+    stackSpots.push({ x: stand.x, z: stand.z, r: form.spotR * sc });
   }
   }
   placeFieldHaystacks();
@@ -6414,17 +7481,30 @@ ${snowCap ? `
     // a plot of standing grain stands only inside a field of ripe wheat or barley (landUse.ts LAND_CROP 1, 2), well
     // inside its margin, its rows along the field's own — not at any angle over whatever crop the land use laid there
     const landAt = heightField._landUseAt;
+    // the plot as it stands in its field: along its rows (fw) and across them (fd)
+    let fw = pw, fd = pd;
     if (landAt) {
       const f = landAt(cx, cz, cropLandSample);
-      if (!f.active || (f.crop !== 1 && f.crop !== 2) || f.edgeM - f.marginM < Math.max(pw, pd) * 0.5 + 2) supported = false;
-      else { dx = f.rowX; dz = f.rowZ; }
+      if (!f.active || (f.crop !== 1 && f.crop !== 2)) supported = false;
+      else {
+        // (mr4, 2026-10-06: a strip field 36 m across never held a plot of 34–60 × 26–48 m, so an openfield's or a Gewann's
+        // strips carried no standing grain at all — Amberford 8 plots → 0, Frontier's Gewann row 2 → 0) the plot fits its
+        // field instead of being refused by it: across its rows to the field's nearer edge, along them to the nearer row
+        // end, each 2 m inside the margin; a field that leaves less than 12 m across or 20 m along holds none. A plot that
+        // fitted before keeps its size (the fit only shortens what the edge would have refused), and the draws are the ones
+        // they were (the plots' own stream)
+        fd = Math.min(pd, 2 * (f.edgeM - f.marginM - 2));
+        fw = Math.min(pw, 2 * (f.endM - f.marginM - 2));
+        if (fd < 12 || fw < 20) supported = false;
+        else { dx = f.rowX; dz = f.rowZ; }
+      }
     }
     const px2 = -dz, pz2 = dx;
-    if (supported && !cropPlotCornersAreLevel(cx, cz, pw, pd, dx, dz, px2, pz2)) {
+    if (supported && !cropPlotCornersAreLevel(cx, cz, fw, fd, dx, dz, px2, pz2)) {
       supported = false;
     }
     if (!supported) return false;
-    appendCropRows(cropGeos, crng, cx, cz, pw, pd, dx, dz, px2, pz2);
+    appendCropRows(cropGeos, crng, cx, cz, fw, fd, dx, dz, px2, pz2);
     return true;
   }
 
@@ -6437,7 +7517,7 @@ ${snowCap ? `
       map: cropTex, alphaTest: 0.42, alphaToCoverage: true, side: THREE.DoubleSide,
       vertexColors: true, roughness: 1.0, metalness: 0.0,
     });
-    cropMat.envMapIntensity = 0.5;
+    // (2026-10-08: the crops take the sky's full light, as they always drew; their 0.5 trim never applied, materialEnvIntensity.ts)
     engineCtx.setupShadowMaterial(cropMat, cropAttributeNormal);
     cropMat.customProgramCacheKey = () => 'world-crop-authored-normal-v1';
     const merged = mergeGeometries(cropGeos, false);
@@ -6533,8 +7613,16 @@ ${snowCap ? `
           min: [hx, beamSpec.minY, hz], max: [hx, beamSpec.maxY, hz],
           kind: 'hedgehog', hedgehogId,
         };
-        setObbShape(record, hx, hz, beamSpec.halfWidth + 0.025,
-          beamSpec.halfLength + 0.025, beamSpec.yaw);
+        // (the hitbox lane, 2026-10-07: the beam's own slabs, which lean with it; its whole projection extruded from foot
+        // to tip stopped a quarter of the sight lines that met it 10+ cm clear of the steel)
+        _hedgehogBeam.makeRotationY(beamSpec.yaw).multiply(_hedgehogTilt.makeRotationX(beamSpec.tilt))
+          .setPosition(hx, y + 0.62 * scale, hz);
+        const slabs = convexSlabs(boxCorners(0.08 * scale + 0.025, 0.08 * scale, 1.05 * scale + 0.025, _hedgehogBeam.elements),
+          HEDGEHOG_SLAB_M, 8);
+        if (slabs.length) {
+          setCompoundShape(record, slabParts(slabs));
+          record.min[1] = slabs[0].y0; record.max[1] = slabs[slabs.length - 1].y1;
+        } else setObbShape(record, hx, hz, beamSpec.halfWidth + 0.025, beamSpec.halfLength + 0.025, beamSpec.yaw);
         const collider = cloneCollisionRecord(record);
         obstacles.push(record); colliders.push(collider);
         clutterObs.push(record); clutterCols.push(collider);
@@ -6564,9 +7652,26 @@ ${snowCap ? `
       if (Math.max(Math.abs(cxp), Math.abs(czp)) > 440) continue;
       if (heightField._roadDist(cxp, czp) < 6) continue;
       if (heightField.getGroundType(cxp, czp) === 'soft' || noVeg(cxp, czp)) continue;
-      const y = heightField.getHeightAt(cxp, czp);
-      addDestructible(carts % 2 ? 'handcart' : 'haycart', cxp, y - 0.04, czp,
-        rng() * Math.PI * 2, 0.95 + rng() * 0.12);
+      const kind = carts % 2 ? 'handcart' : 'haycart';
+      const yaw = rng() * Math.PI * 2, sc = 0.95 + rng() * 0.12;
+      // (wave 211) a station steeper than the carts' tilt cap passes its cart to the nearest neighbouring station that
+      // is not, along the same road, short of the next cart station either way; with none, the cart is not placed (its
+      // draws are spent either way)
+      const meta = resolveDestructibleMeta(destructibleContext, kind);
+      const hwK = (meta.hw ?? meta.r) * sc, hlK = (meta.hl ?? meta.r) * sc;
+      let seat: [number, number] | null = null;
+      // each station on its own side of the road first, then across it
+      for (const step of [0, 1, -1, 2, -2, 3, -3, 4, -4]) for (const side of [1, -1]) {
+        if (seat) break;
+        const near = step === 0 ? at : authoredRoadStationIndex(L, 1, i + step);
+        if (near < 0) continue;
+        const [nx, nz] = L.roads[1][near];
+        const sx = nx + side * 8.5, sz = nz + side * 6.5;
+        if ((step !== 0 || side < 0) && (Math.max(Math.abs(sx), Math.abs(sz)) > 440 || heightField._roadDist(sx, sz) < 6
+          || heightField.getGroundType(sx, sz) === 'soft' || noVeg(sx, sz))) continue;
+        if (!cartGroundPose(heightField, sx, sz, yaw, hwK, hlK).steep) seat = [sx, sz];
+      }
+      if (seat) addDestructible(kind, seat[0], heightField.getHeightAt(seat[0], seat[1]) - 0.04, seat[1], yaw, sc);
       carts++;
     }
   }
@@ -6726,6 +7831,12 @@ ${snowCap ? `
       && heightField.getNormalAt(x, z).y >= 0.86 && !nearTrench(x, z)
       && ![player, ...enemies].some((spawn) => Math.hypot(x - spawn.x, z - spawn.z) < 45)
       && !placedB.some((building) => Math.hypot(x - building.x, z - building.z) < building.rr + 6);
+    const trunks = P.pillboxClearOfTrees ? (vegetation?.treeObstacles ?? []).map((tree) => ({
+      x: (tree.min[0] + tree.max[0]) / 2, z: (tree.min[2] + tree.max[2]) / 2,
+      reach: Math.max(tree.max[0] - tree.min[0], tree.max[2] - tree.min[2]) / 2 + 6.2,
+    })) : [];
+    const pillboxOnTree = (x: number, z: number): boolean => trunks.some((t) => Math.abs(x - t.x) < t.reach
+      && Math.abs(z - t.z) < t.reach);
     let placed = 0;
     for (let attempt = 0; attempt < target * 30 && placed < target; attempt++) {
       const along = 0.22 + wrng() * 0.56;
@@ -6762,13 +7873,14 @@ ${snowCap ? `
         addDestructible('barbedwire', wx, heightField.getHeightAt(wx, wz) - 0.02, wz, wireYaw, wireScale);
       }
       // a pillbox closes one end of every second work (either end, else the centre) 3–4 m behind the breastwork line
+      // (on a map with pillboxClearOfTrees its 8 m square keeps off every trunk, as the landform boulders do)
       if (placed % 2 === 0) {
         const first = wrng() < 0.5 ? 1 : -1;
         const reach = modules * 1.35 + 4.4;
         for (const [ox, oz] of [[lx * first * reach, lz * first * reach], [-lx * first * reach, -lz * first * reach], [-fx * 4, -fz * 4]]) {
           const px = cx + ox - fx * 3, pz = cz + oz - fz * 3;
           // the pillbox's whole footprint (an 8 m square) keeps out of the road core, not just its centre
-          if (!clear(px, pz) || heightField.getNormalAt(px, pz).y < 0.9
+          if (!clear(px, pz) || heightField.getNormalAt(px, pz).y < 0.9 || pillboxOnTree(px, pz)
             || !destructibleClearOfRoad('bunker', px, pz, Math.atan2(fx, fz), 1)) continue;
           addDestructible('bunker', px, heightField.getHeightAt(px, pz) - 0.08, pz, Math.atan2(fx, fz), 1);
           if (wrng() < 0.7) scatterDestructibles('ammobox', px - fx * 4.5, pz - fz * 4.5, 1, 1.5, 3);
@@ -6821,7 +7933,8 @@ ${snowCap ? `
       function* bakeFor(specId: string, pop: boolean): Generator<PropsBuildSlice, WreckBake | null, void> {
         const key = specId + (pop ? '|p' : '');
         if (bakeCache.has(key)) return bakeCache.get(key) ?? null;
-        const options = { seed: seed + bakeCache.size * 131, pop };
+        // the map-vehicles lane (P4): the paint this map's tanks wore survives in patches on the burnt hull
+        const options = { seed: seed + bakeCache.size * 131, pop, remnant: wreckRemnantPaint(mapId) };
         let baked: WreckBake | null;
         if (workerWrecks) {
           const request: NonNullable<PropsBuildSlice['wreckBake']> = { specId, options, result: null };
@@ -6871,6 +7984,18 @@ ${snowCap ? `
             || placedB.some((building) => Math.hypot(x - building.x, z - building.z) < building.rr + 2)) return false;
         }
         if (!boxClearOfPoints(sharpBends, x, z, baked.hx + 0.2, baked.hz + 0.2, yaw, 10)) return false;
+        // the map-vehicles lane (2026-10-08, the placement audit over the merge): a hulk never stands inside a building,
+        // a hut, a garage, a wall, a fence, a barrier or a boulder placed before it (Orchard's Merkava stood in a
+        // checkpoint hut, Airfield's hulks in a quonset hut and a motor pool, Urban's T-72 2 m through a plank fence):
+        // its footprint against every solid over half a metre tall, a hand's breadth of slack, nor with a tree through
+        // it (Verdant's KV-2s); such a seat is refused and the donor tried at the next site (a hulk may still lie
+        // against the low things, a kerb, a log, a crate on its side)
+        if (hulkMeetsTallSolid(x, z, baked.hx, baked.hz, yaw)) return false;
+        // nor on a match objective's disc (the authored zone hints, 30 m, and the kickoff, 12 m, each with 3 m of margin,
+        // as the field works keep them: scenery.ts fieldWorksKeepOut). Both authorities relocate a blocked hint by a
+        // bounded search: a hulk seated 25 m from Steinburg's eastern zone sent it 280 m away and broke the layout's
+        // symmetry (matchPlacement, mapLayoutBrief)
+        if (hulkOnObjective(x, z, Math.hypot(baked.hx, baked.hz))) return false;
         const support = planGroundedObbPose(
           heightField, x, z, baked.hx, baked.hz, yaw, 0.14,
         );
@@ -6910,15 +8035,17 @@ ${snowCap ? `
           sg.translate(x, y, z);
           wreckShadowGeos.push(sg);
         }
-        // solid obstacle + shell collider from the yaw-rotated footprint
-        const cs = Math.abs(Math.cos(yaw)), sn = Math.abs(Math.sin(yaw));
-        const hx = baked.hx * cs + baked.hz * sn + 0.2;
-        const hz = baked.hx * sn + baked.hz * cs + 0.2;
-        const rec = setObbShape(
-          { min: [x - hx, y, z - hz], max: [x + hx, y + baked.h - 0.2, z + hz] },
-          x, z, baked.hx + 0.2, baked.hz + 0.2, yaw);
+        // Separate hull/turret solids follow the exact visible yaw and slope pose.
+        // A sideways gun must never turn the empty space beside a wreck into a wall.
+        const placement = new THREE.Matrix4().makeRotationFromQuaternion(_quat)
+          .multiply(new THREE.Matrix4().makeRotationY(yaw));
+        placement.setPosition(x, y, z);
+        const rec = placeWreckCollision(baked.solids, placement);
+        const hx = (rec.max[0] - rec.min[0]) * 0.5;
+        const hz = (rec.max[2] - rec.min[2]) * 0.5;
         obstacles.push(rec);
-        colliders.push(cloneCollisionRecord(rec));
+        // (the hitbox lane, 2026-10-07: shells and sight lines meet the solids in slabs that lean with them)
+        colliders.push(placeWreckShellCollision(baked.shellSolids ?? baked.solids, placement));
         wreckScorch.push([x, z]);
         tankWreckSpots.push({
           specId, x, y, z, yaw, hx, hz, h: baked.h, debrisTris,
@@ -6934,6 +8061,30 @@ ${snowCap ? `
         // next supported site instead of skipping it and later repeating one.
         wreckPickSerial++;
         return true;
+      }
+      const objectiveLayout = MATCH_OBJECTIVE_LAYOUTS[mapId];
+      const objectiveDiscs: readonly (readonly [number, number, number])[] = [
+        ...(objectiveLayout?.zones ?? []).map((zone) => [zone.x, zone.z, 30 + 3] as const),
+        ...(objectiveLayout?.kickoff ? [[objectiveLayout.kickoff.x, objectiveLayout.kickoff.z, 12 + 3] as const] : []),
+        // (2026-10-08, over modes' symmetric deployments) nor in a deployment slot's clearing, which every placed
+        // destructible keeps (addDestructible's veto: DEPLOYMENT_CLEAR_M and its radius); Delta's Type 59 stood 2.75 m in one
+        ...deploymentSlots.map((slot) => [slot.x, slot.z, DEPLOYMENT_CLEAR_M] as const),
+      ];
+      function hulkOnObjective(x: number, z: number, r: number): boolean {
+        return objectiveDiscs.some(([cx, cz, radius]) => Math.hypot(x - cx, z - cz) < radius + r);
+      }
+      function hulkMeetsTallSolid(x: number, z: number, hx: number, hz: number, yaw: number): boolean {
+        const s = Math.sin(yaw), c = Math.cos(yaw), r = Math.hypot(hx, hz);
+        const hull: FootprintPolygon = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) =>
+          [x + u * hx * c + v * hz * s, z - u * hx * s + v * hz * c] as const);
+        for (const list of [obstacles, sceneryTrees] as const) {
+          for (const ob of list) {
+            if (ob.kind === 'tank-wreck' || ob.max[1] - ob.min[1] < 0.5) continue;
+            if (ob.max[0] < x - r || ob.min[0] > x + r || ob.max[2] < z - r || ob.min[2] > z + r) continue;
+            for (const poly of shapePolygons(ob)) if (polygonGap(hull, poly).gap < -0.1) return true;
+          }
+        }
+        return false;
       }
       let placedW = 0;
       function* placeAuthoredWrecks(): Generator<PropsBuildSlice, void, void> {
@@ -7241,6 +8392,12 @@ ${snowCap ? `
       const pr = 1.6 + rrng() * 1.3;
       const seat = shiftClearOfRoadCore(heightField, x, z, (px, pz) => discClearOfRoadCore(heightField, px, pz, pr))
         ?? [x, z];
+      // the map-vehicles lane (2026-10-08, the placement audit over the merge): a pile keeps half a metre off a tank
+      // hulk placed before it (Skybridge's Sheridan lay 2.7 m deep in one); a refused pile skips its own draws, so the
+      // later candidates' seats move, on the maps where a pile met a hulk only
+      if (tankWreckSpots.some((w) => Math.hypot(Math.max(0, Math.abs(seat[0] - w.x) - w.hx), Math.max(0, Math.abs(seat[1] - w.z) - w.hz)) < pr + 0.5)) {
+        return false;
+      }
       const capture = waterworksRubble && waterworksRubble.length < 3;
       const stoneStart = capture ? buckets.stone.length : 0;
       const woodStart = capture ? buckets.wood.length : 0;
@@ -7269,6 +8426,38 @@ ${snowCap ? `
     // slabs rendered ~100% white ("sidewalks read emissive") — stone reads as
     // concrete-gray on every map.
     const kerbBucket = 'stone';
+    // mr1 (2026-10-05): the kerb is seated on the carriageway, not stacked on the terrain. The critics' "town behind a
+    // knee-high kerb" was the old seat: a level kerb 0.19 m over the terrain at its centre and a pavement pitched to the
+    // terrain 6.35 m out, which stood up to 0.5 m over the road where the ground rose behind it (0.9 m on Blackglass's
+    // banks). Now the kerb shows a KERB_FACE_M face over the carriageway beside it and follows the road's grade, the
+    // pavement's inner edge is flush with the kerb's top, its outer edge climbs toward rising ground by at most
+    // WALK_RISE_MAX_M, and both slabs reach down into lower ground instead of floating over it. A piece on a bridge
+    // deck's span is left to the bridge's parapets. The kerbs are render geometry only (no collision record), and the
+    // pieces skipped still draw their UV jitter, so every later draw of the dressing stream keeps its seat.
+    const KERB_OFFSET_M = 5.05, KERB_DEPTH_M = 0.34, KERB_FACE_M = 0.12, KERB_EMBED_M = 0.10;
+    const WALK_OFFSET_M = 6.35, WALK_DEPTH_M = 2.25, WALK_EMBED_M = 0.06, WALK_RISE_MAX_M = 0.25;
+    const decks = heightField.bridgeDecks ?? [];
+    const onDeckSpan = (x: number, z: number): boolean => decks.some((deck) => {
+      const ox = x - deck.x, oz = z - deck.z;
+      return Math.abs(ox * deck.ux + oz * deck.uz) < deck.halfLength + 1
+        && Math.abs(ox * deck.uz - oz * deck.ux) < deck.halfWidth + 6;
+    });
+    /**
+     * Seat a slab built along local x (its length) and z (across, +z = `outward` away from the road): each vertex takes
+     * its end's height (x < 0 the piece's start, x > 0 its end) — the top from `top(end, outer)`, the bottom from
+     * `foot(end)` — so the slab follows the grade along the road without a level step at its joints.
+     */
+    const seatSlab = (geometry: THREE.BufferGeometry, outward: number,
+      top: (end: 0 | 1, outer: boolean) => number, foot: (end: 0 | 1) => number): void => {
+      const position = geometry.attributes.position;
+      for (let i = 0; i < position.count; i++) {
+        const end = position.getX(i) > 0 ? 1 : 0;
+        const outer = position.getZ(i) * outward > 0;
+        position.setY(i, position.getY(i) > 0 ? top(end, outer) : foot(end));
+      }
+      position.needsUpdate = true;
+      geometry.computeVertexNormals();
+    };
     for (let ri = 0; ri < roads.length; ri++) {
       const nodes = roads[ri];
       for (let i = 0; i < nodes.length - 1; i++) {
@@ -7285,27 +8474,38 @@ ${snowCap ? `
           const tt0 = k / nSub, tt = (k + 0.5) / nSub, tt1 = (k + 1) / nSub;
           const cx = ax + dx * tt, cz = az + dz * tt;
           for (const side of [-1, 1]) {
-            const px = cx - tz * side * 5.05, pz = cz + tx * side * 5.05;
+            const px = cx - tz * side * KERB_OFFSET_M, pz = cz + tx * side * KERB_OFFSET_M;
             if (distToOtherRoads(px, pz, ri) < 6.8) continue; // open corners
-            const y = heightField.getHeightAt(px, pz);
-            const g = slabBox(segLen, 0.26, 0.34, 1.3);
+            // the ground at the piece's start (end 0) and end (end 1), `offset` metres off the centreline on this side
+            const ground = (end: 0 | 1, offset: number): number => {
+              const t = end ? tt1 : tt0;
+              return heightField.getHeightAt(ax + dx * t - tz * side * offset, az + dz * t + tx * side * offset);
+            };
+            // the carriageway at the kerb's face, the ground behind the kerb, and the pavement's two edges
+            const road = [ground(0, KERB_OFFSET_M - KERB_DEPTH_M / 2), ground(1, KERB_OFFSET_M - KERB_DEPTH_M / 2)];
+            const behind = [ground(0, KERB_OFFSET_M + KERB_DEPTH_M / 2), ground(1, KERB_OFFSET_M + KERB_DEPTH_M / 2)];
+            const inner = [ground(0, WALK_OFFSET_M - WALK_DEPTH_M / 2), ground(1, WALK_OFFSET_M - WALK_DEPTH_M / 2)];
+            const outer = [ground(0, WALK_OFFSET_M + WALK_DEPTH_M / 2), ground(1, WALK_OFFSET_M + WALK_DEPTH_M / 2)];
+            const kerbTop = [road[0] + KERB_FACE_M, road[1] + KERB_FACE_M];
+            const kerbFoot = [Math.min(road[0], behind[0]) - KERB_EMBED_M, Math.min(road[1], behind[1]) - KERB_EMBED_M];
+            const rise = [clamp(outer[0] + 0.03 - kerbTop[0], 0, WALK_RISE_MAX_M), clamp(outer[1] + 0.03 - kerbTop[1], 0, WALK_RISE_MAX_M)];
+            const walkFoot = [Math.min(inner[0], outer[0], kerbTop[0]) - WALK_EMBED_M, Math.min(inner[1], outer[1], kerbTop[1]) - WALK_EMBED_M];
+            const spanned = onDeckSpan(cx, cz);
+            const g = slabBox(segLen, (kerbTop[0] - kerbFoot[0] + kerbTop[1] - kerbFoot[1]) / 2, KERB_DEPTH_M, 1.3);
             jitterUV(g, rng);
-            g.rotateY(yaw);
-            g.translate(px, y + 0.06, pz);
-            buckets[kerbBucket].push(g);
-            // r5: PAVEMENT slab behind the kerb — a 2.2 m sidewalk strip
-            // flanking every street, pitched to the terrain per sub-segment.
-            // The critique's "town = boxes dropped on a lawn" came straight
-            // from streets with no built edge between asphalt and grass.
-            const sx0 = ax + dx * tt0 - tz * side * 6.35, sz0 = az + dz * tt0 + tx * side * 6.35;
-            const sx1 = ax + dx * tt1 - tz * side * 6.35, sz1 = az + dz * tt1 + tx * side * 6.35;
-            const h0 = heightField.getHeightAt(sx0, sz0);
-            const h1 = heightField.getHeightAt(sx1, sz1);
-            const walk = slabBox(segLen, 0.16, 2.25, 0.9); // r2: un-stretched paving
+            // r5: PAVEMENT slab behind the kerb — a 2.2 m sidewalk strip flanking every street. The critique's "town =
+            // boxes dropped on a lawn" came straight from streets with no built edge between asphalt and grass.
+            const walk = slabBox(segLen, (kerbTop[0] + rise[0] / 2 - walkFoot[0] + kerbTop[1] + rise[1] / 2 - walkFoot[1]) / 2,
+              WALK_DEPTH_M, 0.9); // r2: un-stretched paving
             jitterUV(walk, rng);
-            walk.rotateZ(Math.atan2(h1 - h0, segLen));
+            if (spanned) { g.dispose(); walk.dispose(); continue; }
+            seatSlab(g, side, (end) => kerbTop[end], (end) => kerbFoot[end]);
+            g.rotateY(yaw);
+            g.translate(px, 0, pz);
+            buckets[kerbBucket].push(g);
+            seatSlab(walk, side, (end, isOuter) => kerbTop[end] + (isOuter ? rise[end] : 0), (end) => walkFoot[end]);
             walk.rotateY(yaw);
-            walk.translate((sx0 + sx1) / 2, (h0 + h1) / 2 + 0.10, (sz0 + sz1) / 2);
+            walk.translate(cx - tz * side * WALK_OFFSET_M, 0, cz + tx * side * WALK_OFFSET_M);
             buckets[kerbBucket].push(walk);
           }
         }
@@ -7426,21 +8626,36 @@ ${snowCap ? `
     // its finest grid and its cells' diagonal), not the analytic height, which stands above the mesh on a bank's lip — a
     // patch conformed to that floated over the drawn lip and showed edge-on
     const groundHeightAt = (px: number, pz: number): number => heightField.getHeightAt(px, pz);
-    const meshHeightAt = (px: number, pz: number): number => terrainNearMeshHeightAt(groundHeightAt, px, pz);
+    const meshHeightAt = (px: number, pz: number): number => terrainNearMeshHeightAt(nearMeshVertexHeight, px, pz);
+    // (b12, the coordinator after the Coastal re-shoot: "lighten the patch's inner ring") the ground contact patches carry
+    // each ring's share of their darkness in a vertex alpha; a boulder's patch keeps its soft outer shadow but lightens
+    // toward the stone, whose foot covers the inner rings and leaves only a sliver showing at a bank's lip (a crease, not a
+    // contact). Only the contact layer passes shares; the other decals keep their geometry as it was.
+    const FULL_PATCH: readonly number[] = [1, 1, 1, 1];
+    const ROCK_PATCH = ROCK_PATCH_SHARES; // (b16: the bed shades take the same, buildRockBeds)
+    // (b44) each kind's share of the contact layer's darkening, carried in the patch's vertex RGB (the contact material
+    // reads its red): a boulder's foot full (its bed's shades too: they carry 1), a crushable prop's and a field stack's
+    // less, a building's foundation least (its walls stand on it, and a village keeps its yards' own ground)
+    const CONTACT_STRENGTH = Object.freeze({ rock: 1, prop: 0.75, stack: 0.75, foundation: 0.45 });
     function conformedDisc(
       x: number,
       z: number,
       r: number,
       profile: readonly number[],
       onMesh = false,
+      shares: readonly number[] | null = null,
+      strength = 1,
     ): THREE.BufferGeometry {
-      const rings = [0, 0.4, 0.7, 1.0], segs = 18;
+      const rings = CONTACT_PATCH_RINGS, segs = 18;
       const nv = 1 + (rings.length - 1) * segs;
       const pos = new Float32Array(nv * 3);
       const uv = new Float32Array(nv * 2);
+      // (the alpha of every vertex is its ring's share, written below; the RGB the kind's strength)
+      const tint = shares ? new Float32Array(nv * 4).fill(strength) : null;
       const groundAt = onMesh ? meshHeightAt : groundHeightAt;
       pos[0] = x; pos[1] = groundAt(x, z) + profile[0]; pos[2] = z;
       uv[0] = 0.5; uv[1] = 0.5;
+      if (tint && shares) tint[3] = shares[0];
       let vi = 1;
       for (let ri = 1; ri < rings.length; ri++) {
         for (let k = 0; k < segs; k++) {
@@ -7451,6 +8666,7 @@ ${snowCap ? `
           pos[vi * 3 + 2] = pz;
           uv[vi * 2] = 0.5 + Math.cos(a) * 0.5 * rings[ri];
           uv[vi * 2 + 1] = 0.5 + Math.sin(a) * 0.5 * rings[ri];
+          if (tint && shares) tint[vi * 4 + 3] = shares[ri];
           vi++;
         }
       }
@@ -7466,6 +8682,7 @@ ${snowCap ? `
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
       geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+      if (tint) geo.setAttribute('color', new THREE.BufferAttribute(tint, 4));
       geo.setIndex(idx);
       geo.computeVertexNormals();
       return geo;
@@ -7516,12 +8733,15 @@ ${snowCap ? `
       decalKind?: string;
     } = {}) {
       if (geos.length === 0) return null;
-      const mat = new THREE.MeshStandardMaterial({
+      // (b44) the contact layer darkens the ground it lies on (contactDarkeningMaterial); the other decals are lit
+      const mat: THREE.Material = groundContact ? contactDarkeningMaterial(tex) : new THREE.MeshStandardMaterial({
         map: tex, transparent: true, depthWrite: false,
         roughness: 0.97, metalness: 0,
         polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
       });
-      if (receiveShadow) engineCtx.setupShadowMaterial(mat);
+      if (receiveShadow && !groundContact) engineCtx.setupShadowMaterial(mat as THREE.MeshStandardMaterial);
+      // (the contact layer's per-ring shares ride its vertex alpha)
+      if (geos[0].getAttribute('color')) mat.vertexColors = true;
       const mesh = new THREE.Mesh(mergeGeometries(geos, false), mat);
       // Foundation/contact tint already supplies the small-scale grounding
       // term. Letting the live CSM shade that translucent layer again stacks
@@ -7544,27 +8764,30 @@ ${snowCap ? `
       apronGeos: THREE.BufferGeometry[],
     ): Generator<PropsBuildSlice, void, void> {
       for (const building of buildingFeatures) {
+        if (building.landmark) continue; // a set piece is grounded by its own plinths
         if (P.streetRows) {
           apronGeos.push(conformedRect(building.x, building.z,
             building.w / 2 + 2.8, building.d / 2 + 2.8, building.rot || 0));
         } else {
           dirtDiscs.push(conformedDisc(building.x, building.z,
-            Math.max(building.w, building.d) * 1.2, [0.05, 0.05, 0.05, 0.04]));
+            Math.max(building.w, building.d) * 1.2, [0.05, 0.05, 0.05, 0.04], false, FULL_PATCH, CONTACT_STRENGTH.foundation));
         }
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       for (const prop of crushables) {
-        dirtDiscs.push(conformedDisc(prop.x, prop.z, 1.15, [0.05, 0.05, 0.04, 0.03]));
+        dirtDiscs.push(conformedDisc(prop.x, prop.z, 1.15, [0.05, 0.05, 0.04, 0.03], false, FULL_PATCH, CONTACT_STRENGTH.prop));
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       for (const stack of stackSpots) {
-        dirtDiscs.push(conformedDisc(stack.x, stack.z, stack.r, [0.05, 0.05, 0.04, 0.03]));
+        dirtDiscs.push(conformedDisc(stack.x, stack.z, stack.r, [0.05, 0.05, 0.04, 0.03], false, FULL_PATCH, CONTACT_STRENGTH.stack));
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       for (const spot of rockSpots) {
-        dirtDiscs.push(conformedDisc(spot.x, spot.z, spot.r, [0.04, 0.04, 0.04, 0.03], true));
+        dirtDiscs.push(conformedDisc(spot.x, spot.z, spot.r, [0.04, 0.04, 0.04, 0.03], true, ROCK_PATCH, CONTACT_STRENGTH.rock));
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
+      // (b16) and over each bed, its patch's soil where the bed stands above the ground the disc lies on
+      for (const shade of rockBedShades) dirtDiscs.push(shade);
     }
     function courtyardDecalIsClear(x: number, z: number): boolean {
       const roadDistance = heightField._roadDist(x, z);
@@ -8014,6 +9237,7 @@ ${snowCap ? `
   // shoreline reeds / refrozen pressure ridges / rowboat / jetty). Soft
   // dressing pushes into existing buckets; small coal piles share rock collision.
   const wharfDressingStart = buckets.wood.length;
+  const wharfPaintedStart = buckets.baked.length; // the map-vehicles lane (P2): the creek boat is a painted hull
   // Round 67 (2026-09-24): dressing the renderer poses every frame (the moored hulls, maps/mooredHullMotion.ts) —
   // the kit lays it into the wood bucket as before and hands the same geometries here; they leave the merged mesh
   // below for one mesh each on the shared wood material.
@@ -8021,9 +9245,16 @@ ${snowCap ? `
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
-    obstacles, colliders, animated: animatedDressing,
+    obstacles, colliders, animated: animatedDressing, vehicleSetPieces: P.vehicleSetPieces, trees: sceneryTrees,
   });
   yield { fine: true, stage: 'map-extras' };
+  // the landmarks lane: the set pieces' furniture, after every seeded pass (placeLandmarks above)
+  landmarkFurniture = true;
+  for (const [kind, x, y, z, yaw, scale] of landmarkDestructibles) addDestructible(kind, x, y, z, yaw, scale);
+  landmarkFurniture = false;
+  // (what the veto left out, by kind, on the receipt: the authoring sees what a vetoed piece displaced)
+  if (landmarkVetoes.length && group.userData.landmarks) group.userData.landmarks.vetoed = { ...landmarkVetoed };
+  group.userData.deploymentClearance = { slots: deploymentSlots.length, vetoed: { ...deploymentVetoed } };
 
   // All seeded decoration has finished. Relocate accepted records before
   // merging, pool collider refits and spatial indexing; never resample RNG.
@@ -8040,7 +9271,7 @@ ${snowCap ? `
   function composeAuthoredReservoirWaterworks(): void {
     if (!waterworksRubble) return;
     group.userData.reservoirWaterworks = composeReservoirWaterworks(mapId, P.reservoirWaterworks,
-      heightField, waterworksRubble, buckets, [...obstacles, ...colliders]);
+      heightField, waterworksRubble, buckets, [...obstacles, ...colliders], regionalArchitecture);
     waterworksRubble.length = 0;
   }
   composeAuthoredReservoirWaterworks();
@@ -8049,7 +9280,7 @@ ${snowCap ? `
     if (mapId !== 'mangrove') return;
     group.userData.fisheryWharf = composeMangroveFisheryWharf(mapId, heightField, wharfFishery,
       P.riverLandings?.find(site => site.lakeIndex === FISHERY_WHARF_LAKE_INDEX), [...obstacles, ...colliders],
-      vegetation, buckets.wood.slice(wharfDressingStart));
+      vegetation, [...buckets.wood.slice(wharfDressingStart), ...buckets.baked.slice(wharfPaintedStart)]);
     wharfFishery = null;
   }
   composeAuthoredFisheryWharf();
@@ -8089,7 +9320,9 @@ ${snowCap ? `
   // a no-op (map.ts, the static-world governor), so the frame update composes the hull's local and world matrices
   // itself, as the instanced crush animations write their matrices.
   const mooredHulls: { mesh: THREE.Mesh; y: number; phase: number }[] = [];
+  const waterContacts: WaterDisturbance[] = [];
   function detachAnimatedDressing(): void {
+    const rings: Array<{ x: number; z: number; yaw: number; halfLength: number; halfWidth: number; surfaceY: number }> = [];
     for (const record of animatedDressing) {
       const bucket = buckets[record.bucket];
       for (const g of record.geometries) {
@@ -8110,10 +9343,275 @@ ${snowCap ? `
       mesh.rotation.y = record.yaw;
       group.add(mesh);
       mooredHulls.push({ mesh, y: record.y, phase: record.phase });
+      // its contact with the water: a standing hull (no speed), lying along its length (the mesh's local +x, turned by
+      // its yaw), lapping the water round it as a standing tank's does
+      waterContacts.push({ x: record.x, z: record.z, strength: 0.55, dirX: Math.cos(record.yaw), dirZ: -Math.sin(record.yaw),
+        speed: 0, halfLength: record.halfLength, halfWidth: record.halfWidth });
+      // round 4 (wave 260): its foam, contact and ripples on the surface it floats in (desktop: a transparent decal)
+      const surfaceY = heightField.getWaterSurfaceHeightAt?.(record.x, record.z)
+        ?? heightField.getHeightAt(record.x, record.z) + (heightField.getWaterDepthAt?.(record.x, record.z) ?? 0);
+      rings.push({ x: record.x, z: record.z, yaw: record.yaw, halfLength: record.halfLength, halfWidth: record.halfWidth, surfaceY });
     }
     animatedDressing.length = 0;
+    const ringMesh = mobileProps ? null : buildHullWaterRings(rings, aniso);
+    if (ringMesh) group.add(ringMesh);
   }
   detachAnimatedDressing();
+
+  // the map-vehicles lane (2026-10-05): no parked vehicle stands inside another (parkedVehicleSeparation.ts). Two
+  // roadside picks could land on one station and side; the later vehicle of such a pair slides along its heading onto
+  // clear verge (the roadside rules, the road core, every other obstacle and tree), or is dropped. No stream draws.
+  // It runs once every record has its seat (the wharf, the Foundry court and the Autumn headlands relocate above) and
+  // before anything plans against the vehicles (the yard dressing, the scenery) or refits and indexes the pools.
+  function separateParkedVehicleRecords(): void {
+    const roles = new Set(Object.keys(CIVILIAN_VEHICLE_RECEIPTS));
+    const vehicles = destructibles.filter((record) => roles.has(record.kind) && record.state === 0);
+    if (vehicles.length < 2) return;
+    const roadside = { rng: () => 0, roads: L.roads, heightField, noVegetation: noVeg, spawns: L.spawns, placedBuildings: placedB };
+    const trees = sceneryTrees; // the vegetation is released above; the trees were captured with the scenery's
+    const footprint = (kind: string) => ({ hw: LOCAL_TYPES[kind].hw ?? LOCAL_TYPES[kind].r, hl: LOCAL_TYPES[kind].hl ?? LOCAL_TYPES[kind].r });
+    group.userData.parkedVehicleSeparation = separateParkedVehicles(vehicles, {
+      footprint,
+      seatClear: (record, x, z) => {
+        const { hw, hl } = footprint(record.kind);
+        if (!isRoadsideSpotClear(roadside, x, z)) return false;
+        if (!boxClearOfRoadCore(heightField, x, z, hw * record.sc + 0.05, hl * record.sc + 0.05, record.yaw)) return false;
+        // the seat's footprint (with half the clearance) against each blocker's box: separating axes (the world's two
+        // and the vehicle's own), so a vehicle on a diagonal verge is not held off by its own bounding square
+        const g = PARKED_VEHICLE_CLEARANCE / 2, fx = Math.sin(record.yaw), fz = Math.cos(record.yaw);
+        const fhw = hw * record.sc + g, fhl = hl * record.sc + g;
+        const ex = fhw * Math.abs(fz) + fhl * Math.abs(fx), ez = fhw * Math.abs(fx) + fhl * Math.abs(fz);
+        const blocks = (ob: CollisionRecord) => {
+          const kind = (ob as { kind?: string }).kind;
+          if (ob === record.ob || ob === record.col || (kind && roles.has(kind))) return false;
+          if (!(x + ex > ob.min[0] && x - ex < ob.max[0] && z + ez > ob.min[2] && z - ez < ob.max[2])) return false;
+          const bx = (ob.min[0] + ob.max[0]) / 2 - x, bz = (ob.min[2] + ob.max[2]) / 2 - z;
+          const hx = (ob.max[0] - ob.min[0]) / 2, hz = (ob.max[2] - ob.min[2]) / 2;
+          for (const [ax, az, half] of [[fx, fz, fhl], [fz, -fx, fhw]] as const) {
+            if (Math.abs(bx * ax + bz * az) >= half + hx * Math.abs(ax) + hz * Math.abs(az)) return false;
+          }
+          return true;
+        };
+        return !obstacles.some(blocks) && !colliders.some(blocks) && !trees.some(blocks);
+      },
+      move: (record, x, z) => relocateParkedVehicleRecord(destructibleContext, record, x, z),
+      drop: (record) => dropParkedVehicleRecord(destructibleContext, record),
+    });
+  }
+  separateParkedVehicleRecords();
+
+  // 2026-10-06 (the integrator's ruling): no cart stands inside anything. A handcart, haycart or sled whose body (its
+  // wheels, sides and load; the shafts and handles are dressing) meets an obstacle (a fence, a wall, firewood, a trough,
+  // a building, rubble, a rock), a tree, a vehicle or a cart seated before it slides the smallest way that clears it,
+  // within 3 m and on its own lot (its way out crosses nothing it did not already stand in), or is dropped
+  // (parkedVehicleSeparation.ts seatCartsClear). Longleaf's haycart stood in a fence line. No stream draws.
+  // 2026-10-08 (the map-vehicles lane's placement audit over the merge): the parked vehicles too, within 6 m. The
+  // lampposts, the sandbag emplacements, the hulks, the street rubble and the kerbs are placed after the roadside
+  // traffic and never looked for it (a lamp post through a Ruinspires box truck, a flatbed 3 m into rubble, a Verdant
+  // truck 0.9 m into sandbags); this pass runs after all of them.
+  function seatCartRecords(): void {
+    const cartKinds = new Set(Object.keys(CART_RECEIPTS));
+    const vehicleKinds = new Set(Object.keys(CIVILIAN_VEHICLE_RECEIPTS));
+    const carts = destructibles.filter((record) => (cartKinds.has(record.kind) || vehicleKinds.has(record.kind)) && record.state === 0
+      && !record.dropped);
+    if (!carts.length) return;
+    const parked = new Map<CollisionRecord, DestructibleRecord>();
+    for (const record of destructibles) {
+      if (record.ob && (cartKinds.has(record.kind) || CIVILIAN_VEHICLE_RECEIPTS[record.kind as keyof typeof CIVILIAN_VEHICLE_RECEIPTS])) {
+        parked.set(record.ob, record);
+      }
+    }
+    const trees = sceneryTrees, pads = [L.spawns.player, ...L.spawns.enemies];
+    const slideOf = (record: DestructibleRecord) => (vehicleKinds.has(record.kind) ? VEHICLE_SLIDE_MAX_M : CART_SLIDE_MAX_M);
+    const CART_CLEARANCE = 0.05;
+    // a destructible building still wears its placement box here; the finalization refits it to its ground-bearing
+    // solids, which can stand up to ~0.8 m past that box (Skybridge's quonset hut, a porch, a step), so a cart keeps a
+    // metre more off a building's box than off a solid that is final already
+    const BUILDING_REFIT_MARGIN_M = 1;
+    const buildings = new Set<CollisionRecord>();
+    for (const record of destructibles) if (record.ob && DESTRUCTIBLE_BUILDING_TYPES[record.kind]) buildings.add(record.ob);
+    const buildingPolys = (ob: CollisionRecord): FootprintPolygon[] => {
+      const shape = ob.shape2;
+      if (shape?.kind === 'obb') {
+        return shapePolygons({ ...ob, shape2: { ...shape, hw: shape.hw + BUILDING_REFIT_MARGIN_M, hl: shape.hl + BUILDING_REFIT_MARGIN_M } });
+      }
+      return shapePolygons(ob).map((poly) => {
+        let cx = 0, cz = 0;
+        for (const [px, pz] of poly) { cx += px; cz += pz; }
+        cx /= poly.length; cz /= poly.length;
+        return poly.map(([px, pz]) => {
+          const d = Math.hypot(px - cx, pz - cz) || 1, grow = (BUILDING_REFIT_MARGIN_M * Math.SQRT2) / d;
+          return [px + (px - cx) * grow, pz + (pz - cz) * grow] as const;
+        });
+      });
+    };
+    const bodyAt = (record: DestructibleRecord, x: number, z: number): FootprintPolygon => {
+      const type = LOCAL_TYPES[record.kind];
+      const c = Math.cos(record.yaw), s = Math.sin(record.yaw), out: [number, number][] = [];
+      const hull = type.bodyHull?.length ? type.bodyHull
+        : [-(type.hw ?? type.r), -(type.hl ?? type.r), type.hw ?? type.r, -(type.hl ?? type.r), type.hw ?? type.r, type.hl ?? type.r, -(type.hw ?? type.r), type.hl ?? type.r];
+      for (let k = 0; k + 1 < hull.length; k += 2) {
+        const lx = hull[k] * record.sc, lz = hull[k + 1] * record.sc;
+        out.push([x + lx * c + lz * s, z - lx * s + lz * c]);
+      }
+      return out;
+    };
+    // (2026-10-08) a destructible's placed box is refitted at finalization to the solids its geometry bears on the ground,
+    // which can outreach the box (a bunker's band 5.3 m from its centre, its box 4.0 m: Cinder Junction's estate car
+    // stood 0.88 m inside one once its pillbox was refitted): any other destructible meets a seat by its box and by its
+    // band's extent at its pose (destructibleFootprint, measured once per kind outside every stream)
+    const owners = new Map<CollisionRecord, DestructibleRecord>();
+    for (const record of destructibles) if (record.ob && !parked.has(record.ob) && !buildings.has(record.ob)) owners.set(record.ob, record);
+    const bandPolys = (ob: CollisionRecord, record: DestructibleRecord): FootprintPolygon[] => {
+      const [ax, al] = destructibleFootprint(record.kind);
+      const c = Math.cos(record.yaw), s = Math.sin(record.yaw), hw = ax * record.sc, hl = al * record.sc;
+      const band: FootprintPolygon = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) =>
+        [record.x + u * hw * c + v * hl * s, record.z - u * hw * s + v * hl * c] as const);
+      return [...shapePolygons(ob), band];
+    };
+    type Near = { ob: CollisionRecord; polys: FootprintPolygon[] | null; parked: DestructibleRecord | null };
+    // (2026-10-08, over batch 5's hitbox lane) a stone that rises past the drive-over line but had no legacy record takes
+    // its collider only at refitRockColliders, after this pass: a cart meets it here by the stone's own contact
+    // footprint, so none is seated over a stone that then turns solid (an Alpine sled stood 0.56 m into one)
+    const risenStones = rockSeats.filter((seat) => seat.added && seat.profile && seat.rec).map((seat) => {
+      const c = seat.profile!.contact, poly: (readonly [number, number])[] = [];
+      let sx0 = Infinity, sx1 = -Infinity, sz0 = Infinity, sz1 = -Infinity;
+      for (let i = 0; i + 1 < c.length; i += 2) {
+        poly.push([c[i], c[i + 1]] as const);
+        sx0 = Math.min(sx0, c[i]); sx1 = Math.max(sx1, c[i]); sz0 = Math.min(sz0, c[i + 1]); sz1 = Math.max(sz1, c[i + 1]);
+      }
+      return { ob: seat.rec!, poly: poly as FootprintPolygon, sx0, sx1, sz0, sz1 };
+    });
+    const nearOf = new Map<DestructibleRecord, Near[]>();
+    for (const cart of carts) {
+      const near: Near[] = [];
+      const type = LOCAL_TYPES[cart.kind], reach = slideOf(cart) + Math.max(type.hw ?? type.r, type.hl ?? type.r) * cart.sc + 6;
+      const x0 = cart.x - reach, x1 = cart.x + reach, z0 = cart.z - reach, z1 = cart.z + reach;
+      for (const list of [obstacles, trees] as const) {
+        for (const ob of list) {
+          if (ob === cart.ob || ob === cart.col || ob.max[0] < x0 || ob.min[0] > x1 || ob.max[2] < z0 || ob.min[2] > z1) continue;
+          const owner = parked.get(ob) ?? null;
+          const prop = owners.get(ob);
+          near.push({ ob, polys: owner ? null : buildings.has(ob) ? buildingPolys(ob) : prop ? bandPolys(ob, prop) : shapePolygons(ob), parked: owner });
+        }
+      }
+      for (const stone of risenStones) {
+        if (stone.sx1 < x0 || stone.sx0 > x1 || stone.sz1 < z0 || stone.sz0 > z1) continue;
+        near.push({ ob: stone.ob, polys: [stone.poly], parked: null });
+      }
+      nearOf.set(cart, near);
+    }
+    // the cart's body at a seat against what stands near it: a vehicle or a cart keeps the parked clearance, the rest
+    // a hand's breadth; `seen` collects each meeting's way out
+    // round 5 (wave 278: the Frosthollow horn sled "jammed against the birch trunk where it couldn't have been drawn"): a
+    // cart was pulled to its seat, so the ground its puller stood on — 2.5 m ahead of its front (local +z: the shafts,
+    // the handles, the horns), at least 1.2 m wide — stays clear of the trees and of every solid over half a metre tall,
+    // and so does the track a sled ran in on, 4 m behind it (each with 25 cm to spare)
+    const approachAt = (record: DestructibleRecord, x: number, z: number): FootprintPolygon[] => {
+      if (!cartKinds.has(record.kind)) return [];
+      const type = LOCAL_TYPES[record.kind], hw = (type.hw ?? type.r) * record.sc, hl = (type.hl ?? type.r) * record.sc;
+      const c = Math.cos(record.yaw), s = Math.sin(record.yaw);
+      const rect = (x0: number, x1: number, z0: number, z1: number): FootprintPolygon =>
+        [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([lx, lz]) => [x + lx * c + lz * s, z - lx * s + lz * c] as const);
+      // a horse or a man stands there: at least 1.2 m wide, 2.5 m long, and a hand's breadth more round both lanes —
+      // where a horse stands (a wagon, a hay sledge); a man pulling a sled by its rope 2.25 m, and a hand cart's is
+      // pushed from between its handles, a man's width and a pace beyond them (the lane rule alone dropped 5 of
+      // Cliffbridge's 35 parked carts from its lanes and steps)
+      const man = record.kind === 'handcart', lane = man ? Math.max(hw, 0.45) + 0.15 : Math.max(hw, 0.6) + 0.25;
+      const out = [rect(-lane, lane, hl, hl + (man ? 1.2 : record.kind === 'sled' ? 2.25 : 2.75))];
+      if (type.runners) out.push(rect(-hw - 0.25, hw + 0.25, -hl - 4, -hl));
+      return out;
+    };
+    const tall = (ob: CollisionRecord) => ob.max[1] - ob.min[1] > 0.5;
+    const meets = (cart: DestructibleRecord, x: number, z: number, seen?: (nx: number, nz: number, depth: number) => void) => {
+      const body = bodyAt(cart, x, z);
+      const approach = approachAt(cart, x, z);
+      let met = false;
+      // (2026-10-08, over modes' symmetric deployments) its placing kept it out of every deployment slot's clearing
+      // (addDestructible's veto); a seat it slides to does too: the way out is straight away from the slot
+      for (const slot of deploymentSlots) {
+        const dx = x - slot.x, dz = z - slot.z, d = Math.hypot(dx, dz), reach = DEPLOYMENT_CLEAR_M + cart.r;
+        if (d >= reach) continue;
+        if (!seen) return true;
+        met = true;
+        seen(d > 1e-6 ? dx / d : 1, d > 1e-6 ? dz / d : 0, reach - d);
+      }
+      for (const n of nearOf.get(cart)!) {
+        if (n.parked && (n.parked.dropped || n.parked === cart)) continue;
+        // (round 5) a cart keeps half a metre of air to anything over half a metre tall (a trunk, a wall, a barrier, a
+        // lamp post): a hand's breadth read as jammed against it (a parked vehicle keeps its old gap)
+        const clearance = n.parked ? PARKED_VEHICLE_CLEARANCE
+          : cartKinds.has(cart.kind) && tall(n.ob) ? (cart.kind === 'handcart' ? 0.12 : 0.5) : CART_CLEARANCE;
+        for (const poly of n.polys ?? shapePolygons(n.ob)) {
+          const g = polygonGap(body, poly);
+          if (g.gap < clearance) {
+            if (!seen) return true;
+            met = true;
+            seen(g.nx, g.nz, clearance - g.gap);
+            continue;
+          }
+          if (n.parked || !approach.length || !tall(n.ob)) continue;
+          for (const lane of approach) {
+            const a = polygonGap(lane, poly);
+            if (a.gap >= 0) continue;
+            if (!seen) return true;
+            met = true;
+            seen(a.nx, a.nz, -a.gap);
+          }
+        }
+      }
+      return met;
+    };
+    // a vehicle's seat is ground it can stand on (2026-10-08): within the 12-degree tilt cap, and neither twisted nor
+    // humped under it — a corner, its middle or the middle of a side 15-20 cm off the plane through its four corners
+    // (an Orchard truck on a broken bank stood with one wheel 0.44 m in the air and another in the slope)
+    const groundBad = (record: DestructibleRecord, x: number, z: number): boolean => {
+      if (!vehicleKinds.has(record.kind)) return false;
+      const type = LOCAL_TYPES[record.kind], hw = (type.hw ?? type.r) * record.sc, hl = (type.hl ?? type.r) * record.sc;
+      if (cartGroundPose(heightField, x, z, record.yaw, hw, hl).steep) return true;
+      const c = Math.cos(record.yaw), s = Math.sin(record.yaw);
+      const at = (lx: number, lz: number) => heightField.getHeightAt(x + lx * c + lz * s, z - lx * s + lz * c);
+      const fl = at(-hw, hl), fr = at(hw, hl), bl = at(-hw, -hl), br = at(hw, -hl);
+      if (Math.abs(fl - fr - bl + br) / 4 > 0.15) return true;
+      const mean = (fl + fr + bl + br) / 4, sx = (fr + br - fl - bl) / (4 * hw), sz = (fl + fr - bl - br) / (4 * hl);
+      for (const [lx, lz] of [[0, 0], [0, hl], [0, -hl], [hw, 0], [-hw, 0]] as const) {
+        if (Math.abs(at(lx, lz) - (mean + lx * sx + lz * sz)) > 0.2) return true;
+      }
+      return false;
+    };
+    group.userData.cartSeats = seatCartsClear(carts, {
+      blocked: (cart, x, z) => meets(cart, x, z) || groundBad(cart, x, z),
+      away: (cart) => {
+        let ax = 0, az = 0;
+        meets(cart, cart.x, cart.z, (nx, nz, depth) => { ax += nx * depth; az += nz * depth; });
+        return [ax, az];
+      },
+      seatOk: (cart, x, z) => {
+        if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
+        if (heightField.getNormalAt(x, z).y < Math.min(0.9, heightField.getNormalAt(cart.x, cart.z).y - 0.02)) return false;
+        if (heightField.getGroundType(x, z) === 'soft' && heightField.getGroundType(cart.x, cart.z) !== 'soft') return false;
+        for (const pad of pads) {
+          if (Math.hypot(x - pad.x, z - pad.z) < Math.min(24, Math.hypot(cart.x - pad.x, cart.z - pad.z))) return false;
+        }
+        const type = LOCAL_TYPES[cart.kind], hw = (type.hw ?? type.r) * cart.sc, hl = (type.hl ?? type.r) * cart.sc;
+        if (!boxClearOfRoadCore(heightField, x, z, hw + 0.05, hl + 0.05, cart.yaw)) return false;
+        // its own lot: the way from its seat crosses nothing it did not already stand in
+        const steps = Math.ceil(Math.hypot(x - cart.x, z - cart.z) / 0.1);
+        for (const n of nearOf.get(cart)!) {
+          if (n.parked || collisionFootprintContainsPoint(n.ob, cart.x, cart.z)) continue;
+          for (let k = 1; k <= steps; k++) {
+            const t = k / steps;
+            if (collisionFootprintContainsPoint(n.ob, cart.x + (x - cart.x) * t, cart.z + (z - cart.z) * t)) return false;
+          }
+        }
+        return true;
+      },
+      move: (cart, x, z) => relocateParkedVehicleRecord(destructibleContext, cart, x, z),
+      drop: (cart) => dropParkedVehicleRecord(destructibleContext, cart),
+      maxSlide: slideOf,
+    });
+  }
+  seatCartRecords();
 
   // -------------------------------------------------------------------------
   // Round 75: YARD DRESSING — pallets, crates, drums, cable drums, tyre stacks, fuel tanks and skips in the apron
@@ -8266,9 +9764,14 @@ ${snowCap ? `
     // culled by the frustum per instance), the bucket's always-drawn receive-only dressing one more: one draw call
     // whatever the number of cells. A phone builds no fine joinery (regional/index.ts) and culls the rest of its timber dressing by
     // the same cells, at its own shorter distances.
+    // facades lane (2026-10-05): the facade craft's fine metalwork (gutter hangers, hopper heads, the downpipes) and its
+    // fine render work on the main render (paint, the dirt run off the sills, pilasters) cull by the same cells on a
+    // desktop build (maps/regional/facade.ts); the metal's batch takes the place of its always-drawn mesh, so it costs no
+    // draw, the render's one (the second and third renders' few fine pieces stay in their meshes). A phone builds none.
     const CELLED = new Set(['structureWood', 'regionalStone']);
+    const DESKTOP_CELLED = new Set(['structureMetal', 'regionalPlaster']);
     const FINE_CELL_M = 120;
-    const culled = (g: THREE.BufferGeometry, key: string) => CELLED.has(key) && castsNoShadow(g)
+    const culled = (g: THREE.BufferGeometry, key: string) => (CELLED.has(key) || (DESKTOP_CELLED.has(key) && !mobileProps)) && castsNoShadow(g)
       && (g.userData.fine === true || (mobileProps && RECEIVE_ONLY_DETAIL.has(key)));
     type Cell = { list: THREE.BufferGeometry[]; minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
     const fineCells = (list: THREE.BufferGeometry[]): Cell[] => {
@@ -8376,6 +9879,38 @@ ${snowCap ? `
       group.add(mesh);
     }
   }
+  // The hitbox lane (2026-10-07): every placement pass has read the stones' legacy records; now each stone takes the
+  // colliders of its own mesh (settleRockColliders above), a stone a hull drives over leaves both lists, and a stone
+  // that rose past the drive-over line with none joins them — before the clutter takes its network identity below.
+  // The ground cover keeps the footprints it has always been sealed against: each legacy record's twin, cosmetic only
+  // (map.ts adds them to the grass, litter, tall-grass and shrub admission), so no tuft or shrub moves with a collider.
+  const rockGroundCover: CollisionRecord[] = [];
+  function refitRockColliders(): void {
+    const dropped = new Set<CollisionRecord>();
+    for (const seat of rockSeats) {
+      if (!seat.rec || !seat.col) continue;
+      if (!seat.added) {
+        const twin = cloneCollisionRecord(seat.rec);
+        letGroundCoverLap(twin);
+        rockGroundCover.push(twin);
+      }
+      if (!seat.profile) { dropped.add(seat.rec); dropped.add(seat.col); continue; }
+      applyRockCollisionProfile(seat.rec, seat.col, seat.profile, seat.y);
+      if (!seat.added) continue;
+      obstacles.push(seat.rec); colliders.push(seat.col);
+      letGroundCoverLap(seat.rec);
+    }
+    if (dropped.size) {
+      for (const list of [obstacles, colliders] as CollisionRecord[][]) {
+        let kept = 0;
+        for (const record of list) if (!dropped.has(record)) list[kept++] = record;
+        list.length = kept;
+      }
+    }
+    rockSeats.length = 0;
+    group.userData.rockGroundCover = rockGroundCover;
+  }
+  refitRockColliders();
   // Append after every ordinary prop so existing network prop identities stay stable.
   for (const clutter of pendingClutter) {
     if (!clutter.activate(destructibles.length)) continue;
@@ -8414,8 +9949,9 @@ ${snowCap ? `
     // walls (including their later terrain fit) and trees retain the cheap path.
     const source = DESTRUCTIBLE_BUILDING_TYPES[kind]
       ? deriveRuntimeStructureCollisionWithSolids({ baked: [geometry] }) : null;
-    const contactBand = source?.profile.contact
+    const contactBand = source?.profile.contact ?? pool.meta?.contactBand
       ?? deriveRuntimeStructureContactBand({ baked: [geometry] });
+    const shellSlabs = SLAB_SHELL_KINDS.has(kind) ? localShellSlabs(geometry) : null;
     for (const record of pool.records) {
       if (!record.ob) continue;
       const scaledExtent = (part: SimpleCollisionShape) => (part.y0 !== undefined && part.y1 !== undefined
@@ -8441,6 +9977,8 @@ ${snowCap ? `
       applyStructureCollisionBand(record.ob, scaledBand, record.x, record.z, record.yaw, record.y);
       if (record.col) {
         applyStructureCollisionBand(record.col, scaledBand, record.x, record.z, record.yaw, record.y);
+        // (the hitbox lane, 2026-10-07) a dense stack's shells and sight lines meet its own slabs, not the contact prism
+        if (shellSlabs?.length) placeLocalShellSlabs(record.col, shellSlabs, record.x, record.y, record.z, record.yaw, record.sc);
       }
     }
     if (!source) return null;
@@ -8481,6 +10019,16 @@ ${snowCap ? `
       }
       imI.instanceColor!.needsUpdate = true;
     }
+    if (pool.meta.instancePaint) {
+      // the map-vehicles lane: each copy's livery (the vehicle material carries it onto the body paint only)
+      for (let i = 0; i < pool.mats4.length; i++) {
+        const record = pool.records[i];
+        pool.meta.instancePaint(_structureTint, record.x, record.z, i);
+        imI.setColorAt(i, _structureTint);
+      }
+      imI.instanceColor!.needsUpdate = true;
+      return;
+    }
     if (!pool.meta.instanceTintStrength) return;
     for (let i = 0; i < pool.mats4.length; i++) {
       writeStructureInstanceTint(_structureTint, kind, i, seed, pool.meta.instanceTintStrength);
@@ -8517,13 +10065,27 @@ ${snowCap ? `
       if (!transferred) geoI.dispose();
     }
   }
+  // the map-vehicles lane (2026-10-05): one clone of the vehicle material for the rebuilt vehicles, its program reading
+  // their per-vertex surface stream (vehicleSurface.ts) and wearing each copy's livery through the paint mask
+  let vehicleSurface: typeof mats.vehicle | null = null;
+  function vehicleSurfaceMaterial(): typeof mats.vehicle {
+    if (vehicleSurface) return vehicleSurface;
+    const material = mats.vehicle.clone();
+    engineCtx.setupShadowMaterial(material, (shader) => { grimeHook(shader); applyVehicleSurfaceHook(shader); });
+    material.customProgramCacheKey = () => `world-props-vehicle-${VEHICLE_SURFACE_PROGRAM}-v7${snowCap ? 's' : ''}`;
+    retainedSurfaceMaterials.push(material);
+    vehicleSurface = material;
+    return material;
+  }
   function* finalizeDestructiblePool(
     kind: string, pool: DestructiblePool,
   ): Generator<PropsBuildSlice, void, void> {
     const meta = pool.meta;
     // Wall modules use the map-toned masonry materials; other objects keep
-    // the wood, straw, vehicle, or baked family selected by their metadata.
-    let material = mats[meta.mat] || mats.baked;
+    // the wood, straw, vehicle, or baked family selected by their metadata
+    // (b15: a straw object wears the hay print's material).
+    let material = (meta.mat === 'straw' ? mats.hay : mats[meta.mat]) || mats.baked;
+    if (meta.mat === 'vehicle' && meta.instancePaint) material = vehicleSurfaceMaterial();
     if (kind === 'lamp') {
       // One material for the whole instanced lamp family, not per fixture.
       // Other baked props keep their existing non-emissive shader.
@@ -8536,6 +10098,22 @@ ${snowCap ? `
     const { geoI, groundCoverDetail } = yield* prepareDestructiblePoolGeometry(kind, pool);
     if (groundCoverDetail) sealGroundCoverPlacements(pool, groundCoverDetail);
     const imI = new THREE.InstancedMesh(geoI, material, pool.mats4.length);
+    if (material === mats.fieldStone && kind === 'wallstone' && geoI.getAttribute('aStone')) {
+      // (b14: the dry-stone walls' settling and copes by world place, and the same in the shadows)
+      if (!geoI.boundingBox) geoI.computeBoundingBox();
+      stoneShapeFor(geoI.boundingBox!, snowCap, stoneShape.value);
+      const depth = createStoneWallDepthMaterial(grimeTex, stoneShape);
+      retainedSurfaceMaterials.push(depth);
+      imI.customDepthMaterial = depth;
+    }
+    if (material === mats.fieldMud && kind === 'walladobe') {
+      // (b14: the mud walls' crown in world space: the module's top and shoulder, and the same crown in the shadows)
+      if (!geoI.boundingBox) geoI.computeBoundingBox();
+      mudShapeFor(geoI.boundingBox!, mudShape.value);
+      const depth = createMudWallDepthMaterial(grimeTex, mudShape);
+      retainedSurfaceMaterials.push(depth);
+      imI.customDepthMaterial = depth;
+    }
     for (let i = 0; i < pool.mats4.length; i++) imI.setMatrixAt(i, pool.mats4[i]);
     tintDestructibleInstances(kind, pool, imI);
     const castsDynamicShadow = destructibleCastsShadow(meta);
@@ -8545,7 +10123,10 @@ ${snowCap ? `
     if (meta.cls === 'topple' || meta.cls === 'toss' || meta.cls === 'physics') imI.frustumCulled = false; // instances animate
     else imI.computeBoundingSphere();
     imI.name = 'destructible-' + kind;
-    if (castsDynamicShadow) setShadowCasterProfile(imI, { heightM: casterHeightM(geoI, pool.mats4), instanced: true }); // round 79
+    // the map-vehicles lane (2026-10-05): a vehicle casts through its coarse stand-in on the pool's own matrices
+    const shadowGeo = castsDynamicShadow && meta.shadowBuild ? meta.shadowBuild() : null;
+    if (shadowGeo) group.add(vehicleShadowCaster(imI, shadowGeo, casterHeightM(shadowGeo, pool.mats4)));
+    else if (castsDynamicShadow) setShadowCasterProfile(imI, { heightM: casterHeightM(geoI, pool.mats4), instanced: true }); // round 79
     if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imI, true);
     group.add(imI);
     pool.imI = imI;
@@ -8572,6 +10153,50 @@ ${snowCap ? `
     }
   }
   yield* finalizeDestructiblePools();
+  // the map-vehicles lane (2026-10-05): the ground darkened under every parked vehicle (desktop tiers)
+  if (!mobileProps) {
+    const contact = buildVehicleContactShadows(destructibles, heightField, aniso, (kind) => {
+      const meta = LOCAL_TYPES[kind];
+      return meta?.instancePaint && meta.hw !== undefined && meta.hl !== undefined ? { hw: meta.hw, hl: meta.hl } : null;
+    }, (record) => !record.dropped);
+    if (contact) group.add(contact);
+    // round 3 (the map-vehicles lane, 2026-10-07): the tracks the sleds' runners pressed into the snow behind them
+    const tracks = buildRunnerTracks(destructibles, heightField, aniso, (kind) => LOCAL_TYPES[kind]?.runners ?? null,
+      (record) => !record.dropped && record.state === 0);
+    if (tracks) group.add(tracks);
+    // round 5 (wave 278: the horn sled "with no runner tracks or trampling behind it"): the puller's boot prints between
+    // a sled's runners, from its track behind it up to where he stood ahead of it
+    const trample = buildRunnerTracks(destructibles, heightField, aniso, (kind) => {
+      const lay = LOCAL_TYPES[kind]?.runners;
+      if (!lay) return null;
+      return { xs: [lay.xs.reduce((a, b) => a + b, 0) / lay.xs.length], z0: lay.z0, z1: lay.z1 + 2, width: 0.26 };
+    }, (record) => !record.dropped && record.state === 0, { texture: 'trample', name: 'props-runner-trample', pitch: 1.4 });
+    if (trample) group.add(trample);
+    // round 5 (wave 278: the LRV with "no wheel tracks"): the rover's chevroned wheel prints, one pair of tracks (each
+    // rear wheel ran in its front wheel's), out behind it the way it drove in
+    const rovers = (P.vehicleSetPieces ?? []).filter((piece) => piece.kind === 'lrv' && !piece.wrecked)
+      .map((piece) => ({ kind: 'lrv', x: piece.x, z: piece.z, yaw: (piece.yawDeg * Math.PI) / 180, sc: 1 }));
+    const wheelTracks = buildRunnerTracks(rovers, heightField, aniso, () => ({ xs: [-0.915, 0.915], z0: -1.145 - 11, z1: 1.145 + 0.2, width: 0.12 }),
+      () => true, { texture: 'chevron', name: 'props-wheel-tracks', pitch: 0.24 });
+    if (wheelTracks) group.add(wheelTracks);
+    // round 3: the mud a landing's hauled-out boat lies in (mapKits.ts beachedBoat's receipt), lit and shadowed
+    const hauled = decorationGroundingReceipts.filter((r) => r.kind === 'beached-boat' && r.mud === true)
+      .map((r) => ({ x: r.x, z: r.z, yaw: r.yaw as number, halfLength: r.halfLength as number, halfWidth: r.halfWidth as number }));
+    const mud = buildBoatMud(hauled, heightField, aniso);
+    if (mud) {
+      engineCtx.setupShadowMaterial(mud.material as THREE.MeshStandardMaterial);
+      group.add(mud);
+      // no blade grows up through the mud or the hull lying in it (map.ts holds these with the scenery's holes): discs
+      // along each boat, the patch's run toward the water included
+      group.userData.boatMudHoles = boatMudHoles(hauled, heightField);
+      // round 4 (wave 260): the mud each hull pushed up round itself as it settled
+      const rims = buildBoatMudRims(hauled, heightField);
+      if (rims) {
+        engineCtx.setupShadowMaterial(rims.material as THREE.MeshStandardMaterial);
+        group.add(rims);
+      }
+    }
+  }
 
   // the scenery lane (2026-10-03): the field boundaries' walls and banks (world/scenery.ts composeFieldWorks), once
   // every solid is final — the pools' refit above reshapes the buildings' records, and the works keep off the objective
@@ -8589,13 +10214,62 @@ ${snowCap ? `
     });
     const receipt = group.userData.scenery as { fieldWorks?: unknown } | undefined;
     if (receipt && built.receipt) receipt.fieldWorks = built.receipt;
-    if (!built.geometry) return;
-    const works = new THREE.Mesh(built.geometry, mats.rock);
-    works.name = 'props-field-works';
-    works.castShadow = false;
-    works.receiveShadow = true;
-    works.matrixAutoUpdate = false;
-    group.add(works);
+    if (!built.wallCells.length && !built.bankGeometry) return;
+    // (b13: the walls on their own dry stone — the face print, a lit material on the cascades like every other; the
+    // banks on the rock material)
+    const place = (geometry: THREE.BufferGeometry, material: THREE.Material, name: string): void => {
+      const works = new THREE.Mesh(geometry, material);
+      works.name = name;
+      works.castShadow = false;
+      works.receiveShadow = true;
+      works.matrixAutoUpdate = false;
+      group.add(works);
+    };
+    if (built.wallCells.length) {
+      const print = yield* makeDryWall(aniso, mobileProps ? 256 : 512);
+      const wallMaterial = new THREE.MeshStandardMaterial({
+        map: print.albedo, normalMap: print.normal, roughnessMap: print.surface, aoMap: print.surface,
+        vertexColors: true, roughness: 1, metalness: 0,
+      });
+      wallMaterial.name = 'props-field-walls';
+      // (b14, wave 97: "uniform polygon cells": the print's two-metre tile varies by world place under the props' grime,
+      // and lichen grows by world place, as on the dry-stone modules)
+      engineCtx.setupShadowMaterial(wallMaterial, (shader) => { grimeHook(shader); applyStoneWallHook(shader, stoneShape); });
+      wallMaterial.customProgramCacheKey = () => 'world-props-field-walls-v1';
+      retainedSurfaceMaterials.push(wallMaterial);
+      // (the coordinator, after the first b13 count: "full stones within a near radius, merged per cell, with a simpler
+      // mid and far form"; the joinery's law) the walls by 64 m cell: two batches of one draw each, the near form's and
+      // the far form's, one instance a cell in each; a cell shows its near form within the quality's near distance of
+      // the camera (updateFieldWallLod) and its far form past it. Every far instance starts shown, every near one hidden
+      // (the same material and program: the far draw links it for both)
+      const batchOf = (forms: Array<THREE.BufferGeometry | null>, name: string) => {
+        const list = forms.filter((g): g is THREE.BufferGeometry => !!g);
+        if (!list.length) return null;
+        const vertices = list.reduce((n, g) => n + g.getAttribute('position').count, 0);
+        const indices = list.reduce((n, g) => n + (g.index ? g.index.count : 0), 0);
+        const batch = new THREE.BatchedMesh(list.length, vertices, Math.max(1, indices), wallMaterial);
+        batch.name = name;
+        batch.sortObjects = false;
+        // (b13's cost hold, Saltwind chase: the walls drew every cell's far form, behind the camera too; a cell outside
+        // the frustum is culled, a few hundred sphere tests a frame against the draws they save)
+        batch.perObjectFrustumCulled = true;
+        batch.castShadow = false;
+        batch.receiveShadow = true;
+        batch.matrixAutoUpdate = false;
+        const ids = forms.map((g) => (g ? batch.addInstance(batch.addGeometry(g)) : -1));
+        for (const g of list) g.dispose();
+        group.add(batch);
+        return { batch, ids };
+      };
+      const near = batchOf(built.wallCells.map((c) => c.near), 'props-field-works');
+      const far = batchOf(built.wallCells.map((c) => c.far), 'props-field-works-far');
+      const cells = built.wallCells.map((c, i) => ({ box: c.box, near: near ? near.ids[i] : -1, far: far ? far.ids[i] : -1, nearShown: false,
+        key: c.key, stones: null, midShown: false }));
+      for (const cell of cells) if (near && cell.near >= 0) near.batch.setVisibleAt(cell.near, false);
+      // (the switch reads the cells through the group, as the fine joinery's does: updateFieldWallLod)
+      group.userData.fieldWallLod = { near: near?.batch ?? null, far: far?.batch ?? null, cells, fine: built.fine, material: wallMaterial } satisfies FieldWallLod;
+    }
+    if (built.bankGeometry) place(built.bankGeometry, mats.rock, built.wallCells.length ? 'props-field-banks' : 'props-field-works');
   }
   yield* placeFieldBoundaryWorks();
   // Construction-only spans are now sealed into matrices/support/colliders;
@@ -8743,6 +10417,8 @@ ${snowCap ? `
     if (!rec?.body || rec.looseIndex == null || rec.looseListed == null
       || !kickLooseProp(rec.body, dx, dz, speed, cause)) return false;
     ensureLooseActive(rec as LooseDestructibleRecord);
+    // audio seam (2026-10-06): a knocked drum, bucket or bin clangs (the body's own kick cooldown spaces the reports)
+    emitDestroyed({ kind: rec.kind, pos: [rec.x, rec.y, rec.z], cause, loose: true });
     return true;
   }
 
@@ -8879,6 +10555,8 @@ ${snowCap ? `
       ax: _cax.x, az: _cax.z, t: 0, placement: null,
       maxAng: settledToppleAngle(heightField, c.x, c.y, c.z, dx, dz, c.h, 0.12),
     });
+    // audio seam (2026-10-06): the pole's foot cracks, its wires whip, it lands — every pole carries the line's wires
+    emitDestroyed({ kind: 'utility_pole', pos: [c.x, c.y, c.z], cause: 'ram' });
     return true;
   }
 
@@ -9116,6 +10794,80 @@ ${snowCap ? `
   const FINE_DETAIL_M: Readonly<Record<string, number>> = {
     ultra: 180, high: 120, medium: 90, low: 70, 'mobile-high': 70, mobile: 60, 'mobile-low': 45,
   };
+  // the scenery lane (b13): the field walls' cells, their near form within the quality's near distance of the camera
+  // (3D, to the cell's box), their far form past it, 10 m of hysteresis; the preset re-read once a second. At High a
+  // top stone's 5 cm step is under half a pixel at 80 m (the cost hold's chase view read 100 m's near cells).
+  const FIELD_WALL_NEAR_M: Readonly<Record<string, number>> = {
+    ultra: 110, high: 80, medium: 65, low: 50, 'mobile-high': 45, mobile: 35, 'mobile-low': 25,
+  };
+  // (b17; gauntlet wave 121, Saltwind's walls "a smooth extruded strip ... mortared, not dry-stone") within a nearer
+  // distance still a cell draws its stone form (fieldWorks.ts buildFieldWallFineSteps: every stone, its joints, the
+  // through-stones, the coping), built when the camera comes within it — one cell at a time, a few milliseconds a frame,
+  // its mid form showing until it is done — and let go when it leaves (8 m of hysteresis); its mid form hides while it
+  // shows. Every cell's stone form at once would hold millions of triangles (Saltwind: 4.2 M), so only the few near the
+  // camera are ever built. None on a phone, none at Low.
+  // (at High a stone is ten pixels tall at 30 m, a cell's box within 30 m of the camera is one to four cells, 20-25 k
+  // triangles each on Saltwind: the mid form takes over past it)
+  const FIELD_WALL_FINE_M: Readonly<Record<string, number>> = {
+    ultra: 45, high: 30, medium: 22, low: 0, 'mobile-high': 0, mobile: 0, 'mobile-low': 0,
+  };
+  /** A frame's share of the stone form being built (ms). */
+  const FIELD_WALL_STONE_BUDGET_MS = 2;
+  type WallCell = FieldWallLod['cells'][number];
+  let wallJob: { cell: WallCell; steps: Generator<unknown, THREE.BufferGeometry | null, void> } | null = null;
+  let wallNear = 80, wallFine = 45, wallFrames = 0;
+  function updateFieldWallLod(cameraPos: THREE.Vector3 | null): void {
+    const lod = group.userData.fieldWallLod as FieldWallLod | undefined;
+    if (!lod || !cameraPos) return;
+    if (wallFrames-- <= 0) {
+      const preset = resolvePresetName();
+      wallNear = FIELD_WALL_NEAR_M[preset] ?? 80; wallFine = lod.fine ? FIELD_WALL_FINE_M[preset] ?? 0 : 0; wallFrames = 60;
+    }
+    const { near, far, cells } = lod;
+    // the stone form being built: a few milliseconds of it a frame
+    if (wallJob) {
+      const start = performance.now();
+      let step = wallJob.steps.next();
+      while (!step.done && performance.now() - start < FIELD_WALL_STONE_BUDGET_MS) step = wallJob.steps.next();
+      if (step.done) {
+        const { cell } = wallJob, g = step.value;
+        wallJob = null;
+        if (g) {
+          const mesh = new THREE.Mesh(g, lod.material);
+          mesh.name = 'props-field-works-stones';
+          mesh.castShadow = false; mesh.receiveShadow = true; mesh.matrixAutoUpdate = false;
+          group.add(mesh);
+          cell.stones = mesh;
+        } else cell.stones = false;
+      }
+    }
+    let pending = 0;
+    for (const cell of cells) {
+      const b = cell.box;
+      const dx = Math.max(b.minX - cameraPos.x, 0, cameraPos.x - b.maxX);
+      const dy = Math.max(b.minY - cameraPos.y, 0, cameraPos.y - b.maxY);
+      const dz = Math.max(b.minZ - cameraPos.z, 0, cameraPos.z - b.maxZ);
+      const d = Math.hypot(dx, dy, dz);
+      const wantStones = wallFine > 0 && (cell.stones ? d < wallFine + 8 : d < wallFine + (wallJob?.cell === cell ? 8 : 0));
+      if (wantStones && cell.stones === null && !wallJob && lod.fine) {
+        wallJob = { cell, steps: buildFieldWallFineSteps(lod.fine, cell.key) };
+      } else if (!wantStones && wallJob?.cell === cell) {
+        wallJob.steps.return(null); // (the camera turned away before it was done)
+        wallJob = null;
+      } else if (!wantStones && cell.stones !== null) {
+        if (cell.stones) { group.remove(cell.stones); cell.stones.geometry.dispose(); }
+        cell.stones = null;
+      }
+      if (wantStones && cell.stones === null) pending++;
+      const show = cell.nearShown ? d < wallNear + 10 : d < wallNear;
+      const midShown = show && !cell.stones;
+      if (midShown !== cell.midShown) { cell.midShown = midShown; if (near && cell.near >= 0) near.setVisibleAt(cell.near, midShown); }
+      if (show === cell.nearShown) continue;
+      cell.nearShown = show;
+      if (far && cell.far >= 0) far.setVisibleAt(cell.far, !show);
+    }
+    lod.pending = pending;
+  }
   let fineFar = 120, fineFrames = 0;
   function updateFineDetail(cameraPos: THREE.Vector3 | null): void {
     const batches = group.userData.fineDetail as Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number } }> }> | undefined;
@@ -9134,6 +10886,7 @@ ${snowCap ? `
     updatePoleLod(cameraPos);
     updateRockLod(cameraPos);
     updateFineDetail(cameraPos);
+    updateFieldWallLod(cameraPos);
     if (mooredHulls.length) {
       animatedTimeS += dt;
       for (let i = 0; i < mooredHulls.length; i++) {
@@ -9148,6 +10901,15 @@ ${snowCap ? `
         else mesh.matrixWorld.copy(mesh.matrix);
       }
     }
+    if (stepDestruction(dt)) updatePoleLod(cameraPos);
+  }
+
+  /**
+   * The destruction's own clock (2026-10-06, split out of updateProps for the Scene Studio, whose hulls crush what
+   * they overrun on its timeline while its world update holds dt at 0): the kind-burst budget, the drum blasts, the
+   * loose dressing and the crush animations. Returns whether a crush animation ran (a toppled pole needs its LOD).
+   */
+  function stepDestruction(dt: number): boolean {
     fxBudget = 6; // per-frame kind-burst cap refill
     // DESTRUCTIBLES r1: deferred explosive-drum blasts (max 2/tick so chains
     // ripple instead of detonating as one frame spike)
@@ -9158,7 +10920,7 @@ ${snowCap ? `
       shellImpact(bl.x, bl.y, bl.z, { r: 5.4, he: true, cause: 'blast' });
     }
     updateLooseProps(dt);
-    if (!crushAnims.length) return; // zero per-frame cost when idle
+    if (!crushAnims.length) return false; // zero per-frame cost when idle
     for (let k = crushAnims.length - 1; k >= 0; k--) {
       const a = crushAnims[k];
       if (!a.placement) {
@@ -9191,7 +10953,10 @@ ${snowCap ? `
       poseToppled(a, ang);
       if (a.t >= 1.1) crushAnims.splice(k, 1);
     }
-    updatePoleLod(cameraPos);
+    return true;
+  }
+  function advanceDestructibles(dt: number): void {
+    if (stepDestruction(dt)) updatePoleLod(null);
   }
 
   /**
@@ -9282,10 +11047,11 @@ ${snowCap ? `
     { material: mats.structureMetal, intensity: 1.2 },
     { material: mats.structureCanvas, intensity: 1.2 },
   ]);
+  nearMeshVertexHeights = null; // (a query after the build asks the field)
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible,
-    destructibles, looseRecords, updateProps, resetDestructibles, tankWreckSpots, utilityNetwork,
+    destructibles, looseRecords, updateProps, advanceDestructibles, resetDestructibles, tankWreckSpots, utilityNetwork,
     utilityPolePlacements, decorationGroundingReceipts,
-    sourcedTexturesReady, registerDestructibles,
+    sourcedTexturesReady, registerDestructibles, waterContacts,
     getLoosePropStats: () => ({ total: looseRecords.length, active: activeLoose.length }),
     features: { buildings: buildingFeatures, tacticalBeats: tacticalBeatFeatures, hearths: hearthAnchors } };
 }

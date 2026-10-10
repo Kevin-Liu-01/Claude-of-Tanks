@@ -16,6 +16,7 @@ import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
 import * as THREE from 'three';
 import type { TrackSurface } from '../world/trackSurface.ts';
 import { createDronePresentation } from './dronePresentation.ts';
+import {missionAttachmentVisualFrame} from '../game/missionAttachmentVisual.ts';
 import { aerialTracerProfile, aerialTracerWidth, aerialTracerLength, type AerialTracerProfile } from './aerialTracers.ts';
 import { waterContactMaskAt } from '../world/waterContactMask.ts';
 import { createParticleSystem, mulberry32, makeFbm } from './particles.ts';
@@ -229,6 +230,9 @@ interface SmokeColumn {
   ttl: number;
   smolder?: number;
   scale: number;
+  /** false: a shell burst on open ground — smoke only, no flame licks on a deck line nothing stands on, no ember
+   * smolder after (2026-10-03, the Studio's floating fire: shell hits left 40 s of flame over bare ice and water). */
+  flame?: boolean;
 }
 
 interface LiveShell {
@@ -346,6 +350,37 @@ interface FxEventMap {
   'tank:fire': TankFireEvent;
 }
 
+/**
+ * Scene Studio cinematic seam (src/fx/cinematicFx.ts). Created on first use
+ * by the Studio chunk only; battle never calls cinematicPort(), so none of
+ * these closures, objects or state changes exist in a battle session.
+ */
+export interface FxCinematicPort {
+  readonly group: THREE.Group;
+  readonly sharing: ReturnType<typeof createParticleSystem>['sharing'];
+  /** The battle's particle-system factory (particles.ts), so the Studio chunk imports none of the FX runtime's modules. */
+  readonly createParticleSystem: typeof createParticleSystem;
+  readonly heightField: FxHeightField;
+  readonly explosionLight: THREE.PointLight;
+  readonly explosionPeak: number;
+  groundY(x: number, z: number): number;
+  /** Seconds since the pooled explosion light last flashed. */
+  explosionFlashAgeS(): number;
+  flashExplosion(pos: THREE.Vector3, peak: number, ageS?: number): void;
+  /** Keep the late soft-particle pass running while companion FX are alive. */
+  setLateFxActive(fn: (() => boolean) | null): void;
+  /** Concurrent smoke-column cap; null restores the battle budget. */
+  setColumnCap(cap: number | null): void;
+  /** Ambient-tinted shading of the battle pools' normal-blended media. */
+  setLightTintShading(on: boolean): void;
+  /**
+   * Night exposure discipline for Studio cinematic shots: scales the pooled
+   * muzzle light and the additive muzzle/flash card intensity (1 = battle).
+   */
+  setMuzzleExposure(light: number, cards: number): void;
+  stampTrackPrint(pos: THREE.Vector3, dir: THREE.Vector3, water: boolean, surface: TrackSurface): void;
+}
+
 export interface FxRuntime {
   readonly group: THREE.Group;
   setReplaySuppressed(suppressed: boolean): void;
@@ -392,17 +427,22 @@ export interface FxRuntime {
     cause?: DestructionCause,
     /** wreck r1: the destroyed entity's id — its smoke column rides and leaves with the corpse. */
     wreckOf?: string | null,
+    /** shellBurst: a shell hitting open ground (the Studio's stand-in blast), not a tank — its column is smoke only. */
+    opts?: { shellBurst?: boolean },
   ): void;
   dust(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number): void;
-  exhaust(pos: THREE.Vector3, intensity: number, sooty?: boolean): void;
+  exhaust(pos: THREE.Vector3, intensity: number, sooty?: boolean, birthOffset?: number): void;
   loosePropHit(pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
   propCrush(pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
   propBreak(kind: string, pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
   setFrozen(frozen: boolean, atTimeS?: number | null): void;
   resetSeed(seed: number): void;
+  /** Pin the shared fx clock to exactly `atTimeS` (every live stamp keeps its age). */
+  resetClock(atTimeS?: number): void;
   resetAll(): void;
   composeFiringMoment(moment: FiringMoment): void;
   composeExplosionMoment(moment: ExplosionMoment): void;
+  cinematicPort(): FxCinematicPort;
 }
 
 declare global {
@@ -539,6 +579,7 @@ const EXPLOSION_LIGHT_PEAK = 520;
 // smolder for the rest of the match).
 const SMOKE_COLUMN_S = 40;
 const SMOKE_SMOLDER_S = 35;    // post-column ember/wisp stage on the wreck
+const SHELL_BURST_COLUMN_S = 14; // a shell hit's smoke-only column (the Studio's stand-in blast; no wreck burns)
 // r5 column-continuity rebuild: 0.05 (was 0.11) — the 9 Hz cadence of very
 // large puffs is what let the column macro-structure fall apart in motion
 // (a detached dark blob with clear air between it and the burning wreck at
@@ -1263,13 +1304,19 @@ function* createFxSteps(
   // SceneAAPass discovers this state on the top-level fx group. The copied
   // scene-depth uniforms come from the particle system; the activity gate
   // also includes non-particle late FX so a lone tracer/ring is never skipped.
+  // Studio cinematic companion activity (FxCinematicPort.setLateFxActive);
+  // always null in battle.
+  let extraLateFxActive: (() => boolean) | null = null;
+  // Studio night exposure scale for the pooled muzzle light (always 1 in battle).
+  let muzzleLightScale = 1;
   group.userData.softParticles = {
     ...particles.softParticles,
     isActive: () => particles.softParticles.isActive()
       || tracerGeo.instanceCount > 0
       || atgmBodies.count > 0
       || shockRings.some(isRingVisible)
-      || muzzleRings.some(isRingVisible),
+      || muzzleRings.some(isRingVisible)
+      || (extraLateFxActive !== null && extraLateFxActive()),
   };
   const _Z = new THREE.Vector3(0, 0, 1); // read-only
 
@@ -1614,6 +1661,8 @@ function* createFxSteps(
    * anchorMode?:string, attachmentResolved?:boolean, acc:number, ttl:number,
    * scale:number}[]} smoke-column emitters */
   const columns: SmokeColumn[] = [];
+  // Battle budget; only the Studio cinematic port may raise it (setColumnCap).
+  let columnCap = MAX_COLUMNS;
   /** last known world position per tank id (fed by bus events that carry pos) */
   const lastKnownPos = new Map<string, MutableVec3>();
   // world-dressing r1: shellId -> shell type, so a world impact knows whether
@@ -3157,6 +3206,7 @@ function* createFxSteps(
     birthOffset = 0,
     cause: DestructionCause = 'ammorack',
     wreckOf: string | null = null,
+    shellBurst = false,
   ): void {
     const rack = cause === 'ammorack';
     const burn = cause === 'fire';
@@ -3225,7 +3275,9 @@ function* createFxSteps(
     emitDestructionEruptionSkirt(pos, cy, burn, dk, birthOffset);
     // wreck r1: a live kill names its wreck so the column rides the corpse (see syncColumnAnchors);
     // composed replays and warm-ups pass no id and keep the world-fixed column.
-    columns.push({ key: wreckOf ? `wreck:${wreckOf}` : null, wreckOf, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0, ttl: SMOKE_COLUMN_S, scale: burn ? 1.45 : 1.3 });
+    // a shell burst leaves a shorter smoke-only column: no wreck burns there
+    columns.push({ key: wreckOf ? `wreck:${wreckOf}` : null, wreckOf, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0,
+      ttl: shellBurst ? SHELL_BURST_COLUMN_S : SMOKE_COLUMN_S, scale: burn ? 1.45 : 1.3, flame: !shellBurst });
     capColumns();
     finalizeDestroyedVisual(visual, rack, birthOffset);
   }
@@ -3334,7 +3386,7 @@ function* createFxSteps(
     // hull"): licks are born ON the deck line, rise slowly, live SHORT and
     // SHRINK with age — fire that licks up off the wreck and dies before it
     // can drift free. Higher rate so the base always carries flame.
-    if (rng() < 0.70 + 0.30 * stage) {
+    if (col.flame !== false && rng() < 0.70 + 0.30 * stage) {
       const licks = rng() < 0.35 ? 2 : 1;
       for (let li = 0; li < licks; li++) {
         _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
@@ -3389,9 +3441,9 @@ function* createFxSteps(
   // Public API
   // --------------------------------------------------------------------------
 
-  /** Enforce MAX_COLUMNS by retiring the lowest-remaining-ttl emitter. */
+  /** Enforce the column cap by retiring the lowest-remaining-ttl emitter. */
   function capColumns(): void {
-    while (columns.length > MAX_COLUMNS) {
+    while (columns.length > columnCap) {
       let low = 0;
       for (let i = 1; i < columns.length; i++) {
         if (columns[i].ttl < columns[low].ttl) low = i;
@@ -3505,7 +3557,8 @@ function* createFxSteps(
     col.ttl -= tickDt;
     if (col.ttl <= 0) {
       col.ttl = 0;
-      col.smolder = SMOKE_SMOLDER_S;
+      // nothing smolders in a shell crater: a smoke-only column simply ends
+      col.smolder = col.flame === false ? 0 : SMOKE_SMOLDER_S;
       col.acc = 0;
       return;
     }
@@ -3715,7 +3768,7 @@ function* createFxSteps(
         // The FPV camera sits inside its airframe; retain the launch/remote silhouette.
         if (shell.pos.distanceToSquared(camera.position) > 4) {
           const owner=decalEntityFor(shell.shooterId),flyer=owner?.aerial;
-          drones.write(shell.pos,shell.vel,shell.id,flyer?.active?flyer.yaw:undefined,shell.ageS,owner?.spec?.nation);
+          drones.write(shell.pos,shell.vel,shell.id,flyer?.active?flyer.yaw:undefined,shell.ageS,owner?.spec?.nation,owner?.visual?.root?missionAttachmentVisualFrame(owner.visual.root):undefined);
         }
         continue;
       }
@@ -4083,9 +4136,9 @@ function* createFxSteps(
     particles.emit('dust', _puffO);
   }
 
-  function rebaseFxClock(atTimeS: number): void {
+  function rebaseFxClock(atTimeS: number, exact = false): void {
     const delta = atTimeS - particles.getTime();
-    if (Math.abs(delta) <= 20) return;
+    if (exact ? delta === 0 : Math.abs(delta) <= 20) return;
     particles.shiftTime(delta);
     for (const tracer of staticTracers) if (tracer.length > 14) tracer[14] += delta;
     for (const state of lightStates) state.bornAt += delta;
@@ -4518,6 +4571,8 @@ function* createFxSteps(
     },
   }) : null;
 
+  let cinematicPortState: FxCinematicPort | null = null;
+  const muzzleCardBase = new Map<THREE.ShaderMaterial, number>();
   const fx: FxRuntime = {
     group,
 
@@ -4575,6 +4630,8 @@ function* createFxSteps(
         resolvedKeyedColumns: resolved,
         unresolvedKeyedColumns: keyed - resolved,
         worldFixedColumns: columns.length - keyed,
+        // smoke-only (shell burst) columns, so a probe can tell them from burning wrecks
+        flamelessColumns: columns.filter((col) => col.flame === false).length,
         subjects,
       };
     },
@@ -4868,7 +4925,7 @@ function* createFxSteps(
       // the brightest lit surface is the muzzle itself.
       _sv.copy(pos).addScaledVector(dir, -0.15);
       _sv.y += 0.10;
-      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * lightK, 0);
+      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * lightK * muzzleLightScale, 0);
     },
 
     /** Tank-on-tank metal contact: lateral sparks, track debris and a low
@@ -5170,8 +5227,9 @@ function* createFxSteps(
       visual: FxVisual | null,
       cause: DestructionCause = 'ammorack',
       wreckOf: string | null = null,
+      opts: { shellBurst?: boolean } = {},
     ): void {
-      spawnDestruction(pos, visual, 0, cause, wreckOf);
+      spawnDestruction(pos, visual, 0, cause, wreckOf, !!opts.shellBurst);
     },
 
     /**
@@ -5221,7 +5279,7 @@ function* createFxSteps(
      * @param {number} intensity 0..1 engine load
      * @param {boolean} [sooty=false] dark diesel puffs instead of thin haze
      */
-    exhaust(pos: THREE.Vector3, intensity: number, sooty = false): void {
+    exhaust(pos: THREE.Vector3, intensity: number, sooty = false, birthOffset = 0): void {
       // r1 "not a single exhaust puff anywhere": the old profile (alpha
       // 0.06-0.29, sub-meter cards, <1.2 s lives) was invisible from any
       // gameplay camera. Diesel puffs are now a clearly readable grey-brown
@@ -5261,7 +5319,7 @@ function* createFxSteps(
             col3(0x8d8b86, _puffO.col0); col3(0x9a9894, _puffO.col1);
             _puffO.alpha = 0.24;
           }
-          _puffO.grav = 0.6; _puffO.birthOffset = -bi * 0.09 - rng() * 0.05;
+          _puffO.grav = 0.6; _puffO.birthOffset = birthOffset - bi * 0.09 - rng() * 0.05;
           particles.emit('smoke', _puffO);
         }
       }
@@ -5287,7 +5345,7 @@ function* createFxSteps(
         col3(0x8d8b86, _puffO.col0); col3(0x9a9894, _puffO.col1);
         _puffO.alpha = 0.14 + 0.14 * intensity;
       }
-      _puffO.grav = 0.5; _puffO.birthOffset = 0;
+      _puffO.grav = 0.5; _puffO.birthOffset = birthOffset;
       particles.emit('smoke', _puffO);
     },
 
@@ -5452,6 +5510,19 @@ function* createFxSteps(
       rng = mulberry32(newSeed);
     },
 
+    /**
+     * Pin the shared clock to exactly `atTimeS` with the age-preserving rebase
+     * (no 20 s threshold). Scene Studio pins 0 at every load and seek, so
+     * clock-phased shading (fire flicker) and every stamp derived from the
+     * clock depend on the timeline alone, never on how long the page has run.
+     * @param {number} [atTimeS]
+     */
+    resetClock(atTimeS = 0): void {
+      rebaseFxClock(atTimeS, true);
+      particles.setFrozen(frozen, atTimeS);
+      printUniforms.uTime.value = atTimeS;
+    },
+
     /** Kill all particles, tracers, decals, timers, emitters and lights. */
     resetAll() {
       replaySuppressed = false;
@@ -5488,6 +5559,37 @@ function* createFxSteps(
       impactDecals.clearAll();
       resetEquipmentDamage();
       for (const st of lightStates) { st.bornAt = -1e9; st.light.intensity = 0; }
+    },
+
+    cinematicPort(): FxCinematicPort {
+      if (cinematicPortState) return cinematicPortState;
+      cinematicPortState = {
+        group,
+        sharing: particles.sharing,
+        createParticleSystem,
+        heightField,
+        explosionLight,
+        explosionPeak: EXPLOSION_LIGHT_PEAK,
+        groundY,
+        explosionFlashAgeS: () => lightAge(lightStates[1]),
+        flashExplosion: (pos, peak, ageS = 0) => flashLight(lightStates[1], pos, peak, ageS),
+        setLateFxActive: (fn) => { extraLateFxActive = fn; },
+        setColumnCap: (cap) => {
+          columnCap = cap == null ? MAX_COLUMNS : Math.max(1, Math.floor(cap));
+          capColumns();
+        },
+        setLightTintShading: (on) => particles.setLightTintShading(on),
+        setMuzzleExposure: (light, cards) => {
+          muzzleLightScale = light;
+          for (const pool of ['flash', 'jet'] as const) {
+            const material = particles.pools[pool].mesh.material as THREE.ShaderMaterial;
+            if (!muzzleCardBase.has(material)) muzzleCardBase.set(material, material.uniforms.uIntensity.value);
+            material.uniforms.uIntensity.value = (muzzleCardBase.get(material) ?? 1) * cards;
+          }
+        },
+        stampTrackPrint,
+      };
+      return cinematicPortState;
     },
 
     /**
@@ -5541,7 +5643,7 @@ function* createFxSteps(
       // onto the mantlet/hull front, but the hottest lit metal is the muzzle.
       _sv.copy(muzzlePos).addScaledVector(dir, -0.18);
       _sv.y += 0.10;
-      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * (rocket ? 0.3 : 1), ageS);
+      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * (rocket ? 0.3 : 1) * muzzleLightScale, ageS);
     },
 
     /**

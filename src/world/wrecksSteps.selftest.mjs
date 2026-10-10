@@ -4,6 +4,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { compactWreckGeometryForPaintSteps, compactWreckGeometrySteps } from './exactWreckGeometry.ts';
+import { collectWreckShellSolids, collectWreckSolids } from './wreckCollision.ts';
 
 // Execute the actual world-owned pipeline with a small deterministic Three
 // hierarchy. Only the synchronous vehicle constructor is replaced here;
@@ -114,12 +115,15 @@ function* compactObserved(geometry) {
     return result.value;
   } finally { steps.return(false); }
 }
+// collectWreckSolids: main's f6be3a54d bakes the wreck's hull/turret collision solids alongside the paint (the
+// fixture visual names no hull or turret mesh, so it bakes none); collectWreckShellSolids (the hitbox lane, e7c724c1d):
+// their convex-hull corners for the shell record, beside them (none here either).
 const api = new Function('THREE', 'mergeGeometries', 'compactWreckGeometryForPaintSteps',
-  'compactWreckGeometrySteps', 'createTank', 'console', 'observePaint',
+  'compactWreckGeometrySteps', 'createTank', 'console', 'observePaint', 'collectWreckSolids', 'collectWreckShellSolids',
   stripTypeScriptTypes(body).replace(/^export /gm, '') + '\nreturn { bakeTankWreck, bakeTankWreckSteps };')(
   THREE, mergeObserved, compactObserved, compactWreckGeometrySteps, makeVisual,
   { warn(...args) { active.warnings.push(args); } },
-  () => { active.painted++; });
+  () => { active.painted++; }, collectWreckSolids, collectWreckShellSolids);
 
 function start(f) { return api.bakeTankWreckSteps(f, 'fixture', { seed: f.seed, pop: f.pop }); }
 function advance(f, steps) { return inFixture(f, () => steps.next()); }

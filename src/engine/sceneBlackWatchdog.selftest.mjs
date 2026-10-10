@@ -6,7 +6,8 @@ import * as THREE from 'three';
 import { createBus } from '../game/stateCore.ts';
 
 globalThis.window = { __GL_DIAG: { errors: [] } };
-const { runSceneBlackWatchdog, scheduleSceneWatchdog, runSceneWatchdogNow } = await import('./deviceDiag.ts');
+const { runSceneBlackWatchdog, scheduleSceneWatchdog, runSceneWatchdogNow, battleProbeRadianceScale } = await import('./deviceDiag.ts');
+const { EXPOSURE_REFERENCE_ILLUMINANCE } = await import('./lightModelCore.ts');
 
 const failures = [];
 let passed = 0;
@@ -347,6 +348,61 @@ for (const at of ['render', 'readback']) for (const measurement of [1, 2]) test(
   f.assertReleased(measurement);
 });
 
+// 2026-10-09 (the MP-entry lane): Verdant's sunset meters 0.494 against the reference 3.0 and a healthy sunset frame read
+// 3.8-4.7 raw, so every sunset network round failed "Battle graphics could not be verified". Low light now draws the probe
+// under the metered ratio through the night's radiance path; a broken lit pipeline still reads dark under it.
+test('low-light battle scale is the metered ratio under the exposure reference, never above authored light', () => {
+  const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} != ${expected}`);
+  close(battleProbeRadianceScale(0.494, 3), 0.494 / 3);
+  close(battleProbeRadianceScale(2.714, 3), 2.714 / 3);
+  assert.equal(battleProbeRadianceScale(0.01, 3), 0.08, 'no stronger than the night preset\'s own diagnostic light');
+  for (const lit of [3, 4.5, 1e6]) assert.equal(battleProbeRadianceScale(lit, 3), null, `illuminance ${lit} keeps authored light`);
+  for (const unknown of [undefined, null, '0.5', 0, -1, NaN, Infinity]) assert.equal(battleProbeRadianceScale(unknown, 3), null);
+  for (const reference of [0, -3, NaN, Infinity]) assert.equal(battleProbeRadianceScale(0.5, reference), null);
+  assert.equal(EXPOSURE_REFERENCE_ILLUMINANCE, 3, 'the legacy rig meters the reference itself (scale null)');
+});
+
+function lowSunInputs(f) {
+  const sun = new THREE.DirectionalLight(0xffbf80, 3.319);
+  const hemi = new THREE.HemisphereLight(0x8899aa, 0x554433, .58);
+  const headlamp = new THREE.SpotLight(0xffffff, 17);
+  f.scene.add(sun, hemi, headlamp);
+  f.scene.environmentIntensity = 1;
+  return { sun, hemi, headlamp, assertRestored() {
+    assert.deepEqual([sun.intensity, hemi.intensity, headlamp.intensity, f.scene.environmentIntensity], [3.319, .58, 17, 1]);
+  } };
+}
+
+test('a healthy sunset frame (4.4 at authored light) passes under the metered scale without the ladder', () => {
+  const scale = battleProbeRadianceScale(0.494, EXPOSURE_REFERENCE_ILLUMINANCE);
+  let lights;
+  // the lit band follows the broad lights: 4.4 at authored sunset radiance, above the threshold under the metered ratio
+  const f = fixture([() => 4.4 * lights.sun.intensity / 3.319]);
+  lights = lowSunInputs(f);
+  const result = f.run({ nightRadianceScale: scale });
+  assert.equal(result.rescued, false);
+  assert.equal(result.failed, undefined);
+  assert.ok(result.before >= 6, `sunset band ${result.before} under the diagnostic light`);
+  assert.equal(f.updates.length, 0, 'a healthy sunset does not enter the invalidate/recompile ladder');
+  lights.assertRestored();
+  f.assertReleased(1);
+  const authored = fixture([4.4, 4.4, 4.4, 4.4]);
+  lowSunInputs(authored);
+  assert.ok(authored.run({}).before < 6, 'the same frame without the metered scale is the reported false black');
+});
+
+for (const sample of [0, 2]) test(`sunset broken lit pipeline (band ${sample} under the metered scale) still fails the ladder`, () => {
+  const f = fixture([sample, sample, sample, sample]);
+  const lights = lowSunInputs(f);
+  const result = f.run({ nightRadianceScale: battleProbeRadianceScale(0.494, EXPOSURE_REFERENCE_ILLUMINANCE) });
+  assert.equal(result.before, sample);
+  assert.equal(result.rescued, false);
+  assert.ok(f.bag.errors.some(message => message.includes('no ladder stage cured it')));
+  lights.assertRestored();
+  assert.deepEqual(f.snapshot(), f.initial);
+  f.assertReleased(4);
+});
+
 test('queued diagnostics obey the exact production phase/world/entry guards', () => {
   const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
   const battleExpression = main.match(/const isCurrentBattleWatchdog = \(\) => ([\s\S]+?);\n/)[1];
@@ -375,10 +431,19 @@ test('queued diagnostics obey the exact production phase/world/entry guards', ()
   }
   assert.match(main, /battleWatchdogRadianceScale = preset\.skyIntensity \?\? 1/);
   const optionsBody = main.match(/function currentSceneWatchdogOptions\(\) \{([\s\S]+?)\n\}/)[1];
-  const options = new Function('game', 'battleAtmosphere', 'battleWatchdogRadianceScale', optionsBody);
-  assert.deepEqual(options({ phase: 'battle' }, { current: { weather: { timeOfDay: 'night' } } }, .05), { nightRadianceScale: .05 });
-  assert.deepEqual(options({ phase: 'battle' }, { current: { weather: { timeOfDay: 'day' } } }, .05), {});
-  assert.deepEqual(options({ phase: 'garage' }, { current: { weather: { timeOfDay: 'night' } } }, .05), {});
+  const options = new Function('game', 'battleAtmosphere', 'battleWatchdogRadianceScale', 'scene', 'battleProbeRadianceScale',
+    'EXPOSURE_REFERENCE_ILLUMINANCE', optionsBody);
+  const run = (phase, timeOfDay, lightModel) => options({ phase }, { current: { weather: { timeOfDay } } }, .05,
+    { userData: lightModel === undefined ? {} : { lightModel } }, battleProbeRadianceScale, EXPOSURE_REFERENCE_ILLUMINANCE);
+  assert.deepEqual(run('battle', 'night', { illuminance: 0.2 }), { nightRadianceScale: .05 }, 'night keeps its authored sky scale');
+  assert.deepEqual(run('battle', 'day'), {}, 'no metered light: the probe keeps authored light');
+  assert.deepEqual(run('battle', 'day', { mode: 'legacy', illuminance: 3 }), {});
+  assert.deepEqual(run('battle', 'day', { illuminance: 3.6 }), {});
+  assert.deepEqual(run('battle', 'sunset', { illuminance: 0.494 }), { nightRadianceScale: 0.494 / 3 });
+  assert.deepEqual(run('battle', 'day', { illuminance: 1.5 }), { nightRadianceScale: 0.5 }, 'a closed deck by day is low light too');
+  assert.deepEqual(run('garage', 'night', { illuminance: 0.2 }), {});
+  assert.deepEqual(run('garage', 'sunset', { illuminance: 0.494 }), {});
+  assert.match(main, /import \{ EXPOSURE_REFERENCE_ILLUMINANCE, loadGroundedLightModel \} from '\.\/engine\/lightModelCore\.ts';/);
   assert.match(main, /signal, measureTimings: true, \.\.\.currentSceneWatchdogOptions\(\)/);
 });
 
@@ -392,7 +457,8 @@ test('real intent, Garage teardown and network activation invalidate old same-wo
   for (const body of bodies) {
     const invoke = new Function('value', `let sceneWatchdogEntryGeneration = 1, battleWarmGeneration = 1, coveredBattleWatchdog = () => {};
       const playSurface = { hideForBattle() {} }, networkSession = { setSpectator() {} };
-      const garageModePreview = { current: null }; // battle entry also clears the Garage mode preview (f94f3ebe5)
+      const garageModePreview = { current: null, clear() { this.current = null; } }; // battle entry also clears the Garage mode preview (f94f3ebe5)
+      const pedestal = { current: null }, clearJuggernautVisual = () => {}; // and the garage hull's Juggernaut aura (16f624704)
       ${body}
       return sceneWatchdogEntryGeneration;`);
     assert.equal(invoke(true), 2, 'deleting an actual adapter invalidation must fail even when the generic guard is intact');
@@ -464,7 +530,9 @@ for (const kind of ['sync', 'async', 'schedule', 'reporter']) {
     'scheduleSceneWatchdog', 'runSceneBlackWatchdogAsync', `
       let sceneWatchdogEntryGeneration = 0, coveredBattleWatchdog = null;
       const studio = { active: false }, renderer = {}, scene = {}, camera = {}, playSurface = { hideForBattle() {} };
-      const garageModePreview = { current: null };
+      const garageModePreview = { current: null, clear() { this.current = null; } };
+      // main (16f624704) clears the garage hull's Juggernaut aura on battle entry
+      const pedestal = { current: null }, clearJuggernautVisual = () => {};
       const currentSceneWatchdogOptions = () => ({});
       return { arm: covered => { ${armBody} }, consume: async assertCurrent => { ${consumeBody} },
         pending: () => coveredBattleWatchdog, invalidate: () => { ${invalidateBody} } };

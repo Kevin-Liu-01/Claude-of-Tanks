@@ -38,6 +38,7 @@ assert.deepEqual(missingSelftests, [],
 const maintainedStandaloneTools = new Set([
   'tools/aerial-tracers.browser.mjs', // main's AC-130 tracer GPU regression (native capture, run by hand)
   'tools/drone-details.browser.mjs', // main's docked/flight drone airframe regression (native capture, run by hand)
+  'tools/base-shell-surface-audit.mjs', // main's base hull/turret mirror-and-planarity census (3d0c3c50e; CPU-only, docs/qa/base-shell-audit-20261005, run by hand)
   'tools/atgm-guidance-probe.mjs',
   'tools/bot-combat-probe.mjs',
   'tools/fleet-battle-views.mjs',
@@ -48,8 +49,10 @@ const maintainedStandaloneTools = new Set([
   'tools/ifv-recoil-probe.mjs',
   'tools/mobile-dynamic-aim-probe.mjs',
   'tools/qa-evidence-manifest.mjs',
+  'tools/rapid-fire-feedback.browser.mjs', // main's rapid-fire HUD/readout regression (7095d2058; browser, through the capture lock, run by hand)
   'tools/reviveprobe.mjs',
   'tools/switch-latency-probe.mjs',
+  'tools/time-to-battle-probe.mjs', // the perf lane's click-to-playable-battle probe per build, map and cache state (2026-10-07; browser, through the capture FIFO, run by hand)
   'tools/voice-smoke.mjs',
   'tools/winding-audit.mjs',
   'tools/world-pole-visual-audit.mjs',
@@ -88,6 +91,7 @@ const ownedSkillDocs = new Set([
   '.agents/skills/improve-threejs/SKILL.md',
   'SKILL.md',
   'api/SKILL.md',
+  'docs/audio-generation/SKILL.md',
   'docs/tank-generation/SKILL.md',
   'server/SKILL.md',
   'src/SKILL.md',

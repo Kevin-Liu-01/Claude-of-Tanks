@@ -114,6 +114,15 @@ interface GaragePedestalRuntimeOptions {
   ): Promise<RuntimeValue>;
   discardSharedTextures(specId: string): void;
   createBudgetYield(budgetMs: number): BudgetYield;
+  /** Install dormant presentation shaders before the first ordinary warm; no second compile on mode click. */
+  prepareVisual?(visual: GaragePedestalVisual, spec: GaragePedestalSpec): void;
+  /**
+   * End those dormant shaders when the visual becomes the battle's (lendToBattle), on every entry path: the battle's
+   * own warm then compiles the paint the battle draws. (The time-to-battle lane, 2026-10-08: an entry that did not pass
+   * the Garage BATTLE button's ui:battleStart — a campaign launch, the debug entry — took the skin into battle, where
+   * the first battle frame disposed it and linked the restored paint's programs synchronously, 17 of them.)
+   */
+  releaseVisual?(visual: GaragePedestalVisual): void;
   compilePrograms(root: Object3D): void;
   /**
    * Optional strict first-use preparation of the hero's forward programs:
@@ -162,7 +171,7 @@ export interface GaragePedestalRuntime {
   isOnStage(visual?: GaragePedestalVisual | null): boolean;
   poseCurrent(): void;
   adoptBattlePlayer(specId: string): boolean;
-  lendToBattle(specId: string): boolean;
+  lendToBattle(specId: string, useTank?: boolean): boolean;
   buildSpeculative(
     specId: string,
     stillValid?: () => boolean,
@@ -197,6 +206,8 @@ export function createGaragePedestalRuntime({
   discardSharedTextures,
   createBudgetYield,
   compilePrograms,
+  prepareVisual,
+  releaseVisual,
   prepareProgramSteps,
   nextFrame,
   getDeviceTier,
@@ -534,6 +545,7 @@ export function createGaragePedestalRuntime({
         phases.buildMs = phases.maxBuildStepMs = now() - startedAt;
       }
       if (!visual || !stillCurrent()) return null;
+      prepareVisual?.(visual, getSpec(specId));
       transferred = true;
       return visual;
     } finally {
@@ -549,7 +561,6 @@ export function createGaragePedestalRuntime({
     stillCurrent: () => boolean = () => true,
     record: GarageSwitchRecord | null = null,
   ) => {
-    if (getDeviceTier() === 'mobile') return;
     try {
       if (!prepareProgramSteps) {
         // Submit-only fallback: two frames give the linker a head start and
@@ -821,11 +832,12 @@ export function createGaragePedestalRuntime({
   const adoptBattlePlayer = (specId: string) => {
     if (disposed || getPhase() !== 'garage') return false;
     const incoming = getBattlePlayer()?.visual;
-    if (!incoming || incoming.specId !== specId || retired.has(incoming)) return false;
+    if (!incoming || incoming.root.userData?.aircraftOnly || incoming.specId !== specId || retired.has(incoming)) return false;
     const cached = cache.get(specId);
     if (cached && reusable(cached) && cached !== incoming) return false;
     const outgoing = current;
     incoming.spec = getSpec(specId);
+    prepareVisual?.(incoming, incoming.spec);
     if (!incoming.root.parent) scene.add(incoming.root);
     current = incoming;
     parked.delete(incoming);
@@ -842,9 +854,14 @@ export function createGaragePedestalRuntime({
     return true;
   };
 
-  const lendToBattle = (specId: string) => {
+  const lendToBattle = (specId: string, useTank = true) => {
     if (disposed) return false;
     const visual = current;
+    if (!useTank) {
+      pollToken += 1; shownToken = pollToken; preloader.invalidate();
+      if (visual) park(visual, true);
+      return false;
+    }
     const entity = getBattleEntity(specId);
     if (visual && visual.specId !== specId) {
       // Direct entry/rematch can request a different tank from the hero still
@@ -865,6 +882,7 @@ export function createGaragePedestalRuntime({
     } catch (_) {
       return false;
     }
+    releaseVisual?.(visual);
     entity.visual = visual;
     // A slow Garage selection must not finish after the current hero has
     // been handed to simulation and move that actor back onto the podium.

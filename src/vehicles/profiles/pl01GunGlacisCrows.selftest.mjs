@@ -41,7 +41,9 @@ for (const id of ['pl01', 'pl01_105']) {
   assert.deepEqual(
     [...hullBounds.min.toArray(), ...hullBounds.max.toArray()]
       .map((value) => Number(value.toFixed(6))),
-    [-halfWidth, 0, -3.565, halfWidth, 2.203312, 3.44],
+    // 2026-10-08 (the tank-accessories lane, round 5): the hull's top is the deck tow cable's crown, and the cable is
+    // laid wire rope with spliced eyes now (round 5's props batch 2b), its strands 1.2 mm proud of the old smooth rod
+    [-halfWidth, 0, -3.565, halfWidth, 2.204529, 3.44],
     `${id} driver-roof seating must preserve the hull and authored cage envelope`,
   );
   const driverSeat = hull.userData.pl01DriverRoofSeat;
@@ -155,9 +157,9 @@ for (const id of ['pl01', 'pl01_105']) {
   assert.deepEqual(trackBands.sort(), ['gearTrackBandL', 'gearTrackBandR'],
     `${id} must retain exactly one linked track course per side`);
 
-  const loaderMG = tank.root.getObjectByName('pl01_loader_mg');
-  assert.ok(loaderMG?.parent === turret,
-    `${id} loader machine gun must traverse with the turret`);
+  // 2026-10-08 (the owner's field standard, main 6763d7cc0): the remote module is the PL-01's only secondary weapon
+  assert.equal(tank.root.getObjectByName('pl01_loader_mg'), undefined,
+    `${id} carries no loader machine gun beside its remote station`);
   assert.ok(tank.root.getObjectByName('turretCupola'),
     `${id} must expose structural cupola geometry`);
   assert.ok(tank.root.getObjectByName('turretEquipment'),

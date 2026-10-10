@@ -204,6 +204,7 @@ const missileVelocityByVehicle = new Map([
   // 2026-09-25 IFV identity batch: MELLS and the Type 79 replica racks keep their originals' speeds; the
   // Borsuk's Spike LR is authored at 180 m/s in europePhotoIfvSpecs.ts.
   ['spz_puma_s1_x', 240], ['type89_x', 210], ['borsuk', 180],
+  ['m6_linebacker', 750], // 2026-10-04: the compact-pod M6 Linebacker's FIM-92 Stinger
 ]);
 const guided = [];
 const additionalMissileVelocityByWeapon = new Map([

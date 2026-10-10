@@ -44,7 +44,6 @@ import type {
 import {
   applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap,
   rulesetLoadout, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
-import { allySpawnPoint, reuseSpawnPad } from '../sim/spawnPads.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
 import {
   DEFAULT_BRAIN_SETTINGS, readBrainSettings, readTeamArrangement, type BrainSettings,
@@ -60,6 +59,7 @@ import type { RosterEntity, RosterGameState } from './rosterState.ts';
 import type { ModuleId } from '../sim/moduleCatalog.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import { getSpec } from '../vehicles/specs.ts';
+import { validatedContactGeometry } from '../sim/trackContact.ts';
 import { tankTier } from '../vehicles/tier.ts';
 import {
   createTankState, updateTank, requestTankJump, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
@@ -114,7 +114,9 @@ import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { getStoredDifficulty } from './input.ts';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.ts';
-import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.ts';
+import {
+  hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns, camoSelectionSuitsTheatre, setCamoBattleSeed,
+} from '../vehicles/materials.ts';
 // EQUIPMENT SYSTEM (game/equipment.ts): per-tank loadouts — the player's
 // persisted picks, per-role AI defaults, and the equipMults record the
 // damage/movement/repair hooks read off CombatState.
@@ -530,8 +532,7 @@ const COMBAT_SEED = 6000;
 const FIRE_TICK_S = 0.5;
 // The battle clock is the ruleset's (sim/matchRuleset.ts timeLimitS: 15:00 for Standard, none for
 // Horde, 12:00 lost-on-expiry for a campaign sortie); the HUD counts the same value down.
-// Allied bots seat around the player pad and a side larger than the map's enemy pads re-uses them on a
-// compact ring: sim/spawnPads.ts (sides, owner 2026-09-18) — the authored 7v7 wedge stays the first six slots.
+// Both sides seat on the symmetric deployment's slots (sim/deployment.ts through the match placement), any side size.
 
 // module-scope scratch — no per-frame allocation
 const _muzzle = new THREE.Vector3();
@@ -666,8 +667,12 @@ function configureBattleCamo(
 ): void {
   clearCamoOverrides();
   if (options.random) {
+    // fleet lane (2026-10-08): bots keep their own paint only where it suits the map's theatre, and their AUTO draws
+    // re-seed per battle (the loading coordinator plans with the same ordinal, so its pre-paint matches)
+    setCamoBattleSeed(game.battleCount);
     for (const specId of autoCamoIdsForBattle(
       game.tanks, playerSpecId, game.mapId, true, game.battleCount,
+      (botSpecId) => camoSelectionSuitsTheatre(getSpec(botSpecId), game.mapId),
     )) {
       setCamoOverride(specId, 'auto');
     }
@@ -724,7 +729,7 @@ function chooseBattleAllies(
   playerSpecId: string,
   randomBattle: boolean,
 ): SoloEntity[] {
-  const candidates = game.tanks.filter((entity) => entity.specId !== playerSpecId);
+  const candidates = game.tanks.filter((entity) => entity !== game.tanks[0]);
   if (!randomBattle) {
     // The staged screenshot battle takes the first three roster entities as
     // allies; the archived WWII preference list retired with those hulls
@@ -735,6 +740,7 @@ function chooseBattleAllies(
   // three, Standard keeps the 6 / 7 balance. The cap never exceeds the pool minus one enemy.
   const exactCap = soloDebugFlags()?.rosterExact && candidates.length < 13 ? 3 : 6;
   const allyCap = Math.min(rulesetAllyCap(game.ruleset, exactCap), Math.max(0, candidates.length - 1));
+  if (game.ruleset.alliedNation === 'player') return allyCap ? candidates.slice(-allyCap) : [];
   const enemyCap = candidates.length - allyCap;
   const byTier = candidates.slice()
     .sort((a, b) => tankTier(b.specId) - tankTier(a.specId));
@@ -815,36 +821,20 @@ interface OpeningLane {
   side: number;
 }
 
-function selectAllySpawn(context: BattleSpawnContext): SpawnPoint {
-  const { world } = context;
-  const playerSpawn = world.spawnPoints.player;
-  // the authored wedge for the first six, lateral and forward slots past them (sim/spawnPads.ts)
-  const point = allySpawnPoint({ x: playerSpawn.pos[0], z: playerSpawn.pos[2], yaw: playerSpawn.yaw }, context.allyIndex++);
-  return {
-    pos: [point.x, world.heightField.getHeightAt(point.x, point.z), point.z],
-    yaw: playerSpawn.yaw,
-  };
-}
-
-function selectEnemySpawn(context: BattleSpawnContext): SpawnPoint {
-  const { enemies } = context.world.spawnPoints;
-  const index = context.enemyIndex++;
-  const pad = enemies[index % enemies.length];
-  const reuse = Math.floor(index / enemies.length);
-  if (reuse === 0) return pad;
-  // sides (2026-09-18): a side larger than the map's pads re-uses them on the compact offset ring instead of
-  // asking the placement search to scatter every extra vehicle around pad 0
-  const point = reuseSpawnPad({ x: pad.pos[0], z: pad.pos[2], yaw: pad.yaw }, reuse);
-  return { pos: [point.x, context.world.heightField.getHeightAt(point.x, point.z), point.z], yaw: pad.yaw };
-}
-
+/**
+ * Symmetric deployments (sim/deployment.ts, modes lane 2026-10-08): the player takes the allied side's slot 0, allied
+ * bots the slots after it, hostiles the enemy side's slots in order — each enemy slot the exact rotation of the allied
+ * slot with its index about the anchors' midpoint. The authority (sim/authoritativeMatch.ts) seats a side through the
+ * same placement call, so a solo battle and a hosted one deploy alike.
+ */
 function selectEntitySpawn(
   context: BattleSpawnContext,
   isPlayer: boolean,
   isAlly: boolean,
 ): SpawnPoint {
-  if (isPlayer) return context.world.spawnPoints.player;
-  return isAlly ? selectAllySpawn(context) : selectEnemySpawn(context);
+  const team = isPlayer || isAlly ? 'alpha' : 'bravo';
+  const slot = context.placement.deploymentSlot(team, team === 'alpha' ? context.allyIndex++ : context.enemyIndex++);
+  return { pos: [slot.x, context.world.heightField.getHeightAt(slot.x, slot.z), slot.z], yaw: slot.yaw };
 }
 
 function initializeBattleEntity(
@@ -1130,7 +1120,7 @@ function spawnBattleEntities(context: BattleSpawnContext): void {
   const { game } = context;
   for (let index = 0; index < game.tanks.length; index++) {
     const entity = game.tanks[index];
-    const isPlayer = entity.specId === context.playerSpecId;
+    const isPlayer = entity === game.tanks[0];
     const isAlly = !isPlayer && context.allies.has(entity);
     const preferred = selectEntitySpawn(context, isPlayer, isAlly);
     const safe = context.placement.spawn({ x: preferred.pos[0], z: preferred.pos[2], yaw: preferred.yaw },
@@ -1187,6 +1177,12 @@ export function setupBattle(
   opts: SetupBattleOptions = {},
 ): void {
   const sp = world.spawnPoints;
+  // Same-nation reinforcements have match-owned identities and resources.
+  for (const entity of game.allTanks) if (entity.matchReinforcement) {
+    releaseParkedTank(game, entity);
+    game.tankById.delete(entity.id);
+  }
+  game.allTanks = game.allTanks.filter(entity => !entity.matchReinforcement);
   resetBattleSession(game, opts);
 
   // COMMUNITY TANKS: field the participants; park everyone else (hidden,
@@ -1194,7 +1190,11 @@ export function setupBattle(
   // campaign: the operation's formation leads the curated pool (rosterState.preferNations)
   const rosterPlan = battleRosterPlan(game.ruleset, game.campaignOperationId, !!opts.random);
   game.tanks = pickBattleParticipants(game, playerSpecId, !!opts.random, game.battleCount,
-    rosterPlan.nations, rosterPlan.slots, rosterPlan.formationLead) as SoloEntity[];
+    rosterPlan.nations, rosterPlan.slots, rosterPlan.formationLead, rosterPlan.alliedSlots) as SoloEntity[];
+  for (const entity of game.tanks) if (entity.matchReinforcement) {
+    game.allTanks.push(entity);
+    game.tankById.set(entity.id, entity);
+  }
   // matchmaking diversity (owner 2026-09-17): this battle's bots and the previous battle's yield their era-band place
   {
     const memory = rememberBattleBots(game.previousBotSpecIds, game.tanks.filter((entity) => entity.specId !== playerSpecId).map((entity) => entity.specId));
@@ -1305,7 +1305,7 @@ export function setupBattle(
   const teamHasBrawler: Record<TeamId, boolean> = { player: false, enemy: false };
   const teamHasScout: Record<TeamId, boolean> = { player: false, enemy: false };
   for (const entity of game.tanks) {
-    if (entity.specId === playerSpecId) continue;
+    if (entity === game.tanks[0]) continue;
     const team: TeamId = allySet.has(entity) ? 'player' : 'enemy';
     const role = roleOf(entity.spec);
     if (role === 'brawler') teamHasBrawler[team] = true;
@@ -1413,43 +1413,6 @@ export function prepareNextOpeningRoute(game: SoloGameState): boolean {
  * @param {object} ent pool entity
  * @returns {void}
  */
-function clampContactValue(value: number, minimum: number, maximum: number): number {
-  return value < minimum ? minimum : value > maximum ? maximum : value;
-}
-
-function validatedContactGeometry(
-  source: SoloVisualContactGeometry,
-  dimensions: MovementSpec['dims'],
-): MovementContactGeometry {
-  const length = dimensions.hullLengthM;
-  const width = dimensions.widthM;
-  return {
-    halfLenM: source.halfLenM == null
-      ? 0.45 * length
-      : clampContactValue(source.halfLenM,
-        CONTACT_LEN_FRAC_MIN * length, CONTACT_LEN_FRAC_MAX * length),
-    halfWidM: source.halfWidM == null
-      ? 0.5 * width
-      : clampContactValue(source.halfWidM,
-        CONTACT_WID_FRAC_MIN * width, CONTACT_WID_FRAC_MAX * width),
-    zCenterM: source.zCenterM == null
-      ? 0
-      : clampContactValue(source.zCenterM,
-        -CONTACT_ZC_FRAC_MAX * length, CONTACT_ZC_FRAC_MAX * length),
-    bottomYM: clampContactValue(source.bottomYM || 0, CONTACT_BOTY_MIN, CONTACT_BOTY_MAX),
-    panYM: source.panYM == null
-      ? null
-      : clampContactValue(source.panYM, CONTACT_PAN_MIN, CONTACT_PAN_MAX),
-    endRise: source.endRise
-      ? {
-        dzM: clampContactValue(source.endRise.dzM || 0.4, 0.2, 0.6),
-        frontM: clampContactValue(source.endRise.frontM, 0.02, 0.5),
-        rearM: clampContactValue(source.endRise.rearM, 0.02, 0.5),
-      }
-      : null,
-  };
-}
-
 function refreshContactGeometry(entity: SoloEntity): void {
   if (!entity.visual) return;
   entity.rigidGear = false;
@@ -1461,26 +1424,8 @@ function refreshContactGeometry(entity: SoloEntity): void {
   }
 }
 
-// First-party builders publish their measured track contact geometry once.
-// The simulation validates that receipt against spec dimensions before using
-// it; runtime vertex rescans were removed with the retired external-GLB path.
-const CONTACT_LEN_FRAC_MIN = 0.22; // sanity clamps vs spec dims — a scan that
-const CONTACT_LEN_FRAC_MAX = 0.50; // lands outside these is wrong, not novel
-const CONTACT_WID_FRAC_MIN = 0.30;
-const CONTACT_WID_FRAC_MAX = 0.58;
-const CONTACT_ZC_FRAC_MAX = 0.12; // contact-run center offset cap (× hull L)
-// MOVEMENT r1: hull-local Y of the lowest rendered surface — the support
-// solve seats THIS plane on the terrain (pos.y = ground − bottomY + margin).
-// The rebuilt profiles park it anywhere from −0.016 (pad grousers a hair
-// under the old plane) to +0.10 (community placeholder pontoons / raised
-// print floor lines); outside this band the scan hit paint, not a track.
-const CONTACT_BOTY_MIN = -0.20;
-const CONTACT_BOTY_MAX = 0.30;
-// Measured hull-pan floor band (belly-guard line): pans outside this are a
-// mis-scan (gun barrel over the bow, open-topped interiors) — fall back to
-// the fixed guard rather than trust them.
-const CONTACT_PAN_MIN = 0.12;
-const CONTACT_PAN_MAX = 0.70;
+// First-party builders publish their measured track contact geometry once; the simulation validates that receipt
+// against spec dimensions (sim/trackContact.ts, shared with the host since physics lane round 8) before using it.
 
 /**
  * Tank collision layer (gameplay_feel r6 — round critique MAJOR "invisible
@@ -2046,6 +1991,7 @@ function traceNearestTank(
       pose,
       entity.spec.armor,
       entity.combat.eraSpent,
+      shell.spec.tracer === 'DRONE',
     );
     if (!intersections.length) continue;
     const distance = intersections[0].t * segmentLength;
@@ -2286,7 +2232,7 @@ function stepSpotting(game: SoloGameState, bus: EventBus): void {
   if (!game.spotting) return;
   for (const event of game.spotting.update(SIM_DT, game.timeS)) {
     bus.emit('tank:spotted', event);
-    if (game.player && event.id === game.player.id && event.team === 'enemy') {
+    if (game.player && event.id === game.player.id && event.team !== game.player.team) {
       bus.emit('player:spotted', { timeS: game.timeS });
     }
   }

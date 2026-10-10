@@ -30,6 +30,7 @@ export const OG_IMAGE_CARDS = [
   ['docs-audio', 'AUDIO & BATTLEFIELD FX', 'public/media/showcase-r1/86_action_coastal_harbor_kill.webp', '50% 48%'],
   ['docs-interface', 'INTERFACE & CONTROLS', 'public/media/showcase-r2/19_live_sniper.webp', '50% 50%'],
   ['docs-studio', 'SCENE STUDIO & CAPTURE', 'public/media/showcase-r2/15_studio_workspace.webp', '50% 50%'],
+  ['docs-filming', 'FILMING THE MEDIA', 'public/media/filming-r1/cover.webp', '62% 50%'],
 ];
 
 function asDataUrl(path, mime) {

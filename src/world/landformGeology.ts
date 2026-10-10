@@ -7,7 +7,8 @@
 // - profile: 'dome' (the smooth default), 'butte' (a gently domed cap, a steep wall, a concave talus apron), 'cone'
 //   (a summit crater, flanks at a near-constant slope, a rounded toe; the crater may be breached), 'inselberg' (a
 //   bornhardt: a broad rounded crown steepening into a near-vertical wall, its foot wandering round the dome, over a
-//   concave talus apron; fans spread from the wall's foot) or, on a ridge,
+//   concave talus apron; fans spread from the wall's foot), 'canyon' (a knoll of negative height: a trough with a level
+//   floor, a talus apron rising to a near-vertical wall and the plain at the rim; ramps may cut the wall) or, on a ridge,
 //   'flow' (a lava flow: a lowered channel between raised levees, a steep margin, a short talus; with `front`, a steep
 //   blocky front at its downhill end);
 // - gullies: V-shaped rills down the flanks, irregularly spaced, fading into the apron; on a knoll, talus fans spread
@@ -24,12 +25,19 @@ export interface LandformGeology {
   outline?: number;
   /** The radial (knoll) or cross-axis (ridge) profile. 'flow' (ridges): a lava flow's lowered channel between raised
    * levees, a steep margin and a short talus. */
-  profile?: 'dome' | 'butte' | 'cone' | 'flow' | 'inselberg';
-  /** butte: the cap's edge and the wall's foot, as fractions of the radius or half-width (default 0.45, 0.62). */
+  profile?: 'dome' | 'butte' | 'cone' | 'flow' | 'inselberg' | 'canyon';
+  /** butte: the cap's edge and the wall's foot, as fractions of the radius or half-width (default 0.45, 0.62). canyon:
+   * the wall's foot and its top, the rim (default 0.74, 0.8). */
   wall?: readonly [number, number];
   /** butte / inselberg: the talus apron's height at the wall's foot, as a share of the landform's height (default 0.28
-   * on a butte, 0.16 on an inselberg; an inselberg's apron varies by half of it round the dome). */
+   * on a butte, 0.16 on an inselberg; an inselberg's apron varies by half of it round the dome). canyon: the talus's
+   * rise above the floor at the wall's foot, as a share of the depth (default 0.3), the apron reaching in 0.16 of the
+   * radius from the foot. */
   apron?: number;
+  /** canyon: cuts down through the wall to the floor (boat ramps, tracks): each on a bearing in degrees (0 = local +x,
+   * counter-clockwise towards local +z), its half-width in degrees (default 9) and its run in metres from the rim to
+   * the floor (default 6 x the depth: about 9.5 degrees). The ramp is smooth: no beds, no rills, no roughness on it. */
+  ramps?: readonly { bearingDeg: number; halfWidthDeg?: number; runM?: number }[];
   /** inselberg: the wall's foot as a fraction of the radius (default 0.68) and how far it wanders round the dome, as a
    * share of itself (default 0.12): the slope break between the wall and the talus is never one ring. */
   foot?: number;
@@ -42,11 +50,27 @@ export interface LandformGeology {
    * edge) and the wall drops from there to the apron within the rest of the width, near-vertical over most of the
    * height (inselbergSection). Without it the crown rounds down into the wall as before. */
   rim?: number;
-  /** inselberg with a rim: rounded bosses breaking the cap, how many and how high in metres. */
-  bosses?: { count: number; heightM: number };
+  /** inselberg with a rim: the cap's fall from its centre to its edge, as a share of the height (default 0.08; the
+   * Redrock lane's round 9: a higher crown over the sheer wall, so the jebel's top is a dome and not a drum's lid). */
+  capDrop?: number;
+  /** inselberg with a rim: rounded bosses breaking the cap, how many and how high in metres, and (optional) the least
+   * radius as a share of the cap (default 0.3; each boss takes up to 0.16 more). */
+  bosses?: { count: number; heightM: number; radius?: number };
   /** inselberg with a rim: vertical flutes down the wall, how many round the jebel and how far each sets the wall back,
-   * as a share of the wall's width (default 0.5). */
-  flutes?: { count: number; depth?: number };
+   * as a share of the wall's width (default 0.5). `joints` (the Redrock lane, round 10: "drip folds", "melted-candle
+   * grooves"): each a V-shaped joint, sharp at its root, at an irregular bearing (jittered within its slot) and of its
+   * own depth, instead of an evenly spaced rounded notch. */
+  flutes?: { count: number; depth?: number; joints?: boolean };
+  /** inselberg with a rim: the wall in this many bedding tiers (the Redrock lane, round 10: "no bedding, no ledges") —
+   * each a steep riser under a narrow ledge, the ledges a share of the wall's width (`ledge`, default 0.3 of a tier's
+   * run). Absent: one smooth wall (the horizon's far jebels and every other inselberg). */
+  tiers?: { count: number; ledge?: number };
+  /**
+   * The Redrock lane (round 11, the gauntlet's wave 282: "earth heaps", "Play-Doh lumps"): Wadi Rum's beehive banding —
+   * `bands` horizontal bands over the inselberg's height above its apron, each a rounded step where the profile steepens
+   * and eases (strength 0..1 of the most a monotonic profile allows). Absent: no banding.
+   */
+  beehive?: { bands: number; strength?: number };
   /** cone: the crater's rim as a fraction of the radius, its depth in metres and an optional breach bearing in
    * degrees (0 = local +x, counter-clockwise towards local +z). */
   crater?: { rim: number; depthM: number; breachDeg?: number };
@@ -106,6 +130,9 @@ export type GeologyZones = [number, number, number];
 
 const TAU = Math.PI * 2;
 const BUTTE_WALL: readonly [number, number] = [0.45, 0.62];
+const CANYON_WALL: readonly [number, number] = [0.74, 0.8];
+/** A canyon's talus apron reaches this share of the radius in from the wall's foot. */
+const CANYON_TALUS = 0.16;
 
 function smoothstep(a: number, b: number, v: number): number {
   const t = Math.max(0, Math.min(1, (v - a) / (b - a)));
@@ -177,6 +204,48 @@ function butteProfile(q: number, geology: LandformGeology): number {
   return apron * (1 - t) * (1 - t);
 }
 
+/**
+ * A canyon's trough (the map-revival lane, 2026-10-05, Skybridge round 2: Glen Canyon's walls over Lake Powell), 0..1
+ * of the depth at the normalized radius q (1 at the outline): a level floor, a concave talus apron rising to the wall's
+ * foot, a near-vertical smoothstep wall up to the rim, then the plain.
+ */
+function canyonProfile(q: number, geology: LandformGeology): number {
+  const [foot, rim] = geology.wall ?? CANYON_WALL;
+  const apron = Math.max(0, Math.min(0.6, geology.apron ?? 0.3));
+  if (q >= rim) return 0;
+  const toe = Math.max(0.05, foot - CANYON_TALUS);
+  if (q <= toe) return 1;
+  if (q <= foot) { const t = (q - toe) / (foot - toe); return 1 - apron * t * t; }
+  const t = (q - foot) / Math.max(1e-6, rim - foot);
+  return (1 - apron) * (1 - t * t * (3 - 2 * t));
+}
+
+/** Where a canyon's side canyons cut: its wall and a little of the plain past the rim (their heads bite back). */
+function canyonFlank(q: number, geology: LandformGeology): number {
+  const [foot, rim] = geology.wall ?? CANYON_WALL;
+  return smoothstep(foot - 0.04, foot + 0.01, q) * (1 - smoothstep(rim + 0.02, rim + 0.07, q));
+}
+
+/**
+ * A canyon's ramps at the bearing theta: the ramp's weight (1 inside its half-width, easing out over the last 40 %) and
+ * its own section, 0..1 of the depth: a straight run from the rim down to the floor. [0, 1] off every ramp.
+ */
+function canyonRamp(geology: LandformGeology, theta: number, q: number, radius: number, depth: number): [number, number] {
+  let weight = 0, shape = 1;
+  for (const ramp of geology.ramps ?? []) {
+    let d = Math.abs(theta - ramp.bearingDeg * Math.PI / 180) % TAU;
+    if (d > Math.PI) d = TAU - d;
+    const half = Math.max(1, ramp.halfWidthDeg ?? 9) * Math.PI / 180;
+    const w = 1 - smoothstep(half * 0.6, half, d);
+    if (w <= weight) continue;
+    const rim = (geology.wall ?? CANYON_WALL)[1];
+    const run = Math.max(1, ramp.runM ?? Math.abs(depth) * 6) / Math.max(1, radius);
+    weight = w;
+    shape = Math.max(0, Math.min(1, (rim - q) / run));
+  }
+  return [weight, shape];
+}
+
 /** A lava flow's cross-section: the channel a step below its levees, the levee crests near the margin, a steep
  * margin wall and a short concave talus. */
 function flowProfile(q: number): number {
@@ -214,14 +283,29 @@ const JEBEL_CAP_DROP = 0.08;
  *   steepest 1.5 x (1 - 0.08 - apron) / ((1 - rim) x foot), near-vertical over most of the height;
  * then a concave talus apron `apron` high at the foot thinning to the plain at the toe.
  */
-export function inselbergSection(q: number, foot: number, apron: number, crown = 4, rim = 0): number {
+export function inselbergSection(q: number, foot: number, apron: number, crown = 4, rim = 0,
+  capDrop = JEBEL_CAP_DROP, tiers = 0, ledge = 0.3, bands = 0, bandStrength = 0.8): number {
   if (q >= 1) return 0;
+  if (bands >= 2) {
+    // the beehive bands: over the height above the apron, h' = h - A (1 - cos(2 pi n u)) / 2 with A pi n < 1, so the profile
+    // stays monotonic while its slope swings band by band (a rounded step every 1/n of the height)
+    const h = inselbergSection(q, foot, apron, crown, rim, capDrop, tiers, ledge);
+    if (h <= apron) return h;
+    const u = (h - apron) / (1 - apron), amp = Math.min(0.95, Math.max(0, bandStrength)) / (Math.PI * bands);
+    return apron + (1 - apron) * (u - amp * 0.5 * (1 - Math.cos(2 * Math.PI * bands * u)));
+  }
   if (rim > 0) {
     const top = foot * rim;
-    if (q <= top) return 1 - JEBEL_CAP_DROP * (q / top) ** 2;
+    if (q <= top) return 1 - capDrop * (q / top) ** 2;
     if (q <= foot) {
       const t = (q - top) / (foot - top);
-      return apron + (1 - JEBEL_CAP_DROP - apron) * (1 - t * t * (3 - 2 * t));
+      if (tiers >= 2) {
+        // the bedding tiers: from the top down, each tier's run a ledge (level) then a riser (a smoothstep)
+        const n = Math.round(tiers), k = Math.min(n - 1, Math.floor(t * n)), f = t * n - k;
+        const r = f < ledge ? 0 : (f - ledge) / (1 - ledge), e = r * r * (3 - 2 * r);
+        return apron + (1 - capDrop - apron) * (1 - (k + e) / n);
+      }
+      return apron + (1 - capDrop - apron) * (1 - t * t * (3 - 2 * t));
     }
   } else if (q <= foot) return 1 - (1 - apron) * (q / foot) ** crown;
   const t = (1 - q) / (1 - foot);
@@ -238,10 +322,25 @@ function inselbergFoot(geology: LandformGeology, theta: number, salt: number): [
   const rim = jebelRim(geology);
   if (rim > 0 && geology.flutes && geology.flutes.count >= 1) {
     const count = Math.round(geology.flutes.count), depth = Math.max(0, Math.min(1, geology.flutes.depth ?? 0.5));
-    // a groove where cos peaks: a rounded notch half a flute wide, the wall standing at its line between the grooves
-    const phase = (theta / TAU) * count + hash2(count, 3, salt + 37);
-    const notch = Math.max(0, Math.cos(phase * TAU)) ** 2;
-    wall -= notch * depth * (1 - rim) * wall;
+    if (geology.flutes.joints) {
+      // a joint in each of `count` slots round the bearing, at a jittered place in its slot: a V notch (its half-width
+      // 0.12-0.27 of a slot, its depth 0.45-1 of the flutes' depth), the nearest two slots' joints read so it wraps
+      const u = (theta / TAU + 1) * count, i = Math.floor(u);
+      let notch = 0;
+      for (let k = i - 1; k <= i + 1; k++) {
+        const slot = ((k % count) + count) % count;
+        const at = k + 0.5 + 0.7 * (hash2(slot, 5, salt + 37) - 0.5), half = 0.12 + 0.15 * hash2(slot, 6, salt + 37);
+        notch = Math.max(notch, Math.max(0, 1 - Math.abs(u - at) / half) * (0.45 + 0.55 * hash2(slot, 7, salt + 37)));
+      }
+      // (round 11: a jointed wall's clefts bite into the cap as well — the loaves of a beehive massif — the rim taking at
+      // most two fifths of their depth, where a fluted wall's grooves keep to the wall below the rim)
+      wall -= notch * depth * (1 - 0.4 * rim) * wall;
+    } else {
+      // a groove where cos peaks: a rounded notch half a flute wide, the wall standing at its line between the grooves
+      const phase = (theta / TAU) * count + hash2(count, 3, salt + 37);
+      const notch = Math.max(0, Math.cos(phase * TAU)) ** 2;
+      wall -= notch * depth * (1 - rim) * wall;
+    }
   }
   return [wall, apron * (1 + 0.5 * lobe(theta, salt + 31))];
 }
@@ -259,7 +358,7 @@ function jebelBosses(geology: LandformGeology, nx: number, nz: number, top: numb
   let best = 0;
   for (let k = 0; k < Math.round(bosses.count); k++) {
     const a = hash2(k, 1, salt + 41) * TAU, r = Math.sqrt(hash2(k, 2, salt + 41)) * top * 0.62;
-    const radius = top * (0.3 + 0.16 * hash2(k, 3, salt + 41));
+    const radius = top * (Math.max(0.15, Math.min(0.6, bosses.radius ?? 0.3)) + 0.16 * hash2(k, 3, salt + 41));
     const d = Math.hypot(nx - Math.cos(a) * r, nz - Math.sin(a) * r) / radius;
     if (d >= 1) continue;
     const dome = (1 - d * d) ** 2 * (0.6 + 0.4 * hash2(k, 4, salt + 41));
@@ -271,10 +370,15 @@ function jebelBosses(geology: LandformGeology, nx: number, nz: number, top: numb
 function profileOf(q: number, geology: LandformGeology, height: number, fallback: (q: number) => number,
   foot: readonly [number, number] | null = null): number {
   const profile = geology.profile ?? 'dome';
-  if (profile === 'inselberg' && foot) return inselbergSection(q, foot[0], foot[1], Math.max(1.5, geology.crown ?? 4), jebelRim(geology));
+  if (profile === 'inselberg' && foot) {
+    return inselbergSection(q, foot[0], foot[1], Math.max(1.5, geology.crown ?? 4), jebelRim(geology),
+      Math.max(0, Math.min(0.4, geology.capDrop ?? JEBEL_CAP_DROP)), geology.tiers?.count ?? 0,
+      Math.max(0, Math.min(0.6, geology.tiers?.ledge ?? 0.3)), geology.beehive?.bands ?? 0, geology.beehive?.strength ?? 0.8);
+  }
   if (profile === 'butte') return butteProfile(q, geology);
   if (profile === 'cone') return coneProfile(q, geology, height);
   if (profile === 'flow') return flowProfile(q);
+  if (profile === 'canyon') return canyonProfile(q, geology);
   return fallback(q);
 }
 
@@ -417,6 +521,15 @@ export function knollGeologyHeight(form: GeologicForm, lx: number, lz: number): 
     const radial = q < rim ? smoothstep(0, rim, q) : smoothstep(0.75, rim, q);
     shape -= Math.max(0, 1 - d / 0.45) * radial * 0.35 * Math.max(0, shape);
   }
+  // a canyon's ramps cut its wall: their straight run fills the trough's section where it lies deeper
+  const canyon = geology.profile === 'canyon' && height < 0;
+  let rampW = 0;
+  if (canyon && geology.ramps?.length) {
+    const radius = Math.hypot(Math.cos(theta) * rx, Math.sin(theta) * rz);
+    const [w, ramp] = canyonRamp(geology, theta, q, radius, height);
+    rampW = w;
+    shape += (Math.min(shape, ramp) - shape) * w;
+  }
   let h = height * shape;
   const rim = foot ? jebelRim(geology) : 0;
   if (rim > 0 && foot && height > 0) {
@@ -434,8 +547,23 @@ export function knollGeologyHeight(form: GeologicForm, lx: number, lz: number): 
   if (geology.strata && height > 0) {
     h = bedded(h, geology.strata, (nx * 0.6 + nz * 0.25) * geology.strata.stepM * 0.5, lx, lz, salt);
   }
+  if (canyon) {
+    // the side canyons bite into the wall and its brow; the beds step the wall, counted up from the floor (the talus keeps
+    // its smooth shape, as a butte's toe does); neither crosses a ramp
+    if (geology.gullies) {
+      const jitter = (valueNoise(Math.cos(theta) * 1.6 + 7, Math.sin(theta) * 1.6 - 3, salt + 11) - 0.5) * 0.6;
+      const count = Math.max(1, Math.round(geology.gullies.count));
+      const g = gully((theta / TAU + 1) * count, q, geology.gullies.width ?? 0.45, jitter, salt + 13, count);
+      h -= geology.gullies.depthM * g * canyonFlank(q, geology) * (1 - rampW);
+    }
+    if (geology.strata) {
+      const above = h - height;
+      const stepped = bedded(above, geology.strata, (nx * 0.6 + nz * 0.25) * geology.strata.stepM * 0.5, lx, lz, salt);
+      h = height + stepped + (above - stepped) * rampW;
+    }
+  }
   if (geology.rough) {
-    h += geology.rough * roughness(lx, lz, salt) * Math.min(1, Math.abs(shape) * 2.5) * Math.sign(height || 1);
+    h += geology.rough * roughness(lx, lz, salt) * Math.min(1, Math.abs(shape) * 2.5) * Math.sign(height || 1) * (1 - rampW);
   }
   return h + fanHeight();
 }
@@ -640,9 +768,11 @@ export function geologyBoulderSite(form: GeologicForm, u: number, v: number): [n
   const theta = u * TAU;
   const profile = geology.profile ?? 'dome';
   const start = profile === 'inselberg' ? inselbergFoot(geology, theta, salt)[0]
-    : profile === 'butte' ? (geology.wall ?? BUTTE_WALL)[1] : profile === 'cone' ? 0.72 : 0.6;
+    : profile === 'butte' ? (geology.wall ?? BUTTE_WALL)[1] : profile === 'cone' ? 0.72 : profile === 'canyon' ? (geology.wall ?? CANYON_WALL)[0] : 0.6;
   const reach = geology.fans ? Math.max(0.05, Math.min(0.6, geology.fans.reach ?? 0.3)) : 0.15;
-  const q = start + (1 + reach - start) * Math.pow(Math.max(0, Math.min(1, v)), 1.6);
+  // (a canyon's talus lies inside its wall: the blocks crowd the foot and thin out toward the floor)
+  const q = profile === 'canyon' ? start - CANYON_TALUS * 1.2 * Math.pow(Math.max(0, Math.min(1, v)), 1.6)
+    : start + (1 + reach - start) * Math.pow(Math.max(0, Math.min(1, v)), 1.6);
   const outline = Math.max(0, Math.min(0.35, geology.outline ?? 0));
   const raw = outline > 0 ? q * (1 + outline * lobe(theta, salt)) : q;
   const rx = Math.max(1, form.rx || form.r || 70), rz = Math.max(1, form.rz || form.r || rx);
@@ -680,7 +810,7 @@ export function restsOnTalus(ground: { getHeightAt(x: number, z: number): number
  * landform made of slag. */
 export function isRockLandform(form: GeologicForm): boolean {
   const profile = form.geology?.profile;
-  return profile === 'butte' || profile === 'inselberg' || (profile === 'flow' && form.kind === 'ridge')
+  return profile === 'butte' || profile === 'inselberg' || profile === 'canyon' || (profile === 'flow' && form.kind === 'ridge')
     || form.geology?.material === 'slag';
 }
 

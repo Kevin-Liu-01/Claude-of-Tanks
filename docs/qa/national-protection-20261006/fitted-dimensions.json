@@ -1,0 +1,101 @@
+{
+  "status": "pass",
+  "rows": [
+    {
+      "id": "ua_t80u_modern",
+      "quality": "high",
+      "width": 4.7920753955841064,
+      "declared": 4.792075
+    },
+    {
+      "id": "ua_t80u_modern",
+      "quality": "low",
+      "width": 4.7920753955841064,
+      "declared": 4.792075
+    },
+    {
+      "id": "ua_t72b3m_modern",
+      "quality": "high",
+      "width": 4.8707115650177,
+      "declared": 4.870712
+    },
+    {
+      "id": "ua_t72b3m_modern",
+      "quality": "low",
+      "width": 4.8707115650177,
+      "declared": 4.870712
+    },
+    {
+      "id": "ua_t72b3_modern",
+      "quality": "high",
+      "width": 4.852843999862671,
+      "declared": 4.852844
+    },
+    {
+      "id": "ua_t72b3_modern",
+      "quality": "low",
+      "width": 4.852843999862671,
+      "declared": 4.852844
+    },
+    {
+      "id": "ua_t72b3m_hetman_ii",
+      "quality": "high",
+      "width": 4.9729509353637695,
+      "declared": 4.972951
+    },
+    {
+      "id": "ua_t72b3m_hetman_ii",
+      "quality": "low",
+      "width": 4.9729509353637695,
+      "declared": 4.972951
+    },
+    {
+      "id": "pl_t80u_modern",
+      "quality": "high",
+      "width": 4.750587224960327,
+      "declared": 4.750587
+    },
+    {
+      "id": "pl_t80u_modern",
+      "quality": "low",
+      "width": 4.750587224960327,
+      "declared": 4.750587
+    },
+    {
+      "id": "pl_t72b3m_modern",
+      "quality": "high",
+      "width": 4.930665493011475,
+      "declared": 4.930665
+    },
+    {
+      "id": "pl_t72b3m_modern",
+      "quality": "low",
+      "width": 4.930665493011475,
+      "declared": 4.930665
+    },
+    {
+      "id": "pl_t72b3_modern",
+      "quality": "high",
+      "width": 4.690134048461914,
+      "declared": 4.690134
+    },
+    {
+      "id": "pl_t72b3_modern",
+      "quality": "low",
+      "width": 4.690134048461914,
+      "declared": 4.690134
+    },
+    {
+      "id": "pl_t72b3_zubr_ii",
+      "quality": "high",
+      "width": 4.790942668914795,
+      "declared": 4.790943
+    },
+    {
+      "id": "pl_t72b3_zubr_ii",
+      "quality": "low",
+      "width": 4.790942668914795,
+      "declared": 4.790943
+    }
+  ]
+}

@@ -34,7 +34,9 @@ export const RUINSPIRES_WINDOW_STYLE: Readonly<StructureWindowStyle> = Object.fr
   glassMetalness: 0.02,
   glassClearcoat: 0.04,
   glassClearcoatRoughness: 0.78,
-  glassEnvMapIntensity: 0.22,
+  // (2026-10-08, gauntlet wave 309: the 0.22 this authored never applied — three overwrote it with the scene's intensity —
+  // and honored it turned the panes into flat black and slate voids; the full sky the approved windows were drawn with)
+  glassEnvMapIntensity: 1.0,
   curtainColor: 0x302c25,
   curtainEmissive: 0x090604,
   curtainEmissiveIntensity: 0.02,

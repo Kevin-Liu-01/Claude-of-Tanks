@@ -11,7 +11,17 @@ export function insideCopperQuarry(x: number, z: number): boolean {
   return x > -256 && x < 40 && z > -194 && z < 234;
 }
 
-/** Three cut levels, with finite-width treads rather than quantized cliffs. */
+/**
+ * Three cut levels, with finite-width treads rather than quantized cliffs. (Copper Mesa round 2, the map-revival lane:
+ * the Iron Blow's benches read as cut faces — each riser over 0.06 to 0.07 of the radius, about 26 degrees at its
+ * steepest and still driven, so the rock layer takes the risers and the treads widen; was 0.11 to 0.13.) (Round 3,
+ * gauntlet wave 132: "no open cut with stepped benches and haul roads is visible; the only excavation is a shallow
+ * brown scraped smear": each riser over 0.04 of the radius — a cut face of 33 to 38 degrees, in the band the scree
+ * layer draws, its knees inside the live 1 m height cache's 0.08 m; was 26 degrees.) (Round 3b, the bots lane's swap
+ * test, fairness band 45-55 %: the steep risers walled the pit's levels from each other, the battle settled inside the
+ * cut and the north won 31 of 80; with the PR head's risers, over 0.11 to 0.13 of the radius, it wins 36 of 80 — the
+ * risers go back to them, the levels and their treads kept.)
+ */
 export function copperQuarryRise(q: number): number {
   return COPPER_QUARRY.depth * (0.34 * smoothstep(0.28, 0.39, q)
     + 0.33 * smoothstep(0.52, 0.63, q)

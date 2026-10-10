@@ -3,6 +3,7 @@ import {bindFleetRegistries,cloneFleetVariant,registerFleetSpecs,stripSilhouette
 import {NATIONAL_LEGACY_CONFIG,NATIONAL_LEGACY_IDS} from './nationalLegacyConfig.ts';
 import {NATIONAL_GUN_PIVOT,NATIONAL_BARREL_LENGTH} from './nationalModernizationDesign.ts';
 import type {FleetTankSpec} from './specContracts.ts';
+import {NATIONAL_PROTECTION_WIDTHS_M} from './nationalProtectionDimensions.ts';
 const entries:Record<string,FleetTankSpec>={};
 for(const c of NATIONAL_LEGACY_CONFIG){
   const s=cloneFleetVariant(TANK_SPECS,c.id,'t90sm_x',{name:c.name,nation:c.nation,era:'next-generation'});
@@ -24,7 +25,7 @@ export function synchronizeNationalLegacyMetadata():void {
     s.balancePeerOf=c.predecessor;
     s.variantOf=c.donor;
     s.armor.turretPivot=[.008,c.y,c.z];
-    s.dims={...s.dims,hullLengthM:d.hullLength,widthM:d.width,heightM:d.heightM,
+    s.dims={...s.dims,hullLengthM:d.hullLength,widthM:NATIONAL_PROTECTION_WIDTHS_M[c.id]??d.width,heightM:d.heightM,
       overallLengthM:d.hullLength/2+c.z+NATIONAL_GUN_PIVOT[2]+NATIONAL_BARREL_LENGTH};
     stripSilhouetteDimensions(s.dims);
     s.visual={...s.visual,number:String(830+index)};

@@ -61,6 +61,8 @@ interface Accumulator {
   mask: number[] | null;
   /** occlusion factor per vertex (weathered buckets only; 1 = open wall) */
   shade: number[] | null;
+  /** paint multiplier per vertex, rgb (weathered buckets only; 1 = the surface's own colour) */
+  tint: number[] | null;
 }
 
 export interface EmitOptions {
@@ -94,6 +96,13 @@ export interface EmitOptions {
   shadeAt?: (p: Vec3) => number;
   /** per-corner colour in a coloured bucket (a painted sheet weathering down its slope), emitting frame; wins over `colour` */
   colourAt?: (p: Vec3) => Rgb;
+  /**
+   * paint on a weathered surface (a limewash band, a painted dado, clay showing through): an rgb multiplier the
+   * weathering pass folds into the building's tint (weather.ts), so the paint takes the wall's damp and grime as well
+   */
+  tint?: Rgb;
+  /** per-corner paint (emitting frame); wins over `tint` */
+  tintAt?: (p: Vec3) => Rgb;
 }
 
 const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpC = new THREE.Vector3(), tmpD = new THREE.Vector3();
@@ -103,7 +112,7 @@ const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpC = new THREE.V
  * never print the same tile at the same wall position.
  */
 export class PartSink {
-  private readonly groups = new Map<string, Accumulator>();
+  private groups = new Map<string, Accumulator>();
   /** triangles emitted so far (structural + decor) */
   triangles = 0;
   /** an optional placement of everything emitted (a wing built in its own frame): rotation about Y + offset */
@@ -114,7 +123,25 @@ export class PartSink {
    * wall it has cut openings in; 0 everywhere else, where a unit sits on a solid face).
    */
   recess = 0;
+  /**
+   * The paint of a coloured bucket's parts emitted with no colour of their own (null: the neutral grey). A kit sets it
+   * round a body whose walls it builds in a coloured bucket (a painted weatherboard cottage: Queenstown's cottageRow).
+   */
+  paint: Rgb | null = null;
   constructor(uvOffset: readonly [number, number] = [0, 0]) { this.uvOffset = uvOffset; }
+
+  /**
+   * Dressing a phone leaves out, drawn as the desktop draws it (docs/DESTRUCTION.md §8.4: a phone's collision is the
+   * desktop's, index for index). On a desktop this is `body()`. On a phone `body` runs too, so every stream it draws
+   * (the build stream, the look stream) stands where the desktop's does when the structure draws its next solid, but
+   * nothing it emits is kept.
+   */
+  dressing(mobile: boolean, body: () => void): void {
+    if (!mobile) { body(); return; }
+    const kept = this.groups, triangles = this.triangles;
+    this.groups = new Map();
+    try { body(); } finally { this.groups = kept; this.triangles = triangles; }
+  }
 
   /** Emit `body` with every point turned `yaw` about Y and moved by (x, y, z); UVs stay in the body's own frame. */
   placed(yaw: number, x: number, y: number, z: number, body: () => void): void {
@@ -133,7 +160,7 @@ export class PartSink {
     let group = this.groups.get(key);
     if (!group) {
       group = { pos: [], nor: [], uv: [], col: COLOURED.has(bucket) ? [] : null, mask: bucket === 'curtain' ? [] : null,
-        shade: SHADED.has(bucket) ? [] : null };
+        shade: SHADED.has(bucket) ? [] : null, tint: SHADED.has(bucket) ? [] : null };
       this.groups.set(key, group);
     }
     return group;
@@ -160,7 +187,7 @@ export class PartSink {
     normal.normalize();
     const n: Vec3 = [normal.x, normal.y, normal.z];
     const g = this.acc(bucket, !!opts.decor, !!opts.shadow, !!opts.fine);
-    const colour = g.col ? (opts.colour ?? [0.6, 0.6, 0.6]) : null;
+    const colour = g.col ? (opts.colour ?? this.paint ?? [0.6, 0.6, 0.6]) : null;
     const glow = g.mask && opts.window ? (n[0] * opts.window[0] + n[1] * opts.window[1] + n[2] * opts.window[2] > 0.999 ? 1 : 0) : 0;
     const density = opts.density ?? BUCKET_UV_DENSITY[bucket];
     const mode = opts.uv ?? WORLD;
@@ -179,6 +206,10 @@ export class PartSink {
         }
         if (g.mask) g.mask.push(glow);
         if (g.shade) g.shade.push(opts.shadeAt ? opts.shadeAt(p) : opts.shade ?? 1);
+        if (g.tint) {
+          const t = opts.tintAt ? opts.tintAt(p) : opts.tint;
+          if (t) g.tint.push(t[0], t[1], t[2]); else g.tint.push(1, 1, 1);
+        }
       }
       this.triangles++;
     }
@@ -348,6 +379,7 @@ export class PartSink {
       if (g.mask) geometry.setAttribute(NIGHT_EMISSION_ATTRIBUTE, new THREE.BufferAttribute(Uint8Array.from(g.mask), 1));
       // the weathering pass consumes (and removes) the occlusion record; an all-open part carries none
       if (g.shade && g.shade.some((v) => v !== 1)) geometry.setAttribute('shade', new THREE.Float32BufferAttribute(g.shade, 1));
+      if (g.tint && g.tint.some((v) => v !== 1)) geometry.setAttribute('tint', new THREE.Float32BufferAttribute(g.tint, 3));
       if (role !== 's') geometry.userData.noCollision = true;
       if (role === 'c') geometry.userData.castsShadow = true;
       if (role === 'f') geometry.userData.fine = true;

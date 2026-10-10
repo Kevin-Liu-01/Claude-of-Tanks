@@ -243,11 +243,26 @@ function scaledRing(
   });
 }
 
+/** Triangulate an outward-ordered welded quad along its convex ridge.
+ * All four authored corners remain fixed. This is opt-in for faceted armor;
+ * cast surfaces keep their existing tessellation and normal treatment. */
+export function pushConvexQuad(
+  positions: number[], a: Point3, b: Point3, c: Point3, d: Point3,
+): void {
+  const ab = [b[0]-a[0], b[1]-a[1], b[2]-a[2]];
+  const ac = [c[0]-a[0], c[1]-a[1], c[2]-a[2]];
+  const n = [ab[1]*ac[2]-ab[2]*ac[1], ab[2]*ac[0]-ab[0]*ac[2], ab[0]*ac[1]-ab[1]*ac[0]];
+  const otherSide = n[0]*(d[0]-a[0])+n[1]*(d[1]-a[1])+n[2]*(d[2]-a[2]);
+  if (otherSide > 1e-12) positions.push(...a,...b,...d,...b,...c,...d);
+  else positions.push(...a,...b,...c,...a,...c,...d);
+}
+
 function pushOrientedSides(
   positions: number[],
   lower: readonly Point3[],
   upper: readonly Point3[],
   center: Point2,
+  convexSideQuads = false,
 ): void {
   const [centerX, centerZ] = center;
   const triangle = (a: Point3, b: Point3, c: Point3): void => {
@@ -259,7 +274,11 @@ function pushOrientedSides(
     const midpointZ = (lower[index][2] + lower[next][2]) / 2 - centerZ;
     const edgeX = lower[next][0] - lower[index][0];
     const edgeZ = lower[next][2] - lower[index][2];
-    if (edgeX * midpointZ - edgeZ * midpointX > 0) {
+    if (convexSideQuads) {
+      if (edgeX * midpointZ - edgeZ * midpointX > 0)
+        pushConvexQuad(positions, lower[index], lower[next], upper[next], upper[index]);
+      else pushConvexQuad(positions, lower[next], lower[index], upper[index], upper[next]);
+    } else if (edgeX * midpointZ - edgeZ * midpointX > 0) {
       triangle(lower[index], lower[next], upper[next]);
       triangle(lower[index], upper[next], upper[index]);
     } else {
@@ -324,6 +343,7 @@ export function polyLoft(
 export function polyMultiLoft(
   plan: readonly Point2[],
   rings: readonly PolyMultiLoftRing[],
+  options: { readonly convexSideQuads?: boolean } = {},
 ): THREE.BufferGeometry {
   if (rings.length < 2) throw new Error('polyMultiLoft requires at least two rings');
   const center = planCenter(plan);
@@ -344,7 +364,7 @@ export function polyMultiLoft(
     pushOrientedSides(positions, resolved[index], resolved[index + 1], [
       (ringCenters[index][0] + ringCenters[index + 1][0]) * 0.5,
       (ringCenters[index][1] + ringCenters[index + 1][1]) * 0.5,
-    ]);
+    ], options.convexSideQuads);
   }
   // sealed check 2026-09-13: the caps used to inherit the plan's winding, so a
   // counter-clockwise plan (the T-14 roof) produced an inside-out lid whose top
@@ -423,15 +443,19 @@ function geometryFromTriangles(positions: readonly number[]): THREE.BufferGeomet
   return geometry;
 }
 
+/**
+ * Box projection of the shared camouflage tile. The plane is chosen per TRIANGLE from the triangle's own face normal
+ * (fleet lane, 2026-10-08; wave 268: "vertical streaks: a top-down projection stretched down vertical faces" on the M1A2's
+ * rear plate, the T-84's skirts and the Type 99A's skirt seams). Chosen per vertex from smoothed normals, a triangle
+ * where a vertical face meets a roof took the roof's plane at its upper corners and the side's at its lower ones, and
+ * its UVs smeared the tile into streaks down the face. Indexed geometry (shared vertices) keeps the per-vertex choice.
+ */
 export function boxUV(geometry: THREE.BufferGeometry, scale = 0.35): THREE.BufferGeometry {
   const position = geometry.getAttribute('position');
   const normal = geometry.getAttribute('normal');
   if (!position || !normal) throw new Error('boxUV requires position and normal attributes');
   const uv = new Float32Array(position.count * 2);
-  for (let index = 0; index < position.count; index++) {
-    const nx = Math.abs(normal.getX(index));
-    const ny = Math.abs(normal.getY(index));
-    const nz = Math.abs(normal.getZ(index));
+  const project = (index: number, nx: number, ny: number, nz: number): void => {
     let u: number;
     let v: number;
     if (ny >= nx && ny >= nz) {
@@ -446,9 +470,66 @@ export function boxUV(geometry: THREE.BufferGeometry, scale = 0.35): THREE.Buffe
     }
     uv[index * 2] = u * scale;
     uv[index * 2 + 1] = v * scale;
+  };
+  if (geometry.index || position.count % 3 !== 0) {
+    for (let index = 0; index < position.count; index++) {
+      project(index, Math.abs(normal.getX(index)), Math.abs(normal.getY(index)), Math.abs(normal.getZ(index)));
+    }
+  } else {
+    for (let t = 0; t < position.count; t += 3) {
+      const ax = position.getX(t), ay = position.getY(t), az = position.getZ(t);
+      const bx = position.getX(t + 1) - ax, by = position.getY(t + 1) - ay, bz = position.getZ(t + 1) - az;
+      const cx = position.getX(t + 2) - ax, cy = position.getY(t + 2) - ay, cz = position.getZ(t + 2) - az;
+      let nx = Math.abs(by * cz - bz * cy), ny = Math.abs(bz * cx - bx * cz), nz = Math.abs(bx * cy - by * cx);
+      if (nx + ny + nz < 1e-14) {
+        // a degenerate triangle: its vertices' own normals, summed
+        nx = Math.abs(normal.getX(t) + normal.getX(t + 1) + normal.getX(t + 2));
+        ny = Math.abs(normal.getY(t) + normal.getY(t + 1) + normal.getY(t + 2));
+        nz = Math.abs(normal.getZ(t) + normal.getZ(t + 1) + normal.getZ(t + 2));
+      }
+      for (let k = 0; k < 3; k++) project(t + k, nx, ny, nz);
+    }
   }
   geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   return geometry;
+}
+
+/**
+ * Fleet lane (2026-10-08; blind critics on the T-90M: the camouflage "floats across ... the gun barrel"): boxUV paints a
+ * round tube as four flat swatches that switch at the 45-degree lines, so the pattern bands and jumps along the barrel.
+ * Every triangle whose three vertices lie within `maxRadius` of the bore axis (the local +Z axis through the origin) and
+ * whose normals face away from it takes a cylindrical projection instead: u runs round the tube in arc metres at the
+ * vertex's own radius (the seam underneath, at +-180 degrees from the top), v along the bore, both at `scale` repeats per
+ * metre. End faces, collars' flat rings and off-axis fittings keep the box projection. Non-indexed geometry only (a
+ * merged bucket).
+ */
+export function boreCylinderUV(geometry: THREE.BufferGeometry, scale: number, maxRadius = 0.32): number {
+  if (geometry.index) throw new Error('boreCylinderUV expects non-indexed geometry');
+  const position = geometry.getAttribute('position');
+  const normal = geometry.getAttribute('normal');
+  const uv = geometry.getAttribute('uv');
+  if (!position || !normal || !uv) throw new Error('boreCylinderUV requires position, normal and uv attributes');
+  const theta = [0, 0, 0], radius = [0, 0, 0];
+  let wrapped = 0;
+  for (let t = 0; t + 2 < position.count; t += 3) {
+    let tube = true;
+    for (let k = 0; k < 3 && tube; k++) {
+      const i = t + k, x = position.getX(i), y = position.getY(i), r = Math.hypot(x, y);
+      if (r > maxRadius || r < 0.004) { tube = false; break; }
+      if ((normal.getX(i) * x + normal.getY(i) * y) / r < 0.6) { tube = false; break; }
+      theta[k] = Math.atan2(x, y);
+      radius[k] = r;
+    }
+    if (!tube) continue;
+    // a triangle across the seam underneath unwraps onto one side
+    if (Math.max(theta[0], theta[1], theta[2]) - Math.min(theta[0], theta[1], theta[2]) > Math.PI) {
+      for (let k = 0; k < 3; k++) if (theta[k] < 0) theta[k] += Math.PI * 2;
+    }
+    for (let k = 0; k < 3; k++) uv.setXY(t + k, theta[k] * radius[k] * scale, position.getZ(t + k) * scale);
+    wrapped++;
+  }
+  uv.needsUpdate = true;
+  return wrapped;
 }
 
 export function mergeAll(geometries: readonly THREE.BufferGeometry[]): THREE.BufferGeometry {

@@ -12,7 +12,7 @@ import { weaponAssembly } from './weaponStock.ts';
 // challenger1 moved to profiles/challenger.ts (§5.75 family-module split) —
 // that module imports this file's shared UK kit (export block at the tail).
 import * as THREE from 'three';
-import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
@@ -1922,7 +1922,12 @@ const CENTURION_HULL = {
   contactZF: 2.50, contactZR: -2.32,
 };
 
-export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
+/**
+ * `stowedLoaderMag` (default true): the Mk.3's low-stowed MAG. 2026-10-08 (the owner's field standard in main 6763d7cc0,
+ * the coordinator's ruling on the lane's audit): the Strv 81 mounts its one roof gun, the Ksp 58, on its Swedish
+ * commander's cupola, so it builds without the stowed MAG that would be a second roof gun for that crew.
+ */
+export function centurionBuild(P: UKCenturionPort, mk: 3 | 5, { stowedLoaderMag = true }: { stowedLoaderMag?: boolean } = {}): void {
   // r7 (combined tone round) — c5 O1 "expose the running gear": the Mk.5/2
   // raises its skirt hem to the ref's own exposed-disc line (outer-strip
   // band bottoms 0.81 per the r2 tables; wheels top 0.85) across panels
@@ -2660,7 +2665,7 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
         forwardFacing: true,
         armorEnvelopeExcluded: true,
       });
-    } else {
+    } else if (stowedLoaderMag) {
       const mg = FITTINGS.pintleMG({
         mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0, scale: 0.8, seed: 9,
       });
@@ -3531,7 +3536,8 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
   fv510PhotoBuildAssemblyStage7();
   // ---- pintle GPMG at the commander's station (§B3 decoration minimum;
   // sky-backed -> two-tone per MG PHYSICS) ----
-  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0.10, scale: 0.85, seed: 3 });
+  // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the turret roof behind the commander's station (feed-side collision census).
+  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0.10, scale: 0.85, seed: 3, feed: 'right' });
   const fv510PhotoBuildMarkingsStage1 = (): void => {
     mg.position.set(0.50, 0.50, -0.44);
     mg.rotation.y = Math.PI * 0.82;
@@ -4396,10 +4402,12 @@ function buildChieftainUpper2026(
   // cheeks.  These returns create the source U-shaped gun aperture in the same
   // structural bucket as the primary body.  The fitted armor plates above it
   // remain independent, so neither variant relies on the shell to close holes.
+  // Bound each return by its original eight corners: directly joining the
+  // offset rings folds the inner side through itself beside the aperture.
   const frontArmorBucket = 'turret';
   const buildChieftainUpper2026TurretStage4 = (): void => {
     for (const s of [-1, 1]) {
-      P.add(frontArmorBucket, slab(
+      P.add(frontArmorBucket, convexSlab(
         [s * 0.14, 0.17, 1.48], [s * 0.43, 0.20, 1.42],
         [s * 0.40, 0.50, 0.91], [s * 0.23, 0.48, 0.94],
         [s * 0.13, 0.35, 1.18], [s * 0.40, 0.43, 1.08],

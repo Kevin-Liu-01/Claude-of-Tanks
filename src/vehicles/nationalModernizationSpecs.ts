@@ -5,6 +5,7 @@ import {leftSidePlate,rightSidePlate} from './specHelpers.ts';
 import {nationalModernizationDesign,NATIONAL_GUN_PIVOT,NATIONAL_BARREL_LENGTH,NATIONAL_BARREL_RADIUS} from './nationalModernizationDesign.ts';
 import type {FleetTankSpec} from './specContracts.ts';
 import {synchronizeNationalLegacyMetadata} from './nationalLegacySpecs.ts';
+import {NATIONAL_PROTECTION_WIDTHS_M} from './nationalProtectionDimensions.ts';
 const entries:Record<string,FleetTankSpec>={};
 for(const c of NATIONAL_MODERNIZATION_CONFIG){
   const s=cloneFleetVariant(TANK_SPECS,c.id,'t90sm_x',{name:c.name,nation:c.nation,era:'next-generation'});
@@ -44,14 +45,17 @@ export function synchronizeNationalModernizationMetadata():void {
     }
     s.armor.gunPivot=[...NATIONAL_GUN_PIVOT];
     s.armor.gunBarrel={...s.armor.gunBarrel,lengthM:NATIONAL_BARREL_LENGTH,radiusM:NATIONAL_BARREL_RADIUS};
-    s.dims={...hull.dims,hullLengthM:design.hullLength,widthM:design.width,
+    s.dims={...hull.dims,hullLengthM:design.hullLength,widthM:NATIONAL_PROTECTION_WIDTHS_M[c.id]??design.width,
       heightM:design.heightM,
       overallLengthM:design.hullLength/2+c.z+NATIONAL_GUN_PIVOT[2]+NATIONAL_BARREL_LENGTH};
     stripSilhouetteDimensions(s.dims);
     s.visual={...s.visual,trackWidthM:hull.visual.trackWidthM,
       scheme:c.package==='cn'?'digital':c.package==='pl'?'nato':'woodland',
       base:c.package==='cn'?'#626c43':c.package==='pl'?'#4a563b':c.package==='ua'?'#536243':'#586145',
-      patches:c.package==='cn'?['#303d34','#a5aa77']:c.package==='ua'?['#283829','#8b9260']:['#29342d','#827458'],
+      // fleet lane 2026-10-08 (the coordinator: the Russian three-tone's near-black blots "read as holes at every
+      // distance"): the Russian black lifted to a dark green-grey
+      patches:c.package==='cn'?['#303d34','#a5aa77']:c.package==='ua'?['#283829','#8b9260']
+        :c.package==='ru'?['#353f37','#827458']:['#29342d','#827458'],
       number:String(810+NATIONAL_MODERNIZATION_IDS.indexOf(c.id))};
     s.gun=structuredClone(upper.gun);
     // Concept capability packages are game balance, not real ammunition data.
