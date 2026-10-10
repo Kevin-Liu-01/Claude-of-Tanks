@@ -1,3 +1,4 @@
+import {assertHollowMuzzle} from '../../../tools/physical-muzzle.test-support.mjs';
 import {neutralStock} from './neutralStock.test-support.mjs';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
@@ -119,22 +120,7 @@ function opticsAndSeats(t,all=stock(t.root)){
   const cooling=ray(t,[.02,1.49,-2.430],[0,1,0],'hull',all.filter(o=>o.name==='hullDetail'));near(cooling?.point.y,1.496,2e-5,'new fan plate meets source deck');
 }
 function bore(t,complete=false){
-  // Until 2026-09-22 this witness walked the physical 120 mm bore: radial rays .01/.10/.70 m behind
-  // the muzzle met the inner wall at .060*cos(pi/48)/cos(.025-pi/48) and the axial ray met the
-  // gunDark stock at the original long blind floor, .01+D.muzzleZ-D.boreFloorZ from its start. Owner
-  // 2026-09-22 ("the point of adding holes instead of carving them into the barrel is that we save
-  // on triangles"): the tube is closed at the source tip because the fleet lining hid that recess
-  // entirely, so the witness now proves the closed painted tip on every pose, across the former
-  // aperture; the bore measurement stays recorded here. The hidden-MRS-intrusion negative that
-  // relied on the inner-wall rays retired with them: an intrusion inside closed metal is invisible.
-  const gun=t.root.getObjectByName('rig_gun'),targets=complete?stock(t.root):stock(gun);
-  const pose=`yaw${t.root.getObjectByName('rig_turret').rotation.y} pitch${gun.rotation.x} recoil${t.root.getObjectByName('rig_recoil').position.z}`;
-  for(const [x,y] of [[.0015,0],[.05,0],[-.05,0],[0,.05],[0,-.05]]){
-    const start=gun.localToWorld(new T.Vector3(x,y,D.muzzleZ-D.trunnion[2]+.01));
-    const hit=new T.Raycaster(start,new T.Vector3(0,0,-1).transformDirection(gun.matrixWorld),0,3).intersectObjects(targets,false)[0];
-    assert.equal(hit?.object.name,'gun',`closed painted tip at ${x}/${y}, ${pose}, hit${hit?.point.toArray()}`);
-    near(hit.distance,.01,2e-5,`metal tube closed at the source tip across the former 120 mm aperture (recorded blind floor D.boreFloorZ ${D.boreFloorZ})`);
-  }
+  assertHollowMuzzle(t.root);
 }
 function census(t){let triangles=0,draws=0;const resources=new Set();t.root.traverse(o=>{if(!o.isMesh)return;resources.add(o.geometry.uuid);let visible=true;for(let p=o;p;p=p.parent)visible&&=p.visible;
   if(visible&&!o.userData.shadowOnly&&!o.userData.authoredShadowProxy&&!o.name.startsWith('procShadow_')){const mats=Array.isArray(o.material)?o.material:[o.material];if(mats.some(m=>m.colorWrite)){triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3*(o.isInstancedMesh?o.count:1);draws++;}}});return{triangles,draws,resources:[...resources].sort()};}

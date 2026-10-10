@@ -148,7 +148,10 @@ function roofCage(P: TankBuilderPort): void {
       put(P, 'turret', 'turretDark', 'cage-bolt', cylY(.011, .011, .012, 8), [x + dx, foot + .016, z + dz]);
     }
     member('cage-post', [x, foot + .010, z], [x, top - .010, z], .024);
-    member('cage-arm', [x, top, z], [x < 0 ? xL : xR, top, z], .018);
+    // At the bend, the full-width crossbar already joins each post to the frame.
+    // fleet lane 2026-10-08 (circular-cap audit): a post on the bend line is already tied by the bend cross tube, which
+    // runs through the same points; its arm lay inside that tube and ended in a cap coplanar with the tube's own
+    if (Math.abs(z - zBend) > .03) member('cage-arm', [x, top, z], [x < 0 ? xL : xR, top, z], .018);
   }
   // diagonal braces between neighbouring posts on each flank, an X across the rear bay
   for (const side of [0, 4]) {

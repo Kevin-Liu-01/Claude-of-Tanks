@@ -1,3 +1,4 @@
+import {assertHollowMuzzle} from '../../../tools/physical-muzzle.test-support.mjs';
 import assert from 'node:assert/strict';import * as THREE from 'three';
 import {readFileSync} from 'node:fs';
 import {censusEquipment,roofEquipmentVerdict} from '../../../tools/source-equipment-policy.mjs';
@@ -63,20 +64,8 @@ function frame(t,id,s){
 }
 function bore(t,s){
   const m=t.root.getObjectByName('gun'),all=visible(t.root);near(new THREE.Box3().setFromObject(m).max.z,s.tip,.000003,'physical source muzzle terminal');
-  for(const[x,y]of [[0,0],[.03,0],[-.03,0],[0,.03],[0,-.03]]){
-    const ray=new THREE.Raycaster(new THREE.Vector3(s.gun[0]+x,s.gun[1]+y,s.tip+.2),new THREE.Vector3(0,0,-1),0,2);
-    // 2026-09-22 (owner: "the point of adding holes instead of carving them into the barrel is that
-    // we save on triangles"): each metal tube is closed at its source tip. The measured opaque bore
-    // floors (s.floor: t90_x 5.964219808578489, t90a_burlak_x 5.853999853134153, t90ms_x 4.99215984344482;
-    // the *.source-measurements.json opaqueBoreFloorZ) stay recorded here as the fidelity evidence;
-    // every former recess sat entirely behind the fallback disc below.
-    near(ray.intersectObject(m,false)[0]?.point.z,s.tip,.00002,`metal tube closed at the source tip (recorded opaque bore floor ${s.floor})`);
-    const h=ray.intersectObjects(all,false)[0];assert.equal(h?.object.name,'muzzleBoreShadowFallbackDisc');
-    // Visible mouth disc seats at the tube edge (owner direction 2026-09-11);
-    // the physical source bore depth is asserted separately above.
-    near(h?.point.z,s.tip+.0003,.00002,'complete source-sized bore seats its mouth lining at the tube edge');
-  }
-  assert.ok(measureTurretBarrelCircularity(t,{requireMeasurement:true}).pass,'physical125mm circular bore and stock');
+  assertHollowMuzzle(t.root,s.tip);
+    assert.ok(measureTurretBarrelCircularity(t,{requireMeasurement:true}).pass,'physical125mm circular bore and stock');
 }
 function gear(t,s){
   const im=t.root.getObjectByName('gearRoadWheelTires'),m=new THREE.Matrix4(),p=new THREE.Vector3();assert.equal(im.count,12);

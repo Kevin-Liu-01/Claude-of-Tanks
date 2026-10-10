@@ -17,6 +17,15 @@ export function addModernFieldCage(P:Port):void {
  });
  const z0=bounds.min.z+.22,z1=Math.min(.12,bounds.max.z-.35),height=bounds.max.y-bounds.min.y;
  const mid=bounds.min.y+height*.48,low=mid-.22,top=mid+.28;
+ // 2026-10-08 (the accessories lane, on the tree merged with main; the defect came from main's 6763d7cc0): a foot and
+ // its standoff keep clear of the turret's smoke-discharger banks. On the Leopard 2A6 UA the rearmost panels' rear feet
+ // stood in the 2A6M's banks (78 crossings); a field kit's bracket is bolted round a bank, so a foot whose standoff would
+ // enter one slides toward its panel's middle, 2 cm at a time, until it clears.
+ P.turretG.updateMatrixWorld(true);
+ const toTurret=new THREE.Matrix4().copy(P.turretG.matrixWorld).invert(),banks:THREE.Box3[]=[];
+ P.turretG.traverse(o=>{
+  if(o.userData?.fittingRoot&&o.userData.fitting==='smokeBank')banks.push(new THREE.Box3().setFromObject(o).applyMatrix4(toTurret).expandByScalar(.02));
+ });
  const anchors:Point[]=[],bar=(a:Point,b:Point,r=.012)=>{
   const geometry=beamBetween(a,b,r,8);geometry.userData.modernFieldCage=true;
   P.addEquipment('turretOpenLattice',geometry);
@@ -24,8 +33,14 @@ export function addModernFieldCage(P:Port):void {
  const panelStock=(side:number,panel:number):void=>{
    const a=z0+(z1-z0)*panel/3+.035,b=z0+(z1-z0)*(panel+1)/3-.035;
    const feet:THREE.Vector3[]=[];
-   for(const z of [a+.06,b-.06]) {
-    const hit=new THREE.Raycaster(new THREE.Vector3(side*4,mid,z),new THREE.Vector3(-side,0,0)).intersectObjects(stock)[0];
+   const cast=(z:number)=>new THREE.Raycaster(new THREE.Vector3(side*4,mid,z),new THREE.Vector3(-side,0,0)).intersectObjects(stock)[0];
+   // the standoff's room: from the wall 0.30 m out, the bracket's depth, and from under the standoff up past the return
+   const standoff=(p:THREE.Vector3)=>new THREE.Box3(new THREE.Vector3(Math.min(p.x,p.x+side*.30),mid-.08,p.z-.07),
+    new THREE.Vector3(Math.max(p.x,p.x+side*.30),mid+.12,p.z+.07));
+   for(const z0 of [a+.06,b-.06]) {
+    let z=z0,hit=cast(z);
+    const inward=z0<(a+b)/2?1:-1;
+    for(let k=0;k<15&&hit&&banks.some(bank=>bank.intersectsBox(standoff(hit!.point)));k++){z+=inward*.02;hit=cast(z);}
     if(!hit)throw Error(`${P.spec.id}: modern cage needs a structural side receiver at ${z}`);
     feet.push(hit.point);anchors.push(hit.point.toArray());
    }

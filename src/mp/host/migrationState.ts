@@ -1,3 +1,5 @@
+import type { DestructionLogEntry } from '../../sim/destructionEvents.ts';
+import { mergeDestructionLogs } from '../wire/destructionLog.ts';
 import type { NewModeCheckpoint } from '../../sim/authoritativeMatch.ts';
 /**
  * Host migration state (P2 client lane, 2026-09-28; docs/MULTIPLAYER-V2.md §13.2 "Keyframes"): the browser host
@@ -180,6 +182,7 @@ export function resumeStateFromRetained(
   latest: SnapshotFrame | null,
   latestAtMs: number | null,
   fallen: readonly number[],
+  destructionEvents: readonly DestructionLogEntry[] = [],
 ): { state: HostResumeState; baseTick: number; baseAtMs: number } {
   const state: HostResumeState = { ...keyframe };
   let baseTick = keyframe.tick;
@@ -188,11 +191,18 @@ export function resumeStateFromRetained(
     // What this viewer saw is exact to its newest frame: overlay those rows; hidden entities keep the sealed keyframe's.
     const rows = new Map(state.frame.entities.map((row) => [row.entityId, row]));
     for (const row of latest.entities) rows.set(row.entityId, row);
-    state.frame = { ...state.frame, tick: latest.tick, serverTimeMs: latest.serverTimeMs, entities: [...rows.values()].sort((a, b) => a.entityId - b.entityId), destroyed: latest.destroyed, meta: latest.meta, modeStateJson: latest.modeStateJson };
+    state.frame = { ...state.frame, tick: latest.tick, serverTimeMs: latest.serverTimeMs, entities: [...rows.values()].sort((a, b) => a.entityId - b.entityId), destroyed: latest.destroyed, meta: latest.meta, modeStateJson: latest.modeStateJson,
+      // the destruction log only grows: the newer frame's is the longer (destruction, docs/DESTRUCTION.md §8.3)
+      destruction: (latest.destruction ?? []).length >= (state.frame.destruction ?? []).length ? latest.destruction : state.frame.destruction };
     state.tick = latest.tick;
     state.battleTimeMs = latest.meta.battleTimeMs;
     baseTick = latest.tick;
     baseAtMs = latestAtMs;
+  }
+  // every stage, breach and crater this seat was told of joins the log (a host that died between an event and the next
+  // snapshot left it here alone, as `fallen` keeps a prop's fall)
+  if (destructionEvents.length) {
+    state.frame = { ...state.frame, destruction: mergeDestructionLogs(state.frame.destruction ?? [], destructionEvents) };
   }
   const listed = new Set(state.frame.destroyed);
   const added = [...new Set(fallen)].filter((index) => Number.isSafeInteger(index) && index >= 0 && !listed.has(index));
@@ -267,6 +277,8 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
     restored++;
   }
   const destroyed = actor.authority.restoreDestroyedObstacles(state.frame.destroyed, state.frame.meta.destructibleRevision);
+  // destruction (docs/DESTRUCTION.md §8.3): stages and collapses (records, heaps, the route grid) without events
+  if (state.frame.destruction?.length) actor.authority.restoreDestruction(state.frame.destruction);
   return { restored, skipped, destroyedRestored: destroyed.restored, destroyedUnknown: destroyed.unknown };
 }
 

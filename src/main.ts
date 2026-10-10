@@ -1,7 +1,6 @@
 import './ui/endScreenPresentation.css';
 import './ui/richTooltip.css';
-import { structureTopAt, SUPPORT_STEP_UP_M } from './sim/structureSupport.ts';
-import type { CollisionRecord } from './world/collision.ts';
+import { createVehicleGroundSampler } from './world/vehicleGroundSampler.ts';
 import './ui/battleUiVisibility.css';
 import './ui/hudCustomization.css';
 import type { RuntimeValue } from './runtimeTypes.ts';
@@ -41,6 +40,7 @@ import type {
   WorldActivationOptions,
 } from './world/worldActivationRuntime.ts';
 import type { PlayerBattleActions } from './game/playerBattleActions.ts';
+import type { FxWorldSeam } from './fx/effects.ts';
 import type { BattleVisualStreamer } from './game/battleVisualStreamer.ts';
 import type {
   MainEntity,
@@ -63,7 +63,7 @@ import { createRenderer } from './engine/renderer.ts';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
   mountDiagOverlay, runSceneBlackWatchdogAsync, reclaimShadows, scheduleSceneWatchdog, runSceneWatchdogNow,
-  type SceneWatchdogResult,
+  battleProbeRadianceScale, type SceneWatchdogResult,
 } from './engine/deviceDiag.ts';
 import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
@@ -73,7 +73,7 @@ import {
 import { createSky, DEFAULT_SKY_PRESET } from './engine/sky.ts';
 import { deriveCloudLayerPreset } from './engine/cloudPresets.ts';
 import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
-import { loadGroundedLightModel } from './engine/lightModelCore.ts';
+import { EXPOSURE_REFERENCE_ILLUMINANCE, loadGroundedLightModel } from './engine/lightModelCore.ts';
 import { loadCloudscapeLayers } from './engine/cloudPresets.ts';
 import { battlePreferences } from './game/battlePreferences.ts';
 import { createFrontlineAtmosphereAccess } from './world/frontlineAtmosphereAccess.ts';
@@ -236,7 +236,7 @@ import { clearMatchSession, createBus, createGameState } from './game/stateCore.
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { matchRulesetFor } from './sim/matchRuleset.ts';
+import { matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
 import { normalizeGameMode } from './sim/matchModes.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
@@ -696,6 +696,8 @@ const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
       // window.__DEBUG lookup silently dropped all marks whenever diagnostics
       // were not installed, including incoming hits on the player's tank.
       resolveEntity: (targetId) => resolveFxSubject(String(targetId)),
+      // destruction-fx: the world whose structure materials take the collapse patch (world.patchStructureMaterials)
+      world: () => (currentWorld() as unknown as FxWorldSeam | null) ?? null,
     }, createOpaqueLoadingYielder(6, 16, { yieldFrame: nextPaintFrame }));
     live.bindBus(bus);
     // createPost runs during garage boot, before this demand-loaded graph
@@ -729,13 +731,10 @@ function requireFxRuntime() {
 // Movement and wheels read the same cached triangles as the near terrain.
 // An analytic/bilinear approximation can sit above the visible ground at a
 // ridge or rut, leaving daylight below otherwise correctly conformed tracks.
-const debrisSupportCandidates: CollisionRecord[] = [];
-const groundSampler = (x: number, z: number, ceiling?: number) => {
-  const terrain = hfProxy.getContactHeightAt(x, z);
-  if (ceiling === undefined) return terrain;
-  const candidates = currentWorld()?.queryObstacles?.(x - .01, z - .01, x + .01, z + .01, debrisSupportCandidates);
-  return candidates ? Math.max(terrain, structureTopAt(candidates, candidates.length, x, z, ceiling - SUPPORT_STEP_UP_M)) : terrain;
-};
+// The wheels and track debris also stand on the standable collision tops the
+// movement solve stands hulls on (bridge decks, roofs, slabs): see
+// world/vehicleGroundSampler.ts (the vehicle-contact lane, 2026-10-09).
+const groundSampler = createVehicleGroundSampler((x, z) => hfProxy.getContactHeightAt(x, z), currentWorld);
 // PERF (performance_budget r4): pool visuals are lazy — remember the sampler
 // on the game state so ensureTankVisual applies it to visuals built later.
 game._groundSampler = groundSampler;
@@ -1571,8 +1570,11 @@ const frontline = createFrontlineAtmosphereAccess(() => ({
   getSpawns: () => currentWorld()?.spawnPoints ?? null,
 }));
 function currentSceneWatchdogOptions() {
-  return game.phase === 'battle' && battleAtmosphere.current?.weather?.timeOfDay === 'night'
-    ? { nightRadianceScale: battleWatchdogRadianceScale } : {};
+  if (game.phase !== 'battle') return {};
+  if (battleAtmosphere.current?.weather?.timeOfDay === 'night') return { nightRadianceScale: battleWatchdogRadianceScale };
+  // 2026-10-09 (the MP-entry lane): a low sun or a closed deck draws the probe under the light model's metered ratio
+  const lowLightScale = battleProbeRadianceScale(scene.userData.lightModel?.illuminance, EXPOSURE_REFERENCE_ILLUMINANCE);
+  return lowLightScale === null ? {} : { nightRadianceScale: lowLightScale };
 }
 const nightLighting = createNightLightingAccess({
   scene,
@@ -2275,7 +2277,7 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
       ports: {
         lifecycle: battleEntryLifecycle,
         // a world laid out otherwise than the host's manifest reads the destroyed list through the manifest's identities
-        load: { ...options.load, loadAuthorityObstacles: (mapId, signal) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal }) },
+        load: { ...options.load, loadAuthorityObstacles: (mapId, signal, variant) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal, variant }) },
         roster: options.roster,
         scene: {
           engineCtx,
@@ -2617,7 +2619,7 @@ function beginBattleEntry(
 ) {
   // batch 19 (2026-09-14): the Garage BATTLE button is a free sortie in the chosen rules — a Frontline
   // Assault pick carves the trenches like a ladder launch does (it used to reach the field without them)
-  pendingTerrainVariant = options?.gameMode === 'frontline_assault' ? 'assault-trenches' : null;
+  pendingTerrainVariant = terrainVariantFor(options?.gameMode); // the mode's battlefield, as the authority builds it
   pendingCampaignOperationId = null;
   return soloBattleEntry.begin(specId, mapId, options);
 }
@@ -2635,7 +2637,7 @@ async function beginSoloBattle({
   gameMode = 'standard',
   campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
-  pendingTerrainVariant = gameMode === 'frontline_assault' ? 'assault-trenches' : null;
+  pendingTerrainVariant = terrainVariantFor(gameMode);
   // campaign slice 5: the mission brief names the ladder operation when the sortie came from it
   pendingCampaignOperationId = gameMode === 'frontline_assault' ? campaignOperationId : null;
   // batch 19: a ladder operation always fights on its own map, whatever the Garage has selected

@@ -13,12 +13,23 @@ import { polygonGap, shapePolygons } from './parkedVehicleSeparation.ts';
 // Geometry/output equivalence is separately checked by the whole-world profile;
 // this test isolates awaited failure and IteratorClose propagation.
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+// (b44) props.ts contactDarkeningMaterial and its shader-anchor helper, sliced and evaluated over the real THREE
+function contactMaterialFromSource() {
+  const slice = (head, tail) => {
+    const at = source.indexOf(head), end = source.indexOf(tail, at);
+    assert.ok(at >= 0 && end > at, `props.ts: ${head}`);
+    return source.slice(at, end + tail.length);
+  };
+  return new Function('THREE', stripTypeScriptTypes(slice('function _mustReplace(src: string, anchor: string, replacement: string): string {', '\n}\n')
+    + slice('function contactDarkeningMaterial(tex: THREE.Texture): THREE.MeshBasicMaterial {', '\n  return mat;\n}\n')) + '\nreturn contactDarkeningMaterial;')(THREE);
+}
 const start = source.indexOf('export async function createPropsAsync(');
 const end = source.indexOf('\nfunction* propsBuildSteps(', start);
 assert.ok(start >= 0 && end > start);
 const wrapper = stripTypeScriptTypes(source.slice(start, end)).replace('export ', '');
 function fixture(steps, acquire = async () => {}, close = () => {}, workerClient = null,
-  now = () => performance.now()) {
+  now = () => performance.now(),
+  mainBake = function* () { throw new Error('unexpected main-thread wreck bake'); }) {
   const events = [], runtime = {}, args = [];
   const nested = (function* () {
     try {
@@ -32,8 +43,8 @@ function fixture(steps, acquire = async () => {}, close = () => {}, workerClient
     return yield* nested;
   }
   const run = new Function('propsBuildSteps', 'ensureTankBuilder', 'Worker', 'createWreckBakeClient', 'performance',
-    wrapper + '\nreturn createPropsAsync;')(build, acquire,
-    workerClient ? function Worker() {} : undefined, () => workerClient, { now });
+    'bakeTankWreckSteps', wrapper + '\nreturn createPropsAsync;')(build, acquire,
+    workerClient ? function Worker() {} : undefined, () => workerClient, { now }, mainBake);
   return { run, events, runtime, args };
 }
 
@@ -170,6 +181,10 @@ for (const failureAt of ['tick', 'bake', 'import']) {
     const height = { _layout: { spawns: { player: {} } } };
     const ports = {
       getMapConfig: () => ({ id: 'urban', splat: {} }),
+      // (2026-10-08, the time-to-battle lane) the world build's config (worldBuildConfig.ts) and the horizon ring's
+      // prefetch, supplied to the terrain build through the ring's hook: none here
+      worldBuildConfig: () => ({ id: 'urban', splat: {} }), getDeviceTier: () => 'desktop',
+      startHorizonRingBuild: () => ({ stats: {}, dispose() {} }), supplyHorizonRing: () => {}, withdrawHorizonRing: () => {}, finishHorizonRingAsync: async () => {},
       preloadPropModels: () => { events.push('archive-request'); return archive.promise; },
       prepareSourcedTerrain: () => ({ cancel() { cancelled++; } }),
       createHeightFieldAsync: async () => { clock += 10; return height; },
@@ -234,15 +249,27 @@ for (const failureAt of ['tick', 'bake', 'import']) {
   assert.deepEqual(calls, [['t90m', request.options], 'disposed']);
 }
 {
+  // (the wreck-worker lane, 2026-10-09) a failed worker bake no longer fails the build: the same request is baked on the
+  // main thread (src/world/wreckWorkerFallback.selftest.mjs drives the real client's failure modes)
   const failure = new Error('worker transfer failed');
   let disposed = 0;
   const client = { prepare() {}, async bake() { throw failure; }, dispose() { disposed++; } };
-  const f = fixture([{ fine: true, wreckBake: { specId: 'k2', options: {}, result: null } }],
-    undefined, undefined, client);
-  await assert.rejects(f.run({}, {}, 2002, null, null, true), error => error === failure);
+  const request = { specId: 'k2', options: { seed: 7, pop: true }, result: null };
+  const fallback = { specId: 'k2', mainThread: true };
+  const acquired = [];
+  const f = fixture([{ fine: true, wreckBake: request }], async (id) => { acquired.push(id); }, undefined, client,
+    undefined, function* (ctx, id, options) {
+      assert.deepEqual([ctx, id, options], [{}, 'k2', request.options], 'the worker\'s own bake of the same request');
+      yield { fine: true, progress: false };
+      return fallback;
+    });
+  const warn = console.warn; console.warn = () => {};
+  try { await f.run({}, {}, 2002, null, null, true); } finally { console.warn = warn; }
+  assert.equal(request.result, fallback);
+  assert.deepEqual(acquired, ['k2'], 'the donor builder loads on the main thread for the fallback only');
   assert.equal(disposed, 1);
-  assert.deepEqual(f.events.map(([event]) => event), ['work', 'closed']);
-  assert.equal(f.args[0][6].signal.aborted, true, 'failed worker await cancels this build source consumer');
+  assert.deepEqual(f.events.map(([event]) => event), ['work', 'complete', 'closed']);
+  assert.equal(f.args[0][6].signal.aborted, false, 'a worker failure no longer cancels this build');
 }
 {
   // (the time-to-battle lane, 2026-10-08) the map's planned bakes already run in the prefetch's own worker: this build's
@@ -442,6 +469,8 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     sceneryTrees: [], shapePolygons, polygonGap,
     // nor one on a match objective's disc (props.ts hulkOnObjective): the fixture's map has none
     mapId: 'fixture', MATCH_OBJECTIVE_LAYOUTS: {},
+    // nor one in a deployment slot's clearing (2026-10-08, a10a37b37): the fixture's map has no deployment slots
+    deploymentSlots: [], DEPLOYMENT_CLEAR_M: 20,
   };
   const api = new Function('dependencies', `
     const { ${Object.keys(dependencies).join(', ')} } = dependencies;
@@ -627,6 +656,8 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     ROCK_PATCH_SHARES: JSON.parse(/const ROCK_PATCH_SHARES: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1]),
     CONTACT_PATCH_RINGS: JSON.parse(/const CONTACT_PATCH_RINGS: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1]),
     rockBedShades: [],
+    // (b44) the contact layer's own material: a multiplicative darkening of the ground (props.ts), sliced with its helper
+    contactDarkeningMaterial: contactMaterialFromSource(),
     foundryDonors: foundry ? [{ feature: buildingFeatures[0] }] : null,
   };
   const api = new Function(...Object.keys(dependencies), stripTypeScriptTypes(
@@ -676,6 +707,12 @@ for (const [streetRows, foundry, options] of [
     advanceFoundationInputs(after, iterator);
     assert.deepEqual(iterator.next(), { done: false, value: { fine: true, progress: false, stage: 'ground-foundations' } });
     assert.deepEqual(after.kinds(), streetRows ? ['ground-contact', 'apron'] : ['ground-contact']);
+    // (b44) the contact layer darkens the ground (a multiplicative, unlit, premultiplied blend); the aprons stay lit
+    for (const mesh of after.group.children) {
+      const contact = mesh.userData.terrainDecalKind === 'ground-contact';
+      assert.equal(mesh.material.blending === THREE.MultiplyBlending && mesh.material.isMeshBasicMaterial === true, contact,
+        `${mesh.userData.terrainDecalKind}: ${contact ? 'the contact darkening' : 'a lit decal'}`);
+    }
     assert.equal(after.randoms.length, 0, 'scar RNG has not started at the first boundary');
     assert.deepEqual(iterator.next(), { done: false, value: { fine: true, progress: false, stage: 'ground-scars' } });
     assert.equal(after.kinds().includes('crater'), !options.rejectCourtyards);

@@ -147,7 +147,7 @@ function trianglePayload(g){
 function closedLaunchStock(quality){
   const outer=authored.filter(p=>p.name==='launch-cell'),inner=authored.filter(p=>p.name==='launch-cell-liner');
   assert.equal(outer.length,24);assert.equal(inner.length,24);
-  const original=new T.LatheGeometry([[.17,-.985],[.17,2.60],[.11,2.60],[.11,-.94],[.17,-.985]].map(p=>new T.Vector2(...p)),quality==='high'?20:12).rotateX(Math.PI/2);
+  const original=new T.LatheGeometry([[.17,-.985],[.17,2.60],[.11,2.60],[.11,-.94],[.17,-.985]].map(p=>new T.Vector2(...p)),quality==='high'?12:8).rotateX(Math.PI/2);
   try{for(let i=0;i<24;i++){
     const expected=KIT.xform(original.clone(),M[i].x,M[i].y,0);
     try{

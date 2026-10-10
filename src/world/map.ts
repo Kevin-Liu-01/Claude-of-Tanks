@@ -12,6 +12,7 @@ import {
   createHeightFieldAsync,
   buildTerrainMeshes,
   buildTerrainMeshesAsync,
+  finishHorizonRingAsync,
   sampleSplatNoise,
 } from './terrain.ts';
 // The visual horizon installs the ring the terrain meshes are built with (horizonRingHook.ts).
@@ -35,20 +36,31 @@ import {
 } from './props.ts';
 import { createGroundLitter, groundLitterProfile, type GroundLitterConfig } from './groundLitter.ts';
 import type { CrushableRecord } from './props.ts';
-import { getMapConfig, type BattlefieldMapConfig } from './maps/index.ts';
+import type { BattlefieldMapConfig } from './maps/index.ts';
 import { createGroundCoverClearance } from './groundCoverClearance.ts';
 import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
 import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
+import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
+import { supplyHorizonRing, withdrawHorizonRing } from './horizonRingHook.ts';
+import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
 import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
 import { startSurfacePaints } from './surfacePaintPrefetch.ts';
 import {
   createObstacleGrid,
-  rayCollisionRecord,
+  nearestColliderHit,
+  type ColliderRayHit,
   type CollisionRecord,
   type ObstacleQuery,
 } from './collision.ts';
+import {
+  createStructureDamageSeam, patchStructureMaterialEntries, type StructureDamageSeam, type StructureMaterialInfo,
+} from './structureDamageSeam.ts';
+import { createStructureDamage } from '../sim/structureDamage.ts';
+import { rubbleHeightFor, type TerrainDeformation } from '../sim/terrainDeformation.ts';
+import { installTerrainCraterMesh } from './terrainCraterMesh.ts';
+import { createGroundCoverCraters } from './groundCoverCraters.ts';
 
 type EngineContext = Parameters<typeof buildTerrainMeshes>[1] &
   Parameters<typeof createVegetation>[1] &
@@ -57,9 +69,6 @@ type EngineContext = Parameters<typeof buildTerrainMeshes>[1] &
   /** Releases a lit material from the cascaded-shadow setup (main.ts engine context). */
   releaseShadowMaterial?(material: THREE.Material): void;
 };
-
-/** The catalog config plus the runtime-only assault-trenches flag. */
-type BuildMapConfig = BattlefieldMapConfig & { assaultTrenches?: boolean };
 
 interface WorldOptions {
   mapId?: string;
@@ -197,6 +206,35 @@ export interface WorldRuntime {
   advanceDestruction(dt: number): void;
   /** The felled trees' falls alone (the Studio: its props fall on their own clock, updateProps). */
   advanceToppledVegetation(dt: number): void;
+  /**
+   * Ground lane (2026-10-08, the FX lane's explosive marks): the cover inside `r` of (x, z) cleared for the rest of the
+   * battle and the tall grass laid low in the ring out to 1.6 r — presentation only (no overlay stamp, no lift; the
+   * crater law's presentation hole, groundCoverCraters.ts addHole). Call it once per mark; the battle's reset clears it.
+   */
+  clearCoverAt(x: number, z: number, r: number): void;
+  /**
+   * Destruction (docs/DESTRUCTION.md §16): a structure's damage seam by its group id — its anatomy (the sim's mound
+   * filled in), where its parts are in the merged buckets, and its kit chain's stage builders — or null.
+   */
+  structureDamage(structureIdx: number): StructureDamageSeam | null;
+  /**
+   * Hand every props-bucket material (each batch's own clone included, and the depth material every bucket that casts
+   * a structure's shadow draws its shadow with: info.role 'depth') to `patch` once, with the meshes drawing it; returns
+   * how many. For the presentation's structure-state shader: call it before the warm so programs compile once, chain
+   * any existing onBeforeCompile and extend customProgramCacheKey. Merged geometries that hold a structure part carry
+   * `aDamage` (structureIdx + 1; 0 for anything else). Every bucket mesh and batch is in world space.
+   */
+  patchStructureMaterials(patch: (material: THREE.Material, info: StructureMaterialInfo) => void): number;
+  /** The structure's seam `touchShadows()` by id (a no-op for an id the world does not know). */
+  touchStructureShadows(structureIdx: number): void;
+  /**
+   * The battle's ground overlay (sim/terrainDeformation.ts: craters, rubble heaps) this world draws and drapes on —
+   * the solo battle's own ground, or a network round's mirror (crater-render-spec §B). Bound per battle, null between;
+   * the terrain's userData carries it too (`groundOverlay`) for the drawn ground to follow.
+   */
+  bindGroundOverlay(overlay: TerrainDeformation | null): void;
+  /** The bound overlay, or null: what decals and dressing drape on (base + `offsetAt`). */
+  groundOverlay(): TerrainDeformation | null;
   spawnPoints: {
     player: { pos: [number, number, number]; yaw?: number };
     enemies: Array<{ pos: [number, number, number]; yaw?: number }>;
@@ -264,9 +302,7 @@ export function createMap(
   { mapId = 'verdant', seed = 1337, terrainVariant }: WorldOptions = {},
 ): WorldRuntime {
   const engineCtx = engineContext as EngineContext;
-  const config: BuildMapConfig = terrainVariant === 'assault-trenches'
-    ? { ...getMapConfig(mapId), assaultTrenches: true }
-    : getMapConfig(mapId);
+  const config: BuildMapConfig = worldBuildConfig(mapId, terrainVariant);
   const heightField = createHeightField(seed, config);
   const terrain = requireTerrainRoot(buildTerrainMeshes(heightField, engineCtx, config));
   const vegetation = createVegetation(heightField, engineCtx, 2001, config);
@@ -294,9 +330,7 @@ export async function createMapAsync(
   { fineSlices = false }: WorldSlicingOptions = {},
 ): Promise<WorldRuntime> {
   const engineCtx = engineContext as EngineContext;
-  const config: BuildMapConfig = terrainVariant === 'assault-trenches'
-    ? { ...getMapConfig(mapId), assaultTrenches: true }
-    : getMapConfig(mapId);
+  const config: BuildMapConfig = worldBuildConfig(mapId, terrainVariant);
   // Transfer/decompress the exact authored sandbag and utility-pole streams
   // while terrain and vegetation occupy the main thread. Previously their
   // 1.2 MB numeric JSON lived inside the map JavaScript chunk and had to be
@@ -309,6 +343,13 @@ export async function createMapAsync(
   const wreckPrefetch = seed === 1337 ? startPlannedWreckBakes(mapId, terrainVariant) : null;
   // (and the props build's fixed-input prints — the straw's, the dry-stone walls' — in the surface paint worker)
   const surfacePrefetch = typeof Worker === 'undefined' ? null : startSurfacePaints(plannedSurfacePaints(config));
+  // (and the horizon ring's geometry pipeline in its own worker, supplied to the terrain build through the ring's hook and
+  // taken after its chunks; a rematch on the same map takes the kept ring instead — horizonRingPrefetch.ts)
+  const ringSource = startHorizonRingBuild({
+    mapId, terrainVariant: terrainVariant ?? null, fieldSeed: seed, ringSeed: 1337, vista: getDeviceTier() !== 'mobile',
+    debugColors: !!(globalThis as typeof globalThis & { __HORIZON_DEBUG?: boolean }).__HORIZON_DEBUG,
+  });
+  supplyHorizonRing(ringSource);
   let completed = false;
   try {
     const step = async (label: string, fraction: number): Promise<void> => {
@@ -354,6 +395,11 @@ export async function createMapAsync(
         startMs: propModelsAwaitStart, endMs: propModelsAwaitEnd };
     }
     await step('Sealing the battlefield', 0.96);
+    // (the time-to-battle lane, 2026-10-08) the horizon ring last: the worker started with this build has had the whole
+    // build to answer (terrain.ts finishHorizonRingAsync: built here meanwhile if it has not); its source and timing for
+    // the load probes, beside the terrain's streaming record
+    await finishHorizonRingAsync(terrain, sub('Sealing the battlefield', 0.96, 0.99), fineSlices);
+    terrain.userData.horizonRingLoad = ringSource.stats;
     const world = assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
     world._buildDetail = {
       vegetation: vegetation._buildDetail || null,
@@ -366,6 +412,8 @@ export async function createMapAsync(
     // the planned wreck bakes nobody took (a cancelled build, a request the plan did not hold) and their worker go
     wreckPrefetch?.dispose();
     surfacePrefetch?.dispose();
+    withdrawHorizonRing(ringSource);
+    ringSource.dispose();
     if (!completed) {
       try { terrainSources.cancel?.(); } catch { /* preserve the original build failure */ }
     }
@@ -552,8 +600,8 @@ function assembleWorld(
     terrain.userData.sourcedTexturesReady, props.sourcedTexturesReady,
   );
 
-  const _aabbNrm = new THREE.Vector3();
   const _bestNrm = new THREE.Vector3();
+  const _nearestHit: ColliderRayHit = { distance: Infinity, record: null };
 
   /**
    * Cheap world raycast: heightfield ray-march + tight prop-shape tests.
@@ -573,26 +621,15 @@ function assembleWorld(
     dir: THREE.Vector3,
     maxDist: number,
   ): { distance: number; record: CollisionRecord | null } {
-    let best = Infinity;
-    let record: CollisionRecord | null = null;
     const endX = origin.x + dir.x * maxDist;
     const endZ = origin.z + dir.z * maxDist;
     queryColliders(
       Math.min(origin.x, endX), Math.min(origin.z, endZ),
       Math.max(origin.x, endX), Math.max(origin.z, endZ), rayCandidates);
-    for (const candidate of rayCandidates) {
-      // Destroyed records stay in the broad phase for O(1) rematch restore.
-      if (candidate.dead) continue;
-      const distance = rayCollisionRecord(
-        origin, dir, candidate, Math.min(maxDist, best), _aabbNrm,
-      );
-      if (distance >= 0 && distance < best) {
-        best = distance;
-        record = candidate;
-        _bestNrm.copy(_aabbNrm);
-      }
-    }
-    return { distance: best, record };
+    // destroyed records stay in the broad phase for O(1) rematch restore; a structure with openings (destruction P2)
+    // answers as a whole
+    nearestColliderHit(rayCandidates, origin, dir, maxDist, _bestNrm, _nearestHit);
+    return { distance: _nearestHit.distance, record: _nearestHit.record };
   }
 
   function terrainHitDistance(
@@ -646,6 +683,41 @@ function assembleWorld(
     return { point, normal, dist: hitT, kind, record: kind === 'prop' ? propHit.record : null };
   }
 
+  // destruction (§7): the battle's ground overlay, bound per battle (crater-render-spec §B)
+  let boundGroundOverlay: TerrainDeformation | null = null;
+  // ground lane (crater-render-spec §B): the drawn terrain follows that overlay, polled from its own updateLOD pass
+  installTerrainCraterMesh(terrain);
+  // ground lane (crater-render-spec §C): the ground cover follows it too — one law, synced after the terrain each frame
+  const groundCoverCraters = createGroundCoverCraters();
+  /** The cover in the bound overlay's reach takes its new stamps after the terrain took them (`update`'s steps after its
+   * LOD walk): the terrain's `followGroundOverlay` hook, which `world.syncGround` runs after its `syncGroundOverlay` for a
+   * frame rendered without an update (the Studio's export steps and captures). O(1) when nothing is new. */
+  function followGroundCover(): void {
+    groundCoverCraters.sync(boundGroundOverlay);
+    vegetation.followCraters?.(groundCoverCraters);
+    tallGrass.followCraters?.(groundCoverCraters);
+    litter.followCraters?.(groundCoverCraters);
+  }
+  terrain.userData.followGroundOverlay = followGroundCover;
+  // destruction (§16): each structure's seam on first ask, its mound from the world's own structure table
+  const structureSeams = new Map<number, StructureDamageSeam>();
+  let structureTable: ReturnType<typeof createStructureDamage> | null = null;
+  const getStructureDamage = (structureIdx: number): StructureDamageSeam | null => {
+    const cached = structureSeams.get(structureIdx);
+    if (cached) return cached;
+    const described = props.structureDamage.get(structureIdx);
+    if (!described) return null;
+    structureTable ??= createStructureDamage(obstacles, colliders);
+    const state = structureTable.byId(structureIdx);
+    if (state && !described.anatomy.mound) {
+      described.anatomy.mound = { cx: state.cx, cz: state.cz, hw: state.hw, hd: state.hd, yaw: state.yaw,
+        heightM: rubbleHeightFor(state.topY - state.baseY) };
+    }
+    const seam = createStructureDamageSeam(structureIdx, described.builder, described.style, described.anatomy,
+      props.structureSpans.get(structureIdx) ?? []);
+    structureSeams.set(structureIdx, seam);
+    return seam;
+  };
   const unregisterDestructibles = props.registerDestructibles();
   return {
     mapId: config.id,
@@ -683,6 +755,11 @@ function assembleWorld(
     // effects_combat r1: crushable props (telegraph poles + world-dressing r1
     // 'loop'-class small clutter) — hull overlap in main.ts triggers
     // crushProp (hinge-topple / debris swap) + fx.propCrush splinters.
+    structureDamage: getStructureDamage,
+    patchStructureMaterials: (patch) => patchStructureMaterialEntries(props.structureMaterials, patch),
+    touchStructureShadows: (structureIdx) => { getStructureDamage(structureIdx)?.touchShadows(); },
+    bindGroundOverlay: (overlay) => { boundGroundOverlay = overlay; terrain.userData.groundOverlay = overlay; },
+    groundOverlay: () => boundGroundOverlay,
     crushables: props.crushables || [],
     crushProp: (i: number, dx: number, dz: number, speedMps = 0) => (
       props.crushProp(i, dx, dz, speedMps)
@@ -739,7 +816,9 @@ function assembleWorld(
     },
     // DESTRUCTIBLES r1: rematch hook — startBattle restores every broken/
     // toppled destructible of the (cached, reused) world to its intact state.
+    clearCoverAt: (x, z, r) => { groundCoverCraters.addHole(x, z, r); },
     resetDestructibles: () => {
+      groundCoverCraters.resetHoles(); // ground lane: the battle's presentation holes go with it
       if (props.resetDestructibles) props.resetDestructibles();
       if (vegetation.resetToppled) vegetation.resetToppled();
     },
@@ -779,6 +858,11 @@ function assembleWorld(
       focusPos: THREE.Vector3 | null = null,
     ) {
       terrain.userData.updateLOD(cameraPos);
+      // ground lane (crater-render-spec §C): the cover in a crater's reach, after the terrain took the same stamps
+      groundCoverCraters.sync(boundGroundOverlay);
+      vegetation.followCraters?.(groundCoverCraters);
+      tallGrass.followCraters?.(groundCoverCraters);
+      litter.followCraters?.(groundCoverCraters);
       // water pass 8: the reactive field's window follows the chase focus (the camera when there is none)
       const waterAnchor = focusPos ?? cameraPos;
       terrain.userData.updateWater?.(dt, waterAnchor.x, waterAnchor.z);

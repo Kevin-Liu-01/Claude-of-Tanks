@@ -454,11 +454,11 @@ const engineShed: RegionalBuilder = (ctx) => {
       faceBox(sink, 'glass', sf, 0, H - 1.0, 0.012, D - 3, 0.7, 0.02, { decor: true });
     }
     // the water column by the door (dressing)
-    if (ctx.tier !== 'mobile') {
+    sink.dressing(ctx.tier === 'mobile', () => {
       const wx = W / 2 - 0.8, wz = D / 2 - 1.2;
       sink.cylinder('structureMetal', [wx, 0.3, wz], 'y', 3.2, 0.14, 10, { colour: pick(look, [BLACK, STEEL]), decor: true });
       sink.member('structureMetal', [wx, 3.3, wz], [wx - 1.6, 3.1, wz], 0.16, 0.16, [0, 1, 0], { colour: BLACK, decor: true, exposed: true }, 0);
-    }
+    });
   });
   return sink.finish();
 };

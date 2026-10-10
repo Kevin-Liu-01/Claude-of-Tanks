@@ -236,8 +236,8 @@ try {
     // to save triangles): the census reports it as physicalRims instead of a fallback Rim mesh.
     const visibleRims = (bore.rims || 0) + (bore.physicalRims || 0);
     if (!skipBore && (bore.tagged !== expectedBores
-        || visibleRims !== expectedBores || bore.discs !== expectedBores)) {
-      failures.push(`${id}: cannon bore must have ${expectedBores} visible tagged rim/disc pair(s) (${JSON.stringify(bore)})`);
+        || visibleRims !== expectedBores || ((bore.discs || 0) + (bore.physicalFloors || 0)) !== expectedBores)) {
+      failures.push(`${id}: cannon bore must have ${expectedBores} visible tagged rim/recess pair(s) (${JSON.stringify(bore)})`);
     }
 
     if (liveOnly) continue;

@@ -1,3 +1,4 @@
+import {inwardBoreWall} from '../physicalMuzzleBore.ts';
 import { markOpenSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // HISTORICAL PHOTO DRAFT — isolated unit-only regression fixture.
 // Superseded by the owner's supplied-file target. No runtime fleet loader may
@@ -281,11 +282,11 @@ function gun(P: TankBuilderPort): void {
     P.add('gun', torus(r, .007, 24, 6), 0, 0, z - D.trunnion[2], Math.PI / 2);
   }
   P.add('gun', new THREE.RingGeometry(.060, .088, 40), 0, 0, D.muzzleZ - D.trunnion[2]);
-  P.add('gunDark', new THREE.CylinderGeometry(.060, .060, .31, 40, 1, true)
-    .rotateX(Math.PI / 2), 0, 0, D.muzzleZ - .155 - D.trunnion[2]);
+  P.add('gunDark', inwardBoreWall(.060, .31, 40), 0, 0, D.muzzleZ - .155 - D.trunnion[2]);
   P.add('gunDark', cylZ(.061, .003, 32), 0, 0, D.muzzleZ - .311 - D.trunnion[2]);
   P.add('gun', box(.084, .068, .109), 0, .106, 7.155 - D.trunnion[2]);
   P.muzzleZ = D.muzzleZ - D.trunnion[2];
+  P.physicalMuzzleBore = { outerRadiusM: 0.088, innerRadiusM: .060, depthM: 0.3095 };
 }
 
 export function buildChallenger1X(P: TankBuilderPort): void {
