@@ -36,6 +36,8 @@ import {
 } from './structureMask.ts';
 import type { StructureDebris } from './structureDebris.ts';
 import type { StructureScars } from './structureScars.ts';
+import type { CollapseBodies, CollapseBodiesEvent } from './collapseBodies.ts';
+import type { CollapsePiece } from './collapsePieces.ts';
 
 export interface StructureStages {
   /** A stage event, with its structure's seam (null: the mask alone — a world without the seam). */
@@ -155,6 +157,12 @@ export interface StructureStagesOptions {
   scars?: StructureScars | null;
   /** The share of the collapse's crumble pieces this tier throws (1 desktop; the phone a few, its pools are small). */
   crumble?: number;
+  /**
+   * The collapse as bodies (collapseBodies.ts; dcore 2026-10-10, the owner: "just let physics work"): a live P1 collapse
+   * of a building with storeys breaks into its own pieces, which fall in the debris pool; the standing building goes at
+   * once and the heap rises under them. Absent (the phone), or when it declines: the mask's crumble.
+   */
+  bodies?: CollapseBodies | null;
 }
 
 /** The section and storey a run was laid for (-1: none — a roof's wreckage has no storey, a storey's heap no
@@ -585,7 +593,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   /** A stage's builder through the writers. `standing`: its runs belong to the standing building (a breach's rim and
    *  room, a spall's units) and fall with it; a collapse's own stubs and pile stay where they lie. */
   function run(seam: StructureDamageSeam, delayS: number, settled: boolean, build: (out: DamageWriters) => DamageStageResult,
-    standing = true, owner?: RunOwner, piecesOnly = false, noPieces = false, holeSeed?: number, holeKind?: 'blast' | 'pierce'): void {
+    standing = true, owner?: RunOwner, piecesOnly = false, noPieces = false, holeSeed?: number, holeKind?: 'blast' | 'pierce'): readonly THREE.Mesh[] {
     const byBucket = spanMaterials(seam);
     const resolve = (bucket: string, role?: DamageRole): THREE.Material => role === 'room' ? roomMaterial
       : byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? fallbackFor(bucket);
@@ -599,6 +607,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     const made = debris.commit();
     if (owner) for (const mesh of made) mesh.userData.runOwner = owner;
     apply(seam, result, holeSeed, holeKind);
+    return made;
   }
 
   // ---- the collapse's crumble (round 7, wave 277: "no wall, roof or masonry is ever seen falling in pieces or with any
@@ -682,7 +691,56 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     }
   }
 
+  /**
+   * A wall panel the collapse's failure reached (collapseBodies: CollapsePiece.shatterS): it bursts into the kit's pieces
+   * over its own rectangle, in its face's layers' buckets and tints — the struck face's driven in along the blow, the
+   * faces that gave under their load slumping out and down.
+   */
+  function shatterPanel(seam: StructureDamageSeam, piece: CollapsePiece, e: CollapseBodiesEvent): void {
+    const where = piece.face;
+    const face = where ? seam.anatomy.storeys[where.storey]?.faces[where.face] : null;
+    if (!where || !face || !face.layers.length) return;
+    const a = seam.anatomy;
+    const c = Math.cos(a.placement.yaw), sn = Math.sin(a.placement.yaw);
+    const dl = Math.hypot(e.dirX || 0, e.dirZ || 0) || 1;
+    const bdx = ((e.dirX || 0) * c - (e.dirZ || 0) * sn) / dl, bdz = ((e.dirX || 0) * sn + (e.dirZ || 0) * c) / dl;
+    const driven = piece.shatterS === 0;
+    const speed = e.cause === 'ram' ? 2.4 : e.cause === 'kinetic' ? 1.8 : 3.6;
+    const rng = damageRng(damageSeed(a.seed, 9, piece.index));
+    const spacing = 0.8;
+    const thick = where.thickness;
+    run(seam, 0, false, (out) => {
+      const nu = Math.max(1, Math.round((where.u1 - where.u0) / spacing)), ny = Math.max(1, Math.round((where.y1 - where.y0) / spacing));
+      for (let iy = 0; iy < ny; iy++) for (let iu = 0; iu < nu; iu++) {
+        const u = where.u0 + (iu + rng()) * (where.u1 - where.u0) / nu;
+        const fy = where.y0 + (iy + rng()) * (where.y1 - where.y0) / ny;
+        if (face.openings.some((op) => Math.abs(u - op.u) < op.w / 2 && fy > op.y0 && fy < op.y0 + op.h)) continue;
+        const slot: FractureSlot = face.layers.length > 1 && rng() < 0.4 ? face.layers[face.layers.length - 1]! : face.layers[0]!;
+        const shape = shapeOfMaterial(slot.material);
+        const flat = shape === 'plate' || shape === 'sheet' || shape === 'tile' || shape === 'slate';
+        const size = (shape === 'beam' ? 1.2 : 0.55) * (0.7 + rng() * 0.6);
+        const px = face.origin[0] + face.u[0] * u - face.out[0] * thick * 0.5;
+        const py = face.origin[1] + fy;
+        const pz = face.origin[2] + face.u[2] * u - face.out[2] * thick * 0.5;
+        const yaw = Math.atan2(face.out[0], face.out[2]);
+        const qa = (yaw + (rng() - 0.5) * 1.2) * 0.5, qt = (rng() - 0.5) * 0.8;
+        const qy = Math.sin(qa), qw = Math.cos(qa), qx = Math.sin(qt) * 0.5, qz = Math.sin(qt) * 0.3;
+        // driven in along the blow (a little up, spread); a wall that gave under its load slumps out and down
+        const k = driven ? speed * (0.6 + 0.7 * rng()) : 0.4 + 0.8 * rng();
+        const dx = driven ? bdx : face.out[0] * (rng() < 0.7 ? 1 : -1), dz = driven ? bdz : face.out[2] * (rng() < 0.7 ? 1 : -1);
+        if (!out.pieces.push(slot.bucket, shape, Math.floor(rng() * 4), px, py, pz, qx, qy, qz, qw,
+          size, size * (flat ? 0.14 : 0.62), Math.min(size * 0.8, Math.max(0.2, thick)), slot.tint[0], slot.tint[1], slot.tint[2],
+          dx * k + (rng() - 0.5) * 0.8, driven ? 0.4 + rng() * 1.2 : -0.3 + rng() * 0.4, dz * k + (rng() - 0.5) * 0.8)) break;
+      }
+      return { cuts: [], hides: [] };
+    }, false, undefined, true);
+  }
+  o.bodies?.onShatter(shatterPanel);
+
   const falling: { seam: StructureDamageSeam; until: number }[] = [];
+  /** A bodies collapse's heap and kit remnants, risen out of the ground over RISE_S as its pieces come down. */
+  const rising: { meshes: readonly THREE.Mesh[]; t0: number; depth: number }[] = [];
+  const RISE_DELAY_S = 0.5, RISE_S = 2.8;
 
   /** A storey's drop at once: the band down to its floor line, what stood on it lowered by its height, its own runs gone
    *  and its neighbours settled, then the kit's heap on the floor line (laid last: it stands); `holes`: its holes and
@@ -835,6 +893,35 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       finishFalls(e.structureId);
       if ((e as StructureStageEvent & { sections?: boolean }).sections === true) sectionsSeen.add(e.structureId);
       const settled = e.settled === true;
+      // (dcore 2026-10-10) a live collapse of a building with storeys comes down as bodies: its own pieces, cut from it
+      // as it stands, fall in the debris pool; it is gone from the mask the same frame and its heap rises under them
+      if (e.stage === 'collapsed' && !settled && seam && o.bodies && (e as StructureStageEvent & { sections?: boolean }).sections !== true
+        && !structureTopple(seam.anatomy, e)) {
+        const standing = debris.standingRuns(STAGE_RUN_TAG + seam.structureIdx + 1);
+        const byBucket = spanMaterials(seam);
+        if (o.bodies.collapse(seam, e, standing, (bucket) => byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? null)) {
+          finishFalls(e.structureId);
+          const a = seam.anatomy;
+          const fall = { eaveM: a.roof ? a.placement.y + a.roof.eaveY - e.baseY : 0, halfW: a.w / 2, halfD: a.d / 2, yaw: a.placement.yaw };
+          mask.collapse(e.structureId, o.now(), Math.max(1, e.topY - e.baseY), e.dirX, e.dirZ, e.cx, e.baseY, e.cz, true, fall);
+          for (const run of standing) debris.dropRun(run);
+          o.scars?.clearStructure(e.structureId);
+          seam.touchShadows();
+          downed.add(e.structureId);
+          // the kit's heap, its fine rubble and its falling bits; its stubs, its whole wall and roof sections are the bodies'
+          const eaveY = a.roof ? a.roof.eaveY : Infinity;
+          const made = run(seam, 0, false, (out) => {
+            (out as DamageWriters & { bodies?: boolean }).bodies = true;
+            return seam.collapse(damageSeed(a.seed, 3), dampPieces(out, 0.55, eaveY));
+          }, false);
+          if (made.length) {
+            const depth = (a.mound ? a.mound.heightM : 1) + 0.6;
+            for (const m of made) { m.matrix.makeTranslation(0, -depth, 0); m.matrixWorldNeedsUpdate = true; }
+            rising.push({ meshes: made, t0: o.now(), depth });
+          }
+          return;
+        }
+      }
       if (e.stage === 'collapsed') {
         // the roof drops into it and the walls come down along the crumble front over COLLAPSE_S, then it is gone
         // (settled: gone at once); the mask needs its eaves and footprint for the roof
@@ -1047,6 +1134,17 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         }
         storeyFalls.length = k;
       }
+      if (rising.length) {
+        const t = o.now();
+        let r = 0;
+        for (const h of rising) {
+          const u = Math.max(0, Math.min(1, (t - h.t0 - RISE_DELAY_S) / RISE_S));
+          const ease = u * u * (3 - 2 * u);
+          for (const m of h.meshes) { m.matrix.makeTranslation(0, -h.depth * (1 - ease), 0); m.matrixWorldNeedsUpdate = true; }
+          if (u < 1) rising[r++] = h;
+        }
+        rising.length = r;
+      }
       if (!falling.length) return;
       const now = o.now();
       let k = 0;
@@ -1058,6 +1156,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       for (const p of pendingStrikes) p.at += delta;
       for (const f of falling) f.until += delta;
       for (const f of storeyFalls) f.t0 += delta;
+      for (const h of rising) h.t0 += delta;
     },
     reset() {
       storeyFalls.length = 0;
@@ -1077,6 +1176,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       flattened.length = 0;
       flattenedSpans = new WeakSet();
       falling.length = 0;
+      rising.length = 0;
+      o.bodies?.reset();
       o.scars?.reset();
     },
     stats: () => ({ falling: falling.length, flattened: flattened.length, kept: originals.size, dropping: storeyFalls.length }),

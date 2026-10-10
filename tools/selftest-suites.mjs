@@ -645,6 +645,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/clock.selftest.mjs',
     // 2026-10-10 (physics lane, for the destruction core's natural collapses): the presentation pool of falling pieces.
     'src/fx/debrisPhysics.selftest.mjs',
+    // 2026-10-10 (dcore, the owner: "make thier collapses much more natural ... just let physics work"): a building cut
+    // into its own pieces (walls over their stubs, floors, roof slabs, gables, chimneys), none starting inside another,
+    // its triangles' area kept, brought down in the pool and laid the same twice.
+    'src/fx/collapsePieces.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
     'src/gallery/overlays.selftest.mjs',
     'src/gallery/damageLab.selftest.mjs',

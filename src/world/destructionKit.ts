@@ -319,6 +319,12 @@ export interface DamagePieceWriter {
 export interface DamageWriters {
   mesh: DamageMeshWriter;
   pieces: DamagePieceWriter;
+  /**
+   * A collapse whose walls and roof come down as bodies (fx/collapseBodies.ts: the building's own pieces, its stubs
+   * kept from its own walls): the builder lays its heap, its fine rubble and its falling bits, but no stubs, no
+   * chimney stumps and no whole wall or roof sections.
+   */
+  bodies?: boolean;
 }
 
 /**

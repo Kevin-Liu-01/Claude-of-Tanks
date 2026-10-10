@@ -26,13 +26,17 @@ import {
   bodyMoundHeightAt, damageRng, damageSeed,
   type DamageFace, type FractureMaterial, type FractureSlot, type StructureDamageAnatomy, type Vec3,
 } from '../world/destructionKit.ts';
+import type { CollisionRecord } from '../world/collision.ts';
+import { createRigidBox, createRigidShape, type RigidShape } from '../sim/rigidBody.ts';
 
 export type CollapsePieceKind = 'wall' | 'floor' | 'roof' | 'gable' | 'chimney';
 
-/** A box of a piece's proxy, in the piece's own frame (its centre and axes). */
+/** A box of a piece's proxy, in the piece's own frame (its centre and axes; its own rotation in that frame when it is
+ *  a chimney riding a roof slab, which also lays no caps: the stack's own faces are the building's). */
 export interface CollapseBox {
   center: [number, number, number];
   half: [number, number, number];
+  rotation?: [number, number, number, number];
 }
 
 export interface CollapsePiece {
@@ -53,9 +57,21 @@ export interface CollapsePiece {
   readonly face: { storey: number; face: number; u0: number; u1: number; y0: number; y1: number; thickness: number } | null;
   /** Seconds after the collapse it is let go (it stands until then, or until something strikes it). */
   readonly releaseS: number;
-  /** Its start velocity (body frame, m/s) and spin (body frame, rad/s). */
-  readonly velocity: [number, number, number];
-  readonly spin: [number, number, number];
+  /**
+   * What lets it go then: the velocity a push gives the point `kickAt` (piece frame) — a wall's top shoved over, the
+   * struck face's driven in, a roof slab's low corner dropped; 0 for a piece that waits for its support to go (a floor).
+   * Body frame, m/s (the impulse is the piece's mass times it).
+   */
+  readonly kick: [number, number, number];
+  readonly kickAt: [number, number, number];
+  /**
+   * When the blow's failure reaches it (s after the collapse; −1: never): it bursts into the kit's pieces and its dust
+   * where it stood and leaves the pool, and what it held (the floor, the walls above, the roof) loses its support there.
+   * The struck face's ground storey goes at once; on a building of storeys the faces beside it a beat later (a wall
+   * held down by the floor over it cannot be shoved over: its foot gives), and the floor and all over it fold into the
+   * gap; the far face is shoved over last.
+   */
+  readonly shatterS: number;
 }
 
 /** The blow that brought it down, in the body frame (the stage event's direction and point). */
@@ -80,6 +96,9 @@ interface FacePlan {
   stubTop: number[];
   pierTop: [number, number];
   pierW: number;
+  /** Its own extent along u: a face along x stops short of the corners the faces along z hold. */
+  uMin: number;
+  uMax: number;
 }
 
 interface StoreyPlan {
@@ -102,8 +121,11 @@ interface RoofSlabPlan {
   /** In-plane axes: e along the eave, f up the slope. */
   e: Vec3;
   f: Vec3;
-  /** Bounds in (e, f) about p. */
+  /** Bounds in (e, f) about p; the top edge's along e (a trapezoid's ridge is shorter than its eave). */
   e0: number; e1: number; f0: number; f1: number;
+  topE0: number; topE1: number;
+  /** Its outline in (e, f), in order (a hip's triangle repeats a corner). */
+  outline: [number, number][];
   /** Its parts: cut across e at these offsets; each part's piece. */
   cuts: number[];
   pieces: number[];
@@ -120,7 +142,12 @@ interface ChimneyPlan {
   max: Vec3;
   /** Below this (body y) the stack stays standing; −Infinity when it all falls. */
   breakY: number;
+  /** Its own piece above the roof (−1: none — it stands, all of it, or goes with the roof's triangles). */
   piece: number;
+  /** The roof's covering at its highest over the stack's footprint (body y; −Infinity: no slab over it). */
+  roofY: number;
+  /** A chimney rising from the roof: its attic part (under the covering) is dropped, not kept. */
+  fromRoof: boolean;
 }
 
 /** The plan: the pieces, and what the partition needs to cut the building's triangles between them. */
@@ -140,6 +167,8 @@ export interface CollapsePlan {
   readonly chimneys: readonly ChimneyPlan[];
   /** The struck face's side (0 +x, 1 −x, 2 +z, 3 −z), or −1. */
   readonly struckSide: number;
+  /** The chimneys' bucket (a stack's broken top draws in it). */
+  readonly chimneyBucket: string;
 }
 
 export interface CollapsePlanOptions {
@@ -310,7 +339,9 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
     // in the plane exactly
     const en = dot(e, n);
     e = norm([e[0] - n[0] * en, e[1] - n[1] * en, e[2] - n[2] * en]);
-    const f = norm(cross(n, e));
+    let f = norm(cross(n, e));
+    // f up the slope (toward the ridge)
+    if (f[1] < 0) { e = [-e[0], -e[1], -e[2]]; f = [-f[0], -f[1], -f[2]]; }
     const p: Vec3 = [(c0[0] + c1[0] + c2[0] + c3[0]) / 4, (c0[1] + c1[1] + c2[1] + c3[1]) / 4, (c0[2] + c1[2] + c2[2] + c3[2]) / 4];
     let e0 = Infinity, e1 = -Infinity, f0 = Infinity, f1 = -Infinity;
     for (const c of slab.corners) {
@@ -319,7 +350,17 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
       e0 = Math.min(e0, de); e1 = Math.max(e1, de); f0 = Math.min(f0, df); f1 = Math.max(f1, df);
     }
     if (!(e1 - e0 > 0.4 && f1 - f0 > 0.4)) continue;
-    slabs.push({ p, n, e, f, e0, e1, f0, f1, cuts: [], pieces: [] });
+    let topE0 = Infinity, topE1 = -Infinity;
+    for (const c of slab.corners) {
+      const d: Vec3 = [c[0] - p[0], c[1] - p[1], c[2] - p[2]];
+      if (dot(d, f) < f1 - 0.25) continue;
+      topE0 = Math.min(topE0, dot(d, e)); topE1 = Math.max(topE1, dot(d, e));
+    }
+    const outline = slab.corners.map((c) => {
+      const d: Vec3 = [c[0] - p[0], c[1] - p[1], c[2] - p[2]];
+      return [dot(d, e), dot(d, f)] as [number, number];
+    });
+    slabs.push({ p, n, e, f, e0, e1, f0, f1, topE0, topE1, outline, cuts: [], pieces: [] });
   }
   const gableFaces: GablePlan[] = [];
   if (roof && (roof.kind === 'gable' || roof.kind === 'halfhip') && slabs.length && storeys.length) {
@@ -330,15 +371,34 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
       if (along && roof.ridgeY - eaveY > 0.8) gableFaces.push({ face, thickness: wallThickness(face), piece: -1 });
     }
   }
-  const chimneys: ChimneyPlan[] = anatomy.chimneys.filter((c) => c.y1 - c.y0 > 0.5 && c.sx > 0.15 && c.sz > 0.15).map((c) => ({
-    min: [c.x - c.sx / 2 - 0.04, c.y0 - 0.04, c.z - c.sz / 2 - 0.04] as Vec3,
-    max: [c.x + c.sx / 2 + 0.04, c.y1 + 0.04, c.z + c.sz / 2 + 0.04] as Vec3,
-    // a stack from the ground keeps a half to most of itself (the kit's remnant rule); one from the roof falls whole
-    breakY: c.y0 <= groundY + 1 ? c.y0 + (c.y1 - c.y0) * (0.45 + rng() * 0.35) : -Infinity,
-    piece: -1,
-  }));
-  const fixedCount = (parts: number) => slabs.length * parts + gableFaces.length + chimneys.length
-    + Math.max(0, storeys.length - 1);
+  // the chimneys: over the roof line a piece of their own, resting on the roof's slabs (no box of theirs starts inside a
+  // slab's); a stack from the ground stands to the roof line (the kit's remnant rule kept a half to most of it), a
+  // chimney rising from the roof leaves its attic part (hidden under the covering before, nothing after)
+  const roofOver = (x: number, z: number): number => {
+    let best = -Infinity;
+    for (const sl of slabs) {
+      if (!(sl.n[1] > 0.2)) continue;
+      const y = sl.p[1] - ((x - sl.p[0]) * sl.n[0] + (z - sl.p[2]) * sl.n[2]) / sl.n[1];
+      const d: Vec3 = [x - sl.p[0], y - sl.p[1], z - sl.p[2]];
+      const de = dot(d, sl.e), df = dot(d, sl.f);
+      if (de < sl.e0 - 0.3 || de > sl.e1 + 0.3 || df < sl.f0 - 0.3 || df > sl.f1 + 0.3) continue;
+      best = Math.max(best, y);
+    }
+    return best;
+  };
+  const chimneys: ChimneyPlan[] = anatomy.chimneys.filter((c) => c.y1 - c.y0 > 0.5 && c.sx > 0.15 && c.sz > 0.15).map((c) => {
+    const hx = c.sx / 2, hz = c.sz / 2;
+    const roofY = Math.max(roofOver(c.x, c.z), roofOver(c.x - hx, c.z - hz), roofOver(c.x + hx, c.z - hz), roofOver(c.x - hx, c.z + hz),
+      roofOver(c.x + hx, c.z + hz));
+    const fromRoof = c.y0 > groundY + 1;
+    const breakY = Number.isFinite(roofY) ? Math.max(fromRoof ? c.y0 : c.y0 + (c.y1 - c.y0) * 0.45, roofY + 0.04)
+      : fromRoof ? -Infinity : c.y0 + (c.y1 - c.y0) * (0.45 + rng() * 0.35);
+    return {
+      min: [c.x - hx - 0.04, c.y0 - 0.04, c.z - hz - 0.04] as Vec3,
+      max: [c.x + hx + 0.04, c.y1 + 0.04, c.z + hz + 0.04] as Vec3,
+      breakY, piece: -1, roofY, fromRoof,
+    };
+  });
 
   // the walls' panel width: as wide as the cap needs
   const roofParts = (s: RoofSlabPlan, long: number) => (s.e1 - s.e0 > long ? 2 : 1);
@@ -346,13 +406,13 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
   let longSlab = large ? 9 : 6.5;
   const panelsFor = (face: DamageFace) => (Number.isFinite(target) ? Math.max(1, Math.min(4, Math.round(face.width / target))) : 1);
   const count = () => storeys.reduce((a, st) => a + st.faces.reduce((b, f) => b + panelsFor(f), 0), 0)
-    + slabs.reduce((a, s) => a + roofParts(s, longSlab), 0) + gableFaces.length + chimneys.length + Math.max(0, storeys.length - 1);
+    + slabs.reduce((a, s) => a + roofParts(s, longSlab), 0) + gableFaces.length + Math.max(0, storeys.length - 1)
+    + chimneys.filter((c) => Number.isFinite(c.breakY)).length;
   for (let guard = 0; guard < 24 && count() > cap; guard++) {
     if (Number.isFinite(target) && target < 16) target *= 1.25;
     else if (longSlab < 40) longSlab *= 1.5;
     else break;
   }
-  void fixedCount;
 
   const pieces: CollapsePiece[] = [];
   const add = (piece: Omit<CollapsePiece, 'index'>): number => {
@@ -372,6 +432,15 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
   const cause = blow.cause ?? 'blast';
   const struckPush = cause === 'ram' ? 1.9 : cause === 'kinetic' ? 1.1 : 2.6;
 
+  // the corners that keep a pier (one or two of the four, the kit's ruin silhouette): never as high as the floor over
+  // them (a floor that came to rest on its piers would stand), and never all round (a slab on four piers stands)
+  const cornerPier = [false, false, false, false];
+  if (anatomy.remnant.corners) {
+    const order = [0, 1, 2, 3].map((k) => ({ k, r: rng() })).sort((a, b) => a.r - b.r).map((e) => e.k);
+    cornerPier[order[0]] = true;
+    if (rng() < 0.55) cornerPier[order[1]] = true;
+  }
+  const cornerOf = (x: number, z: number): number => (x >= cx ? 1 : 0) + (z >= cz ? 2 : 0);
   const storeyPlans: StoreyPlan[] = [];
   for (let s = 0; s < storeys.length; s++) {
     const st = storeys[s];
@@ -387,7 +456,8 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
       const thickness = wallThickness(face);
       const n = panelsFor(face);
       const splits = faceSplits(face, n, rng);
-      const fp: FacePlan = { face, index: fi, side, thickness, splits, panels: [], stubTop: [], pierTop: [0, 0], pierW: 0 };
+      const fp: FacePlan = { face, index: fi, side, thickness, splits, panels: [], stubTop: [], pierTop: [0, 0], pierW: 0,
+        uMin: -face.width / 2, uMax: face.width / 2 };
       plan.faces.push(fp);
       if (!plan.bySide[side]) plan.bySide[side] = fp;
       // the ground storey's stubs: over the heap banked against the wall, irregular by panel, a pier at each corner
@@ -401,12 +471,32 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
           fp.stubTop.push(Math.min(face.height - 0.6, Math.max(0.3, top)));
         }
         if (rem.corners && face.width > 3.2) {
+          // the band under the next floor (or the eaves): a pier stops 0.8 m short of it
+          const room = Math.min(face.height, (next ? next.y0 - (next.floor ? Math.max(0.12, Math.min(0.4, next.floor.thicknessM)) : 0) : eaveY) - face.origin[1]) - 0.8;
+          const at = (end: number) => {
+            const u = end * face.width / 2;
+            const corner = cornerOf(face.origin[0] + face.u[0] * u, face.origin[2] + face.u[2] * u);
+            const k = end < 0 ? 0 : fp.stubTop.length - 1;
+            return cornerPier[corner] ? Math.max(fp.stubTop[k], Math.min(room, bank(u) + 2 + rng() * 0.5)) : fp.stubTop[k];
+          };
           fp.pierW = Math.min(0.9, face.width * 0.16);
-          fp.pierTop = [
-            Math.min(face.height - 0.4, bank(-face.width / 2) + 2 + rng() * 0.5),
-            Math.min(face.height - 0.4, bank(face.width / 2) + 2 + rng() * 0.5),
-          ];
+          fp.pierTop = [at(-1), at(1)];
         }
+      }
+    }
+  }
+
+  // the faces along x stop short of the corners the faces along z hold (no proxy starts inside another): its ends in by
+  // the thickness of the face that holds that corner (which end meets which face: by the corner's side along z)
+  for (const plan of storeyPlans) {
+    for (const fp of plan.faces) {
+      if (fp.side >= 2) continue;
+      const f = fp.face;
+      for (const end of [-1, 1] as const) {
+        const tipZ = f.origin[2] + f.u[2] * end * f.width / 2;
+        const other = plan.bySide[tipZ - cz >= 0 ? 2 : 3];
+        const inset = other ? other.thickness + GAP_M : 0;
+        if (end < 0) fp.uMin = -f.width / 2 + inset; else fp.uMax = f.width / 2 - inset;
       }
     }
   }
@@ -419,17 +509,11 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
       const face = fp.face;
       const T = fp.thickness;
       const cuts = [-face.width / 2, ...fp.splits, face.width / 2];
-      // the faces along x stop short of the corners the faces along z hold (no proxy starts inside another)
-      const alongZ = fp.side >= 2;
-      const corner = (end: number): number => {
-        if (alongZ) return 0;
-        const other = plan.bySide[end < 0 ? 2 : 3] ?? plan.bySide[end < 0 ? 3 : 2];
-        return other ? other.thickness + GAP_M : 0;
-      };
       const delay = sideDelay(fp.side);
       for (let k = 0; k + 1 < cuts.length; k++) {
-        const u0 = cuts[k] + (k === 0 ? corner(-1) : GAP_M / 2);
-        const u1 = cuts[k + 1] - (k + 2 === cuts.length ? corner(1) : GAP_M / 2);
+        const first = k === 0, last = k + 2 === cuts.length;
+        const u0 = first ? fp.uMin : cuts[k] + GAP_M / 2;
+        const u1 = last ? fp.uMax : cuts[k + 1] - GAP_M / 2;
         // face coordinates: y over the storey floor
         const yb = (plan.index === 0 ? fp.stubTop[k] : 0) + GAP_M;
         const yt = Math.min(face.height, plan.y1 - face.origin[1] - (topStorey && roof ? EAVE_GUARD_M : 0)) - GAP_M;
@@ -443,45 +527,50 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
         const zAxis = norm(face.out), xAxis = norm(cross(up, zAxis));
         // the face's u runs along xAxis or against it: the box is symmetric, but the pier notch is not
         const flip = dot(xAxis, face.u) < 0;
-        const boxes: CollapseBox[] = [{ center: [0, 0, 0], half: [(u1 - u0) / 2, (yt - yb) / 2, T / 2 - GAP_M / 2] }];
-        // an end panel of the ground storey stands over its corner pier: notched (a box beside the pier, one over it)
+        const halfT = T / 2 - GAP_M / 2;
+        let boxes: CollapseBox[] = [{ center: [0, 0, 0], half: [(u1 - u0) / 2, (yt - yb) / 2, halfT] }];
+        // an end panel of the ground storey stands over its corner pier (both, a face of one panel): notched — the box
+        // between the piers to its full height, a box over each pier from the pier's top (piece frame: x along xAxis)
         if (plan.index === 0 && fp.pierW > 0) {
-          for (const end of [0, 1] as const) {
-            if ((end === 0 && k !== 0) || (end === 1 && k + 2 !== cuts.length)) continue;
-            const pierTop = fp.pierTop[end] + GAP_M;
-            if (pierTop <= yb + 0.2 || pierTop >= yt - 0.3) continue;
-            const pu0 = end === 0 ? u0 : u1 - fp.pierW, pu1 = end === 0 ? u0 + fp.pierW : u1;
-            if (u1 - u0 - fp.pierW < 0.5) continue;
-            // the box beside the pier (its full height) and the one over it, in the piece frame (x along xAxis)
-            const sgn = flip ? -1 : 1;
-            const restU0 = end === 0 ? pu1 : u0, restU1 = end === 0 ? u1 : pu0;
-            const b0: CollapseBox = { center: [sgn * ((restU0 + restU1) / 2 - uc), 0, 0], half: [(restU1 - restU0) / 2, (yt - yb) / 2, T / 2 - GAP_M / 2] };
-            const b1: CollapseBox = { center: [sgn * ((pu0 + pu1) / 2 - uc), (pierTop + yt) / 2 - yc, 0], half: [(pu1 - pu0) / 2, (yt - pierTop) / 2, T / 2 - GAP_M / 2] };
-            boxes.splice(0, boxes.length, b0, b1);
+          const sgn = flip ? -1 : 1;
+          const notch = (end: 0 | 1): number => {
+            if ((end === 0 && !first) || (end === 1 && !last)) return -1;
+            const top = fp.pierTop[end] + GAP_M;
+            return top > yb + 0.05 ? top : -1;
+          };
+          const lt = notch(0), rt = notch(1);
+          const m0 = lt > 0 ? u0 + fp.pierW + GAP_M : u0, m1 = rt > 0 ? u1 - fp.pierW - GAP_M : u1;
+          if ((lt > 0 || rt > 0) && m1 - m0 > 0.4) {
+            const next: CollapseBox[] = [{ center: [sgn * ((m0 + m1) / 2 - uc), 0, 0], half: [(m1 - m0) / 2, (yt - yb) / 2, halfT] }];
+            if (lt > 0 && yt - lt > 0.2) next.push({ center: [sgn * ((u0 + m0) / 2 - uc), (lt + yt) / 2 - yc, 0], half: [(m0 - u0) / 2, (yt - lt) / 2, halfT] });
+            if (rt > 0 && yt - rt > 0.2) next.push({ center: [sgn * ((m1 + u1) / 2 - uc), (rt + yt) / 2 - yc, 0], half: [(u1 - m1) / 2, (yt - rt) / 2, halfT] });
+            boxes = next;
           }
         }
         const area = (u1 - u0) * (yt - yb);
         const massKg = Math.max(30, area * T * wallDensity(face) * (1 - openingShare(face, u0, u1, yb, yt)));
-        // the start: the struck face pushed in by the blow (hardest nearest its point), the rest off their feet with
-        // a tip, outward more often than in
-        let push: number, tip: number;
+        // the start: a shove at its top — the struck face's in, hardest nearest the blow; the others' over, outward more
+        // often than in (a wall goes as its foot gives: it topples, it is not thrown); the upper storeys lighter, they
+        // ride what they stand on
+        let push: number;
         if (fp.side === struckSide) {
-          const near = blowPoint ? Math.max(0.35, 1 - Math.hypot(center[0] - blowPoint[0], center[1] - blowPoint[1], center[2] - blowPoint[2]) / 9) : 0.7;
-          push = -struckPush * near * (0.8 + 0.4 * rng());
-          tip = -(0.5 + 0.6 * rng()) * near;
+          const near = blowPoint ? Math.max(0.45, 1 - Math.hypot(center[0] - blowPoint[0], center[1] - blowPoint[1], center[2] - blowPoint[2]) / 10) : 0.75;
+          push = -struckPush * near * (0.85 + 0.3 * rng());
         } else {
           const outward = rng() < 0.62 ? 1 : -1;
-          push = outward * (0.35 + 0.35 * rng());
-          tip = outward * (0.35 + 0.55 * rng());
+          push = outward * (plan.index === 0 ? 1.0 + 0.8 * rng() : 0.6 + 0.6 * rng());
         }
-        const spinAxis = cross(up, zAxis); // tips the top along +out
-        const releaseS = delay + (plan.index === 0 ? 0.12 + rng() * 0.3 : rng() * 0.2) * (fp.side === struckSide ? 0.3 : 1);
+        const releaseS = delay + (plan.index === 0 ? 0.08 + rng() * 0.25 : rng() * 0.15) * (fp.side === struckSide ? 0.3 : 1);
         const index = add({
           kind: 'wall', center, rotation: quatFromAxes(xAxis, up, zAxis), boxes, massKg,
           material: face.members.length ? 'timber' : coreOf(face).material, core: coreOf(face), back: backOf(face),
           face: { storey: plan.index, face: fp.index, u0, u1, y0: yb, y1: yt, thickness: T }, releaseS,
-          velocity: [zAxis[0] * push, 0, zAxis[2] * push],
-          spin: [spinAxis[0] * tip, 0, spinAxis[2] * tip],
+          kick: [zAxis[0] * push, 0, zAxis[2] * push], kickAt: [0, (yt - yb) / 2 * 0.85, 0],
+          // (under a floor the whole ground storey gives, the struck face first and the far face last, and what stood
+          // on it comes down onto its stubs; a single storey's other walls are shoved over)
+          shatterS: plan.index !== 0 ? -1 : fp.side === struckSide ? 0
+            : storeys.length < 2 || struckSide < 0 ? -1
+              : (fp.side ^ 1) === struckSide ? 0.55 + rng() * 0.3 : 0.16 + rng() * 0.22,
         });
         fp.panels.push(index);
       }
@@ -503,7 +592,9 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
       kind: 'floor', center: [cx, (fy0 + fy1) / 2, cz], rotation: [0, 0, 0, 1],
       boxes: [{ center: [0, 0, 0], half: [hw, (fy1 - fy0) / 2, hd] }], massKg: Math.max(200, area * kgM2),
       material: slot.material, core: slot, back: ceilingOf(slot), face: null,
-      releaseS: 0.25 + rng() * 0.3, velocity: [0, 0, 0], spin: [0, 0, 0],
+      // its struck side drops into the gap the burst wall left; the rest of it follows as its walls go
+      releaseS: 0.1 + rng() * 0.12, kick: [0, -1.1 - 0.5 * rng(), 0],
+      kickAt: struckSide >= 0 ? [SIDES[struckSide][0] * hw * 0.85, 0, SIDES[struckSide][2] * hd * 0.85] : [0, 0, 0], shatterS: -1,
     });
   }
 
@@ -514,79 +605,121 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
     slab.cuts = parts === 2 ? [(slab.e0 + slab.e1) / 2 + (rng() - 0.5) * 0.15 * (slab.e1 - slab.e0)] : [];
     const edges = [slab.e0, ...slab.cuts, slab.e1];
     const t = Math.max(0.1, Math.min(0.4, roof!.thicknessM || 0.22));
+    // where two slabs meet at the ridge or along a hip their boxes, each under its own covering, would cross: each keeps
+    // back from the ridge and from a sloping side by its thickness × the pitch
+    const tanPitch = Math.sqrt(Math.max(0, 1 - slab.n[1] * slab.n[1])) / Math.max(0.2, slab.n[1]);
+    const back = t * tanPitch + GAP_M;
+    const topF = slab.f1 - back;
+    // the proxy: up to three bands up the slope, each as wide as the outline at its top (a rectangle's one box, a
+    // trapezoid's and a triangle's narrowing stack), each inset from a sloping side
+    const width = (f: number): [number, number] => {
+      let lo = Infinity, hi = -Infinity;
+      const o = slab.outline;
+      for (let i = 0; i < o.length; i++) {
+        const [ea, fa] = o[i], [eb, fb] = o[(i + 1) % o.length];
+        if ((fa - f) * (fb - f) > 0 || Math.abs(fb - fa) < 1e-9 && Math.abs(fa - f) > 1e-9) continue;
+        const k = Math.abs(fb - fa) < 1e-9 ? 0 : (f - fa) / (fb - fa);
+        const ee = ea + (eb - ea) * Math.max(0, Math.min(1, k));
+        lo = Math.min(lo, ee); hi = Math.max(hi, ee);
+        if (Math.abs(fb - fa) < 1e-9) { lo = Math.min(lo, ea, eb); hi = Math.max(hi, ea, eb); }
+      }
+      return [lo, hi];
+    };
+    const bottomW = width(slab.f0 + 0.01), topW = width(topF);
+    const narrowing = (bottomW[1] - bottomW[0]) - (topW[1] - topW[0]) > 0.3;
+    const bands = narrowing ? 3 : 1;
+    const kg = (COVERING_KG_M2[covering?.material ?? 'tile'] ?? 45) + ROOF_FRAME_KG_M2;
     for (let k = 0; k + 1 < edges.length; k++) {
       const a = edges[k] + GAP_M / 2, b = edges[k + 1] - GAP_M / 2;
-      // a triangular slab (a hip) gets a box inside its outline
-      const tri = slabIsTriangle(roof!.slabs[slabs.indexOf(slab)]?.corners);
-      const ia = tri ? a + (b - a) * 0.15 : a, ib = tri ? b - (b - a) * 0.15 : b;
-      const fa = tri ? slab.f0 : slab.f0, fb = tri ? slab.f0 + (slab.f1 - slab.f0) * 0.7 : slab.f1;
-      const ec = (ia + ib) / 2, fc = (fa + fb) / 2;
+      const rects: Array<[number, number, number, number]> = [];
+      for (let j = 0; j < bands; j++) {
+        const fa = slab.f0 + (topF - slab.f0) * (j / bands), fb = slab.f0 + (topF - slab.f0) * ((j + 1) / bands);
+        const [lo, hi] = width(fb);
+        const sideIn = narrowing ? back : 0;
+        const ea = Math.max(a, lo + sideIn), eb = Math.min(b, hi - sideIn);
+        if (eb - ea > 0.25 && fb - fa > 0.1) rects.push([ea, eb, fa + (j ? GAP_M / 2 : 0), fb]);
+      }
+      if (!rects.length) { slab.pieces.push(-1); continue; }
+      // the piece's frame at its lowest (widest) band's centre
+      const [ea0, eb0, fa0, fb0] = rects[0];
+      const ec = (ea0 + eb0) / 2, fc = (fa0 + fb0) / 2;
       const center: [number, number, number] = [
         slab.p[0] + slab.e[0] * ec + slab.f[0] * fc - slab.n[0] * t / 2,
         slab.p[1] + slab.e[1] * ec + slab.f[1] * fc - slab.n[1] * t / 2,
         slab.p[2] + slab.e[2] * ec + slab.f[2] * fc - slab.n[2] * t / 2,
       ];
-      const areaM2 = (b - a) * (slab.f1 - slab.f0) * (tri ? 0.5 : 1);
-      const kg = (COVERING_KG_M2[covering?.material ?? 'tile'] ?? 45) + ROOF_FRAME_KG_M2;
+      // local axes: x = e, y = n, z = e × n = −f
+      const rotation = quatFromAxes(slab.e, slab.n, cross(slab.e, slab.n));
+      const boxes: CollapseBox[] = rects.map(([ea, eb, fa, fb]) => ({
+        center: [(ea + eb) / 2 - ec, 0, -((fa + fb) / 2 - fc)], half: [(eb - ea) / 2, t / 2, (fb - fa) / 2],
+      }));
+      const areaM2 = polygonArea(slab.outline) * Math.max(0.05, Math.min(1, (b - a) / Math.max(0.1, slab.e1 - slab.e0)));
       // the roof drops into the building as its walls go: straight down, tipping toward the struck side
       const sx = struckSide >= 0 ? SIDES[struckSide] : [0, 0, 0];
-      const tipAxis = cross(up, [-sx[0], 0, -sx[2]]);
       const index = add({
-        kind: 'roof', center, rotation: quatFromAxes(slab.e, slab.n, cross(slab.e, slab.n)),
-        boxes: [{ center: [0, 0, 0], half: [(ib - ia) / 2, t / 2, (fb - fa) / 2] }], massKg: Math.max(60, areaM2 * kg),
+        kind: 'roof', center, rotation, boxes, massKg: Math.max(60, areaM2 * kg),
         material: covering?.material ?? 'tile', core: roof!.structure, back: roof!.structure, face: null,
-        releaseS: 0.12 + rng() * 0.25, velocity: [-sx[0] * 0.4, -0.3, -sx[2] * 0.4],
-        spin: [tipAxis[0] * 0.25, 0, tipAxis[2] * 0.25],
+        // its low edge dropped (the struck side's slabs first, the far side's as their walls go)
+        releaseS: (dot([slab.n[0], 0, slab.n[2]], sx as Vec3) > 0.3 ? 0.08 : 0.2) + rng() * 0.2,
+        kick: [-sx[0] * 0.3, -0.7 - 0.4 * rng(), -sx[2] * 0.3], kickAt: [0, 0, boxes[0].half[2] * 0.8], shatterS: -1,
       });
       slab.pieces.push(index);
     }
   }
+  // the chimneys over the roof line: a piece each, resting on the roof (it falls when the roof does)
+  for (let i = 0; i < chimneys.length; i++) {
+    const c = chimneys[i], src = anatomy.chimneys.filter((cc) => cc.y1 - cc.y0 > 0.5 && cc.sx > 0.15 && cc.sz > 0.15)[i];
+    if (!Number.isFinite(c.breakY)) continue;
+    const y0 = c.breakY + GAP_M, y1 = c.max[1] - 0.04;
+    if (!(y1 - y0 > 0.35)) continue;
+    const hx = (c.max[0] - c.min[0]) / 2 - 0.04, hz = (c.max[2] - c.min[2]) / 2 - 0.04;
+    const slot: FractureSlot = { material: 'brick', bucket: src?.bucket ?? 'brick', tint: [0.6, 0.42, 0.34], thicknessM: 0.24, share: 0 };
+    const tipDir = struckSide >= 0 ? SIDES[struckSide ^ 1] : [1, 0, 0];
+    c.piece = add({
+      kind: 'chimney', center: [(c.min[0] + c.max[0]) / 2, (y0 + y1) / 2, (c.min[2] + c.max[2]) / 2], rotation: [0, 0, 0, 1],
+      boxes: [{ center: [0, 0, 0], half: [hx, (y1 - y0) / 2, hz] }], massKg: Math.max(80, 8 * hx * hz * (y1 - y0) / 2 * 0.7 * DENSITY.brick),
+      material: 'brick', core: slot, back: slot, face: null, releaseS: 0.4 + rng() * 0.4,
+      kick: [tipDir[0] * (0.7 + 0.5 * rng()), 0, tipDir[2] * (0.7 + 0.5 * rng())], kickAt: [0, (y1 - y0) / 2 * 0.8, 0], shatterS: -1,
+    });
+  }
+  // a gable: the triangle over the eaves, its proxy a wide low box and a narrow tall one inside its outline, kept under
+  // the roof slabs' boxes over its sloping edges (their thickness, plumb)
+  const roofT = Math.max(0.1, Math.min(0.4, roof?.thicknessM || 0.22));
+  const cosPitch = slabs.length ? Math.max(0.25, slabs.reduce((a, sl) => a + sl.n[1], 0) / slabs.length) : 1;
   for (const g of gableFaces) {
     const face = g.face;
     const T = g.thickness;
     const base = eaveY - face.origin[1], apex = (roof!.ridgeY - face.origin[1]);
-    const hgt = apex - base;
-    const yb = base + GAP_M, yt = base + hgt * 0.4;
-    const halfU = face.width / 2 * 0.5;
+    const H = apex - base, W2 = face.width / 2;
+    const plumb = roofT / cosPitch + 0.06;
+    const a1 = 0.62 * W2, a2 = 0.28 * W2;
+    const y1 = H * (1 - 0.62) - plumb, y2 = H * (1 - 0.28) - plumb;
+    if (!(y1 > 0.25)) continue;
+    const yTop = y2 > y1 + 0.2 ? y2 : y1;
+    const yc = (GAP_M + yTop) / 2;
     const zAxis = norm(face.out), xAxis = norm(cross(up, zAxis));
-    const center: [number, number, number] = [face.origin[0] - face.out[0] * T / 2, face.origin[1] + (yb + yt) / 2, face.origin[2] - face.out[2] * T / 2];
-    const areaM2 = face.width * hgt / 2;
+    const center: [number, number, number] = [face.origin[0] - face.out[0] * T / 2, face.origin[1] + base + yc, face.origin[2] - face.out[2] * T / 2];
+    const halfT = T / 2 - GAP_M / 2;
+    const boxes: CollapseBox[] = [{ center: [0, (GAP_M + y1) / 2 - yc, 0], half: [a1, (y1 - GAP_M) / 2, halfT] }];
+    if (y2 > y1 + 0.2) boxes.push({ center: [0, (GAP_M + y2) / 2 - yc, 0], half: [a2, (y2 - GAP_M) / 2, halfT] });
+    const areaM2 = face.width * H / 2;
     const outward = rng() < 0.7 ? 1 : -1;
-    const spinAxis = cross(up, zAxis);
     g.piece = add({
-      kind: 'gable', center, rotation: quatFromAxes(xAxis, up, zAxis),
-      boxes: [{ center: [0, 0, 0], half: [halfU, (yt - yb) / 2, T / 2 - GAP_M / 2] }], massKg: Math.max(40, areaM2 * T * wallDensity(face)),
+      kind: 'gable', center, rotation: quatFromAxes(xAxis, up, zAxis), boxes, massKg: Math.max(40, areaM2 * T * wallDensity(face)),
       material: coreOf(face).material, core: coreOf(face), back: backOf(face), face: null,
-      releaseS: 0.2 + rng() * 0.3, velocity: [zAxis[0] * outward * 0.5, 0, zAxis[2] * outward * 0.5],
-      spin: [spinAxis[0] * outward * 0.6, 0, spinAxis[2] * outward * 0.6],
-    });
-  }
-  for (const c of chimneys) {
-    const y0 = Number.isFinite(c.breakY) ? c.breakY + GAP_M : c.min[1] + 0.04;
-    const y1 = c.max[1] - 0.04;
-    if (!(y1 - y0 > 0.4)) continue;
-    const hx = (c.max[0] - c.min[0]) / 2 - 0.04, hz = (c.max[2] - c.min[2]) / 2 - 0.04;
-    const slot: FractureSlot = { material: 'brick', bucket: anatomy.chimneys[chimneys.indexOf(c)]?.bucket ?? 'brick', tint: [0.6, 0.42, 0.34], thicknessM: 0.24, share: 0 };
-    const tipDir = struckSide >= 0 ? SIDES[struckSide ^ 1] : [1, 0, 0];
-    const tipAxis = cross(up, tipDir as Vec3);
-    c.piece = add({
-      kind: 'chimney', center: [(c.min[0] + c.max[0]) / 2, (y0 + y1) / 2, (c.min[2] + c.max[2]) / 2], rotation: [0, 0, 0, 1],
-      boxes: [{ center: [0, 0, 0], half: [hx, (y1 - y0) / 2, hz] }], massKg: Math.max(80, 8 * hx * hz * (y1 - y0) / 2 * 0.7 * DENSITY.brick),
-      material: 'brick', core: slot, back: slot, face: null, releaseS: 0.3 + rng() * 0.4,
-      velocity: [0, 0, 0], spin: [tipAxis[0] * 0.5, 0, tipAxis[2] * 0.5],
+      releaseS: 0.2 + rng() * 0.3, kick: [zAxis[0] * outward * (1 + 0.6 * rng()), 0, zAxis[2] * outward * (1 + 0.6 * rng())],
+      kickAt: [0, yTop - yc, 0], shatterS: -1,
     });
   }
   return { pieces, structureIdx: anatomy.structureIdx, groundY, eaveY, cx, cz, hw, hd, storeys: storeyPlans, roof: slabs, gables: gableFaces,
-    chimneys, struckSide };
+    chimneys, struckSide, chimneyBucket: anatomy.chimneys[0]?.bucket ?? 'brick' };
 }
 
-function slabIsTriangle(corners: readonly [Vec3, Vec3, Vec3, Vec3] | undefined): boolean {
-  if (!corners) return false;
-  for (let i = 0; i < 4; i++) {
-    const a = corners[i], b = corners[(i + 1) % 4];
-    if (Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) < 0.05) return true;
-  }
-  return false;
+/** A polygon's area (its outline in order). */
+function polygonArea(o: readonly (readonly [number, number])[]): number {
+  let a = 0;
+  for (let i = 0; i < o.length; i++) { const [x0, y0] = o[i], [x1, y1] = o[(i + 1) % o.length]; a += x0 * y1 - x1 * y0; }
+  return Math.abs(a) / 2;
 }
 
 /** A wall's inner face: a render over its core shows inside as plaster; a bare wall shows its own material. */
@@ -608,6 +741,8 @@ function ceilingOf(slot: FractureSlot): FractureSlot {
 export const PIECE_VERTEX_STRIDE = 11;
 /** The static remnant's index in the partition's output (the stubs, piers, plinth and footings). */
 export const STATIC_PIECE = -1;
+/** What the collapse drops (a roof chimney's attic part, under the covering before and nothing after). */
+export const DROPPED_PIECE = -2;
 
 const MAX_SPLITS = 10;
 const _cent: [number, number, number] = [0, 0, 0];
@@ -618,14 +753,15 @@ type Poly = Float64Array[];
 function splitPoly(poly: Poly, nx: number, ny: number, nz: number, d: number, front: Poly, back: Poly): void {
   front.length = 0; back.length = 0;
   const count = poly.length;
+  const stride = poly[0].length;
   for (let i = 0; i < count; i++) {
     const a = poly[i], b = poly[(i + 1) % count];
     const sa = nx * a[0] + ny * a[1] + nz * a[2] - d, sb = nx * b[0] + ny * b[1] + nz * b[2] - d;
     if (sa >= 0) front.push(a); else back.push(a);
     if ((sa >= 0) !== (sb >= 0)) {
       const t = sa / (sa - sb);
-      const v = new Float64Array(PIECE_VERTEX_STRIDE);
-      for (let k = 0; k < PIECE_VERTEX_STRIDE; k++) v[k] = a[k] + (b[k] - a[k]) * t;
+      const v = new Float64Array(stride);
+      for (let k = 0; k < stride; k++) v[k] = a[k] + (b[k] - a[k]) * t;
       const l = Math.hypot(v[3], v[4], v[5]) || 1;
       v[3] /= l; v[4] /= l; v[5] /= l;
       front.push(v); back.push(v);
@@ -652,11 +788,14 @@ function centroid(poly: Poly): [number, number, number] {
 }
 
 /**
- * Cut the building's triangles (body frame, non-indexed, PIECE_VERTEX_STRIDE floats a vertex) between the plan's
- * pieces. Returns each piece's triangles (same layout), and the static remnant's (STATIC_PIECE: the stubs and piers,
- * the plinth, the chimney feet), keyed by piece index. A triangle that crosses a cut is split along it.
+ * Cut the building's triangles (body frame, non-indexed, `stride` floats a vertex: position, normal, then any other
+ * attributes, interpolated) between the plan's pieces. Returns each piece's triangles (same layout), and the static
+ * remnant's (STATIC_PIECE: the stubs and piers, the plinth, the chimney feet), keyed by piece index. A triangle that
+ * crosses a cut is split along it.
  */
-export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | Float64Array, triangles: number): Map<number, number[]> {
+export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | Float64Array, triangles: number,
+  stride = PIECE_VERTEX_STRIDE): Map<number, number[]> {
+  if (stride < 6) throw new Error('a partition vertex carries a position and a normal');
   const out = new Map<number, number[]>();
   const emit = (piece: number, poly: Poly): void => {
     if (poly.length < 3) return;
@@ -665,9 +804,9 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     const a = poly[0];
     for (let i = 1; i + 1 < poly.length; i++) {
       const b = poly[i], c = poly[i + 1];
-      for (let k = 0; k < PIECE_VERTEX_STRIDE; k++) list.push(a[k]);
-      for (let k = 0; k < PIECE_VERTEX_STRIDE; k++) list.push(b[k]);
-      for (let k = 0; k < PIECE_VERTEX_STRIDE; k++) list.push(c[k]);
+      for (let k = 0; k < stride; k++) list.push(a[k]);
+      for (let k = 0; k < stride; k++) list.push(b[k]);
+      for (let k = 0; k < stride; k++) list.push(c[k]);
     }
   };
   const front: Poly = [], back: Poly = [];
@@ -686,12 +825,15 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
   const assign = (poly: Poly, depth: number): void => {
     // the chimneys first: a polygon wholly inside a stack's box is the stack's (its foot below the break stays)
     for (const c of plan.chimneys) {
+      // (a roof's chimney over no slab goes with the roof's triangles round it)
+      if (!Number.isFinite(c.breakY)) continue;
       if (!poly.every((v) => v[0] >= c.min[0] && v[0] <= c.max[0] && v[1] >= c.min[1] && v[1] <= c.max[1] && v[2] >= c.min[2] && v[2] <= c.max[2])) continue;
-      if (Number.isFinite(c.breakY)) {
-        if (across(poly, 0, 1, 0, c.breakY, depth, (h, s) => emit(s > 0 && c.piece >= 0 ? c.piece : STATIC_PIECE, h))) return;
-        if (centroid(poly)[1] < c.breakY || c.piece < 0) { emit(STATIC_PIECE, poly); return; }
-      }
-      emit(c.piece >= 0 ? c.piece : STATIC_PIECE, poly);
+      // under its break: a ground stack's standing part, a roof chimney's attic part (dropped); over it, its piece (a
+      // roof chimney too short for one drops whole, a ground stack's stands)
+      const under = c.fromRoof ? DROPPED_PIECE : STATIC_PIECE;
+      const over = c.piece >= 0 ? c.piece : under;
+      if (across(poly, 0, 1, 0, c.breakY, depth, (h, s) => emit(s > 0 ? over : under, h))) return;
+      emit(centroid(poly)[1] < c.breakY ? under : over, poly);
       return;
     }
     // under the ground storey: the plinth and footings stay
@@ -715,6 +857,16 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     for (const st of plan.storeys) {
       if (st.floorPiece >= 0 && c[1] >= st.floorY0 && c[1] < st.floorY1) { emit(st.floorPiece, poly); return; }
       if (c[1] < st.floorY1 || st === plan.storeys[plan.storeys.length - 1]) { storey = st; break; }
+    }
+    // a level surface deep inside (a ceiling under the attic, a room's floor plane): no wall's — it goes with the floor
+    // over the storey if there is one, else the collapse drops it (it was hidden inside)
+    {
+      let ny = 0;
+      for (const v of poly) ny += v[4];
+      ny /= poly.length;
+      const deep = Math.min(plan.hw - Math.abs(c[0] - plan.cx), plan.hd - Math.abs(c[2] - plan.cz));
+      const wall = storey.faces.reduce((m, f) => Math.max(m, f.thickness), 0.3);
+      if (Math.abs(ny) > 0.85 && deep > wall + 0.9) { emit(storey.floorPiece >= 0 ? storey.floorPiece : DROPPED_PIECE, poly); return; }
     }
     // the side by the footprint's diagonals
     const dx = plan.hd, dz = plan.hw;
@@ -754,7 +906,7 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
       const uOff = f.u[0] * f.origin[0] + f.u[1] * f.origin[1] + f.u[2] * f.origin[2];
       for (const end of [0, 1] as const) {
         if ((end === 0 && k !== 0) || (end === 1 && !last)) continue;
-        const edge = end === 0 ? -f.width / 2 + fp.pierW : f.width / 2 - fp.pierW;
+        const edge = end === 0 ? fp.uMin + fp.pierW : fp.uMax - fp.pierW;
         const top = f.origin[1] + fp.pierTop[end];
         const inPier = (h: Poly): boolean => {
           const c = centroid(h);
@@ -823,9 +975,9 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
   for (let t = 0; t < triangles; t++) {
     const poly: Poly = [];
     for (let k = 0; k < 3; k++) {
-      const v = new Float64Array(PIECE_VERTEX_STRIDE);
-      const o = (t * 3 + k) * PIECE_VERTEX_STRIDE;
-      for (let j = 0; j < PIECE_VERTEX_STRIDE; j++) v[j] = vertices[o + j];
+      const v = new Float64Array(stride);
+      const o = (t * 3 + k) * stride;
+      for (let j = 0; j < stride; j++) v[j] = vertices[o + j];
       poly.push(v);
     }
     assign(poly, 0);
@@ -871,6 +1023,7 @@ export function capPiece(plan: CollapsePlan, piece: CollapsePiece): CapQuad[] {
       return [x + 2 * (qy * cz - qz * cy), y + 2 * (qz * cx - qx * cz), z + 2 * (qx * cy - qy * cx)];
     };
     for (const box of piece.boxes) {
+      if (box.rotation) continue;
       const [bx, by, bz] = box.center, [hx, hy, hz] = box.half;
       const P = (sx: number, sy: number, sz: number): Vec3 => {
         const r = rot(bx + sx * hx, by + sy * hy, bz + sz * hz);
@@ -909,4 +1062,198 @@ export function capPiece(plan: CollapsePlan, piece: CollapsePiece): CapQuad[] {
   }
   void plan;
   return caps;
+}
+
+// ---- the stubs: what stays standing ---------------------------------------------------------------------------------
+
+/** A static box of the remnant (a stub's run along its face, a corner pier), body frame: centre, its face's u axis and
+ *  out normal, half length along u, half thickness, and its foot and top. */
+export interface StubBox {
+  center: Vec3;
+  u: Vec3;
+  out: Vec3;
+  halfU: number;
+  halfT: number;
+  y0: number;
+  y1: number;
+}
+
+/** The ground storey's stubs and corner piers as boxes (the bodies stand and land on them). */
+export function stubBoxes(plan: CollapsePlan): StubBox[] {
+  const boxes: StubBox[] = [];
+  const st = plan.storeys[0];
+  if (!st) return boxes;
+  for (const fp of st.faces) {
+    if (!fp.stubTop.length) continue;
+    const f = fp.face, T = fp.thickness;
+    const cuts = [-f.width / 2, ...fp.splits, f.width / 2];
+    const box = (u0: number, u1: number, y0: number, y1: number) => {
+      if (!(u1 - u0 > 0.05 && y1 - y0 > 0.05)) return;
+      const uc = (u0 + u1) / 2;
+      boxes.push({
+        center: [f.origin[0] + f.u[0] * uc - f.out[0] * T / 2, f.origin[1] + (y0 + y1) / 2, f.origin[2] + f.u[2] * uc - f.out[2] * T / 2],
+        u: f.u, out: f.out, halfU: (u1 - u0) / 2, halfT: T / 2, y0: f.origin[1] + y0, y1: f.origin[1] + y1,
+      });
+    };
+    cuts[0] = fp.uMin; cuts[cuts.length - 1] = fp.uMax;
+    for (let k = 0; k + 1 < cuts.length; k++) box(cuts[k], cuts[k + 1], 0, fp.stubTop[k]);
+    if (fp.pierW > 0) {
+      box(fp.uMin, fp.uMin + fp.pierW, fp.stubTop[0], fp.pierTop[0]);
+      box(fp.uMax - fp.pierW, fp.uMax, fp.stubTop[fp.stubTop.length - 1], fp.pierTop[1]);
+    }
+  }
+  // the chimneys that stand: a ground stack to its break (whole, when nothing of it falls)
+  for (const c of plan.chimneys) {
+    if (c.fromRoof || !Number.isFinite(c.breakY)) continue;
+    const top = c.piece >= 0 ? c.breakY : c.max[1] - 0.04;
+    const y0 = c.min[1] + 0.04;
+    if (!(top > y0 + 0.1)) continue;
+    boxes.push({ center: [(c.min[0] + c.max[0]) / 2, (y0 + top) / 2, (c.min[2] + c.max[2]) / 2], u: [1, 0, 0], out: [0, 0, 1],
+      halfU: (c.max[0] - c.min[0]) / 2 - 0.04, halfT: (c.max[2] - c.min[2]) / 2 - 0.04, y0, y1: top });
+  }
+  return boxes;
+}
+
+/**
+ * The remnant's cut faces: each stub's broken top in its core and its inner face (the building's own skin is its
+ * outer face), a pier's top and the side it broke from. Body frame.
+ */
+export function capStubs(plan: CollapsePlan): CapQuad[] {
+  const caps: CapQuad[] = [];
+  // a ground stack broken off at the roof line: its broken top
+  for (const c of plan.chimneys) {
+    if (c.piece < 0 || c.fromRoof || !Number.isFinite(c.breakY)) continue;
+    const y = c.breakY, x0 = c.min[0] + 0.04, x1 = c.max[0] - 0.04, z0 = c.min[2] + 0.04, z1 = c.max[2] - 0.04;
+    caps.push({ corners: [[x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]], n: [0, 1, 0],
+      slot: { material: 'brick', bucket: plan.chimneyBucket, tint: [0.55, 0.38, 0.3], thicknessM: 0.24, share: 0 }, shade: 0.8 });
+  }
+  const st = plan.storeys[0];
+  if (!st) return caps;
+  for (const fp of st.faces) {
+    if (!fp.stubTop.length) continue;
+    const f = fp.face, T = fp.thickness;
+    const core = coreOf(f), back = backOf(f);
+    const P = (u: number, y: number, o: number): Vec3 => [f.origin[0] + f.u[0] * u + f.out[0] * o, f.origin[1] + y, f.origin[2] + f.u[2] * u + f.out[2] * o];
+    const upN: Vec3 = [0, 1, 0], inN: Vec3 = [-f.out[0], -f.out[1], -f.out[2]];
+    const top = (u0: number, u1: number, y: number) => caps.push({ corners: [P(u0, y, 0), P(u1, y, 0), P(u1, y, -T), P(u0, y, -T)], n: upN, slot: core, shade: 0.8 });
+    const inner = (u0: number, u1: number, y0: number, y1: number) => caps.push({ corners: [P(u1, y0, -T), P(u0, y0, -T), P(u0, y1, -T), P(u1, y1, -T)], n: inN, slot: back, shade: 0.9 });
+    const cuts = [fp.uMin, ...fp.splits, fp.uMax];
+    for (let k = 0; k + 1 < cuts.length; k++) {
+      top(cuts[k], cuts[k + 1], fp.stubTop[k]);
+      inner(cuts[k], cuts[k + 1], 0, fp.stubTop[k]);
+      // a step between neighbouring stubs: the taller one's broken end
+      if (k + 2 < cuts.length) {
+        const a = fp.stubTop[k], b = fp.stubTop[k + 1], u = cuts[k + 1];
+        if (Math.abs(a - b) > 0.02) {
+          const lo = Math.min(a, b), hi = Math.max(a, b), sgn = a > b ? 1 : -1;
+          const n: Vec3 = [f.u[0] * sgn, 0, f.u[2] * sgn];
+          caps.push({ corners: sgn > 0 ? [P(u, lo, -T), P(u, lo, 0), P(u, hi, 0), P(u, hi, -T)] : [P(u, lo, 0), P(u, lo, -T), P(u, hi, -T), P(u, hi, 0)], n, slot: core, shade: 0.8 });
+        }
+      }
+    }
+    if (fp.pierW > 0) {
+      for (const end of [0, 1] as const) {
+        const y0 = end === 0 ? fp.stubTop[0] : fp.stubTop[fp.stubTop.length - 1], y1 = fp.pierTop[end];
+        if (!(y1 > y0 + 0.05)) continue;
+        const u0 = end === 0 ? fp.uMin : fp.uMax - fp.pierW, u1 = end === 0 ? fp.uMin + fp.pierW : fp.uMax;
+        top(u0, u1, y1);
+        inner(u0, u1, y0, y1);
+        // its inner side, where the wall beside it broke away
+        const u = end === 0 ? u1 : u0, sgn = end === 0 ? 1 : -1;
+        const n: Vec3 = [f.u[0] * sgn, 0, f.u[2] * sgn];
+        caps.push({ corners: sgn > 0 ? [P(u, y0, -T), P(u, y0, 0), P(u, y1, 0), P(u, y1, -T)] : [P(u, y0, 0), P(u, y0, -T), P(u, y1, -T), P(u, y1, 0)], n, slot: core, shade: 0.8 });
+      }
+    }
+  }
+  return caps;
+}
+
+/**
+ * The stubs and piers as static collision prisms in the world (obb records: hw along the face, hl through the wall),
+ * for the debris pool: the falling pieces stand on them and land against them. `placement` is the body frame's.
+ */
+export function stubRecords(plan: CollapsePlan, placement: { x: number; y: number; z: number; yaw: number }): CollisionRecord[] {
+  const c = Math.cos(placement.yaw), s = Math.sin(placement.yaw);
+  const out: CollisionRecord[] = [];
+  for (const b of stubBoxes(plan)) {
+    const wcx = placement.x + b.center[0] * c + b.center[2] * s, wcz = placement.z - b.center[0] * s + b.center[2] * c;
+    const ux = b.u[0] * c + b.u[2] * s, uz = -b.u[0] * s + b.u[2] * c;
+    // obb: hw along right (cos yaw, −sin yaw) = the face's u, hl along forward = its normal
+    const yaw = Math.atan2(-uz, ux);
+    const ex = Math.abs(ux) * b.halfU + Math.abs(uz) * b.halfT, ez = Math.abs(uz) * b.halfU + Math.abs(ux) * b.halfT;
+    const y0 = placement.y + b.y0, y1 = placement.y + b.y1;
+    out.push({
+      min: [wcx - ex, y0, wcz - ez], max: [wcx + ex, y1, wcz + ez],
+      shape2: { kind: 'obb', cx: wcx, cz: wcz, hw: b.halfU, hl: b.halfT, yaw, y0, y1 },
+      kind: 'remnant',
+    } as CollisionRecord);
+  }
+  return out;
+}
+
+// ---- the bodies -------------------------------------------------------------------------------------------------
+
+const shapeCache = new Map<string, RigidShape>();
+const SHAPE_CACHE_MAX = 384;
+
+/** A piece's rigid shape (sim/rigidBody.ts): its box or notched pair, its mass; masonry lands dead and grips. Cached by
+ *  its dimensions and density (a shape allocates). */
+export function pieceShape(piece: CollapsePiece): RigidShape {
+  const volume = piece.boxes.reduce((a, b) => a + 8 * b.half[0] * b.half[1] * b.half[2], 0) || 1;
+  const density = Math.max(60, Math.min(4000, piece.massKg / volume));
+  const q = (v: number) => Math.round(v * 100);
+  const key = `${Math.round(density / 10)}|${piece.boxes.map((b) => `${b.center.map(q).join(',')}:${b.half.map(q).join(',')}${b.rotation ? `@${b.rotation.map((v) => Math.round(v * 1e4)).join(',')}` : ''}`).join(';')}`;
+  const hit = shapeCache.get(key);
+  if (hit) return hit;
+  // masonry lands dead (restitution 0.12-0.18, the physics lane's reading) and grips (0.7): a slab lies where it falls
+  const opts = { restitution: 0.14, friction: 0.72, rolling: 0.15 };
+  let shape: RigidShape;
+  const one = piece.boxes.length === 1 && !piece.boxes[0].rotation && piece.boxes[0].center.every((v) => Math.abs(v) < 1e-6);
+  if (one) {
+    const [hx, hy, hz] = piece.boxes[0].half;
+    shape = createRigidBox(Math.max(0.03, hx), Math.max(0.03, hy), Math.max(0.03, hz), density, opts);
+  } else {
+    shape = createRigidShape(piece.boxes.map((b) => ({
+      kind: 'box' as const, center: b.center, rotation: b.rotation,
+      half: [Math.max(0.03, b.half[0]), Math.max(0.03, b.half[1]), Math.max(0.03, b.half[2])] as [number, number, number],
+      mass: density * 8 * b.half[0] * b.half[1] * b.half[2],
+    })), opts);
+  }
+  if (shapeCache.size >= SHAPE_CACHE_MAX) shapeCache.delete(shapeCache.keys().next().value!);
+  shapeCache.set(key, shape);
+  return shape;
+}
+
+/** A piece's world spawn: its frame's pose, standing where it stood (it rests, asleep, until its kick). */
+export function pieceSpawn(piece: CollapsePiece, placement: { x: number; y: number; z: number; yaw: number }): {
+  x: number; y: number; z: number; qx: number; qy: number; qz: number; qw: number;
+} {
+  const c = Math.cos(placement.yaw), s = Math.sin(placement.yaw);
+  const [px, py, pz] = piece.center;
+  // q = rotY(yaw) · q_piece
+  const hy = Math.sin(placement.yaw / 2), hw = Math.cos(placement.yaw / 2);
+  const [ax, ay, az, aw] = piece.rotation;
+  return {
+    x: placement.x + px * c + pz * s, y: placement.y + py, z: placement.z - px * s + pz * c,
+    qx: hw * ax + hy * az, qy: hw * ay + hy * aw, qz: hw * az - hy * ax, qw: hw * aw - hy * ay,
+  };
+}
+
+/**
+ * A piece's kick as a world impulse at a world point, from its pose now ([x, y, z, qx, qy, qz, qw]): its mass times its
+ * kick (body frame, carried to the world) at its kick point; null for a piece that waits for its support.
+ */
+export function pieceKick(piece: CollapsePiece, placement: { yaw: number }, pose: ArrayLike<number>, out: Float64Array | number[]): boolean {
+  const [kx, ky, kz] = piece.kick;
+  if (!(kx * kx + ky * ky + kz * kz > 1e-6)) return false;
+  const c = Math.cos(placement.yaw), s = Math.sin(placement.yaw);
+  const m = piece.massKg;
+  out[0] = m * (kx * c + kz * s); out[1] = m * ky; out[2] = m * (-kx * s + kz * c);
+  const qx = pose[3], qy = pose[4], qz = pose[5], qw = pose[6];
+  const [x, y, z] = piece.kickAt;
+  const cx = qy * z - qz * y + qw * x, cy = qz * x - qx * z + qw * y, cz = qx * y - qy * x + qw * z;
+  out[3] = pose[0] + x + 2 * (qy * cz - qz * cy);
+  out[4] = pose[1] + y + 2 * (qz * cx - qx * cz);
+  out[5] = pose[2] + z + 2 * (qx * cy - qy * cx);
+  return true;
 }

@@ -1270,6 +1270,9 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
   const extras = extrasOf(anatomy);
   const mesh = new Mesh(out.mesh);
   const st0 = anatomy.storeys[0], [cx, cz] = bodyCentre(anatomy);
+  // (dcore 2026-10-10) its walls and roof come down as bodies, its stubs kept from its own walls: the heap, the fine
+  // rubble, the timbers and the falling bits only
+  const bodies = (out as { bodies?: boolean }).bodies === true;
   // (wave 277: "the brick farmhouses leave a thin blue-black band with no brick-red, no wall stubs and no roof
   // timbers") the sim raises the terrain itself by its mound when a house comes down, so a pile laid on the mound's own
   // profile lies in the ground: the pile stands a hand and more over it (meeting the ground at its rim), and the walls'
@@ -1306,7 +1309,7 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
       }
       return Math.min(f.height, Math.max(0.15, y));
     };
-    remnantWall(mesh, pen, anatomy, rng, standing);
+    if (!bodies) remnantWall(mesh, pen, anatomy, rng, standing);
   }
   // the plinth stays where it was
   if (anatomy.plinth && mesh.begin(anatomy.plinth.slot.bucket, 'remnant')) {
@@ -1316,7 +1319,7 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
   }
   // the chimney stacks stand, broken off (wave 277: "the Steinburg gable leaves a lone chimney" at its full height): a
   // stack from the ground keeps a half to most of its height; one that rose from the roof falls with it
-  if (anatomy.remnant.chimneys) for (const c of anatomy.chimneys) {
+  if (anatomy.remnant.chimneys && !bodies) for (const c of anatomy.chimneys) {
     if (c.y0 > 1 || !mesh.begin(c.bucket, 'remnant')) continue;
     const y1 = c.y0 + (c.y1 - c.y0) * (0.45 + rng() * 0.35);
     heapChunk(mesh, { material: 'brick', bucket: c.bucket, tint: [0.62, 0.42, 0.34], thicknessM: 0.24, share: 0 }, c.x, (c.y0 + y1) / 2, c.z,
@@ -1353,7 +1356,7 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
   }
   // (s1c review) large pieces of the walls lying whole at angles in their face's own skin (a render stays on its slab, a
   // brick wall's courses with it), one edge in the heap and the other up
-  if (st0) for (const f of st0.faces) {
+  if (st0 && !bodies) for (const f of st0.faces) {
     const skin = f.layers.find((l) => l.material !== 'timber') ?? f.layers[0];
     if (!skin || !mesh.begin(skin.bucket, 'rubble')) continue;
     const n = Math.max(1, Math.min(2, Math.round(f.width / 5)));
@@ -1391,7 +1394,7 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
     }, 0);
     const cover = { ...roof.covering, tint: dusted(roof.covering.tint, 0.15) };
     if (mesh.begin(roof.covering.bucket, 'rubble')) {
-      const sections = Math.min(5, Math.max(1, Math.round(area / 20)));
+      const sections = bodies ? 0 : Math.min(5, Math.max(1, Math.round(area / 20)));
       const sectionTint = { ...cover, tint: dusted(roof.covering.tint, 0.25) };
       for (let k = 0; k < sections; k++) {
         const x = cx + (rng() - 0.5) * anatomy.w * 0.55, z = cz + (rng() - 0.5) * anatomy.d * 0.55;
