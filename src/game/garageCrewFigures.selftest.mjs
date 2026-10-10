@@ -150,5 +150,24 @@ for (const [scene, owner] of [
 assert.match(dressing, /addCrewScene\(GARAGE_CREW_SCENES\.t90m, legacyVerdantRoot/, 'the T-90M crew joins its components');
 assert.match(dressing, /const weldTip = put\([\s\S]{0,160}torchTip\.x, torchTip\.y, torchTip\.z/, 'the weld glow sits at the welder\'s torch tip');
 assert.match(dressing, /torchGrip,\s*\]\);/, 'the welding cable ends in the welder\'s hand');
+assert.match(dressing, /figures\.userData\.keepDisplayMesh = true;/,
+  'each crew keeps its own draw, so the frustum culls the crews one by one');
+const optimization = await readFile(new URL('./garageDressingOptimization.ts', import.meta.url), 'utf8');
+assert.match(optimization, /if \(mesh\.userData\.keepDisplayMesh === true\) return false;/,
+  'the display merge honours keepDisplayMesh');
+
+// --- a crew never reads as clones: skin, build and sleeves vary ---------------------------------------------------
+const dresses = Object.values(GARAGE_CREW_SCENES).flatMap((scene) => scene.members.map((member) => member.dress));
+assert.ok(new Set(dresses.map((dress) => dress.skin)).size >= 4, 'skin tones vary across the crew');
+assert.ok(new Set(dresses.map((dress) => dress.build)).size >= 3, 'builds vary across the crew');
+assert.ok(dresses.some((dress) => dress.sleevesRolled) && dresses.some((dress) => !dress.sleevesRolled),
+  'some workers roll their sleeves');
+for (const scene of Object.values(GARAGE_CREW_SCENES)) {
+  for (const member of scene.members) {
+    if (member.dress.headgear === 'welding-hood') {
+      assert.ok(!member.dress.sleevesRolled, `${scene.id}/${member.role}: a welder keeps his sleeves down`);
+    }
+  }
+}
 
 console.log(`garageCrewFigures.selftest: ${members} workers in ${sceneIds.length} crews, ${triangles} triangles; hands, soles and clearances pass`);

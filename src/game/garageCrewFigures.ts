@@ -14,9 +14,9 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 
 type V3 = readonly [number, number, number];
 
-export type CrewHeadgear = 'patrol-cap' | 'shlemofon' | 'watch-cap' | 'welding-hood' | 'ear-defenders' | 'bare';
+type CrewHeadgear = 'patrol-cap' | 'shlemofon' | 'watch-cap' | 'welding-hood' | 'ear-defenders' | 'bare';
 
-export interface CrewDress {
+interface CrewDress {
   /** Coverall body colour (sRGB hex). */
   readonly coverall: number;
   /** Belt, collar, cuffs, pockets and knee patches. */
@@ -28,9 +28,13 @@ export interface CrewDress {
   readonly gloves: number | null;
   readonly headgear: CrewHeadgear;
   readonly headColor: number;
+  /** Sleeves rolled to mid-forearm (bare forearms) instead of buttoned at the wrist. */
+  readonly sleevesRolled?: boolean;
+  /** Body build: scales torso width and limb girth (1 = average; 0.94 lean to 1.08 heavy). */
+  readonly build?: number;
 }
 
-export interface CrewPose {
+interface CrewPose {
   /** Hip-joint centre in the figure frame (feet stand on y = 0, the figure faces +Z). */
   readonly pelvis: V3;
   /** Pelvis yaw (about +Y), forward pitch and roll, in radians. */
@@ -61,7 +65,7 @@ export interface CrewPose {
 }
 
 /** Joint positions a crew receipt can check (figure frame, metres). */
-export interface CrewSkeleton {
+interface CrewSkeleton {
   readonly hips: V3;
   readonly leftShoulder: V3;
   readonly rightShoulder: V3;
@@ -81,7 +85,7 @@ export interface CrewSkeleton {
   readonly soleY: number;
 }
 
-export interface CrewFigureBuild {
+interface CrewFigureBuild {
   readonly geometry: THREE.BufferGeometry;
   readonly skeleton: CrewSkeleton;
   readonly triangles: number;
@@ -252,20 +256,26 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
   const hipQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(hipPitch, hipYaw, hipRoll, 'YXZ'));
   const spineQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(bend, twist, side, 'YXZ'));
   const chestQ = hipQ.clone().multiply(spineQ);
+  const build = dress.build ?? 1;
+  const girth = 0.5 + build * 0.5;
   const sc = new THREE.Vector3(scale, scale, scale);
+  const torsoScale = new THREE.Vector3(scale * build, scale, scale * (0.5 + build * 0.5));
   const hipFrame = new THREE.Matrix4().compose(pelvis, hipQ, sc);
+  const hipLoftFrame = new THREE.Matrix4().compose(pelvis, hipQ, torsoScale);
   const waist = pelvis.clone().add(new THREE.Vector3(0, WAIST_PIVOT_Y * scale, 0).applyQuaternion(hipQ));
   const chestFrame = new THREE.Matrix4().compose(waist, chestQ, sc)
+    .multiply(new THREE.Matrix4().makeTranslation(0, -WAIST_PIVOT_Y, 0));
+  const chestLoftFrame = new THREE.Matrix4().compose(waist, chestQ, torsoScale)
     .multiply(new THREE.Matrix4().makeTranslation(0, -WAIST_PIVOT_Y, 0));
   const inChest = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z).applyMatrix4(chestFrame);
   const inHips = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z).applyMatrix4(hipFrame);
 
   // torso: pelvis loft (hips frame) and chest loft (bent at the waist), belt band over the seam
-  loft(parts, PELVIS_RINGS, hipFrame, dress.coverall, 10, true, false);
-  loft(parts, CHEST_RINGS, chestFrame, dress.coverall, 10, false, true);
+  loft(parts, PELVIS_RINGS, hipLoftFrame, dress.coverall, 10, true, false);
+  loft(parts, CHEST_RINGS, chestLoftFrame, dress.coverall, 10, false, true);
   const beltQ = hipQ.clone();
   const belt = new THREE.CylinderGeometry(1, 1, 0.05, 12, 1, true);
-  _m.compose(inHips(0, WAIST_PIVOT_Y, 0.006), beltQ, _s.set(0.166 * scale, scale, 0.116 * scale));
+  _m.compose(inHips(0, WAIST_PIVOT_Y, 0.006), beltQ, _s.set(0.166 * scale * build, scale, 0.116 * scale * girth));
   parts.push(finish(belt, dress.trim, _m));
   // chest pocket flaps, the zip placket and a turned collar give the coverall its readable front
   for (const x of [-0.088, 0.088]) {
@@ -287,11 +297,16 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
   const headCenter = neckTop.clone().add(new THREE.Vector3(0, 0.095 * scale, 0.012 * scale).applyQuaternion(headQ));
   const inHead = (x: number, y: number, z: number): THREE.Vector3 =>
     new THREE.Vector3(x * scale, y * scale, z * scale).applyQuaternion(headQ).add(headCenter);
-  ball(parts, headCenter, 0.098 * scale, dress.skin, [0.84, 1.06, 0.98], headQ, [10, 8]);
+  ball(parts, headCenter, 0.098 * scale, dress.skin, [0.84, 1.06, 0.98], headQ, [9, 7]);
   // jaw, nose and ears keep the head from reading as a ball
   ball(parts, inHead(0, -0.05, 0.03), 0.054 * scale, dress.skin, [1.0, 0.78, 1.0], headQ, [8, 5]);
   block(parts, inHead(0, -0.012, 0.094), [0.022 * scale, 0.04 * scale, 0.026 * scale], headQ, dress.skin);
   for (const x of [-0.083, 0.083]) ball(parts, inHead(x, 0, -0.005), 0.024 * scale, dress.skin, [0.5, 1, 0.8], headQ, [6, 4]);
+  // the brow shadow over the eyes and the eyebrows above it
+  block(parts, inHead(0, 0.004, 0.086), [0.112 * scale, 0.016 * scale, 0.014 * scale], headQ, shade(dress.skin, 0.74));
+  for (const x of [-0.032, 0.032]) {
+    block(parts, inHead(x, 0.03, 0.09), [0.042 * scale, 0.009 * scale, 0.012 * scale], headQ, dress.hair);
+  }
   headgear(parts, dress, inHead, headQ, scale);
 
   // legs (two-bone IK from the hip joints to the ankles; knees bend forward by default)
@@ -308,13 +323,13 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
     const pole = kneeHint ? vec(kneeHint) : hip.clone().add(new THREE.Vector3(0, -0.2, 0.6).applyQuaternion(hipQ));
     const { mid: knee, end: ankle } = solveTwoBone(hip, ankles[sideName], THIGH_M * scale, SHIN_M * scale, pole);
     legs[sideName] = { knee, ankle };
-    limb(parts, hip, knee, 0.088 * scale, 0.066 * scale, dress.coverall, 9);
-    ball(parts, knee, 0.064 * scale, dress.coverall, [1, 1, 1], null, [8, 5]);
+    limb(parts, hip, knee, 0.088 * scale * girth, 0.066 * scale * girth, dress.coverall, 8);
+    ball(parts, knee, 0.064 * scale, dress.coverall, [1, 1, 1], null, [7, 4]);
     // knee patch on the coverall front
     const kneeQ = new THREE.Quaternion().setFromUnitVectors(_up, _c.subVectors(knee, hip).normalize());
-    limb(parts, knee, ankle, 0.063 * scale, 0.056 * scale, dress.coverall, 9);
+    limb(parts, knee, ankle, 0.063 * scale, 0.056 * scale, dress.coverall, 8);
     const hem = ankle.clone().add(new THREE.Vector3(0, 0.06 * scale, 0));
-    ball(parts, hem, 0.06 * scale, dress.coverall, [1, 0.55, 1], null, [8, 4]);
+    ball(parts, hem, 0.06 * scale, dress.coverall, [1, 0.55, 1], null, [7, 3]);
     const patch = knee.clone().addScaledVector(new THREE.Vector3(0, 0, 1).applyQuaternion(hipQ), 0.045 * scale);
     block(parts, patch, [0.085 * scale, 0.09 * scale, 0.014 * scale], kneeQ, dress.trim);
     // boot: heel under the ankle, toe forward along the foot heading, pitched for kneeling or tiptoe
@@ -354,16 +369,26 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
     }
     const pole = elbowHint ? vec(elbowHint) : inChest(sign * 0.45, SHOULDER_Y - 0.3, -0.35);
     const { mid: elbow, end: wrist } = solveTwoBone(shoulder, wristTarget, UPPER_ARM_M * scale, FOREARM_M * scale, pole);
-    ball(parts, shoulder, 0.064 * scale, dress.coverall, [1, 1, 1], chestQ, [8, 6]);
-    limb(parts, shoulder, elbow, 0.062 * scale, 0.052 * scale, dress.coverall, 8);
-    ball(parts, elbow, 0.052 * scale, dress.coverall, [1, 1, 1], null, [7, 5]);
-    limb(parts, elbow, wrist, 0.05 * scale, 0.042 * scale, dress.coverall, 8);
+    ball(parts, shoulder, 0.064 * scale * girth, dress.coverall, [1, 1, 1], chestQ, [7, 5]);
+    limb(parts, shoulder, elbow, 0.062 * scale * girth, 0.052 * scale * girth, dress.coverall, 8);
+    ball(parts, elbow, 0.052 * scale * girth, dress.coverall, [1, 1, 1], null, [6, 4]);
+    if (dress.sleevesRolled) {
+      // the sleeve rolled to mid-forearm: a thick cuff of rolled cloth, bare forearm to the wrist
+      const roll = elbow.clone().lerp(wrist, 0.42);
+      limb(parts, elbow, roll, 0.05 * scale * girth, 0.047 * scale * girth, dress.coverall, 8);
+      limb(parts, roll.clone().lerp(elbow, 0.18), roll, 0.056 * scale * girth, 0.056 * scale * girth, dress.trim, 8);
+      limb(parts, roll, wrist, 0.04 * scale * girth, 0.034 * scale * girth, dress.skin, 7);
+    } else {
+      limb(parts, elbow, wrist, 0.05 * scale * girth, 0.042 * scale * girth, dress.coverall, 8);
+    }
     // cuff and hand: the hand continues the forearm toward the grip point
     const forearmDir = new THREE.Vector3().subVectors(wrist, elbow).normalize();
     const handDir = palm ? new THREE.Vector3().subVectors(palm, wrist).normalize() : forearmDir.clone();
     if (handDir.lengthSq() < 1e-8) handDir.copy(forearmDir);
-    const cuff = wrist.clone().addScaledVector(forearmDir, -0.025 * scale);
-    limb(parts, cuff.clone().addScaledVector(forearmDir, -0.03 * scale), cuff, 0.047 * scale, 0.047 * scale, dress.trim, 8);
+    if (!dress.sleevesRolled) {
+      const cuff = wrist.clone().addScaledVector(forearmDir, -0.025 * scale);
+      limb(parts, cuff.clone().addScaledVector(forearmDir, -0.03 * scale), cuff, 0.047 * scale, 0.047 * scale, dress.trim, 8);
+    }
     const handQ = new THREE.Quaternion().setFromUnitVectors(_up, handDir);
     const handCenter = wrist.clone().addScaledVector(handDir, 0.06 * scale);
     const handColor = dress.gloves ?? dress.skin;
@@ -476,7 +501,7 @@ function headgear(parts: THREE.BufferGeometry[], dress: CrewDress,
 const SKIN = Object.freeze([0xc79a7c, 0xa8775a, 0x8a5a3e, 0xd8ad8d, 0x6e4430] as const);
 const HAIR = Object.freeze([0x2a2018, 0x17130f, 0x3d2c1e, 0x52463a] as const);
 
-export type CrewNation = 'ru' | 'us' | 'de' | 'kr';
+type CrewNation = 'ru' | 'us' | 'de' | 'kr';
 
 /** A national mechanic's work dress; `variant` cycles skin, hair and headgear so a crew never reads as clones. */
 function shade(hex: number, factor: number): number {
@@ -489,6 +514,13 @@ function shade(hex: number, factor: number): number {
 export function crewDress(nation: CrewNation, variant: number, headgear?: CrewHeadgear): CrewDress {
   const skin = SKIN[Math.abs(variant) % SKIN.length];
   const hairColor = HAIR[Math.abs(variant * 3 + 1) % HAIR.length];
+  const sleevesRolled = headgear !== 'welding-hood' && Math.abs(variant) % 3 === 1;
+  const build = 0.95 + (Math.abs(variant * 7) % 5) * 0.03;
+  return { ...crewDressBase(nation, variant, skin, hairColor, headgear), sleevesRolled, build };
+}
+
+function crewDressBase(nation: CrewNation, variant: number, skin: number, hairColor: number,
+  headgear?: CrewHeadgear): CrewDress {
   switch (nation) {
     case 'ru':
       // Russian Army mechanics: dark olive work suits; tank crews in the padded shlemofon
@@ -526,7 +558,7 @@ export function crewDress(nation: CrewNation, variant: number, headgear?: CrewHe
 // A crew member stands in a scene frame: the exhibit's own floor frame (origin under the exhibit root on the floor,
 // +X its right, +Z its bow), so a scene follows its bay owner through every destination placement.
 
-export interface CrewMember {
+interface CrewMember {
   readonly role: string;
   readonly dress: CrewDress;
   readonly pose: CrewPose;
@@ -536,11 +568,11 @@ export interface CrewMember {
   readonly yaw: number;
 }
 
-export type CrewToolKind = 'torch' | 'extinguisher' | 'pendant' | 'sledgehammer' | 'pry-bar' | 'torque-wrench'
+type CrewToolKind = 'torch' | 'extinguisher' | 'pendant' | 'sledgehammer' | 'pry-bar' | 'torque-wrench'
   | 'clipboard' | 'flashlight' | 'cassette';
 
 /** A hand tool in a member's figure frame (points: the grips first, then the working end). */
-export interface CrewTool {
+interface CrewTool {
   readonly kind: CrewToolKind;
   readonly member: number;
   readonly points: readonly V3[];
@@ -549,7 +581,7 @@ export interface CrewTool {
 }
 
 /** A support a crew member stands on (scene frame): a rolling work stand with its deck at `deckY`. */
-export interface CrewProp {
+interface CrewProp {
   readonly kind: 'work-stand';
   readonly at: V3;
   readonly yaw: number;
@@ -557,7 +589,7 @@ export interface CrewProp {
 }
 
 /** Where a scene's floor frame sits in its bay's authored space (before the bay owner's own transform). */
-export interface CrewSceneFrame {
+interface CrewSceneFrame {
   /** 'workshop': the shared workshop root's authored space; 'leopard-bay': the Leopard mobility bay's own frame. */
   readonly parent: 'workshop' | 'leopard-bay';
   readonly x: number;
@@ -586,7 +618,7 @@ export function crewPointInScene(member: Pick<CrewMember, 'at' | 'yaw'>, point: 
   );
 }
 
-export interface CrewSceneBuild {
+interface CrewSceneBuild {
   readonly geometry: THREE.BufferGeometry;
   readonly skeletons: readonly CrewSkeleton[];
   readonly triangles: number;
@@ -746,7 +778,7 @@ export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard'
   }),
 });
 
-export interface CrewToolMaterials {
+interface CrewToolMaterials {
   readonly steelDark: THREE.Material;
   readonly steelMid: THREE.Material;
   readonly brass: THREE.Material;

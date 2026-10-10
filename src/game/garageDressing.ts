@@ -895,6 +895,7 @@ export function createGarageDressing(
     figures.name = `garage_crew_${scene.id}_figures`;
     figures.castShadow = true;
     figures.receiveShadow = true;
+    figures.userData.keepDisplayMesh = true;
     root.add(figures);
     for (const tool of buildCrewTools(scene, {
       steelDark: mat.steelDark, steelMid: mat.steelMid, brass: mat.brass, rubber: mat.rubber,
