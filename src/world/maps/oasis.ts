@@ -89,9 +89,9 @@ export default {
     // after the roadside plan (every plan building where it was) and each draws from its own stream (terrace)
     plannedSitesAfterPlan: true,
     plannedSites: [
-      { structure: 'marketRow', x: 94.0, z: -62.0, yawDeg: -177, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'marketRow', x: 94.0, z: -62.0, yawDeg: -177, plot: { w: 12, d: 5.2 }, terrace: true },
       { structure: 'adobe', x: 106.0, z: -62.0, yawDeg: -177, plot: { w: 9, d: 9 }, terrace: true },
-      { structure: 'marketRow', x: 124.0, z: -62.0, yawDeg: -177, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'marketRow', x: 124.0, z: -62.0, yawDeg: -177, plot: { w: 12, d: 5.2 }, terrace: true },
       { structure: 'adobe', x: 82.0, z: -56.0, yawDeg: -90, plot: { w: 9, d: 9 }, terrace: true },
       { structure: 'adobe', x: 60.0, z: -52.0, yawDeg: 90, plot: { w: 9, d: 9 }, terrace: true },
       { structure: 'adobe', x: 82.0, z: -44.0, yawDeg: -90, plot: { w: 9, d: 9 }, terrace: true },
@@ -100,7 +100,7 @@ export default {
       { structure: 'adobe', x: 102.0, z: -84.0, yawDeg: -134, plot: { w: 9, d: 9 }, terrace: true },
       { structure: 'adobe', x: 84.0, z: 4.0, yawDeg: -83, plot: { w: 9, d: 9 }, terrace: true },
       { structure: 'adobe', x: 64.0, z: 8.0, yawDeg: 97, plot: { w: 9, d: 9 }, terrace: true },
-      { structure: 'marketRow', x: 94.0, z: 14.0, yawDeg: -29, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'marketRow', x: 94.0, z: 14.0, yawDeg: -29, plot: { w: 12, d: 5.2 }, terrace: true },
       { structure: 'adobe', x: 106.0, z: 18.0, yawDeg: -22, plot: { w: 9, d: 9 }, terrace: true },
       { structure: 'adobe', x: 64.0, z: 20.0, yawDeg: 114, plot: { w: 9, d: 9 }, terrace: true },
       { structure: 'adobe', x: 154.0, z: 78.0, yawDeg: -86, plot: { w: 9, d: 9 }, terrace: true },
@@ -114,6 +114,21 @@ export default {
       { structure: 'compound', x: 178.0, z: 48.0, yawDeg: -77, plot: { w: 20, d: 20 }, terrace: true },
       { structure: 'compound', x: 84.0, z: 64.0, yawDeg: 158, plot: { w: 20, d: 20 }, terrace: true },
       { structure: 'compound', x: 106.0, z: 114.0, yawDeg: 94, plot: { w: 20, d: 20 }, terrace: true },
+      // the gardens' farmsteads out in the palms and on the dune edges, seven each side of the middle
+      { structure: 'adobe', x: 278, z: 202, yawDeg: -11, plot: { w: 10, d: 10 }, terrace: true },
+      { structure: 'adobe', x: 70, z: 176, yawDeg: 4, plot: { w: 10, d: 10 }, terrace: true },
+      { structure: 'adobe', x: -66, z: 174, yawDeg: -2, plot: { w: 10, d: 10 }, terrace: true },
+      { structure: 'adobe', x: -362, z: 148, yawDeg: 55, plot: { w: 10, d: 10 }, terrace: true },
+      { structure: 'adobe', x: -252, z: 138, yawDeg: 109, plot: { w: 10, d: 10 }, terrace: true },
+      { structure: 'adobe', x: 356, z: 108, yawDeg: -83, plot: { w: 10, d: 10 }, terrace: true },
+      { structure: 'adobe', x: -314, z: 46, yawDeg: 99, plot: { w: 10, d: 10 }, terrace: true },
+      { structure: 'adobe', x: 330, z: -222, yawDeg: -97, plot: { w: 10, d: 10 }, terrace: true },
+      { structure: 'adobe', x: 172, z: -172, yawDeg: -79, plot: { w: 10, d: 10 }, terrace: true },
+      { structure: 'adobe', x: -230, z: -154, yawDeg: -85, plot: { w: 10, d: 10 }, terrace: true },
+      { structure: 'adobe', x: -50, z: -154, yawDeg: 4, plot: { w: 10, d: 10 }, terrace: true },
+      { structure: 'adobe', x: 290, z: -114, yawDeg: 83, plot: { w: 10, d: 10 }, terrace: true },
+      { structure: 'adobe', x: -334, z: -110, yawDeg: 95, plot: { w: 10, d: 10 }, terrace: true },
+      { structure: 'adobe', x: -242, z: -38, yawDeg: -81, plot: { w: 10, d: 10 }, terrace: true },
     ],
     // the town's two cell masts (Siwa had mobile coverage by 2010), north and south of it
     landmarks: [
