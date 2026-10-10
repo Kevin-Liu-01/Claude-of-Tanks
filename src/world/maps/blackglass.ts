@@ -191,6 +191,11 @@ export default {
     sunIntensity: 3.9, sunColorHex: 0xffc697, hemiIntensity: 0.32, postExposure: 0.91, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.5 / 0xffb77e / 0.38); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0x4b4845 },
+    // 2026-10-09 (the skies lane; owner R139 "skybox ... too bland"): Suzhou's own sky — the humid, milky haze of the lower
+    // Yangtze: more aerosol, nearly white and a little warm, a pale warm-grey band to 12 degrees and a washed blue overhead
+    // (atmosphere.ts sky grade: the dome, the fog's colour and the sky light all follow it)
+    atmosphere: { mieScale: 11, mieG: 0.86, mieTintHex: 0xf4ece0,
+      horizonTintHex: 0xd6d0c4, horizonTintAmount: 0.6, horizonBandDeg: 12, zenithTintHex: 0xa6b6c6, zenithTintAmount: 0.35 },
   },
   minimap: {
     base: [58, 68, 73], hard: [74, 81, 86], soft: [48, 57, 61],
