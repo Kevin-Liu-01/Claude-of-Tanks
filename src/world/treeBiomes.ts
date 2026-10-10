@@ -68,6 +68,14 @@ export interface TreeBiome {
    */
   woodForms?: Readonly<Partial<Record<TreeSpecies, GrowthSpecies>>>;
   /**
+   * The treescn lane (2026-10-09; trees round 8 by place): the place grows round 8's canopy and form — its woods' crowns
+   * from under a third of their height and meeting (treeGrowth.ts GROWTH_FOREST_FORM), the age's girth, the oak's and
+   * the beech's darker bark and the birch's fuller crown (canopyFormProfile), its shrubs under the crowns' law
+   * (vegetation.ts buildGrownShrub) and its field trees among three open crowns. Unset, round 5's trees: wave 307 read
+   * round 8 a point down on Verdant's bush against the sun, and the owner's light-touch maps keep theirs as they stand.
+   */
+  canopyForm?: true;
+  /**
    * Trees round 4: the colour of the place's shrubs (its biome shrub form), over the map palette's for the bush slot's
    * species — the Las Cañadas broom an ash-dulled grey-green, not the slot palette's green.
    */
@@ -206,7 +214,9 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // (Caldera round 2, wave 114: the holm oak's big leaf sprays read at shrub size as "a tropical fern or palm-like
   // shrub", and the sugi stood in open groves: the bushes are now the grassland's low twiggy scrub (the broom form: bush
   // clover, Miyama-kirishima azalea) and the sugi stand in closed blocks)
-  caldera: B('the Aso caldera, Kyushu', { pine: { form: 'sugi' }, cypress: { form: 'sugi' }, acacia: { form: 'redPine' } }, 'broom'),
+  // (the treescn lane, 2026-10-09: the owner's maps to raise — round 8's canopy form for the sugi and red pine woods)
+  caldera: Object.freeze({ ...B('the Aso caldera, Kyushu', { pine: { form: 'sugi' }, cypress: { form: 'sugi' }, acacia: { form: 'redPine' } }, 'broom'),
+    canopyForm: true as const }),
   // the Dalmatian coast: Aleppo pine, holm oak and olive (and cypress, which the map names directly)
   saltwind: B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak', colour: HOLM_OAK_FOLIAGE },
     acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }),
@@ -226,10 +236,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // wave 4 read the weeping willows of the left treeline as "hanging curtains of flat strips")
   // (the trees lane, 2026-10-06, wave 178: "a loose grove of tall, spindly, birch-like trees ... standing apart in the
   // black-earth plough" — the birch kolki and oak dubravy close: denseStands)
-  verdant: Object.freeze({ ...B('Prokhorovka, Kursk oblast', { pine: { form: 'birch', leaves: true }, willow: { form: 'birch', leaves: true } }),
-    denseStands: true as const,
-    // (round 8, the gauntlet's wave 236: the forest-steppe's woods are oak and ash — the poplar slot's wood trees grow as ash)
-    woodForms: Object.freeze({ poplar: 'ash' as const }) }),
+  // (the treescn lane, 2026-10-09: Verdant on the owner's light-touch list — wave 307 read round 8's light version a
+  // point down on its bush against the sun; its stands, birches and woods stay as they stand: no denseStands, no ash
+  // wood form, no canopy form)
+  verdant: B('Prokhorovka, Kursk oblast', { pine: { form: 'birch', leaves: true }, willow: { form: 'birch', leaves: true } }),
   // Wadi Rum: sparse, dust-dulled umbrella acacias (and the spring's palms) over white-broom scrub (Retama raetam: the
   // map's oak bushes read as lawn shrubs on the sand)
   // (the trees lane, 2026-10-08, the gauntlet's waves 282/283a: the acacias "lime-green, puffy savanna canopies, far too
@@ -264,7 +274,9 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // the Alps: spruce and larch. (The trees lane, 2026-10-08, the gauntlet's wave 278: April on the col — the spruce under
   // the snow's load, the larches bare until their needles come in May)
   alpine: Object.freeze({ ...B('an Alpine pass', { fir: { form: 'larch' }, pine: { form: 'larch' } }), snow: ALPINE_APRIL_SNOW,
-    bare: true as const }),
+    // (the treescn lane, 2026-10-09: the owner's maps to raise — Glacier Pass's spruce woods carry their crowns to the
+    // snow, round 8's canopy form)
+    bare: true as const, canopyForm: true as const }),
   // Kohima in the Naga Hills (the trees lane, 2026-10-06, the gauntlet's wave 157: "built almost entirely from one
   // repeating tropical fan-palm", the wrong flora for a hill station on a saddle at about 1,450 m): Khasi pine on the
   // ridges (the map's pine slot, which took the palm's share), the montane evergreen forest of chestnut-oaks
@@ -273,12 +285,16 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   monsoon: Object.freeze({ ...B('Kohima, the Naga Hills', { pine: { form: 'khasiPine' }, eucalyptus: { form: 'castanopsis' },
     willow: { form: 'holmOak' }, oak: { form: 'bamboo', colour: BAMBOO_FOLIAGE } }, 'holmOak'),
     // (round 2: the shell-killed trunks charred near-black, not the pale poles wave 179 read as eucalyptus)
-    snagValue: Object.freeze([0.16, 0.26] as const) }),
+    snagValue: Object.freeze([0.16, 0.26] as const),
+    // (the treescn lane, 2026-10-09: round 8's canopy and form — Monsoon Ridge's spur woods closed, not parkland)
+    canopyForm: true as const }),
   // Queenstown under Mount Lyell, Tasmania (the map-revival lane, 2026-10-05): eucalypt regrowth where the map plants its
   // acacias and cedars, the radiata plantations' pines as pines, the bushes the tea-tree and myrtle scrub in the holm
   // oak's dark leaf (no 'snag' for the fume-killed stumps: its slot would keep a concealing crown it does not draw);
   // the placement stays the map's
-  copper_mesa: B('Queenstown under Mount Lyell, Tasmania', { acacia: { form: 'eucalyptus' }, cedar: { form: 'eucalyptus' } }, 'holmOak'),
+  // (the treescn lane, 2026-10-09: the owner's maps to raise — round 8's canopy form for the regrowth woods)
+  copper_mesa: Object.freeze({ ...B('Queenstown under Mount Lyell, Tasmania', { acacia: { form: 'eucalyptus' }, cedar: { form: 'eucalyptus' } }, 'holmOak'),
+    canopyForm: true as const }),
   // the Scheldt polders: poplar and willow rows (the map's own slots already)
   polders: B('the Scheldt polders, Zeeland', {}),
   // Glen Canyon and Page, Arizona (the map-revival lane, 2026-10-05, Skybridge round 2; look only: the slots keep their
@@ -369,6 +385,10 @@ export function treeBiomeSnagValue(mapId: string | null | undefined): readonly [
 /** The trees lane: whether a place's stands are closed (TreeBiome.denseStands). */
 export function treeBiomeDenseStands(mapId: string | null | undefined): boolean {
   return !!(mapId && TREE_BIOMES[mapId]?.denseStands);
+}
+/** The treescn lane (2026-10-09): whether a place grows round 8's canopy and form (TreeBiome.canopyForm). */
+export function treeBiomeCanopyForm(mapId: string | null | undefined): boolean {
+  return !!(mapId && TREE_BIOMES[mapId]?.canopyForm);
 }
 /** Trees round 8: the form a slot's wood trees take on a place (TreeBiome.woodForms), or none (the slot's own). */
 export function treeBiomeWoodForm(mapId: string | null | undefined, slot: TreeSpecies): GrowthSpecies | null {

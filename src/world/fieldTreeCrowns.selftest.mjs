@@ -4,12 +4,15 @@
 // or a boundary row's neighbours differ, where since round 5 every field tree of such a species drew the one open
 // variant. Only the pool a tree draws in moves: on the real seeded producer, every seat, matrix, collider and
 // concealment disc is the one the map has with the forest forms off (`?forestForm=0`). A construction receipt: no GPU,
-// no art claim.
+// no art claim. (The treescn lane, 2026-10-09: round 8 by place — the field crowns grow on a place with round 8's canopy
+// form, treeBiomes.ts canopyForm: Monsoon Ridge and Obsidian Caldera here; Frontier, on the owner's light-touch list,
+// keeps every field tree on the one open variant, as before.)
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createHeightField } from './terrain.ts';
 import { createVegetation } from './vegetation.ts';
 import { getMapConfig } from './maps/index.ts';
+import { treeBiomeCanopyForm } from './treeBiomes.ts';
 import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
 
 function canvasFixture() {
@@ -44,7 +47,7 @@ const records = (world) => digest([
 
 const restore = canvasFixture();
 try {
-  for (const mapId of ['verdant', 'frontier', 'desert']) {
+  for (const mapId of ['monsoon', 'caldera', 'frontier', 'desert']) {
     const cfg = getMapConfig(mapId), field = createHeightField(1337, cfg);
     globalThis.location = { search: '?forestForm=0' };
     const plain = createVegetation(field, { setupShadowMaterial() {} }, 2001, cfg);
@@ -62,6 +65,14 @@ try {
       }
       const forest = new Set(forms.species);
       const field = world._trees.filter((t) => forest.has(t.species) && !t.wood);
+      if (!treeBiomeCanopyForm(mapId)) {
+        // a place without round 8's canopy form: every field tree on the open variant, no field crown's pool
+        for (const t of field) assert.equal(t.variant, 2, `${mapId}: a field tree on the open variant`);
+        assert.deepEqual(forms.fieldCrowns, [forms.open, 0, 0], `${mapId}: the census's one open crown`);
+        world.group.traverse((o) => assert.ok(!/^treeCanopyShadow_[a-z]+_[34]$/.test(o.name || ''), `${mapId}: no field crown's pool (${o.name})`));
+        console.log(JSON.stringify({ map: mapId, forms }));
+        continue;
+      }
       for (const t of world._trees) {
         if (!forest.has(t.species)) continue;
         if (t.wood) assert.ok(t.variant === 0 || t.variant === 1, `${mapId}: a wood tree on a forest-grown variant (${t.variant})`);

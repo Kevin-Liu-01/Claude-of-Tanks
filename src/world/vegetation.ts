@@ -39,7 +39,7 @@ import { createLeafDetailLibrary, LEAF_DETAIL_LAW, LEAF_DETAIL_NORMAL_SCALE } fr
 import { createTreeImpostorLibrary, type TreeImpostorLibrary, type TreeImpostorRenderer } from './treeImpostors.ts';
 // p2 trees lane (2026-10-01): the grown near trees — skeleton, wood, spray cards and crown shadow hull — and their
 // branch-spray atlases
-import {
+import { canopyFormProfile,
   canopySkyOcclusion, crownLobes, crownSurfaceNormal, emitBranchGeometry, GROWTH_CROWN_SHADING, emitCrownShadowHull, emitLeafCards, growShrubSkeleton, GROWTH_SHRUB_VALUE, growthCardRows, shrubStemSites, GROWTH_CROWN_STEM_WIDTH, growthCrownAttachments,
   growTreeSkeleton, GROWTH_BIRCH_FOOT, GROWTH_CANOPY_AO, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES, weldGrownGeometry, type CrownShadowMass, type GrowthSpecies,
 } from './treeGrowth.ts';
@@ -49,7 +49,7 @@ import { resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees, type AuthoredTreeFeature,
 } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeBare, treeBiomeColour, treeBiomeDenseStands, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeSnagValue, treeBiomeSnow, treeBiomeSnowPalette, treeBiomeTransmission, treeBiomeUpland, treeBiomeWoodForm, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeCanopyForm, treeBiomeBare, treeBiomeColour, treeBiomeDenseStands, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeSnagValue, treeBiomeSnow, treeBiomeSnowPalette, treeBiomeTransmission, treeBiomeUpland, treeBiomeWoodForm, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -2638,8 +2638,8 @@ export function grownTintLaw(family: string, leafy = false, bare = false): reado
  * palette's laden tiles on the sky-facing sprays. Cards only, welded: the shrub's stems stand inside its foliage.
  */
 function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: VegetationPalette, growth: GrowthSpecies,
-  shrubAtlas = false): THREE.BufferGeometry {
-  const profile = TREE_GROWTH_PROFILES[growth];
+  shrubAtlas = false, canopyForm = false): THREE.BufferGeometry {
+  const profile = canopyForm ? canopyFormProfile(growth) : TREE_GROWTH_PROFILES[growth];
   const skeleton = growShrubSkeleton(growth, kind, rng);
   // a snowy palette's load lies on the sprays facing the sky highest on the mound: a fixed share of the shrub's sprays
   // (by the load) takes the atlas' laden tiles in that order, every other one a bare tile — every shrub of a map
@@ -2671,13 +2671,19 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
   if (shrubAtlas) skeleton.leaves.push(...shrubStemSites(skeleton, SHRUB_STEM_TILE, rng));
   // trees round 8 (wave 275: the bushes' next step, the crowns' law): the mound's form leads its normals — about the
   // ground under its centre, scaled to a hemisphere (its top to the sky, its sides to the sun or away, its back-lit side
-  // passing the light through: the canopy material's transmission) — and its sky by a cluster's height in it
+  // passing the light through: the canopy material's transmission) — and its sky by a cluster's height in it. (The
+  // treescn lane, 2026-10-09: a place with round 8's canopy form only — wave 307 read Verdant's bush against the sun a
+  // full point down; every other place keeps round 5's shrub: its lighter depth shade, its gain, the crown's normals.)
   const moundTop = Math.max(0.3, skeleton.height);
   const [topLo, topHi] = GROWTH_CROWN_SHADING.shrubTop;
+  const shrubGain = canopyForm ? GROWTH_CROWN_SHADING.shrubGain : GROWTH_CROWN_SHADING.shrubGainR5;
   const cards = emitLeafCards(skeleton, {
-    tiles: SPRAY_ATLAS_TILES, rng, rows: 2, depthShade: GROWTH_CROWN_SHADING.shrubDepthShade,
-    volume: GROWTH_CROWN_SHADING.shrubVolume, lobeShare: GROWTH_CROWN_SHADING.shrubLobeShare,
-    volumeCentre: { x: skeleton.crown.x, y: 0, z: skeleton.crown.z }, volumeYScale: skeleton.crown.r / moundTop,
+    tiles: SPRAY_ATLAS_TILES, rng, rows: 2,
+    depthShade: canopyForm ? GROWTH_CROWN_SHADING.shrubDepthShade : GROWTH_CROWN_SHADING.shrubDepthShadeR5,
+    ...(canopyForm ? {
+      volume: GROWTH_CROWN_SHADING.shrubVolume, lobeShare: GROWTH_CROWN_SHADING.shrubLobeShare,
+      volumeCentre: { x: skeleton.crown.x, y: 0, z: skeleton.crown.z }, volumeYScale: skeleton.crown.r / moundTop,
+    } : {}),
     tint(shade, site, r) {
       const jitter = r();
       if (site.stem) {
@@ -2688,9 +2694,9 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
       const sk = snow > 0.05 && site.tile < SPRAY_ATLAS_TILES ? 0.85 + jitter * 0.15 : 0;
       _c.setHSL(hue0 + (r() - 0.5) * 0.06 + (0.585 - hue0) * sk, (sat0 + r() * 0.06) * (1 - sk * 0.85) + 0.02 * sk, 0.5,
         THREE.SRGBColorSpace);
-      const sky = topLo + (topHi - topLo) * Math.max(0, Math.min(1, site.y / moundTop));
-      const value = (0.55 + 0.45 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6) * (profile.foliageValue ?? 1) * (sk > 0 ? 1 : shrubValue)
-        * GROWTH_CROWN_SHADING.shrubGain * sky;
+      const lit = (0.55 + 0.45 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6) * (profile.foliageValue ?? 1) * (sk > 0 ? 1 : shrubValue)
+        * shrubGain;
+      const value = canopyForm ? lit * (topLo + (topHi - topLo) * Math.max(0, Math.min(1, site.y / moundTop))) : lit;
       return [_c.r * gain * value, _c.g * gain * value, _c.b * gain * value];
     },
   });
@@ -2698,7 +2704,7 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
   // as a downward pole gone black (round 8: 0.2 → 0.1 — the mound's normals point up of themselves now)
   const normal = cards.getAttribute('normal') as THREE.BufferAttribute;
   for (let i = 0; i < normal.count; i++) {
-    const nx = normal.getX(i), ny = Math.max(0.1, normal.getY(i)), nz = normal.getZ(i), l = Math.hypot(nx, ny, nz);
+    const nx = normal.getX(i), ny = Math.max(canopyForm ? 0.1 : 0.2, normal.getY(i)), nz = normal.getZ(i), l = Math.hypot(nx, ny, nz);
     normal.setXYZ(i, nx / l, ny / l, nz / l);
   }
   return weldGrownGeometry(cards);
@@ -2732,10 +2738,13 @@ const FIELD_TREE_ROAD_VERGE_M = 18;
 /** Trees round 5: the least distance between two moved field trees' trunks (a hedgerow's standards, m). */
 const FIELD_TREE_SPACING_M = 5;
 
-function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, pal: VegetationPalette = {}, forest = false): TreeGeometryPair {
-  const profile = TREE_GROWTH_PROFILES[species];
+function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, pal: VegetationPalette = {}, forest = false,
+  canopyForm = false): TreeGeometryPair {
+  // (the treescn lane, 2026-10-09: round 8's canopy and form by place — treeBiomes.ts canopyForm, treeGrowth.ts
+  // canopyFormProfile; every other place grows round 5's trees)
+  const profile = canopyForm ? canopyFormProfile(species) : TREE_GROWTH_PROFILES[species];
   const rng = mulberry32(seed);
-  const skeleton = growTreeSkeleton(species, rng, { variant, tier: 'desktop', forest });
+  const skeleton = growTreeSkeleton(species, rng, { variant, tier: 'desktop', forest, ...(canopyForm ? { canopyForm } : {}) });
   const parts: THREE.BufferGeometry[] = [emitBranchGeometry(skeleton, {
     tint: profile.barkTint, topTint: profile.barkTopTint, barkStyle: profile.bark, rng, tier: 'desktop',
   })];
@@ -5413,6 +5422,9 @@ function* vegetationBuildSteps(
   // probe's forest-form toggle swaps them in one page)
   const forestQuery = typeof location !== 'undefined' ? location.search ?? '' : '';
   // (trees lane, 2026-10-05: an orchard form's slot stays open-grown in a wood too, its variants its own species)
+  // (the treescn lane, 2026-10-09: round 8's canopy and form — its trees' form, its shrubs' law, its field crowns — on a
+  // place that grows it, treeBiomes.ts canopyForm; the owner's light-touch maps keep round 5's)
+  const canopyForm = treeBiomeCanopyForm(cfg?.id);
   const forestSpecies = new Set<Species>(grownTrees && treeBiomeWoodSpread(cfg?.id) > 1 && !/[?&]forestForm=0(&|$)/.test(forestQuery)
     ? veg.clusterMix.map(([sp]) => sp).filter((sp) => sp !== 'palm'
       && !TREE_GROWTH_PROFILES[(formOf(sp)?.form ?? sp) as GrowthSpecies]?.orchard) : []);
@@ -5449,9 +5461,10 @@ function* vegetationBuildSteps(
       // the open variant and the field crowns keep the slot's own form)
       near: (k, pal) => {
         const forest = forestSpecies.has(species) && k < FOREST_NEAR_VARIANTS;
-        return buildGrownTree(forest ? treeBiomeWoodForm(cfg?.id, species) ?? growth : growth, seed + legacy.nearSeed + k * 7, k, formPal(pal), forest);
+        return buildGrownTree(forest ? treeBiomeWoodForm(cfg?.id, species) ?? growth : growth, seed + legacy.nearSeed + k * 7, k, formPal(pal), forest,
+          canopyForm);
       },
-      nearOpen: (k, pal) => buildGrownTree(growth, seed + legacy.nearSeed + k * 7, k, formPal(pal)),
+      nearOpen: (k, pal) => buildGrownTree(growth, seed + legacy.nearSeed + k * 7, k, formPal(pal), false, canopyForm),
       far: legacy.far,
     };
   }
@@ -5620,7 +5633,9 @@ function* vegetationBuildSteps(
       // (trees lane, 2026-10-07: a wood species' field crowns — the open-grown alternates of its forest-grown variants,
       // near variants NEAR_VARIANTS and up, which only field trees draw; the far tier draws them as the open variant's
       // impostor row, writeTreeSlot)
-      if (forestSpecies.has(sp) && SPECIES[sp].nearOpen) {
+      // (the treescn lane, 2026-10-09: a place with round 8's canopy form only; elsewhere every field tree draws the open
+      // variant, as before)
+      if (canopyForm && forestSpecies.has(sp) && SPECIES[sp].nearOpen) {
         for (let k = 0; k < FIELD_OPEN_ALTERNATES; k++) {
           const open = SPECIES[sp].nearOpen!(k, palOf(sp));
           prepareTreeBarkSurface(open.trunk, barkTex.meanReflectance, barkTex.width);
@@ -7519,8 +7534,8 @@ function* vegetationBuildSteps(
       return bushMatCache;
     };
     const bushGeos = sprayAtlasSpecies.has(bushSpecies)
-      ? [buildGrownShrub('bush', mulberry32(seed + 31), bushPal, shrubGrowth, shrubOnAtlas),
-        buildGrownShrub('bush', mulberry32(seed + 32), bushPal, shrubGrowth, shrubOnAtlas)]
+      ? [buildGrownShrub('bush', mulberry32(seed + 31), bushPal, shrubGrowth, shrubOnAtlas, canopyForm),
+        buildGrownShrub('bush', mulberry32(seed + 32), bushPal, shrubGrowth, shrubOnAtlas, canopyForm)]
       : [buildBushCards(mulberry32(seed + 31), bushPal), buildBushCards(mulberry32(seed + 32), bushPal)];
     const bushPlacements: [THREE.Matrix4[], THREE.Matrix4[]] = [[], []];
     const bushKeep: [boolean[],boolean[]]=[[],[]];
@@ -7797,7 +7812,7 @@ function* vegetationBuildSteps(
     function createUnderstoreyMesh(): void {
       const n = understoreyPlacements.length;
       if (n === 0) return;
-      const geometry = sprayAtlasSpecies.has(bushSpecies) ? buildGrownShrub('understorey', mulberry32(seed + 33), bushPal, shrubGrowth, shrubOnAtlas)
+      const geometry = sprayAtlasSpecies.has(bushSpecies) ? buildGrownShrub('understorey', mulberry32(seed + 33), bushPal, shrubGrowth, shrubOnAtlas, canopyForm)
         : buildUnderstoreyCards(mulberry32(seed + 33), bushPal);
       geometry.userData.understorey = true;
       geometry.setAttribute('aFadeI', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));

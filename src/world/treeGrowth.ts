@@ -207,7 +207,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.55, angleLow: 1.15, angleHigh: 0.6,
     droop: 0.42, upturn: 0.38, sidePerM: 2.3, sideAngle: 0.75, sideRatio: 0.62, sideDroop: 0.35, twigPerM: 1.8,
     leafOrder: 1, leafPerM: 3.6, leafFrom: 0.15, spray: [0.62, 0.92], aspect: 0.86, habit: 'spray', tipSprays: 2,
-    cardBend: 0.16, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.34, 0.31, 0.28], barkTopTint: null,
+    cardBend: 0.16, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.46, 0.41, 0.36], barkTopTint: null,
     foliageValue: 1.25,
   }),
   poplar: P({
@@ -302,15 +302,12 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     leafOrder: 1, leafPerM: 5.4, leafFrom: 0.0, spray: [0.8, 1.15], aspect: 0.6, habit: 'upright', tipSprays: 1,
     cardBend: 0.04, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.40, 0.34, 0.30], barkTopTint: null, foliageValue: 1.5,
   }),
-  // (the trees lane, 2026-10-06, the gauntlet's wave 178 on Verdant: "tall, spindly, birch-like trees with narrow,
-  // see-through lime-green crowns": a little broader, its sprays from lower on each limb and a fifth larger, so a crown in
-  // leaf holds its mass at the establishing range — its budget of sprays unchanged)
   birch: P({
     family: 'birch', height: 7.0, heightSpread: 0.14, trunkR: 0.16, form: 'excurrent',
-    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.30, crownR: 2.65,
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.30, crownR: 2.45,
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.36, angleLow: 1.35, angleHigh: 0.5,
     droop: 0.40, upturn: 0.0, sidePerM: 2.4, sideAngle: 0.65, sideRatio: 0.7, sideDroop: 1.5, twigPerM: 0,
-    leafOrder: 1, leafPerM: 3.6, leafFrom: 0.12, spray: [0.74, 1.12], aspect: 0.7, habit: 'spray', tipSprays: 3,
+    leafOrder: 1, leafPerM: 3.6, leafFrom: 0.2, spray: [0.62, 0.94], aspect: 0.68, habit: 'spray', tipSprays: 2,
     cardBend: 0.34, flatRoll: 0.6, flatDroop: 0.0, bark: 3, barkTint: [0.92, 0.91, 0.88], barkTopTint: null,
   }),
   aspen: P({
@@ -357,11 +354,11 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
   // dome of level, layered sprays of glossy oval leaves
   beech: P({
     family: 'broadleaf', height: 8.4, heightSpread: 0.10, trunkR: 0.30, form: 'decurrent',
-    forkAt: [0.28, 0.36], scaffolds: [3, 5], scaffoldAngle: [0.42, 0.8], crownBase: 0.4, crownR: 2.9,
+    forkAt: [0.36, 0.44], scaffolds: [3, 5], scaffoldAngle: [0.42, 0.8], crownBase: 0.4, crownR: 2.9,
     envelope: 'ellipsoid', whorled: false, perWhorl: [1, 1], spacing: 0.5, angleLow: 1.1, angleHigh: 0.55,
     droop: 0.3, upturn: 0.3, sidePerM: 2.4, sideAngle: 0.8, sideRatio: 0.62, sideDroop: 0.2, twigPerM: 1.6,
     leafOrder: 1, leafPerM: 3.8, leafFrom: 0.25, spray: [0.62, 0.92], aspect: 0.9, habit: 'flat', tipSprays: 2,
-    cardBend: 0.1, flatRoll: 0.5, flatDroop: 0.1, bark: 2, barkTint: [0.50, 0.50, 0.48], barkTopTint: [0.55, 0.55, 0.53],
+    cardBend: 0.1, flatRoll: 0.5, flatDroop: 0.1, bark: 2, barkTint: [0.60, 0.60, 0.58], barkTopTint: [0.64, 0.64, 0.62],
     foliageValue: 1.12,
   }),
   // the sweet chestnut (the Breton bocage): a stout spirally fissured bole under a broad, high, rounded crown of long
@@ -702,6 +699,12 @@ interface GrowthOptions {
   tier?: 'desktop' | 'mobile';
   /** Trees round 5: grown inside a closed wood (forestGrownProfile), not in the open. */
   forest?: boolean;
+  /**
+   * Trees round 8 by place (the treescn lane, 2026-10-09): the place grows round 8's canopy and form (treeBiomes.ts
+   * canopyForm) — its profiles' round-8 terms (canopyFormProfile), round 8's forest-grown form, the age's girth. Unset,
+   * round 5's trees, as every place the owner called light-touch keeps them.
+   */
+  canopyForm?: boolean;
 }
 
 /**
@@ -730,10 +733,39 @@ export const GROWTH_FOREST_FORM = Object.freeze({
 });
 /** The trees lane (2026-10-06, wave 178): a birch's forest-grown form; since round 8 the general form's own heights. */
 export const GROWTH_FOREST_BIRCH = Object.freeze({ height: 1.04, crownR: 1.0, crownBase: 0.30 });
+/**
+ * Round 5's forest-grown form (2026-10-05), which every place without round 8's canopy form keeps (the treescn lane,
+ * 2026-10-09: round 8 by place — the owner's light-touch maps keep their woods as they stand).
+ */
+export const GROWTH_FOREST_FORM_R5 = Object.freeze({
+  height: 1.12, crownR: 0.86, trunkR: 0.86, fork: 1.45, forkMax: 0.56, crownBase: 0.48, coniferCrownBase: 0.36,
+  scaffoldAngle: 0.72, gnarl: 0.5,
+});
 const forestProfiles = new Map<Readonly<GrowthProfile>, Readonly<GrowthProfile>>();
-/** A profile's forest-grown form (GROWTH_FOREST_FORM); a palm, a snag, a grass-stage seedling or a clump keeps its own. */
-export function forestGrownProfile(p: Readonly<GrowthProfile>): Readonly<GrowthProfile> {
+const forestProfilesR5 = new Map<Readonly<GrowthProfile>, Readonly<GrowthProfile>>();
+/**
+ * A profile's forest-grown form — round 8's (GROWTH_FOREST_FORM) on a place with the canopy form, round 5's
+ * (GROWTH_FOREST_FORM_R5) elsewhere; a palm, a snag, a grass-stage seedling or a clump keeps its own.
+ */
+export function forestGrownProfile(p: Readonly<GrowthProfile>, canopyForm = false): Readonly<GrowthProfile> {
   if (p.family === 'palm' || p.family === 'dead' || p.fountain || p.orchard || p.clump) return p;
+  if (!canopyForm) {
+    const kept = forestProfilesR5.get(p);
+    if (kept) return kept;
+    const r = GROWTH_FOREST_FORM_R5;
+    const r5 = P({
+      ...p,
+      height: p.height * r.height,
+      crownR: p.crownR * r.crownR,
+      trunkR: p.trunkR * r.trunkR,
+      forkAt: p.form === 'decurrent' ? [Math.min(r.forkMax, p.forkAt[0] * r.fork), Math.min(r.forkMax, p.forkAt[1] * r.fork)] : p.forkAt,
+      scaffoldAngle: [p.scaffoldAngle[0] * r.scaffoldAngle, p.scaffoldAngle[1] * r.scaffoldAngle],
+      crownBase: p.form === 'excurrent' ? Math.max(p.crownBase, p.family === 'conifer' ? r.coniferCrownBase : r.crownBase) : p.crownBase,
+      ...(p.gnarl !== undefined ? { gnarl: p.gnarl * r.gnarl } : {}),
+    });
+    forestProfilesR5.set(p, r5);
+    return r5;
+  }
   const cached = forestProfiles.get(p);
   if (cached) return cached;
   const f = GROWTH_FOREST_FORM;
@@ -1644,6 +1676,26 @@ function growFountainShrub(species: GrowthSpecies, kind: 'bush' | 'understorey',
   return { species, height: Math.max(0.3, top), branches: [], leaves, crown: { x: 0, y: top * 0.4, z: 0, r: R } };
 }
 
+/**
+ * Trees round 8 by place (the treescn lane, 2026-10-09): the profile terms round 8 changed on species that grow on the
+ * owner's light-touch maps too — the oak's and the beech's darker bark, the beech's lower fork (wave 238), the birch's
+ * fuller crown (wave 178) — which only a place with the canopy form (treeBiomes.ts canopyForm) grows. The Naga Hills'
+ * own forms (castanopsis, the Khasi pine) carry theirs in the table: they grow on Monsoon Ridge alone.
+ */
+const CANOPY_FORM_TERMS: Readonly<Partial<Record<GrowthSpecies, Partial<GrowthProfile>>>> = Object.freeze({
+  oak: { barkTint: [0.34, 0.31, 0.28] },
+  beech: { forkAt: [0.28, 0.36], barkTint: [0.50, 0.50, 0.48], barkTopTint: [0.55, 0.55, 0.53] },
+  birch: { crownR: 2.65, leafFrom: 0.12, spray: [0.74, 1.12], aspect: 0.7, tipSprays: 3 },
+});
+const canopyProfiles = new Map<GrowthSpecies, Readonly<GrowthProfile>>();
+/** A species' profile on a place with round 8's canopy form: the table's, with CANOPY_FORM_TERMS over it. */
+export function canopyFormProfile(species: GrowthSpecies): Readonly<GrowthProfile> {
+  const terms = CANOPY_FORM_TERMS[species];
+  if (!terms) return TREE_GROWTH_PROFILES[species];
+  let p = canopyProfiles.get(species);
+  if (!p) canopyProfiles.set(species, p = P({ ...TREE_GROWTH_PROFILES[species], ...terms } as GrowthProfile));
+  return p;
+}
 /** Trees round 8: a stem's girth by its age class (the variant: young, typical, old), at the profile's trunk radius. */
 export const GROWTH_AGE_GIRTH: readonly [number, number, number] = Object.freeze([0.86, 1, 1.16]) as unknown as readonly [number, number, number];
 /**
@@ -1654,14 +1706,15 @@ export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: Grow
   const variant = ((options.variant ?? 1) % 3 + 3) % 3;
   // (trees lane: a profile with variant shapes grows each variant's own, at the variant's age as before: the Streuobst
   // form's plum young and small, its apple in its middle years, its pear old and tall)
-  const base = TREE_GROWTH_PROFILES[species], shaped = variantProfile(base, variant);
-  const profile = options.forest ? forestGrownProfile(shaped) : shaped;
+  const canopy = options.canopyForm === true;
+  const base = canopy ? canopyFormProfile(species) : TREE_GROWTH_PROFILES[species], shaped = variantProfile(base, variant);
+  const profile = options.forest ? forestGrownProfile(shaped, canopy) : shaped;
   const mobile = options.tier === 'mobile';
   const ageH = variant === 0 ? 0.88 : variant === 2 ? 1.1 : 1;
   const ageW = variant === 0 ? 0.84 : variant === 2 ? 1.12 : 1;
   // trees round 8 (2026-10-07, the gauntlet's wave 238: "trunks darker, with variety in girth"): the age's girth — a
-  // young tree's stem slimmer, an old one's stouter (GROWTH_AGE_GIRTH)
-  const ageG = GROWTH_AGE_GIRTH[variant];
+  // young tree's stem slimmer, an old one's stouter (GROWTH_AGE_GIRTH; a place with round 8's canopy form only)
+  const ageG = canopy ? GROWTH_AGE_GIRTH[variant] : 1;
   const height = profile.height * ageH * (1 + (rng() - 0.5) * 2 * profile.heightSpread * 0.5);
   // trees round 4 (the gauntlet's waves 49 and 51 on Verdant's treeline: "one tree asset repeated at even spacing, with a
   // hard dark band at the canopy base"): a broadleaf's or a birch's crown base moves with its age — a young leader's
@@ -2239,6 +2292,9 @@ export const GROWTH_CROWN_SHADING = Object.freeze({
    */
   shrubDepthShade: 0.45, shrubGain: 1.32, shrubVolume: 0.55, shrubLobeShare: 0.3,
   shrubTop: Object.freeze([0.8, 1.2]) as readonly [number, number],
+  /** Before round 8 (and on every place without its canopy form, the treescn lane 2026-10-09): the open shrub's lighter
+   * depth shade and the gain that gives its shell back, its normals as a crown's, its positive-up floor 0.2. */
+  shrubDepthShadeR5: 0.3, shrubGainR5: 1.04,
   /** Trees round 4: a tufted pine's tuft by its stem darkens by up to this share (its depth in the crown's ellipsoid). */
   tuftCrownDepth: 0.35,
   /** Trees round 4: a crown card's value from its stem row to its tip row (the cluster's own shade toward its twig). */
