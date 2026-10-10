@@ -1292,6 +1292,102 @@ function buildLogEarthPillbox(O: BuildOpts): THREE.BufferGeometry {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// dragon's teeth (the Westwall's Höckerhindernis: the fortifications lane's round 2, the coordinator's yes 2026-10-09)
+
+/** A line of teeth's measures (m): rows from the enemy's side (row 0, the lowest) back, the pitch along the line. */
+export const TEETH = Object.freeze({
+  rows: 4,
+  /** each row's height, the enemy's side first (the Westwall's 0.9 to 1.5 m) */
+  heights: [0.9, 1.1, 1.3, 1.5] as readonly number[],
+  /** a tooth's base and top half-widths */
+  baseHalf: 0.55,
+  topHalf: 0.2,
+  /** along the line, tooth to tooth; across it, row to row */
+  pitch: 1.65,
+  rowGap: 1.35,
+  /** the foundation slab's height over grade and its reach past the outer teeth */
+  slab: 0.22,
+  slabMargin: 0.45,
+});
+
+/** A segment's teeth seats (local: x along the line, z toward the enemy), row by row, from its length. */
+export function dragonsTeethSeats(length: number): Array<{ x: number; z: number; row: number }> {
+  const T = TEETH;
+  const n = Math.max(2, Math.floor(length / T.pitch));
+  const span = (n - 1) * T.pitch, depth = (T.rows - 1) * T.rowGap;
+  const out: Array<{ x: number; z: number; row: number }> = [];
+  for (let r = 0; r < T.rows; r++) {
+    const z = depth / 2 - r * T.rowGap, stagger = (r % 2) * T.pitch * 0.5;
+    for (let k = 0; k < n - (r % 2); k++) out.push({ x: -span / 2 + stagger + k * T.pitch, z, row: r });
+  }
+  return out;
+}
+
+/**
+ * One segment of dragon's teeth `length` m long along +x, the enemy's side toward +z, centred: four staggered rows of
+ * truncated pyramids rising toward the back, each on its own footing below the ground (`groundAt(x, z)`: the ground's
+ * height at a local point over the segment's origin), poured in the board-formed concrete and weathered like the
+ * pillboxes (moss low down, lichen on the tops, a damp foot; never painted), a few chipped or settled askew, grass at
+ * their feet. Its own seed: no stream draws.
+ */
+export function buildDragonsTeeth(length: number, tones: FortTones, seed: number,
+  groundAt: (x: number, z: number) => number = () => 0): THREE.BufferGeometry {
+  const m = new Mesh();
+  const rng = mulberry32(seed);
+  const T = TEETH;
+  const plain: FortTones = { ...tones, camo: undefined, age: Math.max(tones.age, 0.6) };
+  const W: Weather = { tones: plain, drip: 0, slits: [], grade: 0, seed: (seed * 31) ^ 0x7ee7, burn: 0 };
+  const base = concreteShade(W);
+  for (const seat of dragonsTeethSeats(length)) {
+    const g = groundAt(seat.x, seat.z);
+    const h = T.heights[seat.row] ?? T.heights[T.heights.length - 1];
+    // the damp foot and the moss read from each tooth's own ground, not the segment's
+    const shade: Shade = (p, nn) => {
+      const c = base([p[0], p[1] - g, p[2]], nn);
+      const foot = 1 - smooth(g + 0.05, g + 0.5, p[1]);
+      return mul(mix(c, mix(tones.earth, tones.turf, 0.35), foot * 0.35), 1 - foot * 0.15);
+    };
+    const lean = rng() < 0.12 ? (rng() - 0.5) * 0.12 : 0, yaw = (rng() - 0.5) * 0.06, hh = h * (0.95 + rng() * 0.08);
+    const chip = rng() < 0.18 ? 0.1 + rng() * 0.12 : 0, chipCorner = Math.floor(rng() * 4);
+    // its footing 0.3 m into the ground, so the slope under it never shows its base
+    tooth(m, seat.x, g - 0.3, seat.z, T.baseHalf * (0.96 + rng() * 0.08) + 0.06, T.topHalf, hh + 0.3, yaw, lean, chip, chipCorner, shade);
+  }
+  // grass at their feet (dry on an arid map, none on the regolith)
+  if (!tones.barren) {
+    const seats = dragonsTeethSeats(length);
+    for (let k = 0; k < seats.length * (tones.arid ? 1 : 3); k++) {
+      const s0 = seats[k % seats.length], a = hash3(k, 1, 3, seed) * Math.PI * 2, d = T.baseHalf + 0.05 + hash3(k, 2, 3, seed) * 0.35;
+      const x = s0.x + Math.cos(a) * d, z = s0.z + Math.sin(a) * d;
+      tuft(m, x, groundAt(x, z) - 0.02, z, 0.2 + hash3(k, 4, 3, seed) * 0.3, mix(tones.crest, tones.turf, hash3(k, 5, 3, seed) * 0.6), seed + k * 7);
+    }
+  }
+  return m.geometry();
+}
+
+/** A tooth: a truncated square pyramid on (x, y0, z), leaning `lean` about x, one top corner chipped off by `chip`. */
+function tooth(m: Mesh, x: number, y0: number, z: number, b: number, t: number, h: number, yaw: number, lean: number,
+  chip: number, chipCorner: number, shade: Shade): void {
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  const P = (lx: number, ly: number, lz: number): V3 => {
+    const zz = lz * Math.cos(lean) - ly * Math.sin(lean), yy = lz * Math.sin(lean) + ly * Math.cos(lean);
+    return [x + lx * c + zz * s, y0 + yy, z - lx * s + zz * c];
+  };
+  const base = [[-b, -b], [b, -b], [b, b], [-b, b]], top = [[-t, -t], [t, -t], [t, t], [-t, t]];
+  const ctr = P(0, h * 0.4, 0);
+  const faceN = (q: V3[]) => sub(scl(add(add(q[0], q[1]), add(q[2], q[3])), 0.25), ctr);
+  // the top's corners, one lowered and pulled in where the concrete spalled off
+  const topY = top.map((_, i) => (chip > 0 && i === chipCorner ? h - chip : h));
+  const topP = top.map(([lx, lz], i) => (chip > 0 && i === chipCorner ? P(lx * 0.4, topY[i], lz * 0.4) : P(lx, topY[i], lz)));
+  for (let i = 0; i < 4; i++) {
+    const j = (i + 1) % 4;
+    const q: V3[] = [P(base[i][0], 0, base[i][1]), P(base[j][0], 0, base[j][1]), topP[j], topP[i]];
+    m.quad(q[0], q[1], q[2], q[3], shade, true, undefined, faceN(q));
+  }
+  const tq: V3[] = [topP[3], topP[2], topP[1], topP[0]];
+  m.quad(tq[0], tq[1], tq[2], tq[3], shade, true, undefined, [0, 1, 0]);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // public
 
 function mulberry32(a: number): Rng {
@@ -1351,6 +1447,9 @@ export const FORT_MAPS: Readonly<Record<string, FortMapEntry>> = Object.freeze({
   mangrove: { style: 'logearth', c: 0x8a877f, e: 0x4f4232, t: 0x56683a, k: 0x76804a, w: 0x6a5a44, age: 0.5 },
   delta: { style: 'logearth', c: 0x8a877f, e: 0x6a5a44, t: 0x61694b, k: 0x8a8a5c, w: 0x6a5a44, age: 0.4 },
 });
+
+/** The maps whose front carries a line of dragon's teeth (the Westwall's: the Rur and the Saar). */
+export const TEETH_MAPS: ReadonlySet<string> = new Set(['reservoir', 'foundry']);
 
 /** A map's pillbox form and tones, or null where the map keeps its own (the sangar, a map not listed). */
 export function fortFor(mapId: string): { style: PillboxStyle; tones: FortTones; seed: number } | null {
@@ -1413,6 +1512,7 @@ export const TEMPERATE_TONES: FortTones = {
 /** For the offline look tools: a style's two states, merged with nothing else. */
 export function buildForRender(o: { variant?: string; broken?: boolean; seed?: number; map?: string }): THREE.BufferGeometry {
   const f = o.map ? fortFor(o.map) : null;
+  if (o.variant === 'teeth') return buildDragonsTeeth(14, f?.tones ?? TEMPERATE_TONES, o.seed ?? 7, (x, z) => 0.04 * x + 0.03 * Math.sin(z * 2));
   const style = f?.style ?? (o.variant as PillboxStyle) ?? 'regelbau', tones = f?.tones ?? TEMPERATE_TONES, seed = f?.seed ?? o.seed ?? 7;
   const body = buildPillbox(style, tones, seed, !!o.broken), bank = pillboxBerm(style, tones, seed);
   const g = mergeGeometries([body, bank], false)!;

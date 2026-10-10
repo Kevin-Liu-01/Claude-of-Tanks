@@ -66,8 +66,9 @@ import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
 import {
-  FORT_CONTACT_FLOOR_M, FORT_PRINT_MEAN, FORT_PRINT_SEED, buildPillbox, fortFor, pillboxBerm, pillboxFootprintGeometry, pillboxFooting,
-} from './maps/fortKit.ts'; // the fortifications lane: the pillbox
+  FORT_CONTACT_FLOOR_M, FORT_PRINT_MEAN, FORT_PRINT_SEED, TEETH, TEETH_MAPS, buildDragonsTeeth, buildPillbox, dragonsTeethSeats, fortFor,
+  pillboxBerm, pillboxFootprintGeometry, pillboxFooting,
+} from './maps/fortKit.ts'; // the fortifications lane: the pillbox, the Westwall's teeth
 import {
   FIELD_STONE_PRINT_SEED, liftFieldStoneMean, paintFieldStoneBuffers as paintFieldStoneBuffersInline, type FieldStoneBuffers,
   type FieldStoneLithology,
@@ -8099,6 +8100,95 @@ ${snowCap ? `
     }
     group.userData.rockBeds = beds;
   }
+  /**
+   * The fortifications lane, round 2 (2026-10-09; the coordinator's yes to dragon's teeth on the Westwall maps): a line of
+   * teeth across each half of the front on the Rur and the Saar maps (fortKit.ts TEETH_MAPS), in two or three segments
+   * with gaps a tank drives through, set back from the field works, the roads, the trees, the buildings and the spawns.
+   * Laid after every seeded pass (its own stream, seed + 7433), so nothing placed before it moves; it keeps off what
+   * they laid. Drawn in the pillbox's concrete (the fortConcrete bucket, one merged draw), its collision from its own
+   * teeth: an anti-tank obstacle that stops hulls and shells, never broken.
+   */
+  function placeDragonsTeeth(): void {
+    if (!fort || !mats.fortConcrete || !TEETH_MAPS.has(mapId)) return;
+    const player = L.spawns.player, enemies = L.spawns.enemies;
+    if (!player || !enemies.length) return;
+    let ex = 0, ez = 0;
+    for (const e of enemies) { ex += e.x; ez += e.z; }
+    ex /= enemies.length; ez /= enemies.length;
+    const dx = ex - player.x, dz = ez - player.z, axis = Math.hypot(dx, dz);
+    if (axis < 160) return;
+    const ax = dx / axis, az = dz / axis, lx = -az, lz = ax;
+    const trng = mulberry32(seed + 7433);
+    const depth = (TEETH.rows - 1) * TEETH.rowGap + 2 * TEETH.baseHalf;
+    const trunks = (vegetation?.treeObstacles ?? []).map((t) => [(t.min[0] + t.max[0]) / 2, (t.min[2] + t.max[2]) / 2,
+      Math.max(t.max[0] - t.min[0], t.max[2] - t.min[2]) / 2] as const);
+    const trenchLines = [...(heightField.assaultTrenchLines?.lines ?? []), ...(heightField.fieldTrenchLines?.lines ?? [])];
+    /** A segment's seat is clear: on firm, even ground, off roads, trees, buildings, the works and the spawns. */
+    const segmentClear = (cx: number, cz: number, yaw: number, len: number): boolean => {
+      const hw = len / 2 + 1.5, hd = depth / 2 + 1.5, fx = Math.sin(yaw), fz = Math.cos(yaw), ux = Math.cos(yaw), uz = -Math.sin(yaw);
+      if (Math.max(Math.abs(cx), Math.abs(cz)) > 440 - hw) return false;
+      if (!boxClearOfRoadCore(heightField, cx, cz, hw + 2, hd + 2, yaw)) return false;
+      if ([player, ...enemies].some((sp) => Math.hypot(cx - sp.x, cz - sp.z) < 70)) return false;
+      const inBox = (x: number, z: number, m: number) => {
+        const rx = x - cx, rz = z - cz;
+        return Math.abs(rx * ux + rz * uz) < hw + m && Math.abs(rx * fx + rz * fz) < hd + m;
+      };
+      if (trunks.some(([x, z, r]) => inBox(x, z, r + 1.5))) return false;
+      if (placedB.some((b) => inBox(b.x, b.z, b.rr + 2))) return false;
+      if (destructibles.some((d) => inBox(d.x, d.z, (d.kind === 'bunker' ? 9 : d.r ?? 1) + 1))) return false;
+      if (obstacles.some((o) => o.kind !== 'tree' && inBox((o.min[0] + o.max[0]) / 2, (o.min[2] + o.max[2]) / 2,
+        Math.max(o.max[0] - o.min[0], o.max[2] - o.min[2]) / 2 + 1))) return false;
+      if (trenchLines.some((t) => inBox(t.x, t.z, t.halfLengthM + 6))) return false;
+      // firm, even ground: the corners and the centre within 0.9 m of their mean, nowhere steep, nowhere soft or wet
+      const pts: Array<[number, number]> = [];
+      for (const su of [-1, -0.5, 0, 0.5, 1]) for (const sd of [-1, 0, 1]) pts.push([cx + ux * su * hw + fx * sd * hd, cz + uz * su * hw + fz * sd * hd]);
+      const hs = pts.map(([x, z]) => heightField.getHeightAt(x, z)), mean = hs.reduce((a, h) => a + h, 0) / hs.length;
+      if (hs.some((h) => Math.abs(h - mean) > 0.9)) return false;
+      return pts.every(([x, z]) => heightField.getNormalAt(x, z).y >= 0.93 && heightField.getGroundType(x, z) !== 'soft' && !noVeg(x, z)
+        && (heightField.getWaterMaskAt?.(x, z) ?? 0) < 0.05);
+    };
+    const tones = fort.tones;
+    const placedSegs: Array<{ x: number; y: number; z: number; yaw: number; len: number }> = [];
+    for (const along of [0.36, 0.64]) {
+      const facing = along < 0.5 ? 1 : -1;  // the near line faces the enemy, the far line the player
+      const yaw = Math.atan2(lx, lz) + (facing > 0 ? 0 : Math.PI);
+      // the line's centre: up to 60 tries along the front; then two or three segments with gaps of 9-14 m
+      for (let attempt = 0; attempt < 60; attempt++) {
+        const a = along + (trng() - 0.5) * 0.08, lateral = (trng() * 2 - 1) * Math.min(150, axis * 0.3);
+        const cx = player.x + ax * axis * a + lx * lateral, cz = player.z + az * axis * a + lz * lateral;
+        const segs = 2 + Math.floor(trng() * 2);
+        const lens = Array.from({ length: segs }, () => 18 + trng() * 12);
+        const gaps = Array.from({ length: segs - 1 }, () => 9 + trng() * 5);
+        const total = lens.reduce((s2, v) => s2 + v, 0) + gaps.reduce((s2, v) => s2 + v, 0);
+        let off = -total / 2;
+        const seats: Array<{ x: number; z: number; len: number }> = [];
+        for (let k = 0; k < segs; k++) {
+          const mid = off + lens[k] / 2;
+          seats.push({ x: cx + lx * mid, z: cz + lz * mid, len: lens[k] });
+          off += lens[k] + (gaps[k] ?? 0);
+        }
+        const ok = seats.filter((sg) => segmentClear(sg.x, sg.z, yaw, sg.len));
+        if (ok.length < 2) continue;
+        for (const sg of ok) placedSegs.push({ x: sg.x, y: heightField.getHeightAt(sg.x, sg.z), z: sg.z, yaw, len: sg.len });
+        break;
+      }
+    }
+    const bucket = (buckets as PropsBuckets).fortConcrete ?? ((buckets as PropsBuckets).fortConcrete = []);
+    for (const [i, sg] of placedSegs.entries()) {
+      const c = Math.cos(sg.yaw), sn = Math.sin(sg.yaw);
+      const groundAt = (x: number, z: number) => heightField.getHeightAt(sg.x + x * c + z * sn, sg.z - x * sn + z * c) - sg.y;
+      const geometry = buildDragonsTeeth(sg.len, tones, (seed + 7433 + i * 131) >>> 0, groundAt);
+      // its collision in its own frame: the teeth's ground band (each tooth a solid) and its shell bands
+      const profile = deriveRuntimeStructureCollisionProfile({ baked: [geometry] });
+      appendStructureCollisionBand(obstacles, profile.contact, sg.x, sg.y, sg.z, sg.yaw).kind = 'teeth';
+      for (const band of profile.shell) appendStructureCollisionBand(colliders, band, sg.x, sg.y, sg.z, sg.yaw).kind = 'teeth';
+      geometry.rotateY(sg.yaw);
+      geometry.translate(sg.x, sg.y, sg.z);
+      geometry.computeBoundingSphere();
+      bucket.push(geometry);
+    }
+    group.userData.dragonsTeeth = placedSegs.map((sg) => ({ ...sg, teeth: dragonsTeethSeats(sg.len).length }));
+  }
   /** The pillboxes' earthworks' collision (above): the bank's movement footprint from where it stands FORT_CONTACT_FLOOR_M
    * high, its shell record its own slabs. Laid after every placement pass (the passes saw the pillbox's box alone, as
    * they did before the bank). */
@@ -10078,6 +10168,7 @@ ${snowCap ? `
       yield { fine: true };
     }
   }
+  placeDragonsTeeth();
   yield* mergeMaterialBuckets();
   // the scenery lane (wave 34): the snow drifts banked against the walls draw as one mesh of their own on the plaster
   // (a drift is a low ramp: it receives the cascades and casts none), so a frame can show and hide them

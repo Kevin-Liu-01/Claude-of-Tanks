@@ -14,8 +14,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  FLAT_UV, FORT_CONTACT_FLOOR_M, FORT_GRADE, FORT_MAPS, FORT_PRINT_MEAN, buildPillbox, fortFor, pillboxBerm, pillboxFootprintGeometry,
-  pillboxFooting,
+  FLAT_UV, FORT_CONTACT_FLOOR_M, FORT_GRADE, FORT_MAPS, FORT_PRINT_MEAN, TEETH, TEETH_MAPS, buildDragonsTeeth, buildPillbox,
+  dragonsTeethSeats, fortFor, pillboxBerm, pillboxFootprintGeometry, pillboxFooting,
 } from './fortKit.ts';
 import { MAP_IDS } from './mapIds.ts';
 import { deriveRuntimeStructureContactBand } from '../structureCollision.ts';
@@ -129,4 +129,39 @@ for (const style of STYLES) {
     'outside the runtime the destructible receipts evaluate (destructibleAuthority slices from D_CELL)');
   assert.match(props, /ob\.kind = 'earthwork';/, 'as an earthwork, not the destructible');
 }
-console.log('fortKit.selftest: every map\'s pillbox (Regelbau, DOT, hex, log and earth) builds intact and razed under a hull\'s reach, its embrasures dark in board-formed concrete, its bank falling to the toe with its contact cut at 0.35 m, the old draws spent, shells on its slabs, the bank a static earthwork');
+// ---------------------------------------------------------------------------------------------- 5. the Westwall's teeth
+{
+  for (const id of TEETH_MAPS) assert.ok(FORT_MAPS[id], `${id}: a teeth map has its pillbox's tones`);
+  const f = fortFor('reservoir');
+  const seats = dragonsTeethSeats(24);
+  assert.equal(new Set(seats.map((s) => s.row)).size, TEETH.rows, 'four rows');
+  const rows = [...new Set(seats.map((s) => s.z))].sort((a, b) => b - a);
+  assert.ok(rows[0] > rows[rows.length - 1], 'row 0 on the enemy\'s side (+z)');
+  const slope = (x, z) => 0.05 * x + 0.02 * z;
+  const g = buildDragonsTeeth(24, f.tones, 11, slope);
+  assert.ok(g.attributes.position.count / 3 <= 3200, `a 24 m segment within its budget (${g.attributes.position.count / 3} triangles)`);
+  // every tooth stands on its own ground: its foot below it, its top at its row's height over it (measured without the
+  // grass: the same teeth, the same draws)
+  const bare = buildDragonsTeeth(24, { ...f.tones, barren: true }, 11, slope), p = bare.attributes.position;
+  for (const seat of seats.filter((_, i) => i % 7 === 0)) {
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < p.count; i++) {
+      const m = TEETH.baseHalf + 0.2;
+      if (Math.abs(p.getX(i) - seat.x) > m || Math.abs(p.getZ(i) - seat.z) > m) continue;
+      lo = Math.min(lo, p.getY(i)); hi = Math.max(hi, p.getY(i));
+    }
+    const ground = slope(seat.x, seat.z), h = TEETH.heights[seat.row];
+    assert.ok(lo < ground - 0.15, `a tooth's footing below its ground (${(lo - ground).toFixed(2)} m)`);
+    assert.ok(Math.abs(hi - ground - h) < h * 0.12 + 0.05, `its top at its row's height over its ground (${(hi - ground).toFixed(2)} of ${h})`);
+  }
+  // never painted: the Regelbau's camouflage stays on the casemates
+  const camoMap = Object.entries(FORT_MAPS).find(([, e]) => e.camo === 'pattern')?.[0];
+  const fc = fortFor(camoMap), plain = { ...fc.tones, camo: undefined };
+  const a = buildDragonsTeeth(12, fc.tones, 5), b = buildDragonsTeeth(12, plain, 5);
+  assert.deepEqual(Array.from(a.attributes.color.array), Array.from(b.attributes.color.array), 'the teeth never take the casemates\' paint');
+  const props = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
+  assert.match(props, /\n  placeDragonsTeeth\(\);\n  yield\* mergeMaterialBuckets\(\);/, 'laid after every seeded pass, before the buckets merge');
+  assert.match(props, /appendStructureCollisionBand\(obstacles, profile\.contact, sg\.x, sg\.y, sg\.z, sg\.yaw\)\.kind = 'teeth';/,
+    'its collision from its own teeth');
+}
+console.log('fortKit.selftest: every map\'s pillbox (Regelbau, DOT, hex, log and earth) builds intact and razed under a hull\'s reach, its embrasures dark in board-formed concrete, its bank falling to the toe with its contact cut at 0.35 m, the old draws spent, shells on its slabs, the bank a static earthwork; the Westwall\'s teeth in four rows, each on its own ground, unpainted');
