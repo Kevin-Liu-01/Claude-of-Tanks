@@ -13,11 +13,13 @@ interface TopicDefinition {
   sectionIcons: readonly DocsIconKey[];
   sections: readonly TopicSection[];
   media: readonly TopicMedia[];
+  /** The sections the two figures follow (default the second and the fourth). */
+  mediaAt?: readonly [number, number];
 }
 
 export const TOPIC_ORDER = [
   'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance',
-  'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio',
+  'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio', 'filming',
 ] as const;
 
 export const topics: Record<string, TopicDefinition> = {
@@ -261,6 +263,33 @@ export const topics: Record<string, TopicDefinition> = {
       ['/media/showcase-r1/process/action-review-02.webp', t('docs.topic.studio.media2')],
     ],
   },
+  // How the media rounds were filmed (2026-10-06). The second section holds the take viewer and the third the
+  // process, both filled by filming.ts; public/media/filming-r1 is built by tools/media-r5/docs-media.mjs.
+  filming: {
+    label: t('docs.topic.filming.label'),
+    title: t('docs.topic.filming.title'),
+    lede: t('docs.topic.filming.lede'),
+    hero: '/media/director-r4/silent-loop.mp4',
+    icon: 'filming',
+    sectionIcons: ['specification', 'filming', 'workflow', 'navigation', 'perception', 'studio', 'critique', 'rendering', 'audio', 'release'],
+    sections: [
+      [t('docs.topic.filming.s1.t'), t('docs.topic.filming.s1.p1'), t('docs.topic.filming.s1.p2')],
+      [t('docs.topic.filming.s2.t'), t('docs.topic.filming.s2.p1')],
+      [t('docs.topic.filming.s3.t'), t('docs.topic.filming.s3.p1')],
+      [t('docs.topic.filming.s4.t'), t('docs.topic.filming.s4.p1'), t('docs.topic.filming.s4.p2')],
+      [t('docs.topic.filming.s5.t'), t('docs.topic.filming.s5.p1'), t('docs.topic.filming.s5.p2')],
+      [t('docs.topic.filming.s6.t'), t('docs.topic.filming.s6.p1'), t('docs.topic.filming.s6.p2')],
+      [t('docs.topic.filming.s7.t'), t('docs.topic.filming.s7.p1'), t('docs.topic.filming.s7.p2')],
+      [t('docs.topic.filming.s8.t'), t('docs.topic.filming.s8.p1'), t('docs.topic.filming.s8.p2')],
+      [t('docs.topic.filming.s9.t'), t('docs.topic.filming.s9.p1'), t('docs.topic.filming.s9.p2')],
+      [t('docs.topic.filming.s10.t'), t('docs.topic.filming.s10.p1'), t('docs.topic.filming.s10.p2')],
+    ],
+    media: [
+      ['/media/filming-r1/previz-sheet.webp', t('docs.topic.filming.media1')],
+      ['/media/filming-r1/plan-view.webp', t('docs.topic.filming.media2')],
+    ],
+    mediaAt: [3, 5],
+  },
 };
 
 // Practical field guides follow the original technical anchors.
@@ -303,15 +332,19 @@ function renderTopicPage(): void {
   const heroMarkup = /\.(webm|mp4)$/.test(topic.hero)
     ? `<video autoplay muted loop playsinline preload="metadata" poster="${topic.hero.replace(/\.(webm|mp4)$/, '.jpg')}" aria-label="${heroAlt}"><source src="${topic.hero}" type="${topic.hero.endsWith('.mp4') ? 'video/mp4' : 'video/webm'}"></video>`
     : `<img src="${topic.hero}" alt="${heroAlt}">`;
+  const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
   const sectionMap = topic.sections.map(([title], index) => `<a href="#${topicSectionId(index)}"><span data-doc-icon="${topic.sectionIcons[index] || topic.icon}"></span><b>${String(index + 1).padStart(2, '0')}</b><strong>${title}</strong></a>`).join('');
   root.innerHTML = `
     <header class="topic-hero">${heroMarkup}<div class="topic-hero-shade"></div><div class="shell"><p class="topic-kicker"><span data-doc-icon="${topic.icon}"></span><span>${t('docs.topic.kicker', { label: topic.label })}</span></p><h1>${topic.title}</h1><p>${topic.lede}</p></div></header>
     <nav class="topic-nav" aria-label="${t('docs.topic.navAria')}"><div class="shell"><a href="/docs"><span class="topic-nav-icon" data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${topicNav}</div></nav>
-    <div class="shell topic-layout"><article><nav class="topic-section-map" aria-label="${t('docs.topic.onThisPage')}">${sectionMap}${['vehicles','worlds','simulation'].includes(slug) ? `<a href="#reference"><strong>${t(`docs.reference.${slug}.title`)}</strong></a>` : ''}</nav>${topic.sections.map((section, index) => sectionMarkup(section, index, topic.sectionIcons[index] || topic.icon, topic.media[index === 1 ? 0 : index === 3 ? 1 : -1])).join('')}</article><aside><span class="topic-aside-icon" data-doc-icon="${topic.icon}"></span><p>${t('docs.topic.asideKicker')}</p><strong>${topic.label}</strong><span>${t('docs.topic.asideBody')}</span><a href="/docs">${t('docs.topic.asideLink')}</a></aside></div>`;
+    <div class="shell topic-layout"><article><nav class="topic-section-map" aria-label="${t('docs.topic.onThisPage')}">${sectionMap}${['vehicles','worlds','simulation'].includes(slug) ? `<a href="#reference"><strong>${t(`docs.reference.${slug}.title`)}</strong></a>` : ''}</nav>${topic.sections.map((section, index) => sectionMarkup(section, index, topic.sectionIcons[index] || topic.icon, topic.media[index === firstFigureAt ? 0 : index === secondFigureAt ? 1 : -1])).join('')}</article><aside><span class="topic-aside-icon" data-doc-icon="${topic.icon}"></span><p>${t('docs.topic.asideKicker')}</p><strong>${topic.label}</strong><span>${t('docs.topic.asideBody')}</span><a href="/docs">${t('docs.topic.asideLink')}</a></aside></div>`;
   mountDocsIcons(root);
   const article = root.querySelector<HTMLElement>('article');
   if (article && ['vehicles', 'worlds', 'simulation'].includes(slug)) {
     void import('./reference.ts').then(({mountReference}) => mountReference(article, slug));
+  }
+  if (article && slug === 'filming') {
+    void import('./filming.ts').then(({mountFilming}) => mountFilming(article));
   }
 
   const navStrip = root.querySelector<HTMLElement>('.topic-nav .shell');

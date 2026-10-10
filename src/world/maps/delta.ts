@@ -158,8 +158,8 @@ export default {
     haystacks: 18, rocks: 148, outcrops: 10, craters: 62, rubblePiles: 10,
     cropFields: 11, sandbagLines: 17, hedgehogs: 8,
     cropForm: 'wet-upright', // existing dry wetland-edge plots, not flooded paddies
-    tankWrecks: { era: 'modern', count: 6, debris: true,
-      ids: ['challenger2', 'leclerc', 'bmp3', 'm2a2_bradley', 'type99a', 'm551_sheridan'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): the Jamuna: the Bangladesh Army's Type 59s
+    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['type59'] },
     inhabit: {
       stalls: 5, benches: 4, coreClutter: 24, bales: 8, stooks: 10,
       pots: 8, troughs: 2, laundry: 4, handcarts: 4, carts: 4,

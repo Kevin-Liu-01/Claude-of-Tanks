@@ -1,0 +1,27 @@
+{
+ "map": "autumn",
+ "scene": "/Users/kevinliu/.codex/worktrees/cot-restore-1049-visuals-20260911/shots/media-r5/final/resolved/t13-ford-fight.resolved.json",
+ "fps": 30,
+ "frames": 150,
+ "viewport": [
+  1920,
+  1080
+ ],
+ "actions": [
+  {
+   "frame": 0,
+   "do": "click",
+   "text": "Tanks"
+  },
+  {
+   "frame": 2,
+   "do": "scroll",
+   "text": "Add tanks"
+  },
+  {
+   "frame": 80,
+   "do": "scroll",
+   "text": "Selected tank"
+  }
+ ]
+}

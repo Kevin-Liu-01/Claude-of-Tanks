@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { TankBuilderPort } from './tankFactoryCore.ts';
 
-type ReceiverId = 'pt91_twardy' | 'leo2a6_ua' | 'ua_m1a1';
+type ReceiverId = 'pt91_twardy' | 'leo2a6_ua' | 'ua_m1a1' | 'ua_t80u_modern';
 type Vec3 = readonly [number, number, number];
 export interface MissionReceiverPart {
   readonly role: 'roof-post' | 'rail-post' | 'crossarm' | 'rail-socket' | 'lower-arm' | 'edge-return';
@@ -29,6 +29,8 @@ export const MISSION_RECEIVER_SEATS: Readonly<Record<ReceiverId, ReceiverSeat>> 
     minX: -1.625, maxX: -1.275, minZ: .314, maxZ: .606 },
   ua_m1a1: { x: -1.50, z: -1, topY: 1.535,
     minX: -1.675, maxX: -1.325, minZ: -1.146, maxZ: -.854 },
+  ua_t80u_modern: { x: -1.30, z: -.18, topY: 1.068,
+    minX: -1.475, maxX: -1.125, minZ: -.326, maxZ: -.034 },
 };
 
 export function missionReceiverParts(id: ReceiverId): MissionReceiverPart[] {
@@ -51,6 +53,18 @@ export function missionReceiverParts(id: ReceiverId): MissionReceiverPart[] {
       parts.push({ role: 'rail-post', size: [.026, .041, .026],
         center: [-1.55, .9425, seat.z + z] });
     }
+  } else if (id === 'ua_t80u_modern') {
+    // The left roof-cage wing (fieldRoofCage.ts: rails at x -1.62 and -.98,
+    // tie at -1.30, top 1.04) covers Zoria's only roof launch column; the
+    // roof gun sweeps everything inboard of it. Two flat bearers lie across
+    // the wing, seated 8 mm into its rails, ties and cross rows, so the drone
+    // rides above the lattice as the M1A1 SA's does, clear of the hinges and
+    // the mast at z -.68.
+    for (const dz of [-.09, .09]) {
+      parts.push({ role: 'crossarm', size: [.67, .028, .116],
+        center: [seat.x, seat.topY - .014, seat.z + dz] });
+    }
+    return parts;
   } else {
     // The roof cloth is above the load-bearing cage. Two thin hooked arms
     // reach around its existing edge, keeping both the cloth and the launch

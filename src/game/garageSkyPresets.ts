@@ -77,7 +77,7 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
   badlands: Object.freeze({
     sunElevationDeg: 30, sunAzimuthDeg: 116,
     turbidity: 7.2, rayleigh: 1.05, mieCoefficient: 0.0095, mieDirectionalG: 0.86,
-    fogDensity: 0.00025 /* 2026-10-03: the arid air, follows badlands.ts */, fogTintHex: 0xb18b77, fogMix: 0.56, envIntensity: 0.17,
+    fogDensity: 0.00036 /* follows badlands.ts (Redrock round 9, wave 261: the far massifs' layered haze; was the arid 0.00025) */, fogTintHex: 0xb18b77, fogMix: 0.56, envIntensity: 0.17,
     cloudOpacity: 0.62, cloudOpacity2: 0.26, cloudTintHex: 0xffe4cb,
     sunIntensity: 4.25, sunColorHex: 0xffd4ad, hemiIntensity: 0.25,
     postExposure: 0.92,

@@ -438,6 +438,14 @@ try {
   }
   assert.ok(CENSUS_HELP.includes('establishing, chase, bird, sky-w, sky-s, terrain, tree'));
   assert.equal(parseCensusArgs(['capture', '--out=o', '--probe-lock=rel/probe.lock']).options.probeLock, path.resolve('rel/probe.lock'));
+  // (the hitbox lane, 2026-10-07) map-bound poses and the collider overlay frame
+  const bound = parseCensusArgs(['capture', '--out=o', '--views=none', '--pose=badlands/rock-a:1,3,2:4,1,5+titan_gorge/rock-a:0,2,0:1,1,1', '--overlay=colliders:24']).options;
+  assert.deepEqual(bound.views.map((v) => [v.map, v.name]), [['badlands', 'rock-a'], ['titan_gorge', 'rock-a']], 'a pose binds to its map');
+  assert.deepEqual(viewsForMap(bound.views, 'badlands').map((v) => v.name), ['rock-a'], 'each map shoots its own poses');
+  assert.deepEqual(bound.overlay, { kind: 'colliders', radius: 24 }, 'the overlay radius');
+  assert.equal(parseCensusArgs(['capture', '--out=o', '--overlay=colliders']).options.overlay.radius, 30, 'the default overlay radius');
+  assert.throws(() => parseCensusArgs(['capture', '--out=o', '--overlay=walls']), /--overlay needs colliders/);
+  assert.throws(() => parseCensusArgs(['capture', '--out=o', '--views=none', '--pose=a/x:1,1,1:2,2,2+a/x:1,1,1:2,2,2']), /Duplicate census view name/);
   assert.equal(parseCensusArgs(['capture', '--out=o']).options.probeLock, null);
 
   // ------------------------------------------------------------------ the cloudscape gate (2026-10-03, the skies lane's race)

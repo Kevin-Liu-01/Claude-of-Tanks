@@ -247,13 +247,13 @@ export default {
     { x: -34, z: 450 }, { x: -65, z: 398 }, { x: -3, z: 398 }, { x: -127, z: 398 },
     { x: 59, z: 398 }, { x: -96, z: 450 }, { x: 28, z: 450 },
   ] },
-  splat: { sourcedPalette: 'verdant',
+  splat: { sourcedPalette: 'polders', // (ground lane, wave 248: the polders' own clay, not Verdant's black earth)
     fieldPatch: 1.25, seaLake: true, seaFoam: 0.02, seaRamp: [0.12, 0.48], shoreDirt: true, iceDrift: 0.02,
     // (step 3, gauntlet wave 205: "turquoise kidney-shaped ponds", "thin neon-blue ditch lines") the polder's water dark
-    // and still under a grey North Sea sky (was [0.30, 0.42, 0.43]), the water tone less saturated and darker, no foam;
-    // (wave 205: "near-black soil") Zeeland's sea clay grey-brown, lighter than the black earth, its plough a mid brown
+    // and still under a grey North Sea sky (was [0.30, 0.42, 0.43]), the water tone less saturated and darker, no foam
+    // (the soil's clay is the ground lane's own palette row, wave 248: the stale step 3's soil tint and plough lift over
+    // Verdant's black earth stand down)
     mudTone: (h: number, s: number, l: number) => [h, Math.min(1, s * 0.55), Math.min(1, l * 0.72)],
-    soilTint: [1.2, 1.1, 0.98], ploughLift: 1.2,
     marshGloss: 0.82, iceSky: [0.21, 0.25, 0.25], midRelief: 0.64,
     tintA: [0.84, 1.01, 0.66], tintB: [0.60, 0.76, 0.51], tintC: [1.08, 1.08, 0.78], roadTint: [0.76, 0.72, 0.61],
   },
@@ -344,10 +344,10 @@ export default {
     // (step 3, gauntlet wave 205: "potato-shaped boulders with decal lichen" on marine clay) no stone on the polder: no
     // scattered rocks, no outcrops (and none round the tactical beats)
     haystacks: 18, rocks: 0, outcrops: 0, craters: 48, rubblePiles: 10, cropFields: 10, sandbagLines: 14, hedgehogs: 8,
-    tankWrecks: { era: 'modern', count: 5, debris: true,
-      ids: ['leo2a7v', 'marder1a3', 'strv122', 'leclerc', 'cv90'] },
-    // (step 3) the free-standing garden runs in planks, the polder kit's own yard fence: the white picket is gone (waves
-    // 183–184; the props layer's default is still the picket in this tree)
+    // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
+    // front's war; the war shows through the burnt period trucks and carts
+    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
+    // (step 3) the free-standing garden runs in planks, the polder kit's own yard fence (waves 183–184)
     inhabit: { stalls: 2, benches: 3, coreClutter: 18, bales: 12, stooks: 12, troughs: 2, laundry: 3, handcarts: 3, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 2, modernClutter: 18, looseClutter: 18, roadFence: 'fenceplank', yardFence: 'fenceplank' },
   },
   // (step 4, 2026-10-07; the coordinator: "Dutch steel windmotors (the Bosman type) were common in Zeeland's polders by the

@@ -26,6 +26,7 @@ mkdirSync(join(output, 'static', 'maps'), { recursive: true });
 writeFileSync(join(output, 'static', 'maps', 'verdant-a1b2c3d4.png'), 'png');
 // The collision manifests (content-addressed beside an unhashed index) and the runtime directories.
 const staticFiles = ['mp-collision/index.json', 'mp-collision/verdant.3700dca0d36b.json', 'mp-collision/titan_gorge.0123456789ab.json',
+  'mp-collision/verdant@assault-trenches.0123456789ab.json',
   'mp-collision/notes.json', 'mp-collision/verdant.3700DCA0D36B.json', 'mp-collision/nested/deep.0123456789ab.json',
   'textures/terrain/Grass004_1K-JPG_Color.jpg', 'icons/m1a2_sepv3_angle.webp', 'icons/pt91_side_silhouette.png', 'icons/tank-assets.json',
   'fonts/ABCMonumentGrotesk-Bold.woff2', 'fonts/inter/Inter.woff2', 'fonts/inter/OFL.txt', 'audio/shot.ogg', 'minimaps/verdant.webp',
@@ -75,7 +76,8 @@ try {
   assert.equal(buildImmutableRoutes([], 40).length, 0);
 
   // The collision manifests: the hashed names only — not the index, not an unhashed or upper-case name, not a subdirectory.
-  assert.deepEqual(listCollisionManifests(join(output, 'static')), ['titan_gorge.0123456789ab.json', 'verdant.3700dca0d36b.json']);
+  assert.deepEqual(listCollisionManifests(join(output, 'static')), ['titan_gorge.0123456789ab.json', 'verdant.3700dca0d36b.json',
+    'verdant@assault-trenches.0123456789ab.json']);
   // The runtime files: images, audio and fonts at any depth of the six directories; their JSON and licence text stay out.
   const runtime = listRuntimeFiles(join(output, 'static'));
   assert.deepEqual(runtime, {
@@ -100,6 +102,8 @@ try {
   }
   assert.equal(cacheFor('/mp-collision/verdant.3700dca0d36b.json'), IMMUTABLE_CACHE_CONTROL, 'a content-addressed manifest is immutable');
   assert.equal(cacheFor('/mp-collision/titan_gorge.0123456789ab.json'), IMMUTABLE_CACHE_CONTROL);
+  assert.equal(cacheFor('/mp-collision/verdant@assault-trenches.0123456789ab.json'), IMMUTABLE_CACHE_CONTROL,
+    'a battlefield variant\'s manifest is content-addressed too');
   for (const path of ['/mp-collision/index.json', '/mp-collision/notes.json', '/mp-collision/verdant.000000000000.json',
     '/mp-collision/verdant.3700DCA0D36B.json', '/mp-collision/nested/deep.0123456789ab.json']) {
     assert.equal(cacheFor(path), null, `${path} keeps Vercel's default (the index names the hashes; a miss must not stick)`);
@@ -126,7 +130,7 @@ try {
   writeFileSync(join(output, 'config.json'), JSON.stringify({ version: 3, routes: [{ handle: 'filesystem' }] }));
   assert.throws(() => execFileSync(process.execPath, [tool, `--output=${output}`, '--check'], { stdio: 'pipe' }), 'without routes --check exits non-zero');
   const first = execFileSync(process.execPath, [tool, `--output=${output}`, '--group=40'], { encoding: 'utf8' });
-  assert.match(first, /5 hashed files under \/assets → 1 immutable routes; 2 collision manifests → 1 immutable routes; 8 runtime files in textures, icons, fonts, audio, maps, minimaps → 6 routes/);
+  assert.match(first, /5 hashed files under \/assets → 1 immutable routes; 3 collision manifests → 1 immutable routes; 8 runtime files in textures, icons, fonts, audio, maps, minimaps → 6 routes/);
   const once = JSON.parse(readFileSync(join(output, 'config.json'), 'utf8'));
   execFileSync(process.execPath, [tool, `--output=${output}`, '--group=40'], { encoding: 'utf8' });
   const twice = JSON.parse(readFileSync(join(output, 'config.json'), 'utf8'));
@@ -134,7 +138,7 @@ try {
   assert.equal(twice.routes.filter(isImmutableAssetRoute).length, 1);
   assert.equal(twice.routes.filter(isManagedCacheRoute).length, 8, 'assets + collision + six runtime directories');
   assert.equal(twice.routes[twice.routes.length - 1].handle, 'filesystem');
-  assert.match(execFileSync(process.execPath, [tool, `--output=${output}`, '--check'], { encoding: 'utf8' }), /every one of the 15 files is covered/);
+  assert.match(execFileSync(process.execPath, [tool, `--output=${output}`, '--check'], { encoding: 'utf8' }), /every one of the 16 files is covered/);
   // --check covers the new families: drop the collision route and it fails.
   writeFileSync(join(output, 'config.json'), JSON.stringify({ ...twice, routes: twice.routes.filter((route) => !route.src?.startsWith('^/mp-collision/')) }));
   assert.throws(() => execFileSync(process.execPath, [tool, `--output=${output}`, '--check'], { stdio: 'pipe' }), 'an uncovered collision manifest fails --check');

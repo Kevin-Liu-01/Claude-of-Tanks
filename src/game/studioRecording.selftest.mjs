@@ -25,13 +25,13 @@ function fixture() {
   const track=()=>{const t={stopped:false,stop(){this.stopped=true;},requestFrame(){if(throwAt==='requestFrame')throw Error('requestFrame');if(++submitted===chunkAfter)encoders.at(-1).chunk();}};tracks.push(t);return t;};
   const make=new Function('ports',`
     const {MediaRecorder,renderer,performance,setTimeout,clearTimeout,document,post}=ports;
-    let recording=null,timeScale=0,clockMs=0;
+    let recording=null,timeScale=0,clockMs=0,filming=false;
     const storyboard={durationMs:15000},videoMimeType=()=> 'video/webm';
     const rail={updateVisibility(){}},lighting={update(){},updateFrustums(){}},panel={tick(){},refreshStoryboard(){},refreshTime(){}};
     let poolSweepAcc=0,frameDirty=false,lastFov=60;
     const camera={fov:60,position:{},getWorldDirection(){}},_fwd={},perf={skippedFrames:0,renderedFrames:0};
-    const updateCamera=()=>false,sweepPool=()=>{},advanceTimeline=ms=>{clockMs+=ms;};
-    const invalidate=()=>{frameDirty=true;},stepFx=()=>{},seekTimeline=t=>{clockMs=t;},getWorld=()=>({mapId:'test',update(){}});
+    const updateCamera=()=>false,sweepPool=()=>{},advanceTimeline=ms=>{clockMs+=ms;},syncCrushPlan=()=>{};
+    const invalidate=()=>{frameDirty=true;},stepFx=()=>{},seekTimeline=t=>{clockMs=t;},getWorld=()=>({mapId:'test',update(){}}),flareToWallClock=()=>{};
     ${functions}
     ${tickFunction}
     return {recordVideo,stopRecording,frame:(dt=1/60,wall=dt)=>tick(dt,wall),perf,clockValue:()=>clockMs,state:()=>({active:!!recording,timeScale}),clock:t=>{clockMs=t;}};
@@ -99,7 +99,8 @@ const captureEnd=source.indexOf('  function videoMimeType(',captureBegin);
 assert.ok(captureBegin>0 && captureEnd>captureBegin);
 const captureFunctions=stripTypeScriptTypes(source.slice(captureBegin,captureEnd));
 function captureFixture({fail=false,pixelRatio=2}={}) {
-  let width=1280,height=720,ratio=pixelRatio,target='1280x720',pending=0,clock=2500,draws=0;
+  let width=1280,height=720,ratio=pixelRatio,target='1280x720',pending=0,clock=2500,draws=0,quality='preview';
+  const cinema={setQuality(q){quality=q;}};
   const rail={group:{visible:true}},marker={group:{visible:false}};
   const camera={aspect:width/height,updateProjectionMatrix(){},updateMatrixWorld(){}};
   const renderer={
@@ -108,6 +109,7 @@ function captureFixture({fail=false,pixelRatio=2}={}) {
     capabilities:{maxTextureSize:4096},
     domElement:{toDataURL(){
       assert.equal(pending,0,'capture cannot read partially rebuilt history');
+      assert.equal(quality,'capture','picture passes render at capture quality');
       assert.equal(rail.group.visible,false);assert.equal(marker.group.visible,false);
       if(fail)throw Error('readback failed');
       return 'data:image/png;base64,capture';
@@ -121,19 +123,19 @@ function captureFixture({fail=false,pixelRatio=2}={}) {
     const changed=pending>0;pending=0;return changed;
   }}}};
   const capture=new Function('ports',`
-    const {renderer,camera,post,scene,rail,marker}=ports;
+    const {renderer,camera,post,scene,rail,marker,cinema}=ports;
     const _size={},CAPTURE_MAX_W=4096,CAPTURE_MIN_W=1920;
     const lighting={updateFrustums(){},update(){}},stepFx=()=>{};
     ${captureFunctions}
     return capture;
-  `)({renderer,camera,post,scene,rail,marker});
-  return {capture,cut(){pending=4;},state:()=>({width,height,ratio,pending,clock,draws,aspect:camera.aspect,rail:rail.group.visible,marker:marker.group.visible})};
+  `)({renderer,camera,post,scene,rail,marker,cinema});
+  return {capture,cut(){pending=4;},state:()=>({width,height,ratio,pending,clock,draws,aspect:camera.aspect,rail:rail.group.visible,marker:marker.group.visible,quality})};
 }
 for(const fail of [false,true]) {
   const f=captureFixture({fail});
   if(fail)assert.throws(()=>f.capture({width:3840,height:2160}),/readback failed/);
   else assert.deepEqual(f.capture({width:3840,height:2160}),{dataURL:'data:image/png;base64,capture',width:3840,height:2160});
-  assert.deepEqual(f.state(),{width:1280,height:720,ratio:2,pending:0,clock:2500,draws:4,aspect:1280/720,rail:true,marker:false});
+  assert.deepEqual(f.state(),{width:1280,height:720,ratio:2,pending:0,clock:2500,draws:4,aspect:1280/720,rail:true,marker:false,quality:'preview'});
 }
 {
   const f=captureFixture({pixelRatio:1});

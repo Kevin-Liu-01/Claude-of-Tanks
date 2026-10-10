@@ -23,6 +23,15 @@ const compile = new Function('THREE', 'initialTerrainLods', 'terrainLodForDistan
   'performance', stripTypeScriptTypes(`
   const MAP_SIZE = 1024, HALF = 512;
   function* buildHorizonRingSteps() { return new THREE.Group(); }
+  // (2026-10-08, the ring worker) the ring's hook (horizonRingHook.ts) installs a ring that is an empty group here — the
+  // terrain build's own delegates (in this slice, after the stub above) reach the ring through it — and supplies no
+  // pipeline: the ring builds where it stands
+  const horizonRing = () => ({
+    HORIZON_SEGMENTS: 287,
+    buildHorizonRingSteps: function* () { return new THREE.Group(); },
+    horizonRingGeometrySteps: function* () { return null; },
+  });
+  function horizonRingSupplyFor() { return null; }
   function* createSplatMaterialSteps() {
     return { material: new THREE.MeshStandardMaterial(), textures: new Set() };
   }

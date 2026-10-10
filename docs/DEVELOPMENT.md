@@ -39,6 +39,16 @@ Before publishing:
    lane's stale shard passes silently (round 48, 2026-09-24: Amberford's
    round-1 village haunted the dedicated bots on the new terrain and
    `server/battlePacing.selftest` went red).
+   Since 2026-10-07 (destruction, `docs/DESTRUCTION.md` §3.1) every structure record also packs its structure
+   group (`g`, and `gr` for a landmark set piece): a shard captured by a tree without that packer carries no groups,
+   and the host then plays every building on that map as indestructible. After merging lanes that touched maps,
+   regenerate every shard on the merged tree in Node — `nice -n 15 node tools/capture-world-collision-manifests.mjs
+   --node` (all maps, about an hour on a loaded machine; `--maps a,b` for some) — and confirm with `--check`; record
+   order and counts do not change, only bytes and the index digests.
+   Since 2026-10-08 Frontline Assault's authority plays the map's trench variant from its own shard
+   (`server/world-collision-manifests/<map>@assault-trenches.json`, listed under the index's `variants`): anything
+   that moves a map's records moves its variant's too, so regenerate both — `--node --variant=assault-trenches`
+   (about as long again) and `--check --variant=assault-trenches`. A base recapture keeps the index's variants.
 4. Run `node tools/shared-main-preflight.mjs --base=<starting-base> --validated-head=<tested-commit>`.
    This reads the actual remote main, rejects a dirty or stale candidate and
    reports overlapping paths. After reviewing those paths and running their
@@ -411,7 +421,10 @@ per fleet). Three fleet passes now build each tank once
 per build and run every audit that reads that build on it (`src/vehicles/fleetPass.test-support.mjs`; the audits are
 the former receipts' checks, with their assertions unchanged, in `*Audit.test-support.mjs` modules beside them):
 
-- `fleetPassHigh` — the unbatched seed-4242 HIGH build: the geometry ledger's HIGH rows, machine-gun mounts (with the
+- `fleetPassHigh` — the unbatched seed-4242 HIGH build: the geometry ledger's HIGH rows, every drawn geometry's
+  attributes object still in V8's fast mode (2026-10-07, `src/world/geometryStreams.test-support.mjs`: no
+  `deleteAttribute` on what the renderer draws; the maps' walk rides on `collisionManifestDrift`'s Node world build
+  and `drawnGeometryShape` holds the control and the garages), machine-gun mounts (with the
   detached-mount negative control), track end wraps (with the broken-station controls and 3/5 mm limits), wheel
   quality and the Gallery surface markup (formerly `wheelQuality` and `surfaceMarkupFleet`).
 - `fleetPassLow` — the same build at LOW: the ledger's LOW rows, ERA registration and gun articulation (formerly
@@ -891,6 +904,55 @@ This CPU-only tool runs the production map producers at the canonical seeds and
 updates only identified wreck records in the server shards. It retains unrelated
 obstacles, shell colliders and concealment records. Its inert canvas is sufficient
 for collision generation; it is not evidence of native rendering quality.
+
+### World collider audit and the stones' colliders
+
+Every world collider is held to the geometry it stands for by `tools/world-collider-audit.mjs`
+(the measures in `tools/worldColliderAudit.mjs`, pinned by its selftest). It builds a map in Node
+with the shard builders' seeds and measures each collider against the solid meshes round it: the
+movement footprint against the mesh's horizontal section between 0.2 and 1.4 m over the local ground
+(phantom area: collider with no stone under it; leak area: stone with no collider), and horizontal
+rays from hull to turret height (stopped clear of the stone, or passing through it, by more than
+10 cm). `--families=rocks` measures every stone with and without a collider and the scenery's rock
+formations (on a tree whose stones carry their own colliders, each stone's legacy record survives as
+the ground cover's cosmetic twin and is measured beside it); `--families=records` the other records
+(`--per-kind=<n>` samples); `--write-shards` also writes the map's collision shard from the same
+build, its index entry printed as an `ENTRY` line.
+
+A stone's colliders come from its own mesh (`src/world/rockCollision.ts`, receipt
+`rockCollision.selftest.mjs`): the movement footprint is the stone between 0.2 and 3 m over its
+ground, to its real top; the shell and sight colliders are ranged slabs of the stone's sections
+('w' parts, no format change); a stone rising less than 0.45 m is driven over and has none, and the
+crushable small rocks stop shells like the other dense crushable cover. `props.ts` keeps the legacy
+records through every placement pass and refits them once all have run, so no prop moves.
+
+The props' leaning solids take shell slabs the same way (`src/world/slabCollision.ts`): a sandbag
+stack's shell record is its own geometry's slabs (it published none, so shells passed 70-96 % of the
+stacks), a tank wreck's the convex hull of its hull and turret vertices cut in 0.5 m slabs (the
+movement record stays the solids' prisms, a hull's floor), each hedgehog beam its own slabs, and a
+pylon leg its footing and the strut's slabs to the leg's end (the lattice's 4-6 cm braces carry
+none). A formation's standing blocks keep their own outlines, its movement footprint the stone from
+0.35 m (its pieces flare at their feet; its loose pieces, fewer on phones, carry none, so every tier
+lays the same colliders), and `--families=formations` holds them to the legacy hull by the map's
+union of formation stone (the `scenery-union` row: empty ground plus uncovered stone). A stone a
+hull drives over has no collider and a shell aimed at it meets the ground behind it
+(`rockDriveOver.selftest.mjs`); a crushed stone stops no shell from the tick it is crushed
+(`crushableClutter.selftest.mjs`). Where the stones' own colliders left a sector under the layout
+brief's cover band, `props.coverOutcrops` places authored crescents of the map's own boulders (hard
+cover, on their own seeded draws so no other stone moves).
+
+Every convex part is convex in fact: `collision.ts convexOutlineInPlace` drops the repeated corners
+and those that turn against the outline's winding when a shape is set and when a shard is decoded
+(the shell clip, the point test and the movement SAT read every edge as a half-plane, so one reflex
+corner cut away the part behind its line). `server/convexOutlines.selftest.mjs` holds every convex
+part of every shard to at least 99 % of its outline in the game's own point test, with level shells
+through its middle stopping on it.
+
+To see the colliders in the game, `window.__DEBUG.colliderOverlay({ x, z, radius })` draws every
+record round a point (orange movement, cyan shells and sight; a stretch a mesh hides faint and
+dashed; `null` removes it), and `tools/visual-census.mjs capture --overlay=colliders[:<radius>]`
+shoots each view a second time with it (`<view>-colliders.png`); `--pose=<map>/<name>:...` binds an
+authored pose to one map.
 
 The garage allied-nation selector has a DOM regression fixture in
 `tools/allied-nation.browser.mjs`. The spectator controls have desktop, portrait

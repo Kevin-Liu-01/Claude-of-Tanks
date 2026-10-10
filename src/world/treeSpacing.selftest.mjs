@@ -102,19 +102,20 @@ try {
       report.verdant = { trees: trees.length, open: open.length, alone: alone.length, closure: +(shaded / ground).toFixed(2), birchPools: birchTints.length };
     } finally { world.dispose(); }
   }
-  // Wadi Rum: few trees, open groves in the low ground, palms at the springs only
+  // Wadi Rum: few trees, open groves in the low ground, no palm (the Redrock lane, round 10: the wadi's floor shows no
+  // spring — the gauntlet's wave 270 read its palms as "a palm growing through a lush green acacia on open sand")
   {
     assert.equal(treeBiomeArid('badlands'), true);
     const { cfg, field, world } = produce('badlands');
     try {
       const trees = world._trees.filter(inside);
       assert.ok(trees.length < 600, `Wadi Rum's floor carries few trees (${trees.length})`);
-      const sites = cfg.vegetation.palmSites;
-      assert.ok(sites?.length === 2, 'two springs');
-      for (const t of trees) if (t.species === 'palm') assert.ok(sites.some((s) => Math.hypot(t.x - s.x, t.z - s.z) < s.r), 'a palm at a spring');
+      const sites = cfg.vegetation.palmSites ?? [];
+      assert.ok(Array.isArray(cfg.vegetation.palmSites) && sites.length === 0 && cfg.vegetation.palmFallback === 'acacia', 'no spring: every palm drawn an acacia');
+      assert.equal(trees.filter((t) => t.species === 'palm').length, 0, 'no palm on the wadi\'s floor');
       const groves = world._clusters.filter(inside);
       assert.ok(groves.length <= 8, `a handful of groves (${groves.length})`);
-      const seated = groves.filter((c) => hollowDepth(field, c.x, c.z) >= 0.8 || sites.some((s) => Math.hypot(c.x - s.x, c.z - s.z) < s.r));
+      const seated = groves.filter((c) => hollowDepth(field, c.x, c.z) >= 0.8);
       assert.equal(seated.length, groves.length, 'every grove in the low ground or at a spring');
       report.badlands = { trees: trees.length, groves: groves.length, palms: trees.filter((t) => t.species === 'palm').length };
     } finally { world.dispose(); }

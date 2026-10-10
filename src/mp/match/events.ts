@@ -23,6 +23,8 @@ const DEFAULT_MAX_LATE_TICKS = 4;
 /** Events that allocate large audio, particle, light or debris graphs end a flush. */
 export const HEAVY_EVENT_KINDS: ReadonlySet<string> = new Set([
   'shell_fired', 'shell_hit', 'shell_impact', 'tank_destroyed', 'world_prop_destroyed',
+  // destruction (2026-10-07): a stage change brings dust, debris and a collapse; a crater its ejecta
+  'structure_stage', 'structure_breach', 'terrain_crater',
 ]);
 
 interface QueuedEvent {
@@ -63,6 +65,12 @@ export class ReliableEventQueue {
    * and a prop whose fall is still on its way here must not be laid down by that list first.
    */
   private readonly pendingObstacles = new Map<number, number>();
+  /** Structure ids of the `structure_stage` and `structure_breach` events still owed to the presentation (destruction,
+   * 2026-10-07; breaches P2): the snapshot's destruction log names a stage or a hole before its event is presented, and
+   * the structure's entries belong to their events. */
+  private readonly pendingStructures = new Map<number, number>();
+  /** Crater ids of the `terrain_crater` events still owed to the presentation (P3): a crater belongs to its event too. */
+  private readonly pendingCraters = new Map<number, number>();
 
   constructor({
     maxEventsPerFlush = DEFAULT_MAX_EVENTS_PER_FLUSH,
@@ -100,13 +108,27 @@ export class ReliableEventQueue {
     return this.pendingObstacles.has(index);
   }
 
+  /** Whether a `structure_stage` or `structure_breach` for this structure is still owed to the presentation. */
+  isStructurePending(structureId: number): boolean {
+    return this.pendingStructures.has(structureId);
+  }
+
+  /** Whether a `terrain_crater` with this crater id is still owed to the presentation. */
+  isCraterPending(craterId: number): boolean {
+    return this.pendingCraters.has(craterId);
+  }
+
   private notePending(event: WireEvent, delta: number): void {
-    if (event.kind !== 'world_prop_destroyed') return;
-    const index = Number(event.payload.obstacleIndex);
+    const counted = event.kind === 'world_prop_destroyed' ? this.pendingObstacles
+      : event.kind === 'structure_stage' || event.kind === 'structure_breach' ? this.pendingStructures
+        : event.kind === 'terrain_crater' ? this.pendingCraters : null;
+    if (!counted) return;
+    const index = Number(event.kind === 'world_prop_destroyed' ? event.payload.obstacleIndex
+      : event.kind === 'terrain_crater' ? event.payload.craterId : event.payload.structureId);
     if (!Number.isSafeInteger(index) || index < 0) return;
-    const next = (this.pendingObstacles.get(index) ?? 0) + delta;
-    if (next > 0) this.pendingObstacles.set(index, next);
-    else this.pendingObstacles.delete(index);
+    const next = (counted.get(index) ?? 0) + delta;
+    if (next > 0) counted.set(index, next);
+    else counted.delete(index);
   }
 
   /**
@@ -166,6 +188,8 @@ export class ReliableEventQueue {
     this.staged.length = 0;
     this.stagedHead = 0;
     this.pendingObstacles.clear();
+    this.pendingStructures.clear();
+    this.pendingCraters.clear();
   }
 
   stats(): ReliableEventQueueStats {
