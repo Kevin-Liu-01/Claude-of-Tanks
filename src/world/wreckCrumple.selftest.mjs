@@ -35,9 +35,9 @@ const finiteUnit = (normal, label) => {
   planDents(samples, 6, 0.4, 0.9, 0.08, 0.2, wreckRandom(7), again, new THREE.Vector3(0, 1, 0));
   assert.deepEqual(again, dents, 'deterministic in the seed');
   const bend = planBend(0.5, 5, wreckRandom(3), false);
-  assert.ok(bend && bend.z0 > 0.5 + 0.3 * 4.5 && bend.z0 < 0.5 + 0.65 * 4.5, 'bends past a third of the barrel');
+  assert.ok(bend && bend.z0 > 0.5 + 0.25 * 4.5 && bend.z0 < 0.5 + 0.6 * 4.5, 'bends past a quarter of the barrel');
   const tip = bend.kappa * (5 - bend.z0) ** 2;
-  assert.ok(tip >= 0.22 && tip <= 0.6, `the muzzle 0.22-0.6 m off (${tip.toFixed(2)})`);
+  assert.ok(tip >= 0.4 && tip <= 1.05, `the muzzle 0.4-1.05 m off (${tip.toFixed(2)})`);
   assert.ok(bend.uy < -0.4, 'down, under its own weight');
   assert.equal(planBend(0, 0.6, wreckRandom(3), false), null, 'a stub does not bend');
   // the bend: the bore past z0 curves, the breech end stays, normals follow
@@ -65,12 +65,14 @@ for (const [specId, seed, pop] of [['t90m', 2526, false], ['m1a2', 2002, true]])
     const plan = planWreckCrumple(root, seed, pop);
     assert.ok(plan, `${specId}: a rigged tank has a plan`);
     const { hull, gear, turret, gun } = plan.parts;
-    assert.ok(hull.dents.length >= 5 && hull.dents.length <= 11, `${specId}: hull dents (${hull.dents.length})`);
-    assert.ok(turret.dents.length >= 3, `${specId}: turret dents`);
+    assert.ok(hull.dents.length >= 6 && hull.dents.length <= 13, `${specId}: hull dents (${hull.dents.length})`);
+    assert.ok(hull.creases.length >= 3 && turret.creases.length >= 2, `${specId}: folded creases on the hull and the turret`);
+    assert.ok(turret.dents.length >= 4, `${specId}: turret dents`);
     assert.equal(hull.droops.length, 2, 'both fenders sag in runs');
     assert.equal(hull.hinges.length, 2, 'both skirts hang out in runs');
     assert.ok(gun.bend, 'the barrel bends');
-    assert.equal(hull.bulges.length, pop ? 1 : 0, 'an ammo-rack wreck\'s deck bulges');
+    assert.equal(hull.bulges.length, 1, 'the deck caved in by the fire or bulged by an ammo-rack blast');
+    assert.ok(pop ? hull.bulges[0].amp > 0 : hull.bulges[0].amp < 0, 'out on an ammo-rack wreck, in on a burnt one');
     assert.ok(gear.sags.length <= 1);
     // position alone: two corners at one place go to one place, whichever mesh they came from
     const inv = root.matrixWorld.clone().invert();
@@ -96,7 +98,7 @@ for (const [specId, seed, pop] of [['t90m', 2526, false], ['m1a2', 2002, true]])
         maxMove = Math.max(maxMove, Math.hypot(at[0] - fp.getX(i), at[1] - fp.getY(i), at[2] - fp.getZ(i)));
       }
       assert.ok(maxMove > 0.02, `${specId} ${object.name}: deformed (${maxMove.toFixed(3)} m)`);
-      assert.ok(maxMove < (object.name === 'gun' ? 0.75 : 0.5), `${specId} ${object.name}: within bounds (${maxMove.toFixed(3)} m)`);
+      assert.ok(maxMove < (object.name === 'gun' ? 1.1 : 0.85), `${specId} ${object.name}: within bounds (${maxMove.toFixed(3)} m)`);
       finiteUnit(geometry.attributes.normal, `${specId} ${object.name}`);
       void src;
       checked++;
@@ -136,7 +138,7 @@ for (const [role, receipt] of Object.entries(CIVILIAN_VEHICLE_RECEIPTS)) {
     if (y0 > 1.39 && Math.abs(before[i * 3]) < 0.3) roofDown = Math.max(roofDown, y0 - p.getY(i));
     if (y0 < 0.5 && Math.abs(before[i * 3 + 2]) < 1.0) beltMoved = Math.max(beltMoved, Math.abs(p.getY(i) - y0));
   }
-  assert.ok(roofDown > 0.08, `the roof is pressed in (${roofDown.toFixed(3)} m)`);
+  assert.ok(roofDown > 0.15, `the roof is pressed in (${roofDown.toFixed(3)} m)`);
   assert.ok(beltMoved < 1e-9, 'below the belt line nothing drops');
   finiteUnit(body.attributes.normal, 'vehicle box');
 }

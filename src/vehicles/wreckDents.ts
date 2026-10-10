@@ -9,6 +9,16 @@
 import * as THREE from 'three';
 
 export interface WreckDent { cx: number; cy: number; cz: number; dx: number; dy: number; dz: number; r2: number; depth: number }
+/**
+ * A crease: a plate folded in along a line — `t` along the fold, `d` the push (inward, ⟂ t), the fold `half` long and `w`
+ * wide each side. The fold is a V (a tent across the line): its two faces meet at an edge the light catches, as crumpled
+ * plate does, where a dent's round crater reads soft. Points more than 0.6 m off the plate along `d` do not move (the far
+ * side of a hull stays). Displacement: d · depth · (1 − across/w)₊ · (1 − (along/half)²)² · (1 − |off|/0.6)₊.
+ */
+export interface WreckCrease {
+  cx: number; cy: number; cz: number; tx: number; ty: number; tz: number; dx: number; dy: number; dz: number;
+  half: number; w: number; depth: number;
+}
 export interface WreckBend { z0: number; kappa: number; ux: number; uy: number }
 
 export function wreckRandom(a: number): () => number {
@@ -74,10 +84,35 @@ export function planDents(samples: DentSamples | null, count: number, rMin: numb
 export function planBend(zMin: number, zMax: number, rng: () => number, anyWay: boolean): WreckBend | null {
   const zStart = Math.max(0, zMin), length = zMax - zStart;
   if (!(zMax > 1) || !(length > 0.8)) return null;
-  const z0 = zStart + length * (0.35 + rng() * 0.25);
-  const tip = (0.22 + rng() * 0.33) * Math.min(1.3, length / 4.2);
+  const z0 = zStart + length * (0.3 + rng() * 0.25);
+  // (2026-10-09, after the first wave's frames: a 0.2-0.5 m droop read as a straight gun at 13 m) 0.4-0.8 m at the muzzle
+  const tip = (0.4 + rng() * 0.4) * Math.min(1.3, Math.max(0.7, length / 4.2));
   const phi = anyWay ? (rng() * 2 - 1) * Math.PI : (rng() * 2 - 1) * 1.1;
   return { z0, kappa: tip / ((zMax - z0) * (zMax - z0)), ux: Math.sin(phi), uy: -Math.cos(phi) };
+}
+
+/**
+ * Creases on a part, on the same surface corners a dent takes (the faces a round meets, pushed in toward the part's middle):
+ * each fold along a random line in its plate.
+ */
+export function planCreases(samples: DentSamples | null, count: number, halfMin: number, halfMax: number, wMin: number, wMax: number,
+  dMin: number, dMax: number, rng: () => number, out: WreckCrease[], center: THREE.Vector3 | null = null): void {
+  const dents: WreckDent[] = [];
+  planDents(samples, count, 0.5, 0.5, dMin, dMax, rng, dents, center);
+  const d = new THREE.Vector3(), r = new THREE.Vector3(), t = new THREE.Vector3();
+  for (const dent of dents) {
+    d.set(dent.dx, dent.dy, dent.dz).normalize();
+    // a random direction in the plate: any vector not along d, crossed with d
+    for (let k = 0; k < 4; k++) {
+      r.set(rng() - 0.5, rng() - 0.5, rng() - 0.5);
+      t.crossVectors(d, r);
+      if (t.lengthSq() > 1e-4) break;
+    }
+    if (t.lengthSq() <= 1e-4) t.set(0, 1, 0).cross(d);
+    t.normalize();
+    out.push({ cx: dent.cx, cy: dent.cy, cz: dent.cz, tx: t.x, ty: t.y, tz: t.z, dx: d.x, dy: d.y, dz: d.z,
+      half: halfMin + (halfMax - halfMin) * rng(), w: wMin + (wMax - wMin) * rng(), depth: dent.depth });
+  }
 }
 
 const _p = new THREE.Vector3();

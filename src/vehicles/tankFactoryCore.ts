@@ -9060,12 +9060,12 @@ function* createTankOwnedSteps(
     const hullDents: WreckDent[] = [], turretDents: WreckDent[] = [];
     if (hullPlates) {
       hullPlates.geometry.computeBoundingBox();
-      planDents(dentSamples(hullPlates.geometry, null), LIVE_HULL_DENTS, 0.45, 1.0, 0.08, 0.2, rng, hullDents,
+      planDents(dentSamples(hullPlates.geometry, null), LIVE_HULL_DENTS, 0.6, 1.2, 0.13, 0.28, rng, hullDents,
         box.copy(hullPlates.geometry.boundingBox!).getCenter(new THREE.Vector3()));
     }
     if (turretPlates) {
       turretPlates.geometry.computeBoundingBox();
-      planDents(dentSamples(turretPlates.geometry, null), LIVE_TURRET_DENTS, 0.3, 0.7, 0.06, 0.15, rng, turretDents,
+      planDents(dentSamples(turretPlates.geometry, null), LIVE_TURRET_DENTS, 0.4, 0.9, 0.1, 0.22, rng, turretDents,
         box.copy(turretPlates.geometry.boundingBox!).getCenter(new THREE.Vector3()));
     }
     writeDents(hullDents, burnU.uCrHull.value, burnU.uCrHullDir.value);
