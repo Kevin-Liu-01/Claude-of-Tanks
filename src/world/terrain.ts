@@ -4882,17 +4882,20 @@ void splatCompute() {
     // a tank's 2.9 m gauge or a lorry's 1.8 m, at a random place in each 9–12 m strip, a quarter of the strips empty —
     // each coming and going along its line over 5–20 m (field b at 0.012), not a comb of ruts every 3 m
     float rutVis = smoothstep(0.12, 0.40, 0.30 / max(gFootM, 1e-3)); // gone as the footprint outgrows a rut
+    // (R3, the lab's Frosthollow pad: a smooth sheet with a few prints on it — snow shows every vehicle that crossed it, an
+    // assembly area's snow is churned all over) past the Low tier a snow pad's strips are 6–8 m and fewer of them empty
+    bool snowPad = uLandTier > 0.5 && uReduxD.y > 1.5;
     for (int k = 0; k < 2; k++) {
       float t = 0.62 + float(k) * 1.15;
       vec2 dP = vec2(-sin(t), cos(t)); // across the family's lines
       float q = dot(wp.xz, dP) + 3.5 * (nz(uv, 0.0024, vec2(0.53 + float(k) * 0.21, 0.29)).g - 0.5);
-      float per = 9.0 + 3.0 * float(k);
+      float per = snowPad ? 6.0 + 2.0 * float(k) : 9.0 + 3.0 * float(k);
       vec2 ch = cellHash2(vec2(floor(q / per), 41.0 + float(k) * 13.0));
       float gauge = ch.y > 0.45 ? 2.9 : 1.8;
       float f = fract(q / per) * per - (0.9 + ch.x * (per - gauge - 1.8)); // (3 sigma clear of the strip's edges)
       float r1 = f / 0.30, r2 = (f - gauge) / 0.30;
-      float pres = smoothstep(0.40, 0.62, nz(uv, 0.012, vec2(0.11 + float(k) * 0.37, 0.83)).g)
-        * step(0.25, fract(ch.x * 7.31 + ch.y)) * rutVis;
+      float pres = smoothstep(snowPad ? 0.30 : 0.40, snowPad ? 0.52 : 0.62, nz(uv, 0.012, vec2(0.11 + float(k) * 0.37, 0.83)).g)
+        * step(snowPad ? 0.12 : 0.25, fract(ch.x * 7.31 + ch.y)) * rutVis;
       // (R3, wave 341: "a ruled lattice of thin ink-dark rut lines crossing at right angles") past the Low tier each stretch
       // of the pad is worked along one family's lines (field b at 0.006: regions of a dozen metres and more), the two
       // crossing only where the regions meet
@@ -6853,7 +6856,8 @@ void splatCompute() {
       // gradient below adds the authored wheel-rut relief afterwards.
       vec2 packedRoadN = nrmOn ? groundNrm(uNrmD, uv * 0.210, df, mipB + 4.0).xy : vec2(0.5);
       packedRoadN = mix(vec2(0.5), packedRoadN, 0.30);
-      n.xy = mix(n.xy, packedRoadN, dW);
+      // (R3: a snow pad keeps half the field's drift relief — trodden snow is lumpy, not an ice rink)
+      n.xy = mix(n.xy, packedRoadN, dW * (uLandTier > 0.5 && uReduxD.y > 1.5 ? mix(1.0, 0.5, apronK) : 1.0));
     }
     // Ground lane (2026-10-03): the road's own surface. Its tone drifts along it — a damp stretch, a dusty one, a
     // gravelled patch every 10–40 m; on stretches of a vegetated map's farm road a weedy crown grows between the wheel
@@ -7110,7 +7114,8 @@ void splatCompute() {
     float trampleW = uLandTier > 0.5 ? clamp(apronRim - apronK, 0.0, 1.0) * (1.0 - gRoadTex) : 0.0;
     if (trampleW > 0.003) {
       float tN = nzq(uv, 0.18, vec2(0.33, 0.57)).x;
-      if (uReduxD.y > 1.5) a.rgb = mix(a.rgb, a.rgb * vec3(0.93, 0.935, 0.95), trampleW * (0.5 + 0.5 * tN));
+      // (snow: the pad's trodden grey carried out over its margin in patches, fading — no grey polygon on white)
+      if (uReduxD.y > 1.5) a.rgb = mix(a.rgb, a.rgb * vec3(0.90, 0.905, 0.93), trampleW * (0.45 + 0.55 * tN));
       else if (uReduxD.y > 0.5) a.rgb = mix(a.rgb, a.rgb * vec3(0.93, 0.91, 0.88), trampleW * 0.6);
       else {
         // (the lab's first margin read as the field: the sward flattened and yellowed over the whole margin, worn through to
