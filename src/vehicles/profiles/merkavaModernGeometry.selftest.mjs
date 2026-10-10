@@ -56,11 +56,12 @@ for (const quality of ['high', 'low']) for (const [id, contract] of Object.entri
       });
       assert.equal(roofWeapons.length,1,`${id}: exactly one real roof weapon fitting`);
       assert.equal(roofWeapons[0].parent,turretRig,`${id}: roof weapon remains turret-owned`);
-      let exactParts=0;
-      roofWeapons[0].traverse((object)=>{
-        if(object.isMesh&&object.userData?.fittingExact&&object.userData?.fitting==='pintleMG')exactParts++;
-      });
-      assert.equal(exactParts,2,`${id}: source receiver and barrel are the registered weapon stock`);
+      // 2026-10-10 (fleet-weapons lane; the owner: "its changes need to be combined with your primitive updates like
+      // updating machine guns and stuff"): the arm's gun is the fleet's GPMG construction carried by the source's angled
+      // support (an external cradle), with its muzzle at the source muzzle, in place of the receiver box and box barrel
+      assert.equal(roofWeapons[0].userData.weaponClass,'mag',`${id}: the arm carries a 7.62 mm GPMG`);
+      assert.equal(roofWeapons[0].userData.mount,'external-cradle',`${id}: the angled support carries it`);
+      assert.ok(roofWeapons[0].getObjectByName('browningDerivedMachineGunBody')?.isMesh,`${id}: the fleet GPMG body is drawn`);
     } else {
       assert.equal(turretRig.userData.barakSensorReceipt, undefined,
         `${id}: non-Barak vehicles do not inherit Barak-only sensors`);

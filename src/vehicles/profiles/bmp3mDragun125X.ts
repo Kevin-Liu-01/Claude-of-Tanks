@@ -355,26 +355,15 @@ function buildDragunGear(P: TankBuilderPort): void {
 function buildDragunRoofWeapon(P: TankBuilderPort): void {
     equipment(P, 'turret', 'Detail', cylY(.09, .10, .105, 12), .413, 2.684, -2.278);
     equipment(P, 'turret', 'Detail', box(.285, .40, .335), .364, 2.91, -2.303);
-    const group = new THREE.Group();
-    const stock = mergeAll([
-        // round 5 (2026-10-08, the contact receipt): the receiver rests on the mount housing at mid-length, so its long
-        // faces carry stations there (a plain box's corners all stand past the housing's ends)
-        new THREE.BoxGeometry(.134, .16, .66, 1, 1, 4),
-        xform(box(.125, .036, .46), 0, .094, -.02),
-        xform(box(.042, .073, .13), -.082, -.015, -.05),
-        xform(cylZ(.010, .288, P.q ? 14 : 8), .011, .049, .430),
-        xform(cylZ(.017, .04, P.q ? 14 : 8), .011, .049, .557),
-        xform(box(.012, .04, .018), .011, .077, .530),
-        xform(box(.026, .08, .04), -.047, -.03, -.348),
-        xform(box(.026, .08, .04), .047, -.03, -.348),
-    ]);
-    const weapon = new THREE.Mesh(stock, P.mats.dark);
-    weapon.name = 'dragunRoofReceiverAndBarrel';
-    weapon.castShadow = true;
-    group.add(weapon);
-    P.disposables.push(stock);
-    group.position.set(.404, 3.035 - P.turretG.position.y, -2.383 - P.turretG.position.z);
-    FITTINGS.markExact(group, 'pintleMG');
+    // 2026-10-10 (fleet-weapons lane; the owner: "its changes need to be combined with your primitive updates like
+    // updating machine guns and stuff"): the module's 7.62 mm gun is the fleet's GPMG construction (machineGunGeometry.ts:
+    // receiver with its feed cover, gas cylinder and flash hider, the remote solenoid instead of crew grips) carried by
+    // the source's own mount housing (the external cradle above), in place of the receiver box and plain tube, at Codex's
+    // mount: its muzzle on the source barrel's axis at the source muzzle (x 0.415, y 3.084, z -1.806). One gun, one
+    // fitting.
+    const t = P.turretG.position;
+    const group = FITTINGS.seatMuzzle(FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', mount: 'external-cradle',
+        remoteWeapon: true, ammo: false, tone: 'two-tone', seed: 1253 }), [.415, 3.084 - t.y, -1.806 - t.z]);
     group.name = 'dragunSourceRoofWeapon';
     group.userData.sourceOwner = 'Object_14';
     P.turretG.add(group);

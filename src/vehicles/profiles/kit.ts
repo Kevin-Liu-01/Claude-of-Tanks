@@ -3108,7 +3108,31 @@ function fittingMarkExact(group: THREE.Group, type: string): THREE.Group {
   return group;
 }
 
+/**
+ * Seat a machine-gun fitting by its muzzle (fleet-weapons lane, 2026-10-10): moves the fitting so the tip of its own
+ * barrel stands at `muzzle` (the fitting parent's frame) on the barrel's own axis, read from the gun body's vertices at
+ * the tip. A source-measured gun replaced by the fleet's Browning construction keeps its authored barrel line and reach
+ * this way, whatever the class's receiver and mount dimensions. Returns the fitting.
+ */
+function fittingSeatMuzzle(fitting: THREE.Group, muzzle: readonly [number, number, number]): THREE.Group {
+  const body = fitting.getObjectByName('browningDerivedMachineGunBody')
+    ?? fitting.getObjectByName('americanM2HBBody');
+  if (!(body instanceof THREE.Mesh)) throw new Error('KIT.fittings.seatMuzzle: the fitting carries no gun body');
+  const position = body.geometry.getAttribute('position');
+  let tipZ = -Infinity;
+  for (let i = 0; i < position.count; i++) tipZ = Math.max(tipZ, position.getZ(i));
+  let axisY = 0, axisX = 0, count = 0;
+  for (let i = 0; i < position.count; i++) {
+    if (position.getZ(i) < tipZ - 0.02) continue;
+    axisX += position.getX(i); axisY += position.getY(i); count++;
+  }
+  fitting.position.set(muzzle[0] - axisX / count, muzzle[1] - axisY / count, muzzle[2] - tipZ);
+  fitting.userData.seatedMuzzle = [...muzzle];
+  return fitting;
+}
+
 export const FITTINGS = {
+  seatMuzzle: fittingSeatMuzzle,
   pintleMG: fittingPintleMG,
   americanM2: fittingAmericanM2,
   americanRws: fittingAmericanRws,

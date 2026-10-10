@@ -228,8 +228,9 @@ triangle (`bakeWeaponEdgeWear`); ammunition cans and belts are `mats.ammoDrab` (
 the vertex colours); a weapon fitting's painted slot (`detail`) draws in the hull's camouflage on the vehicle-scale box UV;
 exact source-measured guns take the same finish through `FITTINGS.markExact`. Rendered builds only: geometry-receipt and
 non-rendering builds keep `dark`/`detail` and byte-identical geometry. Fitting material slots are material keys, never
-bucket names (`fitMat` throws on an unknown slot). `weaponFinish.selftest.mjs` holds the rule: no weapon mesh is a flat
-single colour.
+bucket names (`fitMat` throws on an unknown slot). Seat a fleet gun that replaces a source-measured one with
+`FITTINGS.seatMuzzle` (its muzzle on the authored barrel line). `weaponFinish.selftest.mjs` holds the rule: no weapon
+mesh is a flat single colour.
 Read actual assembled wheel centers: the ground-seating law can override an
 authored `wheelY`. Source-backed track courses must fit finite wheel stock,
 including the central drum, tread rings and tooth crowns at their actual axial
