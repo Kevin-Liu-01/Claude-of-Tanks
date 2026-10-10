@@ -45,7 +45,9 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   // leaves the Hauptstrasse west of the square for the trade road, and its second leg leaves the trade road for the
   // Hauptstrasse east of the square.
   urban: [through, through, through, ['boundary', { junction: 2 }], ['boundary', { junction: 2 }],
-    join(3, 4), join(0, 1), join(1, 0), join(0, 1), join(1, 0)],
+    join(3, 4), join(0, 1), join(1, 0), join(0, 1), join(1, 0),
+    // the map-revival lane (2026-10-05): the old town's alleys, each from the Hauptstrasse to a back lane
+    join(0, 6), join(0, 7), join(0, 8), join(0, 9)],
   // Saltmere Bay redesign (2026-10-02): the inland road runs between its two border stubs, which start exactly on its
   // ends and leave the square; the coast road runs between the two bocage lanes; each shore lane leaves the inland
   // road for the strand (the map's two shore termini, as before); the bocage lanes (one the reflection of the other

@@ -168,7 +168,7 @@ const cargoHangar = (ctx: RegionalBuildContext): RegionalParts => {
     // purlins along the hole and flaps of sheet bent down into it
     const mid = arc(v, -v.half, v.half, n, t + 0.18);
     for (let i = h.i0; i <= h.i1; i += 2) sink.member('structureMetal', [mid[i][0], mid[i][1], h.za], [mid[i][0], mid[i][1], h.zb], 0.12, 0.12, [0, 1, 0], { colour: TRUSS, decor: true, exposed: true }, 0);
-    if (!mobile) {
+    sink.dressing(mobile, () => {
       // dressing: its draws come from the look stream, so a phone's build keeps the desktop's geometry after it
       const look = ctx.variant, edge = arc(v, -v.half, v.half, n);
       for (let k = 0; k < 4; k++) {
@@ -179,7 +179,7 @@ const cargoHangar = (ctx: RegionalBuildContext): RegionalParts => {
         if (dir < 0) flap.reverse();
         sink.quad('roof', ...flap, { decor: true });
       }
-    }
+    });
   }
   // the crown's ridge vent, a dark monitor between the holes
   for (let z = zb + 3; z < zf - 3; z += 6) {
@@ -289,7 +289,8 @@ const cargoHangar = (ctx: RegionalBuildContext): RegionalParts => {
       const t2 = k % 2 ? 0.32 : 0.75, u2 = u - 0.25;
       faceBox(sink, 'structureMetal', front, u2, Hd / 2 - 0.05, t2, lw + 0.12, Hd + 0.1, 0.22, { colour: shade(doorLivery, 0.96) });
     }
-    if (!mobile) {
+    // (the phones build the same streams: the leaves' dressing drawn and dropped there, DESTRUCTION.md §8.4)
+    sink.dressing(mobile, () => {
       for (const tr of slid ? [track, k % 2 ? 0.32 : 0.75] : [track]) {
         const uu = tr === track ? u : u - 0.25, ww = tr === track ? w : lw + 0.12, o = tr + 0.13;
         // the leaf's frame: edge stiles, top and bottom rails and the mid rail
@@ -325,9 +326,10 @@ const cargoHangar = (ctx: RegionalBuildContext): RegionalParts => {
         }
         faceBox(sink, 'structureMetal', front, uu, 0.32, o - 0.015, ww - 0.04, 0.64, 0.012, { colour: GRIME, decor: true });
       }
-    }
+    });
   }
-  if (!mobile) {
+  // (its numeral draws from the look stream: drawn and dropped on the phones, so their streams stay the desktop's)
+  sink.dressing(mobile, () => {
     // the wicket in the first standing leaf past the middle, and the hangar's number across the two leaves left of it
     const ow = (kw % 2 ? 0.75 : 0.32) + 0.14;
     faceBox(sink, 'structureMetal', front, uw, 1.1, ow, 1.2, 2.3, 0.04, { colour: frameC, decor: true });
@@ -335,7 +337,7 @@ const cargoHangar = (ctx: RegionalBuildContext): RegionalParts => {
     faceBox(sink, 'structureMetal', front, uw + 0.36, 1.05, ow + 0.06, 0.06, 0.18, 0.04, { colour: TRUSS, decor: true });
     const num = 1 + Math.floor(ctx.variant() * 9);
     paintedNumeral(sink, front, -Wd / 2 + (kn + 0.5) * lw, Hd * 0.48, nh, num, rgb(0xe8e6de), (kn % 2 ? 0.75 : 0.32) + 0.12);
-  }
+  });
   // the bottom rails' channel along the apron and a raised steel rail under each track in it
   faceBox(sink, 'structureMetal', front, 0, 0.03, 0.55, Wd + 2 * pocket, 0.06, 0.9, { colour: TRUSS, decor: true });
   for (const tr of [0.32, 0.75]) faceBox(sink, 'structureMetal', front, 0, 0.09, tr, Wd + 2 * pocket * 0.9, 0.08, 0.07, { colour: shade(RIB, 1.15), decor: true });
@@ -563,10 +565,12 @@ const officeBlock: RegionalBuilder = (ctx) => {
     // the plant on the roof, and the terminal's sign frame over the apron front
     const top = frame.eaveY + 0.3;
     const look = ctx.variant;
-    if (!mobile) for (let k = 0; k < 2 + Math.floor(look() * 2); k++) {
-      const x = (look() - 0.5) * (W - 3), z = (look() - 0.5) * (D - 3);
-      sink.span('structureMetal', x - 0.8, top, z - 0.6, x + 0.8, top + 1.0, z + 0.6, { colour: rgb(0x8a8e8c), decor: true });
-    }
+    sink.dressing(mobile, () => {
+      for (let k = 0; k < 2 + Math.floor(look() * 2); k++) {
+        const x = (look() - 0.5) * (W - 3), z = (look() - 0.5) * (D - 3);
+        sink.span('structureMetal', x - 0.8, top, z - 0.6, x + 0.8, top + 1.0, z + 0.6, { colour: rgb(0x8a8e8c), decor: true });
+      }
+    });
     if (W >= 12) {
       const sw = Math.min(W * 0.6, 12), sy = top + 0.7;
       for (const dx of [-sw / 2 + 0.3, 0, sw / 2 - 0.3]) sink.member('structureMetal', [dx, top, D / 2 - 0.6], [dx, sy + 1.6, D / 2 - 0.6], 0.08, 0.08, [0, 0, 1], { colour: MULLION, decor: true, exposed: true }, 0);

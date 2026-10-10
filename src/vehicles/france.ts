@@ -11,7 +11,7 @@
 // tankFactoryCore's exported geometry KIT.
 
 import { KIT } from './tankFactoryCore.ts';
-import { FITTINGS } from './profiles/kit.ts';
+import { FITTINGS, convexSlab } from './profiles/kit.ts';
 import './franceSpecs.ts';
 import type { TankBuilderPort } from './tankFactoryCore.ts';
 import { CircleGeometry } from 'three';
@@ -242,7 +242,10 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.add('hull', slab(                                                           // lower bow reverse plate, shallow first course; inside native shoe lanes
     [-0.90, 0.44, 2.70], [0.90, 0.44, 2.70], [0.90, 0.61, 3.12], [-0.90, 0.61, 3.12],
     [-0.90, 0.46, 2.72], [0.90, 0.46, 2.72], [0.90, 0.63, 3.12], [-0.90, 0.63, 3.12]));
-  P.add('hull', slab(                                                           // steep source knee into the jaw lip
+  // Both offset courses reverse their normal order at the jaw. Their eight
+  // retained datums bound a finite convex knee; connecting the original rings
+  // directly folds the thin sheet through itself.
+  P.add('hull', convexSlab(                                                     // steep source knee into the jaw lip
     [-0.90, 0.61, 3.12], [0.90, 0.61, 3.12], [0.90, 1.044, 3.41], [-0.90, 1.044, 3.41],
     [-0.90, 0.63, 3.12], [0.90, 0.63, 3.12], [0.90, 1.048, 3.43], [-0.90, 1.048, 3.43]));
   // stern: rear plate face -3.395 (the rear body-column anchor; receipt
@@ -703,7 +706,8 @@ function buildAMX40(P: FranceBuilderPort): void {
     // roof 7.62 AANF1 beside the cupola — LOW mount, FORWARD rest
     // (CROWS-forward law; type10 precedent: receiver at the published
     // height line so heightM p95 stays on the roof plateau)
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.9, seed: 12, elev: -0.03, ammo: true });
+    // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the roof detail beside the cupola (feed-side collision census).
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.9, seed: 12, elev: -0.03, ammo: true, feed: 'right' });
     mg.position.set(-0.46, 0.864, 0.30);                                        // re-seated on the owner-raised connected turret section
     P.turretG.add(mg);
     P.addEquipment('turret', box(0.12, 0.18, 0.12), -0.46, 0.84, 0.30);                 // continuous roof-to-receiver pedestal

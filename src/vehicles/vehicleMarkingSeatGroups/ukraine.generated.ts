@@ -183,15 +183,15 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.25,
         "pos": [
-          1.0373657,
-          0.4846564,
-          -1.355184
+          1.1006951,
+          0.6594564,
+          -1.134184
         ],
         "quaternion": [
-          -0.0805562,
-          0.8319726,
+          -0.0805563,
+          0.8319725,
           0.0529038,
-          0.5463822
+          0.5463823
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "ua_t84_oplot_m",
@@ -205,28 +205,6 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   "ua_m1a1": {
     "schemaVersion": 1,
     "seats": [
-      {
-        "kind": "insignia",
-        "parent": "hull",
-        "size": 0.27,
-        "pos": [
-          1.738133,
-          1.5627299,
-          -2.20516
-        ],
-        "quaternion": [
-          -0.0170924,
-          0.7069002,
-          0.0170924,
-          0.7069002
-        ],
-        "surfaceMesh": "hull",
-        "anchorProfile": "ua_m1a1",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 6,
-        "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.2326348
-      },
       {
         "kind": "designation",
         "parent": "hull",
@@ -243,6 +221,28 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "hull",
+        "anchorProfile": "ua_m1a1",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.27,
+        "pos": [
+          1.4603955,
+          0.4995926,
+          -0.1244897
+        ],
+        "quaternion": [
+          -0.114204,
+          0.6978234,
+          0.114204,
+          0.6978234
+        ],
+        "surfaceMesh": "turret",
         "anchorProfile": "ua_m1a1",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,

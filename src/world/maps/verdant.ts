@@ -85,9 +85,10 @@ export default {
     tintA: [1.14, 1.05, 0.78],
     tintB: [0.76, 0.80, 0.62],
     tintC: [1.09, 1.03, 0.80],
-    // ground lane (wave 83: "a cold blue-black surface"): the chernozem a very dark warm brown (~0.092 / 0.056 / 0.034,
-    // its plough ~0.055 / 0.031 / 0.018) — never blue under the sky's light
-    soilTint: [1.10, 0.96, 0.80],
+    // ground lane (wave 83: "a cold blue-black surface"; wave 88: at 1.16 / 0.95 / 0.75 "a warm reddish-maroon"): the
+    // chernozem a very dark brown-black, only a little warm (~0.087 / 0.056 / 0.038), its plough a shade lifted
+    // (~0.070 / 0.042 / 0.026, luminance ~0.047: at 0.035 the sky's reflection outweighed it)
+    soilTint: [1.04, 0.98, 0.90], ploughLift: 1.35,
   },
 
   vegetation: {
@@ -150,10 +151,9 @@ export default {
     // paired duels (baked static via src/world/wrecks.ts), soft-vehicle and
     // military-clutter dressing, and more sandbag lines along the roads —
     // all destructible (drive-through, shell-breakable)
-    tankWrecks: {
-      era: 'modern', count: 5, debris: true,
-      ids: ['m551_sheridan', 'marder1a3', 'leo2a7v', 'm1a1', 't90a'],
-    },
+    // the map-vehicles lane (2026-10-06, the period ruling): Kursk, 1943: the KV-2, the fleet's one Soviet tank of
+    // the war
+    tankWrecks: { era: 'ww2', count: 5, debris: true, ids: ['kv2'] },
     sandbagLines: 12,
     hedgehogs: 6,
     // r6 terrain_environment: standing grain plots on the open farmland —

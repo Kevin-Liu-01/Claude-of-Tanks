@@ -29,7 +29,7 @@ import { bar, settleOnGround, LIMEWASH_UV, smoothRender } from './kit.ts';
 import { drapedRect } from './grounds.ts';
 import type { LandmarkBuilder } from './types.ts';
 
-const WHITE = rgb(0xe9e9e6), GREY_BELLY = rgb(0xb9bcbf), BLUE = rgb(0x2c5aa0), YELLOW = rgb(0xf0c22c), SOOT = rgb(0x1c1a18), ASH = rgb(0x6a6560);
+const WHITE = rgb(0xe9e9e6), GREY_BELLY = rgb(0xb9bcbf), BLUE = rgb(0x2c5aa0), YELLOW = rgb(0xf0c22c), SOOT = rgb(0x1c1a18);
 const FAN = rgb(0x26282a), GLASS_BURNT = rgb(0x121314);
 const BARE = rgb(0x8f9497), CHAR_STEEL = rgb(0x2c2622), SEAM = rgb(0x3a3d40);
 

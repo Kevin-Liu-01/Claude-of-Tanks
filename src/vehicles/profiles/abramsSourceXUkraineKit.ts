@@ -6,12 +6,14 @@
 // laid on the measured source planes of the X study (abramsSourceX.ts), in the hull frame,
 // and re-seated into the turret frame where the turret owns it. The cassette courses are visual
 // ERA clusters bound to the gameplay zones of abramsSourceXUkraineEraArmor.ts (one depletable
-// bank per course); the cage, slats, jammers and stowage are passive.
+// bank per course). Cage and slat drone-contact faces share the datums in
+// ukrainianDroneCage.ts; jammers and stowage remain passive.
 // Cage rework (owner 2026-09-15, evening: "make its cage components much better and more properly
 // attached to the tank instead of floating"): the posts stand on the real roof surface with
 // bolted base plates, the frame follows the roof down toward the mantlet, mesh walls hang on
 // the flanks and the rear, and struts tie the cage to the bustle rack.
 import * as THREE from 'three';
+import { UA_SOURCE_CAGE } from '../ukrainianDroneCage.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { KIT } from './kit.ts';
 import { roundMember, type XYZ } from './abramsSourceXGeometry.ts';
@@ -120,10 +122,8 @@ function skirtCassettes(P: TankBuilderPort): void {
  * a tube frame that follows the roof down toward the mantlet, a rod lattice welded into the frame,
  * mesh walls hanging on both flanks and the rear, and struts tying the cage to the bustle rack. */
 function roofCage(P: TankBuilderPort): void {
-  const CAGE_Y = ROOF_Y + 1.00; // 3.36 m: clears the CROWS-LP head (3.15 m); the jammer masts rise through
-  const DROP = .20; // the forward bay follows the roof down toward the mantlet
-  const zRear = -2.22, zBend = .30, zFront = 1.20;
-  const xR = 1.30, xL = -1.40; // the frame overhangs the inclined walls (roof edges 1.115 / -1.252)
+  const { roofY: CAGE_Y, drop: DROP, rearZ: zRear, bendZ: zBend, frontZ: zFront,
+    rightX: xR, leftX: xL } = UA_SOURCE_CAGE;
   const rod = .006;
   const frameY = (z: number): number => z <= zBend ? CAGE_Y : CAGE_Y - DROP * (z - zBend) / (zFront - zBend);
   // members are authored in the hull frame; put() seats the whole geometry once (the first cage seated the
@@ -148,7 +148,10 @@ function roofCage(P: TankBuilderPort): void {
       put(P, 'turret', 'turretDark', 'cage-bolt', cylY(.011, .011, .012, 8), [x + dx, foot + .016, z + dz]);
     }
     member('cage-post', [x, foot + .010, z], [x, top - .010, z], .024);
-    member('cage-arm', [x, top, z], [x < 0 ? xL : xR, top, z], .018);
+    // At the bend, the full-width crossbar already joins each post to the frame.
+    // fleet lane 2026-10-08 (circular-cap audit): a post on the bend line is already tied by the bend cross tube, which
+    // runs through the same points; its arm lay inside that tube and ended in a cap coplanar with the tube's own
+    if (Math.abs(z - zBend) > .03) member('cage-arm', [x, top, z], [x < 0 ? xL : xR, top, z], .018);
   }
   // diagonal braces between neighbouring posts on each flank, an X across the rear bay
   for (const side of [0, 4]) {

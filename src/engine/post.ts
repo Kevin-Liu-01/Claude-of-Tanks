@@ -1,3 +1,4 @@
+import { createVisionWarmSteps } from './visionWarm.ts';
 /**
  * post.ts — the full post-processing chain.
  *
@@ -424,6 +425,22 @@ const AERIAL_HAZE_LUM_CAP = 0.385;
 // the share of the authored fog tint, the legacy directional tints' strength and the cap (lightTune A/B hooks).
 const AERIAL_FOG_MIX_SCALE = 1;
 const AERIAL_TINT_MIX = 1;
+/**
+ * 2026-10-05 (the skies lane; the ground lane's local-contrast attribution: the aerial pass the largest loss at
+ * 100-600 m — Railyard's middle bands 0.14-0.28 against the photographs' 0.47-0.54 — and the coordinator's brief: less
+ * transmittance loss there, the hue shift and the distance cue kept): the haze law's middle distances. The optical depth
+ * takes w(d) = mix(AERIAL_MID_W0, 1, smoothstep(0, AERIAL_MID_FAR_M, d)): lighter near the camera, the whole law again by
+ * AERIAL_MID_FAR_M, so the far ranges, the panorama's bake and the cloud banks keep theirs. AERIAL_MID_HUE 1 applies w to
+ * the luminance only: the hazed colour keeps the full law's chromaticity — the hue shift — at the lighter veil's level.
+ * 2026-10-06, measured on the ground lane's frames and metric (Railyard, Verdant, Frontier, Foundry establishing; QA knobs
+ * of the same names, 1 / 1200 / 0 the plain law): the law's in-scatter veil was the whole loss (the law off = the pass
+ * off, +57 % local contrast; extinction alone loses nothing but the distance cue); w0 0.4 gave +16 %, w0 0.2 +23 % (+19
+ * to +28 % per map), the far third's lift over the near (the distance cue) +1.4 L* and its hue shift within 0.3 b*,
+ * the darkest 1 % 7-14 levels deeper, the far bands untouched; a global σ × 0.6 gave +15 % at the cost of the cue.
+ */
+const AERIAL_MID_W0 = 0.2;
+const AERIAL_MID_FAR_M = 1200;
+const AERIAL_MID_HUE = 1;
 // r9 SNIPER DE-HAZE: main.ts already scales the FogExp2 density down at high
 // zoom (fov < 15), but the aerial pass kept FULL density, so the x8 sight
 // picture stayed a desaturated teal wash — a 450 m hillside at x8 subtends
@@ -981,6 +998,9 @@ const AerialShader = {
     uHazeLaw: { value: new THREE.Vector4(0, 1 / HAZE_LAYER_SCALE_M, HAZE_TINT_SHARE, HAZE_TARGET_SKY_K) },
     uHazeZoom: { value: 1 },
     uHazeChroma: { value: new THREE.Vector3(...HAZE_EXT_CHROMA) },
+    // 2026-10-05: the middle distances' knobs (AERIAL_MID_*): x the optical depth's scale at the camera, y where the law is
+    // whole again (m), z 1 for the luminance only (the full law's chromaticity kept)
+    uHazeMid: { value: new THREE.Vector3(AERIAL_MID_W0, AERIAL_MID_FAR_M, AERIAL_MID_HUE) },
     uDetailW: { value: 0 }, // sniper far-field detail weight (0 in arcade)
     uCloudShade: { value: CLOUD_SHADE_DEFAULT }, // per-map cloud-shadow depth
     // aa-r1: composer-buffer texel size for the firefly clamp's diagonal
@@ -1033,6 +1053,7 @@ const AerialShader = {
     uniform vec4 uHazeLaw;
     uniform float uHazeZoom;
     uniform vec3 uHazeChroma;
+    uniform vec3 uHazeMid;
     uniform float uDetailW;
     uniform float uCloudShade;
     uniform vec2 uInvSize;
@@ -1042,6 +1063,17 @@ const AerialShader = {
     ${VEHICLE_OCCLUSION_GLSL}
     ${VEHICLE_GROUND_OCCLUSION_GLSL}
     ${HAZE_LAW_GLSL}
+    // 2026-10-05 (AERIAL_MID_*, the law by default): the middle distances' optical depth × w(d), whole again by
+    // uHazeMid.y; with uHazeMid.z the lighter veil's luminance at the full law's chromaticity (its hue shift kept)
+    vec3 hazeMiddle( vec3 hazed, vec3 surface, vec3 hazeCol, float sig, float rayT, float hzY0, float hzY1 ) {
+      if ( uHazeMid.x >= 0.999 ) return hazed;
+      float w = mix( uHazeMid.x, 1.0, smoothstep( 0.0, uHazeMid.y, rayT ) );
+      vec3 transW = hazeTransmittance( sig * w, rayT, hazeLayerMean( hzY0 * uHazeLaw.y, hzY1 * uHazeLaw.y ), uHazeChroma );
+      vec3 hazedW = surface * transW + hazeCol * ( 1.0 - transW );
+      if ( uHazeMid.z < 0.5 ) return hazedW;
+      vec3 lw = vec3( 0.2126, 0.7152, 0.0722 );
+      return hazed * ( dot( hazedW, lw ) / max( dot( hazed, lw ), 1e-5 ) );
+    }
     // The broad horizontal cloud shadow field keeps its existing 2D noise.
     float vhash( vec2 p ) {
       return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 );
@@ -1193,8 +1225,10 @@ const AerialShader = {
           // length times the layer's path-averaged density between the camera's height and the surface's (1 at the
           // datum); the sniper de-haze scales σ and the far band keeps half of it (the uHazeFull note)
           float sig = uHazeLaw.x * max( uHazeZoom, 0.5 * smoothstep( 430.0, 780.0, rayT ) );
+          vec3 hzSurface = texel.rgb;
           vec3 trans = hazeTransmittance( sig, rayT, hazeLayerMean( hzY0 * uHazeLaw.y, hzY1 * uHazeLaw.y ), uHazeChroma );
           texel.rgb = texel.rgb * trans + hazeCol * ( 1.0 - trans );
+          texel.rgb = hazeMiddle( texel.rgb, hzSurface, hazeCol, sig, rayT, hzY0, hzY1 );
         } else {
           float x = -viewZ * uDensity * hzLayer;
           float f = 1.0 - exp( -x * x );
@@ -1719,6 +1753,18 @@ function requireDepthTexture(
  * smoke column. This pass avoids that category error and gives the shaders a
  * resolved scene-depth source for soft intersections.
  */
+/** CopyShader's copy with a finite guard (NaN and +-Inf to 0; comparisons with NaN are false under fast math too). */
+const LATE_FX_FINITE_COPY_FRAGMENT = /* glsl */ `
+uniform float opacity;
+uniform sampler2D tDiffuse;
+varying vec2 vUv;
+void main() {
+  vec4 c = texture2D( tDiffuse, vUv );
+  c = vec4( abs( c.r ) < 6.0e4 ? c.r : 0.0, abs( c.g ) < 6.0e4 ? c.g : 0.0, abs( c.b ) < 6.0e4 ? c.b : 0.0,
+    abs( c.a ) < 6.0e4 ? c.a : 1.0 );
+  gl_FragColor = opacity * c;
+}`;
+
 export class LateFxPass extends Pass {
   readonly scene: THREE.Scene;
   readonly camera: THREE.PerspectiveCamera;
@@ -1733,7 +1779,8 @@ export class LateFxPass extends Pass {
   readonly copyQuad: FullScreenQuad;
   directColorSource: SceneAerialPass | null = null;
   sceneMatrixSource: SceneAAPass | null = null;
-  private readonly renderSceneView: LateFxSceneView;
+  /** Also the Studio cinema lens's FX coverage view (cinemaPost.ts): one stateless view of the same scene. */
+  readonly renderSceneView: LateFxSceneView;
 
   constructor(
     scene: THREE.Scene,
@@ -1758,7 +1805,9 @@ export class LateFxPass extends Pass {
       name: 'LateFxPass.Copy',
       uniforms: THREE.UniformsUtils.clone(CopyShader.uniforms),
       vertexShader: CopyShader.vertexShader,
-      fragmentShader: CopyShader.fragmentShader,
+      // (2026-10-08, the owner's black screens) the late composite passes finite values only: one NaN or Inf fragment of
+      // a transparent effect must not reach bloom or the grade
+      fragmentShader: LATE_FX_FINITE_COPY_FRAGMENT,
       depthTest: false,
       depthWrite: false,
       blending: THREE.NoBlending,
@@ -2257,7 +2306,10 @@ export function createPost(
     const hp = bloom.materialHighPassFilter;
     const patched = hp.fragmentShader.replace(
       HIGH_PASS_ANCHOR,
-      `gl_FragColor = mix( outputColor, vec4( min( texel.rgb, vec3( ${BLOOM_INPUT_CLAMP.toFixed(2)} ) ), texel.a ), alpha );`,
+      // (2026-10-08, the owner's black screens) a NaN or Inf pixel never enters the blur pyramid (it would spread over
+      // the whole frame): finite values only, then the clamp
+      `vec3 bloomIn = vec3( abs( texel.r ) < 6.0e4 ? texel.r : 0.0, abs( texel.g ) < 6.0e4 ? texel.g : 0.0, abs( texel.b ) < 6.0e4 ? texel.b : 0.0 );
+      gl_FragColor = mix( outputColor, vec4( min( max( bloomIn, vec3( 0.0 ) ), vec3( ${BLOOM_INPUT_CLAMP.toFixed(2)} ) ), texel.a ), alpha );`,
     );
     if (patched === hp.fragmentShader) {
       throw new Error('post.ts: bloom high-pass clamp anchor not found in LuminosityHighPassShader');
@@ -2781,6 +2833,8 @@ export function createPost(
       const terms = hazeTargetTerms(overcast, atmosphere.fogMix, hazeTermsScratch);
       law.set(hazeSigma(atmosphere.fogDensity), hazeLayerInverseScale(), terms.x, terms.y);
       hazeExtinctionChroma(u.uHazeChroma.value as THREE.Vector3);
+      (u.uHazeMid.value as THREE.Vector3).set(lightTune('AERIAL_MID_W0', AERIAL_MID_W0),
+        Math.max(1, lightTune('AERIAL_MID_FAR_M', AERIAL_MID_FAR_M)), lightTune('AERIAL_MID_HUE', AERIAL_MID_HUE));
     } else {
       (u.uHazeLaw.value as THREE.Vector4).x = 0;
     }
@@ -2836,7 +2890,11 @@ export function createPost(
     updateOutputGrade();
     grade.uniforms.uThermal.value = camera.userData.sensorVision ?? (camera.userData.thermalFlight === true ? (camera.userData.flightVision ?? 1) : 0);
     grade.uniforms.uThermalPixel.value.set(1/sceneTarget.width,1/sceneTarget.height);
-    aerial.uniforms.uCloudShade.value = scene.userData.cloudShadeAmp ?? CLOUD_SHADE_DEFAULT;
+    // (2026-10-05, the gauntlet's wave 93 on Whiteout: "soft dark-grey blotches stain the snowfield ... cloud shadows that a
+    // solid overcast cannot cast"): the world-anchored patchiness follows no cloud — under a closed deck it goes, by the
+    // light model's overcast
+    aerial.uniforms.uCloudShade.value = (scene.userData.cloudShadeAmp ?? CLOUD_SHADE_DEFAULT)
+      * (1 - Math.min(1, Math.max(0, (scene.userData.lightModel as { overcast?: number } | undefined)?.overcast ?? 0)));
     updateScopeGrade();
     updateAerialFogColors();
     updateAerialCameraBasis();
@@ -2926,9 +2984,20 @@ export function createPost(
             await yieldBeforePass(label);
           }
           const startedAt = performance.now();
-          pass.enabled = true;
-          composer.render(1 / 60);
-          pass.enabled = false;
+          if (pass === grade) {
+            const visionSteps = createVisionWarmSteps(grade.uniforms.uThermal, () => {
+              pass.enabled = true;
+              try { composer.render(1 / 60); }
+              finally { pass.enabled = false; }
+            });
+            for (const mode of visionSteps) {
+              if (yieldBeforePass) await yieldBeforePass(`vision-${mode}`);
+            }
+          } else {
+            pass.enabled = true;
+            composer.render(1 / 60);
+            pass.enabled = false;
+          }
           timings.push({
             label: pass.constructor?.name || `post-pass-${index + 1}`,
             ms: Math.round(performance.now() - startedAt),

@@ -28,6 +28,8 @@ export interface WeatherTints {
   plaster3: Rgb;
   stone: Rgb;
   roof: Rgb;
+  /** the roof's age, 0 (new tiles) – 1 (a century of weather): its tone and how far its moss and lichen have grown */
+  roofAge: number;
 }
 
 /** A style's weathering: tint palettes (around 1.0, multiplied into the shared surface textures) and strengths. */
@@ -59,17 +61,24 @@ export function pickWeatherTints(palette: WeatherPalette, rng: () => number): We
   };
   // the render variants carry their own canvas tone: the building's tint only shifts them a shade
   const plaster = jitter(pick(palette.plaster), 0.06);
-  return {
-    plaster, plaster2: plaster, plaster3: plaster,
-    stone: jitter(pick(palette.stone), 0.08),
-    roof: jitter(pick(palette.roof), 0.08),
-  };
+  const stone = jitter(pick(palette.stone), 0.08), roof = jitter(pick(palette.roof), 0.08);
+  // (the facades lane, round 6) drawn after the tints: every tint the stream gave before stays as it was
+  return { plaster, plaster2: plaster, plaster3: plaster, stone, roof, roofAge: rng() };
 }
 
 /** Heights (building-local, above the placed ground at y = 0) where the wall-foot band changes slope. */
 const DAMP_BREAKS = [0.35, 1.0, 1.8] as const;
 /** The wall-foot darkening at each height (before the damp strength): piecewise linear between the rows. */
 const DAMP_TABLE: ReadonlyArray<readonly [number, number]> = [[-0.6, 0.6], [0, 0.66], [0.35, 0.8], [1.0, 0.93], [1.8, 1]];
+
+/**
+ * A vertical wall's weathering at height `y` (building frame, the placed ground at 0) for a palette's damp strength:
+ * the factor this pass multiplies into the building's tint there (the destruction seam's rims redraw a wall seamlessly
+ * with it; damage fracture.ts).
+ */
+export function wallWeather(y: number, damp: number): number {
+  return 1 - (1 - dampK(y)) * Math.min(1, Math.max(0, damp));
+}
 
 function dampK(y: number): number {
   if (y <= DAMP_TABLE[0][0]) return DAMP_TABLE[0][1];
@@ -88,7 +97,7 @@ const smooth = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
-interface Vert { p: [number, number, number]; n: [number, number, number]; uv: [number, number]; s: number }
+interface Vert { p: [number, number, number]; n: [number, number, number]; uv: [number, number]; s: number; t: [number, number, number] }
 
 function lerpVert(a: Vert, b: Vert, y: number): Vert {
   // canonical edge direction: both triangles sharing the edge compute the identical point
@@ -100,6 +109,7 @@ function lerpVert(a: Vert, b: Vert, y: number): Vert {
     n: [s.n[0] + (e.n[0] - s.n[0]) * t, s.n[1] + (e.n[1] - s.n[1]) * t, s.n[2] + (e.n[2] - s.n[2]) * t],
     uv: [s.uv[0] + (e.uv[0] - s.uv[0]) * t, s.uv[1] + (e.uv[1] - s.uv[1]) * t],
     s: s.s + (e.s - s.s) * t,
+    t: [s.t[0] + (e.t[0] - s.t[0]) * t, s.t[1] + (e.t[1] - s.t[1]) * t, s.t[2] + (e.t[2] - s.t[2]) * t],
   };
 }
 
@@ -121,14 +131,14 @@ function splitAt(poly: Vert[], h: number): [Vert[], Vert[]] {
 /** Read a non-indexed regional geometry's triangles. */
 function readTriangles(geometry: THREE.BufferGeometry): Vert[][] {
   const pos = geometry.getAttribute('position'), nor = geometry.getAttribute('normal'), uv = geometry.getAttribute('uv');
-  const shade = geometry.getAttribute('shade');
+  const shade = geometry.getAttribute('shade'), tint = geometry.getAttribute('tint');
   const out: Vert[][] = [];
   for (let i = 0; i + 2 < pos.count; i += 3) {
     const tri: Vert[] = [];
     for (let k = 0; k < 3; k++) {
       const j = i + k;
       tri.push({ p: [pos.getX(j), pos.getY(j), pos.getZ(j)], n: [nor.getX(j), nor.getY(j), nor.getZ(j)],
-        uv: [uv.getX(j), uv.getY(j)], s: shade ? shade.getX(j) : 1 });
+        uv: [uv.getX(j), uv.getY(j)], s: shade ? shade.getX(j) : 1, t: tint ? [tint.getX(j), tint.getY(j), tint.getZ(j)] : [1, 1, 1] });
     }
     out.push(tri);
   }
@@ -139,6 +149,10 @@ export interface WeatherOptions {
   damp: number;
   moss: number;
   mossTint?: Rgb;
+  /** the sun's horizontal direction in the building's frame (x, z), or null: a slope turned from it grows more */
+  sun?: readonly [number, number] | null;
+  /** (round 10) a map gated back to the older craft (KIT_LEGACY_MAPS): its roofs weathered without their age */
+  legacy?: boolean;
 }
 
 /**
@@ -158,10 +172,11 @@ export function weatherRegionalParts(parts: RegionalParts, tints: WeatherTints, 
   const roofSpan = Math.max(0.5, roofHi - roofLo);
   const damp = Math.min(1, Math.max(0, options.damp)), moss = Math.min(1, Math.max(0, options.moss));
   const MOSS: Rgb = options.mossTint ?? [0.84, 0.92, 0.74];
+  const sun = options.sun ?? null, age = tints.roofAge ?? 0.5;
   for (const [source, target] of Object.entries(WEATHER_ROUTE) as Array<[RegionalBucket, RegionalBucket]>) {
     const list = parts[source];
     if (!list.length) continue;
-    const tint = tints[source as keyof WeatherTints];
+    const tint = tints[source as Exclude<keyof WeatherTints, 'roofAge'>];
     const isRoof = source === 'roof';
     for (const geometry of list) {
       const pos: number[] = [], nor: number[] = [], uv: number[] = [], col: number[] = [];
@@ -175,19 +190,34 @@ export function weatherRegionalParts(parts: RegionalParts, tints: WeatherTints, 
           if (ny < -0.5) k = 0.58;
           else {
             const t = (v.p[1] - roofLo) / roofSpan;
-            k = 0.8 + 0.2 * smooth(0, 0.6, t);
-            const m = moss * 0.6 * (1 - smooth(0, 0.45, t)) * (ny > 0.3 ? 1 : 0.4);
-            c = [tint[0] * (1 + (MOSS[0] - 1) * m), tint[1] * (1 + (MOSS[1] - 1) * m), tint[2] * (1 + (MOSS[2] - 1) * m)];
+            // (the facades lane, round 6; gauntlet wave 241: "unweathered clay roofs", "one clean terracotta tile texture
+            // with only value shifts between houses") the roof's age: an old roof darker and browner, its moss and lichen
+            // grown thick along the eaves, and thicker on the slope turned from the sun; a new one bright and clean
+            if (options.legacy) {
+              // (round 10, a gated map) the roof as the craft weathered it before its age: moss along the eaves alone
+              k = 0.8 + 0.2 * smooth(0, 0.6, t);
+              const m = moss * 0.6 * (1 - smooth(0, 0.45, t)) * (ny > 0.3 ? 1 : 0.4);
+              c = [tint[0] * (1 + (MOSS[0] - 1) * m), tint[1] * (1 + (MOSS[1] - 1) * m), tint[2] * (1 + (MOSS[2] - 1) * m)];
+            } else {
+              const away = sun && ny > 0.3 && ny < 0.995 ? Math.max(0, -(v.n[0] * sun[0] + v.n[2] * sun[1]) / Math.hypot(v.n[0], v.n[2])) : 0.4;
+              const growth = moss * (0.3 + 0.7 * age) * (0.55 + 0.9 * away);
+              k = (0.8 + 0.2 * smooth(0, 0.6, t)) * (1.05 - 0.2 * age);
+              const m = Math.min(0.9, growth * (1 - smooth(0, 0.5, t)) * (ny > 0.3 ? 1 : 0.4));
+              const brown = age * 0.18;
+              c = [tint[0] * (1 + (MOSS[0] - 1) * m) * (1 - brown * 0.5), tint[1] * (1 + (MOSS[1] - 1) * m), tint[2] * (1 + (MOSS[2] - 1) * m) * (1 + brown * 0.3)];
+            }
           }
         } else if (ny > 0.6) k = 1;
         else if (ny < -0.6) k = 0.62;
         else k = 1 - (1 - dampK(v.p[1])) * damp;
         k *= v.s;
-        col.push(Math.min(1.2, c[0] * k), Math.min(1.2, c[1] * k), Math.min(1.2, c[2] * k));
+        // paint (geometry.ts EmitOptions.tint) under the same tint, damp and occlusion as the wall it lies on
+        col.push(Math.min(1.2, c[0] * k * v.t[0]), Math.min(1.2, c[1] * k * v.t[1]), Math.min(1.2, c[2] * k * v.t[2]));
       };
       for (const tri of readTriangles(geometry)) {
         let pieces: Vert[][] = [tri];
-        if (!isRoof) {
+        // (a part laid on the terrain faces up: the band never darkens it, so it is never cut — facades lane 2026-10-07)
+        if (!isRoof && geometry.userData.onGround !== true) {
           for (const h of DAMP_BREAKS) {
             const next: Vert[][] = [];
             for (const poly of pieces) {
@@ -214,7 +244,10 @@ export function weatherRegionalParts(parts: RegionalParts, tints: WeatherTints, 
     }
     parts[source] = [];
   }
-  // a shade attribute left on any other bucket (a kit that dressed a non-weathered bucket) never reaches the merge
-  for (const list of Object.values(parts)) for (const geometry of list) if (geometry.getAttribute('shade')) geometry.deleteAttribute('shade');
+  // a shade or paint attribute left on any other bucket (a kit that dressed a non-weathered bucket) never reaches the merge
+  for (const list of Object.values(parts)) for (const geometry of list) {
+    if (geometry.getAttribute('shade')) geometry.deleteAttribute('shade');
+    if (geometry.getAttribute('tint')) geometry.deleteAttribute('tint');
+  }
   return parts;
 }

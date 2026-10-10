@@ -85,8 +85,14 @@ for (const id of ['m1a2', 'm1a2_tusk', 'm1a2_sepv2']) {
     `${id}: loader machine-gun pintle is centered on its mounting foot`);
     assert.ok(loaderWeapon.mountOverlapM >= 0.007,
       `${id}: loader machine-gun pintle overlaps its mounting foot`);
-    assert.ok(loaderWeapon.pintleTopY > loaderWeapon.receiverBottomY,
-      `${id}: loader machine-gun pintle reaches into its receiver`);
+    // The shared Browning construction (round 5) bears the receiver on a cradle floor over the pintle's yoke head:
+    // the pintle reaches into the receiver's cradle and the receiver sits on that cradle (no gap anywhere).
+    assert.ok(loaderWeapon.pintleTopY > loaderWeapon.cradleBottomY + 0.003,
+      `${id}: loader machine-gun pintle reaches into its receiver's cradle`);
+    assert.ok(Math.abs(loaderWeapon.cradleTopY - loaderWeapon.receiverBottomY) <= 0.001,
+      `${id}: loader machine-gun receiver sits on its cradle floor`);
+    assert.ok(loaderWeapon.receiverBottomY - loaderWeapon.pintleTopY <= 0.010,
+      `${id}: loader machine-gun receiver stays within its cradle floor of the pintle head`);
   }
 
   tank.dispose();

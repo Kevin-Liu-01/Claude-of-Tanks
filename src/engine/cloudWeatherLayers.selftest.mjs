@@ -130,15 +130,19 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   // (2026-10-02: a capture zeroes the drifts; the positive modulo jumped a whole wrap on the next frame — a seam for the
   // boiling noise, whose vertical period follows the slab's thickness — and every captured cloud ghosted)
   assert.ok(!/% (CLOUD_[A-Z_]+_M|wrap) \+ (CLOUD_[A-Z_]+_M|wrap)\)/.test(layerSrc), 'no drift wraps by a positive modulo');
-  assert.equal(layerSrc.match(/= wrapDrift\(/g)?.length, 8, 'the weather, noise (with the boil), cirrus and upper drifts run through zero');
+  // (2026-10-09, media r5's scene-time clouds: a scene-timed boil is set through wrapDrift too, so the frame step's eight
+  // and the scene setter's one make nine)
+  assert.equal(layerSrc.match(/= wrapDrift\(/g)?.length, 9, 'the weather, noise (with the boil), cirrus and upper drifts run through zero');
 }
 
 // ---- every path that shows a map's sky carries its cloudscape (the battle's getAuthoredPreset, and the world activation's
 // restore for the shots, the Studio staging and the census — which showed the legacy layer of the sky block alone)
 {
   const activation = here('../world/worldActivationRuntime.ts');
-  assert.match(activation, /world\.config\.clouds\s*\?\s*\{ \.\.\.\(world\.config\.sky \?\? \{\}\), cloudscape: world\.config\.clouds \}/, 'restoreAtmosphere carries config.clouds');
-  assert.match(here('../main.ts'), /return config\.clouds \? \{ \.\.\.sky, cloudscape: config\.clouds \} : sky;/, 'the battle path carries it');
+  // (2026-10-05: and the scene wind beside it, world/sceneWind.ts — sceneWind.selftest pins the drift it gives)
+  assert.match(activation, /\.\.\.\(world\.config\.sky \?\? \{\}\), \.\.\.\(world\.config\.clouds \? \{ cloudscape: world\.config\.clouds \} : \{\}\),\s*\.\.\.sceneWindOf\(/, 'restoreAtmosphere carries config.clouds and the scene wind');
+  assert.match(here('../main.ts'), /return \{ \.\.\.sky, \.\.\.\(config\.clouds \? \{ cloudscape: config\.clouds \} : \{\}\), \.\.\.sceneWindOf\(/, 'the battle path carries both');
+  assert.match(here('../main.ts'), /\.\.\.\(config\.clouds \? \{ cloudscape: config\.clouds \} : \{\}\), \.\.\.sceneWindOf\(config as \{ id\?: string \}\) \} as T : skyConfig;/, 'and the live world\'s light');
 }
 
 // ---- the time of day

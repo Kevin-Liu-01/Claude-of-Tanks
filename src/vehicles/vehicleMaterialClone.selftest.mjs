@@ -130,7 +130,9 @@ try {
           pads.push(material);
           assertRegistered(material, `${id}/${object.name}`);
           assert.equal(material.name, 'cot:track-pad');
-          assert.equal(material.vertexColors, false, `${id}: the shoes keep their instance palette, not vertex colours`);
+          // fleet lane round 1 (2026-10-07): the palette now multiplies the shoes' own worn-steel vertex colours
+          assert.equal(material.vertexColors, true, `${id}: the shoes read their worn-steel vertex colours under the palette`);
+          assert.ok(object.geometry.getAttribute('color'), `${id}/${object.name}: the shoe stream carries its vertex colours`);
           note('trackPad', id);
         }
         if (material.userData?.isolatedFrom) {

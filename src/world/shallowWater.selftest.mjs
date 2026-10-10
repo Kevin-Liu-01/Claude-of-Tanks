@@ -170,7 +170,7 @@ const water = createShallowWaterSurface(surface.geometry, mask, waves, field.siz
 }
 assert.equal(water.mesh.material.transparent, true);
 assert.equal(water.mesh.material.depthWrite, false);
-assert.equal(water.mesh.material.envMapIntensity, 0.9, 'surface keeps a bounded sky reflection (0.55 since the 2026-09-12 water pass; 0.9 since water pass 3 lit the sheet once)');
+assert.equal(water.mesh.material.envMapIntensity, 1, 'the sheet takes the sky\'s full image-based light (2026-10-08: the 0.55 and 0.9 it authored never applied, three overwrote them; the reflection\'s weight is uWaterQa\'s grazing law below, engine/materialEnvIntensity.ts)');
 assert.equal(water.mesh.material.forceSinglePass, true, 'one draw, not the two-pass transparent default');
 const shader = { uniforms: {}, vertexShader: ShaderLib.standard.vertexShader, fragmentShader: ShaderLib.standard.fragmentShader };
 water.mesh.material.onBeforeCompile(shader);

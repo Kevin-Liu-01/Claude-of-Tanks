@@ -25,7 +25,9 @@
 // on (the receipts, a renderer without float targets). Desktop tier only: the mobile tier has no far range.
 import * as THREE from 'three';
 import { HAZE_EXT_CHROMA, HAZE_LAW_GLSL, hazeLayerInverseScale, hazeSigma, hazeTargetTerms } from '../engine/hazeLaw.ts';
-import { ATMO_GROUND_KM, ATMOSPHERE_SKY_GLSL } from '../engine/atmosphere.ts';
+import { ATMO_GROUND_KM, ATMOSPHERE_SKY_GLSL, type AtmosphereParams } from '../engine/atmosphere.ts';
+import { CLOUD_SHADE_PARS_GLSL } from '../engine/cloudShadeMap.ts';
+import { authoredSunOf, lightTune, resolveLightModel, type LightModel, type LightModelPreset, type Rgb } from '../engine/lightModelCore.ts';
 import { SEA_APRON_OUTER_RADIUS_M, type SeaOpening } from './edgeWater.ts';
 import type { HorizonReliefCharacter } from './horizonRelief.ts';
 
@@ -192,6 +194,9 @@ export interface HorizonPanoramaOptions {
   treelineM?: number | null;
   /** the probes' smaller bake (a CPU renderer); production bakes at HORIZON_PANORAMA's sizes */
   resolution?: { width: number; height: number; gridA: number; gridR: number };
+  /** 2026-10-05 (Part 1, the skies lane): bake the cloud shade's aux (STRIP_AUX_FRAGMENT) so the far country takes the
+   * clouds' shadows; the desktop tier only (phones have no cloud shade map) */
+  cloudShade?: boolean;
   /** the map's authored fogDensity: the shared haze law's σ (hazeLaw.ts) for the far country past the shell */
   fogDensity?: number | null;
   /** the map's own overcast fraction (lightModelCore resolveOvercast of its sky and cloudscape): the haze target's terms
@@ -200,6 +205,14 @@ export interface HorizonPanoramaOptions {
   /** the battlefield's ground (world x, z → y), the aerial pass's haze datum under the camera (post.ts
    *  setGroundHeightSource): the far earth lands on the screen's horizon through that pass */
   groundAt?: ((x: number, z: number) => number) | null;
+  /**
+   * 2026-10-08 (the nightsky lane; the owner: "on sunsets and nights, the far skybox is still like glowing instead of
+   * having the right lighting"): the map's authored sky preset (its sky block with its cloudscape) — the day light the
+   * bake's gains were tuned under. relight() rebuilds that light with the grounded model (lightModelCore.ts) from the sky
+   * the first bake saw, and re-bakes the far country under the light the battlefield now publishes. Absent: the far
+   * country keeps its day bake (relight() reports false and the night dim stands).
+   */
+  lightPreset?: LightModelPreset | null;
 }
 
 /** How many frames a bake waits for the battlefield to publish this map's own sky before it keeps its own air. */
@@ -213,6 +226,111 @@ interface PanoramaAtmosphere {
   summary?: { horizon: THREE.Color; sunHorizon: THREE.Color } | null;
   /** the sky-view LUT and what sampling it needs (sky.ts AtmospherePublishedState; read, never written) */
   skyView?: THREE.Texture | null; viewHeightKm?: number; knee?: THREE.Vector3; skyIntensity?: number;
+  /** the atmosphere's parameters and its raw sky irradiance (the grounded light model's inputs; relight) */
+  params?: AtmosphereParams | null; irradianceRaw?: THREE.Color;
+}
+
+/**
+ * The light a far face takes under a light model and the sky it was resolved under (lightModel.ts's terms: irradiance in
+ * light units, per channel), as the battlefield's lit materials take it: the key light's at normal incidence (the sun,
+ * the night's moon), and the sky's on a level face — the environment's diffuse share with the hue it keeps
+ * (envDiffuseChroma) plus the hemisphere's glow (an overcast deck's, the night sky's).
+ */
+export function horizonFarLight(model: LightModel, irradianceRaw: Rgb): { sun: [number, number, number]; sky: [number, number, number] } {
+  const lumIrr = 0.2126 * irradianceRaw[0] + 0.7152 * irradianceRaw[1] + 0.0722 * irradianceRaw[2];
+  const env = Math.PI * lumIrr * model.envIntensity * model.envDiffuseGain;
+  const chroma = model.envDiffuseChroma;
+  const hue = (c: number): number => (lumIrr > 1e-9 ? irradianceRaw[c] / lumIrr : 1);
+  const sky = [0, 1, 2].map((c) => env * (1 + (hue(c) - 1) * chroma) + model.hemiIntensity * model.hemiSky[c]) as [number, number, number];
+  const sun = [0, 1, 2].map((c) => model.sunIntensity * model.sunColor[c]) as [number, number, number];
+  return { sun, sky };
+}
+
+/** The light the far country is baked under, against the day its gains were tuned for (horizonPanoramaRelight). */
+export interface HorizonPanoramaLight {
+  /** the key light's direction (unit, toward it): the sun, or the night's moon */
+  sun: [number, number, number];
+  /** the live light over the day's, per channel: the sun's term, the sky's, and the valleys' bounce (the level ground's
+   * whole light, which the bounce carries up) */
+  sunScale: [number, number, number];
+  skyScale: [number, number, number];
+  bounceScale: [number, number, number];
+  /** the live sky's luminance at the horizon over the day's: the bake's own air colour (its fog: the fill under the
+   * skyline, the channel's far water, the air it keeps without a published law) */
+  airScale: number;
+}
+
+/** One side of a relight: a resolved light model, the sky it was resolved under and that sky's horizon (both bands). */
+export interface HorizonPanoramaLightSample {
+  model: LightModel;
+  irradianceRaw: Rgb;
+  horizon: Rgb;
+  sunHorizon: Rgb;
+  /** unit vector toward the key light */
+  sunDir: readonly [number, number, number];
+}
+
+/** The bake's own day light on a level face (STRIP_FRAGMENT's surface law: its gains, the warm sun, the fog's sky tint and
+ * a typical sky occlusion), which relight holds to the battlefield's level ground. */
+export interface HorizonPanoramaBakeLight {
+  gains: { ambient: number; sunGain: number };
+  /** the bake's fog colour (linear): the hue of its sky term (skyTint) */
+  fog: Rgb;
+}
+/** The strip's sun warmth and a level face's typical sky occlusion (light.g), for the level-face match. */
+const STRIP_SUN_WARM: Rgb = [1.06, 0.98, 0.86];
+const LEVEL_SKY_OCCLUSION = 0.9;
+
+/**
+ * The relight of the far country (2026-10-08, the nightsky lane): the bake's sun and sky terms scaled per channel by the
+ * live light over the day light its gains were tuned under, the key light's own direction, and its own air scaled by the
+ * sky at the horizon. Null when the live light is the day's (the authored day bake stands, byte for byte). Ratios are
+ * clamped to [0, 4]: a term the day lacked (none at all) keeps its day value.
+ *
+ * With the bake's own light (`bake`), the sun and sky scales also take one per-channel factor that holds a level far face
+ * to the battlefield's level ground: the bake's day split between its sun and sky terms is its calibration, not the light
+ * model's, and a night lit mostly by the sky would otherwise leave the far land brighter against the near ground than by
+ * day (the receipt measured up to 1.9 times). The sun's share against the sky's keeps the per-term ratios; the bounce
+ * already carries the level ground's whole light.
+ */
+export function horizonPanoramaRelight(day: HorizonPanoramaLightSample, live: HorizonPanoramaLightSample,
+  bake: HorizonPanoramaBakeLight | null = null): HorizonPanoramaLight | null {
+  const d = horizonFarLight(day.model, day.irradianceRaw), l = horizonFarLight(live.model, live.irradianceRaw);
+  const ratio = (a: number, b: number): number => (b > 1e-9 ? Math.min(4, Math.max(0, a / b)) : 1);
+  const sinD = Math.max(0, day.sunDir[1]), sinL = Math.max(0, live.sunDir[1]);
+  const sunScale = [0, 1, 2].map((c) => ratio(l.sun[c], d.sun[c])) as [number, number, number];
+  const skyScale = [0, 1, 2].map((c) => ratio(l.sky[c], d.sky[c])) as [number, number, number];
+  const bounceScale = [0, 1, 2].map((c) => ratio(l.sun[c] * sinL + l.sky[c], d.sun[c] * sinD + d.sky[c])) as [number, number, number];
+  const lum = (a: Rgb, b: Rgb): number => 0.2126 * (a[0] + b[0]) + 0.7152 * (a[1] + b[1]) + 0.0722 * (a[2] + b[2]);
+  const airScale = ratio(lum(live.horizon, live.sunHorizon), lum(day.horizon, day.sunHorizon));
+  const ll = Math.hypot(live.sunDir[0], live.sunDir[1], live.sunDir[2]) || 1;
+  const sun = [live.sunDir[0] / ll, live.sunDir[1] / ll, live.sunDir[2] / ll] as [number, number, number];
+  const dl = Math.hypot(day.sunDir[0], day.sunDir[1], day.sunDir[2]) || 1;
+  const same = (v: number): boolean => Math.abs(v - 1) < 1e-9;
+  // the day's own light: the authored bake stands
+  if ((sun[0] * day.sunDir[0] + sun[1] * day.sunDir[1] + sun[2] * day.sunDir[2]) / dl > 1 - 1e-9
+    && [...sunScale, ...skyScale, ...bounceScale, airScale].every(same)) return null;
+  if (bake) {
+    const fogL = Math.max(1e-3, (bake.fog[0] + bake.fog[1] + bake.fog[2]) / 3);
+    const level = (c: number, sunS: number, skyS: number, sinEl: number): number => bake.gains.sunGain * 1.05 * sinEl * STRIP_SUN_WARM[c] * sunS
+      + bake.gains.ambient * LEVEL_SKY_OCCLUSION * (0.55 + 0.45 * bake.fog[c] / fogL) * skyS;
+    for (let c = 0; c < 3; c++) {
+      const far = ratio(level(c, sunScale[c], skyScale[c], sinL), level(c, 1, 1, sinD));
+      const fix = far > 1e-9 ? bounceScale[c] / far : 1;
+      sunScale[c] = Math.min(4, sunScale[c] * fix);
+      skyScale[c] = Math.min(4, skyScale[c] * fix);
+    }
+    // The day bake lights a level far face brighter than the battlefield lights its own level ground (its gains against
+    // the light model's day: about 1.3 to 1.6 times, the calibration the critics scored by day). Under another light the
+    // far land is never lit brighter than the near ground of the same albedo (the coordinator, 2026-10-08: "never brighter
+    // than the near terrain under the same light"): every term comes down by that excess, by its luminance (no hue shift).
+    const lumOf = (f: (c: number) => number): number => 0.2126 * f(0) + 0.7152 * f(1) + 0.0722 * f(2);
+    const excess = lumOf((c) => level(c, 1, 1, sinD)) / Math.max(1e-9, lumOf((c) => (d.sun[c] * sinD + d.sky[c]) / Math.PI));
+    if (excess > 1) {
+      for (let c = 0; c < 3; c++) { sunScale[c] /= excess; skyScale[c] /= excess; bounceScale[c] /= excess; }
+    }
+  }
+  return { sun, sunScale, skyScale, bounceScale, airScale };
 }
 
 /**
@@ -453,6 +571,14 @@ interface ShellAir {
   uPanoViewProj: THREE.IUniform<THREE.Matrix4>;
   /** the aerial pass's cloud shade, as post.ts sets it each frame (AERIAL_CLOUD_SHADE_GLSL) */
   uCloudShade: THREE.IUniform<number>;
+  /** 2026-10-05 (Part 1): the far country's cloud shadows — the bake's aux (premultiplied: r the land's distance from the
+   *  eye / 10 km, g the sun's share of the texel's colour, b the coverage), whether the shade is on this draw, and the
+   *  shared shade map's uniforms (cloudShadeMap.ts), pointed at the layer's each draw */
+  uPanoAux: THREE.IUniform<THREE.Texture | null>;
+  uPanoShadeOn: THREE.IUniform<number>;
+  tCotCloudShade: THREE.IUniform<THREE.Texture | null>;
+  uCotCloudShade: THREE.IUniform<THREE.Vector4>;
+  uCotCloudSun: THREE.IUniform<THREE.Vector4>;
 }
 
 /** The dome's deck greying (sky.ts ATMOSPHERE_DOME_FRAGMENT: the deck's grey at the horizon, a closed deck's at every
@@ -607,6 +733,11 @@ function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAi
     uPanoCloudOn: { value: 0 },
     uPanoViewProj: { value: new THREE.Matrix4() },
     uCloudShade: { value: 0 },
+    uPanoAux: { value: null },
+    uPanoShadeOn: { value: 0 },
+    tCotCloudShade: { value: null },
+    uCotCloudShade: { value: new THREE.Vector4(0, 0, 1 / 12000, 0) },
+    uCotCloudSun: { value: new THREE.Vector4(0, 1, 0, 1400) },
     uPanoDatum: { value: 0 },
     uPanoSkyOn: { value: 0 },
   };
@@ -625,6 +756,8 @@ uniform vec2 uPanoSunH;
 uniform float uPanoSigmaPost;
 uniform vec3 uPanoTint; uniform vec3 uPanoTerms; uniform float uPanoDatum, uPanoSkyOn, uPanoCloudOn;
 uniform mat4 uPanoViewProj;
+uniform sampler2D uPanoAux; uniform float uPanoShadeOn;
+${CLOUD_SHADE_PARS_GLSL}
 ${ATMOSPHERE_SKY_GLSL}
 ${DOME_DECK_GREY_GLSL}
 ${CLOUD_COMPOSITE_GLSL}
@@ -719,7 +852,20 @@ ${HAZE_LAW_GLSL}`)
         } else {
           // the atlas holds display-encoded colour (more precision in the shadows), premultiplied so its filtered edge
           // samples carry no black from the sky texels: divided back out, then back to linear
-          diffuseColor.rgb *= pow(pano.rgb / pano.a, vec3(2.2));
+          vec3 land = pow(pano.rgb / pano.a, vec3(2.2));
+          // 2026-10-05 (Part 1, the skies lane: the distant hills' cloud shadows): the far point rebuilt from the bake's
+          // distance (the column's azimuth, the ray's elevation from the bake eye), up the sun's ray into the shared shade
+          // map (cotCloudSun: inside its square, faded at the edge); only the sun's share of the texel dims — the sky's light
+          // and the haze stay
+          if (uPanoShadeOn > 0.5) {
+            vec4 aux = texture2D(uPanoAux, panoUv);
+            if (aux.b > 0.5) {
+              float rr = aux.r / aux.b * 10000.0, share = clamp(aux.g / aux.b, 0.0, 1.0), az = vPanoU * 6.2831853;
+              vec3 fp = vec3(cos(az) * rr, uPanoEye.y + tan(e) * rr, sin(az) * rr);
+              land *= 1.0 - share * (1.0 - cotCloudSun(fp));
+            }
+          }
+          diffuseColor.rgb *= land;
         }
       }
       #endif`);
@@ -1253,6 +1399,7 @@ varying vec2 vUv;
 uniform sampler2D uLight;
 uniform vec3 uSun;
 uniform vec2 uGains;
+uniform vec3 uSunScale, uSkyScale, uBounceScale; // the live light over the day's (relight; 1 by day)
 uniform vec3 uBase, uRock, uRock2, uScree, uSnow, uForest, uFog;
 uniform vec4 uChar3;   // snowline, treeline, rockSlope, bedM
 uniform vec4 uChar4;   // strata, deckM, ampM, farRise
@@ -1372,10 +1519,11 @@ vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   float ndl = max(0.0, dot(n, uSun));
   float fogL = (uFog.r + uFog.g + uFog.b) / 3.0;
   vec3 skyTint = 0.55 + 0.45 * uFog / max(1e-3, fogL);
-  // the sun warm, the shade lit by the sky (cooler), a little light bounced up from the valleys
-  vec3 sunC = uGains.y * 1.05 * ndl * light.r * vec3(1.06, 0.98, 0.86);
-  vec3 skyC = uGains.x * (0.62 + 0.38 * n.y) * light.g * skyTint;
-  vec3 bounce = uGains.x * 0.12 * (1.0 - n.y) * vec3(0.9, 0.85, 0.75);
+  // the sun warm, the shade lit by the sky (cooler), a little light bounced up from the valleys — each term under the
+  // live light over the day's it was tuned for (2026-10-08, the nightsky lane: relight; exactly 1 by day)
+  vec3 sunC = uGains.y * 1.05 * ndl * light.r * vec3(1.06, 0.98, 0.86) * uSunScale;
+  vec3 skyC = uGains.x * (0.62 + 0.38 * n.y) * light.g * skyTint * uSkyScale;
+  vec3 bounce = uGains.x * 0.12 * (1.0 - n.y) * vec3(0.9, 0.85, 0.75) * uBounceScale;
   col *= sunC + skyC + bounce;
   return col;
 }
@@ -1463,7 +1611,7 @@ void main() {
     // (its ground the character's snow where the far country is white to its lowest swale — an ice sheet, a negative
     // snowline: the fill stood as a band of the battlefield's ground tone over Whiteout's low ring, the follow-up ticket)
     float fillSnow = uChar3.x < 0.0 ? 1.0 : 0.0;
-    vec3 flatC = mix(uBase, uSnow, fillSnow) * (uGains.y * 1.05 * max(0.0, uSun.y) * vec3(1.06, 0.98, 0.86) + uGains.x * 0.82 * skyTint);
+    vec3 flatC = mix(uBase, uSnow, fillSnow) * (uGains.y * 1.05 * max(0.0, uSun.y) * vec3(1.06, 0.98, 0.86) * uSunScale + uGains.x * 0.82 * skyTint * uSkyScale);
     vec3 fill = mix(flatC, flatC * uForest / max(vec3(1e-3), uBase) * 0.95, smoothstep(0.05, 0.45, patchN) * step(0.35, uChar3.y) * (1.0 - fillSnow));
     float recede = smoothstep(atan(edge.a) - 0.06, atan(edge.a), e);
     if (uAir.y > 0.5) {
@@ -1526,6 +1674,45 @@ void main() {
 }
 `;
 
+/**
+ * 2026-10-05 (Part 1, the skies lane: the distant hills' cloud shadows): the strip's own march, run twice per texel —
+ * the sun's term on and off — for what the shell needs to dim the sun's part under the clouds: r the land's distance from
+ * the eye (/ 10 km), g the sun's share of the texel's final colour, 1 − L(no sun) / L(full) (the haze and the sky's light
+ * cancel; 0 where the sun's term is 0 — a face turned from it, a ridge's shadow), b the coverage; premultiplied by the
+ * coverage like the atlas, so a filtered skyline sample keeps its land's distance. Derived from STRIP_FRAGMENT by name
+ * (null if the strip no longer has the lines it rewrites: the bake skips the pass, the receipt fails).
+ */
+export const STRIP_AUX_FRAGMENT: string | null = deriveStripAux(STRIP_FRAGMENT);
+function deriveStripAux(strip: string): string | null {
+  const edits: [string, string][] = [
+    ['vec3 sunC = uGains.y * 1.05 * ndl * light.r * vec3(1.06, 0.98, 0.86) * uSunScale;', 'vec3 sunC = uGains.y * 1.05 * ndl * light.r * vec3(1.06, 0.98, 0.86) * uSunScale * gSunScale;'],
+    ['(uGains.y * 1.05 * max(0.0, uSun.y) * vec3(1.06, 0.98, 0.86) * uSunScale + uGains.x * 0.82 * skyTint * uSkyScale)', '(uGains.y * 1.05 * max(0.0, uSun.y) * vec3(1.06, 0.98, 0.86) * uSunScale * gSunScale + uGains.x * 0.82 * skyTint * uSkyScale)'],
+    ['void main() {', 'vec4 stripTexel() {'],
+    ['if (hitV < 0.0) { gl_FragColor = vec4(0.0); return; }', 'if (hitV < 0.0) { gRR = 0.0; return vec4(0.0); }'],
+    ['gl_FragColor = vec4(pow(clamp(col, 0.0, 1.0), vec3(1.0 / 2.2)) * alpha, alpha);', 'gRR = rr; return vec4(clamp(col, 0.0, 1.0), alpha);'],
+  ];
+  let out = strip;
+  for (const [from, to] of edits) {
+    if (out.split(from).length !== 2) return null;
+    out = out.replace(from, to);
+  }
+  const head = out.indexOf('${NOISE_GLSL}') >= 0 ? null : out.indexOf('float fallStreak(');
+  if (head === null || head < 0) return null;
+  out = `${out.slice(0, head)}float gSunScale = 1.0;\nfloat gRR = 0.0;\n${out.slice(head)}`;
+  return `${out}
+void main() {
+  gSunScale = 1.0;
+  vec4 full = stripTexel();
+  float rr = gRR;
+  gSunScale = 0.0;
+  vec4 dark = stripTexel();
+  float la = dot(full.rgb, vec3(0.2126, 0.7152, 0.0722)), lb = dot(dark.rgb, vec3(0.2126, 0.7152, 0.0722));
+  float share = la > 1e-5 ? clamp(1.0 - lb / la, 0.0, 1.0) : 0.0;
+  gl_FragColor = vec4(vec3(rr / 10000.0, share, 1.0) * full.a, 1.0);
+}
+`;
+}
+
 // --------------------------------------------------------------------------------------------------- the baker
 
 /** The renderer surface the bake needs (production: the WebGLRenderer). */
@@ -1549,6 +1736,21 @@ export interface HorizonPanoramaHandle {
   readonly baked: boolean;
   /** bake when a capable renderer is present and the atlas is not baked; true when baked after the call */
   ensureBaked(renderer: HorizonPanoramaRenderer | null | undefined): boolean;
+  /**
+   * 2026-10-08 (the nightsky lane): re-bake the far country under the light the battlefield now publishes (the battle
+   * atmosphere's time of day, applied under its cover): the key light's direction and the sun, sky and bounce terms over
+   * the day's, the haze from the live sky. True when the far country carries that light after the call (unchanged when
+   * it already did; the day light is the authored bake); false when it cannot (no capable renderer, no grounded light, no
+   * day reference): the bake stands as it was.
+   */
+  relight(renderer: HorizonPanoramaRenderer | null | undefined): boolean;
+  /**
+   * Keep the sky the battlefield publishes as the day reference relight() measures against, when it is this map's
+   * authored day sky (the battle atmosphere calls it before it applies a time of day: world activation applies the map's
+   * sky after the warm-up, so a map entered straight into a night may not have baked under it). True when a reference
+   * is held after the call.
+   */
+  noteDaySky(): boolean;
   dispose(): void;
   /** the last bake's duration (ms) and count, for the probes; `tone`: whether the battlefield's own ground and rock
    * means coloured the bake ('ground') or the authored palette did ('authored') */
@@ -1556,7 +1758,10 @@ export interface HorizonPanoramaHandle {
     /** the battlefield's ground and rock means the bake took (linear), for the probes and the bake's receipt */
     groundTone: number[] | null; rockTone: number[] | null;
     /** the haze law's terms the bake took (the overcast it read, the published light model's, σ, the targets), for the probes */
-    hazeTerms: { overcast: number; published: number; sigma: number; anti: number[]; toward: number[] } | null };
+    hazeTerms: { overcast: number; published: number; sigma: number; anti: number[]; toward: number[] } | null;
+    /** the light the atlas carries (null: the authored day), the relights run, the last relight's bake (ms) and whether
+     * the first bake took this map's day sky for its reference */
+    light: HorizonPanoramaLight | null; relights: number; relightMs: number; dayReference: boolean };
   /**
    * The battlefield's own ground and rock albedo means (linear), so the far country continues the ring's terrain
    * material instead of the authored hill palette (Sirocco Wadi's far tables were saturated orange behind a pale
@@ -1589,6 +1794,20 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   let domeScene: THREE.Object3D | null = null;
   let dome: THREE.Object3D | undefined;
   mesh.onBeforeRender = (_renderer, scene, camera) => {
+    // (Part 1, 2026-10-05: the far country's cloud shadows — the layer's shared shade map, by reference; off without the
+    // bake's aux, without a published map, or by the QA knob PANO_CLOUD_SHADE 0)
+    {
+      const shared = (scene.userData as { cloudShadeUniforms?: { tCotCloudShade: THREE.IUniform<THREE.Texture | null>;
+        uCotCloudShade: THREE.IUniform<THREE.Vector4>; uCotCloudSun: THREE.IUniform<THREE.Vector4> } }).cloudShadeUniforms;
+      const on = !!air.uPanoAux.value && !!shared && shared.uCotCloudShade.value.w > 0.5 && !!shared.tCotCloudShade.value
+        && lightTune('PANO_CLOUD_SHADE', 1) > 0;
+      air.uPanoShadeOn.value = on ? 1 : 0;
+      if (on) {
+        air.tCotCloudShade.value = shared!.tCotCloudShade.value;
+        air.uCotCloudShade.value = shared!.uCotCloudShade.value;
+        air.uCotCloudSun.value = shared!.uCotCloudSun.value;
+      }
+    }
     // the far earth's landing on the screen's horizon (the shell's far-earth note): the dome's own lookup and greying and
     // the aerial pass's terms as post.ts sets them this frame, the ground under the camera as its datum
     const data = scene.userData as { atmosphere?: PanoramaAtmosphere; lightModel?: { overcast?: number } };
@@ -1647,8 +1866,10 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     }
     if (Number.isFinite(atmosphere.fogDensity)) air.uPanoSigmaPost.value = hazeSigma(atmosphere.fogDensity as number);
     // the aerial pass's cloud shade, as post.ts sets it each frame (its CLOUD_SHADE_DEFAULT without a published one)
+    // (2026-10-05, the skies lane: faded by the light model's overcast as post.ts fades it — none under a closed deck)
     const shade = (scene.userData as { cloudShadeAmp?: number }).cloudShadeAmp;
-    air.uCloudShade.value = typeof shade === 'number' && Number.isFinite(shade) ? shade : 0.22;
+    const deck = Math.min(1, Math.max(0, (scene.userData.lightModel as { overcast?: number } | undefined)?.overcast ?? 0));
+    air.uCloudShade.value = (typeof shade === 'number' && Number.isFinite(shade) ? shade : 0.22) * (1 - deck);
     const ground = options.groundAt ? options.groundAt(camera.position.x, camera.position.z) : NaN;
     air.uPanoDatum.value = Number.isFinite(ground) ? ground : hazeDatumM;
   };
@@ -1660,20 +1881,46 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   mesh.userData.aoExclude = true;
   let atlas: THREE.WebGLRenderTarget | null = null;
   let skyline: THREE.WebGLRenderTarget | null = null;
+  // (Part 1, 2026-10-05: the cloud shade's aux, a quarter of the strip's size; null on the phone tier)
+  let aux: THREE.WebGLRenderTarget | null = null;
   let baked = false;
-  const stats = { bakes: 0, ms: 0, unsupported: null as string | null, tone: 'authored' as 'authored' | 'ground', haze: 'own' as 'own' | 'law',
+  const stats = { bakes: 0, ms: 0, auxMs: 0, aux: false, unsupported: null as string | null, tone: 'authored' as 'authored' | 'ground', haze: 'own' as 'own' | 'law',
     groundTone: null as number[] | null, rockTone: null as number[] | null,
-    hazeTerms: null as { overcast: number; published: number; sigma: number; anti: number[]; toward: number[] } | null };
+    hazeTerms: null as { overcast: number; published: number; sigma: number; anti: number[]; toward: number[] } | null,
+    light: null as HorizonPanoramaLight | null, relights: 0, relightMs: 0, dayReference: false };
   let skyWaits = 0;
-  const publishedSky = (): { atmosphere?: PanoramaAtmosphere; overcast: number } => {
+  const publishedSky = (): { atmosphere?: PanoramaAtmosphere; overcast: number; model?: LightModel } => {
     let root: THREE.Object3D = mesh;
     while (root.parent) root = root.parent;
-    const data = root.userData as { atmosphere?: PanoramaAtmosphere; lightModel?: { overcast?: number } };
-    return { atmosphere: data.atmosphere, overcast: data.lightModel?.overcast ?? 0 };
+    const data = root.userData as { atmosphere?: PanoramaAtmosphere; lightModel?: LightModel };
+    return { atmosphere: data.atmosphere, overcast: data.lightModel?.overcast ?? 0, model: data.lightModel };
+  };
+  // 2026-10-08 (the nightsky lane): the light the next bake takes (null: the authored day, the bake's own uniforms), and
+  // the day it is measured against — this map's own sky as a bake saw it (the atmosphere's parameters, its raw
+  // irradiance and its horizon), from which relight() rebuilds the day light with the grounded model
+  let light: HorizonPanoramaLight | null = null;
+  let dayReference: { params: AtmosphereParams; irradianceRaw: Rgb; horizon: Rgb; sunHorizon: Rgb } | null = null;
+  const rgb = (c: THREE.Color): Rgb => [c.r, c.g, c.b];
+  /** This map's authored day sky is what the battlefield publishes: its sun (the haze law's test) and its dome's
+   * intensity (the night preset keeps some maps' sun elevation and dims the dome to .08). */
+  const authoredSkyShowing = (atmosphere: PanoramaAtmosphere | undefined): boolean => {
+    const sd = atmosphere?.sunDir;
+    if (!atmosphere?.active || !sd || !atmosphere.params || !atmosphere.irradianceRaw || !atmosphere.summary) return false;
+    const [x, y, z] = options.sun, sl = Math.hypot(x, y, z) || 1, dl = Math.hypot(sd.x, sd.y, sd.z) || 1;
+    return (x * sd.x + y * sd.y + z * sd.z) / (sl * dl) >= 0.9995
+      && Math.abs((atmosphere.skyIntensity ?? 1) - (options.lightPreset?.skyIntensity ?? 1)) < 1e-6;
+  };
+  const takeDayReference = (atmosphere: PanoramaAtmosphere | undefined): void => {
+    if (dayReference || !options.lightPreset || !authoredSkyShowing(atmosphere)) return;
+    const a = atmosphere!;
+    dayReference = { params: { ...a.params!, sunDir: [...a.params!.sunDir] as [number, number, number] }, irradianceRaw: rgb(a.irradianceRaw!),
+      horizon: rgb(a.summary!.horizon), sunHorizon: rgb(a.summary!.sunHorizon) };
+    stats.dayReference = true;
   };
   const publishedSkyPending = (): boolean => {
     const { atmosphere, overcast } = publishedSky();
-    return !!atmosphere?.active && !horizonPanoramaHaze(atmosphere, options.sun, options.fogDensity, overcast);
+    // (the sky of the light being baked: the authored day's, or a relight's — a GPU suspension's re-bake at night)
+    return !!atmosphere?.active && !horizonPanoramaHaze(atmosphere, light ? light.sun : options.sun, options.fogDensity, overcast);
   };
   // the haze law's datum: the ground at the square's edge (the ring's seam rows, a low quartile) — the aerial pass takes
   // the ground under the camera
@@ -1733,7 +1980,12 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     const started = performance.now();
     // the battlefield's published sky, where the shell already hangs in the scene (the world's warm-up)
     const published = publishedSky();
-    const haze = horizonPanoramaHaze(published.atmosphere, options.sun, options.fogDensity, options.overcast ?? published.overcast);
+    // (the nightsky lane: the day bake keeps this map's sky as the day reference relight() measures the live light against)
+    if (!light) takeDayReference(published.atmosphere);
+    // the key light the far country is lit by: the authored sun by day, the live light's after a relight — the haze law
+    // takes the published sky only when it is that light's
+    const sun: readonly [number, number, number] = light ? light.sun : options.sun;
+    const haze = horizonPanoramaHaze(published.atmosphere, sun, options.fogDensity, options.overcast ?? published.overcast);
     stats.haze = haze ? 'law' : 'own';
     const r4 = (v: number) => Math.round(v * 1e4) / 1e4;
     stats.hazeTerms = haze ? { overcast: r4(options.overcast ?? published.overcast), published: r4(published.overcast), sigma: haze.sigma,
@@ -1781,12 +2033,18 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       uHazeToward: { value: haze?.toward ?? new THREE.Vector3() },
       uGrid: { value: new THREE.Vector2((options.resolution ?? P).gridA, (options.resolution ?? P).gridR) },
       uEdge: { value: edgeTex },
-      uSun: { value: new THREE.Vector3(...options.sun).normalize() },
+      uSun: { value: new THREE.Vector3(...sun).normalize() },
       uGains: { value: new THREE.Vector2(options.gains.ambient, options.gains.sunGain) },
+      // (the nightsky lane: the live light over the day's, 1 by day — relight)
+      uSunScale: { value: new THREE.Vector3(...(light?.sunScale ?? [1, 1, 1])) },
+      uSkyScale: { value: new THREE.Vector3(...(light?.skyScale ?? [1, 1, 1])) },
+      uBounceScale: { value: new THREE.Vector3(...(light?.bounceScale ?? [1, 1, 1])) },
       uElev: { value: new THREE.Vector2(P.elevMin, P.elevMax) },
       uBase: { value: linear(palette.base) }, uRock: { value: linear(rock) }, uRock2: { value: rock2 },
       uScree: { value: scree }, uSnow: { value: linear(palette.snow) }, uForest: { value: linear(palette.forest) },
-      uFog: { value: linear(palette.fog) },
+      // the bake's own air colour, under the live sky at the horizon after a relight (its hue the map's: the sky tint
+      // the strip derives from it is scale-free)
+      uFog: { value: light ? linear(palette.fog).multiplyScalar(light.airScale) : linear(palette.fog) },
     };
     const target = (w: number, h: number, type: THREE.TextureDataType, mips: boolean): THREE.WebGLRenderTarget => new THREE.WebGLRenderTarget(w, h, {
       type, format: THREE.RGBAFormat, depthBuffer: false, stencilBuffer: false, generateMipmaps: mips,
@@ -1800,6 +2058,10 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     stripRT.texture.colorSpace = THREE.NoColorSpace;
     stripRT.texture.anisotropy = 4;
     stripRT.texture.name = 'horizon-panorama-atlas';
+    // (Part 1: the cloud shade's aux at a quarter of the strip — 2048 x 128 half floats, 2 MB — where the tier has a
+    // shade map and the knob is on; QA: PANO_CLOUD_SHADE 0 bakes none)
+    const auxRT = options.cloudShade && STRIP_AUX_FRAGMENT && lightTune('PANO_CLOUD_SHADE', 1) > 0
+      ? target(Math.max(64, res.width >> 2), Math.max(16, res.height >> 2), THREE.HalfFloatType, false) : null;
     const skylineRawRT = target(res.width, 1, THREE.HalfFloatType, false);
     skylineRawRT.texture.minFilter = skylineRawRT.texture.magFilter = THREE.NearestFilter;
     const skylineRT = target(res.width, 2, THREE.HalfFloatType, false);
@@ -1816,6 +2078,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     const stripMat = pass(STRIP_FRAGMENT, { uHeight: { value: heightRT.texture }, uLight: { value: lightRT.texture } });
     const skylineMat = pass(SKYLINE_FRAGMENT, { uStrip: { value: stripRT.texture }, uRows: { value: res.height } });
     const skylineBlurMat = pass(SKYLINE_BLUR_FRAGMENT, { uSkyline: { value: skylineRawRT.texture }, uColumns: { value: res.width } });
+    const auxMat = auxRT ? pass(STRIP_AUX_FRAGMENT!, { uHeight: { value: heightRT.texture }, uLight: { value: lightRT.texture } }) : null;
     const previousTarget = renderer.getRenderTarget();
     const previousColor = renderer.getClearColor(_clear).clone();
     const previousAlpha = renderer.getClearAlpha();
@@ -1831,25 +2094,39 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
         renderer.clear(true, false, false);
         renderer.render(scene, camera);
       }
+      if (auxMat && auxRT) {
+        const t0 = performance.now();
+        quad.material = auxMat;
+        renderer.setRenderTarget(auxRT);
+        renderer.clear(true, false, false);
+        renderer.render(scene, camera);
+        stats.auxMs = Math.round((performance.now() - t0) * 10) / 10;
+      }
     } finally {
       renderer.setRenderTarget(previousTarget);
       renderer.setClearColor(previousColor, previousAlpha);
       renderer.autoClear = previousAutoClear;
       if (renderer.xr && previousXr !== undefined) renderer.xr.enabled = previousXr;
-      for (const m of [heightMat, lightMat, stripMat, skylineMat, skylineBlurMat]) m.dispose();
+      for (const m of [heightMat, lightMat, stripMat, skylineMat, skylineBlurMat, auxMat]) m?.dispose();
       quad.geometry.dispose();
       heightRT.dispose(); lightRT.dispose(); skylineRawRT.dispose(); edgeTex.dispose();
     }
     if (atlas) atlas.dispose();
     if (skyline) skyline.dispose();
+    if (aux) aux.dispose();
     atlas = stripRT;
     skyline = skylineRT;
+    aux = auxRT;
+    air.uPanoAux.value = auxRT ? auxRT.texture : null;
+    stats.aux = !!auxRT;
     // a GPU suspension (resourceLifetime) disposes the atlas texture: free its framebuffer, show the fallback again and
     // bake once more on the next request
     stripRT.texture.addEventListener('dispose', () => {
       if (atlas !== stripRT) return;
       baked = false; atlas = null; stripRT.dispose();
       if (skyline === skylineRT) { skyline = null; skylineRT.dispose(); air.uPanoSkyline.value = null; }
+      // (the aux goes with the atlas: the shell's cloud shade is off until the next bake makes both)
+      if (auxRT && aux === auxRT) { aux = null; auxRT.dispose(); air.uPanoAux.value = null; }
       mesh.visible = false;
       if (fallback) fallback.visible = true;
     });
@@ -1862,7 +2139,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       air.uPanoSigmaPost.value = haze.sigma;
       air.uPanoHazeAnti.value.copy(haze.anti);
       air.uPanoHazeToward.value.copy(haze.toward);
-      air.uPanoSunH.value.set(options.sun[0], options.sun[2]);
+      air.uPanoSunH.value.set(sun[0], sun[2]);
       if (air.uPanoSunH.value.lengthSq() > 1e-8) air.uPanoSunH.value.normalize(); else air.uPanoSunH.value.set(1, 0);
     } else {
       air.uPanoHaze.value.set(0, 0, 0, 0);
@@ -1871,6 +2148,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     if (fallback) fallback.visible = false;
     baked = true;
     stats.bakes++;
+    stats.light = light;
     stats.ms = Math.round(performance.now() - started);
   }
 
@@ -1899,9 +2177,52 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       bake(renderer);
       return baked;
     },
+    relight(renderer) {
+      // the live light as the battlefield publishes it (the battle atmosphere has just applied its preset): the grounded
+      // model's resolve, the sky it was resolved under and that sky's horizon
+      const { atmosphere, model } = publishedSky();
+      if (!renderer || unsupported(renderer)) return false;
+      // (refused: a bake relit for an earlier battle returns to the authored day — the September behaviour, whose night
+      // dim the battle atmosphere then applies; a galaxy sky's legacy rig on a cached world must not keep a night bake)
+      const refuse = (): boolean => {
+        if (light && baked) { light = null; bake(renderer); }
+        return false;
+      };
+      if (!options.lightPreset || !model || model.mode !== 'physical') return refuse();
+      if (!atmosphere?.active || !atmosphere.sunDir || !atmosphere.irradianceRaw || !atmosphere.summary) return refuse();
+      // (a first relight with the day showing takes its reference now: a bake that ran under another map's sky had none)
+      takeDayReference(atmosphere);
+      if (!dayReference) return refuse();
+      // the day light rebuilt from this map's own sky as the bake saw it, under the same deck pattern the live resolve took
+      const preset = options.lightPreset;
+      const dayModel = resolveLightModel(preset, dayReference.params, { irradianceRaw: dayReference.irradianceRaw },
+        authoredSunOf(preset), model.deckClosure < 1);
+      if (dayModel.mode !== 'physical') return refuse();
+      const next = horizonPanoramaRelight(
+        { model: dayModel, irradianceRaw: dayReference.irradianceRaw, horizon: dayReference.horizon, sunHorizon: dayReference.sunHorizon,
+          sunDir: dayReference.params.sunDir },
+        { model, irradianceRaw: rgb(atmosphere.irradianceRaw), horizon: rgb(atmosphere.summary.horizon), sunHorizon: rgb(atmosphere.summary.sunHorizon),
+          sunDir: [atmosphere.sunDir.x, atmosphere.sunDir.y, atmosphere.sunDir.z] },
+        { gains: options.gains, fog: rgb(palette.fog) });
+      const same = (a: HorizonPanoramaLight | null, b: HorizonPanoramaLight | null): boolean => (a === null || b === null ? a === b
+        : JSON.stringify(a) === JSON.stringify(b));
+      // (the bake already carries this light: nothing to do — the day battle after a day battle, the same night twice)
+      if (baked && same(next, light)) return true;
+      light = next;
+      const started = performance.now();
+      bake(renderer);
+      stats.relights++;
+      stats.relightMs = Math.round(performance.now() - started);
+      return baked;
+    },
+    noteDaySky() {
+      takeDayReference(publishedSky().atmosphere);
+      return !!dayReference;
+    },
     dispose() {
       if (atlas) { const a = atlas; atlas = null; baked = false; a.dispose(); }
       if (skyline) { const k = skyline; skyline = null; air.uPanoSkyline.value = null; k.dispose(); }
+      if (aux) { const x = aux; aux = null; air.uPanoAux.value = null; x.dispose(); }
       geometry.dispose();
       material.dispose();
     },
@@ -1918,4 +2239,4 @@ function mulberry32(a: number): () => number {
 }
 
 /** The bake's shader sources, for the receipts (a structural check: the passes compile against the same uniforms). */
-export const HORIZON_PANORAMA_SHADERS = Object.freeze({ vertex: QUAD_VERTEX, height: HEIGHT_FRAGMENT, light: LIGHT_FRAGMENT, strip: STRIP_FRAGMENT, skyline: SKYLINE_FRAGMENT, skylineBlur: SKYLINE_BLUR_FRAGMENT });
+export const HORIZON_PANORAMA_SHADERS = Object.freeze({ vertex: QUAD_VERTEX, height: HEIGHT_FRAGMENT, light: LIGHT_FRAGMENT, strip: STRIP_FRAGMENT, skyline: SKYLINE_FRAGMENT, skylineBlur: SKYLINE_BLUR_FRAGMENT, stripAux: STRIP_AUX_FRAGMENT ?? '' });

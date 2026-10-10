@@ -20,6 +20,23 @@
 // Landmarks: the Cinder Cone, the Little Cone, the Ember Cone, the Black Shelves, the Ash Hollow, the Sulphur Works'
 // stack and the Loading Yard. At the square's edge the west and east Black Shelves run into the rim: the borders lane
 // carries them outward.
+//
+// The settlement (the map-revival lane, 2026-10-05): a farming village of the caldera floor round its sulphur works,
+// built in the kyushu kit (maps/regional/kyushu.ts) where the plan seats its buildings. Minka farmhouses under thatch,
+// smoked tile or painted tin, with their irimoya gables and the engawa along the south front; white kura storehouses
+// on namako bases; timber naya barns; the vinyl greenhouses of the floor's market gardens; the agricultural co-op's
+// rice warehouse; the sulphur works' refinery sheds (stained yellow at the foot, a monitor along the ridge) or the
+// co-op's big rice kura; the works office of clapboard under tile; the fire brigade's post and its hose tower; the
+// works' brick stacks, or the village's fire lookout with its bell; the village shrine with its torii and lanterns;
+// burnt farmsteads. The trees are Aso's (treeBiomes.ts): sugi and Japanese red pine.
+//
+// Caldera round 2 (the map-revival lane, 2026-10-05; gauntlet wave 114: "a flat grey-beige plain of sand or ash with
+// pebble decals and low-poly shrubs spread evenly ... a desert mining town", the rim "smooth, untextured domes and pale
+// alpine spires rather than Aso's long, flat-topped green rim"): the floor is farmed — rectangular paddies between
+// earth bunds, green and flooded, vegetable plots and meadow (landUse.ts, the 'terrace' region); the slopes and the
+// cones are Kusasenri's grazed grassland, green under the summer's growth, on black volcanic soil (groundRedux.ts no
+// longer zones the floor as pumice and ash); the sugi stand in closed blocks; the scrub is the grassland's low bushes,
+// not broadleaf sprays; the rim is a long, level, wooded and grassy wall with no far peaks over it.
 
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 
@@ -99,28 +116,37 @@ export default {
     enemies: [{ x: 32.3, z: 383.7 }, { x: 24.3, z: 383.7 }, { x: 16.3, z: 383.7 }, { x: 8.3, z: 383.7 }, { x: 32.3, z: 393.7 }, { x: 24.3, z: 393.7 }, { x: 16.3, z: 393.7 }],
   },
   splat: {
-    grassTone: (h: number, s: number, l: number) => [0.14, clamp01(s * 0.55), clamp01(l * 0.48 + 0.08)],
-    dirtTone: (h: number, s: number, l: number) => [0.06, clamp01(s * 0.38), clamp01(l * 0.44 + 0.055)],
+    // (Caldera round 2: Kusasenri's grass and the black Andosol under it; the procedural fallback's tones — the rendered
+    // albedo is the sourced 'caldera' row, sourcedTextures.ts)
+    grassTone: (h: number, s: number, l: number) => [0.22, clamp01(s * 0.62), clamp01(l * 0.56 + 0.07)],
+    dirtTone: (h: number, s: number, l: number) => [0.07, clamp01(s * 0.32), clamp01(l * 0.36 + 0.05)],
     rockTone: (h: number, s: number, l: number) => [0.02, clamp01(s * 0.25), clamp01(l * 0.36 + 0.045)],
-    tintA: [0.72, 0.67, 0.55], tintB: [0.42, 0.39, 0.36], tintC: [0.83, 0.76, 0.56],
+    // (the macro tints: the grassland's green patches and its cured gold, not the ash's warm greys)
+    tintA: [0.94, 0.98, 0.86], tintB: [0.78, 0.82, 0.72], tintC: [1.02, 0.97, 0.80],
     roadTint: [0.49, 0.46, 0.43], strata: 0.05, midRelief: 1.15,
   },
   vegetation: {
     // Las Canadas on Tenerife: sparse Canary pine on bare cinder, a few Canary junipers, broom scrub (retama, codeso)
     // between, no grass carpet (gauntlet wave 3: the eucalyptus hillside and the meadow did not belong in a volcanic
     // caldera). The pine, cypress and acacia archetypes stand in for the Canary pine, juniper and broom.
-    species: ['pine', 'cypress', 'acacia'], clusterMix: [['pine', 0.82], ['cypress', 0.1], ['acacia', 0.08]],
-    loneMix: [['pine', 0.72], ['cypress', 0.12], ['acacia', 0.16]], rimMix: [['pine', 0.86], ['cypress', 0.08], ['acacia', 0.06]],
+    // (Caldera round 2: Aso's — the sugi in the pine and cypress slots stand in closed plantation blocks and windbreaks,
+    // the red pine in the acacia slot on the dry knolls and alone; wave 114: "evenly scattered shrubs")
+    species: ['pine', 'cypress', 'acacia'], clusterMix: [['pine', 0.62], ['cypress', 0.3], ['acacia', 0.08]],
+    loneMix: [['acacia', 0.5], ['pine', 0.3], ['cypress', 0.2]], rimMix: [['pine', 0.6], ['cypress', 0.3], ['acacia', 0.1]],
     // Trees round 2b (2026-10-03, wave 26: "evenly spaced, grid-like" pine stands; the caldera floor is nearly treeless
     // but for the broom): a few open groves (treeBiomes.ts open), scattered pines and a thin rim (its blocks stand
     // inside the square's corners), the broom carrying the floor. Was 16 / 38 / 40 trees and 0.55 broom.
-    clusterCount: 5, loneCount: 22, rimCount: 14, grassDensity: 0.03,
-    bushCount: 1.0, bushSpecies: 'acacia',
+    // (Caldera round 2: more and closed blocks, fewer lone trees, a fuller rim wood, the grassland's sward, a third of the
+    // even bush carpet; was 5 / 22 / 14 trees, 0.03 grass, 1.0 bushes)
+    clusterCount: 12, loneCount: 12, rimCount: 24, grassDensity: 0.5,
+    bushCount: 0.35, bushSpecies: 'acacia',
     // ground lane (wave 62, Caldera street-a: "a bright neon yellow-green scribble … an unmistakable rendering glitch" on
     // the cone's face was one of these few tufts, in the meadow's default green): the caldera's grass is dry, ash-dulled
     // straw, as the badlands' and the desert's
-    grassTexTone: (h: number, s: number, l: number) => [0.11, clamp01(s * 0.40), clamp01(l * 0.85 + 0.05)],
-    tuftTone: (h: number, s: number, l: number) => [0.11, 0.18, clamp01(l * 0.62 + 0.10)],
+    // (Caldera round 2: Kusasenri's grazed sward, a muted summer green going to straw at the tips — the ground lane's
+    // wave-62 straw was Las Cañadas's)
+    grassTexTone: (h: number, s: number, l: number) => [0.2, clamp01(s * 0.55), clamp01(l * 0.82 + 0.04)],
+    tuftTone: (h: number, s: number, l: number) => [0.19, 0.3, clamp01(l * 0.64 + 0.08)],
   },
   props: {
     plan: ['factory', 'foundryoffice', 'stack', 'depot', 'gantry', 'firestation',
@@ -142,9 +168,10 @@ export default {
         structure: 'transformershed', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: 16 },
     ],
     blockFill: true,
-    tones: makeRealisticCityBuildingTones({
-      value: 0.70, saturation: 0.88, soot: 0.055, roofValue: 0.68,
-    }),
+    // the village in Aso's architecture (the kyushu kit); the kit owns the renders' tones, the field walls keep the
+    // city preset's stone
+    architecture: 'kyushu',
+    tones: { stone: makeRealisticCityBuildingTones({ value: 0.70, saturation: 0.88, soot: 0.055, roofValue: 0.68 }).stone },
     extraKits: ['rail'], wallStyle: 'fieldstone', wallStoneChance: 0.72,
     wallRuns: [
       [-306, -140, -214, -104, 2], [-298, 130, -206, 166, 3],
@@ -155,8 +182,9 @@ export default {
     well: false, hayCrates: false, fences: true, telegraph: true, carts: false, logs: true,
     rocks: 310, outcrops: 76, craters: 92, rubblePiles: 36,
     sandbagLines: 22, hedgehogs: 26,
-    tankWrecks: { era: 'modern', count: 7, debris: true,
-      ids: ['m1a1', 't80u', 'm60a2', 'bmpt_t90', 'pt91m', 'ua_t84_oplot_m', 'm60a3'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): Kyushu: the Ground Self-Defense Force's Types 10, 90
+    // and 74 and the Type 89 IFV
+    tankWrecks: { era: 'modern', count: 7, debris: true, ids: ['type10', 'type90', 'type74', 'type89'] },
     inhabit: {
       stalls: 0, benches: 1, coreClutter: 30, drums: 16,
       trucks: 8, jeeps: 5, drumClusters: 9, camps: 3, modernClutter: 34,
@@ -164,7 +192,11 @@ export default {
     },
   },
   horizon: {
-    baseHex: 0x393a37, amp: 1.52, style: 'mesa', treeline: 0.28,
+    // (Caldera round 2, wave 114: "smooth, untextured domes and pale alpine spires rather than Aso's long, flat-topped
+    // green rim"): the rim wooded on its lower walls and grassy over its level tops (the rolling relief's forest and
+    // fields cover, not the volcanic field's bare cones), and no far peaks over it (the uplands behind the rim)
+    relief: 'rolling', panorama: { regional: 'upland' },
+    baseHex: 0x55603d, amp: 1.52, style: 'mesa', treeline: 0.55,
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): stacked lava-flow beds on the crater
     // walls (banding 0.18 over the 0.16 default), a second skyline rank of the dark conifers and more tone grain on
     // the flattest-reading ring of the mesa family (0.48 -> 0.60)
@@ -172,7 +204,7 @@ export default {
     // the mountains lane (2026-10-03): the outland boulders a shade sparser — they follow the ring's drained faces, and
     // the map's horizon draws no more triangles than the PR head's
     outlandRocks: 0.9,
-    forestHex: 0x292d27, rockHex: 0x4a4743, haze: 0.94, grain: 0.60,
+    forestHex: 0x27351f, rockHex: 0x4d4b44, haze: 0.94, grain: 0.60,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'cumulus-humilis', coverage: 0.22, cirrus: 0.45, baseM: 1500 },

@@ -25,6 +25,16 @@ const clone = value => JSON.parse(JSON.stringify(value));
 // recipe, with a cross-layout byte attribution) were change detectors. Each seed now builds today's Reservoir twice in
 // a child process, with and without the waterworks composer: every non-donor byte, record, material family, instance
 // and RNG draw must match, the three bodies must be seated on the current terrain and the budgets may only shrink.
+// 2026-10-07 (the landmarks lane, the pump house; the coordinator's relaxed law): the kiosk is built in the Eifel kit's
+// weathered stone (regionalStone) and curtained panes (curtain). Those two families already exist on Reservoir (its
+// houses draw them), so there is no new shader or family: each gains exactly the kiosk's parts, inserted whole into its
+// merged mesh, their vertex counts asserted (KIT_VERTICES); every other non-donor family stays byte-identical. The budget
+// law counts the kit parts, at or under the three donors'. Footprint, collider, RNG and record laws are unchanged.
+const KIT_MESHES = { 'props-bucket-regionalStone': 'regionalStone', 'props-bucket-curtain': 'curtain' };
+/** The kiosk's kit parts: the walls with their reveals (74 triangles), the two stone sills (12) and the two panes (4). */
+const KIT_VERTICES = { regionalStone: 222 + 36, curtain: 12 };
+const KIT_PARTS = { 'reservoir-kiosk-body': 'regionalStone', 'reservoir-kiosk-sills': 'regionalStone',
+  'reservoir-kiosk-panes': 'curtain', 'reservoir-kiosk-ironwork': 'dark', 'reservoir-kiosk-timber': 'wood' };
 
 function installFixtureCanvas() {
   globalThis.ImageData = class { constructor(data) { this.data = data; } };
@@ -45,19 +55,26 @@ function installFixtureCanvas() {
 }
 
 function recordMeshes(props) {
-  const rows = [], mats = new Set();
-  let vertices = 0, attributeBytes = 0;
+  const rows = [], mats = new Set(), kit = {};
+  let vertices = 0, attributeBytes = 0, tagBytes = 0;
   props.group.traverse(mesh => {
     if (!mesh.isMesh) return;
     const key = mesh.material.customProgramCacheKey(); mats.add(key);
     vertices += mesh.geometry.attributes.position.count;
-    attributeBytes += Object.values(mesh.geometry.attributes).reduce((n, a) => n + a.array.byteLength, 0);
+    // (the structure tag, aDamage, is destruction's own per-vertex cost — a family that gains a building gains it on every
+    // vertex; structureDamageSeam.ts and its receipts hold that budget — so it is counted apart from the geometry's)
+    for (const [n, a] of Object.entries(mesh.geometry.attributes)) {
+      if (n === 'aDamage') tagBytes += a.array.byteLength; else attributeBytes += a.array.byteLength;
+    }
     if (['world-props-stone-v7', 'world-props-wood-v7', 'world-props-dark-v7'].includes(key)) return;
-    rows.push({ name: mesh.name, material: key, count: mesh.count, geometry: geometryHash(mesh.geometry),
+    if (KIT_MESHES[mesh.name]) kit[mesh.name] = { material: key, count: mesh.count, matrix: mesh.matrix.elements,
+      attributes: Object.fromEntries(Object.entries(mesh.geometry.attributes).map(([n, a]) => [n, { itemSize: a.itemSize, array: a.array.slice() }])),
+      index: mesh.geometry.index ? mesh.geometry.index.array.slice() : null };
+    rows.push({ name: mesh.name, material: key, count: mesh.count, geometry: KIT_MESHES[mesh.name] ? 'kit family' : geometryHash(mesh.geometry),
       matrix: mesh.matrix.elements, instances: mesh.instanceMatrix && hash(bytes(mesh.instanceMatrix.array)),
       colors: mesh.instanceColor && hash(bytes(mesh.instanceColor.array)) });
   });
-  return { rows, mats: [...mats].sort(), vertices, attributeBytes };
+  return { rows, mats: [...mats].sort(), vertices, attributeBytes, tagBytes, kit };
 }
 
 async function wholeWorld(seed) {
@@ -102,7 +119,11 @@ async function wholeWorld(seed) {
       const geometry = Object.values(buckets).flat().filter(g => g.name.startsWith('reservoir-'));
       validateIntake(result, geometry, donors[2].collider);
     } else assert.deepEqual(records.map(clone), before);
-    seam = { donors: donors.slice(), before, result };
+    const kit = control ? null : Object.fromEntries(['regionalStone', 'curtain'].map(family => [family,
+      buckets[family].filter(g => g.name.startsWith('reservoir-kiosk')).map(g => ({ name: g.name, count: g.attributes.position.count,
+        structureIdx: g.userData.structureIdx,
+        attributes: Object.fromEntries(Object.entries(g.attributes).map(([n, a]) => [n, a.array.slice()])) }))]));
+    seam = { donors: donors.slice(), before, result, kit };
     return result;
   };
   registerHooks({ load(url, context, nextLoad) {
@@ -143,9 +164,14 @@ async function wholeWorld(seed) {
   }
   const before = await build(); control = false; const after = await build();
   assert.deepEqual(after.rng, before.rng, 'all real producer RNG counts and subsequent values are preserved');
-  assert.deepEqual(after.meshes.rows, before.meshes.rows, 'all non-donor material families and instances are byte-identical');
+  assert.deepEqual(after.meshes.rows, before.meshes.rows, 'all non-donor material families and instances are byte-identical'
+    + ' (the two kit families: their names, materials, counts and matrices; their geometry below)');
+  for (const [name, family] of Object.entries(KIT_MESHES)) {
+    validateKitFamily(name, before.meshes.kit[name], after.meshes.kit[name], after.seam.kit[family], KIT_VERTICES[family]);
+  }
   assert.deepEqual(after.meshes.mats, before.meshes.mats, 'no new shader/material family');
-  assert.ok(after.meshes.vertices <= before.meshes.vertices && after.meshes.attributeBytes <= before.meshes.attributeBytes);
+  assert.ok(after.meshes.vertices <= before.meshes.vertices && after.meshes.attributeBytes <= before.meshes.attributeBytes,
+    `the waterworks never add to the world's vertices (${after.meshes.vertices} of ${before.meshes.vertices}) or bytes (${after.meshes.attributeBytes} of ${before.meshes.attributeBytes})`);
   for (const key of ['obstacles', 'colliders']) {
     const donorKey = key === 'obstacles' ? 'obstacle' : 'collider';
     const indices = before.seam.donors.map(d => before.props[key].indexOf(d[donorKey]));
@@ -170,6 +196,59 @@ async function wholeWorld(seed) {
   }
   console.log(JSON.stringify({ seed, donors: after.seam.result.donors, before: after.seam.result.before,
     after: after.seam.result.after, bodies: after.seam.result.bodies, fullWorldVertices: [before.meshes.vertices, after.meshes.vertices] }));
+}
+
+/** A kit family's merged mesh after the composer: the one before it with exactly the kiosk's parts inserted, whole. */
+function validateKitFamily(name, before, after, parts, expected) {
+  assert.ok(before && after, `${name}: the family exists on Reservoir with and without the waterworks`);
+  assert.equal(parts.reduce((n, p) => n + p.count, 0), expected, `${name}: exactly the kiosk's parts (${expected} vertices)`);
+  assert.deepEqual(Object.keys(after.attributes).sort(), Object.keys(before.attributes).sort(), `${name}: its attributes unchanged`);
+  assert.equal(before.index, null); assert.equal(after.index, null);
+  const names = Object.keys(before.attributes), bv = before.attributes.position.array.length / 3;
+  assert.equal(after.attributes.position.array.length / 3 - bv, expected, `${name}: gains exactly the kiosk's vertices`);
+  const same = (n, i) => { const { itemSize: k } = before.attributes[n], a = before.attributes[n].array, b = after.attributes[n].array;
+    for (let j = 0; j < k; j++) if (a[i * k + j] !== b[i * k + j]) return false; return true; };
+  let at = 0;
+  while (at < bv && names.every(n => same(n, at))) at++;
+  for (const n of names) {
+    const k = before.attributes[n].itemSize, a = before.attributes[n].array, b = after.attributes[n].array;
+    // (the structure tag, `aDamage` = structureIdx + 1 or 0, is the family merge's own: structureDamageSeam.ts
+    // tagStructureVertices writes it on the merged mesh, so a part carries no such attribute — its block is its tag)
+    const block = parts.flatMap(p => {
+      if (p.attributes[n]) return [...p.attributes[n]];
+      assert.equal(n, 'aDamage', `${name}.${n}: an attribute the merge adds must be the structure tag`);
+      return new Array(p.count * k).fill(typeof p.structureIdx === 'number' ? p.structureIdx + 1 : 0);
+    });
+    assert.ok(bytes(b.subarray(0, at * k)).equals(bytes(a.subarray(0, at * k))), `${name}.${n}: the vertices before the kiosk unchanged`);
+    assert.deepEqual([...b.subarray(at * k, (at + expected) * k)], block, `${name}.${n}: the kiosk's parts, whole and in order`);
+    assert.ok(bytes(b.subarray((at + expected) * k)).equals(bytes(a.subarray(at * k))), `${name}.${n}: the vertices after it unchanged`);
+  }
+}
+
+/** The pump house's kit parts: in their families, closed triangle lists with the families' attributes, on the plan. */
+function validateKitKiosk(body, buckets, geometry) {
+  const attributes = { regionalStone: ['color', 'normal', 'position', 'uv'], curtain: ['nightEmissionMask', 'normal', 'position', 'uv'],
+    dark: ['normal', 'position', 'uv'], wood: ['normal', 'position', 'uv'] };
+  for (const [name, family] of Object.entries(KIT_PARTS)) {
+    const parts = geometry.filter(g => g.name === name);
+    assert.equal(parts.length, 1, `${name}: one part`);
+    const g = parts[0], p = g.attributes.position;
+    assert.ok(buckets[family].includes(g), `${name}: in the ${family} family`);
+    assert.deepEqual(Object.keys(g.attributes).sort(), attributes[family], `${name}: the family's attributes`);
+    assert.equal(g.index, null); assert.equal(p.count % 3, 0);
+    for (const a of Object.values(g.attributes)) assert.ok([...a.array].every(Number.isFinite));
+    if (g.attributes.color) assert.ok([...g.attributes.color.array].every(c => c > 0.3 && c <= 1.2), `${name}: weathered tints`);
+    if (family === 'curtain') assert.ok([...g.attributes.nightEmissionMask.array].every(m => m === 1), 'every pane lit at night');
+    // dressing at most 6 cm proud of the hard plan (sills, louvres); everything between the buried foot and the top
+    for (let i = 0; i < p.count; i++) {
+      assert.ok(Math.abs(p.getX(i) - body.x) <= body.width / 2 + 0.0601 && Math.abs(p.getZ(i) - body.z) <= body.depth / 2 + 0.0601);
+      assert.ok(p.getY(i) >= body.bottom - 1e-5 && p.getY(i) <= body.top + 1e-5);
+    }
+  }
+  const walls = geometry.find(g => g.name === 'reservoir-kiosk-body');
+  assert.equal(walls.attributes.position.count, 222, 'the walls, plinth, lintels and reveals: 74 triangles');
+  assert.ok(!walls.userData.noCollision && geometry.find(g => g.name === 'reservoir-kiosk-sills').userData.noCollision,
+    'the walls are structure, the sills dressing');
 }
 
 function validateBodySupport(body, geometry, field) {
@@ -199,12 +278,14 @@ function validateAssembly(receipt, buckets, field) {
   assert.equal(bars.length, 6);
   assert.ok(bars.every(g => buckets.stone.includes(g)), 'all six crossbars retain the existing stone bucket');
   for (const g of geometry) {
+    if (KIT_PARTS[g.name]) { g.computeBoundingBox(); continue; }
     assert.deepEqual(Object.keys(g.attributes).sort(), ['normal', 'position', 'uv']);
     for (const a of Object.values(g.attributes)) assert.ok([...a.array].every(Number.isFinite));
     for (const i of g.index.array) assert.ok(i < g.attributes.position.count);
     g.computeBoundingBox();
   }
   for (const body of receipt.bodies) validateBodySupport(body, geometry, field);
+  validateKitKiosk(receipt.bodies[0], buckets, geometry);
   const bankCap = geometry.find(g => g.name === 'reservoir-bank-cap').boundingBox;
   const hatches = geometry.filter(g => g.name === 'reservoir-bank-hatch');
   assert.equal(hatches.length, 2, 'both service hatches survive inside the same piece budget');
@@ -417,7 +498,7 @@ function validateIntake(receipt, geometry, collider) {
 }
 
 function fixture() {
-  const buckets = { stone: [], wood: [], dark: [slabBox(1, 1, 1)] };
+  const buckets = { stone: [], wood: [], dark: [slabBox(1, 1, 1)], regionalStone: [slabBox(1, 1, 1)], curtain: [slabBox(1, 1, 1)] };
   const donors = Array.from({ length: 3 }, (_, i) => {
     const stone = Array.from({ length: 13 }, () => slabBox(1, 1, 1).translate(-200 + i * 10, 0, 160));
     buckets.stone.push(...stone);
@@ -431,31 +512,36 @@ if (process.argv[2] === '--world') {
   await wholeWorld(Number(process.argv[3]));
 } else {
   const { composeReservoirWaterworks } = await import('./reservoirWaterworks.ts');
+  const KIT = {}; // a regional kit naming no weathering of its own (the Eifel kit): weather.ts DEFAULT_WEATHER
   const field = createHeightField(1337, reservoir), cfg = reservoir.props.reservoirWaterworks;
   for (const id of MAP_IDS.filter(id => id !== 'reservoir')) {
     const f = fixture(), geometry = Object.values(f.buckets).flat(), hashes = geometry.map(geometryHash);
-    assert.equal(composeReservoirWaterworks(id, cfg, field, f.donors, f.buckets, f.blockers), null);
+    assert.equal(composeReservoirWaterworks(id, cfg, field, f.donors, f.buckets, f.blockers, KIT), null);
     assert.deepEqual(Object.values(f.buckets).flat(), geometry, `${id}: same geometry objects`);
     assert.deepEqual(geometry.map(geometryHash), hashes, `${id}: byte-identical despite supplied opt-in`);
     geometry.forEach(g => g.dispose());
   }
-  for (const failure of ['unavailable', 'occupied', 'wet-kiosk', 'steep-kiosk', 'budget']) {
+  for (const failure of ['unavailable', 'occupied', 'wet-kiosk', 'steep-kiosk', 'budget', 'no-kit', 'no-kit-family']) {
     const f = fixture(); let terrain = field;
     if (failure === 'unavailable') f.donors.pop();
     if (failure === 'occupied') f.blockers.push({ min: [43, -8, 97], max: [44, 2, 98] });
     if (failure === 'wet-kiosk') terrain = { ...field, getWaterMaskAt: () => 1 };
     if (failure === 'steep-kiosk') terrain = { ...field, getHeightAt: (x, z) => x < 18 ? x : field.getHeightAt(x, z) };
     if (failure === 'budget') f.donors[0].stone.splice(0, 12);
+    if (failure === 'no-kit-family') f.buckets.curtain.length = 0;
     const geometry = Object.values(f.buckets).flat(), hashes = geometry.map(geometryHash), records = clone(f.blockers);
-    const result = composeReservoirWaterworks('reservoir', cfg, terrain, f.donors, f.buckets, f.blockers);
-    assert.notEqual(result.status, 'built');
+    const result = composeReservoirWaterworks('reservoir', cfg, terrain, f.donors, f.buckets, f.blockers,
+      failure === 'no-kit' ? null : KIT);
+    assert.equal(result.status, { unavailable: 'unavailable', occupied: 'unsafe', 'wet-kiosk': 'unsafe', 'steep-kiosk': 'unsafe',
+      budget: 'budget', 'no-kit': 'unavailable', 'no-kit-family': 'unavailable' }[failure], `${failure}: ${result.status}`);
     assert.deepEqual(Object.values(f.buckets).flat(), geometry, `${failure}: no partial replacement`);
     assert.deepEqual(geometry.map(geometryHash), hashes); assert.deepEqual(f.blockers, records);
     geometry.forEach(g => g.dispose());
   }
   for (const seed of [1337, 2049, 7719]) {
     const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--world', String(seed)],
-      { encoding: 'utf8', timeout: 90000, maxBuffer: 4 * 1024 * 1024 });
+      // (2026-10-09: a whole-world child takes 55-145 s under a loaded suite; 90 s timed out on load, not on the world)
+      { encoding: 'utf8', timeout: 240000, maxBuffer: 4 * 1024 * 1024 });
     assert.equal(child.status, 0, child.stderr || String(child.error));
     console.log(child.stdout.trim());
     console.log(`reservoir/${seed}: full-world composer A/B, seated bodies and intake PASS`);

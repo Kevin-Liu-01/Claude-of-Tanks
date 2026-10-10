@@ -22,7 +22,9 @@ allocation-free chase-camera occlusion focus passed to an active world,
 `terrainLodPolicy.ts` owns typed allocation-free visible/prefetch scheduling,
 `liveHeightFieldProxy.ts` selects cached live versus exact authoring queries,
 `collision.ts` owns strict allocation-free broad phase and narrow-phase shape
-contracts, `maps/` owns layouts, `shallowWater.ts` owns the lake/sea sheet and `waterRipples.ts` the world-anchored GPU
+contracts (every convex part convex in fact: `convexOutlineInPlace`), `rockCollision.ts` derives every stone's and
+rock formation's colliders from its own mesh and `slabCollision.ts` the shell slabs of the props' leaning solids (wrecks,
+hedgehog beams, pylon legs; all audited by `tools/world-collider-audit.mjs`), `maps/` owns layouts, `shallowWater.ts` owns the lake/sea sheet and `waterRipples.ts` the world-anchored GPU
 shallow-water field it reads for wakes, churn and splashes (null on the mobile tier and in receipts), and vegetation,
 props and toppling own their visual/runtime layers; `groundRedux.ts` (THREE-free) holds every map's ground profile
 (the terrain material's transition / fold / snow / strand knobs and the tall-grass biome — never a map-config edit),
@@ -35,7 +37,12 @@ deterministic static tank-wreck and zero-extra-draw-call debris baking.
 each planned building's placement settles the kit replaces its geometry with the region's version inside the same
 footprint (house grammar `house.ts`, openings cut with reveals, `weather.ts` tints and weathering into the vertex-
 coloured `regional*` buckets, war wear, `dressing.ts`); collision follows the new shell, so a kit change regenerates
-the map's shard. The kit guide is in docs/MAP-LAYOUT-BRIEF.md ("Regional building kits").
+the map's shard. The kit guide is in docs/MAP-LAYOUT-BRIEF.md ("Regional building kits"). On desktop builds the facade
+craft (`maps/regional/facade.ts`, 2026-10-05) finishes every kit's houses — window heads and carved surrounds, cornices,
+painted bands, gutter fittings, thatch courses, dormers, weathering — as dressing only, desktop only and from its own
+stream (`facade.selftest.mjs` holds the three laws). `maps/regional/skyline.ts` is the tall- and big-building kit (art-deco
+and curtain towers, slabs, the Stalinist high-rise, sawtooth halls, gasholders, a terminus, a cathedral, each with its
+damage states) a city kit binds into its builders (`SKYLINE_CITY`).
 `destructibles.ts` is the typed, allocation-free active-world seam between
 shell traffic, break FX, prop destruction events, and cached map handlers.
 `utilityNetwork.ts` owns renderer-free pole adjacency, hinge poses, stable
@@ -119,6 +126,16 @@ it): an apron off the ring's outer edge and a wall at 2.6 km, sampling the atlas
 scene fog off as on the round-72 range. The world bakes it under the loading cover (`map.ts` warmImpostors) or on the
 first update, again after a GPU suspension disposes the atlas; until then the round-72 far range draws (receipts, no
 float targets). `horizon.panorama: false` keeps the old range; an object overrides the character's far knobs.
+Time of day (the nightsky lane, 2026-10-08; the owner: "on sunsets and nights, the far skybox is still like glowing"): the
+bake is lit by the map's authored day and drawn unlit, so the battle atmosphere re-bakes it under the light it applies
+(`battleAtmosphereRuntime.ts` relightHorizonPanoramas → the handle's `relight(renderer)`, inside the covered prepare and
+the Studio's time switch; about 60-75 ms per change, none by day): the key light's direction (long shadows at sunset,
+the moon at night), the strip's sun, sky and bounce terms scaled per channel by the live light over the day light the
+gains were tuned under (`horizonPanoramaRelight`, the day rebuilt with the grounded model from the sky the first bake
+saw), a level far face held to the battlefield's level ground and never lit brighter than it, and the haze from the live
+sky. By day the relight is the identity (no re-bake); a relit shell skips the old night dim (×0.20).
+`horizonPanoramaRelight.selftest.mjs` runs the strip's own light and haze statements per map against the sky and the near
+ground.
 Layers (the panorama lab, the real ring baked in-page on SwiftShader, measured the far country above the ring's own
 skyline from the eye on 14-35 % of bearings): the edge texture's alpha carries that skyline (`horizonRingSkylineTan`,
 compass-smoothed), and past ~3.5 km the far country rises to stand a wandering margin above it (-0.9..+4.3°, never into
@@ -223,13 +240,18 @@ giving the lit shell back) — and each card carries a billboard frame (`aAxis`,
 the card's own axis toward the camera (`COT_LEAF_BILLBOARD`, ahead of the wind; the impostor bake turns them the same
 way, `COT_BAKE_BILLBOARD`); a small crown's near-camera dissolve keeps to its size (`vCotNearScale`). The tiles are leaf
 clusters (smaller leaves, lit by where they sit in the cluster); a pine's brush and an acacia's leaflets keep their gaps
-under the alpha test (their shading is painted `source-atop`, never a filled core). `crownShadowDapple.ts` opens sun-space leaf gaps in the
+under the alpha test (their shading is painted `source-atop`, never a filled core; the spruce's and the fir's
+herringbone open between eight side twigs, the Canary pine's tile one long splayed fox-tail). A battle snag is a
+shattered trunk — wood only, its snapped top splintered into shards — and few stand. `crownShadowDapple.ts` opens sun-space leaf gaps in the
 crown hull's depth pass: each crown mass as far as its sprays leave it open (`GROWTH_CROWN_POROSITY`, Beer-Lambert over
 the tree's atlas share of opaque leaf, `SPRAY_ATLAS_COVERAGE`) with its own pattern, so a crown's heart casts darker than
 its fringe (world-anchored, the wood never opens, closing where a cascade's texel outgrows them).
 `treeBiomes.ts` (THREE-free) routes a map's species SLOTS to the regional FORMS of its real place on the desktop tiers
-(new profiles and tiles: beech, chestnut, holmOak, olive, canaryPine, aleppoPine, larch; summer birches in leaf; a map's
-shrub form, Las Cañadas' and Wadi Rum's broom; a place's foliage colour where the map palette names none, the hyper-arid
+(new profiles and tiles: beech, chestnut, holmOak, olive, canaryPine, aleppoPine, larch, the Arizona uplands' juniper and
+pinyon; round 5's map-revival forms: longleafPine (tufts on a long clear bole), lebanonCedar (the `shelf` envelope: level
+plates, a flat top), sugi, redPine; summer birches in leaf; a map's shrub form, Las Cañadas' and Wadi Rum's broom, a
+cutover's longleafSeedling (a `fountain` profile: grass-stage needle fountains from the ground); a place's foliage
+colour where the map palette names none, the hyper-arid
 places' dust-dulled acacias; a form's own colour over the slot's palette, Dalmatia's silver olives and grey holm oaks)
 — records, seeds and the mobile look stay the slot's; a birch crown in leaf on a palette
 naming no card colour takes the broadleaf tint law, never the bare twigs' warm grey (`grownTintLaw`). Snow maps: a conifer's
@@ -238,12 +260,36 @@ sparse, short). Stands are woodlots (`placeTreeClusters`: the round-1 draws repl
 placement keeps its seat, then irregular outlines with denser margins, clearings and thin patches on their own stream, at
 the round-1 stands' mean footprint so the deployments' corridors keep their cover; `standPoint` puts the saplings,
 fringe scrub and understorey on the real outline; a stand that cannot stand leaves no strays; `treeBiomeOpen` places'
-stands are open groves, Las Cañadas' and the arid places'). Lone trees (`placeLoneTrees`, own stream, round-1 draws
-replayed) stand at woodlot edges, on field boundaries (a hedged one, the ground lane's `hedgeSite`, else a road's verge)
-and as field clumps between the deployments (strung along a hedge where one is near); a hyper-arid place
-(`treeBiomeArid`) seats its groves, lone trees and border trees in the wadi beds and hollows; a map's `palmSites` keep
+stands are open groves, Las Cañadas' and the arid places'; a `treeBiomeUpland` place zones its forms by height, the
+conifers on the high ground and the broadleaf forms in the low, Copper Mesa's juniper, pinyon and mesquite; round 3: a
+closed wood holds half again the trees on two thirds of the ground each and spreads its crowns wider,
+`treeBiomeWoodSpread`, its canopy over about two thirds of its ground). Field trees (`placeLoneTrees`, own stream,
+round-1 draws replayed) stand in groups and lines, never alone: fringe groups along a woodlot's outline, hedgerows on
+hedged field boundaries (the ground lane's `hedgeSite`) or avenues on road verges, shelterbelts between the
+deployments; the border's open trees are kept by the 36 m patch; a hyper-arid place
+(`treeBiomeArid`) seats its groves, lone trees and border trees in the wadi beds and hollows (its border trees at a
+field tree's scale, not the forest ring's); a map's `palmSites` keep
 its palms and its palm groves at the water (any other palm grows as `palmFallback`, no draw moved). `treeCrownShading.selftest.mjs` pins the laws,
-`treeSpacing.selftest.mjs` where the trees stand; battlePacing guards the fights' cover.
+`treeSpacing.selftest.mjs` where the trees stand; battlePacing guards the fights' cover. Trees round 5: a grown shrub
+paints its own atlas (`makeSprayAtlas`'s `shrub`: the slot's sprays at a shrub's leaf size on irregular woody twigs, at
+1024 px, its stems on the last tile, `SHRUB_STEM_TILE`) and stands on stem cards from the ground into each clump
+(`shrubStemSites`, turned about their stems like the sprays); a birch's bark carries the bands and branch scars it shows
+across a field (`paintBirchFarMarks`). A tree inside a closed wood is forest-grown (`forestGrownProfile`: a tall clear
+bole under a high, narrower crown): on a map whose woods close, the woods' species grow near variants 0 and 1 forest-grown
+and keep variant 2 open-grown, the woods' trees take the pair and the field trees the open one (`assignTreeForms`; pools,
+impostor rows and records unchanged; `?forestForm=0` and `?forestAB=1` for the probes). On a map with a field system
+a field tree stands on a hedged boundary, a field's edge or a wood's edge, never in a field's interior (`addFieldTree`,
+`fieldTreeMove`: the draws stay, only the seats move; a conifer form stands in the open only at a wood's edge; the
+census is `group.userData.fieldTreeLaw`). A map's `vegetation.bare` stands its deciduous broadleaves leafless
+(`BARE_SPRAY_KINDS`: each form's winter twigs in its own habit, the birch's lattice, the oak's crooked twigs, the
+poplar's climbing shoots, the buddleia's winter canes under dry panicles; `bareFormPalette` drops the leaf colours and
+`grownTintLaw` takes the twigs' grey), the conifers and evergreens in leaf; `?bare=1` for the probes. The `apple`
+form is the Streuobst fruit tree (an `orchard` profile: never forest-grown, its slot never a forest species): its
+`variantShape` grows the plum, the apple and the pear at their ages, its `variantTiles` give each its own atlas tiles
+(`paintOrchardTile`: leaves and summer fruit). A map's `vegetation.hedgeTrees` plants trees along its land use's
+hedged field ends (`plantHedgeTrees`: the hedge band read through `landUseAt`, a seat every `spacingM`, a field gate a
+hedge, ordinary field trees on their own stream after every other placement; census `group.userData.hedgeTrees`, with
+trees per hedge km).
 `propGeometry.ts` owns shared UV-safe primitives and the low-triangle telephone
 pole distance representation; callers dispose or transfer every returned mesh.
 `propPlacement.ts` owns typed terrain-support, rigid-footprint, utility-pole,
@@ -380,3 +426,9 @@ the server collision manifest after changing authored obstacles or cover.
 <!-- agent-docs:fill:gotchas -->
 The garage keeps the battle world dormant. Do not wake or build heavy map work
 on the garage boot path. AI navigation must use traversability, not visuals.
+The horizon ring, its far range and the terrain's wall sky light bake the map's
+authored sun at build. Scene Studio relights a cached battlefield through the
+objects they publish (`material.userData.horizonSunDir`, `horizonFarShading`,
+`sunDirUniform`, the ring's non-enumerable `horizonReliefSource`) and restores
+them on exit; keep those uniform objects shared by every compile when editing
+these materials, or a Studio time leaves a stale sun behind.

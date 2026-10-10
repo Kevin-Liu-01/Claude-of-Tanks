@@ -89,18 +89,35 @@ export function vehicleOcclusionRangeFade(distance: number): number {
   return 1 - x * x * (3 - 2 * x);
 }
 
+/**
+ * Fleet lane 2026-10-08 (the blind critics on every tank close-up: "a single hard source with no contact occlusion"):
+ * the share of a lit pixel's sunlight the cavity term may also dim. 0 keeps the physical ambient-only law; above it a
+ * crevice in sunlight (the gap under a bin, between reactive bricks, behind a skirt) darkens too, as the eye expects of
+ * a hull's small concavities. The strength and this share are uniforms (`uVehOccStrength`, `uVehOccDirect`), so a
+ * capture can compare them on one frame; the constants are their shipped values.
+ */
+export const VEHICLE_OCCLUSION_DIRECT_SHARE = 0;
+
 /** The colour multiplier for a vehicle pixel with cavity term `occ` and sun share `sunShare` (T / (T + A)). */
-export function vehicleOcclusionShade(occ: number, sunShare: number, rangeFade = 1): number {
+export function vehicleOcclusionShade(occ: number, sunShare: number, rangeFade = 1,
+  strength = VEHICLE_OCCLUSION_STRENGTH, directShare = VEHICLE_OCCLUSION_DIRECT_SHARE): number {
   const o = Math.min(1, Math.max(0, occ)) * rangeFade;
-  return 1 - o * VEHICLE_OCCLUSION_STRENGTH * (1 - Math.min(1, Math.max(0, sunShare)));
+  const amb = 1 - Math.min(1, Math.max(0, sunShare));
+  return 1 - o * strength * (amb + (1 - amb) * directShare);
 }
 
 export interface VehicleOcclusionUniforms {
   uVehOcc: { value: number };
+  uVehOccStrength: { value: number };
+  uVehOccDirect: { value: number };
 }
 
 export function createVehicleOcclusionUniforms(): VehicleOcclusionUniforms {
-  return { uVehOcc: { value: 0 } };
+  return {
+    uVehOcc: { value: 0 },
+    uVehOccStrength: { value: VEHICLE_OCCLUSION_STRENGTH },
+    uVehOccDirect: { value: VEHICLE_OCCLUSION_DIRECT_SHARE },
+  };
 }
 
 const f = (x: number): string => x.toFixed(4);
@@ -113,6 +130,8 @@ const f = (x: number): string => x.toFixed(4);
 export const VEHICLE_OCCLUSION_GLSL = /* glsl */ `
     // owner 2026-10-02: vehicle-only cavity occlusion (vehicleOcclusion.ts)
     uniform float uVehOcc;
+    uniform float uVehOccStrength;
+    uniform float uVehOccDirect;
     float cotVehicleCavity( vec2 uv, vec3 P, vec3 N, float dist ) {
       float pxPerM = 0.5 / max( uTan.y * dist * uInvSize.y, 1e-6 );
       float rPx = clamp( pxPerM * ${f(VEHICLE_OCCLUSION_RADIUS_M)}, ${f(VEHICLE_OCCLUSION_MIN_PX)}, ${f(VEHICLE_OCCLUSION_MAX_PX)} );
@@ -149,6 +168,6 @@ export const VEHICLE_OCCLUSION_GLSL = /* glsl */ `
         + uContactAmb.w * max( dot( N, uContactFillDir ), 0.0 );
       float ambShare = amb / max( T + amb, 1e-4 );
       float fade = 1.0 - smoothstep( ${f(VEHICLE_OCCLUSION_RANGE_M - VEHICLE_OCCLUSION_FADE_M)}, ${f(VEHICLE_OCCLUSION_RANGE_M)}, dist );
-      return 1.0 - cotVehicleCavity( uv, P, N, dist ) * fade * ${f(VEHICLE_OCCLUSION_STRENGTH)} * ambShare;
+      return 1.0 - cotVehicleCavity( uv, P, N, dist ) * fade * uVehOccStrength * mix( ambShare, 1.0, uVehOccDirect );
     }
 `;

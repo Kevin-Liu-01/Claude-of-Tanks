@@ -14,7 +14,7 @@ stack, authoring tools, test rigs, and public presentation.
 
 | Area | Current implementation |
 | --- | --- |
-| Playable fleet | 219 production-visible and 219 local-development first-party procedural vehicles |
+| Playable fleet | 220 production-visible and 220 local-development first-party procedural vehicles |
 | Runtime vehicle provenance | 0 playable vehicles sourced from GLB geometry |
 | Battlefields | 33 authored and destructible maps |
 | Simulation | Fixed 60 Hz movement and combat rules |
@@ -28,10 +28,10 @@ The executable provenance check is:
 
     npm run tank:native:check
 
-At the time of this document update it reports 219 first-party procedural battle
+At the time of this document update it reports 220 first-party procedural battle
 playables, no GLB-sourced playables, and no comparison-source paths in the
 runtime registry. Offline reference articulation lives under `tools/` only.
-The canonical saved-roster report tracks the same 219 playable records.
+The canonical saved-roster report tracks the same 220 playable records.
 
 ## Battle rules
 
@@ -217,7 +217,7 @@ The game includes:
 15. Obsidian Caldera
 16. Ironworks
 17. Ruinspires
-18. Blackglass District
+18. Suzhou Creek
 19. Titan Gorge
 20. Skybridge Chasm
 21. Tidegate Polders

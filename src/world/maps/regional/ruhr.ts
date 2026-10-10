@@ -4,8 +4,9 @@
 // loading dock under a deep canopy; the brick water tower carrying its tank house; colliery cottages in pairs with
 // two doors and a dormer each; a shelled brick shell.
 import { PartSink, alongPlot, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { dentilCornice, facadeOn, faceSlab, pilaster, trimRing } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { factoryStack } from './shared.ts';
 
@@ -17,7 +18,42 @@ function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
 }
 
-const WINDOW: WindowStyle = { frame: FRAME, frameWidth: 0.07, frameOut: 0.05, bars: 'six', surround: { bucket: YELLOW_BRICK, width: 0.14, out: 0.05, lintel: 0.26 }, sill: { bucket: 'stone', out: 0.1 }, shutters: null };
+const WINDOW: WindowStyle = { frame: FRAME, frameWidth: 0.07, frameOut: 0.05, bars: 'six', surround: { bucket: YELLOW_BRICK, width: 0.14, out: 0.05, lintel: 0.26 }, sill: { bucket: 'stone', out: 0.1 }, shutters: null,
+  // (facade craft, desktop: the segmental arch of yellow brick the flat lintel stood in for, a keystone at its crown)
+  head: { kind: 'segment', bucket: YELLOW_BRICK, h: 0.15, out: 0.05, ext: 0, rise: 0.12 } };
+
+/**
+ * A coalfield building's brick masonry (facade craft, desktop): a corbelled dentil cornice under the eaves of the
+ * `eaves` faces, returned round the corners; brick piers at the corners and between the bays of the `piers` faces;
+ * a round vent in a yellow-brick ring high in each gable.
+ */
+function brickMasonry(frame: HouseFrame, sink: PartSink, eaves: readonly ('left' | 'right' | 'front' | 'back')[],
+  piers: readonly ('left' | 'right' | 'front' | 'back')[], vents: boolean): void {
+  const base = frame.floors[0], top = frame.eaveY;
+  for (const name of eaves) {
+    const face = frame.faces[name], half = face.width / 2;
+    dentilCornice(sink, 'stone', face, -half, half, top - 0.31, { ret: 0.35 });
+  }
+  for (const name of piers) {
+    const face = frame.faces[name], half = face.width / 2;
+    const us = frame.spec.openings.filter((o) => o.face === name && o.storey === 0).map((o) => o.u).sort((a, b) => a - b);
+    const at = [-half + 0.25, half - 0.25];
+    for (let k = 0; k + 1 < us.length; k++) if (us[k + 1] - us[k] > 2.2) at.push((us[k] + us[k + 1]) / 2);
+    for (const u of at) pilaster(sink, 'stone', face, u, base, top - (eaves.includes(name) ? 0.31 : 0.05), 0.48, 0.07);
+  }
+  if (vents && frame.roof.gable) {
+    for (const name of ['front', 'back'] as const) {
+      const face = frame.faces[name], vy = top + (frame.roof.ridgeY - top) * 0.5, ring: Array<[number, number]> = [], hole: Array<[number, number]> = [];
+      for (let k = 0; k < 12; k++) {
+        const a = Math.PI * 2 * k / 12;
+        ring.push([Math.cos(a) * 0.46, vy + Math.sin(a) * 0.46]);
+        hole.push([Math.cos(a) * 0.32, vy + Math.sin(a) * 0.32]);
+      }
+      faceSlab(sink, YELLOW_BRICK, face, ring, 0, 0.04);
+      faceSlab(sink, 'dark', face, hole, 0.04, 0.004);
+    }
+  }
+}
 
 function dialect(rng: () => number, door: Rgb): HouseDialect {
   return {
@@ -55,6 +91,11 @@ const cottagePair: RegionalBuilder = (ctx) => {
       gutters: { colour: rgb(0x6a6e70) }, verge: null,
     }, dialect(rng, door));
     band(sink, frame.bodies[0], frame.floors[1] - 0.12);
+    if (facadeOn()) {
+      brickMasonry(frame, sink, ['left', 'right'], ['front', 'back'], false);
+      // the party wall between the pair, a pier up the street front
+      pilaster(sink, 'stone', frame.faces.left, 0, frame.floors[0], frame.eaveY - 0.31, 0.5, 0.07);
+    }
   });
   return sink.finish();
 };
@@ -83,6 +124,7 @@ const goodsShed: RegionalBuilder = (ctx) => {
       roof: slate(28), gableBucket: 'stone', openings, chimneys: [], gutters: { colour: rgb(0x6a6e70) }, verge: null,
     }, dialect(rng, DOOR[1]));
     band(sink, frame.bodies[0], 3.9);
+    if (facadeOn()) brickMasonry(frame, sink, ['left', 'right'], ['left'], true);
     // the loading dock and its canopy on brackets
     sink.span('stone', W / 2, -0.4, -D / 2, W / 2 + 2.4, 1.1, D / 2);
     const canopy: RoofSpec = { kind: 'shed', pitchDeg: 7, eave: 0.1, verge: 0.3, thickness: 0.08, bucket: 'roof' };
@@ -136,6 +178,7 @@ const station: RegionalBuilder = (ctx) => {
       chimneys: [{ x: W * 0.25, z: 0, sx: 0.6, sz: 0.6, above: 1.0, bucket: 'stone', cap: 'pots' }], gutters: { colour: rgb(0x6a6e70) }, verge: null,
     }, dialect(rng, door));
     band(sink, core.bodies[0], core.floors[1] - 0.15);
+    if (facadeOn()) brickMasonry(core, sink, ['left', 'right'], ['left', 'right'], true);
     for (const end of [1, -1]) {
       sink.placed(0, 0, 0, end * (coreD / 2 + wingD / 2 - 0.05), () => {
         const wingOpenings: Opening[] = [];
@@ -145,6 +188,7 @@ const station: RegionalBuilder = (ctx) => {
           roof: slate(30, 'hip'), gableBucket: 'stone', openings: wingOpenings, chimneys: [], gutters: { colour: rgb(0x6a6e70) }, verge: null,
         }, dialect(rng, door));
         band(sink, wing.bodies[0], 3.5);
+        if (facadeOn()) trimRing(sink, 'stone', wing.bodies[0], wing.eaveY - 0.24, [{ h: 0.08, out: 0.05 }, { h: 0.08, out: 0.1 }, { h: 0.08, out: 0.14 }]);
       });
     }
     // the platform canopy along the track side (+x) on cast columns
@@ -194,8 +238,10 @@ export const RUHR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     tones: { plaster2: (_h, s, l) => [0.11, Math.min(1, s * 0.6 + 0.2), Math.min(1, l * 1.1 + 0.08)] },
   },
   builders: RUHR_BUILDERS,
-  // the colliery cottages' gardens: a picket fence round the vegetable plot behind the pair, a gate (yards.ts)
-  yard: { kinds: ['rowhouse'], fence: 'fencepicket', gate: 'gate', shed: null, garden: true },
+  // the colliery cottages' gardens: a board fence round the vegetable plot behind the pair, a gate (yards.ts; the
+  // facades lane, 2026-10-06, after waves 182-184 read the white picket as American: a Ruhr colony fenced its gardens in
+  // rough boards)
+  yard: { kinds: ['rowhouse'], fence: 'fenceplank', gate: 'gate', shed: null, garden: true },
 });
 
 export type { RegionalParts };

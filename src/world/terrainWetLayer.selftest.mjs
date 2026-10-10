@@ -49,7 +49,7 @@ function fixture({ text = source, observe = null } = {}) {
   const layer = () => ({ albedo: own(new THREE.Texture()), normal: own(new THREE.Texture()) });
   const declarations = ['mulberry32', 'smoothstep', 'clamp', 'applyTone', 'makeGroundLayer',
     'makeGroundLayerSteps', 'createWetSplatLayer', 'createWetSplatLayerSteps',
-    'selectTerrainLandformMask', 'createSplatMaterialSteps', 'stackLandUseBake', 'buildTerrainMeshes',
+    'selectTerrainLandformMask', 'snowRockHoldLine', 'createSplatMaterialSteps', 'stackLandUseBake', 'buildTerrainMeshes',
     'buildTerrainMeshesAsync', 'terrainBuildSteps'].map(name => declaration(name, text)).join('\n');
   // The actual ground, wet selector, material, terrain generator and async
   // consumer run together. Unrelated horizon/geometry/source I/O is peripheral;
@@ -60,7 +60,7 @@ function fixture({ text = source, observe = null } = {}) {
     const _col = new THREE.Color(), _toneCol = new THREE.Color();
     const _toneHsl = { h: 0, s: 0, l: 0 };
     const CHUNKS = 8, CHUNK_SIZE = 128, HALF = 512, LOD_SEGS = [96,48,24];
-    const SPLAT_COMMON_FRAG = '', SPLAT_NORMAL_FRAG = '';
+    const SPLAT_COMMON_FRAG = '', SPLAT_NORMAL_FRAG = '', SNOW_ROCK_HOLD_LINE = '';
     const _splatFields = {};
     const makeGrassLayer = layer, makeDirtLayer = layer, makeSandstoneLayer = layer;
     const makeIceLayer = layer, makeSeaLayer = layer;
@@ -75,6 +75,8 @@ function fixture({ text = source, observe = null } = {}) {
     const registerRetainedObject3DResources = () => {};
     const terrainIndexPoolReceipt = () => ({});
     function* buildHorizonRingSteps() { return new THREE.Group(); }
+    // (2026-10-08, the ring worker) no ring supply in a sandbox build: the ring builds where it stands
+    function horizonRingSupplyFor() { return null; }
     function* buildFineGridSteps() { return {}; }
     function* buildChunkGeometrySteps() { state.chunks++; return new THREE.BufferGeometry(); }
     ${declarations}

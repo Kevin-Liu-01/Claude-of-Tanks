@@ -1,3 +1,4 @@
+import {assertHollowMuzzle} from '../../../tools/physical-muzzle.test-support.mjs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
@@ -38,20 +39,7 @@ for(const quality of ['high','low']) {
     }
     assert.ok(!ray([0,2.21,1.49],[1,0,0],.20),
       'real space under the thin apron and above the pitching mantlet');
-    for(const[dx,dy]of[[0,0],[.035,0],[-.035,0],[0,.035],[0,-.035]]) {
-      const p=[-.00005+dx,1.94827+dy,6.70];
-      // The visible mouth disc seats at the tube edge (owner direction
-      // 2026-09-11, no hollow throats). Until 2026-09-22 the physical source
-      // recess behind it ran its full 1.2363 m to the floor at z 5.3665 (.0632
-      // tapering to .0614); owner 2026-09-22 ("the point of adding holes instead
-      // of carving them into the barrel is that we save on triangles"): the tube
-      // is now closed at the source tip because the disc hid that recess
-      // entirely. The measurement stays recorded here.
-      close(ray(p,[0,0,-1])?.point.z,6.6031,.00002,'mouth disc seats 0.3 mm ahead of the tube edge');
-      const physical=new THREE.Raycaster(new THREE.Vector3(p[0]+.0015,p[1],p[2]),new THREE.Vector3(0,0,-1),0,12).intersectObject(tank.root,true)
-        .filter(h=>!/muzzleBoreShadowFallback/.test(h.object.name))[0];
-      close(physical?.point.z,6.6028,.00002,'metal tube closed at the source tip (recorded 1.2363 m bore floor z 5.3665)');
-    }
+    assertHollowMuzzle(tank.root,6.6028);
     for(const[z,x]of[[3.20,.12370],[4.20,.11370],[5.20,.10650],[5.60,.10150],
       [6.20,.10370],[6.53,.07475],[6.60,.07445]]) {
       close(ray([.4,1.94827,z],[-1,0,0])?.point.x,x,.0015,'held-out source tube section, including the narrow muzzle');
@@ -83,4 +71,4 @@ for(const quality of ['high','low']) {
     }
   } finally {tank.dispose();}
 }
-console.log('amx40X: actual high/low closed tip over the recorded source-depth bore, stepped tube and mast, recessed optics, cupola air and pitched recoil pass; visual qualification separate');
+console.log('amx40X: actual high/low physical opening and recessed floor, stepped tube and mast, recessed optics, cupola air and pitched recoil pass; visual qualification separate');

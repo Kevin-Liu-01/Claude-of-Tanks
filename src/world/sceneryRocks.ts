@@ -29,6 +29,8 @@ import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { SimplexNoise } from '../engine/simplexFast.ts';
 
 import type { RockForm, RockGeology } from './sceneryPlan.ts';
+import { formationCollisionProfile, rockGroundAt, type FormationCollisionProfile } from './rockCollision.ts';
+import { convexHull2 } from './collision.ts';
 
 type Rng = () => number;
 
@@ -36,6 +38,8 @@ interface RockGround {
   getHeightAt(x: number, z: number): number;
   /** The baked 1 m height grid, when the field has one: per-vertex ground reads use it. */
   getHeightAtFast?(x: number, z: number): number;
+  /** The rendered triangles a hull's tracks meet (terrainContactSurface.ts), when the field has them. */
+  getContactHeightAt?(x: number, z: number): number;
 }
 
 /** One authored rock formation. */
@@ -56,11 +60,14 @@ export interface RockFormationSpec {
   tone?: readonly [number, number, number];
 }
 
-/** A standing rock mass the hulls and shells meet: an XZ convex hull (world, [x, z, ...]) and its vertical range. */
+/** A standing rock mass the hulls and shells meet: its standing outline (the convex hull of its contact outlines, world
+ * [x, z, ...]) and vertical range, and (the hitbox lane, 2026-10-07) its colliders from the standing stone itself
+ * (rockCollision.ts formationCollisionProfile). */
 interface RockMass {
   points: number[];
   y0: number;
   y1: number;
+  profile: FormationCollisionProfile;
 }
 
 interface RockFormationBuild {
@@ -148,7 +155,7 @@ function roundedBlock(
  */
 function beddedSlab(
   rx: number, rz: number, thickness: number, bevel: number, sides: number, noise: SimplexNoise, seed: number,
-  { roughness = 0.22, overhang = 0, scarp = 0, scarpAngle = 0, squareness = 2, topWobble = 0.12 } = {},
+  { roughness = 0.22, overhang = 0, scarp = 0, scarpAngle = 0, squareness = 2, topWobble = 0.12, shoulder = 0 } = {},
 ): THREE.BufferGeometry {
   const ring = (frac: number): number[] => {
     const out: number[] = [];
@@ -168,28 +175,34 @@ function beddedSlab(
   };
   const bottom = ring(bevel * 0.4);
   const mid = ring(-overhang * Math.min(rx, rz));
-  const top = ring(bevel);
+  // (b12, wave 72 on Redrock: "a layer cake" — a shoulder rounds a hard bed's top arris the weather wore: a ring at 0.85
+  // of the thickness inset half the way, the top ring inset the more; 0 keeps the three rings every other form has)
+  const shoulderRing = shoulder > 0 ? ring(bevel * (1 + shoulder) * 0.5) : null;
+  const top = ring(bevel * (1 + shoulder));
   const hMid = thickness * 0.55;
   const positions: number[] = [];
   const index: number[] = [];
   const push = (x: number, y: number, z: number) => { positions.push(x, y, z); return positions.length / 3 - 1; };
   for (let i = 0; i < sides; i++) push(bottom[i * 2], 0, bottom[i * 2 + 1]);
   for (let i = 0; i < sides; i++) push(mid[i * 2], hMid, mid[i * 2 + 1]);
+  if (shoulderRing) for (let i = 0; i < sides; i++) push(shoulderRing[i * 2], thickness * 0.85, shoulderRing[i * 2 + 1]);
+  const topBase = positions.length / 3;
   for (let i = 0; i < sides; i++) {
     const wob = noise.noise(top[i * 2] * 0.6 + seed * 3, top[i * 2 + 1] * 0.6) * thickness * topWobble;
     push(top[i * 2], thickness + wob, top[i * 2 + 1]);
   }
   const cTop = push(0, thickness * (1 + topWobble * 0.15), 0);
   const cBot = push(0, 0, 0);
+  const bands = shoulderRing ? 3 : 2;
   for (let i = 0; i < sides; i++) {
     const j = (i + 1) % sides;
-    // bottom -> mid -> top walls (counter-clockwise seen from outside)
-    for (let band = 0; band < 2; band++) {
+    // bottom -> mid -> (shoulder ->) top walls (counter-clockwise seen from outside)
+    for (let band = 0; band < bands; band++) {
       const a0 = band * sides + i, a1 = band * sides + j;
       const c0 = a0 + sides, c1 = a1 + sides;
       index.push(a0, c1, a1, a0, c0, c1);
     }
-    index.push(2 * sides + i, cTop, 2 * sides + j);
+    index.push(topBase + i, cTop, topBase + j);
     index.push(i, j, cBot);
   }
   const g = new THREE.BufferGeometry();
@@ -272,36 +285,22 @@ function downhill(ground: RockGround, x: number, z: number, step: number): [numb
   return l < 1e-4 ? [0, 0] : [-gx / l, -gz / l];
 }
 
-/** XZ convex hull (monotone chain), counter-clockwise, as [x, z, ...]. */
-function hull2(points: Array<[number, number]>): number[] {
-  const pts = points.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  if (pts.length < 3) return pts.flat();
-  const cross = (o: [number, number], a: [number, number], b: [number, number]) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-  const lower: Array<[number, number]> = [];
-  for (const p of pts) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop(); lower.push(p); }
-  const upper: Array<[number, number]> = [];
-  for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i]; while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop(); upper.push(p); }
-  upper.pop(); lower.pop();
-  return [...lower, ...upper].flat();
-}
-
-/** The standing pieces' collision mass: their projected hull, from the ground under it to their top. */
+/**
+ * The standing pieces' collision mass (the hitbox lane, 2026-10-07): the one projected hull from the ground to the top
+ * filled a tor's open joints, a ledge's recesses and the air round a hoodoo's waist (40 % of Redrock's formation
+ * colliders stood in empty air, 81 % of the worst tenth's). Now each block of the standing stone keeps its own outline,
+ * and the movement footprint is the stone between a hull's track tops and its roof (rockCollision.ts
+ * FORMATION_CONTACT_FLOOR_M). The loose pieces (fallen blocks, talus, scree) carry none: a phone builds fewer of them,
+ * and every tier must lay the same colliders (the authority's shard is one).
+ */
 function massOf(pieces: Piece[], ground: RockGround, floor: number): RockMass | null {
-  const pts: Array<[number, number]> = [];
-  let top = -Infinity;
-  for (const piece of pieces) {
-    if (!piece.standing) continue;
-    const p = piece.geometry.attributes.position;
-    for (let i = 0; i < p.count; i++) {
-      const y = p.getY(i);
-      // only what stands above a hull's step meets a hull; the buried roots do not widen the footprint
-      if (y < ground.getHeightAt(p.getX(i), p.getZ(i)) + 0.35) continue;
-      pts.push([p.getX(i), p.getZ(i)]);
-      if (y > top) top = y;
-    }
-  }
-  if (pts.length < 3) return null;
-  return { points: hull2(pts), y0: floor - 0.5, y1: top };
+  // (2026-10-08) the stone's rise over the ground a hull meets and the eye sees: the rendered triangles, which part from
+  // the 1 m grid by metres at a cliff's foot (rockCollision.ts rockGroundAt)
+  const profile = formationCollisionProfile(pieces.filter((piece) => piece.standing).map((piece) => piece.geometry), rockGroundAt(ground));
+  if (!profile) return null;
+  const corners: Array<[number, number]> = [];
+  for (const outline of profile.contact) for (let i = 0; i < outline.length; i += 2) corners.push([outline[i], outline[i + 1]]);
+  return { points: convexHull2(corners), y0: floor - 0.5, y1: profile.top, profile };
 }
 
 /**
@@ -530,7 +529,8 @@ function beddedOutcrop(spec: RockFormationSpec, ground: RockGround, noise: Simpl
   let ux = -Math.sin(strike), uz = Math.cos(strike);
   if (ux * dx + uz * dz < 0) { ux = -ux; uz = -uz; }
   const sx = Math.cos(strike), sz = Math.sin(strike);
-  const sides = mobile ? 12 : 18;
+  // (b12: the beds jointed into more, blockier blocks, each outline on fewer facets: the formation keeps its budget)
+  const sides = mobile ? 8 : 14;
   const { min } = lowestGround(ground, spec.x, spec.z, R);
   const limestone = spec.geology === 'limestone';
   let y = min - 0.55;
@@ -540,19 +540,27 @@ function beddedOutcrop(spec: RockFormationSpec, ground: RockGround, noise: Simpl
   const crown = Math.max(min + H, ground.getHeightAt(spec.x, spec.z) + H * 0.75);
   for (let bed = 0; bed < 14 && y < crown - 0.15; bed++) {
     const soft = bed % 2 === 1 && !limestone;
-    const thick = Math.min(crown - y + 0.1, soft ? 0.25 + rng() * 0.35 : (0.5 + rng() * 1.0) * Math.max(0.7, H / 4.5));
-    // the joints split a bed into blocks along the strike
-    const blocks = soft ? 1 : Math.max(1, Math.round(halfL * 2 / (3.2 + rng() * 2.5)));
+    // (b12, wave 72 on Redrock: "a layer cake" of even slabs) the beds uneven: thin hard beds and a few massive ones, the
+    // soft partings thin and weathered back into the face, a shadow line under each hard bed
+    const thick = Math.min(crown - y + 0.1, soft ? 0.12 + rng() * 0.3 : (0.5 + 1.25 * Math.pow(rng(), 1.6)) * Math.max(0.7, H / 4.5));
+    // the joints split a hard bed into blocks along the strike, closer than a bed is long (no unbroken plate)
+    const blocks = soft ? 1 : Math.max(1, Math.round(halfL * 2 / (2.4 + rng() * 2.2)));
     const gap = limestone ? 0.08 + rng() * 0.14 : 0.25 + rng() * 0.35; // limestone's joints close: one scar face
     const blockHalf = (halfL * 2 - gap * (blocks - 1)) / blocks / 2;
     for (let b = 0; b < blocks; b++) {
       const along = -halfL + blockHalf + b * (blockHalf * 2 + gap) + (rng() - 0.5) * 0.3;
-      const depth = halfD * (soft ? 0.86 : 0.94 + rng() * 0.12);
-      const g = beddedSlab(blockHalf * (soft ? 1.02 : 0.98), depth, thick, soft ? 0.04 : 0.1, sides, noise, spec.x * 0.01 + bed * 1.7 + b * 0.53,
-        { roughness: soft ? 0.08 : 0.16, overhang: soft ? 0 : 0.05, squareness: soft ? 3 : 4, topWobble: 0.1 });
+      // each joint block proud or recessed of its bed's face, and now and then fallen out of it altogether (its gap the
+      // scarp's broken edge; never the bed's last block)
+      const depth = halfD * (soft ? 0.68 : 0.78 + rng() * 0.34);
+      if (!soft && blocks > 1 && b > 0 && rng() < 0.14) continue;
+      // a joint block's own thickness (a bed wedges along its strike) and its settle: blocky in plan with broken edges,
+      // its top arris worn round (the shoulder)
+      const blockThick = soft ? thick : thick * (0.78 + rng() * 0.44), settle = soft ? 0 : (rng() - 0.6) * 0.12;
+      const g = beddedSlab(blockHalf * (soft ? 1.02 : 0.96), depth, blockThick, soft ? 0.05 : 0.16, sides, noise, spec.x * 0.01 + bed * 1.7 + b * 0.53,
+        { roughness: soft ? 0.12 : 0.32, overhang: soft ? 0 : 0.05, squareness: soft ? 2.6 : 4.2, topWobble: soft ? 0.1 : 0.16, shoulder: soft || mobile || blockThick < 0.65 ? 0 : 0.8 });
       const cx = spec.x + sx * along - ux * back, cz = spec.z + sz * along - uz * back;
-      const j = limestone ? 0.35 : 1;
-      pieces.push({ geometry: place(g, cx, y, cz, -strike + (rng() - 0.5) * 0.06 * j, (rng() - 0.5) * 0.04 * j, (rng() - 0.5) * 0.04 * j), layer: bed, standing: true });
+      const j = limestone ? 0.35 : 1, tip = soft ? 0.04 : 0.09;
+      pieces.push({ geometry: place(g, cx, y + settle, cz, -strike + (rng() - 0.5) * 0.06 * j, (rng() - 0.5) * tip * j, (rng() - 0.5) * tip * j), layer: bed, standing: true });
     }
     y += thick * 0.98;
     if (!soft) {
@@ -562,15 +570,16 @@ function beddedOutcrop(spec: RockFormationSpec, ground: RockGround, noise: Simpl
       halfD *= 0.8 + rng() * 0.14;
     }
   }
-  // the fallen blocks at the scarp foot
+  // the fallen blocks at the scarp foot (b12, wave 72: "soap bars"): angular — sharp joint blocks barely rounded, cut by
+  // three fractures — graded by size (the big ones at the foot, the small ones rolled out beyond), half buried
   const shed = spec.shed ?? 1;
-  const count = Math.round((mobile ? 5 : 11) * shed);
+  const count = Math.round((mobile ? 4 : 11) * shed);
   for (let i = 0; i < count; i++) {
-    const along = (rng() - 0.5) * R * 2.1, out = R * (0.4 + rng() * 0.5);
+    const along = (rng() - 0.5) * R * 2.1, reach = rng(), out = R * (0.35 + reach * 0.7);
     const x = spec.x + sx * along + ux * out, z = spec.z + sz * along + uz * out;
-    const size = 0.3 + Math.pow(rng(), 1.6) * 1.1;
-    const g = roundedBlock(size, size * (0.35 + rng() * 0.25), size * (0.7 + rng() * 0.3), 0.12, 2, noise, rng, { weather: 0.06, cuts: 2, cutDepth: 0.7, seedOffset: i + 40 });
-    const yy = ground.getHeightAt(x, z) + size * 0.1;
+    const size = (0.25 + Math.pow(rng(), 1.6) * 1.2) * (1.2 - 0.65 * reach);
+    const g = roundedBlock(size, size * (0.45 + rng() * 0.3), size * (0.65 + rng() * 0.35), 0.05, 2, noise, rng, { weather: 0.04, cuts: 3, cutDepth: 0.62, seedOffset: i + 40 });
+    const yy = ground.getHeightAt(x, z) - size * (0.15 + rng() * 0.2);
     pieces.push({ geometry: place(g, x, yy, z, rng() * Math.PI, (rng() - 0.5) * 0.5, (rng() - 0.5) * 0.4), layer: i % 4, standing: false });
   }
 }

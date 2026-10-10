@@ -399,6 +399,12 @@
   "gunship_cannon": [
    1.424,
    1.582
+  ],
+  "think_step_by_step": [
+   3.062
+  ],
+  "step_by_step_reply": [
+   3.624
   ]
  },
  "en-US": {
@@ -801,6 +807,12 @@
   "gunship_cannon": [
    1.134,
    1.388
+  ],
+  "think_step_by_step": [
+   2.868
+  ],
+  "step_by_step_reply": [
+   3.592
   ]
  },
  "en-GB": {
@@ -1203,6 +1215,12 @@
   "gunship_cannon": [
    0.71,
    1.292
+  ],
+  "think_step_by_step": [
+   2.806
+  ],
+  "step_by_step_reply": [
+   3.546
   ]
  },
  "ru": {
@@ -1605,6 +1623,12 @@
   "gunship_cannon": [
    1.48,
    1.594
+  ],
+  "think_step_by_step": [
+   3.104
+  ],
+  "step_by_step_reply": [
+   3.452
   ]
  },
  "uk": {
@@ -2007,6 +2031,12 @@
   "drone_lost": [
    1.502,
    2.33
+  ],
+  "think_step_by_step": [
+   3.272
+  ],
+  "step_by_step_reply": [
+   3.596
   ]
  },
  "zh": {
@@ -2409,6 +2439,12 @@
   "suspension_set": [
    1.648,
    2.878
+  ],
+  "think_step_by_step": [
+   2.492
+  ],
+  "step_by_step_reply": [
+   3.228
   ]
  },
  "fr": {
@@ -2811,6 +2847,12 @@
   "suspension_set": [
    1.432,
    1.236
+  ],
+  "think_step_by_step": [
+   2.894
+  ],
+  "step_by_step_reply": [
+   3.404
   ]
  },
  "sv": {
@@ -3213,6 +3255,12 @@
   "gunship_cannon": [
    1.338,
    1.558
+  ],
+  "think_step_by_step": [
+   3.158
+  ],
+  "step_by_step_reply": [
+   3.766
   ]
  },
  "ja": {
@@ -3615,6 +3663,12 @@
   "gunship_missile": [
    1.75,
    1.744
+  ],
+  "think_step_by_step": [
+   2.38
+  ],
+  "step_by_step_reply": [
+   3.634
   ]
  },
  "ko": {
@@ -4017,6 +4071,12 @@
   "drone_lost": [
    1.154,
    2.216
+  ],
+  "think_step_by_step": [
+   2.376
+  ],
+  "step_by_step_reply": [
+   2.94
   ]
  },
  "it": {
@@ -4419,6 +4479,12 @@
   "drone_lost": [
    1.32,
    2.16
+  ],
+  "think_step_by_step": [
+   2.848
+  ],
+  "step_by_step_reply": [
+   3.336
   ]
  },
  "pl": {
@@ -4821,6 +4887,12 @@
   "supply_repair": [
    1.906,
    1.852
+  ],
+  "think_step_by_step": [
+   2.308
+  ],
+  "step_by_step_reply": [
+   3.576
   ]
  },
  "he": {
@@ -5223,6 +5295,12 @@
   "gunship_cannon": [
    1.332,
    1.6
+  ],
+  "think_step_by_step": [
+   2.918
+  ],
+  "step_by_step_reply": [
+   3.65
   ]
  }
 }

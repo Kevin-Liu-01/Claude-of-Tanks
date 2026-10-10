@@ -1,0 +1,36 @@
+import assert from 'node:assert/strict';
+import {createCombatState,tickModuleRepairs,REPAIR_S} from '../sim/damage.ts';
+import {TANK_SPECS} from '../vehicles/specs.ts';
+import {createVehicleStatusReader,vehicleStatusCapacity} from './vehicleStatusPolicy.ts';
+const combat=createCombatState(TANK_SPECS.m1a2),read=createVehicleStatusReader();
+assert.equal(read(combat).length,0);
+assert.equal(read(combat,{inBush:true,spotted:false})[0].id,'conceal');
+assert.equal(read(combat,{inBush:true,fired:true,camo:.1}).length,0);
+assert.equal(read(combat,{inBush:true,spotted:true,camo:.8}).length,0);
+const left=combat.modules.trackL,right=combat.modules.trackR;
+left.state='red';left.hp=0;left.repairT=0;
+assert.equal(read(combat)[0].id,'tracks');assert.equal(read(combat)[0].progress,0);
+combat.equipMults={repair:1.25};tickModuleRepairs(combat,4);
+assert.equal(read(combat)[0].progress,50,'uses real equipment-adjusted repair accumulation');
+right.state='red';right.hp=0;right.repairT=REPAIR_S*.2;
+assert.equal(read(combat)[0].progress,20,'both tracks share the slower remaining repair');
+right.state='ok';tickModuleRepairs(combat,4);
+assert.equal(read(combat)[0].tone,'warning');assert.equal(read(combat)[0].progress,null,'restored movement remains damaged');
+left.state='ok';assert.equal(read(combat).length,0);
+left.state='red';left.repairT=8;combat.modeModuleOnlyDamage=true;
+assert.equal(read(combat)[0].progress,null,'Realistic has no automatic repair');
+combat.modeModuleOnlyDamage=false;combat.moduleRepairProgressKnown=false;
+assert.equal(read(combat)[0].progress,null,'snapshots without timers never invent progress');
+combat.moduleRepairProgressKnown=true;combat.fire.burning=true;
+combat.modules.engine.state='red';combat.modules.optics.state='yellow';combat.crew.driver=false;
+const list=read(combat,{inBush:true});
+assert.deepEqual(list.slice(0,3).map(x=>x.id),['fire','tracks','engine']);
+assert.equal(list.at(-1).id,'conceal');assert.equal(list.find(x=>x.id==='crew').count,1);
+assert.strictEqual(read(combat),list,'retained output buffer');
+combat.destroyed=true;assert.equal(read(combat,{inBush:true}).length,0);
+assert.equal(read(null).length,0);
+for(const width of [112,150,160,240,500])for(const touch of [false,true]){
+ const capacity=vehicleStatusCapacity(width,touch);assert.ok(capacity>=2&&capacity<=4);
+ assert.ok(capacity*(touch?44:34)+(capacity-1)*4<=width);
+}
+console.log('vehicleStatusPolicy: priority, real repair progress, recovery, concealment, lifecycle and caps PASS');

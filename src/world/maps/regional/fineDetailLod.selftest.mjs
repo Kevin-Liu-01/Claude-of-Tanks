@@ -32,7 +32,9 @@ const box = new THREE.Box3();
 let cellCount = 0;
 for (const { mesh, cells } of batches) {
   assert.ok(mesh.isBatchedMesh, `${mesh.name}: one multi-draw batch`);
-  assert.match(mesh.name, /^props-bucket-(structureWood|regionalStone)-batch$/, 'a batch is a timber or stone dressing bucket');
+  // (facades lane, 2026-10-05: the facade craft's metalwork and render work batch too, on a desktop build)
+  assert.match(mesh.name, /^props-bucket-(structureWood|regionalStone|structureMetal|regionalPlaster)-batch$/,
+    'a batch is a timber, stone, metal or render dressing bucket');
   assert.equal(mesh.parent, dressing.group, `${mesh.name}: in the props group`);
   assert.equal(mesh.castShadow, false, `${mesh.name}: casts no shadow`);
   assert.equal(mesh.receiveShadow, true, `${mesh.name}: receives the sun's`);
@@ -59,6 +61,11 @@ assert.ok(timber, 'the timber dressing is batched');
 const always = timber.mesh.instanceCount - timber.cells.length;
 assert.ok(always === 0 || always === 1, 'the batch holds the always-drawn dressing as at most one more instance');
 assert.ok(!dressing.group.children.some((o) => o.name === 'props-bucket-structureWood-detail'), 'no separate draw for the timber dressing beside its batch');
+// a bucket's batch takes the place of its always-drawn dressing mesh (the metalwork's, on a desktop build): no draw beside it
+for (const { mesh } of batches) {
+  const detail = mesh.name.replace(/-batch$/, '-detail');
+  assert.ok(!dressing.group.children.some((o) => o.name === detail), `no separate draw for ${detail} beside its batch`);
+}
 
 const camera = new THREE.Vector3();
 const update = (x, y, z) => { camera.set(x, y, z); dressing.updateProps(0, camera); };
@@ -85,5 +92,37 @@ for (let h = hideAt; h >= 0; h--) {
 }
 assert.ok(showAt !== null && hideAt - showAt >= 10 && hideAt - showAt <= 20,
   `it shows again only well inside that distance (hysteresis: hides at ${hideAt} m, shows at ${showAt} m)`);
-console.log(`fineDetailLod.selftest: Saltwind Ridge's fine joinery in ${batches.length} receive-only multi-draw batches (${cellCount} cells), `
-  + `all hidden from 3 km up; one cell hides ${hideAt} m above its roofs and shows again at ${showAt} m`);
+// (facades lane, 2026-10-06) the facade craft's finest pieces (geometry.ts EmitOptions.fine 'near': the balconettes'
+// rails, the sills' dirt runs, the dentils) stand in near cells of their own, after the kit's: 40 m squares (a box of
+// that square and a building's reach), in the same batches, hidden at half the distance a cell of the kit's own joinery
+// hides at, with the same hysteresis
+const near = batches.flatMap((bt) => bt.cells.filter((c) => c.near).map((c) => ({ bt, c })));
+assert.ok(near.length >= 1, 'the craft\'s near pieces stand in near cells');
+for (const { bt, c } of near) {
+  assert.ok(c.box.maxX - c.box.minX <= 80 && c.box.maxZ - c.box.minZ <= 80,
+    `${bt.mesh.name} near cell ${c.id}: a 40 m cell (${(c.box.maxX - c.box.minX).toFixed(0)} x ${(c.box.maxZ - c.box.minZ).toFixed(0)} m)`);
+  assert.ok(bt.cells.indexOf(c) >= bt.cells.findLastIndex((x) => !x.near), `${bt.mesh.name}: the near cells follow the kit's cells`);
+}
+const { bt: nb, c: nc } = near[0];
+const nx = (nc.box.minX + nc.box.maxX) / 2, nz = (nc.box.minZ + nc.box.maxZ) / 2;
+update(nx, (nc.box.minY + nc.box.maxY) / 2, nz);
+assert.equal(shown(nb, nc), true, 'a camera inside a near cell draws its pieces');
+let nearHideAt = null;
+for (let h = 0; h <= 400; h++) {
+  update(nx, nc.box.maxY + h, nz);
+  if (!shown(nb, nc)) { nearHideAt = h; break; }
+}
+const fineFar = hideAt - 16;
+assert.ok(nearHideAt !== null && Math.abs(nearHideAt - (fineFar * 0.5 + 16)) <= 1,
+  `the near pieces hide at half the fine-detail distance (${nearHideAt} m; the kit's joinery ${hideAt} m)`);
+let nearShowAt = null;
+for (let h = nearHideAt; h >= 0; h--) {
+  update(nx, nc.box.maxY + h, nz);
+  if (shown(nb, nc)) { nearShowAt = h; break; }
+}
+assert.ok(nearShowAt !== null && nearHideAt - nearShowAt >= 10 && nearHideAt - nearShowAt <= 20,
+  `the near pieces show again well inside that distance (hides at ${nearHideAt} m, shows at ${nearShowAt} m)`);
+
+console.log(`fineDetailLod.selftest: Saltwind Ridge's fine joinery in ${batches.length} receive-only multi-draw batches (${cellCount} cells, `
+  + `${near.length} of them the craft's near cells), all hidden from 3 km up; one cell hides ${hideAt} m above its roofs and shows again at `
+  + `${showAt} m, a near cell hides at ${nearHideAt} m and shows at ${nearShowAt} m`);

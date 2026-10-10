@@ -16,6 +16,8 @@ assert.deepEqual(copper.terrain.landforms[0], { kind: 'basin', x: COPPER_QUARRY.
 assert.deepEqual(copper.terrain.marshes, [{ x: -66, z: 32, r: 38, dip: 0.8 }],
   'Protected mud-pan coordinates remain the actual authored wet footprint');
 assert.equal(copper.terrain.village.x0, 64, 'Eastern cut boundary leaves24m before the building zone');
+// (2026-10-05, Copper Mesa round 2: the risers narrowed, the treads widened) (2026-10-07, round 3: each riser a cut
+// face over 0.04 of the radius; round 3b, the bots lane's swap test: the PR head's risers again, 0.11 to 0.13)
 for (const [a, b] of [[0, 0.28], [0.39, 0.52], [0.63, 0.76]]) {
   assert.equal(copperQuarryRise(a), copperQuarryRise(b), 'Cut treads have finite radial width');
 }
@@ -61,7 +63,7 @@ for (const seed of seeds) {
   for (let z = -194; z < 234; z += 4) for (let x = -256; x < 40; x += 4) {
     const h = actual.getHeightAt(x, z), old = baseline.getHeightAt(x, z);
     assert.ok(Number.isFinite(h) && h <= old && h >= old - COPPER_QUARRY.maximumCut - 1e-10,
-      'Excavation never raises a dam and cannot exceed its8m cut budget');
+      `Excavation never raises a dam and cannot exceed its ${COPPER_QUARRY.maximumCut} m cut budget`);
     assert.equal(actual.getGroundType(x, z), baseline.getGroundType(x, z), 'Ground collision classification retained');
     if (old - h < 0.1) continue;
     changedArea += 16;
@@ -93,49 +95,21 @@ for (let z = -180; z < 220; z += 16) for (let x = -240; x < 40; x += 16) {
   equalSurface(gated, uncut, x, z, 'Other map IDs ignore quarry opt-in');
 }
 
-// Copper Mesa's own horizon caps. 2026-10-01 (frozen pins retired): the sha256 aggregate of the other 28 rings (with
-// historical Polders/Titan/Badlands inputs), its mutation control and the byte pin of the current Polders ring were
-// change detectors; horizonResources gates every registered ring (finite rows, closed rim, no folds, layered ranges,
-// Polders' low ridge) and titanGorgeHorizon owns Titan's caps.
+// Copper Mesa's own horizon. 2026-10-05 (the map-revival lane's Copper Mesa round 2): the ring moved off the mesa stack
+// onto the alpine style (the West Coast Range); its table caps belonged to the mesa rows and are retired with them.
+// horizonResources gates every registered ring (finite rows, closed rim, no folds, layered ranges); here the alpine
+// ring keeps its rows unfolded. (The mesa profile's 4.5:1 sheet limit is the tables'; an alpine ring's crags step up to
+// about 7:1 between rows, as Alpine's own ring does: 7.1 at seed 7719.)
 for (const seed of seeds) {
   const ring = sampleHorizonGeometry(getMapConfig('copper_mesa'), seed);
-  // Vista pass (2026-09-19, owner: 'consider this a triple AAA pass'): the ring ladder is 431 columns and 18 / 36 rows with
-  // ridged relief, the first ridge stands 700-720 m out and the skirt seats on the terrain.
-  const n = HORIZON_SEGMENTS;
-  // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the mesa stack uploads 30 rows (was 18)
-  assert.equal(ring.rows.length, 30); assert.equal(ring.positions.length, n * 30 * 3);
-  assert.equal(ring.heights.length, n * 30);
+  const n = HORIZON_SEGMENTS, rows = ring.rows.length;
+  assert.ok(rows >= 18, `the alpine ring uploads its rows (${rows})`);
+  assert.equal(ring.positions.length, n * rows * 3); assert.equal(ring.heights.length, n * rows);
   const p = ring.positions, h = ring.heights;
   const radius = (row, c) => Math.hypot(p[(row * n + c) * 3], p[(row * n + c) * 3 + 2]);
-  for (let c = 0; c < n; c++) for (let row = 1; row < 30; row++) {
+  for (let c = 0; c < n; c++) for (let row = 1; row < rows; row++) {
     assert.ok(radius(row, c) > radius(row - 1, c) + 1, 'No folded horizon faces');
-    // The restored 1049e4e mesa profile keeps its terraced cliff steps (up to
-    // about 4:1 between adjacent rows); a genuinely vertical sheet is steeper.
-    assert.ok((h[row * n + c] - h[(row - 1) * n + c])
-      / (radius(row, c) - radius(row - 1, c)) < 4.5, 'No new vertical skyline sheets');
-  }
-  for (const top of [9, 17]) {
-    let capQuads = 0, area = 0;
-    for (let c = 0; c < n; c++) {
-      const next = (c + 1) % n;
-      const ids = [(top - 1) * n + c, top * n + c, top * n + next, (top - 1) * n + next];
-      const levels = ids.map(i => h[i]);
-      if (Math.max(...levels) - Math.min(...levels) >= 2) continue;
-      // Restored 1049e4e rows: the near table's cap depth follows the closer
-      // 585-760 m row spacing (about 58 m), the outer table keeps 90 m.
-      assert.ok(radius(top, c) - radius(top - 1, c) >= (top === 9 ? 40 : 90) - 0.001);
-      let doubleArea = 0;
-      for (let j = 0; j < 4; j++) {
-        const a = ids[j] * 3, b = ids[(j + 1) % 4] * 3;
-        doubleArea += p[a] * p[b + 2] - p[b] * p[a + 2];
-      }
-      area += Math.abs(doubleArea) * 0.5; capQuads++;
-    }
-    // 2026-10-02 (the mountains lane): the tableland rings' side canyons (horizonMassif.ts, cut only) dissect the tables
-    // before the bed stair, so the far range keeps broad caps over less of its arc (60k m2, was 120k: the canyons take
-    // the rest); the near range's floor and the quad count's are the same broad-top law
-    assert.ok(capQuads >= 30 && area > (top === 9 ? 40000 : 60000), // vista pass: narrower 431-column quads
-      `Both ranges have finite attached cap surfaces (range ${top}: ${capQuads} quads, ${Math.round(area)} m2)`);
+    assert.ok(Number.isFinite(h[row * n + c]), 'finite heights');
   }
 }
 for (const segments of [96, 48, 24]) {
@@ -143,4 +117,4 @@ for (const segments of [96, 48, 24]) {
   assert.equal(index.count, segments * segments * 6 + 4 * segments * 6,
     'All terrain LODs retain their original surface/skirt topology');
 }
-console.log('copperQuarrySurface: protected exact terrain, bounded2D treads, collision cache and finite mesa caps PASS', receipts);
+console.log('copperQuarrySurface: protected exact terrain, bounded2D treads, collision cache and the alpine ring PASS', receipts);

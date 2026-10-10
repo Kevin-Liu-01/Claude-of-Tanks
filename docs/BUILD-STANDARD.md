@@ -213,7 +213,9 @@ never excuses missing it.
    BOTH ends. Never a parallelogram, never a flat/curl-to-ground front.
    Author both end wheels raised per the real vehicle (idler AND
    sprocket); `buildRunningGear`'s contact tangents then form the ramps
-   (contactZF/contactZR pin the patch when needed). A low-authored end
+   (contactZF/contactZR shape a generated loop's ground run where an end
+   has no road-wheel wrap; the published track contact is read off the
+   drawn band, never off these pins). A low-authored end
    wheel (chieftain5's idler at wheel height) violates the law EVEN WHEN
    the oracle print carries the same defect — owner law outranks oracle
    matching (M1-slope precedent): build the real ramp, measure the

@@ -1,3 +1,4 @@
+import {assertHollowMuzzle} from '../../../tools/physical-muzzle.test-support.mjs';
 import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
@@ -45,15 +46,9 @@ for(const quality of['high','low']){
     recoil.position.z=-.20;tank.root.updateMatrixWorld(true);
     near(new T.Vector3(0,0,4.7).applyMatrix4(gun.matrixWorld).z-before.z,-.20,1e-8,`${quality} real recoil ownership`);
     recoil.position.z=0;tank.root.updateMatrixWorld(true);
-    const mouth=tank.root.getObjectByName('muzzleBoreShadowFallbackDisc');
-    assert.ok(mouth.visible&&mouth.userData.cannonBorePrimaryPart,`${quality} real visible bore remains`);
-    // The unchanged low-LOD policy omits the separate toroidal rim.
-    if(quality==='high'){
-      const rim=tank.root.getObjectByName('muzzleBoreShadowFallbackRim'),bounds=new T.Box3().setFromObject(rim);
-      assert.ok(rim.visible&&rim.userData.cannonBorePrimaryPart,'real visible muzzle rim remains');
-      near(bounds.max.z,6.2641814,.004,'physical muzzle endpoint');
-      near((bounds.max.x-bounds.min.x)/2,.0866358,.006,'source-sized visible muzzle lip');
-    }
+    assertHollowMuzzle(tank.root,6.24420,.000003);
+    const seat=tank.root.getObjectByName('muzzleBoreShadowFallback').userData.muzzleSeatReceipt;
+    near(seat.supportOuterRadiusM,.0866358,.006,'source-sized visible muzzle stock');
   }finally{tank.dispose();}
 }
 console.log('t90AXGun: measured A-only taper, evacuated jacket, four narrow seam spans, genuine MRS air and actual recoil/lip pass high+low');

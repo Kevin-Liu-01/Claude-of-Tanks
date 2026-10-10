@@ -35,7 +35,7 @@ function body(P:TankBuilderPort):void{
     [p(r,0,0)[0],p(0,right,0)[1]],[p(8,0,0)[0],p(0,mid,0)[1]],
     [p(-Math.min(l-1,46.7),0,0)[0],p(0,left,0)[1]],[p(-l,0,0)[0],p(0,edge,0)[1]],
   ]}));
-  P.add('turret',local(sectionSolid(sections)));
+  P.add('turret',local(sectionSolid(sections,{sideQuadDiagonal:'convex'})));
   for(const side of[-1,1]){
     const rows:readonly(readonly[number,number,number,number])[]=[[14,56.7,88.0,73.8],[30,53.6,83.0,65.5],
       [45,29.4,72.8,65.2],[53.543,10.2,65.3,64.9]];
@@ -43,7 +43,7 @@ function body(P:TankBuilderPort):void{
       const ring=[[8.5,64.65],[w,64.65],[w,outer],[8.5,inner]].map(([x,y])=>
         [p(side*x,0,0)[0],p(0,y,0)[1]] as [number,number]);
       if(side<0)ring.reverse();return{z:p(0,0,z)[2],ring};
-    }))));
+    }),{sideQuadDiagonal:'convex'})));
   }
 }
 function rearBin(P:TankBuilderPort):void{
