@@ -665,6 +665,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/garageSkyPresets.selftest.mjs',
     'src/game/garageGantry.selftest.mjs',
     'src/game/garageDressingOptimization.selftest.mjs',
+    'src/game/garageCrewFigures.selftest.mjs',
     'src/game/garageDressingDrawRange.selftest.mjs',
     'tools/garage-draw-range-probe.selftest.mjs',
     'src/game/garageVariants.selftest.mjs',

@@ -32,6 +32,14 @@ import {
 } from '../ui/garageStage.ts';
 import { FEATURED_SHOTS } from '../ui/featuredShots.ts';
 import { DECOR_KITS } from '../vehicles/decorations.ts';
+import { getDeviceTier } from '../engine/quality.ts';
+import {
+  buildCrewSceneGeometry,
+  buildCrewTools,
+  crewPointInScene,
+  GARAGE_CREW_SCENES,
+  type CrewScene,
+} from './garageCrewFigures.ts';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
 import { getGarageVariant, type GarageVariant } from './garageVariants.ts';
 import { VERDANT_GANTRY } from './garageGantry.ts';
@@ -855,6 +863,149 @@ export function createGarageDressing(
     bayRoot.userData.swappedWith = 'abrams_welding';
     bayRoot.updateMatrix();
     return bayRoot;
+  }
+
+  // The workshop crews (the owner, 2026-10-09: "human workers working with each other on tanks"). One merged,
+  // vertex-coloured figure mesh per scene, on the material program the Garage stage already seeds for vertex-coloured
+  // packs, plus hand tools on the shared palette. Each scene stands in its exhibit's floor frame and is added before
+  // the bay owner captures its children, so the crew moves with its bay. The mobile tier keeps the essential scenes.
+  let crewMaterial: THREE.MeshStandardMaterial | null = null;
+  const crewScenesBuilt: string[] = [];
+  let crewMembersBuilt = 0;
+  let crewTrianglesBuilt = 0;
+  function addCrewScene(
+    scene: CrewScene,
+    parent: THREE.Object3D,
+    cassette: THREE.Material = mat.olive,
+  ): THREE.Group | null {
+    const frame = scene.frame;
+    if (!scene.essential && getDeviceTier() === 'mobile') return null;
+    crewMaterial ||= track(shadowMat(new THREE.MeshStandardMaterial({
+      color: 0xffffff, vertexColors: true, roughness: 0.88, metalness: 0.06,
+    })));
+    const root = new THREE.Group();
+    root.name = `garage_crew_${scene.id}`;
+    root.position.set(frame.x, 0, frame.z);
+    root.rotation.y = frame.yaw;
+    root.userData.crewTask = scene.task;
+    root.userData.crewRoles = scene.members.map((member) => member.role);
+    for (const prop of scene.props ?? []) addCrewWorkStand(root, prop.at[0], prop.at[2], prop.yaw, prop.deckY);
+    const build = buildCrewSceneGeometry(scene);
+    const figures = new THREE.Mesh(track(build.geometry), crewMaterial);
+    figures.name = `garage_crew_${scene.id}_figures`;
+    figures.castShadow = true;
+    figures.receiveShadow = true;
+    root.add(figures);
+    for (const tool of buildCrewTools(scene, {
+      steelDark: mat.steelDark, steelMid: mat.steelMid, brass: mat.brass, rubber: mat.rubber,
+      timber: mat.timber, extRed: mat.extRed, safety: mat.safety, lamp: mat.lamp, cassette,
+    })) {
+      track(tool.geometry);
+      root.add(tool);
+    }
+    root.userData.crewTriangles = build.triangles;
+    root.userData.crewGripErrorM = Math.max(...build.skeletons.map((k) => Math.max(k.leftGripErrorM, k.rightGripErrorM)));
+    parent.add(root);
+    crewScenesBuilt.push(scene.id);
+    crewMembersBuilt += scene.members.length;
+    crewTrianglesBuilt += build.triangles;
+    group.userData.workshopCrew = {
+      scenes: [...crewScenesBuilt], members: crewMembersBuilt, triangles: crewTrianglesBuilt,
+    };
+    return root;
+  }
+
+  /**
+   * A rolling work stand (the kind every armour workshop pushes beside a hull): a grated deck on four posts with
+   * casters, guard rails on three sides and a four-tread stair, all connected; `deckY` is the standing surface.
+   */
+  function addCrewWorkStand(parent: THREE.Object3D, x: number, z: number, yaw: number, deckY: number): void {
+    const stand = new THREE.Group();
+    stand.name = 'garage_crew_work_stand';
+    stand.position.set(x, 0, z);
+    stand.rotation.y = yaw;
+    stand.userData.supportMode = 'connected-rolling-work-stand';
+    stand.userData.deckY = deckY;
+    parent.add(stand);
+    const W = 1.0, L = 1.3, post = 0.06, rail = 0.95;
+    put(track(new THREE.BoxGeometry(W, 0.05, L)), mat.steelMid, 0, deckY - 0.025, 0, 0, 0, 0, 1, stand)
+      .name = 'garage_crew_work_stand_deck';
+    const postGeometry = track(new THREE.BoxGeometry(post, deckY, post));
+    const railPostGeometry = track(new THREE.BoxGeometry(0.045, rail, 0.045));
+    for (const [px, pz] of [[-W / 2 + 0.05, -L / 2 + 0.05], [W / 2 - 0.05, -L / 2 + 0.05], [-W / 2 + 0.05, L / 2 - 0.05], [W / 2 - 0.05, L / 2 - 0.05]]) {
+      put(postGeometry, mat.safety, px, deckY / 2, pz, 0, 0, 0, 1, stand);
+      put(G.caster, mat.rubber, px, 0.06, pz, 0, 0, Math.PI / 2, 0.9, stand, false);
+      if (px > 0 || pz !== -L / 2 + 0.05) put(railPostGeometry, mat.safety, px, deckY + rail / 2, pz, 0, 0, 0, 1, stand);
+    }
+    const sideRail = track(new THREE.BoxGeometry(0.045, 0.045, L - 0.1));
+    const endRail = track(new THREE.BoxGeometry(W - 0.1, 0.045, 0.045));
+    for (const y of [deckY + rail, deckY + rail * 0.5]) {
+      put(sideRail, mat.safety, W / 2 - 0.05, y, 0, 0, 0, 0, 1, stand);
+      put(endRail, mat.safety, 0, y, L / 2 - 0.05, 0, 0, 0, 1, stand);
+    }
+    const braceGeometry = track(new THREE.BoxGeometry(0.04, 0.04, Math.hypot(L - 0.1, deckY * 0.8)));
+    for (const px of [-W / 2 + 0.05, W / 2 - 0.05]) {
+      put(braceGeometry, mat.steelDark, px, deckY * 0.45, 0, 0, Math.atan2(deckY * 0.8, L - 0.1), 0, 1, stand);
+    }
+    const treadGeometry = track(new THREE.BoxGeometry(W - 0.12, 0.04, 0.24));
+    for (let step = 1; step <= 4; step++) {
+      put(treadGeometry, mat.steelMid, 0, deckY * step / 5, -L / 2 - 0.12 - (4 - step) * 0.22,
+        0, 0, 0, 1, stand);
+    }
+    const stringerLength = Math.hypot(deckY, 0.95);
+    const stringerGeometry = track(new THREE.BoxGeometry(0.05, 0.08, stringerLength));
+    for (const px of [-W / 2 + 0.08, W / 2 - 0.08]) {
+      put(stringerGeometry, mat.safety, px, deckY / 2, -L / 2 - 0.47, 0, -Math.atan2(deckY, 0.95), 0, 1, stand);
+    }
+  }
+
+  /** A crew point (member figure frame) in an exhibit's authored frame. */
+  function crewPoint(
+    scene: CrewScene, memberIndex: number, point: readonly [number, number, number],
+    frame: Readonly<{ x: number; z: number; yaw: number }>,
+  ): THREE.Vector3 {
+    const local = crewPointInScene(scene.members[memberIndex], point);
+    const c = Math.cos(frame.yaw), sn = Math.sin(frame.yaw);
+    return new THREE.Vector3(frame.x + local.x * c + local.z * sn, local.y, frame.z - local.x * sn + local.z * c);
+  }
+
+  /**
+   * One real fleet road wheel held between two carriers' hands (scene frame of `crewRoot`): centred between the four
+   * grips, its axle level and square to the line between the carriers.
+   */
+  function addCarriedRoadWheel(
+    crewRoot: THREE.Group | null,
+    scene: CrewScene,
+    carriers: readonly [number, number],
+    sourceVehicleId: string,
+    tires: THREE.Mesh | undefined,
+    discs: THREE.Mesh | undefined,
+  ): void {
+    if (!crewRoot || !tires?.geometry || !discs?.geometry) return;
+    const grips: THREE.Vector3[] = [];
+    for (const index of carriers) {
+      const pose = scene.members[index].pose;
+      for (const hand of [pose.leftHand, pose.rightHand]) {
+        if (hand) grips.push(crewPointInScene(scene.members[index], hand));
+      }
+    }
+    if (grips.length < 4) return;
+    const centre = grips.reduce((sum, point) => sum.add(point), new THREE.Vector3()).multiplyScalar(1 / grips.length);
+    const a = crewPointInScene(scene.members[carriers[0]], [0, 0, 0]);
+    const b = crewPointInScene(scene.members[carriers[1]], [0, 0, 0]);
+    const along = new THREE.Vector3(b.x - a.x, 0, b.z - a.z).normalize();
+    const axleYaw = Math.atan2(-along.x, -along.z) + Math.PI / 2;
+    const matrix = new THREE.Matrix4().makeRotationY(axleYaw)
+      .multiply(new THREE.Matrix4().makeRotationZ(Math.PI / 2)).setPosition(centre);
+    for (const [source, component] of [[tires, 'carried_road_wheel_tire'], [discs, 'carried_road_wheel_disc']] as const) {
+      const wheel = markModernPart(new THREE.InstancedMesh(source.geometry, source.material, 1), sourceVehicleId, component);
+      wheel.setMatrixAt(0, matrix);
+      wheel.instanceMatrix.needsUpdate = true;
+      wheel.castShadow = wheel.receiveShadow = true;
+      track(wheel);
+      crewRoot.add(wheel);
+    }
+    crewRoot.userData.carriedRoadWheel = centre.toArray().map((value) => Number(value.toFixed(3)));
   }
 
   async function createLegacyVisual(
@@ -2462,6 +2613,9 @@ export function createGarageDressing(
       12.4, -15.0, -0.55 + Math.PI / 2,
     );
 
+    const burlakCrew = addCrewScene(GARAGE_CREW_SCENES.burlak, legacyVerdantRoot);
+    addCarriedRoadWheel(burlakCrew, GARAGE_CREW_SCENES.burlak, [2, 3], 't90a_burlak', roadWheelTires, roadWheelDiscs);
+
     // This bay used to be six independent root children, which made a safe
     // clearance correction impossible: moving only the tank detached it from
     // its jack stands and gantry. Re-parent the complete service story under
@@ -2499,6 +2653,16 @@ export function createGarageDressing(
     tank.rotation.y = -2.03;
     tank.position.set(16.9, 0, 17.7);
     legacyVerdantRoot.add(tank);
+    // The welder works the front-left skirt hanger with a fire watch beside him; the torch, its weld glow and
+    // the welding cable meet his hand, and the creeper sits under the mechanic working beneath the bow.
+    const abramsCrew = GARAGE_CREW_SCENES.abrams;
+    const abramsFrame = abramsCrew.frame;
+    const torch = abramsCrew.tools.find((tool) => tool.kind === 'torch');
+    const torchGrip = torch
+      ? crewPoint(abramsCrew, torch.member, torch.points[0], abramsFrame) : new THREE.Vector3(17.35, 0.4, 15.95);
+    const torchTip = torch
+      ? crewPoint(abramsCrew, torch.member, torch.points[1], abramsFrame) : new THREE.Vector3(17.4, 0.45, 15.92);
+    const creeperAt = crewPoint(abramsCrew, 2, [0, 0, -0.32], abramsFrame);
     const roadWheelTires = tank.getObjectByName('gearRoadWheelTires') as
       THREE.Mesh | undefined;
     const roadWheelDiscs = (tank.getObjectByName('gearRoadWheelDiscs')
@@ -2535,8 +2699,8 @@ export function createGarageDressing(
       14.9, 0.05, 15.9, 0, 0, 0, 1, legacyVerdantRoot);
     const creeper = new THREE.Group();
     creeper.name = 'verdant_original_creeper';
-    creeper.position.set(14.35, 0, 17.1);
-    creeper.rotation.y = 1.1;
+    creeper.position.set(creeperAt.x, 0, creeperAt.z);
+    creeper.rotation.y = -2.03;
     legacyVerdantRoot.add(creeper);
     put(track(new THREE.BoxGeometry(0.55, 0.05, 1.35)), mat.redCabDark,
       0, 0.09, 0, 0, 0, 0, 1, creeper);
@@ -2547,11 +2711,17 @@ export function createGarageDressing(
     const cableMaterial = track(shadowMat(new THREE.MeshStandardMaterial({
       color: 0x141618, roughness: 0.88, metalness: 0.05,
     })));
+    const cableFloor = (x: number, z: number): THREE.Vector3 => {
+      const c = Math.cos(abramsFrame.yaw), sn = Math.sin(abramsFrame.yaw);
+      return new THREE.Vector3(abramsFrame.x + x * c + z * sn, 0.05, abramsFrame.z - x * sn + z * c);
+    };
     const cable = new THREE.CatmullRomCurve3([
       new THREE.Vector3(11.6, 0.22, 19.6),
-      new THREE.Vector3(13.2, 0.05, 18.6),
-      new THREE.Vector3(15.4, 0.05, 17.0),
-      new THREE.Vector3(17.35, 0.4, 15.95),
+      cableFloor(2.2, 4.75),
+      cableFloor(-1.2, 4.55),
+      cableFloor(-2.3, 3.6),
+      torchGrip.clone().add(new THREE.Vector3(0, -0.12, 0)),
+      torchGrip,
     ]);
     const cableMesh = new THREE.Mesh(
       track(new THREE.TubeGeometry(cable, 24, 0.035, 7)), cableMaterial,
@@ -2561,7 +2731,7 @@ export function createGarageDressing(
     legacyVerdantRoot.add(cableMesh);
     const weldTip = put(track(new THREE.SphereGeometry(0.028, 8, 6)),
       track(new THREE.MeshBasicMaterial({ color: 0xffe0b0 })),
-      17.4, 0.45, 15.92, 0, 0, 0, 1, legacyVerdantRoot, false);
+      torchTip.x, torchTip.y, torchTip.z, 0, 0, 0, 1, legacyVerdantRoot, false);
     weldTip.castShadow = false;
     const glowMaterial = track(new THREE.SpriteMaterial({
       map: track(canvasTexture(makePoolTexture(
@@ -2574,7 +2744,7 @@ export function createGarageDressing(
     const spark = new THREE.Sprite(glowMaterial);
     spark.name = 'verdant_original_weld_glow';
     spark.scale.setScalar(0.7);
-    spark.position.set(17.4, 0.47, 15.92);
+    spark.position.copy(torchTip).add(new THREE.Vector3(0, 0.02, 0));
     legacyVerdantRoot.add(spark);
     const pool = new THREE.Mesh(track(new THREE.PlaneGeometry(7, 7)), poolMat);
     pool.rotation.x = -Math.PI / 2;
@@ -2599,6 +2769,7 @@ export function createGarageDressing(
       7.4,
       verdantInteriorRoot,
     );
+    addCrewScene(abramsCrew, legacyVerdantRoot);
     if (!abramsServiceFloorRoot) {
       throw new Error('Abrams welding service floor was not constructed');
     }
@@ -2759,6 +2930,8 @@ export function createGarageDressing(
       track(removedTires);
       track(removedDiscs);
     }
+    const leopardCrew = addCrewScene(GARAGE_CREW_SCENES.leopard, mobilityBay);
+    addCarriedRoadWheel(leopardCrew, GARAGE_CREW_SCENES.leopard, [0, 1], 'leo2a5_a5nl', roadWheelTires, roadWheelDiscs);
     mobilityBay.userData.wheelServiceMode = 'running-gear-removed-to-connected-rack';
     mobilityBay.userData.paintSquareOccupied = true;
     mobilityBay.userData.finalVerdantCenter = [-16.4, 13.6];
@@ -2849,6 +3022,7 @@ export function createGarageDressing(
     cassettes.receiveShadow = true;
     rack.add(cassettes);
     track(cassettes);
+    addCrewScene(GARAGE_CREW_SCENES.t90m, legacyVerdantRoot, Array.isArray(reliktMaterial) ? mat.olive : reliktMaterial);
     wallSign('T-90M / RELIKT', -8.7, 3.25, 22.86,
       Math.PI, 2.8, 0.9, '', legacyVerdantRoot);
   });
@@ -2943,6 +3117,7 @@ export function createGarageDressing(
       0, 2.5, 0.9, '', legacyVerdantRoot);
     wallSign('WEAPON SERVICE', -6.4, 2.75, -22.86,
       0, 2.7, 0.8, '', legacyVerdantRoot);
+    addCrewScene(GARAGE_CREW_SCENES.k2, legacyVerdantRoot);
     placeAuthoredServiceBay(firstBayChildIndex, 'rolled_k2', 'k2');
   });
 
