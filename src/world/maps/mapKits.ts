@@ -184,8 +184,8 @@ interface DressingContext {
  * Roads lane R3 (2026-10-10, the coordinator after wave 341: Cinder Junction's "sleepers lie ON TOP of the cobbles (bed
  * them in)"; "inside paved yards and at crossings, set rails flush with setts (or ballast at grade); keep the raised ballast
  * shoulder only on open-country spans"): the map's paved ground as the rail kit sees it — its roads' carriageways when its
- * roads are paved (pavedRoadHalfM, the R print's or a paved class's half-width), its town rect when it paves its town (a
- * 6 m feather in), its hardstands when they are paved, and a rail yard's graded yard (its ballast laid at grade).
+ * roads are paved (pavedRoadHalfM, the R print's or a paved class's half-width), its town's streets when it paves its town
+ * (pavedTown, the village rect), its hardstands when they are paved, and a rail yard's graded yard (its ballast at grade).
  */
 export interface RailPaving {
   pavedRoadHalfM: number | null;
@@ -203,9 +203,10 @@ const RAIL_CROSSING_M = 4.6;
 export function railBedAt(paving: RailPaving | null | undefined, field: Pick<DressingHeightField, '_roadDist'>, x: number, z: number): number {
   const roadD = field._roadDist(x, z);
   if (paving?.pavedRoadHalfM && roadD < paving.pavedRoadHalfM) return RAIL_BED_PAVED;
-  if (paving?.pavedTown) {
+  // (a paved town paves its streets — the material's setts lie where its road mask does, not over the whole rect)
+  if (paving?.pavedTown && roadD < RAIL_CROSSING_M) {
     const t = paving.pavedTown;
-    if (x > t.x0 + 6 && x < t.x1 - 6 && z > t.z0 + 6 && z < t.z1 - 6) return RAIL_BED_PAVED;
+    if (x > t.x0 && x < t.x1 && z > t.z0 && z < t.z1) return RAIL_BED_PAVED;
   }
   for (const pad of paving?.pavedPads ?? []) {
     const a = (pad.yawDeg ?? 0) * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
