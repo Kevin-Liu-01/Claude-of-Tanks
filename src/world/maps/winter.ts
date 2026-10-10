@@ -363,7 +363,9 @@ export default {
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'stratocumulus-deck', nightGlow: 0.3, nightGlowHex: 0xffc080 },
+  // 2026-10-09 (the shadows lane: the deck's cells took 90 % of the sun over 86 % of the valley — lit and shaded snow
+  // 1.13 : 1 under a cell): a broken stratocumulus passes part of the beam through its thinner cells (cloudscapes.ts deckBeam)
+  clouds: { regime: 'stratocumulus-deck', nightGlow: 0.3, nightGlowHex: 0xffc080, deckBeam: 0.4 },
   sky: {
     // FLAT OVERCAST: higher-but-weak sun (no warm horizon glow), heavy grey
     // cloud deck, raised ambient/env fill so light reads diffuse
