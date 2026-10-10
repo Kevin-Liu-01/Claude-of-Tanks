@@ -6691,7 +6691,7 @@ void splatCompute() {
       float wg = 0.30, sw = max(0.09, 1.6 * fwA);
       float tW = clamp((ae - (wg - sw)) / (2.0 * sw), 0.0, 1.0);
       float groove = 1.0 - tW * tW * (3.0 - 2.0 * tW);
-      float depth = (0.04 + 0.06 * rutAmp) * min(uRoadRuts.x, 1.5);
+      float depth = (0.035 + 0.05 * rutAmp) * min(uRoadRuts.x, 1.5);
       float lipX = (ae - wg - sw - 0.08) / 0.11;
       float lip = exp(-lipX * lipX) * (se > 0.0 ? 1.0 : 0.7) * rutAmp;
       float hwv = max(roadHalfB, 2.6);
@@ -6704,14 +6704,16 @@ void splatCompute() {
       // (R2, the first frames: seen from 12–16 m up the grooves' walls and their shadow drew two thin dark lines — the
       // gauntlet's old "ink lines") a wall ~0.15 m across holds while it spans enough pixels across the road; past that the
       // groove is its soft floor tone alone
-      float wallV = stripeVis(1.6, acrU);
+      float wallV = stripeVis(2.4, acrU);
       if (nrmOn) n.xy -= 0.5 * dh * acrU * relV * wallV * (1.0 - gRoadTex);
       // the floor compacted and cleaner, the lip loose and paler; the floor beside the wall on the sun's side shaded by it
       float sunA = dot(uSunDirW.xz, acrU);         // > 0: the sun stands outward of the road, its light falls inward
       float shL = depth * abs(sunA) / max(uSunDirW.y, 0.08);
       float uS = sunA >= 0.0 ? e : -e;             // the wall on the sun's side at uS = +wg
       float shade = groove * smoothstep(wg - shL - sw, wg - shL + sw, uS) * step(0.02, abs(sunA));
-      a.rgb *= 1.0 - (0.07 * groove * rutAmp + (0.28 * shade - 0.06 * lip) * wallV - 0.05 * windrow) * relV * wR;
+      // (r4 frames: near the camera the grooves read as black channels on Monsoon and Amberford) the wall's shadow and the
+      // floor's tone held soft — the relief's own shading carries most of the groove
+      a.rgb *= 1.0 - (0.045 * groove * rutAmp + (0.14 * shade - 0.05 * lip) * wallV - 0.05 * windrow) * relV * wR;
       // (2) the treads printed in a rut's floor: a tank's track plates (0.16 m pitch) or a lorry's chevrons (0.128 m),
       // one vehicle's print a 9 m stretch (both its ruts), some stretches worn smooth — laid in the road frame
       if (gRoadFrameW > 0.5 && uRoadSurf.w > 0.0 && uLandTier > 1.5) {
@@ -7003,12 +7005,12 @@ void splatCompute() {
           // 10 m) weathered brick — dust-browned, ±18 % brick to brick, the joints filled with the road's own dust — under
           // an irregular drift, the wheel tracks smoothed and darkened, and on a soling road its broken stretches: holes
           // 0.5–2 m where the bricks are gone, mud in their floors, loose bricks round them
-          vec3 brick = soling ? vec3(0.225, 0.122, 0.082) : vec3(0.172, 0.086, 0.064);
-          brick *= 0.82 + 0.36 * bh.x;
-          brick = mix(brick, brick * vec3(0.78, 0.76, 0.88), step(0.80, bh.y));     // the burnt purple ones
+          vec3 brick = soling ? vec3(0.212, 0.122, 0.086) : vec3(0.150, 0.082, 0.066);
+          brick *= 0.88 + 0.24 * bh.x;
+          brick = mix(brick, brick * vec3(0.82, 0.80, 0.90), step(0.88, bh.y));     // the burnt purple ones
           brick = mix(brick, brick * vec3(1.14, 1.08, 0.96), step(0.90, fract(bh.x * 6.7)) * (soling ? 1.0 : 0.0));
           vec3 jointC = soling ? mix(brick * 0.75, uMeanD.rgb * 0.95, 0.6) : vec3(0.22, 0.20, 0.16);
-          vec3 bMean = mix(soling ? vec3(0.205, 0.118, 0.082) : vec3(0.160, 0.085, 0.066), jointC, 0.22);
+          vec3 bMean = mix(soling ? vec3(0.195, 0.116, 0.084) : vec3(0.140, 0.080, 0.067), jointC, 0.22);
           vec3 col = mix(bMean, mix(brick, jointC, jointB), bv);
           col *= 0.92 + 0.16 * nzq(uv, 0.35, vec2(0.61, 0.23)).x;
           col *= 1.0 - 0.12 * wheelW;
@@ -7016,12 +7018,15 @@ void splatCompute() {
           if (soling) {
             vec2 hci = floor(wp.xz / 4.0);
             vec2 hh = cellHash2(hci + vec2(37.0, 71.0));
-            if (hh.x < 0.32) {
+            if (hh.x < 0.22) {
               vec2 hh2 = cellHash2(hci + vec2(3.0, 19.0));
               vec2 hc0 = (hci + 0.25 + 0.5 * hh2) * 4.0;
               float hr = 0.35 + 0.65 * hh.y;
-              float hdist = length((wp.xz - hc0) * vec2(1.0, 1.0 + 0.6 * hh2.x)) + (nz(uv, 1.3, vec2(0.71, 0.43)).g - 0.5) * 0.45;
-              float hole = 1.0 - smoothstep(hr - 0.04, hr + 0.04 + fwP, hdist);
+              // (r4 frames: the holes read as smooth dark ovals) their edges as ragged as lost bricks leave them — the outline
+              // stepped along the brick courses and broken by two noise octaves, the mud's edge soft where it creeps out
+              float hdist = length((wp.xz - hc0) * vec2(1.0, 1.0 + 0.6 * hh2.x)) + (nz(uv, 1.3, vec2(0.71, 0.43)).g - 0.5) * 0.50
+                + (nz(uv, 4.3, vec2(0.29, 0.13)).r - 0.5) * 0.18 + (bh.x - 0.5) * 0.16;
+              float hole = 1.0 - smoothstep(hr - 0.10, hr + 0.06 + fwP, hdist);
               float loose = (1.0 - smoothstep(hr, hr + 0.35, hdist)) * (1.0 - hole) * step(0.6, bh.x);
               broken = max(broken, hole * tileVis(0.6));
               col = mix(col, col * 0.85, loose * 0.6);

@@ -103,8 +103,8 @@ const ROAD_SURFACE_OFF: RoadSurfaceWork = Object.freeze({
 });
 /** Each climate's worked carriageway (groundRedux.ts climate). */
 export const ROAD_SURFACE_BY_CLIMATE: Readonly<Record<'vegetated' | 'arid' | 'snow', RoadSurfaceWork>> = Object.freeze({
-  vegetated: Object.freeze({ relief: 1, stones: 0.55, potholes: 0.8, treads: 1, washboard: 0, toneFloor: 0.92, laneTone: 0.45, windrow: 0.5 }),
-  arid: Object.freeze({ relief: 1, stones: 0.9, potholes: 0.35, treads: 1, washboard: 0.8, toneFloor: 0.92, laneTone: 0.40, windrow: 1 }),
+  vegetated: Object.freeze({ relief: 1, stones: 0.55, potholes: 0.8, treads: 1, washboard: 0, toneFloor: 0.92, laneTone: 0.55, windrow: 0.5 }),
+  arid: Object.freeze({ relief: 1, stones: 0.9, potholes: 0.35, treads: 1, washboard: 0.8, toneFloor: 0.92, laneTone: 0.50, windrow: 1 }),
   snow: Object.freeze({ relief: 0.8, stones: 0, potholes: 0, treads: 1, washboard: 0, toneFloor: 0, laneTone: 0.7, windrow: 0 }),
 });
 /** The owner's protected maps keep the old road law whatever their climate, until a pair shows the worked carriageway does
