@@ -224,6 +224,8 @@ interface ShellHitEvent {
 }
 
 interface ShellExpiredEvent { shellId?: number; shooterId?: string; hitTerrain?: boolean; hitKind?: string; surfaceKind?: string; caliberMm?: number; pos?: Vec3;
+  /** the building the round struck (2026-10-10), when it struck one */
+  structureId?: number;
   /** the round's type, and the destruction catalog's class and charge when published (destruction-fx lane) */
   shellType?: string; munition?: MunitionClass; chargeKg?: number }
 interface TankDestroyedEvent { id: string; killerId?: string | null; pos: Vec3; cause?: string }
@@ -1019,13 +1021,19 @@ export function createAudio({
     const munition = event.munition ?? munitionFromType(event.shellType, caliber);
     const blastCal = munitionExplodes(munition)
       ? blastSoundCaliberMm(Number.isFinite(event.chargeKg) ? event.chargeKg as number : 1.8 * (caliber / 100) ** 3) : 0;
-    if (blastCal > 0 && event.hitKind !== 'prop') explosion(x, y, z, blastCal, undefined, focus);
+    // (2026-10-10, the owner: "proper audio like all things that can be destroyed") a burst on a wall or a prop detonates
+    // as one on the ground does — it played the prop's impact thud alone
+    if (blastCal > 0) explosion(x, y, z, blastCal, undefined, focus);
     if (small) {
       play(water ? 'bullet_water' : 'bullet_dirt', { x, y, z });
     } else if (water) {
       play(caliber >= 61 ? 'water_big' : 'water_small', { x, y, z, focus, ...(blastCal > 0 ? { gainDb: -4 } : {}) });
     } else if (event.hitKind === 'prop') {
       play(propImpactAsset(String(event.surfaceKind || '')), { x, y, z, focus });
+      // a round into a building breaks its wall (structureStages punches the hole): the masonry crumbling out of it
+      if (typeof event.structureId === 'number' || event.surfaceKind === 'structure') {
+        play('rubble_crunch', { x, y, z, delayS: 0.06 + random() * 0.05, gainDb: blastCal > 0 ? -5 : -9 });
+      }
     } else {
       play(groundImpactAsset(surfaceAt(x, z).surface, x, z), { x, y, z, focus, rate: clamp(1.1 - caliber / 900, 0.9, 1.08),
         ...(blastCal > 0 ? { gainDb: -4 } : {}) });

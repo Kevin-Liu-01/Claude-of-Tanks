@@ -414,6 +414,18 @@ moment('gunship_missile', () => bus.emit('ui:shellSelectionChanged', { slot: 2 }
   settle(2);
   assert.deepEqual(['containerRow', 'truckflatbed', 'tree', 'crate', 'warehouse', 'rock', 'sandbag'].map((kind, i) => { settle(0.5); return struck(kind, 9100 + i); }),
     ['ground_metal', 'ground_metal', 'ground_wood', 'ground_wood', 'ground_concrete', 'ground_rock', 'ground_dirt']);
+  // (2026-10-10, the owner: "proper audio like all things that can be destroyed") a burst on a building detonates (it
+  // played the wall's thud alone) and its wall crumbles; an armour-piercing round crumbles it without a detonation
+  const intoBuilding = (shellType, shellId) => {
+    settle(0.6);
+    const since = probe.sfxLog.at(-1)?.seq ?? 0;
+    bus.emit('shell:expired', { shellId, shooterId: 'f1', pos: [10, 1, 30], hitTerrain: false, hitKind: 'prop', surfaceKind: 'structure',
+      structureId: 3, shellType, caliberMm: 125 });
+    return probe.sfxLog.filter((e) => e.seq > since).map((e) => e.n);
+  };
+  const burst = intoBuilding('HE', 9200), pierce = intoBuilding('APFSDS', 9201);
+  assert.ok(burst.some((n) => n.startsWith('expl_')) && burst.includes('rubble_crunch'), `a burst on a building detonates and its wall crumbles (${burst})`);
+  assert.ok(!pierce.some((n) => n.startsWith('expl_')) && pierce.includes('rubble_crunch'), `an AP round crumbles the wall, no detonation (${pierce})`);
 }
 
 // Smoke in the next battle: the sim clock restarts at 0, so screens born earlier than the last battle's are new.
