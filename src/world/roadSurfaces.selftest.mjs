@@ -65,8 +65,11 @@ assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.airfield, town).cls.sli
   assert.ok(styles && styles.length === field._layout.roads.length, 'Tidegate: a style per road line');
   const want = MAP_PATH_SURFACES.polders;
   for (let i = 0; i < want.length; i++) assert.deepEqual(styles[i], want[i] ? { surface: want[i], catalogue: true } : null, `Tidegate path ${i}`);
-  // the road layer marks a catalogued class with bit 7, so the Low tier draws the path as the map's own road
-  const texture = makeMaskTexture(new SimplexNoise({ random: mulberry32(3010) }), field._layout, null, field._waterWetnessAt, null);
+  // the road layer marks a catalogued class with bit 7, so the Low tier draws the path as the map's own road. (2026-10-10:
+  // built as production builds it — Tidegate's shore stamp (shoreDirt, seaRamp[0] 0.12) reuses the road raster after the
+  // layers are taken; before, every texel read its distance to the water and the layer came out empty)
+  const texture = makeMaskTexture(new SimplexNoise({ random: mulberry32(3010) }), field._layout, null, field._waterWetnessAt, 0.12);
+  assert.ok(texture.userData.roadFrame, 'Tidegate keeps its road frame through the shore stamp');
   const layer = texture.userData.roadLayer, n = texture.image.width;
   const [x0, z0] = field._layout.roads[0][1];
   const t = (Math.floor((z0 + 512) * n / 1024) * n + Math.floor((x0 + 512) * n / 1024)) * 4;

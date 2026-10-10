@@ -3726,6 +3726,49 @@ export function makeMaskTexture(
     }
   }
   paintMaskPixels();
+  // roads lane (2026-10-10): the road layers read the road raster (dist) — build them before the shore stamp below reuses
+  // that raster for its own distances (Tidegate Polders' clinker, Amberford's and Mangrove's frames were empty: every
+  // texel read its distance to the water)
+  // 2026-10-05: the road layer (stacked under the mask: stackLandUseBake), a texel per mask texel within the 12 m ramp of a
+  // styled net's roads — R the nearest path's class (ROAD_SURFACE_CODE, 0 its map's own), G its half-width in decimetres
+  // (0 the map's gauge), B A the segment's heading (16 bits of a turn)
+  let roadLayerData: Uint8Array | null = null;
+  if (nearestRoad) {
+    const road = new Uint8Array(s * s * 4);
+    for (let i = 0; i < s * s; i++) {
+      const ri = nearestRoad[i];
+      if (ri < 0 || dist[i] >= 11.9) continue; // (inside the distance ramp: G > 0 wherever a class is)
+      const style = roadStyles![ri];
+      if (!style) continue;
+      road[i * 4] = (style.surface ? ROAD_SURFACE_CODE[style.surface] ?? 0 : 0) | (style.catalogue ? 128 : 0);
+      road[i * 4 + 1] = Math.round(roadStyleHalfWidth(style) * 10);
+      const turn = nearestHeading![i] / (2 * Math.PI);
+      const code = Math.round((turn - Math.floor(turn)) * 65536) & 65535;
+      road[i * 4 + 2] = code >> 8; road[i * 4 + 3] = code & 255;
+    }
+    roadLayerData = road;
+  }
+  // roads lane (2026-10-09): the road frame layer (stacked under the mask after the road layer), a texel per mask texel
+  // within 14 m of any road — R G the running length of the nearest line at its nearest point (15 bits, 1/64 m, wrapping
+  // at 512 m) under the side bit (R's top bit: the texel centre stands right of the heading), B A the segment's heading
+  // (16 bits of a turn). The shader adds the pixel's offset from the texel's centre along that heading, so a pattern laid
+  // along the road (wheel tread, washboard, sett courses) keeps its pitch on a bend, where dot(wp, heading) runs fast or
+  // backwards (|wp| / radius); and the texel centre's own exact distance (the mask's G at that texel) on its side plus the
+  // pixel's offset across the heading gives the exact signed offset from the centreline, where the bilinear distance
+  // field reads up to a texel high (a centre line, the wheel paths of a paved street)
+  let roadFrameData: Uint8Array | null = null;
+  if (nearestArc) {
+    const frame = new Uint8Array(s * s * 4);
+    for (let i = 0; i < s * s; i++) {
+      if (dist[i] >= 14) continue;
+      const arc = (Math.round(nearestArc[i] * ROAD_FRAME_ARC_UNITS) & 32767) | (nearestSide![i] < 0 ? 32768 : 0);
+      frame[i * 4] = arc >> 8; frame[i * 4 + 1] = arc & 255;
+      const turn = nearestHeading![i] / (2 * Math.PI);
+      const code = Math.round((turn - Math.floor(turn)) * 65536) & 65535;
+      frame[i * 4 + 2] = code >> 8; frame[i * 4 + 3] = code & 255;
+    }
+    roadFrameData = frame;
+  }
   if (layout.terrain.hardstands?.length) {
     stampHardstandRoadMask(layout.terrain.hardstands, px, s, MAP_SIZE);
   }
@@ -3751,44 +3794,9 @@ export function makeMaskTexture(
   t.minFilter = THREE.LinearMipmapLinearFilter;
   t.magFilter = THREE.LinearFilter;
   t.generateMipmaps = true;
-  // 2026-10-05: the road layer (stacked under the mask: stackLandUseBake), a texel per mask texel within the 12 m ramp of a
-  // styled net's roads — R the nearest path's class (ROAD_SURFACE_CODE, 0 its map's own), G its half-width in decimetres
-  // (0 the map's gauge), B A the segment's heading (16 bits of a turn)
-  if (nearestRoad) {
-    const road = new Uint8Array(s * s * 4);
-    for (let i = 0; i < s * s; i++) {
-      const ri = nearestRoad[i];
-      if (ri < 0 || dist[i] >= 11.9) continue; // (inside the distance ramp: G > 0 wherever a class is)
-      const style = roadStyles![ri];
-      if (!style) continue;
-      road[i * 4] = (style.surface ? ROAD_SURFACE_CODE[style.surface] ?? 0 : 0) | (style.catalogue ? 128 : 0);
-      road[i * 4 + 1] = Math.round(roadStyleHalfWidth(style) * 10);
-      const turn = nearestHeading![i] / (2 * Math.PI);
-      const code = Math.round((turn - Math.floor(turn)) * 65536) & 65535;
-      road[i * 4 + 2] = code >> 8; road[i * 4 + 3] = code & 255;
-    }
-    t.userData.roadLayer = { data: road, n: s };
-  }
-  // roads lane (2026-10-09): the road frame layer (stacked under the mask after the road layer), a texel per mask texel
-  // within 14 m of any road — R G the running length of the nearest line at its nearest point (15 bits, 1/64 m, wrapping
-  // at 512 m) under the side bit (R's top bit: the texel centre stands right of the heading), B A the segment's heading
-  // (16 bits of a turn). The shader adds the pixel's offset from the texel's centre along that heading, so a pattern laid
-  // along the road (wheel tread, washboard, sett courses) keeps its pitch on a bend, where dot(wp, heading) runs fast or
-  // backwards (|wp| / radius); and the texel centre's own exact distance (the mask's G at that texel) on its side plus the
-  // pixel's offset across the heading gives the exact signed offset from the centreline, where the bilinear distance
-  // field reads up to a texel high (a centre line, the wheel paths of a paved street)
-  if (nearestArc) {
-    const frame = new Uint8Array(s * s * 4);
-    for (let i = 0; i < s * s; i++) {
-      if (dist[i] >= 14) continue;
-      const arc = (Math.round(nearestArc[i] * ROAD_FRAME_ARC_UNITS) & 32767) | (nearestSide![i] < 0 ? 32768 : 0);
-      frame[i * 4] = arc >> 8; frame[i * 4 + 1] = arc & 255;
-      const turn = nearestHeading![i] / (2 * Math.PI);
-      const code = Math.round((turn - Math.floor(turn)) * 65536) & 65535;
-      frame[i * 4 + 2] = code >> 8; frame[i * 4 + 3] = code & 255;
-    }
-    t.userData.roadFrame = { data: frame, n: s };
-  }
+  // (the road and road frame layers, built from the road raster before the shore stamp reused it)
+  if (roadLayerData) t.userData.roadLayer = { data: roadLayerData, n: s };
+  if (roadFrameData) t.userData.roadFrame = { data: roadFrameData, n: s };
   t.anisotropy = 4;
   t.needsUpdate = true;
   return t;
