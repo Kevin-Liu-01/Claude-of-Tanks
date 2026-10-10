@@ -7073,7 +7073,9 @@ void splatCompute() {
     // soft band over the carriageway's middle third (no stripes), the tracks' own darkening near the camera
     float laneFar = smoothstep(0.08, 0.28, gFootM) * (1.0 - gRoadTex);
     float trodMid = (1.0 - smoothstep(0.6, 2.4, dRoad)) * roadCore * rutAmp * mix(1.0, uRoadSurfB.z, workedK);
-    a.rgb *= 1.0 - min(mix(rut * rutShade, trodMid * 0.55, laneFar), 1.0) * mix(0.34, 0.26, gRoadTex);
+    // (R4, the gauntlet's Jade River: the herringbone "dissolves gradually into an orange earth road" — two dark earth lanes
+    // drawn over the bricks past their own scale) past the Low tier a paved surface keeps no earth lanes: its wear is its own
+    a.rgb *= 1.0 - min(mix(rut * rutShade, trodMid * 0.55, laneFar), 1.0) * mix(0.34, 0.26, gRoadTex) * (1.0 - gRoadTex * step(0.5, uLandTier));
     a.a = mix(a.a, a.a * 0.86, rut * (1.0 - gRoadTex));
     a.rgb *= 1.0 + crown * 0.05 * (1.0 - gRoadTex);
     if (gRoadTex > 0.01) {
@@ -7644,7 +7646,9 @@ void splatCompute() {
           float outer = paveCore * (1.0 - smoothstep(0.24, 0.46, mk.r));
           float pavL = dot(pav.rgb, vec3(0.34, 0.45, 0.21)) / max(dot(uMeanR.rgb, vec3(0.34, 0.45, 0.21)) * 0.8, 1e-3);
           float joint = 1.0 - smoothstep(0.55, 0.95, pavL);
-          pav.rgb = mix(pav.rgb, pav.rgb * vec3(0.70, 0.96, 0.50), joint * outer * 0.85);
+          // (R4, the gauntlet's Ironworks: the setts fade "through a soft, blurry dark-green moss halo along both edges") past
+          // the Low tier the outer setts' moss a third as strong
+          pav.rgb = mix(pav.rgb, pav.rgb * vec3(0.70, 0.96, 0.50), joint * outer * (uLandTier > 0.5 ? 0.28 : 0.85));
           float margin = smoothstep(0.02, 0.15, mk.r + (paveN - 0.5) * 0.06) * (1.0 - paveCore) * gRoadTex;
           a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.76, 0.68), margin * 0.65);
           a.a = mix(a.a, max(a.a, 0.94), margin);

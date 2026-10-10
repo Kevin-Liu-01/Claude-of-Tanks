@@ -201,7 +201,7 @@ for (const line of [
   'if (gRoadClass > 0.5) gRoadTex = abs(gRoadClass - 4.0) < 0.5 ? 0.0 : 1.0;',
   'if (gRoadClass > 127.5) gRoadClass = uLandTier > 0.5 ? gRoadClass - 128.0 : 0.0;',
   'float roadFloorL = floorK * dot(a.rgb, vec3(0.34, 0.45, 0.21));',
-  'a.rgb *= 1.0 - min(mix(rut * rutShade, trodMid * 0.55, laneFar), 1.0) * mix(0.34, 0.26, gRoadTex);',
+  'a.rgb *= 1.0 - min(mix(rut * rutShade, trodMid * 0.55, laneFar), 1.0) * mix(0.34, 0.26, gRoadTex) * (1.0 - gRoadTex * step(0.5, uLandTier));',
 ]) assert.ok(source.includes(line.replace(/\s+/g, ' ')), `the material: ${line}`);
 // (the old law, exactly, where every gain is 0: the worked carriageway's block is skipped, the floor clamps to 1, the old
 // grey pull holds and the lanes keep their whole darkening)
