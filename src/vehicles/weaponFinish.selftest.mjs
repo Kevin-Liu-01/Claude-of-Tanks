@@ -89,10 +89,25 @@ import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
     glass: new THREE.MeshStandardMaterial(), shadow: new THREE.MeshStandardMaterial() };
   assert.throws(() => FITTINGS.openYokeRws({ mats, bodySlot: 'turret', sizeStandard: 'k2b-compact-tower' }), /unknown material slot 'turret'/,
     'a bucket name is not a fitting material slot');
-  const station = FITTINGS.openYokeRws({ mats, sizeStandard: 'k2b-compact-tower' });
-  let hullMeshes = 0;
-  station.traverse((o) => { if (o.isMesh && o.material === mats.hull) hullMeshes++; });
-  assert.ok(hullMeshes >= 1, 'a remote station body is painted with the hull by default');
+  // receipt (non-rendering) builds keep the station body in the fitting paint, byte-identical; a rendered set (it carries
+  // the weapon steel) paints the body with the hull and the gun in weapon steel
+  const plain = FITTINGS.openYokeRws({ mats, sizeStandard: 'k2b-compact-tower' });
+  let detailMeshes = 0;
+  plain.traverse((o) => { if (o.isMesh && o.material === mats.detail) detailMeshes++; });
+  assert.ok(detailMeshes >= 1, 'a receipt build keeps the station body in the fitting paint');
+  const weaponSteel = new THREE.MeshStandardMaterial();
+  weaponSteel.userData = { weaponFinish: 'weaponSteel', weaponUvScale: WEAPON_STEEL_UV_REPEATS_PER_M };
+  const rendered = FITTINGS.openYokeRws({ mats: { ...mats, weaponSteel }, sizeStandard: 'k2b-compact-tower' });
+  let hullMeshes = 0, steelMeshes = 0, flatMeshes = 0;
+  rendered.traverse((o) => {
+    if (!o.isMesh) return;
+    if (o.material === mats.hull) hullMeshes++;
+    if (o.material === weaponSteel) steelMeshes++;
+    if (o.material === mats.detail || o.material === mats.dark) flatMeshes++;
+  });
+  assert.ok(hullMeshes >= 1 && steelMeshes >= 1, `a rendered station paints its body with the hull and its gun in weapon steel (${hullMeshes}/${steelMeshes})`);
+  assert.equal(flatMeshes, 0, 'no rendered station mesh keeps the flat fitting paint or hardware gunmetal');
+  weaponSteel.dispose();
   const dir = new URL('./profiles/', import.meta.url);
   for (const file of readdirSync(dir).filter((f) => f.endsWith('.ts'))) {
     const text = readFileSync(new URL(file, dir), 'utf8');
