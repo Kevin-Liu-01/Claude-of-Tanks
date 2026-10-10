@@ -30,7 +30,7 @@ import { CLOUD_CONTRAIL_MAX } from './cloudWeatherLayers.ts';
 const authoredContrails = (id) => Math.round(Math.min(1, Math.max(0, getMapConfig(id)?.clouds?.contrails ?? 0)) * CLOUD_CONTRAIL_MAX);
 import {
   VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_BSM_CASCADES, CLOUD_BSM_SLICES, CLOUD_BSM_TIER_STRETCH, CLOUD_FAR_SHADE_EVERY, CLOUD_DECK_SUN_LOBE, CLOUD_DOME_RADIUS_M, CLOUD_HISTORY_SCALE,
-  CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_TIERS, CLOUD_TRACE_DIVISOR,
+  CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_CAPTURE_SETTLE_FRAMES, CLOUD_SLOT_ORDER, CLOUD_TIERS, CLOUD_TRACE_DIVISOR,
 } from './volumetricClouds.ts';
 import { CLOUD2_EARTH_R, CLOUD2_PERIODS } from './cloudShaders.ts';
 import { CLOUD_SHAPE_TEXELS, CLOUD_DETAIL_TEXELS, CLOUD_TURBULENCE_TEXELS, CLOUD_LATTICE_NOISE_GLSL } from './cloudVolumeNoise.ts';
@@ -77,7 +77,7 @@ assert.equal(cloudCameraCut(0, .36, 1, 1), true, 'large camera turn rebuilds');
     else layer.since++;
   };
   assert.equal(layer.settleForCapture(camera),true);
-  assert.equal(traces,67);assert.equal(layer.captureFramesRemaining,0);
+  assert.equal(traces,3+CLOUD_CAPTURE_SETTLE_FRAMES);assert.ok(CLOUD_CAPTURE_SETTLE_FRAMES>=256,'a still settles to near the live steady state');assert.equal(layer.captureFramesRemaining,0);
   assert.equal(layer.settleForCapture(camera),false,'settled movie frames do no extra traces');
   layer.rebuild=0;layer.since=0;layer.frozen=true;
   assert.equal(layer.settleForCapture(camera),false,'capture respects an intentionally frozen layer');

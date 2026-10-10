@@ -60,6 +60,20 @@ export const CLOUD_TRACE_DIVISOR = 4;
 /** Slots traced per frame while the history rebuilds after a cut (all sixteen after four frames). */
 export const CLOUD_REBUILD_SLOTS = 4;
 /**
+ * A capture's settle after the rebuild (frames at dt 0; settleForCapture). 2026-10-09 (the grain fix, fix/cloud-grain):
+ * 64 frames left four samples a history pixel against the live layer's steady accumulation (some thirty-three at
+ * CLOUD_HISTORY_MIN_ALPHA), so every gauntlet still was grainier than the sky a player sees at rest; 512 frames (an even
+ * mean of the first seventeen, then the floor's average) come within about a tenth of the steady state's noise.
+ */
+export const CLOUD_CAPTURE_SETTLE_FRAMES = 512;
+/**
+ * The resolve's floor on a fresh sample's weight (one refresh a history pixel every sixteen frames). 2026-10-09 (the grain
+ * fix): 0.12 kept about sixteen samples a pixel and left a speckle along the edges and thin parts the owner read as
+ * "super grainy"; 0.06 keeps about thirty-three (6-14 % less error at rest on main's layer, no blur), and the reprojection
+ * follows the wind (uWindStep) so the longer memory does not trail a drifting cloud.
+ */
+export const CLOUD_HISTORY_MIN_ALPHA = 0.06;
+/**
  * The 4 × 4 Bayer matrix: slot k of a cycle is the cell holding value k, so consecutive frames trace cells as
  * far apart as possible and the rebuild sharpens evenly.
  */
@@ -753,7 +767,8 @@ export class VolumetricCloudLayer {
         tTrace: { value: null }, tTraceDepth: { value: null }, tHistory: { value: null }, uSlot: { value: new THREE.Vector2() },
         uPrevCamPos: { value: new THREE.Vector3() }, uPrevRight: { value: new THREE.Vector3(1, 0, 0) }, uPrevUp: { value: new THREE.Vector3(0, 1, 0) },
         uPrevFwd: { value: new THREE.Vector3(0, 0, -1) }, uPrevTan: { value: new THREE.Vector2(1, 1) },
-        uHistoryValid: { value: 0 }, uRebuildK: { value: -1 }, uMinAlpha: { value: 0.12 }, uVarianceGamma: { value: 1.5 },
+        uHistoryValid: { value: 0 }, uRebuildK: { value: -1 }, uMinAlpha: { value: CLOUD_HISTORY_MIN_ALPHA }, uVarianceGamma: { value: 1.5 },
+        uWindStep: { value: new THREE.Vector3() },
       },
     });
     this.bsmMaterial = new THREE.ShaderMaterial({
@@ -1428,6 +1443,8 @@ export class VolumetricCloudLayer {
     (r.uPrevUp.value as THREE.Vector3).copy(P.up);
     (r.uPrevFwd.value as THREE.Vector3).copy(P.fwd);
     (r.uPrevTan.value as THREE.Vector2).copy(P.tan);
+    // the medium's drift since the last frame (the weather lookup moved by -wx, -wz, so a cloud moved by +wx, +wz)
+    (r.uWindStep.value as THREE.Vector3).set(wx, 0, wz);
 
     this.beginTimer();
     if (!this.frozen) {
@@ -1442,14 +1459,15 @@ export class VolumetricCloudLayer {
             (r.uPrevUp.value as THREE.Vector3).copy(C.up);
             (r.uPrevFwd.value as THREE.Vector3).copy(C.fwd);
             (r.uPrevTan.value as THREE.Vector2).copy(C.tan);
+            (r.uWindStep.value as THREE.Vector3).set(0, 0, 0);
           }
           r.uRebuildK.value = this.rebuild;
-          r.uMinAlpha.value = 0.12;
+          r.uMinAlpha.value = CLOUD_HISTORY_MIN_ALPHA;
           this.traceSlot(this.rebuild++);
         }
       } else {
         const n = 1 + Math.floor(this.since++ / 16);
-        r.uMinAlpha.value = Math.max(0.12, 1 / (n + 1));
+        r.uMinAlpha.value = Math.max(CLOUD_HISTORY_MIN_ALPHA, 1 / (n + 1));
         r.uRebuildK.value = -1;
         this.traceSlot(this.frame % 16);
         for (let k = 1; k < this.benchRepeat; k++) this.traceSlot(this.frame % 16);
@@ -1647,7 +1665,7 @@ export class VolumetricCloudLayer {
   /** Cold captures must average the first noisy Bayer samples as well as fill every slot. */
   get captureFramesRemaining(): number {
     if (!this.active || !this.preset || this.frozen) return 0;
-    return Math.ceil((16 - this.rebuild) / CLOUD_REBUILD_SLOTS) + Math.max(0, 64 - this.since);
+    return Math.ceil((16 - this.rebuild) / CLOUD_REBUILD_SLOTS) + Math.max(0, CLOUD_CAPTURE_SETTLE_FRAMES - this.since);
   }
 
   /**

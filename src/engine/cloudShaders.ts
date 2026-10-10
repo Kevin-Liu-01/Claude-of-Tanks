@@ -608,7 +608,9 @@ void main() {
 	vec2 px = tp * 4.0 + uSlot + 0.5 + uSubPixel;
 	vec3 dir = cloudViewDir( px / uHistorySize );
 	vec3 rayDx = dFdx( dir ), rayDy = dFdy( dir );
-	float bn = blueNoise( tp );
+	// 2026-10-09 (the grain fix, fix/cloud-grain): the blue noise of the history pixel this texel refreshes, not of the
+	// trace texel — keyed by the texel, the sixteen pixels of a 4 x 4 block took one offset a cycle and printed its lattice
+	float bn = blueNoise( tp * 4.0 + uSlot );
 	float jitter = fract( bn + uFrameNoise );
 	float cosT = dot( dir, uSunDir );
 	vec3 L = vec3( 0.0 );
@@ -858,6 +860,8 @@ uniform float uHistoryValid;
 uniform float uRebuildK;
 uniform float uMinAlpha;
 uniform float uVarianceGamma;
+// 2026-10-09 (the grain fix): the medium's drift over this frame (m, world)
+uniform vec3 uWindStep;
 varying vec2 vUv;
 vec4 historyCatmullRom( vec2 uv, vec2 size ) {
 	vec2 sp = uv * size;
@@ -913,7 +917,8 @@ void main() {
 	}
 	m1 /= 9.0; m2 /= 9.0;
 	vec3 anchor = uCamPos + dir * clamp( nearKm * 1000.0, 50.0, 60000.0 );
-	vec3 pr = cloudProject( anchor, uPrevCamPos, uPrevRight, uPrevUp, uPrevFwd, uPrevTan );
+	// (2026-10-09) where the wind carried it from: the history follows a drifting cloud instead of trailing it
+	vec3 pr = cloudProject( anchor - uWindStep, uPrevCamPos, uPrevRight, uPrevUp, uPrevFwd, uPrevTan );
 	// the clip tightens with the reprojection's motion: a still view accumulates every slot's samples (a single slot's
 	// neighbourhood is a sixteenth of the pixels, its spread no measure of a converged history), a moving one keeps only
 	// what this frame's samples support
