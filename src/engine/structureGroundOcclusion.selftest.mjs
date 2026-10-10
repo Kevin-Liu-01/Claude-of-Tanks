@@ -125,10 +125,14 @@ assert.match(post, /cotGroundJoin = min\( cotGroundJoin, cotStructureGroundShade
 assert.match(post, /texel\.rgb \*= min\( 1\.0, cotGroundJoin \/ max\( cotHullGround, 1e-3 \) \);/,
   'never compounded with a hull\'s ground term: the stronger stands');
 assert.match(post, /float cotGroundPre = max\( texel\.r, max\( texel\.g, texel\.b \) \);\s*if \( uVehGround > 0\.5/, 'the hulls\' factor read from the colour it scaled');
-assert.match(post, /updateStructureGroundUniforms\(aerial\.uniforms, scene, renderer, lightFx\.contactShadows\);/, 'the contact-shadow lever');
+assert.match(post, /updateStructureGroundUniforms\(aerial\.uniforms, scene, renderer, groundOcclusionOn\);/, 'its lever: the contact march\'s, or the preset\'s own (overhaul r5)');
+assert.match(post, /groundOcclusionOn = next\.contactShadows\s*\|\| \(preset\.groundOcclusion === true && resolveGroundOcclusion\(preset, getDeviceTier\(\), currentPostLightFxQuery\(\)\)\);/,
+  'Low and the phones take it under their presets\' own lever');
+assert.match(post, /updateContactShadowUniforms\(aerial\.uniforms, camera, scene, lightFx\.contactShadows,\s*lightFx\.contactShadows \|\| lightFx\.vehicleOcclusion \|\| groundOcclusionOn\);/,
+  'the rig uniforms it reads are refreshed whenever it runs');
 const map = read('../world/map.ts');
 assert.match(map, /createStructureGroundOcclusion\(props\.obstacles, \{ group, scale: groundOcclusionScale \}\)/, 'the world bakes its obstacles');
-assert.match(map, /getDeviceTier\(\) !== 'mobile'/, 'never on the phones');
+assert.match(map, /const groundOcclusion: StructureGroundOcclusionHandle \| null = groundOcclusionScale > 0\s*&& \(engineCtx/, 'baked on every tier (overhaul r5: the phones too; their preset decides whether it is read)');
 assert.match(map, /groundOcclusion\.update\(dt\);/, 'the world polls its destroyed solids');
 assert.match(map, /groundOcclusion\.dispose\(\);/);
 const main = read('../main.ts');

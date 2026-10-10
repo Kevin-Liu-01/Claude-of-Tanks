@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  POST_LIGHT_FX_NAMES, POST_LIGHT_FX_OFF, parsePostLightFxQuery, resolvePostLightFx, samePostLightFx,
+  POST_LIGHT_FX_NAMES, POST_LIGHT_FX_OFF, parsePostLightFxQuery, resolveGroundOcclusion, resolvePostLightFx, samePostLightFx,
 } from './postLightFxPolicy.ts';
 import { PRESETS } from './quality.ts';
 
@@ -47,6 +47,19 @@ for (const name of ['low', 'mobile-low', 'mobile', 'mobile-high']) {
   const p = PRESETS[name];
   assert.deepEqual([p.contactShadows, p.groundBounce, p.sunShafts, p.lensFlare, p.vehicleOcclusion], [undefined, undefined, undefined, undefined, undefined], name);
 }
+
+// 3b. (2026-10-10, the shadows lane r5) the baked ground occlusion: the contact lever's on the desktop tiers, the
+// preset's own on Low and the phones (Balanced, Quality; not Performance), off under ?fx=off or a list without contact
+assert.equal(resolveGroundOcclusion({ contactShadows: true }, 'desktop', null), true, 'the desktop march\'s lever (r1)');
+assert.equal(resolveGroundOcclusion({ contactShadows: true }, 'mobile', null), false, 'the march never runs on a phone');
+assert.equal(resolveGroundOcclusion({ groundOcclusion: true }, 'mobile', null), true, 'a phone preset\'s own lever');
+assert.equal(resolveGroundOcclusion({ groundOcclusion: true }, 'desktop', null), true, 'Low\'s own lever');
+assert.equal(resolveGroundOcclusion({}, 'desktop', null), false, 'no lever: off');
+assert.equal(resolveGroundOcclusion({ groundOcclusion: true }, 'mobile', 'off'), false, '?fx=off');
+assert.equal(resolveGroundOcclusion({ groundOcclusion: true }, 'desktop', new Set(['shafts'])), false, 'a list without contact');
+assert.equal(resolveGroundOcclusion({ groundOcclusion: true }, 'desktop', new Set(['contact'])), true, '?fx=contact keeps it');
+for (const name of ['low', 'mobile', 'mobile-high']) assert.equal(PRESETS[name].groundOcclusion, true, `${name} takes the baked grounding`);
+for (const name of ['ultra', 'high', 'medium', 'mobile-low']) assert.equal(PRESETS[name].groundOcclusion, undefined, `${name}: the march's lever or none`);
 
 // 4. the consumers resolve the same policy with the device tier and the page query
 const post = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');

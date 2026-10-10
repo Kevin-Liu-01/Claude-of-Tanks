@@ -95,7 +95,7 @@ import {
 import { SunShaftsPass, createLightFxTarget } from './sunShafts.ts';
 import { LensFlarePass } from './lensFlare.ts';
 import {
-  POST_LIGHT_FX_OFF, currentPostLightFxQuery, resolvePostLightFx, samePostLightFx, type PostLightFxFlags,
+  POST_LIGHT_FX_OFF, currentPostLightFxQuery, resolveGroundOcclusion, resolvePostLightFx, samePostLightFx, type PostLightFxFlags,
 } from './postLightFxPolicy.ts';
 import { createPostFrameAccounting, type CompletedPostFrame } from './postFrameAccounting.ts';
 import { LEGACY_EXPOSURE, lightTune, type LightModel } from './lightModelCore.ts';
@@ -2377,9 +2377,13 @@ export function createPost(
   composer.addPass(lensFlare);
   let lightFxOverrides: Partial<PostLightFxFlags> | null = null;
   let lightFx: PostLightFxFlags = POST_LIGHT_FX_OFF;
+  // (2026-10-10, overhaul r5) the baked ground term: the contact lever's (r1), or the preset's own on Low and the phones
+  let groundOcclusionOn = false;
   const resolveLightFx = (): void => {
     const resolved = resolvePostLightFx(preset, getDeviceTier(), currentPostLightFxQuery());
     const next = lightFxOverrides ? Object.freeze({ ...resolved, ...lightFxOverrides }) : resolved;
+    groundOcclusionOn = next.contactShadows
+      || (preset.groundOcclusion === true && resolveGroundOcclusion(preset, getDeviceTier(), currentPostLightFxQuery()));
     renderer.domElement.dataset.lightFx = ['contact', 'bounce', 'shafts', 'flare', 'cavity']
       .filter((_, i) => [next.contactShadows, next.groundBounce, next.sunShafts, next.lensFlare, next.vehicleOcclusion][i]).join('+') || 'off';
     if (samePostLightFx(next, lightFx)) return;
@@ -2911,10 +2915,11 @@ export function createPost(
       scene.userData.nearVehicles as readonly { root: THREE.Object3D }[] | undefined, lightFx.vehicleOcclusion && lightTune('VEHICLE_GROUND_AO', 1) > 0,
       groundRho * lightTune('GROUND_AO_MULTIBOUNCE', 1));
     updateContactShadowUniforms(aerial.uniforms, camera, scene, lightFx.contactShadows,
-      lightFx.contactShadows || lightFx.vehicleOcclusion);
+      lightFx.contactShadows || lightFx.vehicleOcclusion || groundOcclusionOn);
     // (2026-10-09) the structures' ground occlusion rides the contact-shadow lever (the desktop light effects) and reads the
-    // same rig uniforms, which the line above refreshes whenever the lever is on
-    updateStructureGroundUniforms(aerial.uniforms, scene, renderer, lightFx.contactShadows);
+    // same rig uniforms, which the line above refreshes whenever it runs; (2026-10-10, overhaul r5) Low and the phones
+    // take it under their presets' own lever (postLightFxPolicy.ts resolveGroundOcclusion)
+    updateStructureGroundUniforms(aerial.uniforms, scene, renderer, groundOcclusionOn);
     // (2026-10-10) the structures' cavity term rides the cavity lever (?fx=cavity) and the preset's own switch
     aerial.uniforms.uStructOcc.value = lightFx.vehicleOcclusion && preset.structureOcclusion === true && lightTune('STRUCT_OCC', 1) > 0 ? 1 : 0;
     aerial.uniforms.uVehOcc.value = lightFx.vehicleOcclusion ? 1 : 0;

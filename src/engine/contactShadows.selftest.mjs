@@ -199,7 +199,8 @@ const resetAt = aerial.indexOf('texel.a = 1.0;');
 assert.ok(resetAt > shadeAt && resetAt < aerial.indexOf('gl_FragColor = texel;'), 'the alpha is restored to one before the chain continues');
 // owner 2026-10-02: the vehicle cavity occlusion reads the same sun / ambient uniforms, so they refresh for either lever
 // (2026-10-03, the skies-and-atmosphere lane: and the far cloud shadows, which take a far pixel's sun share by the same law)
-assert.match(post, /updateContactShadowUniforms\(aerial\.uniforms, camera, scene, lightFx\.contactShadows,\s*lightFx\.contactShadows \|\| lightFx\.vehicleOcclusion\);/,
+// (2026-10-10, the shadows lane r5: and the baked ground term's lever, which reads the same rig uniforms)
+assert.match(post, /updateContactShadowUniforms\(aerial\.uniforms, camera, scene, lightFx\.contactShadows,\s*lightFx\.contactShadows \|\| lightFx\.vehicleOcclusion \|\| groundOcclusionOn\);/,
   'per-frame refresh follows the lever');
 
 const lighting = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');

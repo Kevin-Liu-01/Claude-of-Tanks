@@ -65,6 +65,22 @@ export function resolvePostLightFx(
   });
 }
 
+/**
+ * 2026-10-10 (the shadows lane, overhaul r5): whether the baked ground sky occlusion beside the world's solids runs
+ * (structureGroundOcclusion.ts). On the desktop tiers with the contact march it rides that lever (r1); a preset's own
+ * `groundOcclusion` lever adds it where the march is off — Low, and the phones, whose other light effects stay off
+ * (it is one texture read near the solids, no screen-space search). `?fx=off` turns it off everywhere and a named
+ * list keeps it only with `contact`.
+ */
+export function resolveGroundOcclusion(
+  preset: Pick<QualityPreset, 'contactShadows' | 'groundOcclusion'>,
+  deviceTier: 'mobile' | 'desktop',
+  query: PostLightFxQuery = null,
+): boolean {
+  if (query === 'off' || (query !== null && !query.has('contact'))) return false;
+  return preset.groundOcclusion === true || (deviceTier !== 'mobile' && preset.contactShadows === true);
+}
+
 /** The page's own query, when there is a page (Node receipts and workers see none). */
 export function currentPostLightFxQuery(): PostLightFxQuery {
   try {

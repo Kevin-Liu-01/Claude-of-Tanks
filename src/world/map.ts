@@ -515,9 +515,10 @@ function assembleWorld(
   const colliders = [...props.colliders, ...vegetation.treeObstacles];
   // 2026-10-09 (the shadows lane): the ground's sky beside the world's standing solids (structureGroundOcclusion.ts) —
   // baked in a worker from the movement obstacles (the ground-bearing solids; trees stay out) while the battle entry
-  // warms, read by the aerial pass on the desktop tiers; a map's sky.lighting.groundOcclusion scales it (0: off)
+  // warms, read by the aerial pass (the desktop tiers; 2026-10-10, overhaul r5: Low and the phones too, under their
+  // presets' own lever); a map's sky.lighting.groundOcclusion scales it (0: off)
   const groundOcclusionScale = (config.sky as { lighting?: { groundOcclusion?: number } } | undefined)?.lighting?.groundOcclusion ?? 1;
-  const groundOcclusion: StructureGroundOcclusionHandle | null = getDeviceTier() !== 'mobile' && groundOcclusionScale > 0
+  const groundOcclusion: StructureGroundOcclusionHandle | null = groundOcclusionScale > 0
     && (engineCtx as { renderer?: THREE.WebGLRenderer }).renderer
     ? createStructureGroundOcclusion(props.obstacles, { group, scale: groundOcclusionScale }) : null;
   if (groundOcclusion) engineCtx.scene.userData.structureGroundOcclusion = groundOcclusion;

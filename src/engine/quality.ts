@@ -83,6 +83,13 @@ export interface QualityPreset {
    */
   readonly structureOcclusion?: boolean;
   /**
+   * 2026-10-10 (the shadows lane, overhaul r5): the baked ground sky occlusion beside the world's solids
+   * (structureGroundOcclusion.ts: one texture read, no screen-space search) on a tier without the contact march — Low
+   * and the phones' Balanced and Quality levels. The tiers with `contactShadows` take it under that lever already.
+   * Absent means off.
+   */
+  readonly groundOcclusion?: boolean;
+  /**
    * Round 73 (2026-09-25): the tall-grass tier's density scale (world/tallGrass.ts) — 1 the full sward, Low a
    * quarter, Medium half; absent means no tier (the mobile presets keep today's ground). Read live per cell build.
    */
@@ -366,6 +373,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   low: {
     label: 'Low',
     msaaSamples: 0,
+    groundOcclusion: true, // 2026-10-10 (overhaul r5): the baked grounding beside walls, houses and stones
     tallGrass: 0.25, // round 73 (2026-09-25): a quarter of the sward
     maxPixelRatio: 1.0,
     dynMin: 1.0,
@@ -419,6 +427,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   mobile: {
     label: 'Balanced',
     msaaSamples: 0,
+    groundOcclusion: true, // 2026-10-10 (overhaul r5): the baked grounding (one texture read near the solids)
     maxPixelRatio: 1.4,
     adaptiveBasePixelRatio: 1.25,
     aoScale: 0,
@@ -437,6 +446,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   'mobile-high': {
     label: 'Quality',
     msaaSamples: 2,
+    groundOcclusion: true, // 2026-10-10 (overhaul r5): the baked grounding (one texture read near the solids)
     maxPixelRatio: 1.7,
     adaptiveBasePixelRatio: 1.5,
     aoScale: 0,
