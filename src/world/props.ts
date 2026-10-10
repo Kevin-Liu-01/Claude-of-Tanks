@@ -91,6 +91,7 @@ import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import {
   ADOBE_UV_PER_M,
   COURSED_WALLSTONE,
+  AMMOBOX_LEGACY,
   DESTRUCTIBLE_TYPES,
   DRY_STONE_KIND,
   FENCE_SEG,
@@ -4050,6 +4051,10 @@ ${snowCap ? `
   // the scenery lane (2026-10-03): the stacks are laid bag by bag in the sourced models' envelopes (maps/sceneryKit.ts
   // buildSandbagStack) on the hessian (wave 52); a breached stack still spends the old remnant's draws
   const LOCAL_TYPES: Record<string, PropsDestructibleMeta> = {
+    // (b45; the coordinator, launch night: some two thousand triangles a stack is a desktop prop) a phone keeps the
+    // 72-triangle crates of before on the baked finish: the same kind, record and draws (bAmmobox spends the legacy
+    // builder's draws), no collider either way (a crushable 'loop' contact), so every host places the same stacks
+    ...(mobileProps ? { ammobox: { ...DESTRUCTIBLE_TYPES.ammobox, mat: 'baked' as const, build: AMMOBOX_LEGACY.build, broken: AMMOBOX_LEGACY.broken } } : {}),
     sandbagbig: {
       cls: 'break', mat: 'burlap', contact: 'ob', collider: true, r: 2.0, h: 1.35, keep: 0.97,
       build: () => buildSandbagStack('sandbagbig'),
