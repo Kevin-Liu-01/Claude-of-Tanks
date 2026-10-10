@@ -58,24 +58,6 @@ for (const id of ['summer', 'desert', 'winter', 'merdc', 'tropic', 'digital', 'd
     seam += delta(y * 192, y * 192 + 191) + delta(y, 191 * 192 + y);
     for (let x = 1; x < 192; x++) interior += delta(y * 192 + x, y * 192 + x - 1);
   }
-  if (id === 'digital') {
-    // pixel art (fleet lane 2026-10-08, the v2 patch fields): at 192 texels most neighbouring texels share or blend a
-    // pixel cell, so the mean interior contrast is far below a cell boundary's while the wrap falls exactly on one. The
-    // tile is redrawn at two texels per cell, where every cell boundary is exact, and the wrap must read as one more
-    // cell boundary: no stronger than the strongest interior row or column of cell boundaries.
-    const cells = Math.round(80 / Math.max(.85, visual.digitalCellK || 1)), size = 2 * cells, d2 = createCanvas(size, size);
-    catalog(d2.getContext('2d'), size, visual, painter.mulberry32(71));
-    const q = pixels(d2);
-    const dq = (a, b) => [0, 1, 2].reduce((sum, ch) => sum + Math.abs(q[a * 4 + ch] - q[b * 4 + ch]), 0);
-    const line = (a, b, step) => { let sum = 0; for (let k = 0; k < size; k++) sum += dq(a + k * step, b + k * step); return sum / size; };
-    // (the patch fields' long horizontal patches make some cell-boundary rows far stronger than the mean, so the wrap is
-    // held to the strongest interior boundary line with a statistical margin; a real seam breaks every wrapped cell)
-    const interior = [];
-    for (let x = 2; x < size; x += 2) interior.push(line(x, x - 1, size), line(x * size, (x - 1) * size, 1));
-    const strongest = Math.max(...interior), wrapLine = Math.max(line(0, size - 1, size), line(0, (size - 1) * size, 1));
-    assert.ok(wrapLine <= strongest * 1.6, `${id}: periodic boundaries stay within local edge contrast (${wrapLine.toFixed(1)} vs ${strongest.toFixed(1)})`);
-    continue;
-  }
   assert.ok(seam / 384 < interior / (192 * 191) * 3 + 3, `${id}: periodic boundaries stay within local edge contrast`);
 }
 // Every fleet recipe uses an explicit art family and retains its source palette.

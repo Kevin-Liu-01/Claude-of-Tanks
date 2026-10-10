@@ -401,6 +401,9 @@ live preview at the native aspect, progress, time left and **Cancel**.
     "mode": "fly"               // fly | orbit (orbit needs lookAt)
   },
 
+  // an actor driven along its track kicks up its tracks' dust as a battle hull does (one call per side every
+  // 0.45-0.7 m of travel, on the fixed timeline): on the media tier, the ground's dust skirt behind it
+
   "fxTime": 600,                // ms: advance the fx timeline exactly this far
                                 //   after firing the effects, then FREEZE
   "timeScale": 0,               // post-load time scale (default 0 = stay frozen)
@@ -442,13 +445,14 @@ neither, the panel marker (or the ground ahead of the camera) is used.
 | `tracer` | `from:[x,y,z]`, `to:[x,y,z]` | `shellType` (AP/APCR/APFSDS/HEAT/HE), `speedMps`, `caliberMm` | Projectile entity traveling between two points; `fxTime` can freeze it in flight. |
 | `impact` | point/actor | `kind` (pen/nonpen/ricochet/he_pen/he_splash/era/spaced_absorb/terrain), `caliberMm`, `normal:[x,y,z]` | Armor or terrain impact effect. |
 | `sparks` | point/actor | `caliberMm` | ricochet spark fan (alias of impact ricochet) |
-| `explosion` | point/actor | `size`: `small` (HE dirt plume) / `medium` (destruction, no rack) / `large` (full ammo-rack fireball + debris + smoke column), `cause` | standalone explosion |
+| `explosion` | point/actor | `size`: `small` (HE dirt plume) / `medium` (destruction, no rack) / `large` (full ammo-rack fireball + debris + smoke column), `cause`; or `munition` (a class of `src/sim/destructionEvents.ts`: `howitzer`, `missile`, `atgm`, `drone_fpv`, `rocket`, `autocannon_he`, `kinetic`, `small_arms` ...) with optional `chargeKg` (default the class's nominal); with `munition`, `wall: true` ends the round on the nearest building's wall along `dirDeg`, `hitH` m up it (default 1.8); `settled: true` lays only the crater the burst would dig, settled (a late joiner's view, no blast) | standalone explosion; with `munition`, the burst that class makes on the ground or water (sized by its charge, coloured by the surface), or on the wall as a battle shell strikes one (the burst names the building, the expiry carries the face's normal) |
 | `tank_kill` | actor | `cause` (ammorack/shot/fire), `pop` (default true) | Destruction sequence with a fireball, debris, smoke column, wreck transition, and optional turret detachment. |
 | `dust` | point/actor | `count`, `intensity`, `dirDeg` | Dust burst using the track-dust effect. |
 | `engine_smoke` | actor | `off` | Additive continuous smoke from the engine deck, including on wreck meshes. |
 | `burning` | actor | `off` | Additive keyed fire and smoke column over the current mesh state. |
 | `detrack` | actor | `side`: `L`/`R` | thrown-track visual + link/spark/dust burst |
 | `firing_moment` | actor | `ageS` (default 0.05), `caliberMm`, `shellType` | the composed frozen firing still (contract `combat_firing` language) |
+| `structure` | point | `stage`: `damaged` / `breached` / `collapsed` (default), `munition` (the blow's class, default `he`), `cause` (`blast` / `kinetic` / `ram`), `dirDeg` (the blow's heading), `hitH` (the blow's height up the wall, m) | the building nearest the point crosses that stage as the battle's sim announces one (a jumped stage lays the one it skipped): its breach rim and room, its fall and pile in its own materials, its dust. Presentation only: the Studio's collision is untouched; a scene load stands it up again |
 | `explosion_moment` | point/actor | `ageS` (default 0.6) | the composed frozen destruction still |
 | `mg_burst` | actor | `count` (default 7), `gapM` (chain spacing, default 7), `spreadDeg`, `caliberMm` (default 12.7), `speedMps` | Coaxial machine-gun flash and a deterministic sequence of small-caliber tracers along the gun line. |
 | `barrage` | point/actor | `count` (default 5), `radiusM` (default 10), `size`: `small`/`medium`/`mixed` (default), `seedDeg` | Deterministic ring of artillery ground bursts around the anchor. |
