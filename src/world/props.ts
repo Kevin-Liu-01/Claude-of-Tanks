@@ -1,5 +1,6 @@
 import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.ts';
 import { boxCorners, convexSlabs, slabParts } from './slabCollision.ts';
+import { rubbleCollisionRecords } from './rubbleCollision.ts'; // the hitbox lane, round 3, 2026-10-09
 // src/world/props.ts — rocks, ~10-building village, walls and cover props.
 // Contract: docs/ARCHITECTURE.md §3.2. All geometry composed BufferGeometry,
 // all textures canvas-generated, everything merged into few draw calls.
@@ -155,8 +156,10 @@ import {
 /** A hedgehog beam's slabs are at most this tall (m; the hitbox lane, 2026-10-07). */
 const HEDGEHOG_SLAB_M = 0.35;
 const _hedgehogBeam = new THREE.Matrix4(), _hedgehogTilt = new THREE.Matrix4();
-/** Pooled kinds whose shell records are the slabs of their own geometry (the hitbox lane, 2026-10-07). */
-export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall']);
+/** Pooled kinds whose shell records are the slabs of their own geometry (the hitbox lane, 2026-10-07; round 3,
+ * 2026-10-09: the heavy trucks, whose contact prism stood the cab's height over an open bed and a box's overhangs —
+ * the overshoot census read 34 % of the shell rays a truck stopped stopping more than 0.3 m from it). */
+export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall', 'truck', 'truckbox', 'truckflatbed']);
 import {
   appendStructureCollisionBand, applyStructureCollisionBand,
   deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
@@ -5074,9 +5077,8 @@ ${snowCap ? `
       beam.translate(x, y + pr * 0.4, z);
       buckets.wood.push(beam);
     }
-    const ob = setCircleShape({ min: [x - pr, y, z - pr],
-      max: [x + pr, y + pr * .7, z + pr], kind: 'rubble' }, x, z, pr);
-    const col = cloneCollisionRecord(ob);
+    // (the hitbox lane, round 3, 2026-10-09) the records from the chunks drawn, not one prism over the whole cone
+    const { obstacle: ob, collider: col } = rubbleCollisionRecords(buckets.stone.slice(stoneStart, stoneStart + n), y, x, z, pr);
     obstacles.push(ob); colliders.push(col);
     const clutter = new CrushableClutter('rubble', x, y, z, pr, pr * .7, [ob], [col]);
     for (const piece of buckets.stone.slice(stoneStart)) clutter.ownPiece(piece);
