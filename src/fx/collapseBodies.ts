@@ -203,8 +203,10 @@ const SOUNDS_PER_PIECE = 3;
 /** Landings that kick dust: this many a piece, one a collapse every this long. */
 const DUSTS_PER_PIECE = 3;
 const DUST_GAP_S = 0.05;
-/** A panel cracks into its parts on a landing this hard (a fall from 0.6 m). */
+/** A panel cracks into its parts on a landing this hard (a fall from 0.6 m), while the pool has fewer bodies awake than
+ *  this (a step costs ~0.016 ms an awake body; at most four steps a frame). */
 const BREAK_MPS = 3.4;
+const BREAK_AWAKE_MAX = 72;
 const CAP_UV_DENSITY = 0.55;
 /** Triangles a preparation takes at a time (between budget checks), and the cuts kept laid at most. */
 const PREPARE_CHUNK = 192;
@@ -286,7 +288,11 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     const { c, p } = hit;
     if (!(speed >= 2.2)) return;
     // a panel landing hard cracks into its parts (after this step: no body is spawned inside the pool's report)
-    if (!p.broken && p.parts.length > 1 && speed >= BREAK_MPS && hit.part < 0) { p.broken = true; breaking.push({ c, p }); }
+    // (a busy pool — a barrage's collapses at once — keeps its panels whole: each crack adds bodies to step)
+    if (!p.broken && p.parts.length > 1 && speed >= BREAK_MPS && hit.part < 0 && pool.world.awakeCount < BREAK_AWAKE_MAX) {
+      p.broken = true;
+      breaking.push({ c, p });
+    }
     if (p.dusts < DUSTS_PER_PIECE && clockS - c.lastDustS >= DUST_GAP_S) {
       p.dusts++;
       c.lastDustS = clockS;
