@@ -364,10 +364,9 @@ export default {
     haystacks: 30, rocks: 180, outcrops: 18, craters: 44, rubblePiles: 0,
     // Legacy-map quality backport: modern hulks along the valley lanes (baked roster
     // tanks) + harvest-season logistics dressing
-    tankWrecks: {
-      era: 'modern', count: 5, debris: true,
-      ids: ['m60a2', 'ua_t84_oplot_m', 't90a', 'm1a1', 't80u'],
-    },
+    // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
+    // front's war; the war shows through the burnt period trucks and carts
+    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
     sandbagLines: 10,
     hedgehogs: 5,
     cropFields: 8, // the harvest is in — stubble plots + standing rows on both banks

@@ -136,7 +136,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // markings move to the turret cheek like the T-72B 1987 X; the right cheek is the clear one (the
   // left carries the smoke launchers).
   t72b3m_x: anchor('turret', 'right', .34, .34, .24, 1),
-  challenger1_x: anchor('turret', 'left', .29, .40, .24, 1),
+  challenger1_x: anchor('turret', 'left', .60, .40, .24, 1),
   t72bu_x: anchor('turret', 'right', .31, .32, .24, -1),
   chieftain5_x: anchor('turret', 'left', .33, .40, .24, -1),
   t90_x: anchor('turret', 'right', .40, .26, .24, 1),
@@ -284,7 +284,9 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   leo2a4_otco: anchor('turret', 'right', 0.36, 0.44, 0.24, -1),
   leo2a4m: anchor('hull', 'left', 0.40, 0.62, 0.24, 1),
   leo2a6m: anchor('turret', 'left', 0.32, 0.43, 0.24, 1),
-  leo2a6_ua: anchor('hull', 'right', 0.41, 0.61, 0.24, -1),
+  // 2026-10-05: on the turret, where the surface search always landed. The ghillie side drape hides both hull sides,
+  // so a hull anchor sent every receipt build through 724 occluded candidates first (167-325 s).
+  leo2a6_ua: anchor('turret', 'left', 0.41, 0.61, 0.24, -1),
   leo2_revolution_proto: anchor('turret', 'right', 0.34, 0.43, 0.25, -1),
   leo2_revolution: anchor('turret', 'right', 0.34, 0.43, 0.25, -1),
   leo2a7v: anchor('turret', 'left', 0.35, 0.44, 0.25, 1),
@@ -356,6 +358,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   bmpt_t90: anchor('hull', 'left', 0.44, 0.60, 0.22, 1),
   bwp1: anchor('hull', 'right', 0.41, 0.64, 0.24, -1),
   marder1a3: anchor('hull', 'left', 0.46, 0.62, 0.23, 1),
+  m6_linebacker: anchor('hull', 'left', 0.39, 0.45, 0.23, 1),
   m3a3_bradley: anchor('turret', 'left', 0.39, 0.45, 0.23, 1),
   // §5.248 ground-up wave: flat authored faces per build — bmp3 turret dome
   // flank, upiór skirt panel field (bmpt removed by §5.304 owner order).
@@ -396,10 +399,11 @@ export function vehicleMarkingIncludesPermanentHullArmor(
 /**
  * Return the release-verified, geometry-local paint seats for a vehicle.
  *
- * The expensive surface search remains part of geometryReceipt builds and
- * the fleet verification gate. Runtime visuals consume these generated
- * receipts directly instead of ray-testing every armor triangle again on
- * each garage switch or bot spawn.
+ * The expensive surface search runs only in tools/gen-vehicle-marking-seats.mjs
+ * (update, and --check: the seats' drift guard). Every build consumes these
+ * generated receipts directly, receipt builds included (2026-10-05), instead
+ * of ray-testing every armor triangle again on each garage switch, bot spawn
+ * or fleet pass.
  */
 function stableNumber(id: string | null | undefined): string {
   let hash = 0x811c9dc5;

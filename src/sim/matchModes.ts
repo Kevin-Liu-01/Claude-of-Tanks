@@ -11,14 +11,25 @@ import {
 } from './ammunition.ts';
 import { createGunshipEscort, ESCORT_RULES, type EscortState } from './gunshipEscort.ts';
 import { applyJuggernautScale } from './juggernautScale.ts';
-import type { AerialView } from './aerialCombat.ts';
 import type { MatchPlacement } from './matchPlacement.ts';
 import { ASSAULT_LINE_FRACTIONS } from './assaultLines.ts';
 import { MATCH_MODE_ARENA_HALF_EXTENT_M as WORLD_MARGIN_M } from './matchObjectiveLayouts.ts';
 import {
   FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, RULESET_SCORE_TARGETS, matchRulesetFor, type MatchRuleset, hordeWaveSize,
+  assaultWaveHealthScale,
   MARS_DEFAULT_RULES, GUN_GAME_WEAPONS, type RulesetPhysics,
 } from './matchRuleset.ts';
+
+/** The aerial unit's presentation view: what the mode state, the HUD, the cameras and the renderer read of a drone or
+ * gunship in flight. Declared here, not in aerialCombat.ts, so the mode rules name it without importing the flight
+ * model, whose launch seats read the vehicle auxiliary inventory and weapons (missionAttachment.ts): the rooms Worker
+ * reaches these rules through matchRuleset's types and keeps src/vehicles out of its program (roomWorkerProgram.selftest).
+ * aerialCombat.ts re-exports it for every other reader. */
+export interface AerialView {
+  kind: 'drone' | 'gunship'; active: boolean; launching: boolean;
+  x: number; y: number; z: number; yaw: number; pitch: number;
+  batteryS: number; cooldownS: number;
+}
 
 export const GAME_MODE_IDS = Object.freeze([
   'standard',
@@ -547,11 +558,13 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     zones,
     ball,
     goals,
-    // tactical map 2026-09-15: the team spawn centres (the flag bases / goals stand on them in
-    // CTF and Turbo Ball; Zone Control marks both, the co-op modes only the human side)
-    spawns: (['alpha', 'bravo'] as const).filter((team) => teams[team].length > 0).map((team) => ({
-      team, x: centers[team].x, y: terrainHeight(centers[team].x, centers[team].z) + 0.1, z: centers[team].z,
-    })),
+    // tactical map 2026-09-15: the team spawn centres (Zone Control marks both, the co-op modes only the human side;
+    // CTF and Turbo Ball mark their bases instead). Symmetric deployments (2026-10-08): the centroid of the side's
+    // deployment slots in use, from the same placement call that seats its tanks (sim/deployment.ts).
+    spawns: (['alpha', 'bravo'] as const).filter((team) => teams[team].length > 0).map((team) => {
+      const at = placement ? placement.deploymentCenter(team, teams[team].length) : centers[team];
+      return { team, x: at.x, y: terrainHeight(at.x, at.z) + 0.1, z: at.z };
+    }),
     horde: id === 'endless_horde' || id === 'frontline_assault' ? {
       wave, alive: 0, total: 0, nextWaveInS: 0, healChance: 0,
     } : null,
@@ -721,7 +734,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const startAssaultWave = (): void => {
     const activeCount = Math.min(hordeEnemies.length,
       assaultRules.initialActive + assaultRules.extraDefenders + lineIndex);
-    const healthScale = 1 + lineIndex * assaultRules.hpPerLine + assaultRules.difficultyHp;
+    const healthScale = assaultWaveHealthScale(assaultRules, lineIndex, zones.length);
     // The opening wave is a fresh draw from the formation (owner 2026-09-15). Every later sector REINFORCES
     // the line instead of re-fielding it (owner 2026-09-17: "capturing bases in frontline assault shouldnt
     // reset tanks"): defenders still alive keep their identity, position and damage, and only the arrivals

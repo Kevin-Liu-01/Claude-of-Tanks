@@ -125,7 +125,8 @@ function clearBoat(parts: readonly BufferGeometry[], dressing: readonly BufferGe
     g.computeBoundingBox(); g.boundingBox!.getCenter(center);
     return Math.hypot(center.x - landing.boatX, center.z - landing.boatZ) < 4.5;
   });
-  if (boat.length !== 10) throw new Error('expected complete unchanged ten-part creek boat');
+  // the creek boat is one painted hull (maps/boatHulls.ts, the map-vehicles lane): it must lie beside the landing
+  if (boat.length < 1) throw new Error('expected the creek boat beside the landing');
   for (const a of parts) for (const b of boat) {
     if (!a.boundingBox!.intersectsBox(b.boundingBox!)) continue;
     const ah = hull(a), bh = hull(b);

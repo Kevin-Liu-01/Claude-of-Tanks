@@ -114,6 +114,23 @@ const server = await createServer({
 await server.listen();
 const address = server.httpServer.address();
 const port = typeof address === 'object' && address ? address.port : server.config.server.port;
+// Page load under machine load (CPU budget 2026-10-08, rule 5): COT_NAV_TIMEOUT_MS and COT_READY_TIMEOUT_MS raise the
+// icons page's navigation and ready waits from their defaults, and COT_NAV_RETRIES retries a load that timed out.
+const NAV_TIMEOUT_MS = Number(process.env.COT_NAV_TIMEOUT_MS) || 30000;
+const READY_TIMEOUT_MS = Number(process.env.COT_READY_TIMEOUT_MS) || 60000;
+const NAV_RETRIES = Math.max(0, Math.floor(Number(process.env.COT_NAV_RETRIES) || 0));
+async function loadIconsPage(page, url) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT_MS });
+      await page.waitForFunction('window.__ICONS_READY === true', { timeout: READY_TIMEOUT_MS });
+      return;
+    } catch (error) {
+      if (attempt >= NAV_RETRIES || !/timeout/i.test(String(error?.message ?? error))) throw error;
+      console.warn(`[presentation-centering] icons page load timed out (attempt ${attempt + 1} of ${NAV_RETRIES + 1}); retrying`);
+    }
+  }
+}
 const browser = await puppeteer.launch({
   headless: 'new',
   protocolTimeout: 15 * 60 * 1000,
@@ -132,8 +149,7 @@ page.on('console', (message) => {
 let failed = false;
 try {
   const url = `http://127.0.0.1:${port}/tools/icons-page.html`;
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await page.waitForFunction('window.__ICONS_READY === true', { timeout: 60000 });
+  await loadIconsPage(page, url);
   const fleetIds = await page.evaluate(() => [...window.__FLEET_IDS]);
   const unknown = selectedIds.filter((id) => !fleetIds.includes(id));
   if (unknown.length) throw new Error(`unknown tank id(s): ${unknown.join(', ')}`);

@@ -1,7 +1,9 @@
 // Early Italian LRMV delivery: KF41 chassis with the Lance 30 mm turret.
 // It is not Puma-derived, and the later Hitfist configuration is a different target.
 import { KIT } from './kit.ts';
+import * as THREE from 'three';
 import { sectionSolid } from './sectionSolid.ts';
+import { sampleArmorRay } from './armorFaceSampling.ts';
 import { armorLoft, turretEquipment, optic, antenna, openTube, smokeBank, mirrorX } from './europeSourcePrimitives.ts';
 import { buildKf41Chassis } from './kf41LynxSourceX.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -12,22 +14,31 @@ export function buildLrmvLynx(P: TankBuilderPort): void {
   const [px,py,pz]=P.spec.armor.turretPivot;
   P.turretG.position.set(px,py,pz);
   P.add('turret',cylY(1.02,1.06,.07,40),0,.025,0);
-  P.add('turret',armorLoft([
+  const turret=armorLoft([
     [-1.84,.88,1.12,1.00,2.53,2.68,3.02],
     [-1.35,1.09,1.31,1.13,2.34,2.56,3.07],
     [.43,1.14,1.38,1.13,2.34,2.53,3.07],
     [.73,1.03,1.30,1.04,2.36,2.55,3.03],
-  ],py,pz));
+  ],py,pz,{sideQuadDiagonal:'convex'});
+  P.add('turret',turret);
   for (const side of [-1,1]) {
     // Deep paired faceted cheeks frame the rocking cannon cradle.
     const cheek=sectionSolid([
       {z:.43-pz,ring:[[.35,2.37-py],[1.38,2.53-py],[1.13,3.07-py],[.35,3.07-py]]},
       {z:1.47-pz,ring:[[.35,2.46-py],[1.10,2.57-py],[.91,2.94-py],[.35,2.94-py]]},
-    ]);
+    ],{sideQuadDiagonal:'convex'});
     P.add('turret',side<0?mirrorX(cheek):cheek);
     P.addHatch('turret',box(.65,.045,.69),side*.49,3.10-py,-.06-pz);
     for (const dx of [-.21,0,.21]) KIT.periscope(P,'turretDetail',side*.49+dx,3.13-py,.31-pz);
-    for (const z of [-1.18,-.76,-.34,.08]) turretEquipment(P,'turretDetail',box(.018,.042,.095),side*1.305,2.73,z);
+    for (const z of [-1.18,-.76,-.34,.08]) {
+      const sample=sampleArmorRay(turret,new THREE.Vector3(side*3,2.73-py,z-pz),new THREE.Vector3(-side,0,0));
+      if(!sample)throw new Error('LRMV cheek fitting has no native armor seat');
+      const geometry=box(.018,.042,.095);
+      geometry.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1,0,0),sample.normal));
+      geometry.userData.nativeShellFixtureRole='lrmv-cheek-fitting';
+      const center=sample.point.addScaledVector(sample.normal,.007);
+      P.addEquipment('turretDetail',geometry,center.x,center.y,center.z);
+    }
     smokeBank(P,side,1.19,2.78,-1.22,4);
     antenna(P,side*.94,3.04,5.50,-1.40);
   }

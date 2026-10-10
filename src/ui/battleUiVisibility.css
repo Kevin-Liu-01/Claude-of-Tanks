@@ -1,5 +1,9 @@
-/* The settings/resume dialogs and end-of-battle flow stay reachable. This
-   class is independent of replay veils and the HUD's inline mode styles. */
-body.cot-battle-ui-hidden :is(.cot-hud,.cot-dp,.cot-si-stats,.cot-touch,
-  .cot-hints,.cot-gear,.cot-room-chat,.cot-mp-status.battle,
-  .cot-network-diagnostics,#cot-perfhud){display:none!important}
+/* Minimal HUD retains real ballistic aiming, range/reload/zoom and vision controls.
+   Keep the root alive: its reticle canvas is authoritative aiming presentation. */
+body.cot-battle-ui-hidden .cot-hud > :not(.cot-ret,.cot-scope-vision,.cot-flight-hud,.cot-drone-signal-loss){display:none!important}
+body.cot-battle-ui-hidden :is(.cot-dp,.cot-si-stats,.cot-hints,.cot-room-chat,.cot-mp-status.battle,.cot-network-diagnostics,#cot-perfhud):not(.cot-hud-editor *){display:none!important}
+/* Touch navigation stays usable; desktop retains Esc and its settings button. */
+body.cot-battle-ui-hidden .cot-touch .aimhint{display:none!important}
+/* Aircraft retain their sight, range, view switch, weapons and return action. */
+body.cot-battle-ui-hidden .flight-console :is(.flight-designation,.flight-emblem,.flight-battery,.flight-hint,.flight-supplies){display:none!important}
+body.cot-battle-ui-hidden .flight-console{background:transparent;box-shadow:none;border-color:transparent}

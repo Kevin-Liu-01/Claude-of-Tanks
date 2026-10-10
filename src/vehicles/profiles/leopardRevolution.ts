@@ -1,3 +1,4 @@
+import { addFieldRoofWeapon } from './fieldRoofWeapon.ts';
 // Independently authored Revolution geometry, measured against the owner's
 // September 2026 reference. The source remains a local comparison asset: no
 // source topology, textures, or runtime loader is used by this builder.
@@ -272,7 +273,7 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
   equip('turretDetail', box(0.22, 0.19, 0.28), 1.083, 2.687, -1.58);
   equip('turretDark', box(0.16, 0.16, 0.24), 0.56, 2.650, -1.55);
   equip('turretGlass', box(0.12, 0.115, 0.012), 0.56, 2.650, -1.423);
-  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: 0.74,
+  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', scale: 0.74,
     tone: 'two-tone', elev: 0, ammo: false, shield: false, ring: false, seed: 260905 });
   mg.name = 'revolutionRemoteMachineGun';
   mg.position.set(0.858, 2.605 - ROOF_BASE, -1.57 - YAW_Z);
@@ -317,6 +318,7 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
   P.addEquipment('gunMount', box(0.62, 0.024, 0.47), 0.005, 0.281, 0.06);
   for (const x of [-0.28, 0.28]) P.addEquipment('gunDark', cylX(0.023, 0.10, 10), x, 0.292, -0.17);
   KIT.buildGun(P, { len: 4.51, r: 0.077, baseR: 0.16, sleeve: true, evac: 0.46, evacR: 1.92, collar: true });
+  addFieldRoofWeapon(P,[-.60,.699,-.65],30,'Leopard 2 Revolution remote 30 mm cannon',.33,.70);
   P.muzzleZ = 4.51;
   P.topY = 2.866 - ROOF_BASE;
   P.hullG.userData.revolutionGeometry = {

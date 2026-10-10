@@ -50,7 +50,9 @@ Receipts import `near`, `nearStrict` and `geometryHash` from
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
 Read the tool's CLI/help and its current evidence doc, run a baseline, then
-compare the same scenario after changes. The multiplayer release checks are the
+compare the same scenario after changes. `tools/audio/` (the ElevenLabs sound
+and crew-voice pipeline) has its own procedure: the
+[audio-generation skill](../docs/audio-generation/SKILL.md). The multiplayer release checks are the
 peer-to-peer ones (docs/MULTIPLAYER-V2.md §13.8, cutover §13.10): `npm run
 test:net:v2:p2p` (`tools/mp-p2p-e2e.mjs`) is the three-browser proof — a room on
 the in-process room host, one seat hosting the match in its browser, two peers
@@ -66,6 +68,14 @@ and `npm run test:net:v2:soak` run the client and host without a browser; `npm r
 test:net:v2:rooms` runs the Worker under the Workers runtime. Run every Chrome
 under the probe mutex at nice 19, one at a time. Production health is the Worker's
 `/healthz` plus `npm run test:net:v2:p2p -- --site` (docs/DEVELOPMENT.md).
+Battle entry is a per-deploy check of its own: `node tools/battle-entry-sweep.mjs
+<url>|--dist=<dir> --tier=mobile|desktop --times=sunset,day,night --force-black` loads
+into every battlefield through the player's covered solo entry with
+`navigator.webdriver` reported false (the scene watchdog runs only outside
+automation, so an ordinary smoke never sees a refusal) and reports entered / refused
+/ stuck / black / rescued per run, plus the negative control
+(`?diagforce=blackout` must be refused); a protected preview reads
+`COT_PROTECTION_BYPASS` from the environment.
 Cold-start claims require `npm run perf:cold`; use `--sessions` for repeated
 cache-disabled contexts and record `--cpu`, `--down-kbps`, `--up-kbps`, and
 `--latency` so a warm navigation cannot masquerade as first-visit reliability.

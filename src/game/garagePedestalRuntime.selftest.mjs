@@ -10,7 +10,7 @@ function deferred() {
 
 function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayedFrames = [],
   delayedBuilds = [], buildCheckpoints = 0, failBudget = false, programSlices = 0,
-  programOutcome = null, speculativeIds = [] } = {}) {
+  programOutcome = null, speculativeIds = [], deviceTier = 'desktop' } = {}) {
   const scene = new THREE.Scene();
   const garagePosition = new THREE.Vector3(10, 5, -12);
   const debugTarget = {};
@@ -36,6 +36,8 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   let buildClosures = 0;
   let programPrepared = 0;
   let programClosures = 0;
+  const prepared = new WeakSet();
+  const releasedForBattle = [];
 
   const makeVisual = (specId, options) => {
     visualOptions.push(options);
@@ -78,7 +80,10 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
 
   const runtime = createGaragePedestalRuntime({
     scene,
+    prepareVisual(visual) { prepared.add(visual.root); },
+    releaseVisual(visual) { releasedForBattle.push(visual.specId); },
     compilePrograms(root) {
+      assert.ok(prepared.has(root),'dormant presentation materials precede the first GPU submission');
       assert.ok(root);
       compileCalls += 1;
     },
@@ -86,6 +91,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
       // FSP-01: strict first-use preparation port — each yield is one frame
       // the runtime must wait; IteratorClose is the stale-selection contract.
       *prepareProgramSteps(root, timing) {
+        assert.ok(prepared.has(root),'strict warm sees the final dormant material');
         assert.ok(root);
         assert.deepEqual(timing, {});
         programPrepared += 1;
@@ -140,7 +146,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
       nowMs += 11;
     },
     nextFrame: async () => { frameCalls += 1; await delayedFrames.shift()?.promise; },
-    getDeviceTier: () => 'desktop',
+    getDeviceTier: () => deviceTier,
     getPhase: () => phase,
     isBootComplete: () => bootComplete,
     getSelectedId: () => selectedId,
@@ -172,6 +178,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
     visualOptions,
     disposed,
     releasedResources,
+    releasedForBattle,
     makeVisual,
     prebakes,
     ensured,
@@ -554,6 +561,7 @@ async function flushMicrotasks() { for (let i = 0; i < 12; i++) await Promise.re
   const geometry = hero.root.children[0].geometry;
   h.entities.set('bravo', {});
   assert.equal(h.runtime.lendToBattle('bravo'), false);
+  assert.deepEqual(h.releasedForBattle, [], 'a hero that is not lent keeps its dormant presentation');
   assert.equal(hero.root.parent, null, 'a different battle selection detaches the unborrowed podium hero');
   assert.equal(hero.root.visible, false);
   assert.equal(h.runtime.current, hero, 'detachment retains the cache identity for return');
@@ -573,6 +581,8 @@ async function flushMicrotasks() { for (let i = 0; i < 12; i++) await Promise.re
   h.entities.set('alpha', {});
   assert.equal(h.runtime.lendToBattle('alpha'), true);
   assert.equal(h.entities.get('alpha').visual, hero, 'matching handoff still lends the visible actor');
+  assert.deepEqual(h.releasedForBattle, ['alpha'],
+    'the lent hero leaves its dormant presentation before the battle warm (every entry path, not only ui:battleStart)');
   assert.equal(hero.root.parent, h.scene);
   h.runtime.dispose();
 }
@@ -740,3 +750,29 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
 }
 
 console.log('garagePedestalRuntime.selftest: private sliced construction, cancellation, timing, program link preparation, speculative neighbors, detached warm LRU, resource preservation and battle handoff passed');
+
+{
+ const h=createHarness({deviceTier:'mobile',programSlices:2,programOutcome:{status:'complete',pending:0}});
+ await h.runtime.set('alpha');h.setBootComplete(true);
+ await h.runtime.set('bravo');
+ assert.equal(h.programPrepared,1,'mobile also prepares links before revealing a new tank');
+ assert.equal(h.debugTarget.__GARAGE_SWITCH.at(-1).link.status,'complete');
+ h.runtime.dispose();
+}
+
+{
+ const h=createHarness();h.setPhase('garage');
+ const aircraft=h.makeVisual('alpha');aircraft.root.userData.aircraftOnly=true;
+ h.setPlayer({visual:aircraft});
+ assert.equal(h.runtime.adoptBattlePlayer('alpha'),false,'a flight anchor is never adopted as the garage tank');
+ h.runtime.dispose();
+}
+
+{
+ const h=createHarness();await h.runtime.set('alpha');const tank=h.runtime.current;
+ assert.equal(h.runtime.lendToBattle('alpha',false),false);
+ assert.equal(tank.root.parent,null,'aircraft entry detaches the retained garage tank');
+ assert.equal(tank.root.visible,false);
+ await h.runtime.set('alpha');assert.equal(tank.root.parent,h.scene);assert.equal(tank.root.visible,true);
+ h.runtime.dispose();
+}

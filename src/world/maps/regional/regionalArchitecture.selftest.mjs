@@ -32,6 +32,8 @@ import { jitterUV } from '../../propGeometry.ts';
 import { sampleObbGround } from '../../propPlacement.ts';
 import { createHeightField } from '../../terrain.ts';
 import { MAP_IDS, getMapConfig } from '../index.ts';
+import { bindStructureSpans, describeStructure, tagStructureVertices } from '../../structureDamageSeam.ts';
+import { createStructureDamage } from '../../../sim/structureDamage.ts';
 import { registerHooks } from 'node:module';
 
 const STYLES = ARCHITECTURE_STYLES;
@@ -45,6 +47,7 @@ const COLOURED = new Set(['structureMetal', 'structureWood', 'regionalPlaster', 
 const WEATHERED_SOURCES = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof'];
 /** Representative base footprints (info) of the plan ids, measured from the base builders. */
 const INFO = {
+  alpine: [8.7, 10.5, 6.7], logcabin: [6.2, 7.0, 4.0], onionchurch: [7.5, 10.0, 12.2], yardshed: [3.6, 3.0, 3.2],
   cottage: [6.0, 8.4, 5.0], farmhouse: [13.4, 9.9, 6.0], tavern: [9.7, 14.9, 8.4], schoolhouse: [9.1, 16.1, 11],
   cornershop: [9.0, 9.0, 7.3], barn: [8.4, 12.3, 6.2], granary: [4.2, 6.4, 4.7], woodshed: [4.3, 5.4, 3.1],
   depot: [11, 20, 6], ruin: [6.8, 9.0, 3.0], church: [9.6, 23.1, 20.4], chapel: [5.8, 8.6, 8.0], mill: [6.6, 6.6, 9.9],
@@ -208,7 +211,8 @@ console.log(`regional coverage: every builder of a new kit reaches its bounds to
   + `(${coverageShort.length}): ${coverageShort.join('; ')}`);
 
 // Surfaces: deterministic, in range, cached.
-for (const [target, kind] of [['roof', 'beavertail'], ['roof', 'canal'], ['roof', 'slate'], ['stone', 'sandstone'], ['stone', 'limestone'], ['stone', 'granite']]) {
+for (const [target, kind] of [['roof', 'beavertail'], ['roof', 'canal'], ['roof', 'slate'], ['stone', 'sandstone'], ['stone', 'limestone'], ['stone', 'granite'],
+  ['concrete', 'boardFormed']]) {
   const paint = () => { const g = paintRegionalSurfaceBuffers(target, kind, [0.5, 0.4, 0.3], 7); let s = g.next(); while (!s.done) s = g.next(); return s.value; };
   const a = paint(), b = paint();
   assert.deepEqual(Buffer.from(a.px.buffer), Buffer.from(b.px.buffer), `${kind}: deterministic pixels`);
@@ -272,6 +276,8 @@ const dependencies = { roadSettlementJunction, buildingRoadStationIndices, THREE
   makeTimberBathhouse, addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops, exteriorChimneyTops, jitterUV,
   sampleObbGround, deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand,
   rebuildRegionalStructure: recordingRebuild, resolveRegionalArchitecture,
+  // destruction (2026-10-07): a placed structure is described and tagged where it is built (props.ts describeStructureAt)
+  bindStructureSpans, describeStructure, tagStructureVertices, createStructureDamage,
   buildingFootprintClearsRoads, roadBuildingFrontage, roadBuildingDoorAxis, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion,
   ...Object.fromEntries(['mulberry32', 'makeCottage', 'makeBarn', 'makeTower', 'makeRuin', 'makeAdobe', 'makeRowhouse'].map((key) => [key, originals[key]])),
 };
@@ -287,6 +293,7 @@ const stage = new Function(...Object.keys(dependencies), `return ${stripTypeScri
   const _upAxis = new THREE.Vector3(0,1,0), _one = new THREE.Vector3(1,1,1);
   const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
   const ensureSteelAtlas = () => {};
+  const regionalSun = config.sky?.sunAzimuthDeg !== undefined ? { sunAzimuthDeg: config.sky.sunAzimuthDeg } : {}; // props.ts: the sun the kit's roofs weather by
   const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
   ${section('function mergeInto(', 'type GroundDecalKind')}
   ${section('  function groundFit(', "  yield { stage: 'yard-clutter' };\n")}

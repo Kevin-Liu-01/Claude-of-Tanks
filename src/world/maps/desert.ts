@@ -381,7 +381,13 @@ export default {
       { structure: 'adobe', x: 24, z: 84, yawDeg: 164 }, { structure: 'adobe', x: -24, z: -84, yawDeg: 344 },
       { structure: 'adobe', x: 96, z: -20, yawDeg: 74 }, { structure: 'adobe', x: -96, z: 20, yawDeg: 254 },
     ],
+    // (the scenery lane, b16; gauntlet wave 121: "a modern prefab with blue glass windows") no steel checkpoint hut: the
+    // two gates' checkpoints and the one among the scattered huts are the ksar's own gate posts (maps/regional
+    // ksarGate.ts): plastered mud brick, a parapet, timber lintels, dark unglazed openings, in the hut's footprint. The
+    // list keeps its entry: dropping it re-seats the scattered huts after it and every pass that avoids them (measured:
+    // the guard post 132 m, crates, rugs, tents, spools, barriers, signs and wall runs moved)
     destructibleBuildings: ['deserttent', 'commandtent', 'checkpointhut', 'guardpost'],
+    structureVariants: { checkpointhut: 'ksargate' },
     // Two pairs, each turned through 180° about the ford: a ruined bordj (desert fort) on each flank, on the far side
     // of the wadi from the team whose flank zone it watches, and a checkpoint where the caravan road enters the ksar.
     tacticalBeats: [
@@ -448,10 +454,9 @@ export default {
     rubblePiles: 14,
     // DESTRUCTIBLES r1: modern-era hulks on the wadi routes (baked roster
     // tanks), convoy dressing + defended-crossroads clutter
-    tankWrecks: {
-      era: 'modern', count: 5, debris: true,
-      ids: ['m60a3', 'merkava4b', 'm1a2', 'type99a', 'ariete'],
-    },
+    // the map-vehicles lane (2026-10-06, the period ruling): the Maghreb: Tunisia's M60A3s and M48s, the T-55s and
+    // T-62s over the Libyan border
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['m60a3', 'type59', 'm48', 't62mv1'] },
     sandbagLines: 12,
     hedgehogs: 8,
     // world-dressing r1: adobe boundary walls + souk inhabitants — stall

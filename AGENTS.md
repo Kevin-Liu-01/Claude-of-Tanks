@@ -20,6 +20,11 @@ worktree and never stage generated tank work wholesale.
 - `docs/AUDIO.md` — the sound engine and how its sounds were generated (ElevenLabs
   catalog, takes, selection, mastering, crew script and cast); read before changing
   `src/audio/` or regenerating sounds.
+- `docs/audio-generation/README.md` — the audio-generation handbook: pipeline and
+  files, the prompt cookbook (what worked and failed), take scoring and failure
+  modes, costs and recipes. Begin with
+  [`docs/audio-generation/SKILL.md`](docs/audio-generation/SKILL.md) before
+  generating or repairing any sound or crew line.
 - `docs/MULTIPLAYER-V2.md` — the peer-to-peer multiplayer: rooms Worker, wire, host, client, the cutover (§13.10).
 - `docs/tank-generation/README.md` — source/markup intake, measured construction,
   prompts, quality gates and resumable tank-generation handoffs. Read before
@@ -120,6 +125,10 @@ worktree and never stage generated tank work wholesale.
   consumables, respawn, clock, roster split, assault escalation, score targets) lives in
   `src/sim/matchRuleset.ts`; the mode controller, `state.ts`, the authority, the HUD and the
   rule cards read that table. Never add a mode literal elsewhere.
+- Both sides deploy through one function: `src/sim/deployment.ts` (each bravo slot the 180° rotation of
+  its alpha slot about the anchors' midpoint), resolved on the world by `sim/matchPlacement.ts`
+  `deploymentSlot`, which the authority, the browser host and the solo sim all call; the world keeps
+  its spawn clearings round those slots (`deploymentClearings`). Never seat a side anywhere else.
 - Objective markers (spawns, flags, zones, sectors, goals, caches) come from one derivation,
   `src/ui/minimapObjectives.ts`, and one glyph set, `src/ui/objectiveGlyphs.ts`; the HUD
   minimap and `src/game/matchModeWorldPresentation.ts` both consume them. A new objective

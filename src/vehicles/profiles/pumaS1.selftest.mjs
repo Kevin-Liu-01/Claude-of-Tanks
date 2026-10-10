@@ -1,3 +1,4 @@
+import {assertHollowMuzzle} from '../../../tools/physical-muzzle.test-support.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Box3, Vector3 } from 'three';
@@ -221,8 +222,7 @@ try {
     surroundsMainBarrel: true,
     surroundsCoax: true,
   }, 'Puma S1 uses a compact hollow trapezoid cradle with four raked side ports');
-  assert.ok(tank.root.getObjectByName('muzzleBoreShadowFallbackRim'),
-    'MK30 carries a real recessed muzzle bore');
+  assertHollowMuzzle(tank.root);
 } finally {
   tank.dispose();
 }

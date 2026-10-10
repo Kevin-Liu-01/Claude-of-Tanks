@@ -38,11 +38,13 @@ import {
 } from './groundBounce.ts';
 import { currentPostLightFxQuery, resolvePostLightFx } from './postLightFxPolicy.ts';
 import {
-  CLOUD_SHADE_PARS_GLSL, CLOUD_SHADE_SAMPLER_BUDGET, attachCloudShadeUniforms, cloudShadeSamplerCount, createCloudShadeUniforms,
+  CLOUD_SHADE_PARS_GLSL, CLOUD_SHADE_SAMPLER_BUDGET, attachCloudShadeUniforms, createCloudShadeUniforms, physicalParsWithoutDfgLut,
+  programTextureUnits,
 } from './cloudShadeMap.ts';
 import type { PublishedLightRig } from './contactShadows.ts';
 import { authoredSunOf, lightTune, resolveLightModel, type LightModel, type LightModelPreset } from './lightModelCore.ts';
 import type { AtmosphereParams } from './atmosphere.ts';
+import { bindMaterialEnvIntensity } from './materialEnvIntensity.ts';
 
 /** What sky.ts publishes on scene.userData.atmosphere that the grounded light model reads (sky.ts AtmospherePublishedState). */
 interface AtmosphereLightInputs {
@@ -1098,7 +1100,9 @@ export function createLighting(
       groundBounceUniforms.uCotSkyChroma.value = model.envDiffuseChroma;
       groundBounceUniforms.uCotShadowDim.value.setScalar(SHADOW_AMBIENT_DIM_LUMA);
       // (2026-10-04, the light under a closed deck: the dims fade with the overcast — groundBounce.ts uCotShadowDepth)
-      groundBounceUniforms.uCotShadowDepth.value = 1 - Math.min(1, Math.max(0, model.overcast)) * lightTune('SHADOW_DIM_OVERCAST', SHADOW_DIM_OVERCAST);
+      // (2026-10-05: by the deck's closure — in a broken deck's gaps the circumsolar sky is out, and its cells' shade comes
+      // through the cloud shade map like a cumulus's)
+      groundBounceUniforms.uCotShadowDepth.value = 1 - Math.min(1, Math.max(0, model.overcast * model.deckClosure)) * lightTune('SHADOW_DIM_OVERCAST', SHADOW_DIM_OVERCAST);
       groundBounceUniforms.uCotShadowFacing.value = lightTune('SHADOW_DIM_FACING', SHADOW_DIM_FACING);
       // (2026-10-04: the environment lights a steep face's open sky here: no wall sky lift — groundBounce.ts)
       terrainWallSkyLift.value = lightTune('WALL_SKY_LIFT_GROUNDED', 0);
@@ -1278,8 +1282,9 @@ export function createLighting(
     const irr = atmo?.irradianceRaw;
     const physical = physicalRig && !farCascadeDormant && !!atmo?.active && !!atmo.params && !!irr;
     const authoredSun = authoredSunOf(opts);
+    // (2026-10-05: a deck with gaps casts its cells through the cloud shade map wherever the volumetric layer draws)
     const model = resolveLightModel(opts, physical ? atmo!.params! : null,
-      physical ? { irradianceRaw: [irr!.r, irr!.g, irr!.b] } : null, authoredSun);
+      physical ? { irradianceRaw: [irr!.r, irr!.g, irr!.b] } : null, authoredSun, cloudShadeOn && !!scene.userData.volumetricClouds);
     rigModel = model;
     scene.userData.lightModel = model;
     scene.userData.lightEnclosed = farCascadeDormant;
@@ -1508,15 +1513,28 @@ export function createLighting(
           csmHook(shader, rdr);
           attachGroundBounceUniforms(shader, groundBounceUniforms);
           if (extraHook) extraHook(shader, rdr);
+          // 2026-10-08 (the world-ibl lane, with the fleet lane): the material's own envMapIntensity, which three
+          // overwrites with the scene's on every draw, back on its share of the sky light (materialEnvIntensity.ts)
+          bindMaterialEnvIntensity(shader, mat);
           if (receiverOnly) {
             shader.uniforms.uCotReceiverOnly = receiverOnlyShadowUniform;
             shader.uniforms.uCotReceiverOnlyV = receiverOnlyShadowUniform;
           }
           if (cloudShade) {
             attachCloudShadeUniforms(shader, cloudShadeUniforms);
-            // three counts a program's units against the fragment limit (sixteen) wherever the sampler sits: a program
-            // already at it keeps no cloud shade rather than warn on every draw (the terrain sits at fifteen)
-            if (cloudShadeSamplerCount(shader, mat, cascadeCount, !!scene.environment) + 1 > CLOUD_SHADE_SAMPLER_BUDGET) {
+            // three numbers a program's units over both stages and warns past sixteen on every bind (cloudShadeMap.ts
+            // programTextureUnits; 2026-10-05: the DFG LUT counted — the terrain sat at seventeen): a program over the
+            // budget first trades three's DFG LUT for the analytic fit (one unit back), and keeps no cloud shade only
+            // when that is not enough
+            let units = programTextureUnits(shader, mat, cascadeCount, !!scene.environment, true);
+            if (units.total > CLOUD_SHADE_SAMPLER_BUDGET && units.dfg) {
+              const pars = physicalParsWithoutDfgLut(THREE.ShaderChunk.lights_physical_pars_fragment);
+              if (pars) {
+                shader.fragmentShader = shader.fragmentShader.replace('#include <lights_physical_pars_fragment>', pars);
+                units = programTextureUnits(shader, mat, cascadeCount, !!scene.environment, true);
+              }
+            }
+            if (units.total > CLOUD_SHADE_SAMPLER_BUDGET || units.fragment > CLOUD_SHADE_SAMPLER_BUDGET) {
               shader.vertexShader = `#undef COT_CLOUD_SHADE\n${shader.vertexShader}`;
               shader.fragmentShader = `#undef COT_CLOUD_SHADE\n${shader.fragmentShader}`;
             }

@@ -1,6 +1,7 @@
 /** Plain-node coverage for the shared UI and equipment vector icon sets. */
 
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
 import { EQUIPMENT_CATALOG } from '../game/equipment.ts';
 import { equipIconIds, equipIconSVG } from './equipIcons.ts';
@@ -211,3 +212,5 @@ for (const type of shellIconTypes()) {
     throw new Error(`missing garage ammunition silhouette: ${type}`);
   }
 }
+
+execFileSync(process.execPath, [new URL('../../tools/generate-product-icons.mjs', import.meta.url).pathname, '--check'], {stdio:'pipe'});

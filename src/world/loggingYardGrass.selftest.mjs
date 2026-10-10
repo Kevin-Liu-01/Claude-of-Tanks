@@ -6,6 +6,7 @@ import { createHeightField, sampleSplatNoise } from './terrain.ts';
 import { buildGrassTuftGeometry, mulberry32 } from './vegetation.ts';
 import { advanceGrassChunkWork, createGrassChunkWork } from './grassChunkWork.ts';
 import { advanceGrassCarpetWork, createGrassCarpetWork } from './grassCarpetWork.ts';
+import { createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees } from './groundCoverCraters.ts';
 import longleaf from './maps/longleaf.ts';
 import verdant from './maps/verdant.ts';
 
@@ -29,7 +30,8 @@ const stages = [
 function compile(legacy) {
   const body = legacy ? stages.replace(treatment, '') : stages;
   return new Function('THREE', 'sampleSplatNoise', 'buildGrassTuftGeometry',
-    'advanceGrassChunkWork', 'createGrassChunkWork', 'advanceGrassCarpetWork', 'createGrassCarpetWork', `return (${stripTypeScriptTypes(`
+    'advanceGrassChunkWork', 'createGrassChunkWork', 'advanceGrassCarpetWork', 'createGrassCarpetWork',
+    'createCraterFollower', 'createStaticCoverPatcher', 'followCraters', 'reseatCraterTrees', 'restoreCraterTrees', `return (${stripTypeScriptTypes(`
     function build(heightField, config, mobileTier, mulberry32, groundCoverBlocked = null) {
       ${section('const HALF = 512;', 'function treePositionNoise(')}
       const seed = 2001, group = new THREE.Group(), veg = { avoid: null, ...config.vegetation }, deferFarGrass = false;
@@ -53,7 +55,8 @@ function compile(legacy) {
       return { chunk, carpetCell, rebuildCarpet, carpetSets, carpetWork, group, grassVariants, stubbleHeightScale, makeTuft };
     }
   `)});`)(THREE, sampleSplatNoise, buildGrassTuftGeometry,
-    advanceGrassChunkWork, createGrassChunkWork, advanceGrassCarpetWork, createGrassCarpetWork);
+    advanceGrassChunkWork, createGrassChunkWork, advanceGrassCarpetWork, createGrassCarpetWork,
+    createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees);
 }
 const build = compile(false), buildLegacy = compile(true);
 

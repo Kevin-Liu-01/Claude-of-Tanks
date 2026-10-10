@@ -74,7 +74,7 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // crossing in the western orchards and the market square (also the turbo-ball kickoff), each a paved apron in the
   // map file, and the bypass in the gap beyond the castle rock, the validated seat of the bounded search on the
   // road's natural floor (an apron there would ramp the bypass past a road grade).
-  urban: { kickoff: { x: -50, z: 0 }, zones: [{ x: -330, z: 24 }, { x: -50, z: 0 }, { x: 247.2, z: 0 }] },
+  urban: { kickoff: { x: -50, z: 0 }, zones: [{ x: -330, z: 4 }, { x: -50, z: 0 }, { x: 247.2, z: 0 }] },
   // Cinder Junction (redesign 2026-10-01): three paved aprons on the main line, rotationally symmetric about the
   // station square — the west level crossing, the station square (also the turbo-ball kickoff), the east level
   // crossing; each is a graded apron in the map file, so the discs seat where they are authored.

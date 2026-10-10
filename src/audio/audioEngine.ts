@@ -36,8 +36,11 @@ import { createAssetLibrary, type AssetLibrary } from './assetLibrary.ts';
 import { createMixer, type Mixer } from './mixer.ts';
 import { createVoicePool, type PlayOptions, type VoicePool } from './voicePool.ts';
 import { createCrewRadio, type CrewRadio } from './crewRadio.ts';
-import { createAmbienceDirector, sceneAssets, type AmbienceDirector } from './ambienceDirector.ts';
-import { GARAGE_SCENE, sceneForMap, type EnvironmentScene } from './environmentScenes.ts';
+import { createAmbienceDirector, sceneAssets, type AmbienceDirector, type BellTower } from './ambienceDirector.ts';
+import { BELL_TOWERS, FLYOVER_BY_AIRCRAFT, GARAGE_SCENE, sceneForMap, type EnvironmentScene } from './environmentScenes.ts';
+import { propSoundAssets, propSoundRecipe } from './propSounds.ts';
+import { DESTRUCTION_SOUND_IDS, blastSoundCaliberMm, munitionExplodes, munitionFromType, structureStageSounds } from './destructionSounds.ts';
+import type { MunitionClass, StructureStageEvent } from '../sim/destructionEvents.ts';
 import { BUDGETS, BUS_LEVELS, CONCUSSION, SNAPSHOTS, VEHICLE_LOD, type DeviceTier, type SettingsChannel } from './mixPolicy.ts';
 import { createVehicleRig, fillVehicleInput, type RigFrame, type RigLod, type VehicleRig } from './vehicleRig.ts';
 import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.ts';
@@ -65,9 +68,24 @@ interface AudioMixerOptions {
   getMapId?(): string | null;
   /** The battle's game mode (each mode opens on its own sound). */
   getGameMode?(): string | null;
+  /** Our side in objective terms ('alpha' | 'bravo'): a network seat's own team reads 'player' whichever side it is. */
+  getObjectiveTeam?(): string | null;
   getTerrain?(): AudioTerrainProbe | null;
+  /**
+   * The battlefield's placed buildings and set pieces (world.getMinimapFeatures().buildings): a planned building's
+   * plan id in `kind`, a set piece's kind in `landmark`. The bells ring from its churches, belfries and campanile.
+   */
+  getLandmarks?(): readonly AudioLandmark[] | null;
   initialPhase?: string;
   tier?: DeviceTier;
+}
+
+/** One placed building or set piece, as the world's feature list carries it (fields beyond x/z are untyped there). */
+export interface AudioLandmark {
+  readonly x: number;
+  readonly z: number;
+  readonly kind?: unknown;
+  readonly landmark?: unknown;
 }
 
 export interface AudioMixer {
@@ -205,12 +223,15 @@ interface ShellHitEvent {
   eraActivations?: readonly { plate: string; pos?: Vec3 }[];
 }
 
-interface ShellExpiredEvent { shellId?: number; shooterId?: string; hitTerrain?: boolean; hitKind?: string; surfaceKind?: string; caliberMm?: number; pos?: Vec3 }
+interface ShellExpiredEvent { shellId?: number; shooterId?: string; hitTerrain?: boolean; hitKind?: string; surfaceKind?: string; caliberMm?: number; pos?: Vec3;
+  /** the round's type, and the destruction catalog's class and charge when published (destruction-fx lane) */
+  shellType?: string; munition?: MunitionClass; chargeKg?: number }
 interface TankDestroyedEvent { id: string; killerId?: string | null; pos: Vec3; cause?: string }
 interface ModuleStateEvent { id: string; module: string; state: string; source?: string; repaired?: boolean }
 interface TankImpactEvent { id?: string; pos: Vec3; speedMps: number }
 interface TankRamEvent { aId?: string; bId?: string; aIsPlayer?: boolean; bIsPlayer?: boolean; pos: Vec3; closingMps?: number; dmgA?: number; dmgB?: number }
-interface PropEvent { id?: string; kind?: string; pos: Vec3; h?: number; cause?: string; speedMps?: number }
+/** `loose`: a loose prop (a drum, a bucket) knocked about rather than destroyed (props.ts kickLooseRecord). */
+interface PropEvent { id?: string; kind?: string; pos: Vec3; h?: number; cause?: string; speedMps?: number; loose?: boolean }
 interface ReloadEvent { total?: number; kind?: string; caliberMm?: number; t?: number; progress?: number; done?: boolean }
 interface VolumeEvent { master?: number; engine?: number; combat?: number; ambience?: number; ui?: number; voice?: number; alarmHeartbeat?: boolean; crewVoice?: string; concussion?: boolean }
 interface SmokeScreen { born?: number; x?: number; y?: number; z?: number; source?: readonly unknown[] }
@@ -265,6 +286,7 @@ const CORE_BATTLE = [
   'ac_far_light', 'ac_far_heavy', 'mg_far', 'mg_rifle_close', 'mg_heavy_close', 'smoke_launcher', 'smoke_burst',
   'radio_interference', 'ui_alert',
   'blast_punch_light', 'blast_punch_medium', 'blast_punch_heavy', 'blast_sub',
+  ...DESTRUCTION_SOUND_IDS,
   'gear_whine_loop', 'electric_drive_loop', 'turbo_whistle_loop',
   'sting_battle', 'distant_artillery', 'distant_flak', 'distant_mg', 'jet_flyover',
 ];
@@ -288,6 +310,13 @@ const UI_SET = [
 
 /** The crew radio's keyed elements and net static, decoded from boot like the interface. */
 const RADIO_SET = ['radio_interference', 'radio_key_in', 'radio_key_out', 'radio_static_loop'];
+
+/** The reasoning exchange waits this long for a quiet net, gives the answer as long to follow the commander's line
+ * (about 3 s of speech, the release and the net's gap), and rarely opens on our first shot. */
+const THINK_WAIT_S = 8;
+const THINK_REPLY_S = 7;
+const THINK_FIRST_SHOT_P = 0.03;
+const THINK_MEDALS = new Set(['chain_of_thought', 'step_by_step']);
 
 /** Aircraft of the Drone and AC-130 modes, decoded on first sight of one. */
 const AERIAL_SET = [
@@ -328,7 +357,9 @@ export function createAudio({
   context: initialContext = null,
   getMapId,
   getGameMode,
+  getObjectiveTeam,
   getTerrain,
+  getLandmarks,
   initialPhase = 'garage',
   tier: forcedTier,
 }: AudioMixerOptions = {}): AudioMixer {
@@ -341,6 +372,8 @@ export function createAudio({
   let radio: CrewRadio | null = null;
   let ambience: AmbienceDirector | null = null;
   const random = mulberry32(0x7a11c);
+  // The reasoning exchange's rare first-shot chance draws apart, leaving every other call's sequence as it was.
+  const thinkRandom = mulberry32(0x5e9b7);
 
   // ---- settings (cot.settings.v1, live via 'ui:volumes').
   let masterVolume = 0.8;
@@ -406,6 +439,10 @@ export function createAudio({
   let ammoLowCalled = false;
   let lastStanding = { mine: false, theirs: false, outnumbered: false };
   let lastKillAt = -99;
+  let thinkStage: 'idle' | 'wait' | 'reply' = 'idle';
+  let thinkUntil = 0;
+  let thoughtThisBattle = false;
+  let firstShotHeard = false;
   let lastSpots: number[] = [];
   let lastSpotCallAt = -99;
   // "We're spotted" once per exposure, not every time an enemy's view flickers back onto a still tank.
@@ -508,13 +545,41 @@ export function createAudio({
   /** Crew radio requests and what the net did with each (bounded; the debug surface's sayLog). */
   const sayLog: { id: string; t: number; ok: boolean; why?: string }[] = [];
 
-  function say(id: string, options?: Parameters<CrewRadio['say']>[1]): void {
+  function say(id: string, options?: Parameters<CrewRadio['say']>[1]): boolean {
     let why: string | undefined;
     if (!radio || phase !== 'battle') why = 'phase';
     else if (playerId != null && tanks.get(playerId)?.alive === false && id !== 'victory' && id !== 'defeat' && id !== 'draw') why = 'dead';
     const ok = why == null && !!radio?.say(id, options);
     sayLog.push({ id, t: ctx ? +ctx.currentTime.toFixed(3) : 0, ok, ...(why ? { why } : !ok ? { why: 'net' } : {}) });
     if (sayLog.length > 160) sayLog.shift();
+    return ok;
+  }
+
+  /**
+   * "Let me think step by step." A reasoning medal (Chain of Thought, or five hits in a row) and, rarely, our first
+   * shot of a battle ask for it, once a battle. It is flavour that gives way to any real call: the commander speaks
+   * only on a quiet net (waiting up to THINK_WAIT_S, so the kill call goes first), and the gunner's "Step one: aim.
+   * Step two: fire." follows only when the net is quiet again and the commander's line was the last thing said.
+   */
+  function requestThink(): void {
+    if (thoughtThisBattle || thinkStage !== 'idle' || !ctx || phase !== 'battle' || battleOver) return;
+    thinkStage = 'wait';
+    thinkUntil = ctx.currentTime + THINK_WAIT_S;
+  }
+
+  function updateThink(now: number): void {
+    if (thinkStage === 'idle' || !radio) return;
+    if (now > thinkUntil || battleOver || phase !== 'battle') { thinkStage = 'idle'; return; }
+    if (!radio.quiet) return;
+    if (thinkStage === 'wait') {
+      if (!say('think_step_by_step')) { thinkStage = 'idle'; return; }
+      thoughtThisBattle = true;
+      thinkStage = 'reply';
+      thinkUntil = now + THINK_REPLY_S;
+      return;
+    }
+    thinkStage = 'idle';
+    if (radio.log.at(-1)?.id === 'think_step_by_step') say('step_by_step_reply');
   }
 
   function hullOptions(extra: PlayOptions = {}): PlayOptions {
@@ -949,14 +1014,21 @@ export function createAudio({
     const water = event.surfaceKind === 'water';
     // Our own round landing short or wide is heard like our hits are.
     const focus = !small && listenerShot(event.shooterId);
+    // destruction-fx lane: an explosive round detonates where it lands (the HE bank by its charge); a kinetic round or a
+    // bullet only strikes (before, an HE shell on open ground played the AP round's dirt thud alone)
+    const munition = event.munition ?? munitionFromType(event.shellType, caliber);
+    const blastCal = munitionExplodes(munition)
+      ? blastSoundCaliberMm(Number.isFinite(event.chargeKg) ? event.chargeKg as number : 1.8 * (caliber / 100) ** 3) : 0;
+    if (blastCal > 0 && event.hitKind !== 'prop') explosion(x, y, z, blastCal, undefined, focus);
     if (small) {
       play(water ? 'bullet_water' : 'bullet_dirt', { x, y, z });
     } else if (water) {
-      play(caliber >= 61 ? 'water_big' : 'water_small', { x, y, z, focus });
+      play(caliber >= 61 ? 'water_big' : 'water_small', { x, y, z, focus, ...(blastCal > 0 ? { gainDb: -4 } : {}) });
     } else if (event.hitKind === 'prop') {
       play(propImpactAsset(String(event.surfaceKind || '')), { x, y, z, focus });
     } else {
-      play(groundImpactAsset(surfaceAt(x, z).surface, x, z), { x, y, z, focus, rate: clamp(1.1 - caliber / 900, 0.9, 1.08) });
+      play(groundImpactAsset(surfaceAt(x, z).surface, x, z), { x, y, z, focus, rate: clamp(1.1 - caliber / 900, 0.9, 1.08),
+        ...(blastCal > 0 ? { gainDb: -4 } : {}) });
     }
     if (!small && listenerValid && playerEntityInfo()?.alive && distanceTo(x, y, z) < 10) {
       play('hull_debris_patter', hullOptions({ bus: 'ownCombat', delayS: 0.25, gainDb: -3 }));
@@ -1038,24 +1110,6 @@ export function createAudio({
 
   // ------------------------------------------------------ props/collisions ---
 
-  function propAsset(kind: string, height = 0): { id: string; follow?: string } {
-    const k = kind.toLowerCase();
-    if (/tree|sapling|stump|trunk|palm|pine|bush|shrub/.test(k)) return { id: 'tree_snap', ...(height > 4 ? { follow: 'tree_fall' } : {}) };
-    if (/chain|wire|barbed/.test(k)) return { id: 'wire_snag' };
-    if (/fence|rail|gate|post/.test(k)) return { id: /metal|steel|iron|chain/.test(k) ? 'fence_metal' : 'fence_wood' };
-    if (/car|truck|van|bus|jeep|vehicle|tractor/.test(k)) return { id: 'car_crush' };
-    if (/container/.test(k)) return { id: 'container_crush' };
-    if (/barrel|drum|tank|cylinder/.test(k)) return { id: 'container_crush' };
-    if (/hedgehog|obstacle|tetra/.test(k)) return { id: 'hedgehog_clang' };
-    if (/sandbag|bag/.test(k)) return { id: 'sandbag_thump' };
-    if (/rubble|rock|stone|debris|brick/.test(k)) return { id: 'rubble_crunch' };
-    if (/glass|window|greenhouse/.test(k)) return { id: 'glass_shatter' };
-    if (/wall|pillar|column/.test(k)) return { id: 'wall_brick' };
-    if (/house|building|hut|shed|barn|tower|kiosk|shack|silo/.test(k)) return { id: 'building_collapse' };
-    if (/aagun|gun/.test(k)) return { id: 'he_armor', follow: 'debris_metal' };
-    return { id: 'crate_break' };
-  }
-
   /**
    * A round striking a prop sounds of what it struck (the hit's record kind): steel clangs, timber splinters, earthworks
    * thump, stone and masonry crack, never a coin toss between wood and concrete.
@@ -1069,13 +1123,58 @@ export function createAudio({
     return 'ground_concrete';
   }
 
+  /**
+   * A prop crushed, broken, toppled or knocked about sounds of what it is (propSounds.ts names every world kind): its
+   * recipe's layers at the prop, a topple's landing when it lands. The obstacle crush and the world's own report of
+   * the same prop arrive in one tick; the props' 0.05 s cooldown keeps it to one sound.
+   */
   function onProp(event: PropEvent, destroyed: boolean): void {
     if (!event?.pos) return;
     const [x, y, z] = event.pos;
-    const { id, follow } = propAsset(String(event.kind || 'tree'), event.h ?? 0);
-    play(id, { x, y, z, gainDb: destroyed ? 0 : -1 });
-    if (follow) play(follow, { x, y, z, delayS: 0.45 + random() * 0.3, gainDb: -2 });
-    logSound(destroyed ? 'prop:destroyed' : 'prop:crushed', { kind: event.kind, id });
+    const kind = String(event.kind || 'tree');
+    const layers = propSoundRecipe(kind, event.h ?? 0);
+    const trimDb = destroyed ? 0 : -1;
+    for (const layer of layers) {
+      play(layer.id, { x, y, z, gainDb: layer.gainDb + trimDb, delayS: layer.jitterS ? layer.delayS + random() * layer.jitterS : layer.delayS });
+    }
+    logSound(event.loose ? 'prop:knocked' : destroyed ? 'prop:destroyed' : 'prop:crushed', { kind: event.kind, id: layers[0]?.id ?? null });
+  }
+
+  /**
+   * The front's aircraft sound of its era (2026-10-06): the Second World War maps fly piston fighters and twin-engine
+   * bombers, the later ones jets. An event naming its type plays that type's sound; otherwise the scene's list.
+   */
+  function flyoverAsset(aircraft?: string): string {
+    const named = aircraft && Object.hasOwn(FLYOVER_BY_AIRCRAFT, aircraft) ? FLYOVER_BY_AIRCRAFT[aircraft] : undefined;
+    if (named) return named;
+    const list = scene.flyovers;
+    let total = 0;
+    for (const [, w] of list) total += w;
+    let roll = random() * total;
+    for (const [id, w] of list) { if (roll < w) return id; roll -= w; }
+    return list[0]?.[0] ?? 'jet_flyover';
+  }
+
+  /**
+   * The bell towers of the battle's world, read once per scene from its buildings and set pieces when the first toll
+   * falls due (the scene change clears them); until a world answers, the next toll asks again.
+   */
+  let bellTowers: BellTower[] | null = null;
+  function currentBellTowers(): readonly BellTower[] {
+    if (bellTowers) return bellTowers;
+    const landmarks = getLandmarks?.() ?? null;
+    if (!landmarks) return [];
+    const terrain = getTerrain?.() ?? null;
+    const towers: BellTower[] = [];
+    for (const feature of landmarks) {
+      const kind = typeof feature.landmark === 'string' ? feature.landmark : typeof feature.kind === 'string' ? feature.kind : '';
+      const spec = Object.hasOwn(BELL_TOWERS, kind) ? BELL_TOWERS[kind] : null;
+      if (!spec || !Number.isFinite(feature.x) || !Number.isFinite(feature.z)) continue;
+      const ground = terrain ? terrain.getHeightAt(feature.x, feature.z) : 0;
+      towers.push({ x: feature.x, y: (Number.isFinite(ground) ? ground : 0) + spec.heightM, z: feature.z, rate: spec.rate, gainDb: spec.gainDb, kind });
+    }
+    bellTowers = towers;
+    return towers;
   }
 
   function onTankImpact(event: TankImpactEvent): void {
@@ -1193,7 +1292,8 @@ export function createAudio({
 
   function onMode(type: string, payload: Record<string, unknown>): void {
     const mode = getGameMode?.() || 'standard';
-    const ours = objectiveTeam(playerTeam);
+    const perspective = getObjectiveTeam?.();
+    const ours = perspective === 'alpha' || perspective === 'bravo' ? perspective : objectiveTeam(playerTeam);
     const team = payload.team === 'alpha' || payload.team === 'bravo' ? payload.team : null;
     const byMe = payload.by != null && payload.by === playerId;
     switch (type) {
@@ -1776,6 +1876,7 @@ export function createAudio({
 
   function applyScene(): void {
     if (!ambience || !mixer || !pool) return;
+    bellTowers = null;
     if (phase === 'battle') {
       const mapId = getMapId?.() || 'verdant';
       scene = sceneForMap(mapId);
@@ -1807,7 +1908,8 @@ export function createAudio({
     pool = createVoicePool({ mixer, library, random, budget: budget.voices, reverb: budget.reverb });
     pool.setOcclusionProbe((x, y, z) => occlusionAt(x, y, z));
     radio = createCrewRadio({ mixer, library, random });
-    ambience = createAmbienceDirector({ mixer, library, pool, random });
+    // Bells wait for the rollout: the countdown's frozen pre-battle (and every probe that holds a battle there) never tolls.
+    ambience = createAmbienceDirector({ mixer, library, pool, random, getBellTowers: currentBellTowers, bellsAllowed: () => rolledOut });
     library.pin([...UI_SET, ...RADIO_SET]);
     void library.load([...UI_SET, ...RADIO_SET]);
     // A battle hull may already be indexed (late adoption mid-battle).
@@ -1859,6 +1961,13 @@ export function createAudio({
     on<TankImpactEvent>('tank:impact', onTankImpact);
     on<TankRamEvent>('tank:ram', (e) => onTankRam(e));
     on<PropEvent>('prop:crushed', (e) => onProp(e, false));
+    // destruction-fx lane: a building crossing a stage (DESTRUCTION.md §11); a settled stage is laid down silently
+    on<StructureStageEvent>('structure:stage', (e) => {
+      if (!e || e.settled) return;
+      for (const l of structureStageSounds(e.stage)) {
+        play(l.id, { x: e.x, y: e.y, z: e.z, delayS: l.delayS + (l.jitterS > 0 ? random() * l.jitterS : 0), gainDb: l.gainDb });
+      }
+    });
     on<PropEvent>('prop:destroyed', (e) => onProp(e, true));
     on<{ id: string; burning?: boolean }>('tank:fire', (e) => {
       const rig = rigs.get(e.id);
@@ -1968,6 +2077,12 @@ export function createAudio({
     });
     // The optics' sensor changing (the tank sight or the drone and gunship cameras).
     on<undefined>('ui:visionChanged', () => { if (phase === 'battle') play('zoom_step', hullOptions({ gainDb: -6 })); });
+    on<{ id?: string }>('service:medal', (e) => { if (e?.id && THINK_MEDALS.has(e.id)) requestThink(); });
+    on<{ isPlayer?: boolean }>('shell:fired', (e) => {
+      if (!e?.isPlayer || firstShotHeard || phase !== 'battle') return;
+      firstShotHeard = true;
+      if (thinkRandom() < THINK_FIRST_SHOT_P) requestThink();
+    });
     on<{ id?: string }>('tank:jump', (e) => { if (isOwn(e?.id)) play('jump_launch', hullOptions({ bus: 'own' })); });
     const righted = (e: { id?: string } | undefined) => {
       const id = e?.id ?? null;
@@ -1993,10 +2108,10 @@ export function createAudio({
     on<{ pos?: Vec3; size?: number }>('atmosphere:artillery', (e) => { if (e?.pos) play('distant_artillery', { ...at(e.pos), gainDb: gainToDb(clamp(e.size ?? 0.6, 0.3, 1.4)) }); });
     on<{ pos?: Vec3; delayS?: number }>('atmosphere:flak', (e) => { if (e?.pos) play('distant_flak', { ...at(e.pos), delayS: Math.max(0, e.delayS ?? 0) }); });
     on<{ pos?: Vec3; shots?: number; gapS?: number }>('atmosphere:aa', (e) => { if (e?.pos) play('distant_mg', at(e.pos)); });
-    on<{ p0?: Vec3; v?: Vec3; durationS?: number }>('atmosphere:flyover', (e) => {
+    on<{ p0?: Vec3; v?: Vec3; durationS?: number; aircraft?: string }>('atmosphere:flyover', (e) => {
       if (!e?.p0 || !e.v) return;
       const half = clamp(e.durationS ?? 20, 4, 60) / 2;
-      play('jet_flyover', { x: e.p0[0] + e.v[0] * half, y: e.p0[1] + e.v[1] * half, z: e.p0[2] + e.v[2] * half, propagate: false, delayS: Math.max(0, half - 3.5) });
+      play(flyoverAsset(e.aircraft), { x: e.p0[0] + e.v[0] * half, y: e.p0[1] + e.v[1] * half, z: e.p0[2] + e.v[2] * half, propagate: false, delayS: Math.max(0, half - 3.5) });
     });
     on<ReloadEvent>('player:reload', onReload);
     on<{ phase?: string }>('phase:change', (e) => {
@@ -2026,6 +2141,10 @@ export function createAudio({
         lastSmokeBorn = -1;
         auxGunOn = null;
         auxLights = null;
+        thinkStage = 'idle';
+        thinkUntil = 0;
+        thoughtThisBattle = false;
+        firstShotHeard = false;
         radio?.setRadioDamage(0);
         applyScene();
         startEngineSoon = true;
@@ -2152,6 +2271,7 @@ export function createAudio({
     pool.prune(now);
     mixer.update(dt);
     radio?.update();
+    updateThink(now);
     if (list) {
       indexTanks(list, dt);
       if (playerId) {
@@ -2212,6 +2332,8 @@ export function createAudio({
     for (const id of MODE_SET) ids.add(id);
     // Every report bank: any calibre may appear (roof guns, mixed rosters, network joins).
     for (const id of Object.values(WEAPON_CLOSE)) ids.add(id);
+    // Every prop's sound (propSounds.ts): the first pole, cart or drum a hull meets is never silent while it decodes.
+    for (const id of propSoundAssets()) ids.add(id);
     const mapId = getMapId?.() || 'verdant';
     for (const id of sceneAssets(sceneForMap(mapId), true)) ids.add(id);
     for (const specId of roster || []) {
@@ -2266,6 +2388,8 @@ export function createAudio({
       get snapshot() { return mixer?.snapshot ?? null; },
       get tier() { return tier; },
       library: () => library?.stats() ?? null,
+      /** Resolves when every sound and voice load in flight has settled (receipts await the real load, never ticks). */
+      libraryIdle: () => library?.idle() ?? Promise.resolve(),
       limiterReduction: () => mixer?.limiterReduction() ?? 0,
       ambientState: () => ambience?.state() ?? { active: false },
       listenerState: () => ({ x: frame.x, y: frame.y, z: frame.z, fx: frame.fx, fz: frame.fz, kind: listenerKind, ownerId: listenerOwnerId, scoped: listenerScoped }),

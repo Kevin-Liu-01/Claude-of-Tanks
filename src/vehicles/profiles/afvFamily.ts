@@ -1,3 +1,5 @@
+import { buildBradleyScoutTurretShell, placeBradleyScoutCheekEra } from './bradleyScoutTurretShell.ts';
+import { buildM3BradleyGunMount } from './m3BradleyGunMount.ts';
 import {buildUpiorUpgrade} from './upiorUpgrade.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { buildT80UXHull } from './t80uX.ts';
@@ -98,12 +100,13 @@ function roofMG(
   cls = 'mag',
   yaw = 0,
   scale = 0.82,
+  feed?: 'left' | 'right',
 ): void {
   P.add('turret', KIT.cylY(0.18, 0.20, 0.075, 16), x, y, z);
   P.add('turretDark', KIT.cylY(0.15, 0.17, 0.020, 16), x, y + 0.047, z);
   mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls, tone: 'two-tone', scale, elev: 0.10,
-    shield: true, ammo: true, ring: { r: 0.16, stubs: 3 }, seed,
+    shield: true, ammo: true, ring: { r: 0.16, stubs: 3 }, seed, feed,
   }), x, y + 0.07, z, [0, yaw, 0]);
 }
 
@@ -278,15 +281,9 @@ function addUkrainianBradleyPackage(P: AfvBuilderPort): void {
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 2.12, d: 0.46, h: 0.30, fill: 0.72, rails: 3, seed: 3210,
   }), 0, 0.45, -1.35);
-  // The pintle ring previously floated 31.75 cm above the donor roof. A
-  // tapered commander pedestal now carries it from the 0.565 m roof plane
-  // to the ring underside without lowering the weapon or obscuring the
-  // Bradley's hatch/periscope silhouette.
-  const roofY = 0.565;
-  const mgRingBottomY = 0.8825;
-  P.addCupola('turret', KIT.cylY(0.23, 0.18, mgRingBottomY - roofY, 18),
-    -0.42, (roofY + mgRingBottomY) / 2, -0.42);
-  roofMG(P, -0.42, 0.92, -0.42, 3220, 'mag', -0.08, 0.76);
+  // 2026-10-08 (the owner's field standard in main 6763d7cc0, the coordinator's ruling on the lane's audit): no roof
+  // pintle. The Ukrainian M2A2 ODS-SA's weapons are the 25 mm Bushmaster, the M240C coax and TOW; the commander's
+  // pedestal and pintle MAG that stood here are gone, and the M240 stowed on the bustle rail stays as the crew's dismount gun.
   radioPair(P, 0.78, -1.40, 3230, 0.98);
   smokePair(P, 1.00, 0.62, 0.18, 4, 3240);
   P.decal('turret', 'number', 'UA B3', 0.21, [-1.24, 0.42, -0.52], -Math.PI / 2);
@@ -619,7 +616,7 @@ function addMarderCastTurret(P: AfvBuilderPort): void {
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 0.90, d: 0.28, h: 0.20, fill: 0.66, rails: 3, seed: 3497,
   }), 0, 0.47, -0.86);
-  roofMG(P, 0.30, 0.475, -0.48, 3500, 'mag', 0.05, 0.62);                      // §B3 MG law (seated on the cast)
+  roofMG(P, 0.30, 0.475, -0.48, 3500, 'mg3', 0.05, 0.62);                      // §B3 MG law (seated on the cast)
   for (const sde of [-1, 1]) {
     P.add('turret', box(0.12, 0.20, 0.34), sde * 0.60, 0.30, -0.44, 0, 0, sde * 0.10); // smoke collar seats
     mount(P, 'turret', FITTINGS.smokeBank({
@@ -701,30 +698,20 @@ function addM3A3Turret(P: AfvBuilderPort): void {
   // sight and left-hand elevating launcher. Every upper edge overlaps the
   // lower ring or the roof cap: there is no daylight seam around the race.
   P.turretG.position.set(0.04, 1.895, -0.36);
-  P.gunG.position.set(-0.06, 0.315, 0.66);
+  // Seat the gun 100 mm lower in the cheek opening. The rear deck uses a
+  // traverse-dependent depression stop instead of lifting the whole gun.
+  // Bearings and saddles share this pre-compression datum.
+  P.gunG.position.set(-0.06, 0.490, 0.78);
   P.add('turret', cylY(0.79, 0.90, 0.13, 26), 0, 0.015, -0.08);
-  P.add('turret', orientedSlab(
-    [-0.84, 0.03, 1.03], [0.84, 0.03, 1.03], [0.98, 0.04, -1.22], [-0.98, 0.04, -1.22],
-    [-0.66, 0.66, 0.82], [0.66, 0.66, 0.82], [0.80, 0.69, -1.08], [-0.80, 0.69, -1.08]));
-  P.add('turret', box(1.28, 0.075, 1.50), 0, 0.695, -0.24);                    // broad roof foundation
-  P.add('turretDark', box(1.12, 0.025, 1.34), 0, 0.742, -0.27);                // recessed roof/service field
-
-  // Faceted cheek shoulders flow into the M242 saddle and continue down both
-  // side walls.  Their outer faces also form physical backing beds for the
-  // destructible turret ERA below.
+  buildBradleyScoutTurretShell(P);
+  // Separate side journals preserve the 70 mm bearing insertion while
+  // leaving an actual longitudinal passage for the recoiling M242 root.
+  // A full cross-shaft/receiver would pass straight through that barrel.
   for (const side of [-1, 1]) {
-    P.add('turret', orientedSlab(
-      [side * 0.12, 0.10, 1.08], [side * 0.73, 0.08, 0.94],
-      [side * 0.88, 0.09, 0.31], [side * 0.20, 0.12, 0.46],
-      [side * 0.12, 0.56, 0.91], [side * 0.59, 0.62, 0.77],
-      [side * 0.72, 0.61, 0.30], [side * 0.18, 0.54, 0.53]));
-    P.add('turret', box(0.12, 0.44, 1.44), side * 0.80, 0.36, -0.38,
-      0, 0, side * 0.035);
-    P.add('turretDark', box(0.035, 0.35, 1.30), side * 0.872, 0.36, -0.38,
-      0, 0, side * 0.035);
+    P.addGunExtraDark(cylX(0.095, 0.225, 24), side * 0.2475, 0, 0);
+    P.addGunExtra(cylX(0.14, 0.14, 24), side * 0.21, 0, 0.04);
   }
-  P.addGunExtra(box(0.56, 0.36, 0.31), 0, 0, 0.28);
-  P.addGunExtraDark(cylZ(0.118, 0.38, 18, 0.095), 0, 0, 0.59);
+  buildM3BradleyGunMount(P);
   buildGun(P, { len: 2.42, r: 0.037, sleeve: true, evac: 0.34,
     collar: true, baseR: 0.10 });
   muzzleBore(P, { len: 2.42, r: 0.037 });
@@ -806,10 +793,10 @@ function addM3A3Turret(P: AfvBuilderPort): void {
   P.add('turretDetail', box(0.035, 0.28, 0.58), 0.74, 0.48, -1.20,
     0, 0, 0.54);
 
-  // Roof weapons and dense service equipment.  Both weapons sit on the
-  // hatch rings above, carry armor shields and ammunition, and point on
-  // slightly different forward arcs rather than sharing one overlapping run.
-  roofMG(P, 0.34, 0.86, -0.47, 3614, 'm2', 0.14, 0.68);
+  // Roof weapon and dense service equipment. 2026-10-08 (the owner's field standard in main 6763d7cc0, the
+  // coordinator's ruling on the lane's audit): the M3A3's armament is the 25 mm, the M240C coax and TOW, and no .50
+  // rides its turret, so the hatch-ring M2 is gone. The shielded M240 on the other hatch ring stays as the vehicle's
+  // one roof gun (the fleet's §B3 rule that every vehicle shows a machine gun).
   roofMG(P, -0.31, 0.86, -0.36, 3616, 'mag', -0.16, 0.58);
   for (const [x, z, yaw] of [
     [-0.62, -0.76, -0.08], [0.62, -0.82, 0.08],
@@ -833,15 +820,11 @@ function addM3A3Turret(P: AfvBuilderPort): void {
   // frontal rake; the side rows stand on the dark beds authored above.
   for (const side of [-1, 1]) {
     P.eraCluster(`m3a3_turret_cheek_${side > 0 ? 'R' : 'L'}`, (put: EraPut) => {
-      for (let row = 0; row < 2; row++) for (let c = 0; c < 3; c++) {
-        put(side * (0.24 + c * 0.22), 1.895 + (0.34 + row * 0.17) * TURRET_HEIGHT_SCALE,
-          -0.36 + 0.92 - c * 0.035, -0.16, side * 0.08, 0,
-          0.72, 0.92 * TURRET_HEIGHT_SCALE, 1.05);
-      }
+      placeBradleyScoutCheekEra(side, put);
     }, true);
     P.eraCluster(`m3a3_turret_side_${side > 0 ? 'R' : 'L'}`, (put: EraPut) => {
       for (let row = 0; row < 2; row++) for (let c = 0; c < 4; c++) {
-        put(side * 0.875, 1.895 + (0.27 + row * 0.18) * TURRET_HEIGHT_SCALE, -0.36 + 0.32 - c * 0.31,
+        put(side * 1.08, 1.895 + (0.27 + row * 0.18) * TURRET_HEIGHT_SCALE, -0.36 + .005 - c * 0.31,
           0, side * Math.PI / 2, side * 0.025,
           1.00, 0.96 * TURRET_HEIGHT_SCALE, 1.75);
       }
@@ -1424,7 +1407,7 @@ function addPumaOraclePackage(P: AfvBuilderPort): void {
   // pose once the §5.249 print restore re-framed the render). Both re-seat
   // on real surfaces: MG pot buried into the roof at its own z, whips onto
   // the bustle roof plate (§B5 physical-seat law).
-  roofMG(P, -0.38, 0.735, -0.48, 3700, 'mag', -0.04, 0.74);
+  roofMG(P, -0.38, 0.735, -0.48, 3700, 'mg3', -0.04, 0.74);
   radioPair(P, 0.79, -1.20, 3710, 0.55);
   P.add('turret', KIT.box(0.28, 0.07, 0.28), 0.42, 0.90, -0.18);
   P.add('turretDetail', KIT.cylY(0.12, 0.14, 0.32, 14), 0.42, 1.09, -0.18);
@@ -1636,7 +1619,16 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
     }
   }
 
-  roofMG(P, -0.30, 0.91, -0.60, 3801, 'nsvt', -0.05, 0.76);
+  // 2026-10-07 (tank-accessories round 4): the NSVT's box takes the gun's left (the NSV feeds from either side). On its
+  // right it hung through the bustle's jerrycans (109 triangles inside the box region in the feed-side collision census,
+  // 107 before round 4); on the left the region is clear (0).
+  // 2026-10-09 (launch RC; missionAttachmentMechanical.selftest, "actual stand including braces is clear"): at its true
+  // calibre the NSVT parked facing forward lay under the braced drone stand, the BMPT's only seat that clears the twin
+  // 30 mm envelope (gen-mission-attachment-seats; a grid search over the roof found no other). The pintle keeps its gun
+  // and moves 15 cm right and 2 cm forward on the rear roof, off the jerrycans and the left whip it stood in. The gun is
+  // parked in travel lock, facing rear-right over the bustle (yaw 2.30), with its box on the right. Edge crossings of the
+  // station into other turret stock fall from 327 to 12, where the barrel rests on the stowage rack's rail.
+  roofMG(P, -0.15, 0.91, -0.58, 3801, 'nsvt', 2.30, 0.76, 'right');
 
   // Rear equipment: backing plate buried into the base-skirt slope, deep
   // bustle rack seated on the slab top, cans left / spare links right.

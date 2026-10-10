@@ -6,6 +6,8 @@ import {getSpec} from './specs.ts';
 import {VEHICLE_SIZE_FACTORS,VEHICLE_HULL_LENGTH_FACTORS} from './vehicleSizePolicy.ts';
 const before=JSON.parse(readFileSync(new URL('./fleetResize20261002.fixture.json',import.meta.url)));
 assert.equal(before.revision,'1e6b4b738179721483f647ef04fe6ee3b249849f');
+// 2026-10-08: c6b60311c (main) rebuilt the Dragun turret front and gun mount and the Kurganets gun after that
+// measurement; the fixture's repinned20261008 note lists the entries re-measured as the current build / factor.
 const near=(a,b,label,tol=2e-5)=>assert(Math.abs(a-b)<tol,`${label}: ${a} != ${b}`);
 for(const [id,b] of Object.entries(before.rows)){
  const f=VEHICLE_SIZE_FACTORS[id],h=VEHICLE_HULL_LENGTH_FACTORS[id]??1,spec=getSpec(id);
@@ -28,8 +30,10 @@ for(const [id,b] of Object.entries(before.rows)){
    }
    t.gunMuzzleWorld(new Vector3()).toArray().forEach((v,k)=>near(v,old.muzzle[k]*f,`${id}/muzzle/${k}`));
    for(const key of ['halfWidM','bottomYM'])near(t.contactGeom[key],old.contact[key]*f,`${id}/contact/${key}`);
-   if(h===1)for(const key of ['halfLenM','zCenterM'])near(t.contactGeom[key],old.contact[key]*f,`${id}/contact/${key}`);
-   else {
+   // 2026-10-04 (aa5fdca05): the track run's length and centre are read off the drawn band and published with the
+   // combat anatomy (4 decimals), not the profile's pinned flat run this 1e6b4b738 fixture measured.
+   for(const key of ['halfLenM','zCenterM'])near(t.contactGeom[key],spec.armor.trackContact[key],`${id}/contact/${key} (published)`,6e-5);
+   if(h!==1){
     const gear=t.root.getObjectByName('rig_hull').userData.runningGearReceipts.at(-1);
     // Pure chassis lengthening must never turn circular tires into ellipses.
     const wheel=t.root.getObjectByName('gearRoadWheelDiscs');assert(wheel);

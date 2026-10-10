@@ -47,10 +47,11 @@ signage, floor equipment, cables, cones, barrels, and authored industrial
 lighting. The restored stage is the sole Verdant owner; it does not allocate an
 outdoor terrain pack. After the Garage becomes interactive and quiet, one
 shared four-bay service layer streams in across all ten locations: a Burlak
-gantry, Abrams welding bay, T-90M armor station, and rolled K2 teardown occupy
-all four quadrants. Each environment shifts the complete layer slightly around
+gantry, Abrams welding bay, T-90M armor station, and rolled K2 teardown surround
+the podium. Each environment shifts the complete layer slightly around
 its landmark; only Verdant shows the wall-mounted interior props that require
-its enclosed shell. These are full-detail fleet shapes but not player-owned
+its enclosed shell. In Verdant the Abrams bay stands beside the FLAMMABLE
+canisters, as the owner placed it; outdoors it stands beside the camera. These are full-detail fleet shapes but not player-owned
 vehicles: the worker applies three shared solid national service finishes
 (Russian green, American desert tan, and Korean olive), allocates no camouflage
 or surface-map canvases, and does not transfer colour/UV/tangent attributes that

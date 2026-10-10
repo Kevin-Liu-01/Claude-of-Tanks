@@ -90,6 +90,10 @@ export function createRenderer(container: HTMLElement): GameRenderer {
     recordLoss: noteGraphicsContextLoss,
     notice: showContextLossOverlay,
   });
+  // (2026-10-08, the owner's black screens) a point or spot light's falloff 1 / max(d^decay, 0.01) reaches 100x at 0.1 m:
+  // a pooled explosion or muzzle light a few centimetres from glossy paint, glass or water pushed GGX specular past the
+  // half-float HDR range (Inf, then NaN through TAA and bloom: a black frame). The floor sits at 0.25 m (16x).
+  limitPointLightFalloff();
   renderer.domElement.addEventListener('webglcontextlost', recovery.lost, false);
   renderer.domElement.addEventListener('webglcontextrestored', recovery.restored, false);
   const dispose = renderer.dispose.bind(renderer);
@@ -188,4 +192,16 @@ export function onResize(renderer: THREE.WebGLRenderer, camera: THREE.Perspectiv
   renderer.setSize(width, height);
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
+}
+
+/** three's getDistanceAttenuation floor (lights_pars_begin): 0.1 m -> 0.25 m for decay 2; idempotent, before compiles. */
+export function limitPointLightFalloff(): boolean {
+  const chunk = THREE.ShaderChunk as unknown as Record<string, string>;
+  const src = chunk.lights_pars_begin;
+  if (typeof src !== 'string') return false;
+  if (src.includes('max( pow( lightDistance, decayExponent ), 0.0625 )')) return true;
+  if (!src.includes('max( pow( lightDistance, decayExponent ), 0.01 )')) return false;
+  chunk.lights_pars_begin = src.replace('max( pow( lightDistance, decayExponent ), 0.01 )',
+    'max( pow( lightDistance, decayExponent ), 0.0625 )');
+  return true;
 }

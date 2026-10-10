@@ -54,6 +54,8 @@ const PUNCHY = new Set(['weapon-close', 'gunshot', 'punch', 'sub', 'impact', 'fo
 const WEIGHTY = new Set(['weapon-close', 'weapon-far', 'impact', 'sub']);
 const DARK_GROUPS = new Set(['ui', 'stingers', 'equipment', 'edge']);
 const MECHANICAL = new Set(['mechanism']);
+/** Groups whose takes may pause between events: animal calls and distant spot sounds, beds, stings. */
+const SPARSE_GROUPS = new Set(['spots', 'ambience', 'stingers']);
 
 /** Assets played once per round fired/struck: one report each, never a burst. */
 const SINGLE_SHOT = /^(mg_|ac_\d+_close|ac_far_|ac_own|bullet_|ricochet_light|radio_key_in|blast_punch_)/;
@@ -119,6 +121,9 @@ function score(m, entry, clip) {
   }
   // No boings (2026-10-03): a weight layer must be rumble, never a pitched tone falling away under the hit.
   if ((entry.proc === 'punch' || entry.proc === 'sub') && m.glide && m.glide.ms >= 60 && (m.glide.ratio >= 1.12 || m.glide.ms >= 150)) s -= 8;
+  // One event, not two (2026-10-04): a take split by silence plays its opening as a lone pop or blip and its body
+  // late (the AC-130 missile's ignition pop, 1.5 s of nothing, then the motor). Calls, beds and stings may pause.
+  if (!entry.loop && m.split?.gapMs >= 400 && !SPARSE_GROUPS.has(entry.group)) s -= 4 + 4 * Math.min(1, (m.split.gapMs - 400) / 800);
   // Dead air: a "4 s" take whose energy is over in 0.2 s is usually a misfire.
   if (!entry.loop && m.decayS < 0.08) s -= 1;
   // A clunk or clack is one event, not a rattle of them.

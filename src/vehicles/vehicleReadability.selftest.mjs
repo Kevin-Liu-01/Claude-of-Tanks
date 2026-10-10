@@ -52,20 +52,41 @@ for (const kept of ['vehFill = min( vehFill, 0.30 / vehLuma );', 'vehFill *= mix
 // the deep-shade floor: the map's last mip is the paint reference, each texel lands in proportion to its own paint and
 // the lift runs along the albedo; the old one-luminance hue lift is gone
 assert.match(frag, /#ifdef USE_MAP\n\t\tvehRefL = max\( dot\( textureLod\( map, vMapUv, 16\.0 \)\.rgb \* diffuse, /, 'a painted map references its mean paint');
-once('float vehTargetL = vehFloorL * vehLuma / vehRefL;', 'each texel lands in proportion to its paint');
+once('float vehTargetL = vehFloorL * vehLuma / max( vehRefL, 0.120 );', 'each texel lands in proportion to its paint, against a mid-olive reference at most');
 once('reflectedLight.indirectDiffuse += material.diffuseColor * ( ( vehTargetL - vehOutL ) / vehLuma );', 'the lift runs along the albedo');
 assert.ok(!frag.includes('vehTint'), 'no one-luminance hue lift');
 // the same law on the CPU: desert dark / base / pale tones (linear luma) under the 0.21 canopy floor
-const deepShade = (texelL, meanL, floorL = 0.21) => floorL * texelL / meanL;
+const deepShade = (texelL, meanL, floorL = 0.21) => floorL * texelL / Math.max(meanL, 0.12);
 const desert = [0.11, 0.27, 0.41].map(l => deepShade(l, 0.25));
 assert.ok(desert[2] / desert[0] > 3.5, `the pale tone stays ${(desert[2] / desert[0]).toFixed(1)}x the dark tone (it was 1x)`);
 assert.ok(Math.abs(deepShade(0.25, 0.25) - 0.21) < 1e-9, 'the mean paint lands where every texel used to');
+// Fleet lane 2026-10-08 (the coordinator's ruling on the s13 sunset renders): a dark scheme's mean no longer lands on the
+// floor itself, so it stays darker in shade; paints at or above the 0.12 reference keep the law exactly
+assert.equal(deepShade(0.3, 0.3), 0.21 * 0.3 / 0.3, 'a light scheme: unchanged');
+assert.equal(deepShade(0.12, 0.12), 0.21, 'at the reference: unchanged');
+const darkDigital = [0.019, 0.040, 0.090, 0.136].map(l => deepShade(l, 0.049)); // sig_k2b: dark, base, mid, light; mean 0.049
+assert.ok(Math.abs(deepShade(0.049, 0.049) - 0.21 * 0.049 / 0.12) < 1e-12, 'a dark digital mean lands by its own albedo');
+assert.ok(darkDigital[3] < 0.21 * 0.136 / 0.049 * 0.5, 'its light patch no longer lifts toward near-white');
+assert.ok(darkDigital[3] / darkDigital[0] > 7, 'and the scheme keeps its contrast');
+const olive = deepShade(0.07, 0.07);
+assert.ok(olive >= 0.115 && olive <= 0.21, `gameplay_feel's calibrated dark olive stays inside its band (${olive.toFixed(3)})`);
 once('float vehHeight = dot( vehWorldPos - uVehGround.xyz, uVehUp );', 'ground occlusion measures height along the vehicle axis');
 assert.match(frag, /reflectedLight\.indirectDiffuse \*= mix\( 0\.\d+, 1\.0,\s*smoothstep\( 0\.\d+, 1\.\d+, vehHeight \) \);/, 'indirect light falls toward the ground');
 assert.ok(!frag.includes('uVehicleShadeModel'), 'one shade model, no A/B branch');
 const unbound = before.uniforms;
 assert.equal(unbound.uVehGround.value.y, -1e5, 'tooling paths with no vehicle root keep a far-below origin (no darkening)');
 assert.deepEqual(unbound.uVehUp.value.toArray(), [0, 1, 0]);
+// Fleet lane 2026-10-08 (camo far lighter than its swatch): three overwrites a material's envMapIntensity with the
+// scene's environmentIntensity whenever it reads the scene environment, so the vehicle trims never applied. The hook
+// scales the image-based light (diffuse irradiance, specular radiance, clearcoat) by uVehEnvScale after three gathers
+// it; the bare hook keeps the full sky light (1), and createTankMaterials binds each material's own trim (below).
+once('uniform float uVehEnvScale;\n', 'the image-based-light scale is declared once');
+once('\tiblIrradiance *= uVehEnvScale;\n\tradiance *= uVehEnvScale;\n', 'the sky diffuse and specular light take it');
+once('\tclearcoatRadiance *= uVehEnvScale;\n', 'and the clearcoat lobe');
+assert.ok(frag.indexOf('iblIrradiance *= uVehEnvScale;') > frag.indexOf('#include <lights_fragment_maps>')
+  && frag.indexOf('iblIrradiance *= uVehEnvScale;') < frag.indexOf('#include <lights_fragment_end>'),
+  'after three gathers the sky light and before it is applied');
+assert.equal(unbound.uVehEnvScale.value, 1, 'the bare hook (thumbnails, hand-hooked profile clones) keeps the full sky light');
 
 try {
   const materialVersion = material.version;
@@ -138,6 +159,7 @@ const bound = [];
 const grounds = new Set(), groundProbe = new Map();
 const roles = new Set();
 const materials = new Set();
+const trimmed = new Map();
 let csmCallbacks = 0;
 const csmContext = {
   setupShadowMaterial(entry, hook) {
@@ -181,6 +203,14 @@ try {
           assert.equal(entry.defines.USE_CSM, 1, `${object.name}: wheel role must preserve shadow defines`);
           assert.equal(shader.uniforms.csmTestWitness.value, 1, 'readability chains through shadow callback');
         }
+        // the factory's own registration (createTankMaterials and every cloneVehicleMaterial clone) scales the sky
+        // light by the material's authored trim; hand-hooked profile clones keep the full sky light
+        if (entry.customProgramCacheKey() === 'veh-ambient-floor-v5') {
+          const expected = entry.envMap ? 1 : entry.envMapIntensity;
+          assert.equal(shader.uniforms.uVehEnvScale.value, expected,
+            `${id}/${object.name} (${entry.name}): the sky light takes the material's own envMapIntensity`);
+          if (expected < 1) trimmed.set(entry.userData.appearanceRole ?? entry.name, { entry, shader });
+        }
         roles.add(entry.userData.appearanceRole);
         grounds.add(shader.uniforms.uVehGround);
         if (!groundProbe.has(id)) groundProbe.set(id, { object, root: visual.root, shader });
@@ -208,6 +238,19 @@ try {
   for (const role of ['armorPaint', 'tireRubber', 'wheelPaint', 'trackPad']) {
     assert.ok(roles.has(role), `${role}: real material callback covered`);
   }
+  for (const role of ['armorPaint', 'wheelPaint']) {
+    assert.ok(trimmed.has(role), `${role}: its authored sky-light trim reaches the shader`);
+  }
+  {
+    // read live: a profile that sets envMapIntensity after creation (a mud rim, a worn clone) needs no recompile
+    const { entry, shader } = trimmed.get('armorPaint');
+    const authored = entry.envMapIntensity, version = entry.version;
+    entry.envMapIntensity = 0.3;
+    assert.equal(shader.uniforms.uVehEnvScale.value, 0.3, 'the trim is read at draw time');
+    entry.envMapIntensity = authored;
+    assert.equal(shader.uniforms.uVehEnvScale.value, authored);
+    assert.equal(entry.version, version, 'no needsUpdate or program change');
+  }
   for (const scale of [.12, 1, .12, 1]) {
     setVehicleReadabilityScale(scale);
     for (const item of bound) {
@@ -222,4 +265,4 @@ try {
   restoreCanvas();
 }
 assert.equal(getVehicleReadabilityScale(), 1);
-console.log('vehicleReadability.selftest: form-fill floors, ground occlusion, kept safeguards, shared current/future/gear uniforms, per-draw ground reference, strict input and exact reset PASS');
+console.log('vehicleReadability.selftest: form-fill floors, ground occlusion, kept safeguards, shared current/future/gear uniforms, per-draw ground reference, per-material sky-light trims, strict input and exact reset PASS');

@@ -224,8 +224,18 @@ export class LensFlarePass extends Pass {
   active = false;
   /** post.ts: clear the shared light target first when the shafts pass did not run this frame. */
   clearTarget = false;
+  /**
+   * Scene Studio film renderer only: ease the visibility by this step (seconds)
+   * instead of the wall-clock gap, so offline frames are deterministic. Null
+   * (every live path) keeps the measured cadence.
+   */
+  fixedDt: number | null = null;
   private dt = 1 / 60;
   private lastMs = -1e9;
+  /** The clock the visibility eases on (ms): the wall clock, or the Studio's export clock (setClock). */
+  private clock: (() => number) | null = null;
+  /** The next visibility render jumps to its target (a clip's start: no history from the last clip or page). */
+  private snapNext = false;
 
   constructor(
     camera: THREE.PerspectiveCamera, scene: THREE.Scene, depthTexture: THREE.DepthTexture, output: THREE.WebGLRenderTarget,
@@ -265,11 +275,28 @@ export class LensFlarePass extends Pass {
     if (this.output.width !== w || this.output.height !== h) this.output.setSize(w, h);
   }
 
+  /**
+   * The Studio's offline export (2026-10-08, fifo2 twins: with the flare on, two runs of a clip whose smoke crossed the
+   * sun differed at 2.4 % of pixels): the visibility eases on the export clock instead of the wall clock, so a render at
+   * the same clock instant eases by nothing and each timeline step eases once, whatever the live renders between steps
+   * and however loaded the machine. null: the wall clock again. Either way the next render snaps to its target.
+   */
+  setClock(nowMs: (() => number) | null): void {
+    this.clock = nowMs;
+    this.lastMs = -1e9;
+    this.snapNext = true;
+  }
+
+  /** The next render jumps to its target (a clip's start or a seek). */
+  snap(): void {
+    this.snapNext = true;
+  }
+
   /** Per frame, before the composer renders. */
   update(active: boolean): void {
     this.active = active;
-    const now = performance.now();
-    this.dt = this.lastMs < 0 ? 1 / 60 : Math.min(0.1, (now - this.lastMs) / 1000);
+    const now = this.clock ? this.clock() : performance.now();
+    this.dt = this.fixedDt ?? (this.lastMs < -1e8 ? 1 / 60 : Math.min(0.1, Math.max(0, (now - this.lastMs) / 1000)));
     this.lastMs = now;
     const sunDir = this.scene.userData.sunDirWorld as THREE.Vector3 | undefined;
     if (!active || !sunDir) {
@@ -315,7 +342,8 @@ export class LensFlarePass extends Pass {
       vu.uSun.value.copy(this.sun.uv);
       vu.uDisc.value.set(radius / aspect, radius);
       vu.uTarget.value = this.target;
-      vu.uBlend.value = 1 - Math.exp(-this.dt * LENS_FLARE_EASE_RATE);
+      vu.uBlend.value = this.snapNext ? 1 : 1 - Math.exp(-this.dt * LENS_FLARE_EASE_RATE);
+      this.snapNext = false;
       vu.tPrev.value = this.visPrev.texture;
       this.quad.material = this.visMaterial;
       renderer.setRenderTarget(this.visCur);

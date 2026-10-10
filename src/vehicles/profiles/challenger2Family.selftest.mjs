@@ -78,8 +78,10 @@ for (const id of ['fv4034', 'challenger2e', 'ua_challenger2']) {
     assert.equal(receipt.bridgedMachineGunBarrels, 1,
       'FV4034 MAG barrel must bridge directly into its receiver');
   } else {
-    assert.equal(receipt.mannedMachineGuns, 4,
-      `${id} carries its three variant weapons plus the Challenger 2 tower`);
+    // 2026-10-08 (the owner's field standard, main 6763d7cc0): the loader's GPMG and the remote tower slaved to the
+    // commander's sight; the commander's crew M2 and the aft bustle MAG duplicated or had no real mount
+    assert.equal(receipt.mannedMachineGuns, 2,
+      `${id} carries the loader's GPMG plus the Challenger 2 tower`);
     const towerReceipt = turret.userData.challenger2WeaponTowerReceipt;
     assert.equal(towerReceipt?.exactChallenger2Assembly, true,
       `${id} must inherit the exact Challenger 2 remote weapon tower`);
@@ -122,12 +124,12 @@ for (const id of ['fv4034', 'challenger2e', 'ua_challenger2']) {
       `${id} cheek ERA face-normal alignment`);
     close(receipt.glacisEraNormalAlignmentDot, 1,
       `${id} glacis ERA face-normal alignment`);
-    assert.equal(receipt.roofAttachmentCount, 9,
+    assert.equal(receipt.roofAttachmentCount, 7,
       `${id} cupolas, machine guns, tower, and roof equipment must all publish seats`);
-    assert.equal(turret.userData.challenger2RoofSeatingReceipt.roofSeats.length, 9,
+    assert.equal(turret.userData.challenger2RoofSeatingReceipt.roofSeats.length, 7,
       `${id} roof-seat receipt must include the centered weapon tower`);
-    assert.equal(receipt.bridgedMachineGunBarrels, 2,
-      `${id} MAG barrels must bridge directly into their receivers`);
+    assert.equal(receipt.bridgedMachineGunBarrels, 1,
+      `${id} MAG barrel must bridge directly into its receiver`);
     assert.equal(receipt.smokeBanks, 2,
       `${id} must carry one reseated smoke bank on each turret cheek`);
     assert.equal(receipt.smokeCanisters, 8,
