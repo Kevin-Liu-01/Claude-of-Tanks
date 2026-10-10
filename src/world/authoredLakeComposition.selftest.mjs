@@ -60,7 +60,8 @@ const config = { ...polders, terrain: { ...polders.terrain, lakes } };
 let permutationSamples = 0, coreBoundarySamples = 0;
 for (const seed of [1337, 2049, 7719]) {
   const field = createHeightField(seed, config);
-  const permutations = [lakes.toReversed(), [lakes[2], lakes[4], lakes[0], lakes[3], lakes[1]]]
+  // (step 6, 2026-10-07: the oxbow basin is the old creek's arm, a canal; four basins remain)
+  const permutations = [lakes.toReversed(), [lakes[2], lakes[0], lakes[3], lakes[1]]]
     .map(order => createHeightField(seed, { ...config, terrain: { ...config.terrain, lakes: order } }));
   for (const candidate of [field, ...permutations]) {
     assert.equal(candidate.getWaterMaskAt(155.22, -257), 1);
@@ -88,5 +89,8 @@ for (const seed of [1337, 2049, 7719]) {
     coreBoundarySamples++;
   }
 }
-assert.ok(permutationSamples > 8000 && coreBoundarySamples >= 900);
+// (2026-10-07, the map-revival lane, Polders step 2: the oxbow lane crosses the oxbow's waist on the lift bridge, so its
+// 37 contour stations a seed within 24 m of the lane were skipped like every road's: 849 of the 960; step 6: the oxbow
+// basin is the old creek's arm, a canal, and the four basins left keep all their 768 stations clear of the roads)
+assert.ok(permutationSamples > 8000 && coreBoundarySamples >= 760, `${permutationSamples} permutation and ${coreBoundarySamples} core-boundary samples`);
 console.log(`authoredLakeComposition: ${legacySamples} exact legacy samples, actual cross-apron flat-core regression, ${permutationSamples} permutation samples and ${coreBoundarySamples} continuous core-boundary samples PASS`);

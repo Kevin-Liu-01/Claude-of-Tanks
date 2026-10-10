@@ -90,6 +90,9 @@ const KIND_SOUNDS: Readonly<Record<string, PropSoundRecipe>> = Object.freeze({
   // wooden crosses topple, the steel wind pump goes over like a lamp, only far bigger
   waysidecross: WOOD_TOPPLE, orthodoxcross: WOOD_TOPPLE,
   windpump: recipe(layer('hedgehog_clang', 0, -2), layer('metal_topple', TOPPLE_LAND_S, 0, 0.06), layer('debris_metal', TOPPLE_LAND_S + 0.15, -6)),
+  // Tidegate Polders' Bosman windmotor (the maps-polders lane, named at its merge of the PR head): the Dutch steel
+  // windmotor on its lattice tower goes over as the wind pump does
+  windmotor: recipe(layer('hedgehog_clang', 0, -2), layer('metal_topple', TOPPLE_LAND_S, 0, 0.06), layer('debris_metal', TOPPLE_LAND_S + 0.15, -6)),
   // --- loose dressing (cls 'physics'): knocked about, never destroyed
   drum: KNOCK, churn: KNOCK, trashcan: KNOCK, gasbottle: KNOCK, bucket: KNOCK, jerrycan: KNOCK,
   // a loose wheel and tyre: a dull rubber thump

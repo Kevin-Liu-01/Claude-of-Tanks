@@ -10,7 +10,8 @@
 //   concave talus apron; fans spread from the wall's foot), 'canyon' (a knoll of negative height: a trough with a level
 //   floor, a talus apron rising to a near-vertical wall and the plain at the rim; ramps may cut the wall) or, on a ridge,
 //   'flow' (a lava flow: a lowered channel between raised levees, a steep margin, a short talus; with `front`, a steep
-//   blocky front at its downhill end);
+//   blocky front at its downhill end) or 'dyke' (an earth embankment: a level crest, straight batters, the shoulder and
+//   the toe rounded);
 // - gullies: V-shaped rills down the flanks, irregularly spaced, fading into the apron; on a knoll, talus fans spread
 //   below the rills' mouths onto the plain;
 // - strata: bedding, a bench and a riser per bed, the beds dipping slightly so no bench is level;
@@ -25,7 +26,9 @@ export interface LandformGeology {
   outline?: number;
   /** The radial (knoll) or cross-axis (ridge) profile. 'flow' (ridges): a lava flow's lowered channel between raised
    * levees, a steep margin and a short talus. */
-  profile?: 'dome' | 'butte' | 'cone' | 'flow' | 'inselberg' | 'canyon';
+  profile?: 'dome' | 'butte' | 'cone' | 'flow' | 'inselberg' | 'canyon' | 'dyke';
+  /** dyke: the crest's half-width as a fraction of the half-width (default 0.25); the batters take the rest. */
+  crest?: number;
   /** butte: the cap's edge and the wall's foot, as fractions of the radius or half-width (default 0.45, 0.62). canyon:
    * the wall's foot and its top, the rim (default 0.74, 0.8). */
   wall?: readonly [number, number];
@@ -193,6 +196,22 @@ function domeProfile(q: number): number {
 function ridgeShoulder(q: number): number {
   const across = 1 - smoothstep(0.22, 1, q);
   return across * across * (3 - 2 * across);
+}
+
+/**
+ * A dyke (the map-revival lane, 2026-10-06, the Polders): an earth embankment, its crest level out to `crest` of the
+ * half-width, then a straight batter down to the toe, the shoulder and the toe each rounded over an eighth of the
+ * batter (the slope ramps in and out, so the crest's edge and the toe are no creases). A polder's dykes stand up off
+ * the fields as embankments, not as the folds the dome profile makes.
+ */
+function dykeProfile(q: number, geology: LandformGeology): number {
+  const c = Math.max(0.05, Math.min(0.8, geology.crest ?? 0.25));
+  if (q <= c) return 1;
+  if (q >= 1) return 0;
+  const t = (q - c) / (1 - c), r = 0.125, k = 1 / (1 - r);
+  if (t < r) return 1 - k * t * t / (2 * r);
+  if (t > 1 - r) { const u = 1 - t; return k * u * u / (2 * r); }
+  return 1 - k * (r / 2 + (t - r));
 }
 
 /** A butte or mesa: a gently domed cap (never a level table), a steep wall, then a concave talus apron. */
@@ -387,6 +406,7 @@ function profileOf(q: number, geology: LandformGeology, height: number, fallback
       !!geology.capLevel);
   }
   if (profile === 'butte') return butteProfile(q, geology);
+  if (profile === 'dyke') return dykeProfile(q, geology);
   if (profile === 'cone') return coneProfile(q, geology, height);
   if (profile === 'flow') return flowProfile(q);
   if (profile === 'canyon') return canyonProfile(q, geology);

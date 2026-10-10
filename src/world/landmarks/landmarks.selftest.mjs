@@ -87,7 +87,7 @@ const BUDGET = {
   church: 16000, stationHall: 13000, townHall: 10000, marketHall: 8000, grainElevator: 9000, granary: 2500,
   waterTower: 6000, windmill: 8000, belfry: 4000, campanile: 4000, fireLookout: 5000, valveTower: 4000,
   obelisk: 4500, statue: 1500, columnMonument: 1500, memorialWall: 2000, equestrianStatue: 1500,
-  fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000, churchyard: 4500, path: 1500, garden: 2500, stairway: 9000,
+  fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000, churchyard: 4500, path: 1500, garden: 2500, stairway: 9000, outfall: 900,
   townGate: 4000, triumphalArch: 7000, kolkhozArch: 2500, torii: 1000,
   stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000, liftBridge: 6000,
   aircraftWreck: 20000, colonialBungalow: 14000, tennisCourt: 5000, bengalTemple: 9000, lighthouse: 3500, mole: 5000,
@@ -380,18 +380,24 @@ for (const [label, ground] of [
   assert.ok(triangles(parts) <= BUDGET.liftBridge, `liftBridge long form within its budget (${triangles(parts)})`);
   const deck = movement.filter((part) => part.kind === 'obb' && Math.abs(part.y1 - part.y0 - 1.0) < 1e-6 && part.hw >= 1.5).sort((p, q) => p.cz - q.cz);
   assert.ok(deck.length >= 5, 'the roadway in parts');
+  // what a hull stands on at a joint: the part's top, or the bank over it (an entry plate lies under its bank)
+  const support = (part, z) => Math.max(part.y1, ground(0, z));
   for (let i = 0; i + 1 < deck.length; i++) {
-    const gap = (deck[i + 1].cz - deck[i + 1].hl) - (deck[i].cz + deck[i].hl);
+    const gap = (deck[i + 1].cz - deck[i + 1].hl) - (deck[i].cz + deck[i].hl), joint = deck[i].cz + deck[i].hl;
+    const a = support(deck[i], joint), b = support(deck[i + 1], joint);
     assert.ok(Math.abs(gap) <= 0.05, `the roadway runs on unbroken (gap ${gap.toFixed(3)} m at ${deck[i].cz.toFixed(2)})`);
-    assert.ok(Math.abs(deck[i + 1].y1 - deck[i].y1) < HULL_STEP_UP_M, `a hull steps from one roadway part to the next (${deck[i].y1.toFixed(2)} → ${deck[i + 1].y1.toFixed(2)})`);
-    assert.ok(hullPassesObstacleTop(deck[i].y1, deck[i + 1].y1, deck[i + 1].y0), 'a hull on the roadway mounts the next part');
+    assert.ok(Math.abs(b - a) < HULL_STEP_UP_M, `a hull steps from one roadway part to the next (${a.toFixed(2)} → ${b.toFixed(2)} at ${joint.toFixed(1)})`);
+    assert.ok(hullPassesObstacleTop(a, deck[i + 1].y1, deck[i + 1].y0), 'a hull on the roadway mounts the next part');
   }
-  // the roadway stands `rise` over the higher bank, and each end comes down to its ground
+  // the roadway stands `rise` over the higher bank, and each end opens with its entry plate (bridges.ts ENTRY_M): under
+  // its bank, where a flat-nosed hull's nose meets it, and longer than half the fleet's longest hull's half-length
+  // (Challenger 3, 4.58 m), so the hull's track rows stand over the record before its nose reaches the roadway
   const top = Math.max(...deck.map((part) => part.y1));
   assert.ok(top >= 1.5, `the roadway stands its rise over the water (${top.toFixed(2)})`);
   for (const [part, zs] of [[deck[0], -1], [deck[deck.length - 1], 1]]) {
     const z = part.cz + zs * part.hl, g = ground(0, z);
-    assert.ok(part.y1 - g < HULL_STEP_UP_M && part.y1 >= g - 0.05, `the ${zs < 0 ? 'near' : 'far'} ramp meets its ground (${part.y1.toFixed(2)} over ${g.toFixed(2)} at ${z.toFixed(1)})`);
+    assert.ok(part.y1 <= g - 0.15, `the ${zs < 0 ? 'near' : 'far'} entry plate lies under its bank (${part.y1.toFixed(2)} under ${g.toFixed(2)} at ${z.toFixed(1)})`);
+    assert.ok(2 * part.hl >= 0.5 * 4.58, `the ${zs < 0 ? 'near' : 'far'} entry plate's length (${(2 * part.hl).toFixed(2)} m)`);
   }
   // the whole bridge within its footprint, and its shells within the packed manifest's limits
   const [, hl] = LANDMARK_KINDS.liftBridge.footprint(params);

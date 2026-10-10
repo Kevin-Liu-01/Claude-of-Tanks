@@ -110,6 +110,10 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // and the box at the path's mouth
   garden: { family: 'park', drapes: true, dressing: () => true, defaults: { width: 14, depth: 10, fence: 'fencepicket', path: 1.4, back: 'open', beds: true },
     footprint: (p) => [num(p, 'width') / 2 + 0.3, num(p, 'depth') / 2 + 0.8] },
+  // a mill's outfall: the culvert's headwall at the bank's top and its runnel pitched in stone down to the water, along +z
+  // from the headwall (`length` m, `width` the runnel's)
+  outfall: { family: 'park', drapes: true, inWater: true, dressing: () => true, defaults: { length: 4, width: 0.8 },
+    footprint: (p) => [num(p, 'width') / 2 + 0.6, num(p, 'length') / 2 + 0.5] },
   // a path draped over the ground from the piece's origin along its +z (`length` m, `width` wide): flagstones or setts
   // (the map's masonry), gravel or beaten earth — an approach from a road to a gate, a track to a door. It meets the road
   // it leaves (no road margin) and stands on nothing.

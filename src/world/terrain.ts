@@ -55,6 +55,7 @@ import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import { createBorderLandform, resolveBorderLandform, type BorderLandformSettings } from './borderLandform.ts';
 import type { FarmsteadStyle } from './borderFarmsteads.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
+import { canalWetness, carveCanals, compileCanals, inCanal, type CanalConfig } from './canals.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
 import { createWaterRippleField } from './waterRipples.ts';
 import { createOceanField, oceanFieldSupported, oceanGridSize, type OceanField } from './oceanFft.ts';
@@ -118,6 +119,18 @@ export interface RoadPathStyle {
   surface?: RoadSurface;
   /** The carriageway's full width (m), 4–18; absent: the map's ~7.7 m gauge. */
   widthM?: number;
+  /**
+   * The map-revival lane (2026-10-07, Tidegate Polders' lanes on the dyke crowns): the carriageway standing at least this
+   * many metres over the ground it crosses (a road already on an embankment as high is left as it is), on a crowned bank
+   * of its own — a crest the carriageway's width and a metre and a fifth of verge either side, its
+   * shoulders down to the graded road plane over six metres — the lift ramped out over `crownRampM` from wherever a road
+   * that keeps its grade comes within eight metres (a junction or a crossing meets it at that road's level), and faded
+   * over a bridge's approaches (they grade to its deck as before). Absent: the path grades as before, and a map that lifts
+   * no path builds its terrain as before.
+   */
+  crownLiftM?: number;
+  /** The crown lift's ramp toward a road that keeps its grade (m; default 40). */
+  crownRampM?: number;
 }
 /** The road layer's class codes (R): 0 the map's own road. */
 const ROAD_SURFACE_CODE: Readonly<Record<RoadSurface, number>> = Object.freeze({ asphalt: 1, cobble: 2, patched: 3, dirt: 4 });
@@ -327,6 +340,20 @@ interface MesaConfig {
 }
 
 interface TerrainSettings {
+  /**
+   * The map-revival lane (2026-10-06, Tidegate Polders' molenbergen): built mounds raised over the finished ground — a
+   * level crest `height` metres over the ground at the centre out to `crestR`, then a batter to the foot at `baseR`,
+   * its shoulder and toe rounded — last, on final queries only, after the water's banks, the roads and the pads: a
+   * landform beside water is graded back toward the waterline by its lake's fitted bank, and would widen that bank.
+   */
+  mounds?: readonly { x: number; z: number; crestR: number; baseR: number; height: number }[];
+  /**
+   * The map-revival lane (2026-10-07, Tidegate Polders step 5; canals.ts): canals as polylines, each with a width, one
+   * water level and a bank or ditch profile — carved on final queries, after every constraint and before the mounds, a
+   * road keeping its ground over each (a culvert); their water is liquid wetness from bank to bank, so the shallow-water
+   * sheet lies on it at the level. Unset: no query calls in.
+   */
+  canals?: readonly CanalConfig[];
   /** Dry viaducts: deck and approaches share one support plane with collision/navigation. */
   bridges?: readonly { x: number; z: number; yawDeg: number; spanM: number; widthM: number; approachM: number; route: number }[];
   hillScale: number;
@@ -1116,6 +1143,22 @@ function segDist(
   return { d: Math.sqrt(ex * ex + ez * ez), t };
 }
 
+/**
+ * The built mounds (TerrainSettings.mounds): each blends the ground to its level crest, the batter between the crest and
+ * the foot straight with its shoulder and toe rounded over an eighth of the run each (landformGeology.ts 'dyke').
+ */
+function raiseMounds(x: number, z: number, h: number,
+  mounds: readonly { x: number; z: number; crestR: number; baseR: number }[], crestYs: Float64Array): number {
+  for (let i = 0; i < mounds.length; i++) {
+    const m = mounds[i], d = Math.hypot(x - m.x, z - m.z);
+    if (d >= m.baseR) continue;
+    const t = d <= m.crestR ? 0 : (d - m.crestR) / Math.max(0.01, m.baseR - m.crestR), r = 0.125, k = 1 / (1 - r);
+    const w = t < r ? 1 - k * t * t / (2 * r) : t > 1 - r ? k * (1 - t) * (1 - t) / (2 * r) : 1 - k * (r / 2 + (t - r));
+    h += (crestYs[i] - h) * w;
+  }
+  return h;
+}
+
 /** Pure analytical height contribution for an authored tactical landform. */
 export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
   phase: 'legacy-support' | 'authored-relief' = 'authored-relief'): number {
@@ -1230,6 +1273,12 @@ function* heightFieldBuildSteps(
   // the open lines past the edge (resolved once the portals stand, from the uncut outland)
   let railOpenLines: (RailOpenLine | null)[] | null = null;
   let railCuttingsOn = false, railCuttingsSuspended = false;
+  // (the map-revival lane, 2026-10-06) the built mounds' crest levels, resolved once the surface is frozen (below); null
+  // until then and on every map without one, so no construction query sees a mound
+  const mounds = T.mounds ?? [];
+  let moundCrestYs: Float64Array | null = null;
+  // (the map-revival lane, 2026-10-07) the canals, compiled once; null on every map without one
+  const compiledCanals = compileCanals(T.canals);
   const _VILLAGE = layout.village;
   const _MARSHES = layout.marshes;
   const terraceZones = prepareTerraceZones(T.terraces);
@@ -1428,6 +1477,13 @@ function* heightFieldBuildSteps(
   let gSegIdx: Int16Array | null = new Int16Array(GN * GN);
   let gSegT: Float32Array | null = new Float32Array(GN * GN);
   const gCorridor = new Float32Array(GN * GN);
+  // (the map-revival lane, 2026-10-07; RoadPathStyle.crownLiftM) the crowned banks of the lifted paths: per cell, the
+  // nearest line's lift (its nodes' ramped lifts, interpolated as the elevation is) and its crest's half-width; null on
+  // every map that lifts no path, and in the road placement sampler (placementOnly: the settlement keeps the seats the
+  // original field gave it; the banks are a finished-road law)
+  const crownStyles = !placementOnly && layout.roadStyles?.some((style) => (style?.crownLiftM ?? 0) > 0) ? layout.roadStyles : null;
+  const gRoadLift = crownStyles ? new Float32Array(GN * GN) : null;
+  const gRoadCrest = crownStyles ? new Float32Array(GN * GN) : null;
 
   const roads = layout.roads;
   // Count completed segments, corridor rows, support setup and range rows;
@@ -1726,6 +1782,18 @@ function* heightFieldBuildSteps(
         roadElevation += (bridge.deckY - roadElevation) * bridge.approach;
         h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd)) * (1 - bridge.span);
       } else h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd));
+      // (the map-revival lane, 2026-10-07) a lifted path's crowned bank over the graded plane: the crest to the
+      // carriageway's edge and its verge, the shoulders down over six metres; a bridge's approaches grade to its deck
+      // as before (the lift fades with the approach, and is nil on the span); the bank runs out from 400 m to the square's
+      // 430 m line, so a road leaves the field on the grade every road leaves it on
+      if (gRoadLift) {
+        const lift = sampleHeightGridCell(gRoadLift, GN, gridIndex, gridFx, gridFz)
+          * (1 - smoothstep(400, 430, Math.max(Math.abs(x), Math.abs(z))));
+        if (lift > 0) {
+          const crest = sampleHeightGridCell(gRoadCrest!, GN, gridIndex, gridFx, gridFz);
+          h += lift * (1 - smoothstep(crest, crest + 6, rd)) * (bridgeDecks.length ? 1 - bridgeTermsAt(x, z).approach : 1);
+        }
+      }
     }
     const detailed = applyRoadShoulderDetail(x, z, h, rd, settlementWeight, marshWeight, lakeWetness, padWetness);
     // Dry viaduct abutments cut any sub-metre shoulder noise flush with the
@@ -2219,6 +2287,15 @@ function* heightFieldBuildSteps(
     if (railCuttingsOn && roadsOn && padsOn && !railCuttingsSuspended) {
       h = railCuttingHeight(railCuttings!, railCuttingPortalYs, x, z, h, railOpenLines);
     }
+    // (the map-revival lane, 2026-10-07) the canals carved to their profiles, a road keeping its ground over each (a
+    // culvert: full inside 6 m of its line, fading out by 10 m) except under a bridge's span (the water runs under the
+    // deck), on final queries only
+    if (compiledCanals !== null && roadsOn && padsOn) {
+      const culvert = 1 - smoothstep(6, 10, gridSample(gRoadDist, x, z));
+      h = carveCanals(compiledCanals, x, z, h, liquidDepthM, bridgeDecks.length ? culvert * (1 - bridgeTermsAt(x, z).span) : culvert);
+    }
+    // the built mounds stand last, over every constraint above (final queries only)
+    if (moundCrestYs !== null && roadsOn && padsOn) h = raiseMounds(x, z, h, mounds, moundCrestYs);
     return h;
   }
 
@@ -2392,6 +2469,36 @@ function* heightFieldBuildSteps(
       const s = gSegIdx![i];
       gRoadElev[i] = e[s] + (e[s + 1] - e[s]) * gSegT![i];
     }
+    if (crownStyles) fillRoadCrowns(crownStyles, nodeElev);
+  }
+  /**
+   * The lifted paths' banks (RoadPathStyle.crownLiftM): each node's lift what its graded plane still lacks of the lift over
+   * the ground it crosses (a road already on an embankment as high takes none), ramped toward the roads that keep their
+   * grade.
+   */
+  function fillRoadCrowns(styles: readonly (RoadPathStyle | null)[], elev: readonly (readonly number[])[]): void {
+    const keepsGrade = roads.map((_, r) => !((styles[r]?.crownLiftM ?? 0) > 0));
+    const nodeLift = roads.map((nodes, r) => {
+      const lift = styles[r]?.crownLiftM ?? 0;
+      if (!(lift > 0)) return nodes.map(() => 0);
+      const ramp = styles[r]?.crownRampM ?? 40;
+      return nodes.map(([x, z], i) => {
+        let d = Infinity;
+        for (let q = 0; q < roads.length; q++) {
+          if (!keepsGrade[q]) continue;
+          const other = roads[q];
+          for (let k = 0; k + 1 < other.length; k++) d = Math.min(d, segDist(x, z, other[k][0], other[k][1], other[k + 1][0], other[k + 1][1]).d);
+        }
+        const lacks = clamp(lift - (elev[r][i] - heightAt(x, z, false, false)), 0, lift);
+        return lacks * smoothstep(8, 8 + ramp, d);
+      });
+    });
+    for (let i = 0; i < GN * GN; i++) {
+      if (!(gRoadDist[i] < 1e8)) continue;
+      const r = gSegRoad![i], s = gSegIdx![i], l = nodeLift[r];
+      gRoadLift![i] = l[s] + (l[s + 1] - l[s]) * gSegT![i];
+      gRoadCrest![i] = (styles[r]?.widthM ? clamp(styles[r]!.widthM! / 2, 2, 9) : 3.85) + 1.2;
+    }
   }
   // --- road node elevations: pre-road height sampled + smoothed + junction blend ---
   buildRoadElevationGrid();
@@ -2553,6 +2660,14 @@ function* heightFieldBuildSteps(
     railCuttingsOn = true;
     railOpenLines = railCuttings.map((cut, i) => resolveRailOpenLine(cut, railCuttingPortalYs[i], outlandHeightAt));
   }
+  // the built mounds' crests: the finished ground at each centre (sampled in the final phase; moundCrestYs is still null
+  // here, so no mound sees another) plus its height
+  if (mounds.length) {
+    const phase = landformPhase;
+    landformPhase = 'authored-relief';
+    moundCrestYs = Float64Array.from(mounds, (m) => heightAt(m.x, m.z, true, true) + m.height);
+    landformPhase = phase;
+  }
   // Explicit second phase: all legacy support targets above are frozen.
   // Exact mesh/physics and the existing one-metre live cache share this surface.
   landformPhase = 'authored-relief';
@@ -2690,6 +2805,8 @@ function* heightFieldBuildSteps(
     for (const m of _MARSHES) {
       if (shorelineDistance(m, x, z, 0.65) < 0.65) return T.frozenMarshes ? 'hard' : 'soft';
     }
+    // (the map-revival lane, 2026-10-07) a canal's water drives as a soft lake's
+    if (compiledCanals !== null && canalWetness(compiledCanals, x, z) > 0.5) return T.softLakes ? 'soft' : 'hard';
     return 'medium';
   }
 
@@ -2754,25 +2871,32 @@ function* heightFieldBuildSteps(
       wetness = Math.max(wetness, shorelineWetness(lake, x, z, true));
       if (wetness === 1) break;
     }
-    if (wetness <= 0) return 0;
+    // (the map-revival lane, 2026-10-07) a canal's water, bank to bank, up to a road's culvert: the water starts where the
+    // carve is whole again (10 m off the road's line; the lakes' 14–18 m band would leave a dry trench either side of every
+    // crossing, and inside 10 m the culvert's wall stands over the level)
+    const canalWet = compiledCanals === null ? 0 : canalWetness(compiledCanals, x, z) * (bridgeDecks.length
+      ? Math.max(smoothstep(9.5, 10.5, gridSample(gRoadDist, x, z)), bridgeTermsAt(x, z).span)
+      : smoothstep(9.5, 10.5, gridSample(gRoadDist, x, z)));
+    if (wetness <= 0) return canalWet;
     // Surface heights deliberately yield to these dry height constraints.
     // The identical callback feeds the existing mask bake and wake queries;
     // neither may paint water over the resulting ford/pad ramps.
     // round 61: under a bridge deck the river keeps its wetness — the deck, not a causeway, carries the road
     const roadDry = smoothstep(14, 18, gridSample(gRoadDist, x, z));
     wetness *= bridgeDecks.length ? roadDry + (1 - roadDry) * bridgeTermsAt(x, z).span : roadDry;
-    if (wetness <= 0) return 0;
+    if (wetness <= 0) return canalWet;
     for (const pad of padPts) {
       const dx = x - pad.x, dz = z - pad.z;
       if (dx * dx + dz * dz >= 26 * 26) continue;
       const distance = Math.hypot(dx, dz);
       if (distance < 26) wetness *= smoothstep(22, 26, distance);
     }
-    return wetness;
+    return canalWet > wetness ? canalWet : wetness;
   }
 
   // vegetation/prop exclusion: open water/ice + marsh cores
   function noVeg(x: number, z: number): boolean {
+    if (compiledCanals !== null && inCanal(compiledCanals, x, z)) return true; // the map-revival lane: a canal and its banks' foot
     if (railSpurNoVeg !== null && railSpurNoVeg(x, z)) return true; // round 57: the rail spur's berth
     // round 63: the cutting's floor, cess and faces — the daylight line is read on the ground before the cut
     if (railCuttingsOn && railCuttingExcludes(railCuttings!, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8, railOpenLines)) {

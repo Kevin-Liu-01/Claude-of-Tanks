@@ -87,7 +87,9 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   blackglass: Array.from({ length: 6 }, () => through),
   titan_gorge: [through, through, through, join(0, 2), join(0, 1)],
   skybridge: [through, through, through, join(0, 2), join(0, 1)],
-  polders: [join(1, 3), through, through, through, join(1, 3)],
+  // (2026-10-06, the map-revival lane, Polders step 2) the oxbow lane leaves the north lane on its dyke crest and ends
+  // on the west road north of the oxbow, over the lift bridge
+  polders: [join(1, 3), through, through, through, join(1, 3), join(4, 1)],
   copper_mesa: [through, through, through, through, join(1, 3)],
   // Kestrel Airfield redesign (2026-10-02): the runway road runs edge to edge; each access road climbs from its edge to
   // the runway road; each taxiway half runs from the runway road at the runway's end to the runway road at its centre.

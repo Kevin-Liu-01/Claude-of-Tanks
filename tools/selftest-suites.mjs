@@ -1298,6 +1298,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/landformGeology.selftest.mjs', // 2026-10-03: landform geology, and every smooth landform unchanged
     'src/world/verdantTownPlan.selftest.mjs', // 2026-10-03: Verdant's classic town plan (every planned building on main's plot, the village walls)
     'src/world/townPlans.selftest.mjs', // 2026-10-03: recorded town plans and the carriageway post-pass (each settlement where PR #9's head seated it)
+    'src/world/terrainMounds.selftest.mjs', // 2026-10-07: built mounds (Polders' molenbergen) level on their crests over the finished ground
+    'src/world/canals.selftest.mjs', // 2026-10-07: canals (the shared linear water primitive; Polders' vaart and weteringen) at one level, and every map without one identical to the terrain before it
+    'src/world/roadCrownLift.selftest.mjs', // 2026-10-07: a styled road path's crown lift (Polders' lanes on the dyke crowns), and every map that lifts no path identical to the terrain before it
     'src/world/terrainSurfaceDetail.selftest.mjs',
     'src/world/terraceBenches.selftest.mjs', // 2026-10-07: Orchard's terrace zones cut after the near-field relief, the benches at their levels
     'src/world/terrainMaterialOwnership.selftest.mjs',
@@ -1425,6 +1428,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // trees round 2b (2026-10-03): where trees stand: woodland edges and verges, Wadi Rum's groves, the palms' sites
     'src/world/treeSpacing.selftest.mjs',
     'src/world/hedgeTrees.selftest.mjs',
+    // the trees lane (2026-10-07, wave 205): Polders' woods off its cropped ground, its willow rows along the field boundaries
+    'src/world/polderTrees.selftest.mjs',
     // the trees lane (2026-10-06, wave 178): the landscape-woods hook (a map's woods on its ridges and slopes)
     'src/world/landscapeWoods.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',

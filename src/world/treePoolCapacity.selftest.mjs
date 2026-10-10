@@ -18,6 +18,7 @@ import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
 import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags } from './crownShadowDapple.ts';
 import { treeBiomeArid, treeBiomeOpen, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
 import { TREE_GROWTH_PROFILES } from './treeGrowth.ts';
+import { resolveLandUseProfile } from './landUse.ts';
 import { markShadowOnly, setShadowCasterProfile } from '../engine/renderLayers.ts';
 import { deploymentClearings } from '../sim/matchPlacement.ts';
 
@@ -43,6 +44,8 @@ const dependencies = { THREE, mulberry32, TREE_ARCHETYPES, treeTrunkCollisionRad
   treeBiomeArid, treeBiomeOpen, treeBiomeUpland, treeBiomeWoodSpread,
   // trees round 5: the field law's conifer forms (vegetation.ts coniferForm)
   treeBiomeSlot, TREE_GROWTH_PROFILES,
+  // (2026-10-07) the hedge trees' land use (vegetation.ts plantHedgeTrees), as the authored placement sandbox carries it
+  resolveLandUseProfile,
   // symmetric deployments (modes lane 2026-10-08): the slots' clearings
   deploymentClearings };
 
@@ -57,6 +60,7 @@ function compile(legacy) {
       const FIELD_TREE_MARGIN_M = ${/const FIELD_TREE_MARGIN_M = ([0-9.]+);/.exec(source)[1]};
       const FIELD_TREE_ROAD_VERGE_M = ${/const FIELD_TREE_ROAD_VERGE_M = ([0-9.]+);/.exec(source)[1]};
       const FIELD_TREE_SPACING_M = ${/const FIELD_TREE_SPACING_M = ([0-9.]+);/.exec(source)[1]};
+      const HEDGE_SCAN_M = ${/const HEDGE_SCAN_M = ([0-9.]+);/.exec(source)[1]};
       ${section('  const treeNearIn =', '  let groundCoverBlocked:')}
       const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _qLean = new THREE.Quaternion();
       const _axLean = new THREE.Vector3(), _pv = new THREE.Vector3(), _sv = new THREE.Vector3();

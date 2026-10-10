@@ -17,6 +17,7 @@ import { authoredTreeStations, insideClearPolygon, plannedSiteClearances, redist
 import { SHORELINE_SEGMENTS, shorelineDistance, shorelineRadiusAt } from './shoreline.ts';
 import { treeBiomeArid, treeBiomeOpen, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
 import { TREE_GROWTH_PROFILES } from './treeGrowth.ts';
+import { resolveLandUseProfile } from './landUse.ts';
 import polders from './maps/polders.ts';
 import mangrove from './maps/mangrove.ts';
 import orchard from './maps/orchard.ts';
@@ -34,10 +35,12 @@ assert.ok(start > 0 && end > start && noiseEnd > noiseStart);
 const dependencies = { THREE, mulberry32, treeRichness, TREE_ARCHETYPES, treeTrunkCollisionRadiusM, setCircleShape,
   PLAYABLE_HALF_EXTENT_M, isClearOfSpawns, createStructureClearances, excludeStructureVegetation,
   DESTRUCTIBLE_BUILDING_TYPES, redistributeAuthoredTrees, placedStructureClearances,
+  // the trees lane (2026-10-07): the hedge trees the authored rows came too close to are dropped after the rows
+  excludeVegetation,
   // trees round 2b (2026-10-03): the hyper-arid places' groves (vegetation.ts placeTreeClusters)
   treeBiomeArid, treeBiomeOpen, treeBiomeUpland, treeBiomeWoodSpread,
   // trees round 5: the field law's conifer forms (vegetation.ts coniferForm)
-  treeBiomeSlot, TREE_GROWTH_PROFILES,
+  treeBiomeSlot, TREE_GROWTH_PROFILES, resolveLandUseProfile,
   // trees lane (2026-10-05): an opted-in map's stands inside its settlement rect (vegetation.ts authoredInSettlement)
   insideClearPolygon, plannedSiteClearances,
   // symmetric deployments (modes lane 2026-10-08): the slots' clearings, the trees in them dropped after placement
@@ -50,6 +53,7 @@ const builder = new Function(...Object.keys(dependencies), `return ${stripTypeSc
   const FIELD_TREE_MARGIN_M = ${/const FIELD_TREE_MARGIN_M = ([0-9.]+);/.exec(source)[1]};
   const FIELD_TREE_ROAD_VERGE_M = ${/const FIELD_TREE_ROAD_VERGE_M = ([0-9.]+);/.exec(source)[1]};
   const FIELD_TREE_SPACING_M = ${/const FIELD_TREE_SPACING_M = ([0-9.]+);/.exec(source)[1]};
+  const HEDGE_SCAN_M = ${/const HEDGE_SCAN_M = ([0-9.]+);/.exec(source)[1]};
   const veg = { parks: null, palettes: {}, avoid: null, ...cfg.vegetation };
   const speciesList = veg.species, treeGeo = Object.fromEntries(speciesList.map(sp => [sp, true]));
   const L = heightField._layout, v = L.village, noVeg = heightField._noVeg;
@@ -168,10 +172,35 @@ function nearestBankMetres(lakes, point) {
   return distance;
 }
 
+/**
+ * The trees lane (2026-10-07, mr4's Polders steps 6 and 7): on a map with hedge trees the rows drop the hedge trees they
+ * come within a field tree's spacing of (vegetation.ts, after redistributeAuthoredTrees), which the map without rows
+ * keeps. The parity below holds against the map without rows less exactly those: the hedge trees within that spacing of a
+ * tree the rows moved (onto a station or onto a donor's old ground), as many as the rows' build counts.
+ */
+function dropHedgeLikeRows(before, after) {
+  const refused = after.group.userData.hedgeTrees?.refused?.authored ?? 0;
+  if (!before.group.userData.hedgeTrees) { assert.equal(refused, 0); return 0; }
+  const firstHedge = before.trees.findIndex((t) => t.hedgeRow), base = firstHedge < 0 ? before.trees.length : firstHedge;
+  assert.ok(after.trees.slice(base).every((t) => t.hedgeRow) && !after.trees.slice(0, base).some((t) => t.hedgeRow),
+    'the hedge trees come last in both builds');
+  const moved = [];
+  for (let i = 0; i < base; i++) {
+    const a = before.trees[i], b = after.trees[i];
+    if (a.x !== b.x || a.z !== b.z) moved.push(b);
+  }
+  const spacing = Number(/const FIELD_TREE_SPACING_M = ([0-9.]+);/.exec(source)[1]);
+  const dropped = excludeVegetation(before.trees, before.treeObstacles, before.concealers,
+    (t) => t.hedgeRow === true && moved.some((m) => Math.hypot(m.x - t.x, m.z - t.z) < spacing));
+  assert.equal(dropped, refused, 'the rows drop exactly the hedge trees within a field tree\'s spacing of a tree they moved');
+  return dropped;
+}
+
 for (const config of [polders, mangrove, orchard]) for (const seed of config.id === 'polders' ? [1337, 2049, 7719] : [1337, 2025]) {
   const hf = createHeightField(seed, config);
   const before = build(hf, { ...config, vegetation: { ...config.vegetation, authoredTrees: undefined } });
   const after = build(hf, config), replay = build(hf, config);
+  const hedgeDropped = dropHedgeLikeRows(before, after);
   assert.equal(after.nextRoll, before.nextRoll, `${config.id}: no placement RNG changes`);
   assert.equal(after.trees.length, before.trees.length);
   assert.equal(after.treeObstacles.length, before.treeObstacles.length);
@@ -255,7 +284,7 @@ for (const config of [polders, mangrove, orchard]) for (const seed of config.id 
   assert.equal(life.treeCrushAnims.length, 0);
   assert.deepEqual(after.trees.map(tree => tree.mat.elements), replay.trees.map(tree => tree.mat.elements), 'reset preserves the relocated upright pose');
   console.log(JSON.stringify({ map: config.id, seed, actualTrees: after.trees.length,
-    actualTrunks: after.treeObstacles.length, onePoolBytes: allocate(after.trees), moved, features: receipts }));
+    actualTrunks: after.treeObstacles.length, onePoolBytes: allocate(after.trees), moved, hedgeDropped, features: receipts }));
 }
 // Trees lane (2026-10-05, Kestrel's dispersal stands; vegetation.ts authoredInSettlement): a map that opts in stands its
 // authored stands inside its settlement rect — on Kestrel the whole plateau — clear of its planned sites and of the
