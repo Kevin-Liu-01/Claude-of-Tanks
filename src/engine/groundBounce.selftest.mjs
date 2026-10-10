@@ -122,8 +122,9 @@ assert.ok(GROUND_BOUNCE_GLSL_TERM.includes('if ( dot( uCotBounceRad, vec3( 1.0 )
 // 7. lighting.ts wiring
 const lighting = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
 assert.match(lighting, /iblIrradiance \*= cotAmbDim;\n\$\{GROUND_BOUNCE_GLSL_TERM\}\n\t#endif/, 'the term sits inside the RE_IndirectDiffuse block after the ambient dims');
-// (2026-10-03: the cloud shade's varying follows the declarations, cloudShadeMap.ts)
-assert.match(lighting, /THREE\.ShaderChunk\.lights_pars_begin = `#if defined\( USE_CSM \) && defined\( CSM_CASCADES \)\n\$\{GROUND_BOUNCE_GLSL_PARS\}\n#endif\n#if defined\( COT_CLOUD_SHADE \) && defined\( USE_SHADOWMAP \)\nvarying float vCotCloudSun;\n#endif\n\$\{THREE\.ShaderChunk\.lights_pars_begin\}`;/,
+// (2026-10-03: the cloud shade's varying follows the declarations, cloudShadeMap.ts; 2026-10-10, the shadows lane r2: and
+// the cascades' seam law's uniform joins the CSM declarations, shadowCascadeLayout.ts)
+assert.match(lighting, /THREE\.ShaderChunk\.lights_pars_begin = `#if defined\( USE_CSM \) && defined\( CSM_CASCADES \)\n\$\{GROUND_BOUNCE_GLSL_PARS\}\nuniform float uCotCsmFadeK;\n#endif\n#if defined\( COT_CLOUD_SHADE \) && defined\( USE_SHADOWMAP \)\nvarying float vCotCloudSun;\n#endif\n\$\{THREE\.ShaderChunk\.lights_pars_begin\}`;/,
   'the declarations precede every CSM fragment');
 assert.match(lighting, /csm\.setupMaterial\(mat\);[\s\S]{0,900}?\{\s*\/\/ Round 69: the ground-bounce uniforms ride on every CSM registration \(groundBounce\.ts\)\.\s*const csmHook = mat\.onBeforeCompile;\s*mat\.onBeforeCompile = \(shader, rdr\) => \{\s*csmHook\(shader, rdr\);\s*attachGroundBounceUniforms\(shader, groundBounceUniforms\);\s*if \(extraHook\) extraHook\(shader, rdr\);/,
   'every CSM registration attaches the uniforms after the CSM hook and before the caller\'s hook');

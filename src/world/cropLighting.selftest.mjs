@@ -33,10 +33,13 @@ const setupSource = declaration(lightingSource, 'setupShadowMaterial', true);
 // (2026-10-08: and the material's own share of the sky light — the real binding, materialEnvIntensity.ts)
 const createSetupWith = new Function('csm', 'buildCoverageMipmaps', 'attachGroundBounceUniforms', 'groundBounceUniforms',
   'cloudShadeOn', 'attachCloudShadeUniforms', 'cloudShadeUniforms', 'programTextureUnits', 'physicalParsWithoutDfgLut', 'THREE',
-  'cascadeCount', 'scene', 'CLOUD_SHADE_SAMPLER_BUDGET', 'bindMaterialEnvIntensity',
+  'cascadeCount', 'scene', 'CLOUD_SHADE_SAMPLER_BUDGET', 'bindMaterialEnvIntensity', 'csmFadeKUniform',
+  'pcssUniform', 'pcssTexelUniform', 'pcssRUniform', 'pcssUUniform',
   `${stripTypeScriptTypes(`const owner = { ${setupSource} };`)}\nreturn owner.setupShadowMaterial;`);
+// (2026-10-10, the shadows lane r2: the cascades' seam law's shared uniform — shadowCascadeLayout.ts — an inert stub here)
 const createSetup = (csmArg, mips, attach, bounce) => createSetupWith(csmArg, mips, attach, bounce, false, () => {}, {},
-  () => ({ fragment: 0, vertex: 0, total: 0, dfg: false }), () => null, THREE, 3, {}, 16, bindMaterialEnvIntensity);
+  () => ({ fragment: 0, vertex: 0, total: 0, dfg: false }), () => null, THREE, 3, {}, 16, bindMaterialEnvIntensity, { value: 0 },
+  { value: new THREE.Vector4() }, { value: new THREE.Vector4() }, { value: new THREE.Vector3() }, { value: new THREE.Vector3() });
 function cropApi(group, engineCtx, finalize = finalizeSource, three = THREE) {
   return new Function('THREE', 'mergeGeometries', 'group', 'engineCtx',
     `${stripTypeScriptTypes(`${replaceSource}\n${hookSource}\n${finalize}`)}
@@ -152,7 +155,9 @@ try {
   assert.strictEqual(f.csm.shaders.get(f.mesh.material), shader, 'real CSM retains the patched shader owner');
   assert.deepEqual(shader.uniforms.CSM_cascades.value.map(v => v.toArray()), [[0, .1], [.1, .4], [.4, 1]]);
   assert.equal(shader.uniforms.cameraNear.value, .5); assert.equal(shader.uniforms.shadowFar.value, 800);
-  assert.deepEqual(Object.keys(shader.uniforms).sort(), ['CSM_cascades', 'cameraNear', 'shadowFar']);
+  // (2026-10-10, the shadows lane r2: and the cascades' seam law's shared uniform; r3: the contact-hardening law's)
+  assert.deepEqual(Object.keys(shader.uniforms).sort(), ['CSM_cascades', 'cameraNear', 'shadowFar', 'uCotCsmFadeK', 'uCotPcss',
+    'uCotPcssR', 'uCotPcssTexel', 'uCotPcssU']);
   const unrelated = new THREE.MeshStandardMaterial();
   try {
     f.setup(unrelated, () => {});
