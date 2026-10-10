@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { HARDSTAND_PAINT_SPILL_M, createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask } from './hardstandSurface.ts';
+import { HARDSTAND_PAINT_SPILL_M, HARDSTAND_TRAMPLE_COVER, HARDSTAND_TRAMPLE_M, createHardstandPaintCover, createHardstandVegetationExclusion,
+  stampHardstandRoadGrids, stampHardstandRoadMask, stampHardstandTrampleMask } from './hardstandSurface.ts';
 import { createHeightField } from './terrain.ts';
 import airfield from './maps/airfield.ts';
 
@@ -81,6 +82,40 @@ for (let z = -80; z <= 80; z += 2) for (let x = -16; x <= 16; x += 2) {
     if (out >= 2 && out < 4) { ring++; if (px[at] > 0) spilled++; }
   }
   assert.ok(spilled > ring * 0.1 && spilled < ring * 0.9, `the outline wanders: ${spilled} of ${ring} pixels 2-4 m out painted`);
+  // roads lane R3 (2026-10-10; wave 341: "every pad is a pasted polygon ... It needs spill, trampled margins, and tracks that
+  // ... leave across grass, sand or snow"; the coordinator: keep the core fully paved and add an irregular outward margin —
+  // the rule this receipt keeps is the paint's, so the margin is asserted on its own terms, outward only): the trampled
+  // margin rides in R at a low cover past the paint, 2–5 m out by its own wandering reach, and nowhere else
+  const before = px.slice();
+  const withG = px.slice(); for (let i = 0; i < withG.length; i += 4) { withG[i + 1] = 91; withG[i + 2] = 17; withG[i + 3] = 203; }
+  const gBefore = withG.slice();
+  stampHardstandTrampleMask([big], px, 512, 1024);
+  stampHardstandTrampleMask([big], withG, 512, 1024);
+  const cap = HARDSTAND_TRAMPLE_COVER * 255;
+  let lowered = 0, touched = 0;
+  const rings = {};
+  for (let iz = 0; iz < 512; iz++) for (let ix = 0; ix < 512; ix++) {
+    const x = (ix + 0.5) * 2 - 512, z = (iz + 0.5) * 2 - 512, at = (iz * 512 + ix) * 4;
+    const out = Math.max(Math.abs(x), Math.abs(z)) - 80;
+    if (px[at] < before[at]) lowered++;
+    if (withG[at + 1] !== gBefore[at + 1] || withG[at + 2] !== gBefore[at + 2] || withG[at + 3] !== gBefore[at + 3]) touched++;
+    if (out <= -1) assert.equal(px[at], 255, 'the apron stays fully paved under its margin');
+    if (px[at] > before[at]) assert.ok(px[at] <= cap + 1, `the margin is a low cover only (${px[at]} at ${out.toFixed(1)} m out)`);
+    if (out >= HARDSTAND_PAINT_SPILL_M + 1.25 + HARDSTAND_TRAMPLE_M) assert.equal(px[at], 0, 'nothing past the margin\'s reach');
+    if (out >= 0 && out < 10) { const r = rings[Math.floor(out / 2)] ??= { n: 0, paint: 0, margin: 0 }; r.n++; if (before[at] > 0) r.paint++; if (px[at] > 0) r.margin++; }
+  }
+  const share = (k, key) => rings[k][key] / rings[k].n;
+  assert.equal(lowered, 0, 'the margin only raises the cover — outward and additive');
+  assert.equal(touched, 0, 'and leaves the distance, wetness and wear channels alone');
+  // past the paint's last texels (2–4 m out, where the paint holds a third) the margin covers the ground; it then wanders out,
+  // ragged, 4–8 m — not a second ruled outline
+  assert.ok(share(1, 'paint') < 0.6 && share(1, 'margin') > 0.95, `the margin closes round the paint's tongues (2–4 m out: paint ${share(1, 'paint').toFixed(2)}, margin ${share(1, 'margin').toFixed(2)})`);
+  assert.ok(share(2, 'paint') < 0.1 && share(2, 'margin') > 0.3 && share(2, 'margin') < 0.95, `4–6 m out the margin wanders (${share(2, 'margin').toFixed(2)})`);
+  assert.ok(share(3, 'margin') > 0.02 && share(3, 'margin') < 0.5, `6–8 m out its last tongues (${share(3, 'margin').toFixed(2)})`);
+  assert.ok(cap < 0.15 * 255, 'below the paving\'s 0.15 threshold (terrain.ts paveCore) and the apron\'s 0.30 (apronK): no surface grows');
+  const cover = createHardstandPaintCover([big]);
+  assert.ok(cover(80 + HARDSTAND_PAINT_SPILL_M + HARDSTAND_TRAMPLE_M - 0.5, 0) && !cover(80 + HARDSTAND_PAINT_SPILL_M + 1.25 + HARDSTAND_TRAMPLE_M + 0.5, 0),
+    'the paint cover the village receipt protects reaches over the margin');
 }
 // Kestrel Airfield (redesigned 2026-10-02, maps lane B): the runway runs east-west across the field's centre (yaw 90,
 // its length along x), and the level holding apron where the taxiways meet it carries the zone-control disc and the
@@ -187,8 +222,15 @@ assert.equal(lakeField._noVeg(300, 340), false);
   const { readFileSync } = await import('node:fs');
   const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
   assert.ok(terrain.includes('float padK = (1.0 - smoothstep(0.05, 0.25, mk.g)) * (1.0 - step(0.5, gRoadTex));')
-    && terrain.includes('float apronK = smoothstep(0.50, 0.90, mk.r) * padK;') && terrain.includes('float apronRim = smoothstep(0.04, 0.50, mk.r) * padK;'),
-    'a pad is the stamp\'s coverage away from any centreline, on an unpaved map — its body and its feather');
+    && terrain.includes('float apronK = smoothstep(0.50, 0.90, mk.r) * padK;')
+    && terrain.includes('float apronRim = smoothstep(uLandTier > 0.5 ? 0.015 : 0.04, uLandTier > 0.5 ? 0.11 : 0.50, mk.r) * padK;'),
+    'a pad is the stamp\'s coverage away from any centreline, on an unpaved map — its body and its feather (R3: past the Low tier its rim takes the trampled margin)');
+  // (R3) the margin is stamped after the strand's soil, which skips R: the soil fringe is painted as before
+  const shoreAt = terrain.indexOf('stampShoreDirtMask(px, dist, s, MAP_SIZE, shoreDirtStart);');
+  const trampleAt = terrain.indexOf('if (layout.terrain.hardstands?.length) stampHardstandTrampleMask(layout.terrain.hardstands, px, s, MAP_SIZE);');
+  assert.ok(shoreAt > 0 && trampleAt > shoreAt, 'the trampled margin after the shore stamp');
+  assert.ok(terrain.includes('padTrackW = max(apronK, 0.85 * apronRim);') && terrain.includes('float padLiftK = workedR && uReduxD.y < 1.5 ? 0.9 * apronK : 0.0;'),
+    'R3: the prints run out across the margin; a pad\'s earth lifted to a shade over the field (no charcoal slab)');
   assert.ok(terrain.includes('shoulder * uShoulderDirt * (1.0 - apronRim)'), 'the shoulder\'s dirt stands down over the whole pad');
   assert.ok(terrain.includes('float dW = max(roadCore, apronK) * 0.9 * (1.0 - gRoadTex);'),
     'the pad takes the carriageway\'s packed ground — earth, or on a snow map packed snow');

@@ -32,7 +32,7 @@ import { shorelineDistance, shorelineRadiusAt, shorelineWetness, sampleShoreline
 import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, LIQUID_MARSH_CORE, LIQUID_MARSH_STRIDE } from './liquidMarshSurface.ts';
 import { composeLakeHeight, type LakeHeightResult } from './lakeHeightComposition.ts';
 import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness } from './liquidMarshIndex.ts';
-import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
+import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask, stampHardstandTrampleMask, type HardstandConfig } from './hardstandSurface.ts';
 import {
   RAIL_OPEN_RANGES_BACK_M, RAIL_OPEN_RUN_M, createRailSpurExclusion, railCuttingExcludes, railCuttingFaceSeedAt, railCuttingHeight,
   railCuttingSeatWeight, resolveRailCuttings, resolveRailOpenLine,
@@ -3787,6 +3787,8 @@ export function makeMaskTexture(
     // touching the height field's separate persistent road/water queries.
     stampShoreDirtMask(px, dist, s, MAP_SIZE, shoreDirtStart);
   }
+  // roads lane R3 (2026-10-10): the pads' trampled margins, after the strand's soil (which skips R) — R only, outward only
+  if (layout.terrain.hardstands?.length) stampHardstandTrampleMask(layout.terrain.hardstands, px, s, MAP_SIZE);
   if (layout.terrain.workedGround?.length) {
     stampWorkedGroundMask(px, s, MAP_SIZE, layout.terrain.workedGround, seedNoi);
   }
@@ -4851,7 +4853,9 @@ void splatCompute() {
   // paint (its centreline's G)
   float padK = (1.0 - smoothstep(0.05, 0.25, mk.g)) * (1.0 - step(0.5, gRoadTex));
   float apronK = smoothstep(0.50, 0.90, mk.r) * padK;
-  float apronRim = smoothstep(0.04, 0.50, mk.r) * padK;
+  // (R3: past the Low tier the rim takes the trampled margin the stamp lays 2–5 m past the paint — hardstandSurface.ts
+  // stampHardstandTrampleMask, R 0.13 at the paint's edge: the shoulder's dirt stands down over it, the material tramples it)
+  float apronRim = smoothstep(uLandTier > 0.5 ? 0.015 : 0.04, uLandTier > 0.5 ? 0.11 : 0.50, mk.r) * padK;
   // (2026-10-07, wave 235's Monsoon chase: "a flat, uniform brown dirt plane … cut by a ruler-straight edge against a flat
   // green strip"; Whiteout's "no … tracks") a pad's edge is broken into the turf in tongues within its feather (the
   // stamp's own spill already wanders 0–4 m out), and the pad is worked ground: the tracks of the vehicles that formed up
@@ -4861,11 +4865,11 @@ void splatCompute() {
   apronK = smoothstep(0.30, 0.85, mk.r + (apronN - 0.5) * 0.60 * tileVis(4.8)) * padK; // (into the stamp's spill: its tongues)
   // (R3, wave 341: "every pad is a pasted polygon with a feathered or ruler-straight outline") past the Low tier its edge
   // also wanders by metres over tens of metres (field b at 0.035), and the prints run out over the trampled margin round it
-  // (padTrackW: the pad and four fifths of its spill)
+  // (padTrackW: the pad, and its trampled margin at most of their strength)
   float padTrackW = apronK;
   if (uLandTier > 0.5 && padK > 0.003) {
     apronK = smoothstep(0.30, 0.85, mk.r + (apronN - 0.5) * 0.60 * tileVis(4.8) + (nz(uv, 0.035, vec2(0.21, 0.83)).g - 0.5) * 0.45) * padK;
-    padTrackW = mix(apronK, max(apronK, apronRim), 0.8);
+    padTrackW = max(apronK, 0.85 * apronRim);
   }
   float padRut = 0.0;
   float padBerm = 0.0, padBar = 0.0; // (R3: the berms pushed up beside the prints, the grousers' bars across them, -1..1)
@@ -6782,13 +6786,20 @@ void splatCompute() {
       // R3 (2026-10-10, the gauntlet's Steppe: "dark, damp-looking soil runs through tinder-dry grass. Match soil tone to
       // the season"; every map: "paler packed and dusty"): a dry road's dust — its tone lifted to the field's (the base
       // layer's mean: the floor above reads the soil the shoulder lays under the carriageway) and greyed to a warm dust
-      // (and wave 341's pads, Frontier's "near-black tar or charcoal slabs": a pad is compacted, dusty ground, lifted at
-      // least two thirds of the way)
-      float dustK = workedR ? max(uRoadSurfC.x, 0.65 * apronK) : 0.0;
-      if (dustK > 0.0) {
+      // (and wave 341's pads, Frontier's "near-black tar or charcoal slabs ... use a real worn hardstand or compacted earth
+      // tone": the lab's pads still sat a third below the field) a pad is compacted, dusty ground — lifted nine tenths of the
+      // way to a shade over the field's own tone, its earth greyed a third toward a warm dust (a snow pad keeps its snow)
+      float dustK = workedR ? uRoadSurfC.x : 0.0;
+      float padLiftK = workedR && uReduxD.y < 1.5 ? 0.9 * apronK : 0.0;
+      if (dustK + padLiftK > 0.0) {
         float fieldL = dot(uMeanG.rgb, vec3(0.34, 0.45, 0.21)), rL = max(dot(roadCol, vec3(0.34, 0.45, 0.21)), 1e-4);
         vec3 lifted = roadCol * clamp(fieldL * 1.05 / rL, 1.0, 2.2);
         roadCol = mix(roadCol, mix(lifted, vec3(dot(lifted, vec3(0.34, 0.45, 0.21))) * vec3(1.06, 1.0, 0.86), 0.45), dustK);
+        if (padLiftK > 0.0) {
+          rL = max(dot(roadCol, vec3(0.34, 0.45, 0.21)), 1e-4);
+          vec3 padC = roadCol * clamp(fieldL * 1.12 / rL, 1.0, 2.6);
+          roadCol = mix(roadCol, mix(padC, vec3(dot(padC, vec3(0.34, 0.45, 0.21))) * vec3(1.07, 1.0, 0.84), 0.33), padLiftK);
+        }
       }
       // R3 (Redrock: "saturated terracotta clay ribbons stand in for Wadi Rum's braided, paler sand tracks"): a braided
       // track is the field's own ground worn — its sand, a shade paler where the traffic packs it (and the band's soil laid
@@ -7106,6 +7117,9 @@ void splatCompute() {
         a.rgb = mix(a.rgb, uMeanD.rgb * uRoadSurfD.rgb * 0.95, smoothstep(0.55, 0.75, tN + 0.25 * trampleW) * trampleW * 0.7);
       }
       a.rgb *= 1.0 - (uReduxD.y > 1.5 ? 0.10 : 0.12) * padRut * trampleW + 0.05 * padBerm * trampleW;
+      // (the tracks leave across it: on turf their floors cut through the sward to the soil, on sand scuffed paler)
+      if (uReduxD.y < 0.5) a.rgb = mix(a.rgb, uMeanD.rgb * uRoadSurfD.rgb * 0.9, padRut * trampleW * 0.55);
+      else if (uReduxD.y < 1.5) a.rgb *= 1.0 + 0.06 * padRut * trampleW;
     }
     // Keep compacted wheel lanes legible without painting near-black marks
     // into the road albedo. The previous 55% dirt-road multiplier turned the

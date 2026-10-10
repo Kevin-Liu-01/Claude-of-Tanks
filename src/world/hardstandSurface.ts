@@ -170,6 +170,47 @@ export function stampHardstandRoadMask(
 }
 
 /**
+ * Roads lane R3 (2026-10-10; wave 341's pads: "every pad is a pasted polygon with a feathered or ruler-straight outline. It
+ * needs spill, trampled margins, and tracks that enter from the approach roads and leave across grass, sand or snow"; the
+ * coordinator: keep the core fully paved, add an irregular outward margin): the ground the traffic tramples round an apron,
+ * 2–5 m past its painted spill and feather (a reach wandering by its own field), carried in the road mask's R at a low cover
+ * — HARDSTAND_TRAMPLE_COVER over the first third of the reach, easing to nothing at its end. Below the paving's 0.15 threshold and the
+ * apron's body (terrain.ts apronK from 0.30), so no paved surface or apron grows; the material draws it as trampled sward,
+ * worn soil, scuffed sand or trodden snow with the pad's tracks running out across it (apronRim past the Low tier).
+ * Outward only and additive: R only rises, never past its value, and G, B and A are untouched. Run after the shore stamp,
+ * so the strand's soil fringe (it skips R) is painted as before.
+ */
+export const HARDSTAND_TRAMPLE_M = 5;
+/** The trampled margin's cover in the mask's R at the paint's edge (terrain.ts reads 0.015–0.11 as the margin). */
+export const HARDSTAND_TRAMPLE_COVER = 0.13;
+function trampleReach(x: number, z: number): number {
+  const n = paintNoise(x / 13 - 21.7, z / 13 + 5.3) * 0.6 + paintNoise(x / 5.1 + 9.4, z / 5.1 - 15.2) * 0.4;
+  return 2 + (HARDSTAND_TRAMPLE_M - 2) * smooth(0.30, 0.70, n);
+}
+export function stampHardstandTrampleMask(
+  strips: readonly HardstandConfig[],
+  pixels: Uint8ClampedArray,
+  size: number,
+  mapSize: number,
+): void {
+  const step = mapSize / size, halfMap = mapSize * 0.5;
+  for (const strip of prepare(strips, () => 0)) {
+    const [x0, x1, z0, z1] = bounds(strip, step, size, halfMap, 2 + HARDSTAND_PAINT_SPILL_M + 1.25 + HARDSTAND_TRAMPLE_M);
+    const cover = strip.paint?.cover ?? 1;
+    for (let iz = z0; iz <= z1; iz++) for (let ix = x0; ix <= x1; ix++) {
+      const x = (ix + 0.5) * step - halfMap, z = (iz + 0.5) * step - halfMap;
+      const d = signedDistance(strip, x, z) - paintSpill(x, z) - 1.25; // (past the paint's feather)
+      if (d < -1.5) continue; // (inside the paint: its own cover)
+      const reach = trampleReach(x, z);
+      if (d >= reach) continue;
+      const m = HARDSTAND_TRAMPLE_COVER * cover * (1 - smooth(0.35 * reach, reach, d)) * 255;
+      const at = (iz * size + ix) * 4;
+      if (m > pixels[at]) pixels[at] = m;
+    }
+  }
+}
+
+/**
  * Construction/placement exclusion for the painted apron, not the combined
  * road network. The 2 m rounded shoulder covers the mask's 1.25 m feather.
  */
@@ -194,12 +235,12 @@ export function createHardstandVegetationExclusion(
   };
 }
 
-/** Whether (x, z) lies under any apron's painted surfacing, its spill included (receipts that tell paved yards from
- * protected roads). */
+/** Whether (x, z) lies under any apron's painted surfacing, its spill and its trampled margin included (receipts that
+ * tell paved yards from protected roads). */
 export function createHardstandPaintCover(
   strips: readonly HardstandConfig[] | undefined,
 ): ((x: number, z: number) => boolean) | null {
   if (!strips?.length) return null;
   const planes = prepare(strips, () => 0);
-  return (x, z) => planes.some((strip) => signedDistance(strip, x, z) < HARDSTAND_PAINT_SPILL_M + 1.25);
+  return (x, z) => planes.some((strip) => signedDistance(strip, x, z) < HARDSTAND_PAINT_SPILL_M + 1.25 + HARDSTAND_TRAMPLE_M);
 }
