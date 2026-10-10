@@ -6848,7 +6848,7 @@ void splatCompute() {
           // one in five blue-grey, one in eight rose), its top domed and worn round, paler and smoother in the wheel
           // paths, some sunk or tilted, one in ninety lost; the joints sand and grit, mossed where no wheel runs
           vec2 sq = rq;
-          if (uPaveClass.z > 0.5) { float cc = (fract(sq.y / 2.6) - 0.5) * 2.6; sq.x += 1.7 - sqrt(2.89 - cc * cc); }
+          if (mod(uPaveClass.z, 2.0) > 0.5) { float cc = (fract(sq.y / 2.6) - 0.5) * 2.6; sq.x += 1.7 - sqrt(2.89 - cc * cc); }
           float course = sq.x / 0.17, ci = floor(course);
           vec2 cr = cellHash2(vec2(ci, 17.0));
           float swd = 0.17 + 0.11 * cr.y;
@@ -6862,14 +6862,15 @@ void splatCompute() {
           vec3 stone = vec3(0.172, 0.168, 0.160) * (0.74 + 0.52 * sh.x);
           stone = mix(stone, stone * vec3(0.78, 0.84, 0.95), step(0.80, fract(sh.x * 5.13 + sh.y)));
           stone = mix(stone, stone * vec3(1.12, 0.98, 0.92), step(0.875, fract(sh.y * 3.71 + sh.x)));
-          stone *= 1.0 + 0.10 * wheelW;
+          stone *= 1.0 - 0.12 * wheelW; // (wave 333: worn wheel tracks darker, grimed with rubber and oil)
           float mossy = (1.0 - wheelW) * smoothstep(0.45, 0.75, nz(uv, 0.08, vec2(0.21, 0.63)).g);
           vec3 jointC = mix(mix(stone * 0.42, uMeanD.rgb * 0.55, 0.5), uMeanG.rgb * 0.62, mossy * 0.6);
           float lost = step(0.989, sh.y) * sv;
-          vec3 settMean = mix(vec3(0.150, 0.147, 0.140), jointC, 0.22) * (1.0 + 0.08 * wheelW);
+          vec3 settMean = mix(vec3(0.150, 0.147, 0.140), jointC, 0.22) * (1.0 - 0.10 * wheelW);
           vec3 col = mix(settMean, mix(stone, jointC, jointS), sv);
           // relaid stretches (a trench filled, a patch reset): rectangles of setts a shade off their neighbours, read at range
           col *= 0.92 + 0.16 * cellHash2(floor(sq / vec2(3.1, 2.3)) + 77.0).x;
+          if (fr) col *= 1.0 - 0.14 * (1.0 - smoothstep(0.0, 0.45, abs(abs(rq.y) - 1.6))) * smoothstep(0.50, 0.78, nz(uv, 0.21, vec2(0.13, 0.71)).g);
           col = mix(col, jointC * 0.6, lost);
           pav = vec4(col, mix(0.86, 0.68, wheelW * (1.0 - jointS)));
           vec2 st2 = vec2(sf.x / 0.17 - 0.5, sf.y / swd - 0.5);
@@ -6959,23 +6960,58 @@ void splatCompute() {
           crk *= tileVis(0.12);
           asph *= 1.0 - 0.55 * crk;
           rough = mix(rough, 0.45, crk * 0.6);
-          float patchRate = (pCls > 2.5 ? 0.38 : 0.10) * uPaveWear.x;
-          vec2 pc = vec2(rq.x / 4.2, rq.y / 2.4), pcI = floor(pc), pcF = fract(pc);
+          // the repairs (wave 333 on Suzhou Creek: the patched style's "large pale rectangles read as pasted blocks"): each a
+          // cut reinstated by hand — an outline that wanders (field b at 1.4: tongues of 0.2–0.7 m), a newer fill darker and
+          // smoother sealed with a thin tar seam, an older one barely off the road's own grey; trench strips along the lanes
+          float patchRate = (pCls > 2.5 ? 0.30 : 0.08) * uPaveWear.x;
+          vec2 cellS = vec2(7.0, 3.2);
+          vec2 pcI = floor(rq / cellS);
           vec2 ph = cellHash2(pcI + vec2(53.0, 7.0));
-          float inPatch = step(ph.x, patchRate);
-          vec2 pe = min(pcF, 1.0 - pcF) * vec2(4.2, 2.4);
-          float seam = (1.0 - smoothstep(0.03, 0.06 + fwP, min(pe.x, pe.y))) * inPatch * tileVis(0.6);
-          asph = mix(asph, ph.y > 0.5 ? asph * 0.80 : mix(asph, vec3(0.15, 0.148, 0.142), 0.55), inPatch);
-          rough = mix(rough, ph.y > 0.5 ? 0.72 : 0.86, inPatch);
-          asph *= 1.0 - 0.40 * seam;
+          float seam = 0.0;
+          if (ph.x < patchRate) {
+            vec2 ph2 = cellHash2(pcI + vec2(11.0, 29.0));
+            vec2 hs = ph2.x > 0.7 ? vec2(2.6 + 0.8 * ph2.y, 0.35 + 0.15 * ph.y) : vec2(0.6 + 1.6 * ph2.y, 0.45 + 0.9 * ph.y);
+            vec2 pc0 = (pcI + 0.5) * cellS + (ph2 - 0.5) * max(cellS - 2.0 * hs, vec2(0.0)) * vec2(1.0, 0.8);
+            vec2 bd = abs(rq - pc0) - hs;
+            float sd = length(max(bd, 0.0)) + min(max(bd.x, bd.y), 0.0) - 0.12;
+            sd += (nz(uv, 1.4, vec2(0.19, 0.73)).g - 0.5) * 0.30 + (nz(uv, 4.1, vec2(0.61, 0.07)).r - 0.5) * 0.06;
+            float inPatch = 1.0 - smoothstep(-0.01, 0.01 + fwP, sd);
+            float newer = step(0.45, ph.y);
+            seam = (1.0 - smoothstep(0.012, 0.024 + fwP, abs(sd))) * tileVis(0.4) * newer;
+            asph = mix(asph, newer > 0.5 ? asph * 0.84 : asph * vec3(1.05, 1.05, 1.03), inPatch);
+            rough = mix(rough, newer > 0.5 ? 0.70 : 0.84, inPatch);
+          }
+          asph *= 1.0 - 0.30 * seam;
           if (pCls > 2.5) {
+            // the round fills of old holes, their edges as ragged as the holes were
             vec2 rci = floor(rq / 6.0);
             vec2 rh = cellHash2(rci + vec2(91.0, 13.0));
             float on = step(rh.y, 0.45 * uPaveWear.x);
             float rr = 0.5 + 0.9 * fract(rh.x * 7.3);
-            float rd = length(rq - (rci + 0.3 + 0.4 * rh) * 6.0);
-            asph = mix(asph, asph * 0.74, on * (1.0 - smoothstep(rr - 0.03, rr + 0.03 + fwP, rd)));
-            asph *= 1.0 - 0.35 * on * (1.0 - smoothstep(0.02, 0.05 + fwP, abs(rd - rr))) * tileVis(0.5);
+            float rd = length(rq - (rci + 0.3 + 0.4 * rh) * 6.0) + (nz(uv, 1.7, vec2(0.43, 0.29)).g - 0.5) * 0.28;
+            asph = mix(asph, asph * 0.84, on * (1.0 - smoothstep(rr - 0.03, rr + 0.03 + fwP, rd)));
+            asph *= 1.0 - 0.22 * on * (1.0 - smoothstep(0.015, 0.035 + fwP, abs(rd - rr))) * tileVis(0.5);
+          }
+          // a tram line down a main street's middle (uPaveClass.z 2: Shanghai's): grooved rails at the standard gauge in a
+          // strip of granite setts, the rail heads polished bright by the wheels, the grooves dark
+          if (fr && uPaveClass.z > 1.5 && gRoadClass < 0.5) {
+            float ay = abs(rq.y);
+            float strip = 1.0 - smoothstep(1.20, 1.24 + fwP, ay);
+            if (strip > 0.0) {
+              float course = rq.x / 0.18, ci = floor(course);
+              float sc = (rq.y + cellHash2(vec2(ci, 5.0)).x * 0.24) / 0.24;
+              vec2 sh = cellHash2(vec2(ci, floor(sc) + 211.0));
+              vec2 sf = vec2(fract(course) * 0.18, fract(sc) * 0.24);
+              float jt = (1.0 - smoothstep(0.008, 0.012 + 0.6 * fwP, min(min(sf.x, 0.18 - sf.x), min(sf.y, 0.24 - sf.y)))) * tileVis(0.18);
+              vec3 granite = vec3(0.165, 0.160, 0.152) * (0.80 + 0.40 * sh.x);
+              vec3 stripC = mix(mix(vec3(0.15, 0.146, 0.139), granite, tileVis(0.18)), vec3(0.06, 0.055, 0.05), jt);
+              float rail = 1.0 - smoothstep(0.030, 0.036 + fwP, abs(ay - 0.7175));
+              float groove = (1.0 - smoothstep(0.016, 0.022 + fwP, abs(ay - 0.7175 + 0.052))) * (1.0 - rail);
+              stripC = mix(stripC, vec3(0.36, 0.37, 0.39), rail * tileVis(0.07));
+              stripC = mix(stripC, vec3(0.025, 0.022, 0.020), groove * tileVis(0.05));
+              asph = mix(asph, stripC, strip);
+              rough = mix(rough, mix(mix(0.86, 0.80, wheelW), 0.30, rail), strip);
+            }
           }
           if (fr && uPaveWear.z > 0.0) {
             float mci = floor(rq.x / 34.0);
@@ -7015,6 +7051,20 @@ void splatCompute() {
             pav = mix(pav, vec4(gCol, 0.86), gutB);
             pN = mix(pN, ((gf.y / 0.12 - 0.5) * pr * 0.35 + (gf.x / 0.12 - 0.5) * al * 0.35) * (1.0 - gJ) * gv, gutB);
           }
+        }
+        // (wave 333: "flat single-material planes … no wear, kerb spill or contact darkening") the grime against a kerb —
+        // the street's dirt and leaves washed to its foot, darkest at the face; on a square off any centreline its edges
+        // trodden darker and weedy, its middle worn in broad stains
+        if (fr && paveTownW > 0.0) {
+          float kg = smoothstep(4.35, 5.0, dRoad) * (1.0 - smoothstep(5.05, 5.25, dRoad)) * paveTownW;
+          pav.rgb *= 1.0 - 0.24 * kg * (0.7 + 0.3 * nz(uv, 0.9, vec2(0.37, 0.53)).r);
+          pav.rgb = mix(pav.rgb, uMeanD.rgb * 0.5, 0.25 * kg * smoothstep(0.55, 0.8, nz(uv, 2.6, vec2(0.11, 0.91)).r) * tileVis(0.2));
+        }
+        if (!fr) {
+          float edgeG = 1.0 - smoothstep(0.55, 0.95, mk.r);
+          pav.rgb *= 1.0 - 0.18 * edgeG;
+          pav.rgb = mix(pav.rgb, uMeanG.rgb * 0.7, 0.30 * edgeG * smoothstep(0.55, 0.80, nz(uv, 0.31, vec2(0.71, 0.23)).g) * tileVis(0.3));
+          pav.rgb *= 1.0 - 0.12 * smoothstep(0.52, 0.80, nzq(uv, 0.05, vec2(0.47, 0.19)).x);
         }
         // standing water (uPaveWear.w, a wet town's): in the gutters and the worn wheel paths' low spots, dark and smooth
         if (uPaveWear.w > 0.0 && fr) {

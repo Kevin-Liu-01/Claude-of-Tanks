@@ -38,6 +38,8 @@ export interface PavedSurfaceConfig {
   covers?: number;
   /** standing water in the gutters and wheel paths (0 dry, the default; times the splat's roadPuddles) */
   puddles?: number;
+  /** a tram line down the middle of the main streets (grooved rails at the standard gauge in a strip of setts) */
+  trams?: boolean;
 }
 
 /** Each paved map's surfaces (the period rulings above). Absent: the map's own splat (its R print, or none). */
@@ -47,8 +49,10 @@ export const MAP_PAVED_SURFACES: Readonly<Record<string, PavedSurfaceConfig>> = 
   urban: Object.freeze({ street: 'patched', square: 'cobble', setts: 'fan', kerbs: true, gutterM: 0.36, patches: 1, cracks: 1, covers: 1, puddles: 0.6 }),
   // Ruinspires (Sarajevo, 1992–96): the shelled city's asphalt, patched and cracked; its styled paths keep their own classes
   ruinspires: Object.freeze({ street: 'patched', square: 'patched', kerbs: true, gutterM: 0.24, patches: 1.5, cracks: 1.3, covers: 1, puddles: 0.15 }),
-  // Suzhou Creek, 1937: tar macadam streets (map revival's pathStyles style them), the squares in setts
-  blackglass: Object.freeze({ street: 'asphalt', square: 'cobble', kerbs: true, gutterM: 0.24, patches: 0.8, cracks: 0.8, covers: 0.6, puddles: 0.5 }),
+  // Suzhou Creek, 1937 (map revival's ruling: the International Settlement's main streets asphalt or tar macadam with the
+  // trams down them; Zhabei's side streets and the lanes granite setts): tar macadam streets with a tram line, the squares
+  // in setts; path 3, the Zhabei road north of the creek, setts (MAP_PATH_SURFACES)
+  blackglass: Object.freeze({ street: 'asphalt', square: 'cobble', kerbs: true, gutterM: 0.24, patches: 0.6, cracks: 0.8, covers: 0.6, puddles: 0.5, trams: true }),
   // Ironworks (Völklingen, 1945): the works town's streets in setts, the roads beyond it cinder and earth
   foundry: Object.freeze({ street: 'cobble', square: 'cobble', townOnly: true }),
   // Aegis Crossing (Ronda, 1972): the old towns' streets and squares in setts
@@ -64,6 +68,8 @@ export const MAP_PATH_SURFACES: Readonly<Record<string, readonly (RoadSurface | 
   polders: Object.freeze<(RoadSurface | null)[]>(['clinker', 'clinker', 'clinker', 'clinker', 'clinker']),
   // Jade River Delta, 2010: the village roads brick soling (the embankment roads past the villages stay earth)
   delta: Object.freeze<(RoadSurface | null)[]>(['brick', 'brick', null, null, 'brick']),
+  // Suzhou Creek, 1937: the Zhabei road north of the creek (path 3) in granite setts
+  blackglass: Object.freeze<(RoadSurface | null)[]>([null, null, null, 'cobble', null, null]),
   // Monsoon Ridge (Kohima, 1944): the metalled Dimapur–Imphal road (path 1, south to north over the ridge); the jeep tracks earth
   monsoon: Object.freeze<(RoadSurface | null)[]>([null, 'asphalt', null, null, null]),
 });
@@ -106,7 +112,7 @@ export function roadSurfaceUniforms(mapId: string, climate: 'vegetated' | 'arid'
   return { a: [w.relief, w.stones, w.potholes, w.treads], b: [w.washboard, w.toneFloor, w.laneTone, w.windrow] };
 }
 
-/** The paved surfaces' shader vectors: (street, square, arcs, gutter), (patches, cracks, covers, puddles) and the kerbed town
+/** The paved surfaces' shader vectors: (street, square, arcs 1 + trams 2, gutter), (patches, cracks, covers, puddles) and the kerbed town
  * rect (centre xz, half-size xz; z 0 without kerbs). */
 export function pavedSurfaceUniforms(paved: PavedSurfaceConfig | undefined,
   town: { x0: number; x1: number; z0: number; z1: number }): { cls: [number, number, number, number];
@@ -115,7 +121,7 @@ export function pavedSurfaceUniforms(paved: PavedSurfaceConfig | undefined,
   const street = paved.street ? ROAD_SURFACE_CODE[paved.street] : 0;
   const square = paved.square === 'print' ? 0 : paved.square ? ROAD_SURFACE_CODE[paved.square] : street;
   return {
-    cls: [street, square, paved.setts === 'fan' ? 1 : 0, paved.kerbs ? Math.max(0, paved.gutterM ?? 0) : 0],
+    cls: [street, square, (paved.setts === 'fan' ? 1 : 0) + (paved.trams ? 2 : 0), paved.kerbs ? Math.max(0, paved.gutterM ?? 0) : 0],
     wear: [paved.patches ?? 1, paved.cracks ?? 1, paved.covers ?? 1, paved.puddles ?? 0],
     town: paved.kerbs ? [(town.x0 + town.x1) / 2, (town.z0 + town.z1) / 2, (town.x1 - town.x0) / 2, (town.z1 - town.z0) / 2] : [0, 0, 0, 0],
   };

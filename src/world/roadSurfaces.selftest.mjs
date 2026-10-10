@@ -52,6 +52,7 @@ assert.deepEqual(pavedSurfaceUniforms(undefined, town).wear, [1, 1, 1, 0], 'no c
 assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.urban, town).cls, [3, 2, 1, 0.36], 'Steinburg: patched streets, a sett square in arcs, 0.36 m gutters');
 assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.urban, town).town, [-20, 20, 80, 60], 'its kerbed town rect');
 assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.cliffbridge, town).town, [0, 0, 0, 0], 'no kerbs: no town rect');
+assert.equal(pavedSurfaceUniforms(MAP_PAVED_SURFACES.blackglass, town).cls[2], 2, 'Suzhou Creek: a tram line, setts in courses');
 assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.airfield, town).cls.slice(0, 2), [6, 0], 'Kestrel: concrete roads, its aprons\' own slabs');
 
 // the layout: a catalogued path takes its surface where the map's own pathStyles leave it unstyled
