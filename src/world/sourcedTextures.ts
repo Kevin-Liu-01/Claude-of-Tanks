@@ -285,7 +285,10 @@ const TERRAIN_PLAN = {
     // a step darker; the rock a desaturated basalt
     // (the map-revival lane, Caldera round 2: Aso's floor and slopes — the photo grass a muted summer green with a cured
     // gold in it, the dirt the black volcanic Andosol of the fields and tracks, the rock the basalt as before)
-    G: { set: 'grass', tint: [0.86, 0.88, 0.66], roughMul: 1.25 },
+    // (Caldera round 4, the map-revival lane, 2026-10-10; gauntlet wave 359: "an oversaturated lawn-green slab ... a golf
+    // course rather than Aso's tawny susuki pasture", "the cone ... a bald lime-green mound") the grass a tawny summer
+    // green — the susuki's straw through the green, a fifth of the photo's saturation out (was 0.86 / 0.88 / 0.66)
+    G: { set: 'grass', desat: 0.2, tint: [0.92, 0.87, 0.6], roughMul: 1.25 },
     D: { set: 'dirt', desat: 0.4, tint: [0.42, 0.40, 0.38], roughMul: 1.3 },
     // (Caldera round 2, item 5, wave 114: the Black Shelves "need a dark, rough, blocky material, not grey"): the rock
     // set's fractured blocks — the lava flows' whole surface and the steep rock — near-black basalt, a breath warm,
