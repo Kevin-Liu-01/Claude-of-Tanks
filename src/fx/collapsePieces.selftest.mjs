@@ -294,7 +294,7 @@ for (const { label, a } of anatomies.slice(0, 4)) {
 }
 
 // shafts (a tower, a minaret): one body over the stump, going over toward the blow and breaking into its drums
-let shafts = 0;
+let shafts = 0, crowned = 0;
 for (const [styleId, id] of [['breton', 'tower'], ['ksar', 'minaret'], ['wadirum', 'watertower']]) {
   const style = ARCHITECTURE_STYLES.find((s2) => s2.id === styleId);
   if (!style?.builders[id]) continue;
@@ -322,6 +322,14 @@ for (const [styleId, id] of [['breton', 'tower'], ['ksar', 'minaret'], ['wadirum
     for (let j = i + 1; j < boxes.length; j++) assert.ok(overlap(boxes[i], boxes[j]) < 0.03, `${label}: drums ${i} and ${j} start apart`);
     for (const st of stub) assert.ok(overlap(boxes[i], st) < 0.03, `${label}: drum ${i} starts clear of the stump`);
   }
+  // its caps: each drum its broken top and foot; its crown (a roof, a tank, a lantern) its broken foot only
+  const caps = capPiece(plan, body), crownPart = plan.shaft.crown?.piece ?? -1;
+  if (crownPart >= 0) crowned++;
+  for (let k = 0; k < body.parts.length; k++) {
+    const mine = caps.filter((c) => c.part === k);
+    if (k === crownPart) assert.ok(mine.length === 1 && mine[0].n[1] < -0.9, `${label}: its crown is capped at its broken foot only (${mine.length})`);
+    else assert.ok(mine.length === 2 && mine.every((c) => Math.abs(c.n[1]) > 0.9), `${label}: drum ${k} is capped at its top and foot (${mine.length})`);
+  }
   // its triangles all land somewhere: the stump stands, the rest is the body's, part by part
   const soup = soupOf(parts), tris = soup.length / 18;
   const out = partitionTriangles(plan, soup, tris, 6);
@@ -344,10 +352,11 @@ for (const [styleId, id] of [['breton', 'tower'], ['ksar', 'minaret'], ['wadirum
   const low = body.parts.filter((pt, k) => one.poses[0][k][1] < body.center[1] + pt.center[1] - 1);
   if (process.env.COLLAPSE_DEBUG) body.parts.forEach((pt, k) => console.log(`    ${label} part ${k} from ${(body.center[1] + pt.center[1]).toFixed(2)} half ${pt.half.map((v) => v.toFixed(2))} to ${one.poses[0][k].slice(0, 3).map((v) => v.toFixed(2)).join(',')} kick ${body.kick.map((v) => v.toFixed(2))}`));
   assert.ok(low.length >= Math.ceil(body.parts.length * 0.7), `${label}: the drums came down (${low.length}/${body.parts.length})`);
-  console.log(`  ${label}: ${body.parts.length} drums toppled ${(plan.cx - top[0]).toFixed(1)} m toward the blow, still at ${one.stillAt.toFixed(2)} s, fastest ${one.maxSpeed.toFixed(1)} m/s`);
+  console.log(`  ${label}: ${body.parts.length} drums${crownPart >= 0 ? ' (its crown the last)' : ''} toppled ${(plan.cx - top[0]).toFixed(1)} m toward the blow, still at ${one.stillAt.toFixed(2)} s, fastest ${one.maxSpeed.toFixed(1)} m/s`);
   shafts++;
 }
 assert.ok(shafts >= 2, `shafts planned and toppled (${shafts})`);
+assert.ok(crowned >= 1, `a crowned shaft among them (${crowned})`);
 
 console.log(`collapsePieces: ${planned} plans (${anatomies.length} buildings × 4 blows, ${pieceCount} pieces), worst start overlap ${worstOverlap.toFixed(3)} m, `
   + `${cutTris} triangles cut with their area kept; the pool brings each down and lays it the same twice PASS`);
