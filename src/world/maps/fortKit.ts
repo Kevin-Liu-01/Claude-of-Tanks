@@ -849,6 +849,12 @@ function buildConcretePillbox(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): 
     const c: V3 = [a[0] + u[0] * sl.s, sl.y, a[1] + u[2] * sl.s];
     const thick = style === 'dot' ? 1.05 : 0.9;
     embrasure(m, c, u, sl.w, sl.h, sl.steps, sl.w * 0.11, sl.h * 0.1, 0.16, thick, reveal, sl.plate ? plateTone : null, sl.w * 0.32, 0.1);
+    // the DOT's main embrasure under its cast visor (the hood over the opening, against splinters and the rain)
+    if (style === 'dot' && sl.w > 1 && !O.broken) {
+      const n: V3 = [-u[2], 0, u[0]];
+      const vy = sl.y + sl.h / 2 + 0.03, depth = 0.3, vw = sl.w + 0.36;
+      solid(m, c[0] + n[0] * depth / 2, vy, c[2] + n[2] * depth / 2, vw, 0.14, depth, Math.atan2(n[0], n[2]), conc, true);
+    }
   }
   // the door: its reveal and the steel leaf set in it
   if (doorEdge >= 0) {
@@ -921,7 +927,7 @@ function buildConcretePillbox(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): 
     }
     cap(m, cPlan, sTop, slabShade, true, true, 5);
     // the turf and earth over the roof, inset from the edge, a ragged rim
-    roofCover(m, plan, sTop, style === 'dot' ? 0.55 : style === 'hex' ? 0.12 : 0.24, style === 'dot' ? 0.0 : 0.38, T, O.seed + 101);
+    roofCover(m, plan, sTop, style === 'dot' ? 0.5 : style === 'hex' ? 0.12 : 0.24, style === 'dot' ? 0.1 : 0.38, T, O.seed + 101);
     // vent pipe and its cap, the periscope stub
     const vent: Shade = () => mix([0.06, 0.06, 0.062], [0.11, 0.05, 0.025], 0.4 + T.age * 0.5);
     const vx = plan[0][0] * 0.0 - 1.35, vz = -1.05;
