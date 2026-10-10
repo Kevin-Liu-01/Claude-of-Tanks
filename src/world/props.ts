@@ -8203,6 +8203,9 @@ ${snowCap ? `
   // "duel" beats where two hulks face each other off the same verge.
   const wreckScorch: Array<[number, number]> = [];
   const tankWreckSpots: TankWreckSpot[] = []; // probe/debug: {specId,x,z,yaw,hx,hz,h} per hulk
+  // Sealed lane 2026-10-10: each placed hulk's drawn footprint (the convex hull of its geometry in plan, its gun and
+  // anything else past the solids its collision keeps), for the parked vehicles' seat passes (crushableFootprints)
+  const wreckDrawnFootprints: CollisionRecord[] = [];
   function* placeTankWrecks(): Generator<PropsBuildSlice, void, void> {
     const wCfg = P.tankWrecks || null;
     const requestedWrecks = wCfg ? (wCfg.count ?? 3) : (P.wrecks ?? 0);
@@ -8310,6 +8313,26 @@ ${snowCap ? `
         g.applyQuaternion(_quat);
         g.translate(x, y, z); // settled on dead suspension across its whole footprint
         wreckGeos.push(g);
+        {
+          // (sealed lane) its drawn footprint over the ground: a parked truck stood with a hulk's barrel 0.6 m in its body
+          const p = g.getAttribute('position') as THREE.BufferAttribute, plan: [number, number][] = [];
+          let top = y;
+          for (let i = 0; i < p.count; i++) {
+            const py = p.getY(i);
+            if (py > top) top = py;
+            if (py > y + 0.3) plan.push([p.getX(i), p.getZ(i)]);
+          }
+          const points = convexHull2(plan);
+          if (points.length >= 6) {
+            let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, cx = 0, cz = 0;
+            for (let k = 0; k < points.length; k += 2) {
+              x0 = Math.min(x0, points[k]); x1 = Math.max(x1, points[k]); z0 = Math.min(z0, points[k + 1]); z1 = Math.max(z1, points[k + 1]);
+              cx += points[k]; cz += points[k + 1];
+            }
+            wreckDrawnFootprints.push({ min: [x0, y, z0], max: [x1, top, z1],
+              shape2: { kind: 'convex', cx: cx / (points.length / 2), cz: cz / (points.length / 2), points } });
+          }
+        }
         // Secondary destruction stays inside the same static merged wreck
         // mesh: torn track runs, wheels and armor plates improve the scene
         // read without adding draw calls, animation, or live vehicle state.
@@ -9679,14 +9702,16 @@ ${snowCap ? `
   // It runs once every record has its seat (the wharf, the Foundry court and the Autumn headlands relocate above) and
   // before anything plans against the vehicles (the yard dressing, the scenery) or refits and indexes the pools.
   // Sealed lane 2026-10-10 (the owner's map vehicles: a utility pole stood through a Verdant jeep and a Sirocco Wadi
-  // flatbed, a bucket in a Tarkhan sedan): the crushables (the sourced utility poles and the loop-contact props: buckets,
-  // crates, ammunition boxes) carry no collision record, so the seat passes below never saw them. Each stands here as a
-  // circle at its contact radius from its foot up its height.
+  // flatbed, a bucket in a Tarkhan sedan, a hulk's barrel in a Steinburg truck): the crushables (the sourced utility poles
+  // and the loop-contact props: buckets, crates, ammunition boxes) carry no collision record, so the seat passes below
+  // never saw them. Each stands here as a circle at its contact radius from its foot up its height.
+  // A placed hulk's collision keeps its hull and turret solids only (a sideways gun never walls off the ground beside it),
+  // so its drawn footprint stands here too (wreckDrawnFootprints).
   function crushableFootprints(): CollisionRecord[] {
-    return crushables.filter((c) => !c.toppled).map((c) => ({
-      min: [c.x - c.r, c.y, c.z - c.r] as CollisionRecord['min'], max: [c.x + c.r, c.y + c.h, c.z + c.r] as CollisionRecord['max'],
+    return [...crushables.filter((c) => !c.toppled).map((c): CollisionRecord => ({
+      min: [c.x - c.r, c.y, c.z - c.r], max: [c.x + c.r, c.y + c.h, c.z + c.r],
       shape2: { kind: 'circle', cx: c.x, cz: c.z, r: c.r },
-    }));
+    })), ...wreckDrawnFootprints];
   }
   function separateParkedVehicleRecords(): void {
     const roles = new Set(Object.keys(CIVILIAN_VEHICLE_RECEIPTS));
