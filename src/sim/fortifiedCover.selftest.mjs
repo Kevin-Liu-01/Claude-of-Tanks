@@ -86,6 +86,9 @@ for (const [name, text, call] of [['solo', solo, /return game\._fortified\?\.ram
   assert.match(text, call, `${name}: the ram books on the ledger`);
   assert.match(text, /obstacle\.min\[1\] > y \+ radius \|\| isFortifiedCoverRecord\(obstacle\)\) continue;/, `${name}: no fall to a burst beside it`);
 }
+const effects = readFileSync(new URL('../fx/effects.ts', import.meta.url), 'utf8');
+assert.match(effects, /if \(\/\^wall\|rubble\|small-rock\|\^bunker\$\|pillbox\/\.test\(kind\)\) return 'masonry';/,
+  'a pillbox breaks into concrete and stone dust, never the wood family the default gave it');
 const ai = readFileSync(new URL('../game/ai.ts', import.meta.url), 'utf8');
 assert.match(ai, /if \(hullYieldingRecord\(o\)\) \{\s*if \(input\.throttle > 0\.05\)/, 'the bots drive through crushables, round a pillbox');
 
