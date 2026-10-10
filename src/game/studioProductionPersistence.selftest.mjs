@@ -49,6 +49,7 @@ const create = new Function('ports', `
   let fxSettings=normalizeStudioFx(null);
   const applyFxSettings=next=>{fxSettings=next;};
   const selectActor=()=>{},setRailVisible=()=>{};
+  const post={};
   ${stripTypeScriptTypes(functions.join('\n'))}
   return {load,stateJson,setProductionFormat,directProduction,stats:()=>({replacements,format:productionFormat,refreshed,pictureApplied})};
 `);
