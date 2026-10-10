@@ -81,6 +81,69 @@ const RIVER = createMarshChannel(RIVER_STATIONS, 0.5).map(station => ({ ...stati
 // where the coach road meets the mill lane and the manor lane.
 const TOWN = { x0: -200, x1: -20, z0: 20, z1: 190 };
 
+// The street village (the map-revival lane, round 5, 2026-10-09; gauntlet wave 319: "a scatter of free-standing cottages
+// on an open meadow … no contiguous street frontage, yards or lanes"). A Lorraine village-rue: along the town's four
+// street arms from the square, both sides, a continuous frontage of terraced houses and long farmhouses (the dwelling,
+// the barn door and the stable under one roof, its long side on the street), eaves to the street, each behind its open
+// usoir — the beaten fore-yard between the house fronts and the carriageway where the dung heap, the woodpile and the
+// cart stand (the kit's dressing). Lanes break the rows into blocks; the square and the gates stay open. Every plot is a
+// terrace site (props.ts plannedSites: its own stream, its author holds the footprints apart), its plot the kit's.
+const SQUARE = { x: -110, z: 100, r: 30 };
+/** The four arms: the coach road south and north of the square, the mill lane west, the north lane east. */
+const STREET_ARMS: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
+  [[-110, 100], [-90, 40], [-53, -33]],
+  [[-110, 100], [-130, 170], [-150, 240]],
+  [[-110, 100], [-180, 60], [-230, 0]],
+  [[-110, 100], [-30, 140], [60, 165]],
+];
+/** From the road's line to the frontage: the carriageway's half width and the usoir (5-8 m). */
+const USOIR_FRONT_M = [9.0, 11.5] as const;
+const GATE_CLEAR_M = 10, LANE_EVERY_M = [38, 56] as const, LANE_M = 6;
+function villageHash(a: number, b: number): number {
+  let k = Math.imul(Math.round(a * 10) | 0, 0x27d4eb2d) ^ Math.imul(Math.round(b * 10) | 0, 0x165667b1) ^ 0x6a17;
+  k = Math.imul(k ^ (k >>> 15), 0x85ebca6b); k = Math.imul(k ^ (k >>> 13), 0xc2b2ae35);
+  return ((k ^ (k >>> 16)) >>> 0) / 4294967296;
+}
+function streetVillage(): Array<{ structure: string; x: number; z: number; yawDeg: number; plot: { w: number; d: number }; terrace: true }> {
+  const sites: Array<{ structure: string; x: number; z: number; yawDeg: number; plot: { w: number; d: number }; terrace: true }> = [];
+  const inTown = (x: number, z: number, m: number) => x > TOWN.x0 + m && x < TOWN.x1 - m && z > TOWN.z0 + m && z < TOWN.z1 - m;
+  for (const [ai, arm] of STREET_ARMS.entries()) {
+    const cum = [0];
+    for (let i = 1; i < arm.length; i++) cum.push(cum[i - 1] + Math.hypot(arm[i][0] - arm[i - 1][0], arm[i][1] - arm[i - 1][1]));
+    const at = (d: number): [number, number, number, number] => {
+      let i = 1;
+      while (i < cum.length - 1 && cum[i] < d) i++;
+      const seg = cum[i] - cum[i - 1], t = (d - cum[i - 1]) / seg;
+      const [ax, az] = arm[i - 1], [bx, bz] = arm[i];
+      return [ax + (bx - ax) * t, az + (bz - az) * t, (bx - ax) / seg, (bz - az) / seg];
+    };
+    for (const side of [-1, 1] as const) {
+      let d = SQUARE.r + 4, nextLane = d + LANE_EVERY_M[0] + villageHash(ai, side) * (LANE_EVERY_M[1] - LANE_EVERY_M[0]);
+      let k = 0;
+      while (d < cum[cum.length - 1]) {
+        const u = villageHash(ai * 31 + side, k++);
+        // a long farmhouse two plots in five, a terraced house otherwise
+        const farm = u < 0.4;
+        const w = farm ? 13.5 + villageHash(k, ai) * 3.5 : 6.8 + villageHash(k, ai) * 2.4;
+        const depth = farm ? 9.0 + villageHash(ai, k) * 1.6 : 8.4 + villageHash(ai, k) * 2.8;
+        if (d + w > nextLane) { d = nextLane + LANE_M; nextLane = d + LANE_EVERY_M[0] + u * (LANE_EVERY_M[1] - LANE_EVERY_M[0]); continue; }
+        const [rx, rz, tx, tz] = at(d + w / 2);
+        const nx = tz * side, nz = -tx * side; // this side's normal, away from the road
+        const front = USOIR_FRONT_M[0] + villageHash(rx, rz) * (USOIR_FRONT_M[1] - USOIR_FRONT_M[0]);
+        const x = rx + nx * (front + depth / 2), z = rz + nz * (front + depth / 2);
+        const reach = Math.hypot(w, depth) / 2;
+        if (!inTown(x, z, GATE_CLEAR_M + reach * 0.6) || Math.hypot(x - SQUARE.x, z - SQUARE.z) < SQUARE.r + reach) { d += w; continue; }
+        // the front (local +z) faces the road: yaw turns +z onto (-nx, -nz)
+        const yawDeg = Math.atan2(-nx, -nz) * 180 / Math.PI;
+        sites.push({ structure: farm ? 'farmhouse' : 'rowhouse', x: +x.toFixed(2), z: +z.toFixed(2), yawDeg: +yawDeg.toFixed(1),
+          plot: { w: +w.toFixed(2), d: +depth.toFixed(2) }, terrace: true });
+        d += w + 0.25;
+      }
+    }
+  }
+  return sites;
+}
+
 export default {
   id: 'autumn',
   name: 'Amberford',
@@ -323,6 +386,9 @@ export default {
       'cornershop', 'cottage', 'ruin', 'cottage', 'granary', 'cottage', 'farmhouse', 'woodshed',
       'cottage', 'barn'],
     blockFill: true,
+    // the map-revival lane (round 5): the street village's frontage (streetVillage above) stands first; the plan's other
+    // buildings then take the blocks behind it
+    plannedSites: streetVillage(),
     monument: true, // the market cross on the square
     destructibleBuildings: ['fieldhut', 'leanto', 'longhouse', 'commandtent'],
     tacticalBeats: [
