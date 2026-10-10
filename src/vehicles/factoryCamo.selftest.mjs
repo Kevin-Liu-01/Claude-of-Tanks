@@ -14,8 +14,6 @@ import {
   camoPatternTags,
   defaultCamoPatternId,
   factoryCamoPatternIdFor,
-  factoryIsServiceCoatOverSignature,
-  nationFieldsPixelCamo,
   stockCamoPatternIdFor,
   hasSignatureCamo,
   sharedCamoPreset,
@@ -52,44 +50,15 @@ for (const id of ALL_TANK_IDS) {
   checked += 1;
 }
 assert.ok(checked >= 190, `the whole fleet resolves Factory (${checked})`);
-// 2026-10-07 (tank-accessories round 4; critics after wave 240: pixel-digital T-90Ms and T-72B3Ms, a Leopard 2A6 in
-// "a four-colour scheme with cream patches", an Abrams that "mixes desert blocks with green rosettes"): the US, German
-// and Russian Factory coats are the paint each army fields - plain CARC Tan, the Bundeswehr NATO three-tone, the
-// Russian green, sand and black disruptive coat - and a wartime German hull wears Hinterhalt ambush paint.
 for (const [nation, era, expected] of [
   ['USSR', 'ww2', 'service_soviet_ww2'], ['USSR', 'interwar', 'service_soviet_ww2'], ['USSR/Russia', 'cold-war', 'service_soviet_coldwar'],
-  ['Russia', 'modern', 'paint_ru_t80u_modern'], ['USA', 'modern', 'carc_tan'], ['USA', 'ww2', 'carc_tan'],
-  ['Germany', 'ww2', 'ambushdot'], ['Germany', 'modern', 'paint_marder2'], ['Israel', 'modern', 'service_merkava2d'],
+  ['Russia', 'modern', 'service_t90m'], ['USA', 'modern', 'service_usa_desert'], ['USA', 'ww2', 'service_usa_desert'],
+  ['Germany', 'ww2', 'service_leo2a6m'], ['Israel', 'modern', 'service_merkava2d'],
 ]) assert.equal(factoryCamoPatternIdFor(nation, era), expected, `${nation}/${era} Factory routing`);
 assert.equal(factoryCamoPatternIdFor(null, 'modern'), null);
 assert.equal(factoryCamoPatternIdFor('Atlantis', 'modern'), null);
-// every national Factory routing is that nation's own coat, and pixel only for a nation that fields pixel camouflage
-// (round 4: was "every national Factory routing is a Service pattern", which kept the Russian digital and the German
-// four-colour bands as Factory)
-for (const [nation, patternId] of Object.entries(FACTORY_CAMO_PATTERN_BY_NATION)) {
-  const tag = camoNationTag(nation);
-  assert.ok(camoPatternTags(patternId).includes(tag), `${nation}: Factory ${patternId} is filed under ${tag}`);
-  if (!nationFieldsPixelCamo(tag)) {
-    assert.ok(!camoPatternTags(patternId).includes('digital'), `${nation}: Factory ${patternId} is not pixel camouflage`);
-  }
-}
-// the critics' hulls in the studio (Factory): Russian green, sand and black; the NATO three-tone; plain CARC Tan, and
-// the SEPv3 under its woodland ULCANS in its own NATO three-tone (no desert coat under green garnish)
-for (const [id, patternId, scheme] of [['t90m', 'paint_ru_t80u_modern', 'woodland'], ['t90m_proryv', 'paint_ru_t80u_modern', 'woodland'],
-  ['t72b3m', 'paint_ru_t80u_modern', 'woodland'], ['leo2a6', 'paint_marder2', 'nato'], ['leo2a4', 'paint_marder2', 'nato'],
-  ['m1a2_sepv3', 'paint_m1a1', 'nato'], ['m1a2', 'carc_tan', 'solid'], ['m60a1', 'carc_tan', 'solid']]) {
-  const spec = getSpec(id);
-  assert.equal(stockCamoPatternIdFor(id, spec.nation, spec.era), patternId, `${id}: Factory is ${patternId}`);
-  assert.equal(resolveCamoVisual(spec, 'factory').scheme, scheme, `${id}: Factory paints the ${scheme} coat`);
-}
-// no US, German or Russian hull's Factory is pixel camouflage, except the Russian export and demonstrator finishes
-// that are their own Signature (T-90SM export digital, the T-90A Burlak demonstrator)
-for (const id of ALL_TANK_IDS) {
-  const spec = getSpec(id);
-  if (!['usa', 'de', 'ru'].includes(camoNationTag(spec.nation)) || ['t90sm', 't90a_burlak'].includes(id)) continue;
-  const stock = stockCamoPatternIdFor(id, spec.nation, spec.era);
-  assert.ok(!stock || !camoPatternTags(stock).includes('digital'), `${id}: Factory ${stock} is not pixel camouflage`);
-}
+assert.deepEqual(Object.values(FACTORY_CAMO_PATTERN_BY_NATION).filter((id) => !id.startsWith('service_')), [],
+  'every national Factory routing is a Service pattern');
 
 // --- national colour schemes: one plain colour per nation, selectable on any hull, filed under the nation (not Factory)
 assert.equal(NATIONAL_CAMO_PATTERN_IDS.length, 13);
@@ -165,11 +134,7 @@ for (const id of SIGNATURE_CAMO_TANK_IDS) {
   const signaturePatternId = signatureCamoPatternId(id);
   assert.ok(signaturePatternId, `${id} must own a named reusable Signature finish`);
   assert.equal(defaultCamoPatternId(id), 'factory');
-  if (factoryIsServiceCoatOverSignature(id)) {
-    // round 4 (2026-10-07): a Russian service hull keeps its exhibition digital as the selectable Signature; its
-    // Factory is the coat the army fields
-    assert.equal(stockCamoPatternIdFor(id), 'paint_ru_t80u_modern', `${id}: Factory is the Russian service coat`);
-  } else assert.equal(stockCamoPatternIdFor(id), signaturePatternId, `${id}: named stock paint is preserved`);
+  assert.equal(stockCamoPatternIdFor(id), signaturePatternId, `${id}: named stock paint is preserved`);
   const signature = resolveCamoVisual(getSpec(id), signaturePatternId);
   assert.notEqual(signature.scheme, 'solid', `${id} Signature must be a real patterned finish`);
   assert.ok((signature.patches || []).length >= 2, `${id} Signature must retain a multi-tone pattern palette`);

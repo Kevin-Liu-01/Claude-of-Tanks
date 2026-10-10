@@ -300,8 +300,12 @@ function verifyMoved(donor,original,receipt,field) {
     finally {expected.dispose();}
   });
   const expected=[];
+  // destruction (2026-10-07): the moved bands keep the donor's structure group (docs/DESTRUCTION.md §3.1)
+  const group=donor.records[0]?.structureIdx;
+  assert.ok(Number.isSafeInteger(group)&&donor.records.every(r=>r.structureIdx===group),'one structure group');
   for(const band of [donor.profile.contact,...donor.profile.shell]) {
-    appendStructureCollisionBand(expected,band,receipt.target.x,receipt.target.y,receipt.target.z,receipt.target.yaw).kind='structure';
+    const record=appendStructureCollisionBand(expected,band,receipt.target.x,receipt.target.y,receipt.target.z,receipt.target.yaw);
+    record.kind='structure';record.structureIdx=group;
   }
   assert.deepEqual(donor.records,expected,'all collision bands follow the visible world pose');
   assert.deepEqual([donor.feature.x,donor.feature.z,donor.feature.rot],

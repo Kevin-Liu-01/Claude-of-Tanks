@@ -27,9 +27,8 @@ assert.match(source, /rightDisplay !== 'block'/,
 assert.match(source, /frames\.maxGapMs > maxGapMs/);
 assert.match(source, /workshopExhibitTextureCount !== 0/);
 assert.match(source, /workshopPaletteCount !== 4/);
-// 2026-10-07 (tank-accessories round 4): the national Factory coats each army fields (camoPolicy.ts)
 assert.match(source,
-  /paint_ru_t80u_modern\|carc_tan\|paint_marder2\|service_bmp3_rok/);
+  /service_t90m\|service_usa_desert\|service_leo2a6m\|service_bmp3_rok/);
 assert.match(source, /option\('profile-workshop', ''\)/);
 assert.match(source, /cpu-profile-attribution-only/);
 assert.match(source, /writeFile\(workshopProfilePath,[\s\S]*?flag: 'wx'/,

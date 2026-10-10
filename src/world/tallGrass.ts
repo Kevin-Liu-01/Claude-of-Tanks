@@ -3,6 +3,7 @@ import { getDeviceTier, getPreset } from '../engine/quality.ts';
 import { createGroundPressureField, type GroundDisturbance, type GroundPressureField } from './groundPressure.ts';
 import { resolveGroundReduxProfile, tallGrassQualityScale, type TallGrassBiome } from './groundRedux.ts';
 import { createLandFieldSample, LAND_CROP, type LandFieldSample } from './landUse.ts';
+import { createCraterFollower, followCraters, type GroundCoverCraters } from './groundCoverCraters.ts';
 
 // Round 73 (2026-09-25, the ground redux; owner: "add tall grass that interacts with tanks"): the tall-grass tier.
 // The meadows carried a knee-high tuft carpet of alpha cards that nothing in the battle ever touched; this tier
@@ -105,6 +106,12 @@ export interface TallGrass {
   /** Sniper scope: fade the blades inside the corridor (0 = arcade, 1 = scoped). */
   setSniperFade(fraction: number, immediate?: boolean): void;
   getState(): TallGrassState;
+  /**
+   * Ground lane (crater-render-spec §C): follow the battle's craters — a blade inside a crater's cleared bowl stands at
+   * no height, the rest stand on base + offsetAt; the published cells a new stamp reaches are patched in place, a later
+   * publish applies the same law (map.ts calls this once a frame after the terrain's own sync).
+   */
+  followCraters(law: GroundCoverCraters): void;
   dispose(): void;
 }
 
@@ -442,6 +449,9 @@ interface Ring {
   truncated: number;
   readonly salt: number;
   readonly far: boolean;
+  /** The published cells in instance order (crater-render-spec §C: a stamp patches the cells it reaches). */
+  segments: Array<{ data: Float32Array; start: number; count: number; x0: number; z0: number }>;
+  segmentCount: number;
 }
 
 export function createTallGrass(field: TallGrassField, options: TallGrassOptions = {}): TallGrass {
@@ -502,7 +512,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     return {
       cellM: spec.cellM, ring: spec.ring, perM2: spec.perM2, cap: spec.cap, mesh, blade, cache: new Map(),
       cellX: 0x7fffffff, cellZ: 0x7fffffff, pending: [], building: null, published: false, completedSincePublish: 0,
-      count: 0, builds: 0, publishes: 0, truncated: 0, salt, far,
+      count: 0, builds: 0, publishes: 0, truncated: 0, salt, far, segments: [], segmentCount: 0,
     };
   }
   const near = makeRing(TALL_GRASS.near, geometries[0], false, 0x1a2b);
@@ -802,6 +812,52 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     }
   }
 
+  // ground lane (crater-render-spec §C): the battle's craters, followed once a frame (map.ts)
+  let craterLaw: GroundCoverCraters | null = null;
+  const craterFollower = createCraterFollower();
+  /**
+   * One published cell's blades in a box, re-read from the cell's base data by the crater law: inside a cleared bowl a
+   * blade stands at no height, elsewhere at base + offsetAt. Marks the cell's instance span for upload when `upload`.
+   */
+  function reseatSegment(ring: Ring, seg: Ring['segments'][number], x0: number, z0: number, x1: number, z1: number, upload: boolean): number {
+    const law = craterLaw!;
+    const matrices = ring.mesh.instanceMatrix.array as Float32Array;
+    const blades = ring.blade.array as Float32Array;
+    let moved = 0;
+    for (let k = 0; k < seg.count; k++) {
+      const at = k * PACK, i = seg.start + k;
+      const x = seg.data[at], z = seg.data[at + 2];
+      if (x < x0 || x > x1 || z < z0 || z > z1) continue;
+      if (law.holeAt(x, z)) { matrices[i * 16 + 13] = seg.data[at + 1]; blades[i * 4 + 1] = 0; }
+      // (a presentation hole's ring — the FX lane's explosive marks: the blast laid the stalks low out to 1.6 r, for good)
+      else { matrices[i * 16 + 13] = seg.data[at + 1] + law.liftAt(x, z); blades[i * 4 + 1] = seg.data[at + 4] * law.squashAt(x, z); }
+      moved++;
+    }
+    if (upload && moved) {
+      ring.mesh.instanceMatrix.addUpdateRange(seg.start * 16, seg.count * 16);
+      ring.mesh.instanceMatrix.needsUpdate = true;
+      ring.blade.addUpdateRange(seg.start * 4, seg.count * 4);
+      ring.blade.needsUpdate = true;
+    }
+    return moved;
+  }
+  function followCraterLaw(law: GroundCoverCraters): void {
+    craterLaw = law;
+    if (!enabled) return;
+    followCraters(law, craterFollower,
+      () => { for (const ring of [near, far]) ring.published = false; }, // a fresh publish from the base cells
+      (x0, z0, x1, z1) => {
+        for (const ring of [near, far]) {
+          if (!ring.published && ring.count === 0) continue;
+          for (let s = 0; s < ring.segmentCount; s++) {
+            const seg = ring.segments[s];
+            if (seg.x0 > x1 || seg.x0 + ring.cellM < x0 || seg.z0 > z1 || seg.z0 + ring.cellM < z0) continue;
+            reseatSegment(ring, seg, x0, z0, x1, z1, true);
+          }
+        }
+      });
+  }
+
   function publish(ring: Ring): void {
     const matrices = ring.mesh.instanceMatrix.array as Float32Array;
     const colors = ring.mesh.instanceColor!.array as Float32Array;
@@ -811,15 +867,25 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     const cells: Array<[number, number, number]> = [];
     for (let dz = -ring.ring; dz <= ring.ring; dz++) for (let dx = -ring.ring; dx <= ring.ring; dx++) cells.push([dx, dz, dx * dx + dz * dz]);
     cells.sort((a, b) => a[2] - b[2]);
+    ring.segmentCount = 0;
     for (const [dx, dz] of cells) {
-      const data = cellData(ring, ring.cellX + dx, ring.cellZ + dz);
+      const cx = ring.cellX + dx, cz = ring.cellZ + dz;
+      const data = cellData(ring, cx, cz);
       if (!data) continue;
+      const start = total;
       for (let at = 0; at + PACK <= data.length; at += PACK) {
         if (total >= ring.cap) { truncated++; continue; }
         const i = total++;
         matrices[i * 16 + 12] = data[at]; matrices[i * 16 + 13] = data[at + 1]; matrices[i * 16 + 14] = data[at + 2];
         blades[i * 4] = data[at + 3]; blades[i * 4 + 1] = data[at + 4]; blades[i * 4 + 2] = data[at + 5]; blades[i * 4 + 3] = data[at + 6];
         colors[i * 3] = data[at + 7]; colors[i * 3 + 1] = data[at + 8]; colors[i * 3 + 2] = data[at + 9];
+      }
+      const seg = ring.segments[ring.segmentCount] ??= { data, start: 0, count: 0, x0: 0, z0: 0 };
+      seg.data = data; seg.start = start; seg.count = total - start; seg.x0 = cx * ring.cellM; seg.z0 = cz * ring.cellM;
+      ring.segmentCount++;
+      // (crater-render-spec §C) a cell a stamp reaches takes the battle's craters as it is published
+      if (craterLaw?.active && craterLaw.touches(seg.x0, seg.z0, seg.x0 + ring.cellM, seg.z0 + ring.cellM)) {
+        reseatSegment(ring, seg, -Infinity, -Infinity, Infinity, Infinity, false);
       }
     }
     ring.mesh.count = total;
@@ -932,6 +998,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       if (immediate) shared.uSniperFade.value = sniperTarget;
     },
     getState,
+    followCraters: followCraterLaw,
     dispose,
   };
 }

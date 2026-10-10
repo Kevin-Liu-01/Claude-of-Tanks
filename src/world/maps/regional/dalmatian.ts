@@ -12,7 +12,7 @@ import {
 import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { pottedPlant, tvAerial, wallLantern, washingLine } from './dressing.ts';
-import { balconette, facadeOn, facadeRng, trimRun } from './facade.ts';
+import { balconette, dressedQuoin, facadeOn, facadeRng, trimRun } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const SHUTTERS: readonly Rgb[] = [0x557a4c, 0x416650, 0x7a5a42, 0x7890a0, 0x8e7a52].map(rgb);
@@ -89,7 +89,7 @@ function dressedStone(sink: PartSink, frame: HouseFrame, rendered: boolean): voi
       const x = sx > 0 ? b.x1 : b.x0, z = sz > 0 ? b.z1 : b.z0;
       for (let y = 0.2, k = 0; y < frame.eaveY - 0.35; y += 0.36, k++) {
         const long = (k + (f() < 0.5 ? 0 : 1)) % 2 === 0, lx = long ? 0.5 : 0.28, lz = long ? 0.28 : 0.5;
-        sink.quoin('stone', sx > 0 ? x - lx : x - 0.03, y, sz > 0 ? z - lz : z - 0.03, sx > 0 ? x + 0.03 : x + lx, y + 0.34, sz > 0 ? z + 0.03 : z + lz, sx, sz, { decor: true });
+        dressedQuoin(sink, 'stone', sx > 0 ? x - lx : x - 0.03, y, sz > 0 ? z - lz : z - 0.03, sx > 0 ? x + 0.03 : x + lx, y + 0.34, sz > 0 ? z + 0.03 : z + lz, sx, sz, { decor: true });
       }
     }
   }
@@ -583,7 +583,7 @@ const customsHouse: RegionalBuilder = (ctx) => {
     const sx = cx > 0 ? 1 : -1, sz = cz > 0 ? 1 : -1;
     for (let y = 0.5, k = 0; y < frame.eaveY - 0.5; y += 0.42, k++) {
       const lx = k % 2 ? 0.55 : 0.3, lz = k % 2 ? 0.3 : 0.55;
-      sink.quoin('stone', cx - sx * lx, y, cz - sz * lz, cx + sx * 0.03, y + 0.36, cz + sz * 0.03, sx, sz, { decor: true });
+      dressedQuoin(sink, 'stone', cx - sx * lx, y, cz - sz * lz, cx + sx * 0.03, y + 0.36, cz + sz * 0.03, sx, sz, { decor: true });
     }
   }
   // the balcony over the door: a stone slab on two consoles, an iron railing

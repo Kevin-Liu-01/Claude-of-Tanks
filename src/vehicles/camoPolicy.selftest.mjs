@@ -77,16 +77,12 @@ for (const tankId of SIGNATURE_CAMO_TANK_IDS) {
   assert.equal(sharedCamoPreset(patternId)?.sourceTankId, tankId,
     `${tankId} selects its own reusable colorway`);
 }
-// 2026-10-07 (tank-accessories round 4; critics after wave 240: pixel-digital T-90Ms, a four-colour Leopard 2A6, an
-// Abrams in desert blocks): Factory is the coat each army fields. US plain CARC Tan, the Bundeswehr NATO three-tone,
-// Russia's green, sand and black disruptive coat; the old service patterns stay selectable.
-assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.USA, 'carc_tan', 'the US Army delivers its Abrams in plain CARC Tan');
-assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Germany, 'paint_marder2', 'the Bundeswehr NATO three-tone');
-assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Russia, 'paint_ru_t80u_modern', 'Russian green, sand and black, never pixel');
+assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.USA, 'service_usa_desert', "round 32: Factory is the nation's service pattern again");
+assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Germany, 'service_leo2a6m');
+assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Russia, 'service_t90m');
 assert.equal(factoryCamoPatternIdFor('USSR', 'ww2'), 'service_soviet_ww2', 'Soviet wartime hulls wear the wartime service scheme');
 assert.equal(factoryCamoPatternIdFor('USSR/Russia', 'cold-war'), 'service_soviet_coldwar');
-assert.equal(factoryCamoPatternIdFor('Russia', 'modern'), 'paint_ru_t80u_modern');
-assert.equal(factoryCamoPatternIdFor('Germany', 'ww2'), 'ambushdot', 'a wartime German hull wears Hinterhalt ambush paint');
+assert.equal(factoryCamoPatternIdFor('Russia', 'modern'), 'service_t90m');
 assert.equal(factoryCamoPatternIdFor('Russia', 'ww2'), 'service_soviet_ww2');
 assert.equal(factoryCamoPatternIdFor('Russia', 'cold-war'), 'service_soviet_coldwar');
 assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.France, 'service_leclerc_xlr');
@@ -299,12 +295,11 @@ const addedPaints = ['mono', 'carbon', 'prism', 'sig_sabra_mk2_x'];
 const tosIndex = CAMO_PATTERN_IDS.indexOf('sig_tos1a_tagil');
 assert.deepEqual(CAMO_PATTERN_IDS.slice(tosIndex - addedPaints.length, tosIndex), addedPaints);
 assert.equal(CAMO_PATTERN_IDS[CAMO_PATTERN_IDS.indexOf('sig_amx10p_25') + 1], 'national_usa', 'the national colours follow the base catalog');
-// 2026-10-07 (tank-accessories round 3): the plain theatre colours (CARC Tan, British Light Stone) append after GT;
-// the pin moves from "GT is last" to the exact tail, so every earlier index is still held in place.
+// 2026-10-09 (fix/camo-defaults): a paint generated after GT joined (the M6 Linebacker's desert three-tone) appends
+// after GT, so every production index holds (camoCatalogProductionIndices.selftest.mjs)
 const gtIndex = CAMO_PATTERN_IDS.indexOf('gt');
 assert.ok(CAMO_PATTERN_IDS[gtIndex - 1].startsWith('paint_'), 'existing authored paints retain their catalog positions');
-assert.deepEqual(CAMO_PATTERN_IDS.slice(gtIndex), ['gt', 'carc_tan', 'light_stone'],
-  'GT, then the theatre colours, append without shifting saved catalog indices');
+assert.deepEqual(CAMO_PATTERN_IDS.slice(gtIndex), ['gt', 'paint_m6_linebacker'], 'GT, then later paints, append without shifting saved catalog indices');
 assert.deepEqual(addedPaints.slice(0, 3).map(id => CAMO_PATTERN_LABEL[id]), ['Mono', 'Carbon', 'Prism']);
 assert.deepEqual(['openai', 'xai', 'gemini'].map(id => CAMO_PATTERN_LABEL[id]), ['OpenAI', 'X', 'Gemini']);
 assert.equal(defaultCamoPatternId('sabra_mk2_x'), 'factory');

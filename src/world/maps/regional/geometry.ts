@@ -77,14 +77,22 @@ export interface EmitOptions {
   shadow?: boolean;
   /**
    * fine joinery a long view cannot resolve (window frames and glazing bars, shutter rails, door panels): props.ts
-   * draws it only within the quality preset's fine-detail distance of the camera, and a phone never builds it
+   * draws it only within the quality preset's fine-detail distance of the camera, and a phone never builds it.
+   * 'near': the facade craft's finest pieces (a flower box, a shop's lettering, a gutter's hangers), which props.ts
+   * draws within half that distance, in cells of their own (PartSink.near scopes a whole call the same way)
    */
-  fine?: boolean;
+  fine?: boolean | 'near';
   /**
    * a box seated on a wall (a timber, a shutter leaf): its outward face reads at any range, its sides and caps are
-   * fine joinery (`fine`). Honoured by `box` for non-casting dressing; `member` sets it on every framing member
+   * fine joinery (`fine`). Honoured by `box` for non-casting dressing; `member` sets it on every framing member.
+   * 'near': those faces are near fine joinery (`fine` 'near'), on a box's `coarse` faces' complement as well
    */
-  fineSides?: boolean;
+  fineSides?: boolean | 'near';
+  /**
+   * laid on the terrain (the wall-foot strip, house.ts groundSkirt): a group of its own, which the weathering's wall-foot
+   * band never cuts at its break heights (a part facing up takes no damp, so a cut would only add triangles)
+   */
+  ground?: boolean;
   uv?: UvMode;
   /** night window: the faces whose normal matches this unit vector glow (curtain bucket only) */
   window?: Vec3;
@@ -123,12 +131,20 @@ export class PartSink {
    * wall it has cut openings in; 0 everywhere else, where a unit sits on a solid face).
    */
   recess = 0;
+  /** inside `near`: every fine emission is a near one (EmitOptions.fine 'near') */
+  private nearDepth = 0;
   /**
    * The paint of a coloured bucket's parts emitted with no colour of their own (null: the neutral grey). A kit sets it
    * round a body whose walls it builds in a coloured bucket (a painted weatherboard cottage: Queenstown's cottageRow).
    */
   paint: Rgb | null = null;
   constructor(uvOffset: readonly [number, number] = [0, 0]) { this.uvOffset = uvOffset; }
+
+  /** Emit `body` with its fine joinery drawn near the camera only (EmitOptions.fine 'near'; the facade craft). */
+  near<T>(body: () => T): T {
+    this.nearDepth++;
+    try { return body(); } finally { this.nearDepth--; }
+  }
 
   /**
    * Dressing a phone leaves out, drawn as the desktop draws it (docs/DESTRUCTION.md §8.4: a phone's collision is the
@@ -155,8 +171,20 @@ export class PartSink {
     try { body(); } finally { this.place = prior; }
   }
 
-  private acc(bucket: RegionalBucket, decor: boolean, shadow = false, fine = false): Accumulator {
-    const key = `${bucket}|${decor ? (fine ? 'f' : shadow ? 'c' : 'd') : 's'}`;
+  /** The placement `placed` has open (its yaw and offset in the building's frame), or null in the building's own frame. */
+  placement(): { yaw: number; x: number; y: number; z: number } | null {
+    const pl = this.place;
+    return pl ? { yaw: Math.atan2(pl.sin, pl.cos), x: pl.x, y: pl.y, z: pl.z } : null;
+  }
+
+  /** A point of the emitting frame in the building's frame (through the placements `placed` has open). */
+  framePoint(p: Vec3): Vec3 {
+    const pl = this.place;
+    return pl ? [p[0] * pl.cos + p[2] * pl.sin + pl.x, p[1] + pl.y, -p[0] * pl.sin + p[2] * pl.cos + pl.z] : [p[0], p[1], p[2]];
+  }
+
+  private acc(bucket: RegionalBucket, decor: boolean, shadow = false, fine: boolean | 'near' = false, ground = false): Accumulator {
+    const key = `${bucket}|${decor ? (fine ? (fine === 'near' || this.nearDepth > 0 ? 'n' : 'f') : shadow ? 'c' : 'd') : 's'}${ground ? '|g' : ''}`;
     let group = this.groups.get(key);
     if (!group) {
       group = { pos: [], nor: [], uv: [], col: COLOURED.has(bucket) ? [] : null, mask: bucket === 'curtain' ? [] : null,
@@ -186,7 +214,7 @@ export class PartSink {
     }
     normal.normalize();
     const n: Vec3 = [normal.x, normal.y, normal.z];
-    const g = this.acc(bucket, !!opts.decor, !!opts.shadow, !!opts.fine);
+    const g = this.acc(bucket, !!opts.decor, !!opts.shadow, opts.fine === 'near' ? 'near' : !!opts.fine, !!opts.ground);
     const colour = g.col ? (opts.colour ?? this.paint ?? [0.6, 0.6, 0.6]) : null;
     const glow = g.mask && opts.window ? (n[0] * opts.window[0] + n[1] * opts.window[1] + n[2] * opts.window[2] > 0.999 ? 1 : 0) : 0;
     const density = opts.density ?? BUCKET_UV_DENSITY[bucket];
@@ -251,7 +279,7 @@ export class PartSink {
     // the faces that stay coarse (a long view reads them) while every other face is fine joinery: `coarse`, or under
     // fineSides the +z face (a face frame's outward axis); non-casting dressing only
     const keep = opts.decor && !opts.shadow ? coarse ?? (opts.fineSides ? { pz: true } : null) : null;
-    const fine = { ...o, fine: true };
+    const fine = { ...o, fine: o.fine === 'near' || o.fineSides === 'near' ? 'near' as const : true };
     const at = (face: keyof FaceSkip) => (keep && !keep[face] ? fine : o);
     // +x, -x, +y, -y, +z, -z faces (corners ccw from outside)
     if (!skip?.px) this.quad(bucket, c(1, -1, 1), c(1, -1, -1), c(1, 1, -1), c(1, 1, 1), at('px'), lf);
@@ -303,7 +331,7 @@ export class PartSink {
     // a framing member abuts its neighbours at both ends: only its face and two sides show (ends: true keeps the caps)
     // exposed: a free member (debris, a wheel spoke, a hip cap) keeps every face. A framing member's sides and caps
     // are fine joinery (EmitOptions.fineSides): a few centimetres deep, they are sub-pixel at a long view
-    this.box(bucket, centre, [width / 2, length / 2, depth / 2], opts.exposed ? opts : { ...opts, fineSides: true }, frame,
+    this.box(bucket, centre, [width / 2, length / 2, depth / 2], opts.exposed ? opts : { ...opts, fineSides: opts.fineSides === 'near' ? 'near' : true }, frame,
       opts.exposed ? undefined : opts.ends ? { nz: true } : { nz: true, py: true, ny: true });
   }
 
@@ -370,7 +398,7 @@ export class PartSink {
     const parts = newRegionalParts();
     for (const [key, g] of this.groups) {
       if (!g.pos.length) continue;
-      const [bucket, role] = key.split('|') as [RegionalBucket, 'd' | 'c' | 'f' | 's'];
+      const [bucket, role, place] = key.split('|') as [RegionalBucket, 'd' | 'c' | 'f' | 'n' | 's', 'g' | undefined];
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(g.pos, 3));
       geometry.setAttribute('normal', new THREE.Float32BufferAttribute(g.nor, 3));
@@ -382,7 +410,9 @@ export class PartSink {
       if (g.tint && g.tint.some((v) => v !== 1)) geometry.setAttribute('tint', new THREE.Float32BufferAttribute(g.tint, 3));
       if (role !== 's') geometry.userData.noCollision = true;
       if (role === 'c') geometry.userData.castsShadow = true;
-      if (role === 'f') geometry.userData.fine = true;
+      if (role === 'f' || role === 'n') geometry.userData.fine = true;
+      if (role === 'n') geometry.userData.fineNear = true;
+      if (place === 'g') geometry.userData.onGround = true;
       geometry.userData.uvJitter = 'none';
       geometry.userData.regional = true;
       parts[bucket].push(geometry);

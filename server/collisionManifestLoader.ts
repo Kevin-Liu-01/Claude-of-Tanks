@@ -1,5 +1,6 @@
 import {
   collisionManifestEntry,
+  collisionManifestShardName,
   readCollisionManifestIndex,
   validateCollisionManifestCounts,
   type CollisionManifestCounts,
@@ -28,9 +29,12 @@ export function createCollisionManifestLoader(
   const indexUrl = new URL('index.json', directory);
   if (statSync(indexUrl).size > 64 * 1024) throw new Error('collision manifest index is too large');
   const index = readCollisionManifestIndex(JSON.parse(readFileSync(indexUrl, 'utf8')));
-  const manifests = createMapResourceCache((id) => {
-    const entry = collisionManifestEntry(index, id);
-    const url = new URL(`${id}.json`, directory);
+  // keyed by the shard name: `<map>` or `<map>@<variant>` (a mode's battlefield variant, its own manifest)
+  const manifests = createMapResourceCache((key) => {
+    const at = key.indexOf('@');
+    const id = at < 0 ? key : key.slice(0, at), variant = at < 0 ? null : key.slice(at + 1);
+    const entry = collisionManifestEntry(index, id, variant);
+    const url = new URL(`${collisionManifestShardName(id, variant)}.json`, directory);
     if (statSync(url).size !== entry.bytes) throw new Error(`collision manifest size mismatch: ${id}`);
     const bytes = readFileSync(url);
     if (createHash('sha256').update(bytes).digest('hex') !== entry.sha256) {
@@ -43,7 +47,9 @@ export function createCollisionManifestLoader(
 
   return {
     terrainSeed: index.terrainSeed,
-    get: manifests.get,
+    /** The manifest of `id`, or of its `variant` (null: the base map). */
+    // (the factory validates: the index lookup first, as before, then the shard's name)
+    get: (id: string, variant: string | null = null) => manifests.get(variant ? `${id}@${variant}` : id),
     cacheStats: manifests.stats,
     stats(): Record<string, CollisionManifestCounts> {
       return Object.fromEntries(Object.entries(index.maps).map(([id, entry]) => [id, {
