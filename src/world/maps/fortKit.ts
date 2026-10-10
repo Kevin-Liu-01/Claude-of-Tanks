@@ -1022,61 +1022,71 @@ function placeBag(m: Mesh, rng: Rng, x: number, y: number, z: number, yaw: numbe
 }
 
 /**
- * The roof's cover: a skin of earth under turf, flat on top and rounded off at a ragged rim inset from the slab's edge,
- * lumpy, its normals smooth (no facets), and tufts of grass standing in it.
+ * The roof's cover: a skin of earth under turf, nearly flat on top and rounded off at a ragged rim inset from the slab's
+ * edge, gently uneven, in patches of grass, dry grass and bare earth, and tufts standing in it. Its normals are the
+ * surface's own (area-weighted over the triangles round each vertex), so no wedge of the fan reads as a fold.
  */
 function roofCover(m: Mesh, plan: Plan, y: number, thick: number, inset: number, T: FortTones, seed: number): void {
   if (thick <= 0.02) return;
   const inner = grow(plan, -inset + (inset === 0 ? 0.18 : 0));
-  const samples = perimeter(inner, 0.22, 3);
+  const samples = perimeter(inner, 0.2, 0);
   const cx = plan.reduce((s, p) => s + p[0], 0) / plan.length, cz = plan.reduce((s, p) => s + p[1], 0) / plan.length;
-  const RINGS = 8;
-  // the cover's height over the slab at a share t of the way to its rim: a plateau rounded off at the edge, lumpy
+  const RINGS = 9;
+  // the cover's height over the slab at a share t of the way to its rim: flat, rounded off at the edge, uneven
   const heightAt = (x: number, z: number, t: number): number => {
     if (t >= 1) return -0.01;
-    const shoulder = Math.pow(Math.cos(Math.min(1, Math.max(0, (t - 0.55) / 0.45)) * Math.PI / 2), 0.7);
-    const lumps = (fbm(x, 0, z, 0.55, seed + 3) - 0.5) * 0.5 + (vnoise(x, 0, z, 0.18, seed + 4) - 0.5) * 0.18;
+    const shoulder = Math.pow(Math.cos(Math.min(1, Math.max(0, (t - 0.68) / 0.32)) * Math.PI / 2), 0.8);
+    const lumps = (fbm(x, 0, z, 0.9, seed + 3) - 0.5) * 0.28 + (vnoise(x, 0, z, 0.25, seed + 4) - 0.5) * 0.08;
     return Math.max(0.01, thick * shoulder * (1 + lumps));
   };
-  const pt = (s: PerimeterSample, r: number): V3 => {
-    const t = r / RINGS;
-    const rag = (vnoise(s.x * 3, 0, s.z * 3, 0.6, seed) - 0.5) * 0.4;
-    const x = cx + (s.x + s.nx * rag - cx) * t, z = cz + (s.z + s.nz * rag - cz) * t;
-    return [x, y + heightAt(x, z, t), z];
-  };
   const K = samples.length;
-  const grid = samples.map((s) => Array.from({ length: RINGS + 1 }, (_, r) => pt(s, r)));
-  const nrm = grid.map((row, i) => row.map((p, r) => {
-    if (r === 0) return [0, 1, 0] as V3;
-    const a = grid[(i + 1) % K][r], b = grid[(i - 1 + K) % K][r], c = grid[i][Math.min(RINGS, r + 1)], d = grid[i][r - 1];
-    let n = norm(cross(sub(c, d), sub(a, b)));
-    if (n[1] < 0) n = scl(n, -1);
-    void p;
-    return n;
+  const grid: V3[][] = samples.map((s0) => Array.from({ length: RINGS + 1 }, (_, r) => {
+    const t = r / RINGS;
+    // the rim's raggedness by place along it (low frequency: no radial combing)
+    const rag = (vnoise(s0.x * 1.3, 0, s0.z * 1.3, 0.9, seed) - 0.5) * 0.35;
+    const x = cx + (s0.x + s0.nx * rag - cx) * t, z = cz + (s0.z + s0.nz * rag - cz) * t;
+    return [x, y + heightAt(x, z, t), z] as V3;
   }));
-  const shade = (p: V3, n: V3): Rgb => {
-    const pat = fbm(p[0], 0, p[2], 0.6, seed + 5), fine = vnoise(p[0], 0, p[2], 0.15, seed + 7);
-    let c = mix(mix(T.turf, T.crest, smooth(0.35, 0.7, pat)), mul(T.earth, 0.9), smooth(0.62, 0.85, fbm(p[0], 3, p[2], 0.4, seed + 9)) * 0.7);
-    const steep = clamp01((1 - n[1]) * 3);
-    c = mix(c, T.earth, steep * (T.arid ? 0.8 : 0.45));
-    if (T.arid) c = mix(c, T.earth, 0.6);
-    return mul(c, 0.86 + fine * 0.28);
-  };
+  // the triangles, then each vertex's normal as the area-weighted sum of its triangles' (degenerate ones add nothing)
+  const tris: Array<[number, number, number, number, number, number]> = [];
   for (let i = 0; i < K; i++) {
     const i1 = (i + 1) % K;
     for (let r = 0; r < RINGS; r++) {
-      const a = grid[i][r], b = grid[i1][r], c = grid[i1][r + 1], d = grid[i][r + 1];
-      if (r === 0) m.triN(a, nrm[i][r], d, nrm[i][r + 1], c, nrm[i1][r + 1], shade);
-      else { m.triN(a, nrm[i][r], d, nrm[i][r + 1], c, nrm[i1][r + 1], shade); m.triN(a, nrm[i][r], c, nrm[i1][r + 1], b, nrm[i1][r], shade); }
+      if (r > 0) tris.push([i, r, i1, r, i1, r + 1]);
+      tris.push([i, r, i1, r + 1, i, r + 1]);
     }
   }
+  const acc = grid.map((row) => row.map(() => [0, 0, 0] as V3));
+  for (const [ia, ra, ib, rb, ic, rc] of tris) {
+    const A = grid[ia][ra], B = grid[ib][rb], C = grid[ic][rc];
+    let fn = cross(sub(B, A), sub(C, A));
+    if (fn[1] < 0) fn = scl(fn, -1);
+    for (const [iv, rv] of [[ia, ra], [ib, rb], [ic, rc]]) { const v = acc[iv][rv]; v[0] += fn[0]; v[1] += fn[1]; v[2] += fn[2]; }
+  }
+  // the centre is one point for every sample: its normal the sum of all of them
+  const centre: V3 = [0, 0, 0];
+  for (let i = 0; i < K; i++) { centre[0] += acc[i][0][0]; centre[1] += acc[i][0][1]; centre[2] += acc[i][0][2]; }
+  for (let i = 0; i < K; i++) acc[i][0] = [centre[0], centre[1], centre[2]];
+  const nrm = acc.map((row) => row.map((v) => norm(v[1] <= 1e-9 ? [0, 1, 0] : v)));
+  const shade = (p: V3, n: V3): Rgb => {
+    const big = fbm(p[0], 0, p[2], 1.1, seed + 5), mid = fbm(p[0] + 3.7, 0, p[2] - 1.9, 0.45, seed + 6), fine = vnoise(p[0], 0, p[2], 0.12, seed + 7);
+    // grass, dry grass in drifts, bare earth in a few patches and where the rim falls away, a darker moss here and there
+    let c = mix(T.turf, T.crest, smooth(0.38, 0.72, big));
+    c = mix(c, mul(T.turf, 0.62), smooth(0.66, 0.84, mid) * (T.arid ? 0 : 0.6));
+    c = mix(c, mul(T.earth, 0.95), smooth(0.7, 0.86, fbm(p[0], 3, p[2], 0.5, seed + 9)) * 0.8);
+    const steep = clamp01((1 - n[1]) * 2.5);
+    c = mix(c, T.earth, steep * (T.arid ? 0.8 : 0.5));
+    if (T.arid) c = mix(c, T.earth, 0.55);
+    return mul(c, 0.8 + fine * 0.35);
+  };
+  for (const [ia, ra, ib, rb, ic, rc] of tris) m.triN(grid[ia][ra], nrm[ia][ra], grid[ib][rb], nrm[ib][rb], grid[ic][rc], nrm[ic][rc], shade);
   // tufts of grass in it (dry on an arid map: thin, few)
-  const tufts = T.barren ? 0 : T.arid ? 18 : 70;
+  const tufts = T.barren ? 0 : T.arid ? 20 : 90;
   for (let k = 0; k < tufts; k++) {
-    const si = Math.floor(hash3(k, 1, 2, seed) * K), t = Math.sqrt(hash3(k, 3, 4, seed)) * 0.82;
+    const si = Math.floor(hash3(k, 1, 2, seed) * K), t = Math.sqrt(hash3(k, 3, 4, seed)) * 0.86;
     const s0 = samples[si];
     const x = cx + (s0.x - cx) * t, z = cz + (s0.z - cz) * t, base = y + heightAt(x, z, t) - 0.02;
-    tuft(m, x, base, z, 0.16 + hash3(k, 5, 6, seed) * 0.22, mix(T.crest, T.turf, hash3(k, 7, 8, seed) * 0.6), seed + k * 13);
+    tuft(m, x, base, z, 0.14 + hash3(k, 5, 6, seed) * 0.26, mix(T.crest, T.turf, hash3(k, 7, 8, seed) * 0.7), seed + k * 13);
   }
 }
 
