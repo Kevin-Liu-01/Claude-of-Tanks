@@ -29,7 +29,7 @@ import { structureTopAt } from '../sim/structureSupport.ts';
 import { recordSegments } from '../dev/colliderOverlay.ts';
 import { boulderKindFor, buildBoulderForm } from './rockDressing.ts';
 import {
-  ROCK_DRIVE_OVER_M, ROCK_TIER_FIRST_M, applyFormationCollision, applyRockCollisionProfile, formationCollisionProfile,
+  ROCK_DRIVE_OVER_M, ROCK_TIER_FIRST_M, ROCK_TIER_FLOOR_M, applyFormationCollision, applyRockCollisionProfile, formationCollisionProfile,
   rockCollisionProfile, rockFormFrom, rockFormOf, rockStaysCrushable,
 } from './rockCollision.ts';
 import { packCollisionRecord } from '../../tools/headlessWorldCollision.mjs';
@@ -52,10 +52,10 @@ const flat = () => 0;
   assert.ok(p, 'a stone past the line has one');
   assert.ok(Math.abs(p.top - 1.2) < 0.02, `its real top (${p.top})`);
   assert.ok(Math.abs(p.exposed - 1.2) < 0.02, 'its rise');
-  // the equator stands 0.2 m over the ground: the ground outline is the whole disc
+  // the equator stands 0.2 m over the ground, at the first tier's rise floor: the footprint is the whole disc
   const area = (pts) => { let a = 0; for (let i = 0; i < pts.length; i += 2) { const j = (i + 2) % pts.length; a += pts[i] * pts[j + 1] - pts[j] * pts[i + 1]; } return Math.abs(a) / 2; };
-  assert.ok(area(p.contact) > 2.9 && area(p.contact) <= Math.PI + 1e-6, `the footprint is the stone's ground outline, its widest section over the ground (${area(p.contact).toFixed(2)} m2)`);
-  // the tiers: the ground outline to 0.7 m over the stone's lowest point, then the stone above it to its top, nested
+  assert.ok(area(p.contact) > 2.9 && area(p.contact) <= Math.PI + 1e-6, `the footprint is the stone's widest section over its rise floor (ROCK_TIER_FLOOR_M) (${area(p.contact).toFixed(2)} m2)`);
+  // the tiers: the footprint to 0.7 m over the stone's lowest point, then the stone above it to its top, nested
   assert.equal(p.tiers.length, 2, `a 1.2 m dome stands two tiers (${p.tiers.length})`);
   assert.equal(p.contact, p.tiers[0].points, 'the footprint is the first tier');
   assert.ok(Math.abs(p.tiers[0].y0) < 0.011 && Math.abs(p.tiers[0].y1 - ROCK_TIER_FIRST_M) < 0.011, `the first tier to ${ROCK_TIER_FIRST_M} m`);
@@ -74,11 +74,12 @@ const flat = () => 0;
       assert.ok(r <= Math.sqrt(Math.max(0, 1 - Math.min(1, h * h))) + 0.03, `slab corner inside the sphere at its foot (${r.toFixed(3)})`);
     }
   }
-  // sunk deeper, the ground cuts it under the equator: a smaller footprint, its section at the ground
+  // sunk deeper, the ground cuts it under the equator: a smaller footprint, its section at the rise floor (a toe a
+  // track's rounded front clears stands no wall; 2026-10-09: the toe's air read over main's footprint)
   const q = rockCollisionProfile(sphere, at(-0.3), flat);
-  // (the section's circle at the ground as twelve corners hold it: 3 r2)
-  const ground = 3 * (1 - 0.3 * 0.3);
-  assert.ok(q && Math.abs(area(q.contact) - ground) < 0.04 * ground, `a sunk stone's ground outline is its section at the ground (${area(q.contact).toFixed(2)} of ${ground.toFixed(2)} m2)`);
+  // (the section's circle at the rise floor as twelve corners hold it: 3 r2)
+  const ground = 3 * (1 - (0.3 + ROCK_TIER_FLOOR_M) ** 2);
+  assert.ok(q && Math.abs(area(q.contact) - ground) < 0.04 * ground, `a sunk stone's footprint is its section at the rise floor (${area(q.contact).toFixed(2)} of ${ground.toFixed(2)} m2)`);
   // a stone that flares at its foot (a cone sunk 10 cm): a toe ring holds the flare its lowest slab's section leaves out
   const cone = rockFormOf(mergeVertices(new THREE.ConeGeometry(1.5, 2, 24, 6).translate(0, 1, 0)));
   const flared = rockCollisionProfile(cone, at(-0.1), flat);
@@ -133,9 +134,11 @@ const slope = (x, z) => 0.18 * x - 0.07 * z;
 const totals = { legacy: { col: 0, ph: 0, rays: 0, phr: 0 }, now: { col: 0, ph: 0, mesh: 0, leak: 0, rays: 0, phr: 0, lkr: 0 } };
 /** The movement record's volume slice by slice (round 2): the tiers and round 1's one prism of the ground outline. */
 const volume = { stone: 0, tiers: { col: 0, ph: 0, high: 0, leak: 0 }, prism: { col: 0, ph: 0, high: 0, leak: 0 } };
-/** The movement record from the ground (the toe included) to 1.4 m over it, where a hull's tracks and hull meet a stone. */
-const MOVE_BAND = [0, 1.4];
-const SLICES = [0.05, 0.35, 0.65, 0.95, 1.25, 1.55, 1.85, 2.15, 2.45, 2.75];
+/** The movement record from the first tier's rise floor to 1.4 m over the ground, where a hull meets a stone (a toe
+ * under the floor is a track's to roll over; 2026-10-09: round 2's ground band read the toe's air over main's). */
+const MOVE_BAND = [ROCK_TIER_FLOOR_M, 1.4];
+// (the slices over the first tier's rise floor: the toe under it is no hull's)
+const SLICES = [0.05, 0.35, 0.65, 0.95, 1.25, 1.55, 1.85, 2.15, 2.45, 2.75].filter((Y) => Y >= ROCK_TIER_FLOOR_M);
 let stones = 0, driveOver = 0, columns = 0;
 for (const lithology of ['granite', 'sandstone', 'limestone']) {
   for (let vi = 0; vi < 3; vi++) {
@@ -228,8 +231,10 @@ assert.ok(nowLeak < 0.03, `and holding it (${(nowLeak * 100).toFixed(1)} % of th
 // follow the stone)
 const tierAir = share(volume.tiers.ph, volume.prism.ph), highAir = share(volume.tiers.high, volume.prism.high);
 const tierLeak = share(volume.tiers.leak, volume.stone), prismLeak = share(volume.prism.leak, volume.stone);
-assert.ok(columns > stones * 1.5, `stones stand tiers (${columns} columns on ${stones} stones)`);
-assert.ok(highAir < 0.6 && tierAir < 0.8, `the tiers stand clear of the air over a dome's shoulders (${(highAir * 100).toFixed(0)} % of the prism's over the first tier, ${(tierAir * 100).toFixed(0)} % in all)`);
+// (2026-10-09: the first tier tops out 0.7 m over the highest ground a stone leaves, so a stone on a slope stands fewer
+// tiers than round 2's, whose first tier the census found under the band on the uphill side)
+assert.ok(columns > stones * 1.25, `stones stand tiers (${columns} columns on ${stones} stones)`);
+assert.ok(highAir < 0.7 && tierAir < 0.85, `the tiers stand clear of the air over a dome's shoulders (${(highAir * 100).toFixed(0)} % of the prism's over the first tier, ${(tierAir * 100).toFixed(0)} % in all)`);
 assert.ok(tierLeak < 0.01 && tierLeak <= prismLeak + 0.01, `and hold the stone (${(tierLeak * 100).toFixed(1)} % uncovered, the prism's ${(prismLeak * 100).toFixed(1)} %)`);
 assert.ok(nowRays < 0.05 && nowRays < oldRays / 3, `shells meet the stone (${(nowRays * 100).toFixed(1)} % of rays stopped 10+ cm clear, legacy ${(oldRays * 100).toFixed(1)} %)`);
 assert.ok(nowRayLeak < 0.04, `and stop on it (${(nowRayLeak * 100).toFixed(1)} % clip 10+ cm of stone unstopped)`);

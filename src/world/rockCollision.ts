@@ -9,8 +9,8 @@
 // shell rays that met one passing no stone, the tops 0.6 m too high, and 2,419 stones over 0.45 m tall with no collider.
 //
 // A stone's colliders now come from its own mesh, placed (its placement matrix) over its own ground:
-//   movement  nested columns from the record's floor (round 2, 2026-10-08: movementTiers): the first the stone's whole
-//             ground outline, toe and tail included, to ROCK_TIER_FIRST_M over its lowest point; each next one the hull
+//   movement  nested columns from the record's floor (round 2, 2026-10-08: movementTiers): the first the hull of the
+//             stone over its rise floor (ROCK_TIER_FLOOR_M), to ROCK_TIER_FIRST_M over its lowest point; each next one the hull
 //             of the stone above its tier, ROCK_TIER_STEP_M higher, up to ROCK_CONTACT_TOP_M over the ground; the last
 //             to the stone's real top, so a hull's floor on the stone steps as the stone does;
 //   shells    the exposed stone in horizontal slabs from its lowest exposed point to its top (the ranged convex parts the
@@ -35,18 +35,32 @@ export const ROCK_CONTACT_TOP_M = 3;
 /**
  * The movement tiers (the hitbox lane, round 2, 2026-10-08; fit waves 263 and 271: "build the movement volume from the
  * same stepped slices"). One prism of the stone's widest girth to its top stood a hull a metre short of a dome's
- * shoulder, boxed the air over a ledge's low slabs and drew a hoodoo's flared foot up its whole stem, and its band from
- * 0.2 m left a stone's toe and tail to a hull's tracks. The first tier's top over the stone's lowest point: past a
- * hull's step-up (0.55 m) with 15 cm to spare, so a hull on level ground meets the stone's ground outline as a wall and
+ * shoulder, boxed the air over a ledge's low slabs and drew a hoodoo's flared foot up its whole stem. The first tier's
+ * top over the highest ground the stone leaves (its uphill foot on a slope; 2026-10-09, the census found a top over its
+ * lowest point under the band uphill): past a hull's step-up (0.55 m) with 15 cm to spare, so a hull on any side
+ * meets the stone's footprint (its hull over ROCK_TIER_FLOOR_M) as a wall and
  * climbs onto the first tier only from ground that rises toward it (a column is a floor within the step-up and is stood
  * on by the same rule, collision.ts hullPassesObstacleTop and structureSupport.ts).
  */
 export const ROCK_TIER_FIRST_M = 0.7;
 /** Each tier above the first. */
 const ROCK_TIER_STEP_M = 0.6;
+/**
+ * The first tier's rise floor (2026-10-09, round 2 on main): its outline is the hull of the stone that stands at least
+ * this high over its own ground. Round 2 first took the whole ground outline, toe and tail included, and the world
+ * collider audit read the contact-band air rise over main's footprint (Reservoir: boulders 9.0 -> 12.4 %, small rocks
+ * 8.8 -> 18.8 %): a hull stood off a stone's bulk by its low toe, which a track's rounded front clears. A stone keeps
+ * main's 0.2 m floor and a formation's block 0.3 m (its pieces flare at their feet: main's 0.35 m left 6.5 % of the
+ * blocks' stone in the band uncovered, 0.2 m stood 7.4 % of the footprint in air; at 0.3 m the census on Reservoir and
+ * Copper Mesa read 3.9 % air and 3.2 % uncovered, both under main's 6.4 and 6.5); the column still stands from
+ * the record's floor, so the push and the support agree.
+ */
+export const ROCK_TIER_FLOOR_M = 0.2;
+/** A formation block's first-tier rise floor (main's FORMATION_CONTACT_FLOOR_M was 0.35). */
+const FORMATION_TIER_FLOOR_M = 0.3;
 /** A last tier thinner than this joins the one under it. */
 const ROCK_TIER_LAST_MIN_M = 0.25;
-/** Corners a tier above the first keeps at most (the first, the ground outline, keeps ROCK_HULL_POINTS). */
+/** Corners a tier above the first keeps at most (the first, the footprint, keeps ROCK_HULL_POINTS). */
 const ROCK_TIER_POINTS = 8;
 /** The shells' toe ring: the stone up to this height over its lowest point (wave 263: a snow boulder's foot stood up to
  * 0.5 m outside its lowest slab, which takes the section 35 % up it)... */
@@ -115,7 +129,7 @@ export interface RockBand {
 }
 
 export interface RockCollisionProfile {
-  /** The movement footprint (world [x, z, ...]): the stone's ground outline, the first tier's. */
+  /** The movement footprint (world [x, z, ...]): the stone's hull over its rise floor, the first tier's. */
   contact: number[];
   /** The movement tiers, bottom up: nested columns (each inside the one under it), `y0` its tier's floor, `y1` its top
    * (the record's parts reach down to the record's floor: applyRockCollisionProfile). */
@@ -359,6 +373,8 @@ interface PlacedSurface {
   exposed: number;
   /** The lowest point of the surface over its ground (where the stone leaves it). */
   low: number;
+  /** The highest point where the stone leaves its ground (a stone on a slope: its uphill foot); `low` when none. */
+  high: number;
 }
 
 /** Place a form (local vertices and a column-major matrix; or world vertices, `matrix` null) over the ground. */
@@ -379,8 +395,8 @@ function placeSurface(
     if (y > top) top = y;
     if (rise[v] > exposed) exposed = rise[v];
   }
-  // the lowest exposed point: every edge's stretch over the ground, its lowest end
-  let low = Infinity;
+  // the lowest exposed point: every edge's stretch over the ground, its lowest end; the highest ground crossing
+  let low = Infinity, high = -Infinity;
   for (let k = 0; k < edges.length; k += 2) {
     const a = edges[k], b = edges[k + 1], ra = rise[a], rb = rise[b];
     if (ra < 0 && rb < 0) continue;
@@ -388,10 +404,12 @@ function placeSurface(
     if (rb >= 0) low = Math.min(low, wy[b]);
     if ((ra < 0) !== (rb < 0)) {
       const t = ra / (ra - rb);
-      low = Math.min(low, wy[a] + (wy[b] - wy[a]) * t);
+      const y = wy[a] + (wy[b] - wy[a]) * t;
+      low = Math.min(low, y);
+      high = Math.max(high, y);
     }
   }
-  return { wx, wy, wz, rise, edges, top, exposed, low };
+  return { wx, wy, wz, rise, edges, top, exposed, low, high: Number.isFinite(high) ? Math.max(high, low) : low };
 }
 
 /** Gather into the scratch the surface's section at height y over its ground (rise >= 0), from the candidate edges. */
@@ -475,13 +493,16 @@ function clipConvexTo(subject: number[], clip: readonly number[]): number[] | nu
  * above its tier's floor up to `riseMax` over the ground (ROCK_TIER_FIRST_M, then every `step`), clipped to the column
  * under it; the last one's top the stone's own. Empty when no stone stands over the ground.
  */
-function movementTiers(s: PlacedSurface, riseMax: number, step = ROCK_TIER_STEP_M): RockBand[] {
+function movementTiers(s: PlacedSurface, riseMax: number, step = ROCK_TIER_STEP_M, riseFloor = ROCK_TIER_FLOOR_M): RockBand[] {
   const floors: number[] = [s.low];
-  for (let y = s.low + ROCK_TIER_FIRST_M; y < s.top - ROCK_TIER_LAST_MIN_M; y += step) floors.push(y);
+  // (the first tier's top over the highest ground the stone leaves, so on a slope a hull on its uphill side meets the
+  // footprint as a wall too, not the narrower tiers above it: 2026-10-09)
+  const base = s.high;
+  for (let y = base + ROCK_TIER_FIRST_M; y < s.top - ROCK_TIER_LAST_MIN_M; y += step) floors.push(y);
   const tiers: RockBand[] = [];
   let under: number[] | null = null;
   for (let k = 0; k < floors.length; k++) {
-    gatherBox(s, floors[k], Infinity, 0, riseMax);
+    gatherBox(s, floors[k], Infinity, k === 0 ? riseFloor : 0, riseMax);
     let points = scratchHullOf(k === 0 ? ROCK_HULL_POINTS : ROCK_TIER_POINTS);
     if (points && under) points = clipConvexTo(points, under);
     if (!points) break;
@@ -735,7 +756,7 @@ export interface FormationCollisionProfile {
 function formationTiers(surfaces: readonly PlacedSurface[]): RockBand[] {
   for (const step of [ROCK_TIER_STEP_M, ROCK_TIER_STEP_M * 1.5, ROCK_TIER_STEP_M * 2.25, Infinity]) {
     const tiers = surfaces.flatMap((s) => {
-      const blockTiers = movementTiers(s, ROCK_CONTACT_TOP_M, step);
+      const blockTiers = movementTiers(s, ROCK_CONTACT_TOP_M, step, FORMATION_TIER_FLOOR_M);
       // (one column a block: its ground outline to its own top)
       if (step === Infinity && blockTiers.length) return [{ ...blockTiers[0], y1: blockTiers[blockTiers.length - 1].y1 }];
       return blockTiers;
@@ -785,7 +806,7 @@ export function formationCollisionProfile(
   // (the ground outlines: each block's first column, all of it over the ground within the band)
   const grounds: Outline[] = [];
   for (const s of surfaces) {
-    gatherBox(s, s.low, Infinity, 0, ROCK_CONTACT_TOP_M);
+    gatherBox(s, s.low, Infinity, FORMATION_TIER_FLOOR_M, ROCK_CONTACT_TOP_M);
     const points = scratchHullOf(ROCK_HULL_POINTS);
     if (points) grounds.push(outlineOf(points));
   }
