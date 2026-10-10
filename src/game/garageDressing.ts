@@ -51,6 +51,7 @@ import {
   BURLAK_SCAFFOLD_CLEARANCE_OFFSET,
   getAbramsWeldingBayPlacement,
   getGarageWorkshopLayoutPose,
+  LEOPARD_MOBILITY_BAY_LOCAL,
   LEOPARD_MOBILITY_BAY_OFFSET,
 } from './garageWorkshopLayout.ts';
 
@@ -2815,8 +2816,8 @@ export function createGarageDressing(
       new THREE.Group(), 'leo2a5_a5nl', 'mobility_teardown_service_bay',
     );
     mobilityBay.name = 'garage_leopard_a5nl_mobility_teardown';
-    mobilityBay.position.set(18.05, 0, -11.95);
-    mobilityBay.rotation.y = -0.55;
+    mobilityBay.position.set(LEOPARD_MOBILITY_BAY_LOCAL.x, 0, LEOPARD_MOBILITY_BAY_LOCAL.z);
+    mobilityBay.rotation.y = LEOPARD_MOBILITY_BAY_LOCAL.yaw;
     leopardServiceBayRoot.add(mobilityBay);
 
     mobilityTeardownTank.name = 'dressing_tank_leo2a5_a5nl_mobility_teardown';
