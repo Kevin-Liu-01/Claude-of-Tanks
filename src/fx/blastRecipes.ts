@@ -286,7 +286,7 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // explosive's smoke: puffs born out of the cooling fireball and driven up by its heat, the upper ones faster so the
   // cloud stretches into a lobed column, each glowing a moment at its heart
   // (7d: separate blue-grey lobes from ~2.4 s) more, smaller puffs overlapping into one lobed mass
-  const smokeN = thermobaric || heavy ? 14 : shaped ? 6 : 12;
+  const smokeN = thermobaric || heavy ? 16 : shaped ? 6 : 14;
   // (on snow, the dark soil it throws from under the snow: HE on snow is dark smoke over white powder)
   const snowy = I.surface === 'snow';
   const soilC = snowy ? UNDER_SNOW_SOIL : L.ejecta;
@@ -301,9 +301,9 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     const u = (i + R()) / smokeN;
     const a = R() * TAU, r = R() * 0.3 * D;
     place(m, I.x + Math.cos(a) * r, by + (0.2 + 0.5 * u) * D, I.z + Math.sin(a) * r, bo + 0.04 + 0.1 * u);
-    const lift = (2.6 + 1.2 * u) * sq * (heavy ? 1.3 : 1) * (shaped ? 0.8 : 1);
+    const lift = (2.2 + 2.4 * u) * sq * (heavy ? 1.3 : 1) * (shaped ? 0.8 : 1);
     // (wave 293) it billows outward as it climbs, not up a chimney; (fx 8) wider, so the lobes swell into one mass
-    const out = (1.2 + 1.6 * R()) * sq;
+    const out = (2.0 + 2.6 * R()) * sq;
     // (fx 8: the split) every puff climbs at nearly one rate and takes one share of the wind, so the cloud rises and
     // leans as one lobed mass through +4 s instead of its upper puffs sailing off downwind as a second cloud
     move(m, Math.cos(a) * out, lift, Math.sin(a) * out, 1.3, (0.42 + 0.14 * u) * Math.sqrt(sq), 0.85, 0);
@@ -311,7 +311,7 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     const life = (9 + 4 * R()) * (heavy ? 1.3 : 1) * (shaped ? 0.8 : 1);
     // (wave 293 and fx 8: the real cloud has grown about eight-fold in area by +2 s) born at a third of the fireball's
     // width and swelling fast: most of its growth in its first two seconds
-    shape(m, life, 0.32 * D * dk, (1.5 + 0.35 * u + 0.3 * R()) * D * dk, 3.8, R);
+    shape(m, life, 0.4 * D * dk, (1.6 + 0.4 * u + 0.35 * R()) * D * dk, 6, R);
     look(m, smokeC0, smokeAged, 0.9, 0.0, 0.55);
     book(m, 'billow', R, life);
     heat(m, 0.3, 4.5);
