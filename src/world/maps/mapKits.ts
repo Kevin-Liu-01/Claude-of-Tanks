@@ -175,11 +175,53 @@ interface DressingContext {
   /** The map-vehicles lane (2026-10-06): the vegetation's tree trunks (props.ts sceneryTrees); a beached boat keeps its
    *  hull clear of them. Omitted, the boats seat as drawn. */
   trees?: readonly CollisionRecord[];
+  /** Roads lane R3 (2026-10-10): where the map's ground is paved, for the rail kit's beds (railBedAt). Omitted, every
+   *  span keeps its raised bed except at a road's crossing. */
+  railPaving?: RailPaving | null;
+}
+
+/**
+ * Roads lane R3 (2026-10-10, the coordinator after wave 341: Cinder Junction's "sleepers lie ON TOP of the cobbles (bed
+ * them in)"; "inside paved yards and at crossings, set rails flush with setts (or ballast at grade); keep the raised ballast
+ * shoulder only on open-country spans"): the map's paved ground as the rail kit sees it — its roads' carriageways when its
+ * roads are paved (pavedRoadHalfM, the R print's or a paved class's half-width), its town rect when it paves its town (a
+ * 6 m feather in), its hardstands when they are paved, and a rail yard's graded yard (its ballast laid at grade).
+ */
+export interface RailPaving {
+  pavedRoadHalfM: number | null;
+  pavedTown: { x0: number; x1: number; z0: number; z1: number } | null;
+  pavedPads: readonly { x: number; z: number; width: number; length: number; yawDeg?: number }[];
+  yard: { x0: number; x1: number; z0: number; z1: number } | null;
+}
+/** A rail span's bed: raised on its ballast and shoulders (open country), its ballast at grade (a yard), set flush in
+ * paving, or flush at an earth road's level crossing (a timber deck between and beside the rails). */
+export const RAIL_BED_RAISED = 0, RAIL_BED_GRADE = 1, RAIL_BED_PAVED = 2, RAIL_BED_CROSSING = 3;
+/** A level crossing's reach either side of a road's centreline (m): the carriageway and its shoulder. */
+const RAIL_CROSSING_M = 4.6;
+
+/** The bed a rail span takes at (x, z) (railPaving: the map's paved ground; omitted, only crossings are set flush). */
+export function railBedAt(paving: RailPaving | null | undefined, field: Pick<DressingHeightField, '_roadDist'>, x: number, z: number): number {
+  const roadD = field._roadDist(x, z);
+  if (paving?.pavedRoadHalfM && roadD < paving.pavedRoadHalfM) return RAIL_BED_PAVED;
+  if (paving?.pavedTown) {
+    const t = paving.pavedTown;
+    if (x > t.x0 + 6 && x < t.x1 - 6 && z > t.z0 + 6 && z < t.z1 - 6) return RAIL_BED_PAVED;
+  }
+  for (const pad of paving?.pavedPads ?? []) {
+    const a = (pad.yawDeg ?? 0) * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
+    const dx = x - pad.x, dz = z - pad.z;
+    const u = dx * c - dz * sn, v = dx * sn + dz * c;
+    if (Math.abs(u) < pad.width / 2 && Math.abs(v) < pad.length / 2) return RAIL_BED_PAVED;
+  }
+  if (roadD < RAIL_CROSSING_M) return RAIL_BED_CROSSING;
+  const y = paving?.yard;
+  if (y && x > y.x0 + 2 && x < y.x1 - 2 && z > y.z0 + 2 && z < y.z1 - 2) return RAIL_BED_GRADE;
+  return RAIL_BED_RAISED;
 }
 
 type FocusedDressingContext = Pick<
   DressingContext,
-  'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated'
+  'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated' | 'railPaving'
 > & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[] };
 
 /** A boat hull into the painted (vertex-coloured) bucket, or the timber one without its colours where a kit has no
@@ -1144,12 +1186,12 @@ function legacyDressingKits(mapId?: string): readonly string[] {
 /** Add map-specific geometry before the shared material buckets are merged. */
 export function dressMapExtras({
   mapId, extraKits = null, riverLandings, L, heightField, rng, buckets, groundingReceipts = null,
-  obstacles, colliders, animated, vehicleSetPieces, trees,
+  obstacles, colliders, animated, vehicleSetPieces, trees, railPaving = null,
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
   const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
-    trunks: trunksOf(trees) };
+    trunks: trunksOf(trees), railPaving };
   if (mapId === 'cliffbridge') {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
   }
@@ -2280,6 +2322,8 @@ interface RailLay {
   conform: 'along' | 'full';
   /** Skip spans over the liquid mask (advancing their seeded draws, so the rest of the dressing is unchanged). */
   washout: boolean;
+  /** Roads lane R3: the bed at a point (railBedAt over the map's paving); omitted, the raised bed everywhere. */
+  bedAt?: (x: number, z: number) => number;
 }
 
 /** The 'full' lay's ground samples in the slab's own frame (along, across), each ±1 = the footprint's half-extent. */
@@ -2330,6 +2374,21 @@ function layRailSpan(
   const len = Math.hypot(run, rise);
   const tilt = Math.atan2(rise, run);
   const nS = Math.round(len / 1.4);
+  // Roads lane R3: the span's bed — paving or a crossing under any of its three inner quarter points sets it flush, a
+  // yard under its middle lays its ballast at grade; every part is built and drawn as before (the same seeded draws),
+  // only dropped: at grade the whole track 0.12 m (its ballast's top 3 cm proud of the floor, its shoulders under it),
+  // flush the bed, shoulders and sleepers under the paving and the rails' heads level with it (a flangeway inside each)
+  let bed = RAIL_BED_RAISED;
+  if (lay.bedAt) {
+    for (const t of [0.25, 0.5, 0.75]) bed = Math.max(bed, lay.bedAt(ax + dx * t, az + dz * t));
+    if (bed === RAIL_BED_GRADE && lay.bedAt(xm, zm) !== RAIL_BED_GRADE) bed = RAIL_BED_RAISED;
+  }
+  const flush = bed === RAIL_BED_PAVED || bed === RAIL_BED_CROSSING;
+  const groundRel = lay.conform === 'full' ? RAIL_SEAT_SINK_M : 0;   // the ground over the span's base
+  const trackDrop = bed === RAIL_BED_GRADE ? groundRel + 0.03 - 0.15 : 0;
+  const bedDrop = flush ? -0.45 : trackDrop;
+  const shoulderDrop = flush || bed === RAIL_BED_GRADE ? -0.45 : 0;
+  const railDrop = flush ? groundRel + 0.008 - 0.325 : trackDrop;
   if (lay.washout && !railSpanIsDry(heightField, ax, az, bx, bz, lay.ballast / 2)) {
     // A drowned siding ends at the bank; the liquid surface is not ground
     // that can support a paper-thin ballast slab. Advance the original 24
@@ -2377,7 +2436,7 @@ function layRailSpan(
   // (wave 234, the railyards' "smooth grey slab … no stone ballast, shoulder … or grime"): the bed and its shoulders
   // draw crushed stone and the track's grime (railBallast.ts), each part's UV its place across the track; no draw
   tagRailBallast(bal, lay.gauge, (x) => x, () => RAIL_BALLAST_BED);
-  place(bal, 0, deep ? 0.15 - RAIL_SLAB_DEPTH_FULL_M / 2 : 0.07, 0);
+  place(bal, 0, (deep ? 0.15 - RAIL_SLAB_DEPTH_FULL_M / 2 : 0.07) + bedDrop, 0);
   (buckets.ballast ?? buckets.baked ?? buckets.stone).push(bal);
   // the shoulders: a sloped plank each side from the bed's top edge (0.15 m) down into the ground 0.6 m out, its
   // foot darkened toward the soil it spills onto
@@ -2396,7 +2455,7 @@ function layRailSpan(
       tagRailBallast(shoulder, lay.gauge, (x) => lx + x * Math.cos(slopeAng),
         (x) => RAIL_BALLAST_SHOULDER + Math.min(1, Math.max(0, (x * sideSign + slopeLen / 2) / slopeLen)));
       shoulder.rotateZ(-sideSign * slopeAng);
-      place(shoulder, lx, 0.15 - drop / 2 - 0.02, 0);
+      place(shoulder, lx, 0.15 - drop / 2 - 0.02 + shoulderDrop, 0);
       (buckets.ballast ?? buckets.baked ?? buckets.stone).push(shoulder);
     }
   }
@@ -2404,15 +2463,32 @@ function layRailSpan(
   const half = lay.gauge / 2;
   for (const side of [-half, half]) {
     const rail = box(0.09, 0.17, len + 0.06, 2.0);
-    place(rail, side, 0.24, 0);
+    place(rail, side, 0.24 + railDrop, 0);
     buckets.dark.push(rail);
     // ground lane: the head the wheels keep bright — worn steel over the rusted web
     const head = box(0.066, 0.016, len + 0.06, 2.0);
     const hp = head.attributes.position, hc = new Float32Array(hp.count * 3);
     for (let i = 0; i < hp.count; i++) { hc[i * 3] = 0.23; hc[i * 3 + 1] = 0.232; hc[i * 3 + 2] = 0.24; }
     head.setAttribute('color', new THREE.BufferAttribute(hc, 3));
-    place(head, side, 0.24 + 0.085 + 0.004, 0);
+    place(head, side, 0.24 + 0.085 + 0.004 + railDrop, 0);
     (buckets.baked || buckets.dark).push(head);
+    // (R3) set flush, the flangeway: a dark groove inside the rail where the wheels' flanges run (no seeded draw)
+    if (flush) {
+      const groove = box(0.05, 0.006, len + 0.06, 2.0);
+      place(groove, side - Math.sign(side) * 0.075, groundRel + 0.003, 0);
+      buckets.dark.push(groove);
+    }
+  }
+  // (R3) an earth road's level crossing: a timber deck between the rails and a plank outside each (no seeded draw)
+  if (bed === RAIL_BED_CROSSING) {
+    const deck = box(lay.gauge - 0.22, 0.03, len, 1.4);
+    place(deck, 0, groundRel - 0.003, 0);
+    buckets.wood.push(deck);
+    for (const sideSign of [-1, 1]) {
+      const plank = box(0.42, 0.03, len, 1.4);
+      place(plank, sideSign * (half + 0.30), groundRel - 0.003, 0);
+      buckets.wood.push(plank);
+    }
   }
   // sleepers every ~1.4 m, seeded; ground lane: an infill sleeper midway before each seeded one (a hashed jitter, no
   // draw), so the track lies on sleepers every ~0.7 m
@@ -2434,11 +2510,11 @@ function layRailSpan(
     weather(sl, ax + dx * t, az + dz * t, false);
     const jitter = (rng() - 0.5) * 0.05;
     if (lay.conform === 'full') {
-      place(sl, jitter, 0.17, (t - 0.5) * len);
+      place(sl, jitter, 0.17 + bedDrop, (t - 0.5) * len);
     } else {
       const sx = ax + dx * t, sz = az + dz * t, sy = ya + (yb - ya) * t;
       if (yaw !== 0) sl.rotateY(yaw);
-      sl.translate(sx + jitter * c, sy + 0.17, sz - jitter * s);
+      sl.translate(sx + jitter * c, sy + 0.17 + bedDrop, sz - jitter * s);
     }
     buckets.wood.push(sl);
     const ti = sI / nS; // on the span's start for the first: the gap across the joint with the last span closes too
@@ -2447,11 +2523,11 @@ function layRailSpan(
     weather(infill, ax + dx * ti, az + dz * ti, true);
     const hashJ = (((Math.imul(Math.round((ax + dx * ti) * 100) ^ Math.imul(Math.round((az + dz * ti) * 100), 0x27d4eb2d), 0x165667b1) >>> 8) & 0xffff) / 65535 - 0.5) * 0.05;
     if (lay.conform === 'full') {
-      place(infill, hashJ, 0.17, (ti - 0.5) * len);
+      place(infill, hashJ, 0.17 + bedDrop, (ti - 0.5) * len);
     } else {
       const sx = ax + dx * ti, sz = az + dz * ti, sy = ya + (yb - ya) * ti;
       if (yaw !== 0) infill.rotateY(yaw);
-      infill.translate(sx + hashJ * c, sy + 0.17, sz - hashJ * s);
+      infill.translate(sx + hashJ * c, sy + 0.17 + bedDrop, sz - hashJ * s);
     }
     buckets.wood.push(infill);
   }
@@ -2466,8 +2542,10 @@ function railLine(
   z0: number,
   z1: number,
   washoutLiquid = false,
+  railPaving: RailPaving | null = null,
 ): void {
-  const lay: RailLay = { gauge: RAIL_SPUR_GAUGE_M, ballast: RAIL_SPUR_BALLAST_M, conform: 'along', washout: washoutLiquid };
+  const lay: RailLay = { gauge: RAIL_SPUR_GAUGE_M, ballast: RAIL_SPUR_BALLAST_M, conform: 'along', washout: washoutLiquid,
+    bedAt: (px, pz) => railBedAt(railPaving, heightField, px, pz) };
   for (const span of resampleRailPath([[x, z0], [x, z1]])) {
     layRailSpan(buckets, rng, heightField, span.ax, span.az, span.bx, span.bz, lay);
   }
@@ -2508,7 +2586,7 @@ function dressRailSpurs(ctx: FocusedDressingContext, spurs: readonly RailSpurCon
   for (const spur of spurs) {
     const lay: RailLay = {
       gauge: spur.gauge ?? RAIL_SPUR_GAUGE_M, ballast: spur.ballast ?? RAIL_SPUR_BALLAST_M,
-      conform: 'full', washout: true,
+      conform: 'full', washout: true, bedAt: (px, pz) => railBedAt(ctx.railPaving, heightField, px, pz),
     };
     const spans = resampleRailPath(spur.path, RAIL_SPUR_LAY_M, true);
     for (const span of spans) layRailSpan(buckets, rng, heightField, span.ax, span.az, span.bx, span.bz, lay);
@@ -2545,7 +2623,7 @@ function dressRailOpenLine(ctx: FocusedDressingContext, cut: RailCutting, lay: R
   const bed: DressingHeightField = { ...heightField, getHeightAt: outland, getWaterMaskAt: () => 0 };
   const path: [number, number][] = [[cut.ex, cut.ez], [cut.ex + cut.ux * RAIL_OPEN_KIT_M, cut.ez + cut.uz * RAIL_OPEN_KIT_M]];
   for (const span of resampleRailPath(path, RAIL_SPUR_LAY_M, true)) {
-    layRailSpan(buckets, rng, bed, span.ax, span.az, span.bx, span.bz, { ...lay, washout: false });
+    layRailSpan(buckets, rng, bed, span.ax, span.az, span.bx, span.bz, { ...lay, washout: false, bedAt: undefined });
   }
 }
 
@@ -2564,9 +2642,10 @@ function addRailYardLines(
   rng: Rng,
   buckets: DressingBuckets,
   washoutLiquid: boolean,
+  railPaving: RailPaving | null = null,
 ): void {
   for (const line of RAIL_YARD_LINES) {
-    railLine(buckets, rng, heightField, line.x, line.z0, line.z1, washoutLiquid);
+    railLine(buckets, rng, heightField, line.x, line.z0, line.z1, washoutLiquid, railPaving);
   }
   for (const line of RAIL_YARD_LINES) {
     if (line.z1 < 230) bufferStop(buckets, rng, heightField, line.x, line.z1 + 0.8);
@@ -2732,7 +2811,7 @@ function dressRailYard(
   ctx: FocusedDressingContext, washoutLiquid = false,
 ): void {
   const { L, heightField, rng, buckets } = ctx;
-  addRailYardLines(heightField, rng, buckets, washoutLiquid);
+  addRailYardLines(heightField, rng, buckets, washoutLiquid, ctx.railPaving ?? null);
   addRailYardCoalHeaps(heightField, rng, buckets, ctx);
   addRailYardSupplies(L.village, heightField, rng, buckets);
 }
@@ -2753,7 +2832,11 @@ function addSpurRollingStock(ctx: FocusedDressingContext, spur: RailSpurConfig):
     const L = ROLLING_STOCK_LENGTH[kind], reach = L * 0.3;
     const yF = heightField.getHeightAt(p.x + p.ux * reach, p.z + p.uz * reach);
     const yB = heightField.getHeightAt(p.x - p.ux * reach, p.z - p.uz * reach);
-    const pitch = Math.atan2(yF - yB, reach * 2), y = (yF + yB) / 2 + RAIL_HEAD_Y;
+    // (roads lane R3: on a span set at grade or flush the rails' heads stand lower, and the vehicle with them)
+    const stockBed = railBedAt(ctx.railPaving, heightField, p.x, p.z);
+    const stockDrop = stockBed === RAIL_BED_GRADE ? RAIL_SEAT_SINK_M + 0.03 - 0.15
+      : stockBed >= RAIL_BED_PAVED ? RAIL_SEAT_SINK_M + 0.008 - 0.325 : 0;
+    const pitch = Math.atan2(yF - yB, reach * 2), y = (yF + yB) / 2 + RAIL_HEAD_Y + stockDrop;
     const g = geo.clone();
     g.rotateX(-pitch);
     g.rotateY(Math.atan2(p.ux, p.uz));

@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import { createHeightField, createLayout, mulberry32 } from './terrain.ts';
-import { dressMapExtras, railSegmentIsDry, railSpanIsDry } from './maps/mapKits.ts';
+import { RAIL_BED_CROSSING, RAIL_BED_GRADE, RAIL_BED_PAVED, RAIL_BED_RAISED, dressMapExtras, railBedAt, railSegmentIsDry, railSpanIsDry } from './maps/mapKits.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import {
   RAIL_COAL_STAGE_OFFSET_M, RAIL_COAL_STAGE_PITCH_M, RAIL_OPEN_KIT_M, RAIL_SPUR_BALLAST_M, RAIL_SPUR_BERTH_M, RAIL_SPUR_GAUGE_M,
@@ -154,10 +154,34 @@ try {
   const rebuilt = build('steppe', steppe, 1337);
   try { assert.equal(rebuilt.digest, built.digest, 'the siding rebuilds byte-identically from the same seed'); }
   finally { dispose(rebuilt); }
+  // roads lane R3 (2026-10-10, the coordinator: "inside paved yards and at crossings, set rails flush ... keep the raised
+  // ballast shoulder only on open-country spans"): a span over the farm road is a level crossing (railBedAt, no paving
+  // given: crossings only) — its slab and sleepers under the ground, the rails' heads level with it, a timber deck between
+  // and beside them; every other span keeps its raised bed, checked as before
+  const bedOf = (sp) => Math.max(...[0.25, 0.5, 0.75].map((t) => railBedAt(null, steppe, sp.ax + (sp.bx - sp.ax) * t, sp.az + (sp.bz - sp.az) * t)));
+  const flushSpan = spurSpans.map((sp) => bedOf(sp) >= RAIL_BED_PAVED);
+  const flushCount = flushSpan.filter(Boolean).length;
+  assert.ok(flushCount > 0 && flushCount <= 6, `Tarkhan's siding crosses its farm road on ${flushCount} spans`);
+  assert.equal(RAIL_BED_RAISED < RAIL_BED_GRADE && RAIL_BED_GRADE < RAIL_BED_PAVED && RAIL_BED_PAVED < RAIL_BED_CROSSING, true, 'the beds rank');
+  const spanAt = (x) => spurSpans.findIndex((sp) => x >= Math.min(sp.ax, sp.bx) - 1e-6 && x <= Math.max(sp.ax, sp.bx) + 1e-6);
+  const raisedOnly = (list) => list.filter((g) => { const i = spanAt(centreX(g)); return i < 0 || !flushSpan[i]; });
+  const flushOnly = (list) => list.filter((g) => { const i = spanAt(centreX(g)); return i >= 0 && flushSpan[i]; });
+  for (const r of flushOnly(rail)) {
+    r.computeBoundingBox();
+    const top = r.boundingBox.max.y, cx = centreX(r), cz = r.boundingBox.getCenter(new THREE.Vector3()).z;
+    assert.ok(Math.abs(top - steppe.getHeightAt(cx, cz)) < 0.06, `a crossing's rail head level with the road (${(top - steppe.getHeightAt(cx, cz)).toFixed(3)} m)`);
+  }
+  for (const g of [...flushOnly(slab), ...flushOnly(sleeper)]) {
+    g.computeBoundingBox();
+    const c = g.boundingBox.getCenter(new THREE.Vector3());
+    assert.ok(g.boundingBox.max.y < steppe.getHeightAt(c.x, c.z) - 0.05, 'a crossing\'s slab and sleepers lie under the road');
+  }
+  assert.ok(built.buckets.wood.some((g) => g.parameters?.width === RAIL_SPUR_GAUGE_M - 0.22 && g.parameters?.height === 0.03),
+    'a crossing\'s timber deck between the rails');
   // every slab bedded: no corner floats, every top corner clears the ground; every span dry
   const v = new THREE.Vector3();
   let worstGap = -Infinity, lowestTop = Infinity;
-  for (const g of slab) {
+  for (const g of raisedOnly(slab)) {
     assert.equal(g.parameters.height, 0.36, 'the spur lays the deep slab');
     const pos = g.attributes.position, verts = [];
     for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i); verts.push([v.x, v.y, v.z]); }
@@ -176,6 +200,7 @@ try {
   const centre = (g) => { g.computeBoundingBox(); return g.boundingBox.getCenter(new THREE.Vector3()); };
   for (let i = 0; i < slab.length; i++) {
     const sc = centre(slab[i]);
+    if (flushSpan[spanAt(sc.x)]) continue;
     for (const r of [rail[2 * i], rail[2 * i + 1]]) {
       const rc = centre(r);
       assert.ok(Math.abs(rc.z - sc.z) > 0.6 && Math.abs(rc.z - sc.z) < 0.85, 'a rail sits ±0.72 m across the slab');
@@ -184,13 +209,13 @@ try {
       assert.ok(rc.y - sc.y > 0.15 && rc.y - sc.y < 0.40, `rail centre 0.27 m over the slab centre (${(rc.y - sc.y).toFixed(3)})`);
     }
   }
-  for (const s of sleeper) {
+  for (const s of raisedOnly(sleeper)) {
     const sc = centre(s), rise = sc.y - steppe.getHeightAt(sc.x, sc.z);
     assert.ok(rise > 0.03 && rise < 0.25, `a sleeper lies on the bedded slab (${rise.toFixed(3)} m over the ground)`);
     assert.ok(Math.abs(sc.z + 181) < 0.1, 'centred on the line');
   }
   for (const s of approach.sleeper) { const sc = centre(s), rise = sc.y - steppe.getOutlandHeightAt(sc.x, sc.z); assert.ok(rise > 0.03 && rise < 0.25, `round 67: an approach sleeper lies on the valley floor the ring seats on (${rise.toFixed(3)} m)`); }
-  for (const r of rail) { const rc = centre(r); const rise = rc.y - steppe.getHeightAt(rc.x, rc.z); assert.ok(rise > 0.08 && rise < 0.32, `a rail rides the sleepers (${rise.toFixed(3)} m over the ground)`); }
+  for (const r of raisedOnly(rail)) { const rc = centre(r); const rise = rc.y - steppe.getHeightAt(rc.x, rc.z); assert.ok(rise > 0.08 && rise < 0.32, `a rail rides the sleepers (${rise.toFixed(3)} m over the ground)`); }
   // the stop: 0.8 m past the west stub, the beam across the track, the struts astride the gauge; the east end is open
   const beamCentres = beam.map(centre).sort((a, b) => a.x - b.x);
   assert.ok(Math.abs(beamCentres[0].x - (144 - 0.8 + 0.05)) < 0.02, 'a beam 0.8 m past the stub, faced to the track');

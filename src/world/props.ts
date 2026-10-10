@@ -51,7 +51,8 @@ import {
 } from './sourcedTextures.ts';
 import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
-import { dressMapExtras, type AnimatedDressing } from './maps/mapKits.ts'; // content_breadth r2
+import { dressMapExtras, type AnimatedDressing, type RailPaving } from './maps/mapKits.ts'; // content_breadth r2
+import { MAP_PAVED_SURFACES } from './roadSurfaces.ts';
 import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNeeded, type SteelAtlasTextures } from './propsSteelAtlas.ts'; // round 75
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
@@ -9557,10 +9558,24 @@ ${snowCap ? `
   // the kit lays it into the wood bucket as before and hands the same geometries here; they leave the merged mesh
   // below for one mesh each on the shared wood material.
   const animatedDressing: AnimatedDressing[] = [];
+  // roads lane R3 (2026-10-10): where the map's ground is paved, for the rail kit's beds — its roads when they are paved
+  // (the splat's pavedRoads or a roadTexMix of a half and more, or a paved street class off a town-only map), its town rect
+  // when it paves its town, its hardstands on paved ground, and a rail yard's graded yard (its ballast at grade)
+  const railPaving = ((): RailPaving => {
+    const S = ((cfg as { splat?: { pavedRoads?: boolean; roadTexMix?: number; townPaving?: unknown; pavedSurface?: { street?: string; townOnly?: boolean } } } | null)?.splat) ?? {};
+    const paved = S.pavedSurface ?? MAP_PAVED_SURFACES[mapId];
+    const roadsPaved = !!S.pavedRoads || (!!paved?.street && !paved.townOnly) || (S.roadTexMix ?? 0) >= 0.5;
+    const townPaved = !!S.townPaving || !!paved?.townOnly;
+    const v = L.village, rect = { x0: v.x0, x1: v.x1, z0: v.z0, z1: v.z1 };
+    const pads = (L.terrain.hardstands ?? []).filter((pad) => roadsPaved
+      || (townPaved && pad.x > v.x0 && pad.x < v.x1 && pad.z > v.z0 && pad.z < v.z1));
+    const yardMap = mapId === 'railyard' || (P.extraKits ?? []).includes('rail');
+    return { pavedRoadHalfM: roadsPaved ? 4.6 : null, pavedTown: townPaved ? rect : null, pavedPads: pads, yard: yardMap ? rect : null };
+  })();
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
-    obstacles, colliders, animated: animatedDressing, vehicleSetPieces: P.vehicleSetPieces, trees: sceneryTrees,
+    obstacles, colliders, animated: animatedDressing, vehicleSetPieces: P.vehicleSetPieces, trees: sceneryTrees, railPaving,
   });
   yield { fine: true, stage: 'map-extras' };
   // the landmarks lane: the set pieces' furniture, after every seeded pass (placeLandmarks above)

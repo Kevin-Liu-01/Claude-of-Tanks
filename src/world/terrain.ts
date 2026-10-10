@@ -130,6 +130,9 @@ export interface RoadPathStyle {
 /** The road frame layer's running-length unit (texel value per metre): 15 bits wrap at 512 m, a whole number of the
  * along-road patterns' periods (0.16 m tread, 0.128 m chevrons, 0.8 m washboard). */
 export const ROAD_FRAME_ARC_UNITS = 64;
+/** The road frame layer's residual of the mask's distance byte at the texel centre: A's low nibble, 0..15 over -0.5..0.5
+ * of a byte (R3: the exact signed offset across the road, continuous from texel to texel within millimetres). */
+export const ROAD_FRAME_RESIDUAL_STEPS = 15;
 /** A styled path's carriageway half-width (m), its wandering edge within the mask's 12 m distance ramp. */
 function roadStyleHalfWidth(style: RoadPathStyle | null | undefined): number {
   return style?.widthM ? clamp(style.widthM / 2, 2, 9) : 0;
@@ -3756,6 +3759,11 @@ export function makeMaskTexture(
   // backwards (|wp| / radius); and the texel centre's own exact distance (the mask's G at that texel) on its side plus the
   // pixel's offset across the heading gives the exact signed offset from the centreline, where the bilinear distance
   // field reads up to a texel high (a centre line, the wheel paths of a paved street)
+  // (R3, 2026-10-10: the gauntlet's Autumn ruts "wiggle as independent snaking grooves that bulge and pinch like worm
+  // trails", Redrock's walls "ripple in regular sinuous waves") the texel centre's distance read from the mask's G byte is
+  // a 4.7 cm step (12 m over 255), and each texel's linear offset jumped by up to that at its edge: B A now carry the
+  // heading in 12 bits (a 0.09° step, a millimetre across a texel) over a nibble of G's rounding residual, so the exact
+  // distance at the centre is G's byte plus that residual (ROAD_FRAME_RESIDUAL_STEPS fifteenths of a byte) — within 3 mm
   let roadFrameData: Uint8Array | null = null;
   if (nearestArc) {
     const frame = new Uint8Array(s * s * 4);
@@ -3764,8 +3772,10 @@ export function makeMaskTexture(
       const arc = (Math.round(nearestArc[i] * ROAD_FRAME_ARC_UNITS) & 32767) | (nearestSide![i] < 0 ? 32768 : 0);
       frame[i * 4] = arc >> 8; frame[i * 4 + 1] = arc & 255;
       const turn = nearestHeading![i] / (2 * Math.PI);
-      const code = Math.round((turn - Math.floor(turn)) * 65536) & 65535;
-      frame[i * 4 + 2] = code >> 8; frame[i * 4 + 3] = code & 255;
+      const code = Math.round((turn - Math.floor(turn)) * 4096) & 4095;
+      const residual = Math.max(0, 1 - dist[i] / 12) * 255 - px[i * 4 + 1];
+      const q = clamp(Math.round((residual + 0.5) * ROAD_FRAME_RESIDUAL_STEPS), 0, ROAD_FRAME_RESIDUAL_STEPS);
+      frame[i * 4 + 2] = code >> 4; frame[i * 4 + 3] = ((code & 15) << 4) | q;
     }
     roadFrameData = frame;
   }
@@ -4025,6 +4035,11 @@ uniform float uRoadPuddle; // ground lane: the map's share of the ruts' puddles 
 // imprints) and (washboard, the dry road's tone floor against the field, the lanes' albedo share near the camera, the
 // grader's windrow)
 uniform vec4 uRoadSurf, uRoadSurfB;
+// (R3, 2026-10-10) the dry road's dust, a braided track's weaving prints, the middle strip's sward and the wheel paths'
+// paleness (terrain.ts roadSurfaceUniforms' c)
+uniform vec4 uRoadSurfC;
+// (R3, wave 341's pads) the road's and the pads' soil tint over the dirt layer (rgb) and the field's own tone's share (w)
+uniform vec4 uRoadSurfD;
 // roads lane R1c (2026-10-09, terrain.ts pavedSurfaceUniforms): the paved surfaces — (street class, square class, setts in
 // arcs, the gutter's width) by ROAD_SURFACE_CODE (0: the R layer's print), (patches, cracks, iron covers, —), and the
 // kerbed town rect (centre xz, half-size xz; z 0 = no kerbs)
@@ -4163,6 +4178,18 @@ float tileVis(float periodM) { return smoothstep(4.0, 10.0, periodM / max(gFootM
 vec2 gDwX = vec2(0.01, 0.0), gDwY = vec2(0.0, 0.01);
 float stripeVis(float periodM, vec2 dir) {
   return smoothstep(4.0, 10.0, periodM / max(abs(dot(gDwX, dir)) + abs(dot(gDwY, dir)), 1e-4));
+}
+// roads lane R4 (2026-10-10): the share of a pixel a band covers — the band |x| <= hw, the pixel's footprint fw across it
+// centred at distance d from the band's middle (a joint, an edge: crisp near the camera, its true weight far off, never a
+// widened stripe beating against the pixels)
+float bandCov(float d, float hw, float fw) {
+  return clamp((min(d + 0.5 * fw, hw) - max(d - 0.5 * fw, -hw)) / max(fw, 1e-4), 0.0, 1.0);
+}
+// roads lane R4: a procedural paved class's own carriageway half-width (m) — a styled path's width, else a town street's
+// setts 3.4, a country asphalt road 3.2, a lane road's slabs 3.0, a dyke road's klinkers 2.3, a village's brick soling 1.9
+float paveHalfOf(float cls, float styledHalf) {
+  if (styledHalf > 0.05) return styledHalf;
+  return abs(cls - 2.0) < 0.5 ? 3.4 : (abs(cls - 5.0) < 0.5 ? 2.3 : (abs(cls - 7.0) < 0.5 ? 1.9 : (abs(cls - 6.0) < 0.5 ? 3.0 : 3.2)));
 }
 // (wave 69, the establishing views' ploughed foregrounds: "the ploughed field nearest the camera smears") stripeVis fades
 // a stripe from 10 px a period, so a turned field's furrows and lands were mostly a blurred tone at 30–80 m. The pixel's
@@ -4653,13 +4680,15 @@ void splatCompute() {
     float fn = uRoadFrame.x;
     ivec2 ft = clamp(ivec2(floor((wp.xz / 1024.0 + 0.5) * fn)), ivec2(0), ivec2(int(fn) - 1));
     vec4 fc = texelFetch(uMask, ft + ivec2(0, int(uRoadFrame.y + 0.5)), 0);
-    float fTurn = (fc.b * 65280.0 + fc.a * 255.0) * (6.2831853 / 65536.0);
+    // (R3: B A the heading in 12 bits over a nibble of the distance byte's rounding residual at the texel's centre)
+    float fA = floor(fc.a * 255.0 + 0.5), fAh = floor(fA / 16.0);
+    float fTurn = (floor(fc.b * 255.0 + 0.5) * 16.0 + fAh) * (6.2831853 / 4096.0);
     gRoadAlong = vec2(cos(fTurn), sin(fTurn));
     vec2 fC = ((vec2(ft) + 0.5) / fn - 0.5) * 1024.0;
     float fArc = fc.r * 65280.0 + fc.g * 255.0;
     float fSide = fArc > 32767.5 ? -1.0 : 1.0;
     gRoadS = (fArc - (fSide < 0.0 ? 32768.0 : 0.0)) * (1.0 / 64.0) + dot(wp.xz - fC, gRoadAlong);
-    float fDc = (1.0 - texelFetch(uMask, ft, 0).g) * 12.0;
+    float fDc = (1.0 - texelFetch(uMask, ft, 0).g - ((fA - 16.0 * fAh) / 15.0 - 0.5) / 255.0) * 12.0;
     gRoadY = fSide * fDc + dot(wp.xz - fC, vec2(-gRoadAlong.y, gRoadAlong.x));
     // (the CPU twin, .qa-dev/frame-probe.mjs: within 2 m of a line a few centimetres off; a texel whose distance a pad's
     // stamp cleared, or whose nearest line is another road's at a junction, disagrees with the pixel's own distance)
@@ -4675,9 +4704,17 @@ void splatCompute() {
   // one (a 100–300 m field), never two unbroken lines from one end of the map to the other
   // (roads lane, 2026-10-09: the swing reads field b at a 250 m tile — features past 16 m. n1's field a carries half its
   // power at metre scale, which the soft lanes hid and the crisp grooves below drew as a wriggle)
-  // (a map on the old road law — uRoadSurf.x 0, the owner's protected maps — keeps the old swing exactly)
-  float laneWob = uRoadSurf.x > 0.0 && uLandTier > 0.5 ? (nz(uv, 0.004, vec2(0.37, 0.11)).g - 0.5) * 0.55 : (n1 - 0.5) * 0.55;
-  float laneD = (dRoad - 1.55 - laneWob) * uLaneK;
+  // (a map on the old road law — uRoadSurf.x 0, and the Low tier — keeps the old swing exactly)
+  // (R3, 2026-10-10: the gauntlet's Autumn ruts "wiggle as independent snaking grooves that bulge and pinch like worm
+  // trails instead of running as a parallel wheel pair") the swing moved |offset|: both lanes out together or in together,
+  // the gauge breathing ±0.55 m. On the worked road the traffic's line weaves instead — the exact signed offset (the frame)
+  // less a drift of ±0.15 m over 30 m and more (field b at 0.002) — and the pair keeps its 3.1 m gauge; where the frame
+  // does not hold (a junction's texels, a pad's) the lanes sit at 1.55 m without a swing
+  bool workedR = uRoadSurf.x > 0.0 && uLandTier > 0.5;
+  float roadWeave = workedR ? (nz(uv, 0.002, vec2(0.37, 0.11)).g - 0.5) * 0.30 : 0.0;
+  float laneY = workedR && gRoadYOk > 0.5 ? abs(gRoadY - roadWeave) : dRoad;
+  float laneWob = workedR ? 0.0 : (n1 - 0.5) * 0.55;
+  float laneD = (laneY - 1.55 - laneWob) * uLaneK;
   // uLaneK == 0 marks a coarse (4 m) mask: one bead-free compaction plateau.
   float lane = uLaneK > 0.0 ? exp(-laneD * laneD) : 1.0 - smoothstep(2.6, 3.6, dRoad);
   float rutAmp = (0.22 + 0.78 * smoothstep(0.28, 0.70, n2 * 0.55 + n1 * 0.45)) * (0.72 + 0.28 * n1hs);
@@ -4707,7 +4744,28 @@ void splatCompute() {
     float vergeOut = roadHalfB + 1.3 + roadBite.y * 2.2;
     float vergeB = (1.0 - smoothstep(vergeOut - 0.45, vergeOut + 0.45, dRoad)) * (0.55 + 0.45 * smoothstep(0.30, 0.70, n1h))
       * notCliffB;
+    // (R3, the gauntlet: the lanes "fade into the grass with no verge edge", "no broken shoulder") on the worked road the
+    // turf meets the carriageway at its own edge (its step drawn below) and the bare verge is worn through only where the
+    // traffic pulls off — in stretches (~10 m, the noise with no period), a quarter of it elsewhere
+    if (workedR) vergeB *= mix(0.25, 1.0, smoothstep(0.40, 0.66, nzq(uv, 0.035, vec2(0.83, 0.41)).x));
     shoulder = mix(shoulder, max(roadCore, vergeB), roadVis * smoothstep(0.02, 0.10, mk.g));
+  }
+  // R4 (2026-10-10, the gauntlet's wave 349a: roads "meet verges and buildings through soft stencil blends or bare dirt";
+  // "on country roads, worn grass verges"): a procedural paved road is built to its own width (paveHalfOf) and ends on a
+  // crisp edge (drawn with the paving below); its verge is a worn strip of 0.3–0.9 m beside it and the sward beyond, where
+  // the mask's shoulder laid two metres and more of bare soil past the old feathered edge. (Medium and High, where the
+  // frame holds, off the kerbed and the paved towns and the airfield's slabs)
+  float paveEdgeY = 0.0; // (R4: the crisp paved edge's offset from the centreline, m; 0 where the old edge holds)
+  if (uLandTier > 0.5 && gRoadTex > 0.5 && gRoadYOk > 0.5 && gRoadFrameW > 0.5 && uPaveSlab.x <= 0.0) {
+    float pClsE = gRoadClass > 0.5 && abs(gRoadClass - 4.0) > 0.5 ? gRoadClass : uPaveClass.x;
+    float townE = 0.0;
+    if (uTownPave.z > 0.0) { vec2 tq3 = abs(wp.xz - uTownPave.xy) - uTownPave.zw; townE = 1.0 - smoothstep(0.0, 6.0, max(tq3.x, tq3.y)); }
+    if (uPaveTown.z > 0.0) { vec2 tq4 = abs(wp.xz - uPaveTown.xy) - uPaveTown.zw; townE = max(townE, 1.0 - smoothstep(0.0, 6.0, max(tq4.x, tq4.y))); }
+    if (pClsE > 0.5 && townE < 0.5) {
+      paveEdgeY = paveHalfOf(pClsE, roadHalfW);
+      float vergeP = paveEdgeY + 0.3 + 0.6 * nzq(uv, 0.21, vec2(0.43, 0.77)).x + 0.25 * (nzq(uv, 1.1, vec2(0.19, 0.31)).x - 0.5) * tileVis(0.6);
+      shoulder = min(shoulder, 1.0 - smoothstep(vergeP - 0.20, vergeP + 0.12, abs(gRoadY)));
+    }
   }
   // dirt patches: noise-broken threshold => small worn patches with ragged
   // edges instead of giant airbrushed smears. r6: warped samples + slightly
@@ -4752,9 +4810,18 @@ void splatCompute() {
   // Its ruts are the road's ruts: darkened as a road's wheel lanes are, puddled on a wet map, slush on a snow map
   float apronN = nz(uv, 0.21, vec2(0.13, 0.71)).r * 0.6 + n1h * 0.4;
   apronK = smoothstep(0.30, 0.85, mk.r + (apronN - 0.5) * 0.60 * tileVis(4.8)) * padK; // (into the stamp's spill: its tongues)
+  // (R3, wave 341: "every pad is a pasted polygon with a feathered or ruler-straight outline") past the Low tier its edge
+  // also wanders by metres over tens of metres (field b at 0.035), and the prints run out over the trampled margin round it
+  // (padTrackW: the pad and four fifths of its spill)
+  float padTrackW = apronK;
+  if (uLandTier > 0.5 && padK > 0.003) {
+    apronK = smoothstep(0.30, 0.85, mk.r + (apronN - 0.5) * 0.60 * tileVis(4.8) + (nz(uv, 0.035, vec2(0.21, 0.83)).g - 0.5) * 0.45) * padK;
+    padTrackW = mix(apronK, max(apronK, apronRim), 0.8);
+  }
   float padRut = 0.0;
+  float padBerm = 0.0, padBar = 0.0; // (R3: the berms pushed up beside the prints, the grousers' bars across them, -1..1)
   vec2 padRutN = vec2(0.0);
-  if (apronK > 0.003) {
+  if (padTrackW > 0.003) {
     // roads lane (2026-10-09; the gauntlet's "near-black swirl apron" on Frontier, Monsoon's "dead-flat brown plane"):
     // each family keeps one heading — a heading read off metre-scale noise turned q = dot(wp, dir), |wp| some 300 m,
     // into that noise's own contour lines, a swirl of ruts every metre that blackened the whole pad. A family's lines
@@ -4773,14 +4840,61 @@ void splatCompute() {
       float r1 = f / 0.30, r2 = (f - gauge) / 0.30;
       float pres = smoothstep(0.40, 0.62, nz(uv, 0.012, vec2(0.11 + float(k) * 0.37, 0.83)).g)
         * step(0.25, fract(ch.x * 7.31 + ch.y)) * rutVis;
-      float e1 = exp(-r1 * r1), e2 = exp(-r2 * r2);
-      padRut = max(padRut, (e1 + e2) * pres);
-      padRutN += dP * (r1 * e1 + r2 * e2) * pres;
+      // (R3, wave 341: "a ruled lattice of thin ink-dark rut lines crossing at right angles") past the Low tier each stretch
+      // of the pad is worked along one family's lines (field b at 0.006: regions of a dozen metres and more), the two
+      // crossing only where the regions meet
+      if (uLandTier > 0.5) {
+        float famSel = smoothstep(0.42, 0.58, nz(uv, 0.006, vec2(0.71, 0.37)).g);
+        pres *= k == 0 ? 1.0 - famSel : famSel;
+      }
+      if (uLandTier < 0.5) {
+        float e1 = exp(-r1 * r1), e2 = exp(-r2 * r2);
+        padRut = max(padRut, (e1 + e2) * pres);
+        padRutN += dP * (r1 * e1 + r2 * e2) * pres;
+      } else {
+        // R3 (the gauntlet's Frosthollow pad: "thin, dark, pen-like scratch lines crossing at random angles, with no paired
+        // track-width ruts, grouser imprints, compacted berms"): a print is a tank's 0.6 m track (a lorry's 0.3 m tyre)
+        // pressed flat, its grousers' bars across it every 0.17 m, and the snow or soil it pushed aside heaped in a berm on
+        // either side — the floor's walls and the berms held while they span a few pixels across the line
+        bool tank = gauge > 2.0;
+        float hw = tank ? 0.30 : 0.15;
+        float g1 = f, g2 = f - gauge;
+        float gN = abs(g1) < abs(g2) ? g1 : g2, u = abs(gN), sg = gN < 0.0 ? -1.0 : 1.0;
+        float fwP = max(abs(dot(gDwX, dP)) + abs(dot(gDwY, dP)), 1e-4);
+        float soft = max(0.035, 1.2 * fwP);
+        float tP = clamp((u - hw + soft) / (2.0 * soft), 0.0, 1.0);
+        float floorW = 1.0 - tP * tP * (3.0 - 2.0 * tP);
+        float bX = (u - hw - 0.10) / max(0.09, soft);
+        float berm = exp(-bX * bX) * (1.0 - floorW);
+        float wallV = smoothstep(0.25, 0.60, 0.20 / fwP); // (the walls and berms, ~0.2 m across, past a few pixels)
+        padRut = max(padRut, floorW * pres);
+        padBerm = max(padBerm, berm * pres * wallV);
+        // h = -depth·floor + rise·berm across the line (wave 341: "snow tracks need depth, not flat smudges" — snow presses
+        // to 8 cm and heaps 5 cm berms, earth 4 and 3.5); its slope along dP (metres a metre), signed to the nearer print
+        float pdD = uReduxD.y > 1.5 ? 0.08 : 0.04, pdB = uReduxD.y > 1.5 ? 0.05 : 0.035;
+        float dh = pdD * 6.0 * tP * (1.0 - tP) / (2.0 * soft) - pdB * 2.0 * bX / max(0.09, soft) * berm;
+        padRutN += dP * sg * dh * pres * wallV;
+        if (tank) {
+          vec2 aP = vec2(dP.y, -dP.x); // along the line
+          float bv = stripeVis(0.17, aP) * floorW * pres;
+          if (bv > 0.01) {
+            float ph = 6.2831853 * (dot(wp.xz, aP) / 0.17 + ch.x * 3.0);
+            padBar += sin(ph) * bv;
+            padRutN += aP * 0.008 * (6.2831853 / 0.17) * cos(ph) * bv; // (h = 0.008·sin: the grousers' bars)
+          }
+        }
+      }
     }
-    padRut *= apronK;
-    padRutN *= apronK;
-    rut = max(rut, padRut * rutAmp * 1.2);
+    padRut *= padTrackW;
+    padBerm *= padTrackW;
+    padBar *= padTrackW;
+    padRutN *= padTrackW;
+    // (the Low tier: a pad's ruts are the road's, darkened with its wheel lanes below; R3 tones its prints itself)
+    if (uLandTier < 0.5) rut = max(rut, padRut * rutAmp * 1.2);
   }
+  // (R3, Redrock's "dark-red overspray" down both sides of its tracks) a braided track's verge keeps a sixth of its soil —
+  // the field's sand runs to the tracks
+  if (workedR && uRoadSurfC.y > 0.0) shoulder *= 1.0 - 0.85 * uRoadSurfC.y;
   float fD = clamp(max(wornCore * uWornDirtStrength, max(shoulder * uShoulderDirt * (1.0 - apronRim), mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
   float fM = mkB;
   // marsh/ice sheets only live on near-flat ground: without this the graded
@@ -6603,6 +6717,9 @@ void splatCompute() {
     if (dW > 0.002) {
       vec3 packedRoad = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB + 4.0).rgb;
       packedRoad *= 0.985 + (n2w - 0.5) * 0.035;
+      // (R3, wave 341's pads: "Saltwind is grey-olive and should be terra rossa") past the Low tier the carriageway's and
+      // the pads' packed earth is the place's own soil — the splat's soil tint, or the road's own (Saltmere's Léon loam)
+      if (workedR) packedRoad *= uRoadSurfD.rgb;
       vec3 roadCol = mix(packedRoad, a.rgb, 0.30) * uRoadTint
         + vec3(0.014, 0.010, 0.006);
       // (roads lane, 2026-10-09: the gauntlet's "flat grey or near-black roads") a dry packed road is never darker than the
@@ -6613,11 +6730,32 @@ void splatCompute() {
       float roadFloorL = floorK * dot(a.rgb, vec3(0.34, 0.45, 0.21));
       roadCol *= clamp(roadFloorL / max(dot(roadCol, vec3(0.34, 0.45, 0.21)), 1e-4), 1.0, 2.2);
       roadCol = mix(roadCol, vec3(dot(roadCol, vec3(0.34, 0.45, 0.21))), floorK > 0.0 ? 0.12 : 0.26);
+      // R3 (2026-10-10, the gauntlet's Steppe: "dark, damp-looking soil runs through tinder-dry grass. Match soil tone to
+      // the season"; every map: "paler packed and dusty"): a dry road's dust — its tone lifted to the field's (the base
+      // layer's mean: the floor above reads the soil the shoulder lays under the carriageway) and greyed to a warm dust
+      // (and wave 341's pads, Frontier's "near-black tar or charcoal slabs": a pad is compacted, dusty ground, lifted at
+      // least two thirds of the way)
+      float dustK = workedR ? max(uRoadSurfC.x, 0.65 * apronK) : 0.0;
+      if (dustK > 0.0) {
+        float fieldL = dot(uMeanG.rgb, vec3(0.34, 0.45, 0.21)), rL = max(dot(roadCol, vec3(0.34, 0.45, 0.21)), 1e-4);
+        vec3 lifted = roadCol * clamp(fieldL * 1.05 / rL, 1.0, 2.2);
+        roadCol = mix(roadCol, mix(lifted, vec3(dot(lifted, vec3(0.34, 0.45, 0.21))) * vec3(1.06, 1.0, 0.86), 0.45), dustK);
+      }
+      // R3 (Redrock: "saturated terracotta clay ribbons stand in for Wadi Rum's braided, paler sand tracks"): a braided
+      // track is the field's own ground worn — its sand, a shade paler where the traffic packs it (and the band's soil laid
+      // at half its weight: the sand's own grain shows through)
+      // (wave 341: "Sirocco is grey on yellow sand") the field's own tone's share of the carriageway and the pads
+      float braidC = workedR ? uRoadSurfC.y : 0.0;
+      float fieldK = workedR ? max(uRoadSurfD.w, braidC) : 0.0;
+      if (fieldK > 0.0) roadCol = mix(roadCol, uMeanG.rgb * vec3(1.03, 1.02, 1.0) * (0.97 + 0.06 * n2w), fieldK);
       // ground lane (2026-10-03, the gauntlet: the winter road was "a flat chocolate-brown slab laid into pristine
       // snow"): a winter road is packed snow, greyer and smoother than the field, with brown slush churned into the two
       // wheel tracks and spattered between them
       if (uReduxD.y > 1.5) {
         vec3 packedSnow = uMeanG.rgb * vec3(0.84, 0.85, 0.87) * (0.94 + 0.12 * n1h);
+        // (R3, wave 341's Frosthollow pads: "a smooth grey sheen") past the Low tier a pad's snow is trodden, not glazed — a
+        // shade off the field's white, its prints carrying the grey
+        if (uLandTier > 0.5) packedSnow *= 1.0 + 0.07 * apronK;
         // (roads lane, wave 341's packing note: the pads' ruts "dark brown stripes on white snow") a pad's vehicle tracks
         // are snow pressed hard — greyer, glazed — with slush churned through to the ground only in stretches
         float padSlush = padRut * smoothstep(0.55, 0.80, nz(uv, 0.05, vec2(0.61, 0.17)).g);
@@ -6625,18 +6763,27 @@ void splatCompute() {
         roadCol = mix(packedSnow, roadCol * 1.05, slush);
         roadCol = mix(roadCol, packedSnow * vec3(0.80, 0.82, 0.86), (padRut - padSlush) * 0.85);
       }
-      a.rgb = mix(a.rgb, roadCol, dW);
+      a.rgb = mix(a.rgb, roadCol, dW * (1.0 - 0.5 * braidC));
       // (the Redrock lane, round 10, splat.roadRuts: the wheel lanes darker where they are worn deep, and gravel strewn on
       // the crown between them near the camera — the carriageway's own stones, not a smooth smear)
+      // (R3: on the worked road the lanes are the pale wheel paths — no darkening)
       if (uRoadRuts.y + uRoadRuts.z > 0.0) {
-        a.rgb *= 1.0 - uRoadRuts.y * lane * rutAmp * dW;
+        a.rgb *= 1.0 - uRoadRuts.y * lane * rutAmp * dW * (workedR ? 0.0 : 1.0);
         float grit = nz(uv, 2.3, vec2(0.71, 0.13)).r;
         float gritW = uRoadRuts.z * dW * (1.0 - 0.7 * lane) * (1.0 - smoothstep(25.0, 70.0, camDist)) * tileVis(0.43);
         a.rgb *= 1.0 - 0.30 * smoothstep(0.66, 0.88, grit) * gritW + 0.14 * (1.0 - smoothstep(0.04, 0.22, grit)) * gritW;
       }
       // (a pad's vehicle ruts darken its packed ground here: a road's own wheel lanes give way to their trodden middle
       // past a 0.08 m footprint, which a pad seen low across its 30-60 m loses at once)
-      a.rgb *= 1.0 - padRut * (uReduxD.y > 1.5 ? 0.06 : 0.20); // (roads lane: the rut tone below darkens them a second time)
+      // (R3, Medium and High: the prints' own tone — a floor pressed glazed and greyer on snow, packed paler on dry ground or
+      // darker on a wet map's; the berms loose, fresh snow a shade whiter or turned soil a shade darker; the grousers' bars)
+      if (uLandTier < 0.5) a.rgb *= 1.0 - padRut * (uReduxD.y > 1.5 ? 0.06 : 0.20); // (roads lane: the rut tone below darkens them a second time)
+      else if (apronK > 0.003) {
+        float wetP = clamp(uRoadPuddle, 0.0, 1.0) * (1.0 - uRoadSurfC.x);
+        bool snowP = uReduxD.y > 1.5;
+        a.rgb *= (1.0 + padRut * (snowP ? -0.06 : mix(0.08, -0.10, wetP))) * (1.0 + padBerm * (snowP ? 0.07 : -0.05))
+          * (1.0 + 0.05 * clamp(padBar, -1.0, 1.0));
+      }
       // (and the ground the tracks churned: darker, damper patches along them)
       a.rgb *= 1.0 - 0.14 * apronK * smoothstep(0.50, 0.80, nzq(uv, 0.12, vec2(0.37, 0.61)).x) * (1.0 - gRoadTex);
       // The sourced dirt normal contains deep clod/pothole forms intended for
@@ -6656,74 +6803,119 @@ void splatCompute() {
       a.rgb *= mix(1.0, 0.86 + drift.x * 0.28, dW);
       a.rgb = mix(a.rgb, a.rgb * vec3(1.04, 1.02, 0.95), smoothstep(0.55, 0.85, drift.y) * dW * 0.6);
       if (uReduxD.y < 0.5) {
-        float crownGrass = crown * dW * smoothstep(0.48, 0.66, drift.y) * smoothstep(0.30, 0.62, n1h + roadBite.y * 0.4);
+        // (R3: the worked road's grass is its middle strip, drawn with the paths below)
+        float crownGrass = workedR ? 0.0 : crown * dW * smoothstep(0.48, 0.66, drift.y) * smoothstep(0.30, 0.62, n1h + roadBite.y * 0.4);
         if (crownGrass > 0.01) {
           vec4 cg = groundSamp(uAlbG, uMeanG, uv * 0.240, df, mipB);
           a = mix(a, cg * vec4(0.92, 0.95, 0.85, 1.0), crownGrass * 0.80);
         }
-        float wet = rut * dW * (1.0 - farM * 0.6) * uRoadPuddle;
-        float pool = smoothstep(0.62, 0.78, nzq(uv, 0.071, vec2(0.83, 0.11)).x + hollow * 0.18);
+        // (R3, the gauntlet's Verdant: "tiny sky-blue puddle decals that sit on the surface rather than in hollows") on the
+        // worked road the water stands in a path's trough — and a pad's prints — fewer on a dry map's (its dust), brown
+        // with silt and half the sky's mirror
+        float wet = (workedR ? max(rut, padRut * 0.8) * (1.0 - uRoadSurfC.x) : rut) * dW * (1.0 - farM * 0.6) * uRoadPuddle;
+        float poolN = nzq(uv, 0.071, vec2(0.83, 0.11)).x + hollow * 0.18;
+        float pool = workedR ? smoothstep(0.66, 0.80, poolN) : smoothstep(0.62, 0.78, poolN);
         gRoadPuddle = wet * pool;
-        float mud = wet * smoothstep(0.52, 0.66, nzq(uv, 0.071, vec2(0.83, 0.11)).x + hollow * 0.18) * (1.0 - gRoadPuddle);
+        float mud = wet * smoothstep(0.52, 0.66, poolN) * (1.0 - gRoadPuddle);
         a.rgb *= 1.0 - 0.30 * mud;
-        a.rgb = mix(a.rgb, a.rgb * 0.34 + vec3(0.006, 0.008, 0.010), gRoadPuddle);
+        a.rgb = workedR ? mix(a.rgb, a.rgb * 0.42 + uMeanD.rgb * 0.10, gRoadPuddle)
+          : mix(a.rgb, a.rgb * 0.34 + vec3(0.006, 0.008, 0.010), gRoadPuddle);
         n.xy = mix(n.xy, vec2(0.5), gRoadPuddle);
+        if (workedR) gRoadPuddle *= 0.55;
       }
     }
     // roads lane R1a (2026-10-09; owner: "make sure roads and stuff are really good", R029 "the roads are so flat"; the
     // gauntlet: "flat grey or near-black roads", "a flat smeared pink-brown band with no ruts, ridges or tyre marks",
-    // Redrock's "smeared tracks"): the carriageway as a worked surface — the wheel ruts as grooves (a floor, steep walls,
-    // the soil squeezed up in a lip beside each, the floor beside the sun's wall in the wall's shadow) instead of two soft
-    // painted bands; the vehicles' treads printed in their floors; the crown and camber; the grader's windrow of loose
-    // stone at the edge; stones strewn on the crown and the edges and swept out of the wheel paths; potholes, puddled on
-    // a wet map; washboard on an arid track. Each term holds while its feature spans enough pixels across its own
-    // direction (stripeVis: a groove seen down the road holds far past tileVis's grazing major axis) and fades to tone
+    // Redrock's "smeared tracks"): the carriageway as a worked surface. R3 (2026-10-10, the gauntlet's wave 349b: "ruts
+    // still flat, with painted dark bands or hairline grooves. Build paired ruts at wheel width, paler packed and dusty
+    // wheel paths, a raised grassy middle strip, broken or worn verges, stones and potholes. Darkening the ruts is the
+    // wrong direction"): the wheel paths broad shallow troughs, packed and paler; the soil they squeezed out in a low berm
+    // beside each; the middle strip standing between them, grassed on a farm road in stretches; the crown and camber; the
+    // grader's windrow; the turf's edge stepped up from the carriageway; the treads printed in the paths; stones on the
+    // berms, the strip's edges and the verges, swept out of the paths; potholes in the paths, puddled on a wet map;
+    // washboard on an arid track; and on a braided track (Redrock) more pairs of tyre prints weaving across the band. Each
+    // term holds while its feature spans enough pixels across its own direction (stripeVis) and fades to its tone
     vec2 acrU = gradD / max(length(gradD), 0.25);
     float wR = roadCore * (1.0 - gRoadTex);
-    // (the tier: Low draws none of it, Medium the grooves alone, High everything)
+    float workedK = 0.0; // (R3: 1 where the worked carriageway drew — its lanes keep none of the old darkening below)
+    // (the tier: Low draws none of it, Medium the profile and the tone, High everything)
     if (dW > 0.002 && wR > 0.002 && uRoadSurf.x + uRoadSurf.y + uRoadSurf.z + uRoadSurfB.x > 0.0 && uLandTier > 0.5) {
-      float e = dRoad - 1.55 - laneWob, ae = abs(e), se = e < 0.0 ? -1.0 : 1.0;
-      float fwA = max(abs(dot(gDwX, acrU)) + abs(dot(gDwY, acrU)), 1e-4);
-      float relV = stripeVis(0.60, acrU) * uRoadSurf.x;
+      workedK = 1.0;
+      // the offset from the traffic's line — signed where the frame holds, weaving with the lanes — and the way it grows
+      vec2 perpW = vec2(-gRoadAlong.y, gRoadAlong.x);
+      bool yOk = gRoadYOk > 0.5;
+      float yW = yOk ? gRoadY - roadWeave : dRoad;
+      float ay = abs(yW);
+      vec2 acrS = yOk ? (yW < 0.0 ? -perpW : perpW) : acrU;
+      float e = ay - 1.55, ae = abs(e), se = e < 0.0 ? -1.0 : 1.0;
+      float fwA = max(abs(dot(gDwX, acrS)) + abs(dot(gDwY, acrS)), 1e-4);
+      float relV = stripeVis(0.90, acrS) * uRoadSurf.x;
       grooveRel = relV * wR;
-      rutShade = mix(1.0, uRoadSurfB.z, grooveRel);
-      // (1) the profile across the road, metres: h = -depth·groove + lip·lip + crown + windrow
-      float wg = 0.30, sw = max(0.09, 1.6 * fwA);
-      float tW = clamp((ae - (wg - sw)) / (2.0 * sw), 0.0, 1.0);
-      float groove = 1.0 - tW * tW * (3.0 - 2.0 * tW);
-      float depth = (0.035 + 0.05 * rutAmp) * min(uRoadRuts.x, 1.5);
-      float lipX = (ae - wg - sw - 0.08) / 0.11;
-      float lip = exp(-lipX * lipX) * (se > 0.0 ? 1.0 : 0.7) * rutAmp;
+      rutShade = uRoadSurfB.z;
+      float braidK = uRoadSurfC.y;
+      // (1) the profile across the road (m), its slope along acrS (the terms of ay) and along acrU (the terms of dRoad):
+      // h = -depth·(1 - p²)² over a path (p its offset over its half-width), + 0.018·berm, + 0.05 over the middle strip,
+      // the crown and camber, the windrow, and the verge's 0.045 m step
+      float pw = mix(0.50, 0.34, braidK);
+      float pP = clamp(ae / pw, 0.0, 1.0), pQ = 1.0 - pP * pP;
+      float path = pQ * pQ;
+      float depth = (0.03 + 0.045 * rutAmp) * min(uRoadRuts.x, 1.5) * (1.0 - 0.7 * braidK);
+      float bX = (ae - pw - 0.10) / 0.16;
+      float berm = exp(-bX * bX) * rutAmp;
+      float mt = clamp((ay - 0.35) / 0.75, 0.0, 1.0);
       float hwv = max(roadHalfB, 2.6);
       float wX = (dRoad - hwv + 0.10) / 0.28;
       float windrow = exp(-wX * wX) * uRoadSurfB.w * roadCore;
-      float dh = depth * 6.0 * tW * (1.0 - tW) / (2.0 * sw) * se
-        - 0.04 * 2.0 * lipX / 0.11 * lip * se
-        - 0.10 * dRoad / (hwv * hwv) * roadCore
-        - 0.035 * 2.0 * wX / 0.28 * windrow;
-      // (R2, the first frames: seen from 12–16 m up the grooves' walls and their shadow drew two thin dark lines — the
-      // gauntlet's old "ink lines") a wall ~0.15 m across holds while it spans enough pixels across the road; past that the
-      // groove is its soft floor tone alone
-      float wallV = stripeVis(2.4, acrU);
-      if (nrmOn) n.xy -= 0.5 * dh * acrU * relV * wallV * (1.0 - gRoadTex);
-      // the floor compacted and cleaner, the lip loose and paler; the floor beside the wall on the sun's side shaded by it
-      float sunA = dot(uSunDirW.xz, acrU);         // > 0: the sun stands outward of the road, its light falls inward
-      float shL = depth * abs(sunA) / max(uSunDirW.y, 0.08);
-      float uS = sunA >= 0.0 ? e : -e;             // the wall on the sun's side at uS = +wg
-      float shade = groove * smoothstep(wg - shL - sw, wg - shL + sw, uS) * step(0.02, abs(sunA));
-      // (r4 frames: near the camera the grooves read as black channels on Monsoon and Amberford) the wall's shadow and the
-      // floor's tone held soft — the relief's own shading carries most of the groove
-      a.rgb *= 1.0 - (0.045 * groove * rutAmp + (0.14 * shade - 0.05 * lip) * wallV - 0.05 * windrow) * relV * wR;
-      // (2) the treads printed in a rut's floor: a tank's track plates (0.16 m pitch) or a lorry's chevrons (0.128 m),
-      // one vehicle's print a 9 m stretch (both its ruts), some stretches worn smooth — laid in the road frame
+      float stepK = (uReduxD.y < 0.5 ? 1.0 - braidK : (uReduxD.y > 1.5 ? 0.7 : 0.0)) * stripeVis(0.45, acrU);
+      float sT = clamp((dRoad - hwv + 0.12) / 0.18, 0.0, 1.0);
+      float dhS = 4.0 * depth * pP * pQ / pw * se
+        - 0.018 * 2.0 * bX / 0.16 * berm * se
+        - 0.05 * 6.0 * mt * (1.0 - mt) / 0.75;
+      float dhU = -0.10 * dRoad / (hwv * hwv) * roadCore - 0.035 * 2.0 * wX / 0.28 * windrow
+        + 0.045 * stepK * 6.0 * sT * (1.0 - sT) / 0.18;
+      if (nrmOn) n.xy -= 0.5 * (dhS * acrS + dhU * acrU) * relV * (1.0 - gRoadTex);
+      // (2) the tone (R3: "paler packed and dusty wheel paths"): the paths packed and dusty, paler and greyer than the
+      // carriageway; the berms' loose soil a shade darker; the turf's edge with its crumbled foot; past a few pixels across
+      // a path, the pair's share of the road
+      float pathV = stripeVis(1.0, acrS);
+      float pathA = mix(0.26, path, pathV) * (0.55 + 0.45 * rutAmp) * uRoadSurfC.w * wR;
+      vec3 paleC = mix(vec3(dot(a.rgb, vec3(0.34, 0.45, 0.21))), a.rgb, 0.55) * 1.30;
+      a.rgb = mix(a.rgb, paleC, pathA);
+      a.rgb *= 1.0 - 0.05 * berm * pathV * wR * uRoadSurfC.w;
+      a.rgb *= 1.0 - 0.28 * stepK * sT * (1.0 - sT) * (1.0 - gRoadTex);
+      // (3) the middle strip (R3: "a raised grassy middle strip"): the sward holds between a farm road's paths — its width
+      // wandering 0.9–1.7 m along the road, its edges broken into tufts, bare trodden gaps in it and yellower and greener
+      // clumps, worn through in stretches where the traffic swings onto it — box-filtered across the pixel, so it holds as
+      // a line far down the road without shimmering; and the verge's sward reaching in over the carriageway's outer
+      // metre in tufts. On a snow road the snow between the slushy tracks lies fresh
+      float tuftN = (nzq(uv, 1.6, vec2(0.13, 0.57)).x - 0.5) * 0.36 * tileVis(0.5)
+        + (nzq(uv, 0.45, vec2(0.71, 0.29)).x - 0.5) * 0.30 * tileVis(1.5);
+      float midHalf = 0.65 + 0.40 * (nz(uv, 0.02, vec2(0.61, 0.07)).g - 0.5) + tuftN;
+      float fwM = max(fwA, 0.10);
+      float midStr = clamp((min(ay + 0.5 * fwM, midHalf) - max(ay - 0.5 * fwM, -midHalf)) / fwM, 0.0, 1.0);
+      if (uRoadSurfC.z > 0.0 && uReduxD.y < 0.5 && uLandTier > 1.5) {
+        float gapN = nzq(uv, 0.25, vec2(0.37, 0.83)).x;
+        float mg = midStr * smoothstep(0.24, 0.44, nz(uv, 0.009, vec2(0.23, 0.67)).g) * (1.0 - 0.8 * smoothstep(0.62, 0.72, gapN));
+        float vg = smoothstep(hwv - 1.3, hwv - 0.15, dRoad + tuftN * 1.4) * (0.35 + 0.65 * smoothstep(0.35, 0.60, gapN));
+        float gw2 = max(mg, vg) * uRoadSurfC.z * wR;
+        if (gw2 > 0.01) {
+          vec4 cg = groundSamp(uAlbG, uMeanG, uv * 0.240, df, mipB);
+          float clump = nzq(uv, 0.9, vec2(0.59, 0.11)).x;
+          cg.rgb *= mix(vec3(0.86, 0.93, 0.84), vec3(1.06, 1.0, 0.78), smoothstep(0.35, 0.70, clump));
+          a = mix(a, cg, gw2 * 0.9);
+          if (nrmOn) n.xy += (groundNrm(uNrmG, uv * 0.93, df, mipB).xy - 0.5) * gw2 * 0.6 * tileVis(0.93);
+        }
+      }
+      if (uReduxD.y > 1.5) a.rgb = mix(a.rgb, uMeanG.rgb * 0.97, midStr * wR * 0.5 * uRoadSurf.x);
+      // (4) the treads printed in a path's floor: a tank's track plates (0.16 m pitch) or a lorry's chevrons (0.128 m),
+      // one vehicle's print a 9 m stretch (both its paths), some stretches worn smooth — laid in the road frame (the hold's
+      // field periodic at the running length's 512 m wrap)
       if (gRoadFrameW > 0.5 && uRoadSurf.w > 0.0 && uLandTier > 1.5) {
-        // (R2: the first frames' treads read as a ruled ladder down whole ruts) a print holds a few metres where the last
-        // vehicle passed, worn in and out (field b at 0.09), its bars uneven, centred in the groove's floor
         vec2 ph = cellHash2(vec2(floor(gRoadS / 9.0), 7.0));
         float chevron = step(0.55, ph.x);
         float pitch = mix(0.16, 0.128, chevron);
-        float floorW = 1.0 - smoothstep(0.08, 0.24, ae);
-        float hold = smoothstep(0.45, 0.70, nz(vec2(gRoadS, ae * 4.0), 0.09, vec2(0.17, 0.59)).g);
+        float floorW = 1.0 - smoothstep(0.14, 0.36, ae);
+        float hold = smoothstep(0.45, 0.70, nz(vec2(gRoadS, ae * 4.0), 46.0 / 512.0, vec2(0.17, 0.59)).g);
         float tv = stripeVis(pitch, gRoadAlong) * floorW * hold * step(ph.x, 0.62) * rutAmp * uRoadSurf.w * gRoadFrameW * wR;
         if (tv > 0.01) {
           float barI = floor((gRoadS + chevron * 0.55 * ae) / pitch);
@@ -6733,12 +6925,13 @@ void splatCompute() {
           a.rgb *= 1.0 - 0.03 * (0.5 - 0.5 * cos(phase)) * tv * barK;
         }
       }
-      // (3) stones: one candidate a 0.12 m cell, strewn on the crown and the edges, swept out of the wheel paths; past
-      // their own pixels, their speckle
+      // (5) stones (one candidate a 0.12 m cell): on the berms, along the strip's edges, the verges and the windrow, swept
+      // out of the paths; past their own pixels, their speckle
       if (uRoadSurf.y > 0.0 && uLandTier > 1.5) {
-        float crownW = 1.0 - smoothstep(0.5, 1.1, dRoad);
         float edgeW = smoothstep(hwv - 1.4, hwv - 0.2, dRoad);
-        float dens = uRoadSurf.y * (0.06 + 0.30 * crownW + 0.34 * edgeW + 0.40 * windrow) * (1.0 - 0.8 * groove);
+        float mrX = (ay - midHalf) / 0.16;
+        float dens = uRoadSurf.y * (0.02 + 0.22 * berm + 0.15 * exp(-mrX * mrX) + 0.25 * edgeW + 0.35 * windrow)
+          * (1.0 - 0.85 * path);
         float sv = tileVis(0.12);
         if (sv > 0.01) {
           vec2 sp = wp.xz / 0.12, sci = floor(sp), scf = fract(sp);
@@ -6749,9 +6942,11 @@ void splatCompute() {
             float q = dot(dv, dv);
             if (q < 1.6) {
               float body = 1.0 - smoothstep(0.80, 1.0, q);
-              vec3 stoneC = mix(uMeanR.rgb, a.rgb, 0.35) * (0.70 + 0.55 * h2.x);
+              // (R3, the gauntlet's "dark pebble dots", "identical repeated pebble decals") a dry road's stones are paler than
+              // the soil they lie on — weathered and dusty, each its own grey-beige — and sit in a faint seat
+              vec3 stoneC = mix(a.rgb, vec3(dot(a.rgb, vec3(0.34, 0.45, 0.21))) * vec3(1.04, 1.02, 0.97), 0.55) * (1.0 + 0.40 * h2.x);
               a.rgb = mix(a.rgb, stoneC, body * sv * wR);
-              a.rgb *= 1.0 - 0.30 * smoothstep(0.85, 1.0, q) * (1.0 - smoothstep(1.0, 1.6, q)) * sv * wR; // its seat's shadow
+              a.rgb *= 1.0 - 0.15 * smoothstep(0.85, 1.0, q) * (1.0 - smoothstep(1.0, 1.6, q)) * sv * wR; // its seat's shadow
               if (nrmOn) n.xy += 0.5 * dv * 0.9 * body * sv * wR;
             }
           }
@@ -6762,32 +6957,44 @@ void splatCompute() {
           a.rgb *= 1.0 - (0.22 * smoothstep(0.66, 0.88, grit) - 0.10 * (1.0 - smoothstep(0.04, 0.22, grit))) * min(dens * 1.6, 1.0) * gritV * wR;
         }
       }
-      // (4) potholes: one candidate a 5 m world cell, an oval bowl 0.6–1.8 m long down the road, its floor damp and, on a
-      // wet map, holding water; its rim of crumbs paler
+      // (6) potholes (R3: in a wheel path, where they form): one candidate per 7 m of each path, an oval bowl 0.6–1.6 m
+      // long down it — or, where the frame does not hold, one a 5 m world cell; its floor damp and, on a wet map, holding
+      // muddy water; its rim of crumbs paler
       if (uRoadSurf.z > 0.0 && uLandTier > 1.5) {
         float hv = tileVis(1.2);
-        vec2 pci = floor(wp.xz / 5.0);
-        vec2 p1 = cellHash2(pci + vec2(61.0, 17.0));
-        if (hv > 0.01 && p1.x < 0.16 * uRoadSurf.z) {
-          vec2 p2 = cellHash2(pci + vec2(5.0, 89.0));
-          vec2 pc = (pci + 0.25 + 0.5 * p2) * 5.0;
+        if (hv > 0.01) {
+          bool inPath = yOk && gRoadFrameW > 0.5;
           vec2 al = gRoadFrameW > 0.5 ? gRoadAlong : vec2(-acrU.y, acrU.x);
-          vec2 dq = wp.xz - pc;
-          vec2 pe = vec2(dot(dq, al) / (0.30 + 0.60 * p1.y), dot(dq, vec2(-al.y, al.x)) / (0.28 + 0.40 * p2.y));
+          float pOn, lenA, widA;
+          vec2 pe, gw;
+          if (inPath) {
+            float side = yW < 0.0 ? -1.0 : 1.0;
+            float cS = floor(gRoadS / 7.0);
+            vec2 p1 = cellHash2(vec2(cS, side * 13.0 + 5.0)), p2 = cellHash2(vec2(cS, side * 29.0 + 71.0));
+            pOn = step(p1.x, 0.22 * uRoadSurf.z);
+            lenA = 0.30 + 0.50 * p1.y; widA = 0.22 + 0.18 * p2.y;
+            pe = vec2((gRoadS - (cS + 0.2 + 0.6 * p2.x) * 7.0) / lenA, (ay - 1.55 - (p2.y - 0.5) * 0.24) / widA);
+            gw = 2.0 * (pe.x / lenA * gRoadAlong + pe.y / widA * acrS);
+          } else {
+            vec2 pci = floor(wp.xz / 5.0);
+            vec2 p1 = cellHash2(pci + vec2(61.0, 17.0)), p2 = cellHash2(pci + vec2(5.0, 89.0));
+            pOn = step(p1.x, 0.16 * uRoadSurf.z);
+            lenA = 0.30 + 0.60 * p1.y; widA = 0.28 + 0.40 * p2.y;
+            vec2 dq = wp.xz - (pci + 0.25 + 0.5 * p2) * 5.0;
+            vec2 alP = vec2(-al.y, al.x);
+            pe = vec2(dot(dq, al) / lenA, dot(dq, alP) / widA);
+            gw = 2.0 * (pe.x / lenA * al + pe.y / widA * alP);
+          }
           float q = dot(pe, pe);
-          if (q < 1.5) {
+          if (pOn > 0.5 && q < 1.5) {
             float bowl = q < 1.0 ? (1.0 - q) * (1.0 - q) : 0.0;
             float rim = smoothstep(0.85, 1.05, q) * (1.0 - smoothstep(1.05, 1.5, q));
-            float pw = hv * wR;
-            if (nrmOn && q < 1.0) {
-              vec2 gq = 2.0 * vec2(pe.x / (0.30 + 0.60 * p1.y), pe.y / (0.28 + 0.40 * p2.y));
-              vec2 gw = gq.x * al + gq.y * vec2(-al.y, al.x);    // ∇q in world xz
-              n.xy -= 0.5 * (0.10 * 2.0 * (1.0 - q)) * gw * pw;  // h = -0.10·(1 - q)², ∇h = 0.20·(1 - q)·∇q
-            }
-            a.rgb *= 1.0 - (0.22 * bowl - 0.07 * rim) * pw;
+            float pwK = hv * wR;
+            if (nrmOn && q < 1.0) n.xy -= 0.5 * (0.10 * 2.0 * (1.0 - q)) * gw * pwK; // h = -0.10·(1 - q)²
+            a.rgb *= 1.0 - (0.22 * bowl - 0.07 * rim) * pwK;
             if (uReduxD.y < 0.5) {
               // (R2: a whole-sky mirror in a small oval read as a blue paint dot) muddy water — its own brown, half the gloss
-              float pond = smoothstep(0.30, 0.70, bowl) * uRoadPuddle * pw;
+              float pond = smoothstep(0.30, 0.70, bowl) * uRoadPuddle * (1.0 - uRoadSurfC.x) * pwK;
               a.rgb = mix(a.rgb, a.rgb * 0.42 + uMeanD.rgb * 0.10, pond);
               n.xy = mix(n.xy, vec2(0.5), pond);
               gRoadPuddle = max(gRoadPuddle, pond * 0.45);
@@ -6795,16 +7002,61 @@ void splatCompute() {
           }
         }
       }
-      // (5) washboard: corrugations across an arid track every 0.8 m, in stretches, strongest in the wheel paths
+      // (7) washboard: corrugations across an arid track every 0.8 m, in stretches, strongest in the wheel paths
       if (uRoadSurfB.x > 0.0 && gRoadFrameW > 0.5 && uLandTier > 1.5) {
         float wv = stripeVis(0.8, gRoadAlong) * uRoadSurfB.x * gRoadFrameW * wR
-          * smoothstep(0.42, 0.62, nz(uv, 0.011, vec2(0.27, 0.59)).g) * (0.55 + 0.45 * lane);
+          * smoothstep(0.42, 0.62, nz(uv, 0.011, vec2(0.27, 0.59)).g) * (0.55 + 0.45 * path);
         if (wv > 0.01) {
           float wph = 6.2831853 * gRoadS / 0.8;
           if (nrmOn) n.xy += 0.5 * 0.025 * (6.2831853 / 0.8) * sin(wph) * gRoadAlong * wv;
           a.rgb *= 1.0 + 0.04 * cos(wph) * wv;
         }
       }
+      // (8) braids (R3, Redrock: "Wadi Rum's braided, paler sand tracks"): the band is worn by more pairs of tyre prints that
+      // weave across it, part and rejoin — each pair a jeep's or a lorry's, 0.3 m tyres pressed into the sand with its rim
+      // pushed up, its line drifting over tens of metres and its print coming and going over 5–30 m (fields along the
+      // running length, periodic at its 512 m wrap)
+      if (braidK > 0.0 && yOk && gRoadFrameW > 0.5 && uLandTier > 1.5) {
+        float bv = stripeVis(0.45, acrS) * braidK * wR;
+        if (bv > 0.01) {
+          float bTone = 0.0;
+          vec2 bN = vec2(0.0);
+          for (int k = 0; k < 3; k++) {
+            float fk = float(k);
+            vec2 hs = vec2(gRoadS, 17.0 * fk);
+            float cy = (fk - 1.0) * 1.7 + 1.4 * (nz(hs, 1.0 / 256.0, vec2(0.13 + 0.31 * fk, 0.57)).g - 0.5);
+            float gH = fk == 1.0 ? 0.95 : 0.80;
+            float on = smoothstep(0.38, 0.60, nz(hs, 1.0 / 128.0, vec2(0.71, 0.19 + 0.23 * fk)).r);
+            float d1 = gRoadY - (cy - gH), d2 = gRoadY - (cy + gH);
+            float dn = abs(d1) < abs(d2) ? d1 : d2, u = abs(dn), sg = dn < 0.0 ? -1.0 : 1.0;
+            // (the lab's first frames: 0.3 m prints read as pairs of scratches) a tyre's print spread 0.4 m by the loose sand,
+            // its floor packed paler, its rim soft
+            float sB = max(0.05, 1.2 * fwA);
+            float tT = clamp((u - 0.20 + sB) / (2.0 * sB), 0.0, 1.0);
+            float fl = 1.0 - tT * tT * (3.0 - 2.0 * tT);
+            float rX = (u - 0.28) / 0.09;
+            float rim = exp(-rX * rX) * (1.0 - fl);
+            bTone += (0.07 * fl - 0.025 * rim) * on;
+            bN += perpW * sg * (0.02 * 6.0 * tT * (1.0 - tT) / (2.0 * sB) - 0.015 * 2.0 * rX / 0.09 * rim) * on;
+          }
+          a.rgb *= 1.0 + bTone * bv;
+          if (nrmOn) n.xy -= 0.5 * bN * bv;
+        }
+      }
+    }
+    // R3 (wave 341: pads need "spill, trampled margins, and tracks that ... leave across grass, sand or snow, so it reads as
+    // made by traffic"): the ground round a pad trampled out across the stamp's spill — the sward flattened and yellowed and
+    // worn to the soil in tongues, the snow trodden grey, the sand scuffed — and the pad's prints pressed into it
+    float trampleW = uLandTier > 0.5 ? clamp(apronRim - apronK, 0.0, 1.0) * (1.0 - gRoadTex) : 0.0;
+    if (trampleW > 0.003) {
+      float tN = nzq(uv, 0.18, vec2(0.33, 0.57)).x;
+      if (uReduxD.y > 1.5) a.rgb = mix(a.rgb, a.rgb * vec3(0.86, 0.87, 0.90), trampleW * 0.7);
+      else if (uReduxD.y > 0.5) a.rgb = mix(a.rgb, a.rgb * vec3(0.93, 0.91, 0.88), trampleW * 0.6);
+      else {
+        a.rgb = mix(a.rgb, a.rgb * vec3(1.10, 1.03, 0.80), trampleW * 0.6);
+        a.rgb = mix(a.rgb, uMeanD.rgb * uRoadSurfD.rgb * 0.95, smoothstep(0.55, 0.75, tN + 0.25 * trampleW) * trampleW * 0.7);
+      }
+      a.rgb *= 1.0 - (uReduxD.y > 1.5 ? 0.10 : 0.12) * padRut * trampleW + 0.05 * padBerm * trampleW;
     }
     // Keep compacted wheel lanes legible without painting near-black marks
     // into the road albedo. The previous 55% dirt-road multiplier turned the
@@ -6820,7 +7072,7 @@ void splatCompute() {
     // ridge a country road's two tracks merge into one trodden, darker middle — so past it the lanes give way to a broad
     // soft band over the carriageway's middle third (no stripes), the tracks' own darkening near the camera
     float laneFar = smoothstep(0.08, 0.28, gFootM) * (1.0 - gRoadTex);
-    float trodMid = (1.0 - smoothstep(0.6, 2.4, dRoad)) * roadCore * rutAmp;
+    float trodMid = (1.0 - smoothstep(0.6, 2.4, dRoad)) * roadCore * rutAmp * mix(1.0, uRoadSurfB.z, workedK);
     a.rgb *= 1.0 - min(mix(rut * rutShade, trodMid * 0.55, laneFar), 1.0) * mix(0.34, 0.26, gRoadTex);
     a.a = mix(a.a, a.a * 0.86, rut * (1.0 - gRoadTex));
     a.rgb *= 1.0 + crown * 0.05 * (1.0 - gRoadTex);
@@ -6845,6 +7097,11 @@ void splatCompute() {
         paveCore = max(paveCore, paveTownW * (1.0 - smoothstep(4.95, 5.10, dRoad)) * gRoadTex * step(dRoad, 11.9));
       }
       float onStreet = max(1.0 - smoothstep(roadHalf + 0.6, roadHalf + 2.4, dRoad), paveTownW * (1.0 - smoothstep(5.1, 5.4, dRoad)));
+      // (R4, the gauntlet's squares: the setts "switch to straight rows on the left along a visible seam") past the Low tier,
+      // where the frame holds off a kerbed town, the street meets its square on a straight line at its own width, its
+      // border course drawn along it below (the old split followed the dirt road's wandering gauge)
+      if (uLandTier > 0.5 && gRoadFrameW > 0.5 && gRoadYOk > 0.5 && paveTownW < 0.5)
+        onStreet = step(abs(gRoadY), paveHalfOf(uPaveClass.x, roadHalfW) + 0.9);
       float streetCls = paveTownW > 0.5 && uPaveExtra.y > 0.5 ? uPaveExtra.y : uPaveClass.x;
       float pCls = gRoadClass > 0.5 && abs(gRoadClass - 4.0) > 0.5 ? gRoadClass : (onStreet > 0.5 ? streetCls : uPaveClass.y);
       if (uLandTier < 0.5) pCls = gRoadClass > 0.5 && gRoadClass < 3.5 ? gRoadClass : 0.0; // (Low: the old law)
@@ -6937,9 +7194,13 @@ void splatCompute() {
         vec2 al = fr ? gRoadAlong : vec2(1.0, 0.0), pr = vec2(-al.y, al.x);
         vec2 rq = fr ? vec2(gRoadS, gRoadYOk > 0.5 ? gRoadY : dRoad * (dot(gradD, pr) < 0.0 ? -1.0 : 1.0)) : wp.xz;
         float fwP = max(gFootM, 1e-3);
-        // the wheel paths of a two-lane street: 0.85 m either side of each 3.2 m lane's middle
+        float fwAl = max(abs(dot(gDwX, al)) + abs(dot(gDwY, al)), 1e-4), fwPr = max(abs(dot(gDwX, pr)) + abs(dot(gDwY, pr)), 1e-4);
+        // the wheel paths of a two-lane street: 0.85 m either side of each 3.2 m lane's middle — (R4, the gauntlet's
+        // Steinburg: "pale wear stripes like a motorway") worn in stretches, their wear coming and going along the road
+        // (field b along the running length, periodic at its 512 m wrap; each side its own)
         float wpX = (abs(abs(rq.y) - 1.6) - 0.85) / 0.32;
-        float wheelW = fr ? exp(-wpX * wpX) : 0.0;
+        float wearOn = fr ? smoothstep(0.30, 0.66, nz(vec2(gRoadS, rq.y < 0.0 ? 3.0 : 9.0), 1.0 / 64.0, vec2(0.41, 0.17)).g) : 0.0;
+        float wheelW = fr ? exp(-wpX * wpX) * (0.35 + 0.65 * wearOn) : 0.0;
         vec2 pN = vec2(0.0);
         if (abs(pCls - 2.0) < 0.5) {
           // SETTS — courses across the road (or the segmental arcs of a German street, uPaveClass.z), a course 0.17 m
@@ -6962,45 +7223,52 @@ void splatCompute() {
           float vC = stripeVis(0.17, al), vL = stripeVis(0.22, pr);
           float sv = max(vC, vL), svs = min(vC, vL);
           float jw = 0.007 + 0.005 * sh.y;
-          float jC = (1.0 - smoothstep(jw, jw + 0.004 + 0.6 * fwP, min(sf.x, 0.17 - sf.x))) * vC;
-          float jL = (1.0 - smoothstep(jw, jw + 0.004 + 0.6 * fwP, min(sf.y, swd - sf.y))) * vL;
-          // (r4 frames: a square's joints along the view still ruled it in fine stripes 20–50 m out — a corduroy) the joints'
-          // dust lightens them toward the stones' own tone with distance
-          float jointS = max(jC, jL) * (1.0 - 0.7 * smoothstep(9.0, 32.0, camDist));
+          // (R4, the gauntlet's wave 349a: setts "smear into featureless colour by mid-frame ... keep stone definition further
+          // out without moiré") each joint at its share of the pixel across its line (bandCov) — far down a street a faint
+          // line at its true weight, not the widened dark stripe the r4 frames saw as a corduroy and a fade with distance
+          // answered by taking the stones away; short of resolving, each set of joints eases to its mean share, the two
+          // sets' union the joints' whole share of the surface
+          float jC = mix(2.0 * jw / 0.17, bandCov(min(sf.x, 0.17 - sf.x), jw, fwAl), vC);
+          float jL = mix(2.0 * jw / swd, bandCov(min(sf.y, swd - sf.y), jw, fwPr), vC * vL);
+          float jointS = 1.0 - (1.0 - jC) * (1.0 - jL);
           vec3 stone = vec3(0.150, 0.146, 0.139) * (0.88 + 0.24 * sh.x)
             * mix(vec3(1.0), sh.y > 0.5 ? vec3(1.04, 1.0, 0.95) : vec3(0.96, 0.99, 1.04), 0.6 * fract(sh.x * 3.7));
-          stone *= 1.0 - 0.12 * wheelW; // (wave 333: worn wheel tracks darker, grimed with rubber and oil)
+          stone *= 1.0 - 0.05 * wheelW; // (wave 333: worn wheel tracks darker, grimed with rubber and oil; R4: faint — the lab's dark bands)
           float mossy = (1.0 - wheelW) * smoothstep(0.45, 0.75, nz(uv, 0.08, vec2(0.21, 0.63)).g);
           vec3 jointC = mix(mix(stone * 0.42, uMeanD.rgb * 0.55, 0.5), uMeanG.rgb * 0.62, mossy * 0.6);
-          float lost = step(0.992, sh.y) * svs;
-          vec3 settMean = mix(vec3(0.150, 0.146, 0.139), jointC, 0.20) * (1.0 - 0.10 * wheelW);
+          // (R4, the gauntlet: "black missing-sett holes peppered evenly ... remove or randomise them heavily": gone — the
+          // relaid patches and the asphalt patches of the larger layer below are the street's repairs)
+          vec3 settMean = vec3(0.150, 0.146, 0.139) * (1.0 - 0.04 * wheelW);
           vec3 col = mix(settMean, stone, sv);
           col = mix(col, jointC, jointS);
           col *= 0.94 + 0.12 * nzq(uv, 0.35, vec2(0.23, 0.41)).x;
-          if (fr) col *= 1.0 - 0.14 * (1.0 - smoothstep(0.0, 0.45, abs(abs(rq.y) - 1.6))) * smoothstep(0.50, 0.78, nz(uv, 0.21, vec2(0.13, 0.71)).g);
-          col = mix(col, jointC * 0.6, lost);
+          if (fr) col *= 1.0 - 0.16 * (1.0 - smoothstep(0.0, 0.45, abs(abs(rq.y) - 1.6))) * smoothstep(0.66, 0.84, nzq(uv, 0.75, vec2(0.13, 0.71)).x)
+            * smoothstep(0.40, 0.62, nz(uv, 0.05, vec2(0.61, 0.23)).g);
           col *= uPaveExtra.x;
-          pav = vec4(col, mix(0.86, 0.68, wheelW * (1.0 - jointS)));
+          pav = vec4(col, mix(0.86, 0.76, wheelW * (1.0 - jointS)));
           vec2 st2 = vec2(sf.x / 0.17 - 0.5, sf.y / swd - 0.5);
           vec2 tilt = (cellHash2(vec2(si, ci) + 3.7) - 0.5) * 0.18;
-          pN = ((st2.x * 0.55 + tilt.x) * al + (st2.y * 0.55 + tilt.y) * pr) * (1.0 - jointS) * (1.0 - lost) * svs;
+          pN = ((st2.x * 0.55 + tilt.x) * al + (st2.y * 0.55 + tilt.y) * pr) * (1.0 - jointS) * svs;
         } else if ((pCls > 4.5 && pCls < 5.5) || pCls > 6.5) {
           // BRICK — clinker (5: the Dutch dyke road's klinkers in herringbone across the road, sand-jointed, red-brown to
           // purple) or brick soling (7: the char's herringbone of common brick, broken and mud-dressed)
           bool soling = pCls > 6.5;
-          float bw = soling ? 0.115 : 0.10;
+          // (R4, the gauntlet: Jade River's herringbone "magnified to roughly twice true brick size", Tidegate's clinker
+          // "oversized in the foreground") both are laid on edge — a Dutch klinker's 200 × 50 mm face (4 to 1), a Bengal
+          // soling brick's 240 × 70 mm (3 to 1, its 225 × 75 here): an n-to-1 herringbone, a cell (cx, cy) a horizontal
+          // brick's (cx − cy mod 2n below n: its offset along the brick) or a vertical one's (the rows above its foot)
+          float bw = soling ? 0.075 : 0.05, bn = soling ? 3.0 : 4.0;
           vec2 hq = vec2(rq.x + rq.y, rq.y - rq.x) * 0.70710678 / bw;   // 45° to the road
           vec2 hc = floor(hq), hf = fract(hq);
-          float hd = mod(hc.x - hc.y, 4.0);
-          vec2 lp, sz = vec2(2.0, 1.0), bid = hc;
-          if (hd < 0.5) lp = hf;
-          else if (hd < 1.5) { lp = vec2(hf.x + 1.0, hf.y); bid = hc - vec2(1.0, 0.0); }
-          else if (hd < 2.5) { lp = vec2(hf.x, hf.y + 1.0); sz = vec2(1.0, 2.0); bid = hc - vec2(0.0, 1.0); }
-          else { lp = hf; sz = vec2(1.0, 2.0); }
+          float hd = mod(hc.x - hc.y, 2.0 * bn);
+          vec2 lp, sz, bid;
+          if (hd < bn - 0.5) { lp = vec2(hd + hf.x, hf.y); sz = vec2(bn, 1.0); bid = vec2(hc.x - hd, hc.y); }
+          else { float kb = 2.0 * bn - 1.0 - hd; lp = vec2(hf.x, kb + hf.y); sz = vec2(1.0, bn); bid = vec2(hc.x, hc.y - kb); }
           vec2 bh = cellHash2(bid + vec2(sz.x * 13.0, 5.0));
           float bEdge = min(min(lp.x, sz.x - lp.x), min(lp.y, sz.y - lp.y)) * bw;
-          float bv = tileVis(bw * 2.0);
-          float jointB = (1.0 - smoothstep(0.005, 0.009 + 0.6 * fwP, bEdge)) * bv;
+          float bv = min(stripeVis(2.0 * bw, al), stripeVis(2.0 * bw, pr));
+          float jwB = soling ? 0.005 : 0.0035;
+          float jointB = mix(0.18, bandCov(bEdge, jwB, 0.5 * (fwAl + fwPr)), bv);
           // (R2, the first frames: Jade River's soling a saturated orange tile floor near and a smooth salmon band past
           // 10 m) weathered brick — dust-browned, ±18 % brick to brick, the joints filled with the road's own dust — under
           // an irregular drift, the wheel tracks smoothed and darkened, and on a soling road its broken stretches: holes
@@ -7010,15 +7278,15 @@ void splatCompute() {
           brick = mix(brick, brick * vec3(0.82, 0.80, 0.90), step(0.88, bh.y));     // the burnt purple ones
           brick = mix(brick, brick * vec3(1.14, 1.08, 0.96), step(0.90, fract(bh.x * 6.7)) * (soling ? 1.0 : 0.0));
           vec3 jointC = soling ? mix(brick * 0.75, uMeanD.rgb * 0.95, 0.6) : vec3(0.22, 0.20, 0.16);
-          vec3 bMean = mix(soling ? vec3(0.195, 0.116, 0.084) : vec3(0.140, 0.080, 0.067), jointC, 0.22);
-          vec3 col = mix(bMean, mix(brick, jointC, jointB), bv);
+          vec3 bMean = soling ? vec3(0.195, 0.116, 0.084) : vec3(0.140, 0.080, 0.067);
+          vec3 col = mix(mix(bMean, brick, bv), jointC, jointB);
           col *= 0.92 + 0.16 * nzq(uv, 0.35, vec2(0.61, 0.23)).x;
           col *= 1.0 - 0.12 * wheelW;
-          float broken = soling ? step(0.90, bh.y) * bv : 0.0;           // a brick gone or broken: the mud under it
+          float broken = soling ? step(0.96, bh.y) * bv : 0.0;           // a brick gone or broken: the mud under it
           if (soling) {
             vec2 hci = floor(wp.xz / 4.0);
             vec2 hh = cellHash2(hci + vec2(37.0, 71.0));
-            if (hh.x < 0.22) {
+            if (hh.x < 0.12) {
               vec2 hh2 = cellHash2(hci + vec2(3.0, 19.0));
               vec2 hc0 = (hci + 0.25 + 0.5 * hh2) * 4.0;
               float hr = 0.35 + 0.65 * hh.y;
@@ -7032,7 +7300,7 @@ void splatCompute() {
               col = mix(col, col * 0.85, loose * 0.6);
             }
           }
-          col = mix(col, uMeanD.rgb * 0.58, broken);
+          col = mix(col, uMeanD.rgb * 0.76, broken);
           // the dust and mud the traffic spreads over it (a soling road between its fields; a dyke road's sand in the joints)
           float dressing = soling ? 0.25 + 0.35 * smoothstep(0.40, 0.70, nz(uv, 0.06, vec2(0.33, 0.17)).g) : 0.10;
           col = mix(col, uMeanD.rgb * vec3(1.0, 0.97, 0.92), dressing * (1.0 - 0.5 * wheelW));
@@ -7084,24 +7352,63 @@ void splatCompute() {
           }
           float laneP = abs(abs(rq.y) - 1.6);
           asph *= 1.0 + 0.09 * wheelW;
-          if (fr) asph *= 1.0 - 0.16 * (1.0 - smoothstep(0.0, 0.45, laneP)) * smoothstep(0.50, 0.78, nz(uv, 0.21, vec2(0.13, 0.71)).g);
+          // (R4, the gauntlet's Monsoon: "two broad, soft black tyre bands that read like painted shadows") the drip down a
+          // lane's middle in spots and smears, not a band (the noise with no period at ~0.5 m), with a faint film between
+          if (fr) asph *= 1.0 - (0.02 + 0.26 * smoothstep(0.66, 0.84, nzq(uv, 0.75, vec2(0.13, 0.71)).x))
+            * (1.0 - smoothstep(0.0, 0.45, laneP)) * smoothstep(0.40, 0.62, nz(uv, 0.05, vec2(0.61, 0.23)).g);
           float rough = mix(0.82, 0.66, wheelW);
-          float crk = 0.0;
+          // (R4, the gauntlet: "clean airbrushed grey with ruler-straight cracks or rectangular patches. Make cracks organic,
+          // patches irregular, and add stains and aggregate") the cracks follow the binder's own failures: the centre joint's
+          // crack meandering (two octaves along the running length, periodic at its wrap) and sealed in tar in stretches;
+          // transverse cracks wandering across a lane from the centre and petering out; and in the worn wheel paths of old
+          // binder a crazed net of small irregular plates (the two nearest points of a jittered grid: the plates' edges) —
+          // each line at its share of the pixel across it
+          float crk = 0.0, sealT = 0.0;
           if (fr) {
-            float wv = (nz(vec2(rq.x, 0.0), 0.37, vec2(0.71, 0.29)).r - 0.5) * 0.10;
-            crk = (1.0 - smoothstep(0.018, 0.018 + fwP, abs(rq.y + wv))) * step(0.5, uPaveWear.y);
-            float tci = floor(rq.x / 7.0);
-            vec2 th = cellHash2(vec2(tci, 23.0));
-            float tx = (tci + 0.15 + 0.7 * th.x) * 7.0 + (nz(vec2(0.0, rq.y), 0.6, vec2(0.11, 0.47)).r - 0.5) * 0.25;
-            crk = max(crk, (1.0 - smoothstep(0.008, 0.008 + fwP, abs(rq.x - tx))) * step(0.35, th.y) * step(abs(rq.y), 1.0 + 3.0 * th.y) * uPaveWear.y);
+            float cw = (nz(vec2(gRoadS, 3.0), 1.0 / 32.0, vec2(0.71, 0.29)).r - 0.5) * 0.34
+              + (nz(vec2(gRoadS, 7.0), 1.0 / 4.0, vec2(0.23, 0.61)).r - 0.5) * 0.07 * tileVis(0.3);
+            float cOn = smoothstep(0.30, 0.50, nz(vec2(gRoadS, 13.0), 1.0 / 64.0, vec2(0.37, 0.83)).g) * step(0.5, uPaveWear.y);
+            crk = bandCov(abs(rq.y - cw), 0.005, fwPr) * cOn;
+            sealT = bandCov(abs(rq.y - cw), 0.03, fwPr) * cOn * smoothstep(0.55, 0.70, nz(vec2(gRoadS, 21.0), 1.0 / 16.0, vec2(0.51, 0.19)).g);
+            float tci = floor(rq.x / 6.0), side = rq.y < 0.0 ? 0.0 : 1.0;
+            vec2 th = cellHash2(vec2(tci, 23.0 + side * 7.0));
+            float tx = (tci + 0.15 + 0.7 * th.x) * 6.0 + (nz(vec2(rq.y, tci * 24.7), 0.15, vec2(0.11, 0.47)).r - 0.5) * 0.70
+              + (nz(vec2(rq.y, tci * 5.3), 1.0, vec2(0.67, 0.19)).r - 0.5) * 0.10 * tileVis(0.25);
+            float tFade = 1.0 - smoothstep(0.6 + 2.2 * th.y, 1.0 + 2.6 * th.y, abs(rq.y));
+            crk = max(crk, bandCov(abs(rq.x - tx), 0.003 + 0.003 * th.y, fwAl) * step(0.40, th.y) * tFade * uPaveWear.y);
           }
-          vec2 cq = rq / 0.26 + (vec2(nz(uv, 0.7, vec2(0.3, 0.1)).g, nz(uv, 0.7, vec2(0.6, 0.9)).g) - 0.5) * 0.9;
-          vec2 cf = fract(cq);
-          float cE = min(min(cf.x, 1.0 - cf.x), min(cf.y, 1.0 - cf.y)) * 0.26;
-          crk = max(crk, (1.0 - smoothstep(0.003, 0.003 + fwP, cE)) * wheelW * smoothstep(0.55, 0.75, big) * uPaveWear.y * tileVis(0.26));
-          crk *= tileVis(0.12);
-          asph *= 1.0 - 0.55 * crk;
-          rough = mix(rough, 0.45, crk * 0.6);
+          float netW = wheelW * smoothstep(0.50, 0.72, big) * uPaveWear.y * tileVis(0.10);
+          if (netW > 0.01) {
+            vec2 gq = rq / 0.30, gc = floor(gq), gf = gq - gc;
+            float d1 = 9.0, d2 = 9.0;
+            for (int j = -1; j <= 1; j++) {
+              for (int i = -1; i <= 1; i++) {
+                vec2 o = vec2(float(i), float(j));
+                vec2 r = o + 0.15 + 0.70 * cellHash2(gc + o + vec2(17.0, 31.0)) - gf;
+                float d = dot(r, r);
+                if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) { d2 = d; }
+              }
+            }
+            crk = max(crk, bandCov((sqrt(d2) - sqrt(d1)) * 0.15, 0.0025, fwP) * netW);
+          }
+          asph *= 1.0 - 0.55 * crk - 0.22 * sealT;
+          rough = mix(rough, 0.45, max(crk * 0.6, sealT * 0.5));
+          // stains: oil and fuel spilled where vehicles stood or broke down (the noise with no period, ~1 m), and the binder
+          // bled black and glossy in the wheel paths' hottest stretches
+          float stainA = smoothstep(0.72, 0.86, nzq(uv, 0.32, vec2(0.83, 0.37)).x) * smoothstep(0.45, 0.70, nz(uv, 0.03, vec2(0.17, 0.53)).g);
+          float bleed = wheelW * smoothstep(0.66, 0.84, nzq(uv, 0.21, vec2(0.29, 0.13)).x);
+          asph *= 1.0 - 0.28 * stainA - 0.18 * bleed;
+          rough = mix(rough, 0.50, max(stainA * 0.5, bleed * 0.7));
+          // the aggregate near the camera: chips a centimetre or two across, paler where the binder has worn off them (the
+          // wheel paths, the ravelled edge), one candidate a 2.5 cm cell
+          float chipV = tileVis(0.05);
+          if (chipV > 0.01) {
+            vec2 cpq = rq / 0.025, cpc = floor(cpq);
+            vec2 chh = cellHash2(cpc + vec2(5.0, 61.0));
+            vec2 cpd = fract(cpq) - 0.5 - (chh - 0.5) * 0.5;
+            float chip = (1.0 - smoothstep(0.16, 0.30, length(cpd))) * step(chh.x, 0.30 + 0.40 * wheelW);
+            asph = mix(asph, vec3(dot(uMeanR.rgb, vec3(0.34, 0.45, 0.21))) * (0.9 + 0.5 * chh.y), chip * chipV * (0.35 + 0.45 * wheelW));
+          }
           // the repairs (wave 333 on Suzhou Creek: the patched style's "large pale rectangles read as pasted blocks"): each a
           // cut reinstated by hand — an outline that wanders (field b at 1.4: tongues of 0.2–0.7 m), a newer fill darker and
           // smoother sealed with a thin tar seam, an older one barely off the road's own grey; trench strips along the lanes
@@ -7114,9 +7421,16 @@ void splatCompute() {
             vec2 ph2 = cellHash2(pcI + vec2(11.0, 29.0));
             vec2 hs = ph2.x > 0.7 ? vec2(2.6 + 0.8 * ph2.y, 0.35 + 0.15 * ph.y) : vec2(0.6 + 1.6 * ph2.y, 0.45 + 0.9 * ph.y);
             vec2 pc0 = (pcI + 0.5) * cellS + (ph2 - 0.5) * max(cellS - 2.0 * hs, vec2(0.0)) * vec2(1.0, 0.8);
-            vec2 bd = abs(rq - pc0) - hs;
+            // (R4: "patches irregular") each turned off the road's axis by up to 15°, grown a second lobe where the next hole
+            // was filled with it, its outline wandering by ±0.25 m
+            float pang = (ph2.y - 0.5) * 0.52, pca = cos(pang), psa = sin(pang);
+            vec2 pdq = rq - pc0;
+            pdq = vec2(pca * pdq.x - psa * pdq.y, psa * pdq.x + pca * pdq.y);
+            vec2 bd = abs(pdq) - hs;
             float sd = length(max(bd, 0.0)) + min(max(bd.x, bd.y), 0.0) - 0.12;
-            sd += (nz(uv, 1.4, vec2(0.19, 0.73)).g - 0.5) * 0.30 + (nz(uv, 4.1, vec2(0.61, 0.07)).r - 0.5) * 0.06;
+            vec2 bd2 = abs(pdq - hs * vec2(0.9, 0.7) * (vec2(ph.y, ph2.x) - 0.5) * 2.0) - hs * 0.55;
+            sd = min(sd, length(max(bd2, 0.0)) + min(max(bd2.x, bd2.y), 0.0) - 0.10);
+            sd += (nz(uv, 1.4, vec2(0.19, 0.73)).g - 0.5) * 0.50 + (nz(uv, 4.1, vec2(0.61, 0.07)).r - 0.5) * 0.10;
             float inPatch = 1.0 - smoothstep(-0.01, 0.01 + fwP, sd);
             float newer = step(0.45, ph.y);
             seam = (1.0 - smoothstep(0.012, 0.024 + fwP, abs(sd))) * tileVis(0.4) * newer;
@@ -7162,6 +7476,109 @@ void splatCompute() {
           }
           pav = vec4(asph * uPaveExtra.x, rough);
           pN = (pN.x * al + pN.y * pr) * 1.0;
+        }
+        // R4 (the gauntlet's wave 349a: "setts, brick and asphalt are crisp single stamps near the camera that smear into
+        // featureless colour by mid-frame. Add a second, larger-scale variation layer (course undulation, wear lanes,
+        // patching) that survives distance"): under the paving's own scale, the ground it lies on — settled in broad dips of
+        // a few metres (their light, and the dirt and damp in their low spots), the wheel paths sunk a centimetre or two where
+        // they are worn (the courses following them down), relaid in irregular patches of another tone with a seam round
+        // them, and a sett street patched in asphalt here and there (uPaveWear.x the rate); a square takes its dips and its
+        // relaid patches. (The patches' edges are drawn over the pixel's footprint by the fields' own slope.)
+        {
+          float hA = nz(uv, 0.035, vec2(0.29, 0.61)).r;
+          vec2 dipG = vec2(nz(uv + vec2(0.6, 0.0), 0.035, vec2(0.29, 0.61)).r - hA,
+            nz(uv + vec2(0.0, 0.6), 0.035, vec2(0.29, 0.61)).r - hA) / 0.6 * 0.05;
+          float sagW = fr ? exp(-wpX * wpX) * wearOn : 0.0;
+          vec2 sagG = 0.015 * 2.0 * wpX / 0.32 * sagW * sign(abs(rq.y) - 1.6) * sign(rq.y) * pr;
+          pN -= 0.5 * (dipG + sagG) * (abs(pCls - 1.0) < 0.5 || abs(pCls - 3.0) < 0.5 ? 0.6 : 1.0);
+          pav.rgb *= 1.0 - 0.14 * smoothstep(0.48, 0.20, hA) + 0.05 * smoothstep(0.58, 0.82, hA);
+          float rlN = nzq(uv, 0.035, vec2(0.83, 0.47)).x;
+          float rlW = 0.12 * fwP + 0.002;
+          float rlK = min(uPaveWear.x, 1.0);
+          float relaid = smoothstep(0.66 - rlW, 0.66 + rlW, rlN) * rlK;
+          pav.rgb *= mix(1.0, 0.76 + 0.44 * nz(uv, 0.012, vec2(0.17, 0.93)).g, relaid);
+          pav.rgb *= 1.0 - 0.30 * (1.0 - smoothstep(0.0, 1.5 * rlW, abs(rlN - 0.66))) * tileVis(0.25) * rlK;
+          if (fr && abs(pCls - 2.0) < 0.5 && uPaveWear.x > 0.0) {
+            float apN = nzq(uv + vec2(37.0, 11.0), 0.06, vec2(0.21, 0.67)).x;
+            float apW = 0.20 * fwP + 0.002;
+            float apT = 0.80 - 0.06 * min(uPaveWear.x, 1.5);
+            float apatch = smoothstep(apT - apW, apT + apW, apN);
+            vec3 tar = vec3(0.092, 0.090, 0.087) * (0.90 + 0.20 * nz(uv, 1.9, vec2(0.31, 0.57)).r);
+            pav.rgb = mix(pav.rgb, tar, apatch);
+            pav.a = mix(pav.a, 0.74, apatch);
+            pN *= 1.0 - apatch;
+            pav.rgb *= 1.0 - 0.35 * (1.0 - smoothstep(0.0, 2.0 * apW, abs(apN - apT))) * tileVis(0.3);
+          }
+        }
+        // R4: a sett street's border course where it meets its square — two rows of large granite setts laid along the
+        // street (0.26 m, staggered), the square's own courses running on beyond them in their own axis
+        if (fr && abs(pCls - 2.0) < 0.5 && gRoadYOk > 0.5 && paveTownW < 0.5 && paveEdgeY <= 0.0) {
+          float bIn = paveHalfOf(uPaveClass.x, roadHalfW) + 0.9 - abs(gRoadY);
+          float bCov = bandCov(abs(bIn - 0.17), 0.17, fwPr);
+          if (bCov > 0.001) {
+            float rowB = bIn < 0.17 ? 0.0 : 1.0;
+            float sB = gRoadS + rowB * 0.13 + (gRoadY < 0.0 ? 0.37 : 0.0);
+            float fB = fract(sB / 0.26) * 0.26;
+            vec2 bh2 = cellHash2(vec2(floor(sB / 0.26), rowB + (gRoadY < 0.0 ? 7.0 : 3.0)));
+            float jB = max(bandCov(min(fB, 0.26 - fB), 0.006, fwAl) * stripeVis(0.26, al), bandCov(abs(bIn - 0.17), 0.006, fwPr));
+            vec3 bC = mix(vec3(0.168, 0.164, 0.156) * (0.88 + 0.24 * bh2.x), vec3(0.07, 0.068, 0.064), jB) * uPaveExtra.x;
+            pav.rgb = mix(pav.rgb, bC, bCov);
+            pN = mix(pN, vec2(0.0), bCov * 0.7);
+          }
+        }
+        // R4 (the gauntlet: "Edges: roads meet verges and buildings through soft stencil blends or bare dirt. Add kerbs,
+        // gutters, edging courses and crumbling asphalt edges"): a country road's paving ends on its own line (paveEdgeY, at
+        // its share of the pixel) — a sett road held by a course of long granite edging stones, a brick or klinker road by a
+        // soldier course of bricks set across it, an asphalt road's edge crumbled in bites where the verge's traffic and the
+        // frost broke it, its base course's gravel showing in them — and the edge's lip catches the light
+        if (paveEdgeY > 0.0) {
+          vec2 perpE = vec2(-gRoadAlong.y, gRoadAlong.x);
+          float ayE = abs(gRoadY);
+          vec2 outE = gRoadY < 0.0 ? -perpE : perpE;
+          float fwE = max(abs(dot(gDwX, outE)) + abs(dot(gDwY, outE)), 1e-4);
+          float fwS = max(abs(dot(gDwX, gRoadAlong)) + abs(dot(gDwY, gRoadAlong)), 1e-4);
+          bool asphE = abs(pCls - 1.0) < 0.5 || abs(pCls - 3.0) < 0.5 || abs(pCls - 6.0) < 0.5;
+          float sideE = gRoadY < 0.0 ? 5.0 : 11.0;
+          float edgeY = paveEdgeY, bN = 0.5, bN2 = 0.5;
+          if (asphE) {
+            bN = nz(vec2(gRoadS, sideE), 1.0 / 16.0, vec2(0.37, 0.61)).r;
+            bN2 = nz(vec2(gRoadS, sideE), 1.0 / 2.0, vec2(0.13, 0.29)).r;
+            edgeY -= 0.42 * smoothstep(0.55, 0.85, bN) * (0.6 + 0.4 * bN2) + 0.06 * (bN2 - 0.5) * tileVis(0.3);
+          }
+          float inE = bandCov(ayE, edgeY, fwE);
+          float outerE = bandCov(ayE, paveEdgeY + (asphE ? 0.05 : 0.0), fwE);
+          paveCore = outerE * gRoadTex;
+          if (asphE) {
+            float gW = clamp((outerE - inE) / max(outerE, 1e-3), 0.0, 1.0);
+            vec3 grav = vec3(dot(uMeanR.rgb, vec3(0.34, 0.45, 0.21))) * vec3(1.05, 1.0, 0.92) * (0.80 + 0.40 * nz(uv, 3.3, vec2(0.71, 0.11)).r);
+            pav.rgb = mix(pav.rgb, grav, gW);
+            pav.a = mix(pav.a, 0.92, gW);
+            pN *= 1.0 - gW;
+            // a crack along the edge where the bites begin
+            float ecY = edgeY - 0.25 - 0.10 * bN2;
+            pav.rgb *= 1.0 - 0.45 * bandCov(abs(ayE - ecY), 0.003, fwE) * smoothstep(0.45, 0.65, bN) * tileVis(0.15);
+          } else {
+            bool brickE = (pCls > 4.5 && pCls < 5.5) || pCls > 6.5;
+            float eW = brickE ? (pCls > 6.5 ? 0.225 : 0.20) : 0.20;
+            float eIn = edgeY - ayE;
+            float cCov = bandCov(abs(eIn - 0.5 * eW), 0.5 * eW, fwE);
+            if (cCov > 0.001) {
+              float uL = brickE ? (pCls > 6.5 ? 0.075 : 0.05) : 0.75;
+              float sE = gRoadS + sideE * 0.37;
+              float cellE = floor(sE / uL), fE = fract(sE / uL) * uL;
+              vec2 eh = cellHash2(vec2(cellE, sideE + 3.0));
+              float jE = bandCov(min(fE, uL - fE), brickE ? 0.0035 : 0.006, fwS) * stripeVis(2.0 * uL, gRoadAlong);
+              float jIn = bandCov(abs(eIn - eW), brickE ? 0.0035 : 0.006, fwE);
+              vec3 eC = brickE ? (pCls > 6.5 ? vec3(0.212, 0.122, 0.086) : vec3(0.150, 0.082, 0.066)) * (0.86 + 0.28 * eh.x)
+                : vec3(0.180, 0.176, 0.168) * (0.90 + 0.20 * eh.x);
+              vec3 eJ = brickE ? vec3(0.20, 0.18, 0.15) : vec3(0.10, 0.098, 0.092);
+              eC = mix(eC, eJ, max(jE, jIn));
+              pav.rgb = mix(pav.rgb, eC, cCov);
+              pN = mix(pN, outE * 0.12 * smoothstep(0.0, 0.05, -eIn + 0.05) * tileVis(0.2), cCov);
+            }
+          }
+          // the lip: the paving's outer face proud of the verge, turned to the light or away from it
+          pN += outE * 0.30 * (1.0 - smoothstep(0.0, 0.03 + fwE, abs(ayE - (asphE ? edgeY : paveEdgeY)))) * tileVis(0.2);
         }
         // the gutter: rows of small setts along the kerb, the street's dirt and leaves gathered in them (a kerbed street,
         // uPaveClass.w its width)
@@ -7221,14 +7638,17 @@ void splatCompute() {
           + (paveN - 0.5) * 0.20 * paveVis * (1.0 - step(0.001, uPaveSlab.x))
           * (uLandTier < 0.5 ? (gRoadClass > 0.5 && gRoadClass < 3.5 && abs(gRoadClass - 2.0) > 0.5 ? 0.0 : 1.0)
             : (abs(pCls - 1.0) < 0.5 || abs(pCls - 3.0) < 0.5 || abs(pCls - 6.0) < 0.5 ? (paveTownW > 0.5 ? 0.0 : 0.35) : 1.0))) * gRoadTex;
-        paveCore = min(paveCore, paveKept);
-        float outer = paveCore * (1.0 - smoothstep(0.24, 0.46, mk.r));
-        float pavL = dot(pav.rgb, vec3(0.34, 0.45, 0.21)) / max(dot(uMeanR.rgb, vec3(0.34, 0.45, 0.21)) * 0.8, 1e-3);
-        float joint = 1.0 - smoothstep(0.55, 0.95, pavL);
-        pav.rgb = mix(pav.rgb, pav.rgb * vec3(0.70, 0.96, 0.50), joint * outer * 0.85);
-        float margin = smoothstep(0.02, 0.15, mk.r + (paveN - 0.5) * 0.06) * (1.0 - paveCore) * gRoadTex;
-        a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.76, 0.68), margin * 0.65);
-        a.a = mix(a.a, max(a.a, 0.94), margin);
+        // (R4: a crisp-edged road keeps its own line, its edging course and its verge — none of the mask's broken margin)
+        if (paveEdgeY <= 0.0) {
+          paveCore = min(paveCore, paveKept);
+          float outer = paveCore * (1.0 - smoothstep(0.24, 0.46, mk.r));
+          float pavL = dot(pav.rgb, vec3(0.34, 0.45, 0.21)) / max(dot(uMeanR.rgb, vec3(0.34, 0.45, 0.21)) * 0.8, 1e-3);
+          float joint = 1.0 - smoothstep(0.55, 0.95, pavL);
+          pav.rgb = mix(pav.rgb, pav.rgb * vec3(0.70, 0.96, 0.50), joint * outer * 0.85);
+          float margin = smoothstep(0.02, 0.15, mk.r + (paveN - 0.5) * 0.06) * (1.0 - paveCore) * gRoadTex;
+          a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.76, 0.68), margin * 0.65);
+          a.a = mix(a.a, max(a.a, 0.94), margin);
+        }
       }
       // (a procedural surface carries its own albedo, a third of the map's road hue over it; the map's tint calibrates its
       // sett print)
@@ -7239,7 +7659,7 @@ void splatCompute() {
       // gutter shading: a darkened seam just inside the pavement edge gives
       // the street a built profile even before the kerb geometry resolves
       float gutter = smoothstep(0.06, 0.20, mk.r) * (1.0 - smoothstep(0.22, 0.42, mk.r));
-      a.rgb *= 1.0 - gutter * 0.18 * gRoadTex;
+      a.rgb *= 1.0 - gutter * 0.18 * gRoadTex * (paveEdgeY > 0.0 ? 0.0 : 1.0);
     }
   }
   // r4: 0.09 -> 0.16 + a dusty desaturation pull — road shoulders must read
@@ -7262,7 +7682,8 @@ void splatCompute() {
     }
   }
   // (a pad's ruts: two grooves across each line, their walls turned to the light)
-  if (nrmOn && padRut > 0.003) n.xy -= padRutN * 0.35;
+  // (R3: past the Low tier the prints' slope, h in metres — the Low tier keeps the old grooves exactly)
+  if (nrmOn && (uLandTier < 0.5 ? padRut > 0.003 : padTrackW > 0.003)) n.xy -= padRutN * (uLandTier < 0.5 ? 0.35 : 0.5);
   // wheel-lane relief and tyre streaks from the distance field: its gradient
   // is the across-road direction and the lane profile's analytic slope shapes
   // two smooth grooves, so a straight road carries no per-texel bumps.
@@ -7271,7 +7692,7 @@ void splatCompute() {
     n.xy += gradD * laneSlope * 0.14 * roadCore * rutAmp * (1.0 - df * 0.72) * uRoadRuts.x * (1.0 - grooveRel);
     vec2 along = vec2(-gradD.y, gradD.x);
     float streak = texture2D(uNoise, vec2(dot(uv, along) * 0.31, dot(uv, gradD) * 2.7)).r;
-    a.rgb *= 1.0 + (streak - 0.5) * 0.16 * max(lane, 0.35 * crown) * roadCore * (1.0 - df);
+    a.rgb *= 1.0 + (streak - 0.5) * 0.16 * max(lane, 0.35 * crown) * roadCore * (1.0 - df) * (1.0 - gRoadTex * step(0.5, uLandTier));
   }
   // wind-blown snow drifts across the ice sheet + snowbank shoreline blend
   // (maps r1: the whole sheet block reads fMs — identical to fM everywhere
@@ -8123,9 +8544,11 @@ function* createSplatMaterialSteps(
     shader.uniforms.uRoadRuts = { value: new THREE.Vector3(...(S.roadRuts ?? [1, 0, 0])) };
     // roads lane (2026-10-09): the worked carriageway (relief, stones, potholes, treads) and (washboard, tone floor, lanes'
     // albedo share, windrow) — the map's override, else its climate's row under its splat.roadSurface
-    const roadWork = roadSurfaceUniforms(mapId, groundProfile.climate, S.roadSurface);
+    const roadWork = roadSurfaceUniforms(mapId, groundProfile.climate, S.roadSurface, S.soilTint as [number, number, number] | undefined);
     shader.uniforms.uRoadSurf = { value: new THREE.Vector4(...roadWork.a) };
     shader.uniforms.uRoadSurfB = { value: new THREE.Vector4(...roadWork.b) };
+    shader.uniforms.uRoadSurfC = { value: new THREE.Vector4(...roadWork.c) };
+    shader.uniforms.uRoadSurfD = { value: new THREE.Vector4(...roadWork.d) };
     // round 42: the sun the vista ring shades with, and the sky-light weight for steep faces turned from it
     shader.uniforms.uSunDirW = { value: skySunDirection(sky) };
     // media r5: the first compile's sun uniform is shared by every later program variant (a light-count recompile

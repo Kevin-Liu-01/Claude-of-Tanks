@@ -88,41 +88,67 @@ export const MAP_PATH_SURFACES: Readonly<Record<string, readonly (RoadSurface | 
 });
 
 /**
- * The worked carriageway of an unpaved road — each a gain, 0 off. relief: the wheel ruts as grooves with lips, the crown
- * and camber; stones: strewn on the crown and the edges, swept out of the wheel paths; potholes: oval bowls, puddled on a
- * wet map; treads: the vehicles' prints in the ruts' floors; washboard: corrugations across an arid track; toneFloor: the
- * dry road's least luminance as a share of the field it crosses (0: the old law); laneTone: the share of the lanes' old
- * albedo darkening kept where the grooves' relief draws them; windrow: the grader's ridge of loose stone along the edge.
+ * The worked carriageway of an unpaved road — each a gain, 0 off. relief: the wheel paths as broad shallow troughs with
+ * berms, the middle strip's hump, the crown and camber, the verge's step; stones: strewn on the berms, the strip's edges and
+ * the verges, swept out of the wheel paths; potholes: oval bowls in the paths, puddled on a wet map; treads: the vehicles'
+ * prints in the paths' floors; washboard: corrugations across an arid track; toneFloor: the dry road's least luminance as
+ * a share of the ground it crosses (0: the old law); laneTone: the share of the lanes' old albedo darkening kept on the
+ * worked road (R3: none but a snow road's slush); windrow: the grader's ridge of loose stone along the edge.
+ * (R3, 2026-10-10) dust: the dry road lifted to the field's tone and greyed — a dry season's track; braids: the band worn
+ * by more pairs of tyre prints weaving across it, the field's own ground (a desert's sand) under them; midStrip: the sward
+ * between the wheel paths of a farm road, in stretches; pale: the packed wheel paths' paleness; fieldTone: the share of
+ * the field's own ground colour in the carriageway and the pads (a desert's sand); soil: the road's and the pads' soil
+ * tint over the dirt layer (absent: the splat's soilTint — the place's own soil, Saltwind's terra rossa).
  */
 export interface RoadSurfaceWork {
   relief: number; stones: number; potholes: number; treads: number;
   washboard: number; toneFloor: number; laneTone: number; windrow: number;
+  dust: number; braids: number; midStrip: number; pale: number;
+  fieldTone: number; soil?: readonly [number, number, number];
 }
-const ROAD_SURFACE_OFF: RoadSurfaceWork = Object.freeze({
-  relief: 0, stones: 0, potholes: 0, treads: 0, washboard: 0, toneFloor: 0, laneTone: 1, windrow: 0,
-});
 /** Each climate's worked carriageway (groundRedux.ts climate). */
 export const ROAD_SURFACE_BY_CLIMATE: Readonly<Record<'vegetated' | 'arid' | 'snow', RoadSurfaceWork>> = Object.freeze({
-  vegetated: Object.freeze({ relief: 1, stones: 0.55, potholes: 0.8, treads: 1, washboard: 0, toneFloor: 0.92, laneTone: 0.55, windrow: 0.5 }),
-  arid: Object.freeze({ relief: 1, stones: 0.9, potholes: 0.35, treads: 1, washboard: 0.8, toneFloor: 0.92, laneTone: 0.50, windrow: 1 }),
-  snow: Object.freeze({ relief: 0.8, stones: 0, potholes: 0, treads: 1, washboard: 0, toneFloor: 0, laneTone: 0.7, windrow: 0 }),
+  vegetated: Object.freeze({ relief: 1, stones: 0.55, potholes: 0.8, treads: 1, washboard: 0, toneFloor: 0.92, laneTone: 0,
+    windrow: 0.5, dust: 0.3, braids: 0, midStrip: 0.85, pale: 0.6, fieldTone: 0 }),
+  arid: Object.freeze({ relief: 1, stones: 0.9, potholes: 0.35, treads: 1, washboard: 0.8, toneFloor: 0.92, laneTone: 0,
+    windrow: 1, dust: 0.55, braids: 0, midStrip: 0, pale: 0.45, fieldTone: 0.5 }),
+  snow: Object.freeze({ relief: 0.8, stones: 0, potholes: 0, treads: 1, washboard: 0, toneFloor: 0, laneTone: 0.7, windrow: 0,
+    dust: 0, braids: 0, midStrip: 0, pale: 0, fieldTone: 0 }),
 });
-/** The owner's protected maps keep the old road law whatever their climate, until a pair shows the worked carriageway does
- * them no harm (2026-10-09: Verdant's light-touch rule; Frontier "incredible", Frosthollow, Saltwind, Reservoir, Cinder
- * Junction, Saltmere, Sirocco, Nordhavn); the Moon's regolith has no potholes or puddles. */
+/**
+ * Each map's own departures from its climate's row. (2026-10-10, the owner's free hand: "you are free to change whatever
+ * you like to make it look better" — the former protected maps, Verdant, Frontier, Frosthollow, Saltwind, Reservoir,
+ * Cinder Junction, Saltmere, Sirocco and Nordhavn, take the worked road with the rest; a blind wave decides.)
+ * Redrock (Wadi Rum): braided sand tracks — no washboard, potholes or grader's windrow in sand; the steppe's 1958 state farm
+ * in its dry season; Monsoon Ridge's, the Jade River Delta's and Tidegate's wet ground; Longleaf's sandy loam; the Moon's
+ * regolith has no potholes or puddles. (Wave 341's pads: "Sirocco is grey on yellow sand" — its tracks and pads the
+ * sand's own; "Saltmere is beach beige and should be Léon loam" — its dirt layer is the strand's sand, the road's soil a
+ * brown loam over it.)
+ */
 export const ROAD_SURFACE_MAP_OVERRIDES: Readonly<Record<string, Partial<RoadSurfaceWork>>> = Object.freeze({
-  ...Object.fromEntries(['verdant', 'frontier', 'winter', 'saltwind', 'reservoir', 'railyard', 'coastal', 'desert', 'fjord']
-    .map((id) => [id, ROAD_SURFACE_OFF])),
-  moon: Object.freeze({ potholes: 0, washboard: 0 }),
+  badlands: Object.freeze({ braids: 1, dust: 0.8, washboard: 0, potholes: 0, windrow: 0, stones: 0.5, fieldTone: 1 }),
+  desert: Object.freeze({ fieldTone: 0.85 }),
+  coastal: Object.freeze({ soil: Object.freeze([0.56, 0.47, 0.37] as const) }),
+  steppe: Object.freeze({ dust: 0.85 }),
+  autumn: Object.freeze({ dust: 0.4 }),
+  longleaf: Object.freeze({ dust: 0.5 }),
+  monsoon: Object.freeze({ dust: 0.1 }),
+  delta: Object.freeze({ dust: 0.12 }),
+  polders: Object.freeze({ dust: 0.2 }),
+  moon: Object.freeze({ potholes: 0, washboard: 0, dust: 0 }),
   mars: Object.freeze({ potholes: 0 }),
 });
 
-/** The worked carriageway's two shader vectors for a map: its climate's row under its splat's own fields, under the map's
- * override. */
+/** The worked carriageway's four shader vectors for a map: its climate's row under its splat's own fields, under the map's
+ * override; the soil the splat's soilTint unless the catalogue names the road's own. */
 export function roadSurfaceUniforms(mapId: string, climate: 'vegetated' | 'arid' | 'snow',
-  own: Partial<RoadSurfaceWork> | undefined): { a: [number, number, number, number]; b: [number, number, number, number] } {
+  own: Partial<RoadSurfaceWork> | undefined, soilTint?: readonly [number, number, number]): {
+  a: [number, number, number, number]; b: [number, number, number, number]; c: [number, number, number, number];
+  d: [number, number, number, number] } {
   const w = { ...ROAD_SURFACE_BY_CLIMATE[climate], ...(own ?? {}), ...(ROAD_SURFACE_MAP_OVERRIDES[mapId] ?? {}) };
-  return { a: [w.relief, w.stones, w.potholes, w.treads], b: [w.washboard, w.toneFloor, w.laneTone, w.windrow] };
+  const soil = w.soil ?? soilTint ?? [1, 1, 1];
+  return { a: [w.relief, w.stones, w.potholes, w.treads], b: [w.washboard, w.toneFloor, w.laneTone, w.windrow],
+    c: [w.dust, w.braids, w.midStrip, w.pale], d: [soil[0], soil[1], soil[2], w.fieldTone] };
 }
 
 /** The paved surfaces' shader vectors: (street, square, arcs, gutter), (patches, cracks, covers, puddles) and the kerbed town

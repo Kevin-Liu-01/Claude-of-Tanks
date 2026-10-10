@@ -14,9 +14,11 @@ const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8').re
 for (const line of [
   'uniform float uRoadPuddle;',
   'shader.uniforms.uRoadPuddle = { value: S.roadPuddles ?? 1 };',
-  'float wet = rut * dW * (1.0 - farM * 0.6) * uRoadPuddle;',
+  // (R3, 2026-10-10: on the worked road the water stands in a path's trough and a pad's prints, fewer on a dusty map's)
+  'float wet = (workedR ? max(rut, padRut * 0.8) * (1.0 - uRoadSurfC.x) : rut) * dW * (1.0 - farM * 0.6) * uRoadPuddle;',
+  'float poolN = nzq(uv, 0.071, vec2(0.83, 0.11)).x + hollow * 0.18;',
   'gRoadPuddle = wet * pool;',
-  'float mud = wet * smoothstep(0.52, 0.66, nzq(uv, 0.071, vec2(0.83, 0.11)).x + hollow * 0.18) * (1.0 - gRoadPuddle);',
+  'float mud = wet * smoothstep(0.52, 0.66, poolN) * (1.0 - gRoadPuddle);',
   'gSplatRough = mix(gSplatRough, mix(0.12, 0.62, smoothstep(16.0, 36.0, camDist)), gRoadPuddle);',
 ]) assert.ok(source.includes(line.replace(/\s+/g, ' ')), `the material: ${line}`);
 assert.ok(!source.includes('gSplatRough = mix(gSplatRough, 0.12, gRoadPuddle);'), 'no puddle mirrors at every distance');

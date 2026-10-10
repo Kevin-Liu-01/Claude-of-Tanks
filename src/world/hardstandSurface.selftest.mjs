@@ -205,7 +205,14 @@ assert.equal(lakeField._noVeg(300, 340), false);
   const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
   assert.ok(terrain.includes('apronK = smoothstep(0.30, 0.85, mk.r + (apronN - 0.5) * 0.60 * tileVis(4.8)) * padK;'), 'the pad\'s edge: into the spill, ragged');
   assert.ok(terrain.includes('rut = max(rut, padRut * rutAmp * 1.2);'), 'its ruts are the road\'s for the puddles');
-  assert.ok(terrain.includes('a.rgb *= 1.0 - padRut * (uReduxD.y > 1.5 ? 0.06 : 0.20);') && terrain.includes('n.xy -= padRutN * 0.35;'), 'they darken its ground (a snow pad\'s barely: pressed snow) and groove it');
+  assert.ok(terrain.includes('if (uLandTier < 0.5) a.rgb *= 1.0 - padRut * (uReduxD.y > 1.5 ? 0.06 : 0.20);') && terrain.includes('if (nrmOn && (uLandTier < 0.5 ? padRut > 0.003 : padTrackW > 0.003)) n.xy -= padRutN * (uLandTier < 0.5 ? 0.35 : 0.5);'), 'they darken its ground (a snow pad\'s barely: pressed snow) and groove it');
+  // (R3, 2026-10-10, the gauntlet's Frosthollow pad: "thin, dark, pen-like scratch lines ... no paired track-width ruts,
+  // grouser imprints, compacted berms") past the Low tier a print is a tank's 0.6 m track or a lorry's 0.3 m tyre pressed
+  // flat, its grousers' bars across it every 0.17 m, a berm of the pushed snow or soil on each side, and it keeps none of
+  // the road's lane darkening
+  assert.ok(terrain.includes('float hw = tank ? 0.30 : 0.15;') && terrain.includes('float bv = stripeVis(0.17, aP) * floorW * pres;')
+    && terrain.includes('padBerm = max(padBerm, berm * pres * wallV);') && terrain.includes('if (uLandTier < 0.5) rut = max(rut, padRut * rutAmp * 1.2);'),
+    'R3: the prints, their grousers and berms; the lanes\' darkening the Low tier\'s only');
   // (roads lane, 2026-10-10, wave 341's packing note) on snow they are pressed, glazed snow, slush churned to the ground in stretches
   assert.ok(terrain.includes('lane * rutAmp * 1.25 + padSlush * 1.10') && terrain.includes('roadCol = mix(roadCol, packedSnow * vec3(0.80, 0.82, 0.86), (padRut - padSlush) * 0.85);'),
     'and on snow they are pressed snow with slush in stretches');
