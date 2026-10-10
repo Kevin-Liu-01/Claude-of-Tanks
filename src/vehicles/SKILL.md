@@ -257,6 +257,16 @@ Vehicle foliage atlases are 512 px with their own coverage-preserving mip chain 
 canvas images). Decor branch bundles and the decor whip stay inside their old near-level triangle counts (the decor's
 first rows; the 6,000-triangle budget is full on several hulls); whips, fitting and decor, are one bowed construction
 (`whipAntennaParts`) whose foot and tip height are the straight rod's.
+The owner's fleet field nets (2026-10-09) are registry rows in `ghillieFleetSuits.ts`, one fitted entry per vehicle,
+called from each family builder (`addVehicleGhillieSuit` is idempotent per build). They use the builder's opt-in
+keep-outs: `yFromArmour`/`clipToArmour` lay a roof or deck net on the armour and end it at the armour's edges (it passes
+under a raised frame and is cut round anything standing taller than `riseLimitM`), `autoOpeningsM` opens every lens,
+hatch lid and cupola and slots the net ahead of each lens, `SidePanel.cuts` keep drapes off dischargers, lights and
+exhausts, and `fieldClearanceM` keeps the whole suit clear of the turret's traverse both ways (occupancy by radius and
+height), of the main gun's swept volume (per-yaw depression curves; flat cloth only where the bare gun already reaches
+its own deck) and of lens views and smoke lines. A hull with such a suit refuses decor loads inside a drape or under a
+turret load's swing (`suit-drape`, `hull-suit` in decorations.ts). New entries still need explicit openings for sight
+heads without glass and exhaust keep-outs.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

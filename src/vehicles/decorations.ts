@@ -66,7 +66,7 @@ import {
   canRack, canRackStyleFor, FABRIC_FAMILIES, sandbag, whipAntennaParts, type AccessoryPainter, type RGB,
 } from './accessoryKits.ts';
 import { FOLIAGE_ALPHA_TEST, vehicleFoliageAtlas, type VehicleFoliageKind } from './vehicleFoliage.ts';
-import { drapeGhillieOverLoads } from './ghillieDrape.ts';
+import { drapeGhillieOverLoads, GHILLIE_TOP_VERTICES } from './ghillieDrape.ts';
 import { block, latheY, moldedBox, place, roundBar, sweptTube, withBoxUV } from './accessoryPrimitives.ts';
 import {
   addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield, createPintleLayout,
@@ -4461,6 +4461,52 @@ export function* attachTankDecorationsSteps(
       return { sweepR, turretMinY, bandMinY };
     }
     const { sweepR, turretMinY, bandMinY } = measureTurretSweep();
+    // 2026-10-09 (the netting lane): a hull dressed in a field suit with working clearances (ghillieSuit.ts
+    // fieldClearanceM: its meshes carry userData.fieldSuit) holds its net and garnish on the decks the turret's loads
+    // swing over; each load hung on the turret clears the suit's top at its radius by 3 cm through the traverse. The
+    // suit's top by radius from the turret's axis, turret frame, 5 cm bins (empty without such a suit).
+    const hullSuitTop = new Map<number, number>();
+    // and its hanging drapes (the net's triangles after its roof and deck carriers, owner frame): a load seated on a
+    // wall, a fender or a bustle face under one would sit inside the cloth, so it takes another seat
+    const suitDrapes: Record<DecorFrame, THREE.Triangle[]> = { hull: [], turret: [] };
+    for (const [frame, group] of [['hull', hullG], ['turret', turretG]] as const) {
+      group.updateWorldMatrix(true, true);
+      const toFrame = new THREE.Matrix4().copy(group.matrixWorld).invert(), m = new THREE.Matrix4();
+      group.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh || mesh.userData?.fieldSuit !== true || !/_net$/.test(mesh.name || '')) return;
+        const pos = mesh.geometry?.attributes?.position as THREE.BufferAttribute | undefined;
+        if (!pos) return;
+        m.multiplyMatrices(toFrame, mesh.matrixWorld);
+        const top = Number(mesh.userData[GHILLIE_TOP_VERTICES]) || 0;
+        for (let i = top - (top % 3); i + 2 < pos.count; i += 3) {
+          suitDrapes[frame].push(new THREE.Triangle(
+            new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(m),
+            new THREE.Vector3().fromBufferAttribute(pos, i + 1).applyMatrix4(m),
+            new THREE.Vector3().fromBufferAttribute(pos, i + 2).applyMatrix4(m)));
+        }
+      });
+    }
+    const triBox = new THREE.Box3();
+    const meetsDrape = (frame: DecorFrame, bb: THREE.Box3): boolean => suitDrapes[frame].some((t) => {
+      triBox.setFromPoints([t.a, t.b, t.c]);
+      return triBox.intersectsBox(bb) && bb.intersectsTriangle(t);
+    });
+    {
+      turretG.updateWorldMatrix(true, false);
+      const toTurret = new THREE.Matrix4().copy(turretG.matrixWorld).invert(), m = new THREE.Matrix4(), v = new THREE.Vector3();
+      hullG.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh || mesh.userData?.fieldSuit !== true || !mesh.geometry?.attributes?.position) return;
+        m.multiplyMatrices(toTurret, mesh.matrixWorld);
+        const pos = mesh.geometry.attributes.position as THREE.BufferAttribute;
+        for (let i = 0; i < pos.count; i++) {
+          v.fromBufferAttribute(pos, i).applyMatrix4(m);
+          const k = Math.floor(Math.hypot(v.x, v.z) / 0.05);
+          hullSuitTop.set(k, Math.max(hullSuitTop.get(k) ?? -Infinity, v.y));
+        }
+      });
+    }
 
     // Gun full-depression bore envelope, swept across every yaw. Hull decor
     // within reach must clear the bore cylinder.
@@ -4925,6 +4971,7 @@ export function* attachTankDecorationsSteps(
         return rejectCommit(name, parts, reason);
       }
       if (!sweepGuardOK(bb)) return rejectCommit(name, parts, 'sweep');
+      if (meetsDrape('hull', bb)) return rejectCommit(name, parts, 'suit-drape');
       return true;
     }
 
@@ -4943,6 +4990,14 @@ export function* attachTankDecorationsSteps(
         return rejectCommit(name, parts, 'turret-width');
       }
       if (rMax > sweepR + 0.55) return rejectCommit(name, parts, 'turret-reach');
+      if (hullSuitTop.size) {
+        // the piece's horizontal reach from the axis: its box's nearest approach to its farthest corner
+        const rMin = Math.hypot(Math.max(0, bb.min.x, -bb.max.x), Math.max(0, bb.min.z, -bb.max.z));
+        let under = -Infinity;
+        for (let k = Math.floor(rMin / 0.05) - 1; k <= Math.floor(rMax / 0.05) + 1; k++) under = Math.max(under, hullSuitTop.get(k) ?? -Infinity);
+        if (bb.min.y < under + 0.03) return rejectCommit(name, parts, 'hull-suit');
+      }
+      if (meetsDrape('turret', bb)) return rejectCommit(name, parts, 'suit-drape');
       sweepRLive = Math.max(sweepRLive, rMax);
       turretMinYLive = Math.min(turretMinYLive, bb.min.y);
       for (const x of [bb.min.x, bb.max.x]) {

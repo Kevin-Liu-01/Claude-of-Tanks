@@ -200,7 +200,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     fieldClearanceM: 0.03, maxHalfWidth: 2.22, hemFloorM: 0.72,
     turret: {
       top: [
-        { x0: -1.27, x1: 1.27, z0: -2.42, z1: 0.80, nx: 32, nz: 40, yAt: () => 1.87, seed: 11, tents: [], garnishRiseM: 0.16, reliefScale: 0.8 },
+        // inside the cage's side rails (x 1.23): the flank drapes, sought from 1.27 out, never find it and hang from the
+        // turret's ARAT tiles instead of curtaining the cage's sides
+        { x0: -1.18, x1: 1.18, z0: -2.42, z1: 0.80, nx: 30, nz: 40, yAt: () => 1.87, seed: 11, tents: [], garnishRiseM: 0.16, reliefScale: 0.8 },
         laid({ x0: -1.06, x1: 1.06, z0: -3.40, z1: -2.58, nx: 21, nz: 10, y: 1.04, garnishRiseM: 0.16, seed: 13 }),
       ],
       side: flanks(-2.30, -0.12, 0.98, 0.46, 1.72, 17),
