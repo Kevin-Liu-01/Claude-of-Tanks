@@ -24,7 +24,7 @@ import { CLOUD_CONTRAIL_MAX } from './cloudWeatherLayers.ts';
 // the count a map authors (what the layer derives with the contrail switch on)
 const authoredContrails = (id) => Math.round(Math.min(1, Math.max(0, getMapConfig(id)?.clouds?.contrails ?? 0)) * CLOUD_CONTRAIL_MAX);
 import {
-  VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_CAPTURE_SETTLE_FRAMES, CLOUD_DETAIL_HF_MEAN, CLOUD_SHAPE_MEANS, CLOUD_HISTORY_MIN_ALPHA, CLOUD_MOTION_ALPHA, CLOUD_DETAIL_PREFILTER_M, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
+  VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_CAPTURE_SETTLE_FRAMES, CLOUD_HISTORY_MIN_ALPHA, CLOUD_MOTION_ALPHA, CLOUD_NOISE_LOD_BIAS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
 } from './volumetricClouds.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
@@ -113,26 +113,19 @@ assert.equal(streets.length, 256 * 256 * 4);
 assert.equal(curl.length, 32 * 32 * 32 * 4);
 assert.equal(blue.length, 32 * 32 * 4);
 assert.equal(digest(bakeCloudShapeVolume(64, CLOUD_NOISE_SEED)), digest(shape), 'the default seed is the shipped seed');
-// 2026-10-09 (grain round 2): the prefilter's means are the shipped volumes' own — an octave the pixel cannot resolve is
-// replaced by exactly what it averages to, so the far clouds' density does not shift
-{
-  const n = detail.length / 4;
-  let hf = 0;
-  for (let i = 0; i < n; i++) hf += (detail[i * 4] * 0.5 + detail[i * 4 + 1] * 0.3 + detail[i * 4 + 2] * 0.2) / 255;
-  assert.ok(Math.abs(hf / n - CLOUD_DETAIL_HF_MEAN) < 0.002, `the detail octave's mean ${(hf / n).toFixed(4)} = CLOUD_DETAIL_HF_MEAN`);
-  const m = [0, 0, 0, 0], ns = shape.length / 4;
-  for (let i = 0; i < ns; i++) for (let c = 0; c < 4; c++) m[c] += shape[i * 4 + c] / 255;
-  for (let c = 0; c < 4; c++) assert.ok(Math.abs(m[c] / ns - CLOUD_SHAPE_MEANS[c]) < 0.002, `the shape volume's channel ${c} mean ${(m[c] / ns).toFixed(4)}`);
-}
-// (the grain rounds) the history's memory and the prefilter's ranges: the floor keeps over twenty samples a pixel, a turn's
-// weight stays under the old cap, each octave fades out where the history pixel's footprint passes its features
+// (the grain rounds) the history's memory, a turn's weight and the noise read at the march's footprint: the floor keeps over
+// twenty samples a pixel, a turn's weight stays under the old cap, and every read of the mipmapped volumes is explicit
+// (footprint-filtered in the density, level 0 elsewhere — an implicit-derivative fetch inside the march is undefined)
 {
   assert.ok(CLOUD_HISTORY_MIN_ALPHA > 0 && CLOUD_HISTORY_MIN_ALPHA <= 0.08, 'the fresh-sample floor keeps a long memory');
   assert.ok(CLOUD_MOTION_ALPHA.perPx > 0 && CLOUD_MOTION_ALPHA.max <= 0.25 && CLOUD_MOTION_ALPHA.max > CLOUD_HISTORY_MIN_ALPHA, 'a turn refreshes faster, within a cap');
-  const P = CLOUD_DETAIL_PREFILTER_M;
-  assert.ok(P.fine0 < P.fine1 && P.fine1 <= P.coarse0 && P.coarse0 < P.coarse1 && P.bulge0 < P.bulge1, 'the octaves fade in order of their size');
+  assert.ok(CLOUD_NOISE_LOD_BIAS <= 0 && CLOUD_NOISE_LOD_BIAS >= -1.5, 'the footprint filter at its level or a little sharper');
   const src = readFileSync(new URL('./volumetricClouds.ts', import.meta.url), 'utf8');
-  assert.ok(src.includes('CLOUD_DETAIL_PREFILTER_M.fine0') && src.includes('clamp( r, lo, hi )'), 'the prefilter and the composite despeckle are in the shaders');
+  assert.doesNotMatch(src, /texture\( t(Shape|Detail),/, 'no implicit-level read of the mipmapped volumes');
+  assert.equal(src.match(/cloudShapeAt\( /g)?.length, 4, 'the body, the bulge octave and the scud read the shape at their footprint (and the helper)');
+  assert.equal(src.match(/cloudDetailAt\( /g)?.length, 3, 'the two erosion octaves read the detail at their footprint (and the helper)');
+  assert.ok(src.includes("makeVolume(upload.shape, CLOUD_SHAPE_SIZE, 'clouds-shape', true)") && src.includes("makeVolume(upload.detail, CLOUD_DETAIL_SIZE, 'clouds-detail', true)"), 'the filtered volumes carry mip chains');
+  assert.ok(src.includes('gLodFoot = t * uPixelAngle;') && src.includes('clamp( r, lo, hi )'), 'the march sets its footprint; the composite despeckles');
 }
 assert.notEqual(digest(bakeCloudShapeVolume(8, 7)), digest(bakeCloudShapeVolume(8, 8)), 'the seed changes the volume');
 {

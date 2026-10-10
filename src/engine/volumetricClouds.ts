@@ -80,16 +80,14 @@ export const CLOUD_CAPTURE_SETTLE_FRAMES = 512;
  */
 export const CLOUD_HISTORY_MIN_ALPHA = 0.06;
 /**
- * 2026-10-09, grain round 2 (the critics: "salt-and-pepper fragment edges", "loose white specks in clear sky"): the
- * erosion octaves are prefiltered by the history pixel's footprint (m) — an octave the pixel cannot resolve is replaced
- * by its mean instead of aliasing into speckle. The fine detail octave (7-27 m) fades out over [fine0, fine1]; the coarse
- * octave's variation (25-100 m) over [coarse0, coarse1]; the shape's 2.7x bulge octave (23-90 m) over [bulge0, bulge1].
- * The means are the baked volumes' own (cloudNoise.ts, CLOUD_NOISE_SEED; volumetricClouds.selftest pins them).
+ * 2026-10-09, grain round 2 (the critics: "salt-and-pepper fragment edges", "loose white specks in clear sky", "dark flecks
+ * inside the cumulus body"; a 1600-sample reference kept the same speckle as a live frame, so it was aliasing, not noise):
+ * the shape and detail volumes are mipmapped and the march reads them at the level of its own footprint (a history pixel
+ * at the sample's distance, t * uPixelAngle) — log2(footprint / texel) per octave, plus this bias — so a 15 m noise texel
+ * seen through a 14 m pixel at five kilometres is filtered instead of point-sampled into a fixed speckle. Every other
+ * lookup of the volumes (the deck cells and lumps, the mottle, the rain streaks, the far shade map) reads level 0, as before.
  */
-export const CLOUD_DETAIL_PREFILTER_M = Object.freeze({ fine0: 3, fine1: 6, coarse0: 12, coarse1: 40, bulge0: 15, bulge1: 45 });
-/** The detail volume's mean of 0.5 r + 0.3 g + 0.2 b, and the shape volume's channel means (r, g, b, a). */
-export const CLOUD_DETAIL_HF_MEAN = 0.481;
-export const CLOUD_SHAPE_MEANS = Object.freeze([0.415, 0.478, 0.48, 0.485] as const);
+export const CLOUD_NOISE_LOD_BIAS = 0;
 /**
  * The fresh sample's extra weight per history pixel of reprojected motion, and its cap (round 2: 0.1 / 0.35 piled up the
  * noise of a turn that the rest then took seconds to average away; the neighbourhood clamp keeps a turn from ghosting).
@@ -417,14 +415,14 @@ float cloudLumpK( vec2 cxz ) {
 float cloudCellK( vec2 cxz ) {
 	if ( uCells <= 0.0 ) return 1.0;
 	vec3 cp = ( vec3( cxz.x, uBase + uThick * 0.5, cxz.y ) + uNoiseShift ) / uCellTile;
-	vec4 c = texture( tShape, cp );
+	vec4 c = textureLod( tShape, cp, 0.0 );
 	float k = mix( 1.0, smoothstep( 0.12, 0.88, c.g * 0.75 + c.b * 0.25 ), uCells );
 	// 2026-10-03: the sub-cell lumps — the detail volume's Worley lumps at twice its period (lumps of a few hundred
 	// metres) carry the cell factor down to the scale of a stratocumulus base's rolls: each lump core a thicker, lower,
 	// darker column, the lanes between them thinner and brighter (one fetch per column, the deck rows only)
 	float lk = cloudLumpK( cxz );
 	if ( lk > 0.0 ) {
-		vec3 dl = texture( tDetail, ( vec3( cxz.x, uBase, cxz.y ) + uNoiseShift * 0.73 ) / ${f(CLOUD_DETAIL_TILE_M * 2)} ).rgb;
+		vec3 dl = textureLod( tDetail, ( vec3( cxz.x, uBase, cxz.y ) + uNoiseShift * 0.73 ) / ${f(CLOUD_DETAIL_TILE_M * 2)}, 0.0 ).rgb;
 		float lump = smoothstep( 0.25, 0.8, dl.r * 0.55 + dl.g * 0.3 + dl.b * 0.15 );
 		k *= mix( 1.0, 0.45 + 0.85 * lump, lk );
 	}
@@ -464,6 +462,12 @@ uniform float uAmbientScale;
 uniform float uClearRadius;
 uniform float uPixelAngle;
 uniform float uVertScale;
+// 2026-10-09 (grain round 2): the volumes read at the march's footprint (CLOUD_NOISE_LOD_BIAS); gLodFoot is the current
+// sample's history-pixel footprint (m), set by the march before each sample (0 elsewhere: level 0)
+float gLodFoot = 0.0;
+float cloudNoiseLod( float texelsPerM ) { return max( 0.0, log2( max( gLodFoot, 1e-3 ) * texelsPerM ) + ${f(CLOUD_NOISE_LOD_BIAS)} ); }
+vec4 cloudShapeAt( vec3 c, float k ) { return textureLod( tShape, c, cloudNoiseLod( ${f(CLOUD_SHAPE_SIZE)} * k / uShapeTile ) ); }
+vec4 cloudDetailAt( vec3 c, float k ) { return textureLod( tDetail, c, cloudNoiseLod( ${f(CLOUD_DETAIL_SIZE)} * k / ${f(CLOUD_DETAIL_TILE_M)} ) ); }
 uniform vec2 uTypeRange;
 uniform float uAnvil;
 uniform float uWispiness;
@@ -629,10 +633,10 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 		if ( hS <= -1.0 ) return 0.0;
 		float band = smoothstep( -1.0, -0.45, hS ) * ( 1.0 - smoothstep( -0.25, 0.0, hS ) );
 		vec3 sp = ( p + uNoiseShift ) * vec3( 1.0, 1.8, 1.0 ) / ( uShapeTile * 0.3 );
-		vec4 s = texture( tShape, sp );
+		vec4 s = cloudShapeAt( sp, 1.0 / 0.3 );
 		float n = remap( s.r, 0.58, 1.0, 0.0, 1.0 ) * w.cov * band;
 		if ( detail && n > 0.0 ) {
-			vec3 dn = texture( tDetail, ( p + uNoiseShift * 1.31 ) / ${f(CLOUD_DETAIL_TILE_M)} ).rgb;
+			vec3 dn = textureLod( tDetail, ( p + uNoiseShift * 1.31 ) / ${f(CLOUD_DETAIL_TILE_M)}, 0.0 ).rgb;
 			n = remap( n, ( 1.0 - ( dn.r * 0.5 + dn.g * 0.3 + dn.b * 0.2 ) ) * 0.65, 1.0, 0.0, 1.0 );
 		}
 		return n * uScud * 0.5;
@@ -664,17 +668,13 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 	// billows read as tall as they are wide; a tall storm slab is not (compressed cells stack into layers); an
 	// anvil is flattened
 	vec3 sp = ( ps + uNoiseShift ) * vec3( 1.0, ( uDebug == 5.0 ? 1.0 : uVertScale ) * mix( 1.0, 0.45, anv ), 1.0 ) / uShapeTile;
-	vec4 s = texture( tShape, sp );
+	vec4 s = cloudShapeAt( sp, 1.0 );
 	// the cauliflower: the inverted Worley cells of the shape (and, on the view march, a second octave at 2.7 x
 	// the frequency: bulges of 90 / 45 / 23 m) lift the column top over each cell centre and drop it at the cell
 	// borders, so a mass's outline is made of overlapping bulges — the interior stays dense (a mask that thinned
 	// the upper half read as pancakes); a stratus keeps its sheet
 	vec4 s2 = vec4( 0.5 );
-	if ( detail && uDebug != 6.0 ) {
-		s2 = texture( tShape, sp * 2.7 + vec3( 0.31, 0.17, 0.53 ) );
-		// (round 2) the bulge octave prefiltered by the footprint: its mean where the pixel cannot resolve its 23-90 m bulges
-		s2 = mix( s2, vec4( ${CLOUD_SHAPE_MEANS.map(f).join(', ')} ), smoothstep( ${f(CLOUD_DETAIL_PREFILTER_M.bulge0)}, ${f(CLOUD_DETAIL_PREFILTER_M.bulge1)}, foot ) );
-	}
+	if ( detail && uDebug != 6.0 ) s2 = cloudShapeAt( sp * 2.7 + vec3( 0.31, 0.17, 0.53 ), 2.7 );
 	float bulge = detail ? s.g * 0.6 + s2.g * 0.4 : s.g;
 	float lift = mix( 1.0, 0.3 + 1.3 * bulge, ( 1.0 - uStratiform ) * 0.9 );
 	hN /= lift;
@@ -722,20 +722,18 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 		vec3 wispyPos = ps;
 		wispyPos.xz -= uWindDir * dot( ps.xz, uWindDir ) * ( 0.5 * uWispiness );
 		vec3 dp = ( wispyPos + uNoiseShift * 1.31 + curl * ( ${f(CLOUD_CURL_M)} * ( 0.35 + 0.65 * hN ) ) ) * vec3( 1.0, uVertScale * 1.07, 1.0 ) / ${f(CLOUD_DETAIL_TILE_M)};
-		vec3 dn = texture( tDetail, dp ).rgb;
+		vec3 dn = cloudDetailAt( dp, 1.0 ).rgb;
 		float hf = dn.r * 0.5 + dn.g * 0.3 + dn.b * 0.2;
 		float hfCoarse = hf;
-		float fineW = 1.0 - smoothstep( ${f(CLOUD_DETAIL_PREFILTER_M.fine0)}, ${f(CLOUD_DETAIL_PREFILTER_M.fine1)}, foot );
+		float fineW = 1.0 - smoothstep( 6.0, 12.0, foot );
 		if ( fineW > 0.0 ) {
-			vec3 dn2 = texture( tDetail, dp * 3.7 + 0.37 ).rgb;
+			vec3 dn2 = cloudDetailAt( dp * 3.7 + 0.37, 3.7 ).rgb;
 			hf = mix( hf, hf * 0.55 + ( dn2.r * 0.5 + dn2.g * 0.3 + dn2.b * 0.2 ) * 0.45, fineW );
 		}
 		// billowy lumps (the Worley cells) under the base and on the flanks, wisps (the inverted cells) on the
 		// tops — the wispy share grows with height and with the map's wispiness; the erosion grows with height
 		// too (a crisp dense base, wispy tops), a front's base is ragged, a stratus erodes little
 		float wispy = clamp( mix( hN * 1.4 - 0.15, 1.0, uWispiness ), 0.0, 1.0 ) * ( 1.0 - uTopBillow * ( 1.0 - uStratiform ) );
-		// (round 2) past the coarse octave's resolvable footprint its variation is its mean, not a speckle
-		hf = mix( hf, ${f(CLOUD_DETAIL_HF_MEAN)}, smoothstep( ${f(CLOUD_DETAIL_PREFILTER_M.coarse0)}, ${f(CLOUD_DETAIL_PREFILTER_M.coarse1)}, foot ) );
 		float erode = mix( hf, 1.0 - hf, wispy );
 		float amount = ( mix( 0.3, 0.85, smoothstep( 0.05, 0.6, hN ) ) + uTowers * 0.35 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) )
 			* ( 1.0 - uStratiform * 0.8 ) * mix( 0.8, 1.25, uWispiness ) * mix( 0.35, 1.0, smoothstep( 0.0, 0.2, uWispiness ) )
@@ -750,7 +748,7 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 		float edgeC = uEdgeCrisp * ( 1.0 - uStratiform );
 		float baseW = edgeC * uBaseFlat * ( 1.0 - smoothstep( 0.0, 0.22, hN ) );
 		if ( baseW > 0.0 ) {
-			vec3 db = texture( tDetail, vec3( ps.x, 17.0, ps.z ) / ${f(CLOUD_DETAIL_TILE_M * 2)} ).rgb;
+			vec3 db = textureLod( tDetail, vec3( ps.x, 17.0, ps.z ) / ${f(CLOUD_DETAIL_TILE_M * 2)}, 0.0 ).rgb;
 			d = remap( d, ( 1.0 - ( db.r * 0.5 + db.g * 0.3 + db.b * 0.2 ) ) * 0.6 * baseW, 1.0, 0.0, 1.0 );
 		}
 		// a sharper threshold: the density saturates a short way in from the outline (crisper edges, no
@@ -939,7 +937,7 @@ vec4 slabRain( vec3 dir, float cosT, float jitter, float sceneT, out float tLaye
 		float prec = cloudPrecip( cxz );
 		if ( prec <= 0.0 ) continue;
 		// streaks: the detail volume on a slice, constant down the fall (curtains), and the virga's evaporation front
-		float streak = texture( tDetail, vec3( cxz.x, 37.0, cxz.y ) / 520.0 ).r;
+		float streak = textureLod( tDetail, vec3( cxz.x, 37.0, cxz.y ) / 520.0, 0.0 ).r;
 		float reach = 1.0 - uRain.y * ( 0.55 + 0.45 * streak );
 		float vprof = 1.0 - smoothstep( reach - 0.18, reach + 0.04, fall / drop );
 		float rho = uRain.x * uRain.w * prec * ( 0.4 + 0.9 * streak ) * vprof;
@@ -1140,6 +1138,7 @@ void main() {
 				// (round 76: a deck's grazing far rays stride like a tall slab's — the cells are hundreds of metres across)
 				float ds = max( ds0 * ( 1.0 + smoothstep( 3000.0, 9000.0, t ) * ( uThick > 2000.0 || uDeckMarch > 0.0 ? 1.0 : 0.4 ) ), min( t * uPixelAngle * 4.0, ${f(CLOUD_STEP_MAX_M)} ) );
 				vec3 p = uCamPos + dir * t;
+				gLodFoot = t * uPixelAngle;
 				vec2 cxz = cloudColumnXZ( p );
 				Weather w = cloudWeather( cxz );
 				float cellK = w.cov > 0.0 ? cloudCellK( cxz ) : 1.0;
@@ -1233,14 +1232,14 @@ void main() {
 						// at half the cell period) thicken and thin the column over each point, so a stratocumulus base
 						// reads lumpy grey instead of airbrushed (one fetch, the deck rows only)
 						if ( uCells > 0.0 ) {
-							vec4 mo = texture( tShape, ( vec3( cxz.x, uBase, cxz.y ) + uNoiseShift ) / ( uCellTile * 0.5 ) );
+							vec4 mo = textureLod( tShape, ( vec3( cxz.x, uBase, cxz.y ) + uNoiseShift ) / ( uCellTile * 0.5 ), 0.0 );
 							tauAbove *= mix( 1.0, 0.2 + 1.6 * ( mo.b * 0.6 + mo.a * 0.4 ), 0.75 * uCells );
 							// 2026-10-03 (the skies lane): the base's fine mottle — the detail volume's Worley lumps on the base
 							// plane (coherent through the column, so the view march keeps them), each lump a thicker, darker
 							// column with lighter seams between: a stratocumulus base reads lumpy, not airbrushed
 							float lkB = cloudLumpK( cxz );
 							if ( lkB > 0.0 ) {
-								vec3 dm = texture( tDetail, ( vec3( cxz.x, uBase, cxz.y ) + uNoiseShift * 0.91 ) / ${f(CLOUD_DETAIL_TILE_M)} ).rgb;
+								vec3 dm = textureLod( tDetail, ( vec3( cxz.x, uBase, cxz.y ) + uNoiseShift * 0.91 ) / ${f(CLOUD_DETAIL_TILE_M)}, 0.0 ).rgb;
 								tauAbove *= mix( 1.0, 0.3 + 1.4 * smoothstep( 0.15, 0.85, dm.r * 0.55 + dm.g * 0.3 + dm.b * 0.15 ), lkB );
 							}
 						}
@@ -1554,14 +1553,15 @@ function makeTarget(width: number, height: number, name: string, type: THREE.Tex
   return rt;
 }
 
-function makeVolume(bytes: Uint8Array, size: number, name: string): THREE.Data3DTexture {
+function makeVolume(bytes: Uint8Array, size: number, name: string, mips = false): THREE.Data3DTexture {
   const tex = new THREE.Data3DTexture(bytes, size, size, size);
   tex.format = THREE.RGBAFormat;
   tex.type = THREE.UnsignedByteType;
-  tex.minFilter = THREE.LinearFilter;
+  // (2026-10-09, grain round 2) the noise the march filters by its footprint carries its mip chain (CLOUD_NOISE_LOD_BIAS)
+  tex.minFilter = mips ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter;
   tex.magFilter = THREE.LinearFilter;
   tex.wrapS = tex.wrapT = tex.wrapR = THREE.RepeatWrapping;
-  tex.generateMipmaps = false;
+  tex.generateMipmaps = mips;
   tex.unpackAlignment = 1;
   tex.name = name;
   tex.needsUpdate = true;
@@ -1813,8 +1813,8 @@ export class VolumetricCloudLayer {
   /** Upload whichever bakes arrived (each once). */
   setNoise(upload: CloudNoiseUpload): void {
     const n = this.noise;
-    if (upload.shape && !n.shape) n.shape = makeVolume(upload.shape, CLOUD_SHAPE_SIZE, 'clouds-shape');
-    if (upload.detail && !n.detail) n.detail = makeVolume(upload.detail, CLOUD_DETAIL_SIZE, 'clouds-detail');
+    if (upload.shape && !n.shape) n.shape = makeVolume(upload.shape, CLOUD_SHAPE_SIZE, 'clouds-shape', true);
+    if (upload.detail && !n.detail) n.detail = makeVolume(upload.detail, CLOUD_DETAIL_SIZE, 'clouds-detail', true);
     if (upload.curl && !n.curl) n.curl = makeVolume(upload.curl, CLOUD_CURL_SIZE, 'clouds-curl');
     if (upload.weather && !n.weather) n.weather = makeWeather(upload.weather, CLOUD_WEATHER_SIZE, 'clouds-weather');
     if (upload.streets && !n.streets) n.streets = makeWeather(upload.streets, CLOUD_WEATHER_SIZE, 'clouds-streets');
