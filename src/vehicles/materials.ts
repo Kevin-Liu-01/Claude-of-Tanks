@@ -3206,6 +3206,13 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
 // One shared uniforms object per tank drives every clone, so the whole wreck
 // animates in lockstep and stepped/frozen captures land mid-sweep correctly.
 
+/** The kill's char (wave 350): it starts once the fire has taken hold and eats the vehicle over several seconds. */
+export const BURN_CHAR_DELAY = 1.2;
+const BURN_CHAR_S = 6.5;
+/** An ember pocket glows up as the char reaches it, within this long of the char's start, and cools over BURN_EMBER_S. */
+const BURN_EMBER_SPREAD_S = 5.5;
+const BURN_EMBER_S = 2.2;
+
 const BURN_COMMON_GLSL = `
 uniform float uBurnT;
 uniform float uBurnSeed;
@@ -3246,7 +3253,10 @@ if ( uBurnT >= 0.0 ) {
   // staged explosion showed BLEACHED pale flanks. /2.4 + 0.80 span keeps the
   // front spatially tight: deck chars under the fireball, flanks follow over
   // ~1.5 s, running gear last (~3 s).
-  float brnProg = uBurnT / 2.4;
+  // (dcore 2026-10-10, wave 350: "the turret is already rust-coloured in mid-air, and the hull goes rust-brown within
+  // ~2 s") the char waits for the fire to take hold (BURN_CHAR_DELAY s: the fireball and the toss read in the vehicle's
+  // own paint, fire-lit) and then eats it over BURN_CHAR_S s
+  float brnProg = max( uBurnT - ${BURN_CHAR_DELAY.toFixed(2)}, 0.0 ) / ${BURN_CHAR_S.toFixed(2)};
   float brnX = brnProg - ( brnH * 0.80 + brnN * 0.50 - 0.12 );
   brnM = smoothstep( 0.0, 0.24, brnX );
   // the ignition FRONT: a NARROW ragged glowing edge right where the sweep
@@ -3279,8 +3289,9 @@ if ( uBurnT >= 0.0 ) {
 
 const BURN_EMISSIVE_GLSL = `
 if ( uBurnT >= 0.0 ) {
-  // sweeping ignition edge: ember-hot rim light on the panel being eaten
-  totalEmissiveRadiance += vec3( 1.35, 0.38, 0.065 ) * brnBand * uBurnGlow
+  // sweeping ignition edge: ember-hot rim light on the panel being eaten (it glows as long as the fire eats, now the
+  // char comes over seconds: the blast's glow or the embers' heat, whichever is the more)
+  totalEmissiveRadiance += vec3( 1.35, 0.38, 0.065 ) * brnBand * max( uBurnGlow, 0.6 * uBurnEmber )
     * ( 0.45 + 0.55 * brnNoise( vBrnW * 6.3 + vec3( uBurnSeed * 3.1 ) ) );
   // fireball wash: while the blast burns, charred surfaces carry a warm fill
   // so the popped turret / fresh wreck reads fire-lit, never a black cutout.
@@ -3298,8 +3309,12 @@ if ( uBurnT >= 0.0 ) {
   totalEmissiveRadiance += vec3( 0.95, 0.34, 0.10 ) * uBurnGlow * 0.34 * pow( brnM, 0.4 );
   // ember pockets smoldering in seams of the finished char (throb + cool)
   // r7: tighter pocket gate + ~half gain — pockets are seams, not a coat
+  // (dcore 2026-10-10, wave 350: "embers should glow and fade, not sit as static dots") each pocket flares when the char
+  // reaches it — at its own moment over the burn — and cools away; none stays lit
   float brnPk = smoothstep( 0.80, 0.97, brnNoise( vBrnW * 4.7 + vec3( uBurnSeed * 4.9 + 3.7 ) ) );
-  totalEmissiveRadiance += vec3( 0.72, 0.16, 0.028 ) * brnPk * brnM * uBurnEmber * ( 1.0 - brnKeep );
+  float brnPkT = uBurnT - ${BURN_CHAR_DELAY.toFixed(2)} - brnNoise( vBrnW * 1.3 + vec3( uBurnSeed * 0.7 + 9.1 ) ) * ${BURN_EMBER_SPREAD_S.toFixed(2)};
+  float brnPkGlow = brnPkT > 0.0 ? smoothstep( 0.0, 0.25, brnPkT ) * exp( -brnPkT / ${BURN_EMBER_S.toFixed(2)} ) : 0.0;
+  totalEmissiveRadiance += vec3( 0.72, 0.16, 0.028 ) * brnPk * brnPkGlow * brnM * uBurnEmber * ( 1.0 - brnKeep ) * 1.6;
   // shadow-side albedo floor: charred flanks keep their soot/panel gradients
   // readable from any angle (matches the old burnt material's wreck floor)
   // r7: 0.11 -> 0.19 — with the darker multiply-char albedo the shaded side

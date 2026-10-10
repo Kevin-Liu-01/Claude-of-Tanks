@@ -38,7 +38,7 @@ import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
 import { applyCamoPanels } from './camoPanels.ts';
 import {
   createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
-  setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial, LIVE_HULL_DENTS, LIVE_TURRET_DENTS,
+  setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial, LIVE_HULL_DENTS, LIVE_TURRET_DENTS, BURN_CHAR_DELAY,
 } from './materials.ts';
 import { bendGeometry, dentSamples, planBend, planDents, wreckRandom, type WreckDent } from './wreckDents.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
@@ -9074,6 +9074,14 @@ function* createTankOwnedSteps(
     liveBentGun.length = 0;
   }
 
+  /** The burn's heat (wave 350: "embers should glow and fade, not sit as static dots"): none until the fire takes hold,
+   *  up as the char comes, then cooling to nothing (no floor: a cold wreck has no glowing specks). */
+  function emberHeat(ageS: number): number {
+    const t = ageS - BURN_CHAR_DELAY;
+    if (!(t > 0)) return 0;
+    return 0.95 * Math.min(1, t / 0.8) * Math.exp(-t / 7);
+  }
+
   function startWreckPresentation(ageS: number): void {
     burnU.uBurnLo.value = root.position.y + 0.15;
     burnU.uBurnHi.value = root.position.y + spec.dims.heightM + 0.35;
@@ -9081,7 +9089,7 @@ function* createTankOwnedSteps(
     wreckAge = ageS;
     burnU.uBurnT.value = ageS;
     burnU.uBurnGlow.value = Math.exp(-ageS / 0.9) * 1.35;
-    burnU.uBurnEmber.value = 0.10 + 0.85 * Math.exp(-ageS / 8);
+    burnU.uBurnEmber.value = emberHeat(ageS);
     mats.burnt.emissiveIntensity = 0.035 + 0.55 * Math.exp(-ageS / 8);
     gunG.rotation.x = 0.12;
     wreckSeat.copy(turretG.position);
@@ -9364,8 +9372,7 @@ function* createTankOwnedSteps(
             // the fireball; at 1.5 s it held the whole darker char uniform
             // orange into the 2-3 s window (probe destroy_2_5s flood).
             burnU.uBurnGlow.value = Math.exp(-wreckAge / 0.9) * (popActive ? 1.35 : 1.0);
-            burnU.uBurnEmber.value = 0.10 + 0.85 * decay *
-              (0.55 + 0.45 * Math.sin(wreckAge * 2.4 + emberPhase));
+            burnU.uBurnEmber.value = emberHeat(wreckAge) * (0.65 + 0.35 * Math.sin(wreckAge * 2.4 + emberPhase));
             // legacy shared-burnt fallback (non-standard materials only)
             mats.burnt.emissiveIntensity = 0.035 + 0.55 * decay *
               (0.55 + 0.45 * Math.sin(wreckAge * 2.4 + emberPhase));
