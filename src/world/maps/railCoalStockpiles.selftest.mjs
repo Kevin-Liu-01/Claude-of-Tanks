@@ -177,14 +177,20 @@ for(const mapId of MAP_IDS) {
     // Round 67's tunnel portals (Tarkhan's spur, 2026-10-01 Cinder Junction's main line) are retired (2026-10-03, the
     // map-borders lane): a cutting's line runs on in the open past the edge and publishes no record (railCutting.selftest).
     assert.equal(candidate.obstacles.filter(record=>record.kind==='tunnel-portal').length,0,`${mapId}: no tunnel portal`);
+    // the map-revival lane (2026-10-06): Ironworks' furnace line (saarWorks.ts) stands its high-line's trestle bents and
+    // the receiving yard's ore and coke heaps, each a convex footprint in both sinks like the coal heaps
+    const works=candidate.obstacles.filter(record=>record.kind==='trestle'||record.kind==='ore-heap'||record.kind==='gas-washer');
+    assert.equal(works.length>0,mapId==='foundry',`${mapId}: only Ironworks' furnace line stands trestles, heaps and a gas washer`);
+    assert.ok(works.every(record=>record.shape2?.kind==='convex'),`${mapId}: the works' solids are convex footprints`);
     // P5 (the map-vehicles lane): Cinder Junction's standing rolling stock carries its own solid records
     const stock=candidate.obstacles.filter(record=>record.kind==='rolling-stock');
     if(mapId!=='railyard') assert.equal(stock.length,0,`${mapId}: no rolling stock`);
-    const solids=coal.length+mills.length+bridges.length+screens.length+stock.length;
+    const solids=coal.length+mills.length+bridges.length+works.length+screens.length+stock.length;
     assert.equal(candidate.obstacles.length,solids);assert.equal(candidate.colliders.length,solids);
     if(railMaps.includes(mapId)) assert.ok(coal.length>0,`${mapId}: retain recognizable coal stockpiles`);
     else assert.equal(coal.length,0,`${mapId}: all26 other map outputs unchanged`);
-    const soft=record=>record.kind!=='mill-house'&&record.kind!=='bridge'&&record.kind!=='rolling-stock'&&!street(record);
+    const soft=record=>record.kind!=='mill-house'&&record.kind!=='bridge'&&record.kind!=='rolling-stock'&&!street(record)
+      &&record.kind!=='trestle'&&record.kind!=='ore-heap'&&record.kind!=='gas-washer';
     const heaps=candidate.obstacles.filter(soft), heapColliders=candidate.colliders.filter(soft);
     const strip=coalStrip(field);
     coal.forEach((geometry,index)=>validatePile(geometry,heaps[index],heapColliders[index],field,strip));

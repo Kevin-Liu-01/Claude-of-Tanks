@@ -652,7 +652,9 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       const vm = field._villageMask ? field._villageMask(x, z) : 0;
       const slopeN = n ? 1 - n.y : 0;
       // (an urban land use — Ruinspires — lies inside the village too: landUse.ts LandUseProfile.urban)
-      const landW = (1 - smoothstep(0.05, 0.30, vm) * (1 - _field.urban)) * smoothstep(5.0, 8.0, roadD) * (1 - smoothstep(0.04, 0.10, slopeN))
+      // (2026-10-06, Ironworks round 3: a works' lots run up its berms' flanks to ~40°, the material's own gate)
+      const landW = (1 - smoothstep(0.05, 0.30, vm) * (1 - _field.urban)) * smoothstep(5.0, 8.0, roadD)
+        * (1 - (_field.works ? smoothstep(0.22, 0.40, slopeN) : smoothstep(0.04, 0.10, slopeN)))
         * (1 - smoothstep(0.02, 0.10, water));
       // (2026-10-08, wave 274's Verdant slope: "a bald patch that steps hard from the dense tall grass", "hard density
       // edges") the field's law and the wild sward's meet across the gate's own band — the slope's 2–6°, the village's

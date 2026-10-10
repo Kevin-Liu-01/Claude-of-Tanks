@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { MAP_IDS, getMapConfig } from './index.ts';
 import { MAP_SETTING_YEAR } from './periodClutterKit.ts';
-import { ISO_CONTAINER_INTRODUCED, FREIGHT_MIX, freightForm, precedesIsoContainer } from './periodFreight.ts';
+import { ISO_CONTAINER_INTRODUCED, FREIGHT_MIX, drawsPeriodFreight, freightForm, precedesIsoContainer } from './periodFreight.ts';
 import { makeContainerRow } from './railKit.ts';
 import { attachStructureBuildContext } from './exteriorDetailKit.ts';
 import { ARCHITECTURE_STYLES } from './regional/index.ts';
@@ -48,6 +48,14 @@ for (const id of MAP_IDS) {
 assert.deepEqual(drawn.sort(), ['foundry', 'railyard', 'steppe'], 'the pre-container battlefields whose rows were boxes');
 assert.equal(precedesIsoContainer('railyard'), true, 'Cinder Junction\'s goods yard holds its period freight');
 for (const id of drawn) assert.ok(FREIGHT_MIX[id], `${id}: its own freight mix`);
+// (2026-10-10, the freight landing's gate) the rail kit's row draws freight on exactly those maps; a pre-container map
+// whose kit rebuilds its container rows (Titan Gorge's trailers, Skybridge's houses, both 1965) keeps the base row whose
+// bounds the kit fills, so its records stand where main has them (collisionManifestDrift)
+for (const id of MAP_IDS) assert.equal(drawsPeriodFreight(id), drawn.includes(id), `${id}: period freight in the rail kit's row only where drawn`);
+for (const id of ['titan_gorge', 'skybridge']) {
+  assert.equal(precedesIsoContainer(id), true, `${id}: before the ISO box`);
+  assert.equal(drawsPeriodFreight(id), false, `${id}: its kit's rows keep the base row's bounds`);
+}
 assert.equal(freightForm('foundry', 0.1), 'billets');
 assert.equal(freightForm('steppe', 0.999), 'crates');
 

@@ -1976,6 +1976,7 @@ const REGIONAL_PAL = {
   nagaWood: [0x5b4735, 0x856b51, 0x2f251b],
   nipa: [0x6e6447, 0x8f8460, 0x3a3426],
   mekongPlank: [0x6f6150, 0x8d7c66, 0x3c342b],
+  saarBrick: [0x5e372b, 0x8a8070, 0x2a2826],
   // the Mount Lyell works' corrugated iron: weathered galvanised, the rusted roofs, the dark of a doorway
   lyellIron: [0x8c8478, 0x6e4a38, 0x3a3634],
   // Siwa's kershef (salt-crusted mud): the wall, its paler crust, the palm-trunk timber
@@ -2280,6 +2281,37 @@ function makeMekongPondHut(rng: Rng): THREE.BufferGeometry {
 }
 
 /**
+ * The Saar works hut (the map-revival lane, 2026-10-06; Ironworks' wave 176: the street's "blue corrugated shed with flat
+ * cyan windows" should be "a 1940s works hut in dark corrugated iron or brick with small-pane windows"): sooted brick
+ * walls on a plinth under a tarred gable roof, small-pane windows in sandstone sills and lintels, a plank door and the
+ * stove's pipe. It stands inside the security office family's footprint (the family it replaces under the Saar kit).
+ */
+function makeSaarWorksHut(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], w = 7.0, d = 8.4, h = 3.4;
+  const BRICK = 0x5e372b, PLINTH = 0x3e3934, TAR = 0x2a2826, STONE = 0x8a8070, GLASS = 0x262c30, BAR = 0xb4ae9f, DOOR = 0x3a2c21;
+  colored(out, box(w + 0.16, 0.5, d + 0.16).translate(0, 0.25, 0), PLINTH, rng);
+  colored(out, box(w, h, d).translate(0, 0.5 + h / 2, 0), BRICK, rng);
+  addLightGableRoof(out, w + 0.5, d + 0.5, 0.5 + h, 1.15, 0, TAR, rng);
+  // the small-pane windows down both long sides (along d) and the door in the front end
+  for (const side of [-1, 1]) for (const z of [-2.6, 0, 2.6]) {
+    const x = side * (w / 2 + 0.03);
+    colored(out, markWorldAperture(box(0.08, 1.3, 1.1), [side, 0, 0]).translate(x, 2.2, z), GLASS, rng, 0.02);
+    for (const dy of [-0.32, 0.32]) colored(out, box(0.1, 0.05, 1.1).translate(x + side * 0.02, 2.2 + dy, z), BAR, _detailRng);
+    for (const dz of [-0.28, 0.28]) colored(out, box(0.1, 1.3, 0.05).translate(x + side * 0.02, 2.2, z + dz), BAR, _detailRng);
+    colored(out, box(0.18, 0.12, 1.35).translate(x + side * 0.04, 1.49, z), STONE, rng);
+    colored(out, box(0.14, 0.16, 1.3).translate(x + side * 0.02, 2.93, z), STONE, rng);
+  }
+  colored(out, box(1.2, 2.2, 0.1).translate(-1.2, 0.5 + 1.1, d / 2 + 0.04), DOOR, rng);
+  colored(out, box(1.4, 0.16, 0.16).translate(-1.2, 0.5 + 2.28, d / 2 + 0.05), STONE, rng);
+  colored(out, markWorldAperture(box(1.0, 1.0, 0.08), [0, 0, 1]).translate(1.6, 2.2, d / 2 + 0.03), GLASS, rng, 0.02);
+  colored(out, box(0.12, 1.0, 0.1).translate(1.6, 2.2, d / 2 + 0.06), BAR, _detailRng);
+  colored(out, box(1.0, 0.1, 0.1).translate(1.6, 2.2, d / 2 + 0.06), BAR, _detailRng);
+  // the stove's pipe through the roof's back slope
+  colored(out, box(0.22, 1.0, 0.22).translate(w * 0.22, 0.5 + h + 0.65, -d * 0.28), TAR, rng);
+  return mergeConnectedStructure('securityoffice', out);
+}
+
+/**
  * The Mount Lyell works' open shed (the motor pool's family; the gauntlet's wave 117 read the steel shelter as "a dark-grey
  * box-section gantry crane"): timber posts under a rusting corrugated-iron skillion, its back and one end walled in
  * iron, an ore wagon and drums under it. Inside the family's footprint and height (4.91 x 6.18 x 4.2).
@@ -2361,6 +2393,10 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
       longhouse: variant('longhouse', REGIONAL_PAL.tin, makeBengalHomestead, 'metal'),
       stilthouse: variant('stilthouse', REGIONAL_PAL.bamboo, makeBengalStiltHouse),
       fishershack: variant('fishershack', REGIONAL_PAL.bamboo, makeBengalFisherShed),
+    }),
+    // the Saar ironworks (Ironworks): the street's office a brick works hut
+    saar: Object.freeze({
+      securityoffice: variant('securityoffice', REGIONAL_PAL.saarBrick, makeSaarWorksHut, 'metal'),
     }),
     kohima: Object.freeze({
       longhouse: variant('longhouse', REGIONAL_PAL.thatch, makeAngamiHouse),

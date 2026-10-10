@@ -7556,6 +7556,73 @@ QA knobs of the same names.
   increment is +0.09 ± 0.31 ms in the establishing view (bound 0.70 ms) and +0.33 ± 0.26 ms in the chase (bound
   0.85 ms); the second run alone gave the chase +0.03 ± 0.30 ms, CPU p25 within 0.2 ms in both views.
 
+### 2026-10-06 — Ironworks round 2: the furnace line (the map-revival lane, mr1)
+
+**Wave 137 read the works as "a few clean brick boxes, smooth dark cylinders and chimneys scattered on a flat
+patchwork".** Round 2 builds the Völklinger Hütte's dense steel silhouette along the recorded blast-furnace block.
+- *The furnace line* (`props.townPlanAdditions`, `maps/saarWorks.ts`): the recorded block at (−74, −29) gets a furnace
+  either side along its own width, each replayed from the block's own stream at its pose, so no recorded building
+  moves. The three stand on one level floor cut into the ore berm (a hardstand at the works street's level, its 14 m
+  bank under the bank law's 0.6, worst 0.51), and the foundry service court still seats its donors.
+- *The high-line* runs level over the three bunker fronts and out past both ends on steel trestle bents. The bents
+  outside the plots are solid.
+- *The gas main* runs behind the stoves, with a branch to each dust catcher and expansion loops over the gaps. Its
+  trestles are solid, and the gas washer stands at its east end.
+- *The yards:* the receiving yard's ore and coke heaps lie west of the line, and three slag tips sit by its casting
+  side. All are vertex-coloured, solid, and kept 5 m off any road.
+- *The shells:* the blast furnaces are riveted in courses with seams, tuyere stocks and bleeders; the stoves are banded;
+  the works' brick is sooted (`soot` 0.065).
+- *Out of place, stripped:* the Nissen hut becomes a brick office of about its footprint (`props.townLightPlanSwaps`),
+  and the pool no longer offers it. The "American timber water tank" becomes the Saar's own water tower: a round brick
+  shaft corbelled out to a windowed drum under a slate cone. Its shaft and plinth stand exactly as the Ruhr kit's did:
+  a 60-seed control found the first draft's 0.5 m taller, 8 cm narrower contact shortening the median 194 → 170 s,
+  although the shards differed only in the two towers' records.
+- *The rails:* the rail kit's two western yard lines now stop at buffer stops either side of the works, instead of
+  crossing the cut, the casting houses and the works street. Their skipped spans still advance their draws, so the
+  yard's other dressing keeps its seat.
+- *Census* [3225, 3687, 2061]; coal heaps 6 (was 7: the props stream reaches the rail strip later).
+- *Pacing* (60 seeds, 36000–36059): median 196 s, p10 163 s, minimum 137 s, none under 120 s, no timeouts.
+- *Layout brief:* holds (3 lanes, sight median 122 m, symmetry 1.03, no solid in a road).
+- *Cost* (capture ticket 9; A the PR head, 8 cycles at mean load 345): void under cost v3, since one cycle stood under
+  the 250 cap. The scene is lighter (731 against 718 draws, 4.37 against 4.57 M triangles at the establishing view,
+  865 / 4.34 M against 856 / 4.55 M at the chase) and compiles no new programs.
+- *Not this round:* March-1945 bare crowns (the trees lane's `vegetation.bare`, not yet on the PR head); the stepped
+  blend edges (the ground lane's); the flat light (the skies lane's).
+
+### 2026-10-06 — Ironworks round 3: the furnace tops, the clinker tips, the works ground (the map-revival lane, mr1)
+
+**Wave 176 found no harm. Its critics read the furnaces as "wooden barrels or grain silos", the stoves as "a row of
+minarets" and the slag tips as "umbrellas or tents", and they found lawn on the works floor.**
+- *The shells:* the steel sheet's profile and panel seams now run round every furnace, stove, washer and gas-main
+  cylinder instead of up it (`EmitOptions.uvAxial` in `regional/geometry.ts`: the run the critics read as staves). A
+  course band circles each shell every 1.2 m, and the vertical seams are gone.
+- *The furnace tops:* the stack draws in to its throat (0.84 of the hearth's radius), where a flat charging platform
+  stands with its railing and the bell house. Four uptakes rise straight off the throat's quarters and bend into a
+  header box over the bell house. The downcomer falls from the header to the dust catcher, and three bleeder stacks with
+  flat bonnets stand over it. The bustle main circles the furnace over the casting house, with its tuyere stocks. Soot
+  and rust streaks run down from the top. The skip hoist stays.
+- *The stoves:* plate courses and a round dome in four frusta closing to a small flat crown, never a point, with
+  streaks.
+- *The clinker tips:* each slag heap is tipped. It has a broken rim, bitten in and bulging, a shoulder of loose lumps,
+  and a crest along its length where the tipping track runs (rails on sleepers, dressing). A skirt of grey-brown fines
+  spreads on the ground round its foot. All of this comes from a stream of its own (`saar-clinker`). The footprint and
+  the solid are the first draft's, from the same draws, so the works' look stream keeps every later seat.
+- *The works hut:* the street's blue security office (round 2's swap for the Nissen hut) becomes the Saar works hut.
+  It is brick on a dark plinth under a tarred gable, with small-pane windows down both long sides and a stove pipe
+  (`REGIONAL_DESTRUCTIBLE_TYPES.saar`; the family keeps its footprint and collision).
+- *The sawtooth mills:* the north lights' glazing bars and rails read at range, with a pane or two shattered. A
+  blue-black engineering-brick plinth runs to 0.85 m. Downpipes fall from the parapet hoppers every 6.2 m, and soot runs
+  down the long walls from the eaves. The panes and the soot draw from the look stream.
+- *The works ground* (1007675da, its own commit and no-harm pair): the works floor, the furnace yards and the cinder
+  ground rotate slag, gravel, hardstanding and ballast, with no sward. Black ground surrounds every furnace. The
+  sidings' ground ends with their lines.
+- *Census* [3225, 3687, 2061], unchanged. The foundry shard is re-captured: the stacks' throats are wider than the
+  first draft's 0.72.
+- *Pacing* (60 seeds, 36000–36059): median 195 s, p10 166 s, minimum 137 s, none under 120 s, no timeouts (round 2:
+  196 / 163 / 137).
+- *Layout brief:* holds (3 lanes, sight median 122 m, symmetry 1.028, no solid in a road). The saar kit's builders all
+  land inside their plots.
+
 ### 2026-10-05 — Blackglass becomes Suzhou Creek: Shanghai in the autumn of 1937 (the map-revival lane, mr1)
 
 **The district stands where PR #9's head (5d2461283) seated it, and Suzhou Creek now runs through it.** The International

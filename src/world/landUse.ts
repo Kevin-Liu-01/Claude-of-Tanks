@@ -168,7 +168,9 @@ export const LAND_CROP_GROWTH: Readonly<Record<LandCropId, Readonly<{ sward: boo
   16: { sward: true, height: 0.4, keep: 0.12, weed: true },
   17: { sward: true, height: 0.85, keep: 0.6 },
   18: { sward: true, height: 0.35, keep: 0.05, weed: true }, // a few weeds in the cracks
-  19: { sward: true, height: 0.40, keep: 0.10, weed: true }, // a court's gravel: weeds along its edges and the ruts' crowns
+  // (2026-10-07, Ironworks round 4, wave 223: "pale grass-blade sprites" over the works' floor) a court's gravel: a few
+  // weeds along its edges and the ruts' crowns, a third of round 3's
+  19: { sward: true, height: 0.40, keep: 0.035, weed: true },
 });
 
 /** Each region's rotation: up to seven slots of [crop kind, share] (the material reads the shares and kinds, uLandC/D/E). */
@@ -218,15 +220,19 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   // were handy
   // (the lab's high view: five even shares drew a quilt of lots — the floor is mostly gravel and cinder, so neighbours
   // match more often than not)
-  worksfloor: [[19, 0.34], [15, 0.26], [17, 0.18], [18, 0.12], [16, 0.10]],
-  // round the blast furnaces: slag and cinder trodden flat, the cast floor's hardstanding, hardcore
-  furnace: [[15, 0.70], [18, 0.16], [16, 0.14]],
+  // (2026-10-06, Ironworks round 3, wave 176: "a checkerboard of flat grey slabs and lime lawns" — no lawn inside the
+  // works: the floor's ruderal grass gone to cinder and gravel; round 4, wave 223: the floor's "flat glossy grey
+  // tarmac-like plates" and pale hardcore read "an empty airfield, a modern car park" — black cinder and slag with the
+  // courts' gravel, no hardstanding and no pale hardcore on the floor)
+  worksfloor: [[15, 0.64], [19, 0.36]],
+  // round the blast furnaces: slag and cinder trodden flat (round 4: no slab, no pale hardcore beside the furnaces)
+  furnace: [[15, 1]],
   // the rail fan's sidings: ballast between and beside the tracks, cinder where the engines stood
   sidings: [[16, 0.80], [15, 0.20]],
   // a court's gravel (a small zone cuts few fields, each one crop: gravel the most of them), a paved or hardcore stand
   court: [[19, 0.80], [18, 0.12], [16, 0.08]],
   // the works roads' verges: black cinder, the court gravel spread out, a little rank grass
-  cinder: [[15, 0.66], [19, 0.20], [17, 0.14]],
+  cinder: [[15, 0.74], [19, 0.22], [17, 0.04]],
   // the secano of the Ronda tableland (map revival lane 2, 2026-10-05): dry-farmed campiña — wheat and barley ripe
   // and cut, the stubble, the fallow turned, the barbecho grazed (cured and patchy in summer, not a green pasture: wave
   // 108b's "hard straight seam between golden field and green pasture"), the plateau's vines, a field of sunflower
@@ -341,8 +347,12 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
       // works furnaces and the service court's donor
       ...[[-74.0, -29.0], [-20.6, 58.2], [-20.9, 232.9], [-278.2, 116.4], [20.2, -202.2], [117, -105]].map(([x, z]) => ({
         region: 'furnace' as const, disc: { x, z, r: 28 }, cut: true })),
+      // (2026-10-06, Ironworks round 3: the furnace line's two new furnaces either side of the block, mr1's saarWorks.ts)
+      ...[[-87.6, -22.7], [-60.4, -35.3]].map(([x, z]) => ({ region: 'furnace' as const, disc: { x, z, r: 22 }, cut: true })),
       // the sidings' ballast (mapKits.ts RAIL_YARD_LINES, 3.5 m either side of each line) and the coal unloading strip
-      ...[[40, -235, 235], [49, -235, 235], [58, -205, 210], [67, -175, 185], [76, -150, 160], [-66, -235, 235], [-57, -190, 200]]
+      // (2026-10-06, Ironworks round 3: the two western lines stop at buffer stops either side of the furnace line,
+      // mapKits.ts SAAR_YARD_GAPS: their sidings end with them)
+      ...[[40, -235, 235], [49, -235, 235], [58, -205, 210], [67, -175, 185], [76, -150, 160], [-66, -235, -85], [-66, 15, 235], [-57, -190, -80], [-57, 10, 200]]
         .map(([x, z0, z1]) => ({ region: 'sidings' as const, rect: { x0: x - 4.5, x1: x + 4.5, z0: z0 - 3, z1: z1 + 3 }, cut: true })),
       { region: 'sidings', rect: { x0: 81.5, x1: 93.5, z0: -55.5, z1: -6.5 }, cut: true },
       // the courts' and yards' gravel: round the casting yard and the west street's and the slag road's yards — 12 m of
@@ -537,6 +547,9 @@ export interface LandFieldSample {
   weed: number;
   /** 1 on an urban land use (LandUseProfile.urban): its fields lie inside the village too. */
   urban: number;
+  /** 1 on a works' ground (LandUseProfile.works): its lots run up the berms' and tips' flanks (the slope gate's ~40°);
+   * optional, so a record built without it reads as 0. */
+  works?: number;
   /**
    * On a track's two wheel lanes: the signed offset from the nearer lane's wandering centre line in its own half-widths
    * (trackLaneMeander / trackLaneCentre / trackLaneHalfWidth; |laneQ| < 1 is the sunk lane, − toward the crown between
@@ -548,7 +561,7 @@ export interface LandFieldSample {
 
 export function createLandFieldSample(): LandFieldSample {
   return { active: 0, crop: 0, edgeM: 1e9, endM: 1e9, sU: 1e9, sV: 1e9, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0,
-    jitter: 0, id: 0, boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0, urban: 0 };
+    jitter: 0, id: 0, boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0, urban: 0, works: 0 };
 }
 
 /** The analytic warp of the boundaries (m): two slow sines per axis, identical in GLSL. */
@@ -569,7 +582,7 @@ function cropFromRoll(c: Float64Array, roll: number): number {
 interface CompiledLandUse {
   ch: number; sh: number; blockU: number; blockV: number; maxSplit: number; marginM: number;
   trackShare: number; hedgeShare: number; warpM: number; salt: number; cum: Float64Array; kinds: Uint8Array;
-  boundary: number; urban: number; zones: readonly CompiledLandZone[] | null;
+  boundary: number; urban: number; works: number; zones: readonly CompiledLandZone[] | null;
 }
 /** A zone's test and its rotation (the same float32 packing as a profile's). */
 interface CompiledLandZone { zone: LandZone; cum: Float64Array; kinds: Uint8Array; trackShare: number; hedgeShare: number }
@@ -617,7 +630,7 @@ function compile(profile: LandUseProfile): CompiledLandUse {
   c = {
     ch: Math.cos(v.landA[1]), sh: Math.sin(v.landA[1]), blockU: v.landA[2], blockV: v.landA[3],
     maxSplit: v.landB[0], marginM: v.landB[1], trackShare: v.landB[2], hedgeShare: v.landB[3],
-    warpM: v.landC[0], salt: v.landC[1], cum, kinds, boundary: v.landE[2], urban: v.landE[3] > 0.5 ? 1 : 0,
+    warpM: v.landC[0], salt: v.landC[1], cum, kinds, boundary: v.landE[2], urban: v.landE[3] > 0.5 ? 1 : 0, works: v.landE[3] > 1.5 ? 1 : 0,
     zones: profile.zones?.length ? profile.zones.map((zone) => ({ zone, ...compileRotation(zone.region),
       trackShare: Math.min(1, Math.max(0, zone.trackShare ?? profile.trackShare)),
       hedgeShare: Math.min(1, Math.max(0, zone.hedgeShare ?? profile.hedgeShare)) })) : null,
@@ -636,9 +649,9 @@ function compile(profile: LandUseProfile): CompiledLandUse {
 export function landUseAt(profile: LandUseProfile | null, x: number, z: number, out: LandFieldSample): LandFieldSample {
   out.active = 0; out.crop = 0; out.edgeM = 1e9; out.endM = 1e9; out.sU = 1e9; out.sV = 1e9; out.split = 1; out.alongU = 1; out.marginM = 0; out.track = 0; out.hedge = 0; out.rowX = 1; out.rowZ = 0;
   out.jitter = 0; out.id = 0; out.boundary = 0; out.tintR = 0; out.tintG = 0; out.tintB = 0; out.sward = 1;
-  out.cropHeight = 1; out.cropKeep = -1; out.weed = 0; out.urban = 0; out.laneQ = 1e9;
+  out.cropHeight = 1; out.cropKeep = -1; out.weed = 0; out.urban = 0; out.works = 0; out.laneQ = 1e9;
   if (!profile || !(profile.strength > 0)) return out;
-  const { ch, sh, blockU, blockV, maxSplit, marginM, warpM, salt, boundary, urban, zones } = compile(profile);
+  const { ch, sh, blockU, blockV, maxSplit, marginM, warpM, salt, boundary, urban, works, zones } = compile(profile);
   let { trackShare, hedgeShare, cum, kinds } = compile(profile);
   const px = x + warpX(x, z) * warpM, pz = z + warpZ(x, z) * warpM;
   const qu = ch * px + sh * pz, qv = -sh * px + ch * pz;
@@ -701,6 +714,7 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   out.hedge = hedgeOn ? 1 - smooth(1.2, 2.4, dShort) : 0;
   out.active = 1;
   out.urban = urban;
+  out.works = works;
   out.crop = crop;
   out.edgeM = Math.min(edgeU, edgeV);
   out.endM = rowAlongU ? edgeU : edgeV;

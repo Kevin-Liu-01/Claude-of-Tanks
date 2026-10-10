@@ -105,6 +105,12 @@ export interface EmitOptions {
   /** per-corner colour in a coloured bucket (a painted sheet weathering down its slope), emitting frame; wins over `colour` */
   colourAt?: (p: Vec3) => Rgb;
   /**
+   * a cylinder's tile turned a quarter: its u along the axis, v round the ring (the straw tile's lay), so the sheet
+   * steel's profile and panel seams run round an upright shell as horizontal plate courses (the Saar kit's furnaces,
+   * stoves and gas mains: wave 176 read the ribs running up them as "wooden barrels or grain silos")
+   */
+  uvAxial?: boolean;
+  /**
    * paint on a weathered surface (a limewash band, a painted dado, clay showing through): an rgb multiplier the
    * weathering pass folds into the building's tint (weather.ts), so the paint takes the wall's damp and grime as well
    */
@@ -385,11 +391,136 @@ export class PartSink {
       const chord = normalize3([a0[j][0] - a0[i][0], a0[j][1] - a0[i][1], a0[j][2] - a0[i][2]]);
       const plane = { kind: 'plane' as const, origin: a0[i], u: chord, v: along };
       // thatch combs along the axis (the straw tile's stalks run along its u)
-      this.quad(bucket, a0[i], a0[j], a1[j], a1[i], { ...opts, uv: bucket === 'straw' ? { ...plane, u: along, v: chord } : plane, density });
+      this.quad(bucket, a0[i], a0[j], a1[j], a1[i], { ...opts, uv: bucket === 'straw' || opts.uvAxial ? { ...plane, u: along, v: chord } : plane, density });
     }
     if (caps) {
       this.polygon(bucket, [...a1], { ...opts, uv: UV_WORLD });
       this.polygon(bucket, [...a0].reverse(), { ...opts, uv: UV_WORLD });
+    }
+  }
+
+  /**
+   * A smooth surface of revolution about an axis through `start` (the map-revival lane, 2026-10-07, Ironworks' furnaces
+   * and stoves: wave 223 read `cylinder`'s twelve flat facets as "a visibly faceted octagonal prism"). `profile` lists
+   * [distance along the axis, radius] from the start; each band between two profile points is shaded by its own slope,
+   * blended with its neighbour's across a soft bend (under 25 degrees) and kept sharp at a lap or a shoulder, so the
+   * shell reads round. The UVs run unbroken round the shell (u, the arc at the ring's radius) and along the axis (v);
+   * `uvPin` instead pins every vertex to one texel (a plain plate: the steel tile's corrugation never shows). No caps.
+   * `bandColour` (a coloured bucket) gives each band its own colour, given the band's index and the corner (emitting
+   * frame), so a band's tone is flat and steps at its edges (a shell's plate courses); it wins over `colourAt`.
+   */
+  revolve(bucket: RegionalBucket, start: Vec3, axis: 'x' | 'y' | 'z', profile: ReadonlyArray<readonly [number, number]>,
+    segments: number, opts: EmitOptions & { uvPin?: readonly [number, number]; bandColour?: (band: number, p: Vec3) => Rgb } = {}): void {
+    if (profile.length < 2 || segments < 3) return;
+    const along: Vec3 = axis === 'x' ? [1, 0, 0] : axis === 'y' ? [0, 1, 0] : [0, 0, 1];
+    const e1: Vec3 = axis === 'y' ? [1, 0, 0] : [0, 1, 0];
+    const e2: Vec3 = axis === 'x' ? [0, 0, 1] : axis === 'y' ? [0, 0, 1] : [1, 0, 0];
+    const cross = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+    const sign = cross[0] * along[0] + cross[1] * along[1] + cross[2] * along[2] < 0 ? -1 : 1;
+    // each band's outward normal in the (radial, axial) plane
+    const bands: Array<[number, number]> = [];
+    for (let k = 0; k + 1 < profile.length; k++) {
+      const dt = profile[k + 1][0] - profile[k][0], dr = profile[k + 1][1] - profile[k][1], l = Math.hypot(dt, dr) || 1;
+      bands.push([dt / l, -dr / l]);
+    }
+    const soft = Math.cos(25 * Math.PI / 180);
+    const vertexNormal = (band: number, ring: number): [number, number] => {
+      const own = bands[band], other = bands[ring === band ? band - 1 : band + 1];
+      if (!other || own[0] * other[0] + own[1] * other[1] < soft) return own;
+      const x = own[0] + other[0], y = own[1] + other[1], l = Math.hypot(x, y) || 1;
+      return [x / l, y / l];
+    };
+    const g = this.acc(bucket, !!opts.decor, !!opts.shadow, !!opts.fine);
+    const colour = g.col ? (opts.colour ?? [0.6, 0.6, 0.6]) : null;
+    const density = opts.density ?? BUCKET_UV_DENSITY[bucket];
+    const [ou, ov] = this.uvOffset;
+    const pl = this.place;
+    const corner = (ring: number, i: number, band: number): void => {
+      const [t, r] = profile[ring], a = sign * (i / segments) * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a);
+      const radial: Vec3 = [e1[0] * c + e2[0] * sn, e1[1] * c + e2[1] * sn, e1[2] * c + e2[2] * sn];
+      const p: Vec3 = [start[0] + along[0] * t + radial[0] * r, start[1] + along[1] * t + radial[1] * r, start[2] + along[2] * t + radial[2] * r];
+      const [nr, na] = vertexNormal(band, ring);
+      const n: Vec3 = [radial[0] * nr + along[0] * na, radial[1] * nr + along[1] * na, radial[2] * nr + along[2] * na];
+      if (pl) {
+        g.pos.push(p[0] * pl.cos + p[2] * pl.sin + pl.x, p[1] + pl.y, -p[0] * pl.sin + p[2] * pl.cos + pl.z);
+        g.nor.push(n[0] * pl.cos + n[2] * pl.sin, n[1], -n[0] * pl.sin + n[2] * pl.cos);
+      } else { g.pos.push(p[0], p[1], p[2]); g.nor.push(n[0], n[1], n[2]); }
+      if (opts.uvPin) g.uv.push(opts.uvPin[0], opts.uvPin[1]);
+      else g.uv.push((i / segments) * Math.PI * 2 * r * density + ou, t * density + ov);
+      if (g.col && colour) {
+        const cc = opts.bandColour ? opts.bandColour(band, p) : opts.colourAt ? opts.colourAt(p) : colour;
+        g.col.push(cc[0], cc[1], cc[2]);
+      }
+      if (g.mask) g.mask.push(0);
+      if (g.shade) g.shade.push(opts.shadeAt ? opts.shadeAt(p) : opts.shade ?? 1);
+      if (g.tint) { const tt = opts.tintAt ? opts.tintAt(p) : opts.tint; if (tt) g.tint.push(tt[0], tt[1], tt[2]); else g.tint.push(1, 1, 1); }
+    };
+    for (let k = 0; k + 1 < profile.length; k++) {
+      if (Math.abs(profile[k + 1][0] - profile[k][0]) < 1e-9 && Math.abs(profile[k + 1][1] - profile[k][1]) < 1e-9) continue;
+      for (let i = 0; i < segments; i++) {
+        // (counter-clockwise seen from outside, as cylinder's side quads: this ring at i, i + 1, the next ring at i + 1, i)
+        corner(k, i, k); corner(k, i + 1, k); corner(k + 1, i + 1, k);
+        corner(k, i, k); corner(k + 1, i + 1, k); corner(k + 1, i, k);
+        this.triangles += 2;
+      }
+    }
+  }
+
+  /**
+   * A round pipe from `a` to `b` of radius `r` (`r1` at b), its normals smooth round it, its UVs unbroken (u round, v
+   * along), or pinned to one texel with `uvPin`; its ends open (a joint or a flange covers them) unless `caps`, which
+   * closes each with a flat disc. The map-revival lane, 2026-10-07: Ironworks' uptakes, downcomers and blast mains, where
+   * a box member read as a square duct.
+   */
+  pipe(bucket: RegionalBucket, a: Vec3, b: Vec3, r: number, segments: number,
+    opts: EmitOptions & { uvPin?: readonly [number, number]; caps?: boolean } = {}, r1 = r): void {
+    const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], len = Math.hypot(d[0], d[1], d[2]);
+    if (len < 1e-6 || segments < 3) return;
+    const ax = normalize3(d);
+    // a side axis square to the pipe (any), and the third by the cross product
+    const ref: Vec3 = Math.abs(ax[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+    const s1 = normalize3([ax[1] * ref[2] - ax[2] * ref[1], ax[2] * ref[0] - ax[0] * ref[2], ax[0] * ref[1] - ax[1] * ref[0]]);
+    const s2: Vec3 = [ax[1] * s1[2] - ax[2] * s1[1], ax[2] * s1[0] - ax[0] * s1[2], ax[0] * s1[1] - ax[1] * s1[0]];
+    const g = this.acc(bucket, !!opts.decor, !!opts.shadow, !!opts.fine);
+    const colour = g.col ? (opts.colour ?? [0.6, 0.6, 0.6]) : null;
+    const density = opts.density ?? BUCKET_UV_DENSITY[bucket];
+    const [ou, ov] = this.uvOffset;
+    const pl = this.place;
+    const slope = (r - r1) / len;
+    const corner = (end: 0 | 1, i: number): void => {
+      const ang = (i / segments) * Math.PI * 2, c = Math.cos(ang), sn = Math.sin(ang), rr = end ? r1 : r;
+      const radial: Vec3 = [s1[0] * c + s2[0] * sn, s1[1] * c + s2[1] * sn, s1[2] * c + s2[2] * sn];
+      const base = end ? b : a;
+      const p: Vec3 = [base[0] + radial[0] * rr, base[1] + radial[1] * rr, base[2] + radial[2] * rr];
+      const n = normalize3([radial[0] + ax[0] * slope, radial[1] + ax[1] * slope, radial[2] + ax[2] * slope]);
+      if (pl) {
+        g.pos.push(p[0] * pl.cos + p[2] * pl.sin + pl.x, p[1] + pl.y, -p[0] * pl.sin + p[2] * pl.cos + pl.z);
+        g.nor.push(n[0] * pl.cos + n[2] * pl.sin, n[1], -n[0] * pl.sin + n[2] * pl.cos);
+      } else { g.pos.push(p[0], p[1], p[2]); g.nor.push(n[0], n[1], n[2]); }
+      if (opts.uvPin) g.uv.push(opts.uvPin[0], opts.uvPin[1]);
+      else g.uv.push((i / segments) * Math.PI * 2 * rr * density + ou, end * len * density + ov);
+      if (g.col && colour) { const cc = opts.colourAt ? opts.colourAt(p) : colour; g.col.push(cc[0], cc[1], cc[2]); }
+      if (g.mask) g.mask.push(0);
+      if (g.shade) g.shade.push(opts.shadeAt ? opts.shadeAt(p) : opts.shade ?? 1);
+      if (g.tint) { const tt = opts.tintAt ? opts.tintAt(p) : opts.tint; if (tt) g.tint.push(tt[0], tt[1], tt[2]); else g.tint.push(1, 1, 1); }
+    };
+    for (let i = 0; i < segments; i++) {
+      // (s1 x s2 = ax: the ring turns positively about the pipe's run, as cylinder's do about theirs, so its quad order —
+      // this end at i, i + 1, the far end at i + 1, i — faces out)
+      corner(0, i); corner(0, i + 1); corner(1, i + 1);
+      corner(0, i); corner(1, i + 1); corner(1, i);
+      this.triangles += 2;
+    }
+    if (opts.caps) {
+      // the end discs: the far one counter-clockwise seen from along the run (it faces +ax), the near one reversed
+      const ringAt = (base: Vec3, rr: number): Vec3[] => Array.from({ length: segments }, (_, i) => {
+        const ang = (i / segments) * Math.PI * 2, c = Math.cos(ang), sn = Math.sin(ang);
+        return [base[0] + (s1[0] * c + s2[0] * sn) * rr, base[1] + (s1[1] * c + s2[1] * sn) * rr, base[2] + (s1[2] * c + s2[2] * sn) * rr] as Vec3;
+      });
+      const { caps: _caps, uvPin, ...capOpts } = opts;
+      const disc = { ...capOpts, ...(uvPin ? { uv: { kind: 'plane' as const, origin: a, u: s1, v: s2 }, density: 0 } : {}) };
+      this.polygon(bucket, ringAt(b, r1), disc);
+      this.polygon(bucket, ringAt(a, r).reverse(), disc);
     }
   }
 

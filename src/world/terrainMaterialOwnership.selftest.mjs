@@ -251,8 +251,10 @@ function checkLandUseCut(text) {
   // ballast and gravel: their stones' grain, one read, High, near, on a works' ground)
   // (2026-10-08, waves 177/287, Saltwind: the karst's grazing is garrigue — its tussocks' bare soil one more field of the
   // noise, Medium up, on a karst pasture only)
-  assert.deepEqual(reads, ['groundSamp', 'nz', 'nz', 'nz', 'nz', 'nz', ...Array(8).fill('nzq'), 'textureLod'],
-    'the block reads seven noise fields, the canopy\'s two near reads, the hardstanding\'s three, the stones\' one, the bend\'s coarse level and the soil (the bake is lu_field\'s)');
+  // (2026-10-10, the Ironworks landing, round 4: a works' slag lot's relief, two octaves of the noise, High, near
+  // (a 0.2 m footprint, where tileVis(0.8) ends), on a works' ground only)
+  assert.deepEqual(reads, ['groundSamp', 'nz', 'nz', 'nz', 'nz', 'nz', 'nz', 'nz', ...Array(8).fill('nzq'), 'textureLod'],
+    'the block reads seven noise fields, the canopy\'s two near reads, the hardstanding\'s three, the stones\' one, the slag\'s relief two, the bend\'s coarse level and the soil (the bake is lu_field\'s)');
   assert.ok(!/fieldN/.test(block), 'no round noise patch varies a field: its tone is its fold and its own draw');
   for (const [gate, read] of [
     ['float nBend = bendW > 0.001 && uLandTier > 1.5 ? ', 'textureLod(uNoise, uvW * 0.0021 + vec2(0.47, 0.13), 4.0)'],
@@ -267,6 +269,7 @@ function checkLandUseCut(text) {
     ['float crackH = uLandTier > 1.5 ? (1.0 - smoothstep(0.0, 0.02 + gFootM, abs(', 'nz(uv, 0.9, vec2(0.71, 0.29))'],
     ['float hStain = uLandTier > 0.5 ? smoothstep(0.62, 0.82, ', 'nzq(uv, 0.17, vec2(0.37, 0.83))'],
     ['float stoneN = stoneVis > 0.001 ? ', 'nz(uv, 3.1, vec2(0.29, 0.61))'],
+    ['if (nrmOn && uLandE.w > 1.5 && uLandTier > 1.5 && gFootM < 0.2) { vec2 tr = ', 'nz(uv, 0.53, vec2(0.37, 0.19))'],
   ]) assert.ok(compact(block).includes(compact(gate + read)), `${read}: read only behind ${gate}`);
   assert.ok(compact(block).includes(compact('nzq(uvW, 0.031, vec2(0.11, 0.59)).y, nzq(uvW, 0.17, vec2(0.83, 0.37)).x), luNear);')),
     'the headland\'s width and the hedge bank\'s break are read in the wander\'s own gated round');

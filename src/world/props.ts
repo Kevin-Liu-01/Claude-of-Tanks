@@ -475,10 +475,17 @@ interface PropsSettings {
    * whatever the ground, roads or aprons under the town have become; the generated road, row and block-fill passes then
    * place nothing more. */
   townPlan?: readonly TownPlanEntry[];
+  /** The map-revival lane (2026-10-06): buildings a map adds to its recorded town plan (Ironworks' blast-furnace line):
+   * each one replayed like a recorded entry, from its own stream at its authored pose, after the record, so no recorded
+   * building moves and the props stream draws nothing for them. */
+  townPlanAdditions?: readonly TownPlanEntry[];
   /** The light buildings of a recorded settlement (maps/townPlans.generated.ts TOWN_LIGHT_PLANS): each destructible
    * building's kind and final pose as that build placed it. They stand there whatever the ground has become, and the
    * light-building pass draws nothing. */
   townLightPlan?: readonly TownLightEntry[];
+  /** The map-revival lane (2026-10-06): a recorded light building's kind the map replaces at its recorded pose (a
+   * kind out of place in the region: Ironworks' Nissen hut becomes a brick office), recorded kind → its stand-in. */
+  townLightPlanSwaps?: Readonly<Record<string, string>>;
   /** The street rows of a recorded settlement (maps/townPlans.generated.ts TOWN_ROW_PLANS; the map-revival lane,
    * 2026-10-05): each row building's pose, plot, wall, ruin and the props stream's state before its builder, and its
    * rubble's seat, size and the street stream's state before it. They stand there whatever the ground has become, and
@@ -5033,6 +5040,10 @@ ${snowCap ? `
       placeRecordedBuilding(entry);
       yield { fine: true };
     }
+    for (const entry of P.townPlanAdditions ?? []) {
+      placeRecordedBuilding(entry);
+      yield { fine: true };
+    }
     bi = builders.length;
   }
   for (const [index, site] of (P.townPlan?.length || P.plannedSitesAfterPlan ? [] : P.plannedSites ?? []).entries()) {
@@ -5607,12 +5618,13 @@ ${snowCap ? `
     // a recorded settlement's light buildings stand at their recorded poses, and the pass draws nothing
     if (P.townLightPlan) {
       for (const entry of P.townLightPlan) {
-        const meta = DESTRUCTIBLE_BUILDING_TYPES[entry.kind];
+        const kind = P.townLightPlanSwaps?.[entry.kind] ?? entry.kind;
+        const meta = DESTRUCTIBLE_BUILDING_TYPES[kind];
         if (!meta) continue;
         const fit = groundFit(entry.x, entry.z, meta.hw * 2, meta.hl * 2, entry.rot);
         // (props.settlementOverWater: one the course's water reaches is left out)
         if (footprintWet(entry.x, entry.z, meta.hw * 2, meta.hl * 2, entry.rot)) continue;
-        addDestructible(entry.kind, entry.x, fit.y + 0.04, entry.z, entry.rot);
+        addDestructible(kind, entry.x, fit.y + 0.04, entry.z, entry.rot);
         buildingFeatures.push({ x: entry.x, z: entry.z, w: meta.hw * 2, d: meta.hl * 2, rot: entry.rot });
         placedB.push({ x: entry.x, z: entry.z, rr: Math.hypot(meta.hw, meta.hl) * 0.72 });
         yield { fine: true };

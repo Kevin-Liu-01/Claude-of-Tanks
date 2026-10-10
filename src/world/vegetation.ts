@@ -4315,7 +4315,8 @@ function* vegetationBuildSteps(
       if (f.active) {
         // (an urban land use — Ruinspires — lies inside the village too: landUse.ts LandUseProfile.urban)
         const fieldW = (1 - smoothstepJs(0.05, 0.30, heightField._villageMask(x, z)) * (1 - f.urban))
-          * smoothstepJs(5.0, 8.0, heightField._roadDist(x, z)) * (1 - smoothstepJs(0.04, 0.10, 1 - normalY))
+          * smoothstepJs(5.0, 8.0, heightField._roadDist(x, z))
+          * (1 - (f.works ? smoothstepJs(0.22, 0.40, 1 - normalY) : smoothstepJs(0.04, 0.10, 1 - normalY))) // a works' berms: ~40°
           * (1 - smoothstepJs(0.02, 0.10, heightField.getWaterMaskAt(x, z)));
         // (wave 274: the field's law across the gate's band, a clumpy draw — tallGrass.ts admit: the same law)
         if (fieldW > 0.15 + 0.70 * fieldDrawAt(x, z)) {

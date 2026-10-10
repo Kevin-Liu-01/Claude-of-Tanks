@@ -141,7 +141,9 @@ const LITTER_PROFILES: Readonly<Record<string, GroundLitterConfig>> = Object.fre
   blackglass: { density: 0.9, clods: 0.1, splinters: 0.1, stoneTint: [0.10, 0.105, 0.11] },
   urban: { density: 0.85, clods: 0.15, splinters: 0.2, stoneTint: [0.15, 0.148, 0.14] },
   ruinspires: { density: 0.95, clods: 0.1, splinters: 0.15, stoneTint: [0.155, 0.15, 0.14] },
-  foundry: { density: 0.9, clods: 0.2, splinters: 0.2, stoneTint: [0.12, 0.117, 0.115] },
+  // (2026-10-07, Ironworks round 4, wave 223: "flat pebble decals" — grey field stones pale against the works' black slag)
+  // a works' litter is clinker: fewer lumps, at the slag's own dark grey, no clods of soil
+  foundry: { density: 0.6, clods: 0, splinters: 0.2, stoneTint: [0.072, 0.07, 0.068] },
   railyard: { density: 1.0, clods: 0.2, splinters: 0.3, stoneTint: [0.13, 0.127, 0.122] },
   skybridge: { density: 0.9, clods: 0.2, splinters: 0.1, stoneTint: [0.145, 0.14, 0.138] },
   airfield: { density: 0.8, clods: 0.3, splinters: 0.2 },
