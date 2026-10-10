@@ -737,12 +737,13 @@ function assembleWorld(
     terrainVariant: config.assaultTrenches ? 'assault-trenches' : null,
     dispose() {
       terrain.userData.cancelSourcedTextures?.();
+      unregisterDestructibles();
+      vegetation.dispose();
+      // (2026-10-09, the shadows lane) the ground occlusion's worker and texture (structureGroundOcclusion.ts)
       if (groundOcclusion) {
         if (engineCtx.scene.userData.structureGroundOcclusion === groundOcclusion) delete engineCtx.scene.userData.structureGroundOcclusion;
         groundOcclusion.dispose();
       }
-      unregisterDestructibles();
-      vegetation.dispose();
       litter.dispose();
       tallGrass.dispose(); // round 73: the sward, its materials and the pressure field's targets
       terrain.userData.disposeWater?.(); // water pass 8: the reactive field's render targets
