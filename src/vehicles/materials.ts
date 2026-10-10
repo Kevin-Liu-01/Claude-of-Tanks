@@ -8,11 +8,7 @@
 
 import * as THREE from 'three';
 import { stockCamoPatternIdFor,
-  AUTO_CAMO_BIOMES,
   CUSTOM_CAMO_ID,
-  autoCamoBiomeId,
-  autoCamoPatternIdFor,
-  camoSuitsTheatre,
   customCamoPatternId,
   defaultCamoPatternId,
   hasSignatureCamo,
@@ -23,10 +19,10 @@ import { stockCamoPatternIdFor,
   sharedCamoPreset,
   signatureCamoPatternId,
 } from './camoPolicy.ts';
-import type { AutoCamoPatternId, AutoCamoVehicle, CamoPatternId, CustomCamo } from './camoPolicy.ts';
+import type { CamoPatternId, CustomCamo } from './camoPolicy.ts';
 import { ALBEDO_SIZE, MAP_SIZE, createMaterialPainter } from './materialPainter.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
-import { camoArtTileRepeat, catalogCamoArtId, fleetCamoArtId } from './catalogCamoPainter.ts';
+import { catalogCamoArtId, fleetCamoArtId } from './catalogCamoPainter.ts';
 import type { MaterialBasePaintRequest, MaterialVisual, PlateFeatures } from './materialPainter.ts';
 import {
   canPaintMaterialBaseInWorker, tryPaintMaterialBase,
@@ -57,6 +53,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 type Rng = () => number;
 type Rgb = [number, number, number];
 type MaterialTextureQuality = 'low' | 'ai' | 'preview' | 'high';
+type ResolvedMaterialCamoPattern = Exclude<CamoPatternId, 'auto'> | 'urban';
 type MaterialPatternId = CamoPatternId | 'urban' | typeof CUSTOM_CAMO_ID | string;
 type BakeYield = () => Promise<void> | void;
 
@@ -455,16 +452,10 @@ function pendingEntryRepaint(key: string): Promise<void> | null {
   return entry ? ENTRY_PAINT_STATE.get(entry)?.idle ?? null : null;
 }
 
-function sharedTextureIdentity(spec: AutoCamoVehicle, selection: string | null = null): SharedTextureIdentity {
-  if (selection == null) return { key: spec.id, patternId: resolveCamoPattern(spec), fixed: false };
-  const patternId = resolveMultiplayerCamoPattern(spec, selection);
-  return { key: `${spec.id}::${patternId}`, patternId, fixed: true };
-}
-
-/** The spec a cached entry was painted for (AUTO needs its nation and era to rebuild that entry's key). */
-function cachedMaterialSpec(specId: string): MaterialTankSpec | null {
-  for (const entry of TEX_CACHE.values()) if (entry.spec.id === specId) return entry.spec;
-  return null;
+function sharedTextureIdentity(specId: string, selection: string | null = null): SharedTextureIdentity {
+  if (selection == null) return { key: specId, patternId: resolveCamoPattern(specId), fixed: false };
+  const patternId = resolveMultiplayerCamoPattern(specId, selection);
+  return { key: `${specId}::${patternId}`, patternId, fixed: true };
 }
 
 // PERF (performance_budget r3): per-spec bake quality tiers. The generated
@@ -559,26 +550,13 @@ function* bakeSharedCanvasesSteps(
   entry.quality = quality;
 }
 
-/**
- * Fleet lane painter v3 (2026-10-08): a patch-field scheme's albedo and roughness tiles span 4 m
- * (catalogCamoPainter.ts camoArtTileSpanM), so those two textures repeat at half the density of the hull's shared
- * 2 m UVs; the normal map keeps the 2 m plate plan. Set after every bake, repaint and restore of an entry.
- */
-function syncCamoTileRepeat(entry: SharedTextureEntry, visual: MaterialVisual, only?: 'camo' | 'rough'): void {
-  const k = camoArtTileRepeat(visual.catalogPattern);
-  for (const texture of [only === 'rough' ? null : entry.camoTex, only === 'camo' ? null : entry.roughTex]) {
-    if (texture && (texture.repeat.x !== k || texture.repeat.y !== k)) texture.repeat.set(k, k);
-  }
-}
-const wideCamoTile = (visual: MaterialVisual): boolean => camoArtTileRepeat(visual.catalogPattern) !== 1;
-
 function acquireSharedTextures(
   spec: MaterialTankSpec,
   aniso: number,
   quality: MaterialTextureQuality = 'high',
   selection: string | null = null,
 ): SharedTextureEntry {
-  const identity = sharedTextureIdentity(spec, selection);
+  const identity = sharedTextureIdentity(spec.id, selection);
   const { key } = identity;
   let entry = TEX_CACHE.get(key);
   if (!entry) {
@@ -603,7 +581,6 @@ function acquireSharedTextures(
     entry.camoTex = canvasTex(entry.camoCanvas, { aniso, repeat: true });
     entry.normalTex = canvasTex(entry.normalCanvas, { srgb: false, aniso, repeat: true });
     entry.roughTex = canvasTex(entry.roughCanvas, { srgb: false, aniso, repeat: true });
-    syncCamoTileRepeat(entry, resolveCamoVisual(entry.spec, entry.patternId));
     TEX_CACHE.set(key, entry);
   } else if (isMaterialTextureQualityUpgrade(entry.quality, quality)) {
     // In-place quality promotion when a closer presentation reuses an entry.
@@ -809,7 +786,6 @@ async function tryPrebakeSharedTexturesInWorker(
     entry.camoTex = canvasTex(entry.camoCanvas, { aniso, repeat: true });
     entry.normalTex = canvasTex(entry.normalCanvas, { srgb: false, aniso, repeat: true });
     entry.roughTex = canvasTex(entry.roughCanvas, { srgb: false, aniso, repeat: true });
-    syncCamoTileRepeat(entry, request.visual);
     TEX_CACHE.set(key, entry);
     adopted = true;
     return true;
@@ -829,7 +805,7 @@ function mutablePaintFingerprint(
   quality: MaterialTextureQuality,
 ): string {
   return JSON.stringify(sharedMaterialPaintRequest({
-    ...source, patternId: resolveCamoPattern(source.spec),
+    ...source, patternId: resolveCamoPattern(source.spec.id),
   }, quality));
 }
 
@@ -854,7 +830,7 @@ export function prebakeSharedTextures(
 ): Promise<void> {
   const spec = requireMaterialTankSpec(specValue);
   const quality = normalizeMaterialTextureQuality(requestedQuality);
-  const identity = sharedTextureIdentity(spec, selection);
+  const identity = sharedTextureIdentity(spec.id, selection);
   const { key } = identity;
   const active = PREBAKE_PENDING.get(key);
   if (active) {
@@ -894,7 +870,7 @@ export function prebakeSharedTextures(
       }
       return;
     }
-    const { patternId } = identity.fixed ? identity : sharedTextureIdentity(spec);
+    const { patternId } = identity.fixed ? identity : sharedTextureIdentity(spec.id);
     const seed = 0x5eed ^ (key.split('').reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) | 0, 7));
     entry = {
       refs: 0,
@@ -923,7 +899,6 @@ export function prebakeSharedTextures(
     entry.camoTex = canvasTex(entry.camoCanvas, { aniso, repeat: true });
     entry.normalTex = canvasTex(entry.normalCanvas, { srgb: false, aniso, repeat: true });
     entry.roughTex = canvasTex(entry.roughCanvas, { srgb: false, aniso, repeat: true });
-    syncCamoTileRepeat(entry, resolveCamoVisual(entry.spec, entry.patternId));
     TEX_CACHE.set(key, entry);
   })();
   const tracked = pending.finally(() => {
@@ -953,7 +928,7 @@ export async function acquireSharedTextureLease(
   if ((selection !== 'urban' && !isBuiltInCamoId(selection)) || selection === 'auto') {
     throw new TypeError('Shared texture leases require a concrete built-in camouflage');
   }
-  const { key } = sharedTextureIdentity(spec, selection);
+  const { key } = sharedTextureIdentity(spec.id, selection);
   TEXTURE_LEASE_PENDING.set(key, (TEXTURE_LEASE_PENDING.get(key) || 0) + 1);
   const outcome: { failure?: { error: RuntimeValue } } = {};
   const drainTick = tick ? async (): Promise<void> => {
@@ -1050,9 +1025,7 @@ export function* prebakeBurntSteps(
   aniso: number,
   selection: string | null = null,
 ): Generator<void, void, void> {
-  // No cached entry for the spec means nothing to char; otherwise its spec rebuilds the (AUTO-resolved) key.
-  const spec = cachedMaterialSpec(specId);
-  const entry = spec ? TEX_CACHE.get(sharedTextureIdentity(spec, selection).key) : undefined;
+  const entry = TEX_CACHE.get(sharedTextureIdentity(specId, selection).key);
   if (!entry || entry.burntTex) return;
   yield* burntBakeSteps(entry, aniso);
 }
@@ -1212,10 +1185,18 @@ const CUSTOM_CAMO_LS_PREFIX = 'cot.camoCustom.v1.';
 // bot-biome-camo intent, extended). Element 0 stays the r8 canonical scheme.
 // EVERY pool member must belong on its biome field — the coastal pool stays
 // green-family for exactly the r8 reason above.
-// Tank-accessories round 3 (2026-10-07): the pools and the AUTO decision live in
-// camoPolicy.ts (AUTO_CAMO_BIOMES, NATIONAL_AUTO_CAMO, autoCamoPatternIdFor): AUTO
-// paints the vehicle's national scheme for the biome's environment and keeps the
-// shared pool for nations without one. activeBiome is always an AUTO_CAMO_BIOMES key.
+const BIOME_PATTERN: Readonly<Record<string, readonly ResolvedMaterialCamoPattern[]>> = {
+  verdant: ['summer', 'flecktarn', 'amoeba', 'dpm', 'tigerstripe', 'merdc'],
+  desert: ['desert', 'chocchip', 'digitaldesert', 'pinkdesert'],
+  winter: ['winter', 'washworn', 'winterbands', 'merdcwinter'],
+  urban: ['urban', 'urbanblock', 'berlin'],
+  autumn: ['autumn', 'oakleaf'],
+  coastal: ['summer', 'dpm', 'merdc'],
+  steppe: ['desert', 'digitaldesert', 'chocchip'],
+  railyard: ['urban', 'urbanblock', 'berlin'],
+  moon: ['urban', 'urbanblock'],
+  cliffbridge: ['summer', 'flecktarn', 'dpm'],
+};
 let activeBiome: string = 'verdant';
 
 /** Persisted camo choice, or the first-party presentation default when unset. */
@@ -1280,62 +1261,44 @@ export function setCamoOverride(specId: string, patternId: string | null): void 
     CAMO_OVERRIDE.set(specId, patternId);
   }
 }
-export function clearCamoOverrides() { CAMO_OVERRIDE.clear(); battleCamoSeed = null; }
-
-// Fleet lane (2026-10-08; the coordinator after wave 258): the battle's seed for its bots' AUTO draws, so one nation's
-// roster fans out over its real schemes from battle to battle. Only overridden (bot) specs read it; the player's own
-// AUTO keeps the per-(vehicle, map) draw the garage previews. Set by setupBattle and the loading coordinator from the
-// battle ordinal they share, so the pre-paint and the battle agree.
-let battleCamoSeed: number | null = null;
-export function setCamoBattleSeed(seed: number | null): void {
-  battleCamoSeed = seed === null || !Number.isFinite(seed) ? null : Math.trunc(seed);
-}
-
-/** Whether a bot may keep its own paint on `mapId` (fleet lane 2026-10-08): the spec's saved or stock selection must
- * suit the battlefield's theatre (camoPolicy.ts camoSuitsTheatre); a local custom paint never does. */
-export function camoSelectionSuitsTheatre(spec: AutoCamoVehicle, mapId: string): boolean {
-  const selection = getCamoSelection(spec.id);
-  if (selection === 'auto') return true;
-  if (selection === CUSTOM_CAMO_ID) return false;
-  const pattern = selection === 'factory' ? stockCamoPatternIdFor(spec.id, spec.nation ?? undefined, spec.era) : selection;
-  return !!pattern && camoSuitsTheatre(pattern, spec.nation, mapId);
-}
+export function clearCamoOverrides() { CAMO_OVERRIDE.clear(); }
 
 /** Point 'auto' selections at a battlefield biome (call before a battle). */
 export function setCamoBiome(mapId: string): void {
-  activeBiome = autoCamoBiomeId(mapId);
-}
-
-/** The tank's effective selection: a battle override first, else the saved pick. */
-function effectiveCamoSelection(specId: string): MaterialPatternId {
-  return CAMO_OVERRIDE.get(specId) || getCamoSelection(specId);
+  activeBiome = BIOME_PATTERN[mapId] ? mapId : 'verdant';
 }
 
 /** Concrete pattern id for a tank right now ('auto' resolved per biome). */
-function resolveCamoPattern(spec: AutoCamoVehicle): MaterialPatternId {
-  const sel = effectiveCamoSelection(spec.id);
-  if (sel === CUSTOM_CAMO_ID) return customCamoPatternId(getCustomCamoSelection(spec.id));
+function resolveCamoPattern(specId: string): MaterialPatternId {
+  const sel = CAMO_OVERRIDE.get(specId) || getCamoSelection(specId);
+  if (sel === CUSTOM_CAMO_ID) return customCamoPatternId(getCustomCamoSelection(specId));
   if (sel !== 'auto') return sel;
-  // The vehicle's national scheme for this biome, or a deterministic draw from
-  // the shared biome pool (camoPolicy.ts autoCamoPatternIdFor): the same tank
-  // always resolves the same scheme on the same map, so the garage AUTO
-  // preview, the battle paint and the repaint cache agree. A bot's override
-  // re-draws with the battle seed (fleet lane 2026-10-08).
-  return autoCamoPatternIdFor(spec, activeBiome, CAMO_OVERRIDE.has(spec.id) ? battleCamoSeed : null);
+  // camo r2: deterministic per-(spec, biome) pick from the biome pool — the
+  // same tank always resolves the same scheme on the same map (garage AUTO
+  // preview, battle paint and repaint caching all agree), while a roster of
+  // AUTO tanks fans out across the pool.
+  const pool = BIOME_PATTERN[activeBiome];
+  let h = 0;
+  const key = `${specId}:${activeBiome}`;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+  return pool[(h >>> 0) % pool.length];
 }
 
 /** Resolve trusted match material input without local storage. The internal
- * urban painter is a concrete AUTO result, not an addition to the wire allowlist.
- * AUTO reads the vehicle's nation and era from the registry spec every peer
- * shares; a bare id (no nation) keeps the shared biome pool. */
+ * urban painter is a concrete AUTO result, not an addition to the wire allowlist. */
 export function resolveMultiplayerCamoPattern<Value>(
-  vehicle: string | AutoCamoVehicle,
+  specId: string,
   selection: Value,
   mapId: string = activeBiome,
-): AutoCamoPatternId {
+): ResolvedMaterialCamoPattern {
   const safe = selection === 'urban' ? 'urban' : networkCamoId(selection);
   if (safe !== 'auto') return safe;
-  return autoCamoPatternIdFor(typeof vehicle === 'string' ? { id: vehicle } : vehicle, mapId);
+  const biome = Object.prototype.hasOwnProperty.call(BIOME_PATTERN, mapId) ? mapId : 'verdant';
+  const pool = BIOME_PATTERN[biome];
+  let h = 0;
+  const key = `${specId}:${biome}`;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+  return pool[(h >>> 0) % pool.length];
 }
 
 // camo r8: season tags per pattern (WoT model — the paint bonus needs the
@@ -1370,24 +1333,23 @@ const PATTERN_SEASON: Readonly<Record<string, readonly string[]>> = {
  * (spotting camo paint bonus — state.ts getCamoBonus consumes this).
  * camo_spotting r3: WoT grants the paint bonus only when the camo season
  * matches the map type — that is what makes AUTO strategically meaningful.
- * AUTO always qualifies: it is the biome's own choice for this vehicle — the
- * nation's scheme for the biome's environment or a member of the biome's
- * shared pool (round 3, 2026-10-07; before the national schemes it was always
- * a pool member, so the verdict is unchanged). The second clause below grants
- * hand-picked pool members on their own biome even where the biome is not in
- * the pattern's season list.
+ * AUTO always qualifies: it resolves to a member of the
+ * BIOME_PATTERN[activeBiome] pool, and the second clause below grants pool
+ * members on their own biome even where the biome is not in the pattern's
+ * season list (a green-grass coastal map auto-resolves inside the green
+ * pool; the pick must still earn its +3.5%).
  * A mismatched manual pick (winter paint on the desert map) still repaints
  * the tank but earns no concealment bonus. Factory preserves any seasonal
  * benefit the vehicle's stock recipe already had.
  */
 export function hasCamoPaint(specId: string): boolean {
-  const selection = effectiveCamoSelection(specId);
-  if (selection === 'auto') return true;
-  if (selection === CUSTOM_CAMO_ID) return false; // a local custom paint never matches a season or a pool
+  const selection = resolveCamoPattern(specId);
   const pat = selection === 'factory' ? stockCamoPatternIdFor(specId) || selection : selection;
   if (pat === 'factory') return false;
-  // second clause: pool membership (camo r2 — the biome rows are pools).
-  const pool: readonly string[] = AUTO_CAMO_BIOMES[activeBiome]?.pool || [];
+  // second clause: pool membership (camo r2 — BIOME_PATTERN rows are pools
+  // now). AUTO always resolves to a pool member, so AUTO always qualifies;
+  // a hand-picked pool scheme earns on its own biome the same way.
+  const pool: readonly string[] = BIOME_PATTERN[activeBiome] || [];
   return (PATTERN_SEASON[pat] || []).includes(activeBiome)
     || pool.includes(pat);
 }
@@ -1545,7 +1507,7 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
     // snow's cool cast. The painter's stroke/grime tones cool with it.
     o = { scheme: 'winter', base: '#99a1a2', weather: '#7b8384', patches: [v.base || '#4b5320'] };
   } else if (patternId === 'urban') {
-    // biome-resolved only (camoPolicy.ts AUTO_CAMO_BIOMES): urban gray 3-tone.
+    // biome-resolved only (see BIOME_PATTERN): urban gray 3-tone.
     // History: r7 found pure concrete gray alien on the green approach
     // fields, r4 pulled it toward moss — and the r5 critic showed the moss
     // hybrid GRADES OUT TO OLIVE under the town map's warm/green grade (a
@@ -1879,7 +1841,7 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
 /** Resolved visual (spec.visual with the active pattern applied). */
 export function resolveCamoVisual(
   spec: MaterialTankSpec,
-  patternId: MaterialPatternId = resolveCamoPattern(spec),
+  patternId: MaterialPatternId = resolveCamoPattern(spec.id),
 ): MaterialVisual {
   return patternVisual(spec, patternId);
 }
@@ -1977,10 +1939,9 @@ function repaintEntry(entry: SharedTextureEntry, patternId: MaterialPatternId): 
   // printed vinyl — critic r4). Same `feats` plan keeps chips/lines aligned
   // with the normal map; the stochastic dust layer redraws from a
   // pattern-keyed stream, which is invisible at paint scale.
-  paintRoughness(entry.roughCanvas, mulberry32(entry.seed ^ ph ^ 0x9e37), feats, undefined, wideCamoTile(vis));
+  paintRoughness(entry.roughCanvas, mulberry32(entry.seed ^ ph ^ 0x9e37), feats);
   paintPatchRoughness(entry.roughCanvas, entry.camoCanvas, vis);
   roughTex.needsUpdate = true;
-  syncCamoTileRepeat(entry, vis);
   entry.patternId = patternId;
   retintEntryFittings(entry, vis);
   // camo r4: memoize the finished bake — the next visit to this
@@ -2110,7 +2071,7 @@ async function restoreBake(entry: SharedTextureEntry, patternId: MaterialPattern
     BAKE_CACHE.delete(key); // undecodable — bake fresh on the fallback path
     return false;
   }
-  if (resolveCamoPattern(entry.spec) !== patternId
+  if (resolveCamoPattern(entry.spec.id) !== patternId
     || entry.patternId === patternId) {
     // superseded (or already landed) while the bitmaps decoded — the newer
     // selection's own restore/repaint owns the entry, don't fight it.
@@ -2133,9 +2094,7 @@ async function restoreBake(entry: SharedTextureEntry, patternId: MaterialPattern
   if (entry.camoTex) entry.camoTex.needsUpdate = true;
   if (entry.roughTex) entry.roughTex.needsUpdate = true;
   entry.patternId = patternId;
-  const restored = patternVisual(entry.spec, patternId);
-  syncCamoTileRepeat(entry, restored);
-  retintEntryFittings(entry, restored);
+  retintEntryFittings(entry, patternVisual(entry.spec, patternId));
   return true;
 }
 
@@ -2147,7 +2106,7 @@ async function restoreBake(entry: SharedTextureEntry, patternId: MaterialPattern
 export function applyCamoPatterns(onlySpecId: string | null = null): void {
   for (const entry of TEX_CACHE.values()) {
     if (entry.fixedPattern || (onlySpecId && entry.spec.id !== onlySpecId)) continue;
-    const pid = resolveCamoPattern(entry.spec);
+    const pid = resolveCamoPattern(entry.spec.id);
     if (entry.patternId !== pid) repaintEntry(entry, pid);
   }
 }
@@ -2188,7 +2147,7 @@ interface StaleCamoEntry {
 function staleCamoEntry(key: string): StaleCamoEntry | null {
   const entry = TEX_CACHE.get(key);
   if (!entry || entry.fixedPattern) return null;
-  const patternId = resolveCamoPattern(entry.spec);
+  const patternId = resolveCamoPattern(entry.spec.id);
   return entry.patternId === patternId ? null : { entry, patternId };
 }
 
@@ -2218,13 +2177,11 @@ async function repaintCamoEntryChunked(
     if (!await yieldCamoSweep(16, generation)) return false;
     exposureTrim(entry.camoCanvas);
     camoTex.needsUpdate = true;
-    syncCamoTileRepeat(entry, visual, 'camo');
     if (!await yieldCamoSweep(16, generation)) return false;
-    paintRoughness(entry.roughCanvas, mulberry32(entry.seed ^ patternHash ^ 0x9e37), feats, undefined, wideCamoTile(visual));
+    paintRoughness(entry.roughCanvas, mulberry32(entry.seed ^ patternHash ^ 0x9e37), feats);
     if (!await yieldCamoSweep(16, generation)) return false;
     paintPatchRoughness(entry.roughCanvas, entry.camoCanvas, visual);
     roughTex.needsUpdate = true;
-    syncCamoTileRepeat(entry, visual);
     entry.patternId = patternId;
     retintEntryFittings(entry, visual);
     snapshotBake(entry, patternId);

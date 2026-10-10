@@ -30,12 +30,11 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.ts';
 import {
-  box, boxUV, boreCylinderUV, cylX, cylY, cylZ, frustum, lathe, mergeAll, mulberry32,
+  box, boxUV, cylX, cylY, cylZ, frustum, lathe, mergeAll, mulberry32,
   polyLoft, polyMultiLoft, polyTurret, slab, sph, straightRidgeGunMask,
   torus, xform,
 } from './factoryGeometry.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
-import { applyCamoPanels } from './camoPanels.ts';
 import {
   createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial,
@@ -8001,14 +8000,8 @@ function* createTankOwnedSteps(
       // tanks"): every hull projects the shared camo tile at ONE density, so a pattern's blotches cover the same
       // world metres on every vehicle; the recipe's camoScale only shapes the paint (camoWorldScale.ts).
       boxUV(merged, CAMO_UV_REPEATS_PER_M);
-      // the gun tube wears its paint round the bore, not in four box swatches (factoryGeometry.ts boreCylinderUV)
-      if (bucket === 'gun') boreCylinderUV(merged, CAMO_UV_REPEATS_PER_M);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
-      // 2026-10-07 (round 4, wave 214: "a flat sticker across every surface, including the gun barrel wrap and
-      // hull boxes"): bolted-on boxes, bins and sleeve sections take their own window of the pattern and their own
-      // paint tone (camoPanels.ts); the armour shell keeps the one continuous projection.
-      applyCamoPanels(merged, list, bucket);
     }
     recordAuthoredRanges(merged, authoredRanges);
     weaponDamage.bind(list, merged);
