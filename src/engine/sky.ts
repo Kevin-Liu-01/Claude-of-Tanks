@@ -774,6 +774,13 @@ function volumetricCloudsEnabledFor(renderer: THREE.WebGLRenderer): boolean {
   return false;
 }
 
+/** TRIAL (trial/takram-clouds): `?clouds=takram` asks for Takram's march on the volumetric layer (takramClouds.ts). */
+function takramCloudsRequested(): boolean {
+  try {
+    return typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('clouds') === 'takram';
+  } catch { return false; }
+}
+
 /** What the rig publishes on scene.userData.atmosphere for the post aerial pass (read every frame, mutated in place). */
 export interface AtmospherePublishedState {
   active: boolean;
@@ -1264,6 +1271,13 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   const volumetricClouds = atmosphereLuts && volumetricCloudsEnabledFor(renderer)
     ? new VolumetricCloudLayer(renderer, scene, atmosphereState, new THREE.Vector3(SKY_KNEE, SKY_KNEE_RANGE, SKY_KNEE_FALLOFF)) : null;
   scene.userData.volumetricClouds = volumetricClouds;
+  // TRIAL (trial/takram-clouds, 2026-10-09): `?clouds=takram` gives the layer Takram's march (@takram/three-clouds, MIT)
+  // through a lazy chunk (takramClouds.ts); no boot chunk carries it, and phones never create the layer
+  if (volumetricClouds && takramCloudsRequested()) {
+    void import('./takramClouds.ts')
+      .then((m) => { m.installTakramClouds(volumetricClouds, renderer); })
+      .catch((error: unknown) => console.warn('[clouds] the takram trial failed to load:', errorMessage(error)));
+  }
   /** Round 37's elevation falloff for the current sky (the atmosphere summary's, or the legacy probe's). */
   let atmosphereFalloff = 1;
   /** 2026-10-01: the grounded model's environment intensity while the atmosphere shows (null on the legacy dome). */
