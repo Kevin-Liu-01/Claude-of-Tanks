@@ -471,7 +471,7 @@ function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig):
   });
   if (variant === 'vt4a1') {
     mount(P, 'turret', FITTINGS.openYokeRws({
-      mats: P.mats, bodySlot: 'turret', sizeStandard: 'k2b-compact-tower',
+      mats: P.mats, bodySlot: 'hull', sizeStandard: 'k2b-compact-tower',
       scale: 0.70, towerRise: 0.08, variant: 'korean-twin', sensorHead: true,
       sensorMount: 'roof', weapon: true, caliberMm: 12.7, cls: 'qjc88',
       weaponName: 'QJC-88 remote weapon station', seed: 430,

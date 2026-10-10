@@ -1166,6 +1166,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/runningGearFinish.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
     'src/vehicles/accessoryMaterials.selftest.mjs',
+    // 2026-10-09 (fleet-weapons lane): no weapon mesh is a flat single colour; unknown fitting slots throw
+    'src/vehicles/weaponFinish.selftest.mjs',
     // 2026-10-05 (tank-accessories lane): decor draws per tank at or below their count before the accessory rebuild
     'src/vehicles/decorDrawBudget.selftest.mjs',
     // 2026-10-08 (tank-accessories round 5): every accessory piece touches the vehicle within 15 mm (a ratchet to zero)

@@ -5,6 +5,7 @@ import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT as UNTYPED_KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
+import { paintAmmoVertexColours, prepareWeaponFinishGeometry } from '../weaponFinish.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { DRUM_ISSUE_PAINTS, barkLog, fabricRollParts, fuelDrumParts, latheY, place, sweptTube } from '../accessoryPrimitives.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
@@ -6581,8 +6582,8 @@ function rebuildT90MSTurretExact(P: T90BuilderPort): void {
   tagilTower.userData.surfaceMarkupSelectable = true;
   const towerPart = (
     name: string,
-    geometry: THREE.BufferGeometry,
-    material: THREE.MeshStandardMaterial,
+    authored: THREE.BufferGeometry,
+    authoredMaterial: THREE.MeshStandardMaterial,
     x: number,
     y: number,
     z: number,
@@ -6590,10 +6591,27 @@ function rebuildT90MSTurretExact(P: T90BuilderPort): void {
     ry = 0,
     rz = 0,
   ): THREE.Mesh => {
+    // 2026-10-09 (fleet-weapons lane): the tower's weapon parts take the fleet weapon finish (weaponFinish.ts) on
+    // rendered builds: the cradle weapon steel, the ammunition coffin, lid and retainer the issue drab, the belt links
+    // brass; the brow and the work light's housing are painted with the vehicle. Non-rendering builds keep their
+    // authored materials and geometry.
+    const ammo = P.mats.ammoDrab && /AmmoBox|AmmoLid|AmmoRetainer|FeedLink/.test(name) ? P.mats.ammoDrab : undefined;
+    const steel = P.mats.weaponSteel && /Cradle/.test(name) ? P.mats.weaponSteel : undefined;
+    const paint = P.mats.weaponSteel && /Brow|LightHousing/.test(name) ? P.mats.hull : undefined;
+    const material = ammo ?? steel ?? paint ?? authoredMaterial;
+    const geometry = authored;
+    if (ammo || steel) {
+      prepareWeaponFinishGeometry(geometry, KIT.boxUV);
+      if (ammo) paintAmmoVertexColours(geometry, ammo, /FeedLink/.test(name));
+    }
     if (material.vertexColors && !geometry.getAttribute('color')) {
       geometry.setAttribute('color', new THREE.BufferAttribute(
         new Float32Array(geometry.getAttribute('position').count * 3).fill(1), 3));
     }
+    // 2026-10-09 (fleet-weapons census): a painted part projects the fleet's metre-scale camouflage like every other
+    // fitting; the optic housing's stock box UVs squeezed the whole tile onto each 0.2 m face (density 4.6 per metre).
+    const camoUvScale = Number(material.userData?.camoUvScale);
+    if (Number.isFinite(camoUvScale) && camoUvScale > 0) KIT.boxUV(geometry, camoUvScale);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = name;
     mesh.position.set(x, y, z);

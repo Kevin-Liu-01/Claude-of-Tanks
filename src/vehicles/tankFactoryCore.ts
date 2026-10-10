@@ -120,6 +120,7 @@ import {
 export type { TrackGuideProfile, TrackOutsoleDimensions } from './profiles/abramsSourceXTrackShoe.ts';
 import type { SuspensionPatternId, SuspensionPattern } from './suspensionPatterns.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { createWeaponFinishMaterials, linkWeaponFinish, mainBarrelIsWeaponSteel, prepareWeaponFinishGeometry } from './weaponFinish.ts';
 
 
 const D2R = Math.PI / 180;
@@ -158,6 +159,10 @@ interface TankMaterials {
   trackTexL: THREE.Texture;
   trackTexR: THREE.Texture;
   trackLinkM: number;
+  /** Fleet-weapons lane 2026-10-09 (weaponFinish.ts): parkerized weapon steel and the national ammunition drab.
+   * Rendered builds only; geometry-only and receipt builds fall back to `dark` and `detail`. */
+  weaponSteel?: THREE.MeshStandardMaterial;
+  ammoDrab?: THREE.MeshStandardMaterial;
   prepareBurnt?: () => void;
   decal(kind: string, text: string | null): THREE.Material;
   dispose(): void;
@@ -1247,7 +1252,7 @@ interface AuthoredRange {
 
 type RigGroupKey = 'hullG' | 'turretG' | 'recoilG' | 'gunG' | 'barrel0G' | 'barrel1G';
 type TankMaterialKey = 'hull' | 'rubber' | 'detail' | 'dark' | 'wood' | 'bark' | 'canvasCloth' | 'canvasPale'
-  | 'glass' | 'barrel' | 'spareTrack' | 'shadow' | 'wheels';
+  | 'glass' | 'barrel' | 'spareTrack' | 'shadow' | 'wheels' | 'weaponSteel';
 type BucketDefinition = readonly [RigGroupKey, TankMaterialKey];
 type OriginalMaterialRecord = [VehicleMesh, THREE.Material | THREE.Material[], boolean];
 
@@ -6737,15 +6742,17 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   turretOpenLattice: ['turretG', 'hull'], turretOpenLatticeDark: ['turretG', 'dark'],
   turretCloth: ['turretG', 'canvasCloth'], turretGlass: ['turretG', 'glass'],
   turretCanvasPale: ['turretG', 'canvasPale'], turretFittingPaint: ['turretG', 'detail'], turretBark: ['turretG', 'bark'],
-  gun: ['recoilG', 'barrel'], gunDark: ['recoilG', 'dark'], gunMount: ['gunG', 'hull'],
-  gunMountDark: ['gunG', 'dark'], gunMountCloth: ['gunG', 'canvasCloth'],
+  // Fleet-weapons lane 2026-10-09: the gun's bare steel (muzzle devices, bore mouths, coax barrels, cradle hardware)
+  // is weapon steel (weaponFinish.ts), not the flat hardware gunmetal.
+  gun: ['recoilG', 'barrel'], gunDark: ['recoilG', 'weaponSteel'], gunMount: ['gunG', 'hull'],
+  gunMountDark: ['gunG', 'weaponSteel'], gunMountCloth: ['gunG', 'canvasCloth'],
   // Continuous mantlet boots are silhouette skin, not distant-LOD stowage.
   gunMountCanvasSkin: ['gunG', 'canvasCloth'],
   gunMountGlass: ['gunG', 'glass'],
   // Opt-in independent twin-gun tubes. Only authored multi-muzzle profiles
   // use these buckets; the rest of the fleet retains the merged recoilG path.
-  gunBarrel0: ['barrel0G', 'barrel'], gunBarrel0Dark: ['barrel0G', 'dark'],
-  gunBarrel1: ['barrel1G', 'barrel'], gunBarrel1Dark: ['barrel1G', 'dark'],
+  gunBarrel0: ['barrel0G', 'barrel'], gunBarrel0Dark: ['barrel0G', 'weaponSteel'],
+  gunBarrel1: ['barrel1G', 'barrel'], gunBarrel1Dark: ['barrel1G', 'weaponSteel'],
   // spare track links (dark oily track steel, r6) + baked-shadow AO panels
   hullTrack: ['hullG', 'spareTrack'], turretTrack: ['turretG', 'spareTrack'],
   hullShadow: ['hullG', 'shadow'],
@@ -7242,6 +7249,17 @@ function* createTankOwnedSteps(
   let activeVisualEraCluster: VisualEraCluster | null = null;
   const decals: VehicleDecal[] = [];
   const disposables: DisposableVehicleResource[] = [];
+  // Fleet-weapons lane 2026-10-09: the weapon finish (weaponFinish.ts) rides the rendered material set; its clones are
+  // owned (and released from the cascade setup) by this visual. Non-rendering builds keep dark/detail.
+  if (usesSharedMaterialTextures) {
+    const finish = createWeaponFinishMaterials(mats.dark, mats.detail, spec.nation, cloneVehicleMaterial);
+    mats.weaponSteel = finish.weaponSteel;
+    mats.ammoDrab = finish.ammoDrab;
+    // exact (source-measured) weapons re-seat their own gunmetal and fitting paint through this link (kit.ts)
+    linkWeaponFinish(mats.dark, finish.weaponSteel);
+    linkWeaponFinish(mats.detail, mats.hull);
+    disposables.push(finish.weaponSteel, finish.ammoDrab);
+  }
   const equipmentDamage = new EquipmentDamage();
   const weaponDamage = new WeaponDamageVisuals();
 
@@ -8016,7 +8034,12 @@ function* createTankOwnedSteps(
     equipmentDamage.bindMerged(list, merged, parentKey === 'hullG' ? 'hull' : parentKey === 'turretG' ? 'turret' : '',
       station ? 'equipment' : combatHitboxRoleForBucket(bucket));
     disposables.push(merged);
-    const mesh = new THREE.Mesh(merged, mats[matKey]);
+    // weapon steel exists on rendered builds only (geometry-only and receipt builds keep the hardware gunmetal)
+    // (the M242 family's main barrel is bare steel too: weaponFinish.ts mainBarrelIsWeaponSteel)
+    const weaponSteel = matKey === 'weaponSteel' || (station && matKey === 'dark')
+      || (bucket === 'gun' && mainBarrelIsWeaponSteel(specId)) ? mats.weaponSteel : undefined;
+    if (weaponSteel) prepareWeaponFinishGeometry(merged, boxUV);
+    const mesh = new THREE.Mesh(merged, weaponSteel ?? (matKey === 'weaponSteel' ? mats.dark : mats[matKey]));
     tagMergedBucket(bucket, mesh);
     // A merged material bucket can contain live equipment mixed with trim.
     // Retain its exact stock without splitting/rebuilding damage-bound ranges.
