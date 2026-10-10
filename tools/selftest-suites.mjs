@@ -712,21 +712,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/runtimeStyles.selftest.mjs',
     'src/ui/topAccentBorders.selftest.mjs',
     'src/vehicles/camoPolicy.selftest.mjs',
-    // 2026-10-07 (tank-accessories round 3): AUTO paints each nation's own scheme for the battlefield's environment
-    'src/vehicles/autoCamoNational.selftest.mjs',
-    'src/vehicles/battleTheatreCamo.selftest.mjs',
+    // 2026-10-09 (fix/camo-defaults): production's camouflage system, row for row (R113; the owner's 10-09 messages)
+    'src/vehicles/camoCatalogProductionIndices.selftest.mjs',
     'src/vehicles/authoredPaintCatalog.selftest.mjs',
     'src/vehicles/customCamoCanvas.selftest.mjs',
     'src/vehicles/factoryCamo.selftest.mjs',
     'src/vehicles/camoPatternSeed.selftest.mjs',
     'src/vehicles/camoWorldScale.selftest.mjs',
-    // 2026-10-07 (tank-accessories round 4): bolted-on boxes, bins and sleeve sections as their own camouflage panels
-    'src/vehicles/camoPanels.selftest.mjs',
     'src/vehicles/brandCamo.selftest.mjs',
     'src/vehicles/catalogCamoPainter.selftest.mjs',
-    // 2026-10-04 (the vehicle-look lane): the field camouflages' boundaries at the tile's own resolution
-    'src/vehicles/camoFieldEdges.selftest.mjs',
-    'src/vehicles/camoPatchFields.selftest.mjs',
     'src/vehicles/vehicleMarkingsCanvas.selftest.mjs',
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
@@ -1072,6 +1066,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/impactPhysics.selftest.mjs',
     'src/sim/impactParity.selftest.mjs',
     'src/sim/structureSupport.selftest.mjs',
+    // 2026-10-09 (vehicle-contact lane, owner: "tracks shouldnt glitch through the bridge"): the drawn tracks rest on the
+    // bridge decks the hull stands on (Aegis Crossing's viaduct, Amberford, Suzhou Creek), driven and parked.
+    'src/world/vehicleGroundContact.selftest.mjs',
     'src/sim/rollover.selftest.mjs',
     'src/sim/tankBodyContacts.selftest.mjs',
     'src/sim/tankBodyRest.selftest.mjs',

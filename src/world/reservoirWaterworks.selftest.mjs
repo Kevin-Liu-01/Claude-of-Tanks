@@ -56,12 +56,16 @@ function installFixtureCanvas() {
 
 function recordMeshes(props) {
   const rows = [], mats = new Set(), kit = {};
-  let vertices = 0, attributeBytes = 0;
+  let vertices = 0, attributeBytes = 0, tagBytes = 0;
   props.group.traverse(mesh => {
     if (!mesh.isMesh) return;
     const key = mesh.material.customProgramCacheKey(); mats.add(key);
     vertices += mesh.geometry.attributes.position.count;
-    attributeBytes += Object.values(mesh.geometry.attributes).reduce((n, a) => n + a.array.byteLength, 0);
+    // (the structure tag, aDamage, is destruction's own per-vertex cost — a family that gains a building gains it on every
+    // vertex; structureDamageSeam.ts and its receipts hold that budget — so it is counted apart from the geometry's)
+    for (const [n, a] of Object.entries(mesh.geometry.attributes)) {
+      if (n === 'aDamage') tagBytes += a.array.byteLength; else attributeBytes += a.array.byteLength;
+    }
     if (['world-props-stone-v7', 'world-props-wood-v7', 'world-props-dark-v7'].includes(key)) return;
     if (KIT_MESHES[mesh.name]) kit[mesh.name] = { material: key, count: mesh.count, matrix: mesh.matrix.elements,
       attributes: Object.fromEntries(Object.entries(mesh.geometry.attributes).map(([n, a]) => [n, { itemSize: a.itemSize, array: a.array.slice() }])),
@@ -70,7 +74,7 @@ function recordMeshes(props) {
       matrix: mesh.matrix.elements, instances: mesh.instanceMatrix && hash(bytes(mesh.instanceMatrix.array)),
       colors: mesh.instanceColor && hash(bytes(mesh.instanceColor.array)) });
   });
-  return { rows, mats: [...mats].sort(), vertices, attributeBytes, kit };
+  return { rows, mats: [...mats].sort(), vertices, attributeBytes, tagBytes, kit };
 }
 
 async function wholeWorld(seed) {
@@ -117,6 +121,7 @@ async function wholeWorld(seed) {
     } else assert.deepEqual(records.map(clone), before);
     const kit = control ? null : Object.fromEntries(['regionalStone', 'curtain'].map(family => [family,
       buckets[family].filter(g => g.name.startsWith('reservoir-kiosk')).map(g => ({ name: g.name, count: g.attributes.position.count,
+        structureIdx: g.userData.structureIdx,
         attributes: Object.fromEntries(Object.entries(g.attributes).map(([n, a]) => [n, a.array.slice()])) }))]));
     seam = { donors: donors.slice(), before, result, kit };
     return result;
@@ -165,7 +170,8 @@ async function wholeWorld(seed) {
     validateKitFamily(name, before.meshes.kit[name], after.meshes.kit[name], after.seam.kit[family], KIT_VERTICES[family]);
   }
   assert.deepEqual(after.meshes.mats, before.meshes.mats, 'no new shader/material family');
-  assert.ok(after.meshes.vertices <= before.meshes.vertices && after.meshes.attributeBytes <= before.meshes.attributeBytes);
+  assert.ok(after.meshes.vertices <= before.meshes.vertices && after.meshes.attributeBytes <= before.meshes.attributeBytes,
+    `the waterworks never add to the world's vertices (${after.meshes.vertices} of ${before.meshes.vertices}) or bytes (${after.meshes.attributeBytes} of ${before.meshes.attributeBytes})`);
   for (const key of ['obstacles', 'colliders']) {
     const donorKey = key === 'obstacles' ? 'obstacle' : 'collider';
     const indices = before.seam.donors.map(d => before.props[key].indexOf(d[donorKey]));
@@ -206,7 +212,13 @@ function validateKitFamily(name, before, after, parts, expected) {
   while (at < bv && names.every(n => same(n, at))) at++;
   for (const n of names) {
     const k = before.attributes[n].itemSize, a = before.attributes[n].array, b = after.attributes[n].array;
-    const block = parts.flatMap(p => [...p.attributes[n]]);
+    // (the structure tag, `aDamage` = structureIdx + 1 or 0, is the family merge's own: structureDamageSeam.ts
+    // tagStructureVertices writes it on the merged mesh, so a part carries no such attribute — its block is its tag)
+    const block = parts.flatMap(p => {
+      if (p.attributes[n]) return [...p.attributes[n]];
+      assert.equal(n, 'aDamage', `${name}.${n}: an attribute the merge adds must be the structure tag`);
+      return new Array(p.count * k).fill(typeof p.structureIdx === 'number' ? p.structureIdx + 1 : 0);
+    });
     assert.ok(bytes(b.subarray(0, at * k)).equals(bytes(a.subarray(0, at * k))), `${name}.${n}: the vertices before the kiosk unchanged`);
     assert.deepEqual([...b.subarray(at * k, (at + expected) * k)], block, `${name}.${n}: the kiosk's parts, whole and in order`);
     assert.ok(bytes(b.subarray((at + expected) * k)).equals(bytes(a.subarray(at * k))), `${name}.${n}: the vertices after it unchanged`);
@@ -528,7 +540,8 @@ if (process.argv[2] === '--world') {
   }
   for (const seed of [1337, 2049, 7719]) {
     const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--world', String(seed)],
-      { encoding: 'utf8', timeout: 90000, maxBuffer: 4 * 1024 * 1024 });
+      // (2026-10-09: a whole-world child takes 55-145 s under a loaded suite; 90 s timed out on load, not on the world)
+      { encoding: 'utf8', timeout: 240000, maxBuffer: 4 * 1024 * 1024 });
     assert.equal(child.status, 0, child.stderr || String(child.error));
     console.log(child.stdout.trim());
     console.log(`reservoir/${seed}: full-world composer A/B, seated bodies and intake PASS`);

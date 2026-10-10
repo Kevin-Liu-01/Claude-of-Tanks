@@ -82,8 +82,8 @@
       "concealers": 10071
     },
     "badlands": {
-      "bytes": 1223187,
-      "sha256": "8b538cc89fdd77837e42bd9aff958562a2402b613454097ca9240f60e9f154d9",
+      "bytes": 1223002,
+      "sha256": "90be6af79785dbc35363c486258f5155cba73f4f361d5c636382d03354bd4c79",
       "obstacles": 1681,
       "colliders": 1386,
       "concealers": 248
@@ -194,8 +194,8 @@
       "concealers": 2285
     },
     "mangrove": {
-      "bytes": 1478951,
-      "sha256": "41d7c914f4ceebd21207170d035aa23d372f621093b9da2e0c41ed2c2f149718",
+      "bytes": 1456197,
+      "sha256": "89b15db914531b07a1578aeb9ecfea7499ca10a523189985da5ff17237e07630",
       "obstacles": 5597,
       "colliders": 5374,
       "concealers": 6579
@@ -316,8 +316,8 @@
         "concealers": 10098
       },
       "badlands": {
-        "bytes": 1369423,
-        "sha256": "d9f9367130738928b5883957294e35585e70a04413dae3631ffb66b9c1c8a447",
+        "bytes": 1408447,
+        "sha256": "ef0bac9caec0f4b3abfd8527231503a1df47b2361e108aa0c1ca6f387a352af0",
         "obstacles": 1806,
         "colliders": 1426,
         "concealers": 248
@@ -428,8 +428,8 @@
         "concealers": 2358
       },
       "mangrove": {
-        "bytes": 1677738,
-        "sha256": "ad9e0c2c440760c7c29149fd73ef8cb909d73b7320da3be96652a1115d94c381",
+        "bytes": 1612920,
+        "sha256": "070ac24c1e22efcc008b996cdddb0d681875347e3ddfee5b4404ecbdb166e5f6",
         "obstacles": 5753,
         "colliders": 5459,
         "concealers": 6634

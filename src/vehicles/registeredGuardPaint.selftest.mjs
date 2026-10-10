@@ -66,21 +66,11 @@ function paint(tank,prior){const o=tank.root.getObjectByName('hullPaintedDetail'
  assert.equal(o.parent.parent.name,'rig_hull');assert.deepEqual(o.parent.levels.map(l=>l.distance),prior.parent.levels.map(l=>l.distance));
  const uv=o.geometry.attributes.uv,p=o.geometry.attributes.position,n=o.geometry.attributes.normal;
  assert.ok(uv&&Array.from(uv.array).every(Number.isFinite));
- const scale=CAMO_UV_REPEATS_PER_M,us=new Set(),vs=new Set(),shift=new Array(p.count); // round 35 (2026-09-21): fleet camo density, not the hull's authored scale
+ const scale=CAMO_UV_REPEATS_PER_M,us=new Set(),vs=new Set(); // round 35 (2026-09-21): fleet camo density, not the hull's authored scale
  for(let i=0;i<p.count;i++){const nx=Math.abs(n.getX(i)),ny=Math.abs(n.getY(i)),nz=Math.abs(n.getZ(i));
   const u=ny>=nx&&ny>=nz?p.getX(i):nx>=nz?p.getZ(i):p.getX(i),v=ny>=nx&&ny>=nz?p.getZ(i):p.getY(i);
-  // 2026-10-08 (tank-accessories round 4, camoPanels.ts): a bolted-on guard piece may take its own window of the
-  // pattern, a rigid shift of the exact spatial projection (same density and axes); every vertex of one connected piece
-  // carries the same shift, and a piece without a panel carries none
-  shift[i]=[uv.getX(i)-Math.fround(u*scale),uv.getY(i)-Math.fround(v*scale)];
+  assert.equal(uv.getX(i),Math.fround(u*scale),'exact spatial camouflage U');assert.equal(uv.getY(i),Math.fround(v*scale),'exact spatial camouflage V');
   us.add(uv.getX(i));vs.add(uv.getY(i));}
- const root=Array.from({length:p.count},(_,i)=>i),find=i=>{while(root[i]!==i){root[i]=root[root[i]];i=root[i];}return i;};
- const ix=o.geometry.index;for(let t=0;t<(ix?.count??p.count);t+=3){const a=ix?ix.getX(t):t;
-  root[find(ix?ix.getX(t+1):t+1)]=find(a);root[find(ix?ix.getX(t+2):t+2)]=find(a);}
- const pieceShift=new Map();for(let i=0;i<p.count;i++){const r=find(i),d=shift[i];
-  if(!pieceShift.has(r))pieceShift.set(r,d);const e=pieceShift.get(r);
-  assert.ok(Math.abs(d[0]-e[0])<1e-4,'exact spatial camouflage U (one rigid window per piece)');
-  assert.ok(Math.abs(d[1]-e[1])<1e-4,'exact spatial camouflage V (one rigid window per piece)');}
  assert.ok(us.size>1&&vs.size>1,'both texture axes vary over the actual stock; a box need not have >8 unique scalar values');return o;}
 const restore=installCanvasFixture(),rows=[];let rays=0,emissions=0;
 try{for(const row of cases)for(const quality of['high','low'])for(const camo of['factory','winter']){
