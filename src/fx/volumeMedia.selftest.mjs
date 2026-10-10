@@ -547,7 +547,17 @@ function captureContext(seed) {
   const span = Math.max(base.hw, base.hd), H = base.topY - base.baseY;
   assert.ok(collapsed.media.filter((m) => m.y > base.baseY + 1).every((m) => m.size1 <= 0.6 * span),
     'nothing big above the base hides the falling walls (no ball, no column)');
-  assert.ok(!collapsed.media.some((m) => m.life >= 12), 'no pall');
+  // (fx 8e, re-ruled with dcore: the critics after the destruction waves saw "dust that doesn't linger and settle" and
+  // "opaque cotton-ball blobs") no tall pall: what lingers past 12 s is low dust settling over the pile — born at the
+  // base, sinking (never rising), thin — in the soft-edged medium
+  const lingering = collapsed.media.filter((m) => m.life >= 12);
+  assert.ok(lingering.length >= 8, `the collapse's dust lingers (${lingering.length} puffs past 12 s)`);
+  assert.ok(lingering.every((m) => m.y <= base.baseY + 1 && m.rise <= 0 && m.density <= 0.42 && m.medium === 'billow'),
+    'what lingers lies low, settles and is thin (no tall pall)');
+  const pall = collapsed.media.filter((m) => m.life >= 18);
+  assert.ok(pall.length >= 4 && pall.every((m) => m.density <= 0.3 && m.aspect >= 2.4 && m.fadeIn >= 1
+    && m.birthOffset > collapseFrontTime(0, 0.8 * H)), 'a thin pall fades in under the thinning cloud once the walls are down');
+  assert.ok(collapsed.media.every((m) => m.medium === 'billow'), 'every puff of the collapse in the soft-edged medium (no cotton balls)');
   // the pieces leave the front as it passes their height (a fall's weight: barely pushed, gravity does the rest)
   // (the front comes down from the eaves: 0.8 of the height without the anatomy)
   for (const k of collapsed.chunk) {

@@ -188,19 +188,27 @@ function footprintEdge(e: StructureStageEvent, cosY: number, sinY: number, perim
 
 function puff(C: BlastContext, x: number, y: number, z: number, vx: number, vy: number, vz: number, drag: number,
   rise: number, windK: number, life: number, size0: number, size1: number, c0: Rgb, c1: Rgb, density: number,
-  play: number, start: number, bo: number, aspect = 1, grow = 2.6): void {
+  play: number, start: number, bo: number, aspect = 1, grow = 2.6, soft: SoftDust | null = null): void {
   const m = C.m;
   const R = C.rand;
   m.x = x; m.y = y; m.z = z; m.birthOffset = bo;
   m.vx = vx; m.vy = vy; m.vz = vz; m.drag = drag; m.rise = rise; m.windK = windK; m.grav = 0;
   m.life = life; m.size0 = size0; m.size1 = size1; m.growExp = grow; m.rot = (R() - 0.5) * 0.7; m.spin = (R() - 0.5) * 0.1;
   m.r0 = c0[0]; m.g0 = c0[1]; m.b0 = c0[2]; m.r1 = c1[0]; m.g1 = c1[1]; m.b1 = c1[2];
-  m.density = density; m.fadeIn = 0.08; m.fadeOut = 0.45;
-  m.medium = 'burst'; m.variant = Math.floor(R() * 4); m.mirror = R() < 0.5; m.playSeconds = play; m.startFrame = start;
+  m.density = density; m.fadeIn = soft ? soft.fadeIn : 0.08; m.fadeOut = soft ? soft.fadeOut : 0.45;
+  m.medium = soft ? 'billow' : 'burst'; m.variant = Math.floor(R() * 4); m.mirror = R() < 0.5; m.playSeconds = play; m.startFrame = start;
   m.aspect = aspect;
   m.heat = 0; m.cool = 1;
   C.media(m);
 }
+
+/** (fx 8e, the critics after the destruction waves: "opaque cotton-ball blobs", "dust that doesn't linger and settle")
+ *  a collapse's dust in the soft-edged billow medium (the burst flipbook's rim is crisp) with its own fade-in and the life
+ *  fraction its erosion starts at. */
+interface SoftDust { fadeIn: number; fadeOut: number }
+const SKIRT_DUST: SoftDust = Object.freeze({ fadeIn: 0.15, fadeOut: 0.6 });
+const BODY_DUST: SoftDust = Object.freeze({ fadeIn: 0.2, fadeOut: 0.5 });
+const PALL_DUST: SoftDust = Object.freeze({ fadeIn: 1.6, fadeOut: 0.55 });
 
 /** A billow of the detonation's own (a fireball cooling to residue, its smoke): heat at birth and its cooling rate. */
 function hot(C: BlastContext, x: number, y: number, z: number, vx: number, vy: number, vz: number, drag: number,
@@ -327,19 +335,21 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     const life = 7 + R() * 3;
     puff(C, e.cx + lx * cosY + lz * sinY, e.baseY + wallH * (0.75 + 0.2 * R()), e.cz - lx * sinY + lz * cosY,
       (R() - 0.5) * 1.5, 1.4 + R() * 1.0, (R() - 0.5) * 1.5, 1.4, 0.6, 1.0, life, 0.25 * span * dk, (0.45 + R() * 0.12) * span * dk,
-      tintDark, tinted, 0.5, life, 2, 0.3 + R() * 0.5, 1, 4.5);
+      tintDark, tinted, 0.42, life, 2, 0.3 + R() * 0.5, 1, 4.5, BODY_DUST);
   }
   // 2. the walls pour their dust out of their foot as the front comes down: a low skirt all round, rolling out wide,
   //    each band's as its pieces land
+  // (fx 8e) thinner and soft-edged, rolling out farther (a surge runs out about a storey or two) and
+  //    lingering: it holds low, drifts and settles (a slow sink) as it thins, rather than rising off as a few balls
   const skirtN = Math.max(10, Math.min(20, Math.round(perim / 3)));
   for (let i = 0; i < skirtN; i++) {
     footprintEdge(e, cosY, sinY, perim, (i + R()) / skirtN, p);
-    const v = 3 + R() * 3;
-    const life = 9 + R() * 2.5;
+    const v = 4 + R() * 3.5;
+    const life = 13 + R() * 4;
     const h = wallH * (0.08 + 0.84 * (i + R()) / skirtN);
     const at = Math.min(frontEnd + 0.3, collapseFrontTime(h, wallH) + Math.sqrt((2 * h) / 9.8));
-    puff(C, p[0] + p[2] * 0.6, e.baseY + 0.45, p[1] + p[3] * 0.6, p[2] * v, 0.35 + R() * 0.4, p[3] * v, 2.0, 0.25, 0.9,
-      life, 0.5 * low * dk, (1.0 + R() * 0.3) * low * dk, tintDark, tinted, 0.5, life, 1, at, 2.0 + R() * 0.5, 4.5);
+    puff(C, p[0] + p[2] * 0.6, e.baseY + 0.45, p[1] + p[3] * 0.6, p[2] * v, 0.3 + R() * 0.3, p[3] * v, 1.6, -0.03, 0.9,
+      life, 0.5 * low * dk, (1.1 + R() * 0.3) * low * dk, tintDark, tinted, 0.4, life, 1, at, 2.0 + R() * 0.5, 4.5, SKIRT_DUST);
   }
   // a little shed off the crumbling line as it passes (the dust rides the falling courses down)
   const BAND = 1.8;
@@ -350,7 +360,8 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     footprintEdge(e, cosY, sinY, perim, R(), p);
     const life = 4 + R() * 1.5;
     puff(C, p[0] + p[2] * 0.3, e.baseY + h, p[1] + p[3] * 0.3, p[2] * 0.6, -1.2 - R() * 0.6, p[3] * 0.6,
-      1.8, 0.05, 0.9, life, 0.2 * span * dk, (0.42 + R() * 0.12) * span * dk, tinted, tinted, 0.4, life, 1, tb + R() * 0.15);
+      1.8, 0.05, 0.9, life, 0.2 * span * dk, (0.42 + R() * 0.12) * span * dk, tinted, tinted, 0.36, life, 1, tb + R() * 0.15,
+      1, 2.6, BODY_DUST);
   }
   // the walls' pieces off the front when no stage builder throws them (a building the world has no seam for: the
   // stages throw a seamed building's own, in its buckets — `crumbled`)
@@ -369,14 +380,27 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     }
   }
   // 3. the body: one mass rising off the pile as the last courses land, born at its foot, spreading and thinning
-  const massN = Math.round(Math.min(12, 7 + perim / 8));
+  // (fx 8e) heavier dust climbs less: it billows up to about the eaves and spreads rather than sailing off as balls
+  const massN = Math.round(Math.min(14, 8 + perim / 8));
   for (let i = 0; i < massN; i++) {
     const lx = (R() * 2 - 1) * e.hw * 0.75, lz = (R() * 2 - 1) * e.hd * 0.75;
     const wx = e.cx + lx * cosY + lz * sinY, wz = e.cz - lx * sinY + lz * cosY;
     const at = frontEnd * 0.55 + (i / massN) * (frontEnd * 0.45 + 0.8) + R() * 0.3;
     const life = 10 + R() * 1.5;
-    puff(C, wx, e.baseY + 0.9, wz, (R() - 0.5) * 1.0, 0.8 + R() * 0.6, (R() - 0.5) * 1.0,
-      1.3, 0.5 + R() * 0.3, 1.0, life, 0.55 * low * dk, (1.3 + R() * 0.3) * low * dk, tintDark, tinted, 0.42, life, 2, at, 1, 4.5);
+    puff(C, wx, e.baseY + 0.9, wz, (R() - 0.5) * 1.4, 0.8 + R() * 0.6, (R() - 0.5) * 1.4,
+      1.3, 0.3 + R() * 0.25, 1.0, life, 0.55 * low * dk, (1.35 + R() * 0.35) * low * dk, tintDark, tinted, 0.36, life, 2, at, 1, 4.5,
+      BODY_DUST);
+  }
+  // 4. (fx 8e: "dust that doesn't linger and settle") the pall it leaves: as the skirt and the body thin, a few broad thin
+  //    sheets of the finest powder lie low over the pile and round it, fading in under them, drifting downwind and
+  //    settling for the better part of half a minute — never tall (it hides nothing: the walls are down by then)
+  const pallN = Math.round(Math.min(7, 4 + perim / 16));
+  for (let i = 0; i < pallN; i++) {
+    const a = (i / pallN) * TAU + R() * 0.8, r = (0.2 + 0.7 * R()) * low;
+    const life = 18 + R() * 6;
+    puff(C, e.cx + Math.cos(a) * r, e.baseY + 0.6, e.cz + Math.sin(a) * r, Math.cos(a) * 0.6, 0.05, Math.sin(a) * 0.6,
+      0.8, -0.04, 1.0, life, 0.6 * low * dk, (0.95 + R() * 0.25) * low * dk, tinted, tinted, 0.26, life, 3,
+      frontEnd + 1.0 + R() * 1.5, 2.6 + R() * 0.6, 1.8, PALL_DUST);
   }
 }
 
