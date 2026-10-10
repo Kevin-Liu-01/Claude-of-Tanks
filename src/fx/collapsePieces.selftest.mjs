@@ -123,6 +123,9 @@ for (const { label, a, parts } of anatomies) {
       for (const v of [...p.center, ...p.rotation, p.massKg, p.releaseS, ...p.kick, ...p.kickAt]) finite(v, `${label} piece ${p.index}`);
       assert.ok(p.massKg > 0 && p.boxes.every((b) => b.half.every((v) => v > 0.01)), `${label}: piece ${p.index} has mass and size`);
       assert.ok(Math.abs(Math.hypot(...p.rotation) - 1) < 1e-6, `${label}: piece ${p.index}'s rotation is a unit quaternion`);
+      assert.ok(p.parts.length < PART_STRIDE, `${label}: piece ${p.index} has fewer parts (${p.parts.length}) than a key's stride`);
+      assert.ok(!p.parts.length || (!!p.partFrame && p.parts.length === (p.partCutsU.length + 1) * (p.partCutsY.length + 1)),
+        `${label}: piece ${p.index}'s parts are its cuts' grid in its part frame`);
       // inside the building's envelope (a metre's margin for the eaves and a jetty)
       assert.ok(Math.abs(p.center[0] - plan.cx) < a.w / 2 + 1.2 && Math.abs(p.center[2] - plan.cz) < a.d / 2 + 1.2 && p.center[1] > 0 && p.center[1] < a.h + 1,
         `${label}: piece ${p.index} (${p.kind}) inside the building (${p.center.map((v) => v.toFixed(2))})`);
@@ -183,7 +186,7 @@ for (const { label, a, parts } of anatomies) {
         for (let i = 0; i < list.length; i += 18) {
           const cx = (list[i] + list[i + 6] + list[i + 12]) / 3, cy = (list[i + 1] + list[i + 7] + list[i + 13]) / 3, cz = (list[i + 2] + list[i + 8] + list[i + 14]) / 3;
           const dd = Math.hypot(cx - p.center[0], cy - p.center[1], cz - p.center[2]);
-          assert.ok(dd < reach, `${label}: a triangle of piece ${piece} (${p.kind}) lies ${dd.toFixed(2)} m from its centre (reach ${reach.toFixed(2)})`);
+          assert.ok(dd < reach, `${label}: a triangle of piece ${piece} (${p.kind}, part ${part}) lies ${dd.toFixed(2)} m from its centre (reach ${reach.toFixed(2)}; at ${[cx, cy, cz].map((v) => v.toFixed(2))}, centre ${p.center.map((v) => v.toFixed(2))}, slab ${slab ? plan.roof.indexOf(slab) : -1})`);
         }
       }
       assert.ok(Math.abs(after - before) <= 1e-6 * Math.max(1, before) + 1e-6, `${label}: the partition keeps the area (${before.toFixed(4)} → ${after.toFixed(4)} m²)`);
