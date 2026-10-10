@@ -882,7 +882,7 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
     }
     // the armour under the point itself; its neighbours' only over a slot or a bolt head (their highest on a sloped plate
     // would hold the net off the slope)
-    return { rest: centre !== null && rest !== null && rest - centre < 0.02 ? rest : centre ?? rest, standing };
+    return { rest: centre !== null && rest !== null && rest - centre < 0.01 ? rest : centre ?? rest, standing };
   };
   const authoredAt = (x: number, z: number, k: number): number => {
     if (panel.yFromArmour && probe) {
@@ -1248,10 +1248,12 @@ function foldAt(f: FoldField, u: number, below: number): number {
 }
 
 /** The netting lane: how far under a laid net's level armour still holds it (m), and the step a laid cell never spans. */
-const LAID_DROP_M = 0.35;
+const LAID_DROP_M = 0.6;
 const LAID_STEP_M = 0.25;
 /** The netting lane: how far off its authored plane a hanging face net still finds its face (m). */
 const FACE_REACH_M = 0.3;
+/** The netting lane: how far off the running gear's surfaces a hull suit keeps (m). */
+const GEAR_KEEP_M = 0.035;
 /** The netting lane: a field suit's drape hangs this close to its wall (m; the older suits keep HANG_GAP_M). */
 const FIELD_HANG_GAP_M = 0.009;
 /**
@@ -1599,7 +1601,8 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
         return r === null ? null : r + DRAPE_GAP_M;
       })(), start, yFrom, hemY, support.clothOk ? FIELD_HANG_GAP_M : HANG_GAP_M,
       start ? -Infinity : outAt(z, 1) - (support.clothOk ? FIELD_FLANK_REACH_M : FLANK_REACH_M),
-      (o) => probe.top(side * o, z));
+      // the netting lane: a lip over the wall's top never lies on a lid
+      (o) => (rollMeetsLid(support.lids, side * o, side * o, z, z) ? null : probe.top(side * o, z)));
       // the netting lane: under a roof net's edge with no wall outboard to lie on (a turret's sides sloping in under
       // its roof), the cloth falls free from that edge
       const free = !sec && start && support.clothOk && !panel.tiedTop ? freeHang(start, hemY) : null;
@@ -1693,7 +1696,9 @@ function faceCloth(panel: FacePanel, cfg: GhillieConfig, support: OwnerSupport, 
       const sec = curtainSection(faceAt, (o) => support.roof(x, facing * o) ?? (() => {
         const r = probe.topNear(x, facing * o, 0.03);
         return r === null ? null : r + gap;
-      })(), start, yFrom, hemY, gap, -Infinity, (o) => probe.top(x, facing * o));
+      })(), start, yFrom, hemY, gap, -Infinity,
+      // the netting lane: a lip over the face's top never lies on a lid
+      (o) => (rollMeetsLid(support.lids, x, x, facing * o, facing * o) ? null : probe.top(x, facing * o)));
       // the netting lane: under a roof net's edge with no face behind it to lie on, the cloth falls free from that edge
       return sec ?? (start && support.clothOk ? freeHang(start, hemY) : null);
     },
@@ -3394,16 +3399,31 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number): FieldClearanc
     const was = deck.get(d);
     if (was === undefined || y > was) deck.set(d, y);
   });
-  // the running gear: no hull suit point within a cell or so (4-8 cm) of it
-  const GEAR_CELL = 0.04;
-  const gearCells = new Set<number>();
+  // the running gear: no hull suit point within GEAR_KEEP_M of its triangles (a drape outside a skirt hangs a skirt's
+  // thickness off the track behind it, and stays)
+  const GEAR_CELL = 0.1;
+  const gearTri = ownerTriangles(hull, [turret, gun], hull, (mesh) => notSuit(mesh) && keptOffGear(mesh));
+  const gearCells = new Map<number, number[]>();
   const gearKey = (i: number, j: number, k: number): number => ((i + 512) * 1024 + (j + 512)) * 1024 + (k + 512);
-  forTrianglePoints(ownerTriangles(hull, [turret, gun], hull, (mesh) => notSuit(mesh) && keptOffGear(mesh)), GEAR_CELL,
-    (x, y, z) => { gearCells.add(gearKey(Math.floor(x / GEAR_CELL), Math.floor(y / GEAR_CELL), Math.floor(z / GEAR_CELL))); });
+  for (let t = 0; t < gearTri.length; t += 9) {
+    const lo = [0, 1, 2].map((a) => Math.floor((Math.min(gearTri[t + a], gearTri[t + 3 + a], gearTri[t + 6 + a]) - GEAR_KEEP_M) / GEAR_CELL));
+    const hi = [0, 1, 2].map((a) => Math.floor((Math.max(gearTri[t + a], gearTri[t + 3 + a], gearTri[t + 6 + a]) + GEAR_KEEP_M) / GEAR_CELL));
+    if ((hi[0] - lo[0] + 1) * (hi[1] - lo[1] + 1) * (hi[2] - lo[2] + 1) > 4000) continue;
+    for (let i = lo[0]; i <= hi[0]; i++) for (let j = lo[1]; j <= hi[1]; j++) for (let k = lo[2]; k <= hi[2]; k++) {
+      const key = gearKey(i, j, k), list = gearCells.get(key);
+      if (list) list.push(t); else gearCells.set(key, [t]);
+    }
+  }
+  const gtri = new THREE.Triangle(), ga = new THREE.Vector3(), gb = new THREE.Vector3(), gc = new THREE.Vector3();
+  const gq = new THREE.Vector3(), gp = new THREE.Vector3();
   const nearGear = (p: readonly number[]): boolean => {
-    const i0 = Math.floor(p[0] / GEAR_CELL), j0 = Math.floor(p[1] / GEAR_CELL), k0 = Math.floor(p[2] / GEAR_CELL);
-    for (let i = i0 - 1; i <= i0 + 1; i++) for (let j = j0 - 1; j <= j0 + 1; j++) for (let k = k0 - 1; k <= k0 + 1; k++) {
-      if (gearCells.has(gearKey(i, j, k))) return true;
+    const list = gearCells.get(gearKey(Math.floor(p[0] / GEAR_CELL), Math.floor(p[1] / GEAR_CELL), Math.floor(p[2] / GEAR_CELL)));
+    if (!list) return false;
+    gq.set(p[0], p[1], p[2]);
+    for (const t of list) {
+      gtri.set(ga.set(gearTri[t], gearTri[t + 1], gearTri[t + 2]), gb.set(gearTri[t + 3], gearTri[t + 4], gearTri[t + 5]),
+        gc.set(gearTri[t + 6], gearTri[t + 7], gearTri[t + 8]));
+      if (gtri.closestPointToPoint(gq, gp).distanceTo(gq) < GEAR_KEEP_M) return true;
     }
     return false;
   };
@@ -3491,12 +3511,17 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number): FieldClearanc
     const d = Math.hypot(dy, dz);
     if (d < 1e-6) return true;
     const phi = Math.atan2(dy, dz);
-    const theta = THREE.MathUtils.clamp(phi, lo, hi);
-    const e = gunBox(d * Math.cos(phi - theta));
-    if (!e) return false;
-    // the point's offset off the bore at that pitch: above (+) or below (-) it
-    const off = d * Math.sin(phi - theta);
-    return lateral > e[0] - margin && lateral < e[1] + margin && off < e[2] + rise && -off < e[3] + rise;
+    // the pitch bringing the bore nearest the point, and the one bringing the breech nearest it (a point behind the
+    // trunnion meets the breech end, which dips as the muzzle rises)
+    const back = phi > 0 ? phi - Math.PI : phi + Math.PI;
+    for (const theta of [THREE.MathUtils.clamp(phi, lo, hi), THREE.MathUtils.clamp(back, lo, hi)]) {
+      const e = gunBox(d * Math.cos(phi - theta));
+      if (!e) continue;
+      // the point's offset off the bore at that pitch: above (+) or below (-) it
+      const off = d * Math.sin(phi - theta);
+      if (lateral > e[0] - margin && lateral < e[1] + margin && off < e[2] + rise && -off < e[3] + rise) return true;
+    }
+    return false;
   };
   const netOk = (owner: GhillieOwner, p: readonly number[]): boolean => {
     if (owner === 'hull') {

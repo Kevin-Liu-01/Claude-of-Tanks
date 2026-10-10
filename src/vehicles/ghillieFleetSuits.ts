@@ -29,10 +29,14 @@ const pair = (x0: number, x1: number, z0: number, z1: number): Point2[][] => [re
  */
 const WOODLAND = { light: 0x6f7e4b, dark: 0x33462d, netColor: 'rgba(40,54,32,0.82)', netTextureSeed: 1101 } as const;
 
-/** A roof or deck net laid over its owner's armour, ending at the armour's edges and opened round its lids. */
+/**
+ * A roof or deck net laid over its owner's armour, ending at the armour's edges and opened round its lids; its rolls at
+ * those openings half the hanging nets' (between two openings close together the rolls meet, and the cloth there must
+ * still lie on the plate).
+ */
 function laid(panel: Omit<TopPanel, 'yAt'> & { y?: number }): TopPanel {
   const { y = 0.5, ...rest } = panel;
-  return { yAt: () => y, yFromArmour: true, clipToArmour: true, autoOpeningsM: 0.07, ...rest };
+  return { yAt: () => y, yFromArmour: true, clipToArmour: true, autoOpeningsM: 0.07, rimScale: 0.5, ...rest };
 }
 
 /**
