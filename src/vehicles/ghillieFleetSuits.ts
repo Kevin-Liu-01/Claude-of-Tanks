@@ -391,6 +391,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   cn_t80u_modern: {
     id: 'cn_t80u_modern', seed: 8031, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.37, hemFloorM: 0.93,
+    // the drone dock on the roof's left (its pad cantilevered over the side): the only seat the generator finds once the
+    // roof is netted, so the net and garnish give way round its cradle and its airframe's launch column
+    dockKeepOut: { frame: 'turret', boxes: [[-1.59, -0.67, 0.621, 0.919, -0.37, 0.05], [-1.777, -0.963, 0.811, 13.175, -0.567, 0.247]] },
     turret: {
       // open round the bustle sides' insignia and number (their seats lie on the plates sloping into the roof)
       top: [laid({ x0: -1.73, x1: 1.73, z0: -2.03, z1: 1.40, nx: 43, nz: 43, y: 0.74,
@@ -434,6 +437,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   leclerc_xlr: {
     id: 'leclerc_xlr', seed: 5502, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.03, hemFloorM: 0.86,
+    // the drone dock on the bustle's left: the only seat the generator finds once the roof is netted, so the net and
+    // garnish give way round its cradle and its airframe's launch column
+    dockKeepOut: { frame: 'turret', boxes: [[-0.684, -0.243, 0.61, 0.839, -1.886, -1.466], [-0.87, -0.057, 0.731, 13.095, -2.083, -1.269]] },
     turret: {
       top: [laid({ x0: -1.68, x1: 1.58, z0: -2.63, z1: 1.99, nx: 41, nz: 58, y: 0.72, garnishRiseM: 0.16, seed: 11 })],
       side: flanks(-0.90, 0.95, 0.76, 0.42, 1.65, 17),

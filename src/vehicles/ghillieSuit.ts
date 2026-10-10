@@ -179,6 +179,14 @@ export interface GhillieConfig {
    */
   fieldClearanceM?: number;
   /**
+   * The netting lane (2026-10-10, the regenerated mission seats): a drone dock the suit keeps clear, as boxes
+   * [x0, x1, y0, y1, z0, z1] in the dock's frame (missionAttachmentSeats.generated.ts: a turret seat is in the turret's
+   * own space, a hull seat in the vehicle root's). No cloth or garnish point of that owner stands in a box. Set where the
+   * suit covers every other seat the generator finds; ghillieSuit.selftest holds each box to its seat record and the
+   * sim's dock volumes (cradle, airframe and launch column). Needs fieldClearanceM.
+   */
+  dockKeepOut?: { readonly frame: 'turret' | 'hull'; readonly boxes: readonly (readonly number[])[] };
+  /**
    * The netting lane: the seed of the painted net texture (default: the suit's seed). Suits sharing one share a single
    * texture pair (camoNetTexture.ts caches by theatre and seed); each panel's own offset keeps them from matching.
    */
@@ -3365,11 +3373,26 @@ interface FieldClearance {
   addHullSuit(): void;
 }
 
-function fieldClearance(P: GhillieBuilderPort, clearance: number): FieldClearance {
+function fieldClearance(P: GhillieBuilderPort, clearance: number, dock?: GhillieConfig['dockKeepOut']): FieldClearance {
   const hull = P.hullG, turret = P.turretG, gun = P.gunG;
   // the rigs may be siblings under the vehicle's root: bring every frame up to date before reading any
   for (const g of [hull, turret, gun]) g.updateWorldMatrix(true, true);
   const toHull = new THREE.Matrix4().copy(hull.matrixWorld).invert();
+  // the drone dock's keep-out boxes in the owner's space: a turret seat's frame is the turret's own, a hull seat's the
+  // vehicle root's (brought into the hull's space corner by corner; the rigs carry no rotation at the build)
+  const dockOwner: GhillieOwner | null = dock ? (dock.frame === 'turret' ? 'turret' : 'hull') : null;
+  const dockBoxes: THREE.Box3[] = (dock?.boxes ?? []).map((b) => {
+    const box = new THREE.Box3(new THREE.Vector3(b[0], b[2], b[4]), new THREE.Vector3(b[1], b[3], b[5]));
+    const root = hull.parent;
+    return dock!.frame === 'hull' && root ? box.applyMatrix4(new THREE.Matrix4().multiplyMatrices(toHull, root.matrixWorld)) : box;
+  });
+  const dockPoint = new THREE.Vector3();
+  const inDock = (owner: GhillieOwner, p: readonly number[]): boolean => {
+    if (owner !== dockOwner) return false;
+    dockPoint.set(p[0], p[1], p[2]);
+    for (const box of dockBoxes) if (box.containsPoint(dockPoint)) return true;
+    return false;
+  };
   const pivot = new THREE.Vector3().setFromMatrixPosition(turret.matrixWorld).applyMatrix4(toHull);
   // what the turret and the hull each occupy through the traverse, by radius from the turret's axis and height in the
   // turret's frame (2 cm cells, -2 m to 4 m): a suit point of one is refused where the other occupies its cell or a
@@ -3536,7 +3559,7 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number): FieldClearanc
     }
     return false;
   };
-  const netOk = (owner: GhillieOwner, p: readonly number[]): boolean => {
+  const workingOk = (owner: GhillieOwner, p: readonly number[]): boolean => {
     if (owner === 'hull') {
       const dx = p[0] - pivot.x, dz = p[2] - pivot.z, r = Math.hypot(dx, dz);
       const qy = p[1] - pivot.y;
@@ -3582,6 +3605,8 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number): FieldClearanc
     }
     return true;
   };
+  // and never inside the drone dock's boxes (cloth, garnish and every card vertex: dockKeepOut)
+  const netOk = (owner: GhillieOwner, p: readonly number[]): boolean => !inDock(owner, p) && workingOk(owner, p);
   const lenses: Partial<Record<GhillieOwner, Float64Array>> = {}, smoke: Partial<Record<GhillieOwner, Float64Array>> = {};
   const ownerOf = (o: GhillieOwner): [THREE.Object3D, THREE.Object3D[]] => (o === 'hull' ? [hull, [turret, gun]] : o === 'turret' ? [turret, [gun]] : [gun, []]);
   /** Whether p lies in a cone or tube along a run of [origin, axis] rows. */
@@ -3598,6 +3623,8 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number): FieldClearanc
     return false;
   };
   const linesOk = (owner: GhillieOwner, p: readonly number[]): boolean => {
+    // a card's face, sampled densely, keeps out of the dock's boxes too (a card can straddle a thin cradle rail)
+    if (inDock(owner, p)) return false;
     const [parent, others] = ownerOf(owner);
     if (inLine(lenses[owner] ??= ownerLenses(parent, others), p, LENS_REACH_M, 0.06, LENS_TAN, true)) return false;
     return !inLine(smoke[owner] ??= ownerSmokeLines(parent, others), p, SMOKE_REACH_M, SMOKE_LINE_M, 0.08);
@@ -3987,7 +4014,7 @@ function buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): void {
   ];
   // the netting lane: the working vehicle's clearances, read once off the assembled build (the hull's top re-read
   // before the turret's suit, so that suit also clears the hull's)
-  const clearance = cfg.fieldClearanceM !== undefined ? fieldClearance(P, cfg.fieldClearanceM) : null;
+  const clearance = cfg.fieldClearanceM !== undefined ? fieldClearance(P, cfg.fieldClearanceM, cfg.dockKeepOut) : null;
   for (const [owner, parent, others] of owners) {
     const panels = cfg[owner];
     if (!panels) continue;
