@@ -72,7 +72,14 @@ try {
     // compound's discs) with fewer stands than the target, each seated full; the DC's compound stays their clearing
     const lw = world.group.userData.landscapeWoods;
     assert.ok(lw && lw.standTrees >= lw.standBudget && lw.stands < lw.target, `the spurs' woods hold their budget (${JSON.stringify(lw)})`);
-    assert.ok(Math.abs(total - 8560) <= 0.03 * 8560, `the woods keep the field law's count (8560 -> ${total})`);
+    // (the treescn lane, 2026-10-09: the field law's count measured on the same tree — the map without the hook — not a
+    // pinned number: main's placements since the hook was written, the deployments' clearings among them, moved the
+    // field law's count from 8,560 to about 8,070)
+    const plainCfg = { ...cfg, vegetation: { ...veg, landscapeWoods: undefined } };
+    const plain = createVegetation(createHeightField(1337, plainCfg), { setupShadowMaterial() {} }, 2001, plainCfg);
+    const fieldLaw = plain._trees.length;
+    plain.dispose(); disposeObject3DResources(plain.group);
+    assert.ok(Math.abs(total - fieldLaw) <= 0.03 * fieldLaw, `the woods keep the field law's count (${fieldLaw} -> ${total})`);
     for (const av of veg.avoid) {
       const inside = world._trees.filter((t) => Math.hypot(t.mat.elements[12] - av.x, t.mat.elements[14] - av.z) < av.r).length;
       assert.equal(inside, 0, `no tree in the compound's disc at (${av.x}, ${av.z})`);
