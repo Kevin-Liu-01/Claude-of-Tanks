@@ -1242,6 +1242,14 @@ function buildLogEarthPillbox(O: BuildOpts): THREE.BufferGeometry {
   }
   // the slit's dark and its log lintel
   m.quad([-slitHW, slitY - slitHH, Z - 0.25], [slitHW, slitY - slitHH, Z - 0.25], [slitHW, slitY + slitHH, Z - 0.25], [-slitHW, slitY + slitHH, Z - 0.25], () => [0.005, 0.005, 0.005], false, [0, 0, 1]);
+  // the dark of the room through the rear doorway, its frame posts and lintel, two bags at the threshold
+  if (!O.broken) {
+    m.quad([0.5, GRADE - 0.05, -Z + 0.35], [-0.5, GRADE - 0.05, -Z + 0.35], [-0.5, GRADE + 1.5, -Z + 0.35], [0.5, GRADE + 1.5, -Z + 0.35], () => [0.006, 0.006, 0.006], false, [0, 0, -1]);
+    for (const x of [-0.55, 0.55]) log(m, [x, GRADE - 0.1, -Z - 0.05], [x, GRADE + 1.55, -Z - 0.05], 0.09, 6, bark, endGrain);
+    log(m, [-0.75, GRADE + 1.6, -Z - 0.05], [0.75, GRADE + 1.6, -Z - 0.05], 0.1, 6, bark, endGrain);
+    const brng = mulberry32(O.seed + 17);
+    for (const x of [-0.95, 0.95]) placeBag(m, brng, x, GRADE + 0.1, -Z - 0.45, 0, T.bag, 0);
+  }
   if (!O.broken) {
     // the roof: two layers of logs across, then the earth over them, a turfed mound to the slit's brow
     for (let i = 0; i < 18; i++) {
