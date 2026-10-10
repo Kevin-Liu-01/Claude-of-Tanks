@@ -125,8 +125,9 @@ for (const line of [
 ]) assert.ok(source.includes(line.replace(/\s+/g, ' ')), `the material: ${line}`);
 // (the old law, exactly, where every gain is 0: the worked carriageway's block is skipped, the floor clamps to 1, the old
 // grey pull holds and the lanes keep their whole darkening)
-assert.ok(source.includes('if (dW > 0.002 && wR > 0.002 && uRoadSurf.x + uRoadSurf.y + uRoadSurf.z + uRoadSurfB.x > 0.0) {'),
-  'the worked carriageway runs only where a gain is set');
+assert.ok(source.includes('if (dW > 0.002 && wR > 0.002 && uRoadSurf.x + uRoadSurf.y + uRoadSurf.z + uRoadSurfB.x > 0.0 && uLandTier > 0.5) {'),
+  'the worked carriageway runs only where a gain is set, and never on the Low tier (the phones keep the old law)');
+assert.ok(source.includes('if (uLandTier < 0.5) pCls = gRoadClass > 0.5 && gRoadClass < 3.5 ? gRoadClass : 0.0;'), 'Low paves by the old law');
 assert.ok(source.includes('uRoadSurfB.y > 0.0 ? 0.12 : 0.26'), 'the old grey pull without a tone floor');
 
 console.log('roadSurfaces: the catalogue\'s classes and maps, the protected maps\' old law, the layout\'s catalogued paths, the road frame layer\'s running length and heading, its stack address and the material\'s reads PASS; no GPU/art claim');
