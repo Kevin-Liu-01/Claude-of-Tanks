@@ -100,17 +100,17 @@ export async function vehicleGroundGlslCases() {
   };
   // the GLSL's shade (round 4): 1 − occ·ambShare − (1 − ambShare)·sunCut, the core past the cap, the band's shadow and the
   // berm's slopes on the sun share; `hulls` the receiver in each hull's frame, `ambShare` the pixel's
-  const shade = (hulls, n, card, ambShare, sun, snow, strengths, runs = null) => {
+  const shade = (hulls, n, card, ambShare, sun, snow, strengths, runs = null, rho = 0.25) => {
     const per = [], cores = [];
     let band = 0, berm = 1;
     for (const q of hulls) {
       if (!receives(q, runs) || M.isRunShoe(q, T90M, card, runs)) continue;
-      per.push(M.vehicleGroundOcclusionLocal(q, n, T90M, strengths, card, runs));
+      per.push(M.vehicleGroundOcclusionLocal(q, n, T90M, strengths, card, runs, M.groundWallSoft(rho)));
       cores.push(M.contactCoreOcclusion(q, T90M, runs));
       band = Math.max(band, M.shoeBandSunShadow(q, T90M, sun, runs));
       berm *= M.snowBermGain(q, n, T90M, sun, snow, runs);
     }
-    const occ = M.combineVehicleGroundOcclusion(per, 0, Math.max(0, ...cores));
+    const occ = M.combineVehicleGroundOcclusion(per, 0, Math.max(0, ...cores), M.groundOcclusionCap(rho));
     const sunCut = 1 - (1 - band) * berm;
     if (occ <= 0.003 && Math.abs(sunCut) <= 0.003) return 0;
     return occ * ambShare + (1 - ambShare) * sunCut;
@@ -141,7 +141,7 @@ export async function vehicleGroundGlslCases() {
     name: 'snow under a sun, a second hull 6 m to the right',
     input: { ...base, ...pack([rootAt(0), rootAt(6)], 0.8, M.GROUND_AO_HULL_ALBEDO), sunLum: kSun },
     expected: receivers.map(([, p, nrm, card]) => shade([vec(p), { x: p[0] - 6, y: p[1], z: p[2] }], vec(nrm), card,
-      card ? cardShare(vec(p)) : 1 / (1 + kSun * Math.max(nrm[1], 0)), UP, M.snowWeight(0.8), snow)),
+      card ? cardShare(vec(p)) : 1 / (1 + kSun * Math.max(nrm[1], 0)), UP, M.snowWeight(0.8), snow, null, 0.8)),
   };
   // the gear's (z, travel) pairs a side, hull-local: the right run climbing from its rear to 9 cm up at its front wheel,
   // the left's middle wheels drooped 4 cm (the band between them follows)

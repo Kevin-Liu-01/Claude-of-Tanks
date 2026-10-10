@@ -20,6 +20,7 @@ import {
   GROUND_AO_BAND_H_M, GROUND_AO_BAND_PEN_M, GROUND_AO_BAND_PEN_PER_M, GROUND_AO_BAND_REACH_M, GROUND_AO_BERM_H_M, GROUND_AO_BERM_W_M,
   GROUND_AO_CORE_FLAT, GROUND_AO_CORE_GAP_M, GROUND_AO_CORE_MAX, GROUND_AO_CORE_W_M, GROUND_AO_GRIME_H_M, GROUND_AO_GRIME_LANE_M, GROUND_AO_GRIME_MAX,
   GROUND_AO_SNOW_ALBEDO, GROUND_AO_WALL_SOFT, contactCoreOcclusion, shoeBandSunShadow, snowBermGain, snowWeight, vehicleGrime,
+  GROUND_AO_OCC_MAX_SNOW, groundOcclusionCap, groundWallSoft,
 } from './vehicleGroundOcclusion.ts';
 import { CONTACT_NORMAL_BREAK_PX, CONTACT_SHADOW_GLSL, contactNormalBroken } from './contactShadows.ts';
 import { T90M, T90M_RUN_TOP, UNION_POINTS } from './vehicleGroundOcclusion.test-support.mjs';
@@ -696,9 +697,15 @@ assert.ok(g.indexOf('float sd = dOut') < g.indexOf('if ( lane > 0.0 ) {') && g.i
 const u4 = createVehicleGroundOcclusionUniforms();
 updateVehicleGroundOcclusionUniforms(u4, [], true, 0.8);
 assert.deepEqual(u4.uVehGroundR4.value.toArray(), [1, 1, 1, 0], 'snow: the berm, no grime');
+assert.deepEqual(u4.uVehGroundR5.value.toArray(), [1, 1, GROUND_AO_OCC_MAX_SNOW, 0], 'snow: the broad share whole, the snow cap');
 updateVehicleGroundOcclusionUniforms(u4, [], true, 0.25);
 assert.deepEqual(u4.uVehGroundR4.value.toArray(), [1, 1, 0, 1], 'grass: the grime, no berm');
-assert.deepEqual(u4.uVehGroundR5.value.toArray(), [GROUND_AO_WALL_SOFT, 1, GROUND_AO_OCC_MAX, 0], 'the softening, the guard and the shipped cap');
+assert.deepEqual(u4.uVehGroundR5.value.toArray(), [GROUND_AO_WALL_SOFT, 1, GROUND_AO_OCC_MAX, 0], 'grass: the softening, the guard and the shipped cap');
+// (round 4, the other side) on snow the cap rises and the broad share stays whole; on grass, sand and dark ground they are the round's
+near(groundOcclusionCap(0.25), GROUND_AO_OCC_MAX, 1e-12, 'the cap on grass'); near(groundOcclusionCap(0.8), GROUND_AO_OCC_MAX_SNOW, 1e-12, 'on snow');
+near(groundWallSoft(0.25), GROUND_AO_WALL_SOFT, 1e-12, 'the softening on grass'); near(groundWallSoft(0.8), 1, 1e-12, 'none on snow');
+assert.ok(GROUND_AO_OCC_MAX_SNOW > GROUND_AO_OCC_MAX && GROUND_AO_OCC_MAX_SNOW <= 0.7, 'snow keeps more of its under-hull shade, never black');
+near(combineVehicleGroundOcclusion([0.99], 10, 0, groundOcclusionCap(0.8)), GROUND_AO_OCC_MAX_SNOW, 1e-12, 'a belly on snow: the snow cap');
 // the wiring: the grime on the hulls' own pixels after their cavities, before the ground's
 const grimeAt = post.indexOf('texel.rgb *= cotVehicleGrime( uCamPos + ray * rayT );');
 assert.ok(grimeAt > vehAt && grimeAt < groundAt, 'the grime after the cavities, before the ground');

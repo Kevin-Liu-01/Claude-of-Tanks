@@ -143,6 +143,14 @@ export const GROUND_AO_CONTACT_MAX = 0.6;
  * crease's core (GROUND_AO_CORE_MAX, past the cap) holds the contact line.
  */
 export const GROUND_AO_OCC_MAX = 0.35;
+/**
+ * Round 4, the other side (snow, the coordinator's check): a bright ground under a dark belly never reads near black — on
+ * winter main's under-hull shade was 0.64–0.74 of the open snow — and both critics on wave 340 asked for more of it there
+ * ("the snow between the wheels as bright as open snow"), so on snow (snowWeight) the cap rises to GROUND_AO_OCC_MAX_SNOW and
+ * the broad share keeps itself whole (GROUND_AO_WALL_SOFT → 1): at 0.35 and 0.7 the winter hulls' under-hull shade read 0.84–0.86
+ * of the open snow and lifted off it.
+ */
+export const GROUND_AO_OCC_MAX_SNOW = 0.65;
 export const GROUND_AO_CONTACT_SPREAD_M = 0.15;
 export const GROUND_AO_CONTACT_RISE_M = 0.25;
 /**
@@ -445,6 +453,16 @@ export function snowWeight(groundAlbedo: number): number {
   return smoothstep(GROUND_AO_SNOW_ALBEDO, GROUND_AO_SNOW_ALBEDO + 0.15, groundAlbedo);
 }
 
+/** Round 4: the joint cap on a ground of this albedo — GROUND_AO_OCC_MAX, GROUND_AO_OCC_MAX_SNOW on snow. */
+export function groundOcclusionCap(groundAlbedo: number): number {
+  return GROUND_AO_OCC_MAX + (GROUND_AO_OCC_MAX_SNOW - GROUND_AO_OCC_MAX) * snowWeight(groundAlbedo);
+}
+
+/** Round 4: the broad share's softening outside the footprint on a ground of this albedo — GROUND_AO_WALL_SOFT, whole on snow. */
+export function groundWallSoft(groundAlbedo: number): number {
+  return GROUND_AO_WALL_SOFT + (1 - GROUND_AO_WALL_SOFT) * snowWeight(groundAlbedo);
+}
+
 /**
  * Round 4: the snow berm's gain on a receiver's sun share (1: flat ground) — the parabola GROUND_AO_BERM_H_M high over
  * GROUND_AO_BERM_W_M beyond a run's outer face along its ground run, at the run's foot; `n` the receiver's normal and `s`
@@ -531,10 +549,10 @@ export function vehicleGroundOcclusionLocal(
 /** Several hulls hide the sky as independent occluders, the joint share capped at GROUND_AO_OCC_MAX, then (round 4) the
  * contact line's core (the hulls' largest; contactCoreOcclusion) by the larger, past the cap; the selection's range fade
  * on the result. */
-export function combineVehicleGroundOcclusion(perHull: readonly number[], distance: number, core = 0): number {
+export function combineVehicleGroundOcclusion(perHull: readonly number[], distance: number, core = 0, cap = GROUND_AO_OCC_MAX): number {
   let vis = 1;
   for (const occ of perHull) vis *= 1 - clamp01(occ);
-  return Math.max(Math.min(1 - vis, GROUND_AO_OCC_MAX), clamp01(core))
+  return Math.max(Math.min(1 - vis, cap), clamp01(core))
     * (1 - smoothstep(GROUND_AO_RANGE_M - GROUND_AO_FADE_M, GROUND_AO_RANGE_M, distance));
 }
 
@@ -876,8 +894,8 @@ export function updateVehicleGroundOcclusionUniforms(
   const snow = snowWeight(groundAlbedo);
   u.uVehGroundR4.value.set(Math.max(lightTune('GROUND_AO_CORE', 1), 0), lightTune('GROUND_AO_BAND', 1) > 0 ? 1 : 0,
     snow * Math.max(lightTune('GROUND_AO_BERM', 1), 0), (1 - snow) * Math.max(lightTune('GROUND_AO_GRIME', 1), 0));
-  u.uVehGroundR5.value.set(clamp01(lightTune('GROUND_AO_WALL_SOFT', GROUND_AO_WALL_SOFT)), lightTune('GROUND_AO_NORMAL_GUARD', 1) > 0 ? 1 : 0,
-    clamp01(lightTune('GROUND_AO_OCC_CAP', GROUND_AO_OCC_MAX)), 0);
+  u.uVehGroundR5.value.set(clamp01(lightTune('GROUND_AO_WALL_SOFT', groundWallSoft(groundAlbedo))), lightTune('GROUND_AO_NORMAL_GUARD', 1) > 0 ? 1 : 0,
+    clamp01(lightTune('GROUND_AO_OCC_CAP', groundOcclusionCap(groundAlbedo))), 0);
   let n = 0;
   if (enabled && roots) {
     for (let i = 0; i < roots.length && n < GROUND_AO_MAX_HULLS; i++) {
