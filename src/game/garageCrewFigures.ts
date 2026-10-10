@@ -251,7 +251,9 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
   const scale = (pose.height ?? STATURE_M) / STATURE_M;
   const parts: THREE.BufferGeometry[] = [];
   const pelvis = vec(pose.pelvis);
-  const [hipYaw, hipPitch, hipRoll] = pose.hips ?? [0, 0, 0];
+  // nobody stands symmetric: a little weight on one hip and a tilt of the head, seeded by the pose itself
+  const lean = Math.sin((pose.pelvis[0] * 13.1 + pose.leftFoot[2] * 7.3 + pose.rightFoot[0] * 5.7) * 9.17) * 0.035;
+  const [hipYaw, hipPitch, hipRoll] = pose.hips ?? [0, 0, lean];
   const [bend, twist, side] = pose.spine ?? [0, 0, 0];
   const hipQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(hipPitch, hipYaw, hipRoll, 'YXZ'));
   const spineQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(bend, twist, side, 'YXZ'));
@@ -282,6 +284,9 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
     block(parts, inChest(x, 0.405, 0.148), [0.08 * scale, 0.026 * scale, 0.012 * scale], chestQ, dress.trim);
   }
   block(parts, inChest(0, 0.3, 0.14), [0.022 * scale, 0.36 * scale, 0.01 * scale], chestQ, dress.trim);
+  for (const x of [-0.088, 0.088]) {
+    block(parts, inChest(x, 0.445, 0.146), [0.086 * scale, 0.022 * scale, 0.008 * scale], chestQ, shade(dress.coverall, 1.45));
+  }
   const collar = new THREE.CylinderGeometry(0.075, 0.09, 0.04, 10, 1, true);
   _m.compose(inChest(0, 0.53, 0.0), chestQ, _s.set(scale, scale, scale * 0.85));
   parts.push(finish(collar, dress.trim, _m));
@@ -291,7 +296,7 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
   // neck and head
   const neckBase = inChest(0, NECK_BASE_Y, 0.0);
   const [headPitch, headYaw] = pose.head ?? [0, 0];
-  const headQ = chestQ.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(headPitch, headYaw, 0, 'YXZ')));
+  const headQ = chestQ.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(headPitch, headYaw, -lean * 1.6, 'YXZ')));
   const neckTop = neckBase.clone().add(new THREE.Vector3(0, 0.075 * scale, 0.01 * scale).applyQuaternion(headQ));
   limb(parts, neckBase, neckTop, 0.05 * scale, 0.047 * scale, dress.skin, 7);
   const headCenter = neckTop.clone().add(new THREE.Vector3(0, 0.095 * scale, 0.012 * scale).applyQuaternion(headQ));
@@ -525,7 +530,7 @@ function crewDressBase(nation: CrewNation, variant: number, skin: number, hairCo
     case 'ru':
       // Russian Army mechanics: dark olive work suits; tank crews in the padded shlemofon
       return {
-        coverall: variant % 2 ? 0x3e4433 : 0x353b30, trim: shade(variant % 2 ? 0x3e4433 : 0x353b30, 0.8), skin, hair: hairColor,
+        coverall: variant % 2 ? 0x4a513d : 0x414839, trim: shade(variant % 2 ? 0x4a513d : 0x414839, 0.8), skin, hair: hairColor,
         boots: 0x1b1714, gloves: variant % 3 === 0 ? 0x2b2a26 : 0x4a4436,
         headgear: headgear ?? (variant % 2 ? 'shlemofon' : 'watch-cap'), headColor: variant % 2 ? 0x2a2620 : 0x2f3329,
       };
@@ -539,7 +544,7 @@ function crewDressBase(nation: CrewNation, variant: number, skin: number, hairCo
     case 'de':
       // Bundeswehr workshop: olive coveralls, field caps
       return {
-        coverall: variant % 2 ? 0x4b4f3c : 0x444837, trim: shade(variant % 2 ? 0x4b4f3c : 0x444837, 0.8), skin, hair: hairColor,
+        coverall: variant % 2 ? 0x565b45 : 0x4e533f, trim: shade(variant % 2 ? 0x565b45 : 0x4e533f, 0.8), skin, hair: hairColor,
         boots: 0x1c1a17, gloves: 0x2d2c28,
         headgear: headgear ?? (variant % 2 ? 'patrol-cap' : 'bare'), headColor: 0x41453a,
       };
@@ -547,7 +552,7 @@ function crewDressBase(nation: CrewNation, variant: number, skin: number, hairCo
     default:
       // ROK Army maintainers: olive-drab coveralls, patrol caps
       return {
-        coverall: variant % 2 ? 0x474d3a : 0x3f4535, trim: shade(variant % 2 ? 0x474d3a : 0x3f4535, 0.8), skin, hair: hairColor,
+        coverall: variant % 2 ? 0x535a43 : 0x4a503d, trim: shade(variant % 2 ? 0x535a43 : 0x4a503d, 0.8), skin, hair: hairColor,
         boots: 0x1d1a16, gloves: variant % 3 === 0 ? 0x2b2a27 : 0x5d5848,
         headgear: headgear ?? 'patrol-cap', headColor: 0x3b4134,
       };
