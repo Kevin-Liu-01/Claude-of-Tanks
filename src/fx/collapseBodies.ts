@@ -82,10 +82,12 @@ export interface CollapseBodies {
   /**
    * The building comes down as bodies: false when it cannot (no storeys, too few pieces) and the caller keeps its
    * scripted collapse. `standing` are the stage runs that stood with it (a breach's rim and room): they are cut with it
-   * and the caller drops them.
+   * and the caller drops them. `ready` runs when its pieces stand in its place (the caller hides it then): at once for a
+   * building whose cut was laid ahead; a building felled whole by one blow finishes its cut over the next frames
+   * (4 ms a frame, a third of a second at most) and stands, in the blow's dust, until then.
    */
   collapse(seam: StructureDamageSeam, e: CollapseBodiesEvent, standing: readonly THREE.Mesh[],
-    materialFor?: (bucket: string) => THREE.Material | null): boolean;
+    materialFor?: (bucket: string) => THREE.Material | null, ready?: () => void): boolean;
   /** The fx clock's delta: the pool steps, every piece follows its body; preparations advance within their budget. */
   update(dtS: number): void;
   /** Collapses in flight (their pieces not all baked). */
@@ -224,7 +226,12 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
   const falling = new Set<number>();
   const stubRecords_: CollisionRecord[] = [];
   const breaking: Array<{ c: LiveCollapse; p: LivePiece }> = [];
+  /** Collapses waiting for their cut (felled before it was laid): finished a little a frame, then brought down. */
+  const waiting: Array<{ seam: StructureDamageSeam; e: CollapseBodiesEvent; standing: readonly THREE.Mesh[]; resolve: (bucket: string) => THREE.Material | null;
+    ready: (() => void) | undefined; since: number; job: Prepared }> = [];
   let clockS = 0;
+  /** The waiting collapses' clock (it runs while nothing is live). */
+  let clockWait = 0;
   let bakedCount = 0;
   let wakeTimer = 0;
   let touch = 0;
@@ -548,10 +555,19 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
   }
 
   function collapse(seam: StructureDamageSeam, e: CollapseBodiesEvent, standing: readonly THREE.Mesh[],
-    resolve: (bucket: string) => THREE.Material | null = o.materialFor): boolean {
-    const anatomy: StructureDamageAnatomy = seam.anatomy;
+    resolve: (bucket: string) => THREE.Material | null = o.materialFor, ready?: () => void): boolean {
     const job = jobFor(seam, resolve);
     if (!job) return false;
+    if (job.plan.pieces.length < 3) { prepared.delete(seam.structureIdx); return false; }
+    // its cut laid ahead: down now; felled before: it waits for its cut, a little a frame
+    if (job.done && job.queue && !job.queue.length) { bringDown(job, seam, e, standing); ready?.(); return true; }
+    if (!waiting.some((w) => w.seam.structureIdx === seam.structureIdx)) waiting.push({ seam, e: { ...e }, standing, resolve, ready, since: clockWait, job });
+    return true;
+  }
+
+  /** The collapse itself, its cut laid: the plan with its blow, the meshes and the bodies. */
+  function bringDown(job: Prepared, seam: StructureDamageSeam, e: CollapseBodiesEvent, standing: readonly THREE.Mesh[]): void {
+    const anatomy: StructureDamageAnatomy = seam.anatomy;
     bind();
     const f = frameOf(anatomy);
     const { placement } = anatomy;
@@ -565,7 +581,6 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     };
     // the fall's plan: the same cut as the job's (its own stream), the blow's order and shoves
     const plan = planCollapsePieces(anatomy, blow, { cap: o.cap });
-    if (plan.pieces.length < 3) { prepared.delete(seam.structureIdx); return false; }
     // the rest of the cut now (a building that fell before its cut was laid), then the rims the breaches laid since
     advanceJob(job, Infinity);
     buildJob(job);
@@ -589,7 +604,6 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       rimBuilt = geometriesOf(rims, false);
     }
     for (const flat of expanded) flat.dispose();
-    if (!built.size) return false;
 
     // the collapse: its remnant (static, world space), its pieces (meshes in their parts' frames, bodies in the pool)
     const mound = anatomy.mound ?? null;
@@ -649,7 +663,6 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     }
     falling.add(anatomy.structureIdx);
     live.push(lc);
-    return true;
   }
 
   /** A panel's parts each into its own body: at their places on the panel now, with the panel's motion there. */
@@ -723,6 +736,21 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     prepare(seam, resolve = o.materialFor) { jobFor(seam, resolve); },
     collapse,
     update(dtS) {
+      clockWait += Math.max(0, dtS);
+      // the collapses waiting for their cut: 4 ms a frame, at most a third of a second, then down
+      for (let i = 0; i < waiting.length;) {
+        const w = waiting[i];
+        const deadline = clockWait - w.since > 0.33 ? Infinity : now() + 4;
+        if (!w.job.done) advanceJob(w.job, deadline);
+        if (w.job.done) buildJob(w.job, deadline);
+        if (w.job.done && w.job.queue && !w.job.queue.length) {
+          waiting.splice(i, 1);
+          bringDown(w.job, w.seam, w.e, w.standing);
+          w.ready?.();
+          continue;
+        }
+        i++;
+      }
       // the cuts laid ahead, within the frame's budget
       if (prepared.size) {
         const deadline = now() + budgetMs;
@@ -813,6 +841,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       prepared.clear();
       falling.clear();
       breaking.length = 0;
+      waiting.length = 0;
       stubRecords_.length = 0;
       pool.reset();
       bound = false;

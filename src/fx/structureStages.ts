@@ -907,15 +907,16 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         && !structureTopple(seam.anatomy, e)) {
         const standing = debris.standingRuns(STAGE_RUN_TAG + seam.structureIdx + 1);
         const byBucket = spanMaterials(seam);
-        if (o.bodies.collapse(seam, e, standing, (bucket) => byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? null)) {
+        // its pieces stand in its place: it goes from the mask, its rims with it, and its heap rises under them (at once
+        // for a building whose cut was laid ahead; a few frames on for one felled whole by one blow)
+        const ready = (): void => {
           finishFalls(e.structureId);
           const a = seam.anatomy;
           const fall = { eaveM: a.roof ? a.placement.y + a.roof.eaveY - e.baseY : 0, halfW: a.w / 2, halfD: a.d / 2, yaw: a.placement.yaw };
           mask.collapse(e.structureId, o.now(), Math.max(1, e.topY - e.baseY), e.dirX, e.dirZ, e.cx, e.baseY, e.cz, true, fall);
-          for (const run of standing) debris.dropRun(run);
+          for (const r of debris.standingRuns(STAGE_RUN_TAG + seam.structureIdx + 1)) debris.dropRun(r);
           o.scars?.clearStructure(e.structureId);
           seam.touchShadows();
-          downed.add(e.structureId);
           // the kit's heap, its fine rubble and its falling bits; its stubs, its whole wall and roof sections are the bodies'
           const eaveY = a.roof ? a.roof.eaveY : Infinity;
           const made = run(seam, 0, false, (out) => {
@@ -927,6 +928,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
             for (const m of made) { m.matrix.makeTranslation(0, -depth, 0); m.matrixWorldNeedsUpdate = true; }
             rising.push({ meshes: made, t0: o.now(), depth });
           }
+        };
+        if (o.bodies.collapse(seam, e, standing, (bucket) => byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? null, ready)) {
+          downed.add(e.structureId);
           return;
         }
       }
