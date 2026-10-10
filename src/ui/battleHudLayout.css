@@ -213,10 +213,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-card{max-h
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-body{min-height:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag{
   box-sizing:border-box;margin:0;grid-template-columns:minmax(0,90fr) minmax(0,172fr);gap:6px;
-  --diagram-size:clamp(0px,calc(var(--hud-right-height) - 160px),90px);
+  --diagram-size:clamp(0px,calc(var(--hud-right-height) - 160px - var(--cot-si-blast-space,0px)),90px);
   min-height:0;height:calc(var(--diagram-size) + 10px);flex-shrink:1;overflow:visible;
 }
-body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-report,.tight-shot-report) .cot-si-diag{--diagram-size:clamp(0px,calc(var(--hud-right-height) - 60px),90px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-report,.tight-shot-report) .cot-si-diag{--diagram-size:clamp(0px,calc(var(--hud-right-height) - 60px - var(--cot-si-blast-space,0px)),90px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag .box{width:min(100%,var(--diagram-size))!important;height:auto!important;aspect-ratio:1;min-width:0;min-height:0;justify-self:center}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag .box:nth-child(2){width:min(100%,calc(var(--diagram-size) * 2))!important;aspect-ratio:2}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag :is(.pf,.sil){background-size:contain;mask-size:contain;object-fit:contain}
@@ -338,7 +338,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 .cot-hud .cot-ear.icon-grid .cot-er .kills{position:absolute;bottom:2px;right:3px;min-width:10px;padding:1px 2px;font-size:9px;background:#0a121cdd}
 .cot-hud .cot-ear.icon-grid.r .cot-er .kills{right:auto;left:3px}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d{display:inline-flex;align-items:center;gap:4px;color:#c8d6df}
-.cot-kf .relation{display:inline-flex;align-self:center;flex:none;color:#ffcc75}
+.cot-kf .relation{display:inline-flex;align-items:center;justify-content:center;align-self:center;line-height:1;flex:none;color:#ffcc75}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-kill-cause=ammorack]{background:#291717eb;border:1px solid #d79568}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-kill-cause=ammorack] .d{color:#ffbc83;font-weight:800}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-relation=friendly] .relation{color:#ffb25e}

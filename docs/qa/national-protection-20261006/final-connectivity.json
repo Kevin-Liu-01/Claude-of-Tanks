@@ -1,0 +1,689 @@
+{
+  "before": {
+    "src/vehicles/profiles/nationalUkraineProtection.ts": "ae1e70d58245d5040c4bb58b6386e5551d26fe4c7c3b9a734e7d7ecda001a0a3",
+    "src/vehicles/profiles/nationalPolandProtection.ts": "2f320f874ac808aeb823c904e7de04fa1e3aff560e60a18a38358b58909d4c0b",
+    "src/vehicles/nationalPolandProtectionConfig.ts": "9680e45ef3d36a7c002e0b3439a8f3999f13d8609c42c9d5abb392f3dbe3c56a"
+  },
+  "after": {
+    "src/vehicles/profiles/nationalUkraineProtection.ts": "ae1e70d58245d5040c4bb58b6386e5551d26fe4c7c3b9a734e7d7ecda001a0a3",
+    "src/vehicles/profiles/nationalPolandProtection.ts": "2f320f874ac808aeb823c904e7de04fa1e3aff560e60a18a38358b58909d4c0b",
+    "src/vehicles/nationalPolandProtectionConfig.ts": "9680e45ef3d36a7c002e0b3439a8f3999f13d8609c42c9d5abb392f3dbe3c56a"
+  },
+  "sourceStable": true,
+  "toleranceM": 0.00015,
+  "limitations": "Native-corresponding finite part graph; verifies a path to permanent base armor, not load strength. Cloth net fabric itself is not a load-bearing root.",
+  "reports": [
+    {
+      "id": "ua_t80u_modern",
+      "quality": "high",
+      "newParts": 319,
+      "newUnmatched": [],
+      "components": 9,
+      "rootContactParts": 44,
+      "connections": 683,
+      "unsupported": [],
+      "era": {
+        "stripResults": [
+          {
+            "name": "glacis_era_L",
+            "changed": true
+          },
+          {
+            "name": "glacis_era_R",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_L",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_R",
+            "changed": true
+          },
+          {
+            "name": "turret_era_L",
+            "changed": true
+          },
+          {
+            "name": "turret_era_R",
+            "changed": true
+          }
+        ],
+        "armorActuallyChanged": true,
+        "kitRemovedWithEra": [],
+        "resetExact": true,
+        "kitResetExact": true
+      }
+    },
+    {
+      "id": "ua_t80u_modern",
+      "quality": "low",
+      "newParts": 319,
+      "newUnmatched": [],
+      "components": 9,
+      "rootContactParts": 44,
+      "connections": 683,
+      "unsupported": [],
+      "era": {
+        "stripResults": [
+          {
+            "name": "glacis_era_L",
+            "changed": true
+          },
+          {
+            "name": "glacis_era_R",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_L",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_R",
+            "changed": true
+          },
+          {
+            "name": "turret_era_L",
+            "changed": true
+          },
+          {
+            "name": "turret_era_R",
+            "changed": true
+          }
+        ],
+        "armorActuallyChanged": true,
+        "kitRemovedWithEra": [],
+        "resetExact": true,
+        "kitResetExact": true
+      }
+    },
+    {
+      "id": "ua_t72b3m_modern",
+      "quality": "high",
+      "newParts": 325,
+      "newUnmatched": [],
+      "components": 9,
+      "rootContactParts": 44,
+      "connections": 697,
+      "unsupported": [],
+      "era": {
+        "stripResults": [
+          {
+            "name": "glacis_era_L",
+            "changed": true
+          },
+          {
+            "name": "glacis_era_R",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_L",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_R",
+            "changed": true
+          },
+          {
+            "name": "turret_era_L",
+            "changed": true
+          },
+          {
+            "name": "turret_era_R",
+            "changed": true
+          }
+        ],
+        "armorActuallyChanged": true,
+        "kitRemovedWithEra": [],
+        "resetExact": true,
+        "kitResetExact": true
+      }
+    },
+    {
+      "id": "ua_t72b3m_modern",
+      "quality": "low",
+      "newParts": 325,
+      "newUnmatched": [],
+      "components": 9,
+      "rootContactParts": 44,
+      "connections": 697,
+      "unsupported": [],
+      "era": {
+        "stripResults": [
+          {
+            "name": "glacis_era_L",
+            "changed": true
+          },
+          {
+            "name": "glacis_era_R",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_L",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_R",
+            "changed": true
+          },
+          {
+            "name": "turret_era_L",
+            "changed": true
+          },
+          {
+            "name": "turret_era_R",
+            "changed": true
+          }
+        ],
+        "armorActuallyChanged": true,
+        "kitRemovedWithEra": [],
+        "resetExact": true,
+        "kitResetExact": true
+      }
+    },
+    {
+      "id": "ua_t72b3_modern",
+      "quality": "high",
+      "newParts": 319,
+      "newUnmatched": [],
+      "components": 9,
+      "rootContactParts": 44,
+      "connections": 683,
+      "unsupported": [],
+      "era": {
+        "stripResults": [
+          {
+            "name": "glacis_era_L",
+            "changed": true
+          },
+          {
+            "name": "glacis_era_R",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_L",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_R",
+            "changed": true
+          },
+          {
+            "name": "turret_era_L",
+            "changed": true
+          },
+          {
+            "name": "turret_era_R",
+            "changed": true
+          }
+        ],
+        "armorActuallyChanged": true,
+        "kitRemovedWithEra": [],
+        "resetExact": true,
+        "kitResetExact": true
+      }
+    },
+    {
+      "id": "ua_t72b3_modern",
+      "quality": "low",
+      "newParts": 319,
+      "newUnmatched": [],
+      "components": 9,
+      "rootContactParts": 44,
+      "connections": 683,
+      "unsupported": [],
+      "era": {
+        "stripResults": [
+          {
+            "name": "glacis_era_L",
+            "changed": true
+          },
+          {
+            "name": "glacis_era_R",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_L",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_R",
+            "changed": true
+          },
+          {
+            "name": "turret_era_L",
+            "changed": true
+          },
+          {
+            "name": "turret_era_R",
+            "changed": true
+          }
+        ],
+        "armorActuallyChanged": true,
+        "kitRemovedWithEra": [],
+        "resetExact": true,
+        "kitResetExact": true
+      }
+    },
+    {
+      "id": "ua_t72b3m_hetman_ii",
+      "quality": "high",
+      "newParts": 335,
+      "newUnmatched": [],
+      "components": 9,
+      "rootContactParts": 44,
+      "connections": 715,
+      "unsupported": [],
+      "era": {
+        "stripResults": [
+          {
+            "name": "glacis_era_L",
+            "changed": true
+          },
+          {
+            "name": "glacis_era_R",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_L",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_R",
+            "changed": true
+          },
+          {
+            "name": "turret_era_L",
+            "changed": true
+          },
+          {
+            "name": "turret_era_R",
+            "changed": true
+          }
+        ],
+        "armorActuallyChanged": true,
+        "kitRemovedWithEra": [],
+        "resetExact": true,
+        "kitResetExact": true
+      }
+    },
+    {
+      "id": "ua_t72b3m_hetman_ii",
+      "quality": "low",
+      "newParts": 335,
+      "newUnmatched": [],
+      "components": 9,
+      "rootContactParts": 44,
+      "connections": 715,
+      "unsupported": [],
+      "era": {
+        "stripResults": [
+          {
+            "name": "glacis_era_L",
+            "changed": true
+          },
+          {
+            "name": "glacis_era_R",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_L",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_R",
+            "changed": true
+          },
+          {
+            "name": "turret_era_L",
+            "changed": true
+          },
+          {
+            "name": "turret_era_R",
+            "changed": true
+          }
+        ],
+        "armorActuallyChanged": true,
+        "kitRemovedWithEra": [],
+        "resetExact": true,
+        "kitResetExact": true
+      }
+    },
+    {
+      "id": "pl_t80u_modern",
+      "quality": "high",
+      "newParts": 165,
+      "newUnmatched": [],
+      "components": 11,
+      "rootContactParts": 40,
+      "connections": 354,
+      "unsupported": [],
+      "era": {
+        "stripResults": [
+          {
+            "name": "glacis_era_L",
+            "changed": true
+          },
+          {
+            "name": "glacis_era_R",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_L",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_R",
+            "changed": true
+          },
+          {
+            "name": "turret_era_L",
+            "changed": true
+          },
+          {
+            "name": "turret_era_R",
+            "changed": true
+          }
+        ],
+        "armorActuallyChanged": true,
+        "kitRemovedWithEra": [],
+        "resetExact": true,
+        "kitResetExact": true
+      }
+    },
+    {
+      "id": "pl_t80u_modern",
+      "quality": "low",
+      "newParts": 165,
+      "newUnmatched": [],
+      "components": 11,
+      "rootContactParts": 40,
+      "connections": 354,
+      "unsupported": [],
+      "era": {
+        "stripResults": [
+          {
+            "name": "glacis_era_L",
+            "changed": true
+          },
+          {
+            "name": "glacis_era_R",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_L",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_R",
+            "changed": true
+          },
+          {
+            "name": "turret_era_L",
+            "changed": true
+          },
+          {
+            "name": "turret_era_R",
+            "changed": true
+          }
+        ],
+        "armorActuallyChanged": true,
+        "kitRemovedWithEra": [],
+        "resetExact": true,
+        "kitResetExact": true
+      }
+    },
+    {
+      "id": "pl_t72b3m_modern",
+      "quality": "high",
+      "newParts": 228,
+      "newUnmatched": [],
+      "components": 13,
+      "rootContactParts": 56,
+      "connections": 589,
+      "unsupported": [],
+      "era": {
+        "stripResults": [
+          {
+            "name": "glacis_era_L",
+            "changed": true
+          },
+          {
+            "name": "glacis_era_R",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_L",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_R",
+            "changed": true
+          },
+          {
+            "name": "turret_era_L",
+            "changed": true
+          },
+          {
+            "name": "turret_era_R",
+            "changed": true
+          }
+        ],
+        "armorActuallyChanged": true,
+        "kitRemovedWithEra": [],
+        "resetExact": true,
+        "kitResetExact": true
+      }
+    },
+    {
+      "id": "pl_t72b3m_modern",
+      "quality": "low",
+      "newParts": 228,
+      "newUnmatched": [],
+      "components": 13,
+      "rootContactParts": 56,
+      "connections": 589,
+      "unsupported": [],
+      "era": {
+        "stripResults": [
+          {
+            "name": "glacis_era_L",
+            "changed": true
+          },
+          {
+            "name": "glacis_era_R",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_L",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_R",
+            "changed": true
+          },
+          {
+            "name": "turret_era_L",
+            "changed": true
+          },
+          {
+            "name": "turret_era_R",
+            "changed": true
+          }
+        ],
+        "armorActuallyChanged": true,
+        "kitRemovedWithEra": [],
+        "resetExact": true,
+        "kitResetExact": true
+      }
+    },
+    {
+      "id": "pl_t72b3_modern",
+      "quality": "high",
+      "newParts": 151,
+      "newUnmatched": [],
+      "components": 11,
+      "rootContactParts": 40,
+      "connections": 312,
+      "unsupported": [],
+      "era": {
+        "stripResults": [
+          {
+            "name": "glacis_era_L",
+            "changed": true
+          },
+          {
+            "name": "glacis_era_R",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_L",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_R",
+            "changed": true
+          },
+          {
+            "name": "turret_era_L",
+            "changed": true
+          },
+          {
+            "name": "turret_era_R",
+            "changed": true
+          }
+        ],
+        "armorActuallyChanged": true,
+        "kitRemovedWithEra": [],
+        "resetExact": true,
+        "kitResetExact": true
+      }
+    },
+    {
+      "id": "pl_t72b3_modern",
+      "quality": "low",
+      "newParts": 151,
+      "newUnmatched": [],
+      "components": 11,
+      "rootContactParts": 40,
+      "connections": 312,
+      "unsupported": [],
+      "era": {
+        "stripResults": [
+          {
+            "name": "glacis_era_L",
+            "changed": true
+          },
+          {
+            "name": "glacis_era_R",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_L",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_R",
+            "changed": true
+          },
+          {
+            "name": "turret_era_L",
+            "changed": true
+          },
+          {
+            "name": "turret_era_R",
+            "changed": true
+          }
+        ],
+        "armorActuallyChanged": true,
+        "kitRemovedWithEra": [],
+        "resetExact": true,
+        "kitResetExact": true
+      }
+    },
+    {
+      "id": "pl_t72b3_zubr_ii",
+      "quality": "high",
+      "newParts": 219,
+      "newUnmatched": [],
+      "components": 15,
+      "rootContactParts": 56,
+      "connections": 550,
+      "unsupported": [],
+      "era": {
+        "stripResults": [
+          {
+            "name": "glacis_era_L",
+            "changed": true
+          },
+          {
+            "name": "glacis_era_R",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_L",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_R",
+            "changed": true
+          },
+          {
+            "name": "turret_era_L",
+            "changed": true
+          },
+          {
+            "name": "turret_era_R",
+            "changed": true
+          }
+        ],
+        "armorActuallyChanged": true,
+        "kitRemovedWithEra": [],
+        "resetExact": true,
+        "kitResetExact": true
+      }
+    },
+    {
+      "id": "pl_t72b3_zubr_ii",
+      "quality": "low",
+      "newParts": 219,
+      "newUnmatched": [],
+      "components": 15,
+      "rootContactParts": 56,
+      "connections": 550,
+      "unsupported": [],
+      "era": {
+        "stripResults": [
+          {
+            "name": "glacis_era_L",
+            "changed": true
+          },
+          {
+            "name": "glacis_era_R",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_L",
+            "changed": true
+          },
+          {
+            "name": "skirt_era_R",
+            "changed": true
+          },
+          {
+            "name": "turret_era_L",
+            "changed": true
+          },
+          {
+            "name": "turret_era_R",
+            "changed": true
+          }
+        ],
+        "armorActuallyChanged": true,
+        "kitRemovedWithEra": [],
+        "resetExact": true,
+        "kitResetExact": true
+      }
+    }
+  ]
+}

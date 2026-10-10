@@ -184,7 +184,9 @@ assert.match(hud,
 assert.doesNotMatch(hud, /cot-bounce|showBounceMessage|BOUNCE_TEXT/,
   'ricochets must not create a second generic toast beside the hit marker and combat record');
 assert.match(hud,
-  /if \(hit\.damage > 0\)[\s\S]*document\.body\.classList\.contains\('cot-touch-layout'\)[\s\S]*outcome\.label[\s\S]*else \{ d\.remove\(\); return; \}/,
+  // (2026-10-09: main's rapid-fire consolidation, 7095d2058, returns before a desktop zero-damage label is made; the
+  // touch layout's one compact outcome label is painted in the zero-damage branch)
+  /if \(!\(hit\.damage > 0\) && !document\.body\.classList\.contains\('cot-touch-layout'\)\) return;[\s\S]*if \(hit\.damage > 0\)[\s\S]*\} else \{[\s\S]*outcome\.label/,
   'desktop zero-damage results must use the ballistic card only while touch retains one compact impact label');
 assert.doesNotMatch(hud, /d\.textContent = '(?:RICOCHET|NO PENETRATION|ABSORBED)'/,
   'HUD result copy must come from the shared hit-outcome registry');
@@ -281,8 +283,9 @@ assert.match(shotInfo,
 assert.match(shotInfo,
   /body\.cot-touch-layout \.cot-si-cardhost,[\s\S]*body\.cot-touch-layout \.cot-si-log\{display:none!important;\}/,
   'touch battles must remove desktop ballistic analysis surfaces from the battlefield');
+// (main's 395305d45 folds the log view's early return into the same guard: `if (isTouchBattleLayout() || logOpen) return;`)
 assert.match(shotInfo,
-  /if \(isTouchBattleLayout\(\)\) return;[\s\S]*const card = buildCard/,
+  /if \(isTouchBattleLayout\(\)(?: \|\| logOpen)?\) return;[\s\S]*const card = buildCard/,
   'touch hits must skip hidden card and diagram construction instead of wasting mobile render work');
 assert.match(shotInfo,
   /kv\('Angle',[^\n]*'w'\);[\s\S]*kv\('Armor',[\s\S]*kv\('Damage',[^\n]*'w'\);[\s\S]*const r = kv\('Pen'/,

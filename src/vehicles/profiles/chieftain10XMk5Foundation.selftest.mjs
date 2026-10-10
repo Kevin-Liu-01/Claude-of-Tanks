@@ -254,7 +254,7 @@ function preservationNegativeControls(root, paint) {
   // 2026-09-22 (owner: holes are added, not carved, to save triangles): the fleet fallback mouth is a
   // flat ring + disc, so the lone Rim no longer forms mobileStaticBatch_0 with a separate Annulus at low
   // quality; the standalone fallback Rim is the held-out physical non-paint mesh when no batch exists.
-  root.traverse(m => { if (m.isMesh && (m.name === 'mobileStaticBatch_0' || m.name === 'muzzleBoreShadowFallbackRim') && !paint.has(m)) physical.push(m); });
+  root.traverse(m => { if (m.isMesh && (m.name === 'mobileStaticBatch_0' || m.userData.carvedBoreStock) && !paint.has(m)) physical.push(m); });
   assert.ok(physical.length, 'the actual physical batch is still compared, despite its identical name');
   for (const m of physical) {
     assert.throws(() => paintGeometryShape(m, 8), assert.AssertionError,

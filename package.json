@@ -134,8 +134,10 @@
     "typecheck": "node node_modules/@typescript/native/bin/tsc -p tsconfig.json --noEmit && node tools/core-unused-check.mjs",
     "media:campaign": "node tools/media-production/campaign.mjs",
     "media:capture": "node tools/media-production/produce.mjs",
+    "media:cinema": "node tools/media-production/cinema.mjs",
     "media:publish": "node tools/media-production/publish.mjs",
-    "media:check": "node tools/media-production/pipeline.selftest.mjs"
+    "media:check": "node tools/media-production/pipeline.selftest.mjs",
+    "tank:caps:check": "node tools/circular-cap-audit.mjs"
   },
   "keywords": [
     "threejs",

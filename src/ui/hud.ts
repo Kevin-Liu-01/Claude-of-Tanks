@@ -1,3 +1,5 @@
+import { isRapidFireHit } from '../game/weaponHitKind.ts';
+import { accumulateDamage, canAccumulateDamage, DAMAGE_BURST_GAP_MS, type DamageNumberBurst } from './damageNumberBurst.ts';
 import { BattleKillLedger } from '../game/battleEventStats.ts';
 import { killPresentation, isDroneStrike } from './killPresentation.ts';
 import { createVehicleStatusStrip } from './vehicleStatus.ts';
@@ -438,8 +440,13 @@ interface SpotMemory {
   lastYaw: number;
   ever: boolean;
 }
-interface LiveDamageNumber { x: number; y: number; until: number }
-interface HitMark { t0: number; bounced: boolean }
+interface LiveDamageNumber {
+  x: number; y: number;
+  element: HTMLDivElement;
+  burst?: DamageNumberBurst;
+  timer?: ReturnType<typeof setTimeout>;
+}
+interface HitMark { t0: number; bounced: boolean; blockedRapid?: boolean }
 interface SpawnFlag { x: number; z: number; color: string; fill?: string }
 
 interface ReticlePaintState {
@@ -1448,7 +1455,7 @@ body.cot-debug-hud .cot-net{display:none!important;}
   background:#cf847d;transform:rotate(-25deg);pointer-events:none;}
 .cot-killfeed{position:absolute;z-index:var(--hud-layer-status);top:52px;left:210px;display:flex;flex-direction:column;
   gap:5px;align-items:flex-start;max-width:420px;}
-.cot-kf{display:flex;gap:7px;align-items:baseline;padding:5px 16px 5px 12px;font-size:12.5px;
+.cot-kf{display:flex;gap:7px;align-items:center;padding:5px 16px 5px 12px;font-size:12.5px;line-height:1.2;
   letter-spacing:.03em;background:linear-gradient(270deg,rgba(8,12,16,0) 0%,rgba(8,12,16,.82) 26%);
   border-left:2px solid #f05a5a;text-shadow:0 1px 2px rgba(0,0,0,.8);
   transition:opacity var(--cot-motion-slow) var(--cot-ease-out);opacity:1;
@@ -1457,8 +1464,9 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-kf .k,.cot-kf .v{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-kf .k{color:#cfe3f4;font-weight:600;}
 .cot-kf .v{color:#f28f8f;font-weight:600;}
-.cot-kf .d{color:#8a97a3;font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;flex:0 0 auto;}
+.cot-kf .d{display:inline-flex;align-items:center;justify-content:center;line-height:1;color:#8a97a3;font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;flex:0 0 auto;}
 .cot-kf .c{color:#f0b04a;font-size:10px;letter-spacing:.1em;font-weight:700;flex:0 0 auto;}
+.cot-kf .d>svg,.cot-kf .relation>svg{display:block;flex:none;}
 .cot-kf .si{width:30px;height:12px;flex:0 0 auto;align-self:center;display:inline-block;}
 .cot-dmglayer{position:absolute;z-index:calc(var(--hud-layer-world) + 1);inset:0;}
 ${spectatorSwitcherStyles}
@@ -1473,6 +1481,9 @@ body.cot-spectating .cot-ret{display:none !important;}
   letter-spacing:-.02em;color:#ffd166;white-space:nowrap;text-transform:uppercase;
   text-shadow:-1px 0 #05080b,1px 0 #05080b,0 -1px #05080b,0 2px #05080b;
   animation:cotFloat 1.7s cubic-bezier(.2,.6,.3,1) forwards;will-change:transform,opacity;}
+.cot-dmgnum.burst{animation:none;opacity:1;transform:translate(-50%,-30%);}
+.cot-dmgnum.burst-ending{animation:cotBurstFade 1s ease-out forwards;}
+@keyframes cotBurstFade{from{opacity:1;transform:translate(-50%,-30%)}to{opacity:0;transform:translate(-50%,-190%)}}
 .cot-dmgnum.miss{color:#bcc8d2;font-size:13px;font-weight:850;letter-spacing:.1em;}
 .cot-dmgnum .crit{position:absolute;left:50%;bottom:calc(100% + 1px);transform:translateX(-50%);
   font-size:10px;font-weight:900;letter-spacing:.12em;color:#ff9b72;margin:0;}
@@ -2553,6 +2564,7 @@ export function initHud(bus: EventBus): HudRuntime {
   function resetCombatPresentation(): void {
     hitDirs.length = 0;
     hitMark = null;
+    for (const number of liveNums) clearTimeout(number.timer);
     liveNums.length = 0;
     dmgLayer.replaceChildren();
     killLeft.replaceChildren();
@@ -3586,6 +3598,14 @@ export function initHud(bus: EventBus): HudRuntime {
     const highlightColor = hitMark.bounced ? '241,247,252' : '255,235,190';
     ctx.save();
     ctx.lineJoin = 'miter';
+    if (hitMark.blockedRapid) {
+      const x = view.cx + 30, y = view.cy - 30;
+      ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(x + 6, y - 3);
+      ctx.lineTo(x + 5, y + 3); ctx.lineTo(x, y + 7);
+      ctx.lineTo(x - 5, y + 3); ctx.lineTo(x - 6, y - 3); ctx.closePath();
+      ctx.fillStyle = `rgba(5,8,12,${visual.opacity})`; ctx.fill();
+      ctx.strokeStyle = `rgba(202,218,232,${visual.opacity})`; ctx.lineWidth = 1.5; ctx.stroke();
+    }
 
     // A padded near-black silhouette keeps the confirmation clean over snow,
     // muzzle flash and bright sand without turning it into a heavy black X.
@@ -5566,47 +5586,68 @@ export function initHud(bus: EventBus): HudRuntime {
     setTimeout(() => { if (item.parentNode) item.remove(); }, 6200);
   }
 
-  function pushDamageNumber(hit: HudHitEvent): void {
-    if (!lastCamera || mode === 'hidden') return;
-    project(lastCamera, hit.pos[0], hit.pos[1] + 1.5, hit.pos[2]);
-    if (!_sVisible) return;
-    const d = el('div', 'cot-dmgnum', dmgLayer);
-    const outcome = hitOutcomeFor(hit);
-    if (hit.damage > 0) {
-      d.textContent = `-${Math.round(hit.damage)}`;
-      if ((hit.modulesHit && hit.modulesHit.length) || (hit.crewHit && hit.crewHit.length)) {
-        const c = el('span', 'crit', d);
-        c.textContent = t('hud.dmg.crit');
-      }
-    } else if (document.body.classList.contains('cot-touch-layout')) {
-      // Touch hides the detailed ballistic card, so retain one compact result
-      // at the impact point. Desktop gets the card only, never a duplicate.
-      d.classList.add('miss');
-      d.dataset.outcome = outcome.id;
-      d.style.color = outcome.color;
-      d.textContent = outcome.label;
-    } else { d.remove(); return; }
-    // WoT-style stacking: new labels step upward off any live label near the
-    // same projected point (slight x-jitter) instead of overlapping.
+  function removeDamageNumber(number: LiveDamageNumber): void {
+    clearTimeout(number.timer);
+    number.element.remove();
+    const index = liveNums.indexOf(number);
+    if (index !== -1) liveNums.splice(index, 1);
+  }
+
+  function placeDamageNumber(number: LiveDamageNumber): void {
     let x = _sx, y = _sy;
-    const nowMs = performance.now();
-    for (let i = liveNums.length - 1; i >= 0; i--) {
-      if (liveNums[i].until < nowMs) liveNums.splice(i, 1);
-    }
     for (let guard = 0; guard < 8; guard++) {
-      const clash = liveNums.find((n) => Math.abs(n.x - x) < 72 && Math.abs(n.y - y) < 24);
+      const clash = liveNums.find(n => n !== number && Math.abs(n.x - x) < 72 && Math.abs(n.y - y) < 24);
       if (!clash) break;
       y = clash.y - 26;
-      x += (Math.random() - 0.5) * 12;
     }
-    // Labels are x-centered; keep the complete widest result string and its
-    // float-up tail inside the viewport at edge hits.
-    x = Math.min(Math.max(x, 90), w - 90);
-    y = Math.min(Math.max(y, 40), h - 60);
-    liveNums.push({ x, y, until: nowMs + 900 });
-    d.style.left = `${x.toFixed(0)}px`;
-    d.style.top = `${y.toFixed(0)}px`;
-    setTimeout(() => { if (d.parentNode) d.remove(); }, 1800);
+    number.x = Math.min(Math.max(x, 90), w - 90);
+    number.y = Math.min(Math.max(y, 40), h - 60);
+    number.element.style.left = `${number.x.toFixed(0)}px`;
+    number.element.style.top = `${number.y.toFixed(0)}px`;
+  }
+
+  function paintDamageNumber(number: LiveDamageNumber, hit: HudHitEvent, rapid: boolean): void {
+    const d = number.element;
+    const damage = number.burst?.damage ?? hit.damage;
+    d.textContent = `-${damage < 1 ? Number(damage.toFixed(1)) : Math.round(damage)}`;
+    if (number.burst?.critical) el('span', 'crit', d).textContent = t('hud.dmg.crit');
+    clearTimeout(number.timer);
+    d.classList.remove('burst-ending');
+    d.classList.toggle('burst', rapid);
+    if (rapid) {
+      number.timer = setTimeout(() => {
+        d.classList.remove('burst'); d.classList.add('burst-ending');
+        number.timer = setTimeout(() => removeDamageNumber(number), 1000);
+      }, DAMAGE_BURST_GAP_MS);
+    } else number.timer = setTimeout(() => removeDamageNumber(number), 1800);
+  }
+
+  function pushDamageNumber(hit: HudHitEvent): void {
+    if (!lastCamera || mode === 'hidden') return;
+    const rapid = isRapidFireHit(hit);
+    // Automatic fire confirms blocks at the reticle, never as a cloud of zeroes.
+    if (rapid && !(hit.damage > 0)) return;
+    if (!(hit.damage > 0) && !document.body.classList.contains('cot-touch-layout')) return;
+    project(lastCamera, hit.pos[0], hit.pos[1] + 1.5, hit.pos[2]);
+    if (!_sVisible) return;
+    const now = performance.now();
+    let number = rapid ? liveNums.find(n => n.burst && canAccumulateDamage(n.burst, hit, now)) : undefined;
+    if (!number) {
+      while (liveNums.length >= 12) removeDamageNumber(liveNums[0]);
+      number = { x: _sx, y: _sy, element: el('div', 'cot-dmgnum', dmgLayer) };
+      liveNums.push(number);
+    }
+    if (hit.damage > 0) {
+      number.burst = accumulateDamage(number.burst, hit, now) ?? undefined;
+      paintDamageNumber(number, hit, rapid);
+    } else {
+      const outcome = hitOutcomeFor(hit), d = number.element;
+      d.classList.add('miss'); d.dataset.outcome = outcome.id;
+      d.style.color = outcome.color; d.textContent = outcome.label;
+      const owner = number;
+      number.timer = setTimeout(() => removeDamageNumber(owner), 1800);
+    }
+    placeDamageNumber(number);
   }
 
   /**
@@ -6013,7 +6054,7 @@ export function initHud(bus: EventBus): HudRuntime {
       // damaging/module outcomes use amber. Copy belongs to the canonical
       // ballistic card (or the compact touch impact label), never this shard.
       const bounced = hitOutcomeFor(hit).confirmTone === 'deflect';
-      hitMark = { t0: lastTimeS, bounced };
+      hitMark = { t0: lastTimeS, bounced, blockedRapid: isRapidFireHit(hit) && hitOutcomeFor(hit).blocked };
     }
     if (playerId != null && hit.targetId === playerId) {
       pushHitDirection(hit, playerRef);

@@ -1,7 +1,6 @@
 import './ui/endScreenPresentation.css';
 import './ui/richTooltip.css';
-import { structureTopAt, SUPPORT_STEP_UP_M } from './sim/structureSupport.ts';
-import type { CollisionRecord } from './world/collision.ts';
+import { createVehicleGroundSampler } from './world/vehicleGroundSampler.ts';
 import './ui/battleUiVisibility.css';
 import './ui/hudCustomization.css';
 import type { RuntimeValue } from './runtimeTypes.ts';
@@ -41,6 +40,7 @@ import type {
   WorldActivationOptions,
 } from './world/worldActivationRuntime.ts';
 import type { PlayerBattleActions } from './game/playerBattleActions.ts';
+import type { FxWorldSeam } from './fx/effects.ts';
 import type { BattleVisualStreamer } from './game/battleVisualStreamer.ts';
 import type {
   MainEntity,
@@ -63,16 +63,17 @@ import { createRenderer } from './engine/renderer.ts';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
   mountDiagOverlay, runSceneBlackWatchdogAsync, reclaimShadows, scheduleSceneWatchdog, runSceneWatchdogNow,
-  type SceneWatchdogResult,
+  battleProbeRadianceScale, type SceneWatchdogResult,
 } from './engine/deviceDiag.ts';
 import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
   reportSustainedOverload, setPresetName, setMobilePresetName,
   noteGpuRenderer, getDeviceTier, shouldReleaseInactivePhaseGpu, applyGraphicsRecovery, onPresetChange,
 } from './engine/quality.ts';
-import { createSky } from './engine/sky.ts';
+import { createSky, DEFAULT_SKY_PRESET } from './engine/sky.ts';
+import { deriveCloudLayerPreset } from './engine/cloudPresets.ts';
 import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
-import { loadGroundedLightModel } from './engine/lightModelCore.ts';
+import { EXPOSURE_REFERENCE_ILLUMINANCE, loadGroundedLightModel } from './engine/lightModelCore.ts';
 import { loadCloudscapeLayers } from './engine/cloudPresets.ts';
 import { battlePreferences } from './game/battlePreferences.ts';
 import { createFrontlineAtmosphereAccess } from './world/frontlineAtmosphereAccess.ts';
@@ -176,7 +177,7 @@ import { createKillcamAccess } from './game/killcamAccess.ts';
 import { createPlayerBattleActions } from './game/playerBattleActions.ts';
 import { createPlayerFrameInput } from './game/playerFrameInput.ts';
 import { createBattleFrameRuntime } from './game/battleFrameRuntime.ts';
-import { createBattlePresentationRuntime } from './game/battlePresentationRuntime.ts';
+import { createBattlePresentationRuntime, loadMissionAttachmentVisual } from './game/battlePresentationRuntime.ts';
 import { createBattleHudFrameRuntime } from './game/battleHudFrameRuntime.ts';
 import { createMatchModeWorldPresentation } from './game/matchModeWorldPresentation.ts';
 import { createBattleResultPresentationRuntime } from './game/battleResultPresentationRuntime.ts';
@@ -235,7 +236,7 @@ import { clearMatchSession, createBus, createGameState } from './game/stateCore.
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { matchRulesetFor } from './sim/matchRuleset.ts';
+import { matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
 import { normalizeGameMode } from './sim/matchModes.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
@@ -266,6 +267,7 @@ import { createRosterPresentation } from './game/rosterPresentation.ts';
 import { tankTier, tierNumeral } from './vehicles/tier.ts';
 import { createTransition } from './ui/transition.ts';
 import type { DamagePanelController } from './ui/damagePanel.ts';
+import { prepareEntryPanelMasks } from './ui/damagePanelEntryMasks.ts';
 import type { HudMatchModeState, HudMode } from './ui/hud.ts';
 
 type DamagePanelSpec = Parameters<DamagePanelController['setTank']>[0];
@@ -682,6 +684,8 @@ let coveredBattleWatchdog: (() => Promise<SceneWatchdogResult | void>) | null = 
 const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
   loadModule: () => import('./fx/effects.ts'),
   initialize: async ({ createFxChunked }) => {
+    // the battle-only mission-attachment visual (the drone dock on its carrier) lands with the FX graph
+    await loadMissionAttachmentVisual();
     const live = await createFxChunked(engineCtx, hfProxy, {
       seed: 5000,
       auxiliaryEntities: () => multiplayerV2.current?.active ? game.tankById.values() : game.tanks, // v2 is the only multiplayer (cutover)
@@ -693,6 +697,8 @@ const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
       // window.__DEBUG lookup silently dropped all marks whenever diagnostics
       // were not installed, including incoming hits on the player's tank.
       resolveEntity: (targetId) => resolveFxSubject(String(targetId)),
+      // destruction-fx: the world whose structure materials take the collapse patch (world.patchStructureMaterials)
+      world: () => (currentWorld() as unknown as FxWorldSeam | null) ?? null,
     }, createOpaqueLoadingYielder(6, 16, { yieldFrame: nextPaintFrame }));
     live.bindBus(bus);
     // createPost runs during garage boot, before this demand-loaded graph
@@ -726,13 +732,10 @@ function requireFxRuntime() {
 // Movement and wheels read the same cached triangles as the near terrain.
 // An analytic/bilinear approximation can sit above the visible ground at a
 // ridge or rut, leaving daylight below otherwise correctly conformed tracks.
-const debrisSupportCandidates: CollisionRecord[] = [];
-const groundSampler = (x: number, z: number, ceiling?: number) => {
-  const terrain = hfProxy.getContactHeightAt(x, z);
-  if (ceiling === undefined) return terrain;
-  const candidates = currentWorld()?.queryObstacles?.(x - .01, z - .01, x + .01, z + .01, debrisSupportCandidates);
-  return candidates ? Math.max(terrain, structureTopAt(candidates, candidates.length, x, z, ceiling - SUPPORT_STEP_UP_M)) : terrain;
-};
+// The wheels and track debris also stand on the standable collision tops the
+// movement solve stands hulls on (bridge decks, roofs, slabs): see
+// world/vehicleGroundSampler.ts (the vehicle-contact lane, 2026-10-09).
+const groundSampler = createVehicleGroundSampler((x, z) => hfProxy.getContactHeightAt(x, z), currentWorld);
 // PERF (performance_budget r4): pool visuals are lazy — remember the sampler
 // on the game state so ensureTankVisual applies it to visuals built later.
 game._groundSampler = groundSampler;
@@ -972,6 +975,8 @@ const pedestal = createGaragePedestalRuntime({
   // invoked; the closure keeps this early lifecycle declaration independent
   // of the later renderer-target owner.
   prepareVisual: (visual) => prepareGarageTankEnergyVisual(visual.root, getSpec(visual.specId).dims),
+  // (the time-to-battle lane, 2026-10-08) the dormant skin ends where the hero becomes the battle's, on every entry path
+  releaseVisual: (visual) => clearJuggernautVisual(visual.root, true),
   compilePrograms: (root) => forwardProgramWarm.compile(root),
   // FSP-01: strict first-use preparation (submission, readiness polling,
   // uniform reflection) of the parked hero's forward programs against the
@@ -1535,6 +1540,8 @@ const battleAtmosphere = createBattleAtmosphereAccess(() => ({
   getWorldRoot: () => currentWorld()?.group ?? null,
   // 2026-10-01 (engine/lightModel.ts): the vehicles' readability lift follows the applied light
   getLightReadability: () => (scene.userData.lightModel as { vehicleReadability?: number } | undefined)?.vehicleReadability ?? 1,
+  // 2026-10-08 (the nightsky lane): the far panorama re-bakes under the applied light inside the covered prepare
+  getRenderer: () => renderer,
   getAuthoredPreset: () => {
     const config: MapCompositionConfig | undefined = currentWorld()?.config;
     if (!config) return {};
@@ -1563,9 +1570,16 @@ const frontline = createFrontlineAtmosphereAccess(() => ({
   getHeightField: () => currentWorld()?.heightField ?? null,
   getSpawns: () => currentWorld()?.spawnPoints ?? null,
 }));
+/** A covered entry revealed before the player's top-down masks linked; the damage panel's retry ladder finishes them. */
+function deferredPanelMasks(specId: string): void {
+  console.warn(`[battle] top-down view of ${specId} still linking at reveal; the damage panel retries it`);
+}
 function currentSceneWatchdogOptions() {
-  return game.phase === 'battle' && battleAtmosphere.current?.weather?.timeOfDay === 'night'
-    ? { nightRadianceScale: battleWatchdogRadianceScale } : {};
+  if (game.phase !== 'battle') return {};
+  if (battleAtmosphere.current?.weather?.timeOfDay === 'night') return { nightRadianceScale: battleWatchdogRadianceScale };
+  // 2026-10-09 (the MP-entry lane): a low sun or a closed deck draws the probe under the light model's metered ratio
+  const lowLightScale = battleProbeRadianceScale(scene.userData.lightModel?.illuminance, EXPOSURE_REFERENCE_ILLUMINANCE);
+  return lowLightScale === null ? {} : { nightRadianceScale: lowLightScale };
 }
 const nightLighting = createNightLightingAccess({
   scene,
@@ -1923,6 +1937,7 @@ const battlePresentation = createBattlePresentationRuntime({
 // terrain, FX and first-frame warm order plus cancellation/fallback policy.
 const soloBattleDeployment = createSoloBattleDeploymentAccess({
   options: () => ({
+    warmVisionSteps: combatWarmComposition.warmVisionSteps,
     game,
     renderer,
     scene,
@@ -1950,9 +1965,8 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
       if (player?.aerial?.kind === 'gunship') return;
       const panel = currentDamagePanel();
       if (!player || !panel) throw new Error('Player damage panel was not prepared');
-      if (!await panel.prepareTankMasks(player.spec, player.visual)) {
-        throw new Error('Player top-down view could not be prepared');
-      }
+      // 2026-10-09 (the black-screen lane): a slow mask link never refuses the battle (damagePanelEntryMasks.ts)
+      await prepareEntryPanelMasks(panel, player.spec, player.visual, deferredPanelMasks);
     },
     prepareAtmosphere: async () => {
       await battleAtmosphere.prepare(game.battleCount, game.mapId, battlePreferences.times);
@@ -2267,7 +2281,7 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
       ports: {
         lifecycle: battleEntryLifecycle,
         // a world laid out otherwise than the host's manifest reads the destroyed list through the manifest's identities
-        load: { ...options.load, loadAuthorityObstacles: (mapId, signal) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal }) },
+        load: { ...options.load, loadAuthorityObstacles: (mapId, signal, variant) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal, variant }) },
         roster: options.roster,
         scene: {
           engineCtx,
@@ -2445,9 +2459,8 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             if (!entity) return;
             const panel = currentDamagePanel();
             if (!panel) throw new Error('network panel warm requires the prepared battle HUD');
-            if (!await panel.prepareTankMasks(entity.spec, entity.visual)) {
-              throw new Error('Player top-down view could not be prepared');
-            }
+            // (2026-10-09) a slow mask link never refuses the round (damagePanelEntryMasks.ts)
+            await prepareEntryPanelMasks(panel, entity.spec, entity.visual, deferredPanelMasks);
           },
           openingEffects: async (fx: ReturnType<typeof requireFxRuntime>, bridge: MultiplayerWarmView, signal?: AbortSignal) => {
             const timing: ForwardProgramCompileTiming & {
@@ -2609,7 +2622,7 @@ function beginBattleEntry(
 ) {
   // batch 19 (2026-09-14): the Garage BATTLE button is a free sortie in the chosen rules — a Frontline
   // Assault pick carves the trenches like a ladder launch does (it used to reach the field without them)
-  pendingTerrainVariant = options?.gameMode === 'frontline_assault' ? 'assault-trenches' : null;
+  pendingTerrainVariant = terrainVariantFor(options?.gameMode); // the mode's battlefield, as the authority builds it
   pendingCampaignOperationId = null;
   return soloBattleEntry.begin(specId, mapId, options);
 }
@@ -2627,7 +2640,7 @@ async function beginSoloBattle({
   gameMode = 'standard',
   campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
-  pendingTerrainVariant = gameMode === 'frontline_assault' ? 'assault-trenches' : null;
+  pendingTerrainVariant = terrainVariantFor(gameMode);
   // campaign slice 5: the mission brief names the ladder operation when the sortie came from it
   pendingCampaignOperationId = gameMode === 'frontline_assault' ? campaignOperationId : null;
   // batch 19: a ladder operation always fights on its own map, whatever the Garage has selected
@@ -2987,6 +3000,7 @@ let shotHudFrame = false;
 
 let lastAuxiliaryNight: boolean | null = null;
 const mainFrame = createMainFrameRuntime({
+  thermalVehicles: combatWarmComposition.thermalVehicles,
   scene,
   camera,
   game,
@@ -3250,8 +3264,12 @@ await bootStage('post', async () => {
 // window.__STUDIO (schema in docs/STUDIO.md). main.ts only hands it these
 // integration seams plus the one tick() branch above — entry keys, panel,
 // actors, effects, capture all live in the studio module.
+let studioLightRuntime: Promise<import('./game/studioLightRuntime.ts').StudioLightRuntime> | null = null;
+let studioLightLive: import('./game/studioLightRuntime.ts').StudioLightRuntime | null = null;
 const studioAccess = createStudioAccess({
-  loadModule: () => import('./game/studio.ts'),
+  // the Studio's own catalog strings, which the game's catalogs leave out, load beside its chunk
+  loadModule: () => Promise.all([import('./game/studio.ts'), import('./ui/studioStrings.ts').then((strings) => strings.ensureStudioStrings())])
+    .then(([module]) => module),
   preloadFxModule,
   ensureFxRuntime,
   prepareRuntime: () => lighting.setFarCascadeDormant(false),
@@ -3265,14 +3283,50 @@ const studioAccess = createStudioAccess({
     }),
     setWorldDormant,
     setGarageSpots, setGarageSunTrim, enterGarage,
-    prepareStudioAtmosphere: async (time: import('./engine/battleWeatherPolicy.ts').BattleTimeOfDay) => {
-      await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, [time]);
+    // media r5: Studio times of day and sun direction. The battle owner keeps the authored day (its Garage-return
+    // reset restores the sky); the demand-loaded Studio light runtime applies the plan over it and restores the
+    // world's baked horizon light on exit.
+    prepareStudioAtmosphere: async (
+      time: import('./game/studioLight.ts').StudioTimeOfDay,
+      light: import('./game/studioLight.ts').StudioLight | null = null,
+    ) => {
+      await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, ['day']);
+      studioLightRuntime ??= import('./game/studioLightRuntime.ts').then(({ createStudioLightRuntime }) => {
+        const runtime = createStudioLightRuntime({
+          scene,
+          getWorld: currentWorld,
+          cloudIdentity: (authored) => {
+            const layer = deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...authored } as Parameters<typeof deriveCloudLayerPreset>[0]);
+            return { offset: [layer.offset[0], layer.offset[1]], windDirRad: layer.windDirRad };
+          },
+          applySky: (preset, keyDirection) => {
+            sky.applyPreset(preset, scene);
+            lighting.setSun(keyDirection ?? sky.sunDir, preset);
+            battleWatchdogRadianceScale = preset.skyIntensity ?? 1;
+            baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
+            worldRuntime.markEnvironmentPrepared(currentWorld());
+          },
+          resetTemporalHistory: () => post.taa?.resetHistory(),
+          nightLightBudget: () => getDeviceTier() === 'mobile' ? { spotLights: 2, pointLights: 1 } : { spotLights: 4, pointLights: 2 },
+        });
+        studioLightLive = runtime;
+        return runtime;
+      }).catch((error: unknown) => {
+        studioLightRuntime = null; // a failed chunk fetch stays retryable
+        throw error;
+      });
+      return (await studioLightRuntime).apply(time, light);
     },
+    restoreStudioAtmosphere: () => studioLightLive?.restore(),
+    getStudioLight: () => studioLightLive,
     warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
     // main.ts owns both direct boot and the first lazy F8 handoff.
     autoEnter: false,
     fx: studioFx,
+    // Studio never enters scoped sniper view, so the permanent sniper fill is
+    // idle there: lend it for flares/night firelight (scene light count fixed).
+    borrowLight: () => sniperFill.light,
   }),
   getPhase: () => game.phase,
   keyTarget: window,

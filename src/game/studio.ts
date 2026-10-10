@@ -1,10 +1,28 @@
 import { t } from '../ui/i18n.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
+import { createStudioCrushes, planStudioCrushes, type StudioCrushEvent, type StudioCrushHull } from './studioCrush.ts';
+import { sceneLinkPath } from './studioSceneLink.ts';
 import type { WaterDisturbance } from '../world/shallowWater.ts';
 import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
-import { BATTLE_TIMES, type BattleTimeOfDay } from '../engine/battleWeatherPolicy.ts';
+import {
+  STUDIO_TIMES, STUDIO_TIME_BANDS, isStudioTime, normalizeStudioLight, planStudioLight, studioElevationBand,
+  studioTimeFor, studioTimesFor, type StudioLight, type StudioTimeOfDay,
+} from './studioLight.ts';
+import { studioAuthoredSky } from './studioLightRuntime.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import {
+  DESTRUCTION_BUS_EVENTS, MUNITION_PROFILES, type MunitionClass, type StructureStage, type StructureStageEvent,
+  type TerrainCraterEvent,
+} from '../sim/destructionEvents.ts';
+import { matchRulesetFor } from '../sim/matchRuleset.ts';
+import {
+  CRATER_DEFORM_MIN_RADIUS_M, craterFor, munitionChargeKg, munitionClassForShell, type MunitionShellLike,
+} from '../sim/munitionBlast.ts';
+import { quantizeCrater, type QuantizedCrater } from '../sim/destructionMatch.ts';
+import { createTerrainDeformation, type TerrainDeformation } from '../sim/terrainDeformation.ts';
+import { architectureStyleOf, wallMaterialForStyle } from '../sim/structureMaterial.ts';
+import { createStudioDestruction, type StudioDestruction } from './studioDestruction.ts';
 /**
  * studio.ts — SCENE STUDIO: an in-game staging rig for composing shots.
  *
@@ -42,7 +60,13 @@ import {
   createTankState, resetTankVerticalState, updateTank, SIM_DT,
 } from '../sim/movement.ts';
 import { createShell, stepShell } from '../sim/ballistics.ts';
-import { conformStudioActor, resetStudioActorSupport } from './studioActorSupport.ts';
+import { conformStudioActor, resetStudioActorSupport, studioSupportBelly } from './studioActorSupport.ts';
+import {
+  FILM_SUPPORT_ON_GRID, captureFilmSupport, createFilmSupport, filmSupportAlpha, presentFilmSupport, resetFilmSupport,
+  type FilmSupport,
+} from './studioFilmSupport.ts';
+import { createStructureSupportField, type StructureSupportField } from '../sim/structureSupport.ts';
+import type { CollisionRecord } from '../world/collision.ts';
 import { createBus } from './stateCore.ts';
 import {
   CAMO_CATALOG_PATTERN_IDS, setCamoOverride, applyCamoPatterns,
@@ -76,8 +100,26 @@ import type {
   StoryboardInput,
 } from './studioTimeline.ts';
 import { createFrameBudgetYielder } from '../engine/frameScheduler.ts';
+import { createStudioCinematics } from '../fx/cinematicFx.ts';
+import type { CineActor, CineTrackActor, CineTrackSample, StudioCinematics } from '../fx/cinematicFx.ts';
+import type { FxCinematicPort } from '../fx/effects.ts';
+import {
+  STUDIO_FX_QUALITIES, STUDIO_FX_PARAMS, normalizeStudioFx, studioFxState, fxParam, flareColor,
+} from './studioFxSettings.ts';
+import type { StudioFxQuality, StudioFxSettings } from './studioFxSettings.ts';
+import { createTrackDustAdapters } from './studioTrackDust.ts';
+import { requestAuxiliary } from '../sim/auxiliarySystems.ts';
+import type { AuxiliaryEntity } from '../sim/auxiliarySystems.ts';
+import { createSmokeCanister, SMOKE_GRAVITY_MPS2 } from '../sim/smokeBallistics.ts';
+import { SMOKE_WIND_X, SMOKE_WIND_Z } from '../sim/smokeScreen.ts';
 import { createProductionScene, productionPreset, productionCamera, productionAspect, reframeProductionPoint, reframeProductionFov } from './studioProduction.ts';
 import type { ProductionOptions, ProductionRigId, ProductionFormat } from './studioProduction.ts';
+import { createStudioFilm } from './studioFilm.ts';
+import type { FilmFrameInfo, FilmNearSurfaces, FilmSessionInfo } from './studioFilm.ts';
+import { createFilmTimeMap, normalizeFilm, filmOutputSize, FILM_CUE_ATTACK_MS, FILM_DEFAULTS } from './studioFilmPlan.ts';
+import type { FilmFilter, FilmSettings, FilmSettingsInput } from './studioFilmPlan.ts';
+import type { FilmExportProgress, FilmExportResult } from './studioFilmExport.ts';
+import type { FilmSoundCue, FilmSoundKind } from './studioFilmAudio.ts';
 import {
   applySiteMetadataToDocument,
   localizedGameMetadata,
@@ -93,11 +135,21 @@ import type {
   TankState,
 } from '../sim/movement.ts';
 import type { PostRuntime } from '../engine/post.ts';
+import { createCinemaPost, type CinemaRuntime } from '../engine/cinemaPost.ts';
+import {
+  NEUTRAL_PICTURE, PICTURE_PRESETS, applyPicturePatch, isNeutralPicture, pictureCinemaSettings,
+  pictureGrainSeed, pictureLensState, pictureLetterboxBars, pictureStateJson, resolvePicture,
+  type PicturePatch, type StudioPicture,
+} from './studioPicture.ts';
 import type { WorldRuntime } from '../world/map.ts';
 
 type TankSpec = ReturnType<typeof getSpec>;
 type TankVisual = ReturnType<typeof createTank>;
-type StudioShell = ReturnType<typeof createShell> & { _studioMaxDistM?: number };
+type StudioShell = ReturnType<typeof createShell> & {
+  _studioMaxDistM?: number;
+  /** A 'strike' round (destruction core lane, P2): traced through the world each step, the sim's own strike where it stops. */
+  _studioWorld?: boolean;
+};
 type ProgressListener = (fraction: number, label: string) => void;
 
 interface StudioPoolTank {
@@ -114,8 +166,9 @@ interface StudioGameState {
 
 interface StudioFxRuntime {
   bindBus(bus: ReturnType<typeof createBus>): void;
-  resetAll(): void;
+  resetAll(options?: { running?: boolean }): void;
   resetSeed(seed: number): void;
+  resetClock(atTimeS?: number): void;
   setFrozen(frozen: boolean): void;
   update(
     deltaSeconds: number,
@@ -124,12 +177,18 @@ interface StudioFxRuntime {
     resolveSubject: (id: RuntimeValue) => StudioActor | null,
   ): void;
   muzzleFlash(position: THREE.Vector3, direction: THREE.Vector3, caliberMm: number): void;
-  destruction(position: THREE.Vector3, visual: TankVisual | null, cause: string): void;
+  /** A hull toppling a pole or dressing (the battle's crush burst) and kicking loose dressing (effects.ts). */
+  propCrush?(position: THREE.Vector3, direction: THREE.Vector3, heightM?: number): void;
+  loosePropHit?(position: THREE.Vector3, direction: THREE.Vector3, heightM?: number): void;
+  destruction(position: THREE.Vector3, visual: TankVisual | null, cause: string, wreckOf?: string | null,
+    opts?: { shellBurst?: boolean }): void;
   dust(position: THREE.Vector3, direction: THREE.Vector3, intensity: number): void;
-  exhaust(position: THREE.Vector3, intensity: number, sooty: boolean): void;
   armorScar(visual: TankVisual, position: THREE.Vector3, normal: THREE.Vector3, caliberMm: number): void;
   composeFiringMoment(options: Readonly<Record<string, RuntimeValue>>): void;
   composeExplosionMoment(options: Readonly<Record<string, RuntimeValue>>): void;
+  exhaust(position: THREE.Vector3, intensity: number, sooty: boolean, vel?: THREE.Vector3 | null, fwd?: THREE.Vector3 | null,
+    birthOffset?: number): void;
+  cinematicPort(): FxCinematicPort;
 }
 
 interface StudioLightingRuntime {
@@ -160,13 +219,23 @@ interface StudioContext {
   getWorld(): WorldRuntime | null;
   ensureWorld(mapId: string, onProgress?: ProgressListener): Promise<WorldRuntime>;
   setWorldDormant(dormant: boolean): void;
-  prepareStudioAtmosphere?(time: BattleTimeOfDay): Promise<void>;
+  /** Apply a Studio time of day and sun override over the active world (main.ts → studioLightRuntime). */
+  prepareStudioAtmosphere?(time: StudioTimeOfDay, light?: StudioLight | null): Promise<unknown>;
+  /** Restore the world's baked horizon light and the readability before the battlefield leaves the Studio. */
+  restoreStudioAtmosphere?(): void;
+  /** The applied light runtime (blue-hour / night lamps follow the actors and the camera). */
+  getStudioLight?(): {
+    setActorRoots(roots: readonly THREE.Object3D[]): void;
+    update(cameraPosition: THREE.Vector3Like): void;
+  } | null;
   setGarageSpots(enabled: boolean): void;
   setGarageSunTrim(enabled: boolean): void;
   enterGarage(): Promise<void> | void;
   warmStudioPipeline?(onProgress?: ProgressListener): Promise<RuntimeValue>;
   transition?: StudioTransitionRuntime;
   autoEnter?: boolean;
+  /** An idle pooled PointLight Studio may drive (flares, night firelight). */
+  borrowLight?(): THREE.PointLight | null;
 }
 
 interface StudioActorInput {
@@ -243,14 +312,49 @@ interface StudioActor extends MovementEntity, StudioPanelActor {
   supportX: number;
   supportZ: number;
   supportYaw: number;
+  /** Film renders: track travel since the last fixed support step (presentation only). */
+  filmScrollL?: number;
+  filmScrollR?: number;
+  /** Film renders: the support steps around the sample and its blend between them (studioFilmSupport.ts). */
+  filmSupport?: FilmSupport;
+  filmSupportAlpha?: number;
   timelineTrack: ActorTrack | null;
+  /** The battle hull's ride surface (terrain + standable primitive tops), per actor and world. */
+  support: StructureSupportField | null;
+  supportWorld: WorldRuntime | null;
 }
 
 type ActorRef = StudioActor | StudioPanelActor | string | number | null | undefined;
 
 interface StudioEffectParams {
+  /** a wreck's age (char and settle), or a settled crater's (crater round 3: the presentation weathers it by age), s */
   ageS?: number;
+  burnS?: number;
+  color?: string;
+  density?: number;
+  driftMps?: number;
+  durationS?: number;
+  fallMps?: number;
+  heightM?: number;
+  hot?: number;
+  launch?: boolean;
+  quality?: string;
+  rate?: number;
+  rise?: number;
+  scale?: number;
+  smoke?: boolean;
+  strength?: number;
   caliberMm?: number;
+  /** explosion: a munition class (sim/destructionEvents.ts) and its charge, kg TNT (default: the class's nominal) */
+  munition?: string;
+  /** structure: the stage the building nearest the effect point crosses ('damaged', 'breached', 'collapsed') */
+  stage?: string;
+  /** explosion with a munition: the round ends on the nearest building's wall (along dirDeg), hitH m up it */
+  wall?: boolean;
+  /** explosion with a munition: only its crater, laid down settled (a late joiner's view: no blast) */
+  settled?: boolean;
+  hitH?: number;
+  chargeKg?: number;
   cause?: string;
   count?: number;
   dirDeg?: number;
@@ -271,9 +375,17 @@ interface StudioEffectParams {
   slot?: number;
   sooty?: boolean;
   speedMps?: number;
+  /** ram: the hull's mass in tonnes (default the actor's spec), and how far ahead of its nose a wall is met (m) */
+  massTons?: number;
+  reachM?: number;
   spreadDeg?: number;
   to?: readonly number[];
   tracer?: boolean;
+  /** strike (destruction P2): the round ({ type, caliberMm, name?, blastRadiusM?, pen100Mm?, velocityMps? }), its climb
+   * (degrees) and how far it flies before it is gone (m) */
+  shell?: Record<string, unknown>;
+  pitchDeg?: number;
+  rangeM?: number;
 }
 
 interface StudioEffectInput {
@@ -309,6 +421,8 @@ interface EffectFireOptions {
 }
 
 interface StudioEffectExecution {
+  /** Stable effect id (seeds the cinematic layer's private stream). */
+  readonly id: string;
   readonly input: StudioEffectInput | StudioEffectRecord;
   readonly actor: StudioActor | null;
   readonly position: THREE.Vector3;
@@ -332,6 +446,44 @@ interface CaptureOptions {
   scale?: number;
   download?: boolean;
   name?: string;
+  type?: string;
+  quality?: number;
+  /** Film still: jittered accumulation samples (1 = the classic single render). */
+  samples?: number;
+  filter?: FilmFilter;
+  /** Film still: render this many times larger, then downsample. */
+  supersample?: number;
+  /** Motion-blur still: timeline ms integrated around the playhead (≤ 1000; 0 = frozen instant). */
+  exposureMs?: number;
+  /** Motion-blur still: adaptive sample ceiling (samples..128, default max(samples, 64)). */
+  maxSamples?: number;
+  /** Motion-blur still: camera-cue scale (default the scene's film.shake, else 1). */
+  shake?: number;
+}
+
+interface FilmBeginOptions extends FilmSettingsInput {
+  width?: number;
+  height?: number;
+  startMs?: number;
+  endMs?: number;
+}
+
+interface FilmExportRequest extends FilmBeginOptions {
+  /** Short-side resolution for the production format (1080, 1440, 2160); ignored with width/height. */
+  resolution?: number;
+  /** Mix the game's combat sound into the file (default true). */
+  audio?: boolean;
+  bitrate?: number;
+  container?: 'auto' | 'mp4' | 'webm';
+  download?: boolean;
+  name?: string;
+  onProgress?: (progress: FilmExportProgress) => void;
+  onFrame?: (canvas: HTMLCanvasElement) => void;
+}
+
+interface FilmRenderOptions {
+  /** Also return the frame as a data URL (headless exporters). */
+  dataURL?: boolean;
   type?: string;
   quality?: number;
 }
@@ -375,8 +527,10 @@ interface RecordingSession {
 
 interface StudioSceneInput {
   map?: string;
+  fx?: { quality?: string; trackDust?: boolean };
   productionFormat?: ProductionFormat;
-  timeOfDay?: BattleTimeOfDay;
+  timeOfDay?: StudioTimeOfDay;
+  light?: StudioLight | null;
   seed?: number;
   actors?: readonly StudioActorInput[];
   effects?: readonly StudioEffectInput[];
@@ -384,6 +538,11 @@ interface StudioSceneInput {
   camera?: CameraConfig;
   fxTime?: number;
   timeScale?: number;
+  /** Optional film settings (studioFilmPlan.ts); absent = none authored. */
+  film?: FilmSettingsInput | null;
+  picture?: PicturePatch | null;
+  /** The Studio's destruction (game/studioDestruction.ts): `sections: false` films the battle's P1 rules. */
+  destruction?: { sections?: boolean };
 }
 
 interface EnterOptions {
@@ -410,6 +569,10 @@ interface StudioRuntime {
 }
 
 const DEG = Math.PI / 180;
+/** What the Studio reads of a building's anatomy (world/structureDamageSeam.ts): its footprint, height and placement. */
+interface StudioStructureAnatomy {
+  massClass: string; placement: { x: number; y: number; z: number; yaw: number }; w: number; d: number; h: number;
+}
 const FX_STEP_S = 1 / 60;      // fixed timeline step (load() and live advance)
 const SETTLE_STEPS = 48;       // updateTank steps to conform a placed actor
 const SETTLE_STEPS_DRAG = 6;   // cheap conform while dragging
@@ -433,6 +596,13 @@ export const EFFECT_TYPES = [
   'barrage',    // artillery stonk — ring of ground bursts around the anchor
   'armor_scar', // permanent battle scarring stamped on the actor's plates
   'exhaust',    // diesel belch off the engine deck
+  // media r5 cinematic pyrotechnics (src/fx/cinematicFx.ts, docs/STUDIO.md):
+  'smoke_screen', // the actor's real smoke-grenade salvo blooming into a wall
+  'flare',        // illumination flare drifting under a parachute (real light)
+  'embers',       // drifting ember storm off a fire
+  'debris',       // hot/cold fragments with trails and landing dust
+  'shockwave',    // ground dust ring racing outward
+  'fire_field',   // burning ground: low flames, lit smoke, glow
 ];
 
 // scratch
@@ -492,9 +662,18 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let entering: Promise<void> | null = null; // in-flight enter() promise (shared latch)
   let loading = false;         // load() in flight (blocks re-entrant loads)
   let mapChange: Promise<string> | null = null; // serialized map switch
-  let timeOfDay: BattleTimeOfDay = 'day';
+  let timeOfDay: StudioTimeOfDay = 'day';
+  let studioLight: StudioLight | null = null; // scene JSON `light`: the sun override (absolute bearing / elevation)
   let timeScale = 1;           // fx time multiplier; 0 = frozen
   let clockMs = 0;             // studio fx timeline (ms since last fx reset)
+  // the lens flare eases on the export clock while advanceFrame drives the timeline (one ease per step, whatever the
+  // live renders between steps), on the wall clock again in playback and outside the Studio
+  let flareOnExportClock = false;
+  const flareToWallClock = (): void => {
+    if (!flareOnExportClock) return;
+    flareOnExportClock = false;
+    post.lensFlare?.setClock?.(null);
+  };
   let uidSeq = 1;
   let effectUidSeq = 1;
   const actors: StudioActor[] = []; // see addActor()
@@ -510,7 +689,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let frameDirty = true;
   let cameraDirty = true;
   let poolSweepAcc = 0;
-  let sceneMeta = { seed: 5000 };
+  let sceneMeta: { seed: number; sections: boolean } = { seed: 5000, sections: true };
   let selectedEffect: StudioEffectRecord | null = null;
   let storyboard: Storyboard = normalizeStoryboard();
   let selectedShotId: string | null = null;
@@ -518,7 +697,32 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let actorKeyUidSeq = 1;
   let railVisible = true;
   let recording: RecordingSession | null = null;
+  // Film renderer (studioFilm.ts): the scene's authored `film` block, and the
+  // live-session latch. While filming, the live tick and authoring input stand
+  // still, the timeline advances unrounded, continuous emitters follow the
+  // 60 Hz timeline grid and track phase follows the exact sample instant.
+  let sceneFilm: FilmSettings | null = null;
+  let filming = false;
+  // Soundtrack cues of an exported film (studioFilmAudio.ts): every combat sound
+  // the timeline produces while the film renders, at its exact instant.
+  let filmCues: FilmSoundCue[] | null = null;
+  function filmCue(kind: FilmSoundKind, x: number, y: number, z: number, caliberMm: number,
+    cause?: 'ammorack' | 'shot' | 'fire'): void {
+    if (filmCues && filmCues.length < 4096) filmCues.push({ timelineMs: clockMs, kind, x, y, z, caliberMm, ...(cause ? { cause } : {}) });
+  }
+  let filmShake = 1; // the open film's camera-cue scale (film.shake)
+  function scaleFilmCue(cue: { rightM: number; upM: number; forwardM: number; rollDeg: number; fovKickDeg: number }): void {
+    if (!filming || filmShake === 1) return;
+    cue.rightM *= filmShake; cue.upM *= filmShake; cue.forwardM *= filmShake;
+    cue.rollDeg *= filmShake; cue.fovKickDeg *= filmShake;
+  }
   const perf = { renderedFrames: 0, skippedFrames: 0, poolSweeps: 0 };
+  // media r5: scene FX quality + the lazily created cinematic layer
+  let fxSettings: StudioFxSettings = normalizeStudioFx(null);
+  let cinematics: StudioCinematics | null = null;
+  let paletteMapId = '';
+  let paletteId = 'verdant';
+  let effectFireS = 0; // authored cue time of the effect being fired
 
   function invalidate() { frameDirty = true; }
 
@@ -633,11 +837,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           point.userData.studioShotId = shot.id;
           group.add(point);
         }
-        group.visible = active && railVisible && timeScale === 0 && !recording && shots.length > 0;
+        group.visible = active && railVisible && timeScale === 0 && !recording && !filming && shots.length > 0;
         invalidate();
       },
       updateVisibility() {
-        group.visible = active && railVisible && timeScale === 0 && !recording
+        group.visible = active && railVisible && timeScale === 0 && !recording && !filming
           && storyboard.shots.length > 0;
       },
     };
@@ -756,6 +960,24 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * @param {object} a actor
    * @param {number} [steps]
    */
+  // Studio actors ride what battle hulls ride (round 30 structure support: terrain plus the standable tops of the
+  // collision primitives below the belly), and a tank staged over a bridge starts on the deck, not on the river bed
+  // or gorge floor under it (the height field there is the excavated surface; the deck is collision support).
+  const _deckCandidates: CollisionRecord[] = [], _deckScratch: CollisionRecord[] = [];
+  function actorSupport(a: StudioActor): StructureSupportField | typeof hfProxy {
+    const world = getWorld();
+    if (!world) return hfProxy;
+    if (!a.support || a.supportWorld !== world) {
+      a.support = createStructureSupportField(hfProxy as Parameters<typeof createStructureSupportField>[0], world);
+      a.supportWorld = world;
+    }
+    const x = a.state.pos.x, z = a.state.pos.z;
+    _deckCandidates.length = 0;
+    world.queryObstacles(x - 4, z - 4, x + 4, z + 4, _deckCandidates);
+    a.support.beginHull(x, z, studioSupportBelly(_deckCandidates, x, z, a.state.pos.y + (a.contactGeom?.bottomYM ?? 0), _deckScratch));
+    return a.support;
+  }
+
   function settleActor(a: StudioActor, steps = SETTLE_STEPS): void {
     const p = a.pose;
     const st = a.state;
@@ -763,7 +985,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     actorRootPosition(a, p.x, p.z, yaw, _v3);
     st.pos.x = _v3.x;
     st.pos.z = _v3.z;
-    resetTankVerticalState(st, hfProxy.getHeightAt(p.x, p.z));
+    resetTankVerticalState(st, actorSupport(a).getHeightAt(st.pos.x, st.pos.z));
     st.yaw = yaw;
     st.speed = 0;
     st.yawRate = 0;
@@ -784,7 +1006,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const aimLocked = a.input.aimLocked;
     if (a.authoredSuspensionAimPitch !== null) a.input.aimLocked = true;
     try {
-      for (let i = 0; i < steps; i++) updateTank(a, hfProxy, SIM_DT);
+      for (let i = 0; i < steps; i++) updateTank(a, actorSupport(a), SIM_DT);
     } finally { a.input.aimLocked = aimLocked; }
     // pin the authored pose exactly (updateTank slews at spec rates; slope
     // slide may creep pos) — staging is authoritative, sim only shapes
@@ -842,7 +1064,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // Six seconds covers the hydraulic rate limit and the slower chassis
     // attitude/support springs at either end of the authored travel range.
     for (let frame = 0; frame < 360; frame++) {
-      updateTank(a, hfProxy, SIM_DT);
+      updateTank(a, actorSupport(a), SIM_DT);
       // Studio placement remains authoritative while the suspension solver
       // owns vertical seating and attitude.
       st.pos.x = rootX;
@@ -998,6 +1220,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       timelineYaw: (cfg.facingDeg || 0) * DEG,
       supportStep: 0, supportX: x, supportZ: z, supportYaw: (cfg.facingDeg || 0) * DEG,
       timelineTrack: null,
+      support: null,
+      supportWorld: null,
     };
   }
 
@@ -1029,10 +1253,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // so setActorState('wrecked'/'turret-popped') never pays first-use
     // program compiles mid-beat. (GLB swaps re-hook in the swap pipeline.)
     if (visual.prewarmBurn) visual.prewarmBurn();
+    let owner: StudioActor | null = null;
     if (visual.setGroundSampler) {
-      visual.setGroundSampler((x: number, z: number) => hfProxy.getHeightAt(x, z));
+      // late-bound: the running gear conforms to the same surface the hull rides (a bridge deck, a roof)
+      visual.setGroundSampler((x: number, z: number) => (owner?.support ?? hfProxy).getHeightAt(x, z));
     }
     const a = createActorRecord(cfg, specId, spec, visual, camoSeed);
+    owner = a;
     actors.push(a);
     // Scene JSON load stages a complete batch. Rebuilding the rail bindings
     // and DOM actor list after every intermediate actor created redundant
@@ -1042,6 +1269,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     actorByRoot.set(visual.root, a);
     // Resolve the one visible spec now; never sweep unrelated cached vehicles.
     activateActorPresentation(a);
+    if (!loading) ctx.getStudioLight?.()?.setActorRoots(actorRoots); // headlights at blue hour / night
     return a;
   }
 
@@ -1060,6 +1288,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     a.visual.dispose();
     const rootIndex = actorRoots.indexOf(a.visual.root);
     if (rootIndex >= 0) actorRoots.splice(rootIndex, 1);
+    if (!loading) ctx.getStudioLight?.()?.setActorRoots(actorRoots); // load() re-syncs once after its batch
     actors.splice(actors.indexOf(a), 1);
     storyboard = clearStoryboardActorTrack(storyboard, actorKey);
     bindStoryboardTracks();
@@ -1247,7 +1476,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   function onPointerDown(e: PointerEvent): void {
     if (!active || e.target !== renderer.domElement) return;
-    if (recording) return;
+    if (recording || filming) return;
     if (e.button === 0) {
       const hitActor = pickActor(e);
       if (hitActor && !placeArmed) {
@@ -1263,7 +1492,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function onPointerMove(e: PointerEvent): void {
-    if (!active) return;
+    if (!active || filming) return;
     if (dragActor) {
       if (terrainHit(e, _v3)) {
         updateActor(dragActor, { x: _v3.x, z: _v3.z, _drag: true });
@@ -1310,6 +1539,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   function onWheel(e: WheelEvent): void {
     if (!active || e.target !== renderer.domElement) return;
+    if (filming) { e.preventDefault(); return; }
     e.preventDefault();
     const k = e.deltaY < 0 ? 1 : -1;
     if (cam.mode === 'orbit') {
@@ -1331,6 +1561,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function onKeyDown(e: KeyboardEvent): void {
+    if (filming) return; // an offline film owns the Studio until it ends
     if (e.code === 'F8' && !e.repeat) {
       if (active) { exit(); e.preventDefault(); return; }
       if (game.phase === 'garage') {
@@ -1415,7 +1646,184 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     };
   }
 
-  function fireActorGun({ actor, params }: StudioEffectExecution): boolean {
+  // --- cinematic FX layer (media r5) -------------------------------------------
+  function terrainPalette(): string {
+    const mapId = getWorld()?.mapId ?? 'verdant';
+    if (mapId !== paletteMapId) {
+      paletteMapId = mapId;
+      // the map's sourced palette, else its own id: sourcedTextures.ts resolveSourcedTerrainPalette, whose unknown-id
+      // fallback (verdant) the dust tones share. Not imported: a Studio import splits the world's terrain chunk.
+      const splat = (getMapConfig(mapId) as { splat?: { sourcedPalette?: string } }).splat;
+      paletteId = splat?.sourcedPalette ?? mapId;
+    }
+    return paletteId;
+  }
+
+  /** Create the Studio-only cinematic layer on first need (never in battle). */
+  function ensureCinematics(): StudioCinematics {
+    if (cinematics) return cinematics;
+    cinematics = createStudioCinematics({
+      port: fx.cinematicPort(),
+      scene,
+      light: ctx.borrowLight?.() ?? null,
+      palette: terrainPalette,
+      seed: () => sceneMeta.seed || 5000,
+    });
+    cinematics.setQuality(fxSettings.quality);
+    cinematics.setTrackDust(fxSettings.trackDust);
+    cinematics.beginEffect(effectFireS);
+    return cinematics;
+  }
+
+  /** Exit teardown: the cinematic layer returns borrowed lights and shaders. */
+  function releaseStudioFx(): void {
+    cinematics?.dispose();
+    cinematics = null;
+    fxSettings = normalizeStudioFx(null);
+    trackAdapters.clear();
+  }
+
+  /** Whether an effect renders its cinematic layer (per-effect override wins). */
+  function cinematicFor(params: StudioEffectParams): boolean {
+    if (params.quality === 'cinematic') return true;
+    if (params.quality === 'battle') return false;
+    return fxSettings.quality === 'cinematic';
+  }
+
+  function applyFxSettings(next: StudioFxSettings): void {
+    fxSettings = next;
+    if (cinematics || next.quality === 'cinematic' || next.trackDust) {
+      const layer = ensureCinematics();
+      layer.setQuality(next.quality);
+      layer.setTrackDust(next.trackDust);
+    }
+  }
+
+  function cineActor(a: StudioActor): CineActor {
+    const st = a.state;
+    const dims = a.spec.dims;
+    const pivot = a.spec.armor?.turretPivot ?? [0, dims.heightM * 0.7, 0];
+    return {
+      uid: a.uid, x: st.pos.x, y: st.pos.y, z: st.pos.z, yaw: st.yaw, turretYaw: st.turretYaw ?? 0,
+      lengthM: dims.hullLengthM || 7, widthM: dims.widthM || 3.6, heightM: dims.heightM || 2.4,
+      pivot: [pivot[0] ?? 0, pivot[1] ?? dims.heightM * 0.7, pivot[2] ?? 0],
+    };
+  }
+
+  const trackList: CineTrackActor[] = [];
+  const _trackSample: ActorTrackSample = { x: 0, z: 0, facingDeg: 0, turretDeg: 0, gunDeg: 0, keyId: undefined };
+  // Keyed by the actor, not its uid: load() restarts uids at a1 (studioTrackDust.ts).
+  const trackAdapters = createTrackDustAdapters<StudioActor>((actorRef) => {
+    const rect = tankContactRect(actorRef.spec);
+    return {
+      uid: actorRef.uid,
+      halfLengthM: rect.halfLength,
+      halfWidthM: rect.halfWidth,
+      poseAt(tS: number, out: CineTrackSample): boolean {
+        const keys = actorRef.timelineTrack?.keys;
+        if (!keys || !sampleActorTrack(keys, tS * 1000, _trackSample)) return false;
+        out.x = _trackSample.x ?? 0; out.z = _trackSample.z ?? 0;
+        out.yawRad = (_trackSample.facingDeg ?? 0) * DEG;
+        return true;
+      },
+    };
+  });
+  function trackActors(): readonly CineTrackActor[] {
+    trackList.length = 0;
+    if (!fxSettings.trackDust) return trackList;
+    for (const a of actors) {
+      const track = a.timelineTrack;
+      if (!track || track.keys.length < 2 || a.visual.isDestroyed?.()) continue;
+      trackList.push(trackAdapters.adapterFor(a));
+    }
+    return trackList;
+  }
+
+  /**
+   * The actor's own smoke-launcher salvo through the game's auxiliary
+   * systems (real sockets + smoke ballistics). Vehicles without a kit fire a
+   * generic turret-front fan of `count` canisters.
+   */
+  function smokeSalvo(a: StudioActor, count: number): number[][] {
+    const ground = (x: number, z: number) => hfProxy.getHeightAt(x, z);
+    const entity = {
+      id: a.uid, team: 'studio', spec: a.spec, state: a.state, combat: { destroyed: false },
+    } as unknown as AuxiliaryEntity;
+    if (requestAuxiliary(entity, 'smoke', clockMs / 1000, ground)) {
+      const screen = entity.combat.auxiliary?.smoke;
+      if (screen?.canisters?.length) return screen.canisters.map((shot) => [...shot]);
+    }
+    const st = a.state;
+    const yaw = st.yaw + (st.turretYaw ?? 0);
+    const out: number[][] = [];
+    for (let i = 0; i < count; i++) {
+      const spread = count > 1 ? (i / (count - 1) - 0.5) * 1.9 : 0;
+      const az = yaw + spread;
+      const side = spread >= 0 ? 1 : -1;
+      _v1.set(
+        st.pos.x + Math.sin(yaw) * 0.6 + Math.cos(yaw) * side * 1.1,
+        st.pos.y + a.spec.dims.heightM * 0.82,
+        st.pos.z + Math.cos(yaw) * 0.6 - Math.sin(yaw) * side * 1.1,
+      );
+      _v2.set(Math.sin(az) * Math.cos(0.42), Math.sin(0.42), Math.cos(az) * Math.cos(0.42));
+      out.push([...createSmokeCanister(_v1, _v2, ground)]);
+    }
+    return out;
+  }
+
+  function fireSmokeScreen({ id, actor, params }: StudioEffectExecution): boolean {
+    if (!actor) return false;
+    const salvo = smokeSalvo(actor, Math.round(fxParam('smoke_screen', 'count', params.count)));
+    ensureCinematics().smokeScreen(id, salvo, SMOKE_GRAVITY_MPS2, SMOKE_WIND_X, SMOKE_WIND_Z,
+      fxParam('smoke_screen', 'durationS', params.durationS), fxParam('smoke_screen', 'density', params.density));
+    return true;
+  }
+
+  function fireFlare({ id, actor, position, params }: StudioEffectExecution): boolean {
+    _v2.copy(position);
+    if (actor) _v2.y = actor.state.pos.y + actor.spec.dims.heightM;
+    else _v2.y = hfProxy.getHeightAt(_v2.x, _v2.z) + 0.5;
+    ensureCinematics().flare(id, _v2, {
+      heightM: fxParam('flare', 'heightM', params.heightM),
+      burnS: fxParam('flare', 'burnS', params.burnS),
+      intensity: fxParam('flare', 'intensity', params.intensity),
+      driftMps: fxParam('flare', 'driftMps', params.driftMps),
+      fallMps: fxParam('flare', 'fallMps', params.fallMps),
+      color: flareColor(params.color),
+      launch: params.launch !== false,
+    });
+    return true;
+  }
+
+  function fireEmbers({ id, actor, position, params }: StudioEffectExecution): boolean {
+    _v2.copy(position);
+    if (actor) _v2.y = actor.state.pos.y + actor.spec.dims.heightM * 0.7;
+    else _v2.y = hfProxy.getHeightAt(_v2.x, _v2.z) + 0.3;
+    ensureCinematics().embers(id, _v2, fxParam('embers', 'radiusM', params.radiusM), fxParam('embers', 'rate', params.rate),
+      fxParam('embers', 'durationS', params.durationS), fxParam('embers', 'rise', params.rise));
+    return true;
+  }
+
+  function fireDebris({ id, actor, position, params }: StudioEffectExecution): boolean {
+    _v2.copy(position);
+    if (!actor) _v2.y = hfProxy.getHeightAt(_v2.x, _v2.z) + 0.6;
+    ensureCinematics().debris(id, _v2, Math.round(fxParam('debris', 'count', params.count)), fxParam('debris', 'speedMps', params.speedMps),
+      fxParam('debris', 'hot', params.hot), fxParam('debris', 'scale', params.scale));
+    return true;
+  }
+
+  function fireShockwave({ id, position, params }: StudioEffectExecution): boolean {
+    ensureCinematics().shockwave(id, position, fxParam('shockwave', 'radiusM', params.radiusM), fxParam('shockwave', 'strength', params.strength));
+    return true;
+  }
+
+  function fireFireField({ id, position, params }: StudioEffectExecution): boolean {
+    ensureCinematics().fireField(id, position, fxParam('fire_field', 'radiusM', params.radiusM), fxParam('fire_field', 'durationS', params.durationS),
+      fxParam('fire_field', 'intensity', params.intensity), params.smoke !== false);
+    return true;
+  }
+
+  function fireActorGun({ id, actor, params }: StudioEffectExecution): boolean {
     if (!actor) return false;
     const slot = Math.max(0, Math.min(
       actor.spec.gun.shells.length - 1,
@@ -1445,6 +1853,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       muzzlePos: [_v2.x, _v2.y, _v2.z],
       dir: [_v3.x, _v3.y, _v3.z],
     });
+    filmCue('cannon', _v2.x, _v2.y, _v2.z, shellSpec.caliberMm);
+    if (cinematicFor(params) && !isUnguidedRocket(actor.spec.gun, shellSpec)) {
+      ensureCinematics().muzzleBlast(id, _v2, _v3, shellSpec.caliberMm);
+    }
     if (params.tracer !== false) {
       const shell = createShell(shellSpec, actor.uid, false, _v2, _v3, shellId);
       shell.rocket = isUnguidedRocket(actor.spec.gun, shellSpec);
@@ -1453,7 +1865,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return true;
   }
 
-  function fireMuzzleFlash({ actor, position, params }: StudioEffectExecution): boolean {
+  function fireMuzzleFlash({ id, actor, position, params }: StudioEffectExecution): boolean {
     if (actor) {
       actor.visual.gunMuzzleWorld(_v2);
       actor.visual.gunDirWorld(_v3);
@@ -1462,7 +1874,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       const direction = (params.dirDeg || 0) * DEG;
       _v3.set(Math.sin(direction), 0, Math.cos(direction));
     }
-    fx.muzzleFlash(_v2, _v3, params.caliberMm || (actor ? actor.spec.gun.caliberMm : 120));
+    const caliberMm = params.caliberMm || (actor ? actor.spec.gun.caliberMm : 120);
+    fx.muzzleFlash(_v2, _v3, caliberMm);
+    filmCue('cannon', _v2.x, _v2.y, _v2.z, caliberMm);
+    if (cinematicFor(params)) ensureCinematics().muzzleBlast(id, _v2, _v3, caliberMm);
     return true;
   }
 
@@ -1495,23 +1910,82 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     defaultCaliberMm: number,
     normal: readonly [number, number, number],
   ): boolean {
-    const { actor, position, params } = execution;
+    const { id, actor, position, params } = execution;
     const impactNormal = params.normal || normal;
     _v2.set(impactNormal[0], impactNormal[1], impactNormal[2]).normalize();
+    const kind = params.kind || defaultKind;
+    const caliberMm = params.caliberMm || defaultCaliberMm;
     fxBus.emit('shell:hit', {
       shellId: null,
       targetId: actor ? actor.uid : null,
-      kind: params.kind || defaultKind,
-      caliberMm: params.caliberMm || defaultCaliberMm,
+      kind,
+      caliberMm,
       damage: 0,
       pos: [position.x, position.y, position.z],
       normal: [_v2.x, _v2.y, _v2.z],
     });
+    filmCue(kind === 'pen' ? 'pen' : kind === 'ricochet' ? 'ricochet' : kind === 'era' ? 'era'
+      : kind === 'terrain' ? 'dirt' : kind === 'he_pen' || kind === 'he_splash' ? 'he' : 'nonpen',
+    position.x, position.y, position.z, caliberMm);
+    if (cinematicFor(params)) ensureCinematics().impact(id, kind, position, _v2, caliberMm);
     return true;
   }
 
-  function fireExplosion({ position, params }: StudioEffectExecution): boolean {
+  function fireExplosion({ id, position, params }: StudioEffectExecution): boolean {
     const size = params.size || 'large';
+    filmCue(size === 'small' ? 'he' : 'tank', position.x, position.y, position.z, 122,
+      size === 'small' ? undefined : size === 'medium' ? 'shot' : (params.cause === 'fire' || params.cause === 'shot' ? params.cause : 'ammorack'));
+    // destruction-fx lane: a burst of a named munition class (the gunship's howitzer, an ATGM, a drone, a 30 mm HE
+    // round ...) at its nominal charge or params.chargeKg, as the battle's shells end on the ground
+    if (typeof params.munition === 'string' && params.munition in MUNITION_PROFILES) {
+      const munition = params.munition as MunitionClass;
+      const chargeKg = Number.isFinite(params.chargeKg) ? Number(params.chargeKg) : MUNITION_PROFILES[munition].nominalChargeKg;
+      // params.wall: the round ends on the nearest building's wall instead, as a battle shell does (the burst names the
+      // building, the expiry carries the struck face's normal): along dirDeg from the point, params.hitH m up the wall
+      const wall = params.wall ? studioWallHit(position, (params.dirDeg ?? 0) * DEG, params.hitH) : null;
+      if (wall) {
+        fxBus.emit(DESTRUCTION_BUS_EVENTS.blast, {
+          munition, chargeKg, x: wall.x, y: wall.y, z: wall.z, nx: wall.nx, ny: 0, nz: wall.nz,
+          surface: 'structure', structureId: wall.structureId,
+        });
+        fxBus.emit('shell:expired', {
+          shellId: -1,
+          hitTerrain: false,
+          hitKind: 'prop',
+          pos: [wall.x, wall.y, wall.z],
+          normal: [wall.nx, 0, wall.nz],
+          munition,
+          chargeKg,
+          caliberMm: params.caliberMm || 120,
+          surfaceKind: 'structure',
+        });
+        return true;
+      }
+      // params.settled: the crater as a late joiner lays it down (crater-render-spec §D/§F): dug, drawn at its final
+      // state, no blast, no burst, no ejecta
+      if (params.settled) {
+        const dug = studioDig(munition, chargeKg, position.x, position.z);
+        const ageS = Number.isFinite(params.ageS) && (params.ageS as number) >= 0 ? (params.ageS as number) : null;
+        if (dug) fxBus.emit(DESTRUCTION_BUS_EVENTS.crater, { ...dug, settled: true, ...(ageS !== null ? { ageS } : {}) });
+        return true;
+      }
+      // the crater the battle would dig here, in the battle's order: the blast naming it, the burst, then the crater
+      const crater = studioDig(munition, chargeKg, position.x, position.z);
+      fxBus.emit(DESTRUCTION_BUS_EVENTS.blast, {
+        munition, chargeKg, x: position.x, y: position.y, z: position.z, nx: 0, ny: 1, nz: 0, surface: 'ground',
+        ...(crater ? { craterId: crater.craterId } : {}),
+      });
+      fxBus.emit('shell:expired', {
+        shellId: -1,
+        hitTerrain: true,
+        pos: [position.x, position.y, position.z],
+        munition,
+        chargeKg,
+        caliberMm: params.caliberMm || 120,
+      });
+      if (crater) fxBus.emit(DESTRUCTION_BUS_EVENTS.crater, crater);
+      return true;
+    }
     if (size === 'small') {
       fxBus.emit('shell:expired', {
         shellId: -1,
@@ -1519,15 +1993,144 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         pos: [position.x, position.y, position.z],
       });
     } else {
-      fx.destruction(position, null, size === 'medium' ? 'shot' : (params.cause || 'ammorack'));
+      // a shell burst (cause 'shot') has no wreck to burn: its column is smoke only (2026-10-03, the floating fire)
+      fx.destruction(position, null, size === 'medium' ? 'shot' : (params.cause || 'ammorack'), null,
+        { shellBurst: params.cause === 'shot' });
     }
+    // `huge` (fuel / ammunition cook-off column) only exists as a cinematic recipe
+    if (size === 'huge' || cinematicFor(params)) ensureCinematics().explosion(id, position, size, params.cause);
     return true;
   }
 
-  function fireTankKill({ actor, params }: StudioEffectExecution): boolean {
+  /**
+   * Craters in the Studio (destruction core lane, 2026-10-08; crater-render-spec §F's strips): a burst of a munition
+   * class digs what the battle would dig at that point — the simulation's law, quantization and seed
+   * (sim/destructionMatch.ts dig and quantizeCrater: radius at least CRATER_DEFORM_MIN_RADIUS_M, never on hard ground,
+   * the ruleset's crater switch and scale) — on a ground overlay of the Studio's own, bound to the world while the Studio digs, so the
+   * drawn terrain, the ground cover and the crater's surface follow it as they do in battle. A scene reload levels it;
+   * leaving the Studio unbinds it (the next battle binds its own). The Studio's hulls keep the undug ground.
+   */
+  let studioGround: TerrainDeformation | null = null;
+  let studioCraters = 0;
+  const studioCraterShape = { radiusM: 0, depthM: 0, rimM: 0 };
+  const studioCraterDug: QuantizedCrater = { x: 0, z: 0, radiusM: 0, depthM: 0, rimM: 0, seed: 0 };
+  function studioDig(munition: MunitionClass, chargeKg: number, x: number, z: number): TerrainCraterEvent | null {
+    const rules = matchRulesetFor('standard').destruction;
+    const w = getWorld();
+    if (!rules.craters || !w || !(chargeKg > 0) || studioCraters >= rules.maxCraters) return null;
+    craterFor(chargeKg, munition, rules.craterScale, studioCraterShape);
+    if (studioCraterShape.radiusM < CRATER_DEFORM_MIN_RADIUS_M) return null;
+    if (w.heightField?.getGroundType?.(x, z) === 'hard') return null;
+    if (!studioGround) studioGround = createTerrainDeformation();
+    if (w.groundOverlay() !== studioGround) w.bindGroundOverlay(studioGround);
+    const { x: qx, z: qz, radiusM, depthM, rimM, seed } = quantizeCrater(x, z, studioCraterShape, studioCraterDug);
+    if (!studioGround.addCrater(qx, qz, radiusM, depthM, rimM, seed)) return null;
+    return { craterId: studioCraters++, x: qx, z: qz, radiusM, depthM, rimM, seed, munition, deforms: true };
+  }
+  function resetStudioGround(unbind: boolean): void {
+    studioCraters = 0;
+    if (!studioGround) return;
+    studioGround.reset();
+    const w = getWorld();
+    if (unbind && w && w.groundOverlay() === studioGround) w.bindGroundOverlay(null);
+  }
+
+  /**
+   * destruction-fx lane: the building nearest the point crosses a damage stage, as the core's sim announces one in
+   * battle (sim/destructionEvents.ts StructureStageEvent, from the world seam's anatomy: footprint, height, blow), so
+   * the Studio films a breach and a collapse in the building's own geometry. Presentation only: the Studio's world
+   * keeps its collision. params: stage, munition, cause ('blast' | 'kinetic' | 'ram'), dirDeg (the blow's heading), hitH
+   * (the blow's height up the wall).
+   */
+  const studioStages = new Map<number, StructureStage>();
+  /** The building whose footprint centre is nearest the point, with its anatomy (the world seam's), or null. */
+  function studioStructureNear(position: THREE.Vector3): { id: number; anatomy: StudioStructureAnatomy } | null {
+    const w = getWorld() as unknown as {
+      getObstacles?(): readonly { min: readonly number[]; max: readonly number[]; structureIdx?: number; structureRole?: string }[];
+      structureDamage?(id: number): { anatomy: StudioStructureAnatomy } | null;
+    } | null;
+    if (!w?.getObstacles || !w.structureDamage) return null;
+    let best = -1, bestD = Infinity;
+    for (const rec of w.getObstacles()) {
+      if (typeof rec.structureIdx !== 'number' || rec.structureRole === 'fixed') continue;
+      const cx = (rec.min[0] + rec.max[0]) / 2, cz = (rec.min[2] + rec.max[2]) / 2;
+      const d = Math.hypot(cx - position.x, cz - position.z);
+      if (d < bestD) { bestD = d; best = rec.structureIdx; }
+    }
+    const seam = best >= 0 ? w.structureDamage(best) : null;
+    return seam ? { id: best, anatomy: seam.anatomy } : null;
+  }
+
+  /**
+   * Where a round heading `heading` from the point meets the nearest building's wall (its oriented footprint, the
+   * anatomy's body frame), `hitH` m above its base (default 1.8, kept under the eaves), with the struck face's outward
+   * normal; null when the line misses it.
+   */
+  function studioWallHit(position: THREE.Vector3, heading: number, hitH: unknown):
+    { structureId: number; x: number; y: number; z: number; nx: number; nz: number } | null {
+    const near = studioStructureNear(position);
+    if (!near) return null;
+    const a = near.anatomy;
+    const { x: px, y: py, z: pz, yaw } = a.placement;
+    const c = Math.cos(yaw), s = Math.sin(yaw);
+    // world = R(yaw) body + placement (three's rotateY); the inverse rotation into the body frame
+    const rx = position.x - px, rz = position.z - pz;
+    const bx = rx * c - rz * s, bz = rx * s + rz * c;
+    const dx = Math.sin(heading), dz = Math.cos(heading);
+    const bdx = dx * c - dz * s, bdz = dx * s + dz * c;
+    const hw = a.w / 2, hd = a.d / 2;
+    const slab = (o: number, d: number, h: number): [number, number] => {
+      if (Math.abs(d) < 1e-9) return Math.abs(o) <= h ? [-Infinity, Infinity] : [Infinity, -Infinity];
+      const t0 = (-h - o) / d, t1 = (h - o) / d;
+      return t0 < t1 ? [t0, t1] : [t1, t0];
+    };
+    const [x0, x1] = slab(bx, bdx, hw), [z0, z1] = slab(bz, bdz, hd);
+    const tIn = Math.max(x0, z0), tOut = Math.min(x1, z1);
+    if (!(tIn <= tOut) || tOut < 0) return null;
+    const t = Math.max(0, tIn);
+    // the face entered: the slab whose entry is the later one
+    const nbx = x0 >= z0 ? -Math.sign(bdx) : 0, nbz = x0 >= z0 ? 0 : -Math.sign(bdz);
+    const hx = bx + bdx * t, hz = bz + bdz * t;
+    const h = Number.isFinite(hitH) ? Number(hitH) : 1.8;
+    return {
+      structureId: near.id,
+      x: px + hx * c + hz * s, z: pz - hx * s + hz * c,
+      y: py + Math.min(Math.max(0.6, a.h - 0.8), Math.max(0.4, h)),
+      nx: nbx * c + nbz * s, nz: -nbx * s + nbz * c,
+    };
+  }
+
+  function fireStructure({ position, params }: StudioEffectExecution): boolean {
+    const near = studioStructureNear(position);
+    if (!near) return false;
+    const best = near.id;
+    const a = near.anatomy;
+    const stage = (params.stage === 'damaged' || params.stage === 'breached' ? params.stage : 'collapsed') as StructureStage;
+    const munition = (typeof params.munition === 'string' && params.munition in MUNITION_PROFILES ? params.munition : 'he') as MunitionClass;
+    const cause = params.cause === 'ram' || params.cause === 'kinetic' ? params.cause : 'blast';
+    const heading = (params.dirDeg ?? 0) * DEG;
+    const e: StructureStageEvent = {
+      structureId: best, massClass: a.massClass as StructureStageEvent['massClass'],
+      cx: a.placement.x, cz: a.placement.z, hw: a.w / 2, hd: a.d / 2, yaw: a.placement.yaw,
+      baseY: a.placement.y, topY: a.placement.y + a.h,
+      stage, previous: studioStages.get(best) ?? 'intact', cause, munition: cause === 'ram' ? null : munition,
+      // the blow's point: params.hitH m up the wall when given (where a wall strike burst), else the effect point
+      x: position.x, y: Number.isFinite(params.hitH) ? a.placement.y + Number(params.hitH) : position.y, z: position.z,
+      dirX: Math.sin(heading), dirZ: Math.cos(heading),
+      points: 100, integrity: stage === 'collapsed' ? 0 : stage === 'breached' ? 0.35 : 0.7,
+    };
+    studioStages.set(best, stage);
+    fxBus.emit(DESTRUCTION_BUS_EVENTS.stage, e);
+    return true;
+  }
+
+  function fireTankKill({ id, actor, params }: StudioEffectExecution): boolean {
     if (!actor) return false;
     _v2.copy(actor.state.pos);
     fx.destruction(_v2, actor.visual, params.cause || 'ammorack');
+    filmCue('tank', _v2.x, _v2.y, _v2.z, actor.spec.gun.caliberMm,
+      params.cause === 'fire' || params.cause === 'shot' ? params.cause : 'ammorack');
+    if (cinematicFor(params)) ensureCinematics().tankKill(id, cineActor(actor), params.cause || 'ammorack');
     actor.visual.setDestroyed({ pop: params.pop !== false, ageS: 0 });
     actor.stateName = params.pop !== false ? 'turret-popped' : 'wrecked';
     actor.stateAgeS = 0;
@@ -1535,7 +2138,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return true;
   }
 
-  function fireDust({ actor, position, params }: StudioEffectExecution): boolean {
+  function fireDust({ id, actor, position, params }: StudioEffectExecution): boolean {
     const count = params.count != null ? params.count : 10;
     const direction = (params.dirDeg || 0) * DEG;
     _v3.set(Math.sin(direction), 0, Math.cos(direction));
@@ -1543,6 +2146,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (actor) _v2.y = actor.state.pos.y + 0.3;
     for (let index = 0; index < count; index += 1) {
       fx.dust(_v2, _v3, params.intensity != null ? params.intensity : 1);
+    }
+    if (cinematicFor(params)) {
+      ensureCinematics().dustBurst(id, _v2, params.dirDeg || 0, params.intensity != null ? params.intensity : 1, count);
     }
     return true;
   }
@@ -1562,7 +2168,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return true;
   }
 
-  function fireBurning({ actor, params }: StudioEffectExecution): boolean {
+  function fireBurning({ id, actor, params }: StudioEffectExecution): boolean {
     if (!actor) return false;
     if (params.off) {
       actor.burning = false;
@@ -1571,6 +2177,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     } else {
       igniteColumn(actor);
       if (actor.stateName === 'intact') actor.stateName = 'burning';
+    }
+    if (cinematics || cinematicFor(params)) {
+      if (params.off) cinematics?.burning(id, cineActor(actor), false);
+      else if (cinematicFor(params)) ensureCinematics().burning(id, cineActor(actor), true);
     }
     panel.refreshActors();
     return true;
@@ -1592,7 +2202,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return true;
   }
 
-  function fireFiringMoment({ actor, params }: StudioEffectExecution): boolean {
+  function fireFiringMoment({ id, actor, params }: StudioEffectExecution): boolean {
     if (!actor) return false;
     const shellSpec = actor.spec.gun.shells[Math.max(0, Math.min(actor.spec.gun.shells.length - 1, (params.slot ?? 0) | 0))];
     const launcher = usesLauncherMuzzles(actor.spec.gun, shellSpec);
@@ -1613,24 +2223,29 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       velocityMps: shellSpec.velocityMps,
       ageS: params.ageS != null ? params.ageS : 0.05,
     });
+    if (cinematicFor(params) && !isUnguidedRocket(actor.spec.gun, shellSpec)) {
+      ensureCinematics().muzzleBlast(id, _v2, _v3, params.caliberMm || shellSpec.caliberMm, params.ageS != null ? params.ageS : 0.05);
+    }
     return true;
   }
 
-  function fireExplosionMoment({ position, params }: StudioEffectExecution): boolean {
+  function fireExplosionMoment({ id, position, params }: StudioEffectExecution): boolean {
     fx.composeExplosionMoment({
       pos: position.clone(),
       ageS: params.ageS != null ? params.ageS : 0.6,
     });
+    if (cinematicFor(params)) ensureCinematics().explosionMoment(id, position, params.ageS != null ? params.ageS : 0.6);
     return true;
   }
 
-  function fireMgBurst({ actor, params }: StudioEffectExecution): boolean {
+  function fireMgBurst({ id, actor, params }: StudioEffectExecution): boolean {
     if (!actor) return false;
     actor.visual.gunMuzzleWorld(_v2);
     actor.visual.gunDirWorld(_v3);
     fx.muzzleFlash(_v2, _v3, params.caliberMm || 25);
     const count = Math.max(1, Math.min(14, params.count != null ? params.count : 7));
     const gapM = params.gapM != null ? params.gapM : 7;
+    if (cinematicFor(params)) ensureCinematics().mgBurst(id, _v2, _v3, count, gapM, params.speedMps || 820);
     const spread = (params.spreadDeg != null ? params.spreadDeg : 0.9) * DEG;
     for (let index = 0; index < count; index += 1) {
       const spec = {
@@ -1654,10 +2269,16 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return true;
   }
 
-  function fireBarrage({ position, params }: StudioEffectExecution): boolean {
+  function fireBarrage({ id, position, params }: StudioEffectExecution): boolean {
     const count = Math.max(1, Math.min(12, params.count != null ? params.count : 5));
     const radius = params.radiusM != null ? params.radiusM : 10;
     const size = params.size || 'mixed';
+    if (cinematicFor(params)) {
+      // a walking salvo: staggered cinematic bursts, no wreck smoke columns
+      ensureCinematics().barrage(id, position, count, radius, size, params.seedDeg || 23,
+        fxParam('barrage', 'durationS', params.durationS));
+      return true;
+    }
     const seedAngle = (params.seedDeg || 23) * DEG;
     for (let index = 0; index < count; index += 1) {
       const angle = seedAngle + (index / count) * Math.PI * 2;
@@ -1666,7 +2287,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       const z = position.z + Math.cos(angle) * distance;
       const y = hfProxy.getHeightAt(x, z) + 0.05;
       const medium = size === 'medium' || (size === 'mixed' && index % 3 === 0);
-      if (medium) fx.destruction(_v2.set(x, y, z), null, 'shot');
+      if (medium) fx.destruction(_v2.set(x, y, z), null, 'shot', null, { shellBurst: true });
       else fxBus.emit('shell:expired', { shellId: -1, hitTerrain: true, pos: [x, y, z] });
     }
     return true;
@@ -1689,6 +2310,179 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       _v2.addScaledVector(_v3, reach);
       fx.armorScar(actor.visual, _v2, _v3, params.caliberMm || 100);
     }
+    return true;
+  }
+
+  // ---- destruction core lane (P2, docs/DESTRUCTION.md §11): the Studio films the sim's own destruction ----
+  /** The Studio's destruction match over the world it shows (game/studioDestruction.ts), made for each world. */
+  let studioSim: StudioDestruction | null = null;
+  let studioSimWorld: WorldRuntime | null = null;
+  /** The sections switch the current match was made with (a scene that changes it gets a new match). */
+  let studioSimSections = true;
+  /** The Studio destruction's raised events, with the Studio clock they were raised at (cleared with the fx runtime). */
+  const studioSimLog: Array<{ tMs: number; event: string; structureId: number | null; section: number | null; hole: number | null;
+    stage: string | null; sectionDown: boolean; storeyDown: boolean }> = [];
+  function studioDestructionNow(): StudioDestruction | null {
+    const w = getWorld();
+    if (!w) return null;
+    if (studioSimWorld !== w || studioSimSections !== sceneMeta.sections) {
+      ensureFxBus();
+      // every stage and breach it raises is logged with the Studio's clock (a capture tool reads which events each frame
+      // presented: __STUDIO.destructionEvents) and goes on to the fx bus
+      const loggingBus = { emit: (event: string, payload: unknown) => {
+        const p = payload as { structureId?: number; section?: number; hole?: number; stage?: string; sectionDown?: boolean; storeyDown?: boolean };
+        studioSimLog.push({ tMs: clockMs, event, structureId: p.structureId ?? null, section: p.section ?? null, hole: p.hole ?? null,
+          stage: p.stage ?? null, sectionDown: p.sectionDown === true, storeyDown: p.storeyDown === true });
+        if (studioSimLog.length > 512) studioSimLog.shift();
+        fxBus.emit(event, payload);
+      } };
+      // a collapse raises the sim's rubble mound on the Studio's ground overlay, bound to the world as a battle's is, so
+      // the drawn terrain and the kit's pile stand on it (the s1t strips' piles lay flat on undeformed ground)
+      if (!studioGround) studioGround = createTerrainDeformation();
+      if (w.groundOverlay() !== studioGround) w.bindGroundOverlay(studioGround);
+      studioSim = createStudioDestruction(w as unknown as Parameters<typeof createStudioDestruction>[0], loggingBus, {
+        rules: matchRulesetFor('standard').destruction,
+        wallMaterial: wallMaterialForStyle(architectureStyleOf(getMapConfig(w.mapId))),
+        ground: studioGround,
+        sections: sceneMeta.sections,
+      });
+      studioSimWorld = w;
+      studioSimSections = sceneMeta.sections;
+    }
+    return studioSim;
+  }
+  const _strikePrev = new THREE.Vector3();
+  const _strikeDir = new THREE.Vector3();
+  const _strikeFrom = new THREE.Vector3();
+  /** Light cover one strike round may break in a step before the rest of its path is left for the next. */
+  const STRIKE_PASS_THROUGH_MAX = 8;
+  /**
+   * A battle round passes light cover (world/collision.ts shellPassesThroughCollisionRecord, restated here: the Studio
+   * reaches the world through what it is handed, never a new static import; studioStrikeCover.selftest.mjs holds the
+   * two to one law): a crushable record that is not dense masonry, adobe or sandbag cover.
+   */
+  function strikePassesRecord(record: { crushable?: boolean; kind?: string } | null | undefined): boolean {
+    if (record?.crushable !== true) return false;
+    const kind = record.kind;
+    return !(kind === 'wallstone' || kind === 'walladobe' || kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall');
+  }
+  /**
+   * A strike round's step from `from` to `to` through the world: light cover it meets — a hut, a fence, a tree, crates —
+   * breaks and lets it on, as a battle round's does (state.ts crushWorldPropFromShell: the world's own crush, the
+   * destructible's broken state); the first solid record (a building's wall, dense cover) stops it there and takes the
+   * strike. True when it stopped.
+   */
+  function traceStrikeRound(sh: StudioShell, world: Pick<WorldRuntime, 'raycast'> & { crushObstacle?: WorldRuntime['crushObstacle'] },
+    from: THREE.Vector3, to: THREE.Vector3): boolean {
+    _strikeDir.subVectors(to, from);
+    let left = _strikeDir.length();
+    if (left <= 1e-6) return false;
+    _strikeDir.multiplyScalar(1 / left);
+    _strikeFrom.copy(from);
+    for (let pass = 0; pass < STRIKE_PASS_THROUGH_MAX; pass++) {
+      const hit = world.raycast(_strikeFrom, _strikeDir, left);
+      if (!hit || hit.kind === 'terrain') return false;
+      if (strikePassesRecord(hit.record) && world.crushObstacle) {
+        world.crushObstacle(hit.record, _strikeDir.x, _strikeDir.z, Number(sh.spec?.velocityMps) || 0, 'shell');
+        const step = hit.dist + 0.01;
+        _strikeFrom.addScaledVector(_strikeDir, step);
+        left -= step;
+        if (left <= 1e-6) return false;
+        continue;
+      }
+      sh.dead = true;
+      sh.pos.copy(hit.point);
+      strikeWorld(sh, hit, _strikeDir);
+      return true;
+    }
+    return false;
+  }
+  /**
+   * A round flying through the Studio's world as a battle round does: from the effect point along dirDeg (pitchDeg up)
+   * at speedMps, traced against the world each step — whose raycast reads the sim's openings, so a round finds a hole
+   * and crosses the room — and where it stops a structure takes the sim's own strike (the hole, a section's fall, its
+   * stages, raised on the bus as the solo step raises them). params.shell: the round ({ type, caliberMm, name?,
+   * blastRadiusM?, pen100Mm? }: 'HE' 125 mm by default; an explicit blastRadiusM makes a howitzer's envelope).
+   */
+  function fireStrike({ position, params }: StudioEffectExecution): boolean {
+    if (!studioDestructionNow()) return false;
+    const heading = (Number(params.dirDeg) || 0) * DEG, pitch = (Number(params.pitchDeg) || 0) * DEG;
+    _v3.set(Math.sin(heading) * Math.cos(pitch), Math.sin(pitch), Math.cos(heading) * Math.cos(pitch));
+    const given = (params.shell && typeof params.shell === 'object' ? params.shell : {}) as Partial<MunitionShellLike> & { velocityMps?: number };
+    const spec = {
+      name: typeof given.name === 'string' ? given.name : 'studio', type: typeof given.type === 'string' ? given.type : 'HE',
+      caliberMm: Number(given.caliberMm) || 125, velocityMps: Number(params.speedMps) || Number(given.velocityMps) || 800,
+      tracer: params.tracer === false ? null : (typeof given.type === 'string' ? given.type : 'HE'),
+      ...(Number.isFinite(given.blastRadiusM) ? { blastRadiusM: Number(given.blastRadiusM) } : {}),
+      ...(Number.isFinite(given.pen100Mm) ? { pen100Mm: Number(given.pen100Mm) } : {}),
+    };
+    const shellId = -(uidSeq * 100000 + shells.length + 1);
+    const shell: StudioShell = createShell(spec, 'studio', false, position, _v3, shellId);
+    shell._studioWorld = true;
+    shell._studioMaxDistM = Number.isFinite(params.rangeM) ? Number(params.rangeM) : 600;
+    shells.push(shell);
+    return true;
+  }
+  /**
+   * A strike round met the ground (2026-10-09; it used to expire there as a plain impact): the sim's strike at the burst
+   * — the structures in its reach take its blast, the light props in its reach fall (studioDestruction.ts, the solo
+   * step's fellBlastProps) — then the crater the battle would dig and the blast naming it. The crater is the Studio's own
+   * (studioDig: one crater count with the explosion effects), so the sim digs none.
+   */
+  function strikeGround(sh: StudioShell): TerrainCraterEvent | null {
+    const spec = sh.spec as unknown as MunitionShellLike;
+    const munition = munitionClassForShell(spec), chargeKg = munitionChargeKg(spec, munition);
+    const dx = sh.pos.x - _strikePrev.x, dz = sh.pos.z - _strikePrev.z, length = Math.hypot(dx, dz) || 1;
+    studioDestructionNow()?.strike(spec, null, sh.pos.x, sh.pos.y, sh.pos.z, dx / length, dz / length, false);
+    if (!(chargeKg > 0)) return null;
+    const crater = studioDig(munition, chargeKg, sh.pos.x, sh.pos.z);
+    fxBus.emit(DESTRUCTION_BUS_EVENTS.blast, {
+      munition, chargeKg, x: sh.pos.x, y: sh.pos.y, z: sh.pos.z, nx: 0, ny: 1, nz: 0, surface: 'ground',
+      ...(crater ? { craterId: crater.craterId } : {}),
+    });
+    return crater;
+  }
+  /** A strike round met the world at `hit` (a record, not the ground): the sim's strike, then the burst where it stopped. */
+  function strikeWorld(sh: StudioShell, hit: { point: THREE.Vector3; normal: THREE.Vector3; record?: { structureIdx?: number } | null },
+    dir: THREE.Vector3): void {
+    const spec = sh.spec as unknown as MunitionShellLike;
+    const record = (hit.record ?? null) as Parameters<StudioDestruction['strike']>[1];
+    studioDestructionNow()?.strike(spec, record, hit.point.x, hit.point.y, hit.point.z, dir.x, dir.z);
+    const munition = munitionClassForShell(spec), chargeKg = munitionChargeKg(spec, munition);
+    const structureId = typeof hit.record?.structureIdx === 'number' ? hit.record.structureIdx : undefined;
+    if (chargeKg > 0) {
+      fxBus.emit(DESTRUCTION_BUS_EVENTS.blast, {
+        munition, chargeKg, x: hit.point.x, y: hit.point.y, z: hit.point.z, nx: hit.normal.x, ny: hit.normal.y, nz: hit.normal.z,
+        surface: structureId !== undefined ? 'structure' : 'prop', ...(structureId !== undefined ? { structureId } : {}),
+      });
+    }
+    fxBus.emit('shell:expired', {
+      shellId: sh.id, hitTerrain: false, hitKind: 'prop', pos: [hit.point.x, hit.point.y, hit.point.z],
+      normal: [hit.normal.x, hit.normal.y, hit.normal.z], shellType: spec.type, caliberMm: spec.caliberMm, munition, chargeKg,
+      surfaceKind: structureId !== undefined ? 'structure' : 'prop',
+    });
+  }
+
+  /**
+   * A hull ramming the building in front of it (P2 staging; wave 277: the ram strip must show the ramming tank): from the
+   * actor's nose (half a hull length ahead along its facing, a metre up) a few metres ahead (params.reachM, 3 m); where
+   * that meets a structure the sim prices the ram at params.speedMps (the closing speed, 10 m/s) for params.massTons (the
+   * actor's hull weight): a ram that brings it down sends it through its cascade, its stages raised as the ram's. The
+   * actor's own motion is the storyboard's: its track runs it into the wall and on.
+   */
+  function fireRam({ actor, params }: StudioEffectExecution): boolean {
+    const sim = studioDestructionNow();
+    const w = getWorld();
+    if (!actor || !sim || !w) return false;
+    _fwd.set(Math.sin(actor.state.yaw), 0, Math.cos(actor.state.yaw));
+    _v2.copy(actor.state.pos).addScaledVector(_fwd, actor.spec.dims.hullLengthM / 2 - 0.5);
+    _v2.y += 1;
+    const hit = w.raycast(_v2, _fwd, Number.isFinite(params.reachM) ? Math.max(0.5, Number(params.reachM)) : 3);
+    const record = hit && hit.kind !== 'terrain' ? (hit.record ?? null) : null;
+    if (!hit || !record || typeof record.structureIdx !== 'number') return false;
+    const massTons = Number(params.massTons) > 0 ? Number(params.massTons) : (Number(actor.spec.weightTons) || 50);
+    const speed = Number(params.speedMps) > 0 ? Number(params.speedMps) : 10;
+    sim.ram(record as Parameters<StudioDestruction['ram']>[0], massTons, speed, hit.point.x, hit.point.y, hit.point.z, _fwd.x, _fwd.z);
     return true;
   }
 
@@ -1718,6 +2512,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     impact: (execution) => fireImpact(execution, 'pen', 120, [0, 1, 0]),
     sparks: (execution) => fireImpact(execution, 'ricochet', 100, [0, 1, 0]),
     explosion: fireExplosion,
+    structure: fireStructure,
     tank_kill: fireTankKill,
     dust: fireDust,
     engine_smoke: fireEngineSmoke,
@@ -1729,6 +2524,14 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     barrage: fireBarrage,
     armor_scar: fireArmorScar,
     exhaust: fireExhaust,
+    smoke_screen: fireSmokeScreen,
+    flare: fireFlare,
+    embers: fireEmbers,
+    debris: fireDebris,
+    shockwave: fireShockwave,
+    fire_field: fireFireField,
+    strike: fireStrike,
+    ram: fireRam,
   });
 
   function recordFiredEffect(
@@ -1772,7 +2575,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       console.warn(`[studio] unknown effect type: ${e.type}`);
       return false;
     }
-    const ok = handler({ input: e, actor: a, position: pos, params });
+    // the id the effect log will assign (makeEffectRecord) seeds its cinematic stream
+    const id = e.id || `fx${effectUidSeq}`;
+    // replays fire on their authored time; live fires at the playhead
+    const fireMs = opts.tMs ?? (opts.record === false && e.tMs != null ? e.tMs : clockMs);
+    effectFireS = fireMs / 1000;
+    cinematics?.beginEffect(effectFireS);
+    const ok = handler({ id, input: e, actor: a, position: pos, params });
     if (ok) {
       recordFiredEffect(e, opts);
       if (w) w.setWindTime(0.35 + clockMs / 1000);
@@ -1846,38 +2655,103 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * still refreshes tracer ribbons/lights so frozen frames render correctly.
    * @param {number} dt seconds (already time-scaled)
    */
+  function emitDamageSmoke(birthOffset: number): void {
+    for (const a of actors) {
+      if (!a.smoking) continue;
+      _fwd.set(Math.sin(a.state.yaw), 0, Math.cos(a.state.yaw));
+      _v2.copy(a.state.pos).addScaledVector(_fwd, -a.spec.dims.hullLengthM * 0.42);
+      _v2.y += a.spec.dims.heightM * 0.72;
+      fx.exhaust(_v2, 1, true, null, null, birthOffset);
+      fx.exhaust(_v2, 0.85, true, null, null, birthOffset); // doubled: damage smoke, not idle haze
+    }
+  }
+
+  /** Exact terrain crossing inside the last shell step (cinematic quality). */
+  function refineShellCrossing(sh: StudioShell, px: number, py: number, pz: number): void {
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 10; i++) {
+      const t = (lo + hi) * 0.5;
+      const x = px + (sh.pos.x - px) * t, z = pz + (sh.pos.z - pz) * t;
+      const y = py + (sh.pos.y - py) * t;
+      if (y <= hfProxy.getHeightAt(x, z)) hi = t; else lo = t;
+    }
+    sh.pos.x = px + (sh.pos.x - px) * hi;
+    sh.pos.z = pz + (sh.pos.z - pz) * hi;
+  }
+
   function stepFx(dt: number): void {
     if (dt > 0) {
+      const previousMs = clockMs;
       clockMs += dt * 1000;
+      const exactShells = fxSettings.quality === 'cinematic';
       // projectiles
+      const traceWorld = getWorld();
       for (const sh of shells) {
         if (sh.dead) continue;
+        const px = sh.pos.x, py = sh.pos.y, pz = sh.pos.z;
+        if (sh._studioWorld) _strikePrev.copy(sh.pos);
         stepShell(sh, dt);
+        // a strike round (P2) meets what the world puts in its path this step — the raycast reads the sim's openings;
+        // light cover on the way breaks and lets it on (traceStrikeRound)
+        if (sh._studioWorld && traceWorld && traceStrikeRound(sh, traceWorld, _strikePrev, sh.pos)) continue;
         const gy = hfProxy.getHeightAt(sh.pos.x, sh.pos.z);
         if (sh.pos.y <= gy) {
-          sh.pos.y = gy + 0.05;
+          // cinematic quality lands the shell where its path met the ground,
+          // independent of the export step (battle keeps the legacy look)
+          if (exactShells) refineShellCrossing(sh, px, py, pz);
+          sh.pos.y = hfProxy.getHeightAt(sh.pos.x, sh.pos.z) + 0.05;
           sh.dead = true;
+          // a strike round bursts on the ground as a battle round does (strikeGround): the blast, then the impact, then
+          // the crater, the solo step's order
+          const groundCrater = sh._studioWorld ? strikeGround(sh) : null;
+          filmCue('dirt', sh.pos.x, sh.pos.y, sh.pos.z, sh.spec?.caliberMm ?? 120);
           fxBus.emit('shell:expired', {
             shellId: sh.id, hitTerrain: true, pos: [sh.pos.x, sh.pos.y, sh.pos.z],
+            // the round's type and calibre, as the solo step publishes them (fx keys its explosion on the class)
+            shellType: sh.spec?.type, caliberMm: sh.spec?.caliberMm,
           });
+          if (groundCrater) fxBus.emit(DESTRUCTION_BUS_EVENTS.crater, groundCrater);
+          if (exactShells) {
+            _v1.set(sh.pos.x, sh.pos.y, sh.pos.z);
+            ensureCinematics().groundHit(`shell${String(sh.id)}`, _v1, sh.spec?.caliberMm || 105, String(sh.spec?.type || 'AP'));
+          }
         } else if (sh.distM > 4000) {
           sh.dead = true;
         } else if (sh._studioMaxDistM != null && sh.distM >= sh._studioMaxDistM) {
           sh.dead = true;
         }
       }
-      // continuous per-actor emitters
-      for (const a of actors) {
-        if (a.smoking) {
-          _fwd.set(Math.sin(a.state.yaw), 0, Math.cos(a.state.yaw));
-          _v2.copy(a.state.pos).addScaledVector(_fwd, -a.spec.dims.hullLengthM * 0.42);
-          _v2.y += a.spec.dims.heightM * 0.72;
-          fx.exhaust(_v2, 1, true);
-          fx.exhaust(_v2, 0.85, true); // doubled: damage smoke, not idle haze
+      // the Studio's destruction steps after the rounds, as the solo step's does (stages, breaches on the bus)
+      studioSim?.step();
+      // continuous per-actor emitters. Live battle quality keeps one pulse
+      // per step; a film's sub-sample steps pulse once per 1/60 s timeline
+      // grid line they cross, so motion-blur sampling never multiplies the
+      // smoke. Cinematic quality always pulses on that grid and schedules each
+      // birth at its grid time (the fx clock still reads the step's start
+      // here, so the offset is positive): 2-8 ms export steps and the
+      // playhead's integer-ms partial steps neither multiply nor shift it.
+      if (exactShells || filming) {
+        const gridMs = FX_STEP_S * 1000;
+        const last = Math.floor(clockMs / gridMs + 1e-6);
+        for (let k = Math.floor(previousMs / gridMs + 1e-6) + 1; k <= last; k++) {
+          const birthOffset = exactShells ? Math.max(0, (k * gridMs - previousMs) / 1000) : 0;
+          emitDamageSmoke(birthOffset);
+          emitStudioExhaust(birthOffset);
         }
+      } else {
+        emitDamageSmoke(0);
+        emitStudioExhaust(0);
       }
+      // the props' own clock on the Studio's (fix/studio-world-step, 2026-10-08): the render loop's world update runs at
+      // dt 0 and an export step runs none, so a felled prop's topple and the loose bodies advance here, step by step
+      getWorld()?.updateProps?.(dt, camera.position);
     }
+    // the drawn ground follows what was dug or raised this step (an export step and a capture run no world update)
+    getWorld()?.syncGround?.();
     fx.update(dt, shells, camera, resolveFxSubject);
+    // the held (frozen) frame: blue-hour / night lamps nearest the camera (playback updates in advanceTimeline)
+    if (dt === 0) ctx.getStudioLight?.()?.update(camera.position);
+    cinematics?.update(dt, clockMs / 1000, shells, trackActors(), camera.position);
   }
 
   /**
@@ -1908,14 +2782,85 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     world.advanceWater(dt, actors[0]?.state.pos.x ?? camera.position.x, actors[0]?.state.pos.z ?? camera.position.z);
   }
 
+  /**
+   * Present one actor. Track/wheel phase advances on the fixed support grid;
+   * a film sample between grid steps adds the exact travel since the last
+   * step for this presentation only, so rolling wheels and track links blur
+   * continuously instead of double-imaging at 60 Hz.
+   */
+  function syncActorVisual(a: StudioActor, dt: number): void {
+    const l = filming ? a.filmScrollL ?? 0 : 0, r = filming ? a.filmScrollR ?? 0 : 0;
+    // a film sample between support steps draws the support pose between them (studioFilmSupport.ts)
+    const alpha = filming && a.filmSupport ? a.filmSupportAlpha ?? -1 : -1;
+    if (alpha >= 0) {
+      a.visual.syncFromState(a.state, dt, undefined, presentFilmSupport(a.filmSupport!, a.state, alpha, l, r));
+      return;
+    }
+    if (l === 0 && r === 0) { a.visual.syncFromState(a.state, dt); return; }
+    const scroll = a.state.trackScroll, baseL = scroll.l, baseR = scroll.r;
+    scroll.l = baseL + l; scroll.r = baseR + r;
+    try { a.visual.syncFromState(a.state, dt); }
+    finally { scroll.l = baseL; scroll.r = baseR; }
+  }
+
+  // destruction-fx (round 7b, wave m2: "engine smoke rising as straight chimney columns"): every running hull's engine
+  // breathes as a battle hull's does (battlePresentationRuntime emitExhaust's law: its load from its speed), with the
+  // hull's motion, so the Studio films the plume bending with the drive and the wind and breaking up
+  const _exPos = new THREE.Vector3(), _exFwd = new THREE.Vector3(), _exVel = new THREE.Vector3();
+  // (integration, 2026-10-09: pulsed by stepFx on the 1/60 s grid with the damage smoke, at its birth offset — its
+  // per-call rate gate assumes 60 calls a second, which a film's motion-blur sub-steps would multiply)
+  function emitStudioExhaust(birthOffset: number): void {
+    for (const a of actors) {
+      if (a.stateName !== 'intact' && a.stateName !== 'engine-smoking') continue;
+      const st = a.state;
+      const speed = st.speed ?? 0;
+      const topSpeedMps = Math.max(1, (a.spec.topSpeedKmh || 60) / 3.6);
+      const load = Math.max(0.1, Math.min(1, 0.15 + Math.abs(speed) / topSpeedMps * 0.85));
+      _exFwd.set(Math.sin(st.yaw), 0, Math.cos(st.yaw));
+      _exVel.copy(_exFwd).multiplyScalar(speed);
+      _exPos.copy(st.pos).addScaledVector(_exFwd, -a.spec.dims.hullLengthM * 0.42);
+      _exPos.y += a.spec.dims.heightM * 0.72;
+      fx.exhaust(_exPos, load, true, _exVel, _exFwd, birthOffset);
+    }
+  }
+
+  // destruction-fx: a driven actor kicks up its tracks' dust as a battle hull does (battlePresentationRuntime emitDust's
+  // law: one call per side every 0.45-0.7 m of travel, from the rear of each track), so the Studio films the dust
+  // skirt; on the fixed timeline, through the fx's own seeded stream
+  const studioDustTravel = new Map<StudioActor, number>();
+  const _dustPos = new THREE.Vector3(), _dustFwd = new THREE.Vector3();
+  function emitStudioTrackDust(dt: number): void {
+    for (const a of actors) {
+      const st = a.state;
+      const speed = Math.abs(st.speed ?? 0);
+      if (speed <= 0.8 || st.grounded === false) { studioDustTravel.set(a, 0); continue; }
+      const topSpeedMps = Math.max(1, (a.spec.topSpeedKmh || 60) / 3.6);
+      const intensity = Math.min(1, speed / topSpeedMps);
+      const spacingM = 0.7 + (0.45 - 0.7) * intensity;
+      const travel = Math.min(spacingM * 2, (studioDustTravel.get(a) ?? 0) + speed * dt);
+      if (travel < spacingM) { studioDustTravel.set(a, travel); continue; }
+      studioDustTravel.set(a, travel - spacingM);
+      const sign = (st.speed ?? 0) < 0 ? -1 : 1;
+      _dustFwd.set(Math.sin(st.yaw) * sign, 0, Math.cos(st.yaw) * sign);
+      const dims = a.spec.dims;
+      for (let side = -1; side <= 1; side += 2) {
+        _dustPos.copy(st.pos).addScaledVector(_dustFwd, -dims.hullLengthM * 0.45);
+        _dustPos.x += _dustFwd.z * side * dims.widthM * 0.45;
+        _dustPos.z += -_dustFwd.x * side * dims.widthM * 0.45;
+        fx.dust(_dustPos, _dustFwd, intensity);
+      }
+    }
+  }
+
   function advanceFx(ms: number): void {
     let remainingS = Math.max(0, ms / 1000);
     while (remainingS > 1e-7) {
       const dt = Math.min(FX_STEP_S, remainingS);
       applyStoryboardActors(clockMs + dt * 1000, dt);
+      emitStudioTrackDust(dt);
       stepFx(dt);
       advanceWater(dt);
-      for (const a of actors) a.visual.syncFromState(a.state, dt);
+      for (const a of actors) syncActorVisual(a, dt);
       remainingS -= dt;
     }
     applyStoryboardCamera(clockMs);
@@ -1925,13 +2870,26 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function resetFxRuntime(seed = sceneMeta.seed || 5000) {
     ensureFxBus();
     shells.length = 0;
-    fx.resetAll();
+    // a scene's hulls are already running: no engine cold-start cough at every load (atmospherics r2, wave 311)
+    fx.resetAll({ running: true });
+    // The fx clock restarts with the timeline: replays (seek, load, film) must
+    // not inherit the page's history in clock-phased shading.
+    fx.resetClock(0);
+    studioStages.clear();
+    // every building stands again (the Studio's destruction: openings cleared, the next strike starts fresh)
+    studioSim?.reset();
+    studioSimLog.length = 0;
+    resetStudioGround(false);
+    studioDustTravel.clear();
     fx.resetSeed(seed);
     fx.setFrozen(false);
+    cinematics?.reset();
     clockMs = 0;
     activeEffectIds.clear();
     const w = getWorld();
-    if (w) { w.resetWater(); w.setWindTime(0.35); }
+    // a scene starts from an intact world, as a battle does: the props its rounds broke and the trees they felled stand
+    // again (the Studio's strike rounds break light cover)
+    if (w) { w.resetWater(); w.setWindTime(0.35); w.resetDestructibles(); }
   }
 
   function restoreAuthoredActor(a: StudioActor): void {
@@ -1974,6 +2932,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     clockMs = target;
     timeScale = savedScale;
     applyStoryboardFrame(target, 0);
+    settleCrushes(target);
     const w = getWorld();
     if (w) w.setWindTime(0.35 + target / 1000);
     panel.refreshAll();
@@ -1992,10 +2951,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function seekTimeline(timeMs: number, opts: SeekOptions = {}): number {
-    if (recording && !opts.recording) return Math.round(clockMs);
+    if ((recording && !opts.recording) || filming) return Math.round(clockMs);
     const target = clampStudioTime(timeMs, storyboard.durationMs);
     if (opts.pause !== false) timeScale = 0;
     rebuildEffects(target);
+    post.lensFlare?.snap?.();
     panel.refreshAll();
     return Math.round(clockMs);
   }
@@ -2010,25 +2970,37 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return next;
   }
 
-  function advanceTimeline(ms: number): number {
-    const target = clampStudioTime(clockMs + Math.max(0, ms), storyboard.durationMs);
+  function advanceTimeline(ms: number, exact = false): number {
+    // Film samples sit between whole milliseconds (a 0.2x shutter spans a
+    // few); every other caller keeps the authored millisecond grid.
+    const target = exact
+      ? Math.min(storyboard.durationMs, clockMs + Math.max(0, ms))
+      : clampStudioTime(clockMs + Math.max(0, ms), storyboard.durationMs);
+    const fromMs = clockMs;
     let due = nextPendingEffect(target);
     while (due) {
       advanceFx(Math.max(0, due.tMs - clockMs));
       applyStoryboardActors(due.tMs, 0);
       fireEffect(due, { record: false, refresh: false });
+      // its moment has passed whether it fired or not: an effect whose handler bails (its actor gone) was offered again at
+      // the same time forever, spinning a film capture at 100 % CPU (the media lane, 2026-10-08)
+      activeEffectIds.add(due.id);
       due = nextPendingEffect(target);
     }
     advanceFx(Math.max(0, target - clockMs));
     clockMs = target;
     getWorld()?.setWindTime(0.35 + clockMs / 1000);
     applyStoryboardFrame(target, 0);
+    advanceCrushes(fromMs, target);
     if (clockMs >= storyboard.durationMs) timeScale = 0;
+    ctx.getStudioLight?.()?.update(camera.position); // blue-hour / night lamps follow the posed actors and camera
     return Math.round(clockMs);
   }
 
   function playTimeline() {
+    if (filming) return false;
     if (clockMs >= storyboard.durationMs - 0.5) seekTimeline(0, { pause: false });
+    flareToWallClock();
     timeScale = 1;
     rail.updateVisibility();
     panel.refreshTime();
@@ -2110,12 +3082,97 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
   }
 
+  // --- hulls crush what they overrun (studioCrush.ts) ------------------------------------------------------------
+  // The plan follows the storyboard (every edit replaces it), the battlefield and the tracked hulls' specs; a new plan
+  // stands the old one's crushes back up and lays its own up to the playhead.
+  const crushes = createStudioCrushes();
+  let crushStoryboard: Storyboard | null = null;
+  let crushWorld: WorldRuntime | null = null;
+  const crushSpecs: unknown[] = [];
+  const _crushSample: ActorTrackSample = { x: 0, z: 0, facingDeg: 0, turretDeg: 0, gunDeg: 0, keyId: undefined };
+  function crushPlanCurrent(world: WorldRuntime | null): boolean {
+    if (crushStoryboard !== storyboard || crushWorld !== world) return false;
+    let n = 0;
+    for (const a of actors) {
+      if (!actorTrackFor(a)) continue;
+      if (crushSpecs[n++] !== a.spec) return false;
+    }
+    return n === crushSpecs.length;
+  }
+  function syncCrushPlan(world: WorldRuntime | null): void {
+    if (crushPlanCurrent(world)) return;
+    if (crushWorld !== world) crushes.restore(crushWorld);
+    crushStoryboard = storyboard;
+    crushWorld = world;
+    crushSpecs.length = 0;
+    const hulls: StudioCrushHull[] = [];
+    for (const a of actors) {
+      const keys = actorTrackFor(a)?.keys;
+      if (!keys) continue;
+      crushSpecs.push(a.spec);
+      const rect = tankContactRect(a.spec);
+      hulls.push({
+        halfLength: rect.halfLength,
+        halfWidth: rect.halfWidth,
+        crushReach: a.spec.dims.hullLengthM * 0.5 + 0.5, // battlePresentationRuntime.ts crushNearbyProps
+        poseAt(tMs, out) {
+          if (!sampleActorTrack(keys, tMs, _crushSample)) return false;
+          out.x = _crushSample.x ?? 0; out.z = _crushSample.z ?? 0;
+          out.yawRad = (_crushSample.facingDeg ?? 0) * DEG;
+          return true;
+        },
+      });
+    }
+    crushes.setPlan(world, world && hulls.length
+      ? planStudioCrushes(hulls, storyboard.durationMs, world.queryObstacles, world.crushables) : []);
+    if (world) crushes.settleTo(world, clockMs);
+  }
+  const _crushPos = new THREE.Vector3(), _crushDir = new THREE.Vector3();
+  /** A toppled pole's or dressing's burst, as the battle adds it after world.crushProp (crushNearbyProps). */
+  function crushBurst(event: StudioCrushEvent): void {
+    const prop = getWorld()?.crushables[event.crushable];
+    if (!prop) return;
+    _crushPos.set(prop.x, prop.y, prop.z);
+    _crushDir.set(event.dirX, 0, event.dirZ);
+    if (prop.dynamic && fx.loosePropHit) fx.loosePropHit(_crushPos, _crushDir, prop.h);
+    else fx.propCrush?.(_crushPos, _crushDir, prop.h);
+  }
+  /** Playback from `fromMs` to `toMs`: each crush fires at its own time. The props' falls run on the props' own clock (stepFx's
+   *  updateProps, PR #9's studio world step), the felled trees' here, exactly to `toMs`; advancing the whole destruction
+   *  here as well would run every prop's topple twice per step. */
+  function advanceCrushes(fromMs: number, toMs: number): void {
+    const world = getWorld();
+    if (!world) return;
+    syncCrushPlan(world);
+    let cursor = fromMs;
+    for (let next = crushes.nextTime(); next <= toMs; next = crushes.nextTime()) {
+      if (next > cursor) { world.advanceToppledVegetation?.((next - cursor) / 1000); cursor = next; }
+      crushes.advanceTo(world, next, crushBurst);
+    }
+    if (toMs > cursor) world.advanceToppledVegetation?.((toMs - cursor) / 1000);
+  }
+  /** Studio exit: the battlefield's props stand again before it can host anything else, and the plan is forgotten. */
+  function releaseCrushes(): void {
+    crushes.restore(crushWorld);
+    crushStoryboard = null;
+    crushWorld = null;
+    crushSpecs.length = 0;
+  }
+  /** A seek: the crushes up to `timeMs` lie at their final poses, the later ones stand. */
+  function settleCrushes(timeMs: number): void {
+    const world = getWorld();
+    if (!world) return;
+    syncCrushPlan(world);
+    crushes.settleTo(world, timeMs);
+  }
+
   function applyStoryboardCamera(timeMs: number): boolean {
     if (!sampleCameraRail(storyboard.shots, timeMs, _cameraSample)) return false;
     camera.position.set(_cameraSample.x, _cameraSample.y, _cameraSample.z);
     cam.mode = 'fly';
     _v2.set(_cameraSample.lookX, _cameraSample.lookY, _cameraSample.lookZ);
-    if (sampleCameraCues(storyboard.cameraCues, timeMs, _cameraCueSample)) {
+    if (sampleCameraCues(storyboard.cameraCues, timeMs, _cameraCueSample, filming ? FILM_CUE_ATTACK_MS : 0)) {
+      scaleFilmCue(_cameraCueSample);
       _fwd.copy(_v2).sub(camera.position).normalize();
       _v3.crossVectors(_fwd, _up).normalize();
       _v1.crossVectors(_v3, _fwd).normalize();
@@ -2148,6 +3205,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       } else if (support) {
         st.speed = 0;
         st.yawRate = 0;
+      } else if (filming) {
+        const signedDist = dx * Math.sin(yaw) + dz * Math.cos(yaw);
+        a.filmScrollL = signedDist + dyaw * 1.5;
+        a.filmScrollR = signedDist - dyaw * 1.5;
       }
       if (support) {
         a.supportX = _actorSample.x; a.supportZ = _actorSample.z; a.supportYaw = yaw;
@@ -2162,7 +3223,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       st.turretYaw = _actorSample.turretDeg * DEG;
       st.gunPitch = clampGunDeg(a.spec, _actorSample.gunDeg, _actorSample.turretDeg) * DEG;
 
-    if (support) conformStudioActor(a, hfProxy, dt, a.visual.isDestroyed());
+    if (support) conformStudioActor(a, actorSupport(a), dt, a.visual.isDestroyed());
   }
 
   function applyStoryboardActors(timeMs: number, dt = 0, settle = false): void {
@@ -2173,6 +3234,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         a.supportStep = 0;
         applyStoryboardActorSample(a, 0, 0, true);
         a.visual.syncFromState(a.state, 0);
+        if (a.filmSupport) resetFilmSupport(a.filmSupport);
+        if (filming) captureFilmSupport(a.filmSupport ??= createFilmSupport(), a.state, 0);
       } else if (dt > 0) {
         // Support is anchored to the timeline, independent of display cadence
         // and the partial intervals surrounding authored FX cues.
@@ -2180,9 +3243,18 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         while (a.supportStep < finalStep) {
           a.supportStep++;
           applyStoryboardActorSample(a, a.supportStep * stepMs, SIM_DT, true);
+          if (filming) captureFilmSupport(a.filmSupport ??= createFilmSupport(), a.state, a.supportStep);
+        }
+        // A film sample between two grid lines solves the step after it, to draw the support pose between the two
+        // (one frame's exposure straddles a grid line; holding the earlier step printed the hull twice).
+        if (filming && a.supportStep === finalStep && timeMs / stepMs - finalStep > FILM_SUPPORT_ON_GRID) {
+          a.supportStep++;
+          applyStoryboardActorSample(a, a.supportStep * stepMs, SIM_DT, true);
+          captureFilmSupport(a.filmSupport ??= createFilmSupport(), a.state, a.supportStep);
         }
       }
       applyStoryboardActorSample(a, timeMs, 0, false);
+      a.filmSupportAlpha = filming && a.filmSupport ? filmSupportAlpha(a.filmSupport, timeMs, stepMs) : -1;
     }
   }
 
@@ -2669,6 +3741,88 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
   const r2 = (v: number): number => Math.round(v * 100) / 100;
 
+  // --- picture (studioPicture.ts schema, engine/cinemaPost.ts passes) -------------
+  // Neutral = no Studio pass in the composer (byte-identical to the house render). The
+  // runtime is created on the first non-neutral picture and disposed on exit.
+  let picture: StudioPicture = NEUTRAL_PICTURE;
+  let cinema: CinemaRuntime | null = null;
+  const _focusPoint = new THREE.Vector3();
+  const _focusAxis = new THREE.Vector3();
+
+  function pictureFocusActor(): StudioActor | null {
+    const ref = picture.dof.focusActor;
+    if (ref == null) return null;
+    return findActor(ref) || (/^\d+$/.test(ref) ? findActor(Number(ref)) : null);
+  }
+
+  /** Focus distance along the optical axis this frame: the actor's turret band, or the set distance. */
+  function pictureFocusDistance(): number {
+    const dof = picture.dof;
+    const actor = pictureFocusActor();
+    let distance = dof.focusDistance;
+    if (actor) {
+      _focusPoint.copy(actor.state.pos);
+      _focusPoint.y += actor.spec.dims.heightM * 0.55;
+      camera.getWorldDirection(_focusAxis);
+      distance = _focusPoint.sub(camera.position).dot(_focusAxis);
+    }
+    return Math.max(0.3, distance + dof.focusOffset);
+  }
+
+  function ensureCinema(): CinemaRuntime {
+    cinema ??= createCinemaPost(post, renderer, camera, {
+      lens: () => pictureLensState(picture.dof, camera.fov, pictureFocusDistance()),
+      grainSeed: () => pictureGrainSeed(sceneMeta.seed || 5000, clockMs),
+    });
+    return cinema;
+  }
+
+  /** Studio exit: every picture pass, hook and render target leaves with the Studio. */
+  function disposePicture(): void {
+    picture = NEUTRAL_PICTURE;
+    cinema?.dispose();
+    cinema = null;
+  }
+
+  /** Passes exist only while the Studio owns the frame (the Garage/battle composer stays pristine). */
+  function applyPictureRuntime(): void {
+    if (!active || isNeutralPicture(picture)) cinema?.apply(null);
+    else ensureCinema().apply(pictureCinemaSettings(picture));
+    invalidate();
+  }
+
+  function getPicture(): StudioPicture {
+    return JSON.parse(JSON.stringify(picture)) as StudioPicture;
+  }
+
+  /** `preset` switches the look; other fields override; null resets to neutral. */
+  function setPicture(patch: PicturePatch | null): StudioPicture {
+    picture = applyPicturePatch(picture, patch);
+    applyPictureRuntime();
+    panel.refreshPicture();
+    return getPicture();
+  }
+
+  /**
+   * Derived lens/finish facts for tooling (focal length, focus, matte, active stages). `size`
+   * (default: the live viewport) is the output the matte is computed for, e.g. a capture size.
+   */
+  function pictureInfo(size: { width?: number; height?: number } = {}) {
+    renderer.getSize(_size);
+    const width = Math.round(size.width || _size.x), height = Math.round(size.height || (size.width ? size.width * _size.y / _size.x : _size.y));
+    const lens = pictureLensState(picture.dof, camera.fov, pictureFocusDistance());
+    const bars = pictureLetterboxBars(picture.letterbox, width, height);
+    return {
+      neutral: isNeutralPicture(picture),
+      stages: cinema ? [...cinema.activeStages] : [],
+      focalLengthMm: r2(lens.focalMm),
+      focusM: r2(lens.focusM),
+      focusActor: pictureFocusActor()?.uid ?? null,
+      cocInfinity: Math.round(lens.cocScale * 1e6) / 1e6,
+      letterboxPx: bars,
+    };
+  }
+
   // --- capture -----------------------------------------------------------------
   function renderCaptureFrame(): void {
     // A resize or camera cut invalidates the interleaved cloud history. Complete
@@ -2699,6 +3853,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     W = Math.max(320, Math.min(maxTex, W));
     let H = Math.round(opts.height || W / aspect);
     H = Math.max(180, Math.min(maxTex, H));
+    if ((opts.samples ?? 1) > 1 || (opts.supersample ?? 1) > 1 || (opts.exposureMs ?? 0) > 0) return captureFilmStill(W, H, opts);
     let dataURL = '';
     const savedRail = rail.group.visible, savedMarker = marker.group.visible;
     try {
@@ -2712,9 +3867,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       camera.updateMatrixWorld(true);
       lighting.update(true); // every cascade fresh — deterministic capture
       stepFx(0);             // rebuild tracer ribbons/lights for this camera
+      cinema?.setQuality('capture'); // picture: full lens/finish tap counts
       renderCaptureFrame();
       dataURL = renderer.domElement.toDataURL(opts.type || 'image/png', opts.quality);
     } finally {
+      cinema?.setQuality('preview');
       renderer.setPixelRatio(prevPR);
       renderer.setSize(prevW, prevH, false);
       camera.aspect = prevW / Math.max(1, prevH);
@@ -2753,6 +3910,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    */
   function recordVideo(opts: VideoOptions = {}): Promise<VideoResult> {
     if (recording) return recording.promise;
+    if (filming) return Promise.reject(new Error('Finish the film render first'));
     if (typeof MediaRecorder === 'undefined' || !renderer.domElement.captureStream) {
       return Promise.reject(new Error('This browser does not support Studio video recording'));
     }
@@ -2799,6 +3957,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       startupTimer: null,
     };
     recording = session;
+    flareToWallClock();
     const clearStartupTimer = () => {
       if (session.startupTimer !== null) clearTimeout(session.startupTimer);
       session.startupTimer = null;
@@ -2916,14 +4075,408 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     };
   }
 
+  // --- film renderer (studioFilm.ts) ------------------------------------------
+  const savedGuides = { marker: false };
+  // Motion probe for adaptive sample counts: the storyboard camera and every
+  // tracked actor sampled across one shutter, without touching the live rig.
+  const _motionCam = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 5000);
+  const _motionRail: CameraRailSample & Required<Pick<
+    CameraRailSample, 'x' | 'y' | 'z' | 'lookX' | 'lookY' | 'lookZ' | 'fov' | 'rollDeg'
+  >> = { x: 0, y: 0, z: 0, lookX: 0, lookY: 0, lookZ: 0, fov: 50, rollDeg: 0, shotId: undefined };
+  const _motionCue = { rightM: 0, upM: 0, forwardM: 0, rollDeg: 0, fovKickDeg: 0 };
+  const _motionActor: ActorTrackSample & Required<Pick<ActorTrackSample, 'x' | 'z' | 'facingDeg' | 'turretDeg' | 'gunDeg'>> = {
+    x: 0, z: 0, facingDeg: 0, turretDeg: 0, gunDeg: 0, keyId: undefined,
+  };
+  const MOTION_GRID: readonly number[] = [-0.85, -0.3, 0.3, 0.85];
+  const MOTION_MARCH_M: readonly number[] = [1.5, 3, 6, 12, 24, 48, 96, 192, 384];
+  const MOTION_FAR_M = 600;
+  const MOTION_PROBES = 9;
+  // one terrain-depth anchor per grid ray, plus the shot's look target
+  const _motionAnchors = Array.from({ length: MOTION_GRID.length * MOTION_GRID.length + 1 }, () => new THREE.Vector3());
+  let _motionLength = new Float64Array(64), _motionPrev = new Float64Array(128);
+  const _motionV = new THREE.Vector3(), _motionF = new THREE.Vector3();
+  const _motionR = new THREE.Vector3(), _motionU = new THREE.Vector3();
+  const _motionNear: THREE.Vector3[] = [];
+
+  /** Same pose math as applyStoryboardCamera, into the probe camera. */
+  function poseMotionCamera(timeMs: number, aspect: number): void {
+    const probe = _motionCam;
+    let fov = camera.fov;
+    if (sampleCameraRail(storyboard.shots, timeMs, _motionRail)) {
+      probe.position.set(_motionRail.x, _motionRail.y, _motionRail.z);
+      _motionV.set(_motionRail.lookX, _motionRail.lookY, _motionRail.lookZ);
+      if (sampleCameraCues(storyboard.cameraCues, timeMs, _motionCue, FILM_CUE_ATTACK_MS)) {
+        scaleFilmCue(_motionCue);
+        _motionF.copy(_motionV).sub(probe.position).normalize();
+        _motionR.crossVectors(_motionF, _up).normalize();
+        _motionU.crossVectors(_motionR, _motionF).normalize();
+        probe.position.addScaledVector(_motionR, _motionCue.rightM);
+        probe.position.addScaledVector(_motionU, _motionCue.upM);
+        probe.position.addScaledVector(_motionF, _motionCue.forwardM);
+      }
+      fov = Math.max(10, Math.min(120, _motionRail.fov + _motionCue.fovKickDeg));
+      _motionF.copy(_motionV).sub(probe.position);
+      probe.rotation.order = 'YXZ';
+      probe.rotation.set(Math.atan2(_motionF.y, Math.hypot(_motionF.x, _motionF.z)),
+        Math.atan2(-_motionF.x, -_motionF.z), (_motionRail.rollDeg + _motionCue.rollDeg) * DEG);
+    } else {
+      probe.position.copy(camera.position);
+      probe.quaternion.copy(camera.quaternion);
+    }
+    probe.fov = fov; probe.aspect = aspect; probe.near = camera.near; probe.far = camera.far;
+    probe.updateProjectionMatrix();
+    probe.updateMatrixWorld(true);
+  }
+
+  /** Project into output pixels; false when the point is behind the lens or far off frame. */
+  function motionPixel(point: THREE.Vector3, width: number, height: number, out: Float64Array, at: number): boolean {
+    _motionV.copy(point).project(_motionCam);
+    if (!(_motionV.z > -1 && _motionV.z < 1) || Math.abs(_motionV.x) > 1.25 || Math.abs(_motionV.y) > 1.25) return false;
+    out[at] = _motionV.x * width / 2;
+    out[at + 1] = _motionV.y * height / 2;
+    return true;
+  }
+
+  /** First terrain crossing along a ray (coarse march + bisection), or the far field. */
+  function motionRayDepth(origin: THREE.Vector3, dir: THREE.Vector3): number {
+    let previous = 0;
+    for (const t of MOTION_MARCH_M) {
+      const x = origin.x + dir.x * t, z = origin.z + dir.z * t;
+      if (origin.y + dir.y * t <= hfProxy.getHeightAt(x, z)) {
+        let lo = previous, hi = t;
+        for (let i = 0; i < 6; i++) {
+          const mid = (lo + hi) / 2;
+          if (origin.y + dir.y * mid <= hfProxy.getHeightAt(origin.x + dir.x * mid, origin.z + dir.z * mid)) hi = mid;
+          else lo = mid;
+        }
+        return hi;
+      }
+      previous = t;
+    }
+    return MOTION_FAR_M;
+  }
+
+  function filmMotionPathPx(times: Float64Array, count: number, width: number, height: number, near?: FilmNearSurfaces | null): number {
+    const open = times[0], close = times[count - 1];
+    if (!(close > open)) return 0;
+    const aspect = width / height;
+    poseMotionCamera((open + close) / 2, aspect);
+    // Anchors at the scene's real depth: where each grid ray meets the terrain
+    // (the nearest geometry in almost every shot), the far field otherwise,
+    // and the look target. Fixed-depth probes overstate shake on open ground.
+    let n = 0;
+    for (const v of MOTION_GRID) {
+      for (const u of MOTION_GRID) {
+        _motionF.set(u, v, 0.5).unproject(_motionCam).sub(_motionCam.position).normalize();
+        _motionAnchors[n++].copy(_motionCam.position).addScaledVector(_motionF, motionRayDepth(_motionCam.position, _motionF));
+      }
+    }
+    if (storyboard.shots.length && sampleCameraRail(storyboard.shots, (open + close) / 2, _motionRail)) {
+      _motionAnchors[n++].set(_motionRail.lookX, _motionRail.lookY, _motionRail.lookZ);
+    }
+    // the surfaces nearest the lens in the last frame (a bush, a pole, a hull), which outrun the terrain behind them
+    const nearCount = near?.count ?? 0;
+    for (let k = 0; k < nearCount; k++) {
+      (_motionNear[k] ??= new THREE.Vector3()).set(near!.points[k * 3], near!.points[k * 3 + 1], near!.points[k * 3 + 2]);
+    }
+    const points = n + nearCount + actors.length;
+    if (_motionLength.length < points) { _motionLength = new Float64Array(points); _motionPrev = new Float64Array(points * 2); }
+    _motionLength.fill(0, 0, points);
+    const valid: boolean[] = new Array(points).fill(false);
+    for (let j = 0; j < MOTION_PROBES; j++) {
+      const t = open + (close - open) * j / (MOTION_PROBES - 1);
+      poseMotionCamera(t, aspect);
+      for (let i = 0; i < points; i++) {
+        let point = i < n ? _motionAnchors[i] : _motionNear[i - n];
+        if (i >= n + nearCount) {
+          const actor = actors[i - n - nearCount];
+          const track = actorTrackFor(actor);
+          if (track && sampleActorTrack(track.keys, t, _motionActor)) {
+            _motionU.set(_motionActor.x, hfProxy.getHeightAt(_motionActor.x, _motionActor.z) + actor.spec.dims.heightM * 0.6, _motionActor.z);
+          } else {
+            _motionU.copy(actor.state.pos);
+            _motionU.y += actor.spec.dims.heightM * 0.6;
+          }
+          point = _motionU;
+        }
+        const x = _motionPrev[i * 2], y = _motionPrev[i * 2 + 1];
+        const inFrame = motionPixel(point, width, height, _motionPrev, i * 2);
+        if (inFrame && valid[i]) _motionLength[i] += Math.hypot(_motionPrev[i * 2] - x, _motionPrev[i * 2 + 1] - y);
+        valid[i] = inFrame;
+      }
+    }
+    let longest = 0;
+    for (let i = 0; i < points; i++) longest = Math.max(longest, _motionLength[i]);
+    return longest;
+  }
+  const filmRenderer = createStudioFilm({
+    renderer, scene, camera, post, lighting,
+    clockMs: () => clockMs,
+    seek: (ms: number) => rebuildEffects(ms),
+    advanceTo: (ms: number) => { advanceTimeline(ms - clockMs, true); },
+    refreshFxForCamera: () => stepFx(0),
+    prepareWorld(complete: boolean) {
+      const world = getWorld();
+      if (!world) return;
+      camera.getWorldDirection(_fwd);
+      world.update(0, camera.position, _fwd, null);
+      // Paused cameras do not drive ordinary streaming; finish this view's
+      // terrain lookahead so a frame never depends on how fast the host is.
+      if (complete) for (let jobs = 0; jobs < 256; jobs++) if (!world.warmTerrainLookahead(camera.position, 1)) break;
+    },
+    cutTimes: () => storyboard.shots.filter((shot) => shot.transition === 'cut').map((shot) => shot.tMs),
+    motionPathPx: filmMotionPathPx,
+    setFilmMode(on: boolean) {
+      if (on === filming) return;
+      filming = on;
+      // Picture passes render at capture quality for every film frame and film still.
+      cinema?.setQuality(on ? 'capture' : 'preview');
+      if (on) {
+        timeScale = 0;
+        savedGuides.marker = marker.group.visible;
+        marker.group.visible = false;
+      } else {
+        marker.group.visible = savedGuides.marker;
+        for (const actor of actors) { actor.filmScrollL = 0; actor.filmScrollR = 0; }
+      }
+      rail.updateVisibility();
+      invalidate();
+    },
+  });
+
+  function filmSettingsFor(opts: FilmSettingsInput): FilmSettings {
+    const base = sceneFilm ?? FILM_DEFAULTS;
+    return normalizeFilm({
+      fps: opts.fps ?? base.fps,
+      shutterDeg: opts.shutterDeg ?? base.shutterDeg,
+      shake: opts.shake ?? base.shake,
+      samples: opts.samples ?? base.samples,
+      maxSamples: opts.maxSamples ?? base.maxSamples,
+      filter: opts.filter ?? base.filter,
+      speed: opts.speed ?? base.speed,
+    });
+  }
+
+  function filmBusy(): string | null {
+    if (recording) return 'Stop recording before rendering a film';
+    if (loading || mapChange || productionLoading) return 'Finish the current Studio operation first';
+    if (filmRenderer.active) return 'A film render is already active';
+    return null;
+  }
+
+  /**
+   * Open an offline film over the storyboard (or [startMs, endMs]) at an exact
+   * output size. Settings default to the scene's `film` block, then
+   * FILM_DEFAULTS. Frames render in order via renderFilmFrame(); endFilm()
+   * restores the live Studio.
+   */
+  function beginFilm(opts: FilmBeginOptions = {}): FilmSessionInfo {
+    const busy = filmBusy();
+    if (busy) throw new Error(busy);
+    const settings = filmSettingsFor(opts);
+    const [defaultW, defaultH] = productionFormat === 'portrait' ? [1080, 1920]
+      : productionFormat === 'square' ? [1080, 1080] : [1920, 1080];
+    timeScale = 0;
+    filmShake = settings.shake;
+    const session = filmRenderer.begin({
+      width: opts.width ?? defaultW,
+      height: opts.height ?? defaultH,
+      settings,
+      startMs: opts.startMs,
+      endMs: opts.endMs,
+    }, storyboard.durationMs);
+    perf.renderedFrames++;
+    return session;
+  }
+
+  function filmFrameDataUrl(opts: FilmRenderOptions): string {
+    return renderer.domElement.toDataURL(opts.type || 'image/png', opts.quality);
+  }
+
+  /**
+   * One film frame: the next frame of the open film (beginFilm), or without
+   * one a supersampled still of the current instant (capture() options plus
+   * `samples`, `filter`, `supersample`; `dataURL: true` returns the PNG).
+   */
+  function renderFilmFrame(opts: FilmRenderOptions & CaptureOptions = {}): (FilmFrameInfo & { dataURL?: string })
+    | { dataURL: string; width: number; height: number } {
+    if (!filmRenderer.active) {
+      return capture({ ...opts, samples: opts.samples ?? (sceneFilm ?? FILM_DEFAULTS).samples });
+    }
+    const frame = filmRenderer.renderNext();
+    perf.renderedFrames++;
+    return opts.dataURL ? { ...frame, dataURL: filmFrameDataUrl(opts) } : frame;
+  }
+
+  function endFilm(): boolean {
+    if (!filmRenderer.active) return false;
+    filmRenderer.end();
+    filmShake = 1;
+    panel.refreshAll();
+    renderCaptureFrame(); // a complete live frame at the restored viewport
+    return true;
+  }
+
+  function captureFilmStill(width: number, height: number, opts: CaptureOptions) {
+    const busy = filmBusy();
+    if (busy) throw new Error(busy);
+    let dataURL = '', samples = 1, exposureMs = 0;
+    const exposure = Math.max(0, Number(opts.exposureMs) || 0);
+    filmShake = exposure > 0 ? Math.min(2, Math.max(0, opts.shake ?? sceneFilm?.shake ?? 1)) : 1;
+    try {
+      const still = filmRenderer.renderStill({
+        width, height,
+        // An exposure needs several instants; 16 is the base before motion adapts it.
+        samples: opts.samples ?? (exposure > 0 ? 16 : undefined),
+        filter: opts.filter,
+        supersample: opts.supersample,
+        exposureMs: exposure,
+        maxSamples: opts.maxSamples,
+        durationMs: storyboard.durationMs,
+      });
+      dataURL = still.canvas.toDataURL(opts.type || 'image/png', opts.quality);
+      samples = still.samples;
+      exposureMs = still.exposureMs;
+    } finally {
+      filmShake = 1;
+      renderCaptureFrame(); // restore a complete live view after the size change
+    }
+    if (opts.download) {
+      const link = document.createElement('a');
+      link.href = dataURL;
+      link.download = opts.name || `studio_${getWorld()?.mapId || 'map'}_${Date.now()}.png`;
+      link.click();
+    }
+    return { dataURL, width, height, samples, exposureMs };
+  }
+
+  function getFilm(): FilmSettings | null {
+    return sceneFilm ? normalizeFilm(sceneFilm) : null;
+  }
+
+  // --- in-browser offline export (studioFilmExport.ts, lazy) ----------------------
+  let filmExport: { controller: AbortController; progress: FilmExportProgress | null } | null = null;
+
+  /**
+   * Render the storyboard as a film and encode it in the browser (WebCodecs:
+   * H.264/MP4, else VP9/WebM). Deterministic frames, nothing dropped; the
+   * playhead returns to where it was. Resolves with the file (downloaded
+   * unless `download: false`).
+   */
+  function exportFilmFile(opts: FilmExportRequest = {}): Promise<FilmExportResult> {
+    if (filmExport) return Promise.reject(new Error('A film export is already running'));
+    const busy = filmBusy();
+    if (busy) return Promise.reject(new Error(busy));
+    let settings: FilmSettings;
+    let size: { width: number; height: number };
+    try {
+      settings = filmSettingsFor(opts);
+      size = opts.width && opts.height
+        ? { width: opts.width, height: opts.height }
+        : filmOutputSize(productionFormat, opts.resolution ?? 1080);
+    } catch (error) {
+      return Promise.reject(error);
+    }
+    const playhead = clockMs;
+    const controller = new AbortController();
+    const session = { controller, progress: null as FilmExportProgress | null };
+    filmExport = session;
+    const run = async (): Promise<FilmExportResult> => {
+      const { exportFilm } = await import('./studioFilmExport.ts');
+      const withAudio = opts.audio !== false;
+      return exportFilm({
+        begin: () => {
+          filmCues = withAudio ? [] : null;
+          const session = beginFilm({ ...settings, width: size.width, height: size.height, startMs: opts.startMs, endMs: opts.endMs });
+          // The opening seek replays every earlier event: keep only those at the film's first instant.
+          if (filmCues) filmCues = filmCues.filter((cue) => cue.timelineMs >= session.startMs - 1e-3);
+          return session;
+        },
+        renderNext: () => {
+          const frame = filmRenderer.renderNext();
+          perf.renderedFrames++;
+          return frame;
+        },
+        end: () => { filmCues = null; endFilm(); },
+        canvas: renderer.domElement,
+        soundtrack: withAudio ? async (session) => {
+          const cues = filmCues ?? [];
+          filmCues = null;
+          const { renderFilmSoundtrack } = await import('./studioFilmAudio.ts');
+          const map = createFilmTimeMap(settings.speed, session.startMs, session.endMs);
+          const aspect = session.width / session.height;
+          return renderFilmSoundtrack(cues, {
+            listenerAt(timelineMs, out) {
+              poseMotionCamera(timelineMs, aspect);
+              const e = _motionCam.matrixWorld.elements;
+              out.x = e[12]; out.y = e[13]; out.z = e[14];
+              out.rightX = e[0]; out.rightY = e[1]; out.rightZ = e[2];
+            },
+            filmMsAt: (timelineMs) => map.filmAt(timelineMs),
+            speedAt: (timelineMs) => map.speedAt(timelineMs),
+          }, { durationS: session.frames / session.fps, seed: sceneMeta.seed || 5000, mapId: getWorld()?.mapId ?? null });
+        } : undefined,
+      }, {
+        width: size.width,
+        height: size.height,
+        fps: settings.fps,
+        bitrate: opts.bitrate,
+        container: opts.container,
+        signal: controller.signal,
+        onProgress(progress) { session.progress = progress; opts.onProgress?.(progress); },
+        onFrame: opts.onFrame ? (canvas) => opts.onFrame?.(canvas) : undefined,
+      });
+    };
+    return run().then((result) => {
+      if (opts.download !== false) {
+        const url = URL.createObjectURL(result.blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = opts.name ||
+          `studio_${getWorld()?.mapId || 'film'}_${size.height}p${settings.fps}.${result.container}`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+      }
+      return result;
+    }).finally(() => {
+      if (filmExport === session) filmExport = null;
+      seekTimeline(playhead);
+      panel.refreshAll();
+    });
+  }
+
+  function cancelFilmExport(): boolean {
+    if (!filmExport) return false;
+    filmExport.controller.abort();
+    return true;
+  }
+
+  function filmExportStatus() {
+    return {
+      active: !!filmExport,
+      supported: typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined',
+      progress: filmExport?.progress ?? null,
+    };
+  }
+
+  /** Author the scene's `film` block (merged onto the current one); null removes it. */
+  function setFilm(patch: FilmSettingsInput | null): FilmSettings | null {
+    if (filmRenderer.active) throw new Error('Finish the film render first');
+    sceneFilm = patch === null ? null : normalizeFilm({ ...(sceneFilm ?? FILM_DEFAULTS), ...patch });
+    return getFilm();
+  }
+
   // --- scene JSON --------------------------------------------------------------
   /** @returns {object} round-trippable scene JSON (docs/STUDIO.md schema). */
   function stateJson() {
     const w = getWorld();
     return {
       map: w ? w.mapId : 'verdant',
-      timeOfDay,
+      // the time as rendered (a space map keeps its authored day)
+      timeOfDay: studioTimeFor(w ? w.mapId : 'verdant', timeOfDay),
+      ...(studioLight ? { light: { ...studioLight } } : {}),
       productionFormat,
+      ...(studioFxState(fxSettings) ? { fx: studioFxState(fxSettings) } : {}),
       seed: sceneMeta.seed || 5000,
       actors: actors.map((a) => ({
         id: a.specId,
@@ -2956,7 +4509,16 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       camera: getCamera(),
       fxTime: Math.round(clockMs),
       timeScale,
+      ...(sceneFilm ? { film: getFilm() } : {}),
+      ...pictureStateEntry(),
+      ...(sceneMeta.sections ? {} : { destruction: { sections: false } }),
     };
+  }
+
+  /** Scenes without a picture keep exactly the earlier state() shape. */
+  function pictureStateEntry(): { picture?: Record<string, RuntimeValue> } {
+    const json = pictureStateJson(picture);
+    return json ? { picture: json } : {};
   }
 
   async function ensureLoadMap(json: StudioSceneInput): Promise<void> {
@@ -2971,6 +4533,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     yieldForFrameBudget: () => Promise<void>,
   ): Promise<void> {
     sceneMeta.seed = json.seed != null ? json.seed : 5000;
+    sceneMeta.sections = json.destruction?.sections !== false;
     timeScale = 0;
     clearActors();
     resetFx(sceneMeta.seed);
@@ -2996,6 +4559,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   function replaceLoadEffects(json: StudioSceneInput, fxMs: number): void {
     const effects = (json.effects || [])
+      // an effect naming an actor the scene does not stage cannot fire: dropped, with a warning (the media lane's
+      // s38-church-knockout named an ally1 it never staged)
+      .filter((effect: StudioEffectInput) => {
+        if (effect.actor == null || findActor(effect.actor)) return true;
+        console.warn(`[studio] ${effect.type} at ${effect.tMs || 0} ms names actor ${String(effect.actor)}, which the scene does not stage: dropped`);
+        return false;
+      })
       .map((effect: StudioEffectInput): StudioEffectInput & { tMs: number } => ({
         ...effect,
         tMs: clampStudioTime(effect.tMs || 0, storyboard.durationMs),
@@ -3006,6 +4576,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function restoreLoadedPresentation(json: StudioSceneInput, fxMs: number): void {
+    ctx.getStudioLight?.()?.setActorRoots(actorRoots); // the loaded batch's headlights join the night lamp pool once
     timeScale = fxMs >= storyboard.durationMs
       ? 0
       : Math.max(0, Math.min(4, json.timeScale != null ? json.timeScale : 0));
@@ -3033,14 +4604,19 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   ): Promise<ReturnType<typeof stateJson>> {
     const loadedFormat = json.productionFormat ?? 'landscape';
     productionAspect(loadedFormat); // Validate before replacing any scene state.
-    if (json.timeOfDay !== undefined && !BATTLE_TIMES.includes(json.timeOfDay)) throw new RangeError('Unknown time of day');
+    const loadedFilm = json.film == null ? null : normalizeFilm(json.film);
+    if (filmRenderer.active) throw new Error('Finish the film render before loading a scene');
+    if (json.timeOfDay !== undefined && !isStudioTime(json.timeOfDay)) throw new RangeError('Unknown time of day');
+    const loadedLight = normalizeStudioLight(json.light); // throws on a malformed block before any state changes
+    const loadedPicture = resolvePicture(json.picture); // validate before replacing scene state
     if (recording) throw new Error('Stop recording before loading a scene');
     if (loading) throw new Error('studio.load already in flight');
     loading = true;
     try {
       const yieldForFrameBudget = createFrameBudgetYielder(10);
       await ensureLoadMap(json);
-      await setTimeOfDay(json.timeOfDay ?? 'day');
+      await setTimeOfDay(json.timeOfDay ?? 'day', loadedLight);
+      applyFxSettings(normalizeStudioFx(json.fx));
       await replaceLoadActors(json, yieldForFrameBudget);
       storyboard = loadedStoryboard(json);
       bindStoryboardTracks();
@@ -3055,26 +4631,88 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       replaceLoadEffects(json, fxMs);
       await yieldForFrameBudget();
       productionFormat = loadedFormat; // Camera keys already carry this framing; never reframe on load.
+      sceneFilm = loadedFilm;
+      picture = loadedPicture;
+      applyPictureRuntime();
       restoreLoadedPresentation(json, fxMs);
+      // a clip starts with the flare at its target: no eased history from the last clip or page
+      post.lensFlare?.snap?.();
       return stateJson();
     } finally {
       loading = false;
     }
   }
 
-  async function setTimeOfDay(time: BattleTimeOfDay): Promise<BattleTimeOfDay> {
-    if (!BATTLE_TIMES.includes(time)) throw new RangeError('Unknown time of day');
-    if (recording) throw new Error('Stop recording before changing the light');
-    if (time === timeOfDay) return time;
-    await transition.run(async () => {
-      await ctx.prepareStudioAtmosphere?.(time);
+  const sameLight = (a: StudioLight | null, b: StudioLight | null): boolean =>
+    (a?.sunAzimuthDeg ?? null) === (b?.sunAzimuthDeg ?? null) && (a?.sunElevationDeg ?? null) === (b?.sunElevationDeg ?? null)
+    && (a?.headlights ?? true) === (b?.headlights ?? true);
+
+  /** Re-light the active world (a covered transition for time changes; slider-rate sun moves stay uncovered). */
+  async function applyStudioLight(time: StudioTimeOfDay, light: StudioLight | null, covered: boolean): Promise<void> {
+    const work = async (): Promise<void> => {
+      await ctx.prepareStudioAtmosphere?.(time, light);
       timeOfDay = time;
+      studioLight = light;
       lighting.updateFrustums();
       lighting.update(true);
       panel.refreshMap();
       invalidate();
-    }, { title: t('studio.settingLight') });
-    return time;
+    };
+    if (covered) await transition.run(work, { title: t('studio.settingLight') });
+    else await work();
+  }
+
+  /**
+   * Select a Studio time of day. A new time keeps the sun's bearing override and takes its own elevation; pass
+   * `light` (an object, or null to clear) to set the override with it. Space maps render their authored day.
+   */
+  async function setTimeOfDay(time: StudioTimeOfDay, light?: StudioLight | null): Promise<StudioTimeOfDay> {
+    if (!isStudioTime(time)) throw new RangeError('Unknown time of day');
+    if (recording) throw new Error('Stop recording before changing the light');
+    if (filming) throw new Error('Finish the film render first');
+    // a new time keeps the bearing and the headlights choice; its elevation band is its own
+    const kept = studioLight ? normalizeStudioLight({ sunAzimuthDeg: studioLight.sunAzimuthDeg, headlights: studioLight.headlights }) : null;
+    const nextLight = light !== undefined ? normalizeStudioLight(light) : time === timeOfDay ? studioLight : kept;
+    if (time !== timeOfDay || !sameLight(nextLight, studioLight)) await applyStudioLight(time, nextLight, true);
+    return studioTimeFor(getWorld()?.mapId ?? 'verdant', time);
+  }
+
+  /**
+   * Merge a sun override: `{sunAzimuthDeg?, sunElevationDeg?}` (a null field removes it), or null to clear. The
+   * elevation is clamped into the current time's band (getLight().band).
+   */
+  async function setLight(patch: StudioLight | null): Promise<ReturnType<typeof getLight>> {
+    if (recording) throw new Error('Stop recording before changing the light');
+    if (filming) throw new Error('Finish the film render first');
+    if (patch !== null && (typeof patch !== 'object' || Array.isArray(patch))) throw new TypeError('Studio light must be an object or null');
+    const next = patch === null ? null : normalizeStudioLight({ ...(studioLight ?? {}), ...patch });
+    const mapId = getWorld()?.mapId ?? 'verdant';
+    // keep the stored elevation inside the band so state() reports what renders
+    if (next?.sunElevationDeg !== undefined) {
+      const band = studioElevationBand(mapId, timeOfDay);
+      next.sunElevationDeg = Math.min(band.max, Math.max(band.min, next.sunElevationDeg));
+    }
+    if (!sameLight(next, studioLight)) await applyStudioLight(timeOfDay, next, false);
+    return getLight();
+  }
+
+  /** The light as rendered: the time, the sun (moon at night) and the override band for the active map. */
+  function getLight() {
+    const world = getWorld();
+    const mapId = world?.mapId ?? 'verdant';
+    const plan = world ? planStudioLight(mapId, studioAuthoredSky(world), timeOfDay, studioLight) : null;
+    const band = studioElevationBand(mapId, timeOfDay);
+    return {
+      time: studioTimeFor(mapId, timeOfDay),
+      requestedTime: timeOfDay,
+      sunAzimuthDeg: plan?.sunAzimuthDeg ?? null,
+      sunElevationDeg: plan?.sunElevationDeg ?? null,
+      override: studioLight ? { ...studioLight } : null,
+      headlights: studioLight?.headlights !== false,
+      band: { min: band.min, max: band.max },
+      times: [...studioTimesFor(mapId)],
+      space: plan?.space ?? false,
+    };
   }
 
   async function setMap(mapId: string): Promise<string> {
@@ -3094,7 +4732,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         progress(0.03 + f * 0.86, label);
       });
       setWorldDormant(false);
-      await ctx.prepareStudioAtmosphere?.(timeOfDay);
+      // a space map renders its authored day; the requested time returns on the next terrestrial map
+      await ctx.prepareStudioAtmosphere?.(timeOfDay, studioLight);
       setCamoBiome(id);
       // Only Studio actors can be seen. Repainting every cached garage/battle
       // texture on a biome change turned a map pick into seconds of unrelated
@@ -3204,7 +4843,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       ]);
       mark('worldAndFx');
       setWorldDormant(false);
-      await ctx.prepareStudioAtmosphere?.(timeOfDay);
+      await ctx.prepareStudioAtmosphere?.(timeOfDay, studioLight);
       // Cold /studio and first-use F8 have no battlefield preset until the
       // awaited acquisition has activated its world. Never borrow the Garage
       // (or previous map's) sun while the requested map is still loading.
@@ -3247,6 +4886,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       }
       panel.setBusy(null);
       panel.refreshAll();
+      applyPictureRuntime(); // a picture set before entry takes effect with the Studio frame
       invalidate();
       mark('present');
     };
@@ -3294,6 +4934,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   async function doExit() {
     if (!active) return;
     if (recording) stopRecording();
+    flareToWallClock();
     active = false;
     panel.hide();
     marker.group.visible = false;
@@ -3301,12 +4942,16 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     dragActor = null;
     dragging = false;
     keys.clear();
+    releaseCrushes();
     clearActors();
     shells.length = 0;
     effectLog.length = 0;
     activeEffectIds.clear();
     fx.resetAll();
+    studioStages.clear();
+    resetStudioGround(true);
     fx.setFrozen(false);
+    releaseStudioFx();
     timeScale = 1;
     camera.rotation.z = 0; // no roll may leak into game cameras
     cam.roll = 0;
@@ -3316,7 +4961,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     actorKeyUidSeq = 1;
     rail.rebuild();
     rail.updateVisibility();
+    disposePicture();
     unsweepPool();
+    ctx.restoreStudioAtmosphere?.(); // the cached battlefield gets its baked horizon light back before it can host a battle
     await enterGarage(); // restores camo overrides, sun trim, spots, showroom
     syncRoute(false);
     docBrand('garage');
@@ -3324,6 +4971,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   // --- per-frame (owns the whole frame while active; called from main tick) ---
   function tick(dt: number, frameWallDtSeconds = dt): void {
+    if (filming) return; // an offline film renders its own frames
     const cameraMoved = updateCamera(dt);
     poolSweepAcc += dt;
     if (poolSweepAcc >= 0.5) {
@@ -3344,6 +4992,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const wdt = 0; // Water uses the fixed Studio timeline; camera/LOD maintenance stays render-driven.
     camera.getWorldDirection(_fwd);
     if (w) w.update(wdt, camera.position, _fwd, null);
+    if (!animating) syncCrushPlan(w); // a paused edit re-plans the crushes at the playhead
     if (animating) {
       // MediaRecorder timestamps follow elapsed wall time. The interactive
       // frame delta is capped at 100 ms, so using it here stretches recordings
@@ -3400,6 +5049,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       if (window.location.pathname === want) return;
       const sp = new URLSearchParams(window.location.search);
       sp.delete('studio');
+      if (!inStudio) sp.delete('scene');
       const qs = sp.toString();
       window.history.replaceState(null, '', want + (qs ? `?${qs}` : ''));
     } catch (_) { /* sandboxed frames — cosmetic only */ }
@@ -3457,29 +5107,74 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     listActors: () => actors.map((a, i) => ({
       index: i, uid: a.uid, name: a.name, id: a.specId,
       pos: [r2(a.timelineX), r2(a.timelineZ)],
+      // where the hull stands (a bridge deck, not the ground under it), for shot tools' sightlines
+      y: r2(a.state.pos.y),
       facingDeg: r2(a.state.yaw / DEG), turretDeg: r2(a.state.turretYaw / DEG),
       gunDeg: r2(a.state.gunPitch / DEG), state: a.stateName,
       smoking: !!a.smoking, burning: !!a.burning,
       camo: a.camo || null, camoSeed: a.camoSeed,
     })),
+    /** The hulls' crushes over the take (studioCrush.ts): when, what, where and how fast, for scores and shot tools. */
+    crushEvents: () => {
+      const world = getWorld();
+      syncCrushPlan(world);
+      return crushes.events.map((e) => {
+        if (e.record) {
+          return {
+            tMs: Math.round(e.tMs), kind: e.record.kind ?? 'obstacle', speedMps: r2(e.speedMps),
+            pos: [r2((e.record.min[0] + e.record.max[0]) / 2), r2(e.record.min[1]), r2((e.record.min[2] + e.record.max[2]) / 2)],
+            heightM: r2(e.record.max[1] - e.record.min[1]),
+          };
+        }
+        const prop = world?.crushables[e.crushable];
+        return {
+          tMs: Math.round(e.tMs), kind: prop?.kind ?? (prop?.index != null ? 'pole' : 'prop'), speedMps: r2(e.speedMps),
+          pos: prop ? [r2(prop.x), r2(prop.y), r2(prop.z)] : [0, 0, 0], heightM: r2(prop?.h ?? 0),
+        };
+      });
+    },
     state: stateJson,
     // session control
     enter: (opts: EnterOptions = {}) => enter(opts),
     exit,
     /** Offline export: monotonic fixed steps, no wall clock or MediaRecorder frame drops. */
     advanceFrame(ms: number) {
-      if (recording || !Number.isFinite(ms) || ms < 0 || ms > 1000) throw new RangeError('Invalid export step');
+      if (recording || filming || !Number.isFinite(ms) || ms < 0 || ms > 1000) throw new RangeError('Invalid export step');
       timeScale = 0;
+      if (!flareOnExportClock) { flareOnExportClock = true; post.lensFlare?.setClock?.(() => clockMs); }
       advanceTimeline(ms);
       getWorld()?.setWindTime(0.35 + clockMs / 1000);
       camera.updateMatrixWorld(true);
       lighting.updateFrustums(); lighting.update(true);
       return clockMs;
     },
-    get timeOfDay() { return timeOfDay; },
+    /** The stages and breaches the Studio's destruction raised so far (P2 strips read which each frame presented). */
+    destructionEvents: () => studioSimLog.slice(),
+    get timeOfDay() { return studioTimeFor(getWorld()?.mapId ?? 'verdant', timeOfDay); },
     setTimeOfDay,
-    setMap: (id: string) => recording
-      ? Promise.reject(new Error('Stop recording before changing battlefield'))
+    setLight,
+    getLight,
+    STUDIO_TIMES,
+    STUDIO_TIME_BANDS,
+    /** Scene FX quality: `battle` (the game's exact look) or `cinematic`. */
+    setFxQuality(quality: StudioFxQuality) {
+      if (recording || filming || !STUDIO_FX_QUALITIES.includes(quality)) return fxSettings.quality;
+      applyFxSettings(normalizeStudioFx({ quality, trackDust: quality === 'cinematic' ? true : fxSettings.trackDust }));
+      rebuildEffects(clockMs);
+      return fxSettings.quality;
+    },
+    get fxQuality() { return fxSettings.quality; },
+    /** Automatic dust + prints behind timeline-driven actors. */
+    setTrackDust(on: boolean) {
+      if (recording || filming) return fxSettings.trackDust;
+      applyFxSettings({ ...fxSettings, trackDust: !!on });
+      rebuildEffects(clockMs);
+      return fxSettings.trackDust;
+    },
+    get trackDust() { return fxSettings.trackDust; },
+    cinematicStats: () => cinematics?.stats() ?? null,
+    setMap: (id: string) => recording || filming
+      ? Promise.reject(new Error(filming ? 'Finish the film render first' : 'Stop recording before changing battlefield'))
       : setMap(id),
     get active() { return active; },
     get mapId() { const w = getWorld(); return w ? w.mapId : null; },
@@ -3519,7 +5214,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     },
     advanceFx: (ms: number) => seekTimeline(clockMs + ms),
     setTimeScale: (v: number) => {
-      if (recording) return timeScale;
+      if (recording || filming) return timeScale;
       const next = Math.max(0, Math.min(4, v));
       if (next > 0 && clockMs >= storyboard.durationMs - 0.5) {
         seekTimeline(0, { pause: false });
@@ -3555,19 +5250,45 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     get durationMs() { return storyboard.durationMs; },
     get playing() { return timeScale > 0; },
     get railVisible() { return railVisible; },
+    /** The battlefield's plan for the Studio's Plan view: the HUD minimap's features and the map's extent. */
+    getPlanFeatures() {
+      const world = getWorld();
+      if (!world) return null;
+      const f = world.getMinimapFeatures();
+      return { size: world.heightField.size, roads: f.roads, buildings: f.buildings, treeClusters: f.treeClusters, waterOrSoft: f.waterOrSoft };
+    },
     get selectedShotId() { return selectedShotId; },
     // video output
     recordVideo,
     stopRecording,
     recordingStatus,
+    // offline film renderer (studioFilm.ts; docs/STUDIO.md "Film renderer")
+    beginFilm,
+    renderFilmFrame,
+    endFilm,
+    getFilm,
+    setFilm,
+    get filming() { return filmRenderer.active; },
+    get filmInfo() { return filmRenderer.info; },
+    exportFilm: exportFilmFile,
+    cancelFilmExport,
+    filmExportStatus,
+    FILM_DEFAULTS,
     // camera
     setCamera: (cfg: CameraConfig) => recording ? getCamera() : applyCamera(cfg),
     getCamera,
+    // picture (docs/STUDIO.md "Picture")
+    setPicture: (patch: PicturePatch | null) => recording ? getPicture() : setPicture(patch),
+    getPicture,
+    pictureInfo,
+    PICTURE_PRESETS,
     // constants for tooling/panel
     TANK_IDS: VISIBLE_TANK_IDS,
     MAP_IDS,
     ACTOR_STATES,
     EFFECT_TYPES,
+    FX_QUALITIES: STUDIO_FX_QUALITIES,
+    FX_PARAMS: STUDIO_FX_PARAMS,
     CAMO_PATTERN_IDS: CAMO_CATALOG_PATTERN_IDS,
     getMapInfo: (id: string) => {
       const config = getMapConfig(id);
@@ -3600,6 +5321,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       cam,
       actors,
       findActor,
+      /** Film accumulation (picture↔film contract): the finish runs once per output frame. */
+      picture: {
+        setFinishBypass: (bypass: boolean) => ensureCinema().setFinishBypass(bypass),
+        renderFinish: (...args: Parameters<CinemaRuntime['renderFinish']>) => ensureCinema().renderFinish(...args),
+        setQuality: (quality: Parameters<CinemaRuntime['setQuality']>[0]) => cinema?.setQuality(quality),
+        get runtime() { return cinema; },
+      },
     },
   };
 
@@ -3608,13 +5336,28 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   window.__STUDIO = api;
 
   // Auto-entry: the /studio pretty route or the legacy ?studio=1 param
-  // (waits for readiness; map via ?map=…)
+  // (waits for readiness; map via ?map=…). A scene link, ?scene=/path/on/this/site.json (studioSceneLink.ts), enters
+  // on the scene's own map and loads it as Load JSON would; a link that fails to load leaves the plain Studio open.
   if (ctx.autoEnter !== false && (urlParam('studio') || onStudioRoute())) {
+    const map = urlParam('map') || 'verdant';
+    const scenePath = sceneLinkPath(urlParam('scene'));
+    const scene = scenePath
+      ? fetch(scenePath).then((response) => {
+        if (!response.ok) throw new Error(`${scenePath}: HTTP ${response.status}`);
+        return response.json() as Promise<StudioSceneInput>;
+      })
+      : null;
+    scene?.catch(() => {}); // awaited below; never an unhandled rejection while the game boots
     const t = setInterval(() => {
       if (!window.__GAME_READY) return;
       clearInterval(t);
-      enter({ map: urlParam('map') || 'verdant' })
-        .catch((err: RuntimeValue) => console.error('[studio] auto-enter failed', err));
+      const entry = scene
+        ? scene.then(
+          (json) => enter({ map: json.map || map }).then(() => load(json)),
+          (err: RuntimeValue) => { console.error('[studio] scene link failed', err); return enter({ map }); },
+        )
+        : enter({ map });
+      entry.catch((err: RuntimeValue) => console.error('[studio] auto-enter failed', err));
     }, 60);
   }
 

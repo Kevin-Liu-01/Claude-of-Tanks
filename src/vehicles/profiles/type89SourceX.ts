@@ -89,9 +89,27 @@ function launchers(P: TankBuilderPort): void {
       for(const dx of [-.155,.155])turretEquipment(P,'turretDetail',box(.035,.33,1.19),x+dx,2.43,-1.055);
       for(const dy of [-.17,.17])turretEquipment(P,'turretDetail',box(.345,.032,1.19),x,2.43+dy,-1.055);
       turretEquipment(P,'turretDetail',box(.34,.35,.035),x,2.43,-1.667);
-      const tube=new THREE.CylinderGeometry(.126,.126,1.16,P.q?24:12,1,true).rotateX(Math.PI/2);
-      turretEquipment(P,'turretDark',tube,x,2.43,-1.055);
+      // Fleet lane 2026-10-08 (sealed gate: type89_x open px 93 > ledger 15, inverted turretDark px at the canister
+      // mouths): the open canister showed its own back faces between the mouth ring and the recessed cap, and its tube
+      // stopped 15 mm short of the ring and the frame, so the mouth read as a hole through the tube wall. The tube now
+      // meets the ring (z -0.46), and the mouth's inner wall at the opening's radius faces inward (its winding reversed,
+      // as the gun bore's in openTube), from the ring back to the cap.
+      const tube=new THREE.CylinderGeometry(.126,.126,1.175,P.q?24:12,1,true).rotateX(Math.PI/2);
+      turretEquipment(P,'turretDark',tube,x,2.43,-1.0475);
+      const mouth=new THREE.CylinderGeometry(.107,.107,.22,P.q?24:12,1,true).rotateX(Math.PI/2);
+      const mouthIndex=mouth.index!;
+      for(let i=0;i<mouthIndex.count;i+=3){const a=mouthIndex.getX(i+1);mouthIndex.setX(i+1,mouthIndex.getX(i+2));mouthIndex.setX(i+2,a);}
+      turretEquipment(P,'turretDark',mouth,x,2.43,-.57);
       turretEquipment(P,'turretDetail',new THREE.RingGeometry(.107,.129,P.q?24:12),x,2.43,-.46);
+      // The mouth is a recess seen from inside: a bore liner with reversed
+      // winding (as openTube's) walls the ring to the recessed cap. Without it
+      // an oblique view met the culled inside of the tube; the voxel fills
+      // that used to stand in the recess left with the 2026-09-30 refill.
+      const liner=new THREE.CylinderGeometry(.107,.107,.22,P.q?24:12,1,true).rotateX(Math.PI/2);
+      const index=liner.index!;
+      for(let i=0;i<index.count;i+=3){const a=index.getX(i+1);index.setX(i+1,index.getX(i+2));index.setX(i+2,a);}
+      liner.computeVertexNormals();
+      turretEquipment(P,'turretDark',liner,x,2.43,-.57);
       turretEquipment(P,'turretDark',new THREE.CircleGeometry(.107,P.q?24:12),x,2.43,-.68);
     }
   });

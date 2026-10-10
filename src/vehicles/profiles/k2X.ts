@@ -211,7 +211,10 @@ function gunnerRoundedSight(P: TankBuilderPort): void {
     .map(([y,r])=>({z:y,ring:roundedSightRing(r)}))).rotateX(-Math.PI/2);
   worldTurretEquipment(P,'turretDetail',shell,0,0,0);
   worldTurretEquipment(P,'turretDark',box(.153,.242,.014),-.63645,2.58514,.77877);
-  worldTurretEquipment(P,'turretGlass',box(.1479,.2412,.002),-.63645,2.58514,.78527);
+  // the glass stands in the shell's own open-front slot, which is its frame (tankFactoryCore.ts armouredGlassSurround)
+  const slotGlass=box(.1479,.2412,.002);
+  slotGlass.userData.apertureFrame='housing';
+  worldTurretEquipment(P,'turretGlass',slotGlass,-.63645,2.58514,.78527);
 }
 
 function commanderEyeBank(P: TankBuilderPort): void {
@@ -311,7 +314,7 @@ function launcherCheek(P: TankBuilderPort, side: number): void {
     const ring: [number,number][]=[[inner,low],[outer,low],[outer,middle],[xu,yu],[xr,yr],[xi,yi]];
     const worldRing=ring.map(([x,y]): [number,number]=>[side*x,y-YAW_Y]);
     return {z:z-YAW_Z,ring:side<0?worldRing.reverse():worldRing};
-  })));
+  }),{sideQuadDiagonal:'convex'}));
   innerCheekBlade(P,side);
 }
 
@@ -507,7 +510,7 @@ export function buildK2X(P: TankBuilderPort): void {
     turret(.133,1.271,.465,1.636,2.397),
     turret(1.034,1.271,.43,1.636,2.355),
     turret(1.816,.432,.38,1.636,2.318),
-  ]));
+  ], {sideQuadDiagonal:'convex'}));
   // The ring has a true solid seat, without broad hidden filler planes.
   P.add('turret', cylY(1.12, .085, 48), 0, .030, 0);
   armorModules(P);

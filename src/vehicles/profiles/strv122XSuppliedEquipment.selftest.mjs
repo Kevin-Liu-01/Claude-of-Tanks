@@ -118,7 +118,8 @@ function canisterStocks(t,all){
     assert.ok(Boolean(hit(all,ahead.toArray(),axis.clone().negate().toArray(),.066)),
       'all sixteen supplied capped canisters exist; no invented deep empty shell');
     const stock=end.clone().addScaledVector(axis,-.176);
-    assert.ok(all.some(m=>/turretDetail/.test(m.name)&&containsClosedStock(m,stock.toArray())),
+    // 2026-10-08 (tank-accessories round 4): marked discharger tubes merge into the matte fitting paint with their stock
+    assert.ok(all.some(m=>/turretDetail|turretFittingPaint/.test(m.name)&&containsClosedStock(m,stock.toArray())),
       `all sixteen actual tubes retain closed load-bearing rear stock: side${side}, end${end.toArray()}`);
     const wall=z>0?1.483:1.229+Math.max(0,stock.z+1.94)*.145;
     const root=[side===1?wall:-wall+.021,stock.y-(z>0?.027:.012),stock.z];

@@ -6,7 +6,9 @@ import * as THREE from 'three';
 import { createBus } from '../game/stateCore.ts';
 
 globalThis.window = { __GL_DIAG: { errors: [] } };
-const { runSceneBlackWatchdog, scheduleSceneWatchdog, runSceneWatchdogNow } = await import('./deviceDiag.ts');
+const { runSceneBlackWatchdog, scheduleSceneWatchdog, runSceneWatchdogNow, battleProbeRadianceScale, litResponseScale,
+  sceneWatchdogRefuses } = await import('./deviceDiag.ts');
+const { EXPOSURE_REFERENCE_ILLUMINANCE } = await import('./lightModelCore.ts');
 
 const failures = [];
 let passed = 0;
@@ -140,7 +142,10 @@ function fixture(samples, { shadows = true, environment = true, fog = true, faul
 }
 
 const healthy = (before) => ({ before, after: null, rescued: false, stage: null });
-const rescued = (stage, after = 18) => ({ before: 0, after, rescued: true, stage });
+// 2026-10-09 (the black-screen lane): a dark first reading is drawn once more under 8x the diagnostic light before any
+// black verdict or rescue; the ladder only runs when that response draw stays black too, and under its light.
+const silent = (before, response = before, scale = 1) => ({ ...healthy(before), response, responseScale: litResponseScale(scale) });
+const rescued = (stage, after = 18) => ({ before: 0, after, rescued: true, stage, response: 0, responseScale: .125 });
 
 for (const sample of [6, 255, [0, 0, 18, 0]]) {
   test(`healthy threshold and alpha independence: ${JSON.stringify(sample)}`, () => {
@@ -153,17 +158,17 @@ for (const sample of [6, 255, [0, 0, 18, 0]]) {
   });
 }
 
-test('just below threshold enters the ladder', () => {
-  const f = fixture([[17, 0, 0, 255], 18]);
-  assert.deepEqual(f.run(), { ...rescued('shadows-off'), before: 17 / 3 });
+test('just below threshold that stays silent under the response light enters the ladder', () => {
+  const f = fixture([[17, 0, 0, 255], [17, 0, 0, 255], 18]);
+  assert.deepEqual(f.run(), { ...rescued('shadows-off'), before: 17 / 3, response: 17 / 3 });
   assert.deepEqual(f.snapshot(), { ...f.initial, shadows: false });
-  f.assertReleased(2);
+  f.assertReleased(3);
 });
 
 for (const [stage, samples, expectedDraws] of [
-  ['shadows-off', [0, 18], 2],
-  ['environment-off', [0, 0, 18, 9], 4],
-  ['fog-off', [0, 0, 0, 18, 9], 5],
+  ['shadows-off', [0, 0, 18], 3],
+  ['environment-off', [0, 0, 0, 18, 9], 5],
+  ['fog-off', [0, 0, 0, 0, 18, 9], 6],
 ]) {
   test(`${stage} rescue retains only the confirmed required stage`, () => {
     const f = fixture(samples);
@@ -183,8 +188,8 @@ for (const [stage, samples, expectedDraws] of [
 }
 
 for (const [stage, samples] of [
-  ['environment-off', [0, 0, 18, 0]],
-  ['fog-off', [0, 0, 0, 18, 0]],
+  ['environment-off', [0, 0, 0, 18, 0]],
+  ['fog-off', [0, 0, 0, 0, 18, 0]],
 ]) {
   test(`${stage} rescue reapplies prior stages when confirmation becomes black`, () => {
     const f = fixture(samples);
@@ -198,24 +203,24 @@ for (const [stage, samples] of [
 }
 
 test('disabled stages are skipped without an extra confirmation', () => {
-  const f = fixture([0, 18], { shadows: false, environment: false });
+  const f = fixture([0, 0, 18], { shadows: false, environment: false });
   assert.deepEqual(f.run(), rescued('fog-off'));
   assert.deepEqual(f.snapshot(), { shadows: false, environment: null, fog: null });
-  f.assertReleased(2);
+  f.assertReleased(3);
 });
 
 test('no eligible stage preserves the initial black result', () => {
-  const f = fixture([0], { shadows: false, environment: false, fog: false });
-  assert.deepEqual(f.run(), healthy(0));
+  const f = fixture([0, 0], { shadows: false, environment: false, fog: false });
+  assert.deepEqual(f.run(), silent(0));
   assert.deepEqual(f.snapshot(), f.initial);
   assert.equal(f.updates.length, 0);
-  f.assertReleased(1);
+  f.assertReleased(2);
 });
 
 test('all-black ladder rolls back stages in reverse order', () => {
-  const f = fixture([0, 0, 0, 0]);
+  const f = fixture([0, 0, 0, 0, 0]);
   let callbackCount = 0;
-  assert.deepEqual(f.run({ onRescue: () => { callbackCount++; } }), healthy(0));
+  assert.deepEqual(f.run({ onRescue: () => { callbackCount++; } }), silent(0));
   assert.equal(callbackCount, 0);
   assert.deepEqual(f.snapshot(), f.initial);
   assert.deepEqual(f.updates.slice(-3), [
@@ -223,7 +228,7 @@ test('all-black ladder rolls back stages in reverse order', () => {
     { shadows: false, environment: f.initial.environment, fog: f.initial.fog },
     f.initial,
   ]);
-  f.assertReleased(4);
+  f.assertReleased(5);
 });
 
 for (const at of ['target', 'clear', 'render', 'readback']) {
@@ -238,13 +243,15 @@ for (const at of ['target', 'clear', 'render', 'readback']) {
 }
 
 for (const at of ['render', 'readback']) {
-  for (const measurement of [2, 3, 4, 5]) {
-    test(`${at} failure at rescue/confirmation measurement ${measurement} rolls back tentative changes`, () => {
+  for (const measurement of [2, 3, 4, 5, 6]) {
+    test(`${at} failure at response/rescue/confirmation measurement ${measurement} rolls back tentative changes`, () => {
       const error = new Error(`measurement ${measurement} ${at} failed`);
-      const samples = measurement === 5 ? [0, 0, 0, 18, 9] : [0, 0, 0, 0];
+      const samples = measurement === 6 ? [0, 0, 0, 0, 18, 9] : [0, 0, 0, 0, 0];
       const f = fixture(samples, { fault: { at, measurement, error } });
       let callbackCount = 0;
-      assert.deepEqual(f.run({ onRescue: () => { callbackCount++; } }), healthy(0));
+      const result = f.run({ onRescue: () => { callbackCount++; } });
+      assert.deepEqual(result, measurement === 2 ? { ...healthy(0), responseScale: .125 } : silent(0));
+      assert.equal(sceneWatchdogRefuses(result), true, 'a failed diagnostic fails closed');
       assert.equal(callbackCount, 0, 'failed measurement is never published as a confirmed rescue');
       assert.ok(f.bag.errors.some((message) => message.includes(error.message)));
       f.assertReleased(measurement);
@@ -255,12 +262,12 @@ for (const at of ['render', 'readback']) {
 }
 
 test('callback failure after confirmed rescue retains the working compatibility choice', () => {
-  const f = fixture([0, 0, 18, 9]);
+  const f = fixture([0, 0, 0, 18, 9]);
   const result = f.run({ onRescue: () => { throw new Error('consumer callback failed'); } });
   assert.deepEqual(result, rescued('environment-off'));
   assert.deepEqual(f.snapshot(), { ...f.initial, environment: null });
   assert.ok(f.bag.errors.some((message) => message.includes('consumer callback failed')));
-  f.assertReleased(4);
+  f.assertReleased(5);
 });
 
 function nightInputs(f) {
@@ -305,25 +312,29 @@ test('explicit night uses authored radiance on existing lit inputs, not a lower 
 });
 
 for (const sample of [0, 3]) test(`night black shader/unlit-only band ${sample} still fails the complete ladder`, () => {
-  const f = fixture([sample, sample, sample, sample]);
+  const f = fixture([sample, sample, sample, sample, sample]);
   const lights = nightInputs(f);
   f.bag.errors.push('existing shader link failure receipt');
-  assert.deepEqual(f.run({ nightRadianceScale: .05 }), { ...healthy(sample), nightRadianceScale: .05 });
+  const result = f.run({ nightRadianceScale: .05 });
+  assert.deepEqual(result, { ...silent(sample, sample, .05), nightRadianceScale: .05 });
+  assert.equal(result.responseScale, .01, 'night\'s response draw is floored at 0.01 (8x its 0.08 diagnostic light)');
+  assert.equal(sceneWatchdogRefuses(result), true);
   assert.equal(f.bag.rescue, undefined);
   assert.equal(f.bag.errors[0], 'existing shader link failure receipt', 'prior graphics evidence is never discarded');
   assert.ok(f.bag.errors.some(message => message.includes('no ladder stage cured it')));
   lights.assertRestored();
   assert.deepEqual(f.snapshot(), f.initial);
-  f.assertReleased(4);
+  f.assertReleased(5);
 });
 
 test('genuine night shadow failure retains the original confirmed compatibility rescue', () => {
-  const f = fixture([0, 18]);
+  const f = fixture([0, 0, 18]);
   const lights = nightInputs(f);
-  assert.deepEqual(f.run({ nightRadianceScale: .05 }), { ...rescued('shadows-off'), nightRadianceScale: .05 });
+  assert.deepEqual(f.run({ nightRadianceScale: .05 }),
+    { ...rescued('shadows-off'), responseScale: litResponseScale(.05), nightRadianceScale: .05 });
   lights.assertRestored();
   assert.equal(f.renderer.shadowMap.enabled, false);
-  f.assertReleased(2);
+  f.assertReleased(3);
 });
 
 for (const scale of [0, -1, NaN, Infinity, 1.1]) test(`invalid night scale ${scale} fails without touching authored radiance`, () => {
@@ -345,6 +356,161 @@ for (const at of ['render', 'readback']) for (const measurement of [1, 2]) test(
   lights.assertRestored();
   assert.ok(f.bag.errors.some(message => message.includes(`night ${at} failure`)));
   f.assertReleased(measurement);
+});
+
+// 2026-10-09 (the MP-entry lane): Verdant's sunset meters 0.494 against the reference 3.0 and a healthy sunset frame read
+// 3.8-4.7 raw, so every sunset network round failed "Battle graphics could not be verified". Low light now draws the probe
+// under the metered ratio through the night's radiance path; a broken lit pipeline still reads dark under it.
+test('low-light battle scale is the metered ratio under the exposure reference, never above authored light', () => {
+  const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} != ${expected}`);
+  close(battleProbeRadianceScale(0.494, 3), 0.494 / 3);
+  close(battleProbeRadianceScale(2.714, 3), 2.714 / 3);
+  assert.equal(battleProbeRadianceScale(0.01, 3), 0.08, 'no stronger than the night preset\'s own diagnostic light');
+  for (const lit of [3, 4.5, 1e6]) assert.equal(battleProbeRadianceScale(lit, 3), null, `illuminance ${lit} keeps authored light`);
+  for (const unknown of [undefined, null, '0.5', 0, -1, NaN, Infinity]) assert.equal(battleProbeRadianceScale(unknown, 3), null);
+  for (const reference of [0, -3, NaN, Infinity]) assert.equal(battleProbeRadianceScale(0.5, reference), null);
+  assert.equal(EXPOSURE_REFERENCE_ILLUMINANCE, 3, 'the legacy rig meters the reference itself (scale null)');
+});
+
+function lowSunInputs(f) {
+  const sun = new THREE.DirectionalLight(0xffbf80, 3.319);
+  const hemi = new THREE.HemisphereLight(0x8899aa, 0x554433, .58);
+  const headlamp = new THREE.SpotLight(0xffffff, 17);
+  f.scene.add(sun, hemi, headlamp);
+  f.scene.environmentIntensity = 1;
+  return { sun, hemi, headlamp, assertRestored() {
+    assert.deepEqual([sun.intensity, hemi.intensity, headlamp.intensity, f.scene.environmentIntensity], [3.319, .58, 17, 1]);
+  } };
+}
+
+test('a healthy sunset frame (4.4 at authored light) passes under the metered scale without the ladder', () => {
+  const scale = battleProbeRadianceScale(0.494, EXPOSURE_REFERENCE_ILLUMINANCE);
+  let lights;
+  // the lit band follows the broad lights: 4.4 at authored sunset radiance, above the threshold under the metered ratio
+  const f = fixture([() => 4.4 * lights.sun.intensity / 3.319]);
+  lights = lowSunInputs(f);
+  const result = f.run({ nightRadianceScale: scale });
+  assert.equal(result.rescued, false);
+  assert.equal(result.failed, undefined);
+  assert.ok(result.before >= 6, `sunset band ${result.before} under the diagnostic light`);
+  assert.equal(f.updates.length, 0, 'a healthy sunset does not enter the invalidate/recompile ladder');
+  lights.assertRestored();
+  f.assertReleased(1);
+  const authored = fixture([4.4, 4.4, 4.4, 4.4, 4.4]);
+  lowSunInputs(authored);
+  assert.ok(authored.run({}).before < 6, 'the same frame without the metered scale is the reported false black');
+});
+
+for (const sample of [0, 2]) test(`sunset broken lit pipeline (band ${sample} under the metered scale) still fails the ladder`, () => {
+  const f = fixture([sample, sample, sample, sample, sample]);
+  const lights = lowSunInputs(f);
+  const result = f.run({ nightRadianceScale: battleProbeRadianceScale(0.494, EXPOSURE_REFERENCE_ILLUMINANCE) });
+  assert.equal(result.before, sample);
+  assert.equal(result.rescued, false);
+  assert.equal(sceneWatchdogRefuses(result), true);
+  assert.ok(f.bag.errors.some(message => message.includes('no ladder stage cured it')));
+  lights.assertRestored();
+  assert.deepEqual(f.snapshot(), f.initial);
+  f.assertReleased(5);
+});
+
+// 2026-10-09 (the black-screen lane): production 207, the phone tier at sunset. The legacy rig meters the exposure
+// reference itself, so no low-light scale applied: Mangrove read 4.7 and was refused after a 53 s ladder, Cinder Junction
+// 7.2 and a dozen maps 6.1-7.8, while the frames the player saw had luma 45-60. Brightness alone cannot tell a dark scene
+// from a broken pipeline; the response to light can.
+test('the response draw is 8x the transaction\'s diagnostic light, floored at 0.01', () => {
+  const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-12, `${actual} != ${expected}`);
+  close(litResponseScale(), .125);
+  close(litResponseScale(1), .125);
+  close(litResponseScale(battleProbeRadianceScale(0.494, 3)), 0.494 / 3 / 8);
+  assert.equal(litResponseScale(.08), .01, 'night (0.08) answers at its floor');
+  assert.equal(litResponseScale(.001), .01);
+  for (const invalid of [0, -1, NaN, Infinity, 1.5, null, '0.5']) close(litResponseScale(invalid), .125);
+  assert.equal(sceneWatchdogRefuses({ before: 4.7, response: 37.6, rescued: false }), false, 'dark but answering is not black');
+  assert.equal(sceneWatchdogRefuses({ before: 6, rescued: false }), false);
+  assert.equal(sceneWatchdogRefuses({ before: 2.3, response: 2.3, rescued: false }), true, 'silent under more light is black');
+  assert.equal(sceneWatchdogRefuses({ before: 0, response: 0, rescued: true }), false, 'a confirmed rescue cured it');
+  assert.equal(sceneWatchdogRefuses({ before: NaN, rescued: false }), true, 'an unreadable band fails closed');
+});
+
+function phoneSunsetInputs(f) {
+  // the legacy rig at sunset on Mangrove Reach (prod 207's refused entry: sun 2.475 at 32 degrees, hemi, env)
+  const sun = new THREE.DirectionalLight(0xffc890, 2.475);
+  const hemi = new THREE.HemisphereLight(0x8899aa, 0x554433, .51);
+  const ambient = new THREE.AmbientLight(0x404650, .2);
+  const lamp = new THREE.PointLight(0xffaa66, 9);
+  f.scene.add(sun, hemi, ambient, lamp);
+  f.scene.environmentIntensity = .3;
+  const authored = [sun.intensity, hemi.intensity, ambient.intensity, lamp.intensity, f.scene.environmentIntensity];
+  // a sound lit pipeline: the band follows the broad lights (4 at authored light; the 8-bit readback floors 4.7 to 4),
+  // lamps and the sky do not count
+  const band = () => 4 * (sun.intensity / authored[0] * .5 + hemi.intensity / authored[1] * .25 + f.scene.environmentIntensity / authored[4] * .25);
+  return { band, assertRestored() {
+    assert.deepEqual([sun.intensity, hemi.intensity, ambient.intensity, lamp.intensity, f.scene.environmentIntensity], authored);
+  } };
+}
+
+test('a dark phone-tier sunset frame that answers diagnostic light passes without the ladder or a picture change', () => {
+  let lights;
+  const f = fixture([() => lights.band(), () => lights.band()]);
+  lights = phoneSunsetInputs(f);
+  const result = f.run({});
+  assert.equal(result.before, 4, 'the refused band, at authored light');
+  assert.equal(result.response, 32, 'the response band answers 8x light');
+  assert.equal(result.responseScale, .125);
+  assert.deepEqual([result.rescued, result.stage, result.after], [false, null, null]);
+  assert.equal(sceneWatchdogRefuses(result), false, 'production 207 refused this frame');
+  assert.equal(f.updates.length, 0, 'no material is invalidated: no recompile, no rescue stage');
+  assert.deepEqual(f.snapshot(), f.initial, 'shadows, environment and fog untouched');
+  assert.equal(f.bag.rescue, undefined);
+  assert.deepEqual(f.bag.errors, [], 'a healthy dark frame leaves no diagnostic note');
+  lights.assertRestored();
+  f.assertReleased(2);
+});
+
+test('a dark low-sun frame under the metered scale answers the response draw too (desktop sunset, dark ground)', () => {
+  let lights;
+  const scale = battleProbeRadianceScale(0.183, EXPOSURE_REFERENCE_ILLUMINANCE); // Cinder Junction's sunset meters 0.183
+  // dark ground and a dark hull: 1 under the metered scale (x16), 8 under the response draw (x8 more)
+  const f = fixture([() => 0.02 * lights.sun.intensity, () => 0.02 * lights.sun.intensity]);
+  lights = lowSunInputs(f);
+  const result = f.run({ nightRadianceScale: scale });
+  assert.ok(result.before < 6 && result.response >= 6, `${result.before} -> ${result.response}`);
+  assert.equal(result.responseScale, litResponseScale(scale));
+  assert.equal(sceneWatchdogRefuses(result), false);
+  assert.equal(f.updates.length, 0);
+  lights.assertRestored();
+  f.assertReleased(2);
+});
+
+for (const [label, output] of [['forced black output', () => 0], ['unlit-only pixels (2.3, the black iPhone)', () => 2.3]]) {
+  test(`a genuinely broken pipeline (${label}) stays silent under the response light and is still refused`, () => {
+    let lights;
+    const f = fixture([output, output, output, output, output]);
+    lights = phoneSunsetInputs(f);
+    const result = f.run({});
+    assert.equal(result.response, result.before, 'more light changes nothing in a broken pipeline');
+    assert.equal(result.rescued, false);
+    assert.equal(sceneWatchdogRefuses(result), true, 'a real black frame is still refused');
+    assert.ok(f.bag.errors.some(message => message.includes('no ladder stage cured it')));
+    assert.deepEqual(f.snapshot(), f.initial, 'every tentative stage came off');
+    lights.assertRestored();
+    f.assertReleased(5);
+  });
+}
+
+test('a broken pipeline that a stage cures is rescued under the response light (the ladder keeps its meaning)', () => {
+  let lights;
+  // environment-poisoned: black until the environment is off, then a sound (dark) frame that answers light
+  const f = fixture([0, 0, 0, (scene) => scene.environment ? 0 : 1.2 * lights.sun.intensity, () => 0]);
+  lights = lowSunInputs(f);
+  const result = f.run({});
+  assert.equal(result.rescued, true);
+  assert.equal(result.stage, 'environment-off');
+  assert.ok(result.after >= 6, `cured band ${result.after} under the response light`);
+  assert.equal(sceneWatchdogRefuses(result), false);
+  lights.assertRestored();
+  f.assertReleased(5);
 });
 
 test('queued diagnostics obey the exact production phase/world/entry guards', () => {
@@ -375,10 +541,19 @@ test('queued diagnostics obey the exact production phase/world/entry guards', ()
   }
   assert.match(main, /battleWatchdogRadianceScale = preset\.skyIntensity \?\? 1/);
   const optionsBody = main.match(/function currentSceneWatchdogOptions\(\) \{([\s\S]+?)\n\}/)[1];
-  const options = new Function('game', 'battleAtmosphere', 'battleWatchdogRadianceScale', optionsBody);
-  assert.deepEqual(options({ phase: 'battle' }, { current: { weather: { timeOfDay: 'night' } } }, .05), { nightRadianceScale: .05 });
-  assert.deepEqual(options({ phase: 'battle' }, { current: { weather: { timeOfDay: 'day' } } }, .05), {});
-  assert.deepEqual(options({ phase: 'garage' }, { current: { weather: { timeOfDay: 'night' } } }, .05), {});
+  const options = new Function('game', 'battleAtmosphere', 'battleWatchdogRadianceScale', 'scene', 'battleProbeRadianceScale',
+    'EXPOSURE_REFERENCE_ILLUMINANCE', optionsBody);
+  const run = (phase, timeOfDay, lightModel) => options({ phase }, { current: { weather: { timeOfDay } } }, .05,
+    { userData: lightModel === undefined ? {} : { lightModel } }, battleProbeRadianceScale, EXPOSURE_REFERENCE_ILLUMINANCE);
+  assert.deepEqual(run('battle', 'night', { illuminance: 0.2 }), { nightRadianceScale: .05 }, 'night keeps its authored sky scale');
+  assert.deepEqual(run('battle', 'day'), {}, 'no metered light: the probe keeps authored light');
+  assert.deepEqual(run('battle', 'day', { mode: 'legacy', illuminance: 3 }), {});
+  assert.deepEqual(run('battle', 'day', { illuminance: 3.6 }), {});
+  assert.deepEqual(run('battle', 'sunset', { illuminance: 0.494 }), { nightRadianceScale: 0.494 / 3 });
+  assert.deepEqual(run('battle', 'day', { illuminance: 1.5 }), { nightRadianceScale: 0.5 }, 'a closed deck by day is low light too');
+  assert.deepEqual(run('garage', 'night', { illuminance: 0.2 }), {});
+  assert.deepEqual(run('garage', 'sunset', { illuminance: 0.494 }), {});
+  assert.match(main, /import \{ EXPOSURE_REFERENCE_ILLUMINANCE, loadGroundedLightModel \} from '\.\/engine\/lightModelCore\.ts';/);
   assert.match(main, /signal, measureTimings: true, \.\.\.currentSceneWatchdogOptions\(\)/);
 });
 

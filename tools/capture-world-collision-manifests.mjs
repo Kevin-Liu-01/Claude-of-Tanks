@@ -25,6 +25,7 @@
  * anything else differs:
  *   node tools/capture-world-collision-manifests.mjs --node --maps desert
  *   node tools/capture-world-collision-manifests.mjs --check
+ *   node tools/capture-world-collision-manifests.mjs --tier=mobile   # a phone's build against the desktop's shards
  */
 
 import { execFileSync } from 'node:child_process';
@@ -33,7 +34,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import {
-  assertUnchangedCollisionShards, collisionCaptureOptions, readCollisionCaptureEntries,
+  assertUnchangedCollisionShards, collisionCaptureOptions, readCollisionCaptureEntries, readCollisionManifestVariants,
   collisionManifestDirectory, writeCollisionManifestIndex, writeCollisionManifestShard,
 } from './worldCollisionManifestFiles.mjs';
 import { packCollisionRecord } from './headlessWorldCollision.mjs';
@@ -113,15 +114,74 @@ function publish(mapId, data) {
     `${data.colliders.length} colliders, ${data.concealers.length} concealers`);
 }
 
-if (options.node) {
+if (options.node && options.variant) {
+  // 2026-10-08 (destruction core lane): a mode's battlefield variant, built from the variant's config into
+  // `<map>@<variant>.json`; the base shards and the index's maps stay as they are
+  const { buildWorldCollisionData } = await import('./headlessWorldCollision.mjs');
+  const { readCollisionManifest } = await import('../server/collisionManifestFormat.ts');
+  const { encodeCollisionManifest, decodeCollisionManifest } = await import('../server/collisionManifestCodec.ts');
+  const index = JSON.parse(readFileSync(new URL('index.json', collisionManifestDirectory), 'utf8'));
+  const variants = readCollisionManifestVariants();
+  const entries = { ...(variants[options.variant] ?? {}) };
+  let drifted = 0;
+  for (const mapId of options.mapIds) {
+    const data = await buildWorldCollisionData(mapId, { variant: options.variant });
+    const label = `${mapId}@${options.variant}`;
+    if (!options.check) {
+      entries[mapId] = writeCollisionManifestShard(mapId, data, collisionManifestDirectory, options.variant);
+      console.log(`${label}: ${data.obstacles.length} obstacles, ${data.colliders.length} colliders, ${data.concealers.length} concealers`);
+      continue;
+    }
+    const encoded = encodeCollisionManifest(readCollisionManifest(data));
+    const text = JSON.stringify(encoded);
+    const sha256 = createHash('sha256').update(text).digest('hex');
+    const committed = index.variants?.[options.variant]?.[mapId];
+    if (committed?.sha256 === sha256 && committed?.bytes === Buffer.byteLength(text)) { console.log(`${label}: current`); continue; }
+    if (!committed) { drifted++; console.log(`${label}: MISSING`); continue; }
+    const committedShard = JSON.parse(readFileSync(new URL(`${label}.json`, collisionManifestDirectory), 'utf8'));
+    const { difference, rounded } = compareDecoded(decodeCollisionManifest(committedShard), decodeCollisionManifest(encoded));
+    if (difference) { drifted++; console.log(`${label}: DRIFTED (${difference})`); }
+    else console.log(`${label}: current (${rounded} packed numbers differ in the last digit)`);
+  }
+  if (options.check) {
+    console.log(`${options.mapIds.length - drifted}/${options.mapIds.length} ${options.variant} shards match the tree`);
+    process.exit(drifted ? 1 : 0);
+  }
+  writeCollisionManifestIndex(index.maps, collisionManifestDirectory, { ...variants, [options.variant]: entries });
+  console.log(`captured ${options.mapIds.length} ${options.variant} shards; published the index with ${Object.keys(entries).length} of them`);
+  process.exit(0);
+} else if (options.node) {
+  if (options.tier) {
+    // the phone tier (destruction core lane, 2026-10-08): the device tier resolves once per process, before any build
+    // reads it; the committed shards are the desktop's, so a phone's build must match them index for index
+    globalThis.window ??= {};
+    globalThis.window.location = { search: `?tier=${options.tier}` };
+    globalThis.window.localStorage ??= { getItem: () => null, setItem() {}, removeItem() {} };
+    const { resolveDeviceTier } = await import('../src/engine/quality.ts');
+    if (resolveDeviceTier() !== options.tier) throw new Error(`the ${options.tier} tier did not resolve`);
+    console.log(`building at the ${options.tier} tier against the desktop's committed shards`);
+  }
   const { buildWorldCollisionData } = await import('./headlessWorldCollision.mjs');
   const { readCollisionManifest } = await import('../server/collisionManifestFormat.ts');
   const { encodeCollisionManifest } = await import('../server/collisionManifestCodec.ts');
   const index = JSON.parse(readFileSync(new URL('index.json', collisionManifestDirectory), 'utf8'));
   let drifted = 0;
   const { decodeCollisionManifest } = await import('../server/collisionManifestCodec.ts');
+  // 2026-10-07 (map-vehicles lane): COT_DRAWN_GEOMETRY_SHAPE=1 (the drift receipt sets it) also walks every node of
+  // the built props and vegetation that holds a geometry for V8's fast properties (src/world/geometryStreams.ts), on
+  // this same build, so the shape check costs no second world build; one line per map, read by the receipt
+  const shape = process.env.COT_DRAWN_GEOMETRY_SHAPE === '1' ? await import('../src/world/geometryStreams.test-support.mjs') : null;
+  const inspect = shape ? ({ mapId, flora, dressing }) => {
+    const offenders = [];
+    const walked = shape.auditDrawnGeometry(flora.group, 'vegetation', offenders)
+      + shape.auditDrawnGeometry(dressing.group, 'props', offenders);
+    let standIns = 0;
+    dressing.group.traverse((node) => { if (/^destructible-.+-shadow$/.test(node.name)) standIns++; });
+    console.log(`drawn-shape ${mapId}: ${walked} walked, ${standIns} stand-ins, ${offenders.length} offenders`
+      + (offenders.length ? ` (${offenders.slice(0, 6).join('; ')})` : ''));
+  } : undefined;
   for (const mapId of options.mapIds) {
-    const data = await buildWorldCollisionData(mapId);
+    const data = await buildWorldCollisionData(mapId, { inspect });
     if (!options.check) { publish(mapId, data); continue; }
     const encoded = encodeCollisionManifest(readCollisionManifest(data));
     const text = JSON.stringify(encoded);
@@ -141,7 +201,7 @@ if (options.node) {
     }
   }
   if (options.check) {
-    console.log(`${options.mapIds.length - drifted}/${options.mapIds.length} collision shards match the tree`);
+    console.log(`${options.mapIds.length - drifted}/${options.mapIds.length} collision shards match the tree${options.tier ? ` built at the ${options.tier} tier` : ''}`);
     if (drifted) process.exit(1);
     process.exit(0);
   }

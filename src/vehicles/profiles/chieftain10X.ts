@@ -302,8 +302,29 @@ function turretStowage(P: TankBuilderPort): void {
 }
 
 function loaderHatches(P: TankBuilderPort): void {
-  for (const [hx, hz] of [[.5115, -.34477], [.455, -.0582]]) P.addHatch('turretDetail',
-    cylY(.263, .263, .048, 28), hx, 2.499 - D.turretPivot[1], hz - D.turretPivot[2]);
+  // Two D-shaped leaves meet on the common chord. Their curved outer
+  // outline and mounting plane stay unchanged, without overlapping lids.
+  const centers = [[.5115, -.34477], [.455, -.0582]];
+  for (const [leaf, [hx, hz]] of centers.entries()) {
+    const [otherX, otherZ] = centers[1 - leaf];
+    const dx = otherX - hx, dz = otherZ - hz;
+    const limit = (dx * dx + dz * dz) / 2;
+    const circle: [number, number][] = Array.from({length: 28}, (_, i) =>
+      [Math.cos(i * Math.PI / 14) * .263, Math.sin(i * Math.PI / 14) * .263]);
+    const ring: [number, number][] = [];
+    for (let i = 0; i < circle.length; i++) {
+      const a = circle[i], b = circle[(i + 1) % circle.length];
+      const da = a[0] * dx + a[1] * dz - limit;
+      const db = b[0] * dx + b[1] * dz - limit;
+      if (da <= 0) ring.push(a);
+      if ((da <= 0) !== (db <= 0)) {
+        const t = da / (da - db);
+        ring.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+      }
+    }
+    P.addHatch('turretDetail', sectionSolid([{z: -.024, ring}, {z: .024, ring}])
+      .rotateX(Math.PI / 2), hx, 2.499 - D.turretPivot[1], hz - D.turretPivot[2]);
+  }
 }
 
 function roofFittings(P: TankBuilderPort): void {

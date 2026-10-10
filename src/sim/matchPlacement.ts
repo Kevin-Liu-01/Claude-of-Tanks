@@ -1,8 +1,14 @@
 /** Deterministic construction/event-time placement. No renderer, fleet or RNG owner. */
 import { collisionFootprintContainsPoint, type CollisionRecord, type ObstacleQuery } from '../world/collision.ts';
 import { MATCH_OBJECTIVE_LAYOUTS, MATCH_MODE_ARENA_HALF_EXTENT_M } from './matchObjectiveLayouts.ts';
+import { PLAYABLE_HALF_EXTENT_M } from '../world/battlefieldBounds.ts';
 import { createObjectiveAccess } from './matchPlacementAccess.ts';
 import type { BotNavigationGrid } from './botRoutePlanner.ts';
+import {
+  createDeployment, deploymentFrame, DEPLOYMENT_CLEARED_SLOTS, DEPLOYMENT_LATTICE_M, DEPLOYMENT_SLOT_RADIUS_M,
+  DEPLOYMENT_SLOT_SPACING_M, type Deployment, type DeploymentCheck, type DeploymentFrame, type DeploymentPoint,
+  type DeploymentSlot, type DeploymentSpawns, type DeploymentTeam,
+} from './deployment.ts';
 
 export interface PlacementPoint { x: number; z: number }
 interface PlacementSpawn extends PlacementPoint { yaw: number }
@@ -45,6 +51,173 @@ export function matchPlacementAnchors(spawns: {
   x /= spawns.enemies.length; z /= spawns.enemies.length;
   return { alpha, bravo: { x, z, yaw: Math.atan2(alpha.x - x, alpha.z - z) },
     deployments: { alpha: [alpha], bravo: spawns.enemies } };
+}
+
+/** The authored pads a placement's anchors carry (matchPlacementAnchors keeps the enemy pads as bravo's deployments). */
+function deploymentSpawnsOf(anchors: PlacementAnchors): DeploymentSpawns {
+  const pads = anchors.deployments?.bravo;
+  return { player: anchors.alpha, enemies: pads && pads.length ? pads : [anchors.bravo] };
+}
+
+/** A deployment slot's ground: the spawn footprint at the fleet's largest placement radius, whole inside the playable square. */
+const SLOT_FOOTPRINT: Footprint = { radius: DEPLOYMENT_SLOT_RADIUS_M, relief: 2, normalY: SPAWN_NORMAL_Y, halfExtent: PLAYABLE_HALF_EXTENT_M };
+
+/** Own half by the placement's rule: a slot stands its radius and 16 m off the middle line, on its side. */
+function deploymentSideCheck(frame: DeploymentFrame): (team: DeploymentTeam, point: PlacementPoint) => boolean {
+  const { pivot, forward } = frame;
+  return (team, point) => {
+    // forward points from bravo's anchor toward alpha's: alpha stands on the positive side
+    const toward = (point.x - pivot.x) * forward.x + (point.z - pivot.z) * forward.z;
+    return (team === 'alpha' ? toward : -toward) >= SLOT_FOOTPRINT.radius + 16;
+  };
+}
+
+function spacedFrom(point: PlacementPoint, held: readonly PlacementPoint[]): boolean {
+  for (const other of held) if (Math.hypot(point.x - other.x, point.z - other.z) < DEPLOYMENT_SLOT_SPACING_M - 1e-6) return false;
+  return true;
+}
+
+/** The ground a deployment's slots are judged on: the height field's ground reads, nothing of the world on it. */
+type DeploymentGround = Pick<PlacementTerrain, 'getHeightAt' | 'getNormalAt' | 'getWaterMaskAt' | 'getGroundType' | 'size'>;
+
+interface GroundStage { deployment: Deployment; ground: SlotGround }
+type SlotGround = (team: DeploymentTeam, point: PlacementPoint) => boolean;
+const terrainDeployments = new WeakMap<object, Map<string, GroundStage>>();
+const clearingsByDeployment = new WeakMap<Deployment, readonly PlacementPoint[]>();
+
+/** The slot footprint's samples in placementTerrainSafe's own arithmetic: the 2 m disc lattice, then the boundary. */
+const SLOT_LATTICE: readonly (readonly [number, number])[] = (() => {
+  const r = DEPLOYMENT_SLOT_RADIUS_M, out: [number, number][] = [];
+  for (let dz = -r; dz <= r; dz += 2) for (let dx = -r; dx <= r; dx += 2) if (dx * dx + dz * dz <= r * r) out.push([dx, dz]);
+  return out;
+})();
+const SLOT_BOUNDARY: readonly (readonly [number, number])[] = (() => {
+  const r = DEPLOYMENT_SLOT_RADIUS_M, count = Math.max(16, Math.ceil(2 * Math.PI * r / 2)), out: [number, number][] = [];
+  for (let i = 0; i < count; i++) { const angle = i / count * Math.PI * 2; out.push([Math.sin(angle) * r, Math.cos(angle) * r]); }
+  return out;
+})();
+
+/**
+ * The slot footprint's ground test: placementTerrainSafe's law at SLOT_FOOTPRINT (inside the map; every lattice and
+ * boundary sample finite, dry, firm and under the spawn slope; the relief under 2 m), with each side's lattice samples
+ * cached. The joint search seats its moved candidates on a side's 2 m lattice (alpha's: the world's; bravo's: its
+ * rotation about the pivot), so the footprints one search tries share their reads, and the cheap reads (height, water,
+ * ground) decide before the slope, which costs four height reads a sample. An off-lattice point (an authored pad) reads
+ * directly. The deployment receipt holds it equal to placementTerrainSafe on lattice and off-lattice points.
+ */
+function createSlotGround(field: DeploymentGround, pivot: DeploymentPoint): SlotGround {
+  const terrain = field as PlacementTerrain;
+  const edge = placementLimit(terrain, SLOT_FOOTPRINT), normalY = SLOT_FOOTPRINT.normalY, relief = SLOT_FOOTPRINT.relief;
+  const level = (x: number, z: number): number => {
+    const y = terrain.getHeightAt(x, z);
+    if (!Number.isFinite(y) || (terrain.getWaterMaskAt?.(x, z) ?? 0) > .05 || terrain.getGroundType?.(x, z) === 'soft') return NaN;
+    return y;
+  };
+  const gentle = (x: number, z: number): boolean => {
+    if (terrain.getNormalAt) return terrain.getNormalAt(x, z).y >= normalY;
+    const dx = (terrain.getHeightAt(x + 1, z) - terrain.getHeightAt(x - 1, z)) * .5;
+    const dz = (terrain.getHeightAt(x, z + 1) - terrain.getHeightAt(x, z - 1)) * .5;
+    return 1 / Math.hypot(dx, dz, 1) >= normalY;
+  };
+  const levels = { alpha: new Map<number, number>(), bravo: new Map<number, number>() };
+  const slopes = { alpha: new Map<number, boolean>(), bravo: new Map<number, boolean>() };
+  const step = DEPLOYMENT_LATTICE_M;
+  /** The point's node on the side's lattice (bravo's lattice is alpha's rotated about the pivot), or null when off it. */
+  const nodeOf = (team: DeploymentTeam, point: PlacementPoint): [number, number] | null => {
+    const u = team === 'alpha' ? point.x : 2 * pivot.x - point.x, v = team === 'alpha' ? point.z : 2 * pivot.z - point.z;
+    const gx = Math.round(u / step), gz = Math.round(v / step);
+    return Math.abs(u - gx * step) < 1e-6 && Math.abs(v - gz * step) < 1e-6 ? [gx, gz] : null;
+  };
+  const sign = { alpha: 1, bravo: -1 };
+  return (team, point) => {
+    if (!Number.isFinite(point.x + point.z) || Math.abs(point.x) > edge || Math.abs(point.z) > edge) return false;
+    const node = nodeOf(team, point), s = sign[team];
+    const key = (dx: number, dz: number) => node ? (node[0] + s * dx / step + 4096) * 8192 + (node[1] + s * dz / step + 4096) : 0;
+    let low = Infinity, high = -Infinity;
+    for (const [dx, dz] of SLOT_LATTICE) {
+      let y: number | undefined;
+      if (node) {
+        const k = key(dx, dz);
+        y = levels[team].get(k);
+        if (y === undefined) levels[team].set(k, y = level(point.x + dx, point.z + dz));
+      } else y = level(point.x + dx, point.z + dz);
+      if (Number.isNaN(y)) return false;
+      if (y < low) low = y;
+      if (y > high) high = y;
+      if (high - low > relief) return false;
+    }
+    for (const [dx, dz] of SLOT_BOUNDARY) {
+      const y = level(point.x + dx, point.z + dz);
+      if (Number.isNaN(y)) return false;
+      if (y < low) low = y;
+      if (y > high) high = y;
+      if (high - low > relief) return false;
+    }
+    for (const [dx, dz] of SLOT_LATTICE) {
+      let ok: boolean | undefined;
+      if (node) {
+        const k = key(dx, dz);
+        ok = slopes[team].get(k);
+        if (ok === undefined) slopes[team].set(k, ok = gentle(point.x + dx, point.z + dz));
+      } else ok = gentle(point.x + dx, point.z + dz);
+      if (!ok) return false;
+    }
+    for (const [dx, dz] of SLOT_BOUNDARY) if (!gentle(point.x + dx, point.z + dz)) return false;
+    return true;
+  };
+}
+
+/**
+ * The deployment's ground stage (sim/deployment.ts): both sides' slots moved, jointly and symmetrically, onto ground a
+ * slot's footprint holds (dry, firm, under 2 m of relief, inside the map, on its own half, the slot spacing apart).
+ * It reads only the height field, so the world dressing keeps its clearings round these slots before any prop stands,
+ * and the match stage (createMatchPlacement) starts from them. Memoized per field and authored spawns.
+ */
+export function terrainDeployment(field: DeploymentGround, spawns: DeploymentSpawns): Deployment {
+  return groundStage(field, spawns).deployment;
+}
+
+/** The ground stage's cached slot test (the deployment receipt holds it equal to placementTerrainSafe at the slot). */
+export function deploymentGroundSafe(field: DeploymentGround, spawns: DeploymentSpawns, team: DeploymentTeam,
+  point: PlacementPoint): boolean {
+  return groundStage(field, spawns).ground(team, point);
+}
+
+function groundStage(field: DeploymentGround, spawns: DeploymentSpawns): GroundStage {
+  let byField = terrainDeployments.get(field);
+  if (!byField) terrainDeployments.set(field, byField = new Map());
+  const key = JSON.stringify([spawns.player.x, spawns.player.z, ...spawns.enemies.flatMap((pad) => [pad.x, pad.z])]);
+  let stage = byField.get(key);
+  if (!stage) {
+    const frame = deploymentFrame(spawns), onSide = deploymentSideCheck(frame), ground = createSlotGround(field, frame.pivot);
+    const check: DeploymentCheck = (team, point, held) => onSide(team, point) && spacedFrom(point, held) && ground(team, point);
+    byField.set(key, stage = { deployment: createDeployment(frame, check), ground });
+  }
+  return stage;
+}
+
+/**
+ * The deployment's own spawn clearings: both sides' ground-stage slots up to the 14 v 14 preset. The world dressing keeps
+ * the authored pads' clearings with its own rules; round these slots it leaves out what its seeded passes would stand
+ * there AFTER their draws — the trees within 26 m (vegetation.ts excludeVegetation), the understorey (its admission) and
+ * snags (their hash), the scatter destructibles within 20 m + r (props.ts addDestructible's veto), the boulders within
+ * 16 m (tryRock) and the rock-field formations (scenery.ts) — so everything outside them stays exactly where it was.
+ * `spawns` defaults to the field's own layout.
+ */
+export function deploymentClearings(field: DeploymentGround & { _layout?: { spawns?: DeploymentSpawns } },
+  spawns: DeploymentSpawns | undefined = field._layout?.spawns): readonly PlacementPoint[] {
+  if (!spawns) throw new TypeError('deployment clearings need the authored spawns');
+  if (!spawns.enemies?.length) return [];
+  const deployment = terrainDeployment(field, spawns);
+  const cached = clearingsByDeployment.get(deployment);
+  if (cached) return cached;
+  const points: PlacementPoint[] = [];
+  for (const team of ['alpha', 'bravo'] as const) {
+    for (const slot of deployment.slots(team, DEPLOYMENT_CLEARED_SLOTS)) points.push(Object.freeze({ x: slot.x, z: slot.z }));
+  }
+  const frozen = Object.freeze(points);
+  clearingsByDeployment.set(deployment, frozen);
+  return frozen;
 }
 
 function safeTerrainPoint(field: PlacementTerrain, x: number, z: number, normalY: number): boolean {
@@ -123,6 +296,12 @@ export interface MatchPlacement {
   readonly zones: readonly PlacementPoint[];
   /** Frontline Assault lines carved into the terrain (assault-trenches worlds), else null. */
   readonly assaultLines: readonly (PlacementPoint | null)[] | null;
+  /** Slot k of a side's symmetric deployment (sim/deployment.ts), on this world and clear of this mode's objectives. */
+  deploymentSlot(team: DeploymentTeam, k: number): DeploymentSlot;
+  /** The centroid of a side's first `count` slots: where its spawn marker stands. */
+  deploymentCenter(team: DeploymentTeam, count: number): PlacementPoint;
+  /** The match stage's deployment itself (receipts read its pairs and moves). */
+  deployment(): Deployment;
   spawn(point: PlacementSpawn, key: string, radius?: number, explicit?: boolean,
     occupied?: readonly OccupiedPlacement[]): PlacementSpawn;
   respawn(point: PlacementSpawn, key: string, occupied: readonly OccupiedPlacement[]): PlacementSpawn | null;
@@ -224,6 +403,25 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
   }
   const zones = mode === 'zone_control' || mode === 'mars' ? placeZones() : [];
 
+  // The deployment's match stage: the ground stage's slots, moved (jointly, symmetrically) off this world's solids and
+  // clear of this mode's objective reservations, so every vehicle the placement seats stands exactly on its slot.
+  const spawnsOf = deploymentSpawnsOf(anchors);
+  const objectiveReservations = reservations.slice();
+  let deployment: Deployment | null = null;
+  const deploymentOf = (): Deployment => {
+    if (deployment) return deployment;
+    const stage = groundStage(options.heightField, spawnsOf), ground = stage.deployment;
+    const onSide = deploymentSideCheck(ground.frame);
+    const check: DeploymentCheck = (team, point, held) => {
+      if (!onSide(team, point) || !spacedFrom(point, held)) return false;
+      for (const other of objectiveReservations) {
+        if (Math.hypot(point.x - other.x, point.z - other.z) < SLOT_FOOTPRINT.radius + other.radius + 3) return false;
+      }
+      return !blockedByWorld(options, point, SLOT_FOOTPRINT, scratch) && stage.ground(team, point);
+    };
+    return deployment = createDeployment(ground.frame, check, (k) => ground.pair(k));
+  };
+
   function resolveSpawn(point: PlacementSpawn, key: string, radius: number | undefined,
     explicit: boolean, occupied: readonly OccupiedPlacement[]): PlacementSpawn | null {
     if (explicit) explicitKeys.add(key);
@@ -243,6 +441,14 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
     navigation: access?.navigation ?? null,
     anchors, centers, middle, zones,
     assaultLines: options.assaultLines ?? null,
+    deployment: deploymentOf,
+    deploymentSlot: (team, k) => deploymentOf().slot(team, k),
+    deploymentCenter(team, count) {
+      const slots = deploymentOf().slots(team, Math.max(1, Math.floor(count)));
+      let x = 0, z = 0;
+      for (const slot of slots) { x += slot.x; z += slot.z; }
+      return { x: x / slots.length, z: z / slots.length };
+    },
     spawn(point, key, radius, explicit = false, occupied = []) {
       const found = resolveSpawn(point, key, radius, explicit, occupied);
       if (!found) throw new Error(`No safe spawn placement for ${key}`);

@@ -1,3 +1,5 @@
+import {resizeAuthoredVehicle} from './vehicleSize.ts';
+import {upgradeOplotFieldEquipment} from './fieldProtectionPack.ts';
 import { buildT64Modern } from './t72ModernVariants.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 // Ukrainian tracked-vehicle family — §5.248 GROUND-UP REBUILDS (ukraine wave).
@@ -25,8 +27,10 @@ import * as THREE from 'three';
 import { UA_CAGE_STATIONS as ABRAMS_DRONE_CAGE_STATIONS } from '../ukrainianDroneCage.ts';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
+import { fabricRollParts } from '../accessoryPrimitives.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { addMissionAttachmentReceiver } from '../missionAttachmentReceiver.ts';
 import {
   loftHull,
   buildT80CastTurret,
@@ -58,10 +62,12 @@ interface DisposableResource {
 }
 
 interface UkraineBuilderPort {
+  postAssemble: TankBuilderPort['postAssemble'];
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
-  readonly mats: Record<string, THREE.Material> & {
+  readonly mats: {
+    readonly hull: THREE.Material;
     readonly canvasCloth: THREE.MeshStandardMaterial;
     readonly dark: THREE.Material;
     readonly detail: THREE.Material;
@@ -69,6 +75,8 @@ interface UkraineBuilderPort {
   };
   readonly spec: { id: string; readonly visual: { readonly number?: string } };
   readonly disposables: DisposableResource[];
+  /** false on the low geometry tier (the factory's `geometryQuality: 'low'`). */
+  readonly q?: boolean;
   muzzleZ?: number;
   topY?: number;
   add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
@@ -86,7 +94,7 @@ interface UkraineBuilderPort {
     ...orientation: number[]
   ): void;
   visualEraCluster(key: string, owner: VehicleAssemblyOwner, build: () => void): void;
-  offsetBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
+  offsetBuckets: TankBuilderPort['offsetBuckets'];
 }
 
 interface CassetteOptions {
@@ -190,9 +198,26 @@ function seatedCassette(
     // face overlaps the body while both layers share one vehicle-space camo.
     lidShift[axis] = outward * (dims[axis] * 0.5 - embed * 0.5
       - lidDims[axis] * 0.5 + lidClearance);
-    P.add(dark, KIT.xform(box(lidDims.x, lidDims.y, lidDims.z),
+    P.add(dark, KIT.xform(bevelledLid(lidDims, axis, outward),
       lidShift.x, lidShift.y, lidShift.z), x, y, z, r[0], r[1], r[2]);
   });
+}
+
+// Fleet lane round 1 (2026-10-08; accessories wave 254 on the Oplot-M: "rows of identical reactive-armour bricks ... the
+// armour reads as a flat mosaic"): a cassette's lid is a pressed plate whose outer face stands inset from its base by a
+// small bevel (a fifth of its thickness, at most 6 mm), so the lid edge catches the light and every brick reads as a
+// layered module; the lid keeps its box (the combat anatomy and the ERA clusters are unchanged).
+function bevelledLid(dims: Record<Axis, number>, axis: Axis, outward: number): THREE.BufferGeometry {
+  const bevel = Math.min(0.006, dims[axis] * 0.2);
+  const [ua, va] = (['x', 'y', 'z'] as const).filter((k) => k !== axis);
+  const corner = (u: number, v: number, n: number, inset: number): number[] => {
+    const p: Record<Axis, number> = { x: 0, y: 0, z: 0 };
+    p[ua] = u * (dims[ua] / 2 - inset); p[va] = v * (dims[va] / 2 - inset); p[axis] = n * dims[axis] / 2;
+    return [p.x, p.y, p.z];
+  };
+  const face = (n: number, inset: number): number[][] => [corner(-1, -1, n, inset), corner(1, -1, n, inset),
+    corner(1, 1, n, inset), corner(-1, 1, n, inset)];
+  return orientedSlab(...face(-outward, 0), ...face(outward, bevel));
 }
 
 // Seat a cassette from the carrier face itself instead of approximating its
@@ -1131,7 +1156,7 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
 // rear anti-thermal cover roll on the bustle; Varta dazzler pair flanking
 // the gun; 6x rubber-rim gear with the Ukrainian skirt line.
 // ---------------------------------------------------------------------------
-function buildUAOplotM(P: UkraineBuilderPort): void {
+function buildUAOplotM(P: TankBuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
   const slab = orientedSlab;
   const eraReceipt = {
@@ -1302,8 +1327,14 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   }
   KIT.towCable(P, [[-1.10, 1.43, 0.20], [-0.40, 1.455, -0.30], [0.42, 1.455, -0.32], [1.10, 1.43, 0.16]]);
   {
+    // Spare links on the right bow fender bridge (2026-10-06). The old deck seat (0.60, 1.432, -1.60) sat under
+    // the bustle: its 1.44 m underside cut 4 cm into the link course at 12 o'clock and swept through it in
+    // traverse. No seat on this engine deck clears the 1.44-1.47 m bustle and rack undersides inside the 2.29 m
+    // sweep. The bow bridge (top 1.34, x 1.245..1.885, z 2.285..3.025) is 2.87 m or more from the ring, below
+    // the gun's full-depression bore, inboard of the rolled seam and clear of the glacis cassettes and the first
+    // fender bin; the carrier feet recess 4 mm into the shelf.
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.50, seed: 8401 });
-    links.position.set(0.60, 1.432, -1.60);
+    links.position.set(1.565, 1.3765, 2.62);
     P.hullG.add(links);
   }
 
@@ -1349,6 +1380,11 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   }
   for (const s of [-1, 1]) {
     P.add('hullRubber', box(0.035, 0.26, 2.20), s * 1.80, 0.50, -2.10, 0, 0, -s * 0.010);
+    // Fleet lane 2026-10-08 (wave 269 chase frames: "the thin plates at both rear hull corners flare outward like loose
+    // fins"): from behind, the last skirt panel stood 15 cm clear of the track band (1.553) with daylight through the
+    // slit. Its stern end closes the slit as the raked bow tip does at the front: an end block with its inner face at
+    // 1.60, under the fender (to 1.26), over the panel's last 8 cm and 2 cm past it.
+    P.add('hull', box(0.285, 0.62, 0.10), s * 1.7425, 0.95, -3.25, 0, 0, -s * 0.006);
   }
   // §5.272 MUST-FIX (2): the print's THICK skirt runs the FULL hull length
   // — forward panel + raked tip now shroud the raised idler wrap whose
@@ -1368,6 +1404,7 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   widthAnchor(P, 1.8875, 0.80, -2.60);
   };
   buildOplotHullSides();
+  resizeAuthoredVehicle(P,1.10);
 
   const buildOplotTurretShell = (): void => {
   // ---- KMDB WELDED TURRET — measured from the WARPED (published-scale)
@@ -1378,7 +1415,7 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   // published 2.285, PNK-6 tower at world -1.34 (the ref's own spike
   // column), and the real interior basket the print carries (its turret
   // mask bottoms at 0.61 inside the hull).
-  P.turretG.position.set(0, 1.42, -0.30);
+  P.turretG.position.set(0, 1.562, -0.33);
   // SHELL PRISM: the flat-roof welded body only (world -1.88..+0.25).
   // §5.272 fix (5): the roof plate drops to 0.795 local (world 2.215) so
   // the hatch rings / periscopes / stowed kit STAND PROUD and read — the
@@ -1452,7 +1489,14 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   P.add('turretDetail', box(1.22, 0.05, 0.18), 0, 0.42, -2.09);
   // anti-thermal roll ON the bustle rack behind the shell (its old -1.46
   // seat was inside the prism — zero rendered pixels)
-  P.add('turretDetail', cylX(0.112, 1.70, 14), 0, 0.565, -1.66);
+  // 2026-10-07 (tank-accessories round 3: a 14-sided cylinder read as a pipe with visible facets): the rolled cover,
+  // pinched under its two bands, its rolled ends wound (the low geometry tier keeps the cylinder)
+  if (P.q === false) P.add('turretDetail', cylX(0.112, 1.70, 14), 0, 0.565, -1.66);
+  else {
+    const roll = fabricRollParts(1.70, 0.112, [-0.58, 0.58], 20, 1455);
+    P.add('turretDetail', roll.body, 0, 0.565, -1.66);
+    for (const end of roll.ends) P.add('turretDark', end, 0, 0.565, -1.66);
+  }
   P.add('turretDark', cylX(0.12, 0.05, 12), -0.58, 0.565, -1.66);
   P.add('turretDark', cylX(0.12, 0.05, 12), 0.58, 0.565, -1.66);
   P.add('turretDark', box(0.06, 0.14, 0.06), -0.88, 0.50, -1.66);
@@ -1476,6 +1520,9 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   }
   P.add('turret', cylY(0.225, 0.24, 0.055, 16), -0.54, 0.81, -0.38);
   P.add('turretDark', cylY(0.195, 0.195, 0.02, 16), -0.54, 0.842, -0.38);
+  // 2026-10-08: the Oplot-M carries one 12.7 mm heavy machine gun, and main's field upgrade (5f8eefaa4,
+  // upgradeOplotFieldEquipment) fits it as a working remote station with its own ammunition; the accessories lane's
+  // decorative KT-12.7 on the commander's hatch ring (rounds 3-4) would have been a second one, so the ring is bare.
   {
     // NSVT stowed on the low bustle deck (UA wartime fit) — exact-group
     // census; the PNK-6 keeps the single p95 spike window.
@@ -1506,10 +1553,15 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
     mk(P.mats.dark, box(0.06, 0.055, 0.06), 0, -0.028, -0.16);
     mk(P.mats.dark, box(0.06, 0.055, 0.06), 0, -0.028, 0.12);
     FITTINGS.markExact(g, 'pintleMG');
-    // across the bustle rack, clear of the shell so the whole gun shape
-    // reads at top/side/rear (the old -1.24 seat was inside the prism)
-    g.position.set(0.30, 0.505, -1.85);
-    g.rotation.y = 1.35;
+    // Square across the bustle rack lid (top 0.445, z -2.18..-2.00) behind the anti-thermal roll, barrel to
+    // the left and can to the rear (2026-10-06). The old -1.85 / 1.35 rad seat ran the receiver and barrel
+    // through the roll, which the critics read as "a wedge-shaped part cuts through a barrel sleeve". Laid
+    // square, the gun needs 0.23 m of depth: the receiver rests on the rear box tread 5 mm behind the deck
+    // plate's rear edge, the can presses into the lid, and the gun stays 19 cm clear of the roll and its
+    // collars and inside the whip bases. It still reads from the top, the side and the rear. (The -1.24 seat
+    // before that was inside the prism.)
+    g.position.set(0.25, 0.452, -2.03);
+    g.rotation.y = -Math.PI / 2;
     P.turretG.add(g);
   }
   // §5.319 left finish: the gunner-sight ZONE at the print's own station
@@ -1551,8 +1603,14 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   // §5.272 fix (5): roof furniture density on the 0.795 plate — lifting
   // eyes, GPS puck, junction box, spent-case port, tie-down cleats (tops
   // <=0.85 local, well under the 2.285 datum).
-  P.add('turretDetail', KIT.torus(0.05, 0.013, 10), -0.95, 0.80, 0.06, Math.PI / 2, 0, 0);
-  P.add('turretDetail', KIT.torus(0.05, 0.013, 10), 0.95, 0.80, -0.86, Math.PI / 2, 0, 0);
+  // 2026-10-07 (tank-accessories round 4; wave 214, mg-1: "a polished-chrome lifting eye that hovers above the roof.
+  // Make it matte and seat it"): each eye is a welded pad on the roof plate (flat at 0.795 under both stations, ray
+  // probe; the pad's underside sunk 3 mm) carrying a round-bar arch whose feet sink 4 mm into the pad, in the
+  // scheme's solid matte fitting paint (FSP-06) instead of a camouflaged ring half-buried in the plate.
+  for (const [ex, ez] of [[-0.95, 0.06], [0.95, -0.86]] as const) {
+    P.add('turretFittingPaint', box(0.11, 0.022, 0.07), ex, 0.795 + 0.011 - 0.003, ez);
+    P.add('turretFittingPaint', new THREE.TorusGeometry(0.042, 0.012, 8, 12, Math.PI), ex, 0.814 - 0.004, ez);
+  }
   P.add('turretDetail', cylY(0.065, 0.07, 0.04, 12), 0.30, 0.815, -0.64);
   P.add('turretDark', box(0.15, 0.045, 0.11), -0.26, 0.818, 0.08);
   P.add('turretDark', cylY(0.088, 0.088, 0.028, 14), -0.06, 0.809, -0.70);
@@ -1739,6 +1797,7 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   addVehicleGhillieSuit(P);
   };
   buildOplotWeapon();
+  upgradeOplotFieldEquipment(P);
   P.topY = 1.42;
 }
 
@@ -2012,12 +2071,13 @@ function buildUAM1A1(P: UkraineBuilderPort): void {
   }
   addAbramsDroneCage(P);
   addVehicleGhillieSuit(P);
+  addMissionAttachmentReceiver(P, 'ua_m1a1');
 }
 
 export const UKRAINE_PROFILES = {
   ua_t64bv: { build: (P: TankBuilderPort) => buildT64Modern(P, true) },
   ua_t80bv: { build: (builder: ProfileBuilderPort) => buildUAT80BV(builder as UkraineBuilderPort) },
   ua_t80u_kursk: { build: (builder: ProfileBuilderPort) => buildUAT80UKursk(builder as UkraineBuilderPort) },
-  ua_t84_oplot_m: { build: (builder: ProfileBuilderPort) => buildUAOplotM(builder as UkraineBuilderPort) },
+  ua_t84_oplot_m: { build: (builder: ProfileBuilderPort) => buildUAOplotM(builder as TankBuilderPort) },
   ua_m1a1: { build: (builder: ProfileBuilderPort) => buildUAM1A1(builder as UkraineBuilderPort) },
 } satisfies VehicleProfileRecord;

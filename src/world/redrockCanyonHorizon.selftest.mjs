@@ -172,7 +172,14 @@ for (const [ringSeed, groundSeed] of [[1337,1337],[2049,2049],[7719,7719],[1337,
     const before = o - columns * 3;
     assert.ok(Math.hypot(x, z) - Math.hypot(ring.positions[before], ring.positions[before + 2]) > 1, 'No folded radial faces');
   }
-  assert.ok(stepped > exterior * 0.2, `the bed stair reaches the canyon's exterior walls (${stepped} of ${exterior} vertices moved past 4 m)`);
+  // (the Redrock lane, round 10, the gauntlet's wave 270: the stair cut into the heads read as "a stack of flat-shaded
+  // steps" over "a flat, hard-edged dark-red strip" — Redrock's horizon sets escarpment: false, and its resolved exterior
+  // is the canyon's own jebel sections, to the ring's rows; a ring that keeps the stair still reaches its walls)
+  if (config.horizon.escarpment === false) {
+    assert.ok(stepped <= exterior * 0.02, `the exterior is the canyon's own heads, unstepped (${stepped} of ${exterior} vertices moved past 4 m)`);
+  } else {
+    assert.ok(stepped > exterior * 0.2, `the bed stair reaches the canyon's exterior walls (${stepped} of ${exterior} vertices moved past 4 m)`);
+  }
   assertEnclosedCanyon(ring);
   // negative control: the pre-round-39 open design (the same ring with its mouth lanes forced back to the floor)
   const openMouths = structuredClone(ring);

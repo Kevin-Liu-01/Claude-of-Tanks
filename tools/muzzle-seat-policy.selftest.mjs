@@ -94,3 +94,18 @@ for (const inner of [0, -.01, NaN, .067, .08]) {
     {...aperture,physicalInnerRadiusM:inner}), /valid measured aperture/);
 }
 console.log('muzzle-seat-policy: physical-aperture luminance and occlusion controls passed');
+
+for (const revision of ['carved-physical-recess-r1','physical-recess-r2']) {
+  const recessed = {revision,physicalBoreDepthM:.12,physicalInnerRadiusM:.04,
+    supportOuterRadiusM:.07,physicalRimProjectionM:0,measuredMinimumDepthM:.12,
+    measuredMaximumDepthM:.12,measuredMaximumWallErrorM:.001,
+    measuredMaximumRimOffsetM:0,lipFrontM:0,annulusForwardM:0,discForwardM:-.12};
+  assert.ok(muzzleSeatAxialFit(recessed), 'measured real recess passes without a front mask');
+  for (const change of [{measuredMinimumDepthM:0},{measuredMaximumDepthM:.3},
+    {measuredMaximumWallErrorM:.02},{measuredMaximumRimOffsetM:.005},
+    {measuredMinimumDepthM:undefined},{physicalBoreDepthM:NaN},
+    {supportOuterRadiusM:.03},{lipFrontM:.001},{discForwardM:0}]) {
+    assert.ok(!muzzleSeatAxialFit({...recessed,...change}), JSON.stringify(change));
+  }
+}
+console.log('muzzle-seat-policy: carved and authored recesses reject caps, missing walls and detached rims');

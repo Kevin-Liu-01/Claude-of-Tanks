@@ -11,7 +11,9 @@ const barakStations = [
     .map(([x,z,a]) => [x+Math.sin(a)*.051,2.687,z+Math.cos(a)*.051]),
   [.5577,2.721,-.703],[-.6673,2.612,.101],
 ].map(([x,y,z]) => [x,y-1.605,z+.3906]);
-const expected = { merkava4_barak: 7, merkava4_trophy: 2, namer_ifv: 3 };
+// merkava4_trophy (fleet lane round 2, 2026-10-08): its two sights plus the eight windows of the commander's periscope ring
+// (merkavaX.ts merkava4Roof), which replaced the dark stub slabs
+const expected = { merkava4_barak: 7, merkava4_trophy: 10, namer_ifv: 3 };
 function verify(id, parts) {
   const optics = parts.filter(p => p.module === 'optics');
   assert.equal(optics.length, expected[id], `${id}: actual sight-part count`);
