@@ -6962,7 +6962,9 @@ void splatCompute() {
           float jw = 0.007 + 0.005 * sh.y;
           float jC = (1.0 - smoothstep(jw, jw + 0.004 + 0.6 * fwP, min(sf.x, 0.17 - sf.x))) * vC;
           float jL = (1.0 - smoothstep(jw, jw + 0.004 + 0.6 * fwP, min(sf.y, swd - sf.y))) * vL;
-          float jointS = max(jC, jL);
+          // (r4 frames: a square's joints along the view still ruled it in fine stripes 20–50 m out — a corduroy) the joints'
+          // dust lightens them toward the stones' own tone with distance
+          float jointS = max(jC, jL) * (1.0 - 0.7 * smoothstep(9.0, 32.0, camDist));
           vec3 stone = vec3(0.150, 0.146, 0.139) * (0.88 + 0.24 * sh.x)
             * mix(vec3(1.0), sh.y > 0.5 ? vec3(1.04, 1.0, 0.95) : vec3(0.96, 0.99, 1.04), 0.6 * fract(sh.x * 3.7));
           stone *= 1.0 - 0.12 * wheelW; // (wave 333: worn wheel tracks darker, grimed with rubber and oil)
