@@ -47,17 +47,17 @@
       "concealers": 5837
     },
     "steppe": {
-      "bytes": 1320562,
-      "sha256": "3c2e93b7229eeb7b6d98651d660f4ec0a24a1b115befc2d87067d87812d11756",
+      "bytes": 1366213,
+      "sha256": "c5a1583549bcd6af4a84a1b7b668fadc0637b813f9da4aaf42f294da5477a91c",
       "obstacles": 2031,
-      "colliders": 1870,
+      "colliders": 1879,
       "concealers": 812
     },
     "railyard": {
-      "bytes": 1331332,
-      "sha256": "a6bc6da01c82105b98a70df2b1c1c70dc8d814c195c9c4f8a8e5341c7a559add",
+      "bytes": 1575019,
+      "sha256": "d29737b47b4f234d8f8caa3f7c1b86a6e5ec5eb4f0249266ce90bdd1de7a1b52",
       "obstacles": 2385,
-      "colliders": 2470,
+      "colliders": 2520,
       "concealers": 1337
     },
     "frontier": {
@@ -110,10 +110,10 @@
       "concealers": 1080
     },
     "foundry": {
-      "bytes": 1780264,
-      "sha256": "8959b67d9e73a2944e8058e8b4d4355fd4730066c69c20eb16280b487523446f",
+      "bytes": 1929741,
+      "sha256": "b4915ec17e942babfa57aa2ea820ef077aee710b74ad3e0eca1cf189fbebfc5a",
       "obstacles": 3871,
-      "colliders": 4287,
+      "colliders": 4320,
       "concealers": 2727
     },
     "ruinspires": {
