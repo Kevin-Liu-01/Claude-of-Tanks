@@ -111,21 +111,20 @@ export default {
       { kind: 'fireLookout', x: 200, z: -330, yawDeg: 0, name: 'the fire lookout on the eastern cut', params: { height: 24 } },
     ],
     // the company's outlying farms and logging camps in the pines (the longleaf kit's dogtrot houses, cabins and barns),
-    // each lot its own stream, after the plan
+    // each on level ground (within the plan's 1.7 m spread), each lot its own stream, after the plan
     plannedSitesAfterPlan: true,
     plannedSites: [
-      { structure: 'farmhouse', x: -160, z: -215, yawDeg: 20, terrace: true },
-      { structure: 'logcabin', x: 100, z: -150, yawDeg: -40, terrace: true },
-      { structure: 'barn', x: 220, z: -250, yawDeg: 70, terrace: true },
-      { structure: 'logcabin', x: -30, z: -320, yawDeg: 10, terrace: true },
-      { structure: 'farmhouse', x: 300, z: 100, yawDeg: -90, terrace: true },
-      { structure: 'farmhouse', x: 160, z: 215, yawDeg: 160, terrace: true },
+      { structure: 'farmhouse', x: -164, z: -216, yawDeg: 86, terrace: true },
+      { structure: 'barn', x: 204, z: -240, yawDeg: 97, terrace: true },
+      { structure: 'logcabin', x: -56, z: -318, yawDeg: -101, terrace: true },
+      { structure: 'farmhouse', x: 300, z: 86, yawDeg: -69, terrace: true },
+      { structure: 'farmhouse', x: 188, z: 222, yawDeg: -54, terrace: true },
       { structure: 'logcabin', x: -60, z: 200, yawDeg: 190, terrace: true },
       { structure: 'barn', x: -200, z: 320, yawDeg: 120, terrace: true },
       { structure: 'logcabin', x: 330, z: -200, yawDeg: -70, terrace: true },
       { structure: 'farmhouse', x: 250, z: 280, yawDeg: 200, terrace: true },
       { structure: 'farmhouse', x: -330, z: -250, yawDeg: 30, terrace: true },
-      { structure: 'logcabin', x: -380, z: 150, yawDeg: 80, terrace: true },
+      { structure: 'logcabin', x: -356, z: 148, yawDeg: 101, terrace: true },
     ],
     loggingYard: {
       // Existing flatbeds load beside grounded cut timber inside the western
