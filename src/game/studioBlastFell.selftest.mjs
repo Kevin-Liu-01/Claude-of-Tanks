@@ -70,13 +70,21 @@ function studioOver(list) {
   assert.equal(crushed.length, PROP_FELL_PER_BLAST, `at most ${PROP_FELL_PER_BLAST} props a burst`);
   assert.equal(studio.match.craters, 1, 'left to the sim, a ground burst digs its crater');
 }
+{
+  // a pillbox in reach is fortified cover: a Studio burst beside it fells the fence post, not the pillbox (fortifiedCover.ts)
+  const { studio, crushed } = studioOver([prop(0, 0.6, 0, 'fenceplank'), prop(1, -0.5, 0, 'bunker')]);
+  studio.strike(he125, null, 0, 0, 0, 0, 1, false);
+  studio.step();
+  assert.deepEqual(crushed.map(({ record }) => `${record.kind}#${record.propIdx}`), ['fenceplank#0'], 'a burst beside a pillbox fells the post, never the pillbox');
+}
 // one rule with the battle's (game/state.ts fellBlastProps)
 const solo = readFileSync(new URL('./state.ts', import.meta.url), 'utf8');
 const studioSim = readFileSync(new URL('./studioDestruction.ts', import.meta.url), 'utf8');
 for (const [name, text] of [['solo', solo], ['studio', studioSim]]) {
   assert.match(text, /let budget = PROP_FELL_PER_TICK;/, `${name}: a step's budget`);
   assert.match(text, /radius = propFellRadiusM\(blasts\[b \+ 3\]\);/, `${name}: the reach of the burst's charge`);
-  assert.match(text, /if \(!obstacle\.crushable \|\| obstacle\.crushed \|\| obstacle\.min\[1\] > y \+ radius\) continue;/, `${name}: crushable, standing, within reach of the burst's height`);
+  assert.match(text, /if \(!obstacle\.crushable \|\| obstacle\.crushed \|\| obstacle\.min\[1\] > y \+ radius \|\| isFortifiedCoverRecord\(obstacle\)\) continue;/,
+    `${name}: crushable, standing, within reach of the burst's height, not fortified cover (a pillbox's ledger breaks it)`);
   assert.match(text, /const fell = Math\.min\((_blastFelled|felled)\.length, PROP_FELL_PER_BLAST, budget\);/, `${name}: at most a burst's share`);
   assert.match(text, /obstacle\.crushed = true;\s*world\.crushObstacle\(obstacle, dx \/ length, dz \/ length, 6, 'shell'\);/, `${name}: the world's crush`);
 }

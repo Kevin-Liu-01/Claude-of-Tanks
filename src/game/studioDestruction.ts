@@ -24,6 +24,7 @@
 import type { CollisionRecord } from '../world/collision.ts';
 import { DESTRUCTION_BUS_EVENTS, type DestructionRules, type StructureBreachEvent, type StructureStageEvent } from '../sim/destructionEvents.ts';
 import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
+import { isFortifiedCoverRecord } from '../sim/fortifiedCover.ts';
 import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, propFellRadiusM, type MunitionShellLike } from '../sim/munitionBlast.ts';
 import type { StructureMaterial } from '../sim/structureMaterial.ts';
 import type { TerrainDeformation } from '../sim/terrainDeformation.ts';
@@ -101,7 +102,8 @@ export function createStudioDestruction(world: StudioWorld, bus: StudioBus, opti
       world.queryObstacles(x - radius, z - radius, x + radius, z + radius, candidates);
       felled.length = 0;
       for (const obstacle of candidates) {
-        if (!obstacle.crushable || obstacle.crushed || obstacle.min[1] > y + radius) continue;
+        // (a pillbox is fortified cover: a burst beside it fells nothing of it — its ledger breaks it, the battle's rule)
+        if (!obstacle.crushable || obstacle.crushed || obstacle.min[1] > y + radius || isFortifiedCoverRecord(obstacle)) continue;
         if (centreDistance(obstacle, x, z) <= radius) felled.push(obstacle);
       }
       felled.sort((a, c) => centreDistance(a, x, z) - centreDistance(c, x, z) || obstacles.indexOf(a) - obstacles.indexOf(c));
