@@ -12,8 +12,11 @@ import {
   createHeightFieldAsync,
   buildTerrainMeshes,
   buildTerrainMeshesAsync,
+  finishHorizonRingAsync,
   sampleSplatNoise,
 } from './terrain.ts';
+// The visual horizon installs the ring the terrain meshes are built with (horizonRingHook.ts).
+import './maps/horizon.ts';
 // Round 73 (2026-09-25): the tall-grass tier and the pressure field its blades bend to
 import { createTallGrass, type TallGrass } from './tallGrass.ts';
 import type { GroundDisturbance } from './groundPressure.ts';
@@ -33,12 +36,15 @@ import {
 } from './props.ts';
 import { createGroundLitter, groundLitterProfile, type GroundLitterConfig } from './groundLitter.ts';
 import type { CrushableRecord } from './props.ts';
-import { getMapConfig, type BattlefieldMapConfig } from './maps/index.ts';
+import type { BattlefieldMapConfig } from './maps/index.ts';
 import { createGroundCoverClearance } from './groundCoverClearance.ts';
 import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
 import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
+import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
+import { supplyHorizonRing, withdrawHorizonRing } from './horizonRingHook.ts';
+import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
 import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
 import { startSurfacePaints } from './surfacePaintPrefetch.ts';
 import {
@@ -55,9 +61,6 @@ type EngineContext = Parameters<typeof buildTerrainMeshes>[1] &
   /** Releases a lit material from the cascaded-shadow setup (main.ts engine context). */
   releaseShadowMaterial?(material: THREE.Material): void;
 };
-
-/** The catalog config plus the runtime-only assault-trenches flag. */
-type BuildMapConfig = BattlefieldMapConfig & { assaultTrenches?: boolean };
 
 interface WorldOptions {
   mapId?: string;
@@ -188,6 +191,13 @@ export interface WorldRuntime {
     options?: { settled?: boolean },
   ): boolean;
   resetDestructibles(): void;
+  /**
+   * Step only the destruction's clock — props' falls, tosses and loose dressing, the felled trunks — by `dt` seconds
+   * (2026-10-06: the Scene Studio's hulls crush what they overrun on its timeline, its world update held at dt 0).
+   */
+  advanceDestruction(dt: number): void;
+  /** The felled trees' falls alone (the Studio: its props fall on their own clock, updateProps). */
+  advanceToppledVegetation(dt: number): void;
   spawnPoints: {
     player: { pos: [number, number, number]; yaw?: number };
     enemies: Array<{ pos: [number, number, number]; yaw?: number }>;
@@ -209,6 +219,20 @@ export interface WorldRuntime {
   /** Round 77c: bake the vegetation's impostor atlas under cover (the activation / solo loading warm). */
   warmImpostors(): boolean;
   setWindTime(timeSeconds: number): void;
+  /**
+   * The props' own clock (hinge topples, loose bodies, pole LOD) advanced by `deltaSeconds`, as `update` does it. A frame
+   * stepped without an update — the Studio's export steps, and its playback, whose update runs at dt 0 — calls this every
+   * fixed step, or a prop felled in a clip never animates its fall (fix/studio-world-step, 2026-10-08).
+   */
+  updateProps(deltaSeconds: number, cameraPosition: THREE.Vector3): void;
+  /**
+   * The drawn ground follows what it is bound to now (fix/studio-world-step, 2026-10-08): the terrain's
+   * `syncGroundOverlay` hook (a deformed ground's chunks, when a module installs one) and its `followGroundOverlay` hook
+   * (the ground cover over them). `update` reaches the same through its LOD walk; a frame rendered without an update (the
+   * Studio's export steps and captures) calls this, or a crater dug mid-clip never reaches the picture. O(1) when nothing
+   * is new; a no-op on a world with no such hooks.
+   */
+  syncGround(): void;
   /** Water pass 6/7: the vehicles in the water this frame (footprint, heading, speed -> wake). No-op on maps without water. */
   setWaterDisturbances(sources: readonly WaterDisturbance[]): void;
   resetWater(): void;
@@ -241,9 +265,7 @@ export function createMap(
   { mapId = 'verdant', seed = 1337, terrainVariant }: WorldOptions = {},
 ): WorldRuntime {
   const engineCtx = engineContext as EngineContext;
-  const config: BuildMapConfig = terrainVariant === 'assault-trenches'
-    ? { ...getMapConfig(mapId), assaultTrenches: true }
-    : getMapConfig(mapId);
+  const config: BuildMapConfig = worldBuildConfig(mapId, terrainVariant);
   const heightField = createHeightField(seed, config);
   const terrain = requireTerrainRoot(buildTerrainMeshes(heightField, engineCtx, config));
   const vegetation = createVegetation(heightField, engineCtx, 2001, config);
@@ -271,9 +293,7 @@ export async function createMapAsync(
   { fineSlices = false }: WorldSlicingOptions = {},
 ): Promise<WorldRuntime> {
   const engineCtx = engineContext as EngineContext;
-  const config: BuildMapConfig = terrainVariant === 'assault-trenches'
-    ? { ...getMapConfig(mapId), assaultTrenches: true }
-    : getMapConfig(mapId);
+  const config: BuildMapConfig = worldBuildConfig(mapId, terrainVariant);
   // Transfer/decompress the exact authored sandbag and utility-pole streams
   // while terrain and vegetation occupy the main thread. Previously their
   // 1.2 MB numeric JSON lived inside the map JavaScript chunk and had to be
@@ -286,6 +306,13 @@ export async function createMapAsync(
   const wreckPrefetch = seed === 1337 ? startPlannedWreckBakes(mapId, terrainVariant) : null;
   // (and the props build's fixed-input prints — the straw's, the dry-stone walls' — in the surface paint worker)
   const surfacePrefetch = typeof Worker === 'undefined' ? null : startSurfacePaints(plannedSurfacePaints(config));
+  // (and the horizon ring's geometry pipeline in its own worker, supplied to the terrain build through the ring's hook and
+  // taken after its chunks; a rematch on the same map takes the kept ring instead — horizonRingPrefetch.ts)
+  const ringSource = startHorizonRingBuild({
+    mapId, terrainVariant: terrainVariant ?? null, fieldSeed: seed, ringSeed: 1337, vista: getDeviceTier() !== 'mobile',
+    debugColors: !!(globalThis as typeof globalThis & { __HORIZON_DEBUG?: boolean }).__HORIZON_DEBUG,
+  });
+  supplyHorizonRing(ringSource);
   let completed = false;
   try {
     const step = async (label: string, fraction: number): Promise<void> => {
@@ -331,6 +358,11 @@ export async function createMapAsync(
         startMs: propModelsAwaitStart, endMs: propModelsAwaitEnd };
     }
     await step('Sealing the battlefield', 0.96);
+    // (the time-to-battle lane, 2026-10-08) the horizon ring last: the worker started with this build has had the whole
+    // build to answer (terrain.ts finishHorizonRingAsync: built here meanwhile if it has not); its source and timing for
+    // the load probes, beside the terrain's streaming record
+    await finishHorizonRingAsync(terrain, sub('Sealing the battlefield', 0.96, 0.99), fineSlices);
+    terrain.userData.horizonRingLoad = ringSource.stats;
     const world = assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
     world._buildDetail = {
       vegetation: vegetation._buildDetail || null,
@@ -343,6 +375,8 @@ export async function createMapAsync(
     // the planned wreck bakes nobody took (a cancelled build, a request the plan did not hold) and their worker go
     wreckPrefetch?.dispose();
     surfacePrefetch?.dispose();
+    withdrawHorizonRing(ringSource);
+    ringSource.dispose();
     if (!completed) {
       try { terrainSources.cancel?.(); } catch { /* preserve the original build failure */ }
     }
@@ -439,6 +473,19 @@ function assembleWorld(
 
   const obstacles = [...props.obstacles, ...vegetation.treeObstacles];
   const colliders = [...props.colliders, ...vegetation.treeObstacles];
+  // 2026-10-07 (the map-vehicles lane): the moored hulls stand in the water as a standing tank does, and lap it
+  // through the same disturbance sources the vehicles feed (props.ts waterContacts); they follow the frame's own sources
+  // (the vehicles keep the first slots), into one reused list, and stand from the first frame and after a reset
+  const waterContacts = props.waterContacts ?? [];
+  const waterSources: WaterDisturbance[] = [];
+  const setWater = (sources: readonly WaterDisturbance[]): void => {
+    if (!waterContacts.length) { terrain.userData.setWaterDisturbances?.(sources); return; }
+    waterSources.length = 0;
+    for (const source of sources) waterSources.push(source);
+    for (const contact of waterContacts) waterSources.push(contact);
+    terrain.userData.setWaterDisturbances?.(waterSources);
+  };
+  setWater([]);
   // Static spatial broad phases: movement queries only the handful of props
   // around a hull, and a shell/LOS ray only the cells spanned by its segment.
   // The narrow phase still uses the authored OBB/circle/convex footprint.
@@ -449,6 +496,8 @@ function assembleWorld(
     ...((props.group.userData.scenery as { groundCoverHoles?: GroundCoverHole[] } | undefined)?.groundCoverHoles ?? []),
     // the regional-buildings lane (2026-10-03): nor through a kit house's yard (props.ts placeRegionalYards)
     ...((props.group.userData.regionalYardHoles as GroundCoverHole[] | undefined) ?? []),
+    // the map-vehicles lane (2026-10-08): nor through the mud a landing's hauled-out boat lies in (props.ts)
+    ...((props.group.userData.boatMudHoles as GroundCoverHole[] | undefined) ?? []),
   ];
   // the hitbox lane (2026-10-07): the stones' colliders are their own now (props.ts refitRockColliders); the ground cover
   // keeps the footprints it was sealed against through their cosmetic twins, so no tuft, stone or shrub moves with them
@@ -705,6 +754,11 @@ function assembleWorld(
       if (props.resetDestructibles) props.resetDestructibles();
       if (vegetation.resetToppled) vegetation.resetToppled();
     },
+    advanceDestruction: (dt: number) => {
+      props.advanceDestructibles?.(dt);
+      vegetation.advanceToppled?.(dt);
+    },
+    advanceToppledVegetation: (dt: number) => { vegetation.advanceToppled?.(dt); },
     spawnPoints,
     /** @returns {{roads:Array, buildings:Array, tacticalBeats:Array, treeClusters:Array, waterOrSoft:Array}} minimap features */
     getMinimapFeatures: () => ({
@@ -756,8 +810,13 @@ function assembleWorld(
     warmImpostors: () => { bakePanorama(); return vegetation.warmImpostors(); },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
     setWindTime(t: number) { vegetation.setWindTime(t); terrain.userData.setWaterTime?.(t); tallGrass.setWindTime(t); },
-    setWaterDisturbances(sources) { terrain.userData.setWaterDisturbances?.(sources); },
-    resetWater() { terrain.userData.resetWater?.(); },
+    updateProps(dt: number, cameraPos: THREE.Vector3) { if (props.updateProps) props.updateProps(dt, cameraPos); },
+    syncGround() {
+      (terrain.userData.syncGroundOverlay as (() => void) | undefined)?.();
+      (terrain.userData.followGroundOverlay as (() => void) | undefined)?.();
+    },
+    setWaterDisturbances(sources) { setWater(sources); },
+    resetWater() { terrain.userData.resetWater?.(); setWater([]); },
     advanceWater(dt, x, z) { terrain.userData.updateWater?.(dt, x, z); },
     /** Round 73: the hulls' footprints this frame press the tall grass (main.ts publishes every vehicle). */
     setGroundDisturbances(sources) { tallGrass.setDisturbances(sources); },

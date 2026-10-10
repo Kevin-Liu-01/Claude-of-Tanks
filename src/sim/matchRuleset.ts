@@ -39,8 +39,15 @@ interface AssaultRules {
   readonly initialActive: number;
   /** Extra defenders per sector from the operation's difficulty. */
   readonly extraDefenders: number;
-  /** Hit-point scale added per sector taken. */
+  /** Hit-point scale added per sector taken, up to the last sector. */
   readonly hpPerLine: number;
+  /**
+   * Hit-point scale of the last sector's counter-attack, in place of 1 + sectors taken × hpPerLine (1.32 on the third
+   * sector). Modes lane, 2026-10-08 (owner decision: the attackers should win 40–55 % of bot tests): the attack took
+   * the first two sectors every time and lost most matches at the third, where five fresh defenders at 1.32× met the
+   * four survivors; 1.15× is the decision's first knob.
+   */
+  readonly finalLineHp: number;
   /** Hit-point scale added by the operation's difficulty (applies to every defender). */
   readonly difficultyHp: number;
   /** Seconds the last sector must be held. */
@@ -333,7 +340,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   frontline_assault: Object.freeze({
     ...STANDARD, mode: 'frontline_assault', respawnS: null, timeLimitS: 720, timeout: 'defeat',
     allies: 3, enemies: 10,
-    assault: Object.freeze({ initialActive: 3, extraDefenders: 0, hpPerLine: 0.16, difficultyHp: 0, holdS: 20 }),
+    assault: Object.freeze({ initialActive: 3, extraDefenders: 0, hpPerLine: 0.16, finalLineHp: 1.15, difficultyHp: 0, holdS: 20 }),
   }),
   // Mars mode (owner 2026-09-18): Olympus Basin's own physics — 0.38 g, a 6.5 m/s jump, +25 % speed, tougher
   // hulls, a lighter recoil launch than Turbo Ball — on the zone objective with 6 s respawns and a
@@ -522,6 +529,17 @@ export function matchRulesetFor(
   }
   if (ruleset.infection) ruleset = { ...ruleset, enemies: Math.max(3, arranged?.enemies ?? 4) };
   return ruleset === base ? base : Object.freeze(ruleset);
+}
+
+/**
+ * Hull scale a Frontline counter-attack arrives with on sector `line` (0-based) of `lines`: 1 + line × hpPerLine on
+ * the way in, finalLineHp on the last sector, plus the operation's difficulty on every one.
+ */
+export function assaultWaveHealthScale(rules: AssaultRules, line: number, lines: number): number {
+  const index = Math.max(0, Math.floor(line));
+  // the opening wave is never the counter-attack, even on a one-sector front
+  const base = index > 0 && index >= lines - 1 ? rules.finalLineHp : 1 + index * rules.hpPerLine;
+  return base + rules.difficultyHp;
 }
 
 /** Hostiles the Horde fields on a wave (1-based), before the pool caps it. */

@@ -6,6 +6,7 @@ import {
   attachTankDecorations,
   decorManifestFor,
   fleetEquipmentNationStyle,
+  isDecorRunningGearName,
   resolveDecorMode,
   roofMountEuler,
   roofMountPosition,
@@ -56,15 +57,66 @@ const coolerColors = cooler
     }
     return sum.map((value) => value / color.count);
   });
-assert.ok(coolerColors.some(([r, g, b]) => b > r * 2.5 && b > g * 1.4),
-  'beer cooler owns a clearly blue insulated body');
-assert.ok(coolerColors.some(([r, g, b]) => Math.max(r, g, b) - Math.min(r, g, b) < 0.08),
-  'beer cooler owns a separate neutral lid');
+// 2026-10-06 (tank-accessories round 2): the blind critics read the blue cooler with its grey lid as a toy-coloured
+// civilian box; crews carry it in issue colours, an olive-drab body under a lighter olive lid.
+assert.ok(coolerColors.some(([r, g, b]) => g >= r && g > b * 1.3),
+  'beer cooler owns an olive-drab insulated body');
+assert.ok(coolerColors.every(([r, g, b]) => b <= Math.max(r, g)),
+  'beer cooler carries no blue anywhere');
+const shade = ([r, g, b]) => r + g + b;
+assert.ok(Math.max(...coolerColors.map(shade)) - Math.min(...coolerColors.map(shade)) > 0.01,
+  'beer cooler owns a separate, lighter lid');
 assert.ok(coolerColors.every(([r, g, b]) => Math.max(r, g, b) < 0.78),
   'beer cooler avoids bright high-contrast authored colors');
-assert.ok(cooler.length >= 18,
-  `beer cooler has molded panels, ribs, latches, hinges, and weather bands (${cooler.length} parts)`);
+// round 5 (2026-10-08, the coordinator: "military kit only"): the cooler is an olive insulated container with steel
+// latches and pressed ribs; the civilian drain plug and raised lid panel are gone
+assert.ok(cooler.length >= 10,
+  `the insulated container is a molded body and lid with latches, hinges, grips and pressed ribs (${cooler.length} parts)`);
+// 2026-10-05 (tank-accessories lane): molded stock, not twelve-triangle blocks — the body and lid carry filleted
+// edges, so their normals take many directions instead of the six axis faces of a box.
+const moldedFaces = cooler.filter((part) => part.mat === 'cans').map((part) => {
+  const normal = part.geo.attributes.normal;
+  const directions = new Set();
+  for (let i = 0; i < normal.count; i++) {
+    directions.add(`${normal.getX(i).toFixed(2)},${normal.getY(i).toFixed(2)},${normal.getZ(i).toFixed(2)}`);
+  }
+  return directions.size;
+});
+assert.ok(moldedFaces.filter((count) => count > 12).length >= 2,
+  'cooler body and lid are filleted molded shells (more than twelve normal directions each)');
 for (const part of cooler) part.geo.dispose();
+
+// Every cargo variant authors a coarse level (the far LOD and the mobile tier): the same envelope from no more
+// triangles, built from an identically seeded stream that both levels consume the same way.
+const tri = (geometry) => (geometry.index ? geometry.index.count : geometry.attributes.position.count) / 3;
+for (const variant of FLEET_EQUIPMENT_VARIANTS) {
+  const draws = { 1: 0, 0: 0 };
+  const build = (detail) => {
+    let a = 0x51f15e;
+    const rng = () => { draws[detail]++; a = (a * 1664525 + 1013904223) >>> 0; return a / 4294967296; };
+    return DECOR_KITS.cargo({ rng, v: variant, detail });
+  };
+  const near = build(1), coarse = build(0);
+  const measure = (parts) => {
+    const box = new THREE.Box3();
+    let triangles = 0;
+    for (const part of parts) {
+      part.geo.computeBoundingBox();
+      box.union(part.geo.boundingBox);
+      triangles += tri(part.geo);
+    }
+    return { box, triangles, size: box.getSize(new THREE.Vector3()) };
+  };
+  const n = measure(near), c = measure(coarse);
+  assert.equal(draws[1], draws[0], `${variant}: near and coarse levels consume the same random draws`);
+  assert.ok(c.triangles <= n.triangles, `${variant}: coarse level is no heavier (${c.triangles} vs ${n.triangles})`);
+  for (const axis of ['x', 'y', 'z']) {
+    assert.ok(c.size[axis] >= n.size[axis] * 0.8 && c.size[axis] <= n.size[axis] * 1.05 + 0.01,
+      `${variant}: coarse ${axis} envelope ${c.size[axis].toFixed(3)} matches near ${n.size[axis].toFixed(3)}`);
+  }
+  assert.ok(n.triangles <= 700, `${variant}: near level stays inside the per-piece budget (${n.triangles})`);
+  for (const part of [...near, ...coarse]) part.geo.dispose();
+}
 
 for (const variant of ['nato-fuel-can', 'blue-water-can', 'twin-can-cradle']) {
   const pair = DECOR_KITS.cargo({ rng: () => 0.37, v: variant });
@@ -133,7 +185,10 @@ assert.ok(basket.length >= 30,
   `shared decorative basket exposes a real lattice and shaped cargo (${basket.length} parts)`);
 assert.ok(!basket.some((part) => part.geo instanceof THREE.PlaneGeometry),
   'decorative basket no longer uses opaque/texture-plane proxy walls');
-assert.ok(basket.filter((part) => part.mat === 'canvas').length >= 7,
+// 2026-10-07 (tank-accessories round 3): the tarp roll's rolled ends are one wound spiral each instead of two
+// concentric eight-segment rings each (the critics read those rings as facets), so the canvas parts are the two
+// duffels, the tarp roll and its two spiral ends; the floor moves from seven parts to five with the same contents.
+assert.ok(basket.filter((part) => part.mat === 'canvas').length >= 5,
   'decorative basket includes shaped packs, flaps, pockets, straps, and a tarp roll');
 assert.equal(basket.meta?.basket, true, 'decorative basket retains placement metadata');
 for (const part of basket) part.geo.dispose();
@@ -220,7 +275,10 @@ for (const id of ALL_TANK_IDS) {
 }
 // 2026-09-23: only the retired curated loadouts (tiger1, t34_85, m4a3e8, isu152, is7,
 // merkava4) placed these four variants; the vocabulary stays for future manifests.
-const UNPLACED_VARIANTS = new Set(['cooler-red', 'twin-can-cradle', 'spare-optics-case', 'thermos-crate']);
+// 2026-10-07 (tank-accessories round 4, waves 215 and 217: a cable spool is not crew kit, camp chairs read as toys): no
+// loadout carries the reel or the chair.
+const UNPLACED_VARIANTS = new Set(['cooler-red', 'twin-can-cradle', 'spare-optics-case', 'thermos-crate', 'cable-reel',
+  'folding-chair']);
 for (const v of UNPLACED_VARIANTS) assert.ok(!distributed.has(v), `${v}: no playable loadout places it today`);
 assert.equal(distributed.size, FLEET_EQUIPMENT_VARIANTS.length - UNPLACED_VARIANTS.size,
   `${distributed.size} cargo variants are visibly distributed across the playable fleet`);
@@ -364,6 +422,17 @@ try {
   decorHullGeometry.dispose();
   decorTurretGeometry.dispose();
   decorMaterial.dispose();
+}
+
+// Decor never probes or seats on running gear, but the track GUARDS (mudguards, side skirts) are hull equipment it
+// must seat on and be blocked by (2026-10-05: the bare /track/ caught hullTrackGuardL/R, so a side piece could seat on
+// the hull behind a skirt and the skirt's bucket decided admission; burlakFixedSidePaint.selftest is the fleet case).
+for (const name of ['gearTrackBandL', 'gearTrackPads', 'gearTrackPadsSimplified', 'trackL', 'track_R',
+  'hullRunningGearTrack', 'roadWheelsL', 'sprocketR', 'idlerL', 'returnRollerR']) {
+  assert.equal(isDecorRunningGearName(name), true, `${name} is running gear`);
+}
+for (const name of ['hullTrackGuardL', 'hullTrackGuardR', 'hull', 'turret', 'hullExternalArmor']) {
+  assert.equal(isDecorRunningGearName(name), false, `${name} is a decor support and obstacle`);
 }
 
 console.log(`decorationsEquipment.selftest: ${FLEET_EQUIPMENT_VARIANTS.length} authored variants, `

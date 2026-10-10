@@ -95,8 +95,12 @@ async function worldBuilders() {
   return builders;
 }
 
-/** Build one map's world collision in Node with the seeds the shards are captured at; returns the packed records. */
-export async function buildWorldCollisionData(mapId, { terrainSeed = 1337, vegetationSeed = 2001, propsSeed = 2002 } = {}) {
+/**
+ * Build one map's world collision in Node with the seeds the shards are captured at; returns the packed records.
+ * `inspect` (2026-10-07) reads the built world before it is packed (the drift receipt's drawn-geometry shape check);
+ * it must not change it.
+ */
+export async function buildWorldCollisionData(mapId, { terrainSeed = 1337, vegetationSeed = 2001, propsSeed = 2002, inspect } = {}) {
   const { maps, terrain, vegetation, props, fleet } = await worldBuilders();
   const config = maps.getMapConfig(mapId);
   // the wreck cast bakes real hull geometry: its demand-loaded builders must be resident first
@@ -106,6 +110,7 @@ export async function buildWorldCollisionData(mapId, { terrainSeed = 1337, veget
   const field = terrain.createHeightField(terrainSeed, config);
   const flora = vegetation.createVegetation(field, engine, vegetationSeed, config);
   const dressing = props.createProps(field, engine, propsSeed, config, flora);
+  inspect?.({ mapId, flora, dressing });
   return packWorldCollision({
     obstacles: [...dressing.obstacles, ...flora.treeObstacles],
     colliders: [...dressing.colliders, ...flora.treeObstacles],

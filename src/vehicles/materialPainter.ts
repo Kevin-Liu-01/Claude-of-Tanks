@@ -2,8 +2,8 @@
 // off-thread prebakes. No Three.js, fleet, DOM creation, or quality policy at import.
 import { paintBrandCamo } from './brandCamoPainter.ts';
 import { paintCustomCamoStrokes } from './customCamoCanvas.ts';
-import { createCatalogCamoPainter, type CatalogCamoArtId } from './catalogCamoPainter.ts';
-import { camoPatchWorldScale } from './camoWorldScale.ts';
+import { camoArtTileSpanM, createCatalogCamoPainter, isPatchFieldArt, type CatalogCamoArtId } from './catalogCamoPainter.ts';
+import { CAMO_TILE_SPAN_M, camoPatchWorldScale } from './camoWorldScale.ts';
 import type { CustomCamoStroke } from './camoPolicy.ts';
 
 export type MaterialCanvas = HTMLCanvasElement | OffscreenCanvas;
@@ -95,6 +95,15 @@ interface MaterialBasePaintEntry<C extends MaterialCanvas> {
   feats: PlateFeatures | null;
 }
 
+/**
+ * Launch night 2026-10-08 (the coordinator's markings audit): a randomly drawn hull number never comes out 14, 18 or 88,
+ * numbers used as hate codes. Only those three values move, each to the next number, and no extra random draw is made,
+ * so every other hull keeps exactly the number it had.
+ */
+const CODED_HULL_NUMBERS: ReadonlySet<number> = new Set([14, 18, 88]);
+export function safeHullNumber(drawn: number): number {
+  return CODED_HULL_NUMBERS.has(drawn) ? drawn + 1 : drawn;
+}
 export const ALBEDO_SIZE = 2048;
 export const MAP_SIZE = 1024;
 
@@ -476,10 +485,13 @@ export function createMaterialPainter<C extends MaterialCanvas>(
     for (let i = 0; i < nV; i++) {
       f.vLines.push({ p: (i + 0.12 + rng() * 0.76) / nV, weld: rng() < 0.42, bolts: rng() < 0.35, gaps: mkGaps() });
     }
-    // bolt rings (hatch / plate access circles)
+    // bolt rings (hatch / plate access circles). Fleet lane round 1 (2026-10-08; the fleet audit's T-90M X skirts): the
+    // tile placed two to four of these at random in every 2 m repeat, so they landed on skirts, glacis plates and gun
+    // shields alike and repeated down a hull side like stamped decals. Access plates and hatches are modelled where they
+    // are; the tile keeps its seams, welds and bolt lines. The draws stay (every later feature keeps its place).
     const nR = 2 + ((rng() * 3) | 0);
     for (let i = 0; i < nR; i++) {
-      f.rings.push({ x: 0.1 + rng() * 0.8, y: 0.1 + rng() * 0.8, r: 0.022 + rng() * 0.03, n: 8 + ((rng() * 6) | 0) });
+      void [rng(), rng(), rng(), rng()];
     }
     // chips clustered near lines and edges
     // r8: 260 chips with bright glints read as white speckle noise at
@@ -541,6 +553,12 @@ export function createMaterialPainter<C extends MaterialCanvas>(
     // shrink so coverage density stays constant.
     const wk = camoPatchWorldScale(visual.camoScale);
     const nK = Math.min(2.2, 1 / (wk * wk));
+    // Fleet lane painter v3 (2026-10-08): a patch-field scheme paints a WIDE tile (catalogCamoPainter.ts
+    // camoArtTileSpanM: 4 m, the texture repeating at half the shared density). Its fields cover every texel, so the
+    // base variation under them is skipped, and the plate plan's paint marks below go into the tile's four quadrants
+    // (each quadrant is the 2 m plan the normal and height maps carry).
+    const tileSpanM = camoArtTileSpanM(visual.catalogPattern);
+    const wide = tileSpanM !== CAMO_TILE_SPAN_M;
 
     ctx.fillStyle = rgb(base);
     ctx.fillRect(0, 0, S, S);
@@ -565,7 +583,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         ctx.fillRect(x - r, y - r, r * 2, r * 2);
       }
     };
-    paintBaseVariation();
+    if (!wide) paintBaseVariation();
     // tank_models r3 (critic major: T-90M factory solid renders as "one flat
     // untextured green — plastic toy response, no roughness/weathering
     // variation"): SOLID schemes lean entirely on the two passes above, which
@@ -2422,7 +2440,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       band(cx, cy, S * 0.11, red, 0.94);               // main stripe
       band(cx + nx * S * 0.095, cy + ny * S * 0.095, S * 0.035, red, 0.94);
       band(cx - nx * S * 0.075, cy - ny * S * 0.075, S * 0.012, blk, 0.9);
-      const num = String(1 + ((rng() * 98) | 0));
+      const num = String(safeHullNumber(1 + ((rng() * 98) | 0)));
       const roundel = (x: number, y: number, r: number): void => {
         const disc = new Path2D();
         disc.arc(x, y, r, 0, Math.PI * 2);
@@ -2573,7 +2591,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       band2.moveTo(x1, -S * 0.1);
       band2.lineTo(x1, S * 1.1);
       strokeWrapped(ctx, S, band2, rgb(white, 0.82), S * 0.035);
-      const num = String(100 + ((rng() * 899) | 0));   // tactical number
+      const num = String(safeHullNumber(100 + ((rng() * 899) | 0)));   // tactical number
       ctx.save();
       ctx.font = `900 ${Math.round(S * 0.17)}px 'ABC Monument Grotesk', sans-serif`;
       ctx.textAlign = 'center';
@@ -2696,7 +2714,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       paintUsmcDust();
       const paintUsmcNumber = (): void => {
         ctx.save();
-        const num2 = String(10 + ((rng() * 89) | 0));
+        const num2 = String(safeHullNumber(10 + ((rng() * 89) | 0)));
         ctx.font = `900 ${Math.round(S * 0.13)}px 'ABC Monument Grotesk', sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -3002,7 +3020,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       paintSolidScheme();
     };
     paintExperimentalSchemes();
-    paintCatalogCamo(ctx, S, visual, rng);
+    paintCatalogCamo(ctx, S, visual, rng, tileSpanM);
 
     // Zimmerit is a common post-pattern pass; it is independent of the scheme.
     const paintZimmeritAlbedo = (): void => {
@@ -3019,14 +3037,12 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         ctx.fillRect(x, 0, 1.2, S);
       }
     };
-    paintZimmeritAlbedo();
 
     // r10: grain trimmed 0.075 -> 0.055 — part of the "flour-dust white
     // speckle" read on top plates under the warm garage key.
     // tank_models r5: 0.055 -> 0.034 — at pedestal range the survivors still
     // read as rendering noise, not paint. Weathering now leans on the darker
     // low-frequency grime passes below instead of per-pixel salt.
-    applyGrain(ctx, S, seed ^ 0x51ab, 0.034);
 
     // ---- plate feature overlay (matches height/roughness maps) --------------
     const px = (v: number): number => v * S;
@@ -3049,7 +3065,6 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         }
       }
     };
-    paintPanelLines();
     // weld beads: dashed light/dark stitch straddling the line
     const weldDash = (horiz: boolean, l: PlateLine): void => {
       const p = l.p;
@@ -3072,7 +3087,6 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       for (const line of feats.hLines) if (line.weld) weldDash(true, line);
       for (const line of feats.vLines) if (line.weld) weldDash(false, line);
     };
-    paintWelds();
     // bolts along lines: dome highlight + drop shadow
     const bolt = (x: number, y: number, r: number): void => {
       ctx.fillStyle = 'rgba(8,8,6,0.5)';
@@ -3113,21 +3127,20 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         }
       }
     };
-    paintHorizontalLineBolts();
-    paintVerticalLineBolts();
-    paintRingBolts();
 
+    // fleet lane 2026-10-08 (wave 268: "a soft dark smear in place of a defined camo pattern", "a blurred texture"): over
+    // the v2 patch fields the grime clouds glaze at under half strength (same draws, so every later draw keeps its place)
+    const grimeCore = isPatchFieldArt(visual.catalogPattern) ? 0.05 : 0.13;
     const paintGrimeBlotches = (): void => {
       for (let i = 0; i < 16; i++) {
         const x = rng() * S, y = rng() * S, r = S * (0.05 + rng() * 0.12);
         const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-        g.addColorStop(0, 'rgba(18,16,12,0.13)');
+        g.addColorStop(0, `rgba(18,16,12,${grimeCore})`);
         g.addColorStop(1, 'rgba(18,16,12,0)');
         ctx.fillStyle = g;
         ctx.fillRect(x - r, y - r, r * 2, r * 2);
       }
     };
-    paintGrimeBlotches();
     // dust + dark oil streaks (canvas +y == world down on side plates).
     // Light dust streaks stay near the base hue and low alpha: 240 strokes of
     // brightened weather tone at 0.13 glazed a pastel film over the pattern —
@@ -3142,7 +3155,6 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (rng() - .5) * (finishedPaint ? S * .006 : 8), y + len); ctx.stroke();
       }
     };
-    paintDustAndOilStreaks();
     // paint chips — dark pit with a worn-metal glint above (from plan).
     // r10 ("flour dust" critique): glints tinted toward dust ochre keyed to the
     // base color and cut ~50% — the old cool near-white pips read as a uniform
@@ -3159,14 +3171,27 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         }
       }
     };
-    paintChips();
-    // rust weeps from plan sources + below some bolts.
+    // rust weeps from plan sources + below some bolts. 2026-10-06 (wave 165, Challenger 1: "a bright vertical
+    // orange sliver splits the dark mantlet cheek like an unresolved texture seam"). The old weep was a 1.4-3 px
+    // orange stroke laid OVER the paint. On a black camo band it lit up as a one-texel line that repeated with
+    // the 2 m tile. A weep is a stain in the paint, so it now MULTIPLIES a warm rust-brown: it darkens and warms
+    // whatever it runs over, nearly vanishing on black and showing as a brown run on green or sand. Nested
+    // passes around a core of at least 2.5 mm fall off softly to each side and fade in from the source, so the
+    // weep never reads as a seam line or a hard-edged bar at close range.
     const weep = (x: number, y: number, len: number, w: number): void => {
-      const g = ctx.createLinearGradient(x, y, x, y + len);
-      g.addColorStop(0, 'rgba(122,64,28,0.42)');
-      g.addColorStop(1, 'rgba(122,64,28,0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(x, y, Math.max(1.4, w), len);
+      const core = Math.max(S / 820, w * 1.6);
+      const prevOp = ctx.globalCompositeOperation;
+      ctx.globalCompositeOperation = 'multiply';
+      for (const [spread, alpha] of [[3.0, 0.08], [2.2, 0.1], [1.5, 0.13], [1.0, 0.2]] as const) {
+        const width = core * spread;
+        const g = ctx.createLinearGradient(x, y, x, y + len);
+        g.addColorStop(0, `rgba(150,112,82,${alpha * 0.5})`);
+        g.addColorStop(0.12, `rgba(150,112,82,${alpha})`);
+        g.addColorStop(1, 'rgba(150,112,82,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(x - width / 2, y, width, len);
+      }
+      ctx.globalCompositeOperation = prevOp;
     };
     const paintRustWeeps = (): void => {
       for (const streak of feats.streaks) {
@@ -3183,7 +3208,32 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         }
       }
     };
-    paintRustWeeps();
+    // The overlay in its original order; a wide tile (painter v3) takes the plate plan once per 2 m quadrant, under a
+    // half-scale transform, so every mark keeps its world size and its place over the normal map's relief; the grain
+    // is per texel and covers the whole canvas once.
+    const quadrants: ReadonlyArray<readonly [number, number]> = wide ? [[0, 0], [1, 0], [0, 1], [1, 1]] : [[0, 0]];
+    if (wide) applyGrain(ctx, S, seed ^ 0x51ab, 0.034);
+    else { paintZimmeritAlbedo(); applyGrain(ctx, S, seed ^ 0x51ab, 0.034); }
+    for (const [qx, qy] of quadrants) {
+      if (wide) {
+        // each quadrant clips to itself, as the 2 m tile clips at its edges (a mark wrapped across the plan's edge
+        // lands in its own quadrant once, never again in the neighbour's)
+        ctx.save();
+        ctx.setTransform(0.5, 0, 0, 0.5, qx * S / 2, qy * S / 2);
+        ctx.beginPath(); ctx.rect(0, 0, S, S); ctx.clip();
+        paintZimmeritAlbedo();
+      }
+      paintPanelLines();
+      paintWelds();
+      paintHorizontalLineBolts();
+      paintVerticalLineBolts();
+      paintRingBolts();
+      paintGrimeBlotches();
+      paintDustAndOilStreaks();
+      paintChips();
+      paintRustWeeps();
+      if (wide) ctx.restore();
+    }
     return canvas;
   }
 
@@ -3460,7 +3510,20 @@ export function createMaterialPainter<C extends MaterialCanvas>(
   // hull GGX at ~0.61 mean, and up-tilted plates at the sun↔camera mirror
   // angle rendered a pale specular film that washed the camo (t34 glacis /
   // m1a2 chamfer cream). Field paint over dust is duller than 0.78.
-  function paintRoughness(canvas: C, rng: Rng, feats: PlateFeatures, base = 0.84): C {
+  const roughnessPlans = new Map<number, C>();
+  function paintRoughness(canvas: C, rng: Rng, feats: PlateFeatures, base = 0.84, wide = false): C {
+    if (wide) {
+      // painter v3: a wide tile's roughness (4 m, under the scheme's per-patch response) carries the 2 m plan in each
+      // quadrant, so its recess lines and bare-metal chips sit on the normal map's relief; the plan is painted once at
+      // the map's own resolution and laid four times
+      const size = canvas.width;
+      let plan = roughnessPlans.get(size);
+      if (!plan) { plan = makeCanvas(size, size); roughnessPlans.set(size, plan); }
+      paintRoughness(plan, rng, feats, base);
+      const ctx = canvas2d(canvas);
+      for (const [qx, qy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) ctx.drawImage(plan, qx * size / 2, qy * size / 2, size / 2, size / 2);
+      return canvas;
+    }
     const ctx = canvas2d(canvas);
     const S = canvas.width;
     const v = (base * 255) | 0;
@@ -3600,7 +3663,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
     entry.normalCanvas.width = entry.normalCanvas.height = sz.map;
     canvas2d(entry.normalCanvas).drawImage(normalSrc, 0, 0, sz.map, sz.map);
     entry.roughCanvas.width = entry.roughCanvas.height = sz.map;
-    paintRoughness(entry.roughCanvas, rng, entry.feats);
+    paintRoughness(entry.roughCanvas, rng, entry.feats, undefined, camoArtTileSpanM(vis.catalogPattern) !== CAMO_TILE_SPAN_M);
     yield;
   }
 

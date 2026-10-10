@@ -138,8 +138,14 @@ for(const quality of ['high','low'])for(const id of ids){
    assert.equal(mesh.userData.continuityRole,'open-lattice');
    const net=tank.root.getObjectByName(id+'_ghillie_'+owner+'_net');
    assert(net&&net.parent.name==='rig_'+owner,id+': physical net follows '+owner);
-   const leaf=tank.root.getObjectByName(id+'_ghillie_'+owner+'_light');
-   assert(leaf?.geometry.attributes.position.count>1000,id+': dense physical leaves, not only painted net');
+   // 2026-10-08 (tank-accessories round 5, merging push 3): the lane's suit builder ties all its garnish into one
+   // card draw per owner, named _leaves (ghillieSuit.ts, 2026-10-05); main's split _light/_dark layers are gone. Its
+   // garnish is bunches tied at points along the nets (critic waves 253 and 269 against a dense uniform card layer: "a
+   // hedge sculpture", "fish scales"), so a dozen bunches (300 vertices) is physical leaves, not a painted net.
+   // 2026-10-09 (launch RC): the bar counts cards, not vertices. A card is 24 vertices at high quality and a flat 12 at
+   // low (ghillieSuit.ts, GHILLIE_TOP_CARDS), so the same dozen cards is 150 vertices at low.
+   const leaf=tank.root.getObjectByName(id+'_ghillie_'+owner+'_leaves');
+   assert(leaf?.geometry.attributes.position.count>(quality==='low'?150:300),id+': physical leaves tied on, not only painted net');
   }
   const cfg=NATIONAL_UKRAINE_GHILLIE[id];
   assert.equal(cfg.hull.top,undefined,id+': hatch and engine deck remain open');
@@ -148,7 +154,8 @@ for(const quality of ['high','low'])for(const id of ids){
   tank.root.updateMatrixWorld(true);
   fullMainGunEnvelope(tank,TANK_SPECS[id],addedHull);
   const seat=MISSION_ATTACHMENT_SEATS[id],native=collectMissionStock(tank,seat.frame,-Infinity,false,TANK_SPECS[id]);
-  const supported=nativeSupportedSeat(native,seat);
+  // Re-measure at the record's own cradle rise (the generator certifies .045, .085 or .125 m, as its sameSupport does).
+  const supported=nativeSupportedSeat(native,seat,seat.y-Math.max(...seat.supportY));
   assert(supported,id+': all four existing drone feet retain their native seats');
   assert(Math.abs(supported.y-seat.y)<.0001,id+': camouflage did not become the drone support');
   assert.equal(nativeMissionCollision(native,seat),null,id+': parked drone and cradle clear actual stock and main gun motion');

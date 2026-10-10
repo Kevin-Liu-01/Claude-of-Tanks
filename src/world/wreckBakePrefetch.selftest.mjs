@@ -1,6 +1,8 @@
 // Receipt for the wreck bake prefetch (src/world/wreckBakePrefetch.ts, the time-to-battle lane): the planned bakes start
 // at once, in plan order and one at a time; the props build takes each planned bake once and bakes anything else on
-// demand; a failed planned bake surfaces where it is taken; disposal releases every bake nobody took and the worker.
+// demand; a failed planned bake surfaces where it is taken and stops the rest of the plan (the wreck-worker lane,
+// 2026-10-09: the props build bakes what the plan could not deliver on the main thread, props.ts); disposal releases
+// every bake nobody took and the worker.
 import assert from 'node:assert/strict';
 import { resolveWreckBakeRows, startWreckBakePrefetch, wreckBakeKey } from './wreckBakePrefetch.ts';
 import { WRECK_BAKE_PLAN, WRECK_BAKE_PLAN_VARIANTS } from './maps/wreckBakePlan.ts';
@@ -45,15 +47,29 @@ const tick = () => new Promise((r) => setImmediate(r));
   assert.equal(f.log.at(-1), 'bake merkava4b 2133 1', 'plan order');
   f.gates[1].fail();
   await tick(); await tick();
-  assert.equal(f.log.at(-1), 'bake t72b3m 2264 0', 'a failed bake does not stop the rest');
+  // (the wreck-worker lane, 2026-10-09) a worker that failed once would cost every later planned bake its own timeout
+  // while the props build waits on it: the rest of the plan is not started and fails where it is taken
+  assert.equal(f.log.at(-1), 'bake merkava4b 2133 1', 'a failed bake stops the rest: no further worker job starts');
   await assert.rejects(p.take('merkava4b', { seed: 2133, pop: true }), /failed/, 'a failed planned bake surfaces where it is taken');
-  f.gates[2].ok();
-  await tick();
-  // the last one is never taken: disposal releases its geometry and the worker
+  await assert.rejects(p.take('t72b3m', { seed: 2264, pop: false }), /stopped after a failed bake/,
+    'the rest of the plan fails at once where it is taken');
   p.dispose();
   await tick(); await tick();
   assert.ok(f.isDisposed());
-  assert.deepEqual([p.stats.taken, p.stats.missed, p.stats.failed, p.stats.settled], [2, 2, 1, 3]);
+  assert.equal(f.gates.length, 2, 'two worker jobs in all');
+  assert.deepEqual([p.stats.taken, p.stats.missed, p.stats.failed, p.stats.settled], [3, 2, 2, 3]);
+}
+{
+  // a planned bake nobody took: disposal releases its geometry and the worker
+  const f = fakeClient();
+  const p = startWreckBakePrefetch([['m60a2', 2002, 1]], () => f.client, () => 0);
+  await tick();
+  f.gates[0].ok();
+  await tick();
+  p.dispose();
+  await tick(); await tick();
+  assert.ok(f.isDisposed());
+  assert.deepEqual([p.stats.taken, p.stats.failed, p.stats.settled], [0, 0, 1]);
 }
 {
   // disposed before the queue drains: the waiting bakes never start
@@ -96,4 +112,4 @@ const tick = () => new Promise((r) => setImmediate(r));
 }
 assert.equal(wreckBakeKey('m1a2', 2002, true), wreckBakeKey('m1a2', 2002, 1));
 assert.notEqual(wreckBakeKey('m1a2', 2002, true), wreckBakeKey('m1a2', 2002, false));
-console.log('wreckBakePrefetch: planned bakes at once in plan order, one at a time, taken once, misses on demand, failures where taken, disposal releases; the plan by tier and terrain resolves every recorded key PASS');
+console.log('wreckBakePrefetch: planned bakes at once in plan order, one at a time, taken once, misses on demand, failures where taken and stopping the rest, disposal releases; the plan by tier and terrain resolves every recorded key PASS');

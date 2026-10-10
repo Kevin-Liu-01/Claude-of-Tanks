@@ -36,7 +36,8 @@ for (const era of VEHICLE_ERA_ORDER) {
   assert.deepEqual(resolveWreckRoster(era, []), authored, `${era}: empty authored cast falls back`);
 }
 
-assert.equal(WRECK_ROSTER_POOLS.modern.length, 32, 'expanded modern cast stays bounded');
+// 35 since the period ruling (2026-10-06): the T-72M1, T-72B3 and T-64BV of the 1990s and 2022 maps
+assert.equal(WRECK_ROSTER_POOLS.modern.length, 35, 'expanded modern cast stays bounded');
 assert.deepEqual(resolveWreckRoster('ww2'), ['kv2', 'jpz_e100_x'],
   'historical cast never resurrects hidden/archived tanks to satisfy a size target');
 for (const era of ['ww2', 'cold-war', 'next-generation']) {

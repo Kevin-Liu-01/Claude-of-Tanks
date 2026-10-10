@@ -157,13 +157,14 @@ function dwelling(ctx: RegionalBuildContext, opts: { longere?: boolean; storeys?
   quoins(sink, frame);
   // the lived-in dressing: a hydrangea by the door (blue on the acid granite soil, sometimes pink), a bench
   const shrub = rng() < 0.6, bloom: Rgb = rng() < 0.7 ? [0.36, 0.46, 0.78] : [0.82, 0.48, 0.62], seat = rng() < 0.3, lantern = rng() < 0.4;
-  if (ctx.tier !== 'mobile') {
+  // (the shrub draws the build stream: a phone draws it as the desktop does, PartSink.dressing)
+  sink.dressing(ctx.tier === 'mobile', () => {
     const door = openings[0], face = frame.faces[door.face];
     const side = door.u > 0 ? -1 : 1;
     if (shrub && Math.abs(door.u + side * (door.w / 2 + 0.75)) + 0.6 < face.width / 2) floweringShrub(sink, face, door.u + side * (door.w / 2 + 0.75), 0.9, bloom, rng);
     if (seat && Math.abs(door.u - side * (door.w / 2 + 1.1)) + 0.8 < face.width / 2) bench(sink, face, door.u - side * (door.w / 2 + 1.1), 1.3, [0.42, 0.36, 0.28]);
     if (lantern && Math.abs(door.u - side * (door.w / 2 + 0.45)) + 0.3 < face.width / 2) wallLantern(sink, face, door.u - side * (door.w / 2 + 0.45), 2.1);
-  }
+  });
   return sink.finish();
 }
 

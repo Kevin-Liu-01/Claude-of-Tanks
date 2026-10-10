@@ -75,10 +75,11 @@ export interface Keep { u0: number; u1: number; y0: number; y1: number }
 /**
  * Shell pocks across a face: small ragged scars where splinters chipped the render to the masonry (`under`), each
  * with a dark crater, kept clear of the openings. Fanned polygons 14-16 mm proud (the depth buffer resolves them to
- * ~280 m, where a pock is a pixel).
+ * ~280 m, where a pock is a pixel). All `count` pocks are drawn from the look stream; only the first `drawn` are
+ * emitted (a phone keeps fewer, and its look stream stands where the desktop's does after them).
  */
 export function shellPocks(sink: PartSink, face: Face, rect: Keep, count: number, keep: readonly Keep[], look: () => number,
-  under: RegionalBucket = 'stone'): void {
+  under: RegionalBucket = 'stone', drawn = count): void {
   for (let k = 0; k < count; k++) {
     const r = 0.07 + look() * look() * 0.32;
     const cu = rect.u0 + r + look() * Math.max(0, rect.u1 - rect.u0 - 2 * r);
@@ -88,6 +89,7 @@ export function shellPocks(sink: PartSink, face: Face, rect: Keep, count: number
       const t = (j / sides) * Math.PI * 2, rr = r * (0.6 + look() * 0.4);
       ring.push([cu + Math.cos(t) * rr, cy + Math.sin(t) * rr]);
     }
+    if (k >= drawn) continue;
     if (keep.some((h) => cu + r > h.u0 - 0.05 && cu - r < h.u1 + 0.05 && cy + r > h.y0 - 0.05 && cy - r < h.y1 + 0.05)) continue;
     sink.polygon(under, [[cu, cy], ...ring, ring[0]].map(([uu, yy]) => facePoint(face, uu, yy, 0.014)), { ...DECOR, shade: 0.8 });
     const c = r * 0.42;

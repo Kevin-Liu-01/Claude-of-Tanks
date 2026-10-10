@@ -63,16 +63,17 @@ import { createRenderer } from './engine/renderer.ts';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
   mountDiagOverlay, runSceneBlackWatchdogAsync, reclaimShadows, scheduleSceneWatchdog, runSceneWatchdogNow,
-  type SceneWatchdogResult,
+  battleProbeRadianceScale, type SceneWatchdogResult,
 } from './engine/deviceDiag.ts';
 import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
   reportSustainedOverload, setPresetName, setMobilePresetName,
   noteGpuRenderer, getDeviceTier, shouldReleaseInactivePhaseGpu, applyGraphicsRecovery, onPresetChange,
 } from './engine/quality.ts';
-import { createSky } from './engine/sky.ts';
+import { createSky, DEFAULT_SKY_PRESET } from './engine/sky.ts';
+import { deriveCloudLayerPreset } from './engine/cloudPresets.ts';
 import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
-import { loadGroundedLightModel } from './engine/lightModelCore.ts';
+import { EXPOSURE_REFERENCE_ILLUMINANCE, loadGroundedLightModel } from './engine/lightModelCore.ts';
 import { loadCloudscapeLayers } from './engine/cloudPresets.ts';
 import { battlePreferences } from './game/battlePreferences.ts';
 import { createFrontlineAtmosphereAccess } from './world/frontlineAtmosphereAccess.ts';
@@ -130,7 +131,7 @@ import {
   CAMO_CATALOG_PATTERN_IDS, getCamoSelection, setCamoSelection,
   getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection,
   setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked,
-  clearCamoOverrides, warmWreckTextures,
+  clearCamoOverrides, warmWreckTextures, setCamoBattleSeed, camoSelectionSuitsTheatre,
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
 } from './vehicles/materials.ts';
 import './ui/motion.css';
@@ -936,6 +937,7 @@ const battleIntent = createBattleIntentRuntime({
   anisotropy: engineCtx.anisotropy ?? 4,
   setCamoBiome,
   clearCamoOverrides,
+  setCamoBattleSeed,
   setCamoOverride,
   applyCamoPatterns: applyCamoPatternsChunked,
   preloadBattleVisuals: () => battleVisualStreamerAccess.preload(),
@@ -1539,6 +1541,8 @@ const battleAtmosphere = createBattleAtmosphereAccess(() => ({
   getWorldRoot: () => currentWorld()?.group ?? null,
   // 2026-10-01 (engine/lightModel.ts): the vehicles' readability lift follows the applied light
   getLightReadability: () => (scene.userData.lightModel as { vehicleReadability?: number } | undefined)?.vehicleReadability ?? 1,
+  // 2026-10-08 (the nightsky lane): the far panorama re-bakes under the applied light inside the covered prepare
+  getRenderer: () => renderer,
   getAuthoredPreset: () => {
     const config: MapCompositionConfig | undefined = currentWorld()?.config;
     if (!config) return {};
@@ -1568,8 +1572,11 @@ const frontline = createFrontlineAtmosphereAccess(() => ({
   getSpawns: () => currentWorld()?.spawnPoints ?? null,
 }));
 function currentSceneWatchdogOptions() {
-  return game.phase === 'battle' && battleAtmosphere.current?.weather?.timeOfDay === 'night'
-    ? { nightRadianceScale: battleWatchdogRadianceScale } : {};
+  if (game.phase !== 'battle') return {};
+  if (battleAtmosphere.current?.weather?.timeOfDay === 'night') return { nightRadianceScale: battleWatchdogRadianceScale };
+  // 2026-10-09 (the MP-entry lane): a low sun or a closed deck draws the probe under the light model's metered ratio
+  const lowLightScale = battleProbeRadianceScale(scene.userData.lightModel?.illuminance, EXPOSURE_REFERENCE_ILLUMINANCE);
+  return lowLightScale === null ? {} : { nightRadianceScale: lowLightScale };
 }
 const nightLighting = createNightLightingAccess({
   scene,
@@ -2191,7 +2198,8 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     },
     planCamoOverrides: (specId: string, mapId: string, randomRoster: boolean, campaignOperationId: string | null = null, gameMode: string | null = null) => {
       const plan = soloRosterPlan(gameMode, campaignOperationId, randomRoster);
-      return planBattleCamoOverrides(game, specId, mapId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.alliedSlots);
+      return planBattleCamoOverrides(game, specId, mapId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.alliedSlots,
+        (botSpecId) => camoSelectionSuitsTheatre(getSpec(botSpecId), mapId));
     },
     ensureTankBuilders,
     preloadSoloAuthority: preloadSoloBattleRuntime,
@@ -3256,8 +3264,12 @@ await bootStage('post', async () => {
 // window.__STUDIO (schema in docs/STUDIO.md). main.ts only hands it these
 // integration seams plus the one tick() branch above — entry keys, panel,
 // actors, effects, capture all live in the studio module.
+let studioLightRuntime: Promise<import('./game/studioLightRuntime.ts').StudioLightRuntime> | null = null;
+let studioLightLive: import('./game/studioLightRuntime.ts').StudioLightRuntime | null = null;
 const studioAccess = createStudioAccess({
-  loadModule: () => import('./game/studio.ts'),
+  // the Studio's own catalog strings, which the game's catalogs leave out, load beside its chunk
+  loadModule: () => Promise.all([import('./game/studio.ts'), import('./ui/studioStrings.ts').then((strings) => strings.ensureStudioStrings())])
+    .then(([module]) => module),
   preloadFxModule,
   ensureFxRuntime,
   prepareRuntime: () => lighting.setFarCascadeDormant(false),
@@ -3271,14 +3283,50 @@ const studioAccess = createStudioAccess({
     }),
     setWorldDormant,
     setGarageSpots, setGarageSunTrim, enterGarage,
-    prepareStudioAtmosphere: async (time: import('./engine/battleWeatherPolicy.ts').BattleTimeOfDay) => {
-      await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, [time]);
+    // media r5: Studio times of day and sun direction. The battle owner keeps the authored day (its Garage-return
+    // reset restores the sky); the demand-loaded Studio light runtime applies the plan over it and restores the
+    // world's baked horizon light on exit.
+    prepareStudioAtmosphere: async (
+      time: import('./game/studioLight.ts').StudioTimeOfDay,
+      light: import('./game/studioLight.ts').StudioLight | null = null,
+    ) => {
+      await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, ['day']);
+      studioLightRuntime ??= import('./game/studioLightRuntime.ts').then(({ createStudioLightRuntime }) => {
+        const runtime = createStudioLightRuntime({
+          scene,
+          getWorld: currentWorld,
+          cloudIdentity: (authored) => {
+            const layer = deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...authored } as Parameters<typeof deriveCloudLayerPreset>[0]);
+            return { offset: [layer.offset[0], layer.offset[1]], windDirRad: layer.windDirRad };
+          },
+          applySky: (preset, keyDirection) => {
+            sky.applyPreset(preset, scene);
+            lighting.setSun(keyDirection ?? sky.sunDir, preset);
+            battleWatchdogRadianceScale = preset.skyIntensity ?? 1;
+            baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
+            worldRuntime.markEnvironmentPrepared(currentWorld());
+          },
+          resetTemporalHistory: () => post.taa?.resetHistory(),
+          nightLightBudget: () => getDeviceTier() === 'mobile' ? { spotLights: 2, pointLights: 1 } : { spotLights: 4, pointLights: 2 },
+        });
+        studioLightLive = runtime;
+        return runtime;
+      }).catch((error: unknown) => {
+        studioLightRuntime = null; // a failed chunk fetch stays retryable
+        throw error;
+      });
+      return (await studioLightRuntime).apply(time, light);
     },
+    restoreStudioAtmosphere: () => studioLightLive?.restore(),
+    getStudioLight: () => studioLightLive,
     warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
     // main.ts owns both direct boot and the first lazy F8 handoff.
     autoEnter: false,
     fx: studioFx,
+    // Studio never enters scoped sniper view, so the permanent sniper fill is
+    // idle there: lend it for flares/night firelight (scene light count fixed).
+    borrowLight: () => sniperFill.light,
   }),
   getPhase: () => game.phase,
   keyTarget: window,

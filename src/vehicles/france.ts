@@ -706,7 +706,8 @@ function buildAMX40(P: FranceBuilderPort): void {
     // roof 7.62 AANF1 beside the cupola — LOW mount, FORWARD rest
     // (CROWS-forward law; type10 precedent: receiver at the published
     // height line so heightM p95 stays on the roof plateau)
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.9, seed: 12, elev: -0.03, ammo: true });
+    // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the roof detail beside the cupola (feed-side collision census).
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.9, seed: 12, elev: -0.03, ammo: true, feed: 'right' });
     mg.position.set(-0.46, 0.864, 0.30);                                        // re-seated on the owner-raised connected turret section
     P.turretG.add(mg);
     P.addEquipment('turret', box(0.12, 0.18, 0.12), -0.46, 0.84, 0.30);                 // continuous roof-to-receiver pedestal

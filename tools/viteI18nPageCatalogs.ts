@@ -9,7 +9,15 @@
 //    i18nCatalogZhCN.ts) through the runtime's own imports. Every page preloads its English chunk beside the module
 //    entry and names its Chinese chunk in `<meta name="cot-locale-catalog" data-locale="zh-CN">`, which
 //    localizeHtmlDocument turns into a modulepreload on /cn/ documents.
-//  - serve: the same subsets as virtual modules at /@cot-i18n/<catalog>.<locale>.js, re-scanned after an edit.
+//  - lazy (2026-10-08, the perf lane): a page's keys that only modules it reaches through import() can show are its
+//    lazy chunk (`assets/i18n.<catalog>~lazy.<locale>-<hash>.js`, named in the meta as `data-en-us-lazy`,
+//    `data-zh-cn-lazy`, the English one prefetched). Every literal import() of a module whose graph can show one of
+//    those keys is rewritten to load the lazy chunk first (src/ui/i18nDictionaries.ts loadLazyCatalog, reached through
+//    `globalThis.__cotI18nLazy` so a module shared with a worker imports nothing more); a document without a lazy chunk
+//    (the game's full catalogs) passes straight through.
+//  - serve: each page catalog's boot and lazy keys together (one subset, as before the split: the dev server rewrites
+//    no import(), so no module request waits on a scan) as virtual modules at /@cot-i18n/<catalog>.<locale>.js,
+//    re-scanned after an edit.
 // The build fails on a scan issue (a key a page could show raw) and on a catalog chunk it cannot find; the dev server
 // warns and serves what it has.
 //
@@ -19,7 +27,8 @@
 // chunk because the shared workers load it and the polyfill needs a document; the build fails when the boot chunk holds
 // another module or a worker entry reaches it.
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { relative, resolve, sep } from 'node:path';
+import { parseAst } from 'rolldown/parseAst';
 import type { OutputBundle, OutputChunk } from 'rolldown';
 import type { HtmlTagDescriptor, Plugin } from 'vite';
 import {
@@ -42,15 +51,54 @@ const CATALOG_FILES: Readonly<Record<CatalogLocale, string>> = {
 };
 type Dictionary = Readonly<Record<string, string>>;
 
-/** The dev URL, and the emitted chunk's module id, of one page catalog's dictionary. */
-export function pageCatalogModuleUrl(catalog: string, locale: CatalogLocale): string {
-  return `${URL_PREFIX}${catalog}.${locale}.js`;
+/** The dev URL, and the emitted chunk's module id, of one page catalog's dictionary (its boot or its lazy chunk). */
+export function pageCatalogModuleUrl(catalog: string, locale: CatalogLocale, lazy = false): string {
+  return `${URL_PREFIX}${catalog}${lazy ? '~lazy' : ''}.${locale}.js`;
 }
 
-function virtualTarget(id: string): { catalog: string; locale: CatalogLocale } | null {
+function virtualTarget(id: string): { catalog: string; locale: CatalogLocale; lazy: boolean } | null {
   if (!id.startsWith(VIRTUAL_PREFIX)) return null;
-  const match = /^([a-z][A-Za-z0-9]*)\.(en-US|zh-CN)$/.exec(id.slice(VIRTUAL_PREFIX.length));
-  return match ? { catalog: match[1]!, locale: match[2] as CatalogLocale } : null;
+  const match = /^([a-z][A-Za-z0-9]*)(~lazy)?\.(en-US|zh-CN)$/.exec(id.slice(VIRTUAL_PREFIX.length));
+  return match ? { catalog: match[1]!, locale: match[3] as CatalogLocale, lazy: !!match[2] } : null;
+}
+
+/** The call that loads a page's lazy chunk before an import() of a lazily reached module (none outside a document). */
+const LAZY_LOAD = '((globalThis.__cotI18nLazy?.() ?? Promise.resolve()).catch(() => {}))';
+
+type ImportNode = {
+  type?: string; start?: number; end?: number;
+  source?: { type?: string; value?: unknown; expressions?: unknown[]; quasis?: Array<{ value: { cooked?: string } }> };
+};
+const IMPORT_CALL_RE = /\bimport\s*\(/;
+
+/**
+ * Every literal import() in `code` whose specifier is in `specifiers` rewritten to load the page's lazy chunk first:
+ * `import('./x.ts')` -> `LAZY.then(() => import('./x.ts'))`. Returns null when nothing changed.
+ */
+export function rewriteLazyImports(code: string, file: string, specifiers: ReadonlySet<string>): string | null {
+  if (!specifiers.size || !IMPORT_CALL_RE.test(code)) return null;
+  const program = parseAst(code, { lang: file.endsWith('.ts') ? 'ts' : 'js' }, file);
+  const sites: Array<{ start: number; end: number }> = [];
+  const walk = (node: unknown): void => {
+    if (!node || typeof node !== 'object') return;
+    const { type, source, start, end } = node as ImportNode;
+    if (type === 'ImportExpression' && source) {
+      const literal = source.type === 'Literal' && typeof source.value === 'string' ? source.value
+        : source.type === 'TemplateLiteral' && !source.expressions?.length ? source.quasis?.[0]?.value.cooked : null;
+      if (literal && specifiers.has(literal)) sites.push({ start: start!, end: end! });
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) for (const child of value) walk(child);
+      else if (value && typeof value === 'object') walk(value);
+    }
+  };
+  walk(program);
+  if (!sites.length) return null;
+  let out = code;
+  for (const { start, end } of sites.sort((a, b) => b.start - a.start)) {
+    out = `${out.slice(0, start)}${LAZY_LOAD}.then(() => ${out.slice(start, end)})${out.slice(end)}`;
+  }
+  return out;
 }
 
 /** A modulepreload link beside the module entry (else at the end of head), where localizeHtmlDocument puts zh-CN's. */
@@ -67,13 +115,21 @@ const zhCatalogMeta = (href: string): HtmlTagDescriptor => ({
   tag: 'meta', attrs: { name: LOCALE_CATALOG_META, 'data-locale': 'zh-CN', content: href }, injectTo: 'head',
 });
 
-/** The page's catalog meta with each locale's chunk URL (`data-en-us`, `data-zh-cn`), which the runtime imports. */
-export function nameCatalogChunks(html: string, files: Readonly<Record<CatalogLocale, string>>): string {
+/**
+ * The page's catalog meta with each locale's chunk URL (`data-en-us`, `data-zh-cn`), which the runtime imports, and its
+ * lazy chunks' (`data-en-us-lazy`, `data-zh-cn-lazy`) when the page has one.
+ */
+export function nameCatalogChunks(
+  html: string,
+  files: Readonly<Record<CatalogLocale, string>>,
+  lazyFiles: Readonly<Record<CatalogLocale, string>> | null = null,
+): string {
   let named = false;
   const out = html.replace(/<meta\b[^>]*>/gi, (tag) => {
     if (named || !new RegExp(`\\bname\\s*=\\s*["']${PAGE_CATALOG_META}["']`, 'i').test(tag)) return tag;
     named = true;
-    const urls = LOCALES.map((locale) => ` data-${locale.toLowerCase()}="${files[locale]}"`).join('');
+    const urls = LOCALES.map((locale) => ` data-${locale.toLowerCase()}="${files[locale]}"`).join('')
+      + LOCALES.map((locale) => (lazyFiles ? ` data-${locale.toLowerCase()}-lazy="${lazyFiles[locale]}"` : '')).join('');
     return tag.replace(/\s*\/?>$/, (end) => `${urls}${end.trim() === '/>' ? ' />' : '>'}`);
   });
   if (!named) throw new Error(`cot-i18n-page-catalogs: no <meta name="${PAGE_CATALOG_META}"> to name the catalog chunks in`);
@@ -83,15 +139,17 @@ export function nameCatalogChunks(html: string, files: Readonly<Record<CatalogLo
 const chunks = (bundle: OutputBundle): OutputChunk[] =>
   Object.values(bundle).filter((output): output is OutputChunk => output.type === 'chunk');
 
-/** The built chunk of each locale for a catalog: the emitted subsets, or the game's full catalog chunks. */
-export function catalogChunkFiles(bundle: OutputBundle, catalog: string): Record<CatalogLocale, string> {
+/** Each locale's built chunk of a catalog: the emitted subsets (or the lazy ones), or the game's full catalogs. */
+export function catalogChunkFiles(bundle: OutputBundle, catalog: string, lazy = false): Record<CatalogLocale, string> {
   const all = chunks(bundle);
   const files = {} as Record<CatalogLocale, string>;
   for (const locale of LOCALES) {
     const chunk = catalog === FULL_CATALOG
       ? all.find((output) => output.moduleIds.some((id) => id.split('?', 1)[0]!.endsWith(`/${CATALOG_FILES[locale]}`)))
-      : all.find((output) => output.facadeModuleId === `${VIRTUAL_PREFIX}${catalog}.${locale}`);
-    if (!chunk) throw new Error(`cot-i18n-page-catalogs: the ${catalog} ${locale} catalog chunk is missing from the bundle`);
+      : all.find((output) => output.facadeModuleId === `${VIRTUAL_PREFIX}${catalog}${lazy ? '~lazy' : ''}.${locale}`);
+    if (!chunk) {
+      throw new Error(`cot-i18n-page-catalogs: the ${catalog}${lazy ? ' lazy' : ''} ${locale} catalog chunk is missing from the bundle`);
+    }
     if (catalog === FULL_CATALOG) {
       // The runtime must import the full catalog by its emitted name: an unrewritten specifier would request a file
       // that does not exist.
@@ -167,14 +225,31 @@ export function i18nPageCatalogs(): Plugin {
         this.error(`cot-i18n-page-catalogs: ${issues.length} way(s) for a public page to show a raw key `
           + `(node tools/i18n-page-catalogs.mjs --check):\n  - ${issues.join('\n  - ')}`);
       }
-      for (const catalog of Object.keys(catalogs)) {
+      for (const [catalog, { lazyKeys }] of Object.entries(catalogs)) {
         if (catalog === FULL_CATALOG) continue;
         for (const locale of LOCALES) {
           this.emitFile({
             type: 'chunk', id: pageCatalogModuleUrl(catalog, locale), name: `i18n.${catalog}.${locale}`, preserveSignature: 'strict',
           });
+          if (!lazyKeys.length) continue;
+          this.emitFile({
+            type: 'chunk', id: pageCatalogModuleUrl(catalog, locale, true), name: `i18n.${catalog}~lazy.${locale}`,
+            preserveSignature: 'strict',
+          });
         }
       }
+    },
+    transform: {
+      // (the build's: an import() of a lazily reached module loads the page's lazy chunk first; buildStart scanned)
+      filter: { id: { include: /\.[cm]?[jt]s(?:\?|$)/, exclude: /[\\/]node_modules[\\/]/ }, code: IMPORT_CALL_RE },
+      handler(code, id) {
+        if (!build || id.startsWith('\0')) return null;
+        const module = relative(root, id.split('?', 1)[0]!).split(sep).join('/');
+        const specifiers = scanned().lazySites[module];
+        if (!specifiers?.length) return null;
+        const out = rewriteLazyImports(code, module, new Set(specifiers));
+        return out === null ? null : { code: out, map: null };
+      },
     },
     resolveId(id) {
       return id.startsWith(URL_PREFIX) ? `${VIRTUAL_PREFIX}${id.slice(URL_PREFIX.length).replace(/\.js$/, '')}` : null;
@@ -184,7 +259,9 @@ export function i18nPageCatalogs(): Plugin {
       if (!target) return null;
       const catalog = target.catalog === FULL_CATALOG ? undefined : scanned().catalogs[target.catalog];
       if (!catalog) throw new Error(`cot-i18n-page-catalogs: no page declares the page catalog "${target.catalog}"`);
-      return `export default ${JSON.stringify(catalogSubset(dictionary(target.locale), catalog.keys))};\n`;
+      // (the dev server's page subset holds the lazy keys too: it names no lazy chunk and rewrites no import())
+      const keys = target.lazy ? catalog.lazyKeys : build ? catalog.keys : [...catalog.keys, ...catalog.lazyKeys];
+      return `export default ${JSON.stringify(catalogSubset(dictionary(target.locale), keys))};\n`;
     },
     configureServer(server) {
       // A source, markup or catalog edit re-scans on the next request (unchanged modules keep their analysis) and
@@ -218,9 +295,14 @@ export function i18nPageCatalogs(): Plugin {
             'en-US': pageCatalogModuleUrl(catalog, 'en-US'), 'zh-CN': pageCatalogModuleUrl(catalog, 'zh-CN'),
           });
         }
+        const lazy = catalog !== FULL_CATALOG && !!scanned().catalogs[catalog]?.lazyKeys.length;
         const files = catalogChunkFiles(ctx.bundle ?? {}, catalog);
-        const named = catalog === FULL_CATALOG ? html : nameCatalogChunks(html, files);
-        return { html: insertModulePreload(named, files['en-US']), tags: [zhCatalogMeta(files['zh-CN'])] };
+        const lazyFiles = lazy ? catalogChunkFiles(ctx.bundle ?? {}, catalog, true) : null;
+        const named = catalog === FULL_CATALOG ? html : nameCatalogChunks(html, files, lazyFiles);
+        // (the English lazy chunk is prefetched: at idle, so the first lazily reached module seldom waits on it)
+        const prefetch: HtmlTagDescriptor[] = lazyFiles
+          ? [{ tag: 'link', attrs: { rel: 'prefetch', href: lazyFiles['en-US'], as: 'script', crossorigin: '' }, injectTo: 'head' }] : [];
+        return { html: insertModulePreload(named, files['en-US']), tags: [zhCatalogMeta(files['zh-CN']), ...prefetch] };
       },
     },
   };

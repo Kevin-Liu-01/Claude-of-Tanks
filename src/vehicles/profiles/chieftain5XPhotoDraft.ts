@@ -1,3 +1,4 @@
+import {inwardBoreWall} from '../physicalMuzzleBore.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Historical test-only photo draft. No playable registry imports this module.
 // Original Mk5 construction from the WEG envelope, MoD exterior equipment
@@ -302,11 +303,11 @@ function gun(P: TankBuilderPort): void {
     P.add('gun', box(.051, .023, .072), .053, radius - .012, z - D.trunnion[2]);
   }
   P.add('gun', new THREE.RingGeometry(.060, .086, 40), 0, 0, D.muzzleZ - D.trunnion[2]);
-  P.add('gunDark', new THREE.CylinderGeometry(.060, .060, .32, 40, 1, true)
-    .rotateX(Math.PI / 2), 0, 0, D.muzzleZ - .160 - D.trunnion[2]);
+  P.add('gunDark', inwardBoreWall(.060, .32, 40), 0, 0, D.muzzleZ - .160 - D.trunnion[2]);
   P.add('gunDark', cylZ(.061, .004, 32), 0, 0, D.muzzleZ - .322 - D.trunnion[2]);
   P.add('gun', box(.063, .061, .089), 0, .107, 6.81 - D.trunnion[2]);
   P.muzzleZ = D.muzzleZ - D.trunnion[2];
+  P.physicalMuzzleBore = { outerRadiusM: 0.086, innerRadiusM: .060, depthM: 0.32 };
 }
 
 export function buildChieftain5XPhotoDraft(P: TankBuilderPort): void {
