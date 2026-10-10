@@ -151,7 +151,7 @@ assert.ok(tankStrike.drawn >= 6, 'a tank round throws a spray of sparks');
 // the grains are gone in a frame or two, and a streak foreshortened to a few pixels keeps an even dash with no white head
 assert.equal(tankStrike.counts[6], 0, 'a tank strike\'s grains are gone within ~0.1 s');
 const fragSrc = tr.mesh.material.fragmentShader;
-assert.match(fragSrc, /float lenK = smoothstep\( 4\.0, 28\.0, vLen \);/, 'the taper and the head scale with the on-screen length');
+assert.match(fragSrc, /float lenK = vCore\.a < 0\.0 \? 0\.0 : smoothstep\( 4\.0, 28\.0, vLen \);/, 'the taper and the head scale with the on-screen length (a wire: none)');
 assert.match(fragSrc, /\* \( 0\.25 \+ 0\.75 \* lenK \);/, 'a short streak\'s head is no brighter than its trace');
 assert.match(fragSrc, /\( 0\.08 \+ 0\.37 \* vDark \) \* lenK/, 'the head whitens only in the dark');
 tr.reset();

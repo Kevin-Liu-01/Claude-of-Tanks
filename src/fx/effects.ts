@@ -1,6 +1,9 @@
 import { createAuxiliaryPresentation, type AuxiliaryVisualEntity } from './auxiliaryPresentation.ts';
 // atmospherics lane: rounds in flight (tracers); the old ribbon block below stays for the gunship and the composer
 import { createProjectileTracers } from './projectileTracers.ts';
+import { firedIsMissile, missileFlicker, missileLookFor, missileWobble, MISSILE_LOOKS, type MissileLook } from './missileLooks.ts';
+import { missileIgnition, missileLaunch, missileTrailPuff } from './missileRecipes.ts';
+import { puffRandom } from './atmosRecipes.ts';
 import {SMOKE_WIND_X, SMOKE_WIND_Z} from '../sim/smokeScreen.ts';
 import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
 /**
@@ -243,6 +246,14 @@ interface GuidedTrail {
   count: number;
   age: number;
   seen: boolean;
+  /** (fx 9a) the round's look, seed, launch point, the distance flown last frame and of the next trail puff */
+  look?: MissileLook;
+  seed?: number;
+  launch?: [number, number, number] | null;
+  lastD?: number;
+  nextSmokeD?: number;
+  puffIndex?: number;
+  fallbackD?: number;
 }
 
 interface TracerTrail {
@@ -296,6 +307,10 @@ interface LiveShell {
     guided?: boolean;
     tracer?: TracerType;
     reloadGroup?: string;
+    /** the round's name and launch sound (local rounds carry their full spec; a networked one only type/guidance) */
+    name?: string;
+    soundProfile?: string;
+    type?: string;
   };
 }
 
@@ -324,6 +339,9 @@ interface PredictedWeaponEvent {
   dir: WireVec3;
   caliberMm: number;
   isPlayer?: boolean;
+  /** the round's launch sound profile ('*-launch' for every guided round) and name, when the shot carries them */
+  weaponSound?: string | null;
+  shellName?: string;
 }
 
 interface ShellFiredEvent extends PredictedWeaponEvent {
@@ -1259,7 +1277,9 @@ function* createFxSteps(
   // during flight. Geometry faces local +Z, matching projectile velocity.
   const atgmBodyGeo = new THREE.CylinderGeometry(0.15, 0.18, 1.25, 8, 1, false);
   atgmBodyGeo.rotateX(Math.PI / 2);
-  const atgmBodyMat = new THREE.MeshBasicMaterial({ color: 0xffe15a });
+  // (fx 9a) the body in its own paint (instance colours per look: a missile is a dark olive or grey airframe, its motor
+  // the bright part), the flare its motor's hot core in the look's colour
+  const atgmBodyMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
   const atgmBodies = new THREE.InstancedMesh(atgmBodyGeo, atgmBodyMat, MAX_ATGM_BODIES);
   atgmBodies.count = 0;
   atgmBodies.frustumCulled = false;
@@ -1268,7 +1288,7 @@ function* createFxSteps(
   atgmBodies.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   const atgmFlareGeo = new THREE.SphereGeometry(0.25, 8, 6);
   const atgmFlareMat = new THREE.MeshBasicMaterial({
-    color: 0xffd21f,
+    color: 0xffffff,
     transparent: true,
     opacity: 0.92,
     depthWrite: false,
@@ -1280,6 +1300,11 @@ function* createFxSteps(
   atgmFlares.renderOrder = 26;
   atgmFlares.layers.set(LATE_FX_LAYER);
   atgmFlares.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  // (fx 9a) instance colours from the start: one program variant for every missile, warmed with the pools
+  {
+    const white = new THREE.Color(1, 1, 1);
+    for (let i = 0; i < MAX_ATGM_BODIES; i++) { atgmBodies.setColorAt(i, white); atgmFlares.setColorAt(i, white); }
+  }
   group.add(atgmBodies, atgmFlares);
 
   // Static tracers (screenshot composers) survive per-frame rebuilds:
@@ -4102,19 +4127,29 @@ function* createFxSteps(
   }
 
   let liveAtgmCount = 0;
+  const _bodyColor = new THREE.Color();
+  const _flareColor = new THREE.Color();
 
-  function writeGuidedBody(shellPos: THREE.Vector3, direction: THREE.Vector3): void {
+  /** One missile's body and its motor's hot core: the body centred 0.65 m behind the nose (scaled about its centre by
+   *  the look), the core 1.35 m back; an unlit motor (a soft launch's coast) shows no core. */
+  function writeGuidedBody(shellPos: THREE.Vector3, direction: THREE.Vector3, look: MissileLook = MISSILE_LOOKS.konkurs,
+    lit = true, flareK = 1): void {
     if (liveAtgmCount < MAX_ATGM_BODIES) {
       _atgmObject.position.copy(shellPos).addScaledVector(direction, -0.65);
       _atgmObject.quaternion.setFromUnitVectors(_Z, direction);
-      _atgmObject.scale.set(1, 1, 1);
+      _atgmObject.scale.set(look.bodyRad * 2, look.bodyRad * 2, look.bodyLen);
       _atgmObject.updateMatrix();
       atgmBodies.setMatrixAt(liveAtgmCount, _atgmObject.matrix);
+      // unlit paint a shade over its sRGB (the late pass's unlit body would read near-black in sun)
+      _bodyColor.setHex(look.bodyHex).multiplyScalar(1.6);
+      atgmBodies.setColorAt(liveAtgmCount, _bodyColor);
       _atgmFlareObject.position.copy(shellPos).addScaledVector(direction, -1.35);
       _atgmFlareObject.quaternion.identity();
-      _atgmFlareObject.scale.setScalar(1.15);
+      _atgmFlareObject.scale.setScalar(lit ? 0.32 + 0.12 * look.flarePx : 1e-4);
       _atgmFlareObject.updateMatrix();
       atgmFlares.setMatrixAt(liveAtgmCount, _atgmFlareObject.matrix);
+      _flareColor.setRGB(look.flareCore[0], look.flareCore[1], look.flareCore[2]).multiplyScalar(1.4 * flareK);
+      atgmFlares.setColorAt(liveAtgmCount, _flareColor);
       liveAtgmCount++;
     }
   }
@@ -4140,6 +4175,195 @@ function* createFxSteps(
     trail.aerialWidth = aerialWidth;
     appendGuidedTrailPoint(trail, shellPos.x, shellPos.y, shellPos.z);
     return writeGuidedTrail(trail, tracerIndex);
+  }
+
+  // ---- (fx 9a) missiles: each round its own look (missileLooks.ts) ----------------------------------------------------
+  /** launch points by shell id (shell:fired), for the command wires */
+  const missileLaunchAt = new Map<ShellId, [number, number, number]>();
+  /** the shooter's gun resolves a networked round that carries only its type and guidance */
+  const missileByShooter = new Map<string, MissileLook>();
+  const _wob = [0, 0];
+  const _mSide = new THREE.Vector3();
+  const _mUp = new THREE.Vector3();
+  const _mPos = new THREE.Vector3();
+  const _mHead = new THREE.Vector3();
+  const WIRE_RGB: readonly number[] = [0.82, 0.82, 0.78];
+  let liveMissiles = 0;
+
+  function idSeed(id: ShellId): number {
+    let h = 2166136261;
+    const str = String(id);
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h | 0;
+  }
+
+  function lookForShell(shell: LiveShell): MissileLook {
+    const spec = shell.spec;
+    if (spec?.name || spec?.soundProfile || shell.rocket) {
+      return missileLookFor(spec?.name, spec?.soundProfile, shell.rocket === true && spec?.guided !== true);
+    }
+    const key = `${String(shell.shooterId)}|${spec?.type ?? ''}`;
+    const known = missileByShooter.get(key);
+    if (known) return known;
+    const owner = decalEntityFor(shell.shooterId) as (FxEntity & {
+      spec?: { gun?: { shells?: readonly ({ name?: string; type?: string; guided?: boolean; soundProfile?: string } | null)[] } };
+    }) | null;
+    const shells = owner?.spec?.gun?.shells ?? [];
+    const round = shells.find((r) => r?.guided === true && (!spec?.type || r.type === spec.type)) ?? shells.find((r) => r?.guided === true);
+    const look = missileLookFor(round?.name, round?.soundProfile, false);
+    if (missileByShooter.size > 64) missileByShooter.clear();
+    missileByShooter.set(key, look);
+    return look;
+  }
+
+  function missileRecord(shell: LiveShell): GuidedTrail {
+    let trail = guidedTrails.get(shell.id);
+    if (!trail) {
+      trail = { points: new Float32Array(ATGM_TRAIL_POINTS * 3), count: 0, age: 0, seen: true };
+      guidedTrails.set(shell.id, trail);
+    }
+    if (!trail.look) {
+      trail.look = lookForShell(shell);
+      trail.seed = idSeed(shell.id);
+      const at = missileLaunchAt.get(shell.id);
+      trail.launch = at ? [at[0], at[1], at[2]]
+        : shell.prevPos ? [shell.prevPos.x, shell.prevPos.y, shell.prevPos.z] : [shell.pos.x, shell.pos.y, shell.pos.z];
+      trail.lastD = -1;
+      trail.nextSmokeD = trail.look.igniteM;
+      trail.puffIndex = 0;
+      // a round first seen mid-flight with no distance record counts as lit
+      trail.fallbackD = trail.look.igniteM;
+    }
+    return trail;
+  }
+
+  /**
+   * A missile or rocket in flight (not the gunship's): its body (wobbling with its steering), its motor's flare and hot
+   * plume once lit, the pop where a coasting motor lights, its smoke trail on the media layer (puffs born where it
+   * passed, when it passed) and the command wires paying out behind a wire-guided round.
+   */
+  function writeMissile(shell: LiveShell, tracerIndex: number): number {
+    const trail = missileRecord(shell);
+    trail.age = 0;
+    trail.seen = true;
+    const look = trail.look as MissileLook;
+    const seed = trail.seed as number;
+    const seedU = ((seed >>> 0) % 10007) / 10007;
+    const speed = Math.max(1, shell.vel.length());
+    const dir = _v1; // the caller normalized the velocity into _v1
+    let d: number;
+    if (Number.isFinite(shell.distM)) d = shell.distM as number;
+    else {
+      if (shell.prevPos && (trail.lastD as number) >= 0) trail.fallbackD = (trail.fallbackD as number) + shell.pos.distanceTo(shell.prevPos);
+      d = trail.fallbackD as number;
+    }
+    const t = Number.isFinite(shell.ageS) ? (shell.ageS as number) : d / speed;
+    // the steering corrections: a small lateral offset off the authoritative line, the same at every frame rate (a round
+    // that carries neither its flight time nor its distance flies its line: its time is not known)
+    const timed = Number.isFinite(shell.ageS) || Number.isFinite(shell.distM);
+    _mSide.crossVectors(dir, _UP);
+    if (_mSide.lengthSq() < 1e-6) _mSide.set(1, 0, 0); else _mSide.normalize();
+    _mUp.crossVectors(_mSide, dir).normalize();
+    missileWobble(look, timed ? t : 0, seedU, _wob);
+    _mPos.copy(shell.pos).addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]);
+    const lit = d >= look.igniteM;
+    const flick = missileFlicker(look, t, seedU);
+    writeGuidedBody(_mPos, dir, look, lit, flick);
+    // the motor at the body's tail
+    _mHead.copy(_mPos).addScaledVector(dir, -(0.65 + 0.625 * look.bodyLen));
+    // the motor lighting clear of the launcher (crossed since the last frame)
+    const lastD = trail.lastD as number;
+    if (blast && look.igniteM > 0.5 && lit && lastD >= 0 && lastD < look.igniteM) {
+      const back = d - look.igniteM;
+      missileIgnition(blast, puffRandom(seed ^ 0x2c1b3c6d), look,
+        _mPos.x - dir.x * back, _mPos.y - dir.y * back, _mPos.z - dir.z * back, dir.x, dir.y, dir.z, -back / speed);
+    }
+    if (lit) {
+      // its plume streaming back from the motor (no longer than it has burned)
+      const plume = Math.max(0.15, Math.min(look.plumeM, d - look.igniteM + 0.3));
+      const dark = tracers.darkLevel();
+      const fk = look.flareK * flick;
+      tracers.glow(_mHead.x, _mHead.y, _mHead.z,
+        _mHead.x - dir.x * plume, _mHead.y - dir.y * plume, _mHead.z - dir.z * plume,
+        look.flarePx * (1 + 0.25 * (1 - dark)), look.haloPx * (0.55 + 0.45 * dark), look.flareCore, fk,
+        look.flareHalo, fk * (0.05 + 0.12 * dark), 1.4);
+      renderedAtgmTrailSegments++;
+      if (blast && look.smoke) emitMissileTrail(trail, look, shell, d, t, speed, seed, seedU);
+    }
+    if (look.wires > 0 && trail.launch) tracerIndex = drawMissileWires(trail, look, t, seedU, tracerIndex);
+    trail.lastD = d;
+    return tracerIndex;
+  }
+
+  /** A missile's or rocket's launch: a gun-launched round keeps the gun's own muzzle blast, a rack's rockets their
+   *  ignition flash; every one adds its look's launch on the media layer and a short light. */
+  function missileLaunchFx(e: PredictedWeaponEvent & { shellName?: string }, seed: number): void {
+    const look = missileLookFor(e.shellName, e.weaponSound, e.rocket === true);
+    _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
+    _v4.set(e.dir[0], e.dir[1], e.dir[2]);
+    if (look.launch === 'gun') fx.muzzleFlash(_v3, _v4, e.caliberMm, false);
+    else if (e.rocket) fx.muzzleFlash(_v3, _v4, e.caliberMm, true);
+    else flashLight(lightStates[0], _v3, MUZZLE_LIGHT_PEAK * 0.35 * look.launchK, 0);
+    if (blast) {
+      missileLaunch(blast, puffRandom(seed), look, _v3.x, _v3.y, _v3.z, _v4.x, _v4.y, _v4.z, groundY(_v3.x, _v3.z), 0);
+    }
+  }
+
+  /** The trail's puffs since the last frame, one per spacing of flight (wider when many missiles fly at once). */
+  function emitMissileTrail(trail: GuidedTrail, look: MissileLook, shell: LiveShell, d: number, t: number, speed: number,
+    seed: number, seedU: number): void {
+    const sm = look.smoke;
+    if (!sm || !blast) return;
+    const spacing = sm.spacingM * Math.max(1, liveMissiles / 4);
+    let next = Math.max(trail.nextSmokeD as number, look.igniteM, d - 60);
+    const dir = _v1;
+    const seg = shell.prevPos ? shell.pos.distanceTo(shell.prevPos) : 0;
+    let n = 0;
+    while (next <= d && n < 24) {
+      const back = d - next;
+      // along this frame's path (its curve) where it reaches, straight back along the line beyond
+      if (shell.prevPos && seg > 1e-3 && back <= seg) _v6.copy(shell.pos).lerp(shell.prevPos, back / seg);
+      else _v6.copy(shell.pos).addScaledVector(dir, -back);
+      missileWobble(look, Number.isFinite(shell.ageS) || Number.isFinite(shell.distM) ? Math.max(0, t - back / speed) : 0, seedU, _wob);
+      _v6.addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]);
+      const motorBack = 0.65 + 0.625 * look.bodyLen;
+      _v6.addScaledVector(dir, -motorBack);
+      const i = trail.puffIndex as number;
+      const beat = Math.sin(i * 1.7 + seedU * 6.2832);
+      missileTrailPuff(blast, puffRandom(seed + Math.imul(i + 1, 0x9e3779b1)), look, _v6.x, _v6.y, _v6.z,
+        dir.x, dir.y, dir.z, beat, -back / speed);
+      trail.puffIndex = i + 1;
+      next += spacing;
+      n++;
+    }
+    trail.nextSmokeD = next;
+  }
+
+  /** A wire-guided round's command wires: faint lines from the launcher to its tail, sagging a little between, glinting
+   *  where the light catches a stretch of them (untapered capsules). */
+  function drawMissileWires(trail: GuidedTrail, look: MissileLook, t: number, seedU: number, tracerIndex: number): number {
+    const L0 = trail.launch as [number, number, number];
+    const dark = tracers.darkLevel();
+    const len = Math.hypot(_mHead.x - L0[0], _mHead.y - L0[1], _mHead.z - L0[2]);
+    if (len < 1) return tracerIndex;
+    const SEGS = 6;
+    const sag = Math.min(2.5, 0.0025 * len);
+    for (let w = 0; w < look.wires; w++) {
+      const off = look.wires > 1 ? (w === 0 ? -0.06 : 0.06) : 0;
+      let px = L0[0] + _mSide.x * off, py = L0[1], pz = L0[2] + _mSide.z * off;
+      for (let k = 1; k <= SEGS; k++) {
+        const f = k / SEGS;
+        const x = L0[0] + (_mHead.x - L0[0]) * f + _mSide.x * off;
+        const y = L0[1] + (_mHead.y - L0[1]) * f - sag * 4 * f * (1 - f);
+        const z = L0[2] + (_mHead.z - L0[2]) * f + _mSide.z * off;
+        const g = Math.sin((k * 12.9898 + w * 4.1 + seedU * 78.233) * 43758.5453 + t * 2.3);
+        const glint = Math.max(0, g) ** 6;
+        const k0 = (0.1 + 0.55 * glint) * (1 - 0.7 * dark);
+        tracers.glow(x, y, z, px, py, pz, 0.32, 0, WIRE_RGB, k0, WIRE_RGB, 0, -1);
+        px = x; py = y; pz = z;
+      }
+    }
+    return tracerIndex;
   }
 
   function writeShellBolt(
@@ -4220,6 +4444,11 @@ function* createFxSteps(
     liveAtgmCount = 0;
     renderedAtgmTrailSegments = 0;
     for (const trail of guidedTrails.values()) trail.seen = false;
+    liveMissiles = 0;
+    for (let i = 0; i < shells.length; i++) {
+      const sh = shells[i];
+      if (!sh.dead && (sh.spec?.guided || sh.rocket === true)) liveMissiles++;
+    }
     for (let index = 0; index < shells.length && tracerCount < MAX_TRACERS; index++) {
       const shell = shells[index];
       if (shell.dead) continue;
@@ -4247,6 +4476,8 @@ function* createFxSteps(
       );
       _v1.copy(shell.vel).normalize();
       _v2.copy(shell.pos).addScaledVector(_v1, -length);
+      // (fx 9a) a missile or rocket draws its own look; the gunship's keep their gimbal-readable ribbon
+      if (guided && !aerial) { tracerCount = writeMissile(shell, tracerCount); continue; }
       if (guided) {
         tracerCount = writeGuidedShell(shell, tracerCount, aerial ? aerialTracerWidth(aerial, shell.pos.distanceTo(camera.position), camera.projectionMatrix.elements[5]) : 0);
         if (tracerCount >= MAX_TRACERS) continue;
@@ -4265,6 +4496,8 @@ function* createFxSteps(
     if (liveAtgmCount > 0 || atgmBodies.userData.lastCount > 0) {
       atgmBodies.instanceMatrix.needsUpdate = true;
       atgmFlares.instanceMatrix.needsUpdate = true;
+      if (atgmBodies.instanceColor) atgmBodies.instanceColor.needsUpdate = true;
+      if (atgmFlares.instanceColor) atgmFlares.instanceColor.needsUpdate = true;
     }
     atgmBodies.userData.lastCount = liveAtgmCount;
   }
@@ -4278,6 +4511,8 @@ function* createFxSteps(
         continue;
       }
       const fade = 1 - trail.age / ATGM_TRAIL_S;
+      // (fx 9a) a missile's own look leaves its smoke on the media layer, not a ribbon
+      if (trail.look) continue;
       tracerCount = writeGuidedTrail(trail, tracerCount, fade * fade);
     }
     return tracerCount;
@@ -5359,7 +5594,12 @@ function* createFxSteps(
       onFxEvent(bus, 'shell:fired', (e) => {
         _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
         _v4.set(e.dir[0], e.dir[1], e.dir[2]);
-        if (!e.feedbackPredicted) fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
+        // (fx 9a) a missile's or rocket's launch is its own (missileRecipes.ts); its launch point anchors the wires
+        if (firedIsMissile(e.weaponSound, e.rocket)) {
+          if (missileLaunchAt.size > 96) missileLaunchAt.clear();
+          missileLaunchAt.set(e.shellId, [e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]]);
+          if (!e.feedbackPredicted) missileLaunchFx(e, idSeed(e.shellId));
+        } else if (!e.feedbackPredicted) fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
         if (e.shellType === 'APFSDS') spawnSabotPetals(_v3, _v4);
         // world-dressing r1: remember the shell's type so its world impact
         // can size the destructible-prop blast (HE clears a radius), and
@@ -5376,7 +5616,8 @@ function* createFxSteps(
         _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
         _v4.set(e.dir[0], e.dir[1], e.dir[2]);
         // Presentation only; sabot petals and sweep/prop ownership await authority.
-        fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
+        if (firedIsMissile(e.weaponSound, e.rocket)) missileLaunchFx(e, idSeed(`${e.muzzlePos.join(',')}`));
+        else fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
       });
       onFxEvent(bus, 'shell:hit', (e) => {
         // atmospherics lane: a round that ends on the hull strikes there (a ricochet flies on, its tracer tumbling)
@@ -6273,6 +6514,8 @@ function* createFxSteps(
       staticTracers.length = 0;
       trails.clear();
       guidedTrails.clear();
+      missileLaunchAt.clear();
+      missileByShooter.clear();
       tracerGeo.instanceCount = 0;
       tracers.reset(); // atmospherics lane
       liveAtgmCount = 0;

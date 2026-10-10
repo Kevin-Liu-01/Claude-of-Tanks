@@ -287,18 +287,20 @@ void main() {
   // length ON SCREEN: a long streak tapers hard from a wider head (the eye reads the point and its fading record); a
   // streak foreshortened to a few pixels (a dart flying away downrange) stays an even warm dash, its head no brighter
   // than its trace — never a ball. The head whitens only in the dark (by day the compound's own colour reads)
-  float lenK = smoothstep( 4.0, 28.0, vLen );
+  // (fx 9a) a negative bead gain marks an untapered line: a missile's command wire
+  float lenK = vCore.a < 0.0 ? 0.0 : smoothstep( 4.0, 28.0, vLen );
   float tailK = mix( 1.0, 0.06 + 0.94 * t * t, lenK );
   float hw = vHalfW * mix( 1.0, 0.3 + 0.9 * t, lenK );
   float core = 1.0 - smoothstep( max( hw - 0.7, 0.0 ), hw + 0.7, d );
   // the round itself: the brightest point, at the head
   float dh = length( vec2( vLocal.x - vLen, vLocal.y ) );
   float bead = exp( -dh * dh / max( vHalfW * vHalfW * ( 2.0 + 2.0 * lenK ), 0.6 ) ) * ( 0.25 + 0.75 * lenK );
+  float beadK = max( vCore.a, 0.0 );
   float hr = vHaloR * mix( 1.0, 0.55 + 0.45 * t, lenK );
   float halo = exp( -d * d / max( hr * hr, 0.25 ) ) * ( 0.2 + 0.8 * tailK );
   float peak = max( vCore.r, max( vCore.g, vCore.b ) );
   vec3 hot = mix( vCore.rgb, vec3( peak ), ( 0.08 + 0.37 * vDark ) * lenK );
-  vec3 col = vCore.rgb * core * tailK + hot * bead * vCore.a + vHalo * halo;
+  vec3 col = vCore.rgb * core * tailK + hot * bead * beadK + vHalo * halo;
   #ifdef USE_FOG
     #ifdef FOG_EXP2
       float fogFactor = 1.0 - exp( -fogDensity * fogDensity * vFogDepth * vFogDepth );
@@ -321,6 +323,13 @@ interface ProjectileTracers {
   write(shell: TracerShell): void;
   /** close the frame: rounds not seen draw their last streak once more, then go */
   end(): void;
+  /** (fx 9a) a raw capsule this frame (call between begin and end): a missile's motor and its plume (head the motor, tail
+   *  the plume's end), core and halo radiance as given by day and night; a negative bead draws an untapered line (a
+   *  command wire) */
+  glow(hx: number, hy: number, hz: number, tx: number, ty: number, tz: number, halfWidthPx: number, haloPx: number,
+    core: readonly number[], coreK: number, halo: readonly number[], haloK: number, bead: number): void;
+  /** the scene's dark level this frame (0 day .. 1 night), for callers that scale their own capsules */
+  darkLevel(): number;
   /** a round struck at `pos` (its terrain, prop or armour hit): its last dash reaches into the strike and, when its
    *  tracer still burns, the strike throws sparks (none off water) */
   strike(id: ShellKey | undefined, pos: readonly number[], water?: boolean): void;
@@ -613,6 +622,18 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       geo.instanceCount = 0;
       mesh.visible = false;
     },
+    glow(hx, hy, hz, tx, ty, tz, halfWidthPx, haloPx, coreRgb, coreK, haloRgb, haloK, bead) {
+      if (n >= capacity) return;
+      const i = n * 4;
+      head.array[i] = hx; head.array[i + 1] = hy; head.array[i + 2] = hz; head.array[i + 3] = halfWidthPx;
+      tail.array[i] = tx; tail.array[i + 1] = ty; tail.array[i + 2] = tz; tail.array[i + 3] = haloPx;
+      core.array[i] = coreRgb[0]! * coreK; core.array[i + 1] = coreRgb[1]! * coreK; core.array[i + 2] = coreRgb[2]! * coreK;
+      core.array[i + 3] = bead;
+      halo.array[i] = haloRgb[0]! * haloK; halo.array[i + 1] = haloRgb[1]! * haloK; halo.array[i + 2] = haloRgb[2]! * haloK;
+      halo.array[i + 3] = dark;
+      n++;
+    },
+    darkLevel: () => dark,
     active: () => geo.instanceCount > 0 || sparksLive > 0,
     stats: () => ({ drawn: geo.instanceCount, tracked: records.size, dark, sparks: sparksLive }),
   };
