@@ -1,7 +1,6 @@
 // Wind-scoured polar logistics station, not an alpine-village reskin:
 // staggered snow berms screen a wide service grid and a frozen melt pan.
 import winter from './winter.ts';
-import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 import { roundRoadBends } from './roadBends.ts';
 export default {
@@ -81,6 +80,11 @@ export default {
     palettes: winter.vegetation.palettes,
   },
   props: {
+    // the arctic kit (maps/regional/arctic.ts; map-revival lane 2's rounds 1-5, gauntlet waves 130 and 224, brought in by
+    // the map-content lane, 2026-10-09): DYE-M's own buildings — the module trains on their piles under the radome, the
+    // tropo billboards, the radar on its lattice tower, the steel garages, the Jamesway huts, the plywood sheds, a
+    // stripped module — on the plan's seats; the kit paints its own panels (the map's tones only tone the old halls)
+    architecture: 'arctic',
     sourcedPalette: 'winter',
     plan: ['depot', 'warehouse', 'watertower', 'foundryoffice', 'containerRow', 'depot', 'warehouse', 'ruin', 'firestation', 'depot', 'containerRow', 'woodshed', 'warehouse', 'ruin', 'depot', 'foundryoffice'],
     destructibleBuildings: ['quonsethut', 'relaystation', 'motorpool', 'servicegarage'],
@@ -93,7 +97,6 @@ export default {
       { id: 'eastern-weather-relay', role: 'scout', x: 320, z: -10, yawDeg: -90, structure: 'relaystation', outcrop: { count: 4, radius: 8 } },
       { id: 'north-fuel-shelter', role: 'support', x: -70, z: 270, yawDeg: 180, structure: 'quonsethut', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true },
     ],
-    tones: makeRealisticCityBuildingTones({ value: 1.04, saturation: 1.02, soot: 0.01, roofValue: 0.94 }),
     industrialCladding: 'steel', // round 75: a polar station's halls are corrugated sheet, not brick
     yardDressing: 60, // round 75: a snowed-in station keeps its yards sparse
     snowCap: true, extraKits: ['winterLake'], wallStyle: 'fieldstone', wallStoneChance: 0.78,

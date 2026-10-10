@@ -408,7 +408,8 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
 
 // ------------------------------------------------------------------------------------------------------------ jamesway
 
-const CANVAS_OLIVE = rgb(0x6a664a), PLYWOOD = rgb(0x8a7a5c);
+// (the first capture: the canvas read as a golden yellow under the snow's light) the olive drab of the huts' canvas, dark
+const CANVAS_OLIVE = rgb(0x45473a), PLYWOOD = rgb(0x7d6e55);
 
 /**
  * A Jamesway hut (the polar stations' prefabricated shelter from the 1950s): canvas over timber arches on a raised
@@ -420,7 +421,7 @@ export const jamesway: LandmarkBuilder = (ctx) => {
   const L = num(ctx, 'length', 6), W = num(ctx, 'width', 3), r = W / 2, floor = 0.45, z0 = -L / 2;
   footing(sink, ctx, 0, 0, r + 0.1, L / 2 + 0.1, 0.05);
   sink.span('structureWood', -r - 0.05, 0.05, z0, r + 0.05, floor, -z0, { colour: shade(PLYWOOD, 0.75) });
-  const canvas = lerp(CANVAS_OLIVE, PANEL_CREAM, ctx.variant() * 0.5);
+  const canvas = lerp(CANVAS_OLIVE, rgb(0x5d5a48), ctx.variant());
   sink.cylinder('structureMetal', [0, floor, z0], 'z', L, r, 12, { colour: canvas }, r, false, -Math.PI / 2, Math.PI);
   // the arches showing as bands through the canvas (fine) and the crown's snow
   for (let z = z0 + 1.22; z < -z0 - 0.3; z += 1.22) sink.cylinder('structureMetal', [0, floor, z - 0.04], 'z', 0.08, r + 0.02, 12, { colour: shade(canvas, 0.78), decor: true, fine: true }, r + 0.02, false, -Math.PI / 2, Math.PI);

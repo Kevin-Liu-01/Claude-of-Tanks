@@ -26,6 +26,7 @@ import { MEKONG_STYLE } from './mekong.ts';
 import { BENGAL_STYLE } from './bengal.ts';
 import { FRANCONIAN_STYLE } from './franconian.ts';
 import { KSAR_STYLE, SIWA_STYLE } from './ksar.ts';
+import { ARCTIC_STYLE } from './arctic.ts';
 import { WADIRUM_STYLE } from './wadirum.ts';
 import { RUHR_STYLE } from './ruhr.ts';
 import { KOHIMA_STYLE } from './kohima.ts';
@@ -56,6 +57,7 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   bengal: BENGAL_STYLE,
   franconian: FRANCONIAN_STYLE,
   ksar: KSAR_STYLE,
+  arctic: ARCTIC_STYLE,
   siwa: SIWA_STYLE,
   wadirum: WADIRUM_STYLE,
   ruhr: RUHR_STYLE,

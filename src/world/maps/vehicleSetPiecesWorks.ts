@@ -89,29 +89,32 @@ export function bv206(mesh: VehicleMesh, coarse: boolean, livery: 'orange' | 'ol
 /** The Tucker Sno-Cat 1544: four pontoon tracks on their steering bogies, the frame, the boxy cab with its wide windows,
  * the cargo bed behind it; the lamps and the roof rack. */
 export function snocat(mesh: VehicleMesh, coarse: boolean): void {
-  const pw = 0.66;
-  for (const sx of [1, -1]) for (const zc of [1.6, -1.6]) {
+  // (the map-content lane's first capture: the pontoons read as four wheels on stalks under a floating box) each pontoon
+  // long and low, the track wrapped round it under an orange pontoon body, the frame and the cab sitting down on them
+  const pw = 0.62;
+  for (const sx of [1, -1]) for (const zc of [1.45, -1.45]) {
     const x = sx * 0.92;
-    belt(mesh, x, pw, zc - 0.7, 0.32, 0.36, zc + 0.7, 0.42, 0.48, coarse, BLACK);
-    mesh.box(x, 0.62, zc, 0.22, 0.24, 1.3, ORANGE, 0.02);
+    belt(mesh, x, pw, zc - 0.62, 0.36, 0.38, zc + 0.62, 0.38, 0.40, coarse, BLACK);
+    mesh.box(x, 0.62, zc, pw - 0.08, 0.34, 1.3, ORANGE, coarse ? 0 : 0.06);
+    mesh.box(x * 0.55, 0.86, zc, 0.6, 0.16, 0.3, BLACK, 0.02);
   }
-  mesh.box(0, 1.05, 0, 1.3, 0.35, 4.8, BLACK, 0.02);
-  // the cab forward, its windows; the bed behind
-  mesh.box(0, 1.85, 0.9, 2.3, 1.35, 2.4, ORANGE, coarse ? 0 : 0.07);
-  mesh.box(0, 2.56, 0.9, 2.2, 0.08, 2.3, WHITE, 0.02);
-  mesh.box(0, 1.5, -1.5, 2.3, 0.6, 2.2, ORANGE, coarse ? 0 : 0.05);
+  mesh.box(0, 0.98, 0, 1.2, 0.26, 4.4, BLACK, 0.02);
+  // the cab forward, its windows; the bed behind with its low sides
+  mesh.box(0, 1.72, 0.85, 2.3, 1.22, 2.3, ORANGE, coarse ? 0 : 0.07);
+  mesh.box(0, 2.36, 0.85, 2.2, 0.06, 2.2, WHITE, 0.02);
+  mesh.box(0, 1.22, -1.45, 2.3, 0.22, 2.2, ORANGE, 0.03);
+  for (const sx of [1, -1]) mesh.box(sx * 1.12, 1.48, -1.45, 0.06, 0.32, 2.2, ORANGE, 0.01);
+  mesh.box(0, 1.48, -2.52, 2.3, 0.32, 0.06, ORANGE, 0.01);
   mesh.dressing(() => {
-    mesh.box(0, 2.15, 2.11, 2.0, 0.6, 0.02, GLASS, 0);
-    for (const sx of [1, -1]) mesh.box(sx * 1.155, 2.15, 0.9, 0.02, 0.55, 1.9, GLASS, 0);
-    for (const sx of [1, -1]) mesh.box(sx * 0.8, 1.6, 2.11, 0.2, 0.18, 0.03, LAMP, 0);
-    mesh.box(0, 2.66, 0.9, 0.14, 0.12, 0.14, LAMP_AMBER, 0);
-    for (let k = 0; k < 4; k++) mesh.box(0, 1.85, -0.6 - k * 0.6, 2.2, 0.06, 0.06, BLACK, 0);
-    for (const sx of [1, -1]) mesh.box(sx * 1.1, 1.85, -1.5, 0.06, 0.06, 2.1, BLACK, 0);
+    mesh.box(0, 1.98, 2.01, 2.0, 0.56, 0.02, GLASS, 0);
+    for (const sx of [1, -1]) mesh.box(sx * 1.155, 1.98, 0.85, 0.02, 0.5, 1.8, GLASS, 0);
+    for (const sx of [1, -1]) mesh.box(sx * 0.8, 1.45, 2.01, 0.2, 0.16, 0.03, LAMP, 0);
+    mesh.box(0, 2.45, 0.85, 0.14, 0.12, 0.14, LAMP_AMBER, 0);
   });
-  // fuel drums lashed in the bed
-  for (const sx of [1, -1]) {
-    mesh.push().translate(sx * 0.5, 2.1, -1.5).rotateZ(Math.PI / 2);
-    mesh.lathe([[0.0001, -0.42], [0.29, -0.42], [0.29, 0.42], [0.0001, 0.42]], coarse ? 8 : 12, () => RUSTY);
+  // fuel drums standing in the bed
+  for (const sx of [1, -1]) for (const z of [-1.0, -1.9]) {
+    mesh.push().translate(sx * 0.5, 1.33, z).rotateZ(Math.PI / 2);
+    mesh.lathe([[0.0001, 0.0], [0.29, 0.0], [0.29, 0.86], [0.0001, 0.86]], coarse ? 8 : 12, () => RUSTY);
     mesh.pop();
   }
 }
