@@ -5,7 +5,7 @@
 //
 // The frame: the front (+z) is the arched façade and the steps; y = 0 the lowest ground under the plinth.
 import { PartSink, rgb, shade, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
-import { archedBody, revolve, type ArchHole, type FaceName } from './kit.ts';
+import { archedBody, bar, revolve, type ArchHole, type FaceName } from './kit.ts';
 import type { LandmarkBuilder } from './types.ts';
 
 const TERRACOTTA = rgb(0xa45a3a), PLAQUE: readonly ReturnType<typeof rgb>[] = [0xa65c3c, 0x9a5236, 0xb06a46, 0x8e4a30].map(rgb);
@@ -30,8 +30,14 @@ function charChala(sink: PartSink, bucket: RegionalBucket, h0: number, y0: numbe
     // dies to nothing at the hips, so the four faces meet in crisp curved ridges — a hut's thatch, not a dome
     const b = bulge * Math.sin(Math.PI * t) * (1 - u * u);
     z += b; y += b * 0.2;
+    // (wave 203: "the temple should read aat-chala curved hips"): the hips themselves bow out — every point pushed out
+    // from the axis by the same convex swell, so a hip's two faces still meet on it and the ridge runs in a curve from
+    // the drooping eave corner to the top, as a bamboo-framed thatch's does
+    const r = Math.hypot(x, z) || 1, hb = bulge * 0.9 * Math.sin(Math.PI * t);
+    const xr = x + x / r * hb;
+    z += z / r * hb;
     const a = k * Math.PI / 2, c = Math.cos(a), s = Math.sin(a);
-    return [x * c + z * s, y, -x * s + z * c];
+    return [xr * c + z * s, y, -xr * s + z * c];
   };
   for (let k = 0; k < 4; k++) {
     for (let i = 0; i < NU; i++) for (let j = 0; j < NT; j++) {
@@ -48,6 +54,11 @@ function charChala(sink: PartSink, bucket: RegionalBucket, h0: number, y0: numbe
       // the soffit (seen from below) inward to the wall head
       const inA: Vec3 = [a[0] * 0.86, a[1] - 0.22, a[2] * 0.86], inB: Vec3 = [b[0] * 0.86, b[1] - 0.22, b[2] * 0.86];
       sink.quad(bucket, inA, inB, b2, a2, { decor: true });
+    }
+    // the hip's moulded rib, riding its curve from the eave corner up (a terracotta roll a hand proud of the slopes)
+    for (let j = 0; j < NT; j++) {
+      const p0 = point(k, 1, j / NT), p1 = point(k, 1, (j + 1) / NT);
+      bar(sink, bucket, [p0[0], p0[1] + 0.06, p0[2]], [p1[0], p1[1] + 0.06, p1[2]], 0.2, { decor: true });
     }
   }
 }

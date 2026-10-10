@@ -5,8 +5,9 @@
 //
 // A bridge's frame: the span runs along z from -span/2 to +span/2 (its abutment faces), x across it, y up from the
 // lowest ground under it. Where the composer gives the ground (types.ts ground) the piers stand on the bed and the deck
-// meets each bank (its ends 5 cm over them, graded between), so a hull drives on from the approach; on flat ground it
-// stands at the authored `deck` height. A drivable bridge authors its movement record (types.ts movement): the deck in
+// meets each bank (its ends 5 cm over them, graded between), so a hull drives on from the approach (the lift bridge's
+// long form, the one a road crosses, opens its record at each end with an entry plate under the bank: ENTRY_M's note);
+// on flat ground it stands at the authored `deck` height. A drivable bridge authors its movement record (types.ts movement): the deck in
 // segments a metre deep under its surface — a standable floor (collision.ts HULL_STANDABLE_HEIGHT_M) a hull mounts and
 // drives along — the parapets or the trusses that keep a hull on it, and the piers and abutments from the bed to the
 // deck's underside, so a hull low enough passes under an arch. The shells' bands stay derived from the geometry: a shell
@@ -335,6 +336,20 @@ const LIFT_PIER_M = 2.6;
 const LIFT_ABUTMENT_M = 3.2;
 /** The fixed approach spans' pile bents stand at most this far apart. */
 const LIFT_BENT_PITCH_M = 3.4;
+/**
+ * The long form's entry plates (the landmarks lane, 2026-10-07; Polders' crossing sweep). A hull meets a deck record nose
+ * first, and a nose row alone over a record counts the step-up against itself (collision.ts hullUndersideOver): a
+ * flat-nosed hull pitched down a concave approach carries its nose plane under the ground, so a roadway end 3-5 cm over
+ * the bank stopped the Sheridan dead at 12.3 m/s (its nose plane at 2.86, the boards at 2.95). Where the roadway meets
+ * the ground (the abutment's back, or a ramp's foot) its record opens with a plate ENTRY_M long whose top lies
+ * ENTRY_SINK_M under the ground there: the nose rides onto it over the bank, and before the nose reaches the roadway's
+ * next part the hull's track rows stand over the record (the first is half a half-length behind the nose: 2.5 m serves
+ * a 10 m hull), so the step onto the boards is the tracks' (collision.ts HULL_STEP_UP_M). The plate is collision only,
+ * under the bank the hull rides; the boards drawn over it are unchanged.
+ */
+export const ENTRY_M = 2.5, ENTRY_SINK_M = 0.2;
+/** Inside the plate a ramp climbs from the bank it meets at most this much a part (under HULL_STEP_UP_M, 0.55). */
+export const ENTRY_CLIMB_M = 0.45;
 
 /** The leaves: girders, cross-beams and the deck boards, each leaf from its pier face (±span/2) to the meeting line,
  * the white edge beams and the railing. */
@@ -584,12 +599,60 @@ function liftBridgeLong(ctx: LandmarkBuildContext, sink: PartSink, span: number,
       }
     };
     // the lift span (its hump in 3 m parts), the level roadway over the piers, the fixed spans and the abutments (one part
-    // each side), the ramps in 1 m parts (a 1:7 ramp steps 0.14 m: collision.ts HULL_STEP_UP_M is 0.55)
+    // each side), the ramps in 1 m parts (a 1:7 ramp steps 0.14 m: collision.ts HULL_STEP_UP_M is 0.55), and where the
+    // roadway meets the ground its entry plate (ENTRY_M's note) in place of the roadway's last ENTRY_M
     run(-s, s, 3, 1.05, 3);
     for (const zs of [-1, 1]) {
-      const R = ramp.get(zs) ?? 0, a = zs * s, b = zs * (E + AB), c = zs * (E + AB + R);
-      run(Math.min(a, b), Math.max(a, b), Infinity, 1.05, Infinity);
-      if (R > 0) run(Math.min(b, c), Math.max(b, c), 1, 0.6, 2);
+      // (distances from the middle along this half: the lift span's end s, the abutment's back L1, the ramp's foot L2, the
+      // plate's inner end Le)
+      const R = ramp.get(zs) ?? 0, L1 = E + AB, L2 = E + AB + R, Le = Math.max(s, L2 - ENTRY_M);
+      // the entry plate from Le to L2, under the lowest ground over it; a hull on it rides the bank over it
+      let gPlate = Infinity, gIn = Infinity, hiPlate = -Infinity;
+      for (const d of [Le, (Le + L2) / 2, L2]) {
+        hiPlate = Math.max(hiPlate, top(zs * d));
+        for (const x of [-W / 2, 0, W / 2]) gPlate = Math.min(gPlate, groundAt(ctx, x, zs * d));
+      }
+      for (const x of [-W / 2, 0, W / 2]) gIn = Math.min(gIn, groundAt(ctx, x, zs * Le));
+      const yPlate = Math.min(gPlate, hiPlate) - ENTRY_SINK_M;
+      // the climb from the bank at the plate's inner end, outside in: the ramp's 1 m parts from the plate to the abutment's
+      // back, each its highest surface but at most ENTRY_CLIMB_M over the one before it (the first over that bank), and
+      // where they cannot reach the roadway so (a bank falling away under a short ramp) the level roadway's outer metres
+      // as further steps. Over a level bank (Polders') the ramp and the roadway are inside the first step and stand whole.
+      let prev = Math.max(yPlate, gIn);
+      const rampParts: [number, number, number, number, number][] = []; // [outer, inner, top, surface lo, surface hi]
+      if (Le > L1) {
+        const n = Math.max(1, Math.ceil(Le - L1 - 1e-6));
+        for (let i = 0; i < n; i++) {
+          const dOut = Le - (Le - L1) * i / n, dIn = Le - (Le - L1) * (i + 1) / n;
+          const hi = Math.max(top(zs * dOut), top(zs * (dOut + dIn) / 2), top(zs * dIn)), lo = Math.min(top(zs * dOut), top(zs * dIn));
+          prev = Math.min(hi, prev + ENTRY_CLIMB_M);
+          rampParts.push([dOut, dIn, prev, lo, hi]);
+        }
+      }
+      let level = Math.min(L1, Le);
+      const levelSteps: [number, number, number][] = []; // [outer, inner, top]
+      while (yD - prev > ENTRY_CLIMB_M && level - 1 > s) {
+        prev += ENTRY_CLIMB_M;
+        levelSteps.push([level, level - 1, prev]);
+        level -= 1;
+      }
+      // the level roadway over the pier, the fixed span and the abutment, to its steps, the ramp or the plate
+      if (level > s) run(Math.min(zs * s, zs * level), Math.max(zs * s, zs * level), Infinity, 1.05, Infinity);
+      for (const [dOut, dIn, y] of levelSteps) {
+        parts.push({ kind: 'obb', cx: 0, cz: zs * (dOut + dIn) / 2, hw: W / 2, hl: (dOut - dIn) / 2, yaw: 0, y0: y - DECK_PART_M, y1: y });
+        for (const sx of [-1, 1]) parts.push({ kind: 'obb', cx: sx * (W / 2 - 0.1), cz: zs * (dOut + dIn) / 2, hw: 0.1, hl: (dOut - dIn) / 2, yaw: 0, y0: y, y1: yD + 1.05 });
+      }
+      for (const [dOut, dIn, y, lo, hi] of rampParts) {
+        parts.push({ kind: 'obb', cx: 0, cz: zs * (dOut + dIn) / 2, hw: W / 2, hl: (dOut - dIn) / 2, yaw: 0, y0: y - DECK_PART_M, y1: y });
+        for (const sx of [-1, 1]) parts.push({ kind: 'obb', cx: sx * (W / 2 - 0.1), cz: zs * (dOut + dIn) / 2, hw: 0.1, hl: (dOut - dIn) / 2, yaw: 0, y0: Math.min(lo, y), y1: hi + 0.6 });
+      }
+      // the plate, and its parapets (or the ramp's) from it to their tops over the roadway as the run's edges
+      const plate0 = Math.min(zs * Le, zs * L2), plate1 = Math.max(zs * Le, zs * L2);
+      parts.push({ kind: 'obb', cx: 0, cz: (plate0 + plate1) / 2, hw: W / 2, hl: (plate1 - plate0) / 2, yaw: 0, y0: yPlate - DECK_PART_M, y1: yPlate });
+      for (const sx of [-1, 1]) {
+        parts.push({ kind: 'obb', cx: sx * (W / 2 - 0.1), cz: (plate0 + plate1) / 2, hw: 0.1, hl: (plate1 - plate0) / 2, yaw: 0, y0: yPlate,
+          y1: hiPlate + (Le >= L1 ? 0.6 : 1.05) });
+      }
       // the piers and the abutments from the bed to under the roadway's parts, and the portal posts
       if (P > 0) parts.push({ kind: 'obb', cx: 0, cz: zs * (s + P / 2), hw: W / 2 + 0.9, hl: P / 2, yaw: 0, y0: groundAt(ctx, 0, zs * (s + P / 2)) - 1.0, y1: yD - DECK_PART_M });
       parts.push({ kind: 'obb', cx: 0, cz: zs * (E + AB / 2), hw: W / 2 + 0.9, hl: AB / 2, yaw: 0, y0: groundAt(ctx, 0, zs * (E + AB / 2)) - 1.0, y1: yD - DECK_PART_M });
