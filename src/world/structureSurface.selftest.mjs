@@ -22,11 +22,12 @@ try {
   for (const seed of [1337, 2001, 2002]) {
     for (const kind of ['wood', 'steel', 'canvas']) {
       const detail = makeStructureDetail(new SimplexNoise({ random: mulberry32(seed) }), 4, kind);
-      const size = kind === 'steel' ? 256 : 128;
+      const size = kind === 'canvas' ? 128 : 256;
       assert.deepEqual(Object.keys(detail).sort(), ['albedo', 'normal', 'surface']);
       for (const texture of Object.values(detail)) {
         // round 75 (2026-09-26): the sheet-steel tile is 256 px (a trapezoid corrugation, seams, rivets, a rust
-        // mask in the ORM blue channel); wood and canvas keep their 128 px tiles
+        // mask in the ORM blue channel); the canvas keeps its 128 px tile. The facades lane's round 6 (2026-10-07;
+        // wave 241: "smeared-grain planks") paints the wood's hewn-oak grain at 256 px over the same 1.82 m
         assert.equal(texture.image.width, size);
         assert.equal(texture.image.height, size);
         assert.equal(texture.image.pixels.byteLength, size * size * 4);

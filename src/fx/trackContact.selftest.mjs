@@ -48,9 +48,11 @@ const oldDust = `{
 
 const recipes = functions(['col3', 'drySurfaceMultiplier', 'updateDustCameraCaps', 'updateDryDustColors',
   'emitTrackKick', 'emitDryTrackWake', 'emitUpperTrackWake', 'emitTrackPowder']);
-function recipeFixture(surface, ground, method = body('dust'), freeze = false, water = 0) {
-  const emitted = [], marks = [], owners = new Set();
+function recipeFixture(surface, ground, method = body('dust'), freeze = false, water = 0, media = false) {
+  const emitted = [], marks = [], owners = new Set(), skirts = [];
   const context = {
+    // destruction-fx: the media tier's track skirt (null blast: the battle's sprite path, as before)
+    blast: media ? {} : null, mediaTrackSkirt: (p, d, intensity, g, s) => skirts.push({ intensity, ground: g, surface: s }),
     THREE, waterContactMaskAt, rng: mulberry32(7919), frozen: freeze, groundY: () => -3.25,
     // The current dust method requires contact with the actual water surface.
     // The fixture's contact sits ON the
@@ -70,7 +72,7 @@ function recipeFixture(surface, ground, method = body('dust'), freeze = false, w
     ${recipes}
     function dust(pos,dir,intensity) ${method}
     return {dust, tail:()=>rng()};`, context);
-  return { ...api, emitted, marks, owners };
+  return { ...api, emitted, marks, owners, skirts };
 }
 const pos = new THREE.Vector3(12, 4, -8), dir = new THREE.Vector3(.6, 0, .8);
 for (const ground of ['hard', 'medium', 'soft']) for (const frozen of [false, true]) {
@@ -108,6 +110,28 @@ function verifyPowder(method = body('dust')) {
 }
 verifyPowder();
 assert.throws(() => verifyPowder(oldDust), assert.AssertionError, 'old large earth wake is rejected');
+
+// destruction-fx (wave 265's weathering critics): on the media tier a moving hull trails its media skirt on dry earth
+// and sand in place of the dry wake's sprites; wet ground and snow keep their spray and powder, and take no skirt
+{
+  const earth = recipeFixture(0, 'medium', body('dust'), false, 0, true);
+  for (let i = 0; i < 48; i++) earth.dust(pos, dir, 1);
+  assert.ok(earth.skirts.length > 0 && earth.skirts.every((k) => k.ground === 'medium' && k.surface === 0), 'dry earth trails a skirt');
+  const legacy = recipeFixture(0, 'medium', body('dust'), false, 0, false);
+  for (let i = 0; i < 48; i++) legacy.dust(pos, dir, 1);
+  assert.ok(earth.emitted.length < legacy.emitted.length, 'the skirt replaces the dry wake\'s sprites (the kick stays)');
+  const sand = recipeFixture(2, 'medium', body('dust'), false, 0, true);
+  for (let i = 0; i < 24; i++) sand.dust(pos, dir, 1);
+  assert.ok(sand.skirts.length > 0 && sand.emitted.length > 0, 'sand: the skirt and the contact powder');
+  for (const [surface, ground] of [[3, 'medium'], [0, 'soft']]) {
+    const none = recipeFixture(surface, ground, body('dust'), false, 0, true);
+    for (let i = 0; i < 24; i++) none.dust(pos, dir, 1);
+    assert.equal(none.skirts.length, 0, `${surface === 3 ? 'snow' : 'wet ground'} takes no skirt`);
+  }
+  const paused = recipeFixture(0, 'medium', body('dust'), true, 0, true);
+  paused.dust(pos, dir, 1);
+  assert.equal(paused.skirts.length, 0, 'a paused contact raises no skirt');
+}
 
 // Actual ring writer uses the same four vertices/attribute and old water flag.
 function verifyPrints() {
