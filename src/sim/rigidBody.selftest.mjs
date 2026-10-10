@@ -191,7 +191,7 @@ function slopeRun() {
   const turret = createRigidShape([
     { kind: 'box', center: [0, 0.45, -0.2], half: [1.7, 0.45, 2.1], mass: 14000 },
     { kind: 'capsule', a: [0, 0.5, 1.9], b: [0, 0.38, 6.6], radius: 0.09, mass: 2200 },
-  ], { restitution: 0.3, friction: 0.6, rolling: 1.6 });
+  ], { restitution: 0.3, friction: 0.6, rolling: 0.3 });
   assert.ok(turret.com[2] > 0, 'the gun pulls the centre of mass forward');
   const world = createRigidWorld({ capacity: 2 });
   world.bindEnvironment(slope);

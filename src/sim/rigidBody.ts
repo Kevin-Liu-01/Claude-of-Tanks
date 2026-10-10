@@ -115,8 +115,11 @@ export interface RigidShapeOptions {
   /** Body restitution (0..1, default 0.3) and friction (default 0.6). */
   restitution?: number;
   friction?: number;
-  /** Rolling resistance while touching (1/s, default 1.2): angular speed decays at this rate. */
+  /** Rolling resistance while touching (1/s, default 0.15): angular speed decays at this rate. Keep it small for boxes
+   * (their corners stop them; a large value holds a toppling body up on its edge), larger for what rolls. */
   rolling?: number;
+  /** A round body (a drum, a shaft on its side) rests on a line: it may sleep without support on both sides. */
+  rolls?: boolean;
   /** Air drag (1/s): linear (default 0.02) and angular (default 0.08). */
   linearDrag?: number;
   angularDrag?: number;
@@ -143,6 +146,7 @@ export interface RigidShape {
   readonly restitution: number;
   readonly friction: number;
   readonly rolling: number;
+  readonly rolls: boolean;
   readonly linearDrag: number;
   readonly angularDrag: number;
 }
@@ -467,7 +471,8 @@ export function createRigidShape(parts: readonly RigidPartSpec[], options: Rigid
     radius,
     restitution: Math.max(0, Math.min(0.9, options.restitution ?? 0.3)),
     friction: Math.max(0.05, options.friction ?? 0.6),
-    rolling: Math.max(0, options.rolling ?? 1.2),
+    rolling: Math.max(0, options.rolling ?? 0.15),
+    rolls: !!options.rolls,
     linearDrag: Math.max(0, options.linearDrag ?? 0.02),
     angularDrag: Math.max(0, options.angularDrag ?? 0.08),
   });
@@ -482,7 +487,8 @@ export function createRigidBox(hx: number, hy: number, hz: number, density: numb
 /** A plain cylinder (axis along local Y) of a uniform density around its own centre. */
 export function createRigidCylinder(radius: number, halfHeight: number, density: number, options: RigidShapeOptions = {}): RigidShape {
   const mass = Math.max(1, Math.PI * radius * radius * 2 * halfHeight * density);
-  return createRigidShape([{ kind: 'cylinder', center: [0, 0, 0], halfHeight, radius, mass }], options);
+  return createRigidShape([{ kind: 'cylinder', center: [0, 0, 0], halfHeight, radius, mass }],
+    { rolling: 0.6, rolls: true, ...options });
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -1250,12 +1256,55 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
     }
   }
 
+  // eight horizontal directions (cos, sin of k·π/4) for the support test
+  const SUPPORT_DIRS = [1, 0, Math.SQRT1_2, Math.SQRT1_2, 0, 1, -Math.SQRT1_2, Math.SQRT1_2, -1, 0, -Math.SQRT1_2, -Math.SQRT1_2, 0, -1, Math.SQRT1_2, -Math.SQRT1_2];
+  /** The support margin (m): the centre of mass must stand this far inside its contacts in every direction. */
+  const SUPPORT_MARGIN_M = 0.03;
+  /**
+   * Whether a quiet body stands on its contacts (its centre of mass inside their spread in every direction), and the
+   * direction it leans when not (supportLeanX/Z): a box balanced on an edge or a corner is quiet for a moment before
+   * it topples, and must not sleep there.
+   */
+  let supportLeanX = 0, supportLeanZ = 0;
+  function supported(i: number): boolean {
+    let missing = -1, worst = Infinity;
+    for (let d = 0; d < 8; d++) {
+      const dx = SUPPORT_DIRS[2 * d], dz = SUPPORT_DIRS[2 * d + 1];
+      let reach = -Infinity;
+      for (let c = 0; c < contactCount; c++) {
+        let nx: number, ny: number, nz: number;
+        if (cA[c] === i) { nx = cNx[c]; ny = cNy[c]; nz = cNz[c]; }
+        else if (cB[c] === i) { nx = -cNx[c]; ny = -cNy[c]; nz = -cNz[c]; }
+        else continue;
+        if (ny >= 0.3) {
+          // something under it: support out to where it touches
+          const r = (cPx[c] - px[i]) * dx + (cPz[c] - pz[i]) * dz;
+          if (r > reach) reach = r;
+        } else if (ny > -0.3 && nx * dx + nz * dz < -0.5) {
+          // a wall or a hull on that side holds it (it leans there)
+          reach = Infinity;
+        }
+      }
+      if (reach < worst) { worst = reach; missing = d; }
+    }
+    if (worst >= SUPPORT_MARGIN_M || missing < 0) return true;
+    supportLeanX = SUPPORT_DIRS[2 * missing]; supportLeanZ = SUPPORT_DIRS[2 * missing + 1];
+    return false;
+  }
+
   function sleepCheck(i: number): void {
     const v2 = vx[i] * vx[i] + vy[i] * vy[i] + vz[i] * vz[i];
     const w2 = wx[i] * wx[i] + wy[i] * wy[i] + wz[i] * wz[i];
     if (touching[i] && v2 < SLEEP_LINEAR_MPS * SLEEP_LINEAR_MPS && w2 < SLEEP_ANGULAR_RADS * SLEEP_ANGULAR_RADS) {
       if (restSteps[i] < 65535) restSteps[i]++;
     } else restSteps[i] = 0;
+    if (restSteps[i] >= SLEEP_STEPS && !shapes[i]!.rolls && !supported(i)) {
+      // balanced on an edge: tip it toward the side it lacks support on (a real body never balances for long)
+      const k = 0.35;
+      wx[i] += supportLeanZ * k; wz[i] -= supportLeanX * k;
+      restSteps[i] = 0;
+      return;
+    }
     if (restSteps[i] >= SLEEP_STEPS || age[i] >= FORCE_SLEEP_STEPS) putToSleep(i);
   }
 
