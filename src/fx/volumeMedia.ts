@@ -393,19 +393,23 @@ void main() {
   float ms = uGrade.w * bright;
   sunL = mix( sunL, sqrt( sunL ), ms );
   skyL = mix( skyL, sqrt( skyL ), ms * 0.6 );
-  // the ground's light: the underside sees the ground as the top sees the sky; (fx 8c, the critics after atmos r2: "a
-  // cool white wall in the desert that ignores warm light") a bright medium scatters it through its whole body as it
-  // does the sky's, so a white screen over sand takes the sand's warmth in its shade, and dust over green turf its green
-  float gndL = mix( 0.35 * D + 0.1, 0.5 * D + 0.12 * ( R + L ) + 0.18, bright );
-  gndL = mix( gndL, sqrt( gndL ), ms * 0.6 ) * uGrade2.x;
-  // the sky's share of that shade gives way a little to the ground's, so the shade changes hue more than level (a
-  // brighter shade would flatten dust into cotton balls)
-  skyL *= 1.0 - 0.15 * bright;
   // dark media take the sky neutral: soot scatters what little it does without the sky's blue (round 4: a rocket's
   // smoke read as blue ghosts), bright dust keeps a little of it
   float skyLum = dot( uSkyCol, vec3( 0.2126, 0.7152, 0.0722 ) );
   vec3 skyC = mix( vec3( skyLum ), uSkyCol, smoothstep( 0.04, 0.3, albedoL ) );
-  vec3 col = vColor.rgb * ( uSunCol * sunL + skyC * skyL + uGroundCol * gndL );
+  // the shade's light: the sky over it, the ground's under it (the reference every medium has always taken)
+  vec3 amb0 = skyC * skyL + uGroundCol * ( 0.35 * D + 0.1 );
+  // (fx 8c, the critics after atmos r2: "a cool white wall in the desert that ignores warm light"; fx 8k, wave 354a: a
+  // collapse's dust read "a dark, thin, flat haze", "murky olive" with the 8c ground light over dark and green ground) a
+  // bright medium scatters the ground's light through its whole body as it does the sky's: its shade takes that light's
+  // HUE at the reference's own LUMINANCE (never darker, never brighter), and only from a warm ground (sand, warm soil):
+  // a screen over sand creams, dust over turf or asphalt keeps the sun-and-sky tan it always had
+  vec3 amb1 = skyC * skyL * 0.7 + uGroundCol * ( 0.6 * D + 0.15 * ( R + L ) + 0.25 );
+  float gLum = dot( uGroundCol, vec3( 0.2126, 0.7152, 0.0722 ) );
+  float warmG = smoothstep( 0.02, 0.16, ( uGroundCol.r - uGroundCol.g ) / max( gLum, 1e-4 ) );
+  float lum0 = dot( amb0, vec3( 0.2126, 0.7152, 0.0722 ) ), lum1 = dot( amb1, vec3( 0.2126, 0.7152, 0.0722 ) );
+  vec3 amb = mix( amb0, amb1 * ( lum0 / max( lum1, 1e-5 ) ), bright * warmG * uGrade2.x );
+  vec3 col = vColor.rgb * ( uSunCol * sunL + amb );
   // fire inside the medium: the baked temperature x the puff's heat, on a blackbody ramp; the soot it lights
   float tb = B.g * B.g;
   float h = clamp( tb * vHeat, 0.0, 1.6 );
