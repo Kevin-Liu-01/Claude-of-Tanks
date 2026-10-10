@@ -6838,6 +6838,9 @@ const CAMO_BUCKETS = new Set([
   'hullTrackGuardL', 'hullTrackGuardR',
   'turret', 'turretCupola', 'turretHatch', 'turretExternalArmor',
   'turretEquipment', 'gun', 'gunMount',
+  // The opt-in independent twin-gun tubes take the same camouflaged barrel paint as `gun`, so they need its projection
+  // and its vertex-colour bake (2026-10-10: without them the BMPT's twin 30 mm tubes rendered black).
+  'gunBarrel0', 'gunBarrel1',
 ]);
 /** Round 4 (2026-10-07): the matte fitting-paint bucket a smoke discharger tube in a paint-only camo bucket rides. */
 const SMOKE_TUBE_PAINT_BUCKET: Readonly<Record<string, string>> = Object.freeze({
