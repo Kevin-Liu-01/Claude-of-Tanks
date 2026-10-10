@@ -260,7 +260,7 @@ const HAZE_TINT_MIX = 0.63;
 // ramp needs ~2 linear LSBs of decorrelation to stay under the banding
 // threshold after the grade's contrast re-spread; pairs with the new
 // display-space IGN dither at the end of post.ts's grade pass.
-const SKY_DITHER = 0.008; // linear-space dither amplitude ~2 display LSB
+const SKY_DITHER = 0.002; // linear-space dither amplitude ~0.5 display LSB (2026-10-09, the clouds lane's grain round 2 with the skies lane's OK: 0.008 read as a static speckle in the blue; the grade's display-space IGN dither carries the 8-bit banding)
 const SKY_FRAG_ANCHOR = 'gl_FragColor = vec4( texColor, 1.0 );';
 const SKY_DOME_SCALE = 10000; // must stay inside camera.far
 const ENV_SKY_SCALE = 50; // PMREMGenerator.fromScene far plane = 100

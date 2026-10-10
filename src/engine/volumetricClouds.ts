@@ -80,6 +80,22 @@ export const CLOUD_CAPTURE_SETTLE_FRAMES = 512;
  */
 export const CLOUD_HISTORY_MIN_ALPHA = 0.06;
 /**
+ * 2026-10-09, grain round 2 (the critics: "salt-and-pepper fragment edges", "loose white specks in clear sky"): the
+ * erosion octaves are prefiltered by the history pixel's footprint (m) — an octave the pixel cannot resolve is replaced
+ * by its mean instead of aliasing into speckle. The fine detail octave (7-27 m) fades out over [fine0, fine1]; the coarse
+ * octave's variation (25-100 m) over [coarse0, coarse1]; the shape's 2.7x bulge octave (23-90 m) over [bulge0, bulge1].
+ * The means are the baked volumes' own (cloudNoise.ts, CLOUD_NOISE_SEED; volumetricClouds.selftest pins them).
+ */
+export const CLOUD_DETAIL_PREFILTER_M = Object.freeze({ fine0: 3, fine1: 6, coarse0: 12, coarse1: 40, bulge0: 15, bulge1: 45 });
+/** The detail volume's mean of 0.5 r + 0.3 g + 0.2 b, and the shape volume's channel means (r, g, b, a). */
+export const CLOUD_DETAIL_HF_MEAN = 0.481;
+export const CLOUD_SHAPE_MEANS = Object.freeze([0.415, 0.478, 0.48, 0.485] as const);
+/**
+ * The fresh sample's extra weight per history pixel of reprojected motion, and its cap (round 2: 0.1 / 0.35 piled up the
+ * noise of a turn that the rest then took seconds to average away; the neighbourhood clamp keeps a turn from ghosting).
+ */
+export const CLOUD_MOTION_ALPHA = Object.freeze({ perPx: 0.05, max: 0.2 });
+/**
  * The 4 × 4 Bayer matrix: slot k of a cycle is the cell holding value k, so consecutive frames trace cells as
  * far apart as possible and the rebuild sharpens evenly.
  */
@@ -654,7 +670,11 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 	// borders, so a mass's outline is made of overlapping bulges — the interior stays dense (a mask that thinned
 	// the upper half read as pancakes); a stratus keeps its sheet
 	vec4 s2 = vec4( 0.5 );
-	if ( detail && uDebug != 6.0 ) s2 = texture( tShape, sp * 2.7 + vec3( 0.31, 0.17, 0.53 ) );
+	if ( detail && uDebug != 6.0 ) {
+		s2 = texture( tShape, sp * 2.7 + vec3( 0.31, 0.17, 0.53 ) );
+		// (round 2) the bulge octave prefiltered by the footprint: its mean where the pixel cannot resolve its 23-90 m bulges
+		s2 = mix( s2, vec4( ${CLOUD_SHAPE_MEANS.map(f).join(', ')} ), smoothstep( ${f(CLOUD_DETAIL_PREFILTER_M.bulge0)}, ${f(CLOUD_DETAIL_PREFILTER_M.bulge1)}, foot ) );
+	}
 	float bulge = detail ? s.g * 0.6 + s2.g * 0.4 : s.g;
 	float lift = mix( 1.0, 0.3 + 1.3 * bulge, ( 1.0 - uStratiform ) * 0.9 );
 	hN /= lift;
@@ -705,7 +725,7 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 		vec3 dn = texture( tDetail, dp ).rgb;
 		float hf = dn.r * 0.5 + dn.g * 0.3 + dn.b * 0.2;
 		float hfCoarse = hf;
-		float fineW = 1.0 - smoothstep( 6.0, 12.0, foot );
+		float fineW = 1.0 - smoothstep( ${f(CLOUD_DETAIL_PREFILTER_M.fine0)}, ${f(CLOUD_DETAIL_PREFILTER_M.fine1)}, foot );
 		if ( fineW > 0.0 ) {
 			vec3 dn2 = texture( tDetail, dp * 3.7 + 0.37 ).rgb;
 			hf = mix( hf, hf * 0.55 + ( dn2.r * 0.5 + dn2.g * 0.3 + dn2.b * 0.2 ) * 0.45, fineW );
@@ -714,6 +734,8 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 		// tops — the wispy share grows with height and with the map's wispiness; the erosion grows with height
 		// too (a crisp dense base, wispy tops), a front's base is ragged, a stratus erodes little
 		float wispy = clamp( mix( hN * 1.4 - 0.15, 1.0, uWispiness ), 0.0, 1.0 ) * ( 1.0 - uTopBillow * ( 1.0 - uStratiform ) );
+		// (round 2) past the coarse octave's resolvable footprint its variation is its mean, not a speckle
+		hf = mix( hf, ${f(CLOUD_DETAIL_HF_MEAN)}, smoothstep( ${f(CLOUD_DETAIL_PREFILTER_M.coarse0)}, ${f(CLOUD_DETAIL_PREFILTER_M.coarse1)}, foot ) );
 		float erode = mix( hf, 1.0 - hf, wispy );
 		float amount = ( mix( 0.3, 0.85, smoothstep( 0.05, 0.6, hN ) ) + uTowers * 0.35 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) )
 			* ( 1.0 - uStratiform * 0.8 ) * mix( 0.8, 1.25, uWispiness ) * mix( 0.35, 1.0, smoothstep( 0.0, 0.2, uWispiness ) )
@@ -1379,7 +1401,7 @@ void main() {
 	if ( fresh ) {
 		vec4 cur = texelFetch( tTrace, ivec2( tp ), 0 );
 		float motion = length( ( pr.xy - uv ) * uHistorySize );
-		float a = clamp( motion * 0.1 + uMinAlpha, uMinAlpha, 0.35 );
+		float a = clamp( motion * ${f(CLOUD_MOTION_ALPHA.perPx)} + uMinAlpha, uMinAlpha, ${f(CLOUD_MOTION_ALPHA.max)} );
 		// rebuilding after a cut: a pixel takes its own first sample as is
 		outv = ( valid && uRebuildK < 0.0 ) ? outv + ( cur - outv ) * a : cur;
 	} else if ( uRebuildK >= 0.0 && valid ) {
@@ -1439,9 +1461,16 @@ vec4 cloudsCatmullRom( vec2 uv, vec2 size ) {
 	vec2 w12 = w1 + w2;
 	vec2 tc0 = ( tp1 - 1.0 ) / size, tc3 = ( tp1 + 2.0 ) / size, tc12 = ( tp1 + w2 / w12 ) / size;
 	float a = w12.x * w0.y, b = w0.x * w12.y, c = w12.x * w12.y, d = w3.x * w12.y, e = w12.x * w3.y;
-	vec4 sum = texture2D( tClouds, vec2( tc12.x, tc0.y ) ) * a + texture2D( tClouds, vec2( tc0.x, tc12.y ) ) * b
-		+ texture2D( tClouds, tc12 ) * c + texture2D( tClouds, vec2( tc3.x, tc12.y ) ) * d + texture2D( tClouds, vec2( tc12.x, tc3.y ) ) * e;
-	return sum / ( a + b + c + d + e );
+	vec4 tA = texture2D( tClouds, vec2( tc12.x, tc0.y ) ), tB = texture2D( tClouds, vec2( tc0.x, tc12.y ) ), tC = texture2D( tClouds, tc12 );
+	vec4 tD = texture2D( tClouds, vec2( tc3.x, tc12.y ) ), tE = texture2D( tClouds, vec2( tc12.x, tc3.y ) );
+	vec4 r = ( tA * a + tB * b + tC * c + tD * d + tE * e ) / ( a + b + c + d + e );
+	// 2026-10-09, grain round 2: the result stays inside the range of the four outer taps (they skip the 2 x 2 texels around
+	// the point), so a one- or two-texel outlier — a speck in clear sky, a dark fleck in a body — and the filter's
+	// overshoot are clamped away, while an edge or a filament, which reaches the outer taps, is left as it is; the radiance
+	// keeps a quarter of the range of headroom over the brightest tap for a thin silver lining
+	vec4 lo = min( min( tA, tB ), min( tD, tE ) ), hi = max( max( tA, tB ), max( tD, tE ) );
+	hi.rgb += ( hi.rgb - lo.rgb ) * 0.25;
+	return clamp( r, lo, hi );
 }
 vec3 cloudKnee( vec3 c ) {
 	float l = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) );
