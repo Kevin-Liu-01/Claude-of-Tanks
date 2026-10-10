@@ -29,11 +29,11 @@ import {
 import type { CollisionRecord } from '../world/collision.ts';
 import { createRigidBox, createRigidShape, type RigidShape } from '../sim/rigidBody.ts';
 
-export type CollapsePieceKind = 'wall' | 'floor' | 'roof' | 'gable' | 'chimney';
+type CollapsePieceKind = 'wall' | 'floor' | 'roof' | 'gable' | 'chimney';
 
 /** A box of a piece's proxy, in the piece's own frame (its centre and axes; its own rotation in that frame when it is
  *  a chimney riding a roof slab, which also lays no caps: the stack's own faces are the building's). */
-export interface CollapseBox {
+interface CollapseBox {
   center: [number, number, number];
   half: [number, number, number];
   rotation?: [number, number, number, number];
@@ -43,7 +43,7 @@ export interface CollapseBox {
  * A part of a piece that breaks off when it lands hard (a wall panel cracks into two to four on its first heavy landing):
  * its box in the piece's frame, its mass and its rectangle on the face.
  */
-export interface CollapsePart {
+interface CollapsePart {
   readonly center: [number, number, number];
   readonly half: [number, number, number];
   readonly massKg: number;
@@ -192,7 +192,7 @@ export interface CollapsePlan {
   readonly chimneyBucket: string;
 }
 
-export interface CollapsePlanOptions {
+interface CollapsePlanOptions {
   /** Pieces at most (default: 24; a shed 12). */
   cap?: number;
 }
@@ -236,7 +236,7 @@ function dot(a: Vec3, b: Vec3): number {
 }
 
 /** The rotation whose columns are x, y, z (an orthonormal right-handed basis). */
-export function quatFromAxes(x: Vec3, y: Vec3, z: Vec3): [number, number, number, number] {
+function quatFromAxes(x: Vec3, y: Vec3, z: Vec3): [number, number, number, number] {
   const m00 = x[0], m01 = y[0], m02 = z[0], m10 = x[1], m11 = y[1], m12 = z[1], m20 = x[2], m21 = y[2], m22 = z[2];
   const tr = m00 + m11 + m22;
   let qx: number, qy: number, qz: number, qw: number;
@@ -258,7 +258,7 @@ export function quatFromAxes(x: Vec3, y: Vec3, z: Vec3): [number, number, number
 }
 
 /** A face's wall thickness behind its plane (its layers, within the bounds; thin for sheet and boards). */
-export function wallThickness(face: DamageFace): number {
+function wallThickness(face: DamageFace): number {
   const sum = face.layers.reduce((a, l) => a + (Number.isFinite(l.thicknessM) ? l.thicknessM : 0), 0);
   const skin = face.layers[0]?.material;
   if (skin === 'metal' || skin === 'plank' || skin === 'canvas') return Math.max(THIN_WALL_M, Math.min(0.2, sum || THIN_WALL_M));
@@ -864,11 +864,11 @@ function ceilingOf(slot: FractureSlot): FractureSlot {
 // ---- the partition: the building's own triangles between its pieces ------------------------------------------------
 
 /** Floats a partitioned vertex carries: position, normal, uv, colour. */
-export const PIECE_VERTEX_STRIDE = 11;
+const PIECE_VERTEX_STRIDE = 11;
 /** The static remnant's index in the partition's output (the stubs, piers, plinth and footings). */
 export const STATIC_PIECE = -1;
 /** What the collapse drops (a roof chimney's attic part, under the covering before and nothing after). */
-export const DROPPED_PIECE = -2;
+const DROPPED_PIECE = -2;
 
 const MAX_SPLITS = 10;
 const _cent: [number, number, number] = [0, 0, 0];
@@ -1190,9 +1190,6 @@ export interface CapQuad {
  */
 export function capPiece(plan: CollapsePlan, piece: CollapsePiece): CapQuad[] {
   const caps: CapQuad[] = [];
-  const quad = (a: Vec3, b: Vec3, c: Vec3, d: Vec3, n: Vec3, slot: FractureSlot, shade: number) => {
-    caps.push({ corners: [a, b, c, d], n, slot, shade });
-  };
   const boxCaps = (skip: (axis: number, sign: number) => boolean, slotFor: (axis: number, sign: number) => FractureSlot,
     shadeFor: (axis: number, sign: number) => number) => {
     const [qx, qy, qz, qw] = piece.rotation;
@@ -1287,7 +1284,7 @@ export function capPiece(plan: CollapsePlan, piece: CollapsePiece): CapQuad[] {
 
 /** A static box of the remnant (a stub's run along its face, a corner pier), body frame: centre, its face's u axis and
  *  out normal, half length along u, half thickness, and its foot and top. */
-export interface StubBox {
+interface StubBox {
   center: Vec3;
   u: Vec3;
   out: Vec3;
@@ -1298,7 +1295,7 @@ export interface StubBox {
 }
 
 /** The ground storey's stubs and corner piers as boxes (the bodies stand and land on them). */
-export function stubBoxes(plan: CollapsePlan): StubBox[] {
+function stubBoxes(plan: CollapsePlan): StubBox[] {
   const boxes: StubBox[] = [];
   const st = plan.storeys[0];
   if (!st) return boxes;
