@@ -31,6 +31,24 @@
      "sha256": "ce9861e89596de9e46f420d4fe362824e5335497cc122665cee43365a49182e7",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "c94f6f44dca3afd83a2e05ceaf1dfb44c21e190095eec92da23c1f46b0f94533",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v13",
+     "sha256": "e95f26333a28692930163b5c0018a0b829fa1c91b61278bba956c12b351a669f",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "fa95bbdefe937a781626df7a2a0d0baa0f7c4fc1c3e933cece2a08d6e300fda7",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -102,13 +120,13 @@
    "time": "day",
    "hero": "leo2a6_x",
    "paint": {
-    "unit": "flecktarn",
+    "unit": "paint_marder2",
     "enemy": "sig_t90a"
    },
    "turrets": "sectors",
    "still": {
     "tMs": 3480,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s02-factory-road": {
@@ -142,6 +160,24 @@
      "sha256": "3f74d05c4c3cc0e1b48a9d2b6a35f6d9d7ed88b7da90b254a414458b15857c30",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "820538eeb036924cdbaa048c8aba98566840f99996684d763bb92ed302377f57",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v13",
+     "sha256": "9494d60413aa72133e8f736309d498515bd37157f461d3f255965ce862c609d2",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "af751366acfe3cb382d1d53763ffdb5230c29f4e5a3a7b7e0a48cd5cd6611fd5",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -213,13 +249,13 @@
    "time": "day",
    "hero": "m1a2_tusk_x",
    "paint": {
-    "unit": "berlin",
+    "unit": "paint_m1a1",
     "enemy": "service_soviet_coldwar"
    },
    "turrets": "flank",
    "still": {
     "tMs": 3980,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s03-square-pass": {
@@ -253,6 +289,24 @@
      "sha256": "5ebd9c6a04fbf55f9669ce3c53663da9931342c885c4d721daf40dcf3f502fe1",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "0300cf57f5791578e1886d55afcc483e66afaf5b4af835136c1552a6e9f5ffba",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v13",
+     "sha256": "cffea674f840bf4bf5e10cb6b6ce81f69d790f5e65980a0da5aa8a87c4778121",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "a123eb7856561924c0a11faed7e0fb162f846b61d2dda4fe820a8a59270c20cd",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -324,13 +378,13 @@
    "time": "day",
    "hero": "leclerc_x",
    "paint": {
-    "unit": "urbanblock",
+    "unit": "sig_leclerc",
     "enemy": "sig_t90"
    },
    "turrets": "sectors",
    "still": {
     "tMs": 3300,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s04-column-under-fire": {
@@ -364,6 +418,24 @@
      "sha256": "3cbfa464e8427d3a7cff1a284021d42a5c1ec0932b2a75dacc122bf4ef686640",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "ad9c85461b478a9e6c0ae375f1b29536133b4417a54ee5783c8d86c85320e1d5",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v13",
+     "sha256": "687b4c6ddfc899cc7d82a505f26a14a83d66b3919404af5d059c169927c6a985",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "7d2c47bf6bc0f236995184a95448505e4ce1e644a476a27107642b0e11f75c9d",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -441,7 +513,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 2700,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s05-barn-advance": {
@@ -475,6 +547,24 @@
      "sha256": "cdf3d48d844060a23de077510206184a244267b79d54ef5b0cf428d49ac9c93e",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v12",
+     "sha256": "98de5085b1d9f9d4c1c0a7633005ea0de025c153b04ef8d7aa6a805a33807051",
+     "at": "2026-10-09T23:32:27.403Z",
+     "note": "Round ten (2026-10-08): fifteen takes re-staged after waves c3 and s1"
+    },
+    {
+     "version": "v13",
+     "sha256": "982f27e67766fe491fade45d48a8ade8fb156c0277c82be5dcf5d4dcc6daf5ba",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "3e4f8fbc2ce517cc813e9514e6930ce40e997b6a4a31f3b600b68bb397a3afca",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -552,7 +642,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 3780,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s06-farm-charge": {
@@ -586,6 +676,24 @@
      "sha256": "2c2b5f3f0ed4427910e2e0960b6ebfcabce3d53697ac6371c5c8004e178aa877",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "183158bc801a1dd3d80971da3876825476d6cc9a151d8b323ca7419efa5fdd89",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v13",
+     "sha256": "17d4451f47d39b5ca143d989d497abd051a5de60d0c228a70012674b2970c962",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "c1747164a099c4486af9475ee6c11f137c6ffb40f460c8cf8d63f709135d84f9",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -657,13 +765,13 @@
    "time": "day",
    "hero": "kf51_x",
    "paint": {
-    "unit": "splinter",
+    "unit": "sig_kf51b",
     "enemy": "sig_t90a_vladimir"
    },
    "turrets": "flank",
    "still": {
-    "tMs": 4380,
-    "exposureMs": 8
+    "tMs": 4900,
+    "exposureMs": 2
    }
   },
   "s07-lake-shellfire": {
@@ -697,6 +805,30 @@
      "sha256": "f9d0fa4a3c4b0c2290949c1aacbc2d25a55b161a41ee713f76f1473d39795a72",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "a2ca045cd0764e576655cb8c9eaf8966bad5932d6243a3e23dcab3cfaccaefb4",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "d926a2b7108d7c045b8c4281c10b2b1b1ece06fbeb17c95f24e2a24acb2d01a7",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v13",
+     "sha256": "68490cafefc3b10a8707abfa38a0a1cf69f89b80e0a09cc874612fb87b84c138",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "d65b440fcd2266a823479c009beca0c2deb54c0dfeb2b36dc067c5bd6c5c800e",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -755,13 +887,13 @@
    "time": "day",
    "hero": "strv122_x",
    "paint": {
-    "unit": "winterbands",
+    "unit": "service_strv122",
     "enemy": "service_soviet_coldwar"
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 2900,
-    "exposureMs": 8
+    "tMs": 4500,
+    "exposureMs": 2
    }
   },
   "s08-market-push": {
@@ -795,6 +927,30 @@
      "sha256": "69ade091116b35f027e4c16edf6af2ffb0be6f0124a1abaf6e6da15c0a0bfbae",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "61c4c6d84e3d56175799896278d6db284f0e76327cdb6f81655f8445a4c6ec23",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "2b74ef28540377691285d2f4f9345f7c066951303afe50da013a45f1c5d1ce19",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v13",
+     "sha256": "865307b397da7f94c0f0a90eb1e2cb7b2ee94ca5563f74952f39cb43095c15fd",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "2edcf9123585d6d863a28f91d9c017e9a2600195095d9c4a08372c7c4e2c5ea9",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -848,18 +1004,18 @@
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
-   "title": "An M1A2 Abrams column pushes through the market street of Sunscar Oasis",
+   "title": "An M6 Linebacker leads an Abrams column through the market street of Sunscar Oasis",
    "map": "oasis",
    "time": "day",
-   "hero": "m1a2_x",
+   "hero": "m6_linebacker",
    "paint": {
-    "unit": "chocchip",
+    "unit": "paint_m6_linebacker",
     "enemy": "sig_t90ms"
    },
    "turrets": "flank",
    "still": {
     "tMs": 3680,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s09-harbor-run": {
@@ -893,6 +1049,36 @@
      "sha256": "97c53b53aa24dc013ca6e86732ec123c44156d6eb09478c6675196e0f96814c3",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "abb502c35d86ecfb50438d39ca4212e50f41b414b7372b8c37c9d542df45f627",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "ac1f815a082eb9105106c9ee252c222cefb1440acf7e5077a161d189d4e44b68",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v12",
+     "sha256": "a2543d92b8f73a8d2cbff60beab86591f682015fad40d526023ae52068c824e5",
+     "at": "2026-10-09T23:32:27.403Z",
+     "note": "Round ten (2026-10-08): fifteen takes re-staged after waves c3 and s1"
+    },
+    {
+     "version": "v13",
+     "sha256": "bc383c3a6c066220e222c52ce847a37dd74fb2f0cd92059c7ab4eb84c70968d8",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "b48f8543d3569e85639138a4b89d492d8b58da841dd218a6bd31e974b36e6a42",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -956,8 +1142,8 @@
    },
    "turrets": "flank",
    "still": {
-    "tMs": 4400,
-    "exposureMs": 8
+    "tMs": 4180,
+    "exposureMs": 2
    }
   },
   "s10-ford-shellfire": {
@@ -991,6 +1177,24 @@
      "sha256": "1f7e8a8d1bdfe6fdfa1ac655fd458f549ec3f5844aa7f289e07cf599ac55105d",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "9aedf37c39f8e488d398162cff1535920849f8801176fc28daf9bab1e6b9446b",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v13",
+     "sha256": "710402465daa955a1fb66a4045b8fca216b660ef6cffa779593f140402bac894",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "656994d7b574cf620c3fcbfe4ed8bfaaed2eab798c43d075c7ddb7d5847e9a8b",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1042,7 +1246,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 4480,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s11-container-rows": {
@@ -1076,6 +1280,36 @@
      "sha256": "1ed7c522376da1d160f1ba963f8b58ed3d57ce9a8135fd80b2cfa53060db891c",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "76c3693452a626826376e40d21c215cbaf167df1fc411cfd8703d3889ea35a86",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "ac4e85f6e31239b387ef23b15298652a7dcaf6cec1868d1619cdec7f13cd68e8",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v12",
+     "sha256": "7d14a9a581340974f8af06bad02b2d7c3c092e293349aaf4d2e10260893f16a1",
+     "at": "2026-10-09T23:32:27.403Z",
+     "note": "Round ten (2026-10-08): fifteen takes re-staged after waves c3 and s1"
+    },
+    {
+     "version": "v13",
+     "sha256": "16352f974176480b54a13af6cc0ad4c2676938283ed8fbb492d5b88f2e119013",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "151d02a92801880640d3460eb0dbe0d7983f1ddffe4639e5bc8c30329f4590e7",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1127,7 +1361,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 3980,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s12-gantry-advance": {
@@ -1161,6 +1395,30 @@
      "sha256": "d704addbc7e0ca7633d3b29d5df33fc411ff1e4ae1a17f2b775f5b4637f802cf",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "e8877e86b642516347380fd69d496fe4871f94350c7d2532fbce1dbe19f74f90",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "bb9afcee73774fa0b5b5b68f52c5d5dbe060d70ed4a37cab9a9c6811cafb88e3",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v13",
+     "sha256": "74f8d170d750d579054b73d3ab22c0a7f230a58d947db08d680d076e76ea41e1",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "aacf0ad875cb239de8abdb69e486bab886596946b30e31ff953b11e8abf13cd9",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1211,8 +1469,8 @@
    },
    "turrets": "flank",
    "still": {
-    "tMs": 3380,
-    "exposureMs": 8
+    "tMs": 4600,
+    "exposureMs": 2
    }
   },
   "s13-farm-race": {
@@ -1246,6 +1504,36 @@
      "sha256": "dbc031a262d4f62a94ddcf26517b4a4f3c28bb4a97b4b6b1dc8d488096d02b43",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "f30a7feebee37d4552a066678a4e1bd696bbc64661bc465f3c20a056f57fbc8a",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "828959f3cafb0eebcea52047fb4440c078ac4edb69ade6871e6a49681cd22fdf",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v12",
+     "sha256": "e50899e6c80c9c7bbdfb1ddf5da3d42abd94d0a6100dab6e08b415c345181d42",
+     "at": "2026-10-09T23:32:27.403Z",
+     "note": "Round ten (2026-10-08): fifteen takes re-staged after waves c3 and s1"
+    },
+    {
+     "version": "v13",
+     "sha256": "64ee175f9d5f41856a3833333f48beb40674a8ccc0cb2e83158762e4cdf8751d",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "4098955c06b3fdd0b387ec9a104bc88fea2f755bc521141f22657552525388f8",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1296,8 +1584,8 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 2900,
-    "exposureMs": 8
+    "tMs": 3380,
+    "exposureMs": 2
    }
   },
   "s14-snow-push": {
@@ -1331,6 +1619,36 @@
      "sha256": "23d25f101067d0c82757aaed250b3cf94e09ee46235eb1be11bbfe76b67d16e6",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "7a891ac0db81be3499dd35ba3c5ff3d2d24c2b3c0f9d90e7f45a2ebd4d2ccdef",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "24221e62e9315b1b632ea8b38588019f80faab3aed4bbd0ba81aaa88a5157cce",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v12",
+     "sha256": "1d24591fa62e9e8ee1c7f5bc762a7e6141d6d961d8e7d787c32149f55d6ae606",
+     "at": "2026-10-09T23:32:27.403Z",
+     "note": "Round ten (2026-10-08): fifteen takes re-staged after waves c3 and s1"
+    },
+    {
+     "version": "v13",
+     "sha256": "ba7b4af1cca0abc04d0d49a194ed6dfdf291dd91e97409d322ec445e971d5280",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "dc5a38437d053fc47143e70845db13177c702dfbc369eda7335b76b1ef220666",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1376,13 +1694,13 @@
    "time": "day",
    "hero": "t80u_x",
    "paint": {
-    "unit": "winter",
+    "unit": "service_soviet_coldwar",
     "enemy": "merdcwinter"
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 4400,
-    "exposureMs": 8
+    "tMs": 3680,
+    "exposureMs": 2
    }
   },
   "s15-orchard-column": {
@@ -1416,6 +1734,24 @@
      "sha256": "9bcf8b9a02d1373bfa1ae9df18837cf6eac290710cbc0c8dfcf633a245289457",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "314f7b3f84029ecccff3a72b2f9c05eb43ec487af688011429f75342366c0977",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v13",
+     "sha256": "1b87ca7b4d21484fcc17efd2016796b571a855e47e0d2febca25007f81b30593",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "bd72dbe1ccaed7b19b50f9b5337a35c3fcf44d8013b4bd8848558da66081fa98",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1461,13 +1797,13 @@
    "time": "day",
    "hero": "ariete_c1_x",
    "paint": {
-    "unit": "autumn",
+    "unit": "service_ariete_c1",
     "enemy": "service_soviet_coldwar"
    },
    "turrets": "flank",
    "still": {
-    "tMs": 2900,
-    "exposureMs": 8
+    "tMs": 3000,
+    "exposureMs": 2
    }
   },
   "s16-street-duel": {
@@ -1501,6 +1837,30 @@
      "sha256": "3e48deb03dc80e9d5912c7cfa3226a160d03dfd81da8e98fb02f108809429ce5",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "267919af2127e6cb1dbabb2c04b6fc4cbf2e84aeccb95d5657a4e200a2ddba5e",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "1df7e13b6bf309154f6ac105c64496f87d8599c30812e4284aeeefcccdfef0bb",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v13",
+     "sha256": "8aa3ef766a76fae1bf416e811911b4d9d62f3f235ed20a14774f2fe7ce209eac",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "f167a3ce44a819c3ea3c3f96d712d7b3bd09ac356d087a686fe9c1d3fe24ea0d",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1541,18 +1901,18 @@
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
-   "title": "Street duel at night: a KF51 Panther trades fire down a Steinburg street",
+   "title": "Street duel at night: a Griffin trades fire with a T-80U down a Steinburg street",
    "map": "urban",
    "time": "night",
    "hero": "griffin50_x",
    "paint": {
-    "unit": "dazzle",
+    "unit": "paint_griffin_viper",
     "enemy": "sig_t90a"
    },
    "turrets": "lens",
    "still": {
     "tMs": 4460,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s17-crossroads-fire": {
@@ -1586,6 +1946,30 @@
      "sha256": "733444abbd7a2ddf3c95d477c9b9ac68b376c13cc51ddf1981a48cbe72e09439",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "5e01cd62b77657fddc88e558ea46754c4a2d4bc0ec1f29149a9fd0af3ad92a55",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "b3eb515a6bc540c005f1d8e4b2f25505ea7cd19635dbe758408e4a745793d908",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v13",
+     "sha256": "f75e1ffcf4823b305135a84cef638e294efce9ecc92050568f6697e326d9f886",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "fa5d735d27ce79860ba83e0bb7b5caf49e9b15425f8da2b48b5b0f7d77e85083",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1637,7 +2021,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 1380,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s18-street-knockout": {
@@ -1665,6 +2049,30 @@
      "sha256": "81baac80c47e7d28e13787e2eb7b84f76ba4aa3f07a10b136552febb5e6caabc",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "0076eb6c43092eb250bc6ad5af46baee6c454792b3e3dfe9c2ba10f833143d5f",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v12",
+     "sha256": "35a48f6f9c0b766d9755c856fc66edb3c2224a2a1fbabc88f37abf3542a673a8",
+     "at": "2026-10-09T23:32:27.403Z",
+     "note": "Round ten (2026-10-08): fifteen takes re-staged after waves c3 and s1"
+    },
+    {
+     "version": "v13",
+     "sha256": "e3867e47ced718f9030210e3960c7626085d308d73118136835976f99f159659",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "2dea579d014986b62203f7c0ed04bf440462258b42044610c1b525c1745dddda",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1710,13 +2118,13 @@
    "time": "night",
    "hero": "leo2a6m_x",
    "paint": {
-    "unit": "digitaldesert",
+    "unit": "service_leo2a6m",
     "enemy": "service_soviet_coldwar"
    },
    "turrets": "sectors",
    "still": {
     "tMs": 2060,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s19-roof-tiles": {
@@ -1750,6 +2158,24 @@
      "sha256": "25a17705960d360a158e86e86376d39339c48f2d35d38652a5ac436fd4e2d9a5",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "0c543412ecfcd646603d26fe191c6e10b3697cae98da1a728258dfb9153a8856",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v13",
+     "sha256": "9d306f6f57143d016ff7f0bcaba8f5b7551fd7c2fb11e6ad6b7bf25c3b37c863",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "0a8b68f3e26fa71ed7ba8de28489f2d7f952bc2ae685ed63c74432976bbfa948",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1790,7 +2216,7 @@
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
-   "title": "Roof tiles rain down as a Leopard 2A6 fires up the street",
+   "title": "Roof tiles rain down as a PL-01 fires up the street",
    "map": "urban",
    "time": "day",
    "hero": "pl01_105",
@@ -1801,7 +2227,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 2680,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s20-road-return-fire": {
@@ -1835,6 +2261,24 @@
      "sha256": "dc0c6974b382ee3110f1bd8dd6b6819501e6a4c7d6e6ae696dc552a04aa24ced",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "48c8995b5d4dc8ef6b893580cd515ec70d4a69a7996c20592bf2abb5c310d7dc",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v13",
+     "sha256": "096797d16b9ae3cc020f283ac2d404878cec06effc49caab8523c3c53c37e0af",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "749179599e3b3a0155fe4ff3f00d88ca61fe5eba0ba8bbf3b20fdb73a52c0191",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1875,7 +2319,7 @@
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
-   "title": "A T-90M column returns fire across the fields at sunset",
+   "title": "A Challenger 2 leads a Ukrainian column returning fire across the fields at sunset",
    "map": "verdant",
    "time": "sunset",
    "hero": "ua_challenger2",
@@ -1886,7 +2330,7 @@
    "turrets": "lens",
    "still": {
     "tMs": 1380,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s21-fields-assault": {
@@ -1920,6 +2364,30 @@
      "sha256": "8b2790d13a17ff8a3c2ca3ae9d28ee429ce7df17564c3e3a6fd84ddc0a6cea7c",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "c0d3c6fd8048b5093358881def2a30e29310ae34c3e744cd2c5f154fea58a866",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "66aeccdffbee85c68d638fb570dcc302c79a16f5a84f664a05615aa976c7aad2",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v13",
+     "sha256": "95b79e7f3772ae8277603dc26b7dee398d19f43e088788cf8108deff8daa399a",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "133fd10e757eb397994310383556992472ea0d8e6d5452294b4bbdf507ce2edc",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -1970,8 +2438,8 @@
    },
    "turrets": "flank",
    "still": {
-    "tMs": 3720,
-    "exposureMs": 8
+    "tMs": 4200,
+    "exposureMs": 2
    }
   },
   "s22-walking-barrage": {
@@ -1999,6 +2467,30 @@
      "sha256": "f85cf4f6a28e9208e9e011589465cf18657ee8cb82d2f4234753cec22d91c6a0",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "1b33c5bba6cd8812535f6b863f13b1d513bacbf4beb27f956336cb250dce0423",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v12",
+     "sha256": "2dd87812fa3f724e08761e0e30ca98d3e4f4f3b3f9fb0590a7585809078b0e55",
+     "at": "2026-10-09T23:32:27.403Z",
+     "note": "Round ten (2026-10-08): fifteen takes re-staged after waves c3 and s1"
+    },
+    {
+     "version": "v13",
+     "sha256": "36e53834698acc5c5ef5d1fac012fcfc3d7cf5f61847dc7ed582402b99341e94",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "bb8789a44e462ad64a28cc2e113435adb9a5a855e535ef8cfea509fbec2fcf34",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2049,8 +2541,8 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 3700,
-    "exposureMs": 8
+    "tMs": 3200,
+    "exposureMs": 2
    }
   },
   "s23-village-crossroads": {
@@ -2084,6 +2576,30 @@
      "sha256": "14a9109087f0478442c1d7f236aca266ca4a00ba862da0691bbfb36bf85b705e",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "03ca4f4bda7aca8c706b39b9b02171c815e7bb6bc3551649ae46466310246cc1",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "d64993123e49248b3780f42df16313487d95a28c5eb122aa48448f024fcacb04",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v13",
+     "sha256": "b81fa62c84f7d8faa158d837a92a209dabfc30667a81305a52b36815b1b72e3b",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "6192513c437c968f57933b25ceedb745da0253107d93f93e51d18392b89121fb",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2124,7 +2640,7 @@
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
-   "title": "T-14 and T-90M tanks hold the village crossroads",
+   "title": "A T-80U Husarz and a PL-01 hold the village crossroads",
    "map": "verdant",
    "time": "day",
    "hero": "pl_t80u_modern",
@@ -2135,7 +2651,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 1580,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s24-ice-duel": {
@@ -2169,6 +2685,24 @@
      "sha256": "66d04c5920a0945849ebae355e198b2b94446ab0fff68ae747d0dd04a8409067",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "26d8d2ab88f7d2a4951b96b5000a5824b62a72b6e4bd9b66a9436d35d1c78186",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v13",
+     "sha256": "2dfb38be4e5688744f58a91b07a35ee263841497d42ea86619d26366a57cc348",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "4ad30670a207172fc1217fa75e76941f4c56a0dd40abd234f4637ca3c9a7ea0f",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2214,13 +2748,13 @@
    "time": "day",
    "hero": "fv510_milan_x",
    "paint": {
-    "unit": "merdcwinter",
+    "unit": "paint_ares_apc_x",
     "enemy": "sig_t90a_vladimir"
    },
    "turrets": "sectors",
    "still": {
     "tMs": 1860,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s25-alpine-village": {
@@ -2254,6 +2788,24 @@
      "sha256": "19a53df81aea0d9e1a3beb8f1d77601aa4ecfa287a4f4e6d64555a4db24ee800",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "e92bf609d34ae2536e29b6082dc652d5848624a72193e267d20f7fb6ca7ed5e0",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v13",
+     "sha256": "8177215bf7d8647448229b09a6ed30f769a2673382135867d019566f52dad5d1",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "a61eab481cfc094ede4d35ee8bb34e3455cab553fc9c0e0be8a0525b047552a2",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2299,13 +2851,13 @@
    "time": "day",
    "hero": "leo2a5_x",
    "paint": {
-    "unit": "washworn",
+    "unit": "service_leo2a4m",
     "enemy": "service_soviet_coldwar"
    },
    "turrets": "flank",
    "still": {
     "tMs": 3280,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s26-minaret-fire": {
@@ -2339,6 +2891,30 @@
      "sha256": "ec54dbcc14eff4ca5160ff6bade425e4cfba408d2a0fa2c2627e0ba9946db555",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "eee7ef6febabaf705fdb24d7ee2a3928556bf1576a4ae7a505ba52143e078ad4",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "f30ba67115c400109fee2411a36a1b754bb8935362b5dd4c4dc5880e7b50da7d",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v13",
+     "sha256": "f78afa9ca0be56474d675a317ef10457f926e6799215204b223f833047a77f13",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "080f72ab582a2cc84a81648b582c82cb647585439acde0a56fdc0f781ecae3fb",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2390,7 +2966,7 @@
    "turrets": "lens",
    "still": {
     "tMs": 1680,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s27-caravanserai-kill": {
@@ -2418,6 +2994,24 @@
      "sha256": "29555b11c0c109fb11709745c4db5d492021b6059eccf894c55c21baeb92c49f",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "1ad0280df1af96b28cb9a72350e93ac308cd9808f2ce3ac215235ba454028181",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v13",
+     "sha256": "115daafc076f48253c546945820d9158d66e7575041ff243e7620886a4b51984",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "30398e0a4f3590807f5aa5883421f74d7b54d21c246ac680993fee9394016618",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2469,7 +3063,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 2160,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s28-fjord-village": {
@@ -2503,6 +3097,30 @@
      "sha256": "8b2a723da09756083d5b15bcbce8465b59039cb9125ac962047745426b714186",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "31675b7c38dc441f63cd706ca1117b594d31a2785099371695c96b1549075b2d",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "bb9e9e32a1bbe791dfa81b95a21d92141b03d246850480770b73033baadf568e",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v13",
+     "sha256": "3590c18cb27f1e12d07948ed43c30b53f698190af238162a5c3ca8e85289e2b0",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "cb1306dee4dccda6e1ab66c2d62bf06b67e3ea1b1541e3b8d8a42fbf051e2058",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2543,7 +3161,7 @@
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
-   "title": "A Stridsvagn 122 and a CV9040C hold the fjord village",
+   "title": "A Challenger 2E and a Challenger 3 hold the fjord village",
    "map": "fjord",
    "time": "day",
    "hero": "challenger2e",
@@ -2554,7 +3172,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 3380,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s29-fjord-road-kill": {
@@ -2582,6 +3200,30 @@
      "sha256": "c173d5a443046835c4184aa57e3695441d7557056b541dd164afe8e0f600f000",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "15e7a4b0a564d1bae6ee59c4e31b712177c98e4bb5e36ff29050f5872749b397",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "6b333e273a34152fd6e09cd8ee11b24b62a986a59d8aea7b76bfdf29b4dd7e85",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v13",
+     "sha256": "c24d26f159641758ea172f40d2531701f21d596b2255b3799dd5ae86ec90bd09",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "85dbe62f9c985070959f77d374bb76cc51f452507ffc24e7ea1f8e8d8174e1f7",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2627,13 +3269,13 @@
    "time": "day",
    "hero": "leo2a4m_x",
    "paint": {
-    "unit": "tigerstripe",
+    "unit": "service_marder1a3",
     "enemy": "sig_t90a_vladimir"
    },
    "turrets": "sectors",
    "still": {
     "tMs": 1960,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s30-temple-village": {
@@ -2667,6 +3309,36 @@
      "sha256": "ae4d710d7dd5ecbd66813f199d002e995d5382c05f070e7177656e2b6ec9f749",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "5ea53aa969a2088fe30940aac2f51fd282a40d8fbcbaaa86a241403e959a3b8d",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "5077e8f75b7ebfc482f85fa81ab9a09811839d08c7d740c9dbccb5bcfcb81cbf",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v12",
+     "sha256": "fc78643ed07585f0e6fb759eab78484302af13234a73919939fbf2d7d8198bee",
+     "at": "2026-10-09T23:32:27.403Z",
+     "note": "Round ten (2026-10-08): fifteen takes re-staged after waves c3 and s1"
+    },
+    {
+     "version": "v13",
+     "sha256": "0b304a587377f818e0e16a1f8f48f731d09f74d1daa007eb02b88106f0d3111c",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "bb506ab286ef05654df8965ddc79be485219e3afc8e19ff69ea9be3bfd9eaa18",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2712,13 +3384,13 @@
    "time": "morning",
    "hero": "k1a1_x",
    "paint": {
-    "unit": "jungleops",
+    "unit": "sig_k1a1",
     "enemy": "sig_t72m1_jaguar"
    },
    "turrets": "flank",
    "still": {
     "tMs": 3280,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s31-ford-fire": {
@@ -2752,6 +3424,36 @@
      "sha256": "5aa1486b04256116c8246adf9bb927a8ecff76b33cd2f08403f7d8ffe7289129",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "2bb89573c80f32f6d235ecc0fac8c69291c13755cda243b54db5ec8ef8c28a45",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "3f0458bb9520bd637008d7fec460390114ab43ba8b6cb7f26cb7bf3be0437b00",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v12",
+     "sha256": "0e08ed839ad49cd5a961e8a9051f3d31c0a394f4469495145ef40746d060b31f",
+     "at": "2026-10-09T23:32:27.403Z",
+     "note": "Round ten (2026-10-08): fifteen takes re-staged after waves c3 and s1"
+    },
+    {
+     "version": "v13",
+     "sha256": "d566a044a572d8d4cf72717f49921068b019f3616ba9b8146e271cf2ea2b0cd5",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "12f1af000536a64e51327ec094c5ce455ced6bb4ae6995bde1972bf9ff8bdc9c",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2803,7 +3505,7 @@
    "turrets": "lens",
    "still": {
     "tMs": 1780,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s32-yard-salvo": {
@@ -2837,6 +3539,24 @@
      "sha256": "7d3187d0a2dc5576715eff4e468eaccb43d6209e9b250778416ddedf79faea3c",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "18f16ea66d998780b18cd4f229b7869f6f6c81b3a37bd2f7ac3dd2e9f8154a32",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v13",
+     "sha256": "52e11ab0749aa883842abd989a0ab713504b210b29594af6d871f5d73e11386d",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "dcf10f602b90706a58fb14cecfd895cdf6e4d49a592f8df158232dddddfbc147",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2887,8 +3607,8 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 1200,
-    "exposureMs": 8
+    "tMs": 1380,
+    "exposureMs": 2
    }
   },
   "s33-water-tower": {
@@ -2922,6 +3642,30 @@
      "sha256": "77ea3d02c948ed78e7a2d1b9e2adf69d52804b0db21dfbc2e35a2edaffb80636",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "3c7ae7d787448d83bebf5ecc4ded30d9b88c2ac0f6c8dd1ce1fb54052bb64c6b",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "45cfdf9a523c4747675571feae32f861827f3a436835ade5ad90b05b1a40039d",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v13",
+     "sha256": "8cae10c8e0c987fe07f71ed0f3dac38be0b7e4ecb9e1cdc32f2f9602ae7ca9ae",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "a37d48afea88c6de07abf9f528518651fd7605a72e25a3a2220910f49e7ad964",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -2972,8 +3716,8 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 3500,
-    "exposureMs": 8
+    "tMs": 3680,
+    "exposureMs": 2
    }
   },
   "s34-furnace-salvo": {
@@ -3001,6 +3745,30 @@
      "sha256": "23bea972bc9f932d77975e2a684e45b7a4b708e7eeea434750c40a7825860a44",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "3941f7e78d6fa92a0a981a786763cff57de2cf7500799be83c10e561e807b0ea",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "e39ed2adc1fe39e241203b9227b0deb1202d493da565f29c9ca2596e044400f4",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v13",
+     "sha256": "6779377332b2386776c35a27268a2c9a699499a79812d9d859f654c00b79bc5b",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "b7d16dbd4d9c724989f736517e7b7081555fd5e5bed9edc5e81cab2c00112fff",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3041,7 +3809,7 @@
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
-   "title": "T-14 Armatas fire a rippling salvo in the Ironworks yard at night",
+   "title": "TOS-1A launchers fire a rippling salvo in the Ironworks yard at night",
    "map": "foundry",
    "time": "night",
    "hero": "tos1a_tagil",
@@ -3052,7 +3820,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 1180,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s35-farm-village": {
@@ -3086,6 +3854,30 @@
      "sha256": "be7fea883e100f1b0d37ff22e6718af0a8c931e5c1e5d7c97152cdd0ef62f83a",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "f971374acdefe4cf07c9cd73cffa2e11a5e8b6a35417a62a8c159e9beec4484f",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v12",
+     "sha256": "6f9f3c103f298f06ecda027a35aabbb16d32d16493f30cd608b43da5ed98c19f",
+     "at": "2026-10-09T23:32:27.403Z",
+     "note": "Round ten (2026-10-08): fifteen takes re-staged after waves c3 and s1"
+    },
+    {
+     "version": "v13",
+     "sha256": "e21c7392bee6bcd53dbf4436fa2e8183d80750e6364767106a1e21dd9f4f7f96",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "1123ccecf6df830e9009e7ebcc88074c2d2d05c40e4f9a797a79ba766a185ec3",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3137,7 +3929,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 3380,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s36-barn-knockout": {
@@ -3165,6 +3957,36 @@
      "sha256": "72b8fc004ed0558e848d4a4a4327fd99ec11483fb2679d0c1e623c530bc8ef83",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "c1227e1d7d6465bbbe42317dcd0d3edd4d4101a2eecd07d0daabee314f9d29c4",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "cf6ef9b99794a1f3d76561715826b09727fcb7fd146b83388603dc7c082b3f9f",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v12",
+     "sha256": "7fe3788c81bad3bcc5281d515398688edcf9771096465d1ea5d047d835258d45",
+     "at": "2026-10-09T23:32:27.403Z",
+     "note": "Round ten (2026-10-08): fifteen takes re-staged after waves c3 and s1"
+    },
+    {
+     "version": "v13",
+     "sha256": "2c805c331252c5c5b764038f7a4852a0500a9dddc68c08c37f190c0d9a8411ae",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "c776eb0533318eb866b835c423ec0416780a9a2294bdb8c7907050a78439d6f1",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3210,13 +4032,13 @@
    "time": "morning",
    "hero": "type10_x",
    "paint": {
-    "unit": "amoeba",
+    "unit": "sig_type10b",
     "enemy": "paint_ru_t80u_modern"
    },
    "turrets": "sectors",
    "still": {
     "tMs": 2060,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s37-river-village": {
@@ -3250,6 +4072,30 @@
      "sha256": "45b66aea615cd296009ebc4f945da709dfc97154fe1e35c91d7c2e51b2123b8f",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "4fd5642c4cf11562bc1d57409d1e532ad1b8ef8798f53ff7ab5131bc977026b6",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v12",
+     "sha256": "08a3427e180c68c9021364b7ed05a9ccd98b091c32a2cf12bec71b9a055e399a",
+     "at": "2026-10-09T23:32:27.403Z",
+     "note": "Round ten (2026-10-08): fifteen takes re-staged after waves c3 and s1"
+    },
+    {
+     "version": "v13",
+     "sha256": "05174e65b18d8a36541e5a9b1a6005bb1a0cca07328e9627c44a2059ee2b2f18",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "6b665e10fc4a63aa9c47f77b8b19765ff99bcab51001a0101739bbbcdd20a9d0",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3290,7 +4136,7 @@
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
-   "title": "ZTZ-100 tanks fight through the river village of the Jade River Delta",
+   "title": "A VT-4A1 and a ZTZ-100 fight through the river village of the Jade River Delta",
    "map": "delta",
    "time": "morning",
    "hero": "vt4a1",
@@ -3301,7 +4147,7 @@
    "turrets": "lens",
    "still": {
     "tMs": 1480,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s38-church-knockout": {
@@ -3329,6 +4175,30 @@
      "sha256": "6e6a578286ce6a6c94712705e88a72f3d4957269725602c1a259d1bcdd3e591c",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "8894473182cb4dfd178abab1692ed7482939aa4ec0c940df5d038bb585a0ec45",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "3b5fc3bcc23b4f5dba50f0ef2af22e6884ca459b1a543db6aefeb9c3aae42a5c",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v13",
+     "sha256": "5edc4bd8934258a0b6c4ffbdc233cf98d76284cf4db7c5f026b9f417cb82ed3a",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "46244db3313c33bd53b5fc31ec78a6cce412eb65e75b6de576818ad31b7650d9",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3374,13 +4244,13 @@
    "time": "night",
    "hero": "t90a_vladimir_x",
    "paint": {
-    "unit": "ardennes44",
+    "unit": "sig_t90a_vladimir",
     "enemy": "merdcwinter"
    },
    "turrets": "sectors",
    "still": {
     "tMs": 2060,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s39-lakeside-village": {
@@ -3414,6 +4284,24 @@
      "sha256": "73d2e80698042d44096967dbb1012f1b86bf079a98a0b782728121c41c27ac8d",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "7329ac482d3514ddf6a49a6dedf40fbd39ac94a7c6be83d3eb687e96b619f34c",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v13",
+     "sha256": "46f5422ac1400df3cd75b46d72e56bac0ad41994b001ed7deda14f3eb3e1ef63",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "d37c70dfbceb5903da79e1d36542f61fd3e65b22d8714cb7cf7f42bf4698c5c4",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3459,13 +4347,13 @@
    "time": "day",
    "hero": "chieftain_mk10_x",
    "paint": {
-    "unit": "dpm",
+    "unit": "paint_chieftain5",
     "enemy": "sig_t90a"
    },
    "turrets": "flank",
    "still": {
     "tMs": 3380,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s40-rooftop-smoke": {
@@ -3499,6 +4387,30 @@
      "sha256": "ff894fc8de2f141710dcad593cbc42ad236b154eb47fd08173a2a31fcd23a33f",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "3c0cbf8b7eadd96963a3ca21ac11d9d20ee5c167b7fc09b1784aee6da001407c",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "1fb972aee1d9bd498cdd7431187e6e25f5f200df3b27fd8be9085cb40656e7f2",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v13",
+     "sha256": "5b9f4f87fcdc3b8c3dc08e62e3e0dc20f6aebd22f37104cde7200515a0cd322c",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "65394b204f2cb31ccbcaab97aa49de4799889051a64d2c2d8a3b2761b7b2b582",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3563,7 +4475,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 3300,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s41-church-tower": {
@@ -3597,6 +4509,24 @@
      "sha256": "95b3a9d52047338c7e451ce0cd8ba0567dbd230f1a5e8e07382c05f7e452965b",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "9c594437f79b68631cd8aa64d5abf1031f57e6aa3ee49b3133ec2cf287f2f1f5",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v13",
+     "sha256": "8d93d31e0b3489c65ed59efe309bca9e3ede7660def374697d738f5e471b8f06",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "ccdfb512432db10c0b9b97602460223eb46dd3c4db29c39049209a34e3b68d2b",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3637,7 +4567,7 @@
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
-   "title": "The night street fight seen from the church tower",
+   "title": "A Leopard 2A6 UA halts in Steinburg's night street fight",
    "map": "urban",
    "time": "night",
    "hero": "leo2a6_ua",
@@ -3648,7 +4578,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 2700,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s42-assault-above": {
@@ -3682,6 +4612,24 @@
      "sha256": "bc3f7ce757916179949c0cdc91924a88d8febb929f2ad531ec0701b98cd13326",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "3f1bff1a5b518bc366b8559159df7cd6e78d30277b677a32c890fecbd98928c5",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v13",
+     "sha256": "0762638ac3cc13d51a7165e80cd52a5c1d5fffaff9f3602d345e97891338abfd",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "83232305a75ae00134d479688a4b5bcc9761c96b4a87b246459a1b4830da48ee",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3733,7 +4681,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 3300,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s43-lake-crane": {
@@ -3767,6 +4715,30 @@
      "sha256": "3c766ea578d686e3c4f68859777ada180f1600651fc70f4724ef622a490dce40",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "08a0f963d0f346fe665bb6c070862ef84d7458b47a81391fde5c395fef0a9d75",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "3ab52c66f5887a67a6a6746ca31d1b474a575421dd863d6b37e6e3766d247093",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v13",
+     "sha256": "2d83c2ad475485fd06cb0c7f748491fb8f2c67e4f3234d4bd8aad2047e973308",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "187347b3572d66d05d4324cb70eec88ff07a5fd31c1386d4c517edd0d02d7a5c",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3818,7 +4790,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 4600,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s44-oasis-sunset": {
@@ -3852,6 +4824,24 @@
      "sha256": "f545a4183f0e6e3c25eebd31d5cad39a60384e7f3551b21975efb27def5040fa",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "6f4cc0102c5b1223a98878b5e2c49c5efd17b93782448e9c55880c4ef11b64af",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v13",
+     "sha256": "1ebffe5a7bd8095319126c2acd35f47816c8e8da7c43931afe4153aef2202fe7",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "efec3b31e1fa7ee2b1dfc0f0efc09b1b5138a3760733ee21b165b347e2174ecf",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -3903,7 +4893,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 3300,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s45-harbor-wide": {
@@ -3943,6 +4933,36 @@
      "sha256": "5efec03f41f852920088881065abe7026fded9577095deebdf18c36e0f233ad2",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "9c9488a61abcbf707f86cb1de43127a42aa5069e574cd1988908203c1b70f537",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "d634681dc74f58bbcd0b6803f912ec073ad81cdedeb9dc7d20b351fcd4e5873d",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v12",
+     "sha256": "a4e17ed8289b7d422a6cd0ece727381ac58805a960001276d6cd7d2977971fc7",
+     "at": "2026-10-09T23:32:27.403Z",
+     "note": "Round ten (2026-10-08): fifteen takes re-staged after waves c3 and s1"
+    },
+    {
+     "version": "v13",
+     "sha256": "fc4017941fa6ffc13a023ca92c4b5f05af48c8dc09aa5e52f2fd63420395d456",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "0d7b54998c330bb3bf7bcd7e75baffbde1a7af11aab6e92c08a411d8f59403a4",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -4001,13 +5021,13 @@
    "time": "golden",
    "hero": "ajax_x",
    "paint": {
-    "unit": "naval",
+    "unit": "sig_ares_apc_x",
     "enemy": "sig_t90a"
    },
    "turrets": "flank",
    "still": {
-    "tMs": 3300,
-    "exposureMs": 8
+    "tMs": 2800,
+    "exposureMs": 2
    }
   },
   "s46-river-drone": {
@@ -4041,6 +5061,30 @@
      "sha256": "1398230b5c94a0052056cce830bf5d2058c0435d69a4d2d192d6e1064fef9f34",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "916a897ab63eb6d828726d3012ce32e7bfdb803ecd18939ae2b59a8fbb1ff342",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "01658d007365b5898d9d9c04da541c1ccac89e080e56f40efaddbfafa42f85a0",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v13",
+     "sha256": "403350d51a29d60bf2e50d3d76296897d1807263236dafe54913385cd42a9808",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "b1c647bf9c7ede59d2bb23c9b17e033b82f0c06b1e4d27f924ab394b1083ecd4",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -4099,13 +5143,13 @@
    "time": "day",
    "hero": "aft10_x",
    "paint": {
-    "unit": "tropic",
+    "unit": "paint_cn_t80u_modern",
     "enemy": "rasputitsa"
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 3300,
-    "exposureMs": 8
+    "tMs": 3000,
+    "exposureMs": 2
    }
   },
   "s47-ironworks-crane": {
@@ -4133,6 +5177,30 @@
      "sha256": "3ba5fa63b23a45ddbd6b54f507c2ee79dd3943936a14f79fdd076e2edbcba9ec",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "ee8968215f4ca8e41108abb2679497f27c5d20e2e07268554db1096676f991b1",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "c1d93beb8ec25f6cc9f13096374ba4904bf63f7b7ca1d294cc2b84065958952a",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v13",
+     "sha256": "400831cb57e3dec86433372d800f617953ea42baeb5508585c26142207f66528",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "ccf1fd56944a4553a294b3d7ee82f69bdf5c52bc917e1ab36013ad65fe3f9449",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -4184,7 +5252,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 4600,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s48-delta-crane": {
@@ -4212,6 +5280,36 @@
      "sha256": "8d5450ce49f437829b41408b9ec2817b1b2780827ecb0f87ba6c857bd6408a6a",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "b3cbbd3f0e5188840b9c605ac55f6dd3308e54169ff8f21ebd5e7258329569bf",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "4d614fc0fccff351d6833936afcb35387f1290b28f0716747c3b78425a477e1c",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v12",
+     "sha256": "24f2776ec9c1e96a65df76799663f164d1bd54719d70003616bc8bdac3fd2e92",
+     "at": "2026-10-09T23:32:27.403Z",
+     "note": "Round ten (2026-10-08): fifteen takes re-staged after waves c3 and s1"
+    },
+    {
+     "version": "v13",
+     "sha256": "76bc96a85b46091347933af423d084f9c0b333f5259b6f917b5eeb74dd3082c0",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "116e02da1253d96961957aca1eb1ac9b8b8a0bf185fb5e52f898d0a130485a90",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -4263,7 +5361,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 4600,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s49-orchard-sunset": {
@@ -4303,6 +5401,30 @@
      "sha256": "1d90bf66dac66f2c1ee2833eab5dc6fe84a7ef1bc354a1c35fc2932adaa0956b",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "39ba41f2601b0f3bd29aaba539a93b8da9813801bb3f7ba8a4b9ba100ba2e213",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v11",
+     "sha256": "a9bc2a5883e131fccd35bef612230538d971ed9505196bf33fdb07c863e9f05f",
+     "at": "2026-10-09T23:32:26.361Z",
+     "note": "Round nine (2026-10-08): wave c3's re-plan of the weakest takes and the staged action beats, 27 takes"
+    },
+    {
+     "version": "v13",
+     "sha256": "dedefc21afa5bb495543970d55d0499e74d0771c7fcbd31799626e50564b252d",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "f33dd63921c38c19de2f273ca6d5f20cd704521ff88814d4baf05fcf8478fe84",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -4361,13 +5483,13 @@
    "time": "day",
    "hero": "amx30_x",
    "paint": {
-    "unit": "oakleaf",
+    "unit": "sig_amx10p",
     "enemy": "service_soviet_coldwar"
    },
    "turrets": "sectors",
    "still": {
     "tMs": 3300,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   },
   "s50-reservoir-crane": {
@@ -4401,6 +5523,30 @@
      "sha256": "ccdd3722353584a271d910bf5450c2a232898a0473c9afd35630333f7be1bc3e",
      "at": "2026-10-07T22:43:49.658Z",
      "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
+    },
+    {
+     "version": "v10",
+     "sha256": "e6df893d943b75e9ae9cf5d9206854dfe711ebbb56c9f9157fe04c076e8f1e10",
+     "at": "2026-10-09T23:32:24.024Z",
+     "note": "Round eight (2026-10-08): the framing re-plan after wave c1 (the lens about 2 m up and level, 11 to 18 m from the tank, the tank 40 to 55 % of the frame), 49 takes, scored by wave c2"
+    },
+    {
+     "version": "v12",
+     "sha256": "2df9248723e4a6197ba7224ceee36a8359341a240505bc8692a385ffc8067ea5",
+     "at": "2026-10-09T23:32:27.403Z",
+     "note": "Round ten (2026-10-08): fifteen takes re-staged after waves c3 and s1"
+    },
+    {
+     "version": "v13",
+     "sha256": "0b16fd80d8c598a74542e3ae319d28f4decde3c4eb915f1764dd9c88deeffba7",
+     "at": "2026-10-09T23:32:29.487Z",
+     "note": "Round twelve (2026-10-08 night): all fifty resolved with the hero-relative beats (wave s2), the occlusion rule and framing v3"
+    },
+    {
+     "version": "v14",
+     "sha256": "e2a027f7d0dc7dba8d46832d38490327edc12aedb29c3c5c48361532b06a1e3b",
+     "at": "2026-10-09T23:32:31.795Z",
+     "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
     }
    ],
    "renders": [
@@ -4452,7 +5598,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 4600,
-    "exposureMs": 8
+    "exposureMs": 2
    }
   }
  }

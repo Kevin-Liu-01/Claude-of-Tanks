@@ -11,19 +11,30 @@
  * every building up again (a scene load, the Studio's exit).
  *
  * The Studio wires it (studio.ts): a wall strike traces the world from the effect along its heading and calls `strike`
- * with the record it met; its flying rounds trace each step's segment and call `strike` where they meet a structure;
- * a ram effect calls `ram` where an actor's nose meets a wall; `step` runs once per fixed step after them.
+ * with the record it met; its flying rounds trace each step's segment and call `strike` where they meet a structure or
+ * the ground; a ram effect calls `ram` where an actor's nose meets a wall; `step` runs once per fixed step after them.
+ *
+ * A burst fells the light props within its reach as a battle's does (2026-10-09; the owner: "destructible props must
+ * break properly"): the solo step's fellBlastProps (game/state.ts) and the authority's fellPropsByBlast, restated over the
+ * Studio world's records — props within 1.2 · W^⅓ of a burst of 2 kg or more, nearest first, at most PROP_FELL_PER_BLAST
+ * a burst and PROP_FELL_PER_TICK a step, each by the world's own crush (its broken state, its debris, its sound). Before,
+ * a Studio round broke only the light cover it flew through (a hut, a box truck): a fence, a crate or a car beside its
+ * burst stood untouched.
  */
 import type { CollisionRecord } from '../world/collision.ts';
 import { DESTRUCTION_BUS_EVENTS, type DestructionRules, type StructureBreachEvent, type StructureStageEvent } from '../sim/destructionEvents.ts';
 import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
-import type { MunitionShellLike } from '../sim/munitionBlast.ts';
+import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, propFellRadiusM, type MunitionShellLike } from '../sim/munitionBlast.ts';
 import type { StructureMaterial } from '../sim/structureMaterial.ts';
 import type { TerrainDeformation } from '../sim/terrainDeformation.ts';
 
 interface StudioWorld {
   getObstacles(): CollisionRecord[];
   getColliders?(): CollisionRecord[];
+  /** The movement records in a box (the world's broad phase): a burst's light props. */
+  queryObstacles?(minX: number, minZ: number, maxX: number, maxZ: number, out: CollisionRecord[]): CollisionRecord[];
+  /** The world's crush of a prop (props.ts breakRecord through map.ts crushObstacle): its broken state, debris, sound. */
+  crushObstacle?(record: CollisionRecord, dirX: number, dirZ: number, speedMps?: number, cause?: 'ram' | 'shell'): boolean;
 }
 
 interface StudioBus {
@@ -33,8 +44,13 @@ interface StudioBus {
 export interface StudioDestruction {
   /** The match the Studio runs (its structures, sections and log): the receipts and the panel read it. */
   readonly match: DestructionMatch;
-  /** A round meeting the world at (x, y, z) heading (dirX, dirZ): `record` the record it met (null on the ground). */
-  strike(spec: MunitionShellLike, record: CollisionRecord | null, x: number, y: number, z: number, dirX: number, dirZ: number): void;
+  /**
+   * A round meeting the world at (x, y, z) heading (dirX, dirZ): `record` the record it met (null on the ground). `dig`:
+   * the match digs a crater for a burst on the ground (default: on the ground); the Studio digs its own (studio.ts
+   * studioDig, one crater count with its explosion effects) and passes false.
+   */
+  strike(spec: MunitionShellLike, record: CollisionRecord | null, x: number, y: number, z: number, dirX: number, dirZ: number,
+    dig?: boolean): void;
   /**
    * A hull of `massTons` ramming the structure `record` belongs to at `closingMps`, its nose at (x, y, z) heading
    * (dirX, dirZ), as the authority prices a ram (§4.4): when the ram brings it down the structure yields and this returns
@@ -69,15 +85,51 @@ export function createStudioDestruction(world: StudioWorld, bus: StudioBus, opti
   const rules: DestructionRules = { ...options.rules, structures: true, sections: options.sections !== false };
   const stages: StructureStageEvent[] = [];
   const breaches: StructureBreachEvent[] = [];
+  /** This step's bursts (x, y, z, kg), felled in step() before the match steps, as the solo step's stepDestruction does. */
+  const blasts: number[] = [];
+  const candidates: CollisionRecord[] = [], felled: CollisionRecord[] = [];
+  const centreDistance = (record: CollisionRecord, x: number, z: number): number =>
+    Math.hypot((record.min[0] + record.max[0]) * 0.5 - x, (record.min[2] + record.max[2]) * 0.5 - z);
+  /** The solo step's fellBlastProps over the Studio world (game/state.ts; the receipt holds the two to one rule). */
+  function fellBlastProps(): void {
+    if (!blasts.length) return;
+    if (!world.queryObstacles || !world.crushObstacle) { blasts.length = 0; return; }
+    let budget = PROP_FELL_PER_TICK;
+    for (let b = 0; b < blasts.length && budget > 0; b += 4) {
+      const x = blasts[b], y = blasts[b + 1], z = blasts[b + 2], radius = propFellRadiusM(blasts[b + 3]);
+      if (!(radius > 0)) continue;
+      world.queryObstacles(x - radius, z - radius, x + radius, z + radius, candidates);
+      felled.length = 0;
+      for (const obstacle of candidates) {
+        if (!obstacle.crushable || obstacle.crushed || obstacle.min[1] > y + radius) continue;
+        if (centreDistance(obstacle, x, z) <= radius) felled.push(obstacle);
+      }
+      felled.sort((a, c) => centreDistance(a, x, z) - centreDistance(c, x, z) || obstacles.indexOf(a) - obstacles.indexOf(c));
+      const fell = Math.min(felled.length, PROP_FELL_PER_BLAST, budget);
+      budget -= fell;
+      for (let i = 0; i < fell; i++) {
+        const obstacle = felled[i];
+        const dx = (obstacle.min[0] + obstacle.max[0]) * 0.5 - x, dz = (obstacle.min[2] + obstacle.max[2]) * 0.5 - z;
+        const length = Math.hypot(dx, dz) || 1;
+        obstacle.crushed = true;
+        world.crushObstacle(obstacle, dx / length, dz / length, 6, 'shell');
+      }
+    }
+    blasts.length = 0;
+    candidates.length = 0;
+    felled.length = 0;
+  }
   const build = (): DestructionMatch => {
     resetStructureRecords(obstacles, colliders);
-    return createDestructionMatch({ rules, obstacles, colliders, wallMaterial: options.wallMaterial, ground: options.ground ?? null });
+    blasts.length = 0;
+    return createDestructionMatch({ rules, obstacles, colliders, wallMaterial: options.wallMaterial, ground: options.ground ?? null,
+      onBlast: (x, y, z, chargeKg) => { blasts.push(x, y, z, chargeKg); } });
   };
   let match = build();
   return {
     get match() { return match; },
-    strike(spec, record, x, y, z, dirX, dirZ) {
-      match.shellWorldHit(spec, record, x, y, z, dirX, dirZ, !record);
+    strike(spec, record, x, y, z, dirX, dirZ, dig = !record) {
+      match.shellWorldHit(spec, record, x, y, z, dirX, dirZ, dig && !record);
     },
     ram(record, massTons, closingMps, x, y, z, dirX, dirZ) {
       const keep = match.ramThrough(record, massTons, closingMps, closingMps, x, y, z, dirX, dirZ);
@@ -85,6 +137,8 @@ export function createStudioDestruction(world: StudioWorld, bus: StudioBus, opti
       return keep;
     },
     step() {
+      // the step's bursts fell their light props first, in report order (the solo step's stepDestruction alike)
+      fellBlastProps();
       match.step();
       stages.length = 0;
       match.drainEvents(stages);
