@@ -17,6 +17,7 @@ import { resolveStructureWindowStyle } from './structureInstanceAppearance.ts';
 import { applyRockShaderHook, rockDressingFor } from './rockDressing.ts'; // round 75 item 6
 import { STONE_SETTLE_M, applyStoneWallHook } from './stoneWallShader.ts'; // b14: the dry-stone walls' world-space hook
 import { MUD_SLUMP_M, applyMudWallHook } from './mudWallShader.ts'; // b14: the mud walls' world-space hook
+import { STRUCTURE_OCCLUSION_EXCLUDED_KINDS } from '../engine/structureOcclusion.ts'; // (2026-10-10, the shadows lane r4: the structures' pixel tag)
 
 // 2026-10-01 (frozen pins retired): the control used to be an embedded copy of the 465a68f7c painter, tone, normal and
 // surface formulas plus a copy of that commit's palette call sites, so any intended plaster repaint failed here. The
@@ -131,7 +132,7 @@ const roof = new Function('THREE', `${stripTypeScriptTypes(section(source,
 const remaining = ['roofT', 'stone', 'fieldStone', 'fieldMud', 'wood', 'straw', 'hay', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'vehiclePaint', 'steel', 'rockDetail'];
 const materialFactory = new Function('THREE', 'resolveStructureWindowStyle', 'makeRoofMaterial',
   'registerRetainedObject3DResources', '_mustReplace', 'rockDressingFor', 'applyRockShaderHook',
-  'STONE_SETTLE_M', 'applyStoneWallHook', 'MUD_SLUMP_M', 'applyMudWallHook', `${stripTypeScriptTypes(`
+  'STONE_SETTLE_M', 'applyStoneWallHook', 'MUD_SLUMP_M', 'applyMudWallHook', 'STRUCTURE_OCCLUSION_EXCLUDED_KINDS', `${stripTypeScriptTypes(`
   function* materialSteps(group, engineCtx, mapId, atlases, grimeTex) {
     const { ${[...families, ...remaining].join(', ')} } = atlases, P = {};
     const regionalArchitecture = null; // a map without a regional kit (maps/regional): no weathered materials
@@ -139,7 +140,7 @@ const materialFactory = new Function('THREE', 'resolveStructureWindowStyle', 'ma
     return { mats, retainedSurfaceMaterials };
   }`)}\nreturn materialSteps;`)(THREE, resolveStructureWindowStyle, roof, registerRetainedObject3DResources,
   (text, anchor, replacement) => { assert.ok(text.includes(anchor)); return text.replace(anchor, replacement); }, rockDressingFor, applyRockShaderHook,
-  STONE_SETTLE_M, applyStoneWallHook, MUD_SLUMP_M, applyMudWallHook);
+  STONE_SETTLE_M, applyStoneWallHook, MUD_SLUMP_M, applyMudWallHook, STRUCTURE_OCCLUSION_EXCLUDED_KINDS);
 function materialFixture(palette, mapId = 'verdant', attached = false) {
   const group = new THREE.Group(), scene = new THREE.Scene(); scene.add(group);
   const dummy = new THREE.DataTexture(new Uint8Array([128, 128, 128, 255]), 1, 1);
