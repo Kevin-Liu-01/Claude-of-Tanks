@@ -63,7 +63,11 @@ assert.ok(ShaderChunk.normal_fragment_begin.includes('vec3 nonPerturbedNormal = 
 // ---- 4. the wiring
 const lighting = read('./lighting.ts');
 assert.match(lighting, /frag = csmPart\.split\(receiverLightSite\)\.join\(`\$\{receiverLightSite\}\s*\$\{CSM_SITE_SETUP\}`\) \+ frag\.slice\(nonCsmAt\);/, 'each CSM site sets the lookup up, after its receiver-only bias');
-assert.match(lighting, /shadowmap_pars_fragment\.replace\(THREE_PCF_GET_SHADOW_DEF, COT_PCF_GET_SHADOW_DEF\)\}\s*\$\{CONTACT_HARDENING_GLSL\}\s*#if defined\( COT_SHADOW_RECEIVER_ONLY \)/, 'three\'s PCF renamed, the wrapper after it (the receiver-only uniform still ends the chunk)');
+assert.match(lighting, /shadowmap_pars_fragment\.replace\(THREE_PCF_GET_SHADOW_DEF, COT_PCF_GET_SHADOW_DEF\)\}\s*\$\{CONTACT_HARDENING_GLSL\}\s*\$\{receiverOnlyPars\}/, 'three\'s PCF renamed, the wrapper after it (the receiver-only uniform still ends the chunk)');
+assert.match(lighting, /const receiverOnlyPars = `#if defined\( COT_SHADOW_RECEIVER_ONLY \) && defined\( USE_SHADOWMAP \)\nuniform float uCotReceiverOnly;\n#endif`;/, 'the receiver-only uniform block, shared by both installs');
+assert.match(lighting, /const contactHardening = getDeviceTier\(\) !== 'mobile';/, 'the phones never install the law');
+assert.match(lighting, /if \(contactHardening\) \{\s*frag = csmPart\.split\(receiverLightSite\)/, 'no site set-up on the phones');
+assert.match(lighting, /: `\$\{THREE\.ShaderChunk\.shadowmap_pars_fragment\}\s*\$\{receiverOnlyPars\}`;/, 'their shadow chunk is three\'s PCF exactly, plus the receiver-only uniform');
 assert.match(lighting, /shader\.uniforms\.uCotPcss = pcssUniform;[\s\S]{0,260}shader\.uniforms\.uCotPcssU = pcssUUniform;/, 'every CSM program binds the law\'s state');
 assert.match(lighting, /function updateLighting\(force = false, dt = 1 \/ 60\): void \{\s*updateContactHardening\(\);/, 'refreshed every frame');
 assert.match(lighting, /const on = !mobileTier && getPreset\(\)\.pcss === true && lightTune\('PCSS', 1\) > 0;/, 'the tier\'s lever; never the phones');
