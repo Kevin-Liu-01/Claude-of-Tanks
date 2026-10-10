@@ -32,6 +32,9 @@ export const SGO_RANGE_FADE_M = 70;
 /** Receivers up to this far over the occluder's base take the term whole, fading to none SGO_GATE_SOFT_M higher (m). */
 export const SGO_GATE_M = 0.8;
 export const SGO_GATE_SOFT_M = 0.7;
+/** Inside a standing solid's footprint (the raster's covered flag) only receivers at its base itself: never the solid's top. */
+export const SGO_COVERED_GATE_M = 0.2;
+export const SGO_COVERED_GATE_SOFT_M = 0.2;
 /** Receivers turned up: from this normal y the term fades in, whole from the second (a wall foot's ground, never the wall). */
 export const SGO_UP_MIN = 0.5;
 export const SGO_UP_FULL = 0.8;
@@ -303,14 +306,19 @@ export const STRUCTURE_GROUND_OCCLUSION_GLSL = /* glsl */ `
     float cotStructureGroundShade( vec2 uv, vec3 P, float alpha, float dist ) {
       vec2 t = P.xz * ${f(1 / (2 * SGO_HALF_M))} + 0.5;
       if ( any( lessThan( t, vec2( 0.0 ) ) ) || any( greaterThan( t, vec2( 1.0 ) ) ) ) return 1.0;
-      float occ = texture2D( tSgo, t ).r;
-      if ( occ < 0.004 ) return 1.0;
+      // the occlusion in R's upper seven bits (the covered flag's lowest bit is noise under 1/254 in the filtered read)
+      float occ = texture2D( tSgo, t ).r * ${f(255 / 254)};
+      if ( occ < 0.008 ) return 1.0;
       // the strongest occluder's base, stored modulo ${SGO_BASE_WRAP_M} m: the one nearest the pixel's own height
       ivec2 ti = ivec2( min( t * ${f(SGO_SIZE)}, vec2( ${f(SGO_SIZE - 1)} ) ) );
-      float baseMod = texelFetch( tSgo, ti, 0 ).g * ${f((255 / 256) * SGO_BASE_WRAP_M)};
+      vec2 near = texelFetch( tSgo, ti, 0 ).rg;
+      float baseMod = near.g * ${f((255 / 256) * SGO_BASE_WRAP_M)};
       float d = baseMod - mod( P.y, ${f(SGO_BASE_WRAP_M)} );
       d -= ${f(SGO_BASE_WRAP_M)} * floor( d * ${f(1 / SGO_BASE_WRAP_M)} + 0.5 );
-      float gate = 1.0 - smoothstep( ${f(SGO_GATE_M)}, ${f(SGO_GATE_M + SGO_GATE_SOFT_M)}, -d );
+      // inside a standing solid's footprint only the ground at its base (the wall foot under the filter), never its top
+      bool covered = mod( floor( near.r * 255.0 + 0.5 ), 2.0 ) > 0.5;
+      float gate = covered ? 1.0 - smoothstep( ${f(SGO_COVERED_GATE_M)}, ${f(SGO_COVERED_GATE_M + SGO_COVERED_GATE_SOFT_M)}, -d )
+        : 1.0 - smoothstep( ${f(SGO_GATE_M)}, ${f(SGO_GATE_M + SGO_GATE_SOFT_M)}, -d );
       if ( gate <= 0.0 ) return 1.0;
       gate *= 1.0 - smoothstep( ${f(SGO_RANGE_M - SGO_RANGE_FADE_M)}, ${f(SGO_RANGE_M)}, dist );
       float sunVis = cotSunVisOf( alpha );

@@ -27,11 +27,13 @@
  * Each part's reach is REACH_H of its height (an infinite wall hides 5 % of the sky at 2 heights), faded over its last
  * 40 % so no edge is drawn.
  *
- * The raster: RG8 over the playable square, TEXEL_M a texel. R the occlusion (0..1). G the base height of the strongest
- * occluder modulo BASE_WRAP_M at BASE_WRAP_M / 256 (the pass recovers the nearest base congruent to it within half a wrap of
- * the pixel's own height, and lets only receivers near the ground take the term — never a roof, a hull top or a wall). A
- * texel inside a standing solid has no visible ground: it takes the largest occlusion of its open neighbours, so the
- * filtered read at the wall line is the wall foot's own value, not a lighter seam.
+ * The raster: RG8 over the playable square, TEXEL_M a texel. R the occlusion in its upper seven bits (0..127) and in its
+ * lowest bit whether the texel lies inside a standing solid (the filtered read takes the bit as noise under 1/254). G the
+ * base height of the strongest occluder modulo BASE_WRAP_M at BASE_WRAP_M / 256 (the pass recovers the nearest base
+ * congruent to it within half a wrap of the pixel's own height, and lets only receivers near the ground take the term —
+ * never a roof, a hull top or a wall). A texel inside a standing solid has no visible ground: it takes the largest
+ * occlusion of its open neighbours, so the filtered read at the wall line is the wall foot's own value, not a lighter seam,
+ * and its flag holds the pass to receivers at the base itself there, so a wall's own top never darkens.
  *
  * No DOM, no WebGL, no three: the worker (structureGroundOcclusionWorker.ts) and the receipt run it as it is.
  */
@@ -52,6 +54,8 @@ export const SGO_MIN_HEIGHT_M = 0.3;
 export const SGO_OVERHANG_M = 1.2;
 /** The G channel's wrap (m): base heights are stored modulo it, at BASE_WRAP_M / 256. */
 export const SGO_BASE_WRAP_M = 64;
+/** R's lowest bit: the texel lies inside a standing solid (its occlusion is its open neighbours'). */
+export const SGO_COVERED_BIT = 1;
 /** Sides of the polygon a circle part becomes. */
 export const SGO_CIRCLE_SIDES = 10;
 
@@ -283,7 +287,8 @@ export function bakeStructureGroundOcclusion(
   // the open texels' occlusion; a covered texel takes the largest of its open neighbours (the wall foot's value)
   const ow = ri1 - ri0, oh = rj1 - rj0;
   const rg = new Uint8Array(ow * oh * 2);
-  const enc = (v: number) => Math.max(0, Math.min(255, Math.round(v * 255)));
+  // the occlusion in R's upper seven bits, the covered flag in its lowest (SGO_COVERED_BIT)
+  const enc = (v: number, covered: boolean) => (Math.max(0, Math.min(127, Math.round(v * 127))) << 1) | (covered ? 1 : 0);
   const wrap = (y: number) => {
     const m = ((y % SGO_BASE_WRAP_M) + SGO_BASE_WRAP_M) % SGO_BASE_WRAP_M;
     return Math.round((m / SGO_BASE_WRAP_M) * 256) & 255;
@@ -306,8 +311,8 @@ export function bakeStructureGroundOcclusion(
         }
       }
       const q = ((j - rj0) * ow + (i - ri0)) * 2;
-      rg[q] = enc(occ);
-      rg[q + 1] = occ > 0 ? wrap(b) : 0;
+      rg[q] = enc(occ, covered[idx] === 1);
+      rg[q + 1] = occ > 0 || covered[idx] ? wrap(b) : 0;
     }
   }
   const t1 = typeof performance !== 'undefined' ? performance.now() : Date.now();

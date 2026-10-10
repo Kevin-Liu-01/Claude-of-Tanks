@@ -74,11 +74,13 @@ assert.equal(packed.length, 4 + 8, 'trees, kerbs under 0.3 m and broken solids a
 const full = bakeStructureGroundOcclusion(packed);
 const at = (x, z) => {
   const i = Math.floor((x + SGO_HALF_M) / SGO_TEXEL_M), j = Math.floor((z + SGO_HALF_M) / SGO_TEXEL_M);
-  return { occ: full.rg[(j * SGO_SIZE + i) * 2] / 255, g: full.rg[(j * SGO_SIZE + i) * 2 + 1] };
+  const r = full.rg[(j * SGO_SIZE + i) * 2];
+  return { occ: (r >> 1) / 127, covered: (r & 1) === 1, g: full.rg[(j * SGO_SIZE + i) * 2 + 1] };
 };
 // beside the long wall (x 10..18 at z 26): a 6 m wall of 8 m, the receiver 0.75 m out
 const foot = at(14.1, 26.75);
-near(foot.occ, prismSkyOcclusion(14.25, 3.2, 26.75, shapeFootprint(house.shape2), 0, 4, 3.2, 9.2), 1.5 / 255, 'the wall foot');
+near(foot.occ, prismSkyOcclusion(14.25, 3.2, 26.75, shapeFootprint(house.shape2), 0, 4, 3.2, 9.2), 1 / 127, 'the wall foot');
+assert.ok(!foot.covered && at(14.1, 25.8).covered && at(14.1, 23).covered, 'R\'s lowest bit: inside the standing solid');
 assert.ok(foot.occ > 0.3 && foot.occ < 0.5, `a house's wall foot loses a third of its sky (${foot.occ})`);
 const baseMod = (foot.g / 256) * SGO_BASE_WRAP_M;
 near(baseMod, 3.2, SGO_BASE_WRAP_M / 256, 'G: the base modulo the wrap');
@@ -111,7 +113,8 @@ assert.equal(diff, 0, 'a region re-bake equals the full bake');
 
 // ---- 4. the pass's block and its wiring
 assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /float cotStructureGroundShade\( vec2 uv, vec3 P, float alpha, float dist \)/);
-assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /texelFetch\( tSgo, ti, 0 \)\.g/, 'the base by its own texel');
+assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /vec2 near = texelFetch\( tSgo, ti, 0 \)\.rg;/, 'the base and the covered flag by their own texel');
+assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /bool covered = mod\( floor\( near\.r \* 255\.0 \+ 0\.5 \), 2\.0 \) > 0\.5;/, 'inside a solid: only its base, never its top');
 assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /ambShare = A \/ max\( T \+ A, 1e-4 \);/, 'only the ambient share');
 assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, new RegExp(`smoothstep\\( ${SGO_GATE_M.toFixed(5)}`), 'only receivers near the base');
 assert.ok(STRUCTURE_GROUND_OCCLUSION_GLSL.includes((1 - SGO_RETURN).toFixed(5)), 'the occluder\'s own light given back');
