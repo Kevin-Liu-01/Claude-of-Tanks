@@ -95,7 +95,7 @@ assert.equal(smokeBlocks([screen], { x: 0, y: 1.8, z: 0 }, { x: 30, y: 1.8, z: 0
   const clock = { now: 0 }, puffs = [];
   const C = {
     rand: Math.random, groundY: () => 0,
-    media: (m) => puffs.push({ x: m.x, y: m.y, z: m.z, vx: m.vx, vy: m.vy, vz: m.vz, drag: m.drag, windK: m.windK }),
+    media: (m) => puffs.push({ x: m.x, y: m.y, z: m.z, vx: m.vx, vy: m.vy, vz: m.vz, drag: m.drag, windK: m.windK, size: m.size1 }),
     chunk() {}, flash() {}, fire() {}, sparks() {}, jet() {}, shockRing() {}, lightPulse() {}, glow() {}, distBoost: () => 1, tier: 1,
     m: makeVolumePuff(), k: {},
     lp: { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, size0: 1, size1: 1, rot: 0, rotVel: 0, col0: [1, 1, 1], col1: [1, 1, 1], alpha: 1, grav: 0, birthOffset: 0 },
@@ -107,7 +107,12 @@ assert.equal(smokeBlocks([screen], { x: 0, y: 1.8, z: 0 }, { x: 30, y: 1.8, z: 0
   fx.setNetworkScreens([screen]);
   for (; clock.now <= SMOKE_DURATION_S + 1; clock.now += 1 / 30) fx.update();
   for (const object of parent.children) { object.geometry?.dispose(); object.material?.dispose(); }
-  let settled = 0;
+  let settled = 0, worstOverlap = 0;
+  // how far a puff's disc (its final size) reaches past the house's walls, in plan (m)
+  const overlap = (x, z, size) => {
+    const dx = Math.max(HOUSE.x0 - x, 0, x - HOUSE.x1), dz = Math.max(HOUSE.z0 - z, 0, z - HOUSE.z1);
+    return size / 2 - Math.hypot(dx, dz);
+  };
   for (const p of puffs) {
     // where it is born, and where a lobe comes to rest (its offset v/k)
     assert.ok(!inside(p, 0.05), `no puff is born inside the house (${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)})`);
@@ -115,8 +120,11 @@ assert.equal(smokeBlocks([screen], { x: 0, y: 1.8, z: 0 }, { x: 30, y: 1.8, z: 0
       settled++;
       const r = { x: p.x + p.vx / p.drag, y: p.y + p.vy / p.drag, z: p.z + p.vz / p.drag };
       assert.ok(!inside(r, 0.05), `no lobe settles inside the house (${r.x.toFixed(2)}, ${r.z.toFixed(2)})`);
-    }
+      worstOverlap = Math.max(worstOverlap, overlap(r.x, r.z, p.size));
+    } else worstOverlap = Math.max(worstOverlap, overlap(p.x, p.z, p.size));
   }
+  // (2026-10-10, the strips' high view: 10 m puffs by the wall spread over the roof) a puff by a wall is held to its room
+  assert.ok(worstOverlap < 1.6, `no puff spreads more than 1.6 m past the house's walls (${worstOverlap.toFixed(2)} m)`);
   assert.ok(puffs.length > 40 && settled > smokeBankCount(screen), `the screen still draws its wall (${puffs.length} puffs, ${settled} lobes)`);
 }
 

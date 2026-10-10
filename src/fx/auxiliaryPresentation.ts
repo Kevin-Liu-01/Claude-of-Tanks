@@ -1,7 +1,7 @@
 import { restoreSmokeScreen } from '../sim/smokeReceipt.ts';
 import * as THREE from 'three';
 import { auxiliaryCapabilities, SMOKE_DURATION_S, type AuxiliaryState, type SmokeScreen } from '../sim/auxiliarySystems.ts';
-import {smokeVolume, smokeBankCount, smokeBankBase, smokeHoldInside, SMOKE_WIND_X, SMOKE_WIND_Z, type SmokeVolume} from '../sim/smokeScreen.ts';
+import {smokeVolume, smokeBankCount, smokeBankBase, smokeHoldInside, smokeWallRoom, SMOKE_WIND_X, SMOKE_WIND_Z, type SmokeVolume} from '../sim/smokeScreen.ts';
 import { smokeCanisterPosition, smokeCanisterVelocity, type SmokeCanister } from '../sim/smokeBallistics.ts';
 import type { BlastContext } from './blastRecipes.ts';
 import {
@@ -295,6 +295,9 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       lobe.tx=at.x;lobe.tz=at.z;
       lobe.ty=smokeBankBase(screen,bank-2,lobe.tx,lobe.tz,ports.ground)+(crown?3.0+R()*.6:1.8+R()*.9);
       lobe.size=crown?8.6+R()*1.4:9.6+R()*2.0;
+      // (2026-10-10) a lobe by a wall no wider than its room there and a metre (it neither spreads through the wall nor
+      // over the roof); the open field keeps every size
+      lobe.size=Math.min(lobe.size,Math.max(1.6,2*(smokeWallRoom(screen,bank-2,lobe.tx,lobe.tz)+1)));
       lobe.life=LOBE_END_S-t;
       lobe.fadeOut=Math.min(.9,Math.max(.3,(LOBE_ERODE_S-t)/lobe.life));
       lobe.crown=crown;lobe.bo=t-to;
@@ -312,7 +315,8 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       spot(w,o,-back+R()*span,(R()-.5)*.3*volume.radius,volume.x,volume.z);
       smokeHoldInside(screen,bank-2,volume,at);
       const x=at.x,z=at.z;
-      smokeBankBody(C,R,x,smokeBankBase(screen,bank-2,x,z,ports.ground)+1.5+R()*2.0,z,8+R()*2.5,life,Math.min(.75,Math.max(.3,(BODY_ERODE_S-t)/life)),t-to);
+      const y=smokeBankBase(screen,bank-2,x,z,ports.ground)+1.5+R()*2.0,size=Math.min(8+R()*2.5,Math.max(1.6,2*(smokeWallRoom(screen,bank-2,x,z)+1)));
+      smokeBankBody(C,R,x,y,z,size,life,Math.min(.75,Math.max(.3,(BODY_ERODE_S-t)/life)),t-to);
     }
     // 5. wisps torn off its top into the scene's wind
     const tops=Math.max(1,Math.round(TOPS*share)),topEvery=TOP_EVERY_S*TOPS/tops;
@@ -325,7 +329,7 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       at.x=volume.x+Math.cos(a)*rho;at.z=volume.z+Math.sin(a)*rho;
       smokeHoldInside(screen,bank-2,volume,at);
       const x=at.x,z=at.z;
-      smokeBankWisp(C,R,x,smokeBankBase(screen,bank-2,x,z,ports.ground)+4.6+R()*1.0,z,t-to);
+      smokeBankWisp(C,R,x,smokeBankBase(screen,bank-2,x,z,ports.ground)+4.6+R()*1.0,z,t-to,Math.max(1.6,2*(smokeWallRoom(screen,bank-2,x,z)+1)));
     }
     // 6. (r2) the haze tail: as the wall erodes, a thin veil left in the bank drifts on with the simulation's breeze
     const hazes=Math.max(1,Math.round(HAZES*share));
@@ -337,7 +341,7 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       spot(w,o,-back+R()*span,(R()-.5)*.25*volume.radius,volume.x,volume.z);
       smokeHoldInside(screen,bank-2,volume,at);
       const x=at.x,z=at.z;
-      smokeScreenHaze(C,R,x,smokeBankBase(screen,bank-2,x,z,ports.ground)+2.0+R()*1.2,z,SMOKE_WIND_X,SMOKE_WIND_Z,SCREEN_END_S-t,t-to);
+      smokeScreenHaze(C,R,x,smokeBankBase(screen,bank-2,x,z,ports.ground)+2.0+R()*1.2,z,SMOKE_WIND_X,SMOKE_WIND_Z,SCREEN_END_S-t,t-to,Math.max(1.6,2*(smokeWallRoom(screen,bank-2,x,z)+1)));
     }
   }
   function mediaScreen(screen:SmokeScreen,now:number){

@@ -95,6 +95,22 @@ export function smokeHoldInside(screen: SmokeScreen, bank: number, volume: Smoke
   out.x = volume.x + dx / r * reach; out.z = volume.z + dz / r * reach;
 }
 
+/** How near the walls a bank read stand to a point (x, z) of its cloud (m, a margin short of them): the least of the
+ * wall's distance along each bearing from there; Infinity for an open bank. The presentation holds a puff's size to it,
+ * so a puff by a wall does not spread through the wall or over the roof (2026-10-10: the strips' high view). */
+export function smokeWallRoom(screen: SmokeScreen, bank: number, x: number, z: number): number {
+  const clip = walledBank(screen, bank);
+  if (!clip) return Infinity;
+  const dx = x - _rest.x, dz = z - _rest.z;
+  let room = Infinity;
+  for (let k = 0; k < SMOKE_CLIP_DIRS; k++) {
+    if (clip[k]! >= Math.round(CLIP_REACH_M * 10)) continue;
+    const a = k / SMOKE_CLIP_DIRS * Math.PI * 2;
+    room = Math.min(room, clip[k]! / 10 - (dx * Math.cos(a) + dz * Math.sin(a)));
+  }
+  return Math.max(0, room - WALL_MARGIN_M);
+}
+
 /** The height a bank's cloud stands on at (x, z): the ground, or the surface its canister rests on when that stands over
  * the ground (a roof: the cloud stays on it, not in the rooms under it). */
 export function smokeBankBase(screen: SmokeScreen, bank: number, x: number, z: number, ground: SmokeGround): number {

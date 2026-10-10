@@ -112,7 +112,7 @@ import { createTrackDustAdapters } from './studioTrackDust.ts';
 import { requestAuxiliary } from '../sim/auxiliarySystems.ts';
 import type { AuxiliaryEntity } from '../sim/auxiliarySystems.ts';
 import { createSmokeCanister, smokeCanisterPosition, smokeCanisterVelocity, SMOKE_GRAVITY_MPS2, type SmokeCanister } from '../sim/smokeBallistics.ts';
-import { smokeBankBase, smokeHoldInside, SMOKE_WIND_X, SMOKE_WIND_Z, type SmokeScreen, type SmokeVolume } from '../sim/smokeScreen.ts';
+import { smokeBankBase, smokeHoldInside, smokeWallRoom, SMOKE_WIND_X, SMOKE_WIND_Z, type SmokeScreen, type SmokeVolume } from '../sim/smokeScreen.ts';
 import { createProductionScene, productionPreset, productionCamera, productionAspect, reframeProductionPoint, reframeProductionFov } from './studioProduction.ts';
 import type { ProductionOptions, ProductionRigId, ProductionFormat } from './studioProduction.ts';
 import { createStudioFilm } from './studioFilm.ts';
@@ -1756,6 +1756,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       velAt(c, t, out) { smokeCanisterVelocity(c as SmokeCanister, t, p); out[0] = p.x; out[1] = p.y; out[2] = p.z; },
       hold(i, cx, cz, radius, at) { volume.x = cx; volume.z = cz; volume.radius = radius; smokeHoldInside(one[i]!, -2, volume, at); },
       base(i, x, z) { return smokeBankBase(one[i]!, -2, x, z, ground); },
+      room(i, x, z) { return smokeWallRoom(one[i]!, -2, x, z); },
     };
   }
   let salvoWalls: SmokeScreenWalls | null = null;

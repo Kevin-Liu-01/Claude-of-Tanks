@@ -1114,6 +1114,8 @@ export interface SmokeScreenWalls {
   velAt(canister: readonly number[], t: number, out: Vec3): void;
   hold(index: number, cx: number, cz: number, radius: number, at: { x: number; z: number }): void;
   base(index: number, x: number, z: number): number;
+  /** How near the walls stand to a point of a canister's cloud (m; Infinity in the open): a puff's size is held to it. */
+  room(index: number, x: number, z: number): number;
 }
 export function smokeScreenEmitter(
   id: string, rng: Rng, startS: number, durationS: number, density: number,
@@ -1188,9 +1190,11 @@ export function smokeScreenEmitter(
           const lift = r() * height;
           at.x = p[0] + driftX + Math.cos(a) * d; at.z = p[2] + driftZ + Math.sin(a) * d;
           if (walls) walls.hold(shot.i, p[0] + driftX, p[2] + driftZ, radius, at);
+          // (a puff by a wall no wider than its room there and a metre: neither through the wall nor over the roof)
+          const cap = walls ? Math.max(1.6, 2 * (walls.room(shot.i, at.x, at.z) + 1)) : Infinity;
           puff(ctx, 'screen', at.x, gy + 1.0 + lift, at.z,
             windX + (r() - 0.5) * 0.35, 0.10 + r() * 0.18, windZ + (r() - 0.5) * 0.35,
-            4.5 + r() * 2.5, 2.8 + growth * 1.6, 6.2 + growth * 3.4 + r() * 1.6,
+            4.5 + r() * 2.5, Math.min(2.8 + growth * 1.6, cap * 0.6), Math.min(6.2 + growth * 3.4 + r() * 1.6, cap),
             white0, white1, Math.min(0.85, 0.42 + 0.36 * dens), 0.02, off - r() * (1 / 30));
         }
       }
