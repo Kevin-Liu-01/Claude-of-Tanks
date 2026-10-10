@@ -11,7 +11,7 @@ import {
   SGO_BASE_WRAP_M, SGO_HALF_M, SGO_REACH_H, SGO_REACH_MAX_M, SGO_SIZE, SGO_TEXEL_M, bakeStructureGroundOcclusion, packOccluders,
   prismSkyOcclusion, sgoRectOf, shapeFootprint,
 } from './structureGroundOcclusionBake.ts';
-import { STRUCTURE_GROUND_OCCLUSION_GLSL, SGO_GATE_M, SGO_PROTECTED_MAPS, SGO_RETURN } from './structureGroundOcclusion.ts';
+import { STRUCTURE_GROUND_OCCLUSION_GLSL, SGO_GATE_M, SGO_RETURN } from './structureGroundOcclusion.ts';
 import { loadGroundedLightModel, resolveDeckBeam, resolveLightModel, luminance } from './lightModelCore.ts';
 import { deriveSun, OVERCAST_DIRECT_CUT } from './lightModel.ts';
 import { skyPresetToAtmosphere } from './atmosphere.ts';
@@ -161,11 +161,9 @@ assert.match(clouds, /Math\.min\(lightTune\('CLOUD_DECK_SHADOW_CORE', CLOUD_LAYE
 const layer = read('./cloudscapeLayer.ts');
 assert.match(layer, /deckBeam: clamp\(scape\.deckBeam \?\? 0, 0, 1\),/);
 
-// ---- 6. the owner's protected maps (2026-10-09: Frosthollow "incredible", and so eight more): neither lever touches them
-for (const id of ['winter', 'railyard', 'saltwind', 'reservoir', 'verdant', 'coastal', 'desert', 'frontier', 'fjord']) {
-  assert.ok(SGO_PROTECTED_MAPS.has(id), `${id}: no ground occlusion`);
-  assert.equal(getMapConfig(id).clouds?.deckBeam, undefined, `${id}: no deck beam`);
-}
-assert.match(map, /SGO_PROTECTED_MAPS\.has\(config\.id\) \? 0/, 'the world reads the protected list');
+// ---- 6. every map (2026-10-10: the owner's free hand lifted the protected maps): no map is held off by id
+assert.doesNotMatch(map, /PROTECTED_MAPS/, 'no per-map exclusion');
+assert.equal(getMapConfig('winter').clouds?.deckBeam, 0.4, 'Frosthollow\'s broken deck passes part of the beam');
+assert.equal(getMapConfig('railyard').clouds?.deckBeam, 0.35, 'Cinder Junction\'s too');
 
-console.log(`structureGroundOcclusion.selftest: Lambert's law (infinite wall, box, deck), the ${SGO_SIZE}² raster (base wrap, seamless wall foot, region re-bake), Whiteout's occluders, the pass and its wiring, the thin deck's beam, the protected maps PASS`);
+console.log(`structureGroundOcclusion.selftest: Lambert's law (infinite wall, box, deck), the ${SGO_SIZE}² raster (base wrap, seamless wall foot, region re-bake), Whiteout's occluders, the pass and its wiring, the thin deck's beam, every map PASS`);

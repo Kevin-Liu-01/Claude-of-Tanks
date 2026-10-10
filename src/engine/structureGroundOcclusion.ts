@@ -47,14 +47,6 @@ export const SGO_RETURN = 0.3;
 export const SGO_CARD_AMBIENT_SHARE = 0.6;
 /** The live term fades in over this many seconds once the bake lands (0 in shot mode). */
 export const SGO_FADE_IN_S = 0.6;
-/**
- * The maps the term stays off on (2026-10-09, the owner on the deployed game: Frosthollow "incredible", and so Cinder
- * Junction, Saltwind, Reservoir, Verdant, Saltmere, Sirocco, Frontier and Nordhavn): light-touch until a blind wave shows
- * the term costs them nothing. A map's sky.lighting.groundOcclusion still scales it everywhere else (0: off).
- */
-export const SGO_PROTECTED_MAPS: ReadonlySet<string> = new Set([
-  'winter', 'railyard', 'saltwind', 'reservoir', 'verdant', 'coastal', 'desert', 'frontier', 'fjord',
-]);
 /** How often the occluders' destroyed flags are polled (s). */
 export const SGO_POLL_S = 0.4;
 
