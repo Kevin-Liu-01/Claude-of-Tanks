@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { Group, Vector3, Euler, Mesh, BoxGeometry, MeshBasicMaterial, InstancedMesh, Matrix4, Ray } from 'three';
-import { syncMissionAttachment, clearMissionAttachment, DRONE_ARRIVAL, droneArrivalHeight } from './missionAttachmentVisual.ts';
+import { syncMissionAttachment, clearMissionAttachment } from './missionAttachmentVisual.ts';
+import { DRONE_ARRIVAL, droneArrivalHeight } from '../fx/droneArrival.ts';
 import { poseDroneRotor } from '../fx/droneModel.ts';
 import { Object3D, Quaternion } from 'three';
 import { missionAttachmentFor, missionAttachmentTurretPivot, missionCradleVolumes, DRONE_DOCK_HEIGHT_M } from '../sim/missionAttachment.ts';

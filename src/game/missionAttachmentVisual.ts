@@ -3,20 +3,22 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { missionAttachmentFor, missionCradleVolumes, DRONE_DOCK_HEIGHT_M, type MissionAttachment, type MissionCarrierSpec } from '../sim/missionAttachment.ts';
 import { acquireDroneModelKit, droneMaterialHooks, droneNation, poseDroneRotor, DRONE_DOCK_PAINT, DRONE_LITE_DISTANCE_M, type DroneKitLease, type DroneModelKit } from '../fx/droneModel.ts';
 import { createMissionCradleGeometry } from './missionCradleGeometry.ts';
+import { DRONE_ARRIVAL, droneArrivalAttitude, droneArrivalHeight } from '../fx/droneArrival.ts';
 import { createCaptureFlag, type CaptureFlag } from '../fx/captureFlag.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 interface MissionVisual {
   root: THREE.Group; drone: THREE.Group; kind: 'drone' | 'flag'; flag?: CaptureFlag; cradles: THREE.Mesh[];
-  detail?: THREE.LOD; lease?: DroneKitLease; arrival?: Arrival; arriveT: number; ready: boolean | null; dispose(): void;
+  detail?: THREE.LOD; lease?: DroneKitLease; arrival?: Arrival; arriveT: number; ready: boolean | null;
+  /** The airframe on the cradle flew home (it is the ready one at the cooldown's end). */
+  returned: boolean; dispose(): void;
 }
 /**
- * A resupplied airframe lands on the empty cradle when the payload is ready again: it settles down the dock's certified
- * launch column (vertical, so it can never meet the carrier's own kit) from 2.4 m with its rotors at speed, brakes into a
- * short hover a hand's width above the pads, touches down on its skids, and spools its props down to the exact angle the
- * parked airframe holds them. Presentation only: it starts on the not-ready to ready edge (a remote client sees only that
- * flag), and a launch in the middle of it hands straight to the flight from the dock datum.
+ * An airframe lands on the cradle: a resupplied one on the empty cradle when the payload is ready again, or the one that
+ * flew home (fx/dronePresentation.ts hands it over at the landing's first pose). The law is fx/droneArrival.ts. A
+ * resupply starts on the not-ready to ready edge (a remote client sees only that flag); an airframe that came home sits
+ * on the cradle through the rest of the cooldown and is the ready one, with no second landing. A launch in the middle
+ * hands straight to the flight from the dock datum.
  */
-export const DRONE_ARRIVAL = Object.freeze({ descentS: 1.5, spoolS: .7, heightM: 2.4, hoverM: .25 });
 interface Arrival { group: THREE.Group; rotors: THREE.Mesh[]; blurs: THREE.Mesh[] }
 function createArrival(kit: DroneModelKit): Arrival {
   const group = new THREE.Group(), rotors: THREE.Mesh[] = [], blurs: THREE.Mesh[] = [];
@@ -31,22 +33,16 @@ function createArrival(kit: DroneModelKit): Arrival {
   for (const mesh of group.children as THREE.Mesh[]) mesh.receiveShadow = true;
   return { group, rotors, blurs };
 }
-/** Height above the pads at a descent fraction: down to a brief braking hover, then a smooth touchdown (C1 throughout). */
-export function droneArrivalHeight(u: number): number {
-  const { heightM, hoverM } = DRONE_ARRIVAL, x = Math.min(1, Math.max(0, u));
-  if (x < .75) return hoverM + (heightM - hoverM) * (1 - x / .75) ** 2;
-  const v = (x - .75) / .25;
-  return hoverM * (1 - v * v * (3 - 2 * v));
-}
+const attitude = { pitch: 0, yaw: 0, roll: 0 };
 // Three full turns of a three-blade prop end where the parked pose holds it.
 const SPOOL_DOWN_RAD = 6 * Math.PI;
 function poseArrival(arrival: Arrival, t: number): void {
   const { descentS, spoolS } = DRONE_ARRIVAL, group = arrival.group;
   if (t < descentS) {
-    const u = t / descentS, settle = 1 - u;
+    const u = t / descentS;
     group.position.set(0, droneArrivalHeight(u), 0);
-    // Yawing into the cradle's line and trimming small attitude errors as it comes down.
-    group.rotation.set(.035 * Math.sin(u * 11) * settle, .32 * settle * settle, .045 * Math.sin(u * 8 + 1) * settle);
+    droneArrivalAttitude(u, attitude);
+    group.rotation.set(attitude.pitch, attitude.yaw, attitude.roll);
     for (let i = 0; i < 4; i++) {
       arrival.rotors[i]!.visible = false; arrival.blurs[i]!.visible = true; poseDroneRotor(arrival.blurs[i]!, i, t * 9 + i);
     }
@@ -163,7 +159,7 @@ function createMount(tankRoot:THREE.Object3D,spec:MissionCarrierSpec,kind:'drone
   }
   parent.add(root);
   let disposed=false;
-  const result:MissionVisual={root,drone,kind,flag,cradles:[near,far],detail:mountDetail,lease:mountLease,arriveT:-1,ready:null,dispose(){if(disposed)return;disposed=true;root.removeFromParent();nearShared.release();farShared.release();releaseCradleMaterials();for(const lease of leases)lease.release();flag?.dispose();mounts.delete(tankRoot);tankRoot.removeEventListener('removed',result.dispose);}};
+  const result:MissionVisual={root,drone,kind,flag,cradles:[near,far],detail:mountDetail,lease:mountLease,arriveT:-1,ready:null,returned:false,dispose(){if(disposed)return;disposed=true;root.removeFromParent();nearShared.release();farShared.release();releaseCradleMaterials();for(const lease of leases)lease.release();flag?.dispose();mounts.delete(tankRoot);tankRoot.removeEventListener('removed',result.dispose);}};
   tankRoot.addEventListener('removed',result.dispose);return result;
 }
 /** Mode equipment is attached to the turret owner (or fixed casemate hull), so suspension and concealment apply.
@@ -177,11 +173,23 @@ export function syncMissionAttachment(tankRoot:THREE.Object3D,spec:MissionCarrie
   mount.root.visible=true;
   const material=destroyed?cradleMaterials?.charred:cradleMaterials?.clean;
   if(material)for(const cradle of mount.cradles)cradle.material=material;
-  const ready=!destroyed&&!view.active&&view.cooldownS<=0;
-  mount.drone.visible=ready;
-  if(ready&&mount.ready===false&&mount.lease)mount.arriveT=0;
-  else if(!ready)mount.arriveT=-1;
-  else if(mount.arriveT>=0)mount.arriveT+=Math.max(0,dt);
+  const gone=destroyed||view.active;
+  // The airframe flying home asks at the landing's first pose; the landing takes over and acknowledges, and the flying
+  // copy stops drawing (dronePresentation) — one drawer every frame, no gap.
+  let started=false;
+  if(mount.drone.userData.returnRequest===true){
+    mount.drone.userData.returnRequest=false;
+    if(!gone&&mount.lease){mount.returned=true;mount.arriveT=0;started=true;mount.drone.userData.returnAck=true;}
+  }
+  if(gone)mount.returned=false;
+  const ready=!gone&&view.cooldownS<=0,present=ready||mount.returned;
+  mount.drone.visible=present;
+  if(ready&&mount.ready===false){
+    if(mount.returned)mount.returned=false;
+    else if(mount.lease){mount.arriveT=0;started=true;}
+  }
+  if(!present)mount.arriveT=-1;
+  else if(mount.arriveT>=0&&!started)mount.arriveT+=Math.max(0,dt);
   mount.ready=ready;
   const landing=mount.arriveT>=0&&mount.arriveT<DRONE_ARRIVAL.descentS+DRONE_ARRIVAL.spoolS;
   if(!landing)mount.arriveT=-1;
