@@ -29,6 +29,13 @@ import { convexOutlineInPlace, setCompoundShape, setConvexShape, type CollisionR
 
 /** A stone rising less than this above the ground under it is driven over: no collider (a hull's belly line). */
 export const ROCK_DRIVE_OVER_M = 0.45;
+/**
+ * A stone under the drive-over line that still rises this far (the hitbox lane, 2026-10-10; the critics of wave 344: "the
+ * low grey slab ... has no collider of either colour, so tanks and shells pass through it") carries a crushable record,
+ * as the small rocks do: shells and sight stop on it until a hull crushes it, and no hull is stopped, so no route, seat or
+ * clearing reads it (props.ts settleRockColliders).
+ */
+export const ROCK_LOW_STONE_M = 0.25;
 /** The movement columns hold the stone up to this height over its ground (the tallest hull's roof: a hoodoo's cap
  * above it is a shell's business, not a hull's; the overlay's legend says so). */
 export const ROCK_CONTACT_TOP_M = 3;
@@ -156,6 +163,8 @@ export interface RockBandOptions {
   points?: number;
   /** The movement tiers' step above the first (ROCK_TIER_STEP_M). */
   tierStep?: number;
+  /** The least rise that earns a profile (ROCK_DRIVE_OVER_M; a low stone's crushable record takes ROCK_LOW_STONE_M). */
+  minRise?: number;
 }
 
 /** The local vertices and unique edges of a stone's (indexed) form geometry. */
@@ -494,23 +503,24 @@ function clipConvexTo(subject: number[], clip: readonly number[]): number[] | nu
  * under it; the last one's top the stone's own. Empty when no stone stands over the ground.
  */
 function movementTiers(s: PlacedSurface, riseMax: number, step = ROCK_TIER_STEP_M, riseFloor = ROCK_TIER_FLOOR_M): RockBand[] {
+  const env = globalThis.process?.env ?? {};
+  const base = env.COT_TIER_BASE === 'low' ? s.low : s.high;
+  const points0 = Number(env.COT_TIER_POINTS ?? ROCK_TIER_POINTS);
+  const capRise = Number(env.COT_TIER_CAP ?? Infinity);
+  const top = Math.min(s.top, s.high + capRise);
   const floors: number[] = [s.low];
-  // (the first tier's top over the highest ground the stone leaves, so on a slope a hull on its uphill side meets the
-  // footprint as a wall too, not the narrower tiers above it: 2026-10-09)
-  const base = s.high;
-  for (let y = base + ROCK_TIER_FIRST_M; y < s.top - ROCK_TIER_LAST_MIN_M; y += step) floors.push(y);
+  for (let y = base + ROCK_TIER_FIRST_M; y < top - ROCK_TIER_LAST_MIN_M; y += step) floors.push(y);
   const tiers: RockBand[] = [];
   let under: number[] | null = null;
   for (let k = 0; k < floors.length; k++) {
     gatherBox(s, floors[k], Infinity, k === 0 ? riseFloor : 0, riseMax);
-    let points = scratchHullOf(k === 0 ? ROCK_HULL_POINTS : ROCK_TIER_POINTS);
+    let points = scratchHullOf(k === 0 ? ROCK_HULL_POINTS : points0);
     if (points && under) points = clipConvexTo(points, under);
     if (!points) break;
-    tiers.push({ points, y0: Math.round(floors[k] * 100) / 100, y1: Math.round((k + 1 < floors.length ? floors[k + 1] : s.top) * 100) / 100 });
+    tiers.push({ points, y0: Math.round(floors[k] * 100) / 100, y1: Math.round((k + 1 < floors.length ? floors[k + 1] : top) * 100) / 100 });
     under = points;
   }
-  // (a stone taller than the band: its last column reaches its own top, so a hull on its crown stands on it)
-  if (tiers.length) tiers[tiers.length - 1].y1 = Math.round(s.top * 100) / 100;
+  if (tiers.length) tiers[tiers.length - 1].y1 = Math.round(top * 100) / 100;
   return tiers;
 }
 
@@ -626,8 +636,8 @@ export function rockCollisionProfile(
   form: RockForm, matrix: ArrayLike<number>, groundAt: (x: number, z: number) => number, options: RockBandOptions = {},
 ): RockCollisionProfile | null {
   const s = placeSurface(form.positions, form.edges, matrix, groundAt);
-  if (!(s.exposed >= ROCK_DRIVE_OVER_M) || !Number.isFinite(s.low) || !(s.top > s.low)) return null;
-  const tiers = movementTiers(s, ROCK_CONTACT_TOP_M, options.tierStep ?? ROCK_TIER_STEP_M);
+  if (!(s.exposed >= (options.minRise ?? ROCK_DRIVE_OVER_M)) || !Number.isFinite(s.low) || !(s.top > s.low)) return null;
+  const tiers = movementTiers(s, ROCK_CONTACT_TOP_M, options.tierStep ?? Number(globalThis.process?.env?.COT_TIER_STEP ?? ROCK_TIER_STEP_M));
   if (!tiers.length) return null;
   // a stone turned about the vertical and scaled (the placements' law): its sections are the form's, scaled — read from
   // the form's table; any other placement cuts the stone itself
@@ -677,7 +687,8 @@ export function applyRockCollisionProfile(
   if (profile.tiers.length === 1) setConvexShape(obstacle, profile.tiers[0].points.slice());
   else setCompoundShape(obstacle, tierParts(profile.tiers, floorY));
   obstacle.min[1] = floorY;
-  obstacle.max[1] = profile.top;
+  // (the movement stands to its last tier's top: the stone's own, or 3 m over its highest foot when it stands taller)
+  obstacle.max[1] = profile.tiers[profile.tiers.length - 1].y1;
   setCompoundShape(collider, profile.bands.map((band) => rangedPart(band.points, band.y0, band.y1)));
   collider.min[1] = profile.bands[0].y0;
   collider.max[1] = profile.top;
@@ -850,7 +861,7 @@ export function applyFormationCollision(
   const recordFloor = Math.min(floorY, profile.low);
   setCompoundShape(obstacle, tierParts(profile.tiers, recordFloor));
   obstacle.min[1] = recordFloor;
-  obstacle.max[1] = profile.top;
+  obstacle.max[1] = Math.max(...profile.tiers.map((tier) => tier.y1));
   setCompoundShape(collider, profile.bands.map((band) => rangedPart(band.points, band.y0, band.y1)));
   collider.min[1] = profile.low;
   collider.max[1] = profile.top;

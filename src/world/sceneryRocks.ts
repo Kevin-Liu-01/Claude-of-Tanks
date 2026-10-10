@@ -29,7 +29,7 @@ import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { SimplexNoise } from '../engine/simplexFast.ts';
 
 import type { RockForm, RockGeology } from './sceneryPlan.ts';
-import { formationCollisionProfile, rockGroundAt, type FormationCollisionProfile } from './rockCollision.ts';
+import { formationCollisionProfile, rockGroundAt, ROCK_DRIVE_OVER_M, type FormationCollisionProfile } from './rockCollision.ts';
 import { convexHull2 } from './collision.ts';
 
 type Rng = () => number;
@@ -81,6 +81,9 @@ interface RockFormationBuild {
 interface RockBuildOptions {
   /** Phones: fewer segments and fewer loose stones. */
   mobile?: boolean;
+  /** A fresh copy of the formation's stream (the hitbox lane, 2026-10-10): a phone lays the desktop's pieces from it as
+   * well, for the collision (the desktop's, part for part) and the loose stones that carry one. */
+  restream?: () => Rng;
 }
 
 // ---------------------------------------------------------------------------------------------- palette
@@ -291,13 +294,14 @@ function downhill(ground: RockGround, x: number, z: number, step: number): [numb
  * filled a tor's open joints, a ledge's recesses and the air round a hoodoo's waist (40 % of Redrock's formation
  * colliders stood in empty air, 81 % of the worst tenth's). Now each block of the standing stone keeps its own outline,
  * and the movement footprint is the stone between a hull's track tops and its roof (rockCollision.ts
- * FORMATION_CONTACT_FLOOR_M). The loose pieces (fallen blocks, talus, scree) carry none: a phone builds fewer of them,
- * and every tier must lay the same colliders (the authority's shard is one).
+ * FORMATION_CONTACT_FLOOR_M). (2026-10-10, the critics of wave 344: "tilted/loose slabs and blocks beside piles" that
+ * tanks and shells pass through) the loose pieces that rise past the drive-over line carry their own mass, from the
+ * desktop's pieces on every tier (buildRockFormation).
  */
 function massOf(pieces: Piece[], ground: RockGround, floor: number): RockMass | null {
   // (2026-10-08) the stone's rise over the ground a hull meets and the eye sees: the rendered triangles, which part from
   // the 1 m grid by metres at a cliff's foot (rockCollision.ts rockGroundAt)
-  const profile = formationCollisionProfile(pieces.filter((piece) => piece.standing).map((piece) => piece.geometry), rockGroundAt(ground));
+  const profile = formationCollisionProfile(pieces.map((piece) => piece.geometry), rockGroundAt(ground));
   if (!profile) return null;
   const corners: Array<[number, number]> = [];
   for (const outline of profile.contact) for (let i = 0; i < outline.length; i += 2) corners.push([outline[i], outline[i + 1]]);
@@ -1278,22 +1282,54 @@ const FORMS: Readonly<Record<RockForm, FormBuilder>> = Object.freeze({
  * read-only. Returns the welded vertex-coloured geometry, the standing masses' collision and the counts.
  */
 export function buildRockFormation(
-  spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, { mobile = false }: RockBuildOptions = {},
+  spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, { mobile = false, restream }: RockBuildOptions = {},
 ): RockFormationBuild {
-  const pieces: Piece[] = [];
-  const { min } = lowestGround(ground, spec.x, spec.z, spec.radius);
   const form = FORMS[spec.form];
   if (!form) throw new Error(`sceneryRocks: unknown form ${spec.form}`);
-  form(spec, ground, noise, rng, mobile, pieces);
-  // a slate crag sheds scree below it; a sandstone or limestone outcrop sheds a little
-  if (spec.form === 'crag' && (spec.shed ?? 1) > 0) {
-    const [dx, dz] = downhill(ground, spec.x, spec.z, spec.radius);
-    scree({ ...spec, x: spec.x + dx * spec.radius * 0.8, z: spec.z + dz * spec.radius * 0.8, radius: spec.radius * 1.4, shed: (spec.shed ?? 1) * 0.6 },
-      ground, noise, rng, mobile, pieces);
+  const lay = (stream: Rng, phone: boolean): Piece[] => {
+    const pieces: Piece[] = [];
+    form(spec, ground, noise, stream, phone, pieces);
+    // a slate crag sheds scree below it; a sandstone or limestone outcrop sheds a little
+    if (spec.form === 'crag' && (spec.shed ?? 1) > 0) {
+      const [dx, dz] = downhill(ground, spec.x, spec.z, spec.radius);
+      scree({ ...spec, x: spec.x + dx * spec.radius * 0.8, z: spec.z + dz * spec.radius * 0.8, radius: spec.radius * 1.4, shed: (spec.shed ?? 1) * 0.6 },
+        ground, noise, stream, phone, pieces);
+    }
+    return pieces;
+  };
+  const own = lay(rng, mobile);
+  // (the hitbox lane, 2026-10-10) the desktop's pieces on every tier: a phone's collision is the desktop's, part for part
+  // (docs/DESTRUCTION.md §8.4: a phone's saving is in how a record draws, never in which records stand), and the loose
+  // stones that carry a collider are drawn where the desktop draws them. Without a fresh stream (a test's one rng) a
+  // tier keeps its own pieces.
+  const desk = mobile && restream ? lay(restream(), false) : own;
+  const groundAt = rockGroundAt(ground);
+  const rises = (piece: Piece): number => {
+    const p = piece.geometry.attributes.position;
+    let rise = -Infinity;
+    for (let i = 0; i < p.count; i++) rise = Math.max(rise, p.getY(i) - groundAt(p.getX(i), p.getZ(i)));
+    return rise;
+  };
+  const solid = new Set(desk.filter((piece) => !piece.standing && rises(piece) >= ROCK_DRIVE_OVER_M));
+  let drawn = own;
+  if (desk !== own) {
+    // a phone draws its own standing stone (fewer facets) and the desktop's loose stones: each that carries a collider,
+    // and two in five of the rest
+    let rest = 0;
+    const loose = desk.filter((piece) => !piece.standing && (solid.has(piece) || rest++ % 5 < 2));
+    const kept = new Set(loose);
+    for (const piece of own) if (!piece.standing) piece.geometry.dispose();
+    for (const piece of desk) if (!kept.has(piece)) piece.geometry.dispose();
+    drawn = [...own.filter((piece) => piece.standing), ...loose];
   }
-  const mass = massOf(pieces, ground, min);
-  const count = pieces.length;
-  const geometry = count ? finish(pieces, spec.geology, spec.tone, ground, noise, spec.x * 0.013 + spec.z * 0.007) : null;
+  const { min } = lowestGround(ground, spec.x, spec.z, spec.radius);
+  const masses: RockMass[] = [];
+  const standing = massOf(desk.filter((piece) => piece.standing), ground, min);
+  if (standing) masses.push(standing);
+  const fallen = solid.size ? massOf([...solid], ground, min) : null;
+  if (fallen) masses.push(fallen);
+  const count = drawn.length;
+  const geometry = count ? finish(drawn, spec.geology, spec.tone, ground, noise, spec.x * 0.013 + spec.z * 0.007) : null;
   const triangles = geometry ? geometry.attributes.position.count / 3 : 0;
-  return { geometry, masses: mass ? [mass] : [], pieces: count, triangles };
+  return { geometry, masses, pieces: count, triangles };
 }
