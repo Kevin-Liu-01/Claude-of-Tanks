@@ -32,6 +32,8 @@ interface Hinge { side: number; xMin: number; hingeY: number; segments: Segment[
 /** One track's upper run, slack over a stretch. */
 interface Sag { side: number; xIn: number; yUpper: number; segment: Segment; out: number }
 type Bend = WreckBend;
+/** A deck caved in by the fire: plates over yMin sink straight down, deepest at (cx, cz), to nothing at R. */
+interface Cave { cx: number; cz: number; r2: number; amp: number; yMin: number }
 /** A vehicle's roof pressed in over a stretch: deepest on the centre line, fading down the pillars to the belt line. */
 interface RoofSag { hw: number; zc: number; half: number; sag: number; yBelt: number; yTop: number }
 /** One end of a vehicle pushed in (s = +1 the nose, −1 the tail), its upper panels buckled up as it shortened. */
@@ -50,6 +52,7 @@ interface PartPlan {
   roofs: RoofSag[];
   ends: EndCrush[];
   creases: WreckCrease[];
+  caves: Cave[];
 }
 
 export interface WreckCrumplePlan {
@@ -138,7 +141,7 @@ export function planWreckCrumple(root: THREE.Object3D, seed: number, pop: boolea
     return { fromFrame, toFrame: fromFrame.clone().invert() };
   };
   const blank = (rig: THREE.Object3D | undefined): PartPlan => ({ ...frameOf(rig), dents: [], bulges: [], droops: [], hinges: [], sags: [],
-    bend: null, roofs: [], ends: [], creases: [] });
+    bend: null, roofs: [], ends: [], creases: [], caves: [] });
   const parts: Partial<Record<PartName, PartPlan>> = {};
 
   // ---- the hull: dents, the deck's bulge on an ammo-rack wreck, fenders and skirts over the tracks ----------------
@@ -156,8 +159,10 @@ export function planWreckCrumple(root: THREE.Object3D, seed: number, pop: boolea
   planCreases(hullSamples, 3 + Math.floor(rng() * 3), 0.45, 1.0, 0.25, 0.5, 0.1, 0.22, rng, hull.creases, hullMid);
   if (hullBox) {
     const r = 0.38 * (hullBox.max.z - hullBox.min.z);
-    hull.bulges.push({ cx: (rng() - 0.5) * 0.4, cy: hullBox.max.y - 0.35, cz: (hullBox.min.z + hullBox.max.z) * 0.5 - 0.15 * (hullBox.max.z - hullBox.min.z)
-      + (rng() - 0.5) * 0.8, r2: r * r, amp: pop ? 0.14 + rng() * 0.1 : -(0.14 + rng() * 0.12) });
+    const cz = (hullBox.min.z + hullBox.max.z) * 0.5 - 0.15 * (hullBox.max.z - hullBox.min.z) + (rng() - 0.5) * 0.8;
+    // an ammo-rack blast bulges the deck out from inside; a burnt-out hull's deck caves straight down into it
+    if (pop) hull.bulges.push({ cx: (rng() - 0.5) * 0.4, cy: hullBox.max.y - 0.35, cz, r2: r * r, amp: 0.14 + rng() * 0.1 });
+    else hull.caves.push({ cx: (rng() - 0.5) * 0.4, cz, r2: r * r * 0.8, amp: -(0.2 + rng() * 0.18), yMin: hullBox.max.y - 0.75 });
     if (rng() < 0.5) {
       const height = hullBox.max.y - hullBox.min.y;
       hull.ends.push({ s: 1, zFace: hullBox.max.z, zone: 0.9 + rng() * 0.5, amount: 0.15 + rng() * 0.2, buckle: 0.06 + rng() * 0.08,
@@ -341,6 +346,18 @@ function evaluate(plan: PartPlan, x: number, y: number, z: number): boolean {
     J[5] += en.buckle * 4 * (1 - 2 * uc) * (en.s / en.zone) * gy; J[4] += lift * dgy;
     moved = true;
   }
+  for (const cv of plan.caves) {
+    if (y <= cv.yMin) continue;
+    const ex = x - cv.cx, ez = z - cv.cz, rho2 = ex * ex + ez * ez;
+    if (rho2 >= cv.r2) continue;
+    const q = 1 - rho2 / cv.r2;
+    const [g, dg] = smooth(cv.yMin, cv.yMin + 0.3, y);
+    const dy = cv.amp * q * q * g;
+    D[1] += dy;
+    const dq = cv.amp * 2 * q * g * (-2 / cv.r2);
+    J[3] += dq * ex; J[5] += dq * ez; J[4] += cv.amp * q * q * dg;
+    moved = true;
+  }
   for (const cr of plan.creases) {
     const ex = x - cr.cx, ey = y - cr.cy, ez = z - cr.cz;
     const along = ex * cr.tx + ey * cr.ty + ez * cr.tz;
@@ -398,6 +415,7 @@ export function refineForCrumple(plan: WreckCrumplePlan | null, geometry: THREE.
   for (const d of part.dents) sphere(d.cx, d.cy, d.cz, Math.sqrt(d.r2));
   for (const c of part.creases) sphere(c.cx, c.cy, c.cz, Math.max(c.half, c.w));
   for (const b of part.bulges) sphere(b.cx, b.cy, b.cz, Math.sqrt(b.r2));
+  for (const cv of part.caves) sphere(cv.cx, cv.yMin + 0.4, cv.cz, Math.sqrt(cv.r2));
   for (const dr of part.droops) for (const sg of dr.segments) sphere(dr.side * (dr.xIn + dr.xOut) * 0.5, dr.yMin + 0.2, sg.zc, sg.half + (dr.xOut - dr.xIn));
   for (const hg of part.hinges) for (const sg of hg.segments) sphere(hg.side * (hg.xMin + 0.3), hg.hingeY - 0.5, sg.zc, sg.half + 0.8);
   for (const sa of part.sags) sphere(sa.side * (sa.xIn + 0.3), sa.yUpper + 0.2, sa.segment.zc, sa.segment.half + 0.6);
@@ -503,7 +521,7 @@ export function crumpleWreckGeometry(plan: WreckCrumplePlan | null, geometry: TH
 
 function applyPart(part: PartPlan, geometry: THREE.BufferGeometry): void {
   if (!part.dents.length && !part.bulges.length && !part.droops.length && !part.hinges.length && !part.sags.length && !part.bend
-    && !part.roofs.length && !part.ends.length && !part.creases.length) return;
+    && !part.roofs.length && !part.ends.length && !part.creases.length && !part.caves.length) return;
   const position = geometry.attributes.position as THREE.BufferAttribute | undefined;
   if (!position) return;
   const normal = geometry.attributes.normal as THREE.BufferAttribute | undefined;
@@ -543,7 +561,7 @@ export function crumpleBurntVehicle(geometry: THREE.BufferGeometry, seed: number
   const rng = wreckRandom((seed ^ 0x5ca7ab1e) | 0);
   const identity = new THREE.Matrix4();
   const part: PartPlan = { toFrame: identity, fromFrame: identity, dents: [], bulges: [], droops: [], hinges: [], sags: [], bend: null,
-    roofs: [], ends: [], creases: [] };
+    roofs: [], ends: [], creases: [], caves: [] };
   const top = geometry.boundingBox!.max.y, hw = Math.max(-b.min.x, b.max.x), length = b.max.z - b.min.z;
   // the roof, pressed in over the cabin (once or twice along it)
   const roofs = 1 + (rng() < 0.4 ? 1 : 0);

@@ -71,8 +71,9 @@ for (const [specId, seed, pop] of [['t90m', 2526, false], ['m1a2', 2002, true]])
     assert.equal(hull.droops.length, 2, 'both fenders sag in runs');
     assert.equal(hull.hinges.length, 2, 'both skirts hang out in runs');
     assert.ok(gun.bend, 'the barrel bends');
-    assert.equal(hull.bulges.length, 1, 'the deck caved in by the fire or bulged by an ammo-rack blast');
-    assert.ok(pop ? hull.bulges[0].amp > 0 : hull.bulges[0].amp < 0, 'out on an ammo-rack wreck, in on a burnt one');
+    assert.equal(hull.bulges.length + hull.caves.length, 1, 'the deck caved in by the fire or bulged by an ammo-rack blast');
+    assert.ok(pop ? hull.bulges.length === 1 && hull.bulges[0].amp > 0 : hull.caves.length === 1 && hull.caves[0].amp < 0,
+      'out on an ammo-rack wreck, straight down into a burnt one');
     assert.ok(gear.sags.length <= 1);
     // position alone: two corners at one place go to one place, whichever mesh they came from
     const inv = root.matrixWorld.clone().invert();
