@@ -512,12 +512,14 @@ assert.ok(!GROWTH_SPECIES.includes('broom'), 'the broom is a shrub form, never a
 // deciduous broadleaves leafless — each form's winter twigs in its own habit, the twigs' grey-brown, the twigs' open
 // shadow — while the conifers and the evergreen broadleaves keep their leaves, and a map in leaf is unchanged.
 {
-  for (const form of ['birch', 'aspen', 'willow', 'beech', 'oak', 'chestnut', 'poplar', 'buddleia']) {
+  // (2026-10-08, the gauntlet's wave 278 on Glacier Pass: the larch is the deciduous conifer — bare on an Alpine April's
+  // col, its needles in May)
+  for (const form of ['birch', 'aspen', 'willow', 'beech', 'oak', 'chestnut', 'poplar', 'buddleia', 'larch']) {
     assert.ok(BARE_SPRAY_KINDS[form], `${form}: a deciduous form has its winter twigs`);
     assert.equal(grownFormSprayKind(form, { bare: true }), BARE_SPRAY_KINDS[form]);
   }
   assert.equal(grownFormSprayKind('birch', { bare: true, birchLeaves: true }), 'birch-bare', 'bare wins over a slot\'s leaves');
-  for (const form of ['olive', 'holmOak', 'eucalyptus', 'mangrove', 'acacia', 'pine', 'spruce', 'fir', 'cedar', 'larch', 'broom']) {
+  for (const form of ['olive', 'holmOak', 'eucalyptus', 'mangrove', 'acacia', 'pine', 'spruce', 'fir', 'cedar', 'broom']) {
     assert.equal(BARE_SPRAY_KINDS[form], undefined, `${form}: keeps its leaves or needles`);
     assert.equal(grownFormSprayKind(form, { bare: true }), grownFormSprayKind(form, {}));
   }

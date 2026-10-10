@@ -49,7 +49,7 @@ import { resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees, type AuthoredTreeFeature,
 } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeTransmission, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeBare, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeSnow, treeBiomeSnowPalette, treeBiomeTransmission, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -2491,6 +2491,9 @@ export const BARE_SPRAY_KINDS: Readonly<Partial<Record<GrowthSpecies, SprayKind>
   oak: 'oak-bare', chestnut: 'oak-bare', poplar: 'poplar-bare', buddleia: 'buddleia-bare',
   // the Streuobst fruit trees' crooked spurs are the oak's habit
   apple: 'oak-bare',
+  // (2026-10-08, wave 278: the larch is the deciduous conifer — its winter crown the fine drooping twigs of the birch's
+  // lattice, on an Alpine April's col until its needles come in May)
+  larch: 'birch-bare',
 });
 
 /** Trees round 2: the spray atlas a grown form paints (treeBiomes.ts) — a birch-family form leafy only where the palette
@@ -5376,8 +5379,9 @@ function* vegetationBuildSteps(
       && !TREE_GROWTH_PROFILES[(formOf(sp)?.form ?? sp) as GrowthSpecies]?.orchard) : []);
   const forestAB = forestSpecies.size > 0 && /[?&]forestAB=1(&|$)/.test(forestQuery);
   // trees lane (2026-10-05): a bare map's deciduous broadleaves and shrubs stand leafless (VegetationConfig `bare`;
-  // `?bare=1` stands any map's bare, the probes' same-build A/B)
-  const bareMap = grownTrees && (veg.bare === true || /[?&]bare=1(&|$)/.test(forestQuery));
+  // `?bare=1` stands any map's bare, the probes' same-build A/B; 2026-10-08, wave 278: a place bare in its season too —
+  // an Alpine April's larches, treeBiomes.ts TreeBiome.bare)
+  const bareMap = grownTrees && (veg.bare === true || treeBiomeBare(cfg?.id) || /[?&]bare=1(&|$)/.test(forestQuery));
   function grownDefinition(species: Exclude<Species, 'palm'>, legacy: SpeciesDefinition): SpeciesDefinition {
     if (!grownTrees) return legacy;
     sprayAtlasSpecies.add(species);
@@ -5480,14 +5484,14 @@ function* vegetationBuildSteps(
   if (snagShare > 0) speciesList.push('snag' as Species);
   const bushSpecies = speciesList.includes(veg.bushSpecies) ? veg.bushSpecies : speciesList[0];
   if (!bushSpecies) throw new Error('world/vegetation: at least one species is required');
+  // trees lane (2026-10-08, the gauntlet's wave 278 on Glacier Pass: summer-green spruce on April's snow): a place under
+  // snow (treeBiomes.ts TreeBiome.snow) lays its load, and its needles' winter colour, on every slot whose palette names
+  // no snow of its own — the law Frosthollow's and Whiteout's palettes already carry
   const palOf = (sp: Species): VegetationPalette => {
-    const explicit = veg.palettes[sp];
-    if (explicit) return explicit;
     const family = TREE_ARCHETYPES[sp]?.family; // p2 trees lane: the snag has no archetype (it reads no palette)
-    if (family === 'conifer') return veg.palettes.pine || {};
-    if (family === 'birch') return veg.palettes.birch || {};
-    if (family === 'palm') return veg.palettes.palm || {};
-    return veg.palettes.oak || {};
+    const pal = veg.palettes[sp] || (family === 'conifer' ? veg.palettes.pine : family === 'birch' ? veg.palettes.birch
+      : family === 'palm' ? veg.palettes.palm : veg.palettes.oak) || {};
+    return treeBiomeSnowPalette(pal, family, treeBiomeSnow(cfg?.id));
   };
 
   const foliageTex = {} as Record<Species, THREE.Texture>;

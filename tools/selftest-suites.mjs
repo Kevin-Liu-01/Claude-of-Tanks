@@ -1387,6 +1387,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/treeCrownShading.selftest.mjs',
     // the trees lane (2026-10-08, the gauntlet's waves 282/283a): Wadi Rum's acacia on Redrock, flat, sparse, grey-green
     'src/world/redrockAcacia.selftest.mjs',
+    // the trees lane (2026-10-08, the gauntlet's wave 278): every map under snow draws its trees under the snow
+    'src/world/snowboundTrees.selftest.mjs',
     // trees round 2b (2026-10-03): where trees stand: woodland edges and verges, Wadi Rum's groves, the palms' sites
     'src/world/treeSpacing.selftest.mjs',
     'src/world/hedgeTrees.selftest.mjs',

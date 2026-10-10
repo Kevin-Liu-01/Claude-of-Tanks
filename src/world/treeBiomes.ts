@@ -59,6 +59,37 @@ export interface TreeBiome {
    * place's leaves pass — small, leathery, dust-coated leaflets pass little light. Unset, the whole gain.
    */
   transmission?: number;
+  /**
+   * The trees lane (2026-10-08, the gauntlet's wave 278 on Glacier Pass): a place whose trees stand in snow — the load
+   * they carry, the needles' winter colour and the hue clamp (TreeBiomeSnow), wherever the map palette names no snow.
+   */
+  snow?: Readonly<TreeBiomeSnow>;
+  /**
+   * The trees lane (2026-10-08, wave 278): a place whose deciduous forms stand leafless in its season, as a bare map's
+   * do (VegetationConfig `bare`; vegetation.ts BARE_SPRAY_KINDS) — an Alpine April's larches before their needles.
+   */
+  bare?: true;
+}
+
+/**
+ * The trees lane (2026-10-08, the gauntlet's wave 278 on Glacier Pass: "the pines are a saturated summer green with not
+ * a flake of snow on their branches", over the col's deep April snow). The snow law is the palette's `snow`
+ * (vegetation.ts: a conifer's laden sprays over its upper crown and the spray atlas's painted load, the legacy tiers'
+ * snow lobes, a broadleaf's or a birch's pads along its limbs) — Frosthollow's palettes carry it (maps/winter.ts) and
+ * Whiteout borrows them; a map without palettes of its own drew its trees in summer on the snow. A place under snow now
+ * lays its load on every slot whose palette names no snow of its own (treeBiomeSnowPalette).
+ */
+interface TreeBiomeSnow {
+  /** The load on the place's conifers (0-1): their laden sprays over the upper crown, the tiers' tops. */
+  conifer: number;
+  /** The load on its broadleaves and birches: the pads along their limbs, the rime on their upper twigs. */
+  broadleaf: number;
+  /** The needles' colour under the load: the card tint (the grown crowns' tint law) and the legacy needles' tone. */
+  needle: Readonly<TreeBiomeColour>;
+  /** The legacy far lobes' colour (VegetationPalette.canopy). */
+  canopy: Readonly<{ hue: number; sat: number; l0: number; l1: number }>;
+  /** The per-tree hue jitter's share (VegetationPalette.jitterHue): near value-only, no lone summer-green tree. */
+  jitterHue: number;
 }
 
 /** A biome's foliage colour defaults (vegetation.ts VegetationPalette's colour fields). */
@@ -112,6 +143,22 @@ const SONORAN_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
 const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   cardHue: 0.25, cardSat: 0.09,
   texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.68), l],
+});
+
+/**
+ * April on an Alpine col at 2,080 m (Glacier Pass, wave 278): a spring snowfall lying on the spruce a little lighter than
+ * Frosthollow's deep-winter 0.9, the needles under it a dark blue-green at half a summer needle's saturation (the
+ * summer card tint is hue 0.30, saturation 0.18), the far lobes a frosted dark green; the larches stand bare
+ * (TreeBiome.bare) with the snow on their twigs.
+ */
+const ALPINE_APRIL_SNOW: Readonly<TreeBiomeSnow> = Object.freeze({
+  conifer: 0.82, broadleaf: 0.6,
+  needle: Object.freeze({
+    cardHue: 0.38, cardSat: 0.08,
+    texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.5), Math.min(1, l * 0.94)],
+  }),
+  canopy: Object.freeze({ hue: 0.44, sat: 0.06, l0: 0.36, l1: 0.58 }),
+  jitterHue: 0.22,
 });
 
 const B = (place: string, slots: TreeBiome['slots'], shrub?: GrowthSpecies, palette?: Readonly<TreeBiomeColour>, arid?: true,
@@ -176,8 +223,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   foundry: B('a Central European steelworks', { birch: { form: 'birch', leaves: true } }),
   airfield: B('a northern European airfield', { birch: { form: 'birch', leaves: true } }),
   fjord: B('a Norwegian fjord', { birch: { form: 'birch', leaves: true } }),
-  // the Alps: spruce and larch
-  alpine: B('an Alpine pass', { fir: { form: 'larch' }, pine: { form: 'larch' } }),
+  // the Alps: spruce and larch. (The trees lane, 2026-10-08, the gauntlet's wave 278: April on the col — the spruce under
+  // the snow's load, the larches bare until their needles come in May)
+  alpine: Object.freeze({ ...B('an Alpine pass', { fir: { form: 'larch' }, pine: { form: 'larch' } }), snow: ALPINE_APRIL_SNOW,
+    bare: true as const }),
   // Queenstown under Mount Lyell, Tasmania (the map-revival lane, 2026-10-05): eucalypt regrowth where the map plants its
   // acacias and cedars, the radiata plantations' pines as pines, the bushes the tea-tree and myrtle scrub in the holm
   // oak's dark leaf (no 'snag' for the fume-killed stumps: its slot would keep a concealing crown it does not draw);
@@ -305,6 +354,44 @@ export function treeBiomeColour(mapId: string | null | undefined): Readonly<Tree
 /** The trees lane (2026-10-08): the share of the grown crowns' back-lit transmission a place's leaves pass (1 unset). */
 export function treeBiomeTransmission(mapId: string | null | undefined): number {
   return (mapId ? TREE_BIOMES[mapId]?.transmission : undefined) ?? 1;
+}
+
+/** The trees lane (2026-10-08, wave 278): a place's snow (TreeBiome.snow), or none. */
+export function treeBiomeSnow(mapId: string | null | undefined): Readonly<TreeBiomeSnow> | null {
+  return (mapId ? TREE_BIOMES[mapId]?.snow : null) ?? null;
+}
+
+/** The trees lane (2026-10-08, wave 278): whether a place's deciduous forms stand leafless in its season (TreeBiome.bare). */
+export function treeBiomeBare(mapId: string | null | undefined): boolean {
+  return !!(mapId && TREE_BIOMES[mapId]?.bare);
+}
+
+/** The palette terms a place's snow fills (vegetation.ts VegetationPalette's subset). */
+interface TreeBiomeSnowTerms extends TreeBiomePaletteTerms {
+  snow?: number;
+  jitterHue?: number;
+  canopy?: unknown;
+}
+
+/**
+ * The trees lane (2026-10-08, wave 278): a slot's palette under its place's snow (TreeBiome.snow) — the load by the
+ * slot's family (a palm carries none), and on a conifer slot the needles' winter colour and the far lobes', each where
+ * the map palette names none, the hue jitter clamped. A palette that names its own snow is the map's own winter
+ * (Frosthollow's, Whiteout's) and stays whole.
+ */
+export function treeBiomeSnowPalette<P extends TreeBiomeSnowTerms>(pal: P, family: string | undefined,
+  snow: Readonly<TreeBiomeSnow> | null): P {
+  if (!snow || pal.snow !== undefined || family === 'palm') return pal;
+  const conifer = family === 'conifer', needle = snow.needle;
+  return {
+    ...pal,
+    snow: conifer ? snow.conifer : snow.broadleaf,
+    ...(pal.jitterHue === undefined ? { jitterHue: snow.jitterHue } : {}),
+    ...(conifer && pal.cardHue === undefined && needle.cardHue !== undefined ? { cardHue: needle.cardHue } : {}),
+    ...(conifer && pal.cardSat === undefined && needle.cardSat !== undefined ? { cardSat: needle.cardSat } : {}),
+    ...(conifer && !pal.texTone && needle.texTone ? { texTone: needle.texTone } : {}),
+    ...(conifer && !pal.canopy ? { canopy: snow.canopy } : {}),
+  };
 }
 
 /** Trees round 4: the colour of a place's shrubs over the bush slot's palette (TreeBiome.shrubColour), or none. */
