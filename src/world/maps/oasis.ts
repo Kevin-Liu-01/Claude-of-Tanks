@@ -83,6 +83,43 @@ export default {
     sourcedPalette: 'desert',
     plan: ['caravanserai', 'compoundSouk', 'adobe', 'bathhouse', 'marketRow', 'minaret', 'compound', 'adobe', 'market', 'ruin', 'adobe', 'compound', 'tower', 'adobe', 'marketRow', 'ruin', 'adobe', 'compound'],
     destructibleBuildings: ['deserttent', 'commandtent', 'checkpointhut', 'guardpost'],
+    // (the map-content lane, 2026-10-09; the census: Siwa a dozen buildings on the caravan road, 39 % of the playable square
+    // more than 30 m from anything standing) the town filled out lot by lot in the kit's kershef: houses along the caravan
+    // street and the souk lane, three shop rows, a second watch tower; nine lots each side of the town's middle. They stand
+    // after the roadside plan (every plan building where it was) and each draws from its own stream (terrace)
+    plannedSitesAfterPlan: true,
+    plannedSites: [
+      { structure: 'marketRow', x: 94.0, z: -62.0, yawDeg: -177, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'adobe', x: 106.0, z: -62.0, yawDeg: -177, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'marketRow', x: 124.0, z: -62.0, yawDeg: -177, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'adobe', x: 82.0, z: -56.0, yawDeg: -90, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'adobe', x: 60.0, z: -52.0, yawDeg: 90, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'adobe', x: 82.0, z: -44.0, yawDeg: -90, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'adobe', x: 60.0, z: -40.0, yawDeg: 90, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'adobe', x: 126.0, z: -86.0, yawDeg: 3, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'adobe', x: 102.0, z: -84.0, yawDeg: -134, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'adobe', x: 84.0, z: 4.0, yawDeg: -83, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'adobe', x: 64.0, z: 8.0, yawDeg: 97, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'marketRow', x: 94.0, z: 14.0, yawDeg: -29, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'adobe', x: 106.0, z: 18.0, yawDeg: -22, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'adobe', x: 64.0, z: 20.0, yawDeg: 114, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'adobe', x: 154.0, z: 78.0, yawDeg: -86, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'tower', x: 134.0, z: 88.0, yawDeg: 94, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'adobe', x: 156.0, z: 90.0, yawDeg: -86, plot: { w: 9, d: 9 }, terrace: true },
+      { structure: 'adobe', x: 134.0, z: 102.0, yawDeg: 94, plot: { w: 9, d: 9 }, terrace: true },
+      // old Shali's heaped blocks on the compound plots behind the streets, three each side of the middle
+      { structure: 'compound', x: 130.0, z: -38.0, yawDeg: -177, plot: { w: 20, d: 20 }, terrace: true },
+      { structure: 'compound', x: 184.0, z: -22.0, yawDeg: 145, plot: { w: 20, d: 20 }, terrace: true },
+      { structure: 'compound', x: 12.0, z: -124.0, yawDeg: 4, plot: { w: 20, d: 20 }, terrace: true },
+      { structure: 'compound', x: 178.0, z: 48.0, yawDeg: -77, plot: { w: 20, d: 20 }, terrace: true },
+      { structure: 'compound', x: 84.0, z: 64.0, yawDeg: 158, plot: { w: 20, d: 20 }, terrace: true },
+      { structure: 'compound', x: 106.0, z: 114.0, yawDeg: 94, plot: { w: 20, d: 20 }, terrace: true },
+    ],
+    // the town's two cell masts (Siwa had mobile coverage by 2010), north and south of it
+    landmarks: [
+      { kind: 'guyedMast', x: 236, z: -150, params: { height: 30 }, ground: 'veto', name: 'the south cell mast' },
+      { kind: 'guyedMast', x: 228, z: 170, params: { height: 30 }, ground: 'veto', name: 'the north cell mast' },
+    ],
     // 2026-10-03 (maps lane B): the roadside buildings stand 16-18 m off the road (was 12-14): five walled compounds,
     // 16-28 m across, reached into the carriageway (the layout brief's solidPropsInRoad)
     buildingLat: [16, 2], destructibleBuildingLat: [16, 3],
@@ -106,7 +143,7 @@ export default {
     // the map-vehicles lane (2026-10-06, the period ruling): Egypt: the M60A3 and M1A1, the T-62 and T-55 (its Type
     // 59 copy)
     tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['m60a3', 'm1a1', 't62mv1', 'type59'] },
-    inhabit: { stalls: 0, benches: 3, coreClutter: 22, pots: 10, laundry: 4, handcarts: 3, carts: 4, trucks: 4, jeeps: 3, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencewattle' },
+    inhabit: { stalls: 0, benches: 3, coreClutter: 22, pots: 10, laundry: 4, handcarts: 3, carts: 7, trucks: 6, jeeps: 5, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencewattle' },
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): dune-ring tone grain 0.46 -> 0.62
   // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): a flat erg of low soft dunes

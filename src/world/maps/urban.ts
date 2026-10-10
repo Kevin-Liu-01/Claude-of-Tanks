@@ -57,7 +57,10 @@ for (let i = 0; i < 108; i++) {
   // a battle-ready map ("rubble/destruction dressing too sparse"); ~1 in 3.5
   // interior slots is now a shelled ruin, clustering into visibly collapsed
   // blocks where the two cadences overlap
-  else if (i % 5 === 2 || i % 9 === 5) PLAN.push('ruin');
+  // (the map-content lane, 2026-10-09; the owner: Steinburg "really good but a bunch of empty areas, it looks like
+  // buildings should be in the town area") one ruin cadence, about one interior slot in nine: the two cadences together
+  // left a third of the block interiors as rubble plots that read from the streets and the air as empty lots
+  else if (i % 9 === 5) PLAN.push('ruin');
   else PLAN.push('rowhouse');
 }
 
@@ -241,6 +244,30 @@ export default {
       // (yawDeg 6) and 4 m off the paving (the layout brief keeps every solid 3.5 m out of a road's core, and an apron is
       // a road); the nave runs back north off the crest's street rows
       { structure: 'church', x: -76, z: 52, yawDeg: 186 },
+      // (the map-content lane, 2026-10-09; the owner's "empty areas") the valley suburbs filled out: a row of houses on each
+      // side of the brickworks road in the south valley and of the goods station road in the north, a tavern and a corner
+      // shop among them, the two suburbs mirrored across the spur's crest (each lot its own stream: terrace, so every later
+      // placement keeps its seat; lots 1.5 m or more off every standing building, 7.5-13.5 m off the road's line)
+      { structure: 'rowhouse', x: -180.0, z: -246.0, yawDeg: 4, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'rowhouse', x: -162.0, z: -248.0, yawDeg: 4, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'tavern', x: -140.0, z: -250.0, yawDeg: 4, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'rowhouse', x: -120.0, z: -250.0, yawDeg: 2, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'cornershop', x: -100.0, z: -252.0, yawDeg: 2, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'rowhouse', x: -80.0, z: -252.0, yawDeg: 2, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'rowhouse', x: -158.0, z: -226.0, yawDeg: -176, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'rowhouse', x: -132.0, z: -228.0, yawDeg: -176, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'rowhouse', x: -104.0, z: -228.0, yawDeg: -178, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'rowhouse', x: -82.0, z: -230.0, yawDeg: -178, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'rowhouse', x: -180.0, z: 250.0, yawDeg: 176, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'rowhouse', x: -160.0, z: 252.0, yawDeg: 176, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'tavern', x: -140.0, z: 252.0, yawDeg: 176, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'rowhouse', x: -120.0, z: 254.0, yawDeg: 174, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'cornershop', x: -100.0, z: 256.0, yawDeg: 174, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'rowhouse', x: -80.0, z: 258.0, yawDeg: 174, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'rowhouse', x: -162.0, z: 228.0, yawDeg: -4, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'rowhouse', x: -132.0, z: 234.0, yawDeg: -4, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'rowhouse', x: -108.0, z: 232.0, yawDeg: -6, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'rowhouse', x: -88.0, z: 234.0, yawDeg: -6, plot: { w: 7.5, d: 9 }, terrace: true },
     ],
     // street frontage is built by CONTIGUOUS rowhouse strips (shared walls,
     // varied heights, collapsed slots spilling rubble) + kerbed pavements
@@ -270,7 +297,9 @@ export default {
       wood: null,
       straw: null,
     },
-    ruinChance: 0.38, // r1: street-front collapse rate up (war-torn read)
+    // (the map-content lane, 2026-10-09, the owner's empty areas: 38 % of the street fronts stood collapsed, gaps in every
+    // row) one street-front house in eight down; the town wall's breaches, the craters and the ruined plots keep the war
+    ruinChance: 0.12,
     townCraters: true, // shell holes pock the streets/squares inside the rect
     // r1 (content_breadth): darker, slightly warm-grey rubble — the old pale
     // near-white smooth boulders read as "grey tent blobs" in the foreground
