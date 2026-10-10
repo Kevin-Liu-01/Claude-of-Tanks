@@ -643,10 +643,13 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
           // (a wall under a floor is held down by it and cannot be shoved over: under a floor every storey gives — the
           // ground storey first, the struck face first and the far face last, each storey over it a beat later as what it
           // carries comes down — and the top storey's walls are shoved over; a single storey's struck face bursts)
+          // (a single storey under its roof is held down by it too: its struck face bursts, the faces beside it give a
+          // beat later, and the far face is shoved over as the roof comes down into the gap)
           shatterS: plan.index === storeys.length - 1 && plan.index > 0 ? -1
             : fp.side === struckSide ? 0.28 * plan.index
-              : storeys.length < 2 || struckSide < 0 ? -1
-                : 0.28 * plan.index + ((fp.side ^ 1) === struckSide ? 0.55 + rng() * 0.3 : 0.16 + rng() * 0.22),
+              : struckSide < 0 ? -1
+                : storeys.length < 2 ? ((fp.side ^ 1) === struckSide ? -1 : 0.22 + rng() * 0.25)
+                  : 0.28 * plan.index + ((fp.side ^ 1) === struckSide ? 0.55 + rng() * 0.3 : 0.16 + rng() * 0.22),
           parts, partCutsU, partCutsY,
           partFrame: parts.length ? { origin: face.origin, u: face.u, v: [0, 1, 0] } : null,
         });
