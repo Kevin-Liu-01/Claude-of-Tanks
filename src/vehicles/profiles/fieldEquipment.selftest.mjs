@@ -5,7 +5,9 @@ import {topIndex} from '../roofSweep.test-support.mjs';
 import {auxiliaryCapabilities} from '../auxiliaryInventory.ts';
 import {auxiliaryWeaponProfile} from '../auxiliaryWeapons.ts';
 import {VEHICLE_SIZE_FACTORS} from '../vehicleSizePolicy.ts';
-const targets=[['griffin50_x','Griffin 50 mm remote 30 mm cannon',30],['leo2a7v_x','Leopard 2A7V remote 30 mm cannon',30],['leo2_revolution','Leopard 2 Revolution remote 30 mm cannon',30],['leo2a5_x','Leopard 2A5 remote 30 mm cannon',30],['leclerc_x','Leclerc XLR remote 30 mm cannon',30],['ua_t84_oplot_m','Oplot-M protected heavy machine gun',12.7]];
+// 2026-10-09 (owner order: "give the griffin 50 mm its old machine gun back"): the Griffin's working roof weapon is its
+// restored 10-07 M2 on the elevated cradle; the field roof 30 mm is gone.
+const targets=[['griffin50_x','griffin50RoofM2',12.7],['leo2a7v_x','Leopard 2A7V remote 30 mm cannon',30],['leo2_revolution','Leopard 2 Revolution remote 30 mm cannon',30],['leo2a5_x','Leopard 2A5 remote 30 mm cannon',30],['leclerc_x','Leclerc XLR remote 30 mm cannon',30],['ua_t84_oplot_m','Oplot-M protected heavy machine gun',12.7]];
 for(const quality of ['high','low'])for(const [id,name,caliber] of targets){
  const registered=auxiliaryCapabilities({id})?.guns.find(g=>g.name===name);
  assert.equal(registered?.caliberMm,caliber,`${id}: combat registry enables the authored cannon`);
