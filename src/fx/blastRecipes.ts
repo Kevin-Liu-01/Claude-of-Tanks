@@ -1060,21 +1060,66 @@ export function dustSurge(C: BlastContext, x: number, y: number, z: number, s: n
   }
 }
 
+/**
+ * (fx 8o, wave 356's critics on a kill: "a flat, lingering dust sheet at 3-4 s") the dust a hull's death throws off the
+ * ground round it: puffs kicked out low and fast that stall, rise and roll up into billows as they swell, thinning from a
+ * third of their lives and gone within three to five seconds; round cards in the turbulent medium, never the wide flat
+ * skirt a ground burst lays (dustSurge). `s` the push: ~0.8 a plain kill, ~1.6 an ammunition cook-off.
+ */
+export function killDust(C: BlastContext, x: number, y: number, z: number, s: number, surface: SurfaceKind,
+  bo: number): void {
+  const L = SURFACE_LOOKS[surface === 'water' ? 'soil' : surface];
+  const R = C.rand;
+  const m = C.m;
+  const sq = Math.sqrt(s);
+  const dk = C.distBoost(x, y, z);
+  const n = Math.round((5 + 3 * s) * Math.sqrt(L.dustK));
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * TAU + (R() - 0.5) * 0.8;
+    const v = (3.5 + R() * 4) * sq;
+    place(m, x + Math.cos(a) * 1.4 * sq, y + 0.4 + R() * 0.3, z + Math.sin(a) * 1.4 * sq, bo + R() * 0.08);
+    // out low and fast, then the stalled dust rolls up: an upward push and a rise
+    move(m, Math.cos(a) * v, 0.8 + R() * 0.9, Math.sin(a) * v, 2.2, 0.35 + R() * 0.25, 0.9, 0);
+    const life = (2.6 + R() * 1.2) * Math.min(1.35, sq);
+    shape(m, life, 0.8 * sq * dk, (2.4 + R() * 1.3) * sq * Math.sqrt(L.dustK) * dk, 2.6, R);
+    look(m, mix3(L.ejecta, L.dust, 0.6), L.dust, Math.min(0.5, 0.3 * L.dustK + 0.1), 0.04, 0.3);
+    book(m, 'billow', R, life);
+    card(m, 1.1 + R() * 0.35, R, 0.06);
+    heat(m, 0, 1);
+    C.media(m);
+  }
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Fire: a hull's fireball, a burning column's tick, a smouldering wreck
 // ---------------------------------------------------------------------------------------------------------------
 
-/** A hull's death fireball (ammo rack: bigger, taller), cooling into the column's first soot. */
-export function killFireball(C: BlastContext, x: number, y: number, z: number, rack: boolean, bo: number): void {
+/** How a hull died, for its death fire: an ammunition cook-off, a plain kill (no ammunition explosion), a burn-out; or
+ *  the Studio's stand-in shell burst on open ground ('burst': the blast every non-rack kill had before fx 8o). */
+export type KillFireKind = 'ammorack' | 'shot' | 'fire' | 'burst';
+
+/**
+ * A hull's death fireball, cooling into the column's first soot. An ammunition cook-off's is the big one (bigger,
+ * taller, more of everything); a burn-out's a middling flare. (fx 8o, wave 356's critics on a plain kill: "far too big for
+ * a kill without an ammunition explosion: a fireball wider than the tank swallows the turret") a plain kill's is a short
+ * flash of burning fuel and propellant venting from the hull, about the hull's own width, gone to soot within a second,
+ * its smoke climbing steadily rather than towering; and every kill's flash lights the media round the hull from inside
+ * (a glow with distance falloff), never a flat disc.
+ */
+export function killFireball(C: BlastContext, x: number, y: number, z: number, kind: KillFireKind, bo: number): void {
   const R = C.rand;
   const m = C.m;
+  const rack = kind === 'ammorack', plain = kind === 'shot';
   // (wave 266: the fireball barely outgrew the hull, one smooth brown ball whose billows froze after ~2 s) a fireball
   // well past the hull's size, rolling up and out in lobes of different sizes; it burns out within a second or so into
   // black soot, which keeps churning (each flipbook plays its whole life) as it climbs into the column
-  const S = rack ? 1.75 : 1.3;
+  const S = rack ? 1.75 : plain ? 0.55 : kind === 'fire' ? 0.95 : 1.3;
   const dk = C.distBoost(x, y, z);
-  // 1. the fire: lobes swelling fast out of the hull, hot at the heart, burnt out to soot by ~1.5 s
-  const n = rack ? 7 : 5;
+  // the flash inside the fire: the media round the hull lit from within, falling off with the distance from its heart
+  C.glow(x, y + 0.4, z, (rack ? 6.5 : plain ? 3.2 : 4.5) * dk, rack ? 1.6 : plain ? 1.0 : 1.2, rack ? 0.7 : plain ? 0.45 : 0.6, bo);
+  // 1. the fire: lobes swelling fast out of the hull, hot at the heart, burnt out to soot by ~1.5 s (a plain kill's
+  //    by ~0.6 s)
+  const n = rack ? 7 : plain ? 3 : 5;
   for (let i = 0; i < n; i++) {
     // (fx 8, the killcam critics after 7d/7e: "black smoke hanging in front of the camera instead of climbing away")
     // the lobes are driven up more than out — a fireball climbs on its own heat — so nothing thrown sideways stalls
@@ -1084,26 +1129,26 @@ export function killFireball(C: BlastContext, x: number, y: number, z: number, r
     move(m, Math.cos(a) * Math.sin(b) * v, (4.5 + R() * 4) * S, Math.sin(a) * Math.sin(b) * v, 1.8, 3.2 * S, 0.6, 0);
     // lobes of different sizes, so their union is lumpy rather than one smooth ball
     const size1 = (5.5 + R() * 4.5) * S * dk;
-    const life = 2.8 + R() * 1.2;
+    const life = plain ? 1.6 + R() * 0.8 : 2.8 + R() * 1.2;
     shape(m, life, size1 * 0.5, size1, 4, R);
     look(m, SOOT, mix3(SOOT, SMOKE_AGED, 0.2), 0.97, 0.0, 0.5);
     book(m, 'billow', R, life);
     // orange-yellow at the heart (round 4 and b5: never white — at heat ~2 the blackbody ramp saturates), and gone
     // fast: a long dull glow read as brown smoke; (fx 8: "a flat salmon wash over the tank at 0.6-1.8 s") an orange
-    // heart for half a second, burnt out to soot by ~1 s
-    heat(m, 1.15 + R() * 0.15, 2.4);
+    // heart for half a second, burnt out to soot by ~1 s; a plain kill's for a third of a second
+    heat(m, (plain ? 1.05 : 1.15) + R() * 0.15, plain ? 3.2 : 2.4);
     C.media(m);
   }
   // 2. the soot: black smoke rolling out of the top of the fire over the first second, climbing and spreading
-  const sn = rack ? 6 : 4;
+  const sn = rack ? 6 : plain ? 2 : 4;
   for (let i = 0; i < sn; i++) {
     const a = R() * TAU;
     place(m, x + (R() - 0.5) * 2.0, y + 1.5 + R() * 2.0 * S, z + (R() - 0.5) * 2.0, bo + 0.2 + i * (0.6 / sn) + R() * 0.1);
     // (fx 8) it climbs away hard and leans off with the wind: a column going up out of the frame, not a pall hanging
-    // round the camera
-    move(m, Math.cos(a) * 1.2 * S, (5 + R() * 3) * S, Math.sin(a) * 1.2 * S, 1.2, 4.2 + R() * 1.4, 1.0, 0);
+    // round the camera; (fx 8o) a plain kill's climbs steadily out of the hull: smoke, not a towering cloud
+    move(m, Math.cos(a) * 1.2 * S, (5 + R() * 3) * S, Math.sin(a) * 1.2 * S, 1.2, plain ? 2.4 + R() * 0.8 : 4.2 + R() * 1.4, 1.0, 0);
     const size1 = (6.5 + R() * 4.5) * S * dk;
-    const life = 6 + R() * 3;
+    const life = plain ? 4 + R() * 2 : 6 + R() * 3;
     shape(m, life, size1 * 0.35, size1, 2.2, R);
     look(m, SOOT, mix3(SOOT, SMOKE_AGED, 0.3), 0.9, 0.15, 0.55);
     book(m, 'billow', R, life);
@@ -1112,12 +1157,13 @@ export function killFireball(C: BlastContext, x: number, y: number, z: number, r
   }
   // 3. the hull's own pieces thrown out of the fire (round 7b, wave m2: "no debris"): hot fragments of plate and fittings,
   // glowing as they fly, cooling as they fall, lying round the wreck
-  const fragN = rack ? 22 : 14;
+  const fragN = rack ? 22 : plain ? 5 : 14;
   for (let i = 0; i < fragN; i++) {
     const a = R() * TAU, up = 0.35 + R() * 0.6, v = (6 + R() * 12) * S;
     chunk(C, i % 3 === 0 ? 'sheet' : 'stone', x + (R() - 0.5) * 1.2, y + 0.8 + R(), z + (R() - 0.5) * 1.2,
       Math.cos(a) * (1 - up) * v, up * v + 2, Math.sin(a) * (1 - up) * v,
-      0.12 + Math.pow(R(), 2) * 0.35, STEEL, 16 + R() * 8, 0.85 + R() * 0.15, bo + R() * 0.05);
+      (plain ? 0.08 + Math.pow(R(), 2) * 0.16 : 0.12 + Math.pow(R(), 2) * 0.35), STEEL, 16 + R() * 8, 0.85 + R() * 0.15,
+      bo + R() * 0.05);
   }
 }
 
