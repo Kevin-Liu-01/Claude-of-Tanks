@@ -310,8 +310,11 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   // rectangular paddies between earth bunds, green and flooded, vegetable plots and meadow, a field road along some of
   // the long boundaries, a few windbreak hedges; the fields keep to the level floor (the material keeps them off the
   // cones, the lava shelves, the roads and the village)
+  // (Caldera round 3, wave 131: "hard-edged flat-colour field rectangles that read as paint fills rather than paddies";
+  // "no paddies that read as flooded or bunded") Aso's paddies are small — the parcels a quarter smaller each way, so
+  // the bunds between them read; fewer field roads (was 96 x 58 m, tracks 0.32)
   caldera: {
-    strength: 1, heading: 0.18, blockU: 96, blockV: 58, maxSplit: 3, marginM: 0.8, trackShare: 0.32, hedgeShare: 0.14,
+    strength: 1, heading: 0.18, blockU: 72, blockV: 42, maxSplit: 3, marginM: 0.8, trackShare: 0.22, hedgeShare: 0.14,
     warpM: 10, region: 'terrace', salt: 103,
   },
   // Ironworks (foundry: the Völklingen ironworks on the Saar, the maps lane's rebuild): brownfield plots between the

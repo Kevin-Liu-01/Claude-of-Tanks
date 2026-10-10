@@ -113,7 +113,9 @@ function validatePile(geometry, obstacle, collider, field, strip = legacyStrip) 
 }
 function dispose(result) {for(const geometries of Object.values(result.buckets)) for(const geometry of geometries) geometry.dispose();}
 // (batch 4: Skybridge round 3, e53ee9c50 — Page never had a railway: the yard's lines, coal heaps and stores are gone)
-const railMaps=['railyard','foundry','caldera'];
+// (2026-10-07, the map-revival lane's Caldera round 3: Obsidian Caldera lays no rail yard — its sidings and their coal
+// stood across Aso's paddies)
+const railMaps=['railyard','foundry'];
 const totals={};
 for(const mapId of MAP_IDS) {
   const field=createHeightField(1337,getMapConfig(mapId));
