@@ -579,4 +579,107 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         ...(side > 0 ? [cut(0.80, 2.60, 1.00, 1.90)] : [])]),
     },
   },
+  // ---- Group C (the owner, 2026-10-10): "give the tusk, m1a3, griffin viper, leopard 2 revolution and t90A burlak
+  // some! and for those tell them be unafraid of adding these on roofs of hulls or turrets". Full roofs and decks at
+  // the Group B density, the glacis tops included at full garnish; the keep-outs are the working ones only (lids open,
+  // lenses and sights see, the guns and the turret traverse, the exhausts).
+  // M1A2 TUSK: the turret roof and bustle under one net round the CROWS (the builder), the sights and both hatches,
+  // drapes down the flanks over the ARAT, a rear drape over the bustle rack; the UA Abrams' hull frame exactly (both
+  // decks netted, the driver's hatch and the exhaust end bare), four drapes a side over the ARAT skirts.
+  m1a2_tusk_x: {
+    id: 'm1a2_tusk_x', seed: 1305, style: 'leafy', ...DENSE, ...WOODLAND,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.22, hemFloorM: 0.7,
+    turret: {
+      top: [laid({ x0: -1.82, x1: 1.70, z0: -3.15, z1: 1.30, nx: 44, nz: 56, y: 0.92, garnishRiseM: 0.16, seed: 11 })],
+      side: flanks(-2.45, -0.10, 0.90, 0.46, 1.70, 17),
+      face: [face({ z: -3.20, x0: -1.20, x1: 1.20, y0: 0.55, y1: 0.98, nx: 24, ny: 6, seed: 23 })],
+    },
+    hull: {
+      top: [
+        laid({ x0: -1.62, x1: 1.62, z0: -3.62, z1: 0.39, nx: 32, nz: 40, y: 1.72, garnishRiseM: 0.14, seed: 31 }),
+        laid({ x0: -1.62, x1: 1.62, z0: 0.39, z1: 3.62, nx: 32, nz: 32, y: 1.50, holes: [rect(-0.38, 0.38, 2.25, 3.00)],
+          garnishRiseM: 0.12, seed: 37 }),
+      ],
+      side: skirts(-3.30, 3.10, 1.54, 0.55, 2.05, 41),
+    },
+  },
+  // M1A3: the wide turret roof and bustle netted round the sights, the hatches and the roof station (the builder),
+  // drapes down the flanks behind the front smoke banks, a rear drape; the long engine deck short of the exhaust, the
+  // front deck round the three crew hatches and their periscopes, four drapes a side.
+  m1a3: {
+    id: 'm1a3', seed: 1306, style: 'leafy', ...DENSE, ...WOODLAND,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.36, hemFloorM: 0.8,
+    turret: {
+      top: [laid({ x0: -1.96, x1: 1.96, z0: -3.30, z1: 1.40, nx: 49, nz: 59, y: 0.76, garnishRiseM: 0.16, seed: 11 })],
+      side: flanks(-3.05, 0.55, 0.74, 0.44, 1.80, 17),
+      face: [face({ z: -3.38, x0: -1.40, x1: 1.40, y0: 0.40, y1: 0.74, nx: 28, ny: 6, seed: 23 })],
+    },
+    hull: {
+      top: [
+        laid({ x0: -1.92, x1: 1.92, z0: -3.80, z1: 0.15, nx: 38, nz: 40, y: 1.70, garnishRiseM: 0.14, seed: 31 }),
+        laid({ x0: -1.92, x1: 1.92, z0: 0.15, z1: 3.85, nx: 38, nz: 37, y: 1.62, garnishRiseM: 0.12, seed: 37 }),
+      ],
+      side: skirts(-3.70, 3.50, 1.62, 0.55, 2.16, 41),
+    },
+  },
+  // Griffin Viper: the long flat hull roof netted bow to stern round the Viper station's sweep, the driver's hatch
+  // and its periscopes; the small station's roof netted round its sights; three-quarter drapes a side down the hull.
+  griffin_viper: {
+    id: 'griffin_viper', seed: 5011, style: 'leafy', ...DENSE, ...WOODLAND,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.86, hemFloorM: 0.84,
+    turret: {
+      top: [laid({ x0: -0.72, x1: 0.72, z0: -0.74, z1: 0.86, nx: 18, nz: 20, y: 0.32, garnishRiseM: 0.10, seed: 11 })],
+      side: flanks(-0.62, 0.52, 0.30, 0.22, 0.64, 17),
+    },
+    hull: {
+      top: [
+        laid({ x0: -1.66, x1: 1.66, z0: -3.04, z1: -0.20, nx: 33, nz: 36, y: 1.92, garnishRiseM: 0.14, seed: 31 }),
+        laid({ x0: -1.66, x1: 1.66, z0: -0.20, z1: 3.44, nx: 33, nz: 46, y: 1.90, holes: [rect(0.28, 1.12, 0.98, 1.78)],
+          garnishRiseM: 0.12, seed: 37 }),
+      ],
+      side: skirts(-2.95, 3.25, 1.82, 0.55, 1.72, 41),
+    },
+  },
+  // Leopard 2 Revolution: the wedge roof netted round the sight head, the remote station and both hatches (the
+  // builder), drapes down the walls between the front and rear smoke banks, a rear drape; the engine deck short of
+  // the rear louvres, the front deck, four drapes a side.
+  leo2_revolution: {
+    id: 'leo2_revolution', seed: 2709, style: 'leafy', ...DENSE, ...WOODLAND,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 0.95,
+    turret: {
+      top: [laid({ x0: -1.64, x1: 1.64, z0: -3.22, z1: 1.55, nx: 41, nz: 60, y: 0.72, garnishRiseM: 0.16, seed: 11 })],
+      side: flanks(-2.80, 1.20, 0.70, 0.42, 1.62, 17),
+      face: [face({ z: -3.28, x0: -1.10, x1: 1.10, y0: 0.32, y1: 0.68, nx: 22, ny: 6, seed: 23 })],
+    },
+    hull: {
+      top: [
+        laid({ x0: -1.86, x1: 1.86, z0: -3.58, z1: 0.40, nx: 37, nz: 40, y: 1.66, garnishRiseM: 0.14, seed: 31 }),
+        laid({ x0: -1.86, x1: 1.86, z0: 0.40, z1: 3.60, nx: 37, nz: 32, y: 1.50, garnishRiseM: 0.12, seed: 37 }),
+      ],
+      side: skirts(-3.50, 3.40, 1.50, 0.52, 1.98, 41),
+    },
+  },
+  // T-90A Burlak: the turret roof netted round its cupolas, sights and the roof station (the builder), the long
+  // Burlak bustle netted to its rails with drapes down its sides, the cheeks' drapes behind the smoke banks, a rear
+  // drape; the engine deck (the left rear exhaust bare) and the front deck, four drapes a side.
+  t90a_burlak_x: {
+    id: 't90a_burlak_x', seed: 9005, style: 'leafy', ...DENSE, ...WOODLAND,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 0.72,
+    turret: {
+      // open round the commander's sight (its stack carries no glass bucket, so the lens slot is authored: the window
+      // looks ahead over the roof from z -0.67)
+      top: [laid({ x0: -1.98, x1: 1.98, z0: -3.25, z1: 1.80, nx: 50, nz: 63, y: 0.72, garnishRiseM: 0.16, seed: 11,
+        holes: [rect(-0.82, -0.18, -1.12, -0.50), [[-0.70, -0.55], [-0.30, -0.55], [-0.12, 0.85], [-0.88, 0.85]]] })],
+      side: [...flanks(-3.20, -1.45, 0.62, 0.40, 0.95, 17), ...flanks(-1.30, 0.40, 0.66, 0.38, 1.86, 19)],
+      face: [face({ z: -3.30, x0: -0.82, x1: 0.82, y0: 0.24, y1: 0.60, nx: 16, ny: 6, seed: 23 })],
+    },
+    hull: {
+      top: [
+        laid({ x0: -1.76, x1: 1.76, z0: -3.70, z1: 0.10, nx: 35, nz: 38, y: 1.50, holes: [rect(-1.95, -1.40, -3.50, -2.20)],
+          garnishRiseM: 0.14, seed: 31 }),
+        laid({ x0: -1.76, x1: 1.76, z0: 0.10, z1: 3.62, nx: 35, nz: 35, y: 1.40, garnishRiseM: 0.12, seed: 37 }),
+      ],
+      side: skirts(-3.10, 3.40, 1.42, 0.46, 1.90, 41, (side) => (side < 0 ? [cut(-3.50, -2.20, 1.00, 1.90)] : [])),
+    },
+  },
 });

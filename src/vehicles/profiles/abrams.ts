@@ -8427,6 +8427,8 @@ function addAbramsXUpgradeEquipment(P: AbramsBuilderPort): void {
 }
 
 function buildM1A3(P: AbramsBuilderPort): void {
+  // 2026-10-10 (owner): the field net and garnish (ghillieFleetSuits.ts Group C), laid on the assembled build
+  addVehicleGhillieSuit(P);
   const layout = createM1A3BuildLayout();
   addM1A3Hull(P, layout.g);
   addM1A3TurretStructure(P, layout.t);

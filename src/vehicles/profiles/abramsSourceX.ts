@@ -130,6 +130,8 @@ function* buildAbramsXCooperativeSteps(P: TankBuilderPort, cooperative = true): 
     buildAbramsSourceXSepv3Kit(P);
     if (cooperative) yield "buildAbramsX:buildAbramsSourceXSepv3Kit(P);";
   }
+  // 2026-10-10 (owner): the TUSK's field net and garnish (ghillieFleetSuits.ts Group C); a hull without a row has none
+  addVehicleGhillieSuit(P);
   P.topY = 2.405;
   if (cooperative) yield "buildAbramsX:P.topY = 2.405;";
   P.muzzleZ = 5.809425 - frame.gun[2];

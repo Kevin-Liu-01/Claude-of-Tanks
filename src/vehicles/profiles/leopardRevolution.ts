@@ -8,6 +8,7 @@ import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { cappedSmokeLauncherGeometry } from '../smokeLauncherGeometry.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { leopardReturnRollers } from './leopardReturnRollers.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
 type XY = readonly [number, number];
 type Section = { z: number; ring: readonly XY[] };
@@ -74,6 +75,8 @@ function turretSection(z: number, half: number, bottom: number, top: number, ins
 }
 
 export function buildLeopardRevolution(P: TankBuilderPort): void {
+  // 2026-10-10 (owner): the field net and garnish (ghillieFleetSuits.ts Group C), laid on the assembled build
+  addVehicleGhillieSuit(P);
   P.hullG.position.set(0, 0, 0);
   P.turretG.position.set(0, ROOF_BASE, YAW_Z);
   P.gunG.position.set(0.012, 1.856 - ROOF_BASE, 1.60 - YAW_Z);
