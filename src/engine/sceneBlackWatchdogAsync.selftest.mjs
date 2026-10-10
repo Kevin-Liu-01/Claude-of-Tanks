@@ -806,4 +806,25 @@ for (const enabled of [false, true]) {
   });
 }
 
+// 2026-10-09 (the black-screen lane): ?diagforce=blackout is a lit pipeline black under any light and any rescue stage,
+// the per-deploy sweep's negative control (tools/battle-entry-sweep.mjs --force-black): it must always be refused.
+let blackoutWatchdog;
+try {
+  globalThis.location = { search: '?diagforce=blackout' };
+  ({ runSceneBlackWatchdogAsync: blackoutWatchdog } = await import('./deviceDiag.ts?blackout-async-selftest'));
+} finally {
+  if (previousLocation === undefined) delete globalThis.location;
+  else globalThis.location = previousLocation;
+}
+for (const enabled of [false, true]) {
+  await test(`forced blackout is refused whatever rescue stages exist (${enabled})`, async () => {
+    const f = fixture({ shadows: enabled, environment: enabled, fog: enabled });
+    const result = await blackoutWatchdog(f.renderer, f.scene, f.camera);
+    assert.equal(result.failed, true, 'a genuinely black pipeline is refused');
+    assert.deepEqual([result.before, result.response, result.rescued], [0, 0, false]);
+    assert.deepEqual(f.compatibility, f.initial, 'every tried stage came off');
+    assert.equal(f.targets.length, 0, 'forced diagnostics never allocate actual probes');
+  });
+}
+
 console.log(`sceneBlackWatchdogAsync.selftest: ${passed} async ownership, cancellation and fallback cases passed`);

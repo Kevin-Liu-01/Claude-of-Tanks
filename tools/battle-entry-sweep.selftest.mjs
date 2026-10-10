@@ -2,7 +2,7 @@
 // The browser sweep itself is tools/battle-entry-sweep.mjs; this pins how one run's observations become its verdict.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { classifyRun, lumaStats, WATCHDOG_THRESHOLD } from './battle-entry-sweep.mjs';
+import { classifyControl, classifyRun, lumaStats, WATCHDOG_THRESHOLD } from './battle-entry-sweep.mjs';
 
 const limits = { minLuma: 10, minSd: 2, bandWarn: 9 };
 const picture = [{ at: 0.5, mean: 62.3, sd: 21.4 }, { at: 2, mean: 61.4, sd: 20.9 }];
@@ -68,6 +68,17 @@ for (const sample of [{ at: 2, mean: 3.1, sd: 9 }, { at: 5, mean: 48, sd: 0.4 },
 }
 
 {
+  // the negative control (?diagforce=blackout): only a watchdog refusal certifies that the sweep still sees black
+  const refused = classifyControl({ entry: 'failed', reason: 'Error: Battlefield scene watchdog could not validate a healthy frame' });
+  assert.equal(refused.verdict, 'control-refused');
+  for (const run of [{ entry: 'revealed' }, { entry: 'timeout', reason: 'no reveal' },
+    { entry: 'failed', reason: 'Error: Player damage panel was not prepared' }]) {
+    assert.equal(classifyControl(run).verdict, 'control-missed', `a forced-black run that ${run.entry} is a missed control`);
+  }
+  passed++;
+}
+
+{
   // luma over the centre: a black frame with a bright HUD edge stays black
   const width = 10, height = 10, data = new Uint8ClampedArray(width * height * 4);
   for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
@@ -84,6 +95,8 @@ for (const sample of [{ at: 2, mean: 3.1, sd: 9 }, { at: 5, mean: 48, sd: 0.4 },
   assert.match(source, /Object\.defineProperty\(Navigator\.prototype, 'webdriver', \{ get: \(\) => false/);
   assert.match(source, /localStorage\.setItem\('cot\.battle\.times\.v2'/);
   assert.match(source, /D\.beginSoloBattle\(\{ specId, mapId, randomRoster: false \}\)/);
+  assert.match(source, /if \(control\) url\.searchParams\.set\('diagforce', 'blackout'\)/, 'the control forces a black lit pipeline');
+  assert.match(source, /r\.control \? r\.verdict === 'control-refused' : r\.verdict === 'entered'/, 'a missed control fails the sweep');
   assert.doesNotMatch(source, /console\.log\([^)]*BYPASS/, 'the protection bypass secret is never printed');
   passed++;
 }

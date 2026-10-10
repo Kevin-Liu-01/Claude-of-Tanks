@@ -142,7 +142,7 @@ declare global {
 
 const qs = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
 const DIAG_PARAM = qs ? qs.get('diag') : null;
-const FORCE = qs ? qs.get('diagforce') : null; // 'noshadow' | 'nolit' (test rig)
+const FORCE = qs ? qs.get('diagforce') : null; // 'noshadow' | 'nolit' | 'blackscene' | 'blackout' (test rig)
 
 /** Pure URL gate: diagnostics may run silently, but UI needs explicit opt-in. */
 export function diagUiRequested(search = (typeof location !== 'undefined' ? location.search : '')) {
@@ -742,9 +742,11 @@ function createWatchdogProbe(
   measurements?: SceneBandTiming[],
   nightRadianceScale = 1,
 ): SceneWatchdogProbe {
-  if (FORCE === 'blackscene') {
-    // before, the response draw, +shadows-off, +environment-off cures it, the confirmation
-    const simulated = [0, 0, 0, 42, 42];
+  if (FORCE === 'blackscene' || FORCE === 'blackout') {
+    // blackscene: before, the response draw, +shadows-off, +environment-off cures it, the confirmation.
+    // blackout (2026-10-09, the black-screen lane): a lit pipeline black under any light and any stage, the negative
+    // control of the per-deploy entry sweep (tools/battle-entry-sweep.mjs --force-black): the entry must be refused.
+    const simulated = FORCE === 'blackout' ? [0] : [0, 0, 0, 42, 42];
     let index = 0;
     return {
       measure() {
@@ -1111,7 +1113,7 @@ export async function runSceneBlackWatchdogAsync(
   let observedMeasurements = measurements;
   try {
     assertSceneWatchdogOwner(signal, isCurrent);
-    if (FORCE === 'blackscene') {
+    if (FORCE === 'blackscene' || FORCE === 'blackout') {
       const forced = runSceneBlackWatchdog(renderer, scene, camera, options);
       if (sceneWatchdogRefuses(forced)) forced.failed = true;
       observedMeasurements = forced.measurements;

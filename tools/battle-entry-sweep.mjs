@@ -24,8 +24,11 @@
  *   stuck     neither a reveal nor a failure within --entry-timeout-s
  *   black     a revealed sample is black or flat
  *   rescued   the watchdog applied a compatibility stage (shadows/environment/fog off): the picture changed
- * Exit 0 only when every run entered. A run also carries notes (a band within --band-warn of the threshold, slow
- * entries, console errors) that do not fail it.
+ * With --force-black, one more run enters that map with ?diagforce=blackout (a lit pipeline black under any light and
+ * any rescue stage): the negative control, which must be refused ("control-refused"; "control-missed" fails the sweep),
+ * so a sweep can never pass because the watchdog stopped looking.
+ * Exit 0 only when every run entered (and the control was refused). A run also carries notes (a band within
+ * --band-warn of the threshold, slow entries, console errors) that do not fail it.
  *
  * Options:
  *   --maps=all|<id,id>        battlefields (default all 33, src/world/maps/mapIds.ts)
@@ -45,6 +48,7 @@
  *   --samples=0.5,2,5         seconds after the entry resolves to sample the picture
  *   --min-luma=10 --min-sd=2  a sample darker or flatter than this (centre region, 0-255 luma) is black
  *   --band-warn=9             note a watchdog band under this (the refusal threshold is 6)
+ *   --force-black[=<map>]     add the negative-control run (default map railyard, the first --times entry)
  *   --out=<dir>               report.json, report.md and the JPEG samples (default ./battle-entry-sweep-<stamp>)
  *   --port=0                  --dist only: the local port (0 picks a free one)
  * A protected *.vercel.app deployment needs the project's automation bypass secret in COT_PROTECTION_BYPASS (read
@@ -88,6 +92,14 @@ export function classifyRun(run, limits) {
   if (!(run.samples ?? []).length) notes.push('no picture sample');
   if (!w) notes.push('no battle watchdog row (the covered probe did not run)');
   return { verdict: 'entered', why: '', notes };
+}
+
+/** The negative control's verdict: the forced-black entry must come back refused by the scene watchdog. */
+export function classifyControl(run) {
+  const refusedByWatchdog = run.entry === 'failed' && /scene watchdog could not validate a healthy frame/i.test(run.reason ?? '');
+  return refusedByWatchdog
+    ? { verdict: 'control-refused', why: 'the forced-black entry was refused', notes: [] }
+    : { verdict: 'control-missed', why: `the forced-black entry was not refused by the watchdog (${run.entry}${run.reason ? `: ${run.reason}` : ''})`, notes: [] };
 }
 
 /** Luma statistics of a decoded RGBA image over its centre (the HUD lives at the edges). */
@@ -163,6 +175,9 @@ async function main() {
   const out = path.resolve(opt('out', `battle-entry-sweep-${new Date().toISOString().replace(/[:.]/g, '-')}`));
   mkdirSync(out, { recursive: true });
   const BYPASS = process.env.COT_PROTECTION_BYPASS || '';
+  const forceArg = args.find((a) => a === '--force-black' || a.startsWith('--force-black='));
+  const controlMap = forceArg ? (forceArg.includes('=') ? forceArg.slice(forceArg.indexOf('=') + 1) : 'railyard') : null;
+  if (controlMap && !MAP_IDS.includes(controlMap)) { console.error(`unknown --force-black map ${controlMap}`); process.exit(2); }
 
   let server = null;
   let base = args.find((a) => !a.startsWith('--'));
@@ -190,11 +205,11 @@ async function main() {
   });
 
   const report = { tool: 'battle-entry-sweep', url: origin, dist: dist || null, startedAt: new Date().toISOString(),
-    options: { maps, times, tier, tank, viewport: `${vw}x${vh}`, fresh, preset: preset || null, headful: flag('headful'),
+    options: { maps, times, tier, tank, viewport: `${vw}x${vh}`, fresh, preset: preset || null, headful: flag('headful'), forceBlack: controlMap,
       chrome: executablePath ? (chromeArg === 'system' ? 'system' : 'custom') : 'puppeteer', limits, sampleAt },
     version: null, runs: [] };
 
-  let browser = null, context = null, page = null, bootedTime = null;
+  let browser = null, context = null, page = null, bootedTime = null, bootedControl = false;
   const consoleErrors = [];
   const pageErrors = [];
 
@@ -243,12 +258,13 @@ async function main() {
     return p;
   }
 
-  async function boot(time) {
+  async function boot(time, control = false) {
     const url = new URL('/', origin);
     url.searchParams.set('debug', '1');
     url.searchParams.set('nosplash', '1');
     url.searchParams.set('telemetry', 'off');
     if (tier === 'mobile') url.searchParams.set('tier', 'mobile');
+    if (control) url.searchParams.set('diagforce', 'blackout');
     await page.evaluateOnNewDocument((t) => { try { localStorage.setItem('cot.battle.times.v2', JSON.stringify([t])); } catch { /* none */ } }, time);
     const t0 = Date.now();
     const res = await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 180000 });
@@ -256,6 +272,7 @@ async function main() {
     await page.waitForFunction('window.__GAME_READY === true && !!window.__DEBUG && window.__DEBUG.game?.phase === "garage"', { timeout: 180000, polling: 250 });
     report.version ??= await page.evaluate(() => document.querySelector('meta[name="application-version"]')?.content ?? null);
     bootedTime = time;
+    bootedControl = control;
     return Date.now() - t0;
   }
 
@@ -307,18 +324,19 @@ async function main() {
 
   const runs = [];
   for (const time of times) for (const map of maps) runs.push({ time, map });
+  if (controlMap) runs.push({ time: times[0], map: controlMap, control: true });
   let index = 0;
   try {
-    for (const { time, map } of runs) {
+    for (const { time, map, control = false } of runs) {
       index++;
-      const label = `${String(index).padStart(3, '0')}-${map}-${time}-${tier}`;
-      const row = { map, time, tier, label, startedAt: new Date().toISOString(), load1: +loadavg()[0].toFixed(1) };
+      const label = `${String(index).padStart(3, '0')}-${map}-${time}-${tier}${control ? '-forced-black' : ''}`;
+      const row = { map, time, tier, label, ...(control ? { control: true } : {}), startedAt: new Date().toISOString(), load1: +loadavg()[0].toFixed(1) };
       consoleErrors.length = 0; pageErrors.length = 0;
       try {
-        if (!page || fresh !== 'none') {
+        if (!page || fresh !== 'none' || control !== bootedControl) {
           if (page) { try { await page.close(); } catch { /* closed */ } }
           page = await newPage();
-          row.bootMs = await boot(time);
+          row.bootMs = await boot(time, control);
         } else if (bootedTime !== time) {
           await page.evaluate((t) => { localStorage.setItem('cot.battle.times.v2', JSON.stringify([t])); }, time);
           bootedTime = time;
@@ -366,7 +384,7 @@ async function main() {
       }
       row.consoleErrors = consoleErrors.slice(0, 8);
       row.pageErrors = pageErrors.slice(0, 4);
-      Object.assign(row, classifyRun(row, limits));
+      Object.assign(row, control ? classifyControl(row) : classifyRun(row, limits));
       runs[index - 1] = row;
       report.runs.push(row);
       const w = row.watchdog?.result;
@@ -386,7 +404,8 @@ async function main() {
     const counts = {};
     for (const r of report.runs) counts[r.verdict] = (counts[r.verdict] ?? 0) + 1;
     report.counts = counts;
-    report.ok = report.runs.length === runs.length && report.runs.every((r) => r.verdict === 'entered');
+    report.ok = report.runs.length === runs.length
+      && report.runs.every((r) => (r.control ? r.verdict === 'control-refused' : r.verdict === 'entered'));
     writeFileSync(path.join(out, 'report.json'), `${JSON.stringify(report, null, 1)}\n`);
     const lines = [`# Battle entry sweep — ${origin}${report.version ? ` (${report.version})` : ''}`, '',
       `${report.runs.length} run(s): ${Object.entries(counts).map(([k, v]) => `${v} ${k}`).join(', ')}; tier ${tier}; fresh ${fresh}; ${report.startedAt} → ${report.finishedAt}`, '',
