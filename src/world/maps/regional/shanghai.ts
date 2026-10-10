@@ -851,8 +851,14 @@ export const SHANGHAI_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
   surfaces: {
     // the lanes' grey canal tiles; brick (grey, banded red in the later lanes; the towers' brown)
     roof: { kind: 'canal', tint: [0.36, 0.37, 0.38] },
-    stone: { kind: 'brick', tint: [0.56, 0.36, 0.30] },
-    sourced: { plaster: true, wood: true },
+    // (round 11; waves 319/320: "clean, saturated, uniformly tiled brick with no soot") an industrial town's brick, soiled
+    stone: { kind: 'brick', tint: [0.56, 0.36, 0.30], weathered: true },
+    sourced: { plaster: false, wood: true },
+    // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
+    // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
+    // painted as the region renders them (regionalSurfaces.ts paintLimeRender), every family under the kit's and the map's
+    // tones; the plaster photo set is off (its 2.4 m tile repeats a lichen motif down every wall)
+    render: { kind: 'limeRender', seed: 0x5b37 },
     tones: {
       plaster: (_h, s, l) => [0.1, Math.min(1, s * 0.25 + 0.03), Math.min(1, l * 0.98 + 0.07)],
       plaster2: (_h, s, l) => [0.11, Math.min(1, s * 0.55 + 0.2), Math.min(1, l * 1.02 + 0.06)],

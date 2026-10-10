@@ -3698,8 +3698,18 @@ function* propsBuildSteps(
   // the facades lane (2026-10-08): a kit's render painter (surfaces.render) paints each render family the map tones, under
   // that tone — the primary on its seed, plaster2 and plaster3 on the next (plaster3 borrows plaster2's relief below)
   const kitRender = regionalArchitecture?.surfaces.render;
-  if (kitRender && P.tones) {
-    const tones: Record<string, ToneFunction | null | undefined> = { ...P.tones };
+  if (kitRender) {
+    const tones: Record<string, ToneFunction | null | undefined> = { ...(P.tones || {}) };
+    // (the facades lane, round 11) a family the map and the kit leave untoned is painted too: as the canvas would have
+    // been toned (the primary as it comes, the second and third families the shifts below take from it)
+    const shift = (base: ToneFunction | null | undefined, dh: number, ds: number, dl: number): ToneFunction => (h, s, l) => {
+      const [bh, bs, bl] = base ? base(h, s, l) : [h, s, l];
+      return [Math.max(0, Math.min(1, bh + dh)), Math.max(0, Math.min(1, bs * ds)), Math.max(0, Math.min(1, bl * dl))];
+    };
+    const primary = tones.plaster ?? null;
+    tones.plaster ??= (h: number, s: number, l: number) => [h, s, l];
+    tones.plaster2 ??= shift(primary, +0.022, 1.1, 0.90);
+    tones.plaster3 ??= shift(primary, -0.035, 0.72, 0.84);
     for (const key of ['plaster', 'plaster2', 'plaster3'] as const) {
       const own = tones[key] as (ToneFunction & { base?: ToneFunction }) | null | undefined;
       if (!own) continue;
@@ -3749,7 +3759,7 @@ function* propsBuildSteps(
   yield { fine: true };
   const stone = regionalArchitecture
     ? yield* makeRegionalStone(regionalArchitecture.surfaces.stone.kind, regionalArchitecture.surfaces.stone.tint, aniso, undefined,
-      regionalArchitecture.surfaces.stone.dressed)
+      regionalArchitecture.surfaces.stone.dressed, regionalArchitecture.surfaces.stone.weathered)
     : yield* makeStone(noi, aniso, T.stone || null);
   yield { fine: true, stage: 'stone-maps' };
   const wood = makeWood(noi, aniso, T.wood || null);

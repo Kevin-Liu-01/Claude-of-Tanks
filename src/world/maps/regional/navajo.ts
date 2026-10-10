@@ -1210,6 +1210,11 @@ export const NAVAJO_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
     roof: { kind: 'sheet', tint: [0.66, 0.66, 0.63] },
     stone: { kind: 'fieldstone', tint: [0.72, 0.47, 0.35] },
     sourced: { plaster: false, wood: true },
+    // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
+    // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
+    // painted as the region renders them (regionalSurfaces.ts paintLimeRender), every family under the kit's and the map's
+    // tones
+    render: { kind: 'limeRender', seed: 0x5c0d },
     tones: {
       // stucco the colour of the sand, the red earth of the hogan roofs and the mud chinking, a white-painted trim
       plaster: (_h, s, l) => [0.075, Math.min(1, s * 0.9 + 0.2), Math.min(1, l * 1.02 + 0.1)],

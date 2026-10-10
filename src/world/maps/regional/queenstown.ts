@@ -608,8 +608,14 @@ export const QUEENSTOWN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   surfaces: {
     // corrugated iron weathering in the west coast's rain; the town's red-brown brick
     roof: { kind: 'sheet', tint: [0.6, 0.58, 0.56] },
-    stone: { kind: 'brick', tint: [0.58, 0.33, 0.27] },
+    // (round 11; waves 319/320: "clean, saturated, uniformly tiled brick with no soot") an industrial town's brick, soiled
+    stone: { kind: 'brick', tint: [0.58, 0.33, 0.27], weathered: true },
     sourced: { plaster: false, wood: true },
+    // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
+    // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
+    // painted as the region renders them (regionalSurfaces.ts paintLimeRender), every family under the kit's and the map's
+    // tones
+    render: { kind: 'limeRender', seed: 0x5c51 },
     tones: {
       plaster: (_h, s, l) => [0.1, Math.min(1, s * 0.5 + 0.1), Math.min(1, l * 1.1 + 0.12)],
       plaster2: (_h, s, l) => [0.07, Math.min(1, s * 0.6 + 0.12), Math.min(1, l * 0.95 + 0.06)],

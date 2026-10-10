@@ -81,7 +81,9 @@ export type ConcreteSurfaceKind = 'boardFormed';
 export interface ArchitectureSurfaces {
   roof: { kind: RoofSurfaceKind; tint: readonly [number, number, number] };
   /** `dressed`: a town's dressed stone — smaller courses, soiled (regionalSurfaces.ts DRESSED; the facades lane) */
-  stone: { kind: StoneSurfaceKind; tint: readonly [number, number, number]; dressed?: boolean };
+  /** `weathered` (the facades lane, round 11): the stone soiled as an industrial town's is — soot clouds and the rain's
+   *  runs down every course (regionalSurfaces.ts WEATHERED); the brick of the coal and river towns */
+  stone: { kind: StoneSurfaceKind; tint: readonly [number, number, number]; dressed?: boolean; weathered?: boolean };
   /** the sourced CC0 photo sets the style keeps (the others stay procedural) */
   sourced: { plaster: boolean; wood: boolean };
   /** default tones of the procedural render / timber / thatch canvases; a map's own tones win */
@@ -96,7 +98,7 @@ export interface ArchitectureSurfaces {
   /** the facades lane (2026-10-08): the painter of the kit's three render canvases, under whatever tones the map gives
    *  them (props.ts; regionalSurfaces.ts paintLimeRender): the primary family on `seed`, plaster2 and plaster3 on one seed
    *  between them (plaster3 borrows plaster2's relief). Absent, each canvas is its tone's painter or the plain render. */
-  render?: { kind: 'limeRender'; seed: number };
+  render?: { kind: 'limeRender' | 'limewash'; seed: number };
   /** the facades lane (2026-10-08; gauntlet wave 260): the print of the kit's thatched roofs (props.ts makeThatch): 'nipa',
    *  the Mekong delta's atap of nipa-palm leaf (regionalSurfaces.ts paintNipaThatch). Absent, the straw thatch print. */
   thatch?: { kind: 'nipa' };

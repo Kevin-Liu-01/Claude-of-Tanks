@@ -486,8 +486,14 @@ export const SAAR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   region: 'The Völklingen ironworks on the Saar: blast furnaces and Cowper stoves, sawtooth rolling mills, gas holders, a colliery headframe, brick and steel',
   surfaces: {
     roof: { kind: 'sheet', tint: [0.36, 0.37, 0.37] },
-    stone: { kind: 'brick', tint: [0.47, 0.26, 0.2] },
-    sourced: { plaster: true, wood: true },
+    // (round 11; waves 319/320: "clean, saturated, uniformly tiled brick with no soot") an industrial town's brick, soiled
+    stone: { kind: 'brick', tint: [0.47, 0.26, 0.2], weathered: true },
+    sourced: { plaster: false, wood: true },
+    // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
+    // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
+    // painted as the region renders them (regionalSurfaces.ts paintLimeRender), every family under the kit's and the map's
+    // tones; the plaster photo set is off (its 2.4 m tile repeats a lichen motif down every wall)
+    render: { kind: 'limeRender', seed: 0x5aa1 },
     // the yellow brick of the bands and the dressings (foundry.ts carries it in the map's own tones)
     tones: { plaster2: (_h, s, l) => [0.11, Math.min(1, s * 0.6 + 0.2), Math.min(1, l + 0.05)] },
   },

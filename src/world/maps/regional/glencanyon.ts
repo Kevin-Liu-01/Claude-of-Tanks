@@ -772,6 +772,11 @@ export const GLENCANYON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
     roof: { kind: 'shingle', tint: [0.46, 0.43, 0.40] },
     stone: { kind: 'block', tint: [0.76, 0.73, 0.68] },
     sourced: { plaster: false, wood: true },
+    // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
+    // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
+    // painted as the region renders them (regionalSurfaces.ts paintLimeRender), every family under the kit's and the map's
+    // tones
+    render: { kind: 'limeRender', seed: 0x5e44 },
     tones: {
       // stucco in the town's pale colours, poured concrete a warm grey, painted concrete and block an off-white
       // (round 3, gauntlet wave 133: the poured concrete read "bright cream": sixty years of weather took it to a

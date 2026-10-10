@@ -557,7 +557,12 @@ export const HOSTOMEL_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
   surfaces: {
     roof: { kind: 'sheet', tint: [0.46, 0.49, 0.48] },
     stone: { kind: 'block', tint: [0.6, 0.6, 0.57] },
-    sourced: { plaster: true, wood: false },
+    sourced: { plaster: false, wood: false },
+    // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
+    // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
+    // painted as the region renders them (regionalSurfaces.ts paintLimeRender), every family under the kit's and the map's
+    // tones; the plaster photo set is off (its 2.4 m tile repeats a lichen motif down every wall)
+    render: { kind: 'limeRender', seed: 0x5d61 },
     tones: {
       plaster: (_h, s, l) => [0.12, Math.min(1, s * 0.25 + 0.04), Math.min(1, l * 0.95 + 0.06)],
       plaster2: (_h, s, l) => [0.13, Math.min(1, s * 0.5 + 0.18), Math.min(1, l * 1.05 + 0.1)],

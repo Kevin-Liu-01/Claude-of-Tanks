@@ -260,8 +260,14 @@ export const BENGAL_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
   region: 'Jamuna chars (Sirajganj, Bogura): homesteads of corrugated iron on earthen plinths, a tin bazaar, a village mosque',
   surfaces: {
     roof: { kind: 'sheet', tint: [0.60, 0.62, 0.63] },
-    stone: { kind: 'brick', tint: [0.62, 0.32, 0.24] },
+    // (round 11; waves 319/320: "clean, saturated, uniformly tiled brick with no soot") an industrial town's brick, soiled
+    stone: { kind: 'brick', tint: [0.62, 0.32, 0.24], weathered: true },
     sourced: { plaster: false, wood: true },
+    // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
+    // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
+    // painted as the region renders them (regionalSurfaces.ts paintLimewash), every family under the kit's and the map's
+    // tones
+    render: { kind: 'limewash', seed: 0x6b4e },
     tones: {
       plaster: (_h, s, l) => [0.12, Math.min(1, s * 0.25), Math.min(1, l * 1.25 + 0.1)],
       plaster2: (_h, s, l) => [0.1, Math.min(1, s * 0.4 + 0.08), Math.min(1, l * 1.1 + 0.05)],

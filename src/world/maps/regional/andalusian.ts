@@ -1236,6 +1236,11 @@ export const ANDALUSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
     // the gorge's golden calcarenite (the Puente Nuevo's stone)
     stone: { kind: 'sandstone', tint: [0.82, 0.73, 0.57] },
     sourced: { plaster: false, wood: true },
+    // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
+    // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
+    // painted as the region renders them (regionalSurfaces.ts paintLimewash), every family under the kit's and the map's
+    // tones
+    render: { kind: 'limewash', seed: 0x6c2a },
     tones: {
       plaster: cal,
       // albero ochre: the bands round the openings, the dados, a few washed fronts

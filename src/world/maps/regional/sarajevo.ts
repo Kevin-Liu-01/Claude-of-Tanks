@@ -758,7 +758,12 @@ export const SARAJEVO_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
     roof: { kind: 'beavertail', tint: [0.44, 0.3, 0.24] },
     // the dressings, the ashlar ground storeys and the mahala's rubble: a warm grey limestone
     stone: { kind: 'limestone', tint: [0.72, 0.68, 0.62] },
-    sourced: { plaster: true, wood: true },
+    sourced: { plaster: false, wood: true },
+    // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
+    // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
+    // painted as the region renders them (regionalSurfaces.ts paintLimeRender), every family under the kit's and the map's
+    // tones; the plaster photo set is off (its 2.4 m tile repeats a lichen motif down every wall)
+    render: { kind: 'limeRender', seed: 0x5a12 },
     tones: {
       // the second render: Austro-Hungarian ochre
       plaster2: (_h, s, l) => [0.105, Math.min(1, s * 0.4 + 0.34), Math.min(1, l * 0.82 + 0.06)],

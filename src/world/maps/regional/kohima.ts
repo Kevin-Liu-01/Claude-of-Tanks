@@ -239,7 +239,12 @@ export const KOHIMA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
   surfaces: {
     roof: { kind: 'sheet', tint: [0.56, 0.30, 0.24] },
     stone: { kind: 'rubble', tint: [0.55, 0.52, 0.47] },
-    sourced: { plaster: true, wood: true },
+    sourced: { plaster: false, wood: true },
+    // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
+    // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
+    // painted as the region renders them (regionalSurfaces.ts paintLimewash), every family under the kit's and the map's
+    // tones; the plaster photo set is off (its 2.4 m tile repeats a lichen motif down every wall)
+    render: { kind: 'limewash', seed: 0x6b0a },
     tones: { straw: (h, s, l) => [h - 0.02, Math.min(1, s * 0.5), Math.min(1, l * 0.8)] },
   },
   builders: KOHIMA_BUILDERS,

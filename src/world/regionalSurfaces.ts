@@ -573,6 +573,11 @@ interface MasonryRecipe {
   raked?: number;
   /** the share of bricks over-fired dark (clinkers) */
   clinker?: number;
+  /**
+   * (round 11) coal soot: the grime clouds and the rain's runs carry a soot that greys the stone as well as darkening it
+   * (0 none): an industrial town's brick goes brown-black, not merely darker red
+   */
+  soot?: number;
 }
 
 const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze({
@@ -636,6 +641,19 @@ const DRESSED: Partial<MasonryRecipe> = Object.freeze({ courseMin: 46, courseMax
   speckle: 0.04, lichen: 0.22, grime: 0.22, rubble: 0.15, bedding: 0.05, mottle: 0.3, streaks: 0.28, tooling: 0.55, margin: 7, chips: 0.2,
   raked: 0.25 });
 
+/**
+ * (the facades lane, round 11; waves 319/320 on Ironworks, Copper Mesa and Cinder Junction: "clean, saturated, uniformly
+ * tiled brick with no soot, mortar relief, streaking or base wear") an industrial town's stone, soiled: the soot's broad
+ * clouds darker and the rain's runs down every course, the joints' mortar more often lost, the odd clinker. A style asks
+ * for it with `stone.weathered`; the brick of the incredibles (Verdant, Cinder Junction, Highland Reservoir) keeps its own.
+ */
+const WEATHERED: Partial<MasonryRecipe> = Object.freeze({ grime: 0.6, streaks: 0.6, raked: 0.24, chips: 0.18, spread: 0.26, soot: 0.55 });
+
+/** A recipe with a style's dressing and weathering laid over its kind's. */
+function recipeOf(kind: StoneSurfaceKind, dressed: boolean, weathered = false): MasonryRecipe {
+  return { ...MASONRY[kind], ...(dressed ? DRESSED : {}), ...(weathered ? WEATHERED : {}) };
+}
+
 /** One course of a stone tile's layout: its rows (canvas px, from the top) and its blocks' columns. */
 export interface MasonryCourse { y0: number; y1: number; blocks: ReadonlyArray<{ x0: number; x1: number; split: boolean }> }
 /** A stone tile's block layout (masonryLayout). */
@@ -647,7 +665,7 @@ export interface MasonryLayout { size: number; mortar: number; wobble: number; c
  * dressed quoins, maps/regional/facade.ts dressedQuoin). (facades lane, 2026-10-06)
  */
 export function masonryLayout(kind: StoneSurfaceKind, dressed = false, seed = 0x51a7, s = 512): MasonryLayout {
-  const R: MasonryRecipe = dressed ? { ...MASONRY[kind], ...DRESSED } : MASONRY[kind];
+  const R: MasonryRecipe = recipeOf(kind, dressed);
   const rowsE = courseEdges(s, R.courseMin, R.courseMax + 1, seed);
   const courses: MasonryCourse[] = [];
   for (let r = 0; r + 1 < rowsE.length; r++) {
@@ -670,8 +688,9 @@ function jointWobble(R: MasonryRecipe): number {
   return R.tooling ? 0.5 + R.relief : 1.2 + R.relief * 2.4;
 }
 
-function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number, dressed = false): Generator<SurfaceSlice, [Uint8ClampedArray, Float32Array, Float32Array], void> {
-  const R: MasonryRecipe = dressed ? { ...MASONRY[kind], ...DRESSED } : MASONRY[kind];
+function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number, dressed = false, weathered = false):
+  Generator<SurfaceSlice, [Uint8ClampedArray, Float32Array, Float32Array], void> {
+  const R: MasonryRecipe = recipeOf(kind, dressed, weathered);
   const px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s), rough = new Float32Array(s * s);
   const rowsE = courseEdges(s, R.courseMin, R.courseMax + 1, seed);
   const colsE: number[][] = [];
@@ -755,6 +774,11 @@ function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number, d
         const h = (k2 - 0.5) * R.hue * 2 + (clink ? -0.06 : 0);
         rr = tint[0] * v * (1 + h); gg = tint[1] * v; bb = tint[2] * v * (1 - h);
         rr = rr * (1 - lichen) + 0.68 * lichen; gg = gg * (1 - lichen) + 0.64 * lichen; bb = bb * (1 - lichen) + 0.48 * lichen;
+        if (R.soot) {
+          // the soot in the grime and the runs: toward a brown-black, the stone's own colour going out of it
+          const so = Math.min(0.7, R.soot * (smooth(0.3, 0.95, big) * 0.85 + runs * 1.1));
+          rr = rr * (1 - so) + 0.13 * so; gg = gg * (1 - so) + 0.115 * so; bb = bb * (1 - so) + 0.1 * so;
+        }
         hgt[i] = clamp(0.3 + pill * (R.faceRamp ?? 0.45) + (tex - 0.5) * R.relief * 0.5 + tool * 0.06 - chip * 0.04);
         rough[i] = clamp(0.82 + (tex - 0.5) * 0.1 + lichen * 0.1 + chip * 0.06);
       }
@@ -876,10 +900,11 @@ export function* makeRegionalRoof(kind: RoofSurfaceKind, tint: Tint, anisotropy:
 }
 
 /** The stone bucket's texture set for a style (512 px). */
-export function* makeRegionalStone(kind: StoneSurfaceKind, tint: Tint, anisotropy: number, seed = 0x51a7, dressed = false):
-  Generator<SurfaceSlice, RegionalSurfaceTextures, void> {
+export function* makeRegionalStone(kind: StoneSurfaceKind, tint: Tint, anisotropy: number, seed = 0x51a7, dressed = false,
+  weathered = false): Generator<SurfaceSlice, RegionalSurfaceTextures, void> {
   const s = 512;
-  const [px, hgt, rough] = yield* cached(`stone:${kind}${dressed ? ':dressed' : ''}:${tint.join(',')}:${seed}`, () => masonry(s, kind, tint, seed, dressed));
+  const [px, hgt, rough] = yield* cached(`stone:${kind}${dressed ? ':dressed' : ''}${weathered ? ':weathered' : ''}:${tint.join(',')}:${seed}`,
+    () => masonry(s, kind, tint, seed, dressed, weathered));
   // (sandstone: squared stone with tight joints, not pillowed blocks — wave 199; round 6, wave 241: "heavily embossed",
   // "cartoon bevels": the brick and the sandstone a third shallower, their tooling and joints carrying the face)
   const relief = kind === 'brick' || kind === 'sandstone' ? 1.5 : kind === 'limestone' ? 2.0 : kind === 'granite' ? 2.4 : 3.0;
@@ -900,7 +925,8 @@ export function* makeRegionalConcrete(kind: ConcreteSurfaceKind, tone: ((px: Uin
 
 /** Paint-only access for receipts (no canvas): the raw buffers. */
 export function* paintRegionalSurfaceBuffers(target: 'roof' | 'stone' | 'concrete', kind: RoofSurfaceKind | StoneSurfaceKind | ConcreteSurfaceKind,
-  tint: Tint, seed: number): Generator<SurfaceSlice, { size: number; px: Uint8ClampedArray; hgt: Float32Array; rough: Float32Array }, void> {
+  tint: Tint, seed: number, weathered = false):
+  Generator<SurfaceSlice, { size: number; px: Uint8ClampedArray; hgt: Float32Array; rough: Float32Array }, void> {
   if (target === 'concrete') {
     const [px, hgt, rough] = yield* boardFormed(256, tint, seed);
     return { size: 256, px, hgt, rough };
@@ -910,7 +936,7 @@ export function* paintRegionalSurfaceBuffers(target: 'roof' | 'stone' | 'concret
     const [px, hgt, rough] = yield* painter(256, tint, seed);
     return { size: 256, px, hgt, rough };
   }
-  const [px, hgt, rough] = yield* masonry(512, kind as StoneSurfaceKind, tint, seed);
+  const [px, hgt, rough] = yield* masonry(512, kind as StoneSurfaceKind, tint, seed, false, weathered);
   return { size: 512, px, hgt, rough };
 }
 

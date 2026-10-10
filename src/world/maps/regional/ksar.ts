@@ -628,6 +628,11 @@ export const SIWA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     stone: { kind: 'rubble', tint: [0.7, 0.66, 0.58] },
     // (the kershef is the render canvas, toned: the plaster photo set read as speckled grey granite on the walls, h4)
     sourced: { plaster: false, wood: true },
+    // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
+    // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
+    // painted as the region renders them (regionalSurfaces.ts paintLimeRender), every family under the kit's and the map's
+    // tones
+    render: { kind: 'limeRender', seed: 0x5d17 },
     tones: {
       // kershef: the salt-crusted mud's warm grey-beige; the older walls darker; limewash
       // (round 2, the gauntlet's wave 125: "kershef tiling noise" — the canvas's lumps at their full contrast read as a
