@@ -121,10 +121,12 @@ function bindRingReliefAtlas(mesh: Mesh, vistaMaterial: Material, terrainMateria
   // (RING_RELIEF_SHADE) and the gradient scale divides by the same factor, so the gradient's share is unchanged.
   // (the horizons lane, 2026-10-09: an atlas the bake encoded at a wider share binds at that share — horizonRelief.ts
   // HorizonReliefCover.shade; the gradient's share stays the same)
-  const ringData = mesh.userData.horizonRing as { relief?: string; reliefShade?: number } | undefined;
+  const ringData = mesh.userData.horizonRing as { relief?: string; reliefShade?: number; ringFill?: number } | undefined;
   const character = ringData?.relief;
   const shade = ringData?.reliefShade ?? RING_RELIEF_SHADE;
   ring.uRingReliefAmp.value = amp * shade;
+  // (the horizons lane, 2026-10-09: a map's sky fill on its ranges — terrain.ts gRingFill; 0 leaves the ring as it was)
+  if (ring.uRingFill) ring.uRingFill.value = ringData?.ringFill ?? 0;
   ring.uRingReliefGrad.value = ((vista.uniforms.uVReliefGrad?.value as number | undefined) ?? 1) * RING_RELIEF_GRADIENT / shade;
   // terrain v3 (2026-10-02, the ring lab: zeroing the atlas removed the chevrons on Sirocco Wadi's far ranges and the
   // dimples on Copper Mesa's walls): the atlas's fine relief is a slope's detail; on the tablelands' and the martian

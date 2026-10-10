@@ -205,6 +205,9 @@ export default {
     // the map's horizon draws no more triangles than the PR head's
     outlandRocks: 0.9,
     forestHex: 0x27351f, rockHex: 0x4d4b44, haze: 0.94, grain: 0.60,
+    // the horizons lane (2026-10-09; the owner: Caldera "not updated at all", wave 114's "smooth, untextured domes"): the
+    // rim's sky fill — its faces turned from the sun keep their woods, meadows and folds through the air (terrain.ts gRingFill)
+    ringFill: 0.8,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'cumulus-humilis', coverage: 0.22, cirrus: 0.45, baseM: 1500 },

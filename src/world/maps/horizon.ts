@@ -140,6 +140,11 @@ interface HorizonConfig {
    * 1049e4e presentation. The skyline ranks (treelineLayers) stay.
    */
   faceBelts?: boolean;
+  /** The horizons lane (2026-10-09; gauntlet wave 288, "a flat dark mountain silhouette, no texture"): the ranges' sky
+   * fill — how far the terrain program lifts the sky's light on the ring's faces past 150-700 m (terrain.ts gRingFill;
+   * 1 doubles it), so a face turned from the sun keeps its stands, clearings and folds through the air. Absent or 0:
+   * none (Verdant and the owner's light-touch maps). */
+  ringFill?: number;
 }
 
 export interface MapSkyConfig extends Partial<SkyPreset> {
@@ -3874,8 +3879,9 @@ export function* buildHorizonRingSteps(
     columns: HORIZON_SEGMENTS, ridgeRow,
     // round 72: the character and the bake's measurements, for the probes and the receipts
     relief: reliefCharacter, reliefBake: reliefBake ? { width: reliefBake.width, height: reliefBake.height, ...reliefBake.stats } : null,
-    // (the horizons lane) the share the atlas was encoded for, which the terrain program binds it at
-    reliefShade: reliefBake?.shade,
+    // (the horizons lane) the share the atlas was encoded for, which the terrain program binds it at, and the map's sky
+    // fill on its ranges (terrain.ts gRingFill)
+    reliefShade: reliefBake?.shade, ringFill: H.ringFill ?? 0,
     // the map-borders lane: the road exits on this ring, for the carriageway attribute (terrain.ts)
     roadExits: ringExits,
   };

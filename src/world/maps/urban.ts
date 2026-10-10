@@ -357,6 +357,9 @@ export default {
     // a forested plateau cut by valleys, no peaks
     baseHex: 0x525c50, amp: 0.7, style: 'escarpment', treeline: 0.92, panorama: { regional: 'upland' },
     forestHex: 0x323f30, haze: 1.0,
+    // the horizons lane (2026-10-09; gauntlet wave 288, Steinburg's edge: "a flat dark mountain silhouette, no texture"): the
+    // ranges' sky fill — the Frankenwald's shaded slopes keep their woods and clearings through the air (terrain.ts gRingFill)
+    ringFill: 0.8,
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)

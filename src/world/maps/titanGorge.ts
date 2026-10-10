@@ -228,6 +228,8 @@ export default {
     // the horizons lane (2026-10-09): the ring atlas's terms off the tables' sheer walls — laid by angle and radius, they
     // were drawn down each wall as vertical streaks and blocks over the walls' own beds (horizonRelief.ts walls)
     reliefCover: { walls: 1 },
+    // (and the ranges' sky fill: the tables' shaded walls keep their beds through the air — terrain.ts gRingFill)
+    ringFill: 0.8,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   // 2026-10-04 (its establishing view: a blue hole in a deck its lighting runs at overcast 1.00): a dense overcast is

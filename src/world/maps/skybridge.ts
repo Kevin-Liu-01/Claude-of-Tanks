@@ -249,6 +249,8 @@ export default {
     // the horizons lane (2026-10-09): the ring atlas's terms off the chasm's and the tables' sheer walls (drawn down each
     // wall as vertical streaks and blocks over its own beds; horizonRelief.ts walls)
     reliefCover: { walls: 1 },
+    // (and the ranges' sky fill: the shaded walls keep their beds through the air — terrain.ts gRingFill)
+    ringFill: 0.8,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'fair-weather-cumulus', baseM: 700, coverage: 0.42, farBand: 0.5, streets: 0.3, virga: 0.5, rain: 0.2 },

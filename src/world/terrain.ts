@@ -3977,6 +3977,14 @@ float gVolcShade = 0.0;   // ground lane (wave 85): a volcanic basin's slope tur
 // marsh normal is off during that draw (past the square its 19 cm tile is sub-pixel at every ring distance).
 uniform float uRingDraw; uniform vec2 uRingReliefR; uniform float uRingReliefGrad; uniform float uRingReliefAmp;
 float gRingAo = 1.0; float gRingSun = 1.0; vec2 gRingGrad = vec2(0.0);
+// the horizons lane (2026-10-09; gauntlet wave 288, "a flat dark mountain silhouette, no texture"; the owner, Caldera and
+// Glacier Pass "not updated at all"): the ranges' sky fill. A face turned from the sun takes the sky's light alone, a
+// twelfth of the sun's on these maps, and the atlas's canopy, rock and folds ride that light (gRingAo) — under the air at
+// a kilometre and more the whole shaded face read as one dark tone. A map's ring may lift the sky's light on its ranges
+// (uRingFill, per map; 0 everywhere else, which leaves every term as it was), ramped in from 150 to 700 m past the edge
+// so no step shows at the seam, so the stands, clearings and folds on a shaded face read through the air.
+uniform float uRingFill;
+float gRingFill = 1.0;
 // terrain v3: the slope band (of the ring's own geometric face) over which the atlas's fine-relief GRADIENT fades — the
 // height-field relief is a slope's detail; on a near-vertical wall it printed dimples and chevrons (the occlusion and
 // the sun visibility keep their full weight). (2, 3) = no fade.
@@ -4421,6 +4429,7 @@ void splatCompute() {
     wn = normalize(vec3(-(ringG0.x + gRingGrad.x), 1.0, -(ringG0.y + gRingGrad.y)));
     gRingAo = 1.0 - (1.0 - pow(ringRel.z, 1.4)) * 0.8 * ringW;
     gRingSun = 1.0 - (1.0 - ringRel.w) * 0.85 * ringW;
+    gRingFill = 1.0 + uRingFill * smoothstep(150.0, 700.0, edgeOut) * ringW / max(uRingReliefAmp, 1e-3);
   }
   // Round 29 (owner 2026-09-20, "see where the texture just stops"): a road that reaches the playable edge runs on
   // into the ring on its clamped edge texels — a straight continuation of the carriageway and its shoulder — and
@@ -7366,6 +7375,8 @@ function* createSplatMaterialSteps(
   const ringReliefUniforms: Record<string, THREE.IUniform> = {
     uRingDraw: { value: 0 }, uRingReliefR: { value: new THREE.Vector2(0, 1) },
     uRingReliefGrad: { value: 1 }, uRingReliefAmp: { value: 0 },
+    // the horizons lane (2026-10-09): the ranges' sky fill — 0 (none) until a map's ring binds its own
+    uRingFill: { value: 0 },
     // terrain v3 (2026-10-02): the slope band over which the atlas gradient fades on the ring's walls; (2, 3) = none —
     // the ring's bind (horizonAutumnGround.ts) sets it per relief character
     uRingReliefWall: { value: new THREE.Vector2(2, 3) },
@@ -7549,6 +7560,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uRingReliefR = ringReliefUniforms.uRingReliefR;
     shader.uniforms.uRingReliefGrad = ringReliefUniforms.uRingReliefGrad;
     shader.uniforms.uRingReliefAmp = ringReliefUniforms.uRingReliefAmp;
+    shader.uniforms.uRingFill = ringReliefUniforms.uRingFill;
     // round 73 (2026-09-25): the ground redux terms — four packed vectors and the shoreline clock, no sampler
     shader.uniforms.uReduxA = reduxUniforms.uReduxA;
     shader.uniforms.uReduxFold = reduxUniforms.uReduxFold;
@@ -7593,7 +7605,9 @@ function* createSplatMaterialSteps(
       + '\nif (uReduxFold.w > 0.001) { float cotWarm = gVolcShade; vec3 cotInd = reflectedLight.indirectDiffuse;'
       + ' reflectedLight.indirectDiffuse = mix(cotInd, vec3(dot(cotInd, vec3(0.299, 0.587, 0.114))) * vec3(1.20, 1.0, 0.76), 0.65 * cotWarm) * (1.0 + 0.45 * cotWarm); }'
       // round 72b: the ring bands' baked cast shadows on the sun's light and their occlusion on the sky's
-      + '\nreflectedLight.directDiffuse *= gRingSun; reflectedLight.directSpecular *= gRingSun; reflectedLight.indirectDiffuse *= gRingAo;');
+      // (the horizons lane, 2026-10-09: and a map's sky fill on its ranges, gRingFill — 1 off the ring and on every map
+      // without one)
+      + '\nreflectedLight.directDiffuse *= gRingSun; reflectedLight.directSpecular *= gRingSun; reflectedLight.indirectDiffuse *= gRingAo * gRingFill;');
     // Round 73: the folds' occlusion joins Three's own ambient-occlusion stage — indirect light only, as an aoMap would
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <aomap_fragment>',
       '#include <aomap_fragment>\nreflectedLight.indirectDiffuse *= gFoldAO;'

@@ -199,6 +199,8 @@ export default {
     // massifs' walls (they streaked down the cliffs as a grey wash); the far ranges' snow off their steep faces, so their
     // rock shows between the snowfields (horizonRelief.ts HorizonReliefCover, horizonPanorama.ts snowSlide)
     reliefCover: { belts: 1, shade: 1, walls: 1 },
+    // (and the ranges' sky fill: the faces turned from the sun keep their folds and stands through the air — terrain.ts gRingFill)
+    ringFill: 0.8,
     panorama: { snowSlide: 1 },
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
