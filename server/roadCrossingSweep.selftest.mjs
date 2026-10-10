@@ -20,7 +20,7 @@ import { createDedicatedWorldCollision } from './dedicatedWorldCollision.ts';
 /** The maps the maps lane rebuilt to the layout brief, and Blackglass, whose district it cleared off the roads. */
 const LANE_MAPS = ['desert', 'urban', 'railyard', 'frontier', 'saltwind', 'coastal', 'verdant', 'mangrove', 'badlands',
   'polders', 'delta', 'reservoir', 'monsoon', 'caldera', 'alpine', 'foundry', 'titan_gorge', 'skybridge', 'mars',
-  'blackglass'];
+  'blackglass', 'ruinspires'];
 // COT_CROSSING_MAPS=a,b narrows the run (a negative control on an older tree, or one map while authoring)
 const MAPS = process.env.COT_CROSSING_MAPS
   ? process.env.COT_CROSSING_MAPS.split(',').filter((id) => LANE_MAPS.includes(id)) : LANE_MAPS;

@@ -86,4 +86,28 @@ assert.match(terrainSource, /if \(vRoadExit\.y > 0\.002\) \{\s*float dE = abs\(v
 assert.match(terrainSource, /attribute vec2 roadExit;\\nvarying vec2 vRoadExit;/, 'the exit attribute is a vertex attribute (a geometry without it reads no road)');
 assert.doesNotMatch(terrainSource, /mk = mix\(mk, vec4\(0\.0, 0\.0, mk\.b, 0\.0\), outsideW\);/, 'the old all-channel 36 m fade is gone');
 
+// (2026-10-07, waves 186/187, Ruinspires' kerb: "a spotless, perfectly regular grid of oversized, heavily bevelled setts")
+// the setts at the kaldrma's scale — 0.14 m courses, 0.13–0.20 m stones, the bevel 0.30, a sett in thirty gone, the
+// tarmac repairs over them — and the far stand-in near the near pattern's mean
+for (const line of [
+  'float course = rq.x / 0.14, ci = floor(course);',
+  'float sw = 0.13 + 0.07 * cr.y;',
+  'float settVis = tileVis(0.30);',
+  'float gone = step(0.966, sh.y) * settVis;',
+  '* 0.30 * settVis * (1.0 - jointS) * (1.0 - gone), 0.5, 1.0);',
+  'float repair = step(rph.x, 0.06) * rpEdge * tileVis(1.0);',
+]) assert.ok(terrainSource.includes(line), `the setts: ${line}`);
+{
+  // the near pattern's mean tone against its far stand-in (0.112): stones, joints and the gone setts over a course grid
+  let sum = 0, n = 0;
+  for (let i = 0; i < 4000; i++) {
+    const tone = 0.72 + 0.56 * ((i * 0.618034) % 1), gone = ((i * 0.3819) % 1) > 0.966;
+    const sw = 0.13 + 0.07 * ((i * 0.7548) % 1), jointShare = Math.min(1, 0.011 * 2 / 0.14 + 0.011 * 2 / sw);
+    const stone = gone ? 0.0505 : 0.128 * tone;
+    sum += stone * (1 - jointShare) + 0.040 * jointShare; n++;
+  }
+  const mean = sum / n;
+  assert.ok(Math.abs(mean - 0.112) < 0.025, `the setts' far stand-in sits near their near mean (${mean.toFixed(3)} against 0.112)`);
+}
+
 console.log('terrainRoadMaterial self-test passed');

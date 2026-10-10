@@ -30,10 +30,11 @@ import { tvAerial, woodpile, pottedPlant } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
   AH_FRAME, CHAR, DARK_FRAME, DOOR_LEAVES, IRON, PANEL_PAINTS, ROLL_SHUTTER, TIMBER, ZINC,
-  archHead, choose, clampTo, fillOf, pediment, railing, sandbagWindow, shellHole, shellPocks, sootBand, unhcrSheet, type Keep,
+  archHead, choose, clampTo, fillOf, pediment, raggedCrown, railing, sandbagWindow, shellHole, shellPocks, sootBand, unhcrSheet, type Keep,
 } from './sarajevoParts.ts';
 import { SARAJEVO_CIVIC_BUILDERS } from './sarajevoCivic.ts';
 import { SARAJEVO_TOWER_BUILDERS } from './sarajevoTowers.ts';
+import { SARAJEVO_LIGHT_VARIANTS } from './sarajevoLight.ts';
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -423,6 +424,11 @@ function yuBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
   }
   openings.push({ face: 'right', storey: 0, kind: 'door', u: 0, w: 1.1, y0: 0, h: 2.3 });
   for (let i = 1; i < n; i++) for (const o of windowRhythm('right', i, W, { w: 1.1, h: 1.2, sill: 1.0, spacing: 2.4, margin: 0.9 })) openings.push(o);
+  // the end walls (wave 162: "a windowless grey slab"): the stair core's small windows up one end, a bathroom column up
+  // the other on some blocks, the rest blank concrete for the siege to mark (below)
+  const endCols: Array<{ face: 'front' | 'back'; u: number }> = [{ face: 'front', u: (look() - 0.5) * D * 0.3 }];
+  if (look() < 0.55) endCols.push({ face: 'back', u: (look() < 0.5 ? -1 : 1) * D * 0.22 });
+  for (const c of endCols) for (let i = 1; i < n; i++) openings.push({ face: c.face, storey: i, kind: 'window', u: c.u, w: 0.8, y0: 1.1, h: 1.0 });
   if (look() < 0.15) for (const o of openings) if (o.storey === n - 2 && o.face === 'left' && o.kind === 'window') o.state = 'burnt';
   sink.placed(0, f.cx, 0, f.cz, () => sink.placed(Math.PI / 2, 0, 0, 0, () => {
     const frame = buildHouse(sink, {
@@ -462,6 +468,20 @@ function yuBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
     if (look() < 0.28) {
       const hy = frame.floors[1 + Math.floor(look() * (n - 1))] + 1.3, hu = (look() - 0.5) * W * 0.7;
       if (!keeps.some((k) => hu > k.u0 - 0.5 && hu < k.u1 + 0.5 && hy > k.y0 - 0.5 && hy < k.y1 + 0.5)) shellHole(sink, street, hu, hy, 0.4 + look() * 0.35, look);
+    }
+    // the end walls take the siege too: the pocks of four winters, a breach or two, the soot of a burnt flat
+    for (const end of ['front', 'back'] as const) {
+      const face = frame.faces[end], ends = keepsOf(openings, end, frame);
+      shellPocks(sink, face, { u0: -face.width / 2 + 0.3, u1: face.width / 2 - 0.3, y0: 0.8, y1: frame.eaveY - 0.4 },
+        Math.round((mobile ? 0.4 : 1) * (8 + look() * 22)), ends, look, 'stone');
+      for (let k = look() < 0.45 ? 1 + Math.floor(look() * 2) : 0; k > 0; k--) {
+        const hy = frame.floors[1 + Math.floor(look() * (n - 1))] + 1.0 + look() * 0.8, hu = (look() - 0.5) * face.width * 0.7;
+        if (!ends.some((e) => hu > e.u0 - 0.6 && hu < e.u1 + 0.6 && hy > e.y0 - 0.6 && hy < e.y1 + 0.6)) shellHole(sink, face, hu, hy, 0.45 + look() * 0.4, look);
+      }
+      if (look() < 0.3) {
+        const fl = 1 + Math.floor(look() * (n - 1)), y0 = frame.floors[fl] + 0.4;
+        sootBand(sink, 'plaster3', face, -face.width / 2 + 0.2, face.width / 2 - 0.2, y0, Math.min(frame.eaveY - 0.2, y0 + upperH * 1.6));
+      }
     }
   }));
   return sink.finish();
@@ -611,10 +631,18 @@ function ahShell(ctx: RegionalBuildContext): RegionalParts {
       const u0 = -W / 2 + k * bw, u1 = u0 + bw, cu = (u0 + u1) / 2;
       // the head of a top storey's bay breaks off at its own height
       const head = top ? y + sh * (0.45 + rng() * 0.75) : y + sh;
+      const head2 = top ? y + sh * (0.4 + rng() * 0.7) : head;
       sink.span(wall, u0, y, zf, cu - ow / 2, head, zf + t);
-      sink.span(wall, cu + ow / 2, y, zf, u1, top ? y + sh * (0.4 + rng() * 0.7) : head, zf + t);
+      sink.span(wall, cu + ow / 2, y, zf, u1, head2, zf + t);
       sink.span(wall, cu - ow / 2, y, zf, cu + ow / 2, y + sill, zf + t);
       if (head > y + sill + oh + 0.25) sink.span(wall, cu - ow / 2, y + sill + oh, zf, cu + ow / 2, head, zf + t);
+      if (top) {
+        // the broken crown over each block of the top storey (dressing round the kit's solid blocks)
+        const frontFace: Face = { origin: [0, 0, zf + t], u: [1, 0, 0], out: [0, 0, 1], width: W };
+        raggedCrown(sink, wall, frontFace, u0, cu - ow / 2, y, head, t, look);
+        raggedCrown(sink, wall, frontFace, cu + ow / 2, u1, y, head2, t, look);
+        if (head > y + sill + oh + 0.25) raggedCrown(sink, wall, frontFace, cu - ow / 2, cu + ow / 2, y + sill + oh, head, t, look);
+      }
       keeps.push({ u0: cu - ow / 2 - 0.2, u1: cu + ow / 2 + 0.2, y0: y + sill - 0.15, y1: y + sill + oh + 0.3 });
       // the soot over the opening
       if (look() < 0.5 && head > y + sill + oh + 0.6) sootBand(sink, wall, { origin: [0, 0, zf + t], u: [1, 0, 0], out: [0, 0, 1], width: W }, cu - ow / 2 - 0.2, cu + ow / 2 + 0.2, y + sill + oh, Math.min(head, y + sill + oh + 1.6));
@@ -628,7 +656,13 @@ function ahShell(ctx: RegionalBuildContext): RegionalParts {
     let zTop = zf, hgt = y * (0.75 + rng() * 0.2);
     while (zTop > -D / 2 + 0.3) {
       const seg = 1.2 + rng() * 1.8, z0 = Math.max(-D / 2, zTop - seg);
-      if (hgt > 0.6) sink.span(wall, x0, 0.35, z0, x0 + t, hgt, zTop);
+      if (hgt > 0.6) {
+        sink.span(wall, x0, 0.35, z0, x0 + t, hgt, zTop);
+        // its crown, on the side wall's outer face (u to the right seen from outside)
+        const sideFace: Face = s < 0 ? { origin: [x0, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D } : { origin: [x0 + t, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
+        if (s < 0) raggedCrown(sink, wall, sideFace, z0, zTop, 0.35, hgt, t, look);
+        else raggedCrown(sink, wall, sideFace, -zTop, -z0, 0.35, hgt, t, look);
+      }
       zTop = z0; hgt *= 0.45 + rng() * 0.4;
     }
   }
@@ -670,6 +704,16 @@ function mahalaShell(ctx: RegionalBuildContext): RegionalParts {
       const a = k / n, b = (k + 1) / n, top = 0.3 + gH * (0.45 + rng() * 0.6);
       if (alongX) sink.span('stone', x0 + len * a, 0.3, z0, x0 + len * b, top, z1);
       else sink.span('stone', x0, 0.3, z0 + len * a, x1, top, z0 + len * b);
+      // its broken crown (dressing round the block), on the wall's outer face
+      if (alongX) {
+        const f: Face = z1 > 0 ? { origin: [0, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: len } : { origin: [0, 0, z0], u: [-1, 0, 0], out: [0, 0, -1], width: len };
+        if (z1 > 0) raggedCrown(sink, 'stone', f, x0 + len * a, x0 + len * b, 0.3, top, z1 - z0, look);
+        else raggedCrown(sink, 'stone', f, -(x0 + len * b), -(x0 + len * a), 0.3, top, z1 - z0, look);
+      } else {
+        const f: Face = x1 < 0 ? { origin: [x0, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: len } : { origin: [x1, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: len };
+        if (x1 < 0) raggedCrown(sink, 'stone', f, z0 + len * a, z0 + len * b, 0.3, top, x1 - x0, look);
+        else raggedCrown(sink, 'stone', f, -(z0 + len * b), -(z0 + len * a), 0.3, top, x1 - x0, look);
+      }
     }
   }
   // the chimney standing alone over the ruin
@@ -777,4 +821,7 @@ export const SARAJEVO_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
   },
   // the shelling: half the city's houses show it at their windows and roofs
   wear: 0.5,
+  // the light buildings in the city's own forms (sarajevoLight.ts): the kiosk, the transformer kiosk, the checkpoint,
+  // the garage, the corner shop and the lock-ups for the generic guard post, sheds, office, garage and Nissen hut
+  lightVariants: SARAJEVO_LIGHT_VARIANTS,
 });

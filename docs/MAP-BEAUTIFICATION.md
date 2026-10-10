@@ -7812,6 +7812,31 @@ of the squares' objective ground (yards.ts yardKeepOut: the zone discs, the kick
   use itself (about +1.5 ms at that shot), which the ground lane's urban fast path takes on. Render only: the shard
   and the census are unchanged.
 
+### 2026-10-06 — Ruinspires round 2: burnt trams on the tracks, broken crowns, the catenary held up (the map-revival lane, mr1)
+
+**Wave 162 passed (+0.14). Its critics found the siege almost absent ("the total absence of any burnt tram car"), the
+ruins in "Lego steps or crenellations", floating catenary wires and bare poles.**
+- *The catenary:* a contact wire runs only between two standing supports one bay apart along the line. A lone pole
+  carries a bracket arm over both tracks, and a bay whose support is down ends its wires, one hanging to the roadway.
+- *The burnt trams:* none had ever placed, because the kerbs' lamps, rubble and row fronts refused every seat. Four now
+  stand on their tracks in the boulevard's middle, in two rotation pairs about the map's centre. The layout brief
+  counts a wreck as a roadblock (`ROADBLOCK_KINDS` gains `tram-wreck`).
+- *The ruins' crowns* (`sarajevoParts.raggedCrown`): every wall block that ends a ruin's height wears a broken crown.
+  It is a skin 15 mm proud of the kit's unchanged block, rising up to 0.3 m past its top in uneven notches and slants.
+  The blocks stay the walls the battle meets: per-strip collision changed what the bots saw through the walls and left
+  two pacing seeds unresolved.
+- *The Yugoslav blocks' end walls:* the stair core's small windows run up one end, with a bathroom column on some, and
+  the siege's pocks, breaches and the soot of a burnt flat. Half the towers' gutted floors are burnt, their soot two and
+  a half floors up. A camp crate left on a cemetery plot stands inside a white stone tomb.
+- *Census* [1937, 6236, 462]. *Pacing* (20 seeds, 37000–37019): median 329 s, p10 223 s, minimum 191 s, none under
+  120 s, no timeouts (round 1: 325 / 229 / 190).
+- *Cost* (capture ticket 10; A the streets' surfaces a8b3b56fc, 8 cycles at mean load 167): chase ACCEPT (GPU p25
+  −1.66 ± 0.81 ms). The establishing view was OVER: +3.44 ± 1.21 ms, with the scene at 8.36 M triangles against
+  6.89 M at the same 765 draws. The crowns were the triangles: 2.5 k a ruin, since a ruin went from 1.4 k to 3.9 k,
+  drawn into every shadow cascade. They are now fine joinery (`EmitOptions.fine`), drawn within the preset's
+  fine-detail distance (120 m at High), never built on a phone, and casting no shadow. A crown stands at most 0.3 m
+  over its block's level top, a sub-pixel line at a long view.
+
 ### 2026-10-06 — the haze's middle distances: less veil at 100–1200 m, the hue shift and the distance cue kept (the skies lane)
 
 **The ground lane's local-contrast attribution** (local contrast: the std of log luminance against its 25 px mean, the

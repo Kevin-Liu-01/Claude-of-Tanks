@@ -132,6 +132,28 @@ export interface ArchitectureStyle {
    * foot as round 9 laid it (Verdant's khatas, the owner's favourite village). Absent: on
    */
   groundCraft?: boolean;
+  /**
+   * The kit's own versions of light-building families, built by the kit (props.ts swaps each in for its family's key,
+   * after structureKit's REGIONAL_DESTRUCTIBLE_TYPES): absent, the families keep their generic builds.
+   */
+  lightVariants?: Readonly<Record<string, LightVariant>>;
+}
+
+/**
+ * A kit's version of one light-building family (structureKit DESTRUCTIBLE_BUILDING_TYPES): the kit's parts and
+ * weathering in one of the kit's renders, inside the family's footprint and height. It keeps the family's class, hit
+ * points and collision (the family's box), so placement, cover and the layout brief never move.
+ */
+export interface LightVariant {
+  /** the kit's render the whole building draws in: one instanced draw per family, no material of its own */
+  mat: 'regionalPlaster' | 'regionalPlaster2' | 'regionalPlaster3' | 'regionalStone';
+  /** the broken state's palette (structureKit debris: base, trim, dark), sRGB hex */
+  pal: readonly [number, number, number];
+  /**
+   * The build: the building's parts, vertex-coloured (position, normal, uv, color), in the family's frame standing on
+   * y = 0, no part below it and no lit window. Built once per world from the props stream: deterministic in `rng`.
+   */
+  parts(rng: () => number, style: ArchitectureStyle): THREE.BufferGeometry[];
 }
 
 /**

@@ -21,7 +21,7 @@
 // walls.
 
 export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'paddy' | 'terrace' | 'karst'
-  | 'brownfield' | 'coalfield' | 'cityfloor' | 'citycourt' | 'cityslope' | 'cemetery' | 'park'
+  | 'brownfield' | 'coalfield' | 'cityfloor' | 'citycourt' | 'cityslope' | 'cemetery' | 'park' | 'cityvacant' | 'citygarden'
   | 'worksfloor' | 'furnace' | 'sidings' | 'court' | 'cinder' | 'secano' | 'tselina';
 
 /** How a region's fields are bounded (the material's uLandE.z). */
@@ -73,10 +73,11 @@ export interface LandUseProfile {
  * rotation about (0, 0); its region's rotation and its own track and hedge shares (else the profile's). A zone decides
  * by a field's middle (the field is one zone's whole) — or, `cut` (Ironworks' sidings, yards and verges), by the point
  * itself: its line cuts the fields it crosses, straight and hard-edged as a works' ground is, and the fields' own
- * layout (their edges, tracks and hedges) is untouched by it. */
+ * layout (their edges, tracks and hedges) is untouched by it. A band's `meander` measures its |z| from a river's line
+ * z = ampM · sin(π x / halfPeriodM) instead of from z = 0 (an odd line, so the band keeps the map's rotation symmetry). */
 export interface LandZone {
   region: LandRegion;
-  band?: { zMin: number; zMax: number; xMin: number; xMax: number };
+  band?: { zMin: number; zMax: number; xMin: number; xMax: number; meander?: { ampM: number; halfPeriodM: number } };
   rect?: { x0: number; x1: number; z0: number; z1: number };
   disc?: { x: number; z: number; r: number };
   /** A road's verge: within `w` metres of the polyline (Ironworks' diagonal works roads). */
@@ -173,6 +174,9 @@ export const LAND_CROP_GROWTH: Readonly<Record<LandCropId, Readonly<{ sward: boo
   19: { sward: true, height: 0.40, keep: 0.035, weed: true },
 });
 
+/** Ruinspires' Miljacka: the river's line z = 60 sin(πx / 800) (maps/ruinspires.ts, the cities lane's valley). */
+const MILJACKA = Object.freeze({ ampM: 60, halfPeriodM: 800 });
+
 /** Each region's rotation: up to seven slots of [crop kind, share] (the material reads the shares and kinds, uLandC/D/E). */
 const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, number])[]>> = Object.freeze({
   // the Kursk / Belgorod black earth: big wheat and barley strips, sunflower, plough of chernozem, little pasture
@@ -240,13 +244,22 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   // the Virgin Lands' grain steppe (the Sary-Arka, Akmola and Kustanai): spring wheat and its stubble in long strips
   // against the black fallow (Barayev's strips), a little barley, mown hay and the unploughed feather-grass remnant
   tselina: [[1, 0.30], [5, 0.32], [4, 0.18], [2, 0.08], [13, 0.06], [17, 0.06]],
+  // (2026-10-07, the ground lane on the cities lane's Miljacka valley; waves 186/187: the cemeteries and the mosque's
+  // mahala "on flat, bare brown dirt with stretched sand-ripple banding" — the old zones' allotment slope, its dug plots'
+  // furrows read as dune ripples) the floor's back lots behind the avenue rows and the benches' orchards gone wild through
+  // the siege: rank grass and weeds over the cleared plots, rubble here and there, nothing dug
+  cityvacant: [[17, 0.52], [0, 0.38], [16, 0.10]],
+  // the flanks up to the benches, the mahala round its houses: grass, mown and long, a few kitchen-garden beds and vine
+  // arbours (few: their rows are the stripes the critics read as ripples), rank grass on the empty plots
+  citygarden: [[0, 0.52], [13, 0.24], [7, 0.08], [12, 0.06], [17, 0.10]],
 });
 
 /** Each region's field boundary. */
 const BOUNDARIES: Readonly<Record<LandRegion, LandBoundary>> = Object.freeze({
   steppe: 'margin', bocage: 'margin', temperate: 'margin', upland: 'margin', strip: 'margin',
   polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin', coalfield: 'margin',
-  cityfloor: 'margin', citycourt: 'margin', cityslope: 'margin', cemetery: 'margin', park: 'margin',
+  cityfloor: 'margin', citycourt: 'margin', cityslope: 'margin', cemetery: 'margin', park: 'margin', cityvacant: 'margin',
+  citygarden: 'margin',
   worksfloor: 'margin', furnace: 'margin', sidings: 'margin', court: 'margin', cinder: 'margin',
   secano: 'margin', tselina: 'margin',
 });
@@ -401,21 +414,25 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
     strength: 0.64, heading: 1.457, blockU: 620, blockV: 104, maxSplit: 2, marginM: 1.8, trackShare: 0.35, hedgeShare: 0.18,
     warpM: 12, region: 'tselina', salt: 103,
   },
-  // 2026-10-05, Ruinspires (the cities lane; Sarajevo under siege): the city's own ground inside the village — strips
-  // along the valley (the contour on both flanks), every zone mirrored through the Square of the Republic as the map is:
-  // the valley floor's hardstanding (|z| < 70), the block interiors' courts and gardens (70–185), the allotments and
-  // orchards above the terrace streets (185–300), the two cemeteries' mown grass and the four parks' lawns with their
-  // paths. No hedge lines (the trees and bushes keep their seats: hedgeShare 0), nothing past the city.
+  // 2026-10-05, Ruinspires (the cities lane; Sarajevo under siege): the city's own ground inside the village, every zone
+  // mirrored through the Square of the Republic as the map is. (2026-10-07, the ground lane on the cities lane's
+  // Miljacka valley, 5c04ab6cc — waves 186/187: the cemeteries and the mosque "on flat, bare brown dirt with stretched
+  // sand-ripple banding", the old zones' allotment slope under the new layout) the valley floor's hardstanding along the
+  // river's own line (z = 60 sin(πx/800)), the back lots behind the avenue rows overgrown, the flanks up to the benches the
+  // mahala's gardens, the benches' orchards gone wild, the two cemeteries' mown grass and the parks' lawns where the
+  // cities lane put them; no hedge lines (the trees and bushes keep their seats), nothing past the city but the parks
+  // that straddle its edge.
   ruinspires: {
     strength: 1, heading: 0, blockU: 48, blockV: 24, maxSplit: 3, marginM: 1.0, trackShare: 0.25, hedgeShare: 0,
-    warpM: 6, region: 'citycourt', salt: 107, urban: true,
+    warpM: 6, region: 'citygarden', salt: 107, urban: true,
     zones: [
-      { region: 'cemetery', rect: { x0: -200, x1: -140, z0: -284, z1: -240 }, mirror: true, trackShare: 0.5, hedgeShare: 0 },
-      { region: 'park', disc: { x: -200, z: 230, r: 52 }, mirror: true, trackShare: 0.45, hedgeShare: 0 },
-      { region: 'park', disc: { x: 170, z: 250, r: 46 }, mirror: true, trackShare: 0.45, hedgeShare: 0 },
-      { region: 'cityfloor', band: { zMin: 0, zMax: 70, xMin: -330, xMax: 330 }, trackShare: 0, hedgeShare: 0 },
-      { region: 'citycourt', band: { zMin: 70, zMax: 185, xMin: -360, xMax: 360 }, trackShare: 0.25, hedgeShare: 0 },
-      { region: 'cityslope', band: { zMin: 185, zMax: 300, xMin: -360, xMax: 360 }, trackShare: 0.4, hedgeShare: 0 },
+      { region: 'cemetery', rect: { x0: -80, x1: -20, z0: 226, z1: 262 }, mirror: true, trackShare: 0.5, hedgeShare: 0 },
+      { region: 'park', disc: { x: -330, z: 322, r: 46 }, mirror: true, trackShare: 0.45, hedgeShare: 0 },
+      { region: 'park', disc: { x: 236, z: 330, r: 40 }, mirror: true, trackShare: 0.45, hedgeShare: 0 },
+      { region: 'cityfloor', band: { zMin: 0, zMax: 60, xMin: -360, xMax: 360, meander: MILJACKA }, trackShare: 0, hedgeShare: 0 },
+      { region: 'cityvacant', band: { zMin: 60, zMax: 130, xMin: -360, xMax: 360, meander: MILJACKA }, trackShare: 0.2, hedgeShare: 0 },
+      { region: 'citygarden', band: { zMin: 0, zMax: 280, xMin: -360, xMax: 360 }, trackShare: 0.3, hedgeShare: 0 },
+      { region: 'cityvacant', band: { zMin: 280, zMax: 310, xMin: -360, xMax: 360 }, trackShare: 0.25, hedgeShare: 0 },
     ],
   },
   // Aegis Crossing (cliffbridge: Ronda and the Tajo, map revival lane 2, 2026-10-05): the open campiña of the tableland
@@ -598,7 +615,10 @@ function compileRotation(region: LandRegion): { cum: Float64Array; kinds: Uint8A
 /** Whether (x, z) lies in a zone (or, mirrored, in its rotation about (0, 0)). */
 export function inLandZone(zone: LandZone, x: number, z: number): boolean {
   const test = (px: number, pz: number): boolean => {
-    if (zone.band) return Math.abs(pz) >= zone.band.zMin && Math.abs(pz) < zone.band.zMax && px >= zone.band.xMin && px < zone.band.xMax;
+    if (zone.band) {
+      const m = zone.band.meander, dz = m ? pz - m.ampM * Math.sin((Math.PI * px) / m.halfPeriodM) : pz;
+      return Math.abs(dz) >= zone.band.zMin && Math.abs(dz) < zone.band.zMax && px >= zone.band.xMin && px < zone.band.xMax;
+    }
     if (zone.rect) return px >= zone.rect.x0 && px < zone.rect.x1 && pz >= zone.rect.z0 && pz < zone.rect.z1;
     if (zone.disc) return (px - zone.disc.x) ** 2 + (pz - zone.disc.z) ** 2 < zone.disc.r * zone.disc.r;
     if (zone.box) {
@@ -797,6 +817,28 @@ function warpJacobian(x: number, z: number, warpM: number, out: Float64Array): v
   out[3] = warpM * (-0.00587 * c3 + 0.5 * 0.00241 * c4);
 }
 const offsetCode = (m: number): number => Math.min(65535, Math.max(0, Math.round(m * OFFSET_SCALE + OFFSET_ZERO)));
+
+/**
+ * (2026-10-07, the ground lane on Ruinspires' Miljacka valley — waves 186/187: the city's gardens and cemeteries "flat,
+ * bare brown dirt") an urban land use sets the town's wear from its own parcels. The mask's A (the village's wear: the
+ * material's uTownWear dirt, and the urban parcels' wear laid over their crops) is kept on the hardstanding, the rubble,
+ * a track and past the land use; rank grass keeps two thirds of it, the beds and arbours a quarter, the grass and the
+ * mown grass a sixth (their own trodden paths). In place on the mask's RGBA8 data; the bake runs at the interior mask's
+ * texel scale (n = the mask's width), so a bake texel is the mask texel of the same index.
+ */
+export const URBAN_PARCEL_WEAR: Readonly<Partial<Record<LandCropId, number>>> = Object.freeze({
+  [LAND_CROP.pasture]: 0.16, [LAND_CROP.hay]: 0.16, [LAND_CROP.rowCrop]: 0.25, [LAND_CROP.vineyard]: 0.25,
+  [LAND_CROP.ruderal]: 0.65,
+});
+export function applyUrbanParcelWear(mask: Uint8Array, bake: Uint8Array, n: number): void {
+  if (mask.length < n * n * 4 || bake.length < n * n * 4) throw new Error('applyUrbanParcelWear: the mask and the bake hold n × n RGBA8 texels');
+  for (let k = 0; k < n * n; k++) {
+    const b = bake[k * 4];
+    if (b & LAND_BAKE_TRACK_BIT) continue;
+    const f = URBAN_PARCEL_WEAR[(b & 31) as LandCropId];
+    if (f !== undefined) mask[k * 4 + 3] = Math.round(mask[k * 4 + 3] * f);
+  }
+}
 
 /**
  * The land use baked for the terrain material (2026-10-03, the GPU fix): this twin at every texel centre of an n × n

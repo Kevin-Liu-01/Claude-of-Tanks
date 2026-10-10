@@ -73,29 +73,61 @@ export function sandbagWindow(sink: PartSink, face: Face, u: number, y: number, 
 export interface Keep { u0: number; u1: number; y0: number; y1: number }
 
 /**
- * Shell pocks across a face: small ragged scars where splinters chipped the render to the masonry (`under`), each
- * with a dark crater, kept clear of the openings. Fanned polygons 14-16 mm proud (the depth buffer resolves them to
- * ~280 m, where a pock is a pixel). All `count` pocks are drawn from the look stream; only the first `drawn` are
- * emitted (a phone keeps fewer, and its look stream stands where the desktop's does after them).
+ * Shell pocks across a face, clustered by blast (waves 186/187: evenly spaced decals read as "neat plaster patches"): a
+ * mortar burst against the wall leaves a scorched centre and a spray of splinter scars round it, the big gouges near the
+ * centre, the small ones flung farther out and drawn out along their flight from it. Each burst takes its share of
+ * `count`; each scar chips the render to the masonry (`under`, its outline torn) round a dark crater, kept clear of
+ * the openings. Fanned polygons 14-16 mm proud (the depth buffer resolves them to ~280 m, where a pock is a pixel); the
+ * scorch a fan whose shade darkens to its centre (the weathering pass multiplies it into the render), 12 mm proud.
+ * All `count` scars are drawn from the look stream; only the first `drawn` are emitted (a phone keeps fewer, and its
+ * look stream stands where the desktop's does after them).
  */
 export function shellPocks(sink: PartSink, face: Face, rect: Keep, count: number, keep: readonly Keep[], look: () => number,
   under: RegionalBucket = 'stone', drawn = count): void {
+  const w = Math.max(0, rect.u1 - rect.u0), h = Math.max(0, rect.y1 - rect.y0);
+  if (w < 0.4 || h < 0.4 || count <= 0) return;
+  const bursts = Math.max(1, Math.round(count / 16));
+  const centres: Array<{ u: number; y: number; spread: number }> = [];
+  for (let b = 0; b < bursts; b++) {
+    const spread = Math.min(Math.max(w, h) * 0.5, 0.9 + look() * 1.9);
+    centres.push({ u: rect.u0 + look() * w, y: rect.y0 + look() * h, spread });
+  }
+  const inKeep = (u: number, y: number, r: number) => keep.some((q) => u + r > q.u0 - 0.05 && u - r < q.u1 + 0.05 && y + r > q.y0 - 0.05 && y - r < q.y1 + 0.05);
+  // the scorch round each burst's centre
+  for (const c of centres) {
+    const R = c.spread * (0.45 + look() * 0.25), n = 9, rim: Array<[number, number]> = [];
+    for (let j = 0; j < n; j++) {
+      const t = (j / n) * Math.PI * 2, rr = R * (0.55 + look() * 0.45);
+      rim.push([c.u + Math.cos(t) * rr, c.y + Math.sin(t) * rr * 0.8]);
+    }
+    if (inKeep(c.u, c.y, R * 0.6)) continue;
+    const pts = [[c.u, c.y], ...rim, rim[0]].map(([uu, yy]) => [uu, Math.max(rect.y0, Math.min(rect.y1, yy))] as [number, number]);
+    sink.polygon(under, pts.map(([uu, yy]) => facePoint(face, Math.max(rect.u0, Math.min(rect.u1, uu)), yy, 0.012)),
+      { ...DECOR, shadeAt: (p) => { const d = Math.hypot(p[0] - facePoint(face, c.u, c.y, 0)[0], p[1] - c.y, p[2] - facePoint(face, c.u, c.y, 0)[2]); return 0.45 + 0.5 * Math.min(1, d / R); } });
+  }
   for (let k = 0; k < count; k++) {
-    const r = 0.07 + look() * look() * 0.32;
-    const cu = rect.u0 + r + look() * Math.max(0, rect.u1 - rect.u0 - 2 * r);
-    const cy = rect.y0 + r + look() * Math.max(0, rect.y1 - rect.y0 - 2 * r);
+    const c = centres[k % bursts];
+    // the scar's flight from the centre: most near it, a few flung to the burst's edge
+    const a = look() * Math.PI * 2, d = c.spread * Math.pow(look(), 0.8);
+    const near = 1 - d / c.spread;
+    const r = (0.05 + look() * look() * 0.24) * (0.7 + near * 0.8);
+    const cu = c.u + Math.cos(a) * d, cy = c.y + Math.sin(a) * d * 0.85;
+    if (cu - r < rect.u0 || cu + r > rect.u1 || cy - r < rect.y0 || cy + r > rect.y1 || inKeep(cu, cy, r)) continue;
+    // drawn out along the flight, torn round its edge
+    const ca = Math.cos(a), sa = Math.sin(a), stretch = 1 + (1 - near) * 1.1;
     const sides = 7, ring: Array<[number, number]> = [];
     for (let j = 0; j < sides; j++) {
-      const t = (j / sides) * Math.PI * 2, rr = r * (0.6 + look() * 0.4);
-      ring.push([cu + Math.cos(t) * rr, cy + Math.sin(t) * rr]);
+      const t = (j / sides) * Math.PI * 2, rr = r * (0.45 + look() * 0.55);
+      const lu = Math.cos(t) * rr * stretch, ly = Math.sin(t) * rr;
+      ring.push([cu + lu * ca - ly * sa, cy + lu * sa + ly * ca]);
     }
-    if (k >= drawn) continue;
-    if (keep.some((h) => cu + r > h.u0 - 0.05 && cu - r < h.u1 + 0.05 && cy + r > h.y0 - 0.05 && cy - r < h.y1 + 0.05)) continue;
-    sink.polygon(under, [[cu, cy], ...ring, ring[0]].map(([uu, yy]) => facePoint(face, uu, yy, 0.014)), { ...DECOR, shade: 0.8 });
-    const c = r * 0.42;
+    const shade = 0.74 + look() * 0.12;
+    if (k >= drawn) continue; // (the scar's draws made, the scar dropped: a phone's look stream stays the desktop's)
+    sink.polygon(under, [[cu, cy], ...ring, ring[0]].map(([uu, yy]) => facePoint(face, uu, yy, 0.014)), { ...DECOR, shade });
+    const cr = r * 0.4;
     sink.polygon('dark', [0, 1, 2, 3, 4].map((j) => {
       const t = (j / 5) * Math.PI * 2 + 0.3;
-      return facePoint(face, cu + Math.cos(t) * c, cy + Math.sin(t) * c, 0.016);
+      return facePoint(face, cu + Math.cos(t) * cr * stretch * ca - Math.sin(t) * cr * sa, cy + Math.cos(t) * cr * stretch * sa + Math.sin(t) * cr * ca, 0.016);
     }), DECOR);
   }
 }
@@ -178,4 +210,55 @@ export function pediment(sink: PartSink, face: Face, u: number, y: number, w: nu
   const pts = [[u - w / 2, y], [u + w / 2, y], [u, y + rise]] as const;
   // a prism from the wall plane outward: points ccw seen from outside (+out), extruded along the face's normal
   sink.prism(bucket, pts.map(([uu, yy]) => facePoint(face, uu, yy, 0)), face.out, out, { ...DECOR, fineSides: true });
+}
+
+/**
+ * A ruined wall's broken crown (wave 162: ruins "need irregular breaks, not Lego steps or crenellations"): a dressing
+ * skin round a wall block's head — its faces 15 mm proud of the block's, from `y0` up past the block's top in a ragged
+ * line of uneven notches and slants — so no wall of a ruin ends in a level box top. The block itself (the kit's solid,
+ * unchanged) stays the wall the battle meets: a per-strip collision changed what the bots saw through the walls and
+ * left two pacing seeds unresolved. The skin's strips are convex quads (a concave crown triangulates). They are fine
+ * joinery (EmitOptions.fine): drawn within the preset's fine-detail distance, never on a phone, casting no shadow. The
+ * crown stands at most 0.3 m over the block's level top, a sub-pixel line at a long view; as a shadow caster in every
+ * cascade it cost the round-2 cost gate +1.47 M triangles at the establishing view (2.5 k a ruin).
+ * The block spans [u0, u1] on the face, `t` thick inward, its top at `top`; `r` the look stream.
+ */
+export function raggedCrown(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, u1: number, y0: number, top: number, t: number,
+  r: () => number): void {
+  const len = u1 - u0;
+  if (len < 0.2 || top - y0 < 0.3) return;
+  const head = raggedHead(r, u0, u1, top + 0.32, top + 0.32, 0.5);
+  const e = 0.015, a = u0 - e, b = u1 + e;
+  const n = Math.max(1, Math.ceil((b - a) / 0.4));
+  const us: number[] = [], hs: number[] = [];
+  for (let i = 0; i <= n; i++) { const u = a + (b - a) * i / n; us.push(u); hs.push(Math.max(top + 0.04, head(u))); }
+  const P = (u: number, y: number, d: number) => facePoint(face, u, y, d);
+  const skin = { decor: true, fine: true } as const;
+  for (let i = 0; i < n; i++) {
+    const ua = us[i], ub = us[i + 1], ha = hs[i], hb = hs[i + 1];
+    sink.quad(bucket, P(ua, y0, e), P(ub, y0, e), P(ub, hb, e), P(ua, ha, e), skin);
+    sink.quad(bucket, P(ua, ha, -t - e), P(ub, hb, -t - e), P(ub, y0, -t - e), P(ua, y0, -t - e), skin);
+    sink.quad(bucket, P(ua, ha, e), P(ub, hb, e), P(ub, hb, -t - e), P(ua, ha, -t - e), skin);
+  }
+  sink.quad(bucket, P(a, y0, e), P(a, hs[0], e), P(a, hs[0], -t - e), P(a, y0, -t - e), skin);
+  sink.quad(bucket, P(b, y0, -t - e), P(b, hs[n], -t - e), P(b, hs[n], e), P(b, y0, e), skin);
+}
+
+/**
+ * A ragged head profile over a wall's run [u0, u1]: a base line from h0 to h1 with notches bitten into it (deep, narrow
+ * V's and broad shallow scoops) and a small tremor, from the stream `r`. Returns at(u), continuous along the run.
+ */
+export function raggedHead(r: () => number, u0: number, u1: number, h0: number, h1: number, bite: number): (u: number) => number {
+  const span = Math.max(0.01, u1 - u0);
+  const notches: Array<{ u: number; w: number; d: number }> = [];
+  for (let k = 0, n = 1 + Math.floor(span / 2.2 * (0.6 + r() * 0.8)); k < n; k++) {
+    notches.push({ u: u0 + r() * span, w: 0.35 + r() * r() * 2.2, d: bite * (0.3 + r() * 0.9) });
+  }
+  const tremor = [r() * 6.28, r() * 6.28];
+  return (u: number) => {
+    const k = (u - u0) / span;
+    let h = h0 + (h1 - h0) * k + 0.12 * Math.sin(u * 3.1 + tremor[0]) + 0.07 * Math.sin(u * 7.3 + tremor[1]);
+    for (const nt of notches) { const q = Math.abs(u - nt.u) / nt.w; if (q < 1) h -= nt.d * (1 - q) ** 1.4; }
+    return h;
+  };
 }

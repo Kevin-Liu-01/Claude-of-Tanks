@@ -64,7 +64,7 @@ import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
 import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { cinderYardWeedsAt, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
-import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
+import { LAND_BAKE_LAYERS, LAND_USE_GLSL, applyUrbanParcelWear, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -6931,21 +6931,39 @@ void splatCompute() {
       if (gRoadClass > 0.5 && gRoadClass < 3.5) {
         vec2 rq = vec2(dot(wp.xz, gRoadDir), dot(wp.xz, vec2(-gRoadDir.y, gRoadDir.x)));
         if (gRoadClass > 1.5 && gRoadClass < 2.5) {
-          // setts: courses 0.16 m along the road, setts 0.18–0.26 m across, the joints staggered course to course
-          float course = rq.x / 0.16, ci = floor(course);
+          // setts: courses 0.14 m along the road, setts 0.13–0.20 m across, the joints staggered course to course
+          // (2026-10-07, waves 186/187, Ruinspires' kerb: "a spotless, perfectly regular grid of oversized, heavily bevelled
+          // setts … no craters, patches") the Balkan kaldrma's own scale — the courses 0.16 → 0.14 m, the setts
+          // 0.18–0.26 → 0.13–0.20 m — the stones' tones wider, their tops worn flatter (the bevel 0.45 → 0.30), a sett in
+          // thirty sunk or gone to dark earth, and the war's tarmac repairs over the setts here and there, ragged
+          float course = rq.x / 0.14, ci = floor(course);
           vec2 cr = cellHash2(vec2(ci, 17.0));
-          float sw = 0.18 + 0.08 * cr.y;
+          float sw = 0.13 + 0.07 * cr.y;
           float sc = (rq.y + cr.x * sw) / sw, si = floor(sc);
           vec2 sh = cellHash2(vec2(ci, si + 311.0));
-          vec2 sf = vec2(fract(course) * 0.16, fract(sc) * sw);
-          float edgeD = min(min(sf.x, 0.16 - sf.x), min(sf.y, sw - sf.y));
-          float settVis = tileVis(0.35);
-          float jointS = (1.0 - smoothstep(0.010, 0.018 + 0.5 * gFootM, edgeD)) * settVis;
-          vec3 sett = vec3(0.128, 0.125, 0.119) * (0.78 + 0.44 * sh.x) * vec3(1.0 + 0.08 * (sh.y - 0.5), 1.0, 1.0 - 0.06 * (sh.y - 0.5));
+          vec2 sf = vec2(fract(course) * 0.14, fract(sc) * sw);
+          float edgeD = min(min(sf.x, 0.14 - sf.x), min(sf.y, sw - sf.y));
+          float settVis = tileVis(0.30);
+          float jointS = (1.0 - smoothstep(0.008, 0.014 + 0.5 * gFootM, edgeD)) * settVis;
+          float gone = step(0.966, sh.y) * settVis;
+          vec3 sett = vec3(0.128, 0.125, 0.119) * (0.72 + 0.56 * sh.x) * vec3(1.0 + 0.10 * (sh.y - 0.5), 1.0, 1.0 - 0.08 * (sh.y - 0.5));
+          sett = mix(sett, vec3(0.052, 0.045, 0.037), gone);
           pav = vec4(mix(mix(vec3(0.112, 0.109, 0.104), sett, settVis), vec3(0.040, 0.036, 0.031), jointS), 0.88);
           // a sett's worn, rounded top
-          vec2 st2 = vec2(sf.x / 0.16 - 0.5, sf.y / sw - 0.5);
-          pnn = vec4(vec2(0.5) + (st2.x * gRoadDir + st2.y * vec2(-gRoadDir.y, gRoadDir.x)) * 0.45 * settVis * (1.0 - jointS), 0.5, 1.0);
+          vec2 st2 = vec2(sf.x / 0.14 - 0.5, sf.y / sw - 0.5);
+          pnn = vec4(vec2(0.5) + (st2.x * gRoadDir + st2.y * vec2(-gRoadDir.y, gRoadDir.x)) * 0.30 * settVis * (1.0 - jointS) * (1.0 - gone), 0.5, 1.0);
+          // the repairs: a cell of 2.0 × 1.4 m in sixteen tarmacked over (newer and older by tone, the aggregate's grain in
+          // it), its edge ragged by the stones it took (the cell's own fraction against a wobble of the road's fine noise)
+          vec2 rpc = vec2(rq.x / 2.0, rq.y / 1.4);
+          vec2 rph = cellHash2(floor(rpc) + vec2(91.0, 13.0));
+          vec2 rpf = abs(fract(rpc) - 0.5) * 2.0;
+          float rpEdge = 1.0 - smoothstep(0.70, 0.90, max(rpf.x, rpf.y) + (n1h - 0.5) * 0.36);
+          float repair = step(rph.x, 0.06) * rpEdge * tileVis(1.0);
+          if (repair > 0.001) {
+            float rpAgg = nz(uv, 1.9, vec2(0.31, 0.57)).r;
+            pav = mix(pav, vec4(vec3(0.074, 0.073, 0.076) * (0.84 + 0.30 * rph.y) * (0.90 + 0.20 * rpAgg), 0.80), repair);
+            pnn = mix(pnn, NRM_MEAN, repair);
+          }
         } else {
           float agg = nz(uv, 1.9, vec2(0.31, 0.57)).r;
           vec3 asph = vec3(0.068, 0.068, 0.072) * (0.92 + 0.16 * agg);
@@ -7716,6 +7734,9 @@ function* createSplatMaterialSteps(
   const offLandTier = onPresetChange(() => { landTier.value = landUseTierOf(resolvePresetName()); });
   const landBake = landUse.landA[0] > 0 ? new Uint8Array(landBakeN * landBakeN * 4 * LAND_BAKE_LAYERS) : null;
   if (landBake) yield* bakeLandUseSteps(landUseProfile, landBakeN, MAP_SIZE, landBake, 64);
+  // ground lane (2026-10-07, Ruinspires' Miljacka valley): an urban land use's parcels set the town's wear (landUse.ts
+  // applyUrbanParcelWear) — the gardens, cemeteries and parks green under their own paths, the hardstanding worn
+  if (landBake && landUseProfile?.urban) applyUrbanParcelWear(mask.image.data as Uint8Array, landBake, landBakeN);
   const groundClock = { value: 0 };
   // the live uniform objects (a probe zeroes a term to isolate its cost or its look)
   const reduxUniforms = {

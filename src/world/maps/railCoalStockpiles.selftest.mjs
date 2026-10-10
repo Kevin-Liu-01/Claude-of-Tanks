@@ -132,10 +132,13 @@ for(const mapId of MAP_IDS) {
     const mills=candidate.obstacles.filter(record=>record.kind==='mill-house');
     assert.equal(mills.length,mapId==='autumn'?1:0,`${mapId}: only Amberford's river kit seats a mill house`);
     // the map-revival lane (2026-10-05): Suzhou Creek's street kit (shanghaiStreets.ts) and Ruinspires' (sarajevoStreets.ts)
-    // block with their burnt trams (Ruinspires' container screens too), a convex footprint in both sinks like the heaps
-    const street=record=>record.kind==='tram-wreck'||record.kind==='container-screen';
+    // block with their burnt trams (Ruinspires' container screens too), a convex footprint in both sinks like the heaps;
+    // Ruinspires' Miljacka valley (2026-10-07) adds the quays' sandbag barricades and burnt cars, the mahalas' garden walls
+    // and the crests' parapets and bunkers
+    const STREET_KINDS=new Set(['tram-wreck','container-screen','sandbagwall','car-wreck','gardenwall','bunker']);
+    const street=record=>STREET_KINDS.has(record.kind);
     const screens=candidate.obstacles.filter(street);
-    assert.equal(screens.length>0,mapId==='blackglass'||mapId==='ruinspires',`${mapId}: only Suzhou Creek's and Ruinspires' street kits stand trams`);
+    assert.equal(screens.length>0,mapId==='blackglass'||mapId==='ruinspires',`${mapId}: only Suzhou Creek's and Ruinspires' street kits stand trams, screens, barricades and walls`);
     assert.equal(candidate.colliders.filter(street).length,screens.length);
     assert.equal(candidate.colliders.filter(record=>record.kind==='mill-house').length,mills.length);
     // Round 61 (2026-09-24): Amberford's arched bridge is the second — one compound record the ride stands on with the
@@ -145,10 +148,12 @@ for(const mapId of MAP_IDS) {
     // 2026-10-01: Cliffbridge's viaduct (its terrain.bridges deck over the gorge) is the second map whose deck the arched
     // stone builder dresses. A tall bridge's parts exceed the 64-part server wire limit and split into consecutive
     // records of at most 64 parts, so the footprint contract below holds for each deck's records read in order.
+    // 2026-10-07: Ruinspires' Miljacka is the third (its five decks, the street kit's arches; mapKits.ts dressMapExtras)
     const bridges=candidate.obstacles.filter(record=>record.kind==='bridge'), decks=field.bridgeDecks??[];
-    // 2026-10-05 (the map-revival lane): Suzhou Creek's four bridges are the arched stone builder's third map
-    assert.equal(bridges.length>0,mapId==='autumn'||mapId==='cliffbridge'||mapId==='blackglass',
-      `${mapId}: only Amberford's river kit, Cliffbridge's viaduct and Suzhou Creek's bridges span a bridge`);
+    // 2026-10-05 (the map-revival lane): Suzhou Creek's four bridges are the arched stone builder's third map;
+    // 2026-10-07: Ruinspires' Miljacka the fourth (its five decks, the street kit's arches; mapKits.ts dressMapExtras)
+    assert.equal(bridges.length>0,mapId==='autumn'||mapId==='cliffbridge'||mapId==='blackglass'||mapId==='ruinspires',
+      `${mapId}: only Amberford's river kit, Cliffbridge's viaduct, Suzhou Creek's and Ruinspires' bridges span a bridge`);
     assert.equal(candidate.colliders.filter(record=>record.kind==='bridge').length,bridges.length);
     const deckRecords=decks.map(()=>[]);
     for(const bridge of bridges){
@@ -167,7 +172,9 @@ for(const mapId of MAP_IDS) {
       const parts=records.flatMap(record=>record.shape2.parts), [body]=parts, parapets=parts.slice(-2);
       assert.ok(parts.length>3,'the deck, abutments, piers, vault bands and two parapets');
       assert.equal(body.y1,deck.deckY,'the deck part\'s top is the deck plane');assert.ok(body.y0<deck.deckY-0.9,'the deck part is a standable floor (round 63: from the crown line)');
-      assert.ok(body.hw===deck.halfWidth&&body.hl>deck.halfLength,'the deck spans the road and its abutments');
+      // (Ruinspires' hump decks keep the slab inside the deck plane, slabInsideDeck: a ramp falling away from a deck's end
+      // met the slab's last metre a few centimetres proud and stopped a hull; the abutments carry the banks)
+      assert.ok(body.hw===deck.halfWidth&&(mapId==='ruinspires'?body.hl===deck.halfLength:body.hl>deck.halfLength),'the deck spans the road and its abutments');
       assert.ok(parts.slice(1,3).every(part=>part.y0<deck.bedY&&part.hw===deck.halfWidth),'the abutments are footed below the bed');
       for(const record of records){
         assert.equal(Math.min(...parts.map(part=>part.y0)),record.min[1]);assert.equal(Math.max(...parts.map(part=>part.y1)),record.max[1]);

@@ -82,8 +82,13 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   // Ruinspires redesign (2026-10-02): the boulevard runs edge to edge; each trunk road leaves it for its edge; each
   // terrace street's halves run from a boulevard crossing to the trunk and on to the other crossing; each cross street
   // links the boulevard to its terrace street.
-  ruinspires: [through, [{ junction: 0 }, 'boundary'], [{ junction: 0 }, 'boundary'], join(0, 1), join(1, 0), join(0, 2),
-    join(2, 0), join(0, 4), join(0, 6), join(0, 3), join(0, 5)],
+  // Ruinspires, the Miljacka's valley (the map-revival lane, 2026-10-06): the two avenues run edge to edge along the
+  // banks; each bridge's street runs from the south avenue to the north avenue; each bench street runs edge to edge
+  // along its flank; each climbing street runs from its avenue up the slope to its bench street; each trunk road leaves
+  // its bench street over the crest.
+  ruinspires: [through, through, join(1, 0), join(1, 0), join(1, 0), join(1, 0), join(1, 0),
+    through, through, join(0, 7), join(1, 8), [{ junction: 7 }, 'boundary'], [{ junction: 8 }, 'boundary'],
+    join(0, 7), join(1, 8), join(0, 7), join(1, 8)],
   blackglass: Array.from({ length: 6 }, () => through),
   titan_gorge: [through, through, through, join(0, 2), join(0, 1)],
   skybridge: [through, through, through, join(0, 2), join(0, 1)],

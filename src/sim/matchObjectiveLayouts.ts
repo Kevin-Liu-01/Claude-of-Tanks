@@ -127,7 +127,12 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   reservoir: { kickoff: { x: 88, z: 8 }, zones: [{ x: -8, z: 154 }, { x: 88, z: 8 }, { x: 12, z: -170 }] },
   // Ruinspires (redesign 2026-10-02): the boulevard's three squares, level aprons in the map file, rotationally
   // symmetric about the Square of the Republic (also the turbo-ball kickoff).
-  ruinspires: { kickoff: { x: 0, z: 0 }, zones: [{ x: -225, z: 0 }, { x: 0, z: 0 }, { x: 225, z: 0 }] },
+  // Ruinspires, the Miljacka's valley (the map-revival lane, 2026-10-06; the deployments at the valley's two ends): three
+  // discs across the valley's waist on the line of equal drives — the north bench's square, the north bank's square by
+  // the central bridge, the south bench's square (the north bench's rotation twin). The river through the centre leaves no
+  // dry disc at the rotation centre, so the bank's square has no twin: its value is symmetric (equal planned drives, the
+  // 40-seed win split per side within 45-55 %), its geometry is not. The kickoff at the bank square's rotation twin.
+  ruinspires: { kickoff: { x: -14, z: -67.3 }, zones: [{ x: 25, z: 296 }, { x: 14, z: 67.3 }, { x: -25, z: -296 }] },
   // Kestrel Airfield (redesign 2026-10-02): the cargo apron, the runway's centre (also the turbo-ball kickoff) and the
   // terminal apron, rotationally symmetric about the runway's centre; the two aprons and the holding apron at the
   // runway's centre are level aprons in the map file.

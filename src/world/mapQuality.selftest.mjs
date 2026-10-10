@@ -394,11 +394,17 @@ for (const mapId of [...EXPANSION, ...EXTREME]) {
     `${mapId}: playable interior includes meaningful hull-down relief`);
 }
 
+// (the map-revival lane, 2026-10-07: under the Sarajevo kit, maps/regional/sarajevoCivic.ts, five more of the structure
+// ids build the valley's monumental landmarks — 'firestation' a domed mosque under its minaret, 'factory' the Orthodox
+// cathedral, 'foundryoffice' the Catholic cathedral's twin towers, 'warehouse' the market hall, 'depot' the čaršija's
+// arcade — so Ruinspires' skyline counts them with the towers and slabs)
+const KIT_LANDMARKS = { sarajevo: ['firestation', 'factory', 'foundryoffice', 'warehouse', 'depot'] };
 for (const mapId of ['ruinspires', 'blackglass']) {
   const config = getMapConfig(mapId);
+  const landmarks = KIT_LANDMARKS[config.props.architecture] ?? [];
   const monumental = [...config.props.plan, ...(config.props.plannedSites ?? []).map((site) => site.structure)].filter((kind) =>
     ['megatower', 'arcology', 'needletower', 'broadcasttower', 'terracetower',
-      'parkingdeck', 'civichall'].includes(kind));
+      'parkingdeck', 'civichall', ...landmarks].includes(kind));
   assert.ok(monumental.length >= 18,
     `${mapId}: destroyed city skyline has at least eighteen monumental structures`);
   assert.ok(config.props.rubblePiles >= 150,

@@ -105,7 +105,8 @@ interface DestructibleBuildingType {
   id: string;
   family: string;
   cls: 'break';
-  mat: 'structureCanvas' | 'structureMetal' | 'structureWood';
+  /** the props material (a kit's own light variant draws in the kit's render: regionalLightVariant below) */
+  mat: 'structureCanvas' | 'structureMetal' | 'structureWood' | 'regionalPlaster' | 'regionalPlaster2' | 'regionalPlaster3' | 'regionalStone';
   surfaceMaterial: 'structureCanvas' | 'structureMetal' | 'structureWood';
   contact: 'ob';
   collider: true;
@@ -2434,6 +2435,38 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
   });
 })();
 
+/**
+ * A kit's light-family variant built by the kit itself (maps/regional types.ts LightVariant; props.ts composes it on a
+ * map whose kit has one): the family's meta (footprint, class, hit points, crush, sounds, debris), the kit's parts
+ * certified grounded and merged here, drawn in the kit's render `mat`, broken into the family's debris in `pal`.
+ *
+ * The family's collision stays the family's: the build runs the family's own build first, from the same stream, and
+ * hands it on as `userData.collisionSource` (props.ts refits the placed obstacles to it, then disposes it). So the
+ * stream draws exactly as it did without the kit (every later pool's build unchanged), the collision manifest, the
+ * cover and the layout brief never move, and the kit's own parts draw from a stream of their own.
+ */
+export function regionalLightVariant(key: string, pal: Palette, parts: (rng: Rng) => THREE.BufferGeometry[],
+  mat: DestructibleBuildingType['mat']): DestructibleBuildingType {
+  const b = DESTRUCTIBLE_BUILDING_TYPES[key];
+  if (!b) throw new Error(`structureKit: no light family ${key} for a kit variant`);
+  const debrisMaterial: DebrisMaterial = b.surfaceMaterial === 'structureMetal' ? 'metal' : b.surfaceMaterial === 'structureCanvas' ? 'canvas' : 'wood';
+  let seed = 0x5a7a1e;
+  for (const ch of key) seed = Math.imul(seed ^ ch.charCodeAt(0), 0x01000193) >>> 0;
+  const build = (rng: Rng): THREE.BufferGeometry => {
+    const family = b.build(rng);
+    let a = seed;
+    const own: Rng = () => {
+      a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const geometry = mergeConnectedStructure(key, parts(own));
+    geometry.userData.collisionSource = family;
+    return geometry;
+  };
+  return { ...lightMeta(b.id, b.family, b.hw, b.hl, b.h, pal, build, debrisMaterial), mat };
+}
 
 export const STRUCTURE_CATALOG = [
   ...Object.keys(STRUCTURE_BUILDERS).map((id) => ({ id, mode: 'merged' })),

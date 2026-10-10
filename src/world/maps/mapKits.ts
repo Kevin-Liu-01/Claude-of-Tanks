@@ -1174,7 +1174,11 @@ export function dressMapExtras({
   }
   // the map-revival lane (2026-10-05): Ruinspires as Sarajevo — the boulevard's tram line, catenary, burnt trams and the
   // container screens at its crossings, the hillside cemeteries (maps/sarajevoStreets.ts; its own streams, never this one)
-  if (kits.includes('sarajevo')) dressSarajevo(focused, mapId);
+  if (kits.includes('sarajevo')) {
+    // the Miljacka's bridges (2026-10-06, the valley rebuild): the stone arches on every deck the river's crossings carry
+    for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused, { slabInsideDeck: true });
+    dressSarajevo(focused, mapId);
+  }
   // Round 56 (2026-09-24, owner decision 21 of 2026-09-23): the wrack line and debris of every strand the map authors
   // (a sea lake with a shelf), after every kit so the boats, jetties and landings above are known and the kits' own
   // draw sequences are untouched. Soft dressing in the existing baked/wood buckets; no collision record.
@@ -1970,6 +1974,10 @@ const BRIDGE_VAULT_BAND_M = 0.15;
 function addArchedStoneBridge(
   deck: DressingBridgeDeck, heightField: DressingHeightField, rng: Rng, buckets: DressingBuckets,
   ctx: FocusedDressingContext,
+  /** The deck slab's collision ends where the deck plane does (the drawn body still reaches a metre into each bank): a
+   * hump deck's approach ramps fall away from its ends, so the slab's last metre stood a few centimetres over the ramp
+   * and stopped a hull whose nose came up it (Ruinspires' Miljacka bridges, the crossing sweep). */
+  opts: { slabInsideDeck?: boolean } = {},
 ): void {
   const { x: cx, z: cz, ux, uz, halfLength, halfWidth, deckY, bedY, waterY } = deck;
   const vx = -uz, vz = ux; // across the road = along the river (the extrusion's local +z)
@@ -2061,7 +2069,7 @@ function addArchedStoneBridge(
   // band's middle height, so the opening a shell or a low hull sees is the arc to within a band. Below the spring
   // line the openings are clear from pier to pier.
   const yaw = Math.atan2(ux, uz); // an OBB's forward axis is (sin yaw, cos yaw), like a hull's
-  const parts: SimpleCollisionShape[] = [{ kind: 'obb', cx, cz, hw: halfWidth, hl: bodyHalf, yaw, y0: crownY, y1: deckY }];
+  const parts: SimpleCollisionShape[] = [{ kind: 'obb', cx, cz, hw: halfWidth, hl: opts.slabInsideDeck ? halfLength : bodyHalf, yaw, y0: crownY, y1: deckY }];
   const solid = (from: number, to: number, y0: number, y1: number): void => {
     // one solid slice of the body between two stations along the road, through the full deck width
     const at = (from + to) / 2;

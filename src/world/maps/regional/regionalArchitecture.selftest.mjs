@@ -27,7 +27,7 @@ import { roadSettlementJunction } from '../../roadSettlementJunction.ts';
 import { roadBuildingFrontage, roadBuildingDoorAxis, buildingFootprintClearsRoads, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion } from '../../roadBuildingFrontage.ts';
 import { VILLAGE_BUILDERS } from '../villageKit.ts';
 import { URBAN_BUILDERS } from '../urbanKit.ts';
-import { STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, makeTimberBathhouse } from '../structureKit.ts';
+import { STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, makeTimberBathhouse, regionalLightVariant } from '../structureKit.ts';
 import { addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops, exteriorChimneyTops } from '../exteriorDetailKit.ts';
 import { jitterUV } from '../../propGeometry.ts';
 import { sampleObbGround } from '../../propPlacement.ts';
@@ -384,5 +384,54 @@ for (const [kit, table] of Object.entries(REGIONAL_DESTRUCTIBLE_TYPES)) {
   for (const bucket of ['regionalPlaster', 'regionalStone', 'regionalRoof']) {
     assert.deepEqual(flat(folded, bucket, 'color'), flat(plain, bucket, 'color'), `${bucket}: untouched by the fold`);
   }
+}
+// a kit's own light variants (types.ts LightVariant: Sarajevo's kiosk, checkpoint, garages, corner shop): the family's
+// meta untouched (footprint, class, hit points, crush, collider), a grounded build inside the family's box in the kit's
+// render, every attribute the instancing merges, no lit window (an emissive light building would install the fixture
+// shader on the kit's shared render), the same build from the same stream, a budget a light building can afford, a
+// broken state; and on the maps whose kit carries them, every pool family a variant has is the variant's
+for (const style of ARCHITECTURE_STYLES) {
+  for (const [key, variant] of Object.entries(style.lightVariants ?? {})) {
+    const base = DESTRUCTIBLE_BUILDING_TYPES[key];
+    assert.ok(base, `${style.id}/${key}: no such light family`);
+    assert.ok(['regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone'].includes(variant.mat), `${style.id}/${key}: draws in a kit render`);
+    const meta = regionalLightVariant(key, variant.pal, (rng) => variant.parts(rng, style), variant.mat);
+    for (const field of ['id', 'family', 'hw', 'hl', 'h', 'r', 'cls', 'contact', 'keep', 'crushMin', 'collider']) {
+      assert.equal(meta[field], base[field], `${style.id}/${key}: ${field} must stay the family's`);
+    }
+    const g = meta.build(streamFrom(7)), again = meta.build(streamFrom(7));
+    g.computeBoundingBox();
+    const bb = g.boundingBox, tris = (g.index ? g.index.count : g.getAttribute('position').count) / 3;
+    // the family's collision is the family's own build, handed on with the variant (structureKit regionalLightVariant):
+    // the same solids as the family's, the stream drawn as the family's build draws it
+    const source = g.userData.collisionSource, family = base.build(streamFrom(7));
+    assert.ok(source, `${style.id}/${key}: no collision source handed on`);
+    assert.equal(JSON.stringify(deriveRuntimeStructureCollisionProfile({ baked: [source] })), JSON.stringify(deriveRuntimeStructureCollisionProfile({ baked: [family] })),
+      `${style.id}/${key}: the collision is the family's`);
+    const sa = streamFrom(11), sb = streamFrom(11);
+    meta.build(sa); base.build(sb);
+    assert.equal(sa(), sb(), `${style.id}/${key}: the build draws the stream as the family's build does`);
+    // inside the family's box, or no farther than the family's own build reaches
+    family.computeBoundingBox();
+    const fb = family.boundingBox;
+    const reachX = Math.max(base.hw + 0.4, Math.max(-fb.min.x, fb.max.x) + 0.05), reachZ = Math.max(base.hl + 0.4, Math.max(-fb.min.z, fb.max.z) + 0.05);
+    assert.ok(Math.max(-bb.min.x, bb.max.x) <= reachX && Math.max(-bb.min.z, bb.max.z) <= reachZ, `${style.id}/${key}: the build leaves the family's footprint`);
+    assert.ok(bb.max.y <= base.h + 0.05 && bb.min.y >= -0.05, `${style.id}/${key}: the build leaves the family's height band`);
+    assert.deepEqual(Object.keys(g.attributes).sort(), ['color', 'nightEmissionMask', 'normal', 'position', 'uv'], `${style.id}/${key}: the instancing's attributes`);
+    const mask = g.getAttribute(NIGHT_EMISSION_ATTRIBUTE);
+    for (let i = 0; i < mask.count; i++) assert.equal(mask.getX(i), 0, `${style.id}/${key}: a lit window on a light building`);
+    const pa = g.getAttribute('position').array, pb = again.getAttribute('position').array;
+    assert.ok(pa.length === pb.length && pa.every((v, i) => v === pb[i]), `${style.id}/${key}: the same stream builds the same building`);
+    assert.ok(tris <= 3000, `${style.id}/${key}: ${tris} triangles is past a light building's 3000`);
+    assert.ok(meta.broken(streamFrom(9)).getAttribute('position').count > 0, `${style.id}/${key}: no broken state`);
+    console.log(`${style.id} ${key}: the kit's own ${base.family} variant in ${variant.mat}, ${tris} triangles`);
+  }
+}
+for (const id of MAP_IDS) {
+  const config = getMapConfig(id), style = resolveRegionalArchitecture(config.props?.architecture);
+  if (!style?.lightVariants) continue;
+  const pool = config.props.destructibleBuildings ?? [];
+  const covered = pool.filter((key) => style.lightVariants[key]);
+  console.log(`${id} (${style.id}): ${covered.length} of ${pool.length} pool families in the kit's own forms (${covered.join(', ')})`);
 }
 console.log('regional architecture: kits sound, placements preserved');
