@@ -1256,7 +1256,7 @@ function foldAt(f: FoldField, u: number, below: number): number {
 }
 
 /** The netting lane: how far under a laid net's level armour still holds it (m), and the step a laid cell never spans. */
-const LAID_DROP_M = 0.6;
+const LAID_DROP_M = 0.35;
 const LAID_STEP_M = 0.25;
 /** The netting lane: how far off its authored plane a hanging face net still finds its face (m). */
 const FACE_REACH_M = 0.3;
@@ -3523,7 +3523,10 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number): FieldClearanc
     // the breech nearest it (the breech end dips as the muzzle rises, and can come out under the turret's floor; above
     // the trunnion the turret's own roof lies between the breech and any cloth on it)
     const back = phi > 0 ? phi - Math.PI : phi + Math.PI;
-    const thetas = dy < 0 && dz < 0 ? [THREE.MathUtils.clamp(phi, lo, hi), THREE.MathUtils.clamp(back, lo, hi)] : [THREE.MathUtils.clamp(phi, lo, hi)];
+    const nearest = THREE.MathUtils.clamp(phi, lo, hi);
+    const thetas = dy < 0 && dz < 0 ? [nearest, THREE.MathUtils.clamp(back, lo, hi)] : [nearest];
+    // near the trunnion the gun's section changes fast (a mantlet's corners): its ends and middle pitches as well
+    if (d * Math.cos(phi - nearest) < 0.8) thetas.push(lo, (lo + hi) / 2, 0 > lo && 0 < hi ? 0 : hi, hi);
     for (const theta of thetas) {
       const e = gunBox(d * Math.cos(phi - theta));
       if (!e) continue;

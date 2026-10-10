@@ -392,16 +392,22 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     id: 'cn_t80u_modern', seed: 8031, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.37, hemFloorM: 0.93,
     turret: {
-      top: [laid({ x0: -1.73, x1: 1.73, z0: -2.03, z1: 1.40, nx: 43, nz: 43, y: 0.74, holes: [...pair(0.90, 1.24, -0.92, -0.20)], garnishRiseM: 0.16, seed: 11 })],
-      side: flanks(-1.90, -0.94, 0.78, 0.46, 1.70, 17),
+      // open round the bustle sides' insignia and number (their seats lie on the plates sloping into the roof)
+      top: [laid({ x0: -1.73, x1: 1.73, z0: -2.03, z1: 1.40, nx: 43, nz: 43, y: 0.74,
+        holes: [...pair(0.90, 1.24, -0.92, -0.20), ...pair(0.36, 0.86, -1.42, -0.94)], garnishRiseM: 0.16, seed: 11 })],
+      // the bustle sides' insignia and number stay clear (vehicleMarkings.ts concept stations: turret z -1.0 to -1.3)
+      side: flanks(-1.90, -0.94, 0.78, 0.46, 1.70, 17, {}, () => [cut(-1.48, -0.90, 0.40, 0.95)]),
       face: [face({ z: -2.04, x0: -1.30, x1: 1.30, y0: 0.32, y1: 0.72, nx: 26, ny: 6, seed: 23 })],
     },
     hull: {
       top: [
-        laid({ x0: -1.80, x1: 1.80, z0: -3.15, z1: 0.07, nx: 36, nz: 32, y: 1.55, garnishRiseM: 0.14, seed: 31 }),
+        // the left fender bare beside the hull's tactical number (hull z -2.8)
+        laid({ x0: -1.80, x1: 1.80, z0: -3.15, z1: 0.07, nx: 36, nz: 32, y: 1.55, holes: [rect(-1.95, -0.98, -3.06, -2.58)],
+          garnishRiseM: 0.14, seed: 31 }),
         laid({ x0: -1.80, x1: 1.80, z0: 0.07, z1: 3.05, nx: 36, nz: 30, y: 1.50, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      side: skirts(-3.25, 3.10, 1.38, 0.40, 2.19, 41),
+      // the hull's rear sides bare round the tactical number (hull z -2.8)
+      side: skirts(-2.50, 3.10, 1.38, 0.40, 2.19, 41),
     },
   },
   // Type 96B: the roof netted round its sights, hatches and roof gun, drapes behind the low side smoke banks, a rear
@@ -417,7 +423,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     hull: {
       top: [
         laid({ x0: -1.62, x1: 1.62, z0: -3.50, z1: -0.15, nx: 32, nz: 34, y: 1.62, holes: [rect(-1.80, -1.30, -3.60, -2.40)], garnishRiseM: 0.14, seed: 31 }),
-        laid({ x0: -1.62, x1: 1.62, z0: -0.15, z1: 3.20, nx: 32, nz: 34, y: 1.55, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
+        laid({ x0: -1.62, x1: 1.62, z0: -0.15, z1: 3.20, nx: 32, nz: 34, y: 1.42, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
       side: skirts(-3.55, 3.25, 1.56, 0.42, 1.74, 41, (side) => (side < 0 ? [cut(-3.60, -2.40, 1.05, 1.70)] : [])),
     },
@@ -448,8 +454,12 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     id: 'ru_t80u_modern', seed: 8032, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.43, hemFloorM: 0.84,
     turret: {
-      top: [laid({ x0: -1.84, x1: 1.86, z0: -2.28, z1: 1.90, nx: 46, nz: 52, y: 0.72, garnishRiseM: 0.16, seed: 11 })],
-      side: [...flanks(-2.13, -0.56, 0.76, 0.46, 1.83, 17).filter((p) => p.side < 0), ...flanks(-2.13, -0.04, 0.76, 0.46, 1.83, 17).filter((p) => p.side > 0)],
+      // open round the bustle sides' insignia and number (their seats lie on the plates sloping into the roof)
+      top: [laid({ x0: -1.84, x1: 1.86, z0: -2.28, z1: 1.90, nx: 46, nz: 52, y: 0.72, holes: pair(0.36, 0.86, -1.44, -0.96),
+        garnishRiseM: 0.16, seed: 11 })],
+      // the bustle sides' insignia and number stay clear (vehicleMarkings.ts concept stations: turret z -1.0 to -1.3)
+      side: [...flanks(-2.13, -0.56, 0.76, 0.46, 1.83, 17, {}, () => [cut(-1.50, -0.86, 0.40, 0.95)]).filter((p) => p.side < 0),
+        ...flanks(-2.13, -0.04, 0.76, 0.46, 1.83, 17, {}, () => [cut(-1.50, -0.86, 0.40, 0.95)]).filter((p) => p.side > 0)],
       face: [face({ z: -2.29, x0: -1.30, x1: 1.30, y0: 0.30, y1: 0.70, nx: 26, ny: 6, seed: 23 })],
     },
     hull: {
@@ -514,7 +524,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     hull: {
       top: [
         laid({ x0: -1.70, x1: 1.70, z0: -3.50, z1: 0.66, nx: 34, nz: 42, y: 2.00, garnishRiseM: 0.14, seed: 31 }),
-        laid({ x0: -1.70, x1: 1.70, z0: 0.66, z1: 3.60, nx: 34, nz: 30, y: 1.95, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
+        laid({ x0: -1.70, x1: 1.70, z0: 0.66, z1: 3.60, nx: 34, nz: 30, y: 1.70, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
       side: skirts(-3.40, 3.50, 1.68, 0.52, 1.76, 41),
     },
