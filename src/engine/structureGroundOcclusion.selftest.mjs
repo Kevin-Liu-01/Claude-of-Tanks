@@ -146,16 +146,20 @@ assert.match(runtime, /renderer\.copyTextureToTexture\(src, texture, null, new T
 await loadGroundedLightModel();
 const irr = [0.11, 0.125, 0.16];
 const whiteout = getMapConfig('whiteout');
-const wSky = { ...DEFAULT_SKY_PRESET, ...whiteout.sky, cloudscape: whiteout.clouds };
-assert.ok(whiteout.clouds.deckBeam > 0.3 && whiteout.clouds.deckBeam < 0.6, 'Whiteout\'s stratus is thin');
-assert.equal(resolveDeckBeam(wSky), whiteout.clouds.deckBeam);
-assert.equal(resolveDeckBeam({ ...wSky, cloudscape: { ...whiteout.clouds, regime: 'fair-weather-cumulus' } }), 0, 'a cloud-shadow regime casts its own cells');
+// (the Whiteout round, after wave 342a) Whiteout's stratus passes a quarter of the beam, at or under the snow relief's limit;
+// the law is pinned on its stratus with a stronger beam, where the lit and shaded snow are far apart
+assert.ok(whiteout.clouds.deckBeam > 0.15 && whiteout.clouds.deckBeam <= 0.25, 'Whiteout\'s stratus: a faint bearing');
+assert.equal(resolveDeckBeam({ ...DEFAULT_SKY_PRESET, ...whiteout.sky, cloudscape: whiteout.clouds }), whiteout.clouds.deckBeam);
+const deck = { ...whiteout.clouds, deckBeam: 0.45 };
+const wSky = { ...DEFAULT_SKY_PRESET, ...whiteout.sky, cloudscape: deck };
+assert.equal(resolveDeckBeam(wSky), deck.deckBeam);
+assert.equal(resolveDeckBeam({ ...wSky, cloudscape: { ...deck, regime: 'fair-weather-cumulus' } }), 0, 'a cloud-shadow regime casts its own cells');
 const wAtmo = skyPresetToAtmosphere(wSky);
 const thin = resolveLightModel(wSky, wAtmo, { irradianceRaw: irr }, null, true);
-const thick = resolveLightModel({ ...wSky, cloudscape: { ...whiteout.clouds, deckBeam: 0 } }, wAtmo, { irradianceRaw: irr }, null, true);
+const thick = resolveLightModel({ ...wSky, cloudscape: { ...deck, deckBeam: 0 } }, wAtmo, { irradianceRaw: irr }, null, true);
 assert.equal(thin.overcast, 1, 'still a closed deck');
 const clear = deriveSun(wAtmo, 0);
-near(thin.sunIntensity * luminance(thin.sunColor) / (clear.intensity * luminance(clear.color)), whiteout.clouds.deckBeam, 0.02, 'the cascades carry deckBeam of the clear beam');
+near(thin.sunIntensity * luminance(thin.sunColor) / (clear.intensity * luminance(clear.color)), deck.deckBeam, 0.02, 'the cascades carry deckBeam of the clear beam');
 near(thick.sunIntensity * luminance(thick.sunColor) / (clear.intensity * luminance(clear.color)), 1 - OVERCAST_DIRECT_CUT, 0.005, 'without it the closed deck\'s few per cent');
 const sinEl = Math.max(0, wAtmo.sunDir[1]);
 const ratio = (m) => (m.sunIntensity * luminance(m.sunColor) * sinEl + m.hemiIntensity + Math.PI * luminance(irr) * m.envIntensity * m.envDiffuseGain)
