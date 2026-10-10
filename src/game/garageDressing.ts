@@ -36,8 +36,10 @@ import { getDeviceTier } from '../engine/quality.ts';
 import {
   buildCrewSceneGeometry,
   buildCrewTools,
+  CREW_REGION_DRESS,
   crewPointInScene,
   GARAGE_CREW_SCENES,
+  paintCrewRegion,
   type CrewScene,
 } from './garageCrewFigures.ts';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
@@ -891,6 +893,19 @@ export function createGarageDressing(
   // packs, plus hand tools on the shared palette. Each scene stands in its exhibit's floor frame and is added before
   // the bay owner captures its children, so the crew moves with its bay. The mobile tier keeps the essential scenes.
   let crewMaterial: THREE.MeshStandardMaterial | null = null;
+  const crewPaintables: Array<{ mesh: THREE.Mesh; base: Float32Array; roles: Uint8Array; memberOf: Uint8Array }> = [];
+  let crewPaintedFor = '';
+  function paintCrewsFor(variant: GarageVariant): void {
+    const key = `${variant.architecture}:${crewPaintables.length}`;
+    if (crewPaintedFor === key) return;
+    crewPaintedFor = key;
+    const region = CREW_REGION_DRESS[variant.architecture] ?? null;
+    for (const crew of crewPaintables) {
+      const colours = crew.mesh.geometry.getAttribute('color') as THREE.BufferAttribute;
+      paintCrewRegion(crew.base, crew.roles, crew.memberOf, region, colours.array as Float32Array);
+      colours.needsUpdate = true;
+    }
+  }
   const crewScenesBuilt: string[] = [];
   let crewMembersBuilt = 0;
   let crewTrianglesBuilt = 0;
@@ -930,6 +945,13 @@ export function createGarageDressing(
     const build = buildCrewSceneGeometry(scene);
     const figures = new THREE.Mesh(track(build.geometry), crewMaterial);
     figures.name = `garage_crew_${scene.id}_figures`;
+    // the authored dress and the per-vertex cloth roles, so each Garage repaints its crews' cloth (setVariant)
+    crewPaintables.push({
+      mesh: figures,
+      base: (build.geometry.getAttribute('color').array as Float32Array).slice(),
+      roles: build.roles,
+      memberOf: build.memberOf,
+    });
     figures.castShadow = true;
     figures.receiveShadow = true;
     figures.userData.keepDisplayMesh = true;
@@ -1544,6 +1566,7 @@ export function createGarageDressing(
     legacyVerdantRoot.updateMatrix();
     const isVerdant = currentVariant.id === 'verdant_motor_pool';
     placeAbramsBay(currentVariant);
+    paintCrewsFor(currentVariant);
     // One demand-loaded four-bay exhibit is shared by every Garage. The four
     // diagonally opposed service stations already fill all quadrants, while
     // this tiny layout pose shifts/rotates the complete set against each

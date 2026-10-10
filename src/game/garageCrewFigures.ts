@@ -10,6 +10,8 @@
 //
 // Imported only by garageDressing.ts: the figures demand-load with the dressing and never reach boot.
 import * as THREE from 'three';
+
+import type { GarageVariant } from './garageVariants.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 type V3 = readonly [number, number, number];
@@ -776,6 +778,10 @@ interface CrewSceneBuild {
   readonly geometry: THREE.BufferGeometry;
   readonly skeletons: readonly CrewSkeleton[];
   readonly triangles: number;
+  /** Per vertex: what the colour dresses (0 skin, boots, gloves and kit; 1 coverall; 2 trim; 3 pocket flap; 4 headgear). */
+  readonly roles: Uint8Array;
+  /** Per vertex: the member it belongs to. */
+  readonly memberOf: Uint8Array;
 }
 
 /** Every member of a scene, posed and merged into one vertex-coloured geometry in the scene frame. */
@@ -784,20 +790,80 @@ export function buildCrewSceneGeometry(scene: CrewScene): CrewSceneBuild {
   const skeletons: CrewSkeleton[] = [];
   let triangles = 0;
   const matrix = new THREE.Matrix4();
-  for (const member of scene.members) {
+  const roleParts: Uint8Array[] = [];
+  const memberParts: Uint8Array[] = [];
+  const probe = new THREE.Color();
+  scene.members.forEach((member, memberIndex) => {
     const build = buildCrewFigure(member.dress, member.pose);
     matrix.compose(vec(member.at), new THREE.Quaternion().setFromAxisAngle(_up, member.yaw), _s.set(1, 1, 1));
     build.geometry.applyMatrix4(matrix);
+    // tag each vertex with the dress colour it carries, so a Garage can repaint the crew's cloth without a rebuild
+    const dressColours: Array<[number, number]> = [
+      [1, member.dress.coverall], [2, member.dress.trim], [3, shade(member.dress.coverall, 1.45)], [4, member.dress.headColor],
+    ];
+    const keys = dressColours.map(([role, hex]) => { probe.setHex(hex); return [role, probe.r, probe.g, probe.b] as const; });
+    const colours = build.geometry.getAttribute('color');
+    const roles = new Uint8Array(colours.count);
+    for (let v = 0; v < colours.count; v++) {
+      const r = colours.getX(v), g = colours.getY(v), b = colours.getZ(v);
+      for (const [role, kr, kg, kb] of keys) {
+        if (Math.abs(r - kr) < 1e-4 && Math.abs(g - kg) < 1e-4 && Math.abs(b - kb) < 1e-4) { roles[v] = role; break; }
+      }
+    }
+    roleParts.push(roles);
+    memberParts.push(new Uint8Array(colours.count).fill(memberIndex));
     geometries.push(build.geometry);
     skeletons.push(build.skeleton);
     triangles += build.triangles;
-  }
+  });
   const geometry = mergeGeometries(geometries, false);
   for (const g of geometries) g.dispose();
   if (!geometry) throw new Error(`crew scene ${scene.id} failed to merge`);
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
-  return { geometry, skeletons, triangles };
+  const vertexCount = geometry.getAttribute('position').count;
+  const roles = new Uint8Array(vertexCount);
+  const memberOf = new Uint8Array(vertexCount);
+  let offset = 0;
+  roleParts.forEach((part, index) => { roles.set(part, offset); memberOf.set(memberParts[index], offset); offset += part.length; });
+  return { geometry, skeletons, triangles, roles, memberOf };
+}
+
+/**
+ * Each Garage dresses its crews for its region (2026-10-10, the coordinator: "its own crew dress"): the coverall colours
+ * the members cycle through and their headgear colour. Verdant keeps the national work dress authored per member.
+ */
+export const CREW_REGION_DRESS: Readonly<Record<GarageVariant['architecture'], { readonly coverall: readonly number[];
+  readonly head: number } | null>> = Object.freeze({
+  field_shed: null,
+  shade_depot: { coverall: [0x9a8360, 0x8c7554, 0xa08a66], head: 0x8a7a5a }, // desert tan, sun caps
+  repair_bunker: { coverall: [0xb4b8b3, 0xa5aaa5, 0x8f9590], head: 0x3b3631 }, // winter smocks, fur hats
+  brick_arsenal: { coverall: [0x2f3a4c, 0x37424f, 0x2a3442], head: 0x262d38 }, // navy arsenal overalls
+  naval_drydock: { coverall: [0xb0632a, 0xa35a26, 0x965226], head: 0xd6d6ce }, // dock orange, white hard hats
+  rail_roundhouse: { coverall: [0x34506e, 0x3d5875, 0x2f4864], head: 0x343434 }, // railway blue
+  rain_canopy: { coverall: [0x3c4a35, 0x45523b, 0x36432f], head: 0x2c3729 }, // rain ponchos
+  rock_cavern: { coverall: [0x8e3328, 0x9a5a22, 0x7d2e26], head: 0xd5d0c6 }, // alpine shells, helmets
+  recovery_yard: { coverall: [0x8a7b5a, 0x7d6e50, 0x948463], head: 0x6c6046 }, // khaki recovery crews
+  factory_line: { coverall: [0x4a4d50, 0x55585b, 0x404346], head: 0xc49c34 }, // mill greys, yellow hard hats
+});
+
+/**
+ * Repaint a built crew's cloth for a region (or restore its authored dress when `region` is null): `base` is the
+ * colour array as built, `out` the live colour array. Skin, boots, gloves and kit keep their colours.
+ */
+export function paintCrewRegion(base: Float32Array, roles: Uint8Array, memberOf: Uint8Array,
+  region: { readonly coverall: readonly number[]; readonly head: number } | null, out: Float32Array): void {
+  if (!region) { out.set(base); return; }
+  const cloth = region.coverall.map((hex) => new THREE.Color().setHex(hex));
+  const head = new THREE.Color().setHex(region.head);
+  for (let v = 0; v < roles.length; v++) {
+    const role = roles[v];
+    const at = v * 3;
+    if (role === 0) { out[at] = base[at]; out[at + 1] = base[at + 1]; out[at + 2] = base[at + 2]; continue; }
+    const c = role === 4 ? head : cloth[memberOf[v] % cloth.length];
+    const k = role === 2 ? 0.8 : role === 3 ? 1.45 : 1;
+    out[at] = Math.min(1, c.r * k); out[at + 1] = Math.min(1, c.g * k); out[at + 2] = Math.min(1, c.b * k);
+  }
 }
 
 const D = (n: 'ru' | 'us' | 'de' | 'kr', v: number, h?: CrewHeadgear): CrewDress => crewDress(n, v, h);

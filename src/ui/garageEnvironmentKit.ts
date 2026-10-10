@@ -1290,6 +1290,14 @@ export function buildGarageEnvironment(
 
   const mergeStructureRecords = (): void => {
     for (const { placement, local, x, z, y } of structureRecords) {
+      // A desert minaret is mud-plastered to its dome (2026-10-10, waves 338 and 357: the white shaft under a red tiled
+      // cap read as "a red-capped lighthouse standing among the dunes"): on sand packs its dome and lantern take the
+      // shaft's adobe, one shade deeper than the courts' lime wash.
+      if (placement.catalogId === 'minaret' && recipe.terrainSurface === 'sand') {
+        local.plaster2 = [...(local.plaster2 || []), ...(local.roof || []), ...(local.plaster || [])];
+        local.roof = [];
+        local.plaster = [];
+      }
       const uniformScale = placement.scale;
       const transform = new THREE.Matrix4().compose(
         new THREE.Vector3(x, y, z),

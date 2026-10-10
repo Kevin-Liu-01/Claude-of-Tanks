@@ -236,14 +236,47 @@ function makeFloorTexture(rng: RandomSource): HTMLCanvasElement {
   return c;
 }
 
+// --- roof deck: corrugated sheeting seen from below, with lap seams and grime -------------------------------------
+function makeRoofDeckTexture(rng: RandomSource): HTMLCanvasElement {
+  const S = 256;
+  const c = document.createElement('canvas');
+  c.width = S; c.height = S;
+  const g = get2dContext(c, { willReadFrequently: true });
+  g.fillStyle = '#4b535a';
+  g.fillRect(0, 0, S, S);
+  for (let x = 0; x < S; x += 16) {
+    const lg = g.createLinearGradient(x, 0, x + 16, 0);
+    lg.addColorStop(0, 'rgba(255,255,255,0.10)');
+    lg.addColorStop(0.4, 'rgba(255,255,255,0.0)');
+    lg.addColorStop(0.7, 'rgba(0,0,0,0.16)');
+    lg.addColorStop(1, 'rgba(255,255,255,0.05)');
+    g.fillStyle = lg;
+    g.fillRect(x, 0, 16, S);
+  }
+  // sheet laps across the ribs and soot from the heaters
+  for (const y of [S * 0.5, S]) {
+    g.fillStyle = 'rgba(12,14,16,0.45)';
+    g.fillRect(0, y - 3, S, 3);
+  }
+  for (let i = 0; i < 18; i++) {
+    const x = rng() * S, y = rng() * S, r = 20 + rng() * 60;
+    const bg = g.createRadialGradient(x, y, 0, x, y, r);
+    bg.addColorStop(0, 'rgba(14,16,18,0.18)');
+    bg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = bg;
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  }
+  return c;
+}
+
 // --- corrugated steel wall texture (vertical ribs + girders + grime) --------
 function makeWallTexture(rng: RandomSource): HTMLCanvasElement {
   const W = 512, H = 256;
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
   const g = get2dContext(c, { willReadFrequently: true });
-  // base panel color
-  g.fillStyle = '#3d4349';
+  // base panel color: a painted grey-blue sheet that reads as a wall (2026-10-10, wave 357: "near-black navy walls")
+  g.fillStyle = '#58616a';
   g.fillRect(0, 0, W, H);
   // vertical corrugation ribs (light/shadow pairs, 16px pitch)
   for (let x = 0; x < W; x += 16) {
@@ -775,8 +808,13 @@ export function createGarageStage(
     }
   }
   addHangarWalls();
+  // The roof (2026-10-10, wave 357: "the hall has no roof: a flat, featureless navy void with no trusses, purlins or
+  // skylights"): corrugated roof sheeting on purlins over five parallel-chord trusses, with three skylight strips the
+  // daylight comes through. The roof casts nothing, so the sun's key through the skylights is unchanged.
+  const roofDeck = makeRoofDeckTexture(rng);
   const ceilMat = shadowMat(new THREE.MeshStandardMaterial({
-    color: 0x1e2124, roughness: 0.95, metalness: 0.1,
+    map: track(canvasTexture(roofDeck, { aniso, repeat: [4, 4] })),
+    roughness: 0.82, metalness: 0.3,
     emissive: 0x151b22, emissiveIntensity: 0.65,
   }));
   track(ceilMat);
@@ -784,20 +822,51 @@ export function createGarageStage(
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = WALL_H;
   group.add(ceiling);
-  // roof trusses (slight self-lift so they silhouette against the ceiling)
   const trussMat = shadowMat(new THREE.MeshStandardMaterial({
-    color: 0x33383d, roughness: 0.6, metalness: 0.5,
+    color: 0x4a5056, roughness: 0.6, metalness: 0.5,
     emissive: 0x171c22, emissiveIntensity: 0.45,
   }));
   track(trussMat);
-  const trussGeo = track(new THREE.BoxGeometry(HW * 2, 0.5, 0.22));
+  const skylightMat = track(new THREE.MeshBasicMaterial({ color: 0xc9d4dc }));
   const roofTrusses: THREE.Mesh[] = [];
   function addRoofTrusses(): void {
-    for (let index = -1; index <= 1; index++) {
-      const truss = new THREE.Mesh(trussGeo, trussMat);
-      truss.position.set(0, WALL_H - 0.35, index * 12);
-      group.add(truss);
-      roofTrusses.push(truss);
+    const chordGeo = track(new THREE.BoxGeometry(HW * 2, 0.24, 0.22));
+    const panel = 2.3;
+    const depth = 1.1;
+    const webLength = Math.hypot(panel, depth);
+    const webGeo = track(new THREE.BoxGeometry(0.11, webLength, 0.11));
+    const purlinGeo = track(new THREE.BoxGeometry(0.16, 0.2, HW * 2));
+    const roofTop = WALL_H - 0.12;
+    for (let index = -2; index <= 2; index++) {
+      const z = index * 9;
+      for (const y of [roofTop - 0.12, roofTop - 0.12 - depth]) {
+        const chord = new THREE.Mesh(chordGeo, trussMat);
+        chord.position.set(0, y, z);
+        group.add(chord);
+        roofTrusses.push(chord);
+      }
+      // Warren web: diagonals alternating across each 2.3 m panel
+      const panels = Math.floor((HW * 2) / panel);
+      for (let k = 0; k < panels; k++) {
+        const web = new THREE.Mesh(webGeo, trussMat);
+        web.position.set(-HW + (k + 0.5) * panel, roofTop - 0.12 - depth / 2, z);
+        web.rotation.z = (k % 2 ? 1 : -1) * Math.atan2(panel, depth);
+        group.add(web);
+        roofTrusses.push(web);
+      }
+    }
+    for (let x = -HW + 1.5; x < HW; x += 3) {
+      const purlin = new THREE.Mesh(purlinGeo, trussMat);
+      purlin.position.set(x, roofTop + 0.02, 0);
+      group.add(purlin);
+      roofTrusses.push(purlin);
+    }
+    const skylightGeo = track(new THREE.PlaneGeometry(2.4, HW * 2 - 2));
+    for (const x of [-11.5, 0, 11.5]) {
+      const skylight = new THREE.Mesh(skylightGeo, skylightMat);
+      skylight.rotation.x = Math.PI / 2;
+      skylight.position.set(x, WALL_H - 0.02, 0);
+      group.add(skylight);
     }
   }
   addRoofTrusses();
@@ -818,6 +887,7 @@ export function createGarageStage(
   const shadeGeo = track(new THREE.CylinderGeometry(0.16, 0.85, 0.6, 20));
   const glowGeo = track(new THREE.CylinderGeometry(0.66, 0.66, 0.06, 20));
   const cableGeo = track(new THREE.CylinderGeometry(0.02, 0.02, 1.6, 6));
+  const highbayPools: Array<[number, number]> = [];
   function addHighbayLamps(): void {
     for (const [x, z] of [[-4.5, -3.5], [5, 2.5]]) {
       const shade = new THREE.Mesh(shadeGeo, housingMat);
@@ -832,6 +902,8 @@ export function createGarageStage(
       pointLight.position.set(x, 7.1, z);
       verdantLights.push(pointLight);
       group.add(pointLight);
+      // the pool it throws on the floor (wave 357: "the lamps light no pools on the floor"), on the shared pool program
+      highbayPools.push([x, z]);
     }
   }
   addHighbayLamps();
@@ -1151,6 +1223,13 @@ export function createGarageStage(
     opacity: 0.55,
   }));
   group.add(pool2);
+  for (const [x, z] of highbayPools) {
+    const lampPool = new THREE.Mesh(track(new THREE.PlaneGeometry(9, 9)), pool2.material);
+    lampPool.rotation.x = -Math.PI / 2;
+    lampPool.position.set(x, 0.038, z);
+    lampPool.name = 'garage_verdant_highbay_pool';
+    group.add(lampPool);
+  }
 
   // --- props: crates, barrels, tires, tool cabinet, workbench ----------------
   const addWorkshopProps = (): void => {
@@ -1312,18 +1391,16 @@ export function createGarageStage(
   //   4. wheel chocks + a traffic cone at the frame's lower corners.
   // Decals are depthWrite-false quads a few mm over the floor plane.
   const addForegroundStaging = (): void => {
-    // 1. painted ring decal (dashed, worn)
+    // 1. painted keep-clear ring, one continuous worn line (2026-10-10, wave 357: dashes read as a car park)
     const ringC = document.createElement('canvas');
     ringC.width = ringC.height = 512;
     const rg = get2dContext(ringC);
     rg.translate(256, 256);
-    rg.strokeStyle = 'rgba(202,170,52,0.6)';
-    rg.lineWidth = 9;
-    rg.setLineDash([34, 22]);
+    rg.strokeStyle = 'rgba(196,166,54,0.5)';
+    rg.lineWidth = 7;
     rg.beginPath();
     rg.arc(0, 0, 232, 0, Math.PI * 2);
     rg.stroke();
-    rg.setLineDash([]);
     // wear: chip the paint with floor-colored nicks
     for (let i = 0; i < 220; i++) {
       const a = rng() * Math.PI * 2, rr = 232 + (rng() - 0.5) * 10;
