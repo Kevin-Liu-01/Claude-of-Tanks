@@ -303,6 +303,41 @@ export default {
       // (its piers 14 m apart, off the carriageway and its verge, inside the shelterbelts' setback: mr4's check)
       { kind: 'kolkhozArch', x: -258, z: -148.2, yawDeg: 98.3, name: 'the kolkhoz arch on the station road',
         params: { span: 13.2, height: 6.6, sign: 'КОЛХОЗ «ЗАРЯ ЦЕЛИНЫ»', wings: 6 } },
+      // (the map-content lane, 2026-10-09; the census: the open steppe the emptiest ground after Whiteout and the mine) the
+      // Virgin Lands round the new sovkhoz in 1958 (landmarks/virginLands.ts): the Komsomol volunteers' tent camps, the field
+      // brigades' wagon-houses at the far fields with their tractors, the threshing floors heaped with grain, the herders'
+      // yurts, two Rozhnovsky water towers; set into the finished map (ground 'veto'), north and south of the middle
+      { kind: 'tentCamp', x: -200, z: 40, yawDeg: 0, ground: 'veto', name: 'the west tent camp' },
+      { kind: 'tentCamp', x: 120, z: -40, yawDeg: 90, ground: 'veto', name: 'the middle tent camp' },
+      { kind: 'tentCamp', x: 300, z: 120, yawDeg: 0, ground: 'veto', name: 'the east tent camp' },
+      { kind: 'fieldWagon', x: -60, z: -240, yawDeg: 30, ground: 'veto', name: 'a field brigade wagon (south)' },
+      { kind: 'fieldWagon', x: 40, z: -330, yawDeg: 80, ground: 'veto', name: 'a field brigade wagon (far south)' },
+      { kind: 'fieldWagon', x: 200, z: -20, yawDeg: 10, ground: 'veto', name: 'a field brigade wagon (east)' },
+      { kind: 'fieldWagon', x: -380, z: 60, yawDeg: 60, ground: 'veto', name: 'a field brigade wagon (west)' },
+      { kind: 'fieldWagon', x: -240, z: 300, yawDeg: 120, ground: 'veto', name: 'a field brigade wagon (north-west)' },
+      { kind: 'fieldWagon', x: 60, z: 300, yawDeg: 200, ground: 'veto', name: 'a field brigade wagon (north)' },
+      { kind: 'fieldWagon', x: 380, z: 240, yawDeg: 160, ground: 'veto', name: 'a field brigade wagon (north-east)' },
+      { kind: 'fieldWagon', x: 380, z: -300, yawDeg: 20, ground: 'veto', name: 'a field brigade wagon (south-east)' },
+      { kind: 'threshingFloor', x: -80, z: 180, yawDeg: 10, ground: 'veto', name: 'the north threshing floor' },
+      { kind: 'threshingFloor', x: 120, z: -260, yawDeg: 80, ground: 'veto', name: 'the south threshing floor' },
+      { kind: 'yurt', x: -390, z: -20, ground: 'veto', name: 'a herders\' yurt (west)' },
+      { kind: 'yurt', x: -380, z: -34, yawDeg: 40, ground: 'veto', name: 'a herders\' yurt (west)' },
+      { kind: 'yurt', x: -398, z: -4, yawDeg: -30, ground: 'veto', name: 'a herders\' yurt (west)' },
+      { kind: 'yurt', x: 330, z: -390, yawDeg: 10, ground: 'veto', name: 'a herders\' yurt (south-east)' },
+      { kind: 'yurt', x: 344, z: -380, yawDeg: 50, ground: 'veto', name: 'a herders\' yurt (south-east)' },
+      { kind: 'yurt', x: 330, z: -410, yawDeg: -20, ground: 'veto', name: 'a herders\' yurt (south-east)' },
+      { kind: 'yurt', x: 80, z: 330, yawDeg: 180, ground: 'veto', name: 'a herders\' yurt (north)' },
+      { kind: 'yurt', x: 94, z: 342, yawDeg: 150, ground: 'veto', name: 'a herders\' yurt (north)' },
+      { kind: 'yurt', x: 110, z: 330, yawDeg: 210, ground: 'veto', name: 'a herders\' yurt (north)' },
+      { kind: 'waterTower', x: -280, z: -60, params: { style: 'rozhnovsky', height: 20 }, ground: 'veto', name: 'the kolkhoz water tower' },
+      { kind: 'waterTower', x: 226, z: 196, params: { style: 'rozhnovsky', height: 20 }, ground: 'veto', name: 'the sovkhoz water tower' },
+    ],
+    // the field brigades' crawler tractors beside their wagons (vehicleSetPieces.ts stz3)
+    vehicleSetPieces: [
+      { kind: 'stz3', x: -52, z: -232, yawDeg: 120 }, { kind: 'stz3', x: 48, z: -322, yawDeg: 20 },
+      { kind: 'stz3', x: 208, z: -14, yawDeg: 100 }, { kind: 'stz3', x: -372, z: 68, yawDeg: 200 },
+      { kind: 'stz3', x: -232, z: 292, yawDeg: 30 }, { kind: 'stz3', x: 68, z: 292, yawDeg: 300 },
+      { kind: 'stz3', x: 372, z: 232, yawDeg: 70 }, { kind: 'stz3', x: 388, z: -292, yawDeg: 110 },
     ],
     // The grain station (round 48): the elevator's head tower, long grain
     // stores, the platform hall, the loading gantry, freight ranks and the
@@ -369,7 +404,7 @@ export default {
       roadFence: 'fencerail', yardFence: 'fencewattle',
       // DESTRUCTIBLES r1: steppe columns — trucks + field cars on the road
       // net, fuel dumps, bivouac clusters in the balkas
-      trucks: 3, jeeps: 2, drumClusters: 3, camps: 3,
+      trucks: 6, jeeps: 4, drumClusters: 3, camps: 3,
       modernClutter: { barrier: 4, roadsign: 5, cone: 7, transformer: 3, cablespool: 3 },
     },
   },

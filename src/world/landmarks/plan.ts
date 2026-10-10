@@ -253,6 +253,15 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: () => [1.8, 1.8] },
   snowFence: { family: 'works', drapes: true, dressing: () => true, defaults: { length: 60 },
     footprint: (p) => [Math.max(2.5, Math.floor(num(p, 'length') / 2.5) * 1.25) + 0.2, 0.6] },
+  // the Virgin Lands' field works (virginLands.ts): the tent camp's tents are the props' own
+  tentCamp: { family: 'works', drapes: true, defaults: { rows: 3, tents: 5 },
+    footprint: (p) => [Math.round(num(p, 'rows')) * 4.5 + 5.2, Math.round(num(p, 'tents')) * 2.6 + 4.6] },
+  fieldWagon: { family: 'works', defaults: { length: 6 },
+    footprint: (p) => [1.6, num(p, 'length') / 2 + 1.4] },
+  threshingFloor: { family: 'works', drapes: true, defaults: { length: 40, width: 16, ridges: 4 },
+    footprint: (p) => [num(p, 'width') / 2 + 0.4, num(p, 'length') / 2 + 2.4] },
+  yurt: { family: 'works', defaults: { radius: 3 },
+    footprint: (p) => [num(p, 'radius') + 0.3, num(p, 'radius') + 0.3] },
   // a mine's works (mining.ts): the headframe stands over its shaft with its winding house behind (the piece centred on
   // both); the conveyor's bents and end houses are its movement record, so it spans the ground between them
   headframe: { family: 'works', drapes: true, defaults: { height: 20, paint: 'oxide' },
