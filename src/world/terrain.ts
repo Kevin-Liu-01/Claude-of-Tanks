@@ -3821,7 +3821,7 @@ export function makeMaskTexture(
  * null where the map paves nothing.
  */
 export function makePavedGroundAt(
-  mask: { image: { data: ArrayLike<number>; width: number }; userData?: { roadLayer?: { data: Uint8Array; n: number } } },
+  mask: { image: { data: ArrayLike<number> | null; width: number }; userData?: { roadLayer?: { data: Uint8Array; n: number } } },
   layout: Pick<TerrainLayout, 'village'>,
   splat: { pavedRoads?: boolean; roadTexMix?: number; townPaving?: unknown; pavedSurface?: PavedSurfaceConfig },
   mapId: string,
@@ -3832,8 +3832,9 @@ export function makePavedGroundAt(
   const townPave = splat.townPaving || paved?.townOnly ? town : null;
   const kerbed = paved?.kerbs ? town : null;
   const roadLayer = mask.userData?.roadLayer ?? null;
-  if (roadTex < 0.5 && !townPave && !kerbed && !roadLayer) return null;
-  const data = mask.image.data, n = mask.image.width, T = n / MAP_SIZE;
+  const data = mask.image.data;
+  if (!data || (roadTex < 0.5 && !townPave && !kerbed && !roadLayer)) return null;
+  const n = mask.image.width, T = n / MAP_SIZE;
   const sample = (x: number, z: number, ch: number): number => {
     const fx = clamp((x + HALF) * T - 0.5, 0, n - 1), fz = clamp((z + HALF) * T - 0.5, 0, n - 1);
     const x0 = Math.floor(fx), z0 = Math.floor(fz), x1 = Math.min(n - 1, x0 + 1), z1 = Math.min(n - 1, z0 + 1);
