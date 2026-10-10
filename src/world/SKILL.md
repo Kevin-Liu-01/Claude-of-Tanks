@@ -108,7 +108,16 @@ landform is in, the stands follow its woods field (`getBorderWoodsAt`) across th
 stand (`HORIZON_STAND_HANDOVER_M`, 720-880 m) and its parcels replace the baked ones; past it the stands are the
 ranges' own (a woodland parcel's straight edges drawn up a face read as a band, gauntlet wave 6). The polar and alpine
 couloirs are cut at the depth the round-72 field's radial ribs had (30 / 26 m over 280 / 260 m: the faces' ribs).
-`horizon.reliefCover` overrides a map's cover. Road passes (`openRoadPasses`, after the border's hand-over): a road
+`horizon.reliefCover` overrides a map's cover. Per-map cover options (the horizons lane, 2026-10-09; each absent by
+default, the atlas then byte for byte as before; `horizonReliefBelts.selftest.mjs`): `belts` breaks a mountain face's
+forest into belts (open bands at wandering heights, avalanche paths down the couloirs, bare crests, krummholz — the
+owner's R023), `shade` binds the atlas at a wider share of the program's range (at 0.7 a canopy over a shaded fold
+clamped to one tone; the bake re-encodes open ground to its old factor and reports `bake.shade`, the ring binds at it),
+and `walls` gives the walls (40-60 degrees of the ring's own slope) the row's run of occlusion, sun and cover and no
+fine gradient — the angle x radius atlas drew each texel down a wall as a vertical streak (Glacier Pass's massif).
+`horizon.ringFill` (terrain.ts `gRingFill`) lifts the sky's light on the ring's faces from 150 to 700 m past the edge,
+so a face turned from the sun keeps its stands and folds through the air (the shaded ranges read as one dark tone:
+gauntlet wave 288); 0 elsewhere leaves the program's terms exactly as they were. Road passes (`openRoadPasses`, after the border's hand-over): a road
 exit (terrain.ts `roadExitAt`, ~720 m) that runs on into the authored ranges gets a valley along its line — floor the
 continued ground at its crossing, 30 m either side, ~24° sides to 220 m — instead of a carriageway painted up a face
 (Cinder Junction's edge-n, gauntlet wave 1); an exit inside a railway cutting's fan is the cutting's. `ring.roadPass`
@@ -125,7 +134,11 @@ patches) and graded toward the fog colour past the shell. One mesh shows it (`ho
 it): an apron off the ring's outer edge and a wall at 2.6 km, sampling the atlas by direction from the bake eye, the
 scene fog off as on the round-72 range. The world bakes it under the loading cover (`map.ts` warmImpostors) or on the
 first update, again after a GPU suspension disposes the atlas; until then the round-72 far range draws (receipts, no
-float targets). `horizon.panorama: false` keeps the old range; an object overrides the character's far knobs.
+float targets). `horizon.panorama: false` keeps the old range; an object overrides the character's far knobs
+(`snowSlide` 0..1: the far snow slides off the steep faces from ~34 degrees instead of ~45, Glacier Pass). From a camera
+over 60 m (the horizons lane, 2026-10-09; `horizonPanoramaParallax.selftest.mjs`), a wall texel over an opening's water
+whose camera ray meets the sea short of that texel's own land (the aux pass's distance) takes the far earth's law —
+the far shore painted from the 30 m eye no longer stands on the wall as a curtain in the bird views.
 Time of day (the nightsky lane, 2026-10-08; the owner: "on sunsets and nights, the far skybox is still like glowing"): the
 bake is lit by the map's authored day and drawn unlit, so the battle atmosphere re-bakes it under the light it applies
 (`battleAtmosphereRuntime.ts` relightHorizonPanoramas → the handle's `relight(renderer)`, inside the covered prepare and
