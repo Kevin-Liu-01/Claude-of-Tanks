@@ -83,6 +83,7 @@ import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KIND
 import { periodClutterTypes } from './maps/periodClutterKit.ts';
 import { STRUCTURE_VARIANTS } from './maps/regional/ksarGate.ts'; // b16: the ksar gate post for the checkpoint hut
 import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
+import { applyWreckSurfaceHook } from './wreckSurfaceShader.ts';
 import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_SETTLE_M } from './stoneWallShader.ts';
 import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
 import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
@@ -3832,6 +3833,9 @@ function* propsBuildSteps(
       vertexColors: true, roughness: 0.95, metalness: 0,
     }),
     baked: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 }),
+    // (destruction core, 2026-10-10, wave 350) the hulks' merged mesh: the baked material's tones under the soot and rust
+    // runs a long-dead hulk carries (wreckSurfaceShader.ts; its own program, drawn only where a map places hulks)
+    wreck: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }),
     // the ground lane (wave 234): the rail kit's bed and shoulders, the baked material's tones under crushed stone and
     // the track's grime (railBallast.ts; its parts' UVs carry their place across the track)
     ballast: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.94, metalness: 0 }),
@@ -4041,13 +4045,14 @@ ${snowCap ? `
   // shadow pass runs the same crown (its depth material).
   const mudShape: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3(1.2, 0.66, MUD_SLUMP_M) };
   const mudHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyMudWallHook(shader, mudShape); };
+  const wreckHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyWreckSurfaceHook(shader); };
   function installSurfaceShaderHooks(): void {
     for (const [materialKind, material] of Object.entries(mats)) {
       engineCtx.setupShadowMaterial(material,
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
           : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook
             : materialKind === 'ballast' ? ballastHook
-            : materialKind === 'fieldMud' ? mudHook : grimeHook);
+            : materialKind === 'fieldMud' ? mudHook : materialKind === 'wreck' ? wreckHook : grimeHook);
       // (the hessian is the canvas's shader with another map, and the hay the straw's: they share their programs; the
       // field print has its own, for the modules' shifted windows, and the mud print its own, for its world-space
       // weathering)
@@ -8357,7 +8362,7 @@ ${snowCap ? `
       }
       function finalizeWreckMeshes(): void {
         if (wreckGeos.length === 0) return;
-        const wm = new THREE.Mesh(mergeWreckGeometries(wreckGeos), mats.baked);
+        const wm = new THREE.Mesh(mergeWreckGeometries(wreckGeos), mats.wreck);
         wm.name = 'tank-wrecks';
         // PERF: the full hulks never enter the shadow passes — the factory's
         // own low-poly proxies (baked below in the same pose) cast instead,

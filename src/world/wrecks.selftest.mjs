@@ -47,14 +47,19 @@ function attributeHash(attribute, index) {
   return hash.digest('hex');
 }
 
+// 2026-10-10 (destruction core, wave 350: "orange rust smears", "an X-shaped streak"): the painter's fields are smooth
+// now; its branches are the char (red to green 1.05 where no tone lies on it; soot darkens all three alike) and a muted
+// rust bloom (red past 0.115, beyond the oxide's 0.105, at a rust's red to green), and no corner reaches 0.15 red.
 function assertPainterBranches(colors) {
-  let char = false, rust = false;
-  for (let i = 0; i < colors.length && !(char && rust); i += 3) {
+  let char = false, rust = false, red = 0;
+  for (let i = 0; i < colors.length; i += 3) {
     const redToGreen = colors[i] / colors[i + 1];
     char ||= Math.abs(redToGreen - 1.05) < 1e-6;
-    rust ||= Math.abs(redToGreen - 1.75 / 0.9) < 1e-6;
+    rust ||= colors[i] > 0.115 && redToGreen > 1.8;
+    red = Math.max(red, colors[i]);
   }
-  assert.ok(char && rust, 'original fixture exercises both char and rust color branches');
+  assert.ok(char && rust, 'the fixture exercises the char and a rust bloom');
+  assert.ok(red <= 0.15, `the rust stays muted (red ${red.toFixed(3)})`);
 }
 
 // 2026-10-01 (frozen pins retired): the m1a1/type10 bake fixtures pinned triangle counts, bounds, byte capacities and
