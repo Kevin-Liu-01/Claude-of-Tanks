@@ -289,7 +289,8 @@ let stops = 0;
   const stone = rockCollisionProfile(sphere, new THREE.Matrix4().makeTranslation(0, 0.4, 0).elements, flat);
   const rec = { min: [0, 0, 0], max: [0, 0, 0] }, col = { min: [0, 0, 0], max: [0, 0, 0] };
   applyRockCollisionProfile(rec, col, stone, -0.3);
-  assert.ok(rec.shape2.kind === 'compound' && rec.shape2.parts.length === 2, 'two tiers');
+  // (round 3: the first to 0.7 m, then 0.4 m steps, the last to the top: 0.7, 1.1, 1.4)
+  assert.ok(rec.shape2.kind === 'compound' && rec.shape2.parts.length === 3, `three tiers (${rec.shape2.parts.length})`);
   // level ground: a hull driven at it from eight sides stops where its front meets the first tier (the stone's widest
   // girth over the ground), never short of it or into it
   const halfL = 3.4, halfW = 1.75, first = stone.tiers[0].points;
@@ -312,6 +313,9 @@ let stops = 0;
   for (const part of rec.shape2.parts) {
     for (let k = 0; k <= 50; k++) {
       const h = -0.5 + k * 0.05;
+      // (round 3: a tier's top at 1.1 m puts an underside exactly on the step-up line, 0.55 m under it, where the push
+      // reads a strict "over" and the support an inclusive one; the line itself has no width, so it is not sampled)
+      if (Math.abs(h - (part.y1 - HULL_STEP_UP_M)) < 1e-9) continue;
       const wall = !hullPassesObstacleTop(h, part.y1, part.y0, true, h);
       const floor = structureTopAt([{ ...rec, shape2: { kind: 'compound', cx: 0, cz: 0, parts: [part] } }], 1, part.cx, part.cz, h) === part.y1;
       assert.ok(!(wall && floor), `no column is a wall to the push and a floor to the support (top ${part.y1}, underside ${h.toFixed(2)})`);
@@ -325,12 +329,12 @@ let stops = 0;
   assert.equal(structureTopAt([rec], 1, 0, 0, stone.top - 0.1), stone.top, 'on its crown the stone\'s top');
   const shoulder = stone.tiers[0].points.slice(0, 2).map((v) => v * 0.97);
   assert.equal(structureTopAt([rec], 1, shoulder[0], shoulder[1], stone.top - 0.1), stone.tiers[0].y1, 'over its shoulder the first tier\'s top');
-  // the collider overlay draws the stack as the hull meets it: the first tier from the ground, the second from its top
+  // the collider overlay draws the stack as the hull meets it: the first tier from the ground, each next from its top
   const segments = [];
   recordSegments(rec, () => 0, segments);
   const ys = new Set();
   for (let i = 1; i < segments.length; i += 3) ys.add(Math.round(segments[i] * 100) / 100);
-  assert.deepEqual([...ys].sort((a, b) => a - b), [0, stone.tiers[0].y1, stone.tiers[1].y1], 'the overlay draws the tiers stacked');
+  assert.deepEqual([...ys].sort((a, b) => a - b), [0, ...stone.tiers.map((tier) => tier.y1)], 'the overlay draws the tiers stacked');
 }
 
 console.log(`rockCollision.selftest: ${stones} placed boulders (${driveOver} driven over): movement phantom ${(oldPhantom * 100).toFixed(1)} % -> `

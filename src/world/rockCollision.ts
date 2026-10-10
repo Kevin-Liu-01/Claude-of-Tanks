@@ -37,21 +37,26 @@ export const ROCK_DRIVE_OVER_M = 0.45;
  */
 export const ROCK_LOW_STONE_M = 0.25;
 /** The movement columns hold the stone up to this height over its ground (the tallest hull's roof: a hoodoo's cap
- * above it is a shell's business, not a hull's; the overlay's legend says so). */
+ * above it is a shell's business, not a hull's; the overlay's legend says so). Round 3 (2026-10-10): the last column
+ * stops here too, over the stone's highest foot, where it ran on to the stone's top (wave 344: "one tall generic
+ * octagonal prism around the whole tower ... its rim rises above the summit block"). */
 export const ROCK_CONTACT_TOP_M = 3;
 /**
  * The movement tiers (the hitbox lane, round 2, 2026-10-08; fit waves 263 and 271: "build the movement volume from the
  * same stepped slices"). One prism of the stone's widest girth to its top stood a hull a metre short of a dome's
  * shoulder, boxed the air over a ledge's low slabs and drew a hoodoo's flared foot up its whole stem. The first tier's
- * top over the highest ground the stone leaves (its uphill foot on a slope; 2026-10-09, the census found a top over its
- * lowest point under the band uphill): past a hull's step-up (0.55 m) with 15 cm to spare, so a hull on any side
- * meets the stone's footprint (its hull over ROCK_TIER_FLOOR_M) as a wall and
- * climbs onto the first tier only from ground that rises toward it (a column is a floor within the step-up and is stood
- * on by the same rule, collision.ts hullPassesObstacleTop and structureSupport.ts).
+ * top this far over the lowest ground the stone leaves: past a hull's step-up (0.55 m) with 15 cm to spare, so a hull on
+ * any side meets the stone's footprint (its hull over ROCK_TIER_FLOOR_M) as a wall and climbs onto the first tier only
+ * from ground that rises toward it (a column is a floor within the step-up and is stood on by the same rule,
+ * collision.ts hullPassesObstacleTop and structureSupport.ts). (2026-10-09 round 2 took it over the highest ground,
+ * against an uphill leak of the eight-cornered tiers; round 3's twelve-cornered tiers from the lowest hold the stone
+ * better than both: the boulder probe read band phantom 41.3 % against 45.2 %, uncovered 0.3 % against 0.8 %.)
  */
 export const ROCK_TIER_FIRST_M = 0.7;
-/** Each tier above the first. */
-const ROCK_TIER_STEP_M = 0.6;
+/** Each tier above the first (round 3, 2026-10-10; the critics of wave 344: "straight-walled prisms that do not narrow
+ * with the domes"): 0.4 m, where round 2's 0.6 m left a dome's shoulders boxed (the boulder probe: air over 1.4 m
+ * 61.1 -> 58.1 %, 3.2 parts a stone). */
+const ROCK_TIER_STEP_M = 0.4;
 /**
  * The first tier's rise floor (2026-10-09, round 2 on main): its outline is the hull of the stone that stands at least
  * this high over its own ground. Round 2 first took the whole ground outline, toe and tail included, and the world
@@ -67,8 +72,9 @@ export const ROCK_TIER_FLOOR_M = 0.2;
 const FORMATION_TIER_FLOOR_M = 0.3;
 /** A last tier thinner than this joins the one under it. */
 const ROCK_TIER_LAST_MIN_M = 0.25;
-/** Corners a tier above the first keeps at most (the first, the footprint, keeps ROCK_HULL_POINTS). */
-const ROCK_TIER_POINTS = 8;
+/** Corners a tier above the first keeps at most, as the footprint keeps ROCK_HULL_POINTS (round 3: eight cut the stone's
+ * rounded ends square and left 0.8-1.3 % of it uncovered; twelve leave 0.2-0.3 %). */
+const ROCK_TIER_POINTS = 12;
 /** The shells' toe ring: the stone up to this height over its lowest point (wave 263: a snow boulder's foot stood up to
  * 0.5 m outside its lowest slab, which takes the section 35 % up it)... */
 const ROCK_TOE_M = 0.25;
@@ -503,18 +509,17 @@ function clipConvexTo(subject: number[], clip: readonly number[]): number[] | nu
  * under it; the last one's top the stone's own. Empty when no stone stands over the ground.
  */
 function movementTiers(s: PlacedSurface, riseMax: number, step = ROCK_TIER_STEP_M, riseFloor = ROCK_TIER_FLOOR_M): RockBand[] {
-  const env = globalThis.process?.env ?? {};
-  const base = env.COT_TIER_BASE === 'low' ? s.low : s.high;
-  const points0 = Number(env.COT_TIER_POINTS ?? ROCK_TIER_POINTS);
-  const capRise = Number(env.COT_TIER_CAP ?? Infinity);
-  const top = Math.min(s.top, s.high + capRise);
+  // (round 3, 2026-10-10; the coordinator: "orange movement colliders that step or taper with the stone like the cyan
+  // shells, capped at ~3 m over the foot. Reshape them, don't shrink: footprints are right") the movement record stops
+  // ROCK_CONTACT_TOP_M over the stone's highest foot (the tallest hull's roof: a hoodoo's stem above it is the shells')
+  const top = Math.min(s.top, s.high + ROCK_CONTACT_TOP_M);
   const floors: number[] = [s.low];
-  for (let y = base + ROCK_TIER_FIRST_M; y < top - ROCK_TIER_LAST_MIN_M; y += step) floors.push(y);
+  for (let y = s.low + ROCK_TIER_FIRST_M; y < top - ROCK_TIER_LAST_MIN_M; y += step) floors.push(y);
   const tiers: RockBand[] = [];
   let under: number[] | null = null;
   for (let k = 0; k < floors.length; k++) {
     gatherBox(s, floors[k], Infinity, k === 0 ? riseFloor : 0, riseMax);
-    let points = scratchHullOf(k === 0 ? ROCK_HULL_POINTS : points0);
+    let points = scratchHullOf(k === 0 ? ROCK_HULL_POINTS : ROCK_TIER_POINTS);
     if (points && under) points = clipConvexTo(points, under);
     if (!points) break;
     tiers.push({ points, y0: Math.round(floors[k] * 100) / 100, y1: Math.round((k + 1 < floors.length ? floors[k + 1] : top) * 100) / 100 });
@@ -637,7 +642,7 @@ export function rockCollisionProfile(
 ): RockCollisionProfile | null {
   const s = placeSurface(form.positions, form.edges, matrix, groundAt);
   if (!(s.exposed >= (options.minRise ?? ROCK_DRIVE_OVER_M)) || !Number.isFinite(s.low) || !(s.top > s.low)) return null;
-  const tiers = movementTiers(s, ROCK_CONTACT_TOP_M, options.tierStep ?? Number(globalThis.process?.env?.COT_TIER_STEP ?? ROCK_TIER_STEP_M));
+  const tiers = movementTiers(s, ROCK_CONTACT_TOP_M, options.tierStep ?? ROCK_TIER_STEP_M);
   if (!tiers.length) return null;
   // a stone turned about the vertical and scaled (the placements' law): its sections are the form's, scaled — read from
   // the form's table; any other placement cuts the stone itself
@@ -765,8 +770,8 @@ export interface FormationCollisionProfile {
 /** A formation's movement tiers: each block's own (movementTiers), coarser while they would overflow a record, then one
  * column a block (its ground outline to its top), then the least wasteful merges of those. */
 function formationTiers(surfaces: readonly PlacedSurface[]): RockBand[] {
-  const first = Number(globalThis.process?.env?.COT_FORM_STEP ?? ROCK_TIER_STEP_M);
-  for (const step of [first, first * 1.5, first * 2.25, Infinity]) {
+  // (round 3) a formation's blocks step as finely as the parts allow: 0.4 m, then the coarser steps round 2 took
+  for (const step of [0.4, 0.6, 0.9, 1.35, Infinity]) {
     const tiers = surfaces.flatMap((s) => {
       const blockTiers = movementTiers(s, ROCK_CONTACT_TOP_M, step, FORMATION_TIER_FLOOR_M);
       // (one column a block: its ground outline to its own top)
