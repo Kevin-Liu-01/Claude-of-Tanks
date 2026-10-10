@@ -101,6 +101,7 @@ import {
   buildDryStoneWallHead,
   civilianVehicleTypes,
 } from './maps/inhabitKit.ts';
+import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS, pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 import { CART_RECEIPTS } from './maps/cartKit.ts';
 import { RUNNER_SNOW_SINK_M } from './maps/cartBodies.ts';
@@ -10131,7 +10132,13 @@ ${snowCap ? `
     group.add(imI);
     pool.imI = imI;
     if (meta.broken) {
-      const geoB = meta.broken(drng);
+      // (destruction core, 2026-10-09; the owner: "destructible objects/props: not looking good") the light dressing's broken
+      // state is its intact build broken (propFracture.ts); the legacy builder still runs first, so it spends its draws from
+      // the destructible stream and every later pool builds from the stream it always did
+      const legacyB = meta.broken(drng);
+      const fracture = PROP_FRACTURE[kind];
+      const geoB = fracture ? fractureProp(geoI, fracture, fractureSeed(seed, kind)) : legacyB;
+      if (geoB !== legacyB) legacyB.dispose();
       const imB = new THREE.InstancedMesh(geoB, material, pool.mats4.length);
       imB.count = 0;
       imB.visible = false;
