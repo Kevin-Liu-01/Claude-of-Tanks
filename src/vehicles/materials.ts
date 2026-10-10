@@ -3295,7 +3295,11 @@ if ( uBurnT >= 0.0 ) {
   // FLOODED the whole wreck uniform orange for seconds (probe destroy_2_5s);
   // the wash must fire-light the toss beat, then hand the surface back to
   // the charred diffuse (uBurnGlow also decays 1.5 s -> 0.9 s, tankFactory).
-  totalEmissiveRadiance += vec3( 0.95, 0.34, 0.10 ) * uBurnGlow * 0.34 * pow( brnM, 0.4 );
+  // fx 8g (the killcam critics after FX 7d/7e: "a flat salmon wash over the tank at 0.6-1.8 s"): the wash follows the
+  // fireball's own heat — the square of the glow, so it lights the toss beat (~1.3 at +0.2 s) and is gone by ~1 s instead
+  // of holding a salmon coat to ~1.8 s — and it flickers across the panels as fire light does (never one flat tone)
+  totalEmissiveRadiance += vec3( 1.0, 0.42, 0.12 ) * uBurnGlow * uBurnGlow * 0.26 * pow( brnM, 0.4 )
+    * ( 0.3 + 0.7 * brnNoise( vBrnW * 1.3 + vec3( uBurnSeed * 0.7 + uBurnT * 1.7 ) ) );
   // ember pockets smoldering in seams of the finished char (throb + cool)
   // r7: tighter pocket gate + ~half gain — pockets are seams, not a coat
   float brnPk = smoothstep( 0.80, 0.97, brnNoise( vBrnW * 4.7 + vec3( uBurnSeed * 4.9 + 3.7 ) ) );
