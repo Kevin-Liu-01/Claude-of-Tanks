@@ -50,7 +50,7 @@ async function test(name, run) {
 }
 
 function fixture({ asyncSamples = [12], syncSamples = [], shadows = true, environment = true,
-  fog = true, failAt = null, restoreThrows = false, preRestoreFailures = 0 } = {}) {
+  fog = true, failAt = null, restoreThrows = false, preRestoreFailures = 0, parallel = null } = {}) {
   const events = [];
   const targets = [];
   const buffers = [];
@@ -230,6 +230,28 @@ function fixture({ asyncSamples = [12], syncSamples = [], shadows = true, enviro
       paint(pixels, syncSamples[syncReads++]);
     },
   };
+  if (parallel) {
+    // 2026-10-09 (the black-screen lane): a renderer that submits a stage's programs without linking them on the main
+    // thread and reports each one complete through KHR_parallel_shader_compile after `parallel.polls` pending queries.
+    const COMPLETION_STATUS_KHR = 0x91B1;
+    gl.getExtension = (name) => (name === 'KHR_parallel_shader_compile' ? { COMPLETION_STATUS_KHR } : null);
+    gl.getProgramParameter = (program, key) => {
+      assert.equal(key, COMPLETION_STATUS_KHR);
+      assert.ok(program.native, 'poll the native program');
+      event('linkPoll');
+      program.queries = (program.queries ?? 0) + 1;
+      return program.queries > parallel.polls;
+    };
+    renderer.compile = (compileScene, compileCamera) => {
+      assertCurrent('compile');
+      assert.equal(compileScene, scene);
+      assert.equal(compileCamera, camera);
+      assert.ok(targets.some((owned) => owned.target === target), 'stage programs are submitted into the probe target');
+      event('compile', { ...compatibility });
+      renderer.info.programs.push({ program: { native: true } }, { program: { native: true } });
+      return new Set();
+    };
+  }
   window.__GL_DIAG = { errors: [] };
   return {
     gl, renderer, scene, camera, targets, buffers, syncs, events, initial, compatibility, externalPack,
@@ -380,23 +402,27 @@ for (const failure of ['enqueue', 'poll', 'copy', 'context-loss', 'timeout']) {
   });
 }
 
+// 2026-10-09 (the black-screen lane): a dark fresh reading is drawn once more under 8x the diagnostic light (the
+// response draw); only a frame that stays black there enters the ladder, measured under that light.
+const answered = (before, response) => ({ ...healthy(before), responseScale: .125, response });
 for (const [label, samples, stage, keep] of [
   ['fresh healthy check', [15], null, []],
-  ['shadows only', [0, 18], 'shadows-off', ['shadows']],
-  ['environment confirmed', [0, 0, 18, 9], 'environment-off', ['environment']],
-  ['fog confirmed', [0, 0, 0, 18, 9], 'fog-off', ['fog']],
-  ['environment reapply', [0, 0, 18, 0], 'environment-off', ['shadows', 'environment']],
-  ['fog reapply', [0, 0, 0, 18, 0], 'fog-off', ['shadows', 'environment', 'fog']],
-  ['all-black rollback', [0, 0, 0, 0], null, []],
+  ['dark frame answers the response light', [4, 32], null, []],
+  ['shadows only', [0, 0, 18], 'shadows-off', ['shadows']],
+  ['environment confirmed', [0, 0, 0, 18, 9], 'environment-off', ['environment']],
+  ['fog confirmed', [0, 0, 0, 0, 18, 9], 'fog-off', ['fog']],
+  ['environment reapply', [0, 0, 0, 18, 0], 'environment-off', ['shadows', 'environment']],
+  ['fog reapply', [0, 0, 0, 0, 18, 0], 'fog-off', ['shadows', 'environment', 'fog']],
+  ['all-black rollback', [0, 0, 0, 0, 0], null, []],
 ]) {
-  await test(`black asynchronous result preserves synchronous ladder: ${label}`, async (clock) => {
+  await test(`black asynchronous result preserves the rescue ladder: ${label}`, async (clock) => {
     const f = fixture({ asyncSamples: [0], syncSamples: samples });
     const callbacks = [];
     const pending = f.run({ onRescue: (result) => callbacks.push(result) });
     await clock.resume();
     const result = await pending;
-    const expected = stage
-      ? { before: 0, after: 18, rescued: true, stage } : healthy(samples[0]);
+    const expected = stage ? { before: 0, after: 18, rescued: true, stage, responseScale: .125, response: 0 }
+      : samples.length > 1 ? answered(samples[0], samples[1]) : healthy(samples[0]);
     if (label === 'all-black rollback') expected.failed = true;
     assert.deepEqual(result, expected);
     assert.equal(callbacks.length, stage ? 1 : 0);
@@ -425,12 +451,12 @@ for (const changed of ['shadows', 'environment', 'fog']) {
 }
 
 await test('fallback skips unavailable rescue stages', async (clock) => {
-  const f = fixture({ asyncSamples: [0], syncSamples: [0, 18], shadows: false, environment: false });
+  const f = fixture({ asyncSamples: [0], syncSamples: [0, 0, 18], shadows: false, environment: false });
   const pending = f.run();
   await clock.resume();
-  assert.deepEqual(await pending, { before: 0, after: 18, rescued: true, stage: 'fog-off' });
+  assert.deepEqual(await pending, { before: 0, after: 18, rescued: true, stage: 'fog-off', responseScale: .125, response: 0 });
   assert.deepEqual(f.compatibility, { shadows: false, environment: null, fog: null });
-  f.assertReleased(2, 2);
+  f.assertReleased(2, 3);
 });
 
 await test('failed synchronous fallback measurement is explicitly failed', async (clock) => {
@@ -442,13 +468,13 @@ await test('failed synchronous fallback measurement is explicitly failed', async
   f.assertReleased(2, 0);
 });
 
-await test('callback failure retains a confirmed synchronous compatibility rescue', async (clock) => {
-  const f = fixture({ asyncSamples: [0], syncSamples: [0, 0, 18, 9] });
+await test('callback failure retains a confirmed compatibility rescue', async (clock) => {
+  const f = fixture({ asyncSamples: [0], syncSamples: [0, 0, 0, 18, 9] });
   const pending = f.run({ onRescue() { throw new Error('callback failed after rescue'); } });
   await clock.resume();
-  assert.deepEqual(await pending, { before: 0, after: 18, rescued: true, stage: 'environment-off' });
+  assert.deepEqual(await pending, { before: 0, after: 18, rescued: true, stage: 'environment-off', responseScale: .125, response: 0 });
   assert.deepEqual(f.compatibility, { ...f.initial, environment: null });
-  f.assertReleased(2, 4);
+  f.assertReleased(2, 5);
 });
 
 for (const failCopy of [false, true]) {
@@ -641,7 +667,7 @@ for (const outcome of ['healthy', 'abort', 'context-lost', 'black']) {
       // Sample depends on illumination at renderer.render, not restored state
       // at later PBO copy. A normalization no-op must fail this healthy case.
       return outcome === 'black' ? 0 : ambient.intensity > 1 ? 18 : 3;
-    }], syncSamples: outcome === 'black' || outcome === 'context-lost' ? [0, 0, 0, 0] : [] });
+    }], syncSamples: outcome === 'black' || outcome === 'context-lost' ? [0, 0, 0, 0, 0] : [] });
     ambient = new THREE.AmbientLight(0x778899, .46);
     sun = new THREE.DirectionalLight(0xa6bce8, .42);
     f.scene.add(ambient, sun);
@@ -670,10 +696,95 @@ for (const outcome of ['healthy', 'abort', 'context-lost', 'black']) {
     } else {
       assert.equal(result.value.failed, true, 'night metadata cannot certify a truly black or context-lost scene');
       assert.equal(result.value.rescued, false);
-      f.assertReleased(2, 4);
+      assert.equal(result.value.responseScale, .01, 'night answers at the response floor');
+      f.assertReleased(2, 5);
     }
   });
 }
+
+await test('a genuinely broken pipeline (forced black output) is still refused, its stages linked off the main thread', async (clock) => {
+  const f = fixture({ asyncSamples: [0], syncSamples: [0, 0, 0, 0, 0], parallel: { polls: 1 } });
+  const callbacks = [];
+  const pending = f.run({ onRescue: (result) => callbacks.push(result) });
+  await clock.resume(); // the PBO fence
+  // each stage: submit its programs into the probe target, then poll completion between tasks before the judging draw
+  for (let stage = 0; stage < 3; stage++) {
+    assert.ok(clock.waits.length === 1 && clock.waits[0].ms === 16, `stage ${stage} yields while its programs link`);
+    assert.ok(f.names().at(-1) === 'linkPoll', 'no judging draw before the links complete');
+    await clock.resume();
+  }
+  const result = await pending;
+  assert.equal(result.failed, true, 'a real black frame is refused');
+  assert.deepEqual([result.before, result.response, result.rescued], [0, 0, false]);
+  assert.equal(callbacks.length, 0);
+  assert.deepEqual(f.compatibility, f.initial, 'every unconfirmed stage came off');
+  const names = f.names();
+  assert.equal(names.filter((name) => name === 'compile').length, 3, 'one program submission per stage');
+  for (let index = 0; index < names.length; index++) {
+    if (names[index] !== 'compile') continue;
+    const judging = names.indexOf('syncRead', index);
+    assert.ok(names.slice(index, judging).includes('linkPoll'), 'the judging draw follows the completion polls');
+  }
+  assert.ok(window.__GL_DIAG.errors.some((message) => message.includes('no ladder stage cured it')));
+  f.assertReleased(2, 5);
+});
+
+await test('a stage cured by the ladder after its programs linked is kept (async ladder rescue)', async (clock) => {
+  const f = fixture({ asyncSamples: [0], syncSamples: [0, 0, 0, 18, 9], parallel: { polls: 1 } });
+  const pending = f.run();
+  await clock.resume();
+  for (let stage = 0; stage < 2; stage++) await clock.resume();
+  assert.deepEqual(await pending, { before: 0, after: 18, rescued: true, stage: 'environment-off', responseScale: .125, response: 0 });
+  assert.deepEqual(f.compatibility, { ...f.initial, environment: null });
+  f.assertReleased(2, 5);
+});
+
+await test('cancellation while a stage links rejects and takes the tentative stage off', async (clock) => {
+  let current = true;
+  const f = fixture({ asyncSamples: [0], syncSamples: [0, 0], parallel: { polls: 5 } });
+  const pending = f.run({ isCurrent: () => current });
+  const observed = pending.then(value => ({ value }), error => ({ error }));
+  await clock.resume();
+  assert.equal(f.compatibility.shadows, false, 'shadows-off is tentatively applied while its programs link');
+  current = false;
+  await clock.resume();
+  const result = await observed;
+  assert.match(String(result.error?.message), /watchdog owner changed/);
+  assert.deepEqual(f.compatibility, f.initial, 'the renderer and shared scene outlive the entry: the stage came off');
+  f.assertReleased(2, 2);
+});
+
+await test('a newer owner\'s compatibility state survives a cancelled stage (compare-and-swap revert)', async (clock) => {
+  let current = true;
+  const f = fixture({ asyncSamples: [0], syncSamples: [0, 0, 0], parallel: { polls: 1 } });
+  const pending = f.run({ isCurrent: () => current });
+  const observed = pending.then(value => ({ value }), error => ({ error }));
+  await clock.resume(); // the PBO fence; shadows-off links
+  await clock.resume(); // shadows-off judged (black); environment-off applied and linking
+  assert.equal(f.compatibility.environment, null);
+  const next = new THREE.Texture();
+  f.compatibility.environment = next; // the next phase installs its own environment
+  current = false;
+  await clock.resume();
+  const result = await observed;
+  assert.match(String(result.error?.message), /watchdog owner changed/);
+  assert.equal(f.compatibility.environment, next, 'the stale stage never clobbers the newer environment');
+  assert.equal(f.compatibility.shadows, f.initial.shadows);
+  f.assertReleased(2, 3);
+});
+
+await test('a ladder whose programs never finish linking fails closed within its allowance', async (clock) => {
+  const f = fixture({ asyncSamples: [0], syncSamples: [0, 0], parallel: { polls: Infinity } });
+  const pending = f.run();
+  await clock.resume();
+  clock.advance(30001);
+  await clock.resume();
+  const result = await pending;
+  assert.equal(result.failed, true);
+  assert.deepEqual(f.compatibility, f.initial);
+  assert.ok(window.__GL_DIAG.errors.some((message) => message.includes('still linking')));
+  f.assertReleased(2, 2);
+});
 
 const previousLocation = globalThis.location;
 let forcedWatchdog;
@@ -692,6 +803,27 @@ for (const enabled of [false, true]) {
     assert.equal(result.rescued, enabled);
     assert.equal(f.targets.length, 0, 'forced diagnostics never allocate actual probes');
     assert.equal(f.buffers.length, 0);
+  });
+}
+
+// 2026-10-09 (the black-screen lane): ?diagforce=blackout is a lit pipeline black under any light and any rescue stage,
+// the per-deploy sweep's negative control (tools/battle-entry-sweep.mjs --force-black): it must always be refused.
+let blackoutWatchdog;
+try {
+  globalThis.location = { search: '?diagforce=blackout' };
+  ({ runSceneBlackWatchdogAsync: blackoutWatchdog } = await import('./deviceDiag.ts?blackout-async-selftest'));
+} finally {
+  if (previousLocation === undefined) delete globalThis.location;
+  else globalThis.location = previousLocation;
+}
+for (const enabled of [false, true]) {
+  await test(`forced blackout is refused whatever rescue stages exist (${enabled})`, async () => {
+    const f = fixture({ shadows: enabled, environment: enabled, fog: enabled });
+    const result = await blackoutWatchdog(f.renderer, f.scene, f.camera);
+    assert.equal(result.failed, true, 'a genuinely black pipeline is refused');
+    assert.deepEqual([result.before, result.response, result.rescued], [0, 0, false]);
+    assert.deepEqual(f.compatibility, f.initial, 'every tried stage came off');
+    assert.equal(f.targets.length, 0, 'forced diagnostics never allocate actual probes');
   });
 }
 
