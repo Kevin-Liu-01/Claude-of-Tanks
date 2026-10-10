@@ -72,6 +72,8 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     stopRecording: noop,
     disposePicture: () => calls.push('picture-disposed'),
     applyPictureRuntime: () => calls.push('picture-applied'),
+    // the destruction stages the Studio played and its own dug ground (fx lane, destruction core lane, 2026-10-08)
+    studioStages: new Map(), resetStudioGround: noop, flareToWallClock: noop,
   };
   const code = stripTypeScriptTypes(`
     function makeStudioEntry(ports) {
