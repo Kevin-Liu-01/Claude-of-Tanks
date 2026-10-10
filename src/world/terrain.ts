@@ -7113,8 +7113,12 @@ void splatCompute() {
       if (uReduxD.y > 1.5) a.rgb = mix(a.rgb, a.rgb * vec3(0.93, 0.935, 0.95), trampleW * (0.5 + 0.5 * tN));
       else if (uReduxD.y > 0.5) a.rgb = mix(a.rgb, a.rgb * vec3(0.93, 0.91, 0.88), trampleW * 0.6);
       else {
-        a.rgb = mix(a.rgb, a.rgb * vec3(1.10, 1.03, 0.80), trampleW * 0.6);
-        a.rgb = mix(a.rgb, uMeanD.rgb * uRoadSurfD.rgb * 0.95, smoothstep(0.55, 0.75, tN + 0.25 * trampleW) * trampleW * 0.7);
+        // (the lab's first margin read as the field: the sward flattened and yellowed over the whole margin, worn through to
+        // the soil in ragged tongues that are thickest by the pad, its tussocks pressed flat)
+        a.rgb = mix(a.rgb, a.rgb * vec3(1.12, 1.04, 0.78), trampleW * 0.7);
+        float wornT = smoothstep(0.42, 0.68, tN * 0.7 + trampleW * 0.5) * trampleW;
+        a.rgb = mix(a.rgb, uMeanD.rgb * uRoadSurfD.rgb * 0.95, wornT * 0.8);
+        n.xy = mix(n.xy, vec2(0.5), trampleW * 0.4);
       }
       a.rgb *= 1.0 - (uReduxD.y > 1.5 ? 0.10 : 0.12) * padRut * trampleW + 0.05 * padBerm * trampleW;
       // (the tracks leave across it: on turf their floors cut through the sward to the soil, on sand scuffed paler)
@@ -7737,11 +7741,14 @@ void splatCompute() {
   // breaks up on the ~6 m noise and scatters gravel speckle off the
   // carriageway shoulder
   float edgeBand = shoulder * (1.0 - roadCore) * (0.55 + 0.90 * n1hs);
+  // (R3, wave 341: Frontier's pads "near-black tar or charcoal slabs" — a pad has no centreline, so its whole body was this
+  // verge band, darkened a sixth and spattered with the rock tile's grey) past the Low tier a pad's body is its own ground
+  if (uLandTier > 0.5) edgeBand *= 1.0 - apronK;
   a.rgb *= 1.0 - edgeBand * 0.16;
   a.rgb = mix(a.rgb, vec3(dot(a.rgb, vec3(0.34, 0.45, 0.21))) * vec3(1.06, 1.0, 0.88), edgeBand * 0.22);
   {
     float gravSpill = shoulder * (1.0 - roadCore) * smoothstep(0.58, 0.9, n1h)
-      * (1.0 - smoothstep(30.0, 90.0, effDist));
+      * (1.0 - smoothstep(30.0, 90.0, effDist)) * (uLandTier > 0.5 ? 1.0 - apronK : 1.0);
     gravSpill *= tileVis(1.2); // ground lane
     if (gravSpill > 0.004) {
       vec4 gravE = texture2D(uAlbR, uv * 0.83);
