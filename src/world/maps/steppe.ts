@@ -17,6 +17,15 @@
 // ford and climbing the western ramp; farm tracks; poplar shelterbelts instead
 // of forests. Wide-open sightlines are the point — the wadi banks and the
 // escarpment crest are the cover geometry.
+//
+// 2026-10-05 (the map-revival lane; the owner: "make sure all maps look completely new and revitalized like verdant"):
+// the grain station is a Virgin Lands sovkhoz estate in its own construction (maps/regional/tselina.ts) — the
+// slip-formed concrete elevator by the siding, the conveyor gallery, the MTS's garages, sheds and repair shop, the grain
+// stores, the settlers' saman and silicate-brick houses with their fenced kitchen gardens, the club, the Rozhnovsky
+// water tower, the boiler stack, the fuel store and the brigade wagons — every building where it stood. The steppe
+// around it is ploughed in Barayev's strips of wheat, stubble and black fallow (landUse.ts PROFILES.steppe), with stone
+// idols on the kurgans, a wind pump at the kolkhoz well, straw ricks on the station's fields and the 110 kV line that
+// brought the elevator its power.
 
 import { gully } from './geology.ts';
 
@@ -43,11 +52,14 @@ const sor = (flat: number, dig: number, ...stations: readonly (readonly [number,
 // field tracks and dead stretches, and a run may stand a few metres off its neighbour's line.
 type BeltRun = readonly [number, number, 'poplar' | 'oak' | 'pine' | null, number, number, number];
 function shelterbelt(x0: number, z0: number, x1: number, z1: number, runs: readonly BeltRun[]) {
-  const len = Math.hypot(x1 - x0, z1 - z0), nx = -(z1 - z0) / len, nz = (x1 - x0) / len;
-  return runs.map(([t0, t1, species, gap, skip, lateral]) => ({
-    x0: Math.round(x0 + (x1 - x0) * t0 + nx * lateral), z0: Math.round(z0 + (z1 - z0) * t0 + nz * lateral),
-    x1: Math.round(x0 + (x1 - x0) * t1 + nx * lateral), z1: Math.round(z0 + (z1 - z0) * t1 + nz * lateral),
-    gap, jitter: 4.5, skip, ...(species ? { species } : {}),
+  // 2026-10-05 (the map-revival lane; gauntlet wave 106: "a savanna of evenly scattered orange trees" — make the belts
+  // "long straight poplar and elm lines"): the runs keep their ages, spacings and losses but stand on the belt's one line
+  // (no lateral step between runs), a tree a metre either side of it
+  // (a run's authored lateral step, the tuple's last member, is no longer laid)
+  return runs.map(([t0, t1, species, gap, skip]) => ({
+    x0: Math.round(x0 + (x1 - x0) * t0), z0: Math.round(z0 + (z1 - z0) * t0),
+    x1: Math.round(x0 + (x1 - x0) * t1), z1: Math.round(z0 + (z1 - z0) * t1),
+    gap, jitter: 2.0, skip, ...(species ? { species } : {}),
   }));
 }
 
@@ -244,8 +256,13 @@ export default {
     clusterMix: [['poplar', 0.50], ['oak', 0.35], ['pine', 0.15]],
     loneMix: [['poplar', 0.54], ['oak', 0.34], ['pine', 0.12]],
     rimMix: [['poplar', 0.40], ['oak', 0.35], ['pine', 0.25]],
+    // (2026-10-05, the map-revival lane: thinning the loose trees to 10 and the groves to 3 for wave 106's "savanna of
+    // evenly scattered orange trees" took the cover the bots fight from — the pacing median fell to 172 s, under the
+    // band; the field-interior rule for loose trees is the trees lane's, the counts stay)
     clusterCount: 5,   // the plain is the point — groves are rare landmarks
-    loneCount: 24,
+    // (2026-10-07, gauntlet wave 204: "scattered lone trees make the steppe read as savanna") the loose trees into
+    // shelterbelts: eight left by the yards and the balkas, the rest planted as three field-protective belts below
+    loneCount: 8,
     rimCount: 34,
     grassDensity: 1.1,
     bushCount: 0.72,
@@ -270,6 +287,16 @@ export default {
       ...shelterbelt(300, -470, 266, -240, [[0, 0.55, 'poplar', 9, 0.2, 0], [0.62, 1, null, 12, 0.3, -3]]),  // east track approach
       ...shelterbelt(-370, -86, -250, -80, [[0, 0.45, 'oak', 8, 0.25, 0], [0.55, 1, null, 10, 0.3, 2]]),     // kolkhoz windbreak
       ...shelterbelt(-440, 386, -300, 382, [[0, 0.6, 'oak', 10, 0.28, 0], [0.7, 1, null, 12, 0.35, -2]]),    // plateau field boundary
+      // 2026-10-05 (the map-revival lane): Barayev's field-protective belts across the strips' long lines, poplar runs
+      // with oak (the elm's stand-in) and a gap where a field track crosses
+      ...shelterbelt(140, 20, 172, 300, [[0, 0.46, 'poplar', 8, 0.12, 0], [0.52, 1, 'oak', 9, 0.15, 0]]),   // station fields, south
+      ...shelterbelt(-330, 60, -298, 300, [[0, 0.5, 'oak', 9, 0.15, 0], [0.56, 1, 'poplar', 8, 0.12, 0]]),  // kolkhoz fields, south
+      ...shelterbelt(380, 30, 412, 300, [[0, 0.44, 'poplar', 8, 0.12, 0], [0.5, 1, 'poplar', 9, 0.14, 0]]), // east fields
+      // (2026-10-07, wave 204) the loose trees' cover as three more field-protective belts across the open middle, on the
+      // strips' long lines like Barayev's, with a gap where a field track crosses
+      ...shelterbelt(18, -80, 42, 130, [[0, 0.48, 'poplar', 9, 0.14, 0], [0.55, 1, 'oak', 10, 0.18, 0]]),    // the middle fields
+      ...shelterbelt(-262, -60, -244, 140, [[0, 0.5, 'oak', 9, 0.16, 0], [0.57, 1, 'poplar', 9, 0.14, 0]]),  // west of the farm track
+      ...shelterbelt(318, -10, 340, 190, [[0, 0.45, 'poplar', 9, 0.14, 0], [0.52, 1, 'poplar', 8, 0.14, 0]]), // east of the station road
     ],
     grassTexTone: (h: number, s: number, l: number) => [0.118, clamp01(s * 0.75 + 0.05), clamp01(l * 1.05 + 0.07)],
     tuftTone: (h: number, s: number, l: number) => [0.122, 0.30, clamp01(l * 0.85 + 0.14)],
@@ -288,6 +315,11 @@ export default {
   },
 
   props: {
+    // the map-revival lane (2026-10-05): the Virgin Lands kit (maps/regional/tselina.ts) builds the station's plan as the
+    // sovkhoz's own: the widest warehouse lot is the grain elevator, the gantry the conveyor gallery to the wagon bin, the
+    // depot the MTS garage, the sheds its implement sheds, the corner shop the club, the farmhouse a two-family house, the
+    // cottages settlers' houses, the container rows the fuel store or the brigade wagons, the barn a sheep barn
+    architecture: 'tselina',
     // The landmarks lane (2026-10-06; src/world/landmarks/): the grain station's concrete elevator — the Virgin Lands'
     // standard battery of silos with its work tower — north of the siding across the track from the long grain store,
     // the buffer stop at its west end; and the collective farm's entrance arch over the station road where it reaches
@@ -307,10 +339,13 @@ export default {
     // The grain station (round 48): the elevator's head tower, long grain
     // stores, the platform hall, the loading gantry, freight ranks and the
     // railway workers' houses along the station road and the east track.
+    // (2026-10-07, gauntlet wave 204: "shipping containers" in a 1950s sovkhoz) no container rows: an implement shed and
+    // a store in their places
     plan: ['watertower', 'warehouse', 'depot', 'granary', 'gantry', 'warehouse', 'cornershop',
-      'shed', 'containerRow', 'farmhouse', 'stack', 'granary', 'cottage', 'warehouse', 'shed',
-      'cottage', 'ruin', 'barn', 'containerRow', 'cottage'],
-    destructibleBuildings: ['longhouse', 'deserttent', 'motorpool', 'quonsethut'],
+      'shed', 'shed', 'farmhouse', 'stack', 'granary', 'cottage', 'warehouse', 'shed',
+      'cottage', 'ruin', 'barn', 'granary', 'cottage'],
+    // (wave 204: "a patio awning") no desert tents or Quonset huts: the field brigades' huts and lean-tos
+    destructibleBuildings: ['longhouse', 'motorpool', 'fieldhut', 'leanto'],
     // rail-kit stores are wide: the same lateral step and ground-fit tolerance
     // as Cinder Junction
     sideSkip: 0.15, spacingPad: 7, buildingLat: [12, 5], maxSpread: 2.4,
@@ -320,14 +355,15 @@ export default {
         structure: 'longhouse', redoubt: true, outcrop: false, wreck: true, wreckOffsetX: -18 },
       // the caravanserai ruin on its rise: broken fort walls, tumbled stone, a herders' camp
       { id: 'tarkhan-caravanserai-ruin', role: 'scout', x: 70, z: 142, yawDeg: 12,
-        structure: 'deserttent', outcrop: { count: 7, radius: 12, scaleMax: 3.0 } },
+        structure: 'leanto', outcrop: { count: 7, radius: 12, scaleMax: 3.0 } },
       // the station's machine yard under the elevator, east lane
       { id: 'elevator-machine-yard', role: 'support', x: 330, z: -160, yawDeg: 0,
         structure: 'motorpool', redoubt: true, outcrop: false, wreck: true, wreckOffsetZ: 16 },
     ],
     tones: {
       plaster: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.4), clamp01(l * 1.08 + 0.06)], // sun-baked lime wash
-      roof: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.7), clamp01(l * 0.95)],
+      // (2026-10-07, wave 204: "terracotta roofs") corrugated asbestos-cement, a pale cool grey (the kit's own sheet)
+      roof: (h: number, s: number, l: number) => [0.1, clamp01(s * 0.1), clamp01(l * 0.9 + 0.1)],
       stone: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.45), clamp01(l * 1.0)],
       wood: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.85), clamp01(l * 1.0)],
       straw: (h: number, s: number, l: number) => [0.11, clamp01(s * 0.9), clamp01(l * 1.05 + 0.05)],
@@ -350,7 +386,9 @@ export default {
     ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     // the steppe's dressing IS hay + stone: bale silhouettes on every fold
-    haystacks: 44, rocks: 230, outcrops: 34, craters: 42, rubblePiles: 0,
+    // (2026-10-05, the map-revival lane; gauntlet wave 106: "a bare, textureless dark cone … reads as a leftover debug
+    // marker"): no field cones — the Virgin Lands stack the combine's straw in long ricks (scenery below)
+    haystacks: 0, rocks: 230, outcrops: 34, craters: 42, rubblePiles: 0,
     // Legacy-map quality backport: modern hulks scattered on the open
     // plain (baked roster tanks, paired duel beats), tank-trap lines
     // the map-vehicles lane (2026-10-06, the period ruling): the Virgin Lands in the 1950s: the T-54 (its Type 59
@@ -361,17 +399,74 @@ export default {
     cropFields: 5,
     // world-dressing r1: open-plain hay economy — heavy bale/stook scatter,
     // stone-post rail fences, troughs at the farmsteads
-    wallStyle: 'fieldstone',
+    // (2026-10-07, wave 204: "dry-stone walls") the corrals, the yard walls and the field boundaries in saman (adobe), as
+    // the Virgin Lands built them
+    wallStyle: 'adobe',
+    // (2026-10-07, the cost trim; the coordinator's ruling) the mud walls' apron at the mobile tier's density on every
+    // tier (fieldWallDressing.ts adobeApronCoarse): Tarkhan runs some 785 m of them, and their dressing was one map-wide
+    // shadow caster of 125.7k triangles
+    adobeApronCoarse: true,
     inhabit: {
-      stalls: 1, benches: 1, coreClutter: 6,
-      bales: 16, stooks: 10,
+      // (wave 204: "a patio awning") no market stalls
+      stalls: 0, benches: 1, coreClutter: 6,
+      // (no stooks: sheaves stood in shocks before the combines; the sovkhoz's straw is ricked)
+      bales: 16, stooks: 0,
       troughs: 1, churns: 1, handcarts: 1, carts: 2,
       roadFence: 'fencerail', yardFence: 'fencewattle',
       // DESTRUCTIBLES r1: steppe columns — trucks + field cars on the road
       // net, fuel dumps, bivouac clusters in the balkas
-      trucks: 3, jeeps: 2, drumClusters: 3, camps: 3,
-      modernClutter: { barrier: 4, roadsign: 5, cone: 7, transformer: 3, cablespool: 3 },
+      // (2026-10-07, wave 204: "present-day Western dressing in a 1950s sovkhoz") no tarp camps; the authored period mix
+      // of Glacier Pass and Nordhavn (mr2's c0c8ef573): the electrification's cable reels and the direction signs, no
+      // traffic cones, Jersey barriers or pad transformers (the "bright green dumpster")
+      trucks: 3, jeeps: 2, drumClusters: 3, camps: 0,
+      modernClutter: { roadsign: 8, cablespool: 10 },
     },
+  },
+
+  // the map-revival lane (2026-10-05; the scenery lane's generators, world/scenery.ts): the steppe's marks — a stone idol
+  // (balbal) on the great kurgan and the western one, the wind pump that waters the kolkhoz herds at its well, the straw
+  // ricks (skirdy) on the fields (maps/sceneryKit.ts strawrick, where the field cones stood), and the 110 kV line up from
+  // the south that brought the elevator its power
+  scenery: {
+    landmarks: [
+      { kind: 'menhir', x: -150, z: 227, scale: 0.7, height: 2.4, name: 'the stone idol on the great kurgan' },
+      { kind: 'menhir', x: -400, z: 236, scale: 0.6, height: 2.1, name: 'the stone idol on the western kurgan' },
+      { kind: 'windpump', x: -276, z: -170, yawDeg: 20, name: 'the wind pump at the kolkhoz well' },
+      // the straw ricks (skirdy) on the strips, their long axes down the fields (the strips run ~7° off north)
+      { kind: 'strawrick', x: 58, z: -300, yawDeg: 7, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 82, z: -314, yawDeg: 4, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 104, z: -298, yawDeg: 9, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -298.3, z: -161.8, yawDeg: 6, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -336.1, z: -107.5, yawDeg: 8, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -88.7, z: -272.9, yawDeg: 5, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 186.4, z: -78.3, yawDeg: 7, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 302.8, z: 38.6, yawDeg: 3, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -229.2, z: 72.6, yawDeg: 9, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 169.6, z: 93.4, yawDeg: 6, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -156.1, z: 88.2, yawDeg: 4, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 158.9, z: 251.2, yawDeg: 8, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -286.3, z: 289.3, yawDeg: 5, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -27.8, z: 287.2, yawDeg: 7, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 219.8, z: 205.3, yawDeg: 6, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -159.1, z: -376.2, yawDeg: 9, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 13.8, z: 47.9, yawDeg: 6, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 11.2, z: 232.3, yawDeg: 8, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -288.7, z: 178.4, yawDeg: 4, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 411.6, z: 223.2, yawDeg: 7, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -201.9, z: -8.3, yawDeg: 9, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 280.5, z: 20.2, yawDeg: 5, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -40.8, z: 81.9, yawDeg: 6, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -153.5, z: -69.1, yawDeg: 8, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -84.9, z: 128.2, yawDeg: 3, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -59.7, z: -163.3, yawDeg: 7, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 76.3, z: -388.5, yawDeg: 5, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 201.7, z: 287.7, yawDeg: 9, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -208.9, z: -59.2, yawDeg: 6, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -406.1, z: -92.8, yawDeg: 4, name: 'a straw rick on the fields' },
+    ],
+    // (up from the south edge to the station's substation, over open fields: a line over a belt's or a lone tree's
+    // crown stands its towers at 39-42 m)
+    powerLines: [{ towers: [[90, -430], [140, -362], [196, -296]], heightM: 30, name: 'the 110 kV line to the grain station' }],
   },
 
   horizon: {

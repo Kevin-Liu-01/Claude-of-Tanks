@@ -22,7 +22,7 @@
 
 export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'paddy' | 'terrace' | 'karst'
   | 'brownfield' | 'coalfield' | 'cityfloor' | 'citycourt' | 'cityslope' | 'cemetery' | 'park'
-  | 'worksfloor' | 'furnace' | 'sidings' | 'court' | 'cinder' | 'secano';
+  | 'worksfloor' | 'furnace' | 'sidings' | 'court' | 'cinder' | 'secano' | 'tselina';
 
 /** How a region's fields are bounded (the material's uLandE.z). */
 export type LandBoundary = 'margin' | 'ditch' | 'bund' | 'wall';
@@ -231,6 +231,9 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   // and cut, the stubble, the fallow turned, the barbecho grazed (cured and patchy in summer, not a green pasture: wave
   // 108b's "hard straight seam between golden field and green pasture"), the plateau's vines, a field of sunflower
   secano: [[1, 0.28], [2, 0.16], [5, 0.22], [4, 0.14], [17, 0.10], [12, 0.06], [6, 0.04]],
+  // the Virgin Lands' grain steppe (the Sary-Arka, Akmola and Kustanai): spring wheat and its stubble in long strips
+  // against the black fallow (Barayev's strips), a little barley, mown hay and the unploughed feather-grass remnant
+  tselina: [[1, 0.30], [5, 0.32], [4, 0.18], [2, 0.08], [13, 0.06], [17, 0.06]],
 });
 
 /** Each region's field boundary. */
@@ -239,7 +242,7 @@ const BOUNDARIES: Readonly<Record<LandRegion, LandBoundary>> = Object.freeze({
   polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin', coalfield: 'margin',
   cityfloor: 'margin', citycourt: 'margin', cityslope: 'margin', cemetery: 'margin', park: 'margin',
   worksfloor: 'margin', furnace: 'margin', sidings: 'margin', court: 'margin', cinder: 'margin',
-  secano: 'margin',
+  secano: 'margin', tselina: 'margin',
 });
 
 /** The rotation's cumulative shares at slots 0..5 (slot 6 takes the rest), normalised. */
@@ -378,6 +381,15 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   airfield: {
     strength: 0.85, heading: 0.08, blockU: 120, blockV: 64, maxSplit: 3, marginM: 1.8, trackShare: 0.35, hedgeShare: 0.12,
     warpM: 14, region: 'upland', salt: 211,
+  },
+  // Tarkhan Steppe (the map-revival lane, 2026-10-05, through the coordinator: the Sary-Arka grain steppe of the Virgin
+  // Lands): Barayev's strip fields — long strips of wheat, stubble and black fallow about 100 m wide, laid across the
+  // prevailing south-westerly along the steppe highway's bearing (~84°); dirt tracks on some of the long lines, a
+  // shelterbelt on a few strip ends. (Gauntlet wave 106: "hard-edged unblended fallow-field colour masks in the aerial
+  // views" — the strips wander more over their length, the crop's colour a little softer, fewer fallow strips.)
+  steppe: {
+    strength: 0.64, heading: 1.457, blockU: 620, blockV: 104, maxSplit: 2, marginM: 1.8, trackShare: 0.35, hedgeShare: 0.18,
+    warpM: 12, region: 'tselina', salt: 103,
   },
   // 2026-10-05, Ruinspires (the cities lane; Sarajevo under siege): the city's own ground inside the village — strips
   // along the valley (the contour on both flanks), every zone mirrored through the Square of the Republic as the map is:

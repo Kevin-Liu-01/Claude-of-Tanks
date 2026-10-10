@@ -585,6 +585,9 @@ interface PropsSettings {
   rockSoilTone?: ToneFunction | null;
   inhabit?: InhabitSettings;
   wallStyle?: string;
+  /** The map-revival lane (2026-10-07): the mud walls' apron at the mobile tier's density on every tier
+   * (fieldWallDressing.ts adobeApronCoarse); unset, as before. */
+  adobeApronCoarse?: boolean;
   sandbagLines?: number;
   /** Field works between the spawns (breastwork + wire + pillbox); every map, default 3 (2026-09-17). */
   fieldWorks?: number;
@@ -5850,6 +5853,7 @@ ${snowCap ? `
   const wallDressing = createWallDressing({
     ground: heightField, snow: snowCap, mobile: mobileProps, adobeBucket: adobeWallBucket, mudUv: ADOBE_UV_PER_M,
     plainV: adobeWallBucket === 'fieldMud' ? FIELD_MUD_PLAIN_V : undefined,
+    adobeApronCoarse: P.adobeApronCoarse === true,
     sand: adobeWallBucket === 'fieldMud' && !!mudEarthOfGround((cfg as { sky?: { lighting?: { groundAlbedoHex?: number } } } | null)?.sky?.lighting?.groundAlbedoHex),
     turf: wallTurfOn ? {
       meshAt: (x, z) => terrainNearMeshHeightAt(nearMeshVertexHeight, x, z), foldAt: turfFoldAt,
@@ -10207,8 +10211,12 @@ ${snowCap ? `
       const all = buckets[key];
       const fine = all.filter((g) => culled(g, key));
       const receiveOnly = RECEIVE_ONLY_DETAIL.has(key);
-      const cast = receiveOnly ? all.filter((g) => !castsNoShadow(g)) : all.filter((g) => !culled(g, key));
-      const coarse = receiveOnly ? all.filter((g) => castsNoShadow(g) && !culled(g, key)) : [];
+      // (2026-10-10, the map-revival lane, the Tarkhan landing's trim) a piece tagged userData.receiveOnly (a mud wall's
+      // apron on a map that opts in, fieldWallDressing.ts adobeApronCoarse) joins any bucket's non-casting mesh; nothing
+      // else is tagged, so every other bucket merges as before
+      const groundOnly = (g: THREE.BufferGeometry) => g.userData.receiveOnly === true;
+      const cast = receiveOnly ? all.filter((g) => !castsNoShadow(g)) : all.filter((g) => !culled(g, key) && !groundOnly(g));
+      const coarse = receiveOnly ? all.filter((g) => castsNoShadow(g) && !culled(g, key)) : all.filter(groundOnly);
       const meshes: Array<[THREE.BufferGeometry[], boolean, string]> = [[cast, true, '']];
       if (!fine.length) meshes.push([coarse, false, '-detail']);
       for (const [list, casts, suffix] of meshes) {

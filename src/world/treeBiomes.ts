@@ -171,6 +171,9 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // dusty greens, the Fremont cottonwoods and the town's planted poplars staying poplars, the scrub between them the
   // broom form's switches (blackbrush, Mormon tea)
   skybridge: B('Glen Canyon and Page, Arizona', { cedar: { form: 'juniper' }, pine: { form: 'pinyon' } }, 'broom', SONORAN_FOLIAGE),
+  // the Sary-Arka grain steppe of the Virgin Lands (the map-revival lane, 2026-10-05): the birch groves (kolki) of the
+  // northern Kazakh steppe where the map names a pine, in leaf; the poplar and oak slots stay its shelterbelts
+  steppe: B('the Sary-Arka grain steppe, Akmola oblast', { pine: { form: 'birch', leaves: true } }),
 });
 
 /** The form a map's shrubs grow as (their own atlas), or none (the bush slot's). */
