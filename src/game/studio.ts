@@ -3089,6 +3089,25 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let crushStoryboard: Storyboard | null = null;
   let crushWorld: WorldRuntime | null = null;
   const crushSpecs: unknown[] = [];
+  /** (dcore 2026-10-10) the hulls on their tracks, pressing the props they meet on every frame of the timeline (the world's
+   *  pressHull: a map vehicle, a hut, a stall or a tent gives where a hull's box meets it), with their contact rects. */
+  const pressHulls: Array<{ hull: StudioCrushHull; centerX: number; centerZ: number }> = [];
+  const _pressPose = { x: 0, z: 0, yawRad: 0 };
+  /** The frame grid the presses run on (ms): fixed, so a re-film presses at the same instants. */
+  const PRESS_STEP_MS = 1000 / 60;
+  function pressAt(world: WorldRuntime, tMs: number): void {
+    for (const p of pressHulls) {
+      if (!p.hull.poseAt(tMs, _pressPose)) continue;
+      const c = Math.cos(_pressPose.yawRad), sn = Math.sin(_pressPose.yawRad);
+      world.pressHull?.(_pressPose.x + p.centerX * c + p.centerZ * sn, _pressPose.z + p.centerZ * c - p.centerX * sn,
+        _pressPose.yawRad, p.hull.halfLength, p.hull.halfWidth);
+    }
+  }
+  /** Every press on the grid in (fromMs, toMs]. */
+  function pressBetween(world: WorldRuntime, fromMs: number, toMs: number): void {
+    if (!pressHulls.length || !world.pressHull) return;
+    for (let k = Math.floor(fromMs / PRESS_STEP_MS) + 1; k * PRESS_STEP_MS <= toMs + 1e-6; k++) pressAt(world, k * PRESS_STEP_MS);
+  }
   const _crushSample: ActorTrackSample = { x: 0, z: 0, facingDeg: 0, turretDeg: 0, gunDeg: 0, keyId: undefined };
   function crushPlanCurrent(world: WorldRuntime | null): boolean {
     if (crushStoryboard !== storyboard || crushWorld !== world) return false;
@@ -3105,6 +3124,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     crushStoryboard = storyboard;
     crushWorld = world;
     crushSpecs.length = 0;
+    pressHulls.length = 0;
+    // the Studio presses with every hull on its tracks: a crush event never sweeps a hull of its own across a prop
+    world?.setCrushSweeps?.(false);
     const hulls: StudioCrushHull[] = [];
     for (const a of actors) {
       const keys = actorTrackFor(a)?.keys;
@@ -3123,9 +3145,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         },
       });
     }
+    for (let i = 0; i < hulls.length; i++) {
+      const rect = tankContactRect(crushSpecs[i] as Parameters<typeof tankContactRect>[0]);
+      pressHulls.push({ hull: hulls[i], centerX: rect.centerX, centerZ: rect.centerZ });
+    }
     crushes.setPlan(world, world && hulls.length
       ? planStudioCrushes(hulls, storyboard.durationMs, world.queryObstacles, world.crushables) : []);
-    if (world) crushes.settleTo(world, clockMs);
+    if (world) { crushes.settleTo(world, clockMs); pressBetween(world, -PRESS_STEP_MS, clockMs); world.advanceDestruction(0); }
   }
   const _crushPos = new THREE.Vector3(), _crushDir = new THREE.Vector3();
   /** A toppled pole's or dressing's burst, as the battle adds it after world.crushProp (crushNearbyProps). */
@@ -3144,6 +3170,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const world = getWorld();
     if (!world) return;
     syncCrushPlan(world);
+    // the hulls press what they meet on every frame first (a crush event then finds its prop already giving)
+    pressBetween(world, fromMs, toMs);
     let cursor = fromMs;
     for (let next = crushes.nextTime(); next <= toMs; next = crushes.nextTime()) {
       if (next > cursor) { world.advanceToppledVegetation?.((next - cursor) / 1000); cursor = next; }
@@ -3153,6 +3181,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
   /** Studio exit: the battlefield's props stand again before it can host anything else, and the plan is forgotten. */
   function releaseCrushes(): void {
+    crushWorld?.setCrushSweeps?.(true);
+    pressHulls.length = 0;
     crushes.restore(crushWorld);
     crushStoryboard = null;
     crushWorld = null;
@@ -3164,6 +3194,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (!world) return;
     syncCrushPlan(world);
     crushes.settleTo(world, timeMs);
+    // the presses up to the seek, replayed on the grid (a reset stood the props up again), and drawn at once
+    pressBetween(world, -PRESS_STEP_MS, timeMs);
+    world.advanceDestruction(0);
   }
 
   function applyStoryboardCamera(timeMs: number): boolean {

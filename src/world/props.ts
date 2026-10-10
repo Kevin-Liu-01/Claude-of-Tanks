@@ -229,6 +229,7 @@ import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
 import { deploymentClearings } from '../sim/matchPlacement.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
 import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.ts';
+import { createPropCrushPresentation } from './propCrushPresentation.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). The exact float/index streams live in a gzip-packed
 // binary archive; createMapAsync starts it while terrain is being constructed.
@@ -782,6 +783,9 @@ interface DestructibleRecord {
   _destructibleIndex?: number;
   /** The parked-vehicle separation found this vehicle no clear seat: out of play (no obstacle, no instance). */
   dropped?: boolean;
+  /** The slot its broken state took in its pool's broken mesh (animateBrokenRecord): a hull pressing the heap later
+   *  draws it from there (propCrushPresentation.ts). */
+  _bi?: number;
 }
 
 interface LooseDestructibleRecord extends DestructibleRecord {
@@ -931,6 +935,15 @@ export interface PropsRuntime {
    */
   advanceDestructibles(deltaSeconds: number): void;
   resetDestructibles(): void;
+  /**
+   * A hull this frame (world centre, yaw, its contact half extents): the props it meets give under it
+   * (propCrushPresentation.ts). Presentation only.
+   */
+  pressHull(x: number, z: number, yaw: number, halfLength: number, halfWidth: number): void;
+  /** Whether a crush this side never pressed sweeps a hull across the prop (the battle) or waits for the presses (the
+   *  Scene Studio, which presses with every hull on its tracks). */
+  setCrushSweeps(on: boolean): void;
+  crushStats(): { copies: number; deforming: number; frozen: number };
   tankWreckSpots: TankWreckSpot[];
   utilityNetwork: UtilityNetwork | null;
   utilityPolePlacements: UtilityPolePlacementReceipt[];
@@ -10674,6 +10687,23 @@ ${snowCap ? `
     }
   }
   indexDestructibleRecords();
+  // (destruction core, 2026-10-10; the owner: "just let physics work"; waves 350/352) the map vehicles, the small buildings,
+  // the stalls and the tents give under a hull where it meets them, keep their paint and every crumple it gives them
+  // (propCrushPresentation.ts over propCrush.ts): presentation only, the simulation's crush event ghosts the obstacle
+  const crushPress = createPropCrushPresentation({
+    group,
+    records: destructibles,
+    poolOf: (kind) => dPools.get(kind),
+    near(minX, minZ, maxX, maxZ, out) {
+      out.length = 0;
+      for (const cell of cellsAround(minX, minZ, maxX, maxZ, 0)) for (const i of cell) out.push(i);
+      return out;
+    },
+    eligible: (kind) => {
+      const meta = dPools.get(kind)?.meta;
+      return !!meta && meta.cls === 'break' && (meta.mat === 'vehicle' || !!DESTRUCTIBLE_BUILDING_TYPES[kind] || kind === 'stall' || kind === 'tent');
+    },
+  });
 
   // Loose bodies can cross the shell hash's 8 m cells. Re-key only on a cell
   // boundary crossing (rare); the steady-state fixed step remains allocation
@@ -10849,6 +10879,7 @@ ${snowCap ? `
     if (!pool.imB) return;
     const bi = pool.nBroken++;
     if (bi >= pool.mats4.length) return;
+    rec._bi = bi;
     pool.imB.setMatrixAt(bi, pool.mats4[rec.slot]);
     if (pool.meta.instanceTintStrength) {
       writeStructureInstanceTint(
@@ -10894,6 +10925,7 @@ ${snowCap ? `
     if (rec.loopRef) rec.loopRef.toppled = true; // stop the main.ts loop
     const l = Math.hypot(dx, dz) || 1;
     if (rec.clutter) rec.clutter.setCrushed(true);
+    else if (pool && crushPress.takes(idx, cause, dx, dz, settled)) { /* drawn by the press: its paint and its crumple */ }
     else if (pool) animateBrokenRecord(rec, pool, dx, dz, speed, l, settled);
     // Late joiners restore persistent destruction without replaying its blast.
     if (settled) return true;
@@ -11302,6 +11334,7 @@ ${snowCap ? `
       shellImpact(bl.x, bl.y, bl.z, { r: 5.4, he: true, cause: 'blast' });
     }
     updateLooseProps(dt);
+    crushPress.step(dt);
     if (!crushAnims.length) return false; // zero per-frame cost when idle
     for (let k = crushAnims.length - 1; k >= 0; k--) {
       const a = crushAnims[k];
@@ -11410,6 +11443,7 @@ ${snowCap ? `
     updatePoleLod(lastPoleCamera, true);
   }
   function resetDestructibles(): void {
+    crushPress.reset();
     crushAnims.length = 0;
     pendingBlasts.length = 0;
     activeLoose.length = 0;
@@ -11440,6 +11474,9 @@ ${snowCap ? `
   nearMeshVertexHeights = null; // (a query after the build asks the field)
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible, structureDamage, structureSpans, structureMaterials,
     destructibles, looseRecords, updateProps, advanceDestructibles, resetDestructibles, tankWreckSpots, utilityNetwork,
+    pressHull: (x: number, z: number, yaw: number, halfLength: number, halfWidth: number) => crushPress.pressHull(x, z, yaw, halfLength, halfWidth),
+    setCrushSweeps: (on: boolean) => crushPress.setSweeps(on),
+    crushStats: () => crushPress.stats(),
     utilityPolePlacements, decorationGroundingReceipts,
     sourcedTexturesReady, registerDestructibles, waterContacts,
     getLoosePropStats: () => ({ total: looseRecords.length, active: activeLoose.length }),
