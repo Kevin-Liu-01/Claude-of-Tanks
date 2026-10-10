@@ -1342,7 +1342,9 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
       }
       const timber = slot.material === 'timber' || slot.material === 'plank';
       const flat = slot.material === 'tile' || slot.material === 'slate' || slot.material === 'plaster' || slot.material === 'infill' || slot.material === 'metal';
-      const sx = timber ? 0.5 + rng() * 1.1 : flat ? 0.12 + rng() * 0.22 : 0.12 + rng() * 0.26;
+      // (2026-10-10, Steinburg after 208: "spiky timber debris") a timber in the pile is broken short: 0.7-1.6 m, where it
+      // lay up to 3.2 m and stuck out over the heap's edge from its crown
+      const sx = timber ? 0.35 + rng() * 0.45 : flat ? 0.12 + rng() * 0.22 : 0.12 + rng() * 0.26;
       const sy = timber ? 0.07 + rng() * 0.04 : flat ? 0.015 + rng() * 0.03 : 0.08 + rng() * 0.18;
       const sz = timber ? 0.07 + rng() * 0.04 : flat ? 0.1 + rng() * 0.2 : 0.1 + rng() * 0.22;
       const y = heapTop(x, z) + sy * 0.35;
@@ -1361,10 +1363,20 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
       const u = (rng() - 0.5) * f.width * 0.7, inward = Math.min(across - 0.4, 0.7 + rng() * 2.2);
       if (inward < 0.4) continue;
       const x = f.origin[0] + f.u[0] * u - f.out[0] * inward, z = f.origin[2] + f.u[2] * u - f.out[2] * inward;
-      const hl = 0.55 + rng() * 0.6, hh = 0.4 + rng() * 0.45, ht = Math.max(0.09, Math.min(0.22, skin.thicknessM / 2 + 0.05));
-      const tilt = (0.35 + rng() * 0.6) * (rng() < 0.5 ? 1 : -1);
-      heapChunk(mesh, { ...skin, tint: dusted(skin.tint, 0.18) }, x, heapTop(x, z) + hh * Math.abs(Math.sin(tilt)) * 0.45, z,
-        hl, ht, hh, yaw + (rng() - 0.5) * 0.5, tilt, rng);
+      const ht = Math.max(0.09, Math.min(0.22, skin.thicknessM / 2 + 0.05));
+      // (2026-10-10, the release agent on Steinburg after 208: "large flat tan wall and gable panels ... read rough") a
+      // wall that came down does not lie as one clean slab: it breaks where it hit, three or four pieces of it at their
+      // own angles, half sunk in the heap, grey with its dust
+      const shards = 3 + (rng() < 0.5 ? 1 : 0);
+      const ya = yaw + (rng() - 0.5) * 0.5;
+      for (let j = 0; j < shards; j++) {
+        const off = (j - (shards - 1) / 2) * (0.55 + rng() * 0.35);
+        const sx = x + Math.cos(ya) * off + (rng() - 0.5) * 0.4, sz = z - Math.sin(ya) * off + (rng() - 0.5) * 0.4;
+        const hl = 0.22 + rng() * 0.2, hh = 0.18 + rng() * 0.18;
+        const tilt = (0.3 + rng() * 0.7) * (rng() < 0.5 ? 1 : -1);
+        heapChunk(mesh, { ...skin, tint: dusted(skin.tint, 0.38) }, sx, heapTop(sx, sz) + hh * Math.abs(Math.sin(tilt)) * 0.2, sz,
+          hl, ht, hh, ya + (rng() - 0.5) * 0.9, tilt, rng);
+      }
     }
   }
   // (s1c review: "the farmhouse's huge roof had almost vanished from its pile") the roof comes down last, onto its walls:
@@ -1405,7 +1417,9 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
   if (frame && (frame.material === 'timber' || frame.material === 'metal') && mesh.begin(frame.bucket, 'rubble')) {
     const n = Math.min(9, 3 + Math.round((anatomy.w + anatomy.d) / 4));
     for (let k = 0; k < n; k++) {
-      const len = 2.2 + rng() * Math.min(3.5, Math.max(anatomy.w, anatomy.d) * 0.45), ang = rng() * Math.PI;
+      // (2026-10-10, Steinburg after 208: "spiky timber debris read rough") rafters broke as the roof came down: shorter
+      // lengths, few poking up, and those only a hand to a knee over the heap
+      const len = 1.4 + rng() * Math.min(1.8, Math.max(anatomy.w, anatomy.d) * 0.3), ang = rng() * Math.PI;
       const mx = cx + (rng() - 0.5) * anatomy.w * 0.6, mz = cz + (rng() - 0.5) * anatomy.d * 0.6;
       // (both ends on the heap: a timber shortened to the footprint and a hand round it)
       const ca = Math.cos(ang), sa = Math.sin(ang), hx = anatomy.w / 2 + 0.5, hz = anatomy.d / 2 + 0.5;
@@ -1413,10 +1427,10 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
         Math.abs(sa) > 1e-3 ? (hz - Math.abs(mz - cz)) / Math.abs(sa) : Infinity);
       if (reachHalf < 0.8) continue;
       const dx = ca * reachHalf, dz = sa * reachHalf;
-      // (s1c review) a third of them poke up out of the heap: one end buried, the other 1-1.6 m over it
-      const poke = k % 3 === 2;
-      const a: Vec3 = [mx - dx, heapTop(mx - dx, mz - dz) + (poke ? -0.25 : 0.06), mz - dz];
-      const b: Vec3 = [mx + dx, heapTop(mx + dx, mz + dz) + (poke ? 1 + rng() * 0.6 : 0.25 + rng() * 0.55), mz + dz];
+      // (s1c review) a few poke up out of the heap: one end buried, the other 0.35-0.7 m over it (it was 1-1.6 m, a third)
+      const poke = k % 5 === 4;
+      const a: Vec3 = [mx - dx, heapTop(mx - dx, mz - dz) + (poke ? -0.2 : 0.04), mz - dz];
+      const b: Vec3 = [mx + dx, heapTop(mx + dx, mz + dz) + (poke ? 0.35 + rng() * 0.35 : 0.12 + rng() * 0.3), mz + dz];
       const shade = 0.8 + rng() * 0.25;
       beamBetween(mesh, a, b, 0.12 + rng() * 0.06, 0.14 + rng() * 0.06, [0, 1, 0], [frame.tint[0] * shade, frame.tint[1] * shade, frame.tint[2] * shade * 0.95]);
     }
