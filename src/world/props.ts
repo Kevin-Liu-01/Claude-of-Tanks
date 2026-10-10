@@ -45,6 +45,7 @@ function richCount(n: number | undefined, fallback = 0): number { return Math.ro
 import { markShadowOnly, setShadowCasterCascades, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
+import { buildGroundMarkingGeometry, pavedGround, wornPaintTexture, type GroundMarkingsConfig } from './groundMarkings.ts';
 import {
   applySourcedBuildings, applySourcedRock, sourcedStoneIsBrick, type BuildingPaletteId, type SourcedTerrainSettings,
   type SourcedTextureApplicationOptions,
@@ -600,6 +601,9 @@ interface PropsSettings {
   rockTalusDeg?: number | null;
   extraKits?: readonly string[] | null;
   riverLandings?: readonly RiverLandingAnchor[];
+  /** The map-revival lane (2026-10-05, Kestrel's apron markings): paint on the paved ground — stripes and numbers
+   * (groundMarkings.ts), drawn as one receive-only decal mesh a few centimetres over the terrain mesh. Default none. */
+  groundMarkings?: GroundMarkingsConfig;
   /** The landmarks lane (2026-10-05): the map's set pieces — bridges, monuments, squares, gates, towers and civic
    * buildings (src/world/landmarks/) — placed once the settlement stands, before every scatter pass. */
   landmarks?: readonly LandmarkPlacement[];
@@ -9348,6 +9352,33 @@ ${snowCap ? `
     placeTrackTears(corridors);
   }
   yield* placeGroundBlendDecals();
+  // The map-revival lane (2026-10-05): paint on the paved ground (P.groundMarkings; groundMarkings.ts) — one merged,
+  // receive-only decal mesh: no shadow cast, the cascades' light on it like the ground's own decals, seated on the
+  // terrain mesh as drawn (the scenery lane's meshHeightAt law) 3.5 cm up, over every other ground decal.
+  function placeGroundMarkings(markings: GroundMarkingsConfig): void {
+    const groundAt = (px: number, pz: number): number => heightField.getHeightAt(px, pz);
+    // paint only on ground the material draws as paving (groundMarkings.ts pavedGround: an apron's rect, a road's line)
+    const paved = pavedGround((cfg as { terrain?: { hardstands?: SceneryHardstand[] } } | null)?.terrain?.hardstands ?? [], L.roads);
+    const built = buildGroundMarkingGeometry(markings, (px, pz) => terrainNearMeshHeightAt(groundAt, px, pz), 0.035, paved);
+    if (!built) return;
+    const mat = new THREE.MeshStandardMaterial({
+      map: wornPaintTexture(aniso), vertexColors: true, transparent: true, depthWrite: false,
+      roughness: 0.92, metalness: 0,
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    });
+    engineCtx.setupShadowMaterial(mat);
+    const mesh = new THREE.Mesh(built.geometry, mat);
+    mesh.name = 'ground-markings';
+    mesh.receiveShadow = true;
+    mesh.castShadow = false;
+    mesh.matrixAutoUpdate = false;
+    mesh.renderOrder = 2;
+    mesh.userData.terrainDecal = true;
+    mesh.userData.terrainDecalKind = 'paint';
+    mesh.userData.decalParts = built.pieces;
+    group.add(mesh);
+  }
+  if (P.groundMarkings) placeGroundMarkings(P.groundMarkings);
   yield { fine: true, stage: 'ground-decals' };
 
   // --- sourced-model InstancedMeshes (one per model, shared baked material) ---

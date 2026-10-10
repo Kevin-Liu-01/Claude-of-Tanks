@@ -159,11 +159,11 @@
       "concealers": 1001
     },
     "airfield": {
-      "bytes": 964712,
-      "sha256": "d80a819b5ec9710e852b90a684ff08211d6b7e61a1ec9c5d3e07076e1027753c",
-      "obstacles": 2971,
-      "colliders": 3016,
-      "concealers": 2435
+      "bytes": 1471412,
+      "sha256": "cf7c5294f822a739195c7c5f66a7fa088a8b0ab56013cdd8dd88f5f753c7840b",
+      "obstacles": 4385,
+      "colliders": 4510,
+      "concealers": 3662
     },
     "oasis": {
       "bytes": 917197,
@@ -393,11 +393,11 @@
         "concealers": 976
       },
       "airfield": {
-        "bytes": 1056342,
-        "sha256": "54a0f62923fe32caa5dd5cf66a7a687c520ab99f1f8b2a41972621ea5bc3cdb1",
-        "obstacles": 3036,
-        "colliders": 3041,
-        "concealers": 2435
+        "bytes": 1523485,
+        "sha256": "792e34e8420dfdc901851d5ed505c12bba7357d21f4dd465cd076a0cf9d671a2",
+        "obstacles": 4427,
+        "colliders": 4524,
+        "concealers": 3662
       },
       "oasis": {
         "bytes": 1107898,

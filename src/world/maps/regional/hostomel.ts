@@ -9,12 +9,16 @@
 import { PartSink, faceBox, facePanel, pick, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
+import { tvAerial } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 /** The sheet steel's liveries: the Antonov hangars' grey-blue and grey-green paint, a pale galvanised grey. */
 const LIVERY: readonly Rgb[] = [0x8f9ca0, 0x84907f, 0xa9ada6, 0x7b8790].map(rgb);
-const DOOR_LIVERY: readonly Rgb[] = [0x6c787c, 0x5f6c63, 0x8b908b, 0x9a8f72].map(rgb);
+// (2026-10-06, gauntlet wave 185: "door leaves read as tan plywood") the tan livery is gone: grey-green steel in its place
+const DOOR_LIVERY: readonly Rgb[] = [0x6c787c, 0x5f6c63, 0x8b908b, 0x737d74].map(rgb);
 const RIB = rgb(0x4e5558), RUST = rgb(0x5e4030), TRUSS = rgb(0x3c4144), MULLION = rgb(0x3a3f42);
+/** The cast concrete's panel joints and the grime at a hangar's foot and on its apron. */
+const JOINT = rgb(0x55574f), GRIME = rgb(0x3a3b36);
 /** Painted steel doors of the stores and the fire station's red appliance doors. */
 const STEEL_DOORS: readonly Rgb[] = [0x5a6a74, 0x6b6f6a, 0x4f5d55].map(rgb);
 const FIRE_RED = rgb(0x9a2e24);
@@ -110,10 +114,12 @@ const cargoHangar = (ctx: RegionalBuildContext): RegionalParts => {
   const livery = pick(rng, LIVERY), doorLivery = pick(rng, DOOR_LIVERY);
   const t = 0.24;
   // the kerb walls the vault springs from, and their buttresses under the ribs
-  for (const [x0, x1] of [[-W / 2, -W / 2 + 0.45], [W / 2 - 0.45, W / 2]]) sink.span('stone', x0, -0.4, zb, x1, hk, zf);
+  // (2026-10-06, gauntlet wave 185: "end walls are a flat block texture") the hangar's concrete is cast and rendered: the
+  // kit's weathered render (its rising damp darkens every foot), panel joints on the door pockets
+  for (const [x0, x1] of [[-W / 2, -W / 2 + 0.45], [W / 2 - 0.45, W / 2]]) sink.span('plaster', x0, -0.4, zb, x1, hk, zf);
   const bay = mobile ? 7.2 : 4.8;
   for (let z = zb + bay / 2; z < zf; z += bay) for (const side of [-1, 1]) {
-    sink.span('stone', side > 0 ? W / 2 : -W / 2 - 0.35, -0.4, z - 0.3, side > 0 ? W / 2 + 0.35 : -W / 2, hk + 0.2, z + 0.3, { decor: true });
+    sink.span('plaster', side > 0 ? W / 2 : -W / 2 - 0.35, -0.4, z - 0.3, side > 0 ? W / 2 + 0.35 : -W / 2, hk + 0.2, z + 0.3, { decor: true });
   }
   // the shell, with the holes the war tore in it (segments [i0, i1) open between za and zb)
   const holes: Array<{ i0: number; i1: number; za: number; zb: number }> = [];
@@ -184,11 +190,13 @@ const cargoHangar = (ctx: RegionalBuildContext): RegionalParts => {
   const back: Face = { origin: [0, 0, zb], u: [-1, 0, 0], out: [0, 0, -1], width: W };
   const arch = arc(v, W / 2, -W / 2, n, t * 0.5);
   wallPolygon(sink, 'structureMetal', back, ccw([[-W / 2, 0], [W / 2, 0], ...arch.map(([x, y]): [number, number] => [x, y])]), 0.3, { colour: livery });
-  sink.span('stone', -W / 2, -0.4, zb, W / 2, 1.0, zb + 0.4);
+  sink.span('plaster', -W / 2, -0.4, zb, W / 2, 1.0, zb + 0.4);
   const clerestory = hk + rise * 0.55;
   for (let u = -W / 2 + 2; u < W / 2 - 2; u += 2.6) {
     if (vaultAt(v, Math.abs(u) + 1.2, t) < clerestory + 1.4) continue;
-    facePanel(sink, 'glass', back, u, clerestory + 0.6, 0.02, 2.2, 1.0, { decor: true });
+    facePanel(sink, 'glass', back, u, clerestory + 0.6, 0.035, 2.2, 1.0, { decor: true });
+    for (const e of [-1, 1]) faceBox(sink, 'structureMetal', back, u + e * 1.145, clerestory + 0.6, 0.05, 0.09, 1.18, 0.1, { colour: MULLION, decor: true });
+    for (const e of [-1, 1]) faceBox(sink, 'structureMetal', back, u, clerestory + 0.6 + e * 0.545, 0.05, 2.2, 0.09, 0.1, { colour: MULLION, decor: true }, 'ends');
   }
   doorUnit(sink, back, W * 0.3, 0, 1.1, 2.3, { leaf: pick(rng, STEEL_DOORS), frame: { bucket: 'structureMetal', width: 0.1, out: 0.06, colour: RIB }, steps: null, leafKind: 'plank' }, 0);
   // the apron gable: door pockets, the girder over the opening, the sheet gable above it
@@ -200,14 +208,29 @@ const cargoHangar = (ctx: RegionalBuildContext): RegionalParts => {
   for (const side of [-1, 1]) {
     const xo = side * W / 2, xi = side * Wd / 2;
     const poly: Array<[number, number]> = [[xo, -0.4], [xi, -0.4], ...archF(xi, xo)];
-    wallPolygon(sink, 'stone', front, ccw(poly), 0.45);
+    wallPolygon(sink, 'plaster', front, ccw(poly), 0.45);
+    if (!mobile) {
+      // the cast panels' joints: verticals every 1.5 m or so across the pocket, horizontals every 3 m up to the arch
+      const span = Math.abs(xo - xi), cols = Math.max(1, Math.round(span / 1.5));
+      for (let k = 1; k < cols; k++) {
+        const x = xi + (xo - xi) * k / cols, top = vaultAt(v, Math.abs(x), t * 0.5) - 0.1;
+        if (top > 0.6) faceBox(sink, 'structureMetal', front, x, (top - 0.3) / 2, 0.006, 0.04, top + 0.3, 0.012, { colour: JOINT, decor: true, fine: true });
+      }
+      for (let y = 3; y < vaultAt(v, Math.abs(xi), t * 0.5) - 0.5; y += 3) {
+        const reach = Math.min(Math.abs(xo), Math.sqrt(Math.max(0, (v.rho - t * 0.5) ** 2 - (y - v.cy) ** 2)) - 0.1);
+        const a = Math.min(Math.abs(xi), reach), b = Math.max(Math.abs(xi), reach);
+        if (b - a > 0.3) faceBox(sink, 'structureMetal', front, side * (a + b) / 2, y, 0.006, b - a, 0.04, 0.012, { colour: JOINT, decor: true, fine: true });
+      }
+    }
   }
   wallPolygon(sink, 'structureMetal', front, ccw([[-Wd / 2, Hd], [Wd / 2, Hd], ...archF(Wd / 2, -Wd / 2)]), 0.3, { colour: livery });
   // the door girder: a deep box beam proud of the gable, bearing on the pockets, its lattice on the face, the track's
   // guide under it
   const gc = shade(livery, 0.82);
   faceBox(sink, 'structureMetal', front, 0, Hd + girder / 2, 0.35, Wd + 1.0, girder, 0.7, { colour: gc });
-  faceBox(sink, 'structureMetal', front, 0, Hd - 0.08, 0.95, Wd + 2 * pocket * 0.9, 0.16, 0.3, { colour: RIB, decor: true });
+  // the leaves' top rail under the girder, over both tracks, bearing 0.6 m into each pocket (it ran 90 % of the
+  // pocket's width and, where the arch falls toward the springing, stood out past the vault's edge into the sky: wave 185)
+  faceBox(sink, 'structureMetal', front, 0, Hd + 0.07, 0.55, Wd + 1.2, 0.18, 0.72, { colour: RIB, decor: true });
   if (!mobile) {
     const panels = Math.max(4, Math.round(Wd / (girder * 1.4))), pw = (Wd + 1.0) / panels;
     for (let k = 0; k < panels; k++) {
@@ -223,27 +246,101 @@ const cargoHangar = (ctx: RegionalBuildContext): RegionalParts => {
     const top = vaultAt(v, Math.abs(u), t) - 0.3;
     if (top < gy + 0.6) continue;
     if (!mobile) faceBox(sink, 'structureMetal', front, u, (gy + top) / 2, 0.03, 0.1, top - gy, 0.06, { colour: shade(livery, 0.8), decor: true });
-    if (top > gy + 2.4 && Math.abs(u) + 1.2 < Wd / 2) facePanel(sink, 'glass', front, u + 1.2, gy + 1.1, 0.02, 1.9, 1.2, { decor: true });
+    if (top > gy + 2.4 && Math.abs(u) + 1.2 < Wd / 2) {
+      // (wave 185: "windows are solid blue rectangles") each light framed, the glazing 6 cm behind the frame's face
+      const lu = u + 1.2, ly = gy + 1.1, lw2 = 1.9, lh = 1.2, F = 0.09, O = 0.1;
+      facePanel(sink, paneBucket(ctx.variant, 0.15), front, lu, ly, 0.035, lw2, lh, { decor: true, window: [0, 0, 1] });
+      const fc = { colour: MULLION, decor: true };
+      for (const e of [-1, 1]) faceBox(sink, 'structureMetal', front, lu + e * (lw2 / 2 + F / 2), ly, O / 2, F, lh + 2 * F, O, fc);
+      for (const e of [-1, 1]) faceBox(sink, 'structureMetal', front, lu, ly + e * (lh / 2 + F / 2), O / 2, lw2, F, O, fc, 'ends');
+      if (!mobile) for (const f of [-1 / 6, 1 / 6]) faceBox(sink, 'structureMetal', front, lu + f * lw2 * 2, ly, 0.07, 0.05, lh, 0.06, { ...fc, fine: true }, 'caps');
+      faceBox(sink, 'structureMetal', front, lu, ly - lh / 2 - F - 0.04, 0.09, lw2 + 2 * F + 0.1, 0.08, 0.18, { colour: shade(livery, 0.7), decor: true });
+    }
   }
   // the sliding leaves on two tracks (alternate leaves on the outer track); one gone, the hangar's dark behind its gap
   const leaves = Math.max(4, Math.round(Wd / 5.5)), lw = Wd / leaves;
   const missing = rng() < 0.55 ? 1 + Math.floor(rng() * (leaves - 2)) : -1;
-  // the hangar's dark behind the leaves: a backing across the opening a metre and a half in (it closes the shell for
-  // the collision, so a leaf gone from its track opens no way into the hangar)
-  if (missing >= 0) sink.span('dark', -Wd / 2, -0.1, zf - 1.6, Wd / 2, Hd, zf - 1.4);
+  // (2026-10-06, the map-revival lane; gauntlet wave 154 on the PR head's frames: "the hangar's end facade facing the
+  // apron has no doors, only painted-on corrugation, frameless dark windows and X-bracing", and "the beige lower
+  // cladding and the block end-wall fail to meet, leaving a gap through which the grass behind shows") the run reads as
+  // doors: where no leaf is gone, one stands slid open over its neighbour on the other track, the dark hangar in its
+  // slot; each leaf is framed (edge stiles, rails), runs on rollers, its lights framed, a wicket in one and the hangar's
+  // number painted across two. The dark backing stands behind the whole opening in every build, the end leaves run
+  // into their pockets and a jamb closes each pocket out to the outer track, so no gap shows the ground beyond.
+  const open = missing < 0 ? 1 + Math.floor(rng() * (leaves - 2)) : -1;
+  // (wave 185: "open bays are flat black panels") the hangar's floor slab inside the whole body, so an open slot shows
+  // the dim interior in depth — the floor, the far gable, the vault's underside, daylight through the shell's holes —
+  // where the dark backing stood 1.5 m behind the leaves; the slab also keeps the plot's grass from showing inside
+  sink.span('plaster', -W / 2 + 0.45, -0.3, zb + 0.4, W / 2 - 0.45, 0.06, zf, { decor: true });
+  for (const side of [-1, 1]) faceBox(sink, 'plaster', front, side * (Wd / 2 + 0.2), (Hd + 0.4) / 2 - 0.4, 0.5, 0.4, Hd + 0.4, 1.0);
+  const frameC = shade(doorLivery, 0.7), ribC = shade(doorLivery, 0.9);
+  // the wicket's leaf and the numeral's (the leaves' ribs keep off them)
+  const kw = Math.min(leaves - 1, Math.floor(leaves / 2) + (Math.floor(leaves / 2) === missing || Math.floor(leaves / 2) === open ? 1 : 0));
+  const uw = -Wd / 2 + (kw + 0.5) * lw - lw * 0.15, kn = kw >= 2 ? kw - 1 : kw + 1, nh = Math.min(3.2, Hd * 0.3);
   for (let k = 0; k < leaves; k++) {
-    const u = -Wd / 2 + (k + 0.5) * lw, track = k % 2 ? 0.75 : 0.32;
-    if (k === missing) continue;
-    faceBox(sink, 'structureMetal', front, u, Hd / 2 - 0.05, track, lw + 0.12, Hd + 0.1, 0.22, { colour: doorLivery });
+    if (k === missing || k === open) continue;
+    // an open leaf stands over the next one, on the other track
+    const slid = k === open + 1 && open >= 0;
+    const track = (k % 2 ? 0.75 : 0.32), ext0 = k === 0 ? 0.3 : 0, ext1 = k === leaves - 1 ? 0.3 : 0;
+    const u = -Wd / 2 + (k + 0.5) * lw + (ext1 - ext0) / 2, w = lw + 0.12 + ext0 + ext1;
+    faceBox(sink, 'structureMetal', front, u, Hd / 2 - 0.05, track, w, Hd + 0.1, 0.22, { colour: doorLivery });
+    if (slid) {
+      // the open leaf, run across it on the other track (its frame and rollers as every leaf's)
+      const t2 = k % 2 ? 0.32 : 0.75, u2 = u - 0.25;
+      faceBox(sink, 'structureMetal', front, u2, Hd / 2 - 0.05, t2, lw + 0.12, Hd + 0.1, 0.22, { colour: shade(doorLivery, 0.96) });
+    }
+    // (the phones build the same streams: the leaves' dressing drawn and dropped there, DESTRUCTION.md §8.4)
     sink.dressing(mobile, () => {
-      for (const f of [0.25, 0.5, 0.75]) faceBox(sink, 'structureMetal', front, u - lw / 2 + lw * f, Hd / 2, track + 0.14, 0.12, Hd - 0.3, 0.06, { colour: shade(doorLivery, 0.78), decor: true });
-      faceBox(sink, 'structureMetal', front, u, Hd * 0.42, track + 0.14, lw - 0.2, 0.14, 0.06, { colour: shade(doorLivery, 0.78), decor: true });
-      // a row of small lights at two thirds of the leaf
-      for (const f of [0.3, 0.7]) facePanel(sink, paneBucket(ctx.variant, 0.2), front, u - lw / 2 + lw * f, Hd * 0.7, track + 0.115, Math.min(1.2, lw * 0.28), 0.8, { decor: true, window: [0, 0, 1] });
+      for (const tr of slid ? [track, k % 2 ? 0.32 : 0.75] : [track]) {
+        const uu = tr === track ? u : u - 0.25, ww = tr === track ? w : lw + 0.12, o = tr + 0.13;
+        // the leaf's frame: edge stiles, top and bottom rails and the mid rail
+        for (const e of [-1, 1]) faceBox(sink, 'structureMetal', front, uu + e * (ww / 2 - 0.1), Hd / 2, o, 0.18, Hd - 0.1, 0.05, { colour: frameC, decor: true });
+        for (const y of [0.14, Hd - 0.16, Hd * 0.42]) faceBox(sink, 'structureMetal', front, uu, y, o, ww - 0.3, 0.18, 0.05, { colour: frameC, decor: true });
+        // the rollers on the bottom rail, and the hangers that carry the leaf from the top rail under the girder
+        for (const e of [-0.3, 0.3]) faceBox(sink, 'structureMetal', front, uu + e * ww, 0.12, o - 0.02, 0.3, 0.22, 0.12, { colour: TRUSS, decor: true });
+        for (const e of [-0.32, 0.32]) faceBox(sink, 'structureMetal', front, uu + e * ww, Hd + 0.02, o - 0.04, 0.16, 0.3, 0.1, { colour: TRUSS, decor: true });
+        // a row of small lights at two thirds of the leaf, each framed with a mullion, the glazing set back behind the
+        // frame's face (wave 185: "windows are solid blue rectangles")
+        const lights = [0.3, 0.7].map((f) => ({ lu: uu - ww / 2 + ww * f, lwid: Math.min(1.2, ww * 0.28) }));
+        for (const { lu, lwid } of lights) {
+          for (const e of [-1, 1]) faceBox(sink, 'structureMetal', front, lu + e * (lwid / 2 + 0.04), Hd * 0.7, o, 0.08, 0.96, 0.05, { colour: frameC, decor: true });
+          for (const e of [-1, 1]) faceBox(sink, 'structureMetal', front, lu, Hd * 0.7 + e * 0.44, o, lwid, 0.08, 0.05, { colour: frameC, decor: true }, 'ends');
+          faceBox(sink, 'structureMetal', front, lu, Hd * 0.7, o - 0.005, 0.04, 0.8, 0.04, { colour: frameC, decor: true, fine: true }, 'caps');
+          facePanel(sink, paneBucket(ctx.variant, 0.2), front, lu, Hd * 0.7, o - 0.008, lwid, 0.8, { decor: true, window: [0, 0, 1] });
+        }
+        // (wave 185: "door leaves read as tan plywood") the sheet's pressed stiffeners, a vertical rib about every metre
+        // between the stiles, broken round the lights, the wicket and the painted number; the grime of the apron along
+        // the leaf's foot
+        const blocked: Array<[number, number, number, number]> = lights.map(({ lu, lwid }) => [lu - lwid / 2 - 0.12, lu + lwid / 2 + 0.12, Hd * 0.7 - 0.56, Hd * 0.7 + 0.56]);
+        if (tr === track && k === kw) blocked.push([uw - 0.72, uw + 0.72, -1, 2.42]);
+        if (tr === track && k === kn) { const un = -Wd / 2 + (kn + 0.5) * lw; blocked.push([un - nh * 0.36, un + nh * 0.36, Hd * 0.48 - 0.12, Hd * 0.48 + nh + 0.12]); }
+        const ribs = Math.max(2, Math.round((ww - 0.4) / 1.05));
+        for (let r = 1; r < ribs; r++) {
+          const ru = uu - ww / 2 + 0.2 + (ww - 0.4) * r / ribs;
+          const cuts = blocked.filter(([a, b]) => ru > a && ru < b).map(([, , c, d]): [number, number] => [c, d]).sort((p, q) => p[0] - q[0]);
+          let y0 = 0.25;
+          for (const [c, d] of [...cuts, [Hd - 0.25, Hd] as [number, number]]) {
+            if (c - y0 > 0.3) faceBox(sink, 'structureMetal', front, ru, (y0 + c) / 2, o + 0.005, 0.07, c - y0, 0.06, { colour: ribC, decor: true, fine: true });
+            y0 = Math.max(y0, d);
+          }
+        }
+        faceBox(sink, 'structureMetal', front, uu, 0.32, o - 0.015, ww - 0.04, 0.64, 0.012, { colour: GRIME, decor: true });
+      }
     });
   }
-  // the bottom track along the apron and the scorched apron edge under a burnt leaf
+  // (its numeral draws from the look stream: drawn and dropped on the phones, so their streams stay the desktop's)
+  sink.dressing(mobile, () => {
+    // the wicket in the first standing leaf past the middle, and the hangar's number across the two leaves left of it
+    const ow = (kw % 2 ? 0.75 : 0.32) + 0.14;
+    faceBox(sink, 'structureMetal', front, uw, 1.1, ow, 1.2, 2.3, 0.04, { colour: frameC, decor: true });
+    faceBox(sink, 'structureMetal', front, uw, 1.05, ow + 0.03, 0.95, 2.05, 0.03, { colour: shade(doorLivery, 1.08), decor: true });
+    faceBox(sink, 'structureMetal', front, uw + 0.36, 1.05, ow + 0.06, 0.06, 0.18, 0.04, { colour: TRUSS, decor: true });
+    const num = 1 + Math.floor(ctx.variant() * 9);
+    paintedNumeral(sink, front, -Wd / 2 + (kn + 0.5) * lw, Hd * 0.48, nh, num, rgb(0xe8e6de), (kn % 2 ? 0.75 : 0.32) + 0.12);
+  });
+  // the bottom rails' channel along the apron and a raised steel rail under each track in it
   faceBox(sink, 'structureMetal', front, 0, 0.03, 0.55, Wd + 2 * pocket, 0.06, 0.9, { colour: TRUSS, decor: true });
+  for (const tr of [0.32, 0.75]) faceBox(sink, 'structureMetal', front, 0, 0.09, tr, Wd + 2 * pocket * 0.9, 0.08, 0.07, { colour: shade(RIB, 1.15), decor: true });
   return sink.finish();
 };
 
@@ -252,6 +349,30 @@ const cargoHangar = (ctx: RegionalBuildContext): RegionalParts => {
  * doors across most of the apron gable (one leaf run open), a band of translucent panels under the eaves, a block
  * workshop lean-to down one side where the plot allows it.
  */
+/**
+ * A painted numeral on a face (an airfield's hangar and stand numbers): seven-segment strokes of white paint, `h` tall
+ * with its foot at y, centred at u (dressing).
+ */
+const SEGMENTS: Readonly<Record<number, string>> = { 0: 'abcdef', 1: 'bc', 2: 'abged', 3: 'abgcd', 4: 'fgbc', 5: 'afgcd', 6: 'afgedc', 7: 'abc', 8: 'abcdefg', 9: 'abcfgd' };
+function paintedNumeral(sink: PartSink, face: Face, u: number, y: number, h: number, digit: number, colour: Rgb, o = 0.05): void {
+  const w = h * 0.55, t = h * 0.12;
+  const seg: Record<string, [number, number, number, number]> = {
+    a: [u, y + h - t / 2, w, t], d: [u, y + t / 2, w, t], g: [u, y + h / 2, w, t],
+    f: [u - w / 2 + t / 2, y + h * 0.75, t, h / 2], b: [u + w / 2 - t / 2, y + h * 0.75, t, h / 2],
+    e: [u - w / 2 + t / 2, y + h * 0.25, t, h / 2], c: [u + w / 2 - t / 2, y + h * 0.25, t, h / 2],
+  };
+  for (const k of SEGMENTS[digit] ?? '') { const [su, sy, sw, sh] = seg[k]; faceBox(sink, 'structureMetal', face, su, sy, o, sw, sh, 0.02, { colour, decor: true }); }
+}
+
+/** Rust and grime run down a sheet wall from its eave: darker streaks of the livery at irregular spacing (dressing). */
+function sheetStreaks(sink: PartSink, face: Face, eave: number, livery: Rgb, look: () => number): void {
+  const n = Math.max(2, Math.round(face.width / 5));
+  for (let k = 0; k < n; k++) {
+    const u = -face.width / 2 + face.width * (k + 0.2 + look() * 0.6) / n, len = 1.2 + look() * 2.4, w = 0.35 + look() * 0.6;
+    faceBox(sink, 'structureMetal', face, u, eave - len / 2 - 0.3, 0.07, w, len, 0.01, { colour: shade(livery, 0.68 + look() * 0.12), decor: true });
+  }
+}
+
 const maintenanceHangar = (ctx: RegionalBuildContext): RegionalParts => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, mobile = ctx.tier === 'mobile';
@@ -276,6 +397,10 @@ const maintenanceHangar = (ctx: RegionalBuildContext): RegionalParts => {
     for (const f of sides) {
       if (!mobile) for (let u = -D / 2 + 1.5; u < D / 2 - 0.5; u += 3) faceBox(sink, 'structureMetal', f, u, (He + 1.0) / 2, 0.03, 0.1, He - 1.0, 0.06, { colour: shade(livery, 0.8), decor: true });
       for (let u = -D / 2 + 2.2; u < D / 2 - 1.5; u += 4.4) facePanel(sink, 'glass', f, u, He - 0.8, 0.065, 3.0, 0.7, { decor: true });
+      // (2026-10-05, the map-revival lane; gauntlet wave 113: "plain flat-textured boxes") the sheet's own weather: a
+      // darker band of the livery over the block plinth, rust and grime streaks down from the eave
+      faceBox(sink, 'structureMetal', f, 0, 1.45, 0.05, D - 0.2, 0.9, 0.02, { colour: shade(livery, 0.82), decor: true });
+      sheetStreaks(sink, f, He - 1.3, livery, ctx.variant);
     }
     // the apron gable's sliding doors, one leaf run across the other, the dark hangar in the gap
     const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
@@ -289,6 +414,11 @@ const maintenanceHangar = (ctx: RegionalBuildContext): RegionalParts => {
       faceBox(sink, 'structureMetal', front, u, Hd * 0.5, u > 0 ? 0.24 : 0.42, lw - 0.3, 0.12, 0.06, { colour: shade(doorLivery, 0.78), decor: true });
       facePanel(sink, 'glass', front, u, Hd * 0.72, u > 0 ? 0.215 : 0.395, lw * 0.6, 0.6, { decor: true });
     }
+    // the leaves' bottom track along the apron and the hangar's painted number on its gable over the doors
+    faceBox(sink, 'structureMetal', front, 0, 0.04, 0.45, Wd + 1.2, 0.08, 0.5, { colour: RIB, decor: true });
+    // (on the fixed leaf, the gable's pitch too shallow to carry it)
+    const num = 1 + Math.floor(ctx.variant() * 9), nh = Math.min(2.2, Hd * 0.34);
+    paintedNumeral(sink, front, Wd / 2 - lw / 2, Hd * 0.3, nh, num, rgb(0xe8e6de), 0.225);
     // a personnel door in the back gable
     const back: Face = { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W };
     doorUnit(sink, back, W * 0.25, 0, 1.0, 2.2, { leaf: pick(rng, STEEL_DOORS), frame: { bucket: 'structureMetal', width: 0.1, out: 0.05, colour: RIB }, steps: null, leafKind: 'plank' }, 0);
@@ -541,6 +671,171 @@ const ruin: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
+// ---------------------------------------------------------------------------------------------------------- the dachas
+
+/** The garden cooperatives' paints (board green, blue, ochre, cream, red-brown, sky blue) and the trim's white. */
+const DACHA_PAINT: readonly Rgb[] = [0x4f7d4a, 0x3f6f9a, 0xc9a24a, 0xd9cfae, 0x7a3e30, 0x5a8aa0].map(rgb);
+/** Their roofs: asbestos-cement sheet greys, sheet painted green, red or brown. */
+const DACHA_SHEET: readonly Rgb[] = [0x9aa0a0, 0x878c8a, 0x4f7a52, 0x8a3a30, 0x6a4a3a].map(rgb);
+const DACHA_TRIM = rgb(0xe3ded2), DACHA_PLANK = rgb(0x7a6048);
+const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
+
+/**
+ * The base geometry's measured footprint (ctx.bounds; the plot where it is empty). A kit house fills it (the
+ * coordinator's rule, 2026-10-05: a kit body short of its base opens a lane the bots drive through).
+ */
+function footprint(ctx: RegionalBuildContext): { w: number; d: number; cx: number; cz: number } {
+  const b = ctx.bounds;
+  const ok = Number.isFinite(b.minX) && Number.isFinite(b.maxX) && b.maxX - b.minX > 0.5 && b.maxZ - b.minZ > 0.5;
+  const x0 = ok ? b.minX : -ctx.info.w / 2, x1 = ok ? b.maxX : ctx.info.w / 2;
+  const z0 = ok ? b.minZ : -ctx.info.d / 2, z1 = ok ? b.maxZ : ctx.info.d / 2;
+  return { w: x1 - x0, d: z1 - z0, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2 };
+}
+
+/** The glazed veranda's panes: small lights in white frames over the boarded dado. */
+const VERANDA_WINDOW: WindowStyle = { frame: DACHA_TRIM, frameWidth: 0.05, frameOut: 0.03, bars: 'cross', surround: null, sill: null, shutters: null };
+
+/**
+ * The dacha of the garden cooperatives round the airport (the sadovi tovarystva of Hostomel and Bucha, laid out from
+ * the 1960s on six-sotok plots): a cottage of one storey in planks or rendered block on a brick plinth under a steep
+ * gable of asbestos-cement or painted sheet, the attic room behind a gable window to the lane, a small brick stack, and
+ * the glazed veranda down one side (or across the back on a deep lot) under its lean-to — boarded to the sill in the
+ * house's paint, small panes above, the door and its steps to the lane. House and veranda fill the base's footprint;
+ * the house's gable faces the lot's +z (the lane).
+ */
+const dacha: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng, look = ctx.variant;
+  const fp = footprint(ctx);
+  const paint = pick(rng, DACHA_PAINT), livery = pick(rng, DACHA_SHEET);
+  const wall: RegionalBucket = rng() < 0.35 ? 'plaster' : 'wood';
+  const sheet = rng() < 0.55;
+  // the veranda down one side on a wide lot, across the back on a deep one
+  const sideways = fp.w >= fp.d * 0.8;
+  const side = rng() < 0.5 ? 1 : -1;
+  const vD = sideways ? clamp(fp.w * 0.3, 1.8, 2.8) : clamp(fp.d * 0.26, 1.8, 2.6);
+  const W = Math.max(3.6, sideways ? fp.w - vD : fp.w), D = Math.max(4.4, sideways ? fp.d : fp.d - vD);
+  const bx = sideways ? fp.cx - side * vD / 2 : fp.cx, bz = sideways ? fp.cz : fp.cz + vD / 2;
+  const pitch = 40 + rng() * 8, wallH = 2.4 + rng() * 0.25, plinth = 0.45;
+  const win: WindowStyle = {
+    frame: rng() < 0.6 ? DACHA_TRIM : paint, frameWidth: 0.06, frameOut: 0.04, bars: rng() < 0.6 ? 'cross' : 'two',
+    surround: wall === 'wood' ? { bucket: 'structureWood', width: 0.1, out: 0.03, lintel: 0.16, colour: rng() < 0.6 ? DACHA_TRIM : paint } : null,
+    sill: { bucket: 'structureWood', out: 0.06, colour: DACHA_TRIM }, shutters: null,
+  };
+  // the side the veranda does not cover keeps its windows; the lane gable two (or one and the door, with the veranda behind)
+  const free: 'left' | 'right' = side > 0 ? 'left' : 'right';
+  const openings: Opening[] = sideways
+    ? [...windowRhythm('front', 0, W - 0.1, { w: 0.9, h: 1.2, sill: 0.85, spacing: 1.6, margin: 0.7, max: 2 }),
+      ...windowRhythm(free, 0, D - 0.1, { w: 0.9, h: 1.2, sill: 0.85, spacing: 2.4, margin: 1.1, max: 2 }),
+      ...windowRhythm('back', 0, W - 0.1, { w: 0.8, h: 1.1, sill: 0.95, spacing: 1.6, margin: 1.0, max: 1 })]
+    : [{ face: 'front', storey: 0, kind: 'door', u: -(W - 0.1) * 0.22, w: 0.85, y0: 0, h: 1.95 },
+      { face: 'front', storey: 0, kind: 'window', u: (W - 0.1) * 0.2, w: 0.9, y0: 0.85, h: 1.2 },
+      ...windowRhythm('left', 0, D - 0.1, { w: 0.9, h: 1.2, sill: 0.85, spacing: 2.4, margin: 1.0, max: 2 }),
+      ...windowRhythm('right', 0, D - 0.1, { w: 0.9, h: 1.2, sill: 0.85, spacing: 2.4, margin: 1.0, max: 2 })];
+  const roof: RoofSpec = { kind: 'gable', pitchDeg: pitch, eave: 0.35, verge: 0.32, thickness: sheet ? 0.06 : 0.1, bucket: sheet ? 'structureMetal' : 'roof', ridge: 'saddle' };
+  sink.placed(0, bx, 0, bz, () => {
+    const frame = buildHouse(sink, {
+      w: W - 0.1, d: D - 0.1, plinth: { h: plinth, out: 0.05, bucket: 'stone' }, storeys: [{ h: wallH, wall }],
+      roof, roofColour: sheet ? livery : undefined, gableBucket: 'wood', openings,
+      chimneys: [{ x: -side * (W - 0.1) * 0.18, z: -(D - 0.1) * 0.2, sx: 0.42, sz: 0.52, above: 0.6, bucket: 'stone', cap: 'slab' }],
+      gutters: null, verge: { colour: rng() < 0.5 ? DACHA_TRIM : paint, bucket: 'structureWood' }, reveal: 0.1,
+      spall: wall === 'plaster' ? undefined : null,
+    }, {
+      window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, win, rng, 0.4),
+      door: (s, face, o, y0, fr) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+        leaf: rng() < 0.5 ? paint : DACHA_PLANK, frame: { bucket: 'structureWood', width: 0.09, out: 0.04, colour: DACHA_TRIM },
+        steps: { bucket: 'stone' }, leafKind: 'plank',
+      }, fr.floors[o.storey] + o.y0),
+    });
+    // the attic room's window in the lane gable (two lights in a white frame on the boarded gable)
+    const gf: Face = { origin: [0, 0, (D - 0.1) / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
+    const rise = frame.roof.ridgeY - frame.eaveY, gy = frame.eaveY + rise * 0.36, gh = clamp(rise * 0.34, 0.7, 1.1), gw = clamp(W * 0.17, 0.7, 1.0);
+    faceBox(sink, 'structureWood', gf, 0, gy, 0.02, gw + 0.16, gh + 0.16, 0.04, { colour: DACHA_TRIM, decor: true });
+    faceBox(sink, paneBucket(rng, 0.3), gf, 0, gy, 0.045, gw, gh, 0.01, { decor: true });
+    faceBox(sink, 'structureWood', gf, 0, gy, 0.055, 0.05, gh, 0.02, { colour: DACHA_TRIM, decor: true, fine: true });
+    // the house's paint on the corner boards and the gable's apron board
+    if (wall === 'wood') {
+      for (const fx of [-1, 1]) for (const face of [gf, { origin: [0, 0, -(D - 0.1) / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W } as Face]) {
+        faceBox(sink, 'structureWood', face, fx * ((W - 0.1) / 2 - 0.06), plinth + wallH / 2, 0.03, 0.12, wallH, 0.05, { colour: paint, decor: true, fine: true });
+      }
+      faceBox(sink, 'structureWood', gf, 0, frame.eaveY + 0.06, 0.04, W - 0.1, 0.14, 0.05, { colour: paint, decor: true });
+    }
+    if (look() < 0.5) tvAerial(sink, frame, (look() - 0.5) * D * 0.4, look);
+  });
+  // the veranda: a body of its own under a lean-to rising to the house wall (its local +x out from the house)
+  const vH = 2.2, vPlinth = 0.4;
+  const vRoof: RoofSpec = { kind: 'shed', pitchDeg: 12, eave: 0.25, verge: 0.2, thickness: sheet ? 0.06 : 0.1, bucket: sheet ? 'structureMetal' : 'roof', ridge: null };
+  const vLen = sideways ? D : W;
+  const vOpen: Opening[] = [
+    { face: 'front', storey: 0, kind: 'door', u: sideways ? 0 : (side > 0 ? -1 : 1) * (vD / 2 - 0.6), w: 0.82, y0: 0, h: 1.95 },
+    ...windowRhythm('right', 0, vLen - 0.06, { w: 0.62, h: 0.95, sill: 1.0, spacing: 0.72, margin: 0.3 }),
+    ...windowRhythm('back', 0, vD - 0.06, { w: 0.62, h: 0.95, sill: 1.0, spacing: 0.72, margin: 0.3, max: 2 }),
+  ];
+  // sideways: the veranda's local frame is the house's turned by 0 (side +1) or π (side -1), its +x away from the house;
+  // across the back: turned a quarter so its +x runs out to the lot's -z
+  const vyaw = sideways ? (side > 0 ? 0 : Math.PI) : -Math.PI / 2;
+  const vx = sideways ? fp.cx + side * (fp.w / 2 - vD / 2) : fp.cx, vz = sideways ? fp.cz : fp.cz - fp.d / 2 + vD / 2;
+  sink.placed(vyaw, vx, 0, vz, () => {
+    const vf = buildHouse(sink, {
+      w: vD - 0.06, d: vLen - 0.06, plinth: { h: vPlinth, out: 0.03, bucket: 'stone' }, storeys: [{ h: vH, wall: 'wood' }],
+      roof: vRoof, roofColour: sheet ? livery : undefined, openings: vOpen, chimneys: [], gutters: null, verge: null, reveal: 0.05, spall: null,
+    }, {
+      window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, VERANDA_WINDOW, rng, 0.35),
+      door: (s, face, o, y0, fr) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+        leaf: paint, frame: { bucket: 'structureWood', width: 0.08, out: 0.03, colour: DACHA_TRIM }, steps: { bucket: 'stone' }, leafKind: 'panel',
+      }, fr.floors[o.storey] + o.y0),
+    });
+    // the boarded dado in the house's paint along the open sides, a rail at the sill
+    const L = vLen - 0.06, w = vD - 0.06;
+    const outer: Face = { origin: [w / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: L };
+    faceBox(sink, 'structureWood', outer, 0, vPlinth + 0.5, 0.03, L - 0.04, 0.95, 0.04, { colour: paint, decor: true });
+    faceBox(sink, 'structureWood', outer, 0, vPlinth + 0.98, 0.06, L, 0.07, 0.08, { colour: DACHA_TRIM, decor: true }, 'ends');
+    // the lean-to leaves two triangles open over its ends: boarded
+    const rise = w * Math.tan(12 * Math.PI / 180);
+    const front: Face = { origin: [0, 0, L / 2], u: [1, 0, 0], out: [0, 0, 1], width: w };
+    const back: Face = { origin: [0, 0, -L / 2], u: [-1, 0, 0], out: [0, 0, -1], width: w };
+    wallPolygon(sink, 'wood', front, [[-w / 2, vf.eaveY], [w / 2, vf.eaveY], [-w / 2, vf.eaveY + rise]], 0.12);
+    wallPolygon(sink, 'wood', back, [[-w / 2, vf.eaveY], [w / 2, vf.eaveY], [w / 2, vf.eaveY + rise]], 0.12);
+  });
+  return sink.finish();
+};
+
+/**
+ * The garden shed at the plot's back (the yards' outbuilding): planks or old sheet on a timber frame under a lean-to
+ * of asbestos sheet, a plank door; it fills its plot.
+ */
+const gardenShed: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng;
+  const fp = footprint(ctx);
+  const W = Math.max(1.8, fp.w - 0.06), D = Math.max(1.6, fp.d - 0.06), h = 2.0 + rng() * 0.25;
+  const sheetWall = rng() < 0.3, livery = pick(rng, DACHA_SHEET);
+  const roof: RoofSpec = { kind: 'shed', pitchDeg: 10, eave: 0.2, verge: 0.15, thickness: 0.06, bucket: 'structureMetal', ridge: null };
+  sink.placed(0, fp.cx, 0, fp.cz, () => {
+    const frame = buildHouse(sink, {
+      w: W, d: D, plinth: null, storeys: [{ h, wall: 'wood' }], roof, roofColour: livery,
+      openings: [{ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * Math.max(0, W - 1.2), w: 0.8, y0: 0, h: 1.8 }],
+      chimneys: [], gutters: null, verge: null, reveal: 0.04, spall: null,
+    }, {
+      window: () => { /* none */ },
+      door: (s, face, o, y0, fr) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+        leaf: DACHA_PLANK, frame: { bucket: 'structureWood', width: 0.06, out: 0.03, colour: shade(DACHA_PLANK, 0.85) }, steps: null, leafKind: 'plank',
+      }, fr.floors[o.storey] + o.y0),
+    });
+    const rise = W * Math.tan(10 * Math.PI / 180);
+    const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
+    const back: Face = { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W };
+    wallPolygon(sink, 'wood', front, [[-W / 2, frame.eaveY], [W / 2, frame.eaveY], [-W / 2, frame.eaveY + rise]], 0.1);
+    wallPolygon(sink, 'wood', back, [[-W / 2, frame.eaveY], [W / 2, frame.eaveY], [W / 2, frame.eaveY + rise]], 0.1);
+    // an old sheet patched over one side
+    if (sheetWall) {
+      const sf: Face = { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
+      faceBox(sink, 'structureMetal', sf, 0, h * 0.45, 0.03, D * 0.8, h * 0.8, 0.03, { colour: shade(livery, 0.85), decor: true });
+    }
+  });
+  return sink.finish();
+};
+
 export const HOSTOMEL_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   warehouse: hangar,
   depot: maintenanceHangar,
@@ -549,11 +844,14 @@ export const HOSTOMEL_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Obje
   firestation: fireStation,
   watertower: waterTower,
   ruin,
+  // the map-revival lane (2026-10-05): the dacha cooperatives on the access roads outside the perimeter, their sheds
+  cottage: dacha,
+  woodshed: gardenShed,
 });
 
 export const HOSTOMEL_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   id: 'hostomel',
-  region: 'Hostomel (Antonov) airport, Kyiv oblast: a barrel-vaulted cargo hangar, sheet-steel maintenance hangars, a concrete tower under its glazed cab, 1970s terminal and office blocks',
+  region: 'Hostomel (Antonov) airport, Kyiv oblast: a barrel-vaulted cargo hangar, sheet-steel maintenance hangars, a concrete tower under its glazed cab, 1970s terminal and office blocks; the dachas of the garden cooperatives outside the perimeter',
   surfaces: {
     roof: { kind: 'sheet', tint: [0.46, 0.49, 0.48] },
     stone: { kind: 'block', tint: [0.6, 0.6, 0.57] },
@@ -568,8 +866,12 @@ export const HOSTOMEL_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
     plaster: [[1, 1, 1], [0.96, 0.95, 0.92], [0.9, 0.9, 0.88], [1.0, 0.97, 0.92]],
     stone: [[1, 1, 1], [0.93, 0.93, 0.91], [0.86, 0.86, 0.85], [0.97, 0.95, 0.92]],
     roof: [[1, 1, 1], [0.9, 0.9, 0.88], [0.82, 0.8, 0.76], [1.05, 1.04, 1.02]],
-    damp: 0.55, moss: 0.25,
+    // (2026-10-06, wave 185: "darken the base where it meets the apron") the damp band deeper than the first pass's 0.55
+    damp: 0.72, moss: 0.25,
   },
   // shellfire and the fires of February 2022: more of the airfield's windows burnt out or boarded than a village's
   wear: 0.45,
+  // the map-revival lane (2026-10-05): the dachas' garden plots (yards.ts) — a picket fence and gate round the yard,
+  // the garden shed at its back, the kitchen-garden beds
+  yard: { kinds: ['cottage'], fence: 'fencepicket', gate: 'gate', shed: 'woodshed', shedSize: [2.6, 2.2], garden: true },
 });

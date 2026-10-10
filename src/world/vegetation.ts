@@ -193,6 +193,11 @@ interface VegetationConfig {
   avoid: VegetationDisc[] | null;
   belts?: VegetationBelt[];
   /**
+   * The map-revival lane (2026-10-06, Kestrel's plantations): rects only the belts plant in — the woodlots, the lone
+   * trees, the hedges and the saplings take no site inside one, so a plantation block holds its rows alone.
+   */
+  standKeepOut?: readonly { x0: number; x1: number; z0: number; z1: number }[];
+  /**
    * Trees round 2b: where the map's palms grow (a spring, a wadi bed, an oasis): a palm drawn anywhere else grows as
    * `palmFallback` (default: the map's first other species), so no draw moves.
    */
@@ -5814,9 +5819,12 @@ function* vegetationBuildSteps(
     _evenSeat[0] = turn ? 2 * halvesAbout!.x - x : x; _evenSeat[1] = turn ? 2 * halvesAbout!.z - z : z;
     return _evenSeat;
   }
+  let placingBelts = false; // standKeepOut: the belts plant inside the kept-out rects
   function siteOk(x: number, z: number, margin: number, settled = false): boolean {
     if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
     if (inAvoid(x, z) || overTreeCeiling(x, z)) return false;
+    // (Kestrel's plantations, 2026-10-07) a map's standKeepOut rects take only its belts' trees
+    if (!placingBelts && veg.standKeepOut?.some((r) => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) return false;
     if (!settled && x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24) return false;
     if (admission()._roadDist(x, z) < 9 + margin) return false;
     if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
@@ -6555,6 +6563,14 @@ function* vegetationBuildSteps(
   // bit-identical). Trees go through addTree => full siteOk rules + obstacles
   // + concealment, i.e. belts are real cover, not dressing.
   function placeTreeBelts(): void {
+    placingBelts = true;
+    try {
+      placeBeltRows();
+    } finally {
+      placingBelts = false;
+    }
+  }
+  function placeBeltRows(): void {
     if (veg.belts) {
       for (const b of veg.belts) {
         const len = Math.hypot(b.x1 - b.x0, b.z1 - b.z0);
