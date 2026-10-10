@@ -7,7 +7,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { compactWreckGeometryForPaintSteps, compactWreckGeometrySteps } from './exactWreckGeometry.ts';
 import { collectWreckShellSolids, collectWreckSolids } from './wreckCollision.ts';
-import { crumpleWreckGeometry, planWreckCrumple } from './wreckCrumple.ts';
+import { crumpleWreckGeometry, planWreckCrumple, refineForCrumple } from './wreckCrumple.ts';
 
 // Explicit 5a13dadb0 pipeline control: paint every expanded corner, then run
 // the unchanged generic all-attribute compactor. The original source was
@@ -35,10 +35,10 @@ function pipeline(control, counts) {
   // planWreckCrumple / crumpleWreckGeometry (destruction core, 2026-10-09): the wreck's dents and bends, before the paint.
   return new Function('THREE', 'mergeGeometries', 'compactWreckGeometryForPaintSteps',
     'compactWreckGeometrySteps', 'createTank', 'observePaint', 'collectWreckSolids', 'collectWreckShellSolids',
-    'planWreckCrumple', 'crumpleWreckGeometry',
+    'planWreckCrumple', 'crumpleWreckGeometry', 'refineForCrumple',
     stripTypeScriptTypes(body).replace(/^export /gm, '') + '\nreturn { bakeTankWreck, bakeTankWreckSteps };')(
     THREE, mergeGeometries, compactWreckGeometryForPaintSteps, compactWreckGeometrySteps,
-    createTank, () => { counts.painted++; }, collectWreckSolids, collectWreckShellSolids, planWreckCrumple, crumpleWreckGeometry);
+    createTank, () => { counts.painted++; }, collectWreckSolids, collectWreckShellSolids, planWreckCrumple, crumpleWreckGeometry, refineForCrumple);
 }
 
 function arrayIdentity(array) {

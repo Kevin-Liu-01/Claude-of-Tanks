@@ -36,7 +36,7 @@ import {
 import { createTank } from '../vehicles/fleetFactory.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
 import { collectWreckShellSolids, collectWreckSolids } from './wreckCollision.ts';
-import { crumpleWreckGeometry, planWreckCrumple, type WreckCrumplePlan } from './wreckCrumple.ts';
+import { crumpleWreckGeometry, planWreckCrumple, refineForCrumple, type WreckCrumplePlan } from './wreckCrumple.ts';
 
 export interface WreckOptions {
   seed?: number;
@@ -200,8 +200,11 @@ function* appendWreckMeshGeometrySteps(
   mesh.geometry.boundingBox?.getSize(size);
   if (Math.hypot(size.x, size.y, size.z) < WRECK_MIN_PART_DIAGONAL_M) return;
   const clone = cloneWreckGeometry(mesh.geometry, new THREE.Matrix4().multiplyMatrices(rootInv, mesh.matrixWorld), owner);
-  crumpleWreckGeometry(crumple, clone, mesh);
-  target.geos.push(clone);
+  // the plates get corners to bend first (a box plate's middle has none), then the crumple moves them
+  const refined = refineForCrumple(crumple, clone, mesh);
+  if (refined !== clone) owner.geometries.add(refined);
+  crumpleWreckGeometry(crumple, refined, mesh);
+  target.geos.push(refined);
 }
 
 function* collectWreckGeometrySteps(
