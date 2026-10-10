@@ -242,7 +242,7 @@ function piece(C: BlastContext, look: StructureLook, x: number, y: number, z: nu
  * or null for the masonry fallback.
  */
 export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: StructureLook | null, crumbled = false,
-  eaveM: number | null = null, topple: ToppleFx | null = null): void {
+  eaveM: number | null = null, topple: ToppleFx | null = null, bodies = false): void {
   if (e.settled) return;
   const L = look ?? FALLBACK_LOOK;
   const R = C.rand;
@@ -321,13 +321,17 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
   // (the battle strips, final: a gable house's cloud stayed a few small puffs) the low cloud is the size of what fell, not
   // of a narrow footprint's half width: a tall narrow house throws as much dust as a squat wide one
   const low = Math.max(span, 0.45 * wallH + 2, 4.5);
+  // (dcore 2026-10-10) a collapse as bodies (fx/collapseBodies.ts) is seen falling: its dust comes thinner and later — the
+  // pieces' own landings kick theirs (pieceLandingFx) — no crumble front to shed from, the skirt as the walls land
+  // (half a second to two), the body off the pile after
+  const thin = bodies ? 0.72 : 1;
   // 1. the roof drops in: the air inside goes up out of the top, darker
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < (bodies ? 2 : 4); i++) {
     const lx = (R() * 2 - 1) * e.hw * 0.6, lz = (R() * 2 - 1) * e.hd * 0.6;
     const life = 7 + R() * 3;
     puff(C, e.cx + lx * cosY + lz * sinY, e.baseY + wallH * (0.75 + 0.2 * R()), e.cz - lx * sinY + lz * cosY,
       (R() - 0.5) * 1.5, 1.4 + R() * 1.0, (R() - 0.5) * 1.5, 1.4, 0.6, 1.0, life, 0.25 * span * dk, (0.45 + R() * 0.12) * span * dk,
-      tintDark, tinted, 0.5, life, 2, 0.3 + R() * 0.5, 1, 4.5);
+      tintDark, tinted, 0.5 * thin, life, 2, (bodies ? 0.5 : 0.3) + R() * 0.5, 1, 4.5);
   }
   // 2. the walls pour their dust out of their foot as the front comes down: a low skirt all round, rolling out wide,
   //    each band's as its pieces land
@@ -337,13 +341,13 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     const v = 3 + R() * 3;
     const life = 9 + R() * 2.5;
     const h = wallH * (0.08 + 0.84 * (i + R()) / skirtN);
-    const at = Math.min(frontEnd + 0.3, collapseFrontTime(h, wallH) + Math.sqrt((2 * h) / 9.8));
+    const at = bodies ? 0.5 + 1.6 * (i + R()) / skirtN : Math.min(frontEnd + 0.3, collapseFrontTime(h, wallH) + Math.sqrt((2 * h) / 9.8));
     puff(C, p[0] + p[2] * 0.6, e.baseY + 0.45, p[1] + p[3] * 0.6, p[2] * v, 0.35 + R() * 0.4, p[3] * v, 2.0, 0.25, 0.9,
-      life, 0.5 * low * dk, (1.0 + R() * 0.3) * low * dk, tintDark, tinted, 0.5, life, 1, at, 2.0 + R() * 0.5, 4.5);
+      life, 0.5 * low * dk, (1.0 + R() * 0.3) * low * dk, tintDark, tinted, 0.5 * thin, life, 1, at, 2.0 + R() * 0.5, 4.5);
   }
   // a little shed off the crumbling line as it passes (the dust rides the falling courses down)
   const BAND = 1.8;
-  const bands = Math.max(1, Math.ceil(wallH / BAND));
+  const bands = bodies ? 0 : Math.max(1, Math.ceil(wallH / BAND));
   for (let b = 0; b < bands; b++) {
     const h = Math.max(0.3, wallH - (b + 0.5) * BAND);
     const tb = collapseFrontTime(h, wallH);
@@ -373,10 +377,10 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
   for (let i = 0; i < massN; i++) {
     const lx = (R() * 2 - 1) * e.hw * 0.75, lz = (R() * 2 - 1) * e.hd * 0.75;
     const wx = e.cx + lx * cosY + lz * sinY, wz = e.cz - lx * sinY + lz * cosY;
-    const at = frontEnd * 0.55 + (i / massN) * (frontEnd * 0.45 + 0.8) + R() * 0.3;
+    const at = bodies ? 1.1 + (i / massN) * 1.6 + R() * 0.3 : frontEnd * 0.55 + (i / massN) * (frontEnd * 0.45 + 0.8) + R() * 0.3;
     const life = 10 + R() * 1.5;
     puff(C, wx, e.baseY + 0.9, wz, (R() - 0.5) * 1.0, 0.8 + R() * 0.6, (R() - 0.5) * 1.0,
-      1.3, 0.5 + R() * 0.3, 1.0, life, 0.55 * low * dk, (1.3 + R() * 0.3) * low * dk, tintDark, tinted, 0.42, life, 2, at, 1, 4.5);
+      1.3, 0.5 + R() * 0.3, 1.0, life, 0.55 * low * dk, (1.3 + R() * 0.3) * low * dk, tintDark, tinted, 0.42 * thin, life, 2, at, 1, 4.5);
   }
 }
 

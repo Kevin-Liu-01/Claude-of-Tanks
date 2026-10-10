@@ -1116,6 +1116,7 @@ function* createFxSteps(
       return bodiesEnv;
     },
     onLanding: (x, y, z, speed, mass, id) => { if (blast) pieceLandingFx(blast, x, y, z, speed, mass, lookOf(id)); },
+    hulls: auxiliaryEntities ? () => auxiliaryEntities() as Iterable<unknown> : undefined,
   }) : null;
   const stages: StructureStages | null = structMask && structDebris
     ? createStructureStages({ mask: structMask, debris: structDebris, now: () => particles.getTime(),
@@ -5338,7 +5339,8 @@ function* createFxSteps(
         if (blast) {
           // a shaft goes over in the blow's direction (structureStages structureTopple): its dust falls along that line
           const topple = e.stage === 'collapsed' ? structureTopple(anat, e) : null;
-          structureStageFx(blast, e, lookOf(e.structureId), !!stages && !!stageSeam, eaveM, topple);
+          structureStageFx(blast, e, lookOf(e.structureId), !!stages && !!stageSeam, eaveM, topple,
+            e.stage === 'collapsed' && !!bodies?.took(e.structureId));
         }
         else phoneStageBeat(e);
       });

@@ -30,6 +30,7 @@ import type { StructureDamageSeam } from '../world/structureDamageSeam.ts';
 import type { StructureDamageAnatomy } from '../world/destructionKit.ts';
 import { rubbleMoundHeightAt, type RubbleMound } from '../sim/terrainDeformation.ts';
 import type { DebrisPhysics } from './debrisPhysics.ts';
+import type { WreckTurretTank } from '../sim/wreckTurrets.ts';
 import {
   PART_STRIDE, STATIC_PIECE, capPiece, capStubs, partShape, partitionTriangles, pieceKick, pieceShape, pieceSpawn,
   planCollapsePieces, stubRecords,
@@ -62,6 +63,8 @@ export interface CollapseBodiesOptions {
   onLanding?(x: number, y: number, z: number, speedMps: number, massKg: number, structureIdx: number): void;
   /** Pieces at most per collapse (default: the plan's, 24 and 12 a shed). */
   cap?: number;
+  /** The vehicles drawn this frame: their hulls and turrets shove the pieces (kinematic boxes in the pool). */
+  hulls?(): Iterable<unknown> | null;
   /** The preparation's budget a frame (ms of wall clock; default 2). */
   prepareBudgetMs?: number;
   /** A clock for that budget (default performance.now). */
@@ -87,6 +90,8 @@ export interface CollapseBodies {
   update(dtS: number): void;
   /** Collapses in flight (their pieces not all baked). */
   readonly active: number;
+  /** Whether this structure came down as bodies (its dust is thinner: the pieces kick their own). */
+  took(structureIdx: number): boolean;
   /** Who bursts a shattered panel into the kit's pieces and dust (structureStages). */
   onShatter(handler: CollapseShatterHandler | null): void;
   reset(): void;
@@ -128,6 +133,9 @@ interface Prepared {
   done: boolean;
   /** For the eviction of a cut never used. */
   touched: number;
+  resolve: (bucket: string) => THREE.Material | null;
+  /** Its geometries by key once the cut is laid (caps in): the collapse only makes meshes of them. */
+  built: Map<number, Array<{ material: THREE.Material; geometry: THREE.BufferGeometry }>> | null;
 }
 
 interface LivePart {
@@ -224,6 +232,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
   let shatterHandler: CollapseShatterHandler | null = null;
   const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(1, 1, 1), _m = new THREE.Matrix4();
   const _o = new THREE.Vector3(), _w = new THREE.Vector3();
+  const hullList: WreckTurretTank[] = [];
   const layouts = new WeakMap<THREE.BufferGeometry, Layout>();
 
   // what the bodies meet: the world's records (the falling buildings' own skipped), the remnants' stubs, and the ground
@@ -430,7 +439,8 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     if (existing) { existing.touched = ++touch; return existing; }
     // the cut does not depend on the blow: a neutral one
     const plan = planCollapsePieces(anatomy, { cause: null, dirX: 0, dirZ: 0, point: null }, { cap: o.cap });
-    const job: Prepared = { structureIdx: seam.structureIdx, seam, plan, groups: new Map(), sources: [], source: 0, tri: 0, done: false, touched: ++touch };
+    const job: Prepared = { structureIdx: seam.structureIdx, seam, plan, groups: new Map(), sources: [], source: 0, tri: 0, done: false,
+      touched: ++touch, resolve, built: null };
     const sources: Source[] = [];
     for (const span of seam.spans) {
       const geometry = (span.mesh as THREE.Mesh).geometry as THREE.BufferGeometry | undefined;
@@ -445,10 +455,83 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     if (prepared.size >= PREPARED_MAX) {
       let oldest: Prepared | null = null;
       for (const j of prepared.values()) if (!oldest || j.touched < oldest.touched) oldest = j;
-      if (oldest) prepared.delete(oldest.structureIdx);
+      if (oldest) { prepared.delete(oldest.structureIdx); disposeBuilt(oldest); }
     }
     prepared.set(seam.structureIdx, job);
     return job;
+  }
+
+  /** A laid cut's geometries by key: the remnant in world space, every piece's part in its own frame (caps in). */
+  function geometriesOf(job: Prepared, caps: boolean): Map<number, Array<{ material: THREE.Material; geometry: THREE.BufferGeometry }>> {
+    const plan = job.plan, groups = job.groups;
+    if (caps) {
+      // each piece's (each part's) broken edges and back, the remnant's broken tops, in their slots' materials
+      const defaultLayout: Layout = { names: ['uv', 'color'], sizes: [2, 3], stride: 11 };
+      const capInto = (key: number, cap: CapQuad): void => {
+        const material = job.resolve(cap.slot.bucket);
+        let g = material ? groups.get(material) : groups.values().next().value as Group | undefined;
+        if (!g && material) { g = { material, layout: defaultLayout, lists: new Map() }; groups.set(material, g); }
+        if (!g) return;
+        let list = g.lists.get(key);
+        if (!list) { list = []; g.lists.set(key, list); }
+        pushCap(list, g.layout, cap);
+      };
+      for (const piece of plan.pieces) for (const cap of capPiece(plan, piece)) capInto(piece.index * PART_STRIDE + (cap.part ?? 0), cap);
+      for (const cap of capStubs(plan)) capInto(STATIC_PIECE, cap);
+    }
+    const f = frameOf(job.seam.anatomy);
+    const out = new Map<number, Array<{ material: THREE.Material; geometry: THREE.BufferGeometry }>>();
+    const v = new THREE.Vector3(), q = new THREE.Quaternion();
+    for (const g of groups.values()) {
+      for (const [key, list] of g.lists) {
+        if (!list.length || key < STATIC_PIECE) continue;
+        const layout = g.layout;
+        const verts = list.length / layout.stride;
+        const pos = new Float32Array(verts * 3), nrm = new Float32Array(verts * 3);
+        const extra = layout.sizes.map((size) => new Float32Array(verts * size));
+        const piece = key >= 0 ? plan.pieces[Math.floor(key / PART_STRIDE)] : null;
+        const off = piece ? piece.parts[key % PART_STRIDE]?.center ?? [0, 0, 0] : [0, 0, 0];
+        if (piece) q.set(-piece.rotation[0], -piece.rotation[1], -piece.rotation[2], piece.rotation[3]);
+        for (let i = 0; i < verts; i++) {
+          const at = i * layout.stride, o3 = i * 3;
+          if (piece) {
+            const pc = piece.center;
+            v.set(list[at] - pc[0], list[at + 1] - pc[1], list[at + 2] - pc[2]).applyQuaternion(q);
+            pos[o3] = v.x - off[0]; pos[o3 + 1] = v.y - off[1]; pos[o3 + 2] = v.z - off[2];
+            v.set(list[at + 3], list[at + 4], list[at + 5]).applyQuaternion(q);
+            nrm[o3] = v.x; nrm[o3 + 1] = v.y; nrm[o3 + 2] = v.z;
+          } else {
+            const x = list[at], y = list[at + 1], z = list[at + 2];
+            pos[o3] = f.x + x * f.c + z * f.s; pos[o3 + 1] = f.y + y; pos[o3 + 2] = f.z - x * f.s + z * f.c;
+            const nx = list[at + 3], ny = list[at + 4], nz = list[at + 5];
+            nrm[o3] = nx * f.c + nz * f.s; nrm[o3 + 1] = ny; nrm[o3 + 2] = -nx * f.s + nz * f.c;
+          }
+          let k = at + 6;
+          for (let a = 0; a < layout.sizes.length; a++) {
+            const size = layout.sizes[a];
+            for (let j = 0; j < size; j++) extra[a][i * size + j] = list[k++];
+          }
+        }
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        geometry.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+        layout.names.forEach((name, a) => geometry.setAttribute(name, new THREE.BufferAttribute(extra[a], layout.sizes[a])));
+        geometry.computeBoundingSphere();
+        let entry = out.get(key);
+        if (!entry) { entry = []; out.set(key, entry); }
+        entry.push({ material: g.material, geometry });
+      }
+    }
+    return out;
+  }
+  /** A laid cut's geometries (its lists are let go). */
+  function buildJob(job: Prepared): void {
+    job.built = geometriesOf(job, true);
+    job.groups.clear();
+  }
+  function disposeBuilt(job: Prepared): void {
+    if (job.built) for (const list of job.built.values()) for (const { geometry } of list) geometry.dispose();
+    job.built = null;
   }
 
   function collapse(seam: StructureDamageSeam, e: CollapseBodiesEvent, standing: readonly THREE.Mesh[],
@@ -470,7 +553,11 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     // the fall's plan: the same cut as the job's (its own stream), the blow's order and shoves
     const plan = planCollapsePieces(anatomy, blow, { cap: o.cap });
     if (plan.pieces.length < 3) { prepared.delete(seam.structureIdx); return false; }
-    // the rims the breaches laid since (small), then the rest of the cut, now
+    // the rest of the cut now (a building that fell before its cut was laid), then the rims the breaches laid since
+    advanceJob(job, Infinity);
+    if (!job.built) buildJob(job);
+    prepared.delete(seam.structureIdx);
+    const built = job.built!;
     const runs: Source[] = [];
     const expanded: THREE.BufferGeometry[] = [];
     for (const run of standing) {
@@ -481,26 +568,15 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       if (flat !== geometry) expanded.push(flat);
       runs.push({ geometry: flat, material: run.material as THREE.Material, first: 0, count: flat.getAttribute('position').count, world: run.matrixWorld });
     }
-    if (runs.length) { job.done = false; addSources(job, runs); }
-    advanceJob(job, Infinity);
+    let rimBuilt: Map<number, Array<{ material: THREE.Material; geometry: THREE.BufferGeometry }>> | null = null;
+    if (runs.length) {
+      const rims: Prepared = { ...job, groups: new Map(), sources: [], source: 0, tri: 0, done: false, built: null };
+      addSources(rims, runs);
+      advanceJob(rims, Infinity);
+      rimBuilt = geometriesOf(rims, false);
+    }
     for (const flat of expanded) flat.dispose();
-    prepared.delete(seam.structureIdx);
-    const groups = job.groups;
-    if (!groups.size) return false;
-
-    // the caps: each piece's (each part's) broken edges and back, the remnant's broken tops, in their slots' materials
-    const defaultLayout: Layout = { names: ['uv', 'color'], sizes: [2, 3], stride: 11 };
-    const capInto = (key: number, cap: CapQuad): void => {
-      const material = resolve(cap.slot.bucket);
-      let g = material ? groups.get(material) : groups.values().next().value as Group;
-      if (!g && material) { g = { material, layout: defaultLayout, lists: new Map() }; groups.set(material, g); }
-      if (!g) return;
-      let list = g.lists.get(key);
-      if (!list) { list = []; g.lists.set(key, list); }
-      pushCap(list, g.layout, cap);
-    };
-    for (const piece of plan.pieces) for (const cap of capPiece(plan, piece)) capInto(piece.index * PART_STRIDE + (cap.part ?? 0), cap);
-    for (const cap of capStubs(plan)) capInto(STATIC_PIECE, cap);
+    if (!built.size) return false;
 
     // the collapse: its remnant (static, world space), its pieces (meshes in their parts' frames, bodies in the pool)
     const mound = anatomy.mound ?? null;
@@ -508,26 +584,6 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     const mx = mound ? mound.cx : placement.x, mz = mound ? mound.cz : placement.z;
     const lc: LiveCollapse = { structureIdx: anatomy.structureIdx, plan, yaw: placement.yaw, seam, event: { ...e }, t0: clockS, pieces: [],
       remnant: [], stubs: [], mound, box: [mx - reach, mz - reach, mx + reach, mz + reach], lastSoundS: -1, lastDustS: -1, baked: [], done: false };
-    const geometryOf = (layout: Layout, list: number[], transform: (src: number[], at: number, pos: Float32Array, nrm: Float32Array, o3: number) => void): THREE.BufferGeometry => {
-      const verts = list.length / layout.stride;
-      const pos = new Float32Array(verts * 3), nrm = new Float32Array(verts * 3);
-      const extra = layout.sizes.map((size) => new Float32Array(verts * size));
-      for (let i = 0; i < verts; i++) {
-        const at = i * layout.stride;
-        transform(list, at, pos, nrm, i * 3);
-        let k = at + 6;
-        for (let a = 0; a < layout.sizes.length; a++) {
-          const size = layout.sizes[a];
-          for (let j = 0; j < size; j++) extra[a][i * size + j] = list[k++];
-        }
-      }
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-      geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
-      layout.names.forEach((name, a) => geo.setAttribute(name, new THREE.BufferAttribute(extra[a], layout.sizes[a])));
-      geo.computeBoundingSphere();
-      return geo;
-    };
     const meshOf = (geo: THREE.BufferGeometry, material: THREE.Material, name: string): THREE.Mesh => {
       const mesh = new THREE.Mesh(geo, material);
       mesh.name = name;
@@ -537,17 +593,10 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       o.group.add(mesh);
       return mesh;
     };
+    const geometriesFor = (key: number) => [...(built.get(key) ?? []), ...(rimBuilt?.get(key) ?? [])];
     // the remnant: the building's own stubs, piers and plinth where they stood
-    for (const g of groups.values()) {
-      const list = g.lists.get(STATIC_PIECE);
-      if (!list?.length) continue;
-      const geo = geometryOf(g.layout, list, (src, at, pos, nrm, o3) => {
-        const x = src[at], y = src[at + 1], z = src[at + 2];
-        pos[o3] = f.x + x * f.c + z * f.s; pos[o3 + 1] = f.y + y; pos[o3 + 2] = f.z - x * f.s + z * f.c;
-        const nx = src[at + 3], ny = src[at + 4], nz = src[at + 5];
-        nrm[o3] = nx * f.c + nz * f.s; nrm[o3 + 1] = ny; nrm[o3 + 2] = -nx * f.s + nz * f.c;
-      });
-      const mesh = meshOf(geo, g.material, `fx-collapse-remnant-${anatomy.structureIdx}`);
+    for (const { material, geometry } of geometriesFor(STATIC_PIECE)) {
+      const mesh = meshOf(geometry, material, `fx-collapse-remnant-${anatomy.structureIdx}`);
       mesh.matrix.identity();
       lc.remnant.push(mesh);
     }
@@ -555,27 +604,17 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     for (const record of stubRecords(plan, placement)) { lc.stubs.push(record); stubRecords_.push(record); }
     // the pieces
     for (const piece of plan.pieces) {
-      if (piece.shatterS === 0) { shatterHandler?.(seam, piece, e); continue; }
-      const qp = new THREE.Quaternion(piece.rotation[0], piece.rotation[1], piece.rotation[2], piece.rotation[3]);
-      const inv = qp.clone().invert();
-      const pc = piece.center;
+      if (piece.shatterS === 0) {
+        shatterHandler?.(seam, piece, e);
+        for (let k = 0; k < Math.max(1, piece.parts.length); k++) for (const g of geometriesFor(piece.index * PART_STRIDE + k)) g.geometry.dispose();
+        continue;
+      }
       const nParts = Math.max(1, piece.parts.length);
       const parts: LivePart[] = [];
       for (let k = 0; k < nParts; k++) {
         const off = piece.parts[k]?.center ?? [0, 0, 0];
-        const meshes: THREE.Mesh[] = [];
-        for (const g of groups.values()) {
-          const list = g.lists.get(piece.index * PART_STRIDE + k);
-          if (!list?.length) continue;
-          const v = new THREE.Vector3();
-          const geo = geometryOf(g.layout, list, (src, at, pos, nrm, o3) => {
-            v.set(src[at] - pc[0], src[at + 1] - pc[1], src[at + 2] - pc[2]).applyQuaternion(inv);
-            pos[o3] = v.x - off[0]; pos[o3 + 1] = v.y - off[1]; pos[o3 + 2] = v.z - off[2];
-            v.set(src[at + 3], src[at + 4], src[at + 5]).applyQuaternion(inv);
-            nrm[o3] = v.x; nrm[o3 + 1] = v.y; nrm[o3 + 2] = v.z;
-          });
-          meshes.push(meshOf(geo, g.material, `fx-collapse-${piece.kind}-${anatomy.structureIdx}-${piece.index}.${k}`));
-        }
+        const meshes = geometriesFor(piece.index * PART_STRIDE + k)
+          .map(({ material, geometry }) => meshOf(geometry, material, `fx-collapse-${piece.kind}-${anatomy.structureIdx}-${piece.index}.${k}`));
         const offset = new THREE.Vector3(off[0], off[1], off[2]);
         parts.push({ meshes, offset, offsetM: offset.lengthSq() > 0 ? new THREE.Matrix4().makeTranslation(off[0], off[1], off[2]) : null,
           handle: -1, pose: new Float64Array(7).fill(NaN) });
@@ -665,8 +704,9 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       if (prepared.size) {
         const deadline = now() + budgetMs;
         for (const job of prepared.values()) {
-          if (job.done) continue;
-          advanceJob(job, deadline);
+          if (job.built) continue;
+          if (!job.done) advanceJob(job, deadline);
+          if (job.done && !job.built && now() < deadline) buildJob(job);
           if (now() >= deadline) break;
         }
       }
@@ -683,6 +723,11 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
           pool.world.wakeInBox(c.box[0], -1e4, c.box[1], c.box[2], 1e4, c.box[3]);
         }
       }
+      // the vehicles shove what lies in their way (and a slab lands on a deck)
+      hullList.length = 0;
+      const hulls = o.hulls?.();
+      if (hulls) for (const t of hulls) if (t && (t as WreckTurretTank).state && (t as WreckTurretTank).spec) hullList.push(t as WreckTurretTank);
+      pool.setHulls(hullList);
       pool.advance(dtS);
       // the panels that landed hard crack now (outside the pool's report)
       while (breaking.length) { const b = breaking.pop()!; breakApart(b.c, b.p); }
@@ -732,6 +777,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       }
     },
     get active() { return live.filter((c) => !c.done).length; },
+    took: (structureIdx) => live.some((c) => c.structureIdx === structureIdx),
     onShatter(handler) { shatterHandler = handler; },
     reset() {
       for (const c of live) {
@@ -740,6 +786,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       }
       live.length = 0;
       byHandle.clear();
+      for (const job of prepared.values()) disposeBuilt(job);
       prepared.clear();
       falling.clear();
       breaking.length = 0;
