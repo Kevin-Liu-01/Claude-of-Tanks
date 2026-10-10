@@ -311,26 +311,58 @@ function sootHalo(
   }
 }
 
-/** Penetration cell: halo + spall streaks + molten rim + hole + scratches. */
+/** A ring of spall pocks: small dark pits (paint and scale blown off, the plate cratered) with a bare-metal fleck in
+ *  each, scattered between r0 and r1 — the fragments' ring round a penetration, the fragment field of an HE burst. */
+function pocks(ctx: CanvasRenderingContext2D, rng: Rng, cx: number, cy: number, r0: number, r1: number, n: number,
+  size: number, alpha: number): void {
+  for (let i = 0; i < n; i++) {
+    const a = rng() * Math.PI * 2;
+    const d = r0 + (r1 - r0) * Math.sqrt(rng());
+    const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d;
+    const r = size * (0.5 + rng() * 0.9);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r * 1.6);
+    g.addColorStop(0, `rgba(9,8,7,${(alpha * (0.75 + rng() * 0.25)).toFixed(3)})`);
+    g.addColorStop(0.55, `rgba(22,19,16,${(alpha * 0.55).toFixed(3)})`);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r * 2, y - r * 2, r * 4, r * 4);
+    // a bare-metal fleck catching the light on the pit's far lip
+    if (rng() < 0.6) {
+      ctx.fillStyle = `rgba(150,152,154,${(alpha * (0.35 + rng() * 0.3)).toFixed(3)})`;
+      ctx.fillRect(x + Math.cos(a) * r * 0.6, y + Math.sin(a) * r * 0.6, Math.max(1, r * 0.5), Math.max(1, r * 0.4));
+    }
+  }
+}
+
+/** A ragged polygon (a torn hole, a flake of paint): n points round (cx, cy) at radius r with jitter j. */
+function raggedPath(ctx: CanvasRenderingContext2D, rng: Rng, cx: number, cy: number, r: number, n: number, j: number): void {
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + (rng() - 0.5) * (Math.PI / n);
+    const rr = r * (1 - j * 0.5 + j * rng());
+    if (i === 0) ctx.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+    else ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+  }
+  ctx.closePath();
+}
+
+/**
+ * Penetration cell (fx 9c, the owner: "hit marks all look better"; the decal is unlit, so nothing in it may glow — the
+ * old cell's bright yellow 'molten rim' and beads read as a lamp on a hull in shade): a torn, near-black hole; a thin
+ * burnished lip of bare steel broken round its edge; the paint burned off in a ragged ring and the plate heat-tempered
+ * (straw, bronze, blue) round that; a ring of spall pocks; soot rays and a soft soot halo. A critical hit (a module or
+ * the crew) burns wider and blacker.
+ */
 function drawPen(ctx: CanvasRenderingContext2D, rng: Rng, crit: boolean): void {
   const c = CELL / 2;
   const R = c;
-  sootHalo(ctx, rng, c, c, R * (crit ? 0.95 : 0.80), crit ? 0.75 : 0.60);
-  // faint ash ring inside the halo: keeps the scorch readable on very dark
-  // camo (soot-on-black otherwise vanishes in shade)
-  const ag = ctx.createRadialGradient(c, c, 0, c, c, R * 0.62);
-  ag.addColorStop(0.32, 'rgba(0,0,0,0)');
-  ag.addColorStop(0.52, 'rgba(142,134,120,0.15)');
-  ag.addColorStop(0.78, 'rgba(120,112,100,0.05)');
-  ag.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = ag;
-  ctx.fillRect(0, 0, CELL, CELL);
-  // radial spall streaks: 4-7 dark sooty rays flung from the hole
+  sootHalo(ctx, rng, c, c, R * (crit ? 0.95 : 0.8), crit ? 0.78 : 0.6);
+  // radial soot rays flung from the hole
   const nStreak = 4 + Math.floor(rng() * 4);
   for (let i = 0; i < nStreak; i++) {
     const a = rng() * Math.PI * 2;
-    const len = R * (0.30 + rng() * 0.36);
-    const w = R * (0.030 + rng() * 0.045);
+    const len = R * (0.3 + rng() * 0.36);
+    const w = R * (0.03 + rng() * 0.045);
     const r0 = R * 0.17;
     ctx.save();
     ctx.translate(c, c);
@@ -344,63 +376,53 @@ function drawPen(ctx: CanvasRenderingContext2D, rng: Rng, crit: boolean): void {
     ctx.fill();
     ctx.restore();
   }
-  // heat-tempering annulus outside the rim: oxide browns/violets where the
-  // plate cooked — this is what keeps an old hit looking HOT-WORKED rather
-  // than lit, and gives the mark body on any camo tone
-  const rimR = R * (crit ? 0.225 : 0.20);
-  const tg = ctx.createRadialGradient(c, c, 0, c, c, rimR * 2.6);
-  tg.addColorStop(0.3, 'rgba(0,0,0,0)');
-  tg.addColorStop(0.52, 'rgba(96,62,50,0.34)');
-  tg.addColorStop(0.74, 'rgba(74,56,64,0.22)');
+  const holeR = R * (crit ? 0.15 : 0.135);
+  // the paint burned off round the hole: a ragged ring of bare, heat-darkened primer and steel
+  ctx.save();
+  raggedPath(ctx, rng, c, c, holeR * (crit ? 3.0 : 2.6), 18, 0.35);
+  ctx.fillStyle = `rgba(80,76,70,${crit ? 0.3 : 0.25})`;
+  ctx.fill();
+  ctx.restore();
+  // the plate heat-tempered round the hole: straw to bronze to blue oxide, faint
+  const tg = ctx.createRadialGradient(c, c, holeR * 0.9, c, c, holeR * 2.5);
+  tg.addColorStop(0, 'rgba(150,118,72,0.42)');
+  tg.addColorStop(0.4, 'rgba(118,78,58,0.34)');
+  tg.addColorStop(0.75, 'rgba(70,72,96,0.24)');
   tg.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = tg;
   ctx.fillRect(0, 0, CELL, CELL);
-  // molten rim: hot ring hugging the hole, cooling outward. Crit runs a
-  // touch deeper into red (over-match heat).
-  const g2 = ctx.createRadialGradient(c, c, 0, c, c, rimR * 1.9);
-  g2.addColorStop(0.0, 'rgba(0,0,0,0)');
-  g2.addColorStop(0.50, `rgba(255,224,170,${crit ? 0.9 : 0.85})`);
-  g2.addColorStop(0.66, crit ? 'rgba(250,120,48,0.66)' : 'rgba(250,146,62,0.6)');
-  g2.addColorStop(0.85, 'rgba(160,62,26,0.26)');
-  g2.addColorStop(1.0, 'rgba(0,0,0,0)');
-  ctx.fillStyle = g2;
-  ctx.fillRect(0, 0, CELL, CELL);
-  // molten beads spattered on the rim
-  const nBead = 3 + Math.floor(rng() * 3);
-  for (let i = 0; i < nBead; i++) {
-    const a = rng() * Math.PI * 2;
-    const d = rimR * (0.9 + rng() * 0.5);
-    const r = 1.4 + rng() * 2.2;
-    const bg = ctx.createRadialGradient(c + Math.cos(a) * d, c + Math.sin(a) * d, 0,
-      c + Math.cos(a) * d, c + Math.sin(a) * d, r * 2);
-    bg.addColorStop(0, 'rgba(255,214,150,0.85)');
-    bg.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, CELL, CELL);
+  // the ring of spall pocks
+  pocks(ctx, rng, c, c, holeR * 1.6, R * (crit ? 0.62 : 0.55), crit ? 18 : 13, R * 0.028, 0.85);
+  // the burnished lip: broken arcs of bare steel hugging the hole (grey, never lamp-bright)
+  const nArc = 5 + Math.floor(rng() * 3);
+  for (let i = 0; i < nArc; i++) {
+    const a0 = rng() * Math.PI * 2;
+    ctx.strokeStyle = `rgba(158,160,162,${(0.45 + rng() * 0.25).toFixed(3)})`;
+    ctx.lineWidth = 1.2 + rng() * 1.6;
+    ctx.beginPath();
+    ctx.arc(c, c, holeR * (1.12 + rng() * 0.18), a0, a0 + 0.35 + rng() * 0.8);
+    ctx.stroke();
   }
-  // the hole itself: near-black core with a hard shoulder — sized so the
-  // dark void reads as strongly as the rim (a hit mark, not a glowing ring)
-  const holeR = R * (crit ? 0.155 : 0.14);
-  const g3 = ctx.createRadialGradient(c, c, 0, c, c, holeR * 1.2);
-  g3.addColorStop(0, 'rgba(3,2,2,0.985)');
-  g3.addColorStop(0.78, 'rgba(6,5,4,0.97)');
-  g3.addColorStop(1, 'rgba(10,8,6,0)');
-  ctx.fillStyle = g3;
-  ctx.fillRect(0, 0, CELL, CELL);
-  // bright bare-metal scratches whipped outward by spall
+  // the hole: torn, near-black, a hard edge
+  ctx.save();
+  raggedPath(ctx, rng, c, c, holeR, 14, 0.42);
+  ctx.fillStyle = 'rgba(4,3,3,0.985)';
+  ctx.fill();
+  ctx.restore();
+  // a few bare-metal scratches whipped outward by the spall
   const nBright = 2 + Math.floor(rng() * 2);
   for (let i = 0; i < nBright; i++) {
     const a = rng() * Math.PI * 2;
-    const len = R * (0.18 + rng() * 0.22);
-    const r0 = rimR * (1.0 + rng() * 0.4);
+    const len = R * (0.16 + rng() * 0.2);
+    const r0 = holeR * (1.3 + rng() * 0.5);
     ctx.save();
     ctx.translate(c, c);
     ctx.rotate(a);
     const g4 = ctx.createLinearGradient(r0, 0, r0 + len, 0);
-    g4.addColorStop(0, `rgba(214,220,228,${0.5 + rng() * 0.3})`);
-    g4.addColorStop(1, 'rgba(214,220,228,0)');
+    g4.addColorStop(0, `rgba(168,170,172,${(0.4 + rng() * 0.25).toFixed(3)})`);
+    g4.addColorStop(1, 'rgba(168,170,172,0)');
     ctx.fillStyle = g4;
-    ctx.fillRect(r0, -(0.6 + rng() * 0.9), len, 1.2 + rng() * 1.8);
+    ctx.fillRect(r0, -(0.5 + rng() * 0.7), len, 1 + rng() * 1.4);
     ctx.restore();
   }
 }
@@ -419,7 +441,7 @@ function drawGouge(ctx: CanvasRenderingContext2D, rng: Rng): void {
     const sx = x0 + rng() * CELL * 0.20;
     const len = CELL * (0.30 + rng() * 0.52);
     const w = 1 + rng() * 2.6;
-    const b = 150 + rng() * 92;
+    const b = 132 + rng() * 52;
     const a0 = 0.28 + rng() * 0.45;
     const g = ctx.createLinearGradient(sx, 0, sx + len, 0);
     g.addColorStop(0, `rgba(${(b * 0.92) | 0},${(b * 0.95) | 0},${b | 0},0)`);
@@ -434,9 +456,9 @@ function drawGouge(ctx: CanvasRenderingContext2D, rng: Rng): void {
     const sx = CELL * (0.14 + rng() * 0.08);
     const len = CELL * (0.26 + rng() * 0.2);
     const g = ctx.createLinearGradient(sx, 0, sx + len, 0);
-    g.addColorStop(0, 'rgba(232,238,246,0)');
-    g.addColorStop(0.3, `rgba(232,238,246,${0.55 + rng() * 0.3})`);
-    g.addColorStop(1, 'rgba(232,238,246,0)');
+    g.addColorStop(0, 'rgba(188,192,198,0)');
+    g.addColorStop(0.3, `rgba(188,192,198,${0.5 + rng() * 0.25})`);
+    g.addColorStop(1, 'rgba(188,192,198,0)');
     ctx.fillStyle = g;
     ctx.fillRect(sx, yy - 1.1, len, 2.2);
   }
@@ -452,10 +474,32 @@ function drawGouge(ctx: CanvasRenderingContext2D, rng: Rng): void {
     ctx.fillStyle = g;
     ctx.fillRect(sx, yy - 2, len, 4);
   }
-  // faint heat tint at the entry end (friction flash where the shell bit)
-  const hg = ctx.createRadialGradient(CELL * 0.20, cy, 0, CELL * 0.20, cy, CELL * 0.17);
-  hg.addColorStop(0, 'rgba(255,172,92,0.34)');
-  hg.addColorStop(1, 'rgba(255,140,70,0)');
+  // (fx 9c) the groove's floor: a dark line down the scrape's middle where the round ploughed the plate (the bare
+  // edges catch the light, the floor does not), deepest at the entry
+  {
+    const g = ctx.createLinearGradient(CELL * 0.14, 0, CELL * 0.74, 0);
+    g.addColorStop(0, 'rgba(30,30,32,0)');
+    g.addColorStop(0.12, 'rgba(30,30,32,0.62)');
+    g.addColorStop(0.7, 'rgba(34,34,36,0.3)');
+    g.addColorStop(1, 'rgba(34,34,36,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(CELL * 0.44, cy, CELL * 0.3, 2.2 + rng() * 1.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // paint flakes torn up along the groove's edges
+  for (let i = 0; i < 6; i++) {
+    const x = CELL * (0.18 + rng() * 0.5), y = cy + (rng() < 0.5 ? -1 : 1) * CELL * (0.06 + rng() * 0.05);
+    ctx.save();
+    raggedPath(ctx, rng, x, y, 2 + rng() * 3.5, 6, 0.6);
+    ctx.fillStyle = `rgba(118,116,110,${(0.3 + rng() * 0.25).toFixed(3)})`;
+    ctx.fill();
+    ctx.restore();
+  }
+  // a faint temper tint where the shell bit (bronze, not a glow: the decal is unlit)
+  const hg = ctx.createRadialGradient(CELL * 0.20, cy, 0, CELL * 0.20, cy, CELL * 0.15);
+  hg.addColorStop(0, 'rgba(150,104,66,0.26)');
+  hg.addColorStop(1, 'rgba(120,84,56,0)');
   ctx.fillStyle = hg;
   ctx.fillRect(0, 0, CELL, CELL);
   // envelope: elongated ellipse biased toward the entry — kills the tail and
@@ -509,6 +553,17 @@ function drawScorch(ctx: CanvasRenderingContext2D, rng: Rng): void {
     ctx.fill();
     ctx.restore();
   }
+  // (fx 9c, the owner: "hit marks all look better") the fragment field: pocks peppered over the blot, thickest near its
+  // centre, and a few flakes of paint blown off to bare primer
+  pocks(ctx, rng, c, c, R * 0.06, R * 0.72, 26 + Math.floor(rng() * 10), R * 0.022, 0.8);
+  for (let i = 0; i < 5; i++) {
+    const a = rng() * Math.PI * 2, d = R * (0.2 + rng() * 0.45);
+    ctx.save();
+    raggedPath(ctx, rng, c + Math.cos(a) * d, c + Math.sin(a) * d, R * (0.03 + rng() * 0.04), 7, 0.55);
+    ctx.fillStyle = `rgba(96,92,86,${(0.28 + rng() * 0.2).toFixed(3)})`;
+    ctx.fill();
+    ctx.restore();
+  }
 }
 
 /** Blunt non-pen scuff: chipped-paint dish with a bare-metal ring. */
@@ -521,13 +576,28 @@ function drawScuff(ctx: CanvasRenderingContext2D, rng: Rng): void {
   g0.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = g0;
   ctx.fillRect(0, 0, CELL, CELL);
+  // (fx 9c) the dent itself: a dark crescent on one side, a lighter one opposite (a shallow dish in the plate)
+  {
+    const dr = R * 0.26, off = R * 0.05, a = rng() * Math.PI * 2;
+    const g1 = ctx.createRadialGradient(c + Math.cos(a) * off, c + Math.sin(a) * off, dr * 0.2, c, c, dr);
+    g1.addColorStop(0, 'rgba(18,16,14,0.32)');
+    g1.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g1;
+    ctx.fillRect(0, 0, CELL, CELL);
+    const g2 = ctx.createRadialGradient(c - Math.cos(a) * off, c - Math.sin(a) * off, dr * 0.5, c, c, dr * 1.05);
+    g2.addColorStop(0.6, 'rgba(0,0,0,0)');
+    g2.addColorStop(0.85, 'rgba(136,134,128,0.18)');
+    g2.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g2;
+    ctx.fillRect(0, 0, CELL, CELL);
+  }
   // chipped ring: broken arcs of exposed metal
   const ringR = R * (0.30 + rng() * 0.05);
   const nArc = 5 + Math.floor(rng() * 4);
   for (let i = 0; i < nArc; i++) {
     const a0 = rng() * Math.PI * 2;
     const span = 0.4 + rng() * 0.9;
-    ctx.strokeStyle = `rgba(168,173,180,${0.35 + rng() * 0.3})`;
+    ctx.strokeStyle = `rgba(150,154,158,${0.35 + rng() * 0.3})`;
     ctx.lineWidth = 2 + rng() * 4;
     ctx.beginPath();
     ctx.arc(c, c, ringR * (0.9 + rng() * 0.25), a0, a0 + span);
@@ -542,8 +612,8 @@ function drawScuff(ctx: CanvasRenderingContext2D, rng: Rng): void {
     ctx.translate(c, c);
     ctx.rotate(a);
     const g = ctx.createLinearGradient(r0, 0, r0 + len, 0);
-    g.addColorStop(0, `rgba(180,184,190,${0.4 + rng() * 0.3})`);
-    g.addColorStop(1, 'rgba(180,184,190,0)');
+    g.addColorStop(0, `rgba(160,163,167,${0.4 + rng() * 0.3})`);
+    g.addColorStop(1, 'rgba(160,163,167,0)');
     ctx.fillStyle = g;
     ctx.fillRect(r0, -0.9, len, 1.8);
     ctx.restore();
