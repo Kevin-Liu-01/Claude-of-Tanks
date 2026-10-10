@@ -334,12 +334,13 @@ assert.ok(visSnow(0, T.pz0) < 0.3 && visSnow(0, T.fz0) < 0.62, `the rear strip: 
 const visSand = 1 - vehicleGroundOcclusionLocal({ x: 0, y: 0, z: 0 }, UP, T, sand);
 assert.ok(visSand > 0.15 && visSand < 0.32, `sunny sand's belly keeps ${visSand.toFixed(3)}`);
 // several hulls as independent occluders, the range fade over the selection's last stretch
-near(combineVehicleGroundOcclusion([0.2, 0.3], 10), 0.44, 1e-12, 'two as independent occluders');
+near(combineVehicleGroundOcclusion([0.1, 0.2], 10), 0.28, 1e-12, 'two as independent occluders');
 near(combineVehicleGroundOcclusion([0.8], GROUND_AO_RANGE_M), 0, 1e-12, 'gone at the range');
-near(combineVehicleGroundOcclusion([0.5], GROUND_AO_RANGE_M - GROUND_AO_FADE_M), 0.5, 1e-12, 'whole inside the fade');
+near(combineVehicleGroundOcclusion([0.3], GROUND_AO_RANGE_M - GROUND_AO_FADE_M), 0.3, 1e-12, 'whole inside the fade');
 // (2026-10-10, round 3; the owner on production 207: "super super dark rectangular shadows under tracks") the hulls' joint
 // share is capped: the ground under a belly keeps a part of its sky (the 207 frames: 0.03–0.08 of the shaded ground)
-assert.ok(GROUND_AO_OCC_MAX >= 0.5 && GROUND_AO_OCC_MAX <= 0.6, `the darkening never passes ${GROUND_AO_OCC_MAX} of the sky`);
+// (round 4, the owner's recovered screenshot: the slab under a rear overhang seen from an elevated rear quarter) 0.35
+assert.ok(GROUND_AO_OCC_MAX >= 0.3 && GROUND_AO_OCC_MAX <= 0.4, `the darkening never passes ${GROUND_AO_OCC_MAX} of the sky`);
 near(combineVehicleGroundOcclusion([0.99], 10), GROUND_AO_OCC_MAX, 1e-12, 'a belly\'s middle: capped');
 near(combineVehicleGroundOcclusion([0.45, 0.45], 10), GROUND_AO_OCC_MAX, 1e-12, 'two hulls never stack past the cap');
 assert.ok(combineVehicleGroundOcclusion([vehicleGroundOcclusionLocal({ x: 0, y: 0, z: 0 }, UP, T, snow)], 10) <= GROUND_AO_OCC_MAX,
