@@ -1006,9 +1006,15 @@ function placeBag(m: Mesh, rng: Rng, x: number, y: number, z: number, yaw: numbe
   g.translate(x, y, z);
   // the bag's own tones toward this map's hessian
   const C = g.getAttribute('color');
-  if (C) for (let i = 0; i < C.count; i++) {
-    const l = (C.getX(i) + C.getY(i) + C.getZ(i)) / 3 / 0.2;
-    C.setXYZ(i, tone[0] * l, tone[1] * l, tone[2] * l);
+  if (C) {
+    // the bag's own light and dark (its seam, its earth toward its bed) over its mean, carried onto this map's hessian
+    let mean = 0;
+    for (let i = 0; i < C.count; i++) mean += (C.getX(i) + C.getY(i) + C.getZ(i)) / 3;
+    mean = Math.max(1e-4, mean / C.count);
+    for (let i = 0; i < C.count; i++) {
+      const l = (C.getX(i) + C.getY(i) + C.getZ(i)) / 3 / mean;
+      C.setXYZ(i, tone[0] * l, tone[1] * l, tone[2] * l);
+    }
   }
   m.absorb(g);
   g.dispose();
