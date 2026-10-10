@@ -90,13 +90,15 @@ export function bv206(mesh: VehicleMesh, coarse: boolean, livery: 'orange' | 'ol
  * the cargo bed behind it; the lamps and the roof rack. */
 export function snocat(mesh: VehicleMesh, coarse: boolean): void {
   // (the map-content lane's first capture: the pontoons read as four wheels on stalks under a floating box) each pontoon
-  // long and low, the track wrapped round it under an orange pontoon body, the frame and the cab sitting down on them
-  const pw = 0.62;
+  // long and low, the track wrapped round it under an orange pontoon body, the frame and the cab sitting down on them.
+  // R6 (gauntlet wave 358a: "spindly wheels"): the pontoons fat, as the 1544's are: 0.78 m of track on 0.84 m end wheels,
+  // 2.2 m long, the orange body filling the loop between the runs, the steering bogies thick
+  const pw = 0.78;
   for (const sx of [1, -1]) for (const zc of [1.45, -1.45]) {
-    const x = sx * 0.92;
-    belt(mesh, x, pw, zc - 0.62, 0.36, 0.38, zc + 0.62, 0.38, 0.40, coarse, BLACK);
-    mesh.box(x, 0.62, zc, pw - 0.08, 0.34, 1.3, ORANGE, coarse ? 0 : 0.06);
-    mesh.box(x * 0.55, 0.86, zc, 0.6, 0.16, 0.3, BLACK, 0.02);
+    const x = sx * 1.0;
+    belt(mesh, x, pw, zc - 0.68, 0.42, 0.43, zc + 0.68, 0.42, 0.43, coarse, BLACK);
+    mesh.box(x, 0.45, zc, pw - 0.04, 0.62, 1.42, ORANGE, coarse ? 0 : 0.06);
+    mesh.box(x * 0.55, 0.92, zc, 0.62, 0.24, 0.42, BLACK, 0.03);
   }
   mesh.box(0, 0.98, 0, 1.2, 0.26, 4.4, BLACK, 0.02);
   // the cab forward, its windows; the bed behind with its low sides

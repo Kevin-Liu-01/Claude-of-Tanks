@@ -111,8 +111,8 @@ import { RUNNER_SNOW_SINK_M } from './maps/cartBodies.ts';
 // the map-vehicles lane (2026-10-05): the vehicles' surface stream and liveries, their ground-contact patches
 import { applyVehicleSurfaceHook, VEHICLE_SURFACE_PROGRAM } from './maps/vehicleSurface.ts';
 import {
-  boatMudHoles, buildBoatMud, buildBoatMudRims, buildHullWaterRings, buildRunnerTracks, buildVehicleContactShadows,
-  vehicleShadowCaster,
+  boatMudHoles, buildBoatMud, buildBoatMudRims, buildHullWaterRings, buildRunnerTracks, buildSetPieceContacts,
+  buildVehicleContactShadows, vehicleShadowCaster,
 } from './maps/vehicleContactShadow.ts';
 import {
   CART_SLIDE_MAX_M, PARKED_VEHICLE_CLEARANCE, polygonGap, seatCartsClear, separateParkedVehicles, shapePolygons, VEHICLE_SLIDE_MAX_M,
@@ -176,7 +176,7 @@ import {
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreckSteps, bakeWreckDebris, wreckRemnantPaint, type WreckBake } from './wrecks.ts';
-import type { VehicleSetPiece } from './maps/vehicleSetPieces.ts';
+import { RUNNING_GEAR_SEATED, SET_PIECE_SIZE, setPiecePrints, setPieceRunningGear, type VehicleSetPiece } from './maps/vehicleSetPieces.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import type { WreckBakePrefetch } from './wreckBakePrefetch.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
@@ -10554,6 +10554,25 @@ ${snowCap ? `
     const wheelTracks = buildRunnerTracks(rovers, heightField, aniso, () => ({ xs: [-0.915, 0.915], z0: -1.145 - 11, z1: 1.145 + 0.2, width: 0.12 }),
       () => true, { texture: 'chevron', name: 'props-wheel-tracks', pitch: 0.24 });
     if (wheelTracks) group.add(wheelTracks);
+    // the map-content lane's R6 (gauntlet wave 358a on Whiteout and Copper Mesa: the Sno-Cat "hovers above the snow ... with
+    // no shadow", the haul truck "hovers on the slope with no contact shadow or seated wheels", "no tracks"): each works
+    // vehicle's prints out behind it, the way it drove in, a strip under each side's line of gear (vehicleSetPieces.ts
+    // setPiecePrints; the wrecks long since drifted over), and its contact with the ground, a soft patch under the body
+    // and a crease along each tyre, track and pontoon (the contact-shadows lane's rule: 0.6 at the most on the ground
+    // lines, the body 0.35, no hard edge; vehicleContactShadow.ts buildSetPieceContacts)
+    const works = (P.vehicleSetPieces ?? []).filter((piece) => RUNNING_GEAR_SEATED.has(piece.kind));
+    if (works.length) {
+      const driven = works.filter((piece) => !piece.wrecked)
+        .map((piece) => ({ kind: piece.kind, x: piece.x, z: piece.z, yaw: (piece.yawDeg * Math.PI) / 180, sc: 1 }));
+      const prints = buildRunnerTracks(driven, heightField, aniso, (kind) => setPiecePrints(kind as VehicleSetPiece['kind']), () => true,
+        { texture: 'chevron', name: 'props-works-tracks', pitch: 0.3 });
+      if (prints) group.add(prints);
+      const contacts = buildSetPieceContacts(works.map((piece) => ({
+        x: piece.x, z: piece.z, yaw: (piece.yawDeg * Math.PI) / 180, hw: SET_PIECE_SIZE[piece.kind].hw, hl: SET_PIECE_SIZE[piece.kind].hl,
+        gear: setPieceRunningGear(piece.kind, !!piece.wrecked).contacts,
+      })), heightField);
+      if (contacts) group.add(contacts);
+    }
     // round 3: the mud a landing's hauled-out boat lies in (mapKits.ts beachedBoat's receipt), lit and shadowed
     const hauled = decorationGroundingReceipts.filter((r) => r.kind === 'beached-boat' && r.mud === true)
       .map((r) => ({ x: r.x, z: r.z, yaw: r.yaw as number, halfLength: r.halfLength as number, halfWidth: r.halfWidth as number }));

@@ -1482,6 +1482,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/cartKit.selftest.mjs',
     'src/world/maps/rollingStock.selftest.mjs',
     'src/world/maps/vehicleSetPieces.selftest.mjs',
+    // the map-content lane's R6 (wave 358a): the works vehicles on their own gear, their prints and ground contact
+    'src/world/maps/setPieceSeat.selftest.mjs',
     'src/world/maps/strandWrack.selftest.mjs',
     'src/world/maps/shoreJetty.selftest.mjs',
     'src/world/maps/mooredHullMotion.selftest.mjs',
