@@ -1607,6 +1607,9 @@ export function createLighting(
       mat: T,
       extraHook: MaterialCompileHook | null = null,
     ): T {
+      // (2026-10-10, overhaul r3) a material set up at a preset without the contact-hardening law compiles it out: Low keeps
+      // three's PCF with no dead branch (contactHardeningShadows.ts COT_NO_PCSS)
+      if (getPreset().pcss !== true) (mat.defines ??= {}).COT_NO_PCSS = '';
       csm.setupMaterial(mat);
       // 2026-10-03 (cloudShadeMap.ts): the clouds' shadows on the sun term — every desktop CSM material built on three's
       // own shaders unless it opts out (material.userData.cotCloudShade = false: it writes vCotCloudSun itself) or its

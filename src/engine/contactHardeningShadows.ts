@@ -31,7 +31,8 @@
  * The light's size: PCSS_LIGHT_DEG of sun by day (the sun is 0.53°; aerosol, the game's scale and the screen want
  * more), widened under a deck by PCSS_OVERCAST_K × the light model's overcast (a stratus diffuses the sun into a bright
  * patch: Whiteout's thin-deck sun, r1, casts soft shadows). The tiers: Ultra, High and Medium (quality.ts `pcss`); Low and
- * the phones keep three's five taps (uCotPcss.z 0). The first PCSS_CASCADES cascades: past them the penumbra is under a
+ * the phones keep three's five taps: the phones never install the law (lighting.ts), and a material set up at a preset
+ * without it compiles it out (COT_NO_PCSS), so no dead branch holds registers on the weakest GPUs. The first PCSS_CASCADES cascades: past them the penumbra is under a
  * texel or two of their maps anyway.
  *
  * No DOM, no WebGL, no three: the receipt runs the CPU twins as they are.
@@ -107,6 +108,7 @@ uniform vec3 uCotPcssU;
 int cotShadowCascade = -1;
 vec3 cotShadowN = vec3( 0.0, 1.0, 0.0 );
 float cotShadowNdotL = 1.0;
+#ifndef COT_NO_PCSS
 float cotPcssTap( sampler2DShadow shadowMap, vec2 uv, float z, vec2 offsetTx, vec2 texel, float texelM, vec2 grad ) {
 	return texture( shadowMap, vec3( uv + offsetTx * texel, z + dot( offsetTx * texelM, grad ) ) );
 }
@@ -153,13 +155,16 @@ float cotPcss( sampler2DShadow shadowMap, vec2 shadowMapSize, float shadowIntens
 	}
 	return mix( 1.0, shadow, shadowIntensity );
 }
+#endif
 float getShadow( sampler2DShadow shadowMap, vec2 shadowMapSize, float shadowIntensity, float shadowBias, float shadowRadius, vec4 shadowCoord ) {
 	int cascade = cotShadowCascade;
 	cotShadowCascade = -1;
+#ifndef COT_NO_PCSS
 	if ( cascade >= 0 && cascade < ${PCSS_CASCADES} && uCotPcss.z > 0.5 ) {
 		float texelM = cascade == 0 ? uCotPcssTexel.x : cascade == 1 ? uCotPcssTexel.y : cascade == 2 ? uCotPcssTexel.z : uCotPcssTexel.w;
 		return cotPcss( shadowMap, shadowMapSize, shadowIntensity, shadowBias, shadowRadius, shadowCoord, texelM );
 	}
+#endif
 	return cotGetShadowPCF( shadowMap, shadowMapSize, shadowIntensity, shadowBias, shadowRadius, shadowCoord );
 }
 #endif
