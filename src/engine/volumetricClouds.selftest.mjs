@@ -122,7 +122,6 @@ assert.equal(digest(bakeCloudShapeVolume(64, CLOUD_NOISE_SEED)), digest(shape), 
   assert.ok(Math.abs(hf / n - CLOUD_DETAIL_HF_MEAN) < 0.002, `the detail octave's mean ${(hf / n).toFixed(4)} = CLOUD_DETAIL_HF_MEAN`);
   const m = [0, 0, 0, 0], ns = shape.length / 4;
   for (let i = 0; i < ns; i++) for (let c = 0; c < 4; c++) m[c] += shape[i * 4 + c] / 255;
-const layerSourceText = readFileSync(new URL('./volumetricClouds.ts', import.meta.url), 'utf8');
   for (let c = 0; c < 4; c++) assert.ok(Math.abs(m[c] / ns - CLOUD_SHAPE_MEANS[c]) < 0.002, `the shape volume's channel ${c} mean ${(m[c] / ns).toFixed(4)}`);
 }
 // (the grain rounds) the history's memory and the prefilter's ranges: the floor keeps over twenty samples a pixel, a turn's
@@ -132,7 +131,8 @@ const layerSourceText = readFileSync(new URL('./volumetricClouds.ts', import.met
   assert.ok(CLOUD_MOTION_ALPHA.perPx > 0 && CLOUD_MOTION_ALPHA.max <= 0.25 && CLOUD_MOTION_ALPHA.max > CLOUD_HISTORY_MIN_ALPHA, 'a turn refreshes faster, within a cap');
   const P = CLOUD_DETAIL_PREFILTER_M;
   assert.ok(P.fine0 < P.fine1 && P.fine1 <= P.coarse0 && P.coarse0 < P.coarse1 && P.bulge0 < P.bulge1, 'the octaves fade in order of their size');
-  assert.ok(readFileSync(new URL('./volumetricClouds.ts', import.meta.url), 'utf8').includes('CLOUD_DETAIL_PREFILTER_M.fine0') && readFileSync(new URL('./volumetricClouds.ts', import.meta.url), 'utf8').includes('clamp( r, lo, hi )'), 'the prefilter and the composite despeckle are in the shaders');
+  const src = readFileSync(new URL('./volumetricClouds.ts', import.meta.url), 'utf8');
+  assert.ok(src.includes('CLOUD_DETAIL_PREFILTER_M.fine0') && src.includes('clamp( r, lo, hi )'), 'the prefilter and the composite despeckle are in the shaders');
 }
 assert.notEqual(digest(bakeCloudShapeVolume(8, 7)), digest(bakeCloudShapeVolume(8, 8)), 'the seed changes the volume');
 {
