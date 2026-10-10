@@ -99,6 +99,33 @@ export default {
       { kind: 'garden', x: -216, z: -46, yawDeg: -90, name: "the lookout's compound", params: { width: 16, depth: 16, fence: 'fencerail', beds: false, path: 0, back: 'fence' } },
       { kind: 'path', x: -246.6, z: -51.35, yawDeg: -102.4, name: "the track from the lookout to the road", params: { length: 44, width: 2.6, surface: 'earth' } },
       { kind: 'fireLookout', x: -216, z: -46, yawDeg: 0, name: 'the fire lookout on the western ridge', params: { height: 26 } },
+      // (the map-content lane, 2026-10-09; the owner: Longleaf Crossing "unfinished") the Louisiana Maneuvers of September 1941
+      // over the sawmill country: the bivouacs' tent rows and their fuel dumps in the clearings, a second fire lookout on
+      // the eastern cut (landmarks/virginLands.ts tentCamp, stations.ts drumCache: the props' canvas tents and drums)
+      { kind: 'tentCamp', x: 40, z: -230, yawDeg: 10, params: { rows: 2, tents: 5 }, ground: 'veto', name: 'a maneuver bivouac (south)' },
+      { kind: 'drumCache', x: 66, z: -226, yawDeg: 10, params: { rows: 3, columns: 6 }, ground: 'veto', name: 'the south bivouac fuel' },
+      { kind: 'tentCamp', x: 60, z: 320, yawDeg: -10, params: { rows: 2, tents: 5 }, ground: 'veto', name: 'a maneuver bivouac (north)' },
+      { kind: 'drumCache', x: 86, z: 316, yawDeg: -10, params: { rows: 3, columns: 6 }, ground: 'veto', name: 'the north bivouac fuel' },
+      { kind: 'tentCamp', x: 240, z: -150, yawDeg: 80, params: { rows: 2, tents: 4 }, ground: 'veto', name: 'a maneuver bivouac (east)' },
+      { kind: 'tentCamp', x: -230, z: 120, yawDeg: 100, params: { rows: 2, tents: 4 }, ground: 'veto', name: 'a maneuver bivouac (west)' },
+      { kind: 'fireLookout', x: 200, z: -330, yawDeg: 0, name: 'the fire lookout on the eastern cut', params: { height: 24 } },
+    ],
+    // the company's outlying farms and logging camps in the pines (the longleaf kit's dogtrot houses, cabins and barns),
+    // each lot its own stream, after the plan
+    plannedSitesAfterPlan: true,
+    plannedSites: [
+      { structure: 'farmhouse', x: -160, z: -215, yawDeg: 20, terrace: true },
+      { structure: 'logcabin', x: 100, z: -150, yawDeg: -40, terrace: true },
+      { structure: 'barn', x: 220, z: -250, yawDeg: 70, terrace: true },
+      { structure: 'logcabin', x: -30, z: -320, yawDeg: 10, terrace: true },
+      { structure: 'farmhouse', x: 300, z: 100, yawDeg: -90, terrace: true },
+      { structure: 'farmhouse', x: 160, z: 215, yawDeg: 160, terrace: true },
+      { structure: 'logcabin', x: -60, z: 200, yawDeg: 190, terrace: true },
+      { structure: 'barn', x: -200, z: 320, yawDeg: 120, terrace: true },
+      { structure: 'logcabin', x: 330, z: -200, yawDeg: -70, terrace: true },
+      { structure: 'farmhouse', x: 250, z: 280, yawDeg: 200, terrace: true },
+      { structure: 'farmhouse', x: -330, z: -250, yawDeg: 30, terrace: true },
+      { structure: 'logcabin', x: -380, z: 150, yawDeg: 80, terrace: true },
     ],
     loggingYard: {
       // Existing flatbeds load beside grounded cut timber inside the western
@@ -127,12 +154,12 @@ export default {
     wallStyle: 'fieldstone', wallStoneChance: 0.62,
     // (round 2, wave 124: "cut stone"): no fieldstone walls in the Louisiana pinewoods — the yards are fenced in plank
     wallRuns: [],
-    well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
+    well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     haystacks: 8, rocks: 30, outcrops: 0, craters: 48, rubblePiles: 10, cropFields: 2, sandbagLines: 14, hedgehogs: 8,
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
     tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
-    inhabit: { stalls: 1, benches: 3, coreClutter: 18, bales: 6, troughs: 2, laundry: 2, handcarts: 3, carts: 4, trucks: 6, jeeps: 4, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 22, roadFence: 'fenceplank', yardFence: 'fenceplank' },
+    inhabit: { stalls: 1, benches: 3, coreClutter: 18, bales: 6, troughs: 2, laundry: 2, handcarts: 3, carts: 4, trucks: 10, jeeps: 6, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 22, roadFence: 'fenceplank', yardFence: 'fenceplank' },
   },
   // the map-revival lane (2026-10-05, round 2; gauntlet wave 124: "no log pond, lumber stacks or working mill yard"): the
   // mill yard between the sawmill and the loading flatbeds — the sawn pine stickered in its drying stacks — and the log deck
