@@ -105,8 +105,8 @@ function lowestOverGround(turrets, id) {
 }
 
 // --- set down on its side an M1A2's turret lies on it (its armour's flank is a face) and rocks to rest; set upright on
-// its bustle, gun to the sky, a little past its narrow footing, it goes over (a 3.4 m column falls in about 3 s from
-// rest; a landing turret comes down tumbling and rarely stands there at all)
+// its bustle, gun to the sky, it has no footing there (an end's upper points stand back from it) and goes over at once
+// (a 3.4 m column still takes a second or two to come down from upright; a landing turret rarely stands there at all)
 function setDown(rotation, lift) {
   const turrets = createWreckTurrets({ seed: 5 });
   turrets.bind(flat);
@@ -132,6 +132,11 @@ function setDown(rotation, lift) {
   const bustle = setDown(new Quaternion().setFromEuler(new (await import('three')).Euler(-Math.PI / 2 + 0.105, 0, 0)), 3.45);
   const down = bustle.findIndex((t) => Math.abs(t - 90) > 45);
   assert.ok(down > 0 && down < 240, `off its bustle within 4 s (${down < 0 ? 'never' : (down / 60).toFixed(2) + ' s'})`);
+  // set exactly upright on its bustle it has no footing there: it starts over at once instead of standing
+  const upright = setDown(new Quaternion().setFromEuler(new (await import('three')).Euler(-Math.PI / 2, 0, 0)), 3.45);
+  const over = upright.findIndex((t) => Math.abs(t - 90) > 45);
+  assert.ok(Math.abs(upright[48] - 90) > 2.5, `upright on its bustle it is going over within 0.8 s (${upright[48].toFixed(1)}°)`);
+  assert.ok(over > 0 && over < 180, `and down within 3 s (${over < 0 ? 'never' : (over / 60).toFixed(2) + ' s'})`);
 }
 
 // --- a cook-off: the turret flies, tumbles and lies on the ground beside its hull (or on it), asleep — never seated

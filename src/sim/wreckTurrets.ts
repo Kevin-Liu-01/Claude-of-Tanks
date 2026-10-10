@@ -160,6 +160,16 @@ function envelopePoints(plates: readonly PlateLike[] | undefined, cells: readonl
     const c = cloud[at];
     points.push([inset(c[0] - d[0] * e, 0), inset(c[1] - d[1] * e, 1), inset(c[2] - d[2] * e, 2)]);
   }
+  // the ends are no footings: a bustle's top slopes or rounds into the roof and its stowage racks crush, a turret's
+  // face is its mantlet and wedges. The upper points of either end stand back from it, so a turret come down on an end
+  // stands on that end's lower edge alone, out of balance toward its roof, and goes over instead of balancing gun-up
+  const mid = (lo[1] + hi[1]) / 2, back = Math.max(0.2 * s, 0.07 * (hi[2] - lo[2]));
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    if (p[1] <= mid) continue;
+    if (p[2] <= lo[2] + e + 0.1 * s) points[i] = [p[0], p[1], Math.max(p[2], lo[2] + e + back)];
+    else if (p[2] >= hi[2] - e - 0.1 * s) points[i] = [p[0], p[1], Math.min(p[2], hi[2] - e - back)];
+  }
   // the footprint on the ring plane: a grid inside the hull of the floored points
   const floor = 0.02 * s + 1e-6;
   const base = cloud.filter((p) => p[1] <= floor).map((p) => [p[0], p[2]] as [number, number]);
