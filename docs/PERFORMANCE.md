@@ -225,7 +225,9 @@ switch promises never become visible. One modern four-bay maintenance graph is
 demand-loaded in quiet slices after readiness, optimized once, and shared by
 all ten environments. Its static Burlak, Abrams, T-90M, and K2 displays surround
 the podium without per-frame update work or per-variant duplication;
-Verdant's extra wall clutter remains a separate visibility branch.
+Verdant's extra wall clutter remains a separate visibility branch. The Abrams
+bay merges as its own nested display owner (a few extra draws) so a switch
+can move it between Verdant's canister station and the outdoor station.
 
 One frozen presentation pose is shared by the stage, hero pedestal, return path,
 and camera runtime. There are no per-location heading or camera branches. The
