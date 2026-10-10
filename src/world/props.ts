@@ -228,6 +228,7 @@ import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
 import { deploymentClearings } from '../sim/matchPlacement.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
 import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.ts';
+import { STRUCTURE_OCCLUSION_EXCLUDED_KINDS } from '../engine/structureOcclusion.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). The exact float/index streams live in a gzip-packed
 // binary archive; createMapAsync starts it while terrain is being constructed.
@@ -4123,6 +4124,9 @@ ${snowCap ? `
   const roofHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyTileLodBias(shader, ROOF_TILE_LOD_BIAS); };
   function installSurfaceShaderHooks(): void {
     for (const [materialKind, material] of Object.entries(mats)) {
+      // (2026-10-10, the shadows lane r4) the structures tag their pixels for their cavity occlusion; ground-like stone,
+      // mud, poles, glass and the props' vehicles do not (structureOcclusion.ts)
+      if (!STRUCTURE_OCCLUSION_EXCLUDED_KINDS.has(materialKind)) material.userData.cotStructurePixel = true;
       // (round 7) a kit's tile sheet takes the biased roof hook; (round 10) a kit's walls the walls' grime
       const kitHook = tileBiased(materialKind) ? roofHook : isKitWall(materialKind) ? wallGrimeHook : null;
       engineCtx.setupShadowMaterial(material, kitHook ?? (
@@ -10076,6 +10080,7 @@ ${snowCap ? `
       const material = new THREE.MeshStandardMaterial({ map: thatch.albedo, normalMap: thatch.normal,
         roughnessMap: thatch.surface, aoMap: thatch.surface, roughness: 1, metalness: 0 });
       material.aoMapIntensity = 0.82;
+      material.userData.cotStructurePixel = true; // (the shadows lane r4: a thatched roof is a structure's)
       engineCtx.setupShadowMaterial(material, grimeHook);
       material.customProgramCacheKey = () => 'world-props-straw-v7' + (snowCap ? 's' : '');
       mats.thatch = material;

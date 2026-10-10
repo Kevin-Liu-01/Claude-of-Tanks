@@ -204,7 +204,8 @@ assert.match(post, /updateContactShadowUniforms\(aerial\.uniforms, camera, scene
 
 const lighting = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
 assert.match(lighting, /#define COT_SUN_VIS_CAPTURED 1\nfloat cotSunVis = 1\.0;/, 'the capture marks itself for the alpha write');
-assert.match(lighting, /#if defined\( COT_SUN_VIS_CAPTURED \) && defined\( OPAQUE \) && defined\( USE_CSM \)\ngl_FragColor\.a = 2\.0 \+ cotSunVis;\n#endif/,
+// (2026-10-10, overhaul r4: a structure material's define adds its tag right after — structureOcclusion.ts)
+assert.match(lighting, /#if defined\( COT_SUN_VIS_CAPTURED \) && defined\( OPAQUE \) && defined\( USE_CSM \)\ngl_FragColor\.a = 2\.0 \+ cotSunVis;\n(?:#ifdef COT_STRUCTURE_PIXEL\n[^\n]*\n#endif\n)?#endif/,
   'opaque CSM pixels write two plus their sun visibility into alpha (cards, water and glass stay below 1.5)');
 assert.equal(contactShadowSunVisibility(2.0), 0, 'decode: an opaque pixel in cascade shadow');
 assert.equal(contactShadowSunVisibility(3.0), 1, 'decode: a sunlit opaque pixel');

@@ -26,6 +26,7 @@ import {
 } from './shadowStability.ts';
 import { createShadowFitCache } from './shadowFitCache.ts';
 import { CSM_FADE_MARGIN_GLSL, cascadeBreaks, csmFadeKFor, csmFadeMargin } from './shadowCascadeLayout.ts';
+import { STRUCTURE_ALPHA_TAG } from './structureOcclusion.ts';
 import {
   CONTACT_HARDENING_GLSL, COT_PCF_GET_SHADOW_DEF, CSM_NON_CSM_HEAD, CSM_SITE_SETUP, PCSS_LIGHT_DEG, PCSS_OVERCAST_K, PCSS_REACH_M,
   THREE_PCF_GET_SHADOW_DEF, pcssLightRad,
@@ -759,9 +760,13 @@ uniform float uCotReceiverOnly;
   if (!opaque.includes(opaqueAnchor)) {
     throw new Error('lighting.ts: alpha anchor not found in opaque_fragment');
   }
+  // (2026-10-10, overhaul r4: a structure material adds STRUCTURE_ALPHA_TAG — 6 + v, structureOcclusion.ts)
   THREE.ShaderChunk.opaque_fragment = opaque.replace(opaqueAnchor, `${opaqueAnchor}
 #if defined( COT_SUN_VIS_CAPTURED ) && defined( OPAQUE ) && defined( USE_CSM )
 gl_FragColor.a = 2.0 + cotSunVis;
+#ifdef COT_STRUCTURE_PIXEL
+gl_FragColor.a += ${STRUCTURE_ALPHA_TAG.toFixed(1)};
+#endif
 #endif`);
 }
 
@@ -1608,6 +1613,9 @@ export function createLighting(
       const cloudShade = cloudShadeOn && (optIn === true || (optIn !== false && !(mat as unknown as { isShaderMaterial?: boolean }).isShaderMaterial));
       if (cloudShade) (mat.defines ??= {}).COT_CLOUD_SHADE = '';
       const receiverOnly = mat.userData.cotShadowReceiverOnly === true; // (RECEIVER_ONLY_SHADOW_NOTE, below)
+      // 2026-10-10 (overhaul r4): a structure material tags its pixels for the structures' cavity occlusion
+      // (structureOcclusion.ts: 6 + v in the scene alpha) by a define, which three keys its program by
+      if (mat.userData.cotStructurePixel === true) (mat.defines ??= {}).COT_STRUCTURE_PIXEL = '';
       {
         // Round 69: the ground-bounce uniforms ride on every CSM registration (groundBounce.ts).
         const csmHook = mat.onBeforeCompile;

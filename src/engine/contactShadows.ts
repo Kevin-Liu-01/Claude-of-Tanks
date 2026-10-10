@@ -32,6 +32,7 @@
  */
 import * as THREE from 'three';
 import { VEHICLE_ALPHA_MIN } from './vehicleOcclusion.ts';
+import { STRUCTURE_ALPHA_MIN } from './structureOcclusion.ts';
 
 export const CONTACT_SHADOW_STEPS = 12;
 export const CONTACT_SHADOW_MAX_SCREEN_PX = 8;
@@ -130,6 +131,8 @@ export interface ContactShadowAmbient {
  * vehicle pixel carries 4 + its visibility (vehicleOcclusion.ts), every other opaque lit pixel 2 + its visibility.
  */
 export function contactShadowSunVisibility(alpha: number): number {
+  // (2026-10-10, overhaul r4: a structure pixel carries 6 + its visibility — structureOcclusion.ts)
+  if (alpha >= STRUCTURE_ALPHA_MIN) return THREE.MathUtils.clamp(alpha - 6, 0, 1);
   if (alpha >= VEHICLE_ALPHA_MIN) return THREE.MathUtils.clamp(alpha - 4, 0, 1);
   return alpha >= CONTACT_SHADOW_ALPHA_OPAQUE ? THREE.MathUtils.clamp(alpha - 2, 0, 1) : -1;
 }
@@ -242,6 +245,7 @@ export const CONTACT_SHADOW_GLSL = /* glsl */ `
     // the scene target's alpha: 2 + the CSM sun visibility of an opaque lit surface (4 + it on a vehicle,
     // vehicleOcclusion.ts), below 1.5 anything else
     float cotSunVisOf( float a ) {
+      if ( a >= ${f(STRUCTURE_ALPHA_MIN)} ) return clamp( a - 6.0, 0.0, 1.0 );
       if ( a >= ${f(VEHICLE_ALPHA_MIN)} ) return clamp( a - 4.0, 0.0, 1.0 );
       return a >= ${f(CONTACT_SHADOW_ALPHA_OPAQUE)} ? clamp( a - 2.0, 0.0, 1.0 ) : -1.0;
     }

@@ -161,6 +161,8 @@ export const VEHICLE_OCCLUSION_GLSL = /* glsl */ `
     }
     float cotVehicleOcclusionShade( vec2 uv, vec3 P, float dist, float alpha ) {
       if ( alpha < ${f(VEHICLE_ALPHA_MIN)} ) return 1.0;
+      // (2026-10-10, overhaul r4) a structure pixel (6 + v, structureOcclusion.ts) takes the structures' own term
+      if ( alpha >= 5.5 ) return 1.0;
       float sunVis = clamp( alpha - 4.0, 0.0, 1.0 );
       vec3 N = cotNormalAt( uv, P );
       float T = uContactSunLum * max( dot( N, uSunDir ), 0.0 ) * sunVis;

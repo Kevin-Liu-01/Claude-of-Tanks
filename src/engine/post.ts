@@ -112,6 +112,9 @@ import {
 import {
   SGO_RANGE_M, STRUCTURE_GROUND_ALPHA_MAX, STRUCTURE_GROUND_OCCLUSION_GLSL, createStructureGroundUniforms, updateStructureGroundUniforms,
 } from './structureGroundOcclusion.ts';
+import {
+  STRUCTURE_ALPHA_MIN, STRUCTURE_OCCLUSION_GLSL, STRUCTURE_OCCLUSION_RANGE_M, createStructureOcclusionUniforms,
+} from './structureOcclusion.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
 import type { GpuFrameTimer } from './gpuFrameTimer.ts';
 /** The haze law's target terms, written in place every frame (hazeTargetTerms). */
@@ -1019,6 +1022,8 @@ const AerialShader = {
     ...createVehicleGroundOcclusionUniforms(),
     // 2026-10-09: the ground's sky beside the world's solids (structureGroundOcclusion.ts) — uSgo 0 skips it
     ...createStructureGroundUniforms(),
+    // 2026-10-10: structure-only cavity occlusion (structureOcclusion.ts) — uStructOcc 0 skips it
+    ...createStructureOcclusionUniforms(),
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -1068,6 +1073,7 @@ const AerialShader = {
     ${VEHICLE_OCCLUSION_GLSL}
     ${VEHICLE_GROUND_OCCLUSION_GLSL}
     ${STRUCTURE_GROUND_OCCLUSION_GLSL}
+    ${STRUCTURE_OCCLUSION_GLSL}
     ${HAZE_LAW_GLSL}
     // 2026-10-05 (AERIAL_MID_*, the law by default): the middle distances' optical depth × w(d), whole again by
     // uHazeMid.y; with uHazeMid.z the lighter veil's luminance at the full law's chromaticity (its hue shift kept)
@@ -1204,6 +1210,11 @@ const AerialShader = {
           texel.rgb *= cotVehicleOcclusionShade( vUv, uCamPos + ray * rayT, -viewZ, texel.a );
         }
         // 2026-10-03: the ground's sky under and beside the near hulls (vehicleGroundOcclusion.ts): its ambient share
+        // 2026-10-10: a structure pixel's cavity occlusion (structureOcclusion.ts): door and window reveals, eaves — its
+        // ambient share; never the ground, the grass or a vehicle
+        if ( uStructOcc > 0.5 && texel.a >= ${STRUCTURE_ALPHA_MIN.toFixed(1)} && -viewZ < ${STRUCTURE_OCCLUSION_RANGE_M.toFixed(1)} ) {
+          texel.rgb *= cotStructureCavityShade( vUv, uCamPos + ray * rayT, -viewZ, texel.a );
+        }
         // (2026-10-09: the colour before the hulls' term, so the structures' term below can read what it took)
         float cotGroundPre = max( texel.r, max( texel.g, texel.b ) );
         if ( uVehGround > 0.5 && texel.a < ${VEHICLE_ALPHA_MIN.toFixed(1)} && -viewZ < ${GROUND_AO_RANGE_M.toFixed(1)} ) {
@@ -2893,6 +2904,8 @@ export function createPost(
     // (2026-10-09) the structures' ground occlusion rides the contact-shadow lever (the desktop light effects) and reads the
     // same rig uniforms, which the line above refreshes whenever the lever is on
     updateStructureGroundUniforms(aerial.uniforms, scene, renderer, lightFx.contactShadows);
+    // (2026-10-10) the structures' cavity term rides the cavity lever (?fx=cavity) and the preset's own switch
+    aerial.uniforms.uStructOcc.value = lightFx.vehicleOcclusion && preset.structureOcclusion === true && lightTune('STRUCT_OCC', 1) > 0 ? 1 : 0;
     aerial.uniforms.uVehOcc.value = lightFx.vehicleOcclusion ? 1 : 0;
     sunShafts.update(lightFx.sunShafts);
     lensFlare.update(lightFx.lensFlare);

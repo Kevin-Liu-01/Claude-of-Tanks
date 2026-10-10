@@ -615,6 +615,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/shadowCascadeLayout.selftest.mjs',
     // 2026-10-10 (the shadows lane, overhaul r3): contact-hardening soft shadows on the nearest cascade
     'src/engine/contactHardeningShadows.selftest.mjs',
+    // 2026-10-10 (the shadows lane, overhaul r4): cavity occlusion for structure pixels only
+    'src/engine/structureOcclusion.selftest.mjs',
     'src/engine/nearVehicleShadowDetail.selftest.mjs',
     'src/engine/articulatedShadowBatch.selftest.mjs',
     'src/engine/lodShadowFade.selftest.mjs',
