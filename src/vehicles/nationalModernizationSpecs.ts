@@ -52,10 +52,7 @@ export function synchronizeNationalModernizationMetadata():void {
     s.visual={...s.visual,trackWidthM:hull.visual.trackWidthM,
       scheme:c.package==='cn'?'digital':c.package==='pl'?'nato':'woodland',
       base:c.package==='cn'?'#626c43':c.package==='pl'?'#4a563b':c.package==='ua'?'#536243':'#586145',
-      // fleet lane 2026-10-08 (the coordinator: the Russian three-tone's near-black blots "read as holes at every
-      // distance"): the Russian black lifted to a dark green-grey
-      patches:c.package==='cn'?['#303d34','#a5aa77']:c.package==='ua'?['#283829','#8b9260']
-        :c.package==='ru'?['#353f37','#827458']:['#29342d','#827458'],
+      patches:c.package==='cn'?['#303d34','#a5aa77']:c.package==='ua'?['#283829','#8b9260']:['#29342d','#827458'],
       number:String(810+NATIONAL_MODERNIZATION_IDS.indexOf(c.id))};
     s.gun=structuredClone(upper.gun);
     // Concept capability packages are game balance, not real ammunition data.

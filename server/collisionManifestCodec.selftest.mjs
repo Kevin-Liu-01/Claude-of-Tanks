@@ -64,6 +64,15 @@ assert.deepEqual(collisionCaptureOptions(['--node', '--maps', 'desert']), {
 assert.deepEqual(collisionCaptureOptions(['--check']), {
   session: 'cot-manifest', mapIds: MAP_IDS, partial: false, headless: false, cacheDir: null, node: true, check: true,
 }, 'a drift check builds every map in Node');
+// 2026-10-08 (destruction core lane): a mode's battlefield variant builds in Node into its own `<map>@<variant>.json`
+assert.deepEqual(collisionCaptureOptions(['--variant=assault-trenches', '--maps', 'verdant']), {
+  session: 'cot-manifest', mapIds: ['verdant'], partial: true, headless: false, cacheDir: null, node: true, check: false,
+  variant: 'assault-trenches',
+}, 'a variant build runs in Node');
+assert.equal(collisionCaptureOptions(['--check', '--variant=assault-trenches']).variant, 'assault-trenches');
+for (const args of [['--variant=moon-craters'], ['--variant=assault-trenches', '--variant=assault-trenches'], ['--variant=assault-trenches', '--headless']]) {
+  assert.throws(() => collisionCaptureOptions(args), /variant|node|headless/);
+}
 for (const args of [['--node', '--headless'], ['--node', 'owned-session'], ['--check', '--check'], ['--node', '--node']]) {
   assert.throws(() => collisionCaptureOptions(args), /node|check|session|headless/);
 }

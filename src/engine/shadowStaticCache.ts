@@ -156,6 +156,10 @@ export function casterSignature(object: CasterLike): number {
   if (staticMask !== null) h = mix(h, staticMask);
   const dynamicMask = shadowCasterDynamicMaskOf(object);
   if (dynamicMask !== null) h = mix(h, dynamicMask);
+  // a shape the GPU changes and nothing above shows (destruction: the structure mask reshaping a props bucket through
+  // its aDamage tags): the owner bumps this epoch on every frame it changes (world structureDamage(id).touchShadows())
+  const epoch = object.userData.cotShadowEpoch;
+  if (typeof epoch === 'number') h = mix(h, epoch);
   return h;
 }
 

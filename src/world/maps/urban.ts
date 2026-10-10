@@ -249,7 +249,14 @@ export default {
     monument: true,
     blockFill: true,
     tones: {
-      plaster: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 0.92)], // sooty render
+      // (the facades lane, 2026-10-08) the cream lime render the photo set gave the town's primary family, its mean kept
+      // (hue 0.106, saturation 0.16, lightness 0.58) now the kit paints the render (franconian.ts surfaces.render);
+      // (2026-10-09, mapQuality's city-tone bound: lightness <= 0.62 at a mid sample) its lightest mottles eased in over
+      // a knee at 0.585, so a bright tone never washes out to white
+      plaster: (h: number, s: number, l: number) => {
+        const x = l * 1.26;
+        return [0.106, clamp01(s * 0.55 + 0.11), clamp01(x < 0.585 ? x : 0.585 + (x - 0.585) * 0.3)];
+      },
       // r3 (content_breadth): two more render families for the street walls —
       // the whole town recycled ONE white-plaster box ("kit-bash at mid
       // distance" critique). plaster2 = warm ochre-cream (Central European

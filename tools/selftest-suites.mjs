@@ -49,7 +49,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/nationalPolandProtection.selftest.mjs',
     'src/vehicles/nationalRoof.selftest.mjs',
     'src/sim/smokeBallistics.selftest.mjs',
+    'src/vehicles/smokeFan.selftest.mjs',
+    'src/sim/smokeScreenCover.selftest.mjs',
     'src/fx/auxiliaryPresentation.selftest.mjs',
+    'src/fx/projectileTracers.selftest.mjs',
     'src/ui/vehicleControlCooldown.selftest.mjs',
     'src/ui/vehicleSpecialAction.selftest.mjs',
     'src/vehicles/vehicleAuxiliaryGeometry.selftest.mjs',
@@ -272,6 +275,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/cinematicFx.selftest.mjs',
     'src/fx/cinematicShotBlast.selftest.mjs',
     'src/fx/shellBurstColumn.selftest.mjs',
+    // 2026-10-08 (destruction core lane, P2): the Studio films the sim's own holes and falls
+    'src/game/studioDestruction.selftest.mjs',
+    // 2026-10-09 (destruction core lane): a Studio burst fells light props as a battle's does; strike rounds burst on the ground.
+    'src/game/studioBlastFell.selftest.mjs',
     'tools/studio-example-scenarios.selftest.mjs',
     'src/vehicles/spareTrackAttachment.selftest.mjs',
     'src/vehicles/turretBarrelCircularity.selftest.mjs',
@@ -568,6 +575,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/viteGlslMinify.selftest.mjs',
     'tools/telemetry-report.selftest.mjs',
     'tools/browser-failure-evidence.selftest.mjs',
+    'tools/battle-entry-sweep.selftest.mjs',
     'tools/multiplayer-frame-trace.selftest.mjs',
     'tools/terrain-stream-benchmark.selftest.mjs',
     'tools/terrain-fast-cache-benchmark.selftest.mjs',
@@ -695,6 +703,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/damagePanel.selftest.mjs',
     'src/ui/damagePanelMarkers.selftest.mjs',
     'src/ui/damagePanelMaskRetry.selftest.mjs',
+    'src/ui/damagePanelEntryMasks.selftest.mjs',
     'src/engine/rgba8Readback.selftest.mjs',
     'src/ui/topMaskProgramWarm.selftest.mjs',
     'src/ui/tankThumbs.selftest.mjs',
@@ -707,21 +716,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/runtimeStyles.selftest.mjs',
     'src/ui/topAccentBorders.selftest.mjs',
     'src/vehicles/camoPolicy.selftest.mjs',
-    // 2026-10-07 (tank-accessories round 3): AUTO paints each nation's own scheme for the battlefield's environment
-    'src/vehicles/autoCamoNational.selftest.mjs',
-    'src/vehicles/battleTheatreCamo.selftest.mjs',
+    // 2026-10-09 (fix/camo-defaults): production's camouflage system, row for row (R113; the owner's 10-09 messages)
+    'src/vehicles/camoCatalogProductionIndices.selftest.mjs',
     'src/vehicles/authoredPaintCatalog.selftest.mjs',
     'src/vehicles/customCamoCanvas.selftest.mjs',
     'src/vehicles/factoryCamo.selftest.mjs',
     'src/vehicles/camoPatternSeed.selftest.mjs',
     'src/vehicles/camoWorldScale.selftest.mjs',
-    // 2026-10-07 (tank-accessories round 4): bolted-on boxes, bins and sleeve sections as their own camouflage panels
-    'src/vehicles/camoPanels.selftest.mjs',
     'src/vehicles/brandCamo.selftest.mjs',
     'src/vehicles/catalogCamoPainter.selftest.mjs',
-    // 2026-10-04 (the vehicle-look lane): the field camouflages' boundaries at the tile's own resolution
-    'src/vehicles/camoFieldEdges.selftest.mjs',
-    'src/vehicles/camoPatchFields.selftest.mjs',
     'src/vehicles/vehicleMarkingsCanvas.selftest.mjs',
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
@@ -795,6 +798,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioWorldStep.selftest.mjs',
     // 2026-10-08 (destruction core lane): an effect naming an actor the scene does not stage never hangs a film
     'src/game/studioOrphanEffect.selftest.mjs',
+    // 2026-10-08 (destruction core lane): a Studio strike round breaks the light cover in its path and flies on
+    'src/game/studioStrikeCover.selftest.mjs',
     'src/game/stateCore.selftest.mjs',
     'src/game/startupIntent.selftest.mjs',
     'src/game/selectedVehicleSelection.selftest.mjs',
@@ -838,6 +843,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/snowFaces.selftest.mjs',
     'src/world/worldFramePresentationRuntime.selftest.mjs',
     'src/fx/particleTextureAssets.selftest.mjs',
+    'src/fx/volumeMedia.selftest.mjs',
+    'src/fx/structureStages.selftest.mjs',
     'src/ui/hitEventFormat.selftest.mjs',
     'src/ui/shotDiagramProjection.selftest.mjs',
     'src/ui/shotSchematic.selftest.mjs',
@@ -940,6 +947,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/soundAssets.selftest.mjs',
     'src/audio/sfxLoudness.selftest.mjs',
     'src/audio/propSounds.selftest.mjs',
+    'src/audio/destructionSounds.selftest.mjs',
     'src/audio/assetLibrary.selftest.mjs',
     'src/audio/crewRadio.selftest.mjs',
     'src/audio/crewVoice.selftest.mjs',
@@ -968,10 +976,17 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/migrationState.selftest.mjs',
     'src/mp/host/matchHost.selftest.mjs',
     'src/mp/host/worldCollision.selftest.mjs',
+    // 2026-10-08 (destruction core lane): Frontline's authority plays the trench variant every client builds
+    'src/mp/host/frontlineVariant.selftest.mjs',
     'src/mp/host/hostRuleset.selftest.mjs',
     // 2026-10-01: the host Worker carries specs, not vehicles; the roster's anatomy loads at boot.
     'src/mp/host/hostFleet.selftest.mjs',
     'src/mp/presentation/battlePresentation.selftest.mjs',
+    // 2026-10-07 (destruction core lane): the authority's stages on a peer's world, the log on the wire and through a migration.
+    'src/mp/presentation/destructionMirror.selftest.mjs',
+    // 2026-10-08 (destruction core lane, crater-render-spec §F): craters across the network — stamped once on a live view
+    // (the log held for an owed event), settled once for a late joiner, restored without an event on a migrated host
+    'src/mp/presentation/craterSync.selftest.mjs',
     'tools/mp-client-soak.selftest.mjs',
     'src/mp/room/roomPolicy.selftest.mjs',
     'src/mp/room/p2pMatchHost.selftest.mjs',
@@ -1056,6 +1071,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/impactPhysics.selftest.mjs',
     'src/sim/impactParity.selftest.mjs',
     'src/sim/structureSupport.selftest.mjs',
+    // 2026-10-09 (vehicle-contact lane, owner: "tracks shouldnt glitch through the bridge"): the drawn tracks rest on the
+    // bridge decks the hull stands on (Aegis Crossing's viaduct, Amberford, Suzhou Creek), driven and parked.
+    'src/world/vehicleGroundContact.selftest.mjs',
     'src/sim/rollover.selftest.mjs',
     'src/sim/tankBodyContacts.selftest.mjs',
     'src/sim/tankBodyRest.selftest.mjs',
@@ -1065,6 +1083,26 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/combatMaintenance.selftest.mjs',
     'src/sim/spotting.selftest.mjs',
     'src/sim/shellSurface.selftest.mjs',
+    // 2026-10-07 (destruction core lane): the munition blast catalog over every round in the game (docs/DESTRUCTION.md §4).
+    'src/sim/munitionBlast.selftest.mjs',
+    'src/sim/structureDamage.selftest.mjs',
+    'src/sim/destructionParity.selftest.mjs',
+    'src/sim/terrainDeformation.selftest.mjs',
+    'src/sim/destructionNavigation.selftest.mjs',
+    'src/sim/destructionShard.selftest.mjs',
+    'src/sim/destructionCraters.selftest.mjs',
+    // 2026-10-08 (destruction core lane, P2): sections — holes, fallen panels, roofs and storeys that rays pass
+    'src/sim/structureSections.selftest.mjs',
+    'src/sim/destructionSections.selftest.mjs',
+    // ground lane (2026-10-08, crater-render-spec §B, §C): the drawn terrain and the ground cover follow the overlay
+    'src/world/terrainCraterMesh.selftest.mjs',
+    'src/world/groundCoverCraters.selftest.mjs',
+    // 2026-10-08 (destruction core lane, P2; wave 277): the collapse comes down storey by storey before its swap
+    'src/sim/collapseCascade.selftest.mjs',
+    // the kit seam's world side: the default kit, the aDamage tags, spans, depth materials and shadow touch (§16.4)
+    'src/world/destructionKit.selftest.mjs',
+    // 2026-10-08 (destruction core lane, layout identity): a phone places the desktop's records, index for index
+    'src/world/phoneLayoutIdentity.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
     // 2026-10-03 (bots lane): an edge holds the side slope across it to the two-way slope rule.
@@ -1467,6 +1505,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/regional/skyline.selftest.mjs', // 2026-10-05: the tall- and big-building kit, every builder and damage state sound
     'src/world/maps/regional/yards.selftest.mjs', // 2026-10-03: the yards round a kit's houses, clear of roads, plots, objectives and pads
     'src/world/maps/regional/fineDetailLod.selftest.mjs', // 2026-10-03: a kit's fine joinery drawn near the camera only
+    'src/world/maps/regional/houseDamage.selftest.mjs', // 2026-10-07: the house kits' damage through the destruction seam (DESTRUCTION.md §16)
+    'src/world/maps/regional/shellDamage.selftest.mjs', // 2026-10-08: houseless buildings read off their parts, dressed by their kit (§16)
     // the landmarks lane (2026-10-05): the set-piece library — budgets, collision, open gates, drivable bridges, the pass
     'src/world/landmarks/landmarks.selftest.mjs',
     'src/world/mangroveFisheryWharf.selftest.mjs',

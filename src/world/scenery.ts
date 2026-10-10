@@ -462,7 +462,7 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
         continue;
       }
       const built = buildRockFormation({ form, geology: field.geology, x, z, radius: r, height, yawDeg, tone: field.tone, shed: 0.6 },
-        ground, noise, mulberry32(stream), { mobile: ctx.mobile });
+        ground, noise, mulberry32(stream), { mobile: ctx.mobile || r < (field.leanUnder ?? 0) });
       if (!built.geometry) continue;
       rockPieces.push(built.geometry);
       for (const mass of built.masses) addMass(mass);

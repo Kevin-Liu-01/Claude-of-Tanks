@@ -362,8 +362,7 @@ try {
         || result.stats.workshopPaletteCount !== 4
         || result.stats.workshopOmittedAttributeBytes <= 0
         || result.stats.workshopPresentationFinishes?.join('|')
-          // 2026-10-07 (tank-accessories round 4): the national Factory coats each army fields (camoPolicy.ts)
-          !== 'paint_ru_t80u_modern|carc_tan|paint_marder2|service_bmp3_rok') {
+          !== 'service_t90m|service_usa_desert|service_leo2a6m|service_bmp3_rok') {
       failures.push(`${result.id}: fixed service-finish optimization is missing`);
     }
     if (!result.stats.battleScreenVisible

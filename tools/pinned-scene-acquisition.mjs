@@ -3,28 +3,21 @@
 import { readFileSync } from 'node:fs';
 
 /**
- * The battlefields' camouflage pools, read from the game's own table (src/vehicles/camoPolicy.ts AUTO_CAMO_BIOMES, the
- * pools the bots' AUTO paint draws from on each map; it moved there from materials.ts BIOME_PATTERN in the
- * tank-accessories lane's national-camouflage round, 2995eaac6) with the per-tank selection key (materials.ts
- * CAMO_LS_PREFIX). Null when the source cannot be read (a copied tools directory): the pin is then a no-op and the tank
- * wears its stored selection.
+ * The battlefields' camouflage pools, read from the game's own table (src/vehicles/materials.ts BIOME_PATTERN, the
+ * pools the bots' AUTO paint draws from on each map) with the per-tank selection key (materials.ts CAMO_LS_PREFIX).
+ * (2026-10-09, fix/camo-defaults: production's camouflage system is restored, so the pools are read from materials.ts
+ * again rather than from PR #9's camoPolicy.ts AUTO_CAMO_BIOMES.) Null when the source cannot be read (a copied tools
+ * directory): the pin is then a no-op and the tank wears its stored selection.
  */
-export function readMapCamoPools(policySource = new URL('../src/vehicles/camoPolicy.ts', import.meta.url),
-  materialsSource = new URL('../src/vehicles/materials.ts', import.meta.url)) {
-  let policy, materials;
-  try { policy = readFileSync(policySource, 'utf8'); materials = readFileSync(materialsSource, 'utf8'); } catch { return null; }
-  const table = /export const AUTO_CAMO_BIOMES[^=]*=\s*Object\.freeze\(\{([\s\S]*?)\n\}\);/.exec(policy);
+export function readMapCamoPools(materialsSource = new URL('../src/vehicles/materials.ts', import.meta.url)) {
+  let materials;
+  try { materials = readFileSync(materialsSource, 'utf8'); } catch { return null; }
+  const table = /const BIOME_PATTERN[^=]*=\s*\{([\s\S]*?)\n\};/.exec(materials);
   const prefix = /const CAMO_LS_PREFIX = '([^']+)';/.exec(materials);
   if (!table || !prefix) return null;
   const pools = {};
-  // a row names its schemes inline or through a shared pool constant (fleet lane 2026-10-08: the theatre pools every
-  // desert, winter, urban and woodland map shares, e.g. `const DESERT_POOL: readonly AutoCamoPatternId[] = [...]`)
-  const named = {};
-  for (const c of policy.matchAll(/const (\w+)(?::[^=]*)?=\s*(?:Object\.freeze\()?\[([^\]]*)\]/g)) {
-    named[c[1]] = [...c[2].matchAll(/'([^']+)'/g)].map((m) => m[1]);
-  }
-  for (const row of table[1].matchAll(/(\w+):\s*autoBiome\([^,]*,\s*(?:\[([^\]]*)\]|(\w+))\)/g)) {
-    const schemes = row[2] !== undefined ? [...row[2].matchAll(/'([^']+)'/g)].map((m) => m[1]) : named[row[3]] || [];
+  for (const row of table[1].matchAll(/(\w+):\s*\[([^\]]*)\]/g)) {
+    const schemes = [...row[2].matchAll(/'([^']+)'/g)].map((m) => m[1]);
     if (schemes.length) pools[row[1]] = Object.freeze(schemes);
   }
   return pools.verdant ? Object.freeze({ storagePrefix: prefix[1], pools: Object.freeze(pools) }) : null;

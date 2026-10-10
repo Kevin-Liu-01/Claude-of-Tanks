@@ -14,7 +14,20 @@ function manifests(): ReturnType<typeof createCollisionManifestLoader> {
   return manifestLoader ??= createCollisionManifestLoader();
 }
 function terrain(): NonNullable<typeof terrainCache> {
-  return terrainCache ??= createMapResourceCache((id) => createHeightField(manifests().terrainSeed, getMapConfig(id)), 2);
+  // keyed `<map>` or `<map>@<variant>`: a mode's battlefield variant is its own field (Frontline's carved trenches)
+  return terrainCache ??= createMapResourceCache((key) => {
+    const at = key.indexOf('@');
+    const id = at < 0 ? key : key.slice(0, at), variant = at < 0 ? null : key.slice(at + 1);
+    return createHeightField(manifests().terrainSeed, variantMapConfig(id, variant));
+  }, 2);
+}
+
+/** The map's config as the variant builds it (sim/matchRuleset.ts terrainVariant; the world's map.ts does the same). */
+export function variantMapConfig(id: string, variant: string | null) {
+  const config = getMapConfig(id);
+  if (variant === null) return config;
+  if (variant !== 'assault-trenches') throw new Error(`unknown battlefield variant ${variant}`);
+  return { ...config, assaultTrenches: true };
 }
 
 /**
@@ -24,13 +37,14 @@ function terrain(): NonNullable<typeof terrainCache> {
  */
 export function createDedicatedWorldCollision(
   mapId: RuntimeValue,
-  { retain = false }: { retain?: boolean } = {},
+  { retain = false, variant = null }: { retain?: boolean; variant?: string | null } = {},
 ) {
   const id = String(mapId || 'verdant');
-  const manifest = manifests().get(id); // validate the ID before config fallback
-  const lease = retain ? terrain().acquire(id) : null;
+  const manifest = manifests().get(id, variant); // validate the ID before config fallback
+  const key = variant ? `${id}@${variant}` : id;
+  const lease = retain ? terrain().acquire(key) : null;
   try {
-    const heightField = lease ? lease.value : terrain().get(id);
+    const heightField = lease ? lease.value : terrain().get(key);
     const world = createHeadlessCollisionWorld({ mapId: id, heightField, manifest });
     return Object.assign(world, { release: () => { lease?.release(); } });
   } catch (error) {

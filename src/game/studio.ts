@@ -11,6 +11,18 @@ import {
 } from './studioLight.ts';
 import { studioAuthoredSky } from './studioLightRuntime.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import {
+  DESTRUCTION_BUS_EVENTS, MUNITION_PROFILES, type MunitionClass, type StructureStage, type StructureStageEvent,
+  type TerrainCraterEvent,
+} from '../sim/destructionEvents.ts';
+import { matchRulesetFor } from '../sim/matchRuleset.ts';
+import {
+  CRATER_DEFORM_MIN_RADIUS_M, craterFor, munitionChargeKg, munitionClassForShell, type MunitionShellLike,
+} from '../sim/munitionBlast.ts';
+import { quantizeCrater, type QuantizedCrater } from '../sim/destructionMatch.ts';
+import { createTerrainDeformation, type TerrainDeformation } from '../sim/terrainDeformation.ts';
+import { architectureStyleOf, wallMaterialForStyle } from '../sim/structureMaterial.ts';
+import { createStudioDestruction, type StudioDestruction } from './studioDestruction.ts';
 /**
  * studio.ts — SCENE STUDIO: an in-game staging rig for composing shots.
  *
@@ -133,7 +145,11 @@ import type { WorldRuntime } from '../world/map.ts';
 
 type TankSpec = ReturnType<typeof getSpec>;
 type TankVisual = ReturnType<typeof createTank>;
-type StudioShell = ReturnType<typeof createShell> & { _studioMaxDistM?: number };
+type StudioShell = ReturnType<typeof createShell> & {
+  _studioMaxDistM?: number;
+  /** A 'strike' round (destruction core lane, P2): traced through the world each step, the sim's own strike where it stops. */
+  _studioWorld?: boolean;
+};
 type ProgressListener = (fraction: number, label: string) => void;
 
 interface StudioPoolTank {
@@ -150,7 +166,7 @@ interface StudioGameState {
 
 interface StudioFxRuntime {
   bindBus(bus: ReturnType<typeof createBus>): void;
-  resetAll(): void;
+  resetAll(options?: { running?: boolean }): void;
   resetSeed(seed: number): void;
   resetClock(atTimeS?: number): void;
   setFrozen(frozen: boolean): void;
@@ -170,7 +186,8 @@ interface StudioFxRuntime {
   armorScar(visual: TankVisual, position: THREE.Vector3, normal: THREE.Vector3, caliberMm: number): void;
   composeFiringMoment(options: Readonly<Record<string, RuntimeValue>>): void;
   composeExplosionMoment(options: Readonly<Record<string, RuntimeValue>>): void;
-  exhaust(position: THREE.Vector3, intensity: number, sooty: boolean, birthOffset?: number): void;
+  exhaust(position: THREE.Vector3, intensity: number, sooty: boolean, vel?: THREE.Vector3 | null, fwd?: THREE.Vector3 | null,
+    birthOffset?: number): void;
   cinematicPort(): FxCinematicPort;
 }
 
@@ -310,6 +327,7 @@ interface StudioActor extends MovementEntity, StudioPanelActor {
 type ActorRef = StudioActor | StudioPanelActor | string | number | null | undefined;
 
 interface StudioEffectParams {
+  /** a wreck's age (char and settle), or a settled crater's (crater round 3: the presentation weathers it by age), s */
   ageS?: number;
   burnS?: number;
   color?: string;
@@ -327,6 +345,16 @@ interface StudioEffectParams {
   smoke?: boolean;
   strength?: number;
   caliberMm?: number;
+  /** explosion: a munition class (sim/destructionEvents.ts) and its charge, kg TNT (default: the class's nominal) */
+  munition?: string;
+  /** structure: the stage the building nearest the effect point crosses ('damaged', 'breached', 'collapsed') */
+  stage?: string;
+  /** explosion with a munition: the round ends on the nearest building's wall (along dirDeg), hitH m up it */
+  wall?: boolean;
+  /** explosion with a munition: only its crater, laid down settled (a late joiner's view: no blast) */
+  settled?: boolean;
+  hitH?: number;
+  chargeKg?: number;
   cause?: string;
   count?: number;
   dirDeg?: number;
@@ -347,9 +375,17 @@ interface StudioEffectParams {
   slot?: number;
   sooty?: boolean;
   speedMps?: number;
+  /** ram: the hull's mass in tonnes (default the actor's spec), and how far ahead of its nose a wall is met (m) */
+  massTons?: number;
+  reachM?: number;
   spreadDeg?: number;
   to?: readonly number[];
   tracer?: boolean;
+  /** strike (destruction P2): the round ({ type, caliberMm, name?, blastRadiusM?, pen100Mm?, velocityMps? }), its climb
+   * (degrees) and how far it flies before it is gone (m) */
+  shell?: Record<string, unknown>;
+  pitchDeg?: number;
+  rangeM?: number;
 }
 
 interface StudioEffectInput {
@@ -505,6 +541,8 @@ interface StudioSceneInput {
   /** Optional film settings (studioFilmPlan.ts); absent = none authored. */
   film?: FilmSettingsInput | null;
   picture?: PicturePatch | null;
+  /** The Studio's destruction (game/studioDestruction.ts): `sections: false` films the battle's P1 rules. */
+  destruction?: { sections?: boolean };
 }
 
 interface EnterOptions {
@@ -531,6 +569,10 @@ interface StudioRuntime {
 }
 
 const DEG = Math.PI / 180;
+/** What the Studio reads of a building's anatomy (world/structureDamageSeam.ts): its footprint, height and placement. */
+interface StudioStructureAnatomy {
+  massClass: string; placement: { x: number; y: number; z: number; yaw: number }; w: number; d: number; h: number;
+}
 const FX_STEP_S = 1 / 60;      // fixed timeline step (load() and live advance)
 const SETTLE_STEPS = 48;       // updateTank steps to conform a placed actor
 const SETTLE_STEPS_DRAG = 6;   // cheap conform while dragging
@@ -624,6 +666,14 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let studioLight: StudioLight | null = null; // scene JSON `light`: the sun override (absolute bearing / elevation)
   let timeScale = 1;           // fx time multiplier; 0 = frozen
   let clockMs = 0;             // studio fx timeline (ms since last fx reset)
+  // the lens flare eases on the export clock while advanceFrame drives the timeline (one ease per step, whatever the
+  // live renders between steps), on the wall clock again in playback and outside the Studio
+  let flareOnExportClock = false;
+  const flareToWallClock = (): void => {
+    if (!flareOnExportClock) return;
+    flareOnExportClock = false;
+    post.lensFlare?.setClock?.(null);
+  };
   let uidSeq = 1;
   let effectUidSeq = 1;
   const actors: StudioActor[] = []; // see addActor()
@@ -639,7 +689,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let frameDirty = true;
   let cameraDirty = true;
   let poolSweepAcc = 0;
-  let sceneMeta = { seed: 5000 };
+  let sceneMeta: { seed: number; sections: boolean } = { seed: 5000, sections: true };
   let selectedEffect: StudioEffectRecord | null = null;
   let storyboard: Storyboard = normalizeStoryboard();
   let selectedShotId: string | null = null;
@@ -1885,6 +1935,57 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const size = params.size || 'large';
     filmCue(size === 'small' ? 'he' : 'tank', position.x, position.y, position.z, 122,
       size === 'small' ? undefined : size === 'medium' ? 'shot' : (params.cause === 'fire' || params.cause === 'shot' ? params.cause : 'ammorack'));
+    // destruction-fx lane: a burst of a named munition class (the gunship's howitzer, an ATGM, a drone, a 30 mm HE
+    // round ...) at its nominal charge or params.chargeKg, as the battle's shells end on the ground
+    if (typeof params.munition === 'string' && params.munition in MUNITION_PROFILES) {
+      const munition = params.munition as MunitionClass;
+      const chargeKg = Number.isFinite(params.chargeKg) ? Number(params.chargeKg) : MUNITION_PROFILES[munition].nominalChargeKg;
+      // params.wall: the round ends on the nearest building's wall instead, as a battle shell does (the burst names the
+      // building, the expiry carries the struck face's normal): along dirDeg from the point, params.hitH m up the wall
+      const wall = params.wall ? studioWallHit(position, (params.dirDeg ?? 0) * DEG, params.hitH) : null;
+      if (wall) {
+        fxBus.emit(DESTRUCTION_BUS_EVENTS.blast, {
+          munition, chargeKg, x: wall.x, y: wall.y, z: wall.z, nx: wall.nx, ny: 0, nz: wall.nz,
+          surface: 'structure', structureId: wall.structureId,
+        });
+        fxBus.emit('shell:expired', {
+          shellId: -1,
+          hitTerrain: false,
+          hitKind: 'prop',
+          pos: [wall.x, wall.y, wall.z],
+          normal: [wall.nx, 0, wall.nz],
+          munition,
+          chargeKg,
+          caliberMm: params.caliberMm || 120,
+          surfaceKind: 'structure',
+        });
+        return true;
+      }
+      // params.settled: the crater as a late joiner lays it down (crater-render-spec §D/§F): dug, drawn at its final
+      // state, no blast, no burst, no ejecta
+      if (params.settled) {
+        const dug = studioDig(munition, chargeKg, position.x, position.z);
+        const ageS = Number.isFinite(params.ageS) && (params.ageS as number) >= 0 ? (params.ageS as number) : null;
+        if (dug) fxBus.emit(DESTRUCTION_BUS_EVENTS.crater, { ...dug, settled: true, ...(ageS !== null ? { ageS } : {}) });
+        return true;
+      }
+      // the crater the battle would dig here, in the battle's order: the blast naming it, the burst, then the crater
+      const crater = studioDig(munition, chargeKg, position.x, position.z);
+      fxBus.emit(DESTRUCTION_BUS_EVENTS.blast, {
+        munition, chargeKg, x: position.x, y: position.y, z: position.z, nx: 0, ny: 1, nz: 0, surface: 'ground',
+        ...(crater ? { craterId: crater.craterId } : {}),
+      });
+      fxBus.emit('shell:expired', {
+        shellId: -1,
+        hitTerrain: true,
+        pos: [position.x, position.y, position.z],
+        munition,
+        chargeKg,
+        caliberMm: params.caliberMm || 120,
+      });
+      if (crater) fxBus.emit(DESTRUCTION_BUS_EVENTS.crater, crater);
+      return true;
+    }
     if (size === 'small') {
       fxBus.emit('shell:expired', {
         shellId: -1,
@@ -1898,6 +1999,128 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
     // `huge` (fuel / ammunition cook-off column) only exists as a cinematic recipe
     if (size === 'huge' || cinematicFor(params)) ensureCinematics().explosion(id, position, size, params.cause);
+    return true;
+  }
+
+  /**
+   * Craters in the Studio (destruction core lane, 2026-10-08; crater-render-spec §F's strips): a burst of a munition
+   * class digs what the battle would dig at that point — the simulation's law, quantization and seed
+   * (sim/destructionMatch.ts dig and quantizeCrater: radius at least CRATER_DEFORM_MIN_RADIUS_M, never on hard ground,
+   * the ruleset's crater switch and scale) — on a ground overlay of the Studio's own, bound to the world while the Studio digs, so the
+   * drawn terrain, the ground cover and the crater's surface follow it as they do in battle. A scene reload levels it;
+   * leaving the Studio unbinds it (the next battle binds its own). The Studio's hulls keep the undug ground.
+   */
+  let studioGround: TerrainDeformation | null = null;
+  let studioCraters = 0;
+  const studioCraterShape = { radiusM: 0, depthM: 0, rimM: 0 };
+  const studioCraterDug: QuantizedCrater = { x: 0, z: 0, radiusM: 0, depthM: 0, rimM: 0, seed: 0 };
+  function studioDig(munition: MunitionClass, chargeKg: number, x: number, z: number): TerrainCraterEvent | null {
+    const rules = matchRulesetFor('standard').destruction;
+    const w = getWorld();
+    if (!rules.craters || !w || !(chargeKg > 0) || studioCraters >= rules.maxCraters) return null;
+    craterFor(chargeKg, munition, rules.craterScale, studioCraterShape);
+    if (studioCraterShape.radiusM < CRATER_DEFORM_MIN_RADIUS_M) return null;
+    if (w.heightField?.getGroundType?.(x, z) === 'hard') return null;
+    if (!studioGround) studioGround = createTerrainDeformation();
+    if (w.groundOverlay() !== studioGround) w.bindGroundOverlay(studioGround);
+    const { x: qx, z: qz, radiusM, depthM, rimM, seed } = quantizeCrater(x, z, studioCraterShape, studioCraterDug);
+    if (!studioGround.addCrater(qx, qz, radiusM, depthM, rimM, seed)) return null;
+    return { craterId: studioCraters++, x: qx, z: qz, radiusM, depthM, rimM, seed, munition, deforms: true };
+  }
+  function resetStudioGround(unbind: boolean): void {
+    studioCraters = 0;
+    if (!studioGround) return;
+    studioGround.reset();
+    const w = getWorld();
+    if (unbind && w && w.groundOverlay() === studioGround) w.bindGroundOverlay(null);
+  }
+
+  /**
+   * destruction-fx lane: the building nearest the point crosses a damage stage, as the core's sim announces one in
+   * battle (sim/destructionEvents.ts StructureStageEvent, from the world seam's anatomy: footprint, height, blow), so
+   * the Studio films a breach and a collapse in the building's own geometry. Presentation only: the Studio's world
+   * keeps its collision. params: stage, munition, cause ('blast' | 'kinetic' | 'ram'), dirDeg (the blow's heading), hitH
+   * (the blow's height up the wall).
+   */
+  const studioStages = new Map<number, StructureStage>();
+  /** The building whose footprint centre is nearest the point, with its anatomy (the world seam's), or null. */
+  function studioStructureNear(position: THREE.Vector3): { id: number; anatomy: StudioStructureAnatomy } | null {
+    const w = getWorld() as unknown as {
+      getObstacles?(): readonly { min: readonly number[]; max: readonly number[]; structureIdx?: number; structureRole?: string }[];
+      structureDamage?(id: number): { anatomy: StudioStructureAnatomy } | null;
+    } | null;
+    if (!w?.getObstacles || !w.structureDamage) return null;
+    let best = -1, bestD = Infinity;
+    for (const rec of w.getObstacles()) {
+      if (typeof rec.structureIdx !== 'number' || rec.structureRole === 'fixed') continue;
+      const cx = (rec.min[0] + rec.max[0]) / 2, cz = (rec.min[2] + rec.max[2]) / 2;
+      const d = Math.hypot(cx - position.x, cz - position.z);
+      if (d < bestD) { bestD = d; best = rec.structureIdx; }
+    }
+    const seam = best >= 0 ? w.structureDamage(best) : null;
+    return seam ? { id: best, anatomy: seam.anatomy } : null;
+  }
+
+  /**
+   * Where a round heading `heading` from the point meets the nearest building's wall (its oriented footprint, the
+   * anatomy's body frame), `hitH` m above its base (default 1.8, kept under the eaves), with the struck face's outward
+   * normal; null when the line misses it.
+   */
+  function studioWallHit(position: THREE.Vector3, heading: number, hitH: unknown):
+    { structureId: number; x: number; y: number; z: number; nx: number; nz: number } | null {
+    const near = studioStructureNear(position);
+    if (!near) return null;
+    const a = near.anatomy;
+    const { x: px, y: py, z: pz, yaw } = a.placement;
+    const c = Math.cos(yaw), s = Math.sin(yaw);
+    // world = R(yaw) body + placement (three's rotateY); the inverse rotation into the body frame
+    const rx = position.x - px, rz = position.z - pz;
+    const bx = rx * c - rz * s, bz = rx * s + rz * c;
+    const dx = Math.sin(heading), dz = Math.cos(heading);
+    const bdx = dx * c - dz * s, bdz = dx * s + dz * c;
+    const hw = a.w / 2, hd = a.d / 2;
+    const slab = (o: number, d: number, h: number): [number, number] => {
+      if (Math.abs(d) < 1e-9) return Math.abs(o) <= h ? [-Infinity, Infinity] : [Infinity, -Infinity];
+      const t0 = (-h - o) / d, t1 = (h - o) / d;
+      return t0 < t1 ? [t0, t1] : [t1, t0];
+    };
+    const [x0, x1] = slab(bx, bdx, hw), [z0, z1] = slab(bz, bdz, hd);
+    const tIn = Math.max(x0, z0), tOut = Math.min(x1, z1);
+    if (!(tIn <= tOut) || tOut < 0) return null;
+    const t = Math.max(0, tIn);
+    // the face entered: the slab whose entry is the later one
+    const nbx = x0 >= z0 ? -Math.sign(bdx) : 0, nbz = x0 >= z0 ? 0 : -Math.sign(bdz);
+    const hx = bx + bdx * t, hz = bz + bdz * t;
+    const h = Number.isFinite(hitH) ? Number(hitH) : 1.8;
+    return {
+      structureId: near.id,
+      x: px + hx * c + hz * s, z: pz - hx * s + hz * c,
+      y: py + Math.min(Math.max(0.6, a.h - 0.8), Math.max(0.4, h)),
+      nx: nbx * c + nbz * s, nz: -nbx * s + nbz * c,
+    };
+  }
+
+  function fireStructure({ position, params }: StudioEffectExecution): boolean {
+    const near = studioStructureNear(position);
+    if (!near) return false;
+    const best = near.id;
+    const a = near.anatomy;
+    const stage = (params.stage === 'damaged' || params.stage === 'breached' ? params.stage : 'collapsed') as StructureStage;
+    const munition = (typeof params.munition === 'string' && params.munition in MUNITION_PROFILES ? params.munition : 'he') as MunitionClass;
+    const cause = params.cause === 'ram' || params.cause === 'kinetic' ? params.cause : 'blast';
+    const heading = (params.dirDeg ?? 0) * DEG;
+    const e: StructureStageEvent = {
+      structureId: best, massClass: a.massClass as StructureStageEvent['massClass'],
+      cx: a.placement.x, cz: a.placement.z, hw: a.w / 2, hd: a.d / 2, yaw: a.placement.yaw,
+      baseY: a.placement.y, topY: a.placement.y + a.h,
+      stage, previous: studioStages.get(best) ?? 'intact', cause, munition: cause === 'ram' ? null : munition,
+      // the blow's point: params.hitH m up the wall when given (where a wall strike burst), else the effect point
+      x: position.x, y: Number.isFinite(params.hitH) ? a.placement.y + Number(params.hitH) : position.y, z: position.z,
+      dirX: Math.sin(heading), dirZ: Math.cos(heading),
+      points: 100, integrity: stage === 'collapsed' ? 0 : stage === 'breached' ? 0.35 : 0.7,
+    };
+    studioStages.set(best, stage);
+    fxBus.emit(DESTRUCTION_BUS_EVENTS.stage, e);
     return true;
   }
 
@@ -2090,6 +2313,179 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return true;
   }
 
+  // ---- destruction core lane (P2, docs/DESTRUCTION.md §11): the Studio films the sim's own destruction ----
+  /** The Studio's destruction match over the world it shows (game/studioDestruction.ts), made for each world. */
+  let studioSim: StudioDestruction | null = null;
+  let studioSimWorld: WorldRuntime | null = null;
+  /** The sections switch the current match was made with (a scene that changes it gets a new match). */
+  let studioSimSections = true;
+  /** The Studio destruction's raised events, with the Studio clock they were raised at (cleared with the fx runtime). */
+  const studioSimLog: Array<{ tMs: number; event: string; structureId: number | null; section: number | null; hole: number | null;
+    stage: string | null; sectionDown: boolean; storeyDown: boolean }> = [];
+  function studioDestructionNow(): StudioDestruction | null {
+    const w = getWorld();
+    if (!w) return null;
+    if (studioSimWorld !== w || studioSimSections !== sceneMeta.sections) {
+      ensureFxBus();
+      // every stage and breach it raises is logged with the Studio's clock (a capture tool reads which events each frame
+      // presented: __STUDIO.destructionEvents) and goes on to the fx bus
+      const loggingBus = { emit: (event: string, payload: unknown) => {
+        const p = payload as { structureId?: number; section?: number; hole?: number; stage?: string; sectionDown?: boolean; storeyDown?: boolean };
+        studioSimLog.push({ tMs: clockMs, event, structureId: p.structureId ?? null, section: p.section ?? null, hole: p.hole ?? null,
+          stage: p.stage ?? null, sectionDown: p.sectionDown === true, storeyDown: p.storeyDown === true });
+        if (studioSimLog.length > 512) studioSimLog.shift();
+        fxBus.emit(event, payload);
+      } };
+      // a collapse raises the sim's rubble mound on the Studio's ground overlay, bound to the world as a battle's is, so
+      // the drawn terrain and the kit's pile stand on it (the s1t strips' piles lay flat on undeformed ground)
+      if (!studioGround) studioGround = createTerrainDeformation();
+      if (w.groundOverlay() !== studioGround) w.bindGroundOverlay(studioGround);
+      studioSim = createStudioDestruction(w as unknown as Parameters<typeof createStudioDestruction>[0], loggingBus, {
+        rules: matchRulesetFor('standard').destruction,
+        wallMaterial: wallMaterialForStyle(architectureStyleOf(getMapConfig(w.mapId))),
+        ground: studioGround,
+        sections: sceneMeta.sections,
+      });
+      studioSimWorld = w;
+      studioSimSections = sceneMeta.sections;
+    }
+    return studioSim;
+  }
+  const _strikePrev = new THREE.Vector3();
+  const _strikeDir = new THREE.Vector3();
+  const _strikeFrom = new THREE.Vector3();
+  /** Light cover one strike round may break in a step before the rest of its path is left for the next. */
+  const STRIKE_PASS_THROUGH_MAX = 8;
+  /**
+   * A battle round passes light cover (world/collision.ts shellPassesThroughCollisionRecord, restated here: the Studio
+   * reaches the world through what it is handed, never a new static import; studioStrikeCover.selftest.mjs holds the
+   * two to one law): a crushable record that is not dense masonry, adobe or sandbag cover.
+   */
+  function strikePassesRecord(record: { crushable?: boolean; kind?: string } | null | undefined): boolean {
+    if (record?.crushable !== true) return false;
+    const kind = record.kind;
+    return !(kind === 'wallstone' || kind === 'walladobe' || kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall');
+  }
+  /**
+   * A strike round's step from `from` to `to` through the world: light cover it meets — a hut, a fence, a tree, crates —
+   * breaks and lets it on, as a battle round's does (state.ts crushWorldPropFromShell: the world's own crush, the
+   * destructible's broken state); the first solid record (a building's wall, dense cover) stops it there and takes the
+   * strike. True when it stopped.
+   */
+  function traceStrikeRound(sh: StudioShell, world: Pick<WorldRuntime, 'raycast'> & { crushObstacle?: WorldRuntime['crushObstacle'] },
+    from: THREE.Vector3, to: THREE.Vector3): boolean {
+    _strikeDir.subVectors(to, from);
+    let left = _strikeDir.length();
+    if (left <= 1e-6) return false;
+    _strikeDir.multiplyScalar(1 / left);
+    _strikeFrom.copy(from);
+    for (let pass = 0; pass < STRIKE_PASS_THROUGH_MAX; pass++) {
+      const hit = world.raycast(_strikeFrom, _strikeDir, left);
+      if (!hit || hit.kind === 'terrain') return false;
+      if (strikePassesRecord(hit.record) && world.crushObstacle) {
+        world.crushObstacle(hit.record, _strikeDir.x, _strikeDir.z, Number(sh.spec?.velocityMps) || 0, 'shell');
+        const step = hit.dist + 0.01;
+        _strikeFrom.addScaledVector(_strikeDir, step);
+        left -= step;
+        if (left <= 1e-6) return false;
+        continue;
+      }
+      sh.dead = true;
+      sh.pos.copy(hit.point);
+      strikeWorld(sh, hit, _strikeDir);
+      return true;
+    }
+    return false;
+  }
+  /**
+   * A round flying through the Studio's world as a battle round does: from the effect point along dirDeg (pitchDeg up)
+   * at speedMps, traced against the world each step — whose raycast reads the sim's openings, so a round finds a hole
+   * and crosses the room — and where it stops a structure takes the sim's own strike (the hole, a section's fall, its
+   * stages, raised on the bus as the solo step raises them). params.shell: the round ({ type, caliberMm, name?,
+   * blastRadiusM?, pen100Mm? }: 'HE' 125 mm by default; an explicit blastRadiusM makes a howitzer's envelope).
+   */
+  function fireStrike({ position, params }: StudioEffectExecution): boolean {
+    if (!studioDestructionNow()) return false;
+    const heading = (Number(params.dirDeg) || 0) * DEG, pitch = (Number(params.pitchDeg) || 0) * DEG;
+    _v3.set(Math.sin(heading) * Math.cos(pitch), Math.sin(pitch), Math.cos(heading) * Math.cos(pitch));
+    const given = (params.shell && typeof params.shell === 'object' ? params.shell : {}) as Partial<MunitionShellLike> & { velocityMps?: number };
+    const spec = {
+      name: typeof given.name === 'string' ? given.name : 'studio', type: typeof given.type === 'string' ? given.type : 'HE',
+      caliberMm: Number(given.caliberMm) || 125, velocityMps: Number(params.speedMps) || Number(given.velocityMps) || 800,
+      tracer: params.tracer === false ? null : (typeof given.type === 'string' ? given.type : 'HE'),
+      ...(Number.isFinite(given.blastRadiusM) ? { blastRadiusM: Number(given.blastRadiusM) } : {}),
+      ...(Number.isFinite(given.pen100Mm) ? { pen100Mm: Number(given.pen100Mm) } : {}),
+    };
+    const shellId = -(uidSeq * 100000 + shells.length + 1);
+    const shell: StudioShell = createShell(spec, 'studio', false, position, _v3, shellId);
+    shell._studioWorld = true;
+    shell._studioMaxDistM = Number.isFinite(params.rangeM) ? Number(params.rangeM) : 600;
+    shells.push(shell);
+    return true;
+  }
+  /**
+   * A strike round met the ground (2026-10-09; it used to expire there as a plain impact): the sim's strike at the burst
+   * — the structures in its reach take its blast, the light props in its reach fall (studioDestruction.ts, the solo
+   * step's fellBlastProps) — then the crater the battle would dig and the blast naming it. The crater is the Studio's own
+   * (studioDig: one crater count with the explosion effects), so the sim digs none.
+   */
+  function strikeGround(sh: StudioShell): TerrainCraterEvent | null {
+    const spec = sh.spec as unknown as MunitionShellLike;
+    const munition = munitionClassForShell(spec), chargeKg = munitionChargeKg(spec, munition);
+    const dx = sh.pos.x - _strikePrev.x, dz = sh.pos.z - _strikePrev.z, length = Math.hypot(dx, dz) || 1;
+    studioDestructionNow()?.strike(spec, null, sh.pos.x, sh.pos.y, sh.pos.z, dx / length, dz / length, false);
+    if (!(chargeKg > 0)) return null;
+    const crater = studioDig(munition, chargeKg, sh.pos.x, sh.pos.z);
+    fxBus.emit(DESTRUCTION_BUS_EVENTS.blast, {
+      munition, chargeKg, x: sh.pos.x, y: sh.pos.y, z: sh.pos.z, nx: 0, ny: 1, nz: 0, surface: 'ground',
+      ...(crater ? { craterId: crater.craterId } : {}),
+    });
+    return crater;
+  }
+  /** A strike round met the world at `hit` (a record, not the ground): the sim's strike, then the burst where it stopped. */
+  function strikeWorld(sh: StudioShell, hit: { point: THREE.Vector3; normal: THREE.Vector3; record?: { structureIdx?: number } | null },
+    dir: THREE.Vector3): void {
+    const spec = sh.spec as unknown as MunitionShellLike;
+    const record = (hit.record ?? null) as Parameters<StudioDestruction['strike']>[1];
+    studioDestructionNow()?.strike(spec, record, hit.point.x, hit.point.y, hit.point.z, dir.x, dir.z);
+    const munition = munitionClassForShell(spec), chargeKg = munitionChargeKg(spec, munition);
+    const structureId = typeof hit.record?.structureIdx === 'number' ? hit.record.structureIdx : undefined;
+    if (chargeKg > 0) {
+      fxBus.emit(DESTRUCTION_BUS_EVENTS.blast, {
+        munition, chargeKg, x: hit.point.x, y: hit.point.y, z: hit.point.z, nx: hit.normal.x, ny: hit.normal.y, nz: hit.normal.z,
+        surface: structureId !== undefined ? 'structure' : 'prop', ...(structureId !== undefined ? { structureId } : {}),
+      });
+    }
+    fxBus.emit('shell:expired', {
+      shellId: sh.id, hitTerrain: false, hitKind: 'prop', pos: [hit.point.x, hit.point.y, hit.point.z],
+      normal: [hit.normal.x, hit.normal.y, hit.normal.z], shellType: spec.type, caliberMm: spec.caliberMm, munition, chargeKg,
+      surfaceKind: structureId !== undefined ? 'structure' : 'prop',
+    });
+  }
+
+  /**
+   * A hull ramming the building in front of it (P2 staging; wave 277: the ram strip must show the ramming tank): from the
+   * actor's nose (half a hull length ahead along its facing, a metre up) a few metres ahead (params.reachM, 3 m); where
+   * that meets a structure the sim prices the ram at params.speedMps (the closing speed, 10 m/s) for params.massTons (the
+   * actor's hull weight): a ram that brings it down sends it through its cascade, its stages raised as the ram's. The
+   * actor's own motion is the storyboard's: its track runs it into the wall and on.
+   */
+  function fireRam({ actor, params }: StudioEffectExecution): boolean {
+    const sim = studioDestructionNow();
+    const w = getWorld();
+    if (!actor || !sim || !w) return false;
+    _fwd.set(Math.sin(actor.state.yaw), 0, Math.cos(actor.state.yaw));
+    _v2.copy(actor.state.pos).addScaledVector(_fwd, actor.spec.dims.hullLengthM / 2 - 0.5);
+    _v2.y += 1;
+    const hit = w.raycast(_v2, _fwd, Number.isFinite(params.reachM) ? Math.max(0.5, Number(params.reachM)) : 3);
+    const record = hit && hit.kind !== 'terrain' ? (hit.record ?? null) : null;
+    if (!hit || !record || typeof record.structureIdx !== 'number') return false;
+    const massTons = Number(params.massTons) > 0 ? Number(params.massTons) : (Number(actor.spec.weightTons) || 50);
+    const speed = Number(params.speedMps) > 0 ? Number(params.speedMps) : 10;
+    sim.ram(record as Parameters<StudioDestruction['ram']>[0], massTons, speed, hit.point.x, hit.point.y, hit.point.z, _fwd.x, _fwd.z);
+    return true;
+  }
+
   function fireExhaust({ actor, params }: StudioEffectExecution): boolean {
     if (!actor) return false;
     _fwd.set(Math.sin(actor.state.yaw), 0, Math.cos(actor.state.yaw));
@@ -2116,6 +2512,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     impact: (execution) => fireImpact(execution, 'pen', 120, [0, 1, 0]),
     sparks: (execution) => fireImpact(execution, 'ricochet', 100, [0, 1, 0]),
     explosion: fireExplosion,
+    structure: fireStructure,
     tank_kill: fireTankKill,
     dust: fireDust,
     engine_smoke: fireEngineSmoke,
@@ -2133,6 +2530,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     debris: fireDebris,
     shockwave: fireShockwave,
     fire_field: fireFireField,
+    strike: fireStrike,
+    ram: fireRam,
   });
 
   function recordFiredEffect(
@@ -2262,8 +2661,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       _fwd.set(Math.sin(a.state.yaw), 0, Math.cos(a.state.yaw));
       _v2.copy(a.state.pos).addScaledVector(_fwd, -a.spec.dims.hullLengthM * 0.42);
       _v2.y += a.spec.dims.heightM * 0.72;
-      fx.exhaust(_v2, 1, true, birthOffset);
-      fx.exhaust(_v2, 0.85, true, birthOffset); // doubled: damage smoke, not idle haze
+      fx.exhaust(_v2, 1, true, null, null, birthOffset);
+      fx.exhaust(_v2, 0.85, true, null, null, birthOffset); // doubled: damage smoke, not idle haze
     }
   }
 
@@ -2286,10 +2685,15 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       clockMs += dt * 1000;
       const exactShells = fxSettings.quality === 'cinematic';
       // projectiles
+      const traceWorld = getWorld();
       for (const sh of shells) {
         if (sh.dead) continue;
         const px = sh.pos.x, py = sh.pos.y, pz = sh.pos.z;
+        if (sh._studioWorld) _strikePrev.copy(sh.pos);
         stepShell(sh, dt);
+        // a strike round (P2) meets what the world puts in its path this step — the raycast reads the sim's openings;
+        // light cover on the way breaks and lets it on (traceStrikeRound)
+        if (sh._studioWorld && traceWorld && traceStrikeRound(sh, traceWorld, _strikePrev, sh.pos)) continue;
         const gy = hfProxy.getHeightAt(sh.pos.x, sh.pos.z);
         if (sh.pos.y <= gy) {
           // cinematic quality lands the shell where its path met the ground,
@@ -2297,10 +2701,16 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           if (exactShells) refineShellCrossing(sh, px, py, pz);
           sh.pos.y = hfProxy.getHeightAt(sh.pos.x, sh.pos.z) + 0.05;
           sh.dead = true;
+          // a strike round bursts on the ground as a battle round does (strikeGround): the blast, then the impact, then
+          // the crater, the solo step's order
+          const groundCrater = sh._studioWorld ? strikeGround(sh) : null;
           filmCue('dirt', sh.pos.x, sh.pos.y, sh.pos.z, sh.spec?.caliberMm ?? 120);
           fxBus.emit('shell:expired', {
             shellId: sh.id, hitTerrain: true, pos: [sh.pos.x, sh.pos.y, sh.pos.z],
+            // the round's type and calibre, as the solo step publishes them (fx keys its explosion on the class)
+            shellType: sh.spec?.type, caliberMm: sh.spec?.caliberMm,
           });
+          if (groundCrater) fxBus.emit(DESTRUCTION_BUS_EVENTS.crater, groundCrater);
           if (exactShells) {
             _v1.set(sh.pos.x, sh.pos.y, sh.pos.z);
             ensureCinematics().groundHit(`shell${String(sh.id)}`, _v1, sh.spec?.caliberMm || 105, String(sh.spec?.type || 'AP'));
@@ -2311,6 +2721,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           sh.dead = true;
         }
       }
+      // the Studio's destruction steps after the rounds, as the solo step's does (stages, breaches on the bus)
+      studioSim?.step();
       // continuous per-actor emitters. Live battle quality keeps one pulse
       // per step; a film's sub-sample steps pulse once per 1/60 s timeline
       // grid line they cross, so motion-blur sampling never multiplies the
@@ -2322,9 +2734,14 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         const gridMs = FX_STEP_S * 1000;
         const last = Math.floor(clockMs / gridMs + 1e-6);
         for (let k = Math.floor(previousMs / gridMs + 1e-6) + 1; k <= last; k++) {
-          emitDamageSmoke(exactShells ? Math.max(0, (k * gridMs - previousMs) / 1000) : 0);
+          const birthOffset = exactShells ? Math.max(0, (k * gridMs - previousMs) / 1000) : 0;
+          emitDamageSmoke(birthOffset);
+          emitStudioExhaust(birthOffset);
         }
-      } else emitDamageSmoke(0);
+      } else {
+        emitDamageSmoke(0);
+        emitStudioExhaust(0);
+      }
       // the props' own clock on the Studio's (fix/studio-world-step, 2026-10-08): the render loop's world update runs at
       // dt 0 and an export step runs none, so a felled prop's topple and the loose bodies advance here, step by step
       getWorld()?.updateProps?.(dt, camera.position);
@@ -2386,11 +2803,61 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     finally { scroll.l = baseL; scroll.r = baseR; }
   }
 
+  // destruction-fx (round 7b, wave m2: "engine smoke rising as straight chimney columns"): every running hull's engine
+  // breathes as a battle hull's does (battlePresentationRuntime emitExhaust's law: its load from its speed), with the
+  // hull's motion, so the Studio films the plume bending with the drive and the wind and breaking up
+  const _exPos = new THREE.Vector3(), _exFwd = new THREE.Vector3(), _exVel = new THREE.Vector3();
+  // (integration, 2026-10-09: pulsed by stepFx on the 1/60 s grid with the damage smoke, at its birth offset — its
+  // per-call rate gate assumes 60 calls a second, which a film's motion-blur sub-steps would multiply)
+  function emitStudioExhaust(birthOffset: number): void {
+    for (const a of actors) {
+      if (a.stateName !== 'intact' && a.stateName !== 'engine-smoking') continue;
+      const st = a.state;
+      const speed = st.speed ?? 0;
+      const topSpeedMps = Math.max(1, (a.spec.topSpeedKmh || 60) / 3.6);
+      const load = Math.max(0.1, Math.min(1, 0.15 + Math.abs(speed) / topSpeedMps * 0.85));
+      _exFwd.set(Math.sin(st.yaw), 0, Math.cos(st.yaw));
+      _exVel.copy(_exFwd).multiplyScalar(speed);
+      _exPos.copy(st.pos).addScaledVector(_exFwd, -a.spec.dims.hullLengthM * 0.42);
+      _exPos.y += a.spec.dims.heightM * 0.72;
+      fx.exhaust(_exPos, load, true, _exVel, _exFwd, birthOffset);
+    }
+  }
+
+  // destruction-fx: a driven actor kicks up its tracks' dust as a battle hull does (battlePresentationRuntime emitDust's
+  // law: one call per side every 0.45-0.7 m of travel, from the rear of each track), so the Studio films the dust
+  // skirt; on the fixed timeline, through the fx's own seeded stream
+  const studioDustTravel = new Map<StudioActor, number>();
+  const _dustPos = new THREE.Vector3(), _dustFwd = new THREE.Vector3();
+  function emitStudioTrackDust(dt: number): void {
+    for (const a of actors) {
+      const st = a.state;
+      const speed = Math.abs(st.speed ?? 0);
+      if (speed <= 0.8 || st.grounded === false) { studioDustTravel.set(a, 0); continue; }
+      const topSpeedMps = Math.max(1, (a.spec.topSpeedKmh || 60) / 3.6);
+      const intensity = Math.min(1, speed / topSpeedMps);
+      const spacingM = 0.7 + (0.45 - 0.7) * intensity;
+      const travel = Math.min(spacingM * 2, (studioDustTravel.get(a) ?? 0) + speed * dt);
+      if (travel < spacingM) { studioDustTravel.set(a, travel); continue; }
+      studioDustTravel.set(a, travel - spacingM);
+      const sign = (st.speed ?? 0) < 0 ? -1 : 1;
+      _dustFwd.set(Math.sin(st.yaw) * sign, 0, Math.cos(st.yaw) * sign);
+      const dims = a.spec.dims;
+      for (let side = -1; side <= 1; side += 2) {
+        _dustPos.copy(st.pos).addScaledVector(_dustFwd, -dims.hullLengthM * 0.45);
+        _dustPos.x += _dustFwd.z * side * dims.widthM * 0.45;
+        _dustPos.z += -_dustFwd.x * side * dims.widthM * 0.45;
+        fx.dust(_dustPos, _dustFwd, intensity);
+      }
+    }
+  }
+
   function advanceFx(ms: number): void {
     let remainingS = Math.max(0, ms / 1000);
     while (remainingS > 1e-7) {
       const dt = Math.min(FX_STEP_S, remainingS);
       applyStoryboardActors(clockMs + dt * 1000, dt);
+      emitStudioTrackDust(dt);
       stepFx(dt);
       advanceWater(dt);
       for (const a of actors) syncActorVisual(a, dt);
@@ -2403,17 +2870,26 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function resetFxRuntime(seed = sceneMeta.seed || 5000) {
     ensureFxBus();
     shells.length = 0;
-    fx.resetAll();
+    // a scene's hulls are already running: no engine cold-start cough at every load (atmospherics r2, wave 311)
+    fx.resetAll({ running: true });
     // The fx clock restarts with the timeline: replays (seek, load, film) must
     // not inherit the page's history in clock-phased shading.
     fx.resetClock(0);
+    studioStages.clear();
+    // every building stands again (the Studio's destruction: openings cleared, the next strike starts fresh)
+    studioSim?.reset();
+    studioSimLog.length = 0;
+    resetStudioGround(false);
+    studioDustTravel.clear();
     fx.resetSeed(seed);
     fx.setFrozen(false);
     cinematics?.reset();
     clockMs = 0;
     activeEffectIds.clear();
     const w = getWorld();
-    if (w) { w.resetWater(); w.setWindTime(0.35); }
+    // a scene starts from an intact world, as a battle does: the props its rounds broke and the trees they felled stand
+    // again (the Studio's strike rounds break light cover)
+    if (w) { w.resetWater(); w.setWindTime(0.35); w.resetDestructibles(); }
   }
 
   function restoreAuthoredActor(a: StudioActor): void {
@@ -2479,6 +2955,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const target = clampStudioTime(timeMs, storyboard.durationMs);
     if (opts.pause !== false) timeScale = 0;
     rebuildEffects(target);
+    post.lensFlare?.snap?.();
     panel.refreshAll();
     return Math.round(clockMs);
   }
@@ -2523,6 +3000,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function playTimeline() {
     if (filming) return false;
     if (clockMs >= storyboard.durationMs - 0.5) seekTimeline(0, { pause: false });
+    flareToWallClock();
     timeScale = 1;
     rail.updateVisibility();
     panel.refreshTime();
@@ -3479,6 +3957,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       startupTimer: null,
     };
     recording = session;
+    flareToWallClock();
     const clearStartupTimer = () => {
       if (session.startupTimer !== null) clearTimeout(session.startupTimer);
       session.startupTimer = null;
@@ -4032,6 +4511,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       timeScale,
       ...(sceneFilm ? { film: getFilm() } : {}),
       ...pictureStateEntry(),
+      ...(sceneMeta.sections ? {} : { destruction: { sections: false } }),
     };
   }
 
@@ -4053,6 +4533,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     yieldForFrameBudget: () => Promise<void>,
   ): Promise<void> {
     sceneMeta.seed = json.seed != null ? json.seed : 5000;
+    sceneMeta.sections = json.destruction?.sections !== false;
     timeScale = 0;
     clearActors();
     resetFx(sceneMeta.seed);
@@ -4154,6 +4635,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       picture = loadedPicture;
       applyPictureRuntime();
       restoreLoadedPresentation(json, fxMs);
+      // a clip starts with the flare at its target: no eased history from the last clip or page
+      post.lensFlare?.snap?.();
       return stateJson();
     } finally {
       loading = false;
@@ -4451,6 +4934,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   async function doExit() {
     if (!active) return;
     if (recording) stopRecording();
+    flareToWallClock();
     active = false;
     panel.hide();
     marker.group.visible = false;
@@ -4464,6 +4948,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     effectLog.length = 0;
     activeEffectIds.clear();
     fx.resetAll();
+    studioStages.clear();
+    resetStudioGround(true);
     fx.setFrozen(false);
     releaseStudioFx();
     timeScale = 1;
@@ -4655,12 +5141,15 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     advanceFrame(ms: number) {
       if (recording || filming || !Number.isFinite(ms) || ms < 0 || ms > 1000) throw new RangeError('Invalid export step');
       timeScale = 0;
+      if (!flareOnExportClock) { flareOnExportClock = true; post.lensFlare?.setClock?.(() => clockMs); }
       advanceTimeline(ms);
       getWorld()?.setWindTime(0.35 + clockMs / 1000);
       camera.updateMatrixWorld(true);
       lighting.updateFrustums(); lighting.update(true);
       return clockMs;
     },
+    /** The stages and breaches the Studio's destruction raised so far (P2 strips read which each frame presented). */
+    destructionEvents: () => studioSimLog.slice(),
     get timeOfDay() { return studioTimeFor(getWorld()?.mapId ?? 'verdant', timeOfDay); },
     setTimeOfDay,
     setLight,

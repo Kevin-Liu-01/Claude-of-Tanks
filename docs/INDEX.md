@@ -68,6 +68,7 @@ Update these when behavior changes. Paths are relative to `docs/`.
 | [VEHICLE-CONTROLS.md](VEHICLE-CONTROLS.md) | The battle HUD control row, shortcuts and fitted-equipment controls |
 | [BOT-TACTICS.md](BOT-TACTICS.md) | Current bot capabilities and the scope of their tests |
 | [BATTLE-WEATHER-AND-DAMAGE.md](BATTLE-WEATHER-AND-DAMAGE.md) | Battle day/night presentation and cosmetic damage |
+| [DESTRUCTION.md](DESTRUCTION.md) | Buildings that take damage and collapse, craters that deform the ground, the munition blast catalog, the kit seam for damage geometry, and their multiplayer sync |
 | [FEATURES.md](FEATURES.md) | Visible features connected to their implementation and verification |
 
 ### World

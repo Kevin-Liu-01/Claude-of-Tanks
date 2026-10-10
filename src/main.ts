@@ -1,7 +1,6 @@
 import './ui/endScreenPresentation.css';
 import './ui/richTooltip.css';
-import { structureTopAt, SUPPORT_STEP_UP_M } from './sim/structureSupport.ts';
-import type { CollisionRecord } from './world/collision.ts';
+import { createVehicleGroundSampler } from './world/vehicleGroundSampler.ts';
 import './ui/battleUiVisibility.css';
 import './ui/hudCustomization.css';
 import type { RuntimeValue } from './runtimeTypes.ts';
@@ -41,6 +40,7 @@ import type {
   WorldActivationOptions,
 } from './world/worldActivationRuntime.ts';
 import type { PlayerBattleActions } from './game/playerBattleActions.ts';
+import type { FxWorldSeam } from './fx/effects.ts';
 import type { BattleVisualStreamer } from './game/battleVisualStreamer.ts';
 import type {
   MainEntity,
@@ -131,7 +131,7 @@ import {
   CAMO_CATALOG_PATTERN_IDS, getCamoSelection, setCamoSelection,
   getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection,
   setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked,
-  clearCamoOverrides, warmWreckTextures, setCamoBattleSeed, camoSelectionSuitsTheatre,
+  clearCamoOverrides, warmWreckTextures,
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
 } from './vehicles/materials.ts';
 import './ui/motion.css';
@@ -236,7 +236,7 @@ import { clearMatchSession, createBus, createGameState } from './game/stateCore.
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { matchRulesetFor } from './sim/matchRuleset.ts';
+import { matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
 import { normalizeGameMode } from './sim/matchModes.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
@@ -267,6 +267,7 @@ import { createRosterPresentation } from './game/rosterPresentation.ts';
 import { tankTier, tierNumeral } from './vehicles/tier.ts';
 import { createTransition } from './ui/transition.ts';
 import type { DamagePanelController } from './ui/damagePanel.ts';
+import { prepareEntryPanelMasks } from './ui/damagePanelEntryMasks.ts';
 import type { HudMatchModeState, HudMode } from './ui/hud.ts';
 
 type DamagePanelSpec = Parameters<DamagePanelController['setTank']>[0];
@@ -696,6 +697,8 @@ const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
       // window.__DEBUG lookup silently dropped all marks whenever diagnostics
       // were not installed, including incoming hits on the player's tank.
       resolveEntity: (targetId) => resolveFxSubject(String(targetId)),
+      // destruction-fx: the world whose structure materials take the collapse patch (world.patchStructureMaterials)
+      world: () => (currentWorld() as unknown as FxWorldSeam | null) ?? null,
     }, createOpaqueLoadingYielder(6, 16, { yieldFrame: nextPaintFrame }));
     live.bindBus(bus);
     // createPost runs during garage boot, before this demand-loaded graph
@@ -729,13 +732,10 @@ function requireFxRuntime() {
 // Movement and wheels read the same cached triangles as the near terrain.
 // An analytic/bilinear approximation can sit above the visible ground at a
 // ridge or rut, leaving daylight below otherwise correctly conformed tracks.
-const debrisSupportCandidates: CollisionRecord[] = [];
-const groundSampler = (x: number, z: number, ceiling?: number) => {
-  const terrain = hfProxy.getContactHeightAt(x, z);
-  if (ceiling === undefined) return terrain;
-  const candidates = currentWorld()?.queryObstacles?.(x - .01, z - .01, x + .01, z + .01, debrisSupportCandidates);
-  return candidates ? Math.max(terrain, structureTopAt(candidates, candidates.length, x, z, ceiling - SUPPORT_STEP_UP_M)) : terrain;
-};
+// The wheels and track debris also stand on the standable collision tops the
+// movement solve stands hulls on (bridge decks, roofs, slabs): see
+// world/vehicleGroundSampler.ts (the vehicle-contact lane, 2026-10-09).
+const groundSampler = createVehicleGroundSampler((x, z) => hfProxy.getContactHeightAt(x, z), currentWorld);
 // PERF (performance_budget r4): pool visuals are lazy — remember the sampler
 // on the game state so ensureTankVisual applies it to visuals built later.
 game._groundSampler = groundSampler;
@@ -937,7 +937,6 @@ const battleIntent = createBattleIntentRuntime({
   anisotropy: engineCtx.anisotropy ?? 4,
   setCamoBiome,
   clearCamoOverrides,
-  setCamoBattleSeed,
   setCamoOverride,
   applyCamoPatterns: applyCamoPatternsChunked,
   preloadBattleVisuals: () => battleVisualStreamerAccess.preload(),
@@ -1571,6 +1570,10 @@ const frontline = createFrontlineAtmosphereAccess(() => ({
   getHeightField: () => currentWorld()?.heightField ?? null,
   getSpawns: () => currentWorld()?.spawnPoints ?? null,
 }));
+/** A covered entry revealed before the player's top-down masks linked; the damage panel's retry ladder finishes them. */
+function deferredPanelMasks(specId: string): void {
+  console.warn(`[battle] top-down view of ${specId} still linking at reveal; the damage panel retries it`);
+}
 function currentSceneWatchdogOptions() {
   if (game.phase !== 'battle') return {};
   if (battleAtmosphere.current?.weather?.timeOfDay === 'night') return { nightRadianceScale: battleWatchdogRadianceScale };
@@ -1962,9 +1965,8 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
       if (player?.aerial?.kind === 'gunship') return;
       const panel = currentDamagePanel();
       if (!player || !panel) throw new Error('Player damage panel was not prepared');
-      if (!await panel.prepareTankMasks(player.spec, player.visual)) {
-        throw new Error('Player top-down view could not be prepared');
-      }
+      // 2026-10-09 (the black-screen lane): a slow mask link never refuses the battle (damagePanelEntryMasks.ts)
+      await prepareEntryPanelMasks(panel, player.spec, player.visual, deferredPanelMasks);
     },
     prepareAtmosphere: async () => {
       await battleAtmosphere.prepare(game.battleCount, game.mapId, battlePreferences.times);
@@ -2198,8 +2200,7 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     },
     planCamoOverrides: (specId: string, mapId: string, randomRoster: boolean, campaignOperationId: string | null = null, gameMode: string | null = null) => {
       const plan = soloRosterPlan(gameMode, campaignOperationId, randomRoster);
-      return planBattleCamoOverrides(game, specId, mapId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.alliedSlots,
-        (botSpecId) => camoSelectionSuitsTheatre(getSpec(botSpecId), mapId));
+      return planBattleCamoOverrides(game, specId, mapId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.alliedSlots);
     },
     ensureTankBuilders,
     preloadSoloAuthority: preloadSoloBattleRuntime,
@@ -2280,7 +2281,7 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
       ports: {
         lifecycle: battleEntryLifecycle,
         // a world laid out otherwise than the host's manifest reads the destroyed list through the manifest's identities
-        load: { ...options.load, loadAuthorityObstacles: (mapId, signal) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal }) },
+        load: { ...options.load, loadAuthorityObstacles: (mapId, signal, variant) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal, variant }) },
         roster: options.roster,
         scene: {
           engineCtx,
@@ -2458,9 +2459,8 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             if (!entity) return;
             const panel = currentDamagePanel();
             if (!panel) throw new Error('network panel warm requires the prepared battle HUD');
-            if (!await panel.prepareTankMasks(entity.spec, entity.visual)) {
-              throw new Error('Player top-down view could not be prepared');
-            }
+            // (2026-10-09) a slow mask link never refuses the round (damagePanelEntryMasks.ts)
+            await prepareEntryPanelMasks(panel, entity.spec, entity.visual, deferredPanelMasks);
           },
           openingEffects: async (fx: ReturnType<typeof requireFxRuntime>, bridge: MultiplayerWarmView, signal?: AbortSignal) => {
             const timing: ForwardProgramCompileTiming & {
@@ -2622,7 +2622,7 @@ function beginBattleEntry(
 ) {
   // batch 19 (2026-09-14): the Garage BATTLE button is a free sortie in the chosen rules — a Frontline
   // Assault pick carves the trenches like a ladder launch does (it used to reach the field without them)
-  pendingTerrainVariant = options?.gameMode === 'frontline_assault' ? 'assault-trenches' : null;
+  pendingTerrainVariant = terrainVariantFor(options?.gameMode); // the mode's battlefield, as the authority builds it
   pendingCampaignOperationId = null;
   return soloBattleEntry.begin(specId, mapId, options);
 }
@@ -2640,7 +2640,7 @@ async function beginSoloBattle({
   gameMode = 'standard',
   campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
-  pendingTerrainVariant = gameMode === 'frontline_assault' ? 'assault-trenches' : null;
+  pendingTerrainVariant = terrainVariantFor(gameMode);
   // campaign slice 5: the mission brief names the ladder operation when the sortie came from it
   pendingCampaignOperationId = gameMode === 'frontline_assault' ? campaignOperationId : null;
   // batch 19: a ladder operation always fights on its own map, whatever the Garage has selected

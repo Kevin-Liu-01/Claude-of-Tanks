@@ -18,10 +18,14 @@
 //   - (ghost-crunch lane, 2026-10-02) every crunch names the obstacle it fells, and a scripted bot driven into a hedgehog
 //     whose crossed beams share one box centre fells it with exactly one event — the three "ghost" crunches of 2026-10-02
 //     were that crunch read back from its position as the sibling beam; a scripted bot falling to its death beside a
-//     crushable tree is presented where its hull died (within 1 cm) on every view — not mid-air, 0.3–0.8 m off.
+//     crushable tree is presented where its hull died (within 1 cm) on every view — not mid-air, 0.3–0.8 m off;
+//   - (destruction, 2026-10-07) a scripted bot rammed at 14 m/s into a verdant house brings it down; every structure_stage
+//     a seat received is presented once at the authority's point, a stage older than a view lands settled, nothing stages
+//     that the host never sent, and the new host after the migration never re-sends a stage the old host sent.
 // Shorter windows than the tool's defaults (8 s of play, 4 s after each scenario; ≈ 45 s wall).
 import assert from 'node:assert/strict';
 import { formatMatrix, runWorldEventsAudit } from './mp-world-events-audit.mjs';
+import { matchRulesetFor } from '../src/sim/matchRuleset.ts';
 
 const report = await runWorldEventsAudit({ playMs: 8000, afterMs: 4000 });
 const text = formatMatrix(report);
@@ -54,13 +58,32 @@ for (const row of report.matrix) {
   }
 }
 for (const [view, row] of Object.entries(report.perPeer)) {
+  // destruction (2026-10-07): a stage that predates the view lands settled; nothing stages that the host never sent
+  check(row.stagesOlderAnimated === 0, `${view}: ${row.stagesOlderAnimated} structure stages that predate this view were animated`);
+  check(row.ghostStages === 0, `${view}: ${row.ghostStages} structure stages the host never sent`);
+  // sections (P2, 2026-10-08): the same for holes and section falls (none with the switch off)
+  check(row.breachesOlderAnimated === 0, `${view}: ${row.breachesOlderAnimated} breaches that predate this view were animated`);
+  check(row.ghostBreaches === 0, `${view}: ${row.ghostBreaches} breaches the host never sent`);
   check(row.ghostFx === 0, `${view}: ${row.ghostFx} prop:crushed effects for nothing this view received`);
   check(row.unattributedFx === 0, `${view}: ${row.unattributedFx} prop:crushed effects name no obstacle`);
   check(row.replaysAnimated === 0, `${view}: ${row.replaysAnimated} falls that predate this view were animated (settled expected)`);
+  // craters (2026-10-08, crater-render-spec §F): one stamp per crater per view; one older than the view lands settled
+  check(row.cratersOlderAnimated === 0, `${view}: ${row.cratersOlderAnimated} craters that predate this view were animated`);
+  check(row.ghostCraters === 0, `${view}: ${row.ghostCraters} craters the host never sent`);
+  check(row.cratersTwice === 0, `${view}: ${row.cratersTwice} craters stamped twice`);
 }
 const { rejoin, migration, return: returned, scripted } = report.steps;
 check(scripted?.hedgehog && scripted.hedgehog.events === 1, `scripted hedgehog: ${scripted?.hedgehog?.events ?? 'no'} events for one ${scripted?.hedgehog?.kind ?? 'shared-centre'} prop (one expected: its records fall together)`);
 check(scripted?.fall?.died === true, `scripted fall: the bot dropped on one hit point beside a tree did not die (${JSON.stringify(scripted?.fall ?? null)})`);
+check(scripted?.ram?.collapsed === true, `scripted ram: the bot driven at 14 m/s into house ${scripted?.ram?.structureId ?? '?'} did not bring it down (${JSON.stringify(scripted?.ram ?? null)})`);
+check(migration.restagedEvents === 0, `migration: ${migration.restagedEvents} structure stages the old host had sent were sent again by the new host`);
+check(migration.rebreachedEvents === 0, `migration: ${migration.rebreachedEvents} breaches the old host had sent were sent again by the new host`);
+// craters: dug when the ruleset's switch is on (the scripted HE round into open ground), never otherwise; never re-sent after
+// the migration (the new host resumed from the log)
+const cratersOn = matchRulesetFor('standard').destruction.craters;
+check(cratersOn ? (scripted?.crater?.dug ?? 0) >= 1 : (scripted?.crater?.dug ?? 0) === 0,
+  `scripted crater: ${scripted?.crater?.dug ?? 'no'} craters dug with the switch ${cratersOn ? 'on' : 'off'} (${JSON.stringify(scripted?.crater ?? null)})`);
+check(migration.recrateredEvents === 0, `migration: ${migration.recrateredEvents} craters the old host had sent were sent again by the new host`);
 const fallViews = Object.entries(scripted?.fall?.presentedErrM ?? {});
 check(fallViews.length > 0 && fallViews.every(([, err]) => err <= 0.01), `scripted fall: presented ${JSON.stringify(scripted?.fall?.presentedErrM ?? {})} m from the hull at its death (≤ 0.01 m on every view)`);
 check(rejoin.replayedAnimated === 0 && rejoin.replayedSettled === rejoin.replayedOnJoin, `rejoin: ${rejoin.replayedAnimated} of ${rejoin.replayedOnJoin} earlier falls animated on the fresh presentation`);
@@ -86,4 +109,10 @@ if (failures.length) {
   assert.fail(`world events audit: ${failures.length} finding(s)\n  ${failures.join('\n  ')}`);
 }
 const crushRows = report.matrix.filter((row) => row.kind === 'world_prop_destroyed' && row.sent > 0);
-console.log(`mp world events audit: scripted ${scripted.hedgehog.kind} (records ${scripted.hedgehog.records.join('/')}, centre shared by ${scripted.hedgehog.sharedCenter.join('/')}) felled by ${scripted.hedgehog.events} event (${scripted.hedgehog.eventIndices.join('/')}), fall death (${scripted.fall.cause}) presented ${fallViews.map(([view, err]) => `${view} ${err} m`).join(', ')}; ${report.steps.live.hostCrushes} live crushes, ${crushRows.reduce((sum, row) => sum + row.viaEvent, 0)} prop falls over ${crushRows.length} views all through their events (Δticks p50 ${crushRows.map((row) => row.dTicks.p50).join('/')}), rejoin ${rejoin.replayedSettled}/${rejoin.replayedOnJoin} earlier falls settled, migration ${migration.restored}/${migration.destroyedOld} destroyed props restored at revision ${migration.revisionNewAtBoot} (the seat's ${migration.bootBase} plus ${migration.knownFromEventsOnly} from events) with ${migration.recrushEvents} re-destroyed, return ${returned.replayedSettled}/${returned.replayedOnJoin} settled, ${report.hostEvents} deliveries judged in ${report.wallMs} ms (harness event-loop delay p99 ${report.loopDelay?.p99Ms ?? '?'} ms)`);
+const stageRows = report.matrix.filter((row) => row.kind === 'structure_stage' && row.sent > 0);
+const breachRows = report.matrix.filter((row) => row.kind === 'structure_breach' && row.sent > 0);
+const craterRows = report.matrix.filter((row) => row.kind === 'terrain_crater' && row.sent > 0);
+const olderCraters = Object.values(report.perPeer).reduce((sum, row) => sum + row.cratersOlderSettled, 0);
+console.log(`mp world events audit: craters ${cratersOn ? `on: ${scripted.crater?.dug ?? 0} dug by ${scripted.crater?.shell ?? '?'}, presented on ${craterRows.length} views `
+  + `${craterRows.reduce((sum, row) => sum + row.applied, 0)}/${craterRows.reduce((sum, row) => sum + row.sent, 0)}, ${olderCraters} laid down settled for later views, `
+  + `the new host re-sent ${migration.recrateredEvents}` : 'off (the switch): none dug'}; scripted ram brought house ${scripted.ram.structureId} down (${scripted.ram.stages.join(' > ')}; stages presented on ${stageRows.length} views, ${stageRows.reduce((sum, row) => sum + row.applied, 0)}/${stageRows.reduce((sum, row) => sum + row.sent, 0)}, the new host re-sent ${migration.restagedEvents}; breaches presented on ${breachRows.length} views, ${breachRows.reduce((sum, row) => sum + row.applied, 0)}/${breachRows.reduce((sum, row) => sum + row.sent, 0)}, re-sent ${migration.rebreachedEvents}); scripted ${scripted.hedgehog.kind} (records ${scripted.hedgehog.records.join('/')}, centre shared by ${scripted.hedgehog.sharedCenter.join('/')}) felled by ${scripted.hedgehog.events} event (${scripted.hedgehog.eventIndices.join('/')}), fall death (${scripted.fall.cause}) presented ${fallViews.map(([view, err]) => `${view} ${err} m`).join(', ')}; ${report.steps.live.hostCrushes} live crushes, ${crushRows.reduce((sum, row) => sum + row.viaEvent, 0)} prop falls over ${crushRows.length} views all through their events (Δticks p50 ${crushRows.map((row) => row.dTicks.p50).join('/')}), rejoin ${rejoin.replayedSettled}/${rejoin.replayedOnJoin} earlier falls settled, migration ${migration.restored}/${migration.destroyedOld} destroyed props restored at revision ${migration.revisionNewAtBoot} (the seat's ${migration.bootBase} plus ${migration.knownFromEventsOnly} from events) with ${migration.recrushEvents} re-destroyed, return ${returned.replayedSettled}/${returned.replayedOnJoin} settled, ${report.hostEvents} deliveries judged in ${report.wallMs} ms (harness event-loop delay p99 ${report.loopDelay?.p99Ms ?? '?'} ms)`);

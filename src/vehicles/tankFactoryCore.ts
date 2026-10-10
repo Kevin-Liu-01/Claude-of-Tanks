@@ -30,12 +30,11 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.ts';
 import {
-  box, boxUV, boreCylinderUV, cylX, cylY, cylZ, frustum, lathe, mergeAll, mulberry32,
+  box, boxUV, cylX, cylY, cylZ, frustum, lathe, mergeAll, mulberry32,
   polyLoft, polyMultiLoft, polyTurret, slab, sph, straightRidgeGunMask,
   torus, xform,
 } from './factoryGeometry.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
-import { applyCamoPanels } from './camoPanels.ts';
 import {
   createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial,
@@ -640,7 +639,19 @@ interface TankPoseState {
   _swayEst?: number;
 }
 
-type GroundSampler = (x: number, z: number, ceiling?: number) => number;
+/**
+ * The drawn ground under a point. `ceiling`, when given, is the highest standable collision top the caller admits there
+ * (a bridge deck, a roof, a slab): the integration's sampler returns the higher of the terrain's contact surface and the
+ * standable tops at or under it, the structure-support rule the movement solve stands hulls on (sim/structureSupport.ts
+ * structureTopAt). Without it the sampler returns the terrain alone. `prepareHull`, when the sampler has one, gathers the
+ * standable tops within `reachM` of a hull once before its wheels sample (one candidate query per hull per conform).
+ */
+export type GroundSampler = ((x: number, z: number, ceiling?: number) => number) & {
+  prepareHull?(x: number, z: number, reachM: number): void;
+};
+/** A wheel stands on a collision top at most this far above its contact plane: the hull step-up the movement solve's
+ * standing rule admits (world/collision.ts HULL_STEP_UP_M; tankFactoryContact.selftest pins the two together). */
+export const WHEEL_STANDABLE_STEP_M = 0.55;
 
 interface WheelConformFrame {
   cb: number;
@@ -734,14 +745,20 @@ function sampleWheelGroundDeviation(
   // Compare every footprint sample with the height of that same point on
   // the tilted contact plane. Comparing the uphill edge to the centre's Y
   // counted hull tilt twice and lifted an already slope-aligned track.
-  let ground = sampler(wx, wz);
-  let sample = sampler(wx + gxX * halfWheelWidth, wz + gxZ * halfWheelWidth) - gxY * halfWheelWidth;
+  // The vehicle-contact lane (2026-10-09, owner: "tracks shouldnt glitch through the bridge or textures, like how they do
+  // on the bridge in aegis crossing"): every sample admits the standable collision tops within a step of the contact
+  // plane, so a wheel on a bridge deck, a roof or a slab rests on the deck the hull stands on. Sampling the terrain alone
+  // read the gorge bed 30 m under Aegis Crossing's viaduct: every wheel fell to its droop and the tracks were drawn
+  // 21-32 cm inside the deck.
+  const ceiling = wy + WHEEL_STANDABLE_STEP_M;
+  let ground = sampler(wx, wz, ceiling);
+  let sample = sampler(wx + gxX * halfWheelWidth, wz + gxZ * halfWheelWidth, ceiling) - gxY * halfWheelWidth;
   if (sample > ground) ground = sample;
-  sample = sampler(wx - gxX * halfWheelWidth, wz - gxZ * halfWheelWidth) + gxY * halfWheelWidth;
+  sample = sampler(wx - gxX * halfWheelWidth, wz - gxZ * halfWheelWidth, ceiling) + gxY * halfWheelWidth;
   if (sample > ground) ground = sample;
-  sample = sampler(wx + gzX * halfRadius, wz + gzZ * halfRadius) - gzY * halfRadius - 0.17 * wheel.r;
+  sample = sampler(wx + gzX * halfRadius, wz + gzZ * halfRadius, ceiling) - gzY * halfRadius - 0.17 * wheel.r;
   if (sample > ground) ground = sample;
-  sample = sampler(wx - gzX * halfRadius, wz - gzZ * halfRadius) + gzY * halfRadius - 0.17 * wheel.r;
+  sample = sampler(wx - gzX * halfRadius, wz - gzZ * halfRadius, ceiling) + gzY * halfRadius - 0.17 * wheel.r;
   if (sample > ground) ground = sample;
   return (ground - wy) * frame.invHsy;
 }
@@ -5059,6 +5076,23 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     const t = (e.z - conformWheels[aft].z) / Math.max(conformWheels[fore].z - conformWheels[aft].z, 1e-4);
     return travel(conformDevs[aft]) * (1 - t) + travel(conformDevs[fore]) * t;
   };
+  // The hull-local radius the canonical road wheels' footprints reach from the hull origin (measured on the first
+  // conform: the gear is complete by then): the sampler's standable-top query covers it once per conform.
+  let conformReachLocalM = -1;
+  const conformReachLocal = (): number => {
+    if (conformReachLocalM >= 0) return conformReachLocalM;
+    let reach = 0;
+    for (const { list } of made) {
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (!e.road) continue;
+        const r = Math.hypot(Math.abs(e.x) + 0.5 * wheelW, Math.abs(e.z) + e.r);
+        if (r > reach) reach = r;
+      }
+    }
+    conformReachLocalM = reach;
+    return reach;
+  };
   // Reused on every conformance update. Keeping this frame outside the hot
   // method avoids allocating a transform object per render cadence.
   const wheelConformFrame: WheelConformFrame = {
@@ -5625,6 +5659,12 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       // either side of it that reach their ground, not dropped to its full droop. The band runs taut between those
       // supported wheels and the wheel rides on it, so it follows the line between their travels. Without a supported
       // wheel on one side it keeps the droop, as before. Flat ground supports every wheel, so nothing at rest changes.
+      // One standable-top query for the whole wheel train (vehicle-contact lane, 2026-10-09): the footprints reach at
+      // most conformReachLocal() from the hull origin at the largest presentation scale, plus the hullG seat offset.
+      if (sampler.prepareHull) {
+        sampler.prepareHull(frame.px, frame.pz, conformReachLocal() * Math.max(Math.abs(frame.hsx), Math.abs(frame.hsz))
+          + Math.hypot(frame.hpx, frame.hpz) + 0.25);
+      }
       let conformed = 0;
       for (const { list } of made) {
         for (let i = 0; i < list.length; i++) {
@@ -8001,14 +8041,8 @@ function* createTankOwnedSteps(
       // tanks"): every hull projects the shared camo tile at ONE density, so a pattern's blotches cover the same
       // world metres on every vehicle; the recipe's camoScale only shapes the paint (camoWorldScale.ts).
       boxUV(merged, CAMO_UV_REPEATS_PER_M);
-      // the gun tube wears its paint round the bore, not in four box swatches (factoryGeometry.ts boreCylinderUV)
-      if (bucket === 'gun') boreCylinderUV(merged, CAMO_UV_REPEATS_PER_M);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
-      // 2026-10-07 (round 4, wave 214: "a flat sticker across every surface, including the gun barrel wrap and
-      // hull boxes"): bolted-on boxes, bins and sleeve sections take their own window of the pattern and their own
-      // paint tone (camoPanels.ts); the armour shell keeps the one continuous projection.
-      applyCamoPanels(merged, list, bucket);
     }
     recordAuthoredRanges(merged, authoredRanges);
     weaponDamage.bind(list, merged);

@@ -17,9 +17,7 @@ import {
   createMaterialPainter, type MaterialVisual, type PlateFeatures,
 } from '../vehicles/materialPainter.ts';
 import { camoPatternIdHash, camoPatternStreamSeed, resolveCamoVisual } from '../vehicles/materials.ts';
-import { autoCamoPatternIdFor } from '../vehicles/camoPolicy.ts';
 import { CAMO_TILE_SPAN_M } from '../vehicles/camoWorldScale.ts';
-import { camoArtTileRepeat } from '../vehicles/catalogCamoPainter.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 
 // --- CAMO PICKER SECTION: swatch painter ------------------------------------
@@ -40,19 +38,6 @@ export const CAMO_SWATCH_CROP = Object.freeze({
   width: CAMO_SWATCH_TILE_PX,
   height: Math.round(CAMO_SWATCH_TILE_PX * CAMO_SWATCH_HEIGHT / CAMO_SWATCH_WIDTH),
 });
-/** Fleet lane painter v3 (2026-10-08): a patch-field scheme paints a WIDE tile (catalogCamoPainter.ts
- * camoArtTileSpanM, 4 m). It is painted at the same 256 px, 64 px per metre, and the swatch takes its middle
- * 2 m x 0.69 m band 1:1: the same armour, at the same scale, as every other swatch. */
-export const CAMO_SWATCH_WIDE_CROP = Object.freeze({
-  x: CAMO_SWATCH_TILE_PX / 4,
-  y: Math.round((CAMO_SWATCH_TILE_PX - CAMO_SWATCH_HEIGHT) / 2),
-  width: CAMO_SWATCH_WIDTH,
-  height: CAMO_SWATCH_HEIGHT,
-});
-/** The band of the painted tile a recipe's swatch shows. */
-export function camoSwatchCrop(visual: MaterialVisual): Readonly<{ x: number; y: number; width: number; height: number }> {
-  return camoArtTileRepeat(visual.catalogPattern) < 1 ? CAMO_SWATCH_WIDE_CROP : CAMO_SWATCH_CROP;
-}
 /** A swatch has no hull: no panel plan, rivets, chips or rust weeps — the pattern alone. */
 const CAMO_SWATCH_EMPTY_FEATURES: Readonly<PlateFeatures> = Object.freeze({
   hLines: [], vLines: [], rings: [], chips: [], streaks: [],
@@ -151,8 +136,8 @@ function cachedSwatch(sample: HTMLCanvasElement, recipe: CamoSwatchRecipe): HTML
   const swatch = makeCanvas(CAMO_SWATCH_WIDTH, CAMO_SWATCH_HEIGHT);
   const ctx = swatch.getContext('2d');
   if (!ctx) throw new Error('2D canvas context is unavailable');
-  const crop = camoSwatchCrop(recipe.visual);
-  ctx.drawImage(tile, crop.x, crop.y, crop.width, crop.height, 0, 0, CAMO_SWATCH_WIDTH, CAMO_SWATCH_HEIGHT);
+  ctx.drawImage(tile, CAMO_SWATCH_CROP.x, CAMO_SWATCH_CROP.y, CAMO_SWATCH_CROP.width, CAMO_SWATCH_CROP.height,
+    0, 0, CAMO_SWATCH_WIDTH, CAMO_SWATCH_HEIGHT);
   if (swatchCache.size >= SWATCH_CACHE_LIMIT) {
     const oldest = swatchCache.keys().next().value;
     if (oldest !== undefined) swatchCache.delete(oldest);
@@ -191,10 +176,6 @@ export function paintCamoSwatch(
 // AUTO is a per-map policy, so its tile previews four real resolved pattern
 // families as a clean seasonal contact sheet. The caption below already
 // supplies the AUTO identity, so no badge obscures the paint.
-// Round 3 (2026-10-07): the four cells are what AUTO paints THIS vehicle on a
-// woodland, desert, winter and urban field — its nation's schemes where it has
-// them (an IDF hull previews Sinai grey four times), the shared pool otherwise.
-const AUTO_SWATCH_BIOMES = Object.freeze(['verdant', 'desert', 'winter', 'urban']);
 export function paintAutoCamoSwatch(
   canvas: HTMLCanvasElement,
   spec: FleetTankSpec,
@@ -205,7 +186,7 @@ export function paintAutoCamoSwatch(
   if (!c) return;
   c.fillStyle = '#11171c';
   c.fillRect(0, 0, W, H);
-  const patterns = AUTO_SWATCH_BIOMES.map((biome) => autoCamoPatternIdFor(spec, biome));
+  const patterns = ['summer', 'desert', 'winter', 'urbanblock'];
   const cellW = W / 2;
   const cellH = H / 2;
   patterns.forEach((pattern, index) => {

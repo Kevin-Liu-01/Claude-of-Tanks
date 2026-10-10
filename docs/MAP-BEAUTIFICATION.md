@@ -7810,6 +7810,39 @@ shadow takes a little too much bounce (the CSM cannot tell the two shadows apart
   ACCEPT; the census identical (4,326,639 triangles, 414 draws). The first hold (GPU p25 +0.42 ± 1.04 ms, CPU p50
   −0.09 ± 0.17 ms; 4,664,349 triangles, 495 draws with the hulls shown) ran niced and is void.
 
+### 2026-10-09 — the clouds' grain: per-pixel jitter, a longer memory that follows the wind, stills settled to the rest (the clouds lane)
+
+**Why.** The owner: "clouds will look terrible and look super grainy instead of proper". The gauntlet never saw it: every
+still settled the clouds 64 frames (four samples a history pixel against the live layer's sixteen), and nobody judged the
+sky at 1:1 in play.
+
+**What it was.** A grain meter (`.qa-dev/cloud-grain3.mjs`, in-page: a ~200-sample running average at the same pose as the
+reference, dt 0 so nothing drifts, the error read inside the cloud mask from the history's transmittance) and 2× crops of
+full-resolution frames at rest and after a camera turn (`.qa-dev/cloud-grain2.mjs`: dt pinned at 1/60 a frame, a frame
+every 100 ms) found:
+- a speckle at rest along cloud edges, thin parts and fragments, worst on Monsoon's broken front, stronger at rest after a
+  turn than during it (the turn's Catmull-Rom reprojection blurs the history; the rest refills it with noisy samples);
+- a regular diagonal hatching along thin edges: the trace's jitter was the blue noise of the trace texel, so the sixteen
+  history pixels of a 4 × 4 block took one start offset a cycle;
+- part of it is the detail octave aliasing at history resolution — the 200-sample reference keeps a little speckle on the
+  fragments — so no amount of accumulation alone makes it vanish.
+
+**What changed** (`volumetricClouds.ts`, no new pass): the jitter keys on the history pixel; the floor on a fresh sample's
+weight is 0.06 (`CLOUD_HISTORY_MIN_ALPHA`, was 0.12: about thirty-three samples a pixel against sixteen) and the reprojection
+is carried by the frame's wind step (`uWindStep`), so the longer memory follows a drifting cloud instead of trailing it; a
+capture settles 512 frames (`CLOUD_CAPTURE_SETTLE_FRAMES`, was 64). Measured against the reference: stills −12 to −24 %,
+steady rest −6 to −14 % on Monsoon, Verdant, Redrock and Frosthollow, no blur.
+
+**Lessons.**
+- A temporally accumulated effect must be judged where a player sees it: at 1:1, at rest and after a turn. A capture settle
+  shorter than the live steady state shows a different (grainier) picture than play; a settle longer than it hides the
+  motion. The gauntlet's stills now settle to the live rest; motion goes to pinned strips.
+- A whole-frame high-pass metric cannot rank grain fixes (all within 2 %): structure swamps the noise. Measure against a
+  long-accumulation reference at the same pose, inside the effect's own mask.
+- RMSE does not see structure: the per-pixel jitter left the error unchanged and removed the hatching the eye locks onto.
+- A smoother composite filter (a B-spline in place of Catmull-Rom) cuts Monsoon's speckle 11 % and blurs crisp cumulus
+  (Verdant +15 %, Redrock +14 % against the sharp reference): reconstruction is not where to buy smoothness on this sky.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

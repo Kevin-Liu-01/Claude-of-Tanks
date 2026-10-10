@@ -28,6 +28,7 @@ import type { MatchSessionOptions, MatchSessionP2pOptions, MatchSessionStats, Se
 import { NetworkStatusModel, SEAT_DROP_REASONS, closeReasonName } from './networkStatus.ts';
 import type { NetworkBanner, NetworkStatusEvent, NetworkStatusMatchSource, NetworkStatusSnapshot, NetworkStatusSummary } from './networkStatus.ts';
 import { isMultiplayerV2Session } from './playMenuAdapter.ts';
+import { terrainVariantFor } from '../../sim/matchRuleset.ts';
 import type { V2RoomSession } from './playMenuAdapter.ts';
 import { createBattlePresentation } from '../presentation/battlePresentation.ts';
 import type {
@@ -128,7 +129,8 @@ export interface BrowserLoadPorts {
    * The authority's obstacle identities by index (its collision manifest, src/mp/host/worldCollision.ts): loaded only for
    * a world laid out otherwise than the manifest, so the presentation can read the persistent destroyed list.
    */
-  loadAuthorityObstacles?(mapId: string, signal: AbortSignal): Promise<(index: number) => ObstacleIdentity | null>;
+  /** The authority's obstacle identities, from the manifest it plays (the mode's battlefield variant's when it has one). */
+  loadAuthorityObstacles?(mapId: string, signal: AbortSignal, variant?: TerrainVariant): Promise<(index: number) => ObstacleIdentity | null>;
   nextFrame(): MaybePromise<RuntimeValue>;
   setAdaptiveSuspended(suspended: boolean): void;
   now?(): number;
@@ -952,7 +954,7 @@ export function createBrowserComposition({
     };
     try {
       if (!active.spectator && !active.ownSpecId) throw new Error('The lobby vehicle selection is unavailable.');
-      const terrainVariant: TerrainVariant = active.mode === 'frontline_assault' ? 'assault-trenches' : null;
+      const terrainVariant: TerrainVariant = terrainVariantFor(active.mode); // the mode's battlefield (sim/matchRuleset.ts)
       scene.resetRoundState();
       roster.setCamoBiome(active.mapId);
       roster.emitBattleStart({ playerId: viewerId, specId: active.ownSpecId, mapId: active.mapId });
@@ -993,7 +995,7 @@ export function createBrowserComposition({
       // every live fall by the event's own identity, and reads the persistent destroyed list through the manifest's
       // (ghost-crunch lane, 2026-10-02). Loaded beside the roster and never awaited: until it lands the list waits.
       if (!battlePresentation.sharesAuthorityIndices && load.loadAuthorityObstacles) {
-        void Promise.resolve().then(() => load.loadAuthorityObstacles!(active.mapId, active.abort.signal)).then((identity) => {
+        void Promise.resolve().then(() => load.loadAuthorityObstacles!(active.mapId, active.abort.signal, terrainVariant)).then((identity) => {
           if (round === active && !disposed) battlePresentation.setAuthorityObstacles(identity);
         }).catch((error) => {
           if (!active.abort.signal.aborted) reportWarning('multiplayer v2 authority obstacles', messageOf(error));

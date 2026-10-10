@@ -41,7 +41,9 @@ for(const id of ids)for(const quality of ['high','low']) {
    assert.ok(error<.025,`${id}/${quality}: live mouth and launch differ by ${error.toFixed(4)}m`);
    used.add(closest);
    const shot=screen.canisters[closest],axis=new THREE.Vector3(...shot.slice(3,6)).normalize();
-   assert.ok(d.dot(axis)>.999,`${id}/${quality}: launch follows the visible bore`);
+   // 2026-10-08: the launchers' fan law (smokeFan.ts) turns each tube's launch across its side's arc, as the real
+   // launchers' tubes are set; the generated directions are the law applied to these bores (tank:controls:check)
+   assert.ok(d.dot(axis)>Math.cos(75*Math.PI/180)&&axis.y>0,`${id}/${quality}: launch follows its bore through the fan law`);
    const before=smokeCanisterPosition(shot,shot[6]*.3,{});
    assert.ok((before.x-shot[0])*axis.x+(before.z-shot[2])*axis.z>0,'canister travels out along its bank');
    launches++;

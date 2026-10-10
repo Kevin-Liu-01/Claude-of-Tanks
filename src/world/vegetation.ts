@@ -51,6 +51,7 @@ import {
 } from './authoredTreePlacement.ts';
 import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
+import { createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees, type GroundCoverCraters } from './groundCoverCraters.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import type { PropsMapConfig } from './props.ts';
@@ -338,6 +339,8 @@ interface TreeRecord {
   wood?: boolean;
   /** Trees lane (2026-10-06): one of a map's hedge trees (vegetation.hedgeTrees, plantHedgeTrees). */
   hedgeRow?: boolean;
+  /** Ground lane (crater-render-spec §C): the placement before a crater re-seated the trunk (base + offsetAt). */
+  craterBase?: THREE.Matrix4;
   /** Trees round 5: one of the field trees (placeLoneTrees), the field law's (addFieldTree). */
   field?: boolean;
 }
@@ -415,6 +418,12 @@ export interface VegetationRuntime {
    * x, texel centres at -512 + (i + 0.5) × 4) — the terrain draws a forest floor under it and no field, the ground
    * tiers thin under it. Built once from the final tree records. */
   _woodsMask: Float32Array;
+  /**
+   * Ground lane (crater-render-spec §C): follow the battle's craters — the grass chunks', bushes' and understorey's
+   * instances in a crater's cleared bowl are hidden and the rest re-seated on base + offsetAt, the carpet rebuilds with
+   * the same law, standing trees root into the bowl's wall (map.ts calls this once a frame after the terrain's sync).
+   */
+  followCraters(law: GroundCoverCraters): void;
 }
 
 interface GarageTreeKit {
@@ -3748,7 +3757,10 @@ export function buildGrassTuftGeometry(
 // than the authored per-map counts, restoring the density the road, structure and spawn
 // clearances trimmed since 1049e4e (verdant 899 -> 812 trees at the spawn pose). Mobile keeps
 // the authored counts. Read at build time, after the device tier is resolved.
-export function treeRichness(): number { return getDeviceTier() === 'mobile' ? 1 : 1.1; }
+// Layout identity (destruction core lane, 2026-10-08, the coordinator's ruling): every tier places what the desktop
+// places — a phone's trees are records (trunks block movement and shells, crowns hide), and the authority's indices are
+// the desktop's — so the phones' saving is in how a tree draws, never in which trees stand.
+export function treeRichness(): number { return 1.1; }
 
 /**
  * Trees round 2 (2026-10-03; Glacier Pass's census, gauntlet wave 4's "lone needle-like grass stalks" on Frosthollow):
@@ -4378,6 +4390,17 @@ function* vegetationBuildSteps(
     return t;
   }
 
+  // ---- ground lane (2026-10-08, crater-render-spec §C): the battle's craters in the ground cover ----
+  // One law (groundCoverCraters.ts): inside 0.9 R of a crater the cover is gone, elsewhere in the overlay's reach it
+  // stands on base + offsetAt. The static meshes (grass chunks, bushes, the understorey) go through one patcher.
+  let craterLaw: GroundCoverCraters | null = null;
+  const craterFollower = createCraterFollower();
+  const craterPatcher = createStaticCoverPatcher();
+  function reseatInstances(mesh: THREE.InstancedMesh, count: number, ax0: number, az0: number, size: number,
+    x0: number, z0: number, x1: number, z1: number): number {
+    return craterLaw ? craterPatcher.reseat(craterLaw, mesh as never, count, ax0, az0, size, x0, z0, x1, z1) : 0;
+  }
+
   yield { stage: 'grassPrep' }; // perf-r3: yield before scatter
   // ---- midfield grass scatter (map-wide chunks, unchanged system) ----
   interface GrassChunkMesh {
@@ -4425,7 +4448,15 @@ function* vegetationBuildSteps(
         if (!geometry.boundingSphere) geometry.computeBoundingSphere();
         return geometry.boundingSphere!;
       },
-      publish: buffers => publishGrassChunk(gc, buffers),
+      publish: buffers => {
+        publishGrassChunk(gc, buffers);
+        // (crater-render-spec §C) a chunk built after craters takes them as it is published
+        if (craterLaw?.active && gc.meshes && craterLaw.touches(gc.x0, gc.z0, gc.x0 + CHUNK_SIZE, gc.z0 + CHUNK_SIZE)) {
+          for (const entry of gc.meshes) {
+            reseatInstances(entry.mesh, entry.total, gc.x0, gc.z0, CHUNK_SIZE, gc.x0, gc.z0, gc.x0 + CHUNK_SIZE, gc.z0 + CHUNK_SIZE);
+          }
+        }
+      },
     });
   }
   function advanceGrassChunk(gc: GrassChunk, eager = false): boolean {
@@ -4572,6 +4603,8 @@ function* vegetationBuildSteps(
     random: mulberry32, makeTuft: (x, z, crng) => makeTuft(x, z, crng, true),
     targets: () => [inactiveCarpetBuffers(0), inactiveCarpetBuffers(1)],
     publish: publishCarpet,
+    // (crater-render-spec §C) a carpet tuft in a crater's cleared bowl is dropped, the rest stands on base + offsetAt
+    reseat: (x, z) => (craterLaw?.active ? (craterLaw.holeAt(x, z) ? NaN : craterLaw.liftAt(x, z)) : 0),
   });
   let _carpetCellX = 0x7fffffff;
   let _carpetCellZ = 0x7fffffff;
@@ -7457,7 +7490,8 @@ function* vegetationBuildSteps(
     // 2026-09-14 environment richness: desktop tiers seed 30 % more field bushes, clumps and
     // cluster fringe scrub than the authored counts (mobile keeps them). Read at build time,
     // after the device tier is resolved. Per-map veg.bushCount still gates what survives.
-    const bushRichness = getDeviceTier() === 'mobile' ? 1 : 1.3;
+    // (every tier since 2026-10-08: a bush is a concealer, a record the phones must stand where the desktop's does)
+    const bushRichness = 1.3;
     function placeBushFringes(): void {
       // fringe bushes around each tree cluster. r3 terrain_environment: maps
       // can raise veg.clusterScrub (desert oases) — extra shrubs land INSIDE
@@ -8490,7 +8524,35 @@ function* vegetationBuildSteps(
     }
   }
   rimTrees.length = 0;
-  return { group, update, dispose, getGrassWorkState, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
+  // ---- ground lane (crater-render-spec §C): following the battle's craters ----
+  let craterDressing: THREE.InstancedMesh[] | null = null;
+  const writeCraterTree = (t: TreeRecord): void => {
+    if (t.slot >= 0) writeTreeSlot(nearMeshes[t.species][t.variant], t.slot, t, t.fade);
+    if (t.fslot >= 0) writeTreeSlot(farMeshes[t.species][t.fv], t.fslot, t, 0);
+  };
+  function followCraterLaw(law: GroundCoverCraters): void {
+    craterLaw = law;
+    craterDressing ??= group.children.filter((c): c is THREE.InstancedMesh =>
+      (c as THREE.InstancedMesh).isInstancedMesh === true && (c.userData.bush === true || c.userData.understorey === true));
+    followCraters(law, craterFollower, () => {
+      craterPatcher.restore();
+      restoreCraterTrees(trees, writeCraterTree);
+      carpetWork.refresh();
+    }, (x0, z0, x1, z1) => {
+      for (const gc of grassChunks) {
+        if (!gc.meshes || gc.x0 > x1 || gc.x0 + CHUNK_SIZE < x0 || gc.z0 > z1 || gc.z0 + CHUNK_SIZE < z0) continue;
+        for (const entry of gc.meshes) reseatInstances(entry.mesh, entry.total, gc.x0, gc.z0, CHUNK_SIZE, x0, z0, x1, z1);
+      }
+      for (const mesh of craterDressing!) reseatInstances(mesh, mesh.count, -HALF, -HALF, HALF * 2, x0, z0, x1, z1);
+      reseatCraterTrees(law, trees, x0, z0, x1, z1, writeCraterTree); // trunks root into the bowl's wall
+      // the carpet rebuilds (its inactive half, as ever) when the reach meets its ring
+      if (_carpetCellX !== 0x7fffffff) {
+        const reach = (CARPET_RING + 1) * CARPET_CELL, cx = (_carpetCellX + 0.5) * CARPET_CELL, cz = (_carpetCellZ + 0.5) * CARPET_CELL;
+        if (x1 >= cx - reach && x0 <= cx + reach && z1 >= cz - reach && z0 <= cz + reach) carpetWork.refresh();
+      }
+    });
+  }
+  return { group, update, dispose, getGrassWorkState, followCraters: followCraterLaw, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
     crushTree, resetToppled, advanceToppled: (dt: number) => { if (treeCrushAnims.length) updateTreeCrush(dt); }, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _woodsMask: woodsMask,
     _rimMix: veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,

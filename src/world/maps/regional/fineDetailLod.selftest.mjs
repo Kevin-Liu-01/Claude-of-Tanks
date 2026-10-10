@@ -92,5 +92,37 @@ for (let h = hideAt; h >= 0; h--) {
 }
 assert.ok(showAt !== null && hideAt - showAt >= 10 && hideAt - showAt <= 20,
   `it shows again only well inside that distance (hysteresis: hides at ${hideAt} m, shows at ${showAt} m)`);
-console.log(`fineDetailLod.selftest: Saltwind Ridge's fine joinery in ${batches.length} receive-only multi-draw batches (${cellCount} cells), `
-  + `all hidden from 3 km up; one cell hides ${hideAt} m above its roofs and shows again at ${showAt} m`);
+// (facades lane, 2026-10-06) the facade craft's finest pieces (geometry.ts EmitOptions.fine 'near': the balconettes'
+// rails, the sills' dirt runs, the dentils) stand in near cells of their own, after the kit's: 40 m squares (a box of
+// that square and a building's reach), in the same batches, hidden at half the distance a cell of the kit's own joinery
+// hides at, with the same hysteresis
+const near = batches.flatMap((bt) => bt.cells.filter((c) => c.near).map((c) => ({ bt, c })));
+assert.ok(near.length >= 1, 'the craft\'s near pieces stand in near cells');
+for (const { bt, c } of near) {
+  assert.ok(c.box.maxX - c.box.minX <= 80 && c.box.maxZ - c.box.minZ <= 80,
+    `${bt.mesh.name} near cell ${c.id}: a 40 m cell (${(c.box.maxX - c.box.minX).toFixed(0)} x ${(c.box.maxZ - c.box.minZ).toFixed(0)} m)`);
+  assert.ok(bt.cells.indexOf(c) >= bt.cells.findLastIndex((x) => !x.near), `${bt.mesh.name}: the near cells follow the kit's cells`);
+}
+const { bt: nb, c: nc } = near[0];
+const nx = (nc.box.minX + nc.box.maxX) / 2, nz = (nc.box.minZ + nc.box.maxZ) / 2;
+update(nx, (nc.box.minY + nc.box.maxY) / 2, nz);
+assert.equal(shown(nb, nc), true, 'a camera inside a near cell draws its pieces');
+let nearHideAt = null;
+for (let h = 0; h <= 400; h++) {
+  update(nx, nc.box.maxY + h, nz);
+  if (!shown(nb, nc)) { nearHideAt = h; break; }
+}
+const fineFar = hideAt - 16;
+assert.ok(nearHideAt !== null && Math.abs(nearHideAt - (fineFar * 0.5 + 16)) <= 1,
+  `the near pieces hide at half the fine-detail distance (${nearHideAt} m; the kit's joinery ${hideAt} m)`);
+let nearShowAt = null;
+for (let h = nearHideAt; h >= 0; h--) {
+  update(nx, nc.box.maxY + h, nz);
+  if (shown(nb, nc)) { nearShowAt = h; break; }
+}
+assert.ok(nearShowAt !== null && nearHideAt - nearShowAt >= 10 && nearHideAt - nearShowAt <= 20,
+  `the near pieces show again well inside that distance (hides at ${nearHideAt} m, shows at ${nearShowAt} m)`);
+
+console.log(`fineDetailLod.selftest: Saltwind Ridge's fine joinery in ${batches.length} receive-only multi-draw batches (${cellCount} cells, `
+  + `${near.length} of them the craft's near cells), all hidden from 3 km up; one cell hides ${hideAt} m above its roofs and shows again at `
+  + `${showAt} m, a near cell hides at ${nearHideAt} m and shows at ${nearShowAt} m`);

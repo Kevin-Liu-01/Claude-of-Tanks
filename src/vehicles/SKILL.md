@@ -120,17 +120,16 @@ shadow-floor hooks, and destroyed-vehicle burn resources. Preserve its painter
 constants, deterministic RNG order, shader strings, and demand-owned wreck
 atlases; extend its local cache and repaint-role contracts instead of casting
 through an untyped material bag.
-AUTO (map) camouflage is decided in the pure `camoPolicy.ts` (tank-accessories round 3, 2026-10-07):
-`AUTO_CAMO_BIOMES` holds each biome's shared pool and environment, `NATIONAL_AUTO_CAMO` each nation's own schemes
-per environment (with era rows), and `autoCamoPatternIdFor(vehicle, mapId)` draws one per vehicle and biome from
-(id, nation, era) alone, so the Garage swatch, battle paint, repaint cache and every multiplayer peer agree;
-`materials.ts` only holds the active biome. A nation without a scheme for an environment keeps the shared pool,
-never another nation's scheme. Change AUTO there, never with a map or nation literal elsewhere, and run
-`autoCamoNational.selftest.mjs`. Round 4 (2026-10-07, critics after wave 240) made Factory and AUTO the coat each army
-fields: Russia's green, sand and black (pixel digital stays a selectable Signature on its service hulls and the stock
-of export and demonstrator hulls only), the Bundeswehr NATO three-tone, plain US CARC Tan (the NATO three-tone in
-woodland AUTO, and under the SEPv3's woodland ULCANS); a nation that fields no pixel camouflage never draws one from a
-shared pool (`nationFieldsPixelCamo`). Concealment verdicts did not move (`factoryCamo.selftest.mjs`).
+Camouflage is production's system (fix/camo-defaults, 2026-10-09; the owner on launch day: "why did you break camos?
+they only show generic camos now instead of the cool camos we had before", then "yeah our entire camo system before was
+better"; R113: "the default camos of our tanks to be what they were before, but just organized a lot better"). Factory
+is each tank's stock scheme (`camoPolicy.ts` stockCamoPatternIdFor: its Signature, a named stock or the nation's service
+pattern); AUTO draws per (vehicle, biome) from `materials.ts` BIOME_PATTERN; a bot keeps its own paint on 40 % of rolls
+(`rosterState.ts` autoCamoIdsForBattle). `camoCatalogProductionIndices.selftest.mjs` holds every tank's selection, stock,
+Factory visual and AUTO, and every catalog index, to production (`camoProductionBaseline.json`, afc5018e9). A paint
+generated later appends after GT (`AUTHORED_PAINT_IDS_AFTER_GT`), never among the earlier ids. PR #9's national/theatre
+AUTO, theatre-matched bots, round-4 Factory coats and painter v2/v3 left with this restore; any change to them needs the
+owner's ruling first.
 `profiles/russia.ts` owns both the strict T-44/T-54/T-62/T-64 Russian profile
 pack and the shared Soviet geometry vocabulary consumed by China, Poland,
 T-72, T-80, and Ukraine. Keep its hull, dome, gun, ERA, Shtora, mudguard, and
@@ -222,11 +221,6 @@ bucket (they collapse with the brick) — emit hardware that must stay dark afte
 `node tools/material-roles-audit.mjs [--ids=… | --all] --md=<path>` (part census hook `partCensus`, lexical evidence
 per part, per-tank role and material counts); the audit and its verdicts are
 [`docs/tank-generation/material-roles-audit-20260925.md`](../../docs/tank-generation/material-roles-audit-20260925.md).
-Camouflage panels (round 4, 2026-10-07; wave 214: "a flat sticker across every surface, including the gun barrel wrap
-and hull boxes"): the merge gives every bolted-on solid in the `*Detail`/`*PaintedDetail`/`*Equipment` buckets (a bin
-with its lid and latches is one connected piece), every gun-tube section and every part marked `markCamoPanel` its own
-window of the tile and paint tone (`camoPanels.ts`); ERA cassettes keep the window and take a brick tone. The shell
-buckets never split on their own (lofted from touching strips): mark a box there when it is a separate item.
 Read actual assembled wheel centers: the ground-seating law can override an
 authored `wheelY`. Source-backed track courses must fit finite wheel stock,
 including the central drum, tread rings and tooth crowns at their actual axial
@@ -380,15 +374,9 @@ no sun state or vehicle tag for the aerial pass. Clone through `cloneVehicleMate
 re-registers the clone exactly as its source and keeps its shader switches (`COT_WHEEL_PAINT_READABILITY`);
 `vehicleMaterialClone.selftest.mjs` pins the running-gear clones (shoes, isolated gear roles, band finishes). About
 forty profile-pack clones still re-hook by hand (`rehook`, `'veh-ambient-floor-v2'`) and predate it.
-The field camouflages (`catalogCamoPainter.ts` paintField) are thresholded on a 192-texel raster; above that size
-`paintFieldEdges` draws their boundaries at the tile's own resolution (one anti-aliased texel). Never scale the
-hard stencil up with smoothing again: that was the "soft, blurry camo blobs" (`camoFieldEdges.selftest.mjs`).
-The digital patterns stay pixel art on their own raster (80 / `digitalCellK` cells across the tile), but since
-2026-10-07 their cells are drawn by box coverage (`paintPixels`), their boundaries break into pixel clusters
-(`fragmentPixelEdges`) and no tone sits under `DIGITAL_TONE_LUMA_FLOOR`. Thresholding the smooth fields straight onto
-the grid and scaling it nearest-neighbour read as "blown-up low-resolution images" with "uniform stair-stepped edges",
-and the near-black tone as an unshaded hole. The service stripes (`stripeField`) keep whole-tile harmonics only: a
-term that does not repeat a whole number of times per tile opens a seam at the 2 m repeat.
+The field camouflages (`catalogCamoPainter.ts` paintField) and the digital patterns paint production's 2 m tile
+(fix/camo-defaults, 2026-10-09: the v2/v3 patch fields, 4 m wide tiles, digital clusters, per-triangle box projection,
+bore-wrapped gun UVs and camouflage panels are retired with the rest of PR #9's camouflage system).
 Weathering marks in the plate painter (`materialPainter.ts`) are stains, so they multiply into the paint. Since
 2026-10-06 the rust weeps multiply a warm brown. The old 1.4-3 px orange stroke laid over the paint lit up on black
 camo bands as "an unresolved texture seam", repeating with the 2 m tile (wave 165, Challenger 1). Never paint a bright,
