@@ -198,6 +198,13 @@ export default {
       { kind: 'snowFence', x: -170, z: 160, yawDeg: -10, ground: 'veto', name: 'the north-west drift fence' },
       { kind: 'snowFence', x: 400, z: -150, yawDeg: 90, ground: 'veto', name: 'the east drift fence' },
       { kind: 'snowFence', x: -398, z: -100, yawDeg: 90, ground: 'veto', name: 'the west drift fence' },
+      // (L2, wave 355) drift fences on the lines the fieldstone walls held round the station (a hull breaks through a module)
+      { kind: 'snowFence', x: -148, z: -46, yawDeg: 90, params: { length: 60 }, ground: 'veto', name: 'the motor pool drift fence (south)' },
+      { kind: 'snowFence', x: -148, z: 52, yawDeg: 90, params: { length: 64 }, ground: 'veto', name: 'the motor pool drift fence (north)' },
+      { kind: 'snowFence', x: -35, z: -58, yawDeg: 0, params: { length: 62 }, ground: 'veto', name: 'the station drift fence (south)' },
+      { kind: 'snowFence', x: -35, z: 52, yawDeg: 0, params: { length: 62 }, ground: 'veto', name: 'the station drift fence (north)' },
+      { kind: 'snowFence', x: 15, z: 296, yawDeg: 0, params: { length: 82 }, ground: 'veto', name: 'the fuel shelter drift fence' },
+      { kind: 'snowFence', x: 316, z: 37, yawDeg: 90, params: { length: 74 }, ground: 'veto', name: 'the relay drift fence' },
     ],
     // the station's machines (vehicleSetPiecesWorks.ts): the Bv 206 carriers, the Sno-Cats and the D8 dozers that kept the
     // roads and the drifts open (the arctic1980s fleet's trucks and pickups stay the inhabit pass's)
