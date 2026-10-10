@@ -277,6 +277,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/shellBurstColumn.selftest.mjs',
     // 2026-10-08 (destruction core lane, P2): the Studio films the sim's own holes and falls
     'src/game/studioDestruction.selftest.mjs',
+    // 2026-10-09 (destruction core lane): a Studio burst fells light props as a battle's does; strike rounds burst on the ground.
+    'src/game/studioBlastFell.selftest.mjs',
     'tools/studio-example-scenarios.selftest.mjs',
     'src/vehicles/spareTrackAttachment.selftest.mjs',
     'src/vehicles/turretBarrelCircularity.selftest.mjs',
@@ -573,6 +575,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/viteGlslMinify.selftest.mjs',
     'tools/telemetry-report.selftest.mjs',
     'tools/browser-failure-evidence.selftest.mjs',
+    'tools/battle-entry-sweep.selftest.mjs',
     'tools/multiplayer-frame-trace.selftest.mjs',
     'tools/terrain-stream-benchmark.selftest.mjs',
     'tools/terrain-fast-cache-benchmark.selftest.mjs',
@@ -700,6 +703,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/damagePanel.selftest.mjs',
     'src/ui/damagePanelMarkers.selftest.mjs',
     'src/ui/damagePanelMaskRetry.selftest.mjs',
+    'src/ui/damagePanelEntryMasks.selftest.mjs',
     'src/engine/rgba8Readback.selftest.mjs',
     'src/ui/topMaskProgramWarm.selftest.mjs',
     'src/ui/tankThumbs.selftest.mjs',

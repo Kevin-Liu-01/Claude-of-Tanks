@@ -68,6 +68,14 @@ and `npm run test:net:v2:soak` run the client and host without a browser; `npm r
 test:net:v2:rooms` runs the Worker under the Workers runtime. Run every Chrome
 under the probe mutex at nice 19, one at a time. Production health is the Worker's
 `/healthz` plus `npm run test:net:v2:p2p -- --site` (docs/DEVELOPMENT.md).
+Battle entry is a per-deploy check of its own: `node tools/battle-entry-sweep.mjs
+<url>|--dist=<dir> --tier=mobile|desktop --times=sunset,day,night --force-black` loads
+into every battlefield through the player's covered solo entry with
+`navigator.webdriver` reported false (the scene watchdog runs only outside
+automation, so an ordinary smoke never sees a refusal) and reports entered / refused
+/ stuck / black / rescued per run, plus the negative control
+(`?diagforce=blackout` must be refused); a protected preview reads
+`COT_PROTECTION_BYPASS` from the environment.
 Cold-start claims require `npm run perf:cold`; use `--sessions` for repeated
 cache-disabled contexts and record `--cpu`, `--down-kbps`, `--up-kbps`, and
 `--latency` so a warm navigation cannot masquerade as first-visit reliability.
