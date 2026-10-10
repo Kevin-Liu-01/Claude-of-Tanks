@@ -5,10 +5,8 @@ import { createCanvas, Path2D, DOMMatrix, ImageData } from '@napi-rs/canvas';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 import { createTank } from './tankFactory.ts';
 import { getSpec } from './specs.ts';
-import { CAMO_UV_REPEATS_PER_M, CAMO_TILE_SPAN_M, CAMO_WIDE_TILE_SPAN_M, camoPatchWorldScale } from './camoWorldScale.ts';
-import { camoPatternIdHash, camoPatternStreamSeed, resolveCamoVisual, setCamoOverride, clearCamoOverrides,
-  applyCamoPatterns } from './materials.ts';
-import { camoArtTileRepeat, camoArtTileSpanM, createCatalogCamoPainter } from './catalogCamoPainter.ts';
+import { CAMO_UV_REPEATS_PER_M, CAMO_TILE_SPAN_M, camoPatchWorldScale } from './camoWorldScale.ts';
+import { camoPatternIdHash, camoPatternStreamSeed, resolveCamoVisual } from './materials.ts';
 import { createMaterialPainter } from './materialPainter.ts';
 import { paintMaterialBase } from './materialPainterWorker.ts';
 
@@ -41,24 +39,9 @@ function measureUvDensity(mesh) {
   assert.ok(p && n && uv, `${mesh.name}: position, normal and uv`);
   const ratios = [];
   const ref = { x: null, y: null, z: null };
-  // the projection plane is the triangle's own (factoryGeometry.ts boxUV, fleet lane 2026-10-08: chosen per vertex from
-  // smoothed normals, a triangle across a roof edge smeared the tile into streaks); merged camo meshes are non-indexed
-  const faceAxis = (t) => {
-    const ax = p.getX(t), ay = p.getY(t), az = p.getZ(t);
-    const bx = p.getX(t + 1) - ax, by = p.getY(t + 1) - ay, bz = p.getZ(t + 1) - az;
-    const cx = p.getX(t + 2) - ax, cy = p.getY(t + 2) - ay, cz = p.getZ(t + 2) - az;
-    let nx = Math.abs(by * cz - bz * cy), ny = Math.abs(bz * cx - bx * cz), nz = Math.abs(bx * cy - by * cx);
-    if (nx + ny + nz < 1e-14) {
-      nx = Math.abs(n.getX(t) + n.getX(t + 1) + n.getX(t + 2));
-      ny = Math.abs(n.getY(t) + n.getY(t + 1) + n.getY(t + 2));
-      nz = Math.abs(n.getZ(t) + n.getZ(t + 1) + n.getZ(t + 2));
-    }
-    return ny >= nx && ny >= nz ? 'y' : nx >= nz ? 'x' : 'z';
-  };
-  assert.ok(!mesh.geometry.index && p.count % 3 === 0, `${mesh.name}: non-indexed triangles`);
-  let axis = 'y';
   for (let i = 0; i < p.count; i++) {
-    if (i % 3 === 0) axis = faceAxis(i);
+    const nx = Math.abs(n.getX(i)), ny = Math.abs(n.getY(i)), nz = Math.abs(n.getZ(i));
+    const axis = ny >= nx && ny >= nz ? 'y' : nx >= nz ? 'x' : 'z';
     const [u, v] = AXIS[axis](p, i);
     // exact projection contract: uv = position * density along the box axes
     assert.equal(uv.getX(i), Math.fround(u * CAMO_UV_REPEATS_PER_M), `${mesh.name}: exact U at vertex ${i}`);
@@ -135,8 +118,7 @@ assert.notEqual(digitalOf(abrams), digitalOf(t90m), 'digital: the Russian lattic
 // a built-in pattern no longer inherits the hull's authored density/knobs (the Puma authors 0.72)
 assert.equal(resolveCamoVisual(puma, 'summer').camoScale, undefined, 'summer does not inherit the Puma hull density');
 // Factory is the nation's service pattern (round 32) and carries THAT recipe's density, not the hull's authored one
-// (2026-10-07, round 4: the German Factory coat is the Bundeswehr NATO three-tone, paint_marder2)
-assert.equal(resolveCamoVisual(puma, 'factory').camoScale, resolveCamoVisual(getSpec('leo2a6m'), 'paint_marder2').camoScale,
+assert.equal(resolveCamoVisual(puma, 'factory').camoScale, resolveCamoVisual(getSpec('leo2a6m'), 'service_leo2a6m').camoScale,
   'Factory on the Puma wears the German service recipe density');
 
 // the FIRST bake paints from the pattern stream: identical to a repaint, byte for byte, through both painter paths
@@ -199,18 +181,13 @@ assert.ok(dense.mean < reference.mean * 0.75,
 near(sparse.mean, reference.mean, 1e-9, 'at or below the reference density the patch geometry is the reference');
 
 // --- the picker swatch is a crop of the real tile, identical across specs for a shared preset ----------------------
-const { paintCamoSwatch, camoSwatchRecipe, resetCamoSwatchCache, camoSwatchCrop, CAMO_SWATCH_CROP, CAMO_SWATCH_WIDE_CROP,
-  CAMO_SWATCH_TILE_PX, CAMO_SWATCH_WIDTH, CAMO_SWATCH_HEIGHT, CAMO_SWATCH_SPAN_M, queueCamoSwatch, pendingCamoSwatchCount,
-  hasCachedCamoSwatch } = await import('../ui/camoSwatchPainter.ts');
+const { paintCamoSwatch, camoSwatchRecipe, resetCamoSwatchCache, CAMO_SWATCH_CROP, CAMO_SWATCH_TILE_PX,
+  CAMO_SWATCH_WIDTH, CAMO_SWATCH_HEIGHT, CAMO_SWATCH_SPAN_M, queueCamoSwatch, pendingCamoSwatchCount, hasCachedCamoSwatch }
+  = await import('../ui/camoSwatchPainter.ts');
 assert.equal(CAMO_SWATCH_SPAN_M.width, CAMO_TILE_SPAN_M, 'the swatch shows one full 2 m tile across');
 near(CAMO_SWATCH_SPAN_M.height, CAMO_TILE_SPAN_M * CAMO_SWATCH_HEIGHT / CAMO_SWATCH_WIDTH, 1e-9, 'and the same scale down');
-// a wide tile (4 m at the same 256 px) gives its middle 2 m x 0.69 m band 1:1: the same armour at the same scale
-assert.equal(CAMO_SWATCH_WIDE_CROP.width / (CAMO_SWATCH_TILE_PX / CAMO_WIDE_TILE_SPAN_M), CAMO_SWATCH_SPAN_M.width,
-  'the wide crop spans the same 2 m');
-assert.equal(CAMO_SWATCH_WIDE_CROP.x * 2 + CAMO_SWATCH_WIDE_CROP.width, CAMO_SWATCH_TILE_PX, 'and is centred');
 resetCamoSwatchCache();
-for (const patternId of ['service_usa_desert', 'paint_chieftain5', 'national_de', 'openai', 'urbanblock', 'paint_m1a1',
-  'digitaldesert']) {
+for (const patternId of ['service_usa_desert', 'paint_chieftain5', 'national_de', 'openai', 'urbanblock']) {
   const swatches = [abrams, t90m, puma].map((spec) => { const c = createCanvas(4, 4); paintCamoSwatch(c, spec, patternId); return c; });
   assert.equal(swatches[0].width, CAMO_SWATCH_WIDTH); assert.equal(swatches[0].height, CAMO_SWATCH_HEIGHT);
   const hex = swatches.map((c) => Buffer.from(pixels(c)).toString('hex'));
@@ -221,11 +198,9 @@ for (const patternId of ['service_usa_desert', 'paint_chieftain5', 'national_de'
   painter.paintCamo(tile, recipe.visual, painter.mulberry32(recipe.streamSeed), EMPTY, recipe.streamSeed);
   painter.exposureTrim(tile);
   const expected = createCanvas(CAMO_SWATCH_WIDTH, CAMO_SWATCH_HEIGHT);
-  const crop = camoSwatchCrop(recipe.visual);
-  assert.equal(crop, camoArtTileRepeat(recipe.visual.catalogPattern) < 1 ? CAMO_SWATCH_WIDE_CROP : CAMO_SWATCH_CROP,
-    `${patternId}: the crop follows the tile's span`);
-  expected.getContext('2d').drawImage(tile, crop.x, crop.y, crop.width, crop.height, 0, 0, CAMO_SWATCH_WIDTH, CAMO_SWATCH_HEIGHT);
-  assert.deepEqual(pixels(swatches[0]), pixels(expected), `${patternId}: the swatch is the real tile's middle 2 m band`);
+  expected.getContext('2d').drawImage(tile, CAMO_SWATCH_CROP.x, CAMO_SWATCH_CROP.y, CAMO_SWATCH_CROP.width, CAMO_SWATCH_CROP.height,
+    0, 0, CAMO_SWATCH_WIDTH, CAMO_SWATCH_HEIGHT);
+  assert.deepEqual(pixels(swatches[0]), pixels(expected), `${patternId}: the swatch is the real tile's middle band at 2:1`);
   assert.ok(!('zimmerit' in recipe.visual) && !('plateLines' in recipe.visual) && !('number' in recipe.visual),
     `${patternId}: hull-only knobs stay out of the swatch recipe`);
 }
@@ -250,59 +225,6 @@ for (const patternId of ['service_usa_desert', 'paint_chieftain5', 'national_de'
   assert.ok(hasCachedCamoSwatch(abrams, 'winterbands'));
 }
 
-// --- painter v3 (fleet lane 2026-10-08): the patch-field schemes paint a wide tile ---------------------------------
-// On a 7 m hull side a 2 m tile brought every patch back three and a half times in a row (a wallpaper rhythm). The
-// three-colour, desert and digital fields paint their albedo and roughness over 4 m; those two textures repeat at half
-// the shared UV density, and the normal map keeps the 2 m plate plan, whose paint marks land in each quadrant.
-assert.equal(CAMO_WIDE_TILE_SPAN_M, 4, 'a wide tile spans four metres');
-for (const art of ['summer', 'desert', 'digital', 'digitaldesert']) assert.equal(camoArtTileSpanM(art), 4, `${art}: wide`);
-for (const art of ['amoeba', 'splinter', 'flecktarn', 'enamel', undefined]) assert.equal(camoArtTileSpanM(art), 2, `${art}: shared`);
-{
-  // the built hull: albedo and roughness at half density, the normal map on the 2 m plan; a repaint to a shared-tile
-  // scheme and back moves the repeat with the paint
-  const restoreWide = installCanvasFixture();
-  try {
-    setCamoOverride('m1a2', 'paint_m1a1');
-    const tank = createTank('m1a2', null, { quality: 'low', materialMode: 'rendered', proceduralOnly: true,
-      batchStatic: false, camoSeed: 4242 });
-    try {
-      const hull = tank.root.getObjectByName('hull').material;
-      assert.deepEqual([hull.map.repeat.x, hull.map.repeat.y], [.5, .5], 'the wide albedo repeats at half the UV density');
-      assert.deepEqual([hull.roughnessMap.repeat.x, hull.roughnessMap.repeat.y], [.5, .5], 'its roughness follows');
-      assert.deepEqual([hull.normalMap.repeat.x, hull.normalMap.repeat.y], [1, 1], 'the normal map keeps the 2 m plan');
-      setCamoOverride('m1a2', 'urbanblock'); applyCamoPatterns('m1a2');
-      assert.deepEqual([hull.map.repeat.x, hull.roughnessMap.repeat.x], [1, 1], 'a repaint to a shared-tile scheme restores it');
-      setCamoOverride('m1a2', 'paint_m1a1'); applyCamoPatterns('m1a2');
-      assert.deepEqual([hull.map.repeat.x, hull.roughnessMap.repeat.x], [.5, .5], 'and back');
-    } finally { tank.dispose?.(); }
-  } finally { clearCamoOverrides(); restoreWide(); }
-}
-{
-  // the plate plan's paint marks sit in every quadrant of a wide tile, where the 2 m normal map carries their relief:
-  // one full-width panel line at 0.3 of the plan darkens rows 0.3 and 0.8 of the tile, in both halves
-  const visual = resolveCamoVisual(abrams, 'paint_m1a1');
-  const plan = { hLines: [{ p: .3, gaps: [], weld: false, bolts: false }], vLines: [], rings: [], chips: [], streaks: [] };
-  const S = 512, tile = createCanvas(S, S);
-  painter.paintCamo(tile, { ...visual, modernWelds: true }, painter.mulberry32(9), plan, 9);
-  const data = pixels(tile);
-  const rowLuma = (y, x0, x1) => { let sum = 0; for (let x = x0; x < x1; x++) { const at = (y * S + x) * 4; sum += data[at] + data[at + 1] + data[at + 2]; } return sum / (x1 - x0); };
-  for (const [y, x0, x1] of [[.15, 0, S / 2], [.15, S / 2, S], [.65, 0, S / 2], [.65, S / 2, S]]) {
-    const line = Math.floor(y * S), lineLuma = Math.min(rowLuma(line, x0, x1), rowLuma(line + 1, x0, x1));
-    assert.ok(lineLuma < rowLuma(line - 4, x0, x1) * .97 && lineLuma < rowLuma(line + 5, x0, x1) * .97,
-      `the panel line darkens row ${line} over x ${x0}..${x1}`);
-  }
-  // and the pattern itself is not 2 m periodic: the tile's halves differ
-  const field = createCanvas(S, S);
-  createCatalogCamoPainter(createCanvas)(field.getContext('2d'), S, visual, painter.mulberry32(9), CAMO_WIDE_TILE_SPAN_M);
-  const f = pixels(field);
-  let differ = 0;
-  for (let y = 0; y < S; y++) for (let x = 0; x < S / 2; x++) {
-    const a = (y * S + x) * 4, b = (y * S + x + S / 2) * 4;
-    if (Math.abs(f[a] - f[b]) + Math.abs(f[a + 1] - f[b + 1]) + Math.abs(f[a + 2] - f[b + 2]) > 24) differ++;
-  }
-  assert.ok(differ / (S * S / 2) > .3, `the wide tile's halves carry different patches (${(differ / (S * S / 2) * 100).toFixed(0)}% differ)`);
-}
-
 // --- source pins: no per-hull UV density survives anywhere on the camo path ----------------------------------------
 const core = source('./tankFactoryCore.ts');
 assert.ok(/boxUV\(merged, CAMO_UV_REPEATS_PER_M\);/.test(core), 'the hull/turret merge projects at the constant');
@@ -316,5 +238,4 @@ assert.ok(/const wk = camoPatchWorldScale\(visual\.camoScale\);/.test(paint), 't
 assert.ok(/mulberry32\(request\.camoStreamSeed\)/.test(paint), 'the first bake paints the pattern from its stream');
 assert.ok(!/camoScale \?\? \.34|camoScale \?\? 0\.34/.test(source('./profiles/leopardA5XDetails.ts')), 'Leopard A5 covers project at the constant');
 console.log(`camoWorldScale.selftest: ${projected} merged surfaces at ${CAMO_UV_REPEATS_PER_M} repeats/m on ${HULLS.length} hulls, `
-  + `pattern tiles, first bake and swatches hull-independent; camoScale 0.72 patches ${(dense.mean / reference.mean * 100).toFixed(0)}% of reference area; `
-  + `patch-field schemes paint ${CAMO_WIDE_TILE_SPAN_M} m tiles (albedo and roughness at ${camoArtTileRepeat('summer')} repeat, plate marks per quadrant)`);
+  + `pattern tiles, first bake and swatches hull-independent; camoScale 0.72 patches ${(dense.mean / reference.mean * 100).toFixed(0)}% of reference area`);

@@ -1,5 +1,6 @@
 import type * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { scaledGroundSampler } from '../scaledGroundSampler.ts';
 import { ARIETE_X_FAMILY_SCALE as SCALE } from './arieteXFamilyFrame.ts';
 import { retainArieteXStructuralLod } from './arieteXStructuralLod.ts';
 
@@ -10,7 +11,7 @@ function scaleGearMotion(P: TankBuilderPort): void {
   const conform = gear.conform.bind(gear);
   let frame: Parameters<typeof conform>[0] | null = null;
   let ground: Parameters<typeof conform>[1];
-  const sourceGround = (x: number, z: number): number => ground(x * SCALE, z * SCALE) / SCALE;
+  const sourceGround = scaledGroundSampler(SCALE, () => ground);
   // The unchanged canonical solver works in the source authoring frame.
   // Convert world motion/terrain into it, then the scaled children display
   // the solved wheel, band and shoe stock together in installed metres.
