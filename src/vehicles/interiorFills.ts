@@ -144,10 +144,23 @@ interface ApplyInteriorFillsOptions {
   /** A record to apply instead of the registered one: the fleet watertight gate attaches the shipped fills to its
    * shared fill-free build without loading the registry, so the pass's other audits keep their build. */
   readonly record?: InteriorFillRecord | null;
+  /** Rendered builds: the horizon the vehicle's detail buckets cull at. Past it a fill no longer stands behind a
+   * real opening only: it shows wherever a culled detail part closed the body, so it switches to a painted copy on
+   * the same LOD horizon and the body reads closed instead of opening dark gaps. */
+  readonly far?: InteriorFillFarLevel | null;
+}
+
+/** The painted far level of the fills: same boxes, the hull's paint, the detail LOD's horizon and hysteresis. */
+interface InteriorFillFarLevel {
+  readonly material: THREE.Material;
+  readonly distance: number;
+  readonly hysteresis: number;
+  /** Bake the painted copy's streams (camouflage UVs, dust colour) in its rig's frame. */
+  paint(geometry: THREE.BufferGeometry, component: InteriorFillComponent): void;
 }
 
 /** Add the registered fills for a tank to its hull and turret rigs. Returns box counts (0 when none are registered). */
-export function applyInteriorFills({ specId, hullG, turretG, gunG = null, material, disposables, record: explicit }: ApplyInteriorFillsOptions): { hull: number; turret: number; gun: number } {
+export function applyInteriorFills({ specId, hullG, turretG, gunG = null, material, disposables, record: explicit, far = null }: ApplyInteriorFillsOptions): { hull: number; turret: number; gun: number } {
   const record = explicit === undefined ? registry.get(specId) : explicit;
   const counts = { hull: 0, turret: 0, gun: 0 };
   if (!record) return counts;
@@ -167,9 +180,29 @@ export function applyInteriorFills({ specId, hullG, turretG, gunG = null, materi
     mesh.userData.interiorFill = true;
     mesh.castShadow = false;
     mesh.receiveShadow = false;
-    parent.add(mesh);
     disposables.push(geometry);
     counts[component] = boxes.length;
+    if (!far) {
+      parent.add(mesh);
+      continue;
+    }
+    // Sealed lane 2026-10-10 (owner: "some vehicles are see through ... gaps in the middle of their bodies"): every
+    // detail bucket a profile closed the body with culls at the detail horizon (64 m on the battle bots' LOW
+    // geometry), leaving the dark backstop as a hole in the hull. Past the same horizon the fill wears the hull's
+    // paint, so a culled part leaves painted body, never a gap; inside it the dark fill still reads as the interior.
+    const painted = geometry.clone();
+    far.paint(painted, component);
+    disposables.push(painted);
+    const farMesh = new THREE.Mesh(painted, far.material);
+    farMesh.name = `${component}InteriorFillFar`;
+    farMesh.userData.interiorFill = true;
+    farMesh.userData.interiorFillFar = true;
+    farMesh.castShadow = false;
+    farMesh.receiveShadow = false;
+    const lod = new THREE.LOD();
+    lod.addLevel(mesh, 0);
+    lod.addLevel(farMesh, far.distance, far.hysteresis);
+    parent.add(lod);
   }
   return counts;
 }

@@ -1475,8 +1475,12 @@ function collectMobileDetailObjects(
     if (combatObjects.has(object)) return;
     if (!(object instanceof THREE.Group)) return;
     const name = object.name || '';
+    // A carved muzzle (carvedMuzzleBore.ts) cut its aperture out of the barrel's own face: its wall and backstop
+    // close that hole, so hiding them with distance would let the player see through the gun (sealed lane).
+    const carvedMouth = name.startsWith('muzzleBoreShadowFallback')
+      && object.children.some((child) => child.userData?.carvedBoreStock);
     if (name.startsWith('rig_decor_') || name.startsWith('fitting_')
-        || name.startsWith('muzzleBoreShadowFallback')) managedGroups.add(object);
+        || (name.startsWith('muzzleBoreShadowFallback') && !carvedMouth)) managedGroups.add(object);
   });
   const underManagedGroup = (object: THREE.Object3D): boolean => {
     for (let parent = object.parent; parent; parent = parent.parent) {
@@ -7949,6 +7953,8 @@ function* createTankOwnedSteps(
 
   // ---- merge buckets into meshes ----
   const gunYOff = armor.turretPivot[1] + armor.gunPivot[1];
+  // The horizon every non-silhouette bucket culls at (mergeBucket) and the interior fills' painted far level takes.
+  const detailLodDistM = geometryQuality === 'low' ? 64 : LOD1_DIST;
   const DIRT_Y: Record<RigGroupKey, number> = {
     hullG: 0, turretG: armor.turretPivot[1], recoilG: gunYOff, gunG: gunYOff,
     barrel0G: gunYOff, barrel1G: gunYOff,
@@ -8080,7 +8086,7 @@ function* createTankOwnedSteps(
     }
     if (!parent) throw new Error(`${specId}: bucket ${bucket} requires authored twin barrels`);
     if (LOD0_KEEP.has(bucket)) parent.add(mesh);
-    else lodWrap(parent, mesh, geometryQuality === 'low' ? 64 : LOD1_DIST);
+    else lodWrap(parent, mesh, detailLodDistM);
   };
   const stationKey=(part:THREE.BufferGeometry):string=>{
     const station=part.userData.auxiliaryStation;
@@ -9959,7 +9965,22 @@ function* createTankOwnedSteps(
 
     // Interior fills 2026-09-13 (owner: every hull and turret must hold water):
     // generated buried solids for this tank, if its fleet group is resident.
-    applyInteriorFills({ specId, hullG, turretG, gunG, material: mats.dark, disposables });
+    // Rendered builds (sealed lane 2026-10-10) give them a painted far level on
+    // the detail buckets' own LOD horizon (mergeBucket's lodWrap), so a part
+    // culled there leaves painted body behind it instead of a dark gap.
+    const fillDirtY: Record<'hull' | 'turret' | 'gun', number> = { hull: DIRT_Y.hullG, turret: DIRT_Y.turretG, gun: DIRT_Y.gunG };
+    applyInteriorFills({
+      specId, hullG, turretG, gunG, material: mats.dark, disposables,
+      far: usesSharedMaterialTextures ? {
+        material: mats.hull,
+        distance: detailLodDistM,
+        hysteresis: 0.1,
+        paint: (geometry, component) => {
+          boxUV(geometry, CAMO_UV_REPEATS_PER_M);
+          bakeDirt(geometry, fillDirtY[component], component === 'hull' ? 1 : 0.5, !!spec.visual.bakeDirtDeckEq);
+        },
+      } : null,
+    });
     if (physicalBore) {
       // Final stock includes generated gun fills and fixed pitch-owned parts.
       // Neither may re-cap the recoil-owned aperture that was verified earlier.
