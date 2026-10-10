@@ -124,7 +124,9 @@ export default {
     plan: [],
     destructibleBuildings: ['alpinerefuge', 'saunahut', 'huntingblind', 'fieldhospital'],
     // the Hospice beside the north-shore road, and the Grande Croix chapel at the foot of the southern climb
-    plannedSites: [{ structure: 'tavern', x: 66, z: 132, yawDeg: 0 }, { structure: 'chapel', x: -112, z: -216, yawDeg: 0 },
+    // (round 4, wave 182: "a small hut where the stone hospice should read"): the hospice on a plot of its own size (the
+    // warehouse's 16 x 24 m), its long side along the road, its chapel at the north-east end
+    plannedSites: [{ structure: 'warehouse', x: 66, z: 132, yawDeg: 67 }, { structure: 'chapel', x: -112, z: -216, yawDeg: 0 },
       { structure: 'rangerlodge', x: -139.14, z: -174.29, yawDeg: -93.4, terrace: true },
       { structure: 'alpine', x: -142.98, z: -160.61, yawDeg: -97.3, terrace: true },
       { structure: 'chapel', x: -145.29, z: -151.13, yawDeg: -97.3, terrace: true },

@@ -74,7 +74,7 @@ export type SurfaceTone = ((hue: number, saturation: number, lightness: number) 
   & { paint?: { kind: RenderSurfaceKind; seed: number } };
 /** Procedural painters of the render canvases (regionalSurfaces.ts): lime-wash over mud plaster, a town's lime render. */
 export type RenderSurfaceKind = 'limewash' | 'limeRender';
-export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block' | 'fieldstone';
+export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block' | 'gneiss' | 'fieldstone';
 /** Poured concrete prints a style can paint its plaster2 bucket with (regionalSurfaces.ts makeRegionalConcrete). */
 export type ConcreteSurfaceKind = 'boardFormed';
 

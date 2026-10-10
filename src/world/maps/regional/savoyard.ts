@@ -489,6 +489,93 @@ const hospice: RegionalBuilder = (ctx) => {
 };
 
 /**
+ * The hospice of the Mont-Cenis on its own plot (round 4; gauntlet wave 182: "a small hut where the stone hospice
+ * should read"; the coordinator approved a planned site with a hospice-sized plot): the pass's long hospice block — four
+ * storeys of rubble under white render on a stone plinth, dressed quoins, rows of shuttered windows, the door to the
+ * road under its inscribed panel, a hipped lauze roof with three stacks — and its chapel at the far end, lower, gabled,
+ * a bell turret on its front gable over the arched door. On the warehouse's plot (16 x 24 m): the block 15 m across and
+ * some 16 m along the road, the chapel closing the plot's +z end; the block's long front and door on the plot's -x (the road).
+ */
+const hospiceGrand: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const st = stateFor(ctx);
+  const fit = wallsIn(ctx, 0.42, 0.42);
+  // the whole measured box (the base's reach, regionalArchitecture's footprint coverage): 16.8 x 28.2 m on Glacier Pass
+  const W = clamp(fit.w, 9, 17), all = clamp(fit.d, 16, 29);
+  const chapelD = clamp(all * 0.3, 5.5, 7.2), D = all - chapelD;
+  const zb = fit.cz - all / 2 + D / 2, zc = fit.cz + all / 2 - chapelD / 2;
+  const win = (s: PartSink, face: Face, o: Opening, y0: number) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+    ...st.window, surround: { bucket: 'plaster', width: 0.18, out: 0.02, lintel: 0.24 }, shutters: { colour: rgb(0x6a7270), kind: 'louvred', closed: 0.35 },
+  }, st.rng, 0.35);
+  // the block: its ridge along the plot (a hip roof's ridge runs along its house frame's z), the door and the long front
+  // on its left face, the plot's -x, to the road; its +z end against the chapel
+  sink.placed(0, fit.cx, 0, zb, () => {
+    const w = W, d = D;
+    const openings: Opening[] = [{ face: 'left', storey: 0, kind: 'door', u: 0, w: 1.8, y0: 0, h: 2.9 }];
+    for (let i = 0; i < 4; i++) {
+      // (the hospice's rows wide-set on the lake side and the far end: the kit's 12 000-triangle building budget; the lake
+      // side's rows 4.3 m apart and the far end's 4.0 since the PR head's facade craft added its surrounds' triangles,
+      // 2026-10-07: three windows a storey on each)
+      for (const o of windowRhythm('left', i, d, { w: 0.9, h: i ? 1.35 : 1.2, sill: i ? 0.8 : 1.1, spacing: 2.5, margin: 1.2, avoid: i ? [] : [[-1.4, 1.4]] })) openings.push(o);
+      for (const o of windowRhythm('right', i, d, { w: 0.85, h: 1.25, sill: 0.9, spacing: 4.3, margin: 1.4 })) openings.push(o);
+      for (const o of windowRhythm('back', i, w, { w: 0.85, h: 1.25, sill: 0.9, spacing: 4.0, margin: 1.6 })) openings.push(o);
+      // the chapel's end: windows only above the chapel's roof
+      if (i === 3) for (const o of windowRhythm('front', i, w, { w: 0.85, h: 1.2, sill: 0.9, spacing: 3.4, margin: 2.4 })) openings.push(o);
+    }
+    const frame = buildHouse(sink, {
+      w, d, plinth: { h: 0.7, out: 0.08, bucket: 'stone' },
+      storeys: [{ h: 3.3, wall: 'stone' }, { h: 2.9, wall: 'stone' }, { h: 2.8, wall: 'stone' }, { h: 2.6, wall: 'stone' }],
+      roof: lauze(27, 0.6, 0.6, 'hip'), openings, gutters: null, verge: null, reveal: 0.45, spall: null,
+      chimneys: [{ x: -w * 0.2, z: -d * 0.3, sx: 0.8, sz: 0.8, above: 1.1, bucket: 'stone', cap: 'slab' },
+        { x: w * 0.18, z: 0, sx: 0.8, sz: 0.8, above: 1.1, bucket: 'stone', cap: 'slab' },
+        { x: -w * 0.2, z: d * 0.3, sx: 0.8, sz: 0.8, above: 1.1, bucket: 'stone', cap: 'slab' }],
+    }, { ...dialect(st), window: win });
+    if (ctx.snowCap) drifts(sink, frame, openings, ctx.variant);
+    const fa = frame.faces.left;
+    // the swept flags before the door, the inscribed panel over it
+    faceBox(sink, 'stone', fa, 0, -0.12, 1.9, 3.8, 0.3, 3.4, { decor: true });
+    faceBox(sink, 'stone', fa, 0, frame.floors[0] + 3.2, 0.05, 2.4, 0.46, 0.1, { decor: true, shadow: true });
+    faceBox(sink, 'dark', fa, 0, frame.floors[0] + 3.2, 0.105, 2.1, 0.18, 0.01, { decor: true });
+    const b0 = frame.bodies[0];
+    for (const [cx, cz] of [[b0.x0, b0.z0], [b0.x1, b0.z0], [b0.x0, b0.z1], [b0.x1, b0.z1]] as const) {
+      const sx = cx > 0 ? 1 : -1, sz = cz > 0 ? 1 : -1;
+      for (let y = 0.8, k = 0; y < frame.eaveY - 0.5; y += 0.6, k++) {
+        const lx = k % 2 ? 0.64 : 0.36, lz = k % 2 ? 0.36 : 0.64;
+        sink.quoin('stone', cx - sx * lx, y, cz - sz * lz, cx + sx * 0.03, y + 0.52, cz + sz * 0.03, sx, sz, { decor: true });
+      }
+    }
+  });
+  // the chapel: its back against the block's end, its front and door to the plot's +z
+  sink.placed(0, fit.cx, 0, zc, () => {
+    const cw = clamp(W * 0.58, 6.5, 9.0), H = 5.6;
+    const frame = buildHouse(sink, {
+      w: cw, d: chapelD + 0.3, plinth: { h: 0.4, out: 0.06, bucket: 'stone' }, storeys: [{ h: H, wall: 'plaster' }],
+      roof: lauze(36, 0.45, 0.5), gableBucket: 'plaster',
+      openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.4, y0: 0, h: 2.7 },
+        { face: 'right', storey: 0, kind: 'window', u: 0, w: 0.7, h: 1.4, y0: 2.4 }, { face: 'left', storey: 0, kind: 'window', u: 0, w: 0.7, h: 1.4, y0: 2.4 }],
+      chimneys: [], gutters: null, verge: null, reveal: 0.4,
+    }, { ...dialect(st), door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+      leaf: LARCH_DARK, frame: { bucket: 'stone', width: 0.26, out: 0.06, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank',
+    }, y0 + o.y0) });
+    if (ctx.snowCap) drifts(sink, frame, frame.spec.openings, ctx.variant);
+    const f = frame.faces.front;
+    faceBox(sink, 'plaster2', f, 0, 3.6, 0.012, 1.4, 0.9, 0.02, { decor: true });
+    faceBox(sink, 'dark', f, 0, 3.6, 0.024, 1.1, 0.64, 0.01, { decor: true });
+    // the bell turret on the front gable's apex
+    const ridge = frame.roof.ridgeY, tz = (chapelD + 0.3) / 2 - 0.7, b = 0.55;
+    sink.span('stone', -b - 0.1, ridge - 0.6, tz - b - 0.1, b + 0.1, ridge + 0.25, tz + b + 0.1);
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+      sink.span('stone', sx * b - 0.15, ridge + 0.25, tz + sz * b - 0.15, sx * b + 0.15, ridge + 1.55, tz + sz * b + 0.15);
+    }
+    sink.span('stone', -b - 0.17, ridge + 1.55, tz - b - 0.17, b + 0.17, ridge + 1.72, tz + b + 0.17);
+    sink.cylinder('structureMetal', [0, ridge + 0.6, tz], 'y', 0.55, 0.28, 8, { colour: BELL, decor: true }, 0.14);
+    const cap: RoofSpec = { kind: 'hip', pitchDeg: 40, eave: 0.12, verge: 0.12, thickness: 0.12, bucket: 'roof', ridge: null };
+    sink.placed(0, 0, 0, tz, () => emitRoof(sink, roofGeometry(2 * b + 0.34, 2 * b + 0.34, ridge + 1.72, cap), cap));
+  });
+  return sink.finish();
+};
+
+/**
  * The frontier guard's barracks (the base lodge's plot): the Italian casermetta of the 1930s — two storeys rendered in
  * ochre on a grey stone plinth, a grey band at the floor and under the eaves, regular windows with grey shutters, a
  * concrete canopy on two piers over the door with the inscription band above it, a hipped lauze roof, a flag mast.
@@ -507,7 +594,8 @@ const caserma: RegionalBuilder = (ctx) => {
   const zc = bb.minZ + 0.5 + D / 2;
   sink.placed(0, (bb.minX + bb.maxX) / 2, 0, zc, () => {
     const frame = buildHouse(sink, {
-      w: W, d: D, plinth: { h: 0.7, out: 0.06, bucket: 'stone' }, storeys: [{ h: 3.4, wall: 'plaster2' }, { h: 3.2, wall: 'plaster2' }],
+      // (round 4, wave 188: "no plinth, drift or contact shade"): the gneiss plinth to the sills' foot, proud of the render
+      w: W, d: D, plinth: { h: 0.95, out: 0.1, bucket: 'stone' }, storeys: [{ h: 3.4, wall: 'plaster2' }, { h: 3.2, wall: 'plaster2' }],
       roof: lauze(22, 0.5, 0.5, 'hip'), openings, gutters: { colour: rgb(0x55595a) }, verge: null, reveal: 0.3, spall: 'stone',
       chimneys: [{ x: 0, z: -D * 0.2, sx: 0.7, sz: 0.7, above: 0.9, bucket: 'plaster2', cap: 'slab' }],
     }, { ...dialect(st), window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
@@ -747,6 +835,8 @@ export const SAVOYARD_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Obje
   chapel: chapelle,
   onionchurch: eglise,
   tavern: hospice,
+  // (round 4) the pass's hospice on its own planned plot (the warehouse's footprint)
+  warehouse: hospiceGrand,
   rangerlodge: caserma,
   depot: grangeLongue,
   ruin: ruine,
@@ -767,13 +857,20 @@ export const SAVOYARD_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
     // (round 2, wave 109b: "one warm tan texture on every box") grey gneiss rubble in a dark lime mortar
     // (round 3, wave 127: the shelled house still "a clean tan, regularly brick-tiled wall"): the stones laid as rubble,
     // split and pillowed in uneven courses, not as coursed greywacke; a cool blue-grey under the low April sun
-    stone: { kind: 'rubble', tint: [0.4, 0.43, 0.5] },
+    // (round 4, wave 188: the ruin and a house base still "a regular tiling tan ashlar with pale joints" — the rubble
+    // recipe's warm lime mortar grid): the gneiss kind, flat foliated slabs in dark raked joints, a mid grey
+    stone: { kind: 'gneiss', tint: [0.5, 0.51, 0.54] },
     sourced: { plaster: false, wood: true },
+    // (round 4, wave 188: the barracks' "coarse sponge-noise render"): the roughcast and the render finer and shallower
+    // than the shared tile
+    relief: { plasterUv: 1.6, normal: 0.4, ao: 0.5 },
     tones: {
       plaster: crepi,
       // the frontier guard's ochre
       // (round 2, wave 109b: "saturated mustard reads plastic") a lime ochre, sun-faded
-      plaster2: (_h, s, l) => [0.1, Math.min(1, 0.2 + s * 0.25), Math.min(1, l * 0.8 + 0.12)],
+      // (round 4, wave 188: still "a saturated mustard box with coarse sponge-noise render"): a faded lime render, the
+      // ochre washed to a pale chalky buff and its light and dark pressed together (the render's noise half as strong)
+      plaster2: (_h, s, l) => [0.11, Math.min(1, 0.1 + s * 0.12), Math.min(1, l * 0.62 + 0.3)],
       // the Vallo Alpino's concrete
       plaster3: (_h, s, l) => [0.11, Math.min(1, 0.04 + s * 0.1), Math.min(1, l * 0.72 + 0.1)],
       // larch weathered silver-brown
@@ -783,11 +880,14 @@ export const SAVOYARD_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
   builders: SAVOYARD_BUILDERS,
   // the long winters: damp at the wall foot, lichen on the lauzes
   weather: {
-    plaster: [[1, 1, 1], [0.97, 0.96, 0.94], [0.94, 0.94, 0.93], [1.0, 0.98, 0.95]],
+    // (round 4, wave 188: "facades showroom-fresh, with no grime"): a third of the renders and the stones smoke- and
+    // weather-grimed, a shade or two down (one pick a building, as before: the stream draws the same)
+    plaster: [[1, 1, 1], [0.97, 0.96, 0.94], [0.94, 0.94, 0.93], [1.0, 0.98, 0.95], [0.88, 0.86, 0.82], [0.91, 0.9, 0.87]],
     // (round 3) the stone's weathering cool: the gneiss greys and blues, never the warm sandstone's buffs
-    stone: [[1, 1, 1], [0.92, 0.94, 0.97], [0.97, 0.98, 1.0], [0.86, 0.88, 0.91]],
+    stone: [[1, 1, 1], [0.92, 0.94, 0.97], [0.97, 0.98, 1.0], [0.86, 0.88, 0.91], [0.8, 0.82, 0.84], [0.84, 0.85, 0.87]],
     roof: [[1, 1, 1], [0.9, 0.88, 0.84], [1.06, 1.03, 0.98], [0.84, 0.83, 0.82]],
-    damp: 0.75, moss: 0.5, mossTint: [0.96, 0.94, 0.8],
+    // (round 4, wave 188: "showroom-fresh, no grime"): the wall foot's splash and rising damp near full
+    damp: 0.95, moss: 0.5, mossTint: [0.96, 0.94, 0.8],
   },
   wear: 0.3,
   // the yards: a fence of split larch round the woodshed (no kitchen garden under the April snow)

@@ -1981,6 +1981,8 @@ const REGIONAL_PAL = {
   // Siwa's kershef (salt-crusted mud): the wall, its paler crust, the palm-trunk timber
   kershef: [0x9a8a74, 0xb3a58d, 0x5e5243],
   concrete: [0x8f8d86, 0xa9a79f, 0x55544f],
+  // the Maurienne's larch, weathered silver-brown (the Savoyard kit's mazot)
+  larch: [0x6b5a48, 0x857055, 0x3d3329],
 } as const satisfies Record<string, Palette>;
 
 /** A light gable roof built at the origin and moved: the shared roof helper lays its planes out centred on x = 0. */
@@ -2087,6 +2089,35 @@ function makeSavoyardCasemate(rng: Rng): THREE.BufferGeometry {
   colored(out, box(3.2, 2.2, 0.5).translate(-1.0, 1.1, z0 - d / 2 - 1.05), c[0], rng, 0.05);
   colored(out, box(0.5, 2.2, 1.1).translate(-2.85, 1.1, z0 - d / 2 - 0.55), c[0], rng, 0.05);
   return mergeConnectedStructure('alpinerefuge', out);
+}
+
+/**
+ * The mazot on its staddle stones (the Savoyard kit's hunting blind, map revival lane 2, round 4; gauntlet wave 188:
+ * the base blind read as "a tall plank box on four long timber stilts ... a hunting hide or water tower" where the
+ * hamlet's granary should stand): a squat box of larch logs, their ends crossing at the corners, raised on four stone
+ * mushrooms (a post and a round cap slab against the rats), a plank door with iron straps, a stone step, a lauze roof
+ * with deep verges under the snow. The family's footprint and class as the blind's; 3.6 m to the ridge.
+ */
+function makeSavoyardMazot(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], wd = REGIONAL_PAL.larch;
+  const w = 2.9, d = 2.6, lift = 0.6, course = 0.25, courses = 8, top = lift + course * courses;
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    colored(out, box(0.26, lift - 0.1, 0.26).translate(sx * 1.1, (lift - 0.1) / 2, sz * 0.95), 0x7b7d7e, rng, 0.06);
+    colored(out, cylinder(0.36, 0.36, 0.1, 10).translate(sx * 1.1, lift - 0.05, sz * 0.95), 0x8a8c8c, rng, 0.05);
+  }
+  // the logs, course on course, the ends crossing at the corners (a course long in x, the next in z)
+  for (let k = 0; k < courses; k++) {
+    const y = lift + course * (k + 0.5);
+    colored(out, (k % 2 ? box(w, course * 0.96, d + 0.4) : box(w + 0.4, course * 0.96, d)).translate(0, y, 0), wd[k % 3 === 2 ? 2 : k % 2], rng, 0.1);
+  }
+  // the door with its strap hinges, the step before it
+  colored(out, box(0.8, 1.4, 0.06).translate(0, lift + 0.75, d / 2 + 0.03), 0x3a2f25, rng, 0.04);
+  for (const t of [0.35, 1.1]) colored(out, box(0.55, 0.05, 0.02).translate(-0.1, lift + t, d / 2 + 0.07), 0x2b2c2d, rng, 0.02);
+  colored(out, box(0.9, lift - 0.15, 0.5).translate(0, (lift - 0.15) / 2, d / 2 + 0.25), 0x7b7d7e, rng, 0.06);
+  // the lauzes in a thick slab roof, the snow lying on them, the slabs' dark edge showing at the eaves
+  colored(out, gable(3.8, 0.95, 3.5).translate(0, top, 0), 0x5c5f63, rng, 0.05);
+  colored(out, gable(3.7, 0.9, 3.4).translate(0, top + 0.12, 0), 0xe6eaee, rng, 0.02);
+  return mergeConnectedStructure('huntingblind', out);
 }
 
 /**
@@ -2361,6 +2392,8 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
     // the Col du Mont-Cenis, 1945: the pass's refuge is a casemate of the Vallo Alpino
     savoyard: Object.freeze({
       alpinerefuge: variant('alpinerefuge', REGIONAL_PAL.concrete, makeSavoyardCasemate, 'metal'),
+      // (round 4) the blind on its stilts is the hamlet's mazot on its staddle stones
+      huntingblind: variant('huntingblind', REGIONAL_PAL.larch, makeSavoyardMazot),
     }),
   });
 })();
