@@ -1543,6 +1543,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propPlacement.selftest.mjs',
     'src/world/wallSpanPlacement.selftest.mjs',
     'src/world/civilianVehicles.selftest.mjs',
+    'src/world/mapVehicleGaps.selftest.mjs',
     'src/world/parkedVehicleSeparation.selftest.mjs',
     'src/ui/contextInfo.selftest.mjs',
     'src/ui/endOverlayRuntime.selftest.mjs',
