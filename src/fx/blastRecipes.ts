@@ -1130,11 +1130,15 @@ export function columnPuff(C: BlastContext, x: number, y: number, z: number, sta
   // wind pick-up vary, and now and then the fire gulps a bigger, denser one: the column swells and pinches, ends at a
   // ragged height, and its bodies take the wind slowly (low drag), so it bends over downwind as it rises
   const gulp = R() < 0.22;
-  move(m, Math.cos(a) * 0.6, 1.6 + R() * 1.2, Math.sin(a) * 0.6, 0.28 + R() * 0.12,
+  // (fx 8h, the killcam critics: "black smoke hanging in front of the camera instead of climbing away") the fire drives
+  // its smoke up hard out of the hull (a hot plume leaves at several m/s) and each body starts narrower and swells more
+  // slowly, so the column is a few metres wide at the deck and widens with height — it climbs out of a close camera's
+  // frame instead of standing round it as a pall
+  move(m, Math.cos(a) * 0.6, 3.2 + R() * 1.6, Math.sin(a) * 0.6, 0.28 + R() * 0.12,
     (1.8 + 1.3 * stage) * (0.75 + R() * 0.5), 0.7 + R() * 0.5, 0);
   const size1 = (9 + R() * 9) * scale * (gulp ? 1.45 : 1);
   const life = 10 + R() * 9;
-  shape(m, life, Math.max(1.6 * scale, size1 * 0.16), size1, 1.5, R);
+  shape(m, life, Math.max(1.4 * scale, size1 * 0.12), size1, 1.25, R);
   // fresh smoke is black; it greys as it rises, cools and thins (and the whole column greys as the fire burns out)
   // (b5: at 12-18 s the column's crown had aged to a sunlit tan-brown) it stays a dark grey well up the column
   const crown = mix3(SOOT, SMOKE_AGED, 0.3 + 0.35 * (1 - stage));

@@ -508,7 +508,9 @@ function captureContext(seed) {
   // (fx 8, re-pinned deliberately: the killcam critics after 7d/7e — "a flat salmon wash over the tank at 0.6-1.8 s",
   // "black smoke hanging in front of the camera instead of climbing away" — the kill fireball cools within a second and
   // its soot climbs away; the HE hit's light on the hull is the flash's quarter second. Same calls, same draws.)
-  assert.equal(`${calls.length} ${draws} ${digest}`, '131 1628 516c8ca45f2d59fa',
+  // (fx 8h, re-pinned deliberately: the burning column leaves the hull at 3.2-4.8 m/s and starts narrower, so it climbs
+  // out of the killcam's frame instead of standing round it)
+  assert.equal(`${calls.length} ${draws} ${digest}`, '131 1628 f4ef2bbd29813e8e',
     "the killcam's recipes are round 8's to the last draw (re-pin only for a deliberate change to the kill path)");
 }
 
