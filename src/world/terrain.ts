@@ -7377,7 +7377,7 @@ void splatCompute() {
             float tFade = 1.0 - smoothstep(0.6 + 2.2 * th.y, 1.0 + 2.6 * th.y, abs(rq.y));
             crk = max(crk, bandCov(abs(rq.x - tx), 0.003 + 0.003 * th.y, fwAl) * step(0.40, th.y) * tFade * uPaveWear.y);
           }
-          float netW = wheelW * smoothstep(0.50, 0.72, big) * uPaveWear.y * tileVis(0.10);
+          float netW = wheelW * smoothstep(0.50, 0.72, big) * uPaveWear.y * tileVis(0.10) * step(1.5, uLandTier); // (High: the net's nine cells)
           if (netW > 0.01) {
             vec2 gq = rq / 0.30, gc = floor(gq), gf = gq - gc;
             float d1 = 9.0, d2 = 9.0;
@@ -7401,7 +7401,7 @@ void splatCompute() {
           rough = mix(rough, 0.50, max(stainA * 0.5, bleed * 0.7));
           // the aggregate near the camera: chips a centimetre or two across, paler where the binder has worn off them (the
           // wheel paths, the ravelled edge), one candidate a 2.5 cm cell
-          float chipV = tileVis(0.05);
+          float chipV = tileVis(0.05) * step(1.5, uLandTier);
           if (chipV > 0.01) {
             vec2 cpq = rq / 0.025, cpc = floor(cpq);
             vec2 chh = cellHash2(cpc + vec2(5.0, 61.0));
