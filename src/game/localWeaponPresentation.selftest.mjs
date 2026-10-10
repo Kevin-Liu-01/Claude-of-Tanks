@@ -70,6 +70,8 @@ const fxBindings = {
   _v3: scratch(), _v4: scratch(), shellKinds, sweepTails,
   fx: { muzzleFlash: () => fxCalls.push('flash') },
   spawnSabotPetals: () => fxCalls.push('sabot'),
+  // the destruction-fx lane's record of a fired round's class and charge (its burst reads it at expiry)
+  rememberMunition: () => {},
 };
 const predictFx = await receiver('../fx/effects.ts', fxCallback('weapon:predicted'), fxBindings);
 const confirmFx = await receiver('../fx/effects.ts', fxCallback('shell:fired'), fxBindings);
