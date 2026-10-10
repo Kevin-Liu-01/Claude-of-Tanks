@@ -45,6 +45,7 @@ import { BUDGETS, BUS_LEVELS, CONCUSSION, SNAPSHOTS, VEHICLE_LOD, type DeviceTie
 import { createVehicleRig, fillVehicleInput, type RigFrame, type RigLod, type VehicleRig } from './vehicleRig.ts';
 import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.ts';
 import { cueProfile } from './soundCues.ts';
+import { onTurretLanding } from '../fx/clock.ts';
 import { AERIAL_RULES } from '../sim/matchRuleset.ts';
 import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
 import { resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type VehicleAudioIdentity } from './vehicleAudioProfiles.ts';
@@ -1061,7 +1062,7 @@ export function createAudio({
       }
       if (!cinematic && blastM > 600) play('expl_far', { x, y, z, focus, gainDb: -3 });
       play('debris_metal', { x, y, z, delayS: 0.25 * stretch, focus, ...slow });
-      if (cause === 'ammorack') play('turret_land', { x: x + (random() - 0.5) * 8, y, z: z + (random() - 0.5) * 8, delayS: (1.5 + random() * 1.1) * stretch, focus, ...slow });
+      // (physics lane, 2026-10-10) the turret's landing plays where and when its body hits (bindBus: onTurretLanding)
     }
     if (!cinematic && cause !== 'fire' && event.id !== playerId) blastNearHull(distanceTo(x, y, z), cause === 'ammorack' ? 160 : 110);
     if (!cinematic && ctx) {
@@ -1941,6 +1942,8 @@ export function createAudio({
     play(INTERFACE_ASSET[sound]);
   }
 
+  let detachTurretLanding: (() => void) | null = null;
+
   function uiClick(): void {
     if (!interfaceOnce()) return;
     play('ui_click');
@@ -1950,6 +1953,12 @@ export function createAudio({
     const on = <T>(event: string, listener: (payload: T) => void): void => {
       bus.on(event, (payload) => { if (ready()) listener(payload as T); });
     };
+    // physics lane (2026-10-10): a popped turret lands where its rigid body hits, heard there (a hard landing, louder)
+    detachTurretLanding?.();
+    detachTurretLanding = onTurretLanding((x, y, z, speed) => {
+      if (!ready() || speed < 3) return;
+      play('turret_land', { x, y, z, gainDb: Math.max(-9, Math.min(0, (speed - 9) * 0.9)) });
+    });
     on<{ id: string; x: number; y: number; z: number; caliberMm: number }>('auxiliary:fired', (e) => {
       if (phase === 'battle' && !battleOver) fireWeapon([e.x, e.y, e.z], e.caliberMm, null, isOwn(e.id));
     });

@@ -64,6 +64,8 @@ export interface TankVisual {
   stripEra?(plateName: string): void;
   resetEra?(): void;
   setDestroyed?(options: { pop: boolean }): void;
+  /** Physics lane (wire 5): the host will send this wreck's turret pose; never simulate it locally. */
+  awaitWreckTurretPose?(): void;
   resetDestroyed?(): void;
   setGroundSampler?(sampler: (x: number, z: number) => RuntimeValue): void;
 }
@@ -109,6 +111,8 @@ export interface MatchActor {
   _networkEraSpent: Set<string>;
   _lastX: number;
   _lastZ: number;
+  /** Physics lane (wire 5): the wreck's turret body pose its host sent, interpolated; null while it has none. */
+  _wreckTurretPose?: Float64Array | null;
 }
 
 export interface MatchShell {
@@ -478,6 +482,8 @@ export function createBattlePresentation({
         // Impact scars are transient children of the live tank: detach them before the wreck material traversal.
         clearVehicleDecals?.(actor.visual);
         actor.visual.setDestroyed({ pop });
+        // the host owns the turret's body (wire 5): the visual follows the rows' pose and never simulates its own
+        actor.visual.awaitWreckTurretPose?.();
       }
     } else if (actor._networkDestroyed) {
       actor.visual.resetDestroyed?.();
@@ -518,6 +524,12 @@ export function createBattlePresentation({
     state.speed = along < 0 ? -speed : speed;
     actor._lastX = sample.x;
     actor._lastZ = sample.z;
+    // physics lane (wire 5): the wreck's turret where the host's body lies (the runtime hands it to the visual)
+    if (sample.wreckBody) {
+      const pose = actor._wreckTurretPose ??= new Float64Array(7);
+      pose[0] = sample.wbx * POS_SCALE; pose[1] = sample.wby * POS_SCALE; pose[2] = sample.wbz * POS_SCALE;
+      pose[3] = sample.wbqx; pose[4] = sample.wbqy; pose[5] = sample.wbqz; pose[6] = sample.wbqw;
+    } else if (actor._wreckTurretPose) actor._wreckTurretPose = null;
   }
 
   function reveal(actor: MatchActor): void {

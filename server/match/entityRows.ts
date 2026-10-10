@@ -12,7 +12,7 @@ import {
 } from '../../src/mp/wire/constants.ts';
 import type { EntityRow, SnapshotMeta, ViewerState } from '../../src/mp/wire/messages.ts';
 import {
-  clampU16, clampU8, quantizeAngle, quantizeMultiplier, quantizePosition, quantizeReloadS, quantizeVelocity,
+  clampU16, clampU8, quantizeAngle, quantizeMultiplier, quantizePosition, quantizeReloadS, quantizeUnitComponent, quantizeVelocity,
 } from '../../src/mp/wire/quantize.ts';
 import { MOVEMENT_CHECKPOINT_VERSION } from '../../src/mp/match/movementCheckpoint.ts';
 import { eraPlateIndices } from '../../src/mp/wire/era.ts';
@@ -113,6 +113,13 @@ export function captureEntityRow(entity: AuthoritativeEntity, entityId: number, 
     flags: entityFlags(entity),
     ...(combat.auxiliary ? { auxiliaryJson: JSON.stringify({...combat.auxiliary, smoke:combat.auxiliary.smoke ? smokeScreenSummary(combat.auxiliary.smoke) : null}) } : {}),
     eraSpent: era.indices(entity),
+    // physics lane (wire 5): a wreck's turret where its body lies
+    ...(entity._wreckTurret ? { wreckBody: {
+      x: quantizePosition(entity._wreckTurret[0]), y: quantizePosition(entity._wreckTurret[1]), z: quantizePosition(entity._wreckTurret[2]),
+      qx: quantizeUnitComponent(entity._wreckTurret[3]), qy: quantizeUnitComponent(entity._wreckTurret[4]),
+      qz: quantizeUnitComponent(entity._wreckTurret[5]), qw: quantizeUnitComponent(entity._wreckTurret[6]),
+      asleep: entity._wreckTurret[7] === 1,
+    } } : {}),
   };
 }
 

@@ -57,7 +57,7 @@ export function createDriveTestAccess({
     aimState: () => runtime?.aimState() ?? null,
     fastForward: (seconds) => runtime?.fastForward(seconds) ?? 0,
     spawnKillShell: (aimYFrac) => runtime?.spawnKillShell(aimYFrac) ?? false,
-    slayEnemies: () => { runtime?.slayEnemies(); },
+    slayEnemies: (cause?: 'ammorack' | 'shot') => { runtime?.slayEnemies(cause); },
     resetAim: () => { runtime?.resetAim(); },
   };
 }

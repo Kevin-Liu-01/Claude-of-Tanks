@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { createFakeContext, fakeBuffer } from './fakeAudioContext.test-support.mjs';
 import { createBus } from '../game/stateCore.ts';
 import { CREW_VOICE_NATIONS } from './crewVoice.ts';
+import { emitTurretLanding } from '../fx/clock.ts';
 
 // Serve the shipped assets from disk; "decode" them as 1.5 s fake buffers.
 const publicRoot = new URL('../../public/', import.meta.url);
@@ -202,8 +203,13 @@ me.state.atGunLimit = false;
 since = mark();
 ctx.advance(10);
 bus.emit('tank:destroyed', { id: 'foe', killerId: 'me', pos: [-40, 0, 120], cause: 'ammorack' });
+// (physics lane, 2026-10-10) the turret lands where its body hits: the visual reports it through the fx clock's bridge
+assert.ok(!logSince(since).some((e) => e.n === 'turret_land'), 'no landing on a timer: the turret has not landed yet');
+emitTurretLanding(-37.5, 0, 122, 8.4);
+emitTurretLanding(-37.2, 0, 122.3, 1.2);
 names = logSince(since).map((e) => e.n);
 for (const id of ['tank_explode_ammo', 'debris_metal', 'turret_land', 'cookoff_loop', 'blast_sub']) assert.ok(names.includes(id), `${id} on an ammo-rack kill (${names})`);
+assert.equal(names.filter((n) => n === 'turret_land').length, 1, 'the hard landing is heard, the settling bump is not');
 assert.ok(!logSince(since).some((e) => e.b === 'ui'), 'the target going up confirms the kill, not an interface sound');
 // The crew calls it once they have seen it go up, about half a second later.
 for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(1 / 60, listener, tanks.filter((t) => t.id !== 'foe')); }
