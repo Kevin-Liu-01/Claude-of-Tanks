@@ -174,8 +174,9 @@ export default {
     wallRuns: [[110, -162, 110, -106, 2], [172, -116, 232, -116, 2], [246, -40, 246, 22, 3], [166, 118, 230, 118, 2], [-126, -244, -58, -244, 3], [-326, 96, -326, 168, 2]],
     well: false, hayCrates: false, fences: true, telegraph: false, carts: false, logs: false,
     rocks: 180, outcrops: 24, craters: 52, rubblePiles: 26, sandbagLines: 16, hedgehogs: 12,
-    tankWrecks: { era: 'modern', count: 5, debris: true,
-      ids: ['m551_sheridan', 'm60a2', 'm1a1', 'bmp3', 'm60a3'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): Australia in the 1970s: the Centurion and the Leopard
+    // AS1
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['centurion5', 'leo1a5'] },
     inhabit: { stalls: 0, benches: 2, coreClutter: 22, drums: 12, trucks: 7, jeeps: 3, drumClusters: 6, camps: 2, modernClutter: 6, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): banding 0.26 — the ore benches inside the square

@@ -1,0 +1,10 @@
+[
+ {"id": "column-under-fire", "treatment": "cinema", "formats": ["land", "square"], "art": "shots/media-r5/site50/renders/stills/s04-column-under-fire/stills/verdant-landscape-2160p-still-2700ms-e25ms.png", "pos_square": "40% 50%"},
+ {"id": "snow-push", "treatment": "keyart", "formats": ["land", "square", "port"], "art": "shots/media-r5/site50/renders/stills/s14-snow-push/stills/winter-landscape-2160p-still-3680ms-e25ms.png", "pos_square": "62% 50%", "pos_port": "62% 50%"},
+ {"id": "street-duel-night", "treatment": "cinema", "formats": ["land", "square"], "art": "shots/media-r5/site50/renders/stills/s16-street-duel/stills/urban-landscape-2160p-still-4460ms-e16ms.png", "pos_square": "70% 50%"},
+ {"id": "container-rows", "treatment": "cinema", "formats": ["land", "square", "port"], "art": "shots/media-r5/site50/renders/stills/s11-container-rows/stills/railyard-landscape-2160p-still-3980ms-e25ms.png", "pos_square": "52% 50%", "pos_port": "56% 50%"},
+ {"id": "ice-shellfire", "treatment": "cinema", "formats": ["land"], "art": "shots/media-r5/site50/renders/stills/s07-lake-shellfire/stills/alpine-landscape-2160p-still-3060ms-e25ms.png", "pos_square": "30% 50%"},
+ {"id": "harbor-run", "treatment": "cinema", "formats": ["land"], "art": "shots/media-r5/site50/renders/stills/s09-harbor-run/stills/fjord-landscape-2160p-still-4180ms-e25ms.png"},
+ {"id": "farm-charge", "treatment": "keyart", "formats": ["land", "square", "port"], "art": "shots/media-r5/site50/renders/stills/s06-farm-charge/stills/verdant-landscape-2160p-still-4380ms-e25ms.png", "pos_square": "66% 50%", "pos_port": "68% 50%"},
+ {"id": "gantry-advance", "treatment": "cinema", "formats": ["land", "square"], "art": "shots/media-r5/site50/renders/stills/s12-gantry-advance/stills/foundry-landscape-2160p-still-3380ms-e25ms.png", "pos_square": "40% 50%"}
+]

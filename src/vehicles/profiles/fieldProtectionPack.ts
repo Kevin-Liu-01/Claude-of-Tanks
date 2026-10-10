@@ -44,7 +44,7 @@ export function upgradeOplotFieldEquipment(P:TankBuilderPort):void{
  sideScreens(P,'hull',2.26,[-2.9,-1.55,-.2,1.15,2.65],1.16,1.58);
  sideScreens(P,'turret',1.82,[-1.46,-.67,.1],.28,.77);
  addFieldRoofCage(P,true);lampsAndTools(P);
- addFieldRoofWeapon(P,[-.67,.795,.02],12.7,'Oplot-M protected heavy machine gun',.16);
+ addFieldRoofWeapon(P,[-.45,.795,.02],12.7,'Oplot-M protected heavy machine gun',.32,.90);
  P.turretG.userData.oplotFieldUpgrade={hullScale:1.10,roofCages:true,roofGunCaliber:12.7};
 }
 export function addLeclercFieldProtection(P:TankBuilderPort):void{

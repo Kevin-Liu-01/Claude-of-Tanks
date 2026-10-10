@@ -20,7 +20,7 @@ const api = new Function('THREE', stripTypeScriptTypes(`
 const drain = (steps) => { let r; do { r = steps.next(); } while (!r.done); return r.value; };
 const ray = new THREE.Raycaster(), origin = new THREE.Vector3(), down = new THREE.Vector3(0, -1, 0);
 const material = new THREE.MeshBasicMaterial();
-let checked = 0, worstOldGap = 0;
+let checked = 0, worstOldGap = 0, normalsChecked = 0;
 for (const mapId of MAP_IDS) {
   const hf = createHeightField(1337, getMapConfig(mapId));
   // A rough flank and an interior chunk cover both triangle halves, roads,
@@ -40,6 +40,12 @@ for (const mapId of MAP_IDS) {
       assert.ok(Math.abs(contact - hit.point.y) < 1e-5,
         `${mapId} ${x},${z}: visible mesh ${hit.point.y}, contact ${contact}`);
       worstOldGap = Math.max(worstOldGap, hf.getHeightAtFast(x, z) - hit.point.y);
+      // (2026-10-08) the contact normal is the drawn triangle's own: the face the ray hit
+      const n = hf.getContactNormalAt(x, z, { x: 0, y: 0, z: 0 }), f = hit.face.normal, up = f.y < 0 ? -1 : 1;
+      assert.ok(Math.abs(Math.hypot(n.x, n.y, n.z) - 1) < 1e-9 && n.y > 0, `${mapId} ${x},${z}: a unit normal, up`);
+      assert.ok((n.x * f.x + n.y * f.y + n.z * f.z) * up > 1 - 1e-6,
+        `${mapId} ${x},${z}: visible face ${f.x},${f.y},${f.z}, contact normal ${n.x},${n.y},${n.z}`);
+      normalsChecked++;
       checked++;
     }
     geometry.dispose();
@@ -47,6 +53,7 @@ for (const mapId of MAP_IDS) {
 }
 material.dispose();
 assert.ok(worstOldGap > .05, 'fixtures reproduce the old visibly raised contact surface');
+assert.equal(normalsChecked, checked, 'every sampled point checks its normal against the hit face');
 
 let calls = 0;
 const contact = createTerrainContactSampler((x, z) => { calls++; return .5 * x - .25 * z; });
@@ -55,6 +62,18 @@ for (const x of [-512, -384, -256, -128, 0, 128, 256, 384, 512]) {
     const xx = Math.max(-512, Math.min(512, x + delta));
     assert.ok(Math.abs(contact(xx, x) - (.5 * xx - .25 * x)) < 1e-5, 'Float32 chunk seams stay continuous');
   }
+}
+{
+  // the plane's own normal on both triangle halves, at every seam; straight up off the square
+  const ex = -.5, ey = 1, ez = .25, el = Math.hypot(ex, ey, ez), out = { x: 0, y: 0, z: 0 };
+  for (const [x, z] of [[10.1, 20.2], [10.9, 20.9], [-127.99, 0.4], [0.001, -0.001], [511.9, -511.9]]) {
+    contact.normalAt(x, z, out);
+    // (the vertices are Float32, as the mesh's: a slope within 1e-5)
+    assert.ok(Math.abs(out.x - ex / el) < 1e-5 && Math.abs(out.y - ey / el) < 1e-5 && Math.abs(out.z - ez / el) < 1e-5,
+      `the plane's normal at ${x},${z}: ${out.x},${out.y},${out.z}`);
+  }
+  contact.normalAt(600, 0, out);
+  assert.deepEqual([out.x, out.y, out.z], [0, 1, 0], 'off the square: straight up');
 }
 contact(10.1, 20.2);
 const before = calls;

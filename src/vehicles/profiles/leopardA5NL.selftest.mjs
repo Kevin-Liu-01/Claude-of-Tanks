@@ -47,12 +47,14 @@ try {
   assert.equal(receipt.panoramicSight, true);
   assert.equal(receipt.equipmentOwned, true);
 
-  const station = receipt.auxiliaryOpenYokeRws;
-  assert.equal(station.variant, 'a5nl-low');
-  assert.equal(station.scale, 0.86);
-  assert.equal(station.towerRiseM, 0.08);
-  assert.equal(station.firingAxis, '+Z');
-  assert.equal(station.equipmentOwned, true);
+  // 2026-10-08 (the owner's field standard in main 6763d7cc0 and his 2A5M precedent; the coordinator's ruling on the
+  // tank-accessories lane's audit): the A5NL's working roof weapon is its loader's MAG, activated on its pintle, and the
+  // open-yoke tower that stood 0.98 m from it is gone
+  assert.equal(receipt.roofWeapon, 'leo2a5_loader_machine_gun');
+  assert.equal(receipt.auxiliaryOpenYokeRws, undefined, 'no open-yoke tower beside the loader\'s station');
+  const loaderStation = tank.root.getObjectByName('leo2a5_loader_machine_gun');
+  assert.ok(loaderStation?.userData.remoteControlled && loaderStation.userData.firingAxis === '+Z'
+    && loaderStation.userData.caliberMm === 7.62, 'the loader\'s MAG is the working remote station');
 
   const finish = tank.root.userData.eraFinishReceipt;
   assert.equal(finish.layeredCassettes, 60,
@@ -70,4 +72,4 @@ try {
   tank.dispose();
 }
 
-console.log('leopardA5NL.selftest: Tier X A5 modernization, ERA, sensors, lights and compact RWS pass');
+console.log('leopardA5NL.selftest: Tier X A5 modernization, ERA, sensors, lights and the loader\'s station pass');

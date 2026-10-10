@@ -202,8 +202,9 @@ console.log(`shoreJetty.selftest: ${plans} plans audited over nine fields — ${
 console.log('shoreJetty.selftest: flat/bank cases, refusals, the kit\'s planted piles, hulls and gangways checked on the three sea maps');
 
 // Round 67 (2026-09-24): the moored hull's render-side animation. With an `animated` sink the kit hands each moored
-// hull's pieces (the same geometry objects the wood bucket holds) to the renderer with the mooring point, the yaw
-// and a phase; without the sink the wood bucket is byte-identical, so every receipt that freezes the kit is untouched.
+// hull (the same geometry object its bucket holds) to the renderer with the mooring point, the yaw and a phase; without
+// the sink the buckets are byte-identical, so every receipt that freezes the kit is untouched. Since the map-vehicles
+// lane's P2 (2026-10-05) the hull is one painted geometry (maps/boatHulls.ts) in the props' baked bucket.
 {
   const { createHash } = await import('node:crypto');
   const digest = (geometries) => {
@@ -225,15 +226,19 @@ console.log('shoreJetty.selftest: flat/bank cases, refusals, the kit\'s planted 
     const animated = [];
     const withSink = build(animated), without = build(null);
     assert.equal(digest(withSink.buckets.wood), digest(without.buckets.wood), `${mapId}: the wood bucket is byte-identical with and without the sink`);
+    assert.equal(digest(withSink.buckets.baked), digest(without.buckets.baked), `${mapId}: the painted bucket is byte-identical with and without the sink`);
     assert.deepEqual(withSink.receipts, without.receipts);
     const moored = withSink.receipts.filter(r => r.kind === 'moored-boat');
     assert.equal(animated.length, moored.length, `${mapId}: one animated record per moored hull`);
     animated.forEach((record, i) => {
-      assert.equal(record.kind, 'moored-hull'); assert.equal(record.bucket, 'wood');
+      assert.equal(record.kind, 'moored-hull'); assert.equal(record.bucket, 'baked', 'the painted hull rides the baked bucket');
       assert.equal(record.x, moored[i].x); assert.equal(record.z, moored[i].z); assert.equal(record.y, moored[i].y, 'the pivot is the keel line at the mooring point');
       assert.ok(record.phase >= 0 && record.phase < Math.PI * 2 && Number.isFinite(record.yaw));
-      assert.ok(record.geometries.length === 10 || record.geometries.length === 12, `${record.geometries.length} pieces: the clinker hull, with or without its mast and boom`);
-      for (const g of record.geometries) assert.ok(withSink.buckets.wood.includes(g), 'the very geometry the wood bucket holds');
+      assert.equal(record.geometries.length, 1, 'one piece: the hull (its mast and boom built in)');
+      // 2026-10-07: its half extents ride along (the hull's contact with the water, props.ts waterContacts)
+      assert.ok(record.halfLength > 2 && record.halfLength < 3.2 && record.halfWidth > 0.4 && record.halfWidth < 0.9,
+        `${mapId}: a hull's half length and beam (${record.halfLength}, ${record.halfWidth})`);
+      for (const g of record.geometries) assert.ok(withSink.buckets.baked.includes(g), 'the very geometry the baked bucket holds');
       // every piece lies within a hull's length of the pivot
       for (const g of record.geometries) { g.computeBoundingBox(); const c = g.boundingBox.getCenter(new (Object.getPrototypeOf(g.boundingBox.min).constructor)()); assert.ok(Math.hypot(c.x - record.x, c.z - record.z) < 4, 'about the mooring point'); }
       hulls++;
@@ -242,5 +247,5 @@ console.log('shoreJetty.selftest: flat/bank cases, refusals, the kit\'s planted 
     for (const list of Object.values(without.buckets)) for (const g of list) g.dispose();
   }
   assert.ok(hulls >= 5, `moored hulls across the sea maps (${hulls})`);
-  console.log(`shoreJetty.selftest: ${hulls} moored hulls handed to the animated sink, the wood bucket byte-identical without it`);
+  console.log(`shoreJetty.selftest: ${hulls} moored hulls handed to the animated sink, the buckets byte-identical without it`);
 }

@@ -180,7 +180,9 @@ for (const config of maps) {
   const settlementCeiling = label === 'copper_mesa' ? 40 : plannedSites ? 26 : 18;
   assert.ok(settlement >= 16 && settlement <= settlementCeiling, `${label}: bounded settlement plan`);
   assert.ok(config.props.rocks <= 224 && config.props.outcrops <= 42, `${label}: bounded geological dressing`);
-  assert.equal(config.props.tankWrecks.count, 5, `${label}: fixed five-wreck authoring budget`);
+  // the map-vehicles lane (2026-10-06, the period ruling): five period hulks, or none on a 1944 front the public fleet
+  // has no tank of (mapQuality.selftest)
+  assert.equal(config.props.tankWrecks.count, config.props.tankWrecks.era === 'ww2' ? 0 : 5, `${label}: fixed five-wreck authoring budget`);
   assert.ok(config.props.inhabit.looseClutter <= 22 && config.props.inhabit.modernClutter <= 22,
     `${label}: bounded inhabited-detail pools`);
   assert.ok(config.sky.fogDensity <= 0.00072 && config.sky.fogMix <= 0.56,
