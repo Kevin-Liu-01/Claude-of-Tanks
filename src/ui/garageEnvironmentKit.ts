@@ -32,6 +32,7 @@ import {
 } from './garageTerrainPatches.generated.ts';
 import {
   addGarageFacilityDetails,
+  garageTerraceAtDatum,
   getGarageFacilityTerraces,
 } from './garageFacilityDetails.ts';
 import { GARAGE_YARD_WEAR, garageYardWearTexture } from './garageYardWear.ts';
@@ -829,7 +830,7 @@ export function buildGarageEnvironment(
     // Garage datum. Their outdoor service frames and local terrain must use
     // that same plane; sampling a dune/snowbank here previously raised the
     // frame through the tank while leaving the actual fleet graph at y=0.
-    const y = terrace.label.startsWith('fleet-service-')
+    const y = garageTerraceAtDatum(terrace, facilityTerraces)
       ? 0
       : samplePatch(patch, heights, center.x, center.z);
     return { ...terrace, ...center, y };
@@ -1006,6 +1007,8 @@ export function buildGarageEnvironment(
     }
     let maxGroundContactErrorM = 0;
     for (const terrace of terraceRecords) {
+      // the crews' small floors are audited at every foot instead (garageCrewFloor.selftest.mjs)
+      if (terrace.label.startsWith('crew-floor-')) continue;
       for (const [sideOffset, depthOffset] of [[0, 0], [-0.55, -0.55], [0.55, -0.55],
         [-0.55, 0.55], [0.55, 0.55]] as const) {
         const point = cameraPoint(

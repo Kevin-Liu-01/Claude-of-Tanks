@@ -142,6 +142,29 @@ export function leopardBayPointToWorkshop(
   return { x: layoutX + ownerX * lc + ownerZ * ls, z: layoutZ - ownerX * ls + ownerZ * lc };
 }
 
+// The yard crews' floors (2026-10-10 ground audit): the track carry and the power-pack pair stand in the open yard
+// beside the hero, where the raw terrain left them buried to 0.47 m (Ironworks) or 0.26 m clear (Saltmere). Each stands
+// on a datum floor circle in the shared workshop frame, its level core clear of the podium base.
+export const GARAGE_YARD_CREW_FLOORS = Object.freeze([
+  Object.freeze({ id: 'yard-track-carry', x: -11.4, z: 1.3, radiusM: 3.8 }),
+  Object.freeze({ id: 'yard-power-pack', x: 3.55, z: -11.45, radiusM: 3.8 }),
+]);
+
+/** The yard crews' floor circles in one Garage's workshop frame (its layout pose applied). */
+export function getGarageYardCrewFloors(
+  variant: Pick<GarageVariant, 'layout'>,
+): ReadonlyArray<{ readonly id: string; readonly x: number; readonly z: number; readonly radiusM: number }> {
+  const [layoutX, layoutZ, layoutYaw] = getGarageWorkshopLayoutPose(variant);
+  const c = Math.cos(layoutYaw);
+  const s = Math.sin(layoutYaw);
+  return GARAGE_YARD_CREW_FLOORS.map((floor) => Object.freeze({
+    id: floor.id,
+    x: layoutX + floor.x * c + floor.z * s,
+    z: layoutZ - floor.x * s + floor.z * c,
+    radiusM: floor.radiusM,
+  }));
+}
+
 export function getGarageWorkshopBayPoses(
   variant: Pick<GarageVariant, 'id' | 'layout'>,
 ): readonly GarageWorkshopBayPose[] {

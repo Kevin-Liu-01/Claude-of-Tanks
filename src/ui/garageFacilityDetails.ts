@@ -9,6 +9,7 @@ import {
 } from '../game/garagePresentationPose.ts';
 import {
   getGarageWorkshopBayPoses,
+  getGarageYardCrewFloors,
   leopardBayPointToWorkshop,
   LEOPARD_MOBILITY_FLOOR,
   type GarageWorkshopBayPose,
@@ -141,6 +142,24 @@ function facilityLayout(variant: GarageVariant): GarageFacilityLayout {
   return FACILITY_LAYOUTS[variant.architecture] || FACILITY_LAYOUTS.field_shed;
 }
 
+/**
+ * The fleet service pads and the crews' floors stand at the Garage datum (y = 0), the plane the shared exhibit and its
+ * crews stand on. A facility terrace that reaches one of them shares that datum, so the two never fight over a floor
+ * (2026-10-10: Ironworks' rail-fed line runs beside the yard track carry).
+ */
+export function garageTerraceAtDatum(
+  terrace: GarageFacilityTerrace,
+  terraces: readonly GarageFacilityTerrace[],
+): boolean {
+  const datumFloor = (candidate: GarageFacilityTerrace): boolean => candidate.label.startsWith('fleet-service-')
+    || candidate.label.startsWith('crew-floor-');
+  if (datumFloor(terrace)) return true;
+  return terraces.some((other) => other !== terrace && datumFloor(other) && Math.hypot(
+    (other.side - terrace.side) / (other.radiusSide + terrace.radiusSide),
+    (other.depth - terrace.depth) / (other.radiusDepth + terrace.radiusDepth),
+  ) < 1);
+}
+
 /** Flat, feathered service pads used before terrain geometry is emitted. */
 export function getGarageFacilityTerraces(variant: GarageVariant): readonly GarageFacilityTerrace[] {
   const layout = facilityLayout(variant);
@@ -171,8 +190,17 @@ export function getGarageFacilityTerraces(variant: GarageVariant): readonly Gara
     radiusSide: LEOPARD_MOBILITY_FLOOR.radiusM,
     radiusDepth: LEOPARD_MOBILITY_FLOOR.radiusM,
   }));
+  // the yard crews' datum floors (the track carry and the power-pack pair beside the hero)
+  const crewFloors = getGarageYardCrewFloors(variant).map((floor) => {
+    const view = garageWorldPointToView(floor.x, floor.z);
+    return Object.freeze({
+      label: `crew-floor-${floor.id}`, side: view.side, depth: view.depth,
+      radiusSide: floor.radiusM, radiusDepth: floor.radiusM,
+    });
+  });
   return Object.freeze([
     ...serviceBays,
+    ...crewFloors,
     ...layout.logistics.map(([side, depth], index) => Object.freeze({
       label: `logistics-${index + 1}`, side, depth, radiusSide: 4.3, radiusDepth: 3.5,
     })),
