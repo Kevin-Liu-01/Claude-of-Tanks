@@ -165,6 +165,9 @@ interface StudioGameState {
   tanks: StudioPoolTank[];
 }
 
+/** A smoke salvo's screen as the battle's auxiliary systems publish it. */
+type StudioSmokeScreen = NonNullable<NonNullable<AuxiliaryEntity['combat']['auxiliary']>['smoke']>;
+
 interface StudioFxRuntime {
   bindBus(bus: ReturnType<typeof createBus>): void;
   resetAll(options?: { running?: boolean }): void;
@@ -190,6 +193,8 @@ interface StudioFxRuntime {
   exhaust(position: THREE.Vector3, intensity: number, sooty: boolean, vel?: THREE.Vector3 | null, fwd?: THREE.Vector3 | null,
     birthOffset?: number): void;
   cinematicPort(): FxCinematicPort;
+  /** (fx 8n) The battle's smoke presentation on the Studio's clock (effects.ts setAuxiliaryClock); resetAll clears it. */
+  setAuxiliaryClock?(clock: (() => number) | null): boolean;
 }
 
 interface StudioLightingRuntime {
@@ -1791,8 +1796,34 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return out;
   }
 
+  /** (fx 8n) The battle-quality salvos' screens, published to the battle's own smoke presentation on the Studio's bus. */
+  const studioScreens: StudioSmokeScreen[] = [];
+  /**
+   * (fx 8n, wave 337: the Studio's battle quality is the game's exact look, and its smoke was the cinematic emitter's) the
+   * actor's salvo as the battle fires it, drawn by the battle's own smoke presentation (the media screen: the same
+   * schedule, recipes and puffs a player sees) on the Studio's timeline clock. False for a vehicle without launchers or
+   * where the battle has no smoke presentation (the caller falls back to the cinematic emitter).
+   */
+  function battleSmokeScreen(a: StudioActor): boolean {
+    if (!fx.setAuxiliaryClock?.(() => clockMs / 1000)) return false;
+    const ground = (x: number, z: number) => hfProxy.getHeightAt(x, z);
+    const entity = {
+      id: a.uid, team: 'studio', spec: a.spec, state: a.state, combat: { destroyed: false },
+    } as unknown as AuxiliaryEntity;
+    if (!requestAuxiliary(entity, 'smoke', clockMs / 1000, ground)) return false;
+    const screen = entity.combat.auxiliary?.smoke;
+    if (!screen?.canisters?.length) return false;
+    ensureFxBus();
+    studioScreens.push(screen);
+    fxBus.emit('auxiliary:smokeScreens', { screens: studioScreens.slice() });
+    return true;
+  }
+
   function fireSmokeScreen({ id, actor, params }: StudioEffectExecution): boolean {
     if (!actor) return false;
+    // battle quality: the game's own screen (the vehicle's real launchers, the battle's duration and density); the
+    // cinematic quality (and a vehicle without launchers) keeps the cinematic emitter and its count/duration/density
+    if (!cinematicFor(params) && battleSmokeScreen(actor)) return true;
     salvoWalls = null;
     const salvo = smokeSalvo(actor, Math.round(fxParam('smoke_screen', 'count', params.count)));
     ensureCinematics().smokeScreen(id, salvo, SMOKE_GRAVITY_MPS2, SMOKE_WIND_X, SMOKE_WIND_Z,
@@ -2894,6 +2925,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     shells.length = 0;
     // a scene's hulls are already running: no engine cold-start cough at every load (atmospherics r2, wave 311)
     fx.resetAll({ running: true });
+    studioScreens.length = 0;
     // The fx clock restarts with the timeline: replays (seek, load, film) must
     // not inherit the page's history in clock-phased shading.
     fx.resetClock(0);
@@ -5003,6 +5035,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     effectLog.length = 0;
     activeEffectIds.clear();
     fx.resetAll();
+    studioScreens.length = 0;
     studioStages.clear();
     resetStudioGround(true);
     fx.setFrozen(false);

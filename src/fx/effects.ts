@@ -540,6 +540,12 @@ export interface FxRuntime {
   composeFiringMoment(moment: FiringMoment): void;
   composeExplosionMoment(moment: ExplosionMoment): void;
   cinematicPort(): FxCinematicPort;
+  /**
+   * (fx 8n) The Studio plays its battle-quality smoke salvos (screens published on its bus as the battle's own
+   * 'auxiliary:smokeScreens') on its timeline's clock (seconds) instead of the match clock; null returns the
+   * presentation to the match clock, and resetAll does too. False where there is no smoke presentation to drive.
+   */
+  setAuxiliaryClock(clock: (() => number) | null): boolean;
 }
 
 declare global {
@@ -5509,8 +5515,11 @@ function* createFxSteps(
     }
   }
 
+  // (fx 8n) the Studio's timeline clock while it plays smoke salvos (setAuxiliaryClock), else the match clock
+  let auxiliaryClock: (() => number) | null = null;
   const auxiliary = auxiliaryEntities && auxiliaryTime ? createAuxiliaryPresentation(group, {
-    entities: auxiliaryEntities, time: auxiliaryTime, ground: groundY, visible: auxiliaryVisible,
+    entities: auxiliaryEntities, time: () => (auxiliaryClock ? auxiliaryClock() : auxiliaryTime()), ground: groundY,
+    visible: auxiliaryVisible,
     // atmospherics lane: the smoke screen on the media layer (desktop tiers; null on the phone tier)
     blast,
     report: (id,p,caliber) => auxiliaryReport?.(id,p,caliber),
@@ -6679,6 +6688,7 @@ function* createFxSteps(
     /** Kill all particles, tracers, decals, timers, emitters and lights. */
     resetAll(options?: { running?: boolean }) {
       replaySuppressed = false;
+      auxiliaryClock = null;
       auxiliary?.reset(); drones.reset();
       particles.resetAll();
       vol?.reset();
@@ -6731,6 +6741,11 @@ function* createFxSteps(
       impactDecals.clearAll();
       resetEquipmentDamage();
       for (const st of lightStates) { st.bornAt = -1e9; st.light.intensity = 0; }
+    },
+
+    setAuxiliaryClock(clock: (() => number) | null): boolean {
+      auxiliaryClock = clock;
+      return auxiliary !== null;
     },
 
     cinematicPort(): FxCinematicPort {
