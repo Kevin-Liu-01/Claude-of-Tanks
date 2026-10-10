@@ -32,6 +32,9 @@ interface LandmarkKindSpec {
    *  tower between thin wall stubs): the composer tests these, not the footprint, against the solids already standing,
    *  and a vetoed ground is theirs. */
   solids?: (p: LandmarkParams) => ReadonlyArray<readonly [number, number, number, number]>;
+  /** The ground it is seated on, [hw, hl], where its footprint reaches past it (a tower mill's sails sweep over ground
+   *  its base never touches): the composer seats it, and measures its fall, on this rectangle alone. */
+  seat?: (p: LandmarkParams) => readonly [number, number] | null;
 }
 
 /** True when a placement builds no solid (plan.ts `dressing`): it publishes no collision record. */
@@ -186,7 +189,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // (the sails sweep a disc across the front; the tail pole reaches back to its capstan)
   windmill: { family: 'tower', defaults: { style: 'smock', height: 14 },
     footprint: (p) => (p.style === 'post' ? [Math.min(9.5, num(p, 'height') - 3.6) + 0.6, 8.0]
-      : p.style === 'tower' ? [12.0, 8.0] : [Math.min(10, num(p, 'height') - 2.1) + 0.6, 9.2]) },
+      : p.style === 'tower' ? [12.0, 8.0] : [Math.min(10, num(p, 'height') - 2.1) + 0.6, 9.2]),
+    // (a tower mill stands on its brick base, 4.5 m round: on a terp's crest its sails' span reaches over the batter)
+    seat: (p) => (p.style === 'tower' ? [4.6, 4.6] : null) },
   // ------------------------------------------------------------------------------------------------ civic buildings
   church: { family: 'civic', defaults: { tradition: 'orthodox', length: 30, width: 11, tower: 27, domes: 1 },
     // (the porticos with their steps stand 3 m off the cube's north and south faces)

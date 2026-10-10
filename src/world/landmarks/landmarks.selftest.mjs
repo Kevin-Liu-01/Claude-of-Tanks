@@ -582,6 +582,24 @@ check('the mole and its light', () => {
       'each stub its own length');
     for (const m of merged) for (const g of geometries(m.parts)) g.dispose();
   }
+  // a paved piece's ground grows no grass: its footprint as ground-cover discs, each over its cell — a path's a metre or
+  // so across (no wide spill onto the verge), a court's in cells no larger than 3 m
+  {
+    const holes = [];
+    const it = composeLandmarks({ ...ctx([
+      { kind: 'path', x: -150, z: -150, yawDeg: 90, name: 'a paved path', params: { length: 20, width: 1.6 } },
+      { kind: 'path', x: -150, z: -120, yawDeg: 0, name: 'a court', params: { length: 18, width: 18 } },
+    ]), groundHole: (x, z, r) => holes.push({ x, z, r }) });
+    let step = it.next(); while (!step.done) step = it.next();
+    assert.equal(step.value.placed, 2, 'both stand');
+    const covered = (x, z) => holes.some((h) => Math.hypot(x - h.x, z - h.z) <= h.r + 1e-6);
+    for (let t = -10; t <= 10; t += 0.5) for (const w of [-0.75, 0, 0.75]) assert.ok(covered(-150 + t, -150 + w), `the path's ground at ${t} m is held clear`);
+    for (let x = -158.5; x <= -141.5; x += 1) for (let z = -128.5; z <= -111.5; z += 1) assert.ok(covered(x, z), `the court's ground at (${x}, ${z}) is held clear`);
+    const pathHoles = holes.filter((h) => Math.abs(h.z + 150) < 3);
+    assert.ok(pathHoles.every((h) => h.r < 1.4), "the path's discs keep to it (no wide spill onto the verge)");
+    assert.ok(holes.every((h) => h.r <= 3 * Math.SQRT2 + 1e-6), 'no disc wider than a 3 m cell');
+    for (const m of merged) for (const g of geometries(m.parts)) g.dispose();
+  }
   // a map without set pieces composes nothing
   const empty = run([]);
   assert.deepEqual(empty, { pieces: [], placed: 0, skipped: 0, triangles: 0 });
