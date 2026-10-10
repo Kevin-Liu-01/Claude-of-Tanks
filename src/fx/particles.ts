@@ -608,7 +608,8 @@ void main() {
   vec3 side = cross( axis, viewDir );
   float sl = length( side );
   side = sl > 1e-4 ? side / sl : vec3( viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0] );
-  wpos += axis * ( position.x * 2.0 * halfLen ) + side * ( position.y * 2.0 * aWS.x );
+  // (fx 9b) a cooling grain shrinks as it dims: its glow is its temperature
+  wpos += axis * ( position.x * 2.0 * halfLen ) + side * ( position.y * 2.0 * aWS.x * ( 1.0 - 0.45 * t ) );
   float alpha = aC.w * ( 1.0 - smoothstep( 0.55, 1.0, t ) ) * nearFade( wpos );
   vColor = vec4( aC.rgb, alpha );
   vUv = uv;
@@ -638,10 +639,18 @@ void main() {
   float a = profile * vColor.a * ( 0.38 + 0.62 * head );
   if ( a < 0.004 ) discard;
   ${FOG_SCALE_F}
-  // incandescent cooling ramp: white-hot core -> orange -> deep red over life
-  vec3 base = mix( vColor.rgb, vec3( 1.0, 0.30, 0.04 ), clamp( vT * 1.5, 0.0, 0.92 ) );
+  // (fx 9b, the owner: "sparks ... look better"; the critics: "pure-white puffy blobs") hot metal on a blackbody ramp: the
+  // grain is born white-yellow (tinted by its own colour), cools through orange to a deep ember red, and its radiance
+  // falls with its temperature (a cooled grain is a dim red speck, never a white blob); only a newborn grain's leading
+  // end burns white, and only thinly
+  float T = clamp( vT, 0.0, 1.0 );
+  vec3 hot = mix( vec3( 1.0, 0.9, 0.66 ), vColor.rgb, 0.35 );
+  vec3 base = mix( hot, vec3( 1.0, 0.46, 0.09 ), smoothstep( 0.0, 0.38, T ) );
+  base = mix( base, vec3( 0.72, 0.1, 0.015 ), smoothstep( 0.32, 0.88, T ) );
+  float glowK = 1.0 - 0.78 * smoothstep( 0.0, 1.0, T );
+  glowK *= glowK;
   vec3 col = toneCap( ( base * ( 0.55 + 0.45 * head )
-    + vec3( core ) * ( 0.35 + 0.55 * head ) * ( 1.0 - vT * 0.85 ) ) * uIntensity );
+    + vec3( core ) * 0.45 * head * ( 1.0 - smoothstep( 0.0, 0.22, T ) ) ) * glowK * uIntensity );
   gl_FragColor = vec4( col * ( 1.0 - fogFactor ), a );
 }
 `;
