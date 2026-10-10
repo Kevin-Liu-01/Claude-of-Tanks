@@ -28,8 +28,11 @@ export const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 export const RUNTIME_CACHE_CONTROL = 'public, max-age=3600, stale-while-revalidate=86400';
 /** Vite's `[name]-[hash][extname]` (an eight-character base64url hash). */
 export const HASHED_ASSET_RE = /-[A-Za-z0-9_-]{8}\.[a-z0-9]+$/;
-/** The collision manifests vite.config.ts emits as `<map>.<sha256[0..12]>.json`; `index.json` names them and is not hashed. */
-const COLLISION_MANIFEST_RE = /^[a-z0-9_-]+\.[0-9a-f]{12}\.json$/;
+/**
+ * The collision manifests vite.config.ts emits as `<map>.<sha256[0..12]>.json` (a mode's battlefield variant as
+ * `<map>@<variant>.<sha256[0..12]>.json`, 2026-10-08); `index.json` names them and is not hashed.
+ */
+const COLLISION_MANIFEST_RE = /^[a-z0-9_-]+(?:@[a-z0-9-]+)?\.[0-9a-f]{12}\.json$/;
 /** Public directories the game loads at runtime; only their images, audio and fonts take the moderate TTL. */
 const RUNTIME_DIRS = Object.freeze(['textures', 'icons', 'fonts', 'audio', 'maps', 'minimaps']);
 const RUNTIME_FILE_RE = /\.(?:png|webp|jpe?g|avif|gif|svg|ktx2|ogg|mp3|wav|m4a|opus|woff2?|ttf|otf)$/i;

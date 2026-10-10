@@ -116,10 +116,17 @@ for(const id of Object.keys(NATIONAL_POLAND_GHILLIE_CONFIGS))for(const quality o
    }
   });
   for(const g of [...added.filter(p=>p.owner==='turret').map(p=>p.g),...turretEra]){g.computeBoundingBox();high=Math.max(high,g.boundingBox.max.y);}
-  let clothMeshes=0;
+  // 2026-10-09 (launch RC): the suit draws its scrim as one garnish layer since the accessories lane's b0617f402
+  // (2026-10-05, "one garnish draw per owner instead of two"): the light and dark flap layers became spray cards each
+  // tinted between the suit's light and dark colours (ghillieSuit.ts, clumpTint), so the turret carries the merged net
+  // and one garnish mesh whose cards hold both scrim colours
+  const clothMeshes=[];
   turret.traverse(o=>{if(!o.isMesh||!o.name.includes('_ghillie_turret_'))return;const b=new Box3().setFromObject(o).applyMatrix4(inverseTurret);
-   high=Math.max(high,b.max.y);clothMeshes++;});
-  assert.equal(clothMeshes,3,`${label}: merged net plus two fitted scrim colors`);
+   high=Math.max(high,b.max.y);clothMeshes.push(o);});
+  assert.deepEqual(clothMeshes.map(o=>o.name.slice(id.length)).sort(),['_ghillie_turret_leaves','_ghillie_turret_net'],`${label}: merged net plus one scrim garnish layer`);
+  const tint=clothMeshes.find(o=>o.name.endsWith('_leaves')).geometry.getAttribute('color'),tints=new Set();
+  for(let i=0;i<(tint?.count??0);i++)tints.add([tint.getX(i),tint.getY(i),tint.getZ(i)].map(v=>v.toFixed(3)).join());
+  assert(tints.size>=2,`${label}: the scrim garnish carries cards of more than one colour (${tints.size})`);
   assert(low-high>.20,`${label}: every new ERA/cage/scrim surface remains below the entire roof-gun sweep (${low-high})`);
   console.log(`${label}: ${eraBodies} ERA bodies, ${added.length} frame parts, ${(low-high).toFixed(3)} m continuous roof-gun clearance`);
  }finally{

@@ -75,11 +75,15 @@ function podiumFront(sink: PartSink, face: Face, h: number, look: () => number, 
   for (let k = 0; k <= n; k++) faceBox(sink, pierBucket, face, -w / 2 + pitch * k, h / 2, 0.08, 0.7, h, 0.16, { decor: true, fineSides: true, shade: pierShade });
 }
 
-/** A face's war: shell pocks over its lower storeys, a breach, sandbags along its foot (dressing; phones skip it). */
+/**
+ * A face's war: shell pocks over its lower storeys, a breach, sandbags along its foot (dressing: a phone draws it as the
+ * desktop does and keeps none of it, PartSink.dressing).
+ */
 function scars(sink: PartSink, face: Face, h: number, look: () => number, mobile: boolean, heavy = false): void {
-  if (mobile) return;
-  pocks(sink, face, -face.width / 2 + 0.4, face.width / 2 - 0.4, 0.4, Math.min(h, 12), (heavy ? 24 : 6) + Math.floor(look() * 10), look);
-  if (heavy && look() < 0.6) breach(sink, face, (look() - 0.5) * face.width * 0.6, 4 + look() * Math.max(1, h - 6), 0.8 + look() * 0.6, look);
+  sink.dressing(mobile, () => {
+    pocks(sink, face, -face.width / 2 + 0.4, face.width / 2 - 0.4, 0.4, Math.min(h, 12), (heavy ? 24 : 6) + Math.floor(look() * 10), look);
+    if (heavy && look() < 0.6) breach(sink, face, (look() - 0.5) * face.width * 0.6, 4 + look() * Math.max(1, h - 6), 0.8 + look() * 0.6, look);
+  });
 }
 
 // ------------------------------------------------------------------------------------------------ the Bund's towers
@@ -346,7 +350,7 @@ const sihangWarehouse: RegionalBuilder = (ctx) => {
             facePanel(sink, 'dark', face, u, y + fh * 0.55, 0.012, gw, gh, DEC);
             if (look() < 0.5) sandbags(sink, face, u, y + fh * 0.3, gw, gh * 0.6, look);
           } else facePanel(sink, r < 0.85 ? 'glass' : 'curtain', face, u, y + fh * 0.55, 0.012, gw, gh, { decor: true, window: face.out });
-          if (hit && !mobile && look() < 0.35) breach(sink, face, u + (look() - 0.5) * pitch, y + fh * 0.5, 0.5 + look() * 0.5, look);
+          if (hit && look() < 0.35) sink.dressing(mobile, () => breach(sink, face, u + (look() - 0.5) * pitch, y + fh * 0.5, 0.5 + look() * 0.5, look));
         }
         // the floor's slab edge across the face
         faceBox(sink, wall, face, 0, y + fh - 0.12, 0.08, face.width, 0.3, 0.16, { decor: true, fineSides: true });

@@ -8,7 +8,8 @@ import * as THREE from 'three';
 import {
   VEHICLE_ALPHA_MIN, VEHICLE_ALPHA_TAG, VEHICLE_OCCLUSION_BIAS, VEHICLE_OCCLUSION_DIRECTIONS, VEHICLE_OCCLUSION_FADE_M,
   VEHICLE_OCCLUSION_GLSL, VEHICLE_OCCLUSION_MAX_PX, VEHICLE_OCCLUSION_MIN_PX, VEHICLE_OCCLUSION_RADIUS_M,
-  VEHICLE_OCCLUSION_RANGE_M, VEHICLE_OCCLUSION_STEPS, VEHICLE_OCCLUSION_STRENGTH, createVehicleOcclusionUniforms,
+  VEHICLE_OCCLUSION_RANGE_M, VEHICLE_OCCLUSION_STEPS, VEHICLE_OCCLUSION_STRENGTH, VEHICLE_OCCLUSION_DIRECT_SHARE,
+  createVehicleOcclusionUniforms,
   vehicleCavityFromHorizons, vehicleOcclusionFalloff, vehicleOcclusionRadiusPx, vehicleOcclusionRangeFade,
   vehicleOcclusionShade, vehicleOcclusionStep, vehicleSunVisibility,
 } from './vehicleOcclusion.ts';
@@ -72,7 +73,14 @@ assert.equal(createVehicleOcclusionUniforms().uVehOcc.value, 0, 'off until the l
 
 // 5. the GLSL carries the same constants and the same laws
 const glsl = VEHICLE_OCCLUSION_GLSL;
-for (const [name, value] of [['radius', VEHICLE_OCCLUSION_RADIUS_M], ['bias', VEHICLE_OCCLUSION_BIAS], ['strength', VEHICLE_OCCLUSION_STRENGTH],
+// (fleet lane 2026-10-08: the strength and the direct share are uniforms defaulting to the constants)
+const uniforms = createVehicleOcclusionUniforms();
+assert.equal(uniforms.uVehOccStrength.value, VEHICLE_OCCLUSION_STRENGTH, 'the strength uniform ships the constant');
+assert.equal(uniforms.uVehOccDirect.value, VEHICLE_OCCLUSION_DIRECT_SHARE, 'the direct-share uniform ships the constant');
+assert.match(glsl, /uVehOccStrength \* mix\( ambShare, 1\.0, uVehOccDirect \)/, 'the GLSL dims ambient, plus the direct share of sunlight');
+assert.ok(near(vehicleOcclusionShade(1, 1, 1, 0.8, 0.5), 1 - 0.8 * 0.5), 'a sunlit cavity dims by the direct share');
+assert.ok(near(vehicleOcclusionShade(1, 0.5, 1, 0.8, 0), vehicleOcclusionShade(1, 0.5)), 'share 0 is the ambient-only law');
+for (const [name, value] of [['radius', VEHICLE_OCCLUSION_RADIUS_M], ['bias', VEHICLE_OCCLUSION_BIAS],
   ['min px', VEHICLE_OCCLUSION_MIN_PX], ['max px', VEHICLE_OCCLUSION_MAX_PX], ['alpha', VEHICLE_ALPHA_MIN]]) {
   assert.ok(glsl.includes(value.toFixed(4)), `GLSL carries the ${name}`);
 }

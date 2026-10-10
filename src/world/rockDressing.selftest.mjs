@@ -524,13 +524,55 @@ assert.throws(() => applyRockShaderHook({ uniforms: {}, vertexShader: '#include 
 // --- the producer
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const hullAt = source.indexOf('rockHulls.push(hull); // the collision proxy');
-assert.ok(hullAt > 0 && hullAt < source.indexOf('const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(lithology, vi), lithology);'), 'the legacy hull is taken before the form is fitted inside it, as the map\'s rock breaks');
+// (the Redrock lane, round 10: the form takes the map's angularity too, RockClimate.angular)
+assert.ok(hullAt > 0 && hullAt < source.indexOf('const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(lithology, vi), lithology, angular);'), 'the legacy hull is taken before the form is fitted inside it, as the map\'s rock breaks');
 assert.match(source, /paintBoulder\(form, P\.rockTone, lithology\);\n\s*rockGeos\.push\(form\.geometry\);/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockGround', new THREE\.InstancedBufferAttribute\(ground, 1\)\)/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockSlope', new THREE\.InstancedBufferAttribute\(slope, 2\)\)/, 'every boulder the slope of its ground');
 assert.match(source, /const rockContact = !snowCap && rockDressing\.dust < 0\.5;/, 'a contact patch round every boulder, but on snow and sand');
-assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(conformedDisc\(spot\.x, spot\.z, spot\.r, \[[^\]]*\], true, ROCK_PATCH\)\);\n\s*yield \{ fine: true, progress: false, stage: 'ground-foundation-instances' \};/,
+assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(conformedDisc\(spot\.x, spot\.z, spot\.r, \[[^\]]*\], true, ROCK_PATCH, CONTACT_STRENGTH\.rock\)\);\n\s*yield \{ fine: true, progress: false, stage: 'ground-foundation-instances' \};/,
   'the contact patches go to the ground decals, conformed to the drawn mesh, one private input and checkpoint each');
+// (b44; wave 272: the boulders' "flat tan disc … like a cookie-cutter decal") the contact layer darkens the ground it lies
+// on: each kind's strength in its patch's vertex RGB, the material a multiplicative darkening, unlit, no fog of its own,
+// gone by 160 m, no shadow — and its output law: the target × mix(1, the grey, a)
+{
+  const strength = /const CONTACT_STRENGTH = Object\.freeze\(\{ rock: ([\d.]+), prop: ([\d.]+), stack: ([\d.]+), foundation: ([\d.]+) \}\);/.exec(source);
+  assert.ok(strength, 'a strength for every kind of contact');
+  const [rock, prop, stack, foundation] = strength.slice(1).map(Number);
+  assert.ok(rock === 1 && prop < rock && stack < rock && foundation < prop, `a boulder's foot full, a prop's and a stack's less, a foundation's least (${rock}, ${prop}, ${stack}, ${foundation})`);
+  for (const [who, call] of [['a foundation', /Math\.max\(building\.w, building\.d\) \* 1\.2, \[[^\]]*\], false, FULL_PATCH, CONTACT_STRENGTH\.foundation\)\);/],
+    ['a crushable prop', /conformedDisc\(prop\.x, prop\.z, 1\.15, \[[^\]]*\], false, FULL_PATCH, CONTACT_STRENGTH\.prop\)\);/],
+    ['a field stack', /conformedDisc\(stack\.x, stack\.z, stack\.r, \[[^\]]*\], false, FULL_PATCH, CONTACT_STRENGTH\.stack\)\);/]]) {
+    assert.match(source, call, `${who}'s patch at its strength`);
+  }
+  assert.match(source, /const tint = shares \? new Float32Array\(nv \* 4\)\.fill\(strength\) : null;/, 'the strength in the vertex RGB, the shares in its alpha');
+  assert.match(source, /const mat: THREE\.Material = groundContact \? contactDarkeningMaterial\(tex\) : new THREE\.MeshStandardMaterial\(\{/, 'the contact layer on its own material');
+  const at = source.indexOf('function contactDarkeningMaterial(tex: THREE.Texture): THREE.MeshBasicMaterial {');
+  assert.ok(at > 0, 'the contact material');
+  const body = source.slice(at, source.indexOf('\n}\n', at));
+  for (const want of ['transparent: true', 'depthWrite: false', 'fog: false', 'toneMapped: false', 'blending: THREE.MultiplyBlending', 'premultipliedAlpha: true', 'vertexColors: true']) {
+    assert.ok(body.includes(want), `the contact material: ${want}`);
+  }
+  const law = /float cotContactA = clamp\(diffuseColor\.a \* ([\d.]+) \* vColor\.r, 0\.0, ([\d.]+)\) \* \(1\.0 - smoothstep\(([\d.]+), ([\d.]+), vCotContactDist\)\);\n  gl_FragColor = vec4\(([\d.]+), ([\d.]+), ([\d.]+), cotContactA\);/.exec(body);
+  assert.ok(law, 'the darkening law in the shader');
+  const [gain, cap, fade0, fade1, gr, gg, gb] = law.slice(1).map(Number);
+  assert.ok(cap <= 0.85 && fade1 <= 200 && fade0 < fade1, `a cap (${cap}) and a fade by ${fade1} m`);
+  assert.ok(gr < 0.7 && gr >= gg && gg >= gb && gb > 0.4, `a faintly warm grey (${gr}, ${gg}, ${gb})`);
+  // the blend three runs for MultiplyBlending with premultiplied alpha (WebGLState: DST_COLOR, ONE_MINUS_SRC_ALPHA):
+  // target × (rgb·a) + target × (1 − a) = target × mix(1, rgb, a): the ground keeps its own colour, darker by a
+  const ground = [0.31, 0.12, 0.06];
+  for (const a of [0, 0.25, 0.8]) {
+    const out = ground.map((t, i) => t * [gr, gg, gb][i] * a + t * (1 - a));
+    const want = ground.map((t, i) => t * (1 + ([gr, gg, gb][i] - 1) * a));
+    assert.ok(out.every((v, i) => Math.abs(v - want[i]) < 1e-12), 'the target times mix(1, the grey, a)');
+    assert.ok(Math.abs(out[0] / out[1] - (ground[0] / ground[1]) * (1 + (gr - 1) * a) / (1 + (gg - 1) * a)) < 1e-12, 'its hue the ground\'s, a breath warmer');
+  }
+  // (the patch's densest texel is 0.94 opaque; a boulder's outer ring carries the full share there)
+  assert.ok(gain * 0.94 * rock >= cap, `a boulder's patch reaches the cap where it is densest (gain ${gain})`);
+  assert.ok(gain * 0.3 * 0.94 * rock < cap, 'its inner ring (share 0.3) stays under it');
+  // the rim: the texture's ragged alpha falls to nothing there whatever the share, so the patch has no edge
+  assert.match(source, /gradient\.addColorStop\(1, 'rgba\(82,68,45,0\)'\);/, 'the contact texture clear at its rim');
+}
 // (b12, after the Coastal re-shoot: a 2-3 px crease at a stone's foot where the patch's inner ring showed past a bank's
 // lip) a boulder's patch lightens toward the stone, its outer shadow whole; the contact layer carries the shares in its
 // vertex alpha, the other decals keep their geometry
@@ -553,7 +595,8 @@ assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(co
   assert.match(terrainSource, /const CHUNKS = 8, CHUNK_SIZE = MAP_SIZE \/ CHUNKS;\nconst LOD_SEGS = \[96, 48, 24\];/);
   assert.match(terrainSource, /idx\[ii\+\+\] = a; idx\[ii\+\+\] = c; idx\[ii\+\+\] = b;\n\s*idx\[ii\+\+\] = b; idx\[ii\+\+\] = c; idx\[ii\+\+\] = d;/,
     'the terrain splits a cell along the diagonal from its +x corner to its +z corner');
-  assert.match(source, /const meshHeightAt = \(px: number, pz: number\): number => terrainNearMeshHeightAt\(groundHeightAt, px, pz\);/,
+  // (the time-to-battle lane, 2026-10-08: through the props build's memo of the field's own heights, nearMeshVertexHeight)
+  assert.match(source, /const meshHeightAt = \(px: number, pz: number\): number => terrainNearMeshHeightAt\(nearMeshVertexHeight, px, pz\);/,
     'the patch reads the terrain\'s own export, no copied grid');
   // the export against the terrain's own chunk index: the grid it samples (read from the corners it asks for) and the
   // diagonal its cells split on (read from acquireTerrainChunkIndex), so the two can never diverge
@@ -582,7 +625,7 @@ assert.match(source, /const heightM = \(box\.max\.y - Math\.max\(box\.min\.y, -0
 // the desktop form near the camera and the phone form past ROCK_FAR_M, both into the near cascades; the far cascades
 // the phone form of every loose rock from a shadow-only pool; the crushable rocks pinned to the first near slots;
 // the pools whole from the build, repartitioned with hysteresis when the camera has moved 8 m
-assert.match(source, /if \(!mobileProps\) \{\n\s*const far = buildBoulderForm\(vi, noi, mulberry32\(seed \+ 60 \+ vi\), hull, 4, legacyTop, boulderKindFor\(lithology, vi\), lithology\);/,
+assert.match(source, /if \(!mobileProps\) \{\n\s*const far = buildBoulderForm\(vi, noi, mulberry32\(seed \+ 60 \+ vi\), hull, 4, legacyTop, boulderKindFor\(lithology, vi\), lithology, angular\);/,
   'the far form is the same rock at the phone\'s tier');
 assert.match(source, /const ROCK_FAR_M = 60;/);
 assert.match(source, /const ROCK_NEAR_CASCADES = 0b0011, ROCK_FAR_CASCADES = 0b1100;/);
@@ -635,6 +678,8 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
   const sharesSrc = /const ROCK_PATCH_SHARES: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1];
   const contactShare = new Function(`const CONTACT_PATCH_RINGS = ${ringsSrc}, ROCK_PATCH_SHARES = ${sharesSrc};\n${stripTypeScriptTypes(source.slice(shareAt, source.indexOf('\n  }\n', shareAt) + 4))}\nreturn contactShare;`)();
   const SPOT_R = 2.6;
+  // (b37) the beds' cells (512 m, one geometry a cell with the wall turf), declared beside the builder
+  const cellSrc = stripTypeScriptTypes(/  const BED_CELL_M = \d+;\n  const bedCellKey = [^\n]*\n/.exec(source)[0]);
   const build = (dust, snowCap, crushable, foldAt = undefined) => {
     // (a straight-sided stone, a metre in radius: its section the same at every height, so no lip is held down by a
     // stone drawing in above its foot)
@@ -644,9 +689,12 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
     const rockClutter = new Map(crushable ? [[placement, {}]] : []);
     const rockContact = !snowCap && dust < 0.5, rockSpotOf = new Map(rockContact ? [[placement, { x: 10, z: 20, r: SPOT_R }]] : []);
     const rockBedShades = [];
-    const fn = new Function('THREE', 'terrainNearMeshHeightAt', 'heightField', 'cfg', 'rockDressing', 'snowCap', 'rockGeos', 'rockPlacements',
+    // (2026-10-08) props.ts's near-mesh vertex memo, as the plain field query it memoizes (nearMeshVertexMemo.selftest)
+    const fixtureField = { getHeightAt: () => 0, ...(foldAt ? { _foldAt: foldAt } : {}) };
+    const fn = new Function('THREE', 'terrainNearMeshHeightAt', 'heightField', 'nearMeshVertexHeight', 'cfg', 'rockDressing', 'snowCap', 'rockGeos', 'rockPlacements',
       'rockClutter', 'boulderSections', 'boulderSectionRadius', 'rockContact', 'rockSpotOf', 'rockBedShades', 'contactShare',
-      `${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt, { getHeightAt: () => 0, ...(foldAt ? { _foldAt: foldAt } : {}) },
+      `${cellSrc}\n${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt, fixtureField,
+      (px, pz) => fixtureField.getHeightAt(px, pz),
       { splat: { rippleDir: [1, 0] } }, { dust }, snowCap, rockGeos, rockPlacements, rockClutter, boulderSections, boulderSectionRadius,
       rockContact, rockSpotOf, rockBedShades, contactShare);
     const it = fn();

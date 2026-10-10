@@ -256,12 +256,34 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
     "seats": [
       {
         "kind": "insignia",
+        "parent": "hull",
+        "size": 0.27,
+        "pos": [
+          -1.996,
+          1.26586,
+          -0.86692
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "m1a2_sepv3",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.0157843
+      },
+      {
+        "kind": "designation",
         "parent": "turret",
         "size": 0.27,
         "pos": [
-          -1.6553305,
-          0.2367727,
-          -1.7173999
+          -1.6096511,
+          0.3025927,
+          -0.0112999
         ],
         "quaternion": [
           -0.114204,
@@ -274,29 +296,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
-      },
-      {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.27,
-        "pos": [
-          -1.5557151,
-          0.5329627,
-          -1.9758999
-        ],
-        "quaternion": [
-          -0.114204,
-          -0.6978234,
-          -0.114204,
-          0.6978234
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "m1a2_sepv3",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 6,
-        "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.0140993
+        "maximumSurfaceErrorM": 0.0009478
       }
     ]
   },
@@ -330,8 +330,8 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.26,
         "pos": [
-          1.3168077,
-          0.4155904,
+          1.2913287,
+          0.4703704,
           -0.4332
         ],
         "quaternion": [

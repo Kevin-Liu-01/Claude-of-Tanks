@@ -261,8 +261,9 @@ export default {
     // (round 3, wave 208: "a storybook European well") no village well: the landmarks lane's Ottoman sabil is the square's water
     well: false, hayCrates: false, fences: true, telegraph: false, carts: true, logs: true,
     haystacks: 0, rocks: 138, outcrops: 20, craters: 48, rubblePiles: 10, cropFields: 7, sandbagLines: 12, hedgehogs: 8,
-    tankWrecks: { era: 'modern', count: 5, debris: true,
-      ids: ['marder1a3', 'ua_t84_oplot_m', 'm551_sheridan', 'pt91m', 'm1a1'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): Lebanon, 1982: the Merkava Mk 1, Magach (M60A1) and
+    // Sho't (Centurion), Syria's T-62s and T-72M
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['merkava1b', 'm60a1', 'centurion5', 't62mv1', 't72m1_jaguar'] },
     // (round 2, wave 123: "picket and rail fencing"): dry stone walls along the lanes and round the yards; (round 3, wave
     // 208) no camps — no modern tarps in Deir el Qamar
     inhabit: { stalls: 4, benches: 4, coreClutter: 22, bales: 0, stooks: 0, pots: 8, laundry: 4, troughs: 2, handcarts: 4, carts: 4, trucks: 4, jeeps: 3, drumClusters: 3, camps: 0, modernClutter: 18, looseClutter: 20, roadFence: 'wallstone', yardFence: 'wallstone' },

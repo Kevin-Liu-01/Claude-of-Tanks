@@ -454,11 +454,11 @@ const minersHouse: RegionalBuilder = (ctx) => {
       const t = 0.3, wy = 1.8;
       sink.span('stone', -len / 2, -0.4, back, len / 2, wy, back + t);
       for (const s of [-1, 1]) sink.span('stone', s > 0 ? len / 2 - t : -len / 2, -0.4, back + t, s > 0 ? len / 2 : -len / 2 + t, wy, yard + over);
-      if (!mobile && look() < 0.7) {
+      if (look() < 0.7) sink.dressing(mobile, () => {
         // a lean-to shed against the back wall: the coal, the goat
         const sw = Math.min(3.2, len * 0.4), sx = (look() - 0.5) * (len - sw - 1);
         sink.span('structureWood', sx - sw / 2, -0.3, back + t, sx + sw / 2, 2.2, back + t + 1.6, { colour: shade(rgb(0x5a4a3a), 0.8 + look() * 0.3), decor: true });
-      }
+      });
     }
   });
   return sink.finish();

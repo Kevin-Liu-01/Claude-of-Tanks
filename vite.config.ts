@@ -34,6 +34,7 @@ import { isExistingProjectDocument } from './tools/existing-document-route.ts';
 import { sharedWorkerChunks } from './tools/viteSharedWorkers.ts';
 import { glslMinify } from './tools/viteGlslMinify.ts';
 import { BOOT_RUNTIME_MODULES, i18nPageCatalogs, VITE_PRELOAD_HELPER } from './tools/viteI18nPageCatalogs.ts';
+import { i18nStudioCatalog } from './tools/viteI18nStudioCatalog.ts';
 
 const appVersion = resolveAppVersion(dirname(fileURLToPath(import.meta.url)));
 
@@ -122,9 +123,11 @@ const rewriteRoutes = (documentRoot: string): Connect.NextHandleFunction => (req
  * The peer-to-peer host's collision manifests (Multiplayer v2 §13, P2 client lane 2026-09-28): the browser host builds
  * its world from the same `server/world-collision-manifests/<map>.json` the match container loads, served under
  * `/mp-collision/` — the index as `index.json` and every map as `<map>.<sha256[0..12]>.json` (content-addressed: the
- * host reads the index, then fetches the map's file by its hash; `src/mp/host/worldCollision.ts`). Dev serves them
+ * host reads the index, then fetches the map's file by its hash; `src/mp/host/worldCollision.ts`), and a mode's
+ * battlefield variant as `<map>@<variant>.<sha256[0..12]>.json` (Frontline's trenches, 2026-10-08). Dev serves them
  * from the source directory; the build emits them beside the page (never through the boot chunk, never under
- * `/assets/`: the immutable routes stay the bundle's). 56 MB of JSON, fetched one map at a time and only when hosting.
+ * `/assets/`: the immutable routes stay the bundle's). About 105 MB of JSON, fetched one map at a time and only when
+ * hosting.
  */
 const COLLISION_MANIFEST_DIR = resolve(dirname(fileURLToPath(import.meta.url)), 'server/world-collision-manifests');
 const COLLISION_MANIFEST_ROUTE = '/mp-collision';
@@ -203,7 +206,9 @@ export default defineConfig({
   // Workers Vite still bundles on their own (the match host, the material painter, the sky/cloud/schematic/texture
   // workers) keep ES modules so their donor families stay on-demand imports, and their chunks take the same base36
   // hash alphabet so every /assets URL moved together (2026-09-25, docs/DEVELOPMENT.md "Asset caching").
-  worker: { format: 'es', rollupOptions: { output: { hashCharacters: 'base36' } } },
+  // The match host's catalog chunks split like the page's (tools/viteI18nStudioCatalog.ts), so both builds emit the same
+  // catalog files.
+  worker: { format: 'es', plugins: () => [i18nStudioCatalog()], rollupOptions: { output: { hashCharacters: 'base36' } } },
   plugins: [
     // 2026-10-02 (tools/viteSharedWorkers.ts): the wreck bake and Garage workshop workers are entries of the page
     // build and import the page's own chunks (dist/assets 954 files / 34.9 MB -> 682 / 27.7 MB; a worker never
@@ -258,6 +263,9 @@ export default defineConfig({
     // built page preloads its English chunk and names its zh-CN chunk in an inert meta, which localizeHtmlDocument turns
     // into a modulepreload on Chinese documents (build-time /cn/ pages and the middleware's request-time ones), so
     // English visitors never fetch Chinese and Chinese pages never flash English.
+    // 2026-10-05 (tools/viteI18nStudioCatalog.ts): the game's catalogs leave the Scene Studio's strings out; each
+    // locale's Studio slice loads with the Studio's chunk.
+    i18nStudioCatalog(),
     i18nPageCatalogs(),
     {
       name: 'cot-site-entry-output',
@@ -339,6 +347,7 @@ export default defineConfig({
         docsAudio: resolve(process.cwd(), 'site/docs-audio.html'),
         docsInterface: resolve(process.cwd(), 'site/docs-interface.html'),
         docsStudio: resolve(process.cwd(), 'site/docs-studio.html'),
+        docsFilming: resolve(process.cwd(), 'site/docs-filming.html'),
         gallery: resolve(process.cwd(), 'site/gallery.html'),
       },
       output: {
@@ -362,6 +371,12 @@ export default defineConfig({
             // the collision primitives they are built on, instead of splitting into two chunks of their own (+1 game
             // request) once the prediction world became their third importer.
             { name: 'collision', test: /[\\/]src[\\/](world[\\/]collision|sim[\\/]structureSupport|sim[\\/]tankBodyContacts)\.ts$/ },
+            // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
+            // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The
+            // Studio's cinema passes and horizon relight import members of it; without the group those split into a
+            // chunk of their own, one more game boot request for code the Studio only reuses. The group takes exactly
+            // these six, not their dependencies (which would pull three itself in): the one chunk they formed before.
+            { name: 'groundBounce', test: /(?:[\\/]three[\\/]examples[\\/]jsm[\\/]postprocessing[\\/]Pass\.js|[\\/]src[\\/]engine[\\/](?:atmosphere|cloudscapes|lightModelCore|hazeLaw|groundBounce)\.ts)$/, includeDependenciesRecursively: false },
           ],
         },
       },
@@ -374,6 +389,7 @@ export default defineConfig({
       'site/docs-simulation.html', 'site/docs-vehicles.html', 'site/docs-rendering.html',
       'site/docs-performance.html', 'site/docs-worlds.html', 'site/docs-ai.html',
       'site/docs-multiplayer.html', 'site/docs-audio.html', 'site/docs-interface.html', 'site/docs-studio.html',
+      'site/docs-filming.html',
     ],
     include: [
       'three',
