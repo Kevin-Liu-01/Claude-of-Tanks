@@ -23,6 +23,16 @@ for (const slot of ['acacia', 'cedar', 'oak']) {
 }
 assert.equal(treeBiomeSlot('desert', 'eucalyptus')?.form, 'acacia', 'the Saharan wadi keeps the savanna acacia');
 assert.equal(treeBiomeSlot('desert', 'eucalyptus')?.colour, undefined, 'and the place\'s arid colour');
+// (the treescn lane, 2026-10-09: the owner's maps to raise — the oasis's acacias out on the sand are the Sahara's own
+// Acacia raddiana / tortilis, its palms where they stand; Sirocco, on the owner's light-touch list, keeps its savanna acacia)
+for (const slot of ['acacia', 'eucalyptus']) {
+  const s = treeBiomeSlot('oasis', slot);
+  assert.equal(s?.form, 'tortilis', `the oasis's ${slot} slot grows as the Sahara's acacia`);
+  assert.ok(s.colour && s.colour.cardSat <= 0.06, `the oasis's ${slot} slot: a dust-dulled grey-green`);
+}
+assert.equal(treeBiomeSlot('oasis', 'palm'), null, 'the oasis keeps its date palms');
+assert.ok(treeBiomeTransmission('oasis') <= 0.5, 'the oasis acacias\' leaves pass little of the low sun');
+assert.equal(treeBiomeTransmission('desert'), 1, 'Sirocco keeps the whole gain');
 assert.ok(GROWTH_SPECIES.includes('tortilis'), 'a tree slot\'s form');
 // (the Redrock lane on wave 282: the back-lit crowns glowed lime) Wadi Rum's leaflets pass little light; elsewhere the whole gain
 assert.ok(treeBiomeTransmission('badlands') <= 0.5, 'Wadi Rum\'s leaves pass little of the low sun');

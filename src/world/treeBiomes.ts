@@ -224,7 +224,12 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // (trees round 3, the gauntlet's wave 31: the wadi's shrubs were "bright green balls" — a Saharan wadi's scrub is the
   // white broom, Retama raetam, grey-green switches, as Wadi Rum's)
   desert: B('a Saharan wadi', { eucalyptus: { form: 'acacia' } }, 'broom', ARID_FOLIAGE, true),
-  oasis: B('a Saharan oasis', { eucalyptus: { form: 'acacia' } }, 'broom', ARID_FOLIAGE, true),
+  // (the treescn lane, 2026-10-09, the owner's list of maps to raise: the oasis's acacias the savanna's puffy umbrella,
+  // its palms right where they stand — in the spring basin and its two garden rows, palmSites. Out on the sand the
+  // Sahara's acacia is Wadi Rum's Acacia raddiana / tortilis: flat, sparse, dust-dulled, its leaflets passing little sun)
+  oasis: Object.freeze({ ...B('a Saharan oasis', { acacia: { form: 'tortilis', colour: RADDIANA_FOLIAGE },
+    eucalyptus: { form: 'tortilis', colour: RADDIANA_FOLIAGE } }, 'broom', ARID_FOLIAGE, true),
+    transmission: 0.4 }),
   // Monument Valley (the map-revival lane, 2026-10-05; round 2 on trees round 5's forms): Utah and one-seed juniper,
   // low, multi-stemmed and grey-green, for the cedar and acacia slots; pinyon for the oak; the scrub as the white broom
   // standing in for sagebrush; the Arizona uplands' dusty greens. The placement stays the map's (no arid or upland
