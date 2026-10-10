@@ -98,7 +98,7 @@ const STREET_ARMS: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
 ];
 /** From the road's line to the frontage: the carriageway's half width and the usoir (5-8 m). */
 const USOIR_FRONT_M = [9.0, 11.5] as const;
-const GATE_CLEAR_M = 10, LANE_EVERY_M = [38, 56] as const, LANE_M = 6;
+const GATE_CLEAR_M = 10, LANE_EVERY_M = [48, 70] as const, LANE_M = 6;
 /** The square's two composed buildings, pinned on its edges facing it (the facades lane's ask): the church on the north
  * edge between the coach road's north arm and the north lane, the inn on the west edge between the coach road and the
  * mill lane; the rows keep their distance (r). */
@@ -399,6 +399,8 @@ export default {
     // the map-revival lane (round 5): the street village's frontage (streetVillage above) stands first; the plan's other
     // buildings then take the blocks behind it
     plannedSites: streetVillage(),
+    // the rise the town stands on: a long farmhouse steps its plinth over up to 2.1 m of fall (the default 1.7 refused two)
+    maxSpread: 2.1,
     monument: true, // the market cross on the square
     destructibleBuildings: ['fieldhut', 'leanto', 'longhouse', 'commandtent'],
     tacticalBeats: [
