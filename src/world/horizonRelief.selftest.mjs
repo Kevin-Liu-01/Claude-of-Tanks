@@ -402,8 +402,10 @@ for(const id of MAP_IDS) {
     return canvas;
   } };
   try {
-    const mesh = buildHorizonRing(null, getMapConfig('longleaf'), 1337);
-    const maxH = mesh.userData.horizonRing.reliefBake ? sampleHorizonGeometry(getMapConfig('longleaf'), 1337).maxHeight : 1;
+    // (the costland lane, 2026-10-09: batch 6 is opt-in per map, borderLandform.ts batch6 — the receipt opts Longleaf in)
+    const longleaf = { ...getMapConfig('longleaf'), terrain: { ...getMapConfig('longleaf').terrain, border: { ...(getMapConfig('longleaf').terrain?.border ?? {}), batch6: true } } };
+    const mesh = buildHorizonRing(null, longleaf, 1337);
+    const maxH = mesh.userData.horizonRing.reliefBake ? sampleHorizonGeometry(longleaf, 1337).maxHeight : 1;
     const forest = mesh.getObjectByName('horizon-forest');
     assert.ok(forest, 'longleaf stands its ring forest');
     const m = new Matrix4(), v = new Vector3();

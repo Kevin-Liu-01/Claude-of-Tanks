@@ -78,7 +78,8 @@ assert.equal(resolveBorderArchitecture('winter', undefined, true), null, 'no kit
   assert.deepEqual(Array.from(hangars.geometry.getAttribute('color').array), Array.from(plain.geometry.getAttribute('color').array),
     'in the generic colours');
 }
-const foundry = getMapConfig('foundry');
+// (the costland lane, 2026-10-09: batch 6 is opt-in per map, borderLandform.ts batch6 — the receipt opts Ironworks in)
+const foundry = { ...getMapConfig('foundry'), terrain: { ...getMapConfig('foundry').terrain, border: { ...(getMapConfig('foundry').terrain?.border ?? {}), batch6: true } } };
 const foundryField = createHeightField(1337, foundry);
 const foundryRing = buildHorizonRing(null, foundry, 1337, foundryField);
 const foundryFarms = foundryRing.getObjectByName('border-farmsteads');
