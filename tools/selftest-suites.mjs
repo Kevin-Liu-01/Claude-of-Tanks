@@ -1520,6 +1520,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/destructibleAuthority.selftest.mjs',
     'src/world/utilityNetwork.selftest.mjs',
     'src/world/wrecks.selftest.mjs',
+    // 2026-10-09 (destruction core lane): the light dressing's broken states made from their own intact builds.
+    'src/world/maps/propFracture.selftest.mjs',
     'src/world/wreckCollision.selftest.mjs',
     'src/world/wreckRoster.selftest.mjs',
     'src/world/wreckFleet.selftest.mjs',
