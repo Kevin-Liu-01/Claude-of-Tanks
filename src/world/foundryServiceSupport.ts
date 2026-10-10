@@ -15,7 +15,7 @@ interface FoundrySupportField {
 }
 const FOUNDRY_SUPPORT_EMBED = 0.03;
 const FOUNDRY_SUPPORT_TOP_CLEARANCE = 0.03;
-/** Explicit art limit: a container body is not a 2.6m-thick foundation. */
+/** Explicit art limit: a container body (or a freight stack's core) is not a 2.6m-thick foundation. */
 const FOUNDRY_CONTAINER_MAX_BURIAL = 0.12;
 
 interface Foot { role: string; box: Box3 }
@@ -65,7 +65,12 @@ function matchesBand(box: Box3, bottom: number, top: number): boolean {
 function supportRole(kind: string, bucket: string, geometry: BufferGeometry, box: Box3): string | null {
   if (geometry.userData.structureSupport?.part === 'entry-threshold') return 'threshold';
   // round 75: the bodies moved from the vertex-painted 'baked' bucket to the 'steel' atlas bucket; same band
-  if (kind === 'containerRow') return (bucket === 'baked' || bucket === 'steel') && matchesBand(box, 0, 2.6) ? 'container' : null;
+  if (kind === 'containerRow') {
+    // the map-revival lane (2026-10-09): a seat of period freight (maps/periodFreight.ts, Ironworks in 1945) stands on
+    // its hidden core, seated as a box was
+    if (geometry.userData.structureSupport?.part === 'freight-core') return bucket === 'baked' && Math.abs(box.min.y) < 0.001 ? 'freight' : null;
+    return (bucket === 'baked' || bucket === 'steel') && matchesBand(box, 0, 2.6) ? 'container' : null;
+  }
   if (bucket !== 'stone') return null;
   switch (kind) {
     case 'factory': return matchesBand(box, -0.7, 0.5) ? 'plinth' : null;
@@ -82,7 +87,8 @@ function supportRole(kind: string, bucket: string, geometry: BufferGeometry, box
 function requireFeet(kind: string, feet: Foot[]): void {
   const count = (role: string): number => feet.filter(foot => foot.role === role).length;
   const valid: Record<string, boolean> = {
-    containerRow: feet.length >= 5 && feet.length <= 6 && count('container') === feet.length,
+    containerRow: feet.length >= 5 && feet.length <= 6
+      && (count('container') === feet.length || count('freight') === feet.length),
     gantry: feet.length === 2 && count('foot') === 2,
     stack: feet.length === 1 && count('plinth') === 1,
     shed: feet.length === 1 && count('platform') === 1,
@@ -126,7 +132,7 @@ function sampleFoot(field: FoundrySupportField, foot: Foot, site: FoundrySupport
 
 function lowerSeat(row: FootSample): number {
   const box = row.foot.box;
-  return row.foot.role === 'container'
+  return row.foot.role === 'container' || row.foot.role === 'freight'
     ? row.groundMax - box.min.y - FOUNDRY_CONTAINER_MAX_BURIAL
     : row.groundMax - box.max.y + FOUNDRY_SUPPORT_TOP_CLEARANCE;
 }
