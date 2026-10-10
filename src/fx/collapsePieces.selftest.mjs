@@ -275,7 +275,9 @@ for (const { label, a } of anatomies.slice(0, 4)) {
     if (one.plan.pieces[i].shatterS >= 0 || !one.poses[i]) continue; // a wall the failure reached burst (no body)
     for (const [x, y, z] of one.poses[i]) {
       assert.ok(y > -0.1, `${label}: piece ${i} lies on the ground, not under it (y ${y.toFixed(2)})`);
-      assert.ok(Math.hypot(x - one.plan.cx, z - one.plan.cz) < Math.max(a.w, a.d) / 2 + 9, `${label}: piece ${i} lies by the building`);
+      // (a wall toppling off a tall building's top storey lands as far out as it stood high)
+      assert.ok(Math.hypot(x - one.plan.cx, z - one.plan.cz) < Math.max(a.w, a.d) / 2 + 6 + 0.8 * top,
+        `${label}: piece ${i} (${one.plan.pieces[i].kind}, from ${one.plan.pieces[i].center.map((v) => v.toFixed(1))}) lies by the building (at ${[x, y, z].map((v) => v.toFixed(1))}; centre ${one.plan.cx.toFixed(1)},${one.plan.cz.toFixed(1)}; ${a.w.toFixed(1)}×${a.d.toFixed(1)})`);
     }
   }
   // it came down: the roof and the upper walls lie low (a cracked panel's parts on average)
