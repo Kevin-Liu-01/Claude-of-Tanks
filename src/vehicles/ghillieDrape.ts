@@ -188,16 +188,17 @@ const SMOKE_LINE_REACH_M = 1.6;
 const SMOKE_LINE_BASE_M = 0.1;
 const SMOKE_LINE_SLOPE = 0.08;
 const SMOKE_TUBE_BACK_M = 0.3;
+const SMOKE_CARD_EXTRA_M = 0.08;
 
-/** Whether p lies in a tube along one of the [px, py, pz, dx, dy, dz] rows. */
-function onSmokeLine(rows: readonly number[], x: number, y: number, z: number): boolean {
+/** Whether p lies in a tube along one of the [px, py, pz, dx, dy, dz] rows (`extra` wider). */
+function onSmokeLine(rows: readonly number[], x: number, y: number, z: number, extra = 0): boolean {
   for (let i = 0; i < rows.length; i += 6) {
     const wx = x - rows[i], wy = y - rows[i + 1], wz = z - rows[i + 2];
     const along = wx * rows[i + 3] + wy * rows[i + 4] + wz * rows[i + 5];
     // the bank's tubes behind each mouth too (the suit gives way to the fitting's body, not only its line of fire)
     if (along < -SMOKE_TUBE_BACK_M || along > SMOKE_LINE_REACH_M) continue;
     const lx = wx - rows[i + 3] * along, ly = wy - rows[i + 4] * along, lz = wz - rows[i + 5] * along;
-    if (Math.hypot(lx, ly, lz) < SMOKE_LINE_BASE_M + Math.max(0, along) * SMOKE_LINE_SLOPE) return true;
+    if (Math.hypot(lx, ly, lz) < SMOKE_LINE_BASE_M + extra + Math.max(0, along) * SMOKE_LINE_SLOPE) return true;
   }
   return false;
 }
@@ -302,7 +303,9 @@ export function clearGhillieForSmoke(group: THREE.Object3D, rows: readonly numbe
     const topCards = mesh.userData[GHILLIE_TOP_CARDS] as readonly [number, number] | undefined;
     // whole triangles of a net, whole cards of the garnish
     const block = typeof mesh.userData[GHILLIE_TOP_VERTICES] === 'number' ? 3 : topCards ? topCards[1] : 3;
-    removed += dropBlocks(mesh, block, (v) => onSmokeLine(rows, pos.getX(v), pos.getY(v), pos.getZ(v)), (a, b, c) => {
+    // a card goes with the cloth round the line it is tied to (8 cm wider), never left standing over the cut
+    const extra = block > 3 ? SMOKE_CARD_EXTRA_M : 0;
+    removed += dropBlocks(mesh, block, (v) => onSmokeLine(rows, pos.getX(v), pos.getY(v), pos.getZ(v), extra), (a, b, c) => {
       for (let i = 0; i < rows.length; i += 6) if (lineCrosses(rows, i, a, b, c)) return true;
       return false;
     });

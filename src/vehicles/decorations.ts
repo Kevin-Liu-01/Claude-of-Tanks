@@ -425,22 +425,20 @@ type SlotPlacer = (
 ) => boolean;
 
 /**
- * The netting lane (2026-10-10): the smoke grenade lines of the decor's own banks under a frame (its rig_decor groups),
- * as [px, py, pz, dx, dy, dz] rows in that frame, for the field suit to give way to (ghillieDrape.ts).
+ * The netting lane (2026-10-10): the smoke grenade lines of the decor's own banks in its groups for one frame (not yet
+ * attached: the resources publish them last, at the frame's own origin), as [px, py, pz, dx, dy, dz] rows in that frame,
+ * for the field suit to give way to (ghillieDrape.ts).
  */
-function decorSmokeLines(frameG: THREE.Object3D): number[] {
-  frameG.updateWorldMatrix(true, true);
-  const inv = new THREE.Matrix4().copy(frameG.matrixWorld).invert(), m = new THREE.Matrix4();
+function decorSmokeLines(groups: readonly THREE.Object3D[]): number[] {
   const p = new THREE.Vector3(), d = new THREE.Vector3(), rows: number[] = [];
-  for (const group of frameG.children) {
-    if (!/^rig_decor_/.test(group.name || '')) continue;
+  for (const group of groups) {
+    group.updateMatrixWorld(true);
     group.traverse((o) => {
       const sockets = o.userData?.smokeSockets as Array<{ position: number[]; direction: number[] }> | undefined;
       if (!Array.isArray(sockets)) return;
-      m.multiplyMatrices(inv, o.matrixWorld);
       for (const s of sockets) {
-        p.fromArray(s.position).applyMatrix4(m);
-        d.fromArray(s.direction).transformDirection(m);
+        p.fromArray(s.position).applyMatrix4(o.matrixWorld);
+        d.fromArray(s.direction).transformDirection(o.matrixWorld);
         rows.push(p.x, p.y, p.z, d.x, d.y, d.z);
       }
     });
@@ -6389,6 +6387,8 @@ export function* attachTankDecorationsSteps(
       return mesh;
     }
 
+    // the netting lane: the decor's groups per frame (published last), for the field suit's smoke lines
+    const decorGroups: Record<DecorFrame, THREE.Group[]> = { hull: [], turret: [] };
     function* mergeDecorationBucket(
       frame: DecorFrame,
       map: Map<DecorMaterialKey, THREE.BufferGeometry[]>,
@@ -6428,6 +6428,7 @@ export function* attachTankDecorationsSteps(
         yield { stage: 'material-bucket', completed: done, total: keys.length };
       }
       resources.addGroup(parent, g);
+      decorGroups[frame].push(g);
       g.userData.combatHitboxRole = functional ? 'equipment' : 'nonArmor';
       g.userData.decorFunctional = functional;
       return drawCalls;
@@ -6444,7 +6445,8 @@ export function* attachTankDecorationsSteps(
     drapeGhillieOverLoads(turretG, seatedLoads.turret);
     // the netting lane (2026-10-10): a field suit gives way to the smoke banks seated here (gameplay fittings, laid
     // after the suit): its cloth and garnish in their lines of fire are cut away
-    for (const frameG of [hullG, turretG]) clearGhillieForSmoke(frameG, decorSmokeLines(frameG));
+    clearGhillieForSmoke(hullG, decorSmokeLines(decorGroups.hull));
+    clearGhillieForSmoke(turretG, decorSmokeLines(decorGroups.turret));
     yield { stage: 'publish', completed: resources.groupCount(), total: resources.groupCount() };
     summary.tris = budget.tris;
     summary.drawCalls = drawCalls;
