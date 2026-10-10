@@ -5,8 +5,8 @@ import {smokeVolume, smokeBankCount, SMOKE_WIND_X, SMOKE_WIND_Z, type SmokeVolum
 import { smokeCanisterPosition, SMOKE_GRAVITY_MPS2, type SmokeCanister } from '../sim/smokeBallistics.ts';
 import type { BlastContext } from './blastRecipes.ts';
 import {
-  puffRandom, slotSeed, smokeBankBody, smokeBankLobe, smokeBankWisp, smokeGrenadeBurst, smokeGrenadeWisp, smokeLaunchPuff,
-  smokeScreenHaze, type SmokeLobeInput,
+  puffRandom, slotSeed, smokeBankBody, smokeBankLobe, smokeBankWisp, smokeDecayHaze, smokeGrenadeBurst, smokeGrenadeWisp,
+  smokeLaunchPuff, smokeScreenHaze, type SmokeLobeInput,
 } from './atmosRecipes.ts';
 
 export interface AuxiliaryVisualEntity {
@@ -46,12 +46,19 @@ const BODY_START_S = 2.4, BODY_EVERY_S = 1.6, BODIES = 6;
 const TOP_START_S = 3.0, TOP_EVERY_S = 2.4, TOPS = 4;
 /** the screen's own end on its age (the simulation's density reaches 0 at 18 s): nothing outlives it */
 const SCREEN_END_S = SMOKE_DURATION_S - 0.2;
-/** (r2, wave 311: "see-through by 15 s") the wall holds dense while the simulation's density does (to 13.5 s), and its
- *  lobes erode away as the density falls to the sight-blocking floor (0.22 at ~16.6 s): what blocks sight looks dense,
- *  and what no longer blocks is gone */
-const LOBE_END_S = 16.6, LOBE_ERODE_S = 13.5;
-/** the bodies thin from the same age */
-const BODY_ERODE_S = 14.0;
+/** (r2, wave 311: "see-through by 15 s") the wall holds dense while the simulation's density does, and its lobes erode
+ *  as the density falls to the sight-blocking floor (0.22 at ~16.6 s); (fx 8l, wave 354a: "a full-bodied wall at 15 s
+ *  that's gone at 18 s, a hard switch-off") the erosion starts earlier and runs longer — from 12 s (the crowns, the
+ *  wall's top, from 11 s), most of a lobe gone by the blocking floor, its last wisps by 18.4 s — and the wall's remains
+ *  go on as the decay haze below */
+const LOBE_END_S = 18.4, LOBE_ERODE_S = 12.0, CROWN_ERODE_S = 11.0, CROWN_END_S = 17.4;
+/** the bodies thin from 12.5 s and are gone by 18.6 s */
+const BODY_ERODE_S = 12.5, BODY_END_S = 18.6;
+/** (fx 8l) the decay haze: broad thin veils born in the eroding bank that the scene's wind takes, lingering 10-20 s
+ *  past the sight block (cosmetic: thin, the gameplay duration untouched) */
+const DECAY_START_S = 11.5, DECAY_EVERY_S = 1.4, DECAYS = 4, DECAY_LIFE_S = [13, 20] as const;
+/** the veil (the haze tail) outlives the screen by this much */
+const HAZE_LINGER_S = 9;
 /** the haze tail: a thin, see-through veil left inside each bank as the wall erodes, drifting with the simulation's
  *  breeze until the screen's end (it hides nothing: the density no longer blocks sight by then) */
 const HAZE_START_S = 13.2, HAZE_EVERY_S = 0.8, HAZES = 2;
@@ -61,7 +68,7 @@ const CROWD_M = 12;
  *  draw one continuous wall: each bank's foot lobes stand along its own stretch of the row (half way to each neighbour,
  *  at most WALL_REACH_M: never past what its envelope covers; the row's ends reach WALL_END_M), one lobe per
  *  WALL_PITCH_M, so a bank beside a wide gap fills it and a bank among close neighbours does not pile up */
-const WALL_REACH_M = 7, WALL_END_M = 6, WALL_PITCH_M = 2.8;
+const WALL_REACH_M = 7, WALL_END_M = 6, WALL_PITCH_M = 2.2;
 
 interface MediaScreenState {
   /** the screen age (s) the schedule has been emitted up to */
@@ -291,9 +298,10 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       lobe.x0=lx;lobe.y0=ly+.6;lobe.z0=lz;
       lobe.tx=at.x;lobe.tz=at.z;
       lobe.ty=ports.ground(lobe.tx,lobe.tz)+(crown?3.0+R()*.6:1.8+R()*.9);
-      lobe.size=crown?8.6+R()*1.4:9.6+R()*2.0;
-      lobe.life=LOBE_END_S-t;
-      lobe.fadeOut=Math.min(.9,Math.max(.3,(LOBE_ERODE_S-t)/lobe.life));
+      // (fx 8l) more, smaller lobes of mixed size (WALL_PITCH_M 2.8 -> 2.2): a cauliflower wall, not a row of balls
+      lobe.size=crown?6.8+R()*1.6:7.6+R()*2.4;
+      lobe.life=(crown?CROWN_END_S:LOBE_END_S)-t;
+      lobe.fadeOut=Math.min(.9,Math.max(.25,((crown?CROWN_ERODE_S:LOBE_ERODE_S)-t)/lobe.life));
       lobe.crown=crown;lobe.bo=t-to;
       smokeBankLobe(C,R,lobe);
     }
@@ -302,13 +310,13 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     for(let j=0;j<bodies;j++){
       const t=tLand+BODY_START_S+j*bodyEvery;
       if(!(t>from&&t<=to)||t>=SCREEN_END_S)continue;
-      const life=Math.min(7.2,SCREEN_END_S-t);
+      const life=Math.min(8.4,BODY_END_S-t);
       if(t+life<to)continue;
       const R=puffRandom(slotSeed(born,lx,lz,bank,200+j));
       smokeVolume(screen,born+t,bank-2,volume,ports.ground);
       spot(w,o,-back+R()*span,(R()-.5)*.3*volume.radius,volume.x,volume.z);
       const x=at.x,z=at.z;
-      smokeBankBody(C,R,x,ports.ground(x,z)+1.5+R()*2.0,z,8+R()*2.5,life,Math.min(.75,Math.max(.3,(BODY_ERODE_S-t)/life)),t-to);
+      smokeBankBody(C,R,x,ports.ground(x,z)+1.5+R()*2.0,z,8+R()*2.5,life,Math.min(.75,Math.max(.25,(BODY_ERODE_S-t)/life)),t-to);
     }
     // 5. wisps torn off its top into the scene's wind
     const tops=Math.max(1,Math.round(TOPS*share)),topEvery=TOP_EVERY_S*TOPS/tops;
@@ -330,7 +338,20 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       smokeVolume(screen,born+t,bank-2,volume,ports.ground);
       spot(w,o,-back+R()*span,(R()-.5)*.25*volume.radius,volume.x,volume.z);
       const x=at.x,z=at.z;
-      smokeScreenHaze(C,R,x,ports.ground(x,z)+2.0+R()*1.2,z,SMOKE_WIND_X,SMOKE_WIND_Z,SCREEN_END_S-t,t-to);
+      smokeScreenHaze(C,R,x,ports.ground(x,z)+2.0+R()*1.2,z,SMOKE_WIND_X,SMOKE_WIND_Z,SCREEN_END_S-t+HAZE_LINGER_S,t-to);
+    }
+    // 7. (fx 8l) the decay: the eroding wall's top and edges taken by the scene's wind, thinning for 10-20 s past the
+    //    sight block (born inside the drifting bank while the simulation still blocks)
+    const decays=Math.max(1,Math.round(DECAYS*share));
+    for(let j=0;j<decays;j++){
+      const t=Math.max(tLand+5,DECAY_START_S+j*DECAY_EVERY_S*DECAYS/decays);
+      if(!(t>from&&t<=to)||t>=SCREEN_END_S)continue;
+      const R=puffRandom(slotSeed(born,lx,lz,bank,500+j));
+      smokeVolume(screen,born+t,bank-2,volume,ports.ground);
+      spot(w,o,-back+R()*span,(R()-.5)*.5*volume.radius,volume.x,volume.z);
+      const x=at.x,z=at.z;
+      const life=DECAY_LIFE_S[0]+R()*(DECAY_LIFE_S[1]-DECAY_LIFE_S[0]);
+      smokeDecayHaze(C,R,x,ports.ground(x,z)+2.6+R()*2.4,z,life,t-to);
     }
   }
   function mediaScreen(screen:SmokeScreen,now:number){
