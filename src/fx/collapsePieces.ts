@@ -619,7 +619,10 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
           const outward = rng() < 0.62 ? 1 : -1;
           push = outward * (plan.index === 0 ? 1.0 + 0.8 * rng() : 0.6 + 0.6 * rng());
         }
-        const releaseS = delay + (plan.index === 0 ? 0.08 + rng() * 0.25 : rng() * 0.15) * (fp.side === struckSide ? 0.3 : 1);
+        // (over storeys that give way, the top storey is shoved as it comes down onto them, not while it still stands on
+        // its floor: it would ride the drop down whole)
+        const dropS = storeys.length > 1 && plan.index === storeys.length - 1 ? 0.28 * (storeys.length - 2) + 0.45 + rng() * 0.35 : 0;
+        const releaseS = dropS + delay + (plan.index === 0 ? 0.08 + rng() * 0.25 : rng() * 0.15) * (fp.side === struckSide ? 0.3 : 1);
         const index = add({
           kind: 'wall', center, rotation: quatFromAxes(xAxis, up, zAxis), boxes, massKg,
           material: face.members.length ? 'timber' : coreOf(face).material, core: coreOf(face), back: backOf(face),
