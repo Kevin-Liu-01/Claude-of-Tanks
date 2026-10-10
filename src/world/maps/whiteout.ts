@@ -106,20 +106,23 @@ export default {
     ],
     industrialCladding: 'steel', // round 75: a polar station's halls are corrugated sheet, not brick
     yardDressing: 60, // round 75: a snowed-in station keeps its yards sparse
+    // (the map-content lane's L2, gauntlet wave 355: "brick pieces that have no place at a DEW Line station", "brick-
+    // textured crates") the fieldstone field walls are gone from the station (drift fences stand on their lines, in the
+    // landmarks below), and with them the brick rubble heaps; fewer crates in the yards, more of the station's drums
     snowCap: true, extraKits: ['winterLake'], wallStyle: 'fieldstone', wallStoneChance: 0.78,
-    wallRuns: [[-148, -76, -148, -16, 2], [-148, 20, -148, 84, 3], [-66, -58, -4, -58, 2], [-66, 52, -4, 52, 3], [-26, 296, 56, 296, 2], [316, 0, 316, 74, 2]],
+    wallRuns: [],
     well: false, hayCrates: false, fences: true,
     // (the map-content lane's round 1c, 2026-10-09) the station's pole line along its service roads; the glacial erratics
     // and frost-shattered outcrops of the plateau (was 136 rocks, 22 outcrops)
     telegraph: true, carts: false, logs: true,
-    rocks: 240, outcrops: 38, craters: 50, rubblePiles: 12, sandbagLines: 16, hedgehogs: 12,
+    rocks: 240, outcrops: 38, craters: 50, rubblePiles: 0, sandbagLines: 16, hedgehogs: 12,
     // the map-vehicles lane (2026-10-06, the period ruling): the Arctic north in the 1980s: Norway's Leopard 1 and
     // M48, Sweden's Strv 103, the Soviet T-80B and BMP-2
-    tankWrecks: { era: 'cold-war', count: 7, debris: true, ids: ['leo1a5', 'm48', 'strv103', 't80b', 'bmp2'] },
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['leo1a5', 'm48', 'strv103', 't80b', 'bmp2'] },
     // map revival lane 2, round 3 (gauntlet wave 130: "an untextured flat-tan box with a tent-shaped canopy, a floating
     // black tyre and steps to nowhere"; folded in by the map-content lane): the roadside camps (a canvas tent camp's kit)
     // and the park benches do not belong at a DEW station; its camps are the Jamesway camps below
-    inhabit: { stalls: 0, benches: 0, coreClutter: 20, sleds: 10, drums: 8, trucks: 5, jeeps: 4, drumClusters: 5, camps: 0, modernClutter: 20, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
+    inhabit: { stalls: 0, benches: 0, coreClutter: 8, sleds: 10, drums: 16, trucks: 5, jeeps: 4, drumClusters: 5, camps: 0, modernClutter: 20, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
     // the map-content lane (2026-10-09; owner: "some maps like whiteout crossing and mesa mines look unfinished and so
     // empty"; the census: 67 % of the playable square more than 30 m from anything standing, the station one strip along
     // the service street). Reference: DYE-M, the Distant Early Warning Line's main station at Cape Dyer on Baffin Island,
@@ -211,7 +214,7 @@ export default {
       { kind: 'bv206', x: 290, z: -60, yawDeg: 180 }, { kind: 'snocat', x: 100, z: -330, yawDeg: 300 },
       { kind: 'd8h', x: -300, z: -300, yawDeg: 30 },
       // (round 1c) the stripped trail south-east of the station, its abandoned machines; more working machines out in the voids
-      { kind: 'bv206', x: 206, z: -196, yawDeg: 130, wrecked: true }, { kind: 'snocat', x: 262, z: -246, yawDeg: 140, wrecked: true },
+      { kind: 'bv206', x: 206, z: -196, yawDeg: 130, wrecked: true }, { kind: 'snocat', x: 254, z: -250, yawDeg: 140, wrecked: true },
       { kind: 'bv206', x: 330, z: -296, yawDeg: 120, wrecked: true }, { kind: 'snocat', x: 392, z: -340, yawDeg: 150, wrecked: true },
       { kind: 'bv206', x: 432, z: -404, yawDeg: 135, wrecked: true },
       { kind: 'snocat', x: 290, z: 104, yawDeg: 10 }, { kind: 'bv206', x: -306, z: 218, yawDeg: 60 },

@@ -627,13 +627,14 @@ const jamesway: RegionalBuilder = (ctx) => {
   sink.span('roof', vx0 - 0.1, fl + r * 0.95, zc - r * 0.62 - 0.1, x1 + 0.1, fl + r * 0.95 + 0.12, zc + r * 0.62 + 0.1, { colour: OLIVE });
   const vf: Face = { origin: [x1, 0, zc], u: [0, 0, -1], out: [1, 0, 0], width: r * 1.24 };
   faceBox(sink, 'structureMetal', vf, 0, fl + 1.0, 0.04, 0.9, 2.0, 0.06, { colour: shade(PLY, 0.7), decor: true });
-  // the ribs at the bays' ends, proud of the sagging canvas, and the window in the far end
-  if (!mobile) {
+  // the ribs at the bays' ends, proud of the sagging canvas, and the window in the far end (dressing a phone draws and
+  // drops: the window draws the build stream, which the phone must draw as often as the desktop does)
+  sink.dressing(mobile, () => {
     for (let k = 1; k < bays; k++) {
       sink.cylinder('structureWood', [x0 + k * bayW - 0.04, fl, zc], 'x', 0.08, r + 0.03, 12, { colour: shade(OLIVE, 0.75), decor: true }, r + 0.03, false, -Math.PI / 2, Math.PI);
     }
     windowUnit(sink, endW, 0, fl + r * 0.35, 0.7, 0.6, WINDOW, rng, 0.4);
-  }
+  });
   // the boardwalk along its side
   sink.span('wood', x0, -0.3, zH, x1, fl - 0.15, bb.maxZ - 0.15);
   // the banks: along the windward side (away from the boardwalk) and against the far end
@@ -665,12 +666,26 @@ const derelict: RegionalBuilder = (ctx) => {
     }
     sink.span('wood', -W / 2, floor, -D / 2, W / 2, floor + 0.2, D / 2);
     const hWall = 1.6 + look() * 0.8, deck = floor + 0.2, top = deck + 2.6, zSplit = -D / 2 + D * 0.4;
-    sink.span('plaster3', -W / 2, deck, -D / 2, -W / 2 + 0.15, top, zSplit);
-    sink.span('plaster3', -W / 2, deck, zSplit + 1.1, -W / 2 + 0.15, floor + hWall, D / 2 - 1.2);
+    // (the map-content L2 receipts: a ruin breaks piece by piece, its pieces read off its standing walls) the walls stand
+    // as their insulated panels, some 1.2 m each, every other one a little recessed at its joints, so each panel is a
+    // piece of its own whose ragged top a blow can open under; `height` the panel's over the deck, `across` the run's
+    // wall line (x for the long walls, z for the end wall)
+    const panels = (a0: number, a1: number, alongX: boolean, across: number, height: (k: number, n: number) => number): void => {
+      const n = Math.max(1, Math.round((a1 - a0) / 1.2)), pw = (a1 - a0) / n;
+      for (let k = 0; k < n; k++) {
+        const t0 = across + (k % 2 ? 0.02 : 0), t1 = across + (k % 2 ? 0.18 : 0.2), ya = deck + height(k, n);
+        if (alongX) sink.span('plaster3', a0 + k * pw, deck, t0, a0 + (k + 1) * pw, ya, t1);
+        else sink.span('plaster3', t0, deck, a0 + k * pw, t1, ya, a0 + (k + 1) * pw);
+      }
+    };
+    // the long wall to the eaves at the door end, its last panel sheared; beyond the window gap broken down toward the
+    // open end
+    panels(-D / 2, zSplit, false, -W / 2, (k, n) => (k === n - 1 ? 2.1 : 2.6));
+    panels(zSplit + 1.1, D / 2 - 1.2, false, -W / 2, (k, n) => Math.max(0.7, (hWall - 0.2) * (1 - 0.5 * k / Math.max(1, n - 1)) * (k % 3 === 1 ? 0.86 : 1)));
     // the door end: the frame's posts and lintel, the end panel beside it, the corner post at the open side
     for (const s of [-1, 1]) sink.span('structureMetal', -W / 2 + 0.15 + 0.6 * (s + 1), deck, -D / 2, -W / 2 + 0.27 + 0.6 * (s + 1), floor + 2.3, -D / 2 + 0.12, { colour: STEEL });
     sink.span('structureMetal', -W / 2 + 0.15, floor + 2.3, -D / 2, -W / 2 + 1.47, floor + 2.42, -D / 2 + 0.12, { colour: STEEL });
-    sink.span('plaster3', -W / 2 + 1.5, deck, -D / 2, W / 2 - 0.4, top, -D / 2 + 0.15);
+    panels(-W / 2 + 1.5, W / 2 - 0.4, true, -D / 2, (k, n) => (k === n - 1 && n > 2 ? 1.7 : 2.6));
     sink.span('structureMetal', W / 2 - 0.4, deck, -D / 2, W / 2 - 0.22, top, -D / 2 + 0.18, { colour: STEEL });
     // the joists: two still up across the door end, a third fallen from the broken wall's head to the deck
     const joist = { colour: STEEL, exposed: true } as const;
@@ -684,7 +699,7 @@ const derelict: RegionalBuilder = (ctx) => {
       sink.member('plaster3', a, b, 1.15, 0.08, [dy / len, -dx / len, 0], { decor: true, exposed: true });
     }
     // the snow drifted onto the deck against the standing wall
-    const inner: Face = { origin: [-W / 2 + 0.15, deck, (-D / 2 + zSplit) / 2], u: [0, 0, -1], out: [1, 0, 0], width: zSplit + D / 2 };
+    const inner: Face = { origin: [-W / 2 + 0.2, deck, (-D / 2 + zSplit) / 2], u: [0, 0, -1], out: [1, 0, 0], width: zSplit + D / 2 };
     bank(sink, inner, -inner.width / 2 + 0.2, inner.width / 2, 0.9, 0.5, 1.5, -0.04, W + D);
   });
   return sink.finish();

@@ -35,7 +35,7 @@ export const SET_PIECE_SIZE: Readonly<Record<SetPieceKind, { hw: number; hl: num
   k2tram: { hw: 1.25, hl: 10.2, h: 3.15, collider: true },
   stz3: { hw: 0.93, hl: 1.85, h: 2.0, collider: true },
   an26: { hw: 2.65, hl: 13.2, h: 5.2, collider: true },
-  bv206: { hw: 0.95, hl: 3.45, h: 2.5, collider: true },
+  bv206: { hw: 0.95, hl: 3.6, h: 2.5, collider: true },
   snocat: { hw: 1.25, hl: 2.75, h: 2.75, collider: true },
   d8h: { hw: 1.95, hl: 2.9, h: 3.4, collider: true },
   haulpak: { hw: 2.3, hl: 3.95, h: 4.6, collider: true },
