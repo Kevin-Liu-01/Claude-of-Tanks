@@ -391,7 +391,7 @@ const SHEETS: readonly Rgb[] = [rgb(0x3c6e9f), rgb(0xd3d4cf), rgb(0x8f908a), rgb
  * pavement, longer along the kerb than across it (x along the kerb, z across, y up from the ground at its centre).
  */
 function kerbHeap(sink: PartSink, look: () => number, size: number, mobile: boolean): void {
-  const n = mobile ? 3 : 5 + ((look() * 5) | 0);
+  const n = mobile ? 3 : 4 + ((look() * 4) | 0);
   for (let i = 0; i < n; i++) {
     const w = (0.18 + look() * 0.45) * size, h = (0.12 + look() * 0.32) * size, d = (0.15 + look() * 0.35) * size;
     const x = (look() - 0.5) * 2.2 * size, z = (look() - 0.5) * 0.9 * size;
@@ -441,7 +441,7 @@ function dressSiegeStreets(ctx: TramContext, keep: YardKeepOut | null, limit = 3
     && clearOfKeepOut(keep, x, z, r, r, tx, tz) && clearOfRoads(roads, x, z, r, r * 0.6, tx, tz);
   for (const [ri, line] of roads.entries()) {
     if (!line || line.length < 2) continue;
-    const st = resample(line, mobile ? 4.0 : 2.0, limit);
+    const st = resample(line, mobile ? 5.0 : 3.0, limit);
     for (const s of st) {
       for (const side of [-1, 1]) {
         const look = streamFrom(hashSeed('sarajevo-kerb', ri, Math.round(s.s * 10), side));
@@ -458,12 +458,12 @@ function dressSiegeStreets(ctx: TramContext, keep: YardKeepOut | null, limit = 3
           }
         }
         // the gutter's litter: masonry chips and plaster flakes washed against the kerb, 4.4-4.9 m off the line
-        if (!mobile && w > 0.3 && look() < 0.55) {
+        if (!mobile && w > 0.36 && look() < 0.3) {
           const g = KERB_M - 0.2 - look() * 0.5, along = (look() - 0.5) * 1.8;
           const x = s.x + s.nx * side * g + s.tx * along, z = s.z + s.nz * side * g + s.tz * along;
           if (clears(solids, x, z, 0.4, 0.4, s.tx, s.tz, 0.1) && clearOfKeepOut(keep, x, z, 0.4, 0.4, s.tx, s.tz)) {
             sink.placed(look() * 6.28, x, hf.getHeightAt(x, z), z, () => {
-              for (let k = 0, n = 2 + ((look() * 4) | 0); k < n; k++) {
+              for (let k = 0, n = 2 + ((look() * 3) | 0); k < n; k++) {
                 const ww = 0.08 + look() * 0.22, hh = 0.04 + look() * 0.09, dd = 0.06 + look() * 0.18;
                 const px = (look() - 0.5) * 0.9, pz = (look() - 0.5) * 0.5;
                 sink.span('structureMetal', px - ww / 2, -0.03, pz - dd / 2, px + ww / 2, hh, pz + dd / 2,
