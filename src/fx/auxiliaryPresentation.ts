@@ -5,8 +5,8 @@ import {smokeVolume, smokeBankCount, SMOKE_WIND_X, SMOKE_WIND_Z, type SmokeVolum
 import { smokeCanisterPosition, SMOKE_GRAVITY_MPS2, type SmokeCanister } from '../sim/smokeBallistics.ts';
 import type { BlastContext } from './blastRecipes.ts';
 import {
-  puffRandom, slotSeed, smokeBankBody, smokeBankLobe, smokeBankWisp, smokeDecayHaze, smokeGrenadeBurst, smokeGrenadeWisp,
-  smokeLaunchPuff, smokeScreenHaze, type SmokeLobeInput,
+  puffRandom, slotSeed, smokeBankBody, smokeBankLobe, smokeBankWisp, smokeCanisterStrike, smokeDecayHaze, smokeGrenadeBurst,
+  smokeGrenadeWisp, smokeLaunchPuff, smokeScreenHaze, type SmokeLobeInput,
 } from './atmosRecipes.ts';
 
 export interface AuxiliaryVisualEntity {
@@ -35,10 +35,17 @@ interface Ports {
 // Each bank's puffs are emitted at fixed times of its own life (seconds after its grenade lands: the simulation's
 // growth clock), each from its own seeded stream: the same screen draws the same cloud at any frame rate, and a screen
 // first seen late (a joiner, a frame hitch, a killcam cut) is filled in with every puff still alive, backdated.
-/** in flight: a wisp behind each bank's lead grenade this often (s of flight) */
-const WISP_EVERY_S = 0.1;
+/** in flight: a wisp behind each bank's lead grenade this often (s of flight); (fx 8m, wave 337: "strings of
+ *  hard-edged near-white balls") about a wisp's own size apart (0.84 m at the launch's 14 m/s), so a trail is a thread */
+const WISP_EVERY_S = 0.06;
 /** at most this many banks trail wisps (a 24-tube salvo's arcs overlap: a few trails read as all of them) */
-const WISP_BANKS = 6;
+const WISP_BANKS = 3;
+/** a wisp's longest life (atmosRecipes.ts smokeGrenadeWisp): a late first frame backdates none that had died */
+const WISP_LIFE_S = 1.2;
+/** (fx 8m, wave 337: "no visible strike or bounce at the wall") a receipt that struck a wall carries one group of this
+ *  many numbers per bounce after its launch's seven (sim/smokeBallistics.ts: the time it left the wall, where, and its
+ *  velocity after); the strike's puffs live under this long */
+const STRIKE_SEGMENT = 7, STRIKE_LIFE_S = 2;
 /** bloom: lobes are born this far apart, the foot lobes first with a crown every third (any prefix mixes both) */
 const LOBE_EVERY_S = 0.09;
 /** body puffs keep the wall dense while the lobes age; wisps tear off its top in the scene's wind */
@@ -271,7 +278,7 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     if(shot&&st.wisps[bank]){
       for(let k=1;k*WISP_EVERY_S<tLand;k++){
         const t=k*WISP_EVERY_S;
-        if(!(t>from&&t<=to)||t+1.7<to)continue;
+        if(!(t>from&&t<=to)||t+WISP_LIFE_S<to)continue;
         smokeCanisterPosition(shot,t,landing);
         smokeGrenadeWisp(C,puffRandom(slotSeed(born,lx,lz,bank,k)),landing.x,landing.y,landing.z,t-to);
       }
@@ -297,9 +304,12 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       spot(w,o,along,crown?(R()-.5)*1.5:(R()-.5)*3.2,cx,cz);
       lobe.x0=lx;lobe.y0=ly+.6;lobe.z0=lz;
       lobe.tx=at.x;lobe.tz=at.z;
-      lobe.ty=ports.ground(lobe.tx,lobe.tz)+(crown?3.0+R()*.6:1.8+R()*.9);
-      // (fx 8l) more, smaller lobes of mixed size (WALL_PITCH_M 2.8 -> 2.2): a cauliflower wall, not a row of balls
-      lobe.size=crown?6.8+R()*1.6:7.6+R()*2.4;
+      // (fx 8m, wave 337: "a flat grey mass with little billow") the crowns stand on the feet, their tops a metre and
+      // more over the feet's line (a lumpy, sunlit top), every centre inside the envelope's 4.2 m
+      lobe.ty=ports.ground(lobe.tx,lobe.tz)+(crown?3.55+R()*.55:1.6+R()*.8);
+      // (fx 8l) more, smaller lobes of mixed size (WALL_PITCH_M 2.8 -> 2.2): a cauliflower wall, not a row of balls;
+      // (fx 8m) the crowns smaller than the feet they stand on, so they read as its bumps
+      lobe.size=crown?5.2+R()*1.2:7.2+R()*2.0;
       lobe.life=(crown?CROWN_END_S:LOBE_END_S)-t;
       lobe.fadeOut=Math.min(.9,Math.max(.25,((crown?CROWN_ERODE_S:LOBE_ERODE_S)-t)/lobe.life));
       lobe.crown=crown;lobe.bo=t-to;
@@ -354,6 +364,27 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       smokeDecayHaze(C,R,x,ports.ground(x,z)+2.6+R()*2.4,z,life,t-to);
     }
   }
+  /** (fx 8m, wave 337: "no visible strike or bounce at the wall") every canister's strikes on its way, over screen ages
+   *  (from, to]: where it left the wall, the wall's normal from the turn the bounce made (the velocity after less the
+   *  velocity it struck with: the reflection turns the speed into the wall out of it). Receipts without bounces (the
+   *  launch's seven numbers) strike nothing. */
+  function mediaStrikes(C:BlastContext,screen:SmokeScreen,from:number,to:number){
+    const shots=screen.canisters;if(!shots)return;
+    for(let i=0;i<shots.length;i++){
+      const shot=shots[i]!;
+      for(let o=7,b=0;o+STRIKE_SEGMENT-1<shot.length;o+=STRIKE_SEGMENT,b++){
+        const t=shot[o]!;
+        if(!(t>from&&t<=to)||t+STRIKE_LIFE_S<to)continue;
+        // the velocity it struck with: the segment before this bounce's, at the bounce
+        const p=o-STRIKE_SEGMENT,t0=p>=7?shot[p]!:0,v=p>=7?p+4:3;
+        let nx=shot[o+4]!-shot[v]!,ny=shot[o+5]!-(shot[v+1]!-SMOKE_GRAVITY_MPS2*(t-t0)),nz=shot[o+6]!-shot[v+2]!;
+        const nl=Math.hypot(nx,ny,nz);
+        if(nl>1e-6){nx/=nl;ny/=nl;nz/=nl;}else{nx=0;ny=1;nz=0;}
+        const x=shot[o+1]!,y=shot[o+2]!,z=shot[o+3]!;
+        smokeCanisterStrike(C,puffRandom(slotSeed(screen.born,x,z,i,600+b)),x,y,z,nx,ny,nz,t-to);
+      }
+    }
+  }
   function mediaScreen(screen:SmokeScreen,now:number){
     let st=mediaScreens.get(screen);
     if(!st){st=mediaState(screen);mediaScreens.set(screen,st);}
@@ -362,6 +393,7 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     if(!(age>st.emittedTo))return;
     const from=st.emittedTo;st.emittedTo=age;
     for(let bank=0;bank<smokeBankCount(screen);bank++)mediaBank(blast!,screen,bank,st,from,age);
+    mediaStrikes(blast!,screen,from,age);
   }
   /** Screens no longer published are forgotten (the match list keeps 18 s; a rematch clears it). */
   function pruneMediaScreens(){
