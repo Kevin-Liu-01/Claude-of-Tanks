@@ -331,7 +331,10 @@ function evaluate(plan: PartPlan, x: number, y: number, z: number): boolean {
     if (u <= 0) continue;
     const uc = Math.min(1, u);
     const [w, dw] = smooth(0, 1, uc);
-    const [gy, dgy] = smooth(en.yLo, en.yHi, y);
+    // the buckle lifts a band between yLo and yHi (the bonnet, the glacis), never what stands above it (a roof)
+    const midY = (en.yLo + en.yHi) * 0.5;
+    const [up, dup] = smooth(en.yLo, midY, y), [down, ddown] = smooth(midY, en.yHi, y);
+    const gy = up * (1 - down), dgy = dup * (1 - down) - up * ddown;
     const lift = en.buckle * 4 * uc * (1 - uc);
     D[2] -= en.s * en.amount * w; D[1] += lift * gy;
     J[8] -= en.amount * dw / en.zone;
@@ -370,6 +373,117 @@ function evaluate(plan: PartPlan, x: number, y: number, z: number): boolean {
     moved = true;
   }
   return moved;
+}
+
+/**
+ * Give a plate corners to bend (2026-10-09, after the first frames: a hull is built of boxes, a plate of four corners has
+ * nothing to dent in its middle, and a dent centred on a corner only tilted the plate): split every triangle edge longer
+ * than `maxEdge` at its midpoint until none is — the split point is the edge's alone, so two triangles that share an edge
+ * split it alike and the refined surface stays closed under the field. Every attribute is interpolated. Non-indexed out;
+ * the input is left as it was. Only a part with features is refined (a part the plan leaves alone keeps its triangles).
+ */
+export function refineForCrumple(plan: WreckCrumplePlan | null, geometry: THREE.BufferGeometry, mesh: THREE.Object3D,
+  maxEdge = 0.4): THREE.BufferGeometry {
+  if (!plan || /InteriorFill/.test(mesh.name)) return geometry;
+  // the budget (a map draws its hulks in one mesh): the armour shell and the gun take most, the tracks some, the dressing
+  // little — a wreck grows by about a sixth
+  const maxTriangles = /^(hull|turret|hullExternalArmor|turretExternalArmor|gun|gunMount)$/.test(mesh.name) ? 2500
+    : /^gearTrackBand/.test(mesh.name) ? 900 : 400;
+  const part = plan.parts[plan.partOf(mesh)];
+  if (!part) return geometry;
+  // where the field acts, in the part's frame: a sphere per feature (a triangle outside them all keeps its corners; the
+  // field is nil at their rims, so the refined patch meets its unrefined neighbours without a gap)
+  const spheres: number[] = [];
+  const sphere = (x: number, y: number, z: number, r: number) => { spheres.push(x, y, z, r + maxEdge); };
+  for (const d of part.dents) sphere(d.cx, d.cy, d.cz, Math.sqrt(d.r2));
+  for (const c of part.creases) sphere(c.cx, c.cy, c.cz, Math.max(c.half, c.w));
+  for (const b of part.bulges) sphere(b.cx, b.cy, b.cz, Math.sqrt(b.r2));
+  for (const dr of part.droops) for (const sg of dr.segments) sphere(dr.side * (dr.xIn + dr.xOut) * 0.5, dr.yMin + 0.2, sg.zc, sg.half + (dr.xOut - dr.xIn));
+  for (const hg of part.hinges) for (const sg of hg.segments) sphere(hg.side * (hg.xMin + 0.3), hg.hingeY - 0.5, sg.zc, sg.half + 0.8);
+  for (const sa of part.sags) sphere(sa.side * (sa.xIn + 0.3), sa.yUpper + 0.2, sa.segment.zc, sa.segment.half + 0.6);
+  const refineAll = !!part.bend || part.ends.length > 0 || part.roofs.length > 0;
+  if (!spheres.length && !refineAll) return geometry;
+  const toFrame = part.toFrame.elements;
+  const near = (cx: number, cy: number, cz: number, r: number): boolean => {
+    if (refineAll) return true;
+    const x = toFrame[0] * cx + toFrame[4] * cy + toFrame[8] * cz + toFrame[12];
+    const y = toFrame[1] * cx + toFrame[5] * cy + toFrame[9] * cz + toFrame[13];
+    const z = toFrame[2] * cx + toFrame[6] * cy + toFrame[10] * cz + toFrame[14];
+    for (let i = 0; i < spheres.length; i += 4) {
+      const dx = x - spheres[i], dy = y - spheres[i + 1], dz = z - spheres[i + 2], rr = r + spheres[i + 3];
+      if (dx * dx + dy * dy + dz * dz < rr * rr) return true;
+    }
+    return false;
+  };
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.attributes.position as THREE.BufferAttribute;
+  const names = Object.keys(source.attributes).filter((n) => !(source.attributes[n] as THREE.InterleavedBufferAttribute).isInterleavedBufferAttribute);
+  const sizes = names.map((n) => (source.attributes[n] as THREE.BufferAttribute).itemSize);
+  const stride = sizes.reduce((a, b) => a + b, 0);
+  const posOffset = names.indexOf('position') >= 0 ? sizes.slice(0, names.indexOf('position')).reduce((a, b) => a + b, 0) : 0;
+  const max2 = maxEdge * maxEdge;
+  const vertices = position.count;
+  // every vertex's attributes, interleaved (one pass), and the output grown in place
+  const src = new Float64Array(vertices * stride);
+  for (let k = 0, o = 0; k < names.length; o += sizes[k], k++) {
+    const array = (source.attributes[names[k]] as THREE.BufferAttribute).array, size = sizes[k];
+    for (let i = 0; i < vertices; i++) for (let c = 0; c < size; c++) src[i * stride + o + c] = array[i * size + c] as number;
+  }
+  let out = new Float64Array(Math.max(stride * 3, src.length + stride * 3 * 64)), used = 0;
+  const emit = (tri: Float64Array) => {
+    if (used + tri.length > out.length) { const grown = new Float64Array(out.length * 2); grown.set(out.subarray(0, used)); out = grown; }
+    out.set(tri, used); used += tri.length;
+  };
+  const triangles = vertices / 3;
+  let made = 0;
+  const p = posOffset, s3 = stride * 3;
+  const stack: Float64Array[] = [];
+  for (let t = 0; t < triangles; t++) {
+    stack.push(src.slice(t * s3, t * s3 + s3));
+    while (stack.length) {
+      const tri = stack.pop()!;
+      const ax = tri[p], ay = tri[p + 1], az = tri[p + 2];
+      const bx = tri[stride + p], by = tri[stride + p + 1], bz = tri[stride + p + 2];
+      const cx = tri[2 * stride + p], cy = tri[2 * stride + p + 1], cz = tri[2 * stride + p + 2];
+      const ab = (ax - bx) ** 2 + (ay - by) ** 2 + (az - bz) ** 2;
+      const bc = (bx - cx) ** 2 + (by - cy) ** 2 + (bz - cz) ** 2;
+      const ca = (cx - ax) ** 2 + (cy - ay) ** 2 + (cz - az) ** 2;
+      const longest = Math.max(ab, bc, ca);
+      if (longest <= max2 || made >= maxTriangles
+        || !near((ax + bx + cx) / 3, (ay + by + cy) / 3, (az + bz + cz) / 3, Math.sqrt(longest) * 0.6)) { emit(tri); continue; }
+      made++;
+      // bisect the longest edge (ties in a fixed order, so a shared edge is split the same way from both sides)
+      const e = ab === longest ? 0 : bc === longest ? 1 : 2;
+      const i0 = e, i1 = (e + 1) % 3, i2 = (e + 2) % 3;
+      const m = new Float64Array(stride);
+      for (let c = 0; c < stride; c++) m[c] = (tri[i0 * stride + c] + tri[i1 * stride + c]) * 0.5;
+      const first = new Float64Array(s3), second = new Float64Array(s3);
+      // first: (v[i0], m, v[i2]); second: (m, v[i1], v[i2]) — the winding kept
+      const put = (dst: Float64Array, slot: number, from: Float64Array, at: number) => { dst.set(from.subarray(at * stride, at * stride + stride), slot * stride); };
+      const order = [i0, i1, i2];
+      // keep the original winding: write the triangles in the order the source's corners run
+      for (let slot = 0; slot < 3; slot++) {
+        const v = order.indexOf(slot);
+        if (slot === i1) first.set(m, slot * stride); else put(first, slot, tri, slot);
+        if (slot === i0) second.set(m, slot * stride); else put(second, slot, tri, slot);
+        void v;
+      }
+      stack.push(first, second);
+    }
+  }
+  if (!made) { if (source !== geometry) source.dispose(); return geometry; }
+  const count = used / stride;
+  const refined = new THREE.BufferGeometry();
+  for (let k = 0, o = 0; k < names.length; o += sizes[k], k++) {
+    const attr = source.attributes[names[k]] as THREE.BufferAttribute, size = sizes[k];
+    const Ctor = (attr.array as Float32Array).constructor as new (n: number) => Float32Array;
+    const array = new Ctor(count * size);
+    for (let i = 0; i < count; i++) for (let c = 0; c < size; c++) array[i * size + c] = out[i * stride + o + c];
+    refined.setAttribute(names[k], new THREE.BufferAttribute(array, size, attr.normalized));
+  }
+  refined.userData = { ...geometry.userData };
+  if (source !== geometry) source.dispose();
+  return refined;
 }
 
 const _v = new THREE.Vector3();
@@ -453,7 +567,16 @@ export function crumpleBurntVehicle(geometry: THREE.BufferGeometry, seed: number
     part.ends.push({ s, zFace: s > 0 ? b.max.z : b.min.z, zone: 0.7 + rng() * 0.4, amount: 0.2 + rng() * 0.25,
       buckle: 0.05 + rng() * 0.07, yLo: top * 0.35, yHi: top * 0.6 });
   }
+  const before = geometry.boundingBox!.max.y;
   applyPart(part, geometry);
   geometry.computeBoundingBox();
+  // never taller than it stood (a role's height allowance is the intact build's)
+  const after = geometry.boundingBox!.max.y;
+  if (after > before + 1e-6) {
+    const k = before / after;
+    for (let i = 0; i < position.count; i++) position.setY(i, position.getY(i) * k);
+    position.needsUpdate = true;
+    geometry.computeBoundingBox();
+  }
   geometry.computeBoundingSphere();
 }
