@@ -50,8 +50,8 @@ export interface CollapsePart {
   readonly rect: { u0: number; u1: number; y0: number; y1: number };
 }
 
-/** A partition key's stride: a piece's key is its index × this + its part. */
-export const PART_STRIDE = 8;
+/** A partition key's stride: a piece's key is its index × this + its part (a piece has fewer parts than this). */
+export const PART_STRIDE = 16;
 
 export interface CollapsePiece {
   readonly index: number;
@@ -86,10 +86,13 @@ export interface CollapsePiece {
    * gap; the far face is shoved over last.
    */
   readonly shatterS: number;
-  /** The parts it breaks into on its first hard landing (none: it stays whole), and their cuts on the face. */
+  /** The parts it breaks into on its first hard landing (none: it stays whole), and their cuts: along `u` and `v` of
+   *  its part frame (a wall's face: u along it, v up; a floor's: the body's x and z; a roof slab's: along its eave and up
+   *  its slope), measured from the frame's origin. */
   readonly parts: readonly CollapsePart[];
   readonly partCutsU: readonly number[];
   readonly partCutsY: readonly number[];
+  readonly partFrame: { origin: Vec3; u: Vec3; v: Vec3 } | null;
 }
 
 /** The blow that brought it down, in the body frame (the stage event's direction and point). */
@@ -436,11 +439,20 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
   }
 
   const pieces: CollapsePiece[] = [];
-  const add = (piece: Omit<CollapsePiece, 'index' | 'parts' | 'partCutsU' | 'partCutsY'>
-    & Partial<Pick<CollapsePiece, 'parts' | 'partCutsU' | 'partCutsY'>>): number => {
+  const add = (piece: Omit<CollapsePiece, 'index' | 'parts' | 'partCutsU' | 'partCutsY' | 'partFrame'>
+    & Partial<Pick<CollapsePiece, 'parts' | 'partCutsU' | 'partCutsY' | 'partFrame'>>): number => {
     if (pieces.length >= cap) return -1;
-    pieces.push({ parts: [], partCutsU: [], partCutsY: [], ...piece, index: pieces.length });
+    pieces.push({ parts: [], partCutsU: [], partCutsY: [], partFrame: null, ...piece, index: pieces.length });
     return pieces.length - 1;
+  };
+  /** Cuts across a span [a, b] into n parts, jittered, kept 0.6 m apart (the building's own stream). */
+  const spanCuts = (a: number, b: number, n: number): number[] => {
+    const cuts: number[] = [];
+    for (let j = 1; j < n; j++) {
+      const c = a + (j + (geo() - 0.5) * 0.3) * (b - a) / n;
+      if (c - (cuts.length ? cuts[cuts.length - 1] : a) > 0.6 && b - c > 0.6) cuts.push(c);
+    }
+    return cuts;
   };
   const up: Vec3 = [0, 1, 0];
 
@@ -636,6 +648,7 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
               : storeys.length < 2 || struckSide < 0 ? -1
                 : 0.28 * plan.index + ((fp.side ^ 1) === struckSide ? 0.55 + rng() * 0.3 : 0.16 + rng() * 0.22),
           parts, partCutsU, partCutsY,
+          partFrame: parts.length ? { origin: face.origin, u: face.u, v: [0, 1, 0] } : null,
         });
         fp.panels.push(index);
       }
@@ -653,6 +666,16 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
     const concrete = slot.material === 'concrete';
     const area = anatomy.w * anatomy.d;
     const kgM2 = concrete ? (fy1 - fy0) * DENSITY.concrete : 95;
+    // it cracks across its joists when it lands: two or three each way by its size (body x and z about its centre)
+    const longX = hw >= hd;
+    const fx = spanCuts(-hw, hw, longX && hw * 2 > 7 ? 3 : 2), fz = spanCuts(-hd, hd, !longX && hd * 2 > 7 ? 3 : 2);
+    const xs = [-hw, ...fx, hw], zs = [-hd, ...fz, hd];
+    const floorParts: CollapsePart[] = [];
+    for (let iz = 0; iz + 1 < zs.length; iz++) for (let ix = 0; ix + 1 < xs.length; ix++) {
+      const a0 = xs[ix], a1 = xs[ix + 1], b0 = zs[iz], b1 = zs[iz + 1];
+      floorParts.push({ center: [(a0 + a1) / 2, 0, (b0 + b1) / 2], half: [(a1 - a0) / 2 - GAP_M / 2, (fy1 - fy0) / 2, (b1 - b0) / 2 - GAP_M / 2],
+        massKg: Math.max(200, area * kgM2) * (a1 - a0) * (b1 - b0) / (4 * hw * hd), rect: { u0: a0, u1: a1, y0: b0, y1: b1 } });
+    }
     plan.floorPiece = add({
       kind: 'floor', center: [cx, (fy0 + fy1) / 2, cz], rotation: [0, 0, 0, 1],
       boxes: [{ center: [0, 0, 0], half: [hw, (fy1 - fy0) / 2, hd] }], massKg: Math.max(200, area * kgM2),
@@ -660,6 +683,8 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
       // its struck side drops into the gap the burst wall left; the rest of it follows as its walls go
       releaseS: 0.1 + rng() * 0.12, kick: [0, -1.1 - 0.5 * rng(), 0],
       kickAt: struckSide >= 0 ? [SIDES[struckSide][0] * hw * 0.85, 0, SIDES[struckSide][2] * hd * 0.85] : [0, 0, 0], shatterS: -1,
+      parts: floorParts.length > 1 ? floorParts : [], partCutsU: floorParts.length > 1 ? fx : [], partCutsY: floorParts.length > 1 ? fz : [],
+      partFrame: floorParts.length > 1 ? { origin: [cx, 0, cz], u: [1, 0, 0], v: [0, 0, 1] } : null,
     });
   }
 
@@ -719,6 +744,21 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
         center: [(ea + eb) / 2 - ec, 0, -((fa + fb) / 2 - fc)], half: [(eb - ea) / 2, t / 2, (fb - fa) / 2],
       }));
       const areaM2 = polygonArea(slab.outline) * Math.max(0.05, Math.min(1, (b - a) / Math.max(0.1, slab.e1 - slab.e0)));
+      // a plain slab cracks when it lands: across its eave if wide, along it if its slope is long (a hip's narrowing
+      // bands stay whole)
+      const roofParts: CollapsePart[] = [];
+      let ru: number[] = [], rv: number[] = [];
+      if (rects.length === 1) {
+        const [ea, eb, fa, fb] = rects[0];
+        ru = spanCuts(ea, eb, eb - ea > 3.5 ? 2 : 1);
+        rv = spanCuts(fa, fb, fb - fa > 4.5 ? 2 : 1);
+        const us = [ea, ...ru, eb], vs = [fa, ...rv, fb];
+        if (us.length > 2 || vs.length > 2) for (let iv = 0; iv + 1 < vs.length; iv++) for (let iu = 0; iu + 1 < us.length; iu++) {
+          const u0 = us[iu], u1 = us[iu + 1], v0 = vs[iv], v1 = vs[iv + 1];
+          roofParts.push({ center: [(u0 + u1) / 2 - ec, 0, -((v0 + v1) / 2 - fc)], half: [(u1 - u0) / 2 - GAP_M / 2, t / 2, (v1 - v0) / 2 - GAP_M / 2],
+            massKg: Math.max(60, areaM2 * kg) * (u1 - u0) * (v1 - v0) / Math.max(0.01, (eb - ea) * (fb - fa)), rect: { u0, u1, y0: v0, y1: v1 } });
+        }
+      }
       // the roof drops into the building as its walls go: straight down, tipping toward the struck side
       const sx = struckSide >= 0 ? SIDES[struckSide] : [0, 0, 0];
       const index = add({
@@ -727,6 +767,8 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
         // its low edge dropped (the struck side's slabs first, the far side's as their walls go)
         releaseS: (dot([slab.n[0], 0, slab.n[2]], sx as Vec3) > 0.3 ? 0.08 : 0.2) + rng() * 0.2,
         kick: [-sx[0] * 0.3, -0.7 - 0.4 * rng(), -sx[2] * 0.3], kickAt: [0, 0, boxes[0].half[2] * 0.8], shatterS: -1,
+        parts: roofParts, partCutsU: roofParts.length ? ru : [], partCutsY: roofParts.length ? rv : [],
+        partFrame: roofParts.length ? { origin: slab.p, u: slab.e, v: slab.f } : null,
       });
       slab.pieces.push(index);
     }
@@ -796,10 +838,11 @@ function backOf(face: DamageFace): FractureSlot {
   return coreOf(face);
 }
 
-/** A floor's underside: the ceiling's lime under timber joists, the slab's own concrete. */
+/** A floor's underside: its joists and boards under the dust of the fall (a broad bright face read as a clean sheet
+ *  in the street), the slab's own concrete. */
 function ceilingOf(slot: FractureSlot): FractureSlot {
   if (slot.material === 'concrete') return slot;
-  return { ...slot, tint: [Math.min(1, slot.tint[0] * 1.1), Math.min(1, slot.tint[1] * 1.08), Math.min(1, slot.tint[2] * 1.05)] };
+  return { ...slot, tint: [slot.tint[0] * 0.78, slot.tint[1] * 0.76, slot.tint[2] * 0.74] };
 }
 
 // ---- the partition: the building's own triangles between its pieces ------------------------------------------------
@@ -927,7 +970,7 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     const c = centroid(poly);
     let storey = plan.storeys[plan.storeys.length - 1];
     for (const st of plan.storeys) {
-      if (st.floorPiece >= 0 && c[1] >= st.floorY0 && c[1] < st.floorY1) { emit(st.floorPiece, poly); return; }
+      if (st.floorPiece >= 0 && c[1] >= st.floorY0 && c[1] < st.floorY1) { partAssign(poly, depth, null, st.floorPiece); return; }
       if (c[1] < st.floorY1 || st === plan.storeys[plan.storeys.length - 1]) { storey = st; break; }
     }
     // a level surface deep inside (a ceiling under the attic, a room's floor plane): no wall's — it goes with the floor
@@ -938,7 +981,10 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
       ny /= poly.length;
       const deep = Math.min(plan.hw - Math.abs(c[0] - plan.cx), plan.hd - Math.abs(c[2] - plan.cz));
       const wall = storey.faces.reduce((m, f) => Math.max(m, f.thickness), 0.3);
-      if (Math.abs(ny) > 0.85 && deep > wall + 0.9) { emit(storey.floorPiece >= 0 ? storey.floorPiece : DROPPED_PIECE, poly); return; }
+      if (Math.abs(ny) > 0.85 && deep > wall + 0.9) {
+        if (storey.floorPiece >= 0) partAssign(poly, depth, null, storey.floorPiece); else emit(DROPPED_PIECE, poly);
+        return;
+      }
     }
     // the side by the footprint's diagonals
     const dx = plan.hd, dz = plan.hw;
@@ -970,25 +1016,26 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     partAssign(poly, depth, fp, piece);
   };
 
-  // a panel that cracks on landing: its parts by their cuts on the face
-  const partAssign = (poly: Poly, depth: number, fp: FacePlan, piece: number): void => {
+  // a piece that cracks on landing: its parts by their cuts in its part frame
+  const partAssign = (poly: Poly, depth: number, _fp: FacePlan | null, piece: number): void => {
     if (piece < 0) { emit(STATIC_PIECE, poly); return; }
     const p = plan.pieces[piece];
-    if (!p.parts.length) { emit(piece, poly); return; }
-    const f = fp.face;
-    const uOff = f.u[0] * f.origin[0] + f.u[1] * f.origin[1] + f.u[2] * f.origin[2];
+    const pf = p.partFrame;
+    if (!p.parts.length || !pf) { emit(piece, poly); return; }
+    const { origin: o, u: U, v: V } = pf;
+    const uOff = U[0] * o[0] + U[1] * o[1] + U[2] * o[2], vOff = V[0] * o[0] + V[1] * o[1] + V[2] * o[2];
     for (const cut of p.partCutsU) {
-      if (across(poly, f.u[0], f.u[1], f.u[2], uOff + cut, depth, (h, _s, dd) => partAssign(h, dd, fp, piece))) return;
+      if (across(poly, U[0], U[1], U[2], uOff + cut, depth, (h, _s, dd) => partAssign(h, dd, null, piece))) return;
     }
     for (const cut of p.partCutsY) {
-      if (across(poly, 0, 1, 0, f.origin[1] + cut, depth, (h, _s, dd) => partAssign(h, dd, fp, piece))) return;
+      if (across(poly, V[0], V[1], V[2], vOff + cut, depth, (h, _s, dd) => partAssign(h, dd, null, piece))) return;
     }
     const c = centroid(poly);
-    const u = f.u[0] * c[0] + f.u[1] * c[1] + f.u[2] * c[2] - uOff, y = c[1] - f.origin[1];
-    let iu = 0, iy = 0;
+    const u = U[0] * c[0] + U[1] * c[1] + U[2] * c[2] - uOff, v = V[0] * c[0] + V[1] * c[1] + V[2] * c[2] - vOff;
+    let iu = 0, iv = 0;
     while (iu < p.partCutsU.length && u >= p.partCutsU[iu]) iu++;
-    while (iy < p.partCutsY.length && y >= p.partCutsY[iy]) iy++;
-    emit(piece, poly, iu + (p.partCutsU.length + 1) * iy);
+    while (iv < p.partCutsY.length && v >= p.partCutsY[iv]) iv++;
+    emit(piece, poly, iu + (p.partCutsU.length + 1) * iv);
   };
 
   // over the stub: an end panel's corner pier stays to its top
@@ -1062,7 +1109,7 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     let k = 0;
     while (k < slab.cuts.length && e >= slab.cuts[k]) k++;
     const piece = slab.pieces[k] ?? -1;
-    emit(piece >= 0 ? piece : STATIC_PIECE, poly);
+    partAssign(poly, depth, null, piece);
   };
 
   // most triangles lie inside one piece: each corner probed alone (no plane can split a point), and when all three
@@ -1137,7 +1184,10 @@ export function capPiece(plan: CollapsePlan, piece: CollapsePiece): CapQuad[] {
       const cx = qy * z - qz * y + qw * x, cy = qz * x - qx * z + qw * y, cz = qx * y - qy * x + qw * z;
       return [x + 2 * (qy * cz - qz * cy), y + 2 * (qz * cx - qx * cz), z + 2 * (qx * cy - qy * cx)];
     };
-    for (const box of piece.boxes) {
+    const capBoxes: Array<CollapseBox & { part: number }> = piece.parts.length
+      ? piece.parts.map((pp, k) => ({ center: pp.center, half: pp.half, part: k }))
+      : piece.boxes.map((b) => ({ ...b, part: 0 }));
+    for (const box of capBoxes) {
       if (box.rotation) continue;
       const [bx, by, bz] = box.center, [hx, hy, hz] = box.half;
       const P = (sx: number, sy: number, sz: number): Vec3 => {
@@ -1152,7 +1202,7 @@ export function capPiece(plan: CollapsePlan, piece: CollapsePiece): CapQuad[] {
         if (axis === 0) c = [P(sign, -1, -sign), P(sign, -1, sign), P(sign, 1, sign), P(sign, 1, -sign)];
         else if (axis === 1) c = [P(-1, sign, -sign), P(1, sign, -sign), P(1, sign, sign), P(-1, sign, sign)];
         else c = [P(-sign, -1, sign), P(sign, -1, sign), P(sign, 1, sign), P(-sign, 1, sign)];
-        quad(c[0], c[1], c[2], c[3], n, slotFor(axis, sign), shadeFor(axis, sign));
+        caps.push({ corners: [c[0], c[1], c[2], c[3]], n, slot: slotFor(axis, sign), shade: shadeFor(axis, sign), part: box.part });
       }
     }
   };
@@ -1202,7 +1252,7 @@ export function capPiece(plan: CollapsePlan, piece: CollapsePiece): CapQuad[] {
         (axis, sign) => (axis === 2 && sign < 0 ? 0.92 : 0.82));
       break;
     case 'floor':
-      boxCaps(() => false, (axis, sign) => (axis === 1 && sign < 0 ? piece.back : piece.core), (axis) => (axis === 1 ? 0.95 : 0.8));
+      boxCaps(() => false, (axis, sign) => (axis === 1 && sign < 0 ? piece.back : piece.core), (axis) => (axis === 1 ? 0.82 : 0.75));
       break;
     case 'roof':
       // the covering on top is the building's; its underside and edges
