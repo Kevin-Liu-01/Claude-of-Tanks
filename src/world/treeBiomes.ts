@@ -55,6 +55,19 @@ export interface TreeBiome {
    */
   snagValue?: readonly [number, number];
   /**
+   * The trees lane (2026-10-06, the coordinator's ruling on the gauntlet's wave 178 — Verdant's light version, its woods
+   * where they stand): a place's stands closed — their thin patches filled from a stream of their own, and no sapling
+   * standing out in a field's interior (vegetation.ts fillStands, placeSaplings).
+   */
+  denseStands?: true;
+  /**
+   * Trees round 8 (2026-10-07, the gauntlet's wave 236 on Verdant): the form a slot's forest-grown variants take on a map
+   * whose woods close — its wood trees — over the slot's own form, which its field and shelterbelt trees keep (their open
+   * variants). Its sprays, palette and records are the slot's: the woods' poplars of Prokhorovka grow as ash, the rows
+   * along the tracks stay poplar.
+   */
+  woodForms?: Readonly<Partial<Record<TreeSpecies, GrowthSpecies>>>;
+  /**
    * Trees round 4: the colour of the place's shrubs (its biome shrub form), over the map palette's for the bush slot's
    * species — the Las Cañadas broom an ash-dulled grey-green, not the slot palette's green.
    */
@@ -152,6 +165,15 @@ const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
 });
 
 /**
+ * Trees lane (2026-10-06): the bamboo's fresh yellow-green (the willow's lances it paints are a greyer green): the hue
+ * turned a little toward green and a third again of the leaves' saturation.
+ */
+const BAMBOO_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.24, cardSat: 0.2,
+  texTone: (_h: number, s: number, l: number): [number, number, number] => [0.235, Math.min(1, s * 1.35), Math.min(1, l * 1.02)],
+});
+
+/**
  * April on an Alpine col at 2,080 m (Glacier Pass, wave 278): a spring snowfall lying on the spruce a little lighter than
  * Frosthollow's deep-winter 0.9, the needles under it a dark blue-green at half a summer needle's saturation (the
  * summer card tint is hue 0.30, saturation 0.18), the far lobes a frosted dark green; the larches stand bare
@@ -165,15 +187,6 @@ const ALPINE_APRIL_SNOW: Readonly<TreeBiomeSnow> = Object.freeze({
   }),
   canopy: Object.freeze({ hue: 0.44, sat: 0.06, l0: 0.36, l1: 0.58 }),
   jitterHue: 0.22,
-});
-
-/**
- * Trees lane (2026-10-06): the bamboo's fresh yellow-green (the willow's lances it paints are a greyer green): the hue
- * turned a little toward green and a third again of the leaves' saturation.
- */
-const BAMBOO_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
-  cardHue: 0.24, cardSat: 0.2,
-  texTone: (_h: number, s: number, l: number): [number, number, number] => [0.235, Math.min(1, s * 1.35), Math.min(1, l * 1.02)],
 });
 
 const B = (place: string, slots: TreeBiome['slots'], shrub?: GrowthSpecies, palette?: Readonly<TreeBiomeColour>, arid?: true,
@@ -211,7 +224,12 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   frontier: B('the Fulda Gap, Hesse', { pine: { form: 'beech' }, aspen: { form: 'birch', leaves: true } }),
   // Prokhorovka: birch and oak shelterbelts, poplars along the tracks (the map's willow and pine slots grow as birches:
   // wave 4 read the weeping willows of the left treeline as "hanging curtains of flat strips")
-  verdant: B('Prokhorovka, Kursk oblast', { pine: { form: 'birch', leaves: true }, willow: { form: 'birch', leaves: true } }),
+  // (the trees lane, 2026-10-06, wave 178: "a loose grove of tall, spindly, birch-like trees ... standing apart in the
+  // black-earth plough" — the birch kolki and oak dubravy close: denseStands)
+  verdant: Object.freeze({ ...B('Prokhorovka, Kursk oblast', { pine: { form: 'birch', leaves: true }, willow: { form: 'birch', leaves: true } }),
+    denseStands: true as const,
+    // (round 8, the gauntlet's wave 236: the forest-steppe's woods are oak and ash — the poplar slot's wood trees grow as ash)
+    woodForms: Object.freeze({ poplar: 'ash' as const }) }),
   // Wadi Rum: sparse, dust-dulled umbrella acacias (and the spring's palms) over white-broom scrub (Retama raetam: the
   // map's oak bushes read as lawn shrubs on the sand)
   // (the trees lane, 2026-10-08, the gauntlet's waves 282/283a: the acacias "lime-green, puffy savanna canopies, far too
@@ -247,11 +265,6 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // the snow's load, the larches bare until their needles come in May)
   alpine: Object.freeze({ ...B('an Alpine pass', { fir: { form: 'larch' }, pine: { form: 'larch' } }), snow: ALPINE_APRIL_SNOW,
     bare: true as const }),
-  // Queenstown under Mount Lyell, Tasmania (the map-revival lane, 2026-10-05): eucalypt regrowth where the map plants its
-  // acacias and cedars, the radiata plantations' pines as pines, the bushes the tea-tree and myrtle scrub in the holm
-  // oak's dark leaf (no 'snag' for the fume-killed stumps: its slot would keep a concealing crown it does not draw);
-  // the placement stays the map's
-  copper_mesa: B('Queenstown under Mount Lyell, Tasmania', { acacia: { form: 'eucalyptus' }, cedar: { form: 'eucalyptus' } }, 'holmOak'),
   // Kohima in the Naga Hills (the trees lane, 2026-10-06, the gauntlet's wave 157: "built almost entirely from one
   // repeating tropical fan-palm", the wrong flora for a hill station on a saddle at about 1,450 m): Khasi pine on the
   // ridges (the map's pine slot, which took the palm's share), the montane evergreen forest of chestnut-oaks
@@ -261,6 +274,11 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
     willow: { form: 'holmOak' }, oak: { form: 'bamboo', colour: BAMBOO_FOLIAGE } }, 'holmOak'),
     // (round 2: the shell-killed trunks charred near-black, not the pale poles wave 179 read as eucalyptus)
     snagValue: Object.freeze([0.16, 0.26] as const) }),
+  // Queenstown under Mount Lyell, Tasmania (the map-revival lane, 2026-10-05): eucalypt regrowth where the map plants its
+  // acacias and cedars, the radiata plantations' pines as pines, the bushes the tea-tree and myrtle scrub in the holm
+  // oak's dark leaf (no 'snag' for the fume-killed stumps: its slot would keep a concealing crown it does not draw);
+  // the placement stays the map's
+  copper_mesa: B('Queenstown under Mount Lyell, Tasmania', { acacia: { form: 'eucalyptus' }, cedar: { form: 'eucalyptus' } }, 'holmOak'),
   // the Scheldt polders: poplar and willow rows (the map's own slots already)
   polders: B('the Scheldt polders, Zeeland', {}),
   // Glen Canyon and Page, Arizona (the map-revival lane, 2026-10-05, Skybridge round 2; look only: the slots keep their
@@ -347,6 +365,14 @@ export function treeBiomeWoodSpread(mapId: string | null | undefined): number {
 /** The trees lane: a place's snag value range (TreeBiome.snagValue), or none (the charred grey default). */
 export function treeBiomeSnagValue(mapId: string | null | undefined): readonly [number, number] | null {
   return (mapId ? TREE_BIOMES[mapId]?.snagValue : null) ?? null;
+}
+/** The trees lane: whether a place's stands are closed (TreeBiome.denseStands). */
+export function treeBiomeDenseStands(mapId: string | null | undefined): boolean {
+  return !!(mapId && TREE_BIOMES[mapId]?.denseStands);
+}
+/** Trees round 8: the form a slot's wood trees take on a place (TreeBiome.woodForms), or none (the slot's own). */
+export function treeBiomeWoodForm(mapId: string | null | undefined, slot: TreeSpecies): GrowthSpecies | null {
+  return (mapId ? TREE_BIOMES[mapId]?.woodForms?.[slot] : null) ?? null;
 }
 
 /** Whether a map's place is zoned by height (conifer forms high, broadleaf forms low). */

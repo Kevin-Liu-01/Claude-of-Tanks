@@ -284,9 +284,11 @@ assert.ok(shape.oak.aspect > shape.poplar.aspect * 1.6, 'the oak spreads where t
     // lighter frame of side limbs and twigs, about a fifth less wood (Monsoon Ridge's forms inside cost rule v3's census)
     const cs = TREE_GROWTH_PROFILES.castanopsis, ch = TREE_GROWTH_PROFILES.chestnut;
     assert.ok(GROWTH_SPECIES.includes('castanopsis'), 'castanopsis is a tree form');
-    for (const k of ['family', 'height', 'trunkR', 'form', 'scaffolds', 'crownBase', 'crownR', 'envelope', 'leafPerM', 'spray', 'habit', 'bark', 'barkTint']) {
+    for (const k of ['family', 'height', 'trunkR', 'form', 'scaffolds', 'crownBase', 'crownR', 'envelope', 'leafPerM', 'spray', 'habit', 'bark']) {
       assert.deepEqual(cs[k], ch[k], `castanopsis keeps the chestnut's ${k}`);
     }
+    // (round 8, the gauntlet's wave 238: "thin grey trunks" — the chestnut-oak's bark darker than the chestnut's)
+    assert.ok(cs.barkTint.every((v, i) => v < ch.barkTint[i]), `castanopsis: darker bark (${cs.barkTint})`);
     let woodCs = 0, woodCh = 0;
     for (let variant = 0; variant < 3; variant++) {
       const a = grow('castanopsis', variant), b = grow('chestnut', variant);
@@ -500,10 +502,12 @@ const shrubRows = [];
 // trees round 5 (2026-10-05, the coordinator's ruling on the gauntlet's wave 98: Frontier's woods "a single wall of
 // near-identical forked grey trunks", the savanna read): a tree grown inside a closed wood is forest-grown — its crown's
 // lowest sprays (the tenth of its seats lowest on the tree, against its height) never lower than the same tree's grown in
-// the open, and higher for a forking broadleaf (by over a fourteenth of its height) and a conifer whose open crown comes
-// down to its foot (a tenth); its crown no wider (its sprays' reach from the stem, a twentieth's play for the ragged whorls), the tree taller,
+// the open, and higher for a forking broadleaf and a conifer whose open crown comes down to its foot; the tree taller,
 // its stem slimmer for its height; deterministic and within the budgets; a palm, a snag and a grass-stage seedling keep
-// their own profile
+// their own profile. Round 8 (2026-10-07, the gauntlet's waves 236-238: the woods' "tall, pale, pole-straight trunks with
+// small sparse tufts at the top"): the lift a little — a forking broadleaf's by over a fortieth of its height, an open-
+// footed conifer's by a twentieth — and the crown as wide as in the open or wider by its larger sprays (between 0.94
+// and 1.25 of the open reach)
 {
   const quantile = (values, q) => { const v = [...values].sort((a, b) => a - b); return v[Math.min(v.length - 1, Math.floor(q * v.length))]; };
   const measure = (skeleton) => {
@@ -520,9 +524,10 @@ const shrubRows = [];
       const forest = growTreeSkeleton(species, mulberry32(2001 + variant * 7), { variant, tier: 'desktop', forest: true });
       assert.deepEqual(forest, growTreeSkeleton(species, mulberry32(2001 + variant * 7), { variant, tier: 'desktop', forest: true }), `${species}: the forest form is deterministic`);
       const a = measure(open), b = measure(forest);
-      const lift = profile.form === 'decurrent' ? 0.07 : profile.family === 'conifer' && a.base < 0.25 ? 0.1 : -0.02;
+      // (an excurrent broadleaf keeps its own crown base: its lowest tenth of seats wanders by the larger sprays' thinning)
+      const lift = profile.form === 'decurrent' ? 0.025 : profile.family === 'conifer' && a.base < 0.25 ? 0.05 : -0.04;
       assert.ok(b.base >= a.base + lift, `${species} v${variant}: a forest tree's crown stands higher (its lowest sprays at ${b.base.toFixed(2)} of its height against ${a.base.toFixed(2)})`);
-      assert.ok(b.reach <= a.reach * 1.06, `${species} v${variant}: and no wider (${b.reach.toFixed(2)} m against ${a.reach.toFixed(2)})`);
+      assert.ok(b.reach >= a.reach * 0.94 && b.reach <= a.reach * 1.25, `${species} v${variant}: as wide as in the open (${b.reach.toFixed(2)} m against ${a.reach.toFixed(2)})`);
       assert.ok(b.height > a.height, `${species} v${variant}: taller (${b.height.toFixed(2)} against ${a.height.toFixed(2)})`);
       assert.ok(b.girth < a.girth, `${species} v${variant}: its stem slimmer for its height`);
       assert.ok(forest.leaves.length <= GROWTH_LEAF_BUDGET.desktop, `${species} v${variant}: within the spray budget`);
