@@ -470,7 +470,7 @@ function concreteShade(W: Weather): Shade {
   const lichen: Rgb = [0.34, 0.33, 0.24];
   return (p, n) => {
     const seed = W.seed;
-    let c: Rgb = T.concrete;
+    let c: Rgb = mul(T.concrete, 0.88);
     // broad pour mottle and the lifts' tone, both faint (the print carries the boards)
     const mot = fbm(p[0], p[1] * 1.6, p[2], 1.3, seed);
     c = mul(c, 0.9 + mot * 0.2);
@@ -483,10 +483,12 @@ function concreteShade(W: Weather): Shade {
       const col = vnoise(p[0] * 3.1 + p[2] * 3.1, 0, 0, 0.55, seed + 3);
       const col2 = vnoise(p[0] * 7.3 - p[2] * 7.3, 0, 0, 0.5, seed + 4);
       const run = smooth(0.52, 0.86, col * 0.7 + col2 * 0.3) * smooth(W.drip - 1.7, W.drip - 0.05, p[1]);
-      c = mul(c, 1 - run * (0.18 + T.age * 0.2));
-      // the band under the overhang: sheltered, a shade cleaner and darker grey
+      c = mul(c, 1 - run * (0.24 + T.age * 0.3));
+      // the band under the overhang: sheltered, a shade cleaner and darker grey; the drip's dark tide line just under it
       const under = smooth(W.drip - 0.4, W.drip - 0.02, p[1]);
       c = mul(c, 1 - under * 0.12);
+      const tide = smooth(W.drip - 0.55, W.drip - 0.3, p[1]) * (1 - smooth(W.drip - 0.3, W.drip - 0.1, p[1]));
+      c = mul(c, 1 - tide * (0.1 + T.age * 0.12) * (0.6 + vnoise(p[0] * 2, 0, p[2] * 2, 0.4, seed + 5) * 0.8));
     } else if (n[1] > 0.5) {
       // tops: lichen rosettes and grime in the low spots
       const l = smooth(0.62, 0.8, fbm(p[0], 0, p[2], 0.35, seed + 9)) * (0.25 + T.age * 0.75) * (T.arid ? 0.35 : 1);
@@ -496,7 +498,7 @@ function concreteShade(W: Weather): Shade {
     // moss patches in the shade side and low, on an old work
     if (!T.arid && vertical) {
       const shadeSide = clamp01(0.5 - n[0] * 0.35 - n[2] * 0.45);
-      const m = smooth(0.58, 0.78, fbm(p[0], p[1], p[2], 0.5, seed + 17)) * shadeSide * (0.25 + T.age * 0.9)
+      const m = smooth(0.55, 0.76, fbm(p[0], p[1], p[2], 0.5, seed + 17)) * shadeSide * (0.3 + T.age * 1.0)
         * (1 - smooth(W.grade + 0.6, W.drip, p[1]) * 0.7);
       c = mix(c, moss, clamp01(m) * 0.75);
     }
