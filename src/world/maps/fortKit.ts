@@ -63,6 +63,8 @@ export interface FortTones {
   arid: boolean;
   /** the period's paint: the 1944 casemates' sprayed blotches, the winter's lime wash (worn by `age`) */
   camo?: 'pattern' | 'whitewash';
+  /** regolith, no growth (the Moon, Mars): no tufts */
+  barren?: boolean;
 }
 
 const lin = (c: number): number => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
@@ -286,7 +288,7 @@ function solid(m: Mesh, cx: number, y0: number, cz: number, w: number, h: number
 }
 
 /** A rough convex lump (a box with its corners pulled about): rubble, a stone, a clod. */
-function lump(m: Mesh, cx: number, cy: number, cz: number, sx: number, sy: number, sz: number, rng: Rng, shade: Shade, printed: boolean, yaw = rng() * Math.PI, tilt = 0.4): void {
+function lump(m: Mesh, cx: number, cy: number, cz: number, sx: number, sy: number, sz: number, rng: Rng, shade: Shade, printed: boolean, yaw = rng() * Math.PI, tilt = 0.4, maxY = Infinity): void {
   const ry = yaw, rx = (rng() - 0.5) * tilt, rz = (rng() - 0.5) * tilt;
   const corner = (x: number, y: number, z: number): V3 => {
     let px = x * sx * (0.75 + rng() * 0.5) / 2, py = y * sy * (0.7 + rng() * 0.6) / 2, pz = z * sz * (0.75 + rng() * 0.5) / 2;
@@ -296,6 +298,9 @@ function lump(m: Mesh, cx: number, cy: number, cz: number, sx: number, sy: numbe
     return [cx + px * Math.cos(ry) + pz * Math.sin(ry), cy + py, cz - px * Math.sin(ry) + pz * Math.cos(ry)];
   };
   const v = [corner(-1, -1, -1), corner(1, -1, -1), corner(1, -1, 1), corner(-1, -1, 1), corner(-1, 1, -1), corner(1, 1, -1), corner(1, 1, 1), corner(-1, 1, 1)];
+  // (a destroyed work's chunk sunk until its highest corner is under the cap: a broken prop has no collider)
+  const over = Math.max(...v.map((q) => q[1])) - maxY;
+  if (over > 0) for (const q of v) q[1] -= over;
   // quads split into triangles each with its own facet normal (a pulled box is not planar)
   const ctr: V3 = [cx, cy, cz];
   const out = (a: V3, b: V3, c: V3): V3 => sub(scl(add(add(a, b), c), 1 / 3), ctr);
@@ -1059,7 +1064,7 @@ function roofCover(m: Mesh, plan: Plan, y: number, thick: number, inset: number,
     }
   }
   // tufts of grass in it (dry on an arid map: thin, few)
-  const tufts = T.arid ? 18 : 70;
+  const tufts = T.barren ? 0 : T.arid ? 18 : 70;
   for (let k = 0; k < tufts; k++) {
     const si = Math.floor(hash3(k, 1, 2, seed) * K), t = Math.sqrt(hash3(k, 3, 4, seed)) * 0.82;
     const s0 = samples[si];
@@ -1193,13 +1198,13 @@ function rubble(m: Mesh, plan: Plan, O: BuildOpts, rng: Rng): void {
     const s = 0.16 + rng() * rng() * 0.62;
     const heapY = GRADE + Math.max(0, H * (1 - rr * rr)) * 0.75;
     const h = Math.min(0.42, s * (0.45 + rng() * 0.4), Math.max(0.1, (BROKEN_CAP - heapY) / 0.9));
-    lump(m, x, heapY + h * 0.25, z, s * (1 + rng() * 0.8), h, s * (0.8 + rng() * 0.6), rng, chunkShade, true, rng() * Math.PI, 0.7);
+    lump(m, x, heapY + h * 0.25, z, s * (1 + rng() * 0.8), h, s * (0.8 + rng() * 0.6), rng, chunkShade, true, rng() * Math.PI, 0.7, BROKEN_CAP - 0.02);
     if (s > 0.45 && rng() < 0.6) bar(m, [x, heapY + h * 0.5, z], [x + (rng() - 0.5) * 0.7, Math.min(BROKEN_CAP + 0.2, heapY + h * 0.5 + rng() * 0.35), z + (rng() - 0.5) * 0.7], rust);
   }
   // inside the shell: the floor heaped with the fallen ceiling's fragments
   for (let i = 0; i < 14; i++) {
     const x = (rng() - 0.5) * 3.6, z = (rng() - 0.5) * 3.0 - 0.2, s = 0.2 + rng() * 0.4;
-    lump(m, x, GRADE + 0.08, z, s, Math.min(0.35, s * 0.6), s, rng, chunkShade, true);
+    lump(m, x, GRADE + 0.08, z, s, Math.min(0.35, s * 0.6), s, rng, chunkShade, true, rng() * Math.PI, 0.4, BROKEN_CAP - 0.02);
   }
 }
 
@@ -1234,7 +1239,7 @@ function buildLogEarthPillbox(O: BuildOpts): THREE.BufferGeometry {
   const courses = Math.floor((wallTop - FOOT * 0.3) / (2 * r * 0.92));
   for (let cI = 0; cI < courses; cI++) {
     const y = FOOT * 0.3 + r + cI * 2 * r * 0.92;
-    if (O.broken && y > 0.36 + (cI % 2) * 0.08) continue;
+    if (O.broken && y + r * 1.92 > BROKEN_CAP - (cI % 2) * 0.06) continue;
     const j = (rng() - 0.5) * 0.12;
     // front: two logs either side of the slit where the slit's course runs
     if (Math.abs(y - slitY) < slitHH + r * 0.5) {
@@ -1247,7 +1252,7 @@ function buildLogEarthPillbox(O: BuildOpts): THREE.BufferGeometry {
     else { log(m, [-X - 0.2, y, -Z], [-0.5, y, -Z], r, 7, bark, endGrain); log(m, [0.5, y, -Z], [X + 0.2, y, -Z], r, 7, bark, endGrain); }
   }
   // the slit's dark and its log lintel
-  m.quad([-slitHW, slitY - slitHH, Z - 0.25], [slitHW, slitY - slitHH, Z - 0.25], [slitHW, slitY + slitHH, Z - 0.25], [-slitHW, slitY + slitHH, Z - 0.25], () => [0.005, 0.005, 0.005], false, [0, 0, 1]);
+  if (!O.broken) m.quad([-slitHW, slitY - slitHH, Z - 0.25], [slitHW, slitY - slitHH, Z - 0.25], [slitHW, slitY + slitHH, Z - 0.25], [-slitHW, slitY + slitHH, Z - 0.25], () => [0.005, 0.005, 0.005], false, [0, 0, 1]);
   // the dark of the room through the rear doorway, its frame posts and lintel, two bags at the threshold
   if (!O.broken) {
     m.quad([0.5, GRADE - 0.05, -Z + 0.35], [-0.5, GRADE - 0.05, -Z + 0.35], [-0.5, GRADE + 1.5, -Z + 0.35], [0.5, GRADE + 1.5, -Z + 0.35], () => [0.006, 0.006, 0.006], false, [0, 0, -1]);
@@ -1269,8 +1274,8 @@ function buildLogEarthPillbox(O: BuildOpts): THREE.BufferGeometry {
     // the roof down: logs fallen in and thrown, splintered
     for (let i = 0; i < 12; i++) {
       const x = (rng() - 0.5) * W, z = (rng() - 0.5) * D, a = rng() * Math.PI, l = 0.8 + rng() * 2;
-      const y = GRADE + 0.2 + rng() * 0.25;
-      log(m, [x - Math.cos(a) * l / 2, y, z - Math.sin(a) * l / 2], [x + Math.cos(a) * l / 2, y + (rng() - 0.5) * 0.3, z + Math.sin(a) * l / 2], r * 0.9, 6, (p, n) => mul(bark(p, n), 0.6), endGrain);
+      const y = GRADE + 0.12 + rng() * 0.18;
+      log(m, [x - Math.cos(a) * l / 2, y, z - Math.sin(a) * l / 2], [x + Math.cos(a) * l / 2, Math.min(BROKEN_CAP - r, y + (rng() - 0.5) * 0.3), z + Math.sin(a) * l / 2], r * 0.9, 6, (p, n) => mul(bark(p, n), 0.6), endGrain);
     }
   }
   // (the bank all round to the slit, open at the rear door: the static earthwork, pillboxBerm)
@@ -1299,7 +1304,7 @@ export function buildPillbox(style: PillboxStyle, tones: FortTones, seed: number
  * and ground. Concrete, earth, turf, crest (the dry grass or sand over the toe), timber, hessian; age 0 fresh .. 1 relic.
  * The desert maps' sangar (structureVariants) and a map absent here keep their own pillbox.
  */
-interface FortMapEntry { style: PillboxStyle; c: number; e: number; t: number; k: number; w?: number; b?: number; age: number; arid?: boolean; camo?: 'pattern' | 'whitewash' }
+interface FortMapEntry { style: PillboxStyle; c: number; e: number; t: number; k: number; w?: number; b?: number; age: number; arid?: boolean; camo?: 'pattern' | 'whitewash'; barren?: boolean }
 const W_TIMBER = 0x5b4a38, W_BAG = 0x8e7f5e;
 export const FORT_MAPS: Readonly<Record<string, FortMapEntry>> = Object.freeze({
   // western Europe 1940-45 and its relics: the Regelbau casemate
@@ -1319,8 +1324,8 @@ export const FORT_MAPS: Readonly<Record<string, FortMapEntry>> = Object.freeze({
   copper_mesa: { style: 'regelbau', c: 0x8f8a82, e: 0x6b5a4a, t: 0x7d6c58, k: 0x8f7d66, age: 0.6, arid: true },
   // the Soviet DOT, rounded front under a thick earth cover
   steppe: { style: 'dot', c: 0x928d82, e: 0x6a5a42, t: 0x7d7a4c, k: 0x9a9060, age: 0.55 },
-  moon: { style: 'dot', c: 0x8c8c8c, e: 0x676b73, t: 0x707479, k: 0x7a7e84, age: 0.1, arid: true },
-  mars: { style: 'dot', c: 0x9a8a7c, e: 0x8a4f35, t: 0x93573a, k: 0xa0634a, age: 0.1, arid: true },
+  moon: { style: 'dot', c: 0x8c8c8c, e: 0x676b73, t: 0x707479, k: 0x7a7e84, age: 0.1, arid: true, barren: true },
+  mars: { style: 'dot', c: 0x9a8a7c, e: 0x8a4f35, t: 0x93573a, k: 0xa0634a, age: 0.1, arid: true, barren: true },
   alpine: { style: 'dot', c: 0x949089, e: 0x6b6258, t: 0x6d7444, k: 0x9ea0a2, age: 0.5 },
   // the hexagonal pillbox: the KMT lines of 1937, the Japanese and Spanish rounds
   blackglass: { style: 'hex', c: 0x8a8780, e: 0x4b4338, t: 0x58613a, k: 0x6f6b52, age: 0.3 },
@@ -1351,7 +1356,7 @@ export function fortFor(mapId: string): { style: PillboxStyle; tones: FortTones;
     style: e.style,
     seed: (h >>> 0) % 100000,
     tones: { concrete: hexLin(e.c), earth: hexLin(e.e), turf: hexLin(e.t), crest: hexLin(e.k), timber: hexLin(e.w ?? W_TIMBER),
-      bag: hexLin(e.b ?? W_BAG), age: e.age, arid: !!e.arid, ...(e.camo ? { camo: e.camo } : {}) },
+      bag: hexLin(e.b ?? W_BAG), age: e.age, arid: !!e.arid, ...(e.camo ? { camo: e.camo } : {}), ...(e.barren ? { barren: true } : {}) },
   };
 }
 

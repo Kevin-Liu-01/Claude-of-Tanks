@@ -1339,6 +1339,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/periodClutter.selftest.mjs',
     // the scenery lane (b16, wave 121): the ksar gate post in place of the steel checkpoint hut on Desert and Redrock
     'src/world/maps/regional/ksarGate.selftest.mjs',
+    // the fortifications lane (2026-10-09, R259; wave 315): the field works' pillbox rebuilt, its bank an earthwork
+    'src/world/maps/fortKit.selftest.mjs',
     'src/world/maps/regional/wadiRumPosts.selftest.mjs',
     'src/world/wireMaterial.selftest.mjs',
     'src/world/maps/fieldWallDressing.selftest.mjs',
