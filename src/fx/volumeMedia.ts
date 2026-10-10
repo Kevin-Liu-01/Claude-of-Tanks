@@ -105,6 +105,8 @@ export function makeVolumePuff(): VolumePuff {
   };
 }
 
+/** How far the pool scans the ring for a free slot before it steals the puff nearest its end. */
+const SLOT_SCAN = 48;
 /** Floats per record (8 vec4 attributes). */
 const STRIDE = 32;
 const ATTRS = ['aPB', 'aVL', 'aDY', 'aSZ', 'aCA', 'aCB', 'aFB', 'aHT'] as const;
@@ -701,11 +703,29 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     const m = VOLUME_ATLAS.media[p.medium];
     return m.firstBand + (Math.abs(Math.floor(p.variant)) % m.variants);
   };
+  /**
+   * (fx 8e, dcore's pool-pressure check: lingering collapse dust and long burst smoke) the slot a new puff takes: the next
+   * free one within a short scan of the ring (dead, or never used), else the scanned puff nearest its own end — never a
+   * fresh body by ring order alone. A puff scheduled for later (its birth ahead) counts as live. O(SLOT_SCAN), no
+   * allocation; with the pool under capacity it is the ring's own order.
+   */
+  function takeSlot(now: number): number {
+    let best = cursor, bestEnd = Infinity;
+    for (let k = 0; k < SLOT_SCAN; k++) {
+      const i = (cursor + k) % capacity;
+      const ob = i * STRIDE;
+      const end = rec[ob + 7] > 0 ? rec[ob + 3] + rec[ob + 7] : -Infinity;
+      if (end < now) { best = i; break; }
+      if (end < bestEnd) { bestEnd = end; best = i; }
+    }
+    cursor = (best + 1) % capacity;
+    return best;
+  }
   function emit(p: VolumePuff): void {
-    const i = cursor;
-    cursor = (cursor + 1) % capacity;
+    const now = o_now();
+    const i = takeSlot(now);
     const o = i * STRIDE;
-    const birth = o_now() + p.birthOffset;
+    const birth = now + p.birthOffset;
     rec[o] = p.x; rec[o + 1] = p.y; rec[o + 2] = p.z; rec[o + 3] = birth;
     rec[o + 4] = p.vx; rec[o + 5] = p.vy; rec[o + 6] = p.vz; rec[o + 7] = p.life;
     rec[o + 8] = p.drag; rec[o + 9] = p.rise; rec[o + 10] = p.windK; rec[o + 11] = p.grav;
