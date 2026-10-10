@@ -18,7 +18,7 @@
 // Deterministic in (hierarchy, seed, pop) on its own random stream; no allocation per vertex.
 
 import * as THREE from 'three';
-import { planBend, planDents, wreckRandom, type WreckBend, type WreckDent } from '../vehicles/wreckDents.ts';
+import { planBend, planCreases, planDents, wreckRandom, type WreckBend, type WreckCrease, type WreckDent } from '../vehicles/wreckDents.ts';
 
 type PartName = 'hull' | 'gear' | 'turret' | 'gun';
 
@@ -49,6 +49,7 @@ interface PartPlan {
   bend: Bend | null;
   roofs: RoofSag[];
   ends: EndCrush[];
+  creases: WreckCrease[];
 }
 
 export interface WreckCrumplePlan {
@@ -137,7 +138,7 @@ export function planWreckCrumple(root: THREE.Object3D, seed: number, pop: boolea
     return { fromFrame, toFrame: fromFrame.clone().invert() };
   };
   const blank = (rig: THREE.Object3D | undefined): PartPlan => ({ ...frameOf(rig), dents: [], bulges: [], droops: [], hinges: [], sags: [],
-    bend: null, roofs: [], ends: [] });
+    bend: null, roofs: [], ends: [], creases: [] });
   const parts: Partial<Record<PartName, PartPlan>> = {};
 
   // ---- the hull: dents, the deck's bulge on an ammo-rack wreck, fenders and skirts over the tracks ----------------
@@ -147,12 +148,21 @@ export function planWreckCrumple(root: THREE.Object3D, seed: number, pop: boolea
   const armor = named.get('hullExternalArmor')?.[0];
   const hullBox = frameBox(hullMain, hull.toFrame, rootInv);
   const hullMid = hullBox ? hullBox.getCenter(new THREE.Vector3()) : null;
-  planDents(hullSamples, 5 + Math.floor(rng() * 4), 0.45, 1.0, 0.08, 0.2, rng, hull.dents, hullMid);
-  if (armor) planDents(frameSamples(armor, hull.toFrame, rootInv), 2 + Math.floor(rng() * 2), 0.35, 0.75, 0.06, 0.15, rng, hull.dents, hullMid);
-  if (pop && hullBox) {
-    const r = 0.42 * (hullBox.max.z - hullBox.min.z);
-    hull.bulges.push({ cx: 0, cy: hullBox.max.y - 0.45, cz: (hullBox.min.z + hullBox.max.z) * 0.5 + (rng() - 0.5) * 0.8,
-      r2: r * r, amp: 0.1 + rng() * 0.08 });
+  // (2026-10-09, after the first wave's frames: 8-20 cm dimples on a hull seen at 13 m read as shading, not damage) deeper,
+  // wider dents and folded creases, the deck caved in by the fire or bulged by an ammo-rack blast, and on some the glacis
+  // pushed in
+  planDents(hullSamples, 6 + Math.floor(rng() * 4), 0.6, 1.25, 0.14, 0.3, rng, hull.dents, hullMid);
+  if (armor) planDents(frameSamples(armor, hull.toFrame, rootInv), 2 + Math.floor(rng() * 3), 0.45, 0.9, 0.1, 0.22, rng, hull.dents, hullMid);
+  planCreases(hullSamples, 3 + Math.floor(rng() * 3), 0.45, 1.0, 0.25, 0.5, 0.1, 0.22, rng, hull.creases, hullMid);
+  if (hullBox) {
+    const r = 0.38 * (hullBox.max.z - hullBox.min.z);
+    hull.bulges.push({ cx: (rng() - 0.5) * 0.4, cy: hullBox.max.y - 0.35, cz: (hullBox.min.z + hullBox.max.z) * 0.5 - 0.15 * (hullBox.max.z - hullBox.min.z)
+      + (rng() - 0.5) * 0.8, r2: r * r, amp: pop ? 0.14 + rng() * 0.1 : -(0.14 + rng() * 0.12) });
+    if (rng() < 0.5) {
+      const height = hullBox.max.y - hullBox.min.y;
+      hull.ends.push({ s: 1, zFace: hullBox.max.z, zone: 0.9 + rng() * 0.5, amount: 0.15 + rng() * 0.2, buckle: 0.06 + rng() * 0.08,
+        yLo: hullBox.min.y + height * 0.35, yHi: hullBox.min.y + height * 0.75 });
+    }
   }
   const bandL = named.get('gearTrackBandL')?.[0], bandR = named.get('gearTrackBandR')?.[0];
   const gear = blank(hullRig);
@@ -164,20 +174,20 @@ export function planWreckCrumple(root: THREE.Object3D, seed: number, pop: boolea
     const top = box.max.y, z0 = box.min.z, z1 = box.max.z;
     // the fenders over it sag in one to three torn runs
     hull.droops.push({ side, xIn, xOut: xOut + 0.2, yMin: top - 0.12,
-      segments: segments(rng, 1 + Math.floor(rng() * 3), z0, z1, 0.45, 1.1, 0.1, 0.32) });
+      segments: segments(rng, 1 + Math.floor(rng() * 3), z0, z1, 0.5, 1.2, 0.18, 0.45) });
     // the skirt plates outboard of it hang out from their top edge in one or two runs
     hull.hinges.push({ side, xMin: xOut - 0.1, hingeY: top + 0.22,
-      segments: segments(rng, 1 + Math.floor(rng() * 2), z0, z1, 0.6, 1.4, 0.14, 0.42) });
+      segments: segments(rng, 1 + Math.floor(rng() * 2), z0, z1, 0.6, 1.4, 0.25, 0.6) });
   }
-  // one track (half the wrecks) goes slack over a stretch: its upper run sags onto the road wheels
-  if (rng() < 0.55) {
+  // one track goes slack over a stretch: its upper run sags onto the road wheels (and on some hangs out)
+  if (rng() < 0.9) {
     const band = rng() < 0.5 ? bandL : bandR;
     const side = band === bandL ? -1 : 1;
     const box = band ? frameBox([band], hull.toFrame, rootInv) : null;
     if (box) {
       const xIn = side < 0 ? -box.max.x : box.min.x;
-      const sag = 0.14 + rng() * 0.18;
-      gear.sags.push({ side, xIn, yUpper: box.max.y - 0.3, out: 0.06 + rng() * 0.1,
+      const sag = 0.22 + rng() * 0.2;
+      gear.sags.push({ side, xIn, yUpper: box.max.y - 0.3, out: 0.08 + rng() * 0.22,
         segment: segments(rng, 1, box.min.z, box.max.z, 1.1, 2.0, sag, sag)[0] });
     }
   }
@@ -190,8 +200,10 @@ export function planWreckCrumple(root: THREE.Object3D, seed: number, pop: boolea
     const turret = blank(turretRig);
     const main = named.get('turret')?.find((m) => rigOf(m, root) === turretRig) ?? meshes.turret[0];
     const box = main ? frameBox([main], turret.toFrame, rootInv) : null;
-    if (main) planDents(frameSamples(main, turret.toFrame, rootInv), 3 + Math.floor(rng() * 3), 0.3, 0.7, 0.06, 0.15, rng, turret.dents,
-      box ? box.getCenter(new THREE.Vector3()) : null);
+    const middle = box ? box.getCenter(new THREE.Vector3()) : null;
+    const samples = main ? frameSamples(main, turret.toFrame, rootInv) : null;
+    planDents(samples, 4 + Math.floor(rng() * 3), 0.4, 0.9, 0.1, 0.24, rng, turret.dents, middle);
+    planCreases(samples, 2 + Math.floor(rng() * 2), 0.35, 0.8, 0.2, 0.4, 0.08, 0.18, rng, turret.creases, middle);
     parts.turret = turret;
   }
 
@@ -326,6 +338,30 @@ function evaluate(plan: PartPlan, x: number, y: number, z: number): boolean {
     J[5] += en.buckle * 4 * (1 - 2 * uc) * (en.s / en.zone) * gy; J[4] += lift * dgy;
     moved = true;
   }
+  for (const cr of plan.creases) {
+    const ex = x - cr.cx, ey = y - cr.cy, ez = z - cr.cz;
+    const along = ex * cr.tx + ey * cr.ty + ez * cr.tz;
+    const u = along / cr.half;
+    if (u <= -1 || u >= 1) continue;
+    const off = ex * cr.dx + ey * cr.dy + ez * cr.dz;
+    if (off <= -0.6 || off >= 0.6) continue;
+    // r: e in the plate, across the fold (e − along·t − off·d)
+    const rx = ex - along * cr.tx - off * cr.dx, ry = ey - along * cr.ty - off * cr.dy, rz = ez - along * cr.tz - off * cr.dz;
+    const across = Math.hypot(rx, ry, rz);
+    if (across >= cr.w) continue;
+    const fa = 1 - across / cr.w, q = 1 - u * u, fl = q * q, fd = 1 - Math.abs(off) / 0.6;
+    const g = cr.depth * fa * fl * fd;
+    D[0] += cr.dx * g; D[1] += cr.dy * g; D[2] += cr.dz * g;
+    // ∇g = depth·(∇fa·fl·fd + fa·∇fl·fd + fa·fl·∇fd); ∇fa = −r̂/w, ∇fl = 2q(−2u)/half·t, ∇fd = −sign(off)/0.6·d
+    const inv = across > 1e-6 ? 1 / across : 0;
+    const ka = -cr.depth * fl * fd / cr.w * inv, kl = cr.depth * fa * fd * (2 * q * (-2 * u) / cr.half);
+    const kd = -cr.depth * fa * fl * Math.sign(off) / 0.6;
+    const gx = ka * rx + kl * cr.tx + kd * cr.dx, gy = ka * ry + kl * cr.ty + kd * cr.dy, gz = ka * rz + kl * cr.tz + kd * cr.dz;
+    J[0] += cr.dx * gx; J[1] += cr.dx * gy; J[2] += cr.dx * gz;
+    J[3] += cr.dy * gx; J[4] += cr.dy * gy; J[5] += cr.dy * gz;
+    J[6] += cr.dz * gx; J[7] += cr.dz * gy; J[8] += cr.dz * gz;
+    moved = true;
+  }
   const b = plan.bend;
   if (b && z > b.z0) {
     const t = z - b.z0, v = b.kappa * t * t, dv = 2 * b.kappa * t;
@@ -353,7 +389,7 @@ export function crumpleWreckGeometry(plan: WreckCrumplePlan | null, geometry: TH
 
 function applyPart(part: PartPlan, geometry: THREE.BufferGeometry): void {
   if (!part.dents.length && !part.bulges.length && !part.droops.length && !part.hinges.length && !part.sags.length && !part.bend
-    && !part.roofs.length && !part.ends.length) return;
+    && !part.roofs.length && !part.ends.length && !part.creases.length) return;
   const position = geometry.attributes.position as THREE.BufferAttribute | undefined;
   if (!position) return;
   const normal = geometry.attributes.normal as THREE.BufferAttribute | undefined;
@@ -393,14 +429,14 @@ export function crumpleBurntVehicle(geometry: THREE.BufferGeometry, seed: number
   const rng = wreckRandom((seed ^ 0x5ca7ab1e) | 0);
   const identity = new THREE.Matrix4();
   const part: PartPlan = { toFrame: identity, fromFrame: identity, dents: [], bulges: [], droops: [], hinges: [], sags: [], bend: null,
-    roofs: [], ends: [] };
+    roofs: [], ends: [], creases: [] };
   const top = geometry.boundingBox!.max.y, hw = Math.max(-b.min.x, b.max.x), length = b.max.z - b.min.z;
   // the roof, pressed in over the cabin (once or twice along it)
   const roofs = 1 + (rng() < 0.4 ? 1 : 0);
   for (let i = 0; i < roofs; i++) {
     const half = (0.55 + rng() * 0.6) * Math.max(0.6, length / 4.2);
     part.roofs.push({ hw: hw * 1.05, zc: b.min.z + half * 0.6 + (length - half * 1.2) * rng(), half,
-      sag: (0.1 + rng() * 0.18) * Math.max(0.7, top / 1.5), yBelt: top * 0.55, yTop: top });
+      sag: (0.18 + rng() * 0.22) * Math.max(0.7, top / 1.5), yBelt: top * 0.55, yTop: top });
   }
   // dents on the flanks and the ends
   const samples: { p: number[]; n: number[] } = { p: [], n: [] };
@@ -408,13 +444,13 @@ export function crumpleBurntVehicle(geometry: THREE.BufferGeometry, seed: number
     samples.p.push(position.getX(i), position.getY(i), position.getZ(i));
     samples.n.push(normal.getX(i), normal.getY(i), normal.getZ(i));
   }
-  planDents(samples, 3 + Math.floor(rng() * 4), 0.3, 0.6, 0.05, 0.13, rng, part.dents, b.getCenter(new THREE.Vector3()), true);
+  planDents(samples, 4 + Math.floor(rng() * 4), 0.35, 0.7, 0.08, 0.2, rng, part.dents, b.getCenter(new THREE.Vector3()), true);
   // off the wheels: a dent's centre on the body, above the tyres
   part.dents = part.dents.filter((d) => d.cy > 0.45);
   // one end pushed in on some
-  if (rng() < 0.45) {
+  if (rng() < 0.6) {
     const s = rng() < 0.6 ? 1 : -1;
-    part.ends.push({ s, zFace: s > 0 ? b.max.z : b.min.z, zone: 0.7 + rng() * 0.4, amount: 0.12 + rng() * 0.18,
+    part.ends.push({ s, zFace: s > 0 ? b.max.z : b.min.z, zone: 0.7 + rng() * 0.4, amount: 0.2 + rng() * 0.25,
       buckle: 0.05 + rng() * 0.07, yLo: top * 0.35, yHi: top * 0.6 });
   }
   applyPart(part, geometry);
