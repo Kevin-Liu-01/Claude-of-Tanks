@@ -39,6 +39,20 @@ export interface CollapseBox {
   rotation?: [number, number, number, number];
 }
 
+/**
+ * A part of a piece that breaks off when it lands hard (a wall panel cracks into two to four on its first heavy landing):
+ * its box in the piece's frame, its mass and its rectangle on the face.
+ */
+export interface CollapsePart {
+  readonly center: [number, number, number];
+  readonly half: [number, number, number];
+  readonly massKg: number;
+  readonly rect: { u0: number; u1: number; y0: number; y1: number };
+}
+
+/** A partition key's stride: a piece's key is its index × this + its part. */
+export const PART_STRIDE = 8;
+
 export interface CollapsePiece {
   readonly index: number;
   readonly kind: CollapsePieceKind;
@@ -72,6 +86,10 @@ export interface CollapsePiece {
    * gap; the far face is shoved over last.
    */
   readonly shatterS: number;
+  /** The parts it breaks into on its first hard landing (none: it stays whole), and their cuts on the face. */
+  readonly parts: readonly CollapsePart[];
+  readonly partCutsU: readonly number[];
+  readonly partCutsY: readonly number[];
 }
 
 /** The blow that brought it down, in the body frame (the stage event's direction and point). */
@@ -295,7 +313,10 @@ function faceSplits(face: DamageFace, n: number, rng: () => number): number[] {
  * the structure (the same on every peer and tier).
  */
 export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: CollapseBlow, options: CollapsePlanOptions = {}): CollapsePlan {
-  const rng = damageRng(damageSeed(anatomy.seed, 0x7c01, anatomy.structureIdx));
+  // two streams: the building's cut (its panels, stubs, piers, roof parts — the same whatever the blow, so a partition
+  // laid before the collapse holds) and the fall (who goes first, how hard)
+  const geo = damageRng(damageSeed(anatomy.seed, 0x7c01, anatomy.structureIdx));
+  const rng = damageRng(damageSeed(anatomy.seed, 0x7c02, anatomy.structureIdx));
   const shed = anatomy.massClass === 'shed';
   const large = anatomy.massClass === 'large';
   const cap = Math.max(4, options.cap ?? (shed ? 12 : 24));
@@ -392,7 +413,7 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
       roofOver(c.x + hx, c.z + hz));
     const fromRoof = c.y0 > groundY + 1;
     const breakY = Number.isFinite(roofY) ? Math.max(fromRoof ? c.y0 : c.y0 + (c.y1 - c.y0) * 0.45, roofY + 0.04)
-      : fromRoof ? -Infinity : c.y0 + (c.y1 - c.y0) * (0.45 + rng() * 0.35);
+      : fromRoof ? -Infinity : c.y0 + (c.y1 - c.y0) * (0.45 + geo() * 0.35);
     return {
       min: [c.x - hx - 0.04, c.y0 - 0.04, c.z - hz - 0.04] as Vec3,
       max: [c.x + hx + 0.04, c.y1 + 0.04, c.z + hz + 0.04] as Vec3,
@@ -415,9 +436,10 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
   }
 
   const pieces: CollapsePiece[] = [];
-  const add = (piece: Omit<CollapsePiece, 'index'>): number => {
+  const add = (piece: Omit<CollapsePiece, 'index' | 'parts' | 'partCutsU' | 'partCutsY'>
+    & Partial<Pick<CollapsePiece, 'parts' | 'partCutsU' | 'partCutsY'>>): number => {
     if (pieces.length >= cap) return -1;
-    pieces.push({ ...piece, index: pieces.length });
+    pieces.push({ parts: [], partCutsU: [], partCutsY: [], ...piece, index: pieces.length });
     return pieces.length - 1;
   };
   const up: Vec3 = [0, 1, 0];
@@ -436,9 +458,9 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
   // them (a floor that came to rest on its piers would stand), and never all round (a slab on four piers stands)
   const cornerPier = [false, false, false, false];
   if (anatomy.remnant.corners) {
-    const order = [0, 1, 2, 3].map((k) => ({ k, r: rng() })).sort((a, b) => a.r - b.r).map((e) => e.k);
+    const order = [0, 1, 2, 3].map((k) => ({ k, r: geo() })).sort((a, b) => a.r - b.r).map((e) => e.k);
     cornerPier[order[0]] = true;
-    if (rng() < 0.55) cornerPier[order[1]] = true;
+    if (geo() < 0.55) cornerPier[order[1]] = true;
   }
   const cornerOf = (x: number, z: number): number => (x >= cx ? 1 : 0) + (z >= cz ? 2 : 0);
   const storeyPlans: StoreyPlan[] = [];
@@ -455,7 +477,7 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
       const side = sideOf(face.out);
       const thickness = wallThickness(face);
       const n = panelsFor(face);
-      const splits = faceSplits(face, n, rng);
+      const splits = faceSplits(face, n, geo);
       const fp: FacePlan = { face, index: fi, side, thickness, splits, panels: [], stubTop: [], pierTop: [0, 0], pierW: 0,
         uMin: -face.width / 2, uMax: face.width / 2 };
       plan.faces.push(fp);
@@ -467,7 +489,7 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
         const cuts = [-face.width / 2, ...splits, face.width / 2];
         for (let k = 0; k + 1 < cuts.length; k++) {
           const mid = (cuts[k] + cuts[k + 1]) / 2;
-          const top = bank(mid) + Math.max(0.25, rem.stubHeightM) * (0.7 + 0.45 * rng());
+          const top = bank(mid) + Math.max(0.25, rem.stubHeightM) * (0.7 + 0.45 * geo());
           fp.stubTop.push(Math.min(face.height - 0.6, Math.max(0.3, top)));
         }
         if (rem.corners && face.width > 3.2) {
@@ -477,7 +499,7 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
             const u = end * face.width / 2;
             const corner = cornerOf(face.origin[0] + face.u[0] * u, face.origin[2] + face.u[2] * u);
             const k = end < 0 ? 0 : fp.stubTop.length - 1;
-            return cornerPier[corner] ? Math.max(fp.stubTop[k], Math.min(room, bank(u) + 2 + rng() * 0.5)) : fp.stubTop[k];
+            return cornerPier[corner] ? Math.max(fp.stubTop[k], Math.min(room, bank(u) + 2 + geo() * 0.5)) : fp.stubTop[k];
           };
           fp.pierW = Math.min(0.9, face.width * 0.16);
           fp.pierTop = [at(-1), at(1)];
@@ -549,6 +571,43 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
         }
         const area = (u1 - u0) * (yt - yb);
         const massKg = Math.max(30, area * T * wallDensity(face) * (1 - openingShare(face, u0, u1, yb, yt)));
+        // where it cracks when it lands hard: two or three across (between its openings), and once up a tall one (the
+        // building's cut: its own stream, whatever the blow)
+        const partCutsU: number[] = [], partCutsY: number[] = [];
+        const parts: CollapsePart[] = [];
+        if (boxes.length === 1 && area >= 4.5) {
+          const width = u1 - u0, height = yt - yb;
+          const nU = width > 3.4 ? 3 : width > 1.9 ? 2 : 1;
+          const nY = height > 2.6 && nU < 3 ? 2 : 1;
+          for (let j = 1; j < nU; j++) {
+            let cu = u0 + (j + (geo() - 0.5) * 0.3) * width / nU;
+            for (const op of face.openings) {
+              const oa = op.u - op.w / 2, ob = op.u + op.w / 2;
+              if (cu > oa - 0.1 && cu < ob + 0.1) cu = cu - oa < ob - cu ? oa - 0.1 : ob + 0.1;
+            }
+            if (cu - (partCutsU.length ? partCutsU[partCutsU.length - 1] : u0) > 0.6 && u1 - cu > 0.6) partCutsU.push(cu);
+          }
+          if (nY === 2) {
+            let cy = yb + height * (0.45 + geo() * 0.15);
+            for (const op of face.openings) {
+              if (Math.abs(op.u - (u0 + u1) / 2) > width / 2 + op.w / 2) continue;
+              if (cy > op.y0 - 0.1 && cy < op.y0 + op.h + 0.1) cy = cy - op.y0 < op.y0 + op.h - cy ? op.y0 - 0.1 : op.y0 + op.h + 0.1;
+            }
+            if (cy - yb > 0.6 && yt - cy > 0.6) partCutsY.push(cy);
+          }
+          const us = [u0, ...partCutsU, u1], ys = [yb, ...partCutsY, yt];
+          if (us.length > 2 || ys.length > 2) {
+            const sgn = dot(norm(cross(up, norm(face.out))), face.u) < 0 ? -1 : 1;
+            for (let iy = 0; iy + 1 < ys.length; iy++) for (let iu = 0; iu + 1 < us.length; iu++) {
+              const pu0 = us[iu], pu1 = us[iu + 1], py0 = ys[iy], py1 = ys[iy + 1];
+              parts.push({
+                center: [sgn * ((pu0 + pu1) / 2 - (u0 + u1) / 2), (py0 + py1) / 2 - (yb + yt) / 2, 0],
+                half: [(pu1 - pu0) / 2 - GAP_M / 2, (py1 - py0) / 2 - GAP_M / 2, T / 2 - GAP_M / 2],
+                massKg: massKg * (pu1 - pu0) * (py1 - py0) / area, rect: { u0: pu0, u1: pu1, y0: py0, y1: py1 },
+              });
+            }
+          } else { partCutsU.length = 0; partCutsY.length = 0; }
+        }
         // the start: a shove at its top — the struck face's in, hardest nearest the blow; the others' over, outward more
         // often than in (a wall goes as its foot gives: it topples, it is not thrown); the upper storeys lighter, they
         // ride what they stand on
@@ -566,11 +625,14 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
           material: face.members.length ? 'timber' : coreOf(face).material, core: coreOf(face), back: backOf(face),
           face: { storey: plan.index, face: fp.index, u0, u1, y0: yb, y1: yt, thickness: T }, releaseS,
           kick: [zAxis[0] * push, 0, zAxis[2] * push], kickAt: [0, (yt - yb) / 2 * 0.85, 0],
-          // (under a floor the whole ground storey gives, the struck face first and the far face last, and what stood
-          // on it comes down onto its stubs; a single storey's other walls are shoved over)
-          shatterS: plan.index !== 0 ? -1 : fp.side === struckSide ? 0
-            : storeys.length < 2 || struckSide < 0 ? -1
-              : (fp.side ^ 1) === struckSide ? 0.55 + rng() * 0.3 : 0.16 + rng() * 0.22,
+          // (a wall under a floor is held down by it and cannot be shoved over: under a floor every storey gives — the
+          // ground storey first, the struck face first and the far face last, each storey over it a beat later as what it
+          // carries comes down — and the top storey's walls are shoved over; a single storey's struck face bursts)
+          shatterS: plan.index === storeys.length - 1 && plan.index > 0 ? -1
+            : fp.side === struckSide ? 0.28 * plan.index
+              : storeys.length < 2 || struckSide < 0 ? -1
+                : 0.28 * plan.index + ((fp.side ^ 1) === struckSide ? 0.55 + rng() * 0.3 : 0.16 + rng() * 0.22),
+          parts, partCutsU, partCutsY,
         });
         fp.panels.push(index);
       }
@@ -602,7 +664,7 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
   const covering = roof?.covering;
   for (const slab of slabs) {
     const parts = roofParts(slab, longSlab);
-    slab.cuts = parts === 2 ? [(slab.e0 + slab.e1) / 2 + (rng() - 0.5) * 0.15 * (slab.e1 - slab.e0)] : [];
+    slab.cuts = parts === 2 ? [(slab.e0 + slab.e1) / 2 + (geo() - 0.5) * 0.15 * (slab.e1 - slab.e0)] : [];
     const edges = [slab.e0, ...slab.cuts, slab.e1];
     const t = Math.max(0.1, Math.min(0.4, roof!.thicknessM || 0.22));
     // where two slabs meet at the ridge or along a hip their boxes, each under its own covering, would cross: each keeps
@@ -703,11 +765,13 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
     const boxes: CollapseBox[] = [{ center: [0, (GAP_M + y1) / 2 - yc, 0], half: [a1, (y1 - GAP_M) / 2, halfT] }];
     if (y2 > y1 + 0.2) boxes.push({ center: [0, (GAP_M + y2) / 2 - yc, 0], half: [a2, (y2 - GAP_M) / 2, halfT] });
     const areaM2 = face.width * H / 2;
-    const outward = rng() < 0.7 ? 1 : -1;
+    // the struck face's gable drops into the gap its wall left (a nudge in); another tips out more often than in
+    const struck = sideOf(face.out) === struckSide;
+    const outward = struck ? -0.4 : rng() < 0.7 ? 1 : -1;
     g.piece = add({
       kind: 'gable', center, rotation: quatFromAxes(xAxis, up, zAxis), boxes, massKg: Math.max(40, areaM2 * T * wallDensity(face)),
       material: coreOf(face).material, core: coreOf(face), back: backOf(face), face: null,
-      releaseS: 0.2 + rng() * 0.3, kick: [zAxis[0] * outward * (1 + 0.6 * rng()), 0, zAxis[2] * outward * (1 + 0.6 * rng())],
+      releaseS: (struck ? 0.04 : 0.2) + rng() * 0.3, kick: [zAxis[0] * outward * (1 + 0.6 * rng()), 0, zAxis[2] * outward * (1 + 0.6 * rng())],
       kickAt: [0, yTop - yc, 0], shatterS: -1,
     });
   }
@@ -797,10 +861,15 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
   stride = PIECE_VERTEX_STRIDE): Map<number, number[]> {
   if (stride < 6) throw new Error('a partition vertex carries a position and a normal');
   const out = new Map<number, number[]>();
-  const emit = (piece: number, poly: Poly): void => {
+  // a probe: one vertex through the same rules, its key recorded instead of emitted (the fast path below); a key is the
+  // piece × PART_STRIDE + its part (the remnant and what is dropped keep their negative codes)
+  let probing = false, probed = 0;
+  const emit = (piece: number, poly: Poly, part = 0): void => {
+    const key = piece < 0 ? piece : piece * PART_STRIDE + part;
+    if (probing) { probed = key; return; }
     if (poly.length < 3) return;
-    let list = out.get(piece);
-    if (!list) { list = []; out.set(piece, list); }
+    let list = out.get(key);
+    if (!list) { list = []; out.set(key, list); }
     const a = poly[0];
     for (let i = 1; i + 1 < poly.length; i++) {
       const b = poly[i], c = poly[i + 1];
@@ -895,7 +964,28 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
       pierAssign(poly, depth, fp, k, piece);
       return;
     }
-    emit(piece >= 0 ? piece : STATIC_PIECE, poly);
+    partAssign(poly, depth, fp, piece);
+  };
+
+  // a panel that cracks on landing: its parts by their cuts on the face
+  const partAssign = (poly: Poly, depth: number, fp: FacePlan, piece: number): void => {
+    if (piece < 0) { emit(STATIC_PIECE, poly); return; }
+    const p = plan.pieces[piece];
+    if (!p.parts.length) { emit(piece, poly); return; }
+    const f = fp.face;
+    const uOff = f.u[0] * f.origin[0] + f.u[1] * f.origin[1] + f.u[2] * f.origin[2];
+    for (const cut of p.partCutsU) {
+      if (across(poly, f.u[0], f.u[1], f.u[2], uOff + cut, depth, (h, _s, dd) => partAssign(h, dd, fp, piece))) return;
+    }
+    for (const cut of p.partCutsY) {
+      if (across(poly, 0, 1, 0, f.origin[1] + cut, depth, (h, _s, dd) => partAssign(h, dd, fp, piece))) return;
+    }
+    const c = centroid(poly);
+    const u = f.u[0] * c[0] + f.u[1] * c[1] + f.u[2] * c[2] - uOff, y = c[1] - f.origin[1];
+    let iu = 0, iy = 0;
+    while (iu < p.partCutsU.length && u >= p.partCutsU[iu]) iu++;
+    while (iy < p.partCutsY.length && y >= p.partCutsY[iy]) iy++;
+    emit(piece, poly, iu + (p.partCutsU.length + 1) * iy);
   };
 
   // over the stub: an end panel's corner pier stays to its top
@@ -919,7 +1009,7 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
         if (inPier(poly)) { emit(STATIC_PIECE, poly); return; }
       }
     }
-    emit(piece >= 0 ? piece : STATIC_PIECE, poly);
+    partAssign(poly, depth, fp, piece);
   };
 
   const roofAssign = (poly: Poly, depth: number): void => {
@@ -972,7 +1062,27 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     emit(piece >= 0 ? piece : STATIC_PIECE, poly);
   };
 
+  // most triangles lie inside one piece: each corner probed alone (no plane can split a point), and when all three
+  // agree the triangle is copied whole; only a triangle across a cut goes through the splitting rules
+  const probe: Poly = [new Float64Array(stride)];
+  const pieceOf = (t: number, k: number): number => {
+    const o = (t * 3 + k) * stride, v = probe[0];
+    for (let j = 0; j < stride; j++) v[j] = vertices[o + j];
+    probing = true;
+    probed = STATIC_PIECE;
+    assign(probe, 0);
+    probing = false;
+    return probed;
+  };
   for (let t = 0; t < triangles; t++) {
+    const p0 = pieceOf(t, 0);
+    if (pieceOf(t, 1) === p0 && pieceOf(t, 2) === p0) {
+      let list = out.get(p0);
+      if (!list) { list = []; out.set(p0, list); }
+      const o = t * 3 * stride;
+      for (let j = 0; j < 3 * stride; j++) list.push(vertices[o + j]);
+      continue;
+    }
     const poly: Poly = [];
     for (let k = 0; k < 3; k++) {
       const v = new Float64Array(stride);
@@ -1003,6 +1113,8 @@ export interface CapQuad {
   slot: FractureSlot;
   /** A shade on the slot's tint (dust on a broken edge, the light inside a room). */
   shade: number;
+  /** The part of its piece it belongs to (0 for a piece that stays whole). */
+  part?: number;
 }
 
 /**
@@ -1041,8 +1153,46 @@ export function capPiece(plan: CollapsePlan, piece: CollapsePiece): CapQuad[] {
       }
     }
   };
+  const fp = piece.face ? plan.storeys[piece.face.storey]?.faces.find((f) => f.index === piece.face!.face) ?? null : null;
   switch (piece.kind) {
     case 'wall':
+      if (fp && piece.face) {
+        // its parts' (or its boxes') rectangles on the face: each its back with the openings left open, and its edges
+        const where = piece.face, f = fp.face, T = where.thickness;
+        const uc = (where.u0 + where.u1) / 2, yc = (where.y0 + where.y1) / 2;
+        const sgn = dot(norm(cross([0, 1, 0], norm(f.out))), f.u) < 0 ? -1 : 1;
+        const rects = piece.parts.length ? piece.parts.map((p) => p.rect)
+          : piece.boxes.map((b) => ({ u0: uc + sgn * b.center[0] - b.half[0], u1: uc + sgn * b.center[0] + b.half[0],
+            y0: yc + b.center[1] - b.half[1], y1: yc + b.center[1] + b.half[1] }));
+        const P = (u: number, y: number, o: number): Vec3 => [f.origin[0] + f.u[0] * u + f.out[0] * o, f.origin[1] + y, f.origin[2] + f.u[2] * u + f.out[2] * o];
+        const inN: Vec3 = [-f.out[0], -f.out[1], -f.out[2]], uN: Vec3 = [f.u[0], f.u[1], f.u[2]];
+        rects.forEach((r, part) => {
+          // the back: the rectangle cut by its openings' edges into cells, those inside an opening left open
+          const us = [r.u0, r.u1], ys = [r.y0, r.y1];
+          for (const op of f.openings) {
+            for (const u of [op.u - op.w / 2, op.u + op.w / 2]) if (u > r.u0 && u < r.u1) us.push(u);
+            for (const y of [op.y0, op.y0 + op.h]) if (y > r.y0 && y < r.y1) ys.push(y);
+          }
+          us.sort((a, b) => a - b); ys.sort((a, b) => a - b);
+          for (let i = 0; i + 1 < us.length; i++) for (let j = 0; j + 1 < ys.length; j++) {
+            const mu = (us[i] + us[i + 1]) / 2, my = (ys[j] + ys[j + 1]) / 2;
+            if (us[i + 1] - us[i] < 0.01 || ys[j + 1] - ys[j] < 0.01) continue;
+            if (f.openings.some((op) => Math.abs(mu - op.u) < op.w / 2 && my > op.y0 && my < op.y0 + op.h)) continue;
+            caps.push({ corners: [P(us[i], ys[j], -T), P(us[i + 1], ys[j], -T), P(us[i + 1], ys[j + 1], -T), P(us[i], ys[j + 1], -T)],
+              n: inN, slot: piece.back, shade: 0.92, part });
+          }
+          // the broken edges: top and foot, and its two ends, through the wall's depth
+          const edge = (a: Vec3, b: Vec3, c: Vec3, d: Vec3, n: Vec3) => caps.push({ corners: [a, b, c, d], n, slot: piece.core, shade: 0.82, part });
+          edge(P(r.u0, r.y1, 0), P(r.u1, r.y1, 0), P(r.u1, r.y1, -T), P(r.u0, r.y1, -T), [0, 1, 0]);
+          edge(P(r.u0, r.y0, 0), P(r.u1, r.y0, 0), P(r.u1, r.y0, -T), P(r.u0, r.y0, -T), [0, -1, 0]);
+          edge(P(r.u1, r.y0, 0), P(r.u1, r.y1, 0), P(r.u1, r.y1, -T), P(r.u1, r.y0, -T), uN);
+          edge(P(r.u0, r.y0, 0), P(r.u0, r.y1, 0), P(r.u0, r.y1, -T), P(r.u0, r.y0, -T), [-uN[0], -uN[1], -uN[2]]);
+        });
+        break;
+      }
+      boxCaps((axis, sign) => axis === 2 && sign > 0, (axis, sign) => (axis === 2 && sign < 0 ? piece.back : piece.core),
+        (axis, sign) => (axis === 2 && sign < 0 ? 0.92 : 0.82));
+      break;
     case 'gable':
       // the face's own skin is the building's (+z); its back (−z) and its four edges are the caps
       boxCaps((axis, sign) => axis === 2 && sign > 0, (axis, sign) => (axis === 2 && sign < 0 ? piece.back : piece.core),
@@ -1256,4 +1406,18 @@ export function pieceKick(piece: CollapsePiece, placement: { yaw: number }, pose
   out[4] = pose[1] + y + 2 * (qz * cx - qx * cz);
   out[5] = pose[2] + z + 2 * (qx * cy - qy * cx);
   return true;
+}
+
+/** A part's own rigid shape once it has broken off (its box, its mass; cached as a piece's). */
+export function partShape(part: CollapsePart): RigidShape {
+  const [hx, hy, hz] = part.half;
+  const volume = 8 * hx * hy * hz || 1;
+  const density = Math.max(60, Math.min(4000, part.massKg / volume));
+  const key = `part|${Math.round(density / 10)}|${part.half.map((v) => Math.round(v * 100)).join(',')}`;
+  const hit = shapeCache.get(key);
+  if (hit) return hit;
+  const shape = createRigidBox(Math.max(0.03, hx), Math.max(0.03, hy), Math.max(0.03, hz), density, { restitution: 0.14, friction: 0.72, rolling: 0.15 });
+  if (shapeCache.size >= SHAPE_CACHE_MAX) shapeCache.delete(shapeCache.keys().next().value!);
+  shapeCache.set(key, shape);
+  return shape;
 }

@@ -715,10 +715,13 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         const u = where.u0 + (iu + rng()) * (where.u1 - where.u0) / nu;
         const fy = where.y0 + (iy + rng()) * (where.y1 - where.y0) / ny;
         if (face.openings.some((op) => Math.abs(u - op.u) < op.w / 2 && fy > op.y0 && fy < op.y0 + op.h)) continue;
-        const slot: FractureSlot = face.layers.length > 1 && rng() < 0.4 ? face.layers[face.layers.length - 1]! : face.layers[0]!;
+        // the wall's masonry most (a frame's timbers break short: no poles)
+        const masonry = face.layers.filter((l) => l.material !== 'timber' && l.material !== 'plank');
+        const pool = masonry.length ? masonry : face.layers;
+        const slot: FractureSlot = pool.length > 1 && rng() < 0.4 ? pool[pool.length - 1]! : pool[0]!;
         const shape = shapeOfMaterial(slot.material);
         const flat = shape === 'plate' || shape === 'sheet' || shape === 'tile' || shape === 'slate';
-        const size = (shape === 'beam' ? 1.2 : 0.55) * (0.7 + rng() * 0.6);
+        const size = (shape === 'beam' ? 0.7 : 0.55) * (0.7 + rng() * 0.6);
         const px = face.origin[0] + face.u[0] * u - face.out[0] * thick * 0.5;
         const py = face.origin[1] + fy;
         const pz = face.origin[2] + face.u[2] * u - face.out[2] * thick * 0.5;
@@ -891,6 +894,11 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   return {
     stage(e, seam) {
       finishFalls(e.structureId);
+      // a building that may come down soon: its cut into bodies laid ahead, a little a frame (collapseBodies prepare)
+      if (o.bodies && seam && e.settled !== true && (e.stage === 'damaged' || e.stage === 'breached')) {
+        const byBucket = spanMaterials(seam);
+        o.bodies.prepare(seam, (bucket) => byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? null);
+      }
       if ((e as StructureStageEvent & { sections?: boolean }).sections === true) sectionsSeen.add(e.structureId);
       const settled = e.settled === true;
       // (dcore 2026-10-10) a live collapse of a building with storeys comes down as bodies: its own pieces, cut from it

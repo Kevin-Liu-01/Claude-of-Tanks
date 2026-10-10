@@ -1418,7 +1418,8 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
   // rubble, as a roof comes down onto its own walls (a cast deck breaks into the pile's slabs instead)
   const frame = anatomy.roof?.structure;
   if (frame && (frame.material === 'timber' || frame.material === 'metal') && mesh.begin(frame.bucket, 'rubble')) {
-    const n = Math.min(9, 3 + Math.round((anatomy.w + anatomy.d) / 4));
+    // (bodies: the roof's frame came down with its slabs; a few broken lengths in the pile)
+    const n = Math.min(bodies ? 4 : 9, (bodies ? 1 : 3) + Math.round((anatomy.w + anatomy.d) / (bodies ? 8 : 4)));
     for (let k = 0; k < n; k++) {
       // (2026-10-10, Steinburg after 208: "spiky timber debris read rough") rafters broke as the roof came down: shorter
       // lengths, few poking up, and those only a hand to a knee over the heap
@@ -1439,10 +1440,12 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
     }
   }
   mesh.end();
-  // the falling debris: from the storeys and the roof, down and out
+  // the falling debris: from the storeys and the roof, down and out (bodies: the walls and the roof fall as their own
+  // pieces; a third as many bits, and no timber longer than a metre — the long poles read as spikes)
   const top = anatomy.roof?.ridgeY ?? anatomy.h;
   const pieceSlots = slots.length ? slots : anatomy.rubble;
-  for (let i = 0; i < out.pieces.capacity; i++) {
+  const bits = bodies ? Math.floor(out.pieces.capacity / 3) : out.pieces.capacity;
+  for (let i = 0; i < bits; i++) {
     const slot = pieceSlots[Math.floor(rng() * pieceSlots.length)];
     if (!slot) break;
     const shape: DebrisShape = slot.material === 'brick' ? 'brick' : slot.material === 'stone' ? 'block' : slot.material === 'rubble' ? 'stone'
@@ -1450,7 +1453,8 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
         : slot.material === 'thatch' ? 'straw' : slot.material === 'adobe' || slot.material === 'earth' ? 'clod' : slot.material === 'metal' ? 'sheet' : 'chunk';
     const ox = (rng() - 0.5) * anatomy.w, oz = (rng() - 0.5) * anatomy.d, x = cx + ox, z = cz + oz, y = 1 + rng() * (top - 1);
     const out2 = Math.hypot(ox, oz) || 1, sp = 1.5 + rng() * 3;
-    const s = shape === 'beam' ? [1 + rng() * 1.6, 0.16, 0.16] : shape === 'tile' ? [0.2, 0.015, 0.34] : [0.15 + rng() * 0.25, 0.1 + rng() * 0.15, 0.12 + rng() * 0.2];
+    const s = shape === 'beam' ? [bodies ? 0.45 + rng() * 0.5 : 1 + rng() * 1.6, bodies ? 0.12 : 0.16, bodies ? 0.12 : 0.16]
+      : shape === 'tile' ? [0.2, 0.015, 0.34] : [0.15 + rng() * 0.25, 0.1 + rng() * 0.15, 0.12 + rng() * 0.2];
     const ang = rng() * Math.PI * 2;
     if (!out.pieces.push(slot.bucket, shape, Math.floor(rng() * 4), x, y, z, 0, Math.sin(ang / 2), 0, Math.cos(ang / 2), s[0], s[1], s[2],
       slot.tint[0], slot.tint[1], slot.tint[2], (ox / out2) * sp, -1 - rng() * 2, (oz / out2) * sp)) break;
