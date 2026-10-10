@@ -266,8 +266,9 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
       seatQuat.identity();
       lastTrail.copy(startPos);
       lastPos.copy(startPos);
-      if (explicitAge !== null) {
-        // a composer's age: the local body now, to that age
+      if (explicitAge !== null && explicitAge > 0) {
+        // a composer's later age (a staged still mid-flight): the local body now, to that age. At age 0 the turret
+        // stands on its seat: the first update decides (an authority's pose, a killcam's track, or our own body)
         startLocal(false, explicitAge);
         advanceLocal(explicitAge);
         if (sampleLocal(explicitAge)) place();
