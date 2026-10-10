@@ -134,6 +134,12 @@ export interface HorizonPanoramaCharacter {
    * band there, under its own horizontal and with the cloud layer's sea fog bank at the far depth, read as "a long flat
    * pale horizontal slab" over the sea maps' bird views (gauntlet wave 313); 0 leaves them open as before */
   limbFill: number;
+  /** The horizons lane (2026-10-09, the owner's R023: "distant treelines across the full height of mountain faces ...
+   * several irregular forest belts from lower slopes through mid-slopes"): 0..1, how far the far faces' forest climbs
+   * past the character's treeline in belts — to about 0.62 of the relief over the plinth, broken by three open bands at
+   * wandering heights that come and go along the ranges (subalpine meadows, rock bands), off the steep faces, a ragged
+   * top; 0 leaves the forest as the character has it */
+  forestBelts: number;
 }
 
 /** The knobs most characters leave at rest: open sea, no tree canopy, the eroded mesa's profile, no isolated peaks. */
@@ -145,7 +151,7 @@ const PANO_EXTRAS = Object.freeze({
   air: 1, fillLaw: 0, rockFloor: -1, scrub: 0, ownRock: 0,
   jebelShare: 0, jebelM: 0, jebelRadiusM: 900, jebelFoot: 0.66, jebelRim: 0.86, jebelApron: 0.18,
   jebelFlutes: 16, jebelFluteDepth: 0.5, jebelBossM: 0, jebelFootVary: 0.14, jebelVarnish: 0, jebelNearM: 0,
-  snowSlide: 0, limbFill: 0,
+  snowSlide: 0, limbFill: 0, forestBelts: 0,
 });
 
 /** Maps lane A's sheer jebel (landformGeology.ts inselbergSection with a rim, origin/visual/maps-layouts ca018e38e):
@@ -1568,7 +1574,7 @@ uniform vec4 uChar4;   // strata, deckM, ampM, farRise
 uniform vec2 uElev;
 uniform sampler2D uEdge;
 uniform vec4 uShore;      // the far shore's height share (0: open sea), the channel's distance (m), its coastal range's share
-uniform vec4 uTrees;      // the far field's canopy (m), the forest's slope limit, a dry coast's scrub
+uniform vec4 uTrees;      // the far field's canopy (m), the forest's slope limit, a dry coast's scrub, the faces' forest belts
 uniform vec4 uAir;        // the far path's share of the law's σ, the fill's law (0 / 1), the bare rock's floor (a share of the relief), the snow's slide off the steep faces
 uniform vec4 uHaze;       // the shared haze law (hazeLaw.ts): σ (1/m), 1 / the layer's scale height, the datum (m), on
 uniform vec3 uHazeChroma; // its per-channel extinction
@@ -1609,6 +1615,22 @@ vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   float streak = uTrees.z > 0.0 ? smoothstep(-0.2, 0.6, fallStreak(wp.xz)) : 0.0;
   float climb = uTrees.z * (0.3 * texture2D(uHeight, g).b + 0.25 * streak + 0.1 * n1);
   float vegW = uChar3.y > 0.0 ? (1.0 - smoothstep(uChar3.y * 0.75, uChar3.y * 1.05, hT + 0.05 * n1 - climb)) * (1.0 - smoothstep(uTrees.y, uTrees.y + 0.23, slope)) : 0.0;
+  // (the horizons lane, 2026-10-09, R023: the faces' forest in belts — uTrees.w) up to about 0.62 of the relief, a ragged
+  // top, three open bands at wandering heights (each coming and going along the range on a 1.4 km field), off the faces
+  // too steep to hold trees; the stands and clearings below take it as their own
+  if (uTrees.w > 0.0 && uChar3.y > 0.0) {
+    float bTop = max(uChar3.y, 0.62);
+    float hw = hT + 0.06 * n1 + 0.04 * noised(wp.xz / 260.0 + vec2(1.7, -4.2)).x;
+    float bZone = (1.0 - smoothstep(bTop * 0.86, bTop * 1.04, hw)) * (1.0 - smoothstep(uTrees.y + 0.05, uTrees.y + 0.28, slope));
+    float gap = 0.0;
+    for (int k = 0; k < 3; k++) {
+      float fk = float(k);
+      float bc = bTop * (0.30 + 0.22 * fk) + 0.03 * sin(fk * 2.3 + 1.1);
+      float on = smoothstep(-0.25, 0.3, noised(wp.xz / 1400.0 + vec2(7.1 * fk + 0.4, -3.3 * fk + 2.2)).x);
+      gap = max(gap, on * (1.0 - smoothstep(0.025, 0.05, abs(hw - bc))));
+    }
+    vegW = max(vegW, uTrees.w * bZone * (1.0 - gap));
+  }
   float standN = noised(wp.xz / 170.0 + vec2(3.1, -7.7)).x + (1.0 - apron) * (0.45 * noised(wp.xz / 61.0 + vec2(-9.2, 4.4)).x + 0.25 * noised(wp.xz / 23.0).x);
   float stand = mix(smoothstep(-0.15, 0.2, standN + 1.4 * smoothstep(0.03, 0.18, slope) - 0.55), 1.0, 0.85 * uTrees.z);
   float mottle = 0.72 + 0.4 * mix(noised(wp.xz / 29.0 + vec2(11.3, 5.1)).x * 0.5 + 0.5, 0.5, apron);
@@ -2183,7 +2205,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
         options.treelineM != null ? options.treelineM / ch.ampM : ch.treeline, ch.rockSlope, ch.bedM) },
       uChar4: { value: new THREE.Vector4(ch.strata, options.deckBaseM, ch.ampM, ch.farRise) },
       uShore: { value: new THREE.Vector4(ch.shore, ch.shoreM, ch.shoreRange, 0) },
-      uTrees: { value: new THREE.Vector4(ch.trees, ch.forestSlope, ch.scrub, 0) },
+      uTrees: { value: new THREE.Vector4(ch.trees, ch.forestSlope, ch.scrub, ch.forestBelts) },
       uAir: { value: new THREE.Vector4(ch.air, ch.fillLaw, ch.rockFloor, ch.snowSlide) },
       uMesa: { value: new THREE.Vector4(ch.mesaTalusM, ch.mesaTalusShare, ch.mesaCliffM, ch.mesaFluteM) },
       uPeaks: { value: new THREE.Vector4(ch.peakShare, ch.peakM, ch.peakRadiusM, ch.peakSharp) },

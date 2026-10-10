@@ -92,4 +92,15 @@ const limbOf = (id) => { const p = getMapConfig(id).horizon?.panorama; return p 
 for (const id of ['fjord', 'coastal', 'saltwind']) assert.equal(limbOf(id), 1, `${id}'s sea horizon runs on into the sky over the limb`);
 for (const id of ['verdant', 'winter', 'reservoir', 'railyard', 'desert', 'frontier', 'alpine', 'caldera', 'urban']) assert.equal(limbOf(id), 0, `${id} keeps its limb open`);
 
-console.log('horizonPanoramaParallax.selftest: the shell\'s parallax over the water, the inlets\' sides, the limb fill and the far ranges\' snow slide PASS');
+// --- the far faces' forest belts (R023) ----------------------------------------------------------------------------
+assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('if (uTrees.w > 0.0 && uChar3.y > 0.0) {') && HORIZON_PANORAMA_SHADERS.strip.includes('vegW = max(vegW, uTrees.w * bZone * (1.0 - gap));'),
+  'the strip\'s forest climbs the faces in belts where the map asks (uTrees.w), never thinning the forest the character has');
+assert.ok(/uTrees: \{ value: new THREE\.Vector4\(ch\.trees, ch\.forestSlope, ch\.scrub, ch\.forestBelts\) \}/.test(source), 'the knob rides in uTrees.w');
+assert.equal(resolveHorizonPanoramaCharacter('alpine').forestBelts, 0, 'the characters keep their forest');
+assert.equal(resolveHorizonPanoramaCharacter('alpine', alpine.panorama).forestBelts, 1, 'Glacier Pass\'s far faces carry forest belts');
+for (const id of PROTECTED) {
+  const p = getMapConfig(id).horizon?.panorama;
+  assert.ok(!(p && typeof p === 'object' && p.forestBelts), `${id} keeps its far forest`);
+}
+
+console.log('horizonPanoramaParallax.selftest: the shell\'s parallax over the water, the inlets\' sides, the limb fill, the far ranges\' snow slide and forest belts PASS');

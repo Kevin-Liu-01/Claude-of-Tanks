@@ -135,7 +135,11 @@ it): an apron off the ring's outer edge and a wall at 2.6 km, sampling the atlas
 scene fog off as on the round-72 range. The world bakes it under the loading cover (`map.ts` warmImpostors) or on the
 first update, again after a GPU suspension disposes the atlas; until then the round-72 far range draws (receipts, no
 float targets). `horizon.panorama: false` keeps the old range; an object overrides the character's far knobs
-(`snowSlide` 0..1: the far snow slides off the steep faces from ~34 degrees instead of ~45, Glacier Pass). From a camera
+(`snowSlide` 0..1: the far snow slides off the steep faces from ~34 degrees instead of ~45, Glacier Pass; `forestBelts`
+0..1: the far faces' forest climbs to ~0.62 of the relief in belts, three open bands at wandering heights, the owner's
+R023; `limbFill` 1: a high camera's rays between the true horizon's dip and its own horizontal take the horizon's colour
+instead of the dome — fjord, coastal, saltwind). An open-sea column is one with no land past a 0.1 sea weight (the inlets'
+sides; at 0.5 they were neither land nor sea and the shell discarded them over the far earth's height: the pillars). From a camera
 over 60 m (the horizons lane, 2026-10-09; `horizonPanoramaParallax.selftest.mjs`), a wall texel over an opening's water
 whose camera ray meets the sea short of that texel's own land (the aux pass's distance) takes the far earth's law —
 the far shore painted from the 30 m eye no longer stands on the wall as a curtain in the bird views.
