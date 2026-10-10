@@ -153,7 +153,9 @@ import {
   rockStaysCrushable, ROCK_LOW_STONE_M,
   type RockCollisionProfile, type RockForm,
 } from './rockCollision.ts'; // the hitbox lane, 2026-10-07
-import { createCrushedStoneLayout, crushedStoneLayout, stoneFormOf, StonePiecePool, type CrushedStoneLayout } from './crushedStones.ts'; // the hitbox lane, 2026-10-10
+import {
+  createCrushedStoneLayout, crushedStoneLayout, stoneFormOf, StonePiecePool, StoneScuffPool, type CrushedStoneLayout,
+} from './crushedStones.ts'; // the hitbox lane, 2026-10-10
 /** A hedgehog beam's slabs are at most this tall (m; the hitbox lane, 2026-10-07). */
 const HEDGEHOG_SLAB_M = 0.35;
 const _hedgehogBeam = new THREE.Matrix4(), _hedgehogTilt = new THREE.Matrix4();
@@ -8979,7 +8981,7 @@ ${snowCap ? `
     const CONTACT_STRENGTH = Object.freeze({ rock: 1, prop: 0.75, stack: 0.75, foundation: 0.45, scuff: 1 });
     // (the hitbox lane, 2026-10-10) a crushed stone's scuff: darkest where it was pressed in, thinning to its rim
     const STONE_SCUFF_SHARES: readonly number[] = [1, 0.95, 0.7, 0.35];
-    const stoneScuffDiscs = new Map<THREE.BufferGeometry, CrushableClutter>();
+    const scuffDiscs: Array<{ clutter: CrushableClutter; disc: THREE.BufferGeometry }> = [];
     function conformedDisc(
       x: number,
       z: number,
@@ -9131,44 +9133,29 @@ ${snowCap ? `
       }
       // (b16) and over each bed, its patch's soil where the bed stands above the ground the disc lies on
       for (const shade of rockBedShades) dirtDiscs.push(shade);
-      // (the hitbox lane, 2026-10-10) each crushable stone's scuff: the ground it is pressed into, a disc of the contact
-      // layer that darkens nothing until the stone is crushed (bindStoneScuffs)
+      // (the hitbox lane, 2026-10-10) each crushable stone's scuff, the ground it is pressed into: conformed now, laid at
+      // its crush (layStoneScuffs)
       for (const scuff of stoneScuffs) {
-        const disc = conformedDisc(scuff.x, scuff.z, scuff.r, [0.05, 0.05, 0.04, 0.03], true, STONE_SCUFF_SHARES, 0);
-        stoneScuffDiscs.set(disc, scuff.clutter);
-        dirtDiscs.push(disc);
+        scuffDiscs.push({ clutter: scuff.clutter,
+          disc: conformedDisc(scuff.x, scuff.z, scuff.r, [0.05, 0.05, 0.04, 0.03], true, STONE_SCUFF_SHARES, CONTACT_STRENGTH.scuff) });
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
     }
-    /** The scuffs' windows in the merged contact layer: a crush lays its stone's disc and darkens it, a rematch takes it
-     * back. A scuff not laid is folded to its centre (no area: it costs no fragment of the layer). */
-    function bindStoneScuffs(dirtDiscs: readonly THREE.BufferGeometry[], merged: THREE.BufferGeometry | null): void {
-      if (!merged || !stoneScuffDiscs.size) return;
-      const color = merged.getAttribute('color') as THREE.BufferAttribute | undefined;
-      const position = merged.getAttribute('position') as THREE.BufferAttribute;
-      if (!color || !position) return;
-      let first = 0;
-      for (const disc of dirtDiscs) {
-        const count = disc.attributes.position.count, clutter = stoneScuffDiscs.get(disc), at = first;
-        first += count;
-        if (!clutter) continue;
-        const home = (position.array as Float32Array).slice(at * 3, (at + count) * 3);
-        const lay = (crushed: boolean): void => {
-          const strength = crushed ? CONTACT_STRENGTH.scuff : 0;
-          for (let i = 0; i < count; i++) {
-            const k = crushed ? i * 3 : 0;
-            position.setXYZ(at + i, home[k], home[k + 1], home[k + 2]);
-            color.setXYZ(at + i, strength, strength, strength);
-          }
-          position.addUpdateRange(at * 3, count * 3);
-          position.needsUpdate = true;
-          color.addUpdateRange(at * color.itemSize, count * color.itemSize);
-          color.needsUpdate = true;
-        };
-        lay(false);
-        clutter.crushHooks.push(lay);
+    /** The crushed stones' scuffs: their discs in one pool drawn with the contact layer's own material, each laid at its
+     * stone's crush and folded at a rematch; nothing is drawn while no stone lies crushed (crushedStones.ts). */
+    function layStoneScuffs(contact: THREE.BufferGeometry | null): void {
+      if (!scuffDiscs.length) return;
+      const layer = group.children.find((object) => (object as THREE.Mesh).geometry === contact) as THREE.Mesh | undefined;
+      const material = (layer?.material as THREE.Material | undefined) ?? contactDarkeningMaterial(makeGroundDecalTexture(noi, aniso, 'dirt'));
+      const pool = new StoneScuffPool(material, 'stone-scuffs');
+      for (const { clutter, disc } of scuffDiscs) { pool.register(clutter, disc); disc.dispose(); }
+      pool.seal();
+      Object.assign(pool.mesh.userData, { groundContactDecal: true, terrainDecal: true, terrainDecalKind: 'stone-scuff', decalParts: 0 });
+      group.add(pool.mesh);
+      for (const { clutter } of scuffDiscs) {
+        clutter.crushHooks.push((crushed) => { if (crushed) pool.show(clutter); else pool.hide(clutter); });
       }
-      stoneScuffDiscs.clear();
+      scuffDiscs.length = 0;
     }
     function courtyardDecalIsClear(x: number, z: number): boolean {
       const roadDistance = heightField._roadDist(x, z);
@@ -9202,11 +9189,12 @@ ${snowCap ? `
         if (!collected) {
           // Only private inputs exist at these checkpoints. Drain every input
           // on IteratorClose without masking the owning build's cancellation.
-          for (const geometries of [dirtDiscs, apronGeos]) {
+          for (const geometries of [dirtDiscs, apronGeos, scuffDiscs.map((scuff) => scuff.disc)]) {
             for (const geometry of geometries) {
               try { geometry.dispose(); } catch (_) { /* continue releasing private inputs */ }
             }
           }
+          scuffDiscs.length = 0;
         }
       }
       const contactGeometry = addDecalMesh(dirtDiscs, makeGroundDecalTexture(noi, aniso, 'dirt'), {
@@ -9214,7 +9202,7 @@ ${snowCap ? `
         groundContact: true,
         decalKind: 'ground-contact',
       });
-      bindStoneScuffs(dirtDiscs, contactGeometry);
+      layStoneScuffs(contactGeometry);
       if (foundryDonors && !P.streetRows && contactGeometry) {
         // Keep the same merged decal and vertex windows. Only the six moved
         // foundations are resampled against their new terrain after dressing.

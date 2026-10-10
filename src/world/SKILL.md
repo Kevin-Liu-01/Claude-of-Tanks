@@ -24,7 +24,9 @@ allocation-free chase-camera occlusion focus passed to an active world,
 `collision.ts` owns strict allocation-free broad phase and narrow-phase shape
 contracts (every convex part convex in fact: `convexOutlineInPlace`), `rockCollision.ts` derives every stone's and
 rock formation's colliders from its own mesh (the movement record its tiers: nested columns stepping as the stone
-does) and `slabCollision.ts` the shell slabs of the props' leaning solids (wrecks,
+does; a low stone a crushable small rock), `crushedStones.ts` what a crushed stone leaves (pressed in, split into
+flakes and chips, its scuff), `rubbleCollision.ts` a rubble pile's records from its drawn chunks, and
+`slabCollision.ts` the shell slabs of the props' leaning solids (wrecks,
 hedgehog beams, pylon legs; all audited by `tools/world-collider-audit.mjs`), `maps/` owns layouts, `shallowWater.ts` owns the lake/sea sheet and `waterRipples.ts` the world-anchored GPU
 shallow-water field it reads for wakes, churn and splashes (null on the mobile tier and in receipts), and vegetation,
 props and toppling own their visual/runtime layers; `groundRedux.ts` (THREE-free) holds every map's ground profile

@@ -34,9 +34,12 @@ const FLAKE_RISE = 0.34;
 const FLAKE_OUT = 0.94;
 const FLAKE_TIP_MIN = 0.24;
 const FLAKE_TIP_SPAN = 0.2;
-/** A chip: its size (m across, a share of the reach, clamped), its height (a share of its size), and how far out it
- *  lands (shares of the reach). */
+/** A chip: its size (m across: a share of the reach, at most a share of the stone's exposed height, clamped), its height
+ *  (a share of its size, at most a share of the exposed height: a chip never stands over the pressed stone), and how far
+ *  out it lands (shares of the reach). */
 const CHIP_SHARE = 0.26;
+const CHIP_RISE_SHARE = 0.9;
+const CHIP_TOP_SHARE = 0.4;
 const CHIP_MIN_M = 0.1;
 const CHIP_MAX_M = 0.34;
 const CHIP_HEIGHT = 0.7;
@@ -170,15 +173,17 @@ export function crushedStoneLayout(
       scaleOf(reach * FLAKE_ACROSS), heightOf(flakeRise * 1.25), scaleOf(reach * FLAKE_ALONG), flakeRise * 0.25, reach * FLAKE_ALONG);
   }
   // the chips: thrown round it
-  const chip = Math.min(CHIP_MAX_M, Math.max(CHIP_MIN_M, reach * CHIP_SHARE));
+  const chip = Math.min(CHIP_MAX_M, Math.max(CHIP_MIN_M, Math.min(reach * CHIP_SHARE, rise * CHIP_RISE_SHARE)));
+  const chipTop = rise * CHIP_TOP_SHARE;
   for (let k = 0; k < STONE_PIECES - 2; k++) {
     const a = yaw + ((k + 0.5) / (STONE_PIECES - 2)) * Math.PI * 2 + (hash01(x, z, 11 + k) - 0.5) * 1.2;
     const r = reach * (CHIP_OUT_MIN + CHIP_OUT_SPAN * hash01(x, z, 15 + k));
     const size = chip * (0.75 + 0.5 * hash01(x, z, 19 + k));
+    const tall = Math.min(size * CHIP_HEIGHT, chipTop);
     const ox = Math.cos(a), oz = Math.sin(a);
     layPiece(out.pieces[2 + k], heightAt, x + ox * r, z + oz * r, hash01(x, z, 23 + k) * Math.PI * 2,
       0.5 * hash01(x, z, 27 + k), -oz, ox, ox, oz,
-      scaleOf(size * 0.5), heightOf(size * CHIP_HEIGHT * 1.2), scaleOf(size * 0.5), size * CHIP_HEIGHT * 0.2, size);
+      scaleOf(size * 0.5), heightOf(tall * 1.2), scaleOf(size * 0.5), tall * 0.2, size);
   }
   return out;
 }
@@ -267,5 +272,116 @@ export class StonePiecePool {
     this.ground.needsUpdate = true;
     this.slope.addUpdateRange(first * 2, STONE_PIECES * 2);
     this.slope.needsUpdate = true;
+  }
+}
+
+/** A scuff's source: its disc's vertices as laid at the build (conformed to the drawn ground), kept until its crush. */
+interface ScuffSource { position: Float32Array; uv: Float32Array; color: Float32Array }
+
+/**
+ * The crushed stones' scuffs: one mesh of disc slots drawn with the contact layer's own material (the ground under it
+ * darkened, never a soil of its own), every stone's disc conformed at the build and kept aside; a stone's first crush
+ * lays its disc in the next slot, a rematch folds it to a point, and the mesh draws nothing while no stone lies crushed
+ * (its draw range ends at the last slot taken).
+ */
+export class StoneScuffPool {
+  readonly mesh: THREE.Mesh;
+  private readonly sources = new Map<object, ScuffSource>();
+  private readonly blocks = new Map<object, number>();
+  private readonly shown = new Set<object>();
+  private position: THREE.BufferAttribute | null = null;
+  private uv: THREE.BufferAttribute | null = null;
+  private color: THREE.BufferAttribute | null = null;
+  private verts = 0;
+  private indices = 0;
+  private template: number[] = [];
+  private next = 0;
+
+  constructor(material: THREE.Material, name: string) {
+    this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
+    this.mesh.visible = false;
+    this.mesh.frustumCulled = false;
+    this.mesh.matrixAutoUpdate = false;
+    this.mesh.castShadow = false;
+    this.mesh.receiveShadow = false;
+    this.mesh.renderOrder = 1;
+    this.mesh.name = name;
+  }
+
+  /** A stone's disc (indexed, with position, uv and an RGBA color), laid at the build; every disc the same layout. */
+  register(owner: object, disc: THREE.BufferGeometry): void {
+    const index = disc.getIndex();
+    const position = disc.getAttribute('position'), uv = disc.getAttribute('uv'), color = disc.getAttribute('color');
+    if (!index || !position || !uv || !color) throw new Error('crushedStones: a scuff disc needs an index, position, uv and color');
+    if (!this.verts) {
+      this.verts = position.count;
+      this.indices = index.count;
+      this.template = Array.from(index.array as ArrayLike<number>);
+    } else if (position.count !== this.verts || index.count !== this.indices) throw new Error('crushedStones: scuff discs differ');
+    this.sources.set(owner, {
+      position: Float32Array.from(position.array as ArrayLike<number>),
+      uv: Float32Array.from(uv.array as ArrayLike<number>),
+      color: Float32Array.from(color.array as ArrayLike<number>),
+    });
+  }
+
+  /** Close the registrations: the slots for every registered stone (nothing drawn yet). */
+  seal(): void {
+    const stones = this.sources.size;
+    if (!stones) return;
+    const geometry = this.mesh.geometry;
+    this.position = new THREE.BufferAttribute(new Float32Array(stones * this.verts * 3), 3);
+    this.uv = new THREE.BufferAttribute(new Float32Array(stones * this.verts * 2), 2);
+    this.color = new THREE.BufferAttribute(new Float32Array(stones * this.verts * 4), 4);
+    const index = new (stones * this.verts > 65535 ? Uint32Array : Uint16Array)(stones * this.indices);
+    for (let b = 0; b < stones; b++) for (let i = 0; i < this.indices; i++) index[b * this.indices + i] = this.template[i] + b * this.verts;
+    geometry.setAttribute('position', this.position);
+    geometry.setAttribute('uv', this.uv);
+    geometry.setAttribute('color', this.color);
+    geometry.setIndex(new THREE.BufferAttribute(index, 1));
+    geometry.setDrawRange(0, 0);
+  }
+
+  /** The stones whose scuffs lie now. */
+  get crushed(): number { return this.shown.size; }
+
+  /** Lay a stone's scuff (its first crush takes a slot); false when it has none. */
+  show(owner: object): boolean {
+    if (this.shown.has(owner)) return true;
+    const source = this.sources.get(owner);
+    if (!source || !this.position || !this.uv || !this.color) return false;
+    let block = this.blocks.get(owner);
+    if (block === undefined) { block = this.next++; this.blocks.set(owner, block); }
+    const at = block * this.verts;
+    (this.position.array as Float32Array).set(source.position, at * 3);
+    (this.uv.array as Float32Array).set(source.uv, at * 2);
+    (this.color.array as Float32Array).set(source.color, at * 4);
+    this.touch(at);
+    this.shown.add(owner);
+    this.mesh.geometry.setDrawRange(0, this.next * this.indices);
+    this.mesh.visible = true;
+    return true;
+  }
+
+  /** Fold a stone's scuff to a point (a rematch); the mesh draws nothing when none is left. */
+  hide(owner: object): void {
+    if (!this.shown.delete(owner) || !this.position) return;
+    const at = this.blocks.get(owner)! * this.verts;
+    const p = this.position.array as Float32Array;
+    for (let i = 1; i < this.verts; i++) p.copyWithin((at + i) * 3, at * 3, at * 3 + 3);
+    this.touch(at);
+    if (this.shown.size === 0) {
+      this.blocks.clear();
+      this.next = 0;
+      this.mesh.geometry.setDrawRange(0, 0);
+      this.mesh.visible = false;
+    }
+  }
+
+  private touch(at: number): void {
+    for (const [attribute, size] of [[this.position, 3], [this.uv, 2], [this.color, 4]] as const) {
+      attribute!.addUpdateRange(at * size, this.verts * size);
+      attribute!.needsUpdate = true;
+    }
   }
 }

@@ -6,13 +6,16 @@
 //     and narrower across the split, but it never vanishes (at least a third of its width, a tenth of its height);
 //   - the two flakes lie either side of the split, clear of the body's middle, each tipped outward (its outer edge lower
 //     than its inner) and seated on the ground (never floating, sunk at most a third of their own height);
-//   - the three chips land beyond the stone's reach and within twice it, seated the same way;
+//   - the three chips land beyond the stone's reach and within twice it, seated the same way, none standing higher than
+//     the pressed stone;
 //   - the pool lays a stone's pieces in a block of its slots, keeps the block through a rematch, draws nothing while no
-//     stone is crushed, refuses past its capacity, and a repeated crush never takes a second block.
+//     stone is crushed, refuses past its capacity, and a repeated crush never takes a second block;
+//   - the scuffs' pool draws nothing until a stone is crushed, lays its disc as the build conformed it, folds it to a
+//     point at a rematch and empties when none is left.
 import assert from 'node:assert/strict';
-import { BoxGeometry, Matrix4, MeshBasicMaterial, Quaternion, Vector3 } from 'three';
+import { BoxGeometry, BufferAttribute, CircleGeometry, Matrix4, MeshBasicMaterial, Quaternion, Vector3 } from 'three';
 import {
-  STONE_PIECES, StonePiecePool, createCrushedStoneLayout, crushedStoneLayout, stoneFormOf,
+  STONE_PIECES, StonePiecePool, StoneScuffPool, createCrushedStoneLayout, crushedStoneLayout, stoneFormOf,
 } from './crushedStones.ts';
 
 // a stone-like form: a box seated on y = 0 (its foot under the seat line, as the boulder forms flare theirs)
@@ -88,6 +91,13 @@ for (const [name, ground] of Object.entries(grounds)) {
       assert.ok(out >= reach * 0.99 && out <= reach * 2, `${name} (${x}, ${z}): a chip lands round the stone (${(out / reach).toFixed(2)} reach)`);
       const seat = e.y - piece.ground;
       assert.ok(seat <= 1e-9 && -seat <= e.sy * form.topLocal / 3, `${name} (${x}, ${z}): a chip is seated (${seat.toFixed(3)} m)`);
+      // a chip never stands over the pressed stone
+      let chipTop = -Infinity;
+      for (const cx of [-1, 1]) for (const cz of [-1, 1]) {
+        corner.set(cx, 1.1, cz).applyMatrix4(piece.matrix);
+        chipTop = Math.max(chipTop, corner.y - ground(corner.x, corner.z));
+      }
+      assert.ok(chipTop <= bodyTop + 0.02, `${name} (${x}, ${z}): a chip (${chipTop.toFixed(2)} m) stands no higher than the pressed stone (${bodyTop.toFixed(2)} m)`);
     }
     if (name === 'slope') {
       // the pieces lie on the slope: each piece's up leans with the ground's normal
@@ -134,6 +144,38 @@ assert.equal(pool.show(three, layoutOf(40).pieces), true, 'an emptied pool takes
 pool.mesh.getMatrixAt(0, m);
 assert.ok(Math.abs(m.elements[12] - layoutOf(40).pieces[0].matrix.elements[12]) < 1e-6, 'the first block is reused');
 
+// the scuffs' pool
+{
+  const disc = (x) => {
+    const g = new CircleGeometry(1.5, 12).rotateX(-Math.PI / 2).translate(x, 2.05, 0);
+    g.setAttribute('color', new BufferAttribute(new Float32Array(g.attributes.position.count * 4).fill(1), 4));
+    g.deleteAttribute('normal');
+    return g;
+  };
+  const scuffs = new StoneScuffPool(new MeshBasicMaterial(), 'test-scuffs');
+  const a = {}, b = {}, stranger = {};
+  scuffs.register(a, disc(0)); scuffs.register(b, disc(10));
+  scuffs.seal();
+  const geometry = scuffs.mesh.geometry, per = disc(0).getIndex().count, verts = disc(0).attributes.position.count;
+  assert.equal(scuffs.mesh.visible, false); assert.equal(geometry.drawRange.count, 0, 'no scuff is drawn before a crush');
+  assert.equal(scuffs.show(stranger), false, 'a stone with no disc lays none');
+  assert.equal(scuffs.show(b), true);
+  assert.equal(scuffs.mesh.visible, true); assert.equal(geometry.drawRange.count, per, 'one disc drawn');
+  assert.ok(Math.abs(geometry.attributes.position.getX(0) - 10) < 1e-6, 'the first crush takes the first slot, its disc as conformed');
+  assert.equal(scuffs.show(a), true); assert.equal(geometry.drawRange.count, 2 * per);
+  scuffs.hide(b);
+  const p = geometry.attributes.position;
+  let folded = true;
+  for (let i = 1; i < verts; i++) folded &&= p.getX(i) === p.getX(0) && p.getY(i) === p.getY(0) && p.getZ(i) === p.getZ(0);
+  assert.ok(folded, 'a rematch folds the scuff to a point');
+  assert.equal(geometry.drawRange.count, 2 * per, 'the slots stay while another scuff lies');
+  scuffs.show(b);
+  assert.ok(Math.abs(p.getX(3) - disc(10).attributes.position.getX(3)) < 1e-6, 'a re-crush lays the disc again');
+  scuffs.hide(a); scuffs.hide(b);
+  assert.equal(scuffs.crushed, 0); assert.equal(scuffs.mesh.visible, false); assert.equal(geometry.drawRange.count, 0, 'empty again');
+}
+
 console.log(`crushedStones.selftest: a crushed stone presses into its ground in place (never gone), splits into two flakes tipped `
   + `outward either side and three chips round it, all seated on level and sloped ground and deterministic in its place; the pool `
-  + `lays ${STONE_PIECES} pieces a stone in a kept block, draws nothing while no stone is crushed and refuses past its capacity`);
+  + `lays ${STONE_PIECES} pieces a stone in a kept block, draws nothing while no stone is crushed and refuses past its capacity; the `
+  + `scuffs lay at a crush, fold at a rematch and draw nothing while no stone is crushed`);

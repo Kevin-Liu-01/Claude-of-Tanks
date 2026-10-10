@@ -765,7 +765,8 @@ export interface FormationCollisionProfile {
 /** A formation's movement tiers: each block's own (movementTiers), coarser while they would overflow a record, then one
  * column a block (its ground outline to its top), then the least wasteful merges of those. */
 function formationTiers(surfaces: readonly PlacedSurface[]): RockBand[] {
-  for (const step of [ROCK_TIER_STEP_M, ROCK_TIER_STEP_M * 1.5, ROCK_TIER_STEP_M * 2.25, Infinity]) {
+  const first = Number(globalThis.process?.env?.COT_FORM_STEP ?? ROCK_TIER_STEP_M);
+  for (const step of [first, first * 1.5, first * 2.25, Infinity]) {
     const tiers = surfaces.flatMap((s) => {
       const blockTiers = movementTiers(s, ROCK_CONTACT_TOP_M, step, FORMATION_TIER_FLOOR_M);
       // (one column a block: its ground outline to its own top)
