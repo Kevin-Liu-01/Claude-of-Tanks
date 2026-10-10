@@ -100,9 +100,11 @@ const ringEdge = (() => {
   assert.ok(frag.includes('if (vd.y >= 0.0) discard;') && frag.includes('bool overLand = landCol && panoUv.y > skyline.a;')
     && frag.includes('if (vPanoApron > 0.5 && e > 0.0) {') && frag.includes('if (!overLand) discard;') && frag.includes('if (uPanoHaze.w < 0.5) discard;'),
     'only a ray under the camera\'s own horizontal takes ground: the apron over the eye\'s horizon over a column\'s land (a hole under its skyline and an open-sea column stay open), else the far earth under the law; a camera looking up at the shell\'s sky sees it open');
-  assert.ok(frag.includes('float disc = tanD * tanD - 2.0 * h / 6371000.0;') && frag.includes('if (disc <= 0.0) discard;')
-    && frag.includes('float x = 2.0 * h / (tanD + sqrt(disc));'),
-    'the far earth\'s ground distance is the earth\'s own (the datum\'s sphere), and over the true horizon\'s dip the ray meets no ground: the dome');
+  // (the horizons lane, 2026-10-09: over the dip the ray meets no ground — the dome, unless the map fills the limb with the
+  // horizon's colour, horizonPanoramaParallax.selftest.mjs)
+  assert.ok(frag.includes('float disc = tanD * tanD - 2.0 * h / 6371000.0;') && frag.includes('if (disc <= 0.0 && uPanoLimb < 0.5) discard;')
+    && frag.includes('float x = disc > 0.0 ? 2.0 * h / (tanD + sqrt(disc)) : 1e7;'),
+    'the far earth\'s ground distance is the earth\'s own (the datum\'s sphere), and over the true horizon\'s dip the ray meets no ground: the dome (or the limb fill)');
   // the ground distance as the shell takes it: flat close in, the horizon's distance √(2hR) at the dip, none over it
   {
     const R = 6371000, ground = (h, tanD) => { const disc = tanD * tanD - 2 * h / R; return disc <= 0 ? null : 2 * h / (tanD + Math.sqrt(disc)); };
@@ -144,7 +146,8 @@ const ringEdge = (() => {
   assert.ok(skyline && skyline.includes('if (c.a >= 0.5) { found = vec4(c.rgb / c.a, v); rim = float(j); break; }') && skyline.includes('vec4 found = vec4(0.0, 0.0, 0.0, -1.0);'),
     'the skyline pass: per column the highest opaque texel, out of the premultiplication, or -1 where no land');
   assert.ok(skyline.includes('for (int k = 3; k <= 24; k++) {') && skyline.includes('if (c.a >= 0.5) { sum += c.rgb / c.a; n += 1.0; }')
-    && skyline.includes("float open = found.a < 0.0 && texture2D(uEdge, vec2(vUv.x, 0.5)).g > 0.5 ? -2.0 : -1.0;"),
+    // (the horizons lane, 2026-10-09: the inlets' sides past a 0.1 sea weight are open sea — horizonPanoramaParallax.selftest.mjs)
+    && skyline.includes("float open = found.a < 0.0 && texture2D(uEdge, vec2(vUv.x, 0.5)).g > 0.1 ? -2.0 : -1.0;"),
     'its second row: the land 0.15 to 1.2 degrees under the rim (the column\'s own lit country, not its crest), and an open-sea column (no land, the ring\'s sea under it) told from a far country under the deck');
   assert.ok(HORIZON_PANORAMA_SHADERS.skylineBlur?.includes('for (int k = -64; k <= 64; k++)') && HORIZON_PANORAMA_SHADERS.skylineBlur.includes('if (c.a >= 0.0) { sum += c.rgb; n += 1.0; }')
     && HORIZON_PANORAMA_SHADERS.skylineBlur.includes('float stride = mod(row, 2.0) < 0.5 ? 1.0 : 16.0;')

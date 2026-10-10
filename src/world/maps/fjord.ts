@@ -155,6 +155,9 @@ export default {
   horizon: {
     baseHex: 0x42535a, amp: 1.34, style: 'alpine', treeline: 0.74, snowline: 0.78,
     forestHex: 0x213b38, rockHex: 0x657077, haze: 0.9, grain: 0.58,
+    // the horizons lane (2026-10-09; gauntlet wave 313, the bird views' "long flat pale horizontal slab"): the far earth
+    // runs on into the horizon over the limb (horizonPanorama.ts limbFill)
+    panorama: { limbFill: 1 },
     // round 49 (owner audit 2026-09-23, "smooth green cone hill on the rim with a darker cap"): the softened alpine domes
     // never reached the vista's slope-keyed rock, so a hill was one green tint with the altitude-banded summit rock as
     // its cap; above the treeline the turf now greys to heath with gneiss ribs, scree fans and a broken summit

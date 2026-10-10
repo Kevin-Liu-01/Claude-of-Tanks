@@ -227,7 +227,7 @@ export default {
   // toward the far shore; the band an elevated view sees under the ridge is the lowland's own scrub, never paler than it
   horizon: {
     baseHex: 0x7f8977, amp: 0.90, style: 'rolling', treeline: 0.42, forestHex: 0x506044, rockHex: 0xa4a391, haze: 0.90, grain: 0.46,
-    panorama: { regional: 'karstRidge', shore: 1.2, shoreM: 4600, shoreRange: 0.9, treeline: 0.75, rockSlope: 0.3, forestSlope: 0.6,
+    panorama: { regional: 'karstRidge', limbFill: 1, shore: 1.2, shoreM: 4600, shoreRange: 0.9, treeline: 0.75, rockSlope: 0.3, forestSlope: 0.6,
       rockFloor: 0.4, gullyM: 110, strata: 0.2, scrub: 0.85, air: 0.25, fillLaw: 1, ownRock: 1 },
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)

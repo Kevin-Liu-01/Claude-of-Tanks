@@ -129,6 +129,11 @@ export interface HorizonPanoramaCharacter {
    * 0.17-0.33 (about 34-48 degrees, where real alpine faces shed it), so the ranges' rock, its beds and its couloirs show
    * between the snowfields */
   snowSlide: number;
+  /** The horizons lane (2026-10-09): 1, the shell fills a high camera's rays between the true horizon's dip and its own
+   * horizontal with the horizon's colour (the far earth run on into the sky) instead of leaving them to the dome — whose
+   * band there, under its own horizontal and with the cloud layer's sea fog bank at the far depth, read as "a long flat
+   * pale horizontal slab" over the sea maps' bird views (gauntlet wave 313); 0 leaves them open as before */
+  limbFill: number;
 }
 
 /** The knobs most characters leave at rest: open sea, no tree canopy, the eroded mesa's profile, no isolated peaks. */
@@ -140,7 +145,7 @@ const PANO_EXTRAS = Object.freeze({
   air: 1, fillLaw: 0, rockFloor: -1, scrub: 0, ownRock: 0,
   jebelShare: 0, jebelM: 0, jebelRadiusM: 900, jebelFoot: 0.66, jebelRim: 0.86, jebelApron: 0.18,
   jebelFlutes: 16, jebelFluteDepth: 0.5, jebelBossM: 0, jebelFootVary: 0.14, jebelVarnish: 0, jebelNearM: 0,
-  snowSlide: 0,
+  snowSlide: 0, limbFill: 0,
 });
 
 /** Maps lane A's sheer jebel (landformGeology.ts inselbergSection with a rim, origin/visual/maps-layouts ca018e38e):
@@ -607,6 +612,8 @@ interface ShellAir {
   uDeckClosed: THREE.IUniform<number>;
   uPanoDatum: THREE.IUniform<number>;
   uPanoSkyOn: THREE.IUniform<number>;
+  /** the horizons lane: the map's limb fill (HorizonPanoramaCharacter.limbFill; 0 leaves the rays over the limb open) */
+  uPanoLimb: THREE.IUniform<number>;
   /** the cloud layer's composite, its dome's own uniforms copied each draw (CLOUD_COMPOSITE_GLSL), read-only; whether
    *  the layer draws; the frame's view-projection (the screen the dome samples the clouds' history in) */
   tClouds: THREE.IUniform<THREE.Texture | null>;
@@ -790,6 +797,7 @@ function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAi
     uCotCloudSun: { value: new THREE.Vector4(0, 1, 0, 1400) },
     uPanoDatum: { value: 0 },
     uPanoSkyOn: { value: 0 },
+    uPanoLimb: { value: 0 },
   };
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uPanoEye = { value: new THREE.Vector3(0, P.eyeY, 0) };
@@ -804,7 +812,7 @@ uniform vec3 uPanoEye; uniform vec2 uPanoElev; varying vec3 vPanoWorld; varying 
 uniform sampler2D uPanoSkyline; uniform vec4 uPanoHaze; uniform vec3 uPanoHazeAnti, uPanoHazeToward, uPanoHazeChroma;
 uniform vec2 uPanoSunH;
 uniform float uPanoSigmaPost;
-uniform vec3 uPanoTint; uniform vec3 uPanoTerms; uniform float uPanoDatum, uPanoSkyOn, uPanoCloudOn;
+uniform vec3 uPanoTint; uniform vec3 uPanoTerms; uniform float uPanoDatum, uPanoSkyOn, uPanoCloudOn, uPanoLimb;
 uniform mat4 uPanoViewProj;
 uniform sampler2D uPanoAux; uniform float uPanoShadeOn;
 ${CLOUD_SHADE_PARS_GLSL}
@@ -893,8 +901,15 @@ ${HAZE_LAW_GLSL}`)
             float h = max(cameraPosition.y - uPanoHaze.z, 0.5);
             float tanD = -rd.y / flatL;
             float disc = tanD * tanD - 2.0 * h / ${EARTH_R};
-            if (disc <= 0.0) discard;
-            float x = 2.0 * h / (tanD + sqrt(disc));
+            // (the horizons lane, 2026-10-09; gauntlet wave 313, the bird views: "a long flat pale horizontal slab runs the
+            // full width", "a flat featureless grey haze band"): a ray between the true horizon's dip and the camera's own
+            // horizontal passes over the earth's limb into the air at the horizon. Discarded, it showed the dome under its
+            // own horizontal and the cloud layer's sea fog bank composited to the far depth — a flat band with a hard edge at
+            // the dip. It is the horizon's own colour: the far earth's reach taken as unbounded, its fill the screen's
+            // horizon (the land and the sea both converge to it at the dip), so the far earth runs on into the sky — where
+            // the map asks (HorizonPanoramaCharacter.limbFill: the sea maps' bird views); elsewhere they stay open as before
+            if (disc <= 0.0 && uPanoLimb < 0.5) discard;
+            float x = disc > 0.0 ? 2.0 * h / (tanD + sqrt(disc)) : 1e7;
             float slant = x * sqrt(1.0 + tanD * tanD);
             bool seaRay = !overLand;
             if (seaRay) {
@@ -1411,7 +1426,14 @@ void main() {
       if (c.a >= 0.5) { sum += c.rgb / c.a; n += 1.0; }
     }
   }
-  float open = found.a < 0.0 && texture2D(uEdge, vec2(vUv.x, 0.5)).g > 0.5 ? -2.0 : -1.0;
+  // (the horizons lane, 2026-10-09; gauntlet wave 313, Nordhavn's bird views: "pale vertical pillars hanging down from it
+  // to the far headlands"): a column with no land whose edge weight is past 0.1 looks out over water — the strip opens
+  // its water texels from a sea weight of 0.02 to 0.2, and they were the only ground in it. Counted open sea only over 0.5,
+  // the taper's columns between 0.1 and 0.5 (the inlets' sides, along the water past a headland) were neither land nor
+  // sea, and with no open-sea column within 2.8 degrees the shell discarded them over the far earth's whole height: the
+  // dome and the cloud layer's sea fog bank in narrow slanted strips. Under 0.1 a column's water texels stay opaque, so
+  // one without land is a far country in the cloud deck, which stays open
+  float open = found.a < 0.0 && texture2D(uEdge, vec2(vUv.x, 0.5)).g > 0.1 ? -2.0 : -1.0;
   gl_FragColor = vec4(n > 0.0 ? sum / n : found.rgb, found.a < 0.0 ? open : found.a);
 }
 `;
@@ -1922,6 +1944,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   const ch = resolveHorizonPanoramaCharacter(options.character, options.overrides);
   const geometry = buildHorizonPanoramaShellGeometry(options.ringEdge);
   const { material, air } = buildShellMaterial();
+  air.uPanoLimb.value = ch.limbFill > 0 ? 1 : 0;
   const mesh = new THREE.Mesh(geometry, material);
   // the far range's name: the battle atmosphere dims every 'horizon-far-range' mesh's colour at night
   // (battleAtmosphereRuntime.ts), and the panorama is that range now; lookups by name still find the round-72 mesh, the

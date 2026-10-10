@@ -78,4 +78,18 @@ for (const id of PROTECTED) {
   assert.ok(!(p && typeof p === 'object' && p.snowSlide), `${id} keeps its far snow`);
 }
 
-console.log('horizonPanoramaParallax.selftest: the shell\'s parallax over the water and the far ranges\' snow slide PASS');
+// --- the inlets' sides counted as open sea (Nordhavn's bird views: "pale vertical pillars") --------------------------
+assert.ok(HORIZON_PANORAMA_SHADERS.skyline.includes('float open = found.a < 0.0 && texture2D(uEdge, vec2(vUv.x, 0.5)).g > 0.1 ? -2.0 : -1.0;'),
+  'a column with no land past a 0.1 sea weight is open sea (the strip opens its water from 0.02 to 0.2), not a far country in the cloud');
+assert.ok(fs.includes('if (!landCol && under.a < 0.004) discard;'), 'a column with neither land nor open sea near it (the cloud deck) stays open');
+
+// --- the limb fill (the bird views' "long flat pale horizontal slab") -----------------------------------------------
+assert.ok(fs.includes('if (disc <= 0.0 && uPanoLimb < 0.5) discard;') && fs.includes('float x = disc > 0.0 ? 2.0 * h / (tanD + sqrt(disc)) : 1e7;'),
+  'a ray over the earth\'s limb takes the horizon\'s colour where the map asks, and stays open elsewhere');
+assert.ok(/air\.uPanoLimb\.value = ch\.limbFill > 0 \? 1 : 0;/.test(source), 'the shell takes its map\'s limb fill');
+assert.equal(resolveHorizonPanoramaCharacter('alpine').limbFill, 0, 'the characters leave the limb open');
+const limbOf = (id) => { const p = getMapConfig(id).horizon?.panorama; return p && typeof p === 'object' ? (p.limbFill ?? 0) : 0; };
+for (const id of ['fjord', 'coastal', 'saltwind']) assert.equal(limbOf(id), 1, `${id}'s sea horizon runs on into the sky over the limb`);
+for (const id of ['verdant', 'winter', 'reservoir', 'railyard', 'desert', 'frontier', 'alpine', 'caldera', 'urban']) assert.equal(limbOf(id), 0, `${id} keeps its limb open`);
+
+console.log('horizonPanoramaParallax.selftest: the shell\'s parallax over the water, the inlets\' sides, the limb fill and the far ranges\' snow slide PASS');
