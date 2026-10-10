@@ -204,7 +204,9 @@ export default {
       { form: 'blocks', geology: 'breccia', x: -14, z: 106, radius: 6, height: 2.6, yawDeg: 30, tone: MARS_BASALT, name: 'the basalt blocks north of the station' },
       { form: 'blocks', geology: 'breccia', x: -62, z: 104, radius: 6, height: 2.4, yawDeg: 110, tone: MARS_BASALT, name: 'the basalt blocks north-west of the station' },
       { form: 'blocks', geology: 'breccia', x: 41, z: 58, radius: 6, height: 2.5, yawDeg: 160, tone: MARS_BASALT, name: 'the basalt blocks north-east of the station' },
-      { form: 'blocks', geology: 'breccia', x: -9, z: 56, radius: 5.5, height: 2.4, yawDeg: 70, tone: MARS_BASALT, name: 'the basalt blocks by the north road' },
+      // (2026-10-10, round 2 on main) 7 m further from zone 2's authored seat (-40, 36): a zone keeps 30 m clear of solids
+      // (matchPlacement), and the field's nearest blocks stood inside that disc, so the seat slid to (-36.9, 28.6)
+      { form: 'blocks', geology: 'breccia', x: -3, z: 60, radius: 5.5, height: 2.4, yawDeg: 70, tone: MARS_BASALT, name: 'the basalt blocks by the north road' },
     ],
   },
   horizon: {
