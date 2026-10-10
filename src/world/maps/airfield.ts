@@ -170,12 +170,14 @@ export default {
     // and Ukraine's T-64BV
     // (the map-content lane, 2026-10-09; the owner: Kestrel Airfield "unfinished") two more of the fight's hulks on the plateau
     tankWrecks: { era: 'modern', count: 7, debris: true, ids: ['t72b3_x', 't80bv', 'bmp2', 'ua_t64bv'] },
-    // the aprons' floodlight masts and the holding apron's, rotation pairs about the runway's centre
+    // the aprons' floodlight masts and the holding apron's, rotation pairs about the runway's centre (the cargo apron's
+    // south-east mast 9 m off the An-225 hangar slab's north-east corner and clear of the store beside it, the map-revival
+    // lane's Kestrel landing; its rotation by the terminal apron)
     landmarks: [
       { kind: 'floodMast', x: -268, z: -104, yawDeg: 160, ground: 'veto', roadMargin: 0.5, name: 'the cargo apron mast (north-west)' },
       { kind: 'floodMast', x: 268, z: 104, yawDeg: -20, ground: 'veto', roadMargin: 0.5, name: 'the terminal apron mast (south-east)' },
-      { kind: 'floodMast', x: -182, z: -196, yawDeg: -20, ground: 'veto', roadMargin: 0.5, name: 'the cargo apron mast (south-east)' },
-      { kind: 'floodMast', x: 182, z: 196, yawDeg: 160, ground: 'veto', roadMargin: 0.5, name: 'the terminal apron mast (north-west)' },
+      { kind: 'floodMast', x: -176, z: -172, yawDeg: -60, ground: 'veto', roadMargin: 0.5, name: 'the cargo apron mast (south-east)' },
+      { kind: 'floodMast', x: 176, z: 172, yawDeg: 120, ground: 'veto', roadMargin: 0.5, name: 'the terminal apron mast (north-west)' },
       { kind: 'floodMast', x: 58, z: -46, yawDeg: -50, ground: 'veto', name: 'the holding apron mast (south)' },
       { kind: 'floodMast', x: -58, z: 46, yawDeg: 130, ground: 'veto', name: 'the holding apron mast (north)' },
       { kind: 'floodMast', x: 120, z: -100, yawDeg: 180, ground: 'veto', name: 'the south taxiway mast' },
