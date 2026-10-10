@@ -828,7 +828,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       }
     },
     get active() { return live.filter((c) => !c.done).length; },
-    took: (structureIdx) => live.some((c) => c.structureIdx === structureIdx),
+    took: (structureIdx) => live.some((c) => c.structureIdx === structureIdx) || waiting.some((w) => w.seam.structureIdx === structureIdx),
     onShatter(handler) { shatterHandler = handler; },
     reset() {
       for (const c of live) {
