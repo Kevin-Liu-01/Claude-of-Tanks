@@ -223,7 +223,7 @@ export const MISSILE_LOOKS: Readonly<Record<string, MissileLook>> = Object.freez
     id: 'rocket', family: 'rocket', launch: 'canister', launchK: 1.4,
     flareCore: [1, 0.64, 0.24], flareHalo: [1, 0.34, 0.07], flarePx: 2.8, haloPx: 14, flareK: 4.2, flicker: 0.18, flickerHz: 22,
     plumeM: 6,
-    smoke: { density: 0.8, c0: LIGHT, c1: WHITE_AGED, size0: 1.0, size1: 4.5, life: 8, spacingM: 4, rise: 0.12, windK: 0.85,
+    smoke: { density: 0.8, c0: LIGHT, c1: WHITE_AGED, size0: 1.2, size1: 4.8, life: 6.5, spacingM: 5, rise: 0.12, windK: 0.85,
       pulse: 0.15 },
     wires: 0, wobbleM: 0.05, wobbleHz: 1.4, igniteM: 0, bodyLen: 2.6, bodyRad: 0.75, bodyHex: 0x50553f,
   }),
