@@ -125,15 +125,17 @@ export function smokeGrenadeBurst(C: BlastContext, R: () => number, x: number, g
   C.flash(lp);
   // the pop: four lobes of dense white thrown out and up, stalling within a second, already a body three to five
   // metres across (the 'burst' book: a smooth ball that develops lobes as it swells)
-  for (let i = 0; i < 4; i++) {
-    const a = (i / 4) * TAU + (R() - 0.5) * 1.1, v = 3.2 + R() * 3.2;
-    m.x = x + Math.cos(a) * 0.3; m.y = y + R() * 0.3; m.z = z + Math.sin(a) * 0.3; m.birthOffset = bo - R() * 0.02;
-    m.vx = Math.cos(a) * v; m.vy = 2.2 + R() * 2.6; m.vz = Math.sin(a) * v;
+  // (fx 8l, wave 354a: "cotton-ball lobes" early in the bloom) six lobes of mixed sizes, a little thinner, half of them in
+  // the turbulent billow medium: a ragged cauliflower pop, never four round balls
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * TAU + (R() - 0.5) * 1.1, v = 2.6 + R() * 3.6;
+    m.x = x + Math.cos(a) * 0.3; m.y = y + R() * 0.4; m.z = z + Math.sin(a) * 0.3; m.birthOffset = bo - R() * 0.03;
+    m.vx = Math.cos(a) * v; m.vy = 1.8 + R() * 3.0; m.vz = Math.sin(a) * v;
     m.drag = 2.4; m.rise = 0.12; m.windK = 0.15; m.grav = 0;
-    m.life = 2.6 + R() * 0.8; m.size0 = 0.8; m.size1 = 3.6 + R() * 1.6; m.growExp = 3.6;
+    m.life = 2.6 + R() * 0.9; m.size0 = 0.6; m.size1 = (i % 3 === 0 ? 3.8 : 2.4) + R() * 1.4; m.growExp = 3.2;
     m.rot = (R() - 0.5) * 0.8; m.spin = (R() - 0.5) * 0.12;
-    look(C, BURST_WHITE, SCREEN_WHITE, 0.96, 0.0, 0.62);
-    book(C, R, 'burst', 3.0, Math.floor(R() * 4), 1.05 + R() * 0.2);
+    look(C, BURST_WHITE, SCREEN_WHITE, 0.86, 0.0, 0.6);
+    book(C, R, i % 2 === 0 ? 'burst' : 'billow', 3.0, Math.floor(R() * 6), 1.0 + R() * 0.35);
     C.media(m);
   }
   // burning pellets thrown out on arcs, each leaving a white streamer: the burst's tell at a distance
@@ -230,8 +232,27 @@ export function smokeScreenHaze(C: BlastContext, R: () => number, x: number, y: 
   m.drag = 0.05; m.rise = 0.04; m.windK = 0; m.grav = 0;
   m.life = life; m.size1 = Math.min(13 + R() * 2.5, maxSize); m.size0 = Math.min(9, m.size1 * 0.7); m.growExp = 1.4;
   m.rot = (R() - 0.5) * 0.6; m.spin = (R() - 0.5) * 0.02;
-  look(C, SCREEN_AGED, SCREEN_AGED, 0.34, 1.0, 0.5);
+  look(C, SCREEN_AGED, SCREEN_AGED, 0.26, 1.0, 0.45);
   book(C, R, 'billow', life * 1.1, 24 + Math.floor(R() * 20), 1.45 + R() * 0.3);
+  C.media(m);
+}
+
+/**
+ * (fx 8l, wave 354a: "a full-bodied wall at 15 s that's gone at 18 s, a hard switch-off") the wall's remains as it
+ * decays: broad thin veils born in the eroding bank (its top and its edges first) that the scene's wind takes, drifting
+ * off, rising a little, swelling and thinning for many seconds. Cosmetic only: thin (it hides nothing), born while the
+ * simulation still blocks and lingering 10-20 s after it stops (the gameplay duration is matchRuleset's, untouched).
+ */
+export function smokeDecayHaze(C: BlastContext, R: () => number, x: number, y: number, z: number, life: number,
+  bo: number): void {
+  const m = C.m;
+  m.x = x; m.y = y; m.z = z; m.birthOffset = bo;
+  m.vx = (R() - 0.5) * 0.4; m.vy = 0.15 + R() * 0.2; m.vz = (R() - 0.5) * 0.4;
+  m.drag = 0.5; m.rise = 0.12 + R() * 0.08; m.windK = 0.6 + R() * 0.3; m.grav = 0;
+  m.life = life; m.size0 = 7 + R() * 2; m.size1 = 15 + R() * 5; m.growExp = 1.5;
+  m.rot = (R() - 0.5) * 0.6; m.spin = (R() - 0.5) * 0.02;
+  look(C, SCREEN_AGED, SCREEN_AGED, 0.18 + R() * 0.06, 1.6, 0.3);
+  book(C, R, 'billow', life * 1.05, 16 + Math.floor(R() * 24), 1.3 + R() * 0.4);
   C.media(m);
 }
 

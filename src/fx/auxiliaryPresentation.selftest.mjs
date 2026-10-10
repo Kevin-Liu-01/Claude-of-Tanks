@@ -72,11 +72,19 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
   assert.ok(at60.puffs.length > 40, `a salvo draws a wall of puffs (${at60.puffs.length})`);
   assert.deepEqual(at20.puffs.map(key).sort(), at60.puffs.map(key).sort(), 'the same puffs at 20 fps as at 60 fps');
   assert.deepEqual(at144.puffs.map(key).sort(), at60.puffs.map(key).sort(), 'the same puffs at 144 fps as at 60 fps');
-  // every puff is born inside the screen's life and none outlives it
+  // every puff is born inside the screen's life; (fx 8l, wave 354a: "a full-bodied wall at 15 s that's gone at 18 s, a
+  // hard switch-off", the coordinator: a cosmetic haze lingering 10-20 s past the sight block, the gameplay duration
+  // untouched) only a thin haze outlives it, and by at most 20 s
   for (const p of at60.puffs) {
     assert.ok(p.birth >= screen.born - 1e-6, 'no puff before the launch');
-    assert.ok(p.birth + p.life <= screen.born + SMOKE_DURATION_S + 1e-6, 'no puff outlives the screen');
+    assert.ok(p.birth <= screen.born + SMOKE_DURATION_S + 1e-6, 'no puff born after the screen');
+    const end = p.birth + p.life - (screen.born + SMOKE_DURATION_S);
+    if (end > 0.65) assert.ok(p.density <= 0.3 && end <= 20 + 1e-6, `only a thin haze outlives the screen (+${end.toFixed(1)} s, density ${p.density})`);
     assert.ok(Number.isFinite(p.x + p.y + p.z + p.vx + p.vy + p.vz + p.life + p.size1), 'finite records');
+  }
+  {
+    const tail = at60.puffs.filter((p) => p.birth + p.life > screen.born + SMOKE_DURATION_S + 8);
+    assert.ok(tail.length >= smokeBankCount(screen) && tail.some((p) => p.windK >= 0.5), `a haze lingers past the sight block and drifts with the wind (${tail.length})`);
   }
   // the dense wall settles inside the simulation's envelope: each lobe's resting place (born at the burst, its offset
   // v/k) lies within the full-grown bank radius of some bank's centre
@@ -102,7 +110,7 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
   const crowded = run(salvo('m1a1'), 1 / 60);
   const perBank = crowded.puffs.length / smokeBankCount(salvo('m1a1'));
   assert.ok(perBank < at60.puffs.length / banks, `crowded banks share their lobes (${perBank.toFixed(1)} vs ${(at60.puffs.length / banks).toFixed(1)} a bank)`);
-  assert.ok(crowded.puffs.length <= 520, `a whole 24-tube screen stays bounded (${crowded.puffs.length} puffs over 18 s)`);
+  assert.ok(crowded.puffs.length <= 480, `a whole 24-tube screen stays bounded (${crowded.puffs.length} puffs over 18 s)`);
   // (r2, wave 311) the launch: a white puff at every bank's tube as its grenade leaves
   for (const sc of [screen, salvo('m1a1')]) {
     const r = run(sc, 1 / 60);
@@ -134,19 +142,20 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
     }
     assert.ok(gap <= 3, `${id}: the wall's widest uncovered stretch inside the envelope is ${gap.toFixed(1)} m`);
   }
-  // (r2, wave 311: "see-through by 15 s") the fade follows the simulation's sight-blocking density: every lobe holds to
-  // 13.5 s and is gone by 16.6 s (the density's blocking floor); a thin haze tail drifts on inside the envelope and
-  // ends with the screen
+  // (r2, wave 311: "see-through by 15 s"; fx 8l, wave 354a: "a hard switch-off") the fade follows the simulation's
+  // sight-blocking density with a long visual decay: every lobe holds dense past 12 s, erodes from 11-12 s (the crowns,
+  // the wall's top, first), is most of the way through its erosion by the blocking floor (16.6 s) and gone by 18.4 s;
+  // a thin haze tail drifts on inside the envelope and outlives the screen by at most HAZE_LINGER_S
   {
-    const holdAge = 13.4, blockEnd = 16.6;
+    const holdAge = 12.9, blockEnd = 16.6;
     const lobes = at60.puffs.filter((p) => p.windK === 0 && p.drag >= 1);
     assert.ok(lobes.every((p) => p.birth + p.life >= screen.born + holdAge), 'every lobe holds while the density does');
-    assert.ok(lobes.every((p) => p.birth + p.life <= screen.born + blockEnd + 1e-6), 'and none outlasts the blocking');
+    assert.ok(lobes.every((p) => p.birth + p.life <= screen.born + 18.4 + 1e-6), 'and its last wisps are gone by 18.4 s');
     const hazes = at60.puffs.filter((p) => p.windK === 0 && p.drag < 0.2);
     assert.ok(hazes.length >= banks, `a haze tail in every bank (${hazes.length})`);
     for (const p of hazes) {
       assert.ok(p.birth >= screen.born + 13 - 1e-6 && p.density <= 0.4, 'the tail is thin and late');
-      assert.ok(p.birth + p.life <= screen.born + SMOKE_DURATION_S + 1e-6, 'it ends with the screen');
+      assert.ok(p.birth + p.life <= screen.born + SMOKE_DURATION_S + 9 + 1e-6, 'it outlives the screen by at most 9 s');
       const inside = Array.from({ length: banks }, (_, b) => { smokeVolume(screen, p.birth, b - 2, vol, () => 0); return [vol.x, vol.z, vol.radius]; })
         .some(([cx, cz, rr]) => Math.hypot(p.x - cx, p.z - cz) <= rr);
       assert.ok(inside, 'the tail is born inside the drifting envelope');
