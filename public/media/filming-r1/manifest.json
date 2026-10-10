@@ -84,9 +84,9 @@
       "scene": {
         "file": "/media/filming-r1/s05-barn-advance.scene.json",
         "source": "tools/media-r5/site50-shots/s05-barn-advance.json",
-        "version": "v9",
-        "sha256": "cdf3d48d844060a23de077510206184a244267b79d54ef5b0cf428d49ac9c93e",
-        "bytes": 75697
+        "version": "v14",
+        "sha256": "3e4f8fbc2ce517cc813e9514e6930ce40e997b6a4a31f3b600b68bb397a3afca",
+        "bytes": 75948
       },
       "frames": {
         "image": "/media/filming-r1/s05-barn-advance-frames.webp",
@@ -178,9 +178,9 @@
       "scene": {
         "file": "/media/filming-r1/s22-walking-barrage.scene.json",
         "source": "tools/media-r5/site50-shots/s22-walking-barrage.json",
-        "version": "v9",
-        "sha256": "f85cf4f6a28e9208e9e011589465cf18657ee8cb82d2f4234753cec22d91c6a0",
-        "bytes": 137519
+        "version": "v14",
+        "sha256": "bb8789a44e462ad64a28cc2e113435adb9a5a855e535ef8cfea509fbec2fcf34",
+        "bytes": 138004
       },
       "frames": {
         "image": "/media/filming-r1/s22-walking-barrage-frames.webp",
@@ -272,9 +272,9 @@
       "scene": {
         "file": "/media/filming-r1/s21-fields-assault.scene.json",
         "source": "tools/media-r5/site50-shots/s21-fields-assault.json",
-        "version": "v9",
-        "sha256": "8b2790d13a17ff8a3c2ca3ae9d28ee429ce7df17564c3e3a6fd84ddc0a6cea7c",
-        "bytes": 121949
+        "version": "v14",
+        "sha256": "133fd10e757eb397994310383556992472ea0d8e6d5452294b4bbdf507ce2edc",
+        "bytes": 121844
       },
       "frames": {
         "image": "/media/filming-r1/s21-fields-assault-frames.webp",
@@ -355,9 +355,9 @@
       "scene": {
         "file": "/media/filming-r1/s47-ironworks-crane.scene.json",
         "source": "tools/media-r5/site50-shots/s47-ironworks-crane.json",
-        "version": "v9",
-        "sha256": "3ba5fa63b23a45ddbd6b54f507c2ee79dd3943936a14f79fdd076e2edbcba9ec",
-        "bytes": 118678
+        "version": "v14",
+        "sha256": "ccf1fd56944a4553a294b3d7ee82f69bdf5c52bc917e1ab36013ad65fe3f9449",
+        "bytes": 120096
       },
       "frames": {
         "image": "/media/filming-r1/s47-ironworks-crane-frames.webp",
@@ -449,9 +449,9 @@
       "scene": {
         "file": "/media/filming-r1/s04-column-under-fire.scene.json",
         "source": "tools/media-r5/site50-shots/s04-column-under-fire.json",
-        "version": "v9",
-        "sha256": "3cbfa464e8427d3a7cff1a284021d42a5c1ec0932b2a75dacc122bf4ef686640",
-        "bytes": 110677
+        "version": "v14",
+        "sha256": "7d2c47bf6bc0f236995184a95448505e4ce1e644a476a27107642b0e11f75c9d",
+        "bytes": 107488
       },
       "frames": {
         "image": "/media/filming-r1/s04-column-under-fire-frames.webp",
@@ -543,9 +543,9 @@
       "scene": {
         "file": "/media/filming-r1/s13-farm-race.scene.json",
         "source": "tools/media-r5/site50-shots/s13-farm-race.json",
-        "version": "v9",
-        "sha256": "dbc031a262d4f62a94ddcf26517b4a4f3c28bb4a97b4b6b1dc8d488096d02b43",
-        "bytes": 30354
+        "version": "v14",
+        "sha256": "4098955c06b3fdd0b387ec9a104bc88fea2f755bc521141f22657552525388f8",
+        "bytes": 29870
       },
       "frames": {
         "image": "/media/filming-r1/s13-farm-race-frames.webp",
@@ -637,9 +637,9 @@
       "scene": {
         "file": "/media/filming-r1/s44-oasis-sunset.scene.json",
         "source": "tools/media-r5/site50-shots/s44-oasis-sunset.json",
-        "version": "v9",
-        "sha256": "f545a4183f0e6e3c25eebd31d5cad39a60384e7f3551b21975efb27def5040fa",
-        "bytes": 75537
+        "version": "v14",
+        "sha256": "efec3b31e1fa7ee2b1dfc0f0efc09b1b5138a3760733ee21b165b347e2174ecf",
+        "bytes": 77262
       },
       "frames": {
         "image": "/media/filming-r1/s44-oasis-sunset-frames.webp",
@@ -731,9 +731,9 @@
       "scene": {
         "file": "/media/filming-r1/s11-container-rows.scene.json",
         "source": "tools/media-r5/site50-shots/s11-container-rows.json",
-        "version": "v9",
-        "sha256": "1ed7c522376da1d160f1ba963f8b58ed3d57ce9a8135fd80b2cfa53060db891c",
-        "bytes": 92987
+        "version": "v14",
+        "sha256": "151d02a92801880640d3460eb0dbe0d7983f1ddffe4639e5bc8c30329f4590e7",
+        "bytes": 92002
       },
       "frames": {
         "image": "/media/filming-r1/s11-container-rows-frames.webp",
