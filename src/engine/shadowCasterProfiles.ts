@@ -23,6 +23,7 @@ import {
   forEachShadowCasterProfile, setShadowCasterDynamicMask, shadowCasterDynamicMaskOf, SHADOW_CASTER_ALL_CASCADES,
   type ShadowCasterProfile,
 } from './renderLayers.ts';
+import { csmFadeMargin } from './shadowCascadeLayout.ts';
 
 /** A ground shadow shorter than this many texels of a cascade's map cannot survive its PCF kernel. */
 export const SHADOW_FOOTPRINT_MIN_TEXELS = 2;
@@ -50,11 +51,13 @@ interface ShadowCasterEvaluation {
 
 /**
  * The view depth from which three's CSM samples cascade i whose break starts at fraction `breakStart` of
- * (far − near): with `fade` the fragment test is `linearDepth >= x − 0.125·x²`, without it `linearDepth >= x`.
+ * (far − near): with `fade` the fragment test is `linearDepth >= x − margin(x) / 2` — three's margin 0.25·x², widened
+ * near the camera by the lane's law (2026-10-09, overhaul r2: shadowCascadeLayout.ts csmFadeMargin, patched into the CSM
+ * chunk by lighting.ts) — without it `linearDepth >= x`.
  */
-export function csmSampledFromM(breakStart: number, near: number, far: number, fade: boolean): number {
+export function csmSampledFromM(breakStart: number, near: number, far: number, fade: boolean, fadeK = 0): number {
   const x = Math.max(0, breakStart);
-  return (fade ? x - 0.125 * x * x : x) * Math.max(0, far - near);
+  return (fade ? x - csmFadeMargin(x, fadeK) / 2 : x) * Math.max(0, far - near);
 }
 
 /** The ground shadow length of a caster `heightM` tall under a sun at `sunElevationRad` (Infinity under the law's floor). */

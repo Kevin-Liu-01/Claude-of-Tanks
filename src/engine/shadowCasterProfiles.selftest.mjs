@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { CSM_FADE_K, csmFadeMargin } from './shadowCascadeLayout.ts';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
@@ -21,7 +22,10 @@ import {
   const near = 0.5, far = 700;
   assert.equal(csmSampledFromM(0, near, far, true), 0, 'the first cascade is sampled from the camera');
   const x = 320 / 700;
+  // (2026-10-09, overhaul r2: the margin max(0.25·x², CSM_FADE_K·x) — shadowCascadeLayout.ts)
   assert.ok(Math.abs(csmSampledFromM(x, near, far, true) - (x - 0.125 * x * x) * (far - near)) < 1e-9, 'fade: x − x²/8 of the range');
+  assert.ok(Math.abs(csmSampledFromM(x, near, far, true, CSM_FADE_K) - (x - csmFadeMargin(x, CSM_FADE_K) / 2) * (far - near)) < 1e-9,
+    'explicit breaks: x − margin(x, k)/2 (shadowCascadeLayout.ts)');
   assert.ok(Math.abs(csmSampledFromM(x, near, far, false) - x * (far - near)) < 1e-9, 'no fade: the break itself');
   assert.ok(csmSampledFromM(x, near, far, true) < csmSampledFromM(x, near, far, false), 'the fade reaches the map earlier');
   assert.equal(csmSampledFromM(-1, near, far, true), 0, 'a negative break is clamped');
@@ -151,7 +155,7 @@ const evaluation = { cascades, sunElevationRad: sun24 };
   assert.match(lighting, /updateCasterProxies\(csm\.lights, scene2, true\);[^\n]*\n\s+evaluateCasterProfiles\(true\);/, 'the priming pass evaluates every cascade');
   assert.match(lighting, /function evaluateCasterProfiles\(all: boolean\): void \{\n\s+if \(mobileTier\) return;/, 'the phones keep their cascades as they are');
   assert.match(lighting, /sample\.texelM = \(shadowCam\.right - shadowCam\.left\) \/ Math\.max\(1, shadow\.mapSize\.x\);/, 'the live texel size');
-  assert.match(lighting, /csmSampledFromM\(i === 0 \? 0 : csm\.breaks\[i - 1\], camera\.near, far, csm\.fade\)/, 'the sampled range from the live breaks and fade');
+  assert.match(lighting, /csmSampledFromM\(i === 0 \? 0 : csm\.breaks\[i - 1\], camera\.near, far, csm\.fade, csmFadeKUniform\.value\)/, 'the sampled range from the live breaks, fade and seam law');
   assert.match(lighting, /Math\.asin\(Math\.max\(-1, Math\.min\(1, -csm\.lightDirection\.y\)\)\)/, 'the sun elevation from the CSM light direction');
 }
 console.log('shadowCasterProfiles.selftest: the content, footprint and reach laws, the CSM sampled-from formula against three\'s shader, instanced sphere refresh, the frame evaluation and the lighting wiring pinned');

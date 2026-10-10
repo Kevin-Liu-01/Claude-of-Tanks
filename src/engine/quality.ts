@@ -89,6 +89,11 @@ export interface QualityPreset {
   readonly bloomScale: number;
   readonly shadowMapSizes: readonly [number, number, number, number];
   readonly shadowMaxFar: number;
+  /**
+   * 2026-10-09 (the shadows lane, overhaul r2): the cascades' explicit breaks, metres from the camera, one fewer than the
+   * cascades (shadowCascadeLayout.ts). Absent: three's practical split over shadowMaxFar.
+   */
+  readonly shadowBreaksM?: readonly number[];
   readonly textureScale?: number;
   readonly vehicleTextureScale?: number;
   readonly textureCap?: number;
@@ -288,6 +293,9 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     bloomScale: 1.0,
     shadowMapSizes: [4096, 4096, 4096, 2048], // 2026-09-12: the 1049e4e 4K mid cascade is back (2K read soft at 100-330 m)
     shadowMaxFar: 700,
+    // 2026-10-09 (overhaul r2): the first cascade over the chase camera's ground (shadowCascadeLayout.ts): 1.7 cm a texel
+    // to 28 m (5.2 cm under the practical split's 89 m first break)
+    shadowBreaksM: [28, 110, 320],
   },
   // High now starts at the full 1.5 ratio on Retina panels. Fine geometry
   // reaches SMAA before the smaller native-canvas upscale instead of being
@@ -320,6 +328,8 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     bloomScale: 0.6,
     shadowMapSizes: [2048, 2048, 2048, 1024],
     shadowMaxFar: 700,
+    // 2026-10-09 (overhaul r2): 3.4 cm a texel to 28 m, where the practical split gave 10.4 (shadowCascadeLayout.ts)
+    shadowBreaksM: [28, 110, 320],
   },
   medium: {
     label: 'Medium',

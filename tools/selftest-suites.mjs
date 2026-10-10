@@ -611,6 +611,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/csmShaderRelease.selftest.mjs',
     'src/engine/renderLayers.selftest.mjs',
     'src/engine/shadowCasterProfiles.selftest.mjs',
+    // 2026-10-09 (the shadows lane, overhaul r2): the cascades' explicit breaks and seam law
+    'src/engine/shadowCascadeLayout.selftest.mjs',
     'src/engine/nearVehicleShadowDetail.selftest.mjs',
     'src/engine/articulatedShadowBatch.selftest.mjs',
     'src/engine/lodShadowFade.selftest.mjs',

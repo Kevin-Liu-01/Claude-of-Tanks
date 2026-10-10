@@ -25,6 +25,7 @@ import {
   snapShadowCoordinate,
 } from './shadowStability.ts';
 import { createShadowFitCache } from './shadowFitCache.ts';
+import { CSM_FADE_MARGIN_GLSL, cascadeBreaks, csmFadeKFor, csmFadeMargin } from './shadowCascadeLayout.ts';
 import { registerShadowCascadeCamera, setShadowCascadeCache, setShadowCascadePolicy } from './renderLayers.ts';
 import type { ShadowStaticCache } from './shadowStaticCache.ts';
 import { csmSampledFromM, evaluateShadowCasterProfiles, type ShadowCascadeSample } from './shadowCasterProfiles.ts';
@@ -177,6 +178,9 @@ const SHADOW_BIAS = -0.0002;
 // The receiver-only materials' share of their own shadow terms (RECEIVER_ONLY_SHADOW_NOTE): 1, the 2 cm bias and no
 // normal offset; 0 under __SHADOW_DEBUG.legacyBias, the cascade's terms as every material had them.
 const receiverOnlyShadowUniform = { value: 1 };
+// 2026-10-09 (overhaul r2): the share of a seam's distance the cascades fade over (shadowCascadeLayout.ts csmFadeKFor), one
+// object every CSM program binds (uCotCsmFadeK); 0 is three's law (the tiers without explicit breaks)
+const csmFadeKUniform = { value: 0 };
 // r4 penumbra: r185's PCF getShadow() is a 5-tap Vogel disk rotated per-pixel
 // by interleaved gradient noise, and its disk radius comes straight from
 // `shadow.radius` (in shadow-map texels). The default 1.0 produced razor-hard
@@ -570,6 +574,11 @@ function patchStableShadowSampling() {
     'if(linearDepth >= CSM_cascades[UNROLLED_LOOP_INDEX].x && linearDepth < CSM_cascades[UNROLLED_LOOP_INDEX].y) directLight.color *= ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowIntensity, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;';
 
   let frag = THREE.ShaderChunk.lights_fragment_begin;
+  // 2026-10-09 (the shadows lane, overhaul r2): a cascade seam fades over a share of its own distance near the camera
+  // (shadowCascadeLayout.ts csmFadeMargin) instead of three's 0.25·x², which left the explicit 28 m break a hard line
+  const marginAnchor = 'margin = 0.25 * pow( closestEdge, 2.0 );';
+  if (frag.split(marginAnchor).length !== 2) throw new Error('lighting.ts: CSM fade-margin anchor not found in lights_fragment_begin');
+  frag = frag.replace(marginAnchor, `margin = ${CSM_FADE_MARGIN_GLSL};`);
   if (!frag.includes(declAnchor) || !frag.includes(fadeAnchor) ||
       !frag.includes(fadeBlendAnchor) || !frag.includes(fadeEndAnchor) ||
       !frag.includes(noFadeAnchor)) {
@@ -666,6 +675,7 @@ ${endHead}`);
   // attached in setupShadowMaterial), declared once at fragment scope for the term above.
   THREE.ShaderChunk.lights_pars_begin = `#if defined( USE_CSM ) && defined( CSM_CASCADES )
 ${GROUND_BOUNCE_GLSL_PARS}
+uniform float uCotCsmFadeK;
 #endif
 #if defined( COT_CLOUD_SHADE ) && defined( USE_SHADOWMAP )
 varying float vCotCloudSun;
@@ -823,18 +833,45 @@ export function createLighting(
   // desktop split while removing one full CSM sampler and allocation.
   const mobileTier = getDeviceTier() === 'mobile';
   const cascadeCount = mobileTier ? 3 : CASCADES;
+  // 2026-10-09 (overhaul r2): the preset's explicit breaks (quality.ts shadowBreaksM; shadowCascadeLayout.ts), else three's
+  // practical split — the phones and the tiers that name none keep it exactly
+  let presetBreaksM: readonly number[] | null = mobileTier ? null : preset.shadowBreaksM ?? null;
+  csmFadeKUniform.value = csmFadeKFor(presetBreaksM);
   const csm = new CSM({
     camera,
     parent: scene,
     cascades: cascadeCount,
     maxFar: preset.shadowMaxFar,
-    mode: 'practical',
+    mode: 'custom',
+    customSplitsCallback: (cascades: number, near: number, far: number, target: number[]) => {
+      cascadeBreaks(target, cascades, near, far, presetBreaksM);
+    },
     shadowMapSize: preset.shadowMapSizes[0],
     shadowBias: SHADOW_BIAS,
     lightDirection: sunDir.clone().negate().normalize(), // CSM wants FROM-sun direction
     lightIntensity: SUN_INTENSITY,
   }) as ExtendedCsm;
   csm.fade = true;
+  // (overhaul r2) a cascade's box grows by the fade margin the lane's law adds over three's (csmFadeMargin with the live k,
+  // in the shader's units: fractions of min(camera.far, maxFar)), so the wider seam stays inside its map; three's bounds
+  // code sizes the rest, and the last cascade (its fade is the shadows' fade-out) keeps three's box exactly
+  const threeShadowBounds = csm._updateShadowBounds.bind(csm);
+  csm._updateShadowBounds = () => {
+    threeShadowBounds();
+    const k = csmFadeKUniform.value;
+    if (!(k > 0)) return;
+    const shadowFar = Math.min(camera.far, csm.maxFar);
+    for (let i = 0; i < csm.frustums.length - 1; i++) {
+      const x = csm.breaks[i];
+      const extra = (csmFadeMargin(x, k) - 0.25 * x * x) * (shadowFar - camera.near);
+      if (!(extra > 0)) continue;
+      const shadowCam = csm.lights[i].shadow.camera;
+      const width = shadowCam.right - shadowCam.left + extra;
+      shadowCam.left = -width / 2; shadowCam.right = width / 2;
+      shadowCam.top = width / 2; shadowCam.bottom = -width / 2;
+      shadowCam.updateProjectionMatrix();
+    }
+  };
   csm.updateFrustums(); // required after changing fade
   loadCasterProxies(csm.lights);
   for (let i = 0; i < csm.lights.length; i++) registerShadowCascadeCamera(csm.lights[i].shadow.camera, i);
@@ -985,9 +1022,17 @@ export function createLighting(
     if (!pendingShadowMask) pendingShadowSizes = null;
     pendingShadowCursor = 0;
     csm.shadowMapSize = p.shadowMapSizes[0];
-    if (csm.maxFar !== p.shadowMaxFar) {
+    const nextBreaksM = mobileTier ? null : p.shadowBreaksM ?? null;
+    const breaksChanged = JSON.stringify(nextBreaksM) !== JSON.stringify(presetBreaksM);
+    presetBreaksM = nextBreaksM;
+    csmFadeKUniform.value = csmFadeKFor(presetBreaksM);
+    if (csm.maxFar !== p.shadowMaxFar || breaksChanged) {
       csm.maxFar = p.shadowMaxFar;
       csm.updateFrustums();
+      for (let i = 0; i < csm.lights.length; i++) {
+        const shadowCam = csm.lights[i].shadow.camera;
+        heldCascadeBoxSizes[i] = shadowCam.right - shadowCam.left;
+      }
       shadowFitCache.invalidate();
       applyShadowNormalBiases();
     }
@@ -1351,7 +1396,7 @@ export function createLighting(
         sample.frustum = shadow.getFrustum();
       } else sample.frustum = null;
       sample.texelM = (shadowCam.right - shadowCam.left) / Math.max(1, shadow.mapSize.x);
-      sample.sampledFromM = csmSampledFromM(i === 0 ? 0 : csm.breaks[i - 1], camera.near, far, csm.fade);
+      sample.sampledFromM = csmSampledFromM(i === 0 ? 0 : csm.breaks[i - 1], camera.near, far, csm.fade, csmFadeKUniform.value);
     }
     profileCascades.length = lights.length;
     // csm.lightDirection points FROM the sun: its -y is the sine of the sun's elevation
@@ -1514,6 +1559,7 @@ export function createLighting(
         mat.onBeforeCompile = (shader, rdr) => {
           csmHook(shader, rdr);
           attachGroundBounceUniforms(shader, groundBounceUniforms);
+          shader.uniforms.uCotCsmFadeK = csmFadeKUniform; // (overhaul r2: the cascades' seam law)
           if (extraHook) extraHook(shader, rdr);
           // 2026-10-08 (the world-ibl lane, with the fleet lane): the material's own envMapIntensity, which three
           // overwrites with the scene's on every draw, back on its share of the sky light (materialEnvIntensity.ts)
