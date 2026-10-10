@@ -569,7 +569,7 @@ interface CrewMember {
 }
 
 type CrewToolKind = 'torch' | 'extinguisher' | 'pendant' | 'sledgehammer' | 'pry-bar' | 'torque-wrench'
-  | 'clipboard' | 'flashlight' | 'cassette';
+  | 'clipboard' | 'flashlight' | 'cassette' | 'crate';
 
 /** A hand tool in a member's figure frame (points: the grips first, then the working end). */
 interface CrewTool {
@@ -590,8 +590,11 @@ interface CrewProp {
 
 /** Where a scene's floor frame sits in its bay's authored space (before the bay owner's own transform). */
 interface CrewSceneFrame {
-  /** 'workshop': the shared workshop root's authored space; 'leopard-bay': the Leopard mobility bay's own frame. */
-  readonly parent: 'workshop' | 'leopard-bay';
+  /**
+   * 'workshop': the shared workshop root's authored space; 'leopard-bay': the Leopard mobility bay's own frame;
+   * 'verdant-interior': Verdant's half-turned interior (its mezzanine), shown only in Verdant.
+   */
+  readonly parent: 'workshop' | 'leopard-bay' | 'verdant-interior';
   readonly x: number;
   readonly z: number;
   readonly yaw: number;
@@ -658,7 +661,7 @@ const HIP = CREW_STANDING_HIP_M;
  * lifted hull), T-90M component rebuild (Relikt fitters and an inspector), K2 rollover teardown (belly inspection
  * with a lamp, track work with a sledge).
  */
-export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard' | 't90m' | 'k2', CrewScene>> = Object.freeze({
+export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard' | 't90m' | 'k2' | 'mezzanine', CrewScene>> = Object.freeze({
   burlak: scene({
     id: 'burlak', task: 'turret lift under the gantry, road wheels off the dolly', essential: true,
     frame: { parent: 'workshop', x: 17.8, z: -15.5, yaw: -0.55 },
@@ -776,6 +779,30 @@ export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard'
       { kind: 'sledgehammer', member: 1, points: [[-0.32, 1.62, -0.12], [-0.22, 1.42, -0.02], [-0.45, 1.95, -0.45]] },
     ],
   }),
+  // Verdant's mezzanine and its inspection overhang (interior frame: deck tops 4.52 and 4.46 m), seen above the hero
+  // from the opening camera: a shift lead on the overhang rail watching the welding below, two hands carrying a parts
+  // crate along the walkway.
+  mezzanine: scene({
+    id: 'mezzanine', task: 'a parts crate along the mezzanine, a lead watching the bays from the overhang rail', essential: false,
+    frame: { parent: 'verdant-interior', x: 0, z: 0, yaw: 0 },
+    members: [
+      { role: 'overhang-lead', dress: D('ru', 8, 'patrol-cap'), at: [10.25, 4.46, 13.08], yaw: Math.PI,
+        pose: { pelvis: [0, HIP - 0.03, 0.02], spine: [0.4, 0.08, 0], head: [0.5, 0.15],
+          leftHand: [0.24, 1.03, 0.5], rightHand: [-0.24, 1.03, 0.52],
+          leftFoot: [0.13, A, -0.06], rightFoot: [-0.13, A, -0.1] } },
+      { role: 'crate-carrier', dress: D('ru', 9), at: [14.75, 4.52, 18.2], yaw: -Math.PI / 2,
+        pose: { pelvis: [0, 0.88, -0.03], spine: [0.22, 0, 0], head: [0.2, 0],
+          leftHand: [0.18, 0.85, 0.42], rightHand: [-0.18, 0.85, 0.42],
+          leftFoot: [0.15, A, 0.06], rightFoot: [-0.15, A, -0.06] } },
+      { role: 'crate-carrier', dress: D('ru', 10), at: [13.25, 4.52, 18.2], yaw: Math.PI / 2,
+        pose: { pelvis: [0, 0.88, -0.03], spine: [0.22, 0, 0], head: [0.25, 0.1],
+          leftHand: [0.18, 0.85, 0.42], rightHand: [-0.18, 0.85, 0.42],
+          leftFoot: [0.14, A, 0.07], rightFoot: [-0.16, A, -0.05] } },
+    ],
+    tools: [
+      { kind: 'crate', member: 2, points: [[0.18, 0.85, 0.42], [-0.18, 0.85, 0.42], [0, 0.85, 1.08]] },
+    ],
+  }),
 });
 
 interface CrewToolMaterials {
@@ -874,6 +901,15 @@ export function buildCrewTools(scene: CrewScene, materials: CrewToolMaterials): 
         lens.position.copy(p[0]).addScaledVector(d, 0.15);
         lens.quaternion.setFromUnitVectors(_up, d);
         meshes.push(lens);
+        break;
+      }
+      case 'crate': {
+        const grips = p[0].clone().add(p[1]).multiplyScalar(0.5);
+        const along = new THREE.Vector3().subVectors(p[2], grips);
+        const length = Math.max(0.3, along.length() - 0.02);
+        const centre = grips.clone().add(p[2]).multiplyScalar(0.5).add(new THREE.Vector3(0, 0.02, 0));
+        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), along.setY(0).normalize());
+        meshes.push(boxAt(centre, [length, 0.4, Math.max(0.3, p[0].distanceTo(p[1]) - 0.04)], q, materials.timber));
         break;
       }
       case 'cassette': {

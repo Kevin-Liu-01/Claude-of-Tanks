@@ -41,7 +41,8 @@ assert.equal(standing.geometry.getAttribute('uv'), undefined, 'figures drop UVs 
 
 // --- every scene: hands on tools, soles on surfaces, bounded triangles -------------------------------------------
 const sceneIds = Object.keys(GARAGE_CREW_SCENES);
-assert.deepEqual(sceneIds, ['burlak', 'abrams', 'leopard', 't90m', 'k2'], 'one crew per exhibit');
+assert.deepEqual(sceneIds, ['burlak', 'abrams', 'leopard', 't90m', 'k2', 'mezzanine'],
+  'one crew per exhibit, plus the Verdant mezzanine crew seen above the hero');
 let members = 0, essentialMembers = 0, triangles = 0;
 for (const scene of Object.values(GARAGE_CREW_SCENES)) {
   assert.ok(scene.members.length >= 2, `${scene.id}: a crew works in a pair or a group`);
@@ -82,10 +83,10 @@ for (const scene of Object.values(GARAGE_CREW_SCENES)) {
     }
   }
 }
-assert.equal(members, 15, 'fifteen workers across the five bays');
+assert.equal(members, 18, 'eighteen workers: fifteen across the five bays, three on the Verdant mezzanine');
 assert.ok(triangles <= 30000, `the crews stay inside 30k triangles (${triangles})`);
-assert.ok(essentialMembers * 2 >= members - 1 && essentialMembers * 2 <= members + 1,
-  `the mobile tier keeps about half the crew (${essentialMembers} of ${members})`);
+assert.ok(essentialMembers >= 6 && essentialMembers * 2 <= members + 1,
+  `the mobile tier keeps at most about half the crew (${essentialMembers} of ${members})`);
 
 // --- the crews stand clear of the podium and the canonical camera in all ten destinations ------------------------
 // Bay-owner transforms as garageDressing.ts applies them (the Burlak forward offset, the Abrams destination placement,
@@ -94,6 +95,10 @@ const rotate = (x, z, yaw) => ({ x: x * Math.cos(yaw) + z * Math.sin(yaw), z: -x
 function sceneToWorkshop(scene, point, variant) {
   let p = rotate(point.x, point.z, scene.frame.yaw);
   p = { x: p.x + scene.frame.x, z: p.z + scene.frame.z };
+  if (scene.frame.parent === 'verdant-interior') {
+    // Verdant's interior turns half a turn about the podium (garageDressing.ts verdantInteriorRoot)
+    return variant.id === 'verdant_motor_pool' ? { x: -p.x, z: -p.z } : null;
+  }
   if (scene.frame.parent === 'leopard-bay') {
     p = rotate(p.x, p.z, -0.55); p = { x: p.x + 18.05, z: p.z - 11.95 };
     p = rotate(p.x, p.z, Math.PI); p = { x: p.x + LEOPARD_MOBILITY_BAY_OFFSET.x, z: p.z + LEOPARD_MOBILITY_BAY_OFFSET.z };
@@ -116,6 +121,7 @@ for (const variant of GARAGE_VARIANTS) {
     for (const member of scene.members) {
       const local = crewPointInScene(member, [0, 0, 0]);
       const p = sceneToWorkshop(scene, { x: local.x, z: local.z }, variant);
+      if (!p) continue;
       const radius = Math.hypot(p.x, p.z);
       assert.ok(radius > keepClear, `${variant.id}/${scene.id}/${member.role}: outside the podium keep-clear (${radius.toFixed(1)} m)`);
       assert.ok(Math.hypot(p.x - camX, p.z - camZ) > 4, `${variant.id}/${scene.id}/${member.role}: clear of the canonical camera`);

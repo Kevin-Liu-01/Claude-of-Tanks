@@ -2229,6 +2229,8 @@ export function createGarageDressing(
     }
 
     buildFactoryStructure();
+    // the mezzanine crew lives in this interior frame, so it shows only in Verdant and above the hero there
+    addCrewScene(GARAGE_CREW_SCENES.mezzanine, verdantInteriorRoot);
     buildFactoryCraneSystem();
     buildFactoryUtilities();
     buildFactoryProcessZones();
