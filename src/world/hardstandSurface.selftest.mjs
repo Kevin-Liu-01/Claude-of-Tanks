@@ -205,8 +205,10 @@ assert.equal(lakeField._noVeg(300, 340), false);
   const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
   assert.ok(terrain.includes('apronK = smoothstep(0.30, 0.85, mk.r + (apronN - 0.5) * 0.60 * tileVis(4.8)) * padK;'), 'the pad\'s edge: into the spill, ragged');
   assert.ok(terrain.includes('rut = max(rut, padRut * rutAmp * 1.2);'), 'its ruts are the road\'s for the puddles');
-  assert.ok(terrain.includes('a.rgb *= 1.0 - padRut * 0.20;') && terrain.includes('n.xy -= padRutN * 0.35;'), 'they darken its ground and groove it');
-  assert.ok(terrain.includes('lane * rutAmp * 1.25 + padRut * 1.10'), 'and on snow they are slush');
+  assert.ok(terrain.includes('a.rgb *= 1.0 - padRut * (uReduxD.y > 1.5 ? 0.06 : 0.20);') && terrain.includes('n.xy -= padRutN * 0.35;'), 'they darken its ground (a snow pad\'s barely: pressed snow) and groove it');
+  // (roads lane, 2026-10-10, wave 341's packing note) on snow they are pressed, glazed snow, slush churned to the ground in stretches
+  assert.ok(terrain.includes('lane * rutAmp * 1.25 + padSlush * 1.10') && terrain.includes('roadCol = mix(roadCol, packedSnow * vec3(0.80, 0.82, 0.86), (padRut - padSlush) * 0.85);'),
+    'and on snow they are pressed snow with slush in stretches');
   // 2026-10-09 (roads lane; the gauntlet's "near-black swirl apron" on Frontier): a family's heading is a constant — any
   // heading read off noise is multiplied by |wp| in q = dot(wp, dir) and draws that noise's contours, a rut every metre —
   // its lines wander only on the slow field b (features past 26 m), and its tracks are single vehicles' pairs per strip

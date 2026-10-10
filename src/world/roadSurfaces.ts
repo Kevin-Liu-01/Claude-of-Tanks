@@ -67,6 +67,9 @@ export const MAP_PAVED_SURFACES: Readonly<Record<string, PavedSurfaceConfig>> = 
     puddles: 0.5, tone: 0.85 }),
   // Ironworks (Völklingen, 1945): the works town's streets in setts, the roads beyond it cinder and earth
   foundry: Object.freeze({ street: 'cobble', square: 'cobble', townOnly: true, tone: 0.62 }),
+  // Monsoon Ridge (Kohima, 1944): no paved street of its own — the tone and wear of its metalled road (MAP_PATH_SURFACES)
+  // only: a dark tar macadam, few cracks, no covers (R2, the first frames: a pale modern grey band)
+  monsoon: Object.freeze({ tone: 0.70, patches: 0.6, cracks: 0.3, covers: 0 }),
   // Aegis Crossing (Ronda, 1972): the old towns' streets and squares in setts
   cliffbridge: Object.freeze({ street: 'cobble', square: 'cobble', townOnly: true, tone: 1.1 }),
   // Kestrel Airfield (Hostomel, 2022): the roads in concrete lane slabs; the aprons and the runway keep their square slabs
