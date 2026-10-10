@@ -3,8 +3,9 @@
 // never waits on the CPU's). Every take whose film and stills are complete gets its master from the kept frames
 // (film-master.mjs) and its formats (site-loops.mjs, which keeps the proxy and drops the master), one take at a time, at
 // nice 15. While <renders>/pause-encodes exists no new take starts. It ends once <renders>/encoder-done exists and no take
-// is pending.
-//   node tools/media-r5/site50-encoder.mjs <renders> <deliver> [--poll=60]
+// is pending. --audio gives each delivered take its sound (take-audio.mjs: the game's recorded world, muxed into every
+// video format; owner 2026-10-09, "make sure our videos have audio").
+//   node tools/media-r5/site50-encoder.mjs <renders> <deliver> [--poll=60] [--audio]
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -70,6 +71,10 @@ for (;;) {
   console.log(`[encoder] ${id} ${stamp()}`);
   const l = nice('site-loops.mjs', [renders, deliver, id, '--drop-film-masters']);
   if (l !== 0 || !delivered(id)) { failed.set(id, (failed.get(id) ?? 0) + 1); console.log(`[encoder] ${id}: formats ${l}; tried ${failed.get(id)} time(s)`); }
+  else if ('audio' in flags) {
+    const a = nice('take-audio.mjs', [deliver, id]);
+    if (a !== 0) console.log(`[encoder] ${id}: take-audio ${a}; its formats stay silent until take-audio.mjs runs again`);
+  }
 }
 const left = ready().filter((id) => !delivered(id));
 console.log(`[encoder] done ${stamp()}${left.length ? `; not delivered: ${left.join(', ')}` : ''}`);

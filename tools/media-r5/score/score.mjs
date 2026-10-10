@@ -9,9 +9,12 @@
 // recordings.
 //
 //   node tools/media-r5/score/score.mjs --cues=<cues.json> --music=<music-gen.wav> --out=<dir>
+//   node tools/media-r5/score/score.mjs --cues=<take-cues.json> --music=none --out=<dir>
 //
 // Writes dir/music.wav, dir/sfx-raw.wav, dir/mix.wav (48 kHz stereo 24-bit, loudness-normalized) and
-// dir/score-receipt.json. Without --music it stops: there is no synthesized stand-in.
+// dir/score-receipt.json. Without --music it stops: there is no synthesized stand-in. --music=none scores a site-fifty
+// take (take-audio.mjs, owner 2026-10-09: "make sure our videos have audio"): the recorded world alone, with no music
+// bed, no hits and no music stem.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -26,7 +29,8 @@ const SR = 48000;
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const m = /^--([a-z-]+)=(.*)$/.exec(a); if (!m) throw Error(a); return [m[1], m[2]]; }));
 const cues = JSON.parse(readFileSync(resolve(args.cues ?? join(HERE, 'cues-trailer.json')), 'utf8'));
 const OUT = resolve(args.out ?? join(ROOT, 'shots/media-r5/score'));
-if (!args.music || !existsSync(resolve(args.music))) throw Error('score: --music=<music-gen.wav> (tools/media-r5/score/music.mjs) is required; nothing is synthesized in its place');
+const NO_MUSIC = args.music === 'none';
+if (!NO_MUSIC && (!args.music || !existsSync(resolve(args.music)))) throw Error('score: --music=<music-gen.wav> (tools/media-r5/score/music.mjs) or --music=none is required; nothing is synthesized in its place');
 mkdirSync(OUT, { recursive: true });
 const DUR = cues.durationSec;
 const N = Math.ceil(DUR * SR) + SR * 4;
@@ -161,6 +165,7 @@ function sfxEvent(e) {
   }
   if (e.kind === 'sample') return play(e.name, e.t, { gain: g, pan: p, send: e.send ?? 0.2 });
   if (e.kind === 'drive') return drive(e);
+  if (e.kind === 'loop') return loopVoice(e);
   if (e.kind === 'bed') return bed(e);
   if (e.kind === 'radio') return transmit(e);
   throw Error(`unknown sfx ${e.kind}`);
@@ -211,35 +216,64 @@ function transmit(e) {
   put(radio, filtered(out, HEADSET), e.t, db(cues.radioDb ?? 6) * (e.gain ?? 1), 0, 0);
   transmissions.push([e.t + start, e.t + voiceEnd]);
 }
+/** Linear [t, gain, pan] keys (a take's lens-following level and pan) read in time order into `out`. */
+function keyed(keys, t, state, out) {
+  while (state.i < keys.length - 2 && keys[state.i + 1][0] <= t) state.i++;
+  const a = keys[state.i], b = keys[Math.min(keys.length - 1, state.i + 1)];
+  const u = b[0] > a[0] ? clamp((t - a[0]) / (b[0] - a[0]), 0, 1) : 0;
+  out.gain = a[1] + (b[1] - a[1]) * u; out.pan = a[2] + (b[2] - a[2]) * u;
+  return out;
+}
 /**
- * A tank on the move: its engine family's recorded loop (mid or high by speed) over its track set's loop for the
- * map's ground. A pass-by (passAt + d0) gets distance gain, Doppler pitch and a left-to-right pan; else a steady bed.
+ * A tank on the move: its engine family's recorded loop (mid or high by speed, at the family's pitch) over its track
+ * set's loop for the map's ground. A pass-by (passAt + d0) gets distance gain, Doppler pitch and a left-to-right pan;
+ * a take's hull follows its keys (level and pan against the moving lens); else a steady bed.
  */
 function drive(e) {
   const speed = e.speed ?? 8, engine = `engine_${e.engine ?? 'diesel_v12_modern'}_${speed > 7 ? 'high' : 'mid'}`;
   const tracks = `tracks_${e.tracks ?? 'heavy'}_${e.surface ?? 'earth'}_${speed > 5 ? 'fast' : 'slow'}`;
-  const layers = [[loopRegion(engine), 0.8], [loopRegion(SFX_ASSETS[tracks] ? tracks : `tracks_${e.tracks ?? 'heavy'}_earth_${speed > 5 ? 'fast' : 'slow'}`), 0.7]];
+  const layers = [[loopRegion(engine), 0.8, e.pitch ?? 1], [loopRegion(SFX_ASSETS[tracks] ? tracks : `tracks_${e.tracks ?? 'heavy'}_earth_${speed > 5 ? 'fast' : 'slow'}`), 0.7, 1]];
   const n = Math.ceil(e.dur * SR), L = new Float32Array(n), R = new Float32Array(n);
   const tc = e.passAt ?? null, d0 = Math.max(1.5, e.d0 ?? 12);
-  const pos = layers.map(() => 0);
+  // a take's hulls start mid-loop (seeded), so two hulls of one family never run in phase
+  const pos = layers.map(([loop], k) => e.keys ? seedOf(`${e.actor}@${k}@${e.t}`) % loop.length : 0);
+  const state = { i: 0 }, at = { gain: 1, pan: 0 };
   for (let i = 0; i < n; i++) {
     const t = i / SR;
     let g = 1, ratio = 1, pan = e.pan ?? 0;
     if (tc != null) {
       const x = speed * (t - tc), d = Math.hypot(d0, x), vr = speed * x / d;
       g = Math.min(1.6, (d0 + 4) / (d + 4)); ratio = 343 / (343 + vr); pan = clamp(x / (d0 + 6), -1, 1) * (e.dir ?? 1);
+    } else if (e.keys) {
+      keyed(e.keys, t, state, at); g = at.gain; pan = at.pan;
     }
     const fade = Math.min(1, t / 0.08, (e.dur - t) / 0.15);
     let m = 0;
-    layers.forEach(([loop, w], k) => {
+    layers.forEach(([loop, w, rate], k) => {
       const len = loop.length, p = pos[k] % len, j = Math.floor(p), f = p - j;
       m += (loop[j] * (1 - f) + loop[(j + 1) % len] * f) * w;
-      pos[k] += ratio;
+      pos[k] += ratio * rate;
     });
     m *= g * fade * (e.gain ?? 1);
     L[i] = m * Math.cos((pan + 1) * Math.PI / 4); R[i] = m * Math.sin((pan + 1) * Math.PI / 4);
   }
   putStereo(sfx, L, R, e.t, 1);
+}
+/**
+ * A take's positional loop (a burning wreck's wreck_fire_loop, a fire field's fire_small_loop): level and pan from its
+ * keys against the moving lens, from a seeded point in the loop, faded in over `fadeIn` when it starts mid-take.
+ */
+function loopVoice(e) {
+  const loop = loopRegion(e.asset), len = loop.length, n = Math.ceil(e.dur * SR), off = seedOf(`${e.asset}@${e.t}@${e.actor ?? ''}`) % len;
+  const L = new Float32Array(n), R = new Float32Array(n), fadeIn = Math.max(0.01, e.fadeIn ?? 0) * SR, fadeOut = 0.01 * SR;
+  const state = { i: 0 }, at = { gain: 1, pan: 0 };
+  for (let i = 0; i < n; i++) {
+    keyed(e.keys, i / SR, state, at);
+    const s = loop[(off + i) % len] * at.gain * Math.min(1, i / fadeIn, (n - 1 - i) / fadeOut);
+    L[i] = s * Math.cos((at.pan + 1) * Math.PI / 4) * Math.SQRT2; R[i] = s * Math.sin((at.pan + 1) * Math.PI / 4) * Math.SQRT2;
+  }
+  putStereo(sfx, L, R, e.t, 1);
+  putStereo(sfxVerbSend, L, R, e.t, e.send ?? 0.15);
 }
 /** The map's recorded ambience bed (and its layer, a river or the surf) under one cut, faded at the cut points. */
 function bed(e) {
@@ -257,8 +291,8 @@ function bed(e) {
   }
 }
 
-// ------------------------------------------------------------------ the music bed (generated: music.mjs)
-{
+// ------------------------------------------------------------------ the music bed (generated: music.mjs; none for a take)
+if (!NO_MUSIC) {
   const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', resolve(args.music), '-f', 'f32le', '-ac', '2', '-ar', String(SR), '-'], { maxBuffer: 1 << 30 });
   const all = new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4);
   for (let i = 0; i * 2 + 1 < all.length && i < N; i++) { music.L[i] = all[i * 2]; music.R[i] = all[i * 2 + 1]; }
@@ -348,7 +382,7 @@ function writeWav(path, L, R, frames) {
 const frames = Math.round(DUR * SR);
 const pre = (b, g) => { const L = b.L.subarray(0, frames).map(x => x * g), R = b.R.subarray(0, frames).map(x => x * g); return [L, R]; };
 const mg = db(cues.musicDb ?? -4), sg = db(cues.sfxDb ?? -2);
-writeWav(join(OUT, 'music-raw.wav'), ...pre(music, mg), frames);
+if (!NO_MUSIC) writeWav(join(OUT, 'music-raw.wav'), ...pre(music, mg), frames);
 writeWav(join(OUT, 'sfx-raw.wav'), ...pre(sfx, sg), frames);
 writeWav(join(OUT, 'radio-raw.wav'), ...pre(radio, sg), frames);
 const sum = { L: new Float32Array(frames), R: new Float32Array(frames) };
@@ -366,16 +400,19 @@ const master = (inp, outp, target = lufs) => {
     '-c:a', 'pcm_s24le', outp]);
 };
 master(join(OUT, 'sum-raw.wav'), join(OUT, 'mix.wav'));
-master(join(OUT, 'music-raw.wav'), join(OUT, 'music.wav'), lufs - 2);
+if (!NO_MUSIC) master(join(OUT, 'music-raw.wav'), join(OUT, 'music.wav'), lufs - 2);
 const meter = spawnSync('ffmpeg', ['-hide_banner', '-i', join(OUT, 'mix.wav'), '-af', 'ebur128=peak=true', '-f', 'null', '-'], { encoding: 'utf8' }).stderr;
 const integrated = /I:\s+(-?[\d.]+) LUFS/.exec(meter.split('Summary:').pop())?.[1], truePeak = /Peak:\s+(-?[\d.]+) dBFS/.exec(meter.split('Summary:').pop())?.[1];
 const sha = f => createHash('sha256').update(readFileSync(f)).digest('hex');
 const receipt = { tool: 'media-r5 score', toolSha256: sha(fileURLToPath(import.meta.url)), cuesSha256: createHash('sha256').update(JSON.stringify(cues)).digest('hex'),
-  durationSec: DUR, sampleRate: SR, integratedLufs: Number(integrated), truePeakDbfs: Number(truePeak), music: { file: resolve(args.music), sha256: sha(resolve(args.music)) },
-  outputs: Object.fromEntries(['mix.wav', 'music.wav', 'sfx-raw.wav'].map(f => [f, sha(join(OUT, f))])),
+  durationSec: DUR, sampleRate: SR, integratedLufs: Number(integrated), truePeakDbfs: Number(truePeak),
+  music: NO_MUSIC ? null : { file: resolve(args.music), sha256: sha(resolve(args.music)) },
+  outputs: Object.fromEntries((NO_MUSIC ? ['mix.wav', 'sfx-raw.wav'] : ['mix.wav', 'music.wav', 'sfx-raw.wav']).map(f => [f, sha(join(OUT, f))])),
   recordings: [...new Set([...decoded.keys()].map(k => k.split('#')[0]))].sort(),
   radio: { transmissions: transmissions.length, seconds: +transmissions.reduce((s, [a, b]) => s + b - a, 0).toFixed(2), lines: radioLevels },
   hits: { kit: kit ? join(KIT, 'kit.json') : null, played: hitsPlayed },
-  provenance: 'Music: Eleven Music (ElevenLabs), generated from this film\'s cue sheet (music.mjs). Effects and ambience: the game\'s recorded sound library (public/audio/sfx, ElevenLabs sound generation; docs/AUDIO.md). Crew voices: the game\'s recorded crew radio (public/audio/voice, ElevenLabs speech; docs/AUDIO.md) through the engine\'s intercom chain. Hits: Eleven sound effects (ElevenLabs) from the film kit (kit.mjs). Nothing synthesized.' };
+  provenance: (NO_MUSIC ? 'No music: the take\'s own world. ' : 'Music: Eleven Music (ElevenLabs), generated from this film\'s cue sheet (music.mjs). ')
+    + 'Effects and ambience: the game\'s recorded sound library (public/audio/sfx, ElevenLabs sound generation; docs/AUDIO.md). Crew voices: the game\'s recorded crew radio (public/audio/voice, ElevenLabs speech; docs/AUDIO.md) through the engine\'s intercom chain. '
+    + (NO_MUSIC ? '' : 'Hits: Eleven sound effects (ElevenLabs) from the film kit (kit.mjs). ') + 'Nothing synthesized.' };
 writeFileSync(join(OUT, 'score-receipt.json'), JSON.stringify(receipt, null, 2));
 console.log(`[score] ${DUR}s · ${integrated} LUFS · true peak ${truePeak} dBFS · ${receipt.recordings.length} recordings -> ${OUT}`);
