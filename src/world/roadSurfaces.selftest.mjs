@@ -240,7 +240,9 @@ assert.ok(source.includes('floorK > 0.0 ? 0.12 : 0.26'), 'the old grey pull with
   for (const line of [
     'float bandCov(float d, float hw, float fw) {',
     'float jC = mix(2.0 * jw / 0.17, bandCov(min(sf.x, 0.17 - sf.x), jw, fwAl), vC);',
-    'float jointS = 1.0 - (1.0 - jC) * (1.0 - jL);',
+    'jointS = 1.0 - (1.0 - jC) * (1.0 - jL);',
+    // (R4 cost) past both sets of joints' resolution the setts' limit at once — no per-sett hash on a wide view's far half
+    'if (sv > 0.004) {', 'jointS = 0.19;',
     'float bw = soling ? 0.075 : 0.05, bn = soling ? 3.0 : 4.0;',
     'float hd = mod(hc.x - hc.y, 2.0 * bn);',
     'if (uLandTier > 0.5 && gRoadTex > 0.5 && gRoadYOk > 0.5 && gRoadFrameW > 0.5 && uPaveSlab.x <= 0.0) {',

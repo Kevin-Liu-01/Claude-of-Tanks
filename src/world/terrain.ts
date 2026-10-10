@@ -7286,43 +7286,51 @@ void splatCompute() {
           // setts) stay as streaks far down the street where the courses' joints, foreshortened, fade — and past both the
           // stone's tone and the joints' average carry an irregular drift of the ground (relaid stretches, wear) and the
           // map's own stone tone (uPaveExtra.x: Ironworks' sooty basalt, Ronda's pale limestone)
-          vec2 sq = rq;
-          if (mod(uPaveClass.z, 2.0) > 0.5) { float cc = (fract(sq.y / 2.6) - 0.5) * 2.6; sq.x += 1.7 - sqrt(2.89 - cc * cc); }
-          float course = sq.x / 0.17, ci = floor(course);
-          vec2 cr = cellHash2(vec2(ci, 17.0));
-          float swd = 0.17 + 0.09 * cr.y;
-          float sc = (sq.y + cr.x * swd) / swd, si = floor(sc);
-          vec2 sh = cellHash2(vec2(ci, si + 311.0));
-          vec2 sf = vec2(fract(course) * 0.17, fract(sc) * swd);
           float vC = stripeVis(0.17, al), vL = stripeVis(0.22, pr);
           float sv = max(vC, vL), svs = min(vC, vL);
-          float jw = 0.007 + 0.005 * sh.y;
-          // (R4, the gauntlet's wave 349a: setts "smear into featureless colour by mid-frame ... keep stone definition further
-          // out without moiré") each joint at its share of the pixel across its line (bandCov) — far down a street a faint
-          // line at its true weight, not the widened dark stripe the r4 frames saw as a corduroy and a fade with distance
-          // answered by taking the stones away; short of resolving, each set of joints eases to its mean share, the two
-          // sets' union the joints' whole share of the surface
-          float jC = mix(2.0 * jw / 0.17, bandCov(min(sf.x, 0.17 - sf.x), jw, fwAl), vC);
-          float jL = mix(2.0 * jw / swd, bandCov(min(sf.y, swd - sf.y), jw, fwPr), vC * vL);
-          float jointS = 1.0 - (1.0 - jC) * (1.0 - jL);
-          vec3 stone = vec3(0.150, 0.146, 0.139) * (0.88 + 0.24 * sh.x)
-            * mix(vec3(1.0), sh.y > 0.5 ? vec3(1.04, 1.0, 0.95) : vec3(0.96, 0.99, 1.04), 0.6 * fract(sh.x * 3.7));
-          stone *= 1.0 - 0.05 * wheelW; // (wave 333: worn wheel tracks darker, grimed with rubber and oil; R4: faint — the lab's dark bands)
           float mossy = (1.0 - wheelW) * smoothstep(0.45, 0.75, nz(uv, 0.08, vec2(0.21, 0.63)).g);
-          vec3 jointC = mix(mix(stone * 0.42, uMeanD.rgb * 0.55, 0.5), uMeanG.rgb * 0.62, mossy * 0.6);
           // (R4, the gauntlet: "black missing-sett holes peppered evenly ... remove or randomise them heavily": gone — the
           // relaid patches and the asphalt patches of the larger layer below are the street's repairs)
           vec3 settMean = vec3(0.150, 0.146, 0.139) * (1.0 - 0.04 * wheelW);
-          vec3 col = mix(settMean, stone, sv);
-          col = mix(col, jointC, jointS);
+          vec3 col;
+          float jointS;
+          if (sv > 0.004) {
+            vec2 sq = rq;
+            if (mod(uPaveClass.z, 2.0) > 0.5) { float cc = (fract(sq.y / 2.6) - 0.5) * 2.6; sq.x += 1.7 - sqrt(2.89 - cc * cc); }
+            float course = sq.x / 0.17, ci = floor(course);
+            vec2 cr = cellHash2(vec2(ci, 17.0));
+            float swd = 0.17 + 0.09 * cr.y;
+            float sc = (sq.y + cr.x * swd) / swd, si = floor(sc);
+            vec2 sh = cellHash2(vec2(ci, si + 311.0));
+            vec2 sf = vec2(fract(course) * 0.17, fract(sc) * swd);
+            float jw = 0.007 + 0.005 * sh.y;
+            // (R4, the gauntlet's wave 349a: setts "smear into featureless colour by mid-frame ... keep stone definition
+            // further out without moiré") each joint at its share of the pixel across its line (bandCov) — far down a street
+            // a faint line at its true weight, not the widened dark stripe the r4 frames saw as a corduroy and a fade with
+            // distance answered by taking the stones away; short of resolving, each set of joints eases to its mean share,
+            // the two sets' union the joints' whole share of the surface
+            float jC = mix(2.0 * jw / 0.17, bandCov(min(sf.x, 0.17 - sf.x), jw, fwAl), vC);
+            float jL = mix(2.0 * jw / swd, bandCov(min(sf.y, swd - sf.y), jw, fwPr), vC * vL);
+            jointS = 1.0 - (1.0 - jC) * (1.0 - jL);
+            vec3 stone = vec3(0.150, 0.146, 0.139) * (0.88 + 0.24 * sh.x)
+              * mix(vec3(1.0), sh.y > 0.5 ? vec3(1.04, 1.0, 0.95) : vec3(0.96, 0.99, 1.04), 0.6 * fract(sh.x * 3.7));
+            stone *= 1.0 - 0.05 * wheelW; // (wave 333: worn wheel tracks darker, grimed with rubber and oil; R4: faint — the lab's dark bands)
+            vec3 jointC = mix(mix(stone * 0.42, uMeanD.rgb * 0.55, 0.5), uMeanG.rgb * 0.62, mossy * 0.6);
+            col = mix(mix(settMean, stone, sv), jointC, jointS);
+            vec2 st2 = vec2(sf.x / 0.17 - 0.5, sf.y / swd - 0.5);
+            vec2 tilt = (cellHash2(vec2(si, ci) + 3.7) - 0.5) * 0.18;
+            pN = ((st2.x * 0.55 + tilt.x) * al + (st2.y * 0.55 + tilt.y) * pr) * (1.0 - jointS) * svs;
+          } else {
+            // (R4 cost: past both sets of joints' resolution — a wide paved view's far half — the setts' limit at once: their
+            // mean tone and the joints' mean share of the surface, 2·jw over each pitch's union; no per-sett hash)
+            jointS = 0.19;
+            col = mix(settMean, mix(mix(settMean * 0.42, uMeanD.rgb * 0.55, 0.5), uMeanG.rgb * 0.62, mossy * 0.6), jointS);
+          }
           col *= 0.94 + 0.12 * nzq(uv, 0.35, vec2(0.23, 0.41)).x;
           if (fr) col *= 1.0 - 0.16 * (1.0 - smoothstep(0.0, 0.45, abs(abs(rq.y) - 1.6))) * smoothstep(0.66, 0.84, nzq(uv, 0.75, vec2(0.13, 0.71)).x)
             * smoothstep(0.40, 0.62, nz(uv, 0.05, vec2(0.61, 0.23)).g);
           col *= uPaveExtra.x;
           pav = vec4(col, mix(0.86, 0.76, wheelW * (1.0 - jointS)));
-          vec2 st2 = vec2(sf.x / 0.17 - 0.5, sf.y / swd - 0.5);
-          vec2 tilt = (cellHash2(vec2(si, ci) + 3.7) - 0.5) * 0.18;
-          pN = ((st2.x * 0.55 + tilt.x) * al + (st2.y * 0.55 + tilt.y) * pr) * (1.0 - jointS) * svs;
         } else if ((pCls > 4.5 && pCls < 5.5) || pCls > 6.5) {
           // BRICK — clinker (5: the Dutch dyke road's klinkers in herringbone across the road, sand-jointed, red-brown to
           // purple) or brick soling (7: the char's herringbone of common brick, broken and mud-dressed)
@@ -7438,7 +7446,8 @@ void splatCompute() {
           // binder a crazed net of small irregular plates (the two nearest points of a jittered grid: the plates' edges) —
           // each line at its share of the pixel across it
           float crk = 0.0, sealT = 0.0;
-          if (fr) {
+          // (R4 cost: past a 0.4 m footprint a crack is under a percent of its pixel and the sealed seam a few — none drawn)
+          if (fr && gFootM < 0.4) {
             float cw = (nz(vec2(gRoadS, 3.0), 1.0 / 32.0, vec2(0.71, 0.29)).r - 0.5) * 0.34
               + (nz(vec2(gRoadS, 7.0), 1.0 / 4.0, vec2(0.23, 0.61)).r - 0.5) * 0.07 * tileVis(0.3);
             float cOn = smoothstep(0.30, 0.50, nz(vec2(gRoadS, 13.0), 1.0 / 64.0, vec2(0.37, 0.83)).g) * step(0.5, uPaveWear.y);
