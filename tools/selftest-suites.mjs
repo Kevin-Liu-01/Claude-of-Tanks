@@ -613,6 +613,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/shadowCasterProfiles.selftest.mjs',
     // 2026-10-09 (the shadows lane, overhaul r2): the cascades' explicit breaks and seam law
     'src/engine/shadowCascadeLayout.selftest.mjs',
+    // 2026-10-10 (the shadows lane, overhaul r3): contact-hardening soft shadows on the nearest cascade
+    'src/engine/contactHardeningShadows.selftest.mjs',
     'src/engine/nearVehicleShadowDetail.selftest.mjs',
     'src/engine/articulatedShadowBatch.selftest.mjs',
     'src/engine/lodShadowFade.selftest.mjs',

@@ -73,6 +73,11 @@ export interface QualityPreset {
    */
   readonly vehicleOcclusion?: boolean;
   /**
+   * 2026-10-10 (the shadows lane, overhaul r3): contact-hardening soft shadows on the nearest cascade
+   * (contactHardeningShadows.ts). Absent means three's five-tap PCF (Low, the phones).
+   */
+  readonly pcss?: boolean;
+  /**
    * Round 73 (2026-09-25): the tall-grass tier's density scale (world/tallGrass.ts) — 1 the full sward, Low a
    * quarter, Medium half; absent means no tier (the mobile presets keep today's ground). Read live per cell build.
    */
@@ -281,6 +286,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     taa: false,
     contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, // round 69 (2026-09-24)
     vehicleOcclusion: true, // owner 2026-10-02: vehicle-only cavity occlusion (vehicleOcclusion.ts)
+    pcss: true, // 2026-10-10 (overhaul r3): contact-hardening shadows on the nearest cascade
     tallGrass: 1.0, // round 73 (2026-09-25): the full sward
     maxPixelRatio: 2.0,
     // Native DPR-2 is the explicit Ultra promise. Under sustained overload it
@@ -315,6 +321,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     taa: false, // 2026-09-14: off by default, see the Ultra note
     contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, // round 69 (2026-09-24)
     vehicleOcclusion: true, // owner 2026-10-02: vehicle-only cavity occlusion (vehicleOcclusion.ts)
+    pcss: true, // 2026-10-10 (overhaul r3): contact-hardening shadows on the nearest cascade
     tallGrass: 1.0, // round 73 (2026-09-25): the full sward
     maxPixelRatio: 1.5,
     adaptiveBasePixelRatio: 1.5,
@@ -337,6 +344,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     taa: false, // 2026-09-14: off by default, see the Ultra note
     contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, // round 69 (2026-09-24)
     vehicleOcclusion: true, // owner 2026-10-02: vehicle-only cavity occlusion (vehicleOcclusion.ts)
+    pcss: true, // 2026-10-10 (overhaul r3): contact-hardening shadows on the nearest cascade
     tallGrass: 0.5, // round 73 (2026-09-25): half the sward
     maxPixelRatio: 1.0,
     // Medium/Low already shed AA, AO and shadow cost. Do not multiply that
