@@ -80,15 +80,34 @@ export function pcssLightRad(overcast: number, lightDeg = PCSS_LIGHT_DEG, overca
 const f = (x: number): string => x.toFixed(5);
 
 /**
- * The block lighting.ts appends to three's shadowmap_pars_fragment: the uniforms and `cotCascadeShadow`, which the CSM
- * chunk calls in place of `getShadow` with the cascade's index (a literal after three unrolls the loop) and the receiver's
- * n·l. uCotPcss = (light size rad, search reach m, on 0/1, shadow depth range m); uCotPcssTexel = the cascades' texels (m).
+ * The block lighting.ts appends to three's shadowmap_pars_fragment. Three's own PCF `getShadow` is renamed
+ * `cotGetShadowPCF` there and this `getShadow`, of the same signature, takes its place: every call site keeps three's text
+ * (vegetation.ts wraps the three directional sites in its leaf floor and counts them; coastShadow.ts wraps getShadow by
+ * macro), and the CSM chunk only sets the cascade and the receiver's frame just before each directional call
+ * (lighting.ts: cotShadowCascade, cotShadowN, cotShadowNdotL). A call nobody set up (a spot light, the non-CSM path, a
+ * second call) reads cascade −1: three's PCF exactly.
+ *
+ * uCotPcss = (light size rad, search reach m, on 0/1, shadow depth range m); uCotPcssTexel = the cascades' texels (m);
+ * uCotPcssR / uCotPcssU = the shadow cameras' +x / +y in view space (the receiver-plane depth bias, below).
+ *
+ * Receiver-plane depth bias: a tap at light-space offset o (metres along the shadow camera's +x, +y) compares against the
+ * receiver's own plane there, z + (o·(n·R, n·U)) / (n·L) over the depth range, so a wide disk on a sloping receiver never
+ * reads the receiver itself as a blocker and a contact keeps its shadow (a single bias for the widest tap lifted a
+ * track's contact off the ground under a 30° sun).
  */
 export const CONTACT_HARDENING_GLSL = /* glsl */ `
-#if defined( USE_SHADOWMAP ) && defined( SHADOWMAP_TYPE_PCF ) && defined( USE_CSM )
+#if defined( USE_SHADOWMAP ) && defined( SHADOWMAP_TYPE_PCF )
 uniform vec4 uCotPcss;
 uniform vec4 uCotPcssTexel;
-float cotPcss( sampler2DShadow shadowMap, vec2 shadowMapSize, float shadowIntensity, float shadowBias, float shadowRadius, vec4 shadowCoord, float texelM, float nDotL ) {
+uniform vec3 uCotPcssR;
+uniform vec3 uCotPcssU;
+int cotShadowCascade = -1;
+vec3 cotShadowN = vec3( 0.0, 1.0, 0.0 );
+float cotShadowNdotL = 1.0;
+float cotPcssTap( sampler2DShadow shadowMap, vec2 uv, float z, vec2 offsetTx, vec2 texel, float texelM, vec2 grad ) {
+	return texture( shadowMap, vec3( uv + offsetTx * texel, z + dot( offsetTx * texelM, grad ) ) );
+}
+float cotPcss( sampler2DShadow shadowMap, vec2 shadowMapSize, float shadowIntensity, float shadowBias, float shadowRadius, vec4 shadowCoord, float texelM ) {
 	vec3 sc = shadowCoord.xyz / shadowCoord.w;
 	sc.z += shadowBias;
 	if ( !( sc.x >= 0.0 && sc.x <= 1.0 && sc.y >= 0.0 && sc.y <= 1.0 && sc.z <= 1.0 ) ) return 1.0;
@@ -97,54 +116,56 @@ float cotPcss( sampler2DShadow shadowMap, vec2 shadowMapSize, float shadowIntens
 	float phi = fract( shadowRadius * 0.754877666 ) * PI2;
 	float minTx = max( shadowRadius, 1.0 );
 	float searchTx = clamp( uCotPcss.x * uCotPcss.y / max( texelM, 1e-4 ), minTx, ${f(PCSS_MAX_TEXELS)} );
-	// the slope-scaled bias for the widest disk the receiver may filter (its own tilt to the light)
-	float slopeTan = min( sqrt( max( 1.0 - nDotL * nDotL, 0.0 ) ) / max( nDotL, 0.05 ), ${f(PCSS_MAX_SLOPE_TAN)} );
-	float zs = sc.z - searchTx * texelM * slopeTan * depthPerM;
-	vec2 o1 = vogelDiskSample( 1, 5, phi ) * searchTx * texel;
-	vec2 o2 = vogelDiskSample( 2, 5, phi ) * searchTx * texel;
-	vec2 o3 = vogelDiskSample( 3, 5, phi ) * searchTx * texel;
-	vec2 o4 = vogelDiskSample( 4, 5, phi ) * searchTx * texel;
-	vec4 lit0 = vec4(
-		texture( shadowMap, vec3( sc.xy + o1, zs ) ), texture( shadowMap, vec3( sc.xy + o2, zs ) ),
-		texture( shadowMap, vec3( sc.xy + o3, zs ) ), texture( shadowMap, vec3( sc.xy + o4, zs ) ) );
-	float litC = texture( shadowMap, vec3( sc.xy, zs ) );
+	// the receiver plane's depth gradient per metre of light-space offset (normalised depth), its slope clamped
+	vec2 grad = vec2( dot( cotShadowN, uCotPcssR ), dot( cotShadowN, uCotPcssU ) ) / max( cotShadowNdotL, 0.1 );
+	float gl = length( grad );
+	if ( gl > ${f(PCSS_MAX_SLOPE_TAN)} ) grad *= ${f(PCSS_MAX_SLOPE_TAN)} / gl;
+	grad *= depthPerM;
+	vec2 o1 = vogelDiskSample( 1, 5, phi ) * searchTx, o2 = vogelDiskSample( 2, 5, phi ) * searchTx;
+	vec2 o3 = vogelDiskSample( 3, 5, phi ) * searchTx, o4 = vogelDiskSample( 4, 5, phi ) * searchTx;
+	float litC = texture( shadowMap, vec3( sc.xy, sc.z ) );
+	vec4 lit0 = vec4( cotPcssTap( shadowMap, sc.xy, sc.z, o1, texel, texelM, grad ), cotPcssTap( shadowMap, sc.xy, sc.z, o2, texel, texelM, grad ),
+		cotPcssTap( shadowMap, sc.xy, sc.z, o3, texel, texelM, grad ), cotPcssTap( shadowMap, sc.xy, sc.z, o4, texel, texelM, grad ) );
 	if ( litC > 0.999 && min( min( lit0.x, lit0.y ), min( lit0.z, lit0.w ) ) > 0.999 ) return 1.0;
 	// the blocker ladder: the share still in shadow with the receiver lifted toward the light by each level
 	float s0 = ( 5.0 - litC - lit0.x - lit0.y - lit0.z - lit0.w ) * 0.2;
 	float sk[ 3 ];
 	${PCSS_LADDER_M.map((m, k) => `{
-		float z = zs - ${f(m)} * depthPerM;
-		sk[ ${k} ] = ( 5.0 - texture( shadowMap, vec3( sc.xy, z ) ) - texture( shadowMap, vec3( sc.xy + o1, z ) )
-			- texture( shadowMap, vec3( sc.xy + o2, z ) ) - texture( shadowMap, vec3( sc.xy + o3, z ) )
-			- texture( shadowMap, vec3( sc.xy + o4, z ) ) ) * 0.2;
+		float z = sc.z - ${f(m)} * depthPerM;
+		sk[ ${k} ] = ( 5.0 - texture( shadowMap, vec3( sc.xy, z ) ) - cotPcssTap( shadowMap, sc.xy, z, o1, texel, texelM, grad )
+			- cotPcssTap( shadowMap, sc.xy, z, o2, texel, texelM, grad ) - cotPcssTap( shadowMap, sc.xy, z, o3, texel, texelM, grad )
+			- cotPcssTap( shadowMap, sc.xy, z, o4, texel, texelM, grad ) ) * 0.2;
 	}`).join('\n\t')}
 	float s1 = min( sk[ 0 ], s0 ), s2 = min( sk[ 1 ], s1 ), s3 = min( sk[ 2 ], s2 );
 	float blockerM = ( ( s0 - s1 ) * ${f(PCSS_LADDER_M[0] / 2)} + ( s1 - s2 ) * ${f((PCSS_LADDER_M[0] + PCSS_LADDER_M[1]) / 2)}
 		+ ( s2 - s3 ) * ${f((PCSS_LADDER_M[1] + PCSS_LADDER_M[2]) / 2)} + s3 * ${f(Math.max(PCSS_TOP_M, PCSS_LADDER_M[2]))} ) / max( s0, 1e-3 );
 	float penTx = clamp( uCotPcss.x * blockerM / max( texelM, 1e-4 ), minTx, ${f(PCSS_MAX_TEXELS)} );
-	float zf = sc.z - penTx * texelM * slopeTan * depthPerM;
 	float shadow = 0.0;
 	if ( penTx < ${f(PCSS_SMALL_TEXELS)} ) {
-		for ( int i = 0; i < 5; i ++ ) shadow += texture( shadowMap, vec3( sc.xy + vogelDiskSample( i, 5, phi ) * penTx * texel, zf ) );
+		for ( int i = 0; i < 5; i ++ ) shadow += cotPcssTap( shadowMap, sc.xy, sc.z, vogelDiskSample( i, 5, phi ) * penTx, texel, texelM, grad );
 		shadow *= 0.2;
 	} else {
-		for ( int i = 0; i < ${PCSS_FILTER_TAPS}; i ++ ) shadow += texture( shadowMap, vec3( sc.xy + vogelDiskSample( i, ${PCSS_FILTER_TAPS}, phi ) * penTx * texel, zf ) );
+		for ( int i = 0; i < ${PCSS_FILTER_TAPS}; i ++ ) shadow += cotPcssTap( shadowMap, sc.xy, sc.z, vogelDiskSample( i, ${PCSS_FILTER_TAPS}, phi ) * penTx, texel, texelM, grad );
 		shadow *= ${f(1 / PCSS_FILTER_TAPS)};
 	}
 	return mix( 1.0, shadow, shadowIntensity );
 }
-float cotCascadeShadow( sampler2DShadow shadowMap, vec2 shadowMapSize, float shadowIntensity, float shadowBias, float shadowRadius, vec4 shadowCoord, int cascade, float nDotL ) {
-	if ( cascade < ${PCSS_CASCADES} && uCotPcss.z > 0.5 ) {
+float getShadow( sampler2DShadow shadowMap, vec2 shadowMapSize, float shadowIntensity, float shadowBias, float shadowRadius, vec4 shadowCoord ) {
+	int cascade = cotShadowCascade;
+	cotShadowCascade = -1;
+	if ( cascade >= 0 && cascade < ${PCSS_CASCADES} && uCotPcss.z > 0.5 ) {
 		float texelM = cascade == 0 ? uCotPcssTexel.x : cascade == 1 ? uCotPcssTexel.y : cascade == 2 ? uCotPcssTexel.z : uCotPcssTexel.w;
-		return cotPcss( shadowMap, shadowMapSize, shadowIntensity, shadowBias, shadowRadius, shadowCoord, texelM, nDotL );
+		return cotPcss( shadowMap, shadowMapSize, shadowIntensity, shadowBias, shadowRadius, shadowCoord, texelM );
 	}
-	return getShadow( shadowMap, shadowMapSize, shadowIntensity, shadowBias, shadowRadius, shadowCoord );
+	return cotGetShadowPCF( shadowMap, shadowMapSize, shadowIntensity, shadowBias, shadowRadius, shadowCoord );
 }
 #endif
 `;
 
-/** The call three's CSM chunk makes per cascade, and the one that replaces it (lighting.ts patchStableShadowSampling). */
-export const CSM_GET_SHADOW_CALL = 'getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowIntensity, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] )';
-/** The head of three's non-CSM directional block in the same chunk: its call keeps getShadow. */
+/** Three's PCF getShadow definition (renamed cotGetShadowPCF by lighting.ts), and the directional site's set-up anchor. */
+export const THREE_PCF_GET_SHADOW_DEF = 'float getShadow( sampler2DShadow shadowMap, vec2 shadowMapSize, float shadowIntensity, float shadowBias, float shadowRadius, vec4 shadowCoord ) {';
+export const COT_PCF_GET_SHADOW_DEF = 'float cotGetShadowPCF( sampler2DShadow shadowMap, vec2 shadowMapSize, float shadowIntensity, float shadowBias, float shadowRadius, vec4 shadowCoord ) {';
+/** The head of three's non-CSM directional block in the CSM chunk: its site is left unset (cascade −1). */
 export const CSM_NON_CSM_HEAD = '#if ( NUM_DIR_LIGHTS > 0 ) && defined( RE_Direct ) && !defined( USE_CSM ) && !defined( CSM_CASCADES )';
-export const CSM_CASCADE_SHADOW_CALL = 'cotCascadeShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowIntensity, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ], UNROLLED_LOOP_INDEX, clamp( dot( geometryNormal, directLight.direction ), 0.0, 1.0 ) )';
+/** What each CSM directional site sets just before its shadow call. */
+export const CSM_SITE_SETUP = 'cotShadowCascade = UNROLLED_LOOP_INDEX; cotShadowN = geometryNormal; cotShadowNdotL = clamp( dot( geometryNormal, directLight.direction ), 0.0, 1.0 );';

@@ -5,9 +5,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { CSMShader } from 'three/examples/jsm/csm/CSMShader.js';
+import { ShaderChunk } from 'three';
 import {
-  CONTACT_HARDENING_GLSL, CSM_CASCADE_SHADOW_CALL, CSM_GET_SHADOW_CALL, CSM_NON_CSM_HEAD, PCSS_CASCADES, PCSS_FILTER_TAPS, PCSS_LADDER_M, PCSS_LIGHT_DEG,
-  PCSS_MAX_TEXELS, PCSS_OVERCAST_K, PCSS_TOP_M, blockerDistanceM, pcssLightRad, penumbraTexels,
+  CONTACT_HARDENING_GLSL, COT_PCF_GET_SHADOW_DEF, CSM_NON_CSM_HEAD, CSM_SITE_SETUP, PCSS_CASCADES, PCSS_FILTER_TAPS, PCSS_LADDER_M, PCSS_LIGHT_DEG,
+  PCSS_MAX_TEXELS, PCSS_OVERCAST_K, PCSS_TOP_M, THREE_PCF_GET_SHADOW_DEF, blockerDistanceM, pcssLightRad, penumbraTexels,
 } from './contactHardeningShadows.ts';
 import { PRESETS } from './quality.ts';
 
@@ -33,30 +34,51 @@ near(pcssLightRad(2), pcssLightRad(1), 1e-12, 'clamped overcast');
 
 // ---- 3. the GLSL block
 const g = CONTACT_HARDENING_GLSL;
-for (const m of PCSS_LADDER_M) assert.ok(g.includes(`- ${m.toFixed(5)} * depthPerM`), `the ladder level ${m} m`);
+for (const m of PCSS_LADDER_M) assert.ok(g.includes(`float z = sc.z - ${m.toFixed(5)} * depthPerM;`), `the ladder level ${m} m`);
 assert.ok(g.includes(`clamp( uCotPcss.x * blockerM / max( texelM, 1e-4 ), minTx, ${PCSS_MAX_TEXELS.toFixed(5)} )`), 'the penumbra law');
 assert.ok(g.includes(`vogelDiskSample( i, ${PCSS_FILTER_TAPS}, phi )`), 'the wide filter');
 assert.match(g, /if \( litC > 0\.999 && min\( min\( lit0\.x, lit0\.y \), min\( lit0\.z, lit0\.w \) \) > 0\.999 \) return 1\.0;/, 'the lit early-out (five taps, three\'s own cost)');
 assert.doesNotMatch(g, /sampler2D\s+(?!Shadow)/, 'compares only: no raw-depth sampler, no new texture unit');
 assert.match(g, /float phi = fract\( shadowRadius \* 0\.754877666 \) \* PI2;/, 'one fixed rotation per cascade (no screen noise)');
-assert.match(g, new RegExp(`if \\( cascade < ${PCSS_CASCADES} && uCotPcss\\.z > 0\\.5 \\)`), 'only the nearest cascade(s), only where the lever is on');
-assert.match(g, /return getShadow\( shadowMap, shadowMapSize, shadowIntensity, shadowBias, shadowRadius, shadowCoord \);/, 'otherwise three\'s getShadow exactly');
+assert.match(g, /return texture\( shadowMap, vec3\( uv \+ offsetTx \* texel, z \+ dot\( offsetTx \* texelM, grad \) \) \);/, 'every disk tap compares against the receiver\'s own plane');
+assert.match(g, /vec2 grad = vec2\( dot\( cotShadowN, uCotPcssR \), dot\( cotShadowN, uCotPcssU \) \) \/ max\( cotShadowNdotL, 0\.1 \);/, 'the plane\'s gradient from the receiver\'s normal and the light\'s frame');
+assert.match(g, /int cascade = cotShadowCascade;\s*cotShadowCascade = -1;/, 'a site is read once: a later call (a spot light) takes three\'s PCF');
+assert.match(g, new RegExp(`if \\( cascade >= 0 && cascade < ${PCSS_CASCADES} && uCotPcss\\.z > 0\\.5 \\)`), 'only the nearest cascade(s), only where the lever is on');
+assert.match(g, /return cotGetShadowPCF\( shadowMap, shadowMapSize, shadowIntensity, shadowBias, shadowRadius, shadowCoord \);/, 'otherwise three\'s PCF exactly');
+assert.ok(g.includes(THREE_PCF_GET_SHADOW_DEF), 'the wrapper keeps three\'s getShadow signature');
+assert.equal(ShaderChunk.shadowmap_pars_fragment.split(THREE_PCF_GET_SHADOW_DEF).length - 1, 1, 'three\'s chunk defines its PCF getShadow once (the rename\'s anchor)');
+assert.equal(COT_PCF_GET_SHADOW_DEF.replace('cotGetShadowPCF', 'getShadow'), THREE_PCF_GET_SHADOW_DEF, 'the rename keeps the signature');
 {
   const chunk = CSMShader.lights_fragment_begin, at = chunk.indexOf(CSM_NON_CSM_HEAD);
+  const site = 'directionalLightShadow = directionalLightShadows[ i ];';
   assert.ok(at > 0, 'three\'s chunk keeps its non-CSM directional block after the CSM one');
-  assert.equal(chunk.slice(0, at).split(CSM_GET_SHADOW_CALL).length - 1, 2, 'the CSM block makes the two calls the patch replaces');
-  assert.equal(chunk.slice(at).split(CSM_GET_SHADOW_CALL).length - 1, 1, 'the non-CSM block keeps its own (getShadow, untouched)');
+  assert.equal(chunk.slice(0, at).split(site).length - 1, 2, 'the CSM block has the two directional sites the set-up follows');
+  assert.equal(chunk.split('getShadow( directionalShadowMap[ i ]').length - 1, 3, 'three\'s call text untouched (vegetation.ts counts three sites)');
 }
-assert.ok(CSM_CASCADE_SHADOW_CALL.includes('UNROLLED_LOOP_INDEX'), 'the cascade index is a literal after three unrolls the loop');
+assert.ok(CSM_SITE_SETUP.includes('cotShadowCascade = UNROLLED_LOOP_INDEX;'), 'the cascade index is a literal after three unrolls the loop');
 
 // ---- 4. the wiring
 const lighting = read('./lighting.ts');
-assert.match(lighting, /frag = csmPart\.split\(CSM_GET_SHADOW_CALL\)\.join\(CSM_CASCADE_SHADOW_CALL\) \+ frag\.slice\(nonCsmAt\);/, 'the CSM block calls cotCascadeShadow');
-assert.match(lighting, /\$\{CONTACT_HARDENING_GLSL\}`;/, 'the block rides shadowmap_pars_fragment');
-assert.match(lighting, /shader\.uniforms\.uCotPcss = pcssUniform;[\s\S]{0,120}shader\.uniforms\.uCotPcssTexel = pcssTexelUniform;/, 'every CSM program binds the law\'s state');
+assert.match(lighting, /frag = csmPart\.split\(receiverLightSite\)\.join\(`\$\{receiverLightSite\}\s*\$\{CSM_SITE_SETUP\}`\) \+ frag\.slice\(nonCsmAt\);/, 'each CSM site sets the lookup up, after its receiver-only bias');
+assert.match(lighting, /shadowmap_pars_fragment\.replace\(THREE_PCF_GET_SHADOW_DEF, COT_PCF_GET_SHADOW_DEF\)\}\s*\$\{CONTACT_HARDENING_GLSL\}\s*#if defined\( COT_SHADOW_RECEIVER_ONLY \)/, 'three\'s PCF renamed, the wrapper after it (the receiver-only uniform still ends the chunk)');
+assert.match(lighting, /shader\.uniforms\.uCotPcss = pcssUniform;[\s\S]{0,260}shader\.uniforms\.uCotPcssU = pcssUUniform;/, 'every CSM program binds the law\'s state');
 assert.match(lighting, /function updateLighting\(force = false, dt = 1 \/ 60\): void \{\s*updateContactHardening\(\);/, 'refreshed every frame');
 assert.match(lighting, /const on = !mobileTier && getPreset\(\)\.pcss === true && lightTune\('PCSS', 1\) > 0;/, 'the tier\'s lever; never the phones');
 for (const name of ['ultra', 'high', 'medium']) assert.equal(PRESETS[name].pcss, true, `${name} takes the law`);
 for (const name of ['low', 'mobile', 'mobile-low', 'mobile-high']) assert.equal(PRESETS[name].pcss, undefined, `${name} keeps three's PCF`);
 
-console.log(`contactHardeningShadows.selftest: the blocker ladder (${PCSS_LADDER_M.join(' / ')} m) and penumbra law, the deck's widening, the GLSL block (compares only, lit early-out, ${PCSS_FILTER_TAPS}-tap filter), three's two calls and the wiring PASS`);
+// ---- 5. the installed chunks (the real rig, built in Node): three's call sites intact for vegetation.ts's leaf floor (it
+// throws unless it finds three), each CSM site set up once, one wrapper over the renamed PCF, the receiver-only uniform last
+{
+  const THREE = await import('three');
+  const { createLighting } = await import('./lighting.ts');
+  createLighting(new THREE.Scene(), new THREE.PerspectiveCamera(60, 16 / 9, 0.5, 4000), new THREE.Vector3(0.4, 0.6, 0.3).normalize());
+  const C = THREE.ShaderChunk;
+  assert.equal(C.lights_fragment_begin.split('getShadow( directionalShadowMap[ i ]').length - 1, 3, 'three directional sites (vegetation.ts counts them)');
+  assert.equal(C.lights_fragment_begin.split(CSM_SITE_SETUP).length - 1, 2, 'the two CSM sites set the lookup up');
+  assert.equal(C.shadowmap_pars_fragment.split(THREE_PCF_GET_SHADOW_DEF).length - 1, 1, 'one getShadow: the wrapper');
+  assert.equal(C.shadowmap_pars_fragment.split(COT_PCF_GET_SHADOW_DEF).length - 1, 1, 'three\'s PCF beneath it');
+  assert.ok(C.shadowmap_pars_fragment.indexOf(COT_PCF_GET_SHADOW_DEF) < C.shadowmap_pars_fragment.indexOf(THREE_PCF_GET_SHADOW_DEF), 'the PCF defined before the wrapper calls it');
+}
+
+console.log(`contactHardeningShadows.selftest: the blocker ladder (${PCSS_LADDER_M.join(' / ')} m) and penumbra law, the deck's widening, the GLSL block (compares only, receiver-plane bias, lit early-out, ${PCSS_FILTER_TAPS}-tap filter), three's call sites untouched and the wiring PASS`);

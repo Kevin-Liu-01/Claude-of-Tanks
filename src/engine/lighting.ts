@@ -27,8 +27,8 @@ import {
 import { createShadowFitCache } from './shadowFitCache.ts';
 import { CSM_FADE_MARGIN_GLSL, cascadeBreaks, csmFadeKFor, csmFadeMargin } from './shadowCascadeLayout.ts';
 import {
-  CONTACT_HARDENING_GLSL, CSM_CASCADE_SHADOW_CALL, CSM_GET_SHADOW_CALL, CSM_NON_CSM_HEAD, PCSS_LIGHT_DEG, PCSS_OVERCAST_K, PCSS_REACH_M,
-  pcssLightRad,
+  CONTACT_HARDENING_GLSL, COT_PCF_GET_SHADOW_DEF, CSM_NON_CSM_HEAD, CSM_SITE_SETUP, PCSS_LIGHT_DEG, PCSS_OVERCAST_K, PCSS_REACH_M,
+  THREE_PCF_GET_SHADOW_DEF, pcssLightRad,
 } from './contactHardeningShadows.ts';
 import { registerShadowCascadeCamera, setShadowCascadeCache, setShadowCascadePolicy } from './renderLayers.ts';
 import type { ShadowStaticCache } from './shadowStaticCache.ts';
@@ -189,6 +189,9 @@ const csmFadeKUniform = { value: 0 };
 // reach m, on 0/1, shadow depth range m) and the cascades' texels (m); one object each, every CSM program binds them
 const pcssUniform = { value: new THREE.Vector4(0, PCSS_REACH_M, 0, 1999) };
 const pcssTexelUniform = { value: new THREE.Vector4(0.03, 0.1, 0.4, 1.6) };
+// the shadow cameras' +x / +y in view space (the receiver-plane depth bias)
+const pcssRUniform = { value: new THREE.Vector3(1, 0, 0) };
+const pcssUUniform = { value: new THREE.Vector3(0, 1, 0) };
 // r4 penumbra: r185's PCF getShadow() is a 5-tap Vogel disk rotated per-pixel
 // by interleaved gradient noise, and its disk radius comes straight from
 // `shadow.radius` (in shadow-map texels). The default 1.0 produced razor-hard
@@ -615,18 +618,21 @@ vec3 cotPrev;`);
   const receiverLightAnchor = 'directionalLightShadow = directionalLightShadows[ i ];';
   const receiverLightParts = frag.split(receiverLightAnchor);
   if (receiverLightParts.length !== 4) throw new Error('lighting.ts: receiver-only anchors not found in lights_fragment_begin');
-  frag = receiverLightParts.join(`${receiverLightAnchor}
+  const receiverLightSite = `${receiverLightAnchor}
 				#if defined( COT_SHADOW_RECEIVER_ONLY ) && defined( USE_SHADOWMAP )
 				directionalLightShadow.shadowBias = mix( directionalLightShadow.shadowBias, COT_RECEIVER_SHADOW_BIAS, uCotReceiverOnly );
-				#endif`);
-  // 2026-10-10 (overhaul r3): every cascade's shadow through cotCascadeShadow (contactHardeningShadows.ts): the nearest
-  // cascades take the contact-hardening law where it is on, the rest three's getShadow exactly
-  // (only inside the CSM block: the non-CSM path after it keeps three's getShadow — cotCascadeShadow exists only under USE_CSM)
+				#endif`;
+  frag = receiverLightParts.join(receiverLightSite);
+  // 2026-10-10 (overhaul r3): each CSM directional site tells the shadow lookup which cascade it reads and the receiver's
+  // frame (contactHardeningShadows.ts: getShadow, three's own PCF renamed beneath it); the call text stays three's, so
+  // vegetation.ts's leaf floor and coastShadow.ts's wrapper find it, and the non-CSM site after the block reads cascade −1
   const nonCsmAt = frag.indexOf(CSM_NON_CSM_HEAD);
   if (nonCsmAt < 0) throw new Error('lighting.ts: the non-CSM directional block was not found in lights_fragment_begin');
   const csmPart = frag.slice(0, nonCsmAt);
-  if (csmPart.split(CSM_GET_SHADOW_CALL).length !== 3) throw new Error('lighting.ts: the CSM getShadow calls were not found twice in lights_fragment_begin');
-  frag = csmPart.split(CSM_GET_SHADOW_CALL).join(CSM_CASCADE_SHADOW_CALL) + frag.slice(nonCsmAt);
+  // (after the receiver-only bias: the site's own copy of the shadow struct is complete there)
+  if (csmPart.split(receiverLightSite).length !== 3) throw new Error('lighting.ts: the CSM directional sites were not found twice in lights_fragment_begin');
+  frag = csmPart.split(receiverLightSite).join(`${receiverLightSite}
+				${CSM_SITE_SETUP}`) + frag.slice(nonCsmAt);
   THREE.ShaderChunk.lights_fragment_begin = frag;
 
   const endHead = '#if defined( RE_IndirectDiffuse )';
@@ -723,11 +729,15 @@ varying float vCotCloudSun;
 #if defined( COT_SHADOW_RECEIVER_ONLY ) && defined( USE_SHADOWMAP )
 uniform float uCotReceiverOnlyV;
 #endif`;
-  THREE.ShaderChunk.shadowmap_pars_fragment = `${THREE.ShaderChunk.shadowmap_pars_fragment}
+  // (overhaul r3) three's PCF getShadow becomes cotGetShadowPCF beneath the contact-hardening getShadow appended below
+  if (THREE.ShaderChunk.shadowmap_pars_fragment.split(THREE_PCF_GET_SHADOW_DEF).length !== 2) {
+    throw new Error('lighting.ts: three\'s PCF getShadow definition was not found once in shadowmap_pars_fragment');
+  }
+  THREE.ShaderChunk.shadowmap_pars_fragment = `${THREE.ShaderChunk.shadowmap_pars_fragment.replace(THREE_PCF_GET_SHADOW_DEF, COT_PCF_GET_SHADOW_DEF)}
+${CONTACT_HARDENING_GLSL}
 #if defined( COT_SHADOW_RECEIVER_ONLY ) && defined( USE_SHADOWMAP )
 uniform float uCotReceiverOnly;
-#endif
-${CONTACT_HARDENING_GLSL}`;
+#endif`;
   const receiverVertexAnchor = '\tvec4 shadowWorldPosition;\n';
   if (THREE.ShaderChunk.shadowmap_vertex.split(receiverVertexAnchor).length !== 2) {
     throw new Error('lighting.ts: receiver-only anchor not found in shadowmap_vertex');
@@ -1334,6 +1344,10 @@ export function createLighting(
       const texel = (cam.right - cam.left) / Math.max(1, light.shadow.mapSize.x);
       if (i === 0) t.x = texel; else if (i === 1) t.y = texel; else if (i === 2) t.z = texel; else t.w = texel;
     }
+    // the cascades share the light's orientation: the first one's camera axes, into the view's frame
+    const e = csm.lights[0].shadow.camera.matrixWorld.elements;
+    pcssRUniform.value.set(e[0], e[1], e[2]).transformDirection(camera.matrixWorldInverse);
+    pcssUUniform.value.set(e[4], e[5], e[6]).transformDirection(camera.matrixWorldInverse);
   }
 
   function updateLighting(force = false, dt = 1 / 60): void {
@@ -1603,6 +1617,8 @@ export function createLighting(
           shader.uniforms.uCotCsmFadeK = csmFadeKUniform; // (overhaul r2: the cascades' seam law)
           shader.uniforms.uCotPcss = pcssUniform; // (overhaul r3: the contact-hardening law)
           shader.uniforms.uCotPcssTexel = pcssTexelUniform;
+          shader.uniforms.uCotPcssR = pcssRUniform;
+          shader.uniforms.uCotPcssU = pcssUUniform;
           if (extraHook) extraHook(shader, rdr);
           // 2026-10-08 (the world-ibl lane, with the fleet lane): the material's own envMapIntensity, which three
           // overwrites with the scene's on every draw, back on its share of the sky light (materialEnvIntensity.ts)
