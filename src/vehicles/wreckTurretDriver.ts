@@ -77,6 +77,8 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
   const deathRootScale = new THREE.Vector3(1, 1, 1);
   const seatOffset = new THREE.Vector3();
   const seatQuat = new THREE.Quaternion();
+  /** The drawn turret group's own scale at the kill (a fitted rig: the T-90M's is 0.95 × 0.65 × 0.913), kept in flight. */
+  const turretScale = new THREE.Vector3(1, 1, 1);
   const startPos = new THREE.Vector3();
   const startQuat = new THREE.Quaternion();
   let scale = 1;
@@ -230,8 +232,8 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
     _q.set(framePose[3], framePose[4], framePose[5], framePose[6]);
     _s.setScalar(scale);
     _m.compose(_p, _q, _s);
-    // the drawn group's seat within the frame (a GLB re-seat), its own yaw on the frame
-    _off.compose(seatOffset, seatQuat, _s.setScalar(1));
+    // the drawn group's seat within the frame (a GLB re-seat) and its own fitted scale
+    _off.compose(seatOffset, seatQuat, turretScale);
     _m.multiply(_off);
     _inv.copy(rootWorld(_rootWorld)).invert();
     _local.multiplyMatrices(_inv, _m);
@@ -258,6 +260,7 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
       scale = deathRootScale.x || 1;
       // the turret frame at the kill: the hull's root · T(pivot) · Ry(the turret's yaw)
       const yaw0 = o.turret.rotation.y;
+      turretScale.copy(o.turret.scale);
       const pivot = new THREE.Vector3(profile.pivot[0], profile.pivot[1], profile.pivot[2]);
       startPos.copy(pivot).applyMatrix4(deathRoot);
       startQuat.copy(_q).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw0));

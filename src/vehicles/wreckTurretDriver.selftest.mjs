@@ -71,6 +71,20 @@ function driverFor(r, landings = []) {
   driver.reset();
 }
 
+// --- a fitted rig keeps its turret group's own scale in flight (the T-90M's turret group is 0.95 × 0.65 × 0.913)
+{
+  const r = rig(1.2, -0.4);
+  r.turret.scale.set(0.95, 0.65, 0.913);
+  const driver = driverFor(r);
+  driver.begin(true, r.turret.position.clone(), 0);
+  let worst = 0;
+  for (let f = 1; f <= 240; f++) {
+    driver.update(f / 60, 1 / 60);
+    worst = Math.max(worst, Math.abs(r.turret.scale.x - 0.95), Math.abs(r.turret.scale.y - 0.65), Math.abs(r.turret.scale.z - 0.913));
+  }
+  assert.ok(worst < 1e-6, `the fitted scale stays on the flying turret (${worst.toExponential(2)})`);
+}
+
 // --- an authority: the drawn turret is the body's frame (the procedural seat: no offset), frame for frame
 {
   const r = rig(-0.7, 1.1);
@@ -118,4 +132,4 @@ function driverFor(r, landings = []) {
   assert.ok(low < atFreeze.y, 'and came down');
 }
 
-console.log('wreckTurretDriver.selftest: a composition throws and lands the turret with no jump, an authority\'s pose is drawn exactly, a quiet authority is carried on');
+console.log('wreckTurretDriver.selftest: a composition throws and lands the turret with no jump, a fitted rig keeps its turret scale, an authority\'s pose is drawn exactly, a quiet authority is carried on');

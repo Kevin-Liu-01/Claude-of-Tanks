@@ -8928,6 +8928,8 @@ function* createTankOwnedSteps(
   // mount (killcam r3 made the old spec-pivot restage visibly ~1.2 m off).
   const wreckSeat = new THREE.Vector3(
     armor.turretPivot[0], armor.turretPivot[1], armor.turretPivot[2]);
+  // the turret group's own fitted scale at the kill (a body-driven turret is placed by matrix; the reset restores it)
+  const wreckSeatScale = new THREE.Vector3(1, 1, 1);
   // r5: V0 6.2 -> 12.2 tossed the turret ~5.5 m up — r6 critic: "reads as a
   // tiny bird-like speck for its whole flight ... never lands readable".
   // 8.4 m/s peaks ~2.6 m over the ring (inside/just above the fireball crown
@@ -9055,6 +9057,7 @@ function* createTankOwnedSteps(
     // a body-driven turret eases its gun from its last lay (wreckTurretDriver); the bake's table drops it at once
     if (!turretDriver?.drives) gunG.rotation.x = 0.12;
     wreckSeat.copy(turretG.position);
+    wreckSeatScale.copy(turretG.scale);
     popYaw0 = turretG.rotation.y;
   }
 
@@ -9856,7 +9859,7 @@ function* createTankOwnedSteps(
         // off before this, clearly visible in the killcam r3 intact beat).
         turretG.position.copy(wreckSeat);
         turretG.rotation.set(0, 0, 0);
-        turretG.scale.set(1, 1, 1);
+        turretG.scale.copy(wreckSeatScale);
         gunG.rotation.x = 0;
       }
       turretDriver?.reset();
