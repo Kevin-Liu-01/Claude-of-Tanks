@@ -83,7 +83,7 @@ export interface PloughArea { x0: number; x1: number; z0: number; z1: number }
 
 /**
  * The windrows a plough throws up along both sides of a ploughed road (Whiteout's service corridors: "no plough banks"):
- * a bank 1.2 m off the carriageway's edge, about half a metre high and two and a half wide, in runs of 10-24 m broken
+ * a bank 1.65 m off the carriageway's edge (its toe at the edge), about half a metre high and two and a half wide, in runs of 10-24 m broken
  * where a drive or a crossing road comes in (no bank nearer another road than its own), only inside the ploughed area.
  * Each run is laid as chords of at most 10 m along the road's line (a bend stays a bend), each chord two drift ramps
  * back to back (buildWallDrift's windward profile at a bank's size).
@@ -93,7 +93,7 @@ export function buildPloughBanks(
   roadDist: (x: number, z: number) => number, opts: { mobile?: boolean; roadHalfM?: number } = {},
 ): THREE.BufferGeometry[] {
   const out: THREE.BufferGeometry[] = [];
-  const offset = (opts.roadHalfM ?? 3.85) + 1.2;
+  const offset = (opts.roadHalfM ?? 3.85) + 1.65;
   const inside = (x: number, z: number) => x > area.x0 && x < area.x1 && z > area.z0 && z < area.z1;
   for (const path of roads) {
     if (path.length < 2) continue;
