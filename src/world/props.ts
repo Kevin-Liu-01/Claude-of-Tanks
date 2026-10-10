@@ -9678,12 +9678,23 @@ ${snowCap ? `
   // clear verge (the roadside rules, the road core, every other obstacle and tree), or is dropped. No stream draws.
   // It runs once every record has its seat (the wharf, the Foundry court and the Autumn headlands relocate above) and
   // before anything plans against the vehicles (the yard dressing, the scenery) or refits and indexes the pools.
+  // Sealed lane 2026-10-10 (the owner's map vehicles: a utility pole stood through a Verdant jeep and a Sirocco Wadi
+  // flatbed, a bucket in a Tarkhan sedan): the crushables (the sourced utility poles and the loop-contact props: buckets,
+  // crates, ammunition boxes) carry no collision record, so the seat passes below never saw them. Each stands here as a
+  // circle at its contact radius from its foot up its height.
+  function crushableFootprints(): CollisionRecord[] {
+    return crushables.filter((c) => !c.toppled).map((c) => ({
+      min: [c.x - c.r, c.y, c.z - c.r] as CollisionRecord['min'], max: [c.x + c.r, c.y + c.h, c.z + c.r] as CollisionRecord['max'],
+      shape2: { kind: 'circle', cx: c.x, cz: c.z, r: c.r },
+    }));
+  }
   function separateParkedVehicleRecords(): void {
     const roles = new Set(Object.keys(CIVILIAN_VEHICLE_RECEIPTS));
     const vehicles = destructibles.filter((record) => roles.has(record.kind) && record.state === 0);
     if (vehicles.length < 2) return;
     const roadside = { rng: () => 0, roads: L.roads, heightField, noVegetation: noVeg, spawns: L.spawns, placedBuildings: placedB };
     const trees = sceneryTrees; // the vegetation is released above; the trees were captured with the scenery's
+    const crushRecords = crushableFootprints();
     const footprint = (kind: string) => ({ hw: LOCAL_TYPES[kind].hw ?? LOCAL_TYPES[kind].r, hl: LOCAL_TYPES[kind].hl ?? LOCAL_TYPES[kind].r });
     group.userData.parkedVehicleSeparation = separateParkedVehicles(vehicles, {
       footprint,
@@ -9707,7 +9718,7 @@ ${snowCap ? `
           }
           return true;
         };
-        return !obstacles.some(blocks) && !colliders.some(blocks) && !trees.some(blocks);
+        return !obstacles.some(blocks) && !colliders.some(blocks) && !trees.some(blocks) && !crushRecords.some(blocks);
       },
       move: (record, x, z) => relocateParkedVehicleRecord(destructibleContext, record, x, z),
       drop: (record) => dropParkedVehicleRecord(destructibleContext, record),
@@ -9798,6 +9809,7 @@ ${snowCap ? `
       return { ob: seat.rec!, poly: poly as FootprintPolygon, sx0, sx1, sz0, sz1 };
     });
     const nearOf = new Map<DestructibleRecord, Near[]>();
+    const crushRecords = crushableFootprints();
     for (const cart of carts) {
       const near: Near[] = [];
       const type = LOCAL_TYPES[cart.kind], reach = slideOf(cart) + Math.max(type.hw ?? type.r, type.hl ?? type.r) * cart.sc + 6;
@@ -9813,6 +9825,10 @@ ${snowCap ? `
       for (const stone of risenStones) {
         if (stone.sx1 < x0 || stone.sx0 > x1 || stone.sz1 < z0 || stone.sz0 > z1) continue;
         near.push({ ob: stone.ob, polys: [stone.poly], parked: null });
+      }
+      for (const ob of crushRecords) {
+        if (ob.max[0] < x0 || ob.min[0] > x1 || ob.max[2] < z0 || ob.min[2] > z1) continue;
+        near.push({ ob, polys: null, parked: null });
       }
       nearOf.set(cart, near);
     }
