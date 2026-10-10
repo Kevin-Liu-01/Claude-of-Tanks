@@ -82,7 +82,7 @@ interface SpottingState {
 
 interface VehicleFx {
   dust(position: Vector3, forward: Vector3, intensity: number): void;
-  exhaust(position: Vector3, load: number, diesel: boolean): void;
+  exhaust(position: Vector3, load: number, diesel: boolean, velocity?: Vector3 | null, forward?: Vector3 | null): void;
   loosePropHit?(position: Vector3, direction: Vector3, height: number): void;
   propCrush(position: Vector3, direction: Vector3, height: number): void;
 }
@@ -157,6 +157,7 @@ export function createBattlePresentationRuntime({
   const OFFSCREEN_PRESENTATION_INTERVAL_S = 1 / 30;
   const detailScreenPosition = new Vector3();
   const forward = new Vector3();
+  const exhaustVelocity = new Vector3();
   const right = new Vector3();
   const effectPosition = new Vector3();
   const travelDirection = new Vector3();
@@ -367,10 +368,14 @@ export function createBattlePresentationRuntime({
     effectPosition.copy(presented.pos)
       .addScaledVector(forward, -dimensions.hullLengthM * 0.42);
     effectPosition.y += dimensions.heightM * 0.72;
+    // the hull's own motion (the plume streams off the deck under way and bends with the wind: fx round 7b)
+    exhaustVelocity.copy(forward).multiplyScalar(presented.speed || 0);
     fx.exhaust(
       effectPosition,
       load,
       !battleClient.isPostwarVehicleEra(entity.spec.era),
+      exhaustVelocity,
+      forward,
     );
   };
 

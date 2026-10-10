@@ -417,7 +417,12 @@ export const SCENERY_DESTRUCTIBLE_TYPES = {
 // ---------------------------------------------------------------------------------------------- the pylon line
 
 /** One lattice tower's geometry (baked, world-oriented later): a 400 kV double-circuit "Donau" tower, scaled. */
-export function buildPylon(rng: Rng, height = 34, mobile = false, breadthOf = height): { geometry: THREE.BufferGeometry; legHalf: number; arms: Array<[number, number]> } {
+export function buildPylon(rng: Rng, height = 34, mobile = false, breadthOf = height): {
+  geometry: THREE.BufferGeometry; legHalf: number; arms: Array<[number, number]>;
+  /** The legs' half spread at a height over the footing and the tower's height (the hitbox lane, 2026-10-07: the legs'
+   * colliders lean with them). */
+  halfAt: (y: number) => number; height: number;
+} {
   const parts: THREE.BufferGeometry[] = [];
   // (a tower stood taller over the woods keeps the breadth of the tower it was authored as: its footing, its waist and
   // its arms, so its legs and its conductors' spread stay where they were; only its body rises)
@@ -491,7 +496,7 @@ export function buildPylon(rng: Rng, height = 34, mobile = false, breadthOf = he
   strut(waist * 0.75, H * 0.97, 0, 0, H, 0, 0.08, GALV);
   arms.push([0, H]);
   for (const [sx, sz] of corners) parts.push(paint(box(0.9, 0.5, 0.9).translate(sx * base, 0.1, sz * base), CONCRETE, 0.05, rng));
-  return { geometry: merge(parts, true, false), legHalf: base, arms };
+  return { geometry: merge(parts, true, false), legHalf: base, arms, halfAt, height: H };
 }
 
 /** A sagging conductor between two attachment points as one thin box per segment (baked, dark). */
@@ -1054,9 +1059,20 @@ export function buildSandbagBedding(
   // skirt beside three boulders each on Verdant and Frontier: on a rock's shaded foot it is no brighter than the dirt
   // beside it, so the rocks keep it. A world-planar uv as the banks have.)
   const op = out.attributes.position, gr = new Float32Array(op.count), uv = new Float32Array(op.count * 2);
+  // (the time-to-battle lane, 2026-10-08) the non-indexed merge repeats a vertex in every triangle it closes: its ground
+  // is asked once (the same exact coordinates, the same height; 27.5 k of the 34 k asks on Verdant were repeats)
+  const groundOf = new Map<number, Map<number, number>>();
   for (let i = 0; i < op.count; i++) {
     const px = op.getX(i), py = op.getY(i), pz = op.getZ(i);
-    gr[i] = ground.getHeightAt(px, pz) - 0.5;
+    let groundY: number | undefined;
+    if (px === 0 || pz === 0) groundY = ground.getHeightAt(px, pz);
+    else {
+      let row = groundOf.get(px);
+      if (!row) groundOf.set(px, row = new Map());
+      groundY = row.get(pz);
+      if (groundY === undefined) row.set(pz, groundY = ground.getHeightAt(px, pz));
+    }
+    gr[i] = groundY - 0.5;
     uv[i * 2] = px * 0.37 + py * 0.21; uv[i * 2 + 1] = pz * 0.37 - py * 0.17;
   }
   out.setAttribute('aRockGround', new THREE.BufferAttribute(gr, 1));

@@ -44,7 +44,6 @@ import type {
 import {
   applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap,
   rulesetLoadout, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
-import { allySpawnPoint, reuseSpawnPad } from '../sim/spawnPads.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
 import {
   DEFAULT_BRAIN_SETTINGS, readBrainSettings, readTeamArrangement, type BrainSettings,
@@ -125,6 +124,19 @@ import {
 import { mulberry32 } from './stateCore.ts';
 import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.ts';
 import { classifyShellSurface, shellHitsWater } from '../sim/shellSurface.ts';
+import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
+import {
+  DESTRUCTION_BUS_EVENTS, type StructureBreachEvent, type StructureStageEvent, type TerrainCraterEvent,
+} from '../sim/destructionEvents.ts';
+import { architectureStyleOf, wallMaterialForStyle } from '../sim/structureMaterial.ts';
+import { getMapConfig } from '../world/maps/index.ts';
+import {
+  FUEL_CHARGE_KG, PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, cookOffChargeKg, munitionBlastEventFor, propFellRadiusM,
+} from '../sim/munitionBlast.ts';
+import {
+  createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, rubbleHeightFor, type TerrainDeformation,
+} from '../sim/terrainDeformation.ts';
+import { fellConcealersAt, restoreConcealers } from '../sim/spotting.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from '../sim/matchPlacement.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from './consumables.ts';
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
@@ -251,6 +263,10 @@ type SoloPooledEntity = Omit<RosterEntity,
     /** Impact physics: closing speed already priced in the crash that is still resolving, and when it last grew. */
     _impactAccumMps?: number;
     _impactAccumT?: number;
+    /** Destruction: the structure record this hull met hard this tick (a crash prices a ram on it). */
+    _ramRecord?: CollisionRecord | null;
+    /** Destruction: the share of its speed the hull keeps after rammed structures yielded this tick. */
+    _ramKeep?: number;
     _modeTargetX?: number;
     _modeTargetZ?: number;
     _reloadEvent?: ReloadPresentationEvent;
@@ -323,6 +339,13 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _botNavigation?: Readonly<BotNavigationGrid> | null;
   _navigationWrecks?: NavigationWreck[];
   _navigationWreckTicks?: number;
+  /** Destruction (docs/DESTRUCTION.md): this battle's structures and log, as the authority keeps them. */
+  _destruction?: DestructionMatch | null;
+  _destructionEvents?: StructureStageEvent[];
+  _destructionBreaches?: StructureBreachEvent[];
+  _destructionCraters?: TerrainCraterEvent[];
+  /** Blasts the destruction match reported, waiting for their light props to fall (fellBlastProps). */
+  _destructionBlasts?: number[];
 }
 
 interface SpawnPoint {
@@ -363,6 +386,8 @@ interface SoloWorld {
   heightField: SoloHeightField;
   raycast(origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDist: number): SoloWorldHit | null;
   getObstacles(): SoloObstacle[];
+  /** Shell and sight records (destruction reads the structures' shell bands). */
+  getColliders?(): SoloObstacle[];
   queryObstacles?: (
     minX: number,
     minZ: number,
@@ -371,6 +396,8 @@ interface SoloWorld {
     out: SoloObstacle[],
   ) => SoloObstacle[];
   getConcealment?(): ConcealerDisc[];
+  /** The battle's ground overlay for the drawn ground and the decals to follow (world/map.ts; crater-render-spec §B). */
+  bindGroundOverlay?(overlay: TerrainDeformation | null): void;
   crushObstacle?(
     obstacle: SoloObstacle,
     dirX: number,
@@ -531,8 +558,7 @@ const COMBAT_SEED = 6000;
 const FIRE_TICK_S = 0.5;
 // The battle clock is the ruleset's (sim/matchRuleset.ts timeLimitS: 15:00 for Standard, none for
 // Horde, 12:00 lost-on-expiry for a campaign sortie); the HUD counts the same value down.
-// Allied bots seat around the player pad and a side larger than the map's enemy pads re-uses them on a
-// compact ring: sim/spawnPads.ts (sides, owner 2026-09-18) — the authored 7v7 wedge stays the first six slots.
+// Both sides seat on the symmetric deployment's slots (sim/deployment.ts through the match placement), any side size.
 
 // module-scope scratch — no per-frame allocation
 const _muzzle = new THREE.Vector3();
@@ -817,36 +843,20 @@ interface OpeningLane {
   side: number;
 }
 
-function selectAllySpawn(context: BattleSpawnContext): SpawnPoint {
-  const { world } = context;
-  const playerSpawn = world.spawnPoints.player;
-  // the authored wedge for the first six, lateral and forward slots past them (sim/spawnPads.ts)
-  const point = allySpawnPoint({ x: playerSpawn.pos[0], z: playerSpawn.pos[2], yaw: playerSpawn.yaw }, context.allyIndex++);
-  return {
-    pos: [point.x, world.heightField.getHeightAt(point.x, point.z), point.z],
-    yaw: playerSpawn.yaw,
-  };
-}
-
-function selectEnemySpawn(context: BattleSpawnContext): SpawnPoint {
-  const { enemies } = context.world.spawnPoints;
-  const index = context.enemyIndex++;
-  const pad = enemies[index % enemies.length];
-  const reuse = Math.floor(index / enemies.length);
-  if (reuse === 0) return pad;
-  // sides (2026-09-18): a side larger than the map's pads re-uses them on the compact offset ring instead of
-  // asking the placement search to scatter every extra vehicle around pad 0
-  const point = reuseSpawnPad({ x: pad.pos[0], z: pad.pos[2], yaw: pad.yaw }, reuse);
-  return { pos: [point.x, context.world.heightField.getHeightAt(point.x, point.z), point.z], yaw: pad.yaw };
-}
-
+/**
+ * Symmetric deployments (sim/deployment.ts, modes lane 2026-10-08): the player takes the allied side's slot 0, allied
+ * bots the slots after it, hostiles the enemy side's slots in order — each enemy slot the exact rotation of the allied
+ * slot with its index about the anchors' midpoint. The authority (sim/authoritativeMatch.ts) seats a side through the
+ * same placement call, so a solo battle and a hosted one deploy alike.
+ */
 function selectEntitySpawn(
   context: BattleSpawnContext,
   isPlayer: boolean,
   isAlly: boolean,
 ): SpawnPoint {
-  if (isPlayer) return context.world.spawnPoints.player;
-  return isAlly ? selectAllySpawn(context) : selectEnemySpawn(context);
+  const team = isPlayer || isAlly ? 'alpha' : 'bravo';
+  const slot = context.placement.deploymentSlot(team, team === 'alpha' ? context.allyIndex++ : context.enemyIndex++);
+  return { pos: [slot.x, context.world.heightField.getHeightAt(slot.x, slot.z), slot.z], yaw: slot.yaw };
 }
 
 function initializeBattleEntity(
@@ -1196,6 +1206,34 @@ export function setupBattle(
   }
   game.allTanks = game.allTanks.filter(entity => !entity.matchReinforcement);
   resetBattleSession(game, opts);
+  // destruction (docs/DESTRUCTION.md): the cached world's buildings stand again before anything reads them (the
+  // placement's route grid skips crushed records), then this battle's structures from the same records
+  const worldColliders = world.getColliders ? world.getColliders() : [];
+  resetStructureRecords(world.getObstacles(), worldColliders);
+  const ground = groundFor(world);
+  ground.overlay.reset();
+  world.bindGroundOverlay?.(ground.overlay);
+  restoreConcealers(world.getConcealment ? world.getConcealment() : null);
+  const blasts: number[] = game._destructionBlasts = [];
+  game._destruction = createDestructionMatch({
+    rules: game.ruleset.destruction, obstacles: world.getObstacles(), colliders: worldColliders,
+    ground: ground.overlay,
+    // the bots' grid re-reads the ground round the heap, as the authority's does
+    onCollapse: (structure) => {
+      const reach = rubbleFalloffM(structure.hw, structure.hd, rubbleHeightFor(structure.topY - structure.baseY));
+      const ex = Math.abs(Math.sin(structure.yaw)) * structure.hd + Math.abs(Math.cos(structure.yaw)) * structure.hw + reach;
+      const ez = Math.abs(Math.cos(structure.yaw)) * structure.hd + Math.abs(Math.sin(structure.yaw)) * structure.hw + reach;
+      game._botNavigation?.refreshArea?.(structure.cx - ex, structure.cz - ez, structure.cx + ex, structure.cz + ez);
+    },
+    onBlast: (x, y, z, chargeKg) => { blasts.push(x, y, z, chargeKg); },
+    // P3: no crater on hard ground (roads, bridge decks, ice), as the authority reads it
+    groundTypeAt: (x, z) => world.heightField?.getGroundType?.(x, z) ?? 'medium',
+    // the map's walls price a ram (§4.4), as the authority reads them
+    wallMaterial: wallMaterialForStyle(architectureStyleOf(getMapConfig(game.mapId))),
+  });
+  game._destructionEvents = [];
+  game._destructionBreaches = [];
+  game._destructionCraters = [];
 
   // COMMUNITY TANKS: field the participants; park everyone else (hidden,
   // null state/combat — every sim/HUD/audio consumer guards on those).
@@ -1243,7 +1281,7 @@ export function setupBattle(
   game.spotting = createBattleSpotting(game, world);
 
   const aiDeps = {
-    heightField: world.heightField,
+    heightField: ground.field,
     raycast: world.raycast,
     getObstacles: () => world.getObstacles(),
     queryObstacles: world.queryObstacles || null,
@@ -1578,6 +1616,16 @@ function queueCrush(
 /** The contacts the first obstacle sweep found hard, swept again (resolveObstacleCollisions). */
 const _hardObstacles: SoloObstacle[] = [];
 
+/** Destruction: the speed share a hull keeps through a structure that yields to its ram, or null (it holds). */
+function structureYield(game: SoloGameState, entity: SoloEntity, obstacle: SoloObstacle, pushX: number, pushZ: number): number | null {
+  const length = Math.hypot(pushX, pushZ);
+  if (length <= 1e-9 || !game._destruction) return null;
+  const state = entity.state;
+  const closing = Math.max(0, -state.speed * (Math.sin(state.yaw) * pushX + Math.cos(state.yaw) * pushZ) / length);
+  return game._destruction.ramThrough(obstacle, entity.spec.weightTons, closing, Math.abs(state.speed),
+    state.pos.x, state.pos.y, state.pos.z, -pushX / length, -pushZ / length);
+}
+
 function resolveObstacleCollisions(
   game: SoloGameState,
   world: SoloWorld,
@@ -1646,8 +1694,19 @@ function resolveObstacleCollisions(
       outPush.z = beforeZ;
       continue;
     }
+    // destruction (docs/DESTRUCTION.md §4.4): a structure this ram brings down yields, as a crushed prop does
+    if (self && obstacle.structureIdx !== undefined && game._destruction?.enabled) {
+      const keep = structureYield(game, self, obstacle, outPush.x - beforeX, outPush.z - beforeZ);
+      if (keep !== null) {
+        outPush.x = beforeX;
+        outPush.z = beforeZ;
+        self._ramKeep = Math.min(self._ramKeep ?? 1, keep);
+        continue;
+      }
+    }
     pushed = true;
     _hardObstacles[hardCount++] = obstacle;
+    if (self && obstacle.structureIdx !== undefined && !self._ramRecord) self._ramRecord = obstacle;
   }
   // a second sweep over the contacts that pushed, from where the first left the hull (sim/authoritativeMatch.ts)
   for (let index = 0; index < hardCount; index++) {
@@ -1798,6 +1857,14 @@ function announceDestroyed(
 ): void {
   ent._destroyedAnnounced = true;
   game.matchModeController?.recordDestruction(ent.id, killerId);
+  // a cook-off or a fuel fire bursts on the structures beside the hull (never on the tanks)
+  game._destruction?.tankDeath(cause, ent.spec.weightTons, ent.state.pos.x, ent.state.pos.y, ent.state.pos.z);
+  if (cause === 'ammorack' || cause === 'fire') {
+    const cookOff = cause === 'ammorack';
+    bus.emit(DESTRUCTION_BUS_EVENTS.blast, { munition: cookOff ? 'cook_off' : 'fuel',
+      chargeKg: cookOff ? cookOffChargeKg(ent.spec.weightTons) : FUEL_CHARGE_KG,
+      x: ent.state.pos.x, y: ent.state.pos.y + 1, z: ent.state.pos.z, nx: 0, ny: 1, nz: 0, surface: 'tank' });
+  }
   // turret toss is RESERVED for ammo-rack detonations (WoT spectacle);
   // plain HP kills / burn-outs keep the turret seated (gun droop + smoke)
   ent.visual?.setDestroyed({ pop: cause === 'ammorack' });
@@ -2059,6 +2126,13 @@ function resolveTankShellImpact(
   const intersections = nearest.intersections;
   if (!entity || !intersections) return;
   knockEntityFromShell(entity, shell);
+  const strike = intersections[0]?.point;
+  if (strike) game._destruction?.shellBurst(shell.spec, strike.x, strike.y, strike.z, shell.vel.x, shell.vel.z);
+  if (strike) {
+    const normal = (intersections[0] as { normal?: { x: number; y: number; z: number } }).normal;
+    const blast = munitionBlastEventFor(shell.spec, strike.x, strike.y, strike.z, normal?.x ?? 0, normal?.y ?? 1, normal?.z ?? 0, 'tank');
+    if (blast) bus.emit(DESTRUCTION_BUS_EVENTS.blast, blast);
+  }
   if (isHeClass(shell.spec.type)) {
     emitHeOutcomes(game, bus, shell, intersections[0].point, entity, intersections);
   } else {
@@ -2086,6 +2160,7 @@ function crushWorldPropFromShell(
     'shell',
   );
   if (!crushed || record.treeIdx == null) return;
+  if (record.shape2 && world.getConcealment) fellConcealersAt(world.getConcealment(), record.shape2.cx, record.shape2.cz);
   bus.emit('prop:crushed', {
     shooterId: shell.shooterId,
     cause: 'shell',
@@ -2150,6 +2225,16 @@ function resolveWorldShellImpact(
     shell.dead = true;
   }
   crushWorldPropFromShell(world, bus, shell, hit);
+  // destruction: the struck structure takes the strike and the round's blast (docs/DESTRUCTION.md §4); a burst on the
+  // ground (not on water) may dig a crater (§7, P3)
+  const craterId = game._destruction?.shellWorldHit(shell.spec, hit.record, hit.point.x, hit.point.y, hit.point.z, _seg.x, _seg.z,
+    hit.kind === 'terrain' && !hit.record && !shellHitsWater(world, hit)) ?? null;
+  // the detonation, for the explosion's variety (docs/DESTRUCTION.md §11): one per burst, whatever the rules
+  const blast = munitionBlastEventFor(shell.spec, hit.point.x, hit.point.y, hit.point.z,
+    hit.normal?.x ?? 0, hit.normal?.y ?? 1, hit.normal?.z ?? 0,
+    shellHitsWater(world, hit) ? 'water' : hit.kind === 'terrain' ? 'terrain' : hit.record?.structureIdx != null ? 'structure' : 'prop',
+    hit.record?.structureIdx, craterId);
+  if (blast) bus.emit(DESTRUCTION_BUS_EVENTS.blast, blast);
   bus.emit('shell:expired', {
     shellId: shell.id,
     shooterId: shell.shooterId,
@@ -2429,6 +2514,11 @@ function resolveTankImpacts(
       entity._lastImpactT = game.timeS;
       publishHullImpact(game, entity, bus, rig, 'impact', closing, result);
     }
+    // destruction: the structure the hull struck takes the crash's energy (docs/DESTRUCTION.md §4.4)
+    if (entity._ramRecord && state.impactSource === IMPACT_SOURCE_COLLIDER) {
+      game._destruction?.ram(entity._ramRecord, entity.spec.weightTons, closing, prior,
+        state.pos.x, state.pos.y, state.pos.z, -state.impactNx, -state.impactNz);
+    }
   } else if (impact > 1.5 && game.timeS - (entity._lastImpactT || -1) > IMPACT_CRASH_WINDOW_S) {
     // a soft contact (another hull): the thud and the shake, the ram resolution prices it
     entity._lastImpactT = game.timeS;
@@ -2455,11 +2545,26 @@ function resolveTankImpacts(
 
 const structureSupportByWorld = new WeakMap<SoloWorld, StructureSupportField>();
 
+interface SoloGround { overlay: TerrainDeformation; field: SoloHeightField }
+const groundByWorld = new WeakMap<SoloWorld, SoloGround>();
+
+/** Destruction (docs/DESTRUCTION.md §7): the ground this world's battles deform — its field plus an overlay each battle
+ * resets (rubble mounds, craters); the world's own field is never touched. */
+function groundFor(world: SoloWorld): SoloGround {
+  let ground = groundByWorld.get(world);
+  if (!ground) {
+    const overlay = createTerrainDeformation();
+    ground = { overlay, field: createDeformedHeightField(world.heightField, overlay) };
+    groundByWorld.set(world, ground);
+  }
+  return ground;
+}
+
 /** Round 30: the height field every hull rides on — terrain plus the tops of the primitives it stands on. */
 function structureSupportFor(world: SoloWorld): StructureSupportField {
   let field = structureSupportByWorld.get(world);
   if (!field) {
-    field = createStructureSupportField(world.heightField, world);
+    field = createStructureSupportField(groundFor(world).field, world);
     structureSupportByWorld.set(world, field);
   }
   return field;
@@ -2489,8 +2594,11 @@ function stepTankMovement(
     const parking = entity.aerial?.kind === 'drone' && entity.aerial.active;
     const { throttle, steer, brake, aimLocked } = entity.input;
     if (parking) { entity.input.throttle = 0; entity.input.steer = 0; entity.input.brake = true; entity.input.aimLocked = true; }
+    entity._ramRecord = null;
+    entity._ramKeep = undefined;
     try { updateTank(entity, support, SIM_DT, collider.collide); }
     finally { if (parking) { entity.input.throttle = throttle; entity.input.steer = steer; entity.input.brake = brake; entity.input.aimLocked = aimLocked; } }
+    if (entity._ramKeep !== undefined) entity.state.speed *= entity._ramKeep;
     resolveTankImpacts(game, entity, bus, rig, collider);
   }
 }
@@ -2511,6 +2619,10 @@ function resolveCrushContacts(
     const overrunMps = Math.abs(entity.state.speed);
     world.crushObstacle?.(obstacle, directionX, directionZ, overrunMps);
     entity.state.speed *= obstacle.crushKeep ?? CRUSH_SPEED_KEEP;
+    // a felled tree stops concealing (destruction, docs/DESTRUCTION.md §6)
+    if (obstacle.treeIdx != null && obstacle.shape2 && world.getConcealment) {
+      fellConcealersAt(world.getConcealment(), obstacle.shape2.cx, obstacle.shape2.cz);
+    }
     bus.emit('prop:crushed', {
       id: entity.id,
       specId: entity.specId,
@@ -2933,7 +3045,80 @@ export function simStep(
   stepShells(game, bus, world);
   stepFireDamage(game, bus);
   tickRepairs(game, bus, SIM_DT);
+  stepDestruction(game, bus, world);
   settleBattleResult(game, bus, stepMatchMode(game, bus));
+}
+
+/**
+ * Destruction: the light props within the reach of the blasts the match reported fall (the authority's
+ * fellPropsByBlast: nearest first, at most PROP_FELL_PER_BLAST a blast, a tree's canopy stops concealing).
+ */
+const _blastCandidates: SoloObstacle[] = [];
+const _blastFelled: SoloObstacle[] = [];
+function fellBlastProps(game: SoloGameState, bus: EventBus, world: SoloWorld | null): void {
+  const blasts = game._destructionBlasts;
+  if (!blasts?.length) return;
+  if (!world?.queryObstacles || !world.crushObstacle) { blasts.length = 0; return; }
+  const obstacles = world.getObstacles();
+  let budget = PROP_FELL_PER_TICK;
+  for (let b = 0; b < blasts.length && budget > 0; b += 4) {
+    const x = blasts[b], y = blasts[b + 1], z = blasts[b + 2], radius = propFellRadiusM(blasts[b + 3]);
+    if (!(radius > 0)) continue;
+    world.queryObstacles(x - radius, z - radius, x + radius, z + radius, _blastCandidates);
+    _blastFelled.length = 0;
+    for (const obstacle of _blastCandidates) {
+      if (!obstacle.crushable || obstacle.crushed || obstacle.min[1] > y + radius) continue;
+      const cx = (obstacle.min[0] + obstacle.max[0]) * 0.5, cz = (obstacle.min[2] + obstacle.max[2]) * 0.5;
+      if (Math.hypot(cx - x, cz - z) <= radius) _blastFelled.push(obstacle);
+    }
+    _blastFelled.sort((a, c) => {
+      const da = Math.hypot((a.min[0] + a.max[0]) * 0.5 - x, (a.min[2] + a.max[2]) * 0.5 - z);
+      const dc = Math.hypot((c.min[0] + c.max[0]) * 0.5 - x, (c.min[2] + c.max[2]) * 0.5 - z);
+      return da - dc || obstacles.indexOf(a) - obstacles.indexOf(c);
+    });
+    const fell = Math.min(_blastFelled.length, PROP_FELL_PER_BLAST, budget);
+    budget -= fell;
+    for (let i = 0; i < fell; i++) {
+      const obstacle = _blastFelled[i];
+      const dx = (obstacle.min[0] + obstacle.max[0]) * 0.5 - x, dz = (obstacle.min[2] + obstacle.max[2]) * 0.5 - z;
+      const length = Math.hypot(dx, dz) || 1;
+      obstacle.crushed = true;
+      world.crushObstacle(obstacle, dx / length, dz / length, 6, 'shell');
+      if (obstacle.treeIdx != null && obstacle.shape2 && world.getConcealment) {
+        fellConcealersAt(world.getConcealment(), obstacle.shape2.cx, obstacle.shape2.cz);
+      }
+      bus.emit('prop:crushed', {
+        cause: 'blast', speedMps: 6, kind: obstacle.kind || 'prop', h: obstacle.max[1] - obstacle.min[1],
+        pos: [(obstacle.min[0] + obstacle.max[0]) * 0.5, obstacle.min[1], (obstacle.min[2] + obstacle.max[2]) * 0.5],
+        dir: [dx / length, 0, dz / length],
+      });
+    }
+  }
+  blasts.length = 0;
+  _blastCandidates.length = 0;
+  _blastFelled.length = 0;
+}
+
+/** Destruction's end of step (the authority's advanceDestruction): queued collapses swap, stage events go out. */
+function stepDestruction(game: SoloGameState, bus: EventBus, world: SoloWorld): void {
+  const destruction = game._destruction;
+  if (!destruction) return;
+  // the tick's blasts fell their light props here, in report order (the authority's advanceDestruction alike)
+  if (destruction.enabled) fellBlastProps(game, bus, world);
+  destruction.step();
+  const events = game._destructionEvents ??= [];
+  events.length = 0;
+  destruction.drainEvents(events);
+  for (const event of events) bus.emit(DESTRUCTION_BUS_EVENTS.stage, event);
+  // P2: holes and section falls, after the stages of the same tick (the log's order)
+  const breaches = game._destructionBreaches ??= [];
+  breaches.length = 0;
+  destruction.drainBreaches(breaches);
+  for (const breach of breaches) bus.emit(DESTRUCTION_BUS_EVENTS.breach, breach);
+  const craters = game._destructionCraters ??= [];
+  craters.length = 0;
+  destruction.drainCraters(craters);
+  for (const crater of craters) bus.emit(DESTRUCTION_BUS_EVENTS.crater, crater);
 }
 
 /**

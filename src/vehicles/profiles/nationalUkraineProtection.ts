@@ -46,8 +46,10 @@ function camouflage(id:ProtectionId,index:number):GhillieConfig{
     light:0x6d7e48,dark:0x31482d,netColor:'rgba(38,53,30,0.83)',
     hull:{side:[-1,1].flatMap(side=>d.hullPanels.filter((_,i)=>i!==1).map(([z0,z1],i)=>({
       side,z0:z0+.055,z1:z1-.055,nz:15,ny:7,seed:37+side+i*17,
-      topAt:(z:number)=>hullCageTop(id,z)-.029,bottomAt:(z:number)=>1.005+.020*Math.sin(z*5.4),
-      outAt:(_z:number,t:number)=>d.hullX+.024+(1-t)*.018,
+      // Tied under the header (tiedTop): the drape starts 4 mm under the header's centre line, 1.4 cm outside the
+      // tube, within the lashings, instead of rolling over the header's top into the gun's sweep.
+      topAt:(z:number)=>hullCageTop(id,z)-.004,bottomAt:(z:number)=>1.005+.020*Math.sin(z*5.4),
+      outAt:(_z:number,t:number)=>d.hullX+.024+(1-t)*.018,tiedTop:true,
     })))},
     turret:{
       side:[-1,1].map(side=>({side,z0:d.sideBack+.04,z1:d.sideFront-.055,nz:index===3?23:17,ny:7,seed:71+side,

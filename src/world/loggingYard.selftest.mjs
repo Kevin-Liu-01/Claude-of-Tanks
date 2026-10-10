@@ -3,13 +3,15 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { createHeightField } from './terrain.ts';
-import { mulberry32, FIELD_LOG_COUNTS, HAY_CRATE_SITES } from './props.ts'; // density pass 2 (2026-09-12): the projected stages read the per-map caps
+import { mulberry32, FIELD_LOG_COUNTS, HAY_CRATE_SITES, SLAB_SHELL_KINDS } from './props.ts'; // density pass 2 (2026-09-12): the projected stages read the per-map caps
+import { localShellSlabs, placeLocalShellSlabs } from './rockCollision.ts'; // the hitbox lane (2026-10-08): the stacks' shell slabs
 import { cloneCollisionRecord, pushHullFromObstacle, setCircleShape, setObbShape } from './collision.ts';
 import { sampleDiscGround, sampleObbGround, planGroundedSegment } from './propPlacement.ts';
 import { scaleUV } from './propGeometry.ts';
-import { DESTRUCTIBLE_TYPES, FENCE_SEG, WALL_SEG } from './maps/inhabitKit.ts';
+import { DESTRUCTIBLE_TYPES, FENCE_SEG, WALL_SEG, civilianVehicleTypes } from './maps/inhabitKit.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
-import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
+import { CIVILIAN_VEHICLE_RECEIPTS, pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
+import { CART_RECEIPTS } from './maps/cartKit.ts';
 import { authoredRoadStationCount, authoredRoadStationIndex } from './maps/roadStations.ts';
 import { deriveRuntimeStructureCollisionWithSolids, deriveRuntimeStructureContactBand,
   applyStructureCollisionBand } from './structureCollision.ts';
@@ -32,7 +34,10 @@ const dependencies = { THREE, mulberry32, cloneCollisionRecord, setCircleShape, 
   DESTRUCTIBLE_BUILDING_TYPES, FENCE_SEG, WALL_SEG, pickCivilianVehicleKind,
   deriveRuntimeStructureCollisionWithSolids, deriveRuntimeStructureContactBand,
   applyStructureCollisionBand, attachGroundCoverSolidProfile, createGroundCoverSolidProfile,
-  GROUND_COVER_PLACEMENT_BYTES, setWorldNightFixtureActive,
+  GROUND_COVER_PLACEMENT_BYTES, setWorldNightFixtureActive, SLAB_SHELL_KINDS, localShellSlabs, placeLocalShellSlabs,
+  // (2026-10-07) the destructible stage seats a cart tilted to its ground (props.ts cartGroundPose, CART_KINDS); since
+  // 2026-10-08 a parked vehicle too (GROUND_POSED_KINDS)
+  CART_RECEIPTS, CIVILIAN_VEHICLE_RECEIPTS,
   authoredRoadStationCount, authoredRoadStationIndex, FIELD_LOG_COUNTS, HAY_CRATE_SITES,
   // props.ts reads its settlement counts through richCount (tier multiplier, 2026-09-14); this
   // receipt checks the authored counts, i.e. the mobile tier's production value.
@@ -206,10 +211,23 @@ for (const seed of [1337, 2025]) {
 // 2026-10-02 (maps lane B): Longleaf Crossing's gentler relief (hillScale 0.88, microScale 0.76) and its new swell
 // move the same two donors: the replay without the logging yard puts them at the origins below, and the canonical
 // shard's packed heights at the bays are 2.0045 and 1.9812 (was (-149.2308, -173.9215) and (-80.6038, 239.7031), 1.9813).
+// 2026-10-05 (the map-vehicles lane): the flatbeds collide as the Louisiana fleet's own flatbed (its contact band, not
+// the legacy box truck's), so the second donor's packed height rounds to 1.9813 (was 1.9812) and its footprint's
+// bounds centre stands off the record by the band's own asymmetry (the cab forward of the bed), which the bay check
+// below applies through the production transform.
 const preLayoutTraffic = [
   { x: -149.2563437955792, z: -173.84073125534042, height: 2.0045 },
-  { x: -80.53000567837782, z: 239.67939683819532, height: 1.9812 },
+  { x: -80.53000567837782, z: 239.67939683819532, height: 1.9813 },
 ];
+const flatbedBand = civilianVehicleTypes('longleaf', false).truckflatbed.contactBand;
+/** The bounds centre a flatbed's footprint takes at a seat (the band through the production transform). */
+function seatedBandCentre(x, z, yaw, sc) {
+  const scaled = { ...flatbedBand, parts: flatbedBand.parts.map((part) => (part.points
+    ? { ...part, cx: part.cx * sc, cz: part.cz * sc, points: part.points.map((v) => v * sc) }
+    : { ...part, cx: part.cx * sc, cz: part.cz * sc, ...(part.hw ? { hw: part.hw * sc, hl: part.hl * sc } : {}), ...(part.r ? { r: part.r * sc } : {}) })) };
+  const probe = applyStructureCollisionBand({ min: [0, 0, 0], max: [0, 0, 0] }, scaled, x, z, yaw, 0);
+  return [(probe.min[0] + probe.max[0]) / 2, (probe.min[2] + probe.max[2]) / 2];
+}
 const flatbedBays = longleaf.props.loggingYard.flatbeds;
 const currentTraffic = canonical.filter(ob => ob.kind === 'truckflatbed' && flatbedBays.some(point =>
   Math.hypot((ob.min[0] + ob.max[0]) / 2 - point.x, (ob.min[2] + ob.max[2]) / 2 - point.z) < 26));
@@ -226,8 +244,9 @@ const savedTraffic = preLayoutTraffic.map(({ x, z, height }, index) => {
   const current = matches[0];
   assert.ok(!matchedTraffic.has(current)); matchedTraffic.add(current);
   const target = longleaf.props.loggingYard.flatbeds[index];
-  assert.ok(Math.hypot((current.min[0]+current.max[0])/2-target.x,
-    (current.min[2]+current.max[2])/2-target.z) < .1,
+  const [bx, bz] = seatedBandCentre(target.x, target.z, target.yaw, sc);
+  assert.ok(Math.hypot((current.min[0]+current.max[0])/2-bx,
+    (current.min[2]+current.max[2])/2-bz) < .1,
     'matched current donor occupies its authored loading bay');
   assert.ok(Math.abs((current.max[1] - current.min[1]) / DESTRUCTIBLE_TYPES.truckflatbed.h - sc) < 1e-10,
     'composition preserves each captured donor scale');

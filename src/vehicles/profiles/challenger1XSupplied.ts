@@ -1,3 +1,4 @@
+import { addModernFieldCage } from './modernFieldCage.ts';
 // Independent supplied-file rebuild. This entry deliberately calls none of
 // the superseded handbook/photo Challenger profile or its vehicle helpers.
 import { addChallenger1SuppliedHull } from './challenger1XSuppliedHull.ts';
@@ -17,4 +18,5 @@ export function buildChallenger1Supplied(P: TankBuilderPort): void {
   addChallenger1SuppliedGear(P);
   addChallenger1SuppliedTurret(P);
   addChallenger1SuppliedGun(P);
+  addModernFieldCage(P);
 }

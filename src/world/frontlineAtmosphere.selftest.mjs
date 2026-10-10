@@ -99,6 +99,8 @@ for (const e of a.runtime.log) {
 }
 const flyover = a.events.find(([name]) => name === 'atmosphere:flyover');
 assert.ok(flyover, 'a flyover happened in three minutes on the front');
+// the flyover names the aircraft it shows (the Audio 2.0 lane plays its type's sound): the Fulda Gap flies the A-10
+assert.equal(flyover[1].aircraft, 'a10', 'the flyover event names its aircraft');
 const speed = Math.hypot(...flyover[1].v);
 assert.ok(speed >= FRONTLINE_LIMITS.aircraftSpeedMps[0] && speed <= FRONTLINE_LIMITS.aircraftSpeedMps[1]);
 assert.ok(a.parent.getObjectByName('frontline-aircraft-0'), 'aircraft slot exists');

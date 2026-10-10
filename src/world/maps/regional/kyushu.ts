@@ -266,9 +266,11 @@ const naya: RegionalBuilder = (ctx) => {
       const pts: Vec3[] = rg.gable.map(([u, y]) => [u, y, z] as Vec3);
       sink.prism('structureWood', z > 0 ? [...pts].reverse() : pts, [0, 0, z > 0 ? -1 : 1], 0.06, { colour: board });
     }
-    if (ctx.tier !== 'mobile') for (let k = 0; k < 6; k++) {
-      sink.cylinder('structureWood', [W / 2 + 0.6 + look() * 0.6, 0, -L / 2 + 1 + k * 0.9], 'y', 1.1 + look() * 0.3, 0.32, 7, { colour: rgb(0xb8a070), decor: true }, 0.12);
-    }
+    sink.dressing(ctx.tier === 'mobile', () => {
+      for (let k = 0; k < 6; k++) {
+        sink.cylinder('structureWood', [W / 2 + 0.6 + look() * 0.6, 0, -L / 2 + 1 + k * 0.9], 'y', 1.1 + look() * 0.3, 0.32, 7, { colour: rgb(0xb8a070), decor: true }, 0.12);
+      }
+    });
   });
   return sink.finish();
 };

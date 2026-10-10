@@ -10,7 +10,7 @@ import { WEAPON_CLASSES } from '../audio/weaponAudio.ts';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const expected = [
   'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance',
-  'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio',
+  'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio', 'filming',
 ];
 
 assert.deepEqual([...TOPIC_ORDER], expected, 'the manual keeps one deliberate public topic order');
@@ -34,6 +34,8 @@ for (const id of TOPIC_ORDER) {
     assert.ok(Object.hasOwn(DOCS_ICON_SPECS, icon), `${id} section icon ${icon} is registered`);
   }
   assert.equal(topic.media.length, 2, `${id} has two current visual evidence anchors`);
+  const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
+  assert.ok(firstFigureAt < secondFigureAt && secondFigureAt < topic.sections.length, `${id} places both figures after its own sections`);
   for (const asset of [topic.hero, ...topic.media.map(([src]) => src)]) {
     assert.ok(existsSync(join(ROOT, 'public', asset)), `${id}: referenced media exists (${asset})`);
   }
@@ -41,7 +43,9 @@ for (const id of TOPIC_ORDER) {
   assert.match(landing, new RegExp(`href="/docs/${id}"`), `${id} is discoverable from the manual index`);
 }
 
-assert.match(docsCss, /\.topic-nav \.shell\{display:grid;grid-template-columns:minmax\(120px,\.72fr\) repeat\(6,minmax\(0,1fr\)\)/, 'wide manuals expose every topic in a balanced two-row grid');
+assert.match(docsCss, /\.topic-nav \.shell\{display:grid;grid-template-columns:minmax\(120px,\.72fr\) repeat\(7,minmax\(0,1fr\)\)/, 'wide manuals expose every topic in a balanced two-row grid');
+assert.match(docsCss, /\n\.topic-nav a:last-child\{grid-column:span 2\}\n/, 'the thirteenth topic closes the second row across its last two cells');
+assert.equal(TOPIC_ORDER.length, 13, 'thirteen topics fill the two-row grid: seven, then five and one spanning two');
 assert.match(docsCss, /\.topic-nav \.shell\{display:flex;gap:1px;overflow-x:auto;[^}]*scrollbar-width:thin\}/, 'narrow manuals keep an explicit scrollable topic strip');
 assert.match(topicsSource, /navStrip\.scrollLeft = Math\.max\(0, activeTopic\.offsetLeft/, 'narrow manuals reveal their active topic without moving the page');
 assert.doesNotMatch(topicsSource, /replace\(\/\[\^a-z0-9\]/, 'translated headings must not determine section anchors');
@@ -85,4 +89,4 @@ assert.match(audioText, /13 existing national crews for every tank/);
 assert.match(audioText, /saved across battles and reloads/);
 assert.doesNotMatch(audioText, /selftest|node (?:src|tools)\//, 'the audio manual is written for players, not as a test checklist');
 
-console.log('topics.selftest: 12 indexed manuals with complete icon, workflow, and audio coverage passed');
+console.log(`topics.selftest: ${TOPIC_ORDER.length} indexed manuals with complete icon, workflow, and audio coverage passed`);

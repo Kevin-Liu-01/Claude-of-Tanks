@@ -1,3 +1,4 @@
+import {assertHollowMuzzle} from '../../../tools/physical-muzzle.test-support.mjs';
 // Source-space regression: undo only the owner-directed 1.10 uniform size.
 // Installed metre bounds/unit rigs are checked by vehicleSize.selftest.
 import assert from 'node:assert/strict';
@@ -47,24 +48,7 @@ function framesAndBore(t,ms){
  const muzzle=t.gunMuzzleWorld(new THREE.Vector3());
  near(muzzle.distanceTo(new THREE.Vector3(source.gun[0],source.gun[1],source.muzzle)),0,2e-6,'true source firing anchor');
  const cannon=t.root.getObjectByName('gun');
- for(const [x,y]of[[.0015,0],[.03,0],[-.03,0],[0,.03],[0,-.03]]){
-  const o=[source.gun[0]+x,source.gun[1]+y,source.muzzle+.10];
-  // Until 2026-09-22 this ray met the actual metal blind floor (source.floor,
-  // raw 211.141739, 115.6 mm behind the mouth) through the open polygon bore;
-  // owner 2026-09-22 ("the point of adding holes instead of carving them into
-  // the barrel is that we save on triangles"): the mouth is solid now, closed
-  // at the source tip because the lining hid that bore entirely. Recorded here.
-  near(hit([cannon],o,[0,0,-1],.4)?.point.z,source.muzzle,2e-5,`metal mouth closed at the source tip (recorded blind floor ${source.floor})`);
-  const all=hit(ms,o,[0,0,-1],.4);
-  // Fleet mouth standard (2026-09-12, terminal-surface-fit-r2): visible
-  // furniture is the lining seated on the tube's true mouth face; the recessed
-  // metal floor is asserted separately above. The chamfered bore course ends
-  // 14.3 mm behind the ballistic marker but the outer course reaches it, so the
-  // mouth-face scan seats the flush lining 0.3 mm proud of the marker instead
-  // of burying the lip inside the outer course.
-  assert.equal(all?.object.name,'muzzleBoreShadowFallbackDisc','visible furniture is the fleet lining');
-  near(all?.point.z,source.muzzle+.0003,.0005,'all visible muzzle furniture is the flush lining on the terminal face');
- }
+ assertHollowMuzzle(t.root,source.muzzle);
  // Pin the physical sixteen-facet outer mouth from outside: vertex rays (0 and
  // pi/2) meet the polygon radius, the face-centre ray (pi/16) meets its
  // R*cos(pi/16) chord, so a round lathe substitute fails. Levels sit midway

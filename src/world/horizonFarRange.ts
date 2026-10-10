@@ -424,6 +424,9 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
       }`);
   };
   material.customProgramCacheKey = () => 'horizon-far-range-r72c';
+  // media r5: the shading uniforms (sun, gains, rock / snow / fog colours) are shared with every compile; Scene Studio
+  // relights them for its times of day and restores them
+  material.userData.horizonFarShading = shading;
   const mesh = new THREE.Mesh(geo, material);
   mesh.onBeforeRender = (_renderer, scene) => {
     const shared = (scene.userData as { cloudShadeUniforms?: { tCotCloudShade: THREE.IUniform<THREE.Texture | null>;
