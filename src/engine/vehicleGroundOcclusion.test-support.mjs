@@ -86,7 +86,8 @@ export async function vehicleGroundGlslCases() {
     return { hullCount: u.uVehGround.value, rows: u.uVehGroundM.value.flatMap((v) => v.toArray()),
       solids: u.uVehGroundB.value.flatMap((v) => v.toArray()), runs: knots, light: u.uVehGroundLight.value.toArray() };
   };
-  const shown = (occ) => (occ > 0.003 ? occ : 0); // the block skips a pixel it barely touches
+  // the block skips a pixel it barely touches; the hulls' joint share is capped (round 3: GROUND_AO_OCC_MAX)
+  const shown = (occ) => { const c = Math.min(occ, M.GROUND_AO_OCC_MAX); return c > 0.003 ? c : 0; };
   const base = { amb: [1, 1, 0, 0], fillDir: [0, 1, 0], sunDir: [0, 1, 0], points: receivers.map((r) => r[1]), normals: receivers.map((r) => r[2]),
     // the scene target's alpha: a card (no sun state) under 1.5, a lit pixel's 2 + its sun visibility
     alphas: receivers.map((r) => (r[3] ? 1 : 2.5)) };

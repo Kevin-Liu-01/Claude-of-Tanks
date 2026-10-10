@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
   GROUND_AO_BELLY_VIEW, GROUND_AO_CARD_AMBIENT_SHARE, GROUND_AO_CLIP_SLACK_M, GROUND_AO_CONTACT_EDGE_M, GROUND_AO_CONTACT_FULL_M,
-  GROUND_AO_CONTACT_GAP_M, GROUND_AO_CONTACT_MAX, GROUND_AO_CONTACT_RISE_M, GROUND_AO_CONTACT_SPREAD_M, GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_EDGE_M, GROUND_AO_FADE_M, GROUND_AO_GAP_FADE_M, GROUND_AO_HULL_ALBEDO,
+  GROUND_AO_CONTACT_GAP_M, GROUND_AO_CONTACT_MAX, GROUND_AO_CONTACT_RISE_M, GROUND_AO_CONTACT_SPREAD_M, GROUND_AO_OCC_MAX, GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_EDGE_M, GROUND_AO_FADE_M, GROUND_AO_GAP_FADE_M, GROUND_AO_HULL_ALBEDO,
   GROUND_AO_HULL_SKIN_M, GROUND_AO_MAX_HULLS, GROUND_AO_NO_RUN_M, GROUND_AO_RANGE_M, GROUND_AO_REACH, GROUND_AO_RUN_KNOTS,
   GROUND_AO_UNDER_GROUND, VEHICLE_GROUND_OCCLUSION_GLSL, boxSkyOcclusion, combineVehicleGroundOcclusion,
   createVehicleGroundOcclusionUniforms, hullBottomAt, hullProxyOf, hullSkyOcclusion, isRunShoe, measureVehicleGroundHull, trackFloorAt,
@@ -329,9 +329,16 @@ assert.ok(visSnow(0, T.pz0) < 0.3 && visSnow(0, T.fz0) < 0.62, `the rear strip: 
 const visSand = 1 - vehicleGroundOcclusionLocal({ x: 0, y: 0, z: 0 }, UP, T, sand);
 assert.ok(visSand > 0.15 && visSand < 0.32, `sunny sand's belly keeps ${visSand.toFixed(3)}`);
 // several hulls as independent occluders, the range fade over the selection's last stretch
-near(combineVehicleGroundOcclusion([0.5, 0.5], 10), 0.75, 1e-12, 'two halves');
+near(combineVehicleGroundOcclusion([0.3, 0.4], 10), 0.58, 1e-12, 'two as independent occluders');
 near(combineVehicleGroundOcclusion([0.8], GROUND_AO_RANGE_M), 0, 1e-12, 'gone at the range');
-near(combineVehicleGroundOcclusion([0.8], GROUND_AO_RANGE_M - GROUND_AO_FADE_M), 0.8, 1e-12, 'whole inside the fade');
+near(combineVehicleGroundOcclusion([0.6], GROUND_AO_RANGE_M - GROUND_AO_FADE_M), 0.6, 1e-12, 'whole inside the fade');
+// (2026-10-10, round 3; the owner on production 207: "super super dark rectangular shadows under tracks") the hulls' joint
+// share is capped: the ground under a belly keeps a part of its sky (the 207 frames: 0.03–0.08 of the shaded ground)
+assert.ok(GROUND_AO_OCC_MAX >= 0.6 && GROUND_AO_OCC_MAX <= 0.75, `the darkening never passes ${GROUND_AO_OCC_MAX} of the sky`);
+near(combineVehicleGroundOcclusion([0.99], 10), GROUND_AO_OCC_MAX, 1e-12, 'a belly\'s middle: capped');
+near(combineVehicleGroundOcclusion([0.6, 0.6], 10), GROUND_AO_OCC_MAX, 1e-12, 'two hulls never stack past the cap');
+assert.ok(combineVehicleGroundOcclusion([vehicleGroundOcclusionLocal({ x: 0, y: 0, z: 0 }, UP, T, snow)], 10) <= GROUND_AO_OCC_MAX,
+  'snow under the belly keeps at least the cap\'s share of its sky');
 
 // ---- 6. the solid from a built root: contact geometry, the hull proxy's underside, the shoes (then the bands)
 function builtHull(name, { z = 0, bands = true, contact = true, shoes = true, slope = 0 } = {}) {
@@ -507,6 +514,7 @@ assert.ok(g.includes(`smoothstep( ${f4(GROUND_AO_RANGE_M - GROUND_AO_FADE_M)}, $
 assert.ok(g.includes(`float ambShare = mix( ${f4(GROUND_AO_CARD_AMBIENT_SHARE)}, 1.0, under );`), 'a card\'s ambient share: fixed in the open, whole under a belly');
 assert.match(g, /ambShare = A \/ max\( T \+ A, 1e-4 \);/, 'only the ambient share darkens');
 assert.match(g, /return 1\.0 - occ \* ambShare;/);
+assert.ok(g.includes(`float occ = min( 1.0 - vis, ${f4(GROUND_AO_OCC_MAX)} ) * fade;`), 'the hulls\' joint share capped once');
 assert.ok(!/2\.0404|Jimenez|fract\( sin/.test(g), 'no ground-albedo multi-bounce, no per-pixel noise');
 assert.ok(g.indexOf('if ( !haveN )') > g.lastIndexOf('continue;'), 'the depth normal only for a pixel some hull reaches');
 assert.ok(g.includes(`if ( q.y > b0.y + 0.02 && dOut < ${f4(GROUND_AO_HULL_SKIN_M)} ) continue;`), 'the hull\'s own skin is skipped');

@@ -124,6 +124,14 @@ export const GROUND_AO_CONTACT_EDGE_M = 0.05;
  * ambient share (sunlit ground beside the track keeps its sun).
  */
 export const GROUND_AO_CONTACT_MAX = 0.7;
+/**
+ * 2026-10-10 (round 3, the same report): the whole darkening a receiver takes from every near hull together never passes
+ * this share of its sky, so the ground in a hull's own shadow keeps at least (1 − GROUND_AO_OCC_MAX) of its sky light — the
+ * ground under a belly seen between the road wheels read near black (0.03–0.08 of the shaded ground on the 207 frames: the
+ * solid's share under the belly times its strength). The per-hull law below is the geometry's; the cap is applied once, on
+ * the hulls' joint share (combineVehicleGroundOcclusion, the GLSL's occ), so overlapping hulls never stack past it.
+ */
+export const GROUND_AO_OCC_MAX = 0.7;
 export const GROUND_AO_CONTACT_SPREAD_M = 0.15;
 export const GROUND_AO_CONTACT_RISE_M = 0.25;
 /** The drawn run's travel reaches the shader at this many knots evenly along each ground run (linear between; two vec4). */
@@ -378,11 +386,12 @@ export function vehicleGroundOcclusionLocal(
   return Math.min(occ, 1) * s;
 }
 
-/** Several hulls hide the sky as independent occluders; the selection's range fade on the result. */
+/** Several hulls hide the sky as independent occluders, the joint share capped at GROUND_AO_OCC_MAX; the selection's range
+ * fade on the result. */
 export function combineVehicleGroundOcclusion(perHull: readonly number[], distance: number): number {
   let vis = 1;
   for (const occ of perHull) vis *= 1 - clamp01(occ);
-  return (1 - vis) * (1 - smoothstep(GROUND_AO_RANGE_M - GROUND_AO_FADE_M, GROUND_AO_RANGE_M, distance));
+  return Math.min(1 - vis, GROUND_AO_OCC_MAX) * (1 - smoothstep(GROUND_AO_RANGE_M - GROUND_AO_FADE_M, GROUND_AO_RANGE_M, distance));
 }
 
 export interface VehicleGroundOcclusionUniforms {
@@ -866,7 +875,8 @@ ${GLSL_HULL_EDGES}
         vis *= 1.0 - min( ho, 1.0 ) * mix( sWall, sBelly, inside );
         under = max( under, inside * step( q.y, b0.y ) );
       }
-      float occ = ( 1.0 - vis ) * fade;
+      // (2026-10-10, round 3) the hulls' joint share capped: the ground keeps a part of its sky under any belly
+      float occ = min( 1.0 - vis, ${f(GROUND_AO_OCC_MAX)} ) * fade;
       if ( occ <= 0.003 ) return 1.0;
       // a card has no sun state: half in sun in the open, in the hull's own shade under its belly
       float ambShare = mix( ${f(GROUND_AO_CARD_AMBIENT_SHARE)}, 1.0, under );
