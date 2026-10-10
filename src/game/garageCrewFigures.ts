@@ -62,7 +62,24 @@ interface CrewPose {
   readonly rightFootPitch?: number;
   /** Standing height in metres (default 1.76). */
   readonly height?: number;
+  /** Hand shape: a fist round a handle, an open carry under a load, a flat palm on a surface or a relaxed hand.
+   * Default: a fist when the hand has a grip point, relaxed when it hangs. */
+  readonly leftGrip?: CrewHandShape;
+  readonly rightGrip?: CrewHandShape;
+  /** The direction each palm faces (toward the object it holds), figure frame. */
+  readonly leftPalm?: V3;
+  readonly rightPalm?: V3;
 }
+
+type CrewHandShape = 'fist' | 'carry' | 'flat' | 'relaxed';
+
+// Finger curl (proximal, distal joint, radians) per hand shape.
+const HAND_CURL: Readonly<Record<CrewHandShape, readonly [number, number]>> = Object.freeze({
+  fist: [1.22, 1.32],
+  carry: [0.42, 0.55],
+  flat: [0.08, 0.1],
+  relaxed: [0.5, 0.62],
+});
 
 /** Joint positions a crew receipt can check (figure frame, metres). */
 interface CrewSkeleton {
@@ -242,6 +259,56 @@ function solveTwoBone(root: THREE.Vector3, target: THREE.Vector3, upper: number,
   return { mid, end };
 }
 
+const _hz = new THREE.Vector3();
+const _hd = new THREE.Vector3();
+const _hm = new THREE.Matrix4();
+const _hq = new THREE.Quaternion();
+
+/** A box segment from `start` along `dir` (unit) for `length`, its width along `across`. */
+function segment(parts: THREE.BufferGeometry[], start: THREE.Vector3, dir: THREE.Vector3, across: THREE.Vector3,
+  length: number, width: number, depth: number, color: number): THREE.Vector3 {
+  _hz.crossVectors(across, dir).normalize();
+  _hm.makeBasis(across, dir, _hz);
+  _hq.setFromRotationMatrix(_hm);
+  const centre = start.clone().addScaledVector(dir, length / 2);
+  block(parts, centre, [width, length, depth], _hq, color);
+  return start.clone().addScaledVector(dir, length);
+}
+
+/**
+ * A gloved or bare hand: palm, four two-joint fingers and a thumb, curled by shape round the palm normal `n`
+ * (which points from the palm to the object held). `sign` is +1 for the left hand, -1 for the right.
+ */
+function buildHand(parts: THREE.BufferGeometry[], wrist: THREE.Vector3, handDir: THREE.Vector3, n: THREE.Vector3,
+  sign: number, shape: CrewHandShape, color: number, scale: number): void {
+  // palm basis: Y along the hand, Z out of the palm, X = Y x Z; the thumb sits at -sign * X
+  const y = handDir.clone().normalize();
+  const z = n.clone().addScaledVector(y, -n.dot(y)).normalize();
+  const x = new THREE.Vector3().crossVectors(y, z).normalize();
+  const thumbDir = x.clone().multiplyScalar(-sign);
+  _hm.makeBasis(x, y, z);
+  _hq.setFromRotationMatrix(_hm);
+  const palmCentre = wrist.clone().addScaledVector(y, 0.04 * scale);
+  block(parts, palmCentre, [0.08 * scale, 0.082 * scale, 0.03 * scale], _hq.clone(), color);
+  const [curl1, curl2] = HAND_CURL[shape];
+  const lengths = [[0.044, 0.034], [0.047, 0.036], [0.043, 0.033], [0.036, 0.028]] as const;
+  for (let finger = 0; finger < 4; finger++) {
+    const base = palmCentre.clone().addScaledVector(y, 0.041 * scale)
+      .addScaledVector(thumbDir, (1.5 - finger) * 0.02 * scale);
+    _hd.copy(y).multiplyScalar(Math.cos(curl1)).addScaledVector(z, Math.sin(curl1)).normalize();
+    const knuckle = segment(parts, base, _hd.clone(), x, lengths[finger][0] * scale, 0.018 * scale, 0.019 * scale, color);
+    _hd.copy(y).multiplyScalar(Math.cos(curl1 + curl2)).addScaledVector(z, Math.sin(curl1 + curl2)).normalize();
+    segment(parts, knuckle, _hd.clone(), x, lengths[finger][1] * scale, 0.016 * scale, 0.017 * scale, color);
+  }
+  // the thumb: out from the heel of the palm toward the index finger, wrapping over a fist
+  const thumbBase = palmCentre.clone().addScaledVector(thumbDir, 0.036 * scale).addScaledVector(y, -0.018 * scale);
+  const wrap = shape === 'fist' ? 0.85 : shape === 'carry' ? 0.45 : 0.2;
+  _hd.copy(y).multiplyScalar(0.75).addScaledVector(thumbDir, 0.55).addScaledVector(z, wrap * 0.6).normalize();
+  const thumbKnuckle = segment(parts, thumbBase, _hd.clone(), z, 0.038 * scale, 0.02 * scale, 0.02 * scale, color);
+  _hd.copy(y).multiplyScalar(0.6).addScaledVector(thumbDir, 0.1 - wrap * 0.5).addScaledVector(z, wrap).normalize();
+  segment(parts, thumbKnuckle, _hd.clone(), z, 0.03 * scale, 0.018 * scale, 0.018 * scale, color);
+}
+
 /**
  * Build one posed crew figure in its own frame (feet on y = 0, facing +Z).
  * The grip and ankle targets are honoured exactly while they stay inside the limb's reach; the skeleton reports
@@ -305,13 +372,18 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
   ball(parts, headCenter, 0.098 * scale, dress.skin, [0.84, 1.06, 0.98], headQ, [9, 7]);
   // jaw, nose and ears keep the head from reading as a ball
   ball(parts, inHead(0, -0.05, 0.03), 0.054 * scale, dress.skin, [1.0, 0.78, 1.0], headQ, [8, 5]);
-  block(parts, inHead(0, -0.012, 0.094), [0.022 * scale, 0.04 * scale, 0.026 * scale], headQ, dress.skin);
-  for (const x of [-0.083, 0.083]) ball(parts, inHead(x, 0, -0.005), 0.024 * scale, dress.skin, [0.5, 1, 0.8], headQ, [6, 4]);
-  // the brow shadow over the eyes and the eyebrows above it
-  block(parts, inHead(0, 0.004, 0.086), [0.112 * scale, 0.016 * scale, 0.014 * scale], headQ, shade(dress.skin, 0.74));
-  for (const x of [-0.032, 0.032]) {
-    block(parts, inHead(x, 0.03, 0.09), [0.042 * scale, 0.009 * scale, 0.012 * scale], headQ, dress.hair);
+  for (const x of [-0.083, 0.083]) ball(parts, inHead(x, 0, -0.005), 0.024 * scale, dress.skin, [0.5, 1, 0.8], headQ, [5, 3]);
+  // A face that reads at workshop range: a brow ridge, dark eye sockets under it, eyebrows, a nose wedge with its tip,
+  // and a mouth line over the chin.
+  block(parts, inHead(0, 0.014, 0.09), [0.108 * scale, 0.016 * scale, 0.018 * scale], headQ, dress.skin);
+  for (const x of [-0.031, 0.031]) {
+    block(parts, inHead(x, -0.006, 0.088), [0.032 * scale, 0.014 * scale, 0.012 * scale], headQ, shade(dress.skin, 0.4));
+    block(parts, inHead(x, 0.026, 0.096), [0.038 * scale, 0.009 * scale, 0.01 * scale], headQ, dress.hair);
   }
+  const noseQ = headQ.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.28, 0, 0)));
+  block(parts, inHead(0, -0.022, 0.097), [0.02 * scale, 0.042 * scale, 0.026 * scale], noseQ, dress.skin);
+  ball(parts, inHead(0, -0.042, 0.106), 0.012 * scale, shade(dress.skin, 0.92), [1.25, 0.8, 1], headQ, [6, 4]);
+  block(parts, inHead(0, -0.062, 0.091), [0.034 * scale, 0.006 * scale, 0.008 * scale], headQ, shade(dress.skin, 0.5));
   headgear(parts, dress, inHead, headQ, scale);
 
   // legs (two-bone IK from the hip joints to the ankles; knees bend forward by default)
@@ -329,12 +401,12 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
     const { mid: knee, end: ankle } = solveTwoBone(hip, ankles[sideName], THIGH_M * scale, SHIN_M * scale, pole);
     legs[sideName] = { knee, ankle };
     limb(parts, hip, knee, 0.088 * scale * girth, 0.066 * scale * girth, dress.coverall, 8);
-    ball(parts, knee, 0.064 * scale, dress.coverall, [1, 1, 1], null, [7, 4]);
+    ball(parts, knee, 0.064 * scale, dress.coverall, [1, 1, 1], null, [6, 3]);
     // knee patch on the coverall front
     const kneeQ = new THREE.Quaternion().setFromUnitVectors(_up, _c.subVectors(knee, hip).normalize());
     limb(parts, knee, ankle, 0.063 * scale, 0.056 * scale, dress.coverall, 8);
     const hem = ankle.clone().add(new THREE.Vector3(0, 0.06 * scale, 0));
-    ball(parts, hem, 0.06 * scale, dress.coverall, [1, 0.55, 1], null, [7, 3]);
+    ball(parts, hem, 0.06 * scale, dress.coverall, [1, 0.55, 1], null, [6, 3]);
     const patch = knee.clone().addScaledVector(new THREE.Vector3(0, 0, 1).applyQuaternion(hipQ), 0.045 * scale);
     block(parts, patch, [0.085 * scale, 0.09 * scale, 0.014 * scale], kneeQ, dress.trim);
     // boot: heel under the ankle, toe forward along the foot heading, pitched for kneeling or tiptoe
@@ -346,7 +418,7 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
     const sole = ankle.clone().add(new THREE.Vector3(0, -0.064 * scale, 0.058 * scale).applyQuaternion(footQ));
     block(parts, sole, [0.11 * scale, 0.022 * scale, 0.27 * scale], footQ, 0x111111);
     const toe = ankle.clone().add(new THREE.Vector3(0, -0.04 * scale, 0.16 * scale).applyQuaternion(footQ));
-    ball(parts, toe, 0.05 * scale, dress.boots, [1, 0.62, 1.05], footQ, [7, 4]);
+    ball(parts, toe, 0.05 * scale, dress.boots, [1, 0.62, 1.05], footQ, [6, 3]);
     for (const corner of [[-0.055, -0.077], [0.055, -0.077], [-0.055, 0.193], [0.055, 0.193]] as const) {
       const p = ankle.clone().add(new THREE.Vector3(corner[0] * scale, -0.075 * scale, corner[1] * scale).applyQuaternion(footQ));
       soleY = Math.min(soleY, p.y);
@@ -358,10 +430,18 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
     left: { elbow: new THREE.Vector3(), wrist: new THREE.Vector3(), error: 0 },
     right: { elbow: new THREE.Vector3(), wrist: new THREE.Vector3(), error: 0 },
   };
+  const chestRight = new THREE.Vector3(1, 0, 0).applyQuaternion(chestQ);
   for (const sideName of ['left', 'right'] as const) {
     const sign = sideName === 'left' ? 1 : -1;
-    const shoulder = inChest(sign * SHOULDER_HALF_WIDTH, SHOULDER_Y, -0.005);
     const grip = sideName === 'left' ? pose.leftHand : pose.rightHand;
+    const otherGrip = sideName === 'left' ? pose.rightHand : pose.leftHand;
+    // the shoulder girdle follows a long reach: up to 4 cm toward the grip (a shrug overhead, protraction forward)
+    const shoulder = inChest(sign * SHOULDER_HALF_WIDTH, SHOULDER_Y, -0.005);
+    if (grip) {
+      const reach = new THREE.Vector3(grip[0], grip[1], grip[2]).sub(shoulder);
+      const extend = THREE.MathUtils.clamp((reach.length() - 0.34 * scale) / (0.28 * scale), 0, 1);
+      shoulder.addScaledVector(reach.normalize(), 0.04 * scale * extend);
+    }
     const elbowHint = sideName === 'left' ? pose.leftElbow : pose.rightElbow;
     let wristTarget: THREE.Vector3;
     let palm: THREE.Vector3 | null = null;
@@ -374,9 +454,9 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
     }
     const pole = elbowHint ? vec(elbowHint) : inChest(sign * 0.45, SHOULDER_Y - 0.3, -0.35);
     const { mid: elbow, end: wrist } = solveTwoBone(shoulder, wristTarget, UPPER_ARM_M * scale, FOREARM_M * scale, pole);
-    ball(parts, shoulder, 0.064 * scale * girth, dress.coverall, [1, 1, 1], chestQ, [7, 5]);
+    ball(parts, shoulder, 0.064 * scale * girth, dress.coverall, [1, 1, 1], chestQ, [6, 4]);
     limb(parts, shoulder, elbow, 0.062 * scale * girth, 0.052 * scale * girth, dress.coverall, 8);
-    ball(parts, elbow, 0.052 * scale * girth, dress.coverall, [1, 1, 1], null, [6, 4]);
+    ball(parts, elbow, 0.052 * scale * girth, dress.coverall, [1, 1, 1], null, [5, 3]);
     if (dress.sleevesRolled) {
       // the sleeve rolled to mid-forearm: a thick cuff of rolled cloth, bare forearm to the wrist
       const roll = elbow.clone().lerp(wrist, 0.42);
@@ -394,12 +474,20 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
       const cuff = wrist.clone().addScaledVector(forearmDir, -0.025 * scale);
       limb(parts, cuff.clone().addScaledVector(forearmDir, -0.03 * scale), cuff, 0.047 * scale, 0.047 * scale, dress.trim, 8);
     }
-    const handQ = new THREE.Quaternion().setFromUnitVectors(_up, handDir);
-    const handCenter = wrist.clone().addScaledVector(handDir, 0.06 * scale);
     const handColor = dress.gloves ?? dress.skin;
-    ball(parts, handCenter, 0.05 * scale, handColor, [0.95, 1.25, 0.62], handQ, [7, 5]);
-    const thumb = handCenter.clone().addScaledVector(new THREE.Vector3(sign * 0.03, 0, 0.02).applyQuaternion(handQ), scale);
-    ball(parts, thumb, 0.02 * scale, handColor, [1, 1.7, 1], handQ, [5, 4]);
+    // the palm faces what it holds: an authored direction, the other hand on a shared load, otherwise inward
+    const palmHint = sideName === 'left' ? pose.leftPalm : pose.rightPalm;
+    let palmNormal: THREE.Vector3;
+    if (palmHint) palmNormal = vec(palmHint).normalize();
+    else if (grip && otherGrip && Math.hypot(grip[0] - otherGrip[0], grip[1] - otherGrip[1], grip[2] - otherGrip[2]) < 0.7) {
+      palmNormal = vec(otherGrip).sub(vec(grip)).normalize();
+    } else {
+      palmNormal = chestRight.clone().multiplyScalar(-sign);
+      if (grip) palmNormal.add(new THREE.Vector3(0, -0.4, 0)).normalize();
+    }
+    if (Math.abs(palmNormal.dot(handDir)) > 0.97) palmNormal = chestRight.clone().multiplyScalar(-sign);
+    const shape = (sideName === 'left' ? pose.leftGrip : pose.rightGrip) ?? (grip ? 'fist' : 'relaxed');
+    buildHand(parts, wrist, handDir, palmNormal, sign, shape, handColor, scale);
     const solvedPalm = wrist.clone().addScaledVector(handDir, PALM_FROM_WRIST_M * scale);
     arms[sideName] = { elbow, wrist, error: palm ? solvedPalm.distanceTo(palm) : 0 };
   }
@@ -451,12 +539,12 @@ function headgear(parts: THREE.BufferGeometry[], dress: CrewDress,
     }
     case 'shlemofon': {
       // the padded tank-crew helmet: a dome with three padded ridges and ear cups
-      ball(parts, inHead(0, 0.025, -0.006), 0.108 * scale, dress.headColor, [0.9, 0.86, 1.0], headQ, [10, 7]);
+      ball(parts, inHead(0, 0.025, -0.006), 0.108 * scale, dress.headColor, [0.9, 0.86, 1.0], headQ, [9, 6]);
       for (const x of [-0.045, 0, 0.045]) {
-        ball(parts, inHead(x, 0.088, -0.01), 0.024 * scale, dress.headColor, [1, 0.8, 4.2], headQ, [6, 4]);
+        ball(parts, inHead(x, 0.088, -0.01), 0.024 * scale, dress.headColor, [1, 0.8, 4.2], headQ, [5, 3]);
       }
       for (const x of [-0.088, 0.088]) {
-        ball(parts, inHead(x, -0.012, -0.004), 0.038 * scale, dress.headColor, [0.55, 1.15, 1.0], headQ, [7, 5]);
+        ball(parts, inHead(x, -0.012, -0.004), 0.038 * scale, dress.headColor, [0.55, 1.15, 1.0], headQ, [6, 4]);
       }
       break;
     }
@@ -574,7 +662,8 @@ interface CrewMember {
 }
 
 type CrewToolKind = 'torch' | 'extinguisher' | 'pendant' | 'sledgehammer' | 'pry-bar' | 'torque-wrench'
-  | 'clipboard' | 'flashlight' | 'cassette' | 'crate';
+  | 'clipboard' | 'flashlight' | 'cassette' | 'crate' | 'breaker-bar' | 'impact-wrench' | 'punch' | 'hammer'
+  | 'track-section';
 
 /** A hand tool in a member's figure frame (points: the grips first, then the working end). */
 interface CrewTool {
@@ -585,12 +674,21 @@ interface CrewTool {
   readonly anchor?: V3;
 }
 
-/** A support a crew member stands on (scene frame): a rolling work stand with its deck at `deckY`. */
+/**
+ * A scene prop (scene frame): a rolling work stand a member stands on (deck at `deckY`), or a welding curtain that
+ * screens hot work from the rest of the bay.
+ */
 interface CrewProp {
-  readonly kind: 'work-stand';
+  readonly kind: 'work-stand' | 'weld-curtain' | 'power-pack';
   readonly at: V3;
   readonly yaw: number;
   readonly deckY: number;
+}
+
+/** A road wheel the crew is moving (scene frame): its centre and axle, built from the exhibit's own wheel. */
+interface CrewWheel {
+  readonly at: V3;
+  readonly axle: V3;
 }
 
 /** Where a scene's floor frame sits in its bay's authored space (before the bay owner's own transform). */
@@ -610,6 +708,9 @@ export interface CrewScene {
   readonly task: string;
   readonly frame: CrewSceneFrame;
   readonly props?: readonly CrewProp[];
+  readonly wheels?: readonly CrewWheel[];
+  /** Hot work in this scene: the torch tip (scene frame), where the weld glow, its light and the cable meet. */
+  readonly weldTip?: V3;
   /** Kept on the mobile tier (the halved crew keeps one essential scene per bay story). */
   readonly essential: boolean;
   readonly members: readonly CrewMember[];
@@ -666,47 +767,60 @@ const HIP = CREW_STANDING_HIP_M;
  * lifted hull), T-90M component rebuild (Relikt fitters and an inspector), K2 rollover teardown (belly inspection
  * with a lamp, track work with a sledge).
  */
-export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard' | 't90m' | 'k2' | 'mezzanine', CrewScene>> = Object.freeze({
+export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard' | 't90m' | 'k2' | 'mezzanine' | 'yard', CrewScene>> = Object.freeze({
+  // the T-90A on jack stands, its turret on the gantry hook: the hoist operator watches the lift with the pendant, a
+  // fitter on a rolling stand guides the turret ring, two men carry a road wheel flat between them to the dolly
   burlak: scene({
     id: 'burlak', task: 'turret lift under the gantry, road wheels off the dolly', essential: true,
     frame: { parent: 'workshop', x: 17.8, z: -15.5, yaw: -0.55 },
     props: [{ kind: 'work-stand', at: [2.85, 0, -0.45], yaw: 0, deckY: 1.2 }],
     members: [
       { role: 'hoist-operator', dress: D('ru', 1), at: [-2.85, 0, -1.35], yaw: Math.PI / 2,
-        pose: { pelvis: [0, HIP, 0], spine: [-0.06, 0.12, 0], head: [-0.42, 0.25],
-          leftHand: [0.06, 1.2, 0.3], rightHand: [-0.05, 1.24, 0.31],
-          leftFoot: [0.13, A, 0.06], rightFoot: [-0.12, A, -0.07] } },
+        pose: { pelvis: [0, HIP, 0.01], spine: [-0.08, 0.14, 0.02], head: [-0.46, 0.22],
+          leftHand: [0.04, 1.2, 0.31], rightHand: [-0.05, 1.27, 0.3], leftPalm: [-1, 0, 0.3], rightPalm: [1, 0, 0.3],
+          leftFoot: [0.13, A, 0.06], rightFoot: [-0.12, A, -0.09], rightFootYaw: -0.3 } },
       { role: 'turret-fitter', dress: D('ru', 2), at: [2.58, 1.2, -0.45], yaw: -Math.PI / 2,
-        pose: { pelvis: [0, HIP - 0.04, 0], spine: [0.38, 0, 0], head: [0.1, 0],
+        pose: { pelvis: [0, HIP - 0.06, -0.02], spine: [0.42, -0.1, 0.04], head: [0.18, -0.1],
           leftHand: [-0.21, 1.05, 0.5], rightHand: [0.19, 1.03, 0.52],
-          leftFoot: [0.14, A, 0.08], rightFoot: [-0.14, A, -0.05] } },
+          leftFoot: [0.15, A, 0.1], rightFoot: [-0.14, A, -0.12] } },
       { role: 'road-wheel-carrier', dress: D('ru', 3), at: [-3.6, 0, 4.25], yaw: 0,
-        pose: { pelvis: [0, 0.86, -0.04], spine: [0.26, 0, 0], head: [0.3, 0],
-          leftHand: [0.17, 0.82, 0.34], rightHand: [-0.17, 0.82, 0.34],
-          leftFoot: [0.16, A, 0.06], rightFoot: [-0.16, A, -0.08] } },
-      { role: 'road-wheel-carrier', dress: D('ru', 4), at: [-3.6, 0, 5.65], yaw: Math.PI,
-        pose: { pelvis: [0, 0.86, -0.04], spine: [0.26, 0, 0], head: [0.2, 0.2],
-          leftHand: [0.17, 0.82, 0.34], rightHand: [-0.17, 0.82, 0.34],
-          leftFoot: [0.15, A, 0.08], rightFoot: [-0.17, A, -0.06] } },
+        pose: { pelvis: [0, 0.82, -0.05], spine: [0.16, 0.04, 0], head: [-0.06, 0.05],
+          leftHand: [0.25, 0.69, 0.25], rightHand: [-0.25, 0.69, 0.25], leftGrip: 'carry', rightGrip: 'carry',
+          leftPalm: [0, 1, 0.1], rightPalm: [0, 1, 0.1],
+          leftFoot: [0.17, A, 0.06], rightFoot: [-0.17, A, -0.14] } },
+      { role: 'road-wheel-carrier', dress: D('ru', 4), at: [-3.6, 0, 5.31], yaw: Math.PI,
+        pose: { pelvis: [0, 0.81, -0.06], spine: [0.18, -0.05, 0], head: [-0.02, -0.08],
+          leftHand: [0.25, 0.69, 0.25], rightHand: [-0.25, 0.69, 0.25], leftGrip: 'carry', rightGrip: 'carry',
+          leftPalm: [0, 1, 0.1], rightPalm: [0, 1, 0.1],
+          leftFoot: [0.16, A, 0.1], rightFoot: [-0.17, A, -0.1] } },
     ],
     tools: [
-      { kind: 'pendant', member: 0, points: [[0, 1.22, 0.33]], anchor: [0, 3.72, 0.4] },
+      { kind: 'pendant', member: 0, points: [[0, 1.235, 0.305]], anchor: [0, 3.72, 0.4] },
       { kind: 'pry-bar', member: 1, points: [[-0.21, 1.05, 0.5], [0.19, 1.03, 0.52], [-0.08, 1.12, 1.05]] },
     ],
   }),
+  // the Abrams by the FLAMMABLE canisters (the owner's placement) gets cold work only: a track tensioner on the front
+  // idler adjuster, a road-wheel change at the stripped right side, a man rolling the next wheel in, a mechanic on the
+  // creeper under the bow
   abrams: scene({
-    id: 'abrams', task: 'welding a skirt hanger with a fire watch, a mechanic under the bow', essential: true,
+    id: 'abrams', task: 'track tensioning and a road-wheel change, a mechanic under the bow', essential: true,
     frame: { parent: 'workshop', x: 16.9, z: 17.7, yaw: -2.03 },
+    wheels: [{ at: [-0.45, 0.31, 4.35], axle: [0, 0, 1] }],
     members: [
-      { role: 'welder', dress: D('us', 1, 'welding-hood'), at: [-2.62, 0, 3.0], yaw: Math.PI / 2,
-        pose: { pelvis: [0, 0.49, -0.04], spine: [0.36, 0, 0], head: [0.3, 0],
+      { role: 'track-tensioner', dress: D('us', 1), at: [-2.45, 0, 2.95], yaw: Math.PI / 2,
+        pose: { pelvis: [0, 0.84, -0.06], spine: [0.34, 0.06, 0], head: [0.32, 0.04],
+          leftHand: [0.02, 0.98, 0.34], rightHand: [-0.06, 1.05, 0.27],
+          leftFoot: [0.16, A, 0.14], rightFoot: [-0.16, A + 0.048, -0.26], rightFootPitch: 0.25 } },
+      { role: 'wheel-changer', dress: D('us', 2), at: [-2.48, 0, 0.55], yaw: Math.PI / 2,
+        pose: { pelvis: [0, 0.49, -0.04], spine: [0.3, 0.05, 0], head: [0.28, 0],
           leftFoot: [0.1, 0.22, -0.4], leftFootPitch: 1.3, leftKnee: [0.1, -0.2, 0.6],
           rightFoot: [-0.15, A, 0.36], rightKnee: [-0.15, 0.9, 0.9],
-          rightHand: [-0.05, 0.56, 0.5], leftHand: [0.2, 0.62, 0.52] } },
-      { role: 'fire-watch', dress: D('us', 2), at: [-3.55, 0, 2.05], yaw: Math.PI / 2 - 0.55,
-        pose: { pelvis: [0, HIP, 0], spine: [0.06, 0.1, 0], head: [0.28, 0.15],
-          rightHand: [-0.21, 0.77, 0.08], leftHand: [0.12, 0.98, 0.36],
-          leftFoot: [0.13, A, 0.06], rightFoot: [-0.12, A, -0.05] } },
+          rightHand: [-0.04, 0.43, 0.42], leftHand: [0.09, 0.5, 0.5], leftGrip: 'flat', leftPalm: [0, -1, 0] } },
+      { role: 'wheel-roller', dress: D('us', 4), at: [0.0, 0, 4.35], yaw: -Math.PI / 2,
+        pose: { pelvis: [0, 0.74, -0.14], spine: [0.7, 0.04, 0], head: [-0.1, 0],
+          leftHand: [0.1, 0.58, 0.36], rightHand: [-0.1, 0.58, 0.36], leftGrip: 'flat', rightGrip: 'flat',
+          leftPalm: [0, -0.95, 0.32], rightPalm: [0, -0.95, 0.32],
+          leftFoot: [0.14, A, 0.1], rightFoot: [-0.14, A + 0.066, -0.42], rightFootPitch: 0.35 } },
       { role: 'creeper-mechanic', dress: D('us', 3, 'bare'), at: [0.55, 0.115, 3.55], yaw: 0,
         pose: { pelvis: [0, 0.11, 0], hips: [0, -Math.PI / 2, 0], head: [-0.12, 0],
           leftHand: [0.2, 0.36, -0.42], rightHand: [-0.18, 0.37, -0.4],
@@ -716,25 +830,29 @@ export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard'
           leftFootPitch: -0.25, rightFootPitch: -0.2 } },
     ],
     tools: [
-      { kind: 'torch', member: 0, points: [[-0.05, 0.56, 0.5], [0.0, 0.55, 0.74]] },
-      { kind: 'extinguisher', member: 1, points: [[-0.21, 0.77, 0.08], [0.12, 0.98, 0.36]] },
-      { kind: 'flashlight', member: 2, points: [[0.2, 0.36, -0.42], [0.22, 0.42, -0.6]] },
+      { kind: 'breaker-bar', member: 0, points: [[0.02, 0.98, 0.34], [-0.06, 1.05, 0.27], [0.05, 0.56, 0.7]] },
+      { kind: 'impact-wrench', member: 1, points: [[-0.04, 0.43, 0.42], [0.09, 0.5, 0.5], [0.03, 0.42, 0.68]] },
+      { kind: 'flashlight', member: 3, points: [[0.2, 0.36, -0.42], [0.22, 0.42, -0.6]] },
     ],
   }),
+  // the Leopard on its lift: two men carry a road wheel flat to the rack, a mechanic with a torque wrench works the
+  // road-arm bolts under the hull
   leopard: scene({
     id: 'leopard', task: 'road wheels off the lifted hull to the rack', essential: false,
     frame: { parent: 'leopard-bay', x: 0, z: 0, yaw: 0 },
     members: [
       { role: 'road-wheel-carrier', dress: D('de', 1), at: [-1.05, 0, 5.05], yaw: -Math.PI / 2,
-        pose: { pelvis: [0, 0.86, -0.04], spine: [0.26, 0, 0], head: [0.3, 0],
-          leftHand: [0.17, 0.82, 0.34], rightHand: [-0.17, 0.82, 0.34],
-          leftFoot: [0.16, A, 0.06], rightFoot: [-0.16, A, -0.08] } },
-      { role: 'road-wheel-carrier', dress: D('de', 2), at: [-2.45, 0, 5.05], yaw: Math.PI / 2,
-        pose: { pelvis: [0, 0.86, -0.04], spine: [0.26, 0, 0], head: [0.2, 0.2],
-          leftHand: [0.17, 0.82, 0.34], rightHand: [-0.17, 0.82, 0.34],
-          leftFoot: [0.15, A, 0.08], rightFoot: [-0.17, A, -0.06] } },
+        pose: { pelvis: [0, 0.82, -0.05], spine: [0.17, 0.05, 0], head: [-0.05, 0.06],
+          leftHand: [0.25, 0.69, 0.25], rightHand: [-0.25, 0.69, 0.25], leftGrip: 'carry', rightGrip: 'carry',
+          leftPalm: [0, 1, 0.1], rightPalm: [0, 1, 0.1],
+          leftFoot: [0.17, A, 0.06], rightFoot: [-0.17, A, -0.14] } },
+      { role: 'road-wheel-carrier', dress: D('de', 2), at: [-2.11, 0, 5.05], yaw: Math.PI / 2,
+        pose: { pelvis: [0, 0.81, -0.06], spine: [0.19, -0.04, 0], head: [-0.03, -0.06],
+          leftHand: [0.25, 0.69, 0.25], rightHand: [-0.25, 0.69, 0.25], leftGrip: 'carry', rightGrip: 'carry',
+          leftPalm: [0, 1, 0.1], rightPalm: [0, 1, 0.1],
+          leftFoot: [0.16, A, 0.1], rightFoot: [-0.17, A, -0.1] } },
       { role: 'suspension-mechanic', dress: D('de', 3), at: [-2.55, 0, -0.6], yaw: Math.PI / 2,
-        pose: { pelvis: [0, 0.49, -0.02], spine: [0.15, 0, 0], head: [-0.35, 0],
+        pose: { pelvis: [0, 0.49, -0.02], spine: [0.12, 0.06, 0], head: [-0.38, 0.05],
           leftFoot: [0.1, 0.22, -0.4], leftFootPitch: 1.3, leftKnee: [0.1, -0.2, 0.6],
           rightFoot: [-0.15, A, 0.36], rightKnee: [-0.15, 0.9, 0.9],
           rightHand: [-0.06, 1.0, 0.58], leftHand: [0.16, 0.95, 0.55] } },
@@ -743,49 +861,68 @@ export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard'
       { kind: 'torque-wrench', member: 2, points: [[-0.06, 1.0, 0.58], [0.16, 0.95, 0.55], [0.05, 1.02, 0.95]] },
     ],
   }),
+  // the T-90M turret on its cradle: a carrier brings a Relikt cassette, one fitter lifts one onto the roof, another
+  // presses one onto the left cheek
   t90m: scene({
-    id: 't90m', task: 'Relikt cassettes onto the turret, an inspector at the gun', essential: false,
+    id: 't90m', task: 'Relikt cassettes onto the turret roof and cheek', essential: false,
     frame: { parent: 'workshop', x: -6.6, z: 20.5, yaw: 2.4 },
     members: [
       { role: 'cassette-carrier', dress: D('ru', 5, 'watch-cap'), at: [2.3, 0, -1.85], yaw: -2.2,
-        pose: { pelvis: [0, HIP - 0.02, 0], spine: [0.1, 0, 0], head: [0.25, 0],
-          leftHand: [0.17, 1.02, 0.3], rightHand: [-0.17, 1.02, 0.3],
-          leftFoot: [0.13, A, 0.12], rightFoot: [-0.12, A, -0.12] } },
+        pose: { pelvis: [0, HIP - 0.06, -0.02], spine: [-0.1, 0.03, 0], head: [0.3, 0],
+          leftHand: [0.16, 0.98, 0.25], rightHand: [-0.16, 0.98, 0.25], leftGrip: 'carry', rightGrip: 'carry',
+          leftPalm: [0, 1, 0], rightPalm: [0, 1, 0],
+          leftFoot: [0.13, A, 0.14], rightFoot: [-0.12, A, -0.14] } },
       { role: 'cassette-fitter', dress: D('ru', 6), at: [-2.35, 0, 0.9], yaw: Math.PI / 2,
-        pose: { pelvis: [0, HIP, 0], spine: [0.12, 0, 0], head: [0.1, 0],
-          leftHand: [0.16, 1.62, 0.55], rightHand: [-0.18, 1.6, 0.55],
-          leftFoot: [0.13, A, 0.1], rightFoot: [-0.12, A, -0.04] } },
-      { role: 'inspector', dress: D('ru', 7, 'shlemofon'), at: [1.85, 0, 3.6], yaw: -2.45,
-        pose: { pelvis: [0, HIP, 0], spine: [0.08, 0, 0], head: [0.42, 0.1],
-          leftHand: [0.06, 1.12, 0.3], rightHand: [-0.06, 1.15, 0.33],
-          leftFoot: [0.12, A, 0.0], rightFoot: [-0.12, A, 0.03] } },
+        pose: { pelvis: [0, HIP, 0], spine: [0.08, 0.05, 0], head: [-0.15, 0],
+          leftHand: [0.16, 1.5, 0.52], rightHand: [-0.18, 1.48, 0.52], leftGrip: 'carry', rightGrip: 'carry',
+          leftPalm: [0, 1, 0.2], rightPalm: [0, 1, 0.2],
+          leftFoot: [0.13, A, 0.12], rightFoot: [-0.12, A, -0.08] } },
+      { role: 'cheek-fitter', dress: D('ru', 7, 'shlemofon'), at: [2.39, 0, -0.4], yaw: -1.406,
+        pose: { pelvis: [0, HIP - 0.02, 0], spine: [0.14, -0.06, 0], head: [0.12, 0.05],
+          leftHand: [0.17, 1.22, 0.5], rightHand: [-0.17, 1.24, 0.5], leftGrip: 'flat', rightGrip: 'flat',
+          leftPalm: [0, 0, 1], rightPalm: [0, 0, 1],
+          leftFoot: [0.13, A, 0.08], rightFoot: [-0.13, A, -0.1] } },
     ],
     tools: [
-      { kind: 'cassette', member: 0, points: [[0.17, 1.02, 0.3], [-0.17, 1.02, 0.3]] },
-      { kind: 'cassette', member: 1, points: [[0.16, 1.62, 0.55], [-0.18, 1.6, 0.55]] },
-      { kind: 'clipboard', member: 2, points: [[0.06, 1.12, 0.3], [-0.06, 1.15, 0.33]] },
+      { kind: 'cassette', member: 0, points: [[0.16, 0.98, 0.25], [-0.16, 0.98, 0.25], [0, 1.14, 0.27]] },
+      { kind: 'cassette', member: 1, points: [[0.16, 1.5, 0.52], [-0.18, 1.48, 0.52], [-0.01, 1.66, 0.56]] },
+      { kind: 'cassette', member: 2, points: [[0.17, 1.22, 0.5], [-0.17, 1.24, 0.5], [0, 1.23, 0.72]] },
     ],
   }),
+  // the K2 rolled in its rotisserie for belly access: a welder on a stand works a belly plate behind a welding curtain
+  // with a fire watch below, and a track man drifts pins out of the shoes on the pallet
   k2: scene({
-    id: 'k2', task: 'belly inspection on the rolled hull, track pins with a sledge', essential: false,
+    id: 'k2', task: 'belly plate welding on the rolled hull with a fire watch, track pins on the shoe pallet', essential: false,
     frame: { parent: 'workshop', x: -16.25, z: -16.85, yaw: 0.35 },
+    props: [
+      { kind: 'work-stand', at: [0.62, 0, 0.25], yaw: 0, deckY: 0.9 },
+      { kind: 'weld-curtain', at: [0.95, 0, -1.2], yaw: 0, deckY: 0 },
+    ],
+    weldTip: [-0.22, 2.18, 0.25],
     members: [
-      { role: 'belly-inspector', dress: D('kr', 1), at: [2.75, 0, 0.5], yaw: -Math.PI / 2,
-        pose: { pelvis: [0, HIP - 0.03, 0], spine: [-0.1, 0, 0], head: [-0.3, 0],
-          rightHand: [-0.12, 1.45, 0.42], leftHand: [0.2, 1.3, 0.5],
-          leftFoot: [0.13, A, 0.08], rightFoot: [-0.12, A, -0.08] } },
-      { role: 'track-striker', dress: D('kr', 2, 'ear-defenders'), at: [-4.55, 0, 1.6], yaw: -Math.PI / 2,
-        pose: { pelvis: [0, 0.86, 0], hips: [0.25, 0, 0], spine: [0.08, 0.45, -0.12], head: [0.55, -0.3],
-          rightHand: [-0.32, 1.62, -0.12], leftHand: [-0.22, 1.42, -0.02],
-          leftFoot: [0.2, A, 0.2], rightFoot: [-0.18, A, -0.15] } },
+      { role: 'welder', dress: D('kr', 1, 'welding-hood'), at: [0.55, 0.9, 0.25], yaw: -Math.PI / 2,
+        pose: { pelvis: [0, HIP - 0.05, -0.03], spine: [0.24, 0.04, 0], head: [0.1, 0],
+          rightHand: [-0.03, 1.18, 0.5], leftHand: [0.1, 1.24, 0.6],
+          leftFoot: [0.13, A, 0.08], rightFoot: [-0.13, A, -0.14] } },
+      { role: 'fire-watch', dress: D('kr', 3), at: [1.95, 0, 1.3], yaw: -2.19,
+        pose: { pelvis: [0, HIP, 0], spine: [0.04, 0.08, 0], head: [-0.2, 0.1],
+          rightHand: [-0.21, 0.77, 0.08], leftHand: [0.12, 0.98, 0.36],
+          leftFoot: [0.13, A, 0.06], rightFoot: [-0.12, A, -0.05] } },
+      { role: 'track-pin-man', dress: D('kr', 2, 'ear-defenders'), at: [-5.0, 0, 1.5], yaw: -Math.PI / 2,
+        pose: { pelvis: [0, 0.49, -0.06], spine: [0.46, 0.08, 0], head: [0.48, 0],
+          leftFoot: [0.1, 0.22, -0.4], leftFootPitch: 1.3, leftKnee: [0.1, -0.2, 0.6],
+          rightFoot: [-0.15, A, 0.36], rightKnee: [-0.15, 0.9, 0.9],
+          leftHand: [-0.02, 0.47, 0.5], rightHand: [-0.17, 0.66, 0.36] } },
     ],
     tools: [
-      { kind: 'flashlight', member: 0, points: [[-0.12, 1.45, 0.42], [-0.1, 1.62, 0.62]] },
-      { kind: 'sledgehammer', member: 1, points: [[-0.32, 1.62, -0.12], [-0.22, 1.42, -0.02], [-0.45, 1.95, -0.45]] },
+      { kind: 'torch', member: 0, points: [[-0.03, 1.18, 0.5], [0, 1.28, 0.77]] },
+      { kind: 'extinguisher', member: 1, points: [[-0.21, 0.77, 0.08], [0.12, 0.98, 0.36]] },
+      { kind: 'punch', member: 2, points: [[-0.02, 0.47, 0.5], [-0.04, 0.3, 0.53]] },
+      { kind: 'hammer', member: 2, points: [[-0.17, 0.66, 0.36], [-0.03, 0.6, 0.5]] },
     ],
   }),
   // Verdant's mezzanine and its inspection overhang (interior frame: deck tops 4.52 and 4.46 m), seen above the hero
-  // from the opening camera: a shift lead on the overhang rail watching the welding below, two hands carrying a parts
+  // from the opening camera: a shift lead on the overhang rail watching the bays below, two hands carrying a parts
   // crate along the walkway.
   mezzanine: scene({
     id: 'mezzanine', task: 'a parts crate along the mezzanine, a lead watching the bays from the overhang rail', essential: false,
@@ -793,19 +930,55 @@ export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard'
     members: [
       { role: 'overhang-lead', dress: D('ru', 8, 'patrol-cap'), at: [10.25, 4.46, 13.08], yaw: Math.PI,
         pose: { pelvis: [0, HIP - 0.03, 0.02], spine: [0.4, 0.08, 0], head: [0.5, 0.15],
-          leftHand: [0.24, 1.03, 0.5], rightHand: [-0.24, 1.03, 0.52],
+          leftHand: [0.24, 1.03, 0.5], rightHand: [-0.24, 1.03, 0.52], leftPalm: [0, -1, 0], rightPalm: [0, -1, 0],
           leftFoot: [0.13, A, -0.06], rightFoot: [-0.13, A, -0.1] } },
       { role: 'crate-carrier', dress: D('ru', 9), at: [14.75, 4.52, 18.2], yaw: -Math.PI / 2,
-        pose: { pelvis: [0, 0.88, -0.03], spine: [0.22, 0, 0], head: [0.2, 0],
-          leftHand: [0.18, 0.85, 0.42], rightHand: [-0.18, 0.85, 0.42],
-          leftFoot: [0.15, A, 0.06], rightFoot: [-0.15, A, -0.06] } },
+        pose: { pelvis: [0, 0.86, -0.04], spine: [0.18, 0.04, 0], head: [0.15, 0],
+          leftHand: [0.18, 0.8, 0.4], rightHand: [-0.18, 0.8, 0.4], leftGrip: 'carry', rightGrip: 'carry',
+          leftPalm: [0, 1, 0], rightPalm: [0, 1, 0],
+          leftFoot: [0.15, A, 0.06], rightFoot: [-0.15, A, -0.1] } },
       { role: 'crate-carrier', dress: D('ru', 10), at: [13.25, 4.52, 18.2], yaw: Math.PI / 2,
-        pose: { pelvis: [0, 0.88, -0.03], spine: [0.22, 0, 0], head: [0.25, 0.1],
-          leftHand: [0.18, 0.85, 0.42], rightHand: [-0.18, 0.85, 0.42],
-          leftFoot: [0.14, A, 0.07], rightFoot: [-0.16, A, -0.05] } },
+        pose: { pelvis: [0, 0.86, -0.04], spine: [0.2, -0.04, 0], head: [0.2, 0.1],
+          leftHand: [0.18, 0.8, 0.4], rightHand: [-0.18, 0.8, 0.4], leftGrip: 'carry', rightGrip: 'carry',
+          leftPalm: [0, 1, 0], rightPalm: [0, 1, 0],
+          leftFoot: [0.14, A, 0.07], rightFoot: [-0.16, A, -0.08] } },
     ],
     tools: [
-      { kind: 'crate', member: 2, points: [[0.18, 0.85, 0.42], [-0.18, 0.85, 0.42], [0, 0.85, 1.08]] },
+      { kind: 'crate', member: 2, points: [[0.18, 0.8, 0.4], [-0.18, 0.8, 0.4], [0, 0.8, 1.08]] },
+    ],
+  }),
+  // The free floor either side of the hero in the opening frame (wave 338: "behind the menus the hall is empty"): two
+  // men carry a section of track toward the Abrams, and a pulled power pack stands on its stand with a mechanic at the
+  // fuel pump and another checking the cooling pack. Shared by all ten Garages (their hardstand outdoors).
+  yard: scene({
+    id: 'yard', task: 'a track section carried across the floor, a pulled power pack on its stand', essential: false,
+    frame: { parent: 'workshop', x: 0, z: 0, yaw: 0 },
+    props: [{ kind: 'power-pack', at: [3.4, 0, -11.4], yaw: 0.55, deckY: 0 }],
+    members: [
+      { role: 'track-carrier', dress: D('ru', 11), at: [-9.7, 0, 1.65], yaw: -2.156,
+        pose: { pelvis: [0, 0.83, -0.05], spine: [0.15, 0.05, 0], head: [-0.04, 0.05],
+          leftHand: [0.24, 0.7, 0.22], rightHand: [-0.24, 0.7, 0.22], leftGrip: 'fist', rightGrip: 'fist',
+          leftPalm: [-1, 0, 0], rightPalm: [1, 0, 0],
+          leftFoot: [0.17, A, 0.06], rightFoot: [-0.17, A, -0.14] } },
+      { role: 'track-carrier', dress: D('ru', 12), at: [-11.0, 0, 0.8], yaw: -2.156 + Math.PI,
+        pose: { pelvis: [0, 0.82, -0.06], spine: [0.17, -0.04, 0], head: [-0.02, -0.07],
+          leftHand: [0.24, 0.7, 0.22], rightHand: [-0.24, 0.7, 0.22], leftGrip: 'fist', rightGrip: 'fist',
+          leftPalm: [-1, 0, 0], rightPalm: [1, 0, 0],
+          leftFoot: [0.16, A, 0.1], rightFoot: [-0.17, A, -0.1] } },
+      { role: 'power-pack-mechanic', dress: D('us', 5), at: [2.25, 0, -10.75], yaw: 0.55 + Math.PI / 2,
+        pose: { pelvis: [0, HIP - 0.06, -0.02], spine: [0.36, 0.06, 0], head: [0.25, 0],
+          leftHand: [0.12, 1.02, 0.48], rightHand: [-0.1, 1.08, 0.5], leftGrip: 'flat', leftPalm: [0, -1, 0.2],
+          leftFoot: [0.14, A, 0.08], rightFoot: [-0.13, A, -0.14] } },
+      { role: 'cooling-pack-inspector', dress: D('kr', 6), at: [4.95, 0, -12.15], yaw: 0.55 - Math.PI / 2,
+        pose: { pelvis: [0, HIP, 0], spine: [0.1, -0.08, 0], head: [0.32, -0.1],
+          leftHand: [0.06, 1.12, 0.3], rightHand: [-0.12, 1.2, 0.42], leftGrip: 'carry', leftPalm: [0, 1, 0],
+          leftFoot: [0.12, A, 0.02], rightFoot: [-0.12, A, 0.0] } },
+    ],
+    tools: [
+      { kind: 'track-section', member: 0, points: [[0.24, 0.7, 0.22], [-0.24, 0.7, 0.22]] },
+      { kind: 'torque-wrench', member: 2, points: [[-0.1, 1.08, 0.5], [0.12, 1.02, 0.48], [-0.02, 1.0, 0.82]] },
+      { kind: 'flashlight', member: 3, points: [[-0.12, 1.2, 0.42], [-0.08, 1.28, 0.62]] },
+      { kind: 'clipboard', member: 3, points: [[0.06, 1.12, 0.3], [0.0, 1.14, 0.32]] },
     ],
   }),
 });
@@ -882,6 +1055,42 @@ export function buildCrewTools(scene: CrewScene, materials: CrewToolMaterials): 
         meshes.push(boxAt(p[2], [0.09, 0.22, 0.09], head, materials.steelDark));
         break;
       }
+      case 'breaker-bar': {
+        const d = dir(p[0], p[2]);
+        meshes.push(rod(p[1].clone().addScaledVector(d, -0.1), p[2], 0.015, materials.steelMid));
+        const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.07, 10), materials.steelDark);
+        socket.position.copy(p[2]);
+        socket.quaternion.setFromUnitVectors(_up, d);
+        meshes.push(socket);
+        break;
+      }
+      case 'impact-wrench': {
+        // pistol-grip air impact wrench: grip in the right hand, body forward to the socket on the hub nut, air hose
+        const d = dir(p[0], p[2]);
+        const bodyStart = p[0].clone().add(new THREE.Vector3(0, 0.06, 0));
+        meshes.push(rod(bodyStart, p[2].clone().addScaledVector(d, -0.04), 0.038, materials.steelDark, 10));
+        meshes.push(rod(p[0].clone().add(new THREE.Vector3(0, -0.05, 0)), bodyStart, 0.022, materials.rubber, 8));
+        const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.06, 8), materials.steelMid);
+        socket.position.copy(p[2]);
+        socket.quaternion.setFromUnitVectors(_up, d);
+        meshes.push(socket);
+        const hoseEnd = p[0].clone(); hoseEnd.y = 0.02; hoseEnd.addScaledVector(d, -0.45);
+        meshes.push(rod(p[0].clone().add(new THREE.Vector3(0, -0.06, 0)), hoseEnd, 0.01, materials.rubber, 6));
+        break;
+      }
+      case 'punch': {
+        meshes.push(rod(p[0].clone().addScaledVector(dir(p[1], p[0]), 0.05), p[1], 0.009, materials.steelMid, 6));
+        break;
+      }
+      case 'hammer': {
+        const d = dir(p[0], p[1]);
+        meshes.push(rod(p[0].clone().addScaledVector(d, -0.06), p[1], 0.013, materials.timber, 6));
+        const side = new THREE.Vector3().crossVectors(d, _up);
+        if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
+        const head = new THREE.Quaternion().setFromUnitVectors(_up, side.normalize());
+        meshes.push(boxAt(p[1], [0.045, 0.12, 0.045], head, materials.steelDark));
+        break;
+      }
       case 'pry-bar':
       case 'torque-wrench': {
         const d = dir(p[0], p[2]);
@@ -909,16 +1118,34 @@ export function buildCrewTools(scene: CrewScene, materials: CrewToolMaterials): 
         break;
       }
       case 'crate': {
-        const grips = p[0].clone().add(p[1]).multiplyScalar(0.5);
+        // the crate rests on the carriers' upturned palms
+        const grips = p[0].clone().add(p[1]).multiplyScalar(0.5).add(new THREE.Vector3(0, 0.2, 0));
         const along = new THREE.Vector3().subVectors(p[2], grips);
         const length = Math.max(0.3, along.length() - 0.02);
-        const centre = grips.clone().add(p[2]).multiplyScalar(0.5).add(new THREE.Vector3(0, 0.02, 0));
+        const centre = grips.clone().add(p[2].clone().add(new THREE.Vector3(0, 0.2, 0))).multiplyScalar(0.5);
         const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), along.setY(0).normalize());
         meshes.push(boxAt(centre, [length, 0.4, Math.max(0.3, p[0].distanceTo(p[1]) - 0.04)], q, materials.timber));
         break;
       }
+      case 'track-section': {
+        // links between this carrier's hands and his partner's (the next member), each a shoe with its guide horn
+        const partner = scene.members[tool.member + 1];
+        const a = p[0].clone().add(p[1]).multiplyScalar(0.5);
+        const b = crewPointInScene(partner, [0, tool.points[0][1], tool.points[0][2]]);
+        const along = new THREE.Vector3().subVectors(b, a);
+        const length = along.length();
+        along.normalize();
+        const count = Math.max(3, Math.round(length / 0.152));
+        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), along);
+        for (let link = 0; link < count; link++) {
+          const centre = a.clone().addScaledVector(along, (link + 0.5) * (length / count)).add(new THREE.Vector3(0, -0.02, 0));
+          meshes.push(boxAt(centre, [0.56, 0.05, 0.13], q, materials.steelDark));
+          meshes.push(boxAt(centre.clone().add(new THREE.Vector3(0, 0.05, 0)), [0.05, 0.06, 0.08], q, materials.steelMid));
+        }
+        break;
+      }
       case 'cassette': {
-        const centre = p[0].clone().add(p[1]).multiplyScalar(0.5).add(new THREE.Vector3(0, 0.02, 0));
+        const centre = p[2] ? p[2].clone() : p[0].clone().add(p[1]).multiplyScalar(0.5).add(new THREE.Vector3(0, 0.02, 0));
         const across = dir(p[1], p[0]);
         const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), new THREE.Vector3(across.x, 0, across.z).normalize());
         meshes.push(boxAt(centre, [Math.max(0.26, p[0].distanceTo(p[1]) - 0.06), 0.3, 0.42], q, materials.cassette));

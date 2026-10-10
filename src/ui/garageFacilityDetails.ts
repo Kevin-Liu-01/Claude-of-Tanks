@@ -643,6 +643,8 @@ export function addGarageFacilityDetails({
     }
   };
 
+  // A roll-cab tool chest (2026-10-10, wave 338: "a blank maroon box"): drawer fronts with pulls on both long faces,
+  // a top tray lip, a push bar on one end and four casters.
   const addToolCart = (side: number, depth: number, tint = primer): void => {
     const cluster = fixedCluster(side, depth);
     clusterBox(cluster, 0, 0, 0.66, 1.05, 1.24, 0.56, tint, 'painted');
@@ -650,8 +652,17 @@ export function addGarageFacilityDetails({
       clusterCylinder(cluster, x, z, 0.12, 0.10, 0.12,
         rubber, Math.PI / 2, 8);
     }
-    for (const y of [0.42, 0.68, 0.94]) {
-      clusterBox(cluster, 0, -0.30, y, 0.86, 0.04, 0.03, dark, 'equipment');
+    const face = tint.clone().multiplyScalar(1.18);
+    for (const longitudinal of [-0.292, 0.292]) {
+      for (const [y, height] of [[0.3, 0.2], [0.53, 0.2], [0.76, 0.2], [0.98, 0.18], [1.16, 0.14]] as const) {
+        clusterBox(cluster, 0, longitudinal, y, 0.97, height - 0.025, 0.018, face, 'painted');
+        clusterBox(cluster, 0, longitudinal * 1.06, y + height * 0.22, 0.42, 0.022, 0.024, steel, 'equipment');
+      }
+    }
+    clusterBox(cluster, 0, 0, 1.3, 1.09, 0.035, 0.6, dark, 'equipment');
+    clusterCylinder(cluster, 0.6, 0, 1.0, 0.016, 0.5, steel, Math.PI / 2, 8);
+    for (const longitudinal of [-0.2, 0.2]) {
+      clusterBox(cluster, 0.56, longitudinal, 1.0, 0.08, 0.03, 0.03, steel, 'equipment');
     }
   };
 

@@ -62,6 +62,11 @@ export function getAbramsWeldingBayPlacement(
   return variant.id === 'verdant_motor_pool' ? ABRAMS_FLAMMABLE_BAY_OFFSET : ABRAMS_WELDING_BAY_PLACEMENT;
 }
 
+// The weld light (2026-10-10): Verdant's former west-wall fill PointLight now stands at the rolled K2's belly weld,
+// 0.35 m out from the torch tip toward the welder, so the arc lights him, the plate and the floor. Garage frame,
+// Verdant layout; garageCrewFigures.selftest checks it against the K2 crew's torch.
+export const VERDANT_WELD_LIGHT = Object.freeze({ x: 15.72, y: 2.05, z: 16.3 });
+
 // The Leopard occupies the neighboring mobility square, not the Abrams
 // welding owner. Preserve its established world-space pose when the Abrams
 // service story moves independently.
