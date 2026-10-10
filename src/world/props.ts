@@ -57,7 +57,7 @@ import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructu
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import {
   applyRockShaderHook, boulderKindFor, boulderSectionRadius, boulderSections, buildBoulderForm, createRockDepthMaterial, makeRockDetail, paintBoulder,
-  rockAngularityFor, rockDressingFor, rockLithologyFor,
+  rockAngularityFor, rockBaseToneFor, rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts'; // round 75 item 6
 import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
 import { applyRailBallastHook } from './railBallast.ts'; // the ground lane (wave 234): the rail kit's crushed-stone bed
@@ -6714,7 +6714,7 @@ ${snowCap ? `
     const lithology = rockLithologyFor(mapId);
     const angular = rockAngularityFor(mapId);
     const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(lithology, vi), lithology, angular);
-    paintBoulder(form, P.rockTone, lithology);
+    paintBoulder(form, P.rockTone, lithology, rockBaseToneFor(mapId));
     rockGeos.push(form.geometry);
     // (the desktop form on every tier, so every host derives the same colliders; its own stream, so no draw moves)
     const collisionForm = mobileProps
@@ -6724,7 +6724,7 @@ ${snowCap ? `
     if (collisionForm !== form.geometry) collisionForm.dispose();
     if (!mobileProps) {
       const far = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 4, legacyTop, boulderKindFor(lithology, vi), lithology, angular);
-      paintBoulder(far, P.rockTone, lithology);
+      paintBoulder(far, P.rockTone, lithology, rockBaseToneFor(mapId));
       rockGeosFar.push(far.geometry);
     }
     g.dispose();
