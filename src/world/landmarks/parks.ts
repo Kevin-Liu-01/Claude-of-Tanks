@@ -266,6 +266,89 @@ export const path: LandmarkBuilder = (ctx) => {
   return { parts: sink.finish(), tints: { plaster3: PATH_TINT[surface] ?? PATH_TINT.gravel } };
 };
 
+// ---------------------------------------------------------------------------------------------------------- stairway
+
+/**
+ * A stepped lane (the map-revival lane, 2026-10-07, Orchard round 5 — the coordinator's condition for the terraced
+ * village: "paths, stairs and a ramped mule track from the cross road up to the church square … ground-material paths
+ * with stone steps on the risers", every one "a place a person would walk, with treads, risers and landings"): a lane
+ * from the piece's origin `length` m along its +z, `width` wide, read off the ground under its centre and both edges (the
+ * highest of the three, so no step is buried by a cross-fall). Its level stretches are landings paved over the ground
+ * (flags in the map's masonry, gravel or beaten earth); wherever the ground along it climbs steeper than `steep` (a
+ * terrace's riser, a road's cut bank, a graded ramp) a flight is set into the slope: risers near `rise` m, each step's
+ * back level with the ground and its nosing one rise over it, its block reaching under the ground, between two low stone
+ * kerbs. `steps: 'block'` lays solid stone steps (a village stair); `'cordonata'` a mule stair — a stone curb across the
+ * lane at every riser and a tread of the landing's surface behind it, long and low, the way a laden mule climbs. Dressing
+ * only: a hull drives over it as over the ground.
+ */
+export const stairway: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const L = Math.max(2, Number(ctx.params.length)), w = Math.max(0.8, Number(ctx.params.width));
+  const rise = Math.min(0.24, Math.max(0.1, Number(ctx.params.rise))), steep = Math.max(0.03, Number(ctx.params.steep));
+  const surface = String(ctx.params.surface), cordonata = String(ctx.params.steps) === 'cordonata', kerbs = ctx.params.kerbs !== false;
+  const paving: RegionalBucket = surface === 'stone' ? 'stone' : 'plaster3';
+  const ground = ctx.ground ?? (() => 0);
+  const hw = w / 2, N = Math.max(4, Math.round(L / 0.1)), DZ = L / N;
+  const zAt = (i: number): number => -L / 2 + i * DZ;
+  const ys: number[] = [];
+  for (let i = 0; i <= N; i++) { const z = zAt(i); ys.push(Math.max(ground(-hw, z), ground(0, z), ground(hw, z))); }
+  // the flights: the stretches whose grade over a 0.6 m window passes `steep`, joined across gaps under 0.6 m and
+  // widened by 0.2 m at either end (a riser's rounded foot and brow)
+  const steepAt = (i: number): boolean => {
+    const a = Math.max(0, i - 3), b = Math.min(N, i + 3);
+    return Math.abs(ys[b] - ys[a]) / ((b - a) * DZ) > steep;
+  };
+  const flights: Array<{ i0: number; i1: number }> = [];
+  for (let i = 0; i <= N; i++) {
+    if (!steepAt(i)) continue;
+    const last = flights[flights.length - 1];
+    if (last && i - last.i1 <= 6) last.i1 = i; else flights.push({ i0: i, i1: i });
+  }
+  for (const f of flights) { f.i0 = Math.max(0, f.i0 - 2); f.i1 = Math.min(N, f.i1 + 2); }
+  // the landings between the flights (and from the lane's ends), paved over the ground
+  const lift = surface === 'earth' ? 0.03 : 0.045;
+  let from = 0;
+  for (const f of [...flights, { i0: N, i1: N }]) {
+    if (zAt(f.i0) - zAt(from) >= 0.3) drapedPath(sink, paving, ground, [0, zAt(from)], [0, zAt(f.i0)], w, { lift });
+    from = f.i1;
+  }
+  const kerbW = 0.22, curbD = 0.26;
+  for (const f of flights) {
+    const up = ys[f.i1] >= ys[f.i0];
+    const foot = up ? f.i0 : f.i1, head = up ? f.i1 : f.i0, dir = up ? 1 : -1;
+    const y0 = ys[foot], y1 = ys[head];
+    const n = Math.max(1, Math.round((y1 - y0) / rise));
+    const r = (y1 - y0) / n;
+    if (!(r > 0.05)) continue;
+    // each step's front: the first sample from the foot where the ground reaches its base (y0 + k r)
+    const fronts: number[] = [foot];
+    let i = foot;
+    for (let k = 1; k < n; k++) {
+      while (i !== head && ys[i] < y0 + k * r) i += dir;
+      fronts.push(i);
+    }
+    fronts.push(head);
+    for (let k = 0; k < n; k++) {
+      const za = zAt(fronts[k]);
+      let zb = zAt(fronts[k + 1]);
+      if (Math.abs(zb - za) < 0.12) zb = za + dir * 0.12;
+      const lo = Math.min(za, zb), hi = Math.max(za, zb);
+      let under = Infinity;
+      for (let j = Math.min(fronts[k], fronts[k + 1]); j <= Math.max(fronts[k], fronts[k + 1]); j++) under = Math.min(under, ys[j]);
+      const top = y0 + (k + 1) * r, bottom = Math.min(under, top - r) - 0.35;
+      if (cordonata && hi - lo > curbD + 0.2) {
+        // the curb across the lane at the riser, and the tread behind it in the landing's surface
+        const curb0 = dir > 0 ? lo : hi - curbD, curb1 = dir > 0 ? lo + curbD : hi;
+        sink.span('stone', -hw, bottom, curb0, hw, top, curb1, { decor: true });
+        sink.span(paving, -hw, bottom, dir > 0 ? curb1 : lo, hw, top - 0.02, dir > 0 ? hi : curb0, { decor: true });
+      } else sink.span('stone', -hw, bottom, lo, hw, top, hi, { decor: true });
+      // the kerbs: a low stone edge either side, its top a hand over the step
+      if (kerbs) for (const s of [-1, 1]) sink.span('stone', s > 0 ? hw : -hw - kerbW, bottom, lo, s > 0 ? hw + kerbW : -hw, top + 0.16, hi, { decor: true });
+    }
+  }
+  return { parts: sink.finish(), tints: { plaster3: PATH_TINT[surface] ?? PATH_TINT.gravel } };
+};
+
 // ---------------------------------------------------------------------------------------------------------- churchyard
 
 const GREEN_IRON = rgb(0x4f7d5a);

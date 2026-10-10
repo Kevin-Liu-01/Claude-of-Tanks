@@ -249,6 +249,18 @@ export interface TerraceZoneConfig {
    * 0.05 and 0.1): level ground keeps its own shape instead of breaking into islands at a bench's level. */
   minGrade?: number;
   fullGrade?: number;
+  /** (the map-revival lane, 2026-10-07, Orchard round 5: the village stacked on its terraced hill) the share of the steps
+   * kept inside the settlement (0..1). Absent: 0 — a settlement lies on its own levelled ground, as before. */
+  settlement?: number;
+  /**
+   * (the map-revival lane, 2026-10-07, Orchard round 5: the village's mule track — the coordinator's "a ramped mule track
+   * from the cross road up to the church square … no road grading needed") ramped tracks through the zone, each a
+   * polyline whose nodes carry the track's height ([x, z, y], metres): within `halfWidth` m of the line (default 1.6) the
+   * stepped ground is cut and filled level across to the track's height there (interpolated along each leg), easing back
+   * to the steps over `feather` m more (default 2). Where two legs' bands meet (a switchback) the ground takes their
+   * weighted mean. The zone's own edge weight fades a track, and nothing outside its bands moves.
+   */
+  ramps?: readonly { nodes: readonly (readonly [number, number, number])[]; halfWidth?: number; feather?: number }[];
 }
 
 /** A splat's two-formation bedrock (TerrainSplatConfig.formation). */
@@ -721,7 +733,14 @@ const MAP_SIZE = 1024;
 interface TerraceZone {
   xs: Float64Array; zs: Float64Array;
   minX: number; maxX: number; minZ: number; maxZ: number;
-  feather: number; stepM: number; riserGrade: number; minGrade: number; fullGrade: number;
+  feather: number; stepM: number; riserGrade: number; minGrade: number; fullGrade: number; settlement: number;
+  ramps: TerraceRamp[];
+}
+/** A prepared ramped track (TerraceZoneConfig.ramps): its nodes, its band and the bounds the band reaches. */
+interface TerraceRamp {
+  nodes: readonly (readonly [number, number, number])[];
+  halfWidth: number; feather: number;
+  minX: number; maxX: number; minZ: number; maxZ: number;
 }
 interface TerraceZoneHit { zone: TerraceZone; weight: number }
 
@@ -732,8 +751,40 @@ function prepareTerraceZones(zones: readonly TerraceZoneConfig[] | undefined): T
       xs, zs, minX: Math.min(...xs), maxX: Math.max(...xs), minZ: Math.min(...zs), maxZ: Math.max(...zs),
       feather: Math.max(1, z.feather ?? 24), stepM: z.stepM, riserGrade: z.riserGrade ?? 0.6,
       minGrade: z.minGrade ?? 0.05, fullGrade: Math.max((z.minGrade ?? 0.05) + 0.01, z.fullGrade ?? 0.1),
+      settlement: clamp(z.settlement ?? 0, 0, 1),
+      ramps: (z.ramps ?? []).filter((r) => r.nodes.length >= 2).map((r) => {
+        const halfWidth = Math.max(0.5, r.halfWidth ?? 1.6), feather = Math.max(0.5, r.feather ?? 2), reach = halfWidth + feather;
+        const nx = r.nodes.map((n) => n[0]), nz = r.nodes.map((n) => n[1]);
+        return { nodes: r.nodes, halfWidth, feather, minX: Math.min(...nx) - reach, maxX: Math.max(...nx) + reach,
+          minZ: Math.min(...nz) - reach, maxZ: Math.max(...nz) + reach };
+      }),
     };
   });
+}
+
+/**
+ * A terrace zone's ramped tracks over its stepped ground (TerraceZoneConfig.ramps): inside a track's band the ground lies
+ * level across at the track's height there (its legs' heights interpolated along them; where two legs' bands meet, their
+ * weighted mean), easing back to the steps over the feather; `weight` (the zone's own edge weight) fades it.
+ */
+function rampTerraceGround(ramps: readonly TerraceRamp[], weight: number, x: number, z: number, h: number): number {
+  let out = h;
+  for (const ramp of ramps) {
+    if (x < ramp.minX || x > ramp.maxX || z < ramp.minZ || z > ramp.maxZ) continue;
+    const { nodes, halfWidth, feather } = ramp;
+    let wsum = 0, ysum = 0, kmax = 0;
+    for (let i = 0; i + 1 < nodes.length; i++) {
+      const ax = nodes[i][0], az = nodes[i][1], ay = nodes[i][2];
+      const dx = nodes[i + 1][0] - ax, dz = nodes[i + 1][1] - az, len2 = dx * dx + dz * dz;
+      const t = len2 > 0 ? clamp(((x - ax) * dx + (z - az) * dz) / len2, 0, 1) : 0;
+      const d = Math.hypot(x - ax - dx * t, z - az - dz * t);
+      if (d >= halfWidth + feather) continue;
+      const k = 1 - smoothstep(halfWidth, halfWidth + feather, d);
+      wsum += k; ysum += k * (ay + (nodes[i + 1][2] - ay) * t); kmax = Math.max(kmax, k);
+    }
+    if (kmax > 0) out += (ysum / wsum - out) * kmax * weight;
+  }
+  return out;
 }
 
 /** The material's terrace uniforms (T2): each zone's bounding rect (up to four) and the riser band — a face whose slope
@@ -2065,6 +2116,7 @@ function* heightFieldBuildSteps(
     // the open midfield offers hull-down folds instead of a flat golf course.
     // Attenuated (not zeroed) on drive corridors so they stay drivable, and
     // suppressed in the village/marshes.
+    const tz = terraceZones.length ? terraceZoneWeight(terraceZones, x, z) : null;
     {
       const f1 = noi.noise(x * 0.0104 + 610, z * 0.0104 - 320);
       const f2 = noi.noise(x * 0.0233 - 105, z * 0.0233 + 77);
@@ -2074,10 +2126,8 @@ function* heightFieldBuildSteps(
         - smoothstep(0.55, 0.92, f2) * 1.5;                        // shallow depressions
       micro *= (1 - cw * 0.55) * (1 - vm) * (1 - Math.max(marshW, sorCalmW)) * T.microScale * (1 - macroCapW);
       // the map-revival lane (2026-10-05): a terrace zone's benches are level — its berms and scrapes stand down
-      const tz = terraceZones.length ? terraceZoneWeight(terraceZones, x, z) : null;
       if (tz) micro *= 1 - 0.85 * tz.weight;
       h += micro;
-      if (tz) h = applyTerraces(tz, x, z, h, cw, vm, marshW);
     }
     // r3 terrain_environment: near-field micro-relief — 3-8 m humps, scrapes
     // and settling (~10-25 cm) so the ground stops reading as a smooth
@@ -2089,6 +2139,10 @@ function* heightFieldBuildSteps(
       const m2 = noi.noise(x * 0.317 - 260, z * 0.317 + 33);
       h += (m1 * 0.16 + m2 * 0.07) * (1 - vm) * (1 - Math.max(marshW * 0.7, sorCalmW)) * T.microScale * (1 - macroCapW);
     }
+    // the map-revival lane (2026-10-05; round 5, 2026-10-07): a terrace zone is stepped after the near-field relief, so
+    // its humps are taken into the steps — the benches level, each riser one clean face (the relief laid over the steps
+    // broke the risers into lit and shaded facets at range, the ground lane's read of gauntlet wave 251)
+    if (tz) h = applyTerraces(tz, x, z, h, cw, vm, marshW);
     // maps lane B (2026-10-03): a sor — its pan dug, and everything under its flat's level filled dead flat to it
     if (sorStation >= 0) {
       h -= sorDig;
@@ -2177,8 +2231,13 @@ function* heightFieldBuildSteps(
    * settlement, the marshes.
    */
   function applyTerraces(tz: TerraceZoneHit, x: number, z: number, h: number, cw: number, vm: number, marshW: number): number {
+    const stepped = stepTerraces(tz, x, z, h, cw, vm, marshW);
+    // (the map-revival lane, 2026-10-07) the zone's ramped tracks, cut and filled level across over its steps
+    return tz.zone.ramps.length ? rampTerraceGround(tz.zone.ramps, tz.weight, x, z, stepped) : stepped;
+  }
+  function stepTerraces(tz: TerraceZoneHit, x: number, z: number, h: number, cw: number, vm: number, marshW: number): number {
     const zone = tz.zone;
-    const protect = (1 - cw * 0.85) * (1 - vm) * (1 - marshW);
+    const protect = (1 - cw * 0.85) * (1 - vm * (1 - zone.settlement)) * (1 - marshW);
     if (protect <= 0.001) return h;
     const smooth = (px: number, pz: number) => applyMacroTerrain(px, pz, baseTerrainHeight(px, pz, cw, vm), cw, vm, marshW);
     const h0 = smooth(x, z);
@@ -4094,6 +4153,9 @@ vec4 nz(vec2 p, float s, vec2 o) { return textureLod(uNoise, p * s + o, max(0.0,
 // fragment's footprint, the tile repeat itself beats against the pixel grid (concentric arcs from a raised camera, the
 // round-73 mid octave's 1.08 m tile at 100–190 m). gFootM is the footprint's major axis (m per pixel, set once in
 // splatCompute); tileVis(P) keeps a term whole while a period spans 10 px or more and fades it out by 4 px.
+// ground lane (2026-10-07, Orchard's dry-stone risers): the terrace riser band's weight, set where the rock takes the
+// risers (splatCompute) and read by the rock layer's coursed-stone pass
+float gRiserW = 0.0;
 float gFootM = 0.01;
 float tileVis(float periodM) { return smoothstep(4.0, 10.0, periodM / max(gFootM, 1e-4)); }
 // ground lane (farmland): the world xz a pixel steps across and down the screen — a stripe of period P across the unit
@@ -4686,6 +4748,16 @@ void splatCompute() {
     rut = max(rut, padRut * rutAmp * 1.2);
   }
   float fD = clamp(max(wornCore * uWornDirtStrength, max(shoulder * uShoulderDirt * (1.0 - apronRim), mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
+  // ground lane (2026-10-07, wave 251's Orchard bird: "the Chouf in summer isn't uniformly green") a terrace map's dry
+  // ground: on the terraces' treads, between the olives, the soil lies bare and stony in patches, and on the valley's
+  // steeper slopes (~15-35 deg) the turf thins to dry, stony ground in places — the D layer, the map's own dry stony soil
+  // (its palette row); every map without terrace zones as it was
+  if (uTerraceParam.x > 0.5) {
+    float dryN = nzq(uvW, 0.045, vec2(0.71, 0.33)).x * 0.7 + n1h * 0.3; // ~22 m patches, ragged at the ~5 m scale
+    float treadW = terraceZoneW(wp.xz) * (1.0 - smoothstep(uTerraceParam.z, uTerraceParam.w, slope)) * (1.0 - roadCore);
+    float steepDry = smoothstep(0.06, 0.18, slope) * (1.0 - smoothstep(0.30, 0.42, slope)) * (1.0 - roadCore);
+    fD = max(fD, max(treadW * smoothstep(0.50, 0.72, dryN) * 0.80, steepDry * smoothstep(0.44, 0.70, dryN) * 0.70));
+  }
   float fM = mkB;
   // marsh/ice sheets only live on near-flat ground: without this the graded
   // banks around a frozen lake inherit the sheet's glossy blue ice response
@@ -4796,7 +4868,10 @@ void splatCompute() {
   // the map-revival lane (2026-10-05, Orchard Valley's terraces T2): a terrace zone's risers are its dry-stone walls — the
   // faces the steps stand steeper than the benches (applyTerraces) take the rock layer whatever the turf's hold, the
   // benches keep their ground; the carriageways stay road
-  if (uTerraceParam.x > 0.5) fR = max(fR, terraceZoneW(wp.xz) * (1.0 - roadCore) * smoothstep(uTerraceParam.z, uTerraceParam.w, slope));
+  if (uTerraceParam.x > 0.5) {
+    gRiserW = terraceZoneW(wp.xz) * (1.0 - roadCore) * smoothstep(uTerraceParam.z, uTerraceParam.w, slope);
+    fR = max(fR, gRiserW);
+  }
   // Ground lane (2026-10-03, Caldera's gauntlet: the lava shelves' fronts "read as long dark trenches"): on a volcanic
   // basin (groundRedux VOLCANIC) a lava flow — the landform channel, the maps lane's flowCover in the mask — is basalt
   // over its whole surface, its top, levees and front alike, not only where it is steep
@@ -5123,6 +5198,33 @@ void splatCompute() {
       a = mix(a, aS, steepW);
       if (nrmOn) n = mix(n, wallNrm(uNrmR, 0.155, df, mipB), steepW);
     }
+  }
+  // ground lane (2026-10-07, wave 212's Orchard: the risers read as bare rock gashes): a terrace riser is a dry-stone
+  // wall — courses 0.30 m high of blocks 0.45–0.85 m long laid along the face, each block's own tone round the
+  // palette rock's mean, dark joints (exact cells; the coursing fades out by tileVis before it can alias), the photo's
+  // relief flattened — after the rock and the steep wall passes, which both lay the photo rock on a riser. Only where the
+  // riser band holds (gRiserW, terrace zones only: every other map draws as before)
+  if (gRiserW > 0.002) {
+    float cy = wp.y / 0.30, ci = floor(cy);
+    vec2 ch = cellHash2(vec2(ci, 41.0));
+    float along = abs(wn.x) > abs(wn.z) ? wp.z : wp.x;
+    float bw = 0.45 + 0.40 * ch.y;
+    float sb = (along + ch.x * bw) / bw, bi = floor(sb);
+    vec2 bh = cellHash2(vec2(ci, bi + 77.0));
+    vec2 bf = vec2(fract(cy) * 0.30, fract(sb) * bw);
+    float jd = min(min(bf.x, 0.30 - bf.x), min(bf.y, bw - bf.y));
+    float stoneVis = tileVis(0.45);
+    float joint = (1.0 - smoothstep(0.018, 0.034 + 0.5 * gFootM, jd)) * stoneVis;
+    // (2026-10-07, wave 252's Orchard bird on mr4's r4: "the terraced knoll shows its risers as bright sandy contour
+    // stripes", "rounded pale-cream rock patches that read as golf-course sand bunkers") an old wall is weathered grey
+    // limestone, not the cream of a fresh face (its tone 30 % toward its own luminance), and its far tone is the near
+    // coursing's mean — the blocks' with their joints' (a quarter of the face at 0.32) — not the bright face alone: the
+    // coursing faded to 0.96 of the stone, ~15 % over the walls it stood for
+    vec3 wallGrey = mix(uMeanR.rgb, vec3(dot(uMeanR.rgb, vec3(0.2126, 0.7152, 0.0722))), 0.30);
+    vec3 stone = wallGrey * (0.80 + 0.40 * bh.x) * vec3(1.0 + 0.06 * (bh.y - 0.5), 1.0, 1.0 - 0.08 * (bh.y - 0.5));
+    vec3 dry = mix(mix(wallGrey * 0.83, stone, stoneVis) * (0.92 + 0.16 * smoothstep(0.30, 0.70, n1h)), wallGrey * 0.32, joint);
+    a.rgb = mix(a.rgb, dry, gRiserW);
+    if (nrmOn) n = mix(n, NRM_MEAN, gRiserW * 0.6);
   }
   // Ground lane (wave 80, Titan Gorge's and Redrock's establishing views: "a glaring magenta/pink wavy decal stripe
   // across the ground" — the 38–76° scarps of their ridges and knolls seen edge-on 350–770 m out, each one flat,
@@ -6218,7 +6320,8 @@ void splatCompute() {
   // faces past ~300 m into featureless sheets — re-project the rock layer at
   // a coarse world scale + its normals so distant mesa/cut walls stay craggy
   {
-    float farRock = fR * farM * (1.0 - gSnowRock); // ground lane (wave 62): not the rock's grain on the snow lying on it
+    // (2026-10-07: nor on a terrace riser, a dry-stone wall: its coursing is the riser pass's)
+    float farRock = fR * farM * (1.0 - gSnowRock) * (1.0 - gRiserW); // ground lane (wave 62): not the rock's grain on the snow lying on it
     if (farRock > 0.003) {
       // wall-plane sample takes over on steep faces (r5). Mix SAMPLES, not
       // coordinates — coordinate blending smeared diagonal fur streaks across

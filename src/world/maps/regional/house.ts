@@ -36,6 +36,14 @@ export interface RoofSpec {
   ridge?: 'round' | 'saddle' | null;
   /** flat roof parapet height (m) */
   parapet?: number;
+  /**
+   * (map revival lane, 2026-10-07, Orchard's earth roofs) a flat roof's parapet in a bucket of its own (the walls' stone
+   * round a rolled earth roof): the covering then lies inside the parapet's ring, never coplanar with its faces. Absent,
+   * the parapet takes the covering's bucket (plaster under a tiled one), as before
+   */
+  parapetBucket?: RegionalBucket;
+  /** paint over the covering (EmitOptions.tint, a weathered bucket): clay on a render's canvas. Absent, none */
+  tint?: Rgb;
   /** dressing only (a second covering over a structural slab): no collision */
   decor?: boolean;
   /**
@@ -612,16 +620,19 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
   // a vertex-coloured covering (painted sheet in structureMetal) takes its livery here, weathered down the slope
   const lowY = eaveY - roof.eave * tanP, highY = roof.kind === 'shed' ? eaveY + 2 * s * tanP : ridgeY;
   const dec: EmitOptions = { ...(roof.decor ? { decor: true } : {}), ...(colour ? { colour } : {}),
-    ...(colour && roof.kind !== 'flat' ? { colourAt: weatheredSheet(colour, lowY, highY + t) } : {}) };
+    ...(colour && roof.kind !== 'flat' ? { colourAt: weatheredSheet(colour, lowY, highY + t) } : {}), ...(roof.tint ? { tint: roof.tint } : {}) };
   if (roof.kind === 'flat') {
-    const e = roof.eave;
-    sink.span(bucket, -s - e, eaveY, -halfD - e, s + e, eaveY + t, halfD + e, dec);
+    const e = roof.eave, th = 0.22;
+    const pb = roof.parapetBucket ?? (bucket === 'roof' ? 'plaster' : bucket);
+    // a parapet of another bucket rings the covering: the covering lies inside it (no coplanar faces of two surfaces)
+    const inset = roof.parapet && pb !== bucket ? th : 0;
+    sink.span(bucket, -s - e + inset, eaveY, -halfD - e + inset, s + e - inset, eaveY + t, halfD + e - inset, dec);
     if (roof.parapet) {
-      const p = roof.parapet, th = 0.22, top = eaveY + t + p;
-      sink.span(bucket === 'roof' ? 'plaster' : bucket, -s - e, eaveY, halfD + e - th, s + e, top, halfD + e);
-      sink.span(bucket === 'roof' ? 'plaster' : bucket, -s - e, eaveY, -halfD - e, s + e, top, -halfD - e + th);
-      sink.span(bucket === 'roof' ? 'plaster' : bucket, s + e - th, eaveY, -halfD - e + th, s + e, top, halfD + e - th);
-      sink.span(bucket === 'roof' ? 'plaster' : bucket, -s - e, eaveY, -halfD - e + th, -s - e + th, top, halfD + e - th);
+      const p = roof.parapet, top = eaveY + t + p;
+      sink.span(pb, -s - e, eaveY, halfD + e - th, s + e, top, halfD + e);
+      sink.span(pb, -s - e, eaveY, -halfD - e, s + e, top, -halfD - e + th);
+      sink.span(pb, s + e - th, eaveY, -halfD - e + th, s + e, top, halfD + e - th);
+      sink.span(pb, -s - e, eaveY, -halfD - e + th, -s - e + th, top, halfD + e - th);
     }
     return;
   }
