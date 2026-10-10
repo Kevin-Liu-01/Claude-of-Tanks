@@ -1226,6 +1226,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/challenger3RearTurret.selftest.mjs',
     'src/vehicles/profiles/challenger3RunningGear.selftest.mjs',
     'src/vehicles/battleDetailLod.selftest.mjs',
+    // sealed lane 2026-10-10: the painted far level of the interior fills on the detail horizon (the owner's gaps)
+    'src/vehicles/interiorFillFarLevel.selftest.mjs',
     'src/vehicles/combatVisibility.selftest.mjs',
     'src/vehicles/articulatedShadowBatchIntegration.selftest.mjs',
     'src/vehicles/battleGeometrySharing.selftest.mjs',
