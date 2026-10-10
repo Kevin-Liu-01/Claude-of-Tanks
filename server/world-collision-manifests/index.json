@@ -124,10 +124,10 @@
       "concealers": 382
     },
     "blackglass": {
-      "bytes": 1519295,
-      "sha256": "fe39a94202d54384f72872ad0ebde75f311f188c82a2bf1e867bcc0725caa114",
-      "obstacles": 3169,
-      "colliders": 3621,
+      "bytes": 1649249,
+      "sha256": "cea4d4ecb1cb20c0f3d939370d9e56cfff4457efc03cc29519a31e555dbbd62a",
+      "obstacles": 3203,
+      "colliders": 3859,
       "concealers": 1916
     },
     "titan_gorge": {
@@ -358,10 +358,10 @@
         "concealers": 382
       },
       "blackglass": {
-        "bytes": 1519295,
-        "sha256": "fe39a94202d54384f72872ad0ebde75f311f188c82a2bf1e867bcc0725caa114",
-        "obstacles": 3169,
-        "colliders": 3621,
+        "bytes": 1649249,
+        "sha256": "cea4d4ecb1cb20c0f3d939370d9e56cfff4457efc03cc29519a31e555dbbd62a",
+        "obstacles": 3203,
+        "colliders": 3859,
         "concealers": 1916
       },
       "titan_gorge": {
