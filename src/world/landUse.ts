@@ -22,7 +22,7 @@
 
 export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'paddy' | 'terrace' | 'karst'
   | 'brownfield' | 'coalfield' | 'cityfloor' | 'citycourt' | 'cityslope' | 'cemetery' | 'park'
-  | 'worksfloor' | 'furnace' | 'sidings' | 'court' | 'cinder' | 'secano' | 'terraceDry';
+  | 'worksfloor' | 'furnace' | 'sidings' | 'court' | 'cinder' | 'secano' | 'terraceDry' | 'terraceSummer';
 
 /** How a region's fields are bounded (the material's uLandE.z). */
 export type LandBoundary = 'margin' | 'ditch' | 'bund' | 'wall';
@@ -189,11 +189,16 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   paddy: [[9, 0.38], [8, 0.22], [14, 0.15], [10, 0.10], [4, 0.07], [0, 0.08], [7, 0.0]],
   // a Japanese caldera floor (Aso): rectangular paddies, green and flooded, vegetable plots, meadow
   terrace: [[9, 0.44], [8, 0.20], [10, 0.10], [7, 0.10], [0, 0.16], [4, 0.0], [5, 0.0]],
+  // (Caldera round 4, the map-revival lane, 2026-10-10; gauntlet wave 359: "flooded parcels ... hard-edged rectangles of
+  // glittering blue-white noise"; "out of season they should be dry stubble rather than open water") Aso's floor in the
+  // early summer of the map: most paddies planted and green, a few still flooded for the late transplanting, the odd one
+  // ripe or cut to stubble, the vegetable plots and the meadow between — a tenth of the fields under water, not a fifth
+  terraceSummer: [[9, 0.48], [8, 0.10], [10, 0.10], [7, 0.12], [0, 0.12], [5, 0.08]],
   // (2026-10-10, the map-revival lane; gauntlet wave 359, Caldera chase: "three of the four tanks stand in a river") the
   // caldera floor round a deployment: its paddies grown or ripe, never flooded — a flooded paddy under a tank company
   // reads as a river it was set down in (the deployment's ground test reads the water mask, and a paddy's water is the
   // land use's crop, not the mask's)
-  terraceDry: [[9, 0.52], [10, 0.12], [7, 0.14], [0, 0.22]],
+  terraceDry: [[9, 0.52], [10, 0.12], [7, 0.14], [0, 0.14], [5, 0.08]],
   // the Dalmatian karst: small walled fields of red earth, vines, dry grazing and a little grain — the grain ripe in the
   // dry season (wave 39, Saltwind corner-ne: "a hard-edged, oversaturated bright-green rectangle in the mid-ground" was
   // a young green crop's plot between the walls, a tone no summer karst field carries)
@@ -244,7 +249,7 @@ const BOUNDARIES: Readonly<Record<LandRegion, LandBoundary>> = Object.freeze({
   polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin', coalfield: 'margin',
   cityfloor: 'margin', citycourt: 'margin', cityslope: 'margin', cemetery: 'margin', park: 'margin',
   worksfloor: 'margin', furnace: 'margin', sidings: 'margin', court: 'margin', cinder: 'margin',
-  secano: 'margin', terraceDry: 'bund',
+  secano: 'margin', terraceDry: 'bund', terraceSummer: 'bund',
 });
 
 /** The rotation's cumulative shares at slots 0..5 (slot 6 takes the rest), normalised. */
@@ -326,13 +331,16 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   // of alpha's 14 slots and 13 of bravo's) each side's deployment on dry paddies: the fields whose middles lie within
   // CALDERA_DRY_DEPLOYMENT_M of a side's anchor (alpha's pad, bravo's pads' centroid) grow their rice, none flooded;
   // every other field is the terrace's rotation, as before
+  // (Caldera round 4, wave 359: "Aso's floor is a fine grid of narrow paddies and bunds aligned to roads and drains") the
+  // blocks narrower, 60 x 28 m cut at most in two, so the bunds' grid is finer (was 72 x 42 m in up to three), and the
+  // floor's crops its early summer (terraceSummer: a tenth of the fields flooded, not a fifth)
   caldera: {
-    strength: 1, heading: 0.18, blockU: 72, blockV: 42, maxSplit: 3, marginM: 0.8, trackShare: 0.22, hedgeShare: 0.14,
+    strength: 1, heading: 0.18, blockU: 60, blockV: 28, maxSplit: 2, marginM: 0.8, trackShare: 0.22, hedgeShare: 0.14,
     warpM: 10, region: 'terrace', salt: 103,
     zones: [
       { region: 'terraceDry', disc: { x: -302, z: -380, r: CALDERA_DRY_DEPLOYMENT_M } },
       { region: 'terraceDry', disc: { x: 22, z: 388, r: CALDERA_DRY_DEPLOYMENT_M } },
-      { region: 'terrace', rect: { x0: -1e6, x1: 1e6, z0: -1e6, z1: 1e6 } },
+      { region: 'terraceSummer', rect: { x0: -1e6, x1: 1e6, z0: -1e6, z1: 1e6 } },
     ],
   },
   // Ironworks (foundry: the Völklingen ironworks on the Saar, the maps lane's rebuild): brownfield plots between the
