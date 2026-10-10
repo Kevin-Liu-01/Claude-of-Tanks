@@ -5338,9 +5338,10 @@ function* createFxSteps(
         const eaveM = anat?.roof ? anat.placement.y + anat.roof.eaveY - e.baseY : null;
         if (blast) {
           // a shaft goes over in the blow's direction (structureStages structureTopple): its dust falls along that line
-          const topple = e.stage === 'collapsed' ? structureTopple(anat, e) : null;
-          structureStageFx(blast, e, lookOf(e.structureId), !!stages && !!stageSeam, eaveM, topple,
-            e.stage === 'collapsed' && !!bodies?.took(e.structureId));
+          // (a shaft that came down as bodies falls where its drums fall: its dust is a collapse's, not the scripted line's)
+          const asBodies = e.stage === 'collapsed' && !!bodies?.took(e.structureId);
+          const topple = e.stage === 'collapsed' && !asBodies ? structureTopple(anat, e) : null;
+          structureStageFx(blast, e, lookOf(e.structureId), !!stages && !!stageSeam, eaveM, topple, asBodies);
         }
         else phoneStageBeat(e);
       });

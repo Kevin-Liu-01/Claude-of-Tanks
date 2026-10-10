@@ -76,6 +76,9 @@ function lyingDrum(mesh: Mesh, c: Vec3, axis: Vec3, l: number, w: number, h: num
 export function collapseShaft(anatomy: StructureDamageAnatomy, seed: number, out: Writers, mound: MoundHeight): DamageStageResult {
   const rng = damageRng(seed);
   const mesh = new Mesh(out.mesh);
+  // (dcore 2026-10-10) a shaft that comes down as bodies (fx/collapseBodies.ts: its stump its own courses, its drums and
+  // its crown falling where they fall): the heap round its foot and a few bursts off it only
+  const bodies = (out as { bodies?: boolean }).bodies === true;
   const bands = anatomy.storeys, b0 = bands[0];
   if (!b0) return { cuts: [], hides: [{ section: null, partClass: null }] };
   const extras = extrasOf(anatomy), shaft = shaftOf(anatomy);
@@ -97,7 +100,7 @@ export function collapseShaft(anatomy: StructureDamageAnatomy, seed: number, out
       return Math.max(0.4, banked + stumpH * (1 + 0.3 * v) + corner);
     };
   });
-  for (const band of bands.slice(0, 2)) {
+  for (const band of bodies ? [] : bands.slice(0, 2)) {
     band.faces.forEach((f, k) => {
       const floor = f.origin[1] - baseY, line = lines[k];
       // (a face whose stump stays under this band's floor everywhere along it draws nothing here)
@@ -121,7 +124,7 @@ export function collapseShaft(anatomy: StructureDamageAnatomy, seed: number, out
   const foot = Math.max(b0.faces[0].width, b0.faces[1].width) / 2;
   let along = foot + 0.3 + rng() * 0.5, from = b0.y0 + stumpH + Math.max(0, mound(cx, cz));
   const wall: FractureSlot = b0.faces[0].layers[b0.faces[0].layers.length - 1] ?? anatomy.rubble[0];
-  for (let k = 0; k < bands.length; k++) {
+  for (let k = 0; k < (bodies ? 0 : bands.length); k++) {
     const b = bands[k], y0 = Math.max(from, b.y0);
     if (b.y1 - y0 < 0.4) continue;
     const across = (b.faces[0].width + b.faces[2].width) / 4, thick = (b.faces[1].width + b.faces[3].width) / 4;
@@ -151,25 +154,26 @@ export function collapseShaft(anatomy: StructureDamageAnatomy, seed: number, out
   }
   // 4. the crown at the far end: crumpled where it struck
   const crown = shaft?.crown;
-  if (crown && mesh.begin(crown.bucket, 'rubble')) {
+  if (crown && !bodies && mesh.begin(crown.bucket, 'rubble')) {
     const w = (crown.x1 - crown.x0) / 2, d = (crown.z1 - crown.z0) / 2, h = (crown.y1 - crown.y0) / 2;
     const mx = cx + axis[0] * (along + Math.max(w, h)), mz = cz + axis[2] * (along + Math.max(w, h));
     lyingDrum(mesh, [mx, top(mx, mz) + Math.min(w, d) * 0.7, mz], axis, h * 0.9, w * 0.92, d * 0.75, (rng() - 0.5) * 0.9, crown.tint, rng);
   }
   mesh.end();
   // 5. the throw: the shaft's units down the line
-  const reach = along;
-  for (let i = 0; i < out.pieces.capacity; i++) {
+  const reach = bodies ? foot + 1 : along;
+  for (let i = 0; i < (bodies ? Math.floor(out.pieces.capacity / 4) : out.pieces.capacity); i++) {
     const t = rng(), slot = slots[Math.floor(rng() * slots.length)] ?? wall;
     if (!slot) break;
     // (dcore 2026-10-09) a shaft the presentation toppled lies on the ground when this is laid: its courses burst off
     // the line where it struck, low; otherwise they rain down it from the height they fell from
     const x = cx + axis[0] * reach * t, z = cz + axis[2] * reach * t;
-    const y = given ? 0.4 + rng() * 1.2 : 0.5 + (1 - t) * 0.5 * H + rng() * 2;
+    // (bodies: they burst off the stump as the shaft goes, low)
+    const y = given || bodies ? 0.4 + rng() * 1.2 : 0.5 + (1 - t) * 0.5 * H + rng() * 2;
     const spin = rng() * Math.PI * 2, shape = slot.material === 'brick' ? 'brick' : slot.material === 'adobe' ? 'clod' : slot.material === 'plaster' ? 'plate' : 'block';
     if (!out.pieces.push(slot.bucket, shape, Math.floor(rng() * 4), x, y, z, 0, Math.sin(spin / 2), 0, Math.cos(spin / 2),
       0.18 + rng() * 0.2, 0.09 + rng() * 0.1, 0.12 + rng() * 0.16, slot.tint[0], slot.tint[1], slot.tint[2],
-      axis[0] * (1 + rng() * 2) + (rng() - 0.5), given ? 0.5 + rng() * 2.5 : -1 - rng() * 2, axis[2] * (1 + rng() * 2) + (rng() - 0.5))) break;
+      axis[0] * (1 + rng() * 2) + (rng() - 0.5), given || bodies ? 0.5 + rng() * 2.5 : -1 - rng() * 2, axis[2] * (1 + rng() * 2) + (rng() - 0.5))) break;
   }
   return { cuts: [], hides: [{ section: null, partClass: null }] };
 }

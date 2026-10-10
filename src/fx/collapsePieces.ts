@@ -29,7 +29,7 @@ import {
 import type { CollisionRecord } from '../world/collision.ts';
 import { createRigidBox, createRigidShape, type RigidShape } from '../sim/rigidBody.ts';
 
-type CollapsePieceKind = 'wall' | 'floor' | 'roof' | 'gable' | 'chimney';
+type CollapsePieceKind = 'wall' | 'floor' | 'roof' | 'gable' | 'chimney' | 'drum' | 'crown';
 
 /** A box of a piece's proxy, in the piece's own frame (its centre and axes; its own rotation in that frame when it is
  *  a chimney riding a roof slab, which also lays no caps: the stack's own faces are the building's). */
@@ -190,6 +190,12 @@ export interface CollapsePlan {
   readonly struckSide: number;
   /** The chimneys' bucket (a stack's broken top draws in it). */
   readonly chimneyBucket: string;
+  /**
+   * A shaft (a stack, a water tower, a minaret, a tower: the kit reads it as one) topples as a stack of drums over its
+   * stump instead: its stump's top, the drums' bounds up it (ascending, from the stump's top) and their pieces, its crown.
+   */
+  readonly shaft: { stumpY: number; bounds: number[]; drums: number[]; crown: { min: Vec3; max: Vec3; piece: number } | null;
+    slot: FractureSlot } | null;
 }
 
 interface CollapsePlanOptions {
@@ -320,6 +326,8 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
   // laid before the collapse holds) and the fall (who goes first, how hard)
   const geo = damageRng(damageSeed(anatomy.seed, 0x7c01, anatomy.structureIdx));
   const rng = damageRng(damageSeed(anatomy.seed, 0x7c02, anatomy.structureIdx));
+  const shaftPlan = (anatomy.kitPlan as { damage?: { shaft?: { crown?: ShaftCrown | null } } } | undefined)?.damage?.shaft;
+  if (shaftPlan && anatomy.storeys.length) return planShaft(anatomy, blow, shaftPlan.crown ?? null, geo, rng);
   const shed = anatomy.massClass === 'shed';
   const large = anatomy.massClass === 'large';
   const cap = Math.max(4, options.cap ?? (shed ? 12 : 24));
@@ -840,7 +848,92 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
     });
   }
   return { pieces, structureIdx: anatomy.structureIdx, groundY, eaveY, cx, cz, hw, hd, storeys: storeyPlans, roof: slabs, gables: gableFaces,
-    chimneys, struckSide, chimneyBucket: anatomy.chimneys[0]?.bucket ?? 'brick' };
+    chimneys, struckSide, chimneyBucket: anatomy.chimneys[0]?.bucket ?? 'brick', shaft: null };
+}
+
+/** A shaft's crown as its kit hands it over (regional/shaft.ts ShaftExtras.crown). */
+interface ShaftCrown { y0: number; y1: number; x0: number; x1: number; z0: number; z1: number; bucket: string; tint: readonly [number, number, number] }
+
+/**
+ * A shaft's collapse (dcore 2026-10-10; it toppled along a closed-form rod to a fixed landing): its stump stands a metre
+ * to three and a half over its foot (the kit's rule), and over it the shaft goes over toward the blow as one body (a
+ * stack of free drums stood on its stump, or flew apart), about the edge of its foot; when it strikes the ground it
+ * breaks into its drums — two to six, a couple of its widths each — and its crown, each with the shaft's motion there.
+ * Toward the blow, as the mask's topple (structureStages structureTopple; wave 322: one that went over away from the
+ * shooter vanished behind its own stump and dust): the struck side's foot is gone and it leans into the gap.
+ */
+function planShaft(anatomy: StructureDamageAnatomy, blow: CollapseBlow, crown: ShaftCrown | null, geo: () => number, rng: () => number): CollapsePlan {
+  const bands = anatomy.storeys, b0 = bands[0];
+  let cx = 0, cz = 0;
+  for (const f of b0.faces) { cx += f.origin[0]; cz += f.origin[2]; }
+  cx /= Math.max(1, b0.faces.length); cz /= Math.max(1, b0.faces.length);
+  const hw = anatomy.w / 2, hd = anatomy.d / 2;
+  const baseY = b0.y0, topWall = bands[bands.length - 1].y1;
+  const H = (crown ? crown.y1 : topWall) - baseY;
+  const bank = Math.max(0, bodyMoundHeightAt(anatomy, cx, cz));
+  const stumpY = baseY + bank + 1.2 + geo() * Math.min(2.3, H * 0.15);
+  const wallSlot = b0.faces[0]?.layers[b0.faces[0].layers.length - 1] ?? anatomy.rubble[0]
+    ?? { material: 'brick', bucket: b0.faces[0]?.bucket ?? 'brick', tint: [0.6, 0.45, 0.38], thicknessM: 0.4, share: 1 };
+  // the topple: toward the blow (against its travel, body frame), else its own way; started just past what tips it
+  // over its foot's edge
+  const bl = Math.hypot(blow.dirX, blow.dirZ);
+  const ang = rng() * Math.PI * 2;
+  const tx = bl > 1e-6 ? -blow.dirX / bl : Math.cos(ang), tz = bl > 1e-6 ? -blow.dirZ / bl : Math.sin(ang);
+  // the drums: a couple of its widths each, two to six (the building's cut: its own stream)
+  const span = Math.max(0.5, topWall - stumpY);
+  const width = Math.max(anatomy.w, anatomy.d);
+  const n = Math.max(2, Math.min(6, Math.round(span / Math.max(2.5, 2.2 * width))));
+  const bounds = [stumpY];
+  for (let k = 1; k < n; k++) bounds.push(stumpY + span * (k + (geo() - 0.5) * 0.3) / n);
+  bounds.push(topWall);
+  const bandAt = (y: number) => bands.find((b) => y >= b.y0 && y <= b.y1) ?? bands[bands.length - 1];
+  // its parts, drum by drum, then the crown; the body's frame at its foot's centre over the stump
+  const y0 = stumpY + GAP_M / 2, yTop = crown && crown.y1 > topWall ? crown.y1 : topWall;
+  const frameY = (y0 + yTop) / 2;
+  const parts: CollapsePart[] = [];
+  const drumParts: number[] = [];
+  let massKg = 0;
+  for (let k = 0; k + 1 < bounds.length; k++) {
+    const a = bounds[k] + GAP_M / 2, b = bounds[k + 1] - GAP_M / 2;
+    if (!(b - a > 0.3)) { drumParts.push(-1); continue; }
+    const band = bandAt((a + b) / 2);
+    const across = (band.faces[0]?.width ?? anatomy.w) / 2 * 0.98, thick = (band.faces[1]?.width ?? anatomy.d) / 2 * 0.98;
+    const slot = band.faces[0]?.layers[band.faces[0].layers.length - 1] ?? wallSlot;
+    const m = Math.max(150, 8 * across * thick * (b - a) / 2 * 0.45 * (DENSITY[slot.material] ?? 1800));
+    drumParts.push(parts.length);
+    parts.push({ center: [0, (a + b) / 2 - frameY, 0], half: [across, (b - a) / 2, thick], massKg: m, rect: { u0: -across, u1: across, y0: a, y1: b } });
+    massKg += m;
+  }
+  let crownBox: { min: Vec3; max: Vec3; piece: number } | null = null;
+  let crownPart = -1;
+  if (crown && crown.y1 - Math.max(crown.y0, topWall) > 0.3) {
+    const a = Math.max(crown.y0, topWall) + GAP_M / 2, b = crown.y1;
+    const hx = Math.max(0.1, (crown.x1 - crown.x0) / 2), hz = Math.max(0.1, (crown.z1 - crown.z0) / 2);
+    const m = Math.max(100, 8 * hx * hz * (b - a) / 2 * 120);
+    crownPart = parts.length;
+    parts.push({ center: [(crown.x0 + crown.x1) / 2 - cx, (a + b) / 2 - frameY, (crown.z0 + crown.z1) / 2 - cz], half: [hx, (b - a) / 2, hz], massKg: m,
+      rect: { u0: crown.x0, u1: crown.x1, y0: a, y1: b } });
+    massKg += m;
+    crownBox = { min: [crown.x0 - 0.05, Math.max(crown.y0, topWall) - 0.05, crown.z0 - 0.05], max: [crown.x1 + 0.05, crown.y1 + 0.05, crown.z1 + 0.05], piece: 0 };
+  }
+  // the turn that just tips it over its foot's edge (its centre of mass over the edge), and a little more; given as a
+  // push at its centre of percussion, so it turns about that edge and its foot does not kick back off the stump
+  const L = yTop - y0, halfBase = Math.min(parts[0]?.half[0] ?? hw, parts[0]?.half[2] ?? hd);
+  const hc = L / 2;
+  const rise = Math.hypot(halfBase, hc) - hc;
+  const inertia = (L * L + 4 * halfBase * halfBase) / 3;
+  const omega = Math.sqrt((2 * 9.81 * rise) / Math.max(1, inertia)) * (1.15 + rng() * 0.2);
+  const percussion = (L * L + 4 * halfBase * halfBase) / (6 * Math.max(0.5, L));
+  const pieces: CollapsePiece[] = [{
+    index: 0, kind: 'drum', center: [cx, frameY, cz], rotation: [0, 0, 0, 1],
+    boxes: parts.map((pp) => ({ center: pp.center, half: pp.half })), massKg, material: wallSlot.material, core: wallSlot, back: wallSlot, face: null,
+    releaseS: 0, kick: [tx * omega * hc, 0, tz * omega * hc], kickAt: [0, Math.min(hc, percussion), 0], shatterS: -1,
+    // its parts are its drums: by their bounds up the shaft (and the crown, whose box claims its own triangles first)
+    parts, partCutsU: [], partCutsY: bounds.slice(1, -1), partFrame: { origin: [cx, 0, cz], u: [1, 0, 0], v: [0, 1, 0] },
+  }];
+  return { pieces, structureIdx: anatomy.structureIdx, groundY: baseY, eaveY: topWall, cx, cz, hw, hd, storeys: [], roof: [], gables: [],
+    chimneys: [], struckSide: -1, chimneyBucket: wallSlot.bucket,
+    shaft: { stumpY, bounds, drums: drumParts, crown: crownBox ? { ...crownBox, piece: crownPart } : null, slot: wallSlot } };
 }
 
 /** A polygon's area (its outline in order). */
@@ -956,7 +1049,26 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     return true;
   };
 
+  const shaftAssign = (poly: Poly, depth: number): void => {
+    const sh = plan.shaft!;
+    // the crown: a polygon wholly inside its box (the shaft's last part)
+    const cr = sh.crown;
+    if (cr && poly.every((v) => v[0] >= cr.min[0] && v[0] <= cr.max[0] && v[1] >= cr.min[1] && v[1] <= cr.max[1] && v[2] >= cr.min[2] && v[2] <= cr.max[2])) {
+      emit(0, poly, cr.piece);
+      return;
+    }
+    // the stump stands; the drums by their bounds up the shaft (a polygon across a bound is cut along it)
+    for (const b of sh.bounds) if (across(poly, 0, 1, 0, b, depth, (h, _s, dd) => shaftAssign(h, dd))) return;
+    const y = centroid(poly)[1];
+    if (y < sh.stumpY) { emit(STATIC_PIECE, poly); return; }
+    let k = 0;
+    while (k + 1 < sh.bounds.length - 1 && y >= sh.bounds[k + 1]) k++;
+    const part = sh.drums[k] ?? -1;
+    emit(0, poly, part >= 0 ? part : Math.max(0, sh.drums.findIndex((d) => d >= 0)));
+  };
+
   const assign = (poly: Poly, depth: number): void => {
+    if (plan.shaft) { shaftAssign(poly, depth); return; }
     // the chimneys first: a polygon wholly inside a stack's box is the stack's (its foot below the break stays)
     for (const c of plan.chimneys) {
       // (a roof's chimney over no slab goes with the roof's triangles round it)
@@ -1275,8 +1387,12 @@ export function capPiece(plan: CollapsePlan, piece: CollapsePiece): CapQuad[] {
       boxCaps((axis, sign) => axis === 1 && sign > 0, () => piece.core, (axis, sign) => (axis === 1 && sign < 0 ? 0.85 : 0.75));
       break;
     case 'chimney':
-      // a stack's sides are the building's; its broken top and foot
+    case 'drum':
+      // a stack's (a drum's) sides are the building's; its broken top and foot
       boxCaps((axis) => axis !== 1, () => piece.core, () => 0.78);
+      break;
+    case 'crown':
+      boxCaps((axis, sign) => !(axis === 1 && sign < 0), () => piece.core, () => 0.7);
       break;
   }
   void plan;
@@ -1300,6 +1416,12 @@ interface StubBox {
 /** The ground storey's stubs and corner piers as boxes (the bodies stand and land on them). */
 function stubBoxes(plan: CollapsePlan): StubBox[] {
   const boxes: StubBox[] = [];
+  if (plan.shaft) {
+    // a shaft's stump
+    const y0 = plan.groundY, y1 = plan.shaft.stumpY;
+    if (y1 > y0 + 0.1) boxes.push({ center: [plan.cx, (y0 + y1) / 2, plan.cz], u: [1, 0, 0], out: [0, 0, 1], halfU: plan.hw * 0.98, halfT: plan.hd * 0.98, y0, y1 });
+    return boxes;
+  }
   const st = plan.storeys[0];
   if (!st) return boxes;
   for (const fp of st.faces) {
@@ -1339,6 +1461,12 @@ function stubBoxes(plan: CollapsePlan): StubBox[] {
  */
 export function capStubs(plan: CollapsePlan): CapQuad[] {
   const caps: CapQuad[] = [];
+  if (plan.shaft) {
+    // a shaft's stump: its broken top
+    const y = plan.shaft.stumpY, x0 = plan.cx - plan.hw, x1 = plan.cx + plan.hw, z0 = plan.cz - plan.hd, z1 = plan.cz + plan.hd;
+    caps.push({ corners: [[x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]], n: [0, 1, 0], slot: plan.shaft.slot, shade: 0.75 });
+    return caps;
+  }
   // a ground stack broken off at the roof line: its broken top
   for (const c of plan.chimneys) {
     if (c.piece < 0 || c.fromRoof || !Number.isFinite(c.breakY)) continue;
