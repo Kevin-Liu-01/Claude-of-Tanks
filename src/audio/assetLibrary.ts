@@ -60,6 +60,11 @@ export interface AssetLibrary {
   voice(language: string, line: string, random: () => number, take?: number): AudioBuffer | null;
   voiceTakes(language: string, line: string): number;
   stats(): { assets: number; decodedMb: number; sfxMb: number; voiceMb: number; pinned: number; pending: number; failed: number; voices: string[] };
+  /**
+   * Resolves once every load in flight (sound effects and voice packs) has settled, the loads those start included: the
+   * real completion a caller can await instead of polling `stats().pending` (a debug and receipt seam; play never waits).
+   */
+  idle(): Promise<void>;
 }
 
 interface Entry {
@@ -101,6 +106,8 @@ export function createAssetLibrary({
   const voiceEntries = new Map<string, Entry>();
   const voiceLanguages = new Map<string, Promise<void>>();
   const readyVoices = new Set<string>();
+  /** Load promises seen to settle (idle()): a settled load is never waited on again. */
+  const settledLoads = new WeakSet<Promise<void>>();
   const decoders = new Map<number, DecodeContext | null>();
   let supported: boolean | null = null;
   let active = 0;
@@ -295,6 +302,16 @@ export function createAssetLibrary({
       })();
       voiceLanguages.set(language, promise);
       return promise;
+    },
+    async idle() {
+      // every load promise already observed to settle; a pass that finds none new in flight ends the wait
+      for (;;) {
+        const inFlight: Promise<void>[] = [];
+        for (const entry of entries.values()) if (entry.promise && !settledLoads.has(entry.promise)) inFlight.push(entry.promise);
+        for (const promise of voiceLanguages.values()) if (!settledLoads.has(promise)) inFlight.push(promise);
+        if (!inFlight.length) return;
+        await Promise.all(inFlight.map((promise) => promise.then(() => { settledLoads.add(promise); }, () => { settledLoads.add(promise); })));
+      }
     },
     voiceReady: (language) => readyVoices.has(language),
     voice(language, line, random, take) {

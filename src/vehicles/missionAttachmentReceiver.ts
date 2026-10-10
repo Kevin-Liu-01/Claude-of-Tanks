@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { TankBuilderPort } from './tankFactoryCore.ts';
-import { boxUV } from './factoryGeometry.ts';
+import { boxUV, paintedSurfaceShade } from './factoryGeometry.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
 
 type ReceiverId = 'pt91_twardy' | 'leo2a6_ua' | 'ua_m1a1' | 'ua_t80u_modern';
@@ -156,12 +156,7 @@ export function addMissionAttachmentReceiver(P: ReceiverBuilder, id: ReceiverId)
     // density and carry baked vertex colour; this mesh bypasses the buckets, so it gets both here. It used to render
     // black (the hull material reads vertex colour, and these boxes had none) with a whole camo tile per small face.
     boxUV(geometry, CAMO_UV_REPEATS_PER_M);
-    const normals = geometry.getAttribute('normal'), shade = new Float32Array(normals.count * 3);
-    for (let i = 0; i < normals.count; i++) {
-      const ny = normals.getY(i), ao = (1 - Math.max(0, -ny) * .28) * (1 - Math.max(0, ny) * .16);
-      shade[i * 3] = shade[i * 3 + 1] = shade[i * 3 + 2] = ao;
-    }
-    geometry.setAttribute('color', new THREE.BufferAttribute(shade, 3));
+    paintedSurfaceShade(geometry);
     const receiver = new THREE.Mesh(geometry, P.mats.hull);
     receiver.name = 'turretMissionReceiver';
     receiver.castShadow = receiver.receiveShadow = true;
