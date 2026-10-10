@@ -6,12 +6,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { DESTRUCTIBLE_TYPES } from './inhabitKit.ts';
+import { DESTRUCTIBLE_BUILDING_TYPES } from './structureKit.ts';
 import { PROP_FRACTURE, fractureProp, fractureSeed } from './propFracture.ts';
 
 const rng = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 const report = [];
 for (const [kind, plan] of Object.entries(PROP_FRACTURE)) {
-  const meta = DESTRUCTIBLE_TYPES[kind];
+  const meta = DESTRUCTIBLE_TYPES[kind] ?? DESTRUCTIBLE_BUILDING_TYPES[kind];
   assert.ok(meta?.build && meta.broken, `${kind}: a destructible with a broken state`);
   const intact = meta.build(rng(7));
   const seed = fractureSeed(4242, kind);

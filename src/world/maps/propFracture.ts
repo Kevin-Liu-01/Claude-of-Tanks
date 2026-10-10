@@ -35,6 +35,11 @@ export interface FracturePlan {
 export const WOOD_FRACTURE: FracturePlan = Object.freeze({
   snapLen: 0.55, pieceMin: 0.18, maxCuts: 2, jag: 0.05, scatter: 0.55, stubChance: 0.6, stubMax: 0.45, dropBelow: 0.06, debrisMax: 0.55,
 });
+/** A small building (a hut, a hide, a shed, a camp tent): its walls, roof and frame snap in larger pieces and lie
+ * across and round its footprint, corner posts often left standing as low stubs. */
+export const BUILDING_FRACTURE: FracturePlan = Object.freeze({
+  snapLen: 1.0, pieceMin: 0.4, maxCuts: 2, jag: 0.08, scatter: 0.9, stubChance: 0.7, stubMax: 0.55, dropBelow: 0.08, debrisMax: 0.6,
+});
 /** A fence or a gate: posts snap low and often stand, boards and rails lie along the line it ran. */
 export const FENCE_FRACTURE: FracturePlan = Object.freeze({
   snapLen: 0.6, pieceMin: 0.25, maxCuts: 2, jag: 0.05, scatter: 0.35, stubChance: 0.75, stubMax: 0.42, dropBelow: 0.05, debrisMax: 0.45,
@@ -146,8 +151,10 @@ export function fractureProp(intact: THREE.BufferGeometry, plan: FracturePlan, s
     }
     box.getCenter(centre);
     if (piece.stub) {
-      // a stub stands where it stood, leaning a little
-      e.set((rng() - 0.5) * 0.3, 0, (rng() - 0.5) * 0.3);
+      // a stub stands where it stood, leaning a little (a wide one less: its foot never sinks more than 3 cm)
+      const span = box.getSize(new THREE.Vector3());
+      const lean = Math.min(0.3, 0.06 / Math.max(0.05, Math.max(span.x, span.z)));
+      e.set((rng() - 0.5) * lean, 0, (rng() - 0.5) * lean);
       m.makeRotationFromEuler(e);
       lift.set(centre.x, box.min.y, centre.z);
       m.premultiply(new THREE.Matrix4().makeTranslation(lift.x, lift.y, lift.z));
@@ -209,14 +216,20 @@ export function fractureProp(intact: THREE.BufferGeometry, plan: FracturePlan, s
 
 /**
  * The kinds whose broken state is their intact build, broken (props.ts finalizeDestructiblePool): the boards, posts,
- * frames and cloth of the light dressing. A kind left out keeps its own broken builder: the barrel's sprung staves, the
- * carts (cartKit), the burnt vehicles (civilianVehicleKit), the walls' stone, the straw, the wire, the pillbox.
+ * frames and cloth of the light dressing and the small buildings. A kind left out keeps its own broken builder: the
+ * barrel's sprung staves, the carts (cartKit), the burnt vehicles (civilianVehicleKit), the walls' stone, the straw, the
+ * wire, the pillbox, the Quonset's buckled arch and the greenhouse's ribs.
  */
 export const PROP_FRACTURE: Readonly<Record<string, FracturePlan>> = Object.freeze({
   crate: WOOD_FRACTURE, pallet: WOOD_FRACTURE, bench: WOOD_FRACTURE, trough: WOOD_FRACTURE, stall: WOOD_FRACTURE,
   firewood: WOOD_FRACTURE, rugframe: WOOD_FRACTURE, laundry: WOOD_FRACTURE, ammobox: WOOD_FRACTURE, tent: WOOD_FRACTURE,
   cablespool: WOOD_FRACTURE, gate: WOOD_FRACTURE,
   fenceplank: FENCE_FRACTURE, fencepicket: FENCE_FRACTURE, fencewattle: FENCE_FRACTURE, fencerail: FENCE_FRACTURE,
+  // the small buildings on the shared debris builder (structureKit.ts lightMeta; the Quonset and the greenhouse keep the
+  // facades lane's own broken states)
+  fieldhut: BUILDING_FRACTURE, leanto: BUILDING_FRACTURE, huntingblind: BUILDING_FRACTURE, fishershack: BUILDING_FRACTURE,
+  saunahut: BUILDING_FRACTURE, guardpost: BUILDING_FRACTURE, checkpointhut: BUILDING_FRACTURE, transformershed: BUILDING_FRACTURE,
+  motorpool: BUILDING_FRACTURE, commandtent: BUILDING_FRACTURE, deserttent: BUILDING_FRACTURE, fieldhospital: BUILDING_FRACTURE,
 });
 
 /** A kind's break on a map: its own salt on the map's seed. */
