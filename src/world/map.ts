@@ -13,6 +13,7 @@ import {
   buildTerrainMeshes,
   buildTerrainMeshesAsync,
   finishHorizonRingAsync,
+  makePavedGroundAt,
   sampleSplatNoise,
 } from './terrain.ts';
 // The visual horizon installs the ring the terrain meshes are built with (horizonRingHook.ts).
@@ -559,8 +560,11 @@ function assembleWorld(
     config: (config.vegetation as { litter?: GroundLitterConfig | null } | undefined)?.litter
       ?? groundLitterProfile(config.id),
     blocked: groundCoverClearance(),
-    // roads lane R3 (2026-10-10): none on the paving the terrain draws (terrain.ts makePavedGroundAt)
-    paved: (terrain.userData.pavedGroundAt as ((x: number, z: number) => boolean) | null | undefined) ?? null,
+    // roads lane R3 (2026-10-10): none on the paving the terrain draws (terrain.ts makePavedGroundAt over its road mask)
+    paved: terrain.userData.roadMask
+      ? makePavedGroundAt(terrain.userData.roadMask as Parameters<typeof makePavedGroundAt>[0], heightField._layout,
+        ((config as TerrainMapConfig).splat ?? {}) as Parameters<typeof makePavedGroundAt>[2], config.id)
+      : null,
     // every lit world material joins the cascaded-shadow setup (see terrain/vegetation);
     // receipts stub the engine context without the hook, production always has it
     setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),

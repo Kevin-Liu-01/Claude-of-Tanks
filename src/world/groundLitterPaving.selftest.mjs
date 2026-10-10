@@ -76,10 +76,10 @@ for (const id of ['ruinspires', 'urban', 'foundry']) {
 const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 const map = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
 const litterSource = readFileSync(new URL('./groundLitter.ts', import.meta.url), 'utf8');
-assert.ok(terrain.includes('mat.userData.pavedGroundAt = makePavedGroundAt(mask, layout, S, mapId);')
-  && terrain.includes('group.userData.pavedGroundAt = mat.userData.pavedGroundAt;'), 'the terrain group exposes its paving');
-assert.ok(map.includes('paved: (terrain.userData.pavedGroundAt as ((x: number, z: number) => boolean) | null | undefined) ?? null,'),
-  'the world hands the litter the terrain\'s paving');
+assert.ok(terrain.includes('mat.userData.roadMask = mask;') && terrain.includes('group.userData.roadMask = mat.userData.roadMask;'),
+  'the terrain group exposes its road mask');
+assert.ok(map.includes('paved: terrain.userData.roadMask') && map.includes('makePavedGroundAt(terrain.userData.roadMask as Parameters<typeof makePavedGroundAt>[0], heightField._layout,'),
+  'the world hands the litter the terrain\'s paving (its twin over the road mask)');
 assert.ok(litterSource.includes('if (paved && paved(x, z)) continue;'), 'the litter skips it (after its seeded draws: the stream is unchanged)');
 
 console.log('groundLitterPaving: Ruinspires, Steinburg and Ironworks — main\'s litter on the paving, none now, the rest kept; the steppe paves nothing; the wiring PASS; no GPU/art claim');

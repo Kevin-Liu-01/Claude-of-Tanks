@@ -8700,8 +8700,8 @@ function* createSplatMaterialSteps(
   // (a map's own snow-on-rock law compiles its own source, so it keys its own program; every other map keeps the key)
   mat.customProgramCacheKey = () => `world-terrain-splat-v54-${seaOpenings.length ? 'coast' : 'land'}${snowHold ? `-${snowHold.replace(/[^0-9.]+/g, '_')}` : ''}`; // terrain v3 (2026-10-02): v54
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
-  // (roads lane R3: where the material draws paving, for the ground litter — terrain group userData.pavedGroundAt)
-  mat.userData.pavedGroundAt = makePavedGroundAt(mask, layout, S, mapId);
+  // (roads lane R3: the road mask, for the paving's CPU twin the ground litter reads — map.ts makePavedGroundAt)
+  mat.userData.roadMask = mask;
   mat.userData.formationUniform = formationUniform;
   mat.userData.formationLowUniform = formationLowUniform;
   mat.userData.formationUpUniform = formationUpUniform;
@@ -9690,7 +9690,7 @@ function* terrainBuildSteps(
   group.userData.streamingStats = streamStats;
   streamStats.indexPool = terrainIndexPoolReceipt(terrainIndexPool);
   group.userData.sourcedTexturesReady = mat.userData.sourcedTexturesReady;
-  group.userData.pavedGroundAt = mat.userData.pavedGroundAt; // roads lane R3: the ground litter keeps off the paving
+  group.userData.roadMask = mat.userData.roadMask; // roads lane R3: the ground litter keeps off the paving (map.ts)
   group.userData.cancelSourcedTextures = sourcePreparation?.cancel;
   return group;
 }
