@@ -1559,11 +1559,11 @@ export function createLighting(
         mat.onBeforeCompile = (shader, rdr) => {
           csmHook(shader, rdr);
           attachGroundBounceUniforms(shader, groundBounceUniforms);
-          shader.uniforms.uCotCsmFadeK = csmFadeKUniform; // (overhaul r2: the cascades' seam law)
           if (extraHook) extraHook(shader, rdr);
           // 2026-10-08 (the world-ibl lane, with the fleet lane): the material's own envMapIntensity, which three
           // overwrites with the scene's on every draw, back on its share of the sky light (materialEnvIntensity.ts)
           bindMaterialEnvIntensity(shader, mat);
+          shader.uniforms.uCotCsmFadeK = csmFadeKUniform; // (overhaul r2: the cascades' seam law)
           if (receiverOnly) {
             shader.uniforms.uCotReceiverOnly = receiverOnlyShadowUniform;
             shader.uniforms.uCotReceiverOnlyV = receiverOnlyShadowUniform;
