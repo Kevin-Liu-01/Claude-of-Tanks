@@ -225,11 +225,11 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // billboard reaches from its struts' anchors behind to its feed tower before it (the focus of its curved face)
   radomeTower: { family: 'works', defaults: { side: 9, height: 8, radius: 5.2 },
     footprint: (p) => { const r = Math.max(num(p, 'side') / 2, num(p, 'radius')); return [r + 1.0, r + 1.8]; } },
-  troposcatter: { family: 'works', drapes: true, defaults: { width: 18, height: 14, clearance: 2.5 },
+  troposcatter: { family: 'works', drapes: true, defaults: { width: 18, height: 14, clearance: 1.4 },
     footprint: (p) => {
-      const hw = num(p, 'width') / 2, sag = num(p, 'width') * 0.1, rake = Math.min(0.5 * num(p, 'height') + 2, 10);
-      const fz = Math.min(hw * hw / (4 * sag) - sag * 0.5, 0.9 * hw + 2);
-      return [hw + 0.6, Math.max(fz + 0.7, sag * 0.5 + 0.3 + rake + 0.5)];
+      // (stations.ts sagDepth: the raking legs' footings behind to the transmitter module's stair before)
+      const w = num(p, 'width'), sag = Math.max(2.0, w / 6), fz = Math.min(2.2 + (w * w) / (16 * sag), 2.2 + 4 * sag + 7);
+      return [w / 2 + 0.6, (3.1 + fz + 1.6 + 1.4) / 2 + 0.3];
     } },
   guyedMast: { family: 'works', drapes: true, defaults: { height: 36, face: 1.2, guys: 0.36 },
     footprint: (p) => { const g = Math.max(0.2, num(p, 'guys')) * num(p, 'height') + 0.6; return [g, g]; } },
@@ -246,6 +246,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'width') / 2 + 0.4, num(p, 'length') / 2 + 1.7] },
   drumCache: { family: 'works', drapes: true, dressing: () => true, defaults: { rows: 3, columns: 8 },
     footprint: (p) => [(Math.round(num(p, 'columns')) - 1) * 0.37 + 2.4, Math.max(2.2, (Math.round(num(p, 'rows')) - 1) * 0.37 + 0.6)] },
+  // (the airstrip: a draped strip, its markers the props' barrels, a windsock and a shack beside its middle)
+  airstrip: { family: 'works', drapes: true, roadMargin: 0, defaults: { length: 460, width: 26 },
+    footprint: (p) => [num(p, 'width') / 2 + 10, num(p, 'length') / 2 + 1.5] },
   snowFence: { family: 'works', drapes: true, dressing: () => true, defaults: { length: 60 },
     footprint: (p) => [Math.max(2.5, Math.floor(num(p, 'length') / 2.5) * 1.25) + 0.2, 0.6] },
   // a mine's works (mining.ts): the headframe stands over its shaft with its winding house behind (the piece centred on

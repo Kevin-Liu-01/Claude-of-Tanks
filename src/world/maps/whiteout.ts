@@ -150,9 +150,11 @@ export default {
       { kind: 'jamesway', x: -430, z: -230, yawDeg: 0, ground: 'veto', name: 'the west camp (south hut)' },
       { kind: 'jamesway', x: -412, z: -230, yawDeg: 0, ground: 'veto', name: 'the west camp (north hut)' },
       { kind: 'drumCache', x: -430, z: -258, yawDeg: 0, ground: 'veto', name: 'the west camp drums' },
-      { kind: 'jamesway', x: -425, z: 120, yawDeg: 0, ground: 'veto', name: 'the billboard camp (west hut)' },
-      { kind: 'jamesway', x: -407, z: 120, yawDeg: 0, ground: 'veto', name: 'the billboard camp (east hut)' },
-      { kind: 'drumCache', x: -416, z: 145, yawDeg: 0, ground: 'veto', name: 'the billboard camp drums' },
+      { kind: 'jamesway', x: -405, z: 150, yawDeg: 0, ground: 'veto', name: 'the billboard camp (west hut)' },
+      { kind: 'jamesway', x: -387, z: 150, yawDeg: 0, ground: 'veto', name: 'the billboard camp (east hut)' },
+      { kind: 'drumCache', x: -396, z: 172, yawDeg: 0, ground: 'veto', name: 'the billboard camp drums' },
+      // the airstrip on the plateau's west edge, its markers, windsock and radio shack
+      { kind: 'airstrip', x: -440, z: 30, yawDeg: 0, ground: 'veto', name: 'the airstrip' },
       { kind: 'guyedMast', x: -420, z: 330, params: { height: 30 }, ground: 'veto', name: 'the beacon mast' },
       { kind: 'jamesway', x: 420, z: 420, yawDeg: 90, ground: 'veto', name: 'the north-east outpost' },
       { kind: 'drumCache', x: 250, z: 330, yawDeg: 30, ground: 'veto', name: 'the north road cache' },
@@ -170,7 +172,7 @@ export default {
       { kind: 'snowFence', x: 0, z: 190, yawDeg: 0, ground: 'veto', name: 'the north drift fence' },
       { kind: 'snowFence', x: -170, z: 160, yawDeg: -10, ground: 'veto', name: 'the north-west drift fence' },
       { kind: 'snowFence', x: 400, z: -150, yawDeg: 90, ground: 'veto', name: 'the east drift fence' },
-      { kind: 'snowFence', x: -420, z: -100, yawDeg: 90, ground: 'veto', name: 'the west drift fence' },
+      { kind: 'snowFence', x: -398, z: -100, yawDeg: 90, ground: 'veto', name: 'the west drift fence' },
     ],
     // the station's machines (vehicleSetPiecesWorks.ts): the Bv 206 carriers, the Sno-Cats and the D8 dozers that kept the
     // roads and the drifts open (the arctic1980s fleet's trucks and pickups stay the inhabit pass's)
@@ -182,12 +184,27 @@ export default {
       { kind: 'snocat', x: -344, z: 62, yawDeg: 20 }, { kind: 'd8h', x: 168, z: 206, yawDeg: 120 },
       { kind: 'bv206', x: -248, z: 208, yawDeg: 0 }, { kind: 'snocat', x: 318, z: 316, yawDeg: 110 },
       { kind: 'bv206', x: 300, z: -350, yawDeg: -20 },
-      { kind: 'snocat', x: -400, z: -250, yawDeg: 40 }, { kind: 'bv206', x: -395, z: 140, yawDeg: 160 },
+      { kind: 'snocat', x: -400, z: -250, yawDeg: 40 }, { kind: 'bv206', x: -368, z: 166, yawDeg: 160 },
       { kind: 'd8h', x: 230, z: 300, yawDeg: 60 }, { kind: 'snocat', x: 200, z: -380, yawDeg: 20 },
       { kind: 'bv206', x: 290, z: -60, yawDeg: 180 }, { kind: 'snocat', x: 100, z: -330, yawDeg: 300 },
       { kind: 'd8h', x: -300, z: -300, yawDeg: 30 },
       // the dump's burnt-out carrier
       { kind: 'bv206', x: -410, z: -380, yawDeg: 70, wrecked: true },
+    ],
+  },
+  // the map-content lane (2026-10-09; the owner: "so empty", and the bird view the judge): the plateau's frost-shattered
+  // gneiss — tors and outcrops standing out of the snow on the knolls, the ridges and the esker, a field in each quarter
+  // and on each flank, mirrored north and south of the station so neither deployment gains cover
+  scenery: {
+    rockFields: [
+      { geology: 'granite', x: -380, z: -60, radius: 70, count: 9, slopeBias: 0.4, size: [3, 6], name: 'the west knoll tors' },
+      { geology: 'granite', x: 210, z: 130, radius: 80, count: 10, slopeBias: 0.5, size: [3, 6.5], name: 'the east ridge rock' },
+      { geology: 'granite', x: -320, z: -330, radius: 80, count: 9, size: [2.5, 5.5], name: 'the esker boulder field' },
+      { geology: 'granite', x: -380, z: 370, radius: 70, count: 9, size: [2.5, 5.5], name: 'the north-west boulder field' },
+      { geology: 'granite', x: 330, z: -270, radius: 70, count: 8, size: [3, 6], name: 'the south-east tor' },
+      { geology: 'granite', x: 360, z: 330, radius: 70, count: 8, size: [3, 6], name: 'the north-east tor' },
+      { geology: 'granite', x: 40, z: -290, radius: 70, count: 8, slopeBias: 0.5, size: [2.5, 5.5], name: 'the south ridge rock' },
+      { geology: 'granite', x: 110, z: 320, radius: 70, count: 8, size: [2.5, 5.5], name: 'the north berm rock' },
     ],
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the flattest ring's tone grain 0.35 -> 0.60
