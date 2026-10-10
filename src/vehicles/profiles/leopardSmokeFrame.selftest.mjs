@@ -105,7 +105,9 @@ function rows(g){
 function nativeRetained(c){
   const all=[];let capMeshes=0;
   c.tank.root.traverse(o=>{
-    if(!o.isMesh)return;
+    // 2026-10-10 (the netting lane): a field net is cut round the smoke banks' lines of fire, so it follows the caps by
+    // design (ghillieSuit.ts fieldClearanceM); it is no native retained geometry
+    if(!o.isMesh||/_ghillie_/.test(o.name))return;
     if(o.name==='turretDark'){
       const available=new Map();for(const row of rows(o.geometry))available.set(row,(available.get(row)??0)+1);
       for(const p of c.pairs)for(const row of rows(p.cap)){

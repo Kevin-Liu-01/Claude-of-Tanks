@@ -86,6 +86,11 @@ interface TopPanel {
    * over and every hatch still opens.
    */
   autoOpeningsM?: number;
+  /**
+   * The netting lane: openings cut in the cloth only (the lens view slots autoOpeningsM adds): the garnish keeps no
+   * margin from them, its own lens cones keep it out of each view.
+   */
+  slots?: Point2[][];
 }
 
 interface SidePanel {
@@ -840,7 +845,10 @@ interface TopCloth extends ClothSurface {
 }
 
 function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uvk: number): TopCloth {
-  const { x0, x1, z0, z1, nx = 18, nz = 30, outline = null, holes = [] } = panel;
+  const { x0, x1, z0, z1, nx = 18, nz = 30, outline = null } = panel;
+  // the cloth's openings (authored holes, lids and lens slots); the garnish keeps its margin from the first two only
+  const garnishHoles = panel.holes ?? [];
+  const holes = panel.slots?.length ? [...garnishHoles, ...panel.slots] : garnishHoles;
   const NX = nx + 1, NZ = nz + 1;
   const xs = new Float64Array(NX), zs = new Float64Array(NZ);
   for (let i = 0; i < NX; i++) xs[i] = THREE.MathUtils.lerp(x0, x1, i / nx);
@@ -1089,11 +1097,11 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
     allowed(u, v, margin) {
       if (!inside(u, v)) return false;
       if ((panel.foliageExclude ?? []).some((region) => nearPolygon(u, v, region, margin * 0.5))) return false;
-      return !holes.some((hole) => nearPolygon(u, v, hole, margin));
+      return !garnishHoles.some((hole) => nearPolygon(u, v, hole, margin));
     },
     edge: (u, v) => edgeDistance(u, v, ring),
     cardOk(p) {
-      if (holes.some((hole) => nearPolygon(p[0], p[2], hole, (panel.garnishOpeningMarginM ?? 0.09) * 0.5))) return false;
+      if (garnishHoles.some((hole) => nearPolygon(p[0], p[2], hole, (panel.garnishOpeningMarginM ?? 0.09) * 0.5))) return false;
       const h = heightAt(p[0], p[2]);
       // over the deck the spray stays above its own net; past the deck's edge it may droop over it
       return h === null || !inside(p[0], p[2]) || p[1] > h - 0.03;
@@ -3511,10 +3519,12 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number): FieldClearanc
     const d = Math.hypot(dy, dz);
     if (d < 1e-6) return true;
     const phi = Math.atan2(dy, dz);
-    // the pitch bringing the bore nearest the point, and the one bringing the breech nearest it (a point behind the
-    // trunnion meets the breech end, which dips as the muzzle rises)
+    // the pitch bringing the bore nearest the point, and for a point below the trunnion and behind it the one bringing
+    // the breech nearest it (the breech end dips as the muzzle rises, and can come out under the turret's floor; above
+    // the trunnion the turret's own roof lies between the breech and any cloth on it)
     const back = phi > 0 ? phi - Math.PI : phi + Math.PI;
-    for (const theta of [THREE.MathUtils.clamp(phi, lo, hi), THREE.MathUtils.clamp(back, lo, hi)]) {
+    const thetas = dy < 0 && dz < 0 ? [THREE.MathUtils.clamp(phi, lo, hi), THREE.MathUtils.clamp(back, lo, hi)] : [THREE.MathUtils.clamp(phi, lo, hi)];
+    for (const theta of thetas) {
       const e = gunBox(d * Math.cos(phi - theta));
       if (!e) continue;
       // the point's offset off the bore at that pitch: above (+) or below (-) it
@@ -3809,13 +3819,11 @@ function addGhillieOwner(
         if (bx1 + margin < panel.x0 || bx0 - margin > panel.x1 || bz1 + margin < panel.z0 || bz0 - margin > panel.z1) continue;
         opened.push(rect(bx0 - margin, bx1 + margin, bz0 - margin, bz1 + margin));
       }
-      for (const slot of slots) {
-        if (slot.every(([x]) => x < panel.x0) || slot.every(([x]) => x > panel.x1)
-          || slot.every(([, z]) => z < panel.z0) || slot.every(([, z]) => z > panel.z1)) continue;
-        opened.push(slot);
-      }
     }
-    const laid = topCloth(opened.length ? { ...panel, holes: [...(panel.holes ?? []), ...opened] } : panel, cfg, support, uvk);
+    const slotted = margin === undefined ? [] : slots.filter((slot) => !(slot.every(([x]) => x < panel.x0) || slot.every(([x]) => x > panel.x1)
+      || slot.every(([, z]) => z < panel.z0) || slot.every(([, z]) => z > panel.z1)));
+    const laid = topCloth(opened.length || slotted.length
+      ? { ...panel, holes: [...(panel.holes ?? []), ...opened], ...(slotted.length ? { slots: slotted } : {}) } : panel, cfg, support, uvk);
     // the netting lane: a carrier is filtered by the clearance as it is laid, and the drapes built after it see only
     // what is left of it (a drape never starts from a roof edge the clearance took away)
     if (coverOk) {

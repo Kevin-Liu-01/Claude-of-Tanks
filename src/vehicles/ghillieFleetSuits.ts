@@ -526,7 +526,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     id: 'kf51b', seed: 5101, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.1, hemFloorM: 0.68,
     turret: {
-      top: [laid({ x0: -1.58, x1: 1.56, z0: -3.09, z1: 1.73, nx: 39, nz: 60, y: 0.64, garnishRiseM: 0.16, seed: 11 })],
+      // the fore-roof over the moving gun housing stays open air (kf51bTurretCenter.selftest: x +-0.40, z 0.92-1.85)
+      top: [laid({ x0: -1.58, x1: 1.56, z0: -3.09, z1: 1.73, nx: 39, nz: 60, y: 0.64, garnishRiseM: 0.16, seed: 11,
+        holes: [rect(-0.48, 0.48, 0.86, 1.90)] })],
       // the front drapes cut round the cheek sensors (turret z 0.88, both flanks)
       side: [...flanks(-0.38, 1.45, 0.68, 0.44, 1.55, 17, {}, () => [cut(0.66, 1.10, 0.50, 0.90)]),
         ...flanks(-2.94, -1.13, 0.68, 0.44, 1.55, 19)],

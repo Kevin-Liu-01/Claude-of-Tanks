@@ -14,7 +14,8 @@ for(const quality of ['high','low']) {
     function ray(owner,point,direction,far) {
       tank.root.updateMatrixWorld(true);
       const surfaces=[];
-      tank.root.traverseVisible(mesh=>{if(mesh.isMesh)surfaces.push(mesh)});
+      // 2026-10-10 (the netting lane): the field net and garnish (ghillieSuit.ts) are cloth over the stock these rays read
+      tank.root.traverseVisible(mesh=>{if(mesh.isMesh&&!/_ghillie_/.test(mesh.name))surfaces.push(mesh)});
       const local=new THREE.Vector3(...point);if(owner===turret)local.sub(pivot);
       const hit=new THREE.Raycaster(owner.localToWorld(local),new THREE.Vector3(...direction).transformDirection(owner.matrixWorld),0,far*owner.getWorldScale(new THREE.Vector3()).x).intersectObjects(surfaces,false)[0];
       if(!hit)return null;

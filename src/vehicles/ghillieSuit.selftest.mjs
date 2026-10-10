@@ -481,10 +481,12 @@ for (const [id, cfg] of Object.entries(FLEET_GHILLIE_SUITS)) {
     }
   });
   if (suit.turret.length) {
+    // the bore's line ahead of the trunnion (world frame: the rigs ride the hull's suspension)
     const net = suit.turret.find((m) => /_net$/.test(m.name));
-    const gunWorldY = rigs.turret.position.y + 0.38;
-    const hits = new THREE.Raycaster(new THREE.Vector3(0, gunWorldY, 8), new THREE.Vector3(0, 0, -1), 0, 14).intersectObject(net, false);
-    assert.ok(hits.every((hit) => hit.point.z < rigs.turret.position.z - 0.72), `${id} leaves the complete mantlet/gun corridor open`);
+    const trunnion = new THREE.Vector3().setFromMatrixPosition(rigs.gun.matrixWorld);
+    const hits = new THREE.Raycaster(new THREE.Vector3(trunnion.x, trunnion.y, trunnion.z + 8), new THREE.Vector3(0, 0, -1), 0, 8)
+      .intersectObject(net, false);
+    assert.deepEqual(hits.map((hit) => hit.point.toArray().map((v) => +v.toFixed(2))), [], `${id} leaves the gun's bore line open`);
   }
   tank.dispose();
 }

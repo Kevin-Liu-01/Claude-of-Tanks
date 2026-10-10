@@ -4995,7 +4995,8 @@ export function* attachTankDecorationsSteps(
         return rejectCommit(name, parts, reason);
       }
       if (!sweepGuardOK(bb)) return rejectCommit(name, parts, 'sweep');
-      if (meetsDrape('hull', bb)) return rejectCommit(name, parts, 'suit-drape');
+      // a gameplay fitting (the smoke banks) is always seated: the field suit gives way to it instead (ghillieDrape.ts)
+      if (!FUNCTIONAL_KITS.has(name) && meetsDrape('hull', bb)) return rejectCommit(name, parts, 'suit-drape');
       return true;
     }
 
@@ -5014,14 +5015,14 @@ export function* attachTankDecorationsSteps(
         return rejectCommit(name, parts, 'turret-width');
       }
       if (rMax > sweepR + 0.55) return rejectCommit(name, parts, 'turret-reach');
-      if (hullSuitTop.size) {
+      if (hullSuitTop.size && !FUNCTIONAL_KITS.has(name)) {
         // the piece's horizontal reach from the axis: its box's nearest approach to its farthest corner
         const rMin = Math.hypot(Math.max(0, bb.min.x, -bb.max.x), Math.max(0, bb.min.z, -bb.max.z));
         let under = -Infinity;
         for (let k = Math.floor(rMin / 0.05) - 1; k <= Math.floor(rMax / 0.05) + 1; k++) under = Math.max(under, hullSuitTop.get(k) ?? -Infinity);
         if (bb.min.y < under + 0.03) return rejectCommit(name, parts, 'hull-suit');
       }
-      if (meetsDrape('turret', bb)) return rejectCommit(name, parts, 'suit-drape');
+      if (!FUNCTIONAL_KITS.has(name) && meetsDrape('turret', bb)) return rejectCommit(name, parts, 'suit-drape');
       sweepRLive = Math.max(sweepRLive, rMax);
       turretMinYLive = Math.min(turretMinYLive, bb.min.y);
       for (const x of [bb.min.x, bb.max.x]) {

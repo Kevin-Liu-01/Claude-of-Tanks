@@ -285,7 +285,9 @@ for(const quality of ['high','low']){
   const first=capturePrimaryHull(createTank,'ariete_c1_x',opts),second=capturePrimaryHull(createTank,'ariete_c2_x',opts),c1=first.tank,c2=second.tank;
   commanderDonor(c2,opts);
   try{c1.root.updateMatrixWorld(true);c2.root.updateMatrixWorld(true);samePrimary(c1,c2);outwardWheels(c1);outwardWheels(c2);reactiveCassettes(c2);assertC2PrimaryHullDelta(first.stocks,second.stocks);assertC2ReceivingClearance(c2,first.stocks,second.stocks);clearancePoses+=mechanicalClearance(c1,'ariete_c1_x');clearancePoses+=mechanicalClearance(c2,'ariete_c2_x');gear(c2);bore(c2,true);poses(c2);negatives(c2);commanderClearance(c2);lodCosts.push(...lodPresentation(c1,'ariete_c1_x',quality),...lodPresentation(c2,'ariete_c2_x',quality));
-    const c=census(c2);assert(c.triangles<=100000,'C2 frozen whole-model HIGH ceiling');assert(c.draws<=65,'merged MBT batches');costs.push({quality,triangles:c.triangles,draws:c.draws});
+    // 2026-10-10 (the netting lane): the owner's order of 2026-10-09 ("a ton more netting and camo leaves all over") adds the
+// C2's field net and garnish, four draws and about 6.5k triangles at HIGH (99.3k bare; 105.7k with it)
+const c=census(c2);assert(c.triangles<=108000,'C2 frozen whole-model HIGH ceiling');assert(c.draws<=65,'merged MBT batches');costs.push({quality,triangles:c.triangles,draws:c.draws});
   }finally{c1.dispose();c2.dispose();first.stocks.forEach(g=>g.dispose());second.stocks.forEach(g=>g.dispose());}
 }
 assert(costs[1].triangles<=costs[0].triangles*.75,'C2 LOW <=75% HIGH');

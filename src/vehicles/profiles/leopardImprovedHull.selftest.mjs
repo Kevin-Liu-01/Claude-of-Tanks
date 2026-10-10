@@ -90,7 +90,15 @@ for (const quality of ['high', 'low']) {
 const source = createTank('leo2a7v_x', null, { proceduralOnly: true, geometryReceipt: true });
 source.root.updateMatrixWorld(true);
 near(getSpec('leo2a7v_x').dims.widthM, 4, '2A7V retains its own dimensions');
-near(size(source.root.getObjectByName('rig_hull')).x, 4.010000, '2A7V hull unchanged');
+// 2026-10-10 (the netting lane, the owner's order of 2026-10-09: "a ton more netting and camo leaves" on the 2A7V): the
+// field net's skirt drapes hang outside the hull; the hull's own width is measured without them
+const bare = (object) => {
+  const box = new THREE.Box3();
+  object.updateMatrixWorld(true);
+  object.traverse((o) => { if (o.isMesh && !/_ghillie_/.test(o.name)) box.expandByObject(o, true); });
+  return box.getSize(new THREE.Vector3());
+};
+near(bare(source.root.getObjectByName('rig_hull')).x, 4.010000, '2A7V hull unchanged');
 near(size(source.root.getObjectByName('rig_turret')).x, 3.180981, '2A7V turret unchanged');
 source.dispose();
 console.log('leopardImprovedHull.selftest: ok');

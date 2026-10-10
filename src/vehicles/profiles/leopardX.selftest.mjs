@@ -173,8 +173,10 @@ for (const [id, source] of Object.entries(sources)) {
       tank.root.traverse(o=>{
         if(['armor','externalArmor'].includes(o.userData?.combatHitboxRole))
           assert.notEqual(o.userData.continuityRole,'open-lattice',`${id}/${o.name}: no structural armor reclassified`);
-        if(isOpenLatticeMesh(o))assert.ok(/OpenLattice/.test(o.name)||ropes.includes(o),
-          `${id}/${o.name}: only measured cage bars and named recovery ropes qualify`);
+        // 2026-10-10 (the netting lane, the owner's order of 2026-10-09): the field net and its garnish are open lattice
+        // too (an alpha-cut net over air), named as the suit's (ghillieSuit.ts)
+        if(isOpenLatticeMesh(o))assert.ok(/OpenLattice/.test(o.name)||/_ghillie_/.test(o.name)||ropes.includes(o),
+          `${id}/${o.name}: only measured cage bars, named recovery ropes and the field net qualify`);
       });
     }
 

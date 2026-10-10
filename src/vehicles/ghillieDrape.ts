@@ -187,13 +187,15 @@ function recheckLifted(mesh: THREE.Mesh, block: number, lifted: Uint8Array): voi
 const SMOKE_LINE_REACH_M = 1.6;
 const SMOKE_LINE_BASE_M = 0.1;
 const SMOKE_LINE_SLOPE = 0.08;
+const SMOKE_TUBE_BACK_M = 0.3;
 
 /** Whether p lies in a tube along one of the [px, py, pz, dx, dy, dz] rows. */
 function onSmokeLine(rows: readonly number[], x: number, y: number, z: number): boolean {
   for (let i = 0; i < rows.length; i += 6) {
     const wx = x - rows[i], wy = y - rows[i + 1], wz = z - rows[i + 2];
     const along = wx * rows[i + 3] + wy * rows[i + 4] + wz * rows[i + 5];
-    if (along < -0.05 || along > SMOKE_LINE_REACH_M) continue;
+    // the bank's tubes behind each mouth too (the suit gives way to the fitting's body, not only its line of fire)
+    if (along < -SMOKE_TUBE_BACK_M || along > SMOKE_LINE_REACH_M) continue;
     const lx = wx - rows[i + 3] * along, ly = wy - rows[i + 4] * along, lz = wz - rows[i + 5] * along;
     if (Math.hypot(lx, ly, lz) < SMOKE_LINE_BASE_M + Math.max(0, along) * SMOKE_LINE_SLOPE) return true;
   }
