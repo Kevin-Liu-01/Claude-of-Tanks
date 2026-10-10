@@ -178,7 +178,7 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
     const lobes = at60.puffs.filter((p) => p.windK === 0 && p.drag >= 1);
     for (const p of lobes) {
       const g = 1 - Math.pow(1 - Math.min(1, 2.4 / p.life), p.growExp);
-      assert.ok(p.size0 >= 2 && p.size0 + (p.size1 - p.size0) * g >= 0.85 * p.size1, `a lobe swells with the bank (${p.size0} m at birth, growth ${g.toFixed(2)} by 2.4 s)`);
+      assert.ok(p.size0 >= Math.min(2, 0.6 * p.size1) && p.size0 + (p.size1 - p.size0) * g >= 0.85 * p.size1, `a lobe swells with the bank (${p.size0} m at birth, growth ${g.toFixed(2)} by 2.4 s)`);
     }
     // the wall is modelled: its crowns (settling over 3.5 m) the sunlit white, brighter than any of its feet (under 2.5 m)
     const settle = (p) => p.y + p.vy / p.drag;

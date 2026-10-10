@@ -2861,7 +2861,9 @@ function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventB
     const bits=entity.input.auxiliaryBits||0; entity.input.auxiliaryBits=0;
     if(bits&2048)game.matchModeController?.requestSupply(entity.id,'ammo',game.timeS);
     if(bits&4096)game.matchModeController?.requestSupply(entity.id,'heal',game.timeS);
-    if(bits&64 && requestAuxiliary(entity,'smoke',game.timeS,world.heightField.getHeightAt)){
+    // (2026-10-09) the canisters fly through the world's own collision: they bounce off walls, and the clouds stay out
+    // of the houses beside them
+    if(bits&64 && requestAuxiliary(entity,'smoke',game.timeS,world.heightField.getHeightAt,world)){
       const screens=game.auxiliarySmokeScreens??=[];screens.push(entity.combat.auxiliary!.smoke!);
       if(screens.length>84)screens.shift();
       bus.emit('auxiliary:smokeScreens',{screens});

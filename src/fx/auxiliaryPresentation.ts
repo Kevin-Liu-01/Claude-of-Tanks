@@ -1,8 +1,8 @@
 import { restoreSmokeScreen } from '../sim/smokeReceipt.ts';
 import * as THREE from 'three';
 import { auxiliaryCapabilities, SMOKE_DURATION_S, type AuxiliaryState, type SmokeScreen } from '../sim/auxiliarySystems.ts';
-import {smokeVolume, smokeBankCount, SMOKE_WIND_X, SMOKE_WIND_Z, type SmokeVolume} from '../sim/smokeScreen.ts';
-import { smokeCanisterPosition, SMOKE_GRAVITY_MPS2, type SmokeCanister } from '../sim/smokeBallistics.ts';
+import {smokeVolume, smokeBankCount, smokeBankBase, smokeHoldInside, smokeWallRoom, SMOKE_WIND_X, SMOKE_WIND_Z, type SmokeVolume} from '../sim/smokeScreen.ts';
+import { smokeCanisterPosition, smokeCanisterVelocity, SMOKE_GRAVITY_MPS2, SMOKE_SEGMENT, type SmokeCanister } from '../sim/smokeBallistics.ts';
 import type { BlastContext } from './blastRecipes.ts';
 import {
   puffRandom, slotSeed, smokeBankBody, smokeBankLobe, smokeBankWisp, smokeCanisterStrike, smokeDecayHaze, smokeGrenadeBurst,
@@ -42,10 +42,10 @@ const WISP_EVERY_S = 0.06;
 const WISP_BANKS = 3;
 /** a wisp's longest life (atmosRecipes.ts smokeGrenadeWisp): a late first frame backdates none that had died */
 const WISP_LIFE_S = 1.2;
-/** (fx 8m, wave 337: "no visible strike or bounce at the wall") a receipt that struck a wall carries one group of this
- *  many numbers per bounce after its launch's seven (sim/smokeBallistics.ts: the time it left the wall, where, and its
- *  velocity after); the strike's puffs live under this long */
-const STRIKE_SEGMENT = 7, STRIKE_LIFE_S = 2;
+/** (fx 8m, wave 337: "no visible strike or bounce at the wall") a receipt that struck a wall carries one group of
+ *  SMOKE_SEGMENT numbers per bounce after its launch's seven (sim/smokeBallistics.ts: the time it left the wall, where,
+ *  and its velocity after); the strike's puffs live under this long */
+const STRIKE_LIFE_S = 2;
 /** bloom: lobes are born this far apart, the foot lobes first with a crown every third (any prefix mixes both) */
 const LOBE_EVERY_S = 0.09;
 /** body puffs keep the wall dense while the lobes age; wisps tear off its top in the scene's wind */
@@ -186,7 +186,8 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     for(const shot of screen.canisters??[]){
       if(age<0||age>shot[6]+.5||count>=256)continue;
       smokeCanisterPosition(shot,age,position);
-      direction.set(shot[3],shot[4]-SMOKE_GRAVITY_MPS2*Math.min(age,shot[6]),shot[5]).normalize();
+      // (2026-10-09) along its own flight segment: a canister that bounced off a wall turns with its new path
+      smokeCanisterVelocity(shot,age,direction);direction.normalize();
       q.setFromUnitVectors(yAxis,direction);scale.setScalar(1);
       matrix.compose(position,q,scale);grenades.setMatrixAt(count++,matrix);
       if(trail&&age<shot[6])ports.smoke(position,.09,.4,.75);
@@ -285,7 +286,7 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     }
     // 2. the burst where it lands
     if(tLand>from&&tLand<=to&&tLand+3.9>=to){
-      smokeGrenadeBurst(C,puffRandom(slotSeed(born,lx,lz,bank,50)),lx,ports.ground(lx,lz),lz,share,tLand-to);
+      smokeGrenadeBurst(C,puffRandom(slotSeed(born,lx,lz,bank,50)),lx,smokeBankBase(screen,bank-2,lx,lz,ports.ground),lz,share,tLand-to);
     }
     // the bank's settled centre (its full growth, 2.2 s after landing, drifted as the simulation drifts it)
     smokeVolume(screen,born+tLand+2.2,bank-2,volume,ports.ground);
@@ -302,14 +303,19 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       const R=puffRandom(slotSeed(born,lx,lz,bank,100+j));
       const along=crown?(R()-.5)*Math.min(4,span*.5):-back+(slot+.5)*span/feet+(R()-.5)*1.2;
       spot(w,o,along,crown?(R()-.5)*1.5:(R()-.5)*3.2,cx,cz);
+      // (2026-10-09) no lobe of a bank past the walls its smoke stopped at (the settled volume's reach, smokeScreen.ts)
+      smokeHoldInside(screen,bank-2,volume,at);
       lobe.x0=lx;lobe.y0=ly+.6;lobe.z0=lz;
       lobe.tx=at.x;lobe.tz=at.z;
       // (fx 8m, wave 337: "a flat grey mass with little billow") the crowns stand on the feet, their tops a metre and
       // more over the feet's line (a lumpy, sunlit top), every centre inside the envelope's 4.2 m
-      lobe.ty=ports.ground(lobe.tx,lobe.tz)+(crown?3.55+R()*.55:1.6+R()*.8);
+      lobe.ty=smokeBankBase(screen,bank-2,lobe.tx,lobe.tz,ports.ground)+(crown?3.55+R()*.55:1.6+R()*.8);
       // (fx 8l) more, smaller lobes of mixed size (WALL_PITCH_M 2.8 -> 2.2): a cauliflower wall, not a row of balls;
       // (fx 8m) the crowns smaller than the feet they stand on, so they read as its bumps
       lobe.size=crown?5.2+R()*1.2:7.2+R()*2.0;
+      // (2026-10-10) a lobe by a wall no wider than its room there and a metre (it neither spreads through the wall nor
+      // over the roof); the open field keeps every size
+      lobe.size=Math.min(lobe.size,Math.max(1.6,2*(smokeWallRoom(screen,bank-2,lobe.tx,lobe.tz)+1)));
       lobe.life=(crown?CROWN_END_S:LOBE_END_S)-t;
       lobe.fadeOut=Math.min(.9,Math.max(.25,((crown?CROWN_ERODE_S:LOBE_ERODE_S)-t)/lobe.life));
       lobe.crown=crown;lobe.bo=t-to;
@@ -325,8 +331,10 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       const R=puffRandom(slotSeed(born,lx,lz,bank,200+j));
       smokeVolume(screen,born+t,bank-2,volume,ports.ground);
       spot(w,o,-back+R()*span,(R()-.5)*.3*volume.radius,volume.x,volume.z);
+      smokeHoldInside(screen,bank-2,volume,at);
       const x=at.x,z=at.z;
-      smokeBankBody(C,R,x,ports.ground(x,z)+1.5+R()*2.0,z,8+R()*2.5,life,Math.min(.75,Math.max(.25,(BODY_ERODE_S-t)/life)),t-to);
+      const y=smokeBankBase(screen,bank-2,x,z,ports.ground)+1.5+R()*2.0,size=Math.min(8+R()*2.5,Math.max(1.6,2*(smokeWallRoom(screen,bank-2,x,z)+1)));
+      smokeBankBody(C,R,x,y,z,size,life,Math.min(.75,Math.max(.25,(BODY_ERODE_S-t)/life)),t-to);
     }
     // 5. wisps torn off its top into the scene's wind
     const tops=Math.max(1,Math.round(TOPS*share)),topEvery=TOP_EVERY_S*TOPS/tops;
@@ -336,8 +344,10 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       const R=puffRandom(slotSeed(born,lx,lz,bank,300+j));
       smokeVolume(screen,born+t,bank-2,volume,ports.ground);
       const a=R()*Math.PI*2,rho=R()*.4*volume.radius;
-      const x=volume.x+Math.cos(a)*rho,z=volume.z+Math.sin(a)*rho;
-      smokeBankWisp(C,R,x,ports.ground(x,z)+4.6+R()*1.0,z,t-to);
+      at.x=volume.x+Math.cos(a)*rho;at.z=volume.z+Math.sin(a)*rho;
+      smokeHoldInside(screen,bank-2,volume,at);
+      const x=at.x,z=at.z;
+      smokeBankWisp(C,R,x,smokeBankBase(screen,bank-2,x,z,ports.ground)+4.6+R()*1.0,z,t-to,Math.max(1.6,2*(smokeWallRoom(screen,bank-2,x,z)+1)));
     }
     // 6. (r2) the haze tail: as the wall erodes, a thin veil left in the bank drifts on with the simulation's breeze
     const hazes=Math.max(1,Math.round(HAZES*share));
@@ -347,8 +357,9 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       const R=puffRandom(slotSeed(born,lx,lz,bank,400+j));
       smokeVolume(screen,born+t,bank-2,volume,ports.ground);
       spot(w,o,-back+R()*span,(R()-.5)*.25*volume.radius,volume.x,volume.z);
+      smokeHoldInside(screen,bank-2,volume,at);
       const x=at.x,z=at.z;
-      smokeScreenHaze(C,R,x,ports.ground(x,z)+2.0+R()*1.2,z,SMOKE_WIND_X,SMOKE_WIND_Z,SCREEN_END_S-t+HAZE_LINGER_S,t-to);
+      smokeScreenHaze(C,R,x,smokeBankBase(screen,bank-2,x,z,ports.ground)+2.0+R()*1.2,z,SMOKE_WIND_X,SMOKE_WIND_Z,SCREEN_END_S-t+HAZE_LINGER_S,t-to,Math.max(1.6,2*(smokeWallRoom(screen,bank-2,x,z)+1)));
     }
     // 7. (fx 8l) the decay: the eroding wall's top and edges taken by the scene's wind, thinning for 10-20 s past the
     //    sight block (born inside the drifting bank while the simulation still blocks)
@@ -359,9 +370,11 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       const R=puffRandom(slotSeed(born,lx,lz,bank,500+j));
       smokeVolume(screen,born+t,bank-2,volume,ports.ground);
       spot(w,o,-back+R()*span,(R()-.5)*.5*volume.radius,volume.x,volume.z);
+      // (fx 8m, over fix/smoke-collision) held inside the walls its bank stopped at, no wider than its room by a wall
+      smokeHoldInside(screen,bank-2,volume,at);
       const x=at.x,z=at.z;
       const life=DECAY_LIFE_S[0]+R()*(DECAY_LIFE_S[1]-DECAY_LIFE_S[0]);
-      smokeDecayHaze(C,R,x,ports.ground(x,z)+2.6+R()*2.4,z,life,t-to);
+      smokeDecayHaze(C,R,x,smokeBankBase(screen,bank-2,x,z,ports.ground)+2.6+R()*2.4,z,life,t-to,Math.max(1.6,2*(smokeWallRoom(screen,bank-2,x,z)+1)));
     }
   }
   /** (fx 8m, wave 337: "no visible strike or bounce at the wall") every canister's strikes on its way, over screen ages
@@ -372,11 +385,11 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     const shots=screen.canisters;if(!shots)return;
     for(let i=0;i<shots.length;i++){
       const shot=shots[i]!;
-      for(let o=7,b=0;o+STRIKE_SEGMENT-1<shot.length;o+=STRIKE_SEGMENT,b++){
+      for(let o=7,b=0;o+SMOKE_SEGMENT-1<shot.length;o+=SMOKE_SEGMENT,b++){
         const t=shot[o]!;
         if(!(t>from&&t<=to)||t+STRIKE_LIFE_S<to)continue;
         // the velocity it struck with: the segment before this bounce's, at the bounce
-        const p=o-STRIKE_SEGMENT,t0=p>=7?shot[p]!:0,v=p>=7?p+4:3;
+        const p=o-SMOKE_SEGMENT,t0=p>=7?shot[p]!:0,v=p>=7?p+4:3;
         let nx=shot[o+4]!-shot[v]!,ny=shot[o+5]!-(shot[v+1]!-SMOKE_GRAVITY_MPS2*(t-t0)),nz=shot[o+6]!-shot[v+2]!;
         const nl=Math.hypot(nx,ny,nz);
         if(nl>1e-6){nx/=nl;ny/=nl;nz/=nl;}else{nx=0;ny=1;nz=0;}

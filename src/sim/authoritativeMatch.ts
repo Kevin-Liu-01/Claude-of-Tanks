@@ -1611,7 +1611,9 @@ export function createAuthoritativeMatch({
     if (!result) {
       if(bits&PLAYER_ACTION_BITS.SUPPLY_AMMO)modeController.requestSupply(entity.id,'ammo',timeS+modeTimeOffsetS);
       if(bits&PLAYER_ACTION_BITS.SUPPLY_HEAL)modeController.requestSupply(entity.id,'heal',timeS+modeTimeOffsetS);
-      if (bits & PLAYER_ACTION_BITS.SMOKE && requestAuxiliary(entity, 'smoke', timeS, heightField.getHeightAt)) {
+      // (2026-10-09) the canisters fly through the match's collision (the shards and their destruction state): they
+      // bounce off walls, and the clouds stay out of the houses beside them
+      if (bits & PLAYER_ACTION_BITS.SMOKE && requestAuxiliary(entity, 'smoke', timeS, heightField.getHeightAt, worldCollision)) {
         auxiliarySmokeScreens.push(entity.combat.auxiliary!.smoke!);
         if(auxiliarySmokeScreens.length>84)auxiliarySmokeScreens.shift();
       }
