@@ -71,7 +71,7 @@ function fixture({ closeThrows = false } = {}) {
   const functions = [
     declaration('mulberry32'), declaration('splatFields'), declaration('splatFieldSteps'),
     ...['fieldSample', 'wrapUnit', 'sampleSplatNoise', 'makeShaderNoiseTexture',
-      'selectTerrainLandformMask', 'createWetSplatLayer', 'createWetSplatLayerSteps', 'stackLandUseBake'].map(declaration),
+      'selectTerrainLandformMask', 'createWetSplatLayer', 'createWetSplatLayerSteps', 'stackLandUseBake', 'snowRockHoldLine'].map(declaration),
     material,
     ...['buildTerrainMeshes', 'buildTerrainMeshesAsync', 'terrainBuildSteps'].map(declaration),
   ].join('\n').replace(/^export /gm, '');
@@ -79,9 +79,11 @@ function fixture({ closeThrows = false } = {}) {
     'layer', 'own', 'state', 'closeThrows', 'groundReduxUniformValues', 'resolveGroundReduxProfile', 'landUseUniformValues', 'resolveLandUseProfile', 'bakeLandUseSteps', 'landUseTierOf', 'LAND_BAKE_LAYERS', stripTypeScriptTypes(`
     const attachTerrainLandUse = () => {};
     const SPLAT_FIELD_S = 256, CHUNKS = 8, CHUNK_SIZE = 128, HALF = 512;
-    const LOD_SEGS = [96,48,24], SPLAT_COMMON_FRAG = '', SPLAT_NORMAL_FRAG = '';
+    const LOD_SEGS = [96,48,24], SPLAT_COMMON_FRAG = '', SPLAT_NORMAL_FRAG = '', SNOW_ROCK_HOLD_LINE = '';
     let _splatFields = null;
     function* buildHorizonRingSteps() { return new THREE.Group(); }
+    // (2026-10-08, the ring worker) no ring supply in a sandbox build: the ring builds where it stands
+    function horizonRingSupplyFor() { return null; }
     function* buildFineGridSteps() { return {}; }
     function* buildChunkGeometrySteps() { state.chunks++; return new THREE.BufferGeometry(); }
     const registerRetainedObject3DResources = () => {};
@@ -161,7 +163,10 @@ try {
   assert.equal(candidate.state.noiseCalls, calls, 'warm synchronous path does no noise work');
   const warm = drain(candidate.api.steps());
   assert.equal(warm.count, 0); assert.equal(warm.value, completed.value);
-  synchronous.api.noiseTexture(3011); candidate.api.noiseTexture(3011);
+  synchronous.api.noiseTexture(3011);
+  // (2026-10-05) the upload's orientation: row 0 at v = 0, the rows the CPU twin's fieldSample reads (a canvas defaults
+  // to flipY, which mirrored every field in z against its twin)
+  assert.equal(candidate.api.noiseTexture(3011).flipY, false, 'the noise texture uploads unflipped: the shader reads the twin\'s rows');
   assert.deepEqual(candidate.state.uploads, synchronous.state.uploads, 'exact quantized RGBA and upload options');
   assert.equal(candidate.state.uploads[0].size, 256);
   assert.equal(candidate.state.uploads[0].options.anisotropy, 16);

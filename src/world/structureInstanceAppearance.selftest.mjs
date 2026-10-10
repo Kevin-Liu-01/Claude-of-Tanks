@@ -28,9 +28,11 @@ assert.ok(luminance(RUINSPIRES_WINDOW_STYLE.curtainColor) < 0.22,
 assert.ok(RUINSPIRES_WINDOW_STYLE.curtainEmissiveIntensity <= 0.02,
   'Ruinspires window fill cannot form white emissive bands');
 assert.ok(RUINSPIRES_WINDOW_STYLE.glassRoughness >= 0.75
-  && RUINSPIRES_WINDOW_STYLE.glassEnvMapIntensity <= 0.25
   && RUINSPIRES_WINDOW_STYLE.glassClearcoat <= 0.05,
   'Ruinspires glazing cannot mirror the exposed sky into pale window cards');
+// (2026-10-08, gauntlet wave 309: the sky share stays whole — an honored 0.22 read as black voids; the roughness and the
+// thin clearcoat keep the panes from mirroring the sky)
+assert.equal(RUINSPIRES_WINDOW_STYLE.glassEnvMapIntensity, 1.0, 'Ruinspires glazing takes the sky light the approved windows had');
 assert.equal(resolveRowhouseTrimBucket('stone', false, true), 'stone',
   'low-contrast ruined-city facades cannot place pale plaster lines on dark masonry');
 assert.equal(resolveRowhouseTrimBucket('plaster3', false, true), 'stone',

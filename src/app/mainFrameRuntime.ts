@@ -44,6 +44,7 @@ interface MainFrameRuntimeOptions {
   scene: Scene;
   camera: PerspectiveCamera;
   game: MainGameState;
+  thermalVehicles?: ReturnType<typeof createThermalVehicles>;
   scheduleFrame(): void;
   isGraphicsContextLost(): boolean;
   syncViewportPixelRatio(): boolean;
@@ -62,7 +63,7 @@ interface MainFrameRuntimeOptions {
   post: PostRuntime;
   showroom: GarageShowroomRuntime;
   pedestal: GaragePedestalRuntime;
-  garageModePreview?: { readonly animated: boolean; update(dt: number): void; clear(): void };
+  garageModePreview?: { readonly animated: boolean; readonly pending?: boolean; update(dt: number): void; clear(): void };
   /** The one network pump every phase shares (the multiplayer composition's session owner). */
   networkSession: { pump(dtSeconds: number, nowMs: number): void };
   garageFramePacer: GarageFramePacer;
@@ -98,6 +99,7 @@ export function createMainFrameRuntime({
   scene,
   camera,
   game,
+  thermalVehicles = createThermalVehicles(),
   scheduleFrame,
   isGraphicsContextLost,
   syncViewportPixelRatio,
@@ -160,7 +162,6 @@ export function createMainFrameRuntime({
   }
 
   const forward = new Vector3();
-  const thermalVehicles = createThermalVehicles();
   const garageFrameRequest: GarageFrameRequest = { animate: false };
   let lastMs = -1;
   let lastFov = camera.fov;
@@ -192,6 +193,13 @@ export function createMainFrameRuntime({
     fx?.update(dtSeconds, game.shells, camera, resolveFxSubject);
     updateNightLighting?.();
     if (getShotHudFrame()) battleHudFrame.redrawFrozen();
+    // A shot frame is never the Garage's static presentation: it releases the static-presentation dormancy latch every
+    // frame, as a battle frame does (renderPresentation below). The Garage GPU warm sets that latch in its `finally`
+    // (garageGpuWarmRuntime.ts) and can finish after a capture has staged its battlefield; this frame's own forced
+    // update bypasses the latch, but a capture tool that samples the live, unforced update (the cost probes) would
+    // otherwise freeze every cascade for the whole run (2026-10-08, the clouds lane's F2c: one page of three drew no
+    // shadow map). Releasing an already released latch is a no-op.
+    lighting.setStaticPresentationDormant(false);
     lighting.update(true);
     post.render(dtSeconds, frameWallDtSeconds);
   };
@@ -199,11 +207,11 @@ export function createMainFrameRuntime({
   const prepareGarageFrame = (nowMs: number, dtSeconds: number): boolean => {
     if (game.phase !== 'garage') { garageModePreview?.clear(); return true; }
     networkSession.pump(dtSeconds, nowMs);
-    garageFrameRequest.animate = showroom.moving || pedestal.switchPending || !!garageModePreview?.animated;
+    garageFrameRequest.animate = showroom.moving || pedestal.switchPending || !!garageModePreview?.animated || !!garageModePreview?.pending;
     if (!garageFramePacer.shouldRender(nowMs, garageFrameRequest)) return false;
     showroom.update(dtSeconds);
     garageModePreview?.update(dtSeconds);
-    return true;
+    return !garageModePreview?.pending;
   };
 
   const updateCombatCamera = (

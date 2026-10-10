@@ -82,12 +82,22 @@ catalog key that the declaring pages' module scripts, and everything they import
 statically or through a literal `import()`, spell as a string literal, a key
 prefix ending in `.`, or a template that starts with a key namespace
 (`` `docs.guide.${slug}.t` ``), plus the pages' `data-i18n` markup and key strings
-in imported JSON. `tools/viteI18nPageCatalogs.ts` builds one chunk per page
-catalog and locale, names both on the page's meta (`data-en-us`, `data-zh-cn`),
-preloads the English one and points the `/cn/` preload at the Chinese one; the
-dev server serves the same subsets from `/@cot-i18n/`. The locale runtime,
-static-markup localization and responsive layout share one boot chunk so every
-page keeps its request count.
+in imported JSON. A page boots on the keys of its boot graph (its scripts, their
+static imports and its markup); the further keys that only modules it reaches
+through a literal `import()` can show are its lazy catalog, and every page boots
+on less than a quarter of the keys. `tools/viteI18nPageCatalogs.ts` builds a
+chunk per page catalog and locale, and a lazy chunk where the page has lazy
+keys; it names them on the page's meta (`data-en-us`, `data-zh-cn`,
+`data-en-us-lazy`, `data-zh-cn-lazy`), preloads the English chunk, prefetches the
+English lazy one and points the `/cn/` preload at the Chinese one. Each literal
+`import()` of a module whose graph can show a lazy key is rewritten to load the
+lazy chunk first (`loadLazyCatalog` in `src/ui/i18nDictionaries.ts`, reached
+through `globalThis.__cotI18nLazy`), so the module's strings are resident when it
+evaluates; a document without a lazy chunk, such as the game, passes straight
+through. The dev server serves a page's boot and lazy keys as one subset from
+`/@cot-i18n/` and rewrites nothing. The locale runtime, static-markup
+localization and responsive layout share one boot chunk so every page keeps its
+request count.
 
 A way for a public page to show a raw key fails the build and
 `tools/i18n-page-catalogs.selftest.mjs`: a `t()` key template or concatenation

@@ -243,15 +243,16 @@ function createRecordedPresentation(options, record) {
       return true;
     },
     setPerspective(entityId) { record.push(`perspective:${entityId}`); return true; },
-    // the real presentation's rule: a mobile-tier or variant world is not the authority's index space
-    get sharesAuthorityIndices() { return options.worldCollision?.layoutTier !== 'mobile' && !options.worldCollision?.terrainVariant; },
+    // the real presentation's rule (authorityObstacles.ts, 2026-10-08): every world shares the authority's index space —
+    // a phone's places what the desktop places — unless shown otherwise (the harness's world says so)
+    get sharesAuthorityIndices() { return options.worldCollision?.sharesIndices !== false; },
     setAuthorityObstacles(identity) { record.push('presentation.authorityObstacles'); presentation.authorityIdentity = identity; },
     dispose() { record.push('presentation.dispose'); presentation.disposed = true; },
   };
   return presentation;
 }
 
-function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120_000, p2p = null, layoutTier = null, loadAuthorityObstacles = null } = {}) {
+function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120_000, p2p = null, layoutTier = null, sharesIndices = true, loadAuthorityObstacles = null } = {}) {
   const calls = [];
   const bus = [];
   const game = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'verdant', phase: 'garage', gameMode: 'standard', matchModeState: null };
@@ -284,7 +285,7 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
   const statusEvents = [];
   const statusReports = [];
   const timers = [];
-  const worldCollision = { heightField: { getHeightAt: () => 0 }, getObstacles: () => [], layoutTier };
+  const worldCollision = { heightField: { getHeightAt: () => 0 }, getObstacles: () => [], layoutTier, sharesIndices };
   const ports = {
     lifecycle,
     load: {
@@ -663,6 +664,37 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   assert.equal(dark.ports.trace.status, 'failed');
 }
 
+// ------------------------------------------------------------ only the watchdog's own verdict blocks entry (2026-10-09, R047)
+// The probe draws offscreen and reads its own target: a page hidden behind another tab, with no frame presented since
+// the countdown began (the frame waits take their hidden fallback), measured 18.9 on the R047 repro and entered. A
+// low-light round's verdict carries the diagnostic scale it was measured under (sunset 0.165: 14.8-20.7, was 3.8-4.7 and
+// refused). Neither visibility nor presented frames may turn a healthy verdict into the refusal above.
+{
+  const previousDocument = globalThis.document;
+  globalThis.document = { visibilityState: 'hidden', hidden: true, hasFocus: () => false };
+  const verdicts = [];
+  try {
+    for (const verdict of [{ before: 18.9, after: null, rescued: false, stage: null },
+      { before: 14.8, after: null, rescued: false, stage: null, nightRadianceScale: 0.494 / 3 }]) {
+      const hidden = createHarness({ blackWatchdog: async () => { verdicts.push(verdict); return verdict; } });
+      const hiddenRoom = makeRoomSession(hidden.calls);
+      const hiddenEntry = hidden.composition.beginRoom({ role: 'client', session: hiddenRoom, lobbyState: hiddenRoom.lobby });
+      const hiddenOwner = hidden.sessions[0];
+      await hiddenOwner.enter({ matchStart: matchStart(1, 'verdant'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });
+      await hiddenOwner.welcome();
+      hiddenOwner.frame(frame());
+      assert.equal(await hiddenEntry, true, `a healthy verdict (${verdict.before}) enters with the page hidden`);
+      assert.equal(hidden.ports.failure ?? null, null, 'no entry failure is recorded');
+      assert.equal(hidden.ports.trace.status, 'complete');
+      assert.deepEqual(hidden.ports.trace.blackCheck, verdict, 'the trace keeps the verdict and the scale it was measured under');
+    }
+    assert.equal(verdicts.length, 2, 'one watchdog run per entry, no visibility gate in front of it');
+  } finally {
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+  }
+}
+
 // ------------------------------------------------------------ the room closing mid-battle: clear input, return to the Garage, the failure panel
 {
   const kicked = createHarness();
@@ -861,23 +893,23 @@ assert.ok(calls.includes('client.leave'), 'disposing the composition leaves the 
   iced.composition.dispose();
 }
 
-// ------------------------------------------------------------ a world laid out otherwise (ghost-crunch lane, 2026-10-02): a mobile-tier
-// world is not the host manifest's index space, so the round loads the manifest's obstacle identities beside the roster and
-// hands them to the presentation (the persistent destroyed list reads through them); the base layout loads nothing
+// ------------------------------------------------------------ a world laid out otherwise (ghost-crunch lane, 2026-10-02): a world
+// that is not the host manifest's index space loads the manifest's obstacle identities beside the roster and hands them to
+// the presentation (the persistent destroyed list reads through them); a shared layout — a phone's now too — loads nothing
 {
   const identity = (index) => ({ x: index, z: -index, kind: 'tree' });
-  for (const [layoutTier, expected] of [['mobile', true], ['desktop', false]]) {
-    const layout = createHarness({ layoutTier, loadAuthorityObstacles: async () => identity });
+  for (const [layoutTier, sharesIndices, expected] of [['mobile', true, false], ['desktop', true, false], ['mobile', false, true]]) {
+    const layout = createHarness({ layoutTier, sharesIndices, loadAuthorityObstacles: async () => identity });
     const room = makeRoomSession(layout.calls);
     layout.composition.beginRoom({ role: 'host', session: room, lobbyState: room.lobby });
     await layout.sessions[0].enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });
     await settle(4);
     const presentation = layout.presentations[0];
-    assert.equal(layout.calls.includes('authorityObstacles:alpine:true'), expected, `${layoutTier}: the manifest's identities load only for a world laid out otherwise`);
-    assert.equal(presentation.authorityIdentity === identity, expected, `${layoutTier}: and reach the presentation`);
+    assert.equal(layout.calls.includes('authorityObstacles:alpine:true'), expected, `${layoutTier}/${sharesIndices}: the manifest's identities load only for a world laid out otherwise`);
+    assert.equal(presentation.authorityIdentity === identity, expected, `${layoutTier}/${sharesIndices}: and reach the presentation`);
     layout.composition.dispose();
   }
-  const failing = createHarness({ layoutTier: 'mobile', loadAuthorityObstacles: async () => { throw new Error('manifest unreachable'); } });
+  const failing = createHarness({ layoutTier: 'mobile', sharesIndices: false, loadAuthorityObstacles: async () => { throw new Error('manifest unreachable'); } });
   const room = makeRoomSession(failing.calls);
   failing.composition.beginRoom({ role: 'host', session: room, lobbyState: room.lobby });
   await failing.sessions[0].enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });

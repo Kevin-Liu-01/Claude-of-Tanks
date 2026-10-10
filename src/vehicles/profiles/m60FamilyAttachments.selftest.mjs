@@ -165,7 +165,7 @@ for (const id of ['m60a1', 'm60a3']) {
     tank.root.updateMatrixWorld(true);
     const spec = getSpec(id);
     const marker = tank.root.getObjectByName('rig_muzzle').getWorldPosition(new THREE.Vector3());
-    const mouthRing = tank.root.getObjectByName('muzzleBoreShadowFallbackRim').getWorldPosition(new THREE.Vector3());
+    const mouthRing = tank.root.getObjectByName('muzzleBoreShadowFallback').getWorldPosition(new THREE.Vector3());
     const authorityMuzzleZ = spec.armor.turretPivot[2] + spec.armor.gunPivot[2] + spec.armor.gunBarrel.lengthM;
     assert.ok(Math.abs(authorityMuzzleZ - marker.z) < 1e-6,
       `${id}: the authority barrel ends on the muzzle marker (${authorityMuzzleZ} vs ${marker.z})`);

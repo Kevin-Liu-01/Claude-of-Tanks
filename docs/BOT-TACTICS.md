@@ -75,6 +75,19 @@ Hidden shooters provide last-shot position hints, never permission to fire at
 unspotted live coordinates. If only one opponent remains, multiple bots can
 still attack it. This is target selection, not an artificial immunity cap.
 
+Movement under fire wins over a stop in the open. The settled-shot halt (a
+starved trigger with a clear ray halts the hull for a clean shot) waits for 8 s
+of contact with the target without a shot: the silence no longer runs from the
+bot's last shot, so a fresh contact is no starved trigger. The stalemate press
+halts only once the gun may fire on the contact. Neither halt holds a hull hit
+inside the under-fire window by a gun that still sees its body: it keeps the
+movement its state chose (the scout's kite, the fallback, the flank, cover).
+Behind a crest the gun sees only its turret over, it still halts to shoot. A
+scout struck from the side keeps moving instead of turning armour it does not
+have onto the shot; the other roles still angle. Tidegate Polders pacing seed
+41002: a BMP-3 braked to a stop 100 m from a Bradley on contact, sat facing it
+under fire through its own fallback and flank, and died 5 s later.
+
 Jev's target instructions explicitly give human and bot opponents equal
 priority, preserve useful local fights and distribute uncovered threats. Its
 explicit tactical orders still precede ordinary local ranking. The proxy tests
@@ -146,6 +159,19 @@ intent, so the low-speed watchdog does not read the hold as a wedge and reverse
 the hull off its hold point; a hull pressing into a wall short of it still backs
 off.
 
+A collider stop backs the hull off at once, whatever its mode. A contact with a
+solid primitive that takes 2 m/s and three quarters of the hull's speed within
+0.3 s, against a world obstacle rather than another hull, reverses the hull for
+1.4 s with its bow swinging along the face toward its goal's side. It counts as
+a stuck strike, and as with the low-speed watchdog's only a repeat before the
+hull drives free escalates (the detour, the waypoint skip, the pocket escape):
+the pacing battles stop most bots once or twice, which is not yet a pocket. A
+scrape that keeps its speed is no stop, and a crawl into a face stays the
+low-speed watchdog's. Polders 41002: an
+M1A1 turning a route corner ran into a farm building's wall at 6 m/s and fought
+from the wall for 7.6 s, from the enemy it saw half a second after the stop
+until it was hit.
+
 A route corner round cover is not taken back at the next recheck. A recheck
 that would return to the corner the hull gave up less than 2 s ago keeps the
 current corner instead, while its lane stays clear and the destination stays
@@ -178,6 +204,16 @@ target's remaining health (6 m/s at least). Inside 60 m a clear line drives
 straight at the hull. Its own contact does not count as the target moving, and
 the empty rack's probe does not scoot the run away. Runs that cannot finish the
 target alone keep the full-speed judgement.
+
+The retirement leaves the finish to the team, so it holds only while a teammate
+with rounds aboard lives. With no teammate left that can fire (wrecks and empty
+racks do not count), an empty or spent rack whose ram the law refuses takes the
+last run at a passive target anyway, at full speed: the target will never come
+to it, and the run ends the match one way or the other. On the scenery lane's
+stone-free Polders, pacing tail seed 41000, the last bravo bot (an AFT-10 at 8 %
+of its hull, its eight HJ-10s spent) retired 248 m from the idle host and faced
+it from 330 s to the 900 s cap; it now runs at the host after its last missile
+and the match ends at 231 s. A target that moves or fires keeps the retirement.
 
 A press point given up (masked, missed out, pinned or unreached) stays out of
 the picks for 120 seconds, with three more held beside it. One veto slot let two
@@ -295,6 +331,20 @@ search cannot drive a hull.
   aspects do not take turns (they alternated before). The arc limit's leg
   starts with the press running and leaves the bank in under 2 s with no
   back-up.
+- `src/game/ai.lastRun.selftest.mjs`: the Polders seed 41000 standoff, an
+  empty AFT-10 at 163 hp 248 m from the idle M1A2 with a wrecked teammate,
+  runs at the host (it held its distance for the whole run before). A teammate
+  with an empty rack is no one to leave the finish to; an armed teammate, a
+  moving host and a firing host keep the retirement.
+- `src/game/ai.underFire.selftest.mjs`: a BMP-3 that has never fired keeps
+  moving when it sights an enemy (no settled-shot halt); a settle holds no scout
+  hit in the open but still halts one behind a berm (with an unhit control); a
+  scout struck from the side keeps moving while a T-90M angles.
+- `src/game/ai.colliderStop.selftest.mjs`: an M1A1 that runs into a wall at
+  6 m/s reverses within a second of the stop with its bow toward its goal's
+  side, still does when it sights an enemy just after the stop, keeps its
+  patrol's waypoint after a lone stop, and a scrape or a stop with no world
+  obstacle on that side is no stop.
 - `src/game/ai.levels.selftest.mjs`: a synthetic deck over a floor, with and
   without a ramp: the deck bot leaves the floor target for one on its own level,
   the floor bot drives the ramp to the deck, gives the deck target up when no

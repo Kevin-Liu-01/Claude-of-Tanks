@@ -33,13 +33,15 @@ import {
 import { FEATURED_SHOTS } from '../ui/featuredShots.ts';
 import { DECOR_KITS } from '../vehicles/decorations.ts';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
-import { getGarageVariant } from './garageVariants.ts';
+import { getGarageVariant, type GarageVariant } from './garageVariants.ts';
 import { VERDANT_GANTRY } from './garageGantry.ts';
 import { GARAGE_HERO_HEADING_RAD, GARAGE_PLATFORM_GEOMETRY } from './garagePresentationPose.ts';
 import { auditGarageWallBays, garageWallTransform } from './garageWallLayout.ts';
 import {
   ABRAMS_FLAMMABLE_BAY_OFFSET,
+  ABRAMS_WELDING_BAY_PLACEMENT,
   BURLAK_SCAFFOLD_CLEARANCE_OFFSET,
+  getAbramsWeldingBayPlacement,
   getGarageWorkshopLayoutPose,
   LEOPARD_MOBILITY_BAY_OFFSET,
 } from './garageWorkshopLayout.ts';
@@ -132,9 +134,14 @@ const WORKSHOP_CHUNK_LABELS = Object.freeze([
 const SHARED_MAINTENANCE_BAY_IDS = Object.freeze([
   'burlak_gantry', 'abrams_welding', 't90m_relikt', 'rolled_k2',
 ] as const);
-const SHARED_MAINTENANCE_BAY_QUADRANTS = Object.freeze([
-  'north-east', 'south-east', 'south-west', 'north-west',
-] as const);
+// The Abrams bay's quadrant follows its destination placement
+// (garageWorkshopLayout.ts): Verdant's half-turned canister station in the
+// south-east, the outdoor packs' station on the north floor (the bays' own
+// compass: +x north).
+const SHARED_MAINTENANCE_BAY_QUADRANTS = Object.freeze({
+  verdant: Object.freeze(['north-east', 'south-east', 'south-west', 'north-west'] as const),
+  outdoor: Object.freeze(['north-east', 'north', 'south-west', 'north-west'] as const),
+});
 
 // The workshop monitor is a field archive, not a location preview. Reuse the
 // canonical player-facing captures so filenames cannot drift from disk, but
@@ -234,6 +241,7 @@ export function createGarageDressing(
   let preparedVisual: { specId: string; visual: GarageWorkshopVisual } | null = null;
   let pendingTankReveal: THREE.Object3D | null = null;
   let abramsServiceFloorRoot: THREE.Group | null = null;
+  let abramsBayRoot: THREE.Group | null = null;
   const hidePendingTankReveal = (): void => {
     if (pendingTankReveal) pendingTankReveal.visible = false;
   };
@@ -790,7 +798,33 @@ export function createGarageDressing(
     return object;
   }
 
-  function halfTurnAuthoredServiceBay(
+  // Carry the complete Abrams welding bay owner to its destination placement
+  // (garageWorkshopLayout.ts): the owner's half-turned canister station in
+  // Verdant, the station beside the camera in the nine outdoor packs. The
+  // owner is its own static display owner, so the shared optimization keeps
+  // it movable while the other bays merge into the shared root.
+  function placeAbramsBay(variant: GarageVariant): void {
+    if (!abramsBayRoot) return;
+    const placement = getAbramsWeldingBayPlacement(variant);
+    const verdant = placement === ABRAMS_FLAMMABLE_BAY_OFFSET;
+    abramsBayRoot.position.set(placement.x, 0, placement.z);
+    abramsBayRoot.rotation.y = placement.rotationRad;
+    abramsBayRoot.updateMatrix();
+    abramsBayRoot.userData.layoutRotationRad = placement.rotationRad;
+    abramsBayRoot.userData.inwardAdvanceM = Number(Math.hypot(placement.x, placement.z).toFixed(2));
+    abramsBayRoot.userData.serviceLandmark = verdant ? 'east-flammable-canisters' : 'west-center-hoist';
+    if (verdant) {
+      abramsBayRoot.userData.canisterCenterSeparationM = ABRAMS_FLAMMABLE_BAY_OFFSET.canisterCenterSeparationM;
+      abramsBayRoot.userData.swappedWith = 'rolled_k2';
+      delete abramsBayRoot.userData.heroSilhouettePx;
+    } else {
+      abramsBayRoot.userData.heroSilhouettePx = ABRAMS_WELDING_BAY_PLACEMENT.heroSilhouettePx;
+      delete abramsBayRoot.userData.canisterCenterSeparationM;
+      delete abramsBayRoot.userData.swappedWith;
+    }
+  }
+
+  function placeAuthoredServiceBay(
     firstChildIndex: number,
     bayId: 'abrams_welding' | 'rolled_k2',
     sourceVehicleId: 'm1a2' | 'k2',
@@ -799,25 +833,26 @@ export function createGarageDressing(
     const bayRoot = markModernPart(
       new THREE.Group(), sourceVehicleId, `${bayId}_service_bay`,
     );
+    // The Abrams follows its destination placement (placeAbramsBay); K2 keeps
+    // its half-turn into the Abrams's authored quadrant and its small
+    // perimeter-crane clearance correction. Both are complete owner transforms
+    // so tools and supports cannot drift away from the hull.
+    bayRoot.userData.perimeterCraneClearance = true;
+    for (const child of authoredChildren) bayRoot.add(child);
+    legacyVerdantRoot.add(bayRoot);
+    if (bayId === 'abrams_welding') {
+      bayRoot.name = 'garage_abrams_welding_service_bay';
+      abramsBayRoot = bayRoot;
+      placeAbramsBay(currentVariant);
+      return bayRoot;
+    }
     bayRoot.name = `garage_${bayId}_half_turn`;
     bayRoot.rotation.y = Math.PI;
-    // The Abrams follows Verdant's east canister service station while K2
-    // keeps its small perimeter-crane clearance correction. Both are complete
-    // owner transforms so tools and supports cannot drift away from the hull.
-    const offset = bayId === 'abrams_welding'
-      ? ABRAMS_FLAMMABLE_BAY_OFFSET : { x: -0.35, z: -0.35 };
+    const offset = { x: -0.35, z: -0.35 };
     bayRoot.position.set(offset.x, 0, offset.z);
     bayRoot.userData.layoutRotationRad = Math.PI;
     bayRoot.userData.inwardAdvanceM = Number(Math.hypot(offset.x, offset.z).toFixed(2));
-    if (bayId === 'abrams_welding') {
-      bayRoot.userData.canisterCenterSeparationM =
-        ABRAMS_FLAMMABLE_BAY_OFFSET.canisterCenterSeparationM;
-      bayRoot.userData.serviceLandmark = 'east-flammable-canisters';
-    }
-    bayRoot.userData.perimeterCraneClearance = true;
-    bayRoot.userData.swappedWith = bayId === 'abrams_welding' ? 'rolled_k2' : 'abrams_welding';
-    for (const child of authoredChildren) bayRoot.add(child);
-    legacyVerdantRoot.add(bayRoot);
+    bayRoot.userData.swappedWith = 'abrams_welding';
     bayRoot.updateMatrix();
     return bayRoot;
   }
@@ -1068,6 +1103,7 @@ export function createGarageDressing(
     legacyVerdantRoot.rotation.y = layoutYaw;
     legacyVerdantRoot.updateMatrix();
     const isVerdant = currentVariant.id === 'verdant_motor_pool';
+    placeAbramsBay(currentVariant);
     // One demand-loaded four-bay exhibit is shared by every Garage. The four
     // diagonally opposed service stations already fill all quadrants, while
     // this tiny layout pose shifts/rotates the complete set against each
@@ -1086,7 +1122,13 @@ export function createGarageDressing(
     group.userData.workshopExhibitCount = 5;
     group.userData.sharedMaintenanceBayCount = 4;
     group.userData.sharedMaintenanceBayIds = [...SHARED_MAINTENANCE_BAY_IDS];
-    group.userData.sharedMaintenanceBayQuadrants = [...SHARED_MAINTENANCE_BAY_QUADRANTS];
+    group.userData.sharedMaintenanceBayQuadrants = [
+      ...SHARED_MAINTENANCE_BAY_QUADRANTS[isVerdant ? 'verdant' : 'outdoor'],
+    ];
+    // Verdant's Abrams and K2 bays exchange quadrants as two half-turned owners;
+    // outdoors only the K2 keeps that swap.
+    group.userData.swappedServiceBayIds = isVerdant ? ['abrams_welding', 'rolled_k2'] : ['rolled_k2'];
+    group.userData.abramsServiceLandmark = isVerdant ? 'east-flammable-canisters' : 'west-center-hoist';
     group.userData.workshopOrbitCoverageDegrees = 360;
     group.userData.workshopSceneMode = isVerdant
       ? 'verdant-workshop' : 'environment-service-exhibits';
@@ -2548,7 +2590,8 @@ export function createGarageDressing(
     // The lamp remains an indoor roof fixture, but follows the same bay
     // translation so its cone lands on the moved pad instead of the empty old
     // scaffold square. The interior already supplies the half-turn, hence the
-    // inverse offset in its authored coordinate space.
+    // inverse offset in its authored coordinate space. It exists only in
+    // Verdant, whose Abrams bay stands at the canister station.
     workLamp(
       15.9 - ABRAMS_FLAMMABLE_BAY_OFFSET.x,
       16.6 - ABRAMS_FLAMMABLE_BAY_OFFSET.z,
@@ -2561,10 +2604,11 @@ export function createGarageDressing(
     }
     // Reparent the complete painted square immediately before the bay owner
     // captures its authored children. The outline and oil staining therefore
-    // inherit exactly the same half-turn and FLAMMABLE-wall offset as the tank,
-    // removed skirts, wheel dolly, cable and carts.
+    // inherit exactly the same placement as the tank, removed skirts, wheel
+    // dolly, cable and carts: the half-turn and FLAMMABLE-wall offset in
+    // Verdant, the station beside the camera outdoors.
     legacyVerdantRoot.add(abramsServiceFloorRoot);
-    halfTurnAuthoredServiceBay(firstBayChildIndex, 'abrams_welding', 'm1a2');
+    placeAuthoredServiceBay(firstBayChildIndex, 'abrams_welding', 'm1a2');
   });
 
   // ==========================================================================
@@ -2899,7 +2943,7 @@ export function createGarageDressing(
       0, 2.5, 0.9, '', legacyVerdantRoot);
     wallSign('WEAPON SERVICE', -6.4, 2.75, -22.86,
       0, 2.7, 0.8, '', legacyVerdantRoot);
-    halfTurnAuthoredServiceBay(firstBayChildIndex, 'rolled_k2', 'k2');
+    placeAuthoredServiceBay(firstBayChildIndex, 'rolled_k2', 'k2');
   });
 
   // One canonical four-bay service set is shared across all ten environments.
@@ -2928,9 +2972,6 @@ export function createGarageDressing(
     ];
     group.userData.sharedMaintenanceBayCount = 4;
     group.userData.sharedMaintenanceBayIds = [...SHARED_MAINTENANCE_BAY_IDS];
-    group.userData.sharedMaintenanceBayQuadrants = [...SHARED_MAINTENANCE_BAY_QUADRANTS];
-    group.userData.swappedServiceBayIds = ['abrams_welding', 'rolled_k2'];
-    group.userData.abramsServiceLandmark = 'east-flammable-canisters';
     group.userData.leopardServiceOwnerIndependent = true;
     group.userData.workshopOrbitCoverageDegrees = 360;
     setVariant(currentVariant.id);
@@ -2941,7 +2982,9 @@ export function createGarageDressing(
   chunks.push(function optimizeWorkshopDisplays() {
     const sourceTriangles = group.userData.verdantOriginalTriangleCount || 0;
     optimizeGarageDressing(group, {
-      staticDisplayOwners: [legacyVerdantRoot, verdantInteriorRoot],
+      // The Abrams bay owner nests inside the shared root but merges alone, so
+      // each destination can still carry it to its own placement.
+      staticDisplayOwners: [legacyVerdantRoot, verdantInteriorRoot, ...(abramsBayRoot ? [abramsBayRoot] : [])],
       additionalResourceRoots: [legacyVerdantRoot, verdantInteriorRoot],
       bakedMaterialLifecycle: engineCtx?.setupShadowMaterial && engineCtx.releaseShadowMaterial ? {
         // Variant accents stay on the shared mutable palette.

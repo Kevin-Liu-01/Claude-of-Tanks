@@ -15,6 +15,9 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { DestructiblePropType } from './inhabitKit.ts';
+// (b15: the field stacks of every region, and the straw props' bands of the hay print)
+import { HAY_FACE_V, HAY_WOOD_V } from '../hayPrint.ts';
+import { mapToBand } from './haystackKit.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -296,9 +299,9 @@ function bStrawStack(rng: Rng): THREE.BufferGeometry {
     p.setX(i, p.getX(i) * f); p.setZ(i, p.getZ(i) * f);
   }
   stack.computeVertexNormals();
-  parts.push(scaleUV(stack, 3, 2));
+  parts.push(mapToBand(scaleUV(stack, 3, 2), HAY_FACE_V));
   const pole = new THREE.CylinderGeometry(0.05, 0.06, 1.1, 5, 1);
-  parts.push(scaleUV(pole, 0.3, 1).translate((rng() - 0.5) * 0.06, h + 0.4, 0));
+  parts.push(mapToBand(scaleUV(pole, 0.3, 1), HAY_WOOD_V).translate((rng() - 0.5) * 0.06, h + 0.4, 0));
   return merge(parts, false, true);
 }
 
@@ -309,9 +312,86 @@ function bStrawStackBroken(rng: Rng): THREE.BufferGeometry {
     const p = mound.attributes.position;
     for (let i = 0; i < p.count; i++) { const f = 1 + (rng() - 0.5) * 0.3; p.setX(i, p.getX(i) * f); p.setZ(i, p.getZ(i) * f); }
     mound.computeVertexNormals();
-    parts.push(scaleUV(mound, 2, 0.6).translate(ox, 0.27, oz));
+    parts.push(mapToBand(scaleUV(mound, 2, 0.6), HAY_FACE_V).translate(ox, 0.27, oz));
   }
   return merge(parts, false, true);
+}
+
+// ---------------------------------------------------------------------------------------------- the mill yard
+
+// (the map-revival lane, 2026-10-05, Longleaf round 2; gauntlet wave 124: "no log pond, lumber stacks or working mill
+// yard in any frame")
+const PINE_BOARD: Palette = [0.09, 0.42, 0.62];
+const PINE_BOARD_OLD: Palette = [0.08, 0.22, 0.46];
+const STICKER: Palette = [0.07, 0.25, 0.36];
+const PINE_BARK: Palette = [0.06, 0.30, 0.22];
+const PINE_END: Palette = [0.09, 0.40, 0.58];
+
+/** A stickered stack of sawn pine drying in the yard: courses of boards laid edge to edge, a row of sticks between each
+ * course so the air passes, the whole on three sleepers; a newer stack pale, an older one weathered grey. */
+function bLumberStack(rng: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const L = 4.6 + rng() * 0.6, W = 2.3, courses = 14 + ((rng() * 5) | 0), board = 0.06, stick = 0.04;
+  const wood = rng() < 0.6 ? PINE_BOARD : PINE_BOARD_OLD;
+  for (const z of [-L * 0.42, 0, L * 0.42]) parts.push(paint(box(W + 0.2, 0.16, 0.18), STICKER, 0.05, rng).translate(0, 0.08, z));
+  let y = 0.16;
+  for (let c = 0; c < courses; c++) {
+    // a course in two runs of boards, one end ragged where a run was cut short
+    for (const side of [-1, 1]) {
+      const short = rng() < 0.3 ? 0.2 + rng() * 0.6 : 0;
+      parts.push(paint(box(W / 2 - 0.01, board, L - short), wood, 0.07, rng).translate(side * W / 4, y + board / 2, short * (rng() < 0.5 ? 0.5 : -0.5)));
+    }
+    y += board;
+    if (c < courses - 1) {
+      for (const z of [-L * 0.42, 0, L * 0.42]) parts.push(paint(box(W, stick, 0.05), STICKER, 0.05, rng).translate(0, y + stick / 2, z));
+      y += stick;
+    }
+  }
+  return merge(parts, true, false);
+}
+
+function bLumberStackBroken(rng: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  for (const z of [-1.9, 0, 1.9]) parts.push(paint(box(2.5, 0.16, 0.18), STICKER, 0.05, rng).translate(0, 0.08, z));
+  for (let i = 0; i < 14; i++) {
+    const b = box(0.44, 0.06, 2 + rng() * 2.6);
+    b.rotateY((rng() - 0.5) * 1.6); b.rotateZ((rng() - 0.5) * 0.3);
+    parts.push(paint(b, PINE_BOARD, 0.08, rng).translate((rng() - 0.5) * 3.2, 0.1 + rng() * 0.5, (rng() - 0.5) * 3.6));
+  }
+  return merge(parts, true, false);
+}
+
+/** The log deck at the mill's slip: long pine logs piled three high against two posts, their sawn ends to the yard. */
+function bLogDeck(rng: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const L = 7.2 + rng() * 0.8;
+  const rows = [[5, 0.36], [4, 0.34], [3, 0.32]] as const;
+  let y = 0;
+  rows.forEach(([n, r], k) => {
+    const spacing = 2 * r + 0.02, x0 = -((n - 1) * spacing) / 2;
+    for (let i = 0; i < n; i++) {
+      const rr = r * (0.88 + rng() * 0.24);
+      const log = new THREE.CylinderGeometry(rr, rr, L - rng() * 0.6, 9, 1, false);
+      log.rotateX(Math.PI / 2);
+      parts.push(paint(log, PINE_BARK, 0.08, rng).translate(x0 + i * spacing + (rng() - 0.5) * 0.06, y + rr + k * 0.02, (rng() - 0.5) * 0.4));
+      const end = new THREE.CircleGeometry(rr * 0.92, 9);
+      parts.push(paint(end, PINE_END, 0.06, rng).translate(x0 + i * spacing, y + rr + k * 0.02, L / 2 - 0.2));
+    }
+    y += r * 1.7;
+  });
+  for (const side of [-1, 1]) parts.push(paint(box(0.22, 1.8, 0.22), STICKER, 0.05, rng).translate(side * 2.05, 0.9, 0));
+  return merge(parts, true, false);
+}
+
+function bLogDeckBroken(rng: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  for (let i = 0; i < 7; i++) {
+    const r = 0.3 + rng() * 0.08;
+    const log = new THREE.CylinderGeometry(r, r, 6 + rng() * 1.5, 8, 1, false);
+    log.rotateX(Math.PI / 2); log.rotateY((rng() - 0.5) * 0.9);
+    parts.push(paint(log, PINE_BARK, 0.08, rng).translate((rng() - 0.5) * 4.4, r, (rng() - 0.5) * 2));
+  }
+  return merge(parts, true, false);
 }
 
 /**
@@ -393,6 +473,9 @@ export const SCENERY_DESTRUCTIBLE_TYPES = {
   windpump: { cls: 'topple', mat: 'baked', contact: 'ob', r: 2.4, h: 13.9, hw: 1.4, hl: 1.4, groundR: 1.35, build: bWindPump, broken: null, keep: 0.86, crushMin: 2.0 },
   tomb: { cls: 'break', mat: 'baked', contact: 'ob', r: 1.9, h: 2.4, hw: 1.3, hl: 1.7, build: bTomb, broken: bTombBroken, collider: true, keep: 0.86, crushMin: 2.4 },
   strawstack: { cls: 'break', mat: 'straw', contact: 'ob', r: 1.6, h: 5.1, shape: 'circle', collisionR: 1.35, build: bStrawStack, broken: bStrawStackBroken },
+  // the mill yard (the map-revival lane, 2026-10-05, Longleaf round 2): solid stacks a hull breaks only by ramming
+  lumberstack: { cls: 'break', mat: 'baked', contact: 'ob', r: 2.7, h: 2.0, hw: 1.25, hl: 2.4, build: bLumberStack, broken: bLumberStackBroken, collider: true, keep: 0.86, crushMin: 2.4 },
+  logdeck: { cls: 'break', mat: 'baked', contact: 'ob', r: 4.1, h: 1.95, hw: 2.1, hl: 3.5, build: bLogDeck, broken: bLogDeckBroken, collider: true, keep: 0.86, crushMin: 2.6 },
   // (appended: every kind before it keeps its place in the props registry)
   strawrick: { cls: 'break', mat: 'straw', contact: 'ob', r: 4.8, h: 4.6, hw: 1.6, hl: 4.4, build: bStrawRick, broken: bStrawRickBroken },
 } satisfies Record<string, DestructiblePropType>;
@@ -401,7 +484,12 @@ export const SCENERY_DESTRUCTIBLE_TYPES = {
 // ---------------------------------------------------------------------------------------------- the pylon line
 
 /** One lattice tower's geometry (baked, world-oriented later): a 400 kV double-circuit "Donau" tower, scaled. */
-export function buildPylon(rng: Rng, height = 34, mobile = false, breadthOf = height): { geometry: THREE.BufferGeometry; legHalf: number; arms: Array<[number, number]> } {
+export function buildPylon(rng: Rng, height = 34, mobile = false, breadthOf = height): {
+  geometry: THREE.BufferGeometry; legHalf: number; arms: Array<[number, number]>;
+  /** The legs' half spread at a height over the footing and the tower's height (the hitbox lane, 2026-10-07: the legs'
+   * colliders lean with them). */
+  halfAt: (y: number) => number; height: number;
+} {
   const parts: THREE.BufferGeometry[] = [];
   // (a tower stood taller over the woods keeps the breadth of the tower it was authored as: its footing, its waist and
   // its arms, so its legs and its conductors' spread stay where they were; only its body rises)
@@ -475,7 +563,7 @@ export function buildPylon(rng: Rng, height = 34, mobile = false, breadthOf = he
   strut(waist * 0.75, H * 0.97, 0, 0, H, 0, 0.08, GALV);
   arms.push([0, H]);
   for (const [sx, sz] of corners) parts.push(paint(box(0.9, 0.5, 0.9).translate(sx * base, 0.1, sz * base), CONCRETE, 0.05, rng));
-  return { geometry: merge(parts, true, false), legHalf: base, arms };
+  return { geometry: merge(parts, true, false), legHalf: base, arms, halfAt, height: H };
 }
 
 /** A sagging conductor between two attachment points as one thin box per segment (baked, dark). */
@@ -1038,9 +1126,20 @@ export function buildSandbagBedding(
   // skirt beside three boulders each on Verdant and Frontier: on a rock's shaded foot it is no brighter than the dirt
   // beside it, so the rocks keep it. A world-planar uv as the banks have.)
   const op = out.attributes.position, gr = new Float32Array(op.count), uv = new Float32Array(op.count * 2);
+  // (the time-to-battle lane, 2026-10-08) the non-indexed merge repeats a vertex in every triangle it closes: its ground
+  // is asked once (the same exact coordinates, the same height; 27.5 k of the 34 k asks on Verdant were repeats)
+  const groundOf = new Map<number, Map<number, number>>();
   for (let i = 0; i < op.count; i++) {
     const px = op.getX(i), py = op.getY(i), pz = op.getZ(i);
-    gr[i] = ground.getHeightAt(px, pz) - 0.5;
+    let groundY: number | undefined;
+    if (px === 0 || pz === 0) groundY = ground.getHeightAt(px, pz);
+    else {
+      let row = groundOf.get(px);
+      if (!row) groundOf.set(px, row = new Map());
+      groundY = row.get(pz);
+      if (groundY === undefined) row.set(pz, groundY = ground.getHeightAt(px, pz));
+    }
+    gr[i] = groundY - 0.5;
     uv[i * 2] = px * 0.37 + py * 0.21; uv[i * 2 + 1] = pz * 0.37 - py * 0.17;
   }
   out.setAttribute('aRockGround', new THREE.BufferAttribute(gr, 1));

@@ -24,7 +24,7 @@ import { CLOUD_CONTRAIL_MAX } from './cloudWeatherLayers.ts';
 // the count a map authors (what the layer derives with the contrail switch on)
 const authoredContrails = (id) => Math.round(Math.min(1, Math.max(0, getMapConfig(id)?.clouds?.contrails ?? 0)) * CLOUD_CONTRAIL_MAX);
 import {
-  VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
+  VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_CAPTURE_SETTLE_FRAMES, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
 } from './volumetricClouds.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
@@ -69,7 +69,7 @@ assert.equal(cloudCameraCut(0, .36, 1, 1), true, 'large camera turn rebuilds');
     else layer.since++;
   };
   assert.equal(layer.settleForCapture(camera),true);
-  assert.equal(traces,67);assert.equal(layer.captureFramesRemaining,0);
+  assert.equal(traces,3+CLOUD_CAPTURE_SETTLE_FRAMES);assert.ok(CLOUD_CAPTURE_SETTLE_FRAMES>=256,'a still settles to near the live steady state');assert.equal(layer.captureFramesRemaining,0);
   assert.equal(layer.settleForCapture(camera),false,'settled movie frames do no extra traces');
   layer.rebuild=0;layer.since=0;layer.frozen=true;
   assert.equal(layer.settleForCapture(camera),false,'capture respects an intentionally frozen layer');
@@ -260,7 +260,7 @@ for (const id of MAP_IDS) {
   assert.ok(p.coverage >= 0 && p.coverage <= CLOUD_LAYER_RULES.coverageMax);
   assert.ok(p.baseM > 0 && p.thicknessM > 0 && p.density > 0);
   assert.ok(p.shadowThreshold >= 0 && p.shadowThreshold <= 1);
-  assert.equal(+p.shadowThreshold.toFixed(3), +Math.min(1, 1 - p.coverage + CLOUD_LAYER_RULES.shadowCoreBand).toFixed(3), `${id}: the shadow footprint is the cloud's dense core`);
+  assert.equal(+p.shadowThreshold.toFixed(3), +Math.min(1, 1 - p.coverage + CLOUD_LAYER_RULES.shadowCoreBand).toFixed(3), `${id}: the shadow footprint is the visible cloud's (2026-10-05: no core band)`);
   assert.ok(p.tint.every((c) => c > 0 && c <= 1), `${id} tint in (0, 1]`);
   assert.ok(p.typeRange[0] <= p.typeRange[1] && p.typeRange[0] >= 0 && p.typeRange[1] <= 1, `${id} type range`);
   assert.ok(p.cirrusAltM > p.baseM + p.thicknessM, `${id}: the cirrus sheet sits above the slab`);
@@ -288,10 +288,12 @@ assert.deepEqual(table, {
   ruinspires: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1100, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0.25, virga: 0.6, fogBank: 0 },
   blackglass: { regime: 'ash-veil', coverage: 0.55, baseM: 800, thicknessM: 450, shadow: false, streets: 0.2, cirrus: 0.5, farBand: 0.4, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   // (2026-10-04: a dense overcast is closed — Titan Gorge's deck opened a blue hole at 0.96 under a light model at overcast 1)
-  titan_gorge: { regime: 'dense-overcast', coverage: 1, baseM: 450, thicknessM: 500, shadow: false, streets: 0, cirrus: 0, farBand: 0.6, contrails: 0, rain: 0.25, virga: 0.55, fogBank: 0 },
+  // (2026-10-05, the map-revival lane's Titan round 2: Monument Valley under fair-weather cumulus, the deck opened)
+  titan_gorge: { regime: 'fair-weather-cumulus', coverage: 0.34, baseM: 1200, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   skybridge: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 700, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.5, contrails: 0, rain: 0.2, virga: 0.5, fogBank: 0 },
   polders: { regime: 'broken-stratocumulus', coverage: 0.68, baseM: 600, thicknessM: 500, shadow: true, streets: 0.4, cirrus: 0.1, farBand: 0.5, contrails: 3, rain: 0.2, virga: 0.2, fogBank: 0.35 },
-  copper_mesa: { regime: 'cumulus-humilis', coverage: 0.2, baseM: 1900, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.85, fogBank: 0 },
+  // (2026-10-05, the map-revival lane: Copper Mesa is Queenstown under the west coast's broken stratocumulus)
+  copper_mesa: { regime: 'broken-stratocumulus', coverage: 0.62, baseM: 900, thicknessM: 500, shadow: true, streets: 0.3, cirrus: 0.1, farBand: 0.5, contrails: 0, rain: 0.2, virga: 0.2, fogBank: 0 },
   airfield: { regime: 'fair-weather-cumulus', coverage: 0.38, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 6, rain: 0, virga: 0, fogBank: 0 },
   oasis: { regime: 'cumulus-humilis', coverage: 0.17, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.85, fogBank: 0 },
   whiteout: { regime: 'low-stratus', coverage: 1, baseM: 300, thicknessM: 300, shadow: false, streets: 0, cirrus: 0, farBand: 0.5, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
@@ -346,7 +348,9 @@ assert.deepEqual(table, {
   assert.deepEqual([whiteout.cells, whiteout.deckLight, whiteout.lumps, whiteout.deckDetail, whiteout.ambientScale, whiteout.undulatus, whiteout.interior],
     [0.5, 1, 0.6, 0.5, 3, 0, 0], 'whiteout: a structured deck on the deck path alone');
   const titan = deriveCloudLayerPreset(skyOf('titan_gorge'));
-  assert.deepEqual([titan.lumps, titan.cells, titan.deckLight], [0.7, 0.7, 1], 'titan: base lumps on its cellular deck');
+  // (2026-10-05, the map-revival lane's Titan round 2: Monument Valley's sky is the fair-weather cumulus regime — no deck,
+  // so no base lumps and no cells)
+  assert.deepEqual([titan.lumps, titan.cells, titan.deckLight], [0, 0, 0], 'titan: fair-weather cumulus, no deck structure');
   const foundry = deriveCloudLayerPreset(skyOf('foundry'));
   assert.ok(foundry.regime === 'industrial-stratocumulus' && foundry.baseM === 850 && foundry.cells === 0.9 && foundry.deckLight === 1 && foundry.cirrus === 0, 'foundry: a low cellular industrial deck, no cirrus over it');
   assert.ok(foundry.tint[0] > foundry.tint[2] && foundry.tint[0] > 0.75, 'foundry: the smog rides on the deck\'s base as a warm-grey albedo');
@@ -517,7 +521,8 @@ assert.ok(layerSource.includes("name: 'VolumetricCloudTrace'") && layerSource.in
 console.log('volumetricClouds.selftest: deterministic noise (six bakes), tiling, equalisation and street anisotropy, the 31-map cloudscape table, the regime rows, the shadow policy, the slot cycle, the haze mirror and the hooks pinned');
 
 // The shade map keeps the gobos' soft edge band (a continuous opacity over the cut, never a binary stamp).
-assert.match(layerSource,/smoothstep\( uThreshold - 0\.08, uThreshold \+ 0\.08, cloudField/,'cloud edges have a continuous opacity band');
+// (2026-10-05: the band's half-width a QA knob, 0.04 by default — CLOUD_SHADOW_SOFT — over the visible outline)
+assert.match(layerSource,/smoothstep\( uThreshold \+ uShadeLook\.y - uShadeLook\.z, uThreshold \+ uShadeLook\.y \+ uShadeLook\.z, cloudField/,'cloud edges have a continuous opacity band');
 
 // 2026-10-04 (the gauntlet's wave 62 on Titan Gorge: the sun "a flat, hard-edged white disc pasted on a featureless
 // grey-white sky"): a ray the march ends under the 0.03 cut is opaque, its in-scatter renormalised for the remainder —
@@ -548,5 +553,35 @@ assert.match(layerSource, /t\.uDeckLobe\.value = lightTune\('CLOUD_DECK_SUN_LOBE
   for (let i = 0; i < n; i++) { const c = -1 + 2 * (i + 0.5) / n; mean += (1 + 0.2 * (dual(c, 0.6) * 4 * Math.PI - 1)) / n; }
   assert.ok(Math.abs(mean - 1) < 1e-3, `the lobe's mean over the sky ${mean.toFixed(4)}`);
   assert.ok(1 + 0.2 * (dual(1, 0.6) * 4 * Math.PI - 1) > 2, 'toward the sun the diffused sun more than doubles');
+}
+// 2026-10-09: a capture's clouds are a function of its scene time alone. Two layers whose live pages ran different
+// histories (the drift, the billows' boil, the contrails' upper drift, the shade map's refresh age, a storm's lightning)
+// hold the same cloud state after setCaptureTime(t, true), so two renders of one scene draw the same clouds and cloud
+// shadows (the media lane's engine reviews r10 and r11 drew S35's field in cloud shadow once and in sun once).
+{
+  const preset = deriveCloudLayerPreset(skyOf('verdant'));
+  const make = () => { const l = new VolumetricCloudLayer({}, new THREE.Scene(), {}, new THREE.Vector3(1, 1, 1)); l.setPreset(preset); return l; };
+  const a = make(), b = make();
+  b.weatherShift.set(1234, -567); b.noiseShift.set(89, 4321, -12); b.cirrusShift.set(2222, 3); b.upperDrift.set(-9876, 543);
+  Object.assign(b, { farShadeValid: true, farShadeAge: 5, flashSeed: 7, flashClock: 2.5, flashNext: 11, flashAge: 0.1, flashStrokes: 2, flashPeak: 0.8, historyIndex: 1, frame: 13 });
+  const state = (l) => JSON.stringify([l.weatherShift, l.noiseShift, l.cirrusShift, l.upperDrift, l.farShadeValid, l.flashSeed, l.flashClock,
+    l.flashNext, l.flashAge, l.flashStrokes, l.flashPeak, l.historyIndex, l.frame, l.traces]);
+  for (const t of [0, 1.234, 4.7]) {
+    a.setCaptureTime(t, true);
+    b.setCaptureTime(t, true);
+    assert.equal(state(b), state(a), `the clouds at ${t} s are the scene's, whatever the page drew before`);
+    // a later sample of the take (no restart): the drift follows the time and the shade map is cut again
+    a.setCaptureTime(t + 0.033);
+    b.setCaptureTime(t + 0.033);
+    assert.equal(state(b), state(a), `and at ${t + 0.033} s`);
+    assert.equal(b.farShadeValid, false, 'a capture sample re-cuts the shade map at its own drift');
+  }
+  a.setCaptureTime(0, true);
+  const boil0 = a.noiseShift.y, trail0 = a.upperDrift.x;
+  a.setCaptureTime(6, true);
+  assert.ok(Math.abs(a.noiseShift.y - boil0) > 1, 'the billows turn over with scene time');
+  assert.ok(Math.abs(a.upperDrift.x - trail0) > 1 || Math.abs(Math.cos(preset.cirrusAngleRad)) < 1e-6, 'the contrails drift with scene time');
+  a.dispose();
+  b.dispose();
 }
 console.log('volumetricClouds.selftest: the cut ray opaque (no disc through a closed deck), the forward lobe of a deck PASS');

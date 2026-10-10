@@ -110,9 +110,25 @@ export const NATIONAL_CAMO_PATTERN_IDS = Object.freeze([
   'national_jp', 'national_pl', 'national_kr', 'national_se', 'national_il', 'national_ua',
 ] as const);
 
+/**
+ * Authored paints generated after GT joined the catalog (fix/camo-defaults, 2026-10-09). The generated table keeps its
+ * ids sorted, so a new paint would land among the earlier ones and shift every later serialized index. These sit after
+ * GT instead, in the order they joined. The M6 Linebacker's own desert three-tone came with main's Linebacker rebuild
+ * (030b3ff96 lineage). Production (deploy 206) lists 170 ids; those 170 keep their exact indices
+ * (camoCatalogProductionIndices.selftest.mjs).
+ */
+const AUTHORED_PAINT_IDS_AFTER_GT = Object.freeze(['paint_m6_linebacker'] as const);
+type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number];
+const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
+  (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id);
+const AUTHORED_PAINT_IDS_BEFORE_GT = AUTHORED_PAINT_IDS.filter(
+  (id): id is Exclude<typeof id, AuthoredPaintIdAfterGt> => !isAuthoredPaintIdAfterGt(id));
+
 /** Append-only: base catalog, then the national colours, then every distinct authored paint (generated). */
 export const CAMO_PATTERN_IDS = Object.freeze([
-  ...BASE_CAMO_PATTERN_IDS, ...NATIONAL_CAMO_PATTERN_IDS, ...AUTHORED_PAINT_IDS,
+  ...BASE_CAMO_PATTERN_IDS, ...NATIONAL_CAMO_PATTERN_IDS, ...AUTHORED_PAINT_IDS_BEFORE_GT,
+  'gt', // Append after existing IDs to preserve serialized catalog indices.
+  ...AUTHORED_PAINT_IDS_AFTER_GT,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -241,6 +257,7 @@ const NATIONAL_CAMO_PATTERN_LABEL: Readonly<Record<NationalCamoPatternId, string
 });
 
 export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Object.freeze({
+  gt: 'GT · General Translation',
   ...BASE_CAMO_PATTERN_LABEL,
   ...NATIONAL_CAMO_PATTERN_LABEL,
   ...Object.fromEntries(AUTHORED_PAINT_ENTRIES.map((entry) => [entry.id, entry.label])),
@@ -621,6 +638,7 @@ const CAMO_PATTERN_TAGS: Readonly<Partial<Record<CamoPatternId, readonly CamoTag
   openai: ['geometric', 'special'],
   xai: ['stripes', 'special'],
   gemini: ['geometric', 'special'],
+  gt: ['geometric', 'special'],
   ducky: ['organic', 'special'],
   suits: ['geometric', 'special'],
   flames: ['stripes', 'special'],

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
+import { ARCHITECTURE_STYLES } from './maps/regional/index.ts';
 import { isLayoutBriefMap } from './maps/layoutBriefMaps.ts';
 import { createHeightField, createLayout } from './terrain.ts';
 import { roadNetworkComponentCount } from './maps/roadEndpoints.ts';
@@ -15,6 +16,8 @@ import {
 import { UTILITY_POLE_PAIR_MAX_RELIEF, planUtilityPoleStation } from './propPlacement.ts';
 import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
 import { isPublicWreckDonor, WRECK_ROSTER_POOLS } from './wreckRoster.ts';
+import { fleetForMap } from './maps/vehicleFleets.ts';
+import { vehicleEraForId } from '../vehicles/taxonomy.ts';
 
 // Match the world's metadata-registration boundary, without acquiring any
 // vehicle geometry. Bare specs also retain incomplete/hidden donor records.
@@ -38,10 +41,16 @@ const LAYERED_TREELINES = new Map([
   ['cliffbridge', 2], ['verdant', 2], ['coastal', 2], ['autumn', 2],
   ['frontier', 3], ['delta', 3], ['monsoon', 3],
   ['caldera', 2], ['polders', 2], // round 47 (2026-09-23): the two bland rings with a skyline impostor gain a second rank
+  ['longleaf', 2], // the map-revival lane (2026-10-05, gauntlet wave 124): the flatwoods' pines close Longleaf's ring in two rows
 ]);
 const polePolicyByMap = new Map();
 const battlefieldWrecks = new Set();
-const mobileWrecks = new Set();
+// The map-vehicles lane (2026-10-06, the integrator's period ruling): each map's hulks are its own period's, the period
+// of its civilians (vehicleFleets.ts), drawn from the curated donor pools the wreck fleet receipt bakes. A map of the
+// 1937-45 war carries the KV-2 at Kursk and no tank hulk elsewhere (the public fleet has no other tank of that war; the
+// war shows through the burnt period trucks and carts); the Moon carries none. A period cast smaller than the map's
+// placement budget cycles through its slots, and the budget never rises.
+const curatedWreckDonors = new Set(Object.values(WRECK_ROSTER_POOLS).flat());
 // Existing desktop caps are deliberate scene budgets, not a variety knob.
 const extraWreckBudget = { moon: 3, urban: 6, railyard: 6, frontier: 6, delta: 6,
   badlands: 7, monsoon: 7, alpine: 6, caldera: 7, foundry: 8,
@@ -145,16 +154,20 @@ for (const mapId of MAP_IDS) {
   assert.ok(config.terrain && config.vegetation && config.props && config.sky,
     `${mapId}: complete biome configuration`);
   const cast = config.props.tankWrecks;
-  assert.equal(cast.count, extraWreckBudget[mapId] ?? 5,
-    `${mapId}: more wreck types never raise the existing placement budget`);
-  assert.equal(cast.ids.length, cast.count, `${mapId}: every wreck slot has an authored donor`);
+  const fleetYear = Number(/(\d{4})s?$/.exec(fleetForMap(mapId).id)?.[1] ?? NaN);
+  const warYears = fleetYear <= 1945, noHulks = mapId === 'moon' || (warYears && mapId !== 'verdant');
+  assert.equal(cast.count, noHulks ? 0 : extraWreckBudget[mapId] ?? 5,
+    `${mapId}: the period cast keeps the existing placement budget (none on a war front the fleet has no tank of)`);
+  assert.ok(noHulks ? cast.ids.length === 0 : cast.ids.length >= 1 && cast.ids.length <= cast.count,
+    `${mapId}: an authored period cast within the slots`);
+  if (warYears) assert.equal(cast.era, 'ww2', `${mapId}: a war-years map's cast is of the war`);
   assert.equal(new Set(cast.ids).size, cast.ids.length, `${mapId}: no repeated donor in a map cast`);
   for (const id of cast.ids) {
     assert.ok(isPublicWreckDonor(id), `${mapId}/${id}: wreck donor is actually publicly playable`);
-    assert.ok(WRECK_ROSTER_POOLS.modern.includes(id), `${mapId}/${id}: curated modern battlefield donor`);
+    assert.ok(curatedWreckDonors.has(id), `${mapId}/${id}: a curated donor the wreck fleet receipt bakes`);
+    if (warYears) assert.equal(vehicleEraForId(id), 'ww2', `${mapId}/${id}: a tank of the war`);
     battlefieldWrecks.add(id);
   }
-  cast.ids.slice(0, 2).forEach(id => mobileWrecks.add(id));
   const treelineLayers = resolveHorizonTreelineLayers(config.horizon);
   assert.ok(Number.isInteger(treelineLayers)
     && treelineLayers >= 1 && treelineLayers <= HORIZON_TREELINE_MAX_LAYERS,
@@ -208,10 +221,13 @@ for (const mapId of MAP_IDS) {
   }
 }
 
-assert.deepEqual([...battlefieldWrecks].sort(), [...WRECK_ROSTER_POOLS.modern].sort(),
-  'every modern wreck donor is authored into real map placements, not only a fallback pool');
-assert.deepEqual([...mobileWrecks].sort(), [...WRECK_ROSTER_POOLS.modern].sort(),
-  'the complete wreck variety is represented within the existing two-slot mobile casts');
+// the period ruling's named casts (2026-10-06; the Fulda Gap keeps six of its seven types inside its six slots)
+assert.deepEqual(getMapConfig('frontier').props.tankWrecks.ids, ['m60a3', 'm1a1', 'leo1a5', 'marder1a3', 't80b', 'bmp2'],
+  'the Fulda Gap in the 1980s: NATO and Soviet armour of the decade');
+assert.deepEqual(getMapConfig('ruinspires').props.tankWrecks.ids, ['t72m1_jaguar', 'type59', 'bmp2'], 'Sarajevo, 1992-96');
+assert.deepEqual(getMapConfig('airfield').props.tankWrecks.ids, ['t72b3_x', 't80bv', 'bmp2', 'ua_t64bv'], 'Hostomel, 2022');
+assert.deepEqual(getMapConfig('verdant').props.tankWrecks.ids, ['kv2'], 'Kursk, 1943: the KV-2');
+assert.ok(battlefieldWrecks.size >= 20, `the period casts still bring a broad variety of hulks (${battlefieldWrecks.size} types)`);
 
 const cityMaterialMaps = ['urban', 'foundry', 'ruinspires', 'blackglass', 'skybridge', 'caldera'];
 const repairedHeavyFamilies = ['factory', 'foundryoffice', 'depot', 'warehouse', 'firestation'];
@@ -220,6 +236,15 @@ for (const mapId of cityMaterialMaps) {
   const config = getMapConfig(mapId);
   const tones = config.props.tones;
   assert.ok(tones, `${mapId}: city structures have an authored material palette`);
+  // a map whose regional kit owns its renders' tones (props.architecture; the map keeps only its field walls' stone,
+  // props.ts lays the kit's tones under the map's): the kit's palette is the city palette, and its painters are
+  // regionalArchitecture.selftest's (the map-revival lanes, 2026-10-05)
+  const kit = config.props.architecture ? ARCHITECTURE_STYLES.find((style) => style.id === config.props.architecture) : null;
+  if (kit && !tones.plaster) {
+    assert.ok(['plaster', 'plaster2', 'plaster3'].every((bucket) => typeof kit.surfaces.tones?.[bucket] === 'function')
+      && typeof tones.stone === 'function', `${mapId}: the ${kit.id} kit owns the renders' tones and the map keeps its field walls' stone`);
+    continue;
+  }
   const samples = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof']
     .map((bucket) => tones[bucket](0.5, 0.34, 0.55));
   assert.ok(samples.every(([hue, saturation, lightness]) => (
@@ -294,8 +319,10 @@ for (const mapId of [...EXPANSION, ...EXTREME]) {
   // roadside plan
   const landmarks = [...config.props.plan, ...(config.props.plannedSites ?? []).map((site) => site.structure)];
   assert.ok(landmarks.length >= 14, `${mapId}: authored landmark plan is dense`);
-  assert.equal(config.props.tankWrecks.era, 'modern', `${mapId}: modern wreck fleet`);
-  assert.ok(config.props.tankWrecks.count >= 5, `${mapId}: multiple wreck story beats`);
+  // the period ruling (2026-10-06): the cast is the map's period's (above), and a war front the fleet has no tank of
+  // carries none
+  assert.ok(config.props.tankWrecks.count >= 5 || config.props.tankWrecks.count === 0 && config.props.tankWrecks.era === 'ww2',
+    `${mapId}: multiple wreck story beats, or none on a war front`);
   assert.equal(config.props.tankWrecks.debris, true, `${mapId}: detached debris enabled`);
   // an authored mix counts its pieces: a period map keeps the budget in the families of its year (Nordhavn 1940 and
   // Glacier Pass 1945 have cable reels and direction signs, no traffic cones, Jersey barriers or pad transformers)
@@ -427,9 +454,10 @@ for (const mapId of LEGACY) {
   const config = getMapConfig(mapId);
   const wrecks = config.props.tankWrecks;
   assert.equal(config.props.telegraph, true, `${mapId}: linked utility-pole network enabled`);
-  assert.equal(wrecks.era, 'modern', `${mapId}: modern wreck backport`);
+  // the period ruling (2026-10-06) replaced the modern backport: the period cast (checked above for every map) may be
+  // smaller than its slots, which cycle through it
   assert.equal(wrecks.debris, true, `${mapId}: detached wreck debris backport`);
-  assert.equal(wrecks.ids.length, wrecks.count, `${mapId}: deliberate no-repeat wreck cast`);
+  assert.ok(wrecks.ids.length <= wrecks.count, `${mapId}: a no-repeat period cast within the slots`);
   const clutter = config.props.inhabit.modernClutter;
   assert.equal(typeof clutter, 'object', `${mapId}: authored modern-clutter mix`);
   for (const kind of CLUTTER_FAMILIES) {

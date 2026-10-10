@@ -4,7 +4,7 @@
 // running-gear course, then adds source-specific supported armor/equipment.
 
 import * as THREE from 'three';
-import { KIT, FITTINGS, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, orientedSlab, convexSlab } from './kit.ts';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildType10BBase } from '../modern3.ts';
 import { buildType90 } from './misc.ts';
@@ -12,7 +12,7 @@ import { TYPE10_MANTLET_FIT } from './type10GunSeat.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mount as mountFitting } from './fittingMount.ts';
-import { sampleArmorFace as sampleFace } from './armorFaceSampling.ts';
+import { sampleConvexArmorFace as sampleFace } from './armorFaceSampling.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
@@ -325,10 +325,10 @@ function addSTB1HullBody(P: JapaneseBuilderPort): void {
     // flare begins only at the top-run line, matching the source cross-
     // section and preventing the diagonal side wall from cutting through
     // suspension-driven pads.
-    P.add('hull', orientedSlab(
+    P.add('hull', convexSlab(
       [-a.w, a.b, a.z], [a.w, a.b, a.z], [b.w, b.b, b.z], [-b.w, b.b, b.z],
       [-a.ws, a.s, a.z], [a.ws, a.s, a.z], [b.ws, b.s, b.z], [-b.ws, b.s, b.z]));
-    P.add('hull', orientedSlab(
+    P.add('hull', convexSlab(
       [-a.ws, a.s, a.z], [a.ws, a.s, a.z], [b.ws, b.s, b.z], [-b.ws, b.s, b.z],
       [-a.wt, a.t, a.z], [a.wt, a.t, a.z], [b.wt, b.t, b.z], [-b.wt, b.t, b.z]));
   }
@@ -732,14 +732,13 @@ function addType90APackage(P: JapaneseBuilderPort): void {
     for (let i = 0; i < 6; i++) cassette(P, 'hull', side * 1.70, 1.07,
       1.78 - i * 0.70, 0.055, 0.40, 0.62, null, false);
   }
-  // Large panoramic thermal head and shielded low roof weapon.
+  // Large panoramic thermal head. 2026-10-08 (the owner's field standard in main 6763d7cc0, the coordinator's ruling on
+  // the lane's audit): the package's shielded roof MAG and its ring are gone. A Type 90 carries one roof weapon, the
+  // M2 on its pintle between the commander's and gunner's hatches, beside the Type 74 coax, and the MAG stood 0.7 m from it.
   P.add('turret', box(0.48, 0.075, 0.46), -0.55, 0.86, -0.22);
   P.add('turretDetail', box(0.38, 0.34, 0.35), -0.55, 1.04, -0.18, -0.05, 0, 0);
   P.add('turretDark', box(0.28, 0.18, 0.032), -0.55, 1.06, 0.03);
   P.add('turretGlass', box(0.20, 0.11, 0.022), -0.55, 1.06, 0.055);
-  P.add('turret', cylY(0.27, 0.29, 0.075, 18), 0.50, 0.86, -0.48);
-  P.add('turretDark', torus(0.25, 0.014, 18), 0.50, 0.91, -0.48);
-  roofWeapon(P, 0.50, 0.92, -0.48, 9010, 0.82, -0.04);
 
   // The donor's broad welded roof remains the correct Type 90 family mass,
   // but the A package needs a visible service grammar at garage distance.
@@ -832,13 +831,15 @@ function addType10BPackage(P: JapaneseBuilderPort): void {
       [side * 1.694, 0.055, 0.88], [side * 1.43, 0.671, 0.638],
       [side * 1.375, 0.616, -0.715], [side * 1.628, 0.055, -0.638],
     ];
-    P.add('turret', orientedSlab(
+    // Two welded support facets form each compound face. The old fixed
+    // quad diagonal dented one cheek inward and disagreed with its mirror.
+    P.add('turret', convexSlab(
       [side * 0.198, 0.055, 1.606], sideFace[0], sideFace[3], [side * 0.44, 0.055, 0.264],
       topFace[0], topFace[1], topFace[2], topFace[3]));
 
-    // Four compound-pitch courses replace the two hand-rotated diagonal
-    // strips. Every cassette inherits the wing's local normal and penetrates
-    // its carrier by 12 mm, so neither yaw nor pitch can open a daylight gap.
+    // Every cassette samples the emitted planar facets, not a bilinear
+    // imaginary patch between them. Its local normal and 12 mm embed follow
+    // its carrier, so neither yaw nor pitch can open a daylight gap.
     for (const u of [0.16, 0.38, 0.60, 0.82]) {
       for (const v of [0.12, 0.36, 0.60, 0.84]) {
         const face = sampleFace(...topFace, u, v, [0, 1, 0]);

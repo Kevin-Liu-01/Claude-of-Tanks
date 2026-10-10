@@ -1,5 +1,12 @@
+import { addModernFieldCage } from './modernFieldCage.ts';
+import {addRearFieldStowage} from './rearFieldStowage.ts';
+import {buildM1A1GunMount} from './m1a1GunMount.ts';
+import {abramsPlanarCheek} from './abramsPlanarCheek.ts';
+import {facetedSlab,symmetricSlab} from './facetedSlab.ts';
+import {pushConvexQuad} from '../factoryGeometry.ts';
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { sweptTube } from '../accessoryPrimitives.ts';
 // Strict TypeScript Abrams family procedural profiles — gate-v6 rebuild (2026-07-31).
 // Authored against TRUE-AXIS ortho mask traces (docs/references/profiles/*
 // re-extracted after the v6 camera fix, plus scratch probe curves decoded to
@@ -186,6 +193,7 @@ interface AbramsTurretConfig {
   readonly tw: number;
   readonly throat: number;
   readonly throatDepth?: number;
+  readonly throatRearBottomY?: number;
   readonly zTip: number;
   readonly zWide: number;
   readonly zWideR?: number;
@@ -209,8 +217,10 @@ interface AbramsTurretConfig {
   readonly roofThroatRearY?: number;
   readonly roofThroatFrontY?: number;
   readonly throatChinBevel?: Vec2Tuple;
-  readonly joinedCheekRoof?: boolean;
+  readonly planarCheekCourses?: boolean;
   readonly articulatedThroat?: boolean;
+  /** A family-authored mantlet occupies the open pitching bay. */
+  readonly separateMantlet?: boolean;
   readonly faceRake?: number;
   readonly yBotKnees?: readonly Vec2Tuple[];
   readonly inset: number;
@@ -312,6 +322,9 @@ interface AbramsLoaderWeaponReceipt {
   pintleZ: number;
   pintleBottomY: number;
   pintleTopY: number;
+  /** The cradle floor the receiver rests on (the shared Browning construction's load path). */
+  cradleBottomY: number;
+  cradleTopY: number;
   receiverBottomY: number;
   receiverY: number;
   americanWeaponStandard: string;
@@ -365,7 +378,7 @@ function configuredAbramsProfile(
 ) {
   return {
     ...options,
-    build: (builder: RuntimeValue): void => build(requireAbramsBuilder(builder), options),
+    build: (builder: RuntimeValue): void => { const P=requireAbramsBuilder(builder); build(P, options); if(P.spec.id==='m1a2')addRearFieldStowage(P); },
   };
 }
 
@@ -387,6 +400,30 @@ const towCable: typeof KIT.towCable = (...args) => KIT.towCable(...args);
 const headlight: typeof KIT.headlight = (...args) => KIT.headlight(...args);
 const xform: typeof KIT.xform = (...args) => KIT.xform(...args);
 const mergeAll: typeof KIT.mergeAll = (...args) => KIT.mergeAll(...args);
+
+const M1_RETURN_COURSE_IDS = new Set([
+  'm1a1', 'm1a1ha', 'ua_m1a1', 'm1a2', 'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3',
+]);
+
+// Deck and belly stations need not have the same longitudinal slope. Their
+// narrow side returns therefore have four noncoplanar corners: keep those
+// measured edges, but form the exterior ridge instead of an inward diagonal
+// dent. Only the two side panels change; roof, floor and station end faces
+// remain byte-identical. The same outward rule reflects the physical surface,
+// unlike choosing one default diagonal independently on opposite sides.
+function abramsReturnCourse(...corners: Parameters<typeof KIT.slab>): THREE.BufferGeometry {
+  const geometry = slab(...corners);
+  const [a, b, c, d, e, f, g, h] = corners;
+  const position = geometry.getAttribute('position');
+  for (const [start, points] of [[6, [b, c, g, f]], [18, [d, a, e, h]]] as const) {
+    const triangles: number[] = [];
+    pushConvexQuad(triangles, ...points);
+    for (let i = 0; i < 6; i++) position.setXYZ(start + i,
+      triangles[i * 3], triangles[i * 3 + 1], triangles[i * 3 + 2]);
+  }
+  geometry.computeVertexNormals();
+  return geometry;
+}
 
 // ---------------------------------------------------------------------------
 // Curve helpers
@@ -426,7 +463,9 @@ function loftBand(
     const tf = lineAt(top, zf), tr = lineAt(top, zr);
     const bf = bottomAt(zf), br = bottomAt(zr);
     if (tf - bf < 0.015 && tr - br < 0.015) continue;
-    P.add(bucket, slab(
+    const bandSlab = M1_RETURN_COURSE_IDS.has(P.spec.id) ? abramsReturnCourse
+      : P.spec.id === 'm1a3' ? symmetricSlab : slab;
+    P.add(bucket, bandSlab(
       [-halfW, bf, zf], [halfW, bf, zf], [halfW, br, zr], [-halfW, br, zr],
       [-(halfW - inset), tf, zf], [halfW - inset, tf, zf],
       [halfW - inset, tr, zr], [-(halfW - inset), tr, zr]));
@@ -475,7 +514,8 @@ function loftTrackClearBand(
           [tx0, tf, zf], [tx1, tf, zf], [tx1, tr, zr], [tx0, tr, zr]]
         : [[x1, of, zf], [x0, of, zf], [x0, or, zr], [x1, or, zr],
           [tx1, tf, zf], [tx0, tf, zf], [tx0, tr, zr], [tx1, tr, zr]];
-      P.add(bucket, slab(...points));
+      P.add(bucket, M1_RETURN_COURSE_IDS.has(P.spec.id)
+        ? abramsReturnCourse(...points) : slab(...points));
     }
   }
 }
@@ -524,19 +564,12 @@ function sideSlab(
   t1: Vec3Tuple,
   t2: Vec3Tuple,
   t3: Vec3Tuple,
-  joinMirroredRoof = false,
 ): void {
   const M = ([x, y, z]: Vec3Tuple): Vec3Tuple => [side * x, y, z];
-  // Non-planar cheek roofs must use the same physical diagonal on both
-  // flanks. The historical positive-side order split t0->t2 while the
-  // winding-corrected mirror split t1->t3, so a sufficiently faceted roof
-  // could read as two selectable triangles on only one side. A cyclic ring
-  // rotation preserves outward winding while choosing the mirror's t1->t3
-  // diagonal; legacy profiles retain their byte-identical topology.
+  // Legacy callers retain their existing topology; the M1A3's planar stock
+  // uses abramsPlanarCheek and reflects the completed triangle list.
   P.add(bucket, side > 0
-    ? (joinMirroredRoof
-      ? slab(b1, b2, b3, b0, t1, t2, t3, t0)
-      : slab(b0, b1, b2, b3, t0, t1, t2, t3))
+    ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
     : slab(M(b1), M(b0), M(b3), M(b2), M(t1), M(t0), M(t3), M(t2)));
 }
 
@@ -1649,11 +1682,20 @@ function addAbramsShellCheeks(
     const zT = side > 0 ? (t.zTipR ?? t.zTip) : t.zTip;
     const zW = side > 0 ? (t.zWideR ?? t.zWide) : t.zWide;
     const bx = side > 0 ? (t.twTipR ?? tw) : tw;   // right wide-corner pull-in
+    if(t.planarCheekCourses){
+      P.add('turret',abramsPlanarCheek([
+        [thr,t.yBotTip??t.yBot,zT],[bx,t.yBot,zW+.12],
+        [tw,t.yBot,t.zWide-.7],[thr,t.yBot,zT-1.05],
+      ],[
+        [thr,t.roofTip,zT-faceRake],[Math.min(bx,tw-inset),t.roofWide,zW],
+        [tw-inset,roofCheekOuterRearY,t.zWide-.7],[thr,roofCheekInnerRearY,zT-1.15],
+      ],side));
+      continue;
+    }
     sideSlab(P, 'turret', side,
       [thr, t.yBotTip ?? t.yBot, zT], [bx, t.yBot, zW + 0.12], [tw, t.yBot, t.zWide - 0.7], [thr, t.yBot, zT - 1.05],
       [thr, t.roofTip, zT - faceRake], [Math.min(bx, tw - inset), t.roofWide, zW],
-      [tw - inset, roofCheekOuterRearY, t.zWide - 0.7], [thr, roofCheekInnerRearY, zT - 1.15],
-      t.joinedCheekRoof);
+      [tw - inset, roofCheekOuterRearY, t.zWide - 0.7], [thr, roofCheekInnerRearY, zT - 1.15]);
   }
 }
 
@@ -1662,6 +1704,7 @@ function addAbramsShellThroat(
   t: AbramsShellConfig,
   layout: AbramsShellLayout,
 ): void {
+  if (t.separateMantlet) return;
   const { thr, faceRake, roofThroatRearY } = layout;
   // Throat block between the cheeks: recessed face carries the embrasure.
   // t.yBotFace chamfers the block's front bottom edge with the cheeks;
@@ -1674,6 +1717,7 @@ function addAbramsShellThroat(
   // print carries a genuine VALLEY behind its collar — a shorter throat
   // block clears those side columns (aim family round, 2026-08-06).
   const thD = t.throatDepth ?? 1.3;
+  const rearBottomY = t.throatRearBottomY ?? t.yBot;
   // The M1A3's broad shield is the mantlet itself. Leave 12 mm at each
   // cheek and author it in the pitching frame, never the recoil frame.
   const halfWidth = t.articulatedThroat ? thr - .012 : thr * 1.02;
@@ -1689,7 +1733,7 @@ function addAbramsShellThroat(
       const cover = slab(
         [left, yBF + (i === 0 ? bevelRise : 0), frontZ(left)],
         [right, yBF + (i === 2 ? bevelRise : 0), frontZ(right)],
-        [right, t.yBot, t.zTip - thD], [left, t.yBot, t.zTip - thD],
+        [right, rearBottomY, t.zTip - thD], [left, rearBottomY, t.zTip - thD],
         [left, roofFrontY, frontZ(left) - faceRake], [right, roofFrontY, frontZ(right) - faceRake],
         [right, roofThroatRearY, t.zTip - thD], [left, roofThroatRearY, t.zTip - thD]);
       cover.translate(-P.gunG.position.x, -P.gunG.position.y, -P.gunG.position.z);
@@ -1698,7 +1742,7 @@ function addAbramsShellThroat(
     return;
   }
   const throat = slab(
-    [-halfWidth, yBF, zFace], [halfWidth, yBF, zFace - skew], [halfWidth, t.yBot, t.zTip - thD], [-halfWidth, t.yBot, t.zTip - thD],
+    [-halfWidth, yBF, zFace], [halfWidth, yBF, zFace - skew], [halfWidth, rearBottomY, t.zTip - thD], [-halfWidth, rearBottomY, t.zTip - thD],
     [-halfWidth, roofFrontY, zFace - faceRake], [halfWidth, roofFrontY, zFace - skew - faceRake],
     [halfWidth, roofThroatRearY, t.zTip - thD], [-halfWidth, roofThroatRearY, t.zTip - thD]);
   if (t.articulatedThroat) {
@@ -1730,6 +1774,8 @@ function addAbramsShellBody(
   layout: AbramsShellLayout,
 ): void {
   const { tw, inset, zMain, yBotRear } = layout;
+  const bodySlab = t.separateMantlet && M1_RETURN_COURSE_IDS.has(P.spec.id)
+    ? abramsReturnCourse : t.planarCheekCourses ? symmetricSlab : slab;
   // Cheek->roof transition wedge (roofWide across the shoulders). wedgePull
   // keeps its bottom face inside the next plan trace column when the flank
   // wall is authored separately (plan-column sliver law).
@@ -1743,14 +1789,52 @@ function addAbramsShellBody(
     for (const [left, right] of [[-(tw - wp), -t.throat], [t.throat, tw - wp]]) {
       const topLeft = Math.max(left, -(tw - inset));
       const topRight = Math.min(right, tw - inset);
-      P.add('turret', slab(
+      P.add('turret', t.planarCheekCourses ? facetedSlab([
+        [t.throat,t.yBot,t.zWide+.1],[tw-wp,t.yBot,t.zWide+.1],
+        [tw-wp,t.yBot,zMain],[t.throat,t.yBot,zMain],
+      ],[
+        [t.throat,t.roofWide,t.zWide],[tw-inset,t.roofWide,t.zWide],
+        [tw-inset,t.roofMain,zMain],[t.throat,t.roofMain,zMain],
+      ],left<0?-1:1) : slab(
         [left, t.yBot, t.zWide + .1], [right, t.yBot, t.zWide + .1], [right, t.yBot, zMain], [left, t.yBot, zMain],
         [topLeft, t.roofWide, t.zWide], [topRight, t.roofWide, t.zWide],
         [topRight, t.roofMain, zMain], [topLeft, t.roofMain, zMain]));
     }
-    P.add('turret', slab(
-      [-t.throat, t.yBot, frontZ], [t.throat, t.yBot, frontZ], [t.throat, t.yBot, zMain], [-t.throat, t.yBot, zMain],
-      [-t.throat, frontY, frontZ], [t.throat, frontY, frontZ], [t.throat, t.roofMain, zMain], [-t.throat, t.roofMain, zMain]));
+    if (t.separateMantlet) {
+      // M1A1: the center roof ends in a curved elevation recess. The old
+      // full-height rectangular throat occupied the moving shield's rear
+      // volume and appeared as an extra cube behind the mantlet.
+      const gun = P.gunG.position;
+      const radius = .356;
+      const profile = new THREE.Shape();
+      profile.moveTo(zMain, t.yBot);
+      profile.lineTo(gun.z - .09, t.yBot);
+      profile.lineTo(gun.z - .09, gun.y - .35);
+      for (let i = 0; i <= 24; i++) {
+        const y = -.344 + i * (.662 / 24);
+        profile.lineTo(gun.z - Math.sqrt(radius * radius - y * y), gun.y + y);
+      }
+      profile.lineTo(gun.z - .22, gun.y + .35);
+      profile.lineTo(zMain, t.roofMain);
+      profile.closePath();
+      P.add('turret', new THREE.ExtrudeGeometry(profile, {
+        depth: t.throat * 2, steps: 1, bevelEnabled: false,
+      }).rotateY(-Math.PI / 2), t.throat, 0, 0);
+      // Coaxial bearing housings seat the journals in the cheek walls;
+      // the 5 mm running gap is radial, never a floating axial mount.
+      const bearing = new THREE.Shape();
+      bearing.absarc(0, 0, .225, 0, Math.PI * 2, false);
+      const bore = new THREE.Path();
+      bore.absarc(0, 0, .180, 0, Math.PI * 2, true);
+      bearing.holes.push(bore);
+      for (const side of [-1, 1]) P.add('turret', new THREE.ExtrudeGeometry(bearing, {
+        depth: .03, steps: 1, bevelEnabled: false, curveSegments: P.q ? 16 : 10,
+      }).rotateY(-Math.PI / 2), side * .39 + .015, gun.y, gun.z);
+    } else {
+      P.add('turret', slab(
+        [-t.throat, t.yBot, frontZ], [t.throat, t.yBot, frontZ], [t.throat, t.yBot, zMain], [-t.throat, t.yBot, zMain],
+        [-t.throat, frontY, frontZ], [t.throat, frontY, frontZ], [t.throat, t.roofMain, zMain], [-t.throat, t.roofMain, zMain]));
+    }
   } else {
     P.add('turret', slab(
       [-(tw - wp), t.yBot, t.zWide + 0.1], [tw - wp, t.yBot, t.zWide + 0.1], [tw - wp, t.yBot, zMain], [-(tw - wp), t.yBot, zMain],
@@ -1770,7 +1854,7 @@ function addAbramsShellBody(
       const [zf, yf] = segsB[k], [zr, yr] = segsB[k + 1];
       const last = k === segsB.length - 2;
       const xb = last ? tw * 0.985 : tw, xt = last ? (tw - inset) * 0.985 : (tw - inset);
-      P.add('turret', slab(
+      P.add('turret', bodySlab(
         [-tw, yf, zf], [tw, yf, zf], [xb, yr, zr], [-xb, yr, zr],
         [-(tw - inset), roofAt(zf), zf], [tw - inset, roofAt(zf), zf],
         [xt, roofAt(zr), last ? zr + 0.10 : zr], [-xt, roofAt(zr), last ? zr + 0.10 : zr]));
@@ -2970,9 +3054,7 @@ function tejasRoofKit(
         const scale = tallStation ? 0.68 : 0.64;
         const baseY = loaderMountTopAt(loaderMountZ) - 0.008;
         const baseZ = loaderMountZ;
-        const receiverY = baseY + 0.345 * scale;
-        if (lowProfileStation) sepv3LoaderReceiverY = receiverY;
-        addAbramsBrowning(P, {
+        const loaderGun = addAbramsBrowning(P, {
           x: loaderX,
           y: baseY,
           z: baseZ,
@@ -2985,13 +3067,19 @@ function tejasRoofKit(
           barrelLength: tallStation ? 0.72 : 0.66,
           ring: lowProfileStation,
         });
+        // round 5: the receipt reads the built gun's datum (the shared Browning construction at true scale)
+        const datum = loaderGun.userData.mountDatum;
+        const receiverY = baseY + datum.receiverY;
+        if (lowProfileStation) sepv3LoaderReceiverY = receiverY;
         loaderWeaponReceipt = {
           station: tallStation ? 'sepv2-loader-m2hb' : 'sepv3-loader-m2hb',
           x: loaderX,
           pintleZ: baseZ,
           pintleBottomY: baseY,
-          pintleTopY: baseY + 0.330 * scale,
-          receiverBottomY: baseY + (0.345 - 0.0725) * scale,
+          pintleTopY: baseY + datum.pintleTopY,
+          cradleBottomY: baseY + datum.cradleBottomY,
+          cradleTopY: baseY + datum.cradleTopY,
+          receiverBottomY: baseY + datum.receiverBottomY,
           receiverY,
           americanWeaponStandard: 'sheridan-m2hb-v2',
           shieldVariant: tallStation ? 'armored' : 'low',
@@ -3027,9 +3115,8 @@ function tejasRoofKit(
         const pintleBottomY = standardM1A2
           ? loaderMountTopAt(loaderMountZ) - 0.008
           : receiverY - 0.185;
-        const pintleTopY = pintleBottomY + 0.330 * scale;
         const shieldVariant = standardM1A2 ? 'split' : ha ? 'armored' : false;
-        addAbramsBrowning(P, {
+        const loaderGun = addAbramsBrowning(P, {
           x: loaderX,
           y: pintleBottomY,
           z: pintleZ,
@@ -3044,14 +3131,18 @@ function tejasRoofKit(
           ring: !ha,
         });
         if (standardM1A2) {
+          // round 5: measured on the built gun (the shared Browning construction at true scale)
+          const datum = loaderGun.userData.mountDatum;
           loaderWeaponReceipt = {
             station: 'm1a2-loader-m2hb',
             x: loaderX,
             pintleZ,
             pintleBottomY,
-            pintleTopY,
-            receiverBottomY: pintleBottomY + (0.345 - 0.0725) * scale,
-            receiverY: pintleBottomY + 0.345 * scale,
+            pintleTopY: pintleBottomY + datum.pintleTopY,
+            cradleBottomY: pintleBottomY + datum.cradleBottomY,
+            cradleTopY: pintleBottomY + datum.cradleTopY,
+            receiverBottomY: pintleBottomY + datum.receiverBottomY,
+            receiverY: pintleBottomY + datum.receiverY,
             americanWeaponStandard: 'sheridan-m2hb-v2',
             shieldVariant: 'split',
           };
@@ -3179,6 +3270,9 @@ function tejasRoofKit(
         // Keep the complete bank 12 mm farther out on its broad bracket
         // so its bore rims remain clear of the applique face.
         if (side > 0) smokeX += .012;
+        // The wider mantlet bay rotates the cheek frame inward. Restore the
+        // bank's outward reach as one assembly, including its seated foot.
+        smokeX += side * .015;
       }
       tejasSmokeCluster(P, smokeX, smokeY, smokeZ, side);
     }
@@ -3326,10 +3420,6 @@ function tejasRoofKit(
     // (selected inner face x=1.44, y=-0.0534..0.4534, z=1.1816..1.2984)
     // stood proud of the primary swept cheek.  The closed cheek loft beneath
     // it already carries this transition, so remove the overlay completely.
-    // Plan-only center bump left of the covers (ref plan 2.754 world at
-    // x -0.26..-0.37; held in the covers' 1.76..2.00 y band so neither the
-    // side nor the front silhouette moves).
-    P.add('turret', box(0.20, 0.24, 0.42), -0.32, 0.31, 2.19);
     // (turret "A-11" number decals dropped — visual r3 item 6: the ref
     // carries no such markings; invented text read as a builder signature)
     // Cable-reel DRUM on the left bustle flank (visual r3 item 6): the ref
@@ -4140,7 +4230,20 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     : null;
   const t = {
     ...TEJAS_TURRET,
+    // Both cheeks are fabricated from the same planar armor courses. The
+    // former source-fit offsets twisted their fronts and chose opposite
+    // diagonals across the roofs; equipment keeps its intentional asymmetry.
+    planarCheekCourses: true,
+    zTipR: TEJAS_TURRET.zTip,
+    twTipR: TEJAS_TURRET.tw,
+    roofCheekInnerRearY: TEJAS_TURRET.roofWide,
+    roofCheekOuterRearY: TEJAS_TURRET.roofWide,
     ...(dufMul ? { rackDufMul: dufMul } : {}),
+    // The owner's photographs replace the earlier plan-skewed throat cover.
+    // Cheeks bound a real bay; the broad M256 shield is authored in gun space.
+    articulatedThroat: true,
+    separateMantlet: true,
+    throat: .39,
     yBot: M1A1_TURRET_FLOOR_Y,
     yBotKnees: TEJAS_TURRET.yBotKnees.map(([z, y]): Vec2Tuple =>
       [z, Math.max(y, M1A1_TURRET_FLOOR_Y)]),
@@ -4373,44 +4476,25 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
       0, (bearingTop + bearingBottom) / 2, 0);
     abramsBustleRack(P, t, 1);
     tejasRoofKit(P, t, p.station ?? 'crows', p.abramsKit);
-    // Mantlet hand-rolled post-warp (the shared abramsMantlet block2/seam tops
-    // rode 2.05-2.11 world where the warped-frame ref reads a 2.00 flat cover
-    // line; block1 deepened to the ref's 1.54-1.56 cover bottom, collar
-    // slimmed to the same 2.00 top). Gun group sits at world (x -0.05, y 1.88).
-    P.addGunExtra(box(0.64, 0.58, 0.42), 0, -0.03, 0.22);
-    // block2 top raised to the ref's 2.13 cover line, depth trimmed to end at
-    // z 2.42 world (W1b side rows: ref holds 2.134-2.142 out to ~2.41 but the
-    // 2.496 column is bare 1.992 tube — the first 0.24-deep raise owned it at
-    // +0.12). Bottom stays ~1.68; seams/coax ride the new rear face.
-    // Visual r4 item 4: the 0.384-wide block2 read as a SQUARE bay outline
-    // proud of block1 (its cast shadow drew the box) and the two vertical
-    // cover seams were the inner pair of "pill" lines. Widened to 0.56 so the
-    // cover reads as the ref's LOW WIDE HORIZONTAL band (same top/bottom/depth
-    // — side columns identical; plan hidden behind the throat block), vertical
-    // seams DELETED, horizontal seams stretched with the cover: one bold line
-    // at the cover top edge + a slim lower seam, per the ref's band language.
-    P.addGunExtra(box(0.56, 0.40, 0.13), 0, 0.05, 0.415);
-    P.addGunExtra(box(0.50, 0.030, 0.028), 0, 0.20, 0.47);
-    P.addGunExtra(box(0.44, 0.024, 0.028), 0, -0.14, 0.47);
-    P.addGunExtraDark(cylZ(0.042, 0.18, 10), 0.16, 0.02, 0.47);
-    P.addGunExtra(cylZ(0.125, 0.28, 14), 0, 0, 0.66);
+    // The photo-based armored face and round cradle pitch as one assembly.
+    buildM1A1GunMount(P, P.spec.id === 'm1a1ha');
     if (P.spec.id === 'm1a1ha') {
-      // HA gun-rig searchlight: its rear shell overlaps the left mantlet edge,
-      // so the complete lamp pitches with rig_gun instead of floating on the
-      // turret when the cannon elevates.  The broad glass face is deliberately
+      // HA gun-rig searchlight: a two-stage bracket carries the entire
+      // lamp ahead of the left cheek, and pitches with the gun without
+      // cutting through the fixed turret when it elevates.  The broad glass face is deliberately
       // visible beside the tube from frontal and left-quarter views.
-      P.add('gunMount', box(0.34, 0.32, 0.22), -0.48, 0.04, 0.54);
-      P.add('gunMountDark', box(0.305, 0.285, 0.028), -0.48, 0.04, 0.660);
-      P.add('gunMountGlass', box(0.245, 0.215, 0.016), -0.48, 0.04, 0.683);
-      P.add('gunMountDark', box(0.045, 0.26, 0.19), -0.285, 0.04, 0.525,
+      P.add('gunMount', box(0.34, 0.32, 0.22), -0.48, 0.07, 0.70);
+      P.add('gunMountDark', box(0.305, 0.285, 0.028), -0.48, 0.07, 0.820);
+      P.add('gunMountGlass', box(0.245, 0.215, 0.016), -0.48, 0.07, 0.843);
+      P.add('gunMountDark', box(0.045, 0.26, 0.19), -0.285, 0.07, 0.685,
         0, 0, -0.12);
-      P.add('gunMountDark', box(0.045, 0.26, 0.19), -0.675, 0.04, 0.525,
+      P.add('gunMountDark', box(0.045, 0.26, 0.19), -0.675, 0.07, 0.685,
         0, 0, 0.12);
       P.gunG.userData.abramsGunRigSearchlightReceipt = Object.freeze({
         host: P.spec.id,
         x: -0.48,
-        y: 0.04,
-        z: 0.54,
+        y: 0.07,
+        z: 0.70,
         lensWidthM: 0.245,
         lensHeightM: 0.215,
         pitchesWithGun: true,
@@ -4438,7 +4522,9 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     // carrier and the 1.714/2.046 side lines are byte-equal), short 0.138
     // step rings hugging the drum ends (<= the old cone outline at every z,
     // so no new silhouette pixel), recessed dark cinch/step seams.
-    buildGun(P, { len: t.gunLen, r: t.gunR, sleeve: false, collar: false, baseR: 0.14 });
+    // The recoiling hidden root must fit inside the fixed cradle, including
+    // its 1.15× rear taper. The visible thermal sleeves keep their own radii.
+    buildGun(P, { len: t.gunLen, r: t.gunR, sleeve: false, collar: false, baseR: 0.11 });
     P.add('gun', cylZ(0.166, 0.341, 20), 0, 0, 1.634);
     P.add('gun', cylZ(0.138, 0.06, 18), 0, 0, 1.444);
     P.add('gun', cylZ(0.138, 0.06, 18), 0, 0, 1.824);
@@ -4450,14 +4536,14 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     {
       const seg = P.q ? 24 : 14;
       for (const [z0, z1] of [[0.54, 0.705], [0.735, 1.115], [1.145, 1.56]]) {
-        P.add('gun', cylZ(0.125, z1 - z0, seg), 0.05, 0.007, (z0 + z1) / 2);
+        P.add('gun', cylZ(0.125, z1 - z0, seg), 0, 0, (z0 + z1) / 2);
       }
       for (const zc of [0.72, 1.13]) {                                 // cinch bands in the grooves
-        P.add('gun', cylZ(0.1235, 0.036, seg), 0.05, 0.007, zc);
+        P.add('gun', cylZ(0.1235, 0.036, seg), 0, 0, zc);
       }
-      P.add('gun', cylZ(0.120, 0.06, seg), 0.05, 0.007, 1.60);        // recessed joint ring
-      P.add('gun', cylZ(0.125, 0.27, seg), 0.05, 0.007, 1.775);       // sleeve B
-      P.add('gun', cylZ(0.118, 0.014, seg), 0.05, 0.007, 1.899);      // sleeve mouth washer
+      P.add('gun', cylZ(0.120, 0.06, seg), 0, 0, 1.60);        // recessed joint ring
+      P.add('gun', cylZ(0.125, 0.27, seg), 0, 0, 1.775);       // sleeve B
+      P.add('gun', cylZ(0.118, 0.014, seg), 0, 0, 1.899);      // sleeve mouth washer
     }
     P.add('gun', cylZ(t.gunR * 1.12, 0.09, 12), 0, 0, t.gunLen - 0.55);
   };
@@ -6469,12 +6555,16 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     // real holes around the breech and recoil slide.
     for (const [cx, sign] of [[-0.445, -1], [0.330, 1]]) {
       // Rear and forward uprights are deliberately on different z planes.
-      P.add('turretDark', box(0.045, 0.300, 0.045), cx,
-        3.075 - 1.95, -0.315 + 0.39, 0, 0, sign * 0.035);
-      P.add('turretDark', box(0.040, 0.205, 0.040), cx - sign * 0.010,
-        3.030 - 1.95, -0.025 + 0.39, 0, 0, -sign * 0.045);
+      // 2026-10-08 (tank-accessories round 5, the contact receipt: the cradle's side frames, rails, end shoes and
+      // cross-shaft touched nothing within 15 mm): each upright now runs from the lower split rail to the upper one,
+      // so the two rail pairs, the uprights and the cross-shaft close into one braced cage; the forward pair moves
+      // 12 mm aft onto its trunnion drum and the braces 15 mm inboard onto their uprights.
+      P.add('turretDark', box(0.045, 0.420, 0.045), cx,
+        3.090 - 1.95, -0.315 + 0.39, 0, 0, sign * 0.035);
+      P.add('turretDark', box(0.040, 0.420, 0.040), cx - sign * 0.010,
+        3.090 - 1.95, -0.037 + 0.39, 0, 0, -sign * 0.045);
       // Front-view diagonal brace: open triangular negative space, not plate.
-      P.add('turretDetail', box(0.030, 0.275, 0.032), cx - sign * 0.040,
+      P.add('turretDetail', box(0.030, 0.275, 0.032), cx - sign * 0.025,
         3.110 - 1.95, -0.283 + 0.39, 0, 0, sign * 0.24);
       P.add('turretDark', cylX(0.052, 0.105, 12), cx - sign * 0.012,
         3.165 - 1.95, -0.105 + 0.39);
@@ -6483,16 +6573,19 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     }
     // Split rails avoid the former heavy rectangular crown. Tiny end shoes
     // retain the measured x/y extrema without visually recreating a box.
+    // Round 5: the split rails run out to the uprights' outer faces (they stopped 6-8 cm short of them), and the end
+    // shoes bridge the two upper rails at the same 3.35 m extreme instead of hovering 5 cm above them.
     for (const z of [-0.304, -0.035]) {
-      P.add('turretDark', box(0.640, 0.030, 0.032), -0.069,
+      P.add('turretDark', box(0.818, 0.030, 0.032), -0.0575,
         3.285 - 1.95, z + 0.39);
-      P.add('turretDark', box(0.620, 0.036, 0.036), -0.069,
+      // the forward uprights lean inboard at their feet, so the forward lower rail stops 4 mm inside them
+      P.add('turretDark', box(z < -0.1 ? 0.818 : 0.770, 0.036, 0.036), -0.0575,
         2.900 - 1.95, z + 0.39);
     }
-    P.add('turretDark', box(0.045, 0.026, 0.045), -0.455,
-      3.337 - 1.95, -0.169 + 0.39);
-    P.add('turretDark', box(0.045, 0.026, 0.045), 0.341,
-      3.337 - 1.95, -0.169 + 0.39);
+    P.add('turretDark', box(0.045, 0.050, 0.300), -0.455,
+      3.325 - 1.95, -0.169 + 0.39);
+    P.add('turretDark', box(0.045, 0.050, 0.300), 0.341,
+      3.325 - 1.95, -0.169 + 0.39);
     // Compact tapered breech with two recoil rails and an exposed cross-shaft.
     P.add('turret', frustum(0.190, 0.105, -0.105, 0.165, 0.085, -0.085,
       3.015 - 1.95, 3.225 - 1.95), -0.045, 0, -0.145 + 0.39);
@@ -6502,7 +6595,8 @@ function buildAbramsX(P: AbramsBuilderPort): void {
       P.add('turretDark', box(0.055, 0.055, 0.225), side * 0.145,
         3.230 - 1.95, -0.145 + 0.39);
     }
-    P.add('turretDark', cylX(0.058, 0.52, 12), -0.045,
+    // round 5: the exposed cross-shaft is carried by the rear uprights (it stopped 15 cm inside them)
+    P.add('turretDark', cylX(0.058, 0.795, 12), -0.0575,
       3.055 - 1.95, -0.275 + 0.39);
     // Open receiver cage.  The former 330 x 105 x 315 mm solid block owned
     // the right envelope but erased the source's daylight around its recoil
@@ -6523,19 +6617,23 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     // Gun-right electronics case, feed wheel and visible ammunition arc.
     // Its registered bottom sat only tangent to the turntable radius. A
     // half-buried equipment foot now overlaps both the roof and case.
-    P.add('turretDetail', box(0.34, 0.18, 0.32), 0.41,
-      2.515 - 1.95, -0.40 + 0.39);
+    // Round 5 (contact receipt): the foot spans the tapered case's whole footprint, so the case stands on it
+    // rather than overhanging it on three sides.
+    P.add('turretDetail', box(0.46, 0.18, 0.53), 0.47,
+      2.515 - 1.95, -0.415 + 0.39);
     // The gun-right electronics enclosure is a tapered armored cassette.
     // Its previous rectangular AABB proxy made the otherwise open XM914
     // mechanism read like a generic CROWS tower.  Keep the registered outer
     // envelope at the buried foot, then chamfer the exposed upper half.
     P.add('turret', frustum(0.1615, 0.255, -0.255,
-      0.136, 0.220, -0.215, 2.579 - 1.95, 3.072 - 1.95),
+      0.136, 0.220, -0.215, 2.597 - 1.95, 3.072 - 1.95),
       0.5265, 0, -0.413 + 0.39);
     P.add('turretDark', box(0.018, 0.39, 0.42), 0.374,
       2.825 - 1.95, -0.413 + 0.39);
     for (const dy of [-0.12, 0, 0.12]) {
-      P.add('turretDetail', box(0.010, 0.025, 0.30), 0.690,
+      // round 5: each rib follows the case's tapering outer face (the top rib stood 16 mm off it)
+      const faceX = 0.5265 + 0.1615 - (2.825 + dy - 2.597) * (0.1615 - 0.136) / (3.072 - 2.597);
+      P.add('turretDetail', box(0.010, 0.025, 0.30), faceX + 0.004,
         2.825 + dy - 1.95, -0.413 + 0.39);
     }
     P.add('turretDark', cylX(0.105, 0.190, 16), 0.345,
@@ -6617,8 +6715,9 @@ function buildAbramsX(P: AbramsBuilderPort): void {
       }
       P.add('turretDark', box(0.130, 0.080, 0.140), 0.570,
         3.100 - 1.95, -0.300 + 0.39);
-      P.add('turretDetail', box(0.165, 0.025, 0.175), 0.570,
-        3.1375 - 1.95, -0.300 + 0.39);
+      // round 5: the lid rests on the feed mouth's flat top (it overhung the rounded block by 18 mm a side, half sunk)
+      P.add('turretDetail', box(0.110, 0.025, 0.120), 0.570,
+        3.1525 - 1.95, -0.300 + 0.39);
       P.turretG.userData.abramsxRwsFeedReceipt = {
         ammoBoxTopY: 1.122,
         feedMouthCenter: [0.570, 1.150, 0.090],
@@ -6636,17 +6735,18 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     // Flexible power/data return from the feed housing into the slew ring.
     // The segmented run makes the mechanical load path explicit without
     // closing the deliberate daylight around the receiver cage.
-    for (const [x, y, z, rz] of [
-      [0.515, 3.080, -0.505, 0.28],
-      [0.455, 2.990, -0.455, 0.48],
-      [0.390, 2.900, -0.390, 0.68],
-    ]) P.add('turretDark', box(0.032, 0.115, 0.032), x,
-      y - 1.95, z + 0.39, 0, 0, rz);
+    // Round 5 (contact receipt): the three loose box segments sat inside the enlarged case; one continuous cable now
+    // leaves the case's inboard face and drops onto the slew ring's top.
+    P.add('turretDark', sweptTube([[0.40, 3.02 - 1.95, -0.40 + 0.39], [0.33, 2.99 - 1.95, -0.40 + 0.39],
+      [0.27, 2.92 - 1.95, -0.34 + 0.39], [0.22, 2.845 - 1.95, -0.28 + 0.39]], 0.016, 6, 10));
     // Broad mandatory-kit crest from the measured puli/feed enclosure.  Its
     // 0.32 m span is a real P95 band (not an antenna spike) and anchors the
     // published 3.47 m datum while visually reading as the belt's top guide.
-    P.add('turretDetail', box(0.045, 0.026, 0.440), 0.36,
+    // Round 5 (contact receipt): the crest stands on a post from the third feed-bridge link (it hovered 5 cm over
+    // the bridge) and carries a station at the post.
+    P.add('turretDetail', new THREE.BoxGeometry(0.045, 0.026, 0.440, 1, 1, 4), 0.36,
       3.456 - 1.95, -0.393 + 0.39);
+    P.add('turretDetail', box(0.030, 0.060, 0.030), 0.36, 3.415 - 1.95, -0.393 + 0.39);
 
     // Gun-left EO cluster: armored cheek, round forward aperture and a small
     // secondary glass channel, all independently readable.
@@ -6672,8 +6772,9 @@ function buildAbramsX(P: AbramsBuilderPort): void {
       3.210 - 1.95, 0.6965 + 0.39);
     P.add('turret', cylZ(0.082, 0.72, 12), 0,
       3.235 - 1.95, -0.4065 + 0.39);
-    P.add('turretDark', cylZ(0.060, 0.28, 12), 0,
-      3.235 - 1.95, 0.105 + 0.39);
+    // round 5: the stepped sleeve carries its second band (the band at 0.315 m hung 7 cm past the sleeve's end)
+    P.add('turretDark', cylZ(0.060, 0.37, 12), 0,
+      3.235 - 1.95, 0.150 + 0.39);
     P.add('turretDetail', cylZ(0.038, 0.135, 12), 0,
       3.210 - 1.95, 1.520 + 0.39);
     P.add('turretDark', cylZ(0.020, 0.012, 10), 0,
@@ -7277,7 +7378,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     [z, w, y0, y1, roofW, broadY = y0, baseW = w]: AxShellStation,
   ): AxShellLocal => {
     const terraceReceipt = axRearTerraces.get(z);
-    return ({
+    const station: AxShellLocal = {
     // The final visual reduction is deliberately sub-voxel at the outer
     // envelope: enough to tighten the broad read, but not enough to move the
     // registered armor out of its measured source cells.
@@ -7312,7 +7413,19 @@ function buildAbramsX(P: AbramsBuilderPort): void {
         shoulderOuterW: shoulderOuterW ?? (baseW * 0.985),
       };
     })() : null,
-  });
+    };
+    // The low rear tip has only 70 mm of raw stock. The independent visual
+    // offsets above formerly put its floor above its roof, crossing two aft
+    // layers. Keep the exterior roof datum and widths, and nest these buried
+    // backing courses below it with finite 5 mm minimum depth. This applies
+    // only to the terminal tail; the forward gun aperture is untouched.
+    if (z < -2.0) {
+      station.roofShoulderY = Math.min(station.roofShoulderY, station.y1 - 0.005);
+      station.shoulderY = Math.min(station.shoulderY, station.roofShoulderY - 0.005);
+      station.kneeY = Math.min(station.kneeY, station.shoulderY - 0.005);
+      station.shellY = Math.min(station.shellY, station.kneeY - 0.005);
+    }
+    return station;
   };
   // Emit one armor layer between adjacent longitudinal stations.  Forward
   // of z=1.549 the oracle's cross-width trace is EMPTY across |x|<0.38:
@@ -7876,7 +7989,7 @@ function createM1A3BuildLayout() {
     roofThroatRearY: mantletRoofRamp.throatRearY,
     roofThroatFrontY: mantletRoofRamp.throatFrontY,
     throatChinBevel: [0.10, 0.08],
-    joinedCheekRoof: true,
+    planarCheekCourses: true,
     articulatedThroat: true,
     yBotFace: .16, // swept chin clears even the rear deck at 10° depression
     faceRake: 0.44,
@@ -7922,28 +8035,36 @@ function addM1A3Hull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     // Closed shoulder roof spans from the glacis into the skirt crown.
     // Its underside stays above the return shoes; the forward folded apron
     // closes the view into the idler bay without hiding the lower track.
-    sideSlab(P, 'hull', side,
+    P.add('hull', facetedSlab([
       [0.77, 1.46, 3.90], [2.07, 1.505, 3.82], [2.07, 1.505, 2.68], [0.77, 1.50, 2.72],
-      [0.76, 1.51, 3.88], [2.04, 1.575, 3.80], [2.04, 1.615, 2.72], [0.76, 1.61, 2.80]);
-    sideSlab(P, 'hull', side,
+    ], [
+      [0.76, 1.51, 3.88], [2.04, 1.575, 3.80], [2.04, 1.615, 2.72], [0.76, 1.61, 2.80],
+    ], side, 'bd'));
+    P.add('hull', facetedSlab([
       [0.78, 1.12, 4.00], [2.04, 1.16, 3.94], [2.04, 1.16, 3.86], [0.78, 1.12, 3.92],
-      [0.76, 1.515, 3.91], [2.04, 1.58, 3.83], [2.04, 1.58, 3.75], [0.76, 1.515, 3.83]);
+    ], [
+      [0.76, 1.515, 3.91], [2.04, 1.58, 3.83], [2.04, 1.58, 3.75], [0.76, 1.515, 3.83],
+    ], side));
     // Rear sponson roof and short end return sit inside the existing cage.
     // The center overlap joins the powerpack deck; the lower stock leaves
     // the sprocket/shoe sweep open and keeps the exhaust deck uncovered.
-    sideSlab(P, 'hull', side,
+    P.add('hull', facetedSlab([
       [0.99, 1.51, -2.14], [2.08, 1.51, -2.14], [2.08, 1.51, -4.035], [0.99, 1.51, -4.035],
-      [0.99, 1.73, -2.14], [2.08, 1.61, -2.14], [2.08, 1.59, -4.035], [0.99, 1.635, -4.035]);
-    sideSlab(P, 'hull', side,
+    ], [
+      [0.99, 1.73, -2.14], [2.08, 1.61, -2.14], [2.08, 1.59, -4.035], [0.99, 1.635, -4.035],
+    ], side));
+    P.add('hull', facetedSlab([
       [0.99, 1.22, -4.01], [2.08, 1.22, -4.01], [2.08, 1.22, -4.035], [0.99, 1.22, -4.035],
-      [0.99, 1.635, -4.01], [2.08, 1.59, -4.01], [2.08, 1.59, -4.035], [0.99, 1.635, -4.035]);
+    ], [
+      [0.99, 1.635, -4.01], [2.08, 1.59, -4.01], [2.08, 1.59, -4.035], [0.99, 1.635, -4.035],
+    ], side));
     // Join the existing center sponson to the skirt crown between the two
     // new end covers. The underside remains above the complete shoe sweep.
     P.add('hull', box(0.14, 0.06, 5.00), side * 1.82, 1.565, 0.24);
     P.addExternalArmor('hull', box(0.16, 0.14, 0.92), side * 1.71, 1.58, 3.17,
       0, side * -0.10, 0);
   }
-  P.add('hull', slab(
+  P.add('hull', symmetricSlab(
     [-0.70, 1.25, 3.92], [0.70, 1.25, 3.92], [0.82, 1.51, 2.72], [-0.82, 1.51, 2.72],
     [-0.62, 1.31, 3.80], [0.62, 1.31, 3.80], [0.70, 1.59, 2.78], [-0.70, 1.59, 2.78]));
   // Localized upper-fender bridges close the narrow plan-view seam between
@@ -8216,7 +8337,7 @@ function publishM1A3DesignReceipt(P: AbramsBuilderPort, layout: M1A3BuildLayout)
     enhancedCheekModules: 0,
     turretRoofInsetM: t.inset,
     mantletRoofRamp,
-    cheekRoofSurface: 'joined-mirrored-facet',
+    cheekRoofSurface: 'planar-front-and-transverse-roof-courses',
   });
   P.hullG.userData.m1a3DesignReceipt = receipt;
   P.turretG.userData.m1a3DesignReceipt = receipt;
@@ -8312,6 +8433,7 @@ function buildM1A3(P: AbramsBuilderPort): void {
   addM1A3RemoteWeaponTower(P);
   addM1A3AntennasAndGun(P, layout.t);
   addM1A3UpgradeEquipment(P, layout.t);
+  addModernFieldCage(P);
   publishM1A3DesignReceipt(P, layout);
 }
 

@@ -1,6 +1,7 @@
 import { buildT80UK } from './t80ukRenewal.ts';
 import { buildAmx30Casting } from './amx30X.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 // Euro/Asia-moderns family procedural profiles (fidelity oracles:
 // ariete-dustymojito, char_leclerc_andertan, t80u_javanilga, recovered
 // type90, type74-nullops). Owned by the misc/Euro-Asia family agent.
@@ -178,7 +179,9 @@ function sightBox(
   P.add(dark, box(0.014, h * 0.8, d * 0.9), x, y, z - 0.01, 0, ry, 0); // door split line
 }
 
-// GALIX-style discharger bank: n dark tubes splayed on a mount wedge.
+// GALIX-style discharger bank: n dark tubes splayed on a mount wedge. `top` tubes ride an upper row (r = -1) on the
+// same wedge, which grows up by one row pitch to carry them; `topShift` slides that row aft along the wedge (the wedge
+// grows aft with it) where the turret side ahead of the bank is taken.
 function galixBank(
   P: MiscBuilderPort,
   x: number,
@@ -187,12 +190,20 @@ function galixBank(
   side: number,
   n = 4,
   rows = 1,
+  top = 0,
+  topShift = 0,
+  topLift = 0,
 ): void {
   const { box, cylZ } = KIT;
-  P.add('turret', box(0.09, 0.26, 0.16 * n * 0.72), x - side * 0.02, y - 0.04, z, 0, side * 0.55, 0);
-  for (let r = 0; r < rows; r++) for (let k = 0; k < n - (r ? 1 : 0); k++) {
-    P.add('turretDark', markSmokeTube(cylZ(0.048, 0.24, 8)), x + side * (k * 0.02 - r * 0.06), y + 0.05 - r * 0.15,
-      z + 0.26 - k * 0.135, -0.42 + r * 0.08, side * (0.95 + k * 0.14), 0);
+  const shift = top ? topShift : 0, lift = top ? topLift : 0;
+  const grow = top ? 0.15 + lift : 0;
+  P.add('turret', box(0.09, 0.26 + grow, 0.16 * Math.max(n, top) * 0.72 + Math.abs(shift)), x - side * 0.02,
+    y - 0.04 + grow / 2, z + shift / 2, 0, side * 0.55, 0);
+  for (let r = top ? -1 : 0; r < rows; r++) for (let k = 0; k < (r < 0 ? top : n - (r ? 1 : 0)); k++) {
+    // the upper row fans a little tighter, so its sixth tube still fires ahead of the beam (yaw at most 1.5 rad)
+    P.add('turretDark', markSmokeTube(cylZ(0.048, 0.24, 8)), x + side * (k * 0.02 - r * 0.06),
+      y + 0.05 - r * 0.15 + (r < 0 ? lift : 0), z + 0.26 - k * 0.135 + (r < 0 ? shift : 0), -0.42 + r * 0.08,
+      side * (r < 0 ? 0.9 + k * 0.12 : 0.95 + k * 0.14), 0);
   }
 }
 
@@ -1331,15 +1342,17 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
       // angles (sweep under-fr [1.017, 2.201, 0.994], 0.242 x 0.077). Plug
       // follows the chamfer underside line 5 mm below the sheet (armor module
       // face, §5.326 closure class); interior to plan/side silhouettes.
+      // The closure floor is 10 mm below its 0.295 m outboard roof; the old
+      // 0.300 m floor inverted the final strip beside the chamfer edge.
       P.add('turret', slab(
-        [s * 1.00, 0.30, 0.97], [s * 1.40, 0.30, 0.93], [s * 1.40, 0.30, 0.86], [s * 1.00, 0.30, 0.90],
+        [s * 1.00, 0.285, 0.97], [s * 1.40, 0.285, 0.93], [s * 1.40, 0.285, 0.86], [s * 1.00, 0.285, 0.90],
         [s * 1.00, 0.555, 0.97], [s * 1.40, 0.295, 0.93], [s * 1.40, 0.295, 0.86], [s * 1.00, 0.555, 0.90]));
       // Watertight pass 2026-09-13: the same wedge void ran under the whole
       // chamfer sheet (z 0.02..0.90, 53 / 49 L per side), open at its front
       // mouth. The bulkhead's profile now fills the full length beneath the
       // sheet, 5 mm below it, over the cheek core.
       P.add('turret', slab(
-        [s * 1.00, 0.30, 0.90], [s * 1.40, 0.30, 0.86], [s * 1.40, 0.30, 0.04], [s * 1.00, 0.30, 0.08],
+        [s * 1.00, 0.285, 0.90], [s * 1.40, 0.285, 0.86], [s * 1.40, 0.285, 0.04], [s * 1.00, 0.285, 0.08],
         [s * 1.00, 0.555, 0.90], [s * 1.40, 0.295, 0.86], [s * 1.40, 0.295, 0.04], [s * 1.00, 0.555, 0.08]));
     }
     // Watertight pass 2026-09-13 ("pour water into the turret and it must not
@@ -1684,33 +1697,26 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
       // measured fix for side cols 0.515/0.626: the two-tone CAP strip rode
       // the barrel to z_w 0.76 at 2.439 and pixel-printed 2.464 (loop-2
       // whatsat AABB [-0.877..-0.823, top 2.439, z 0.258..0.763]).
-      const anf1 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.18, seed: 11, scale: 0.78, ammo: false, barrelBridge: true });
-      anf1.name = 'leclercRoofAnf1';
-      anf1.position.set(-0.85, 0.610, 0.413);
-      anf1.userData.roofContactY = 0.610;
-      P.turretG.add(anf1);
+      // 2026-10-07 (tank-accessories round 4, wave 217: "thin rod barrels on box receivers with no cradle, box, belt or
+      // feed cover"): both roof guns carry their feed again; the round-4 gun hangs its can, belt and tray on its left
+      // (inboard here, over the mid roof, clear of the front column window the old right-hand can poked).
+      // 2026-10-08 (the owner's field standard, main 6763d7cc0, and the coordinator's ruling): a Leclerc carries one roof
+      // 7.62 (remote, at the commander's hand) beside its 12.7 coax. The S2 keeps it here; on the S1 and the XLR the
+      // owner's roof RWS takes its place (the XLR's RWS replaced the roof 7.62), so they carry no ANF1.
+      if (!centeredRoofStations) {
+        const anf1 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.18, seed: 11, scale: 0.78, ammo: true, barrelBridge: true });
+        anf1.name = 'leclercRoofAnf1';
+        anf1.position.set(-0.85, 0.610, 0.413);
+        anf1.userData.roofContactY = 0.610;
+        P.turretG.add(anf1);
+      }
     }
-    // §5.14 ORDER: 12.7 mm M2 on the roof, FORWARD rest (§5.07 CROWS-FORWARD
-    // law — pintleMG default aim is +z). Seated right-forward on the MID roof
-    // beside the sight cluster: receiver band lands in the same ref 2.41-2.43
-    // side-col class the ANF1/block already own (side masks image both
-    // flanks); foot sunk 2 cm into the mid roof (priced-furniture-swap law),
-    // tone dark per MG PHYSICS pale-deck polarity.
-    {
-      // Disable-run receipts (loop 3/4): the first seat (0.92/0.59/0.36,
-      // scale 0.82, elev -0.06, ammo can ON) cost EXACTLY -0.4 headline
-      // (turret -0.7, stations -1.6; IR caps + left cable + coax hood free).
-      // Re-tuned per the ANF1's own priced lessons: barrel DROOPED under the
-      // cluster crest (matched-envelope law), ammo can OFF (flat pouch on the
-      // roof instead), scale 0.76, foot sunk to 0.575 — receiver band ~2.40
-      // inside the ref's own 2.37-2.42 cluster window at z_w 0.16..0.46.
-      const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'dark', elev: -0.20, seed: 17, scale: 0.76, ammo: false });
-      m2.name = 'leclercRoofM2';
-      m2.position.set(0.88, 0.575, 0.36);
-      P.turretG.add(m2);
-      P.add('turretDark', box(0.10, 0.02, 0.14), 0.70, 0.62, 0.10);              // flat 12.7 ammo pouch on the mid roof
-    }
-    P.add('turretDark', box(0.11, 0.02, 0.16), -0.68, 0.62, 0.32);               // ANF1 ammo pouch reseated FLAT on the mid roof (top 2.23w)
+    // 2026-10-08 (the owner's field standard in main 6763d7cc0, the coordinator's ruling on the lane's audit): the second
+    // roof gun is gone from every Leclerc. Owner order §5.14 (2026-08-07: "also add machine guns and lights and other
+    // equipment") had the France agent seat a 12.7 mm M2 right-forward on the mid roof; wave 257 made it a 7.62 GPMG on
+    // the HL-70 lid, which left two roof 7.62s where a Leclerc carries one. The order stays answered by the S2's ANF1,
+    // the S1's and XLR's roof RWS and the 12.7 coax.
+    if (!centeredRoofStations) P.add('turretDark', box(0.11, 0.02, 0.16), -0.68, 0.62, 0.32); // ANF1 ammo pouch reseated FLAT on the mid roof (top 2.23w)
     P.add('turretDetail', box(0.105, 0.09, 0.12), 0.8875, LH + 0.03, -0.822);    // sight/mount block (carries the priced 2.427w front line; WIDENED x 0.835..0.94 so col 0.916 — ref 2.41 — stays covered after the MG left. 90-ladder r1: z_w -0.862..-0.982 — the old -0.80 front edge printed 2.42 into side col -0.802 [ref roof 2.355]; the block now hides under the mast columns' 2.53 line)
     periscope(P, 'turretDetail', -0.35, 0.60, -0.28, 0.3);
     P.add('turretDetail', box(0.09, 0.104, 0.12), -0.215, 0.70, -0.10);          // 90-ladder r1: loader periscope housing — base on the 2.248 channel, crown 2.352 = the ref's 2.351 line on front cols -0.182/-0.222 (left-only; the print's right side stays low)                       // (france round: head FLUSH over the new high cap — the 0.762 reseat printed +0.10 over the ref's 2.36 band on the -0.38 side cols)
@@ -1742,8 +1748,15 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
     // envelope (rear tube lands z_w -1.76 = the documented rear edge; tube
     // tops hold the certified 2.078w crown; base box grows only forward,
     // interior to the priced corner columns).
-    galixBank(P, 1.24, 0.33, -1.38, 1, 5, 2);
-    galixBank(P, -1.34, 0.50, -1.62, -1, 5, 2);
+    // 2026-10-08 (the coordinator, regional truth with the count kept): the S2 and the XLR carried a generic 6-tube
+    // decor fan bank on each front cheek (a "loose grey slab" to the critics, launchers the real tank does not have)
+    // for 12 of their 30 launch sockets. Those 12 now ride each GALIX wedge as an upper row of six in the bank's own
+    // form, so the smoke salvo keeps its count and every launcher stands at the rear sides, where the GALIX are.
+    const galixTop = variant === 'amx56' ? 0 : 6;
+    // the left (+X) row sits two pitches aft: the side box ahead of that bank owns the turret side forward of z -1.30;
+    // on the XLR it also rides above the side armour module (top 0.63) that runs along that flank
+    galixBank(P, 1.24, 0.33, -1.38, 1, 5, 2, galixTop, -0.32, variant === 'xlr' ? 0.17 : 0);
+    galixBank(P, -1.34, 0.50, -1.62, -1, 5, 2, galixTop);
     // LARGE CYLINDRICAL DRUM on the turret right rear (photo round, read 6 —
     // the Tamiya's very visible horizontal stowage drum, axis fore-aft).
     // Measured seat r2: r 0.20 xc 1.24 (x 1.04..1.44 — the first outboard seat
@@ -1833,6 +1846,11 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
     P.addGunExtraDark(cylZ(0.12, 0.06, 14), 0, 0, 0.985);                        // §B3.1 dust-boot ring where the tube exits the plate face (r 0.12 < the 0.132 junction collar — interior to the priced sleeve band)
     P.addGunExtraDark(cylZ(0.028, 0.10, 8), 0.34, 0.10, 0.44);                   // coax port
     P.addGunExtraDark(box(0.07, 0.05, 0.05), 0.34, 0.145, 0.44);                 // §5.14 coax hood tell (§B3 sight grammar: hood + port)
+    // 2026-10-07 (tank-accessories round 4, wave 217: "the coax root shows daylight through the mantlet"): the coax
+    // bay behind the port (gun-local x 0.31..0.48, z -0.37..0.05) stood open to the turret interior once round 3's
+    // regenerated fills stopped closing it (the fill generator leaves gun-frame volumes empty), leaking 6.2 L in the
+    // watertight census. A closed backing block on the gun mount fills the bay and elevates with the gun.
+    P.addGunExtraDark(box(0.17, 0.27, 0.42), 0.395, 0.04, -0.16);
     P.addGunExtra(cylZ(0.132, 0.50, 12), 0, -0.02, 2.55);                        // fat sleeve-junction collar (plan ±0.15 cols)
     // 90-ladder r1: collar#2 TRIMMED to end at world 3.985 and kept CENTERED —
     // the print's own fat gun content at plan col -0.166 ends exactly 3.981
@@ -1966,6 +1984,10 @@ function buildLeclercXLR(P: MiscBuilderPort): void {
   const xlrShoeTopY = 0.807;
   const xlrBodyH = 0.18;
   const xlrBodyTopY = 0.987;
+  // 2026-10-08 (the owner's 2A5M precedent in main 6763d7cc0: activate the original station, do not remove it): the
+  // owner's roof RWS (refactored 2026-08-29) is the XLR's working roof weapon; its shoe, body, sight and shield are the
+  // station's stock. Gameplay change: functional roof guns 0 -> 1.
+  const finishXlrRws = captureAuxiliaryStock(P, 'leclercXlrRoofRwsGun');
   P.addEquipment('turret', cylY(0.27, 0.27, xlrShoeH, 16),
     xlrRwsX, xlrRoofY + xlrShoeH / 2, xlrRwsZ);
   P.addEquipment('turret', box(0.42, xlrBodyH, 0.42),
@@ -1977,12 +1999,14 @@ function buildLeclercXLR(P: MiscBuilderPort): void {
   P.addEquipment('turret', box(0.50, 0.28, 0.045),
     xlrRwsX, 1.0395, 0.01, -0.18, 0, 0);
   {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.08, seed: 104, scale: 0.78, ammo: true });
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.08, seed: 104, scale: 0.78, ammo: true,
+      remoteControlled: true });
     mg.name = 'leclercXlrRoofRwsGun';
     mg.position.set(xlrRwsX, xlrBodyTopY, -0.17);
     mg.userData.mountContactY = xlrBodyTopY;
     P.turretG.add(mg);
   }
+  finishXlrRws();
   // The marked periscope block previously started at 0.795 m. Lower it so
   // its 70 mm housing bottoms exactly on the same 0.752 m roof plateau.
   periscope(P, 'turretDetail', 0.18, 0.787, 0.14, -0.10);
@@ -2083,17 +2107,22 @@ function buildAMX56(P: MiscBuilderPort): void {
   P.add('turretGlass', box(0.25, 0.13, 0.025), 0.62, 0.745, 0.395);
   const amxRwsX = -0.67;
   const amxRwsZ = -0.33;
+  // 2026-10-08 (the owner's 2A5M precedent in main 6763d7cc0): the owner's roof RWS (refactored 2026-08-29) is the S1's
+  // working roof weapon, its base, body, sight and shield the station's stock. Gameplay change: functional 0 -> 1.
+  const finishAmxRws = captureAuxiliaryStock(P, 'amx56RoofRwsGun');
   P.addEquipment('turret', cylY(0.24, 0.24, 0.08, 16), amxRwsX, 0.792, amxRwsZ);
   P.addEquipment('turret', box(0.40, 0.18, 0.38), amxRwsX, 0.922, -0.25);
   P.add('turretGlass', box(0.15, 0.10, 0.025), amxRwsX, 0.942, -0.04);
   P.addEquipment('turret', box(0.52, 0.30, 0.045), amxRwsX, 1.052, -0.025, -0.16, 0, 0);
   {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'heavy', tone: 'dark', elev: 0.06, seed: 56, scale: 0.82, ammo: true });
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'heavy', tone: 'dark', elev: 0.06, seed: 56, scale: 0.82, ammo: true,
+      remoteControlled: true });
     mg.name = 'amx56RoofRwsGun';
     mg.position.set(amxRwsX, 1.012, -0.23);
     mg.userData.mountContactY = 1.012;
     P.turretG.add(mg);
   }
+  finishAmxRws();
   periscope(P, 'turretDetail', 0.12, 0.683, -0.18, 0.12);
   P.turretG.userData.amx56RoofAssembly = {
     gunnerSightRoofY: 0.610,

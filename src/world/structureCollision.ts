@@ -345,30 +345,93 @@ function combinedConvexHull(first: number[], second: number[]): number[] | null 
   return hullArea <= sourceArea + Math.max(1e-5, sourceArea * 1e-4) ? hull : null;
 }
 
-function mergeFirstProjectedPair(polygons: number[][], vertexKeys: Map<number[], Set<string>>): boolean {
-  for (let first = 0; first < polygons.length; first++) {
-    const firstKeys = projectedPolygonKeys(polygons[first], vertexKeys);
-    for (let second = first + 1; second < polygons.length; second++) {
-      if (sharedVertexCount(firstKeys, polygons[second], vertexKeys) < 2) continue;
-      const hull = combinedConvexHull(polygons[first], polygons[second]);
-      if (!hull) continue;
-      polygons[first] = hull;
-      polygons.splice(second, 1);
-      return true;
-    }
-  }
-  return false;
-}
-
+/**
+ * One solid's projected triangles merged into convex polygons: the first mergeable pair in list order — two polygons
+ * sharing at least two welded corners whose convex hull adds no area — becomes their hull in place of the first, the
+ * second leaves the list, and the search starts again from the top until no pair merges.
+ *
+ * (2026-10-08, the perf lane, time-to-battle: the same merges in the same order, without restarting the pair search
+ * from the top — it was cubic in the triangles, ~3 s of a Verdant props build. A polygon only becomes a hull in the
+ * place of the earlier of its pair, so after a merge at row f every row before f is still clean but for its pair with
+ * the new hull: those are checked first, in order (the restarted search would meet them first), then the search goes
+ * on from f, past every row found clean since — a row's pairs change only when a polygon after it becomes a hull,
+ * which that column check covers. The pairs come from a welded-corner index: a pair sharing fewer than two corners
+ * never merges, so it is never visited. structureCollisionMergeKeys.selftest.mjs holds it to the restarted search.)
+ */
 function mergeProjectedTriangles(triangles: number[][]) {
   const polygons = dedupeProjectedTriangles(triangles);
-  // Pair search restarts in the same order, but unchanged polygon arrays need
-  // not rebuild welded vertex strings for every comparison. Each accepted
-  // hull is a new array, so its keys cannot alias the replaced polygon's keys.
-  // This construction-local cache is discarded with this one merge call.
-  const vertexKeys = new Map<number[], Set<string>>();
-  while (mergeFirstProjectedPair(polygons, vertexKeys)) { /* restart after each exact merge */ }
-  return uniquePolygons(polygons);
+  const count = polygons.length;
+  const keys = polygons.map((polygon) => polygonVertexKeys(polygon));
+  const alive = new Uint8Array(count).fill(1);
+  const clean = new Uint8Array(count);
+  const slotsByKey = new Map<string, Set<number>>();
+  const index = (slot: number): void => {
+    for (const key of keys[slot]) {
+      let slots = slotsByKey.get(key);
+      if (!slots) slotsByKey.set(key, slots = new Set());
+      slots.add(slot);
+    }
+  };
+  const unindex = (slot: number): void => {
+    for (const key of keys[slot]) slotsByKey.get(key)!.delete(slot);
+  };
+  for (let slot = 0; slot < count; slot++) index(slot);
+  const shared = new Map<number, number>();
+  /** The live polygons sharing two or more welded corners with `slot`, before it or after it, in list order. */
+  const partners = (slot: number, before: boolean): number[] => {
+    shared.clear();
+    for (const key of keys[slot]) {
+      for (const other of slotsByKey.get(key)!) {
+        if (other === slot || (before ? other > slot : other < slot)) continue;
+        shared.set(other, (shared.get(other) ?? 0) + 1);
+      }
+    }
+    const out: number[] = [];
+    for (const [other, corners] of shared) if (corners >= 2) out.push(other);
+    return out.sort((a, b) => a - b);
+  };
+  const merge = (first: number, second: number, hull: number[]): void => {
+    unindex(second);
+    unindex(first);
+    alive[second] = 0;
+    polygons[first] = hull;
+    keys[first] = polygonVertexKeys(hull);
+    index(first);
+    clean[first] = 0;
+  };
+  let row = 0;
+  let column = -1;
+  for (;;) {
+    if (column >= 0) {
+      // a new hull at `column`: every row before it is clean but for its pair with the hull, in order
+      const hullAt = column;
+      column = -1;
+      for (const earlier of partners(hullAt, true)) {
+        const hull = combinedConvexHull(polygons[earlier], polygons[hullAt]);
+        if (!hull) continue;
+        merge(earlier, hullAt, hull);
+        column = earlier;
+        break;
+      }
+      if (column >= 0) continue;
+      row = hullAt;
+    }
+    let merged = false;
+    for (let first = row; first < count && !merged; first++) {
+      if (!alive[first] || clean[first]) continue;
+      for (const second of partners(first, false)) {
+        const hull = combinedConvexHull(polygons[first], polygons[second]);
+        if (!hull) continue;
+        merge(first, second, hull);
+        column = first;
+        merged = true;
+        break;
+      }
+      if (!merged) clean[first] = 1;
+    }
+    if (!merged) break;
+  }
+  return uniquePolygons(polygons.filter((_, slot) => alive[slot] === 1));
 }
 
 /** Sutherland-Hodgman clip of a flat x y z polygon to the horizontal slab y0 <= y <= y1. */
@@ -508,6 +571,30 @@ function dropCollinearCorners(points: number[]): number[] {
   return out.length >= 6 ? out : points;
 }
 
+/**
+ * The landmarks lane (2026-10-05): a convex loop still over the packed limit once its straight-through corners are gone
+ * (a turned section — a water tower's tank, a drum — is a fine polygon with no collinear corner) sheds, one at a time,
+ * the corner whose removal loses the least area (Visvalingam), down to PACKED_POLYGON_VERTICES. A loop already within
+ * the limit is returned as it was, so every manifest already carried keeps its bytes.
+ */
+function capConvexCorners(points: number[]): number[] {
+  if (points.length <= 2 * PACKED_POLYGON_VERTICES) return points;
+  const xs: number[] = [], zs: number[] = [];
+  for (let i = 0; i < points.length; i += 2) { xs.push(points[i]); zs.push(points[i + 1]); }
+  const area = (a: number, b: number, c: number) => Math.abs((xs[b] - xs[a]) * (zs[c] - zs[a]) - (zs[b] - zs[a]) * (xs[c] - xs[a]));
+  const alive = xs.map((_, i) => i);
+  while (alive.length > PACKED_POLYGON_VERTICES) {
+    let best = 0, bestArea = Infinity;
+    for (let k = 0; k < alive.length; k++) {
+      const a = alive[(k + alive.length - 1) % alive.length], b = alive[k], c = alive[(k + 1) % alive.length];
+      const lost = area(a, b, c);
+      if (lost < bestArea) { bestArea = lost; best = k; }
+    }
+    alive.splice(best, 1);
+  }
+  return alive.flatMap((i) => [xs[i], zs[i]]);
+}
+
 function isConvexPolygon(points: number[]): boolean {
   const count = points.length / 2;
   let sign = 0;
@@ -557,7 +644,7 @@ function bandProjection(solid: LocalSolid, bandMin: number, bandMax: number): { 
     for (const section of sliceContours(solid, level)) {
       loops++;
       if (isConvexPolygon(section)) {
-        const loop = section.length > 2 * PACKED_POLYGON_VERTICES ? dropCollinearCorners(section) : section;
+        const loop = section.length > 2 * PACKED_POLYGON_VERTICES ? capConvexCorners(dropCollinearCorners(section)) : section;
         pieces.push({ points: loop, y0: slabMin, y1: slabMax });
         continue;
       }
@@ -948,7 +1035,11 @@ function makeRuntimeBand(
   const source = band
     ? (band.dense ? band.source : shedTrim(band.source))
     : collisionSource(solids, true, projectedCache);
-  if (source.length <= PART_LIMIT) return { minY, maxY, parts: source.map(rangedShape) };
+  // (the landmarks lane, 2026-10-05: a raw dense loop over the packed corner limit — a turned tank's section — collapses
+  // too; every band the manifests already carried was within both limits and publishes as it was)
+  if (source.length <= PART_LIMIT && source.every((item) => item.points.length <= 2 * PACKED_POLYGON_VERTICES)) {
+    return { minY, maxY, parts: source.map(rangedShape) };
+  }
   const collision = collapseRuntimeFootprint(source.map((item) => item.points));
   return { minY, maxY, parts: rangeRectangles(collision, source).map(rangedShape) };
 }
@@ -1009,7 +1100,25 @@ function collapseRuntimeFootprint(source: number[][]): number[][] {
       points.push([polygon[index], polygon[index + 1]]);
     }
   }
-  return [convexHull2(points)];
+  return [capConvexCorners(convexHull2(points))];
+}
+
+/**
+ * A merged geometry whose surface dressing is flagged per vertex (`userData.noCollisionVertices`: the map vehicles'
+ * seams, handles, trim and mirrors, maps/vehicleMesh.ts) seen without the triangles that lie wholly on flagged vertices,
+ * as a separate noCollision geometry's would be; any other geometry as it is.
+ */
+function withoutDressing(geometry: BufferGeometry): BufferGeometry {
+  const flags = geometry.userData?.noCollisionVertices as Uint8Array | undefined;
+  const index = geometry.getIndex();
+  if (!flags || !index) return geometry;
+  const kept: number[] = [];
+  for (let t = 0; t + 2 < index.count; t += 3) {
+    const a = index.getX(t), b = index.getX(t + 1), c = index.getX(t + 2);
+    if (!(flags[a] && flags[b] && flags[c])) kept.push(a, b, c);
+  }
+  const keptIndex = { count: kept.length, getX: (i: number) => kept[i] };
+  return { getAttribute: (name: string) => geometry.getAttribute(name), getIndex: () => keptIndex, userData: {} } as unknown as BufferGeometry;
 }
 
 function collectSolids(buckets: StructureGeometryBuckets) {
@@ -1020,7 +1129,7 @@ function collectSolids(buckets: StructureGeometryBuckets) {
       // regional kits (maps/regional/geometry.ts) finish their surface dressing — framing, joinery, shutters, gutters —
       // as separate geometries flagged noCollision: a member 3 cm proud of a wall is not a collision part
       if (geometry.userData?.noCollision) continue;
-      solids.push(...geometrySolids(geometry, bucket));
+      solids.push(...geometrySolids(withoutDressing(geometry), bucket));
     }
   }
   return solids;
@@ -1046,6 +1155,13 @@ function deriveCollisionBands<T extends StructureCollisionRuntimeBand>(
   createBand: (active: LocalSolid[], minY: number, maxY: number, ground: boolean) => T,
 ): { contact: T; shell: T[] } {
   const contact = deriveContactBand(solids, createBand);
+  return { contact, shell: deriveShellBands(solids, createBand) };
+}
+
+function deriveShellBands<T extends StructureCollisionRuntimeBand>(
+  solids: LocalSolid[],
+  createBand: (active: LocalSolid[], minY: number, maxY: number, ground: boolean) => T,
+): T[] {
   const minY = Math.min(...solids.map((solid) => solid.minY));
   const maxY = Math.max(...solids.map((solid) => solid.maxY));
   const shell: T[] = [];
@@ -1070,7 +1186,7 @@ function deriveCollisionBands<T extends StructureCollisionRuntimeBand>(
     }
     shell.push(band);
   }
-  return { contact, shell };
+  return shell;
 }
 
 function footprintKey(part: SimpleCollisionShape): string {
@@ -1115,6 +1231,18 @@ export function deriveRuntimeStructureCollisionProfile(
   buckets: StructureGeometryBuckets,
 ): StructureCollisionRuntimeProfile {
   return deriveRuntimeCollisionBands(collectSolids(buckets));
+}
+
+/**
+ * The shell bands alone (the landmarks lane, 2026-10-05): a structure whose movement record is authored — a bridge's
+ * standable deck over a gully, which has no solid near the gully floor to make a ground-contact band — still takes its
+ * shells' and sight's bands from its geometry.
+ */
+export function deriveRuntimeStructureShellBands(buckets: StructureGeometryBuckets): StructureCollisionRuntimeBand[] {
+  const solids = collectSolids(buckets);
+  if (!solids.length) return [];
+  const projectedCache = new Map<LocalSolid, number[][]>();
+  return deriveShellBands(solids, (active, minY, maxY, ground) => makeRuntimeBand(active, minY, maxY, ground, projectedCache));
 }
 
 /** Exact full-profile contact result for consumers that do not use shell bands. */

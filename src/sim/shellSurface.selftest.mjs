@@ -24,9 +24,10 @@ assert.match(state, /surfaceKind: classifyShellSurface\(world, hit\),/, 'shell:e
 assert.match(state, /hitWater: shellHitsWater\(world, hit\),/, 'shell:expired carries the water flag');
 const fx = readFileSync(new URL('../fx/effects.ts', import.meta.url), 'utf8');
 assert.match(fx, /function waterSplash\(/, 'FX owns a water splash');
-assert.match(fx, /if \(e\.hitTerrain\) \{\s*if \(e\.hitWater \|\| shellPointOnWater\(_v3\)\) waterSplash\(_v3, e\.caliberMm \|\| 76, false\);\s*else dirtPlume\(_v3, e\.caliberMm \|\| 76, false\);/,
+// the destruction-fx lane's burst (fx/blastRecipes.ts) takes the same water flag: a water burst, else the ground's
+assert.match(fx, /if \(e\.hitTerrain\) \{\s*const water = !!e\.hitWater \|\| shellPointOnWater\(_v3\);\s*if \(mediaGroundHit\(_v3, [^,]+, water, arrival\)\) \{[^}]*\}\s*if \(water\) waterSplash\(_v3, e\.caliberMm \|\| 76, false\);\s*else dirtPlume\(_v3, e\.caliberMm \|\| 76, false\);/,
   'expired shells on water splash instead of throwing dirt');
-assert.match(fx, /case 'terrain':\s*if \(shellPointOnWater\(pos\)\) waterSplash\(pos, caliberMm, caliberMm >= 105\);\s*else dirtPlume\(pos, caliberMm, caliberMm >= 105\);/,
+assert.match(fx, /case 'terrain':\s*if \(mediaGroundHit\(pos, [^,]+, shellPointOnWater\(pos\), null\)\) break;\s*if \(shellPointOnWater\(pos\)\) waterSplash\(pos, caliberMm, caliberMm >= 105\);\s*else dirtPlume\(pos, caliberMm, caliberMm >= 105\);/,
   'direct terrain impacts respect the water mask');
 const audio = readFileSync(new URL('../audio/audioEngine.ts', import.meta.url), 'utf8');
 assert.match(audio, /event\.surfaceKind === 'water'/, 'audio plays a splash for water expiries');

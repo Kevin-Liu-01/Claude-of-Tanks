@@ -31,6 +31,10 @@ classic controller takes through `setOrder()` and drops on expiry — the
 shared local controller owns mission driving, coordinated flanks, fall safety and ability reflexes even without orders (docs/BOT-TACTICS.md); `jevProtocol.ts` is the shared
 wire schema the proxy validates and builds the questions from;
 `input.ts` normalizes devices; `profile.ts` persists real local match history;
+`serviceRecord.ts` tracks medals through each battle from bus events (main.ts
+supplies the player/team/clock context) and keeps the medal case, achievement
+tiers and last 25 battles in `cot.service.v1`, emitting `service:medal` live
+and `service:battleAwards` at the end; medals never unlock anything;
 `playerBattleActions.ts` owns ammunition, consumable, special-action, and
 local-versus-network command policy without importing the combat runtime;
 `equipment.ts` owns the strict catalog, persistence, legal-loadout, multiplier,
@@ -71,7 +75,24 @@ skip), `battleEndingCamera.ts` poses its camera beats through the rig, and
 `killcamAccess.ts` owns retryable replay acquisition and its stable inactive
 facade; `killcam.ts` owns replay presentation, while `studio.ts` renders the
 Scene Studio and `studioTimeline.ts` owns its strict JSON-safe storyboard and
-allocation-free camera/actor sampling contract.
+allocation-free camera/actor sampling contract. The Studio film renderer is
+`studioFilmPlan.ts` (pure film block, speed ramps, monotone cut-aware shutter
+schedules, adaptive counts, Halton jitter), `studioFilm.ts` (accumulation
+session: TAA bypass, per-sample cascades, cloud settle, flare film clock),
+`studioFilmExport.ts` (lazy WebCodecs encoder) and `studioFilmMux.ts` (pure
+MP4/WebM containers); while a film is open the live tick and Studio input stand
+still, the timeline advances unrounded, smoke emitters pulse on the 60 Hz grid
+and track phase follows the exact sample instant. `studioPicture.ts` owns the
+pure Studio picture schema (neutral default, clamps, named looks, minimal
+`state()` diff, thin-lens/letterbox/grain-seed physics) that
+`engine/cinemaPost.ts` renders; a neutral stage must never insert a pass.
+`studioLight.ts` owns the pure
+Studio times of day (a superset of the battle times, authored relative to each
+map's sky) and the scene `light` block; `studioLightRuntime.ts`, demand-loaded
+only by main.ts's Studio port, applies a plan over the battle owner's authored
+day (sky, key, readability, the baked horizon light, the ring's shadow re-bake,
+blue-hour/night lamps) and restores every value on a return to day, a world
+switch or Studio exit. Battles never import either file.
 `garagePedestalRuntime.ts` owns hero construction, shader submission, warm LRU
 residency, switch convergence, and battle visual handoff; it composes
 `garagePedestalPreloader.ts` for exact card-intent and quiet neighbor warming.

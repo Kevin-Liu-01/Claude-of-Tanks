@@ -29,6 +29,11 @@ import {
 } from './camoPolicy.ts';
 
 assert.equal(isBuiltInCamoId('summer'), true);
+assert.equal(isBuiltInCamoId('gt'), true);
+assert.equal(networkCamoId('gt'), 'gt');
+assert.ok(CAMO_CATALOG_PATTERN_IDS.includes('gt'));
+assert.deepEqual(camoPatternTags('gt'), ['geometric', 'special']);
+assert.match(CAMO_PATTERN_LABEL.gt, /General Translation/);
 assert.equal(isBuiltInCamoId(CUSTOM_CAMO_ID), false,
   'custom paint is never accepted as public match metadata');
 assert.equal(networkCamoId(CUSTOM_CAMO_ID), 'factory');
@@ -290,7 +295,11 @@ const addedPaints = ['mono', 'carbon', 'prism', 'sig_sabra_mk2_x'];
 const tosIndex = CAMO_PATTERN_IDS.indexOf('sig_tos1a_tagil');
 assert.deepEqual(CAMO_PATTERN_IDS.slice(tosIndex - addedPaints.length, tosIndex), addedPaints);
 assert.equal(CAMO_PATTERN_IDS[CAMO_PATTERN_IDS.indexOf('sig_amx10p_25') + 1], 'national_usa', 'the national colours follow the base catalog');
-assert.ok(CAMO_PATTERN_IDS.at(-1).startsWith('paint_'), 'the generated authored paints close the catalog');
+// 2026-10-09 (fix/camo-defaults): a paint generated after GT joined (the M6 Linebacker's desert three-tone) appends
+// after GT, so every production index holds (camoCatalogProductionIndices.selftest.mjs)
+const gtIndex = CAMO_PATTERN_IDS.indexOf('gt');
+assert.ok(CAMO_PATTERN_IDS[gtIndex - 1].startsWith('paint_'), 'existing authored paints retain their catalog positions');
+assert.deepEqual(CAMO_PATTERN_IDS.slice(gtIndex), ['gt', 'paint_m6_linebacker'], 'GT, then later paints, append without shifting saved catalog indices');
 assert.deepEqual(addedPaints.slice(0, 3).map(id => CAMO_PATTERN_LABEL[id]), ['Mono', 'Carbon', 'Prism']);
 assert.deepEqual(['openai', 'xai', 'gemini'].map(id => CAMO_PATTERN_LABEL[id]), ['OpenAI', 'X', 'Gemini']);
 assert.equal(defaultCamoPatternId('sabra_mk2_x'), 'factory');

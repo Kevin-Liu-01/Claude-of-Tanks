@@ -7,8 +7,8 @@ import { cardHtml, OG_IMAGE_CARDS } from './generate-og-images.mjs';
 const root = new URL('../../', import.meta.url);
 const crest = readFileSync(new URL('public/brand/logo-mark.svg', root)).toString('base64');
 const font = readFileSync(new URL('public/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2', root)).toString('base64');
-assert.equal(OG_IMAGE_CARDS.length, 18, 'default, private rooms, Studio, and every public page need a card');
-assert.equal(new Set(OG_IMAGE_CARDS.map(([id]) => id)).size, 18);
+assert.equal(OG_IMAGE_CARDS.length, 19, 'default, private rooms, Studio, and every public page need a card');
+assert.equal(new Set(OG_IMAGE_CARDS.map(([id]) => id)).size, 19);
 
 const canvas = createCanvas(1200, 630);
 const context = canvas.getContext('2d');
@@ -45,4 +45,4 @@ for (const [id, label, source, position, fit] of OG_IMAGE_CARDS) {
   assert.ok(amber > 500, `${id}: regenerate the shipped card with the amber OF TANKS subtitle (${amber} pixels)`);
 }
 if (sheet) writeFileSync(sheetPath, sheet.toBuffer('image/png'));
-console.log('og-images.selftest: all 18 cards use the canonical shield, typography, and bottom-left lockup');
+console.log('og-images.selftest: all 19 cards use the canonical shield, typography, and bottom-left lockup');

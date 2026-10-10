@@ -21,7 +21,8 @@
 // walls.
 
 export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'paddy' | 'terrace' | 'karst'
-  | 'brownfield' | 'coalfield' | 'tselina';
+  | 'brownfield' | 'coalfield' | 'cityfloor' | 'citycourt' | 'cityslope' | 'cemetery' | 'park'
+  | 'worksfloor' | 'furnace' | 'sidings' | 'court' | 'cinder' | 'secano' | 'tselina';
 
 /** How a region's fields are bounded (the material's uLandE.z). */
 export type LandBoundary = 'margin' | 'ditch' | 'bund' | 'wall';
@@ -49,6 +50,43 @@ export interface LandUseProfile {
   region: LandRegion;
   /** Salt of the field hash (two maps with one layout still crop differently). */
   salt: number;
+  /**
+   * 2026-10-05 (Ruinspires, the cities lane): the land use lies inside the village too — a city's yards, courts,
+   * allotments and parks — with the town's wear laid over it (the material's uLandE.w; elsewhere the village keeps the
+   * fields off).
+   */
+  urban?: boolean;
+  /**
+   * 2026-10-05 (Ironworks): an urban land use that is a works' ground — no grass between its lots: their margins the
+   * works' trodden dirt, the stone kinds (ballast, gravel) dulled with the works' soot (the material's uLandE.w 2).
+   */
+  works?: boolean;
+  /**
+   * 2026-10-05 (Ruinspires): zones by map metres, the first a field's middle falls in naming its rotation, its track
+   * and hedge shares; a field in none carries no land use (LAND_CROP_NONE in the bake). Without zones the whole map is
+   * the profile's region.
+   */
+  zones?: readonly LandZone[];
+}
+
+/** A zone of a zoned land use (Ruinspires): a band of |z| (an x range), a rectangle or a disc, `mirror` adding its
+ * rotation about (0, 0); its region's rotation and its own track and hedge shares (else the profile's). A zone decides
+ * by a field's middle (the field is one zone's whole) — or, `cut` (Ironworks' sidings, yards and verges), by the point
+ * itself: its line cuts the fields it crosses, straight and hard-edged as a works' ground is, and the fields' own
+ * layout (their edges, tracks and hedges) is untouched by it. */
+export interface LandZone {
+  region: LandRegion;
+  band?: { zMin: number; zMax: number; xMin: number; xMax: number };
+  rect?: { x0: number; x1: number; z0: number; z1: number };
+  disc?: { x: number; z: number; r: number };
+  /** A road's verge: within `w` metres of the polyline (Ironworks' diagonal works roads). */
+  line?: { points: readonly (readonly [number, number])[]; w: number };
+  /** A turned rectangle: centre, width (local x) and length (local z), its yaw (Ironworks' yards, as hardstands are). */
+  box?: { x: number; z: number; w: number; l: number; yawDeg: number };
+  mirror?: boolean;
+  cut?: boolean;
+  trackShare?: number;
+  hedgeShare?: number;
 }
 
 /** Crop kinds (the shader's ids, 0..15). */
@@ -66,6 +104,8 @@ export const LAND_CROP = Object.freeze({
   slag: 15,       // an ironworks' tipped slag: black-grey, granular
   ballast: 16,    // crushed-stone ballast and hardcore: grey
   ruderal: 17,    // brownfield grass: patchy, dry, with bare ground between
+  hardstanding: 18, // 2026-10-05 (Ruinspires): a city's hardstanding — patched asphalt and concrete pours, cracked, weeds in the cracks
+  gravel: 19,     // 2026-10-05 (Ironworks): a works court's gravel — rounded stones and their fines, wheel-rutted, warm grey
 } as const);
 export type LandCropId = (typeof LAND_CROP)[keyof typeof LAND_CROP];
 
@@ -95,6 +135,8 @@ export const LAND_CROP_ALBEDO: Readonly<Record<LandCropId, readonly [number, num
   15: [0.075, 0.072, 0.070], // slag
   16: [0.16, 0.155, 0.15],  // ballast
   17: [0.20, 0.19, 0.10],   // ruderal brownfield grass (cured)
+  18: [0.095, 0.094, 0.092], // hardstanding (asphalt with its repairs and some concrete; the material draws its own)
+  19: [0.150, 0.140, 0.122], // a court's gravel (river gravel and its fines, a warm grey; the material draws its own)
 });
 
 /**
@@ -125,6 +167,8 @@ export const LAND_CROP_GROWTH: Readonly<Record<LandCropId, Readonly<{ sward: boo
   15: { sward: false, height: 0, keep: 0 },
   16: { sward: true, height: 0.4, keep: 0.12, weed: true },
   17: { sward: true, height: 0.85, keep: 0.6 },
+  18: { sward: true, height: 0.35, keep: 0.05, weed: true }, // a few weeds in the cracks
+  19: { sward: true, height: 0.40, keep: 0.10, weed: true }, // a court's gravel: weeds along its edges and the ruts' crowns
 });
 
 /** Each region's rotation: up to seven slots of [crop kind, share] (the material reads the shares and kinds, uLandC/D/E). */
@@ -148,13 +192,45 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   // the Dalmatian karst: small walled fields of red earth, vines, dry grazing and a little grain — the grain ripe in the
   // dry season (wave 39, Saltwind corner-ne: "a hard-edged, oversaturated bright-green rectangle in the mid-ground" was
   // a young green crop's plot between the walls, a tone no summer karst field carries)
-  karst: [[11, 0.30], [12, 0.26], [0, 0.28], [5, 0.08], [1, 0.08], [13, 0.0], [4, 0.0]],
+  // (wave 177, Saltwind: "no exposed limestone anywhere"; 2026-10-08's wave 287: "real terra rossa is pocketed between
+  // limestone") the karst's red fields are its few deep-soiled plots: half its walled ground is dry grazing, the
+  // garrigue over thin soil (terrain.ts draws it cured, its red soil showing between the tussocks)
+  karst: [[11, 0.20], [12, 0.18], [0, 0.46], [5, 0.08], [1, 0.08], [13, 0.0], [4, 0.0]],
   // an ironworks' ground (Völklingen on the Saar): plots of brownfield grass, tipped slag, ballast and hardcore,
   // rank grass and bare earth, between the works' tracks and the birch scrub that seeds itself along them
   brownfield: [[17, 0.40], [15, 0.22], [16, 0.18], [0, 0.12], [4, 0.08], [5, 0.0], [3, 0.0]],
   // a coalfield valley's farmland (the Ruhr's, Silesia's, the Valleys'): pasture and rough grazing gone ruderal round the
   // pits, small arable fields, and here and there a plot of tipped slag
   coalfield: [[0, 0.26], [17, 0.22], [4, 0.14], [5, 0.14], [1, 0.12], [3, 0.06], [15, 0.06]],
+  // 2026-10-05, Ruinspires (Sarajevo under siege, the cities lane): the valley floor's hardstanding between the street
+  // rows — patched asphalt and concrete pours, hardcore and compacted ground, rank grass in the gaps
+  cityfloor: [[18, 0.62], [16, 0.16], [17, 0.22]],
+  // the block interiors: courtyards and gardens — grass, rank grass over beaten earth, allotment beds, a dug plot, a yard
+  citycourt: [[0, 0.34], [17, 0.28], [7, 0.20], [4, 0.08], [16, 0.10]],
+  // the slopes above the terrace streets: allotments and orchards in strips along the contour, hay and grazing between
+  cityslope: [[7, 0.28], [12, 0.22], [13, 0.20], [0, 0.20], [4, 0.10]],
+  // a cemetery's mown grass
+  cemetery: [[13, 1]],
+  // a park's lawns, mown in part
+  park: [[0, 0.75], [13, 0.25]],
+  // 2026-10-05, Ironworks (the Völklingen works, March 1945; the cities lane): the works floor between the streets —
+  // courts of gravel, ruderal grass gone over the idle plots, patched hardstanding, slag and hardcore tipped where they
+  // were handy
+  // (the lab's high view: five even shares drew a quilt of lots — the floor is mostly gravel and cinder, so neighbours
+  // match more often than not)
+  worksfloor: [[19, 0.34], [15, 0.26], [17, 0.18], [18, 0.12], [16, 0.10]],
+  // round the blast furnaces: slag and cinder trodden flat, the cast floor's hardstanding, hardcore
+  furnace: [[15, 0.70], [18, 0.16], [16, 0.14]],
+  // the rail fan's sidings: ballast between and beside the tracks, cinder where the engines stood
+  sidings: [[16, 0.80], [15, 0.20]],
+  // a court's gravel (a small zone cuts few fields, each one crop: gravel the most of them), a paved or hardcore stand
+  court: [[19, 0.80], [18, 0.12], [16, 0.08]],
+  // the works roads' verges: black cinder, the court gravel spread out, a little rank grass
+  cinder: [[15, 0.66], [19, 0.20], [17, 0.14]],
+  // the secano of the Ronda tableland (map revival lane 2, 2026-10-05): dry-farmed campiña — wheat and barley ripe
+  // and cut, the stubble, the fallow turned, the barbecho grazed (cured and patchy in summer, not a green pasture: wave
+  // 108b's "hard straight seam between golden field and green pasture"), the plateau's vines, a field of sunflower
+  secano: [[1, 0.28], [2, 0.16], [5, 0.22], [4, 0.14], [17, 0.10], [12, 0.06], [6, 0.04]],
   // the Virgin Lands' grain steppe (the Sary-Arka, Akmola and Kustanai): spring wheat and its stubble in long strips
   // against the black fallow (Barayev's strips), a little barley, mown hay and the unploughed feather-grass remnant
   tselina: [[1, 0.30], [5, 0.32], [4, 0.18], [2, 0.08], [13, 0.06], [17, 0.06]],
@@ -163,7 +239,10 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
 /** Each region's field boundary. */
 const BOUNDARIES: Readonly<Record<LandRegion, LandBoundary>> = Object.freeze({
   steppe: 'margin', bocage: 'margin', temperate: 'margin', upland: 'margin', strip: 'margin',
-  polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin', coalfield: 'margin', tselina: 'margin',
+  polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin', coalfield: 'margin',
+  cityfloor: 'margin', citycourt: 'margin', cityslope: 'margin', cemetery: 'margin', park: 'margin',
+  worksfloor: 'margin', furnace: 'margin', sidings: 'margin', court: 'margin', cinder: 'margin',
+  secano: 'margin', tselina: 'margin',
 });
 
 /** The rotation's cumulative shares at slots 0..5 (slot 6 takes the rest), normalised. */
@@ -229,14 +308,59 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
     strength: 1, heading: 1.19, blockU: 64, blockV: 46, maxSplit: 2, marginM: 1.2, trackShare: 0.15, hedgeShare: 0.05,
     warpM: 16, region: 'karst', salt: 79,
   },
-  // (Caldera: the maps lane rebuilt it as Las Cañadas — a volcanic basin of ash flats, cinder cones and lava flows with
-  // no fields; its ground is the volcanic zoning of groundRedux.ts, not a land use. The 'terrace' region stays for a
-  // paddy map.)
+  // Obsidian Caldera (caldera: the Aso caldera's floor, the map-revival lane's Caldera round 2; gauntlet wave 114: "a
+  // flat grey-beige plain ... Aso's floor is a patchwork of rice paddies, flooded or stubble, bunds, field roads"):
+  // rectangular paddies between earth bunds, green and flooded, vegetable plots and meadow, a field road along some of
+  // the long boundaries, a few windbreak hedges; the fields keep to the level floor (the material keeps them off the
+  // cones, the lava shelves, the roads and the village)
+  caldera: {
+    strength: 1, heading: 0.18, blockU: 96, blockV: 58, maxSplit: 3, marginM: 0.8, trackShare: 0.32, hedgeShare: 0.14,
+    warpM: 10, region: 'terrace', salt: 103,
+  },
   // Ironworks (foundry: the Völklingen ironworks on the Saar, the maps lane's rebuild): brownfield plots between the
   // works' streets (an axis grid), birch scrub seeded along some of the plot lines, works tracks along others
+  // (2026-10-05, the cities lane: "slag, black-grey cinder, round the blast furnaces and along the works roads; gravel in
+  // the courts; ballast on every rail siding") the works' own ground inside its floor (urban: the land use lies inside
+  // the village there), zoned on the works plan: the rail fan's sidings (mapKits.ts RAIL_YARD_LINES: the five lines at
+  // x 40–76 and the two at x −66, −57), the blast furnace block (the casting house at (−74, −29), its stacks at
+  // (−44, −36) and (−104, −64)), the loading court (foundry.ts workedGround), the works streets' verges (x and z of
+  // 0 and ±258–262), the rest of the floor; past it the brownfield as it was. Every zone keeps the profile's track and
+  // hedge shares and the layout is the one it was, so the hedge seats — the scrub's trees and their collision — and the
+  // border's parcels past the edge stand where they stood
   foundry: {
-    strength: 0.75, heading: 0, blockU: 96, blockV: 64, maxSplit: 3, marginM: 1.6, trackShare: 0.45, hedgeShare: 0.35,
-    warpM: 18, region: 'brownfield', salt: 89,
+    strength: 1, heading: 0, blockU: 96, blockV: 64, maxSplit: 3, marginM: 0.8, trackShare: 0.45, hedgeShare: 0.35,
+    warpM: 18, region: 'brownfield', salt: 89, urban: true, works: true,
+    zones: [
+      // (cut: the works' own lines, on the mask's 2 m texels; mr1's built world at 9bb7490b3)
+      // the blast furnaces' slag (the saar factory kit's ~12 × 19.6 m and its stoves and bunkers): the landmark, the four
+      // works furnaces and the service court's donor
+      ...[[-74.0, -29.0], [-20.6, 58.2], [-20.9, 232.9], [-278.2, 116.4], [20.2, -202.2], [117, -105]].map(([x, z]) => ({
+        region: 'furnace' as const, disc: { x, z, r: 28 }, cut: true })),
+      // the sidings' ballast (mapKits.ts RAIL_YARD_LINES, 3.5 m either side of each line) and the coal unloading strip
+      ...[[40, -235, 235], [49, -235, 235], [58, -205, 210], [67, -175, 185], [76, -150, 160], [-66, -235, 235], [-57, -190, 200]]
+        .map(([x, z0, z1]) => ({ region: 'sidings' as const, rect: { x0: x - 4.5, x1: x + 4.5, z0: z0 - 3, z1: z1 + 3 }, cut: true })),
+      { region: 'sidings', rect: { x0: 81.5, x1: 93.5, z0: -55.5, z1: -6.5 }, cut: true },
+      // the courts' and yards' gravel: round the casting yard and the west street's and the slag road's yards — 12 m of
+      // gravel about each hardstand (the yards themselves stay paved: foundry.ts seats the zone-control discs "on paved
+      // yards", and a paved apron keeps the land use off), the loading court and the service court
+      { region: 'court', box: { x: 0, z: -72, w: 74, l: 74, yawDeg: 56 }, cut: true },
+      { region: 'court', box: { x: -258, z: 50, w: 80, l: 80, yawDeg: 0 }, cut: true },
+      { region: 'court', box: { x: 200, z: -176, w: 80, l: 80, yawDeg: 104 }, cut: true },
+      { region: 'court', rect: { x0: 82, x1: 176, z0: -162, z1: -87 }, cut: true },
+      { region: 'court', rect: { x0: 71, x1: 163, z0: -123, z1: -70 }, cut: true },
+      // the works roads' verges: 14 m either side of the street grid's lines and of the three diagonal roads
+      // (foundry.ts terrain.roads.paths)
+      ...[0, -258, 258].map((x) => ({ region: 'cinder' as const, rect: { x0: x - 14, x1: x + 14, z0: -290, z1: 290 }, cut: true })),
+      ...[0, -260, 262].map((z) => ({ region: 'cinder' as const, rect: { x0: -290, x1: 290, z0: z - 14, z1: z + 14 }, cut: true })),
+      ...[
+        [[-258, -225], [-120, -126], [48, -12], [220, 112], [258, 136]],
+        [[-258, 211], [-248, 206], [-94, 118], [72, 26], [232, -86], [258, -108]],
+        [[-258, -189], [-190, -210], [-42, -196], [104, -158], [248, -194], [258, -203]],
+      ].map((points) => ({ region: 'cinder' as const, line: { points: points as [number, number][], w: 14 }, cut: true })),
+      // the rest of the works floor (a field's middle decides), and past it the brownfield as it was
+      { region: 'worksfloor', rect: { x0: -290, x1: 290, z0: -290, z1: 290 } },
+      { region: 'brownfield', rect: { x0: -1e6, x1: 1e6, z0: -1e6, z1: 1e6 } },
+    ],
   },
   // Cinder Junction (railyard: a coalfield rail junction): the valley floor's fields and grazing round the yard, laid along
   // the main line (its chord rises 6.6 m per 100 m of easting); the graded yard itself is worn ground (the material's
@@ -254,6 +378,32 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
     strength: 0.64, heading: 1.457, blockU: 620, blockV: 104, maxSplit: 2, marginM: 1.8, trackShare: 0.35, hedgeShare: 0.18,
     warpM: 12, region: 'tselina', salt: 103,
   },
+  // 2026-10-05, Ruinspires (the cities lane; Sarajevo under siege): the city's own ground inside the village — strips
+  // along the valley (the contour on both flanks), every zone mirrored through the Square of the Republic as the map is:
+  // the valley floor's hardstanding (|z| < 70), the block interiors' courts and gardens (70–185), the allotments and
+  // orchards above the terrace streets (185–300), the two cemeteries' mown grass and the four parks' lawns with their
+  // paths. No hedge lines (the trees and bushes keep their seats: hedgeShare 0), nothing past the city.
+  ruinspires: {
+    strength: 1, heading: 0, blockU: 48, blockV: 24, maxSplit: 3, marginM: 1.0, trackShare: 0.25, hedgeShare: 0,
+    warpM: 6, region: 'citycourt', salt: 107, urban: true,
+    zones: [
+      { region: 'cemetery', rect: { x0: -200, x1: -140, z0: -284, z1: -240 }, mirror: true, trackShare: 0.5, hedgeShare: 0 },
+      { region: 'park', disc: { x: -200, z: 230, r: 52 }, mirror: true, trackShare: 0.45, hedgeShare: 0 },
+      { region: 'park', disc: { x: 170, z: 250, r: 46 }, mirror: true, trackShare: 0.45, hedgeShare: 0 },
+      { region: 'cityfloor', band: { zMin: 0, zMax: 70, xMin: -330, xMax: 330 }, trackShare: 0, hedgeShare: 0 },
+      { region: 'citycourt', band: { zMin: 70, zMax: 185, xMin: -360, xMax: 360 }, trackShare: 0.25, hedgeShare: 0 },
+      { region: 'cityslope', band: { zMin: 185, zMax: 300, xMin: -360, xMax: 360 }, trackShare: 0.4, hedgeShare: 0 },
+    ],
+  },
+  // Aegis Crossing (cliffbridge: Ronda and the Tajo, map revival lane 2, 2026-10-05): the open campiña of the tableland
+  // in big dry-farmed blocks along the main road's north-south line (its length-weighted heading), tracks along many of
+  // the long lines, almost no hedges (open country); the plough on the map's own soil layer (no per-region soil tone)
+  cliffbridge: {
+    strength: 1, heading: 1.571, blockU: 170, blockV: 110, maxSplit: 3, marginM: 2.0, trackShare: 0.4, hedgeShare: 0.05,
+    warpM: 20, region: 'secano', salt: 103,
+  },
+  // (Orchard Valley has no row: its karst fields (2026-10-05) laid a cadastral quilt over the Chouf's terraces and most
+  // of the establishing view's cost; the coordinator dropped it on 2026-10-06, and the terraces carry the valley's ground)
 });
 
 /** The map's land use, or null (no fields). */
@@ -304,7 +454,7 @@ export function landUseUniformValues(profile: LandUseProfile | null): {
     landC: [Math.max(0, profile.warpM), profile.salt >>> 0, c[4], c[5]],
     landD: [c[0], c[1], c[2], c[3]],
     // the slots' crop kinds (five bits a slot: 0..3, 4..6), the boundary (margin 0, ditch 1, bund 2, wall 3)
-    landE: [kinds[0], kinds[1], BOUNDARY_ID[BOUNDARIES[profile.region]], 0],
+    landE: [kinds[0], kinds[1], BOUNDARY_ID[BOUNDARIES[profile.region]], profile.urban ? (profile.works ? 2 : 1) : 0],
   };
 }
 
@@ -370,6 +520,8 @@ export interface LandFieldSample {
   cropKeep: number;
   /** 1 when the field's sward is its weeds (cured grass tones, not the crop's albedo). */
   weed: number;
+  /** 1 on an urban land use (LandUseProfile.urban): its fields lie inside the village too. */
+  urban: number;
   /**
    * On a track's two wheel lanes: the signed offset from the nearer lane's wandering centre line in its own half-widths
    * (trackLaneMeander / trackLaneCentre / trackLaneHalfWidth; |laneQ| < 1 is the sunk lane, − toward the crown between
@@ -381,7 +533,7 @@ export interface LandFieldSample {
 
 export function createLandFieldSample(): LandFieldSample {
   return { active: 0, crop: 0, edgeM: 1e9, endM: 1e9, sU: 1e9, sV: 1e9, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0,
-    jitter: 0, id: 0, boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
+    jitter: 0, id: 0, boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0, urban: 0 };
 }
 
 /** The analytic warp of the boundaries (m): two slow sines per axis, identical in GLSL. */
@@ -402,7 +554,41 @@ function cropFromRoll(c: Float64Array, roll: number): number {
 interface CompiledLandUse {
   ch: number; sh: number; blockU: number; blockV: number; maxSplit: number; marginM: number;
   trackShare: number; hedgeShare: number; warpM: number; salt: number; cum: Float64Array; kinds: Uint8Array;
-  boundary: number;
+  boundary: number; urban: number; zones: readonly CompiledLandZone[] | null;
+}
+/** A zone's test and its rotation (the same float32 packing as a profile's). */
+interface CompiledLandZone { zone: LandZone; cum: Float64Array; kinds: Uint8Array; trackShare: number; hedgeShare: number }
+/** A region's cumulative shares and slot kinds as the material packs them (float32 shares). */
+function compileRotation(region: LandRegion): { cum: Float64Array; kinds: Uint8Array } {
+  const c = rotationCumulative(region), k = rotationKinds(region);
+  const cum = new Float64Array(6);
+  for (let i = 0; i < 6; i++) cum[i] = Math.fround(c[i]);
+  const kinds = new Uint8Array(7);
+  for (let i = 0; i < 7; i++) kinds[i] = ((i < 4 ? Math.fround(k[0]) : Math.fround(k[1])) >> ((i < 4 ? i : i - 4) * 5)) & 31;
+  return { cum, kinds };
+}
+/** Whether (x, z) lies in a zone (or, mirrored, in its rotation about (0, 0)). */
+export function inLandZone(zone: LandZone, x: number, z: number): boolean {
+  const test = (px: number, pz: number): boolean => {
+    if (zone.band) return Math.abs(pz) >= zone.band.zMin && Math.abs(pz) < zone.band.zMax && px >= zone.band.xMin && px < zone.band.xMax;
+    if (zone.rect) return px >= zone.rect.x0 && px < zone.rect.x1 && pz >= zone.rect.z0 && pz < zone.rect.z1;
+    if (zone.disc) return (px - zone.disc.x) ** 2 + (pz - zone.disc.z) ** 2 < zone.disc.r * zone.disc.r;
+    if (zone.box) {
+      const a = zone.box.yawDeg * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a), dx = px - zone.box.x, dz = pz - zone.box.z;
+      // (the hardstand's own frame: local x = (cos, −sin), local z = (sin, cos) — terrain.ts stampHardstand)
+      return Math.abs(dx * c - dz * sn) < zone.box.w * 0.5 && Math.abs(dx * sn + dz * c) < zone.box.l * 0.5;
+    }
+    if (zone.line) {
+      const pts = zone.line.points, w2 = zone.line.w * zone.line.w;
+      for (let i = 0; i + 1 < pts.length; i++) {
+        const [ax, az] = pts[i], [bx, bz] = pts[i + 1], dx = bx - ax, dz = bz - az;
+        const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz)));
+        if ((px - ax - t * dx) ** 2 + (pz - az - t * dz) ** 2 < w2) return true;
+      }
+    }
+    return false;
+  };
+  return test(x, z) || (!!zone.mirror && test(-x, -z));
 }
 const compiled = new WeakMap<LandUseProfile, CompiledLandUse>();
 function compile(profile: LandUseProfile): CompiledLandUse {
@@ -416,7 +602,10 @@ function compile(profile: LandUseProfile): CompiledLandUse {
   c = {
     ch: Math.cos(v.landA[1]), sh: Math.sin(v.landA[1]), blockU: v.landA[2], blockV: v.landA[3],
     maxSplit: v.landB[0], marginM: v.landB[1], trackShare: v.landB[2], hedgeShare: v.landB[3],
-    warpM: v.landC[0], salt: v.landC[1], cum, kinds, boundary: v.landE[2],
+    warpM: v.landC[0], salt: v.landC[1], cum, kinds, boundary: v.landE[2], urban: v.landE[3] > 0.5 ? 1 : 0,
+    zones: profile.zones?.length ? profile.zones.map((zone) => ({ zone, ...compileRotation(zone.region),
+      trackShare: Math.min(1, Math.max(0, zone.trackShare ?? profile.trackShare)),
+      hedgeShare: Math.min(1, Math.max(0, zone.hedgeShare ?? profile.hedgeShare)) })) : null,
   };
   compiled.set(profile, c);
   return c;
@@ -432,9 +621,10 @@ function compile(profile: LandUseProfile): CompiledLandUse {
 export function landUseAt(profile: LandUseProfile | null, x: number, z: number, out: LandFieldSample): LandFieldSample {
   out.active = 0; out.crop = 0; out.edgeM = 1e9; out.endM = 1e9; out.sU = 1e9; out.sV = 1e9; out.split = 1; out.alongU = 1; out.marginM = 0; out.track = 0; out.hedge = 0; out.rowX = 1; out.rowZ = 0;
   out.jitter = 0; out.id = 0; out.boundary = 0; out.tintR = 0; out.tintG = 0; out.tintB = 0; out.sward = 1;
-  out.cropHeight = 1; out.cropKeep = -1; out.weed = 0; out.laneQ = 1e9;
+  out.cropHeight = 1; out.cropKeep = -1; out.weed = 0; out.urban = 0; out.laneQ = 1e9;
   if (!profile || !(profile.strength > 0)) return out;
-  const { ch, sh, blockU, blockV, maxSplit, marginM, trackShare, hedgeShare, warpM, salt, cum, kinds, boundary } = compile(profile);
+  const { ch, sh, blockU, blockV, maxSplit, marginM, warpM, salt, boundary, urban, zones } = compile(profile);
+  let { trackShare, hedgeShare, cum, kinds } = compile(profile);
   const px = x + warpX(x, z) * warpM, pz = z + warpZ(x, z) * warpM;
   const qu = ch * px + sh * pz, qv = -sh * px + ch * pz;
   const row = Math.floor(qv / blockV);
@@ -466,6 +656,18 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
     rowAlongU = blockU > w;
   }
   const fieldA = row, fieldB = col * 8 + k;
+  if (zones) {
+    // the zone of the field's middle (in the warped grid, turned back to the map — the warp's few metres aside), so a
+    // field is one zone's whole: no zone's line cuts a field in two
+    const w = (alongU ? blockU : blockV) / split;
+    const mu = alongU ? col * blockU + (k + 0.5) * w - shift : col * blockU + blockU * 0.5 - shift;
+    const mv = alongU ? row * blockV + blockV * 0.5 : row * blockV + (k + 0.5) * w;
+    const mx = ch * mu - sh * mv, mz = sh * mu + ch * mv;
+    let found: CompiledLandZone | null = null;
+    for (const zn of zones) if (zn.zone.cut ? inLandZone(zn.zone, x, z) : inLandZone(zn.zone, mx, mz)) { found = zn; break; }
+    if (!found) return out; // past the zones: no land use (the bake's LAND_CROP_NONE)
+    cum = found.cum; kinds = found.kinds; trackShare = found.trackShare; hedgeShare = found.hedgeShare;
+  }
   const crop = kinds[cropFromRoll(cum, luRand(fieldA, fieldB, salt + 23))] as LandCropId;
   // a long boundary (the row line) carries a track by its own line index and 120 m segment along it, so both blocks
   // either side agree; the short boundaries (block ends and the cuts) carry hedges by the block and cut index
@@ -483,6 +685,7 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   const dShort = alongU ? Math.min(edgeU, Math.min(lu, blockU - lu)) : Math.min(lu, blockU - lu);
   out.hedge = hedgeOn ? 1 - smooth(1.2, 2.4, dShort) : 0;
   out.active = 1;
+  out.urban = urban;
   out.crop = crop;
   out.edgeM = Math.min(edgeU, edgeV);
   out.endM = rowAlongU ? edgeU : edgeV;
@@ -506,8 +709,9 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
 
 /**
  * A farm track's wheel lanes (wave 83, Verdant: "crisp, uniform dark-grey stripes straight into the distance like painted
- * rails"): each lane's centre wanders ±0.11 m about its line 0.85 m from the track's, and its half-width swells and
- * narrows 0.19–0.29 m along the track, the two lanes on their own phases. u is the track's along coordinate — the
+ * rails"; wave 86: "constant-width strips"): each lane's centre wanders ±0.11 m about its line 0.85 m from the track's
+ * (and a few centimetres by the metre), and its half-width swells and narrows 0.12–0.36 m along the track over 5–17 m
+ * (wave 88: the swell of centimetres was not visible at the camera's range), the two lanes on their own phases. u is the track's along coordinate — the
  * unwarped grid's u (the slow boundary warp turns a track by well under a degree across a lane) — and side ±1 the side
  * of the track's line (the sign of sV). LAND_USE_GLSL's lu_laneC and lu_laneW are the same sums; the material sinks
  * the lanes there and the grass tiers keep them bare (tallGrass.ts, vegetation.ts: laneQ).
@@ -519,10 +723,10 @@ export function trackLaneMeander(u: number): number {
 }
 export function trackLaneCentre(u: number, side: number): number {
   return 0.85 + 0.11 * (0.50 * Math.sin(u * 0.53 + side * 1.9) + 0.32 * Math.sin(u * 1.37 + side * 0.7 + 1.1)
-    + 0.18 * Math.sin(u * 3.11 + side * 2.3 + 0.4));
+    + 0.18 * Math.sin(u * 3.11 + side * 2.3 + 0.4)) + 0.025 * Math.sin(u * 7.9 + side * 3.1);
 }
 export function trackLaneHalfWidth(u: number, side: number): number {
-  return 0.24 * (1 + 0.22 * Math.sin(u * 0.91 + side * 2.6 + 0.4));
+  return 0.24 * (1 + 0.32 * Math.sin(u * 0.37 + side * 2.6 + 0.4) + 0.16 * Math.sin(u * 1.13 + side * 1.3 + 2.0));
 }
 
 function smooth(a: number, b: number, x: number): number {
@@ -534,6 +738,8 @@ function smooth(a: number, b: number, x: number): number {
 
 /** The bake's first layer's R channel: the crop kind in its low five bits, then the track and the hedge flags. */
 export const LAND_BAKE_TRACK_BIT = 32;
+/** 2026-10-05: the crop code of a texel no zone of a zoned land use holds (Ruinspires): the material draws no field. */
+export const LAND_CROP_NONE = 31;
 export const LAND_BAKE_HEDGE_BIT = 64;
 /** Set when the field's block is cut along its u axis (its fields are blockU / split by blockV). */
 export const LAND_BAKE_ALONG_U_BIT = 128;
@@ -589,8 +795,8 @@ export function* bakeLandUseSteps(
       const x = ((i + 0.5) / n - 0.5) * mapSize;
       landUseAt(profile, x, z, sample);
       const k = (j * n + i) * 4;
-      out[k] = (sample.crop & 31) | (sample.track > 0 ? LAND_BAKE_TRACK_BIT : 0) | (sample.hedge > 0 ? LAND_BAKE_HEDGE_BIT : 0)
-        | (sample.alongU ? LAND_BAKE_ALONG_U_BIT : 0);
+      out[k] = (sample.active ? sample.crop & 31 : LAND_CROP_NONE) | (sample.track > 0 ? LAND_BAKE_TRACK_BIT : 0)
+        | (sample.hedge > 0 ? LAND_BAKE_HEDGE_BIT : 0) | (sample.alongU ? LAND_BAKE_ALONG_U_BIT : 0);
       out[k + 1] = (Math.min(63, Math.round(sample.jitter * 63)) << 2) | ((sample.split - 1) & 3);
       const turn = Math.atan2(sample.rowZ, sample.rowX) / (2 * Math.PI);
       const code = Math.round((turn - Math.floor(turn)) * 65536) & 65535;
@@ -676,9 +882,10 @@ float lu_sV(vec2 p, vec4 b, vec4 k, ivec2 t) {
 // at the along coordinate u = dot(p, uLandRot), side ±1 the mid-line's side (landUse.ts trackLaneCentre /
 // trackLaneHalfWidth / trackLaneMeander)
 float lu_laneC(float u, float side) {
-  return 0.85 + 0.11 * (0.50 * sin(u * 0.53 + side * 1.9) + 0.32 * sin(u * 1.37 + side * 0.7 + 1.1) + 0.18 * sin(u * 3.11 + side * 2.3 + 0.4));
+  return 0.85 + 0.11 * (0.50 * sin(u * 0.53 + side * 1.9) + 0.32 * sin(u * 1.37 + side * 0.7 + 1.1) + 0.18 * sin(u * 3.11 + side * 2.3 + 0.4))
+    + 0.025 * sin(u * 7.9 + side * 3.1);
 }
-float lu_laneW(float u, float side) { return 0.24 * (1.0 + 0.22 * sin(u * 0.91 + side * 2.6 + 0.4)); }
+float lu_laneW(float u, float side) { return 0.24 * (1.0 + 0.32 * sin(u * 0.37 + side * 2.6 + 0.4) + 0.16 * sin(u * 1.13 + side * 1.3 + 2.0)); }
 float lu_laneM(float u) { return 0.30 * sin(u * 0.105 + 0.7) + 0.18 * sin(u * 0.043 + 2.3); } // the lanes' common meander
 void lu_field(vec2 p, out float crop, out float edgeM, out float track, out vec2 rowDir, out float jitter, out float hedge) {
   vec4 a, b, k; ivec2 t;

@@ -10,6 +10,17 @@ export interface BaseBounds {
   maxY: number;
 }
 
+/**
+ * The ground a placed building stands on, in the building's own frame (props.ts; facades lane, 2026-10-07): the wall-foot
+ * strip lies on it (house.ts groundSkirt). Read-only for the geometry: nothing structural ever asks it.
+ */
+export interface RegionalGround {
+  /** the rendered terrain's height at a point of the building's frame, over the building's base (its local y = 0) */
+  at(x: number, z: number): number;
+  /** keep the world's grass, tall grass and litter off a disc of the building's frame (map.ts holds it with the yards') */
+  hole?(x: number, z: number, r: number): void;
+}
+
 /** Everything a regional builder may read. It never draws from the props placement stream. */
 export interface RegionalBuildContext {
   structureId: string;
@@ -42,23 +53,53 @@ export interface RegionalBuildContext {
   x?: number;
   z?: number;
   yaw?: number;
+  /** the ground under the placed building (absent in a bare build: the receipts, a donor); see RegionalGround */
+  ground?: RegionalGround;
+  /**
+   * The map's sun azimuth (degrees, its sky's sunAzimuthDeg: 0 toward +z, 90 toward +x), for the weathering only: the
+   * slopes turned from the sun grow their moss and lichen (weather.ts). Absent (a bare build), no slope is favoured.
+   */
+  sunAzimuthDeg?: number;
 }
 
 export type RegionalBuilder = (ctx: RegionalBuildContext) => RegionalParts;
 
 /** Procedural surface painters a style selects for the roof and stone buckets (regionalSurfaces.ts). */
 export type RoofSurfaceKind = 'beavertail' | 'canal' | 'slate' | 'pantile' | 'sheet' | 'asbestos' | 'shingle';
-/** An HSL remap of a procedural surface (props.ts ToneFunction). */
-export type SurfaceTone = (hue: number, saturation: number, lightness: number) => readonly [number, number, number];
-export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block';
+/**
+ * An HSL remap of a procedural surface (props.ts ToneFunction). A render tone may also name its painter: `paint`
+ * lime-wash brushed over mud plaster (regionalSurfaces.ts paintLimewash, its own seed) in place of the plain render.
+ */
+export type SurfaceTone = ((hue: number, saturation: number, lightness: number) => readonly [number, number, number])
+  & { paint?: { kind: RenderSurfaceKind; seed: number } };
+/** Procedural painters of the render canvases (regionalSurfaces.ts): lime-wash over mud plaster, a town's lime render. */
+export type RenderSurfaceKind = 'limewash' | 'limeRender';
+export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block' | 'fieldstone';
+/** Poured concrete prints a style can paint its plaster2 bucket with (regionalSurfaces.ts makeRegionalConcrete). */
+export type ConcreteSurfaceKind = 'boardFormed';
 
 export interface ArchitectureSurfaces {
   roof: { kind: RoofSurfaceKind; tint: readonly [number, number, number] };
-  stone: { kind: StoneSurfaceKind; tint: readonly [number, number, number] };
+  /** `dressed`: a town's dressed stone — smaller courses, soiled (regionalSurfaces.ts DRESSED; the facades lane) */
+  stone: { kind: StoneSurfaceKind; tint: readonly [number, number, number]; dressed?: boolean };
   /** the sourced CC0 photo sets the style keeps (the others stay procedural) */
   sourced: { plaster: boolean; wood: boolean };
   /** default tones of the procedural render / timber / thatch canvases; a map's own tones win */
   tones?: Partial<Record<'plaster' | 'plaster2' | 'plaster3' | 'wood' | 'straw', SurfaceTone>>;
+  /** a style that pours its plaster2 walls: that bucket's print is the concrete's (its formwork's boards, lift lines and
+   *  tie holes), toned by the plaster2 tone as the render was; absent = the render canvas */
+  concrete?: ConcreteSurfaceKind;
+  /** map revival lane 2 (2026-10-05): the walls' render finer and shallower than the shared tile (a limewash's skin, not a
+   * coarse stucco): the tile repeats `plasterUv` times as often over the plaster buckets, its normal map at `normal`
+   * strength and its cavities' occlusion at `ao`. Absent, the shared tile as it is (every other kit's surfaces unchanged). */
+  relief?: { plasterUv: number; normal: number; ao: number };
+  /** the facades lane (2026-10-08): the painter of the kit's three render canvases, under whatever tones the map gives
+   *  them (props.ts; regionalSurfaces.ts paintLimeRender): the primary family on `seed`, plaster2 and plaster3 on one seed
+   *  between them (plaster3 borrows plaster2's relief). Absent, each canvas is its tone's painter or the plain render. */
+  render?: { kind: 'limeRender'; seed: number };
+  /** the facades lane (2026-10-08; gauntlet wave 260): the print of the kit's thatched roofs (props.ts makeThatch): 'nipa',
+   *  the Mekong delta's atap of nipa-palm leaf (regionalSurfaces.ts paintNipaThatch). Absent, the straw thatch print. */
+  thatch?: { kind: 'nipa' };
 }
 
 export interface ArchitectureStyle {
@@ -71,8 +112,20 @@ export interface ArchitectureStyle {
   weather?: WeatherPalette;
   /** share of houses showing war damage: burnt or boarded windows, a stripped roof patch (house.ts; default 0.2) */
   wear?: number;
+  /**
+   * the churchyard round the kit's church (the facades lane, 2026-10-06; wave 150: "both German churches stand on bare
+   * dirt"): a yard on the church's freest side walled like a house's, its graves in place of the beds. A map opts in
+   * (props `churchyard: true`): its walls are destructibles with colliders, so the map's collision shard regenerates
+   */
+  churchyard?: YardStyle;
   /** the yards round the kit's houses (yards.ts): absent, the houses stand in the open ground as before */
   yard?: YardStyle;
+  /**
+   * (the facades lane, round 10) the foot of the kit's houses as round 10 lays it — a plinth's water table, a wider apron
+   * at the wall foot and longer door paths, the render's losses up the walls drawn no more (house.ts); false keeps the
+   * foot as round 9 laid it (Verdant's khatas, the owner's favourite village). Absent: on
+   */
+  groundCraft?: boolean;
 }
 
 /**
@@ -83,6 +136,10 @@ export interface ArchitectureStyle {
 export interface YardStyle {
   /** the plan kinds that keep a yard */
   kinds: readonly string[];
+  /** a churchyard's graves in place of the beds (yards.ts graveParts; the facades lane, 2026-10-06) */
+  graves?: boolean;
+  /** the yard never takes the plot's front (+z, the door's side): a church's approach stays open */
+  keepFront?: boolean;
   /** the destructible kind of the enclosure's modules (a fence or a low wall) */
   fence: string;
   /** the destructible hung in the gate's gap, or none (an open gap) */
