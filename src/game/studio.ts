@@ -2423,6 +2423,25 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     shells.push(shell);
     return true;
   }
+  /**
+   * A strike round met the ground (2026-10-09; it used to expire there as a plain impact): the sim's strike at the burst
+   * — the structures in its reach take its blast, the light props in its reach fall (studioDestruction.ts, the solo
+   * step's fellBlastProps) — then the crater the battle would dig and the blast naming it. The crater is the Studio's own
+   * (studioDig: one crater count with the explosion effects), so the sim digs none.
+   */
+  function strikeGround(sh: StudioShell): TerrainCraterEvent | null {
+    const spec = sh.spec as unknown as MunitionShellLike;
+    const munition = munitionClassForShell(spec), chargeKg = munitionChargeKg(spec, munition);
+    const dx = sh.pos.x - _strikePrev.x, dz = sh.pos.z - _strikePrev.z, length = Math.hypot(dx, dz) || 1;
+    studioDestructionNow()?.strike(spec, null, sh.pos.x, sh.pos.y, sh.pos.z, dx / length, dz / length, false);
+    if (!(chargeKg > 0)) return null;
+    const crater = studioDig(munition, chargeKg, sh.pos.x, sh.pos.z);
+    fxBus.emit(DESTRUCTION_BUS_EVENTS.blast, {
+      munition, chargeKg, x: sh.pos.x, y: sh.pos.y, z: sh.pos.z, nx: 0, ny: 1, nz: 0, surface: 'ground',
+      ...(crater ? { craterId: crater.craterId } : {}),
+    });
+    return crater;
+  }
   /** A strike round met the world at `hit` (a record, not the ground): the sim's strike, then the burst where it stopped. */
   function strikeWorld(sh: StudioShell, hit: { point: THREE.Vector3; normal: THREE.Vector3; record?: { structureIdx?: number } | null },
     dir: THREE.Vector3): void {
@@ -2683,12 +2702,16 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           if (exactShells) refineShellCrossing(sh, px, py, pz);
           sh.pos.y = hfProxy.getHeightAt(sh.pos.x, sh.pos.z) + 0.05;
           sh.dead = true;
+          // a strike round bursts on the ground as a battle round does (strikeGround): the blast, then the impact, then
+          // the crater, the solo step's order
+          const groundCrater = sh._studioWorld ? strikeGround(sh) : null;
           filmCue('dirt', sh.pos.x, sh.pos.y, sh.pos.z, sh.spec?.caliberMm ?? 120);
           fxBus.emit('shell:expired', {
             shellId: sh.id, hitTerrain: true, pos: [sh.pos.x, sh.pos.y, sh.pos.z],
             // the round's type and calibre, as the solo step publishes them (fx keys its explosion on the class)
             shellType: sh.spec?.type, caliberMm: sh.spec?.caliberMm,
           });
+          if (groundCrater) fxBus.emit(DESTRUCTION_BUS_EVENTS.crater, groundCrater);
           if (exactShells) {
             _v1.set(sh.pos.x, sh.pos.y, sh.pos.z);
             ensureCinematics().groundHit(`shell${String(sh.id)}`, _v1, sh.spec?.caliberMm || 105, String(sh.spec?.type || 'AP'));
