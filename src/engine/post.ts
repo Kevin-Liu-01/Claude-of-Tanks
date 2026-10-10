@@ -113,7 +113,7 @@ import {
   SGO_RANGE_M, STRUCTURE_GROUND_ALPHA_MAX, STRUCTURE_GROUND_OCCLUSION_GLSL, createStructureGroundUniforms, updateStructureGroundUniforms,
 } from './structureGroundOcclusion.ts';
 import {
-  STRUCTURE_ALPHA_MIN, STRUCTURE_OCCLUSION_GLSL, STRUCTURE_OCCLUSION_RANGE_M, createStructureOcclusionUniforms,
+  STRUCTURE_ALPHA_MIN, STRUCTURE_ALPHA_TAG, STRUCTURE_OCCLUSION_GLSL, STRUCTURE_OCCLUSION_RANGE_M, createStructureOcclusionUniforms,
 } from './structureOcclusion.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
 import type { GpuFrameTimer } from './gpuFrameTimer.ts';
@@ -1209,13 +1209,20 @@ const AerialShader = {
         if ( uVehOcc > 0.5 && texel.a >= ${VEHICLE_ALPHA_MIN.toFixed(1)} && -viewZ < ${VEHICLE_OCCLUSION_RANGE_M.toFixed(1)} ) {
           texel.rgb *= cotVehicleOcclusionShade( vUv, uCamPos + ray * rayT, -viewZ, texel.a );
         }
-        // 2026-10-03: the ground's sky under and beside the near hulls (vehicleGroundOcclusion.ts): its ambient share
         // 2026-10-10: a structure pixel's cavity occlusion (structureOcclusion.ts): door and window reveals, eaves — its
-        // ambient share; never the ground, the grass or a vehicle
-        if ( uStructOcc > 0.5 && texel.a >= ${STRUCTURE_ALPHA_MIN.toFixed(1)} && -viewZ < ${STRUCTURE_OCCLUSION_RANGE_M.toFixed(1)} ) {
-          texel.rgb *= cotStructureCavityShade( vUv, uCamPos + ray * rayT, -viewZ, texel.a );
+        // ambient share; never the ground, the grass or a vehicle. Its factor joins the baked ground term below by min()
+        // (a deck or a slab at a wall's foot takes the stronger of the two, never their product). Past it the pixel is an
+        // opaque lit receiver again (2 + v): the hulls' and the baked ground terms take a structure's decks, slabs and
+        // floors as they always did (a tank on a bridge keeps its ground), their own normal gates keep its walls
+        float cotStructCav = 1.0;
+        if ( texel.a >= ${STRUCTURE_ALPHA_MIN.toFixed(1)} ) {
+          if ( uStructOcc > 0.5 && -viewZ < ${STRUCTURE_OCCLUSION_RANGE_M.toFixed(1)} ) {
+            cotStructCav = cotStructureCavityShade( vUv, uCamPos + ray * rayT, -viewZ, texel.a );
+          }
+          texel.a -= ${STRUCTURE_ALPHA_TAG.toFixed(1)};
         }
-        // (2026-10-09: the colour before the hulls' term, so the structures' term below can read what it took)
+        // 2026-10-03: the ground's sky under and beside the near hulls (vehicleGroundOcclusion.ts): its ambient share
+        // (2026-10-09: the colour before the hulls' term, so the structures' terms below can read what it took)
         float cotGroundPre = max( texel.r, max( texel.g, texel.b ) );
         if ( uVehGround > 0.5 && texel.a < ${VEHICLE_ALPHA_MIN.toFixed(1)} && -viewZ < ${GROUND_AO_RANGE_M.toFixed(1)} ) {
           texel.rgb *= cotVehicleGroundShade( vUv, uCamPos + ray * rayT, texel.a, -viewZ );
@@ -1224,9 +1231,13 @@ const AerialShader = {
         // its ambient share, never a solid's own faces. Where a hull's ground term already dims the pixel the stronger of
         // the two stands, never their product: under and beside a hull the belly hides most of what a wall would, and the
         // two never compound into the near-black the hull's own term owns (the contact-shadow lane's pixels)
+        float cotGroundJoin = cotStructCav;
         if ( uSgo > 0.001 && texel.a < ${STRUCTURE_GROUND_ALPHA_MAX.toFixed(1)} && -viewZ < ${SGO_RANGE_M.toFixed(1)} ) {
+          cotGroundJoin = min( cotGroundJoin, cotStructureGroundShade( vUv, uCamPos + ray * rayT, texel.a, -viewZ ) );
+        }
+        if ( cotGroundJoin < 1.0 ) {
           float cotHullGround = cotGroundPre > 1e-6 ? clamp( max( texel.r, max( texel.g, texel.b ) ) / cotGroundPre, 0.0, 1.0 ) : 1.0;
-          texel.rgb *= min( 1.0, cotStructureGroundShade( vUv, uCamPos + ray * rayT, texel.a, -viewZ ) / max( cotHullGround, 1e-3 ) );
+          texel.rgb *= min( 1.0, cotGroundJoin / max( cotHullGround, 1e-3 ) );
         }
         // height-aware atmosphere (see AERIAL_HEIGHT_* const block): pixels
         // high above the battlefield datum sit in thinner air — scatter-in

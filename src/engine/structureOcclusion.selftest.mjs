@@ -63,7 +63,14 @@ const props = read('../world/props.ts');
 assert.match(props, /if \(!STRUCTURE_OCCLUSION_EXCLUDED_KINDS\.has\(materialKind\)\) material\.userData\.cotStructurePixel = true;/, 'the props\' structure kinds tag their pixels');
 for (const kind of ['rock', 'fieldStone', 'fieldMud', 'ballast', 'pole', 'glass', 'vehicle']) assert.ok(STRUCTURE_OCCLUSION_EXCLUDED_KINDS.has(kind), `${kind} is not a structure`);
 const post = read('./post.ts');
-assert.match(post, /if \( uStructOcc > 0\.5 && texel\.a >= \$\{STRUCTURE_ALPHA_MIN\.toFixed\(1\)\} && -viewZ < \$\{STRUCTURE_OCCLUSION_RANGE_M\.toFixed\(1\)\} \) \{\s*texel\.rgb \*= cotStructureCavityShade\( vUv, uCamPos \+ ray \* rayT, -viewZ, texel\.a \);/, 'the aerial pass');
+assert.match(post, /float cotStructCav = 1\.0;\s*if \( texel\.a >= \$\{STRUCTURE_ALPHA_MIN\.toFixed\(1\)\} \) \{\s*if \( uStructOcc > 0\.5 && -viewZ < \$\{STRUCTURE_OCCLUSION_RANGE_M\.toFixed\(1\)\} \) \{\s*cotStructCav = cotStructureCavityShade\( vUv, uCamPos \+ ray \* rayT, -viewZ, texel\.a \);\s*\}\s*texel\.a -= \$\{STRUCTURE_ALPHA_TAG\.toFixed\(1\)\};/,
+  'the aerial pass: the cavity factor, then the pixel back in the opaque band (2 + v)');
+assert.ok(post.indexOf('texel.a -= ${STRUCTURE_ALPHA_TAG') < post.indexOf('texel.rgb *= cotVehicleGroundShade('),
+  'a structure\'s deck or slab is a receiver of the hulls\' ground term again (a tank on a bridge keeps its ground)');
+assert.match(post, /float cotGroundJoin = cotStructCav;[\s\S]{0,400}cotGroundJoin = min\( cotGroundJoin, cotStructureGroundShade\(/,
+  'joined with the baked ground term by min(): one owner per pixel, never a product');
+assert.match(post, /if \( cotGroundJoin < 1\.0 \) \{[\s\S]{0,240}texel\.rgb \*= min\( 1\.0, cotGroundJoin \/ max\( cotHullGround, 1e-3 \) \);/,
+  'applied even where the baked term is off, never under a hull\'s stronger term');
 assert.ok(post.indexOf('cotStructureCavityShade( vUv') < post.indexOf('texel.a = 1.0;'), 'consumed before the pass restores alpha');
 assert.match(post, /aerial\.uniforms\.uStructOcc\.value = lightFx\.vehicleOcclusion && preset\.structureOcclusion === true && lightTune\('STRUCT_OCC', 1\) > 0 \? 1 : 0;/, 'the cavity lever and the tier\'s switch');
 for (const name of ['ultra', 'high']) assert.equal(PRESETS[name].structureOcclusion, true, `${name} takes the term`);

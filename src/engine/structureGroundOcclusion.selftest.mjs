@@ -120,7 +120,9 @@ assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, new RegExp(`smoothstep\\( ${SGO_GA
 assert.ok(STRUCTURE_GROUND_OCCLUSION_GLSL.includes((1 - SGO_RETURN).toFixed(5)), 'the occluder\'s own light given back');
 const post = read('./post.ts');
 assert.match(post, /\$\{STRUCTURE_GROUND_OCCLUSION_GLSL\}/, 'the aerial pass includes the block');
-assert.match(post, /texel\.rgb \*= min\( 1\.0, cotStructureGroundShade\( vUv, uCamPos \+ ray \* rayT, texel\.a, -viewZ \) \/ max\( cotHullGround, 1e-3 \) \);/,
+assert.match(post, /cotGroundJoin = min\( cotGroundJoin, cotStructureGroundShade\( vUv, uCamPos \+ ray \* rayT, texel\.a, -viewZ \) \);/,
+  'joined by min() (with a structure pixel\'s cavity factor, overhaul r4)');
+assert.match(post, /texel\.rgb \*= min\( 1\.0, cotGroundJoin \/ max\( cotHullGround, 1e-3 \) \);/,
   'never compounded with a hull\'s ground term: the stronger stands');
 assert.match(post, /float cotGroundPre = max\( texel\.r, max\( texel\.g, texel\.b \) \);\s*if \( uVehGround > 0\.5/, 'the hulls\' factor read from the colour it scaled');
 assert.match(post, /updateStructureGroundUniforms\(aerial\.uniforms, scene, renderer, lightFx\.contactShadows\);/, 'the contact-shadow lever');
