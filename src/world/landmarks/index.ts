@@ -13,6 +13,7 @@ import { bandstand, churchyard, fountain, garden, outfall, parkGate, parkSquare,
 import { aircraftWreck } from './wrecks.ts';
 import { airstrip, drumCache, fuelTankFarm, guyedMast, jamesway, moduleTrain, radomeTower, snowFence, troposcatter } from './stations.ts';
 import { conveyor, headframe, oreBin, oreCars } from './mining.ts';
+import { fishRack, hayRack, stabbur } from './fjordWorks.ts';
 import { belfry, campanile, fireLookout, valveTower, waterTower, windmill } from './towers.ts';
 import type { LandmarkBuilder, LandmarkKind } from './types.ts';
 
@@ -33,6 +34,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   equestrianStatue,
   fireLookout,
   fuelTankFarm,
+  fishRack,
   fountain,
   garden,
   grainElevator,
@@ -41,6 +43,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   jamesway,
   granary,
   houseRow,
+  hayRack,
   khan,
   kolkhozArch,
   lavoir,
@@ -65,6 +68,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   slipway,
   snowFence,
   stairway,
+  stabbur,
   stationHall,
   stoneArchBridge,
   tennisCourt,
