@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createHeightField, makeMaskTexture, mulberry32, stackLandUseBake } from './terrain.ts';
+import { ROAD_FRAME_ARC_UNITS, createHeightField, makeMaskTexture, mulberry32, stackLandUseBake } from './terrain.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { getMapConfig } from './maps/index.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
@@ -63,6 +63,7 @@ assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.airfield, town).cls.sli
   for (let i = 0; i < want.length; i++) assert.deepEqual(styles[i], want[i] ? { surface: want[i] } : null, `Tidegate path ${i}`);
 }
 
+assert.equal(65536 / ROAD_FRAME_ARC_UNITS, 1024, 'the running length wraps at 1024 m, a whole number of every pattern\'s periods');
 // the road frame layer: every texel within 14 m of a road holds the nearest line's running length (1/64 m, 16 bits) and
 // heading (16 bits of a turn); on a straight east-west road the length grows with x and the heading is 0
 {
@@ -81,9 +82,9 @@ assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.airfield, town).cls.sli
   // along one road's segment the running length steps by the texel spacing projected on the heading
   const road = field._layout.roads[0];
   const [ax, az] = road[0], [bx, bz] = road[1];
-  const len = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / len, uz = (bz - az) / len;
+  const len = Math.hypot(bx - ax, bz - az);
   const texelOf = (x, z) => Math.floor((z + 512) * n / 1024) * n + Math.floor((x + 512) * n / 1024);
-  const arcAt = (i) => (frame.data[i * 4] * 256 + frame.data[i * 4 + 1]) / 64;
+  const arcAt = (i) => (frame.data[i * 4] * 256 + frame.data[i * 4 + 1]) / ROAD_FRAME_ARC_UNITS;
   const turnAt = (i) => (frame.data[i * 4 + 2] * 256 + frame.data[i * 4 + 3]) / 65536;
   const want = ((Math.atan2(bz - az, bx - ax) / (2 * Math.PI)) % 1 + 1) % 1;
   for (const t of [0.3, 0.5, 0.7]) {
@@ -94,7 +95,6 @@ assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.airfield, town).cls.sli
     assert.ok(turnErr < 0.003, `the heading at ${t} of the first segment (${turnAt(i).toFixed(4)} vs ${want.toFixed(4)})`);
     // the texel centre's own running length: within a texel's diagonal of the point's
     assert.ok(Math.abs(arcAt(i) - (t * len) % 1024) < 1024 / n * 1.5, `the running length at ${t} (${arcAt(i).toFixed(2)} vs ${(t * len).toFixed(2)})`);
-    void ux; void uz;
   }
   // the stack: the frame after the road layer (here the only layer), addressed by uRoadFrame
   const st = stackLandUseBake(texture, null, 1, null, frame);

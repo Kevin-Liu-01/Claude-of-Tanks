@@ -4622,7 +4622,8 @@ void splatCompute() {
   // roads lane (2026-10-09): the road frame from the stack's frame layer — one exact texel a mask texel: the nearest line's
   // heading and its running length at the texel's centre, the pixel's own offset added along the heading (exact on a bend,
   // where dot(wp, heading) runs fast or backwards by |wp| / radius). Past the square's edge the clamped texel is no frame
-  if (uRoadFrame.z > 0.5 && dRoad < 11.9 && outsideRoadW < 0.999) {
+  // (the tier, landUseTierOf: Low — the phones' default — reads no frame and keeps the old road and paving law)
+  if (uRoadFrame.z > 0.5 && dRoad < 11.9 && outsideRoadW < 0.999 && uLandTier > 0.5) {
     float fn = uRoadFrame.x;
     ivec2 ft = clamp(ivec2(floor((wp.xz / 1024.0 + 0.5) * fn)), ivec2(0), ivec2(int(fn) - 1));
     vec4 fc = texelFetch(uMask, ft + ivec2(0, int(uRoadFrame.y + 0.5)), 0);
@@ -6544,7 +6545,7 @@ void splatCompute() {
   // the distance field's gradient: the across-road direction, away from the centreline (~unit; small over the centre's kink).
   // (roads lane, 2026-10-09: read once here — the worked carriageway below and the lanes' relief after it both use it)
   vec2 gradD = vec2(0.0);
-  if (roadCore > 0.002 || (gRoadTex > 0.01 && dRoad < 11.9)) { // (and a paved surface's side of its centreline)
+  if (roadCore > 0.002 || (gRoadTex > 0.01 && dRoad < 11.9 && uLandTier > 0.5)) { // (and a paved surface's side of its centreline)
     float texel = 1.0 / 1024.0;
     gradD.x = maskAt(mUV - vec2(texel, 0.0)).g - maskAt(mUV + vec2(texel, 0.0)).g;
     gradD.y = maskAt(mUV - vec2(0.0, texel)).g - maskAt(mUV + vec2(0.0, texel)).g;
@@ -6640,7 +6641,8 @@ void splatCompute() {
     // direction (stripeVis: a groove seen down the road holds far past tileVis's grazing major axis) and fades to tone
     vec2 acrU = gradD / max(length(gradD), 0.25);
     float wR = roadCore * (1.0 - gRoadTex);
-    if (dW > 0.002 && wR > 0.002 && uRoadSurf.x + uRoadSurf.y + uRoadSurf.z + uRoadSurfB.x > 0.0) {
+    // (the tier: Low draws none of it, Medium the grooves alone, High everything)
+    if (dW > 0.002 && wR > 0.002 && uRoadSurf.x + uRoadSurf.y + uRoadSurf.z + uRoadSurfB.x > 0.0 && uLandTier > 0.5) {
       float e = dRoad - 1.55 - laneWob, ae = abs(e), se = e < 0.0 ? -1.0 : 1.0;
       float fwA = max(abs(dot(gDwX, acrU)) + abs(dot(gDwY, acrU)), 1e-4);
       float relV = stripeVis(0.60, acrU) * uRoadSurf.x;
@@ -6669,7 +6671,7 @@ void splatCompute() {
       a.rgb *= 1.0 - (0.07 * groove * rutAmp + 0.28 * shade - 0.06 * lip - 0.05 * windrow) * relV * wR;
       // (2) the treads printed in a rut's floor: a tank's track plates (0.16 m pitch) or a lorry's chevrons (0.128 m),
       // one vehicle's print a 9 m stretch (both its ruts), some stretches worn smooth — laid in the road frame
-      if (gRoadFrameW > 0.5 && uRoadSurf.w > 0.0) {
+      if (gRoadFrameW > 0.5 && uRoadSurf.w > 0.0 && uLandTier > 1.5) {
         vec2 ph = cellHash2(vec2(floor(gRoadS / 9.0), 7.0));
         float chevron = step(0.55, ph.x);
         float pitch = mix(0.16, 0.128, chevron);
@@ -6682,7 +6684,7 @@ void splatCompute() {
       }
       // (3) stones: one candidate a 0.12 m cell, strewn on the crown and the edges, swept out of the wheel paths; past
       // their own pixels, their speckle
-      if (uRoadSurf.y > 0.0) {
+      if (uRoadSurf.y > 0.0 && uLandTier > 1.5) {
         float crownW = 1.0 - smoothstep(0.5, 1.1, dRoad);
         float edgeW = smoothstep(hwv - 1.4, hwv - 0.2, dRoad);
         float dens = uRoadSurf.y * (0.06 + 0.30 * crownW + 0.34 * edgeW + 0.40 * windrow) * (1.0 - 0.8 * groove);
@@ -6711,7 +6713,7 @@ void splatCompute() {
       }
       // (4) potholes: one candidate a 5 m world cell, an oval bowl 0.6–1.8 m long down the road, its floor damp and, on a
       // wet map, holding water; its rim of crumbs paler
-      if (uRoadSurf.z > 0.0) {
+      if (uRoadSurf.z > 0.0 && uLandTier > 1.5) {
         float hv = tileVis(1.2);
         vec2 pci = floor(wp.xz / 5.0);
         vec2 p1 = cellHash2(pci + vec2(61.0, 17.0));
@@ -6742,7 +6744,7 @@ void splatCompute() {
         }
       }
       // (5) washboard: corrugations across an arid track every 0.8 m, in stretches, strongest in the wheel paths
-      if (uRoadSurfB.x > 0.0 && gRoadFrameW > 0.5) {
+      if (uRoadSurfB.x > 0.0 && gRoadFrameW > 0.5 && uLandTier > 1.5) {
         float wv = stripeVis(0.8, gRoadAlong) * uRoadSurfB.x * gRoadFrameW * wR
           * smoothstep(0.42, 0.62, nz(uv, 0.011, vec2(0.27, 0.59)).g) * (0.55 + 0.45 * lane);
         if (wv > 0.01) {
@@ -6792,6 +6794,7 @@ void splatCompute() {
       }
       float onStreet = max(1.0 - smoothstep(roadHalf + 0.6, roadHalf + 2.4, dRoad), paveTownW * (1.0 - smoothstep(5.1, 5.4, dRoad)));
       float pCls = gRoadClass > 0.5 && abs(gRoadClass - 4.0) > 0.5 ? gRoadClass : (onStreet > 0.5 ? uPaveClass.x : uPaveClass.y);
+      if (uLandTier < 0.5) pCls = gRoadClass > 0.5 && gRoadClass < 3.5 ? gRoadClass : 0.0; // (Low: the old law)
       vec4 pav = vec4(0.0), pnn = NRM_MEAN;
       if (pCls < 0.5) {
         pav = splatSamp(uAlbR, uv * 0.31, df, mipB, uMeanR);
