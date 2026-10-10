@@ -1523,6 +1523,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/wreckCollision.selftest.mjs',
     'src/world/wreckRoster.selftest.mjs',
     'src/world/wreckFleet.selftest.mjs',
+    // 2026-10-09 (destruction core lane): crumpled wrecks — the baked hulks, the burnt map vehicles, the live kill.
+    'src/world/wreckCrumple.selftest.mjs',
     'src/world/wrecksSteps.selftest.mjs',
     'src/world/wreckPaintDedup.selftest.mjs',
     'src/world/wreckDiscardedPaint.selftest.mjs',
