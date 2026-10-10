@@ -179,6 +179,23 @@ export const LOW_SUN_EV = -0.5;
  * (2026-10-03, the gauntlet's wave 19: K 0.42 → 0.25 with the deck's ground return, which brightens an overcast
  * snowfield by itself — OVERCAST_GROUND_RETURN; fp12's lift25 frames: Whiteout's chase 1.86 → 3.86 against the PR head.)
  */
+/**
+ * 2026-10-09 (the skies lane; the gauntlet's wave 295 at night: "the whole sand floor ... lit pale grey-white almost to
+ * daylight level, reading as fresh snow", "the snow fields and distant peaks stay almost daytime-bright"): at night the
+ * eye adapts to the moonlit scene it sees, so a bright ground pulls the camera down where the day's photographer opened
+ * up — NIGHT_ALBEDO_K stops per doubling of the ground's luminance over NIGHT_ALBEDO_REF, at most NIGHT_ALBEDO_MAX_EV
+ * (0 = the night camera ignores the ground, as before; QA: __LIGHT_TUNE.NIGHT_ALBEDO_K).
+ */
+export const NIGHT_ALBEDO_REF = 0.2;
+export const NIGHT_ALBEDO_K = 0;
+export const NIGHT_ALBEDO_MAX_EV = 0.6;
+/** The night camera's pull-down (EV, ≤ 0) for a ground albedo (luminance). */
+export function nightAlbedoEV(groundLuminance: number): number {
+  const k = lightTune('NIGHT_ALBEDO_K', NIGHT_ALBEDO_K);
+  const ref = lightTune('NIGHT_ALBEDO_REF', NIGHT_ALBEDO_REF);
+  if (!(k > 0) || !(groundLuminance > ref)) return 0;
+  return -clamp(k * Math.log2(groundLuminance / ref), 0, lightTune('NIGHT_ALBEDO_MAX_EV', NIGHT_ALBEDO_MAX_EV));
+}
 export const EXPOSURE_ALBEDO_REF = 0.35;
 export const EXPOSURE_ALBEDO_K = 0.25;
 export const EXPOSURE_ALBEDO_MAX_EV = 0.75;
@@ -364,7 +381,8 @@ function resolveGrounded(
   const sunElevationDeg = Math.asin(clamp(params.sunDir[1], -1, 1)) * 180 / Math.PI;
   const lowSun = (1 - night) * (1 - smoothstep(6, 18, sunElevationDeg));
   const exposure = exposureFor(illuminance, (L.exposureEV ?? 0) + night * lightTune('NIGHT_EV', NIGHT_EV)
-    + lowSun * lightTune('LOW_SUN_EV', LOW_SUN_EV) + (1 - night) * exposureAlbedoEV(luminance(ground)));
+    + lowSun * lightTune('LOW_SUN_EV', LOW_SUN_EV) + (1 - night) * exposureAlbedoEV(luminance(ground))
+    + night * nightAlbedoEV(luminance(ground)));
   // the readability lift's floor holds its on-screen level as the camera adapts (Verdant's key keeps it whole), and
   // fades with the deck that lights the shade itself
   const vehicleReadability = clamp(Math.min(1, lightTune('EXPOSURE_KEY', EXPOSURE_KEY) / exposure)
