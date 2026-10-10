@@ -232,6 +232,8 @@ export interface RigidWorld {
   ): void;
   /** An impulse at a world point (N s); wakes the body. */
   applyImpulse(slot: number, jx: number, jy: number, jz: number, px: number, py: number, pz: number): void;
+  /** Set a body's velocity (centre of mass, m/s) and angular velocity (rad/s); wakes it. */
+  setVelocity(slot: number, vx: number, vy: number, vz: number, wx: number, wy: number, wz: number): void;
   wake(slot: number): void;
   /** Wake every sleeper whose bounds meet the box (the ground or a building changed there). */
   wakeInBox(minX: number, minY: number, minZ: number, maxX: number, maxY: number, maxZ: number): void;
@@ -1640,6 +1642,12 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
       wake(slot);
       updateRotation(slot);
       applyBodyImpulse(slot, jx, jy, jz, x - px[slot], y - py[slot], z - pz[slot], false);
+    },
+    setVelocity(slot, lx, ly, lz, ax, ay, az) {
+      if (slot < 0 || slot >= capacity || !active[slot]) return;
+      wake(slot);
+      vx[slot] = lx; vy[slot] = ly; vz[slot] = lz;
+      wx[slot] = ax; wy[slot] = ay; wz[slot] = az;
     },
     wake,
     wakeInBox(minX, minY, minZ, maxX, maxY, maxZ) {
