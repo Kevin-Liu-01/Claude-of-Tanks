@@ -84,10 +84,37 @@ export async function vehicleGroundGlslCases() {
     const knots = u.uVehGroundR.value.flatMap((v) => v.toArray());
     packedRuns = { left: knots.slice(0, 8), right: knots.slice(8, 16) };
     return { hullCount: u.uVehGround.value, rows: u.uVehGroundM.value.flatMap((v) => v.toArray()),
-      solids: u.uVehGroundB.value.flatMap((v) => v.toArray()), runs: knots, light: u.uVehGroundLight.value.toArray() };
+      solids: u.uVehGroundB.value.flatMap((v) => v.toArray()), runs: knots, light: u.uVehGroundLight.value.toArray(),
+      r4: u.uVehGroundR4.value.toArray(), r5: u.uVehGroundR5.value.toArray() };
   };
   // the block skips a pixel it barely touches; the hulls' joint share is capped (round 3: GROUND_AO_OCC_MAX)
-  const shown = (occ) => { const c = Math.min(occ, M.GROUND_AO_OCC_MAX); return c > 0.003 ? c : 0; };
+  const UP = { x: 0, y: 1, z: 0 };
+  // (round 4) a hull the receiver is a receiver of (its reach, not its skin, not one of its shoes): the crease's core, the
+  // shoe band's sun shadow and the snow berm come only from such a hull
+  const receives = (q, runs) => {
+    const H = T90M.yt - T90M.y0;
+    const dx = Math.abs(q.x) - T90M.hx, dz = Math.abs(q.z - 0.5 * (T90M.fz0 + T90M.fz1)) - 0.5 * (T90M.fz1 - T90M.fz0);
+    const dOut = Math.hypot(Math.max(dx, 0), Math.max(dz, 0));
+    if (dOut > H * M.GROUND_AO_REACH[1] || q.y > T90M.yt || q.y < T90M.y0 - H * M.GROUND_AO_REACH[1]) return false;
+    return !(q.y > T90M.yb + 0.02 && dOut < M.GROUND_AO_HULL_SKIN_M);
+  };
+  // the GLSL's shade (round 4): 1 − occ·ambShare − (1 − ambShare)·sunCut, the core past the cap, the band's shadow and the
+  // berm's slopes on the sun share; `hulls` the receiver in each hull's frame, `ambShare` the pixel's
+  const shade = (hulls, n, card, ambShare, sun, snow, strengths, runs = null) => {
+    const per = [], cores = [];
+    let band = 0, berm = 1;
+    for (const q of hulls) {
+      if (!receives(q, runs) || M.isRunShoe(q, T90M, card, runs)) continue;
+      per.push(M.vehicleGroundOcclusionLocal(q, n, T90M, strengths, card, runs));
+      cores.push(M.contactCoreOcclusion(q, T90M, runs));
+      band = Math.max(band, M.shoeBandSunShadow(q, T90M, sun, runs));
+      berm *= M.snowBermGain(q, n, T90M, sun, snow, runs);
+    }
+    const occ = M.combineVehicleGroundOcclusion(per, 0, Math.max(0, ...cores));
+    const sunCut = 1 - (1 - band) * berm;
+    if (occ <= 0.003 && Math.abs(sunCut) <= 0.003) return 0;
+    return occ * ambShare + (1 - ambShare) * sunCut;
+  };
   const base = { amb: [1, 1, 0, 0], fillDir: [0, 1, 0], sunDir: [0, 1, 0], points: receivers.map((r) => r[1]), normals: receivers.map((r) => r[2]),
     // the scene target's alpha: a card (no sun state) under 1.5, a lit pixel's 2 + its sun visibility
     alphas: receivers.map((r) => (r[3] ? 1 : 2.5)) };
@@ -107,19 +134,14 @@ export async function vehicleGroundGlslCases() {
   const geometry = {
     name: 'geometry: one hull, no interreflection, the whole ambient share',
     input: { ...base, ...pack([rootAt(0)], 0.25, 0), sunLum: 0 },
-    expected: receivers.map(([, p, nrm, card]) => shown(M.vehicleGroundOcclusionLocal(vec(p), vec(nrm), T90M, { belly: 1, wall: 1 }, card))
-      * (card ? cardShare(vec(p)) : 1)),
+    expected: receivers.map(([, p, nrm, card]) => shade([vec(p)], vec(nrm), card, card ? cardShare(vec(p)) : 1, UP, 0, { belly: 1, wall: 1 })),
   };
   const kSun = 0.65, snow = M.vehicleGroundStrengths(0.8, kSun, M.GROUND_AO_HULL_ALBEDO, M.GROUND_AO_BELLY_VIEW);
   const sunlit = {
     name: 'snow under a sun, a second hull 6 m to the right',
     input: { ...base, ...pack([rootAt(0), rootAt(6)], 0.8, M.GROUND_AO_HULL_ALBEDO), sunLum: kSun },
-    expected: receivers.map(([, p, nrm, card]) => {
-      const occ = M.combineVehicleGroundOcclusion([
-        M.vehicleGroundOcclusionLocal(vec(p), vec(nrm), T90M, snow, card),
-        M.vehicleGroundOcclusionLocal({ x: p[0] - 6, y: p[1], z: p[2] }, vec(nrm), T90M, snow, card)], 0);
-      return shown(occ) * (card ? cardShare(vec(p)) : 1 / (1 + kSun * Math.max(nrm[1], 0)));
-    }),
+    expected: receivers.map(([, p, nrm, card]) => shade([vec(p), { x: p[0] - 6, y: p[1], z: p[2] }], vec(nrm), card,
+      card ? cardShare(vec(p)) : 1 / (1 + kSun * Math.max(nrm[1], 0)), UP, M.snowWeight(0.8), snow)),
   };
   // the gear's (z, travel) pairs a side, hull-local: the right run climbing from its rear to 9 cm up at its front wheel,
   // the left's middle wheels drooped 4 cm (the band between them follows)
@@ -133,8 +155,25 @@ export async function vehicleGroundGlslCases() {
   const drawn = {
     name: 'the runs as drawn: the right run lifted ahead, the left drooped in the middle',
     input: { ...base, ...drawnInput, sunLum: 0 },
-    expected: receivers.map(([, p, nrm, card]) => shown(M.vehicleGroundOcclusionLocal(vec(p), vec(nrm), T90M, { belly: 1, wall: 1 }, card, runs))
-      * (card ? cardShare(vec(p), runs) : 1)),
+    expected: receivers.map(([, p, nrm, card]) => shade([vec(p)], vec(nrm), card, card ? cardShare(vec(p), runs) : 1, UP, 0, { belly: 1, wall: 1 }, runs)),
   };
-  return { labels: receivers.map((r) => r[0]), cases: [geometry, sunlit, drawn], glsl: M.VEHICLE_GROUND_OCCLUSION_GLSL };
+  // (round 4) grass under a low sun from the hull's left (32°, the Verdant day), the runs as drawn: the shoe band's sun line
+  // on the right run's shade side, the crease's core, the softer broad share — and the grime on the hull's own pixels
+  const lowSun = [-Math.cos(0.5585), Math.sin(0.5585), 0.12];
+  const lowSunLen = Math.hypot(...lowSun), sunL = lowSun.map((v) => v / lowSunLen);
+  const kLow = 2.2, grass = M.vehicleGroundStrengths(0.25, kLow * Math.max(sunL[1], 0), M.GROUND_AO_HULL_ALBEDO, M.GROUND_AO_BELLY_VIEW);
+  const lowInput = pack([rootAt(0, reader)], 0.25, M.GROUND_AO_HULL_ALBEDO);
+  const underLow = (q) => (M.isRunShoe(q, T90M, true, runs) || !receives(q, runs)) ? 0 : M.hullSunShadow(q, T90M, vec(sunL));
+  const lowSunCase = {
+    name: 'grass under a low sun from the left, the runs as drawn',
+    input: { ...base, ...lowInput, sunLum: kLow, sunDir: sunL },
+    expected: receivers.map(([, p, nrm, card]) => {
+      const q = vec(p), n = vec(nrm);
+      const T = kLow * Math.max(n.x * sunL[0] + n.y * sunL[1] + n.z * sunL[2], 0);
+      const amb = card ? M.GROUND_AO_CARD_AMBIENT_SHARE + (1 - M.GROUND_AO_CARD_AMBIENT_SHARE) * underLow(q) : 1 / (1 + T);
+      return shade([q], n, card, amb, vec(sunL), 0, grass, runs);
+    }),
+    expectedGrime: receivers.map(([, p]) => M.vehicleGrime(vec(p), T90M, runs)),
+  };
+  return { labels: receivers.map((r) => r[0]), cases: [geometry, sunlit, drawn, lowSunCase], glsl: M.VEHICLE_GROUND_OCCLUSION_GLSL };
 }
