@@ -112,8 +112,9 @@ function crewCalls(scene, cut, cutIndex, inMs, outMs, rate) {
 }
 /**
  * A take's running gear: every hull that runs more than 1 m/s through the cut (the hero first, then the three nearest
- * the lens) plays its own family's recorded engine, at its family's pitch, over its track set's loop. Level and pan
- * follow the lens every 100 ms. A held lens that a hull passes within 18 m gets the Doppler pass-by instead.
+ * the lens) plays its own family's recorded engine, at its family's pitch, over its track set's loop. The keys give
+ * its distance and pan against the lens every 100 ms, and score.mjs --gameLaw levels each loop by its cue's law on the
+ * vehicles bus, as the game does. A held lens that a hull passes within 18 m gets the Doppler pass-by instead.
  */
 function takeDrives(scene, cut, inMs, outMs, rate) {
   const sb = scene.storyboard ?? {}, sh = sb.shots ?? [];
@@ -134,7 +135,7 @@ function takeDrives(scene, cut, inMs, outMs, rate) {
   movers.sort((a, b) => (b.name === 'hero') - (a.name === 'hero') || a.best.d - b.best.d);
   for (const m of movers.slice(0, 4)) {
     const id = scene.actors.find((a) => a.name === m.name)?.id ?? '', spec = specOf(id);
-    const identity = spec ? resolveVehicleAudioIdentity(spec) : null, level = m.name === 'hero' ? 1 : 0.7;
+    const identity = spec ? resolveVehicleAudioIdentity(spec) : null;
     const ev = { kind: 'drive', actor: m.name, t: +cut.start.toFixed(3), dur: +cut.dur.toFixed(3), speed: +m.speed.toFixed(1),
       engine: identity?.engine ?? (TURBINE.test(id) ? 'turbine_agt' : 'diesel_v12_modern'), pitch: +(identity?.enginePitch ?? 1).toFixed(4),
       tracks: identity?.tracks ?? 'heavy', surface: SURFACE[scene.map] ?? 'earth' };
@@ -142,12 +143,12 @@ function takeDrives(scene, cut, inMs, outMs, rate) {
       const c = camAt(sb, m.best.t), fx = sh[0].lookAt[0] - c[0], fz = sh[0].lookAt[2] - c[2];
       const a = actorAt(scene, m.name, m.best.t - 50), b2 = actorAt(scene, m.name, m.best.t + 50);
       const dir = Math.sign(-(b2[0] - a[0]) * fz + (b2[1] - a[1]) * fx) || 1;
-      Object.assign(ev, { passAt: +((m.best.t - inMs) / 1000 / rate).toFixed(3), d0: +m.best.d.toFixed(1), gain: +(0.9 * level).toFixed(2), dir });
+      Object.assign(ev, { passAt: +((m.best.t - inMs) / 1000 / rate).toFixed(3), d0: +m.best.d.toFixed(1), dir });
     } else {
       const keys = [];
       for (let tm = inMs; tm <= outMs + 1e-6; tm += 100) {
-        const p = actorAt(scene, m.name, tm), d = distAt(sb, tm, p);
-        keys.push([+((tm - inMs) / 1000 / rate).toFixed(3), +(Math.max(0.06, Math.min(0.6, 6 / Math.max(6, d))) * level).toFixed(3), panAt(sb, tm, p)]);
+        const p = actorAt(scene, m.name, tm);
+        keys.push([+((tm - inMs) / 1000 / rate).toFixed(3), +distAt(sb, tm, p).toFixed(1), panAt(sb, tm, p)]);
       }
       ev.keys = keys;
     }
@@ -156,22 +157,23 @@ function takeDrives(scene, cut, inMs, outMs, rate) {
 }
 /**
  * A take's fires as audioEngine.ts voices them: a burning wreck's wreck_fire_loop, a fire field's fire_small_loop
- * (louder with its intensity). Each runs from its effect's start (or the cut's) to its end, or to the cut's end, with
- * level and pan following the lens every 100 ms.
+ * (louder with its intensity, 4 dB a decade). Each runs from its effect's start (or the cut's) to its end, or to the
+ * cut's end. The keys give its distance and pan against the lens every 100 ms; score.mjs --gameLaw levels it by its
+ * cue's law on the environment bus.
  */
 function fireLoop(scene, cut, e, inMs, outMs, rate) {
   const start = e.tMs ?? 0, from = Math.max(inMs, start);
   const until = e.params?.durationS ? Math.min(outMs, start + e.params.durationS * 1000) : outMs;
   if (until - from < 200) return;
-  const sb = scene.storyboard ?? {}, wreck = e.type === 'burning';
-  const baseDb = wreck ? -14 : -15 + 4 * Math.log10(Math.max(0.25, e.params?.intensity ?? 1)), keys = [];
+  const sb = scene.storyboard ?? {}, wreck = e.type === 'burning', keys = [];
   for (let tm = from; tm <= until + 1e-6; tm += 100) {
     const at = e.at ?? (e.actor ? actorAt(scene, e.actor, tm) : null);
     if (!at) return;
-    keys.push([+((tm - from) / 1000 / rate).toFixed(3), +(Math.pow(10, baseDb / 20) * Math.min(1, 12 / Math.max(12, distAt(sb, tm, at)))).toFixed(4), panAt(sb, tm, at)]);
+    keys.push([+((tm - from) / 1000 / rate).toFixed(3), +distAt(sb, tm, at).toFixed(1), panAt(sb, tm, at)]);
   }
+  const level = wreck ? 1 : +Math.pow(10, 4 * Math.log10(Math.max(0.25, e.params?.intensity ?? 1)) / 20).toFixed(3);
   sfx.push({ kind: 'loop', asset: wreck ? 'wreck_fire_loop' : 'fire_small_loop', actor: e.actor ?? null, t: +(cut.start + (from - inMs) / 1000 / rate).toFixed(3),
-    dur: +((until - from) / 1000 / rate).toFixed(3), fadeIn: from > inMs ? 0.4 : 0, keys });
+    dur: +((until - from) / 1000 / rate).toFixed(3), fadeIn: from > inMs ? 0.4 : 0, level, keys });
 }
 for (const cut of edl.shots) {
   const id = basename(cut.src, '.mp4').replace(/-p$/, ''); // portrait clips share the landscape scene's timing

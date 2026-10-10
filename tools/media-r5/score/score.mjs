@@ -15,13 +15,16 @@
 // dir/score-receipt.json. Without --music it stops: there is no synthesized stand-in. --music=none scores a site-fifty
 // take (take-audio.mjs, owner 2026-10-09: "make sure our videos have audio"): the recorded world alone, with no music
 // bed, no hits and no music stem.
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, statSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { SFX_ASSETS } from '../../../src/audio/sfxManifest.generated.ts';
 import { WEAPON_CLASSES } from '../../../src/audio/weaponAudio.ts';
+import { cueProfile } from '../../../src/audio/soundCues.ts';
+import { BUS_LEVELS } from '../../../src/audio/mixPolicy.ts';
+import { distanceAttenuationDb } from '../../../src/audio/audioMath.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../../..');
@@ -74,6 +77,18 @@ function putStereo(target, L, R, at, gain = 1) { mix(target.L, L, at, gain); mix
 
 // ------------------------------------------------------------------ the game's recorded library
 const decoded = new Map();
+// Decoded recordings persist across runs (shots/media-r5/score-cache, keyed by the file's size and mtime): fifty takes
+// share most of their recordings, and one ffmpeg decode per recording per take dominated a take's mix time.
+const PCM_CACHE = join(ROOT, 'shots/media-r5/score-cache');
+function decodePcm(file, channels) {
+  const info = statSync(file), key = createHash('sha256').update(`${file}|${info.size}|${info.mtimeMs}|${channels}|${SR}`).digest('hex').slice(0, 24);
+  const cached = join(PCM_CACHE, `${key}.f32`);
+  if (existsSync(cached)) return readFileSync(cached);
+  const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-f', 'f32le', '-ac', String(channels), '-ar', String(SR), '-'], { maxBuffer: 1 << 28 });
+  mkdirSync(PCM_CACHE, { recursive: true });
+  writeFileSync(`${cached}.${process.pid}`, raw); renameSync(`${cached}.${process.pid}`, cached);
+  return raw;
+}
 /** One recording (public/audio/sfx/<group>/<id>_<k>.webm) at 48 kHz: mono, or [L, R] when `stereo`. */
 function recording(id, k = 0, stereo = false) {
   const key = `${id}#${k}#${stereo}`;
@@ -82,7 +97,7 @@ function recording(id, k = 0, stereo = false) {
   if (!record) throw Error(`score: no recorded asset ${id}`);
   const file = join(ROOT, 'public/audio/sfx', record.g, `${id}_${k % record.n}.webm`);
   if (!existsSync(file)) throw Error(`score: missing recording ${file}`);
-  const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-f', 'f32le', '-ac', stereo ? '2' : '1', '-ar', String(SR), '-'], { maxBuffer: 1 << 28 });
+  const raw = decodePcm(file, stereo ? 2 : 1);
   const all = new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4).slice();
   const out = stereo ? [all.filter((_, i) => i % 2 === 0), all.filter((_, i) => i % 2 === 1)] : all;
   decoded.set(key, out); return out;
@@ -96,8 +111,52 @@ function atRate(src, rate = 1, maxDurS = null) {
   if (maxDurS && limit < n) { const fade = Math.min(limit, Math.round(0.04 * SR)); for (let i = 0; i < fade; i++) out[limit - 1 - i] *= i / fade; }
   return out;
 }
-function play(id, t, { gain = 1, pan = 0, rate = 1, maxDurS = null, send = 0.25, delayS = 0 } = {}) {
-  put(sfx, atRate(recording(id, variant(id, t)), rate, maxDurS), t + delayS, gain, pan, send);
+/**
+ * cues.gameLaw (a take): each recording levelled as the game levels it (voicePool.ts). That is the cue's gain, then
+ * its inverse-distance law past its reference distance (soundCues.ts cueProfile, audioMath.ts distanceAttenuationDb),
+ * then its bus's level (mixPolicy.ts BUS_LEVELS), relative to the weapons bus (a gun report at its reference distance
+ * plays at 1). The films keep their one compressed law (distanceGain).
+ */
+const GAME_LAW = cues.gameLaw === true;
+const lawProfiles = new Map();
+function lawGain(id, distM) {
+  let p = lawProfiles.get(id);
+  if (!p) { p = cueProfile(id, SFX_ASSETS[id]?.g ?? 'impacts'); lawProfiles.set(id, p); }
+  return db(p.gainDb + distanceAttenuationDb(distM, p.refM, p.rolloff)) * (BUS_LEVELS[p.bus] ?? 1) / BUS_LEVELS.weapons;
+}
+function play(id, t, { gain = 1, pan = 0, rate = 1, maxDurS = null, send = 0.25, delayS = 0, distM = null } = {}) {
+  if (GAME_LAW && distM != null) gain *= lawGain(id, distM);
+  const src = atRate(recording(id, variant(id, t)), rate, maxDurS);
+  if (CARVE) voices.push({ src, at: t + delayS, gain, pan, send });
+  else put(sfx, src, t + delayS, gain, pan, send);
+}
+/**
+ * The carve (cues.carve, a take's busy fight): the recorded reports, blasts and kills ring for 2.5-5 s, so in a take
+ * with nine of them in 6.6 s their decays stacked into a plateau and every shot after the first rose only ~3 dB above
+ * it (S01, 2026-10-10). Each major hit (a cannon, a burst, a kill) ducks the one-shots already ringing by carve.db,
+ * with a short attack and hold and an exponential release, as a re-recording mixer carves the tails under each new hit,
+ * so the hit lands clean. Its own layers start with it and are not ducked. Beds, engines, fires and the radio are
+ * untouched.
+ */
+const CARVE = cues.carve ? { db: -9, attackS: 0.015, holdS: 0.12, releaseS: 0.35, ...cues.carve } : null;
+const voices = [];
+function carveVoices() {
+  const majors = (cues.sfx ?? []).filter((e) => e.kind === 'cannon' || e.kind === 'he' || e.kind === 'kill').map((e) => e.t).sort((a, b) => a - b);
+  const depth = 1 - db(CARVE.db), atk = CARVE.attackS * SR, hold = CARVE.holdS * SR, tau = CARVE.releaseS * SR;
+  for (const v of voices) {
+    const n = v.src.length, start = Math.round(v.at * SR), g = new Float32Array(n).fill(1);
+    for (const m of majors) {
+      const from = Math.round(m * SR) - start;
+      if (m <= v.at + 0.03 || from >= n) continue; // the voice's own hit, or one after the voice has ended
+      for (let i = Math.max(0, from); i < n; i++) {
+        const u = i - from, shape = u < atk ? u / atk : u < atk + hold ? 1 : Math.exp(-(u - atk - hold) / tau);
+        if (shape < 1e-3 && u > atk + hold) break;
+        g[i] *= 1 - depth * shape;
+      }
+    }
+    const out = v.src.map((s, i) => s * g[i]);
+    put(sfx, out, v.at, v.gain, v.pan, v.send);
+  }
 }
 /** The seamless region of a loop asset ([loopStart, loopEnd] inside its wrap-padded file), mono or stereo. */
 function loopRegion(id, stereo = false) {
@@ -124,43 +183,43 @@ function punchFor(family, caliberMm) {
 const distanceGain = (m) => clamp(Math.pow(25 / Math.max(25, m), 0.6), 0.18, 1);
 function weapon(e) {
   const cls = WEAPON_CLASSES[e.cls] ?? WEAPON_CLASSES.gun_120, d = e.distM ?? 40, rate = e.rate ?? 1, pan = e.pan ?? 0;
-  const level = distanceGain(d) * db(e.gainDb ?? 0) * (e.gain ?? 1);
+  const level = (GAME_LAW ? 1 : distanceGain(d)) * db(e.gainDb ?? 0) * (e.gain ?? 1);
   const closeK = 1 - ramp(d, cls.closeFadeM), farK = ramp(d, cls.farFadeM);
   if (closeK > 0.05 && BLAST_DB[cls.family] != null) {
     const punch = punchFor(cls.family, e.caliberMm ?? 120);
-    play(punch.id, e.t, { gain: level * db(BLAST_DB[cls.family]), pan, rate: punch.rate, maxDurS: punch.maxDurS, send: 0.15 });
+    play(punch.id, e.t, { gain: level * db(BLAST_DB[cls.family]), pan, rate: punch.rate, maxDurS: punch.maxDurS, send: 0.15, distM: d });
   }
-  if (closeK > 0.03) play(WEAPON_CLOSE[cls.id], e.t, { gain: level * closeK, pan, rate, send: 0.25 });
-  if (farK > 0.03) play(WEAPON_FAR[cls.id], e.t, { gain: level * farK * db(-3), pan, rate, send: 0.35 });
-  if (e.twin) play(WEAPON_CLOSE[cls.id], e.t, { gain: level * Math.max(closeK, 0.05) * db(-2), pan, rate: rate * 0.97, delayS: 0.016 });
+  if (closeK > 0.03) play(WEAPON_CLOSE[cls.id], e.t, { gain: level * closeK, pan, rate, send: 0.25, distM: d });
+  if (farK > 0.03) play(WEAPON_FAR[cls.id], e.t, { gain: level * farK * db(-3), pan, rate, send: 0.35, distM: d });
+  if (e.twin) play(WEAPON_CLOSE[cls.id], e.t, { gain: level * Math.max(closeK, 0.05) * db(-2), pan, rate: rate * 0.97, delayS: 0.016, distM: d });
   if (cls.family !== 'mg' || e.burstHead) {
-    play(`tail_${e.tail ?? 'open'}`, e.t, { gain: level * cls.tailGain * db(-12), pan, rate: cls.tailRate * rate, delayS: 0.035 + (seedOf(e.t) % 20) / 1000, send: 0.4 });
+    play(`tail_${e.tail ?? 'open'}`, e.t, { gain: level * cls.tailGain * db(-12), pan, rate: cls.tailRate * rate, delayS: 0.035 + (seedOf(e.t) % 20) / 1000, send: 0.4, distM: d });
   }
 }
 function sfxEvent(e) {
-  const g = e.gain ?? 1, p = e.pan ?? 0, level = distanceGain(e.distM ?? 30) * g;
+  const g = e.gain ?? 1, p = e.pan ?? 0, level = (GAME_LAW ? 1 : distanceGain(e.distM ?? 30)) * g, distM = e.distM ?? 30;
   if (e.kind === 'cannon' || e.kind === 'mg') return weapon(e);
   if (e.kind === 'kill') {
-    play(e.pop ? 'tank_explode_ammo' : 'tank_explode', e.t, { gain: level, pan: p, send: 0.3 });
-    play('blast_sub', e.t, { gain: level * db(e.pop ? 2 : 1), pan: p, rate: e.pop ? 0.8 : 0.88, send: 0.1 });
-    play('debris_metal', e.t, { gain: level * 0.8, pan: p * 0.6, delayS: 0.08, send: 0.3 });
-    if (e.pop) play('turret_land', e.t, { gain: level * 0.7, pan: p, delayS: 1.4, send: 0.3 });
+    play(e.pop ? 'tank_explode_ammo' : 'tank_explode', e.t, { gain: level, pan: p, send: 0.3, distM });
+    play('blast_sub', e.t, { gain: level * db(e.pop ? 2 : 1), pan: p, rate: e.pop ? 0.8 : 0.88, send: 0.1, distM });
+    play('debris_metal', e.t, { gain: level * 0.8, pan: p * 0.6, delayS: 0.08, send: 0.3, distM });
+    if (e.pop) play('turret_land', e.t, { gain: level * 0.7, pan: p, delayS: 1.4, send: 0.3, distM });
     return;
   }
   if (e.kind === 'he') {
     const size = { small: 'small', medium: 'medium', large: 'large', huge: 'large' }[e.size ?? 'medium'] ?? 'medium';
-    play(`expl_he_${size}`, e.t, { gain: level, pan: p, send: 0.35 });
-    if (e.size === 'large' || e.size === 'huge') play('blast_sub', e.t, { gain: level * db(e.size === 'huge' ? 1 : -1), pan: p, rate: e.size === 'huge' ? 0.85 : 0.97, send: 0.1 });
+    play(`expl_he_${size}`, e.t, { gain: level, pan: p, send: 0.35, distM });
+    if (e.size === 'large' || e.size === 'huge') play('blast_sub', e.t, { gain: level * db(e.size === 'huge' ? 1 : -1), pan: p, rate: e.size === 'huge' ? 0.85 : 0.97, send: 0.1, distM });
     return;
   }
-  if (e.kind === 'pen') { play(e.heavy === false ? 'pen_light' : 'pen_heavy', e.t, { gain: level, pan: p, send: 0.2 }); return play('hull_thud_sub', e.t, { gain: level * 0.7, pan: p, send: 0.05 }); }
-  if (e.kind === 'nonpen') return play('nonpen_heavy', e.t, { gain: level, pan: p, send: 0.2 });
-  if (e.kind === 'ricochet') return play(e.heavy === false ? 'ricochet_light' : 'ricochet_heavy', e.t, { gain: level * 0.9, pan: p, send: 0.25 });
-  if (e.kind === 'dirt') return play('ground_dirt', e.t, { gain: level, pan: p, send: 0.2 });
+  if (e.kind === 'pen') { play(e.heavy === false ? 'pen_light' : 'pen_heavy', e.t, { gain: level, pan: p, send: 0.2, distM }); return play('hull_thud_sub', e.t, { gain: level * 0.7, pan: p, send: 0.05, distM }); }
+  if (e.kind === 'nonpen') return play('nonpen_heavy', e.t, { gain: level, pan: p, send: 0.2, distM });
+  if (e.kind === 'ricochet') return play(e.heavy === false ? 'ricochet_light' : 'ricochet_heavy', e.t, { gain: level * 0.9, pan: p, send: 0.25, distM });
+  if (e.kind === 'dirt') return play('ground_dirt', e.t, { gain: level, pan: p, send: 0.2, distM });
   if (e.kind === 'prop') {
     // a hull crushing cover, as audioEngine.ts onProp plays it: the kind's sound at -1 dB, a tall tree's fall after it
-    play(e.asset, e.t, { gain: level * db(-1), pan: p, send: 0.25 });
-    if (e.follow) play(e.follow, e.t, { gain: level * db(-2), pan: p, delayS: 0.45 + (seedOf(`fall@${e.t}`) % 300) / 1000, send: 0.3 });
+    play(e.asset, e.t, { gain: level * db(-1), pan: p, send: 0.25, distM });
+    if (e.follow) play(e.follow, e.t, { gain: level * db(-2), pan: p, delayS: 0.45 + (seedOf(`fall@${e.t}`) % 300) / 1000, send: 0.3, distM });
     return;
   }
   if (e.kind === 'sample') return play(e.name, e.t, { gain: g, pan: p, send: e.send ?? 0.2 });
@@ -188,7 +247,7 @@ const transmissions = [];
 function take(lang, line, k, rate) {
   const file = join(ROOT, 'public/audio/voice', lang, `${line}_${k}.webm`);
   if (!existsSync(file)) throw Error(`score: missing crew take ${file}`);
-  const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-f', 'f32le', '-ac', '1', '-ar', String(SR), '-'], { maxBuffer: 1 << 26 });
+  const raw = decodePcm(file, 1);
   decoded.set(`voice/${lang}/${line}#${k}#false`, true);
   return atRate(new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4).slice(), rate);
 }
@@ -216,14 +275,19 @@ function transmit(e) {
   put(radio, filtered(out, HEADSET), e.t, db(cues.radioDb ?? 6) * (e.gain ?? 1), 0, 0);
   transmissions.push([e.t + start, e.t + voiceEnd]);
 }
-/** Linear [t, gain, pan] keys (a take's lens-following level and pan) read in time order into `out`. */
+/**
+ * Linear [t, value, pan] keys (a take's lens-following level, or under cues.gameLaw its distance, and pan) read in
+ * time order into `out`: out.i and out.u locate t between keys i and i + 1 for per-key tables.
+ */
 function keyed(keys, t, state, out) {
   while (state.i < keys.length - 2 && keys[state.i + 1][0] <= t) state.i++;
   const a = keys[state.i], b = keys[Math.min(keys.length - 1, state.i + 1)];
   const u = b[0] > a[0] ? clamp((t - a[0]) / (b[0] - a[0]), 0, 1) : 0;
-  out.gain = a[1] + (b[1] - a[1]) * u; out.pan = a[2] + (b[2] - a[2]) * u;
+  out.gain = a[1] + (b[1] - a[1]) * u; out.pan = a[2] + (b[2] - a[2]) * u; out.i = state.i; out.u = u;
   return out;
 }
+/** A per-key gain table, read between keys i and i + 1. */
+const between = (table, i, u) => table[i] + (table[Math.min(table.length - 1, i + 1)] - table[i]) * u;
 /**
  * A tank on the move: its engine family's recorded loop (mid or high by speed, at the family's pitch) over its track
  * set's loop for the map's ground. A pass-by (passAt + d0) gets distance gain, Doppler pitch and a left-to-right pan;
@@ -231,30 +295,38 @@ function keyed(keys, t, state, out) {
  */
 function drive(e) {
   const speed = e.speed ?? 8, engine = `engine_${e.engine ?? 'diesel_v12_modern'}_${speed > 7 ? 'high' : 'mid'}`;
-  const tracks = `tracks_${e.tracks ?? 'heavy'}_${e.surface ?? 'earth'}_${speed > 5 ? 'fast' : 'slow'}`;
-  const layers = [[loopRegion(engine), 0.8, e.pitch ?? 1], [loopRegion(SFX_ASSETS[tracks] ? tracks : `tracks_${e.tracks ?? 'heavy'}_earth_${speed > 5 ? 'fast' : 'slow'}`), 0.7, 1]];
+  const tracksWanted = `tracks_${e.tracks ?? 'heavy'}_${e.surface ?? 'earth'}_${speed > 5 ? 'fast' : 'slow'}`;
+  const tracks = SFX_ASSETS[tracksWanted] ? tracksWanted : `tracks_${e.tracks ?? 'heavy'}_earth_${speed > 5 ? 'fast' : 'slow'}`;
+  // the films weight the engine 0.8 and the tracks 0.7; under the game's law each loop plays at its own cue's level
+  const ids = [engine, tracks];
+  const layers = [[loopRegion(engine), GAME_LAW ? 1 : 0.8, e.pitch ?? 1], [loopRegion(tracks), GAME_LAW ? 1 : 0.7, 1]];
   const n = Math.ceil(e.dur * SR), L = new Float32Array(n), R = new Float32Array(n);
   const tc = e.passAt ?? null, d0 = Math.max(1.5, e.d0 ?? 12);
   // a take's hulls start mid-loop (seeded), so two hulls of one family never run in phase
-  const pos = layers.map(([loop], k) => e.keys ? seedOf(`${e.actor}@${k}@${e.t}`) % loop.length : 0);
-  const state = { i: 0 }, at = { gain: 1, pan: 0 };
+  const pos = layers.map(([loop], k) => e.keys || GAME_LAW ? seedOf(`${e.actor}@${k}@${e.t}`) % loop.length : 0);
+  // under the game's law a take's keys carry distances: each layer's gain at each key
+  const lawTables = GAME_LAW && e.keys ? ids.map((id) => e.keys.map((k) => lawGain(id, k[1]))) : null;
+  const state = { i: 0 }, at = { gain: 1, pan: 0, i: 0, u: 0 }, lg = [1, 1];
   for (let i = 0; i < n; i++) {
     const t = i / SR;
     let g = 1, ratio = 1, pan = e.pan ?? 0;
     if (tc != null) {
       const x = speed * (t - tc), d = Math.hypot(d0, x), vr = speed * x / d;
-      g = Math.min(1.6, (d0 + 4) / (d + 4)); ratio = 343 / (343 + vr); pan = clamp(x / (d0 + 6), -1, 1) * (e.dir ?? 1);
+      ratio = 343 / (343 + vr); pan = clamp(x / (d0 + 6), -1, 1) * (e.dir ?? 1);
+      if (GAME_LAW) { lg[0] = lawGain(ids[0], d); lg[1] = lawGain(ids[1], d); } else g = Math.min(1.6, (d0 + 4) / (d + 4));
     } else if (e.keys) {
-      keyed(e.keys, t, state, at); g = at.gain; pan = at.pan;
+      keyed(e.keys, t, state, at); pan = at.pan;
+      if (lawTables) { lg[0] = between(lawTables[0], at.i, at.u); lg[1] = between(lawTables[1], at.i, at.u); } else g = at.gain;
     }
     const fade = Math.min(1, t / 0.08, (e.dur - t) / 0.15);
     let m = 0;
     layers.forEach(([loop, w, rate], k) => {
       const len = loop.length, p = pos[k] % len, j = Math.floor(p), f = p - j;
-      m += (loop[j] * (1 - f) + loop[(j + 1) % len] * f) * w;
+      m += (loop[j] * (1 - f) + loop[(j + 1) % len] * f) * w * lg[k];
       pos[k] += ratio * rate;
     });
-    m *= g * fade * (e.gain ?? 1);
+    // (under the game's law the drives pan as the one-shots do, unity at the centre, so their levels compare)
+    m *= g * fade * (e.gain ?? 1) * (GAME_LAW ? Math.SQRT2 : 1);
     L[i] = m * Math.cos((pan + 1) * Math.PI / 4); R[i] = m * Math.sin((pan + 1) * Math.PI / 4);
   }
   putStereo(sfx, L, R, e.t, 1);
@@ -266,10 +338,13 @@ function drive(e) {
 function loopVoice(e) {
   const loop = loopRegion(e.asset), len = loop.length, n = Math.ceil(e.dur * SR), off = seedOf(`${e.asset}@${e.t}@${e.actor ?? ''}`) % len;
   const L = new Float32Array(n), R = new Float32Array(n), fadeIn = Math.max(0.01, e.fadeIn ?? 0) * SR, fadeOut = 0.01 * SR;
-  const state = { i: 0 }, at = { gain: 1, pan: 0 };
+  const state = { i: 0 }, at = { gain: 1, pan: 0, i: 0, u: 0 };
+  // under the game's law the keys carry distances: the loop's cue level at each, times the effect's own level
+  const law = GAME_LAW ? e.keys.map((k) => lawGain(e.asset, k[1]) * (e.level ?? 1)) : null;
   for (let i = 0; i < n; i++) {
     keyed(e.keys, i / SR, state, at);
-    const s = loop[(off + i) % len] * at.gain * Math.min(1, i / fadeIn, (n - 1 - i) / fadeOut);
+    const gain = law ? between(law, at.i, at.u) : at.gain;
+    const s = loop[(off + i) % len] * gain * Math.min(1, i / fadeIn, (n - 1 - i) / fadeOut);
     L[i] = s * Math.cos((at.pan + 1) * Math.PI / 4) * Math.SQRT2; R[i] = s * Math.sin((at.pan + 1) * Math.PI / 4) * Math.SQRT2;
   }
   putStereo(sfx, L, R, e.t, 1);
@@ -298,9 +373,13 @@ if (!NO_MUSIC) {
   for (let i = 0; i * 2 + 1 < all.length && i < N; i++) { music.L[i] = all[i * 2]; music.R[i] = all[i * 2 + 1]; }
 }
 for (const s of cues.sfx ?? []) sfxEvent(s);
+if (CARVE) carveVoices();
 
-const [svL, svR] = freeverb(sfxVerbSend.L, sfxVerbSend.R, { room: 0.82, damp: 0.45, width: 0.8 });
-mix(sfx.L, svL, 0, 0.45); mix(sfx.R, svR, 0, 0.45);
+// the outdoor reflections: a film's long room, or the cue sheet's (a take's busier fight wants a shorter, drier one, so
+// one shot's wash does not bury the next; take-audio.mjs)
+const VERB = { room: 0.82, damp: 0.45, wet: 0.45, ...(cues.verb ?? {}) };
+const [svL, svR] = freeverb(sfxVerbSend.L, sfxVerbSend.R, { room: VERB.room, damp: VERB.damp, width: 0.8 });
+mix(sfx.L, svL, 0, VERB.wet); mix(sfx.R, svR, 0, VERB.wet);
 // The beds duck under speech as the game ducks them (mixPolicy VOICE_DUCK: ambience −10 dB, 40 ms in, 450 ms out); the
 // world, −4 dB in the game, gives a film's crews −6 dB (cues.worldDuckDb), and the music, which the game leaves alone,
 // gives them room too (cues.musicDuckDb).

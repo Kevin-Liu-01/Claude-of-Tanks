@@ -62,7 +62,10 @@ for (const id of ids) {
   // 1. the cues: the take as a one-cut edit of its own scene
   copyFileSync(scene, join(wd, `${id}.json`));
   writeFileSync(join(wd, 'edl.json'), JSON.stringify({ shots: [{ src: `${id}.mp4`, start: 0, dur: takeS, in: 0 }] }, null, 1));
-  writeFileSync(join(wd, 'cues-in.json'), JSON.stringify({ title: id, durationSec: takeS, lufs: LUFS, sfxDb: -2, fadeOutSec: 0, sections: [], hits: [] }, null, 1));
+  // levelled as the game levels it (score.mjs gameLaw: each cue's distance law on its bus); the world ducks under the
+  // crews by the game's VOICE_DUCK (-4 dB, the ambience -10), and the crews keep the films' +6 dB
+  writeFileSync(join(wd, 'cues-in.json'), JSON.stringify({ title: id, durationSec: takeS, lufs: LUFS, sfxDb: -2, radioDb: 6, worldDuckDb: -4,
+    gameLaw: true, fadeOutSec: 0, sections: [], hits: [] }, null, 1));
   const cuesLog = run('node', [join(TOOL, 'score/sfx-cues.mjs'), join(wd, 'edl.json'), wd, join(wd, 'cues-in.json'), join(wd, 'cues.json'), '--take']).trim();
   // 2. the mix
   const scoreLog = run('node', [join(TOOL, 'score/score.mjs'), `--cues=${join(wd, 'cues.json')}`, '--music=none', `--out=${wd}`]).trim();
