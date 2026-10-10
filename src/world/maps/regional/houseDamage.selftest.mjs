@@ -250,8 +250,14 @@ for (const [styleId, id, wall] of SAMPLE) {
     const beams = one.runs.filter((r) => r.role === 'rubble' && r.bucket === a.roof.structure.bucket);
     assert.ok(beams.some((r) => r.pos.length >= 48), `${styleId}/${id}: the roof's timbers in the pile`);
     let poke = 0;
-    for (const r of beams) for (let i = 0; i < r.pos.length; i += 3) poke = Math.max(poke, r.pos[i + 1] - mound(r.pos[i], r.pos[i + 2]));
-    assert.ok(poke >= 1.1, `${styleId}/${id}: a timber pokes up out of the heap (${poke.toFixed(2)})`);
+    // over the heap's own top (fracture.ts heapTop: the mound, and HEAP_LIFT_M over it on its crown)
+    const heapTop = (x, z) => { const m = mound(x, z); return m + 0.35 * Math.max(0, Math.min(1, (m - 0.12) / 0.5)); };
+    for (const r of beams) for (let i = 0; i < r.pos.length; i += 3) poke = Math.max(poke, r.pos[i + 1] - heapTop(r.pos[i], r.pos[i + 2]));
+    // (2026-10-10, the release agent on Steinburg after 208: "spiky timber debris read rough") a few poke up, a hand to a
+    // knee over the heap, none a spike (the s1c review had asked 1.1 m and more)
+    // (a beam is a hand thick, and a piece lying across a steep heap's flank stands over the flank below it: up to 1.3 m
+    // over the heap's top, where the propped rafters stood 1.7 m and more)
+    assert.ok(poke >= 0.3 && poke <= 1.3, `${styleId}/${id}: a timber pokes up out of the heap, not a spike (${poke.toFixed(2)})`);
   }
   // the roof's covering over the pile: its plates in the covering's own bucket
   if (a.roof && ['tile', 'slate', 'metal', 'plank'].includes(a.roof.covering.material)) {
@@ -264,12 +270,21 @@ for (const [styleId, id, wall] of SAMPLE) {
   for (const r of one.runs) {
     if (r.role !== 'rubble' || !skinBuckets.has(r.bucket) || (r.pos.length / 3) % 24) continue; // (boxes only: the skin is a fan)
     for (let i = 0; i + 23 * 3 < r.pos.length; i += 24 * 3) {
-      let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
-      for (let k = 0; k < 24; k++) for (let c = 0; c < 3; c++) { lo[c] = Math.min(lo[c], r.pos[i + k * 3 + c]); hi[c] = Math.max(hi[c], r.pos[i + k * 3 + c]); }
-      slab = Math.max(slab, Math.hypot(hi[0] - lo[0], hi[2] - lo[2]));
+      // the box's own longest side (its corners' nearest neighbours are its edges; an axis-aligned extent overstates a
+      // turned box: a 0.8 m square piece at 45 degrees spans 1.13 m)
+      const corners = [];
+      for (let k = 0; k < 24; k++) {
+        const v = [r.pos[i + k * 3], r.pos[i + k * 3 + 1], r.pos[i + k * 3 + 2]];
+        if (!corners.some((c) => Math.hypot(c[0] - v[0], c[1] - v[1], c[2] - v[2]) < 1e-4)) corners.push(v);
+      }
+      const d0 = corners.slice(1).map((c) => Math.hypot(c[0] - corners[0][0], c[1] - corners[0][1], c[2] - corners[0][2])).sort((x, y) => x - y);
+      slab = Math.max(slab, d0[2] ?? 0);
     }
   }
-  assert.ok(slab >= 1.3, `${styleId}/${id}: a wall slab lies whole in the pile (${slab.toFixed(2)} m)`);
+  // (2026-10-10, Steinburg after 208: "large flat tan wall and gable panels ... read rough") a wall that came down lies
+  // broken in three or four pieces of its own skin, none a clean panel a metre long (the s1c review had asked
+  // one lying whole)
+  assert.ok(slab >= 0.4 && slab < 1.0, `${styleId}/${id}: a wall's skin lies broken in the pile, its longest piece ${slab.toFixed(2)} m`);
   falls++; fv += one.mesh.vertices;
 }
 console.log(`house damage: ${falls} collapses deterministic, within a house's caps (mean ${(fv / falls).toFixed(0)} vertices), the structure hidden, remnants in the footprint, heaps over the mound with stubs over them and the roof's timbers in them`);

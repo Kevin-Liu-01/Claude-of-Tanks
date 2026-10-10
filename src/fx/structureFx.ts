@@ -473,6 +473,31 @@ const _tint: [number, number, number] = [0, 0, 0];
 type SectionFallEvent = StructureBreachEvent & {
   storeyDown?: boolean; baseY?: number; cx?: number; cz?: number; hw?: number; hd?: number;
 };
+/**
+ * A collapsing building's piece striking the ground, the heap or another piece (fx/collapseBodies.ts; dcore 2026-10-10):
+ * a skirt of the building's own dust rolling out from where it hit, sized by the blow — a panel slapping down a few
+ * puffs low along the ground, a roof slab dropped from the eaves a broad cloud.
+ */
+export function pieceLandingFx(C: BlastContext, x: number, y: number, z: number, speedMps: number, massKg: number,
+  look: StructureLook | null): void {
+  const energyKj = 0.5 * massKg * speedMps * speedMps / 1000;
+  if (!(energyKj > 2)) return;
+  const L = look ?? FALLBACK_LOOK;
+  const R = C.rand;
+  const k = Math.max(0, Math.min(1, Math.log10(energyKj / 2) / Math.log10(60)));
+  const dust = brickDust(L, dustOf(L, _dust), _tint);
+  const dark: Rgb = [dust[0] * 0.7, dust[1] * 0.7, dust[2] * 0.7];
+  const dk = C.distBoost(x, y, z);
+  const n = 2 + Math.round(4 * k);
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * TAU + R() * 0.8;
+    const v = (1.2 + R() * 1.8) * (0.6 + k);
+    const life = 3 + R() * 2 + k * 2;
+    puff(C, x + Math.cos(a) * 0.5, y + 0.3, z + Math.sin(a) * 0.5, Math.cos(a) * v, 0.3 + R() * 0.5 * k, Math.sin(a) * v,
+      1.8, 0.1, 0.9, life, (0.9 + 0.6 * k) * dk, (2.4 + 2.2 * k + R()) * dk, dark, dust, 0.4 + 0.25 * k, life, 1, R() * 0.2, 1.4);
+  }
+}
+
 export function sectionFallFx(C: BlastContext, e: SectionFallEvent, look: StructureLook | null): void {
   if (e.settled || !e.sectionDown) return;
   const L = look ?? FALLBACK_LOOK;

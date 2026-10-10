@@ -47,11 +47,16 @@ import { craterWobblePhases } from '../sim/terrainDeformation.ts';
 import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, markKindFor, type CraterClimate, type CraterMarks } from './craterMarks.ts';
-import { lookForStruckKind, lookFromAnatomy, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
+import { lookForStruckKind, lookFromAnatomy, pieceLandingFx, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
 import { createStructureMask, type StructureMask } from './structureMask.ts';
 import { createStructureStages, structureTopple, type StructureStages } from './structureStages.ts';
 import { createStructureScars, type StructureScars } from './structureScars.ts';
 import { createStructureDebris, type StructureDebris } from './structureDebris.ts';
+import { createDebrisPhysics } from './debrisPhysics.ts';
+import { createCollapseBodies, type CollapseBodies } from './collapseBodies.ts';
+import { createWreckEnvironment } from '../sim/wreckTurrets.ts';
+import type { RigidEnvironment } from '../sim/rigidBody.ts';
+import type { CollisionRecord } from '../world/collision.ts';
 import type { StructureDamageSeam, StructureMaterialInfo } from '../world/structureDamageSeam.ts';
 import { DESTRUCTION_BUS_EVENTS, type MunitionBlastEvent, type StructureBreachEvent, type StructureStageEvent, type TerrainCraterEvent } from '../sim/destructionEvents.ts';
 import { munitionChargeKg, munitionClassForShell, cookOffChargeKg, craterFor } from '../sim/munitionBlast.ts';
@@ -95,6 +100,9 @@ export interface FxWorldSeam {
    *  match; presentation only (the sim's overlay never carries marks), called once per mark at event time */
   clearCoverAt?(x: number, z: number, radiusM: number): void;
   readonly mapId?: string;
+  /** the world's static records (a collapse's pieces land on and against them) */
+  getObstacles?(): readonly CollisionRecord[];
+  getColliders?(): readonly CollisionRecord[];
 }
 
 interface FxOptions {
@@ -1090,9 +1098,28 @@ function* createFxSteps(
   // the phone tier cuts no holes: it draws each cut on the wall's face (a breach still reads as damage)
   const scars: StructureScars | null = mediaTier ? null : createStructureScars();
   if (scars) group.add(scars.mesh);
+  // (dcore 2026-10-10, the owner: "just let physics work") a building comes down as its own pieces, bodies in the
+  // presentation's debris pool (fx/collapseBodies.ts over fx/debrisPhysics.ts); the phone keeps the mask's crumble
+  let bodiesWorld: FxWorldSeam | null = null;
+  let bodiesEnv: RigidEnvironment | null = null;
+  const bodies: CollapseBodies | null = mediaTier && structMask && structDebris ? createCollapseBodies({
+    pool: createDebrisPhysics({ capacity: 128 }),
+    group,
+    materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null,
+    groundAt: (x, z) => deformedGroundY(x, z),
+    environment: () => {
+      const w = world ? world() : null;
+      if (w !== bodiesWorld) {
+        bodiesWorld = w;
+        bodiesEnv = w?.getObstacles ? createWreckEnvironment((x, z) => deformedGroundY(x, z), w.getObstacles(), w.getColliders?.() ?? []) : null;
+      }
+      return bodiesEnv;
+    },
+    onLanding: (x, y, z, speed, mass, id) => { if (blast) pieceLandingFx(blast, x, y, z, speed, mass, lookOf(id)); },
+  }) : null;
   const stages: StructureStages | null = structMask && structDebris
     ? createStructureStages({ mask: structMask, debris: structDebris, now: () => particles.getTime(),
-      materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null, scars, crumble: mediaTier ? 1 : 0.15 })
+      materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null, scars, crumble: mediaTier ? 1 : 0.15, bodies })
     : null;
   /** The last detonation on a structure (munition:blast), for the shell event that follows it. */
   const lastBlast = { x: 0, y: 0, z: 0, structureId: -1 };
@@ -5278,6 +5305,7 @@ function* createFxSteps(
       if (!frozen) auxiliary?.update();
       printUniforms.uTime.value = particles.getTime();
       const tickDt = advanceFxClock();
+      bodies?.update(tickDt);
       battleFreshS += tickDt;
       syncColumnAnchors(resolveSubject);
       updateClockDrivenLights();

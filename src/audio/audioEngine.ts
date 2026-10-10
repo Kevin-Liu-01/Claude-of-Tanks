@@ -45,6 +45,7 @@ import { BUDGETS, BUS_LEVELS, CONCUSSION, SNAPSHOTS, VEHICLE_LOD, type DeviceTie
 import { createVehicleRig, fillVehicleInput, type RigFrame, type RigLod, type VehicleRig } from './vehicleRig.ts';
 import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.ts';
 import { cueProfile } from './soundCues.ts';
+import { collapseImpactLayers, onCollapseImpact } from '../fx/collapseImpacts.ts';
 import { AERIAL_RULES } from '../sim/matchRuleset.ts';
 import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
 import { resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type VehicleAudioIdentity } from './vehicleAudioProfiles.ts';
@@ -1949,6 +1950,8 @@ export function createAudio({
     play(INTERFACE_ASSET[sound]);
   }
 
+  let detachCollapseImpacts: (() => void) | null = null;
+
   function uiClick(): void {
     if (!interfaceOnce()) return;
     play('ui_click');
@@ -1958,6 +1961,14 @@ export function createAudio({
     const on = <T>(event: string, listener: (payload: T) => void): void => {
       bus.on(event, (payload) => { if (ready()) listener(payload as T); });
     };
+    // (dcore 2026-10-10) a collapsing building's pieces land where their bodies hit (fx/collapseBodies.ts): each heard in
+    // its material from the recorded catalog (collapseImpacts.ts), sized by the blow
+    detachCollapseImpacts?.();
+    detachCollapseImpacts = onCollapseImpact((x, y, z, speed, mass, material) => {
+      if (!ready()) return;
+      const layers = collapseImpactLayers(speed, mass, material);
+      if (layers) for (const l of layers) play(l.id, { x, y, z, delayS: l.delayS, gainDb: l.gainDb });
+    });
     on<{ id: string; x: number; y: number; z: number; caliberMm: number }>('auxiliary:fired', (e) => {
       if (phase === 'battle' && !battleOver) fireWeapon([e.x, e.y, e.z], e.caliberMm, null, isOwn(e.id));
     });
