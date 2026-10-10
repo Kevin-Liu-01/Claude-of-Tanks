@@ -45,6 +45,23 @@ served locally from `public/`, no CDN or network fetches in game code.
 This third-party license applies to the generated declarations, not to the
 project's first-party code or Reserved Content.
 
+## Open-source runtime libraries (trial branch `trial/takram-clouds` only)
+
+The `?clouds=takram` trial (2026-10-09, owner-approved for this branch) loads these npm packages in one lazy chunk
+behind the switch (`src/engine/takramClouds.ts`); no boot chunk carries them and no default asset URL is used (Takram's
+procedural textures and GPU-generated atmosphere tables; the spatiotemporal noise is the first-party
+`src/engine/takramBlue128.bin`, baked by `cloudNoise.ts` `bakeCloudBlueNoise(128, 0x7a4b1c3d)`). Each package's license is the
+one its npm manifest and repository declare; nothing here relicenses them.
+
+| Software | Author | Source | License | Files |
+|---|---|---|---|---|
+| @takram/three-clouds 0.7.6 (volumetric clouds: `CloudsEffect`, procedural shape/detail/weather/turbulence textures; its cascaded shadow maps embed three-csm, MIT, © 2019 vtHawk). | Shota Matsuda / Takram | https://github.com/takram-design-engineering/three-geospatial/tree/main/packages/clouds | MIT | npm package `@takram/three-clouds`; adapter `src/engine/takramClouds.ts` |
+| @takram/three-atmosphere 0.19.1 (Bruneton precomputed atmosphere: `PrecomputedTexturesGenerator`, the tables the clouds read). | Shota Matsuda / Takram | https://github.com/takram-design-engineering/three-geospatial/tree/main/packages/atmosphere | MIT | npm package `@takram/three-atmosphere` |
+| @takram/three-geospatial 0.9.1 (`Ellipsoid`, `Geodetic`, shader includes). | Shota Matsuda / Takram | https://github.com/takram-design-engineering/three-geospatial/tree/main/packages/core | MIT | npm package `@takram/three-geospatial` |
+| postprocessing 6.39.5 (the `Effect` / `Pass` base classes Takram's effect extends; its composer is not used). | Raoul van Rüschen and contributors (pmndrs) | https://github.com/pmndrs/postprocessing | Zlib | npm package `postprocessing` |
+| astronomy-engine 2.1.19, url-join 5.0.0, react-merge-refs 3.0.2 (dependencies of @takram/three-atmosphere; react-merge-refs' optional React peer is not installed). | Donald Cross; José F. Romaniello; Greg Bergé | https://github.com/cosinekitty/astronomy · https://github.com/jfromaniello/url-join · https://github.com/gregberge/react-merge-refs | MIT | npm packages |
+| @petamoriken/float16 3.9.3, tiny-invariant 1.3.3, type-fest 5.10.0, tagged-tag 1.0.0 (dependencies of the Takram packages). | Kenta Moriuchi; Alex Reardon; Sindre Sorhus | https://github.com/petamoriken/float16 · https://github.com/alexreardon/tiny-invariant · https://github.com/sindresorhus/type-fest · https://github.com/sindresorhus/tagged-tag | MIT (type-fest: MIT OR CC0-1.0) | npm packages |
+
 ## Open-source UI assets
 
 | Asset | Author | Source | License | Files |

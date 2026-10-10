@@ -947,6 +947,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-13 (the owner: "no more of the cloud type depicted in fjord"): broken-stratocumulus banned from every map, time
     // of day, weather variant, Studio plan, Garage sky and phone deck; fjord, polders and copper_mesa on fair-weather cumulus
     'src/engine/cloudsBan.selftest.mjs',
+    // TRIAL (trial/takram-clouds, 2026-10-09): `?clouds=takram` reaches Takram's march only through a lazy import; the
+    // preset → layer mapping, the world → ECEF frame, the noise volume, no default asset URL
+    'src/engine/takramClouds.selftest.mjs',
     // 2026-10-05 (the skies-and-atmosphere lane): one wind per battlefield — every map's surface wind from its source, its
     // clouds' drift veered from it (never opposed)
     'src/world/sceneWind.selftest.mjs',
