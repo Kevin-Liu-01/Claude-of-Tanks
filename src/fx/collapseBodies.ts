@@ -622,6 +622,12 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       if (!parts.some((pp) => pp.meshes.length)) continue;
       const spawn = pieceSpawn(piece, placement);
       const handle = pool.spawn(pieceShape(piece), { ...spawn, asleep: true }, piece.releaseS);
+      if (handle < 0) {
+        // the pool is full (a barrage's collapses at once): this piece bursts where it stands rather than hang there
+        for (const pp of parts) for (const m of pp.meshes) { m.removeFromParent(); m.geometry.dispose(); }
+        if (piece.face) shatterHandler?.(seam, piece, e);
+        continue;
+      }
       const lp: LivePiece = { piece, handle, parts, broken: false, still: 0, sounds: 0, dusts: 0, kicked: false, shattered: false,
         pose: new Float64Array(7).fill(NaN) };
       writeWhole(lp, [spawn.x, spawn.y, spawn.z, spawn.qx, spawn.qy, spawn.qz, spawn.qw]);
@@ -657,6 +663,10 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       if (h >= 0) {
         byHandle.set(h, { c, p, part: k });
         writePart(part, [pose[0] + _o.x, pose[1] + _o.y, pose[2] + _o.z, pose[3], pose[4], pose[5], pose[6]]);
+      } else {
+        // no room for it: it goes (it would hang where the panel cracked)
+        for (const m of part.meshes) { m.removeFromParent(); m.geometry.dispose(); }
+        part.meshes.length = 0;
       }
     }
   }
