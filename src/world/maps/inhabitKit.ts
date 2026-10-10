@@ -63,6 +63,9 @@ export interface DestructiblePropType {
   contactBand?: StructureCollisionRuntimeBand;
   /** Each instance's own colour (a vehicle's livery through the material's paint mask), by its place and slot. */
   instancePaint?: (out: THREE.Color, x: number, z: number, slot: number) => void;
+  /** The fortifications lane: the whole work's ground for the placement checks (props.ts destructibleFootprint) where
+   * it reaches past the destructible (the pillbox's static bank); no stream draws. */
+  footprintBuild?: () => THREE.BufferGeometry;
   /** A lighter stand-in that casts the pool's shadows in place of its full geometry (no stream draws). */
   shadowBuild?: () => THREE.BufferGeometry;
   /** The family's cascaded shadow, over the size rule (destructibleRenderPolicy.ts destructibleCastsShadow). */
