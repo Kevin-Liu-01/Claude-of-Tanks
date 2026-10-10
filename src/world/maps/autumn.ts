@@ -99,13 +99,21 @@ const STREET_ARMS: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
 /** From the road's line to the frontage: the carriageway's half width and the usoir (5-8 m). */
 const USOIR_FRONT_M = [9.0, 11.5] as const;
 const GATE_CLEAR_M = 10, LANE_EVERY_M = [38, 56] as const, LANE_M = 6;
+/** The square's two composed buildings, pinned on its edges facing it (the facades lane's ask): the church on the north
+ * edge between the coach road's north arm and the north lane, the inn on the west edge between the coach road and the
+ * mill lane; the rows keep their distance (r). */
+const SQUARE_SEATS = [
+  { structure: 'church', x: -98.4, z: 131.9, yawDeg: -160, r: 17 },
+  { structure: 'tavern', x: -137.2, z: 112.7, yawDeg: 115, r: 12 },
+] as const;
 function villageHash(a: number, b: number): number {
   let k = Math.imul(Math.round(a * 10) | 0, 0x27d4eb2d) ^ Math.imul(Math.round(b * 10) | 0, 0x165667b1) ^ 0x6a17;
   k = Math.imul(k ^ (k >>> 15), 0x85ebca6b); k = Math.imul(k ^ (k >>> 13), 0xc2b2ae35);
   return ((k ^ (k >>> 16)) >>> 0) / 4294967296;
 }
-function streetVillage(): Array<{ structure: string; x: number; z: number; yawDeg: number; plot: { w: number; d: number }; terrace: true }> {
-  const sites: Array<{ structure: string; x: number; z: number; yawDeg: number; plot: { w: number; d: number }; terrace: true }> = [];
+function streetVillage(): Array<{ structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number }; terrace: true }> {
+  const sites: Array<{ structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number }; terrace: true }> =
+    SQUARE_SEATS.map(({ structure, x, z, yawDeg }) => ({ structure, x, z, yawDeg, terrace: true as const }));
   const inTown = (x: number, z: number, m: number) => x > TOWN.x0 + m && x < TOWN.x1 - m && z > TOWN.z0 + m && z < TOWN.z1 - m;
   for (const [ai, arm] of STREET_ARMS.entries()) {
     const cum = [0];
@@ -132,7 +140,8 @@ function streetVillage(): Array<{ structure: string; x: number; z: number; yawDe
         const front = USOIR_FRONT_M[0] + villageHash(rx, rz) * (USOIR_FRONT_M[1] - USOIR_FRONT_M[0]);
         const x = rx + nx * (front + depth / 2), z = rz + nz * (front + depth / 2);
         const reach = Math.hypot(w, depth) / 2;
-        if (!inTown(x, z, GATE_CLEAR_M + reach * 0.6) || Math.hypot(x - SQUARE.x, z - SQUARE.z) < SQUARE.r + reach) { d += w; continue; }
+        if (!inTown(x, z, GATE_CLEAR_M + reach * 0.6) || Math.hypot(x - SQUARE.x, z - SQUARE.z) < SQUARE.r + reach
+          || SQUARE_SEATS.some((seat) => Math.hypot(x - seat.x, z - seat.z) < seat.r + reach)) { d += w; continue; }
         // the front (local +z) faces the road: yaw turns +z onto (-nx, -nz)
         const yawDeg = Math.atan2(-nx, -nz) * 180 / Math.PI;
         sites.push({ structure: farm ? 'farmhouse' : 'rowhouse', x: +x.toFixed(2), z: +z.toFixed(2), yawDeg: +yawDeg.toFixed(1),
@@ -381,7 +390,8 @@ export default {
     // a Norman tower keep, the market hall and rows, shops, granaries and
     // cottages; consumed along the town's three streets, the remainder fills
     // the blocks between them
-    plan: ['tavern', 'cottage', 'church', 'cornershop', 'market', 'marketRow', 'cottage', 'tower',
+    // (the map-revival lane, round 5: the church and the inn stand pinned on the square, SQUARE_SEATS)
+    plan: ['cottage', 'cornershop', 'market', 'marketRow', 'cottage', 'tower',
       'granary', 'cottage', 'schoolhouse', 'farmhouse', 'cottage', 'chapel', 'barn', 'cottage',
       'cornershop', 'cottage', 'ruin', 'cottage', 'granary', 'cottage', 'farmhouse', 'woodshed',
       'cottage', 'barn'],
