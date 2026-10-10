@@ -19,9 +19,10 @@ import type { ObstacleIdentity } from '../presentation/authorityObstacles.ts';
  */
 export const COLLISION_MANIFEST_ROUTE = '/mp-collision';
 
-/** The file name of a map's manifest under the route, from its index entry. */
-export function collisionManifestFileName(mapId: string, sha256: string): string {
-  return `${mapId}.${sha256.slice(0, 12)}.json`;
+/** The file name of a map's manifest (or of its battlefield variant's) under the route, from its index entry. */
+export function collisionManifestFileName(mapId: string, sha256: string, variant: string | null = null): string {
+  // (the id and the variant were whitelisted by the index lookup that produced `sha256`)
+  return `${variant ? `${mapId}@${variant}` : mapId}.${sha256.slice(0, 12)}.json`;
 }
 
 type FetchLike = (url: string, init?: { cache?: string; signal?: AbortSignal }) => Promise<{ ok: boolean; status: number; arrayBuffer(): Promise<ArrayBuffer>; json(): Promise<unknown> }>;
@@ -30,6 +31,8 @@ interface LoadOptions {
   fetchImpl?: FetchLike;
   digest?: (algorithm: string, data: Uint8Array) => Promise<ArrayBuffer>;
   signal?: AbortSignal;
+  /** The mode's battlefield variant (sim/matchRuleset.ts terrainVariantFor): its own manifest and its own field. */
+  variant?: string | null;
 }
 
 async function sha256Hex(bytes: Uint8Array, digest?: LoadOptions['digest']): Promise<string> {
@@ -45,15 +48,15 @@ async function sha256Hex(bytes: Uint8Array, digest?: LoadOptions['digest']): Pro
 }
 
 /** Fetch, verify and decode the collision manifest of `mapId` from the manifests under `base`, with the index's terrain seed. */
-async function loadCollisionManifest(mapId: string, base: string, { fetchImpl, digest, signal }: LoadOptions = {}) {
+async function loadCollisionManifest(mapId: string, base: string, { fetchImpl, digest, signal, variant = null }: LoadOptions = {}) {
   const run = fetchImpl ?? ((globalThis as { fetch?: FetchLike }).fetch);
   if (typeof run !== 'function') throw new Error('fetch is unavailable in this runtime');
   const root = base.replace(/\/+$/, '');
   const indexResponse = await run(`${root}/index.json`, { cache: 'no-cache', signal });
   if (!indexResponse.ok) throw new Error(`collision manifest index: HTTP ${indexResponse.status}`);
   const index = readCollisionManifestIndex(await indexResponse.json());
-  const entry = collisionManifestEntry(index, mapId);
-  const response = await run(`${root}/${collisionManifestFileName(mapId, entry.sha256)}`, { cache: 'force-cache', signal });
+  const entry = collisionManifestEntry(index, mapId, variant);
+  const response = await run(`${root}/${collisionManifestFileName(mapId, entry.sha256, variant)}`, { cache: 'force-cache', signal });
   if (!response.ok) throw new Error(`collision manifest ${mapId}: HTTP ${response.status}`);
   const bytes = new Uint8Array(await response.arrayBuffer());
   if (bytes.byteLength !== entry.bytes) throw new Error(`collision manifest size mismatch: ${mapId}`);
@@ -66,7 +69,9 @@ async function loadCollisionManifest(mapId: string, base: string, { fetchImpl, d
 /** Fetch, verify and build the collision world of `mapId` from the manifests under `base`. */
 export async function loadCollisionWorld(mapId: string, base: string, options: LoadOptions = {}): Promise<ActorWorldCollision> {
   const { manifest, terrainSeed } = await loadCollisionManifest(mapId, base, options);
-  const heightField = createHeightField(terrainSeed, getMapConfig(mapId));
+  // a variant's field is built from its own config (Frontline's trenches carved), as every client's world builds it
+  const config = getMapConfig(mapId);
+  const heightField = createHeightField(terrainSeed, options.variant === 'assault-trenches' ? { ...config, assaultTrenches: true } : config);
   const world = createHeadlessCollisionWorld({ mapId, heightField, manifest });
   return Object.assign(world, { release: () => { /* nothing leased: the Worker's world dies with the match */ } });
 }

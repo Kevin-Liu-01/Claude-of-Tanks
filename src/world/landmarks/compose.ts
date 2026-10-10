@@ -61,6 +61,11 @@ interface LandmarkComposeContext {
   hardKinds?: ReadonlySet<string>;
   /** The shells' and sight's records; the pass appends each piece's shell bands. */
   colliders: CollisionRecord[];
+  /** The next structure group id (destruction, docs/DESTRUCTION.md §3.1): the props' build-order serial. */
+  structureIndex?(): number;
+  /** Describe a piece for its damage (destruction §16): its parts in its own frame, its placement, its records. */
+  describeStructure?(structureIdx: number, kind: string, parts: RegionalParts, x: number, y: number, z: number, yaw: number,
+    obstacles: CollisionRecord[], colliders: CollisionRecord[]): void;
   architecture: ArchitectureStyle | null;
   snowCap: boolean;
   seed: number;
@@ -305,6 +310,7 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     // that is all dressing (a square's paths and fence) publishes none
     const baseY = ground.y;
     let records = 0;
+    const obstacleStart = ctx.obstacles.length, colliderStart = ctx.colliders.length;
     if (hasStructure(parts)) try {
       let shell;
       const movement: CollisionRecord[] = [];
@@ -330,6 +336,25 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
       }
       // the deck is also what a shell meets over the water: its movement record joins the shells' list as well
       for (const record of movement) { ctx.colliders.push(cloneCollisionRecord(record)); records++; }
+      // destruction (docs/DESTRUCTION.md §3.1): the piece is one structure group, a landmark (breach-only), or fixed
+      // when it carries a deck a route depends on
+      if (ctx.structureIndex) {
+        const structureIdx = ctx.structureIndex();
+        const structureRole = movement.length ? 'fixed' : 'setpiece';
+        for (let i = obstacleStart; i < ctx.obstacles.length; i++) {
+          ctx.obstacles[i].structureIdx = structureIdx;
+          ctx.obstacles[i].structureRole = structureRole;
+        }
+        for (let i = colliderStart; i < ctx.colliders.length; i++) {
+          ctx.colliders[i].structureIdx = structureIdx;
+          ctx.colliders[i].structureRole = structureRole;
+        }
+        for (const geometry of partList(parts)) geometry.userData.structureIdx = structureIdx;
+        if (structureRole === 'setpiece') {
+          ctx.describeStructure?.(structureIdx, placement.kind, parts, placement.x, baseY, placement.z, yaw,
+            ctx.obstacles.slice(obstacleStart), ctx.colliders.slice(colliderStart));
+        }
+      }
     } catch (error) {
       for (const geometry of partList(parts)) geometry.dispose();
       skip(`collision: ${(error as Error).message}`);

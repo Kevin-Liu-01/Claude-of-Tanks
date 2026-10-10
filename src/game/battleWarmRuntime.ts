@@ -581,6 +581,8 @@ interface StudioFxPort extends BattleFxPort {
     heightM: number,
   ): void;
   propCrush(position: Vector3, direction: Vector3, heightM: number): void;
+  /** A building's first damage's programs (fx/structureStages.ts warm): laid at `position`, cleared by resetAll. */
+  warmStructures?(position: Vector3): number;
 }
 
 interface BattlePostPort {
@@ -797,6 +799,9 @@ export function stageCombatFxProgramSubmission({
       fx.propBreak(kind, position, direction, 1.5);
     }
     fx.propCrush(position, direction, 7);
+    // (dcore 2026-10-09, the collapse spike: a battle's first building damage compiled the room behind a hole, the
+    // pieces' material and the runs' programs) a building's stage programs, staged with the rest for the covered render
+    try { fx.warmStructures?.(position); } catch (_) { /* warm only */ }
     const warmShells: WarmShell[] = [];
     if (shellSpec) {
       const shell = createShell(
@@ -1404,6 +1409,11 @@ export function* createCombatOpeningWarmSteps(
       fx.dust(position, direction, 1);
       fx.exhaust(position, 1, true);
       yield;
+      // (dcore 2026-10-09, the collapse spike: the rare warm had not run when a battle's first building came down, and
+      // its first damage compiled the room, the pieces and the runs' programs mid-battle) a building's stage programs
+      // in the opening warm, before reveal
+      try { fx.warmStructures?.(position); } catch (_) { /* warm only */ }
+      yield;
       markEffectDetail('openingEffects');
       try { fx.update(0.016, game.shells ?? [], camera); } catch (_) { /* warm only */ }
       const softParticlesAt = performance.now();
@@ -1485,6 +1495,9 @@ function* warmCombatDestructionEffectSteps(
       yield;
     }
     fx.propCrush(position, context.scratch3, 7);
+    yield;
+    // (dcore 2026-10-09: the first collapse compiled its programs mid-battle) a building's runs, room and pieces
+    try { fx.warmStructures?.(position); } catch (_) { /* warm only */ }
     yield;
     try { fx.update(0.016, game.shells ?? [], camera); } catch (_) { /* warm only */ }
     post.prepareSoftParticles();

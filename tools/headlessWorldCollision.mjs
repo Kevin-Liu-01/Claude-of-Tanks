@@ -65,6 +65,10 @@ export function packCollisionRecord(record) {
   if (record.kind != null) out.k = record.kind;
   if (record.treeIdx != null) out.t = record.treeIdx;
   if (record.propIdx != null) out.p = record.propIdx;
+  // destruction (docs/DESTRUCTION.md §3.1): the structure group and, for a set piece, its role (1 setpiece, 2 fixed)
+  if (record.structureIdx != null) out.g = record.structureIdx;
+  if (record.structureRole === 'setpiece') out.gr = 1;
+  else if (record.structureRole === 'fixed') out.gr = 2;
   return out;
 }
 
@@ -96,13 +100,15 @@ async function worldBuilders() {
 }
 
 /**
- * Build one map's world collision in Node with the seeds the shards are captured at; returns the packed records.
- * `inspect` (2026-10-07) reads the built world before it is packed (the drift receipt's drawn-geometry shape check);
- * it must not change it.
+ * Build one map's world collision in Node with the seeds the shards are captured at; returns the packed records. A
+ * `variant` (2026-10-08: 'assault-trenches', Frontline's carved trench system and its works) builds the map from that
+ * variant's config, as every client's world does (world/map.ts). `inspect` (2026-10-07) reads the built world before it
+ * is packed (the drift receipt's drawn-geometry shape check); it must not change it.
  */
-export async function buildWorldCollisionData(mapId, { terrainSeed = 1337, vegetationSeed = 2001, propsSeed = 2002, inspect } = {}) {
+export async function buildWorldCollisionData(mapId, { terrainSeed = 1337, vegetationSeed = 2001, propsSeed = 2002, variant = null, inspect } = {}) {
   const { maps, terrain, vegetation, props, fleet } = await worldBuilders();
-  const config = maps.getMapConfig(mapId);
+  if (variant !== null && variant !== 'assault-trenches') throw new Error(`unknown battlefield variant ${variant}`);
+  const config = variant ? { ...maps.getMapConfig(mapId), assaultTrenches: true } : maps.getMapConfig(mapId);
   // the wreck cast bakes real hull geometry: its demand-loaded builders must be resident first
   const wreckIds = config.props?.tankWrecks?.ids ?? [];
   if (wreckIds.length) await fleet.ensureTankBuilders(wreckIds);

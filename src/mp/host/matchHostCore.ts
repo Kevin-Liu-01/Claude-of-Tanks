@@ -9,6 +9,8 @@
  * migration it boots from the retained state at the tick the main thread computed. DOM-free. Vehicles are specs only
  * (src/vehicles/authorityFleet.ts): the boot loads the roster's combat-anatomy groups beside the collision world.
  */
+import type { DestructionLogEntry } from '../../sim/destructionEvents.ts';
+import { quantizeDestructionEntry } from '../wire/destructionLog.ts';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 import { hostRulesetFor } from './hostRuleset.ts';
@@ -29,6 +31,7 @@ import type { MigrationKeyframe } from './migrationState.ts';
 import { MIGRATION_EVENT_KIND } from './hostProtocol.ts';
 import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
 import { loadCollisionWorld } from './worldCollision.ts';
+import { terrainVariantFor } from '../../sim/matchRuleset.ts';
 
 type TimerHandle = unknown;
 
@@ -81,7 +84,9 @@ const rosterSpecIds = (config: HostBootConfig): string[] => [
 
 export function createMatchHostCore({
   port,
-  buildWorld = async (config) => (config.manifestBase ? loadCollisionWorld(config.mapId, config.manifestBase) : 'terrain'),
+  // the mode's battlefield variant (Frontline's carved trenches) is the world the authority plays: its own manifest
+  buildWorld = async (config) => (config.manifestBase
+    ? loadCollisionWorld(config.mapId, config.manifestBase, { variant: terrainVariantFor(config.mode) }) : 'terrain'),
   now = () => (typeof performance === 'object' ? performance.now() : Date.now()),
   wallClock = () => Date.now(),
   schedule,
@@ -254,9 +259,12 @@ export function createMatchHostCore({
     const destroyed = Array.isArray(meta.destroyedObstacleIndices)
       ? [...new Set((meta.destroyedObstacleIndices as number[]).filter((index) => Number.isInteger(index) && index >= 0))].sort((a, b) => a - b) : [];
     const battleTimeMs = Math.round(live.authority.timeS * 1000) + live.resumedBattleTimeMs;
+    // destruction (docs/DESTRUCTION.md §8.3): the sealed keyframe carries the whole log, as the wire quantizes it
+    const destruction = Array.isArray(meta.destructionLog)
+      ? (meta.destructionLog as DestructionLogEntry[]).map(quantizeDestructionEntry) : [];
     const frame: SnapshotFrame = {
       tick, serverTimeMs, ackedInputTick: NO_TICK, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: INPUT_MARGIN_UNKNOWN,
-      meta: captureMeta({ ...meta, battleTimeMs }, live.ended), destroyed, entities, shells: [], viewer: null,
+      meta: captureMeta({ ...meta, battleTimeMs }, live.ended), destroyed, destruction, entities, shells: [], viewer: null,
       modeStateJson: meta.modeState ? JSON.stringify(meta.modeState) : null,
     };
     const phase = live.ended || live.authority.result ? 'ended' : live.authority.phase === 'countdown' ? 'countdown' : 'playing';

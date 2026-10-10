@@ -3,6 +3,8 @@ import { writeFileSync, readFileSync } from 'node:fs';
 import { createTank } from '../src/vehicles/tankFactory.ts';
 import { ALL_TANK_IDS } from '../src/vehicles/specs.ts';
 import { smokeSocketsFor } from '../src/vehicles/vehicleAuxiliaryGeometry.ts';
+// 2026-10-08: each launcher's tubes fan across its side's arc as the real launchers do (src/vehicles/smokeFan.ts)
+import { fanSmokeMounts } from '../src/vehicles/smokeFan.ts';
 const check=process.argv.includes('--check');
 // Functional smoke pins (2026-10-07, coordinator ruling on the tank-accessories lane): a decor rebuild must not change
 // a vehicle's gameplay counts. Round 2 moved the decor smoke banks into the functional decor group, so the M2A2
@@ -48,7 +50,7 @@ for(const id of ALL_TANK_IDS){
   if(smoke.length<FUNCTIONAL_SMOKE_PIN[id])throw new Error(`${id}: ${smoke.length} smoke sockets, below its functional pin ${FUNCTIONAL_SMOKE_PIN[id]}`);
   smoke.length=FUNCTIONAL_SMOKE_PIN[id];
  }
- rows[id]={turretPivot:round(turret.position.toArray()),smoke,guns,lights:!!tank.root.userData.nightLightCoverage?.headlights};
+ rows[id]={turretPivot:round(turret.position.toArray()),smoke:fanSmokeMounts(id,smoke),guns,lights:!!tank.root.userData.nightLightCoverage?.headlights};
  if(!rows[id].lights)missing.push({id,name:'driving lights'});
  tank.dispose?.();
 }

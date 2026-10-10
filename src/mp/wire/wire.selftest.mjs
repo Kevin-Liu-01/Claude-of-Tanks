@@ -93,6 +93,21 @@ function randomViewer(entityId) {
   };
 }
 
+/** Destruction log entries (2026-10-07, wire 4), exactly as the wire quantizes them (mm, cm, mm). */
+function randomDestructionEntry() {
+  const kind = pick(['stage', 'stage', 'breach', 'crater']);
+  if (kind === 'stage') {
+    const entry = { kind, structureId: int(0, 400), stage: pick(['damaged', 'breached', 'collapsed']) };
+    return rng() < 0.8 ? { ...entry, cx: int(-500000, 500000) / 1000, cz: int(-500000, 500000) / 1000 } : entry;
+  }
+  if (kind === 'breach') {
+    return { kind, structureId: int(0, 400), section: int(0, 40), hole: int(0, 3), x: int(-500000, 500000) / 1000,
+      y: int(-20000, 90000) / 1000, z: int(-500000, 500000) / 1000, radiusM: int(5, 300) / 100, sectionDown: rng() < 0.2 };
+  }
+  return { kind, craterId: int(0, 159), x: int(-500000, 500000) / 1000, z: int(-500000, 500000) / 1000,
+    radiusM: int(160, 600) / 100, depthM: int(100, 2100) / 1000, rimM: int(10, 720) / 1000, seed: int(0, 65535) };
+}
+
 function randomFrame(tick, entityCount, options = {}) {
   const ids = new Set();
   while (ids.size < entityCount) ids.add(int(1, MAX_ENTITIES));
@@ -109,6 +124,7 @@ function randomFrame(tick, entityCount, options = {}) {
       verdictReason: verdict ? pick(['elimination', 'time_limit', 'score']) : '', destructibleRevision: int(0, 100000),
     },
     destroyed: [...destroyed].sort((a, b) => a - b),
+    destruction: Array.from({ length: rng() < 0.4 ? 0 : int(1, 20) }, randomDestructionEntry),
     entities,
     shells: Array.from({ length: int(0, 12) }, () => randomShell(entities.length ? pick(entities).entityId : 0)),
     viewer: rng() < 0.7 && entities.length ? randomViewer(pick(entities).entityId) : null,
@@ -147,9 +163,11 @@ function evolveFrame(frame, tick) {
   entities.sort((a, b) => a.entityId - b.entityId);
   const destroyed = new Set(frame.destroyed);
   for (let n = int(0, 3); n > 0; n--) destroyed.add(int(0, 5000));
+  // the destruction log only grows: a few more entries now and then
+  const destruction = [...(frame.destruction ?? []), ...Array.from({ length: rng() < 0.5 ? 0 : int(1, 4) }, randomDestructionEntry)];
   return {
     ...frame, tick, serverTimeMs: tick * 1000 / 60 | 0, ackedInputTick: int(0, tick),
-    destroyed: [...destroyed].sort((a, b) => a - b), entities,
+    destroyed: [...destroyed].sort((a, b) => a - b), destruction, entities,
     shells: Array.from({ length: int(0, 8) }, () => randomShell(entities.length ? pick(entities).entityId : 0)),
     viewer: frame.viewer ? randomViewer(frame.viewer.entityId) : null,
   };

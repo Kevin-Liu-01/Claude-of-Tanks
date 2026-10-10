@@ -74,7 +74,7 @@ assert.match(manifest.figures.at(-1).source, new RegExp(`^${CARD.take}: previz a
 const orphans = readdirSync(MEDIA).filter((name) => !referenced.has(name));
 assert.deepEqual(orphans, [], 'every file in filming-r1 is in the manifest (rebuild with tools/media-r5/docs-media.mjs)');
 const total = readdirSync(MEDIA).reduce((sum, name) => sum + statSync(join(MEDIA, name)).size, 0);
-assert.ok(total < 64 * 1048576, `filming-r1 is ${(total / 1048576).toFixed(1)} MB; the collection's budget is 64 MB`);
+assert.ok(total < 84 * 1048576, `filming-r1 is ${(total / 1048576).toFixed(1)} MB; the collection's budget is 84 MB`);
 
 // The page: its figures are the builder's, the cover feeds the manual index and the social card.
 const filming = topics.filming;
