@@ -3033,11 +3033,13 @@ function* createFxSteps(
       _puffO.vel[0] = Math.cos(a) * Math.sin(b) * v;
       _puffO.vel[1] = Math.abs(Math.cos(b)) * v * 0.45 + 0.9;
       _puffO.vel[2] = Math.sin(a) * Math.sin(b) * v;
-      _puffO.life = 0.7 + rng() * 1.0;
-      _puffO.size0 = (1.8 + rng() * 1.0) * fireS * dk; _puffO.size1 = (4.2 + rng() * 2.0) * fireS * dk;
+      // (fx 8i, wave 334a killcam: "a cream-salmon exposure wash at 0.4 s") smaller, shorter tongues: the media
+      // fireball carries the body, these only lick out of it
+      _puffO.life = 0.45 + rng() * 0.6;
+      _puffO.size0 = (1.4 + rng() * 0.8) * fireS * dk; _puffO.size1 = (3.0 + rng() * 1.5) * fireS * dk;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 4;
-      col3(0xffd865, _puffO.col0); col3(0xe6520f, _puffO.col1);
-      _puffO.alpha = 0.34 + rng() * 0.18; _puffO.grav = 1.0;
+      col3(0xffd865, _puffO.col0); col3(0xd8420a, _puffO.col1);
+      _puffO.alpha = 0.3 + rng() * 0.14; _puffO.grav = 1.0;
       _puffO.birthOffset = i < count / 3
         ? birthOffset - rng() * 0.25
         : birthOffset + rng() * 0.35;
@@ -3180,11 +3182,13 @@ function* createFxSteps(
       _puffO.vel[0] = (rng() - 0.5) * 0.4;
       _puffO.vel[1] = 0.8 + rng() * 0.6;
       _puffO.vel[2] = (rng() - 0.5) * 0.4;
-      _puffO.life = 1.5 + rng() * 1.3;
-      _puffO.size0 = 0.9 + rng() * 0.4; _puffO.size1 = 1.6 + rng() * 0.7;
+      // (fx 8i, wave 334a killcam: "salmon sprite puffs inside the smoke at 1.8-3.0 s") the ring fire's flames are
+      // brief licks that end deep orange, not slow cards fading through salmon inside the smoke for seconds
+      _puffO.life = 0.6 + rng() * 0.5;
+      _puffO.size0 = 0.8 + rng() * 0.4; _puffO.size1 = 1.3 + rng() * 0.5;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 4;
-      col3(0xffd070, _puffO.col0); col3(0xff5a10, _puffO.col1);
-      _puffO.alpha = 0.75; _puffO.grav = 1.2;
+      col3(0xffd070, _puffO.col0); col3(0xd23c08, _puffO.col1);
+      _puffO.alpha = 0.6; _puffO.grav = 1.2;
       _puffO.birthOffset = birthOffset - rng() * 0.4 + i * 0.45;
       particles.emit('fire', _puffO);
     }

@@ -3302,8 +3302,15 @@ if ( uBurnT >= 0.0 ) {
     * ( 0.3 + 0.7 * brnNoise( vBrnW * 1.3 + vec3( uBurnSeed * 0.7 + uBurnT * 1.7 ) ) );
   // ember pockets smoldering in seams of the finished char (throb + cool)
   // r7: tighter pocket gate + ~half gain — pockets are seams, not a coat
-  float brnPk = smoothstep( 0.80, 0.97, brnNoise( vBrnW * 4.7 + vec3( uBurnSeed * 4.9 + 3.7 ) ) );
-  totalEmissiveRadiance += vec3( 0.72, 0.16, 0.028 ) * brnPk * brnM * uBurnEmber * ( 1.0 - brnKeep );
+  // fx 8i (wave 334a killcam: "flat orange polka-dot embers on the hull"): the pockets are cracks, not dots — the product
+  // of two noises at different scales (ragged, elongated), gated tighter, deep red in their thin parts, and each one
+  // breathing on its own phase rather than the whole hull pulsing as one
+  float brnPkA = brnNoise( vBrnW * 4.7 + vec3( uBurnSeed * 4.9 + 3.7 ) );
+  float brnPkB = brnNoise( vBrnW * vec3( 11.0, 3.1, 11.0 ) + vec3( uBurnSeed * 2.3 + 9.1 ) );
+  float brnPk = smoothstep( 0.62, 0.9, brnPkA * brnPkB * 1.35 );
+  float brnPkLive = 0.55 + 0.45 * sin( uBurnT * 2.1 + brnPkA * 19.0 );
+  totalEmissiveRadiance += mix( vec3( 0.42, 0.05, 0.01 ), vec3( 0.8, 0.22, 0.04 ), brnPk ) * brnPk * brnM * uBurnEmber
+    * brnPkLive * ( 1.0 - brnKeep );
   // shadow-side albedo floor: charred flanks keep their soot/panel gradients
   // readable from any angle (matches the old burnt material's wreck floor)
   // r7: 0.11 -> 0.19 — with the darker multiply-char albedo the shaded side
