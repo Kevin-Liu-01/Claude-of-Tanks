@@ -564,7 +564,10 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     resolve: (bucket: string) => THREE.Material | null = o.materialFor, ready?: () => void): boolean {
     const job = jobFor(seam, resolve);
     if (!job) return false;
-    if (job.plan.pieces.length < 3) { prepared.delete(seam.structureIdx); return false; }
+    // a cut of too few pieces (a degenerate building) keeps the scripted collapse; a shaft is one body of its drums (its
+    // plan one glued piece: wave cb-3 filmed the scripted topple on both arms while this asked every plan for three)
+    const plan = job.plan;
+    if (plan.shaft ? !((plan.pieces[0]?.parts.length ?? 0) >= 2) : plan.pieces.length < 3) { prepared.delete(seam.structureIdx); return false; }
     // its cut laid ahead: down now; felled before: it waits for its cut, a little a frame
     if (job.done && job.queue && !job.queue.length) { bringDown(job, seam, e, standing); ready?.(); return true; }
     if (!waiting.some((w) => w.seam.structureIdx === seam.structureIdx)) waiting.push({ seam, e: { ...e }, standing, resolve, ready, since: clockWait, job });
