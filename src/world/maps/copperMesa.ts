@@ -188,7 +188,10 @@ export default {
   // peaks (Owen, Lyell, Sedgwick), dark rainforest low on them, bare grey crags above, no snow; the far country its long
   // steep ridges
   horizon: { baseHex: 0x6a625c, amp: 1.35, style: 'alpine', treeline: 0.38, snowline: 2, bareRock: 0.7, outcrops: 0.5,
-    panorama: { regional: 'ridges' }, forestHex: 0x22392b, rockHex: 0x8c8884, haze: 0.88, grain: 0.6 },
+    panorama: { regional: 'ridges' }, forestHex: 0x22392b, rockHex: 0x8c8884, haze: 0.88, grain: 0.6,
+    // the horizons lane (2026-10-09; owner: restyle): the ranges' sky fill — the shaded faces keep their folds and stands
+    // through the air (terrain.ts gRingFill)
+    ringFill: 0.8 },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the haze a step cooler than the 0xffe0b6 sun
   // (0xaa9b89 -> 0xa8a49c), broken altocumulus (0.68 / 0.35 -> 0.80 / 0.50) on an explicit 880 m deck that keeps its
   // texture at 2-12°, and patchy light across the benches (cloudShadowAmp 0.30)

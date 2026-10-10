@@ -124,7 +124,7 @@ for (const id of PROTECTED) {
   assert.ok(terrain.includes('uRingFill: { value: 0 },') && terrain.includes('shader.uniforms.uRingFill = ringReliefUniforms.uRingFill;'),
     'the program starts with none');
   assert.ok(ground.includes('if (ring.uRingFill) ring.uRingFill.value = ringData?.ringFill ?? 0;'), 'the ring binds its map\'s fill (0 when the map has none)');
-  const filled = ['alpine', 'caldera', 'titan_gorge', 'skybridge', 'urban'];
+  const filled = ['alpine', 'caldera', 'titan_gorge', 'skybridge', 'urban', 'copper_mesa', 'monsoon'];
   for (const id of filled) {
     const v = getMapConfig(id).horizon?.ringFill;
     assert.ok(typeof v === 'number' && v > 0 && v <= 1.6, `${id} lifts its ranges' shade (${v})`);
