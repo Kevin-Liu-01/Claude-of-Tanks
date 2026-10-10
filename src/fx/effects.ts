@@ -4314,7 +4314,9 @@ function* createFxSteps(
     seed: number, seedU: number): void {
     const sm = look.smoke;
     if (!sm || !blast) return;
-    const spacing = sm.spacingM * Math.max(1, liveMissiles / 4);
+    // a crowded sky (a rocket salvo, a 12-tube volley): wider spacing, bigger puffs (missileTrailPuff's `coarse`)
+    const coarse = Math.max(1, liveMissiles / 4);
+    const spacing = sm.spacingM * coarse;
     let next = Math.max(trail.nextSmokeD as number, look.igniteM, d - 60);
     const dir = _v1;
     const seg = shell.prevPos ? shell.pos.distanceTo(shell.prevPos) : 0;
@@ -4331,7 +4333,7 @@ function* createFxSteps(
       const i = trail.puffIndex as number;
       const beat = Math.sin(i * 1.7 + seedU * 6.2832);
       missileTrailPuff(blast, puffRandom(seed + Math.imul(i + 1, 0x9e3779b1)), look, _v6.x, _v6.y, _v6.z,
-        dir.x, dir.y, dir.z, beat, -back / speed);
+        dir.x, dir.y, dir.z, beat, -back / speed, coarse);
       trail.puffIndex = i + 1;
       next += spacing;
       n++;
