@@ -21,6 +21,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/aerialMinimap.selftest.mjs',
     'src/sim/droneRecon.selftest.mjs',
     'src/sim/droneArmor.selftest.mjs',
+    'src/sim/droneAvoidance.selftest.mjs',
     'src/game/missionAttachmentVisual.selftest.mjs',
     'src/game/missionAttachmentMotion.selftest.mjs',
     'src/game/garageModePreview.selftest.mjs',
