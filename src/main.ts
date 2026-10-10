@@ -131,7 +131,7 @@ import {
   CAMO_CATALOG_PATTERN_IDS, getCamoSelection, setCamoSelection,
   getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection,
   setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked,
-  clearCamoOverrides, warmWreckTextures, setCamoBattleSeed, camoSelectionSuitsTheatre,
+  clearCamoOverrides, warmWreckTextures,
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
 } from './vehicles/materials.ts';
 import './ui/motion.css';
@@ -936,7 +936,6 @@ const battleIntent = createBattleIntentRuntime({
   anisotropy: engineCtx.anisotropy ?? 4,
   setCamoBiome,
   clearCamoOverrides,
-  setCamoBattleSeed,
   setCamoOverride,
   applyCamoPatterns: applyCamoPatternsChunked,
   preloadBattleVisuals: () => battleVisualStreamerAccess.preload(),
@@ -2197,8 +2196,7 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     },
     planCamoOverrides: (specId: string, mapId: string, randomRoster: boolean, campaignOperationId: string | null = null, gameMode: string | null = null) => {
       const plan = soloRosterPlan(gameMode, campaignOperationId, randomRoster);
-      return planBattleCamoOverrides(game, specId, mapId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.alliedSlots,
-        (botSpecId) => camoSelectionSuitsTheatre(getSpec(botSpecId), mapId));
+      return planBattleCamoOverrides(game, specId, mapId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.alliedSlots);
     },
     ensureTankBuilders,
     preloadSoloAuthority: preloadSoloBattleRuntime,
