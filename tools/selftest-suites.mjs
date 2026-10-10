@@ -1139,6 +1139,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.lastRun.selftest.mjs',
     // 2026-10-09 (gameplay lane): a pivot never drives past 4 m/s (botModes Aegis Crossing Turbo Ball, the 896-point fall).
     'src/game/ai.pivotRoll.selftest.mjs',
+    // 2026-10-09 (gameplay lane): an escalated stuck recovery releases the careful rules for 10 s (Blackglass 38001).
+    'src/game/ai.wedgeRelease.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',

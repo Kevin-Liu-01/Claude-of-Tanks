@@ -2784,6 +2784,17 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // A standard pivot rolls at 3-4 m/s (see PIVOT_CLEAR_M), so the cap binds where the mode's speed or a running start
   // carries the hull faster.
   const PIVOT_ROLL_MAX_MPS = 4;
+  // The careful rules stand aside in a wedge (gameplay lane, 2026-10-09; Blackglass pacing seed 38001 on the destruction
+  // tree that first carried them: the 900 s cap). In a lane between two buildings the last bravo Leopard 2A5 spent 350 s
+  // in a 5 by 10 m patch at the start of every search leg: each recheck chose the clear corner on the other side (34 to
+  // 38 crowded choices), the pivot crept and the solid brake held it at 1.5 m/s (902 to 994 brakes in 18 s), the low-speed
+  // watchdog struck, and the leg ended where it began. The production driving left that lane in seconds. A hull whose
+  // stuck recovery has escalated (a repeated strike, or an orbit) drives on the old rules for WEDGE_RELEASE_S: the first
+  // open corner by score, a full pivot, no solid brake. A scuffed wall is better than a lost match.
+  const WEDGE_RELEASE_S = 10;
+  let wedgeReleaseUntilS = -Infinity, wedgeReleases = 0;
+  /** The careful rules (corner cells and lanes clear of other solids, the creeping pivot, the solid brake) apply. */
+  const carefulDriving = (): boolean => nowS >= wedgeReleaseUntilS;
   const ownHalfLengthM = (): number => (spec.dims.hullLengthM || spec.dims.lengthM || 6) * 0.5;
   const routeSolids: AiObstacle[] = [];
   let cornersCrowded = 0, pivotCreeps = 0, pivotRollCuts = 0, solidBrakes = 0, gunNudgeAtS = -Infinity;
@@ -2908,10 +2919,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     let best = Infinity, bx = 0, bz = 0, bestClear = false, crowdedBest = Infinity;
     const cellMargin = spec.dims.widthM * 0.5 + CORNER_CELL_CLEAR_M;
     const boxX = (box.min[0] + box.max[0]) * 0.5, boxZ = (box.min[2] + box.max[2]) * 0.5;
+    const careful = carefulDriving(); // in a wedge every open corner counts as clear: the first by score (WEDGE_RELEASE_S)
     for (let i = 0; i < routeCandidates.length; i++) {
       let cx = routeCandidates[i].x;
       let cz = routeCandidates[i].z;
-      let cellClear = !solidWithin(cx, cz, cellMargin);
+      let cellClear = !careful || !solidWithin(cx, cz, cellMargin);
       for (let push = 1; !cellClear && push <= CORNER_PUSHES; push++) {
         const px = cx + Math.sign(cx - boxX) * CORNER_PUSH_M * push;
         const pz = cz + Math.sign(cz - boxZ) * CORNER_PUSH_M * push;
@@ -2923,7 +2935,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const score = d1 + Math.hypot(goalX - cx, goalZ - cz) +
         cornerBias(sourceX, sourceZ, directionX, directionZ, cx, cz);
       if (bestClear && score >= best) continue;
-      const clear = cellClear && !laneMeetsSolid(sourceX, sourceZ, cx, cz, margin * 0.85, box);
+      const clear = !careful || (cellClear && !laneMeetsSolid(sourceX, sourceZ, cx, cz, margin * 0.85, box));
       if (!clear) {
         if (score < crowdedBest) crowdedBest = score;
         if (bestClear || score >= best) continue;
@@ -3198,7 +3210,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       // it, and give the pivot enough drive to actually break friction.
       // Beside a solid that drive rolls the hull through a 4-5 m arc into it at 3-4 m/s: there the pivot creeps, its
       // drive cut above SOLID_CREEP_MPS (see PIVOT_CLEAR_M).
-      if (Math.abs(st.speed) >= SOLID_CREEP_MPS && solidWithin(st.pos.x, st.pos.z, ownHalfLengthM() + PIVOT_CLEAR_M)) {
+      if (carefulDriving() && Math.abs(st.speed) >= SOLID_CREEP_MPS
+        && solidWithin(st.pos.x, st.pos.z, ownHalfLengthM() + PIVOT_CLEAR_M)) {
         input.throttle = 0;
         input.brake = true;
         pivotCreeps++;
@@ -4500,6 +4513,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     stuckStrikes++;
     strikeEvents++;
     if (requireRepeatedStrike && stuckStrikes < 2) return;
+    // an escalated recovery is a wedge: the careful rules stand aside for a while (see WEDGE_RELEASE_S)
+    if (timeS >= wedgeReleaseUntilS) wedgeReleases++;
+    wedgeReleaseUntilS = timeS + WEDGE_RELEASE_S;
 
     detourSide = -detourSide;
     detourUntilS = timeS + UNSTICK_TIME_S + 6;
@@ -5939,7 +5955,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // SOLID_STOP_MPS2, must be clear of solids; when it is not, the controller brakes (the steering stays) and replans.
     const travel = entity.state.speed;
     if (entity.state.grounded && Math.abs(travel) > SOLID_CREEP_MPS && input.throttle * travel >= 0
-      && !(travel < 0 && nowS - gunNudgeAtS < 0.05)) {
+      && !(travel < 0 && nowS - gunNudgeAtS < 0.05) && carefulDriving()) {
       const st = entity.state;
       const sign = Math.sign(travel), speed = Math.abs(travel);
       const reach = ownHalfLengthM() + 1 + speed * 0.15 + speed * speed / (2 * SOLID_STOP_MPS2);
@@ -6347,7 +6363,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       objectiveShifts, objectiveShifting, zoneHoldMoves,
       routeCornerX: routeActive ? +routeCorner.x.toFixed(2) : null,
       routeCornerZ: routeActive ? +routeCorner.z.toFixed(2) : null, routeCornerFlips,
-      driveGoalX, driveGoalZ, driveGoalAgeS: nowS - driveGoalAtS, steerGoalX, steerGoalZ, cornersCrowded, pivotCreeps, pivotRollCuts, solidBrakes, routeOutcome,
+      driveGoalX, driveGoalZ, driveGoalAgeS: nowS - driveGoalAtS, steerGoalX, steerGoalZ, cornersCrowded, pivotCreeps, pivotRollCuts, solidBrakes, wedgeReleases, wedgeReleased: !carefulDriving(), routeOutcome,
       objectiveShiftX: objectiveShifting ? +objectiveShiftPoint.x.toFixed(1) : null,
       objectiveShiftZ: objectiveShifting ? +objectiveShiftPoint.z.toFixed(1) : null,
       zoneHoldX: Number.isFinite(zoneHoldForX) ? +zoneHold.x.toFixed(1) : null,
