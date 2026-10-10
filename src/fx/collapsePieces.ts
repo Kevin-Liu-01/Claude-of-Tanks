@@ -810,14 +810,30 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
     const boxes: CollapseBox[] = [{ center: [0, (GAP_M + y1) / 2 - yc, 0], half: [a1, (y1 - GAP_M) / 2, halfT] }];
     if (y2 > y1 + 0.2) boxes.push({ center: [0, (GAP_M + y2) / 2 - yc, 0], half: [a2, (y2 - GAP_M) / 2, halfT] });
     const areaM2 = face.width * H / 2;
+    // it cracks when it lands: its middle under the ridge and its two sides (vertical cuts a third of the way out)
+    const cut = W2 * (0.3 + geo() * 0.08);
+    const sgn = dot(xAxis, face.u) < 0 ? -1 : 1;
+    const gm = Math.max(40, areaM2 * T * wallDensity(face));
+    const midTop = Math.max(0.3, H * (1 - cut / W2) - plumb), sideTop = Math.max(0.2, 0.45 * H * (1 - cut / W2) - plumb);
+    const sideEnd = cut + 0.55 * (W2 - cut);
+    const gableParts: CollapsePart[] = W2 > 1.6 ? [
+      { center: [sgn * -(cut + sideEnd) / 2, GAP_M + sideTop / 2 - yc, 0], half: [(sideEnd - cut) / 2, sideTop / 2, halfT],
+        massKg: gm * (1 - cut / W2) ** 2 / 2, rect: { u0: -W2, u1: -cut, y0: base, y1: apex } },
+      { center: [0, GAP_M + midTop / 2 - yc, 0], half: [cut - GAP_M, midTop / 2, halfT],
+        massKg: gm * (1 - (1 - cut / W2) ** 2), rect: { u0: -cut, u1: cut, y0: base, y1: apex } },
+      { center: [sgn * (cut + sideEnd) / 2, GAP_M + sideTop / 2 - yc, 0], half: [(sideEnd - cut) / 2, sideTop / 2, halfT],
+        massKg: gm * (1 - cut / W2) ** 2 / 2, rect: { u0: cut, u1: W2, y0: base, y1: apex } },
+    ] : [];
     // the struck face's gable drops into the gap its wall left (a nudge in); another tips out more often than in
     const struck = sideOf(face.out) === struckSide;
     const outward = struck ? -0.4 : rng() < 0.7 ? 1 : -1;
     g.piece = add({
-      kind: 'gable', center, rotation: quatFromAxes(xAxis, up, zAxis), boxes, massKg: Math.max(40, areaM2 * T * wallDensity(face)),
+      kind: 'gable', center, rotation: quatFromAxes(xAxis, up, zAxis), boxes, massKg: gm,
       material: coreOf(face).material, core: coreOf(face), back: backOf(face), face: null,
       releaseS: (struck ? 0.04 : 0.2) + rng() * 0.3, kick: [zAxis[0] * outward * (1 + 0.6 * rng()), 0, zAxis[2] * outward * (1 + 0.6 * rng())],
       kickAt: [0, yTop - yc, 0], shatterS: -1,
+      parts: gableParts, partCutsU: gableParts.length ? [-cut, cut] : [], partCutsY: [],
+      partFrame: gableParts.length ? { origin: face.origin, u: face.u, v: [0, 1, 0] } : null,
     });
   }
   return { pieces, structureIdx: anatomy.structureIdx, groundY, eaveY, cx, cz, hw, hd, storeys: storeyPlans, roof: slabs, gables: gableFaces,
@@ -1076,7 +1092,7 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
       if (o < inner) continue;
       // under every slab's plane by more than its covering: the gable's (the verge's tiles stay the roof's)
       const below = plan.roof.every((s) => (c[0] - s.p[0]) * s.n[0] + (c[1] - s.p[1]) * s.n[1] + (c[2] - s.p[2]) * s.n[2] < -0.06);
-      if (below || !plan.roof.length) { emit(g.piece, poly); return; }
+      if (below || !plan.roof.length) { partAssign(poly, depth, null, g.piece); return; }
     }
     if (!plan.roof.length) { emit(STATIC_PIECE, poly); return; }
     // the nearest slab's plane, split on the bisector with the runner-up where the polygon's corners disagree
