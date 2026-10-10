@@ -115,6 +115,9 @@ for (const path of paths) {
 const resolve = (path, query = '') => resolveVercelRequest(after, { path, query }, files);
 assert.equal(resolve('/docs/build').file, '/docs-build.html');
 assert.equal(resolve('/cn/docs/multiplayer').file, '/cn/docs-multiplayer.html');
+assert.equal(resolve('/docs/filming').file, '/docs-filming.html', 'the thirteenth manual (2026-10-06) is routed');
+assert.equal(resolve('/cn/docs/filming').file, '/cn/docs-filming.html');
+assert.deepEqual([resolve('/docs/filming/').status, resolve('/docs/filming/').location], [308, '/docs/filming']);
 assert.equal(resolve('/studio').file, '/index.html', 'the English studio is the game document (the middleware adds its metadata)');
 assert.equal(resolve('/cn/studio').file, '/cn/studio.html');
 assert.equal(resolve('/cn').file, '/cn/index.html');

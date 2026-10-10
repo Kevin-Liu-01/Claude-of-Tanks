@@ -1,7 +1,8 @@
-import { BATTLE_TIMES, type BattleTimeOfDay } from '../engine/battleWeatherPolicy.ts';
+import { STUDIO_TIMES, type StudioLight, type StudioTimeOfDay } from '../game/studioLight.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { ProductionFormat, ProductionRigId } from '../game/studioProduction.ts';
 import { mountStudioProductionPanel, STUDIO_PRODUCTION_CSS } from './studioProductionPanel.ts';
+import { mountStudioPicturePanel, type StudioPicturePanelApi } from './studioPicturePanel.ts';
 /**
  * studioPanel.ts — SCENE STUDIO control panel (src/game/studio.ts's UI).
  *
@@ -21,13 +22,16 @@ import { mountMediaArchive } from '../presentation/mediaArchive.ts';
 import { PRODUCT_STATS } from '../productStats.ts';
 import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
 import { createInfoButton, type InfoButton } from './contextInfo.ts';
+import { createPlanView, type StudioPlanFeatures } from './studioPlanView.ts';
 import { getLocale, t } from './i18n.ts';
+import { STUDIO_FX_PARAMS } from '../game/studioFxSettings.ts';
 import { hrefForLocale } from './localeRouting.ts';
+import { FILM_RESOLUTIONS, createFilmPlan, filmOutputSize, normalizeFilm } from '../game/studioFilmPlan.ts';
 
 const STUDIO_GUIDES = {
   battlefield: 'environment', map: 'environment', tanks: 'actors', addTanks: 'actors',
   selectedTank: 'actors', effects: 'effects', layersEvents: 'effects', cinematics: 'timeline',
-  storyboard: 'timeline', camera: 'camera', output: 'output', productionArchive: 'recipe',
+  storyboard: 'timeline', camera: 'camera', picture: 'camera', output: 'output', productionArchive: 'recipe',
 } as const;
 
 const STUDIO_GROUP_INFO_KEYS = Object.freeze({
@@ -45,6 +49,7 @@ const STUDIO_SECTION_INFO_KEYS = Object.freeze({
   layersEvents: 'studioPanel.info.section.layersEvents',
   storyboard: 'studioPanel.info.section.storyboard',
   camera: 'studioPanel.info.section.camera',
+  picture: 'studioPanel.info.section.picture',
   output: 'studioPanel.info.section.output',
   productionArchive: 'studioPanel.info.section.productionArchive',
 } as const);
@@ -86,6 +91,7 @@ interface StudioEffect {
   readonly id: string;
   readonly type: string;
   readonly tMs: number;
+  readonly params?: object;
   readonly selected?: boolean;
   readonly actor?: string | number | null;
   readonly from?: readonly number[];
@@ -127,12 +133,49 @@ interface StudioSpecInfo {
   readonly rosterTag?: string;
 }
 
+interface StudioLightState {
+  readonly time: StudioTimeOfDay;
+  readonly headlights: boolean;
+  readonly sunAzimuthDeg: number | null;
+  readonly sunElevationDeg: number | null;
+  readonly override: StudioLight | null;
+  readonly band: { readonly min: number; readonly max: number };
+  readonly times: readonly StudioTimeOfDay[];
+  readonly space: boolean;
+}
+
 interface StudioRecordingStatus {
   readonly active: boolean;
   readonly supported: boolean;
   readonly elapsedMs: number;
   readonly durationMs: number;
   readonly mimeType?: string | null;
+}
+
+interface StudioFilmProgress {
+  readonly stage: 'preparing' | 'rendering' | 'finishing';
+  readonly frame: number;
+  readonly frames: number;
+  readonly remainingMs: number | null;
+}
+
+interface StudioFilmSettings {
+  readonly fps: number;
+  readonly samples: number;
+  readonly shake: number;
+  readonly shutterDeg: number;
+  readonly filter: string;
+  readonly speed: ReadonlyArray<{ readonly tMs: number; readonly speed: number; readonly ease: string }>;
+}
+
+interface StudioFilmExportOptions {
+  readonly resolution: number;
+  readonly fps: number;
+  readonly samples: number;
+  readonly shake: number;
+  readonly download: boolean;
+  readonly onProgress: (progress: StudioFilmProgress) => void;
+  readonly onFrame: (canvas: HTMLCanvasElement) => void;
 }
 
 interface StudioEffectRecipe {
@@ -145,14 +188,16 @@ interface StudioEffectRecipe {
   readonly params?: Readonly<Record<string, RuntimeValue>>;
 }
 
-export interface StudioPanelApi {
+export interface StudioPanelApi extends StudioPicturePanelApi {
   readonly MAP_IDS: readonly string[];
   readonly TANK_IDS: readonly string[];
   readonly CAMO_PATTERN_IDS: readonly string[];
   readonly ACTOR_STATES: readonly string[];
   readonly mapId: string | null;
-  readonly timeOfDay: BattleTimeOfDay;
-  setTimeOfDay(time: BattleTimeOfDay): Promise<RuntimeValue>;
+  readonly timeOfDay: StudioTimeOfDay;
+  setTimeOfDay(time: StudioTimeOfDay): Promise<RuntimeValue>;
+  setLight(patch: StudioLight | null): Promise<RuntimeValue>;
+  getLight(): StudioLightState;
   readonly timeScale: number;
   readonly fxTimeMs: number;
   readonly durationMs: number;
@@ -171,6 +216,8 @@ export interface StudioPanelApi {
   getSpecInfo(id: string): StudioSpecInfo;
   getCamera(): StudioCameraState;
   getStoryboard(): StudioStoryboard;
+  /** The battlefield's plan for the Plan view (the HUD minimap's features and the map's extent). */
+  getPlanFeatures(): StudioPlanFeatures | null;
   listEffects(): readonly StudioEffect[];
   recordingStatus(): StudioRecordingStatus;
   state(): Record<string, RuntimeValue>;
@@ -183,6 +230,10 @@ export interface StudioPanelApi {
   selectActor(uid: string): RuntimeValue;
   effect(recipe: StudioEffectRecipe): RuntimeValue;
   clearEffects(): RuntimeValue;
+  setFxQuality(quality: 'battle' | 'cinematic'): RuntimeValue;
+  readonly fxQuality: string;
+  setTrackDust(on: boolean): RuntimeValue;
+  readonly trackDust: boolean;
   advanceFx(milliseconds: number): RuntimeValue;
   setStoryboardDuration(milliseconds: number): RuntimeValue;
   setTimeScale(scale: number): RuntimeValue;
@@ -203,6 +254,11 @@ export interface StudioPanelApi {
   recordVideo(options: { readonly fps: number; readonly download: boolean }): Promise<{ size: number }>;
   stopRecording(): RuntimeValue;
   capture(options: { readonly width: number; readonly height?: number; readonly download: boolean }): RuntimeValue;
+  exportFilm(options: StudioFilmExportOptions): Promise<{ readonly bytes: number }>;
+  cancelFilmExport(): RuntimeValue;
+  filmExportStatus(): { readonly active: boolean; readonly supported: boolean };
+  getFilm(): StudioFilmSettings | null;
+  setFilm(patch: Readonly<Record<string, RuntimeValue>> | null): RuntimeValue;
   load(state: RuntimeValue): Promise<RuntimeValue>;
   updateEffect(id: string, patch: Readonly<Record<string, RuntimeValue>>): RuntimeValue;
   removeEffect(id: string): RuntimeValue;
@@ -252,6 +308,7 @@ interface StudioPanelRuntime {
   refreshTime(): void;
   refreshStoryboard(): void;
   refreshMap(): void;
+  refreshPicture(): void;
   refreshAll(): void;
   tick(dt: number): void;
 }
@@ -501,12 +558,42 @@ const CSS = `
 .cot-studio .recStatus{margin:6px 0;font-size:8px;font-weight:800;letter-spacing:.1em;
   color:#71808d;text-transform:uppercase;text-align:center;}
 .cot-studio .recStatus.on{color:#ff806b;animation:studioRecPulse 1s ease-in-out infinite;}
+.cot-studio .filmHead{display:flex;align-items:center;gap:6px;margin:1px 0 8px;font-size:8px;font-weight:900;
+  letter-spacing:.2em;color:#e69a2d;text-transform:uppercase;}
+.cot-studio .filmHead::after{content:'';flex:1;height:1px;background:rgba(230,154,45,.25);}
+.cot-studio .filmHead.live{margin-top:12px;}
+.cot-studio .filmHint{margin:5px 0 2px;font-size:8px;line-height:1.5;letter-spacing:.06em;color:#71808d;}
+.cot-studio .filmVeil{position:absolute;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;
+  justify-content:center;gap:13px;padding:24px 16px;pointer-events:auto;background:rgba(3,5,8,.86);
+  backdrop-filter:blur(3px);}
+.cot-studio .filmVeil.on{display:flex;}
+.cot-studio .filmVeil .fvTitle{font-size:11px;font-weight:900;letter-spacing:.26em;color:#ffd27a;}
+.cot-studio .filmVeil .fvPreview{display:block;max-width:min(78vw,960px);max-height:58vh;background:#05080b;
+  border:1px solid rgba(230,154,45,.45);box-shadow:0 18px 60px rgba(0,0,0,.75);}
+.cot-studio .filmVeil .fvBar{width:min(78vw,560px);height:4px;background:rgba(190,204,216,.18);}
+.cot-studio .filmVeil .fvBar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#d95f00,#ffd27a);}
+.cot-studio .filmVeil .fvText{font-size:10px;font-weight:800;letter-spacing:.14em;color:#c9d4dd;text-align:center;}
+.cot-studio .filmVeil button{min-width:160px;min-height:36px;}
 @keyframes studioRecPulse{50%{opacity:.45;}}
 .cot-studio .foot{position:absolute;left:20px;bottom:14px;pointer-events:none;
   font-size:10px;font-weight:600;letter-spacing:.08em;color:#9fb0bf;
   text-shadow:0 1px 4px rgba(0,0,0,.9);line-height:1.7;}
 .cot-studio .foot .cam{color:#ffd27a;font-weight:700;}
 .cot-studio .val{font-size:10px;font-weight:800;color:#ffd27a;min-width:34px;text-align:right;}
+/* --- sun (media r5): compass dial, lighting presets, elevation --------------- */
+.cot-studio .sun{display:grid;grid-template-columns:78px minmax(0,1fr);gap:8px;align-items:center;margin-bottom:6px;}
+.cot-studio .sunDial{width:78px;height:78px;display:block;touch-action:none;cursor:grab;
+  background:radial-gradient(circle at 50% 50%,rgba(16,23,30,.95) 0 58%,rgba(8,12,16,.95) 59% 100%);
+  border:1px solid rgba(190,204,216,.28);border-radius:50%;}
+.cot-studio .sunDial:focus-visible{outline:2px solid #ffd27a;outline-offset:2px;}
+.cot-studio .sunDial.drag{cursor:grabbing;}
+.cot-studio .sunSide{display:grid;gap:5px;min-width:0;}
+.cot-studio .sunRead{display:flex;justify-content:space-between;gap:6px;font-size:9px;font-weight:800;
+  letter-spacing:.12em;color:#8a97a3;text-transform:uppercase;}
+.cot-studio .sunRead b{color:#ffd27a;font-weight:900;letter-spacing:.06em;}
+.cot-studio .sunPresets{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;}
+.cot-studio .sunPresets button{padding:5px 2px;font-size:8px;letter-spacing:.06em;min-height:26px;}
+.cot-studio .sunNote{font-size:8.5px;font-weight:700;letter-spacing:.08em;color:#6f7d88;}
 .cot-studio-archive{width:min(94vw,1560px);max-width:none;padding:0;border:1px solid rgba(190,204,216,.32);
   background:#05080b;color:#e6edf3;box-shadow:0 36px 140px rgba(0,0,0,.82);font-family:${FONT_STACK};}
 .cot-studio-archive::backdrop{background:rgba(1,3,5,.9);backdrop-filter:blur(10px);}
@@ -639,19 +726,166 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   timeLabel.appendChild(el('span', '', t('studioPanel.timeOfDay')));
   const timeSelect = el('select');
   timeSelect.setAttribute('aria-label', t('studioPanel.timeOfDay'));
-  for (const time of BATTLE_TIMES) {
+  const timeOptions = new Map<StudioTimeOfDay, HTMLOptionElement>();
+  for (const time of STUDIO_TIMES) {
     const option = el('option', '', t(`atmosphere.${time}`));
     option.value = time;
+    timeOptions.set(time, option);
     timeSelect.appendChild(option);
   }
   timeSelect.addEventListener('change', () => {
     timeSelect.disabled = true;
-    S.setTimeOfDay(timeSelect.value as BattleTimeOfDay)
+    S.setTimeOfDay(timeSelect.value as StudioTimeOfDay)
       .catch((error: RuntimeValue) => flashBusy(errorMessage(error)))
       .finally(() => { timeSelect.disabled = false; api.refreshMap(); });
   });
   timeLabel.appendChild(timeSelect);
   secScene.appendChild(timeLabel);
+
+  // --- sun (media r5): bearing on a north-up compass (world +Z up, -X right, as the tactical map), lighting
+  // presets relative to the camera, elevation inside the time's band. Slider-rate changes coalesce to one apply.
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const svg = <K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number>): SVGElementTagNameMap[K] => {
+    const node = document.createElementNS(SVG_NS, tag);
+    for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value));
+    return node;
+  };
+  const sunBlock = el('div', 'sun');
+  const dial = svg('svg', { viewBox: '-50 -50 100 100', class: 'sunDial', role: 'slider', tabindex: 0,
+    'aria-label': t('studioPanel.light.bearingAria'), 'aria-valuemin': 0, 'aria-valuemax': 359 });
+  dial.append(
+    svg('circle', { r: 44, fill: 'none', stroke: 'rgba(190,204,216,.22)', 'stroke-width': 1 }),
+    svg('circle', { r: 30, fill: 'none', stroke: 'rgba(190,204,216,.10)', 'stroke-width': 1 }),
+  );
+  for (let tick = 0; tick < 360; tick += 30) {
+    const a = tick * Math.PI / 180, r0 = tick % 90 ? 40 : 36;
+    dial.appendChild(svg('line', { x1: -Math.sin(a) * r0, y1: -Math.cos(a) * r0, x2: -Math.sin(a) * 44, y2: -Math.cos(a) * 44,
+      stroke: tick % 90 ? 'rgba(190,204,216,.25)' : 'rgba(190,204,216,.5)', 'stroke-width': 1 }));
+  }
+  const north = svg('text', { x: 0, y: -27, 'text-anchor': 'middle', 'font-size': 9, 'font-weight': 900,
+    fill: '#8a97a3', 'font-family': 'sans-serif' });
+  north.textContent = t('studioPanel.light.north');
+  const camWedge = svg('path', { d: 'M0 0 L-9 -30 A31 31 0 0 1 9 -30 Z', fill: 'rgba(143,208,255,.20)',
+    stroke: 'rgba(143,208,255,.55)', 'stroke-width': 1 });
+  const sunRay = svg('line', { x1: 0, y1: 0, x2: 0, y2: -38, stroke: 'rgba(255,193,105,.55)', 'stroke-width': 1.5 });
+  const sunDot = svg('circle', { cx: 0, cy: -38, r: 6.5, fill: '#ffb84d', stroke: '#0b0f12', 'stroke-width': 1.5 });
+  dial.append(north, camWedge, sunRay, sunDot);
+  const sunSide = el('div', 'sunSide');
+  const sunRead = el('div', 'sunRead');
+  const bearingRead = el('span');
+  const elevationRead = el('span');
+  sunRead.append(bearingRead, elevationRead);
+  const sunPresets = el('div', 'sunPresets');
+  const presetButtons: HTMLButtonElement[] = [];
+  const cameraBearing = (): number => {
+    const c = S.getCamera();
+    const dx = c.lookAt[0] - c.pos[0], dz = c.lookAt[2] - c.pos[2];
+    return ((Math.atan2(dx, dz) * 180 / Math.PI) % 360 + 360) % 360;
+  };
+  // relative to the camera's bearing: the sun ahead (backlight), just off-axis ahead (rim), across (side), behind (front)
+  for (const [key, offset] of [['back', 0], ['rim', 32], ['side', 90], ['front', 180], ['map', null]] as const) {
+    const button = el('button', null, t(`studioPanel.light.${key}`));
+    button.type = 'button';
+    button.title = t(`studioPanel.light.${key}Hint`);
+    button.addEventListener('click', () => {
+      const bearing = offset === null ? null : Math.round(((cameraBearing() + offset) % 360 + 360) % 360);
+      queueLight({ sunAzimuthDeg: bearing });
+    });
+    presetButtons.push(button);
+    sunPresets.appendChild(button);
+  }
+  const sunNote = el('div', 'sunNote', '');
+  sunSide.append(sunRead, sunPresets);
+  sunBlock.append(dial, sunSide);
+  const lampRow = el('div', 'row');
+  const lampBtn = el('button', null, t('studioPanel.light.headlights'));
+  lampBtn.type = 'button';
+  lampBtn.title = t('studioPanel.light.headlightsHint');
+  lampBtn.addEventListener('click', () => queueLight({ headlights: !S.getLight().headlights }));
+  lampRow.append(lampBtn, sunNote);
+  const elevation = sliderRow(t('studioPanel.light.elevation'), 1, 80, 0.5, (value) => {
+    queueLight({ sunElevationDeg: value });
+  });
+  elevation.input.setAttribute('aria-label', t('studioPanel.light.elevationAria'));
+  const elevationReset = el('button', null, t('studioPanel.light.auto'));
+  elevationReset.type = 'button';
+  elevationReset.title = t('studioPanel.light.autoHint');
+  elevationReset.addEventListener('click', () => queueLight({ sunElevationDeg: null }));
+  elevation.row.appendChild(elevationReset);
+  secScene.append(sunBlock, elevation.row, lampRow);
+
+  // one apply in flight; the latest request waits behind it (a dragged dial never queues a backlog)
+  let lightInFlight: Promise<void> | null = null;
+  let lightPending: Record<string, number | boolean | null> | null = null;
+  function queueLight(patch: Record<string, number | boolean | null>): void {
+    lightPending = { ...(lightPending ?? {}), ...patch };
+    if (lightInFlight) return;
+    const pump = async (): Promise<void> => {
+      while (lightPending) {
+        const next = lightPending;
+        lightPending = null;
+        try { await S.setLight(next as StudioLight); } catch (error) { flashBusy(errorMessage(error as RuntimeValue)); }
+      }
+    };
+    lightInFlight = pump().finally(() => { lightInFlight = null; refreshSun(); });
+  }
+  const bearingFromPointer = (event: PointerEvent): number => {
+    const box = dial.getBoundingClientRect();
+    const x = event.clientX - (box.left + box.width / 2), y = event.clientY - (box.top + box.height / 2);
+    // dial right = world -X, dial up = world +Z
+    return Math.round(((Math.atan2(-x, -y) * 180 / Math.PI) % 360 + 360) % 360);
+  };
+  let dialDrag = false;
+  dial.addEventListener('pointerdown', (event) => {
+    dialDrag = true;
+    dial.classList.add('drag');
+    dial.setPointerCapture(event.pointerId);
+    queueLight({ sunAzimuthDeg: bearingFromPointer(event) });
+  });
+  dial.addEventListener('pointermove', (event) => {
+    if (dialDrag) queueLight({ sunAzimuthDeg: bearingFromPointer(event) });
+  });
+  const endDrag = (): void => { dialDrag = false; dial.classList.remove('drag'); };
+  dial.addEventListener('pointerup', endDrag);
+  dial.addEventListener('pointercancel', endDrag);
+  dial.addEventListener('keydown', (event) => {
+    const step = event.shiftKey ? 15 : 5;
+    const current = S.getLight().sunAzimuthDeg ?? 0;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') queueLight({ sunAzimuthDeg: (current + 360 - step) % 360 });
+    else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') queueLight({ sunAzimuthDeg: (current + step) % 360 });
+    else return;
+    event.preventDefault();
+  });
+  function refreshSunCamera(): void {
+    // the wedge points along the camera's bearing (dial up = world +Z, so a bearing turns it counter-clockwise)
+    camWedge.setAttribute('transform', `rotate(${(-cameraBearing()).toFixed(1)})`);
+  }
+  function refreshSun(): void {
+    const light = S.getLight();
+    const az = light.sunAzimuthDeg ?? 0, elev = light.sunElevationDeg ?? 0;
+    const a = az * Math.PI / 180;
+    const radius = 38 - Math.max(0, Math.min(1, elev / 80)) * 18; // a high sun stands nearer the centre
+    sunDot.setAttribute('cx', String(-Math.sin(a) * radius));
+    sunDot.setAttribute('cy', String(-Math.cos(a) * radius));
+    sunRay.setAttribute('x2', String(-Math.sin(a) * radius));
+    sunRay.setAttribute('y2', String(-Math.cos(a) * radius));
+    sunDot.setAttribute('fill', light.time === 'night' ? '#dfe8ff' : light.time === 'dusk' ? '#ff9c6b' : '#ffb84d');
+    refreshSunCamera();
+    dial.setAttribute('aria-valuenow', String(Math.round(az)));
+    dial.setAttribute('aria-valuetext', t('studioPanel.light.bearingValue', { deg: Math.round(az) }));
+    bearingRead.innerHTML = '';
+    bearingRead.append(t('studioPanel.light.bearing') + ' ', el('b', null, `${Math.round(az)}°`));
+    elevationRead.innerHTML = '';
+    elevationRead.append(t(light.time === 'night' ? 'studioPanel.light.moon' : 'studioPanel.light.sun') + ' ', el('b', null, `${elev.toFixed(1)}°`));
+    elevation.setRange(light.band.min, light.band.max);
+    elevation.set(elev);
+    elevationReset.classList.toggle('on', light.override?.sunElevationDeg === undefined);
+    presetButtons[4].classList.toggle('on', light.override?.sunAzimuthDeg === undefined);
+    sunNote.textContent = light.space ? t('studioPanel.light.spaceNote') : '';
+    lampBtn.classList.toggle('on', light.headlights);
+    lampBtn.setAttribute('aria-pressed', String(light.headlights));
+    for (const [time, option] of timeOptions) option.disabled = !light.times.includes(time);
+  }
   battlefieldGroup.body.appendChild(secScene);
 
   let mapPreviewsHydrated = false;
@@ -976,6 +1210,87 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       S.effect({ type: 'engine_smoke', actor: a.uid, params: { off: true } });
     })],
   ]);
+  // media r5 cinematic pyrotechnics: quality toggles + the new effect types
+  const cineGroup = el('div', 'fxg');
+  cineGroup.appendChild(el('div', 'gh', t('studioPanel.fxGroup.cinematic')));
+  const cineToggles = el('div', 'grid');
+  const cineBtn = el('button', null, t('studioPanel.fx.cinematicOff'));
+  cineBtn.addEventListener('click', () => S.setFxQuality(S.fxQuality === 'cinematic' ? 'battle' : 'cinematic'));
+  const dustBtn = el('button', null, t('studioPanel.fx.trackDustOff'));
+  dustBtn.addEventListener('click', () => S.setTrackDust(!S.trackDust));
+  cineToggles.append(cineBtn, dustBtn);
+  cineGroup.appendChild(cineToggles);
+  secFx.appendChild(cineGroup);
+  function refreshCinematicToggles(): void {
+    const on = S.fxQuality === 'cinematic';
+    cineBtn.classList.toggle('on', on);
+    cineBtn.textContent = t(on ? 'studioPanel.fx.cinematicOn' : 'studioPanel.fx.cinematicOff');
+    dustBtn.classList.toggle('on', S.trackDust);
+    dustBtn.textContent = t(S.trackDust ? 'studioPanel.fx.trackDustOn' : 'studioPanel.fx.trackDustOff');
+  }
+  fxGroup(t('studioPanel.fxGroup.cinematic'), [
+    [t('studioPanel.fx.smokeScreen'), () => withSelected((a) => S.effect({ type: 'smoke_screen', actor: a.uid }))],
+    [t('studioPanel.fx.flare'), () => selOr((a) => (a
+      ? S.effect({ type: 'flare', actor: a.uid })
+      : atMarker(() => S.effect({ type: 'flare' }))))],
+    [t('studioPanel.fx.embers'), () => selOr((a) => (a
+      ? S.effect({ type: 'embers', actor: a.uid })
+      : atMarker(() => S.effect({ type: 'embers' }))))],
+    [t('studioPanel.fx.fireField'), () => atMarker(() => S.effect({ type: 'fire_field' }))],
+    [t('studioPanel.fx.shockwave'), () => atMarker(() => S.effect({ type: 'shockwave' }))],
+    [t('studioPanel.fx.debris'), () => atMarker(() => S.effect({ type: 'debris' }))],
+    [t('studioPanel.fx.explHuge'), () => atMarker(() => S.effect({ type: 'explosion', params: { size: 'huge' } })), true],
+  ]);
+  // parameters of the selected layer (cinematic types): applied on release,
+  // replaying the stack once per change
+  const fxParamsBox = el('div', 'fxg');
+  fxParamsBox.hidden = true;
+  secFx.insertBefore(fxParamsBox, fxStack.nextSibling);
+  let fxParamsKey = '';
+  const fxParamRows = new Map<string, { input: HTMLInputElement; val: HTMLElement }>();
+  function rebuildFxParams(effects: readonly StudioEffect[]): void {
+    const effect = effects.find((item) => item.selected) ?? null;
+    const defs = effect ? STUDIO_FX_PARAMS[effect.type] : undefined;
+    if (!effect || !defs) {
+      fxParamsBox.hidden = true;
+      fxParamsKey = '';
+      return;
+    }
+    fxParamsBox.hidden = false;
+    const key = `${effect.id}:${effect.type}`;
+    if (key !== fxParamsKey) {
+      fxParamsKey = key;
+      fxParamsBox.textContent = '';
+      fxParamRows.clear();
+      fxParamsBox.appendChild(el('div', 'gh', t('studioPanel.fxParams.title')));
+      for (const def of defs) {
+        const row = el('div', 'row');
+        row.appendChild(el('label', 'k', t(def.label)));
+        const input = document.createElement('input');
+        input.type = 'range';
+        input.min = String(def.min);
+        input.max = String(def.max);
+        input.step = String(def.step);
+        input.setAttribute('aria-label', t(def.label));
+        const val = el('div', 'val', '');
+        input.addEventListener('input', () => { val.textContent = input.value; });
+        input.addEventListener('change', () => {
+          S.updateEffect(effect.id, { params: { [def.key]: Number(input.value) } });
+        });
+        row.append(input, val);
+        fxParamsBox.appendChild(row);
+        fxParamRows.set(def.key, { input, val });
+      }
+    }
+    for (const def of defs) {
+      const row = fxParamRows.get(def.key);
+      if (!row) continue;
+      const raw = (effect.params as Readonly<Record<string, unknown>> | undefined)?.[def.key];
+      const value = typeof raw === 'number' && Number.isFinite(raw) ? raw : def.value;
+      row.input.value = String(value);
+      row.val.textContent = String(Math.round(value * 100) / 100);
+    }
+  }
   effectsGroup.body.appendChild(secFx);
 
   // === GLOBAL group ===
@@ -1058,6 +1373,20 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   });
   railRow.append(railBtn, clearTrackBtn);
   secTime.appendChild(railRow);
+  // the take from above: routes, the camera's track and its distance and height (studioPlanView.ts)
+  const planView = createPlanView(S, t);
+  let planShown = true;
+  const planBtn = el('button', null, t('studioPanel.plan.hide'));
+  planBtn.style.marginTop = '5px';
+  planBtn.addEventListener('click', () => {
+    planShown = !planShown;
+    planView.root.hidden = !planShown;
+    planBtn.textContent = planShown ? t('studioPanel.plan.hide') : t('studioPanel.plan.show');
+    planBtn.classList.toggle('on', planShown);
+    if (planShown) planView.refreshPlan();
+  });
+  planBtn.classList.add('on');
+  secTime.append(planBtn, planView.root);
   const duelBtn = el('button', 'prime', t('studio.directDuel'));
   let duelVariant = 0;
   duelBtn.style.marginTop = '6px';
@@ -1100,11 +1429,159 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const spd = sliderRow('Speed', 2, 60, 1, (v) => { S._internal.cam.speed = v; });
   secCam.append(fov.row, roll.row, spd.row);
   globalGroup.body.appendChild(secCam);
+  const secPicture = section('picture', t('studioPanel.section.picture'), t('studioPanel.section.pictureSub'));
+  const picturePanel = mountStudioPicturePanel(S, secPicture, {
+    sliderRow, selectedActor: () => S._internal.selected, flash: (text) => flashBusy(text),
+  });
+  globalGroup.body.appendChild(secPicture);
 
   // === OUTPUT group ===
   const outputGroup = panelGroup('05', 'output', t('studioPanel.panel.output.title'), t('studioPanel.panel.output.sub'));
   dock.appendChild(outputGroup.root);
   const secCap = section('output', t('studioPanel.section.output'), t('studioPanel.section.outputSub'));
+  // --- film: deterministic offline export (studioFilm*.ts) ----------------------
+  secCap.appendChild(el('div', 'filmHead', t('studio.film.heading')));
+  const filmSizeRow = el('div', 'row');
+  const filmSize = document.createElement('select');
+  for (const resolution of FILM_RESOLUTIONS) {
+    const option = document.createElement('option');
+    option.value = String(resolution);
+    option.textContent = `${resolution}p`;
+    filmSize.appendChild(option);
+  }
+  const filmFps = document.createElement('select');
+  for (const fps of [24, 30, 60]) {
+    const option = document.createElement('option');
+    option.value = String(fps);
+    option.textContent = t('studio.film.fpsOption', { fps });
+    filmFps.appendChild(option);
+  }
+  filmSizeRow.append(el('label', 'k', t('studio.film.size')), filmSize, el('label', 'k', t('studio.film.rate')), filmFps);
+  secCap.appendChild(filmSizeRow);
+  const filmBlurRow = el('div', 'row');
+  const filmBlur = document.createElement('select');
+  for (const [key, samples] of [['studio.film.blurOff', 1], ['studio.film.blurDraft', 4], ['studio.film.blurGood', 8],
+    ['studio.film.blurBest', 16], ['studio.film.blurMaster', 32]] as const) {
+    const option = document.createElement('option');
+    option.value = String(samples);
+    option.textContent = t(key);
+    filmBlur.appendChild(option);
+  }
+  filmBlur.value = '8';
+  filmFps.value = '30';
+  const filmShake = document.createElement('select');
+  for (const [key, shake] of [['studio.film.shakeFull', 1], ['studio.film.shakeHalf', 0.5],
+    ['studio.film.shakeQuarter', 0.25], ['studio.film.shakeOff', 0]] as const) {
+    const option = document.createElement('option');
+    option.value = String(shake);
+    option.textContent = t(key);
+    filmShake.appendChild(option);
+  }
+  filmShake.title = t('studio.film.shakeTitle');
+  filmBlurRow.append(el('label', 'k', t('studio.film.blur')), filmBlur, el('label', 'k', t('studio.film.shake')), filmShake);
+  secCap.appendChild(filmBlurRow);
+  const filmSummary = el('div', 'recStatus', '');
+  secCap.appendChild(filmSummary);
+  const filmBtn = el('button', 'prime', t('studio.film.export'));
+  secCap.appendChild(filmBtn);
+  secCap.appendChild(el('div', 'filmHint', t('studio.film.hint')));
+  // Authoring the export settings records them in the scene's `film` block.
+  for (const control of [filmFps, filmBlur, filmShake]) {
+    control.addEventListener('change', () => {
+      try { S.setFilm({ fps: Number(filmFps.value), samples: Number(filmBlur.value), shake: Number(filmShake.value) }); } catch { /* exporting */ }
+      updateFilmSummary();
+    });
+  }
+  filmSize.addEventListener('change', () => updateFilmSummary());
+  // Export veil: blocks the canvas and panel while frames render; live preview at the native aspect.
+  const filmVeil = el('div', 'filmVeil');
+  filmVeil.setAttribute('role', 'dialog');
+  filmVeil.setAttribute('aria-modal', 'true');
+  filmVeil.setAttribute('aria-label', t('studio.film.veilTitle'));
+  const veilPreview = document.createElement('canvas');
+  veilPreview.className = 'fvPreview';
+  const veilBar = el('div', 'fvBar');
+  const veilFill = el('i');
+  veilBar.appendChild(veilFill);
+  const veilText = el('div', 'fvText', t('studio.film.preparing'));
+  veilText.setAttribute('aria-live', 'polite');
+  const veilCancel = el('button', 'warn', t('studio.film.cancel'));
+  veilCancel.addEventListener('click', () => S.cancelFilmExport());
+  filmVeil.append(el('div', 'fvTitle', t('studio.film.veilTitle')), veilPreview, veilBar, veilText, veilCancel);
+  for (const evName of ['pointerdown', 'pointermove', 'pointerup', 'wheel', 'keydown']) {
+    filmVeil.addEventListener(evName, (e) => e.stopPropagation());
+  }
+  root.appendChild(filmVeil);
+  const clockText = (ms: number): string => {
+    const seconds = Math.max(0, Math.round(ms / 1000));
+    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  };
+  function showFilmProgress(progress: StudioFilmProgress): void {
+    veilFill.style.width = `${progress.frames ? (progress.frame / progress.frames) * 100 : 0}%`;
+    veilText.textContent = progress.stage === 'preparing' ? t('studio.film.preparing')
+      : progress.stage === 'finishing' ? t('studio.film.finishing')
+        : progress.remainingMs === null
+          ? t('studio.film.progressFirst', { frame: progress.frame, frames: progress.frames })
+          : t('studio.film.progress', { frame: progress.frame, frames: progress.frames, remaining: clockText(progress.remainingMs) });
+  }
+  function drawFilmPreview(canvas: HTMLCanvasElement): void {
+    const aspect = canvas.width / Math.max(1, canvas.height);
+    const width = aspect >= 1 ? 640 : Math.round(480 * aspect);
+    const height = Math.round(width / aspect);
+    if (veilPreview.width !== width || veilPreview.height !== height) { veilPreview.width = width; veilPreview.height = height; }
+    veilPreview.getContext('2d')?.drawImage(canvas, 0, 0, width, height);
+  }
+  filmBtn.addEventListener('click', () => {
+    if (S.filmExportStatus().active || S.recordingStatus().active) return;
+    filmVeil.classList.add('on');
+    veilFill.style.width = '0%';
+    veilText.textContent = t('studio.film.preparing');
+    veilCancel.focus();
+    S.exportFilm({
+      resolution: Number(filmSize.value),
+      fps: Number(filmFps.value),
+      samples: Number(filmBlur.value),
+      shake: Number(filmShake.value),
+      download: true,
+      onProgress: showFilmProgress,
+      onFrame: drawFilmPreview,
+    })
+      .then((result) => flashBusy(t('studio.film.saved', { size: (result.bytes / 1048576).toFixed(1) })))
+      .catch((error: RuntimeValue) => flashBusy(error instanceof Error && error.name === 'AbortError'
+        ? t('studio.film.cancelled')
+        : t('studio.film.failed', { error: errorMessage(error) })))
+      .finally(() => { filmVeil.classList.remove('on'); api.refreshStoryboard(); });
+  });
+  let filmSignature = '';
+  function updateFilmSummary(): void {
+    const film = S.getFilm();
+    const signature = film ? `${film.fps}/${film.samples}/${film.shake}` : '';
+    if (signature !== filmSignature) {
+      filmSignature = signature;
+      if (film) {
+        filmFps.value = String(film.fps);
+        if ([...filmBlur.options].some((option) => option.value === String(film.samples))) filmBlur.value = String(film.samples);
+        if ([...filmShake.options].some((option) => option.value === String(film.shake))) filmShake.value = String(film.shake);
+      }
+    }
+    const status = S.filmExportStatus();
+    const busyOutput = status.active || S.recordingStatus().active;
+    filmBtn.disabled = busyOutput || !status.supported;
+    for (const control of [filmSize, filmFps, filmBlur, filmShake]) control.disabled = busyOutput;
+    if (!status.supported) { filmSummary.textContent = t('studio.film.unsupported'); return; }
+    try {
+      const format = S.productionFormat;
+      const { width, height } = filmOutputSize(format, Number(filmSize.value));
+      const plan = createFilmPlan(normalizeFilm({ ...(film ?? {}), fps: Number(filmFps.value), samples: Number(filmBlur.value) }), 0, S.durationMs);
+      filmSummary.textContent = t('studio.film.summary', {
+        ratio: format === 'portrait' ? '9:16' : format === 'square' ? '1:1' : '16:9',
+        width, height, seconds: (plan.map.durationMs / 1000).toFixed(1), frames: plan.frames,
+      });
+    } catch (error) {
+      filmSummary.textContent = errorMessage(error);
+    }
+  }
+  secCap.appendChild(el('div', 'filmHead live', t('studio.film.liveHeading')));
   const videoRow = el('div', 'row');
   videoRow.appendChild(el('label', 'k', 'Video'));
   const fpsSel = document.createElement('select');
@@ -1365,6 +1842,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   function rebuildEffectList() {
     fxStack.textContent = '';
     const effects = S.listEffects();
+    rebuildFxParams(effects);
+    refreshCinematicToggles();
     if (!effects.length) {
       fxStack.appendChild(el('div', 'fxempty', t('studioPanel.fx.empty')));
       return;
@@ -1474,7 +1953,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       card.appendChild(copy);
       const transition = document.createElement('select');
       transition.setAttribute('aria-label', t('studioPanel.shot.transitionAria', { label: shot.label }));
-      for (const id of ['smooth', 'linear', 'cut', 'bezier']) {
+      for (const id of ['smooth', 'linear', 'cut', 'bezier', 'spline']) {
         const option = document.createElement('option');
         option.value = id;
         option.textContent = id.toUpperCase();
@@ -1528,7 +2007,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   }
 
   // --- public panel API -------------------------------------------------------
-  let refreshAcc = 0;
+  let refreshAcc = 0, planAcc = 0;
   const api: StudioPanelRuntime = {
     root,
     show() { root.style.display = 'block'; productionPanel.setVisible(true); api.refreshAll(); },
@@ -1565,6 +2044,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         alist.appendChild(row);
       });
       api.refreshSelected();
+      if (planShown) planView.refreshPlan();
     },
     refreshSelected() {
       const a = S._internal.selected;
@@ -1619,6 +2099,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       for (const playhead of timelineBoard.querySelectorAll<HTMLElement>('.playhead')) {
         playhead.style.left = left;
       }
+      if (planShown && !S.playing) planView.refreshTime();
       const rec = S.recordingStatus();
       recordBtn.textContent = rec.active ? t('studio.stopRecording') : t('studio.recordVideo');
       recordBtn.classList.toggle('on', rec.active);
@@ -1649,10 +2130,13 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       railBtn.disabled = isRecording;
       timeSelect.disabled = isRecording;
       rebuildStoryboard();
+      updateFilmSummary();
+      if (planShown) planView.refreshPlan();
       api.refreshTime();
     },
     refreshMap() {
       timeSelect.value = S.timeOfDay;
+      refreshSun();
       const id = S.mapId;
       badgeMap.textContent = id ? id.toUpperCase() : '';
       if (!id) return;
@@ -1660,13 +2144,16 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       mapHero.src = imageFor(MAP_HEROES, id) || imageFor(MAP_THUMBS, id) || '';
       mapName.textContent = info.name || id;
       mapId.textContent = id.toUpperCase();
+      if (planShown) planView.refreshPlan();
       mapBtn.setAttribute('aria-label', t('studioPanel.map.chooseAriaCurrent', { name: info.name || id }));
       for (const [cardId, card] of mapCards) {
         card.setAttribute('aria-selected', String(cardId === id));
       }
     },
+    refreshPicture() { picturePanel.refresh(); },
     refreshAll() {
       api.refreshMap();
+      api.refreshPicture();
       api.refreshActors();
       api.refreshEffects();
       api.refreshCamera();
@@ -1675,12 +2162,16 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     },
     tick(dt) {
       refreshAcc += dt;
+      planAcc += dt;
+      // the plan follows the playhead at ~15 fps while the take plays
+      if (planShown && S.playing && planAcc >= 1 / 15) { planAcc = 0; planView.refreshTime(); }
       if (refreshAcc < 0.25) return;
       refreshAcc = 0;
       const c = S.getCamera();
       footCam.textContent =
         `CAM ${c.pos.map((v) => v.toFixed(1)).join(', ')}  ·  yaw ${c.yawDeg.toFixed(1)}°  ` +
         `pitch ${c.pitchDeg.toFixed(1)}°  ·  fov ${c.fov.toFixed(0)}  ·  T ${(S.fxTimeMs / 1000).toFixed(2)}s`;
+      refreshSunCamera();
       api.refreshTime();
     },
   };

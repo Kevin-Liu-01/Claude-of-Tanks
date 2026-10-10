@@ -105,7 +105,8 @@ interface SceneWatchdogOptions {
   onRescue?: (result: SceneWatchdogResult) => void;
   /** Bounded operation timings for covered network entry, never a frame-loop probe. */
   measureTimings?: boolean;
-  /** Explicit known-night preset.skyIntensity; never infer night from dark pixels. */
+  /** Explicit known-night preset.skyIntensity, or a low-light battle's metered ratio (battleProbeRadianceScale);
+   * never inferred from dark pixels. */
   nightRadianceScale?: number;
 }
 
@@ -475,6 +476,27 @@ function withSceneProbeRadiance<T>(scene: THREE.Scene, scale: number, render: ()
     scene.environmentIntensity = environmentIntensity;
     for (const [light, intensity] of lights) light.intensity = intensity;
   }
+}
+
+/** The strongest diagnostic illumination a battle probe applies: the night preset's own sky scale (x12.5). */
+const MIN_BATTLE_PROBE_RADIANCE_SCALE = 0.08;
+
+/**
+ * 2026-10-09 (the MP-entry lane; R047's two-peer Verdant entries both failed "Battle graphics could not be verified"):
+ * the probe reads scene-linear radiance before the camera's exposure. Since the grounded light model (2026-10-01) the
+ * camera opens up wherever the horizontal light falls under the exposure law's reference: Verdant's sunset meters 0.49
+ * against 3.0 (exposure 2.78), and a healthy sunset frame read 3.7-4.7 against the black threshold 6, so every Verdant
+ * sunset network round threw at entry, and the covered solo entry refused it too (automation skips that probe). Night already
+ * draws the probe under diagnostic illumination, its authored sky scale. A battle below the reference now draws it under
+ * the ratio the light model metered, through the same radiance path: only broad lit inputs scale, so a failed lit
+ * pipeline stays dark and the threshold keeps its meaning. Null (no change) at or above the reference, or without a
+ * metered illuminance (the legacy rig reports the reference itself).
+ */
+export function battleProbeRadianceScale(illuminance: unknown, referenceIlluminance: number): number | null {
+  if (typeof illuminance !== 'number' || !Number.isFinite(illuminance) || illuminance <= 0) return null;
+  if (!Number.isFinite(referenceIlluminance) || referenceIlluminance <= 0) return null;
+  const ratio = illuminance / referenceIlluminance;
+  return ratio < 1 ? Math.max(MIN_BATTLE_PROBE_RADIANCE_SCALE, ratio) : null;
 }
 
 function copySceneBandTimings(rows: readonly SceneBandTiming[]): SceneBandTiming[] {

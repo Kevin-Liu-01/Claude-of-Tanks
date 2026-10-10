@@ -1,4 +1,4 @@
-import { weaponHitKind, type WeaponHitIdentity } from '../game/weaponHitKind.ts';
+import { isRapidFireHit, weaponHitKind, type WeaponHitIdentity } from '../game/weaponHitKind.ts';
 export interface ReadoutHit extends WeaponHitIdentity {
   readonly shellId?: number;
   readonly targetId: string;
@@ -6,26 +6,10 @@ export interface ReadoutHit extends WeaponHitIdentity {
   readonly damage: number;
   readonly kind: string;
 }
-export interface MachineGunBurst<E extends ReadoutHit> {
-  latest: E;
-  count: number;
-  damage: number;
-  penetrations: number;
-  blocked: number;
-  at: number;
-}
-const BURST_GAP_MS = 1200;
-/** Only adjacent rounds against the same entity/weapon form a burst. */
-export function appendMachineGunBurst<E extends ReadoutHit>(
-  previous: MachineGunBurst<E> | null, hit: E, now: number, penetrated: boolean, blocked: boolean,
-): MachineGunBurst<E> {
-  const same = previous && now >= previous.at && now - previous.at <= BURST_GAP_MS
-    && previous.latest.targetId === hit.targetId && previous.latest.attackerId === hit.attackerId
-    && previous.latest.shellName === hit.shellName && previous.latest.caliberMm === hit.caliberMm;
-  const burst = same ? previous : { latest: hit, count: 0, damage: 0, penetrations: 0, blocked: 0, at: now };
-  burst.latest = hit; burst.count++; burst.damage += Math.max(0, hit.damage);
-  burst.penetrations += Number(penetrated); burst.blocked += Number(blocked); burst.at = now;
-  return burst;
+/** Automatic fire only replaces the main panel for a resolved penetration.
+ * Module damage can have zero hull damage; use the event, not its UI label. */
+export function shouldShowShotReadout(hit: WeaponHitIdentity & { kind?: string }): boolean {
+  return !isRapidFireHit(hit) || hit.kind === 'pen' || hit.kind === 'he_pen';
 }
 /** One missile may report a direct hit plus many splash victims in the same tick. */
 export function keepMissileDirectHit(current: ReadoutHit | null, next: ReadoutHit): boolean {

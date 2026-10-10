@@ -404,4 +404,24 @@ for(const high of [true,false]) {
     for(let i=0;i<reset.length;i++)close(reset[i].distanceTo(bosses[i]),0,'source arm datum survives reset');
   } finally { model.dispose(); }
 }
+// Two bogie arms share one fixed bearing, while every wheel retains its axle.
+for (const high of [true, false]) {
+  const model = fixture({ suspensionPattern: 'paired-bogie' }, high);
+  try {
+    const mesh = model.root.getObjectByName('gearSuspensionJointBosses');
+    const before = positions(mesh);
+    assert.equal(new Set(before.map(p => p.toArray().join(','))).size, before.length,
+      'paired suspension must not render the fixed bearing twice');
+    for (const wheel of positions(model.root.getObjectByName('gearRoadWheelTires'))) {
+      assert.ok(before.some(p => Math.sign(p.x) === Math.sign(wheel.x)
+        && Math.abs(p.y - wheel.y) < 1e-6 && Math.abs(p.z - wheel.z) < 1e-6),
+      'deduplicating the fixed bearing must preserve every moving axle');
+    }
+    model.gear.update(.35, -.65); model.gear.resetPose();
+    const after = positions(mesh);
+    assert.equal(after.length, before.length);
+    for (let i = 0; i < after.length; i++) close(after[i].distanceTo(before[i]), 0,
+      'shared bearings retain the authored suspension datum after motion and reset');
+  } finally { model.dispose(); }
+}
 console.log('roadWheelRestHeights.selftest: measured axles/supports and independent moving suspension dimensions, fixed drum lanes, immutable inputs and unlit fleet gear pass');

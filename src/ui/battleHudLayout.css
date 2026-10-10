@@ -213,10 +213,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-card{max-h
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-body{min-height:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag{
   box-sizing:border-box;margin:0;grid-template-columns:minmax(0,90fr) minmax(0,172fr);gap:6px;
-  --diagram-size:clamp(0px,calc(var(--hud-right-height) - 160px - var(--cot-si-burst-space,0px) - var(--cot-si-blast-space,0px)),90px);
+  --diagram-size:clamp(0px,calc(var(--hud-right-height) - 160px - var(--cot-si-blast-space,0px)),90px);
   min-height:0;height:calc(var(--diagram-size) + 10px);flex-shrink:1;overflow:visible;
 }
-body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-report,.tight-shot-report) .cot-si-diag{--diagram-size:clamp(0px,calc(var(--hud-right-height) - 60px - var(--cot-si-burst-space,0px) - var(--cot-si-blast-space,0px)),90px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-report,.tight-shot-report) .cot-si-diag{--diagram-size:clamp(0px,calc(var(--hud-right-height) - 60px - var(--cot-si-blast-space,0px)),90px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag .box{width:min(100%,var(--diagram-size))!important;height:auto!important;aspect-ratio:1;min-width:0;min-height:0;justify-self:center}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag .box:nth-child(2){width:min(100%,calc(var(--diagram-size) * 2))!important;aspect-ratio:2}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag :is(.pf,.sil){background-size:contain;mask-size:contain;object-fit:contain}

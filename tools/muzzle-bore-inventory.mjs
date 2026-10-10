@@ -1,35 +1,14 @@
 #!/usr/bin/env node
-// Muzzle-bore triangle inventory (owner 2026-09-22: "audit all our wheels and gun holes again ...
-// the point of adding holes instead of carving them into the barrel is that we save on triangles,
-// so actually check for this and make sure were saving the triangles here").
-//
-//   node tools/muzzle-bore-inventory.mjs [--ids=a,b | --all] [--quality=high,low] [--json=path] [--md=path] [--gate] [--debug]
-//
-// Builds every selected tank under node at each quality and measures the mouth in the rig_muzzle frame:
-//  * added hole   the factory's universal fallback assembly, muzzleBoreShadowFallback{Rim,Throat,Annulus,Disc},
-//                 counted per part (the "hole that is added");
-//  * carved bore  barrel-bucket triangles (gun/gunDark/gunBarrelN/gunMount) inside the terminal window of the
-//                 mouth (radius <= 1.3 R, from the floor to 2 cm ahead of the marker) that are not the tube's
-//                 outward-facing skin, split into cap (the ordinary tube end within 3 cm), floor, wall, ring and
-//                 lip, plus the barrel's own axial recess depth measured by rays that ignore the fallback
-//                 (a "hole that is carved");
-//  * method       fallback-only | physical-declared (P.physicalMuzzleBore contract, ray-verified at build) |
-//                 authored-recess (a funnel/torus/disc recess merged into the gun buckets, §B3.1 helpers) |
-//                 carved-undeclared (a recess deeper than the 3 cm counterbore law with no contract) |
-//                 none (sealed launch canisters);
-//  * seat policy  tools/muzzle-seat-policy.mjs muzzleSeatAxialFit on every muzzleSeatReceipt, with the same
-//                 assembled disc-depth witness the browser probe adds;
-//  * formulas     for a mouth of N segments: hole as built (since 2026-09-22) = flat ring 2N + disc N (+ throat
-//                 sleeve 2N when the authored tube stops short) = 3N–5N; a verified physical recess keeps only
-//                 the disc (N). Before 2026-09-22 the hole was rim torus 10N + annulus 2N + disc N = 13N–15N.
-//                 carved recess = wall 2N + floor N = 3N, plus the annulus ring 2N that an open tube end needs
-//                 = 5N, which is a net 4N over the capped tube it replaces (the cap it removes is N).
-// --gate exits 1 when any selected hull pays twice (a carved or authored recess AND the fallback assembly)
-// without a physical contract. Node-only: no vite, no puppeteer.
+// Counts actual native stock, carved interiors and any obsolete mask geometry.
+// Conversion deltas exclude the removed legacy mask; they are not total fleet
+// savings. A 12-sided interior costs 24 wall + 10 floor triangles. Native face
+// retriangulation is measured separately instead of estimated as a round cap.
+// Usage: --ids=a,b | --all, --quality=high,low, --json=path, --md=path, --gate.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import * as THREE from 'three';
 import './tank-surface-collect.mjs'; // node canvas shim
+import { verifyCarvedMuzzleBore } from '../src/vehicles/carvedMuzzleBore.ts';
 import { muzzleSeatAxialFit } from './muzzle-seat-policy.mjs';
 
 import { pathToFileURL } from 'node:url';
@@ -48,8 +27,8 @@ try { fills = await import('../src/vehicles/interiorFills.ts'); } catch { fills 
 const ids = flag('all') ? [...DEVELOPMENT_TANK_IDS] : opt('ids', 'm1a2,k2,kf41_lynx_x').split(',').map((s) => s.trim()).filter(Boolean);
 const qualities = opt('quality', 'high,low').split(',').map((s) => s.trim()).filter(Boolean);
 const debug = flag('debug');
-/** Methods that satisfy the owner's rule: the fallback assembly alone, or a declared, ray-verified physical bore. */
-export const ALLOWED_BORE_METHODS = Object.freeze(['fallback-only', 'physical-declared', 'none']);
+/** Every playable cannon needs a verified physical opening; sealed canisters are exempt. */
+export const ALLOWED_BORE_METHODS = Object.freeze(['physical-declared', 'physical-carved', 'none']);
 
 const FALLBACK_GROUP = /^muzzleBoreShadowFallback(?:_\d+)?$/;
 const FALLBACK_PART = /^muzzleBoreShadowFallback(Rim|Throat|Annulus|Disc)(?:_\d+)?$/;
@@ -132,7 +111,7 @@ export function inventoryOne(id, quality) {
       if (FALLBACK_PART.test(object.name || '') || HIDDEN_AUTHORED.test(object.name || '')) return;
       const tris = triangleCount(object.geometry);
       gunSubtreeTris += tris;
-      if (BARREL_BUCKET.test(object.name || '')) { barrelTris += tris; barrelMeshes.push(object); }
+      if (BARREL_BUCKET.test(object.name || '') || object.userData.carvedBoreStock) { barrelTris += tris; barrelMeshes.push(object); }
     });
     // Seat receipts, with the browser probe's independent assembled disc-depth witness.
     const receipts = fallbackGroups.map((group) => {
@@ -140,7 +119,7 @@ export function inventoryOne(id, quality) {
       if (!receipt) return null;
       const disc = group.children.find((part) => /FallbackDisc/.test(part.name || ''));
       const physicalDiscDepthM = disc ? -muzzle.worldToLocal(disc.getWorldPosition(new THREE.Vector3())).z : null;
-      return { ...receipt, physicalDiscDepthM };
+      return { ...receipt, physicalDiscDepthM, ...(group.userData.physicalMouth ? verifyCarvedMuzzleBore(root,group) : {}) };
     }).filter(Boolean);
     const seatPass = receipts.length === expectedBores && receipts.every(muzzleSeatAxialFit);
     const physical = root.userData.physicalMuzzleBoreVerification || null;
@@ -256,21 +235,21 @@ export function inventoryOne(id, quality) {
       const angles = new Set(course.filter((v) => v[0] >= zRef - 0.004).map((v) => v[1]));
       row.nTube = Math.min(96, Math.max(3, angles.size));
     }
-    row.nBore = fallback.annulus ? fallback.annulus / 2 / Math.max(1, expectedBores) : (fallback.disc / Math.max(1, expectedBores)) || null;
-    const nB = row.nBore || 0, nT = row.nTube || nB, mouths = Math.max(1, expectedBores);
+    row.conversion = {
+      removedTriangles: receipts.reduce((sum,r)=>sum+(r.removedTriangles||0),0),
+      addedTriangles: receipts.reduce((sum,r)=>sum+(r.addedTriangles||0),0),
+      interiorTriangles: receipts.filter(r=>r.revision==='carved-physical-recess-r1').length*34,
+    };
+    row.nBore = row.conversion.interiorTriangles ? 12 : fallback.annulus ? fallback.annulus / 2 / Math.max(1, expectedBores) : (fallback.disc / Math.max(1, expectedBores)) || null;
     row.formulas = {
-      note: 'per mouth: hole as built (2026-09-22) = flat ring 2N + disc N (+ throat 2N when the tube stops short); physical recess keeps the disc only (N); before 2026-09-22 it was rim 10N + annulus 2N + disc N; carved = wall 2N + floor N = 3N, +2N annulus for an open end = 5N (net 4N over the removed cap N)',
-      holeAsBuilt: fallback.total,
-      holeMinimal: 3 * nB * mouths,
-      carved3N_atBore: 3 * nB * mouths,
-      carved5N_atBore: 5 * nB * mouths,
-      carved5N_atTube: 5 * nT * mouths,
-      carvedNet4N_atTube: 4 * nT * mouths,
-      savingsVsCarved5N_atTube: 5 * nT * mouths - fallback.total,
-      savingsMinimalVsCarved5N_atTube: 5 * nT * mouths - 3 * nB * mouths,
+      note: 'Actual cut delta excludes removed legacy masks; no estimated savings claim.',
+      interiorTriangles: row.conversion.interiorTriangles,
+      nativeCutDelta: row.conversion.addedTriangles-row.conversion.removedTriangles-row.conversion.interiorTriangles,
+      conversionDelta: row.conversion.addedTriangles-row.conversion.removedTriangles,
     };
     const recessed = recess.recessed;
-    if (physical) row.method = 'physical-declared';
+    if (receipts.every(r=>r.revision==='carved-physical-recess-r1') && seatPass) row.method = 'physical-carved';
+    else if (physical) row.method = 'physical-declared';
     else if (recessed && Number.isFinite(deepestM) && deepestM > CAP_MAX_DEPTH_M + 0.004) row.method = 'carved-undeclared';
     else if (recessed) row.method = 'authored-recess';
     else row.method = 'fallback-only';
@@ -307,8 +286,8 @@ const byId = new Map();
 for (const row of rows) { if (!byId.has(row.id)) byId.set(row.id, {}); byId.get(row.id)[row.quality] = row; }
 const pad = (s, n) => String(s ?? '').padEnd(n);
 const hl = (get) => { const h = get('high'), l = get('low'); return `${h ?? '-'}/${l ?? '-'}`; };
-console.log(pad('id', 22), pad('method', 18), pad('hole h/l', 10), pad('carved h/l', 11), pad('barrel h/l', 12), pad('carvedEq5N h/l', 15), pad('saving h/l', 12), pad('N h/l', 8), pad('depth', 7), 'seat flags');
-const mdLines = ['| id | method | bore tris (hole) high/low | carved tris high/low | barrel tris high/low | carved-equivalent 5N tris high/low | savings (carved-eq minus hole) high/low | tube N high/low | recess depth m | seat policy ok | flags |', '|---|---|---|---|---|---|---|---|---|---|---|'];
+console.log(pad('id', 22), pad('method', 18), pad('hole h/l', 10), pad('carved h/l', 11), pad('barrel h/l', 12), pad('interior h/l', 15), pad('cut delta h/l', 12), pad('N h/l', 8), pad('depth', 7), 'seat flags');
+const mdLines = ['| id | method | bore tris (hole) high/low | carved tris high/low | barrel tris high/low | new interior tris high/low | native cut delta high/low | tube N high/low | recess depth m | seat policy ok | flags |', '|---|---|---|---|---|---|---|---|---|---|---|'];
 for (const [id, q] of byId) {
   const get = (field) => (quality) => { const r = q[quality]; if (!r || r.error) return null; return field(r); };
   const err = Object.values(q).find((r) => r.error);
@@ -318,8 +297,8 @@ for (const [id, q] of byId) {
   const hole = hl(get((r) => r.fallback.total));
   const carved = hl(get((r) => r.recess?.carvedTris ?? 0));
   const barrel = hl(get((r) => r.barrelTris));
-  const eq = hl(get((r) => r.formulas?.carved5N_atTube));
-  const sav = hl(get((r) => r.formulas?.savingsVsCarved5N_atTube));
+  const eq = hl(get((r) => r.formulas?.interiorTriangles));
+  const sav = hl(get((r) => r.formulas?.nativeCutDelta));
   const n = hl(get((r) => r.nTube));
   const depth = any.recess?.deepestM != null ? any.recess.deepestM.toFixed(3) : '-';
   const seat = Object.values(q).every((r) => r.seatPass) ? 'ok' : 'FAIL';
@@ -331,9 +310,10 @@ for (const [id, q] of byId) {
 const doublePayers = [...byId.values()].filter((q) => Object.values(q).some((r) => !r.error && r.method !== 'fallback-only' && r.method !== 'physical-declared' && r.method !== 'none' && r.double));
 const physicalPayers = [...byId.values()].filter((q) => Object.values(q).some((r) => !r.error && r.method === 'physical-declared'));
 console.log(`bore inventory: ${byId.size} tanks x ${qualities.length} qualities, ${doublePayers.length} paying twice without a contract, ${physicalPayers.length} declared physical bores, ${failures} build failures`);
+const invalidMouths = rows.filter(row => !row.error && (!ALLOWED_BORE_METHODS.includes(row.method) || !row.seatPass || row.fallback.total > 0));
 const jsonPath = opt('json', '');
 if (jsonPath) { mkdirSync(dirname(resolve(jsonPath)), { recursive: true }); writeFileSync(resolve(jsonPath), JSON.stringify({ generatedAt: new Date().toISOString(), qualities, rows }, null, 1)); }
 const mdPath = opt('md', '');
 if (mdPath) { mkdirSync(dirname(resolve(mdPath)), { recursive: true }); writeFileSync(resolve(mdPath), `${mdLines.join('\n')}\n`); }
-if (flag('gate') && (doublePayers.length || failures)) process.exit(1);
+if (flag('gate') && (doublePayers.length || failures || invalidMouths.length)) process.exit(1);
 }

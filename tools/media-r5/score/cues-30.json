@@ -1,0 +1,216 @@
+{
+ "title": "Around the Clock — 30s cut",
+ "bpm": 96,
+ "durationSec": 30,
+ "lufs": -14,
+ "musicDb": -3,
+ "sfxDb": -1,
+ "fadeOutSec": 1.2,
+ "progression": [
+  "Dm",
+  "Dm",
+  "Bb",
+  "Bb",
+  "F",
+  "F",
+  "C",
+  "C"
+ ],
+ "motif": [
+  "A4",
+  "D5",
+  "C5",
+  "A4"
+ ],
+ "sections": [
+  {
+   "name": "cold",
+   "fromBar": 0,
+   "toBar": 0,
+   "layers": [
+    "drone",
+    "ticks"
+   ],
+   "gainDb": -10
+  },
+  {
+   "name": "title",
+   "fromBar": 1,
+   "toBar": 1,
+   "layers": [
+    "drone"
+   ],
+   "gainDb": -5
+  },
+  {
+   "name": "dawn",
+   "fromBar": 2,
+   "toBar": 3,
+   "layers": [
+    "drone",
+    "ticks",
+    "pulse",
+    "pad",
+    "taiko"
+   ],
+   "gainDb": -6
+  },
+  {
+   "name": "noon",
+   "fromBar": 4,
+   "toBar": 5,
+   "layers": [
+    "pulse16",
+    "open",
+    "taiko2",
+    "toms",
+    "hats",
+    "rim"
+   ],
+   "gainDb": -2
+  },
+  {
+   "name": "golden",
+   "fromBar": 6,
+   "toBar": 6,
+   "layers": [
+    "pulse16",
+    "open",
+    "taiko2",
+    "hats16",
+    "toms",
+    "rim",
+    "pad"
+   ],
+   "gainDb": -1
+  },
+  {
+   "name": "slowmo",
+   "fromBar": 7,
+   "toBar": 7,
+   "layers": [
+    "heartbeat",
+    "drone"
+   ],
+   "gainDb": -8
+  },
+  {
+   "name": "night",
+   "fromBar": 8,
+   "toBar": 9,
+   "layers": [
+    "taiko2",
+    "toms",
+    "hats16",
+    "rim",
+    "pulse16",
+    "open",
+    "drone"
+   ],
+   "gainDb": 0
+  },
+  {
+   "name": "end",
+   "fromBar": 10,
+   "toBar": 11,
+   "layers": [
+    "drone",
+    "ticks"
+   ],
+   "gainDb": -4
+  }
+ ],
+ "hits": [
+  {
+   "kind": "swell",
+   "t": 2.5,
+   "sec": 2.2
+  },
+  {
+   "kind": "braam",
+   "t": 2.5,
+   "chord": "Dm",
+   "sec": 4.5
+  },
+  {
+   "kind": "boom",
+   "t": 2.5,
+   "sec": 3
+  },
+  {
+   "kind": "riser",
+   "t": 10,
+   "sec": 3
+  },
+  {
+   "kind": "braam",
+   "t": 10,
+   "chord": "Bb",
+   "sec": 4
+  },
+  {
+   "kind": "boom",
+   "t": 10,
+   "sec": 3
+  },
+  {
+   "kind": "braam",
+   "t": 15,
+   "chord": "F",
+   "sec": 4
+  },
+  {
+   "kind": "boom",
+   "t": 17.5,
+   "sec": 4,
+   "f0": 90,
+   "f1": 26,
+   "tau": 0.5
+  },
+  {
+   "kind": "riser",
+   "t": 20,
+   "sec": 2.5
+  },
+  {
+   "kind": "braam",
+   "t": 20,
+   "chord": "Dm",
+   "sec": 4.5
+  },
+  {
+   "kind": "boom",
+   "t": 20,
+   "sec": 3
+  },
+  {
+   "kind": "braam",
+   "t": 22.5,
+   "chord": "C",
+   "sec": 4
+  },
+  {
+   "kind": "swell",
+   "t": 25,
+   "sec": 2
+  },
+  {
+   "kind": "braam",
+   "t": 25,
+   "chord": "Dm",
+   "sec": 5
+  },
+  {
+   "kind": "boom",
+   "t": 25,
+   "sec": 4
+  },
+  {
+   "kind": "stop",
+   "t": 29.2
+  }
+ ],
+ "ducks": [],
+ "sfx": [],
+ "rampSec": 0.4
+}

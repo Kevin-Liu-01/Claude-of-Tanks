@@ -1,6 +1,7 @@
 // i18nLazyCatalog.selftest.mjs — every document loads its own catalogs on demand: English documents never load the
 // zh-CN catalog and Chinese ones preload it (FE-P3); no page's static graph holds a catalog, so a public page loads only
-// its generated page catalog (tools/i18n-page-catalogs.selftest.mjs) and the game the full catalogs.
+// its generated page catalog (tools/i18n-page-catalogs.selftest.mjs) and the game the full catalogs, less the Scene
+// Studio's strings, which load with its chunk.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -122,5 +123,62 @@ const pluginSource = readFileSync(resolve(ROOT, 'tools/viteI18nPageCatalogs.ts')
 assert.match(pluginSource, /transformIndexHtml: \{\s*order: 'post',/,
   'the build names each page\'s catalog chunks after bundling');
 
+// 5. The Scene Studio's strings (src/ui/i18nStudioKeys.ts) load with its chunk: the build serves the game's catalogs
+//    without them and each locale's slice as a module that main.ts loads beside the Studio's chunk.
+const { i18nStudioCatalog, splitStudioCatalog } = await import('../../tools/viteI18nStudioCatalog.ts');
+const fullCatalogs = Object.fromEntries(['en-US', 'zh-CN'].map((locale) =>
+  [locale, JSON.parse(readFileSync(resolve(ROOT, `src/ui/i18nCatalog.${locale}.json`), 'utf8'))]));
+const studioKeys = Object.keys(splitStudioCatalog(fullCatalogs['en-US']).studio).sort();
+assert.ok(studioKeys.length > 100, 'the Studio owns its slice of the catalog');
+assert.deepEqual(Object.keys(splitStudioCatalog(fullCatalogs['zh-CN']).studio).sort(), studioKeys, 'both locales split alike');
+assert.match(viteConfig, /^\s*i18nStudioCatalog\(\),\n\s*i18nPageCatalogs\(\),$/m, 'the build registers the Studio catalog split');
+const studioPlugin = i18nStudioCatalog();
+studioPlugin.configResolved({ root: ROOT });
+const pluginContext = { addWatchFile() {}, error(message) { throw new Error(message); } };
+assert.equal(studioPlugin.enforce, 'pre', 'the split serves the catalog files before Vite reads them');
+for (const locale of ['en-US', 'zh-CN']) {
+  const game = JSON.parse(studioPlugin.load.call(pluginContext, resolve(ROOT, `src/ui/i18nCatalog.${locale}.json`)));
+  const sliceId = studioPlugin.resolveId.call(pluginContext, `virtual:cot-i18n-studio/${locale}`);
+  const slice = JSON.parse(studioPlugin.load.call(pluginContext, sliceId).replace(/^export default /, '').replace(/;\s*$/, ''));
+  assert.ok(studioKeys.every((key) => !(key in game)), `the game's ${locale} catalog leaves the Studio's strings out`);
+  assert.deepEqual(Object.keys(slice).sort(), studioKeys, `the ${locale} Studio slice holds them`);
+  assert.deepEqual({ ...game, ...slice }, fullCatalogs[locale], `the ${locale} split loses and changes nothing`);
+}
+assert.equal(studioPlugin.load.call(pluginContext, resolve(ROOT, 'src/ui/i18n.ts')), null, 'other modules load as written');
+// Nothing outside the Studio shows its strings (they would read raw), and the game's static graph holds no Studio module.
+const STUDIO_MODULE = /^src\/(?:ui|game)\/studio[A-Za-z]*\.ts$/;
+const studioFamilies = ['studio.film.', 'studioPanel.picture.', 'studioPanel.light.', 'studioPanel.fxParam.'];
+for (const file of sources) {
+  if (STUDIO_MODULE.test(file) || file === 'src/ui/i18nStudioKeys.ts') continue;
+  const text = readFileSync(resolve(ROOT, file), 'utf8');
+  const shown = studioKeys.find((key) => ["'", '"', '`'].some((quote) => text.includes(`${quote}${key}${quote}`)))
+    ?? studioFamilies.find((family) => text.includes(`\`${family}\${`));
+  assert.equal(shown, undefined, `${file} shows the Studio string ${shown}, which the game's catalogs leave out`);
+}
+const { BATTLE_TIMES } = await import('../engine/battleWeatherPolicy.ts');
+assert.ok(BATTLE_TIMES.every((time) => !studioKeys.includes(`atmosphere.${time}`)),
+  'the battle time picker (battleTimeChoices.ts) offers no Studio-only time of day');
+const gameClosure = staticImportClosure('src/main.ts', { root: ROOT });
+for (const module of ['src/game/studio.ts', 'src/ui/studioPanel.ts', 'src/ui/studioPicturePanel.ts', 'src/ui/studioStrings.ts']) {
+  assert.ok(!gameClosure.has(module), `the game statically loads ${module}: ${importChain(gameClosure, module)}`);
+}
+assert.match(readFileSync(resolve(ROOT, 'src/main.ts'), 'utf8'),
+  /loadModule: \(\) => Promise\.all\(\[import\('\.\/game\/studio\.ts'\), import\('\.\/ui\/studioStrings\.ts'\)\.then\(\(strings\) => strings\.ensureStudioStrings\(\)\)\]\)/,
+  'the Studio opens once its strings are resident');
+// Runtime: the Studio merges each resident locale's slice into its dictionary (here English and, after section 3's
+// switch, Chinese); a failed slice merges nothing.
+const { extendResidentDictionaries } = await import('./studioStrings.ts');
+await assert.rejects(extendResidentDictionaries(() => Promise.reject(new Error('offline'))), /offline/, 'a failed slice rejects');
+assert.equal(dictionaries.catalogText('en-US', 'studio.film.probe'), 'studio.film.probe', 'and merges nothing');
+const sliceRequests = [];
+await extendResidentDictionaries((locale) => {
+  sliceRequests.push(locale);
+  return Promise.resolve({ default: { 'studio.film.probe': locale === 'zh-CN' ? '影片' : 'Film' } });
+});
+assert.deepEqual(sliceRequests, ['en-US', 'zh-CN'], 'each resident locale loads its slice');
+assert.equal(dictionaries.catalogText('en-US', 'studio.film.probe'), 'Film');
+assert.equal(dictionaries.catalogText('zh-CN', 'studio.film.probe'), '影片');
+assert.equal(dictionaries.catalogText('zh-CN', 'garage.battle'), '出战', 'the merge keeps the game\'s strings');
+
 console.log('i18nLazyCatalog.selftest: no page graph holds a catalog; zh-CN loads on demand, English pages never fetch it, '
-  + '/cn/ preloads it');
+  + `/cn/ preloads it; the Studio's ${studioKeys.length} strings per locale load with its chunk`);

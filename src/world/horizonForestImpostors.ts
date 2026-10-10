@@ -26,7 +26,7 @@ export const HORIZON_FOREST_IMPOSTOR_PROGRAM_KEY = 'horizon-forest-impostor-v2';
 /** The far tier's law the ring's impostors share: the matte diffuse wrap, its translucency and its sky fill. */
 export const HORIZON_FOREST_IMPOSTOR_WRAP = 0.38;
 export const HORIZON_FOREST_IMPOSTOR_THIN = 0.18;
-export const HORIZON_FOREST_IMPOSTOR_SKY_FILL = 0.80;
+export const HORIZON_FOREST_IMPOSTOR_SKY_FILL = 1.0; // (2026-10-08: the full sky, as both tiers always drew; materialEnvIntensity.ts)
 
 interface HorizonForestImpostorOptions {
   library: TreeImpostorLibrary;

@@ -39,6 +39,16 @@ Before publishing:
    lane's stale shard passes silently (round 48, 2026-09-24: Amberford's
    round-1 village haunted the dedicated bots on the new terrain and
    `server/battlePacing.selftest` went red).
+   Since 2026-10-07 (destruction, `docs/DESTRUCTION.md` §3.1) every structure record also packs its structure
+   group (`g`, and `gr` for a landmark set piece): a shard captured by a tree without that packer carries no groups,
+   and the host then plays every building on that map as indestructible. After merging lanes that touched maps,
+   regenerate every shard on the merged tree in Node — `nice -n 15 node tools/capture-world-collision-manifests.mjs
+   --node` (all maps, about an hour on a loaded machine; `--maps a,b` for some) — and confirm with `--check`; record
+   order and counts do not change, only bytes and the index digests.
+   Since 2026-10-08 Frontline Assault's authority plays the map's trench variant from its own shard
+   (`server/world-collision-manifests/<map>@assault-trenches.json`, listed under the index's `variants`): anything
+   that moves a map's records moves its variant's too, so regenerate both — `--node --variant=assault-trenches`
+   (about as long again) and `--check --variant=assault-trenches`. A base recapture keeps the index's variants.
 4. Run `node tools/shared-main-preflight.mjs --base=<starting-base> --validated-head=<tested-commit>`.
    This reads the actual remote main, rejects a dirty or stale candidate and
    reports overlapping paths. After reviewing those paths and running their
@@ -411,7 +421,10 @@ per fleet). Three fleet passes now build each tank once
 per build and run every audit that reads that build on it (`src/vehicles/fleetPass.test-support.mjs`; the audits are
 the former receipts' checks, with their assertions unchanged, in `*Audit.test-support.mjs` modules beside them):
 
-- `fleetPassHigh` — the unbatched seed-4242 HIGH build: the geometry ledger's HIGH rows, machine-gun mounts (with the
+- `fleetPassHigh` — the unbatched seed-4242 HIGH build: the geometry ledger's HIGH rows, every drawn geometry's
+  attributes object still in V8's fast mode (2026-10-07, `src/world/geometryStreams.test-support.mjs`: no
+  `deleteAttribute` on what the renderer draws; the maps' walk rides on `collisionManifestDrift`'s Node world build
+  and `drawnGeometryShape` holds the control and the garages), machine-gun mounts (with the
   detached-mount negative control), track end wraps (with the broken-station controls and 3/5 mm limits), wheel
   quality and the Gallery surface markup (formerly `wheelQuality` and `surfaceMarkupFleet`).
 - `fleetPassLow` — the same build at LOW: the ledger's LOW rows, ERA registration and gun articulation (formerly

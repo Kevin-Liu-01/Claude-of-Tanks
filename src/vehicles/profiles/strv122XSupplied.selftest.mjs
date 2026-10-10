@@ -1,3 +1,4 @@
+import {assertHollowMuzzle} from '../../../tools/physical-muzzle.test-support.mjs';
 import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
@@ -28,17 +29,7 @@ function sourceSurfaces(root,all){
     near(ray([turret],[3,y,z],[-1,0,0])?.point.x,right,.008,'held-out source right side plane');
     near(ray([turret],[-3,y,z],[1,0,0])?.point.x,left,.008,'held-out source left side plane');
   }
-  // Until 2026-09-22 physical metal sat 0.343 m behind the opening (the source
-  // bore ran to an inferred blind seat at 5.145 inside the solid/hollow
-  // bracket) with no dark cap at the lip; owner 2026-09-22 ("the point of
-  // adding holes instead of carving them into the barrel is that we save on
-  // triangles"): the metal tube is now closed at the source tip because the
-  // fleet mouth disc hid that recess. The measurement stays recorded here.
-  const metal=all.filter(m=>!/muzzleBoreShadowFallback/.test(m.name));
-  near(ray(metal,[pitchPoint[0]+.0015,pitchPoint[1],muzzle+.02],[0,0,-1])?.point.z,muzzle,.0005,
-    'metal tube closed at the source tip (recorded blind stock z 5.145)');
-  assert.equal(ray(metal,[pitchPoint[0]+.0015,pitchPoint[1],muzzle+.02],[0,0,-1])?.object.name,'gun',
-    'the closed tip is the painted tube, not a dark seat disc');
+  assertHollowMuzzle(root,muzzle);
   assert.ok(!ray([turret],[.60,1.81,-2.45],[0,0,1],.37),
     'source rising bustle underside stays empty above deck');
   // Both sight hoods contain real recesses with a glass back and solid jambs.

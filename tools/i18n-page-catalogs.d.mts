@@ -4,11 +4,18 @@ export const FULL_CATALOG: string;
 export interface PageCatalog {
   readonly pages: readonly string[];
   readonly modules: readonly string[];
+  /** The boot graph's keys (the page chunk): its scripts, their static imports and its markup. */
   readonly keys: readonly string[];
+  /** The further keys the page's lazy graphs reach (the lazy chunk, loaded at the first import() of a boundary). */
+  readonly lazyKeys: readonly string[];
+  /** The lazy boundaries: literal import() targets outside the boot graph, and theirs in turn. */
+  readonly lazy: readonly string[];
 }
 
 export interface PageCatalogScan {
   readonly catalogs: Readonly<Record<string, PageCatalog>>;
+  /** Per module, the import() specifiers of lazy boundaries that can show a lazy key: the build loads the lazy chunk first. */
+  readonly lazySites: Readonly<Record<string, readonly string[]>>;
   readonly issues: readonly string[];
 }
 

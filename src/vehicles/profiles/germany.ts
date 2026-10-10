@@ -77,7 +77,7 @@ function roofWeapon(
   P.add('turretDark', KIT.box(0.39, 0.020, 0.35), x, y + 0.048, z);
   P.add('turret', KIT.cylY(0.20, 0.22, 0.075, 18), x, y + 0.09, z);
   mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mag', tone: 'two-tone', scale, elev: 0.11,
+    mats: P.mats, cls: 'mg3', tone: 'two-tone', scale, elev: 0.11,
     shield: true, ammo: true, ring: { r: 0.16, stubs: 3 }, seed,
   }), x, y + 0.11, z, [0, yaw, 0]);
 }

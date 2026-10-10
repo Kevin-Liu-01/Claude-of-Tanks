@@ -67,8 +67,10 @@ function hull(P: TankBuilderPort): void {
       wing(-2.418,1.1833),wing(-2.2656,1.6335)];
     P.add('hull',sectionSolid(wings));
     P.addEquipment('hullDetail',deckPlate(.829,.664,.025),side*1.282,2.122,-2.666);
-    for(const [lampX,lampY,r] of [[1.419,1.299,.072],[1.256,1.261,.072]]) {
-      P.addEquipment('hullDetail',cylZ(r+.016,.062,P.q?20:12),side*lampX,lampY,3.444);
+    // fleet lane 2026-10-08 (circular-cap audit): the two pods touch, so their front rings were one coplanar overlap;
+    // the inboard pod sits 2 mm further back
+    for(const [lampX,lampY,r,dz] of [[1.419,1.299,.072,0],[1.256,1.261,.072,-.002]]) {
+      P.addEquipment('hullDetail',cylZ(r+.010,.062,P.q?20:12),side*lampX,lampY,3.444+dz);
       P.addEquipment('hullGlass',markVehicleNightLens(cylZ(r,.009,P.q?20:12), 'headlight'),side*lampX,lampY,3.477);
     }
     // The source towing eyes stand in the YZ plane: only 55 mm across X.
@@ -154,8 +156,9 @@ function turret(P:TankBuilderPort):void {
       const a=i*Math.PI*2/(P.q?24:12);return[Math.cos(a)*rx,y-2.6+Math.sin(a)*ry] as const;
     })}))));
   P.addGunExtra(cylX(.147,.405,P.q?24:14),0,0,-.096);
-  P.add('gun',cylZ(.067,2.93194,P.q?32:18),0,0,1.46597);
-  P.add('gunDark',cylZ(.061,.19,P.q?32:18),0,0,2.83694);
+  // The muzzle is a physical annulus; its dark bore floor sits inside it.
+  P.add('gun',lathedWheelSection([[0,.061],[0,.067],[2.93194,.067],[2.93194,.061]],P.q?32:18).rotateY(-Math.PI/2));
+  P.add('gunDark',cylZ(.061,.17,P.q?32:18),0,0,2.82694);
   if(P.q)for(let i=0;i<4;i++)P.add('gunDark',torus(.061,.006,20,5).rotateX(Math.PI/2),0,0,2.765+i*.04);
   P.muzzleZ=2.93194;
 }

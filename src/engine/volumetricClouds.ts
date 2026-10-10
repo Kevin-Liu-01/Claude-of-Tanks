@@ -65,6 +65,21 @@ export const CLOUD_TRACE_DIVISOR = 4;
 /** Slots traced per frame while the history rebuilds after a cut (all sixteen after four frames). */
 export const CLOUD_REBUILD_SLOTS = 4;
 /**
+ * A capture's settle after the rebuild (frames at dt 0; settleForCapture). 2026-10-09: 64 frames left four samples a
+ * history pixel against the live layer's steady accumulation (some thirty-three at CLOUD_HISTORY_MIN_ALPHA), so every
+ * gauntlet still was grainier than the sky a player sees at rest; 512 frames (an even mean of the first seventeen, then
+ * the floor's average) come within about a tenth of the steady state's noise.
+ */
+export const CLOUD_CAPTURE_SETTLE_FRAMES = 512;
+/**
+ * The resolve's floor on a fresh sample's weight (one refresh a history pixel every sixteen frames). 2026-10-09: 0.12
+ * kept about sixteen samples a pixel, and along a cloud's edges and thin parts that left a speckle the owner read as
+ * "super grainy"; 0.06 keeps about thirty-three (the grain meter, error against a 200-sample reference inside the cloud
+ * mask: 6-14 % less at rest on Monsoon, Verdant, Redrock and Frosthollow, no blur), and the reprojection follows the
+ * wind (uWindStep) so the longer memory does not trail a drifting cloud.
+ */
+export const CLOUD_HISTORY_MIN_ALPHA = 0.06;
+/**
  * The 4 × 4 Bayer matrix: slot k of a cycle is the cell holding value k, so consecutive frames trace cells as
  * far apart as possible and the rebuild sharpens evenly.
  */
@@ -120,6 +135,8 @@ const CIRRUS_WARP_M = 2600;
 const CLOUD_BOIL_M_PER_S = 0.7;
 /** 2026-10-01: the trails' upper drift and the boil wrap here (m): whole tiles of every field they read. */
 const CLOUD_UPPER_WRAP_M = 600000;
+/** A night storm's lightning: its sequence's seed and its first strike (s); a capture restarts the sequence (setCaptureTime). */
+const CLOUD_FLASH_SEED = 0x2f6b4a1d, CLOUD_FLASH_FIRST_S = 3;
 /**
  * A drift kept inside (-w, w) (2026-10-02): continuous through zero and a whole wrap at +-w. The positive modulo it
  * replaces jumped a whole wrap on the first frame after a capture zeroed the drifts (the census and the shot tools
@@ -1032,7 +1049,12 @@ void main() {
 	// Take derivatives before the divergent march. Filter at the trace footprint so all sixteen history slots
 	// see the same distant features, including during camera motion and the first frames after a cut.
 	vec3 rayDx = dFdx( dir ), rayDy = dFdy( dir );
-	float bn = blueNoise( tp );
+	// 2026-10-09 (the owner: "super grainy"): the jitter is the blue noise of the history pixel this texel refreshes, not of
+	// the trace texel. Keyed by the texel, the sixteen pixels of a 4 x 4 block took one start offset a cycle, so their
+	// errors agreed and the sky's noise was blotches eight screen pixels across that the accumulation could not average
+	// out of a moving view; keyed by the pixel, neighbours take offsets as far apart as possible (void-and-cluster ranks)
+	// and what noise remains is fine, high-frequency and averaged by the composite's filter.
+	float bn = blueNoise( tp * ${f(CLOUD_TRACE_DIVISOR)} + uSlot );
 	float jitter = fract( bn + uFrameNoise );
 	float cosT = dot( dir, uSunDir );
 	vec3 L = vec3( 0.0 );
@@ -1288,6 +1310,8 @@ uniform vec2 uPrevTan;
 uniform float uHistoryValid;
 uniform float uRebuildK;
 uniform float uMinAlpha;
+// 2026-10-09: the medium's drift over this frame (m, world): the cloud seen now along a ray stood there less this step
+uniform vec3 uWindStep;
 varying vec2 vUv;
 // Catmull-Rom in five bilinear taps (the corner taps dropped)
 vec4 historyCatmullRom( vec2 uv, vec2 size ) {
@@ -1330,7 +1354,8 @@ void main() {
 	bool fresh = cell == uSlot;
 	// where was this cloud point last frame
 	vec3 anchor = uCamPos + dir * cloudAnchorDistance( dir );
-	vec3 pr = cloudProject( anchor, uPrevCamPos, uPrevRight, uPrevUp, uPrevFwd, uPrevTan );
+	// (2026-10-09) where the wind carried it from: the history follows a drifting cloud instead of trailing it
+	vec3 pr = cloudProject( anchor - uWindStep, uPrevCamPos, uPrevRight, uPrevUp, uPrevFwd, uPrevTan );
 	bool valid = uHistoryValid > 0.5 && pr.z > 1.0 && all( greaterThan( pr.xy, vec2( 0.0 ) ) ) && all( lessThan( pr.xy, vec2( 1.0 ) ) );
 	vec4 outv;
 	if ( valid ) {
@@ -1563,9 +1588,9 @@ export class VolumetricCloudLayer {
   private readonly upperDrift = new THREE.Vector2();
   /** 2026-10-02: the aerial pass's haze-layer datum (the ground under the camera, post.ts uHazeDatum); NaN until a frame passes it. */
   private hazeDatum = Number.NaN;
-  private flashSeed = 0x2f6b4a1d;
+  private flashSeed = CLOUD_FLASH_SEED;
   private flashClock = 0;
-  private flashNext = 3;
+  private flashNext = CLOUD_FLASH_FIRST_S;
   private flashAge = 1e3;
   private flashStrokes = 0;
   private flashPeak = 0;
@@ -1672,7 +1697,8 @@ export class VolumetricCloudLayer {
         tTrace: { value: null }, tHistory: { value: null }, uSlot: { value: new THREE.Vector2() },
         uPrevCamPos: { value: new THREE.Vector3() }, uPrevRight: { value: new THREE.Vector3(1, 0, 0) }, uPrevUp: { value: new THREE.Vector3(0, 1, 0) },
         uPrevFwd: { value: new THREE.Vector3(0, 0, -1) }, uPrevTan: { value: new THREE.Vector2(1, 1) },
-        uHistoryValid: { value: 0 }, uRebuildK: { value: -1 }, uMinAlpha: { value: 0.12 },
+        uHistoryValid: { value: 0 }, uRebuildK: { value: -1 }, uMinAlpha: { value: CLOUD_HISTORY_MIN_ALPHA },
+        uWindStep: { value: new THREE.Vector3() },
       },
     });
     // the clouds' shadow field: the two weather fields, their drift, the cut and the front's clear radius (the shade map
@@ -1782,6 +1808,45 @@ export class VolumetricCloudLayer {
     this.rebuild = 0;
     this.since = 0;
     this.historyValid = false;
+  }
+
+  /**
+   * Scene Studio film capture: put the wind drift where `timeS` seconds of scene time carry it (live frames
+   * integrate their wall-clock dt instead) and, with `restart`, begin a fresh trace sequence and history. A
+   * film's clouds then depend on its camera and timeline alone, whatever the page rendered before.
+   */
+  setCaptureTime(timeS: number, restart = false): void {
+    const preset = this.preset;
+    if (!preset) return;
+    const wrap = (value: number, tile: number): number => ((value % tile) + tile) % tile;
+    const t = Math.max(0, timeS);
+    const travel = preset.windSpeed * t;
+    const wdx = Math.cos(preset.windDirRad), wdz = Math.sin(preset.windDirRad);
+    this.weatherShift.set(wrap(-wdx * travel, CLOUD_WEATHER_TILE_M), wrap(-wdz * travel, CLOUD_WEATHER_TILE_M));
+    this.noiseShift.x = wrap(-wdx * travel * 0.8, CLOUD_SHAPE_TILE_STRATUS_M);
+    this.noiseShift.z = wrap(-wdz * travel * 0.8, CLOUD_SHAPE_TILE_STRATUS_M);
+    this.cirrusShift.set(wrap(-2 * travel, CLOUD_CIRRUS_TILE_M), 0);
+    // (2026-10-09) The billows' boil and the contrails' upper drift come from scene time too, wrapped as live frames
+    // wrap them (their lookups do not tile, so a wrap is a seam). Before, a film started from whatever the page had
+    // accumulated before it, and two renders of one scene drew different clouds and cloud shadows.
+    this.noiseShift.y = wrapDrift(-CLOUD_BOIL_M_PER_S * (1 - 0.8 * preset.stratiform) * t, CLOUD_UPPER_WRAP_M);
+    const ux = Math.cos(preset.cirrusAngleRad), uz = Math.sin(preset.cirrusAngleRad);
+    this.upperDrift.set(wrapDrift(-ux * preset.windSpeed * 2 * t, CLOUD_UPPER_WRAP_M), wrapDrift(-uz * preset.windSpeed * 2 * t, CLOUD_UPPER_WRAP_M));
+    // the shade map is cut at this drift on the next render, not at whichever drift its every-eighth-frame refresh held
+    this.farShadeValid = false;
+    if (!restart) return;
+    this.frame = 0;
+    this.traces = 0;
+    this.hasPrev = false;
+    this.historyIndex = 0;
+    // a night storm's lightning runs its sequence from the take's start
+    this.flashSeed = CLOUD_FLASH_SEED;
+    this.flashClock = 0;
+    this.flashNext = CLOUD_FLASH_FIRST_S;
+    this.flashAge = 1e3;
+    this.flashStrokes = 0;
+    this.flashPeak = 0;
+    this.resetHistory();
   }
 
   private updateGoboMaterials(): void {
@@ -2130,6 +2195,8 @@ export class VolumetricCloudLayer {
     (r.uPrevUp.value as THREE.Vector3).copy(P.up);
     (r.uPrevFwd.value as THREE.Vector3).copy(P.fwd);
     (r.uPrevTan.value as THREE.Vector2).copy(P.tan);
+    // the medium's drift since the last frame (the weather lookup moved by -wx, -wz, so a cloud moved by +wx, +wz)
+    (r.uWindStep.value as THREE.Vector3).set(wx, 0, wz);
 
     this.beginTimer();
     if (!this.frozen) {
@@ -2143,14 +2210,15 @@ export class VolumetricCloudLayer {
             (r.uPrevUp.value as THREE.Vector3).copy(C.up);
             (r.uPrevFwd.value as THREE.Vector3).copy(C.fwd);
             (r.uPrevTan.value as THREE.Vector2).copy(C.tan);
+            (r.uWindStep.value as THREE.Vector3).set(0, 0, 0);
           }
           r.uRebuildK.value = this.rebuild;
-          r.uMinAlpha.value = 0.12;
+          r.uMinAlpha.value = CLOUD_HISTORY_MIN_ALPHA;
           this.traceSlot(this.rebuild++);
         }
       } else {
         const n = 1 + Math.floor(this.since++ / 16);
-        r.uMinAlpha.value = Math.max(0.12, 1 / (n + 1));
+        r.uMinAlpha.value = Math.max(CLOUD_HISTORY_MIN_ALPHA, 1 / (n + 1));
         r.uRebuildK.value = -1;
         this.traceSlot(this.frame % 16);
         for (let k = 1; k < this.benchRepeat; k++) this.traceSlot(this.frame % 16);
@@ -2290,8 +2358,8 @@ export class VolumetricCloudLayer {
     this.timerOpen = false;
   }
 
-  /** Complete interleaved history plus four averaging cycles for a still.
-   * Trace only the cloud targets; do not redraw the complete world 68 times. */
+  /** Complete interleaved history plus thirty-two averaging cycles for a still (CLOUD_CAPTURE_SETTLE_FRAMES).
+   * Trace only the cloud targets; do not redraw the complete world 516 times. */
   settleForCapture(camera: THREE.PerspectiveCamera): boolean {
     if (!this.targetWidth || !this.targetHeight) return false;
     const remaining = this.captureFramesRemaining;
@@ -2304,7 +2372,7 @@ export class VolumetricCloudLayer {
   /** Cold captures must average the first noisy Bayer samples as well as fill every slot. */
   get captureFramesRemaining(): number {
     if (!this.active || !this.preset || this.frozen) return 0;
-    return Math.ceil((16 - this.rebuild) / CLOUD_REBUILD_SLOTS) + Math.max(0, 64 - this.since);
+    return Math.ceil((16 - this.rebuild) / CLOUD_REBUILD_SLOTS) + Math.max(0, CLOUD_CAPTURE_SETTLE_FRAMES - this.since);
   }
 
   /**
