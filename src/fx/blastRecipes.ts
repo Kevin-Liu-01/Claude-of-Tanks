@@ -295,10 +295,14 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // born a dark grey-brown (the explosive's grey residue with the soil in it) and ageing to one warm grey
   // (fx 8i, wave 334a, both critics: "the caramel cloud never greys or thins") the soil's share is a tint, not the body:
   // the explosive's grey residue carries it, and it ages to a neutral grey (DVIDS 954922's cloud is grey by +2 s)
-  const smokeC0: Rgb = shaped || thermobaric ? mixInto(_e, SOOT, soilC, 0.12)
-    : mixInto(_e, mixInto(_e, SOOT, soilC, 0.15), BLAST_RESIDUE, 0.35);
+  // (fx 8j, the wave builder at 354b's pack: 8i's cloud "dark brown-black with blue-grey fringes at 2.4-8.4 s"; DVIDS
+  // 954922's cloud is a mid grey, lighter than the treeline, its darkest at the core) the explosive's grey residue is
+  // the body and the soot only darkens it: born a dark mid grey, ageing to a light grey; the dark heart is the
+  // fireball's own soot and the earth column's soil inside it
+  const smokeC0: Rgb = shaped || thermobaric ? mixInto(_e, mixInto(_e, SOOT, BLAST_RESIDUE, 0.45), soilC, 0.12)
+    : mixInto(_e, mixInto(_e, BLAST_RESIDUE, SOOT, 0.25), soilC, 0.12);
   const smokeAged: Rgb = snowy ? mixInto(_f, SMOKE_AGED, soilC, 0.12)
-    : mixInto(_f, SMOKE_AGED, L.dust, 0.1);
+    : mixInto(_f, SMOKE_AGED, L.dust, 0.08);
   for (let i = 0; i < smokeN; i++) {
     const u = (i + R()) / smokeN;
     const a = R() * TAU, r = R() * 0.3 * D;
@@ -315,7 +319,8 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     // width and swelling fast: most of its growth in its first two seconds
     shape(m, life, 0.4 * D * dk, (1.6 + 0.4 * u + 0.35 * R()) * D * dk, 6, R);
     // (fx 8i: "never thins") its erosion starts at a third of its life (~3-4 s), so the cloud thins as it climbs
-    look(m, smokeC0, smokeAged, 0.9, 0.0, 0.33);
+    // (8j) a body you see into at its edges, not a wall: a little thinner
+    look(m, smokeC0, smokeAged, 0.78, 0.0, 0.33);
     book(m, 'billow', R, life);
     heat(m, 0.3, 4.5);
     C.media(m);
