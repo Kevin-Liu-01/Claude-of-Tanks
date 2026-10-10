@@ -125,6 +125,8 @@ export default {
     enemies: [{ x: 12, z: 395 }, { x: 4, z: 395 }, { x: -4, z: 395 }, { x: -12, z: 395 }, { x: 12, z: 405 }, { x: 4, z: 405 }, { x: -4, z: 405 }],
   },
   splat: {
+    // the map-revival lane (Titan round 6, wave 235): the buttes' level caps keep the skin's tone, the varnish down the walls
+    varnishSteepOnly: true,
     grassTone: (h: number, s: number, l: number) => [0.055, 0.46, clamp01(0.19 + l * 0.78)],
     dirtTone: (h: number, s: number, l: number) => [0.055, 0.43, clamp01(0.24 + l * 0.48)],
     sandstone: true,

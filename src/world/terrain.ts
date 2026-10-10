@@ -442,6 +442,10 @@ interface SplatConfig {
    * third, the caprock is bare rock whatever its hollows, and the face carries vertical flutes of three widths in its
    * normal, honeycomb pits low on the near faces and desert-varnish streaks of every width down it. Absent = off. */
   jebelFace?: readonly [number, number, number];
+  /** The map-revival lane (Titan round 6, gauntlet wave 235: the butte caps' "vertical hair-like streaks"): on an arid map
+   * the far rock's varnish runs only down the steep faces, the level rock (a mesa's bare cap) keeping the skin's tone.
+   * Absent = off: the varnish on every far rock as before (the protected arid maps keep their pixels). */
+  varnishSteepOnly?: boolean;
   /** Ground lane (2026-10-05, mr2's Glacier round 2: "the col's steep and convex ground stays white"): on a snow map the
    * snow lies on the rock layer up to this slope (degrees), fading out by snowRockFadeDeg, and a crest (the fold
    * attribute's −1) loses it snowRockCrest of slope (1 − n.y) sooner, a hollow keeps it as much longer. Absent = today's
@@ -3962,6 +3966,7 @@ uniform vec4 uFormationUp;  // the upper formation: likewise
 uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoulderDirt, uLaneK, uIceDrift, uMidRelief, uFieldPatch;
 uniform vec2 uWallWeather; // the Redrock lane: the joint blocks' tone step and the varnish streaks' darkening (default 0.26, 0.50)
 uniform vec4 uJebelFace;   // the Redrock lane, round 9: x on (1) / off (0); y flutes, z tafoni, w varnish (splat.jebelFace)
+uniform float uVarnishSteep; // the map-revival lane (Titan round 6): 1 = the far rock's varnish only down steep faces (splat.varnishSteepOnly)
 uniform float uRippleNear; // the Redrock lane, round 10: the near ripple trains' strength (splat.rippleNear; rippleAmp's by default)
 uniform vec3 uRoadRuts;    // the Redrock lane, round 10: the wheel lanes' relief gain, darkening and the carriageway's gravel
 uniform float uRoadPuddle; // ground lane: the map's share of the ruts' puddles and their mud (splat.roadPuddles, default 1)
@@ -5136,8 +5141,11 @@ void splatCompute() {
     // (the map-revival lane, Titan round 6, gauntlet wave 235: the butte caps' "vertical hair-like streaks") the varnish
     // runs down a face's fall line, so it reads the wall projections — on level rock (a mesa's bare cap: fR 1, steepW 0)
     // their height coordinate is constant and their axes and signs flip with the cap's least tilt, and the noise drew one
-    // stretched row across the cap; the streaks only where the face is steep, the skin's tone everywhere
-    a.rgb = mix(a.rgb, skin * mix(1.0, 0.84 + 0.32 * varnish, smoothstep(0.20, 0.42, slope)), rockFar);
+    // stretched row across the cap; the streaks only where the face is steep, the skin's tone everywhere — on a map that
+    // asks (splat.varnishSteepOnly: uVarnishSteep 1, a uniform branch); every other map's far rock exactly as before
+    float varnishK = 0.84 + 0.32 * varnish;
+    if (uVarnishSteep > 0.5) varnishK = mix(1.0, varnishK, smoothstep(0.20, 0.42, slope));
+    a.rgb = mix(a.rgb, skin * varnishK, rockFar);
   }
   // Ground lane (wave 62, Glacier Pass street-b, 2.2, the worst view: "a blue-and-white swirled marble/agate texture …
   // a broken material", Frosthollow's walls the same): a snow map's rock layer was Rock058 lifted half again and
@@ -7441,6 +7449,8 @@ function* createSplatMaterialSteps(
     shader.uniforms.uWallWeather = { value: new THREE.Vector2(...(S.wallWeather ?? [0.26, 0.50])) };
     // the Redrock lane, round 9: Wadi Rum's jebel faces (splat.jebelFace; absent = off)
     shader.uniforms.uJebelFace = { value: S.jebelFace ? new THREE.Vector4(1, ...S.jebelFace) : new THREE.Vector4(0, 0, 0, 0) };
+    // the map-revival lane (Titan round 6): the far rock's varnish only down the steep faces (splat.varnishSteepOnly)
+    shader.uniforms.uVarnishSteep = { value: S.varnishSteepOnly ? 1 : 0 };
     shader.uniforms.uFormation = formationUniform; // ground lane: set by the build from the field's height span
     shader.uniforms.uFormationLow = formationLowUniform; // the Redrock lane
     shader.uniforms.uFormationUp = formationUpUniform;
