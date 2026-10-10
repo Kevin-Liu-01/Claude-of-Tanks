@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import {Group,Vector3,Box3,Object3D} from 'three';
 import {DRONE_DESIGNS,createDroneModelKit,poseDroneRotor,droneRotorDirection} from './droneModel.ts';
 import {DRONE_DOCK_ENVELOPE,DRONE_DOCK_VOLUMES,DRONE_DOCK_HEIGHT_M} from '../sim/missionAttachment.ts';
-import {createDronePresentation} from './dronePresentation.ts';
+import {createDronePresentation,droneHiddenFromCamera} from './dronePresentation.ts';
+import {PerspectiveCamera} from 'three';
 const shapes=new Set(),colors=new Set(),pose=new Object3D(),point=new Vector3();
 const e=DRONE_DOCK_ENVELOPE,allowed=new Box3(new Vector3(-e.halfWidth,e.bottom,-e.halfDepth),new Vector3(e.halfWidth,e.top,e.halfDepth));
 const fits=box=>allowed.containsBox(box);
@@ -39,4 +40,15 @@ const root=new Group(),pool=createDronePresentation(root);pool.begin(1);
 for(let i=0;i<60;i++)pool.write(new Vector3(),new Vector3(),i,0,1,i%2?'China':'USA');pool.end();
 assert.equal(root.children.filter(m=>m.name.includes('airframes')).reduce((sum,m)=>sum+m.count,0),42,'bounded shared aircraft capacity');
 pool.begin(2);pool.end();assert.ok(root.children.every(m=>!m.visible),'expired aircraft hidden');pool.reset();
+// Self-hide: only the pilot's own drone, only while its aerial camera rides it. A film camera 1.99 m from the dock
+// (the 2026-10-10 vanishing frame) and any other observer draw it.
+{
+ const camera=new PerspectiveCamera(),at=new Vector3(0,.43,0);camera.position.set(1.25,.42,-1.55);
+ assert.equal(droneHiddenFromCamera(at,'p1',true,camera),false,'an observer 1.99 m away draws the drone');
+ camera.userData.aerialPilotId='p1';
+ assert.equal(droneHiddenFromCamera(at,'p1',true,camera),true,'the riding pilot camera skips its own airframe');
+ assert.equal(droneHiddenFromCamera(at,'p2',true,camera),false,'another player\'s drone stays drawn beside the pilot camera');
+ assert.equal(droneHiddenFromCamera(at,'p1',false,camera),false,'a finished flight never hides');
+ camera.position.set(3,.42,0);assert.equal(droneHiddenFromCamera(at,'p1',true,camera),false,'beyond 2 m the pilot sees its launch silhouette');
+}
 console.log(`droneModel: ${rotorChecks} rotor poses, national geometry, finite dock envelope, physical skid contact, oversize negative control and bounded rendering passed`);

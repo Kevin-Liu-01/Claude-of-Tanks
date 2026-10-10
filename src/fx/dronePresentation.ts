@@ -5,6 +5,15 @@ import { createDroneAttitude, updateDroneAttitude, droneWobblePitch, droneWobble
 import { acquireDroneModelKit, droneNation, poseDroneRotor, DRONE_LITE_DISTANCE_M, type DroneKitLease } from './droneModel.ts';
 
 const CAPACITY = 42;
+/**
+ * The pilot's lens rides inside its own airframe, so that one drone is skipped near the camera while the pilot's aerial
+ * camera follows it (2 m covers the one fixed step the camera's view lags the airframe). Every other camera (a film, the
+ * killcam, spectators, a teammate beside the carrier) draws every drone, however close (2026-10-10: a film camera 1.99 m
+ * from the dock lost the airframe for a frame as it passed camera height).
+ */
+export function droneHiddenFromCamera(position:THREE.Vector3,shooterId:string|number|null|undefined,flightActive:boolean,camera:THREE.Camera):boolean {
+  return flightActive&&shooterId!=null&&camera.userData.aerialPilotId===shooterId&&position.distanceToSquared(camera.position)<=4;
+}
 /** The blades read individually only while they spool; at speed each rotor is a translucent disc. */
 const BLUR_AFTER_SPOOL = .62;
 
