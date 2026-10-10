@@ -1,5 +1,12 @@
 // Wind-scoured polar logistics station, not an alpine-village reskin:
 // staggered snow berms screen a wide service grid and a frozen melt pan.
+//
+// Reference: DYE-M (Dye Main), the Distant Early Warning Line's eastern main station at Cape Dyer, Baffin Island
+// (Nunavut), in the 1980s, as the North Warning System took the line over: the Upper Camp on a bare plateau some 700 m
+// above Davis Strait at the island's most easterly point, among the Cumberland Peninsula's mountains, the strait's pack
+// ice below. Rock and snow on permafrost, frost-shattered tors, the gravel ridges the ice left and frozen tarns, no
+// tree for hundreds of kilometres. Nothing the station built stands on the ground: its modules ride on steel piles so
+// their heat cannot thaw it (map revival lane 2's reference, rounds 1-5; folded in by the map-content lane).
 import winter from './winter.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 import { roundRoadBends } from './roadBends.ts';
@@ -109,7 +116,10 @@ export default {
     // the map-vehicles lane (2026-10-06, the period ruling): the Arctic north in the 1980s: Norway's Leopard 1 and
     // M48, Sweden's Strv 103, the Soviet T-80B and BMP-2
     tankWrecks: { era: 'cold-war', count: 7, debris: true, ids: ['leo1a5', 'm48', 'strv103', 't80b', 'bmp2'] },
-    inhabit: { stalls: 0, benches: 2, coreClutter: 20, sleds: 10, drums: 8, trucks: 5, jeeps: 4, drumClusters: 5, camps: 2, modernClutter: 20, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
+    // map revival lane 2, round 3 (gauntlet wave 130: "an untextured flat-tan box with a tent-shaped canopy, a floating
+    // black tyre and steps to nowhere"; folded in by the map-content lane): the roadside camps (a canvas tent camp's kit)
+    // and the park benches do not belong at a DEW station; its camps are the Jamesway camps below
+    inhabit: { stalls: 0, benches: 0, coreClutter: 20, sleds: 10, drums: 8, trucks: 5, jeeps: 4, drumClusters: 5, camps: 0, modernClutter: 20, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
     // the map-content lane (2026-10-09; owner: "some maps like whiteout crossing and mesa mines look unfinished and so
     // empty"; the census: 67 % of the playable square more than 30 m from anything standing, the station one strip along
     // the service street). Reference: DYE-M, the Distant Early Warning Line's main station at Cape Dyer on Baffin Island,

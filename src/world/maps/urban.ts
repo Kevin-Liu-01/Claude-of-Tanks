@@ -248,7 +248,8 @@ export default {
       // side of the brickworks road in the south valley and of the goods station road in the north, a tavern and a corner
       // shop among them, the two suburbs mirrored across the spur's crest (each lot its own stream: terrace, so every later
       // placement keeps its seat; lots 1.5 m or more off every standing building, 7.5-13.5 m off the road's line, on ground
-      // within the town's 2.4 m spread: the brickworks road's steep lot at x -140 and its mirror left open)
+      // within the town's 2.4 m spread, clear of every tree's trunk: eight houses a side; the brickworks road's steep lot at
+      // x -140 and its mirror left open, the goods station road's houses seated off its roadside trees)
       { structure: 'rowhouse', x: -180.0, z: -246.0, yawDeg: 4, plot: { w: 7.5, d: 9 }, terrace: true },
       { structure: 'rowhouse', x: -162.0, z: -248.0, yawDeg: 4, plot: { w: 7.5, d: 9 }, terrace: true },
       { structure: 'rowhouse', x: -120.0, z: -250.0, yawDeg: 2, plot: { w: 7.5, d: 9 }, terrace: true },
@@ -257,16 +258,14 @@ export default {
       { structure: 'rowhouse', x: -158.0, z: -226.0, yawDeg: -176, plot: { w: 7.5, d: 9 }, terrace: true },
       { structure: 'rowhouse', x: -132.0, z: -228.0, yawDeg: -176, plot: { w: 7.5, d: 9 }, terrace: true },
       { structure: 'rowhouse', x: -104.0, z: -228.0, yawDeg: -178, plot: { w: 7.5, d: 9 }, terrace: true },
-      { structure: 'rowhouse', x: -82.0, z: -230.0, yawDeg: -178, plot: { w: 7.5, d: 9 }, terrace: true },
       { structure: 'rowhouse', x: -180.0, z: 250.0, yawDeg: 176, plot: { w: 7.5, d: 9 }, terrace: true },
       { structure: 'rowhouse', x: -160.0, z: 252.0, yawDeg: 176, plot: { w: 7.5, d: 9 }, terrace: true },
       { structure: 'rowhouse', x: -120.0, z: 254.0, yawDeg: 174, plot: { w: 7.5, d: 9 }, terrace: true },
       { structure: 'cornershop', x: -100.0, z: 256.0, yawDeg: 174, plot: { w: 7.5, d: 9 }, terrace: true },
-      { structure: 'tavern', x: -80.0, z: 258.0, yawDeg: 174, plot: { w: 7.5, d: 9 }, terrace: true },
       { structure: 'rowhouse', x: -162.0, z: 228.0, yawDeg: -4, plot: { w: 7.5, d: 9 }, terrace: true },
       { structure: 'rowhouse', x: -132.0, z: 234.0, yawDeg: -4, plot: { w: 7.5, d: 9 }, terrace: true },
-      { structure: 'rowhouse', x: -108.0, z: 232.0, yawDeg: -6, plot: { w: 7.5, d: 9 }, terrace: true },
-      { structure: 'rowhouse', x: -88.0, z: 234.0, yawDeg: -6, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'rowhouse', x: -148.0, z: 229.0, yawDeg: -4, plot: { w: 7.5, d: 9 }, terrace: true },
+      { structure: 'rowhouse', x: -50.0, z: 237.0, yawDeg: -96, plot: { w: 7.5, d: 9 }, terrace: true },
     ],
     // street frontage is built by CONTIGUOUS rowhouse strips (shared walls,
     // varied heights, collapsed slots spilling rubble) + kerbed pavements

@@ -119,7 +119,7 @@ export default {
       { structure: 'adobe', x: 70, z: 176, yawDeg: 4, plot: { w: 10, d: 10 }, terrace: true },
       { structure: 'adobe', x: -66, z: 174, yawDeg: -2, plot: { w: 10, d: 10 }, terrace: true },
       { structure: 'adobe', x: -362, z: 148, yawDeg: 55, plot: { w: 10, d: 10 }, terrace: true },
-      { structure: 'adobe', x: -252, z: 138, yawDeg: 109, plot: { w: 10, d: 10 }, terrace: true },
+      { structure: 'adobe', x: -270, z: 100, yawDeg: 103, plot: { w: 10, d: 10 }, terrace: true },
       { structure: 'adobe', x: 356, z: 108, yawDeg: -83, plot: { w: 10, d: 10 }, terrace: true },
       { structure: 'adobe', x: -314, z: 46, yawDeg: 99, plot: { w: 10, d: 10 }, terrace: true },
       { structure: 'adobe', x: 330, z: -222, yawDeg: -97, plot: { w: 10, d: 10 }, terrace: true },
