@@ -8,6 +8,7 @@ import {
   garageWorldPointToView,
 } from '../game/garagePresentationPose.ts';
 import {
+  GARAGE_SHELTER_FINISHES,
   getGarageWorkshopBayPoses,
   getGarageYardCrewFloors,
   leopardBayPointToWorkshop,
@@ -219,21 +220,6 @@ function cameraPoint(side: number, depth: number): { readonly x: number; readonl
 }
 
 /** Build dense static service-facility geometry without adding live scene nodes. */
-/** Regional shelter construction: frame paint and roofing per Garage (sRGB). */
-const SHELTER_FINISHES: Readonly<Record<GarageVariant['architecture'], { readonly frame: number; readonly roof: number }>> =
-  Object.freeze({
-    field_shed: { frame: 0x58615a, roof: 0x5d6466 },
-    shade_depot: { frame: 0xa48b62, roof: 0xc8b48c }, // sand-painted steel under a desert shade cloth
-    repair_bunker: { frame: 0x4e5a4c, roof: 0xb9c2c4 }, // dark green steel, insulated panels, snow-dusted
-    brick_arsenal: { frame: 0x6b4638, roof: 0x6e7072 }, // oxide-primed steel, weathered corrugated iron
-    naval_drydock: { frame: 0x8b9296, roof: 0x9aa1a3 }, // salt-weathered galvanised steel and sheeting
-    rail_roundhouse: { frame: 0x2f3234, roof: 0x55595b }, // black railway steel, sooty sheeting
-    rain_canopy: { frame: 0x4f6a52, roof: 0x3f5a48 }, // green steel under a monsoon tarpaulin
-    rock_cavern: { frame: 0x6c7478, roof: 0x7e8588 }, // grey steel, rock-dusted sheeting
-    recovery_yard: { frame: 0x8a5a3a, roof: 0x9c7a5c }, // rust-red steel under a dust-coloured tarp
-    factory_line: { frame: 0x5d6266, roof: 0x45484a }, // mill-grey steel, soot-black sheeting
-  });
-
 export function addGarageFacilityDetails({
   buckets,
   engineCtx,
@@ -259,7 +245,7 @@ export function addGarageFacilityDetails({
   // Each Garage builds its service shelters its own way (2026-10-10, wave 357: "a tangle of flat navy, yellow and cyan
   // beams"): one regional frame paint and one roofing for every column, beam and roof sheet; safety yellow stays on
   // the braces and rails and the pack's accent on small fittings only.
-  const shelter = SHELTER_FINISHES[variant.architecture] ?? SHELTER_FINISHES.field_shed;
+  const shelter = GARAGE_SHELTER_FINISHES[variant.architecture] ?? GARAGE_SHELTER_FINISHES.field_shed;
   const steel = new THREE.Color(shelter.frame);
   const roofing = new THREE.Color(shelter.roof);
   const accent = new THREE.Color(variant.accent).lerp(steel, 0.45);

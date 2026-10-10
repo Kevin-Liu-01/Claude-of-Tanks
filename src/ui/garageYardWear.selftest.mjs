@@ -57,7 +57,7 @@ assert.doesNotMatch(wear, /setLineDash|fillText/, 'no painted bay boxes, dashes 
 assert.doesNotMatch(wear, /requestAnimationFrame|setInterval|addEventListener/, 'no per-frame or event work');
 assert.match(kit, /masonry: \{ color: garageFacilityAlbedo\('concrete'/, 'facility footings are cast concrete, not brick');
 assert.doesNotMatch(kit, /acquire\('brick', requestRender\)/, 'no brick on the service facilities');
-assert.match(facility, /SHELTER_FINISHES\[variant\.architecture\]/, 'each Garage paints and roofs its shelters its own way');
+assert.match(facility, /GARAGE_SHELTER_FINISHES\[variant\.architecture\]/, 'each Garage paints and roofs its shelters its own way');
 assert.doesNotMatch(facility, /clusterBox\(cluster, 0, 0, 0\.10, 10\.8, 0\.20, 9\.0,/,
   'no raised deck under a bay: the exhibit and its crew stand on the pad');
 

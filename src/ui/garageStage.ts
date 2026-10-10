@@ -20,7 +20,7 @@ import {
   type GarageArchitectureStats,
 } from './garageArchitecture.ts';
 import { getDeviceTier } from '../engine/quality.ts';
-import { VERDANT_WELD_LIGHT } from '../game/garageWorkshopLayout.ts';
+import { getGarageWorkshopLayoutPose, VERDANT_WELD_LIGHT } from '../game/garageWorkshopLayout.ts';
 
 type RandomSource = () => number;
 type SignWear = [boolean, number, number, number, number];
@@ -1104,6 +1104,7 @@ export function createGarageStage(
   // half-turned, hence the negated Garage-frame point. It flickers only while Verdant frames draw (the floor's
   // onBeforeRender below), so the settled Garage never wakes for it.
   const fill = new THREE.PointLight(0xb9d3ff, 9, 8, 2);
+  const OUTDOOR_WELD_LIGHT_INTENSITY = 14;
   fill.name = 'garage_verdant_weld_light';
   fill.position.set(-VERDANT_WELD_LIGHT.x, VERDANT_WELD_LIGHT.y, -VERDANT_WELD_LIGHT.z);
   fill.castShadow = false;
@@ -1438,13 +1439,15 @@ export function createGarageStage(
   const verdantLightIntensities = new Map(
     verdantLights.map((light) => [light, light.intensity] as const),
   );
-  // The weld light's arc flicker rides the floor's own draw (Verdant only: the floor is part of the indoor set), so it
-  // costs a few multiplies per drawn frame and nothing while the Garage is settled or outdoors.
-  floor.onBeforeRender = () => {
-    const base = verdantLightIntensities.get(fill) ?? 0;
+  // The weld light's arc flicker rides a draw that happens anyway (Verdant's floor indoors, the turntable outdoors),
+  // so it costs a few multiplies per drawn frame and nothing while the Garage is settled.
+  let weldBaseIntensity = verdantLightIntensities.get(fill) ?? 0;
+  const flickerWeld = (): void => {
     const t = performance.now() * 0.001;
-    fill.intensity = base * (0.72 + 0.28 * (0.5 + 0.3 * Math.sin(t * 41.3) + 0.2 * Math.sin(t * 67.9 + 0.7)));
+    fill.intensity = weldBaseIntensity * (0.72 + 0.28 * (0.5 + 0.3 * Math.sin(t * 41.3) + 0.2 * Math.sin(t * 67.9 + 0.7)));
   };
+  floor.onBeforeRender = flickerWeld;
+  podium.onBeforeRender = flickerWeld;
   let variantPresentationGeneration = 0;
   const ENVIRONMENT_REVEAL_ATTEMPTS = 3;
   const waitForEnvironmentRetry = (attempt: number): Promise<void> => (
@@ -1463,6 +1466,18 @@ export function createGarageStage(
     for (const light of verdantLights) {
       light.visible = true;
       light.intensity = isVerdant ? (verdantLightIntensities.get(light) || 0) : 0;
+    }
+    // Every Garage welds at the rolled K2's belly (2026-10-10, the coordinator: a weld light in every garage with a
+    // weld bay, same light count, no new program): the weld light follows the shared exhibit's layout pose into each
+    // pack and burns at a daylight strength outdoors.
+    {
+      const [layoutX, layoutZ, layoutYaw] = getGarageWorkshopLayoutPose(getGarageVariant(variantId));
+      const c = Math.cos(layoutYaw), sn = Math.sin(layoutYaw);
+      const weldX = layoutX + VERDANT_WELD_LIGHT.x * c + VERDANT_WELD_LIGHT.z * sn;
+      const weldZ = layoutZ - VERDANT_WELD_LIGHT.x * sn + VERDANT_WELD_LIGHT.z * c;
+      fill.position.set(-weldX, VERDANT_WELD_LIGHT.y, -weldZ);
+      weldBaseIntensity = isVerdant ? (verdantLightIntensities.get(fill) || 0) : OUTDOOR_WELD_LIGHT_INTENSITY;
+      fill.intensity = weldBaseIntensity;
     }
     architecture.group.visible = !isVerdant;
     group.userData.garageSceneMode = isVerdant ? 'verdant-workshop' : 'authentic-scene-pack';

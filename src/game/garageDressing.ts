@@ -50,6 +50,7 @@ import {
   ABRAMS_WELDING_BAY_PLACEMENT,
   BURLAK_SCAFFOLD_CLEARANCE_OFFSET,
   getAbramsWeldingBayPlacement,
+  GARAGE_SHELTER_FINISHES,
   getGarageWorkshopLayoutPose,
   LEOPARD_MOBILITY_BAY_LOCAL,
   LEOPARD_MOBILITY_BAY_OFFSET,
@@ -1281,6 +1282,47 @@ export function createGarageDressing(
     if (disposed || !stillValid()) throw pausedWork;
   }
 
+  /**
+   * A barrel stand under a turret's gun (2026-10-10, wave 357: "its long gun barrel unsupported"): a splayed A-frame
+   * on a base plate with a rubber-lined V-block under the barrel at `along` of its length, painted the Garage's
+   * safety colour. Built in the workshop frame from the gun's own world pose.
+   */
+  function addBarrelStand(gunRoot: THREE.Object3D | undefined, along: number, name: string): void {
+    if (!gunRoot) return;
+    legacyVerdantRoot.updateMatrixWorld(true);
+    const origin = gunRoot.getWorldPosition(new THREE.Vector3());
+    const axis = new THREE.Vector3(0, 0, 1).transformDirection(gunRoot.matrixWorld);
+    const bounds = new THREE.Box3().setFromObject(gunRoot);
+    if (bounds.isEmpty()) return;
+    // the barrel's reach along its axis: the farthest bounds corner
+    let reach = 0;
+    for (const x of [bounds.min.x, bounds.max.x]) for (const y of [bounds.min.y, bounds.max.y]) {
+      for (const z of [bounds.min.z, bounds.max.z]) reach = Math.max(reach, new THREE.Vector3(x, y, z).sub(origin).dot(axis));
+    }
+    if (reach < 1.5) return;
+    const atWorld = origin.clone().addScaledVector(axis, reach * along);
+    const at = legacyVerdantRoot.worldToLocal(atWorld.clone());
+    const top = at.y - 0.1;
+    if (top < 0.4) return;
+    const stand = new THREE.Group();
+    stand.name = name;
+    stand.position.set(at.x, 0, at.z);
+    const axisLocal = legacyVerdantRoot.worldToLocal(atWorld.clone().add(axis)).sub(at);
+    stand.rotation.y = Math.atan2(axisLocal.x, axisLocal.z);
+    stand.userData.supportMode = 'a-frame-barrel-stand';
+    legacyVerdantRoot.add(stand);
+    put(track(new THREE.BoxGeometry(0.62, 0.04, 0.44)), mat.steelDark, 0, 0.02, 0, 0, 0, 0, 1, stand);
+    const leg = track(new THREE.BoxGeometry(0.07, Math.hypot(top - 0.08, 0.24), 0.07));
+    for (const side of [-1, 1]) {
+      put(leg, mat.safety, side * 0.12, (top - 0.04) / 2, 0, 0, 0, side * Math.atan2(0.24, top - 0.08), 1, stand);
+    }
+    put(track(new THREE.BoxGeometry(0.34, 0.06, 0.08)), mat.safety, 0, top * 0.45, 0, 0, 0, 0, 1, stand);
+    for (const side of [-1, 1]) {
+      put(track(new THREE.BoxGeometry(0.14, 0.05, 0.12)), mat.steelMid, side * 0.07, top - 0.01, 0, 0, 0, side * -0.6, 1, stand);
+    }
+    put(track(new THREE.BoxGeometry(0.1, 0.02, 0.1)), mat.rubber, 0, top + 0.01, 0, 0, 0, 0, 1, stand);
+  }
+
   function placeGunRig(
     source: THREE.Object3D | undefined,
     sourceVehicleId: string,
@@ -1485,7 +1527,16 @@ export function createGarageDressing(
     currentVariant = getGarageVariant(variantId);
     group.userData.garageVariantId = currentVariant.id;
     group.userData.garageMapId = currentVariant.mapId;
-    mat.safety.color.setHex(currentVariant.accent);
+    // Verdant keeps its hall's own paint; outdoors the exhibit's frames take the pack's shelter paint and one safety
+    // yellow, so the bays and the facility around them read as one construction (wave 357: "three-colour tangles").
+    if (currentVariant.id === 'verdant_motor_pool') {
+      mat.safety.color.setHex(currentVariant.accent);
+      mat.blueSteel.color.setHex(0x2a4257);
+    } else {
+      const finish = GARAGE_SHELTER_FINISHES[currentVariant.architecture] ?? GARAGE_SHELTER_FINISHES.field_shed;
+      mat.safety.color.setHex(0xa8862c);
+      mat.blueSteel.color.setHex(finish.frame);
+    }
     bayFill.color.setHex(currentVariant.lightTint);
     const [layoutX, layoutZ, layoutYaw] = getGarageWorkshopLayoutPose(currentVariant);
     legacyVerdantRoot.position.set(layoutX, 0, layoutZ);
@@ -1547,6 +1598,94 @@ export function createGarageDressing(
     tank.traverse((object) => {
       if (object.userData.authoredShadowProxy) object.visible = false;
     });
+  }
+
+  /**
+   * The rolled K2 reads as a stripped hull, not a slab (2026-10-10, wave 357: "a featureless dark-green slab with a few
+   * knobs"): with its running gear off, the hull shows what a teardown exposes, in the hull's own frame so it rolls with
+   * it: road-arm hubs and bump stops down both sides, the final drives and idler mounts, the engine deck lifted off with
+   * the bay open and its harnesses hanging, the driver's hatch swung open and the belly escape hatch out.
+   */
+  function addK2StrippedAnatomy(tank: THREE.Object3D, hull: THREE.Object3D | undefined): void {
+    if (!hull) return;
+    tank.updateMatrixWorld(true);
+    const inverse = tank.matrixWorld.clone().invert();
+    const box = new THREE.Box3();
+    const local = new THREE.Box3();
+    hull.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (!mesh.isMesh || !mesh.visible || !mesh.geometry) return;
+      if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+      local.copy(mesh.geometry.boundingBox!).applyMatrix4(inverse.clone().multiply(mesh.matrixWorld));
+      box.union(local);
+    });
+    if (box.isEmpty()) return;
+    const anatomy = markModernPart(new THREE.Group(), 'k2', 'stripped_hull_anatomy');
+    anatomy.name = 'k2_stripped_hull_anatomy';
+    tank.add(anatomy);
+    const halfWidth = (box.max.x - box.min.x) / 2;
+    const cx = (box.max.x + box.min.x) / 2;
+    const top = box.max.y;
+    const belly = box.min.y;
+    const front = box.max.z;
+    const rear = box.min.z;
+    const length = front - rear;
+    const hub = track(new THREE.CylinderGeometry(0.11, 0.12, 0.16, 12).rotateZ(Math.PI / 2));
+    const arm = track(new THREE.BoxGeometry(0.1, 0.12, 0.46));
+    const stop = track(new THREE.BoxGeometry(0.12, 0.1, 0.16));
+    const axleY = belly + (top - belly) * 0.3;
+    for (const side of [-1, 1]) {
+      const x = cx + side * (halfWidth + 0.05);
+      for (let station = 0; station < 6; station++) {
+        const z = rear + length * (0.2 + station * 0.12);
+        put(hub, mat.steelDark, x, axleY, z, 0, 0, 0, 1, anatomy);
+        put(arm, mat.oily, x + side * 0.07, axleY - 0.06, z - 0.2, 0, -0.35, 0, 1, anatomy);
+        put(stop, mat.steelMid, x - side * 0.01, axleY + 0.24, z + 0.1, 0, 0, 0, 1, anatomy);
+      }
+      // final drive at the rear, idler crank at the front
+      put(track(new THREE.CylinderGeometry(0.3, 0.34, 0.26, 16).rotateZ(Math.PI / 2)), mat.steelDark,
+        x + side * 0.06, belly + (top - belly) * 0.52, rear + 0.42, 0, 0, 0, 1, anatomy);
+      put(track(new THREE.CylinderGeometry(0.16, 0.16, 0.2, 12).rotateZ(Math.PI / 2)), mat.oily,
+        x + side * 0.04, belly + (top - belly) * 0.42, front - 0.5, 0, 0, 0, 1, anatomy);
+    }
+    // the engine deck lifted off: a dark open bay with its frame, the radiator core and hanging harnesses
+    const bayLength = Math.min(2.2, length * 0.3);
+    const bayZ = rear + bayLength / 2 + 0.25;
+    put(track(new THREE.BoxGeometry(halfWidth * 1.5, 0.02, bayLength)), mat.rubber, cx, top + 0.005, bayZ, 0, 0, 0, 1, anatomy);
+    for (const sx of [-1, 1]) {
+      put(track(new THREE.BoxGeometry(0.08, 0.06, bayLength)), mat.steelMid, cx + sx * halfWidth * 0.76, top + 0.03, bayZ,
+        0, 0, 0, 1, anatomy);
+    }
+    for (const sz of [-1, 1]) {
+      put(track(new THREE.BoxGeometry(halfWidth * 1.6, 0.06, 0.08)), mat.steelMid, cx, top + 0.03, bayZ + sz * bayLength / 2,
+        0, 0, 0, 1, anatomy);
+    }
+    put(track(new THREE.BoxGeometry(halfWidth * 1.1, 0.12, 0.5)), mat.steelDark, cx, top + 0.07, bayZ - bayLength * 0.25,
+      0, 0, 0, 1, anatomy);
+    const harness = track(new THREE.CylinderGeometry(0.018, 0.018, 0.55, 6));
+    for (let lead = 0; lead < 4; lead++) {
+      put(harness, lead % 2 ? mat.rubber : mat.extRed, cx - halfWidth * 0.5 + lead * halfWidth * 0.32, top + 0.25,
+        bayZ + bayLength * 0.2, 0.2 * lead, 0.5 + lead * 0.15, 0, 1, anatomy);
+    }
+    // the driver's hatch swung open on its hinge, the belly escape hatch out beside its ring
+    const hatch = track(new THREE.CylinderGeometry(0.32, 0.32, 0.05, 18));
+    put(hatch, mat.olive, cx + halfWidth * 0.35, top + 0.3, front - 0.85, 0, 0, 1.2, 1, anatomy);
+    put(track(new THREE.TorusGeometry(0.33, 0.03, 6, 20).rotateX(Math.PI / 2)), mat.steelDark,
+      cx + halfWidth * 0.1, top + 0.01, front - 0.85, 0, 0, 0, 1, anatomy);
+    put(track(new THREE.CylinderGeometry(0.3, 0.3, 0.03, 18)), mat.rubber, cx - halfWidth * 0.2, belly - 0.012,
+      (front + rear) / 2 + 0.6, 0, 0, 0, 1, anatomy);
+    put(track(new THREE.TorusGeometry(0.31, 0.025, 6, 20).rotateX(Math.PI / 2)), mat.steelMid, cx - halfWidth * 0.2,
+      belly - 0.02, (front + rear) / 2 + 0.6, 0, 0, 0, 1, anatomy);
+    // belly bolt rows where the add-on mine plate came off
+    const bolt = track(new THREE.CylinderGeometry(0.018, 0.018, 0.03, 6));
+    for (let row = 0; row < 2; row++) {
+      for (let k = 0; k < 14; k++) {
+        put(bolt, mat.steelBright, cx + (row ? 1 : -1) * halfWidth * 0.62, belly - 0.012,
+          rear + length * (0.15 + k * 0.05), 0, 0, 0, 1, anatomy, false);
+      }
+    }
+    anatomy.userData.exposed = ['road-arm-hubs', 'bump-stops', 'final-drives', 'idler-cranks', 'open-engine-bay',
+      'hanging-harnesses', 'open-drivers-hatch', 'belly-escape-hatch', 'mine-plate-bolt-rows'];
   }
 
   function addK2RoadWheelStacks(
@@ -3175,17 +3314,28 @@ export function createGarageDressing(
     cradle.position.set(-6.6, 0, 20.5);
     cradle.rotation.y = 2.4;
     legacyVerdantRoot.add(cradle);
-    const blockGeometry = track(new THREE.BoxGeometry(0.68, 0.46, 0.68));
-    for (const [blockX, blockZ] of [[-1.05, -0.84], [1.05, -0.84], [-1.05, 0.84], [1.05, 0.84]]) {
-      put(blockGeometry, mat.timber, blockX, 0.23, blockZ,
-        0, 0, 0, 1, cradle);
+    // Timber cribbing under the turret ring (2026-10-10, wave 357: the old solid blocks read as "plain cardboard
+    // boxes"): four crib stacks of three crossed courses, two 150 mm timbers a course with a gap between them, the
+    // way a turret is set down off its hull; the bearers above carry the ring.
+    const cribTimber = track(new THREE.BoxGeometry(0.15, 0.15, 0.72));
+    for (const [cribX, cribZ] of [[-1.05, -0.84], [1.05, -0.84], [-1.05, 0.84], [1.05, 0.84]]) {
+      for (let course = 0; course < 3; course++) {
+        const across = course % 2 === 1;
+        for (const offset of [-0.21, 0.21]) {
+          put(cribTimber, course === 1 ? mat.timberDark : mat.timber,
+            cribX + (across ? 0 : offset), 0.077 + course * 0.153, cribZ + (across ? offset : 0),
+            across ? Math.PI / 2 : 0, 0, 0, 1, cradle);
+        }
+      }
     }
+    cradle.userData.supportMode = 'timber-crib-stacks';
     const bearerGeometry = track(new THREE.BoxGeometry(2.85, 0.16, 0.28));
     put(bearerGeometry, mat.timberDark, 0, 0.49, -0.70,
       0, 0, 0, 1, cradle);
     put(bearerGeometry, mat.timberDark, 0, 0.49, 0.70,
       0, 0, 0, 1, cradle);
     placeGunRig(gun, 't90m', 2.75, 1.08, 21.39, 0.92);
+    addBarrelStand(gun, 0.62, 'garage_t90m_barrel_stand');
 
     const turretMesh = turret?.getObjectByName('turretCloth') as THREE.Mesh | undefined;
     const reliktMaterial = turretMesh?.material || mat.olive;
@@ -3275,6 +3425,8 @@ export function createGarageDressing(
     tank.rotation.set(0, 0.35, THREE.MathUtils.degToRad(68));
     legacyVerdantRoot.add(tank);
     seatVisibleRoot(tank, 0.20);
+    // after seating, so the exposed parts never lift the hull off its saddles or the weld off the belly
+    addK2StrippedAnatomy(tank, hull);
 
     const cradle = markModernPart(new THREE.Group(), 'k2', 'hull_support');
     cradle.position.set(-16.25, 0, -16.85);
