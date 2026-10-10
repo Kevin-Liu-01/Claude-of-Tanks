@@ -1305,7 +1305,7 @@ export interface CapQuad {
  */
 export function capPiece(plan: CollapsePlan, piece: CollapsePiece): CapQuad[] {
   const caps: CapQuad[] = [];
-  const boxCaps = (skip: (axis: number, sign: number) => boolean, slotFor: (axis: number, sign: number) => FractureSlot,
+  const boxCaps = (skip: (axis: number, sign: number, part: number) => boolean, slotFor: (axis: number, sign: number) => FractureSlot,
     shadeFor: (axis: number, sign: number) => number) => {
     const [qx, qy, qz, qw] = piece.rotation;
     const rot = (x: number, y: number, z: number): Vec3 => {
@@ -1323,7 +1323,7 @@ export function capPiece(plan: CollapsePlan, piece: CollapsePiece): CapQuad[] {
         return [piece.center[0] + r[0], piece.center[1] + r[1], piece.center[2] + r[2]];
       };
       for (let axis = 0; axis < 3; axis++) for (const sign of [-1, 1]) {
-        if (skip(axis, sign)) continue;
+        if (skip(axis, sign, box.part)) continue;
         const n = rot(axis === 0 ? sign : 0, axis === 1 ? sign : 0, axis === 2 ? sign : 0);
         // the face's corners counter-clockwise seen from outside
         let c: [Vec3, Vec3, Vec3, Vec3];
@@ -1387,10 +1387,13 @@ export function capPiece(plan: CollapsePlan, piece: CollapsePiece): CapQuad[] {
       boxCaps((axis, sign) => axis === 1 && sign > 0, () => piece.core, (axis, sign) => (axis === 1 && sign < 0 ? 0.85 : 0.75));
       break;
     case 'chimney':
-    case 'drum':
-      // a stack's (a drum's) sides are the building's; its broken top and foot
-      boxCaps((axis) => axis !== 1, () => piece.core, () => 0.78);
+    case 'drum': {
+      // a stack's (a drum's) sides are the building's; its broken top and foot — a shaft's crown (its last part) only its
+      // broken foot: over it stands its own roof or tank, which a flat cap would cut through
+      const crownPart = piece.kind === 'drum' ? plan.shaft?.crown?.piece ?? -1 : -1;
+      boxCaps((axis, sign, part) => axis !== 1 || (part === crownPart && sign > 0), () => piece.core, () => 0.78);
       break;
+    }
     case 'crown':
       boxCaps((axis, sign) => !(axis === 1 && sign < 0), () => piece.core, () => 0.7);
       break;
