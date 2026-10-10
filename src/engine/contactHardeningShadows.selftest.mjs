@@ -56,6 +56,9 @@ assert.equal(COT_PCF_GET_SHADOW_DEF.replace('cotGetShadowPCF', 'getShadow'), THR
   assert.equal(chunk.split('getShadow( directionalShadowMap[ i ]').length - 1, 3, 'three\'s call text untouched (vegetation.ts counts three sites)');
 }
 assert.ok(CSM_SITE_SETUP.includes('cotShadowCascade = UNROLLED_LOOP_INDEX;'), 'the cascade index is a literal after three unrolls the loop');
+assert.ok(CSM_SITE_SETUP.includes('cotShadowN = nonPerturbedNormal;') && !CSM_SITE_SETUP.includes('geometryNormal'),
+  'the receiver plane is the geometric normal, never the normal-mapped one (a bumpy plane compares a wall against itself)');
+assert.ok(ShaderChunk.normal_fragment_begin.includes('vec3 nonPerturbedNormal = normal;'), 'three\'s normal chunk still declares it, before any map');
 
 // ---- 4. the wiring
 const lighting = read('./lighting.ts');
