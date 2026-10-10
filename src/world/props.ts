@@ -52,7 +52,7 @@ import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNe
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import {
-  applyRockShaderHook, boulderKindFor, boulderSectionRadius, boulderSections, buildBoulderForm, createRockDepthMaterial, makeRockDetail, paintBoulder,
+  applyRockShaderHook, boulderKindFor, boulderSectionRadius, boulderSections, buildBoulderForm, buildScreeClast, createRockDepthMaterial, makeRockDetail, paintBoulder,
   rockAngularityFor, rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts'; // round 75 item 6
 import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
@@ -6424,7 +6424,9 @@ ${snowCap ? `
     rockGeos.push(form.geometry);
     // (the desktop form on every tier, so every host derives the same colliders; its own stream, so no draw moves)
     const collisionForm = mobileProps
-      ? buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 6, legacyTop, boulderKindFor(lithology, vi), lithology).geometry
+      // (b46, the treescn lane: with the map's angularity, as the desktop form takes it — Redrock's phones drew their
+      // colliders from the unbroken form since round 10)
+      ? buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 6, legacyTop, boulderKindFor(lithology, vi), lithology, angular).geometry
       : form.geometry;
     rockForms.push(rockFormOf(collisionForm));
     if (collisionForm !== form.geometry) collisionForm.dispose();
@@ -6858,8 +6860,27 @@ ${snowCap ? `
    */
   const BED_CELL_M = 512;
   const bedCellKey = (x: number, z: number): number => Math.floor((x + 512) / BED_CELL_M) * 64 + Math.floor((z + 512) / BED_CELL_M);
+  /**
+   * (b46, the treescn lane 2026-10-09; the critics: boulders "with no burial or fracture", "no talus or block apron", "the
+   * boulders need to sit in the earth ... with scattered clasts") the scree at every boulder's foot on a map that asks
+   * for it (rockDressing scree): the map's own stone broken small (rockDressing.ts buildScreeClast, painted as its
+   * boulders are) strewn round the foot from the stone's own section outward, crowded down the fall line where the
+   * ground falls away, the larger chips nearer, each half sunk into the ground under it — conformed to the drawn ground
+   * (the terrain's near mesh) at its centre. Every clast on the stone's own stream (its seat's hash), so no draw of the
+   * map's moves; none on the road core. Merged world-space geometry in the beds' 512 m cells, drawn with the boulders'
+   * own material (one draw a cell, casting nothing). Not under the crushable stones, nor on the phones (the beds' rule).
+   */
+  const screeGeos: THREE.BufferGeometry[] = [];
   function* buildRockBeds(): Generator<PropsBuildSlice, THREE.BufferGeometry[], void> {
     const SEGMENTS = 24, RINGS = 5;
+    const screeShare = rockDressing.scree ?? 0;
+    const screeProtos = screeShare > 0 ? Array.from({ length: 4 }, (_, i) => {
+      const lithology = rockLithologyFor(mapId);
+      const form = buildScreeClast(mulberry32(seed + 9173 + i * 31), lithology);
+      paintBoulder(form, P.rockTone, lithology);
+      return form.geometry;
+    }) : [];
+    const screeCells = new Map<number, { pos: number[]; nor: number[]; col: number[]; face: number[]; ground: number[] }>();
     const meshAt = (x: number, z: number): number => terrainNearMeshHeightAt(nearMeshVertexHeight, x, z);
     const ripple = (cfg as { splat?: { rippleDir?: readonly [number, number] } } | null)?.splat?.rippleDir ?? [0.8, 0.6];
     const windL = Math.hypot(ripple[0], ripple[1]) || 1, wx = ripple[0] / windL, wz = ripple[1] / windL;
@@ -6901,6 +6922,43 @@ ${snowCap ? `
         if (meanR < 0.3) continue;
         const size = Math.min(1.2, Math.max(0.35, meanR / 1.2));
         const key = bedCellKey(px, pz);
+        if (screeShare > 0 && meanR >= 0.45) {
+          // the stone's own stream: its seat's hash
+          const sr = mulberry32((Math.imul(Math.round(px * 64), 73856093) ^ Math.imul(Math.round(pz * 64), 19349663) ^ 0x51ed27) | 0);
+          // the fall line: the foot's lowest direction, and how steeply the ground falls across the stone
+          let kLow = 0, gHigh = -Infinity;
+          for (let k = 0; k < SEGMENTS; k++) { if (ground[k] < ground[kLow]) kLow = k; gHigh = Math.max(gHigh, ground[k]); }
+          const fall = Math.min(1, (gHigh - ground[kLow]) / Math.max(0.3, meanR) * 4);
+          const count = Math.round(screeShare * (3 + 8 * (size - 0.35) / 0.85));
+          let sc = screeCells.get(key);
+          if (!sc) screeCells.set(key, sc = { pos: [], nor: [], col: [], face: [], ground: [] });
+          for (let q = 0; q < count; q++) {
+            let phi = sr() * Math.PI * 2;
+            const downhill = sr() < 0.75 * fall;
+            if (downhill) phi = ((kLow + 0.5) / SEGMENTS) * Math.PI * 2 + (sr() - 0.5) * 1.5;
+            const k = ((Math.floor((phi / (Math.PI * 2)) * SEGMENTS) % SEGMENTS) + SEGMENTS) % SEGMENTS;
+            const spread = (0.3 + 1.05 * size) * (downhill ? 1.7 : 1);
+            const out = Math.pow(sr(), 1.35);
+            const d = radius[k] * (0.9 + 0.08 * sr()) + spread * out;
+            const s = Math.max(0.05, Math.min(0.42, (0.07 + 0.17 * sr() * sr()) * (0.6 + 0.55 * size) * (1 - 0.45 * out)));
+            const cx = px + Math.cos(phi) * d, cz = pz + Math.sin(phi) * d;
+            const proto = screeProtos[Math.floor(sr() * screeProtos.length)];
+            const yaw = sr() * Math.PI * 2, cy = Math.cos(yaw), sy2 = Math.sin(yaw), stretch = 0.8 + 0.4 * sr();
+            const sink = 0.22 + 0.2 * sr();
+            if (!discClearOfRoadCore(heightField, cx, cz, s)) continue;
+            const gy = meshAt(cx, cz);
+            const pp = proto.attributes.position, pn = proto.attributes.normal, pc = proto.attributes.color, pf = proto.attributes.aRockFace;
+            for (let v = 0; v < pp.count; v++) {
+              const lx = pp.getX(v) * s * stretch, ly = pp.getY(v) * s, lz = pp.getZ(v) * s;
+              sc.pos.push(cx + lx * cy + lz * sy2, gy + ly - sink * s, cz - lx * sy2 + lz * cy);
+              const nx = pn.getX(v) / stretch, ny = pn.getY(v), nz = pn.getZ(v), nl = Math.hypot(nx, ny, nz) || 1;
+              sc.nor.push((nx * cy + nz * sy2) / nl, ny / nl, (-nx * sy2 + nz * cy) / nl);
+              sc.col.push(pc.getX(v), pc.getY(v), pc.getZ(v));
+              sc.face.push(pf.getX(v), pf.getY(v), pf.getZ(v), pf.getW(v));
+              sc.ground.push(gy);
+            }
+          }
+        }
         let cell = cells.get(key);
         if (!cell) cells.set(key, cell = { pos: [], fold: [], idx: [] });
         const base = cell.pos.length / 3;
@@ -6971,6 +7029,18 @@ ${snowCap ? `
         if (++built % 48 === 0) yield { fine: true, progress: false, stage: 'rock-beds' };
       }
     }
+    for (const { pos, nor, col, face, ground: foot } of screeCells.values()) {
+      if (!pos.length) continue;
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geometry.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+      geometry.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      geometry.setAttribute('aRockFace', new THREE.Float32BufferAttribute(face, 4));
+      geometry.setAttribute('aRockGround', new THREE.Float32BufferAttribute(foot, 1));
+      geometry.computeBoundingSphere();
+      screeGeos.push(geometry);
+    }
+    for (const proto of screeProtos) proto.dispose();
     const out: THREE.BufferGeometry[] = [];
     for (const { pos, fold, idx } of cells.values()) {
       const geometry = new THREE.BufferGeometry();
@@ -7015,6 +7085,17 @@ ${snowCap ? `
   instantiateRockVariants();
   // (b14) every boulder's bed, for the world to draw with the ground's own material (map.ts assembleWorld)
   if (!mobileProps) group.userData.rockBeds = yield* buildRockBeds();
+  // (b46, the treescn lane) the scree, with the boulders' own material: one mesh a cell, receiving the sun's shadow, casting
+  // none (small chips under their stones' own)
+  for (const geometry of screeGeos) {
+    const mesh = new THREE.Mesh(geometry, mats.rock);
+    mesh.name = 'rock-scree';
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    mesh.matrixAutoUpdate = false;
+    group.add(mesh);
+  }
+  if (screeGeos.length) group.userData.rockScree = screeGeos.length;
   rockClutter.clear();
   // (b18) and the turf banked against the dry-stone walls' feet, the same ground material's: (b37) merged into its cell's
   // bed, one geometry a 512 m cell for both (bedCellKey), so a cell costs one draw, not two

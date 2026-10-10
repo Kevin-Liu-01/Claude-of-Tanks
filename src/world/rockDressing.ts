@@ -59,6 +59,11 @@ export interface RockDressing {
   streak: readonly [number, number, number];
   /** (b46) the bed's lip against the usual: 1 everywhere a wave has not asked for the stone to sit deeper. */
   bedLip: number;
+  /**
+   * (b46, the treescn lane 2026-10-09) the scree at a stone's foot: 0 none (every map that sets none), 1 a full apron —
+   * the stone's own rock broken small, strewn round its foot and down the fall line, half sunk (props.ts buildRockBeds).
+   */
+  scree: number;
 }
 
 // lichen species (sRGB): the grey-green foliose and crustose, the yellow-green map lichen, the orange Xanthoria of
@@ -83,6 +88,8 @@ interface RockClimate {
    * weathered lumps down to two fifths, up to two more fracture faces and every stone notched at its beds. Absent = 0
    * (every other map, draw for draw). */
   angular?: number;
+  /** (b46, the treescn lane) the scree at the foot (RockDressing.scree); absent, none */
+  scree?: number;
 }
 
 /** The battlefields' rock; a map absent here is dry temperate granite (a little moss, grey lichen, no dust). */
@@ -102,26 +109,35 @@ const ROCK_CLIMATE: Readonly<Record<string, RockClimate>> = Object.freeze({
   // (b46; gauntlet wave 287, both critics: "smooth domes or lozenges with no fracture faces", "no moss, lichen, grass or
   // litter climbing them"): the Eifel's own stone, the Devonian greywacke of the Rur valley — dark, hard, blocky and
   // jointed — its north faces mossed in the wet upland, grey-green crusts on its tops, the turf of the meadow at its foot
-  reservoir: { moss: 0.95, dust: 0, lith: 'greywacke', lichen: [0.22, GREY_GREEN, YELLOW_GREEN, 0.6], mossNorth: 1, turf: [0x4d5a2e, 0.85], bedLip: 2.6 },
+  reservoir: { moss: 0.95, dust: 0, lith: 'greywacke', lichen: [0.22, GREY_GREEN, YELLOW_GREEN, 0.6], mossNorth: 1, turf: [0x4d5a2e, 0.85], bedLip: 2.6,
+    scree: 0.45 },
   // (b46; wave 287: "karst limestone, fluted and pitted, grey-white, with rubble and red soil pocketed against it") the
   // Dalmatian kamenjar: sharp grey-white limestone, its crown fluted by the rain (rillenkarren) and pitted, dark runoff
   // streaks down its steep faces, pale and black crusts, terra rossa in its hollows and at its foot
-  saltwind: { moss: 0.1, dust: 0, lith: 'karst', lichen: [0.24, PALE, BLACK, 0.62], varnish: 0.22, turf: [0x66603a, 0.9], bedLip: 2.0 },
+  saltwind: { moss: 0.1, dust: 0, lith: 'karst', lichen: [0.24, PALE, BLACK, 0.62], varnish: 0.22, turf: [0x66603a, 0.9], bedLip: 2.0,
+    scree: 0.7 },
   frontier: { moss: 0.5, dust: 0, lith: 'sandstone', lichen: [0.15, ORANGE, GREY_GREEN, 0.55], varnish: 0.07 },
-  alpine: { moss: 0.45, dust: 0, lith: 'gneiss', lichen: [0.19, YELLOW_GREEN, BLACK, 0.55] },
+  // (b46, the treescn lane 2026-10-09, the owner's maps to raise — Glacier Pass): the col's gneiss frost-shattered, its
+  // blocks fresh-broken along the foliation with crisp arrises, a frost-riven apron of its own chips round every foot,
+  // the black and map lichens on the faces the snow leaves, moss on the shaded side
+  alpine: { moss: 0.45, dust: 0, lith: 'gneiss', lichen: [0.19, YELLOW_GREEN, BLACK, 0.55], mossNorth: 1, angular: 0.75, scree: 1 },
   urban: { moss: 0.3, dust: 0.1, lith: 'granite', lichen: [0.07, PALE, ORANGE, 0.7] },
   railyard: { moss: 0.25, dust: 0.15, lith: 'granite', lichen: [0.06, PALE, ORANGE, 0.7] },
   foundry: { moss: 0.25, dust: 0.15, lith: 'granite', lichen: [0.05, PALE, ORANGE, 0.7] },
   ruinspires: { moss: 0.25, dust: 0.1, lith: 'sandstone', lichen: [0.09, PALE, ORANGE, 0.6] },
   skybridge: { moss: 0.2, dust: 0.1, lith: 'sandstone', lichen: [0.1, ORANGE, PALE, 0.5] },
-  caldera: { moss: 0.05, dust: 0.35, lith: 'basalt', lichen: [0.06, PALE, ORANGE, 0.6] },
+  // (b46, the treescn lane — Obsidian Caldera): the caldera's lava blocks jointed and freshly broken, half buried in the
+  // ash soil (the bed's lip higher), a spall of black clinker at each foot
+  caldera: { moss: 0.05, dust: 0.35, lith: 'basalt', lichen: [0.06, PALE, ORANGE, 0.6], angular: 0.8, bedLip: 1.9, scree: 1 },
   blackglass: { moss: 0, dust: 0.25, lith: 'basalt', lichen: [0.04, PALE, ORANGE, 0.7] },
   steppe: { moss: 0.15, dust: 0.4, lith: 'granite', lichen: [0.15, ORANGE, GREY_GREEN, 0.5], varnish: 0.06 },
   airfield: { moss: 0.2, dust: 0.4, lith: 'granite', lichen: [0.12, GREY_GREEN, ORANGE, 0.6], varnish: 0.05 },
   desert: { moss: 0, dust: 0.8, lith: 'sandstone', lichen: [0.03, BLACK, ORANGE, 0.6], varnish: 0.33 },
-  badlands: { moss: 0, dust: 0.8, lith: 'sandstone', lichen: [0.03, BLACK, ORANGE, 0.6], varnish: 0.3, angular: 1 },
-  copper_mesa: { moss: 0, dust: 0.75, lith: 'sandstone', lichen: [0.04, ORANGE, BLACK, 0.5], varnish: 0.3 },
-  titan_gorge: { moss: 0, dust: 0.7, lith: 'sandstone', lichen: [0.04, BLACK, ORANGE, 0.6], varnish: 0.27 },
+  badlands: { moss: 0, dust: 0.8, lith: 'sandstone', lichen: [0.03, BLACK, ORANGE, 0.6], varnish: 0.3, angular: 1, scree: 0.9 },
+  // (b46, the treescn lane — Copper Mesa, Titan Gorge, Redrock): the fallen sandstone blocks broken square along their
+  // joints and beds, drifted into the sand (the sandy bed), and spalled: a scree of their own slabs and chips round them
+  copper_mesa: { moss: 0, dust: 0.75, lith: 'sandstone', lichen: [0.04, ORANGE, BLACK, 0.5], varnish: 0.3, angular: 0.7, scree: 0.9 },
+  titan_gorge: { moss: 0, dust: 0.7, lith: 'sandstone', lichen: [0.04, BLACK, ORANGE, 0.6], varnish: 0.27, angular: 0.65, scree: 0.9 },
   oasis: { moss: 0, dust: 0.7, lith: 'sandstone', lichen: [0.04, ORANGE, BLACK, 0.5], varnish: 0.24 },
   mars: { moss: 0, dust: 0.9, lith: 'basalt', lichen: [0, PALE, PALE, 1] },
   moon: { moss: 0, dust: 0.7, lith: 'basalt', lichen: [0, PALE, PALE, 1] },
@@ -252,6 +268,7 @@ export function rockDressingFor(mapId: string, dirtTone: ToneFunction | null | u
     karst: climate.lith === 'karst' ? [1, 1, 1] : [0, 0, 0],
     streak: climate.lith === 'karst' ? [0.5, 0.51, 0.53] : [0.36, 0.29, 0.25],
     bedLip: climate.bedLip ?? 1,
+    scree: Math.max(0, Math.min(1, climate.scree ?? 0)),
   };
 }
 
@@ -890,6 +907,82 @@ export function paintBoulder(form: BoulderForm, tone: ToneFunction | null | unde
     col[i * 3] = _soil.r; col[i * 3 + 1] = _soil.g; col[i * 3 + 2] = _soil.b;
   }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+}
+
+/**
+ * (b46, the treescn lane 2026-10-09; the critics on wave 287 and on Redrock's waves 282-325: boulders as "smooth blobs"
+ * with "no burial or fracture", "no talus or block apron", sitting "on a clean seam") a scree clast: the stone broken
+ * small. An irregular block — an icosahedron's twelve corners, each at a radius of its own, the whole flattened as a
+ * bedded rock's chips are slabs — cut by two fracture planes (the corners past a plane laid onto it: the fresh breaks,
+ * paler, the arrises crisp), flat-shaded (twenty facets at most). Unit size about its centre (y up), its painted
+ * facts the boulders' own (BoulderForm: paintBoulder tones it as the map's stone, aRockFace carries its height share and
+ * its breaks), so the rock material dresses it as the boulder it broke from. props.ts buildRockBeds strews it.
+ */
+export function buildScreeClast(rng: () => number, lithology: BoulderLithology = 'granite'): BoulderForm {
+  const g = (1 + Math.sqrt(5)) / 2;
+  const corners: number[][] = [[-1, g, 0], [1, g, 0], [-1, -g, 0], [1, -g, 0], [0, -1, g], [0, 1, g], [0, -1, -g], [0, 1, -g],
+    [g, 0, -1], [g, 0, 1], [-g, 0, -1], [-g, 0, 1]];
+  const faces = [0, 11, 5, 0, 5, 1, 0, 1, 7, 0, 7, 10, 0, 10, 11, 1, 5, 9, 5, 11, 4, 11, 10, 2, 10, 7, 6, 7, 1, 8, 3, 9, 4, 3, 4, 2,
+    3, 2, 6, 3, 6, 8, 3, 8, 9, 4, 9, 5, 2, 4, 11, 6, 2, 10, 8, 6, 7, 9, 8, 1];
+  // the bedded stones break to slabs, the massive ones to blocks
+  const bedded = lithology === 'sandstone' || lithology === 'slate' || lithology === 'limestone' || lithology === 'greywacke'
+    || lithology === 'karst' || lithology === 'gneiss';
+  const flat = bedded ? 0.42 + rng() * 0.2 : 0.55 + rng() * 0.25, deep = 0.7 + rng() * 0.3;
+  const vx: number[][] = [], fresh0: number[] = [];
+  for (const [x0, y0, z0] of corners) {
+    const l = Math.hypot(x0, y0, z0), r = 0.8 + rng() * 0.45;
+    vx.push([(x0 / l) * r, (y0 / l) * r * flat, (z0 / l) * r * deep]); fresh0.push(0);
+  }
+  // two fracture planes, each across a facet of its own (the first a facet of the top, the second one of the sides): the
+  // facet's plane moved in a little, every corner past it laid onto it — the facet a fresh break, flat, its arrises crisp
+  for (let c = 0; c < 2; c++) {
+    let f = Math.floor(rng() * 20);
+    for (let tries = 0; tries < 20; tries++, f = (f + 7) % 20) {
+      const a = vx[faces[f * 3]], b = vx[faces[f * 3 + 1]], d = vx[faces[f * 3 + 2]];
+      const ny = (b[2] - a[2]) * (d[0] - a[0]) - (b[0] - a[0]) * (d[2] - a[2]);
+      const up = ny / (Math.hypot((b[1] - a[1]) * (d[2] - a[2]) - (b[2] - a[2]) * (d[1] - a[1]), ny, (b[0] - a[0]) * (d[1] - a[1]) - (b[1] - a[1]) * (d[0] - a[0])) || 1);
+      if (c === 0 ? up > 0.45 : Math.abs(up) < 0.55) break;
+    }
+    const a = vx[faces[f * 3]], b = vx[faces[f * 3 + 1]], d = vx[faces[f * 3 + 2]];
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], wx = d[0] - a[0], wy = d[1] - a[1], wz = d[2] - a[2];
+    let nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx;
+    const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+    const centre = ((a[0] + b[0] + d[0]) * nx + (a[1] + b[1] + d[1]) * ny + (a[2] + b[2] + d[2]) * nz) / 3;
+    const plane = centre * (0.8 + 0.1 * rng());
+    for (let v = 0; v < vx.length; v++) {
+      const p = vx[v], s = p[0] * nx + p[1] * ny + p[2] * nz;
+      if (s > plane) { p[0] -= (s - plane) * nx; p[1] -= (s - plane) * ny; p[2] -= (s - plane) * nz; fresh0[v] = 1; }
+    }
+  }
+  let top = 0;
+  for (const v of vx) top = Math.max(top, v[1]);
+  const count = faces.length, pos = new Float32Array(count * 3), nor = new Float32Array(count * 3), face = new Float32Array(count * 4);
+  const edge = new Float32Array(count), fresh = new Float32Array(count), facet = new Float32Array(count), hollow = new Float32Array(count);
+  for (let t = 0; t < faces.length; t += 3) {
+    const a = vx[faces[t]], b = vx[faces[t + 1]], c = vx[faces[t + 2]];
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], wx = c[0] - a[0], wy = c[1] - a[1], wz = c[2] - a[2];
+    let nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx;
+    const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+    // a facet cut flat by a fracture plane is all break; one that spans a cut a part of it
+    const faceFresh = (fresh0[faces[t]] + fresh0[faces[t + 1]] + fresh0[faces[t + 2]]) / 3;
+    const tone = rng() * 2 - 1;
+    for (let k = 0; k < 3; k++) {
+      const v = t + k, p = vx[faces[v]];
+      pos[v * 3] = p[0]; pos[v * 3 + 1] = p[1]; pos[v * 3 + 2] = p[2];
+      nor[v * 3] = nx; nor[v * 3 + 1] = ny; nor[v * 3 + 2] = nz;
+      fresh[v] = faceFresh > 0.99 ? 1 : faceFresh * 0.6;
+      facet[v] = tone;
+      face[v * 4 + 1] = clamp(p[1] / Math.max(1e-6, top), -1, 1);
+      face[v * 4 + 2] = fresh[v];
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geometry.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  geometry.setAttribute('aRockFace', new THREE.BufferAttribute(face, 4));
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return { geometry, edge, fresh, facet, hollow };
 }
 
 /** The heights (form units) and the directions round the vertical axis at which a stone's sections are taken (b14). */

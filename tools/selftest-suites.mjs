@@ -1319,6 +1319,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/yardDressing.selftest.mjs',
     'src/world/rockDressing.selftest.mjs',
+    // b46, the treescn lane (2026-10-09): the scree at the boulders' feet, the stones of the owner's maps to raise
+    'src/world/rockScree.selftest.mjs',
     'src/world/rockCollision.selftest.mjs', // 2026-10-07 the hitbox lane: a stone's colliders from its own mesh
     'src/world/rockDriveOver.selftest.mjs', // 2026-10-08 the hitbox lane: a drive-over stone has no collider; shells meet its ground
     // the scenery lane (after wave 57): the telegraph poles' weathered timber
