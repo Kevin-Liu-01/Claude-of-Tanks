@@ -8209,9 +8209,13 @@ ${snowCap ? `
     for (const [i, sg] of placedSegs.entries()) {
       const c = Math.cos(sg.yaw), sn = Math.sin(sg.yaw);
       const groundAt = (x: number, z: number) => heightField.getHeightAt(sg.x + x * c + z * sn, sg.z - x * sn + z * c) - sg.y;
-      const geometry = buildDragonsTeeth(sg.len, tones, (seed + 7433 + i * 131) >>> 0, groundAt);
-      // its collision in its own frame: the teeth's ground band (each tooth a solid) and its shell bands
-      const profile = deriveRuntimeStructureCollisionProfile({ baked: [geometry] });
+      const teethSeed = (seed + 7433 + i * 131) >>> 0;
+      const geometry = buildDragonsTeeth(sg.len, tones, teethSeed, groundAt);
+      // its collision in its own frame: the teeth's ground band (each tooth a solid) and its shell bands, from the same
+      // teeth without their grass (a blade stops nothing)
+      const bare = buildDragonsTeeth(sg.len, { ...tones, barren: true }, teethSeed, groundAt);
+      const profile = deriveRuntimeStructureCollisionProfile({ baked: [bare] });
+      bare.dispose();
       appendStructureCollisionBand(obstacles, profile.contact, sg.x, sg.y, sg.z, sg.yaw).kind = 'teeth';
       for (const band of profile.shell) appendStructureCollisionBand(colliders, band, sg.x, sg.y, sg.z, sg.yaw).kind = 'teeth';
       geometry.rotateY(sg.yaw);
