@@ -322,9 +322,9 @@ function hashLaunch(seed: number, id: string, tick: number): number {
 export type WreckTurretCause = 'ammorack' | 'ammo_rack' | 'shot' | 'fire' | 'ram' | string;
 
 /** The cook-off's work on the turret per kilogram of its charge (J/kg): a 66.8 t M1A2's 10 kg throws its 16.6 t
- * turret at about 14 m/s, some 10 m over the ring (6–14 m by the draw). */
-const COOK_OFF_J_PER_KG = 160_000;
-const COOK_OFF_MIN_MPS = 8;
+ * turret at about 17 m/s, some 15 m over the ring and clear of its own fireball (9–18 m by the draw). */
+const COOK_OFF_J_PER_KG = 250_000;
+const COOK_OFF_MIN_MPS = 9;
 const COOK_OFF_MAX_MPS = 19;
 
 /**
@@ -354,11 +354,11 @@ export function turretLaunchVelocity(
   ax *= al; ay *= al; az *= al;
   let up: number, side: number, tumble: number, spin: number;
   if (rack) {
-    // v = sqrt(2 E / m), the work 0.6–1.4 of the mean: 6–14 m over the ring for an MBT, 2.5–3.8 s in the air, landing
-    // 5–15 m off its hull with one or two turns in it
+    // v = sqrt(2 E / m), the work 0.6–1.4 of the mean: 9–18 m over the ring for an MBT, 3–4 s in the air, landing
+    // 7–17 m off its hull (clear of its ends) with one or two turns in it
     const work = COOK_OFF_J_PER_KG * charge * (0.6 + 0.8 * random());
     up = Math.max(COOK_OFF_MIN_MPS, Math.min(COOK_OFF_MAX_MPS, Math.sqrt((2 * work) / mass)));
-    side = 1.8 + 2.6 * random();
+    side = 2.2 + 2.6 * random();
     tumble = 1.4 + 2.2 * random();
     spin = (random() * 2 - 1) * 3.0;
   } else if (burn) {
