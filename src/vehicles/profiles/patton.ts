@@ -1989,6 +1989,7 @@ function emitSmoothBustleMesh(
 function emitSmoothBustleOuterSkin(
   P: PattonBuilderPort,
   rows: readonly SmoothBustleRow[],
+  ringCount: number,
   yl: HeightMap,
   zl: HeightMap,
 ): void {
@@ -2004,6 +2005,16 @@ function emitSmoothBustleOuterSkin(
       const a1 = a0 + 1;
       const b0 = a0 + pointsPerRow;
       const b1 = b0 + 1;
+      indices.push(a0, a1, b1, a0, b1, b0);
+    }
+    // Sealed lane 2026-10-10: the tail cap's collapsing rings lie on the tail plane, but the section is open along
+    // the floor (the underside strip closes it only between the real rings), so the face's bottom wedge, floor to
+    // centroid, stayed open behind the culled tail tarp (296 px of sky through the turret at battle range).
+    if (row >= ringCount - 1) {
+      const a0 = row * pointsPerRow + pointsPerRow - 1;
+      const a1 = row * pointsPerRow;
+      const b0 = a0 + pointsPerRow;
+      const b1 = a1 + pointsPerRow;
       indices.push(a0, a1, b1, a0, b1, b0);
     }
   }
@@ -2082,7 +2093,7 @@ function smoothBustle(
   // tail cap: two collapsing rings ON the tail plane (z anchor untouched) —
   // shared grid vertices grade the wrap into the face; interior stays -z flat
   if (!appendSmoothBustleTailCap(rows)) return;
-  emitSmoothBustleOuterSkin(P, rows, yl, zl);
+  emitSmoothBustleOuterSkin(P, rows, rings.length, yl, zl);
   emitSmoothBustleUnderside(P, rows, rings.length, yl, zl);
   emitSmoothBustleFrontCap(P, rows[0], yl, zl);
 }
