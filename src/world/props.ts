@@ -66,8 +66,8 @@ import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
 import {
-  FORT_CONTACT_FLOOR_M, FORT_PRINT_MEAN, FORT_PRINT_SEED, TEETH, TEETH_MAPS, buildDragonsTeeth, buildPillbox, dragonsTeethSeats, fortFor,
-  pillboxBerm, pillboxFootprintGeometry, pillboxFooting,
+  FORT_CONTACT_FLOOR_M, FORT_PRINT_MEAN, FORT_PRINT_SEED, TEETH, TEETH_MAPS, buildDragonsTeeth, buildHedgehogBeam, buildHedgehogGusset,
+  buildPillbox, dragonsTeethSeats, fortFor, pillboxBerm, pillboxFootprintGeometry, pillboxFooting,
 } from './maps/fortKit.ts'; // the fortifications lane: the pillbox, the Westwall's teeth
 import {
   FIELD_STONE_PRINT_SEED, liftFieldStoneMean, paintFieldStoneBuffers as paintFieldStoneBuffersInline, type FieldStoneBuffers,
@@ -7651,12 +7651,19 @@ ${snowCap ? `
       const beams = hedgehogBeamSpecs(hx, y, hz, yaw, scale, yawOffsets);
       const clutterObs: CollisionRecord[] = [], clutterCols: CollisionRecord[] = [];
       const clutter = new CrushableClutter('hedgehog', hx, y, hz, 1.2 * scale, 1.7 * scale, clutterObs, clutterCols);
-      for (const beamSpec of beams) {
-        const beam = box(0.16 * scale, 0.16 * scale, 2.1 * scale, 1.2);
+      // (the fortifications lane, round 2b: three angle irons in weathered, rusting steel, riveted at their crossing,
+      // on the plain vertex-coloured material; the old beams were flat near-black boxes on the glassy 'dark' bucket.
+      // The same footprint, so the same collision; drawn from their own seed, no placement draws)
+      const gusset = buildHedgehogGusset(scale, 0x4e6 + hedgehogId * 31);
+      gusset.rotateY(yaw);
+      gusset.translate(hx, y + 0.62 * scale, hz);
+      buckets.baked.push(gusset); clutter.ownPiece(gusset);
+      for (const [bi, beamSpec] of beams.entries()) {
+        const beam = buildHedgehogBeam(2.1 * scale, 0.16 * scale, 0x4e7 + hedgehogId * 31 + bi);
         beam.rotateX(beamSpec.tilt);
         beam.rotateY(beamSpec.yaw);
         beam.translate(hx, y + 0.62 * scale, hz);
-        buckets.dark.push(beam); clutter.ownPiece(beam);
+        buckets.baked.push(beam); clutter.ownPiece(beam);
         const record: PropsCollisionRecord = {
           min: [hx, beamSpec.minY, hz], max: [hx, beamSpec.maxY, hz],
           kind: 'hedgehog', hedgehogId,

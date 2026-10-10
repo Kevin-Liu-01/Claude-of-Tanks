@@ -1388,6 +1388,48 @@ function tooth(m: Mesh, x: number, y0: number, z: number, b: number, t: number, 
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// the Czech hedgehog (round 2b): three angle irons riveted at their crossing
+
+/** Steel and its rust, linear albedo, for the plain baked bucket (vertex colours are albedo). */
+const STEEL_DARK: Rgb = hexLin(0x34302d), RUST_BROWN: Rgb = hexLin(0x4c2c1c), RUST_ORANGE: Rgb = hexLin(0x6a381d);
+
+/**
+ * One beam of a hedgehog along +z, `length` m, centred, an angle iron (two legs `leg` m wide, `t` m thick) whose
+ * outer corner lies on the axis's −x −y side, the old box's footprint (leg × leg) kept; weathered steel, rust running
+ * from its ends and its edges. Plain vertex colours (the baked bucket), uvs on the plain texel. Its own seed.
+ */
+export function buildHedgehogBeam(length: number, leg: number, seed: number): THREE.BufferGeometry {
+  const m = new Mesh(1);
+  const t = Math.max(0.012, leg * 0.09), h = length / 2, a = -leg / 2;
+  const shade: Shade = (p, n) => {
+    const streak = vnoise(p[0] * 9, p[1] * 9, p[2] * 1.2, 0.3, seed) * 0.6 + vnoise(p[0] * 3, p[1] * 3, p[2] * 4, 0.5, seed + 3) * 0.4;
+    const end = smooth(h * 0.55, h, Math.abs(p[2]));
+    const up = n[1] > 0.5 ? 0.25 : 0;
+    const rust = clamp01(streak * 0.95 - 0.38 + end * 0.4 + up);
+    const c = mix(STEEL_DARK, mix(RUST_BROWN, RUST_ORANGE, smooth(0.5, 0.9, streak)), rust);
+    return mul(c, 0.85 + vnoise(p[0], p[1], p[2], 0.08, seed + 7) * 0.3);
+  };
+  // the horizontal leg (along x) and the vertical leg (along y), each a thin box
+  solid(m, a + leg / 2, a, 0, leg, t, length, 0, shade, false);
+  solid(m, a + t / 2, a + t, 0, t, leg - t, length, 0, shade, false);
+  return m.geometry();
+}
+
+/** The gusset at a hedgehog's crossing: two riveted plates and their rivet heads (plain baked colours). */
+export function buildHedgehogGusset(scale: number, seed: number): THREE.BufferGeometry {
+  const m = new Mesh(1);
+  const shade: Shade = (p) => mix(STEEL_DARK, RUST_BROWN, clamp01(vnoise(p[0] * 8, p[1] * 8, p[2] * 8, 0.2, seed) * 1.2 - 0.1));
+  const s = scale;
+  solid(m, 0, -0.17 * s, 0, 0.34 * s, 0.34 * s, 0.018 * s, 0, shade, false);
+  solid(m, 0, -0.17 * s, 0, 0.018 * s, 0.34 * s, 0.34 * s, 0, shade, false);
+  for (const [x, y] of [[-0.1, 0.06], [0.1, 0.06], [-0.1, -0.06], [0.1, -0.06]]) {
+    solid(m, x * s, y * s, 0.012 * s, 0.03 * s, 0.03 * s, 0.012 * s, Math.PI / 4, shade, false);
+    solid(m, 0.012 * s, y * s, x * s, 0.012 * s, 0.03 * s, 0.03 * s, Math.PI / 4, shade, false);
+  }
+  return m.geometry();
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // public
 
 function mulberry32(a: number): Rng {

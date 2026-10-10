@@ -14,8 +14,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  FLAT_UV, FORT_CONTACT_FLOOR_M, FORT_GRADE, FORT_MAPS, FORT_PRINT_MEAN, TEETH, TEETH_MAPS, buildDragonsTeeth, buildPillbox,
-  dragonsTeethSeats, fortFor, pillboxBerm, pillboxFootprintGeometry, pillboxFooting,
+  FLAT_UV, FORT_CONTACT_FLOOR_M, FORT_GRADE, FORT_MAPS, FORT_PRINT_MEAN, TEETH, TEETH_MAPS, buildDragonsTeeth, buildHedgehogBeam,
+  buildHedgehogGusset, buildPillbox, dragonsTeethSeats, fortFor, pillboxBerm, pillboxFootprintGeometry, pillboxFooting,
 } from './fortKit.ts';
 import { MAP_IDS } from './mapIds.ts';
 import { deriveRuntimeStructureContactBand } from '../structureCollision.ts';
@@ -164,4 +164,23 @@ for (const style of STYLES) {
   assert.match(props, /appendStructureCollisionBand\(obstacles, profile\.contact, sg\.x, sg\.y, sg\.z, sg\.yaw\)\.kind = 'teeth';/,
     'its collision from its own teeth');
 }
-console.log('fortKit.selftest: every map\'s pillbox (Regelbau, DOT, hex, log and earth) builds intact and razed under a hull\'s reach, its embrasures dark in board-formed concrete, its bank falling to the toe with its contact cut at 0.35 m, the old draws spent, shells on its slabs, the bank a static earthwork; the Westwall\'s teeth in four rows, each on its own ground, unpainted');
+// ---------------------------------------------------------------------------------------------- 6. the hedgehog
+{
+  const beam = buildHedgehogBeam(2.1, 0.16, 9), b = bbox(beam);
+  assert.ok(Math.abs(b.min.x + 0.08) < 1e-6 && Math.abs(b.max.x - 0.08) < 1e-6 && Math.abs(b.min.y + 0.08) < 1e-6 && Math.abs(b.max.y - 0.08) < 1e-6
+    && Math.abs(b.min.z + 1.05) < 1e-6 && Math.abs(b.max.z - 1.05) < 1e-6, 'an angle iron in the old beam\'s footprint (the same collision specs)');
+  // an angle, not a bar: nothing at the section's far corner (+x +y)
+  const p = beam.attributes.position;
+  let farCorner = 0;
+  for (let i = 0; i < p.count; i++) if (p.getX(i) > 0.03 && p.getY(i) > 0.03) farCorner++;
+  assert.equal(farCorner, 0, 'two legs, the section open at its far corner');
+  const c = beam.attributes.color;
+  let mean = [0, 0, 0];
+  for (let i = 0; i < c.count; i++) { mean[0] += c.getX(i) / c.count; mean[1] += c.getY(i) / c.count; mean[2] += c.getZ(i) / c.count; }
+  assert.ok(mean[0] > mean[2] * 1.15 && mean[0] > 0.02, `weathered, rusting steel (mean ${mean.map((v) => v.toFixed(3)).join(', ')})`);
+  assert.ok(Object.keys(buildHedgehogGusset(1, 3).attributes).join() === Object.keys(beam.attributes).join(), 'the gusset on the same attributes');
+  const props = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
+  const hog = props.slice(props.indexOf('function placeHedgehogs'), props.indexOf('placeHedgehogs();'));
+  assert.ok(hog.includes('buckets.baked.push(beam)') && !hog.includes('buckets.dark.push'), 'on the plain vertex-coloured material, off the glassy dark one');
+}
+console.log('fortKit.selftest: every map\'s pillbox (Regelbau, DOT, hex, log and earth) builds intact and razed under a hull\'s reach, its embrasures dark in board-formed concrete, its bank falling to the toe with its contact cut at 0.35 m, the old draws spent, shells on its slabs, the bank a static earthwork; the Westwall\'s teeth in four rows, each on its own ground, unpainted; the hedgehogs angle irons in rusting steel');
