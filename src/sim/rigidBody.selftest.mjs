@@ -234,7 +234,41 @@ function slopeRun() {
   assert.ok(worst < 0.25, `no frame-to-frame jump larger than a step's travel (${worst.toFixed(3)} m)`);
 }
 
-// --- 11. no allocation per step (heap stays flat across many steps once warm)
+// --- 11. wedged piles come to rest (dcore, 2026-10-10: a slab tilted on a corner pier with a wall panel wedged under
+// its edge climbed ~5 cm/s and never slept — the panel's edge had pierced the slab, the two boxes' spheres were pushed out
+// of opposite faces and clamped them together; static corners were solved cold every step and flickered)
+{
+  let seed = 1;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const slabShape = createRigidBox(2.8, 0.14, 2.4, 2200, { restitution: 0.12, friction: 0.7 });
+  const panelShape = createRigidBox(2.2, 1.5, 0.18, 1900, { restitution: 0.12, friction: 0.7 });
+  let awake = 0, worstClimb = 0;
+  for (let v = 0; v < 40; v++) {
+    const pierH = 1.2 + rnd() * 1.6;
+    const pier = { min: [-0.4, 0, -0.4], max: [0.4, pierH, 0.4], shape2: { kind: 'obb', cx: 0, cz: 0, hw: 0.4, hl: 0.4, yaw: 0 } };
+    const world = createRigidWorld({ capacity: 4 });
+    world.bindEnvironment({ groundAt: () => 0, queryStatic: (minX, minZ, maxX, maxZ, out) => {
+      out.length = 0;
+      if (!(pier.max[0] < minX || pier.min[0] > maxX || pier.max[2] < minZ || pier.min[2] > maxZ)) out.push(pier);
+      return out;
+    } });
+    const lean = rnd() * 1.4, yaw = (rnd() - 0.5) * 1.2;
+    const cy = Math.cos(yaw / 2), sy = Math.sin(yaw / 2), cl = Math.cos(lean / 2), sl = Math.sin(lean / 2);
+    const panel = world.spawn(panelShape, { x: 3.2 + rnd() * 1.6, y: 1.6 + rnd(), z: (rnd() - 0.5) * 2,
+      qx: cy * sl, qy: sy * cl, qz: -sy * sl, qw: cy * cl });
+    const tilt = 0.2 + rnd() * 0.35;
+    const slab = world.spawn(slabShape, { x: 1.8 + rnd() * 0.6, y: pierH + 1.4 + rnd(), z: (rnd() - 0.5) * 0.8,
+      qz: -Math.sin(tilt / 2), qw: Math.cos(tilt / 2), vx: rnd() - 0.5, wy: rnd() - 0.5 });
+    let y12 = 0;
+    for (let n = 0; n < 60 * 20; n++) { world.step(); if (n === 60 * 12) y12 = world.py[slab]; }
+    if (!world.asleep[slab] || !world.asleep[panel]) awake++;
+    worstClimb = Math.max(worstClimb, world.py[slab] - y12);
+  }
+  assert.equal(awake, 0, `every wedged pile sleeps within 20 s (${awake} of 40 still awake)`);
+  assert.ok(worstClimb < 0.02, `no slab creeps up its pile (${worstClimb.toFixed(3)} m over 8 s)`);
+}
+
+// --- 12. no allocation per step (heap stays flat across many steps once warm)
 if (typeof globalThis.gc === 'function') {
   const world = createRigidWorld({ capacity: 16 });
   world.bindEnvironment(slope);
@@ -249,4 +283,4 @@ if (typeof globalThis.gc === 'function') {
   assert.ok(grown < 512 * 1024, `the heap stays flat across 4,000 steps (${(grown / 1024).toFixed(0)} KB)`);
 }
 
-console.log('rigidBody.selftest: drop + sleep, impact reports, slope tumble, bit-identical reruns, rolling drum, static walls and vanished roofs, kinematic decks and shoves, stacks, compound turret with gun, interpolation');
+console.log('rigidBody.selftest: drop + sleep, impact reports, slope tumble, bit-identical reruns, rolling drum, static walls and vanished roofs, kinematic decks and shoves, stacks, compound turret with gun, interpolation, wedged piles at rest');
