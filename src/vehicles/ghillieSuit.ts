@@ -3818,15 +3818,28 @@ function addGhillieOwner(
     const laid = topCloth(opened.length ? { ...panel, holes: [...(panel.holes ?? []), ...opened] } : panel, cfg, support, uvk);
     // the netting lane: a carrier is filtered by the clearance as it is laid, and the drapes built after it see only
     // what is left of it (a drape never starts from a roof edge the clearance took away)
-    tops.push(coverOk ? {
-      ...laid,
-      geometry: clearedGeometry(laid.geometry, coverOk),
-      covers: (x, z) => {
-        if (!laid.covers(x, z)) return false;
-        const h = laid.heightAt(x, z);
-        return h !== null && coverOk([x, h, z]);
-      },
-    } : laid);
+    if (coverOk) {
+      const geometry = clearedGeometry(laid.geometry, coverOk);
+      // the cells whose cloth is really there (torn perimeter cells, islands and what the clearance took are not): a
+      // drape starts only on cloth that exists
+      const { x0, x1, z0, z1, nx = 18, nz = 30 } = panel;
+      const cellAt = (x: number, z: number): number => THREE.MathUtils.clamp(Math.floor((z - z0) / ((z1 - z0) || 1) * nz), 0, nz - 1) * nx
+        + THREE.MathUtils.clamp(Math.floor((x - x0) / ((x1 - x0) || 1) * nx), 0, nx - 1);
+      const kept = new Set<number>();
+      const gp = geometry.attributes.position as THREE.BufferAttribute;
+      for (let t = 0; t + 2 < gp.count; t += 3) {
+        kept.add(cellAt((gp.getX(t) + gp.getX(t + 1) + gp.getX(t + 2)) / 3, (gp.getZ(t) + gp.getZ(t + 1) + gp.getZ(t + 2)) / 3));
+      }
+      tops.push({
+        ...laid,
+        geometry,
+        covers: (x, z) => {
+          if (!laid.covers(x, z) || !kept.has(cellAt(x, z))) return false;
+          const h = laid.heightAt(x, z);
+          return h !== null && coverOk([x, h, z]);
+        },
+      });
+    } else tops.push(laid);
   }
   const surfaces: ClothSurface[] = [...tops];
   for (const panel of panels.side ?? []) surfaces.push(sideCloth(panel, cfg, support, uvk, gunFloor?.standing ?? null));
