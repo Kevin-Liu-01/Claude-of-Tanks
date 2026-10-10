@@ -1328,8 +1328,11 @@ and objective glyphs stay upright; nothing nudges them apart.
 
 **Mask readiness and retry policy.** Solo and multiplayer covered entry await
 `prepareTankMasks` before revealing the battle. It joins the shared preparation
-and paints a matching active panel before reporting success; failure follows
-covered entry recovery. The private clone excludes shadow-only helpers
+and paints a matching active panel before reporting success. Masks that miss
+their programs' 5 s link cap (a loaded machine) no longer refuse the battle
+(2026-10-09, `src/ui/damagePanelEntryMasks.ts`): the reveal goes on and the
+panel's retry ladder paints them; a missing panel still follows covered entry
+recovery. The private clone excludes shadow-only helpers
 (including the live-owner articulated batch) and renders even when its source
 actor is staged/hidden. `setTank` asks `tankThumbs.getTopDownMasks` for the
 real layers; an unfinished schematic stays blank, never a generic vehicle.
