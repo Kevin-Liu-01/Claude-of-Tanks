@@ -65,7 +65,9 @@ import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSp
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
-import { FORT_PRINT_MEAN, FORT_PRINT_SEED, buildPillbox, fortFor, pillboxContactProxy, pillboxFooting } from './maps/fortKit.ts'; // the fortifications lane: the pillbox
+import {
+  FORT_CONTACT_FLOOR_M, FORT_PRINT_MEAN, FORT_PRINT_SEED, buildPillbox, fortFor, pillboxBerm, pillboxFootprintGeometry, pillboxFooting,
+} from './maps/fortKit.ts'; // the fortifications lane: the pillbox
 import {
   FIELD_STONE_PRINT_SEED, liftFieldStoneMean, paintFieldStoneBuffers as paintFieldStoneBuffersInline, type FieldStoneBuffers,
   type FieldStoneLithology,
@@ -4117,13 +4119,8 @@ ${snowCap ? `
     // own variant (the sangar) still wins below.
     ...(fort ? { bunker: {
       ...DESTRUCTIBLE_TYPES.bunker, mat: 'fortConcrete',
-      // the movement footprint: the body and the bank where it stands 0.35 m and more (no stop at a toe a hull climbs)
-      contactBand: (() => {
-        const proxy = pillboxContactProxy(fort.style, fort.tones, fort.seed);
-        const band = deriveRuntimeStructureContactBand({ baked: [proxy] });
-        proxy.dispose();
-        return band;
-      })(),
+      // the seat checks (roads, trunks) read the whole work's ground: the body and its static bank (placeFieldWorks)
+      footprintBuild: () => pillboxFootprintGeometry(fort.style, fort.tones, fort.seed),
       build: (rng: () => number) => { DESTRUCTIBLE_TYPES.bunker.build(rng).dispose(); return buildPillbox(fort.style, fort.tones, fort.seed, false); },
       broken: (rng: () => number) => { DESTRUCTIBLE_TYPES.bunker.broken!(rng).dispose(); return buildPillbox(fort.style, fort.tones, fort.seed, true); },
     } } : {}),
@@ -4217,7 +4214,8 @@ ${snowCap ? `
     let extents = destructibleFootprints.get(kind);
     if (!extents) {
       const meta = resolveDestructibleMeta(destructibleContext, kind);
-      const geometry = meta.build(mulberry32(0x0f0f7));
+      // (the fortifications lane: a pillbox's seat is its whole work's ground, the bank round the destructible body)
+      const geometry = meta.footprintBuild ? meta.footprintBuild() : meta.build(mulberry32(0x0f0f7));
       const band = deriveRuntimeStructureContactBand({ baked: [geometry] });
       geometry.dispose();
       const bounds = setCompoundShape({ min: [0, 0, 0], max: [0, 0, 0] }, band.parts);
@@ -7994,12 +7992,29 @@ ${snowCap ? `
   placeFieldWorks();
 
   // the fortifications lane (2026-10-09; gauntlet wave 315: pillboxes "on brown plinths or on flat brown patches that
-  // look pasted onto the grass", "weak footing"): each pillbox's earth bank meets the battlefield through the ground's
-  // own material, a fillet from the bank's toe (fortKit.ts pillboxFooting: the same rows the bank is built from) out
-  // over the terrain, so the bank grows out of the ground round it. Merged into the boulders' bed cells (the ground's
-  // material, one draw a 512 m cell), on desktop as the beds are. The fillet stands under the bank's toe height and
-  // the toe keeps its place when the bank slumps (a broken pillbox), so neither state leaves a lip in the air.
-  if (fort && !mobileProps && P.structureVariants?.bunker === undefined) {
+  // look pasted onto the grass", "weak footing", and their ask, "sand or earth banked against the pillboxes"): each
+  // pillbox stands in an earthwork, the bank of earth thrown up against its walls (fortKit.ts pillboxBerm). The bank is
+  // the battlefield's, not the destructible's: it outlives the concrete (a broken prop has no collider, so a bank that
+  // fell with it would be cover a hull drives through), keeps its own collision (pillboxEarthworks, laid once every
+  // placement pass is done, as the destructibles' own bands are refitted), and on desktop it is drawn with the ground's
+  // own material over the bank's exact form and out over the terrain past its toe, merged into the boulders' bed cells
+  // (one draw a 512 m cell), so it grows out of the ground round it; the phones draw it in its vertex colours on the
+  // plain baked material.
+  const fortSeats: Array<{ x: number; y: number; z: number; yaw: number }> = [];
+  if (fort && P.structureVariants?.bunker === undefined) {
+    for (const rec of destructibles) if (rec.kind === 'bunker') fortSeats.push({ x: rec.x, y: rec.y, z: rec.z, yaw: rec.yaw });
+  }
+  if (fort && fortSeats.length && mobileProps) {
+    const bank = pillboxBerm(fort.style, fort.tones, fort.seed, { forBaked: true });
+    for (const seat of fortSeats) {
+      const g = bank.clone();
+      g.rotateY(seat.yaw);
+      g.translate(seat.x, seat.y, seat.z);
+      buckets.baked.push(g);
+    }
+    bank.dispose();
+  }
+  if (fort && fortSeats.length && !mobileProps) {
     const footing = pillboxFooting(fort.style, fort.tones, fort.seed);
     const meshAt = (x: number, z: number): number => terrainNearMeshHeightAt(nearMeshVertexHeight, x, z);
     const foldAt = (heightField as { _foldAt?: (x: number, z: number) => number })._foldAt;
@@ -8009,30 +8024,37 @@ ${snowCap ? `
       return Math.max(-127, Math.min(127, Math.round((f > 1 ? 1 : f < -1 ? -1 : f) * 127)));
     };
     const fillets: THREE.BufferGeometry[] = [];
-    for (const rec of destructibles) {
-      if (rec.kind !== 'bunker') continue;
-      const c = Math.cos(rec.yaw), sn = Math.sin(rec.yaw);
-      const toWorld = (p: readonly number[]): [number, number, number] => [rec.x + p[0] * c + p[2] * sn, rec.y + p[1], rec.z - p[0] * sn + p[2] * c];
-      const pos: number[] = [], fold: number[] = [], idx: number[] = [];
-      const RINGS = 5;
+    for (const seat of fortSeats) {
+      const c = Math.cos(seat.yaw), sn = Math.sin(seat.yaw);
+      const toWorld = (p: readonly number[]): [number, number, number] => [seat.x + p[0] * c + p[2] * sn, seat.y + p[1], seat.z - p[0] * sn + p[2] * c];
+      const pos: number[] = [], fold: number[] = [], idx: number[] = [], share: number[] = [];
+      // per sample: the inner face (below grade up to the crest, inside the wall), the bank's rows from the wall to
+      // its toe (a hair over it), then out over the ground, the last ring tucked under it
+      const BANK_ROWS = 7;
+      const RINGS = 1 + BANK_ROWS + 3;
       for (const f of footing) {
-        // the bank's surface near its toe (t 0.88 and 1.0), then out over the ground, the last ring tucked under it
-        const inner = toWorld(f.rows[5]), toe = toWorld(f.rows[6]);
         const ox = f.nx * c + f.nz * sn, oz = -f.nx * sn + f.nz * c;
-        const ring: Array<[number, number, number]> = [
-          [inner[0], Math.max(inner[1], meshAt(inner[0], inner[2])) + 0.02, inner[2]],
-          [toe[0], Math.max(toe[1], meshAt(toe[0], toe[2])) + 0.025, toe[2]],
-          [toe[0] + ox * 0.4, 0, toe[2] + oz * 0.4],
-          [toe[0] + ox * 0.85, 0, toe[2] + oz * 0.85],
-          [toe[0] + ox * 1.3, 0, toe[2] + oz * 1.3],
-        ];
-        ring[2][1] = meshAt(ring[2][0], ring[2][2]) + 0.03;
-        ring[3][1] = meshAt(ring[3][0], ring[3][2]) + 0.012;
-        ring[4][1] = meshAt(ring[4][0], ring[4][2]) - 0.05;
-        for (const q of ring) { pos.push(q[0], q[1], q[2]); fold.push(foldByte(q[0], q[2])); }
+        const crest = toWorld(f.rows[0]);
+        const ring: Array<[number, number, number]> = [[crest[0], seat.y - 0.6, crest[2]]];
+        for (let r = 0; r < BANK_ROWS; r++) {
+          const q = toWorld(f.rows[r]);
+          ring.push([q[0], Math.max(q[1] + 0.02, meshAt(q[0], q[2]) + 0.02), q[2]]);
+        }
+        const toe = toWorld(f.rows[BANK_ROWS - 1]);
+        for (const [d, lift] of [[0.45, 0.025], [0.95, 0.01], [1.4, -0.05]] as const) {
+          const x = toe[0] + ox * d, z = toe[2] + oz * d;
+          ring.push([x, meshAt(x, z) + lift, z]);
+        }
+        ring.forEach((q, j) => { pos.push(q[0], q[1], q[2]); fold.push(foldByte(q[0], q[2])); share.push(j === 0 ? 1 : j <= BANK_ROWS ? 0.7 : 0.35); });
       }
       const K = footing.length;
       for (let k = 0; k < K; k++) {
+        if (footing[k].h < 0.02 && footing[(k + 1) % K].h < 0.02) {
+          // no bank here (the open rear): the toe rings alone, a lip of ground against the wall's foot
+          const a = k * RINGS, b = ((k + 1) % K) * RINGS;
+          for (let j = BANK_ROWS - 1; j < RINGS - 1; j++) idx.push(a + j, a + j + 1, b + j, a + j + 1, b + j + 1, b + j);
+          continue;
+        }
         const a = k * RINGS, b = ((k + 1) % K) * RINGS;
         for (let j = 0; j < RINGS - 1; j++) idx.push(a + j, a + j + 1, b + j, a + j + 1, b + j + 1, b + j);
       }
@@ -8041,31 +8063,52 @@ ${snowCap ? `
       g.setAttribute('fold', new THREE.BufferAttribute(Int8Array.from(fold), 1, true));
       g.setIndex(idx);
       g.computeVertexNormals();
-      // wound to face up, and the ground's slope laws read near-ground normals (the b44 fillet lesson: a fillet lit by
-      // its own steep normal lost the fields and drew a tan ring): two fifths of its own form over the ground's up
+      // wound to face out of the bank, and the ground's slope laws fed a normal nearer the ground's own up (the b44
+      // fillet lesson: a fillet lit wholly by its own steep normal lost the fields and drew a tan ring): the bank keeps
+      // seven tenths of its own form, the ground past its toe a third
       const nrm = g.getAttribute('normal') as THREE.BufferAttribute;
       let up = 0;
       for (let i = 0; i < nrm.count; i++) up += nrm.getY(i);
-      if (up < 0) { for (let i = 0; i < idx.length; i += 3) { const t = idx[i + 1]; idx[i + 1] = idx[i + 2]; idx[i + 2] = t; } g.setIndex(idx); g.computeVertexNormals(); }
+      if (up < 0) {
+        for (let i = 0; i < idx.length; i += 3) { const t = idx[i + 1]; idx[i + 1] = idx[i + 2]; idx[i + 2] = t; }
+        g.setIndex(idx); g.computeVertexNormals();
+      }
       for (let i = 0; i < nrm.count; i++) {
-        const nx = nrm.getX(i) * 0.4, ny = nrm.getY(i) * 0.4 + 0.6, nz = nrm.getZ(i) * 0.4, l = Math.hypot(nx, ny, nz) || 1;
+        const k = share[i];
+        const nx = nrm.getX(i) * k, ny = nrm.getY(i) * k + (1 - k), nz = nrm.getZ(i) * k, l = Math.hypot(nx, ny, nz) || 1;
         nrm.setXYZ(i, nx / l, ny / l, nz / l);
       }
       g.computeBoundingSphere();
       fillets.push(g);
     }
-    if (fillets.length) {
-      const beds = (group.userData.rockBeds as THREE.BufferGeometry[] | undefined) ?? [];
-      for (const g of fillets) {
-        const cg = g.boundingSphere!.center, key = bedCellKey(cg.x, cg.z);
-        const at = beds.findIndex((b) => { if (!b.boundingSphere) b.computeBoundingSphere(); return bedCellKey(b.boundingSphere!.center.x, b.boundingSphere!.center.z) === key; });
-        const host = at >= 0 ? beds[at] : null;
-        const merged = host && host.index && host.getAttribute('normal') && host.getAttribute('fold') && Object.keys(host.attributes).length === 3
-          ? mergeGeometries([host, g], false) : null;
-        if (host && merged) { host.dispose(); g.dispose(); merged.computeBoundingSphere(); beds[at] = merged; }
-        else beds.push(g);
-      }
-      group.userData.rockBeds = beds;
+    const beds = (group.userData.rockBeds as THREE.BufferGeometry[] | undefined) ?? [];
+    for (const g of fillets) {
+      const cg = g.boundingSphere!.center, key = bedCellKey(cg.x, cg.z);
+      const at = beds.findIndex((b) => { if (!b.boundingSphere) b.computeBoundingSphere(); return bedCellKey(b.boundingSphere!.center.x, b.boundingSphere!.center.z) === key; });
+      const host = at >= 0 ? beds[at] : null;
+      const merged = host && host.index && host.getAttribute('normal') && host.getAttribute('fold') && Object.keys(host.attributes).length === 3
+        ? mergeGeometries([host, g], false) : null;
+      if (host && merged) { host.dispose(); g.dispose(); merged.computeBoundingSphere(); beds[at] = merged; }
+      else beds.push(g);
+    }
+    group.userData.rockBeds = beds;
+  }
+  /** The pillboxes' earthworks' collision (above): the bank's movement footprint from where it stands FORT_CONTACT_FLOOR_M
+   * high, its shell record its own slabs. Laid after every placement pass (the passes saw the pillbox's box alone, as
+   * they did before the bank). */
+  function pillboxEarthworks(): void {
+    if (!fort || !fortSeats.length) return;
+    const clipped = pillboxBerm(fort.style, fort.tones, fort.seed, { clip: FORT_CONTACT_FLOOR_M });
+    const full = pillboxBerm(fort.style, fort.tones, fort.seed);
+    const contact = deriveRuntimeStructureContactBand({ baked: [clipped] });
+    const slabs = localShellSlabs(full);
+    clipped.dispose(); full.dispose();
+    for (const seat of fortSeats) {
+      const ob = appendStructureCollisionBand(obstacles, contact, seat.x, seat.y, seat.z, seat.yaw);
+      ob.kind = 'earthwork';
+      const col = cloneCollisionRecord(ob);
+      if (slabs?.length) placeLocalShellSlabs(col, slabs, seat.x, seat.y, seat.z, seat.yaw, 1);
+      colliders.push(col);
     }
   }
 
@@ -11218,6 +11261,8 @@ ${snowCap ? `
     }
   }
 
+  // the fortifications lane: the pillboxes' earthworks, once every pass has placed its pieces (above)
+  pillboxEarthworks();
   registerWorldNightLighting(group, mats.curtain, destructibles, mapId, [
     { material: mats.glass, intensity: 2 },
     { material: mats.structureWood, intensity: 1.2 },

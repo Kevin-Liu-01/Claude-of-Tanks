@@ -12,10 +12,11 @@
 // - board-formwork concrete: the props' `fortConcrete` bucket, the board-formed print (regionalSurfaces.ts boardFormed)
 //   under these vertex colours, which carry the weather: damp foot, rain runs under the drip and the slits, soot over
 //   the embrasures, moss and lichen;
-// - earth banked against three walls to the sill, its toe below grade, turf on its crest and on the roof.
-// Its destroyed state is the same concrete broken: the face blown in to a ragged stub with its bars bent out, the slab
-// cracked into plates that sag into the shell, rubble at a real volume, soot; the berm slumped low (a broken prop has no
-// collider, so nothing of it stands higher than a hull crosses).
+// - earth banked against three walls to the sill, turf on the roof. The bank is the battlefield's earthwork, not the
+//   destructible's (pillboxBerm; props.ts lays it with its own collision and draws it in the ground's material).
+// Its destroyed state is the same concrete broken: the walls razed to ragged stubs with their bars bent out, the slab
+// cracked into plates fallen into the room, rubble at a real volume, soot, all under BROKEN_CAP (a broken prop has no
+// collider, so nothing of it stands higher than a hull crosses); the bank stands round it, its earth face bared.
 //
 // Regional forms (pillboxStyleFor): the German Regelbau casemate (western Europe 1940-45 and its relics), the Soviet
 // DOT with its rounded front under a thick earth cover, the hexagonal pillbox (the KMT lines of 1937, the Japanese and
@@ -106,6 +107,9 @@ const norm = (a: V3): V3 => { const l = Math.hypot(a[0], a[1], a[2]) || 1; retur
 type Shade = (p: V3, n: V3) => Rgb;
 
 class Mesh {
+  /** vertex colours = albedo x this: over the print's mean (the fortConcrete bucket), or 1 (the plain baked bucket) */
+  readonly colourScale: number;
+  constructor(colourScale = 1 / FORT_PRINT_MEAN) { this.colourScale = colourScale; }
   readonly p: number[] = [];
   readonly n: number[] = [];
   readonly t: number[] = [];
@@ -116,7 +120,7 @@ class Mesh {
     this.n.push(n[0], n[1], n[2]);
     const u = uv ?? FLAT_UV;
     this.t.push(u[0], u[1]);
-    this.c.push(col[0] / FORT_PRINT_MEAN, col[1] / FORT_PRINT_MEAN, col[2] / FORT_PRINT_MEAN);
+    this.c.push(col[0] * this.colourScale, col[1] * this.colourScale, col[2] * this.colourScale);
   }
   /**
    * A flat quad a b c d (either winding): with `n` its normal is n and its winding follows it; with `hint` its normal
@@ -155,7 +159,7 @@ class Mesh {
       this.n.push(N.getX(i), N.getY(i), N.getZ(i));
       if (keepUv && T) this.t.push(T.getX(i), T.getY(i)); else this.t.push(FLAT_UV[0], FLAT_UV[1]);
       const r = C ? C.getX(i) : 0.5, gg = C ? C.getY(i) : 0.5, b = C ? C.getZ(i) : 0.5;
-      this.c.push(r / FORT_PRINT_MEAN, gg / FORT_PRINT_MEAN, b / FORT_PRINT_MEAN);
+      this.c.push(r * this.colourScale, gg * this.colourScale, b * this.colourScale);
     }
     if (s !== g) s.dispose();
   }
@@ -661,6 +665,13 @@ function berm(m: Mesh, B: BermSpec): void {
       m.triN(a, na, d, nd, c, nc, col);
       m.triN(a, na, c, nc, b, nb, col);
     }
+    // the inner face: the earth cut against the wall, from the crest down below grade (hidden in the concrete while
+    // the work stands; the bank's face over the razed walls once it is destroyed)
+    const a = grid[i][0], b = grid[i1][0];
+    const a0: V3 = [a[0], B.grade - 0.75, a[2]], b0: V3 = [b[0], B.grade - 0.75, b[2]];
+    const inward: V3 = norm([-samples[i].nx, 0, -samples[i].nz]);
+    const cut: Shade = (p) => mul(T.earth, 0.62 + vnoise(p[0] * 3, p[1] * 5, p[2] * 3, 0.3, B.seed + 43) * 0.25);
+    m.quad(a, b, b0, a0, cut, false, inward);
   }
 }
 
@@ -694,7 +705,7 @@ function edgeRole(_nx: number, nz: number): 'front' | 'rear' | 'flank' {
   return 'flank';
 }
 
-interface BuildOpts { tones: FortTones; seed: number; broken: boolean; clip?: number }
+interface BuildOpts { tones: FortTones; seed: number; broken: boolean }
 
 interface ConcreteSlit { edge: number; s: number; y: number; w: number; h: number; steps: number; plate: boolean }
 interface ConcreteLayout {
@@ -799,7 +810,7 @@ function buildConcretePillbox(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): 
         const inner: Shade = (p) => mul(T.concrete, 0.28 + vnoise(p[0], p[1], p[2], 0.4, O.seed + 73) * 0.12);
         m.quad(q1, q0, [q0[0], PIT, q0[2]], [q1[0], PIT, q1[2]], inner, false, scl(n, -1));
         // the bars: the outer and inner mats' verticals, bent out and over where the blast tore the concrete off them
-        if (hash3(j, i, 3, O.seed) < 0.5) {
+        if (hash3(j, i, 3, O.seed) < 0.26) {
           const rust: Shade = () => mix([0.12, 0.05, 0.025], [0.05, 0.035, 0.03], hash3(j, i, 5, O.seed));
           const off = hash3(j, i, 4, O.seed) < 0.5 ? 0.09 : thick - 0.09, out = off < thick / 2 ? 1 : -0.6;
           const base = add(p0, scl(n, -off));
@@ -908,8 +919,8 @@ function buildConcretePillbox(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): 
     collapsedSlab(m, sPlan, slab, slabShade, O, rng);
   }
 
-  // ---- the berm
-  berm(m, { ...concreteBermSpec(style, L, T, O.seed, O.broken), clip: O.clip });
+  // (the bank is not the destructible's: props.ts lays it as a static earthwork, pillboxBerm, so it outlives the
+  // concrete and keeps its collision)
 
   // ---- the destroyed state's rubble, at a real volume, in the concrete's own colours (none higher than a hull crosses)
   if (O.broken) rubble(m, plan, O, rng);
@@ -976,36 +987,78 @@ function placeBag(m: Mesh, rng: Rng, x: number, y: number, z: number, yaw: numbe
   g.dispose();
 }
 
-/** The roof's cover: turf over a skin of earth, its rim ragged, inset from the slab's edge. */
+/**
+ * The roof's cover: a skin of earth under turf, flat on top and rounded off at a ragged rim inset from the slab's edge,
+ * lumpy, its normals smooth (no facets), and tufts of grass standing in it.
+ */
 function roofCover(m: Mesh, plan: Plan, y: number, thick: number, inset: number, T: FortTones, seed: number): void {
   if (thick <= 0.02) return;
   const inner = grow(plan, -inset + (inset === 0 ? 0.18 : 0));
-  const samples = perimeter(inner, 0.3, 2);
+  const samples = perimeter(inner, 0.22, 3);
   const cx = plan.reduce((s, p) => s + p[0], 0) / plan.length, cz = plan.reduce((s, p) => s + p[1], 0) / plan.length;
-  const RINGS = 5;
-  const pt = (s: PerimeterSample, r: number): V3 => {
-    const t = r / RINGS; // 0 centre .. 1 rim
-    const rag = (vnoise(s.x * 3, 0, s.z * 3, 0.6, seed) - 0.5) * 0.36;
-    const x = cx + (s.x + s.nx * rag - cx) * t, z = cz + (s.z + s.nz * rag - cz) * t;
-    const h = thick * Math.pow(Math.max(0, 1 - t * t), 0.6) + 0.015 + (vnoise(x * 2, 0, z * 2, 0.5, seed + 3) - 0.5) * 0.06 * (1 - t);
-    return [x, y + (t >= 1 ? -0.01 : h), z];
+  const RINGS = 8;
+  // the cover's height over the slab at a share t of the way to its rim: a plateau rounded off at the edge, lumpy
+  const heightAt = (x: number, z: number, t: number): number => {
+    if (t >= 1) return -0.01;
+    const shoulder = Math.pow(Math.cos(Math.min(1, Math.max(0, (t - 0.55) / 0.45)) * Math.PI / 2), 0.7);
+    const lumps = (fbm(x, 0, z, 0.55, seed + 3) - 0.5) * 0.5 + (vnoise(x, 0, z, 0.18, seed + 4) - 0.5) * 0.18;
+    return Math.max(0.01, thick * shoulder * (1 + lumps));
   };
-  const shade: Shade = (p, n) => {
-    const pat = fbm(p[0], 0, p[2], 0.6, seed + 5);
-    let c = mix(T.turf, T.crest, smooth(0.4, 0.75, pat));
-    const steep = clamp01((1 - n[1]) * 3);
-    c = mix(c, T.earth, steep * 0.5 * (T.arid ? 1 : 0.6));
-    if (T.arid) c = mix(c, T.earth, 0.7);
-    return mul(c, 0.9 + vnoise(p[0], 0, p[2], 0.2, seed + 7) * 0.2);
+  const pt = (s: PerimeterSample, r: number): V3 => {
+    const t = r / RINGS;
+    const rag = (vnoise(s.x * 3, 0, s.z * 3, 0.6, seed) - 0.5) * 0.4;
+    const x = cx + (s.x + s.nx * rag - cx) * t, z = cz + (s.z + s.nz * rag - cz) * t;
+    return [x, y + heightAt(x, z, t), z];
   };
   const K = samples.length;
+  const grid = samples.map((s) => Array.from({ length: RINGS + 1 }, (_, r) => pt(s, r)));
+  const nrm = grid.map((row, i) => row.map((p, r) => {
+    if (r === 0) return [0, 1, 0] as V3;
+    const a = grid[(i + 1) % K][r], b = grid[(i - 1 + K) % K][r], c = grid[i][Math.min(RINGS, r + 1)], d = grid[i][r - 1];
+    let n = norm(cross(sub(c, d), sub(a, b)));
+    if (n[1] < 0) n = scl(n, -1);
+    void p;
+    return n;
+  }));
+  const shade = (p: V3, n: V3): Rgb => {
+    const pat = fbm(p[0], 0, p[2], 0.6, seed + 5), fine = vnoise(p[0], 0, p[2], 0.15, seed + 7);
+    let c = mix(mix(T.turf, T.crest, smooth(0.35, 0.7, pat)), mul(T.earth, 0.9), smooth(0.62, 0.85, fbm(p[0], 3, p[2], 0.4, seed + 9)) * 0.7);
+    const steep = clamp01((1 - n[1]) * 3);
+    c = mix(c, T.earth, steep * (T.arid ? 0.8 : 0.45));
+    if (T.arid) c = mix(c, T.earth, 0.6);
+    return mul(c, 0.86 + fine * 0.28);
+  };
   for (let i = 0; i < K; i++) {
-    const s0 = samples[i], s1 = samples[(i + 1) % K];
+    const i1 = (i + 1) % K;
     for (let r = 0; r < RINGS; r++) {
-      const a = pt(s0, r), b = pt(s1, r), c = pt(s1, r + 1), d = pt(s0, r + 1);
-      if (r === 0) m.tri(a, d, c, shade, false, undefined, [0, 1, 0]);
-      else { m.tri(a, d, c, shade, false, undefined, [0, 1, 0]); m.tri(a, c, b, shade, false, undefined, [0, 1, 0]); }
+      const a = grid[i][r], b = grid[i1][r], c = grid[i1][r + 1], d = grid[i][r + 1];
+      if (r === 0) m.triN(a, nrm[i][r], d, nrm[i][r + 1], c, nrm[i1][r + 1], shade);
+      else { m.triN(a, nrm[i][r], d, nrm[i][r + 1], c, nrm[i1][r + 1], shade); m.triN(a, nrm[i][r], c, nrm[i1][r + 1], b, nrm[i1][r], shade); }
     }
+  }
+  // tufts of grass in it (dry on an arid map: thin, few)
+  const tufts = T.arid ? 18 : 70;
+  for (let k = 0; k < tufts; k++) {
+    const si = Math.floor(hash3(k, 1, 2, seed) * K), t = Math.sqrt(hash3(k, 3, 4, seed)) * 0.82;
+    const s0 = samples[si];
+    const x = cx + (s0.x - cx) * t, z = cz + (s0.z - cz) * t, base = y + heightAt(x, z, t) - 0.02;
+    tuft(m, x, base, z, 0.16 + hash3(k, 5, 6, seed) * 0.22, mix(T.crest, T.turf, hash3(k, 7, 8, seed) * 0.6), seed + k * 13);
+  }
+}
+
+/** A tuft of grass: four or five blades, each a thin two-sided triangle leaning out, darker at its foot. */
+function tuft(m: Mesh, x: number, y: number, z: number, h: number, tone: Rgb, seed: number): void {
+  const blades = 4 + Math.floor(hash3(seed, 1, 0, 9) * 2);
+  for (let b = 0; b < blades; b++) {
+    const a = hash3(seed, b, 1, 7) * Math.PI * 2, lean = 0.25 + hash3(seed, b, 2, 7) * 0.35, w = 0.025 + hash3(seed, b, 3, 7) * 0.02;
+    const hh = h * (0.7 + hash3(seed, b, 4, 7) * 0.5);
+    const dx = Math.cos(a), dz = Math.sin(a), px = -dz * w, pz = dx * w;
+    const p0: V3 = [x + px, y, z + pz], p1: V3 = [x - px, y, z - pz], tip: V3 = [x + dx * hh * lean, y + hh, z + dz * hh * lean];
+    const n = norm(cross(sub(p1, p0), sub(tip, p0)));
+    const col = (p: V3): Rgb => mul(tone, 0.55 + 0.6 * clamp01((p[1] - y) / hh));
+    m.vertex(p0, n, null, col(p0)); m.vertex(p1, n, null, col(p1)); m.vertex(tip, n, null, col(tip));
+    const nb = scl(n, -1);
+    m.vertex(p1, nb, null, col(p1)); m.vertex(p0, nb, null, col(p0)); m.vertex(tip, nb, null, col(tip));
   }
 }
 
@@ -1109,7 +1162,7 @@ function rubble(m: Mesh, plan: Plan, O: BuildOpts, rng: Rng): void {
     else { m.tri(a, c, d, heapShade, false, undefined, [0, 1, 0]); m.tri(a, b, c, heapShade, false, undefined, [0, 1, 0]); }
   }
   // chunks: slabs of the wall with their boards (printed), blocks, a few with bars
-  const chunkShade: Shade = (p, n) => mul(mix(mul(T.concrete, 0.82), mix(dust, [0.2, 0.19, 0.17], 0.5), vnoise(p[0], p[1], p[2], 0.25, O.seed + 171) * 0.7),
+  const chunkShade: Shade = (p, n) => mul(mix(mul(T.concrete, 0.66), mix(dust, [0.16, 0.15, 0.13], 0.5), vnoise(p[0], p[1], p[2], 0.25, O.seed + 171) * 0.75),
     (n[1] > 0.5 ? 0.95 : 0.78) * (0.85 + hash3(Math.round(p[0] * 3), Math.round(p[2] * 3), 1, O.seed) * 0.25));
   const rust: Shade = () => [0.1, 0.045, 0.022];
   for (let i = 0; i < 26; i++) {
@@ -1190,8 +1243,7 @@ function buildLogEarthPillbox(O: BuildOpts): THREE.BufferGeometry {
       log(m, [x - Math.cos(a) * l / 2, y, z - Math.sin(a) * l / 2], [x + Math.cos(a) * l / 2, y + (rng() - 0.5) * 0.3, z + Math.sin(a) * l / 2], r * 0.9, 6, (p, n) => mul(bark(p, n), 0.6), endGrain);
     }
   }
-  // the bank all round to the slit, open at the rear door
-  berm(m, { ...logEarthBermSpec(T, O.seed, O.broken), clip: O.clip });
+  // (the bank all round to the slit, open at the rear door: the static earthwork, pillboxBerm)
   if (O.broken) {
     for (let i = 0; i < 10; i++) lump(m, (rng() - 0.5) * 4, GRADE + 0.08, (rng() - 0.5) * 3.4, 0.3 + rng() * 0.4, 0.22, 0.3 + rng() * 0.4, rng, (p) => mul(T.earth, 0.8 + vnoise(p[0], 0, p[2], 0.2, 5) * 0.3), false);
   }
@@ -1287,16 +1339,29 @@ export function pillboxFooting(style: PillboxStyle, tones: FortTones, seed: numb
 export const FORT_GRADE = GRADE;
 
 /**
- * The intact pillbox with its bank cut off where it falls under `clip` metres (FORT_CONTACT_FLOOR_M): the movement
- * footprint's source (props.ts contactBand), so a hull is stopped by the bank where it stands higher than a hull
- * climbs, not at its toe (the hitbox lane's formations rule, FORMATION_CONTACT_FLOOR_M). Shells meet the drawn
- * geometry's own slabs.
+ * A map's pillbox bank: the earth banked against its walls, in the pillbox's frame (+z forward, y over its base). It
+ * is the battlefield's, not the destructible's: props.ts lays it as a static earthwork round each pillbox (its own
+ * collision; drawn with the ground's material on desktop, in these vertex colours on the phones' plain baked material,
+ * `forBaked`), so it stands as it was when the concrete inside is destroyed. `clip`: the movement footprint's source,
+ * the bank cut off where it falls under that height (FORT_CONTACT_FLOOR_M; the hitbox lane's formations rule: a hull
+ * is stopped where the bank stands higher than it climbs, not at its toe).
  */
-export function pillboxContactProxy(style: PillboxStyle, tones: FortTones, seed: number): THREE.BufferGeometry {
-  const O = { tones, seed, broken: false, clip: FORT_CONTACT_FLOOR_M };
-  return style === 'logearth' ? buildLogEarthPillbox(O) : buildConcretePillbox(style, O);
+export function pillboxBerm(style: PillboxStyle, tones: FortTones, seed: number, opts: { clip?: number; forBaked?: boolean } = {}): THREE.BufferGeometry {
+  const m = new Mesh(opts.forBaked ? 1 : 1 / FORT_PRINT_MEAN);
+  const B = style === 'logearth' ? logEarthBermSpec(tones, seed, false) : concreteBermSpec(style, concreteLayout(style), tones, seed, false);
+  berm(m, { ...B, clip: opts.clip });
+  return m.geometry();
 }
 export const FORT_CONTACT_FLOOR_M = 0.35;
+
+/** The whole work's ground (the body and its bank): the field works' road and trunk checks read its band (props.ts). */
+export function pillboxFootprintGeometry(style: PillboxStyle, tones: FortTones, seed: number): THREE.BufferGeometry {
+  const body = buildPillbox(style, tones, seed, false), bank = pillboxBerm(style, tones, seed);
+  const g = mergeGeometries([body, bank], false);
+  body.dispose(); bank.dispose();
+  if (!g) throw new Error('fortKit: footprint merge failed');
+  return g;
+}
 
 /** Default tones (a temperate map); props.ts passes each map's. */
 export const TEMPERATE_TONES: FortTones = {
@@ -1305,8 +1370,13 @@ export const TEMPERATE_TONES: FortTones = {
 };
 
 /** For the offline look tools: a style's two states, merged with nothing else. */
-export function buildForRender(o: { variant?: string; broken?: boolean; seed?: number }): THREE.BufferGeometry {
-  return buildPillbox((o.variant as PillboxStyle) ?? 'regelbau', TEMPERATE_TONES, o.seed ?? 7, !!o.broken);
+export function buildForRender(o: { variant?: string; broken?: boolean; seed?: number; map?: string }): THREE.BufferGeometry {
+  const f = o.map ? fortFor(o.map) : null;
+  const style = f?.style ?? (o.variant as PillboxStyle) ?? 'regelbau', tones = f?.tones ?? TEMPERATE_TONES, seed = f?.seed ?? o.seed ?? 7;
+  const body = buildPillbox(style, tones, seed, !!o.broken), bank = pillboxBerm(style, tones, seed);
+  const g = mergeGeometries([body, bank], false)!;
+  body.dispose(); bank.dispose();
+  return g;
 }
 
 export { mergeGeometries as _mergeForTests };
