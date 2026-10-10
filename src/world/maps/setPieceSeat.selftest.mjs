@@ -4,7 +4,7 @@
 //   - each works kind (vehicleSetPieces.ts RUNNING_GEAR_SEATED) reads its running gear off its built solids: two sides of
 //     ground contacts (a Sno-Cat's four pontoons, a Bv 206's four tracks, a D8H's two, a Haulpak's tyres and duals);
 //   - on every map that places them, seated on that gear (seatOnRunningGear) no floor point stands more than 2 cm clear
-//     of the ground and none is sunk past 0.45 m, where the plane through the footprint's corners left some 0.3-0.7 m up;
+//     of the ground and none is sunk past 0.3 m (the pieces on bumpy ground moved a few metres to a flatter seat), where the plane through the footprint's corners left some 0.3-0.7 m up;
 //     the dressing kit seats them so (mapKits.ts), the other set pieces by their corners as before;
 //   - their prints: a strip under each side's line of gear, out behind them;
 //   - their contact (vehicleContactShadow.ts buildSetPieceContacts, to the contact-shadows lane's rule): darken-only, the
@@ -29,7 +29,7 @@ for (const kind of RUNNING_GEAR_SEATED) {
     const left = gear.contacts.filter((c) => c.x0 + c.x1 < 0), right = gear.contacts.filter((c) => c.x0 + c.x1 > 0);
     assert.ok(left.length && right.length, `${kind}${wrecked ? ' wrecked' : ''}: ground contacts on both sides`);
     if (!wrecked) assert.ok(gear.contacts.length >= GEAR[kind], `${kind}: its running gear reads (${gear.contacts.length} contacts)`);
-    assert.ok(gear.floor.length >= 16 && gear.floor.length % 2 === 0, `${kind}: its floor points`);
+    assert.ok(gear.floor.length >= 24 && gear.floor.length % 3 === 0, `${kind}: its floor points`);
     const size = SET_PIECE_SIZE[kind];
     for (const c of gear.contacts) {
       assert.ok(Math.abs(c.x0) <= size.hw + 0.15 && Math.abs(c.x1) <= size.hw + 0.15 && Math.abs(c.z0) <= size.hl + 0.15 && Math.abs(c.z1) <= size.hl + 0.15,
@@ -60,7 +60,7 @@ for (const mapId of MAP_IDS) {
     const seat = seatOnRunningGear(piece, gear, ground);
     assert.ok(seat, `${mapId}: ${piece.kind} at (${piece.x}, ${piece.z}) seats on its gear`);
     assert.ok(seat.maxGap <= GEAR_SEAT_CLEARANCE_M + 1e-6, `${mapId}: ${piece.kind} at (${piece.x}, ${piece.z}): no floor point clear of the ground (${seat.maxGap.toFixed(3)})`);
-    assert.ok(seat.minGap >= -0.45, `${mapId}: ${piece.kind} at (${piece.x}, ${piece.z}): sunk no more than 0.45 m (${seat.minGap.toFixed(2)})`);
+    assert.ok(seat.minGap >= -0.3, `${mapId}: ${piece.kind} at (${piece.x}, ${piece.z}): sunk no more than 0.3 m (${seat.minGap.toFixed(2)})`);
     assert.ok(Math.abs(seat.pitch) < 0.5 && Math.abs(seat.roll) < 0.5, `${mapId}: ${piece.kind} at (${piece.x}, ${piece.z}): a sane pose`);
     deepest = Math.min(deepest, seat.minGap);
     // what the corner plane left: its floor points' highest clearance
@@ -68,10 +68,11 @@ for (const mapId of MAP_IDS) {
     const at = (lx, lz) => ground(piece.x + lx * cy + lz * sy, piece.z - lx * sy + lz * cy);
     const fl = at(-size.hw, size.hl), fr = at(size.hw, size.hl), bl = at(-size.hw, -size.hl), br = at(size.hw, -size.hl);
     const pitch = Math.atan2((fl + fr - bl - br) / 2, size.hl * 2), roll = Math.atan2((fr + br - fl - bl) / 2, size.hw * 2), y = (fl + fr + bl + br) / 4;
-    for (let k = 0; k < gear.floor.length; k += 2) {
-      const x = gear.floor[k], z = gear.floor[k + 1];
-      const x1 = x * Math.cos(roll), y1 = x * Math.sin(roll) * Math.cos(pitch) + z * Math.sin(pitch), z1 = -x * Math.sin(roll) * Math.sin(pitch) + z * Math.cos(pitch);
-      worstCorner = Math.max(worstCorner, y + y1 - ground(piece.x + x1 * cy + z1 * sy, piece.z - x1 * sy + z1 * cy));
+    for (let k = 0; k < gear.floor.length; k += 3) {
+      const x = gear.floor[k], h = gear.floor[k + 1], z = gear.floor[k + 2];
+      const x0 = x * Math.cos(roll) - h * Math.sin(roll), y0 = x * Math.sin(roll) + h * Math.cos(roll);
+      const y1 = y0 * Math.cos(pitch) + z * Math.sin(pitch), z1 = -y0 * Math.sin(pitch) + z * Math.cos(pitch);
+      worstCorner = Math.max(worstCorner, y + y1 - ground(piece.x + x0 * cy + z1 * sy, piece.z - x0 * sy + z1 * cy));
     }
     seated++;
   }

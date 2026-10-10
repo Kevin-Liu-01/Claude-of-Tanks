@@ -211,17 +211,19 @@ export default {
     ],
     // the open cut's machines (vehicleSetPiecesWorks.ts): the Haulpak dump trucks on the haul roads and in the cut, the
     // D8 dozers on the benches (the australia1970s fleet's town vehicles stay the inhabit pass's)
+    // (the map-content lane's R6) seated on their own gear (vehicleSetPieces.ts seatOnRunningGear); the ones on bumpy
+    // ground, a rock or a fence moved a few metres to a flatter, clear seat
     vehicleSetPieces: [
-      { kind: 'haulpak', x: -110, z: -40, yawDeg: 30 }, { kind: 'haulpak', x: -20, z: 70, yawDeg: 200 },
+      { kind: 'haulpak', x: -110, z: -34, yawDeg: 30 }, { kind: 'haulpak', x: -24, z: 68, yawDeg: 200 },
       { kind: 'haulpak', x: -150, z: -10, yawDeg: 100, wrecked: true }, { kind: 'haulpak', x: 200, z: -270, yawDeg: 40 },
       { kind: 'haulpak', x: 40, z: -30, yawDeg: 0 }, { kind: 'haulpak', x: -200, z: 160, yawDeg: 300 },
-      { kind: 'haulpak', x: 390, z: -250, yawDeg: 170 }, { kind: 'haulpak', x: -380, z: -200, yawDeg: 20 },
-      { kind: 'd8h', x: -180, z: 90, yawDeg: 60 }, { kind: 'd8h', x: 40, z: -100, yawDeg: 250 }, { kind: 'd8h', x: 380, z: 300, yawDeg: 10 },
-      { kind: 'haulpak', x: -60, z: 100, yawDeg: 70 }, { kind: 'haulpak', x: -260, z: -200, yawDeg: 10 },
-      { kind: 'haulpak', x: -330, z: -320, yawDeg: 120, wrecked: true }, { kind: 'haulpak', x: -360, z: 330, yawDeg: 30 },
-      { kind: 'haulpak', x: -420, z: 200, yawDeg: 160 }, { kind: 'haulpak', x: 120, z: 220, yawDeg: 270 },
-      { kind: 'haulpak', x: 160, z: 280, yawDeg: 0 }, { kind: 'haulpak', x: 370, z: -400, yawDeg: 200 },
-      { kind: 'd8h', x: 400, z: 60, yawDeg: 90 }, { kind: 'd8h', x: 390, z: 140, yawDeg: 200 }, { kind: 'd8h', x: -60, z: -160, yawDeg: 20 },
+      { kind: 'haulpak', x: 390, z: -252, yawDeg: 170 }, { kind: 'haulpak', x: -380, z: -200, yawDeg: 20 },
+      { kind: 'd8h', x: -174, z: 78, yawDeg: 60 }, { kind: 'd8h', x: 40, z: -100, yawDeg: 250 }, { kind: 'd8h', x: 376, z: 304, yawDeg: 10 },
+      { kind: 'haulpak', x: -60, z: 100, yawDeg: 70 }, { kind: 'haulpak', x: -258, z: -200, yawDeg: 25 },
+      { kind: 'haulpak', x: -330, z: -320, yawDeg: 120, wrecked: true }, { kind: 'haulpak', x: -364, z: 324, yawDeg: 30 },
+      { kind: 'haulpak', x: -424, z: 192, yawDeg: 190 }, { kind: 'haulpak', x: 120, z: 220, yawDeg: 270 },
+      { kind: 'haulpak', x: 160, z: 280, yawDeg: 0 }, { kind: 'haulpak', x: 372, z: -398, yawDeg: 200 },
+      { kind: 'd8h', x: 406, z: 60, yawDeg: 90 }, { kind: 'd8h', x: 402, z: 140, yawDeg: 200 }, { kind: 'd8h', x: -60, z: -160, yawDeg: 20 },
     ],
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): banding 0.26 — the ore benches inside the square

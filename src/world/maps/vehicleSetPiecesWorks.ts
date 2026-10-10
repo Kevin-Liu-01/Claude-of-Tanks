@@ -38,7 +38,10 @@ function belt(mesh: VehicleMesh, x: number, width: number, zr: number, rr: numbe
   const path: Vec3[] = [], n = coarse ? 5 : 9;
   for (let k = 0; k <= n; k++) { const a = Math.PI / 2 + (k / n) * Math.PI; path.push([x, yr + Math.sin(a) * rr, zr + Math.cos(a) * rr]); }
   for (let k = 0; k <= n; k++) { const a = -Math.PI / 2 + (k / n) * Math.PI; path.push([x, yf + Math.sin(a) * rf, zf + Math.cos(a) * rf]); }
-  mesh.sweep(path, [[-width / 2, -0.04], [width / 2, -0.04], [width / 2, 0.04], [-width / 2, 0.04]], () => m,
+  // (R6, gauntlet wave 358a: "spindly wheels") the section's first coordinate is the sweep's side (here the loop's radial
+  // direction, out at the runs) and its second the frame's up (here across the vehicle): the belt `width` across and 8 cm
+  // thick (it was laid the other way, a band 8 cm wide and `width` deep, which read as a thin wheel on a stalk)
+  mesh.sweep(path, [[-0.04, -width / 2], [0.04, -width / 2], [0.04, width / 2], [-0.04, width / 2]], () => m,
     { closedPath: true, closedSection: true, creases: [0, 1, 2, 3], up: [1, 0, 0] });
   // the road wheels inside the belt
   const count = Math.max(2, Math.round((zf - zr) / 0.55));

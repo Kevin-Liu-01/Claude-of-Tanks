@@ -559,47 +559,58 @@ export const RUNNING_GEAR_SEATED: ReadonlySet<SetPieceKind> = new Set<SetPieceKi
 
 /** A plan rectangle where a set piece's solids meet the ground (a tyre or a pair of duals, a track, a pontoon), local. */
 export interface GearContact { readonly x0: number; readonly x1: number; readonly z0: number; readonly z1: number }
-/** A set piece's running gear: its ground contacts and its floor points (local x, z pairs, the solids' within 6 cm of its
- * lowest, at most a few hundred). */
+/** A set piece's running gear: its ground contacts, and its floor points (local x, y, z triples: the solids' vertices within
+ * 6 cm of its lowest, and points every 0.4 m down each contact's middle, at most a few hundred). */
 export interface RunningGear { readonly contacts: readonly GearContact[]; readonly floor: Float32Array }
 
-/** The floor points' band over the piece's lowest point, and the cell its contacts are gathered by. */
-const FLOOR_BAND_M = 0.06, GEAR_CELL_M = 0.3;
+/** The floor's band over the piece's lowest point; the gap two floor faces may leave and still be one contact. */
+const FLOOR_BAND_M = 0.06, GEAR_JOIN_M = 0.1;
 
-/** A built piece's running gear (pure: no stream draws), from its solids' floor points gathered cell by cell. */
+/**
+ * A built piece's running gear (pure: no stream draws). Its floor faces (the solids' triangles lying wholly within 6 cm of
+ * its lowest point: a track's flat run under its wheels, a tyre's bottom, a pontoon's belt) in plan, joined where they
+ * touch into contacts; its floor points for the seat.
+ */
 export function runningGearOf(geometry: THREE.BufferGeometry): RunningGear {
-  const p = geometry.getAttribute('position'), skip = geometry.userData.noCollisionVertices as Uint8Array | undefined;
+  const p = geometry.getAttribute('position'), index = geometry.getIndex();
+  const skip = geometry.userData.noCollisionVertices as Uint8Array | undefined;
   let low = Infinity;
   for (let i = 0; i < p.count; i++) if (!(skip && skip[i])) low = Math.min(low, p.getY(i));
-  const xs: number[] = [], zs: number[] = [];
-  for (let i = 0; i < p.count; i++) {
-    if ((skip && skip[i]) || p.getY(i) > low + FLOOR_BAND_M) continue;
-    xs.push(p.getX(i)); zs.push(p.getZ(i));
+  const band = low + FLOOR_BAND_M;
+  const boxes: Array<{ x0: number; x1: number; z0: number; z1: number }> = [];
+  const tris = index ? index.count / 3 : p.count / 3;
+  for (let t = 0; t < tris; t++) {
+    const a = index ? index.getX(t * 3) : t * 3, b = index ? index.getX(t * 3 + 1) : t * 3 + 1, c = index ? index.getX(t * 3 + 2) : t * 3 + 2;
+    if (skip && (skip[a] || skip[b] || skip[c])) continue;
+    if (p.getY(a) > band || p.getY(b) > band || p.getY(c) > band) continue;
+    boxes.push({
+      x0: Math.min(p.getX(a), p.getX(b), p.getX(c)), x1: Math.max(p.getX(a), p.getX(b), p.getX(c)),
+      z0: Math.min(p.getZ(a), p.getZ(b), p.getZ(c)), z1: Math.max(p.getZ(a), p.getZ(b), p.getZ(c)),
+    });
   }
-  // the points gathered by the cells they fall in, joined where cells touch (corners too)
-  const cellOf = new Map<string, number>(), parent: number[] = [], cellIx: number[] = [], cellJz: number[] = [];
-  const find = (a: number): number => { while (parent[a] !== a) { parent[a] = parent[parent[a]]; a = parent[a]; } return a; };
-  const owner = xs.map((x, k) => {
-    const i = Math.floor(x / GEAR_CELL_M), j = Math.floor(zs[k] / GEAR_CELL_M), key = `${i},${j}`;
-    let c = cellOf.get(key);
-    if (c === undefined) { c = parent.length; cellOf.set(key, c); parent.push(c); cellIx.push(i); cellJz.push(j); }
-    return c;
-  });
-  for (let c = 0; c < parent.length; c++) {
-    for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
-      const n = cellOf.get(`${cellIx[c] + di},${cellJz[c] + dj}`);
-      if (n !== undefined) { const a = find(c), b = find(n); if (a !== b) parent[Math.max(a, b)] = Math.min(a, b); }
+  // the faces joined where their boxes touch (within 10 cm), until no two contacts touch
+  let contacts = boxes;
+  for (let merged = true; merged;) {
+    merged = false;
+    const out: typeof boxes = [];
+    for (const box of contacts) {
+      const hit = out.find((o) => box.x0 <= o.x1 + GEAR_JOIN_M && box.x1 >= o.x0 - GEAR_JOIN_M && box.z0 <= o.z1 + GEAR_JOIN_M && box.z1 >= o.z0 - GEAR_JOIN_M);
+      if (!hit) { out.push({ ...box }); continue; }
+      hit.x0 = Math.min(hit.x0, box.x0); hit.x1 = Math.max(hit.x1, box.x1); hit.z0 = Math.min(hit.z0, box.z0); hit.z1 = Math.max(hit.z1, box.z1);
+      merged = true;
     }
+    contacts = out;
   }
-  const boxes = new Map<number, { x0: number; x1: number; z0: number; z1: number }>();
-  owner.forEach((c, k) => {
-    const r = find(c), b = boxes.get(r);
-    if (!b) boxes.set(r, { x0: xs[k], x1: xs[k], z0: zs[k], z1: zs[k] });
-    else { b.x0 = Math.min(b.x0, xs[k]); b.x1 = Math.max(b.x1, xs[k]); b.z0 = Math.min(b.z0, zs[k]); b.z1 = Math.max(b.z1, zs[k]); }
-  });
-  const contacts = [...boxes.values()].sort((a, b) => a.x0 - b.x0 || a.z0 - b.z0);
-  const step = Math.max(1, Math.ceil(xs.length / 240)), floor: number[] = [];
-  for (let k = 0; k < xs.length; k += step) floor.push(xs[k], zs[k]);
+  contacts.sort((a, b) => a.x0 - b.x0 || a.z0 - b.z0);
+  const floor: number[] = [];
+  const near: number[] = [];
+  for (let i = 0; i < p.count; i++) if (!(skip && skip[i]) && p.getY(i) <= band) near.push(i);
+  const step = Math.max(1, Math.ceil(near.length / 160));
+  for (let k = 0; k < near.length; k += step) floor.push(p.getX(near[k]), p.getY(near[k]) - low, p.getZ(near[k]));
+  for (const c of contacts) {
+    const x = (c.x0 + c.x1) / 2, n = Math.max(1, Math.ceil((c.z1 - c.z0) / 0.4));
+    for (let k = 0; k <= n; k++) floor.push(x, 0, c.z0 + ((c.z1 - c.z0) * k) / n);
+  }
   return { contacts, floor: new Float32Array(floor) };
 }
 
@@ -650,9 +661,10 @@ export function seatOnRunningGear(piece: Pick<VehicleSetPiece, 'x' | 'z' | 'yawD
   const cr = Math.cos(roll), sr = Math.sin(roll), cp = Math.cos(pitch), sp = Math.sin(pitch);
   const gaps = (base: number) => {
     let most = -Infinity, least = Infinity;
-    for (let k = 0; k < gear.floor.length; k += 2) {
-      const x = gear.floor[k], z = gear.floor[k + 1];
-      const x1 = x * cr, y1 = x * sr * cp + z * sp, z1 = -x * sr * sp + z * cp;
+    for (let k = 0; k < gear.floor.length; k += 3) {
+      const x = gear.floor[k], h = gear.floor[k + 1], z = gear.floor[k + 2];
+      const x0 = x * cr - h * sr, y0 = x * sr + h * cr;
+      const x1 = x0, y1 = y0 * cp + z * sp, z1 = -y0 * sp + z * cp;
       const gap = base + y1 - ground(piece.x + x1 * cy + z1 * sy, piece.z - x1 * sy + z1 * cy);
       most = Math.max(most, gap); least = Math.min(least, gap);
     }
@@ -672,6 +684,8 @@ export function setPiecePrints(kind: SetPieceKind): { xs: number[]; z0: number; 
   const left = gear.contacts.filter((c) => c.x0 + c.x1 < 0), right = gear.contacts.filter((c) => c.x0 + c.x1 > 0);
   if (!left.length || !right.length) return null;
   const mid = (list: readonly GearContact[]) => list.reduce((a, c) => a + (c.x0 + c.x1) / 2, 0) / list.length;
-  const width = Math.min(1.3, Math.max(...gear.contacts.map((c) => c.x1 - c.x0)) + 0.04);
-  return { xs: [mid(left), mid(right)], z0: Math.min(...gear.contacts.map((c) => c.z0)) - 14, z1: Math.max(...gear.contacts.map((c) => c.z1)), width };
+  // (the sides' gear only: a dozer's blade and ripper rest on the ground too, but leave no print as it drives)
+  const sides = [...left, ...right];
+  const width = Math.min(1.3, Math.max(...sides.map((c) => c.x1 - c.x0)) + 0.04);
+  return { xs: [mid(left), mid(right)], z0: Math.min(...sides.map((c) => c.z0)) - 14, z1: Math.max(...sides.map((c) => c.z1)), width };
 }

@@ -214,6 +214,8 @@ export default {
     ],
     // the station's machines (vehicleSetPiecesWorks.ts): the Bv 206 carriers, the Sno-Cats and the D8 dozers that kept the
     // roads and the drifts open (the arctic1980s fleet's trucks and pickups stay the inhabit pass's)
+    // (the map-content lane's R6) seated on their own gear (vehicleSetPieces.ts seatOnRunningGear); the ones on bumpy
+    // ground, a rock or a fence moved a few metres to a flatter, clear seat
     vehicleSetPieces: [
       { kind: 'bv206', x: -8, z: -12, yawDeg: 80 }, { kind: 'bv206', x: -72, z: -64, yawDeg: 90 },
       { kind: 'snocat', x: 18, z: -62, yawDeg: -60 }, { kind: 'd8h', x: 132, z: -126, yawDeg: 30 },
@@ -223,18 +225,18 @@ export default {
       { kind: 'bv206', x: -248, z: 208, yawDeg: 0 }, { kind: 'snocat', x: 318, z: 316, yawDeg: 110 },
       { kind: 'bv206', x: 300, z: -350, yawDeg: -20 },
       { kind: 'snocat', x: -392, z: -264, yawDeg: 40 }, { kind: 'bv206', x: -368, z: 166, yawDeg: 160 },
-      { kind: 'd8h', x: 230, z: 300, yawDeg: 60 }, { kind: 'snocat', x: 200, z: -380, yawDeg: 20 },
+      { kind: 'd8h', x: 230, z: 300, yawDeg: 60 }, { kind: 'snocat', x: 202, z: -376, yawDeg: 20 },
       { kind: 'bv206', x: 290, z: -60, yawDeg: 180 }, { kind: 'snocat', x: 100, z: -330, yawDeg: 300 },
       { kind: 'd8h', x: -300, z: -300, yawDeg: 30 },
       // (round 1c) the stripped trail south-east of the station, its abandoned machines; more working machines out in the voids
-      { kind: 'bv206', x: 206, z: -196, yawDeg: 130, wrecked: true }, { kind: 'snocat', x: 254, z: -250, yawDeg: 140, wrecked: true },
+      { kind: 'bv206', x: 206, z: -190, yawDeg: 130, wrecked: true }, { kind: 'snocat', x: 248, z: -242, yawDeg: 140, wrecked: true },
       { kind: 'bv206', x: 330, z: -296, yawDeg: 120, wrecked: true }, { kind: 'snocat', x: 392, z: -340, yawDeg: 150, wrecked: true },
       { kind: 'bv206', x: 432, z: -404, yawDeg: 135, wrecked: true },
       { kind: 'snocat', x: 290, z: 104, yawDeg: 10 }, { kind: 'bv206', x: -306, z: 218, yawDeg: 60 },
-      { kind: 'd8h', x: 128, z: -300, yawDeg: 200 }, { kind: 'bv206', x: -62, z: 318, yawDeg: 95 },
-      { kind: 'snocat', x: 406, z: 22, yawDeg: 300 }, { kind: 'd8h', x: 398, z: -182, yawDeg: 20 },
+      { kind: 'd8h', x: 134, z: -304, yawDeg: 200 }, { kind: 'bv206', x: -62, z: 318, yawDeg: 95 },
+      { kind: 'snocat', x: 410, z: 14, yawDeg: 300 }, { kind: 'd8h', x: 402, z: -186, yawDeg: 20 },
       // the dump's burnt-out carrier
-      { kind: 'bv206', x: -410, z: -380, yawDeg: 70, wrecked: true },
+      { kind: 'bv206', x: -398, z: -380, yawDeg: 70, wrecked: true },
     ],
   },
   // the map-content lane (2026-10-09; the owner: "so empty", and the bird view the judge): the plateau's frost-shattered
