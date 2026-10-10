@@ -25,9 +25,27 @@ import * as THREE from 'three';
 /** Texture repeats per metre of the weapon-steel grain (one 256 px tile spans a third of a metre: ~1.3 mm a texel). */
 export const WEAPON_STEEL_UV_REPEATS_PER_M = 3;
 
-/** Wear band on a crease edge, metres: fully worn inside `core`, broken by the chip mask out to `reach`. */
-const WEAR_CORE_M = 0.0035;
-const WEAR_REACH_M = 0.014;
+/**
+ * The edge wear's live parameters (material.userData.weaponWear: plain numbers, so Material.clone()'s JSON copy keeps
+ * them; the shader reads them through uniform getters at every upload, so a tuning page can change them in place).
+ * - wornColor (linear RGB), wornRoughness, wornMetalness: the bare steel that shows through on a worn edge;
+ * - core, reach (metres): fully worn inside `core` of a crease edge, broken by the chip mask out to `reach`;
+ * - chipLo, chipHi, reachWeight: the chip mask's threshold band and how strongly nearness to the edge raises it.
+ * 2026-10-10 (the first garage close-ups): the first set (worn #8f8c84 at roughness 0.34 and metalness 0.85, a 3.5 mm
+ * core and a 14 mm reach) wore most of a small receiver to bright steel and read as chrome under the hangar lights; the
+ * wear is now a thin, sparse, dark steel line.
+ */
+export interface WeaponWearParams {
+  wornColor: [number, number, number];
+  wornRoughness: number;
+  wornMetalness: number;
+  core: number;
+  reach: number;
+  chipLo: number;
+  chipHi: number;
+  reachWeight: number;
+}
+const linearRgb = (hex: number): [number, number, number] => { const c = new THREE.Color(hex); return [c.r, c.g, c.b]; };
 /** Two faces meeting at more than this angle make a crease edge (a 16-sided tube's facets meet at 22.5 degrees). */
 const CREASE_COS = Math.cos(THREE.MathUtils.degToRad(38));
 
@@ -80,8 +98,8 @@ function dataTexture(data: Uint8Array, srgb: boolean): THREE.DataTexture {
  * The shared weapon-finish textures (built once per process):
  * - albedo: a near-white multiplier — fine phosphate grain (+-4 %) over broad oil-darkened and dry-grey patches
  *   (+-9 %), so a receiver or a barrel never reads as one flat tone;
- * - rough: R the chip mask that breaks the edge wear up, G the roughness (oil streaks run smoother, about 0.55 of the
- *   dry phosphate), B the metalness multiplier (dry patches a little less metallic);
+ * - rough: R the chip mask that breaks the edge wear up, G the roughness (oil streaks run a little smoother, about 0.76
+ *   of the dry phosphate), B the metalness multiplier (dry patches a little less metallic);
  * - normal: the phosphate's fine tooth.
  */
 export function weaponFinishTextures(): WeaponTextures {
@@ -105,7 +123,7 @@ export function weaponFinishTextures(): WeaponTextures {
       albedo[i * 4 + 3] = 255;
       const chip = fbm(x, y, 16, 3, 53);
       rough[i * 4] = Math.round(255 * chip);
-      rough[i * 4 + 1] = Math.round(255 * Math.min(1, Math.max(0, 0.98 - oily * 0.42 + grain * 0.06 + patch * 0.10)));
+      rough[i * 4 + 1] = Math.round(255 * Math.min(1, Math.max(0, 0.98 - oily * 0.22 + grain * 0.06 + patch * 0.10)));
       rough[i * 4 + 2] = Math.round(255 * Math.min(1, Math.max(0, 0.92 + patch * 0.16)));
       rough[i * 4 + 3] = 255;
       height[i] = grain * 0.7 + (fbm(x, y, 32, 2, 71) - 0.5) * 0.6;
@@ -204,8 +222,11 @@ varying vec3 vWeaponEdgeBary;
 varying vec3 vWeaponEdgeInvH;`;
 const WEAR_FRAGMENT_HEAD = `
 uniform vec3 uWeaponWornColor;
+uniform float uWeaponWornRoughness;
+uniform float uWeaponWornMetalness;
 uniform float uWeaponWearCore;
 uniform float uWeaponWearReach;
+uniform vec3 uWeaponChip;
 varying vec3 vWeaponEdgeBary;
 varying vec3 vWeaponEdgeInvH;
 float weaponEdgeDistance() {
@@ -228,7 +249,7 @@ float weaponWear = 0.0;
 		#endif
 		float core = 1.0 - smoothstep( uWeaponWearCore * 0.5, uWeaponWearCore, ed );
 		float reach = 1.0 - smoothstep( uWeaponWearCore, uWeaponWearReach, ed );
-		float chipped = smoothstep( 0.62, 0.70, chip + reach * 0.45 );
+		float chipped = smoothstep( uWeaponChip.x, uWeaponChip.y, chip + reach * uWeaponChip.z );
 		float px = max( fwidth( ed ), 1e-6 );
 		float resolve = clamp( ( uWeaponWearCore / px - 0.6 ) / 1.2, 0.0, 1.0 );
 		weaponWear = max( core, chipped * reach ) * resolve;
@@ -236,18 +257,24 @@ float weaponWear = 0.0;
 }`;
 
 /** Install the crease-edge wear on a weapon-finish material (wraps its existing compile hook, like applyBurnHook). */
-export function installWeaponEdgeWear(material: THREE.MeshStandardMaterial, worn: THREE.ColorRepresentation,
-  wornRoughness: number, wornMetalness: number): void {
+export function installWeaponEdgeWear(material: THREE.MeshStandardMaterial, params: WeaponWearParams): void {
   if (material.userData.weaponEdgeWear) return;
   material.userData.weaponEdgeWear = true;
+  material.userData.weaponWear = { ...params, wornColor: [...params.wornColor] };
   const prevHook = typeof material.onBeforeCompile === 'function' ? material.onBeforeCompile : null;
   const prevKey = material.customProgramCacheKey;
-  const wornColor = new THREE.Color(worn);
+  const live = (): WeaponWearParams => material.userData.weaponWear as WeaponWearParams;
+  const wornColor = new THREE.Color();
+  const chip = new THREE.Vector3();
   material.onBeforeCompile = function (shader, renderer) {
     if (prevHook) prevHook.call(this, shader, renderer);
-    shader.uniforms.uWeaponWornColor = { value: wornColor };
-    shader.uniforms.uWeaponWearCore = { value: WEAR_CORE_M };
-    shader.uniforms.uWeaponWearReach = { value: WEAR_REACH_M };
+    // getters: three reads a uniform's value at every upload, so the live parameters apply without a recompile
+    shader.uniforms.uWeaponWornColor = { get value() { const c = live().wornColor; return wornColor.setRGB(c[0], c[1], c[2]); } };
+    shader.uniforms.uWeaponWornRoughness = { get value() { return live().wornRoughness; } };
+    shader.uniforms.uWeaponWornMetalness = { get value() { return live().wornMetalness; } };
+    shader.uniforms.uWeaponWearCore = { get value() { return live().core; } };
+    shader.uniforms.uWeaponWearReach = { get value() { return live().reach; } };
+    shader.uniforms.uWeaponChip = { get value() { const p = live(); return chip.set(p.chipLo, p.chipHi, p.reachWeight); } };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>${WEAR_VERTEX_HEAD}`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -258,11 +285,11 @@ export function installWeaponEdgeWear(material: THREE.MeshStandardMaterial, worn
       .replace('#include <map_fragment>', `#include <map_fragment>${WEAR_FRAGMENT_AMOUNT}
 	diffuseColor.rgb = mix( diffuseColor.rgb, uWeaponWornColor, weaponWear );`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-	roughnessFactor = mix( roughnessFactor, ${wornRoughness.toFixed(3)}, weaponWear );`)
+	roughnessFactor = mix( roughnessFactor, uWeaponWornRoughness, weaponWear );`)
       .replace('#include <metalnessmap_fragment>', `#include <metalnessmap_fragment>
-	metalnessFactor = mix( metalnessFactor, ${wornMetalness.toFixed(3)}, weaponWear );`);
+	metalnessFactor = mix( metalnessFactor, uWeaponWornMetalness, weaponWear );`);
   };
-  const tag = `|weapon-wear-v1-${wornRoughness.toFixed(2)}-${wornMetalness.toFixed(2)}`;
+  const tag = '|weapon-wear-v2';
   material.customProgramCacheKey = function () {
     return (typeof prevKey === 'function' ? prevKey.call(this) : '') + tag;
   };
@@ -294,10 +321,18 @@ type CloneVehicleMaterial = <T extends THREE.Material>(source: T, configure?: (c
 /**
  * The weapon-finish pair for one vehicle, cloned from its hardware gunmetal and fitting paint so they share every
  * vehicle hook (cascade shadows, light floor, sky trim). Weapon steel: phosphate grey-black (#2b2c29) with the grain,
- * patch and oil-streak maps, metalness 0.5 (dry patches less), sky light trimmed to 0.3 so the barrel top never
- * mirrors the sky; worn edges bright steel (#8f8c84), smooth and metallic. Ammunition drab: the nation's issue colour,
- * matte paint (roughness 0.82) whose worn edges show the same steel.
+ * patch and oil-streak maps, a satin phosphate (roughness 0.8, metalness 0.4, dry patches less), sky light trimmed to
+ * 0.25 so a receiver top never mirrors the hangar lights; a thin, sparse line of dark bare steel on its crease edges.
+ * Ammunition drab: the nation's issue colour, matte paint (roughness 0.82) whose worn edges show dull steel.
  */
+export const WEAPON_STEEL_WEAR: Readonly<WeaponWearParams> = Object.freeze({
+  wornColor: linearRgb(0x5c5a54), wornRoughness: 0.5, wornMetalness: 0.7,
+  core: 0.002, reach: 0.008, chipLo: 0.68, chipHi: 0.76, reachWeight: 0.35,
+});
+export const AMMO_DRAB_WEAR: Readonly<WeaponWearParams> = Object.freeze({
+  wornColor: linearRgb(0x66635b), wornRoughness: 0.6, wornMetalness: 0.5,
+  core: 0.002, reach: 0.008, chipLo: 0.68, chipHi: 0.76, reachWeight: 0.35,
+});
 export function createWeaponFinishMaterials(
   dark: THREE.MeshStandardMaterial,
   detail: THREE.MeshStandardMaterial,
@@ -308,19 +343,19 @@ export function createWeaponFinishMaterials(
   const weaponSteel = cloneVehicleMaterial(dark, (m) => {
     m.color.set(0x2b2c29);
     m.map = tex.albedo;
-    m.roughness = 0.72;
+    m.roughness = 0.8;
     m.roughnessMap = tex.rough;
-    m.metalness = 0.5;
+    m.metalness = 0.4;
     m.metalnessMap = tex.rough;
     m.normalMap = tex.normal;
     m.normalScale = new THREE.Vector2(0.45, 0.45);
-    m.envMapIntensity = 0.3;
+    m.envMapIntensity = 0.25;
     m.vertexColors = false;
   });
   weaponSteel.name = 'cot:weapon-steel';
   weaponSteel.userData = { ...weaponSteel.userData, appearanceRole: 'gunmetal', weaponFinish: 'weaponSteel',
     weaponUvScale: WEAPON_STEEL_UV_REPEATS_PER_M };
-  installWeaponEdgeWear(weaponSteel, 0x8f8c84, 0.34, 0.85);
+  installWeaponEdgeWear(weaponSteel, WEAPON_STEEL_WEAR);
   // The can's drab and the belt's dull brass ride the vertex colours (ammoVertexColour), so one material draws both.
   const ammoDrab = cloneVehicleMaterial(detail, (m) => {
     m.color.set(0xffffff);
@@ -338,7 +373,7 @@ export function createWeaponFinishMaterials(
   const drab = new THREE.Color(ammoDrabFor(nation));
   ammoDrab.userData = { ...ammoDrab.userData, appearanceRole: 'fittingPaint', weaponFinish: 'ammoDrab',
     weaponUvScale: WEAPON_STEEL_UV_REPEATS_PER_M, ammoDrabLinear: [drab.r, drab.g, drab.b] };
-  installWeaponEdgeWear(ammoDrab, 0x7d7a70, 0.45, 0.7);
+  installWeaponEdgeWear(ammoDrab, AMMO_DRAB_WEAR);
   return { weaponSteel, ammoDrab };
 }
 

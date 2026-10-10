@@ -21,8 +21,8 @@ import * as THREE from 'three';
 import { createTank, KIT } from './tankFactory.ts';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 import {
-  WEAPON_EDGE_BARY, WEAPON_EDGE_INVH, WEAPON_STEEL_UV_REPEATS_PER_M, bakeWeaponEdgeWear, installWeaponEdgeWear,
-  weaponFinishTextures,
+  WEAPON_EDGE_BARY, WEAPON_EDGE_INVH, WEAPON_STEEL_UV_REPEATS_PER_M, WEAPON_STEEL_WEAR, AMMO_DRAB_WEAR, bakeWeaponEdgeWear,
+  installWeaponEdgeWear, weaponFinishTextures,
 } from './weaponFinish.ts';
 import { FITTINGS } from './profiles/kit.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
@@ -33,7 +33,7 @@ import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
   assert.equal(weaponFinishTextures(), tex, 'the textures are built once and shared');
   const digest = (t) => createHash('sha256').update(t.image.data).digest('hex').slice(0, 16);
   const digests = { albedo: digest(tex.albedo), rough: digest(tex.rough), normal: digest(tex.normal) };
-  assert.deepEqual(digests, { albedo: 'c08b792a2afb3444', rough: '0ad59fa92829bdf3', normal: '281b1fe8cab57a05' }, `weapon-finish textures ${JSON.stringify(digests)}`);
+  assert.deepEqual(digests, { albedo: 'c08b792a2afb3444', rough: 'a99bced4a885ac11', normal: '281b1fe8cab57a05' }, `weapon-finish textures ${JSON.stringify(digests)}`);
   assert.equal(tex.albedo.colorSpace, THREE.SRGBColorSpace, 'the albedo multiplier is sRGB');
   assert.equal(tex.rough.colorSpace, THREE.NoColorSpace, 'the rough/metal/chip map is linear data');
   let lo = 255, hi = 0;
@@ -67,8 +67,8 @@ import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
 {
   const material = new THREE.MeshStandardMaterial();
   material.customProgramCacheKey = () => 'veh-ambient-floor-v5';
-  installWeaponEdgeWear(material, 0x8f8c84, 0.34, 0.85);
-  installWeaponEdgeWear(material, 0x8f8c84, 0.34, 0.85);
+  installWeaponEdgeWear(material, WEAPON_STEEL_WEAR);
+  installWeaponEdgeWear(material, WEAPON_STEEL_WEAR);
   const shader = {
     uniforms: {},
     vertexShader: '#include <common>\n#include <begin_vertex>',
@@ -78,9 +78,26 @@ import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
   assert.match(shader.vertexShader, new RegExp(`attribute vec3 ${WEAPON_EDGE_BARY}`), 'the bake attributes reach the vertex stage');
   assert.match(shader.fragmentShader, /fwidth\( ed \)/, 'the band fades where it is under a pixel');
   assert.equal((shader.fragmentShader.match(/weaponEdgeDistance\(\) \{/g) ?? []).length, 1, 'installed once');
-  assert.ok(shader.uniforms.uWeaponWornColor && shader.uniforms.uWeaponWearCore, 'wear uniforms bound');
-  assert.match(material.customProgramCacheKey(), /^veh-ambient-floor-v5\|weapon-wear-v1/, 'the program key keeps the vehicle key and adds the wear');
+  for (const u of ['uWeaponWornColor', 'uWeaponWornRoughness', 'uWeaponWornMetalness', 'uWeaponWearCore', 'uWeaponWearReach', 'uWeaponChip'])
+    assert.ok(shader.uniforms[u], `wear uniform ${u} bound`);
+  assert.match(material.customProgramCacheKey(), /^veh-ambient-floor-v5\|weapon-wear-v2$/, 'the program key keeps the vehicle key and adds the wear');
+  // the live parameters reach the program at the next upload (no recompile), and survive Material.clone()'s JSON copy
+  assert.equal(shader.uniforms.uWeaponWornRoughness.value, WEAPON_STEEL_WEAR.wornRoughness);
+  material.userData.weaponWear.wornRoughness = 0.61;
+  material.userData.weaponWear.wornColor = [0.1, 0.2, 0.3];
+  assert.equal(shader.uniforms.uWeaponWornRoughness.value, 0.61, 'a live wear parameter applies in place');
+  assert.deepEqual(shader.uniforms.uWeaponWornColor.value.toArray(), [0.1, 0.2, 0.3]);
+  assert.deepEqual(JSON.parse(JSON.stringify(material.userData)).weaponWear, material.userData.weaponWear, 'the parameters are plain data');
+  assert.equal(WEAPON_STEEL_WEAR.wornRoughness, 0.5, 'installing copies the defaults (the frozen table is untouched)');
   material.dispose();
+  // 2026-10-10 (the first garage close-ups read chrome): the wear stays a thin line of dark steel, never a bright
+  // band — the worn steel's luminance, its band and its gloss are bounded for both finishes
+  for (const [name, w] of [['weapon steel', WEAPON_STEEL_WEAR], ['ammunition drab', AMMO_DRAB_WEAR]]) {
+    const lum = 0.2126 * w.wornColor[0] + 0.7152 * w.wornColor[1] + 0.0722 * w.wornColor[2];
+    assert.ok(lum <= 0.15, `${name}: worn steel is dark (linear luminance ${lum.toFixed(3)})`);
+    assert.ok(w.reach <= 0.01 && w.core <= w.reach / 2, `${name}: the wear band is thin (core ${w.core} m, reach ${w.reach} m)`);
+    assert.ok(w.wornRoughness >= 0.45 && w.wornMetalness <= 0.8, `${name}: worn steel is not a mirror`);
+  }
 }
 
 // ---- unknown fitting slots throw; no profile names a bucket as a slot ------------------------------------------
@@ -141,14 +158,20 @@ const isWeaponMesh = (o) => {
   }
   return false;
 };
-function uvDensityMedian(geometry) {
+// The camouflage density is a vehicle-frame quantity: a mesh inside a scaled group (the Griffin's reduced turret scales
+// its stations' groups by 0.81) carries UVs projected for its vehicle-frame size, so measure in the tank root's frame.
+function uvDensityMedian(mesh, root) {
+  const geometry = mesh.geometry;
+  root.updateMatrixWorld(true);
+  const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert().multiply(mesh.matrixWorld);
   const pos = geometry.getAttribute('position'), uv = geometry.getAttribute('uv'), index = geometry.index;
   const n = index ? index.count : pos.count, samples = [];
   const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
   let total = 0;
   for (let t = 0; t + 2 < n; t += 3) {
     const [i0, i1, i2] = [t, t + 1, t + 2].map((k) => (index ? index.getX(k) : k));
-    a.fromBufferAttribute(pos, i0); b.fromBufferAttribute(pos, i1); c.fromBufferAttribute(pos, i2);
+    a.fromBufferAttribute(pos, i0).applyMatrix4(toRoot); b.fromBufferAttribute(pos, i1).applyMatrix4(toRoot);
+    c.fromBufferAttribute(pos, i2).applyMatrix4(toRoot);
     const world = b.clone().sub(a).cross(c.clone().sub(a)).length() / 2;
     if (world < 1e-9) continue;
     const uvArea = Math.abs((uv.getX(i1) - uv.getX(i0)) * (uv.getY(i2) - uv.getY(i0)) - (uv.getX(i2) - uv.getX(i0)) * (uv.getY(i1) - uv.getY(i0))) / 2;
@@ -197,7 +220,7 @@ try {
         const uv = o.geometry.getAttribute('uv'), pos = o.geometry.getAttribute('position');
         assert.ok(uv && o.geometry.getAttribute('color'), `${id}/${o.name}: painted housings carry camouflage UVs and vertex colours`);
         // the camouflage density: the area-weighted median of sqrt(UV area / world area) is the fleet's repeats per metre
-        const density = uvDensityMedian(o.geometry);
+        const density = uvDensityMedian(o, visual.root);
         assert.ok(Math.abs(density - CAMO_UV_REPEATS_PER_M) < CAMO_UV_REPEATS_PER_M * 0.15,
           `${id}/${o.name}: camouflage projected at the fleet density (${density.toFixed(3)} per metre)`);
       } else {
@@ -212,7 +235,7 @@ try {
   const housing = t90ms.root.getObjectByName('t90msTagilTowerOpticHousing');
   assert.ok(housing, 't90ms: the Tagil optic housing exists');
   {
-    const density = uvDensityMedian(housing.geometry);
+    const density = uvDensityMedian(housing, t90ms.root);
     assert.ok(Math.abs(density - CAMO_UV_REPEATS_PER_M) < 0.05, `t90ms: the optic housing projects the camouflage at the fleet density (${density.toFixed(3)} per metre, was 4.6)`);
   }
 } finally {
