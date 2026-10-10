@@ -93,6 +93,27 @@ assert.ok(gpuMB <= 16, `the media atlases stay within the 16 MB desktop budget (
   media.update(camera);
   const st = media.stats();
   assert.equal(st.live, 64, 'the ring holds its capacity (the oldest are overwritten)');
+  // (fx 8e) under pressure the pool takes free slots first and steals the puff nearest its end, never a fresh body by
+  // ring order: a long-lived puff survives a burst of short ones that overfills the ring
+  {
+    let tnow = 0;
+    const pool = createVolumeMedia({ soft, now: () => tnow, capacity: 32 });
+    const q = makeVolumePuff();
+    q.x = 0; q.y = 1; q.z = -10; q.vx = 0; q.vy = 0; q.vz = 0; q.drag = 1; q.rise = 0; q.windK = 0; q.grav = 0; q.birthOffset = 0;
+    q.life = 30; q.size0 = 7.77; q.size1 = 7.77;
+    pool.emit(q);
+    q.life = 2; q.size0 = 1; q.size1 = 1;
+    for (let k = 0; k < 31; k++) pool.emit(q);
+    tnow = 3;
+    for (let k = 0; k < 40; k++) pool.emit(q);
+    tnow = 3.5;
+    pool.update(camera);
+    const sz = pool.group.children[0].geometry.getAttribute('aSZ').array;
+    let kept = false;
+    for (let k = 0; k < pool.stats().drawn; k++) if (Math.abs(sz[k * 4] - 7.77) < 1e-4) kept = true;
+    assert.ok(kept, 'the long-lived puff outlives an overfilled burst of short ones');
+    pool.dispose?.();
+  }
   assert.equal(st.drawn, 64, 'every live puff is drawn');
   assert.equal(media.group.children[0].visible, true, 'a live pool draws');
   // read the sorted instance origins back: depth along the view must not increase
