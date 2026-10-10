@@ -643,6 +643,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/lazyRuntime.selftest.mjs',
     'src/fx/flipbookOrientation.selftest.mjs',
     'src/fx/clock.selftest.mjs',
+    // 2026-10-10 (physics lane, for the destruction core's natural collapses): the presentation pool of falling pieces.
+    'src/fx/debrisPhysics.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
     'src/gallery/overlays.selftest.mjs',
     'src/gallery/damageLab.selftest.mjs',
