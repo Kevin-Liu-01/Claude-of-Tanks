@@ -100,7 +100,8 @@ import { attachTankDecorations, attachTankDecorationsSteps, type DecorationAttac
 // the destruction beat is finally capturable frame-by-frame (the r4 critic
 // saw a fully-charred, already-settled wreck at "0.1 s" because rAF frames
 // between captures aged the old dt-accumulators in wall-clock time).
-import { fxNow, emitPopTrail } from '../fx/clock.ts';
+import { fxNow, emitPopTrail, emitTurretLanding } from '../fx/clock.ts';
+import { createWreckTurretDriver } from './wreckTurretDriver.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
 import {
   markVehicleShadowDetail, NEAR_SHADOW_DETAIL_MAX_MESHES, NEAR_SHADOW_DETAIL_NAMES, vehicleShadowDetailOf,
@@ -1178,6 +1179,13 @@ interface TankVisual {
   stripEra(plateName: string): boolean;
   resetEra(): boolean;
   setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
+  /**
+   * The wreck's turret body pose for this frame (physics lane): the turret frame's world pose [x, y, z, qx, qy, qz, qw]
+   * the simulation owns (sim/wreckTurrets.ts), interpolated by the caller; null when none is offered this frame.
+   */
+  setWreckTurretPose(pose: ArrayLike<number> | null): void;
+  /** A host will send this wreck's turret pose: hold the turret on its seat until it does, never simulate it here. */
+  awaitWreckTurretPose(): void;
   isDestroyed(): boolean;
   prewarmBurn(): THREE.Object3D[];
   getWreckFallbackMaterial(): THREE.Material;
@@ -8933,8 +8941,23 @@ function* createTankOwnedSteps(
   // full-toss / welded-in-place split ("destruction spectacle silently
   // depends on which kill you land").
   let popScale = 1;
+  // physics lane (2026-10-10; the owner: "it blows up nicely but then the turret snaps into a pre-ordained resting
+  // position"): the arc and the settle table below now serve only the static hulks' bake (geometry-only visuals,
+  // whose collision the shards hold). Every other wreck's turret follows its rigid body — the simulation's in a battle,
+  // a local one of the same engine in a composition — and lies where the physics put it (wreckTurretDriver.ts).
+  const turretDriver = geometryOnly ? null : createWreckTurretDriver({
+    spec,
+    root,
+    turret: turretG,
+    gun: gunG,
+    ground: () => groundSampler,
+    random: rng,
+    trail: (x, y, z, heat, birthOffset) => emitPopTrail(x, y, z, heat, birthOffset),
+    landing: (x, y, z, speed) => emitTurretLanding(x, y, z, speed),
+  });
+  let turretFlying = false;
 
-  /** Settled wreck pose: turret knocked askew, resting half-off the ring. */
+  /** Settled wreck pose (static hulk bakes only): turret knocked askew, resting half-off the ring. */
   function settleTurret() {
     // r6 (critic: "the signature end-state — turret lying next to/on the
     // hull — is absent"): a full toss now lands the turret clearly BESIDE
@@ -9029,12 +9052,18 @@ function* createTankOwnedSteps(
     burnU.uBurnGlow.value = Math.exp(-ageS / 0.9) * 1.35;
     burnU.uBurnEmber.value = 0.10 + 0.85 * Math.exp(-ageS / 8);
     mats.burnt.emissiveIntensity = 0.035 + 0.55 * Math.exp(-ageS / 8);
-    gunG.rotation.x = 0.12;
+    // a body-driven turret eases its gun from its last lay (wreckTurretDriver); the bake's table drops it at once
+    if (!turretDriver?.drives) gunG.rotation.x = 0.12;
     wreckSeat.copy(turretG.position);
     popYaw0 = turretG.rotation.y;
   }
 
-  function launchDestroyedTurret(pop: boolean, ageS: number): void {
+  function launchDestroyedTurret(pop: boolean, ageS: number, explicitAge: boolean): void {
+    if (turretDriver) {
+      turretFlying = false;
+      turretDriver.begin(pop, wreckSeat, explicitAge ? ageS : null);
+      if (turretDriver.active) return;
+    }
     popScale = pop ? 1 : 0.22;
     popActive = true;
     popT = ageS;
@@ -9297,6 +9326,7 @@ function* createTankOwnedSteps(
           // r5: pop/char/embers advance by the FX CLOCK (adv), so stepped
           // captures catch the arc mid-air and the char mid-spread.
           if (popActive) { popT += adv; applyPop(); }
+          else if (turretDriver?.active) turretFlying = turretDriver.update(Math.max(0, wreckAge + adv), adv);
           // r6 burn-front + ember drive: the whole wreck's char/glow rides the
           // shared burn uniforms (see burnU note) — the front sweeps for
           // ~2.1 s, its ignition edge glows hot while it eats (uBurnGlow, also
@@ -9309,7 +9339,7 @@ function* createTankOwnedSteps(
             // r7: glow tau 1.5 -> 0.9 s — the fire-lit wash must collapse with
             // the fireball; at 1.5 s it held the whole darker char uniform
             // orange into the 2-3 s window (probe destroy_2_5s flood).
-            burnU.uBurnGlow.value = Math.exp(-wreckAge / 0.9) * (popActive ? 1.35 : 1.0);
+            burnU.uBurnGlow.value = Math.exp(-wreckAge / 0.9) * (popActive || turretFlying ? 1.35 : 1.0);
             burnU.uBurnEmber.value = 0.10 + 0.85 * decay *
               (0.55 + 0.45 * Math.sin(wreckAge * 2.4 + emberPhase));
             // legacy shared-burnt fallback (non-standard materials only)
@@ -9732,9 +9762,13 @@ function* createTankOwnedSteps(
       // or a low ~20% jolt on plain kills that unseats the turret and drops
       // it askew. GLB and procedural tanks share the exact same sequence
       // (the GLB turret node is re-parented into turretG at swap time).
-      launchDestroyedTurret(!!(opts && opts.pop), ageS0);
+      launchDestroyedTurret(!!(opts && opts.pop), ageS0, !!opts && typeof opts.ageS === 'number');
       if (restoreDetachedBattleDetails) setBattleDetailsAttached(false);
     },
+
+    setWreckTurretPose(pose) { if (destroyed) turretDriver?.setExternal(pose); },
+
+    awaitWreckTurretPose() { if (destroyed) turretDriver?.awaitExternal(); },
 
     /** @returns {boolean} the wreck look is currently applied */
     isDestroyed() { return destroyed; },
@@ -9822,8 +9856,11 @@ function* createTankOwnedSteps(
         // off before this, clearly visible in the killcam r3 intact beat).
         turretG.position.copy(wreckSeat);
         turretG.rotation.set(0, 0, 0);
+        turretG.scale.set(1, 1, 1);
         gunG.rotation.x = 0;
       }
+      turretDriver?.reset();
+      turretFlying = false;
       burnU.uBurnT.value = -1; // disarm the burn mask (clones stay cached)
       burnU.uBurnGlow.value = 0;
       burnU.uBurnEmber.value = 0;

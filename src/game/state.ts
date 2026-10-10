@@ -126,6 +126,10 @@ import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.
 import { classifyShellSurface, shellHitsWater } from '../sim/shellSurface.ts';
 import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
 import {
+  createWreckEnvironment, createWreckTurrets, wreckGroundSampler, type WreckTurrets,
+} from '../sim/wreckTurrets.ts';
+import type { RigidEnvironment } from '../sim/rigidBody.ts';
+import {
   DESTRUCTION_BUS_EVENTS, type StructureBreachEvent, type StructureStageEvent, type TerrainCraterEvent,
 } from '../sim/destructionEvents.ts';
 import { architectureStyleOf, wallMaterialForStyle } from '../sim/structureMaterial.ts';
@@ -341,6 +345,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _navigationWreckTicks?: number;
   /** Destruction (docs/DESTRUCTION.md): this battle's structures and log, as the authority keeps them. */
   _destruction?: DestructionMatch | null;
+  /** Popped and unseated turrets as rigid bodies (physics lane; sim/wreckTurrets.ts). */
+  _wreckTurrets?: WreckTurrets | null;
   _destructionEvents?: StructureStageEvent[];
   _destructionBreaches?: StructureBreachEvent[];
   _destructionCraters?: TerrainCraterEvent[];
@@ -567,6 +573,16 @@ const _dir = new THREE.Vector3();
 const _seg = new THREE.Vector3();
 const _worldRayOrigin = new THREE.Vector3();
 const _toC = new THREE.Vector3();
+/** A wreck's turret off its ring: its frame (traced at the body's pose) and the reach of its plates and gun from it. */
+const _wreckTurretWorld = new THREE.Matrix4();
+const WRECK_TURRET_REACH_M = 6.5;
+const _toTurret = new THREE.Vector3();
+/** Whether the step's segment (from `from` along _seg) passes within `reach` of a point. */
+function segmentNearPoint(from: THREE.Vector3, length: number, x: number, y: number, z: number, reach: number): boolean {
+  _toTurret.set(x - from.x, y - from.y, z - from.z);
+  const along = Math.max(0, Math.min(length, _toTurret.dot(_seg)));
+  return _toTurret.lengthSq() - along * along <= reach * reach;
+}
 const _spawnPos = new THREE.Vector3();
 const _contactCenter = new THREE.Vector3();
 const _obstacleCenter = new THREE.Vector3();
@@ -1234,6 +1250,11 @@ export function setupBattle(
   game._destructionEvents = [];
   game._destructionBreaches = [];
   game._destructionCraters = [];
+  // physics lane (2026-10-10): this battle's turret bodies meet the deformed ground and the world's solid records
+  const wreckTurrets = game._wreckTurrets ??= createWreckTurrets({ seed: COMBAT_SEED + game.battleCount });
+  wreckTurrets.reset();
+  wreckTurrets.gravity = 9.81 * (Number.isFinite(game.ruleset.gravityScale) ? game.ruleset.gravityScale : 1);
+  wreckTurrets.bind(wreckEnvironmentFor(world, ground.field));
 
   // COMMUNITY TANKS: field the participants; park everyone else (hidden,
   // null state/combat — every sim/HUD/audio consumer guards on those).
@@ -1868,6 +1889,8 @@ function announceDestroyed(
   // turret toss is RESERVED for ammo-rack detonations (WoT spectacle);
   // plain HP kills / burn-outs keep the turret seated (gun droop + smoke)
   ent.visual?.setDestroyed({ pop: cause === 'ammorack' });
+  // physics lane: the turret flies (a cook-off) or comes off its ring (any other death) as a body the step owns
+  game._wreckTurrets?.launch(ent, cause, Math.round(game.timeS / SIM_DT));
   bus.emit('tank:destroyed', {
     id: ent.id,
     specId: ent.specId,
@@ -2057,13 +2080,17 @@ function traceNearestTank(
   for (const entity of game.tanks) {
     if (entity.modeActive === false || entity.id === shell.shooterId || isGunship(entity)) continue;
     const radius = entity.spec.armor.boundingRadiusM;
+    // physics lane: a wreck whose turret came off its ring is traced with the turret where its body lies
+    const detached = entity.combat.destroyed && !!game._wreckTurrets?.frameMatrix(entity.id, _wreckTurretWorld);
     _toC.copy(entity.state.pos);
     _toC.y += entity.spec.dims.heightM * 0.5;
     _toC.sub(shell.prevPos);
     const projection = Math.max(0, Math.min(segmentLength, _toC.dot(_seg)));
     const distanceSquared = _toC.lengthSq() - projection * projection;
-    if (distanceSquared > radius * radius) continue;
+    if (distanceSquared > radius * radius && !(detached && segmentNearPoint(shell.prevPos, segmentLength,
+      _wreckTurretWorld.elements[12], _wreckTurretWorld.elements[13], _wreckTurretWorld.elements[14], WRECK_TURRET_REACH_M))) continue;
     const pose = tankPoseFromState(entity.state);
+    if (detached) pose.turretWorld = _wreckTurretWorld;
     const intersections = traceTank(
       shell.prevPos,
       shell.pos,
@@ -2544,6 +2571,17 @@ function resolveTankImpacts(
 }
 
 const structureSupportByWorld = new WeakMap<SoloWorld, StructureSupportField>();
+
+const wreckEnvironmentByWorld = new WeakMap<SoloWorld, RigidEnvironment>();
+/** Physics lane: what a turret body meets in this world — its deformed ground and its solid records (one grid a world). */
+function wreckEnvironmentFor(world: SoloWorld, field: SoloHeightField): RigidEnvironment {
+  let environment = wreckEnvironmentByWorld.get(world);
+  if (!environment) {
+    environment = createWreckEnvironment(wreckGroundSampler(field), world.getObstacles(), world.getColliders ? world.getColliders() : []);
+    wreckEnvironmentByWorld.set(world, environment);
+  }
+  return environment;
+}
 
 interface SoloGround { overlay: TerrainDeformation; field: SoloHeightField }
 const groundByWorld = new WeakMap<SoloWorld, SoloGround>();
@@ -3039,6 +3077,8 @@ export function simStep(
   resolveCrushContacts(collider, world, bus);
   resolveRamContacts(game, bus, rig, collider);
   stepRolloverRecovery(game, bus);
+  // the hulls have moved: the turret bodies meet them where they stand now, before any shell this step is traced
+  game._wreckTurrets?.step(game.tanks);
   stepReloadAndFire(game, bus, rig);
   stepAuxiliarySystems(game, world, bus);
   game.killcam?.recordSimStep(game);

@@ -42,6 +42,8 @@ type PresentedTankState = TankState;
 interface TankVisual {
   root: Object3D;
   setVisible(visible: boolean): void;
+  /** Physics lane: the wreck's turret body pose for this frame (world turret frame), or null. */
+  setWreckTurretPose?(pose: ArrayLike<number> | null): void;
   setTrackState?(module: 'trackL' | 'trackR', broken: boolean): void;
   setWeaponModuleState?(module: string, state: 'ok' | 'yellow' | 'red'): void;
   syncFromState(
@@ -74,6 +76,13 @@ interface TankEntity {
   _dustTravelAcc?: number;
   _offscreenPresentationS?: number;
   _wasDetailVisible?: boolean;
+  /** A network peer's wreck turret pose, interpolated from its host's rows (mp/presentation/battlePresentation.ts). */
+  _wreckTurretPose?: Float64Array | null;
+}
+
+/** The solo step's turret bodies, as the presentation reads them (sim/wreckTurrets.ts). */
+interface WreckTurretPoses {
+  framePoseAt(id: string, alpha: number, out: Float64Array): boolean;
 }
 
 interface SpottingState {
@@ -121,7 +130,7 @@ interface BattlePresentationRuntime {
 }
 
 interface BattlePresentationRuntimeOptions {
-  game: Pick<GameState, 'phase' | 'tanks' | 'player' | 'spotting' | 'matchModeState'>;
+  game: Pick<GameState, 'phase' | 'tanks' | 'player' | 'spotting' | 'matchModeState'> & { _wreckTurrets?: WreckTurretPoses | null };
   camera: PerspectiveCamera;
   scene: Scene;
   battleClient: PosePorts;
@@ -432,6 +441,17 @@ export function createBattlePresentationRuntime({
     crushNearbyProps(entity, fx, world, speed);
   };
 
+  // physics lane (2026-10-10): a wreck's turret follows its body — the solo step's, interpolated between two steps like
+  // the hulls, or the pose a network peer's host sent
+  const wreckTurretPose = new Float64Array(7);
+  const feedWreckTurret = (entity: TankEntity, alpha: number, networkActive: boolean): void => {
+    const visual = entity.visual;
+    if (!visual?.setWreckTurretPose) return;
+    if (networkActive) { visual.setWreckTurretPose(entity._wreckTurretPose ?? null); return; }
+    const turrets = game._wreckTurrets;
+    visual.setWreckTurretPose(turrets && turrets.framePoseAt(entity.id, alpha, wreckTurretPose) ? wreckTurretPose : null);
+  };
+
   const updateTank = (
     entity: TankEntity,
     dtFrame: number | undefined,
@@ -450,6 +470,7 @@ export function createBattlePresentationRuntime({
       return;
     }
     const presented = presentationStateFor(entity, presentationAlpha, networkActive);
+    if (entity.combat.destroyed) feedWreckTurret(entity, presentationAlpha, networkActive);
     const viewDistanceM = syncTankVisual(entity, presented, dtFrame, pedestalVisual);
     updateVehicleFx(entity, fx, world, presented, viewDistanceM, dtFrame);
   };
