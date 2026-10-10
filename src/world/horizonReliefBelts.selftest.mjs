@@ -6,6 +6,7 @@
 // without them bakes its atlas byte for byte as before.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import {
   HORIZON_RELIEF_AO_DEPTH, HORIZON_RELIEF_AO_POWER, HORIZON_RELIEF_SHADE, HORIZON_RELIEF_SUN_DEPTH,
   bakeHorizonRelief, createHorizonReliefField, encodeCanopyAo, encodeCanopySun, resolveHorizonRelief,
@@ -13,6 +14,8 @@ import {
 import { HORIZON_SEGMENTS, sampleHorizonGeometry } from './maps/horizon.ts';
 import { getMapConfig } from './maps/index.ts';
 
+// the owner's protected maps (2026-10-09 verdicts: "incredible", light-touch) keep their rings and far country
+const PROTECTED = ['verdant', 'winter', 'saltwind', 'reservoir', 'railyard', 'coastal', 'desert', 'frontier', 'fjord'];
 const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const programAo = (z, shade) => 1 - (1 - Math.pow(z, HORIZON_RELIEF_AO_POWER)) * HORIZON_RELIEF_AO_DEPTH * shade;
 const programSun = (z, shade) => 1 - (1 - z) * HORIZON_RELIEF_SUN_DEPTH * shade;
@@ -105,9 +108,30 @@ assert.equal(wide.shade, 1, 'the bake reports the share its texels are encoded f
 
 // the maps that take the options: Glacier Pass only (the owner's "hasn't been updated at all"); the light-touch maps
 // (Nordhavn Fjord, Saltmere Bay, Saltwind, Highland Reservoir, Frontier: "incredible") keep their atlases
-for (const id of ['fjord', 'coastal', 'saltwind', 'reservoir', 'frontier', 'verdant']) {
+for (const id of PROTECTED) {
   const c = getMapConfig(id).horizon?.reliefCover;
   assert.ok(!c || (c.belts === undefined && c.shade === undefined && c.walls === undefined), `${id} keeps its atlas (no belts, share or walls)`);
 }
 
-console.log('horizonReliefBelts.selftest: the wider share\'s encoding, the belts, the walls\' fade and the maps that take them PASS');
+// --- the ranges' sky fill (terrain.ts gRingFill) ------------------------------------------------------------------
+{
+  const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const ground = readFileSync(new URL('./horizonAutumnGround.ts', import.meta.url), 'utf8');
+  assert.ok(terrain.includes('uniform float uRingFill;\nfloat gRingFill = 1.0;'), 'the fill is a scalar uniform and 1 off the ring');
+  assert.ok(terrain.includes('gRingFill = 1.0 + uRingFill * smoothstep(150.0, 700.0, edgeOut) * ringW / max(uRingReliefAmp, 1e-3);'),
+    'the fill ramps in from 150 to 700 m past the edge, under the atlas\'s own weight');
+  assert.ok(terrain.includes('reflectedLight.indirectDiffuse *= gRingAo * gRingFill;'), 'it lifts the sky\'s light only (the indirect term)');
+  assert.ok(terrain.includes('uRingFill: { value: 0 },') && terrain.includes('shader.uniforms.uRingFill = ringReliefUniforms.uRingFill;'),
+    'the program starts with none');
+  assert.ok(ground.includes('if (ring.uRingFill) ring.uRingFill.value = ringData?.ringFill ?? 0;'), 'the ring binds its map\'s fill (0 when the map has none)');
+  const filled = ['alpine', 'caldera', 'titan_gorge', 'skybridge', 'urban'];
+  for (const id of filled) {
+    const v = getMapConfig(id).horizon?.ringFill;
+    assert.ok(typeof v === 'number' && v > 0 && v <= 1.6, `${id} lifts its ranges' shade (${v})`);
+  }
+  for (const id of PROTECTED) {
+    assert.ok(!getMapConfig(id).horizon?.ringFill, `${id} keeps its ranges' light (no fill)`);
+  }
+}
+
+console.log('horizonReliefBelts.selftest: the wider share\'s encoding, the belts, the walls\' fade, the sky fill and the maps that take them PASS');

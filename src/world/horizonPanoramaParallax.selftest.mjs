@@ -10,6 +10,8 @@ import * as THREE from 'three';
 import { HORIZON_PANORAMA, HORIZON_PANORAMA_SHADERS, createHorizonPanorama, resolveHorizonPanoramaCharacter } from './horizonPanorama.ts';
 import { getMapConfig } from './maps/index.ts';
 
+// the owner's protected maps (2026-10-09 verdicts: "incredible", light-touch) keep their far country
+const PROTECTED = ['verdant', 'winter', 'saltwind', 'reservoir', 'railyard', 'coastal', 'desert', 'frontier', 'fjord'];
 const source = readFileSync(new URL('./horizonPanorama.ts', import.meta.url), 'utf8');
 
 // --- the shell's parallax gate ----------------------------------------------------------------------------------
@@ -71,7 +73,7 @@ assert.equal(resolveHorizonPanoramaCharacter('alpine').snowSlide, 0, 'the charac
 const alpine = getMapConfig('alpine').horizon;
 assert.equal(resolveHorizonPanoramaCharacter('alpine', typeof alpine.panorama === 'object' ? alpine.panorama : undefined).snowSlide, 1,
   'Glacier Pass lets its far ranges\' snow slide off the steep faces');
-for (const id of ['fjord', 'coastal', 'saltwind', 'reservoir', 'frontier', 'verdant']) {
+for (const id of PROTECTED) {
   const p = getMapConfig(id).horizon?.panorama;
   assert.ok(!(p && typeof p === 'object' && p.snowSlide), `${id} keeps its far snow`);
 }

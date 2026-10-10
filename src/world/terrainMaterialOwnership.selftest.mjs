@@ -167,6 +167,8 @@ function checkSourceContract(text) {
     'uMeanG', 'uMeanD', 'uMeanR', 'uMeanM', 'uReduxD',
     // terrain v3 (2026-10-02): the ring atlas gradient's wall fade (vec2, set per relief character at the ring's bind) — no sampler
     'uRingReliefWall',
+    // the horizons lane (2026-10-09): the ranges' sky fill (scalar, per map at the ring's bind; 0 = none) — no sampler
+    'uRingFill',
     // ground lane (2026-10-03): the land use's field system (landUse.ts) — five packed vectors, no sampler
     'uLandA', 'uLandB', 'uLandC', 'uLandD', 'uLandE',
     // ground lane (2026-10-03, the land-use bake): the bake's address in the ground mask's stack and the stack's own (two
