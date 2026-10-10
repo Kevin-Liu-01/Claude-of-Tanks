@@ -41,7 +41,8 @@ const authoredWorlds = new Map();
 // (2026-10-06, Skybridge's canyon: the props stream re-draws past the old lake banks' boulders and seats four heaps at
 // the yard's sidings where it seated five)
 // (2026-10-06, Skybridge round 3: Page never had a railway — the yard's lines, heaps and stores are gone from Skybridge)
-const coalCensus = { railyard: 10, caldera: 7, foundry: 7 };
+// (2026-10-07: Obsidian Caldera lays no rail yard, so no coal — the map-revival lane's Caldera round 3, landed 2026-10-09)
+const coalCensus = { railyard: 10, foundry: 7 };
 
 // 2026-09-29 roads/settlements: native all31-map recapture, terrain1337,
 // props2002, vegetation2001. Counts include shared tree colliders (the capture
