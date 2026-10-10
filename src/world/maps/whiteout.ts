@@ -63,7 +63,9 @@ export default {
   // law steps by the same factor (L 0.52 + 0.32·l → 0.46 + 0.28·l), postExposure 0.86 → 0.83 in the sky block below.
   // Skyline metric and the snow boxes in the round-70 section of docs/MAP-BEAUTIFICATION.md.
   splat: { sourcedPalette: 'winter', ...winter.splat,
-    sourcedTint: { G: [0.88, 0.885, 0.895] },
+    // (2026-10-10, the map-revival lane; wave 355: "blue-grey snow" under the thin overcast) the photo snow a breath cool,
+    // not blue: B/R 1.017 -> 1.003
+    sourcedTint: { G: [0.885, 0.885, 0.888] },
     grassTone: (h: number, s: number, l: number) => [0.575, 0.03, clamp01(0.46 + l * 0.28)], // snowpack fallback
     // 2026-10-03 (maps lane B, the gauntlet's "dull blue-grey plaster"): snow is near neutral, and under overcast its
     // blue comes only from open sky (the skies lane's lighting side). The macro tints go from B/R 1.06 (A) and
@@ -71,7 +73,8 @@ export default {
     // (the map-revival lane, round 2b, 2026-10-10; the stranded DEW Line round's ground values, gauntlet wave 224: the macro
     // blotches read as "a camouflage pattern") B lifted halfway to A (0.873 -> 0.937 luminance), the wind's drift across the
     // ice half again (0.3 -> 0.5)
-    iceDrift: 0.5, tintA: [1.021, 1.041, 1.062], tintB: [0.929, 0.938, 0.947], tintC: [1.05, 1.06, 1.08], roadTint: [0.67, 0.70, 0.72], midRelief: 0.45 },
+    // (2026-10-10, wave 355: "blue-grey snow") the three macro tints B/R 1.04 -> 1.01, each at its luminance
+    iceDrift: 0.5, tintA: [1.035, 1.042, 1.048], tintB: [0.935, 0.938, 0.941], tintC: [1.058, 1.062, 1.068], roadTint: [0.67, 0.70, 0.72], midRelief: 0.45 },
   vegetation: {
     grassTexTone: winter.vegetation.grassTexTone, tuftTone: winter.vegetation.tuftTone,
     // A few sheltered firs break up the spruce/birch silhouette without
