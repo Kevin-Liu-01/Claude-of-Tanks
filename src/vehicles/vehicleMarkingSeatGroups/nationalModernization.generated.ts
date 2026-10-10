@@ -407,8 +407,8 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "size": 0.24,
         "pos": [
           -1.044,
-          1.4545,
-          -2.8223999
+          0.83605,
+          -1.6799999
         ],
         "quaternion": [
           0,
@@ -419,24 +419,24 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "surfaceMesh": "hull",
         "anchorProfile": "cn_t80u_modern",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 6,
-        "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.937
+        "visibilityClearSamples": 5,
+        "visibilityRatio": 0.5555556,
+        "maximumSurfaceErrorM": 1.121006
       },
       {
         "kind": "insignia",
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -0.6312881,
+          0.6312881,
           0.5937182,
           -1.1819736
         ],
         "quaternion": [
-          0.5633979,
+          -0.5633979,
           0.668621,
           0.3127207,
-          -0.371126
+          0.371126
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "cn_t80u_modern",
@@ -553,44 +553,44 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -0.6394011,
+          0.6394011,
           0.6109055,
           -1.1977314
         ],
         "quaternion": [
-          0.5487231,
+          -0.5487231,
           0.6781205,
           0.3075574,
-          -0.3800842
+          0.3800842
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "ru_t80u_modern",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0101998
+        "visibilityClearSamples": 7,
+        "visibilityRatio": 0.7777778,
+        "maximumSurfaceErrorM": 0.0202208
       },
       {
         "kind": "designation",
         "parent": "turret",
-        "size": 0.24,
+        "size": 0.2112,
         "pos": [
-          0.549242,
-          0.6110858,
-          -1.2281106
+          0.9013987,
+          0.6426577,
+          -1.045456
         ],
         "quaternion": [
-          -0.5610704,
-          0.6540228,
-          0.3303739,
-          0.3851069
+          -0.4852646,
+          0.7654064,
+          0.2263328,
+          0.3569941
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "ru_t80u_modern",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0096913
+        "visibilityClearSamples": 5,
+        "visibilityRatio": 0.5555556,
+        "maximumSurfaceErrorM": 0.1753673
       }
     ]
   },

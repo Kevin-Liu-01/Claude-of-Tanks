@@ -3138,8 +3138,10 @@ function probeTargets(group: THREE.Group): SurfaceMesh[] {
     if (o instanceof THREE.LOD) { if (o.levels.length && o.levels[0].object) visit(o.levels[0].object); return; }
     if (o instanceof THREE.Mesh && !(o instanceof THREE.InstancedMesh) && o.geometry) {
       const m = Array.isArray(o.material) ? o.material[0] : o.material;
+      // the netting lane: a field suit (ghillieSuit.ts fieldClearanceM) is no surface to seat on; the decor seats on the
+      // armour under it and the suit is drawn over the loads (ghillieDrape.ts) and cut round the smoke banks
       if (m && m.colorWrite !== false && !isDecorRunningGearName(o.name || '')
-          && !Array.isArray(o.material)) out.push(o as SurfaceMesh);
+          && !Array.isArray(o.material) && o.userData?.fieldSuit !== true) out.push(o as SurfaceMesh);
     }
     for (const c of o.children) visit(c);
   };

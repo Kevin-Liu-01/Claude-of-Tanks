@@ -99,6 +99,6 @@ const bare = (object) => {
   return box.getSize(new THREE.Vector3());
 };
 near(bare(source.root.getObjectByName('rig_hull')).x, 4.010000, '2A7V hull unchanged');
-near(size(source.root.getObjectByName('rig_turret')).x, 3.180981, '2A7V turret unchanged');
+near(bare(source.root.getObjectByName('rig_turret')).x, 3.180981, '2A7V turret unchanged');
 source.dispose();
 console.log('leopardImprovedHull.selftest: ok');

@@ -14,31 +14,31 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.24,
         "pos": [
-          -1.905,
-          1.26992,
-          -2.4055999
+          -0.9992076,
+          0.8090267,
+          -1.0421014
         ],
         "quaternion": [
-          0,
-          -0.7071068,
-          0,
-          0.7071068
+          0.0054998,
+          -0.7071675,
+          0.0054986,
+          0.7070033
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "leo2a7v_x",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "visibilityClearSamples": 8,
+        "visibilityRatio": 0.8888889,
+        "maximumSurfaceErrorM": 0.677081
       },
       {
         "kind": "designation",
         "parent": "hull",
         "size": 0.24,
         "pos": [
-          -1.884,
-          1.26992,
-          -1.57235
+          -1.806,
+          1.73072,
+          0.4729
         ],
         "quaternion": [
           0,
@@ -184,7 +184,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "size": 0.22,
         "pos": [
           -1.743,
-          1.1501205,
+          0.8910393,
           1.1565432
         ],
         "quaternion": [
