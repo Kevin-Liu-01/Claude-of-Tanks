@@ -153,9 +153,13 @@
     "node": "24.x"
   },
   "dependencies": {
+    "@takram/three-atmosphere": "0.19.1",
+    "@takram/three-clouds": "0.7.6",
+    "@takram/three-geospatial": "0.9.1",
     "@vercel/analytics": "^2.0.1",
     "@vercel/functions": "^3.9.5",
     "flag-icons": "^7.5.0",
+    "postprocessing": "6.39.5",
     "three": "^0.185.1",
     "ws": "^8.21.3"
   },
