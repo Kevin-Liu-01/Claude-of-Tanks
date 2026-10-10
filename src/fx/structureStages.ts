@@ -903,8 +903,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       const settled = e.settled === true;
       // (dcore 2026-10-10) a live collapse of a building with storeys comes down as bodies: its own pieces, cut from it
       // as it stands, fall in the debris pool; it is gone from the mask the same frame and its heap rises under them
-      if (e.stage === 'collapsed' && !settled && seam && o.bodies && (e as StructureStageEvent & { sections?: boolean }).sections !== true
-        && !structureTopple(seam.anatomy, e)) {
+      // (a shaft too: it topples as a stack of drums over its stump, collapsePieces planShaft)
+      if (e.stage === 'collapsed' && !settled && seam && o.bodies && (e as StructureStageEvent & { sections?: boolean }).sections !== true) {
         const standing = debris.standingRuns(STAGE_RUN_TAG + seam.structureIdx + 1);
         const byBucket = spanMaterials(seam);
         // its pieces stand in its place: it goes from the mask, its rims with it, and its heap rises under them (at once

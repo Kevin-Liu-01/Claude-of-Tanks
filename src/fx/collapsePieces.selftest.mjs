@@ -293,5 +293,61 @@ for (const { label, a } of anatomies.slice(0, 4)) {
   console.log(`  ${label}: ${one.plan.pieces.length} pieces (${one.breaks} cracked on landing) lie still at ${one.stillAt.toFixed(2)} s, fastest ${one.maxSpeed.toFixed(1)} m/s, ${lowered.length}/${high.length} upper pieces down`);
 }
 
+// shafts (a tower, a minaret): one body over the stump, going over toward the blow and breaking into its drums
+let shafts = 0;
+for (const [styleId, id] of [['breton', 'tower'], ['ksar', 'minaret'], ['wadirum', 'watertower']]) {
+  const style = ARCHITECTURE_STYLES.find((s2) => s2.id === styleId);
+  if (!style?.builders[id]) continue;
+  const seed = 7, [w, d, h] = [5, 5, 18];
+  const parts = buildRegionalParts(style, { structureId: id, info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
+    wallBucket: 'stone', rng: streamFrom(seed), variant: streamFrom(seed * 7 + 3), mapId: 'damage', snowCap: false, tier: 'desktop' }, streamFrom(seed * 3 + 5));
+  const describe = structureDamageKitChain(id, styleId).find((k) => k.describe)?.describe;
+  const a = describe?.({ structureIdx: 6, mapId: 'damage', builder: id, style: styleId, parts, w, d, h, placement: { x: 0, y: 0, z: 0, yaw: 0 },
+    massClass: 'house', seed: 5, kitPlan: regionalKitPlanOf(parts) });
+  if (!a?.kitPlan?.damage?.shaft) continue;
+  const label = `${styleId}/${id}`;
+  const blow = { cause: 'blast', dirX: 1, dirZ: 0, point: [-a.w / 2, 2, 0] };
+  const plan = planCollapsePieces(a, blow);
+  const body = plan.pieces[0];
+  assert.ok(plan.shaft && plan.pieces.length === 1 && body.kind === 'drum' && body.parts.length >= 2 && body.parts.length < PART_STRIDE,
+    `${label}: a shaft is one body of drums (${plan.pieces.length} pieces, ${body?.parts.length} parts)`);
+  assert.equal(JSON.stringify(planCollapsePieces(a, blow).pieces), JSON.stringify(plan.pieces), `${label}: the same plan twice`);
+  // its drums start clear of each other and of the stump
+  const boxes = pieceBoxes(body);
+  const stub = stubRecords(plan, a.placement).map((r) => {
+    const sh = r.shape2, fx = Math.sin(sh.yaw), fz = Math.cos(sh.yaw);
+    return { c: [sh.cx, (sh.y0 + sh.y1) / 2, sh.cz], a: [[fz, 0, -fx], [0, 1, 0], [fx, 0, fz]], h: [sh.hw, (sh.y1 - sh.y0) / 2, sh.hl], piece: -1 };
+  });
+  for (let i = 0; i < boxes.length; i++) {
+    for (let j = i + 1; j < boxes.length; j++) assert.ok(overlap(boxes[i], boxes[j]) < 0.03, `${label}: drums ${i} and ${j} start apart`);
+    for (const st of stub) assert.ok(overlap(boxes[i], st) < 0.03, `${label}: drum ${i} starts clear of the stump`);
+  }
+  // its triangles all land somewhere: the stump stands, the rest is the body's, part by part
+  const soup = soupOf(parts), tris = soup.length / 18;
+  const out = partitionTriangles(plan, soup, tris, 6);
+  let after = 0;
+  for (const [key, list] of out) {
+    after += area(list, 6);
+    assert.ok(key === STATIC_PIECE || (key >= 0 && key < body.parts.length),
+      `${label}: the partition's key ${key} is the stump or one of the body's parts`);
+  }
+  assert.ok(Math.abs(after - area(soup, 6)) <= 1e-6 * Math.max(1, area(soup, 6)) + 1e-6, `${label}: the partition keeps the area`);
+  // it goes over toward the blow, breaks into its drums where it strikes and lies still, the same twice
+  const one = settle(a, blow), two = settle(a, blow);
+  assert.deepEqual(two.poses, one.poses, `${label}: the topple lies the same twice`);
+  assert.ok(one.stillAt > 0, `${label}: the topple lies still within 12 s`);
+  assert.ok(one.breaks === 1 && one.poses[0]?.length === body.parts.length, `${label}: it broke into its drums where it struck (${one.breaks}, ${one.poses[0]?.length} bodies)`);
+  const top = one.poses[0][body.parts.length - 1];
+  assert.ok(plan.cx - top[0] > 2 && Math.abs(top[2] - plan.cz) < 0.5 * (plan.cx - top[0]), `${label}: its top lands out toward the blow (${(plan.cx - top[0]).toFixed(1)} m toward it, ${(top[2] - plan.cz).toFixed(1)} across)`);
+  assert.ok(Math.hypot(top[0] - plan.cx, top[2] - plan.cz) < (body.boxes.reduce((m, b) => Math.max(m, b.center[1] + b.half[1]), 0) + body.center[1] - plan.groundY) + 4,
+    `${label}: its top lands within its height (${Math.hypot(top[0] - plan.cx, top[2] - plan.cz).toFixed(1)} m)`);
+  const low = body.parts.filter((pt, k) => one.poses[0][k][1] < body.center[1] + pt.center[1] - 1);
+  if (process.env.COLLAPSE_DEBUG) body.parts.forEach((pt, k) => console.log(`    ${label} part ${k} from ${(body.center[1] + pt.center[1]).toFixed(2)} half ${pt.half.map((v) => v.toFixed(2))} to ${one.poses[0][k].slice(0, 3).map((v) => v.toFixed(2)).join(',')} kick ${body.kick.map((v) => v.toFixed(2))}`));
+  assert.ok(low.length >= Math.ceil(body.parts.length * 0.7), `${label}: the drums came down (${low.length}/${body.parts.length})`);
+  console.log(`  ${label}: ${body.parts.length} drums toppled ${(plan.cx - top[0]).toFixed(1)} m toward the blow, still at ${one.stillAt.toFixed(2)} s, fastest ${one.maxSpeed.toFixed(1)} m/s`);
+  shafts++;
+}
+assert.ok(shafts >= 2, `shafts planned and toppled (${shafts})`);
+
 console.log(`collapsePieces: ${planned} plans (${anatomies.length} buildings × 4 blows, ${pieceCount} pieces), worst start overlap ${worstOverlap.toFixed(3)} m, `
   + `${cutTris} triangles cut with their area kept; the pool brings each down and lays it the same twice PASS`);
