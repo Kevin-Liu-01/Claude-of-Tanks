@@ -49,16 +49,23 @@ export interface DebrisPhysics {
   gravity: number;
   /**
    * A piece: its shape and spawn pose/velocity; released now or `releaseDelayS` later (it waits where it stands).
-   * Returns its handle, or -1 when the handle table is full.
+   * With `spawn.asleep` a waiting piece is in the world at once, solid and asleep — released pieces rest on it and
+   * strike it — and at its release it wakes with its spawn velocities, unless a hit or a lost support woke it sooner
+   * (then it falls as it was struck). Returns its handle, or -1 when the handle table is full.
    */
   spawn(shape: RigidShape, spawn: RigidSpawn, releaseDelayS?: number): number;
+  /** An impulse (N s) at a world point on a piece; wakes it (a waiting piece is released first). */
+  impulse(handle: number, jx: number, jy: number, jz: number, px: number, py: number, pz: number): void;
+  /** A piece's velocity [vx, vy, vz, wx, wy, wz] (m/s, rad/s; a waiting piece's spawn velocities); false if unknown. */
+  velocity(handle: number, out: Float64Array | number[]): boolean;
   /** The presented hulls this frame, as kinematic boxes (hull and turret boxes from their armour). */
   setHulls(tanks: readonly (WreckTurretTank | null | undefined)[]): void;
   /** Advance by the caller's clock delta (s): fixed steps; returns the interpolation alpha for framePoseAt. */
   advance(dtS: number): number;
   /** A piece's authoring-frame pose interpolated to this frame; false for an unknown handle. */
   framePoseAt(handle: number, out: Float64Array | number[]): boolean;
-  /** Whether a piece has come to rest (a waiting piece is not). */
+  /** Whether a piece's body sleeps: come to rest, or a resting piece still waiting for its release (a waiting piece
+   *  outside the world does not). */
   asleep(handle: number): boolean;
   onImpact(listener: DebrisImpactListener): () => void;
   onEvict(listener: DebrisEvictListener): () => void;
@@ -86,6 +93,8 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
   const handleLive = new Uint8Array(handleCapacity);
   const handleShape: (RigidShape | null)[] = new Array(handleCapacity).fill(null);
   const handleRelease = new Float64Array(handleCapacity);
+  /** 1: the piece waits in the world asleep (spawn.asleep); its spawn velocities wait for its release. */
+  const handleResting = new Uint8Array(handleCapacity);
   // the waiting spawn: x, y, z, qx, qy, qz, qw, vx, vy, vz, wx, wy, wz
   const handleSpawn = new Float64Array(handleCapacity * 13);
   const slotHandle = new Int32Array(capacity).fill(HANDLE_NONE);
@@ -138,19 +147,35 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
     spawnScratch.vx = handleSpawn[o + 7]; spawnScratch.vy = handleSpawn[o + 8]; spawnScratch.vz = handleSpawn[o + 9];
     spawnScratch.wx = handleSpawn[o + 10]; spawnScratch.wy = handleSpawn[o + 11]; spawnScratch.wz = handleSpawn[o + 12];
     const shape = handleShape[handle]!;
+    // a resting piece enters at once, asleep and still (its velocities wait for its release)
+    const resting = handleResting[handle] === 1;
+    spawnScratch.asleep = resting;
+    if (resting) { spawnScratch.vx = spawnScratch.vy = spawnScratch.vz = 0; spawnScratch.wx = spawnScratch.wy = spawnScratch.wz = 0; }
     let slot = world.spawn(shape, spawnScratch);
     if (slot < 0 && evictOldestSleeper()) slot = world.spawn(shape, spawnScratch);
     if (slot < 0) return; // still full of moving pieces: it waits a step more
     handleSlot[handle] = slot;
     slotHandle[slot] = handle;
-    waiting--;
+    if (!resting) waiting--;
   }
 
   function releaseDue(): void {
     if (waiting === 0) return;
     for (let handle = 0; handle < handleCapacity; handle++) {
-      if (handleLive[handle] && handleSlot[handle] === HANDLE_NONE && handleRelease[handle] <= timeS + 1e-9) releaseHandle(handle);
+      if (!handleLive[handle] || handleRelease[handle] > timeS + 1e-9) continue;
+      if (handleSlot[handle] === HANDLE_NONE) releaseHandle(handle);
+      else if (handleResting[handle]) wakeResting(handle);
     }
+  }
+
+  /** A resting piece's release: asleep still, it takes its spawn velocities; woken sooner, it keeps its own motion. */
+  function wakeResting(handle: number): void {
+    handleResting[handle] = 0;
+    waiting--;
+    const slot = handleSlot[handle];
+    if (slot === HANDLE_NONE || !world.asleep[slot]) return;
+    const o = handle * 13;
+    world.setVelocity(slot, handleSpawn[o + 7], handleSpawn[o + 8], handleSpawn[o + 9], handleSpawn[o + 10], handleSpawn[o + 11], handleSpawn[o + 12]);
   }
 
   function dispatchImpacts(): void {
@@ -190,10 +215,31 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
       handleLive[handle] = 1;
       handleSlot[handle] = HANDLE_NONE;
       handleRelease[handle] = timeS + Math.max(0, releaseDelayS);
+      handleResting[handle] = spawn.asleep && releaseDelayS > 0 ? 1 : 0;
       handles++;
       waiting++;
-      if (releaseDelayS <= 0) releaseHandle(handle);
+      // released now, or (resting) in the world now and woken at its time
+      if (releaseDelayS <= 0 || handleResting[handle]) releaseHandle(handle);
       return handle;
+    },
+    impulse(handle, jx, jy, jz, x, y, z) {
+      if (handle < 0 || handle >= handleCapacity || !handleLive[handle]) return;
+      if (handleSlot[handle] === HANDLE_NONE) { handleRelease[handle] = timeS; releaseHandle(handle); }
+      else if (handleResting[handle]) { handleResting[handle] = 0; waiting--; }
+      const slot = handleSlot[handle];
+      if (slot !== HANDLE_NONE) world.applyImpulse(slot, jx, jy, jz, x, y, z);
+    },
+    velocity(handle, out) {
+      if (handle < 0 || handle >= handleCapacity || !handleLive[handle]) return false;
+      const slot = handleSlot[handle];
+      if (slot === HANDLE_NONE || handleResting[handle]) {
+        const o = handle * 13;
+        for (let k = 0; k < 6; k++) out[k] = handleSpawn[o + 7 + k];
+        return true;
+      }
+      out[0] = world.vx[slot]; out[1] = world.vy[slot]; out[2] = world.vz[slot];
+      out[3] = world.wx[slot]; out[4] = world.wy[slot]; out[5] = world.wz[slot];
+      return true;
     },
     setHulls(tanks) {
       let k = 0;
@@ -268,6 +314,7 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
       if (handle < 0 || handle >= handleCapacity || !handleLive[handle]) return;
       const slot = handleSlot[handle];
       if (slot !== HANDLE_NONE) { world.remove(slot); slotHandle[slot] = HANDLE_NONE; } else waiting--;
+      if (handleResting[handle]) { handleResting[handle] = 0; waiting--; }
       handleLive[handle] = 0;
       handleSlot[handle] = HANDLE_NONE;
       handleShape[handle] = null;
@@ -276,6 +323,7 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
     reset() {
       world.clear();
       handleLive.fill(0);
+      handleResting.fill(0);
       handleSlot.fill(HANDLE_NONE);
       slotHandle.fill(HANDLE_NONE);
       handleShape.fill(null);
