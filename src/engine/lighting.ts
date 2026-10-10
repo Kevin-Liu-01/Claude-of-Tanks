@@ -625,14 +625,19 @@ vec3 cotPrev;`);
   frag = receiverLightParts.join(receiverLightSite);
   // 2026-10-10 (overhaul r3): each CSM directional site tells the shadow lookup which cascade it reads and the receiver's
   // frame (contactHardeningShadows.ts: getShadow, three's own PCF renamed beneath it); the call text stays three's, so
-  // vegetation.ts's leaf floor and coastShadow.ts's wrapper find it, and the non-CSM site after the block reads cascade −1
+  // vegetation.ts's leaf floor and coastShadow.ts's wrapper find it, and the non-CSM site after the block reads cascade −1.
+  // The phones never take the law: their shaders keep three's PCF exactly, with no dead branch to hold registers on a
+  // mobile GPU (the device tier is resolved with the renderer, before the rig: quality.ts resolveDeviceTier)
+  const contactHardening = getDeviceTier() !== 'mobile';
   const nonCsmAt = frag.indexOf(CSM_NON_CSM_HEAD);
   if (nonCsmAt < 0) throw new Error('lighting.ts: the non-CSM directional block was not found in lights_fragment_begin');
   const csmPart = frag.slice(0, nonCsmAt);
   // (after the receiver-only bias: the site's own copy of the shadow struct is complete there)
   if (csmPart.split(receiverLightSite).length !== 3) throw new Error('lighting.ts: the CSM directional sites were not found twice in lights_fragment_begin');
-  frag = csmPart.split(receiverLightSite).join(`${receiverLightSite}
+  if (contactHardening) {
+    frag = csmPart.split(receiverLightSite).join(`${receiverLightSite}
 				${CSM_SITE_SETUP}`) + frag.slice(nonCsmAt);
+  }
   THREE.ShaderChunk.lights_fragment_begin = frag;
 
   const endHead = '#if defined( RE_IndirectDiffuse )';
@@ -733,11 +738,13 @@ uniform float uCotReceiverOnlyV;
   if (THREE.ShaderChunk.shadowmap_pars_fragment.split(THREE_PCF_GET_SHADOW_DEF).length !== 2) {
     throw new Error('lighting.ts: three\'s PCF getShadow definition was not found once in shadowmap_pars_fragment');
   }
-  THREE.ShaderChunk.shadowmap_pars_fragment = `${THREE.ShaderChunk.shadowmap_pars_fragment.replace(THREE_PCF_GET_SHADOW_DEF, COT_PCF_GET_SHADOW_DEF)}
-${CONTACT_HARDENING_GLSL}
-#if defined( COT_SHADOW_RECEIVER_ONLY ) && defined( USE_SHADOWMAP )
+  const receiverOnlyPars = `#if defined( COT_SHADOW_RECEIVER_ONLY ) && defined( USE_SHADOWMAP )
 uniform float uCotReceiverOnly;
 #endif`;
+  THREE.ShaderChunk.shadowmap_pars_fragment = contactHardening ? `${THREE.ShaderChunk.shadowmap_pars_fragment.replace(THREE_PCF_GET_SHADOW_DEF, COT_PCF_GET_SHADOW_DEF)}
+${CONTACT_HARDENING_GLSL}
+${receiverOnlyPars}` : `${THREE.ShaderChunk.shadowmap_pars_fragment}
+${receiverOnlyPars}`;
   const receiverVertexAnchor = '\tvec4 shadowWorldPosition;\n';
   if (THREE.ShaderChunk.shadowmap_vertex.split(receiverVertexAnchor).length !== 2) {
     throw new Error('lighting.ts: receiver-only anchor not found in shadowmap_vertex');
