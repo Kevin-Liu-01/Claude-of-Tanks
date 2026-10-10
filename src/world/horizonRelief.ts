@@ -149,8 +149,9 @@ export interface HorizonReliefCover {
   /** The horizons lane (2026-10-09, Glacier Pass's massif: "a smeared grey wash down the cliff"): 0..1, how far the
    * atlas's terms fade out on the walls. The atlas is laid by angle and radius, so on a wall a few metres of radius
    * stand for a hundred metres of face and every texel's occlusion, sun and fine gradient is drawn down the whole face —
-   * each column's value a vertical streak. On the walls (the ring's own slope from 40 to 60 degrees) the terms fade to
-   * open ground, and the face takes its light from its own normal and the live shadows. 0 (or absent): as before. */
+   * each column's value a vertical streak. On the walls (the ring's own slope from 40 to 60 degrees) the occlusion, sun
+   * and cover take their run along the row (about 70 m of arc) and the fine gradient fades out, so a wall keeps its depth
+   * and its shadows' broad shapes without the stripes. 0 (or absent): as before. */
   walls?: number;
 }
 
@@ -1119,6 +1120,8 @@ export function* bakeHorizonReliefSteps(
   // (the horizons lane: the character's binding share; the base share's atlas stays byte for byte)
   const shade = s.cover?.shade ?? HORIZON_RELIEF_SHADE, wideShade = shade !== HORIZON_RELIEF_SHADE;
   const wallsK = clamp(s.cover?.walls ?? 0, 0, 1);
+  const rowAo = new Float32Array(wallsK > 0 ? W : 0), rowSun = new Float32Array(wallsK > 0 ? W : 0);
+  const rowLight = new Float32Array(wallsK > 0 ? W : 0), rowFade = new Float32Array(wallsK > 0 ? W : 0);
   const half = (grid: Float32Array, i: number, j: number): number => {
     const fx = (i - 0.5) * 0.5, fy = (j - 0.5) * 0.5;
     let x0 = Math.floor(fx), y0 = Math.floor(fy);
@@ -1142,7 +1145,7 @@ export function* bakeHorizonReliefSteps(
       const fr = (fine[Math.min(H - 1, j + 1) * W + i] - fine[Math.max(0, j - 1) * W + i]) / (2 * dr);
       const gx = fr * ct - fθ * st, gz = fr * st + fθ * ct;
       if ((idx & 1023) === 0) grads.push(Math.hypot(gx, gz));
-      // (the horizons lane: a wall's terms fade out — HorizonReliefCover.walls)
+      // (the horizons lane: a wall's terms lose their streaks — HorizonReliefCover.walls; the row's second pass below)
       let wallFade = 0;
       if (wallsK > 0) {
         const mθ = (macro[j * W + ip] - macro[j * W + im]) / (2 * arc);
@@ -1151,15 +1154,39 @@ export function* bakeHorizonReliefSteps(
       }
       data[idx * 4] = clamp(Math.round((gx * (1 - wallFade) / gradScale * 0.5 + 0.5) * 255), 0, 255);
       data[idx * 4 + 1] = clamp(Math.round((gz * (1 - wallFade) / gradScale * 0.5 + 0.5) * 255), 0, 255);
-      let aoOut = half(aoGrid, i, j), sunOut = half(sunGrid, i, j);
-      if (wallFade > 0) { aoOut += (1 - aoOut) * wallFade; sunOut += (1 - sunOut) * wallFade; }
-      const light = canopyLight ? 1 - (1 - canopyLight[idx]) * (1 - wallFade) : 1;
-      if (light < 0.999 || wideShade) {
-        aoOut = encodeCanopyAo(aoOut, light, shade);
-        sunOut = encodeCanopySun(sunOut, light, shade);
+      const aoRaw = half(aoGrid, i, j), sunRaw = half(sunGrid, i, j), lightRaw = canopyLight ? canopyLight[idx] : 1;
+      if (wallsK > 0) { rowAo[i] = aoRaw; rowSun[i] = sunRaw; rowLight[i] = lightRaw; rowFade[i] = wallFade; continue; }
+      let aoOut = aoRaw, sunOut = sunRaw;
+      if (lightRaw < 0.999 || wideShade) {
+        aoOut = encodeCanopyAo(aoOut, lightRaw, shade);
+        sunOut = encodeCanopySun(sunOut, lightRaw, shade);
       }
       data[idx * 4 + 2] = clamp(Math.round(aoOut * 255), 0, 255);
       data[idx * 4 + 3] = clamp(Math.round(sunOut * 255), 0, 255);
+    }
+    if (wallsK > 0) {
+      // the walls: on a wall each texel's occlusion, sun and cover are drawn down the whole face, so the row's own
+      // texel-to-texel variation stood as vertical streaks; there the terms take their run along the row (about 70 m
+      // of arc), so a wall keeps its depth and its shadows' broad shapes without the stripes. The gentle ground keeps its
+      // own texel
+      const reach = Math.max(2, Math.round(36 / arc)), span = 2 * reach + 1;
+      let sa = 0, ss = 0, sl = 0;
+      for (let k = -reach; k <= reach; k++) { const t = ((k % W) + W) % W; sa += rowAo[t]; ss += rowSun[t]; sl += rowLight[t]; }
+      for (let i = 0; i < W; i++) {
+        const f = rowFade[i];
+        const ao = rowAo[i] + (sa / span - rowAo[i]) * f, sun = rowSun[i] + (ss / span - rowSun[i]) * f;
+        const light = rowLight[i] + (sl / span - rowLight[i]) * f;
+        let aoOut = ao, sunOut = sun;
+        if (light < 0.999 || wideShade) {
+          aoOut = encodeCanopyAo(aoOut, light, shade);
+          sunOut = encodeCanopySun(sunOut, light, shade);
+        }
+        const idx = j * W + i;
+        data[idx * 4 + 2] = clamp(Math.round(aoOut * 255), 0, 255);
+        data[idx * 4 + 3] = clamp(Math.round(sunOut * 255), 0, 255);
+        const out = (i - reach + W) % W, inn = (i + reach + 1) % W;
+        sa += rowAo[inn] - rowAo[out]; ss += rowSun[inn] - rowSun[out]; sl += rowLight[inn] - rowLight[out];
+      }
     }
     if ((j & 15) === 15) yield;
   }

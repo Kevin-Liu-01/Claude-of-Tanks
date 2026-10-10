@@ -79,21 +79,28 @@ assert.equal(wide.shade, 1, 'the bake reports the share its texels are encoded f
   assert.ok(worst < 0.012, `every texel keeps its program factor at the wider share within a byte step (${worst.toFixed(4)})`);
 }
 
-// the walls: the steep texels' terms fade to open ground; the gentle ones are untouched
+// the walls: the steep texels' terms take their run along the row (no texel-to-texel stripes down a wall); the gentle
+// ground keeps its own texels
 {
   const walls = bake({ walls: 1 });
-  let steepFaded = 0, steep = 0, gentleSame = 0, gentle = 0;
+  let moved = 0, stripeBefore = 0, stripeAfter = 0, pairs = 0;
   for (let j = 0; j < H; j++) {
     for (let i = 0; i < W; i++) {
-      const t = j * W + i;
-      if (walls.data[t * 4 + 2] !== plain.data[t * 4 + 2] || walls.data[t * 4 + 3] !== plain.data[t * 4 + 3]) {
-        steep++; if (walls.data[t * 4 + 2] >= plain.data[t * 4 + 2] && walls.data[t * 4 + 3] >= plain.data[t * 4 + 3]) steepFaded++;
-      } else { gentle++; gentleSame++; }
+      const t = j * W + i, u = j * W + (i + 1) % W;
+      const changed = walls.data[t * 4 + 2] !== plain.data[t * 4 + 2] || walls.data[t * 4 + 3] !== plain.data[t * 4 + 3];
+      if (!changed) continue;
+      moved++;
+      const changedNext = walls.data[u * 4 + 2] !== plain.data[u * 4 + 2] || walls.data[u * 4 + 3] !== plain.data[u * 4 + 3];
+      if (!changedNext) continue;
+      pairs++;
+      stripeBefore += Math.abs(plain.data[t * 4 + 3] - plain.data[u * 4 + 3]) + Math.abs(plain.data[t * 4 + 2] - plain.data[u * 4 + 2]);
+      stripeAfter += Math.abs(walls.data[t * 4 + 3] - walls.data[u * 4 + 3]) + Math.abs(walls.data[t * 4 + 2] - walls.data[u * 4 + 2]);
     }
   }
-  assert.ok(steep > 0 && steepFaded === steep, `every texel the walls' fade moves goes toward open ground (${steepFaded} of ${steep})`);
-  assert.ok(gentle > steep, `the fade leaves most of the ring as it was (${gentle} untouched, ${steep} faded)`);
-  assert.ok(gentleSame === gentle, 'untouched texels are byte-identical');
+  assert.ok(moved > 0 && moved < 0.5 * W * H, `the walls' terms change on the walls only (${(moved / (W * H) * 100).toFixed(1)} % of the texels)`);
+  assert.ok(pairs > 100 && stripeAfter < 0.6 * stripeBefore,
+    `along a wall the texel-to-texel steps (the streaks down the face) fall (${(stripeBefore / pairs).toFixed(2)} -> ${(stripeAfter / pairs).toFixed(2)})`);
+  assert.equal(sha(bake({ walls: 1 }).data), sha(walls.data), 'the walls\' pass is deterministic');
 }
 
 // the maps that take the options: Glacier Pass only (the owner's "hasn't been updated at all"); the light-touch maps
