@@ -17,6 +17,9 @@ import { HORIZON_RELIEF_CHARACTERS } from './horizonRelief.ts';
 import { inselbergSection } from './landformGeology.ts';
 import { CLOUD_FOGBANK_RANGE_M } from '../engine/cloudWeatherLayers.ts';
 import { hazeSigma } from '../engine/hazeLaw.ts';
+import { authoredSunOf, loadGroundedLightModel, resolveLightModel } from '../engine/lightModelCore.ts';
+import { skyPresetToAtmosphere, sunDirectionOf } from '../engine/atmosphere.ts';
+import { battleTimePreset } from '../engine/battleAtmosphereRuntime.ts';
 
 const P = HORIZON_PANORAMA;
 const n = 431;
@@ -287,7 +290,8 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
   assert.ok(jv.jebelNearM >= HORIZON_PANORAMA.shellM && jv.jebelNearM <= 3500 && jv.jebelM >= 600,
     'jebel: the massifs from about 3 km, past the shell, tall enough to stand over the ring');
   const redrock = readFileSync(new URL('./maps/badlands.ts', import.meta.url), 'utf8');
-  assert.ok(/panorama: \{ regional: 'jebel', air: 0\.\d+, fillLaw: 1 \}/.test(redrock),
+  // (the Redrock lane, round 9: the far massifs' own knobs may follow — fewer, domed, more deeply varnished)
+  assert.ok(/panorama: \{ regional: 'jebel', air: 0\.\d+, fillLaw: 1[ ,}]/.test(redrock),
     'Redrock\'s far air thinner than the law\'s σ (desert air is clear), the band under the massifs the plain\'s own sand');
   // v3b: Wadi Rum's tones from the plain's own sand (the pair of 8248ca70b: "pale grey-white castles", the domes brighter
   // than the sky above them) — the varnished walls about a third of the sand's albedo, redder-brown; the pale Disi only
@@ -501,6 +505,109 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
   handle.dispose();
 }
 
+// --- 2026-10-08 (the nightsky lane): relight — the far country re-baked under the light the battlefield publishes -----
+// (the battle atmosphere calls it right after it applies a time of day, inside its covered prepare). The first bake under
+// this map's own day sky keeps that sky as the day reference; the day light is the identity (no re-bake: the authored bake
+// stands); another light re-bakes once, with that light's key direction and the scales the strip reads; the same light
+// twice is a no-op; back to the day re-bakes the authored bake; without a renderer, a preset or the grounded light it
+// refuses (the battle atmosphere then keeps the night dim).
+{
+  await loadGroundedLightModel();
+  const lightPreset = { sunElevationDeg: 32, sunAzimuthDeg: 115, sunIntensity: 4.5, skyIntensity: 1, turbidity: 4, rayleigh: 1.2,
+    mieCoefficient: 0.006, mieDirectionalG: 0.82 };
+  const daySun = sunDirectionOf(32, 115);
+  const scene = new THREE.Scene();
+  const publish = (preset, irr, horizon, sunHorizon) => {
+    const params = skyPresetToAtmosphere(preset);
+    scene.userData.atmosphere = {
+      active: true, skyView: null, sunDir: new THREE.Vector3(...params.sunDir), params, skyIntensity: preset.skyIntensity ?? 1,
+      irradianceRaw: new THREE.Color(...irr), fogTint: new THREE.Color(0x7e97b8), fogMix: 0.55, fogDensity: 0.00074,
+      summary: { horizon: new THREE.Color(...horizon), sunHorizon: new THREE.Color(...sunHorizon) },
+    };
+    scene.userData.lightModel = resolveLightModel(preset, params, { irradianceRaw: irr }, authoredSunOf(preset), false);
+  };
+  // a strip pass's light uniforms, as the renderer is handed them
+  const seen = [];
+  const renderer = recordingRenderer();
+  const render = renderer.render;
+  renderer.render = (s2, c2) => {
+    const u = s2.children[0]?.material?.uniforms;
+    if (u?.uSunScale && u.uLight) seen.push({ sun: u.uSun.value.toArray(), sunScale: u.uSunScale.value.toArray(), skyScale: u.uSkyScale.value.toArray(),
+      bounceScale: u.uBounceScale.value.toArray(), fog: u.uFog.value.toArray(), haze: u.uHaze.value.w });
+    render(s2, c2);
+  };
+  const handle = createHorizonPanorama({ ...options, sun: daySun, lightPreset }, null);
+  scene.add(handle.mesh);
+  assert.equal(handle.relight(null), false, 'no renderer: no relight');
+  publish(lightPreset, [0.3, 0.36, 0.45], [0.55, 0.62, 0.7], [0.8, 0.75, 0.62]);
+  assert.equal(handle.ensureBaked(renderer), true, 'the day bake');
+  assert.equal(handle.stats.dayReference, true, 'the first bake under this map\'s own day sky keeps it as the day reference');
+  assert.deepEqual(seen.at(-1).sunScale, [1, 1, 1], 'the day bake\'s scales are exactly 1');
+  assert.equal(seen.at(-1).haze, 1, 'and it takes the published sky\'s law');
+  const dayStrip = seen.at(-1);
+  assert.equal(handle.relight(renderer), true, 'the day light: carried');
+  assert.equal(handle.stats.bakes, 1, 'the day light is the authored bake: no re-bake');
+  assert.equal(handle.stats.light, null, 'and no relight recorded');
+  // night: the moon at 24 degrees, the dome at .08, a darker sky
+  const nightPreset = battleTimePreset(lightPreset, 'night');
+  publish(nightPreset, [0.024, 0.029, 0.036], [0.044, 0.05, 0.056], [0.06, 0.06, 0.05]);
+  assert.equal(handle.relight(renderer), true, 'night: relit');
+  assert.equal(handle.stats.bakes, 2, 'one re-bake');
+  assert.equal(handle.stats.relights, 1, 'recorded');
+  const night = seen.at(-1);
+  const moon = sunDirectionOf(24, 115);
+  assert.ok(night.sun.every((v, i) => Math.abs(v - moon[i]) < 1e-6), 'the night bake is lit from the moon\'s direction');
+  assert.ok(night.sunScale.every((v) => v > 0 && v < 0.3) && night.skyScale.every((v) => v > 0 && v < 1),
+    `the night's moon and sky far under the day's (${night.sunScale.map((v) => v.toFixed(3))}, ${night.skyScale.map((v) => v.toFixed(3))})`);
+  assert.ok(night.sunScale[2] > night.sunScale[0], 'the moonlight bluer than the sun');
+  assert.ok(night.fog.every((v, i) => v < dayStrip.fog[i] * 0.3), 'the bake\'s own air under the night sky');
+  assert.equal(night.haze, 1, 'and the published night sky\'s law (its haze darkens with the sky)');
+  assert.ok(handle.stats.light && handle.stats.light.airScale < 0.3, 'the light recorded for the probes');
+  assert.equal(handle.relight(renderer), true, 'the same night again: carried');
+  assert.equal(handle.stats.bakes, 2, 'no second re-bake');
+  // a GPU suspension keeps the relit light: the next bake is the night's
+  handle.mesh.material.map.dispose();
+  assert.equal(handle.ensureBaked(renderer), true, 'the suspended atlas bakes again');
+  assert.deepEqual(seen.at(-1).sunScale, night.sunScale, 'under the night\'s light');
+  // back to the day: the authored bake again, byte for byte the day's uniforms
+  publish(lightPreset, [0.3, 0.36, 0.45], [0.55, 0.62, 0.7], [0.8, 0.75, 0.62]);
+  assert.equal(handle.relight(renderer), true, 'back to the day');
+  assert.equal(handle.stats.light, null, 'the authored day');
+  assert.deepEqual(seen.at(-1), dayStrip, 'the day bake\'s uniforms, exactly');
+  // refusals: no grounded light (the legacy rig), no preset
+  scene.userData.lightModel = { ...scene.userData.lightModel, mode: 'legacy' };
+  assert.equal(handle.relight(renderer), false, 'the legacy rig: no relight (the dim stands)');
+  // a refusal after a relit battle returns the far country to the authored day (a galaxy sky's legacy rig on a cached
+  // world must not keep the last battle's night)
+  publish(nightPreset, [0.024, 0.029, 0.036], [0.044, 0.05, 0.056], [0.06, 0.06, 0.05]);
+  assert.equal(handle.relight(renderer), true, 'night again');
+  const relitBakes = handle.stats.bakes;
+  scene.userData.lightModel = { ...scene.userData.lightModel, mode: 'legacy' };
+  assert.equal(handle.relight(renderer), false, 'refused');
+  assert.equal(handle.stats.bakes, relitBakes + 1, 'and re-baked');
+  assert.equal(handle.stats.light, null, 'back to the authored day');
+  assert.deepEqual(seen.at(-1).sunScale, [1, 1, 1], 'under the day\'s own uniforms');
+  const bare = createHorizonPanorama({ ...options, sun: daySun }, null);
+  scene.add(bare.mesh);
+  publish(nightPreset, [0.024, 0.029, 0.036], [0.044, 0.05, 0.056], [0.06, 0.06, 0.05]);
+  assert.equal(bare.relight(renderer), false, 'no authored preset: no day to measure against');
+  // a map entered straight into the night (the Studio's map switch at night: world activation applies the map's sky
+  // after the warm-up, so nothing baked under the day): the battle atmosphere notes the day sky before it applies the
+  // night, and the relight then bakes once, under the night
+  const late = createHorizonPanorama({ ...options, sun: daySun, lightPreset }, null);
+  scene.add(late.mesh);
+  publish(lightPreset, [0.3, 0.36, 0.45], [0.55, 0.62, 0.7], [0.8, 0.75, 0.62]);
+  assert.equal(late.noteDaySky(), true, 'the day sky noted while it shows');
+  assert.equal(late.stats.bakes, 0, 'without a bake');
+  publish(nightPreset, [0.024, 0.029, 0.036], [0.044, 0.05, 0.056], [0.06, 0.06, 0.05]);
+  assert.equal(late.noteDaySky(), true, 'a later sky never replaces the reference');
+  assert.equal(late.relight(renderer), true, 'relit');
+  assert.equal(late.stats.bakes, 1, 'one bake, under the night');
+  assert.ok(late.stats.light && seen.at(-1).sunScale.every((v, i) => Math.abs(v - night.sunScale[i]) < 1e-12),
+    'the same night light as the handle that baked the day first');
+  handle.dispose(); bare.dispose(); late.dispose();
+}
+
 // --- 2026-10-05 (Part 1, the skies lane: the distant hills' cloud shadows) --------------------------------------------
 // the aux pass: the strip's own march run twice (the sun's term on and off), at a quarter of the strip, on the tier with a
 // shade map only; the shell rebuilds each far point and dims only the sun's share under the shared shade map
@@ -509,8 +616,9 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
   assert.ok(aux && aux.length > 1000, 'the aux shader derives from the strip\'s (its rewritten lines all found)');
   assert.equal(aux.split('void main()').length - 1, 1, 'one main');
   assert.ok(/gSunScale = 1\.0;\s*vec4 full = stripTexel\(\);\s*float rr = gRR;\s*gSunScale = 0\.0;\s*vec4 dark = stripTexel\(\);/.test(aux), 'the march twice: the sun on, then off');
-  assert.ok(aux.includes('vec3 sunC = uGains.y * 1.05 * ndl * light.r * vec3(1.06, 0.98, 0.86) * gSunScale;'), 'the surface\'s sun term scaled');
-  assert.ok(aux.includes('vec3(1.06, 0.98, 0.86) * gSunScale + uGains.x * 0.82 * skyTint'), 'and the hidden fill\'s');
+  // (2026-10-08, the nightsky lane: the sun's term carries the relight's scale — 1 by day — before the aux's on/off)
+  assert.ok(aux.includes('vec3 sunC = uGains.y * 1.05 * ndl * light.r * vec3(1.06, 0.98, 0.86) * uSunScale * gSunScale;'), 'the surface\'s sun term scaled');
+  assert.ok(aux.includes('vec3(1.06, 0.98, 0.86) * uSunScale * gSunScale + uGains.x * 0.82 * skyTint * uSkyScale'), 'and the hidden fill\'s');
   assert.ok(aux.includes('float share = la > 1e-5 ? clamp(1.0 - lb / la, 0.0, 1.0) : 0.0;'), 'the share: 1 - L(no sun) / L(full), bounded');
   assert.ok(aux.includes('gl_FragColor = vec4(vec3(rr / 10000.0, share, 1.0) * full.a, 1.0);'), 'premultiplied by the coverage, like the atlas');
   // the share's bounds, on the GLSL's own expression: 0..1, 0 where the sun's term is 0 (the two marches agree)

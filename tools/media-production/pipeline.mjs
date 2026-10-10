@@ -20,6 +20,24 @@ export function sourceDigest(root = process.cwd()) {
   for (const path of ['index.html','package-lock.json','vite.config.ts']) {hash.update(path);hash.update(readFileSync(join(root,path)));}
   return hash.digest('hex');
 }
+/** cinema --lease-min (2026-10-07): endBefore() is asked before each film and says the lease ends there. Its estimate is
+ *  the longest take so far (a film and the still-only jobs after it), so a lease never ends between a film and its stills
+ *  and always renders at least one film. */
+export function leaseClock(leaseMs, heldSince, now = Date.now) {
+  let takeStart = 0, longestTake = 0;
+  return {
+    get longestTake() { return longestTake; },
+    endBefore() {
+      if (!leaseMs) return false;
+      const t = now();
+      if (takeStart) longestTake = Math.max(longestTake, t - takeStart);
+      if (takeStart && t - heldSince + longestTake > leaseMs) return true;
+      takeStart = t;
+      return false;
+    },
+  };
+}
+
 export function verifyFile(file) {
   if (!existsSync(file.path) || digest(readFileSync(file.path)) !== file.sha256) throw Error(`Capture changed or missing: ${file.path}`);
 }

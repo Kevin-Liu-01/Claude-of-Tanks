@@ -103,8 +103,9 @@ export default {
     // (round 2, wave 125: "a red-tiled wishing well", "a red fence") the springs are the water; palm-rib fences only
     well: false, hayCrates: false, fences: false, telegraph: false, carts: true, logs: false,
     rocks: 144, outcrops: 24, craters: 48, rubblePiles: 12, sandbagLines: 14, hedgehogs: 8,
-    tankWrecks: { era: 'modern', count: 5, debris: true,
-      ids: ['merkava4b', 'm60a3', 'merkava3d', 'm1a2', 't90a'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): Egypt: the M60A3 and M1A1, the T-62 and T-55 (its Type
+    // 59 copy)
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['m60a3', 'm1a1', 't62mv1', 'type59'] },
     inhabit: { stalls: 0, benches: 3, coreClutter: 22, pots: 10, laundry: 4, handcarts: 3, carts: 4, trucks: 4, jeeps: 3, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencewattle' },
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): dune-ring tone grain 0.46 -> 0.62

@@ -81,10 +81,12 @@ for (const seed of [1337, 2049, 7719]) for (const mapId of strandMaps) {
   const built = build(mapId, seed);
   try {
     const { buckets, receipts, field, config } = built;
-    assert.ok(buckets.baked.length >= 200, `${mapId}/${seed}: a wrack line was laid (${buckets.baked.length} pieces)`);
-    assert.ok(buckets.baked.length <= 1400, `${mapId}/${seed}: bounded (${buckets.baked.length} pieces)`);
+    // the painted boat hulls share the baked bucket (maps/boatHulls.ts, the map-vehicles lane): the wrack is the rest
+    const wrack = buckets.baked.filter((g) => !g.userData.boat);
+    assert.ok(wrack.length >= 200, `${mapId}/${seed}: a wrack line was laid (${wrack.length} pieces)`);
+    assert.ok(wrack.length <= 1400, `${mapId}/${seed}: bounded (${wrack.length} pieces)`);
     let triangles = 0;
-    for (const g of buckets.baked) {
+    for (const g of wrack) {
       auditPiece(g, built, `${mapId}/${seed} baked`);
       triangles += g.index.count / 3;
     }
@@ -92,7 +94,7 @@ for (const seed of [1337, 2049, 7719]) for (const mapId of strandMaps) {
     for (const name of names) if (name !== 'wood' && name !== 'baked' && name !== 'straw' && name !== 'plaster') {
       assert.equal(buckets[name].length, 0, `${mapId}/${seed}: no new material family (${name})`);
     }
-    pieces += buckets.baked.length;
+    pieces += wrack.length;
     // the coastal driftwood (Saltmere, Nordhavn) lies on the strand now, never up the bank or in the water
     for (const receipt of receipts.filter(r => r.kind === 'driftwood')) {
       const level = lakeLevelAt(config.terrain.lakes, receipt.x, receipt.z);

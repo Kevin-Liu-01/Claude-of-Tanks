@@ -224,6 +224,12 @@ export class LensFlarePass extends Pass {
   active = false;
   /** post.ts: clear the shared light target first when the shafts pass did not run this frame. */
   clearTarget = false;
+  /**
+   * Scene Studio film renderer only: ease the visibility by this step (seconds)
+   * instead of the wall-clock gap, so offline frames are deterministic. Null
+   * (every live path) keeps the measured cadence.
+   */
+  fixedDt: number | null = null;
   private dt = 1 / 60;
   private lastMs = -1e9;
 
@@ -269,7 +275,7 @@ export class LensFlarePass extends Pass {
   update(active: boolean): void {
     this.active = active;
     const now = performance.now();
-    this.dt = this.lastMs < 0 ? 1 / 60 : Math.min(0.1, (now - this.lastMs) / 1000);
+    this.dt = this.fixedDt ?? (this.lastMs < 0 ? 1 / 60 : Math.min(0.1, (now - this.lastMs) / 1000));
     this.lastMs = now;
     const sunDir = this.scene.userData.sunDirWorld as THREE.Vector3 | undefined;
     if (!active || !sunDir) {

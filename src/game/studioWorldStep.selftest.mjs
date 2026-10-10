@@ -70,6 +70,8 @@ function studioStep(world) {
     _fwd: new THREE.Vector3(), _v2: new THREE.Vector3(), fx: { update: noop, exhaust: noop }, camera: new THREE.PerspectiveCamera(),
     resolveFxSubject: noop, getWorld: () => world, FX_STEP_S: 1 / 60, applyStoryboardActors: noop, advanceWater: noop,
     applyStoryboardCamera: noop, invalidate: noop,
+    // the media Studio's own step state (media/r5-on-pr9): live FX quality, no Studio light, a scratch vector
+    fxSettings: { quality: 'live' }, ctx: {}, _v1: new THREE.Vector3(),
   };
   for (const name of free) if (!(name in ports)) ports[name] = called.has(name) ? noop : undefined;
   const code = stripTypeScriptTypes(`

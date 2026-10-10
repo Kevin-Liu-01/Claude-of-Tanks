@@ -1103,6 +1103,24 @@ function collapseRuntimeFootprint(source: number[][]): number[][] {
   return [capConvexCorners(convexHull2(points))];
 }
 
+/**
+ * A merged geometry whose surface dressing is flagged per vertex (`userData.noCollisionVertices`: the map vehicles'
+ * seams, handles, trim and mirrors, maps/vehicleMesh.ts) seen without the triangles that lie wholly on flagged vertices,
+ * as a separate noCollision geometry's would be; any other geometry as it is.
+ */
+function withoutDressing(geometry: BufferGeometry): BufferGeometry {
+  const flags = geometry.userData?.noCollisionVertices as Uint8Array | undefined;
+  const index = geometry.getIndex();
+  if (!flags || !index) return geometry;
+  const kept: number[] = [];
+  for (let t = 0; t + 2 < index.count; t += 3) {
+    const a = index.getX(t), b = index.getX(t + 1), c = index.getX(t + 2);
+    if (!(flags[a] && flags[b] && flags[c])) kept.push(a, b, c);
+  }
+  const keptIndex = { count: kept.length, getX: (i: number) => kept[i] };
+  return { getAttribute: (name: string) => geometry.getAttribute(name), getIndex: () => keptIndex, userData: {} } as unknown as BufferGeometry;
+}
+
 function collectSolids(buckets: StructureGeometryBuckets) {
   const solids: LocalSolid[] = [];
   for (const [bucket, geometries] of Object.entries(buckets)) {
@@ -1111,7 +1129,7 @@ function collectSolids(buckets: StructureGeometryBuckets) {
       // regional kits (maps/regional/geometry.ts) finish their surface dressing — framing, joinery, shutters, gutters —
       // as separate geometries flagged noCollision: a member 3 cm proud of a wall is not a collision part
       if (geometry.userData?.noCollision) continue;
-      solids.push(...geometrySolids(geometry, bucket));
+      solids.push(...geometrySolids(withoutDressing(geometry), bucket));
     }
   }
   return solids;

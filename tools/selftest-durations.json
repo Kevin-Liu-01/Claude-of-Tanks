@@ -333,7 +333,6 @@
     "src/sim/rollover.selftest.mjs": 100,
     "src/sim/shellSurface.selftest.mjs": 100,
     "src/sim/smokeBallistics.selftest.mjs": 100,
-    "src/sim/spawnPads.selftest.mjs": 200,
     "src/sim/specialActions.selftest.mjs": 2000,
     "src/sim/spotting.selftest.mjs": 100,
     "src/sim/structureSupport.selftest.mjs": 100,
