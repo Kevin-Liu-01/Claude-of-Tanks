@@ -13,7 +13,7 @@ import { streamFrom } from '../world/maps/regional/geometry.ts';
 import { structureDamageKitChain } from '../world/destructionKit.ts';
 import { describeDefault } from '../world/destructionDefaultKit.ts';
 import {
-  STATIC_PIECE, capPiece, capStubs, partitionTriangles, pieceKick, pieceShape, pieceSpawn, planCollapsePieces, stubRecords,
+  PART_STRIDE, STATIC_PIECE, capPiece, capStubs, partShape, partitionTriangles, pieceKick, pieceShape, pieceSpawn, planCollapsePieces, stubRecords,
 } from './collapsePieces.ts';
 import { createDebrisPhysics } from './debrisPhysics.ts';
 
@@ -167,11 +167,13 @@ for (const { label, a, parts } of anatomies) {
       cutTris += tris;
       const before = area(soup, 6);
       let after = 0;
-      for (const [piece, list] of out) {
+      for (const [key, list] of out) {
         after += area(list, 6);
-        assert.ok(list.every(Number.isFinite), `${label}: piece ${piece}'s triangles finite`);
-        if (piece < 0) continue; // the remnant (STATIC_PIECE) and what the collapse drops
+        assert.ok(list.every(Number.isFinite), `${label}: key ${key}'s triangles finite`);
+        if (key < 0) continue; // the remnant (STATIC_PIECE) and what the collapse drops
+        const piece = Math.floor(key / PART_STRIDE), part = key % PART_STRIDE;
         const p = plan.pieces[piece];
+        assert.ok(p && part < Math.max(1, p.parts.length), `${label}: key ${key} names a piece and a part of it`);
         // (a gable's proxy keeps inside its triangle, a roof part's inside its slab: their reach is the outline's)
         const slab = p.kind === 'roof' ? plan.roof.find((sl) => sl.pieces.includes(piece)) : null;
         const reach = slab ? Math.max(...slab.outline.map(([oe, of]) => Math.hypot(slab.p[0] + slab.e[0] * oe + slab.f[0] * of - p.center[0],
@@ -193,7 +195,7 @@ for (const { label, a, parts } of anatomies) {
 // the pool: flat ground, the stubs as records; it comes down and lies still, the same twice
 function settle(a, blow) {
   const plan = planCollapsePieces(a, blow);
-  const pool = createDebrisPhysics({ capacity: 64 });
+  const pool = createDebrisPhysics({ capacity: 96 });
   const stubs = stubRecords(plan, a.placement);
   pool.bind({
     groundAt: () => 0,
@@ -206,12 +208,36 @@ function settle(a, blow) {
   });
   const handles = plan.pieces.map((p) => (p.shatterS === 0 ? -1 : pool.spawn(pieceShape(p), { ...pieceSpawn(p, a.placement), asleep: true }, p.releaseS)));
   assert.ok(handles.every((h, i) => h >= 0 || plan.pieces[i].shatterS === 0), 'every piece takes a handle (the burst wall none)');
+  // a panel cracks into its parts on its first hard landing (collapseBodies does the same)
+  const partHandles = plan.pieces.map(() => null);
+  const pieceOfHandle = new Map(handles.map((h, i) => [h, i]).filter(([h]) => h >= 0));
+  const breaking = new Set();
+  let breaks = 0;
+  pool.onImpact((x, y, z, speed, mass, handle) => {
+    const i = pieceOfHandle.get(handle);
+    if (i === undefined || speed < 3.4 || plan.pieces[i].parts.length < 2 || partHandles[i]) return;
+    breaking.add(i);
+  });
   const pose = new Float64Array(7), vel = new Float64Array(6), imp = new Float64Array(6);
   const kicked = plan.pieces.map(() => false);
   let maxSpeed = 0, stillAt = -1;
   for (let step = 0; step < 60 * 12; step++) {
     pool.advance(1 / 60);
-    // each piece's shove at its release, from where it stands (collapseBodies does the same)
+    for (const i of [...breaking].sort((x, y) => x - y)) {
+      const p = plan.pieces[i], h = handles[i];
+      breaking.delete(i);
+      if (h < 0) continue;
+      pool.framePoseAt(h, pose); pool.velocity(h, vel);
+      pool.release(h); pieceOfHandle.delete(h); handles[i] = -1;
+      partHandles[i] = p.parts.map((part) => {
+        const [ox, oy, oz] = rot([pose[3], pose[4], pose[5], pose[6]], part.center);
+        const vx = vel[0] + (vel[4] * oz - vel[5] * oy), vy = vel[1] + (vel[5] * ox - vel[3] * oz), vz = vel[2] + (vel[3] * oy - vel[4] * ox);
+        return pool.spawn(partShape(part), { x: pose[0] + ox, y: pose[1] + oy, z: pose[2] + oz, qx: pose[3], qy: pose[4], qz: pose[5], qw: pose[6],
+          vx, vy, vz, wx: vel[3], wy: vel[4], wz: vel[5] });
+      });
+      breaks++;
+    }
+    // each piece's shove at its release, from where it stands; a wall the failure reaches bursts (its body goes)
     for (const p of plan.pieces) {
       if (p.shatterS > 0 && handles[p.index] >= 0 && (step + 1) / 60 >= p.shatterS) { pool.framePoseAt(handles[p.index], pose); pool.release(handles[p.index]); handles[p.index] = -1; const r = Math.hypot(...p.boxes[0].half) + 1; pool.world.wakeInBox(pose[0] - r, pose[1] - r, pose[2] - r, pose[0] + r, pose[1] + r, pose[2] + r); continue; }
       if (handles[p.index] < 0 || kicked[p.index] || (step + 1) / 60 < p.releaseS) continue;
@@ -221,7 +247,7 @@ function settle(a, blow) {
     }
     // still: every body asleep, or (after 7 s, as collapseBodies bakes it) only creeping
     let all = true, slow = true;
-    for (const h of handles) {
+    for (const h of [...handles, ...partHandles.flatMap((ph) => ph ?? [])]) {
       if (h < 0) continue;
       pool.velocity(h, vel);
       const v = Math.hypot(vel[0], vel[1], vel[2]), w = Math.hypot(vel[3], vel[4], vel[5]);
@@ -231,8 +257,12 @@ function settle(a, blow) {
     }
     if (all || (slow && step / 60 > 7)) { stillAt = step / 60; break; }
   }
-  const poses = handles.map((h) => { if (h < 0) return null; pool.framePoseAt(h, pose); return Array.from(pose); });
-  return { plan, poses, maxSpeed, stillAt };
+  // each piece's resting poses: its own, or its parts'
+  const poses = handles.map((h, i) => {
+    const hs = h >= 0 ? [h] : (partHandles[i] ?? []).filter((x) => x >= 0);
+    return hs.length ? hs.map((x) => { pool.framePoseAt(x, pose); return Array.from(pose); }) : null;
+  });
+  return { plan, poses, maxSpeed, stillAt, breaks };
 }
 for (const { label, a } of anatomies.slice(0, 4)) {
   const blow = { cause: 'blast', dirX: 0, dirZ: -1, point: [0, 2, a.d / 2] };
@@ -242,16 +272,20 @@ for (const { label, a } of anatomies.slice(0, 4)) {
   const top = a.roof?.ridgeY ?? a.h;
   assert.ok(one.maxSpeed < Math.sqrt(2 * 9.81 * top) + 4, `${label}: nothing flies faster than a fall from the roof (${one.maxSpeed.toFixed(1)} m/s)`);
   for (let i = 0; i < one.poses.length; i++) {
-    if (one.plan.pieces[i].shatterS >= 0) continue; // a wall the failure reached burst (no body)
-    const [x, y, z] = one.poses[i];
-    assert.ok(y > -0.1, `${label}: piece ${i} lies on the ground, not under it (y ${y.toFixed(2)})`);
-    assert.ok(Math.hypot(x - one.plan.cx, z - one.plan.cz) < Math.max(a.w, a.d) / 2 + 9, `${label}: piece ${i} lies by the building`);
+    if (one.plan.pieces[i].shatterS >= 0 || !one.poses[i]) continue; // a wall the failure reached burst (no body)
+    for (const [x, y, z] of one.poses[i]) {
+      assert.ok(y > -0.1, `${label}: piece ${i} lies on the ground, not under it (y ${y.toFixed(2)})`);
+      assert.ok(Math.hypot(x - one.plan.cx, z - one.plan.cz) < Math.max(a.w, a.d) / 2 + 9, `${label}: piece ${i} lies by the building`);
+    }
   }
-  // it came down: the roof and the upper walls lie low
-  const high = one.plan.pieces.filter((p) => p.center[1] > 3 && p.shatterS < 0);
-  const lowered = high.filter((p) => one.poses[p.index] && one.poses[p.index][1] < p.center[1] - 1.5);
+  // it came down: the roof and the upper walls lie low (a cracked panel's parts on average)
+  const high = one.plan.pieces.filter((p) => p.center[1] > 3 && p.shatterS < 0 && one.poses[p.index]);
+  // (down by a third of its height at least, a metre and a half at most: a low roof can only come down onto the stubs)
+  const lowered = high.filter((p) => one.poses[p.index].reduce((sum, q) => sum + q[1], 0) / one.poses[p.index].length
+    < p.center[1] - Math.min(1.5, Math.max(0.8, 0.35 * (p.center[1] - one.plan.groundY))));
+  if (process.env.COLLAPSE_DEBUG) for (const p of high) console.log(`    ${label} ${p.index} ${p.kind} from y ${p.center[1].toFixed(2)} to ${one.poses[p.index].map((q) => q[1].toFixed(2)).join('/')} release ${p.releaseS.toFixed(2)} shatter ${p.shatterS.toFixed(2)} kick ${p.kick.map((v) => v.toFixed(2)).join(',')}`);
   assert.ok(lowered.length >= Math.ceil(high.length * 0.7), `${label}: the upper pieces came down (${lowered.length}/${high.length})`);
-  console.log(`  ${label}: ${one.plan.pieces.length} pieces lie still at ${one.stillAt.toFixed(2)} s, fastest ${one.maxSpeed.toFixed(1)} m/s, ${lowered.length}/${high.length} upper pieces down`);
+  console.log(`  ${label}: ${one.plan.pieces.length} pieces (${one.breaks} cracked on landing) lie still at ${one.stillAt.toFixed(2)} s, fastest ${one.maxSpeed.toFixed(1)} m/s, ${lowered.length}/${high.length} upper pieces down`);
 }
 
 console.log(`collapsePieces: ${planned} plans (${anatomies.length} buildings × 4 blows, ${pieceCount} pieces), worst start overlap ${worstOverlap.toFixed(3)} m, `
