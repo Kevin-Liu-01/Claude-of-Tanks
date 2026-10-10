@@ -2441,6 +2441,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       shellId: sh.id, hitTerrain: false, hitKind: 'prop', pos: [hit.point.x, hit.point.y, hit.point.z],
       normal: [hit.normal.x, hit.normal.y, hit.normal.z], shellType: spec.type, caliberMm: spec.caliberMm, munition, chargeKg,
       surfaceKind: structureId !== undefined ? 'structure' : 'prop',
+      ...(structureId !== undefined ? { structureId } : {}),
     });
   }
 

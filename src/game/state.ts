@@ -2247,6 +2247,8 @@ function resolveWorldShellImpact(
     normal: hit.normal ? [hit.normal.x, hit.normal.y, hit.normal.z] : null,
     shellType: shell.spec.type,
     caliberMm: shell.spec.caliberMm,
+    // the building it struck (2026-10-10: every round's hole on it, not only a burst's that names it in its blast)
+    ...(typeof hit.record?.structureIdx === 'number' ? { structureId: hit.record.structureIdx } : {}),
   });
 }
 
