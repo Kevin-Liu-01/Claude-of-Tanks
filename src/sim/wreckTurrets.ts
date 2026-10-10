@@ -168,7 +168,7 @@ function buildProfile(spec: WreckTurretSpec, s: number): WreckTurretProfile {
       spacing: 0.45 * s,
     });
   }
-  const shape = createRigidShape(parts, { restitution: 0.32, friction: 0.62, rolling: 1.8, linearDrag: 0.015, angularDrag: 0.06, maxSpheres: 72 });
+  const shape = createRigidShape(parts, { restitution: 0.32, friction: 0.62, rolling: 0.3, linearDrag: 0.015, angularDrag: 0.06, maxSpheres: 72 });
   return {
     shape, pivot, hullCenter, hullHalf,
     turretCenter: [center[0] / s, center[1] / s, center[2] / s], turretHalf: [half[0] / s, half[1] / s, half[2] / s],

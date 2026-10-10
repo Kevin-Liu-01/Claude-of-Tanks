@@ -643,6 +643,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/lazyRuntime.selftest.mjs',
     'src/fx/flipbookOrientation.selftest.mjs',
     'src/fx/clock.selftest.mjs',
+    // 2026-10-10 (physics lane, for the destruction core's natural collapses): the presentation pool of falling pieces.
+    'src/fx/debrisPhysics.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
     'src/gallery/overlays.selftest.mjs',
     'src/gallery/damageLab.selftest.mjs',
@@ -1066,6 +1068,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/impactPhysics.selftest.mjs',
     'src/sim/impactParity.selftest.mjs',
     'src/sim/structureSupport.selftest.mjs',
+    // 2026-10-10 (physics lane, owner: "the turret snaps into a pre-ordained resting position ... just let physics work"):
+    // the game's own rigid bodies, and a dead hull's turret as one.
+    'src/sim/rigidBody.selftest.mjs',
+    'src/sim/wreckTurrets.selftest.mjs',
     // 2026-10-09 (vehicle-contact lane, owner: "tracks shouldnt glitch through the bridge"): the drawn tracks rest on the
     // bridge decks the hull stands on (Aegis Crossing's viaduct, Amberford, Suzhou Creek), driven and parked.
     'src/world/vehicleGroundContact.selftest.mjs',
