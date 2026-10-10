@@ -75,6 +75,47 @@ function collapse(dts) {
   assert.ok(pose[2] > z0 + 2, `the hull shoved the block ahead of it (${z0.toFixed(2)} → ${pose[2].toFixed(2)})`);
 }
 
+// --- resting pieces (spawn.asleep): a floor waiting in the world catches what falls on it; a hard hit wakes it early;
+// at its release a still-sleeping piece takes its spawn velocities; impulse and velocity reach a piece through its handle
+{
+  const pool = createDebrisPhysics({ capacity: 8 });
+  // a pier 2.85 m tall (a static record) under a floor slab that waits asleep on it, released in 5 s sideways off it;
+  // a block dropped on the floor at once (a lost support would wake the floor too: the engine's support check)
+  const pier = { min: [-0.5, 0, -0.5], max: [0.5, 2.85, 0.5], shape2: { kind: 'obb', cx: 0, cz: 0, hw: 0.5, hl: 0.5, yaw: 0 } };
+  pool.bind({ groundAt: () => 0, queryStatic: (minX, minZ, maxX, maxZ, out) => {
+    out.length = 0;
+    if (!(pier.max[0] < minX || pier.min[0] > maxX || pier.max[2] < minZ || pier.min[2] > maxZ)) out.push(pier);
+    return out;
+  } });
+  const floor = pool.spawn(createRigidBox(1.6, 0.15, 1.6, 1900), { x: 0, y: 3, z: 0, asleep: true, vx: 4, vy: 1 }, 5);
+  const brick = pool.spawn(block, { x: 0.2, y: 4.2, z: 0.1 });
+  run(pool, 1.5);
+  pool.framePoseAt(brick, pose);
+  assert.ok(pose[1] > 3.1, `the waiting floor caught the block (${pose[1].toFixed(2)} m)`);
+  pool.framePoseAt(floor, pose);
+  assert.ok(Math.abs(pose[1] - 3) < 0.02 && Math.abs(pose[0]) < 0.02, 'the floor still stands on its pier (the hit woke it; it settled again)');
+  const v = new Float64Array(6);
+  assert.equal(pool.velocity(floor, v), true);
+  assert.equal(v[0], 4, 'its velocity is the one its release will give');
+  run(pool, 5);
+  pool.framePoseAt(floor, pose);
+  assert.ok(pose[1] < 2 && pose[0] > 1, `released at its time, it slid off its pier with its spawn velocity (${pose[0].toFixed(2)}, ${pose[1].toFixed(2)})`);
+  // a resting piece struck hard wakes before its time and falls as it was struck
+  const shelf = pool.spawn(createRigidBox(1, 0.12, 1, 1900), { x: 10, y: 2.5, z: 0, asleep: true, vz: 3 }, 30);
+  const hammer = pool.spawn(createRigidBox(0.3, 0.3, 0.3, 7800), { x: 10.6, y: 6, z: 0, vy: -6 });
+  run(pool, 3);
+  pool.framePoseAt(shelf, pose);
+  assert.ok(pose[1] < 1, `the struck shelf fell before its release (${pose[1].toFixed(2)} m)`);
+  assert.ok(Math.abs(pose[2]) < 1.5, 'without its release velocity (it was woken by the hit)');
+  void hammer;
+  // an impulse through a handle
+  const kicked = pool.spawn(block, { x: 20, y: 0.25, z: 0 });
+  run(pool, 1);
+  pool.impulse(kicked, 400, 300, 0, 20, 0.4, 0);
+  pool.velocity(kicked, v);
+  assert.ok(v[0] > 1 && v[1] > 0.5, `the kick moved it (${v[0].toFixed(2)}, ${v[1].toFixed(2)})`);
+}
+
 // --- full: the oldest sleeper gives way, its final pose handed over to be frozen
 {
   const pool = createDebrisPhysics({ capacity: 4 });
@@ -108,4 +149,4 @@ if (typeof globalThis.gc === 'function') {
   assert.ok(process.memoryUsage().heapUsed - before < 256 * 1024, 'the heap stays flat');
 }
 
-console.log('debrisPhysics.selftest: progressive release, landings with handles, rest flat, bit-identical across frame times, hull decks and shoves, oldest-sleeper eviction with its pose, flat heap');
+console.log('debrisPhysics.selftest: progressive release, resting pieces (catch, early wake, release velocity), impulse/velocity, landings with handles, rest flat, bit-identical across frame times, hull decks and shoves, oldest-sleeper eviction with its pose, flat heap');
