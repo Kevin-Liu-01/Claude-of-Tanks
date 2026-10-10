@@ -66,6 +66,10 @@ assert.match(lighting, /frag = csmPart\.split\(receiverLightSite\)\.join\(`\$\{r
 assert.match(lighting, /shadowmap_pars_fragment\.replace\(THREE_PCF_GET_SHADOW_DEF, COT_PCF_GET_SHADOW_DEF\)\}\s*\$\{CONTACT_HARDENING_GLSL\}\s*\$\{receiverOnlyPars\}/, 'three\'s PCF renamed, the wrapper after it (the receiver-only uniform still ends the chunk)');
 assert.match(lighting, /const receiverOnlyPars = `#if defined\( COT_SHADOW_RECEIVER_ONLY \) && defined\( USE_SHADOWMAP \)\nuniform float uCotReceiverOnly;\n#endif`;/, 'the receiver-only uniform block, shared by both installs');
 assert.match(lighting, /const contactHardening = getDeviceTier\(\) !== 'mobile';/, 'the phones never install the law');
+assert.match(lighting, /if \(getPreset\(\)\.pcss !== true\) \(mat\.defines \?\?= \{\}\)\.COT_NO_PCSS = '';\s*csm\.setupMaterial\(mat\);/,
+  'a material set up at a preset without the law compiles it out (Low)');
+assert.ok(g.indexOf('#ifndef COT_NO_PCSS') < g.indexOf('float cotPcss(') && g.split('#ifndef COT_NO_PCSS').length - 1 === 2,
+  'the law and its call compile out under COT_NO_PCSS; the wrapper stays (three\'s PCF beneath it)');
 assert.match(lighting, /if \(contactHardening\) \{\s*frag = csmPart\.split\(receiverLightSite\)/, 'no site set-up on the phones');
 assert.match(lighting, /: `\$\{THREE\.ShaderChunk\.shadowmap_pars_fragment\}\s*\$\{receiverOnlyPars\}`;/, 'their shadow chunk is three\'s PCF exactly, plus the receiver-only uniform');
 assert.match(lighting, /shader\.uniforms\.uCotPcss = pcssUniform;[\s\S]{0,260}shader\.uniforms\.uCotPcssU = pcssUUniform;/, 'every CSM program binds the law\'s state');

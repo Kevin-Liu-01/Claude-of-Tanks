@@ -1615,6 +1615,9 @@ export function createLighting(
       // 2026-10-10 (overhaul r4): a structure material tags its pixels for the structures' cavity occlusion
       // (structureOcclusion.ts: 6 + v in the scene alpha) by a define, which three keys its program by
       if (mat.userData.cotStructurePixel === true) (mat.defines ??= {}).COT_STRUCTURE_PIXEL = '';
+      // (2026-10-10, overhaul r3) a material set up at a preset without the contact-hardening law compiles it out: Low keeps
+      // three's PCF with no dead branch (contactHardeningShadows.ts COT_NO_PCSS)
+      if (getPreset().pcss !== true) (mat.defines ??= {}).COT_NO_PCSS = '';
       csm.setupMaterial(mat);
       // 2026-10-03 (cloudShadeMap.ts): the clouds' shadows on the sun term — every desktop CSM material built on three's
       // own shaders unless it opts out (material.userData.cotCloudShade = false: it writes vCotCloudSun itself) or its

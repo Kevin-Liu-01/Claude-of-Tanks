@@ -34,12 +34,13 @@ const setupSource = declaration(lightingSource, 'setupShadowMaterial', true);
 const createSetupWith = new Function('csm', 'buildCoverageMipmaps', 'attachGroundBounceUniforms', 'groundBounceUniforms',
   'cloudShadeOn', 'attachCloudShadeUniforms', 'cloudShadeUniforms', 'programTextureUnits', 'physicalParsWithoutDfgLut', 'THREE',
   'cascadeCount', 'scene', 'CLOUD_SHADE_SAMPLER_BUDGET', 'bindMaterialEnvIntensity', 'csmFadeKUniform',
-  'pcssUniform', 'pcssTexelUniform', 'pcssRUniform', 'pcssUUniform',
+  'pcssUniform', 'pcssTexelUniform', 'pcssRUniform', 'pcssUUniform', 'getPreset',
   `${stripTypeScriptTypes(`const owner = { ${setupSource} };`)}\nreturn owner.setupShadowMaterial;`);
 // (2026-10-10, the shadows lane r2: the cascades' seam law's shared uniform — shadowCascadeLayout.ts — an inert stub here)
 const createSetup = (csmArg, mips, attach, bounce) => createSetupWith(csmArg, mips, attach, bounce, false, () => {}, {},
   () => ({ fragment: 0, vertex: 0, total: 0, dfg: false }), () => null, THREE, 3, {}, 16, bindMaterialEnvIntensity, { value: 0 },
-  { value: new THREE.Vector4() }, { value: new THREE.Vector4() }, { value: new THREE.Vector3() }, { value: new THREE.Vector3() });
+  { value: new THREE.Vector4() }, { value: new THREE.Vector4() }, { value: new THREE.Vector3() }, { value: new THREE.Vector3() },
+  () => ({ pcss: true }));
 function cropApi(group, engineCtx, finalize = finalizeSource, three = THREE) {
   return new Function('THREE', 'mergeGeometries', 'group', 'engineCtx',
     `${stripTypeScriptTypes(`${replaceSource}\n${hookSource}\n${finalize}`)}
