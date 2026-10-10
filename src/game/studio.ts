@@ -102,6 +102,7 @@ import type {
 import { createFrameBudgetYielder } from '../engine/frameScheduler.ts';
 import { createStudioCinematics } from '../fx/cinematicFx.ts';
 import type { CineActor, CineTrackActor, CineTrackSample, StudioCinematics } from '../fx/cinematicFx.ts';
+import type { SmokeScreenWalls } from '../fx/cinematicRecipes.ts';
 import type { FxCinematicPort } from '../fx/effects.ts';
 import {
   STUDIO_FX_QUALITIES, STUDIO_FX_PARAMS, normalizeStudioFx, studioFxState, fxParam, flareColor,
@@ -110,8 +111,8 @@ import type { StudioFxQuality, StudioFxSettings } from './studioFxSettings.ts';
 import { createTrackDustAdapters } from './studioTrackDust.ts';
 import { requestAuxiliary } from '../sim/auxiliarySystems.ts';
 import type { AuxiliaryEntity } from '../sim/auxiliarySystems.ts';
-import { createSmokeCanister, SMOKE_GRAVITY_MPS2 } from '../sim/smokeBallistics.ts';
-import { SMOKE_WIND_X, SMOKE_WIND_Z } from '../sim/smokeScreen.ts';
+import { createSmokeCanister, smokeCanisterPosition, smokeCanisterVelocity, SMOKE_GRAVITY_MPS2, type SmokeCanister } from '../sim/smokeBallistics.ts';
+import { smokeBankBase, smokeHoldInside, SMOKE_WIND_X, SMOKE_WIND_Z, type SmokeScreen, type SmokeVolume } from '../sim/smokeScreen.ts';
 import { createProductionScene, productionPreset, productionCamera, productionAspect, reframeProductionPoint, reframeProductionFov } from './studioProduction.ts';
 import type { ProductionOptions, ProductionRigId, ProductionFormat } from './studioProduction.ts';
 import { createStudioFilm } from './studioFilm.ts';
@@ -1744,14 +1745,32 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * systems (real sockets + smoke ballistics). Vehicles without a kit fire a
    * generic turret-front fan of `count` canisters.
    */
+  /** (2026-10-09) The cinematic screen's walls from the simulation (handed over: the Studio chunk imports no sim module
+   * of its own): bounced paths, each canister's cloud held outside the walls it read at launch, a roof's surface. */
+  function smokeWalls(shots: readonly SmokeCanister[], clip: SmokeScreen['clip']): SmokeScreenWalls {
+    const ground = (x: number, z: number) => hfProxy.getHeightAt(x, z);
+    const one = shots.map((shot, i): SmokeScreen => ({ x: 0, y: 0, z: 0, yaw: 0, born: 0, canisters: [shot], banks: [0], clip: clip?.[i] ? [clip[i]!] : undefined }));
+    const p = { x: 0, y: 0, z: 0 }, volume: SmokeVolume = { x: 0, y: 0, z: 0, radius: 0, height: 0, density: 0 };
+    return {
+      pathAt(c, t, out) { smokeCanisterPosition(c as SmokeCanister, t, p); out[0] = p.x; out[1] = p.y; out[2] = p.z; },
+      velAt(c, t, out) { smokeCanisterVelocity(c as SmokeCanister, t, p); out[0] = p.x; out[1] = p.y; out[2] = p.z; },
+      hold(i, cx, cz, radius, at) { volume.x = cx; volume.z = cz; volume.radius = radius; smokeHoldInside(one[i]!, -2, volume, at); },
+      base(i, x, z) { return smokeBankBase(one[i]!, -2, x, z, ground); },
+    };
+  }
+  let salvoWalls: SmokeScreenWalls | null = null;
   function smokeSalvo(a: StudioActor, count: number): number[][] {
     const ground = (x: number, z: number) => hfProxy.getHeightAt(x, z);
     const entity = {
       id: a.uid, team: 'studio', spec: a.spec, state: a.state, combat: { destroyed: false },
     } as unknown as AuxiliaryEntity;
-    if (requestAuxiliary(entity, 'smoke', clockMs / 1000, ground)) {
+    // (2026-10-09) through the active world's collision, as the battle fires them: canisters bounce off walls
+    if (requestAuxiliary(entity, 'smoke', clockMs / 1000, ground, getWorld())) {
       const screen = entity.combat.auxiliary?.smoke;
-      if (screen?.canisters?.length) return screen.canisters.map((shot) => [...shot]);
+      if (screen?.canisters?.length) {
+        salvoWalls = smokeWalls(screen.canisters, screen.clip);
+        return screen.canisters.map((shot) => [...shot]);
+      }
     }
     const st = a.state;
     const yaw = st.yaw + (st.turretYaw ?? 0);
@@ -1773,9 +1792,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   function fireSmokeScreen({ id, actor, params }: StudioEffectExecution): boolean {
     if (!actor) return false;
+    salvoWalls = null;
     const salvo = smokeSalvo(actor, Math.round(fxParam('smoke_screen', 'count', params.count)));
     ensureCinematics().smokeScreen(id, salvo, SMOKE_GRAVITY_MPS2, SMOKE_WIND_X, SMOKE_WIND_Z,
-      fxParam('smoke_screen', 'durationS', params.durationS), fxParam('smoke_screen', 'density', params.density));
+      fxParam('smoke_screen', 'durationS', params.durationS), fxParam('smoke_screen', 'density', params.density), salvoWalls);
     return true;
   }
 

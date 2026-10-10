@@ -30,7 +30,7 @@ import {
 } from './cinematicRecipes.ts';
 import type {
   CineCtx, CineEmitter, CineEnv, CineGlow, CineLight, CineSink, CineSprite, CineWorld,
-  FlameSource, GroundTone, Puff, PuffPool, Rng, Streak, Chunk, Jet,
+  FlameSource, GroundTone, Puff, PuffPool, Rng, Streak, Chunk, Jet, SmokeScreenWalls,
 } from './cinematicRecipes.ts';
 
 export type CinematicQuality = 'battle' | 'cinematic';
@@ -266,7 +266,7 @@ export interface StudioCinematics {
   barrage(id: string, pos: THREE.Vector3, count: number, radiusM: number, size: string, seedDeg: number, durationS: number): void;
   dustBurst(id: string, pos: THREE.Vector3, dirDeg: number, intensity: number, count: number): void;
   mgBurst(id: string, muzzle: THREE.Vector3, dir: THREE.Vector3, rounds: number, gapM: number, speedMps: number): void;
-  smokeScreen(id: string, canisters: readonly (readonly number[])[], gravity: number, windX: number, windZ: number, durationS: number, density: number): void;
+  smokeScreen(id: string, canisters: readonly (readonly number[])[], gravity: number, windX: number, windZ: number, durationS: number, density: number, walls?: SmokeScreenWalls | null): void;
   flare(id: string, pos: THREE.Vector3, opts: FlareOptions): void;
   embers(id: string, pos: THREE.Vector3, radiusM: number, rate: number, durationS: number, rise: number): void;
   debris(id: string, pos: THREE.Vector3, count: number, speedMps: number, hot: number, sizeK: number): void;
@@ -1035,8 +1035,8 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
         sparkShower(ctx, muzzle.x + dir.x * 0.3, muzzle.y + dir.y * 0.3, muzzle.z + dir.z * 0.3, dir.x, dir.y, dir.z, 3, 40, 0.15, off);
       }
     },
-    smokeScreen(id, cans, gravity, windX, windZ, durationS, density) {
-      addEmitter(smokeScreenEmitter(id, rngFor(id, 9), env.nowS, durationS, density, cans, windX, windZ, gravity, world.groundY));
+    smokeScreen(id, cans, gravity, windX, windZ, durationS, density, walls) {
+      addEmitter(smokeScreenEmitter(id, rngFor(id, 9), env.nowS, durationS, density, cans, windX, windZ, gravity, world.groundY, walls ?? null));
     },
     flare(id, pos, o) {
       addEmitter(flareEmitter(id, rngFor(id, 10), env.nowS, pos.x, pos.y, pos.z, o));

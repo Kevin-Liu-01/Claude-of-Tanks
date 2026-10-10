@@ -1106,18 +1106,30 @@ export function trackDustPacket(
  * with thin trails, white bursts where they land, then a thick wall that
  * blooms, rolls and drifts with the battle smoke wind before thinning out.
  */
+/** (2026-10-09) The screen's walls, handed in by the Studio from the simulation (src/sim/smokeScreen.ts, no import here):
+ * the canisters' paths with their bounces, each cloud held outside the walls round its rest, and the surface it
+ * stands on (a roof's, when it rests on one). */
+export interface SmokeScreenWalls {
+  pathAt(canister: readonly number[], t: number, out: Vec3): void;
+  velAt(canister: readonly number[], t: number, out: Vec3): void;
+  hold(index: number, cx: number, cz: number, radius: number, at: { x: number; z: number }): void;
+  base(index: number, x: number, z: number): number;
+}
 export function smokeScreenEmitter(
   id: string, rng: Rng, startS: number, durationS: number, density: number,
   canisters: readonly (readonly number[])[], windX: number, windZ: number, gravity: number,
-  groundY: (x: number, z: number) => number,
+  groundY: (x: number, z: number) => number, walls: SmokeScreenWalls | null = null,
 ): CineEmitter {
-  // canister receipts: [x0,y0,z0, vx,vy,vz, landS]
-  const shots = canisters.map((c, i) => ({ c, delay: i * 0.06 }));
+  // canister receipts: [x0,y0,z0, vx,vy,vz, landS, (bounces: tS, x,y,z, vx,vy,vz)*]
+  const shots = canisters.map((c, i) => ({ c, delay: i * 0.06, i }));
   const endS = startS + durationS + 6;
   const posAt = (shot: { c: readonly number[] }, t: number, out: Vec3): Vec3 => {
     const tt = clamp(t, 0, shot.c[6]);
+    if (walls) { walls.pathAt(shot.c, tt, out); return out; }
     return set3(out, shot.c[0] + shot.c[3] * tt, shot.c[1] + shot.c[4] * tt - 0.5 * gravity * tt * tt, shot.c[2] + shot.c[5] * tt);
   };
+  const v: Vec3 = [0, 0, 0];
+  const at = { x: 0, z: 0 };
   const p: Vec3 = [0, 0, 0];
   const white0 = hex(0xaeb6b8), white1 = hex(0xb8c1c2), bloom = hex(0xe8eeee);
   const smooth = (v: number) => { const t = clamp(v, 0, 1); return t * t * (3 - 2 * t); };
@@ -1145,7 +1157,7 @@ export function smokeScreenEmitter(
         }
         const after = st - land;
         posAt(shot, land, p);
-        const gy = groundY(p[0], p[2]);
+        const gy = walls ? walls.base(shot.i, p[0], p[2]) : groundY(p[0], p[2]);
         if (after < 1 / 30 + 1e-9) {
           // landing burst: bright white bloom with streamers
           for (let j = 0; j < 12; j++) {
@@ -1163,12 +1175,20 @@ export function smokeScreenEmitter(
         if (dens < 0.02) continue;
         const radius = 1.2 + growth * 6.8;
         const height = 0.8 + growth * 3.6;
-        const driftX = windX * after, driftZ = windZ * after;
+        let driftX = windX * after, driftZ = windZ * after;
+        if (walls) {
+          // (the breeze carries the cloud no nearer a wall than the simulation lets it)
+          at.x = p[0] + driftX; at.z = p[2] + driftZ;
+          walls.hold(shot.i, p[0], p[2], 1e9, at);
+          driftX = at.x - p[0]; driftZ = at.z - p[2];
+        }
         const n = r() < 0.5 * dens ? 2 : 1;
         for (let j = 0; j < n; j++) {
           const a = r() * TAU, d = Math.sqrt(r()) * radius;
           const lift = r() * height;
-          puff(ctx, 'screen', p[0] + driftX + Math.cos(a) * d, gy + 1.0 + lift, p[2] + driftZ + Math.sin(a) * d,
+          at.x = p[0] + driftX + Math.cos(a) * d; at.z = p[2] + driftZ + Math.sin(a) * d;
+          if (walls) walls.hold(shot.i, p[0] + driftX, p[2] + driftZ, radius, at);
+          puff(ctx, 'screen', at.x, gy + 1.0 + lift, at.z,
             windX + (r() - 0.5) * 0.35, 0.10 + r() * 0.18, windZ + (r() - 0.5) * 0.35,
             4.5 + r() * 2.5, 2.8 + growth * 1.6, 6.2 + growth * 3.4 + r() * 1.6,
             white0, white1, Math.min(0.85, 0.42 + 0.36 * dens), 0.02, off - r() * (1 / 30));
@@ -1181,7 +1201,8 @@ export function smokeScreenEmitter(
         const st = t - shot.delay;
         if (st < 0 || st > shot.c[6]) continue;
         posAt(shot, st, p);
-        visit(p[0], p[1], p[2], shot.c[3], shot.c[4] - gravity * st, shot.c[5]);
+        if (walls) { walls.velAt(shot.c, st, v); visit(p[0], p[1], p[2], v[0], v[1], v[2]); }
+        else visit(p[0], p[1], p[2], shot.c[3], shot.c[4] - gravity * st, shot.c[5]);
       }
     },
   });

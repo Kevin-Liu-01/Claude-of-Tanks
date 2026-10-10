@@ -51,6 +51,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/smokeBallistics.selftest.mjs',
     'src/vehicles/smokeFan.selftest.mjs',
     'src/sim/smokeScreenCover.selftest.mjs',
+    'src/sim/smokeCollision.selftest.mjs', // 2026-10-09 the hitbox lane: canisters bounce off walls; screens stay out of houses
     'src/fx/auxiliaryPresentation.selftest.mjs',
     'src/fx/projectileTracers.selftest.mjs',
     'src/ui/vehicleControlCooldown.selftest.mjs',
