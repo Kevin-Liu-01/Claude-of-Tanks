@@ -91,6 +91,89 @@ function pick<T>(list: readonly T[], u: number): T {
   return list[Math.min(list.length - 1, (u * list.length) | 0)];
 }
 
+/** World-metre UV density for the timber parts: the oak print's grain reads on a crate face (the box default spread one
+ * tile over 1.8 m, so a crate showed a smooth patch of it). */
+const GRAIN_UV = 2.2;
+
+/** Re-colour one face of a BoxGeometry (px, nx, py, ny, pz, nz = 0..5: 4 vertices each) toward a tone, keeping its jitter. */
+function faceTone(geo: THREE.BufferGeometry, face: number, hex: number, local: Rng, jitter = 0.08): void {
+  _c.set(hex);
+  const col = geo.getAttribute('color') as THREE.BufferAttribute;
+  for (let k = face * 4; k < face * 4 + 4; k++) {
+    const v = 1 + (local() - 0.5) * jitter * 2;
+    col.setXYZ(k, Math.min(1, _c.r * v), Math.min(1, _c.g * v), Math.min(1, _c.b * v));
+  }
+}
+
+/**
+ * One side of a sheeted load (wave 335: "smooth tarp blocks"): a grid from the skirt at the bearers up to the ridge's
+ * eave, the sheet drawn in along each lashing and billowing between them, draped folds in its lower band, darker in its
+ * hollows. `a`-`b` is the side's foot (local x, z), `out` its outward normal, `lashU` the lashings' positions along it
+ * (0..1). Indexed, with position / normal / uv / colour as the box parts carry.
+ */
+function sheetSide(local: Rng, a: readonly [number, number], b: readonly [number, number], out: readonly [number, number],
+  y0: number, y1: number, inset: number, lashU: readonly number[], tone: number): THREE.BufferGeometry {
+  const cols = 12, rows = 5;
+  const pos: number[] = [], uv: number[] = [], col: number[] = [], idx: number[] = [];
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const phase = local() * 6.28, amp = 0.012 + local() * 0.016;
+  _c.set(tone);
+  for (let r = 0; r <= rows; r++) {
+    const t = r / rows, y = y0 + (y1 - y0) * t;
+    for (let c = 0; c <= cols; c++) {
+      const u = c / cols;
+      // the lashings pull the sheet in; between them it billows out, most at mid-height; the skirt folds in its low band
+      let pull = 0;
+      for (const lu of lashU) { const q = ((u - lu) * len) / 0.22; pull = Math.max(pull, Math.exp(-(q * q))); }
+      const belly = Math.sin(Math.PI * t) * (0.035 - 0.05 * pull);
+      const fold = (1 - t) ** 2 * amp * Math.sin(u * len / 0.32 * Math.PI * 2 + phase);
+      const edge = Math.min(u, 1 - u) < 0.08 ? (1 - Math.min(u, 1 - u) / 0.08) * 0.02 : 0;
+      const off = belly + fold - edge - inset * t;
+      const x = a[0] + (b[0] - a[0]) * u + out[0] * off, z = a[1] + (b[1] - a[1]) * u + out[1] * off;
+      pos.push(x, y, z);
+      uv.push(u * len * 0.5, y * 0.5);
+      const shadeK = Math.max(0.72, Math.min(1.08, 0.94 + off * 2.4 + (local() - 0.5) * 0.05));
+      col.push(Math.min(1, _c.r * shadeK), Math.min(1, _c.g * shadeK), Math.min(1, _c.b * shadeK));
+    }
+  }
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const i = r * (cols + 1) + c, j = i + cols + 1;
+    idx.push(i, i + 1, j, i + 1, j + 1, j);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  // facing out whichever way the foot runs: flip the winding if the first normal points in
+  const n = g.getAttribute('normal');
+  if (n.getX(0) * out[0] + n.getZ(0) * out[1] < 0) {
+    for (let k = 0; k < idx.length; k += 3) { const t2 = idx[k + 1]; idx[k + 1] = idx[k + 2]; idx[k + 2] = t2; }
+    g.setIndex(idx);
+    g.computeVertexNormals();
+  }
+  return g;
+}
+
+/**
+ * The spill round a stack's foot (wave 335: freight "standing directly on untouched ground with no ... spill"): a loose
+ * dunnage plank or two, a broken crate board, a scrap of bark, lying out of the stack's footprint on its long sides.
+ */
+function spill(parts: StackParts, local: Rng, w: number, l: number): void {
+  const n = 1 + ((local() * 3) | 0);
+  for (let k = 0; k < n; k++) {
+    const side = local() < 0.5 ? -1 : 1;
+    const plank = local() < 0.6;
+    const pl = plank ? 1.2 + local() * 1.4 : 0.4 + local() * 0.5, pw = plank ? 0.14 + local() * 0.08 : 0.12, ph = plank ? 0.05 : 0.025;
+    const g = paint(box(pw, ph, pl, GRAIN_UV), local, plank ? TIMBER_GREY : pick(CRATE_TONES, local()), 0.1);
+    g.rotateY(Math.PI / 2 * (local() < 0.7 ? 1 : 0) + (local() - 0.5) * 0.9);
+    g.rotateZ((local() - 0.5) * 0.12);
+    g.translate(side * (w / 2 + 0.25 + local() * 0.6), ph / 2 - 0.005, (local() - 0.5) * l * 0.8);
+    parts.structureWood.push(fresh(g));
+  }
+}
+
 /** One stack's parts by bucket, in the seat's local frame (x across, z along, y up from the ground). */
 interface StackParts { baked: THREE.BufferGeometry[]; structureWood: THREE.BufferGeometry[]; structureMetal: THREE.BufferGeometry[] }
 
@@ -136,47 +219,39 @@ function tarpStack(parts: StackParts, local: Rng, mapId: string, upper: boolean)
   const tone = pick(tones, local());
   bearers(parts, local, w, l, 3);
   cores(parts, local, 0.92 * (w + 0.06) - 0.08, BEARER_H + h - 0.06, 0.92 * (l + 0.06) - 0.08, upper);
-  // the sheet: a square frustum (wider at the skirt), scaled to the stack's plan
-  const body = new THREE.CylinderGeometry(Math.SQRT1_2 * 0.94, Math.SQRT1_2, h + BEARER_H - 0.04, 4, 4, true);
-  body.rotateY(Math.PI / 4);
-  body.scale(w + 0.06, 1, l + 0.06);
-  body.translate(0, (h + BEARER_H - 0.04) / 2 + 0.04, 0);
-  // the sheet is slack between the lashings and pulled in over the load's courses: each inner ring drawn in by its own
-  // amount, a corner here and there lower or prouder (the load under it is not a box); the skirt ring stays at the bearers
-  const pos = body.attributes.position as THREE.BufferAttribute;
-  const sheetTop = h + BEARER_H, ringPull = [0, 0.97 + local() * 0.02, 0.975 + local() * 0.02, 0.965 + local() * 0.025, 1];
-  // (one jitter per ring and corner: the seam's two copies of a corner move together, so the sheet never opens)
-  const jitter = Array.from({ length: 20 }, () => [1 + (local() - 0.5) * 0.02, (local() - 0.5) * 0.06]);
-  for (let i = 0; i < pos.count; i++) {
-    const y = pos.getY(i), ring = Math.round((1 - (y - 0.04) / (sheetTop - 0.04)) * 4);
-    if (ring <= 0 || ring >= 4) continue;
-    const [kj, yj] = jitter[ring * 4 + (pos.getX(i) > 0 ? 1 : 0) + (pos.getZ(i) > 0 ? 2 : 0)];
-    const k = ringPull[ring] * kj;
-    pos.setX(i, pos.getX(i) * k); pos.setZ(i, pos.getZ(i) * (1 - (1 - k) * 0.35));
-    pos.setY(i, y + yj);
-  }
-  body.computeVertexNormals();
-  parts.baked.push(fresh(paint(body, local, tone, 0.09)));
-  // the top: a shallow ridge over the spar, closing the frustum's top
-  const top = gablePrism(w * 0.94 + 0.06, ridge, l * 0.94 + 0.06, 0.4);
-  top.translate(0, h + BEARER_H, 0);
-  parts.baked.push(fresh(paint(top, local, tone, 0.07)));
-  // the lashings: over the ridge (two slanted pieces) and down each side to the bearer end
+  // the lashings' places along the load (they draw the sheet in where they run)
   const lashes = 3 + (local() < 0.5 ? 1 : 0);
+  const lashZ = Array.from({ length: lashes }, (_, i) => -l / 2 + 0.6 + (l - 1.2) * (i / (lashes - 1)) + (local() - 0.5) * 0.2);
+  // the sheet: four draped sides from the skirt at the bearers to the ridge's eaves, drawn in along the lashings and
+  // billowing between them, folds in the skirt (sheetSide); the long sides carry the lashings
+  const W2 = (w + 0.06) / 2, L2 = (l + 0.06) / 2, top = h + BEARER_H;
+  const lashU = lashZ.map((z) => (z + L2) / (2 * L2));
+  parts.baked.push(fresh(sheetSide(local, [W2, -L2], [W2, L2], [1, 0], 0.04, top, 0.06 * W2, lashU, tone)));
+  parts.baked.push(fresh(sheetSide(local, [-W2, L2], [-W2, -L2], [-1, 0], 0.04, top, 0.06 * W2, lashU.map((u) => 1 - u), tone)));
+  parts.baked.push(fresh(sheetSide(local, [-W2, -L2], [W2, -L2], [0, -1], 0.04, top, 0.06 * L2 * 0.25, [], tone)));
+  parts.baked.push(fresh(sheetSide(local, [W2, L2], [-W2, L2], [0, 1], 0.04, top, 0.06 * L2 * 0.25, [], tone)));
+  // the top: a shallow ridge over the spar, closing the sheet's top
+  const topG = gablePrism(w * 0.94 + 0.06, ridge, l * 0.94 + 0.06, 0.4);
+  topG.translate(0, top, 0);
+  parts.baked.push(fresh(paint(topG, local, tone, 0.07)));
+  // the lashings: over the ridge (two slanted pieces) and down each side to the bearer end, each with its knot at the foot
   const halfTop = (w * 0.94 + 0.06) / 2, slope = Math.atan2(ridge, halfTop), run = Math.hypot(halfTop, ridge);
-  for (let i = 0; i < lashes; i++) {
-    const z = -l / 2 + 0.6 + (l - 1.2) * (i / (lashes - 1)) + (local() - 0.5) * 0.2;
-    for (const s of [-1, 1]) {
+  for (const z of lashZ) {
+    for (const s2 of [-1, 1]) {
       const over = paint(box(run, 0.03, 0.04, 0.5), local, ROPE, 0.08);
-      over.rotateZ(-s * slope);
-      over.translate(s * halfTop / 2, h + BEARER_H + ridge / 2 + 0.018, z);
+      over.rotateZ(-s2 * slope);
+      over.translate(s2 * halfTop / 2, top + ridge / 2 + 0.018, z);
       parts.baked.push(fresh(over));
       const down = paint(box(0.03, h - 0.02, 0.04, 0.5), local, ROPE, 0.08);
-      down.rotateZ(s * 0.025);
-      down.translate(s * ((w + 0.06) / 2 + 0.012), BEARER_H + (h - 0.02) / 2, z);
+      down.rotateZ(s2 * 0.03);
+      down.translate(s2 * (W2 + 0.006), BEARER_H + (h - 0.02) / 2, z);
       parts.baked.push(fresh(down));
+      const knot = paint(box(0.07, 0.07, 0.09, 0.5), local, ROPE, 0.1);
+      knot.translate(s2 * (W2 + 0.02), BEARER_H + 0.03, z);
+      parts.baked.push(fresh(knot));
     }
   }
+  spill(parts, local, w + 0.06, l + 0.06);
 }
 
 /** A crate stack: a full course of wooden cases on the bearers, the next course full only on a stacked seat. */
@@ -198,20 +273,31 @@ function crateStack(parts: StackParts, local: Rng, upper: boolean): void {
       const x = -SEAT_W / 2 + 0.05 + cw * (i + 0.5) + (local() - 0.5) * 0.04;
       const z = -SEAT_L / 2 + 0.15 + cl * (j + 0.5) + (local() - 0.5) * 0.05;
       const yaw = full ? (local() - 0.5) * 0.03 : (local() - 0.5) * 0.12;
-      const crate = paint(box(ww, hh, ll, 0.55), local, tone, 0.07);
-      crate.rotateY(yaw);
-      crate.translate(x, y + hh / 2, z);
-      parts.structureWood.push(fresh(crate));
-      // the case's battens: a darker band round its top and its foot, proud by a centimetre
-      for (const by of [0.06, hh - 0.06]) {
-        const batten = paint(box(ww + 0.02, 0.08, ll + 0.02, 0.55), local, 0x6f5d44, 0.06);
-        batten.rotateY(yaw);
-        batten.translate(x, y + by, z);
-        parts.structureWood.push(fresh(batten));
+      const put = (g: THREE.BufferGeometry, gy: number) => { g.rotateY(yaw); g.translate(x, y + gy, z); parts.structureWood.push(fresh(g)); };
+      // the case behind its boards, dark in the seams
+      put(paint(box(ww - 0.03, hh - 0.02, ll - 0.03, GRAIN_UV), local, 0x3e3529, 0.05), hh / 2);
+      // three boards a side, each its own tone, a seam between them; the lid's boards across the top
+      const bh = (hh - 0.03) / 3;
+      for (let k = 0; k < 3; k++) {
+        const board = paint(box(ww, bh - 0.014, ll, GRAIN_UV), local, tone, 0.06);
+        const v = 0.9 + local() * 0.18, cc = board.getAttribute('color') as THREE.BufferAttribute;
+        for (let q = 0; q < cc.count; q++) cc.setXYZ(q, Math.min(1, cc.getX(q) * v), Math.min(1, cc.getY(q) * v), Math.min(1, cc.getZ(q) * v));
+        // the end grain of the boards paler on the case's ends
+        faceTone(board, 4, 0xb8a27e, local); faceTone(board, 5, 0xb8a27e, local);
+        put(board, 0.015 + bh * (k + 0.5));
+      }
+      // the battens round its top and its foot, proud by a centimetre, and an upright at each end of the long faces
+      for (const by of [0.06, hh - 0.06]) put(paint(box(ww + 0.02, 0.08, ll + 0.02, GRAIN_UV), local, 0x6f5d44, 0.06), by);
+      for (const ez of [-1, 1]) put(paint(box(ww + 0.02, hh - 0.16, 0.07, GRAIN_UV), local, 0x6f5d44, 0.06).translate(0, 0, ez * (ll / 2 - 0.035)), hh / 2);
+      // a shipper's stencil on one long face now and then
+      if (local() < 0.4) {
+        const st = paint(box(0.012, Math.min(0.18, hh * 0.2), Math.min(0.42, ll * 0.5), 1), local, 0x2a2622, 0.05);
+        put(st.translate((local() < 0.5 ? -1 : 1) * (ww / 2 + 0.004), 0, (local() - 0.5) * ll * 0.2), hh * (0.55 + local() * 0.15));
       }
     }
     y += ch;
   }
+  spill(parts, local, SEAT_W - 0.1, SEAT_L - 0.3);
 }
 
 /**
@@ -252,21 +338,25 @@ function lumberStack(parts: StackParts, local: Rng, upper: boolean): void {
   cores(parts, local, w - 0.1, BEARER_H + (courses - 1) * pitch - sticker - 0.03, l - 0.5, upper);
   for (let c = 0; c < courses; c++) {
     const y = BEARER_H + c * pitch;
-    // a course is a row of boards edge to edge: four planks across, their ends ragged
+    // a course is a row of boards edge to edge: four planks across, their ends ragged, their sawn ends pale end grain
     const planks = 4;
     for (let p = 0; p < planks; p++) {
       const pw = w / planks - 0.015, pl = l - (c === courses - 1 ? local() * 1.2 : local() * 0.25);
-      const board = paint(box(pw, courseH, pl, 0.55), local, DEAL, 0.1);
+      const board = paint(box(pw, courseH, pl, GRAIN_UV), local, DEAL, 0.1);
+      faceTone(board, 4, 0xe6d3a8, local, 0.06); faceTone(board, 5, 0xe6d3a8, local, 0.06);
+      // the weathered top of the top course greyer
+      if (c === courses - 1) faceTone(board, 2, 0xa69a84, local, 0.08);
       board.translate(-w / 2 + (p + 0.5) * (w / planks), y + courseH / 2, (local() - 0.5) * 0.18);
       parts.structureWood.push(fresh(board));
     }
     if (c === courses - 1) break;
     for (const z of [-l * 0.42, -l * 0.14, l * 0.14, l * 0.42]) {
-      const st = paint(box(w + 0.04, sticker, 0.05, 0.55), local, TIMBER_GREY, 0.06);
+      const st = paint(box(w + 0.04, sticker, 0.05, GRAIN_UV), local, TIMBER_GREY, 0.06);
       st.translate(0, y + courseH + sticker / 2, z);
       parts.structureWood.push(fresh(st));
     }
   }
+  spill(parts, local, w, l);
 }
 
 /**
