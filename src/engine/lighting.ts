@@ -17,13 +17,7 @@ import {
   resolveShadowPrimeCount,
 } from './shadowRefresh.ts';
 import { debugModeRequested } from '../dev/debugIntent.ts';
-import {
-  SHADOW_OPACITY,
-  SHADOW_RECEIVER_ONLY_BIAS_M,
-  shadowDepthBiasForTexel,
-  shadowNormalBiasForTexel,
-  snapShadowCoordinate,
-} from './shadowStability.ts';
+import { DECK_PENUMBRA_K, deckPenumbraRadius, SHADOW_OPACITY, SHADOW_RECEIVER_ONLY_BIAS_M, shadowDepthBiasForTexel, shadowNormalBiasForTexel, snapShadowCoordinate } from './shadowStability.ts';
 import { createShadowFitCache } from './shadowFitCache.ts';
 import { CSM_FADE_MARGIN_GLSL, cascadeBreaks, csmFadeKFor, csmFadeMargin } from './shadowCascadeLayout.ts';
 import { registerShadowCascadeCamera, setShadowCascadeCache, setShadowCascadePolicy } from './renderLayers.ts';
@@ -957,15 +951,33 @@ export function createLighting(
     for (let i = 0; i < csm.lights.length; i++) applyShadowNormalBias(i);
   }
 
+  // 2026-10-10 (the shadows lane, the Whiteout round): each cascade's radius before a closed deck's widening, and the
+  // deck's uniform share of the cut the current rig carries (shadowStability.ts deckPenumbraRadius)
+  const baseShadowRadius: number[] = [];
+  let deckShare = 0;
+  /** Widen the cascades' PCF radius under a closed deck, and back when the deck opens. */
+  function applyDeckPenumbra(model: LightModel | null): void {
+    const share = model?.mode === 'physical' ? Math.min(1, Math.max(0, model.overcast * model.deckClosure)) : 0;
+    if (Math.abs(share - deckShare) < 1e-3) return;
+    deckShare = share;
+    for (let i = 0; i < csm.lights.length; i++) {
+      const base = baseShadowRadius[i];
+      if (base === undefined) continue;
+      csm.lights[i].shadow.radius = deckPenumbraRadius(base, deckShare, lightTune('DECK_PENUMBRA', DECK_PENUMBRA_K));
+      applyShadowNormalBias(i);
+    }
+  }
+
   /** Resize one cascade, retaining every other live map until its own turn. */
   function applyShadowSize(i: number, size: number): void {
     const shadow = csm.lights[i].shadow;
     // physical-penumbra-preserving PCF radius (see SHADOW_RADII_REF_SIZES)
     const ref = SHADOW_RADII_REF_SIZES[Math.min(i, SHADOW_RADII_REF_SIZES.length - 1)];
-    shadow.radius = Math.max(
+    baseShadowRadius[i] = Math.max(
       MIN_FILTER_RADIUS_TEXELS,
       SHADOW_RADII[Math.min(i, SHADOW_RADII.length - 1)] * (size / ref),
     );
+    shadow.radius = deckPenumbraRadius(baseShadowRadius[i], deckShare, lightTune('DECK_PENUMBRA', DECK_PENUMBRA_K));
     if (shadow.mapSize.x !== size) {
       shadow.mapSize.set(size, size);
       shadowFitCache.invalidate();
@@ -1333,6 +1345,7 @@ export function createLighting(
     const model = resolveLightModel(opts, physical ? atmo!.params! : null,
       physical ? { irradianceRaw: [irr!.r, irr!.g, irr!.b] } : null, authoredSun, cloudShadeOn && !!scene.userData.volumetricClouds);
     rigModel = model;
+    applyDeckPenumbra(model); // (the Whiteout round: a closed deck's diffuse shadows)
     scene.userData.lightModel = model;
     scene.userData.lightEnclosed = farCascadeDormant;
     scene.environmentIntensity = model.envIntensity;
