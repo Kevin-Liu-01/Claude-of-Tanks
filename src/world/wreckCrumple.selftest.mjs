@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { ensureTankBuilder, createTank } from '../vehicles/fleetFactory.ts';
-import { bendGeometry, planBend, planDents, wreckRandom } from '../vehicles/wreckDents.ts';
+import { bendGeometry, kinkPoint, planBend, planDents, wreckRandom } from '../vehicles/wreckDents.ts';
 import { crumpleBurntVehicle, crumpleWreckGeometry, planWreckCrumple } from './wreckCrumple.ts';
 import { bakeTankWreck } from './wrecks.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS } from './maps/civilianVehicleKit.ts';
@@ -35,10 +35,11 @@ const finiteUnit = (normal, label) => {
   planDents(samples, 6, 0.4, 0.9, 0.08, 0.2, wreckRandom(7), again, new THREE.Vector3(0, 1, 0));
   assert.deepEqual(again, dents, 'deterministic in the seed');
   const bend = planBend(0.5, 5, wreckRandom(3), false);
-  assert.ok(bend && bend.z0 > 0.5 + 0.25 * 4.5 && bend.z0 < 0.5 + 0.6 * 4.5, 'bends past a quarter of the barrel');
-  const tip = bend.kappa * (5 - bend.z0) ** 2;
-  assert.ok(tip >= 0.4 && tip <= 1.05, `the muzzle 0.4-1.05 m off (${tip.toFixed(2)})`);
+  assert.ok(bend && bend.z0 > 0.5 + 0.3 * 4.5 && bend.z0 < 0.5 + 0.6 * 4.5, 'kinks at a stress point a third to a half out');
+  const tip = (5 - bend.z0) * Math.sin(bend.theta);
+  assert.ok(tip >= 0.3 && tip <= 0.8, `the muzzle 0.3-0.8 m off (${tip.toFixed(2)})`);
   assert.ok(bend.uy < -0.4, 'down, under its own weight');
+  assert.ok(bend.ramp <= 0.1, 'a crease, not a curve (the turn taken within 0.1 m)');
   assert.equal(planBend(0, 0.6, wreckRandom(3), false), null, 'a stub does not bend');
   // the bend: the bore past z0 curves, the breech end stays, normals follow
   const tube = new THREE.CylinderGeometry(0.1, 0.1, 5, 12, 20).rotateX(Math.PI / 2).translate(0, 0, 2.5);
@@ -51,6 +52,15 @@ const finiteUnit = (normal, label) => {
     if (z <= bend.z0) assert.equal(moved, 0, 'the breech end stays');
   }
   finiteUnit(tube.attributes.normal, 'bent tube');
+  // (wave 350: "bends like rubber") past the crease the barrel is straight and keeps its length: points on its axis stay
+  // collinear and as far apart as they were
+  const axis = [1.5, 2.6, 3.7, 4.8].map((z) => new THREE.Vector3(0, 0, Math.max(z, bend.z0 + bend.ramp + 0.01 + (z - 1.5) * 0.25)));
+  for (const q of axis) kinkPoint(bend, q);
+  const d1 = axis[1].clone().sub(axis[0]), d2 = axis[3].clone().sub(axis[2]);
+  assert.ok(d1.clone().normalize().dot(d2.clone().normalize()) > 0.99999, 'straight past the crease');
+  const orig = [1.5, 2.6, 3.7, 4.8].map((z) => Math.max(z, bend.z0 + bend.ramp + 0.01 + (z - 1.5) * 0.25));
+  assert.ok(Math.abs(axis[0].distanceTo(axis[3]) - (orig[3] - orig[0])) < 1e-9, 'rigid: its length kept');
+  assert.ok(Math.abs(Math.atan2(-d2.y, d2.z) - bend.theta * -bend.uy) < 0.02 || bend.uy > -0.99, 'turned by the planned angle');
 }
 
 // ---- the baked hulks ------------------------------------------------------------------------------------------------

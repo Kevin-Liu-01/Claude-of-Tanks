@@ -19,7 +19,12 @@ export interface WreckCrease {
   cx: number; cy: number; cz: number; tx: number; ty: number; tz: number; dx: number; dy: number; dz: number;
   half: number; w: number; depth: number;
 }
-export interface WreckBend { z0: number; kappa: number; ux: number; uy: number }
+/**
+ * The gun's kink (wave 350: a barrel bent along a curve "bends like rubber"): past the stress point `z0` the barrel
+ * turns rigidly by `theta` toward (ux, uy) about a hinge on its axis there, the turn taken over the short `ramp` (m) of
+ * the kink itself, so the barrel is two straight runs meeting at a crease.
+ */
+export interface WreckBend { z0: number; theta: number; ux: number; uy: number; ramp: number }
 
 export function wreckRandom(a: number): () => number {
   return function (): number {
@@ -84,11 +89,21 @@ export function planDents(samples: DentSamples | null, count: number, rMin: numb
 export function planBend(zMin: number, zMax: number, rng: () => number, anyWay: boolean): WreckBend | null {
   const zStart = Math.max(0, zMin), length = zMax - zStart;
   if (!(zMax > 1) || !(length > 0.8)) return null;
-  const z0 = zStart + length * (0.3 + rng() * 0.25);
-  // (2026-10-09, after the first wave's frames: a 0.2-0.5 m droop read as a straight gun at 13 m) 0.4-0.8 m at the muzzle
-  const tip = (0.4 + rng() * 0.4) * Math.min(1.3, Math.max(0.7, length / 4.2));
+  // the stress point: where the barrel's wall thins past its thermal sleeve and evacuator, a third to a half of the way out
+  const z0 = zStart + length * (0.35 + rng() * 0.2);
+  // (2026-10-09: a 0.2-0.5 m droop read as a straight gun at 13 m) 0.35-0.6 m at the muzzle, now as a corner the light finds
+  const tip = (0.35 + rng() * 0.25) * Math.min(1.3, Math.max(0.7, length / 4.2));
   const phi = anyWay ? (rng() * 2 - 1) * Math.PI : (rng() * 2 - 1) * 1.1;
-  return { z0, kappa: tip / ((zMax - z0) * (zMax - z0)), ux: Math.sin(phi), uy: -Math.cos(phi) };
+  const theta = Math.asin(Math.min(0.35, tip / Math.max(0.5, zMax - z0)));
+  return { z0, theta, ux: Math.sin(phi), uy: -Math.cos(phi), ramp: 0.06 };
+}
+
+/** The kink's turn at `t` past its stress point (eased over its ramp: the crease). */
+export function bendAngle(bend: WreckBend, t: number): number {
+  if (t <= 0) return 0;
+  if (t >= bend.ramp) return bend.theta;
+  const s = t / bend.ramp;
+  return bend.theta * s * s * (3 - 2 * s);
 }
 
 /**
@@ -119,8 +134,30 @@ const _p = new THREE.Vector3();
 const _n = new THREE.Vector3();
 
 /**
- * Bend a geometry by `bend` in the gun's frame: `toGun` takes its stored corners into that frame, `fromGun` back. The
- * normals follow the bend's Jacobian (the bore's curve is seen in the light). In place.
+ * A point of the gun's frame turned by the kink (in place): its run along the bore past `z0` and its offset toward
+ * (ux, uy) rotate together about the hinge, so the barrel past the crease is straight and keeps its length.
+ */
+export function kinkPoint(bend: WreckBend, p: THREE.Vector3): void {
+  const t = p.z - bend.z0;
+  if (t <= 0) return;
+  const th = bendAngle(bend, t), c = Math.cos(th), s = Math.sin(th);
+  const a = p.x * bend.ux + p.y * bend.uy;
+  const t1 = t * c - a * s, a1 = t * s + a * c;
+  p.x += bend.ux * (a1 - a); p.y += bend.uy * (a1 - a); p.z = bend.z0 + t1;
+}
+
+/** A direction of the gun's frame at a point `t` past the stress point, turned as the kink turns it there (in place). */
+export function kinkDirection(bend: WreckBend, t: number, n: THREE.Vector3): void {
+  if (t <= 0) return;
+  const th = bendAngle(bend, t), c = Math.cos(th), s = Math.sin(th);
+  const a = n.x * bend.ux + n.y * bend.uy, z = n.z;
+  const z1 = z * c - a * s, a1 = z * s + a * c;
+  n.x += bend.ux * (a1 - a); n.y += bend.uy * (a1 - a); n.z = z1;
+}
+
+/**
+ * Kink a geometry by `bend` in the gun's frame: `toGun` takes its stored corners into that frame, `fromGun` back. The
+ * normals turn with the barrel (the crease's two runs catch the light differently). In place.
  */
 export function bendGeometry(geometry: THREE.BufferGeometry, bend: WreckBend, toGun: THREE.Matrix4, fromGun: THREE.Matrix4): void {
   const position = geometry.attributes.position as THREE.BufferAttribute | undefined;
@@ -130,14 +167,13 @@ export function bendGeometry(geometry: THREE.BufferGeometry, bend: WreckBend, to
   for (let i = 0; i < position.count; i++) {
     _p.fromBufferAttribute(position, i).applyMatrix4(toGun);
     if (_p.z <= bend.z0) continue;
-    const t = _p.z - bend.z0, v = bend.kappa * t * t, dv = 2 * bend.kappa * t;
-    _p.x += bend.ux * v; _p.y += bend.uy * v;
+    const t = _p.z - bend.z0;
+    kinkPoint(bend, _p);
     _p.applyMatrix4(fromGun);
     position.setXYZ(i, _p.x, _p.y, _p.z);
     if (!normal) continue;
-    // J = I + u ⊗ ẑ·dv; its cofactor maps n to (nx, ny, nz − dv·(ux·nx + uy·ny))
     _n.fromBufferAttribute(normal, i).applyMatrix3(to3);
-    _n.z -= dv * (bend.ux * _n.x + bend.uy * _n.y);
+    kinkDirection(bend, t, _n);
     _n.applyMatrix3(from3).normalize();
     normal.setXYZ(i, _n.x, _n.y, _n.z);
   }

@@ -18,7 +18,7 @@
 // Deterministic in (hierarchy, seed, pop) on its own random stream; no allocation per vertex.
 
 import * as THREE from 'three';
-import { planBend, planCreases, planDents, wreckRandom, type WreckBend, type WreckCrease, type WreckDent } from '../vehicles/wreckDents.ts';
+import { bendAngle, planBend, planCreases, planDents, wreckRandom, type WreckBend, type WreckCrease, type WreckDent } from '../vehicles/wreckDents.ts';
 
 type PartName = 'hull' | 'gear' | 'turret' | 'gun';
 
@@ -384,9 +384,16 @@ function evaluate(plan: PartPlan, x: number, y: number, z: number): boolean {
   }
   const b = plan.bend;
   if (b && z > b.z0) {
-    const t = z - b.z0, v = b.kappa * t * t, dv = 2 * b.kappa * t;
-    D[0] += b.ux * v; D[1] += b.uy * v;
-    J[2] += b.ux * dv; J[5] += b.uy * dv;
+    // the gun's kink (wave 350: the curve "bends like rubber"): past its stress point the barrel turns rigidly about the
+    // hinge, D = R(p − h) + h − p in the plane of the bore and the turn's direction u; J += R − I there
+    const t = z - b.z0, th = bendAngle(b, t), c = Math.cos(th), s = Math.sin(th);
+    const a = x * b.ux + y * b.uy;
+    const da = t * s + a * c - a, dz = t * c - a * s - t;
+    D[0] += b.ux * da; D[1] += b.uy * da; D[2] += dz;
+    const cm = c - 1;
+    J[0] += b.ux * b.ux * cm; J[1] += b.ux * b.uy * cm; J[2] += b.ux * s;
+    J[3] += b.uy * b.ux * cm; J[4] += b.uy * b.uy * cm; J[5] += b.uy * s;
+    J[6] -= s * b.ux; J[7] -= s * b.uy; J[8] += cm;
     moved = true;
   }
   return moved;
