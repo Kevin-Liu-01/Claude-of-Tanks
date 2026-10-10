@@ -69,4 +69,4 @@ assert.match(post, /aerial\.uniforms\.uStructOcc\.value = lightFx\.vehicleOcclus
 for (const name of ['ultra', 'high']) assert.equal(PRESETS[name].structureOcclusion, true, `${name} takes the term`);
 for (const name of ['medium', 'low', 'mobile', 'mobile-low', 'mobile-high']) assert.equal(PRESETS[name].structureOcclusion, undefined, `${name} does not`);
 
-console.log(`structureOcclusion.selftest: the alpha bands (opaque 2, vehicle 4, structure 6 + v) and their decoders, the cavity law (radius ${0.9} m, strength ${STRUCTURE_OCCLUSION_STRENGTH}, range ${STRUCTURE_OCCLUSION_RANGE_M} m), the GLSL, the installed chunk and the wiring PASS`);
+console.log(`structureOcclusion.selftest: the alpha bands (opaque 2, vehicle 4, structure 6 + v) and their decoders, the cavity law (radius ${0.6} m, strength ${STRUCTURE_OCCLUSION_STRENGTH}, range ${STRUCTURE_OCCLUSION_RANGE_M} m), the GLSL, the installed chunk and the wiring PASS`);

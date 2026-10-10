@@ -31,13 +31,13 @@ export const STRUCTURE_ALPHA_MIN = 5.5;
 export const STRUCTURE_OCCLUSION_DIRECTIONS = 8;
 export const STRUCTURE_OCCLUSION_STEPS = 4;
 /** World search radius: a door or window reveal, an eave, a porch roof's soffit. */
-export const STRUCTURE_OCCLUSION_RADIUS_M = 0.9;
+export const STRUCTURE_OCCLUSION_RADIUS_M = 0.6;
 export const STRUCTURE_OCCLUSION_MIN_PX = 3;
 export const STRUCTURE_OCCLUSION_MAX_PX = 48;
 /** Sine of the horizon elevation below which a surface counts as the pixel's own face. */
 export const STRUCTURE_OCCLUSION_BIAS = 0.15;
 /** How much of the ambient share a fully occluded pixel loses. */
-export const STRUCTURE_OCCLUSION_STRENGTH = 0.65;
+export const STRUCTURE_OCCLUSION_STRENGTH = 0.55;
 export const STRUCTURE_OCCLUSION_RANGE_M = 110;
 export const STRUCTURE_OCCLUSION_FADE_M = 35;
 
