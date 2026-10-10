@@ -6667,7 +6667,6 @@ ${snowCap ? `
   // keep the bed they stood in on main (buildRockBeds), and each crushable stone's scuff disc (collectFoundationDecals)
   const lowStones = new Set<THREE.Matrix4>();
   const stoneScuffs: Array<{ clutter: CrushableClutter; x: number; z: number; r: number }> = [];
-  const stonePiecePools: StonePiecePool[] = [];
   const rockGeos: THREE.BufferGeometry[] = [];
   // the scenery lane (wave 74, the cascade trim): on the desktop each rock's phone form too (270 triangles against 672),
   // for the far rocks and the far shadow cascades
@@ -7052,7 +7051,6 @@ ${snowCap ? `
       const reach = form.halfLocal * Math.max(Math.hypot(e[0], e[1], e[2]), Math.hypot(e[8], e[9], e[10]));
       stoneScuffs.push({ clutter, x: e[12], z: e[14], r: Math.max(0.6, reach * 1.6) });
     }
-    stonePiecePools.push(pieces);
   }
   function instantiateRockVariants(): void {
   for (let vi = 0; vi < 3; vi++) {
