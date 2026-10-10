@@ -1069,24 +1069,29 @@ export function createGarageDressing(
   ): void {
     if (!crewRoot || !tires?.geometry || !discs?.geometry) return;
     if (!tires.geometry.boundingBox) tires.geometry.computeBoundingBox();
-    // the wheel lies flat on the carriers' upturned palms: its centre half a tyre width above them
-    const tireHalfWidth = (tires.geometry.boundingBox!.max.x - tires.geometry.boundingBox!.min.x) / 2;
-    const grips: THREE.Vector3[] = [];
-    for (const index of carriers) {
-      const pose = scene.members[index].pose;
-      for (const hand of [pose.leftHand, pose.rightHand]) {
-        if (hand) grips.push(crewPointInScene(scene.members[index], hand));
-      }
-    }
-    if (grips.length < 4) return;
-    const centre = grips.reduce((sum, point) => sum.add(point), new THREE.Vector3()).multiplyScalar(1 / grips.length);
-    centre.y += tireHalfWidth + 0.01;
-    const a = crewPointInScene(scene.members[carriers[0]], [0, 0, 0]);
-    const b = crewPointInScene(scene.members[carriers[1]], [0, 0, 0]);
-    const along = new THREE.Vector3(b.x - a.x, 0, b.z - a.z).normalize();
-    const axleYaw = Math.atan2(-along.x, -along.z) + Math.PI / 2;
-    const matrix = new THREE.Matrix4().makeRotationY(axleYaw)
-      .multiply(new THREE.Matrix4().makeRotationZ(Math.PI / 2)).setPosition(centre);
+    // The wheel stands upright between the carriers (garageCrewFigures.ts wheelCarrierPose): its tread passes through
+    // both carriers' hands, a little below the axle, and its face, disc and hub show side-on (2026-10-10, wave 357).
+    const box = tires.geometry.boundingBox!;
+    const radius = Math.max(box.max.y - box.min.y, box.max.z - box.min.z) / 2;
+    const gripsOf = (member: number): THREE.Vector3[] => {
+      const pose = scene.members[member].pose;
+      return [pose.leftHand, pose.rightHand].filter((hand): hand is NonNullable<typeof hand> => Boolean(hand))
+        .map((hand) => crewPointInScene(scene.members[member], hand));
+    };
+    const gripsA = gripsOf(carriers[0]);
+    const gripsB = gripsOf(carriers[1]);
+    if (gripsA.length < 2 || gripsB.length < 2) return;
+    const mean = (points: THREE.Vector3[]): THREE.Vector3 =>
+      points.reduce((sum, point) => sum.add(point), new THREE.Vector3()).multiplyScalar(1 / points.length);
+    const gripA = mean(gripsA);
+    const gripB = mean(gripsB);
+    const halfGap = Math.hypot(gripB.x - gripA.x, gripB.z - gripA.z) / 2;
+    const centre = gripA.clone().lerp(gripB, 0.5);
+    centre.y += Math.sqrt(Math.max(0, radius * radius - halfGap * halfGap));
+    const along = new THREE.Vector3(gripB.x - gripA.x, 0, gripB.z - gripA.z).normalize();
+    const axle = new THREE.Vector3(-along.z, 0, along.x);
+    const matrix = new THREE.Matrix4().compose(centre,
+      new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), axle), new THREE.Vector3(1, 1, 1));
     // Plain meshes on the exhibit's own wheel geometry and materials: the static display merge folds them into the
     // batches the exhibit already draws, so a carried wheel adds no draw call.
     for (const [geometry, material] of [[tires.geometry, tires.material], [discs.geometry, discs.material],
