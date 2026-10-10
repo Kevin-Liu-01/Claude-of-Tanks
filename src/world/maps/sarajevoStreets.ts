@@ -944,8 +944,8 @@ function stump(sink: PartSink, look: () => number): void {
 /**
  * Sarajevo's streets under the siege (the map-revival lane, round 4, 2026-10-09; gauntlet wave 319: "a tram street
  * that is spotless for a city under siege"): the fall off the shelled facades swept into heaps along the kerbs, thickest
- * in clumps, the boulevard's street trees cut to stumps for firewood in the first winter, and the sheeting hung across
- * the side streets' mouths at the boulevard against the snipers on the hills, high over the carriageway. All dressing
+ * in clumps, the avenues' street trees cut to stumps for firewood in the first winter, and the sheeting hung across
+ * the side streets' mouths at the avenues against the snipers on the hills, high over the carriageway. All dressing
  * (no collision, nothing a hull or a round meets; casting its shadow); every look from the seat's own hash; clear of the squares' objective
  * ground and every record placed so far.
  */
