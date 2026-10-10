@@ -267,6 +267,7 @@ import { createRosterPresentation } from './game/rosterPresentation.ts';
 import { tankTier, tierNumeral } from './vehicles/tier.ts';
 import { createTransition } from './ui/transition.ts';
 import type { DamagePanelController } from './ui/damagePanel.ts';
+import { prepareEntryPanelMasks } from './ui/damagePanelEntryMasks.ts';
 import type { HudMatchModeState, HudMode } from './ui/hud.ts';
 
 type DamagePanelSpec = Parameters<DamagePanelController['setTank']>[0];
@@ -1570,6 +1571,10 @@ const frontline = createFrontlineAtmosphereAccess(() => ({
   getHeightField: () => currentWorld()?.heightField ?? null,
   getSpawns: () => currentWorld()?.spawnPoints ?? null,
 }));
+/** A covered entry revealed before the player's top-down masks linked; the damage panel's retry ladder finishes them. */
+function deferredPanelMasks(specId: string): void {
+  console.warn(`[battle] top-down view of ${specId} still linking at reveal; the damage panel retries it`);
+}
 function currentSceneWatchdogOptions() {
   if (game.phase !== 'battle') return {};
   if (battleAtmosphere.current?.weather?.timeOfDay === 'night') return { nightRadianceScale: battleWatchdogRadianceScale };
@@ -1961,9 +1966,8 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
       if (player?.aerial?.kind === 'gunship') return;
       const panel = currentDamagePanel();
       if (!player || !panel) throw new Error('Player damage panel was not prepared');
-      if (!await panel.prepareTankMasks(player.spec, player.visual)) {
-        throw new Error('Player top-down view could not be prepared');
-      }
+      // 2026-10-09 (the black-screen lane): a slow mask link never refuses the battle (damagePanelEntryMasks.ts)
+      await prepareEntryPanelMasks(panel, player.spec, player.visual, deferredPanelMasks);
     },
     prepareAtmosphere: async () => {
       await battleAtmosphere.prepare(game.battleCount, game.mapId, battlePreferences.times);
@@ -2456,9 +2460,8 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             if (!entity) return;
             const panel = currentDamagePanel();
             if (!panel) throw new Error('network panel warm requires the prepared battle HUD');
-            if (!await panel.prepareTankMasks(entity.spec, entity.visual)) {
-              throw new Error('Player top-down view could not be prepared');
-            }
+            // (2026-10-09) a slow mask link never refuses the round (damagePanelEntryMasks.ts)
+            await prepareEntryPanelMasks(panel, entity.spec, entity.visual, deferredPanelMasks);
           },
           openingEffects: async (fx: ReturnType<typeof requireFxRuntime>, bridge: MultiplayerWarmView, signal?: AbortSignal) => {
             const timing: ForwardProgramCompileTiming & {
