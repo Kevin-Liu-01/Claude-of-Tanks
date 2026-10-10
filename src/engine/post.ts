@@ -1377,6 +1377,22 @@ const GRADE_SAT_LINEAR_LEGACY = 1.4;
 const GRADE_CONTRAST = 1.28;
 const GRADE_BLACK_POINT = 0.012;
 const GRADE_SATURATION = 1.0;
+/** 2026-10-09: the aerial in-scatter's level at full night, over the day's (1 = the day's law; see updateAerialFogColors). */
+const HAZE_NIGHT_LEVEL = 1.0;
+/**
+ * 2026-10-09 (the skies lane; the gauntlet's wave 295 on six maps' night frames: "the land below keeps a saturated daytime
+ * green instead of desaturating under moonlight", "the foreground stubble field stays a saturated daytime straw-yellow at
+ * night", "the night sea ... a saturated, almost daylight cyan-blue", "the near sand floor stays a bright, saturated dusk
+ * tan"): the night's scotopic shift drained only 28 % of a moonlit field's colour (0.55 at luma 0.06, gone by 0.55, and a
+ * saturated blue sea or straw field read bright enough on luma alone to keep most of it). The shift is now keyed on the
+ * pixel's light — its luma or, for a saturated lamp, its brightest channel weighted (a red lens or a sodium lamp holds
+ * its colour, the receipt's lit lens included) — and takes most of a moonlit midtone's colour toward a cool grey with a
+ * milder blue than before (a night is not "a blue-tinted copy of the day"): [amount, key from, key to, the brightest
+ * channel's weight in the key].
+ */
+export const GRADE_NIGHT_SCOTOPIC: readonly [number, number, number, number] = Object.freeze([0.78, 0.10, 0.80, 0.80]);
+/** The scotopic shift's target: the pixel's luma times this cool grey. */
+export const GRADE_NIGHT_SCOTOPIC_TINT: readonly [number, number, number] = Object.freeze([0.86, 0.97, 1.14]);
 /**
  * 2026-10-03 (the shade-fill lane; the gauntlet's waves 29, 34 and 36: a tank's shadow on Verdant's grass at about RGB
  * (12, 40, 8), a shaded village wall "a flat, textureless matte-black mass", Saltmere's tor "crushed to near-black"):
@@ -1499,6 +1515,9 @@ const GradeShader = {
     uWhiteBalance: { value: new THREE.Vector3(1, 1, 1) },
     // 2026-10-01: 0..1 night (lightModel.ts) — the scotopic shift of low light toward a desaturated blue
     uNight: { value: 0 },
+    // 2026-10-09: the scotopic shift's law and target (GRADE_NIGHT_SCOTOPIC, _TINT)
+    uScot: { value: new THREE.Vector4(...GRADE_NIGHT_SCOTOPIC) },
+    uScotTint: { value: new THREE.Vector3(...GRADE_NIGHT_SCOTOPIC_TINT) },
     uScope: { value: 0 }, // 0 = arcade, 1 = sniper (eased by render())
     // r4: zoom-scaled center unsharp while scoped — the x8 picture magnifies
     // terrain/horizon texels far past their mip frequency and the far field
@@ -1526,6 +1545,8 @@ const GradeShader = {
     uniform float uBlackPoint;
     uniform float uVignette;
     uniform float uNight;
+    uniform vec4 uScot;
+    uniform vec3 uScotTint;
     uniform float uScope;
     uniform float uSharp;
     uniform float uAspect;
@@ -1581,8 +1602,9 @@ const GradeShader = {
       // night (2026-10-01): low light reads through the rods — colour drains from the shadows and dim midtones
       // toward a cool blue (the Purkinje shift); highlights (lamps, the moon, muzzle flashes) keep their colour
       if ( uNight > 0.001 ) {
-        float scot = uNight * 0.55 * ( 1.0 - smoothstep( 0.06, 0.55, luma ) );
-        col = mix( col, luma * vec3( 0.82, 0.96, 1.22 ), scot );
+        float scotKey = max( luma, max( col.r, max( col.g, col.b ) ) * uScot.w );
+        float scot = uNight * uScot.x * ( 1.0 - smoothstep( uScot.y, uScot.z, scotKey ) );
+        col = mix( col, luma * uScotTint, scot );
       }
       // vignette (radial, corners only) — luma-adaptive: bright sky/haze
       // corners keep most of their level so sunny establishing shots read
@@ -2745,6 +2767,8 @@ export function createPost(
     u.uBlackPoint.value = lightTune('GRADE_BLACK_POINT', GRADE_BLACK_POINT);
     u.uVignette.value = lightTune('GRADE_VIGNETTE', GRADE_VIGNETTE);
     u.uNight.value = model?.night ?? 0;
+    (u.uScot.value as THREE.Vector4).set(lightTune('GRADE_SCOT_AMOUNT', GRADE_NIGHT_SCOTOPIC[0]), lightTune('GRADE_SCOT_FROM', GRADE_NIGHT_SCOTOPIC[1]),
+      lightTune('GRADE_SCOT_TO', GRADE_NIGHT_SCOTOPIC[2]), lightTune('GRADE_SCOT_MAXC', GRADE_NIGHT_SCOTOPIC[3]));
     if (model) {
       u.uExposure.value = model.exposure;
       u.uWhiteBalance.value.set(model.whiteBalance[0], model.whiteBalance[1], model.whiteBalance[2]);
@@ -2831,7 +2855,11 @@ export function createPost(
       const law = u.uHazeLaw.value as THREE.Vector4;
       // (the target's tint share and level: hazeLaw.ts hazeTargetTerms, the cloud trace's deck rows read the same)
       const terms = hazeTargetTerms(overcast, atmosphere.fogMix, hazeTermsScratch);
-      law.set(hazeSigma(atmosphere.fogDensity), hazeLayerInverseScale(), terms.x, terms.y);
+      // 2026-10-09 (the skies lane, owner R264 "on sunsets and nights, the far skybox is still like glowing"): at night the
+      // air's level under the sky behind it (HAZE_NIGHT_LEVEL at full night; 1 = the day's law)
+      const night = (scene.userData.lightModel as LightModel | undefined)?.night ?? 0;
+      const nightLevel = 1 + (lightTune('HAZE_NIGHT_LEVEL', HAZE_NIGHT_LEVEL) - 1) * night;
+      law.set(hazeSigma(atmosphere.fogDensity), hazeLayerInverseScale(), terms.x, terms.y * nightLevel);
       hazeExtinctionChroma(u.uHazeChroma.value as THREE.Vector3);
       (u.uHazeMid.value as THREE.Vector3).set(lightTune('AERIAL_MID_W0', AERIAL_MID_W0),
         Math.max(1, lightTune('AERIAL_MID_FAR_M', AERIAL_MID_FAR_M)), lightTune('AERIAL_MID_HUE', AERIAL_MID_HUE));
