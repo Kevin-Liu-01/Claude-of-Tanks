@@ -51,7 +51,7 @@ const BOW:Readonly<Record<ProtectionId,readonly[number,number]>>={
 function camouflage(id:ProtectionId,index:number):GhillieConfig{
   const d=NATIONAL_UKRAINE_PROTECTION[id],[bowZ,bowTop]=BOW[id];
   return {
-    id,seed:8460+index*113,style:'leafy',density:1.3,leafScale:.8,boughShare:.42,fieldClearanceM:.03,
+    id,seed:8460+index*113,style:'leafy',density:1.8,leafScale:.8,boughShare:.42,fieldClearanceM:.03,hemFloorM:.6,
     light:0x6d7e48,dark:0x31482d,netColor:'rgba(38,53,30,0.83)',
     hull:{
      face:[{z:bowZ,x0:-1.02,x1:1.02,y0:bowTop-.36,y1:bowTop,nx:20,ny:5,seed:101}],

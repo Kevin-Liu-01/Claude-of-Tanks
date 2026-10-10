@@ -66,7 +66,7 @@ import {
   canRack, canRackStyleFor, FABRIC_FAMILIES, sandbag, whipAntennaParts, type AccessoryPainter, type RGB,
 } from './accessoryKits.ts';
 import { FOLIAGE_ALPHA_TEST, vehicleFoliageAtlas, type VehicleFoliageKind } from './vehicleFoliage.ts';
-import { drapeGhillieOverLoads, GHILLIE_TOP_VERTICES } from './ghillieDrape.ts';
+import { clearGhillieForSmoke, drapeGhillieOverLoads, GHILLIE_TOP_VERTICES } from './ghillieDrape.ts';
 import { block, latheY, moldedBox, place, roundBar, sweptTube, withBoxUV } from './accessoryPrimitives.ts';
 import {
   addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield, createPintleLayout,
@@ -423,6 +423,30 @@ type SlotPlacer = (
   parts: DecorPartList,
   name: string,
 ) => boolean;
+
+/**
+ * The netting lane (2026-10-10): the smoke grenade lines of the decor's own banks under a frame (its rig_decor groups),
+ * as [px, py, pz, dx, dy, dz] rows in that frame, for the field suit to give way to (ghillieDrape.ts).
+ */
+function decorSmokeLines(frameG: THREE.Object3D): number[] {
+  frameG.updateWorldMatrix(true, true);
+  const inv = new THREE.Matrix4().copy(frameG.matrixWorld).invert(), m = new THREE.Matrix4();
+  const p = new THREE.Vector3(), d = new THREE.Vector3(), rows: number[] = [];
+  for (const group of frameG.children) {
+    if (!/^rig_decor_/.test(group.name || '')) continue;
+    group.traverse((o) => {
+      const sockets = o.userData?.smokeSockets as Array<{ position: number[]; direction: number[] }> | undefined;
+      if (!Array.isArray(sockets)) return;
+      m.multiplyMatrices(inv, o.matrixWorld);
+      for (const s of sockets) {
+        p.fromArray(s.position).applyMatrix4(m);
+        d.fromArray(s.direction).transformDirection(m);
+        rows.push(p.x, p.y, p.z, d.x, d.y, d.z);
+      }
+    });
+  }
+  return rows;
+}
 
 function errorMessage(error: RuntimeValue): string {
   return error instanceof Error ? error.message : String(error);
@@ -6415,6 +6439,9 @@ export function* attachTankDecorationsSteps(
     // them, never laid through them (ghillieDrape.ts)
     drapeGhillieOverLoads(hullG, seatedLoads.hull);
     drapeGhillieOverLoads(turretG, seatedLoads.turret);
+    // the netting lane (2026-10-10): a field suit gives way to the smoke banks seated here (gameplay fittings, laid
+    // after the suit): its cloth and garnish in their lines of fire are cut away
+    for (const frameG of [hullG, turretG]) clearGhillieForSmoke(frameG, decorSmokeLines(frameG));
     yield { stage: 'publish', completed: resources.groupCount(), total: resources.groupCount() };
     summary.tris = budget.tris;
     summary.drawCalls = drawCalls;

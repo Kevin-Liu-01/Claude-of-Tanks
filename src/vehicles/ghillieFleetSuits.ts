@@ -22,8 +22,12 @@ const rect = (x0: number, x1: number, z0: number, z1: number): Point2[] => [[x0,
 /** A rectangle mirrored to both flanks (x0 < x1 on the right; the left copy is negated). */
 const pair = (x0: number, x1: number, z0: number, z1: number): Point2[][] => [rect(x0, x1, z0, z1), rect(-x1, -x0, z0, z1)];
 
-/** The woodland issue tones the bough tints are pulled toward (the theatre's palette carries the strips). */
-const WOODLAND = { light: 0x6f7e4b, dark: 0x33462d, netColor: 'rgba(40,54,32,0.82)' } as const;
+/**
+ * The woodland issue tones the bough tints are pulled toward (the theatre's palette carries the strips), and one
+ * painted net texture for the whole set (the Abrams UA's, ghillieSuit.ts ua_m1a1): a texture pair per hull would cost
+ * a paint and its memory each, and every panel is offset in it anyway.
+ */
+const WOODLAND = { light: 0x6f7e4b, dark: 0x33462d, netColor: 'rgba(40,54,32,0.82)', netTextureSeed: 1101 } as const;
 
 /** A roof or deck net laid over its owner's armour, ending at the armour's edges and opened round its lids. */
 function laid(panel: Omit<TopPanel, 'yAt'> & { y?: number }): TopPanel {
@@ -51,7 +55,7 @@ function flanks(z0: number, z1: number, top: number, drop: number, out: number, 
 function face(panel: FacePanel): FacePanel { return panel; }
 
 /** Group B (the owner: "a ton more netting and camo leaves all over"): denser garnish, more of it cut boughs. */
-const DENSE = { density: 1.2, leafScale: 0.94, boughShare: 0.42 } as const;
+const DENSE = { density: 1.8, leafScale: 0.94, boughShare: 0.42 } as const;
 
 /** Four drapes a side between z0 and z1 with short bare gaps (a heavily netted hull's skirts). */
 function skirts(z0: number, z1: number, top: number, drop: number, out: number, seed: number,
@@ -72,7 +76,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // the front shoulders beside the driver netted outboard of the gun's arc, the skirts hung in three drapes a side.
   cv90: {
     id: 'cv90', seed: 9040, style: 'leafy', density: 0.95, leafScale: 0.92, foliageKind: 'spruce', ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 1.92, hemFloorM: 1.12,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.92, hemFloorM: 0.85,
 
     turret: {
       top: [laid({
@@ -107,7 +111,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // the right flank's exhaust outlet (z -0.5 to 0.6) left bare.
   cv90_x: {
     id: 'cv90_x', seed: 9041, style: 'leafy', density: 0.95, leafScale: 0.92, foliageKind: 'spruce', ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 1.9, hemFloorM: 0.7,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.9, hemFloorM: 0.65,
     turret: {
       top: [laid({
         x0: -1.24, x1: 1.24, z0: -1.44, z1: 1.20, nx: 31, nz: 33, y: 0.78,
@@ -132,7 +136,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // deck under the basket netted low, the skirts hung in three drapes a side; the front engine deck and its grille bare.
   merkava4b: {
     id: 'merkava4b', seed: 4041, style: 'leafy', density: 0.95, leafScale: 0.92, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 2.08, hemFloorM: 0.9,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.08, hemFloorM: 0.85,
     turret: {
       top: [
         laid({
@@ -152,7 +156,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     hull: {
       top: [laid({ x0: -1.75, x1: 1.75, z0: -4.10, z1: -0.55, nx: 35, nz: 36, y: 1.76, garnishRiseM: 0.10, seed: 31 })],
       side: [
-        ...flanks(-3.95, -1.90, 1.82, 0.56, 1.88, 41),
+        ...flanks(-3.25, -1.90, 1.82, 0.56, 1.88, 41),
         ...flanks(-1.52, 0.56, 1.82, 0.52, 1.88, 47),
         ...flanks(0.94, 2.42, 1.82, 0.56, 1.88, 53),
       ],
@@ -164,7 +168,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // hull's rear deck under the basket netted low; drapes from the deck edge over the skirts, three a side.
   merkava3c: {
     id: 'merkava3c', seed: 3031, style: 'leafy', density: 0.95, leafScale: 0.92, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 2.03, hemFloorM: 0.88,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.03, hemFloorM: 0.85,
     turret: {
       top: [
         laid({
@@ -197,12 +201,14 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // and the exhaust end bare), four drapes a side over the skirts.
   ua_m1a1_x: {
     id: 'ua_m1a1_x', seed: 1103, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 2.22, hemFloorM: 0.72,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.22, hemFloorM: 0.7,
     turret: {
       top: [
         // inside the cage's side rails (x 1.23): the flank drapes, sought from 1.27 out, never find it and hang from the
         // turret's ARAT tiles instead of curtaining the cage's sides
-        { x0: -1.18, x1: 1.18, z0: -2.42, z1: 0.80, nx: 30, nz: 40, yAt: () => 1.87, seed: 11, tents: [], garnishRiseM: 0.16, reliefScale: 0.8 },
+        // open over the commander's cupola and the loader's hatch (the crew's way out through the cage roof)
+        { x0: -1.18, x1: 1.18, z0: -2.42, z1: 0.80, nx: 30, nz: 40, yAt: () => 1.87, seed: 11, tents: [], garnishRiseM: 0.16, reliefScale: 0.8,
+          holes: [rect(-1.10, 0.09, -1.34, -0.15), rect(0.01, 0.83, -1.14, -0.32)] },
         laid({ x0: -1.06, x1: 1.06, z0: -3.40, z1: -2.58, nx: 21, nz: 10, y: 1.04, garnishRiseM: 0.16, seed: 13 }),
       ],
       side: flanks(-2.30, -0.12, 0.98, 0.46, 1.72, 17),
@@ -247,7 +253,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // exhaust).
   type10b: {
     id: 'type10b', seed: 1004, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 1.95, hemFloorM: 0.75,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.95, hemFloorM: 0.62,
     turret: {
       top: [laid({
         x0: -1.68, x1: 1.70, z0: -3.41, z1: 1.97, nx: 42, nz: 67, y: 0.76,
@@ -260,10 +266,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     },
     hull: {
       top: [
-        laid({ x0: -1.66, x1: 1.66, z0: -3.40, z1: 0.24, nx: 33, nz: 36, y: 1.95, holes: [rect(-1.80, -1.35, -3.45, -2.30)], garnishRiseM: 0.14, seed: 31 }),
+        laid({ x0: -1.66, x1: 1.66, z0: -3.40, z1: 0.24, nx: 33, nz: 36, y: 1.95, holes: [rect(-1.80, -1.35, -3.55, -2.15)], garnishRiseM: 0.14, seed: 31 }),
         laid({ x0: -1.66, x1: 1.66, z0: 0.24, z1: 3.45, nx: 33, nz: 32, y: 1.80, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      side: skirts(-3.45, 3.30, 1.60, 0.55, 1.76, 41, (side) => (side < 0 ? [cut(-3.45, -2.30, 1.30, 1.85)] : [])),
+      side: skirts(-3.10, 3.02, 1.60, 0.55, 1.76, 41, (side) => (side < 0 ? [cut(-3.55, -2.15, 1.30, 1.85)] : [])),
     },
   },
   // Type 90A: the roof netted round the sight head and its rail, the commander's and loader's hatches and the MG ring,
@@ -295,7 +301,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // glacis over its appliqué, four drapes a side over the skirts.
   ariete_c2_x: {
     id: 'ariete_c2_x', seed: 2042, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 2.42, hemFloorM: 0.85,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.42, hemFloorM: 0.78,
     turret: {
       top: [laid({
         x0: -2.09, x1: 2.09, z0: -3.27, z1: 1.70, nx: 52, nz: 62, y: 0.95,
@@ -319,7 +325,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // round the driver's periscope, four drapes a side.
   ariete_c2: {
     id: 'ariete_c2', seed: 2043, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 2.19, hemFloorM: 0.85,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.19, hemFloorM: 0.8,
     turret: {
       top: [laid({
         x0: -1.71, x1: 1.71, z0: -2.72, z1: 2.06, nx: 43, nz: 60, y: 0.97,
@@ -336,14 +342,14 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.87, x1: 1.87, z0: -0.11, z1: 3.85, nx: 37, nz: 40, y: 1.90, holes: [rect(-0.43, 0.20, 0.84, 1.29)],
           garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      side: skirts(-3.85, 3.85, 1.72, 0.55, 2.01, 41),
+      side: skirts(-3.45, 3.40, 1.72, 0.55, 2.01, 41),
     },
   },
   // LRMV Lynx: the turret roof netted round the RWS (the builder) and the periscope row, drapes ahead of the side smoke
   // banks, a rear drape; the long hull roof netted fore and aft of the turret, four drapes a side down the tall skirts.
   lrmv_lynx: {
     id: 'lrmv_lynx', seed: 6201, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 1.84, hemFloorM: 0.9,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.84, hemFloorM: 0.84,
     turret: {
       top: [laid({ x0: -1.27, x1: 1.27, z0: -1.55, z1: 1.35, nx: 32, nz: 36, y: 0.70, garnishRiseM: 0.16, seed: 11 })],
       side: flanks(-0.58, 1.00, 0.74, 0.42, 1.24, 17),
@@ -361,7 +367,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // a rear drape; the engine deck netted (the left rear exhaust bare) and the front deck, four drapes a side.
   ztz99a2: {
     id: 'ztz99a2', seed: 9902, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 2.09, hemFloorM: 0.75,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.09, hemFloorM: 0.72,
     turret: {
       top: [laid({ x0: -1.67, x1: 1.67, z0: -2.36, z1: 1.55, nx: 42, nz: 49, y: 0.81, holes: [rect(0.17, 0.43, -0.99, -0.77)], garnishRiseM: 0.16, seed: 11 })],
       side: flanks(-2.21, -0.03, 0.85, 0.46, 1.64, 17),
@@ -380,7 +386,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // a side.
   cn_t80u_modern: {
     id: 'cn_t80u_modern', seed: 8031, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 2.37, hemFloorM: 0.95,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.37, hemFloorM: 0.93,
     turret: {
       top: [laid({ x0: -1.73, x1: 1.73, z0: -2.03, z1: 1.40, nx: 43, nz: 43, y: 0.74, holes: [...pair(0.90, 1.24, -0.92, -0.20)], garnishRiseM: 0.16, seed: 11 })],
       side: flanks(-1.90, -0.94, 0.78, 0.46, 1.70, 17),
@@ -398,7 +404,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // drape; the engine deck netted (the left rear exhaust bare) and the front deck, four drapes a side.
   type96b_x: {
     id: 'type96b_x', seed: 9602, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 1.94, hemFloorM: 1.1,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.94, hemFloorM: 1.07,
     turret: {
       top: [laid({ x0: -1.75, x1: 1.75, z0: -1.95, z1: 1.91, nx: 44, nz: 48, y: 0.70, garnishRiseM: 0.16, seed: 11 })],
       side: flanks(-1.80, 0.39, 0.74, 0.46, 1.72, 17),
@@ -417,7 +423,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // engine deck netted short of the rear exhaust, the front deck, four drapes a side.
   leclerc_xlr: {
     id: 'leclerc_xlr', seed: 5502, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 2.03, hemFloorM: 0.9,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.03, hemFloorM: 0.86,
     turret: {
       top: [laid({ x0: -1.68, x1: 1.58, z0: -2.63, z1: 1.99, nx: 41, nz: 58, y: 0.72, garnishRiseM: 0.16, seed: 11 })],
       side: flanks(-0.90, 0.95, 0.76, 0.42, 1.65, 17),
@@ -428,7 +434,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.70, x1: 1.70, z0: -3.15, z1: -0.10, nx: 34, nz: 31, y: 1.70, garnishRiseM: 0.14, seed: 31 }),
         laid({ x0: -1.70, x1: 1.70, z0: -0.10, z1: 3.25, nx: 34, nz: 34, y: 1.62, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      side: skirts(-3.30, 3.30, 1.40, 0.42, 1.83, 41),
+      side: skirts(-3.30, 2.42, 1.40, 0.42, 1.83, 41),
     },
   },
   // T-80U Bars-M: the roof netted round its drum-fed station (the builder), sights and hatches, drapes behind each
@@ -436,7 +442,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // side.
   ru_t80u_modern: {
     id: 'ru_t80u_modern', seed: 8032, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 2.43, hemFloorM: 0.95,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.43, hemFloorM: 0.84,
     turret: {
       top: [laid({ x0: -1.84, x1: 1.86, z0: -2.28, z1: 1.90, nx: 46, nz: 52, y: 0.72, garnishRiseM: 0.16, seed: 11 })],
       side: [...flanks(-2.13, -0.56, 0.76, 0.46, 1.83, 17).filter((p) => p.side < 0), ...flanks(-2.13, -0.04, 0.76, 0.46, 1.83, 17).filter((p) => p.side > 0)],
@@ -456,7 +462,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // the exhaust).
   t90m: {
     id: 't90m', seed: 9004, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 0.8,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 0.72,
     turret: {
       top: [laid({ x0: -1.87, x1: 1.87, z0: -3.55, z1: 1.40, nx: 47, nz: 62, y: 0.94,
         holes: [rect(0.50, 1.10, 0.45, 1.25), rect(0.08, 0.62, 0.40, 0.90)], garnishRiseM: 0.16, seed: 11 })],
@@ -468,7 +474,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.80, x1: 1.80, z0: -3.85, z1: 0.14, nx: 36, nz: 40, y: 1.60, holes: [rect(-1.95, -1.40, -3.50, -2.20)], garnishRiseM: 0.14, seed: 31 }),
         laid({ x0: -1.80, x1: 1.80, z0: 0.14, z1: 3.70, nx: 36, nz: 36, y: 1.55, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      side: skirts(-3.80, 3.60, 1.52, 0.48, 1.95, 41, (side) => (side < 0 ? [cut(-3.50, -2.20, 1.00, 1.90)] : [])),
+      side: skirts(-3.05, 3.35, 1.52, 0.48, 1.95, 41, (side) => (side < 0 ? [cut(-3.50, -2.20, 1.00, 1.90)] : [])),
     },
   },
   // Leopard 2A7V: the arrowhead roof netted round the PERI, the EMES head, the hatches and the remote station (the
@@ -476,7 +482,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // deck netted short of the rear exhaust louvres, the front deck, four drapes a side.
   leo2a7v_x: {
     id: 'leo2a7v_x', seed: 2704, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 1.05,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 1.01,
     turret: {
       top: [laid({ x0: -1.63, x1: 1.63, z0: -3.35, z1: 2.35, nx: 41, nz: 71, y: 0.88, garnishRiseM: 0.16, seed: 11 })],
       side: [...flanks(-1.04, 1.50, 0.92, 0.46, 1.60, 17), ...flanks(-3.20, -2.10, 0.92, 0.42, 1.60, 19)],
@@ -495,7 +501,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // deck, four drapes a side.
   leo2a5_x: {
     id: 'leo2a5_x', seed: 2505, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 1.94, hemFloorM: 1.0,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.94, hemFloorM: 0.97,
     turret: {
       top: [laid({ x0: -1.55, x1: 1.56, z0: -3.53, z1: 2.40, nx: 39, nz: 74, y: 0.86, garnishRiseM: 0.16, seed: 11 })],
       side: [...flanks(-0.81, 1.60, 0.90, 0.46, 1.53, 17), ...flanks(-3.38, -2.54, 0.90, 0.42, 1.53, 19)],
@@ -514,10 +520,12 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // front deck, four drapes a side.
   kf51b: {
     id: 'kf51b', seed: 5101, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 2.1, hemFloorM: 0.75,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.1, hemFloorM: 0.68,
     turret: {
       top: [laid({ x0: -1.58, x1: 1.56, z0: -3.09, z1: 1.73, nx: 39, nz: 60, y: 0.64, garnishRiseM: 0.16, seed: 11 })],
-      side: [...flanks(-0.38, 1.45, 0.68, 0.44, 1.55, 17), ...flanks(-2.94, -1.13, 0.68, 0.44, 1.55, 19)],
+      // the front drapes cut round the cheek sensors (turret z 0.88, both flanks)
+      side: [...flanks(-0.38, 1.45, 0.68, 0.44, 1.55, 17, {}, () => [cut(0.66, 1.10, 0.50, 0.90)]),
+        ...flanks(-2.94, -1.13, 0.68, 0.44, 1.55, 19)],
       face: [face({ z: -3.10, x0: -1.25, x1: 1.25, y0: 0.24, y1: 0.62, nx: 25, ny: 6, seed: 23 })],
     },
     hull: {
@@ -525,7 +533,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.75, x1: 1.75, z0: -3.50, z1: 0.65, nx: 35, nz: 42, y: 2.00, garnishRiseM: 0.14, seed: 31 }),
         laid({ x0: -1.75, x1: 1.75, z0: 0.65, z1: 3.50, nx: 35, nz: 29, y: 1.95, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      side: skirts(-3.40, 3.40, 1.48, 0.52, 1.92, 41),
+      side: skirts(-3.40, 3.12, 1.48, 0.52, 1.92, 41),
     },
   },
   // SPz Wotan: the offset turret's roof netted round its sights and the remote station (the builder), drapes behind the
@@ -533,7 +541,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // round the front exhaust).
   spz_puma_s1: {
     id: 'spz_puma_s1', seed: 1501, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 2.04, hemFloorM: 0.75,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.04, hemFloorM: 0.67,
     turret: {
       top: [laid({ x0: -1.23, x1: 1.22, z0: -1.57, z1: 1.22, nx: 31, nz: 35, y: 0.67, garnishRiseM: 0.16, seed: 11 })],
       side: flanks(-1.42, -0.21, 0.71, 0.42, 1.21, 17),
@@ -544,7 +552,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.70, x1: 1.70, z0: -3.10, z1: -0.99, nx: 34, nz: 21, y: 1.90, garnishRiseM: 0.14, seed: 31 }),
         laid({ x0: -1.70, x1: 1.70, z0: -0.99, z1: 3.00, nx: 34, nz: 40, y: 1.85, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      side: skirts(-3.10, 3.05, 1.62, 0.55, 1.86, 41, (side) => (side > 0 ? [cut(0.80, 2.60, 1.00, 1.90)] : [])),
+      // cut round the hull's side cameras (z 0.94 and -2.45 a side) and the right front exhaust
+      side: skirts(-3.10, 3.05, 1.62, 0.55, 1.86, 41, (side) => [cut(0.74, 1.14, 1.42, 1.90), cut(-2.65, -2.25, 1.42, 1.90),
+        ...(side > 0 ? [cut(0.80, 2.60, 1.00, 1.90)] : [])]),
     },
   },
 });

@@ -8,7 +8,7 @@ import {
   ghillieGarnishAtlas, vehicleFoliageAtlas, type FoliageCard, type VehicleFoliageKind,
 } from './vehicleFoliage.ts';
 import type { SprayKind } from '../world/treeSprayAtlas.ts';
-import { GHILLIE_TOP_CARDS, GHILLIE_TOP_VERTICES } from './ghillieDrape.ts';
+import { GHILLIE_FIELD_OK, GHILLIE_TOP_CARDS, GHILLIE_TOP_VERTICES } from './ghillieDrape.ts';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 import {
   garnishedNetTextures, NET_PALETTES, NET_TEXTURE_PX, NET_TILE_M, suitTheatreOf, theatreOfHex, type NetPalette, type SuitTheatre,
@@ -113,7 +113,8 @@ interface SidePanel {
   tiedTop?: boolean;
   /**
    * 2026-10-09 (the netting lane): boxes [z0, z1, yLo, yHi] the drape is cut away over (a smoke discharger bank, a
-   * light, a sight window or an exhaust on the wall it hangs past); no garnish reaches into them either.
+   * light, a sight window or an exhaust on the wall it hangs past), from yHi down to the hem: no cloth hangs on below a
+   * cut, and no garnish reaches into it either (yLo documents the fitting's foot).
    */
   cuts?: readonly (readonly [number, number, number, number])[];
 }
@@ -168,9 +169,15 @@ export interface GhillieConfig {
    * The hull's net and garnish stay under the turret's underside through its whole traverse; the turret's stay above
    * the hull (armour, fittings and the hull's own suit) through it, its drape hems raised to suit; neither enters the
    * main gun's swept volume (its depression by turret yaw and its full elevation); no garnish stands in a lens's view or
-   * a smoke discharger's line of fire. Unset on the round-5 suits, which keep their receipts.
+   * a smoke discharger's line of fire, and no cloth stands off its armour there. Unset on the round-5 suits, which keep
+   * their receipts.
    */
   fieldClearanceM?: number;
+  /**
+   * The netting lane: the seed of the painted net texture (default: the suit's seed). Suits sharing one share a single
+   * texture pair (camoNetTexture.ts caches by theatre and seed); each panel's own offset keeps them from matching.
+   */
+  netTextureSeed?: number;
   hull?: GhilliePanels;
   turret?: GhilliePanels;
   gun?: GhilliePanels;
@@ -211,7 +218,30 @@ const rect = (x0: number, x1: number, z0: number, z1: number): Point2[] => (
   [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]
 );
 
+/** Each polygon's plan box [x0, x1, z0, z1], kept on first use (a point outside it is outside the polygon). */
+const polyBoxes = new WeakMap<readonly Point2[], [number, number, number, number]>();
+function polyBox(poly: readonly Point2[]): [number, number, number, number] {
+  let box = polyBoxes.get(poly);
+  if (!box) {
+    box = [Infinity, -Infinity, Infinity, -Infinity];
+    for (const [px, pz] of poly) {
+      if (px < box[0]) box[0] = px;
+      if (px > box[1]) box[1] = px;
+      if (pz < box[2]) box[2] = pz;
+      if (pz > box[3]) box[3] = pz;
+    }
+    polyBoxes.set(poly, box);
+  }
+  return box;
+}
+/** Whether (x, z) lies within `pad` of a polygon's plan box. */
+function nearBox(x: number, z: number, poly: readonly Point2[], pad: number): boolean {
+  const b = polyBox(poly);
+  return x >= b[0] - pad && x <= b[1] + pad && z >= b[2] - pad && z <= b[3] + pad;
+}
+
 function insidePoly(x: number, z: number, poly: readonly Point2[]): boolean {
+  if (poly.length > 4 && !nearBox(x, z, poly, 0)) return false;
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
     const [xi, zi] = poly[i];
@@ -391,6 +421,7 @@ function placeGarnishClumps(
 
 /** Point-in-polygon or within `margin` of its edges. */
 function nearPolygon(x: number, z: number, poly: readonly Point2[], margin: number): boolean {
+  if (!nearBox(x, z, poly, Math.max(0, margin))) return false;
   if (insidePoly(x, z, poly)) return true;
   if (margin <= 0) return false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -494,8 +525,8 @@ interface SurfaceProbe {
   side(y: number, z: number, side: number): number | null;
   /** The outermost surface toward `facing` (+1 bow, -1 rear) at (x, y), as facing * z, or null. */
   face(x: number, y: number, facing: number): number | null;
-  /** Every surface on the vertical line through (x, z), highest first, with its facing (an armour probe's). */
-  surfacesAt?(x: number, z: number): Array<{ y: number; up: boolean }>;
+  /** Every surface on the vertical line through (x, z), highest first, with its facing and whether it is running gear. */
+  surfacesAt?(x: number, z: number): Array<{ y: number; up: boolean; gear?: boolean }>;
 }
 
 /** The highest of a surface within `r` of (x, z): five samples, kept inside `bounds` [x0, x1, z0, z1] when given. */
@@ -602,8 +633,8 @@ class ArmourProbe implements SurfaceProbe {
    * The netting lane: every armour surface the vertical line through (x, z) meets, highest first, each with whether
    * it faces up (a deck, a lid) or down (a bar's or a box's underside). Running gear is met with its clearance added.
    */
-  surfacesAt(x: number, z: number): Array<{ y: number; up: boolean }> {
-    const tri = this.tri, g = this.xz, out: Array<{ y: number; up: boolean }> = [];
+  surfacesAt(x: number, z: number): Array<{ y: number; up: boolean; gear: boolean }> {
+    const tri = this.tri, g = this.xz, out: Array<{ y: number; up: boolean; gear: boolean }> = [];
     const test = (t: number): void => {
       const o = t * 9;
       const x0 = tri[o], y0 = tri[o + 2], x1 = tri[o + 3], y1 = tri[o + 5], x2 = tri[o + 6], y2 = tri[o + 8];
@@ -614,7 +645,7 @@ class ArmourProbe implements SurfaceProbe {
       if (l0 < -1e-7 || l1 < -1e-7 || l2 < -1e-7) return;
       // the face's normal y sign from its winding in plan (counter-clockwise from above faces up)
       const ny = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0);
-      out.push({ y: l0 * tri[o + 1] + l1 * tri[o + 4] + l2 * tri[o + 7] + (this.gear[t] ? GEAR_CLEARANCE_M : 0), up: ny < 0 });
+      out.push({ y: l0 * tri[o + 1] + l1 * tri[o + 4] + l2 * tri[o + 7] + (this.gear[t] ? GEAR_CLEARANCE_M : 0), up: ny < 0, gear: !!this.gear[t] });
     };
     const c = Math.floor((x - g.min0) / PROBE_CELL_M), r = Math.floor((z - g.min1) / PROBE_CELL_M);
     if (c >= 0 && r >= 0 && c < g.n0 && r < g.n1) {
@@ -661,6 +692,8 @@ interface OwnerSupport {
   hemFloorAt?(x: number, z: number): number;
   /** The netting lane (fieldClearanceM): whether cloth may lie at an owner-local point. */
   clothOk?(p: Point3): boolean;
+  /** The netting lane: the owner's lid and lens plan boxes [x0, x1, z0, z1]; a drape's roll over the deck never crosses one. */
+  lids?: ReadonlyArray<readonly [number, number, number, number]>;
 }
 
 /** A point and its outward normal on a cloth, for seating garnish. */
@@ -736,7 +769,7 @@ const panelUvOffset = (panel: { seed?: number }, suitSeed: number): [number, num
  * the sheet, hanging in the air with nothing holding them. Those islands are dropped (a sheet keeps every piece of at
  * least a twentieth of its cells).
  */
-function dropIslands(positions: number[], uvs: number[]): void {
+function dropIslands(positions: number[], uvs: number[], minTris = 8, share = 20): void {
   const triCount = positions.length / 9;
   if (triCount < 2) return;
   const parent = Int32Array.from({ length: triCount }, (_, i) => i);
@@ -753,7 +786,7 @@ function dropIslands(positions: number[], uvs: number[]): void {
   }
   const size = new Map<number, number>();
   for (let t = 0; t < triCount; t++) { const r = find(t); size.set(r, (size.get(r) ?? 0) + 1); }
-  const keep = Math.max(8, Math.ceil(triCount / 20));
+  const keep = Math.max(minTris, Math.ceil(triCount / share));
   if ([...size.values()].every((n) => n >= keep)) return;
   const p2: number[] = [], u2: number[] = [];
   for (let t = 0; t < triCount; t++) {
@@ -816,9 +849,9 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
   // a seated net over measured armour sits at the drape's loft: the probe already carries the ERA, kit and packs the
   // authored seat gap was there to clear
   const probe = support.probe;
-  // the netting lane: a net laid over the armour (yFromArmour) has its cords on the plate (8 mm)
+  // the netting lane: a net laid over the armour (yFromArmour) has its cords on the plate (5 mm)
   const gap = seated && probe ? Math.min(panel.seatGapM ?? FITTED_GAP_M, DRAPE_GAP_M - 0.004)
-    : panel.seatGapM ?? (panel.yFromArmour ? 0.008 : DRAPE_GAP_M);
+    : panel.seatGapM ?? (panel.yFromArmour ? 0.005 : DRAPE_GAP_M);
   const s = panelSeed(panel, cfg.seed);
   const base = new Float64Array(NX * NZ);
   // where no armour holds the cloth (past a deck's edge, beside a barrel) it hangs from its neighbours (supported)
@@ -832,12 +865,14 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
   const laidRest = new Float64Array(NX * NZ).fill(NaN);
   const laidAt = (x: number, z: number): { rest: number | null; standing: boolean } => {
     const ceiling = panel.yAt(x, z) + (panel.riseLimitM ?? 0.35);
-    let rest: number | null = null, standing = false;
-    for (const [dx, dz] of [[0, 0], [0.035, 0], [-0.035, 0], [0, 0.035], [0, -0.035]] as const) {
+    let rest: number | null = null, centre: number | null = null, standing = false;
+    for (const [dx, dz] of [[0, 0], [0.03, 0.02], [-0.03, -0.02]] as const) {
       const sx = THREE.MathUtils.clamp(x + dx, x0, x1), sz = THREE.MathUtils.clamp(z + dz, z0, z1);
-      const hits: Array<{ y: number; up: boolean }> = probe?.surfacesAt?.(sx, sz) ?? [];
+      const hits: Array<{ y: number; up: boolean; gear?: boolean }> = probe?.surfacesAt?.(sx, sz) ?? [];
       let here: number | null = null;
-      for (const h of hits) if (h.up && h.y <= ceiling) { here = h.y; break; }
+      // the running gear holds no laid net up (past a deck's edge the cloth ends, it never falls onto the track)
+      for (const h of hits) if (h.up && h.y <= ceiling) { if (!h.gear) here = h.y; break; }
+      if (dx === 0 && dz === 0) centre = here;
       if (here !== null && (rest === null || here > rest)) rest = here;
       // the tallest thing over this sample: standing on the surface the net lies on, or raised over it
       if (hits.length && hits[0].y > ceiling) {
@@ -845,13 +880,17 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
         if (!under || here === null || under.y < here + 0.06) standing = true;
       }
     }
-    return { rest, standing };
+    // the armour under the point itself; its neighbours' only over a slot or a bolt head (their highest on a sloped plate
+    // would hold the net off the slope)
+    return { rest: centre !== null && rest !== null && rest - centre < 0.02 ? rest : centre ?? rest, standing };
   };
   const authoredAt = (x: number, z: number, k: number): number => {
     if (panel.yFromArmour && probe) {
       const { rest, standing } = laidAt(x, z);
       if (standing) tall[k] = 1;
-      if (rest !== null) { laidRest[k] = rest; if (!standing) return rest + 0.02; }
+      // the netting lane: armour more than LAID_DROP_M under the panel's level is past the deck's edge (the hull under a
+      // turret's side, a ledge far below), not the deck this net lies on
+      if (rest !== null && rest > panel.yAt(x, z) - LAID_DROP_M) { laidRest[k] = rest; if (!standing) return rest + 0.02; }
     }
     return panel.yAt(x, z);
   };
@@ -927,7 +966,8 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
       const x = xs[i], z = zs[j];
       let l = 0, roll = 0;
       holes.forEach((hole, h) => {
-        if (insidePoly(x, z, hole)) return;
+        // past the rim's width of the opening's box, nothing (exact: the boundary lies inside the box)
+        if (!nearBox(x, z, hole, RIM_W_M) || insidePoly(x, z, hole)) return;
         const d = boundaryDistance(x, z, hole);
         // the roll is bunched unevenly along the cut: thick in places, flat in others
         const bunch = Math.max(0, 0.25 + 0.95 * clothNoise(x * 1.7, z * 1.7, 0.22, s + h * 13));
@@ -942,7 +982,8 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
     }
     // the membrane: each point hangs from the highest support within reach, sagging away from it
     const ri = Math.ceil(SAG_REACH_M / Math.max(1e-3, (x1 - x0) / nx)), rj = Math.ceil(SAG_REACH_M / Math.max(1e-3, (z1 - z0) / nz));
-    const reliefK = panel.reliefScale ?? 1;
+    // a laid net's swell and creases are its own: shallower than a carrier's hung over sticks
+    const reliefK = panel.reliefScale ?? (panel.yFromArmour ? 0.6 : 1);
     for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) {
       let best = supported[j * NX + i] ? base[j * NX + i] + lift[j * NX + i] : -Infinity;
       for (let jj = Math.max(0, j - rj); jj <= Math.min(NZ - 1, j + rj); jj++) {
@@ -966,10 +1007,10 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
       const crease = Math.max(0, 1 - Math.abs(fold) / 0.18) ** 2;
       y[j * NX + i] = best + rim[j * NX + i]
         + reliefK * (0.004 * (1 + clothNoise(x, z, 0.55, s)) + 0.002 * (1 + clothNoise(x, z, 0.19, s + 17)) + 0.03 * crease);
-      // the netting lane: a net laid over the armour keeps its folds within 12 mm of its cords (its rolls and the sticks
+      // the netting lane: a net laid over the armour keeps its folds within 10 mm of its cords (its rolls and the sticks
       // under it excepted), so every piece of it lies on the plate
       if (panel.yFromArmour && armoured[j * NX + i]) {
-        y[j * NX + i] = Math.min(y[j * NX + i], base[j * NX + i] + lift[j * NX + i] + rim[j * NX + i] + 0.012);
+        y[j * NX + i] = Math.min(y[j * NX + i], base[j * NX + i] + lift[j * NX + i] + rim[j * NX + i] + 0.010);
       }
       if (panel.restOnProbeM !== undefined && probe) {
         // the surface under the point and under the grid lines to its neighbours (a tube between two points holds up the
@@ -993,9 +1034,20 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
     const a = y[j * NX + i], b = y[j * NX + i + 1], c = y[(j + 1) * NX + i], d = y[(j + 1) * NX + i + 1];
     return a + (b - a) * u + (c - a) * w + (a - b - c + d) * u * w;
   };
-  // the netting lane (clipToArmour): a cell is laid where at least two of its corners have armour under them
+  // the netting lane (clipToArmour): a cell is laid where at least two of its corners have armour under them, and never
+  // down a step between them (a net laid over a deck ends at its edge instead of hanging a wall of cloth off it)
+  const stepped = (i: number, j: number): boolean => {
+    if (!panel.yFromArmour) return false;
+    let lo = Infinity, hi = -Infinity;
+    for (const k of [j * NX + i, j * NX + i + 1, (j + 1) * NX + i, (j + 1) * NX + i + 1]) {
+      const r = laidRest[k];
+      if (Number.isNaN(r)) continue;
+      lo = Math.min(lo, r); hi = Math.max(hi, r);
+    }
+    return hi - lo > LAID_STEP_M;
+  };
   const clipped = (i: number, j: number): boolean => (panel.clipToArmour === true && !!probe
-    && armoured[j * NX + i] + armoured[j * NX + i + 1] + armoured[(j + 1) * NX + i] + armoured[(j + 1) * NX + i + 1] < 2)
+    && (armoured[j * NX + i] + armoured[j * NX + i + 1] + armoured[(j + 1) * NX + i] + armoured[(j + 1) * NX + i + 1] < 2 || stepped(i, j)))
     || tall[j * NX + i] + tall[j * NX + i + 1] + tall[(j + 1) * NX + i] + tall[(j + 1) * NX + i + 1] > 0;
   const cellOf = (x: number, z: number): [number, number] => [
     THREE.MathUtils.clamp(Math.floor((x - x0) / ((x1 - x0) || 1) * nx), 0, nx - 1),
@@ -1195,6 +1247,19 @@ function foldAt(f: FoldField, u: number, below: number): number {
   return v;
 }
 
+/** The netting lane: how far under a laid net's level armour still holds it (m), and the step a laid cell never spans. */
+const LAID_DROP_M = 0.35;
+const LAID_STEP_M = 0.25;
+/** The netting lane: how far off its authored plane a hanging face net still finds its face (m). */
+const FACE_REACH_M = 0.3;
+/** The netting lane: a field suit's drape hangs this close to its wall (m; the older suits keep HANG_GAP_M). */
+const FIELD_HANG_GAP_M = 0.009;
+/**
+ * The netting lane: with no roof net above, only armour this close inside a field suit's drape line holds its top (m; a
+ * hatch lid 40 cm in from the deck's edge is no wall to hang it from).
+ */
+const FIELD_FLANK_REACH_M = 0.2;
+
 /** Fold depth at the hem of a hanging drape (bounded by the suit's certified half-width where it has one). */
 const FOLD_DEPTH_M = 0.065;
 
@@ -1214,6 +1279,13 @@ interface CurtainSpec {
    * hanging below it are left out, so no cloth is left hanging under a cut.
    */
   keepPoint?(p: Point3): boolean;
+  /**
+   * The netting lane: a station with no roof net's edge above it (`orphan`) whose section finds no armour holds no
+   * cloth (no authored fallback hung in the air from nothing); under a roof net's edge the fallback hangs from it.
+   */
+  orphan?(a: number): boolean;
+  /** The netting lane: a field suit's drape keeps no scrap (a piece under 24 cells or an eighth of the drape). */
+  readonly field?: boolean;
   readonly maxOut: number;
   readonly seed: number;
   /** Fold depth multiplier (a tied-down face drape folds little). */
@@ -1338,17 +1410,22 @@ function buildCurtain(spec: CurtainSpec, uvk: number, uvOffset: [number, number]
   // geometry
   const positions: number[] = [], uvs: number[] = [];
   const columns: Array<{ a: number; pts: Point3[]; normals: Point3[]; t: number[] }> = [];
+  const missing = raw.map((sec, c) => !sec && !!spec.orphan?.(station(c)));
   const vertex: Point3[][] = sections.map((sec, c) => sec.out.map((o, r) => spec.place(station(c), o, sec.up[r])));
   const vlen: number[][] = sections.map((sec) => {
     const out = [0];
     for (let r = sec.out.length - 2; r >= 0; r--) out.unshift(out[0] + Math.hypot(sec.out[r + 1] - sec.out[r], sec.up[r + 1] - sec.up[r]));
     return out;
   });
+  // each corner is asked once (it is shared by up to four cells)
+  const kept: Array<Array<boolean | undefined>> = vertex.map((col) => new Array<boolean | undefined>(col.length));
+  const keptAt = (c: number, r: number): boolean => (kept[c][r] ??= spec.keepPoint!(vertex[c][r]));
   for (let c = 0; c < cols; c++) {
     const aA = station(c), aB = station(c + 1);
+    if (missing[c] || missing[c + 1]) continue;
     let cut = false;
     for (let r = 0; r < rows; r++) {
-      if (cut || (spec.keepPoint && ![vertex[c][r], vertex[c + 1][r], vertex[c + 1][r + 1], vertex[c][r + 1]].every((q) => spec.keepPoint!(q)))) {
+      if (cut || (spec.keepPoint && !(keptAt(c, r) && keptAt(c + 1, r) && keptAt(c + 1, r + 1) && keptAt(c, r + 1)))) {
         cut = true;
         continue;
       }
@@ -1373,7 +1450,8 @@ function buildCurtain(spec: CurtainSpec, uvk: number, uvOffset: [number, number]
     });
     columns.push({ a, pts: vertex[c], normals, t: sec.t });
   }
-  dropIslands(positions, uvs);
+  if (spec.field) dropIslands(positions, uvs, 24, 8);
+  else dropIslands(positions, uvs);
   return { geometry: makeGeometry(positions, uvs), columns };
 }
 
@@ -1443,6 +1521,19 @@ function sectionBelow(sec: { pts: Array<[number, number]>; corner: number }, y: 
   return pts.length >= 2 ? { pts, corner: 0 } : null;
 }
 
+/** The netting lane: whether a roll lying over the deck across plan x x0..x1 at z (or z z0..z1 at x) meets a lid box. */
+function rollMeetsLid(lids: ReadonlyArray<readonly [number, number, number, number]> | undefined,
+  x0: number, x1: number, z0: number, z1: number): boolean {
+  return !!lids?.some(([bx0, bx1, bz0, bz1]) => Math.max(x0, x1) > bx0 - 0.05 && Math.min(x0, x1) < bx1 + 0.05
+    && Math.max(z0, z1) > bz0 - 0.05 && Math.min(z0, z1) < bz1 + 0.05);
+}
+
+/** The netting lane: a cloth falling free from a roof net's edge (start) to its hem, or null with no drop to hang. */
+function freeHang(start: { out: number; up: number }, hemY: number): { pts: Array<[number, number]>; corner: number } | null {
+  if (start.up - hemY < 0.1) return null;
+  return { pts: [[start.out, start.up], [start.out + HANG_GAP_M, start.up - 0.03], [start.out + HANG_GAP_M, hemY]], corner: 1 };
+}
+
 /** Metres of bare run a mission dock keeps either side of it in a wing's drape. */
 const DOCK_CLEAR_M = 0.03;
 
@@ -1487,7 +1578,11 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
     // a roof net within half a metre inside the drape's line (never one across an opening further in)
     for (let o = outAt(z, 1) + 0.05, stop = Math.max(0.02, outAt(z, 1) - 0.5); o > stop; o -= 0.02) {
       const r = support.roof(side * o, z);
-      if (r !== null) return { out: Math.max(0.02, o - 0.04), up: support.roof(side * Math.max(0.02, o - 0.04), z) ?? r };
+      if (r === null) continue;
+      // the netting lane: a roll that would lie across a lid (a hatch beside the deck's edge) is not hung: the drape
+      // starts at its wall's top instead
+      if (rollMeetsLid(support.lids, side * Math.max(0.02, o - 0.04), side * (outAt(z, 1) + 0.05), z, z)) return null;
+      return { out: Math.max(0.02, o - 0.04), up: support.roof(side * Math.max(0.02, o - 0.04), z) ?? r };
     }
     return null;
   };
@@ -1502,8 +1597,26 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
       const sec = curtainSection((yy) => probe.side(yy, z, side), (o) => support.roof(side * o, z) ?? (() => {
         const r = probe.topNear(side * o, z, 0.03);
         return r === null ? null : r + DRAPE_GAP_M;
-      })(), start, yFrom, hemY, HANG_GAP_M, start ? -Infinity : outAt(z, 1) - FLANK_REACH_M, (o) => probe.top(side * o, z));
-      return panel.tiedTop && sec ? sectionBelow(sec, topAt(z)) : sec;
+      })(), start, yFrom, hemY, support.clothOk ? FIELD_HANG_GAP_M : HANG_GAP_M,
+      start ? -Infinity : outAt(z, 1) - (support.clothOk ? FIELD_FLANK_REACH_M : FLANK_REACH_M),
+      (o) => probe.top(side * o, z));
+      // the netting lane: under a roof net's edge with no wall outboard to lie on (a turret's sides sloping in under
+      // its roof), the cloth falls free from that edge
+      const free = !sec && start && support.clothOk && !panel.tiedTop ? freeHang(start, hemY) : null;
+      const hung = panel.tiedTop && sec ? sectionBelow(sec, topAt(z)) : sec ?? free;
+      // the netting lane: a hull drape whose roll over the deck's edge lies in the turret's sweep (or in another of the
+      // vehicle's clearances) is tied lower on its wall instead, from the highest height its cloth keeps every clearance
+      // all the way down to the hem (a drape beside the turret hangs from the skirt's top, not over the deck under it)
+      if (!hung || !support.hull || !support.clothOk) return hung;
+      const clear = (o: number, u: number): boolean => support.clothOk!([side * o, u, z]);
+      if (hung.pts.every(([o, u]) => clear(o, u))) return hung;
+      let tieY: number | null = null;
+      for (let k = hung.pts.length - 1; k >= 0 && clear(hung.pts[k][0], hung.pts[k][1]); k--) tieY = hung.pts[k][1];
+      const tied = tieY === null || tieY < hemY + 0.15 ? null : sectionBelow(hung, tieY);
+      // its top lashed snug to the wall there (6 mm off it), the cloth falling away below
+      const wallAt = tied ? probe.side(tied.pts[0][1], z, side) : null;
+      if (tied && wallAt !== null && wallAt <= tied.pts[0][0] && wallAt > tied.pts[0][0] - 0.15) tied.pts[0] = [wallAt + 0.006, tied.pts[0][1]];
+      return tied;
     },
     fallback(z, t) {
       const top = topAt(z), bottom = hem(z);
@@ -1511,10 +1624,12 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
     },
     place: (z, out, up) => [side * out, up, z],
     keepPoint: support.clothOk,
+    ...(support.clothOk ? { orphan: (z: number) => roofEdge(z) === null, field: true } : {}),
     ...(runFloor || dockSide || cuts.length ? { keep: (z: number, up: number, za: number, zb: number): boolean =>
       (!runFloor || up < runFloor(z) - 0.02)
       && !(dockSide && Math.max(za, zb) > dockSide.min.z - DOCK_CLEAR_M && Math.min(za, zb) < dockSide.max.z + DOCK_CLEAR_M)
-      && !cuts.some(([c0, c1, lo, hi]) => Math.max(za, zb) > c0 && Math.min(za, zb) < c1 && up > lo && up < hi) } : {}),
+      // a cut runs from its top down to the hem (cloth never hangs on below a cut)
+      && !cuts.some(([c0, c1, , hi]) => Math.max(za, zb) > c0 && Math.min(za, zb) < c1 && up < hi) } : {}),
   };
   const { geometry, columns } = buildCurtain(spec, uvk, panelUvOffset(panel, cfg.seed), side < 0);
   const underTurret = support.hull && !support.turretless, topRow = curtainTopAt(columns);
@@ -1523,7 +1638,7 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
     sample: curtainSampler(columns, (n) => { const l = Math.hypot(n[0], n[1]) || 1; return [side * n[0] / l, n[1] / l, 0]; }),
     allowed: () => true,
     cardOk: (p) => p[2] >= z0 - 0.05 && p[2] <= z1 + 0.05 && (!underTurret || p[1] <= topRow(p[2]) + 0.005)
-      && !cuts.some(([c0, c1, lo, hi]) => p[2] > c0 - 0.04 && p[2] < c1 + 0.04 && p[1] > lo - 0.04 && p[1] < hi + 0.04),
+      && !cuts.some(([c0, c1, , hi]) => p[2] > c0 - 0.04 && p[2] < c1 + 0.04 && p[1] < hi + 0.04),
   };
 }
 
@@ -1563,20 +1678,39 @@ function faceCloth(panel: FacePanel, cfg: GhillieConfig, support: OwnerSupport, 
       const zFace = facing * authoredZ(x, y1);
       for (let o = zFace; o > zFace - 0.6; o -= 0.02) {
         const r = support.roof(x, facing * o);
-        if (r !== null) { start = { out: o - 0.04, up: support.roof(x, facing * (o - 0.04)) ?? r }; break; }
+        if (r === null) continue;
+        // the netting lane: never a roll across a lid between the roof net's edge and the face
+        if (!rollMeetsLid(support.lids, x, x, facing * (o - 0.04), facing * zFace)) start = { out: o - 0.04, up: support.roof(x, facing * (o - 0.04)) ?? r };
+        break;
       }
       const yFrom = start ? start.up : y1 + 0.02;
-      return curtainSection((yy) => probe.face(x, yy, facing), (o) => support.roof(x, facing * o) ?? (() => {
+      // the netting lane: only a face within FACE_REACH_M of the authored plane holds the cloth (past a bustle's corner the
+      // probe meets the turret's side a metre forward, and a column hung there stretched one cell across the gap)
+      const faceAt = support.clothOk ? (yy: number): number | null => {
+        const f = probe.face(x, yy, facing);
+        return f !== null && Math.abs(f - facing * authoredZ(x, yy)) <= FACE_REACH_M ? f : null;
+      } : (yy: number): number | null => probe.face(x, yy, facing);
+      const sec = curtainSection(faceAt, (o) => support.roof(x, facing * o) ?? (() => {
         const r = probe.topNear(x, facing * o, 0.03);
         return r === null ? null : r + gap;
       })(), start, yFrom, hemY, gap, -Infinity, (o) => probe.top(x, facing * o));
+      // the netting lane: under a roof net's edge with no face behind it to lie on, the cloth falls free from that edge
+      return sec ?? (start && support.clothOk ? freeHang(start, hemY) : null);
     },
     fallback(x, t) {
       const yy = THREE.MathUtils.lerp(hem(x), y1, t);
       return [facing * authoredZ(x, yy) + 0.01, yy];
     },
     place: (x, out, up) => [x, up, facing * out],
-    keepPoint: support.clothOk,
+    keepPoint: support.clothOk, field: !!support.clothOk,
+    // a hanging face net with no roof net's edge above it and no plate under it holds nothing (a tied one has its plate)
+    ...(support.clothOk && !tied ? { orphan: (x: number) => {
+      const zFace = facing * authoredZ(x, y1);
+      for (let o = zFace; o > zFace - 0.6; o -= 0.02) {
+        if (support.roof(x, facing * o) !== null) return rollMeetsLid(support.lids, x, x, facing * (o - 0.04), facing * zFace);
+      }
+      return true;
+    } } : {}),
     keep(x, up) {
       if (outline && !insidePoly(x, Math.min(up, y1 - 0.01), outline) && up <= y1) return false;
       return !holes.some((hole) => insidePoly(x, up, hole));
@@ -1831,8 +1965,12 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
   }
   // a fitted cover carries a few tufts of its own cut flaps; a draped net its bunches and boughs
   const perM2 = (top ? 4.4 : 4.9) * cfg.density * (top ? (panel.garnishDensity ?? 1) : 1) * (cfg.style === 'leafy' ? 1 : 0.55);
-  // drapes take more of their bunches high, under the top cord, and along the hem
-  const bias = top ? undefined : (r: () => number): [number, number] => {
+  // drapes take more of their bunches high, under the top cord, and along the hem; a fleet field net (fieldClearanceM)
+  // spreads them down the drape, clear of the turret's swing over its top
+  const bias = top ? undefined : cfg.fieldClearanceM !== undefined ? (r: () => number): [number, number] => {
+    const k = r();
+    return [r(), k < 0.3 ? 0.04 + r() * 0.18 : 0.24 + r() * 0.6];
+  } : (r: () => number): [number, number] => {
     const k = r();
     return [r(), k < 0.32 ? 0.04 + r() * 0.16 : 0.32 + Math.pow(r(), 0.7) * 0.66];
   };
@@ -1953,7 +2091,7 @@ function makeNet(
   // shared per theatre or palette and seed (never disposed with a visual); the height map takes the cloth's bump slot
   // (the cloned canvas already samples one), so neither adds a shader variant
   const leafy = cfg.style === 'leafy';
-  const shared = leafy ? garnishedNetTextures(theatre, cfg.seed) : cutLeafCoverTextures(cover, cfg.seed);
+  const shared = leafy ? garnishedNetTextures(theatre, cfg.netTextureSeed ?? cfg.seed) : cutLeafCoverTextures(cover, cfg.seed);
   return makeCloth(P, (m) => {
     m.color.setHex(0xffffff);
     if (shared) {
@@ -2971,10 +3109,17 @@ const SWEEP_BIN_M = 0.02;
 /** How far a lens sees clear (m) and the tangent of its view's half-angle (22 degrees). */
 const LENS_REACH_M = 2.0;
 const LENS_TAN = Math.tan(22 * Math.PI / 180);
-/** The yaw offsets (rad) a point near the trunnion is tested at besides the one aimed at it. */
+/** The yaw offsets (rad) a point near the trunnion is tested at besides the ones that bring the gun across it. */
 const NEAR_YAWS = [-150, -120, -90, -60, -40, -20, 20, 40, 60, 90, 120, 150, 180].map((d) => d * Math.PI / 180);
+/** The step (m, across the bore) between the turret yaws that bring the gun's box over a hull point. */
+const GUN_STEP_M = 0.03;
+/** Heights over and under a deck point (m): the bare gun reaching any exempts the cloth lying flat on that deck. */
+const FLAT_PROBES = [0.04, 0, -0.05, -0.1, -0.2, -0.3];
+/** A cloth's view cone off a lens: its reach (m) and the tangent of its half-angle (25 degrees). */
+const CLOTH_LENS_REACH_M = 1.0;
+const CLOTH_LENS_TAN = Math.tan(25 * Math.PI / 180);
 /** How far ahead of a sideways- or forward-looking lens a roof net is slotted open (m). */
-const LENS_SLOT_M = 0.6;
+const LENS_SLOT_M = 0.8;
 /** How far a smoke discharger's grenade line is kept clear (m), and its half-width at the mouth (m). */
 const SMOKE_REACH_M = 1.6;
 const SMOKE_LINE_M = 0.1;
@@ -3051,6 +3196,9 @@ function forTrianglePoints(tri: Float32Array, cell: number, visit: (x: number, y
 }
 
 const notGear = (mesh: THREE.Mesh): boolean => mesh.userData?.runningGear !== true && !RUNNING_GEAR_RE.test(mesh.name || '');
+/** The netting lane: the running gear a suit keeps off (the wheels, tracks and their run; never a fender, trim or skirt). */
+const keptOffGear = (mesh: THREE.Mesh): boolean => mesh.userData?.runningGear === true
+  || (RUNNING_GEAR_RE.test(mesh.name || '') && !/trim|guard|fender|skirt|cover|spare|fitting/i.test(mesh.name || ''));
 const notSuit = (mesh: THREE.Mesh): boolean => !/_ghillie_/.test(mesh.name || '');
 
 /**
@@ -3140,25 +3288,50 @@ function ownerLenses(parent: THREE.Object3D, others: readonly THREE.Object3D[]):
   return Float64Array.from(out);
 }
 
-/** An owner's smoke discharger mouths and lines of fire as flat [px, py, pz, dx, dy, dz] runs (owner frame). */
+/**
+ * An owner's smoke discharger mouths and lines of fire as flat [px, py, pz, dx, dy, dz] runs (owner frame), each bank's
+ * as the factory will align it after the suit is built (vehicleAuxiliaryGeometry.ts alignSmokeBanks: a bank whose
+ * outside tubes turn past 1.35 rad of the bow is turned back about the owner's vertical through its own origin).
+ */
 function ownerSmokeLines(parent: THREE.Object3D, others: readonly THREE.Object3D[]): Float64Array {
   const inv = new THREE.Matrix4().copy(parent.matrixWorld).invert();
   const out: number[] = [];
+  const banks: Array<{ x: number; z: number; rows: number[] }> = [];
   const p = new THREE.Vector3(), d = new THREE.Vector3(), m = new THREE.Matrix4();
-  const walk = (o: THREE.Object3D): void => {
+  const walk = (o: THREE.Object3D, bank: { x: number; z: number; rows: number[] } | null): void => {
     if (others.includes(o)) return;
+    let mine = bank;
+    if (o.userData?.fittingRoot && o.userData.fitting === 'smokeBank') {
+      p.setFromMatrixPosition(o.matrixWorld).applyMatrix4(inv);
+      mine = { x: p.x, z: p.z, rows: [] };
+      banks.push(mine);
+    }
     const sockets = o.userData?.smokeSockets as Array<{ position: number[]; direction: number[] }> | undefined;
     if (Array.isArray(sockets)) {
       m.multiplyMatrices(inv, o.matrixWorld);
       for (const s of sockets) {
         p.fromArray(s.position).applyMatrix4(m);
         d.fromArray(s.direction).transformDirection(m);
-        out.push(p.x, p.y, p.z, d.x, d.y, d.z);
+        (mine ? mine.rows : out).push(p.x, p.y, p.z, d.x, d.y, d.z);
       }
     }
-    for (const child of o.children) walk(child);
+    for (const child of o.children) walk(child, mine);
   };
-  for (const child of parent.children) walk(child);
+  for (const child of parent.children) walk(child, null);
+  for (const bank of banks) {
+    const rows = bank.rows;
+    let min = Infinity, max = -Infinity;
+    for (let i = 0; i < rows.length; i += 6) {
+      const yaw = Math.atan2(rows[i + 3], rows[i + 5]);
+      min = Math.min(min, yaw); max = Math.max(max, yaw);
+    }
+    const delta = max > 1.35 ? 1.35 - max : min < -1.35 ? -1.35 - min : 0;
+    const c = Math.cos(delta), sn = Math.sin(delta);
+    for (let i = 0; i < rows.length; i += 6) {
+      const px = rows[i] - bank.x, pz = rows[i + 2] - bank.z, dx = rows[i + 3], dz = rows[i + 5];
+      out.push(bank.x + c * px + sn * pz, rows[i + 1], bank.z - sn * px + c * pz, c * dx + sn * dz, rows[i + 4], -sn * dx + c * dz);
+    }
+  }
   return Float64Array.from(out);
 }
 
@@ -3169,6 +3342,10 @@ interface FieldClearance {
   clothOk(owner: GhillieOwner, p: readonly number[]): boolean;
   /** And a garnish point keeps the lens views and smoke lines clear besides. */
   garnishOk(owner: GhillieOwner, p: readonly number[]): boolean;
+  /** Only the thin lines: a point outside every lens view and smoke line of the owner. */
+  linesOk(owner: GhillieOwner, p: readonly number[]): boolean;
+  /** A cloth point standing off its armour outside every lens's view (a shorter, wider cone than the garnish's). */
+  lensClear(owner: GhillieOwner, p: readonly number[]): boolean;
   /** The lowest a turret drape's hem may hang at turret-local (x, z). */
   turretHemFloor(x: number, z: number): number;
   /** Adds the hull's own suit (laid by now) to the hull's top envelope the turret's suit clears. */
@@ -3195,12 +3372,18 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number): FieldClearanc
     const k = cellOf(Math.hypot(x - pivot.x, z - pivot.z), y - pivot.y);
     if (k >= 0) occ[k] = 1;
   };
-  // and the turret's base: the widest it reaches within 25 cm of its ring plane (no hull net lies inside it)
-  let ringR = 0;
-  forTrianglePoints(ownerTriangles(turret, [gun], hull, notSuit), 0.04, (x, y, z) => {
-    mark(turretOcc, x, y, z);
-    if (y - pivot.y < 0.25) ringR = Math.max(ringR, Math.hypot(x - pivot.x, z - pivot.z));
-  });
+  forTrianglePoints(ownerTriangles(turret, [gun], hull, notSuit), 0.06, (x, y, z) => mark(turretOcc, x, y, z));
+  // and the span the turret reaches at each radius through the traverse, lowest cell to highest: a hull point between
+  // them lies inside its swept body, its hollow included (a deck plate running on under the turret's floor), not only
+  // beside its skin
+  const turretLo = new Int32Array(R_BINS).fill(Y_BINS), turretHi = new Int32Array(R_BINS).fill(-1);
+  for (let i = 0; i < R_BINS; i++) {
+    for (let j = 0; j < Y_BINS; j++) {
+      if (!turretOcc[i * Y_BINS + j]) continue;
+      if (j < turretLo[i]) turretLo[i] = j;
+      turretHi[i] = j;
+    }
+  }
   // the hull's own top over its plan (hull frame, 4 cm cells), running gear left out of both
   const DECK_CELL = 0.04;
   const deck = new Map<number, number>();
@@ -3211,6 +3394,19 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number): FieldClearanc
     const was = deck.get(d);
     if (was === undefined || y > was) deck.set(d, y);
   });
+  // the running gear: no hull suit point within a cell or so (4-8 cm) of it
+  const GEAR_CELL = 0.04;
+  const gearCells = new Set<number>();
+  const gearKey = (i: number, j: number, k: number): number => ((i + 512) * 1024 + (j + 512)) * 1024 + (k + 512);
+  forTrianglePoints(ownerTriangles(hull, [turret, gun], hull, (mesh) => notSuit(mesh) && keptOffGear(mesh)), GEAR_CELL,
+    (x, y, z) => { gearCells.add(gearKey(Math.floor(x / GEAR_CELL), Math.floor(y / GEAR_CELL), Math.floor(z / GEAR_CELL))); });
+  const nearGear = (p: readonly number[]): boolean => {
+    const i0 = Math.floor(p[0] / GEAR_CELL), j0 = Math.floor(p[1] / GEAR_CELL), k0 = Math.floor(p[2] / GEAR_CELL);
+    for (let i = i0 - 1; i <= i0 + 1; i++) for (let j = j0 - 1; j <= j0 + 1; j++) for (let k = k0 - 1; k <= k0 + 1; k++) {
+      if (gearCells.has(gearKey(i, j, k))) return true;
+    }
+    return false;
+  };
   const deckAt = (x: number, z: number): number | null => {
     let best: number | null = null;
     for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
@@ -3220,20 +3416,19 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number): FieldClearanc
     return best;
   };
   const reach = Math.ceil(clearance / SWEEP_BIN_M) + 1;
-  /** Whether `occ` holds anything within the clearance of (r, yT) through the traverse. */
-  const occupied = (occ: Uint8Array, r: number, yT: number): boolean => {
+  /** Whether `occ` holds anything within the clearance of (r, yT) through the traverse (`rad` bins either side). */
+  const occupied = (occ: Uint8Array, r: number, yT: number, rad = 3): boolean => {
     const i0 = Math.floor(r / SWEEP_BIN_M), j0 = Math.floor((yT - Y_BASE) / SWEEP_BIN_M);
-    for (let i = Math.max(0, i0 - 3); i <= Math.min(R_BINS - 1, i0 + 3); i++) {
+    for (let i = Math.max(0, i0 - rad); i <= Math.min(R_BINS - 1, i0 + rad); i++) {
       for (let j = Math.max(0, j0 - reach); j <= Math.min(Y_BINS - 1, j0 + reach); j++) if (occ[i * Y_BINS + j]) return true;
     }
     return false;
   };
-  /** Whether the turret stands within `above` metres over (r, yT) anywhere through its traverse. */
-  const overhead = (r: number, yT: number, above: number): boolean => {
+  /** Whether the turret's swept body (and the clearance round it) holds (r, yT). */
+  const inTurretSweep = (r: number, yT: number): boolean => {
     const i0 = Math.floor(r / SWEEP_BIN_M), j0 = Math.floor((yT - Y_BASE) / SWEEP_BIN_M);
-    const j1 = Math.floor((yT + above - Y_BASE) / SWEEP_BIN_M);
-    for (let i = Math.max(0, i0 - 2); i <= Math.min(R_BINS - 1, i0 + 2); i++) {
-      for (let j = Math.max(0, j0); j <= Math.min(Y_BINS - 1, j1); j++) if (turretOcc[i * Y_BINS + j]) return true;
+    for (let i = Math.max(0, i0 - 3); i <= Math.min(R_BINS - 1, i0 + 3); i++) {
+      if (turretHi[i] >= 0 && j0 >= turretLo[i] - reach && j0 <= turretHi[i] + reach) return true;
     }
     return false;
   };
@@ -3241,86 +3436,133 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number): FieldClearanc
   const hullTopUnder = (r: number, below: number): number => {
     const i0 = Math.floor(r / SWEEP_BIN_M), jTop = Math.min(Y_BINS - 1, Math.floor((below - Y_BASE) / SWEEP_BIN_M));
     let top = -Infinity;
-    for (let i = Math.max(0, i0 - 2); i <= Math.min(R_BINS - 1, i0 + 2); i++) {
+    for (let i = Math.max(0, i0 - 4); i <= Math.min(R_BINS - 1, i0 + 4); i++) {
       for (let j = jTop; j >= 0; j--) if (hullOcc[i * Y_BINS + j]) { top = Math.max(top, Y_BASE + (j + 1) * SWEEP_BIN_M); break; }
     }
     return top;
   };
   // the main gun: its radius by station along the bore (gun frame), its trunnion in the turret frame, its pitch limits
   const gunAt = new THREE.Vector3().setFromMatrixPosition(gun.matrixWorld).applyMatrix4(new THREE.Matrix4().copy(turret.matrixWorld).invert());
-  const radius = new Map<number, number>();
+  // the gun's extent by station along the bore: its left and right edges and how far above and below its axis it
+  // reaches (a box, not a circle: a mantlet's corners must not be read as reaching under the deck; and lopsided, a
+  // launcher on one side of the cradle widening only that side)
+  const radius = new Map<number, number>(), extent = new Map<number, [number, number, number, number]>();
   forTrianglePoints(ownerTriangles(gun, [], gun, notSuit), 0.04, (x, y, z) => {
     const k = Math.floor(z / SWEEP_BIN_M), r = Math.hypot(x, y);
     if (r > (radius.get(k) ?? -1)) radius.set(k, r);
+    const e = extent.get(k) ?? [Infinity, -Infinity, -Infinity, -Infinity];
+    e[0] = Math.min(e[0], x); e[1] = Math.max(e[1], x); e[2] = Math.max(e[2], y); e[3] = Math.max(e[3], -y);
+    extent.set(k, e);
   });
   // how far round the trunnion the gun's wide parts reach (a point that near is tested at several yaws)
   let gunReach = 0;
   for (const r of radius.values()) gunReach = Math.max(gunReach, r);
   gunReach += 0.3;
-  const gunR = (along: number): number | null => {
-    const k = Math.floor(along / SWEEP_BIN_M);
-    let r: number | null = null;
-    for (let i = k - 1; i <= k + 1; i++) { const v = radius.get(i); if (v !== undefined && (r === null || v > r)) r = v; }
-    return r;
-  };
+  // the box's farthest left and right, and the gun's farthest stations
+  let leftmost = 0, rightmost = 0, maxAlong = 0, minAlong = 0;
+  for (const e of extent.values()) { leftmost = Math.min(leftmost, e[0]); rightmost = Math.max(rightmost, e[1]); }
+  for (const k of extent.keys()) { maxAlong = Math.max(maxAlong, (k + 1) * SWEEP_BIN_M); minAlong = Math.min(minAlong, k * SWEEP_BIN_M); }
   const spec = P.spec;
   const deg = Math.PI / 180;
   const tMax = (spec.gunElevationDeg ?? 18) * deg;
   const tMinFront = -(spec.gunDepressionDeg ?? 8) * deg;
-  const sweptBy = (lateral: number, qy: number, qz: number, lo: number, hi: number): boolean => {
+  // nothing farther out than the muzzle's reach, or lower than the gun's deepest depression brings its belly, meets it
+  const gunReachR = Math.abs(gunAt.x) + gunAt.z + maxAlong + gunReach + clearance;
+  let deepest = 0;
+  for (const e of extent.values()) deepest = Math.max(deepest, e[3]);
+  const gunLowY = gunAt.y - Math.max(maxAlong * Math.sin(Math.max(0, -tMinFront) + 0.05), -minAlong * Math.sin(Math.max(0, tMax) + 0.05))
+    - deepest - clearance - 0.05;
+  /** The gun's box [left, right, above, below] round a station (three bins), or null past its ends. */
+  const gunBox = (along: number): [number, number, number, number] | null => {
+    const k = Math.floor(along / SWEEP_BIN_M);
+    let out: [number, number, number, number] | null = null;
+    for (let i = k - 1; i <= k + 1; i++) {
+      const e = extent.get(i);
+      if (e) out = out ? [Math.min(out[0], e[0]), Math.max(out[1], e[1]), Math.max(out[2], e[2]), Math.max(out[3], e[3])] : [e[0], e[1], e[2], e[3]];
+    }
+    return out;
+  };
+  /**
+   * Whether the gun through pitches lo..hi meets a point `lateral` across from its bore (gun frame x, signed) at
+   * turret-frame height qy and reach qz, within `margin` across and `rise` above and below.
+   */
+  const sweptBy = (lateral: number, qy: number, qz: number, lo: number, hi: number, margin = clearance, rise = margin): boolean => {
     const dy = qy - gunAt.y, dz = qz - gunAt.z;
     const d = Math.hypot(dy, dz);
     if (d < 1e-6) return true;
     const phi = Math.atan2(dy, dz);
     const theta = THREE.MathUtils.clamp(phi, lo, hi);
-    const r = gunR(d * Math.cos(phi - theta));
-    return r !== null && Math.hypot(lateral, d * Math.sin(phi - theta)) < r + clearance;
+    const e = gunBox(d * Math.cos(phi - theta));
+    if (!e) return false;
+    // the point's offset off the bore at that pitch: above (+) or below (-) it
+    const off = d * Math.sin(phi - theta);
+    return lateral > e[0] - margin && lateral < e[1] + margin && off < e[2] + rise && -off < e[3] + rise;
   };
   const netOk = (owner: GhillieOwner, p: readonly number[]): boolean => {
     if (owner === 'hull') {
       const dx = p[0] - pivot.x, dz = p[2] - pivot.z, r = Math.hypot(dx, dz);
-      // clear of the turret through its traverse, never inside its base, and never in the low gap under it (an
-      // overhang within 25 cm: hidden there, and in the breech's and the basket's way)
-      if (r < ringR + 0.05 || occupied(turretOcc, r, p[1] - pivot.y) || overhead(r, p[1] - pivot.y, 0.25)) return false;
-      // out of the gun's arc: the turret laid toward the point, the gun through its pitch range at that yaw; near the
-      // trunnion the mantlet's wide base sweeps it at other yaws too
+      const qy = p[1] - pivot.y;
+      // off the running gear
+      if (nearGear(p)) return false;
+      // clear of whatever the turret carries round over this radius and height through its traverse
+      if (inTurretSweep(r, qy)) return false;
+      if (qy < gunLowY || r > gunReachR) return true;
+      // out of the gun's arc: every turret yaw that brings the gun's box across the point (sampled across the box's
+      // widest half-width), the gun through its pitch range at that yaw; near the trunnion the mantlet's wide base
+      // sweeps it round the full circle besides
       const aim = Math.atan2(dx, dz);
-      const lo = minimumMechanicalGunPitch(spec, aim);
-      if (r < gunAt.z + gunReach) {
-        for (const off of NEAR_YAWS) {
-          const yaw = aim - off;
-          if (sweptBy(Math.abs(r * Math.sin(off) - gunAt.x), p[1] - pivot.y, r * Math.cos(off), minimumMechanicalGunPitch(spec, yaw), tMax)) return false;
+      const plate = deckAt(p[0], p[2]);
+      const flat = plate !== null && p[1] <= plate + 0.04;
+      const hitAt = (off: number): boolean => {
+        const lateral = r * Math.sin(off) - gunAt.x, along = r * Math.cos(off);
+        const lo = minimumMechanicalGunPitch(spec, aim - off);
+        if (!sweptBy(lateral, qy, along, lo, tMax)) return false;
+        // a spec whose depression has no deck curve lets the bare gun reach its own deck: where the gun at that yaw's
+        // lowest pitch, passing over the point (the same reach across), already comes down to within the cloth's 4 cm
+        // of the armour under it (or into it), the cloth lying flat on that armour stays (the alternative is no net on
+        // that deck at all); no garnish stands up there. Only ahead of the trunnion (behind it the breech swings
+        // inside the turret)
+        if (!flat || along - gunAt.z < 0.05) return true;
+        for (const dy of FLAT_PROBES) if (sweptBy(lateral, plate! + dy - pivot.y, along, lo, lo, clearance, 0)) return false;
+        return true;
+      };
+      if (r > 1e-6) {
+        const sLo = (gunAt.x + leftmost - clearance) / r, sHi = (gunAt.x + rightmost + clearance) / r;
+        if (sHi > -1 && sLo < 1) {
+          const dLo = Math.asin(Math.max(-1, sLo)), dHi = Math.asin(Math.min(1, sHi));
+          const n = Math.max(2, Math.ceil(((dHi - dLo) * r) / GUN_STEP_M));
+          for (let k = 0; k <= n; k++) if (hitAt(dLo + ((dHi - dLo) * k) / n)) return false;
         }
       }
-      if (!sweptBy(Math.abs(gunAt.x), p[1] - pivot.y, r, lo, tMax)) return true;
-      // a spec whose depression has no deck curve lets the bare gun reach its own deck: where the gun's underside at that
-      // pitch already comes down into the cloth's layer over the armour under the point (4 cm), the cloth lying flat on
-      // that armour stays (the alternative is no net on that deck at all); no garnish stands up there
-      const plate = deckAt(p[0], p[2]);
-      const dzT = r - gunAt.z;
-      // only ahead of the trunnion (behind it the breech swings inside the turret)
-      if (plate === null || p[1] > plate + 0.04 || dzT < 0.05) return false;
-      const under = gunR(dzT / Math.cos(lo));
-      return under !== null && pivot.y + gunAt.y + dzT * Math.tan(lo) - under < plate + 0.04;
+      if (r < gunAt.z + gunReach) for (const off of NEAR_YAWS) if (hitAt(off)) return false;
+      return true;
     }
     if (owner === 'turret') {
-      if (occupied(hullOcc, Math.hypot(p[0], p[2]), p[1])) return false;
-      return !sweptBy(Math.abs(p[0] - gunAt.x), p[1], p[2], tMinFront, tMax);
+      // the hull's armour, fittings and suit within 10 cm across through the traverse
+      if (occupied(hullOcc, Math.hypot(p[0], p[2]), p[1], 5)) return false;
+      return !sweptBy(p[0] - gunAt.x, p[1], p[2], tMinFront, tMax);
     }
     return true;
   };
   const lenses: Partial<Record<GhillieOwner, Float64Array>> = {}, smoke: Partial<Record<GhillieOwner, Float64Array>> = {};
   const ownerOf = (o: GhillieOwner): [THREE.Object3D, THREE.Object3D[]] => (o === 'hull' ? [hull, [turret, gun]] : o === 'turret' ? [turret, [gun]] : [gun, []]);
   /** Whether p lies in a cone or tube along a run of [origin, axis] rows. */
-  const inLine = (rows: Float64Array, p: readonly number[], reach: number, base: number, slope: number): boolean => {
+  const inLine = (rows: Float64Array, p: readonly number[], reach: number, base: number, slope: number, both = false): boolean => {
     for (let i = 0; i < rows.length; i += 6) {
       const wx = p[0] - rows[i], wy = p[1] - rows[i + 1], wz = p[2] - rows[i + 2];
-      const along = wx * rows[i + 3] + wy * rows[i + 4] + wz * rows[i + 5];
+      let along = wx * rows[i + 3] + wy * rows[i + 4] + wz * rows[i + 5];
+      // both: a pane whose housing reads from either face keeps a short margin behind it too (30 cm)
+      if (both && along < 0 && along > -0.3) along = -along;
       if (along < -0.05 || along > reach) continue;
       const lx = wx - rows[i + 3] * along, ly = wy - rows[i + 4] * along, lz = wz - rows[i + 5] * along;
       if (Math.hypot(lx, ly, lz) < base + Math.max(0, along) * slope) return true;
     }
     return false;
+  };
+  const linesOk = (owner: GhillieOwner, p: readonly number[]): boolean => {
+    const [parent, others] = ownerOf(owner);
+    if (inLine(lenses[owner] ??= ownerLenses(parent, others), p, LENS_REACH_M, 0.06, LENS_TAN, true)) return false;
+    return !inLine(smoke[owner] ??= ownerSmokeLines(parent, others), p, SMOKE_REACH_M, SMOKE_LINE_M, 0.08);
   };
   return {
     netOk,
@@ -3331,28 +3573,50 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number): FieldClearanc
     },
     garnishOk(owner, p) {
       if (!netOk(owner, p)) return false;
+      return linesOk(owner, p);
+    },
+    linesOk,
+    lensClear(owner, p) {
       const [parent, others] = ownerOf(owner);
-      if (inLine(lenses[owner] ??= ownerLenses(parent, others), p, LENS_REACH_M, 0.06, LENS_TAN)) return false;
-      return !inLine(smoke[owner] ??= ownerSmokeLines(parent, others), p, SMOKE_REACH_M, SMOKE_LINE_M, 0.08);
+      return !inLine(lenses[owner] ??= ownerLenses(parent, others), p, CLOTH_LENS_REACH_M, 0.06, CLOTH_LENS_TAN, true);
     },
     // a drape's hem keeps above what stands on the hull under the turret's line (60 cm over its ring: decks, bins,
     // hatches and the hull's own suit, never a frame or a cage reaching up round the turret)
     turretHemFloor(x, z) { return hullTopUnder(Math.hypot(x, z), 0.6) + clearance + 0.02; },
     addHullSuit() {
       hull.updateWorldMatrix(true, true);
-      forTrianglePoints(ownerTriangles(hull, [turret, gun], hull, (mesh) => !notSuit(mesh)), 0.04, (x, y, z) => mark(hullOcc, x, y, z));
+      forTrianglePoints(ownerTriangles(hull, [turret, gun], hull, (mesh) => !notSuit(mesh)), 0.06, (x, y, z) => mark(hullOcc, x, y, z));
     },
   };
+}
+
+/**
+ * Hand a field suit's mesh its clearance test (ghillieDrape.ts GHILLIE_FIELD_OK), non-enumerable: userData's JSON copies
+ * and metadata digests never see a function.
+ */
+function fieldOk(mesh: THREE.Object3D, ok: (p: readonly number[]) => boolean): void {
+  Object.defineProperty(mesh.userData, GHILLIE_FIELD_OK, { value: ok, enumerable: false, configurable: true });
 }
 
 /** Drop a carrier's triangles with a corner the clearance refuses (the cloth's garnish is held to the same rule). */
 function clearedGeometry(geometry: THREE.BufferGeometry, ok: (p: readonly number[]) => boolean): THREE.BufferGeometry {
   const pos = geometry.attributes.position as THREE.BufferAttribute, uv = geometry.attributes.uv as THREE.BufferAttribute | undefined;
   const positions: number[] = [], uvs: number[] = [];
+  // a corner shared by several triangles is asked once
+  const asked = new Map<string, boolean>();
+  const okAt = (i: number): boolean => {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), key = `${x},${y},${z}`;
+    let v = asked.get(key);
+    if (v === undefined) { v = ok([x, y, z]); asked.set(key, v); }
+    return v;
+  };
   let dropped = 0;
   for (let t = 0; t + 2 < pos.count; t += 3) {
     let keep = true;
-    for (let k = 0; k < 3 && keep; k++) keep = ok([pos.getX(t + k), pos.getY(t + k), pos.getZ(t + k)]);
+    for (let k = 0; k < 3 && keep; k++) keep = okAt(t + k);
+    // and the triangle's middle (a cloth bridging a gap between corners that rest on armour)
+    if (keep) keep = ok([(pos.getX(t) + pos.getX(t + 1) + pos.getX(t + 2)) / 3, (pos.getY(t) + pos.getY(t + 1) + pos.getY(t + 2)) / 3,
+      (pos.getZ(t) + pos.getZ(t + 1) + pos.getZ(t + 2)) / 3]);
     if (!keep) { dropped++; continue; }
     for (let k = 0; k < 3; k++) {
       positions.push(pos.getX(t + k), pos.getY(t + k), pos.getZ(t + k));
@@ -3470,6 +3734,15 @@ function addGhillieOwner(
   // the roofs first: every drape starts on the net already laid over the edge above it
   const tops: TopCloth[] = [];
   const dock = owner === 'turret' ? missionDockOf(parent) : null;
+  // the netting lane: a cloth point keeps the vehicle's clearances, and where it stands off the armour under it (a
+  // drape down a wall, a net carried over a gap) every lens's view besides; cloth lying on the armour (5 cm) is under
+  // a lens's view, not in it
+  const lying = (p: readonly number[]): boolean => {
+    for (const h of probe?.surfacesAt?.(p[0], p[2]) ?? []) if (h.up && h.y <= p[1] + 0.005) return p[1] - h.y < 0.05;
+    return false;
+  };
+  const coverOk = clearance
+    ? (p: readonly number[]): boolean => clearance.clothOk(owner, p) && (clearance.lensClear(owner, p) || lying(p)) : undefined;
   const support: OwnerSupport = {
     probe, hull, owner, fitted: !leafy, turretless: !cfg.turret,
     hemFloor: hull ? cfg.hemFloorM ?? NET_HEM_FLOOR_M : -Infinity,
@@ -3479,13 +3752,14 @@ function addGhillieOwner(
     },
     tentOk: dock ? (x, z) => x < dock.min.x - 0.5 || x > dock.max.x + 0.5 || z < dock.min.z - 0.5 || z > dock.max.z + 0.5 : undefined,
     hemFloorAt: owner === 'turret' && clearance ? (x, z) => clearance.turretHemFloor(x, z) : undefined,
-    clothOk: clearance ? (p) => clearance.clothOk(owner, p) : undefined,
+    clothOk: coverOk,
   };
   // a roof gun's traverse: the roof net is cut open under its swept floor and no garnish stands up into it
   const gunFloor = owner === 'turret' ? roofWeaponFloor(parent, P.spec.id) : null;
   // the netting lane: the owner's lenses, hatch lids and cupolas, for the panels that open round them
   const autoOpen = (panels.top ?? []).some((p) => p.autoOpeningsM !== undefined);
   const lids = autoOpen ? lidBoxes(parent, others) : [];
+  if (clearance) support.lids = lids;
   // and each lens's view over the roof: a slot widening ahead of a pane that looks out sideways or forward
   const slots: Point2[][] = [];
   if (autoOpen) {
@@ -3494,9 +3768,12 @@ function addGhillieOwner(
       const [cx, , cz, nx, ny, nz] = lenses.subarray(i, i + 6);
       const h = Math.hypot(nx, nz);
       if (Math.abs(ny) > 0.75 || h < 1e-6) continue;
-      const fx = nx / h, fz = nz / h, w0 = 0.1, w1 = 0.1 + LENS_SLOT_M * 0.4;
-      slots.push([[cx - fz * w0, cz + fx * w0], [cx + fz * w0, cz - fx * w0],
-        [cx + fx * LENS_SLOT_M + fz * w1, cz + fz * LENS_SLOT_M - fx * w1], [cx + fx * LENS_SLOT_M - fz * w1, cz + fz * LENS_SLOT_M + fx * w1]]);
+      // both ways along the pane's axis (a periscope block's housing can read from either face)
+      for (const dir of [1, -1]) {
+        const fx = dir * nx / h, fz = dir * nz / h, w0 = 0.1, w1 = 0.1 + LENS_SLOT_M * 0.4;
+        slots.push([[cx - fz * w0, cz + fx * w0], [cx + fz * w0, cz - fx * w0],
+          [cx + fx * LENS_SLOT_M + fz * w1, cz + fz * LENS_SLOT_M - fx * w1], [cx + fx * LENS_SLOT_M - fz * w1, cz + fz * LENS_SLOT_M + fx * w1]]);
+      }
     }
   }
   for (const panel of panels.top ?? []) {
@@ -3513,7 +3790,18 @@ function addGhillieOwner(
         opened.push(slot);
       }
     }
-    tops.push(topCloth(opened.length ? { ...panel, holes: [...(panel.holes ?? []), ...opened] } : panel, cfg, support, uvk));
+    const laid = topCloth(opened.length ? { ...panel, holes: [...(panel.holes ?? []), ...opened] } : panel, cfg, support, uvk);
+    // the netting lane: a carrier is filtered by the clearance as it is laid, and the drapes built after it see only
+    // what is left of it (a drape never starts from a roof edge the clearance took away)
+    tops.push(coverOk ? {
+      ...laid,
+      geometry: clearedGeometry(laid.geometry, coverOk),
+      covers: (x, z) => {
+        if (!laid.covers(x, z)) return false;
+        const h = laid.heightAt(x, z);
+        return h !== null && coverOk([x, h, z]);
+      },
+    } : laid);
   }
   const surfaces: ClothSurface[] = [...tops];
   for (const panel of panels.side ?? []) surfaces.push(sideCloth(panel, cfg, support, uvk, gunFloor?.standing ?? null));
@@ -3530,8 +3818,10 @@ function addGhillieOwner(
   if (clearance) {
     surfaces.forEach((surface, k) => {
       surfaces[k] = { ...surface,
-        // drapes were cut column by column as they were built (keepPoint); a carrier is filtered here
-        geometry: surface.kind === 'top' ? clearedGeometry(surface.geometry, (p) => clearance.clothOk(owner, p)) : surface.geometry,
+        // carriers were filtered as they were laid and drapes cut column by column as they were built (keepPoint); a
+        // roof cage wing's cloths are filtered here
+        geometry: surface.kind === 'top' && !tops.includes(surface as TopCloth) && coverOk
+          ? clearedGeometry(surface.geometry, coverOk) : surface.geometry,
         cardOk: (p) => surface.cardOk(p) && clearance.garnishOk(owner, p) };
     });
   }
@@ -3540,7 +3830,10 @@ function addGhillieOwner(
   if (cfg.foliage !== false) {
     const ctx: TuftContext = {
       cfg, pal: NET_PALETTES[theatre], q: P.q !== false, maxHalfWidth: cfg.maxHalfWidth ?? Infinity, hemFloor: support.hemFloor,
-      cardClear: clearance ? (card) => denseCardPoints(card).every((p) => clearance.garnishOk(owner, p)) : undefined,
+      // the card's own vertices keep the vehicle's clearances; its face, sampled densely, keeps the thin lens views
+      // and smoke lines clear (a line can pass between a card's vertices)
+      cardClear: clearance ? (card) => foliageCardPoints(card).every((p) => clearance.netOk(owner, p))
+        && denseCardPoints(card).every((p) => clearance.linesOk(owner, p)) : undefined,
     };
     surfaces.forEach((surface, k) => {
       addTufts(foliage, surface, ctx, cfg.seed + k * 1000 + (owner === 'turret' ? 37 : owner === 'gun' ? 71 : 0));
@@ -3549,13 +3842,17 @@ function addGhillieOwner(
   }
   const netMat = makeNet(P, cfg, theatre, cover);
   const netMesh = addMerged(P, parent, surfaces.map((s) => s.geometry), netMat, `${cfg.id}_ghillie_${owner}_net`);
-  // the netting lane: a suit with working clearances is marked for the decor's turret-load guard (decorations.ts)
-  if (netMesh && clearance) netMesh.userData.fieldSuit = true;
+  // the netting lane: a suit with working clearances is marked for the decor's turret-load guard (decorations.ts), and
+  // what the decor draws up over its loads is held to the same clearances (ghillieDrape.ts)
+  if (netMesh && clearance) {
+    netMesh.userData.fieldSuit = true;
+    fieldOk(netMesh, (p) => clearance.clothOk(owner, p));
+  }
   // a garage pattern switch repaints the vehicle in place: the net swaps to the new theatre's (a cover to the new scheme)
   if (netMesh && P.mats.wheels) {
     followVehicleScheme(P.mats.wheels, netMat, (vis) => {
       const t = theatreOfHex(vis.base);
-      const next = leafy ? garnishedNetTextures(t, cfg.seed) : cutLeafCoverTextures(coverPaletteOf(vis, t), cfg.seed);
+      const next = leafy ? garnishedNetTextures(t, cfg.netTextureSeed ?? cfg.seed) : cutLeafCoverTextures(coverPaletteOf(vis, t), cfg.seed);
       if (next) { netMat.map = next.map; netMat.bumpMap = next.bump; }
     });
   }
@@ -3570,7 +3867,10 @@ function addGhillieOwner(
     const mesh = new THREE.Mesh(leaves, mat);
     mesh.name = `${cfg.id}_ghillie_${owner}_leaves`;
     mesh.castShadow = mesh.receiveShadow = true;
-    if (clearance) mesh.userData.fieldSuit = true;
+    if (clearance) {
+      mesh.userData.fieldSuit = true;
+      fieldOk(mesh, (p) => clearance.garnishOk(owner, p));
+    }
     mesh.userData.vehicleFoliage = leafy ? garnishSpecies(cfg) : cfg.foliageKind ?? defaultFoliageKind(cfg.style);
     // alpha-cut sprays enclose air between their leaves, like the net that carries them
     mesh.userData.combatHitboxRole = 'nonArmor';
@@ -3693,13 +3993,7 @@ export function addVehicleGhillieSuit(P: GhillieBuilderPort, config?: GhillieCon
   const cfg = freezeConfig(authored);
   // laid against the finished armour: after the profile's own postAssemble chain, which it never wraps (a port without
   // that stage builds at once)
-  // TEMP-NET-TIMING (netting lane, remove before commit)
-  const timed = (): void => {
-    const c0 = process.env.NET_TIMING ? process.cpuUsage() : null;
-    buildGhillieSuit(P, cfg);
-    if (c0) { const c = process.cpuUsage(c0); console.log(`[suit-cpu] ${P.spec.id} ${((c.user + c.system) / 1000).toFixed(0)} ms`); }
-  };
-  if (P.afterAssemble) P.afterAssemble.push(timed);
-  else timed();
+  if (P.afterAssemble) P.afterAssemble.push(() => buildGhillieSuit(P, cfg));
+  else buildGhillieSuit(P, cfg);
   return true;
 }
