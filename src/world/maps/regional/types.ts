@@ -71,7 +71,9 @@ export type RoofSurfaceKind = 'beavertail' | 'canal' | 'slate' | 'pantile' | 'sh
  * lime-wash brushed over mud plaster (regionalSurfaces.ts paintLimewash, its own seed) in place of the plain render.
  */
 export type SurfaceTone = ((hue: number, saturation: number, lightness: number) => readonly [number, number, number])
-  & { paint?: { kind: 'limewash'; seed: number } };
+  & { paint?: { kind: RenderSurfaceKind; seed: number } };
+/** Procedural painters of the render canvases (regionalSurfaces.ts): lime-wash over mud plaster, a town's lime render. */
+export type RenderSurfaceKind = 'limewash' | 'limeRender';
 export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block' | 'fieldstone';
 /** Poured concrete prints a style can paint its plaster2 bucket with (regionalSurfaces.ts makeRegionalConcrete). */
 export type ConcreteSurfaceKind = 'boardFormed';
@@ -91,6 +93,13 @@ export interface ArchitectureSurfaces {
    * coarse stucco): the tile repeats `plasterUv` times as often over the plaster buckets, its normal map at `normal`
    * strength and its cavities' occlusion at `ao`. Absent, the shared tile as it is (every other kit's surfaces unchanged). */
   relief?: { plasterUv: number; normal: number; ao: number };
+  /** the facades lane (2026-10-08): the painter of the kit's three render canvases, under whatever tones the map gives
+   *  them (props.ts; regionalSurfaces.ts paintLimeRender): the primary family on `seed`, plaster2 and plaster3 on one seed
+   *  between them (plaster3 borrows plaster2's relief). Absent, each canvas is its tone's painter or the plain render. */
+  render?: { kind: 'limeRender'; seed: number };
+  /** the facades lane (2026-10-08; gauntlet wave 260): the print of the kit's thatched roofs (props.ts makeThatch): 'nipa',
+   *  the Mekong delta's atap of nipa-palm leaf (regionalSurfaces.ts paintNipaThatch). Absent, the straw thatch print. */
+  thatch?: { kind: 'nipa' };
 }
 
 export interface ArchitectureStyle {
@@ -111,6 +120,12 @@ export interface ArchitectureStyle {
   churchyard?: YardStyle;
   /** the yards round the kit's houses (yards.ts): absent, the houses stand in the open ground as before */
   yard?: YardStyle;
+  /**
+   * (the facades lane, round 10) the foot of the kit's houses as round 10 lays it — a plinth's water table, a wider apron
+   * at the wall foot and longer door paths, the render's losses up the walls drawn no more (house.ts); false keeps the
+   * foot as round 9 laid it (Verdant's khatas, the owner's favourite village). Absent: on
+   */
+  groundCraft?: boolean;
 }
 
 /**

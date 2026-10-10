@@ -26,6 +26,10 @@ export interface FacadeContext {
   stone?: { kind: StoneSurfaceKind; dressed?: boolean };
   /** the ground the placed building stands on (RegionalBuildContext.ground; absent in a bare build) */
   ground?: RegionalGround;
+  /** (round 10) the style's ground craft (ArchitectureStyle.groundCraft): false keeps round 9's wall foot */
+  groundCraft?: boolean;
+  /** (round 10) the map's kit gated back to the craft's older layers (maps/regional/index.ts KIT_LEGACY_MAPS) */
+  legacy?: boolean;
 }
 let facadeContext: FacadeContext | null = null;
 
@@ -45,6 +49,24 @@ export function setFacadeCraft(on: boolean): void {
 /** True on a desktop kit build: the facade craft is built. A phone, or a build outside a kit, keeps the plain parts. */
 export function facadeOn(): boolean {
   return craftEnabled && facadeContext?.tier === 'desktop';
+}
+
+/** True on a desktop kit build whose style takes round 10's wall foot (ArchitectureStyle.groundCraft, default on). */
+export function facadeGroundCraft(): boolean {
+  return facadeOn() && facadeContext?.groundCraft !== false;
+}
+
+/** True in a kit build on a map gated back to the craft's older layers (maps/regional/index.ts KIT_LEGACY_MAPS). */
+export function facadeLegacy(): boolean {
+  return facadeContext?.legacy === true;
+}
+
+/**
+ * True in a kit build (any tier, craft or none) whose style takes round 10's wall foot: its render losses are drawn by
+ * no build, so the craft never takes away what the plain build drew (facade.selftest: the craft only adds).
+ */
+export function styleGroundCraft(): boolean {
+  return !!facadeContext && facadeContext.groundCraft !== false;
 }
 
 /** The ground under the building being built (the wall-foot strip lies on it), or null: a bare build lays it level. */
@@ -205,9 +227,12 @@ function shrink(poly: ReadonlyArray<readonly [number, number]>, cu: number, cy: 
  * eaves, its edge bundled (the lift wanders along it), and two course lines up the slope, each a lip a couple of
  * centimetres proud. `eave0`, `eave1` are the slope's lower edge on its top surface, `top0`, `top1` the matching ends of
  * the slope's upper edge (on a hip, the ridge ends; on a hip's end slope, its apex twice), `n` the slope's normal.
+ * `nipa` (an atap of nipa leaf; the facades lane, 2026-10-08, gauntlet wave 260): the doubled eave course alone, thick and
+ * frayed (its lift wanders every half metre), and no course lines (the leaf rows are the print's, a hand's width apart;
+ * lips a metre apart read as shingle courses).
  */
 export function thatchCourses(sink: PartSink, bucket: RegionalBucket, eave0: Vec3, eave1: Vec3, top0: Vec3, top1: Vec3, n: Vec3,
-  opts: { verges?: boolean; stepped?: boolean } = {}): void {
+  opts: { verges?: boolean; stepped?: boolean; nipa?: boolean } = {}): void {
   const lerp = (a: Vec3, b: Vec3, t: number): Vec3 => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
   const add = (a: Vec3, k: number): Vec3 => [a[0] + n[0] * k, a[1] + n[1] * k, a[2] + n[2] * k];
   const along = [eave1[0] - eave0[0], eave1[1] - eave0[1], eave1[2] - eave0[2]];
@@ -224,7 +249,9 @@ export function thatchCourses(sink: PartSink, bucket: RegionalBucket, eave0: Vec
   // the eaves beaten into three steps of butt ends (the south Russian and Ukrainian thatcher's stepped eave), then two
   // course lines up the slope
   const step = Math.min(0.24, slopeLen * 0.11);
-  const courses: Array<{ from: number; to: number; lift: number; jitter: number }> = [
+  const courses: Array<{ from: number; to: number; lift: number; jitter: number }> = opts.nipa
+    ? [{ from: 0, to: Math.min(0.32, slopeLen * 0.14), lift: 0.08, jitter: 0.03 }]
+    : [
     ...(opts.stepped === false ? [] : [
       { from: 0, to: step, lift: 0.065, jitter: 0.02 },
       { from: step, to: 2 * step, lift: 0.055, jitter: 0.016 },
@@ -244,7 +271,7 @@ export function thatchCourses(sink: PartSink, bucket: RegionalBucket, eave0: Vec
     const span = Math.hypot(lo1[0] - lo0[0], lo1[1] - lo0[1], lo1[2] - lo0[2]);
     // (a bundle's wander every 1.3 m along the eave course, a course line straight: Verdant's thatch at a third of
     // its first cost)
-    const cells = Math.max(1, Math.round(span / (course.jitter > 0.01 ? 1.3 : 4)));
+    const cells = Math.max(1, Math.round(span / (opts.nipa ? 0.5 : course.jitter > 0.01 ? 1.3 : 4)));
     const lifts: number[] = [];
     for (let k = 0; k <= cells; k++) {
       const p = lerp(lo0, lo1, k / cells);

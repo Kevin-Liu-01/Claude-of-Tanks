@@ -1,7 +1,6 @@
 import './ui/endScreenPresentation.css';
 import './ui/richTooltip.css';
-import { structureTopAt, SUPPORT_STEP_UP_M } from './sim/structureSupport.ts';
-import type { CollisionRecord } from './world/collision.ts';
+import { createVehicleGroundSampler } from './world/vehicleGroundSampler.ts';
 import './ui/battleUiVisibility.css';
 import './ui/hudCustomization.css';
 import type { RuntimeValue } from './runtimeTypes.ts';
@@ -132,7 +131,7 @@ import {
   CAMO_CATALOG_PATTERN_IDS, getCamoSelection, setCamoSelection,
   getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection,
   setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked,
-  clearCamoOverrides, warmWreckTextures, setCamoBattleSeed, camoSelectionSuitsTheatre,
+  clearCamoOverrides, warmWreckTextures,
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
 } from './vehicles/materials.ts';
 import './ui/motion.css';
@@ -732,13 +731,10 @@ function requireFxRuntime() {
 // Movement and wheels read the same cached triangles as the near terrain.
 // An analytic/bilinear approximation can sit above the visible ground at a
 // ridge or rut, leaving daylight below otherwise correctly conformed tracks.
-const debrisSupportCandidates: CollisionRecord[] = [];
-const groundSampler = (x: number, z: number, ceiling?: number) => {
-  const terrain = hfProxy.getContactHeightAt(x, z);
-  if (ceiling === undefined) return terrain;
-  const candidates = currentWorld()?.queryObstacles?.(x - .01, z - .01, x + .01, z + .01, debrisSupportCandidates);
-  return candidates ? Math.max(terrain, structureTopAt(candidates, candidates.length, x, z, ceiling - SUPPORT_STEP_UP_M)) : terrain;
-};
+// The wheels and track debris also stand on the standable collision tops the
+// movement solve stands hulls on (bridge decks, roofs, slabs): see
+// world/vehicleGroundSampler.ts (the vehicle-contact lane, 2026-10-09).
+const groundSampler = createVehicleGroundSampler((x, z) => hfProxy.getContactHeightAt(x, z), currentWorld);
 // PERF (performance_budget r4): pool visuals are lazy — remember the sampler
 // on the game state so ensureTankVisual applies it to visuals built later.
 game._groundSampler = groundSampler;
@@ -940,7 +936,6 @@ const battleIntent = createBattleIntentRuntime({
   anisotropy: engineCtx.anisotropy ?? 4,
   setCamoBiome,
   clearCamoOverrides,
-  setCamoBattleSeed,
   setCamoOverride,
   applyCamoPatterns: applyCamoPatternsChunked,
   preloadBattleVisuals: () => battleVisualStreamerAccess.preload(),
@@ -2201,8 +2196,7 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     },
     planCamoOverrides: (specId: string, mapId: string, randomRoster: boolean, campaignOperationId: string | null = null, gameMode: string | null = null) => {
       const plan = soloRosterPlan(gameMode, campaignOperationId, randomRoster);
-      return planBattleCamoOverrides(game, specId, mapId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.alliedSlots,
-        (botSpecId) => camoSelectionSuitsTheatre(getSpec(botSpecId), mapId));
+      return planBattleCamoOverrides(game, specId, mapId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.alliedSlots);
     },
     ensureTankBuilders,
     preloadSoloAuthority: preloadSoloBattleRuntime,
