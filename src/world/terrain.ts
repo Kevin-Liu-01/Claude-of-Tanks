@@ -5702,8 +5702,12 @@ void splatCompute() {
         }
       } else if (bnd < 2.5) {
         // a paddy's bund: a raised earth line half a metre wide, grassed on its top, between the water and the rice
-        float bund = (1.0 - smoothstep(0.30, 0.55, edgeM)) * (1.0 - track);
-        a.rgb = mix(a.rgb, mix(soilF * 0.95, a.rgb * vec3(0.95, 1.0, 0.85), 0.40 + 0.25 * n1h), bund * landW);
+        // (Caldera round 4, wave 359: "no paddy grid" — the bunds took the field's own green or the soil's dark, so past the
+        // near fields the grid between the water and the rice was gone) the bund a little wider, its cut grass a paler,
+        // drier green over the earth than the rice or the water either side, so the grid holds into the middle distance
+        float bund = (1.0 - smoothstep(0.36, 0.66, edgeM)) * (1.0 - track);
+        vec3 bundTop = mix(soilF * 1.05, vec3(1.55, 1.78, 0.78) * baseL * bright, 0.55 + 0.25 * n1h);
+        a.rgb = mix(a.rgb, bundTop, bund * landW);
       } else {
         // a dry stone wall's footing: limestone rubble 0.8 m wide, broken into its stones and gaps and grown over in
         // places, its foot shaded on the field side (the round-2 chase frame: a pale unbroken strip read as a painted
@@ -7113,6 +7117,10 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
 {
   vec3 dN = gSplatNrm;
   vec3 gN = normalize(vWNormal);
+  // (Caldera round 4, the map-revival lane, 2026-10-10; gauntlet wave 359: "the water glitters") a flooded paddy's and a
+  // ditch's water lies level: its sheet takes the world's up, not the relief of the ground under it (the splat stage has
+  // flattened its detail), so the sky it mirrors is one sheet and not a glitter of facets
+  if (gFieldWater > 0.001) gN = normalize(mix(gN, vec3(0.0, 1.0, 0.0), gFieldWater));
   // round 72b: the ring bands' lighting normal carries the atlas gradient the splat slope already read
   if (dot(gRingGrad, gRingGrad) > 0.0) {
     vec2 ringG0 = -gN.xz / max(gN.y, 0.05);

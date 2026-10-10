@@ -128,6 +128,11 @@ export default {
       { boundary: [[379, -179], [360, -168], [341, -151], [320, -164], [309, -181], [293, -199], [292, -226], [318, -237], [339, -237], [362, -239], [384, -227], [380, -201]], feather: 10, strength: 0.85 },
     ],
     village: { x0: -178, x1: 188, z0: -174, z1: 190, cx: 4, cz: 14, feather: 44, flatten: 0.72, relief: 0.24 },
+    // (Caldera round 4, the map-revival lane, 2026-10-10; gauntlet wave 359: "no paddy grid", "Western farm boxes ... on
+    // open lawn"; the bird view: a 370 m dark lawn inside the loop) Aso's farmsteads stand among their paddies: the
+    // village's worn soil keeps to the yards and the roads' margins (the activity patches), and the paddies, bunds and
+    // field roads run up to them — the village zone's wear was the whole rectangle, which kept every field off it
+    villageWear: 'activity-patches',
     landforms: [
       // a small negative knoll on the bump the hill noise raises 2.5 m by the north-east loading road at (100, 247): bravo's
       // block routes cross it at speed, and a hull launched off it took the map's worst fall (2026-10-03, 108 hp)
