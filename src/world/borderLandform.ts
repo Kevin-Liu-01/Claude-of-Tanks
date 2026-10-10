@@ -137,6 +137,8 @@ export interface BorderLandformSettings {
    * woods field past the hand-over with its lone-tree crop law, lee-face stands, the hedges as strings of crowned bushes,
    * the far rise. A map passes a wave against main before it opts in; every other map keeps the edge main drew (Verdant's
    * north-east corner dropped with the lower critic in wave 330, Saltwind's east edge in 331). Read through borderBatch6.
+   * 2026-10-10 (the owner's free hand: every map under the standard PASS rule): Verdant (wave 330, horizon_border +0.88, worst
+   * drop −0.17) and Saltwind (331, worst −0.14) pass it and take batch 6 too.
    */
   batch6?: boolean;
   /**
@@ -161,7 +163,7 @@ const STYLE_DEFAULTS: Readonly<Record<string, BorderLandformSettings>> = {
  * valleys and logging country, tablelands and canyons, mountain valleys. A map config's `terrain.border` overrides it.
  */
 const MAP_BORDERS: Readonly<Record<string, Partial<BorderLandformSettings>>> = {
-  verdant: { forest: 0.36, hedgerows: 0.85, fields: 0.75, farms: 12, farRiseM: 40 },
+  verdant: { forest: 0.36, hedgerows: 0.85, fields: 0.75, farms: 12, farRiseM: 40, batch6: true },
   desert: { forest: 0.03, enclosure: 0.5, hedgerows: 0, fields: 0, farms: 4, buildings: 'arid' },
   winter: { forest: 0.44, hedgerows: 0.2, fields: 0.1, farms: 6, buildings: 'winter' },
   urban: { forest: 0.28, hedgerows: 0.5, fields: 0.45, farms: 14 },
@@ -188,7 +190,7 @@ const MAP_BORDERS: Readonly<Record<string, Partial<BorderLandformSettings>>> = {
   orchard: { forest: 0.4, hedgerows: 0.75, fields: 0.65, farms: 12 },
   longleaf: { forest: 0.62, hedgerows: 0.2, fields: 0.15, farms: 6 },
   mangrove: { enclosure: 0.04, hillHeight: 0.35, reachM: 420, rimFloor: 0.12, wavelengthM: 820, forest: 0.42, hedgerows: 0, fields: 0, farms: 6, buildings: 'tropical', erosion: 0 },
-  saltwind: { forest: 0.14, terrace: 0.35, hedgerows: 0.35, fields: 0.3, crops: 'steppe', farms: 7, buildings: 'steppe' },
+  saltwind: { forest: 0.14, terrace: 0.35, hedgerows: 0.35, fields: 0.3, crops: 'steppe', farms: 7, buildings: 'steppe', batch6: true },
   reservoir: { forest: 0.5, fields: 0.15, farms: 6 },
   mars: { forest: 0, hedgerows: 0, fields: 0, farms: 0 },
   moon: { forest: 0, hillHeight: 1.6, hedgerows: 0, fields: 0, farms: 0 },
