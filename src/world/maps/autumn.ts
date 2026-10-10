@@ -176,7 +176,8 @@ export default {
     // opening drive drops to the cross lanes and chooses the bridge or the ford.
     // The upland is uneven beyond the pad, so the allies deploy in Reservoir's
     // compact columns instead of the wide lateral arc.
-    player: { x: 303, z: -327, formation: { columnSpacingM: 8, rowSpacingM: 13 } },
+    // (2026-10-10, the fairness ruling: 25 m farther up the shelf, as far as the zones' drives stay even)
+    player: { x: 318, z: -352, formation: { columnSpacingM: 8, rowSpacingM: 13 } },
     // one enemy arc north of the town, clear of the coach road and the park
     // Flat-scanned on the marsh-less field ($SP/r48a/design.mjs pads): minNy >= 0.90
     // and relief <= 4 m over the 22 m pad, >= 30 m off a lane, >= 45 m apart, >= 800 m
@@ -310,6 +311,12 @@ export default {
       { id: 'mid-orchard-upper', species: 'oak', path: [[-131, -197], [-61, -159]], count: 10, width: 0.15 },
       { id: 'east-orchard-lower', species: 'oak', path: [[40, -134], [106, -90]], count: 10, width: 0.15 },
       { id: 'east-orchard-upper', species: 'oak', path: [[35, -119], [101, -75]], count: 10, width: 0.15 },
+      // (2026-10-10, the map-revival lane; the coordinator's fairness ruling: in all-bot games the north team died on the
+      // open meadow before the ford, x 50-200 m, z 0-150 m, to the south team holding the ford's banks — alpha won 58-62 %,
+      // first blood 57 of 80 on main and the landing alike) mirabelle rows on the north bank's meadow, parallel to the
+      // river like the south bank's, the cover the north team crosses to the ford in
+      { id: 'north-orchard-lower', species: 'oak', path: [[60, 48], [150, 91]], count: 10, width: 0.15 },
+      { id: 'north-orchard-upper', species: 'oak', path: [[52, 64], [142, 107]], count: 10, width: 0.15 },
     ],
   },
 

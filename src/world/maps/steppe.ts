@@ -203,7 +203,11 @@ export default {
     // the plateau ~180 m behind the kurgan crest (the spawn-clear fade ends at
     // 90 m, so the mounds keep their height), with the highway and the east
     // track passing between pads, short of the rim lift (past z ≈ 470).
-    player: { x: -160, z: -310 },
+    // (2026-10-10, the map-revival lane; the coordinator's fairness ruling: the pad at z -310 stood ~105 m nearer the middle
+    // than the enemy arc (z 402-426) and alpha won 56-58 % of all-bot games, first blood 53 of 80 north of the middle) the
+    // pad 30 m down the approach, as far as the zones' drives stay even (objective symmetry 1.12 -> 1.20, the brief's line
+    // 1.25; 40 m costs a lane)
+    player: { x: -160, z: -340 },
     enemies: [
       { x: -262, z: 416 }, { x: -172, z: 424 }, { x: -84, z: 410 }, { x: 10, z: 422 },
       { x: 100, z: 414 }, { x: 186, z: 426 }, { x: 300, z: 402 },
