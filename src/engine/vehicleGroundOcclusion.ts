@@ -123,15 +123,17 @@ export const GROUND_AO_CONTACT_EDGE_M = 0.05;
  * It joins the solid's share by the larger of the two, never their sum (no stacking), and like it dims only the pixel's
  * ambient share (sunlit ground beside the track keeps its sun).
  */
-export const GROUND_AO_CONTACT_MAX = 0.7;
+export const GROUND_AO_CONTACT_MAX = 0.6;
 /**
  * 2026-10-10 (round 3, the same report): the whole darkening a receiver takes from every near hull together never passes
  * this share of its sky, so the ground in a hull's own shadow keeps at least (1 − GROUND_AO_OCC_MAX) of its sky light — the
  * ground under a belly seen between the road wheels read near black (0.03–0.08 of the shaded ground on the 207 frames: the
  * solid's share under the belly times its strength). The per-hull law below is the geometry's; the cap is applied once, on
- * the hulls' joint share (combineVehicleGroundOcclusion, the GLSL's occ), so overlapping hulls never stack past it.
+ * the hulls' joint share (combineVehicleGroundOcclusion, the GLSL's occ), so overlapping hulls never stack past it. 0.55:
+ * the ground in the hull's own shadow keeps at least 0.45 of its sky light — darker than the open shadow, never black (at
+ * 0.7 the strip under a skirt, sun-shadowed and all ambient, still read 0.3 of the shadow beside it).
  */
-export const GROUND_AO_OCC_MAX = 0.7;
+export const GROUND_AO_OCC_MAX = 0.55;
 export const GROUND_AO_CONTACT_SPREAD_M = 0.15;
 export const GROUND_AO_CONTACT_RISE_M = 0.25;
 /** The drawn run's travel reaches the shader at this many knots evenly along each ground run (linear between; two vec4). */

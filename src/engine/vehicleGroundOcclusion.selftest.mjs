@@ -182,7 +182,7 @@ assert.ok(!isRunShoe({ x: 1.5, y: 0.1, z: T.cz0 - 0.5 }, T, true) && C(1.5, T.cz
 // production 207: "super super dark rectangular shadows under tracks?? fix this"): the contact hid the whole sky (near
 // black, past the solid's own share there); it is a soft rim now, at most GROUND_AO_CONTACT_MAX, joined by the larger
 const MAXC = GROUND_AO_CONTACT_MAX;
-assert.ok(MAXC >= 0.5 && MAXC <= 0.75, `the contact hides at most ${MAXC} of the sky (the old lane: all of it)`);
+assert.ok(MAXC >= 0.5 && MAXC <= 0.7, `the contact hides at most ${MAXC} of the sky (the old lane: all of it)`);
 assert.ok(!isRunShoe({ x: 1.5, y: 0, z: 0 }, T, false) && underTrackOcclusion({ x: 1.5, y: 0, z: 0 }, T) === MAXC, 'the ground under the ground run');
 assert.ok(F(1.5, 0) >= MAXC && F(1.5, 0) < 0.9, `the lane keeps a share of its sky: ${F(1.5, 0).toFixed(3)} (the solid's or the contact's, the larger; the old lane: 1)`);
 near(underTrackOcclusion({ x: 1.5, y: 0.03, z: 0 }, T), MAXC * (1 - (0.03 / GROUND_AO_CONTACT_RISE_M) ** 2 * (3 - 2 * 0.03 / GROUND_AO_CONTACT_RISE_M)), 1e-9,
@@ -329,14 +329,14 @@ assert.ok(visSnow(0, T.pz0) < 0.3 && visSnow(0, T.fz0) < 0.62, `the rear strip: 
 const visSand = 1 - vehicleGroundOcclusionLocal({ x: 0, y: 0, z: 0 }, UP, T, sand);
 assert.ok(visSand > 0.15 && visSand < 0.32, `sunny sand's belly keeps ${visSand.toFixed(3)}`);
 // several hulls as independent occluders, the range fade over the selection's last stretch
-near(combineVehicleGroundOcclusion([0.3, 0.4], 10), 0.58, 1e-12, 'two as independent occluders');
+near(combineVehicleGroundOcclusion([0.2, 0.3], 10), 0.44, 1e-12, 'two as independent occluders');
 near(combineVehicleGroundOcclusion([0.8], GROUND_AO_RANGE_M), 0, 1e-12, 'gone at the range');
-near(combineVehicleGroundOcclusion([0.6], GROUND_AO_RANGE_M - GROUND_AO_FADE_M), 0.6, 1e-12, 'whole inside the fade');
+near(combineVehicleGroundOcclusion([0.5], GROUND_AO_RANGE_M - GROUND_AO_FADE_M), 0.5, 1e-12, 'whole inside the fade');
 // (2026-10-10, round 3; the owner on production 207: "super super dark rectangular shadows under tracks") the hulls' joint
 // share is capped: the ground under a belly keeps a part of its sky (the 207 frames: 0.03–0.08 of the shaded ground)
-assert.ok(GROUND_AO_OCC_MAX >= 0.6 && GROUND_AO_OCC_MAX <= 0.75, `the darkening never passes ${GROUND_AO_OCC_MAX} of the sky`);
+assert.ok(GROUND_AO_OCC_MAX >= 0.5 && GROUND_AO_OCC_MAX <= 0.6, `the darkening never passes ${GROUND_AO_OCC_MAX} of the sky`);
 near(combineVehicleGroundOcclusion([0.99], 10), GROUND_AO_OCC_MAX, 1e-12, 'a belly\'s middle: capped');
-near(combineVehicleGroundOcclusion([0.6, 0.6], 10), GROUND_AO_OCC_MAX, 1e-12, 'two hulls never stack past the cap');
+near(combineVehicleGroundOcclusion([0.45, 0.45], 10), GROUND_AO_OCC_MAX, 1e-12, 'two hulls never stack past the cap');
 assert.ok(combineVehicleGroundOcclusion([vehicleGroundOcclusionLocal({ x: 0, y: 0, z: 0 }, UP, T, snow)], 10) <= GROUND_AO_OCC_MAX,
   'snow under the belly keeps at least the cap\'s share of its sky');
 
