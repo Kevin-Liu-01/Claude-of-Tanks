@@ -31,6 +31,7 @@ import {
   eraRuCheeks,
   ruShtora,
 } from './russia.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -46,6 +47,7 @@ type CastStation = readonly [z: number, levels: readonly CastLevel[]];
 interface T90Materials extends Record<string, THREE.MeshStandardMaterial> {
   readonly dark: THREE.MeshStandardMaterial;
   readonly hull: THREE.MeshStandardMaterial;
+  readonly canvasCloth: THREE.MeshStandardMaterial;
 }
 
 interface T90BuilderPort {
@@ -7560,6 +7562,8 @@ function refineT90MProryvArmor2026(P: T90BuilderPort): void {
 // tapered bustle. External GLBs are comparison oracles only; no source
 // vertices, generated payloads or runtime meshes enter this builder.
 function buildT90MProryvNative2026(P: T90BuilderPort): void {
+  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
+  addVehicleGhillieSuit(P);
   buildT90MProryv(P);
   replaceT90MProryvHull(P);
   replaceT90MProryvTurret(P);

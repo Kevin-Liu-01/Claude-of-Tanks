@@ -11227,6 +11227,8 @@ function buildKF51(P: TankBuilderPort) {
 // into the live tank.
 // ---------------------------------------------------------------------------
 function buildKF51OwnerExact(P: TankBuilderPort) {
+  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
+  addVehicleGhillieSuit(P);
   const { box, cylX, cylY, cylZ, torus, frustum, polyMultiLoft, buildGun, periscope,
     liftEye, jerryCan } = KIT;
   const slab = orientedSlab;

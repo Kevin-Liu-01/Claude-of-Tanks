@@ -15,14 +15,19 @@ import {
 } from './advancedIfvScale.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mountRotated as mount } from './fittingMount.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
 type Vec3 = [number, number, number];
 type Owner = 'hull' | 'turret';
 
 interface PumaS1BuilderPort extends AdvancedIfvScalePort {
   readonly gunG: THREE.Group;
-  readonly mats: Record<string, THREE.Material>;
+  readonly mats: Record<string, THREE.Material> & {
+    readonly canvasCloth: THREE.MeshStandardMaterial;
+    readonly wheels?: THREE.MeshStandardMaterial;
+  };
   readonly q?: boolean;
+  readonly disposables: Array<{ dispose(): void }>;
   readonly geometryReceipt?: boolean;
   readonly spec: { readonly id: string; readonly visual: { readonly number?: string } };
   muzzleZ: number;
@@ -587,6 +592,8 @@ function addTurret(P: PumaS1BuilderPort): void {
 }
 
 function buildPumaS1(P: PumaS1BuilderPort): void {
+  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
+  addVehicleGhillieSuit(P);
   addHullShell(P);
   addRunningGear(P);
   addTurret(P);

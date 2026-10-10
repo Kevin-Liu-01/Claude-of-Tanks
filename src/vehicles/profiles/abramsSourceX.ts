@@ -10,6 +10,7 @@ import { bindAbramsSourceXStockEra } from './abramsSourceXEra.ts';
 import { buildAbramsSourceXUkraineKit } from './abramsSourceXUkraineKit.ts';
 import { buildAbramsSourceXSepv3Kit } from './abramsSourceXSepv3Kit.ts';
 import { ABRAMS_SOURCE_X_FRAME } from '../abramsSourceXDatums.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 export { ABRAMS_SOURCE_X_FRAME } from '../abramsSourceXDatums.ts';
 
 // Inferred articulation from the source's bearing circle and level bore.
@@ -121,6 +122,8 @@ function* buildAbramsXCooperativeSteps(P: TankBuilderPort, cooperative = true): 
     // owner 2026-09-15: the M1A2 Abrams UA wears its field kit over the finished study
     buildAbramsSourceXUkraineKit(P);
     if (cooperative) yield "buildAbramsX:buildAbramsSourceXUkraineKit(P);";
+    // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
+    addVehicleGhillieSuit(P);
   }
   if (options.sepv3) {
     // owner 2026-09-15 (evening): the SEPv3 carries Trophy, the UAAPU and the fielded M1A2C detail

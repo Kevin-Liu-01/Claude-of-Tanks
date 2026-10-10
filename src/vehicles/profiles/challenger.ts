@@ -36,6 +36,7 @@ import {
 import type { UKBuilderPort } from './uk.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { buildHollowPairedRoadWheel } from '../hollowRoadWheelStock.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -2808,6 +2809,8 @@ function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
 }
 
 function buildChallenger2(P: ChallengerBuilderPort): void {
+  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
+  addVehicleGhillieSuit(P);
   const { cylX, tarpRoll, ammoCan } = KIT;
   const { rng } = P;
   const variant = P.spec.id;

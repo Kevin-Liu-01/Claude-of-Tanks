@@ -31,6 +31,7 @@ import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.j
 import { KIT, FITTINGS, MUDGUARDS, convexSlab } from './kit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -61,11 +62,14 @@ interface MiscBuilderPort {
     readonly dark: THREE.Material;
     readonly detail: THREE.Material;
     readonly shadow: THREE.Material;
+    readonly canvasCloth: THREE.MeshStandardMaterial;
+    readonly wheels?: THREE.MeshStandardMaterial;
   };
   readonly disposables: THREE.BufferGeometry[];
   readonly rng: () => number;
   readonly q?: boolean;
   readonly spec: {
+    readonly id: string;
     readonly armor: { readonly turretPivot: Vec3Tuple };
     readonly visual: { readonly number?: string };
   };
@@ -1924,6 +1928,8 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
 // The accepted S2 hull/running gear/turret stay intact; every new protection
 // module has a broad parent return and stays clear of the single live course.
 function buildLeclercXLR(P: MiscBuilderPort): void {
+  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
+  addVehicleGhillieSuit(P);
   buildLeclerc(P, 'xlr');
   const { box, cylY, cylZ, torus, periscope } = KIT;
   const slab = orientedSlab;

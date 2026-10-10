@@ -150,7 +150,9 @@ for(const quality of ['high','low'])for(const id of ids){
   const cfg=NATIONAL_UKRAINE_GHILLIE[id];
   assert.equal(cfg.hull.top,undefined,id+': hatch and engine deck remain open');
   assert.equal(cfg.turret.top,undefined,id+': roof weapons and drone launch column remain open');
-  assert.equal(cfg.hull.side.length,6,id+': one cage bay on each flank remains uncovered for visible ERA');
+  // 2026-10-09 (owner: "add a ton more netting and camo leaves all over the zoria and hetman and sich"): every cage bay
+  // on each flank is netted (the visible-ERA bay of c6b60311c is netted over); the roof and the decks stay open above
+  assert.equal(cfg.hull.side.length,8,id+': every cage bay on each flank carries its net');
   tank.root.updateMatrixWorld(true);
   fullMainGunEnvelope(tank,TANK_SPECS[id],addedHull);
   const seat=MISSION_ATTACHMENT_SEATS[id],native=collectMissionStock(tank,seat.frame,-Infinity,false,TANK_SPECS[id]);

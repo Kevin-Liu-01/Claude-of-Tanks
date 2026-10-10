@@ -15,6 +15,7 @@ import { leopardReturnRollers } from './leopardReturnRollers.ts';
 import { lineUpperReturnBand } from '../upperReturnBandStock.ts';
 import { cappedSmokeLauncherGeometry } from '../smokeLauncherGeometry.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
 const { box, cylX, cylY, cylZ, torus } = KIT;
 type Station = readonly [z: number, half: number, bottom: number, top: number];
@@ -1087,6 +1088,8 @@ function a4Whip(P:TankBuilderPort,d:Datum,x:number,dy:number,dz:number): void {
 // A7V: separate authored tub, low broad asymmetric shell, deep actual EMES
 // recess, full-height modules, and the source's two rear tall masts.
 export function buildLeopard2A7VX(P: TankBuilderPort): void {
+  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
+  addVehicleGhillieSuit(P);
   const d = LEOPARD_X_DATUMS.leo2a7v_x;
   begin(P, d);
   const stations: Station[] = [
@@ -1255,6 +1258,8 @@ export function buildLeopard2A4MX(P: TankBuilderPort): void {
 // sits (38.9 − 28) mm further in, so the roller seat and the inner lining follow it (2026-09-17).
 const A5_WEB_INSET_M = .01403 + (.0389 - .028);
 export function buildLeopard2A5X(P: TankBuilderPort): void {
+  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
+  addVehicleGhillieSuit(P);
   const d=LEOPARD_X_DATUMS.leo2a5_x;
   begin(P,d);
   a5HullShell(P);

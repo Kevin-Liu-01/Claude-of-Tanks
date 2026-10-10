@@ -22,6 +22,7 @@ import {NATIONAL_MODERNIZATION_CONFIG,type NationalModernizationConfig} from '..
 import {nationalModernizationDesign,NATIONAL_GUN_PIVOT,NATIONAL_BARREL_LENGTH} from '../nationalModernizationDesign.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {addNationalMantlet} from './nationalMantlet.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 const {box,cylY,cylX,cylZ}=KIT;
 
 function mainWeapon(P:TankBuilderPort,c:NationalModernizationConfig|Pick<NationalModernizationConfig,'package'>):void {
@@ -55,6 +56,8 @@ function mainWeapon(P:TankBuilderPort,c:NationalModernizationConfig|Pick<Nationa
  P.muzzleZ=NATIONAL_BARREL_LENGTH;
 }
 function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
+  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
+  addVehicleGhillieSuit(P);
  P.hullG.position.set(0,0,0);P.turretG.position.set(.008,c.y,c.z);
  if(c.model===0){buildT80UXRunningGear(P);buildT80UXHullCore(P);buildT80UXFenders(P);}
  else if(c.model===1){buildT72B3MXRunningGear(P);buildT72B3MXHullCore(P);buildT72B3MXFenders(P);}
