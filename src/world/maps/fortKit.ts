@@ -61,6 +61,8 @@ export interface FortTones {
   age: number;
   /** a sandy map: no moss, the berm sand */
   arid: boolean;
+  /** the period's paint: the 1944 casemates' sprayed blotches, the winter's lime wash (worn by `age`) */
+  camo?: 'pattern' | 'whitewash';
 }
 
 const lin = (c: number): number => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
@@ -475,6 +477,18 @@ function concreteShade(W: Weather): Shade {
     const mot = fbm(p[0], p[1] * 1.6, p[2], 1.3, seed);
     c = mul(c, 0.9 + mot * 0.2);
     const vertical = Math.abs(n[1]) < 0.5;
+    if (T.camo === 'pattern' && n[1] < 0.7) {
+      // sprayed blotches, soft-edged, olive and red-brown over the grey, worn back toward it on the weather faces
+      const b1 = smooth(0.42, 0.5, fbm(p[0], p[1] * 0.8, p[2], 1.1, seed + 201));
+      const b2 = smooth(0.48, 0.56, fbm(p[0] + 7.1, p[1] * 0.8, p[2] - 3.3, 0.9, seed + 203));
+      const wear = clamp01(0.95 - T.age * 0.35 + (vnoise(p[0] * 3, p[1] * 3, p[2] * 3, 0.25, seed + 205) - 0.5) * 0.3);
+      c = mix(c, [0.105, 0.105, 0.055], b1 * wear);
+      c = mix(c, [0.12, 0.075, 0.045], b2 * (1 - b1) * wear);
+    } else if (T.camo === 'whitewash' && n[1] < 0.7) {
+      // a lime wash brushed on in the field, patchy, thin over the board lines, run down by the thaw
+      const wash = smooth(0.3, 0.46, fbm(p[0], p[1] * 0.6, p[2], 0.8, seed + 207)) * (0.95 - T.age * 0.3);
+      c = mix(c, [0.7, 0.71, 0.7], clamp01(wash));
+    }
     if (vertical) {
       // the damp foot: darker and greener where the splash and the berm's wet reach
       const foot = 1 - smooth(W.grade + 0.05, W.grade + 0.75 + mot * 0.3, p[1]);
@@ -1271,19 +1285,19 @@ export function buildPillbox(style: PillboxStyle, tones: FortTones, seed: number
  * and ground. Concrete, earth, turf, crest (the dry grass or sand over the toe), timber, hessian; age 0 fresh .. 1 relic.
  * The desert maps' sangar (structureVariants) and a map absent here keep their own pillbox.
  */
-interface FortMapEntry { style: PillboxStyle; c: number; e: number; t: number; k: number; w?: number; b?: number; age: number; arid?: boolean }
+interface FortMapEntry { style: PillboxStyle; c: number; e: number; t: number; k: number; w?: number; b?: number; age: number; arid?: boolean; camo?: 'pattern' | 'whitewash' }
 const W_TIMBER = 0x5b4a38, W_BAG = 0x8e7f5e;
 export const FORT_MAPS: Readonly<Record<string, FortMapEntry>> = Object.freeze({
   // western Europe 1940-45 and its relics: the Regelbau casemate
-  autumn: { style: 'regelbau', c: 0x8f8b82, e: 0x5a4a38, t: 0x5d6a33, k: 0x8a8150, age: 0.4 },
-  polders: { style: 'regelbau', c: 0x8c8a84, e: 0x4f4636, t: 0x55663a, k: 0x7f8257, age: 0.45 },
-  reservoir: { style: 'regelbau', c: 0x8a877f, e: 0x55473a, t: 0x50602f, k: 0x7a7a48, age: 0.5 },
-  foundry: { style: 'regelbau', c: 0x85827b, e: 0x4c4339, t: 0x58603a, k: 0x7a7559, age: 0.55 },
+  autumn: { style: 'regelbau', c: 0x8f8b82, e: 0x5a4a38, t: 0x5d6a33, k: 0x8a8150, age: 0.4, camo: 'pattern' },
+  polders: { style: 'regelbau', c: 0x8c8a84, e: 0x4f4636, t: 0x55663a, k: 0x7f8257, age: 0.45, camo: 'pattern' },
+  reservoir: { style: 'regelbau', c: 0x8a877f, e: 0x55473a, t: 0x50602f, k: 0x7a7a48, age: 0.5, camo: 'pattern' },
+  foundry: { style: 'regelbau', c: 0x85827b, e: 0x4c4339, t: 0x58603a, k: 0x7a7559, age: 0.55, camo: 'pattern' },
   railyard: { style: 'regelbau', c: 0x87847c, e: 0x4f463b, t: 0x5a6438, k: 0x7d7a55, age: 0.75 },
   urban: { style: 'regelbau', c: 0x8a867e, e: 0x50463a, t: 0x56653a, k: 0x7f7c55, age: 0.7 },
   frontier: { style: 'regelbau', c: 0x8b877f, e: 0x55493a, t: 0x58693a, k: 0x86834f, age: 0.75 },
   coastal: { style: 'regelbau', c: 0x8d8b84, e: 0x4e4a3c, t: 0x5b6d3b, k: 0x8b8a5a, age: 0.95 },
-  winter: { style: 'regelbau', c: 0x8e8c88, e: 0x6d6a66, t: 0xd7dbe2, k: 0xe4e7ec, age: 0.35 },
+  winter: { style: 'regelbau', c: 0x8e8c88, e: 0x6d6a66, t: 0xd7dbe2, k: 0xe4e7ec, age: 0.35, camo: 'whitewash' },
   whiteout: { style: 'regelbau', c: 0x8f8e8a, e: 0x77746f, t: 0xdfe3ea, k: 0xe8ebf0, age: 0.5 },
   ruinspires: { style: 'regelbau', c: 0x8d8981, e: 0x5f5242, t: 0x6a6c3c, k: 0x8f8559, age: 0.6 },
   skybridge: { style: 'regelbau', c: 0x9b8f80, e: 0x8a5f43, t: 0x8f6a4b, k: 0xaa8161, age: 0.5, arid: true },
@@ -1323,7 +1337,7 @@ export function fortFor(mapId: string): { style: PillboxStyle; tones: FortTones;
     style: e.style,
     seed: (h >>> 0) % 100000,
     tones: { concrete: hexLin(e.c), earth: hexLin(e.e), turf: hexLin(e.t), crest: hexLin(e.k), timber: hexLin(e.w ?? W_TIMBER),
-      bag: hexLin(e.b ?? W_BAG), age: e.age, arid: !!e.arid },
+      bag: hexLin(e.b ?? W_BAG), age: e.age, arid: !!e.arid, ...(e.camo ? { camo: e.camo } : {}) },
   };
 }
 
