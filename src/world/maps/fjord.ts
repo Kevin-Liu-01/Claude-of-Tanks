@@ -329,7 +329,11 @@ export default {
     water: 'rgba(43,81,99,.88)', waterStroke: 'rgba(21,46,61,.95)',
     roadCasing: 'rgba(37,41,43,.95)', roadFill: 'rgba(143,151,150,.96)', buildingFill: '#c2c8ca',
   },
-  shot: { pos: [-226, 42, -238], look: [218, -4, 38] },
+  // (the map-content lane, 2026-10-10; the research lane's request, the coordinator's approval: the old pose looked across
+  // the middle of the map at the old village site, an empty moor since the town moved onto the quays on 10-03) the
+  // establishing pose from the valley floor south-west of the harbour town, looking north-east along the harbour road over
+  // the farms, the town and the quays to the lighthouse on the south headland, the bay's arms and the massifs behind
+  shot: { pos: [96, 38, -300], look: [330, -6, 20] },
   // round 66 (2026-09-24, the FFT ocean): a sheltered fjord — a light air down the arms, a faint swell from the mouth;
   // the owner's approved look is kept (amplitude 0.45: centimetres, read as the same water from the chase camera)
   ocean: { windSpeed: 3.2, windDirDeg: 250, fetchKm: 6, swell: 0.1, amplitude: 0.45, choppiness: 0.7, foam: 0.15, breakers: 0.3, caustics: 0.4 },
