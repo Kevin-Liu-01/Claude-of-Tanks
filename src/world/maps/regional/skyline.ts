@@ -123,6 +123,11 @@ interface TowerFacade {
   /** mullions per bay (fine joinery) and their colour */
   mullions: number;
   mullion: Rgb;
+  /**
+   * the mullions and transom drawn at any range, not as fine joinery (the map-revival lane, mr1, 2026-10-07: the station's
+   * head building, whose big bays read as unmullioned panels past the fine-detail distance). Off for every tower.
+   */
+  coarseMullions?: boolean;
 }
 
 /** What a tier's floors suffered (decided per building, its own stream). */
@@ -287,9 +292,9 @@ function dressFace(sink: PartSink, face: Face, fi: number, bays: number, y0: num
       if (facade.mullions > 0) {
         for (let m = 1; m <= facade.mullions; m++) {
           const mu = u - gw / 2 + gw * m / (facade.mullions + 1);
-          facePanel(sink, 'structureMetal', face, mu, (gy0 + gy1) / 2, glassO + 0.02, 0.05, gy1 - gy0, { ...DECOR, colour: facade.mullion, fine: true });
+          facePanel(sink, 'structureMetal', face, mu, (gy0 + gy1) / 2, glassO + 0.02, 0.05, gy1 - gy0, { ...DECOR, colour: facade.mullion, fine: !facade.coarseMullions });
         }
-        facePanel(sink, 'structureMetal', face, u, gy1 - (gy1 - gy0) * 0.25, glassO + 0.02, gw, 0.05, { ...DECOR, colour: facade.mullion, fine: true });
+        facePanel(sink, 'structureMetal', face, u, gy1 - (gy1 - gy0) * 0.25, glassO + 0.02, gw, 0.05, { ...DECOR, colour: facade.mullion, fine: !facade.coarseMullions });
       }
     }
     if (burnt) {
@@ -806,9 +811,12 @@ export function gasHolder(opts: SkylineOptions = {}): RegionalBuilder {
 
 /**
  * A terminus: the stone head building with its central pavilion, the great lunette window over the entrance arch and
- * the clock tower, and behind it the train shed, a glass barrel vault on iron ribs between brick side walls.
+ * the clock tower, and behind it the train shed between brick side walls: one span or two, each a blunt two-centred
+ * pointed arch of iron ribs under glass and sheeting, a smoke-vent lantern along its crown, the glazed end screen's
+ * mullions radiating from its springing (the map-revival lane, mr1, 2026-10-07: wave 209 read the low smooth barrel by
+ * the clock tower as a Nissen hut). `nameBoard`: the station's name board over the entrance arch.
  */
-export function stationHall(opts: SkylineOptions = {}): RegionalBuilder {
+export function stationHall(opts: SkylineOptions & { nameBoard?: boolean } = {}): RegionalBuilder {
   return (ctx) => {
     const sink = new PartSink(uvOffset(ctx));
     const rng = ctx.rng;
@@ -820,7 +828,7 @@ export function stationHall(opts: SkylineOptions = {}): RegionalBuilder {
     // the head building along the front (+z), two storeys and a central pavilion
     const head = { x0: plot.x0, x1: plot.x1, z0: plot.z1 - headD, z1: plot.z1 - 0.9 };
     const hfacade: TowerFacade = { pier: { bucket: stone, w: 0.7, out: 0.3 }, spandrel: { bucket: stone, h: 1.2, out: 0.12, shade: 0.86 }, bay: 3.4, lit: 0.4,
-      glazing: 'bays', mullions: 2, mullion: rgb(0x4a4a44) };
+      glazing: 'bays', mullions: 2, mullion: rgb(0x4a4a44), coarseMullions: true };
     const hdmg = tierDamage(rng, damage, 2);
     const hTop = towerTier(sink, head, 0, 2, 5.2, hfacade, hdmg, rng, { base: -0.5 });
     trimRing(sink, stone, head, hTop - 0.4, [{ h: 0.15, out: 0.14 }, { h: 0.25, out: 0.4 }]);
@@ -838,9 +846,16 @@ export function stationHall(opts: SkylineOptions = {}): RegionalBuilder {
     for (let k = 1; k < 8; k++) {
       const a = Math.PI * k / 8;
       sink.member('structureMetal', facePoint(front, 0, archH - archW / 2, 0.05), facePoint(front, Math.cos(a) * archW * 0.46, archH - archW / 2 + Math.sin(a) * archW * 0.46, 0.05),
-        0.08, 0.06, [0, 0, 1], { ...DECOR, colour: STEEL, fine: true });
+        0.08, 0.06, [0, 0, 1], { ...DECOR, colour: STEEL });
     }
     trimRun(sink, stone, front, -pw / 2, pw / 2, hTop + 5.4, [{ h: 0.2, out: 0.2 }, { h: 0.3, out: 0.45 }], { ret: 0.5 });
+    // the name board over the arch: a dark enamelled board, its lettering's pale band, scorched on a burnt station
+    if (opts.nameBoard) {
+      const boardY = archH + 0.55, boardW = Math.min(pw * 0.8, archW + 2.4);
+      faceBox(sink, 'structureMetal', front, 0, boardY, 0.05, boardW, 0.9, 0.08, { ...DECOR, colour: rgb(0x1f2a33) });
+      faceBox(sink, 'structureMetal', front, 0, boardY, 0.095, boardW - 0.5, 0.36, 0.01,
+        { ...DECOR, colour: damage >= 2 ? rgb(0x8f8a7c) : rgb(0xd8d2c0) });
+    }
     // the clock tower on the pavilion's corner
     const tx = pav.x1 - 2.2, tz = pav.z1 - 2.2, tTop = hTop + 6 + 9;
     sink.span(stone, tx - 1.8, hTop + 6, tz - 1.8, tx + 1.8, tTop, tz + 1.8);
@@ -849,36 +864,75 @@ export function stationHall(opts: SkylineOptions = {}): RegionalBuilder {
       faceBox(sink, 'dark', face, 0, tTop - 2.4, 0.06, 0.07, 0.8, 0.02, DECOR);
     }
     pyramidCrown(sink, tx, tz, 2.0, tTop, 3.6, COPPER);
-    // the train shed: brick side walls, a glass barrel vault on iron ribs
+    // the train shed: brick side walls, then one span or two (past 26 m), each a blunt two-centred pointed arch of iron
+    // ribs (each arc's centre past the axis on the far side and below the springing line: the rise 0.7 of the half span,
+    // the arcs meeting at the crown in a low point), glass over its middle bands and sheeting over the haunches, a
+    // smoke-vent lantern along the crown, the end screen glazed with its mullions radiating from the springing. All
+    // dressing but the walls.
     const shed = { x0: plot.x0 + 0.5, x1: plot.x1 - 0.5, z0: plot.z0, z1: head.z0 };
-    const wallH = 7.5, span = shed.x1 - shed.x0, R = span / 2, cxs = (shed.x0 + shed.x1) / 2;
+    const wallH = 7.5, width = shed.x1 - shed.x0;
     for (const x of [shed.x0, shed.x1 - 0.8]) sink.span(stone, x, -0.4, shed.z0, x + 0.8, wallH, shed.z1);
+    const spans = width > 26 ? 2 : 1, half = width / spans / 2;
     const ribs = Math.max(4, Math.round(shedD / 4.5));
-    for (let k = 0; k <= ribs; k++) {
-      const z = shed.z0 + 0.3 + (shedD - 0.6) * k / ribs;
-      const fallen = damage >= 2 && hash01(k, span, 4.4) < 0.3;
-      if (fallen) continue;
-      for (let s = 0; s < 12; s++) {
-        const a0 = Math.PI * s / 12, a1 = Math.PI * (s + 1) / 12;
-        sink.member('structureMetal', [cxs + Math.cos(a0) * R, wallH + Math.sin(a0) * R * 0.55, z], [cxs + Math.cos(a1) * R, wallH + Math.sin(a1) * R * 0.55, z],
-          0.25, 0.35, [0, 0, 1], { ...DECOR, colour: STEEL, exposed: true });
+    const ribZ = (k: number) => shed.z0 + 0.3 + (shedD - 0.6) * k / ribs;
+    // (the left arc's centre at (cx + ac, wallH - ae); it runs from its springing up to the axis, still rising there)
+    const SEG = 12, ac = 0.3 * half, ae = 0.8 * half, R = Math.hypot(half + ac, ae);
+    const springA = Math.atan2(ae, -(half + ac)), crownA = Math.atan2(Math.sqrt(R * R - ac * ac), -ac);
+    const rise = Math.sqrt(R * R - ac * ac) - ae;
+    /** The arch's points, springing to springing: the left arc up to the crown, the right its mirror. */
+    const arch = (cx: number): Array<[number, number]> => {
+      const left: Array<[number, number]> = [];
+      for (let k = 0; k <= SEG / 2; k++) {
+        const a = springA + (crownA - springA) * k / (SEG / 2);
+        left.push([cx + ac + Math.cos(a) * R, wallH - ae + Math.sin(a) * R]);
       }
-    }
-    // the vault's glazing and its sheeted bands, gone over the blown bays
-    for (let s = 0; s < 12; s++) {
-      const a0 = Math.PI * s / 12, a1 = Math.PI * (s + 1) / 12;
-      const p0x = cxs + Math.cos(a0) * R, p0y = wallH + Math.sin(a0) * R * 0.55, p1x = cxs + Math.cos(a1) * R, p1y = wallH + Math.sin(a1) * R * 0.55;
-      const glazed = s >= 3 && s <= 8;
-      for (let k = 0; k < ribs; k++) {
-        if (damage >= 1 && hash01(s, k, 7.7) < 0.12 * damage) continue;
-        const za = shed.z0 + 0.3 + (shedD - 0.6) * k / ribs, zb = shed.z0 + 0.3 + (shedD - 0.6) * (k + 1) / ribs;
-        const pts: Vec3[] = [[p0x, p0y + 0.1, za], [p0x, p0y + 0.1, zb], [p1x, p1y + 0.1, zb], [p1x, p1y + 0.1, za]];
-        // (the corners run over the vault from +x: reversed, they wind outward)
-        sink.polygon(glazed ? 'glass' : 'roof', [...pts].reverse(), { ...DECOR, ...(glazed ? { window: [0, 1, 0] as Vec3 } : {}) });
-        // its underside, seen from the platforms: a skin 4 cm under it (toward the vault's axis)
-        const am = (a0 + a1) / 2, ox = -Math.cos(am) * 0.04, oy = -Math.sin(am) * 0.04;
-        sink.polygon(glazed ? 'glass' : 'roof', pts.map(([px, py, pz]): Vec3 => [px + ox, py + oy, pz]), DECOR);
+      return [...left, ...left.slice(0, -1).reverse().map(([x, y]): [number, number] => [2 * cx - x, y])];
+    };
+    for (let sp = 0; sp < spans; sp++) {
+      const cx = shed.x0 + half * (2 * sp + 1), pts = arch(cx), crownY = wallH + rise;
+      for (let k = 0; k <= ribs; k++) {
+        const z = ribZ(k);
+        if (damage >= 2 && hash01(k, width, 4.4 + sp) < 0.3) continue;
+        for (let s = 0; s < SEG; s++) {
+          sink.member('structureMetal', [pts[s][0], pts[s][1], z], [pts[s + 1][0], pts[s + 1][1], z], 0.25, 0.35, [0, 0, 1], { ...DECOR, colour: STEEL, exposed: true });
+        }
+        // the spine's iron column where two spans meet
+        if (sp === 1) sink.member('structureMetal', [shed.x0 + 2 * half, 0, z], [shed.x0 + 2 * half, wallH, z], 0.32, 0.32, [0, 0, 1], { ...DECOR, colour: STEEL, exposed: true });
       }
+      // the glazing over the middle bands, the sheeting over the haunches, gone over the blown bays (both faces)
+      for (let s = 0; s < SEG; s++) {
+        const [p0x, p0y] = pts[s], [p1x, p1y] = pts[s + 1];
+        const glazed = s >= 3 && s <= 8;
+        const nx = -(p1y - p0y), ny = p1x - p0x, nl = Math.hypot(nx, ny) || 1;
+        const ox = (nx / nl) * 0.04, oy = (ny / nl) * 0.04;
+        for (let k = 0; k < ribs; k++) {
+          if (damage >= 1 && hash01(s + sp * SEG, k, 7.7) < 0.12 * damage) continue;
+          const za = ribZ(k), zb = ribZ(k + 1);
+          const quad: Vec3[] = [[p0x, p0y + 0.1, za], [p0x, p0y + 0.1, zb], [p1x, p1y + 0.1, zb], [p1x, p1y + 0.1, za]];
+          // (the corners run over the arch from its left springing: so they wind outward)
+          sink.polygon(glazed ? 'glass' : 'roof', quad, { ...DECOR, ...(glazed ? { window: [0, 1, 0] as Vec3 } : {}) });
+          // its underside, seen from the platforms: a skin 4 cm in from it, wound the other way
+          sink.polygon(glazed ? 'glass' : 'roof', [...quad].reverse().map(([px, py, pz]): Vec3 => [px - ox, py - oy, pz]), DECOR);
+        }
+      }
+      // the smoke-vent lantern along the crown: its dark louvred sides on short posts, its sheeted cap
+      const lz0 = shed.z0 + 0.6, lz1 = shed.z1 - 0.6;
+      sink.span('dark', cx - 0.7, crownY + 0.35, lz0, cx + 0.7, crownY + 0.95, lz1, DECOR);
+      sink.span('roof', cx - 1.0, crownY + 0.95, lz0 - 0.2, cx + 1.0, crownY + 1.1, lz1 + 0.2, DECOR);
+      for (let k = 0; k <= ribs; k++) {
+        for (const side of [-1, 1]) sink.member('structureMetal', [cx + side * 0.6, crownY - 0.05, ribZ(k)], [cx + side * 0.6, crownY + 0.4, ribZ(k)], 0.1, 0.1, [0, 0, 1], { ...DECOR, colour: STEEL, exposed: true });
+      }
+      // the end screen at the open end: glazed (both faces) under the arch, its mullions radiating from the springing
+      const sz = shed.z0 + 0.02;
+      const screen: Vec3[] = pts.map(([x, y]): Vec3 => [x, y, sz]);
+      if (damage < 2 || hash01(sp, width, 9.1) < 0.5) {
+        sink.polygon('glass', screen, DECOR);
+        sink.polygon('glass', [...screen].reverse().map(([x, y, z]): Vec3 => [x, y, z + 0.03]), DECOR);
+      } else sink.polygon('dark', screen.map(([x, y, z]): Vec3 => [x, y, z + 0.02]), DECOR);
+      for (let k = 1; k < SEG; k += 2) {
+        sink.member('structureMetal', [cx, wallH, sz - 0.03], [pts[k][0], pts[k][1], sz - 0.03], 0.08, 0.06, [0, 0, -1], { ...DECOR, colour: STEEL, exposed: true });
+      }
+      sink.member('structureMetal', [pts[0][0], wallH, sz - 0.03], [pts[SEG][0], wallH, sz - 0.03], 0.3, 0.1, [0, 0, -1], { ...DECOR, colour: STEEL, exposed: true });
     }
     return sink.finish();
   };

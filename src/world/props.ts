@@ -484,6 +484,10 @@ interface PropsSettings {
    * rubble's seat, size and the street stream's state before it. They stand there whatever the ground has become, and
    * the street-row pass draws nothing. */
   townRowPlan?: readonly TownRowEntry[];
+  /** Rows the record never held (the map-revival lane, 2026-10-06, Suzhou Creek's round 2: the lilong lanes' terraces on
+   * the district's empty lots), replayed after the recorded rows the same way, each from its own stream, and only where
+   * its plot is dry, off every road's core and clear of every record placed before it. */
+  townRowPlanAdditions?: readonly TownRowEntry[];
   /**
    * The map-revival lane (2026-10-05, Suzhou Creek): a water course (the map's liquid marsh chain) laid through a
    * recorded settlement (townPlan, townRowPlan, townLightPlan). What its water reaches leaves it: a planned building is
@@ -5127,7 +5131,31 @@ ${snowCap ? `
     // a recorded settlement's rows stand at their recorded poses from their own streams, and the pass draws nothing
     // (props.townRowPlan; props.settlementOverWater leaves out a row its water reaches, and its rubble)
     if (P.townRowPlan) {
-      for (const entry of P.townRowPlan) {
+      // a row addition's plot: dry, its corners and edge midpoints off every road's core, no record inside it
+      const rowPlotClear = (entry: TownRowEntry): boolean => {
+        const c = Math.cos(entry.rot), sn = Math.sin(entry.rot), hw = entry.w / 2 + 0.6, hd = entry.d / 2 + 0.6;
+        const local = (x: number, z: number): [number, number] => { const dx = x - entry.x, dz = z - entry.z; return [dx * c - dz * sn, dx * sn + dz * c]; };
+        for (const [a, b] of [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, -1], [0, 1], [-1, 0], [1, 0], [0, 0]]) {
+          const lx = a * hw, lz = b * hd, x = entry.x + lx * c + lz * sn, z = entry.z - lx * sn + lz * c;
+          if (heightField._roadDist(x, z) < 4.5) return false;
+        }
+        // a record inside the plot: its centre in it (a crate, a lamp), or its own footprint over the plot's points (a
+        // building beside it is judged by its shape, not its turned box)
+        const ex = Math.abs(c) * hw + Math.abs(sn) * hd, ez = Math.abs(sn) * hw + Math.abs(c) * hd;
+        const pts: Array<[number, number]> = [];
+        for (let a = -hw; a <= hw + 1e-6; a += hw / Math.max(1, Math.round(hw / 0.75))) for (let b = -hd; b <= hd + 1e-6; b += hd / Math.max(1, Math.round(hd / 0.75))) {
+          pts.push([entry.x + a * c + b * sn, entry.z - a * sn + b * c]);
+        }
+        return !obstacles.some((o) => {
+          if (o.dead || o.max[0] < entry.x - ex || o.min[0] > entry.x + ex || o.max[2] < entry.z - ez || o.min[2] > entry.z + ez) return false;
+          const [lx, lz] = local((o.min[0] + o.max[0]) / 2, (o.min[2] + o.max[2]) / 2);
+          if (Math.abs(lx) < hw && Math.abs(lz) < hd) return true;
+          return pts.some(([x, z]) => collisionFootprintContainsPoint(o, x, z, 0));
+        });
+      };
+      const rows = [...P.townRowPlan.map((entry) => ({ entry, added: false })), ...(P.townRowPlanAdditions ?? []).map((entry) => ({ entry, added: true }))];
+      for (const { entry, added } of rows) {
+        if (added && (footprintWet(entry.x, entry.z, entry.w, entry.d, entry.rot) || !rowPlotClear(entry))) continue;
         const stream = mulberry32(entry.rng);
         let tmp: PropsBuckets = {
           plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
@@ -9627,7 +9655,7 @@ ${snowCap ? `
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
-    obstacles, colliders, animated: animatedDressing, vehicleSetPieces: P.vehicleSetPieces, trees: sceneryTrees,
+    obstacles, colliders, animated: animatedDressing, vehicleSetPieces: P.vehicleSetPieces, trees: sceneryTrees, buildings: buildingFeatures,
   });
   yield { fine: true, stage: 'map-extras' };
   // the landmarks lane: the set pieces' furniture, after every seeded pass (placeLandmarks above)

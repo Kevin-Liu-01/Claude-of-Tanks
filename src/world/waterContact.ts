@@ -109,8 +109,10 @@ const CALDERA_LAKE: Readonly<WaterContactProfile> = Object.freeze({
 });
 // Suzhou Creek (blackglass; the map-revival lane, 2026-10-05): the city creek's dark silt-laden water, a slow drift
 // east toward the Huangpu, little foam; the lake's wading depth (the bridges' decks were set over it)
+// (round 2, wave 149: "clean blue water between bare slopes", "a clean blue-grey sky mirror instead of the brown, crowded
+// creek": the silt's brown body opaque and lighter, the surface rough enough that the sky reads as a dull sheen)
 const SUZHOU_CREEK: Readonly<WaterContactProfile> = Object.freeze({
-  ...LAKE, color: 0x343528, opacity: 0.80, roughness: 0.34, shallowColor: 0x605c42, foam: 0.08,
+  ...LAKE, color: 0x4a3e2a, opacity: 0.9, roughness: 0.52, shallowColor: 0x6f5e3e, foam: 0.08,
   shoreColor: 0x5e5a4c, flowX: 0.010, flowZ: 0.002, waveScale: 0.050, waveStrength: 0.45,
 });
 const MOUNTAIN_LAKE: Readonly<WaterContactProfile> = Object.freeze({

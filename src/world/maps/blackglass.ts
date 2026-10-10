@@ -47,6 +47,29 @@ const CREEK = createMarshChannel(CREEK_STATIONS, 0.5).map((station) => ({ ...sta
   return r === station.r ? station : { ...station, r };
 });
 
+/**
+ * The lilong lanes on the district's empty lots (round 2, wave 149: "a thin scatter of towers and red-brick, red-tile
+ * European houses on bare dirt lots" where the bar is "dense grey-brick lilong"): blocks of three shikumen terraces,
+ * each a row of gate houses 4.9 m apiece behind its court wall, 12 m deep, the rows 4 m apart along their lanes, each
+ * row's gates facing the next row's back. The blocks stand on lots a search found clear (every plot dry, 6 m off any
+ * road's core, no record inside, gentle; 72 m off the zones, 90 m off the spawns), turned to the nearest road; the
+ * rows replay after the recorded rows from streams of their own (props.townRowPlanAdditions), so no recorded building
+ * moves. On Zhabei's bank (north of the creek) one row in five stands burnt out.
+ */
+const LILONG_BLOCKS: ReadonlyArray<{ x: number; z: number; yawDeg: number; n: number }> = [
+  { x: -36, z: -68, yawDeg: 95.3, n: 6 }, { x: -120, z: 94, yawDeg: 48.7, n: 6 }, { x: 6, z: -140, yawDeg: 95.3, n: 6 },
+  { x: -60, z: -134, yawDeg: 95.3, n: 6 }, { x: 72, z: -134, yawDeg: 83.3, n: 6 }, { x: 6, z: 184, yawDeg: 190.3, n: 6 },
+  { x: -60, z: 196, yawDeg: 190.3, n: 6 }, { x: 84, z: 196, yawDeg: 78.7, n: 6 }, { x: 168, z: 130, yawDeg: 98.8, n: 6 },
+  { x: -180, z: 106, yawDeg: -8.9, n: 6 }, { x: -24, z: -194, yawDeg: 95.3, n: 6 }, { x: 42, z: -194, yawDeg: 173.3, n: 8 },
+];
+const LILONG_ROWS = LILONG_BLOCKS.flatMap((block, b) => [-1, 0, 1].map((k) => {
+  const rot = block.yawDeg * Math.PI / 180, off = k * (12 + 4);
+  const x = +(block.x + Math.sin(rot) * off).toFixed(3), z = +(block.z + Math.cos(rot) * off).toFixed(3);
+  const rng = (Math.imul(b * 3 + k + 2, 0x9e3779b1) ^ Math.imul(Math.round(x * 10), 0x85ebca6b) ^ Math.imul(Math.round(z * 10), 0xc2b2ae35)) | 0;
+  const zhabei = z > 100 && ((rng >>> 8) % 5 === 0);
+  return { x, z, rot, w: block.n * 4.9, d: 12, ruined: zhabei, wall: 'stone', rng };
+}));
+
 export default {
   id: 'blackglass',
   // Suzhou Creek (the map-revival lane, 2026-10-05): Shanghai in the autumn of 1937, the creek between the
@@ -54,7 +77,9 @@ export default {
   name: 'Suzhou Creek',
   blurb: 'Shanghai, autumn 1937: Art Deco towers and stone-gate lanes across four bridges from burning Zhabei',
   terrain: {
-    hillScale: 0.62, microScale: 0.72, rimH: 36,
+    // (round 2, wave 149: "conifer-covered mountain ridges stand in for the flat Yangtze delta in most establishing shots":
+    // the 36 m rim stood behind the skyline as a range; the delta's rim is a levee's height)
+    hillScale: 0.62, microScale: 0.72, rimH: 14,
     // the creek (was the flooded quarter's two marshes on its course)
     marshes: CREEK,
     village: { x0: -294, x1: 304, z0: -288, z1: 302, cx: 6, cz: 16, feather: 54, flatten: 0.82, relief: 0.46 },
@@ -132,6 +157,7 @@ export default {
     // the district stands as PR #9's head seated it (the owner's town-plan ruling), its street rows too, so the creek moves
     // only what its water reaches whatever it does to the ground under the rest
     townPlan: TOWN_PLANS.blackglass, townLightPlan: TOWN_LIGHT_PLANS.blackglass, townRowPlan: TOWN_ROW_PLANS.blackglass,
+    townRowPlanAdditions: LILONG_ROWS,
     // Shanghai in 1937 (maps/regional/shanghai*.ts): the Settlement's lanes, blocks and godowns, Zhabei's shophouses, the
     // Bund's banks and the Art Deco towers in the landmarks' footprints
     architecture: 'shanghai',
@@ -145,9 +171,14 @@ export default {
     // side, 59 m north, it stands on that line again, off every carriageway, and the south wins 22.
     roadClearanceTargets: [{ from: [-101.8, -85.7], to: [-111.9, -27.8] }],
     streetRowRoadStride: 2, ruinChance: 0.54, curbs: true, lampposts: true,
-    tones: makeRealisticCityBuildingTones({
-      value: 0.73, saturation: 0.82, soot: 0.035, roofValue: 0.72, coolAccent: 0.015,
-    }),
+    // the city's palette (the realistic city tones) with the Shanghai kit's granite carried over it (round 2, wave 149: the
+    // Customs House read "dark olive" with "a crude checkerboard" of windows — the preset's third render is a weathered
+    // green-grey, hue 0.2, and a map's tones override its kit's, props.ts): the Bund's granite and the deco towers'
+    // dressings stand in the kit's warm grey (maps/regional/shanghai.ts surfaces.tones.plaster3)
+    tones: {
+      ...makeRealisticCityBuildingTones({ value: 0.73, saturation: 0.82, soot: 0.035, roofValue: 0.72, coolAccent: 0.015 }),
+      plaster3: (_h: number, s: number, l: number) => [0.09, clamp01(s * 0.12 + 0.03), clamp01(l * 0.9 + 0.05)],
+    },
     wallStyle: 'brick', wallStoneChance: 0.82, buildingLat: [15, 7],
     sideSkip: 0.06, spacingPad: 4.0, maxSpread: 4.6,
     wallRuns: [
@@ -174,7 +205,8 @@ export default {
     // district kept a weathered volcanic field (the mountains lane, gauntlet wave 15); the coastal relief is the delta's
     // (horizonRelief.ts: an authored key wins over the map's identity)
     baseHex: 0x5f6a58, amp: 0.2, style: 'rolling', relief: 'coastal', treeline: 0.55,
-    panorama: { regional: 'plain', trees: 12 },
+    // (round 2: the far country flat to the horizon, its relief the plain's least; its skyline the poplar rows)
+    panorama: { regional: 'plain', trees: 12, ampM: 24, farRise: 0 },
     outlandRocks: 0.1, forestHex: 0x33473a, rockHex: 0x6d7068, haze: 0.98, grain: 0.5,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)

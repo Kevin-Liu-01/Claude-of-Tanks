@@ -175,6 +175,9 @@ interface DressingContext {
   /** The map-vehicles lane (2026-10-06): the vegetation's tree trunks (props.ts sceneryTrees); a beached boat keeps its
    *  hull clear of them. Omitted, the boats seat as drawn. */
   trees?: readonly CollisionRecord[];
+  /** the buildings placed so far (props.ts buildingFeatures: the plan's with their structure kind), for a kit that dresses
+   *  a landmark's ground (Suzhou's North Station) */
+  buildings?: ReadonlyArray<{ x: number; z: number; w: number; d: number; rot: number; kind?: string }>;
 }
 
 type FocusedDressingContext = Pick<
@@ -1144,7 +1147,7 @@ function legacyDressingKits(mapId?: string): readonly string[] {
 /** Add map-specific geometry before the shared material buckets are merged. */
 export function dressMapExtras({
   mapId, extraKits = null, riverLandings, L, heightField, rng, buckets, groundingReceipts = null,
-  obstacles, colliders, animated, vehicleSetPieces, trees,
+  obstacles, colliders, animated, vehicleSetPieces, trees, buildings,
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
@@ -1166,7 +1169,7 @@ export function dressMapExtras({
   if (kits.includes('shanghai')) {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
     // the tram line down the Settlement's avenue, the bridgeheads' sandbagged posts, the creek's sampans (their own streams)
-    dressShanghai(focused, mapId);
+    dressShanghai({ ...focused, buildings }, mapId);
   }
   // the map-revival lane (2026-10-05): Ruinspires as Sarajevo — the boulevard's tram line, catenary, burnt trams and the
   // container screens at its crossings, the hillside cemeteries (maps/sarajevoStreets.ts; its own streams, never this one)

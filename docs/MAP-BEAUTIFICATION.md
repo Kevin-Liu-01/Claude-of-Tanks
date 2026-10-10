@@ -7862,6 +7862,38 @@ steady rest −6 to −14 % on Monsoon, Verdant, Redrock and Frosthollow, no blu
 - A smoother composite filter (a B-spline in place of Catmull-Rom) cuts Monsoon's speckle 11 % and blurs crisp cumulus
   (Verdant +15 %, Redrock +14 % against the sharp reference): reconstruction is not where to buy smoothness on this sky.
 
+### 2026-10-06 — Suzhou Creek round 2: the lilong lanes, the walled creek, the delta's flat horizon (the map-revival lane, mr1)
+
+**Wave 149 passed (+0.42). Its critics agree on "a thin scatter of towers and red-brick, red-tile European houses on
+bare dirt lots", "clean blue water between bare slopes" and "conifer-covered mountain ridges" for a flat delta.**
+- *The lilong lanes* (`props.townRowPlanAdditions`, blackglass.ts `LILONG_BLOCKS`): twelve blocks of three shikumen
+  terraces stand on the district's empty lots. Each row is a run of gate houses, 4.9 m apiece behind its court wall
+  and 12 m deep; the rows are 4 m apart along their lanes, each row's gates facing the next row's back. A search
+  found the lots: every plot dry, 6 m off any road's core, no record inside it, gentle, 72 m off the zones and 90 m
+  off the spawns. The rows replay after the recorded rows, from streams of their own, so no recorded building moves.
+  A plot is judged against the records' own footprints (a turned box would refuse a block's middle row). 34 of the
+  36 rows stand. On Zhabei's bank one row in five is burnt out. A plot of four or more gate houses always builds as
+  shikumen (the kit's `rowhouse`).
+- *The creek:* the silt water is brown, opaque and duller (waterContact `SUZHOU_CREEK`: the body 0x4a3e2a, roughness
+  0.52). Its banks through the city are a granite revetment laid on the bank's own slope, with a coping, mooring posts
+  and landing steps (dressing; the slope stays the ground a hull drives). The sampans crowd it: four in five stretches
+  hold a raft of up to four.
+- *The horizon:* the rim falls from 36 m to a levee's 14 m, and the far country is the plain's least relief (`ampM`
+  24, no far rise). The flat, hazy, built-up delta skyline past it is the skies lane's.
+- *The granite:* the realistic city tones' third render is a weathered green-grey (hue 0.2), and a map's tones
+  override its kit's, so the Customs House read "dark olive". The kit's warm grey now stands on the map. The Bund
+  buildings' lit windows (22 % and 18 %, which read by day as "a crude checkerboard of flat white window rectangles")
+  are 5 % and 6 %.
+- *The tram avenue:* the catenary is held up (a wire runs only between two standing supports one bay apart, and a
+  lone pole carries a bracket arm). Three burnt trams stand derailed toward the kerbs, inside the avenue but clear of
+  the middle a hull drives (on their tracks one stopped the road crossing sweep's driver short of road 2's causeway);
+  the avenue is no rotation of itself, so each takes its own seat. The layout brief counts a wreck a roadblock.
+- *The warehouse view* was taken inside the Joint Trust warehouse (the head's parking deck, which the kit already
+  builds as the Sihang warehouse). It is re-posed across the creek. The "leopard posts" were its interior columns
+  seen from inside.
+- *Census* [2747, 3362, 1492]. *Pacing* (20 seeds, 38000–38019): median 338 s, p10 254 s, minimum 162 s, none under
+  120 s, no timeouts (round 1: 246 / 185 / 95 s); the lanes' cover lengthens the fights, inside the 3–8 minute band.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

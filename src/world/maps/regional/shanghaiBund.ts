@@ -128,8 +128,9 @@ function heldToDepth(builder: RegionalBuilder): RegionalBuilder {
   };
 }
 
-/** Shanghai North Station in Zhabei: the skyline kit's terminus, its head building to the street, burnt out. */
-const northStation = heldToDepth(stationHall({ damage: 2 }));
+/** Shanghai North Station in Zhabei: the skyline kit's terminus, its head building to the street, burnt out, its name
+ *  board over the arch (its forecourt and tracks: shanghaiStreets.ts dressNorthStation). */
+const northStation = heldToDepth(stationHall({ damage: 2, nameBoard: true }));
 
 // ------------------------------------------------------------------------------------------------ the Bank of China
 
@@ -141,7 +142,7 @@ const bankOfChina: RegionalBuilder = (ctx) => {
     const look = ctx.variant, mobile = ctx.tier === 'mobile';
     const W = clampTo(f.w, 5, 60), D = clampTo(f.d, 5, 60), H = clampTo(ctx.info.h, 8, 90);
     const fh = 3.4, wingTop = Math.max(fh * 2, H * 0.36), towerTop = Math.max(wingTop + fh, H * 0.84);
-    const gold: FacadeStyle = { pitch: 1.6, pier: 0.55, pierBucket: 'plaster2', pierOut: 0.26, spandrel: rgb(0x6b5a3e), lit: 0.18, dark: 0.08 };
+    const gold: FacadeStyle = { pitch: 1.6, pier: 0.55, pierBucket: 'plaster2', pierOut: 0.26, spandrel: rgb(0x6b5a3e), lit: 0.06, dark: 0.08 };
     sink.span('plaster2', -W / 2, -0.4, -D / 2, W / 2, wingTop, D / 2);
     sink.span('plaster2', -W / 2 - 0.1, wingTop - 0.45, -D / 2 - 0.1, W / 2 + 0.1, wingTop, D / 2 + 0.1, SHADOWED);
     const faces = tierFaces(-W / 2, W / 2, -D / 2, D / 2);
@@ -180,7 +181,7 @@ const customsHouse: RegionalBuilder = (ctx) => {
     const look = ctx.variant, mobile = ctx.tier === 'mobile';
     const W = clampTo(f.w, 5, 60), D = clampTo(f.d, 5, 60), H = clampTo(ctx.info.h, 8, 90);
     const fh = 3.6, blockTop = Math.max(fh * 2, H * 0.47);
-    const granite: FacadeStyle = { pitch: 2.0, pier: 0.65, pierBucket: 'plaster3', pierOut: 0.2, spandrel: rgb(0x8c867b), lit: 0.22, dark: 0.06 };
+    const granite: FacadeStyle = { pitch: 2.0, pier: 0.65, pierBucket: 'plaster3', pierOut: 0.2, spandrel: rgb(0x8c867b), lit: 0.05, dark: 0.06 }; // (wave 149: a lit window reads a flat white pane by day; few were lit in the shelled city)
     // the block with its front's middle recessed behind the columns
     const rec = Math.min(2.2, D * 0.12), pw = Math.min(W * 0.42, 11);
     sink.span('plaster3', -W / 2, -0.4, -D / 2, W / 2, blockTop, D / 2 - rec);
