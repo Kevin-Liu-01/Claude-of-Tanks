@@ -52,7 +52,10 @@ assert.deepEqual(pavedSurfaceUniforms(undefined, town).wear, [1, 1, 1, 0], 'no c
 assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.urban, town).cls, [3, 2, 1, 0.36], 'Steinburg: patched streets, a sett square in arcs, 0.36 m gutters');
 assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.urban, town).town, [-20, 20, 80, 60], 'its kerbed town rect');
 assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.cliffbridge, town).town, [0, 0, 0, 0], 'no kerbs: no town rect');
-assert.equal(pavedSurfaceUniforms(MAP_PAVED_SURFACES.blackglass, town).cls[2], 2, 'Suzhou Creek: a tram line, setts in courses');
+assert.deepEqual(pavedSurfaceUniforms(undefined, town).extra, [1, 0, 0, 0], 'no config: tone 1, no town street class, no lines or fills');
+assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.urban, town).extra, [0.92, 2, 1, 0], 'Steinburg: setts inside the kerbed town, centre lines past it');
+assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.ruinspires, town).extra.slice(2), [1, 1], 'Ruinspires: centre lines and shell-hole fills');
+assert.equal(pavedSurfaceUniforms(MAP_PAVED_SURFACES.foundry, town).extra[0], 0.62, 'Ironworks: sooty setts');
 assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.airfield, town).cls.slice(0, 2), [6, 0], 'Kestrel: concrete roads, its aprons\' own slabs');
 
 // the layout: a catalogued path takes its surface where the map's own pathStyles leave it unstyled
@@ -70,7 +73,7 @@ assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.airfield, town).cls.sli
   assert.equal(layer.data[t], 128 | ROAD_SURFACE_CODE.clinker, 'Tidegate\'s mill lane: clinker, marked as the catalogue\'s');
 }
 
-assert.equal(65536 / ROAD_FRAME_ARC_UNITS, 1024, 'the running length wraps at 1024 m, a whole number of every pattern\'s periods');
+assert.equal(32768 / ROAD_FRAME_ARC_UNITS, 512, 'the running length wraps at 512 m (15 bits under the side bit)');
 // the road frame layer: every texel within 14 m of a road holds the nearest line's running length (1/64 m, 16 bits) and
 // heading (16 bits of a turn); on a straight east-west road the length grows with x and the heading is 0
 {
@@ -91,7 +94,8 @@ assert.equal(65536 / ROAD_FRAME_ARC_UNITS, 1024, 'the running length wraps at 10
   const [ax, az] = road[0], [bx, bz] = road[1];
   const len = Math.hypot(bx - ax, bz - az);
   const texelOf = (x, z) => Math.floor((z + 512) * n / 1024) * n + Math.floor((x + 512) * n / 1024);
-  const arcAt = (i) => (frame.data[i * 4] * 256 + frame.data[i * 4 + 1]) / ROAD_FRAME_ARC_UNITS;
+  const arcAt = (i) => ((frame.data[i * 4] & 127) * 256 + frame.data[i * 4 + 1]) / ROAD_FRAME_ARC_UNITS;
+  const sideAt = (i) => (frame.data[i * 4] & 128 ? -1 : 1);
   const turnAt = (i) => (frame.data[i * 4 + 2] * 256 + frame.data[i * 4 + 3]) / 65536;
   const want = ((Math.atan2(bz - az, bx - ax) / (2 * Math.PI)) % 1 + 1) % 1;
   for (const t of [0.3, 0.5, 0.7]) {
@@ -101,7 +105,11 @@ assert.equal(65536 / ROAD_FRAME_ARC_UNITS, 1024, 'the running length wraps at 10
     const turnErr = Math.min(Math.abs(turnAt(i) - want), 1 - Math.abs(turnAt(i) - want));
     assert.ok(turnErr < 0.003, `the heading at ${t} of the first segment (${turnAt(i).toFixed(4)} vs ${want.toFixed(4)})`);
     // the texel centre's own running length: within a texel's diagonal of the point's
-    assert.ok(Math.abs(arcAt(i) - (t * len) % 1024) < 1024 / n * 1.5, `the running length at ${t} (${arcAt(i).toFixed(2)} vs ${(t * len).toFixed(2)})`);
+    assert.ok(Math.abs(arcAt(i) - (t * len) % 512) < 1024 / n * 1.5, `the running length at ${t} (${arcAt(i).toFixed(2)} vs ${(t * len).toFixed(2)})`);
+    // the side bit: 6 m left of the heading and 6 m right of it stand on opposite sides
+    const lx = -(bz - az) / len, lz = (bx - ax) / len;
+    assert.equal(sideAt(texelOf(x + lx * 6, z + lz * 6)), 1, `left of the heading at ${t}`);
+    assert.equal(sideAt(texelOf(x - lx * 6, z - lz * 6)), -1, `right of the heading at ${t}`);
   }
   // the stack: the frame after the road layer (here the only layer), addressed by uRoadFrame
   const st = stackLandUseBake(texture, null, 1, null, frame);
@@ -120,7 +128,8 @@ const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8').re
 for (const line of [
   'uniform vec4 uRoadFrame;',
   'vec4 fc = texelFetch(uMask, ft + ivec2(0, int(uRoadFrame.y + 0.5)), 0);',
-  'gRoadS = (fc.r * 65280.0 + fc.g * 255.0) * (1.0 / 64.0) + dot(wp.xz - fC, gRoadAlong);',
+  'gRoadS = (fArc - (fSide < 0.0 ? 32768.0 : 0.0)) * (1.0 / 64.0) + dot(wp.xz - fC, gRoadAlong);',
+  'gRoadY = fSide * (1.0 - texelFetch(uMask, ft, 0).g) * 12.0 + dot(wp.xz - fC, vec2(-gRoadAlong.y, gRoadAlong.x));',
   'uniform vec4 uRoadSurf, uRoadSurfB;',
   'uniform vec4 uPaveClass, uPaveWear, uPaveTown;',
   'shader.uniforms.uRoadFrame = { value: maskStack.frame };',

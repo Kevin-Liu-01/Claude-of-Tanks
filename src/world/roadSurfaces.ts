@@ -38,25 +38,37 @@ export interface PavedSurfaceConfig {
   covers?: number;
   /** standing water in the gutters and wheel paths (0 dry, the default; times the splat's roadPuddles) */
   puddles?: number;
-  /** a tram line down the middle of the main streets (grooved rails at the standard gauge in a strip of setts) */
-  trams?: boolean;
+  /** the procedural surfaces' stone and binder tone (1 = a mid granite grey; Ironworks' sooty basalt 0.62) */
+  tone?: number;
+  /** a kerbed town's streets in their own class (a German old town's setts inside, asphalt on the roads past it) */
+  townStreet?: Exclude<RoadSurface, 'dirt'>;
+  /** the country roads' worn white centre line (a map from the 1950s on), 0..1 */
+  markings?: number;
+  /** a shelled city's asphalt: the ragged fills of shell holes, 0..1 */
+  holeFills?: number;
 }
 
 /** Each paved map's surfaces (the period rulings above). Absent: the map's own splat (its R print, or none). */
 export const MAP_PAVED_SURFACES: Readonly<Record<string, PavedSurfaceConfig>> = Object.freeze({
   // Steinburg, 1984: the town's streets an old asphalt patched over its trenches, sett gutters at the kerbs; the market
   // square in setts laid in arcs
-  urban: Object.freeze({ street: 'patched', square: 'cobble', setts: 'fan', kerbs: true, gutterM: 0.36, patches: 1, cracks: 1, covers: 1, puddles: 0.6 }),
+  // (R2, the first frames: the old town's smooth asphalt lost to main's sett print) the old town's streets in setts, the
+  // roads past it a patched asphalt with its worn centre line
+  urban: Object.freeze({ street: 'patched', townStreet: 'cobble', square: 'cobble', setts: 'fan', kerbs: true, gutterM: 0.36,
+    patches: 1, cracks: 1, covers: 1, puddles: 0.6, markings: 1, tone: 0.92 }),
   // Ruinspires (Sarajevo, 1992–96): the shelled city's asphalt, patched and cracked; its styled paths keep their own classes
-  ruinspires: Object.freeze({ street: 'patched', square: 'patched', kerbs: true, gutterM: 0.24, patches: 1.5, cracks: 1.3, covers: 1, puddles: 0.15 }),
-  // Suzhou Creek, 1937 (map revival's ruling: the International Settlement's main streets asphalt or tar macadam with the
-  // trams down them; Zhabei's side streets and the lanes granite setts): tar macadam streets with a tram line, the squares
-  // in setts; path 3, the Zhabei road north of the creek, setts (MAP_PATH_SURFACES)
-  blackglass: Object.freeze({ street: 'asphalt', square: 'cobble', kerbs: true, gutterM: 0.24, patches: 0.6, cracks: 0.8, covers: 0.6, puddles: 0.5, trams: true }),
+  // (R2: the squares in setts — the patched asphalt squares read as empty car parks; the round fills ragged and fewer)
+  ruinspires: Object.freeze({ street: 'patched', square: 'cobble', kerbs: true, gutterM: 0.24, patches: 1.3, cracks: 1.3, covers: 1,
+    puddles: 0.15, markings: 1, holeFills: 1 }),
+  // Suzhou Creek, 1937 (map revival's ruling: the International Settlement's main streets asphalt or tar macadam; Zhabei's
+  // side streets and the lanes granite setts): tar macadam streets, the squares in setts; path 3, the Zhabei road north of
+  // the creek, setts (MAP_PATH_SURFACES). (R2: no tram line — distance-field rails bent round every junction)
+  blackglass: Object.freeze({ street: 'asphalt', square: 'cobble', kerbs: true, gutterM: 0.24, patches: 0.6, cracks: 0.8, covers: 0.6,
+    puddles: 0.5, tone: 0.85 }),
   // Ironworks (Völklingen, 1945): the works town's streets in setts, the roads beyond it cinder and earth
-  foundry: Object.freeze({ street: 'cobble', square: 'cobble', townOnly: true }),
+  foundry: Object.freeze({ street: 'cobble', square: 'cobble', townOnly: true, tone: 0.62 }),
   // Aegis Crossing (Ronda, 1972): the old towns' streets and squares in setts
-  cliffbridge: Object.freeze({ street: 'cobble', square: 'cobble', townOnly: true }),
+  cliffbridge: Object.freeze({ street: 'cobble', square: 'cobble', townOnly: true, tone: 1.1 }),
   // Kestrel Airfield (Hostomel, 2022): the roads in concrete lane slabs; the aprons and the runway keep their square slabs
   airfield: Object.freeze({ street: 'concrete', square: 'print', cracks: 0.6, patches: 0.4 }),
 });
@@ -112,17 +124,18 @@ export function roadSurfaceUniforms(mapId: string, climate: 'vegetated' | 'arid'
   return { a: [w.relief, w.stones, w.potholes, w.treads], b: [w.washboard, w.toneFloor, w.laneTone, w.windrow] };
 }
 
-/** The paved surfaces' shader vectors: (street, square, arcs 1 + trams 2, gutter), (patches, cracks, covers, puddles) and the kerbed town
- * rect (centre xz, half-size xz; z 0 without kerbs). */
+/** The paved surfaces' shader vectors: (street, square, arcs, gutter), (patches, cracks, covers, puddles) and the kerbed town
+ * rect (centre xz, half-size xz; z 0 without kerbs) and (tone, the kerbed town's street class, centre lines, shell-hole fills). */
 export function pavedSurfaceUniforms(paved: PavedSurfaceConfig | undefined,
   town: { x0: number; x1: number; z0: number; z1: number }): { cls: [number, number, number, number];
-  wear: [number, number, number, number]; town: [number, number, number, number] } {
-  if (!paved) return { cls: [0, 0, 0, 0], wear: [1, 1, 1, 0], town: [0, 0, 0, 0] };
+  wear: [number, number, number, number]; town: [number, number, number, number]; extra: [number, number, number, number] } {
+  if (!paved) return { cls: [0, 0, 0, 0], wear: [1, 1, 1, 0], town: [0, 0, 0, 0], extra: [1, 0, 0, 0] };
   const street = paved.street ? ROAD_SURFACE_CODE[paved.street] : 0;
   const square = paved.square === 'print' ? 0 : paved.square ? ROAD_SURFACE_CODE[paved.square] : street;
   return {
-    cls: [street, square, (paved.setts === 'fan' ? 1 : 0) + (paved.trams ? 2 : 0), paved.kerbs ? Math.max(0, paved.gutterM ?? 0) : 0],
+    cls: [street, square, paved.setts === 'fan' ? 1 : 0, paved.kerbs ? Math.max(0, paved.gutterM ?? 0) : 0],
     wear: [paved.patches ?? 1, paved.cracks ?? 1, paved.covers ?? 1, paved.puddles ?? 0],
     town: paved.kerbs ? [(town.x0 + town.x1) / 2, (town.z0 + town.z1) / 2, (town.x1 - town.x0) / 2, (town.z1 - town.z0) / 2] : [0, 0, 0, 0],
+    extra: [paved.tone ?? 1, paved.kerbs && paved.townStreet ? ROAD_SURFACE_CODE[paved.townStreet] : 0, paved.markings ?? 0, paved.holeFills ?? 0],
   };
 }

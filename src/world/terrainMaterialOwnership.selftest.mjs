@@ -201,7 +201,7 @@ function checkSourceContract(text) {
     'uThatch',
     // roads lane (2026-10-09): the road frame layer's address in the mask stack (vec4, no sampler — fetched exactly through
     // uMask), the worked carriageway's gains (two vec4) and the paved surfaces' classes, wear and kerbed town (three vec4)
-    'uRoadFrame', 'uRoadSurf', 'uRoadSurfB', 'uPaveClass', 'uPaveWear', 'uPaveTown',
+    'uRoadFrame', 'uRoadSurf', 'uRoadSurfB', 'uPaveClass', 'uPaveWear', 'uPaveTown', 'uPaveExtra',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);
