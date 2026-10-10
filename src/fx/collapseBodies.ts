@@ -134,8 +134,10 @@ interface Prepared {
   /** For the eviction of a cut never used. */
   touched: number;
   resolve: (bucket: string) => THREE.Material | null;
-  /** Its geometries by key once the cut is laid (caps in): the collapse only makes meshes of them. */
+  /** Its geometries by key once the cut is laid (caps in): the collapse only makes meshes of them. Built a list at a
+   *  time too (`queue`: what is left to build; null before the caps are in). */
   built: Map<number, Array<{ material: THREE.Material; geometry: THREE.BufferGeometry }>> | null;
+  queue: Array<[Group, number]> | null;
 }
 
 interface LivePart {
@@ -440,7 +442,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     // the cut does not depend on the blow: a neutral one
     const plan = planCollapsePieces(anatomy, { cause: null, dirX: 0, dirZ: 0, point: null }, { cap: o.cap });
     const job: Prepared = { structureIdx: seam.structureIdx, seam, plan, groups: new Map(), sources: [], source: 0, tri: 0, done: false,
-      touched: ++touch, resolve, built: null };
+      touched: ++touch, resolve, built: null, queue: null };
     const sources: Source[] = [];
     for (const span of seam.spans) {
       const geometry = (span.mesh as THREE.Mesh).geometry as THREE.BufferGeometry | undefined;
@@ -461,77 +463,88 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     return job;
   }
 
-  /** A laid cut's geometries by key: the remnant in world space, every piece's part in its own frame (caps in). */
-  function geometriesOf(job: Prepared, caps: boolean): Map<number, Array<{ material: THREE.Material; geometry: THREE.BufferGeometry }>> {
+  /** A laid cut's caps: each piece's (each part's) broken edges and back, the remnant's broken tops, in their slots'
+   *  materials. */
+  function addCaps(job: Prepared): void {
     const plan = job.plan, groups = job.groups;
-    if (caps) {
-      // each piece's (each part's) broken edges and back, the remnant's broken tops, in their slots' materials
-      const defaultLayout: Layout = { names: ['uv', 'color'], sizes: [2, 3], stride: 11 };
-      const capInto = (key: number, cap: CapQuad): void => {
-        const material = job.resolve(cap.slot.bucket);
-        let g = material ? groups.get(material) : groups.values().next().value as Group | undefined;
-        if (!g && material) { g = { material, layout: defaultLayout, lists: new Map() }; groups.set(material, g); }
-        if (!g) return;
-        let list = g.lists.get(key);
-        if (!list) { list = []; g.lists.set(key, list); }
-        pushCap(list, g.layout, cap);
-      };
-      for (const piece of plan.pieces) for (const cap of capPiece(plan, piece)) capInto(piece.index * PART_STRIDE + (cap.part ?? 0), cap);
-      for (const cap of capStubs(plan)) capInto(STATIC_PIECE, cap);
-    }
-    const f = frameOf(job.seam.anatomy);
-    const out = new Map<number, Array<{ material: THREE.Material; geometry: THREE.BufferGeometry }>>();
-    const v = new THREE.Vector3(), q = new THREE.Quaternion();
-    for (const g of groups.values()) {
-      for (const [key, list] of g.lists) {
-        if (!list.length || key < STATIC_PIECE) continue;
-        const layout = g.layout;
-        const verts = list.length / layout.stride;
-        const pos = new Float32Array(verts * 3), nrm = new Float32Array(verts * 3);
-        const extra = layout.sizes.map((size) => new Float32Array(verts * size));
-        const piece = key >= 0 ? plan.pieces[Math.floor(key / PART_STRIDE)] : null;
-        const off = piece ? piece.parts[key % PART_STRIDE]?.center ?? [0, 0, 0] : [0, 0, 0];
-        if (piece) q.set(-piece.rotation[0], -piece.rotation[1], -piece.rotation[2], piece.rotation[3]);
-        for (let i = 0; i < verts; i++) {
-          const at = i * layout.stride, o3 = i * 3;
-          if (piece) {
-            const pc = piece.center;
-            v.set(list[at] - pc[0], list[at + 1] - pc[1], list[at + 2] - pc[2]).applyQuaternion(q);
-            pos[o3] = v.x - off[0]; pos[o3 + 1] = v.y - off[1]; pos[o3 + 2] = v.z - off[2];
-            v.set(list[at + 3], list[at + 4], list[at + 5]).applyQuaternion(q);
-            nrm[o3] = v.x; nrm[o3 + 1] = v.y; nrm[o3 + 2] = v.z;
-          } else {
-            const x = list[at], y = list[at + 1], z = list[at + 2];
-            pos[o3] = f.x + x * f.c + z * f.s; pos[o3 + 1] = f.y + y; pos[o3 + 2] = f.z - x * f.s + z * f.c;
-            const nx = list[at + 3], ny = list[at + 4], nz = list[at + 5];
-            nrm[o3] = nx * f.c + nz * f.s; nrm[o3 + 1] = ny; nrm[o3 + 2] = -nx * f.s + nz * f.c;
-          }
-          let k = at + 6;
-          for (let a = 0; a < layout.sizes.length; a++) {
-            const size = layout.sizes[a];
-            for (let j = 0; j < size; j++) extra[a][i * size + j] = list[k++];
-          }
-        }
-        const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-        geometry.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
-        layout.names.forEach((name, a) => geometry.setAttribute(name, new THREE.BufferAttribute(extra[a], layout.sizes[a])));
-        geometry.computeBoundingSphere();
-        let entry = out.get(key);
-        if (!entry) { entry = []; out.set(key, entry); }
-        entry.push({ material: g.material, geometry });
+    const defaultLayout: Layout = { names: ['uv', 'color'], sizes: [2, 3], stride: 11 };
+    const capInto = (key: number, cap: CapQuad): void => {
+      const material = job.resolve(cap.slot.bucket);
+      let g = material ? groups.get(material) : groups.values().next().value as Group | undefined;
+      if (!g && material) { g = { material, layout: defaultLayout, lists: new Map() }; groups.set(material, g); }
+      if (!g) return;
+      let list = g.lists.get(key);
+      if (!list) { list = []; g.lists.set(key, list); }
+      pushCap(list, g.layout, cap);
+    };
+    for (const piece of plan.pieces) for (const cap of capPiece(plan, piece)) capInto(piece.index * PART_STRIDE + (cap.part ?? 0), cap);
+    for (const cap of capStubs(plan)) capInto(STATIC_PIECE, cap);
+  }
+  const _v = new THREE.Vector3(), _iq = new THREE.Quaternion();
+  /** One list's geometry: the remnant's in world space, a piece's part in its own frame. */
+  function geometryOfList(job: Prepared, g: Group, key: number, list: number[]): THREE.BufferGeometry {
+    const plan = job.plan, layout = g.layout, f = frameOf(job.seam.anatomy);
+    const verts = list.length / layout.stride;
+    const pos = new Float32Array(verts * 3), nrm = new Float32Array(verts * 3);
+    const extra = layout.sizes.map((size) => new Float32Array(verts * size));
+    const piece = key >= 0 ? plan.pieces[Math.floor(key / PART_STRIDE)] : null;
+    const off = piece ? piece.parts[key % PART_STRIDE]?.center ?? [0, 0, 0] : [0, 0, 0];
+    if (piece) _iq.set(-piece.rotation[0], -piece.rotation[1], -piece.rotation[2], piece.rotation[3]);
+    for (let i = 0; i < verts; i++) {
+      const at = i * layout.stride, o3 = i * 3;
+      if (piece) {
+        const pc = piece.center;
+        _v.set(list[at] - pc[0], list[at + 1] - pc[1], list[at + 2] - pc[2]).applyQuaternion(_iq);
+        pos[o3] = _v.x - off[0]; pos[o3 + 1] = _v.y - off[1]; pos[o3 + 2] = _v.z - off[2];
+        _v.set(list[at + 3], list[at + 4], list[at + 5]).applyQuaternion(_iq);
+        nrm[o3] = _v.x; nrm[o3 + 1] = _v.y; nrm[o3 + 2] = _v.z;
+      } else {
+        const x = list[at], y = list[at + 1], z = list[at + 2];
+        pos[o3] = f.x + x * f.c + z * f.s; pos[o3 + 1] = f.y + y; pos[o3 + 2] = f.z - x * f.s + z * f.c;
+        const nx = list[at + 3], ny = list[at + 4], nz = list[at + 5];
+        nrm[o3] = nx * f.c + nz * f.s; nrm[o3 + 1] = ny; nrm[o3 + 2] = -nx * f.s + nz * f.c;
+      }
+      let k = at + 6;
+      for (let a = 0; a < layout.sizes.length; a++) {
+        const size = layout.sizes[a];
+        for (let j = 0; j < size; j++) extra[a][i * size + j] = list[k++];
       }
     }
-    return out;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geometry.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+    layout.names.forEach((name, a) => geometry.setAttribute(name, new THREE.BufferAttribute(extra[a], layout.sizes[a])));
+    geometry.computeBoundingSphere();
+    return geometry;
   }
-  /** A laid cut's geometries (its lists are let go). */
-  function buildJob(job: Prepared): void {
-    job.built = geometriesOf(job, true);
-    job.groups.clear();
+  /** Build a laid cut's geometries until done or the deadline (Infinity: all of them); its lists are let go as built. */
+  function buildJob(job: Prepared, deadline = Infinity, caps = true): void {
+    if (!job.queue) {
+      if (caps) addCaps(job);
+      job.built = new Map();
+      job.queue = [];
+      for (const g of job.groups.values()) for (const [key, list] of g.lists) if (list.length && key >= STATIC_PIECE) job.queue.push([g, key]);
+    }
+    while (job.queue.length) {
+      const [g, key] = job.queue.pop()!;
+      const list = g.lists.get(key)!;
+      const geometry = geometryOfList(job, g, key, list);
+      g.lists.delete(key);
+      let entry = job.built!.get(key);
+      if (!entry) { entry = []; job.built!.set(key, entry); }
+      entry.push({ material: g.material, geometry });
+      if (now() >= deadline) return;
+    }
+  }
+  /** A cut's geometries, all of them (the rims laid at the collapse: no caps of their own). */
+  function geometriesOf(job: Prepared, caps: boolean): Map<number, Array<{ material: THREE.Material; geometry: THREE.BufferGeometry }>> {
+    buildJob(job, Infinity, caps);
+    return job.built!;
   }
   function disposeBuilt(job: Prepared): void {
     if (job.built) for (const list of job.built.values()) for (const { geometry } of list) geometry.dispose();
     job.built = null;
+    job.queue = null;
   }
 
   function collapse(seam: StructureDamageSeam, e: CollapseBodiesEvent, standing: readonly THREE.Mesh[],
@@ -555,7 +568,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     if (plan.pieces.length < 3) { prepared.delete(seam.structureIdx); return false; }
     // the rest of the cut now (a building that fell before its cut was laid), then the rims the breaches laid since
     advanceJob(job, Infinity);
-    if (!job.built) buildJob(job);
+    buildJob(job);
     prepared.delete(seam.structureIdx);
     const built = job.built!;
     const runs: Source[] = [];
@@ -570,7 +583,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     }
     let rimBuilt: Map<number, Array<{ material: THREE.Material; geometry: THREE.BufferGeometry }>> | null = null;
     if (runs.length) {
-      const rims: Prepared = { ...job, groups: new Map(), sources: [], source: 0, tri: 0, done: false, built: null };
+      const rims: Prepared = { ...job, groups: new Map(), sources: [], source: 0, tri: 0, done: false, built: null, queue: null };
       addSources(rims, runs);
       advanceJob(rims, Infinity);
       rimBuilt = geometriesOf(rims, false);
@@ -714,9 +727,9 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       if (prepared.size) {
         const deadline = now() + budgetMs;
         for (const job of prepared.values()) {
-          if (job.built) continue;
+          if (job.queue && !job.queue.length) continue;
           if (!job.done) advanceJob(job, deadline);
-          if (job.done && !job.built && now() < deadline) buildJob(job);
+          if (job.done && now() < deadline) buildJob(job, deadline);
           if (now() >= deadline) break;
         }
       }
