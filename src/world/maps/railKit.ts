@@ -23,6 +23,7 @@ import {
 import {
   BOX_FACE, STEEL_ATLAS_STRIP_M, STEEL_BLANK_END_U, STEEL_DOOR_U, STEEL_STRIP_V, mapBoxFaceUv, type SteelStrip,
 } from '../propsSteelAtlas.ts'; // round 75
+import { drawsPeriodFreight, pushPeriodFreight } from './periodFreight.ts';
 
 const gablePrism = (width: number, height: number, depth: number): THREE.BufferGeometry => (
   createGablePrism(width, height, depth, 0.5)
@@ -371,7 +372,11 @@ export function makeContainerRow(
   buckets: GeometryBuckets,
 ): StructureDimensions {
   const target = buckets.steel || buckets.baked || buckets.dark;
-  const liveries = containerLiveries(structureBuildContext(buckets));
+  const context = structureBuildContext(buckets);
+  const liveries = containerLiveries(context);
+  // the map-revival lane (2026-10-09): before the ISO box (periodFreight.ts) the seats hold the period's freight, on a
+  // map with its own mix (a kit that rebuilds the row keeps the base row's bounds: drawsPeriodFreight)
+  const freightMap = context && drawsPeriodFreight(context.mapId) ? context.mapId : null;
   const n = 5 + ((rng() * 2) | 0);
   const CL = CONTAINER_L, CW = CONTAINER_W, CH = CONTAINER_H;
   let x = -((n - 1) * (CW + 0.5)) / 2;
@@ -382,6 +387,14 @@ export function makeContainerRow(
     const yaw = (rng() - 0.5) * 0.08;
     const zOff = (rng() - 0.5) * 1.4;
     const jitter = drawBodyJitter(rng);
+    if (freightMap !== null) {
+      // the same shared draws as the boxes: the stack roll, then the stacked box's livery, paint, yaw and offsets
+      const upper = rng() < 0.45;
+      if (upper) { rng(); drawBodyJitter(rng); rng(); rng(); rng(); }
+      pushPeriodFreight(buckets, local, freightMap, x, zOff, yaw, upper);
+      x += CW + 0.4 + rng() * 0.5;
+      continue;
+    }
     const strip: SteelStrip = local() < 0.5 ? 'sideA' : 'sideB';
     pushContainer(target, jitter, local, hex, strip, yaw, x, 0, zOff, local() < 0.5);
     if (rng() < 0.45) { // second tier
