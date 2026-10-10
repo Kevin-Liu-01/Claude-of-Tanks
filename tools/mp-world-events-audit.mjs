@@ -45,6 +45,9 @@ import { createObstacleGrid } from '../src/world/collision.ts';
 import { PHASE, TICK_HZ } from '../src/mp/wire/constants.ts';
 import { createHash } from 'node:crypto';
 import { decodeMigrationKeyframe, deriveMigrationKey, openMigrationBlob } from '../src/mp/host/migrationState.ts';
+import { createStructureDamage } from '../src/sim/structureDamage.ts';
+import { craterFor, munitionChargeKg, munitionClassForShell } from '../src/sim/munitionBlast.ts';
+import { isHeClass } from '../src/sim/damage.ts';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const until = async (predicate, label, timeoutMs) => {
@@ -55,10 +58,14 @@ const until = async (predicate, label, timeoutMs) => {
   }
 };
 const now = () => performance.now();
-const TRACKED_BUS = new Set(['prop:crushed', 'shell:expired', 'shell:hit', 'tank:destroyed', 'tank:ram', 'tank:impact', 'tank:fire', 'shell:fired', 'weapon:predicted']);
-const HOST_KINDS = ['world_prop_destroyed', 'shell_impact', 'shell_hit', 'tank_destroyed', 'tank_ram', 'tank_impact', 'tank_fire', 'shell_fired'];
+const TRACKED_BUS = new Set(['prop:crushed', 'shell:expired', 'shell:hit', 'tank:destroyed', 'tank:ram', 'tank:impact', 'tank:fire', 'shell:fired', 'weapon:predicted', 'structure:stage', 'structure:breach', 'terrain:crater']);
+// destruction (2026-10-07): a structure's stage is world state like a prop's fall: keyed by what it names, not by its host
+// sections (P2, 2026-10-08): a hole or a section's fall is world state too, keyed by its structure, section and slot
+// craters (2026-10-08, crater-render-spec §F): a dug crater is world state too, keyed by its craterId in the match's log
+const HOST_KINDS = ['world_prop_destroyed', 'shell_impact', 'shell_hit', 'tank_destroyed', 'tank_ram', 'tank_impact', 'tank_fire', 'shell_fired', 'structure_stage', 'structure_breach', 'terrain_crater'];
+const WORLD_KINDS = new Set(['world_prop_destroyed', 'structure_stage', 'structure_breach', 'terrain_crater']);
 /** host event kind → the bus kind the presentation emits for it */
-const BUS_FOR = { world_prop_destroyed: 'prop:crushed', shell_impact: 'shell:expired', shell_hit: 'shell:hit', tank_destroyed: 'tank:destroyed', tank_ram: 'tank:ram', tank_impact: 'tank:impact', tank_fire: 'tank:fire', shell_fired: 'shell:fired' };
+const BUS_FOR = { world_prop_destroyed: 'prop:crushed', shell_impact: 'shell:expired', shell_hit: 'shell:hit', tank_destroyed: 'tank:destroyed', tank_ram: 'tank:ram', tank_impact: 'tank:impact', tank_fire: 'tank:fire', shell_fired: 'shell:fired', structure_stage: 'structure:stage', structure_breach: 'structure:breach', terrain_crater: 'terrain:crater' };
 const MAP_ID = 'verdant';
 const SNAPSHOT_TICKS = 3; // 20 Hz
 /** A send this close to a view's end (its leave, the host's close, the run's end) cannot have been presented by it. */
@@ -74,6 +81,9 @@ function keyOf(type, payload) {
     case 'tank_impact': return `crash:${payload.id}`;
     case 'tank_fire': return `fire:${payload.id}:${payload.burning ? 1 : 0}`;
     case 'shell_fired': return `fired:${payload.shellId}`;
+    case 'structure_stage': return `stage:${payload.structureId}:${payload.stage}`;
+    case 'structure_breach': return `breach:${payload.structureId}:${payload.section}:${payload.hole}`;
+    case 'terrain_crater': return `crater:${payload.craterId}`;
     default: return `${type}`;
   }
 }
@@ -87,6 +97,9 @@ function busKeyOf(type, payload) {
     case 'tank:impact': return `crash:${payload.id}`;
     case 'tank:fire': return `fire:${payload.id}:${payload.burning ? 1 : 0}`;
     case 'shell:fired': return `fired:${payload.shellId}`;
+    case 'structure:stage': return `stage:${payload.structureId}:${payload.stage}`;
+    case 'structure:breach': return `breach:${payload.structureId}:${payload.section}:${payload.hole}`;
+    case 'terrain:crater': return `crater:${payload.craterId}`;
     default: return null;
   }
 }
@@ -130,7 +143,57 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       const [x, , z] = obstaclePos(index);
       if (Math.hypot(x, z) < best) { best = Math.hypot(x, z); tree = { index, center: obstaclePos(index) }; }
     });
-    return { hedgehog, tree };
+    // destruction (2026-10-07): a house a bot can ram at speed — the approach across its long side clear for 14 m
+    let ram = null;
+    const structureTable = createStructureDamage(referenceObstacles, reference.getColliders());
+    for (const structure of structureTable.structures) {
+      if (!structure.collapsible || ram) continue;
+      for (const side of [1, -1]) {
+        const rx = Math.cos(structure.yaw) * side, rz = -Math.sin(structure.yaw) * side;
+        const startX = structure.cx + rx * (structure.hw + 12), startZ = structure.cz + rz * (structure.hw + 12);
+        const blocked = referenceObstacles.some((o) => !o.crushable && o.structureIdx !== structure.id && [0.25, 0.5, 0.75, 1].some((t) => {
+          const x = startX + (structure.cx - startX) * t * (12 / (structure.hw + 12)), z = startZ + (structure.cz - startZ) * t * (12 / (structure.hw + 12));
+          return x > o.min[0] - 3 && x < o.max[0] + 3 && z > o.min[2] - 3 && z < o.max[2] + 3;
+        }));
+        if (blocked) continue;
+        ram = { structureId: structure.id, start: [startX, startZ], yaw: Math.atan2(-rx, -rz) };
+        break;
+      }
+    }
+    // sections (P2, 2026-10-08): another structure a bot can shell — 20 m out across its long side, the line clear — for
+    // the holes (and a panel's fall) a match with sections on sends
+    let breach = null;
+    for (const structure of structureTable.structures) {
+      if (!structure.destructible || structure.id === ram?.structureId || breach) continue;
+      for (const side of [1, -1]) {
+        const rx = Math.cos(structure.yaw) * side, rz = -Math.sin(structure.yaw) * side;
+        const startX = structure.cx + rx * (structure.hw + 20), startZ = structure.cz + rz * (structure.hw + 20);
+        const blocked = referenceObstacles.some((o) => !o.crushable && o.structureIdx !== structure.id && [0.2, 0.4, 0.6, 0.8, 1].some((t) => {
+          const x = startX + (structure.cx - startX) * t * (20 / (structure.hw + 20)), z = startZ + (structure.cz - startZ) * t * (20 / (structure.hw + 20));
+          return x > o.min[0] - 3 && x < o.max[0] + 3 && z > o.min[2] - 3 && z < o.max[2] + 3;
+        }));
+        if (blocked) continue;
+        breach = { structureId: structure.id, start: [startX, startZ], yaw: Math.atan2(-rx, -rz),
+          target: [structure.cx + rx * structure.hw, structure.baseY + 1.8, structure.cz + rz * structure.hw] };
+        break;
+      }
+    }
+    // craters (2026-10-08): open, soft, dry ground nearest the map centre — nothing standing within 14 m — where a bot's HE
+    // round digs (the switch on), 22 m ahead of the hull
+    let crater = null;
+    for (let ring = 0; ring <= 12 && !crater; ring++) {
+      for (let k = 0; k < Math.max(1, ring * 8) && !crater; k++) {
+        const a = (k / Math.max(1, ring * 8)) * Math.PI * 2;
+        const x = Math.round(Math.sin(a) * ring * 20), z = Math.round(Math.cos(a) * ring * 20);
+        const tx = x, tz = z + 22;
+        const ground = reference.heightField.getGroundType?.(tx, tz) ?? 'medium';
+        if (ground === 'hard' || (reference.heightField.getWaterMaskAt?.(tx, tz) ?? 0) > 0.05) continue;
+        const near = referenceObstacles.some((o) => Math.max(o.min[0] - Math.max(x, tx), Math.min(x, tx) - o.max[0], 0) < 14
+          && Math.max(o.min[2] - Math.max(z, tz), Math.min(z, tz) - o.max[2], 0) < 14);
+        if (!near) crater = { start: [x, z], target: [tx, tz] };
+      }
+    }
+    return { hedgehog, tree, ram, breach, crater };
   })();
   const hostLog = [];          // every event as sent to each viewer
   const hostCores = [];        // { id, core, hooked, generation }
@@ -163,12 +226,13 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         const payload = event;
         let pos = null;
         if (type === 'world_prop_destroyed') pos = obstaclePos(Number(payload.obstacleIndex));
+        else if (type === 'terrain_crater') pos = [payload.x, 0, payload.z];
         // a death is judged against the hull itself at its tick, not against the position its own payload carries
         else if (type === 'tank_destroyed' && typeof payload.id === 'string' && authority.entityById.get(payload.id)) { const e = authority.entityById.get(payload.id); pos = [e.state.pos.x, e.state.pos.y, e.state.pos.z]; }
         else if (typeof payload.x === 'number') pos = [payload.x, payload.y, payload.z];
         else if (Array.isArray(payload.pos)) pos = [...payload.pos];
         else if (typeof payload.id === 'string') { const e = authority.entityById.get(payload.id); if (e) pos = [e.state.pos.x, e.state.pos.y, e.state.pos.z]; }
-        const key = type === 'world_prop_destroyed' ? keyOf(type, payload) : `${entry.id}/${keyOf(type, payload)}`;
+        const key = WORLD_KINDS.has(type) ? keyOf(type, payload) : `${entry.id}/${keyOf(type, payload)}`;
         hostLog.push({ host: entry.id, generation: entry.generation, tick, wallMs, viewerId, type, key, pos,
           index: type === 'world_prop_destroyed' ? Number(payload.obstacleIndex) : null, cause: payload.cause ?? null, shooterId: typeof payload.shooterId === 'string' ? payload.shooterId : null,
           dir: type === 'world_prop_destroyed' ? [Number(payload.directionX) || 0, Number(payload.directionZ) || 0] : null, speed: typeof payload.speedMps === 'number' ? payload.speedMps : null });
@@ -189,11 +253,16 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     gunMuzzleWorld(out) { return out.set(0, 2, 0); }, gunDirWorld(out) { return out.set(0, 0, 1); },
     stripEra() {}, resetEra() {}, setDestroyed() {}, resetDestroyed() {},
   });
-  const cloneObstacles = () => referenceObstacles.map((o) => ({ min: o.min, max: o.max, crushable: o.crushable === true, crushMin: o.crushMin, kind: o.kind, treeIdx: o.treeIdx, propIdx: o.propIdx, crushed: false, shape2: null }));
+  // a structure's records keep their group and footprint: the presentation's destruction mirror derives its table from them
+  const cloneObstacles = () => referenceObstacles.map((o) => ({ min: o.min, max: o.max, crushable: o.crushable === true, crushMin: o.crushMin, kind: o.kind, treeIdx: o.treeIdx, propIdx: o.propIdx, crushed: false,
+    shape2: o.structureIdx !== undefined ? o.shape2 : null, ...(o.structureIdx !== undefined ? { structureIdx: o.structureIdx, structureRole: o.structureRole } : {}) }));
+  const referenceStructureColliders = reference.getColliders().filter((o) => o.structureIdx !== undefined);
+  const cloneStructureColliders = () => referenceStructureColliders.map((o) => ({ min: o.min, max: o.max, kind: o.kind, shape2: o.shape2, structureIdx: o.structureIdx, structureRole: o.structureRole, crushed: false, dead: false }));
   function auditPresentation(peer, round) {
     const roundIndex = peer.rounds.length;
     const game = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: MAP_ID };
     const obstacles = cloneObstacles();
+    const colliders = cloneStructureColliders();
     // the presentation's own records (their `crushed` flags are this view's), queried as the browser world's grid is
     const queryClones = createObstacleGrid(obstacles);
     const record = { roundIndex, welcomeTick: null, welcomeAtMs: null, endedAtMs: null, welcomes: 0, frames: 0, applied: [], hostIdAtWelcome: null, actors: 0, rosterError: null };
@@ -205,6 +274,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     const worldCollision = {
       heightField: reference.heightField,
       getObstacles: () => obstacles,
+      getColliders: () => colliders,
       queryObstacles: (minX, minZ, maxX, maxZ, target) => queryClones(minX, minZ, maxX, maxZ, target),
       crushObstacle(obstacle, dx, dz, speed, _cause, options) {
         const index = obstacles.indexOf(obstacle);
@@ -218,8 +288,12 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         const propIndex = type === 'prop:crushed' ? (payload.obstacleIndex ?? obstacleIndexAt(pos)) : null;
         const hostId = peer.session.p2p?.hostId ?? peer.id;
         const busKey = busKeyOf(type, payload);
-        record.applied.push({ kind: type, key: type === 'prop:crushed' ? (propIndex !== null ? `prop:${propIndex}` : null) : (busKey ? `${hostId}/${busKey}` : null), hostId, pos, path, presentedTick, frameGap, newestTick: newestTick(), wallMs: now(),
-          index: propIndex, shooterId: payload.shooterId ?? null, feedbackPredicted: payload.feedbackPredicted ?? null, fireIntentSeq: payload.fireIntentSeq ?? null });
+        const worldKeyed = type === 'structure:stage' || type === 'structure:breach' || type === 'terrain:crater';
+        const stagePos = type === 'structure:stage' || type === 'structure:breach' ? [payload.x, payload.y, payload.z]
+          : type === 'terrain:crater' ? [payload.x, 0, payload.z] : null;
+        record.applied.push({ kind: type, key: type === 'prop:crushed' ? (propIndex !== null ? `prop:${propIndex}` : null) : worldKeyed ? busKey : (busKey ? `${hostId}/${busKey}` : null), hostId, pos: stagePos ?? pos, path, presentedTick, frameGap, newestTick: newestTick(), wallMs: now(),
+          index: propIndex, shooterId: payload.shooterId ?? null, feedbackPredicted: payload.feedbackPredicted ?? null, fireIntentSeq: payload.fireIntentSeq ?? null,
+          settled: payload.settled === true });
       },
     };
     const presentation = createBattlePresentation({
@@ -353,6 +427,56 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         bots[1].combat.hp = 1;
         report.steps.scripted.fall = { botId: bots[1].id, tree: scriptedSites.tree.index };
       }
+      if (scriptedSites.ram && bots[2]) {
+        const [x, z] = scriptedSites.ram.start;
+        bots[2].state.pos.set(x, groundAt(x, z) + 0.05, z);
+        bots[2].state.yaw = scriptedSites.ram.yaw;
+        bots[2].state.speed = 14;
+        // its AI off and its throttle held open: a bot's own plan braked or turned it away from the wall in about one
+        // run in three under load (2026-10-08), and the ram is what this case judges
+        bots[2].aiCtl = null;
+        Object.assign(bots[2].input, { throttle: 1, steer: 0, brake: false });
+        report.steps.scripted.ram = { botId: bots[2].id, structureId: scriptedSites.ram.structureId };
+      }
+      // craters (2026-10-08, crater-render-spec §F): the remaining bot with the round that digs deepest fires it into open
+      // ground 22 m ahead, its AI off and its gun reloaded; with the switch off the case records that nothing was dug
+      const diggers = bots.slice(3).map((bot) => {
+        const slot = bot.spec.gun.shells.findIndex((shell) => isHeClass(shell.type));
+        if (slot < 0) return null;
+        const shell = bot.spec.gun.shells[slot], munition = munitionClassForShell(shell);
+        return { bot, slot, radiusM: craterFor(munitionChargeKg(shell, munition), munition, 1, { radiusM: 0, depthM: 0, rimM: 0 }).radiusM };
+      }).filter(Boolean).sort((a, b) => b.radiusM - a.radiusM);
+      const digger = scriptedSites.crater ? (diggers[0]?.bot ?? null) : null;
+      if (scriptedSites.crater && diggers[0]) {
+        const { bot, slot, radiusM } = diggers[0];
+        const [x, z] = scriptedSites.crater.start, [tx, tz] = scriptedSites.crater.target;
+        bot.state.pos.set(x, groundAt(x, z) + 0.05, z);
+        bot.state.yaw = 0;
+        bot.state.speed = 0;
+        bot.aiCtl = null;
+        bot.combat.shellSlot = slot;
+        Object.assign(bot.combat.reload, { t: 0, kind: 'ready' });
+        Object.assign(bot.input, { throttle: 0, steer: 0, brake: true, fire: true, shellSlot: slot });
+        bot.input.aimPoint.set(tx, groundAt(tx, tz), tz);
+        report.steps.scripted.crater = { botId: bot.id, shell: bot.spec.gun.shells[slot].name, radiusM: Number(radiusM.toFixed(2)), target: [tx, tz] };
+      }
+      // sections (P2): a bot shells another house's wall with its HE round, its AI off and its gun reloaded (with the
+      // switch off it only damages the house)
+      const sheller = bots.slice(3).filter((bot) => bot !== digger).map((bot) => ({ bot, slot: bot.spec.gun.shells.findIndex((shell) => isHeClass(shell.type)) }))
+        .find((entry) => entry.slot >= 0);
+      if (scriptedSites.breach && sheller) {
+        const { bot, slot } = sheller;
+        const [x, z] = scriptedSites.breach.start;
+        bot.state.pos.set(x, groundAt(x, z) + 0.05, z);
+        bot.state.yaw = scriptedSites.breach.yaw;
+        bot.state.speed = 0;
+        bot.aiCtl = null;
+        bot.combat.shellSlot = slot;
+        Object.assign(bot.combat.reload, { t: 0, kind: 'ready' });
+        Object.assign(bot.input, { throttle: 0, steer: 0, brake: true, fire: true, shellSlot: slot });
+        bot.input.aimPoint.set(...scriptedSites.breach.target);
+        report.steps.scripted.breach = { botId: bot.id, structureId: scriptedSites.breach.structureId, shell: bot.spec.gun.shells[slot].name };
+      }
       log(`scripted: ${JSON.stringify(report.steps.scripted)}`);
     }
     await sleep(playMs);
@@ -448,6 +572,19 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     marks.migrationPlayEnd = now();
     const recrushed = hostEventsBetween(marks.newHostLiveAt, marks.migrationPlayEnd, 'world_prop_destroyed').filter((e) => e.host === 'p2' && oldSet.has(e.index));
     report.steps.migration.recrushEvents = uniqueBy(recrushed, (e) => e.key);
+    // destruction: a stage the old host sent never comes again from the new one (it resumed from the log)
+    const oldStages = new Set(hostLog.filter((e) => e.type === 'structure_stage' && e.host === 'p1').map((e) => e.key));
+    report.steps.migration.oldStages = oldStages.size;
+    report.steps.migration.restagedEvents = uniqueBy(hostEventsBetween(marks.newHostLiveAt, marks.migrationPlayEnd, 'structure_stage')
+      .filter((e) => e.host === 'p2' && oldStages.has(e.key)), (e) => e.key);
+    const oldBreaches = new Set(hostLog.filter((e) => e.type === 'structure_breach' && e.host === 'p1').map((e) => e.key));
+    report.steps.migration.oldBreaches = oldBreaches.size;
+    report.steps.migration.rebreachedEvents = uniqueBy(hostEventsBetween(marks.newHostLiveAt, marks.migrationPlayEnd, 'structure_breach')
+      .filter((e) => e.host === 'p2' && oldBreaches.has(e.key)), (e) => e.key);
+    const oldCraters = new Set(hostLog.filter((e) => e.type === 'terrain_crater' && e.host === 'p1').map((e) => e.key));
+    report.steps.migration.oldCraters = oldCraters.size;
+    report.steps.migration.recrateredEvents = uniqueBy(hostEventsBetween(marks.newHostLiveAt, marks.migrationPlayEnd, 'terrain_crater')
+      .filter((e) => e.host === 'p2' && oldCraters.has(e.key)), (e) => e.key);
     report.steps.migration.newCrushEventsAfter = uniqueBy(hostEventsBetween(marks.newHostLiveAt, marks.migrationPlayEnd, 'world_prop_destroyed').filter((e) => e.host === 'p2'), (e) => e.key);
     const ghostFx = (peer) => peer.rounds.at(-1).applied.filter((e) => e.kind === 'prop:crushed' && e.wallMs >= marks.newHostLiveAt && e.wallMs < marks.migrationPlayEnd && recrushed.some((h) => h.key === e.key && h.viewerId === peer.id));
     report.steps.migration.ghostFxP2 = ghostFx(p2).length;
@@ -490,6 +627,15 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     scriptedCases.hedgehog.events = events.length;
     scriptedCases.hedgehog.eventIndices = [...new Set(sends.map((e) => e.index))];
     scriptedCases.hedgehog.eventSharesCenter = sends.some((e) => scriptedCases.hedgehog.sharedCenter.includes(e.index));
+  }
+  if (scriptedCases?.ram) {
+    const stages = hostLog.filter((e) => e.type === 'structure_stage' && e.key.startsWith(`stage:${scriptedCases.ram.structureId}:`));
+    scriptedCases.ram.stages = [...new Set(stages.map((e) => e.key.split(':')[2]))];
+    scriptedCases.ram.collapsed = scriptedCases.ram.stages.includes('collapsed');
+  }
+  if (scriptedCases?.crater) {
+    const dug = hostLog.filter((e) => e.type === 'terrain_crater' && e.host === 'p1');
+    scriptedCases.crater.dug = uniqueBy(dug, (e) => e.key);
   }
   if (scriptedCases?.fall) {
     const deaths = hostLog.filter((e) => e.type === 'tank_destroyed' && e.key.endsWith(`/dead:${scriptedCases.fall.botId}`));
@@ -592,7 +738,26 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       // an effect that names no obstacle cannot be judged: counted on its own, never read back from a shared box centre
       const unattributedFx = applied.filter((a) => a.kind === 'prop:crushed' && a.index === null);
       const ghostFx = applied.filter((a, i) => a.kind === 'prop:crushed' && a.index !== null && !used.has(i) && !everSent(a));
-      perPeer[`${peer.label}#${round.roundIndex}`] = { welcomeTick: round.welcomeTick, welcomes: round.welcomes, actors: round.actors, rosterError: round.rosterError, frames: round.frames, ghostFx: ghostFx.length, unattributedFx: unattributedFx.length, unmatchedCrushes: unmatchedCrushes.length, replaysOfOlderState: predating.length, replaysAnimated: predating.filter((a) => !a.settled).length, replaysSettled: predating.filter((a) => a.settled).length,
+      // destruction: a stage this presentation applied that no judged send explains — a late joiner's settled log entry
+      // (expected, settled) or an animation of older state (a finding)
+      const stageSentBefore = (a) => hostLog.some((e) => e.type === 'structure_stage' && e.key === a.key && e.wallMs < round.welcomeAtMs);
+      const olderStages = applied.filter((a, i) => a.kind === 'structure:stage' && !used.has(i) && stageSentBefore(a));
+      const ghostStages = applied.filter((a, i) => a.kind === 'structure:stage' && !used.has(i) && !hostLog.some((e) => e.type === 'structure_stage' && e.key === a.key));
+      // sections (P2): the same for holes and section falls
+      const breachSentBefore = (a) => hostLog.some((e) => e.type === 'structure_breach' && e.key === a.key && e.wallMs < round.welcomeAtMs);
+      const olderBreaches = applied.filter((a, i) => a.kind === 'structure:breach' && !used.has(i) && breachSentBefore(a));
+      const ghostBreaches = applied.filter((a, i) => a.kind === 'structure:breach' && !used.has(i) && !hostLog.some((e) => e.type === 'structure_breach' && e.key === a.key));
+      // craters: a crater older than the view is laid down settled, once; nothing is dug that the host never sent
+      const craterSentBefore = (a) => hostLog.some((e) => e.type === 'terrain_crater' && e.key === a.key && e.wallMs < round.welcomeAtMs);
+      const olderCraters = applied.filter((a, i) => a.kind === 'terrain:crater' && !used.has(i) && craterSentBefore(a));
+      const ghostCraters = applied.filter((a, i) => a.kind === 'terrain:crater' && !used.has(i) && !hostLog.some((e) => e.type === 'terrain_crater' && e.key === a.key));
+      const craterKeys = applied.filter((a) => a.kind === 'terrain:crater').map((a) => a.key);
+      const cratersTwice = craterKeys.length - new Set(craterKeys).size;
+      perPeer[`${peer.label}#${round.roundIndex}`] = { welcomeTick: round.welcomeTick, welcomes: round.welcomes, actors: round.actors, rosterError: round.rosterError, frames: round.frames, ghostFx: ghostFx.length,
+        stagesOlderSettled: olderStages.filter((a) => a.settled).length, stagesOlderAnimated: olderStages.filter((a) => !a.settled).length, ghostStages: ghostStages.length,
+        breachesOlderSettled: olderBreaches.filter((a) => a.settled).length, breachesOlderAnimated: olderBreaches.filter((a) => !a.settled).length,
+        ghostBreaches: ghostBreaches.length,
+        cratersOlderSettled: olderCraters.filter((a) => a.settled).length, cratersOlderAnimated: olderCraters.filter((a) => !a.settled).length, ghostCraters: ghostCraters.length, cratersTwice, unattributedFx: unattributedFx.length, unmatchedCrushes: unmatchedCrushes.length, replaysOfOlderState: predating.length, replaysAnimated: predating.filter((a) => !a.settled).length, replaysSettled: predating.filter((a) => a.settled).length,
         ownShotFlashes: applied.filter((a) => a.kind === 'weapon:predicted').length, ownShellFiredUnpredicted: applied.filter((a) => a.kind === 'shell:fired' && a.shooterId === peer.id && a.feedbackPredicted === false).length, ownShellFiredPredicted: applied.filter((a) => a.kind === 'shell:fired' && a.shooterId === peer.id && a.feedbackPredicted === true).length };
     }
   }

@@ -16,11 +16,10 @@ const t90m = spec('t90m', 'Russia', '#3f5138');
 const abrams = spec('m1a2', 'USA', '#b09466');
 const k2 = spec('k2', 'South Korea', '#465341');
 
-// 2026-10-07 (tank-accessories round 4): the national Factory coats are the paint each army fields (camoPolicy.ts)
-assert.equal(garageWorkshopFinishKey(burlak), 'paint_ru_t80u_modern');
-assert.equal(garageWorkshopFinishKey(t90m), 'paint_ru_t80u_modern',
+assert.equal(garageWorkshopFinishKey(burlak), 'service_t90m');
+assert.equal(garageWorkshopFinishKey(t90m), 'service_t90m',
   'both Russian exhibits must share one immutable service palette');
-assert.equal(garageWorkshopFinishKey(abrams), 'carc_tan');
+assert.equal(garageWorkshopFinishKey(abrams), 'service_usa_desert');
 assert.equal(garageWorkshopFinishKey(k2), 'service_bmp3_rok');
 
 const palette = createGarageWorkshopMaterialPalette(burlak, {});

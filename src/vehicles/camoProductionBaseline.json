@@ -1,0 +1,1840 @@
+{
+ "baseline": "afc5018e9 (production: deploy 206 e502c7670 + generated receipts)",
+ "ids": [
+  "auto",
+  "factory",
+  "summer",
+  "desert",
+  "winter",
+  "digital",
+  "merdc",
+  "tropic",
+  "ambushdot",
+  "splinter",
+  "pinkdesert",
+  "autumn",
+  "urbanblock",
+  "washworn",
+  "naval",
+  "dazzle",
+  "flecktarn",
+  "amoeba",
+  "dpm",
+  "tigerstripe",
+  "m90",
+  "chocchip",
+  "digitaldesert",
+  "merdcwinter",
+  "winterbands",
+  "berlin",
+  "oakleaf",
+  "hexfield",
+  "midnight",
+  "claude",
+  "spark",
+  "openai",
+  "xai",
+  "gemini",
+  "ducky",
+  "suits",
+  "flames",
+  "leopardprint",
+  "bolt",
+  "stars",
+  "daisy",
+  "circuit",
+  "racing",
+  "paintball",
+  "normandy44",
+  "berlin45",
+  "ardennes44",
+  "pacific45",
+  "jungleops",
+  "rasputitsa",
+  "signature",
+  "service_usa_desert",
+  "service_marder1a3",
+  "service_leo2a4m",
+  "service_leo2a6m",
+  "service_soviet_ww2",
+  "service_soviet_coldwar",
+  "service_t90m",
+  "service_challenger_3",
+  "service_leclerc_xlr",
+  "service_type99a",
+  "service_ariete_c1",
+  "service_type10",
+  "service_pl01",
+  "service_bmp3_rok",
+  "service_strv122",
+  "service_merkava2d",
+  "service_ua_m2a3_bradley",
+  "sig_abramsx",
+  "sig_m551_sheridan",
+  "sig_leo2a4_otco",
+  "sig_mbt70",
+  "sig_kf51b",
+  "sig_bmpt_t90",
+  "sig_t90",
+  "sig_t90sm",
+  "sig_t90ms",
+  "sig_t90a_burlak",
+  "sig_t90m",
+  "sig_t90m_proryv",
+  "sig_t90a",
+  "sig_t90a_vladimir",
+  "sig_challenger2e",
+  "sig_challenger_3x",
+  "sig_ares_apc_x",
+  "sig_amx56",
+  "sig_leclerc",
+  "sig_ariete_c2",
+  "sig_type10b",
+  "sig_type90",
+  "sig_type90a",
+  "sig_type59",
+  "sig_ztz85_iii",
+  "sig_type99a",
+  "sig_ztz99a2_prototype",
+  "sig_ztz99a2",
+  "sig_type100",
+  "sig_ztz100_x",
+  "sig_object695_x",
+  "sig_pt91m",
+  "sig_t72m1_jaguar",
+  "sig_pt91_twardy",
+  "sig_pl01_105",
+  "sig_bwp1",
+  "sig_upior",
+  "sig_k2",
+  "sig_k1a1",
+  "sig_k2b",
+  "sig_merkava1b",
+  "sig_merkava2b",
+  "sig_merkava3c",
+  "sig_merkava3d",
+  "sig_merkava4b",
+  "sig_merkava2d",
+  "sig_merkava3d_x",
+  "sig_merkava4_x",
+  "sig_merkava4_trophy",
+  "sig_merkava4_barak",
+  "sig_namer_ifv",
+  "sig_t84",
+  "sig_ua_challenger2",
+  "sig_ua_t64bv",
+  "sig_ua_t80bv",
+  "sig_ua_t80u_kursk",
+  "sig_ua_t84_oplot_m",
+  "sig_ua_m1a1",
+  "sig_leo2a6_ua",
+  "mono",
+  "carbon",
+  "prism",
+  "sig_sabra_mk2_x",
+  "sig_tos1a_tagil",
+  "sig_dardo",
+  "sig_lrmv_lynx",
+  "sig_borsuk",
+  "sig_amx10p",
+  "sig_amx10p_25",
+  "national_usa",
+  "national_de",
+  "national_ru",
+  "national_uk",
+  "national_fr",
+  "national_cn",
+  "national_it",
+  "national_jp",
+  "national_pl",
+  "national_kr",
+  "national_se",
+  "national_il",
+  "national_ua",
+  "paint_amx40",
+  "paint_ares_apc_x",
+  "paint_bmpt_terminator2",
+  "paint_chieftain5",
+  "paint_cn_t80u_modern",
+  "paint_cv90_mkiv",
+  "paint_griffin_viper",
+  "paint_kurganets25_x",
+  "paint_kv2",
+  "paint_m1a1",
+  "paint_marder2",
+  "paint_object695_x",
+  "paint_pl_t80u_modern",
+  "paint_ru_t80u_modern",
+  "paint_strv81",
+  "paint_t72b3m",
+  "paint_t90ms",
+  "paint_type74",
+  "paint_ua_t80u_modern",
+  "gt"
+ ],
+ "catalog": [
+  "auto",
+  "factory",
+  "summer",
+  "desert",
+  "winter",
+  "digital",
+  "merdc",
+  "tropic",
+  "ambushdot",
+  "splinter",
+  "pinkdesert",
+  "autumn",
+  "urbanblock",
+  "washworn",
+  "naval",
+  "dazzle",
+  "flecktarn",
+  "amoeba",
+  "dpm",
+  "tigerstripe",
+  "m90",
+  "chocchip",
+  "digitaldesert",
+  "merdcwinter",
+  "winterbands",
+  "berlin",
+  "oakleaf",
+  "hexfield",
+  "midnight",
+  "claude",
+  "spark",
+  "openai",
+  "xai",
+  "gemini",
+  "ducky",
+  "suits",
+  "flames",
+  "leopardprint",
+  "bolt",
+  "stars",
+  "daisy",
+  "circuit",
+  "racing",
+  "paintball",
+  "normandy44",
+  "berlin45",
+  "ardennes44",
+  "pacific45",
+  "jungleops",
+  "rasputitsa",
+  "service_usa_desert",
+  "service_marder1a3",
+  "service_leo2a4m",
+  "service_leo2a6m",
+  "service_soviet_ww2",
+  "service_soviet_coldwar",
+  "service_t90m",
+  "service_challenger_3",
+  "service_leclerc_xlr",
+  "service_type99a",
+  "service_ariete_c1",
+  "service_type10",
+  "service_pl01",
+  "service_bmp3_rok",
+  "service_strv122",
+  "service_merkava2d",
+  "service_ua_m2a3_bradley",
+  "sig_abramsx",
+  "sig_m551_sheridan",
+  "sig_leo2a4_otco",
+  "sig_mbt70",
+  "sig_kf51b",
+  "sig_bmpt_t90",
+  "sig_t90",
+  "sig_t90sm",
+  "sig_t90ms",
+  "sig_t90a_burlak",
+  "sig_t90m",
+  "sig_t90m_proryv",
+  "sig_t90a",
+  "sig_t90a_vladimir",
+  "sig_challenger2e",
+  "sig_challenger_3x",
+  "sig_ares_apc_x",
+  "sig_amx56",
+  "sig_leclerc",
+  "sig_ariete_c2",
+  "sig_type10b",
+  "sig_type90",
+  "sig_type90a",
+  "sig_type59",
+  "sig_ztz85_iii",
+  "sig_type99a",
+  "sig_ztz99a2_prototype",
+  "sig_ztz99a2",
+  "sig_type100",
+  "sig_ztz100_x",
+  "sig_object695_x",
+  "sig_pt91m",
+  "sig_t72m1_jaguar",
+  "sig_pt91_twardy",
+  "sig_pl01_105",
+  "sig_bwp1",
+  "sig_upior",
+  "sig_k2",
+  "sig_k1a1",
+  "sig_k2b",
+  "sig_merkava1b",
+  "sig_merkava2b",
+  "sig_merkava3c",
+  "sig_merkava3d",
+  "sig_merkava4b",
+  "sig_merkava2d",
+  "sig_merkava3d_x",
+  "sig_merkava4_x",
+  "sig_merkava4_trophy",
+  "sig_merkava4_barak",
+  "sig_namer_ifv",
+  "sig_t84",
+  "sig_ua_challenger2",
+  "sig_ua_t64bv",
+  "sig_ua_t80bv",
+  "sig_ua_t80u_kursk",
+  "sig_ua_t84_oplot_m",
+  "sig_ua_m1a1",
+  "sig_leo2a6_ua",
+  "mono",
+  "carbon",
+  "prism",
+  "sig_sabra_mk2_x",
+  "sig_tos1a_tagil",
+  "sig_dardo",
+  "sig_lrmv_lynx",
+  "sig_borsuk",
+  "sig_amx10p",
+  "sig_amx10p_25",
+  "national_usa",
+  "national_de",
+  "national_ru",
+  "national_uk",
+  "national_fr",
+  "national_cn",
+  "national_it",
+  "national_jp",
+  "national_pl",
+  "national_kr",
+  "national_se",
+  "national_il",
+  "national_ua",
+  "paint_amx40",
+  "paint_ares_apc_x",
+  "paint_bmpt_terminator2",
+  "paint_chieftain5",
+  "paint_cn_t80u_modern",
+  "paint_cv90_mkiv",
+  "paint_griffin_viper",
+  "paint_kurganets25_x",
+  "paint_kv2",
+  "paint_m1a1",
+  "paint_marder2",
+  "paint_object695_x",
+  "paint_pl_t80u_modern",
+  "paint_ru_t80u_modern",
+  "paint_strv81",
+  "paint_t72b3m",
+  "paint_t90ms",
+  "paint_type74",
+  "paint_ua_t80u_modern",
+  "gt"
+ ],
+ "selections": {
+  "auto": "abb6bd27a92352ef",
+  "factory": "130188c39662f598",
+  "summer": "7a1d98aa5fb259e8",
+  "desert": "14d9b65287748398",
+  "winter": "723e3b88f2feeb86",
+  "digital": "2e55be6034d4f693",
+  "merdc": "bedc8ea4b538cb29",
+  "tropic": "abeca9f260051b25",
+  "ambushdot": "419edc4fa210daa5",
+  "splinter": "4910013b179bb332",
+  "pinkdesert": "72705c471604caf4",
+  "autumn": "42ec4db94fbf6b5e",
+  "urbanblock": "42203e0c3caa3fba",
+  "washworn": "b7799c0da3d82c28",
+  "naval": "a1cf3e6227486b95",
+  "dazzle": "90a668eb628a4a3b",
+  "flecktarn": "5d34ebb88ac7da03",
+  "amoeba": "fb6b2dbdcfa03c38",
+  "dpm": "fa62e14d7991f665",
+  "tigerstripe": "a486e37ddafb451b",
+  "m90": "a3e0db10637064f6",
+  "chocchip": "617d7cce7b1f2554",
+  "digitaldesert": "5a58d056a16e214e",
+  "merdcwinter": "e9782ab5356b0fc6",
+  "winterbands": "81603773e6a80a74",
+  "berlin": "9122791deb620650",
+  "oakleaf": "c6795dd75483419c",
+  "hexfield": "9ae1906fbb7a3b14",
+  "midnight": "89cc87aceccbe00b",
+  "claude": "964562c9e0960cf7",
+  "spark": "371111cf7bf7d61c",
+  "openai": "9120ad55121638a3",
+  "xai": "fa43f864149d4f7e",
+  "gemini": "5856ea4c71a77d98",
+  "ducky": "ba8199942a9b83af",
+  "suits": "78b7613f9fb64058",
+  "flames": "b0548df1767adaa1",
+  "leopardprint": "1a5614165d8152a4",
+  "bolt": "6e3577ebf8e46335",
+  "stars": "50c2009db5d8d953",
+  "daisy": "cc15075b99e2bfce",
+  "circuit": "d193c8715b48f6e4",
+  "racing": "c84a773a05305d95",
+  "paintball": "025745990e8d1f2b",
+  "normandy44": "450f6e330c8dea4d",
+  "berlin45": "09f2f1657d8f9563",
+  "ardennes44": "7eba46109cf354bc",
+  "pacific45": "841451c28aa26371",
+  "jungleops": "3749a804519b769e",
+  "rasputitsa": "94fa9a51148f59ee",
+  "signature": "0d9b13b723f61536",
+  "service_usa_desert": "2e10870e1deb2066",
+  "service_marder1a3": "60356e7224403b34",
+  "service_leo2a4m": "f51c71586f31ebb8",
+  "service_leo2a6m": "433f811b04057941",
+  "service_soviet_ww2": "1e3ee7fe3b11cc0c",
+  "service_soviet_coldwar": "4e1723c8b0be6a8e",
+  "service_t90m": "5188827b4d6a548f",
+  "service_challenger_3": "40d5462499853bf0",
+  "service_leclerc_xlr": "e12803f0c20bd5e5",
+  "service_type99a": "2b39cedfa2e103bb",
+  "service_ariete_c1": "93ae9e6dad5b17d7",
+  "service_type10": "62c2daff21f096b6",
+  "service_pl01": "f5d2056201b145e5",
+  "service_bmp3_rok": "600cba7c337214de",
+  "service_strv122": "c033195e12109624",
+  "service_merkava2d": "7d0e9fc092d774f0",
+  "service_ua_m2a3_bradley": "50ef26f5195d16f0",
+  "sig_abramsx": "92a83aa305756080",
+  "sig_m551_sheridan": "3cc2e46b98490002",
+  "sig_leo2a4_otco": "c55855f3b0693b78",
+  "sig_mbt70": "cbff2c555134fb25",
+  "sig_kf51b": "1592088bb90a548a",
+  "sig_bmpt_t90": "06c598cd57fde41d",
+  "sig_t90": "a4311c6930b549b4",
+  "sig_t90sm": "104ea005dee194c8",
+  "sig_t90ms": "c2d2e2d8cd8ab0c5",
+  "sig_t90a_burlak": "90ea3b00c19f9ba2",
+  "sig_t90m": "3fe22d47363436ac",
+  "sig_t90m_proryv": "01bb4984381e11db",
+  "sig_t90a": "1ee00fda73fbfe29",
+  "sig_t90a_vladimir": "8a3e8a4ded9ebf92",
+  "sig_challenger2e": "6b8f45e67eebc5a0",
+  "sig_challenger_3x": "2e63173bf0440d5b",
+  "sig_ares_apc_x": "218112fe28cbb6c4",
+  "sig_amx56": "6684f92c5498bc2f",
+  "sig_leclerc": "33f44987f14fe454",
+  "sig_ariete_c2": "f3c48cd5e8575f73",
+  "sig_type10b": "887b9841aac1b356",
+  "sig_type90": "bcd696cc3ccade87",
+  "sig_type90a": "f2858eadd71f7c88",
+  "sig_type59": "a582aad184333f35",
+  "sig_ztz85_iii": "a928db3cf404d31e",
+  "sig_type99a": "8d838ba4a892d7ef",
+  "sig_ztz99a2_prototype": "df790b8a62a52a49",
+  "sig_ztz99a2": "0278b67b2a20602a",
+  "sig_type100": "2b94cf09769ad759",
+  "sig_ztz100_x": "0b5bbe206db79f38",
+  "sig_object695_x": "a42cb9e572b23871",
+  "sig_pt91m": "58f5fc14023ddbd5",
+  "sig_t72m1_jaguar": "ed8276f0ad86a912",
+  "sig_pt91_twardy": "915d912d3b53bba7",
+  "sig_pl01_105": "d024ea563acf8394",
+  "sig_bwp1": "cfe88c8d41c10507",
+  "sig_upior": "e80176d60aa202f7",
+  "sig_k2": "26f2dbc325c2d2f2",
+  "sig_k1a1": "3d01c9998eb5c58d",
+  "sig_k2b": "5f41ebe8c585dce3",
+  "sig_merkava1b": "09c3344f2aad5f49",
+  "sig_merkava2b": "ac746f6125fe6e15",
+  "sig_merkava3c": "ead1ef2dbf6a04f6",
+  "sig_merkava3d": "2bf6987790749ba5",
+  "sig_merkava4b": "16eb0c91fb0d8403",
+  "sig_merkava2d": "89d489d39ca78ab3",
+  "sig_merkava3d_x": "2b518f518239503e",
+  "sig_merkava4_x": "5fb890f573bc5879",
+  "sig_merkava4_trophy": "0a01bb64c5619400",
+  "sig_merkava4_barak": "d2aa1bbd991eaba9",
+  "sig_namer_ifv": "940278e68a8f45a7",
+  "sig_t84": "63f139a8fdd43aa6",
+  "sig_ua_challenger2": "ecdb9b5db9981c35",
+  "sig_ua_t64bv": "09903e47298549e7",
+  "sig_ua_t80bv": "cd5370cd253c5b5e",
+  "sig_ua_t80u_kursk": "40871f6a63ae5edf",
+  "sig_ua_t84_oplot_m": "bc4eee8139a5254c",
+  "sig_ua_m1a1": "80d444ecc96222d7",
+  "sig_leo2a6_ua": "9742c37d1b599561",
+  "mono": "5b04af1a03107eea",
+  "carbon": "37c70f58c855aa32",
+  "prism": "60030cc7dc0e0a19",
+  "sig_sabra_mk2_x": "6b601e46209061b2",
+  "sig_tos1a_tagil": "4c4619eb7aa2bcad",
+  "sig_dardo": "c871ac40c9c2ea45",
+  "sig_lrmv_lynx": "f9c74b0f6c4177a3",
+  "sig_borsuk": "266252999f565595",
+  "sig_amx10p": "ca31e9905c1fa6e8",
+  "sig_amx10p_25": "8f425a4a0831a128",
+  "national_usa": "9bd7e5fe76390991",
+  "national_de": "6a9e367e853a0cd3",
+  "national_ru": "db06e297a6fb604d",
+  "national_uk": "12f29189ae1358b0",
+  "national_fr": "c9b4c8de267e25bf",
+  "national_cn": "54ca71b2301dcc49",
+  "national_it": "73f828b46beece95",
+  "national_jp": "350650ab916dae0a",
+  "national_pl": "865b87253c1f40b3",
+  "national_kr": "3e1e54bcce623b2d",
+  "national_se": "c3e27b9fac286713",
+  "national_il": "fb6934e7328eea08",
+  "national_ua": "7b76e4568e0c1fe9",
+  "paint_amx40": "20e8316b532aa01e",
+  "paint_ares_apc_x": "da44a476679f0338",
+  "paint_bmpt_terminator2": "552a4b3ca23894aa",
+  "paint_chieftain5": "2eaf11ec6aa36d47",
+  "paint_cn_t80u_modern": "5c3db88fbfab175f",
+  "paint_cv90_mkiv": "d5a57caf87c26899",
+  "paint_griffin_viper": "67f2a9410fe20fbe",
+  "paint_kurganets25_x": "62ad1cc4771fd4d0",
+  "paint_kv2": "0141d887833fdee1",
+  "paint_m1a1": "c1dc8820f93e5919",
+  "paint_marder2": "baac1e9600e599a5",
+  "paint_object695_x": "fc17834817b24b9f",
+  "paint_pl_t80u_modern": "fb1b998aef131941",
+  "paint_ru_t80u_modern": "ca9ad99cdc8afc20",
+  "paint_strv81": "afe56d9eebfcafb8",
+  "paint_t72b3m": "bcdf1979abc38ff0",
+  "paint_t90ms": "cbc1cc5d3559a041",
+  "paint_type74": "9b03463bc146d5df",
+  "paint_ua_t80u_modern": "94faa83d16f77f30",
+  "gt": "2a138b9b7211ec9a"
+ },
+ "tanks": {
+  "m1a1": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "bf1100a01153293a",
+   "auto": "tigerstripe pinkdesert merdcwinter urban autumn dpm chocchip urbanblock urbanblock summer tigerstripe tigerstripe"
+  },
+  "m1a1ha": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "bf1100a01153293a",
+   "auto": "dpm digitaldesert winterbands urbanblock oakleaf summer desert urbanblock urban dpm dpm dpm"
+  },
+  "m1a2": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "694f3df7a4d82a8b",
+   "auto": "merdc digitaldesert winterbands urbanblock oakleaf dpm chocchip berlin urban dpm merdc merdc"
+  },
+  "m1a2_tusk": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "65c6c57c28462b6e",
+   "auto": "merdc desert winter urban oakleaf merdc chocchip urbanblock urban summer merdc merdc"
+  },
+  "m1a2_sepv2": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "694f3df7a4d82a8b",
+   "auto": "tigerstripe pinkdesert merdcwinter urban autumn dpm digitaldesert berlin urbanblock summer tigerstripe tigerstripe"
+  },
+  "m1a2_sepv3": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "ab5d9df66dd46615",
+   "auto": "flecktarn digitaldesert winterbands urbanblock oakleaf dpm digitaldesert urban urban dpm flecktarn flecktarn"
+  },
+  "m1a3": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "930ed657be18c731",
+   "auto": "amoeba chocchip washworn berlin autumn merdc desert urban urbanblock flecktarn amoeba amoeba"
+  },
+  "abramsx": {
+   "selection": "factory",
+   "stock": "sig_abramsx",
+   "factory": "cf87c154c984805c",
+   "auto": "amoeba chocchip washworn urbanblock autumn dpm desert berlin urbanblock flecktarn amoeba amoeba"
+  },
+  "t62mv1": {
+   "selection": "factory",
+   "stock": "service_soviet_coldwar",
+   "factory": "d47ee45d2fd134d6",
+   "auto": "summer pinkdesert merdcwinter urbanblock autumn summer digitaldesert berlin urbanblock dpm summer summer"
+  },
+  "t64bv1": {
+   "selection": "factory",
+   "stock": "service_soviet_coldwar",
+   "factory": "f7f15c8a43d5c7cd",
+   "auto": "flecktarn desert winter berlin oakleaf dpm desert urbanblock urban dpm flecktarn flecktarn"
+  },
+  "t72b3m": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "9ac5b845ee813f5a",
+   "auto": "dpm digitaldesert winterbands urbanblock oakleaf summer desert urban urban flecktarn dpm dpm"
+  },
+  "t72bu": {
+   "selection": "factory",
+   "stock": "service_soviet_coldwar",
+   "factory": "8ce11144d58ab513",
+   "auto": "amoeba chocchip washworn urban autumn merdc chocchip berlin urbanblock summer amoeba amoeba"
+  },
+  "pt91m": {
+   "selection": "factory",
+   "stock": "sig_pt91m",
+   "factory": "1843a8c3e246b4b8",
+   "auto": "merdc digitaldesert winterbands urbanblock oakleaf merdc desert urban urban dpm merdc merdc"
+  },
+  "t80": {
+   "selection": "factory",
+   "stock": "service_soviet_coldwar",
+   "factory": "ff1c9669ffdfe3b2",
+   "auto": "summer pinkdesert merdcwinter urban autumn summer desert urban urbanblock flecktarn summer summer"
+  },
+  "t80b": {
+   "selection": "factory",
+   "stock": "service_soviet_coldwar",
+   "factory": "4d9e7eae29fc85b7",
+   "auto": "amoeba chocchip washworn berlin autumn merdc digitaldesert berlin urbanblock dpm amoeba amoeba"
+  },
+  "t80bv": {
+   "selection": "factory",
+   "stock": "service_soviet_coldwar",
+   "factory": "27624dde2f103f8f",
+   "auto": "summer pinkdesert merdcwinter urbanblock autumn summer desert berlin urbanblock dpm summer summer"
+  },
+  "t80u": {
+   "selection": "factory",
+   "stock": "service_soviet_coldwar",
+   "factory": "d12509c8c2ee0b34",
+   "auto": "flecktarn digitaldesert winterbands berlin oakleaf dpm digitaldesert urbanblock urban dpm flecktarn flecktarn"
+  },
+  "t84": {
+   "selection": "factory",
+   "stock": "sig_t84",
+   "factory": "5eefa97007ca3ead",
+   "auto": "amoeba pinkdesert merdcwinter urban autumn merdc chocchip urbanblock urbanblock flecktarn amoeba amoeba"
+  },
+  "t90": {
+   "selection": "factory",
+   "stock": "sig_t90",
+   "factory": "950bdf4362bfff70",
+   "auto": "flecktarn desert winter urbanblock oakleaf dpm digitaldesert berlin urban dpm flecktarn flecktarn"
+  },
+  "t90a": {
+   "selection": "factory",
+   "stock": "sig_t90a",
+   "factory": "ed068fbe45ca1d3e",
+   "auto": "tigerstripe chocchip washworn berlin autumn dpm chocchip urbanblock urbanblock flecktarn tigerstripe tigerstripe"
+  },
+  "t90a_vladimir": {
+   "selection": "factory",
+   "stock": "sig_t90a_vladimir",
+   "factory": "2d0dff43b7e8f2d2",
+   "auto": "merdc desert winter berlin oakleaf merdc desert urban urban dpm merdc merdc"
+  },
+  "t90a_burlak": {
+   "selection": "factory",
+   "stock": "sig_t90a_burlak",
+   "factory": "6446704b8e832c4d",
+   "auto": "summer pinkdesert merdcwinter berlin autumn summer chocchip urbanblock urbanblock flecktarn summer summer"
+  },
+  "t90sm": {
+   "selection": "factory",
+   "stock": "sig_t90sm",
+   "factory": "eead6ee408e6d373",
+   "auto": "merdc digitaldesert winterbands berlin oakleaf merdc digitaldesert urban urban summer merdc merdc"
+  },
+  "t90m": {
+   "selection": "factory",
+   "stock": "sig_t90m",
+   "factory": "1511d5694d237d45",
+   "auto": "summer chocchip washworn berlin autumn summer desert urbanblock urbanblock dpm summer summer"
+  },
+  "t90ms": {
+   "selection": "factory",
+   "stock": "sig_t90ms",
+   "factory": "9573255b55f86073",
+   "auto": "merdc digitaldesert winterbands urban oakleaf dpm chocchip urbanblock urban dpm merdc merdc"
+  },
+  "t90m_proryv": {
+   "selection": "factory",
+   "stock": "sig_t90m_proryv",
+   "factory": "743a5daa15d6a2b7",
+   "auto": "flecktarn desert winter urban oakleaf dpm desert urban urban summer flecktarn flecktarn"
+  },
+  "strv81": {
+   "selection": "factory",
+   "stock": "service_strv122",
+   "factory": "1e329860e9bb5358",
+   "auto": "tigerstripe chocchip washworn berlin autumn dpm desert urbanblock urbanblock summer tigerstripe tigerstripe"
+  },
+  "udes03": {
+   "selection": "factory",
+   "stock": "service_strv122",
+   "factory": "339324a55910d60d",
+   "auto": "tigerstripe pinkdesert merdcwinter berlin autumn dpm digitaldesert berlin urbanblock summer tigerstripe tigerstripe"
+  },
+  "strv103a": {
+   "selection": "factory",
+   "stock": "service_strv122",
+   "factory": "f60f66e0b19e645c",
+   "auto": "summer chocchip washworn urbanblock autumn summer chocchip urban urbanblock summer summer summer"
+  },
+  "strv103": {
+   "selection": "factory",
+   "stock": "service_strv122",
+   "factory": "e36aee2d9062a2fd",
+   "auto": "merdc desert winter urban oakleaf dpm desert urbanblock urban flecktarn merdc merdc"
+  },
+  "cv90": {
+   "selection": "factory",
+   "stock": "service_strv122",
+   "factory": "272b81e3a940d0bf",
+   "auto": "summer chocchip washworn urban autumn summer chocchip urban urbanblock dpm summer summer"
+  },
+  "cv90_x": {
+   "selection": "factory",
+   "stock": "service_strv122",
+   "factory": "29c97faa96b5be7e",
+   "auto": "merdc desert winter urbanblock oakleaf merdc desert urban urban summer merdc merdc"
+  },
+  "cv90105_tml_x": {
+   "selection": "factory",
+   "stock": "service_strv122",
+   "factory": "cb9f0572ec9ca4a5",
+   "auto": "merdc digitaldesert winterbands urbanblock oakleaf merdc desert urban urban summer merdc merdc"
+  },
+  "strv122": {
+   "selection": "factory",
+   "stock": "service_strv122",
+   "factory": "43225aaf714894e5",
+   "auto": "summer pinkdesert merdcwinter urbanblock autumn summer desert berlin urbanblock flecktarn summer summer"
+  },
+  "cv90_mkiv": {
+   "selection": "factory",
+   "stock": "service_strv122",
+   "factory": "77e89115091bef56",
+   "auto": "amoeba pinkdesert merdcwinter berlin autumn merdc chocchip berlin urbanblock summer amoeba amoeba"
+  },
+  "cv90_mkiv_x": {
+   "selection": "factory",
+   "stock": "service_strv122",
+   "factory": "c08255d4b4bde7c1",
+   "auto": "flecktarn digitaldesert winterbands urban oakleaf dpm chocchip urban urban summer flecktarn flecktarn"
+  },
+  "kv2": {
+   "selection": "factory",
+   "stock": "service_soviet_ww2",
+   "factory": "614400c42b11bded",
+   "auto": "merdc desert winter berlin oakleaf merdc desert berlin urban summer merdc merdc"
+  },
+  "chieftain5": {
+   "selection": "factory",
+   "stock": "service_challenger_3",
+   "factory": "cf8b37723ac0ff93",
+   "auto": "amoeba chocchip washworn berlin autumn merdc digitaldesert urban urbanblock flecktarn amoeba amoeba"
+  },
+  "chieftain_mk10": {
+   "selection": "factory",
+   "stock": "service_challenger_3",
+   "factory": "0a2889f0feda847e",
+   "auto": "dpm digitaldesert winterbands urban oakleaf summer desert berlin urban dpm dpm dpm"
+  },
+  "challenger1": {
+   "selection": "factory",
+   "stock": "service_challenger_3",
+   "factory": "51ae4983503755f0",
+   "auto": "summer chocchip washworn urban autumn summer chocchip urban urbanblock summer summer summer"
+  },
+  "fv4034": {
+   "selection": "factory",
+   "stock": "service_challenger_3",
+   "factory": "6bc87e347ed6f546",
+   "auto": "dpm digitaldesert winterbands urban oakleaf summer digitaldesert urban urban summer dpm dpm"
+  },
+  "challenger2": {
+   "selection": "factory",
+   "stock": "service_challenger_3",
+   "factory": "51ae4983503755f0",
+   "auto": "flecktarn desert winter urbanblock oakleaf dpm chocchip urbanblock urban dpm flecktarn flecktarn"
+  },
+  "challenger2e": {
+   "selection": "factory",
+   "stock": "sig_challenger2e",
+   "factory": "746321a11d0c27d6",
+   "auto": "tigerstripe chocchip washworn urbanblock autumn dpm digitaldesert urbanblock urbanblock flecktarn tigerstripe tigerstripe"
+  },
+  "ua_challenger2": {
+   "selection": "factory",
+   "stock": "sig_ua_challenger2",
+   "factory": "b6363a9389e20873",
+   "auto": "summer pinkdesert merdcwinter urban autumn summer desert urban urbanblock dpm summer summer"
+  },
+  "challenger_3": {
+   "selection": "factory",
+   "stock": "service_challenger_3",
+   "factory": "76d643cd6550ccd0",
+   "auto": "dpm desert winter urban oakleaf summer chocchip urban urban dpm dpm dpm"
+  },
+  "challenger_3x": {
+   "selection": "factory",
+   "stock": "sig_challenger_3x",
+   "factory": "320deeb5c4bab72d",
+   "auto": "dpm digitaldesert winterbands urban oakleaf merdc chocchip urban urban flecktarn dpm dpm"
+  },
+  "k2": {
+   "selection": "factory",
+   "stock": "sig_k2",
+   "factory": "5f014b3df350e7b8",
+   "auto": "merdc desert winter urbanblock oakleaf merdc desert urban urban summer merdc merdc"
+  },
+  "k1a1": {
+   "selection": "factory",
+   "stock": "sig_k1a1",
+   "factory": "36cc20d907aebf84",
+   "auto": "tigerstripe chocchip washworn urbanblock autumn dpm desert urban urbanblock dpm tigerstripe tigerstripe"
+  },
+  "stb1": {
+   "selection": "factory",
+   "stock": "service_type10",
+   "factory": "257ab21d98cfd94e",
+   "auto": "amoeba pinkdesert merdcwinter berlin autumn merdc desert urbanblock urbanblock flecktarn amoeba amoeba"
+  },
+  "type74": {
+   "selection": "factory",
+   "stock": "service_type10",
+   "factory": "9e0e8ad3306eb22b",
+   "auto": "merdc desert winter urbanblock oakleaf merdc chocchip berlin urban dpm merdc merdc"
+  },
+  "type90": {
+   "selection": "factory",
+   "stock": "sig_type90",
+   "factory": "49f13f4a7611302c",
+   "auto": "dpm digitaldesert winterbands berlin oakleaf merdc desert urban urban dpm dpm dpm"
+  },
+  "type90a": {
+   "selection": "factory",
+   "stock": "sig_type90a",
+   "factory": "4b4a154b8dbb9e0d",
+   "auto": "amoeba pinkdesert merdcwinter urbanblock autumn merdc desert berlin urbanblock summer amoeba amoeba"
+  },
+  "type10": {
+   "selection": "factory",
+   "stock": "service_type10",
+   "factory": "a29eb6eab6409d73",
+   "auto": "dpm digitaldesert winterbands urban oakleaf summer desert berlin urban dpm dpm dpm"
+  },
+  "type10b": {
+   "selection": "factory",
+   "stock": "sig_type10b",
+   "factory": "009bf79d0c845fc0",
+   "auto": "flecktarn digitaldesert winterbands berlin oakleaf dpm digitaldesert urban urban flecktarn flecktarn flecktarn"
+  },
+  "m2a2_bradley": {
+   "selection": "factory",
+   "stock": "summer",
+   "factory": "a9f48f125fb39b4f",
+   "auto": "tigerstripe pinkdesert merdcwinter urbanblock autumn summer digitaldesert urbanblock urbanblock flecktarn tigerstripe tigerstripe"
+  },
+  "bmp2": {
+   "selection": "factory",
+   "stock": "service_soviet_coldwar",
+   "factory": "eae686daa6b94a55",
+   "auto": "flecktarn digitaldesert winterbands urban oakleaf dpm desert urbanblock urban dpm flecktarn flecktarn"
+  },
+  "spz_puma": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "bb907d041126b328",
+   "auto": "dpm desert winter urban oakleaf summer desert urban urban dpm dpm dpm"
+  },
+  "spz_puma_s1": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "b686f8d78f961118",
+   "auto": "tigerstripe chocchip washworn urban autumn dpm digitaldesert urban urbanblock flecktarn tigerstripe tigerstripe"
+  },
+  "type89_light_tiger": {
+   "selection": "factory",
+   "stock": "service_type10",
+   "factory": "6a920c602545c57a",
+   "auto": "tigerstripe chocchip washworn berlin autumn dpm chocchip berlin urbanblock flecktarn tigerstripe tigerstripe"
+  },
+  "type89": {
+   "selection": "factory",
+   "stock": "service_type10",
+   "factory": "b90dedd7dfa309af",
+   "auto": "merdc desert winter berlin oakleaf merdc chocchip urbanblock urban flecktarn merdc merdc"
+  },
+  "dardo": {
+   "selection": "factory",
+   "stock": "sig_dardo",
+   "factory": "afa62180ebda4b13",
+   "auto": "amoeba pinkdesert merdcwinter berlin autumn merdc digitaldesert berlin urbanblock summer amoeba amoeba"
+  },
+  "lrmv_lynx": {
+   "selection": "factory",
+   "stock": "sig_lrmv_lynx",
+   "factory": "7ebd863af354327f",
+   "auto": "flecktarn desert winter berlin oakleaf dpm chocchip urban urban flecktarn flecktarn flecktarn"
+  },
+  "carro45t": {
+   "selection": "factory",
+   "stock": "service_ariete_c1",
+   "factory": "5c776007ef54d435",
+   "auto": "summer chocchip washworn berlin autumn summer digitaldesert urban urbanblock summer summer summer"
+  },
+  "ariete": {
+   "selection": "factory",
+   "stock": "service_ariete_c1",
+   "factory": "4663c0f1deabaca7",
+   "auto": "summer chocchip washworn urbanblock autumn summer desert urbanblock urbanblock dpm summer summer"
+  },
+  "ariete_c1": {
+   "selection": "factory",
+   "stock": "service_ariete_c1",
+   "factory": "f94eebb4763dea80",
+   "auto": "flecktarn desert winter berlin oakleaf dpm digitaldesert urbanblock urban summer flecktarn flecktarn"
+  },
+  "ariete_c2": {
+   "selection": "factory",
+   "stock": "sig_ariete_c2",
+   "factory": "6dae2978153e5a58",
+   "auto": "tigerstripe pinkdesert merdcwinter urban autumn dpm chocchip berlin urbanblock summer tigerstripe tigerstripe"
+  },
+  "ariete_c1_x": {
+   "selection": "factory",
+   "stock": "service_ariete_c1",
+   "factory": "b40d4552b52554d4",
+   "auto": "summer pinkdesert merdcwinter berlin autumn summer digitaldesert urban urbanblock summer summer summer"
+  },
+  "ariete_c2_x": {
+   "selection": "factory",
+   "stock": "sig_ariete_c2",
+   "factory": "acfad03ce38eeb2a",
+   "auto": "dpm digitaldesert winterbands berlin oakleaf summer chocchip urban urban dpm dpm dpm"
+  },
+  "amx40": {
+   "selection": "factory",
+   "stock": "service_leclerc_xlr",
+   "factory": "48ac3368ae1675aa",
+   "auto": "amoeba pinkdesert merdcwinter urban autumn merdc chocchip urban urbanblock dpm amoeba amoeba"
+  },
+  "leo1a5": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "da717f0cf8bf8c70",
+   "auto": "merdc desert winter urban oakleaf merdc digitaldesert urban urban summer merdc merdc"
+  },
+  "leopard2_proto": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "dbcd65dbca0adf16",
+   "auto": "amoeba chocchip washworn urban autumn dpm chocchip urbanblock urbanblock flecktarn amoeba amoeba"
+  },
+  "leo2a4": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "dbcd65dbca0adf16",
+   "auto": "flecktarn desert winter urban oakleaf dpm chocchip berlin urban summer flecktarn flecktarn"
+  },
+  "leo2a4_otco": {
+   "selection": "factory",
+   "stock": "sig_leo2a4_otco",
+   "factory": "f68f902c0be67f02",
+   "auto": "flecktarn digitaldesert winterbands urbanblock oakleaf summer digitaldesert berlin urban summer flecktarn flecktarn"
+  },
+  "leo2a4m": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "a0d8fb647bcb391e",
+   "auto": "summer chocchip washworn urban autumn summer desert urban urbanblock dpm summer summer"
+  },
+  "leo2a5": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "a01f9076e2c7705e",
+   "auto": "amoeba pinkdesert merdcwinter urbanblock autumn merdc chocchip urban urbanblock dpm amoeba amoeba"
+  },
+  "leo2a5_a5nl": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "e96dad215d55cba8",
+   "auto": "flecktarn digitaldesert winterbands urban oakleaf dpm chocchip urban urban summer flecktarn flecktarn"
+  },
+  "leo2a6": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "7a78a728f513321c",
+   "auto": "merdc digitaldesert winterbands berlin oakleaf merdc desert urbanblock urban flecktarn merdc merdc"
+  },
+  "leo2a6m": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "9372f3913461afc9",
+   "auto": "amoeba pinkdesert merdcwinter berlin autumn merdc digitaldesert urbanblock urbanblock dpm amoeba amoeba"
+  },
+  "leo2_revolution_proto": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "a4b51a4ba2f436ae",
+   "auto": "flecktarn digitaldesert winterbands berlin oakleaf dpm digitaldesert urbanblock urban summer flecktarn flecktarn"
+  },
+  "leo2_revolution": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "a4b51a4ba2f436ae",
+   "auto": "amoeba pinkdesert merdcwinter urban autumn merdc desert urban urbanblock flecktarn amoeba amoeba"
+  },
+  "leo2a7v": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "a4b51a4ba2f436ae",
+   "auto": "tigerstripe pinkdesert merdcwinter urban autumn dpm digitaldesert urbanblock urbanblock summer tigerstripe tigerstripe"
+  },
+  "leclerc": {
+   "selection": "factory",
+   "stock": "sig_leclerc",
+   "factory": "1c7d3b79c88a71a3",
+   "auto": "amoeba pinkdesert merdcwinter urban autumn dpm desert berlin urbanblock dpm amoeba amoeba"
+  },
+  "leclerc_xlr": {
+   "selection": "factory",
+   "stock": "service_leclerc_xlr",
+   "factory": "73663166a24b22e8",
+   "auto": "merdc desert winter urban oakleaf merdc digitaldesert urban urban dpm merdc merdc"
+  },
+  "amx56": {
+   "selection": "factory",
+   "stock": "sig_amx56",
+   "factory": "95bd6264b067b1c0",
+   "auto": "dpm digitaldesert winterbands berlin oakleaf merdc desert urban urban summer dpm dpm"
+  },
+  "type59": {
+   "selection": "factory",
+   "stock": "sig_type59",
+   "factory": "306893e0db54f6ad",
+   "auto": "amoeba chocchip washworn urbanblock autumn merdc digitaldesert urban urbanblock flecktarn amoeba amoeba"
+  },
+  "ztz85_iii": {
+   "selection": "factory",
+   "stock": "sig_ztz85_iii",
+   "factory": "bb4ad7739937124c",
+   "auto": "flecktarn desert winter urban oakleaf dpm desert urbanblock urban dpm flecktarn flecktarn"
+  },
+  "type99a": {
+   "selection": "factory",
+   "stock": "sig_type99a",
+   "factory": "d6d0b20322bce079",
+   "auto": "merdc desert winter urbanblock oakleaf merdc digitaldesert urban urban flecktarn merdc merdc"
+  },
+  "type96b_x": {
+   "selection": "factory",
+   "stock": "service_type99a",
+   "factory": "942f7b9db1ede5ae",
+   "auto": "tigerstripe pinkdesert merdcwinter urban autumn dpm desert berlin urbanblock flecktarn tigerstripe tigerstripe"
+  },
+  "type96_72_long": {
+   "selection": "factory",
+   "stock": "service_type99a",
+   "factory": "9e0f6185dbda6fd2",
+   "auto": "amoeba pinkdesert merdcwinter urban autumn merdc chocchip urbanblock urbanblock flecktarn amoeba amoeba"
+  },
+  "type96_80_feng": {
+   "selection": "factory",
+   "stock": "service_type99a",
+   "factory": "62349d12efb0a531",
+   "auto": "flecktarn desert winter urban oakleaf dpm digitaldesert urban urban summer flecktarn flecktarn"
+  },
+  "type96_72m_lei": {
+   "selection": "factory",
+   "stock": "service_type99a",
+   "factory": "de4a6503d9fdc486",
+   "auto": "dpm desert winter urban oakleaf summer desert urban urban flecktarn dpm dpm"
+  },
+  "aft10_x": {
+   "selection": "factory",
+   "stock": "service_type99a",
+   "factory": "d6b910eb9fe1a116",
+   "auto": "merdc desert winter berlin oakleaf merdc desert urban urban flecktarn merdc merdc"
+  },
+  "ztz99a2_prototype": {
+   "selection": "factory",
+   "stock": "sig_ztz99a2_prototype",
+   "factory": "5fc0327632f5f48b",
+   "auto": "summer pinkdesert merdcwinter urbanblock autumn summer chocchip urbanblock urbanblock dpm summer summer"
+  },
+  "ztz99a2": {
+   "selection": "factory",
+   "stock": "sig_ztz99a2",
+   "factory": "2ed71356bcf78616",
+   "auto": "dpm digitaldesert winterbands berlin oakleaf summer chocchip berlin urban flecktarn dpm dpm"
+  },
+  "vt4a1": {
+   "selection": "factory",
+   "stock": "service_type99a",
+   "factory": "ed161deea4100501",
+   "auto": "summer chocchip washworn urban autumn summer desert urban urbanblock dpm summer summer"
+  },
+  "type100": {
+   "selection": "factory",
+   "stock": "sig_type100",
+   "factory": "172307ebbc69ac0d",
+   "auto": "flecktarn desert winter urbanblock oakleaf dpm digitaldesert berlin urban summer flecktarn flecktarn"
+  },
+  "ztz100_x": {
+   "selection": "factory",
+   "stock": "sig_ztz100_x",
+   "factory": "158a8cb9359cdcde",
+   "auto": "tigerstripe chocchip washworn berlin autumn dpm chocchip urban urbanblock dpm tigerstripe tigerstripe"
+  },
+  "ztz100_prototype": {
+   "selection": "factory",
+   "stock": "sig_ztz100_x",
+   "factory": "158a8cb9359cdcde",
+   "auto": "summer pinkdesert merdcwinter urban autumn summer digitaldesert urbanblock urbanblock flecktarn summer summer"
+  },
+  "mbt70": {
+   "selection": "factory",
+   "stock": "sig_mbt70",
+   "factory": "a2e5eec7040429f6",
+   "auto": "summer pinkdesert merdcwinter urban autumn merdc chocchip urbanblock urbanblock summer summer summer"
+  },
+  "t14": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "d176e08a4fe63f6e",
+   "auto": "flecktarn desert winter berlin oakleaf summer desert berlin urban dpm flecktarn flecktarn"
+  },
+  "kf51": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "83544d8304688f65",
+   "auto": "merdc desert winter urban oakleaf merdc digitaldesert urban urban dpm merdc merdc"
+  },
+  "kf51b": {
+   "selection": "factory",
+   "stock": "sig_kf51b",
+   "factory": "e90c78e6284e68f5",
+   "auto": "merdc desert winter urban oakleaf merdc desert berlin urban summer merdc merdc"
+  },
+  "fv510": {
+   "selection": "factory",
+   "stock": "service_challenger_3",
+   "factory": "250b4509a3a0d1ce",
+   "auto": "summer pinkdesert merdcwinter urbanblock autumn summer digitaldesert urbanblock urbanblock summer summer summer"
+  },
+  "fv510_milan": {
+   "selection": "factory",
+   "stock": "service_challenger_3",
+   "factory": "35f85a828cfee721",
+   "auto": "tigerstripe chocchip washworn urbanblock autumn dpm desert urbanblock urbanblock dpm tigerstripe tigerstripe"
+  },
+  "fv510_milan_x": {
+   "selection": "factory",
+   "stock": "service_challenger_3",
+   "factory": "a89cccb508bdc58b",
+   "auto": "flecktarn desert winter berlin oakleaf dpm chocchip berlin urban dpm flecktarn flecktarn"
+  },
+  "ajax_x": {
+   "selection": "factory",
+   "stock": "service_challenger_3",
+   "factory": "f40307259117fc0b",
+   "auto": "flecktarn digitaldesert winterbands berlin oakleaf dpm digitaldesert urbanblock urban flecktarn flecktarn flecktarn"
+  },
+  "ares_apc_x": {
+   "selection": "factory",
+   "stock": "sig_ares_apc_x",
+   "factory": "4a65ebe30a0f4b57",
+   "auto": "dpm digitaldesert winterbands urbanblock oakleaf summer chocchip urbanblock urban summer dpm dpm"
+  },
+  "m60a1": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "ba60cc4fc1c78614",
+   "auto": "flecktarn desert winter berlin oakleaf dpm chocchip urban urban summer flecktarn flecktarn"
+  },
+  "merkava1b": {
+   "selection": "factory",
+   "stock": "sig_merkava1b",
+   "factory": "92b54c6554a57330",
+   "auto": "tigerstripe pinkdesert merdcwinter berlin autumn dpm chocchip urbanblock urbanblock summer tigerstripe tigerstripe"
+  },
+  "merkava2b": {
+   "selection": "factory",
+   "stock": "sig_merkava2b",
+   "factory": "01d35000fddaf958",
+   "auto": "merdc desert winter urban oakleaf merdc chocchip urban urban flecktarn merdc merdc"
+  },
+  "merkava2d": {
+   "selection": "factory",
+   "stock": "sig_merkava2d",
+   "factory": "a19bfc15f62f8a3f",
+   "auto": "dpm digitaldesert winterbands urbanblock oakleaf summer desert berlin urban dpm dpm dpm"
+  },
+  "sabra_mk2_x": {
+   "selection": "factory",
+   "stock": "sig_sabra_mk2_x",
+   "factory": "7c414e192f757d2d",
+   "auto": "merdc digitaldesert winterbands urban oakleaf merdc desert urban urban dpm merdc merdc"
+  },
+  "merkava3c": {
+   "selection": "factory",
+   "stock": "sig_merkava3c",
+   "factory": "18a83b4753a4d796",
+   "auto": "flecktarn desert winter urbanblock oakleaf dpm desert urbanblock urban flecktarn flecktarn flecktarn"
+  },
+  "merkava3d": {
+   "selection": "factory",
+   "stock": "sig_merkava3d",
+   "factory": "f2284f4ef30bcf9c",
+   "auto": "tigerstripe pinkdesert merdcwinter berlin autumn dpm digitaldesert berlin urbanblock summer tigerstripe tigerstripe"
+  },
+  "merkava3d_x": {
+   "selection": "factory",
+   "stock": "sig_merkava3d_x",
+   "factory": "4e196b8df66edb2c",
+   "auto": "dpm digitaldesert winterbands berlin oakleaf summer chocchip urban urban flecktarn dpm dpm"
+  },
+  "merkava4_x": {
+   "selection": "factory",
+   "stock": "sig_merkava4_x",
+   "factory": "29f950476a2e23c9",
+   "auto": "amoeba chocchip washworn urban autumn dpm chocchip urban urbanblock summer amoeba amoeba"
+  },
+  "merkava4b": {
+   "selection": "factory",
+   "stock": "sig_merkava4b",
+   "factory": "a3f9ebe1d28b246d",
+   "auto": "flecktarn digitaldesert winterbands urbanblock oakleaf dpm desert berlin urban summer flecktarn flecktarn"
+  },
+  "namer_ifv": {
+   "selection": "factory",
+   "stock": "sig_namer_ifv",
+   "factory": "1f1e6a36cc81387a",
+   "auto": "flecktarn digitaldesert winterbands urban oakleaf summer desert urban urban summer flecktarn flecktarn"
+  },
+  "merkava4_trophy": {
+   "selection": "factory",
+   "stock": "sig_merkava4_trophy",
+   "factory": "4886796672e8760c",
+   "auto": "tigerstripe chocchip washworn urban autumn dpm chocchip urbanblock urbanblock summer tigerstripe tigerstripe"
+  },
+  "merkava4_barak": {
+   "selection": "factory",
+   "stock": "sig_merkava4_barak",
+   "factory": "7426d7373643f6d6",
+   "auto": "dpm desert winter urbanblock oakleaf summer digitaldesert urban urban summer dpm dpm"
+  },
+  "amx30": {
+   "selection": "factory",
+   "stock": "service_leclerc_xlr",
+   "factory": "3882101dfc4a11dc",
+   "auto": "flecktarn digitaldesert winterbands urban oakleaf dpm chocchip urbanblock urban flecktarn flecktarn flecktarn"
+  },
+  "amx30b2": {
+   "selection": "factory",
+   "stock": "service_leclerc_xlr",
+   "factory": "c056c8ddeff8c046",
+   "auto": "flecktarn digitaldesert winterbands berlin oakleaf dpm chocchip urban urban dpm flecktarn flecktarn"
+  },
+  "m48": {
+   "selection": "factory",
+   "stock": "summer",
+   "factory": "728833af417692f3",
+   "auto": "dpm digitaldesert winterbands urbanblock oakleaf summer chocchip berlin urban dpm dpm dpm"
+  },
+  "m60a2": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "477d61775029025b",
+   "auto": "tigerstripe pinkdesert merdcwinter urban autumn dpm desert urbanblock urbanblock dpm tigerstripe tigerstripe"
+  },
+  "vickers_mk1": {
+   "selection": "factory",
+   "stock": "service_challenger_3",
+   "factory": "1ed7740370e554bf",
+   "auto": "merdc desert winter urban oakleaf merdc digitaldesert berlin urban dpm merdc merdc"
+  },
+  "centurion3": {
+   "selection": "factory",
+   "stock": "service_challenger_3",
+   "factory": "0a2889f0feda847e",
+   "auto": "tigerstripe pinkdesert merdcwinter berlin autumn dpm desert berlin urbanblock flecktarn tigerstripe tigerstripe"
+  },
+  "centurion5": {
+   "selection": "factory",
+   "stock": "service_challenger_3",
+   "factory": "0a2889f0feda847e",
+   "auto": "amoeba chocchip washworn urban autumn dpm digitaldesert berlin urbanblock dpm amoeba amoeba"
+  },
+  "m46_patton": {
+   "selection": "factory",
+   "stock": "summer",
+   "factory": "eafdc91bf50f27ca",
+   "auto": "summer pinkdesert merdcwinter urbanblock autumn summer chocchip urbanblock urbanblock summer summer summer"
+  },
+  "m47_patton": {
+   "selection": "factory",
+   "stock": "summer",
+   "factory": "eafdc91bf50f27ca",
+   "auto": "dpm desert winter berlin oakleaf summer digitaldesert urbanblock urban flecktarn dpm dpm"
+  },
+  "m60a3": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "ba60cc4fc1c78614",
+   "auto": "merdc digitaldesert winterbands urban oakleaf merdc desert berlin urban flecktarn merdc merdc"
+  },
+  "ua_t64bv": {
+   "selection": "factory",
+   "stock": "sig_ua_t64bv",
+   "factory": "41827d568602d293",
+   "auto": "merdc desert winter berlin oakleaf merdc chocchip urban urban dpm merdc merdc"
+  },
+  "ua_t80bv": {
+   "selection": "factory",
+   "stock": "sig_ua_t80bv",
+   "factory": "b3d4d7a00d47bd18",
+   "auto": "flecktarn digitaldesert winterbands urban oakleaf dpm desert berlin urban flecktarn flecktarn flecktarn"
+  },
+  "ua_t80u_kursk": {
+   "selection": "factory",
+   "stock": "sig_ua_t80u_kursk",
+   "factory": "6c7376283d7592af",
+   "auto": "merdc digitaldesert winterbands urban oakleaf merdc digitaldesert urban urban flecktarn merdc merdc"
+  },
+  "ua_t84_oplot_m": {
+   "selection": "factory",
+   "stock": "sig_ua_t84_oplot_m",
+   "factory": "04509d4067f37bf6",
+   "auto": "tigerstripe pinkdesert merdcwinter berlin autumn dpm desert berlin urbanblock flecktarn tigerstripe tigerstripe"
+  },
+  "ua_m1a1": {
+   "selection": "factory",
+   "stock": "sig_ua_m1a1",
+   "factory": "ec8dc67081276928",
+   "auto": "flecktarn desert winter urbanblock oakleaf dpm desert berlin urban dpm flecktarn flecktarn"
+  },
+  "leo2a6_ua": {
+   "selection": "factory",
+   "stock": "sig_leo2a6_ua",
+   "factory": "3944d105df97870b",
+   "auto": "summer chocchip washworn urbanblock autumn summer desert urban urbanblock summer summer summer"
+  },
+  "object695_x": {
+   "selection": "factory",
+   "stock": "sig_object695_x",
+   "factory": "4431bef03c858a4d",
+   "auto": "tigerstripe pinkdesert merdcwinter berlin autumn dpm chocchip urban urbanblock dpm tigerstripe tigerstripe"
+  },
+  "t72m1_jaguar": {
+   "selection": "factory",
+   "stock": "sig_t72m1_jaguar",
+   "factory": "7b5cfcb5839573a2",
+   "auto": "summer chocchip washworn urban autumn summer desert berlin urbanblock summer summer summer"
+  },
+  "t72_rys": {
+   "selection": "factory",
+   "stock": "service_pl01",
+   "factory": "4a364cdef49bcabb",
+   "auto": "tigerstripe pinkdesert merdcwinter urbanblock autumn dpm desert berlin urbanblock flecktarn tigerstripe tigerstripe"
+  },
+  "pt91_twardy": {
+   "selection": "factory",
+   "stock": "sig_pt91_twardy",
+   "factory": "278844347910ac03",
+   "auto": "summer pinkdesert merdcwinter berlin autumn summer chocchip urbanblock urbanblock flecktarn summer summer"
+  },
+  "pl01": {
+   "selection": "factory",
+   "stock": "service_pl01",
+   "factory": "9bd74dbc24f39de0",
+   "auto": "dpm digitaldesert winterbands berlin oakleaf merdc chocchip urbanblock urban flecktarn dpm dpm"
+  },
+  "borsuk": {
+   "selection": "factory",
+   "stock": "sig_borsuk",
+   "factory": "fde0449e3ac17688",
+   "auto": "amoeba pinkdesert merdcwinter urban autumn merdc digitaldesert berlin urbanblock dpm amoeba amoeba"
+  },
+  "pl01_105": {
+   "selection": "factory",
+   "stock": "sig_pl01_105",
+   "factory": "e70581692540360b",
+   "auto": "tigerstripe pinkdesert merdcwinter berlin autumn dpm chocchip urban urbanblock dpm tigerstripe tigerstripe"
+  },
+  "k2b": {
+   "selection": "factory",
+   "stock": "sig_k2b",
+   "factory": "fb77c6cb454460dd",
+   "auto": "merdc desert winter urban oakleaf merdc desert berlin urban dpm merdc merdc"
+  },
+  "bmp3_rok": {
+   "selection": "factory",
+   "stock": "service_bmp3_rok",
+   "factory": "9bd907ae39e70243",
+   "auto": "merdc digitaldesert winterbands urban oakleaf merdc chocchip berlin urban summer merdc merdc"
+  },
+  "ua_m2a3_bradley": {
+   "selection": "factory",
+   "stock": "service_ua_m2a3_bradley",
+   "factory": "b5ce99002a79c817",
+   "auto": "tigerstripe pinkdesert merdcwinter urban autumn dpm digitaldesert berlin urbanblock summer tigerstripe tigerstripe"
+  },
+  "bmpt_terminator2": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "d90451c7ad569e1f",
+   "auto": "flecktarn desert winter urban oakleaf summer digitaldesert berlin urban dpm flecktarn flecktarn"
+  },
+  "bwp1": {
+   "selection": "factory",
+   "stock": "sig_bwp1",
+   "factory": "9aebc9a4d0d1daa2",
+   "auto": "summer chocchip washworn urban autumn summer desert urban urbanblock dpm summer summer"
+  },
+  "marder1a3": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "7c6372e6df74e761",
+   "auto": "summer pinkdesert merdcwinter urbanblock autumn summer desert urban urbanblock dpm summer summer"
+  },
+  "m3a3_bradley": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "5c65a9b3518f0fe1",
+   "auto": "amoeba chocchip washworn urban autumn merdc chocchip urban urbanblock flecktarn amoeba amoeba"
+  },
+  "bmp3": {
+   "selection": "factory",
+   "stock": "service_soviet_coldwar",
+   "factory": "f3a4555150a580a5",
+   "auto": "tigerstripe chocchip washworn urban autumn dpm desert berlin urbanblock flecktarn tigerstripe tigerstripe"
+  },
+  "bmp3m_dragun125_x": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "596cc7165e06a047",
+   "auto": "summer pinkdesert merdcwinter urbanblock autumn summer digitaldesert berlin urbanblock flecktarn summer summer"
+  },
+  "kurganets25_x": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "65c2c2181abaeef9",
+   "auto": "summer pinkdesert merdcwinter berlin autumn summer desert urban urbanblock dpm summer summer"
+  },
+  "tos1a_tagil": {
+   "selection": "factory",
+   "stock": "sig_tos1a_tagil",
+   "factory": "ccd10b9665c1bc60",
+   "auto": "summer chocchip washworn urbanblock autumn merdc chocchip urbanblock urbanblock flecktarn summer summer"
+  },
+  "upior": {
+   "selection": "factory",
+   "stock": "sig_upior",
+   "factory": "48685bbdc87cf817",
+   "auto": "dpm digitaldesert winterbands urbanblock oakleaf summer desert urbanblock urban dpm dpm dpm"
+  },
+  "bmpt_t90": {
+   "selection": "factory",
+   "stock": "sig_bmpt_t90",
+   "factory": "7cfb4229c02cce09",
+   "auto": "dpm desert winter urbanblock oakleaf summer digitaldesert berlin urban summer dpm dpm"
+  },
+  "m551_sheridan": {
+   "selection": "factory",
+   "stock": "sig_m551_sheridan",
+   "factory": "6245390616425cce",
+   "auto": "merdc digitaldesert winterbands urbanblock oakleaf merdc chocchip berlin urban dpm merdc merdc"
+  },
+  "m551a1_tts": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "4153a0aec4fda5cf",
+   "auto": "summer pinkdesert merdcwinter urbanblock autumn summer desert urbanblock urbanblock summer summer summer"
+  },
+  "leo2a7v_x": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "a4b51a4ba2f436ae",
+   "auto": "dpm digitaldesert winterbands berlin oakleaf summer digitaldesert urban urban flecktarn dpm dpm"
+  },
+  "leo2a6m_x": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "9372f3913461afc9",
+   "auto": "merdc digitaldesert winterbands urban oakleaf merdc chocchip urbanblock urban flecktarn merdc merdc"
+  },
+  "leo2a4m_x": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "a0d8fb647bcb391e",
+   "auto": "merdc desert winter urbanblock oakleaf merdc desert urban urban flecktarn merdc merdc"
+  },
+  "leo2a5_x": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "a01f9076e2c7705e",
+   "auto": "merdc digitaldesert winterbands urban oakleaf merdc desert urbanblock urban dpm merdc merdc"
+  },
+  "k2_x": {
+   "selection": "factory",
+   "stock": "service_bmp3_rok",
+   "factory": "739a0a77a092324a",
+   "auto": "tigerstripe pinkdesert merdcwinter urban autumn dpm desert urban urbanblock dpm tigerstripe tigerstripe"
+  },
+  "kf51_x": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "83544d8304688f65",
+   "auto": "tigerstripe pinkdesert merdcwinter urban autumn dpm desert berlin urbanblock flecktarn tigerstripe tigerstripe"
+  },
+  "t90a_x": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "4b9fa63ec888ff03",
+   "auto": "flecktarn desert winter berlin oakleaf dpm digitaldesert berlin urban summer flecktarn flecktarn"
+  },
+  "t90a_vladimir_x": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "4b9fa63ec888ff03",
+   "auto": "amoeba pinkdesert merdcwinter urban autumn merdc desert urbanblock urbanblock summer amoeba amoeba"
+  },
+  "t90m_x": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "8f4f689fc3e3fb5c",
+   "auto": "dpm desert winter urbanblock oakleaf summer digitaldesert berlin urban dpm dpm dpm"
+  },
+  "t90sm_x": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "8f4f689fc3e3fb5c",
+   "auto": "summer chocchip washworn urban autumn summer desert berlin urbanblock summer summer summer"
+  },
+  "t14_x": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "d176e08a4fe63f6e",
+   "auto": "amoeba pinkdesert merdcwinter urbanblock autumn merdc chocchip urbanblock urbanblock summer amoeba amoeba"
+  },
+  "griffin50_x": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "53af0e27958ddd41",
+   "auto": "flecktarn desert winter urbanblock oakleaf dpm digitaldesert urban urban dpm flecktarn flecktarn"
+  },
+  "kf41_lynx_x": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "0bd41517c305bc5b",
+   "auto": "dpm desert winter urban oakleaf summer desert berlin urban dpm dpm dpm"
+  },
+  "k21_x": {
+   "selection": "factory",
+   "stock": "service_bmp3_rok",
+   "factory": "0def247ce89e3ea1",
+   "auto": "dpm desert winter urban oakleaf summer chocchip berlin urban flecktarn dpm dpm"
+  },
+  "leo2a6_x": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "7a78a728f513321c",
+   "auto": "tigerstripe chocchip washworn urban autumn dpm digitaldesert urbanblock urbanblock summer tigerstripe tigerstripe"
+  },
+  "k1a1_x": {
+   "selection": "factory",
+   "stock": "service_bmp3_rok",
+   "factory": "690ad17e78b04179",
+   "auto": "flecktarn desert winter berlin oakleaf dpm desert urban urban summer flecktarn flecktarn"
+  },
+  "amx30_x": {
+   "selection": "factory",
+   "stock": "service_leclerc_xlr",
+   "factory": "3882101dfc4a11dc",
+   "auto": "summer chocchip washworn berlin autumn summer digitaldesert urban urbanblock dpm summer summer"
+  },
+  "t62mv1_x": {
+   "selection": "factory",
+   "stock": "service_soviet_coldwar",
+   "factory": "d47ee45d2fd134d6",
+   "auto": "merdc digitaldesert winterbands urbanblock oakleaf merdc chocchip urbanblock urban summer merdc merdc"
+  },
+  "t72b_1987_x": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "9ac5b845ee813f5a",
+   "auto": "amoeba pinkdesert merdcwinter urbanblock autumn merdc chocchip urbanblock urbanblock summer amoeba amoeba"
+  },
+  "t80u_x": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "a567226499ec1904",
+   "auto": "summer chocchip washworn berlin autumn summer digitaldesert urbanblock urbanblock dpm summer summer"
+  },
+  "leclerc_x": {
+   "selection": "factory",
+   "stock": "service_leclerc_xlr",
+   "factory": "e5abd38eb9aa50d8",
+   "auto": "dpm digitaldesert winterbands berlin oakleaf merdc desert berlin urban dpm dpm dpm"
+  },
+  "leclerc_classic_x": {
+   "selection": "factory",
+   "stock": "service_leclerc_xlr",
+   "factory": "e5abd38eb9aa50d8",
+   "auto": "amoeba pinkdesert merdcwinter urbanblock autumn merdc chocchip urbanblock urbanblock flecktarn amoeba amoeba"
+  },
+  "chieftain_mk10_x": {
+   "selection": "factory",
+   "stock": "service_challenger_3",
+   "factory": "0a2889f0feda847e",
+   "auto": "amoeba chocchip washworn urbanblock autumn merdc desert urban urbanblock summer amoeba amoeba"
+  },
+  "t72b3_x": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "9ac5b845ee813f5a",
+   "auto": "dpm digitaldesert winterbands berlin oakleaf summer chocchip urbanblock urban dpm dpm dpm"
+  },
+  "jpz_e100_x": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "87a9f26b6270ffe9",
+   "auto": "amoeba pinkdesert merdcwinter urbanblock autumn merdc desert berlin urbanblock flecktarn amoeba amoeba"
+  },
+  "type10_x": {
+   "selection": "factory",
+   "stock": "service_type10",
+   "factory": "a29eb6eab6409d73",
+   "auto": "summer chocchip washworn urbanblock autumn summer chocchip urbanblock urbanblock dpm summer summer"
+  },
+  "type90_x": {
+   "selection": "factory",
+   "stock": "service_type10",
+   "factory": "a29eb6eab6409d73",
+   "auto": "amoeba chocchip washworn urban autumn merdc desert urban urbanblock dpm amoeba amoeba"
+  },
+  "amx40_x": {
+   "selection": "factory",
+   "stock": "service_leclerc_xlr",
+   "factory": "48ac3368ae1675aa",
+   "auto": "dpm digitaldesert winterbands urban oakleaf summer desert berlin urban dpm dpm dpm"
+  },
+  "strv122_x": {
+   "selection": "factory",
+   "stock": "service_strv122",
+   "factory": "43225aaf714894e5",
+   "auto": "flecktarn digitaldesert winterbands urbanblock oakleaf dpm chocchip berlin urban summer flecktarn flecktarn"
+  },
+  "t72b3m_x": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "9ac5b845ee813f5a",
+   "auto": "amoeba chocchip washworn urbanblock autumn merdc digitaldesert urbanblock urbanblock flecktarn amoeba amoeba"
+  },
+  "challenger1_x": {
+   "selection": "factory",
+   "stock": "service_challenger_3",
+   "factory": "24af537fcedf03bc",
+   "auto": "dpm desert winter urbanblock oakleaf summer desert urban urban dpm dpm dpm"
+  },
+  "t72bu_x": {
+   "selection": "factory",
+   "stock": "service_soviet_coldwar",
+   "factory": "8ce11144d58ab513",
+   "auto": "flecktarn desert winter urban oakleaf dpm chocchip berlin urban summer flecktarn flecktarn"
+  },
+  "chieftain5_x": {
+   "selection": "factory",
+   "stock": "service_challenger_3",
+   "factory": "cf8b37723ac0ff93",
+   "auto": "dpm desert winter urban oakleaf summer desert urbanblock urban dpm dpm dpm"
+  },
+  "t90_x": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "37800db68538a622",
+   "auto": "tigerstripe pinkdesert merdcwinter berlin autumn dpm desert berlin urbanblock summer tigerstripe tigerstripe"
+  },
+  "t90a_burlak_x": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "adf1003bc4afed85",
+   "auto": "merdc digitaldesert winterbands urbanblock oakleaf merdc chocchip berlin urban flecktarn merdc merdc"
+  },
+  "t90ms_x": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "c6dba60618ff45bf",
+   "auto": "summer chocchip washworn berlin autumn summer digitaldesert berlin urbanblock summer summer summer"
+  },
+  "m1a2_x": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "694f3df7a4d82a8b",
+   "auto": "summer chocchip washworn berlin autumn summer chocchip urbanblock urbanblock dpm summer summer"
+  },
+  "m1a2_tusk_x": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "65c6c57c28462b6e",
+   "auto": "summer pinkdesert merdcwinter urban autumn merdc digitaldesert urbanblock urbanblock flecktarn summer summer"
+  },
+  "m1a2_sepv2_x": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "694f3df7a4d82a8b",
+   "auto": "flecktarn digitaldesert winterbands berlin oakleaf dpm desert urban urban summer flecktarn flecktarn"
+  },
+  "m1a2_sepv3_x": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "ab5d9df66dd46615",
+   "auto": "tigerstripe chocchip washworn berlin autumn dpm digitaldesert urban urbanblock dpm tigerstripe tigerstripe"
+  },
+  "ua_m1a1_x": {
+   "selection": "factory",
+   "stock": "service_ua_m2a3_bradley",
+   "factory": "d36ff3dda367408c",
+   "auto": "summer pinkdesert merdcwinter berlin autumn summer chocchip urbanblock urbanblock dpm summer summer"
+  },
+  "griffin_viper": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "9b1db4f62652d3b5",
+   "auto": "tigerstripe chocchip washworn berlin autumn dpm digitaldesert urbanblock urbanblock flecktarn tigerstripe tigerstripe"
+  },
+  "spz_puma_s1_x": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "7e062435c369b22a",
+   "auto": "merdc desert winter berlin oakleaf merdc digitaldesert berlin urban dpm merdc merdc"
+  },
+  "type89_x": {
+   "selection": "factory",
+   "stock": "service_type10",
+   "factory": "28f88e53945d1789",
+   "auto": "summer pinkdesert merdcwinter urban autumn summer digitaldesert urbanblock urbanblock dpm summer summer"
+  },
+  "amx10p": {
+   "selection": "factory",
+   "stock": "sig_amx10p",
+   "factory": "84576e653db69c50",
+   "auto": "flecktarn digitaldesert winterbands berlin oakleaf dpm chocchip urbanblock urban summer flecktarn flecktarn"
+  },
+  "amx10p_25": {
+   "selection": "factory",
+   "stock": "sig_amx10p_25",
+   "factory": "260a29b817dd2ea9",
+   "auto": "flecktarn digitaldesert winterbands urbanblock oakleaf dpm desert urbanblock urban dpm flecktarn flecktarn"
+  },
+  "marder2": {
+   "selection": "factory",
+   "stock": "service_leo2a6m",
+   "factory": "52261501c3008276",
+   "auto": "dpm desert winter urban oakleaf summer digitaldesert berlin urban summer dpm dpm"
+  },
+  "m6_linebacker": {
+   "selection": "factory",
+   "stock": "service_usa_desert",
+   "factory": "6de1188373c8ff6d",
+   "auto": "tigerstripe chocchip washworn urban autumn dpm digitaldesert berlin urbanblock summer tigerstripe tigerstripe"
+  },
+  "ua_t80u_modern": {
+   "selection": "factory",
+   "stock": "service_ua_m2a3_bradley",
+   "factory": "c8c9d9ab79168e8a",
+   "auto": "tigerstripe chocchip washworn urban autumn dpm chocchip urbanblock urbanblock flecktarn tigerstripe tigerstripe"
+  },
+  "ua_t72b3m_modern": {
+   "selection": "factory",
+   "stock": "service_ua_m2a3_bradley",
+   "factory": "6b5f013e606e0be0",
+   "auto": "amoeba chocchip washworn urban autumn merdc chocchip urban urbanblock flecktarn amoeba amoeba"
+  },
+  "ua_t72b3m_hetman_ii": {
+   "selection": "factory",
+   "stock": "service_ua_m2a3_bradley",
+   "factory": "bef71215a2f6ae09",
+   "auto": "flecktarn digitaldesert winterbands urbanblock oakleaf dpm desert urbanblock urban summer flecktarn flecktarn"
+  },
+  "ua_t72b3_modern": {
+   "selection": "factory",
+   "stock": "service_ua_m2a3_bradley",
+   "factory": "be28d1def58a0165",
+   "auto": "merdc digitaldesert winterbands urbanblock oakleaf merdc desert berlin urban dpm merdc merdc"
+  },
+  "pl_t80u_modern": {
+   "selection": "factory",
+   "stock": "service_pl01",
+   "factory": "dc597aac9c6bb682",
+   "auto": "amoeba chocchip washworn berlin autumn merdc desert berlin urbanblock summer amoeba amoeba"
+  },
+  "pl_t72b3m_modern": {
+   "selection": "factory",
+   "stock": "service_pl01",
+   "factory": "be8ec171b2d25198",
+   "auto": "amoeba chocchip washworn urbanblock autumn merdc chocchip urbanblock urbanblock summer amoeba amoeba"
+  },
+  "pl_t72b3_modern": {
+   "selection": "factory",
+   "stock": "service_pl01",
+   "factory": "0da0b6c8d5deb55b",
+   "auto": "merdc digitaldesert winterbands berlin oakleaf merdc digitaldesert berlin urban summer merdc merdc"
+  },
+  "pl_t72b3_zubr_ii": {
+   "selection": "factory",
+   "stock": "service_pl01",
+   "factory": "c4e8723a62dd5452",
+   "auto": "tigerstripe chocchip washworn urban autumn dpm chocchip urbanblock urbanblock dpm tigerstripe tigerstripe"
+  },
+  "cn_t80u_modern": {
+   "selection": "factory",
+   "stock": "service_type99a",
+   "factory": "a40808a24af3476b",
+   "auto": "merdc digitaldesert winterbands berlin oakleaf merdc chocchip urban urban summer merdc merdc"
+  },
+  "cn_t72b3m_modern": {
+   "selection": "factory",
+   "stock": "service_type99a",
+   "factory": "c986d302d02a95be",
+   "auto": "dpm digitaldesert winterbands urbanblock oakleaf summer desert berlin urban dpm dpm dpm"
+  },
+  "cn_t72b3_modern": {
+   "selection": "factory",
+   "stock": "service_type99a",
+   "factory": "4ad4b52eed2fe2bb",
+   "auto": "summer chocchip washworn urbanblock autumn summer digitaldesert urban urbanblock dpm summer summer"
+  },
+  "ru_t80u_modern": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "033c7262bce471c2",
+   "auto": "flecktarn digitaldesert winterbands urban oakleaf dpm desert urbanblock urban summer flecktarn flecktarn"
+  },
+  "ru_t72b3m_modern": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "b1c439dd066ef4ff",
+   "auto": "flecktarn digitaldesert winterbands urban oakleaf dpm digitaldesert urban urban summer flecktarn flecktarn"
+  },
+  "ru_t72b3_modern": {
+   "selection": "factory",
+   "stock": "service_t90m",
+   "factory": "5c72ff5b1af39da3",
+   "auto": "tigerstripe chocchip washworn berlin autumn dpm desert urban urbanblock flecktarn tigerstripe tigerstripe"
+  }
+ }
+}

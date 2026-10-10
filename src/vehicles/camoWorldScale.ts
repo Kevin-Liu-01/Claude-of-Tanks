@@ -15,11 +15,6 @@ export const CAMO_UV_REPEATS_PER_M = 0.5;
 /** World metres one repeat of the camouflage tile spans on a hull (2 m). */
 export const CAMO_TILE_SPAN_M = 1 / CAMO_UV_REPEATS_PER_M;
 
-/** World metres one repeat of a WIDE camouflage tile spans (the patch-field schemes, catalogCamoPainter.ts
- * camoArtTileSpanM): its albedo and roughness textures repeat at CAMO_TILE_SPAN_M / CAMO_WIDE_TILE_SPAN_M of the
- * shared UVs, so a 7 m hull side shows its patches less than twice instead of three and a half times. */
-export const CAMO_WIDE_TILE_SPAN_M = 4;
-
 /**
  * Patch-geometry factor for a recipe density. The painter's shapes are authored against the reference density
  * (patches sized for a 2 m tile); a denser recipe (camoScale above the reference) paints proportionally smaller

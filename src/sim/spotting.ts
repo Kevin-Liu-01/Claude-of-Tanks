@@ -83,6 +83,28 @@ export interface ConcealerDisc {
   z: number;
   r: number;
   add: number;
+  /** The tree under this canopy was felled (destruction, 2026-10-07): it conceals nothing until the battle resets. */
+  dead?: boolean;
+}
+
+/**
+ * A felled tree stops concealing (docs/DESTRUCTION.md §6): every canopy disc centred on its trunk (x, z, within 1 cm)
+ * is marked dead; returns how many. The authority and the solo step call it when a tree falls.
+ */
+export function fellConcealersAt(concealers: readonly ConcealerDisc[] | null | undefined, x: number, z: number): number {
+  if (!concealers) return 0;
+  let felled = 0;
+  for (let i = 0; i < concealers.length; i++) {
+    const disc = concealers[i];
+    if (!disc.dead && Math.abs(disc.x - x) <= 0.01 && Math.abs(disc.z - z) <= 0.01) { disc.dead = true; felled++; }
+  }
+  return felled;
+}
+
+/** A cached world's next battle: every canopy conceals again. */
+export function restoreConcealers(concealers: readonly ConcealerDisc[] | null | undefined): void {
+  if (!concealers) return;
+  for (let i = 0; i < concealers.length; i++) if (concealers[i].dead) concealers[i].dead = false;
 }
 
 export interface SpottingRayHit {
@@ -469,6 +491,7 @@ export function bushBonusBetween(
   let bonus = 0;
   for (let i = 0; i < concealers.length; i++) {
     const c = concealers[i];
+    if (c.dead) continue;
     // cheap reject: outside the segment's bounding box grown by r
     const r = c.r;
     if (c.x < Math.min(sx, tx) - r || c.x > Math.max(sx, tx) + r) continue;
@@ -750,6 +773,7 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
     let bush = 0;
     for (let i = 0; i < concealers.length; i++) {
       const concealer = concealers[i];
+      if (concealer.dead) continue;
       const dx = concealer.x - position.x;
       const dz = concealer.z - position.z;
       const radius = concealer.r + 1.2;
@@ -991,6 +1015,7 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
   function bushNearby(p: SpottingVector3): boolean {
     for (let i = 0; i < concealers.length; i++) {
       const c = concealers[i];
+      if (c.dead) continue;
       const dx = c.x - p.x, dz = c.z - p.z;
       if (dx * dx + dz * dz <= (c.r + 1.2) * (c.r + 1.2)) return true;
     }

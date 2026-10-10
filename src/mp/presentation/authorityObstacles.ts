@@ -54,9 +54,16 @@ function hasIdentity(obstacle: PredictionObstacle, identity: ObstacleIdentity): 
     && (!identity.kind || !obstacle.kind || obstacle.kind === identity.kind);
 }
 
-/** The authority's obstacles in `world`: shared indices unless its layout (`layoutTier`, `terrainVariant`) says otherwise. */
+/**
+ * The authority's obstacles in `world`: shared indices unless an event proves otherwise. The authority plays the mode's
+ * battlefield variant from that variant's own manifest (2026-10-08: Frontline's trench works included), so a world shares
+ * its indices whatever its variant; and the mobile tier places what the desktop places, record for record (2026-10-08:
+ * the placement split, the scenery lane's rock masses and the facades lane's row-house bands — the phone-tier check reads
+ * 33 of 33 shards), so it shares them too. An event whose record at its index is another prop still turns this off and
+ * finds its prop by identity: a layout that drifts again degrades to the identity path, never to a wrong fall.
+ */
 export function createAuthorityObstacles(world: WorldCollisionLike | null): AuthorityObstacles {
-  let shared = !!world && world.layoutTier !== 'mobile' && !world.terrainVariant;
+  let shared = !!world;
   let identities: ((index: number) => ObstacleIdentity | null) | null = null;
   const candidates: PredictionObstacle[] = [];
 

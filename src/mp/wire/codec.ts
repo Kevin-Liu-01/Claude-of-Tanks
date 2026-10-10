@@ -4,6 +4,7 @@
  * out-of-range frame comes back as a typed rejection.
  */
 import { ByteReader, ByteWriter, WireError, toUint8Array } from './bytes.ts';
+import { readDestructionEntries, writeDestructionEntries } from './destructionLog.ts';
 import {
   CLOSE_REASON, EVENT_KIND_NAMES, EVENT_KIND_OTHER, MAX_BUILD_BYTES, MAX_CHAT_BYTES,
   MAX_CONTROLS_PER_INPUT, MAX_DESTROYED_PER_SNAPSHOT, MAX_DETAIL_BYTES, MAX_ENTITIES, MAX_EVENTS_PER_MESSAGE,
@@ -172,10 +173,12 @@ function writeMeta(writer: ByteWriter, meta: SnapshotMeta, hasVerdict: boolean):
 
 function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: SnapshotFrame | null): void {
   const hasVerdict = packet.meta.verdict !== 0;
+  const destruction = packet.destruction ?? [];
   const flags = (packet.keyframe ? SNAPSHOT_FLAGS.KEYFRAME : 0) |
     (packet.viewer ? SNAPSHOT_FLAGS.HAS_VIEWER : 0) |
     (packet.modeStateJson != null ? SNAPSHOT_FLAGS.HAS_MODE_STATE : 0) |
-    (hasVerdict ? SNAPSHOT_FLAGS.HAS_VERDICT : 0);
+    (hasVerdict ? SNAPSHOT_FLAGS.HAS_VERDICT : 0) |
+    (destruction.length ? SNAPSHOT_FLAGS.HAS_DESTRUCTION : 0);
   if (!packet.keyframe && (!baseline || baseline.tick !== packet.baseTick)) {
     throw new WireError('missing_baseline', 'delta snapshot needs its baseline frame');
   }
@@ -203,6 +206,10 @@ function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: Sna
   for (const shell of packet.shells) writeShell(writer, shell);
   if (packet.viewer) writeViewer(writer, packet.viewer);
   if (packet.modeStateJson != null) writer.string(packet.modeStateJson, MAX_MODE_STATE_JSON_BYTES);
+  if (destruction.length) {
+    writer.u32(packet.keyframe ? 0 : packet.destructionBase);
+    writeDestructionEntries(writer, destruction);
+  }
 }
 
 function writeResumeHint(writer: ByteWriter, message: ResumeHintMessage): void {
@@ -426,7 +433,7 @@ function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => Sna
   if (tick === NO_TICK) throw new WireError('range', 'snapshot tick is required');
   const serverTimeMs = reader.u32();
   const flags = reader.u8();
-  if (flags > 15) throw new WireError('range', 'snapshot flags out of range');
+  if (flags > 31) throw new WireError('range', 'snapshot flags out of range');
   const keyframe = (flags & SNAPSHOT_FLAGS.KEYFRAME) !== 0;
   const baseTick = tickOrNone(reader.u32());
   if (keyframe !== (baseTick === NO_TICK)) throw new WireError('invalid_message', 'keyframe flag disagrees with base tick');
@@ -463,9 +470,16 @@ function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => Sna
   for (let index = 0; index < shellCount; index++) shells.push(readShell(reader));
   const viewer = flags & SNAPSHOT_FLAGS.HAS_VIEWER ? readViewer(reader) : null;
   const modeStateJson = flags & SNAPSHOT_FLAGS.HAS_MODE_STATE ? reader.string(MAX_MODE_STATE_JSON_BYTES) : null;
+  let destructionBase = 0;
+  let destruction: SnapshotPacket['destruction'] = [];
+  if (flags & SNAPSHOT_FLAGS.HAS_DESTRUCTION) {
+    destructionBase = reader.u32();
+    if (keyframe && destructionBase !== 0) throw new WireError('invalid_message', 'a keyframe carries the whole destruction log');
+    destruction = readDestructionEntries(reader);
+  }
   return {
     type: MESSAGE_TYPE.SNAPSHOT, tick, serverTimeMs, keyframe, baseTick, ackedInputTick, ackedFireSeq, ackedActionSeq,
-    inputMarginTicks, meta, destroyed, entities, removed, shells, viewer, modeStateJson,
+    inputMarginTicks, meta, destroyed, destruction, destructionBase, entities, removed, shells, viewer, modeStateJson,
   };
 }
 
@@ -595,6 +609,9 @@ export function buildSnapshotPacket(frame: SnapshotFrame, baseline: SnapshotFram
     inputMarginTicks: frame.inputMarginTicks,
     meta: frame.meta,
     destroyed: baseline ? destroyedAdditions(baseline.destroyed, frame.destroyed) : frame.destroyed.slice(),
+    // the log only grows: a delta carries what follows its baseline's length
+    destruction: (frame.destruction ?? []).slice(baseline ? (baseline.destruction ?? []).length : 0),
+    destructionBase: baseline ? (baseline.destruction ?? []).length : 0,
     entities,
     removed,
     shells: frame.shells,
@@ -626,6 +643,12 @@ export function applySnapshotPacket(packet: SnapshotPacket, baseline: SnapshotFr
   const destroyed = base
     ? [...new Set([...base.destroyed, ...packet.destroyed])].sort((a, b) => a - b)
     : packet.destroyed.slice();
+  const baseLog = base ? base.destruction ?? [] : [];
+  const additions = packet.destruction ?? [];
+  if (base && additions.length && packet.destructionBase !== baseLog.length) {
+    throw new WireError('invalid_message', `destruction log delta follows ${packet.destructionBase}, the baseline holds ${baseLog.length}`);
+  }
+  const destruction = additions.length ? [...baseLog, ...additions] : baseLog.slice();
   return {
     tick: packet.tick,
     serverTimeMs: packet.serverTimeMs,
@@ -635,6 +658,7 @@ export function applySnapshotPacket(packet: SnapshotPacket, baseline: SnapshotFr
     inputMarginTicks: packet.inputMarginTicks,
     meta: packet.meta,
     destroyed,
+    destruction,
     entities,
     shells: packet.shells,
     viewer: packet.viewer,
