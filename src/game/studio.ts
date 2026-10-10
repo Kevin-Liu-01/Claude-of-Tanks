@@ -2359,12 +2359,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   /**
    * A battle round passes light cover (world/collision.ts shellPassesThroughCollisionRecord, restated here: the Studio
    * reaches the world through what it is handed, never a new static import; studioStrikeCover.selftest.mjs holds the
-   * two to one law): a crushable record that is not dense masonry, adobe or sandbag cover.
+   * two to one law): a crushable record that is not dense masonry, adobe or sandbag cover, a stone or a pillbox.
    */
   function strikePassesRecord(record: { crushable?: boolean; kind?: string } | null | undefined): boolean {
     if (record?.crushable !== true) return false;
     const kind = record.kind;
-    return !(kind === 'wallstone' || kind === 'walladobe' || kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall');
+    return !(kind === 'wallstone' || kind === 'walladobe' || kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall'
+      || kind === 'small-rock' || kind === 'bunker');
   }
   /**
    * A strike round's step from `from` to `to` through the world: light cover it meets — a hut, a fence, a tree, crates —
