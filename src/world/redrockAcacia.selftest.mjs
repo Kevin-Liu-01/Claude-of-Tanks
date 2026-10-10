@@ -102,4 +102,4 @@ try {
   } finally { veg.dispose(); disposeObject3DResources(veg.group); }
 } finally { restore(); }
 console.log(JSON.stringify(report));
-console.log('redrockAcacia.selftest: Wadi Rum\'s acacias flat, sparse and grey-green on Redrock; the Saharan maps\' unchanged PASS');
+console.log('redrockAcacia.selftest: the Sahara\'s and Wadi Rum\'s acacias flat, sparse and grey-green on Redrock and the Oasis; Sirocco\'s unchanged PASS');
