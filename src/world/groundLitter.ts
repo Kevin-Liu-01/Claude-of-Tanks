@@ -57,6 +57,13 @@ interface GroundLitterOptions {
    */
   setupMaterial?: ((material: THREE.MeshStandardMaterial, hook: GroundLitterMaterialHook) => void) | null;
   releaseMaterial?: ((material: THREE.Material) => void) | null;
+  /**
+   * Roads lane R3 (2026-10-10; the gauntlet's wave 349a: "identical pebble decals" lying on Ruinspires' asphalt and
+   * Steinburg's and Ironworks' setts): where the terrain draws paving (terrain.ts makePavedGroundAt — the material's own
+   * paved share and cover, a margin round them), no litter: the kerbed streets out to the kerbs' face, the paved towns'
+   * streets and squares, the paved pads. The centreline's fixed 3.2 m (roadCoreM) stays for every unpaved road.
+   */
+  paved?: ((x: number, z: number) => boolean) | null;
 }
 
 interface GroundLitterState {
@@ -281,6 +288,7 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
   const cfg = resolveGroundLitterConfig(options.config);
   const seed = options.seed ?? 2005;
   const blocked = options.blocked ?? null;
+  const paved = options.paved ?? null;
   const cellsPerUpdate = Math.max(1, options.cellsPerUpdate ?? 6);
   const group = new THREE.Group();
   group.name = 'ground-litter';
@@ -332,6 +340,7 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
       const jitterC = rng();
       const roadD = field._roadDist ? field._roadDist(x, z) : 1e9;
       if (roadD < GROUND_LITTER.roadCoreM) continue;
+      if (paved && paved(x, z)) continue; // (roads lane R3: none on the paving or its edge)
       if (field.getGroundType && field.getGroundType(x, z) === 'soft') continue;
       if (field.getWaterMaskAt && field.getWaterMaskAt(x, z) > 0.2) continue;
       let ny = 1;

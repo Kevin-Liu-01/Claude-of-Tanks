@@ -3813,6 +3813,54 @@ export function makeMaskTexture(
 }
 
 /**
+ * Roads lane R3 (2026-10-10; the gauntlet's wave 349a: "identical pebble decals" lying on Ruinspires' asphalt, Steinburg's
+ * and Ironworks' setts): where the terrain material draws a paved surface — the CPU twin of its paved share (gRoadTex: the
+ * map's paved roads, its paved town rect, a styled path's class) and its paved cover (the mask's road cover R from the
+ * 0.15–0.24 ramp of paveCore, which takes the carriageways and the pads' stamps; a kerbed town's streets out to the kerbs'
+ * face at 5.05 m) — with a margin round it, so the verge's litter keeps off the paving's edge. The ground litter skips it;
+ * null where the map paves nothing.
+ */
+export function makePavedGroundAt(
+  mask: { image: { data: ArrayLike<number>; width: number }; userData?: { roadLayer?: { data: Uint8Array; n: number } } },
+  layout: Pick<TerrainLayout, 'village'>,
+  splat: { pavedRoads?: boolean; roadTexMix?: number; townPaving?: unknown; pavedSurface?: PavedSurfaceConfig },
+  mapId: string,
+): ((x: number, z: number) => boolean) | null {
+  const paved = splat.pavedSurface ?? MAP_PAVED_SURFACES[mapId];
+  const roadTex = splat.pavedRoads || (paved?.street && !paved.townOnly) ? 1 : clamp(splat.roadTexMix ?? 0, 0, 1);
+  const town = layout.village;
+  const townPave = splat.townPaving || paved?.townOnly ? town : null;
+  const kerbed = paved?.kerbs ? town : null;
+  const roadLayer = mask.userData?.roadLayer ?? null;
+  if (roadTex < 0.5 && !townPave && !kerbed && !roadLayer) return null;
+  const data = mask.image.data, n = mask.image.width, T = n / MAP_SIZE;
+  const sample = (x: number, z: number, ch: number): number => {
+    const fx = clamp((x + HALF) * T - 0.5, 0, n - 1), fz = clamp((z + HALF) * T - 0.5, 0, n - 1);
+    const x0 = Math.floor(fx), z0 = Math.floor(fz), x1 = Math.min(n - 1, x0 + 1), z1 = Math.min(n - 1, z0 + 1);
+    const tx = fx - x0, tz = fz - z0;
+    const a = data[(z0 * n + x0) * 4 + ch] + (data[(z0 * n + x1) * 4 + ch] - data[(z0 * n + x0) * 4 + ch]) * tx;
+    const b = data[(z1 * n + x0) * 4 + ch] + (data[(z1 * n + x1) * 4 + ch] - data[(z1 * n + x0) * 4 + ch]) * tx;
+    return (a + (b - a) * tz) / 255;
+  };
+  // (the material's town weights reach a half 3 m out of the rect: 1 - smoothstep(0, 6, the distance outside it))
+  const outside = (x: number, z: number): number => Math.max(town.x0 - x, x - town.x1, town.z0 - z, z - town.z1);
+  return (x: number, z: number): boolean => {
+    const dRoad = (1 - sample(x, z, 1)) * 12;
+    let tex = roadTex;
+    if (townPave && outside(x, z) < 3) tex = 1;
+    if (roadLayer && dRoad < 11.9) {
+      const rn = roadLayer.n;
+      const ti = clamp(Math.floor((z + HALF) * rn / MAP_SIZE), 0, rn - 1) * rn + clamp(Math.floor((x + HALF) * rn / MAP_SIZE), 0, rn - 1);
+      const cls = roadLayer.data[ti * 4] & 127;
+      if (cls > 0) tex = cls === 4 ? 0 : 1;
+    }
+    if (tex < 0.5) return false;
+    if (kerbed && outside(x, z) < 3 && dRoad < 5.45) return true;
+    return sample(x, z, 0) >= 0.10;
+  };
+}
+
+/**
  * Ground lane (2026-10-04, wave 69 on Verdant's establishing view: "the mid-field has several near-circular blotches of
  * slightly different green/yellow tone that read as round texture-paint strokes rather than the rectilinear hedge- and
  * fence-bounded plots a real farmed valley would show"): the village's worn ground laid out as its plots instead of
@@ -8637,6 +8685,8 @@ function* createSplatMaterialSteps(
   // (a map's own snow-on-rock law compiles its own source, so it keys its own program; every other map keeps the key)
   mat.customProgramCacheKey = () => `world-terrain-splat-v54-${seaOpenings.length ? 'coast' : 'land'}${snowHold ? `-${snowHold.replace(/[^0-9.]+/g, '_')}` : ''}`; // terrain v3 (2026-10-02): v54
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
+  // (roads lane R3: where the material draws paving, for the ground litter — terrain group userData.pavedGroundAt)
+  mat.userData.pavedGroundAt = makePavedGroundAt(mask, layout, S, mapId);
   mat.userData.formationUniform = formationUniform;
   mat.userData.formationLowUniform = formationLowUniform;
   mat.userData.formationUpUniform = formationUpUniform;
@@ -9625,6 +9675,7 @@ function* terrainBuildSteps(
   group.userData.streamingStats = streamStats;
   streamStats.indexPool = terrainIndexPoolReceipt(terrainIndexPool);
   group.userData.sourcedTexturesReady = mat.userData.sourcedTexturesReady;
+  group.userData.pavedGroundAt = mat.userData.pavedGroundAt; // roads lane R3: the ground litter keeps off the paving
   group.userData.cancelSourcedTextures = sourcePreparation?.cancel;
   return group;
 }

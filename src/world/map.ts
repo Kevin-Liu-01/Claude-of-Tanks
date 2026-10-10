@@ -559,6 +559,8 @@ function assembleWorld(
     config: (config.vegetation as { litter?: GroundLitterConfig | null } | undefined)?.litter
       ?? groundLitterProfile(config.id),
     blocked: groundCoverClearance(),
+    // roads lane R3 (2026-10-10): none on the paving the terrain draws (terrain.ts makePavedGroundAt)
+    paved: (terrain.userData.pavedGroundAt as ((x: number, z: number) => boolean) | null | undefined) ?? null,
     // every lit world material joins the cascaded-shadow setup (see terrain/vegetation);
     // receipts stub the engine context without the hook, production always has it
     setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
