@@ -93,7 +93,7 @@ const BUDGET = {
   aircraftWreck: 20000, colonialBungalow: 14000, tennisCourt: 5000, bengalTemple: 9000, lighthouse: 3500, mole: 5000,
   lavoir: 5000, khan: 14000, quay: 4000, slipway: 1500,
   radomeTower: 9000, troposcatter: 9000, guyedMast: 9000, moduleTrain: 9000, fuelTankFarm: 9000,
-  headframe: 9000, oreBin: 9000, conveyor: 9000, oreCars: 9000, jamesway: 9000, drumCache: 9000, snowFence: 9000, airstrip: 9000,
+  headframe: 9000, oreBin: 9000, conveyor: 9000, oreCars: 9000, jamesway: 9000, drumCache: 9000, snowFence: 9000, airstrip: 9000, floodMast: 9000,
 };
 assert.deepEqual(Object.keys(BUDGET).sort(), [...KINDS].sort(), 'a budget for every kind');
 /** The authored variants each kind is built in besides its defaults. */

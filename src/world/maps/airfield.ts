@@ -168,8 +168,26 @@ export default {
     rocks: 98, outcrops: 12, craters: 58, rubblePiles: 14, sandbagLines: 18, hedgehogs: 18,
     // the map-vehicles lane (2026-10-06, the period ruling): Hostomel, February 2022: the T-72B3, T-80BV and BMP-2,
     // and Ukraine's T-64BV
-    tankWrecks: { era: 'modern', count: 5, debris: true, ids: ['t72b3_x', 't80bv', 'bmp2', 'ua_t64bv'] },
-    inhabit: { stalls: 0, benches: 2, coreClutter: 20, drums: 10, trucks: 7, jeeps: 5, drumClusters: 5, camps: 3, modernClutter: 22, looseClutter: 18, roadFence: 'fencerail', yardFence: 'fencerail' },
+    // (the map-content lane, 2026-10-09; the owner: Kestrel Airfield "unfinished") two more of the fight's hulks on the plateau
+    tankWrecks: { era: 'modern', count: 7, debris: true, ids: ['t72b3_x', 't80bv', 'bmp2', 'ua_t64bv'] },
+    // the aprons' floodlight masts and the holding apron's, rotation pairs about the runway's centre
+    landmarks: [
+      { kind: 'floodMast', x: -268, z: -104, yawDeg: 160, ground: 'veto', roadMargin: 0.5, name: 'the cargo apron mast (north-west)' },
+      { kind: 'floodMast', x: 268, z: 104, yawDeg: -20, ground: 'veto', roadMargin: 0.5, name: 'the terminal apron mast (south-east)' },
+      { kind: 'floodMast', x: -182, z: -196, yawDeg: -20, ground: 'veto', roadMargin: 0.5, name: 'the cargo apron mast (south-east)' },
+      { kind: 'floodMast', x: 182, z: 196, yawDeg: 160, ground: 'veto', roadMargin: 0.5, name: 'the terminal apron mast (north-west)' },
+      { kind: 'floodMast', x: 58, z: -46, yawDeg: -50, ground: 'veto', name: 'the holding apron mast (south)' },
+      { kind: 'floodMast', x: -58, z: 46, yawDeg: 130, ground: 'veto', name: 'the holding apron mast (north)' },
+      { kind: 'floodMast', x: 120, z: -100, yawDeg: 180, ground: 'veto', name: 'the south taxiway mast' },
+      { kind: 'floodMast', x: -120, z: 100, yawDeg: 0, ground: 'veto', name: 'the north taxiway mast' },
+    ],
+    // the An-26 transports in the dispersal pens, two of them burnt out where the February fighting caught them (rotation
+    // pairs)
+    vehicleSetPieces: [
+      { kind: 'an26', x: 135, z: -176, yawDeg: 0, wrecked: true }, { kind: 'an26', x: -135, z: 176, yawDeg: 180, wrecked: true },
+      { kind: 'an26', x: 214, z: -182, yawDeg: 0 }, { kind: 'an26', x: -214, z: 182, yawDeg: 180 },
+    ],
+    inhabit: { stalls: 0, benches: 2, coreClutter: 20, drums: 10, trucks: 10, jeeps: 7, drumClusters: 5, camps: 3, modernClutter: 22, looseClutter: 18, roadFence: 'fencerail', yardFence: 'fencerail' },
   },
   // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): an airfield plain: low swells,
   // tree lines

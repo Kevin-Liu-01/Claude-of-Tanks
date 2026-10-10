@@ -563,3 +563,31 @@ export const airstrip: LandmarkBuilder = (ctx) => {
   bar(sink, 'structureMetal', [sx0 + 2.6, sg + 2.75, sz0 + 1.2], [sx0 + 2.6, sg + 7.5, sz0 + 1.2], 0.05, { colour: STEEL_DARK, decor: true });
   return { parts: sink.finish(), tints: { plaster3: [0.62, 0.6, 0.58] }, destructibles };
 };
+
+// ---------------------------------------------------------------------------------------------------------- flood mast
+
+/**
+ * An apron's floodlight mast: a tapering steel pole on its concrete base, the ladder and its cage up one side, the
+ * railed platform at the head and the bank of floodlights on it, turned to the apron (+z), the cable box at the foot.
+ */
+export const floodMast: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const H = num(ctx, 'height', 10);
+  sink.span('stone', -0.9, -0.6 - ctx.groundFall, -0.9, 0.9, 0.4, 0.9);
+  sink.cylinder('structureMetal', [0, 0.4, 0], 'y', H - 0.4, 0.42, 10, { colour: STEEL }, 0.2);
+  ladder(sink, 0, -0.55, 0.6, H - 0.3, true, STEEL_DARK);
+  // the head: a ring platform, its rail, the frame and the floodlights in two rows facing +z
+  sink.cylinder('structureMetal', [0, H - 0.15, 0], 'y', 0.15, 1.4, 12, { colour: STEEL_DARK });
+  for (let k = 0; k < 12; k++) {
+    const a = (k / 12) * Math.PI * 2;
+    bar(sink, 'structureMetal', [Math.cos(a) * 1.35, H, Math.sin(a) * 1.35], [Math.cos(a) * 1.35, H + 1.0, Math.sin(a) * 1.35], 0.04, { colour: STEEL_DARK, decor: true, fine: true });
+  }
+  sink.span('structureMetal', -1.5, H + 0.2, 0.9, 1.5, H + 2.6, 1.05, { colour: STEEL_DARK });
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) {
+    const x = -1.1 + c * 0.73, y = H + 0.75 + r * 1.1;
+    sink.span('structureMetal', x - 0.3, y - 0.3, 1.05, x + 0.3, y + 0.3, 1.45, { colour: IRON, decor: true });
+    sink.quad('glass', [x - 0.24, y - 0.24, 1.46], [x + 0.24, y - 0.24, 1.46], [x + 0.24, y + 0.24, 1.46], [x - 0.24, y + 0.24, 1.46], { decor: true });
+  }
+  sink.span('structureMetal', 0.6, 0.4, -0.3, 1.2, 1.5, 0.3, { colour: shade(STEEL, 0.8), decor: true });
+  return { parts: sink.finish() };
+};

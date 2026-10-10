@@ -35,7 +35,7 @@ export type LandmarkKind =
   // wrecks
   | 'aircraftWreck'
   // works: a polar station's (stations.ts)
-  | 'radomeTower' | 'troposcatter' | 'guyedMast' | 'moduleTrain' | 'fuelTankFarm' | 'jamesway' | 'drumCache' | 'snowFence' | 'airstrip'
+  | 'radomeTower' | 'troposcatter' | 'guyedMast' | 'moduleTrain' | 'fuelTankFarm' | 'jamesway' | 'drumCache' | 'snowFence' | 'airstrip' | 'floodMast'
   // works: a mine's (mining.ts)
   | 'headframe' | 'oreBin' | 'conveyor' | 'oreCars';
 

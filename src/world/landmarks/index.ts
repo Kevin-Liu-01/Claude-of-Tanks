@@ -11,7 +11,7 @@ import { lighthouse, mole, quay, slipway } from './harbour.ts';
 import { khan, lavoir } from './village.ts';
 import { bandstand, churchyard, fountain, garden, parkGate, parkSquare, path } from './parks.ts';
 import { aircraftWreck } from './wrecks.ts';
-import { airstrip, drumCache, fuelTankFarm, guyedMast, jamesway, moduleTrain, radomeTower, snowFence, troposcatter } from './stations.ts';
+import { airstrip, drumCache, floodMast, fuelTankFarm, guyedMast, jamesway, moduleTrain, radomeTower, snowFence, troposcatter } from './stations.ts';
 import { conveyor, headframe, oreBin, oreCars } from './mining.ts';
 import { belfry, campanile, fireLookout, valveTower, waterTower, windmill } from './towers.ts';
 import type { LandmarkBuilder, LandmarkKind } from './types.ts';
@@ -32,6 +32,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   drumCache,
   equestrianStatue,
   fireLookout,
+  floodMast,
   fuelTankFarm,
   fountain,
   garden,

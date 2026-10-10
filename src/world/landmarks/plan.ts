@@ -249,6 +249,8 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // (the airstrip: a draped strip, its markers the props' barrels, a windsock and a shack beside its middle)
   airstrip: { family: 'works', drapes: true, roadMargin: 0, defaults: { length: 460, width: 26 },
     footprint: (p) => [num(p, 'width') / 2 + 10, num(p, 'length') / 2 + 1.5] },
+  floodMast: { family: 'works', defaults: { height: 22 },
+    footprint: () => [1.8, 1.8] },
   snowFence: { family: 'works', drapes: true, dressing: () => true, defaults: { length: 60 },
     footprint: (p) => [Math.max(2.5, Math.floor(num(p, 'length') / 2.5) * 1.25) + 0.2, 0.6] },
   // a mine's works (mining.ts): the headframe stands over its shaft with its winding house behind (the piece centred on
