@@ -2,7 +2,7 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 import * as THREE from 'three';
 import { KIT, FITTINGS } from './kit.ts';
-import { mergeAll, xform } from '../factoryGeometry.ts';
+import { mergeAll } from '../factoryGeometry.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
@@ -359,11 +359,19 @@ function buildDragunRoofWeapon(P: TankBuilderPort): void {
     // updating machine guns and stuff"): the module's 7.62 mm gun is the fleet's GPMG construction (machineGunGeometry.ts:
     // receiver with its feed cover, gas cylinder and flash hider, the remote solenoid instead of crew grips) carried by
     // the source's own mount housing (the external cradle above), in place of the receiver box and plain tube, at Codex's
-    // mount: its muzzle on the source barrel's axis at the source muzzle (x 0.415, y 3.084, z -1.806). One gun, one
+    // mount: its muzzle on the source muzzle's x and z (0.415, -1.806). The gun rests on the housing (its lowest point on
+    // the housing top, y 3.11): on the source barrel's own height (y 3.084) the slimmer receiver sank into the box and
+    // read as a barrel stuck in its face plus a loose feed cover on its roof (wave 345's packing check). One gun, one
     // fitting.
     const t = P.turretG.position;
+    const housingTop = 2.91 + .40 / 2;
     const group = FITTINGS.seatMuzzle(FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', mount: 'external-cradle',
         remoteWeapon: true, ammo: false, tone: 'two-tone', seed: 1253 }), [.415, 3.084 - t.y, -1.806 - t.z]);
+    const body = group.getObjectByName('browningDerivedMachineGunBody') as THREE.Mesh;
+    const bodyBottom = new THREE.Box3().setFromBufferAttribute(body.geometry.getAttribute('position') as THREE.BufferAttribute).min.y;
+    const lift = (housingTop - t.y) - (group.position.y + bodyBottom);
+    group.position.y += lift;
+    group.userData.seatedMuzzle = [.415, 3.084 + lift - t.y, -1.806 - t.z];
     group.name = 'dragunSourceRoofWeapon';
     group.userData.sourceOwner = 'Object_14';
     P.turretG.add(group);
