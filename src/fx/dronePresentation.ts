@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {AERIAL_RULES} from '../sim/matchRuleset.ts';
 import {droneLaunchHeight,droneFreeFlightBlend,DRONE_SPOOL_S} from '../sim/droneLaunch.ts';
-import { createDroneAttitude, updateDroneAttitude, droneWobblePitch, droneWobbleRoll, type DroneAttitude } from './droneMotion.ts';
+import { createDroneAttitude, updateDroneAttitude, droneWobblePitch, droneWobbleRoll, droneHoverDrift, droneClimbCharacter, type DroneAttitude } from './droneMotion.ts';
 import { acquireDroneModelKit, droneNation, poseDroneRotor, DRONE_LITE_DISTANCE_M, type DroneKitLease } from './droneModel.ts';
 import { DRONE_ARRIVAL, DRONE_RETURN, droneArrivalAttitude } from './droneArrival.ts';
 import { avoidDroneObstacles, type AerialWorldQuery } from '../sim/aerialCombat.ts';
@@ -57,6 +57,8 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
     const meshes=[...parts,rotors,blurs];
     // Shaded like the docked airframe (one program per material), so a launch from a shaded dock never brightens.
     for(const mesh of meshes){mesh.count=0;mesh.visible=false;mesh.frustumCulled=false;mesh.receiveShadow=true;parent.add(mesh);}
+    // Near airframes cast with the sun (solid parts and spooling blades; never the translucent discs or the lite pool).
+    for(const mesh of [...parts,rotors])mesh.castShadow=detail==='full';
     parts[0]!.name=`FPV ${kit.name} airframes${detail==='lite'?' (lite)':''}`;rotors.name='FPV spinning propellers';blurs.name='FPV rotor discs';
     return {lease,parts,rotors,blurs,meshes,count:0,bladeCount:0,blurCount:0};
   }
@@ -69,7 +71,9 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
   pose.rotation.order='YXZ';let count=0,time=0,dt=1/60,frame=0;
   const camera=new THREE.Vector3();let hasCamera=false;
   const attitudes=new Map<string|number,DroneAttitude>();
-  const launchFrames=new Map<string|number,{orientation:THREE.Quaternion;offset:THREE.Vector3}>();
+  const launchFrames=new Map<string|number,{orientation:THREE.Quaternion;offset:THREE.Vector3;blocked:boolean}>();
+  const climb={pitch:0,roll:0,lift:0},drift={x:0,z:0},climbEuler=new THREE.Euler(0,0,0,'YXZ'),climbQuat=new THREE.Quaternion();
+  const launchOrientation=new THREE.Quaternion(),upRay=new THREE.Vector3(0,1,0);
   const upAxis=new THREE.Vector3(0,1,0),lift=new THREE.Vector3(),dockUp=new THREE.Vector3();
   const dockOrientation=new THREE.Quaternion(),flightOrientation=new THREE.Quaternion();
   const tracks=new Map<string|number,Track>(),returns=new Map<string|number,ReturnFlight>(),impacted=new Map<string|number,number>();
@@ -116,7 +120,7 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
     if(r.phase==='grace'){
       r.vel.multiplyScalar(Math.exp(-dt*6));r.pos.addScaledVector(r.vel,dt);
       if(r.phaseT>=DRONE_RETURN.graceS){
-        r.phase='transit';r.phaseT=0;r.cruiseY=Math.max(r.pos.y,dockAt.y+DRONE_RETURN.cruiseAboveDockM);
+        r.phase='transit';r.phaseT=0;r.cruiseY=dockAt.y+DRONE_RETURN.cruiseAboveDockM;
         const distance=Math.hypot(dockAt.x-r.pos.x,dockAt.z-r.pos.z);
         r.speed=Math.min(DRONE_RETURN.maxSpeed,Math.max(DRONE_RETURN.minSpeed,distance/DRONE_RETURN.targetS));
       }
@@ -129,17 +133,18 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
         if(world&&drop>1e-3&&world.raycast(r.pos,rayDir.multiplyScalar(1/drop),drop))return false;
         r.phase='descent';r.phaseT=0;r.descentFrom=Math.max(.5,r.pos.y-handoffAt.y);
       }else{
+        // Home at cruise height over a moving carrier: climbs or glides to it on the way, lifted over what lies ahead.
+        r.cruiseY=dockAt.y+DRONE_RETURN.cruiseAboveDockM;
         const ground=Math.min(r.speed,distance*1.4+.5);
         desired.copy(toward).multiplyScalar(distance>1e-6?ground/distance:0);
-        desired.y=Math.max(-8,Math.min(8,(r.cruiseY-r.pos.y)*1.5));
+        desired.y=Math.max(-5,Math.min(8,(r.cruiseY-r.pos.y)*.8));
         if(world)avoidDroneObstacles(world,String(r.ownerId),r.pos,desired);
         r.vel.lerp(desired,1-Math.exp(-dt*2.5));r.pos.addScaledVector(r.vel,dt);
-        r.cruiseY=Math.max(r.cruiseY,r.pos.y);
       }
     }
     if(r.phase==='descent'){
       // The carrier may move: the column is tracked; the last metres ease into the landing's first pose.
-      desired.set((handoffAt.x-r.pos.x)*4,-Math.min(6,Math.max(.6,(r.pos.y-handoffAt.y)*1.1)),(handoffAt.z-r.pos.z)*4);
+      desired.set((handoffAt.x-r.pos.x)*4,-Math.min(6,Math.max(1.2,(r.pos.y-handoffAt.y)*1.6)),(handoffAt.z-r.pos.z)*4);
       r.vel.lerp(desired,1-Math.exp(-dt*6));r.pos.addScaledVector(r.vel,dt);
       if(r.pos.y<=handoffAt.y+.04){
         r.pos.copy(handoffAt);r.vel.set(0,0,0);r.phase='handoff';r.phaseT=0;
@@ -202,16 +207,19 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
       const launchS=AERIAL_RULES.drone.launchS;
       const free=droneFreeFlightBlend(ageS);
       pose.position.copy(position);pose.position.y+=state.bob*free;
+      // Station-keeping: a centimetre of wander caught again, once the airframe flies free.
+      droneHoverDrift(time,phase,drift);pose.position.x+=drift.x*free;pose.position.z+=drift.z*free;
       pose.rotation.set(state.pitch+droneWobblePitch(time,phase)*free,state.yaw,state.roll+droneWobbleRoll(time,phase)*free);
       if(free<1){
-        let remembered=launchFrames.get(id);if(!remembered){remembered={orientation:new THREE.Quaternion(),offset:new THREE.Vector3()};launchFrames.set(id,remembered);}
+        let remembered=launchFrames.get(id);if(!remembered){remembered={orientation:new THREE.Quaternion(),offset:new THREE.Vector3(),blocked:false};launchFrames.set(id,remembered);}
         if(launchFrame&&ageS<launchS){
           launchFrame.getWorldQuaternion(dockOrientation);remembered.orientation.copy(dockOrientation);
           launchFrame.getWorldPosition(pose.position);
           // Never draw the climb above where the authority stopped it (a deck or bough over the dock).
           dockUp.set(0,1,0).applyQuaternion(dockOrientation);
-          const authorityLift=lift.copy(position).sub(pose.position).dot(dockUp);
-          lift.set(0,Math.min(droneLaunchHeight(ageS),Math.max(0,authorityLift)+.05),0).applyQuaternion(dockOrientation);pose.position.add(lift);
+          const authorityLift=lift.copy(position).sub(pose.position).dot(dockUp),climbHeight=droneLaunchHeight(ageS);
+          if(authorityLift<climbHeight-.05)remembered.blocked=true;
+          lift.set(0,Math.min(climbHeight,Math.max(0,authorityLift)+.05),0).applyQuaternion(dockOrientation);pose.position.add(lift);
           remembered.offset.copy(pose.position).sub(position);
         }
         else if(ageS<launchS)remembered.orientation.setFromAxisAngle(upAxis,yaw);
@@ -219,7 +227,21 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
         // fixed-step authority. Fade that presentation-only offset after the
         // aircraft is clear instead of snapping at the end of spool-up.
         else pose.position.addScaledVector(remembered.offset,1-free);
-        flightOrientation.copy(pose.quaternion);pose.quaternion.copy(remembered.orientation).slerp(flightOrientation,free);
+        // The climb's character: trim corrections and a nose-down lean toward forward flight (in the dock's frame,
+        // folded into the flight attitude as the airframe flies free), and a short overshoot of the launch height that
+        // settles in quick corrections, drawn only where the authority's climb was clear and nothing lies just above.
+        const climbU=Math.min(1,Math.max(0,(ageS-DRONE_SPOOL_S)/(launchS-DRONE_SPOOL_S)));
+        droneClimbCharacter(ageS,launchS,climbU,remembered.blocked?0:droneLaunchHeight(ageS),phase,climb);
+        climbQuat.setFromEuler(climbEuler.set(climb.pitch,0,climb.roll,'YXZ'));
+        launchOrientation.copy(remembered.orientation).multiply(climbQuat);
+        flightOrientation.copy(pose.quaternion);pose.quaternion.copy(launchOrientation).slerp(flightOrientation,free);
+        if(climb.lift!==0&&!remembered.blocked){
+          let overshoot=climb.lift*(1-free);
+          const world=overshoot>0?options.world?.():null;
+          const hit=world?world.raycast(pose.position,upRay,overshoot+.3):null;
+          if(hit)overshoot=Math.max(0,Math.min(overshoot,hit.dist-.3));
+          pose.position.y+=overshoot;
+        }
       }
       pose.updateMatrix();
       for(const part of pool.parts)part.setMatrixAt(index,pose.matrix);

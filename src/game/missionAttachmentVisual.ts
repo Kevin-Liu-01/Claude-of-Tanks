@@ -2,15 +2,18 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { missionAttachmentFor, missionCradleVolumes, DRONE_DOCK_HEIGHT_M, type MissionAttachment, type MissionCarrierSpec } from '../sim/missionAttachment.ts';
 import { acquireDroneModelKit, droneMaterialHooks, droneNation, poseDroneRotor, DRONE_DOCK_PAINT, DRONE_LITE_DISTANCE_M, type DroneKitLease, type DroneModelKit } from '../fx/droneModel.ts';
-import { createMissionCradleGeometry } from './missionCradleGeometry.ts';
-import { DRONE_ARRIVAL, droneArrivalAttitude, droneArrivalHeight } from '../fx/droneArrival.ts';
+import { createMissionCradleGeometry, createMissionHoldDownGeometry, missionHoldDownPivots, MISSION_HOLD_DOWN_Y } from './missionCradleGeometry.ts';
+import { DRONE_ARRIVAL, droneArrivalAttitude, droneArrivalHeight, droneSpinDownAngle } from '../fx/droneArrival.ts';
 import { createCaptureFlag, type CaptureFlag } from '../fx/captureFlag.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 interface MissionVisual {
   root: THREE.Group; drone: THREE.Group; kind: 'drone' | 'flag'; flag?: CaptureFlag; cradles: THREE.Mesh[];
   detail?: THREE.LOD; lease?: DroneKitLease; arrival?: Arrival; arriveT: number; ready: boolean | null;
   /** The airframe on the cradle flew home (it is the ready one at the cooldown's end). */
-  returned: boolean; dispose(): void;
+  returned: boolean;
+  /** The quick-release skid clamps (one instance each) and how far they stand open (0 holding, 1 clear). */
+  holdDowns?: THREE.InstancedMesh; holdPivots?: ReturnType<typeof missionHoldDownPivots>; hold: number; holdPosed: number;
+  dispose(): void;
 }
 /**
  * An airframe lands on the cradle: a resupplied one on the empty cradle when the payload is ready again, or the one that
@@ -30,12 +33,11 @@ function createArrival(kit: DroneModelKit): Arrival {
     rotors.push(rotor); blurs.push(blur); group.add(rotor, blur);
   }
   // Shade like the parked airframe it hands over to, so a dock in shadow never brightens for the landing.
-  for (const mesh of group.children as THREE.Mesh[]) mesh.receiveShadow = true;
+  // Shadows follow the sun from every solid part; the translucent discs cast none.
+  for (const mesh of group.children as THREE.Mesh[]) { mesh.receiveShadow = true; mesh.castShadow = !blurs.includes(mesh); }
   return { group, rotors, blurs };
 }
 const attitude = { pitch: 0, yaw: 0, roll: 0 };
-// Three full turns of a three-blade prop end where the parked pose holds it.
-const SPOOL_DOWN_RAD = 6 * Math.PI;
 function poseArrival(arrival: Arrival, t: number): void {
   const { descentS, spoolS } = DRONE_ARRIVAL, group = arrival.group;
   if (t < descentS) {
@@ -48,11 +50,34 @@ function poseArrival(arrival: Arrival, t: number): void {
     }
     return;
   }
-  const s = Math.min(1, (t - descentS) / spoolS), spin = SPOOL_DOWN_RAD * (1 - (1 - s) ** 3);
+  // On the pads: the discs hold a moment, then the blades show and slow to the parked angle.
+  const s = t - descentS, discs = s < DRONE_ARRIVAL.discS;
+  const spin = droneSpinDownAngle((s - DRONE_ARRIVAL.discS) / (spoolS - DRONE_ARRIVAL.discS));
   group.position.set(0, 0, 0); group.rotation.set(0, 0, 0);
   for (let i = 0; i < 4; i++) {
-    arrival.rotors[i]!.visible = true; arrival.blurs[i]!.visible = false; poseDroneRotor(arrival.rotors[i]!, i, spin);
+    arrival.rotors[i]!.visible = !discs; arrival.blurs[i]!.visible = discs;
+    if (discs) poseDroneRotor(arrival.blurs[i]!, i, t * 9 + i); else poseDroneRotor(arrival.rotors[i]!, i, spin);
   }
+}
+/** The quick-release clamps share one head geometry across every dock. */
+let holdDownShared:{geometry:THREE.BufferGeometry;users:number}|null=null;
+function acquireHoldDown():{geometry:THREE.BufferGeometry;release():void} {
+  if(!holdDownShared)holdDownShared={geometry:createMissionHoldDownGeometry(),users:0};
+  const owned=holdDownShared;owned.users++;let released=false;
+  return {geometry:owned.geometry,release(){if(released)return;released=true;if(--owned.users>0)return;if(holdDownShared===owned)holdDownShared=null;owned.geometry.dispose();}};
+}
+/** Seconds for a clamp head to swing between holding and clear. */
+const HOLD_SWING_S = .22;
+const holdMatrix = new THREE.Matrix4();
+function poseHoldDowns(mount:MissionVisual):void {
+  if(!mount.holdDowns||!mount.holdPivots||mount.holdPosed===mount.hold)return;
+  // Eased swing: the head starts and ends its quarter turn gently.
+  const h=mount.hold,e=h*h*(3-2*h);
+  mount.holdPivots.forEach((p,i)=>{
+    holdMatrix.makeRotationY(p.closedYaw+(p.openYaw-p.closedYaw)*e).setPosition(p.x,MISSION_HOLD_DOWN_Y,p.z);
+    mount.holdDowns!.setMatrixAt(i,holdMatrix);
+  });
+  mount.holdDowns.instanceMatrix.needsUpdate=true;mount.holdPosed=h;
 }
 const mounts=new WeakMap<THREE.Object3D,MissionVisual>();
 
@@ -126,7 +151,7 @@ function parkedAirframe(lease:DroneKitLease):THREE.Group {
   const kit=lease.kit,group=new THREE.Group(),parked=lease.shared('parked',parkedGeometry);
   group.add(new THREE.Mesh(parked,kit.bodyMaterial));
   for(const part of kit.parts.slice(1))group.add(new THREE.Mesh(part.geometry,part.material));
-  for(const mesh of group.children as THREE.Mesh[])mesh.receiveShadow=true;
+  for(const mesh of group.children as THREE.Mesh[]){mesh.receiveShadow=true;mesh.castShadow=true;}
   return group;
 }
 function createMount(tankRoot:THREE.Object3D,spec:MissionCarrierSpec,kind:'drone'|'flag'='drone'):MissionVisual {
@@ -143,8 +168,18 @@ function createMount(tankRoot:THREE.Object3D,spec:MissionCarrierSpec,kind:'drone
   const near=new THREE.Mesh(nearShared.geometry,materials.clean),far=new THREE.Mesh(farShared.geometry,materials.clean);
   near.name='Mission dock cradle';far.name='Mission dock cradle (far)';
   for(const mesh of [near,far])mesh.receiveShadow=true;
+  // The near dock casts with the sun (the distant stock does not: the shadow pass only pays for docks in view).
+  near.castShadow=true;
   const cradle=new THREE.LOD();cradle.name='Mission dock cradle detail';cradle.addLevel(near,0);cradle.addLevel(far,DRONE_LITE_DISTANCE_M);
   root.add(cradle);
+  // Quick-release skid clamps: their heads swing clear before a lift-off and close again after a landing's spin-down.
+  let holdShared:{geometry:THREE.BufferGeometry;release():void}|undefined,holdDowns:THREE.InstancedMesh|undefined;
+  if(kind==='drone'){
+    holdShared=acquireHoldDown();
+    holdDowns=new THREE.InstancedMesh(holdShared.geometry,materials.clean,4);
+    holdDowns.name='Mission dock hold-down clamps';holdDowns.frustumCulled=false;holdDowns.castShadow=holdDowns.receiveShadow=true;
+    near.add(holdDowns);
+  }
   const leases:DroneKitLease[]=[];
   let mountDetail:THREE.LOD|undefined,mountLease:DroneKitLease|undefined;
   const flag=kind==='flag'?createCaptureFlag():undefined;
@@ -153,13 +188,17 @@ function createMount(tankRoot:THREE.Object3D,spec:MissionCarrierSpec,kind:'drone
     const full=acquireDroneModelKit(spec.nation),lite=acquireDroneModelKit(spec.nation,'lite');leases.push(full,lite);
     drone.name='Docked FPV mission payload';drone.userData.variant=full.kit.name;drone.position.set(seat.payloadOffset?.[0]??0,DRONE_DOCK_HEIGHT_M,seat.payloadOffset?.[1]??0);
     const detail=new THREE.LOD();detail.name='Docked FPV airframe detail';
-    detail.addLevel(parkedAirframe(full),0);detail.addLevel(parkedAirframe(lite),DRONE_LITE_DISTANCE_M);
+    const parkedLite=parkedAirframe(lite);for(const mesh of parkedLite.children as THREE.Mesh[])mesh.castShadow=false;
+    detail.addLevel(parkedAirframe(full),0);detail.addLevel(parkedLite,DRONE_LITE_DISTANCE_M);
     drone.add(detail);root.add(drone);
     mountDetail=detail;mountLease=full;
   }
   parent.add(root);
   let disposed=false;
-  const result:MissionVisual={root,drone,kind,flag,cradles:[near,far],detail:mountDetail,lease:mountLease,arriveT:-1,ready:null,returned:false,dispose(){if(disposed)return;disposed=true;root.removeFromParent();nearShared.release();farShared.release();releaseCradleMaterials();for(const lease of leases)lease.release();flag?.dispose();mounts.delete(tankRoot);tankRoot.removeEventListener('removed',result.dispose);}};
+  const result:MissionVisual={root,drone,kind,flag,cradles:holdDowns?[near,far,holdDowns]:[near,far],detail:mountDetail,lease:mountLease,arriveT:-1,ready:null,returned:false,
+    holdDowns,holdPivots:holdDowns?missionHoldDownPivots(seat):undefined,hold:0,holdPosed:-1,
+    dispose(){if(disposed)return;disposed=true;root.removeFromParent();nearShared.release();farShared.release();holdDowns?.dispose();holdShared?.release();releaseCradleMaterials();for(const lease of leases)lease.release();flag?.dispose();mounts.delete(tankRoot);tankRoot.removeEventListener('removed',result.dispose);}};
+  poseHoldDowns(result);
   tankRoot.addEventListener('removed',result.dispose);return result;
 }
 /** Mode equipment is attached to the turret owner (or fixed casemate hull), so suspension and concealment apply.
@@ -196,7 +235,14 @@ export function syncMissionAttachment(tankRoot:THREE.Object3D,spec:MissionCarrie
   if(landing&&!mount.arrival&&mount.lease){mount.arrival=createArrival(mount.lease.kit);mount.drone.add(mount.arrival.group);}
   if(mount.arrival){mount.arrival.group.visible=landing;if(landing)poseArrival(mount.arrival,mount.arriveT);}
   if(mount.detail)mount.detail.visible=!landing;
+  // The clamps hold a parked airframe and stand clear for a lift-off, an empty cradle and a landing; with presentation
+  // time they swing, without it (a still dock) they simply show where they belong.
+  const clear=present&&!landing?0:1;
+  mount.hold=dt>0?(clear>mount.hold?Math.min(clear,mount.hold+dt/HOLD_SWING_S):Math.max(clear,mount.hold-dt/HOLD_SWING_S)):clear;
+  poseHoldDowns(mount);
 }
+/** Diagnostics and tests: how far a carrier's skid clamps stand open (0 holding, 1 clear), or null without a dock. */
+export function missionHoldDownOpen(tankRoot:THREE.Object3D):number|null { return mounts.get(tankRoot)?.holdDowns ? mounts.get(tankRoot)!.hold : null; }
 
 export function syncFlagAttachment(tankRoot:THREE.Object3D,spec:MissionCarrierSpec,timeS:number):void {
   let mount=mounts.get(tankRoot);

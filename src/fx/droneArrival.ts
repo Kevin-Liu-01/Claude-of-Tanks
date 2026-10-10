@@ -3,10 +3,17 @@
  * airframe flying home (fx/dronePresentation.ts), which hands over at the landing's first pose. Presentation only.
  *
  * The airframe settles straight down the dock's certified launch column from `heightM` with its rotors at speed,
- * brakes into a short hover `hoverM` above the pads, touches down on its skids and spools its props down to the exact
- * angle the parked airframe holds them.
+ * brakes into a short hover `hoverM` above the pads and touches down on its skids. The props spin down where the eye
+ * can follow them: still discs for `discS`, then visible blades slowing over the rest of `spoolS` to the exact angle
+ * the parked airframe holds them.
  */
-export const DRONE_ARRIVAL = Object.freeze({ descentS: 1.5, spoolS: .7, heightM: 2.4, hoverM: .25 });
+export const DRONE_ARRIVAL = Object.freeze({ descentS: 1.5, spoolS: 1.4, discS: .3, heightM: 2.4, hoverM: .25 });
+/** Prop angle through the blade phase of the spin-down (u from 0 to 1): two full turns that slow to rest, ending
+ * exactly on the parked pose (a whole number of turns), quick enough at first to read as spinning. */
+export function droneSpinDownAngle(u:number):number {
+  const x = Math.min(1, Math.max(0, u));
+  return 4 * Math.PI * (1 - (1 - x) * (1 - x));
+}
 
 /** Height above the pads at a descent fraction: down to a brief braking hover, then a smooth touchdown (C1 throughout). */
 export function droneArrivalHeight(u: number): number {
@@ -31,7 +38,8 @@ export function droneArrivalAttitude(u: number, out: { pitch: number; yaw: numbe
 export const DRONE_RETURN = Object.freeze({
   /** Hold while an impact for this shell may still be on its way (a client applies events and snapshots together). */
   graceS: .12,
-  /** Transit over the carrier, at least this far above the dock, and never lower than where the flight ended. */
+  /** Transit height over the dock: the airframe climbs or glides to it on the way home (the world's raycast lifts it
+   * over whatever lies ahead), then descends the dock's column from there. */
   cruiseAboveDockM: 15,
   /** Transit ground speed: the distance home over `targetS`, inside these bounds (m/s). */
   minSpeed: 18, maxSpeed: 55, targetS: 11,
