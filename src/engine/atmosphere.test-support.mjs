@@ -214,7 +214,14 @@ export class CpuAtmosphere {
         throughput[c] *= tStep;
       }
     }
-    return L.map((v) => v * p.sunIlluminance);
+    const sky = L.map((v) => v * p.sunIlluminance);
+    // 2026-10-09: the map's sky grade, as the sky-view pass applies it (atmosphere.ts AtmosphereParams.grade)
+    const g = p.grade;
+    if (!g || !(g[3] + g[7] > 0)) return sky;
+    const wh = Math.exp(-Math.max(Math.asin(clamp(rd[1], -1, 1)), 0) / g[8]);
+    const l = luminance(sky);
+    const out = sky.map((v, c) => mix(v, g[4 + c] * l, g[7] * (1 - wh)));
+    return out.map((v, c) => mix(v, g[c] * l, g[3] * wh));
   }
 
   /** Transmittance from the viewer toward a direction (the sun disc's colour). */

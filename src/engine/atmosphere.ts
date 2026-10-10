@@ -72,6 +72,15 @@ export interface AtmosphereParams {
   viewHeightKm: number;
   /** Unit vector toward the sun (or the moon on a night preset), world space, +y up. */
   sunDir: readonly [number, number, number];
+  /**
+   * 2026-10-09 (the skies lane, owner R139: "obsidian caldera, blackglass district, ruinspires, copper mesa mines, polder
+   * gate, whiteout station: skybox ... too bland"): the map's sky character, graded into the sky-view LUT so the dome, the
+   * aerial pass's scatter-in target, the summary (fog colour, hemisphere hue) and the environment bake all see it — the
+   * ground lit by the sky it stands under. [horizon hue r, g, b (luminance 1), its share at the horizon, zenith hue r, g,
+   * b, its share overhead, the horizon band's 1/e elevation (radians)]; the shares already carry the low-sun and night
+   * fades (SKY_GRADE_SUN_FADE_DEG, the night amount). All zero shares: the physical sky untouched.
+   */
+  grade: readonly [number, number, number, number, number, number, number, number, number];
 }
 
 /** Per-map overrides a sky preset may author on top of the derived parameters (Mars' thin CO2 sky). */
@@ -83,6 +92,13 @@ export interface AtmosphereOverrides {
   mieTintHex?: number;
   groundAlbedoHex?: number;
   sunIlluminance?: number;
+  /** 2026-10-09: the sky grade (AtmosphereParams.grade) — the horizon band's hue, its share and 1/e height (degrees). */
+  horizonTintHex?: number;
+  horizonTintAmount?: number;
+  horizonBandDeg?: number;
+  /** 2026-10-09: the upper sky's hue and its share overhead (it fades out into the horizon band). */
+  zenithTintHex?: number;
+  zenithTintAmount?: number;
 }
 
 /** The sky preset fields the mapping reads (a subset of sky.ts's SkyPreset). */
@@ -94,6 +110,8 @@ export interface AtmosphereSkyPresetInput {
   mieCoefficient: number;
   mieDirectionalG: number;
   atmosphere?: AtmosphereOverrides | null;
+  /** The dome intensity (a night preset's .08 fades the sky grade out: the night amount, sky.ts nightAmount). */
+  skyIntensity?: number;
 }
 
 // Calibration (round 65, 2026-09-24). The legacy dome was three's Preetham sky with the engine's radiance scale,
@@ -149,6 +167,32 @@ function liveCalibration(): typeof ATMO_CALIBRATION {
   }
 }
 
+/**
+ * 2026-10-09: the sky grade fades out under a low sun (fully on from the second value, degrees): a map's character hue
+ * never repaints its sunset, whose own warm band is the atmosphere's.
+ */
+export const SKY_GRADE_SUN_FADE_DEG: readonly [number, number] = Object.freeze([4, 16]);
+const IDENTITY_GRADE = Object.freeze([1, 1, 1, 0, 1, 1, 1, 0, 0.1] as const);
+/** A hue of luminance 1 (the grade replaces the sky's hue at its own luminance). */
+function hueOf(hex: number): [number, number, number] {
+  const [r, g, b] = hexToLinear(hex);
+  const l = Math.max(0.2126 * r + 0.7152 * g + 0.0722 * b, 1e-6);
+  return [r / l, g / l, b / l];
+}
+function skyGradeOf(preset: AtmosphereSkyPresetInput, o: AtmosphereOverrides): AtmosphereParams['grade'] {
+  const hAmount = o.horizonTintHex == null ? 0 : o.horizonTintAmount ?? 0.5;
+  const zAmount = o.zenithTintHex == null ? 0 : o.zenithTintAmount ?? 0.3;
+  if (!(hAmount > 0) && !(zAmount > 0)) return IDENTITY_GRADE;
+  const clamp = THREE.MathUtils.clamp;
+  const night = clamp((0.30 - (preset.skyIntensity ?? 1)) / 0.22, 0, 1);
+  const t = clamp((preset.sunElevationDeg - SKY_GRADE_SUN_FADE_DEG[0]) / (SKY_GRADE_SUN_FADE_DEG[1] - SKY_GRADE_SUN_FADE_DEG[0]), 0, 1);
+  const k = (1 - night) * t * t * (3 - 2 * t);
+  const h = o.horizonTintHex == null ? [1, 1, 1] : hueOf(o.horizonTintHex);
+  const z = o.zenithTintHex == null ? [1, 1, 1] : hueOf(o.zenithTintHex);
+  return [h[0], h[1], h[2], clamp(hAmount, 0, 1) * k, z[0], z[1], z[2], clamp(zAmount, 0, 1) * k,
+    THREE.MathUtils.degToRad(Math.max(o.horizonBandDeg ?? 9, 0.5))];
+}
+
 /** Map a sky preset onto atmosphere parameters (see ATMO_CALIBRATION); authored overrides win. */
 export function skyPresetToAtmosphere(preset: AtmosphereSkyPresetInput): AtmosphereParams {
   const C = liveCalibration();
@@ -165,6 +209,7 @@ export function skyPresetToAtmosphere(preset: AtmosphereSkyPresetInput): Atmosph
     sunIlluminance: o.sunIlluminance ?? C.sunIlluminance,
     viewHeightKm: C.viewHeightKm,
     sunDir: sunDirectionOf(preset.sunElevationDeg, preset.sunAzimuthDeg),
+    grade: skyGradeOf(preset, o),
   };
 }
 
@@ -376,6 +421,10 @@ const SKY_VIEW_FRAGMENT = /* glsl */`
 ${ATMOSPHERE_CORE_GLSL}
 uniform vec3 uAtmoSunDir;
 uniform float uAtmoViewHeight;
+// 2026-10-09: the map's sky grade (AtmosphereParams.grade): hue and share at the horizon, overhead, the band's 1/e height
+uniform vec4 uAtmoGradeH;
+uniform vec4 uAtmoGradeZ;
+uniform float uAtmoGradeBand;
 varying vec2 vUv;
 void main() {
 	float u = ( vUv.x - ${f(0.5 / SV_W)} ) * ${f(SV_W / (SV_W - 1))};
@@ -432,7 +481,15 @@ void main() {
 		L += throughput * ( S - S * tStep ) / ext;
 		throughput *= tStep;
 	}
-	gl_FragColor = vec4( L * uAtmoSunIlluminance, 1.0 );
+	vec3 sky = L * uAtmoSunIlluminance;
+	if ( uAtmoGradeH.w + uAtmoGradeZ.w > 0.0 ) {
+		// the hue goes to the map's at the sky's own luminance: the horizon band's over its 1/e height, the upper sky's above
+		float wh = exp( - max( ATMO_PI * 0.5 - vza, 0.0 ) / uAtmoGradeBand );
+		float l = dot( sky, vec3( 0.2126, 0.7152, 0.0722 ) );
+		sky = mix( sky, uAtmoGradeZ.rgb * l, uAtmoGradeZ.w * ( 1.0 - wh ) );
+		sky = mix( sky, uAtmoGradeH.rgb * l, uAtmoGradeH.w * wh );
+	}
+	gl_FragColor = vec4( sky, 1.0 );
 }`;
 
 // The summary: eight float texels the CPU reads back once per atmosphere change (never per frame).
@@ -549,7 +606,8 @@ function paramsMultiScatterKey(p: AtmosphereParams): string {
 }
 /** The whole-parameter key: the sky-view LUT and every consumer uniform follow it. */
 export function atmosphereKey(p: AtmosphereParams, skyIntensity = 1): string {
-  return `${paramsMultiScatterKey(p)}|${p.mieG},${p.sunIlluminance},${p.viewHeightKm}|${p.sunDir.join(',')}|${skyIntensity}`;
+  const grade = p.grade && (p.grade[3] > 0 || p.grade[7] > 0) ? `|${p.grade.join(',')}` : '';
+  return `${paramsMultiScatterKey(p)}|${p.mieG},${p.sunIlluminance},${p.viewHeightKm}|${p.sunDir.join(',')}|${skyIntensity}${grade}`;
 }
 
 /**
@@ -600,6 +658,8 @@ export class AtmosphereLuts {
     this.multiScatterMaterial = material(MULTI_SCATTER_FRAGMENT, core());
     this.skyViewMaterial = material(SKY_VIEW_FRAGMENT, {
       ...core(), uAtmoSunDir: { value: new THREE.Vector3(0, 1, 0) }, uAtmoViewHeight: { value: ATMO_GROUND_KM + 0.05 },
+      uAtmoGradeH: { value: new THREE.Vector4(1, 1, 1, 0) }, uAtmoGradeZ: { value: new THREE.Vector4(1, 1, 1, 0) },
+      uAtmoGradeBand: { value: 0.1 },
     });
     this.summaryMaterial = material(SUMMARY_FRAGMENT, {
       ...core(), tAtmoSky: { value: this.skyView.texture }, uAtmoSun: { value: new THREE.Vector3(0, 1, 0) },
@@ -678,6 +738,10 @@ export class AtmosphereLuts {
     this.applyCore(sv, p);
     (sv.uAtmoSunDir.value as THREE.Vector3).set(...p.sunDir).normalize();
     sv.uAtmoViewHeight.value = ATMO_GROUND_KM + p.viewHeightKm;
+    const g = p.grade ?? IDENTITY_GRADE;
+    (sv.uAtmoGradeH.value as THREE.Vector4).set(g[0], g[1], g[2], g[3]);
+    (sv.uAtmoGradeZ.value as THREE.Vector4).set(g[4], g[5], g[6], g[7]);
+    sv.uAtmoGradeBand.value = g[8];
     this.renderPass(this.skyViewMaterial, this.skyView);
     this.skyViewKey = skyViewKey;
     const su = this.summaryMaterial.uniforms;

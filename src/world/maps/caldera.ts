@@ -227,6 +227,12 @@ export default {
     sunIntensity: 4.0, sunColorHex: 0xffc9a0, hemiIntensity: 0.42, postExposure: 0.95, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.5 / 0xffb985 / 0.64); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0x4b4845 },
+    // 2026-10-09 (the skies lane; owner R139 "skybox ... too bland", 10-09 "not updated at all"): the caldera's own sky —
+    // every map shared the Earth-blue dome. Ash in the air: a thinner Rayleigh sky over a blue-absorbing aerosol (the tight
+    // lobe kept: no wide halo), the dark crater floor under the bounce, an ochre-ash band on the horizon and a smoky steel
+    // overhead (atmosphere.ts sky grade: the dome, the fog's colour and the sky light all follow it)
+    atmosphere: { rayleighScale: 0.8, mieScale: 7, mieG: 0.88, mieTintHex: 0xb8987a, groundAlbedoHex: 0x4b4845,
+      horizonTintHex: 0xc4a27a, horizonTintAmount: 0.6, horizonBandDeg: 9, zenithTintHex: 0x8e9cab, zenithTintAmount: 0.35 },
   },
   minimap: {
     base: [60, 57, 50], hard: [77, 73, 67], soft: [57, 54, 49],

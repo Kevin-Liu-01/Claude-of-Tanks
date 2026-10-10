@@ -246,6 +246,11 @@ export default {
     sunIntensity: 3.8, sunColorHex: 0xffd0aa, hemiIntensity: 0.34, postExposure: 0.94,
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0xad9b7c },
+    // 2026-10-09 (the skies lane; owner R139 "skybox ... too bland"): a dust-laden sky over the ruins — a blue-absorbing
+    // mineral aerosol, the sandy floor under the bounce, a buff band on the horizon and a dusty blue overhead (atmosphere.ts
+    // sky grade: the dome, the fog's colour and the sky light all follow it)
+    atmosphere: { mieScale: 8, mieG: 0.86, mieTintHex: 0xe8c8a0, groundAlbedoHex: 0xad9b7c,
+      horizonTintHex: 0xd8bc94, horizonTintAmount: 0.55, horizonBandDeg: 9, zenithTintHex: 0x9cb0c4, zenithTintAmount: 0.2 },
   },
   minimap: {
     base: [76, 79, 78], hard: [88, 88, 87], soft: [59, 65, 64],
