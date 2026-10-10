@@ -226,6 +226,17 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     layouts.set(geometry, layout);
     return layout;
   }
+  /** The union of layouts (a bucket drawn by more than one merge: an attribute one carries and another not). */
+  function unionLayout(a: Layout, b: Layout): Layout {
+    const names = [...a.names], sizes = [...a.sizes];
+    b.names.forEach((name, i) => { if (!names.includes(name)) { names.push(name); sizes.push(b.sizes[i]); } });
+    return names.length === a.names.length ? a : { names, sizes, stride: 6 + sizes.reduce((x, y) => x + y, 0) };
+  }
+  /** An attribute a source lacks, as the material would read it absent: a colour and the weathering's tint and shade
+   *  white, anything else 0. */
+  function neutral(name: string): number {
+    return name === 'color' || name === 'tint' || name === 'shade' ? 1 : 0;
+  }
 
   function writePose(p: LivePiece, src: ArrayLike<number>): void {
     let same = true;
@@ -294,12 +305,13 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       if (!g) { g = { material, layout, lists: new Map() }; groups.set(material, g); }
       return g;
     };
+    // each material's layout: the union of its sources' (first pass), so no source's triangles are left out
+    const sources: Array<{ geometry: THREE.BufferGeometry; material: THREE.Material; first: number; count: number; world: THREE.Matrix4 | null }> = [];
     const cut = (geometry: THREE.BufferGeometry, material: THREE.Material, first: number, count: number, world: THREE.Matrix4 | null): void => {
-      const layout = layoutOf(geometry);
-      const g = groupFor(material, layout);
-      if (g.layout.stride !== layout.stride) return; // (one material, two layouts: never in a merged world)
+      const g = groups.get(material)!;
+      const layout = g.layout;
       const pos = geometry.getAttribute('position'), nrm = geometry.getAttribute('normal');
-      const attrs = layout.names.map((name) => geometry.getAttribute(name));
+      const attrs = layout.names.map((name) => (geometry.getAttribute(name) as THREE.BufferAttribute | undefined) ?? null);
       const tris = Math.floor(count / 3);
       if (!tris) return;
       const soup = new Float64Array(tris * 3 * layout.stride);
@@ -315,7 +327,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         let k = o2 + 6;
         for (let a = 0; a < attrs.length; a++) {
           const attr = attrs[a], size = layout.sizes[a];
-          for (let j = 0; j < size; j++) soup[k++] = attr ? attr.getComponent(src, j) : 0;
+          for (let j = 0; j < size; j++) soup[k++] = attr && j < attr.itemSize ? attr.getComponent(src, j) : neutral(layout.names[a]);
         }
       }
       const parts = partitionTriangles(plan, soup, tris, layout.stride);
@@ -331,21 +343,27 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       const material = resolve(span.bucket);
       if (!material) continue;
       // the merged buckets are in world space (identity matrices under the world root)
-      cut(geometry, material, span.first, span.count, null);
+      sources.push({ geometry, material, first: span.first, count: span.count, world: null });
     }
+    const expanded: THREE.BufferGeometry[] = [];
     for (const run of standing) {
       const geometry = run.geometry as THREE.BufferGeometry;
       const material = run.material as THREE.Material;
       if (!geometry?.getAttribute || Array.isArray(run.material)) continue;
       run.updateWorldMatrix(true, false);
-      const index = geometry.getIndex();
-      if (index) {
-        // a stage run is indexed: expand it
-        const flat = geometry.toNonIndexed();
-        cut(flat, material, 0, flat.getAttribute('position').count, run.matrixWorld);
-        flat.dispose();
-      } else cut(geometry, material, 0, geometry.getAttribute('position').count, run.matrixWorld);
+      // a stage run is indexed: expanded
+      const flat = geometry.getIndex() ? geometry.toNonIndexed() : geometry;
+      if (flat !== geometry) expanded.push(flat);
+      sources.push({ geometry: flat, material, first: 0, count: flat.getAttribute('position').count, world: run.matrixWorld });
     }
+    for (const src of sources) {
+      const layout = layoutOf(src.geometry);
+      const g = groups.get(src.material);
+      if (!g) groups.set(src.material, { material: src.material, layout, lists: new Map() });
+      else g.layout = unionLayout(g.layout, layout);
+    }
+    for (const src of sources) cut(src.geometry, src.material, src.first, src.count, src.world);
+    for (const flat of expanded) flat.dispose();
     if (!groups.size) return false;
 
     // the caps: each piece's broken edges and back, the remnant's broken tops, in their slots' materials
