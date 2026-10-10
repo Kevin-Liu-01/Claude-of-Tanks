@@ -35,7 +35,13 @@ import {
   garageTerraceAtDatum,
   getGarageFacilityTerraces,
 } from './garageFacilityDetails.ts';
-import { GARAGE_YARD_WEAR, garageYardWearTexture } from './garageYardWear.ts';
+import {
+  GARAGE_HARDSTAND_STYLES,
+  garageFacilityAlbedo,
+  garageHardstandAlbedo,
+  garageHardstandKind,
+  garageHardstandNormal,
+} from './garageYardWear.ts';
 import {
   addGarageApproachDetails,
   type GarageApproachStats,
@@ -1177,7 +1183,20 @@ export function buildGarageEnvironment(
   for (const slab of slabGeometries) slab.dispose();
   hardstandGeometry.computeVertexNormals();
   track(hardstandGeometry);
-  const hardstandMaterial = texturedMaterial('cobble', { color: recipe.hardstandTint, roughness: 0.92, metalness: 0.02 });
+  // This Garage's own floor (garageYardWear.ts): a per-pack albedo over the apron's texel layout (slab joints or
+  // earth, the yard's working history with its track lanes down this pack's approach road, the region's sand, snow,
+  // salt, cinders, soot, mud or dust) and the shared normal for its floor kind, on the stock map + normal program.
+  const hardstandStyle = GARAGE_HARDSTAND_STYLES[variant.architecture];
+  const [approachSide, approachDepth] = recipe.approach.waypoints[0];
+  const hardstandAlbedo = garageHardstandAlbedo(hardstandStyle, garageViewPoint(approachSide, approachDepth),
+    engineCtx.anisotropy ?? 4);
+  const hardstandNormal = garageHardstandNormal(garageHardstandKind(hardstandStyle), engineCtx.anisotropy ?? 4);
+  const hardstandMaterial = hardstandAlbedo && hardstandNormal
+    ? plainMaterial({
+      map: track(hardstandAlbedo), normalMap: hardstandNormal, normalScale: new THREE.Vector2(0.6, 0.6),
+      roughness: 0.94, metalness: 0.02,
+    })
+    : texturedMaterial('plaster', { color: recipe.hardstandTint, roughness: 0.94, metalness: 0.02 });
   hardstandMaterial.polygonOffset = true;
   hardstandMaterial.polygonOffsetFactor = -1;
   hardstandMaterial.polygonOffsetUnits = -1;
@@ -1185,43 +1204,12 @@ export function buildGarageEnvironment(
   hardstand.name = 'connected_service_hardstand';
   hardstand.userData.drapedOnTerrain = true;
   hardstand.userData.fleetPadSlabs = slabGeometries.length;
+  hardstand.userData.hardstandStyle = hardstandStyle;
+  root.userData.serviceYardWear = hardstandStyle;
   hardstand.receiveShadow = true;
   hardstand.matrixAutoUpdate = false;
   hardstand.updateMatrix();
   root.add(hardstand);
-
-  // The working history of the apron (2026-10-10, the owner's "more detailed ... better textures"): one shared
-  // yard-wear texture (track lanes worn in from this pack's approach road, the turntable's grime ring, oil stains,
-  // worn bay paint) on a transparent decal that receives the settled shadow. The texture is shared by every pack and
-  // never disposed with one; plain Node has no canvas and skips it.
-  const yardWear = garageYardWearTexture(engineCtx.anisotropy ?? 4);
-  if (yardWear) {
-    const [approachSide, approachDepth] = recipe.approach.waypoints[0];
-    const toward = garageViewPoint(approachSide, approachDepth);
-    const yardMaterial = plainMaterial({
-      map: yardWear, transparent: true, depthWrite: false, roughness: 0.96, metalness: 0,
-      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
-    });
-    // draped over the apron (same height field, 6 mm above it), turned to this pack's approach road
-    const yardGeometry = new THREE.PlaneGeometry(GARAGE_YARD_WEAR.widthM, GARAGE_YARD_WEAR.depthM, 29, 24);
-    yardGeometry.rotateX(-Math.PI / 2);
-    yardGeometry.rotateY(Math.atan2(-toward.x, -toward.z));
-    {
-      const positions = yardGeometry.getAttribute('position');
-      for (let index = 0; index < positions.count; index += 1) {
-        positions.setY(index, apronHeightAt(positions.getX(index), positions.getZ(index)) + 0.006);
-      }
-    }
-    const yard = new THREE.Mesh(track(yardGeometry), yardMaterial);
-    yard.name = 'garage_service_yard_wear';
-    yard.receiveShadow = true;
-    yard.castShadow = false;
-    yard.renderOrder = 1;
-    yard.matrixAutoUpdate = false;
-    yard.updateMatrix();
-    root.add(yard);
-    root.userData.serviceYardWear = true;
-  }
 
   // Static battlefield ground cover sits outside the service hardstand. A
   // single three-triangle tuft is instanced across the real terrain and color
@@ -1319,15 +1307,26 @@ export function buildGarageEnvironment(
   mergeStructureRecords();
 
   const buildFacilityPresentation = () => {
-    const facilitySurfaceHandles = variant.architecture === 'field_shed'
+    // The facility frames, panels and footings take the shared weathered steel, enamel and cast-concrete albedos
+    // (garageYardWear.ts) over the stucco normal; machinery keeps the timber normal (2026-10-10, wave 357: "flat
+    // navy, yellow and cyan beams", "blank maroon boxes", "a European red-brick deck").
+    const facilityHandles = variant.architecture === 'field_shed'
       ? null
       : Object.freeze({
-          structure: assets.acquire('roof', requestRender),
-          painted: assets.acquire('plaster', requestRender),
+          fine: assets.acquire('plaster', requestRender),
           equipment: assets.acquire('wood', requestRender),
-          masonry: assets.acquire('brick', requestRender),
         });
-    if (facilitySurfaceHandles) handles.push(...Object.values(facilitySurfaceHandles));
+    if (facilityHandles) handles.push(...Object.values(facilityHandles));
+    const anisotropy = engineCtx.anisotropy ?? 4;
+    const facilitySurfaceHandles = facilityHandles
+      ? Object.freeze({
+          structure: { color: garageFacilityAlbedo('steel', anisotropy), normal: facilityHandles.fine.normal },
+          painted: { color: garageFacilityAlbedo('panel', anisotropy), normal: facilityHandles.fine.normal },
+          equipment: { color: null, normal: facilityHandles.equipment.normal },
+          masonry: { color: garageFacilityAlbedo('concrete', anisotropy) ?? facilityHandles.fine.color,
+            normal: facilityHandles.fine.normal },
+        })
+      : null;
     const facilityDetails = variant.architecture === 'field_shed'
       ? Object.freeze({
           facilityProps: 0,

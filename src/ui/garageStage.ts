@@ -206,18 +206,8 @@ function makeFloorTexture(rng: RandomSource): HTMLCanvasElement {
     g.moveTo(0, (S / 4) * i + 2); g.lineTo(S, (S / 4) * i + 2);
   }
   g.stroke();
-  // painted service-bay box around the podium (worn yellow)
-  g.strokeStyle = 'rgba(196,164,44,0.55)';
-  g.lineWidth = 9;
-  g.setLineDash([46, 26]);
-  g.strokeRect(S * 0.22, S * 0.22, S * 0.56, S * 0.56);
-  g.setLineDash([]);
-  // white guide line leading to the bay door
-  g.strokeStyle = 'rgba(208,212,216,0.4)';
-  g.lineWidth = 7;
-  g.beginPath();
-  g.moveTo(S / 2, S * 0.78); g.lineTo(S / 2, S * 0.98);
-  g.stroke();
+  // No painted bay box or guide line (2026-10-10, wave 357: "white road-lane dashes like a car park"): the hall's
+  // history is its joints, stains and the tread lanes below.
   // Straight approach scuffs share the podium's real-world spacing, width,
   // and cleat pitch. They overlap beneath the disc so no gap can open at its
   // edge, even at grazing camera angles.

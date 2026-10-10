@@ -412,30 +412,6 @@ export function createGarageDressing(
     return c;
   }
 
-  // worn dashed white paint box — the side-bay floor outline decal
-  function makeBayOutlineTexture(): HTMLCanvasElement {
-    const S = 256;
-    const c = document.createElement('canvas');
-    c.width = c.height = S;
-    const g = c.getContext('2d')!;
-    g.strokeStyle = 'rgba(206,210,214,0.5)';
-    g.lineWidth = 7;
-    g.setLineDash([26, 18]);
-    g.strokeRect(10, 10, S - 20, S - 20);
-    g.setLineDash([]);
-    // corner Ls painted heavier
-    g.lineWidth = 10;
-    for (const [x, y, dx, dy] of [[10, 10, 1, 1], [S - 10, 10, -1, 1], [10, S - 10, 1, -1], [S - 10, S - 10, -1, -1]]) {
-      g.beginPath();
-      g.moveTo(x + dx * 34, y); g.lineTo(x, y); g.lineTo(x, y + dy * 34);
-      g.stroke();
-    }
-    for (let i = 0; i < 200; i++) { // chip the paint
-      g.clearRect(rng() * S, rng() * S, 1 + rng() * 4, 1 + rng() * 2);
-    }
-    return c;
-  }
-
   // rubber tread skid arc
   function makeSkidTexture(): HTMLCanvasElement {
     const c = document.createElement('canvas');
@@ -2640,28 +2616,8 @@ export function createGarageDressing(
     // The NW floor band stays open for the real K2 side-hull teardown in the
     // modern component chunk.
 
-    // --- FLOOR: bay outlines, oil, skids, painted spur lane ------------------
-    const outlineMat = track(new THREE.MeshBasicMaterial({
-      map: track(canvasTexture(makeBayOutlineTexture())), transparent: true, depthWrite: false,
-    }));
-    const addBayOutline = (
-      parent: THREE.Object3D,
-      bx: number,
-      bz: number,
-      ry2: number,
-      w: number,
-      h: number,
-      name: string,
-    ): void => {
-      const q = new THREE.Mesh(track(new THREE.PlaneGeometry(1, 1)), outlineMat);
-      q.name = name;
-      q.rotation.set(-Math.PI / 2, 0, ry2);
-      q.scale.set(w, h, 1);
-      q.position.set(bx, 0.024, bz);
-      parent.add(q);
-    };
-    addBayOutline(group, 16.4, -13.6, -0.55, 9.4, 7.2,
-      'verdant_leopard_mobility_bay_outline');
+    // --- FLOOR: oil and skids (2026-10-10, wave 357: the dashed bay outlines and the painted spur lane read as
+    // "car-park lane dashes" in every Garage, so the floors keep only their working history) ----------------------
     abramsServiceFloorRoot = markModernPart(
       new THREE.Group(), 'm1a2', 'welding_service_floor',
     );
@@ -2670,8 +2626,6 @@ export function createGarageDressing(
     // Build the outline and stain off-scene. The complete Abrams bay owns its
     // first visible attachment after the async vehicle transfer finishes, so
     // the floor cannot flash at these raw authored coordinates and then jump.
-    addBayOutline(abramsServiceFloorRoot, 15.3, 16.2, -2.03, 9.6, 7.4,
-      'verdant_abrams_welding_bay_outline');
     for (const [sx, sz, ss] of [[17.2, -13.2, 3.2], [15.6, 15.8, 3.6], [21.3, -6.4, 2.0], [11.6, 19.2, 1.7], [-14.2, 19.8, 2.2], [3.4, -20.7, 1.9]]) {
       const stain = new THREE.Mesh(track(new THREE.PlaneGeometry(ss, ss)), stainMat);
       const belongsToAbramsBay = sx === 15.6 && sz === 15.8;
@@ -2704,25 +2658,6 @@ export function createGarageDressing(
       wear.scale.set(wearSpanM, wearSpanM, 1);
       wear.position.set(0, 0.023, 0);
       group.add(wear);
-    }
-    // painted guide spur splitting from the center lane toward bay A
-    {
-      const laneC = document.createElement('canvas');
-      laneC.width = 256; laneC.height = 32;
-      const lg2 = laneC.getContext('2d')!;
-      lg2.strokeStyle = 'rgba(196,164,44,0.42)';
-      lg2.lineWidth = 12;
-      lg2.setLineDash([30, 20]);
-      lg2.beginPath();
-      lg2.moveTo(0, 16); lg2.lineTo(256, 16);
-      lg2.stroke();
-      const laneMat = track(new THREE.MeshBasicMaterial({
-        map: track(canvasTexture(laneC)), transparent: true, depthWrite: false,
-      }));
-      const lane = new THREE.Mesh(track(new THREE.PlaneGeometry(11, 1.2)), laneMat);
-      lane.rotation.set(-Math.PI / 2, 0, 0.62);
-      lane.position.set(11.2, 0.023, -6.8);
-      group.add(lane);
     }
     // The scrolling battle display is already owned by the shared workshop
     // root. Everything authored after it is wall/floor clutter
