@@ -22,17 +22,12 @@ type Rng = () => number;
 export const ISO_CONTAINER_INTRODUCED = 1966;
 
 /**
- * Battlefields the rule passes over though their year comes before the box, each with its reason. Cinder Junction (1962)
- * is one of the owner's protected maps ("incredible", 2026-10-09): its goods yard keeps its boxes until the owner rules
- * on them (both critics of gauntlet wave 333 named the lettered ISO containers there as modern).
+ * True on a battlefield whose setting year comes before the ISO box: its container rows draw period freight. (Cinder
+ * Junction, 1962, is one of the owner's protected maps; both critics of gauntlet wave 333 named the lettered ISO boxes in
+ * its goods yard as modern, and the owner approved its period freight on 2026-10-09.)
  */
-export const ISO_CONTAINER_EXEMPT: Readonly<Record<string, string>> = Object.freeze({
-  railyard: 'protected map: its goods yard keeps its boxes until the owner rules (wave 333)',
-});
-
-/** True on a battlefield whose setting year comes before the ISO box: its container rows draw period freight. */
 export function precedesIsoContainer(mapId: string | null | undefined): boolean {
-  if (!mapId || ISO_CONTAINER_EXEMPT[mapId]) return false;
+  if (!mapId) return false;
   const year = MAP_SETTING_YEAR[mapId];
   return year !== undefined && year < ISO_CONTAINER_INTRODUCED;
 }
@@ -41,11 +36,13 @@ export type FreightForm = 'tarp' | 'crates' | 'billets' | 'lumber';
 
 /**
  * Each pre-container battlefield's yard goods: Ironworks' works yard (the Völklingen works, March 1945) half rolled
- * steel waiting on its dunnage, the rest under the Reichsbahn's tarred sheets and in crates; the Virgin Lands' depot
- * (1958) sheeted stacks and the sawn timber the new state farms were built from.
+ * steel waiting on its dunnage, the rest under the Reichsbahn's tarred sheets and in crates; Cinder Junction (1962) the
+ * goods shed's crates and sheeted wagonloads with a timber stack; the Virgin Lands' depot (1958) sheeted stacks and the
+ * sawn timber the new state farms were built from.
  */
 export const FREIGHT_MIX: Readonly<Record<string, readonly (readonly [FreightForm, number])[]>> = Object.freeze({
   foundry: [['billets', 0.4], ['tarp', 0.38], ['crates', 0.22]],
+  railyard: [['tarp', 0.45], ['crates', 0.35], ['lumber', 0.2]],
   steppe: [['tarp', 0.4], ['lumber', 0.35], ['crates', 0.25]],
 });
 const DEFAULT_MIX: readonly (readonly [FreightForm, number])[] = [['tarp', 0.55], ['crates', 0.45]];

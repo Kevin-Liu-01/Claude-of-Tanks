@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { MAP_IDS, getMapConfig } from './index.ts';
 import { MAP_SETTING_YEAR } from './periodClutterKit.ts';
-import { ISO_CONTAINER_EXEMPT, ISO_CONTAINER_INTRODUCED, FREIGHT_MIX, freightForm, precedesIsoContainer } from './periodFreight.ts';
+import { ISO_CONTAINER_INTRODUCED, FREIGHT_MIX, freightForm, precedesIsoContainer } from './periodFreight.ts';
 import { makeContainerRow } from './railKit.ts';
 import { attachStructureBuildContext } from './exteriorDetailKit.ts';
 import { ARCHITECTURE_STYLES } from './regional/index.ts';
@@ -29,13 +29,13 @@ const consumes = (b) => all(b).filter((g) => g.userData.uvJitter === 'consume');
 assert.equal(ISO_CONTAINER_INTRODUCED, 1966);
 for (const id of MAP_IDS) {
   const year = MAP_SETTING_YEAR[id];
-  assert.equal(precedesIsoContainer(id), year !== undefined && year < 1966 && !ISO_CONTAINER_EXEMPT[id], `${id}: the year rule`);
+  assert.equal(precedesIsoContainer(id), year !== undefined && year < 1966, `${id}: the year rule`);
 }
 assert.equal(precedesIsoContainer(undefined), false);
 assert.equal(precedesIsoContainer('nowhere'), false, 'a map without a year keeps its boxes');
 
-// 2. every pre-1966 battlefield that draws a container row through the rail kit (no regional builder of its own) and
-// is not exempt is named, and has its own freight mix; the receipt names them so a new one is a decision, not an accident
+// 2. every pre-1966 battlefield that draws a container row through the rail kit (no regional builder of its own) is
+// named, and has its own freight mix; the receipt names them so a new one is a decision, not an accident
 const drawn = [];
 for (const id of MAP_IDS) {
   const props = getMapConfig(id).props ?? {};
@@ -44,10 +44,9 @@ for (const id of MAP_IDS) {
   if (style?.builders?.containerRow) continue;
   if (precedesIsoContainer(id)) drawn.push(id);
 }
-assert.deepEqual(drawn.sort(), ['foundry', 'steppe'], 'the pre-container battlefields whose rows were boxes');
-// the protected Cinder Junction (1962) keeps its boxes until the owner rules (wave 333), exempt by name with its reason
-assert.deepEqual(Object.keys(ISO_CONTAINER_EXEMPT), ['railyard']);
-assert.equal(precedesIsoContainer('railyard'), false, 'Cinder Junction keeps its boxes');
+// (Cinder Junction, 1962, a protected map: the owner approved its period freight on 2026-10-09)
+assert.deepEqual(drawn.sort(), ['foundry', 'railyard', 'steppe'], 'the pre-container battlefields whose rows were boxes');
+assert.equal(precedesIsoContainer('railyard'), true, 'Cinder Junction\'s goods yard holds its period freight');
 for (const id of drawn) assert.ok(FREIGHT_MIX[id], `${id}: its own freight mix`);
 assert.equal(freightForm('foundry', 0.1), 'billets');
 assert.equal(freightForm('steppe', 0.999), 'crates');
