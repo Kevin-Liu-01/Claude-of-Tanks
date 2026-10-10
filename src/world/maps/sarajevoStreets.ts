@@ -363,6 +363,149 @@ function dressCemeteries(ctx: TramContext): void {
   }
 }
 
+// ------------------------------------------------------------------------------------------------ the siege's streets
+
+/** A value noise in [0, 1) on a turned grid (clumps, never squared to the streets), an integer hash of the cell. */
+function clumpNoise(x: number, z: number, scale: number, salt: number): number {
+  const fx = (0.8 * x - 0.6 * z) / scale, fz = (0.6 * x + 0.8 * z) / scale;
+  const ix = Math.floor(fx), iz = Math.floor(fz), tx = fx - ix, tz = fz - iz;
+  const sx = tx * tx * (3 - 2 * tx), sz = tz * tz * (3 - 2 * tz);
+  const h = (a: number, b: number): number => {
+    let k = Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1) ^ salt;
+    k = Math.imul(k ^ (k >>> 15), 0x85ebca6b); k = Math.imul(k ^ (k >>> 13), 0xc2b2ae35);
+    return ((k ^ (k >>> 16)) >>> 0) / 4294967296;
+  };
+  const a = h(ix, iz) + (h(ix + 1, iz) - h(ix, iz)) * sx;
+  const b = h(ix, iz + 1) + (h(ix + 1, iz + 1) - h(ix, iz + 1)) * sx;
+  return a + (b - a) * sz;
+}
+
+/** The kerb line (props.ts kerbs 5.05 m off every line): the pavement's litter lies between it and the frontage. */
+const KERB_M = 5.05;
+const SPALL = rgb(0x8b8378), BRICK = rgb(0x8a4e3a), CHAR_WOOD = rgb(0x2d2621), STUMP = rgb(0x9a8569), STUMP_TOP = rgb(0xc7ad84);
+/** The sheeting the city hung against the snipers: UNHCR's blue-and-white plastic, grey blankets, a rust-red tarp. */
+const SHEETS: readonly Rgb[] = [rgb(0x3c6e9f), rgb(0xd3d4cf), rgb(0x8f908a), rgb(0x7d3d2c), rgb(0x4d7fae), rgb(0xc9c7bd)];
+
+/**
+ * A heap of the facades' fall swept to the kerb: masonry lumps, brick ends and a plaster slab or two, sunk into the
+ * pavement, longer along the kerb than across it (x along the kerb, z across, y up from the ground at its centre).
+ */
+function kerbHeap(sink: PartSink, look: () => number, size: number, mobile: boolean): void {
+  const n = mobile ? 3 : 5 + ((look() * 5) | 0);
+  for (let i = 0; i < n; i++) {
+    const w = (0.18 + look() * 0.45) * size, h = (0.12 + look() * 0.32) * size, d = (0.15 + look() * 0.35) * size;
+    const x = (look() - 0.5) * 2.2 * size, z = (look() - 0.5) * 0.9 * size;
+    const lift = h * (0.25 + look() * 0.25) * (1 - Math.min(1, (Math.abs(x) / (1.3 * size)) ** 2));
+    sink.placed((look() - 0.5) * 1.6, x, -0.06, z, () => {
+      const roll = look();
+      if (roll < 0.55) sink.span('structureMetal', -w / 2, lift - h * 0.4, -d / 2, w / 2, lift + h * 0.6, d / 2,
+        { colour: shade(SPALL, 0.75 + look() * 0.35), decor: true, shadow: true });
+      else if (roll < 0.82) sink.span('structureMetal', -w * 0.4, lift - 0.04, -d * 0.3, w * 0.4, lift + 0.08, d * 0.3,
+        { colour: shade(BRICK, 0.8 + look() * 0.3), decor: true, shadow: true });
+      else sink.member('structureMetal', [-w * 0.8, lift + 0.02, 0], [w * 0.8, lift + h * 0.7, 0], d * 0.9, 0.06, [0, 0, 1],
+        { colour: shade(SPALL, 0.95 + look() * 0.2), decor: true, shadow: true }, 0);
+    });
+  }
+  // a charred joist end from the burnt floors above, now and then
+  if (!mobile && look() < 0.3) {
+    const a: Vec3 = [-0.9 * size, 0.05, (look() - 0.5) * 0.4], b: Vec3 = [0.6 * size, 0.25 + look() * 0.3, (look() - 0.5) * 0.6];
+    sink.member('structureWood', a, b, 0.14, 0.12, [0, 0, 1], { colour: CHAR_WOOD, decor: true, shadow: true }, 0);
+  }
+}
+
+/** A street tree the siege's winters cut for firewood: the sawn stump, its root flare, the cut face pale. */
+function stump(sink: PartSink, look: () => number): void {
+  const r = 0.17 + look() * 0.14, h = 0.25 + look() * 0.45;
+  sink.cylinder('structureWood', [0, -0.05, 0], 'y', h + 0.05, r, 7, { colour: shade(STUMP, 0.8 + look() * 0.3), decor: true, shadow: true }, r * 0.92);
+  sink.cylinder('structureWood', [0, -0.08, 0], 'y', 0.2, r * 1.35, 7, { colour: shade(STUMP, 0.7), decor: true, shadow: true }, r);
+  sink.cylinder('structureWood', [0, h, 0], 'y', 0.015, r * 0.9, 7, { colour: STUMP_TOP, decor: true, shadow: true }, r * 0.9);
+}
+
+/**
+ * Sarajevo's streets under the siege (the map-revival lane, round 4, 2026-10-09; gauntlet wave 319: "a tram street
+ * that is spotless for a city under siege"): the fall off the shelled facades swept into heaps along the kerbs, thickest
+ * in clumps, the boulevard's street trees cut to stumps for firewood in the first winter, and the sheeting hung across
+ * the side streets' mouths at the boulevard against the snipers on the hills, high over the carriageway. All dressing
+ * (no collision, nothing a hull or a round meets; casting its shadow); every look from the seat's own hash; clear of the squares' objective
+ * ground and every record placed so far.
+ */
+function dressSiegeStreets(ctx: TramContext, keep: YardKeepOut | null, limit = 330): void {
+  const roads = ctx.L.roads ?? [];
+  const hf = ctx.heightField;
+  const mobile = getDeviceTier() === 'mobile';
+  const records = [...(ctx.obstacles ?? []), ...(ctx.colliders ?? [])];
+  const sink = new PartSink([0, 0]);
+  const clearAt = (x: number, z: number, r: number) => clears(records, x, z, r, r, 1, 0, 0.2)
+    && clearOfKeepOut(keep, x, z, r, r, 1, 0);
+  for (const [ri, line] of roads.entries()) {
+    if (!line || line.length < 2) continue;
+    const st = resample(line, mobile ? 4.5 : 2.5, limit);
+    for (const s of st) {
+      for (const side of [-1, 1]) {
+        // the heaps keep to their clumps: a heart of rubble here, a clear stretch there
+        const ox = s.x + s.nx * side * KERB_M, oz = s.z + s.nz * side * KERB_M;
+        const w = clumpNoise(ox, oz, 9, 0x51e9 + ri);
+        if (w < 0.52) continue;
+        const look = streamFrom(hashSeed('sarajevo-kerb', ri, Math.round(s.s * 10), side));
+        if (look() > (w - 0.52) * 2.6) continue;
+        const across = 0.5 + look() * 1.6, along = (look() - 0.5) * 1.8;
+        const x = ox + s.nx * side * across + s.tx * along, z = oz + s.nz * side * across + s.tz * along;
+        if (!clearAt(x, z, 0.9)) continue;
+        const yaw = Math.atan2(s.tz, s.tx) * -1 + (look() - 0.5) * 0.4;
+        sink.placed(yaw, x, hf.getHeightAt(x, z), z, () => kerbHeap(sink, look, 0.7 + look() * 0.7 * w, mobile));
+      }
+    }
+  }
+  // the boulevard's stumps (road 0): a tree's pit every 11 m along both pavements, most of them cut
+  const boulevard = roads[0];
+  if (boulevard && boulevard.length > 1) {
+    for (const s of resample(boulevard, 11, limit)) {
+      for (const side of [-1, 1]) {
+        const look = streamFrom(hashSeed('sarajevo-stump', Math.round(s.s), side));
+        if (look() < 0.28) continue;
+        const x = s.x + s.nx * side * (KERB_M + 1.3), z = s.z + s.nz * side * (KERB_M + 1.3);
+        if (!clearAt(x, z, 0.5)) continue;
+        sink.placed(look() * 6.28, x, hf.getHeightAt(x, z), z, () => stump(sink, look));
+      }
+    }
+  }
+  // the screens: where another road leaves the boulevard, sheets hung on a wire across its mouth, 2.8-6 m up
+  if (boulevard && !mobile) {
+    for (const [ri, line] of roads.entries()) {
+      if (ri === 0 || !line || line.length < 2) continue;
+      for (const s of resample(line, 2.0, limit)) {
+        // the first stretch of the side street within 14-20 m of the boulevard's line
+        let best = Infinity;
+        for (let i = 0; i + 1 < boulevard.length; i++) {
+          const [ax, az] = boulevard[i], [bx, bz] = boulevard[i + 1];
+          const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
+          const t = Math.max(0, Math.min(1, ((s.x - ax) * dx + (s.z - az) * dz) / l2));
+          best = Math.min(best, Math.hypot(s.x - ax - dx * t, s.z - az - dz * t));
+        }
+        if (best < 15 || best > 17) continue;
+        const look = streamFrom(hashSeed('sarajevo-screen', ri, Math.round(s.x), Math.round(s.z)));
+        if (look() < 0.35) continue;
+        const half = 7.0, y = hf.getHeightAt(s.x, s.z), top = 6.0 + look() * 0.6;
+        const yaw = -Math.atan2(s.nz, s.nx);
+        sink.placed(yaw, s.x, y, s.z, () => {
+          sink.member('structureMetal', [-half, top, 0], [half, top - 0.25, 0], 0.03, 0.03, [0, 0, 1], { colour: WIRE, decor: true, shadow: true }, 0);
+          let u = -half + 0.3;
+          while (u < half - 0.6) {
+            const w = 1.2 + look() * 2.0, h = 2.4 + look() * 1.0;
+            if (look() < 0.82) {
+              const c = SHEETS[(look() * SHEETS.length) | 0];
+              sink.span('structureMetal', u, top - h, -0.01 - look() * 0.05, Math.min(half - 0.3, u + w), top - 0.05, 0.01, { colour: shade(c, 0.85 + look() * 0.2), decor: true, shadow: true });
+            }
+            u += w + 0.05 + look() * 0.5;
+          }
+        });
+        break; // one screen a side street's mouth
+      }
+    }
+  }
+  push(ctx, sink);
+}
+
 /** Ruinspires as Sarajevo: the boulevard's tram line and its street works, the hillside cemeteries. */
 export function dressSarajevo(ctx: TramContext, mapId = 'ruinspires'): void {
   // the objective ground the trams and the screens keep off (the squares stay open: their zones seat where authored)
@@ -370,4 +513,5 @@ export function dressSarajevo(ctx: TramContext, mapId = 'ruinspires'): void {
   const keep = ctx.L.spawns ? yardKeepOut(mapId, ctx.L.spawns, ctx.L.terrain?.hardstands ?? [], decks) : null;
   dressTramBoulevard(ctx, keep, 0);
   dressCemeteries(ctx);
+  dressSiegeStreets(ctx, keep);
 }
