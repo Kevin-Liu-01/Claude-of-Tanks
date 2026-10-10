@@ -39,6 +39,10 @@ import {
   type RailOpenLine, type RailSpurConfig,
 } from './railSpurs.ts';
 import { roadCoreMask, roadLaneSharpness } from './roadMaskProfile.ts';
+import {
+  MAP_PATH_SURFACES, MAP_PAVED_SURFACES, ROAD_SURFACE_CODE, pavedSurfaceUniforms, roadSurfaceUniforms,
+  type PavedSurfaceConfig, type RoadSurface, type RoadSurfaceWork,
+} from './roadSurfaces.ts';
 import { trackSurfaceAt, trackSurfacePolicy, type TrackSurface } from './trackSurface.ts';
 import { completeRoadEndpoints, gradeRoadPortals, alignHardstandRoadPortals,
   usesInheritedRoadGrades, remapInheritedRoadElevations, alignAddedRoadJunctionGrades,
@@ -111,16 +115,18 @@ interface AuthoredRoadConfig {
  * mask, the surface from the mask stack's road layer (one texel: the nearest path's class, half-width and heading) —
  * and nothing else reads it: placement keeps ROAD_FOOTPRINT_CLEAR_M, grading and collision are unchanged.
  */
-export type RoadSurface = 'asphalt' | 'cobble' | 'patched' | 'dirt';
 export interface RoadPathStyle {
   /** asphalt: dark and even, with lane wear; cobble: setts in courses across the road; patched: asphalt with paler
-   * and darker patches and cracks; dirt: packed earth (the country road). Absent: the map's roadTint / roadTexMix. */
+   * and darker patches and cracks; dirt: packed earth (the country road); (roads lane, 2026-10-09) clinker: a dyke road's
+   * klinkers in herringbone; concrete: a lane road in sawn slabs; brick: brick soling in herringbone, broken and
+   * mud-dressed. Absent: the map's roadTint / roadTexMix. */
   surface?: RoadSurface;
   /** The carriageway's full width (m), 4–18; absent: the map's ~7.7 m gauge. */
   widthM?: number;
 }
-/** The road layer's class codes (R): 0 the map's own road. */
-const ROAD_SURFACE_CODE: Readonly<Record<RoadSurface, number>> = Object.freeze({ asphalt: 1, cobble: 2, patched: 3, dirt: 4 });
+/** The road frame layer's running-length unit (texel value per metre): 16 bits wrap at 1024 m, a whole number of every
+ * along-road pattern's periods (0.16 m tread, 0.128 m chevrons, 0.8 m washboard, 0.16 m sett courses). */
+export const ROAD_FRAME_ARC_UNITS = 64;
 /** A styled path's carriageway half-width (m), its wandering edge within the mask's 12 m distance ramp. */
 function roadStyleHalfWidth(style: RoadPathStyle | null | undefined): number {
   return style?.widthM ? clamp(style.widthM / 2, 2, 9) : 0;
@@ -471,6 +477,11 @@ interface SplatConfig {
   wornDirtStrength?: number;
   /** Scale of the bare-dirt road shoulder (1 = full). Snow passes keep their verges white with a low value. */
   shoulderDirt?: number;
+  /** Roads lane (2026-10-09): the worked carriageway's gains over the map's climate row (RoadSurfaceWork). */
+  roadSurface?: Partial<RoadSurfaceWork>;
+  /** Roads lane R1c (2026-10-09): the paved surfaces in place of the R layer's print (PavedSurfaceConfig); the roads take
+   * the paved path whole (uRoadTex 1) where it is set. */
+  pavedSurface?: PavedSurfaceConfig;
 }
 
 export interface TerrainMapConfig extends HorizonMapConfig {
@@ -1003,10 +1014,16 @@ export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads 
     const gridCount = roads.length;
     if (t.roads.paths) roads.push(...buildPathRoads(t.roads.paths));
     // (buildPathRoads keeps every path of two or more points, in order: a style follows its path)
-    if (t.roads.paths && t.roads.pathStyles?.some((st) => !!st)) {
+    // (roads lane, 2026-10-09: a path the catalogue surfaces — roadSurfaces.ts MAP_PATH_SURFACES, by the map's year — is
+    // styled with that surface where the map's own pathStyles leave it unstyled)
+    const catalogue = (cfg?.id && MAP_PATH_SURFACES[cfg.id]) || null;
+    if (t.roads.paths && (t.roads.pathStyles?.some((st) => !!st) || catalogue?.some((sf) => !!sf))) {
       roadStyles = new Array<RoadPathStyle | null>(gridCount).fill(null);
       t.roads.paths.forEach((path, i) => {
-        if (Array.isArray(path) && path.length >= 2) roadStyles!.push(t.roads !== 'country' ? t.roads?.pathStyles?.[i] ?? null : null);
+        if (!Array.isArray(path) || path.length < 2) return;
+        const own = t.roads !== 'country' ? t.roads?.pathStyles?.[i] ?? null : null;
+        const surface = catalogue?.[i] ?? null;
+        roadStyles!.push(own ?? (surface ? { surface } : null));
       });
     }
   }
@@ -3603,22 +3620,30 @@ export function makeMaskTexture(
   // 2026-10-05: a styled road net keeps each texel's nearest line and that segment's heading (the road layer below)
   const roadStyles = layout.roadStyles ?? null;
   const nearestRoad = roadStyles ? new Int16Array(s * s).fill(-1) : null;
-  const nearestHeading = roadStyles ? new Float32Array(s * s) : null;
+  // roads lane (2026-10-09): every map's roads keep each texel's nearest segment's heading and the running length of its
+  // nearest point along that line (the road frame layer below: the surface's along-road coordinate, exact on a bend)
+  const frameOn = layout.roads.length > 0;
+  const nearestHeading = roadStyles || frameOn ? new Float32Array(s * s) : null;
+  const nearestArc = frameOn ? new Float32Array(s * s) : null;
   function rasterizeRoadDistances(): void {
     for (let ri = 0; ri < layout.roads.length; ri++) {
       const nodes = layout.roads[ri];
-      for (let sg = 0; sg < nodes.length - 1; sg++) {
+      let arc0 = 0;
+      for (let sg = 0; sg < nodes.length - 1; sg++, arc0 += Math.hypot(nodes[sg][0] - nodes[sg - 1][0], nodes[sg][1] - nodes[sg - 1][1])) {
         const [ax, az] = nodes[sg], [bx, bz] = nodes[sg + 1];
+        const heading = Math.atan2(bz - az, bx - ax), segLen = Math.hypot(bx - ax, bz - az);
         const x0 = clamp(Math.floor((Math.min(ax, bx) - 14 + HALF) * T), 0, s - 1);
         const x1 = clamp(Math.ceil((Math.max(ax, bx) + 14 + HALF) * T), 0, s - 1);
         const z0 = clamp(Math.floor((Math.min(az, bz) - 14 + HALF) * T), 0, s - 1);
         const z1 = clamp(Math.ceil((Math.max(az, bz) + 14 + HALF) * T), 0, s - 1);
         for (let tz = z0; tz <= z1; tz++) for (let tx = x0; tx <= x1; tx++) {
-          const { d } = segDist((tx + 0.5) / T - HALF, (tz + 0.5) / T - HALF, ax, az, bx, bz);
+          const { d, t: along } = segDist((tx + 0.5) / T - HALF, (tz + 0.5) / T - HALF, ax, az, bx, bz);
           const i = tz * s + tx;
           if (d < dist[i]) {
             dist[i] = d;
-            if (nearestRoad) { nearestRoad[i] = ri; nearestHeading![i] = Math.atan2(bz - az, bx - ax); }
+            if (nearestRoad) nearestRoad[i] = ri;
+            if (nearestHeading) nearestHeading[i] = heading;
+            if (nearestArc) nearestArc[i] = arc0 + along * segLen;
           }
         }
       }
@@ -3735,6 +3760,23 @@ export function makeMaskTexture(
     }
     t.userData.roadLayer = { data: road, n: s };
   }
+  // roads lane (2026-10-09): the road frame layer (stacked under the mask after the road layer), a texel per mask texel
+  // within 14 m of any road — R G the running length of the nearest line at its nearest point (16 bits, 1/64 m, wrapping
+  // at 1024 m), B A the segment's heading (16 bits of a turn). The shader adds the pixel's offset from the texel's centre
+  // along that heading, so a pattern laid along the road (wheel tread, washboard, sett courses) keeps its pitch on a bend,
+  // where dot(wp, heading) runs fast or backwards (|wp| / radius)
+  if (nearestArc) {
+    const frame = new Uint8Array(s * s * 4);
+    for (let i = 0; i < s * s; i++) {
+      if (dist[i] >= 14) continue;
+      const arc = Math.round(nearestArc[i] * ROAD_FRAME_ARC_UNITS) & 65535;
+      frame[i * 4] = arc >> 8; frame[i * 4 + 1] = arc & 255;
+      const turn = nearestHeading![i] / (2 * Math.PI);
+      const code = Math.round((turn - Math.floor(turn)) * 65536) & 65535;
+      frame[i * 4 + 2] = code >> 8; frame[i * 4 + 3] = code & 255;
+    }
+    t.userData.roadFrame = { data: frame, n: s };
+  }
   t.anisotropy = 4;
   t.needsUpdate = true;
   return t;
@@ -3814,20 +3856,24 @@ const MASK_STACK_GUTTER = 64;
  * 2026-10-05: a styled road net's road layer (makeMaskTexture: the nearest path's class, half-width and heading, one
  * texel per mask texel over the square) goes under the bake's layers, or in their place, fetched exactly as they are
  * (uRoadClass = (its texels a side, its first row, 1, 0); (1, 0, 0, 0) without one).
+ * 2026-10-09 (roads lane): every map's road frame layer (makeMaskTexture: the nearest line's running length and heading)
+ * goes last, fetched exactly (uRoadFrame, the same form).
  */
 export function stackLandUseBake(ground: THREE.DataTexture, bake: Uint8Array | null, n: number,
-  road: { data: Uint8Array; n: number } | null = null): {
-  texture: THREE.DataTexture; stack: THREE.Vector4; bake: THREE.Vector4; road: THREE.Vector4;
+  road: { data: Uint8Array; n: number } | null = null, frame: { data: Uint8Array; n: number } | null = null): {
+  texture: THREE.DataTexture; stack: THREE.Vector4; bake: THREE.Vector4; road: THREE.Vector4; frame: THREE.Vector4;
 } {
   const W = ground.image.width, rows = ground.image.height;
-  if (!bake && !road) {
+  if (!bake && !road && !frame) {
     return { texture: ground, stack: new THREE.Vector4(1, 0.5 / W, 1 - 0.5 / W, 1 / rows), bake: new THREE.Vector4(1, MAP_SIZE, 0, 1 / W),
-      road: new THREE.Vector4(1, 0, 0, 0) };
+      road: new THREE.Vector4(1, 0, 0, 0), frame: new THREE.Vector4(1, 0, 0, 0) };
   }
   const layers = bake ? bake.length / (n * n * 4) : 0;
   if (bake && (n > W || !Number.isInteger(layers) || layers < 1)) throw new Error('stackLandUseBake: the bake must be whole n × n RGBA8 layers with n ≤ the mask width');
   if (road && (road.n > W || road.data.length !== road.n * road.n * 4)) throw new Error('stackLandUseBake: the road layer must be one n × n RGBA8 layer with n ≤ the mask width');
-  const row0 = rows + 2 * MASK_STACK_GUTTER, roadRow0 = row0 + layers * n, H = roadRow0 + (road ? road.n : 0);
+  if (frame && (frame.n > W || frame.data.length !== frame.n * frame.n * 4)) throw new Error('stackLandUseBake: the road frame layer must be one n × n RGBA8 layer with n ≤ the mask width');
+  const row0 = rows + 2 * MASK_STACK_GUTTER, roadRow0 = row0 + layers * n, frameRow0 = roadRow0 + (road ? road.n : 0);
+  const H = frameRow0 + (frame ? frame.n : 0);
   const data = new Uint8Array(W * H * 4);
   const src = ground.image.data as Uint8Array;
   data.set(src.subarray(0, W * rows * 4));
@@ -3840,10 +3886,11 @@ export function stackLandUseBake(ground: THREE.DataTexture, bake: Uint8Array | n
     for (let i = m; i < W; i++) padded.set(edge, i * 4);
     return padded;
   };
-  if (bake) layerRow(bake, n, 0); else layerRow(road!.data, road!.n, 0);
+  if (bake) layerRow(bake, n, 0); else if (road) layerRow(road.data, road.n, 0); else layerRow(frame!.data, frame!.n, 0);
   for (let r = 0; r < MASK_STACK_GUTTER; r++) data.set(padded, (rows + MASK_STACK_GUTTER + r) * W * 4);
   if (bake) for (let j = 0; j < layers * n; j++) data.set(layerRow(bake, n, j), (row0 + j) * W * 4);
   if (road) for (let j = 0; j < road.n; j++) data.set(layerRow(road.data, road.n, j), (roadRow0 + j) * W * 4);
+  if (frame) for (let j = 0; j < frame.n; j++) data.set(layerRow(frame.data, frame.n, j), (frameRow0 + j) * W * 4);
   const texture = new THREE.DataTexture(data, W, H, THREE.RGBAFormat);
   texture.flipY = false;
   texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
@@ -3852,7 +3899,8 @@ export function stackLandUseBake(ground: THREE.DataTexture, bake: Uint8Array | n
   texture.needsUpdate = true; texture.name = 'terrain:maskStack';
   return { texture, stack: new THREE.Vector4(rows / H, 0.5 / W, 1 - 0.5 / W, 1 / H),
     bake: bake ? new THREE.Vector4(n, MAP_SIZE, row0, 1 / W) : new THREE.Vector4(1, MAP_SIZE, 0, 1 / W),
-    road: road ? new THREE.Vector4(road.n, roadRow0, 1, 0) : new THREE.Vector4(1, 0, 0, 0) };
+    road: road ? new THREE.Vector4(road.n, roadRow0, 1, 0) : new THREE.Vector4(1, 0, 0, 0),
+    frame: frame ? new THREE.Vector4(frame.n, frameRow0, 1, 0) : new THREE.Vector4(1, 0, 0, 0) };
 }
 
 function makeShaderNoiseTexture(_seed: number): THREE.CanvasTexture {
@@ -3924,6 +3972,12 @@ uniform vec4 uRoadClass;
 float gRoadTex = 0.0;        // the road's paved share here: the map's uRoadTex, 1 inside a paved town rect (SplatConfig
                              // townPaving, map revival lane 2), or a styled path's own surface (asphalt, setts) over both
 float gRoadClass = 0.0;      // a styled path's surface (terrain.ts ROAD_SURFACE_CODE): 0 the map's own road
+// roads lane (2026-10-09): the road frame (uRoadFrame, the stack's frame layer): the nearest line's heading, the running
+// length along it at this pixel (m, wrapping at 1024 m) and 1 where the frame holds (inside the square, on a road's ramp)
+uniform vec4 uRoadFrame;
+vec2 gRoadAlong = vec2(1.0, 0.0);
+float gRoadS = 0.0;
+float gRoadFrameW = 0.0;
 vec2 gRoadDir = vec2(1.0, 0.0); // the styled path's heading here (world xz)
 vec4 maskAt(vec2 uv) {
   return texture2D(uMask, vec2(clamp(uv.x, uMaskStack.y, uMaskStack.z), clamp(uv.y, uMaskStack.y, uMaskStack.z) * uMaskStack.x));
@@ -3945,6 +3999,14 @@ uniform vec4 uJebelFace;   // the Redrock lane, round 9: x on (1) / off (0); y f
 uniform float uRippleNear; // the Redrock lane, round 10: the near ripple trains' strength (splat.rippleNear; rippleAmp's by default)
 uniform vec3 uRoadRuts;    // the Redrock lane, round 10: the wheel lanes' relief gain, darkening and the carriageway's gravel
 uniform float uRoadPuddle; // ground lane: the map's share of the ruts' puddles and their mud (splat.roadPuddles, default 1)
+// roads lane (2026-10-09, terrain.ts roadSurfaceUniforms): the worked carriageway — (relief, stones, potholes, tread
+// imprints) and (washboard, the dry road's tone floor against the field, the lanes' albedo share near the camera, the
+// grader's windrow)
+uniform vec4 uRoadSurf, uRoadSurfB;
+// roads lane R1c (2026-10-09, terrain.ts pavedSurfaceUniforms): the paved surfaces — (street class, square class, setts in
+// arcs, the gutter's width) by ROAD_SURFACE_CODE (0: the R layer's print), (patches, cracks, iron covers, —), and the
+// kerbed town rect (centre xz, half-size xz; z 0 = no kerbs)
+uniform vec4 uPaveClass, uPaveWear, uPaveTown;
 // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving (a cobble set: Cinder Junction, Steinburg,
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
 uniform float uPavedRock;
@@ -4555,7 +4617,20 @@ void splatCompute() {
     roadHalfW = floor(rc.g * 255.0 + 0.5) * 0.1;
     float rTurn = (rc.b * 65280.0 + rc.a * 255.0) * (6.2831853 / 65536.0);
     gRoadDir = vec2(cos(rTurn), sin(rTurn));
-    if (gRoadClass > 0.5) gRoadTex = gRoadClass > 3.5 ? 0.0 : 1.0;
+    if (gRoadClass > 0.5) gRoadTex = abs(gRoadClass - 4.0) < 0.5 ? 0.0 : 1.0; // (4 dirt; 5–7 clinker, concrete, brick)
+  }
+  // roads lane (2026-10-09): the road frame from the stack's frame layer — one exact texel a mask texel: the nearest line's
+  // heading and its running length at the texel's centre, the pixel's own offset added along the heading (exact on a bend,
+  // where dot(wp, heading) runs fast or backwards by |wp| / radius). Past the square's edge the clamped texel is no frame
+  if (uRoadFrame.z > 0.5 && dRoad < 11.9 && outsideRoadW < 0.999) {
+    float fn = uRoadFrame.x;
+    ivec2 ft = clamp(ivec2(floor((wp.xz / 1024.0 + 0.5) * fn)), ivec2(0), ivec2(int(fn) - 1));
+    vec4 fc = texelFetch(uMask, ft + ivec2(0, int(uRoadFrame.y + 0.5)), 0);
+    float fTurn = (fc.b * 65280.0 + fc.a * 255.0) * (6.2831853 / 65536.0);
+    gRoadAlong = vec2(cos(fTurn), sin(fTurn));
+    vec2 fC = ((vec2(ft) + 0.5) / fn - 0.5) * 1024.0;
+    gRoadS = (fc.r * 65280.0 + fc.g * 255.0) * (1.0 / 64.0) + dot(wp.xz - fC, gRoadAlong);
+    gRoadFrameW = 1.0 - outsideRoadW;
   }
   float roadHalf = (roadHalfW > 0.05 ? roadHalfW : 3.85) + (n1hs - 0.5) * 1.1 + (n2 - 0.5) * 1.5;
   float roadCore = 1.0 - smoothstep(roadHalf - 0.55, roadHalf + 0.55, dRoad);
@@ -4564,7 +4639,11 @@ void splatCompute() {
   // texture with no clod variation or color break"): a country road's wheel tracks are not ruled — the lanes swing a
   // quarter metre either way along it, and they come and go: deep and dark down one stretch, nearly gone on a hard dry
   // one (a 100–300 m field), never two unbroken lines from one end of the map to the other
-  float laneD = (dRoad - 1.55 - (n1 - 0.5) * 0.55) * uLaneK;
+  // (roads lane, 2026-10-09: the swing reads field b at a 250 m tile — features past 16 m. n1's field a carries half its
+  // power at metre scale, which the soft lanes hid and the crisp grooves below drew as a wriggle)
+  // (a map on the old road law — uRoadSurf.x 0, the owner's protected maps — keeps the old swing exactly)
+  float laneWob = uRoadSurf.x > 0.0 ? (nz(uv, 0.004, vec2(0.37, 0.11)).g - 0.5) * 0.55 : (n1 - 0.5) * 0.55;
+  float laneD = (dRoad - 1.55 - laneWob) * uLaneK;
   // uLaneK == 0 marks a coarse (4 m) mask: one bead-free compaction plateau.
   float lane = uLaneK > 0.0 ? exp(-laneD * laneD) : 1.0 - smoothstep(2.6, 3.6, dRoad);
   float rutAmp = (0.22 + 0.78 * smoothstep(0.28, 0.70, n2 * 0.55 + n1 * 0.45)) * (0.72 + 0.28 * n1hs);
@@ -6462,6 +6541,17 @@ void splatCompute() {
       }
     }
   }
+  // the distance field's gradient: the across-road direction, away from the centreline (~unit; small over the centre's kink).
+  // (roads lane, 2026-10-09: read once here — the worked carriageway below and the lanes' relief after it both use it)
+  vec2 gradD = vec2(0.0);
+  if (roadCore > 0.002 || (gRoadTex > 0.01 && dRoad < 11.9)) { // (and a paved surface's side of its centreline)
+    float texel = 1.0 / 1024.0;
+    gradD.x = maskAt(mUV - vec2(texel, 0.0)).g - maskAt(mUV + vec2(texel, 0.0)).g;
+    gradD.y = maskAt(mUV - vec2(0.0, texel)).g - maskAt(mUV + vec2(0.0, texel)).g;
+    gradD *= 6.0; // byte ramp over a 2 m baseline -> metres per metre, ~unit across the road
+  }
+  float rutShade = 1.0;   // roads lane: the lanes' albedo darkening kept (below), where the grooves' own relief carries them
+  float grooveRel = 0.0;  // roads lane: the share of the lanes' relief the crisp groove profile draws (the soft one the rest)
   {
     // compacted earth road: two-track profile — lightened compacted core,
     // dark wheel ruts, damp borders. uRoadTex (0..1) cross-fades to PAVED
@@ -6481,7 +6571,12 @@ void splatCompute() {
       packedRoad *= 0.985 + (n2w - 0.5) * 0.035;
       vec3 roadCol = mix(packedRoad, a.rgb, 0.30) * uRoadTint
         + vec3(0.014, 0.010, 0.006);
-      roadCol = mix(roadCol, vec3(dot(roadCol, vec3(0.34, 0.45, 0.21))), 0.26);
+      // (roads lane, 2026-10-09: the gauntlet's "flat grey or near-black roads") a dry packed road is never darker than the
+      // field it crosses — the traffic's dust and the cleared surface reflect more than the soil or the sward beside it;
+      // only its wet ruts and puddles go darker (below) — and it keeps more of its soil's hue than the old grey pull
+      float roadFloorL = uRoadSurfB.y * dot(a.rgb, vec3(0.34, 0.45, 0.21));
+      roadCol *= clamp(roadFloorL / max(dot(roadCol, vec3(0.34, 0.45, 0.21)), 1e-4), 1.0, 2.2);
+      roadCol = mix(roadCol, vec3(dot(roadCol, vec3(0.34, 0.45, 0.21))), uRoadSurfB.y > 0.0 ? 0.12 : 0.26);
       // ground lane (2026-10-03, the gauntlet: the winter road was "a flat chocolate-brown slab laid into pristine
       // snow"): a winter road is packed snow, greyer and smoother than the field, with brown slush churned into the two
       // wheel tracks and spattered between them
@@ -6535,6 +6630,128 @@ void splatCompute() {
         n.xy = mix(n.xy, vec2(0.5), gRoadPuddle);
       }
     }
+    // roads lane R1a (2026-10-09; owner: "make sure roads and stuff are really good", R029 "the roads are so flat"; the
+    // gauntlet: "flat grey or near-black roads", "a flat smeared pink-brown band with no ruts, ridges or tyre marks",
+    // Redrock's "smeared tracks"): the carriageway as a worked surface — the wheel ruts as grooves (a floor, steep walls,
+    // the soil squeezed up in a lip beside each, the floor beside the sun's wall in the wall's shadow) instead of two soft
+    // painted bands; the vehicles' treads printed in their floors; the crown and camber; the grader's windrow of loose
+    // stone at the edge; stones strewn on the crown and the edges and swept out of the wheel paths; potholes, puddled on
+    // a wet map; washboard on an arid track. Each term holds while its feature spans enough pixels across its own
+    // direction (stripeVis: a groove seen down the road holds far past tileVis's grazing major axis) and fades to tone
+    vec2 acrU = gradD / max(length(gradD), 0.25);
+    float wR = roadCore * (1.0 - gRoadTex);
+    if (dW > 0.002 && wR > 0.002 && uRoadSurf.x + uRoadSurf.y + uRoadSurf.z + uRoadSurfB.x > 0.0) {
+      float e = dRoad - 1.55 - laneWob, ae = abs(e), se = e < 0.0 ? -1.0 : 1.0;
+      float fwA = max(abs(dot(gDwX, acrU)) + abs(dot(gDwY, acrU)), 1e-4);
+      float relV = stripeVis(0.60, acrU) * uRoadSurf.x;
+      grooveRel = relV * wR;
+      rutShade = mix(1.0, uRoadSurfB.z, grooveRel);
+      // (1) the profile across the road, metres: h = -depth·groove + lip·lip + crown + windrow
+      float wg = 0.30, sw = max(0.09, 1.6 * fwA);
+      float tW = clamp((ae - (wg - sw)) / (2.0 * sw), 0.0, 1.0);
+      float groove = 1.0 - tW * tW * (3.0 - 2.0 * tW);
+      float depth = (0.04 + 0.06 * rutAmp) * min(uRoadRuts.x, 1.5);
+      float lipX = (ae - wg - sw - 0.08) / 0.11;
+      float lip = exp(-lipX * lipX) * (se > 0.0 ? 1.0 : 0.7) * rutAmp;
+      float hwv = max(roadHalfB, 2.6);
+      float wX = (dRoad - hwv + 0.10) / 0.28;
+      float windrow = exp(-wX * wX) * uRoadSurfB.w * roadCore;
+      float dh = depth * 6.0 * tW * (1.0 - tW) / (2.0 * sw) * se
+        - 0.04 * 2.0 * lipX / 0.11 * lip * se
+        - 0.10 * dRoad / (hwv * hwv) * roadCore
+        - 0.035 * 2.0 * wX / 0.28 * windrow;
+      if (nrmOn) n.xy -= 0.5 * dh * acrU * relV * (1.0 - gRoadTex);
+      // the floor compacted and cleaner, the lip loose and paler; the floor beside the wall on the sun's side shaded by it
+      float sunA = dot(uSunDirW.xz, acrU);         // > 0: the sun stands outward of the road, its light falls inward
+      float shL = depth * abs(sunA) / max(uSunDirW.y, 0.08);
+      float uS = sunA >= 0.0 ? e : -e;             // the wall on the sun's side at uS = +wg
+      float shade = groove * smoothstep(wg - shL - sw, wg - shL + sw, uS) * step(0.02, abs(sunA));
+      a.rgb *= 1.0 - (0.07 * groove * rutAmp + 0.28 * shade - 0.06 * lip - 0.05 * windrow) * relV * wR;
+      // (2) the treads printed in a rut's floor: a tank's track plates (0.16 m pitch) or a lorry's chevrons (0.128 m),
+      // one vehicle's print a 9 m stretch (both its ruts), some stretches worn smooth — laid in the road frame
+      if (gRoadFrameW > 0.5 && uRoadSurf.w > 0.0) {
+        vec2 ph = cellHash2(vec2(floor(gRoadS / 9.0), 7.0));
+        float chevron = step(0.55, ph.x);
+        float pitch = mix(0.16, 0.128, chevron);
+        float tv = stripeVis(pitch, gRoadAlong) * groove * step(ph.x, 0.88) * rutAmp * uRoadSurf.w * gRoadFrameW * wR;
+        if (tv > 0.01) {
+          float phase = 6.2831853 * ((gRoadS + chevron * 0.55 * ae) / pitch + ph.y);
+          if (nrmOn) n.xy += 0.5 * 0.010 * (6.2831853 / pitch) * sin(phase) * gRoadAlong * tv;
+          a.rgb *= 1.0 - 0.05 * (0.5 - 0.5 * cos(phase)) * tv;
+        }
+      }
+      // (3) stones: one candidate a 0.12 m cell, strewn on the crown and the edges, swept out of the wheel paths; past
+      // their own pixels, their speckle
+      if (uRoadSurf.y > 0.0) {
+        float crownW = 1.0 - smoothstep(0.5, 1.1, dRoad);
+        float edgeW = smoothstep(hwv - 1.4, hwv - 0.2, dRoad);
+        float dens = uRoadSurf.y * (0.06 + 0.30 * crownW + 0.34 * edgeW + 0.40 * windrow) * (1.0 - 0.8 * groove);
+        float sv = tileVis(0.12);
+        if (sv > 0.01) {
+          vec2 sp = wp.xz / 0.12, sci = floor(sp), scf = fract(sp);
+          vec2 h1 = cellHash2(sci + vec2(19.0, 3.0));
+          if (h1.x < dens) {
+            vec2 h2 = cellHash2(sci + vec2(-7.0, 41.0));
+            vec2 dv = (scf - (0.30 + 0.40 * h2)) / (0.14 + 0.16 * h1.y);
+            float q = dot(dv, dv);
+            if (q < 1.6) {
+              float body = 1.0 - smoothstep(0.80, 1.0, q);
+              vec3 stoneC = mix(uMeanR.rgb, a.rgb, 0.35) * (0.70 + 0.55 * h2.x);
+              a.rgb = mix(a.rgb, stoneC, body * sv * wR);
+              a.rgb *= 1.0 - 0.30 * smoothstep(0.85, 1.0, q) * (1.0 - smoothstep(1.0, 1.6, q)) * sv * wR; // its seat's shadow
+              if (nrmOn) n.xy += 0.5 * dv * 0.9 * body * sv * wR;
+            }
+          }
+        }
+        float gritV = tileVis(0.43) * (1.0 - sv) * (1.0 - smoothstep(30.0, 80.0, camDist));
+        if (gritV > 0.01) {
+          float grit = nz(uv, 2.3, vec2(0.71, 0.13)).r;
+          a.rgb *= 1.0 - (0.22 * smoothstep(0.66, 0.88, grit) - 0.10 * (1.0 - smoothstep(0.04, 0.22, grit))) * min(dens * 1.6, 1.0) * gritV * wR;
+        }
+      }
+      // (4) potholes: one candidate a 5 m world cell, an oval bowl 0.6–1.8 m long down the road, its floor damp and, on a
+      // wet map, holding water; its rim of crumbs paler
+      if (uRoadSurf.z > 0.0) {
+        float hv = tileVis(1.2);
+        vec2 pci = floor(wp.xz / 5.0);
+        vec2 p1 = cellHash2(pci + vec2(61.0, 17.0));
+        if (hv > 0.01 && p1.x < 0.16 * uRoadSurf.z) {
+          vec2 p2 = cellHash2(pci + vec2(5.0, 89.0));
+          vec2 pc = (pci + 0.25 + 0.5 * p2) * 5.0;
+          vec2 al = gRoadFrameW > 0.5 ? gRoadAlong : vec2(-acrU.y, acrU.x);
+          vec2 dq = wp.xz - pc;
+          vec2 pe = vec2(dot(dq, al) / (0.30 + 0.60 * p1.y), dot(dq, vec2(-al.y, al.x)) / (0.28 + 0.40 * p2.y));
+          float q = dot(pe, pe);
+          if (q < 1.5) {
+            float bowl = q < 1.0 ? (1.0 - q) * (1.0 - q) : 0.0;
+            float rim = smoothstep(0.85, 1.05, q) * (1.0 - smoothstep(1.05, 1.5, q));
+            float pw = hv * wR;
+            if (nrmOn && q < 1.0) {
+              vec2 gq = 2.0 * vec2(pe.x / (0.30 + 0.60 * p1.y), pe.y / (0.28 + 0.40 * p2.y));
+              vec2 gw = gq.x * al + gq.y * vec2(-al.y, al.x);    // ∇q in world xz
+              n.xy -= 0.5 * (0.10 * 2.0 * (1.0 - q)) * gw * pw;  // h = -0.10·(1 - q)², ∇h = 0.20·(1 - q)·∇q
+            }
+            a.rgb *= 1.0 - (0.22 * bowl - 0.07 * rim) * pw;
+            if (uReduxD.y < 0.5) {
+              float pond = smoothstep(0.30, 0.70, bowl) * uRoadPuddle * pw;
+              a.rgb = mix(a.rgb, a.rgb * 0.34 + vec3(0.006, 0.008, 0.010), pond);
+              n.xy = mix(n.xy, vec2(0.5), pond);
+              gRoadPuddle = max(gRoadPuddle, pond);
+            }
+          }
+        }
+      }
+      // (5) washboard: corrugations across an arid track every 0.8 m, in stretches, strongest in the wheel paths
+      if (uRoadSurfB.x > 0.0 && gRoadFrameW > 0.5) {
+        float wv = stripeVis(0.8, gRoadAlong) * uRoadSurfB.x * gRoadFrameW * wR
+          * smoothstep(0.42, 0.62, nz(uv, 0.011, vec2(0.27, 0.59)).g) * (0.55 + 0.45 * lane);
+        if (wv > 0.01) {
+          float wph = 6.2831853 * gRoadS / 0.8;
+          if (nrmOn) n.xy += 0.5 * 0.025 * (6.2831853 / 0.8) * sin(wph) * gRoadAlong * wv;
+          a.rgb *= 1.0 + 0.04 * cos(wph) * wv;
+        }
+      }
+    }
     // Keep compacted wheel lanes legible without painting near-black marks
     // into the road albedo. The previous 55% dirt-road multiplier turned the
     // low-resolution rut mask into a repeating chain of oval stains on every
@@ -6550,7 +6767,7 @@ void splatCompute() {
     // soft band over the carriageway's middle third (no stripes), the tracks' own darkening near the camera
     float laneFar = smoothstep(0.08, 0.28, gFootM) * (1.0 - gRoadTex);
     float trodMid = (1.0 - smoothstep(0.6, 2.4, dRoad)) * roadCore * rutAmp;
-    a.rgb *= 1.0 - min(mix(rut, trodMid * 0.55, laneFar), 1.0) * mix(0.34, 0.26, gRoadTex);
+    a.rgb *= 1.0 - min(mix(rut * rutShade, trodMid * 0.55, laneFar), 1.0) * mix(0.34, 0.26, gRoadTex);
     a.a = mix(a.a, a.a * 0.86, rut * (1.0 - gRoadTex));
     a.rgb *= 1.0 + crown * 0.05 * (1.0 - gRoadTex);
     if (gRoadTex > 0.01) {
@@ -6561,83 +6778,241 @@ void splatCompute() {
       // noise-feathered 0.10-0.26 ramp read as water-eroded banks; a paved
       // street must end on a near-kerb line
       float paveCore = smoothstep(0.15, 0.24, mk.r + (n1hs - 0.5) * 0.025) * gRoadTex;
-      vec4 pav = splatSamp(uAlbR, uv * 0.31, df, mipB, uMeanR);
-      vec4 pnn = splatSamp(uNrmR, uv * 0.31, df, mipB, NRM_MEAN);
-      pnn.z = 0.5;
-      float pvar = nz(uv, 0.037, vec2(0.77, 0.19)).r; // NB: "patch" is a reserved word in GLSL ES
-      // r6: 0.86+0.26 -> 0.72+0.22 — the near-white sett sheet under a blue
-      // sky ambient read as a frozen canal; darker worn stone keeps the
-      // street below the facade value range
-      pav.rgb *= 0.72 + smoothstep(0.35, 0.75, pvar) * 0.22;
-      if (uPaveSlab.x > 0.0) {
-        // maps lane B (2026-10-03, the gauntlet: Kestrel Airfield's apron "reads as a cobbled plaza"): airfield
-        // concrete in place of the map's sett print — square slabs with sealed expansion joints, a tone per slab (pours
-        // of different age), the aggregate's mottle, oil and fuel stains, and rubber streaks along the runway's axis
-        vec2 slabP = wp.xz / uPaveSlab.x;
-        vec2 slabH = cellHash2(floor(slabP));
-        vec2 slabF = fract(slabP);
-        vec2 jointD = min(slabF, 1.0 - slabF) * uPaveSlab.x;
-        vec2 jointFw = max(fwidth(wp.xz), vec2(1e-4));
-        vec2 jointL = 1.0 - smoothstep(vec2(uPaveSlab.y) - jointFw, vec2(uPaveSlab.y) + jointFw, jointD);
-        float joint = max(jointL.x, jointL.y) * tileVis(uPaveSlab.x);
-        vec3 conc = vec3(dot(uMeanR.rgb, vec3(0.30, 0.59, 0.11))) * vec3(1.03, 1.01, 0.97);
-        conc *= 0.88 + slabH.x * 0.18;
-        conc *= 0.92 + nz(uv, 0.23, vec2(0.29, 0.63)).r * 0.16;
-        float stain = smoothstep(0.64, 0.84, nzq(uv, 0.11, vec2(0.17, 0.41)).x) * uPaveSlab.z;
-        stain = max(stain, smoothstep(0.80, 0.96, slabH.y) * smoothstep(0.45, 0.75, nz(uv, 0.37, vec2(0.83, 0.07)).g) * uPaveSlab.z);
-        conc *= 1.0 - stain * 0.40;
-        // (the noise stretched 150:1 along the runway's x axis, read at the across-axis scale's explicit LOD; faint, as
-        // the slab roads up from the valleys run across that axis)
-        float tyre = smoothstep(0.70, 0.86, nz(vec2(wp.x * 0.00677, wp.z), 0.31, vec2(0.0)).r)
-          * smoothstep(0.40, 0.66, nz(uv, 0.006, vec2(0.37, 0.91)).g) * uPaveSlab.w;
-        conc *= 1.0 - tyre * 0.22;
-        conc *= 1.0 - joint * 0.55;
-        pav = vec4(conc, mix(0.86, 0.60, stain));
-        pnn = NRM_MEAN;
+      // roads lane R1c (2026-10-09; owner: the roads "need to look a lot better, especially paved ones"; the gauntlet:
+      // Steinburg's street "a flat near-black band … no cobble, kerb, wear", its square "a uniform grey cobble plane",
+      // Suzhou Creek's "navy-black asphalt plane", Ruinspires' "featureless blue-grey asphalt"): the surface here is a
+      // styled path's own, else the map's paved class (splat.pavedSurface: its streets, and its squares off any
+      // centreline), else the R layer's print as before (and the airfield's slabs) — each drawn in the road's frame
+      float onStreet = 1.0 - smoothstep(roadHalf + 0.6, roadHalf + 2.4, dRoad);
+      float pCls = gRoadClass > 0.5 && abs(gRoadClass - 4.0) > 0.5 ? gRoadClass : (onStreet > 0.5 ? uPaveClass.x : uPaveClass.y);
+      // a kerbed town's streets paved out to the kerbs' face (props.ts KERB_OFFSET_M 5.05: splat.pavedSurface.kerbs)
+      float paveTownW = 0.0;
+      if (uPaveTown.z > 0.0) {
+        vec2 tq = abs(wp.xz - uPaveTown.xy) - uPaveTown.zw;
+        paveTownW = 1.0 - smoothstep(0.0, 6.0, max(tq.x, tq.y));
+        paveCore = max(paveCore, paveTownW * (1.0 - smoothstep(4.95, 5.10, dRoad)) * gRoadTex * step(dRoad, 11.9));
       }
-      // (2026-10-05) a styled path's own surface (terrain.ts RoadPathStyle), in the road's frame: setts in courses
-      // across it, or asphalt — dark and even, the wheel paths polished paler, oil down the lanes' middles — and, patched,
-      // its repairs (newer darker, older paler and greyer, their seams sealed) and the old surface's cracks
-      if (gRoadClass > 0.5 && gRoadClass < 3.5) {
-        vec2 rq = vec2(dot(wp.xz, gRoadDir), dot(wp.xz, vec2(-gRoadDir.y, gRoadDir.x)));
-        if (gRoadClass > 1.5 && gRoadClass < 2.5) {
-          // setts: courses 0.16 m along the road, setts 0.18–0.26 m across, the joints staggered course to course
-          float course = rq.x / 0.16, ci = floor(course);
-          vec2 cr = cellHash2(vec2(ci, 17.0));
-          float sw = 0.18 + 0.08 * cr.y;
-          float sc = (rq.y + cr.x * sw) / sw, si = floor(sc);
-          vec2 sh = cellHash2(vec2(ci, si + 311.0));
-          vec2 sf = vec2(fract(course) * 0.16, fract(sc) * sw);
-          float edgeD = min(min(sf.x, 0.16 - sf.x), min(sf.y, sw - sf.y));
-          float settVis = tileVis(0.35);
-          float jointS = (1.0 - smoothstep(0.010, 0.018 + 0.5 * gFootM, edgeD)) * settVis;
-          vec3 sett = vec3(0.128, 0.125, 0.119) * (0.78 + 0.44 * sh.x) * vec3(1.0 + 0.08 * (sh.y - 0.5), 1.0, 1.0 - 0.06 * (sh.y - 0.5));
-          pav = vec4(mix(mix(vec3(0.112, 0.109, 0.104), sett, settVis), vec3(0.040, 0.036, 0.031), jointS), 0.88);
-          // a sett's worn, rounded top
-          vec2 st2 = vec2(sf.x / 0.16 - 0.5, sf.y / sw - 0.5);
-          pnn = vec4(vec2(0.5) + (st2.x * gRoadDir + st2.y * vec2(-gRoadDir.y, gRoadDir.x)) * 0.45 * settVis * (1.0 - jointS), 0.5, 1.0);
-        } else {
-          float agg = nz(uv, 1.9, vec2(0.31, 0.57)).r;
-          vec3 asph = vec3(0.068, 0.068, 0.072) * (0.92 + 0.16 * agg);
-          float laneP = abs(fract(rq.y / 3.5) - 0.5) * 3.5; // metres from a 3.5 m lane's middle
-          float wheelP = (laneP - 0.95) / 0.35;
-          asph *= 1.0 + 0.10 * exp(-wheelP * wheelP) * tileVis(1.0);
-          asph *= 1.0 - 0.18 * (1.0 - smoothstep(0.0, 0.45, laneP)) * smoothstep(0.55, 0.80, nz(uv, 0.21, vec2(0.13, 0.71)).g);
-          if (gRoadClass > 2.5) {
-            vec2 pc = vec2(rq.x / 4.2, rq.y / 2.4), pcI = floor(pc), pcF = fract(pc);
-            vec2 ph = cellHash2(pcI + vec2(53.0, 7.0));
-            float inPatch = step(ph.x, 0.38);
-            vec2 pe = min(pcF, 1.0 - pcF) * vec2(4.2, 2.4);
-            float seam = (1.0 - smoothstep(0.03, 0.06 + gFootM, min(pe.x, pe.y))) * inPatch * tileVis(0.6);
-            asph = mix(asph, ph.y > 0.5 ? asph * 0.78 : mix(asph, vec3(0.13, 0.128, 0.122), 0.55), inPatch);
-            asph *= 1.0 - 0.45 * seam;
-            float crack = (1.0 - smoothstep(0.0, 0.02 + gFootM, abs(nz(uv, 0.9, vec2(0.71, 0.29)).r - 0.5) * 0.12))
-              * (1.0 - inPatch) * tileVis(0.5) * 0.5;
-            asph *= 1.0 - crack;
-          }
-          pav = vec4(asph, 0.80);
+      vec4 pav = vec4(0.0), pnn = NRM_MEAN;
+      if (pCls < 0.5) {
+        pav = splatSamp(uAlbR, uv * 0.31, df, mipB, uMeanR);
+        pnn = splatSamp(uNrmR, uv * 0.31, df, mipB, NRM_MEAN);
+        pnn.z = 0.5;
+        float pvar = nz(uv, 0.037, vec2(0.77, 0.19)).r; // NB: "patch" is a reserved word in GLSL ES
+        // r6: 0.86+0.26 -> 0.72+0.22 — the near-white sett sheet under a blue
+        // sky ambient read as a frozen canal; darker worn stone keeps the
+        // street below the facade value range
+        pav.rgb *= 0.72 + smoothstep(0.35, 0.75, pvar) * 0.22;
+        if (uPaveSlab.x > 0.0) {
+          // maps lane B (2026-10-03, the gauntlet: Kestrel Airfield's apron "reads as a cobbled plaza"): airfield
+          // concrete in place of the map's sett print — square slabs with sealed expansion joints, a tone per slab (pours
+          // of different age), the aggregate's mottle, oil and fuel stains, and rubber streaks along the runway's axis
+          vec2 slabP = wp.xz / uPaveSlab.x;
+          vec2 slabH = cellHash2(floor(slabP));
+          vec2 slabF = fract(slabP);
+          vec2 jointD = min(slabF, 1.0 - slabF) * uPaveSlab.x;
+          vec2 jointFw = max(fwidth(wp.xz), vec2(1e-4));
+          vec2 jointL = 1.0 - smoothstep(vec2(uPaveSlab.y) - jointFw, vec2(uPaveSlab.y) + jointFw, jointD);
+          float joint = max(jointL.x, jointL.y) * tileVis(uPaveSlab.x);
+          vec3 conc = vec3(dot(uMeanR.rgb, vec3(0.30, 0.59, 0.11))) * vec3(1.03, 1.01, 0.97);
+          conc *= 0.88 + slabH.x * 0.18;
+          conc *= 0.92 + nz(uv, 0.23, vec2(0.29, 0.63)).r * 0.16;
+          float stain = smoothstep(0.64, 0.84, nzq(uv, 0.11, vec2(0.17, 0.41)).x) * uPaveSlab.z;
+          stain = max(stain, smoothstep(0.80, 0.96, slabH.y) * smoothstep(0.45, 0.75, nz(uv, 0.37, vec2(0.83, 0.07)).g) * uPaveSlab.z);
+          conc *= 1.0 - stain * 0.40;
+          // (the noise stretched 150:1 along the runway's x axis, read at the across-axis scale's explicit LOD; faint, as
+          // the slab roads up from the valleys run across that axis)
+          float tyre = smoothstep(0.70, 0.86, nz(vec2(wp.x * 0.00677, wp.z), 0.31, vec2(0.0)).r)
+            * smoothstep(0.40, 0.66, nz(uv, 0.006, vec2(0.37, 0.91)).g) * uPaveSlab.w;
+          conc *= 1.0 - tyre * 0.22;
+          conc *= 1.0 - joint * 0.55;
+          pav = vec4(conc, mix(0.86, 0.60, stain));
           pnn = NRM_MEAN;
         }
+      } else {
+        // the road's own frame on a street (along: the running length; across: signed metres off the centreline, its side
+        // from the distance field's gradient), the world's axes on a square off any centreline
+        bool fr = gRoadFrameW > 0.5 && onStreet > 0.5;
+        vec2 al = fr ? gRoadAlong : vec2(1.0, 0.0), pr = vec2(-al.y, al.x);
+        vec2 rq = fr ? vec2(gRoadS, dRoad * (dot(gradD, pr) < 0.0 ? -1.0 : 1.0)) : wp.xz;
+        float fwP = max(gFootM, 1e-3);
+        // the wheel paths of a two-lane street: 0.85 m either side of each 3.2 m lane's middle
+        float wpX = (abs(abs(rq.y) - 1.6) - 0.85) / 0.32;
+        float wheelW = fr ? exp(-wpX * wpX) : 0.0;
+        vec2 pN = vec2(0.0);
+        if (abs(pCls - 2.0) < 0.5) {
+          // SETTS — courses across the road (or the segmental arcs of a German street, uPaveClass.z), a course 0.17 m
+          // along, its setts 0.17–0.28 m across and staggered course to course; each sett its own stone (granite greys,
+          // one in five blue-grey, one in eight rose), its top domed and worn round, paler and smoother in the wheel
+          // paths, some sunk or tilted, one in ninety lost; the joints sand and grit, mossed where no wheel runs
+          vec2 sq = rq;
+          if (uPaveClass.z > 0.5) { float cc = (fract(sq.y / 2.6) - 0.5) * 2.6; sq.x += 1.7 - sqrt(2.89 - cc * cc); }
+          float course = sq.x / 0.17, ci = floor(course);
+          vec2 cr = cellHash2(vec2(ci, 17.0));
+          float swd = 0.17 + 0.11 * cr.y;
+          float sc = (sq.y + cr.x * swd) / swd, si = floor(sc);
+          vec2 sh = cellHash2(vec2(ci, si + 311.0));
+          vec2 sf = vec2(fract(course) * 0.17, fract(sc) * swd);
+          float edgeD = min(min(sf.x, 0.17 - sf.x), min(sf.y, swd - sf.y));
+          float sv = tileVis(0.17);
+          float jw = 0.007 + 0.006 * sh.y;
+          float jointS = (1.0 - smoothstep(jw, jw + 0.004 + 0.6 * fwP, edgeD)) * sv;
+          vec3 stone = vec3(0.172, 0.168, 0.160) * (0.74 + 0.52 * sh.x);
+          stone = mix(stone, stone * vec3(0.78, 0.84, 0.95), step(0.80, fract(sh.x * 5.13 + sh.y)));
+          stone = mix(stone, stone * vec3(1.12, 0.98, 0.92), step(0.875, fract(sh.y * 3.71 + sh.x)));
+          stone *= 1.0 + 0.10 * wheelW;
+          float mossy = (1.0 - wheelW) * smoothstep(0.45, 0.75, nz(uv, 0.08, vec2(0.21, 0.63)).g);
+          vec3 jointC = mix(mix(stone * 0.42, uMeanD.rgb * 0.55, 0.5), uMeanG.rgb * 0.62, mossy * 0.6);
+          float lost = step(0.989, sh.y) * sv;
+          vec3 settMean = mix(vec3(0.150, 0.147, 0.140), jointC, 0.22);
+          vec3 col = mix(settMean, mix(stone, jointC, jointS), sv);
+          col = mix(col, jointC * 0.6, lost);
+          pav = vec4(col, mix(0.86, 0.68, wheelW * (1.0 - jointS)));
+          vec2 st2 = vec2(sf.x / 0.17 - 0.5, sf.y / swd - 0.5);
+          vec2 tilt = (cellHash2(vec2(si, ci) + 3.7) - 0.5) * 0.18;
+          pN = ((st2.x * 0.55 + tilt.x) * al + (st2.y * 0.55 + tilt.y) * pr) * (1.0 - jointS) * (1.0 - lost) * sv;
+        } else if ((pCls > 4.5 && pCls < 5.5) || pCls > 6.5) {
+          // BRICK — clinker (5: the Dutch dyke road's klinkers in herringbone across the road, sand-jointed, red-brown to
+          // purple) or brick soling (7: the char's herringbone of common brick, broken and mud-dressed)
+          bool soling = pCls > 6.5;
+          float bw = soling ? 0.115 : 0.10;
+          vec2 hq = vec2(rq.x + rq.y, rq.y - rq.x) * 0.70710678 / bw;   // 45° to the road
+          vec2 hc = floor(hq), hf = fract(hq);
+          float hd = mod(hc.x - hc.y, 4.0);
+          vec2 lp, sz = vec2(2.0, 1.0), bid = hc;
+          if (hd < 0.5) lp = hf;
+          else if (hd < 1.5) { lp = vec2(hf.x + 1.0, hf.y); bid = hc - vec2(1.0, 0.0); }
+          else if (hd < 2.5) { lp = vec2(hf.x, hf.y + 1.0); sz = vec2(1.0, 2.0); bid = hc - vec2(0.0, 1.0); }
+          else { lp = hf; sz = vec2(1.0, 2.0); }
+          vec2 bh = cellHash2(bid + vec2(sz.x * 13.0, 5.0));
+          float bEdge = min(min(lp.x, sz.x - lp.x), min(lp.y, sz.y - lp.y)) * bw;
+          float bv = tileVis(bw * 2.0);
+          float jointB = (1.0 - smoothstep(0.005, 0.009 + 0.6 * fwP, bEdge)) * bv;
+          vec3 brick = soling ? vec3(0.30, 0.135, 0.075) : vec3(0.215, 0.090, 0.060);
+          brick *= 0.72 + 0.50 * bh.x;
+          brick = mix(brick, brick * vec3(0.72, 0.70, 0.86), step(0.78, bh.y));     // the burnt purple ones
+          brick = mix(brick, brick * vec3(1.18, 1.10, 0.95), step(0.90, fract(bh.x * 6.7)) * (soling ? 1.0 : 0.0));
+          vec3 jointC = soling ? uMeanD.rgb * 0.75 : vec3(0.21, 0.19, 0.15);
+          vec3 bMean = mix(brick * 0.9, jointC, 0.25);
+          vec3 col = mix(soling ? vec3(0.26, 0.13, 0.08) : vec3(0.18, 0.085, 0.06), mix(brick, jointC, jointB), bv);
+          float broken = soling ? step(0.86, bh.y) * bv : 0.0;           // a brick gone or broken: the mud under it
+          col = mix(col, uMeanD.rgb * 0.62, broken);
+          // the dust and mud the traffic spreads over it (a soling road between its fields; a dyke road's sand in the joints)
+          float dressing = soling ? 0.30 + 0.35 * smoothstep(0.40, 0.70, nz(uv, 0.06, vec2(0.33, 0.17)).g) : 0.08;
+          col = mix(col, uMeanD.rgb * vec3(1.0, 0.97, 0.92), dressing * (1.0 - 0.6 * wheelW));
+          pav = vec4(col, 0.88);
+          vec2 bq = (lp / sz - 0.5);
+          vec2 hb = vec2(bq.x - bq.y, bq.x + bq.y) * 0.70710678;          // back from the 45° frame
+          vec2 tiltB = (bh - 0.5) * (soling ? 0.22 : 0.08);
+          pN = ((hb.x * 0.35 + tiltB.x) * al + (hb.y * 0.35 + tiltB.y) * pr) * (1.0 - jointB) * bv * (1.0 - broken);
+        } else if (abs(pCls - 6.0) < 0.5) {
+          // CONCRETE — a lane road in slabs: sawn transverse joints every 4.5 m, the centre joint, each slab its own pour
+          // (tone), the aggregate's speckle, a corner crack in some, rubber darkening the wheel paths, the joints sealed
+          float slabL = 4.5;
+          float si2 = floor(rq.x / slabL), side2 = rq.y < 0.0 ? 0.0 : 1.0;
+          vec2 slh = cellHash2(vec2(si2, side2 + 37.0));
+          float jx = abs(fract(rq.x / slabL) - 0.5) * slabL;
+          float jT = 1.0 - smoothstep(slabL * 0.5 - 0.012, slabL * 0.5 - 0.012 + fwP + 0.004, jx);
+          float jL = fr ? 1.0 - smoothstep(0.012, 0.016 + fwP, abs(rq.y)) : 0.0;
+          float jointC2 = max(jT, jL) * tileVis(0.5);
+          vec3 conc = vec3(0.30, 0.295, 0.28) * (0.86 + 0.20 * slh.x);
+          conc *= 1.0 + (nz(uv, 3.1, vec2(0.41, 0.23)).r - 0.5) * 0.22 * tileVis(0.08);
+          conc *= 1.0 - 0.16 * wheelW;
+          float lc = fract(rq.x / slabL) - 0.5;
+          float crackLine = abs((lc * slabL) - (rq.y - (side2 - 0.5) * 2.0) * (slh.y - 0.5) * 2.0);
+          float cornerCrack = step(0.70, slh.y) * (1.0 - smoothstep(0.004, 0.006 + fwP, crackLine)) * step(abs(lc), 0.30) * tileVis(0.3);
+          conc *= 1.0 - 0.55 * max(jointC2, cornerCrack);
+          float stainC = smoothstep(0.66, 0.86, nzq(uv, 0.11, vec2(0.17, 0.41)).x);
+          conc *= 1.0 - 0.25 * stainC;
+          pav = vec4(conc, mix(0.88, 0.70, wheelW));
+        } else {
+          // ASPHALT (1) / PATCHED (3) — an aged binder course, mid grey with its aggregate showing; paler and smoother in the
+          // wheel paths, dark with drip down the lanes' middles; the centre seam and transverse cracks sealed with tar, a
+          // crazed net in the worn wheel paths; repairs cut square along it (a patched street's rule, a few on any), and on
+          // a patched street the round fills of old holes; iron covers on the crown and the lanes
+          float agg = nz(uv, 1.9, vec2(0.31, 0.57)).r;
+          float big = nz(uv, 0.021, vec2(0.17, 0.83)).g;
+          vec3 asph = vec3(0.118, 0.116, 0.111) * (0.90 + 0.16 * agg) * (0.88 + 0.24 * big);
+          float aggF = nz(uv, 6.1, vec2(0.13, 0.77)).r;
+          asph *= 1.0 + (smoothstep(0.62, 0.86, aggF) * 0.45 - smoothstep(0.30, 0.10, aggF) * 0.18) * tileVis(0.06);
+          float laneP = abs(abs(rq.y) - 1.6);
+          asph *= 1.0 + 0.09 * wheelW;
+          if (fr) asph *= 1.0 - 0.16 * (1.0 - smoothstep(0.0, 0.45, laneP)) * smoothstep(0.50, 0.78, nz(uv, 0.21, vec2(0.13, 0.71)).g);
+          float rough = mix(0.82, 0.66, wheelW);
+          float crk = 0.0;
+          if (fr) {
+            float wv = (nz(vec2(rq.x, 0.0), 0.37, vec2(0.71, 0.29)).r - 0.5) * 0.10;
+            crk = (1.0 - smoothstep(0.018, 0.018 + fwP, abs(rq.y + wv))) * step(0.5, uPaveWear.y);
+            float tci = floor(rq.x / 7.0);
+            vec2 th = cellHash2(vec2(tci, 23.0));
+            float tx = (tci + 0.15 + 0.7 * th.x) * 7.0 + (nz(vec2(0.0, rq.y), 0.6, vec2(0.11, 0.47)).r - 0.5) * 0.25;
+            crk = max(crk, (1.0 - smoothstep(0.008, 0.008 + fwP, abs(rq.x - tx))) * step(0.35, th.y) * step(abs(rq.y), 1.0 + 3.0 * th.y) * uPaveWear.y);
+          }
+          vec2 cq = rq / 0.26 + (vec2(nz(uv, 0.7, vec2(0.3, 0.1)).g, nz(uv, 0.7, vec2(0.6, 0.9)).g) - 0.5) * 0.9;
+          vec2 cf = fract(cq);
+          float cE = min(min(cf.x, 1.0 - cf.x), min(cf.y, 1.0 - cf.y)) * 0.26;
+          crk = max(crk, (1.0 - smoothstep(0.003, 0.003 + fwP, cE)) * wheelW * smoothstep(0.55, 0.75, big) * uPaveWear.y * tileVis(0.26));
+          crk *= tileVis(0.12);
+          asph *= 1.0 - 0.55 * crk;
+          rough = mix(rough, 0.45, crk * 0.6);
+          float patchRate = (pCls > 2.5 ? 0.38 : 0.10) * uPaveWear.x;
+          vec2 pc = vec2(rq.x / 4.2, rq.y / 2.4), pcI = floor(pc), pcF = fract(pc);
+          vec2 ph = cellHash2(pcI + vec2(53.0, 7.0));
+          float inPatch = step(ph.x, patchRate);
+          vec2 pe = min(pcF, 1.0 - pcF) * vec2(4.2, 2.4);
+          float seam = (1.0 - smoothstep(0.03, 0.06 + fwP, min(pe.x, pe.y))) * inPatch * tileVis(0.6);
+          asph = mix(asph, ph.y > 0.5 ? asph * 0.80 : mix(asph, vec3(0.15, 0.148, 0.142), 0.55), inPatch);
+          rough = mix(rough, ph.y > 0.5 ? 0.72 : 0.86, inPatch);
+          asph *= 1.0 - 0.40 * seam;
+          if (pCls > 2.5) {
+            vec2 rci = floor(rq / 6.0);
+            vec2 rh = cellHash2(rci + vec2(91.0, 13.0));
+            float on = step(rh.y, 0.45 * uPaveWear.x);
+            float rr = 0.5 + 0.9 * fract(rh.x * 7.3);
+            float rd = length(rq - (rci + 0.3 + 0.4 * rh) * 6.0);
+            asph = mix(asph, asph * 0.74, on * (1.0 - smoothstep(rr - 0.03, rr + 0.03 + fwP, rd)));
+            asph *= 1.0 - 0.35 * on * (1.0 - smoothstep(0.02, 0.05 + fwP, abs(rd - rr))) * tileVis(0.5);
+          }
+          if (fr && uPaveWear.z > 0.0) {
+            float mci = floor(rq.x / 34.0);
+            vec2 mh = cellHash2(vec2(mci, 71.0));
+            vec2 mc = vec2((mci + 0.2 + 0.6 * mh.x) * 34.0, mh.y > 0.5 ? 0.0 : (mh.y > 0.25 ? 1.6 : -1.6));
+            float md = length(rq - mc);
+            float cover = (1.0 - smoothstep(0.31, 0.31 + fwP, md)) * step(fract(mh.x * 9.1), uPaveWear.z) * tileVis(0.62);
+            if (cover > 0.0) {
+              float boss = step(0.5, fract(floor((rq.x - mc.x) / 0.055) * 0.5 + floor((rq.y - mc.y) / 0.055) * 0.5)) * tileVis(0.11);
+              vec3 iron = vec3(0.070, 0.064, 0.058) * (1.0 + 0.25 * boss) * mix(vec3(1.0), vec3(1.25, 0.95, 0.75), smoothstep(0.6, 0.9, agg));
+              iron *= 1.0 - 0.5 * (1.0 - smoothstep(0.012, 0.02 + fwP, abs(md - 0.29)));
+              asph = mix(asph, iron, cover);
+              rough = mix(rough, 0.52, cover);
+              pN += (rq - mc) / max(md, 1e-3) * 0.3 * (1.0 - smoothstep(0.0, 0.03 + fwP, abs(md - 0.31))) * cover;
+            }
+          }
+          pav = vec4(asph, rough);
+          pN = (pN.x * al + pN.y * pr) * 1.0;
+        }
+        // the gutter: rows of small setts along the kerb, the street's dirt and leaves gathered in them (a kerbed street,
+        // uPaveClass.w its width)
+        float gutW = uPaveClass.w;
+        if (gutW > 0.0 && fr && abs(pCls - 2.0) > 0.5) {
+          float gIn = dRoad - (5.0 - gutW);
+          float gutB = smoothstep(-0.01, 0.01 + fwP, gIn) * paveTownW;
+          if (gutB > 0.001) {
+            float row = floor(gIn / 0.12), colI = floor(gRoadS / 0.12 + row * 0.5);
+            vec2 gh2 = cellHash2(vec2(colI, row + 61.0));
+            vec2 gf = vec2(fract(gRoadS / 0.12 + row * 0.5), fract(gIn / 0.12)) * 0.12;
+            float gE = min(min(gf.x, 0.12 - gf.x), min(gf.y, 0.12 - gf.y));
+            float gv = tileVis(0.12);
+            float gJ = (1.0 - smoothstep(0.006, 0.010 + 0.6 * fwP, gE)) * gv;
+            vec3 gStone = vec3(0.19, 0.185, 0.175) * (0.78 + 0.44 * gh2.x);
+            vec3 gDirt = uMeanD.rgb * 0.55;
+            vec3 gCol = mix(mix(vec3(0.165), gDirt, 0.2), mix(gStone, gDirt, gJ), gv);
+            gCol = mix(gCol, gDirt * 0.8, 0.35 * smoothstep(gutW * 0.5, gutW, gIn) * smoothstep(0.45, 0.7, nz(uv, 0.09, vec2(0.61, 0.13)).g));
+            pav = mix(pav, vec4(gCol, 0.86), gutB);
+            pN = mix(pN, ((gf.y / 0.12 - 0.5) * pr * 0.35 + (gf.x / 0.12 - 0.5) * al * 0.35) * (1.0 - gJ) * gv, gutB);
+          }
+        }
+        pnn = vec4(vec2(0.5) + pN, 0.5, 1.0);
+      }
       }
       // ground lane (2026-10-03, the gauntlet: the cobble road "meets meadow at a knife edge with no verge, mud or broken
       // stones"): a country sett road's margin is broken — setts lost in runs along the edge with soil in the gaps (the
@@ -6649,7 +7024,7 @@ void splatCompute() {
         // (maps lane B: an airfield's concrete keeps a straight edge — no setts to lose)
         float paveKept = smoothstep(0.15, 0.24, mk.r + (n1hs - 0.5) * 0.025
           + (paveN - 0.5) * 0.20 * paveVis * (1.0 - step(0.001, uPaveSlab.x))
-          * (gRoadClass > 0.5 && gRoadClass < 3.5 && abs(gRoadClass - 2.0) > 0.5 ? 0.0 : 1.0)) * gRoadTex;
+          * (abs(pCls - 1.0) < 0.5 || abs(pCls - 3.0) < 0.5 || abs(pCls - 6.0) < 0.5 ? (paveTownW > 0.5 ? 0.0 : 0.35) : 1.0)) * gRoadTex;
         paveCore = min(paveCore, paveKept);
         float outer = paveCore * (1.0 - smoothstep(0.24, 0.46, mk.r));
         float pavL = dot(pav.rgb, vec3(0.34, 0.45, 0.21)) / max(dot(uMeanR.rgb, vec3(0.34, 0.45, 0.21)) * 0.8, 1e-3);
@@ -6659,8 +7034,10 @@ void splatCompute() {
         a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.76, 0.68), margin * 0.65);
         a.a = mix(a.a, max(a.a, 0.94), margin);
       }
-      // (a styled path's surface carries its own albedo: the map's tint calibrates its sett print)
-      a.rgb = mix(a.rgb, pav.rgb * (gRoadClass > 0.5 && gRoadClass < 3.5 ? vec3(1.0) : uRoadTint), paveCore * 0.94);
+      // (a procedural surface carries its own albedo, a third of the map's road hue over it; the map's tint calibrates its
+      // sett print)
+      vec3 paveHue = mix(vec3(1.0), uRoadTint / max(dot(uRoadTint, vec3(0.34, 0.45, 0.21)), 0.05), 0.33);
+      a.rgb = mix(a.rgb, pav.rgb * (pCls > 0.5 ? paveHue : uRoadTint), paveCore * 0.94);
       a.a = mix(a.a, pav.a, paveCore * 0.85);
       n = mix(n, pnn, paveCore * 0.85);
       // gutter shading: a darkened seam just inside the pavement edge gives
@@ -6694,13 +7071,8 @@ void splatCompute() {
   // is the across-road direction and the lane profile's analytic slope shapes
   // two smooth grooves, so a straight road carries no per-texel bumps.
   if (roadCore > 0.002) {
-    float texel = 1.0 / 1024.0;
-    vec2 gradD;
-    gradD.x = maskAt(mUV - vec2(texel, 0.0)).g - maskAt(mUV + vec2(texel, 0.0)).g;
-    gradD.y = maskAt(mUV - vec2(0.0, texel)).g - maskAt(mUV + vec2(0.0, texel)).g;
-    gradD *= 6.0; // byte ramp over a 2 m baseline -> metres per metre, ~unit across the road
     float laneSlope = -2.0 * laneD * uLaneK * lane;
-    n.xy += gradD * laneSlope * 0.14 * roadCore * rutAmp * (1.0 - df * 0.72) * uRoadRuts.x;
+    n.xy += gradD * laneSlope * 0.14 * roadCore * rutAmp * (1.0 - df * 0.72) * uRoadRuts.x * (1.0 - grooveRel);
     vec2 along = vec2(-gradD.y, gradD.x);
     float streak = texture2D(uNoise, vec2(dot(uv, along) * 0.31, dot(uv, gradD) * 2.7)).r;
     a.rgb *= 1.0 + (streak - 0.5) * 0.16 * max(lane, 0.35 * crown) * roadCore * (1.0 - df);
@@ -7398,6 +7770,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uMaskStack = { value: maskStack.stack };
     shader.uniforms.uLandBake = { value: maskStack.bake };
     shader.uniforms.uRoadClass = { value: maskStack.road };
+    shader.uniforms.uRoadFrame = { value: maskStack.frame }; // roads lane (2026-10-09): the road frame layer's size and first row
     shader.uniforms.uLandTier = landTier;
     shader.uniforms.uLandRot = { value: new THREE.Vector2(Math.cos(landUse.landA[1]), Math.sin(landUse.landA[1])) };
     shader.uniforms.uMaskSize = { value: groundMask === mask ? MAP_SIZE : OUTLAND_WATER_MASK_SIZE_M };
@@ -7426,10 +7799,17 @@ function* createSplatMaterialSteps(
     shader.uniforms.uFormation = formationUniform; // ground lane: set by the build from the field's height span
     shader.uniforms.uFormationLow = formationLowUniform; // the Redrock lane
     shader.uniforms.uFormationUp = formationUpUniform;
-    shader.uniforms.uRoadTex = { value: S.pavedRoads ? 1 : clamp(S.roadTexMix ?? 0, 0, 1) };
+    // (roads lane R1c: a map's paved surfaces — its splat's, else the catalogue's — take its roads whole, or its town's)
+    const pavedCfg: PavedSurfaceConfig | undefined = S.pavedSurface ?? MAP_PAVED_SURFACES[mapId];
+    shader.uniforms.uRoadTex = { value: S.pavedRoads || (pavedCfg && !pavedCfg.townOnly) ? 1 : clamp(S.roadTexMix ?? 0, 0, 1) };
     const town = layout.village; // map revival lane 2: the paved town rect (townPaving), off unless the map authors it
-    shader.uniforms.uTownPave = { value: S.townPaving ? new THREE.Vector4((town.x0 + town.x1) / 2, (town.z0 + town.z1) / 2,
+    shader.uniforms.uTownPave = { value: S.townPaving || pavedCfg?.townOnly ? new THREE.Vector4((town.x0 + town.x1) / 2, (town.z0 + town.z1) / 2,
       (town.x1 - town.x0) / 2, (town.z1 - town.z0) / 2) : new THREE.Vector4(0, 0, 0, 0) };
+    // roads lane R1c (2026-10-09): the paved surfaces (pavedSurfaceUniforms)
+    const paved = pavedSurfaceUniforms(pavedCfg, town);
+    shader.uniforms.uPaveClass = { value: new THREE.Vector4(...paved.cls) };
+    shader.uniforms.uPaveWear = { value: new THREE.Vector4(...paved.wear) };
+    shader.uniforms.uPaveTown = { value: new THREE.Vector4(...paved.town) };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
     shader.uniforms.uYardCinder = { value: yardCinder };
     shader.uniforms.uThatch = { value: thatchV };
@@ -7487,7 +7867,8 @@ function* createSplatMaterialSteps(
     return texture;
   })();
   const maskStack = stackLandUseBake(groundMask, landBake, landBakeN,
-    (mask.userData as { roadLayer?: { data: Uint8Array; n: number } }).roadLayer ?? null);
+    (mask.userData as { roadLayer?: { data: Uint8Array; n: number } }).roadLayer ?? null,
+    (mask.userData as { roadFrame?: { data: Uint8Array; n: number } }).roadFrame ?? null);
   function assignSplatBiomeUniforms(shader: MaterialShader): void {
     // maps r1 (ADDITIVE, uSea-gated in the shader — 0 on every pre-existing
     // map): open-water mode. Remaps the wide marsh-mask shore ramp into a
@@ -7541,6 +7922,11 @@ function* createSplatMaterialSteps(
     // the Redrock lane, round 10: the near trains' own strength (rippleAmp's on every map that sets none) and the roads' ruts
     shader.uniforms.uRippleNear = { value: (S.rippleNear ?? S.rippleAmp ?? 0) * Math.max(0, groundProfile.windRipple ?? 1) };
     shader.uniforms.uRoadRuts = { value: new THREE.Vector3(...(S.roadRuts ?? [1, 0, 0])) };
+    // roads lane (2026-10-09): the worked carriageway (relief, stones, potholes, treads) and (washboard, tone floor, lanes'
+    // albedo share, windrow) — the map's override, else its climate's row under its splat.roadSurface
+    const roadWork = roadSurfaceUniforms(mapId, groundProfile.climate, S.roadSurface);
+    shader.uniforms.uRoadSurf = { value: new THREE.Vector4(...roadWork.a) };
+    shader.uniforms.uRoadSurfB = { value: new THREE.Vector4(...roadWork.b) };
     // round 42: the sun the vista ring shades with, and the sky-light weight for steep faces turned from it
     shader.uniforms.uSunDirW = { value: skySunDirection(sky) };
     // media r5: the first compile's sun uniform is shared by every later program variant (a light-count recompile

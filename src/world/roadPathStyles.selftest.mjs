@@ -91,7 +91,8 @@ for (const line of [
   'vec4 rc = texelFetch(uMask, rt + ivec2(0, int(uRoadClass.y + 0.5)), 0);',
   'gRoadClass = floor(rc.r * 255.0 + 0.5);',
   'roadHalfW = floor(rc.g * 255.0 + 0.5) * 0.1;',
-  'if (gRoadClass > 0.5) gRoadTex = gRoadClass > 3.5 ? 0.0 : 1.0;',
+  // (roads lane 2026-10-09: classes 5–7, clinker, concrete and brick, are paved; only dirt (4) is not)
+  'if (gRoadClass > 0.5) gRoadTex = abs(gRoadClass - 4.0) < 0.5 ? 0.0 : 1.0;',
   'float roadHalf = (roadHalfW > 0.05 ? roadHalfW : 3.85) + (n1hs - 0.5) * 1.1 + (n2 - 0.5) * 1.5;',
   'shader.uniforms.uRoadClass = { value: maskStack.road };',
 ]) assert.ok(source.includes(line.replace(/\s+/g, ' ')), `the material: ${line}`);
