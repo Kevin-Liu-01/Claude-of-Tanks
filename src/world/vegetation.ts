@@ -227,6 +227,13 @@ interface VegetationConfig {
    * draw: unset, every map's tufts are as before.
    */
   tuftHeight?: number;
+  /**
+   * The treescn lane (2026-10-09, S2; set by SWARD_LAW, never by a map): a sparse map's tufts gather into tussocks — its
+   * clump law tighter (one stray in a hundred), the tussocks' cores broad and low, the strays small (resolveTuftScale).
+   */
+  tussocks?: true;
+  /** The treescn lane (S2, SWARD_LAW): the meadow card's flower accents (makeGrassCardTexture `forbs`; unset, three). */
+  forbs?: number;
   clusterScrub?: number;
   /**
    * Trees lane (2026-10-06, the coordinator's ruling on the gauntlet's wave 178: "the meadows are peppered with isolated
@@ -1037,6 +1044,7 @@ export function makeGrassCardTexture(
   rng: RandomSource,
   variant: number,
   tone: ToneFunction | null = null,
+  forbs = 3,
 ): THREE.Texture {
   // Grass never occupies enough screen space to justify a 256 px procedural
   // atlas. A simpler 128 px silhouette minifies more cleanly and quarters the
@@ -1098,8 +1106,9 @@ export function makeGrassCardTexture(
   }
   // A few broad color accents survive minification without the old high-
   // frequency flower speckle.
+  // (the treescn lane, 2026-10-09, S2: a map's forbs — SWARD_LAW's 0 on the maps to raise, the critics' "yellow confetti")
   if (variant === 0) {
-    for (let f = 0; f < 3; f++) {
+    for (let f = 0; f < forbs; f++) {
       const fx = 6 + rng() * (s - 12), fy = s - (0.45 + 0.4 * rng()) * s;
       const warm = rng() < 0.55;
       // (ground lane, wave 87: "pale, colorless specks … at a uniform size and density") the pale accents a cream at the
@@ -3768,6 +3777,30 @@ function applySnowGrassLaw(veg: VegetationConfig, mapId: string | null): void {
     { x0: -700, x1: 700, z0: -700, z1: 700, feather: 1, heightScale: SNOW_GRASS_LAW.heightScale }];
 }
 
+/**
+ * The treescn lane (2026-10-09, S2): the sward of the owner's maps to raise — never the light-touch maps (winter,
+ * saltwind, reservoir, railyard, verdant, coastal, desert, frontier, fjord).
+ * - tussocks, the arid maps (the critics on Redrock: "evenly sprinkled grass blades" where "Wadi Rum's sparse plants are
+ *   ... widely spaced clumps", "spreading more of the same tiny grass sprites would read as noise"; on Copper Mesa and
+ *   Titan "sparse, isolated grass tufts", "sprite tufts", stickers): the tufts gather into tussocks in the clump law's
+ *   hollows — one stray in a hundred, the tussock cores broad and low (resolveTuftScale);
+ * - forbs 0, the temperate maps (the critics' "yellow confetti dots" sprinkled over the meadow cards): the meadow card
+ *   paints no flower accents (makeGrassCardTexture).
+ * The tufts' draws and their seats' stream stay what they were: the law only admits, scales and paints.
+ */
+export const SWARD_LAW: Readonly<Record<string, Readonly<{ tussocks?: true; forbs?: number }>>> = Object.freeze({
+  badlands: { tussocks: true }, copper_mesa: { tussocks: true }, titan_gorge: { tussocks: true }, skybridge: { tussocks: true },
+  autumn: { forbs: 0 }, steppe: { forbs: 0 }, monsoon: { forbs: 0 }, polders: { forbs: 0 }, delta: { forbs: 0 },
+  airfield: { forbs: 0 }, orchard: { forbs: 0 }, longleaf: { forbs: 0 }, cliffbridge: { forbs: 0 }, caldera: { forbs: 0 },
+  oasis: { forbs: 0 }, foundry: { forbs: 0 }, ruinspires: { forbs: 0 }, blackglass: { forbs: 0 }, mangrove: { forbs: 0 },
+});
+function applySwardLaw(veg: VegetationConfig, mapId: string | null): void {
+  const law = mapId ? SWARD_LAW[mapId] : undefined;
+  if (!law) return;
+  if (law.tussocks) veg.tussocks = true;
+  if (law.forbs !== undefined) veg.forbs = law.forbs;
+}
+
 /** p2 trees lane (2026-10-01): the desktop tiers grow their near trees (treeGrowth.ts); the mobile tier keeps the
  * legacy card trees. Read at build time, after the device tier is resolved. */
 export function vegetationGrowsTrees(): boolean {
@@ -3894,6 +3927,8 @@ function* vegetationBuildSteps(
   let groundCoverBlocked: GroundCoverBlocked | null = null;
   // trees round 2 (2026-10-03): a snowbound map's classic tufts are dead winter grass (applySnowGrassLaw)
   applySnowGrassLaw(veg, cfg?.id ?? null);
+  // (the treescn lane, 2026-10-09: the sward of the maps to raise, SWARD_LAW)
+  applySwardLaw(veg, cfg?.id ?? null);
   const grassPerChunk = Math.round(GRASS_PER_CHUNK * veg.grassDensity
     * (mobileTier ? 0.62 : 1));
   const carpetPerCell = Math.round(CARPET_PER_CELL * veg.grassDensity
@@ -4026,7 +4061,7 @@ function* vegetationBuildSteps(
     buildGrassTuftGeometry(w, h, 1, 1.5);
 
   const grassTex: THREE.Texture[] = [];
-  grassTex.push(makeGrassCardTexture(mulberry32(seed + 41), 0, veg.grassTexTone));
+  grassTex.push(makeGrassCardTexture(mulberry32(seed + 41), 0, veg.grassTexTone, veg.forbs ?? 3));
   yield { stage: 'grassPrep', fine: true };
   grassTex.push(makeGrassCardTexture(mulberry32(seed + 42), 1, veg.grassTexTone));
   yield { stage: 'grassPrep', fine: true };
@@ -4188,6 +4223,15 @@ function* vegetationBuildSteps(
     const biome = smoothstepJs(0.42, 0.70, splat.n2);
     const thicket = smoothstepJs(0.44, 0.78, splat.n1);
     const clump = biome * (0.12 + 0.88 * thicket);
+    if (veg.tussocks === true) {
+      // (the treescn lane, S2: SWARD_LAW tussocks) a tussock's tufts close together in the clump's heart, one stray in a
+      // hundred out on the bare ground; the heart's tufts broad and low (a tussock, not a sprinkle of blades), the strays
+      // small
+      if (clusterRoll > Math.pow(clump, 1.5) * 0.99 + 0.006) return false;
+      _tuftScaleScratch[0] = 0.55 + clump * 1.3 + roll * 0.4;
+      _tuftScaleScratch[1] = Math.min(1.2, 0.45 + clump * 0.6 + variantRoll * 0.3);
+      return true;
+    }
     if (clusterRoll > clump * 0.97 + 0.03) return false;
     _tuftScaleScratch[0] = 0.5 + clump * 0.85 + roll * 0.7;
     _tuftScaleScratch[1] = Math.min(1.35, 0.55 + clump * 0.65 + variantRoll * 0.55);

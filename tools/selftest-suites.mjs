@@ -1365,6 +1365,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/civilianVehicleGeometry.selftest.mjs',
     'src/world/grassLighting.selftest.mjs',
     'src/world/grassAtlasPadding.selftest.mjs',
+    // the treescn lane (2026-10-09, S2): the sward of the maps to raise — tussocks on the arid maps, no confetti on the temperate
+    'src/world/swardLaw.selftest.mjs',
     'src/world/grassBladeShape.selftest.mjs',
     'src/world/autumnSeasonalPalette.selftest.mjs',
     'src/world/autumnLeafSprays.selftest.mjs',
