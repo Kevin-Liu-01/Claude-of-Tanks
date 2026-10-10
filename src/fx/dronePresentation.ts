@@ -36,7 +36,8 @@ export function createDronePresentation(parent: THREE.Group) {
     const blurs=new THREE.InstancedMesh(kit.rotorBlur,kit.blurMaterial,CAPACITY*4);
     blurs.renderOrder=2;
     const meshes=[...parts,rotors,blurs];
-    for(const mesh of meshes){mesh.count=0;mesh.visible=false;mesh.frustumCulled=false;parent.add(mesh);}
+    // Shaded like the docked airframe (one program per material), so a launch from a shaded dock never brightens.
+    for(const mesh of meshes){mesh.count=0;mesh.visible=false;mesh.frustumCulled=false;mesh.receiveShadow=true;parent.add(mesh);}
     parts[0]!.name=`FPV ${kit.name} airframes${detail==='lite'?' (lite)':''}`;rotors.name='FPV spinning propellers';blurs.name='FPV rotor discs';
     return {lease,parts,rotors,blurs,meshes,count:0,bladeCount:0,blurCount:0};
   }
