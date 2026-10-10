@@ -977,7 +977,6 @@ export function createGarageDressing(
     crewRoot: THREE.Group | null,
     scene: CrewScene,
     carriers: readonly [number, number],
-    sourceVehicleId: string,
     tires: THREE.Mesh | undefined,
     discs: THREE.Mesh | undefined,
   ): void {
@@ -997,12 +996,13 @@ export function createGarageDressing(
     const axleYaw = Math.atan2(-along.x, -along.z) + Math.PI / 2;
     const matrix = new THREE.Matrix4().makeRotationY(axleYaw)
       .multiply(new THREE.Matrix4().makeRotationZ(Math.PI / 2)).setPosition(centre);
-    for (const [source, component] of [[tires, 'carried_road_wheel_tire'], [discs, 'carried_road_wheel_disc']] as const) {
-      const wheel = markModernPart(new THREE.InstancedMesh(source.geometry, source.material, 1), sourceVehicleId, component);
-      wheel.setMatrixAt(0, matrix);
-      wheel.instanceMatrix.needsUpdate = true;
+    // Plain meshes on the exhibit's own wheel geometry and materials: the static display merge folds them into the
+    // batches the exhibit already draws, so a carried wheel adds no draw call.
+    for (const source of [tires, discs]) {
+      const wheel = new THREE.Mesh(source.geometry, source.material);
+      wheel.matrixAutoUpdate = false;
+      wheel.matrix.copy(matrix);
       wheel.castShadow = wheel.receiveShadow = true;
-      track(wheel);
       crewRoot.add(wheel);
     }
     crewRoot.userData.carriedRoadWheel = centre.toArray().map((value) => Number(value.toFixed(3)));
@@ -2614,7 +2614,7 @@ export function createGarageDressing(
     );
 
     const burlakCrew = addCrewScene(GARAGE_CREW_SCENES.burlak, legacyVerdantRoot);
-    addCarriedRoadWheel(burlakCrew, GARAGE_CREW_SCENES.burlak, [2, 3], 't90a_burlak', roadWheelTires, roadWheelDiscs);
+    addCarriedRoadWheel(burlakCrew, GARAGE_CREW_SCENES.burlak, [2, 3], roadWheelTires, roadWheelDiscs);
 
     // This bay used to be six independent root children, which made a safe
     // clearance correction impossible: moving only the tank detached it from
@@ -2931,7 +2931,7 @@ export function createGarageDressing(
       track(removedDiscs);
     }
     const leopardCrew = addCrewScene(GARAGE_CREW_SCENES.leopard, mobilityBay);
-    addCarriedRoadWheel(leopardCrew, GARAGE_CREW_SCENES.leopard, [0, 1], 'leo2a5_a5nl', roadWheelTires, roadWheelDiscs);
+    addCarriedRoadWheel(leopardCrew, GARAGE_CREW_SCENES.leopard, [0, 1], roadWheelTires, roadWheelDiscs);
     mobilityBay.userData.wheelServiceMode = 'running-gear-removed-to-connected-rack';
     mobilityBay.userData.paintSquareOccupied = true;
     mobilityBay.userData.finalVerdantCenter = [-16.4, 13.6];
