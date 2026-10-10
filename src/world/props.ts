@@ -10148,8 +10148,12 @@ ${snowCap ? `
       const all = buckets[key];
       const fine = all.filter((g) => culled(g, key));
       const receiveOnly = RECEIVE_ONLY_DETAIL.has(key);
-      const cast = receiveOnly ? all.filter((g) => !castsNoShadow(g)) : all.filter((g) => !culled(g, key));
-      const coarse = receiveOnly ? all.filter((g) => castsNoShadow(g) && !culled(g, key)) : [];
+      // (2026-10-10, the map-revival lane, the Tarkhan landing's trim) a piece tagged userData.receiveOnly (a mud wall's
+      // apron on a map that opts in, fieldWallDressing.ts adobeApronCoarse) joins any bucket's non-casting mesh; nothing
+      // else is tagged, so every other bucket merges as before
+      const groundOnly = (g: THREE.BufferGeometry) => g.userData.receiveOnly === true;
+      const cast = receiveOnly ? all.filter((g) => !castsNoShadow(g)) : all.filter((g) => !culled(g, key) && !groundOnly(g));
+      const coarse = receiveOnly ? all.filter((g) => castsNoShadow(g) && !culled(g, key)) : all.filter(groundOnly);
       const meshes: Array<[THREE.BufferGeometry[], boolean, string]> = [[cast, true, '']];
       if (!fine.length) meshes.push([coarse, false, '-detail']);
       for (const [list, casts, suffix] of meshes) {

@@ -478,6 +478,9 @@ export interface WallDressingOptions {
    * The map-revival lane (2026-10-07, Tarkhan's cost trim; the coordinator's ruling): a map's mud walls dressed at the
    * mobile tier's density on every tier — the apron's 0.6 m rows and 1.2 lumps a metre (buildMudApron's `mobile`) — for
    * a map that runs many hundreds of metres of them. Unset, every map dresses its walls as before.
+   * (2026-10-10, the Tarkhan landing's trim) and the dressing a mud wall's foot is given — the apron and the sand ramps,
+   * ground-hugging skirts inside the wall's own shadow — receives shadows but casts none: tagged `userData.receiveOnly`,
+   * props.ts merges it into its bucket's non-casting mesh, so the shadow cascades skip it.
    */
   adobeApronCoarse?: boolean;
   plainV?: readonly [number, number];
@@ -549,6 +552,7 @@ export function createWallDressing(o: WallDressingOptions): WallDressing {
             if (ramp) out.wall.push(ramp);
           }
         }
+        if (o.adobeApronCoarse === true) for (const part of out.wall) part.userData.receiveOnly = true;
         return out;
       }
       const foot = buildWallFootStones(o.ground, ax, az, bx, bz, half + 0.05, placeSeed(ax, az, 0xf007), { mobile: o.mobile });

@@ -280,6 +280,15 @@ const attrs = (g) => Object.keys(g.attributes).sort().join(',');
   }
   const coarse = createWallDressing({ ...base, adobeApronCoarse: true }).island(true, 0, 0, 0, 9, 0.26).wall[0];
   assert.deepEqual(bytes(coarse), bytes(mobile), 'opted in, the apron is the mobile tier\'s on every tier');
+  // (2026-10-10, the Tarkhan landing's trim) opted in, the foot's dressing receives shadows but casts none: tagged for
+  // the bucket's non-casting mesh (props.ts mergeMaterialBuckets); unset, nothing is tagged
+  assert.equal(coarse.userData.receiveOnly, true, 'opted in, the apron is receive-only');
+  for (const unset of [base, { ...base, adobeApronCoarse: false }]) {
+    assert.ok(createWallDressing(unset).island(true, 0, 0, 0, 9, 0.26).wall.every((g) => g.userData.receiveOnly === undefined), 'unset, nothing tagged');
+  }
+  const propsSource = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
+  assert.match(propsSource, /const groundOnly = \(g: THREE\.BufferGeometry\) => g\.userData\.receiveOnly === true;\n\s*const cast = receiveOnly \? all\.filter\(\(g\) => !castsNoShadow\(g\)\) : all\.filter\(\(g\) => !culled\(g, key\) && !groundOnly\(g\)\);\n\s*const coarse = receiveOnly \? all\.filter\(\(g\) => castsNoShadow\(g\) && !culled\(g, key\)\) : all\.filter\(groundOnly\);/,
+    'a tagged piece merges into its bucket\'s non-casting mesh');
   assert.ok(tris(coarse) < tris(desktop) * 0.6, `about half the triangles (${tris(coarse)} of ${tris(desktop)})`);
   const { MAP_IDS, getMapConfig } = await import('./index.ts');
   const setting = MAP_IDS.filter((id) => getMapConfig(id).props?.adobeApronCoarse !== undefined);
