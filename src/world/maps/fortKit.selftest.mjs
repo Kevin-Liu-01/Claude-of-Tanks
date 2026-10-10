@@ -14,11 +14,13 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  FLAT_UV, FORT_CONTACT_FLOOR_M, FORT_GRADE, FORT_MAPS, FORT_PRINT_MEAN, TEETH, TEETH_MAPS, buildDragonsTeeth, buildHedgehogBeam,
-  buildHedgehogGusset, buildPillbox, dragonsTeethSeats, fortFor, pillboxBerm, pillboxFootprintGeometry, pillboxFooting,
+  FLAT_UV, FORT_CONTACT_FLOOR_M, FORT_GRADE, FORT_MAPS, FORT_PRINT_MEAN, TEETH, TEETH_MAPS, buildCheckpointPost, buildDragonsTeeth,
+  buildHedgehogBeam, buildHedgehogGusset, buildPillbox, buildSentryPost, dragonsTeethSeats, fortFor, pillboxBerm, pillboxFootprintGeometry,
+  pillboxFooting,
 } from './fortKit.ts';
 import { MAP_IDS } from './mapIds.ts';
 import { deriveRuntimeStructureContactBand } from '../structureCollision.ts';
+import { DESTRUCTIBLE_BUILDING_TYPES } from './structureKit.ts';
 
 const STYLES = ['regelbau', 'dot', 'hex', 'logearth'];
 const bbox = (g) => { g.computeBoundingBox(); return g.boundingBox; };
@@ -183,4 +185,41 @@ for (const style of STYLES) {
   const hog = props.slice(props.indexOf('function placeHedgehogs'), props.indexOf('placeHedgehogs();'));
   assert.ok(hog.includes('buckets.baked.push(beam)') && !hog.includes('buckets.dark.push'), 'on the plain vertex-coloured material, off the glassy dark one');
 }
-console.log('fortKit.selftest: every map\'s pillbox (Regelbau, DOT, hex, log and earth) builds intact and razed under a hull\'s reach, its embrasures dark in board-formed concrete, its bank falling to the toe with its contact cut at 0.35 m, the old draws spent, shells on its slabs, the bank a static earthwork; the Westwall\'s teeth in four rows, each on its own ground, unpainted; the hedgehogs angle irons in rusting steel');
+// ---------------------------------------------------------------------------------------------- 7. the checkpoint post and the sentry post
+for (const [kind, build] of [['checkpointhut', buildCheckpointPost], ['guardpost', buildSentryPost]]) {
+  const meta = DESTRUCTIBLE_BUILDING_TYPES[kind];
+  for (const mapId of ['frontier', 'oasis', 'caldera']) {
+    const f = fortFor(mapId);
+    const intact = build(f.tones, f.seed, false), broken = build(f.tones, f.seed, true);
+    for (const [label, g] of [['intact', intact], ['destroyed', broken]]) {
+      assert.deepEqual(Object.keys(g.attributes).sort(), ['color', 'nightEmissionMask', 'normal', 'position', 'uv'], `${kind} ${label}: one attribute set, the night mask on every part`);
+      assert.ok(finite(g.attributes.position.array) && finite(g.attributes.color.array), `${kind} ${label}: finite`);
+      assert.ok(g.attributes.position.count / 3 <= 5000, `${kind} ${label}: within its budget (${g.attributes.position.count / 3})`);
+    }
+    const b = bbox(intact);
+    assert.ok(Math.max(-b.min.x, b.max.x) <= meta.hw + 0.02 && Math.max(-b.min.z, b.max.z) <= meta.hl + 0.02 && b.max.y <= meta.h + 1e-6,
+      `${kind}: inside its footprint (${b.max.x.toFixed(2)} x ${Math.max(-b.min.z, b.max.z).toFixed(2)} x ${b.max.y.toFixed(2)} of ${meta.hw} x ${meta.hl} x ${meta.h})`);
+    const mask = intact.attributes.nightEmissionMask, lit = Array.from({ length: mask.count }, (_, i) => mask.getX(i)).filter((v) => v > 0.5).length;
+    assert.ok(lit >= 6, `${kind}: its panes lit at night (${lit} vertices)`);
+    const bm = broken.attributes.nightEmissionMask;
+    assert.ok(Array.from({ length: bm.count }, (_, i) => bm.getX(i)).every((v) => v < 0.5), `${kind}: no lit pane in the ruin`);
+    // the ruin under a hull's reach (bars excepted, as for the pillbox)
+    const p = broken.attributes.position;
+    let solidTop = 0;
+    for (let i = 0; i < p.count; i += 3) {
+      const q = [0, 1, 2].map((k) => [p.getX(i + k), p.getY(i + k), p.getZ(i + k)]);
+      const e = (a2, b2) => Math.hypot(a2[0] - b2[0], a2[1] - b2[1], a2[2] - b2[2]);
+      const u = q[1].map((v, k) => v - q[0][k]), w = q[2].map((v, k) => v - q[0][k]);
+      const area = Math.hypot(u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]) / 2;
+      const longest = Math.max(e(q[0], q[1]), e(q[1], q[2]), e(q[2], q[0]));
+      if (longest > 0 && (2 * area) / longest > 0.04) solidTop = Math.max(solidTop, q[0][1], q[1][1], q[2][1]);
+    }
+    assert.ok(solidTop <= 0.62, `${kind} destroyed on ${mapId}: nothing solid higher than a hull crosses (${solidTop.toFixed(2)} m)`);
+  }
+  const props = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
+  assert.ok(props.includes(`build: (rng: () => number) => { DESTRUCTIBLE_BUILDING_TYPES.${kind}.build(rng).dispose(); return `)
+    && props.includes(`broken: (rng: () => number) => { DESTRUCTIBLE_BUILDING_TYPES.${kind}.broken!(rng).dispose(); return `), `${kind}: the old builds' draws spent first`);
+  assert.ok(props.indexOf(`      ${kind}: {\n        ...DESTRUCTIBLE_BUILDING_TYPES.${kind}, mat: 'fortConcrete'`) < props.indexOf('...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES'),
+    `${kind}: a kit's own version still wins over it`);
+}
+console.log('fortKit.selftest: every map\'s pillbox (Regelbau, DOT, hex, log and earth) builds intact and razed under a hull\'s reach, its embrasures dark in board-formed concrete, its bank falling to the toe with its contact cut at 0.35 m, the old draws spent, shells on its slabs, the bank a static earthwork; the Westwall\'s teeth in four rows, each on its own ground, unpainted; the hedgehogs angle irons in rusting steel; the checkpoint and sentry posts in their footprints, lit at night, razed low');

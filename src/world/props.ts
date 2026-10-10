@@ -66,8 +66,8 @@ import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
 import {
-  FORT_CONTACT_FLOOR_M, FORT_PRINT_MEAN, FORT_PRINT_SEED, TEETH, TEETH_MAPS, buildDragonsTeeth, buildHedgehogBeam, buildHedgehogGusset,
-  buildPillbox, dragonsTeethSeats, fortFor, pillboxBerm, pillboxFootprintGeometry, pillboxFooting,
+  FORT_CONTACT_FLOOR_M, FORT_PRINT_MEAN, FORT_PRINT_SEED, TEETH, TEETH_MAPS, buildCheckpointPost, buildDragonsTeeth, buildHedgehogBeam,
+  buildHedgehogGusset, buildPillbox, buildSentryPost, dragonsTeethSeats, fortFor, pillboxBerm, pillboxFootprintGeometry, pillboxFooting,
 } from './maps/fortKit.ts'; // the fortifications lane: the pillbox, the Westwall's teeth
 import {
   FIELD_STONE_PRINT_SEED, liftFieldStoneMean, paintFieldStoneBuffers as paintFieldStoneBuffersInline, type FieldStoneBuffers,
@@ -4106,6 +4106,23 @@ ${snowCap ? `
       : { wallstone: { ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket, ...(snowCap ? { build: snowLoadedWallstone } : {}) } }),
     // the mud wall on its own worn render (fieldMudSurface.ts), never the house plaster
     walladobe: { ...DESTRUCTIBLE_TYPES.walladobe, mat: adobeWallBucket },
+    // the fortifications lane, round 2c (2026-10-09, the coordinator's ruling: the military light structures are the
+    // fortifications kit's): the checkpoint hut a guardhouse of rendered concrete block under a slab canopy, the guard post
+    // an armoured sentry cab on a sandbagged plinth, both on the pillbox's concrete and razed under a hull's reach when
+    // destroyed (maps/fortKit.ts). Same key, footprint, class and resistance; the old builds' draws spent first, so
+    // every pool after them keeps its shape. A kit's own version (below) and a map's variant still win.
+    ...(fort ? {
+      checkpointhut: {
+        ...DESTRUCTIBLE_BUILDING_TYPES.checkpointhut, mat: 'fortConcrete', instanceTintStrength: 0.03,
+        build: (rng: () => number) => { DESTRUCTIBLE_BUILDING_TYPES.checkpointhut.build(rng).dispose(); return buildCheckpointPost(fort.tones, fort.seed + 211, false); },
+        broken: (rng: () => number) => { DESTRUCTIBLE_BUILDING_TYPES.checkpointhut.broken!(rng).dispose(); return buildCheckpointPost(fort.tones, fort.seed + 211, true); },
+      },
+      guardpost: {
+        ...DESTRUCTIBLE_BUILDING_TYPES.guardpost, mat: 'fortConcrete', instanceTintStrength: 0.03,
+        build: (rng: () => number) => { DESTRUCTIBLE_BUILDING_TYPES.guardpost.build(rng).dispose(); return buildSentryPost(fort.tones, fort.seed + 223, false); },
+        broken: (rng: () => number) => { DESTRUCTIBLE_BUILDING_TYPES.guardpost.broken!(rng).dispose(); return buildSentryPost(fort.tones, fort.seed + 223, true); },
+      },
+    } : {}),
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),

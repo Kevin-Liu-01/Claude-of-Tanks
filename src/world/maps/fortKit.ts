@@ -29,6 +29,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { sandbagBag } from './sceneryKit.ts';
+import { ensureWorldNightEmissionMask, markWorldAperture } from '../worldNightEmissionGeometry.ts';
 
 type Rng = () => number;
 type V3 = [number, number, number];
@@ -1430,6 +1431,292 @@ export function buildHedgehogGusset(scale: number, seed: number): THREE.BufferGe
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// the checkpoint post and the sentry post (round 2c: the coordinator's 2026-10-09 ruling; the military light structures)
+
+/** A military steel's paint over the map's ground: olive drab, or the desert sand on an arid map; worn, rusting. */
+function militarySteel(tones: FortTones): Rgb {
+  return tones.arid ? hexLin(0x8c7c5e) : tones.barren ? hexLin(0x8a8a86) : hexLin(0x4a503c);
+}
+
+/** A steel surface: the paint worn back at the edges and the foot, rust in streaks. */
+function steelShade(paint: Rgb, seed: number): Shade {
+  return (p, n) => {
+    const wear = smooth(0.62, 0.86, fbm(p[0] * 2, p[1] * 2, p[2] * 2, 0.4, seed));
+    const rust = smooth(0.66, 0.9, vnoise(p[0] * 6, p[1] * 1.5, p[2] * 6, 0.3, seed + 3)) * (n[1] > 0.5 ? 1.3 : 1);
+    let c = mix(paint, mul(paint, 0.7), wear * 0.6);
+    c = mix(c, RUST_BROWN, clamp01(rust) * 0.55);
+    return mul(c, 0.9 + vnoise(p[0], p[1], p[2], 0.12, seed + 5) * 0.2);
+  };
+}
+
+/** A pane (its own mesh, for the night's window mask) facing `n`, a w × h quad at c. */
+function pane(c: V3, u: V3, w: number, h: number, n: V3, tint: Rgb): THREE.BufferGeometry {
+  const m = new Mesh();
+  const up: V3 = [0, 1, 0];
+  const P = (a: number, b: number): V3 => add(add(c, scl(u, a)), scl(up, b));
+  m.quad(P(-w / 2, -h / 2), P(w / 2, -h / 2), P(w / 2, h / 2), P(-w / 2, h / 2), () => tint, false, n);
+  return markWorldAperture(m.geometry(), [n[0], n[1], n[2]]);
+}
+
+/** The geometry and its panes as one, every part carrying the night mask (lit panes 1, the rest 0). */
+function withPanes(body: THREE.BufferGeometry, panes: THREE.BufferGeometry[]): THREE.BufferGeometry {
+  const g = mergeGeometries([ensureWorldNightEmissionMask(body), ...panes], false);
+  if (!g) throw new Error('fortKit: pane merge failed');
+  body.dispose(); for (const q of panes) q.dispose();
+  g.computeBoundingBox(); g.computeBoundingSphere();
+  return g;
+}
+
+/** The checkpoint post's measures (m): its body back from the porch, inside the hut's 2.40 x 3.7 half extents. */
+const POST = Object.freeze({ w: 3.7, d: 4.3, z0: -3.55, wall: 2.6, slab: 0.22, roofZ1: 3.45 });
+
+/**
+ * The checkpoint post: a guardhouse of rendered concrete block under a thick flat roof slab that runs on over the porch
+ * as a canopy on two steel posts, a steel door and the guard's window to the front, windows down the flanks behind steel
+ * frames, an L of sandbags round the porch, a floodlight on its bracket; weathered like the pillboxes. Destroyed: the
+ * walls razed to ragged stubs with their bars, the slab fallen into the room, the door blown out, the bags strewn —
+ * nothing higher than a hull crosses (a broken structure has no collider).
+ */
+export function buildCheckpointPost(tones: FortTones, seed: number, broken: boolean): THREE.BufferGeometry {
+  const m = new Mesh();
+  const rng = mulberry32(seed);
+  const plain: FortTones = { ...tones, camo: undefined };
+  const { w, d, z0, wall, slab } = POST;
+  const z1 = z0 + d, hx = w / 2;
+  const plan: Plan = ensureOutward([[-hx, z0], [hx, z0], [hx, z1], [-hx, z1]]);
+  const W: Weather = { tones: plain, drip: wall, slits: [], grade: 0.02, seed: (seed * 31) ^ 0xc4ec, burn: broken ? 1 : 0 };
+  const conc = concreteShade(W);
+  const steel = steelShade(militarySteel(tones), seed + 11);
+  const dark: Shade = () => [0.012, 0.012, 0.012];
+  const glass: Rgb = [0.05, 0.06, 0.065];
+  const panes: THREE.BufferGeometry[] = [];
+  // the plinth: a slab under the house and its porch, a hair over grade, its skirt below it
+  prism(m, ensureOutward([[-hx - 0.15, z0 - 0.14], [hx + 0.15, z0 - 0.14], [hx + 0.15, POST.roofZ1 + 0.1], [-hx - 0.15, POST.roofZ1 + 0.1]]),
+    -0.4, 0.12, conc, conc, null, true, 0.5);
+  // the openings: the door and the guard's window to the front, two windows a flank
+  type Op = { edge: number; s: number; y0: number; y1: number; w: number; door?: boolean };
+  const ops: Op[] = [];
+  // edges of the plan, outward normals: find the front (+z), the flanks
+  const edges = plan.map((a, i) => { const b = plan[(i + 1) % 4], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    return { a, b, len, u: [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len] as V3, n: [-(b[1] - a[1]) / len, 0, (b[0] - a[0]) / len] as V3 }; });
+  const front = edges.findIndex((e) => e.n[2] > 0.9), back = edges.findIndex((e) => e.n[2] < -0.9);
+  const flanks = edges.map((e, i) => (Math.abs(e.n[0]) > 0.9 ? i : -1)).filter((i) => i >= 0);
+  ops.push({ edge: front, s: edges[front].len * 0.27, y0: 0.12, y1: 2.15, w: 0.92, door: true });
+  ops.push({ edge: front, s: edges[front].len * 0.7, y0: 1.0, y1: 1.95, w: 1.5 });
+  for (const f of flanks) for (const t of [0.3, 0.68]) ops.push({ edge: f, s: edges[f].len * t, y0: 1.1, y1: 1.9, w: 1.05 });
+  ops.push({ edge: back, s: edges[back].len * 0.5, y0: 1.3, y1: 1.85, w: 0.7 });
+  // the razed walls' ragged top (destroyed)
+  const raggedTop = (ei: number) => (sAlong: number) => {
+    if (!broken) return wall;
+    const e = edges[ei], x = e.a[0] + e.u[0] * sAlong, z = e.a[1] + e.u[2] * sAlong;
+    const jag = (vnoise(x * 5.3, 0, z * 5.3, 0.3, seed + 61) - 0.5) * 0.4;
+    return Math.max(0.18, Math.min(BROKEN_CAP - 0.05, 0.42 + (ei === front ? -0.15 : 0.05) + jag));
+  };
+  for (let i = 0; i < 4; i++) {
+    const e = edges[i], top = raggedTop(i);
+    const mine = ops.filter((o) => o.edge === i).map((o) => ({ s0: o.s - o.w / 2, s1: o.s + o.w / 2, t0: o.y0, t1: o.y1 }));
+    const kept = broken ? mine.filter((o) => o.t1 < top(o.s0) - 0.05 && o.t1 < top(o.s1) - 0.05) : mine;
+    wallFace(m, [e.a[0], 0, e.a[1]], e.u, e.len, -0.3, top, kept, conc, 0.3);
+    if (broken) {
+      // the break: the wall's 0.25 m across its ragged line, the block's grey core, a bar or two bent out
+      const thick = 0.25, steps = Math.max(2, Math.round(e.len / 0.25));
+      const core: Shade = (p) => mix(plain.concrete, [0.34, 0.32, 0.29], 0.5 + vnoise(p[0], p[1], p[2], 0.15, seed + 71) * 0.3);
+      for (let j = 0; j < steps; j++) {
+        const s0 = (j / steps) * e.len, s1 = ((j + 1) / steps) * e.len, t0 = top(s0), t1 = top(s1);
+        const p0: V3 = [e.a[0] + e.u[0] * s0, t0, e.a[1] + e.u[2] * s0], p1: V3 = [e.a[0] + e.u[0] * s1, t1, e.a[1] + e.u[2] * s1];
+        const q0 = add(p0, scl(e.n, -thick)), q1 = add(p1, scl(e.n, -thick));
+        m.quad(p0, p1, q1, q0, core, false, [0, 1, 0]);
+        const inner: Shade = (p) => mul(plain.concrete, 0.3 + vnoise(p[0], p[1], p[2], 0.4, seed + 73) * 0.12);
+        m.quad(q1, q0, [q0[0], -0.3, q0[2]], [q1[0], -0.3, q1[2]], inner, false, scl(e.n, -1));
+        if (hash3(j, i, 3, seed) < 0.18) {
+          const rust: Shade = () => [0.1, 0.045, 0.022];
+          const base = add(p0, scl(e.n, -thick / 2)), l = Math.min(0.12 + hash3(j, i, 7, seed) * 0.25, BROKEN_CAP + 0.2 - t0);
+          bar(m, base, add(base, [e.n[0] * 0.12, l, e.n[2] * 0.12]), rust);
+        }
+      }
+    }
+  }
+  // the openings' reveals, frames, the door leaf and the panes (intact)
+  if (!broken) {
+    for (const o of ops) {
+      const e = edges[o.edge], c: V3 = [e.a[0] + e.u[0] * o.s, (o.y0 + o.y1) / 2, e.a[1] + e.u[2] * o.s];
+      const hw2 = o.w / 2, hh = (o.y1 - o.y0) / 2, D = 0.22;
+      const P = (du: number, dv: number, dep: number): V3 => [c[0] + e.u[0] * du - e.n[0] * dep, c[1] + dv, c[2] + e.u[2] * du - e.n[2] * dep];
+      const reveal: Shade = (p, nn) => mul(conc(p, nn), 0.7);
+      m.quad(P(-hw2, hh, 0), P(-hw2, -hh, 0), P(-hw2, -hh, D), P(-hw2, hh, D), reveal, true, e.u);
+      m.quad(P(hw2, -hh, 0), P(hw2, hh, 0), P(hw2, hh, D), P(hw2, -hh, D), reveal, true, scl(e.u, -1));
+      m.quad(P(hw2, hh, 0), P(-hw2, hh, 0), P(-hw2, hh, D), P(hw2, hh, D), reveal, true, [0, -1, 0]);
+      m.quad(P(-hw2, -hh, 0), P(hw2, -hh, 0), P(hw2, -hh, D), P(-hw2, -hh, D), reveal, true, [0, 1, 0]);
+      // the steel frame, a hair proud, and the sill
+      const fr = 0.05;
+      for (const [a0, a1, b0, b1] of [[-hw2, hw2, hh - fr, hh], [-hw2, hw2, -hh, -hh + fr], [-hw2, -hw2 + fr, -hh, hh], [hw2 - fr, hw2, -hh, hh]]) {
+        m.quad(P(a0, b0, D - 0.01), P(a1, b0, D - 0.01), P(a1, b1, D - 0.01), P(a0, b1, D - 0.01), steel, false, e.n);
+      }
+      if (o.door) {
+        m.quad(P(-hw2 + fr, -hh, D - 0.005), P(hw2 - fr, -hh, D - 0.005), P(hw2 - fr, hh - fr, D - 0.005), P(-hw2 + fr, hh - fr, D - 0.005), steel, false, e.n);
+        solid(m, c[0] + e.u[0] * (hw2 - 0.18) + e.n[0] * (-D + 0.03), c[1] - 0.05, c[2] + e.u[2] * (hw2 - 0.18) + e.n[2] * (-D + 0.03), 0.12, 0.04, 0.05, Math.atan2(e.n[0], e.n[2]), steel, false);
+      } else {
+        solid(m, c[0] + e.n[0] * 0.04, o.y0 - 0.05, c[2] + e.n[2] * 0.04, Math.abs(e.u[0]) > 0.5 ? o.w + 0.16 : 0.16, 0.06, Math.abs(e.u[2]) > 0.5 ? o.w + 0.16 : 0.16, 0, conc, true);
+        panes.push(pane(P(0, 0, D - 0.02), e.u, o.w - 2 * fr, 2 * hh - 2 * fr, e.n, glass));
+        // the window's steel bars
+        for (let k = 1; k <= 3; k++) {
+          const du = -hw2 + (k * o.w) / 4;
+          bar(m, P(du, -hh + fr, D - 0.04), P(du, hh - fr, D - 0.04), steel, 0.012);
+        }
+      }
+    }
+  }
+  // the roof slab, its canopy over the porch on two steel posts, the drip groove and the chamfer (intact); fallen in (destroyed)
+  const roofPlan: Plan = ensureOutward([[-hx - 0.18, z0 - 0.14], [hx + 0.18, z0 - 0.14], [hx + 0.18, POST.roofZ1], [-hx - 0.18, POST.roofZ1]]);
+  if (!broken) {
+    cap(m, roofPlan, wall, (p, nn) => mul(conc(p, nn), 0.55), false, true, 2);
+    prism(m, roofPlan, wall, wall + slab, conc, null, null, true, 0.4);
+    cap(m, grow(roofPlan, -0.05), wall + slab + 0.03, (p, nn) => {
+      const c = conc(p, nn);
+      return mix(c, mul(plain.earth, 0.8), smooth(0.55, 0.8, fbm(p[0], 0, p[2], 0.6, seed + 9)) * 0.35);
+    }, true, true, 3);
+    prism(m, grow(roofPlan, -0.05), wall + slab, wall + slab + 0.03, conc, null, null, true, 0.4);
+    for (const x of [-hx + 0.25, hx - 0.25]) solid(m, x, 0.12, POST.roofZ1 - 0.25, 0.12, wall - 0.12, 0.12, 0, steel, false);
+    // the floodlight on its bracket at the front corner, its glass lit at night
+    const lx = hx - 0.05, lz = z1 + 0.05, ly = wall - 0.25;
+    solid(m, lx + 0.15, ly, lz, 0.3, 0.05, 0.05, 0, steel, false);
+    solid(m, lx + 0.32, ly - 0.12, lz + 0.02, 0.2, 0.18, 0.16, 0, steel, false);
+    panes.push(pane([lx + 0.32, ly - 0.03, lz + 0.105], [1, 0, 0], 0.14, 0.12, [0, 0, 1], [0.6, 0.58, 0.5]));
+    // a vent pipe through the slab
+    log(m, [-hx + 0.7, wall + slab, z0 + 0.8], [-hx + 0.7, wall + slab + 0.42, z0 + 0.8], 0.06, 8, steel, steel);
+  } else {
+    collapsedSlab(m, roofPlan, slab, conc, { tones: plain, seed, broken: true }, rng);
+    // the door blown out onto the porch, the canopy posts bent down
+    const door = mulberry32(seed + 5);
+    const dz = z1 + 0.55 + door() * 0.4, dx = -0.4 + (door() - 0.5) * 0.8;
+    lump(m, dx, 0.16, dz, 0.95, 0.05, 2.0, door, steel, false, 0.2 + door() * 0.4, 0.1, BROKEN_CAP - 0.1);
+    for (const x of [-hx + 0.25, hx - 0.25]) {
+      // the canopy's posts bent over under the falling slab: a stub, a kink, the rest lying
+      const kink: V3 = [x + (door() - 0.5) * 0.3, 0.45, POST.roofZ1 - 0.15];
+      bar(m, [x, 0.12, POST.roofZ1 - 0.25], kink, steel, 0.05);
+      bar(m, kink, [kink[0] + (door() - 0.5) * 1.0, 0.1, POST.roofZ1 + 0.7 + door() * 0.4], steel, 0.05);
+    }
+    // block rubble in the room and spilling out of the front
+    for (let i = 0; i < 22; i++) {
+      const x = (rng() - 0.5) * (w + 1.2), z = z0 + rng() * (d + 1.6), s = 0.15 + rng() * 0.3;
+      lump(m, x, 0.15, z, s * 1.6, s * 0.7, s, rng, conc, true, rng() * Math.PI, 0.5, BROKEN_CAP - 0.05);
+    }
+  }
+  // the sandbags: an L round the porch (three courses intact; strewn, destroyed)
+  const brng = mulberry32(seed + 91);
+  const bagTone = tones.bag;
+  if (!broken) {
+    // an L across the porch's front and down its left side, three courses, the right side left open for the way in
+    const fz = POST.roofZ1 - 0.4, sx = -hx + 0.25;
+    for (let course = 0; course < 3; course++) {
+      const y = 0.22 + course * 0.19, st = (course % 2) * 0.28;
+      for (let k = 0; k < 4; k++) placeBag(m, brng, sx + 0.3 + st + k * 0.56, y, fz, -Math.PI / 2, bagTone, course);
+      for (let k = 0; k < 3; k++) placeBag(m, brng, sx, y, fz - 0.45 - st - k * 0.56, 0, bagTone, course);
+    }
+  } else {
+    for (let k = 0; k < 9; k++) placeBag(m, brng, -hx + brng() * 2.4, 0.13, z1 + 0.2 + brng() * 1.6, brng() * Math.PI, bagTone, 0);
+  }
+  return withPanes(m.geometry(), panes);
+}
+
+/** The sentry post's measures (m), inside the guard post's 2.02 x 1.98 half extents and 4.1 m. */
+const SENTRY = Object.freeze({ base: 2.9, baseH: 1.05, cab: 2.2, cabH: 1.9 });
+
+/**
+ * The sentry post: an armoured steel cab with vision slits all round on a concrete plinth revetted with sandbags, a steel
+ * roof plate over it with a searchlight, the ladder up its back; worn olive (sand on an arid map). Destroyed: the cab
+ * torn off and lying crumpled beside the plinth, the bags strewn, the plinth's foot cracked, the ladder down — nothing
+ * higher than a hull crosses.
+ */
+export function buildSentryPost(tones: FortTones, seed: number, broken: boolean): THREE.BufferGeometry {
+  const m = new Mesh();
+  const rng = mulberry32(seed);
+  const plain: FortTones = { ...tones, camo: undefined };
+  const { base, baseH, cab, cabH } = SENTRY;
+  const W: Weather = { tones: plain, drip: baseH, slits: [], grade: 0.02, seed: (seed * 31) ^ 0x5e47, burn: broken ? 1 : 0 };
+  const conc = concreteShade(W);
+  const steel = steelShade(militarySteel(tones), seed + 13);
+  const panes: THREE.BufferGeometry[] = [];
+  const hb = base / 2, hc = cab / 2;
+  // the plinth: concrete to the cab's floor (its foot only, destroyed)
+  const plinthTop = broken ? 0.42 : baseH;
+  const plinth: Plan = ensureOutward(chamferedRect(base - 0.5, base - 0.5, 0.08));
+  prism(m, plinth, -0.35, plinthTop, conc, conc, null, true, 0.35);
+  // the sandbags round it, four courses (strewn, destroyed)
+  const brng = mulberry32(seed + 17);
+  if (!broken) {
+    for (let course = 0; course < 3; course++) {
+      const y = 0.1 + course * 0.19, inset = course * 0.04;
+      for (const side of [0, 1, 2, 3]) {
+        const along = side % 2 === 0, sign = side < 2 ? 1 : -1;
+        const n = 4;
+        for (let k = 0; k < n; k++) {
+          const t = -hb + 0.32 + inset + k * ((base - 0.64 - 2 * inset) / (n - 1)) + (course % 2) * 0.12;
+          // the back side (−z) leaves the ladder's way open
+          if (side === 3 && Math.abs(t) < 0.5) continue;
+          const x = along ? t : sign * (hb - 0.18 - inset), z = along ? sign * (hb - 0.18 - inset) : t;
+          placeBag(m, brng, x, y, z, along ? 0 : Math.PI / 2, tones.bag, course);
+        }
+      }
+    }
+  } else {
+    for (let k = 0; k < 12; k++) placeBag(m, brng, (brng() - 0.5) * base * 1.25, 0.12, (brng() - 0.5) * base * 1.25, brng() * Math.PI, tones.bag, 0);
+  }
+  if (!broken) {
+    // the cab: four steel walls with a slit all round, the floor on the plinth, the roof plate over it
+    const y0 = baseH, y1 = baseH + cabH, slitY = y0 + 1.35, slitH = 0.16;
+    const cabPlan: Plan = ensureOutward(chamferedRect(cab, cab, 0.06));
+    for (let i = 0; i < cabPlan.length; i++) {
+      const a = cabPlan[i], b = cabPlan[(i + 1) % cabPlan.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const u: V3 = [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len], n: V3 = [-u[2], 0, u[0]];
+      const ops = len > 1 ? [{ s0: 0.18, s1: len - 0.18, t0: slitY - slitH / 2, t1: slitY + slitH / 2 }] : [];
+      // the back wall's door
+      if (len > 1 && n[2] < -0.9) ops.push({ s0: len / 2 - 0.35, s1: len / 2 + 0.35, t0: y0 + 0.02, t1: y0 + 1.15 });
+      wallFace(m, [a[0], 0, a[1]], u, len, y0, () => y1, ops, steel, 0.4);
+      if (len > 1) {
+        // the slit's dark and its lit pane (a lamp inside at night), a visor plate over it
+        const c: V3 = [a[0] + u[0] * len / 2 - n[0] * 0.08, slitY, a[1] + u[2] * len / 2 - n[2] * 0.08];
+        panes.push(pane(c, u, len - 0.36, slitH, n, [0.03, 0.03, 0.03]));
+        solid(m, a[0] + u[0] * len / 2 + n[0] * 0.09, slitY + slitH / 2 + 0.01, a[1] + u[2] * len / 2 + n[2] * 0.09,
+          Math.abs(u[0]) > 0.5 ? len - 0.2 : 0.18, 0.025, Math.abs(u[2]) > 0.5 ? len - 0.2 : 0.18, 0, steel, false);
+      }
+    }
+    // the inside's dark behind the slits and the door
+    cap(m, grow(cabPlan, -0.05), y0 + 0.02, () => [0.01, 0.01, 0.01], true, false, 1);
+    m.quad([-hc + 0.05, y0 + 0.02, -hc + 0.06], [hc - 0.05, y0 + 0.02, -hc + 0.06], [hc - 0.05, y1 - 0.02, -hc + 0.06], [-hc + 0.05, y1 - 0.02, -hc + 0.06], () => [0.008, 0.008, 0.008], false, [0, 0, 1]);
+    // the roof plate with its overhang and lip, the searchlight, a mast
+    const rp: Plan = ensureOutward(chamferedRect(cab + 0.5, cab + 0.5, 0.05));
+    prism(m, rp, y1, y1 + 0.07, steel, steel, steel, false);
+    log(m, [0.6, y1 + 0.07, 0.4], [0.6, y1 + 0.3, 0.4], 0.04, 6, steel, steel);
+    solid(m, 0.6, y1 + 0.3, 0.4, 0.3, 0.22, 0.26, 0.4, steel, false);
+    panes.push(pane([0.6 + Math.sin(0.4) * 0.135, y1 + 0.41, 0.4 + Math.cos(0.4) * 0.135], [Math.cos(0.4), 0, -Math.sin(0.4)], 0.2, 0.14, [Math.sin(0.4), 0, Math.cos(0.4)], [0.6, 0.58, 0.5]));
+    bar(m, [-0.8, y1 + 0.07, -0.7], [-0.8, Math.min(4.05, y1 + 1.0), -0.7], steel, 0.012);
+    // the ladder up its back to the door: two rails and the rungs, foot on the ground
+    const lz = -hb + 0.08;
+    for (const x of [-0.25, 0.25]) bar(m, [x, 0, lz], [x, y0 + 0.05, -hc - 0.02], steel, 0.022);
+    for (let k = 1; k <= 4; k++) {
+      const t = k / 5, z = lz + (-hc - 0.02 - lz) * t, y = (y0 + 0.05) * t;
+      bar(m, [-0.25, y, z], [0.25, y, z], steel, 0.014);
+    }
+  } else {
+    // the cab torn off: its walls crumpled flat beside the plinth, a plate or two thrown, the roof plate on top, the
+    // ladder down
+    const cx = hb + 0.15 + rng() * 0.2, cz = (rng() - 0.5) * 0.6;
+    for (let i = 0; i < 4; i++) {
+      const a = i * Math.PI / 2 + (rng() - 0.5) * 0.3;
+      lump(m, cx + Math.cos(a) * 0.7, 0.2 + i * 0.07, cz + Math.sin(a) * 0.7, cab * 0.95, 0.06, 1.2 + rng() * 0.5, rng, steel, false, a, 0.25, BROKEN_CAP - 0.05);
+    }
+    lump(m, cx + 0.1, 0.48, cz - 0.1, cab + 0.3, 0.05, cab + 0.2, rng, steel, false, rng() * 0.6, 0.15, BROKEN_CAP - 0.02);
+    for (const x of [-0.25, 0.25]) bar(m, [x - 0.4, 0.04, -hb - 0.4], [x + 0.9, 0.06, -hb - 2.1 + rng() * 0.3], steel, 0.022);
+    for (let i = 0; i < 10; i++) {
+      const s = 0.12 + rng() * 0.25;
+      lump(m, (rng() - 0.5) * base, 0.1, (rng() - 0.5) * base, s * 1.5, s * 0.7, s, rng, conc, true, rng() * Math.PI, 0.5, BROKEN_CAP - 0.05);
+    }
+  }
+  return withPanes(m.geometry(), panes);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // public
 
 function mulberry32(a: number): Rng {
@@ -1554,6 +1841,8 @@ export const TEMPERATE_TONES: FortTones = {
 /** For the offline look tools: a style's two states, merged with nothing else. */
 export function buildForRender(o: { variant?: string; broken?: boolean; seed?: number; map?: string }): THREE.BufferGeometry {
   const f = o.map ? fortFor(o.map) : null;
+  if (o.variant === 'checkpoint') return buildCheckpointPost(f?.tones ?? TEMPERATE_TONES, o.seed ?? 7, !!o.broken);
+  if (o.variant === 'sentry') return buildSentryPost(f?.tones ?? TEMPERATE_TONES, o.seed ?? 7, !!o.broken);
   if (o.variant === 'teeth') return buildDragonsTeeth(14, f?.tones ?? TEMPERATE_TONES, o.seed ?? 7, (x, z) => 0.04 * x + 0.03 * Math.sin(z * 2));
   const style = f?.style ?? (o.variant as PillboxStyle) ?? 'regelbau', tones = f?.tones ?? TEMPERATE_TONES, seed = f?.seed ?? o.seed ?? 7;
   const body = buildPillbox(style, tones, seed, !!o.broken), bank = pillboxBerm(style, tones, seed);
