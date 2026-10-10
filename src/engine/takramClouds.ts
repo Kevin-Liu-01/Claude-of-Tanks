@@ -54,6 +54,8 @@ export const TAKRAM_SITE = Object.freeze({ latDeg: 35, lonDeg: 10 });
 const TAKRAM_WEATHER_REPEAT = 100;
 /** Metres per weather tile at that repeat (a cube face spans a quarter of a great circle). */
 const TAKRAM_WEATHER_TILE_M = (Math.PI / 2) * 6371000 / TAKRAM_WEATHER_REPEAT;
+/** How far the Beer shadow map's cascades reach (m; our cloud shade map spans 12 km around the camera). */
+const TAKRAM_SHADOW_FAR_M = 12000;
 const GOLDEN = 0.6180339887498949;
 /** The first-party blue-noise tile (Vite emits it beside the lazy chunk; a plain file URL under node). */
 const BLUE_NOISE_URL = new URL('./takramBlue128.bin', import.meta.url).href;
@@ -399,6 +401,9 @@ export class TakramTrial {
       effect.setDepthTexture(sceneDepth, THREE.BasicDepthPacking);
     }
     effect.sunDirection.copy(layer.atmosphere.sunDir).applyMatrix3(this.rotation).normalize();
+    // the Beer shadow map's cascades reach as far as our cloud shade square (12 km), not the camera's far plane (4 km):
+    // the ground's cloud shadows must not stop at 4 km in an establishing view
+    effect.shadow.farScale = TAKRAM_SHADOW_FAR_M / Math.max(1, camera.far);
     const prevTarget = renderer.getRenderTarget();
     const prevAutoClear = renderer.autoClear;
     try {
