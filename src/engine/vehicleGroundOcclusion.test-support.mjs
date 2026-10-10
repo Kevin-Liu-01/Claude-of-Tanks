@@ -95,11 +95,13 @@ export async function vehicleGroundGlslCases() {
   // a card's ambient share: 0.6 in the open, the whole of it under a belly (inside a footprint, below the belly) — of a
   // hull the pixel is a receiver of (a shoe of hull A, or the hull's own skin, takes none from it)
   const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  // (2026-10-10, round 3) all ambient only in the hull's own shadow: the ray toward the sun (here straight up) meets its box
   const underOf = (q, runs = null) => {
     const dx = Math.abs(q.x) - T90M.hx, dz = Math.abs(q.z - 0.5 * (T90M.fz0 + T90M.fz1)) - 0.5 * (T90M.fz1 - T90M.fz0);
-    const dOut = Math.hypot(Math.max(dx, 0), Math.max(dz, 0)), sd = dOut + Math.min(Math.max(dx, dz), 0);
+    const dOut = Math.hypot(Math.max(dx, 0), Math.max(dz, 0));
     if (M.isRunShoe(q, T90M, true, runs) || (q.y > T90M.yb + 0.02 && dOut < M.GROUND_AO_HULL_SKIN_M)) return 0;
-    return (1 - smooth(-M.GROUND_AO_EDGE_M, M.GROUND_AO_EDGE_M, sd)) * (q.y <= T90M.yb ? 1 : 0);
+    void smooth;
+    return M.hullSunShadow(q, T90M, { x: 0, y: 1, z: 0 });
   };
   const cardShare = (q, runs = null) => M.GROUND_AO_CARD_AMBIENT_SHARE + (1 - M.GROUND_AO_CARD_AMBIENT_SHARE) * underOf(q, runs);
   const geometry = {

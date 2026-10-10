@@ -394,6 +394,31 @@ export function combineVehicleGroundOcclusion(perHull: readonly number[], distan
   return Math.min(1 - vis, GROUND_AO_OCC_MAX) * (1 - smoothstep(GROUND_AO_RANGE_M - GROUND_AO_FADE_M, GROUND_AO_RANGE_M, distance));
 }
 
+/**
+ * 2026-10-10 (round 3; the owner on production: "super super dark rectangular shadows under tracks"): whether a ray from q
+ * toward the sun (s, the hull frame; any length) meets the hull — its solid over the belly (the footprint from the belly to
+ * the deck) or either run (its lane from the contact plane to the belly, the hull's length) — so a card (a grass blade: no
+ * sun state) at q stands in the hull's own shadow. A card took the whole ambient share wherever it stood inside the
+ * footprint below the belly, sunlit or not: the sunlit grass under a skirt or a side frame, past the track sideways and
+ * along the whole hull, went near black under a hard top edge at the belly's height (76 → 28 in display on the 207
+ * frames). 1 in the hull's shadow, 0 out of it.
+ */
+function rayMeetsBox(q: Vec3Like, s: Vec3Like, lo: readonly number[], hi: readonly number[]): boolean {
+  const o = [q.x, q.y, q.z], d = [s.x, s.y, s.z];
+  let tn = -Infinity, tf = Infinity;
+  for (let a = 0; a < 3; a++) {
+    const inv = 1 / (d[a] + 1e-7);
+    const t0 = (lo[a] - o[a]) * inv, t1 = (hi[a] - o[a]) * inv;
+    tn = Math.max(tn, Math.min(t0, t1)); tf = Math.min(tf, Math.max(t0, t1));
+  }
+  return tf >= Math.max(tn, 0);
+}
+export function hullSunShadow(q: Vec3Like, h: VehicleGroundHull, s: Vec3Like): number {
+  return rayMeetsBox(q, s, [-h.hx, h.yb, h.fz0], [h.hx, h.yt, h.fz1])
+    || rayMeetsBox(q, s, [h.xi, h.y0, h.fz0], [h.xo, h.yb, h.fz1])
+    || rayMeetsBox(q, s, [-h.xo, h.y0, h.fz0], [-h.xi, h.yb, h.fz1]) ? 1 : 0;
+}
+
 export interface VehicleGroundOcclusionUniforms {
   /** The hulls written this frame (0: the block is skipped). */
   uVehGround: THREE.IUniform<number>;
@@ -750,6 +775,20 @@ export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
       return dot( k0, max( 1.0 - abs( t - vec4( 0.0, 1.0, 2.0, 3.0 ) ), 0.0 ) )
            + dot( k1, max( 1.0 - abs( t - vec4( 4.0, 5.0, 6.0, 7.0 ) ), 0.0 ) );
     }
+    // (2026-10-10, round 3) a card at q in the hull's own shadow: the ray toward the sun s (the hull frame) meets the solid
+    // over the belly or either run (hullSunShadow)
+    float cotVgRayBox( vec3 q, vec3 inv, vec3 lo, vec3 hi ) {
+      vec3 t0 = ( lo - q ) * inv, t1 = ( hi - q ) * inv;
+      vec3 tmin = min( t0, t1 ), tmax = max( t0, t1 );
+      float tn = max( max( tmin.x, tmin.y ), tmin.z ), tf = min( min( tmax.x, tmax.y ), tmax.z );
+      return tf >= max( tn, 0.0 ) ? 1.0 : 0.0;
+    }
+    float cotVgSunShadow( vec3 q, vec3 s, vec4 b0, vec4 b1, vec4 b2 ) {
+      vec3 inv = 1.0 / ( s + vec3( 1e-7 ) );
+      return max( cotVgRayBox( q, inv, vec3( -b0.x, b0.y, b1.x ), vec3( b0.x, b0.z, b1.y ) ),
+        max( cotVgRayBox( q, inv, vec3( b2.z, b0.w, b1.x ), vec3( b2.w, b0.y, b1.y ) ),
+             cotVgRayBox( q, inv, vec3( -b2.w, b0.w, b1.x ), vec3( -b2.z, b0.y, b1.y ) ) ) );
+    }
     // one silhouette edge of Lambert's projected solid angle (a, b relative to the receiver; their lengths cancel)
     float cotVgEdge( vec3 a, vec3 b, vec3 n ) {
       vec3 c = cross( a, b );
@@ -805,7 +844,7 @@ ${GLSL_HULL_EDGES}
       vec3 N = vec3( 0.0, 1.0, 0.0 );
       bool haveN = false;
       float vis = 1.0;
-      float under = 0.0; // how far inside a footprint, below its belly, the pixel stands: no sun reaches it there
+      float under = 0.0; // a card in a hull's own shadow (no sun reaches it there): its light is all ambient
       for ( int i = 0; i < ${GROUND_AO_MAX_HULLS}; i++ ) {
         if ( float( i ) >= uVehGround ) break;
         vec4 m0 = uVehGroundM[ i * 3 ], m1 = uVehGroundM[ i * 3 + 1 ], m2 = uVehGroundM[ i * 3 + 2 ];
@@ -873,12 +912,17 @@ ${GLSL_HULL_EDGES}
         float sd = dOut + min( max( dd.x, dd.y ), 0.0 );
         float inside = 1.0 - smoothstep( ${f(-GROUND_AO_EDGE_M)}, ${f(GROUND_AO_EDGE_M)}, sd );
         vis *= 1.0 - min( ho, 1.0 ) * mix( sWall, sBelly, inside );
-        under = max( under, inside * step( q.y, b0.y ) );
+        // a card (no sun state) takes the whole ambient share only in the hull's own shadow (round 3: inside the footprint
+        // below the belly it did so sunlit too — a near-black band of sunlit grass under a skirt); with the sun under the
+        // horizon, inside the footprint below the belly as before
+        if ( sunVis < 0.0 && under < 1.0 ) under = max( under, uSunDir.y > 0.0
+          ? cotVgSunShadow( q, vec3( dot( m0.xyz, uSunDir ), dot( m1.xyz, uSunDir ), dot( m2.xyz, uSunDir ) ), b0, b1, b2 )
+          : inside * step( q.y, b0.y ) );
       }
       // (2026-10-10, round 3) the hulls' joint share capped: the ground keeps a part of its sky under any belly
       float occ = min( 1.0 - vis, ${f(GROUND_AO_OCC_MAX)} ) * fade;
       if ( occ <= 0.003 ) return 1.0;
-      // a card has no sun state: half in sun in the open, in the hull's own shade under its belly
+      // a card has no sun state: half in sun in the open, all ambient in a hull's own shadow
       float ambShare = mix( ${f(GROUND_AO_CARD_AMBIENT_SHARE)}, 1.0, under );
       if ( sunVis >= 0.0 ) {
         float T = uContactSunLum * max( dot( N, uSunDir ), 0.0 ) * clamp( sunVis, 0.0, 1.0 );

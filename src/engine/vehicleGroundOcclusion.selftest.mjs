@@ -15,7 +15,7 @@ import {
   GROUND_AO_HULL_SKIN_M, GROUND_AO_MAX_HULLS, GROUND_AO_NO_RUN_M, GROUND_AO_RANGE_M, GROUND_AO_REACH, GROUND_AO_RUN_KNOTS,
   GROUND_AO_UNDER_GROUND, VEHICLE_GROUND_OCCLUSION_GLSL, boxSkyOcclusion, combineVehicleGroundOcclusion,
   createVehicleGroundOcclusionUniforms, hullBottomAt, hullProxyOf, hullSkyOcclusion, isRunShoe, measureVehicleGroundHull, trackFloorAt,
-  runGapOcclusion, runTravelAt, underTrackOcclusion, updateVehicleGroundOcclusionUniforms, vehicleGroundOcclusionLocal,
+  hullSunShadow, runGapOcclusion, runTravelAt, underTrackOcclusion, updateVehicleGroundOcclusionUniforms, vehicleGroundOcclusionLocal,
   vehicleGroundStrengths,
 } from './vehicleGroundOcclusion.ts';
 import { T90M, T90M_RUN_TOP, UNION_POINTS } from './vehicleGroundOcclusion.test-support.mjs';
@@ -340,6 +340,24 @@ near(combineVehicleGroundOcclusion([0.6, 0.6], 10), GROUND_AO_OCC_MAX, 1e-12, 't
 assert.ok(combineVehicleGroundOcclusion([vehicleGroundOcclusionLocal({ x: 0, y: 0, z: 0 }, UP, T, snow)], 10) <= GROUND_AO_OCC_MAX,
   'snow under the belly keeps at least the cap\'s share of its sky');
 
+// ---- 5b. (2026-10-10, round 3) a card's sun: all ambient only in the hull's own shadow — the ray toward the sun meets its
+// box (the footprint from the contact plane to the deck). Inside the footprint below the belly a card took the whole
+// ambient share sunlit too: the sunlit grass under a skirt went near black under a hard edge at the belly's height
+{
+  const up = unit(0, 1, 0), lowSunRight = unit(1, 0.35, 0), lowSunLeft = unit(-1, 0.35, 0);
+  assert.equal(hullSunShadow({ x: 0, y: 0.1, z: 0 }, T, up), 1, 'under the belly, a high sun: shaded');
+  assert.equal(hullSunShadow({ x: T.hx - 0.05, y: 0.2, z: 0 }, T, lowSunRight), 0, 'under the right overhang, the sun low on the right: sunlit');
+  assert.equal(hullSunShadow({ x: T.hx - 0.05, y: 0.2, z: 0 }, T, lowSunLeft), 1, 'the same blade, the sun on the left: in the hull\'s shadow');
+  assert.equal(hullSunShadow({ x: T.hx + 1.0, y: 0.1, z: 0 }, T, lowSunLeft), 1, 'a metre out on the shadow side, a low sun: in its cast shadow');
+  assert.equal(hullSunShadow({ x: T.hx + 1.0, y: 0.1, z: 0 }, T, lowSunRight), 0, 'on the sunny side: sunlit');
+  assert.equal(hullSunShadow({ x: 0, y: 0.1, z: T.fz1 + 3 }, T, up), 0, 'ahead of the hull, a high sun: sunlit');
+  assert.equal(hullSunShadow({ x: 0, y: 2.0, z: 0 }, T, up), 0, 'over the deck: sunlit');
+  assert.equal(hullSunShadow({ x: 0, y: 0.1, z: 0 }, T, unit(1, 0.12, 0)), 1, 'under the belly, a grazing sun from the side: the run shades it');
+  assert.equal(hullSunShadow({ x: 0, y: 0.1, z: T.fz1 + 0.05 }, T, unit(0, 0.3, -1)), 1, 'just ahead of the glacis, a low sun from behind the hull: in its shadow');
+  assert.equal(hullSunShadow({ x: 0, y: 0.1, z: T.fz1 + 0.05 }, T, unit(0, 0.3, 1)), 0, 'the sun ahead: sunlit');
+
+}
+
 // ---- 6. the solid from a built root: contact geometry, the hull proxy's underside, the shoes (then the bands)
 function builtHull(name, { z = 0, bands = true, contact = true, shoes = true, slope = 0 } = {}) {
   const root = new THREE.Group(); root.name = name; root.position.set(0, 0, z);
@@ -515,6 +533,9 @@ assert.ok(g.includes(`float ambShare = mix( ${f4(GROUND_AO_CARD_AMBIENT_SHARE)},
 assert.match(g, /ambShare = A \/ max\( T \+ A, 1e-4 \);/, 'only the ambient share darkens');
 assert.match(g, /return 1\.0 - occ \* ambShare;/);
 assert.ok(g.includes(`float occ = min( 1.0 - vis, ${f4(GROUND_AO_OCC_MAX)} ) * fade;`), 'the hulls\' joint share capped once');
+assert.ok(g.includes('float cotVgSunShadow( vec3 q, vec3 s, vec4 b0, vec4 b1, vec4 b2 ) {')
+  && g.includes('? cotVgSunShadow( q, vec3( dot( m0.xyz, uSunDir ), dot( m1.xyz, uSunDir ), dot( m2.xyz, uSunDir ) ), b0, b1, b2 )')
+  && !g.includes('under = max( under, inside * step( q.y, b0.y ) );'), 'a card all ambient only in the hull\'s own shadow');
 assert.ok(!/2\.0404|Jimenez|fract\( sin/.test(g), 'no ground-albedo multi-bounce, no per-pixel noise');
 assert.ok(g.indexOf('if ( !haveN )') > g.lastIndexOf('continue;'), 'the depth normal only for a pixel some hull reaches');
 assert.ok(g.includes(`if ( q.y > b0.y + 0.02 && dOut < ${f4(GROUND_AO_HULL_SKIN_M)} ) continue;`), 'the hull\'s own skin is skipped');
