@@ -66,6 +66,30 @@ export interface CrushField {
   stale: boolean;
   /** Canvas: it drapes and drags (CLOTH). */
   readonly cloth: boolean;
+  /** A burst's dents (wave 351: a near miss must show): each a crater pushed in along its direction, packed
+   *  [cx, cy, cz, dx, dy, dz, r, depth] in the prop's frame, at most MAX_DENTS (the deepest kept). */
+  readonly dents: number[];
+}
+
+/** A prop keeps this many burst dents at most. */
+const MAX_DENTS = 6;
+
+/**
+ * A burst's dent on the prop: at (cx, cy, cz), pushed in along (dx, dy, dz) (unit) by `depth` at its middle, falling off
+ * over radius `r` as (1 − d²/r²)². Its own frame. Returns whether it was kept.
+ */
+export function addDent(f: CrushField, cx: number, cy: number, cz: number, dx: number, dy: number, dz: number, r: number, depth: number): boolean {
+  if (!(r > 0) || !(depth > 0)) return false;
+  if (f.dents.length >= MAX_DENTS * 8) {
+    // the shallowest goes when a deeper one comes
+    let worst = -1, least = depth;
+    for (let k = 0; k < f.dents.length; k += 8) if (f.dents[k + 7] < least) { least = f.dents[k + 7]; worst = k; }
+    if (worst < 0) return false;
+    f.dents.splice(worst, 8);
+  }
+  f.dents.push(cx, cy, cz, dx, dy, dz, r, depth);
+  f.touched = true;
+  return true;
 }
 
 /** A field over a footprint of half extents (hw, hl) about the prop's origin, its rest top `top`. */
@@ -76,7 +100,7 @@ export function createCrushField(hw: number, hl: number, top: number, cell = CRU
   const n = nx * nz;
   const cap = new Float32Array(n).fill(Infinity);
   return { x0, z0, nx, nz, cell, top: Math.max(0.2, top), cap, eff: new Float32Array(n).fill(Infinity),
-    pushX: new Float32Array(n), pushZ: new Float32Array(n), touched: false, stale: false, cloth };
+    pushX: new Float32Array(n), pushZ: new Float32Array(n), touched: false, stale: false, cloth, dents: [] };
 }
 
 /** Whether a hull rectangle (centre, unit forward, half extents; the prop's frame) meets the prop's box (half extents
@@ -231,6 +255,14 @@ export function deformPositions(f: CrushField, rest: ArrayLike<number>, out: Flo
         const lift = f.cloth ? CLOTH.lift : Math.max(0.25, Math.min(1, (y - FLOOR_M) / Math.max(0.4, f.top * 0.75)));
         nx += px * lift; nz += pz * lift;
       }
+    }
+    // a burst's dents: the panels facing it pushed in
+    for (let k = 0; k < f.dents.length; k += 8) {
+      const ex = x - f.dents[k], ey = y - f.dents[k + 1], ez = z - f.dents[k + 2], r = f.dents[k + 6];
+      const d2 = ex * ex + ey * ey + ez * ez;
+      if (d2 >= r * r) continue;
+      const q = 1 - d2 / (r * r), push = f.dents[k + 7] * q * q;
+      nx += f.dents[k + 3] * push; ny += f.dents[k + 4] * push; nz += f.dents[k + 5] * push;
     }
     out[v] = nx; out[v + 1] = Math.max(0.015, ny); out[v + 2] = nz;
   }

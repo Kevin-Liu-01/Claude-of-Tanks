@@ -10705,6 +10705,9 @@ ${snowCap ? `
     },
     // canvas drapes and drags as cloth (wave 352: "canvas never reads as cloth")
     cloth: (kind) => kind === 'tent' || (dPools.get(kind)?.meta.mat as string | undefined) === 'canvas',
+    // a vehicle a round destroys burns (its char over seconds, never a flip to the burnt pool), and a near miss shows on it
+    burns: (kind) => dPools.get(kind)?.meta.mat === 'vehicle',
+    onBurn: (x, y, z, heightM) => emitBreakFx('vehicleburn', x, y + 0.3, z, 0, 0, heightM),
   });
 
   // Loose bodies can cross the shell hash's 8 m cells. Re-key only on a cell
@@ -11080,6 +11083,21 @@ ${snowCap ? `
       }
     }
   }
+  /** A burst's near miss on the map vehicles round it (propCrushPresentation.ts blast): its reach grows with the charge's
+   *  cube root (a 125 mm HE shell about 5 m, a 152 mm about 6, a howitzer's 20 kg about 8.7). Presentation only. */
+  function blastNear(x: number, y: number, z: number, chargeKg: number): void {
+    const reach = Math.min(10, 3.2 * Math.cbrt(Math.max(0.1, chargeKg)));
+    for (const cell of cellsAround(x, z, x, z, reach + 4)) {
+      for (const idx of cell) {
+        const rec = destructibles[idx];
+        if (rec.dropped || rec.clutter || dPools.get(rec.kind)?.meta.mat !== 'vehicle') continue;
+        if (y > rec.y + rec.h + reach) continue;
+        const d = Math.max(0, Math.hypot(rec.x - x, rec.z - z) - rec.r * 0.6);
+        const strength = Math.pow(Math.max(0, 1 - d / reach), 1.2);
+        if (strength > 0.05) crushPress.blast(idx, x, y, z, strength);
+      }
+    }
+  }
   const registerDestructibles = (): (() => void) => registerWorldDestructibles({
     key: mapId,
     isActive: () => {
@@ -11090,6 +11108,7 @@ ${snowCap ? `
     },
     sweep: shellSweep,
     impact: shellImpact,
+    blast: blastNear,
   });
 
   // DESTRUCTIBLES r1: tossed-prop pose — ballistic arc along the impact

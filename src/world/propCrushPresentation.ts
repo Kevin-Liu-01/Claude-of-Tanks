@@ -14,7 +14,7 @@
  * being redrawn and is culled by its own bounds again.
  */
 import * as THREE from 'three';
-import { createCrushField, deformPositions, flatNormals, hullMeetsBox, pressField, sweepPose, type CrushField } from './propCrush.ts';
+import { addDent, createCrushField, deformPositions, flatNormals, hullMeetsBox, pressField, sweepPose, type CrushField } from './propCrush.ts';
 
 /** A destructible record as this reads it (props.ts DestructibleRecord). */
 export interface CrushRecordLike {
@@ -46,6 +46,10 @@ export interface PropCrushHost {
   eligible(kind: string): boolean;
   /** Whether a kind is canvas (a tent: it drapes and drags as cloth under the hull). */
   cloth?(kind: string): boolean;
+  /** Whether a kind burns when a round destroys it (the map vehicles): its char comes over seconds, then its burnt build. */
+  burns?(kind: string): boolean;
+  /** A prop began burning at (x, y, z), `heightM` tall (the fire and smoke the effects raise over it). */
+  onBurn?(x: number, y: number, z: number, heightM: number): void;
 }
 
 /** A crush event the presentation never pressed sweeps a hull across the prop over this long (s). */
@@ -55,6 +59,14 @@ const REDRAW_MAX = 4;
 const FREEZE_FRAMES = 30;
 /** The furthest a record's centre lies from a hull's whose box could reach it (m). */
 const REACH_PAD_M = 4.2;
+/** A burst's shove: over this long (s) the prop is thrown off and settles. */
+const SHOVE_S = 0.9;
+/** The burn (wave 350/351: no paint flip): the paint chars over CHAR_S once the fire has taken hold (CHAR_T0 s after the
+ *  kill), and the burnt build (glass, rubber and lamps gone, char and oxide) takes the copy's place at its end. */
+const CHAR_T0 = 0.6;
+const CHAR_S = 4.5;
+/** Char: the paint's colour at the end of its burn. */
+const CHAR_RGB = [0.07, 0.06, 0.055];
 
 interface CrushTarget {
   readonly index: number;
@@ -73,6 +85,14 @@ interface CrushTarget {
   frozen: boolean;
   /** A sweep in flight: its direction (the prop's frame), how far along (0..1). */
   sweep: { dx: number; dz: number; k: number } | null;
+  /** Its placement (the pool's slot matrix) and a burst's shove over it in flight: offset (world), lift, tilt axis and
+   *  angle, yaw, its clock. */
+  readonly placement: THREE.Matrix4;
+  shove: { ox: number; oz: number; lift: number; ax: number; az: number; tilt: number; yaw: number; t: number } | null;
+  /** The glass blown out (its triangles collapsed), once. */
+  glassOut: boolean;
+  /** Burning: its clock (s since the kill), the paint it chars from, whether the burnt build has taken its place. */
+  burn: { t: number; from: [number, number, number]; swapped: boolean } | null;
 }
 
 export interface PropCrushPresentation {
@@ -85,6 +105,12 @@ export interface PropCrushPresentation {
   takes(index: number, cause: string, dirX: number, dirZ: number, settled: boolean): boolean;
   /** Whether a crush event this side never pressed sweeps a hull across the prop (the battle: yes; the Studio: no). */
   setSweeps(on: boolean): void;
+  /**
+   * A burst near record `index` (wave 351: "a near miss must show on a civilian vehicle"): `strength` 0..1 (how near
+   * and how big). Its glass goes, the panels facing it dent, and it is shoved and lifted off and settles. Presentation
+   * only; a burst that destroys it is the simulation's (takes).
+   */
+  blast(index: number, x: number, y: number, z: number, strength: number): void;
   /** The frame's redraws (budgeted) and the sweeps in flight. */
   step(dt: number): void;
   /** Stand every copy's prop back up (the pools' slots restored, the copies gone). */
@@ -98,6 +124,8 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
   const order: CrushTarget[] = [];
   const near: number[] = [];
   const _m = new THREE.Matrix4(), _zero = new THREE.Matrix4().makeScale(0, 0, 0), _v = new THREE.Vector3(), _c = new THREE.Color();
+  const _m2 = new THREE.Matrix4(), _m3 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
+  const _axis = new THREE.Vector3();
   const _pose: number[] = [0, 0, 0, 0, 0, 0];
   let sweeps = true;
   let cursor = 0;
@@ -149,6 +177,7 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
       index, kind: rec.kind, mesh, geometry, rest: (src.getAttribute('position') as THREE.BufferAttribute).array as Float32Array,
       field: createCrushField(hw, hl, box.max.y, undefined, host.cloth?.(rec.kind) ?? false), inverse: new THREE.Matrix4().copy(matrix).invert(), fromBroken: source.broken,
       hw, hl, dirty: false, idle: 0, frozen: false, sweep: null,
+      placement: matrix.clone(), shove: null, glassOut: false, burn: null,
     };
     targets.set(index, target);
     order.push(target);
@@ -169,6 +198,91 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
       t.dirty = true; t.idle = 0;
       if (t.frozen) { t.frozen = false; t.mesh.frustumCulled = false; }
     }
+  }
+
+  /** Its glass blown out: every triangle all of whose corners are glass (the surface stream: glossy, not metal, not
+   *  paint) collapsed onto a point of itself, in the copy's own index. Once. */
+  function glassOut(t: CrushTarget): void {
+    if (t.glassOut) return;
+    t.glassOut = true;
+    const surf = t.geometry.getAttribute('surf') as THREE.BufferAttribute | undefined;
+    const index = t.geometry.index;
+    if (!surf || !index) return;
+    const a = surf.array as ArrayLike<number>, scale = surf.normalized ? 255 : 1;
+    const glass = (v: number): boolean => a[v * 3] < 0.12 * scale && a[v * 3 + 1] < 0.25 * scale && a[v * 3 + 2] < 0.05 * scale;
+    const ix = index.array as Uint16Array | Uint32Array;
+    let gone = 0;
+    for (let k = 0; k + 2 < ix.length; k += 3) {
+      if (glass(ix[k]) && glass(ix[k + 1]) && glass(ix[k + 2])) { ix[k + 1] = ix[k]; ix[k + 2] = ix[k]; gone++; }
+    }
+    if (gone) index.needsUpdate = true;
+  }
+
+  /** The copy's placement now: its slot's, under a burst's shove in flight (or settled) and a burn's settle. */
+  function place(t: CrushTarget): void {
+    const rec = host.records[t.index];
+    _m.copy(t.placement);
+    if (rec && (t.shove || (t.burn && !t.burn.swapped))) {
+      let ox = 0, oz = 0, oy = 0, tilt = 0, yaw = 0, ax = 1, az = 0;
+      if (t.shove) {
+        const k = Math.min(1, t.shove.t / SHOVE_S), ease = 1 - (1 - k) ** 3;
+        ox = t.shove.ox * ease; oz = t.shove.oz * ease;
+        oy = t.shove.lift * 4 * k * (1 - k);
+        // it rocks over, away from the burst, and comes back down onto its wheels
+        tilt = t.shove.tilt * Math.sin(Math.PI * k) * (1 - k * 0.6);
+        yaw = t.shove.yaw * ease; ax = t.shove.ax; az = t.shove.az;
+      }
+      // a burnt body settles onto its rims as its tyres go (until that is baked into its placement)
+      if (t.burn && !t.burn.swapped) oy -= 0.12 * Math.min(1, Math.max(0, (t.burn.t - CHAR_T0) / CHAR_S));
+      _q.setFromAxisAngle(_axis.set(ax, 0, az), tilt);
+      _q2.setFromAxisAngle(_axis.set(0, 1, 0), yaw);
+      _q.multiply(_q2);
+      _m2.makeTranslation(-rec.x, -rec.y, -rec.z);
+      _m3.makeRotationFromQuaternion(_q).multiply(_m2);
+      _m2.makeTranslation(rec.x + ox, rec.y + oy, rec.z + oz);
+      _m.premultiply(_m3).premultiply(_m2);
+    }
+    t.mesh.setMatrixAt(0, _m);
+    t.mesh.instanceMatrix.needsUpdate = true;
+  }
+
+  /** A round's kill on a vehicle (wave 350/351): its glass goes, the side facing the shot dents, and it burns — the fire
+   *  takes hold, the paint chars over seconds and the body settles onto its rims. `settled`: the end of all that at once. */
+  function burn(t: CrushTarget, dirX: number, dirZ: number, settled: boolean): void {
+    if (t.burn) return;
+    const rec = host.records[t.index];
+    glassOut(t);
+    if (rec) {
+      // the shot's side: from the vehicle toward where the round came from
+      _v.set(rec.x - dirX * 10, rec.y + 0.9, rec.z - dirZ * 10).applyMatrix4(t.inverse);
+      dentFrom(t, _v.x, _v.y, _v.z, 0.85);
+    }
+    const from: [number, number, number] = [1, 1, 1];
+    if (t.mesh.instanceColor) { t.mesh.getColorAt(0, _c); from[0] = _c.r; from[1] = _c.g; from[2] = _c.b; }
+    t.burn = { t: settled ? CHAR_T0 + CHAR_S + 1 : 0, from, swapped: false };
+    if (!settled && rec) host.onBurn?.(rec.x, rec.y, rec.z, t.field.top);
+    tint(t);
+    t.dirty = true; t.idle = 0;
+  }
+
+  /** The paint's char at the burn's clock. */
+  function tint(t: CrushTarget): void {
+    if (!t.burn || !t.mesh.instanceColor) return;
+    const k = Math.max(0, Math.min(1, (t.burn.t - CHAR_T0) / CHAR_S)), e = k * k * (3 - 2 * k);
+    _c.setRGB(t.burn.from[0] + (CHAR_RGB[0] - t.burn.from[0]) * e, t.burn.from[1] + (CHAR_RGB[1] - t.burn.from[1]) * e,
+      t.burn.from[2] + (CHAR_RGB[2] - t.burn.from[2]) * e);
+    t.mesh.setColorAt(0, _c);
+    t.mesh.instanceColor.needsUpdate = true;
+  }
+
+  /** A dent on the side facing a point (the prop's frame), its strength 0..1. */
+  function dentFrom(t: CrushTarget, px: number, py: number, pz: number, strength: number): void {
+    const top = t.field.top;
+    const cx = Math.max(-t.hw, Math.min(t.hw, px)), cy = Math.max(top * 0.25, Math.min(top * 0.85, py)), cz = Math.max(-t.hl, Math.min(t.hl, pz));
+    let dx = cx - px, dy = (cy - py) * 0.3, dz = cz - pz;
+    let l = Math.hypot(dx, dy, dz);
+    if (!(l > 1e-3)) { dx = -cx; dy = 0; dz = -cz; l = Math.hypot(dx, dz) || 1; }
+    addDent(t.field, cx, cy, cz, dx / l, dy / l, dz / l, 0.6 + 0.8 * strength, 0.05 + 0.17 * strength);
   }
 
   return {
@@ -206,9 +320,17 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     },
     takes(index, cause, dirX, dirZ, settled) {
       const have = targets.get(index);
-      if (have) return true;
       const rec = host.records[index];
-      if (!rec || !host.eligible(rec.kind) || cause !== 'ram') return false;
+      if (!rec || !host.eligible(rec.kind)) return false;
+      if (cause !== 'ram') {
+        // a round's kill: a vehicle burns (its char over seconds, never a flip); anything else keeps the pool's broken state
+        if (!host.burns?.(rec.kind)) return !!have;
+        const t = have ?? begin(index, true);
+        if (!t) return false;
+        burn(t, dirX, dirZ, settled);
+        return true;
+      }
+      if (have) return true;
       // (the record breaks this moment from its intact slot: breakRecord has marked it broken already)
       const t = begin(index, true);
       if (!t) return false;
@@ -229,7 +351,53 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
       return true;
     },
     setSweeps(on) { sweeps = on; },
+    blast(index, x, y, z, strength) {
+      if (!(strength > 0.05)) return;
+      const rec = host.records[index];
+      if (!rec || !host.burns?.(rec.kind)) return;
+      const t = begin(index);
+      if (!t) return;
+      const k = Math.min(1, strength);
+      _v.set(x, y, z).applyMatrix4(t.inverse);
+      dentFrom(t, _v.x, _v.y, _v.z, k);
+      if (k > 0.12) glassOut(t);
+      // the shove: away from the burst, lifted and rocked over, a little turned
+      let dx = rec.x - x, dz = rec.z - z;
+      const l = Math.hypot(dx, dz) || 1;
+      dx /= l; dz /= l;
+      const throwM = 0.08 + 0.7 * k * k;
+      const prev = t.shove;
+      const settledX = prev ? prev.ox : 0, settledZ = prev ? prev.oz : 0;
+      t.shove = { ox: settledX + dx * throwM, oz: settledZ + dz * throwM, lift: 0.3 * k * k, ax: dz, az: -dx, tilt: 0.22 * k,
+        yaw: (prev ? prev.yaw : 0) + 0.08 * k * (((index * 2654435761) >>> 0) % 2 ? 1 : -1), t: 0 };
+      t.dirty = true; t.idle = 0;
+      if (t.frozen) { t.frozen = false; t.mesh.frustumCulled = false; }
+    },
     step(dt) {
+      // the shoves and the burns in flight
+      for (const t of order) {
+        if (!t.shove && !(t.burn && !t.burn.swapped)) continue;
+        if (t.shove) {
+          t.shove.t += Math.max(0, dt);
+          if (t.shove.t >= SHOVE_S) {
+            // it lies where it was thrown: its frame (the presses' and the dents') follows it there
+            t.shove.t = SHOVE_S;
+          }
+        }
+        if (t.burn && !t.burn.swapped) { t.burn.t += Math.max(0, dt); tint(t); }
+        place(t);
+        t.idle = 0;
+        // both settled (a shove thrown, a burn charred): where it lies now is its placement — the presses' and the
+        // dents' frame follows it, a later shove builds on it
+        const shoveDone = !t.shove || t.shove.t >= SHOVE_S;
+        const burnDone = !t.burn || t.burn.swapped || t.burn.t >= CHAR_T0 + CHAR_S;
+        if (shoveDone && burnDone) {
+          t.mesh.getMatrixAt(0, t.placement);
+          t.inverse.copy(t.placement).invert();
+          t.shove = null;
+          if (t.burn) t.burn.swapped = true;
+        }
+      }
       // the sweeps in flight
       for (const t of order) {
         if (!t.sweep) continue;

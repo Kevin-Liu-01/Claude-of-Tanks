@@ -116,13 +116,14 @@ function poolOf(geometry, broken) {
   if (imB) { imB.count = 0; imB.setColorAt(0, new THREE.Color(0.4, 0.4, 0.4)); }
   return { mats4: [new THREE.Matrix4()], imI, imB };
 }
-function setup(broken = null) {
+function setup(broken = null, burns = false) {
   const group = new THREE.Group();
   const record = { kind: 'jeep', x: 0, y: 0, z: 0, r: 2.1, slot: 0, state: 0 };
   const pool = poolOf(jeep, broken);
+  const burnt = [];
   const press = createPropCrushPresentation({ group, records: [record], poolOf: () => pool, near: (a, b2, c, d, out) => { out.length = 0; out.push(0); return out; },
-    eligible: () => true });
-  return { group, record, pool, press };
+    eligible: () => true, burns: () => burns, onBurn: (x, y, z, h) => burnt.push([x, y, z, h]) });
+  return { group, record, pool, press, burnt };
 }
 const slotScale = (im, i) => { const m = new THREE.Matrix4(); im.getMatrixAt(i, m); return new THREE.Vector3().setFromMatrixScale(m).x; };
 {
@@ -192,6 +193,61 @@ const slotScale = (im, i) => { const m = new THREE.Matrix4(); im.getMatrixAt(i, 
   copy.geometry.computeBoundingBox();
   assert.ok(copy.geometry.boundingBox.max.y < 0.5, `the heap flattened where the tracks crossed it (${copy.geometry.boundingBox.max.y.toFixed(2)} m)`);
   assert.equal(slotScale(pool.imI, 0), 1, 'its intact slot untouched (the broken one stood in for it)');
+}
+{
+  // a near miss (wave 351): the glass goes, the side facing the burst dents, it is shoved off and settles — the same twice
+  const run = () => {
+    const { group, press } = setup(null, true);
+    press.blast(0, -4, 0.6, 0, 0.8);
+    for (let i = 0; i < 70; i++) press.step(DT);
+    return group.children[0];
+  };
+  const one = run(), two = run();
+  assert.ok(one, 'a near miss makes the copy');
+  const ix = one.geometry.index.array;
+  let collapsed = 0;
+  for (let k = 0; k < ix.length; k += 3) if (ix[k] === ix[k + 1] && ix[k] === ix[k + 2]) collapsed++;
+  assert.ok(collapsed > 10, `its glass blown out (${collapsed} triangles)`);
+  const pos = one.geometry.getAttribute('position').array;
+  let dented = 0;
+  for (let v = 0; v < pos.length; v += 3) if (rest[v] < -hw * 0.6 && pos[v] > rest[v] + 0.02) dented++;
+  assert.ok(dented > 20, `the side facing the burst dented in (${dented} points)`);
+  const m = new THREE.Matrix4();
+  one.getMatrixAt(0, m);
+  const at = new THREE.Vector3().setFromMatrixPosition(m);
+  assert.ok(at.x > 0.3 && at.x < 0.8 && Math.abs(at.y) < 1e-3, `shoved off the burst and settled on the ground (${at.x.toFixed(2)}, ${at.y.toFixed(3)})`);
+  const m2 = new THREE.Matrix4();
+  two.getMatrixAt(0, m2);
+  assert.deepEqual(m2.elements, m.elements, 'the same near miss shoves it the same');
+  console.log(`  near miss: ${collapsed} glass triangles out, ${dented} points dented, shoved ${at.x.toFixed(2)} m`);
+}
+{
+  // a round's kill on a vehicle: it burns — the fire raised once, the paint chars over seconds (no flip), it settles
+  const { group, record, press, burnt, pool } = setup(null, true);
+  record.state = 1;
+  assert.equal(press.takes(0, 'shell', 1, 0, false), true, 'a round\'s kill on a vehicle is the press\'s (it burns)');
+  assert.equal(burnt.length, 1, 'its fire raised once');
+  const copy = group.children[0];
+  const c = new THREE.Color();
+  copy.getColorAt(0, c);
+  assert.ok(Math.abs(c.g - 0.5) < 1e-6, 'at the kill it still wears its paint');
+  for (let i = 0; i < 60 * 2.5; i++) press.step(DT);
+  copy.getColorAt(0, c);
+  assert.ok(c.g < 0.5 && c.g > 0.08, `it chars over seconds (green ${c.g.toFixed(3)} at 2.5 s)`);
+  for (let i = 0; i < 60 * 4; i++) press.step(DT);
+  copy.getColorAt(0, c);
+  assert.ok(c.g < 0.07, `charred by the end (green ${c.g.toFixed(3)})`);
+  const m = new THREE.Matrix4();
+  copy.getMatrixAt(0, m);
+  assert.ok(Math.abs(new THREE.Vector3().setFromMatrixPosition(m).y + 0.12) < 1e-3, 'settled onto its rims');
+  assert.equal(pool.imB, null, 'no broken pool needed');
+  // settled (a late joiner): charred at once, no fire raised
+  const late = setup(null, true);
+  late.record.state = 1;
+  late.press.takes(0, 'shell', 1, 0, true);
+  late.press.step(0);
+  late.group.children[0].getColorAt(0, c);
+  assert.ok(c.g < 0.07 && late.burnt.length === 0, 'settled: charred at once, no fire');
 }
 console.log('propCrush: a vehicle gives at contact and pancakes under the tracks, never rising, the same twice; the far side of a clip stands; '
   + 'the copy keeps its livery, the sim\'s crush swaps nothing, unseen crushes sweep (not in the Studio), heaps flatten again PASS');
