@@ -1,4 +1,4 @@
-import { OLYMPUS_SETTLEMENT } from './marsSettlement.ts';
+import { MARS_OUTPOSTS, OLYMPUS_SETTLEMENT } from './marsSettlement.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 import { MARS_SKY_PRESET } from '../../engine/marsAtmosphere.ts';
 // src/world/maps/mars.ts — Olympus Basin: a rust-red impact basin under a galaxy sky, its research
@@ -131,7 +131,7 @@ export default {
   },
 
   props: {
-    orbitalSettlement: OLYMPUS_SETTLEMENT,
+    orbitalSettlement: [...OLYMPUS_SETTLEMENT, ...MARS_OUTPOSTS],
     yardClutter: false,
     // sourced building tints (sourcedTextures BUILDING plan): the badlands dust set for the station's huts
     sourcedPalette: 'badlands',
