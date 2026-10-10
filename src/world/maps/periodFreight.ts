@@ -47,6 +47,17 @@ export const FREIGHT_MIX: Readonly<Record<string, readonly (readonly [FreightFor
 });
 const DEFAULT_MIX: readonly (readonly [FreightForm, number])[] = [['tarp', 0.55], ['crates', 0.45]];
 
+/**
+ * True where the rail kit's container row (railKit.ts makeContainerRow) draws period freight: a pre-container
+ * battlefield with its own mix. (2026-10-10, the freight landing's gate: Titan Gorge and Skybridge, both 1965, have
+ * container-row lots their regional kits rebuild — a trailer, a house — over the rail kit's base row, whose bounds the
+ * kit fills; freight stacks there moved the kits' records. Without a mix of its own a map keeps the base row its kit
+ * replaces, as before.)
+ */
+export function drawsPeriodFreight(mapId: string | null | undefined): boolean {
+  return precedesIsoContainer(mapId) && Object.prototype.hasOwnProperty.call(FREIGHT_MIX, mapId as string);
+}
+
 /** The seat's form from the map's mix and one draw of the seat's own stream. */
 export function freightForm(mapId: string, u: number): FreightForm {
   const mix = FREIGHT_MIX[mapId] ?? DEFAULT_MIX;
