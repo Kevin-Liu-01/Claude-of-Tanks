@@ -173,7 +173,8 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
       const draws: number[] = [];
       for (let n = 0; n < 40; n++) draws.push(o.random());
       let cursor = 0;
-      turretLaunchVelocity(pop ? 'ammorack' : 'shot', (o.spec.weightTons ?? 40) * scale ** 3, () => draws[(cursor++) % draws.length], hv);
+      turretLaunchVelocity(pop ? 'ammorack' : 'shot', (o.spec.weightTons ?? 40) * scale ** 3, () => draws[(cursor++) % draws.length], hv,
+        profile.shape.mass);
       localSlot = world.spawn(profile.shape, {
         x: startPos.x, y: startPos.y, z: startPos.z, qx: startQuat.x, qy: startQuat.y, qz: startQuat.z, qw: startQuat.w,
         vx: hv[0], vy: hv[1], vz: hv[2], wx: hv[3], wy: hv[4], wz: hv[5], owner: 1,

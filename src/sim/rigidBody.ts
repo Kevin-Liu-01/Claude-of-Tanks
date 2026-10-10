@@ -22,8 +22,8 @@
  *    restitution above an approach speed, warm started per sphere and partner) and penetration by a split impulse
  *    (pseudo velocities that move the body without adding energy). Semi-implicit Euler at a fixed step; quaternion
  *    orientation; linear and angular drag; rolling resistance while touching.
- *  - A body whose speed stays under the sleep thresholds for SLEEP_STEPS sleeps: its pose freezes where the physics
- *    put it. A moving kinematic box, an awake body or a kick wakes it; a sleeper re-checks its support every
+ *  - A body whose speed stays under the sleep thresholds for SLEEP_STEPS, without speeding up meanwhile, sleeps: its
+ *    pose freezes where the physics put it (one tipping slowly off an edge is not at rest and keeps going). A moving kinematic box, an awake body or a kick wakes it; a sleeper re-checks its support every
  *    SUPPORT_CHECK_STEPS (a crater dug or a building gone under it wakes it).
  *  - Hard landings are reported (`impact*` arrays: point, approach speed, mass, partner kind) for dust and sound.
  *
@@ -46,6 +46,14 @@ const CONTACT_MARGIN_M = 0.02;
 const SLEEP_LINEAR_MPS = 0.07;
 const SLEEP_ANGULAR_RADS = 0.12;
 const SLEEP_STEPS = 36;
+/**
+ * A body speeding up through its quiet window is leaving a balance (an edge, a corner, a gun propping it), not
+ * resting: its window starts again. Growth is the end of the window against its start (squared speeds), above a
+ * floor that a body at rest never reaches (rad/s, m/s) and a genuinely centred one (within about 0.2°) never leaves.
+ */
+const REST_GROWTH = 2.5;
+const REST_FLOOR_RADS = 0.015;
+const REST_FLOOR_MPS = 0.012;
 /** A body that never settles (pinned between movers, a numerical edge) sleeps anyway after this many steps (25 s). */
 const FORCE_SLEEP_STEPS = 1500;
 /** A sleeper checks it still stands on something this often (steps). */
@@ -96,6 +104,12 @@ export type RigidPartSpec =
     edgeRadius?: number;
     /** false: the part has mass and a solid but lays no contact spheres (a part inside another). */
     contacts?: boolean;
+    /**
+     * The part's own contact points (authoring frame) in place of the box's face grid: a body whose real outline is
+     * not its box (a turret: sloped cheeks, a bustle, a sight on the roof) meets the world where its outline is, and
+     * comes to rest only on faces it really has. Spheres of `edgeRadius` centred on them (lay them inset by it).
+     */
+    points?: readonly Vec3[];
   }
   | { kind: 'capsule'; a: Vec3; b: Vec3; radius: number; mass: number; spacing?: number; contacts?: boolean }
   | {
@@ -425,7 +439,12 @@ export function createRigidShape(parts: readonly RigidPartSpec[], options: Rigid
       if (part.kind === 'box') {
         const longest = 2 * Math.max(part.half[0], part.half[1], part.half[2]);
         const spacing = (part.spacing ?? Math.max(0.9, longest / 5)) * widen;
-        if (part.contacts !== false) boxSpheres(build, part, spacing);
+        if (part.contacts !== false) {
+          if (part.points) {
+            const e = part.edgeRadius ?? Math.min(0.04, Math.min(part.half[0], part.half[1], part.half[2]) / 3);
+            for (const point of part.points) pushSphere(build, point[0], point[1], point[2], e);
+          } else boxSpheres(build, part, spacing);
+        }
         const q = part.rotation ?? [0, 0, 0, 1];
         build.solids.push(SOLID_BOX, part.center[0], part.center[1], part.center[2], q[0], q[1], q[2], q[3],
           part.half[0], part.half[1], part.half[2], 0, 0, 0);
@@ -543,6 +562,8 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
   const asleep = new Uint8Array(capacity);
   const age = new Uint32Array(capacity);
   const restSteps = new Uint16Array(capacity);
+  // squared speeds at the start of the quiet window (the sleep veto's reference)
+  const restV2 = new Float64Array(capacity), restW2 = new Float64Array(capacity);
   const supportClock = new Uint16Array(capacity);
   const impactCooldown = new Uint8Array(capacity);
   const owner = new Int32Array(capacity).fill(-1);
@@ -1444,9 +1465,18 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
     const v2 = vx[i] * vx[i] + vy[i] * vy[i] + vz[i] * vz[i];
     const w2 = wx[i] * wx[i] + wy[i] * wy[i] + wz[i] * wz[i];
     if (touching[i] && v2 < SLEEP_LINEAR_MPS * SLEEP_LINEAR_MPS && w2 < SLEEP_ANGULAR_RADS * SLEEP_ANGULAR_RADS) {
+      if (restSteps[i] === 0) { restV2[i] = v2; restW2[i] = w2; }
       if (restSteps[i] < 65535) restSteps[i]++;
     } else restSteps[i] = 0;
-    if (restSteps[i] >= SLEEP_STEPS || age[i] >= FORCE_SLEEP_STEPS) putToSleep(i);
+    if (age[i] >= FORCE_SLEEP_STEPS) { putToSleep(i); return; }
+    if (restSteps[i] < SLEEP_STEPS) return;
+    if (w2 > REST_GROWTH * restW2[i] + REST_FLOOR_RADS * REST_FLOOR_RADS
+      || v2 > REST_GROWTH * restV2[i] + REST_FLOOR_MPS * REST_FLOOR_MPS) {
+      // still quiet but faster than when the window opened: it is tipping off something, let it go
+      restSteps[i] = 1; restV2[i] = v2; restW2[i] = w2;
+      return;
+    }
+    putToSleep(i);
   }
 
   function putToSleep(i: number): void {

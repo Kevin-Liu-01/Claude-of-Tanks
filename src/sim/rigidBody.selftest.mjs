@@ -269,6 +269,49 @@ function slopeRun() {
 }
 
 // --- 12. no allocation per step (heap stays flat across many steps once warm)
+// --- a box balanced on an edge a hair off its balance tips over in the rigid fall's own time: it never falls asleep up
+// there (the sleep window sees it speeding up), and a box set square on its face sleeps at once
+{
+  const fallTime = (theta0, a) => { // the inverted pendulum about the edge, numerically
+    const d = a / Math.SQRT2, inertia = (2 / 3) * a * a;
+    let th = theta0, w = 0, t = 0;
+    while (th < Math.PI / 4 && t < 20) { w += (9.81 * d / inertia) * Math.sin(th) * 1e-4; th += w * 1e-4; t += 1e-4; }
+    return t;
+  };
+  for (const tiltDeg of [0.5, 2]) {
+    const world = createRigidWorld({ capacity: 1, kinematicCapacity: 0 });
+    world.bindEnvironment(flat);
+    const t = tiltDeg * Math.PI / 180, ang = Math.PI / 4 + t, d = Math.SQRT2;
+    const slot = world.spawn(createRigidBox(1, 1, 1, 2000), { x: -Math.sin(t) * d, y: Math.cos(t) * d + 0.001, z: 0, qz: Math.sin(ang / 2), qw: Math.cos(ang / 2) });
+    let flatAt = -1;
+    for (let n = 1; n <= 480 && flatAt < 0; n++) {
+      world.step();
+      assert.ok(!world.asleep[slot] || flatAt >= 0, `asleep on its edge at ${(n / 60).toFixed(2)} s (${tiltDeg}°)`);
+      if (Math.abs(2 * Math.atan2(world.qz[slot], world.qw[slot]) - Math.PI / 4) >= Math.PI / 4 - 0.02) flatAt = n / 60;
+    }
+    const expected = fallTime(t, 2);
+    assert.ok(flatAt > 0 && Math.abs(flatAt - expected) < 0.15, `${tiltDeg}° off its edge it lands flat at ${flatAt.toFixed(2)} s (rigid fall ${expected.toFixed(2)} s)`);
+  }
+  const world = createRigidWorld({ capacity: 1, kinematicCapacity: 0 });
+  world.bindEnvironment(flat);
+  const slot = world.spawn(createRigidBox(1, 1, 1, 2000), { x: 0, y: 1.0005, z: 0 });
+  const asleepAt = stepUntilAsleep(world, slot, 120);
+  assert.ok(asleepAt > 0 && asleepAt <= 40, `square on its face it sleeps at once (${asleepAt} steps)`);
+}
+
+// --- a box's own contact points (a turret's outline) replace its face grid: it meets the ground where they are
+{
+  const points = [[-0.9, -0.46, -1.4], [0.9, -0.46, -1.4], [0.9, -0.46, 1.4], [-0.9, -0.46, 1.4], [-0.5, 0.46, -1], [0.5, 0.46, -1], [0.5, 0.46, 1], [-0.5, 0.46, 1]];
+  const shape = createRigidShape([{ kind: 'box', center: [0, 0, 0], half: [1, 0.5, 1.5], mass: 9000, points, edgeRadius: 0.04 }]);
+  assert.equal(shape.sphereCount, 8, 'one sphere a point');
+  const world = createRigidWorld({ capacity: 1, kinematicCapacity: 0 });
+  world.bindEnvironment(flat);
+  const slot = world.spawn(shape, { x: 0, y: 1, z: 0 });
+  assert.ok(stepUntilAsleep(world, slot) > 0, 'it settles on its base');
+  world.framePose(slot, pose);
+  assert.ok(Math.abs(pose[1] - 0.5) < 0.01, `it sits on its points' footprint (centre ${pose[1].toFixed(3)} m; its box's face is 0.04 lower)`);
+}
+
 if (typeof globalThis.gc === 'function') {
   const world = createRigidWorld({ capacity: 16 });
   world.bindEnvironment(slope);
@@ -283,4 +326,4 @@ if (typeof globalThis.gc === 'function') {
   assert.ok(grown < 512 * 1024, `the heap stays flat across 4,000 steps (${(grown / 1024).toFixed(0)} KB)`);
 }
 
-console.log('rigidBody.selftest: drop + sleep, impact reports, slope tumble, bit-identical reruns, rolling drum, static walls and vanished roofs, kinematic decks and shoves, stacks, compound turret with gun, interpolation, wedged piles at rest');
+console.log('rigidBody.selftest: drop + sleep, impact reports, slope tumble, bit-identical reruns, rolling drum, static walls and vanished roofs, kinematic decks and shoves, stacks, compound turret with gun, interpolation, wedged piles at rest, edges tip in the rigid fall time, box contact points');
