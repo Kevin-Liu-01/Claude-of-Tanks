@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {Group,Vector3,Box3,Object3D} from 'three';
-import {DRONE_DESIGNS,createDroneModelKit,poseDroneRotor} from './droneModel.ts';
+import {DRONE_DESIGNS,createDroneModelKit,poseDroneRotor,droneRotorDirection} from './droneModel.ts';
 import {DRONE_DOCK_ENVELOPE,DRONE_DOCK_VOLUMES,DRONE_DOCK_HEIGHT_M} from '../sim/missionAttachment.ts';
 import {createDronePresentation} from './dronePresentation.ts';
 const shapes=new Set(),colors=new Set(),pose=new Object3D(),point=new Vector3();
@@ -17,19 +17,23 @@ const proveCovered=geometry=>{
   assert.ok(stock.some(b=>trianglePoints.every(p=>b.containsPoint(p))),'whole finite triangle belongs to a protected stock volume: '+trianglePoints.map(v=>v.toArray()));
  }
 };
-for(const nation of Object.keys(DRONE_DESIGNS)){
- const kit=createDroneModelKit(nation);kit.body.computeBoundingBox();
- assert.ok(kit.body.getAttribute('position').count>1800,'motor bells, wiring, guards and feet are modeled');
+for(const nation of Object.keys(DRONE_DESIGNS))for(const detail of ['full','lite']){
+ const kit=createDroneModelKit(nation,detail);kit.body.computeBoundingBox();
+ if(detail==='full')assert.ok(kit.body.getAttribute('position').count>1800,'motor bells, wiring, guards and feet are modeled');
+ assert.equal(kit.parts.length,4,'four merged airframe materials: composite, paint, metal, glass');
  assert.ok(kit.body.boundingBox.min.y>=-.25,'landing gear clears the dock');
  const assembly=new Box3();
- for(const geometry of [kit.body,kit.equipment,kit.lens]){proveCovered(geometry);geometry.computeBoundingBox();assembly.union(geometry.boundingBox);assert.ok(Array.from(geometry.attributes.position.array).every(Number.isFinite),'finite mesh positions');}
+ for(const geometry of [kit.body,kit.equipment,kit.metal,kit.lens]){proveCovered(geometry);geometry.computeBoundingBox();assembly.union(geometry.boundingBox);assert.ok(Array.from(geometry.attributes.position.array).every(Number.isFinite),'finite mesh positions');}
  kit.rotor.computeBoundingBox();
- for(let i=0;i<4;i++)for(let step=0;step<72;step++){poseDroneRotor(pose,i,step*Math.PI/36);for(let v=0;v<kit.rotor.attributes.position.count;v++){point.fromBufferAttribute(kit.rotor.attributes.position,v).applyMatrix4(pose.matrix);assembly.expandByPoint(point);point.y+=DRONE_DOCK_HEIGHT_M;assert.ok(pointFits(point),'spinning rotor stays inside finite rotor stock');}rotorChecks++;}
+ for(const rotor of [kit.rotor,kit.rotorBlur])for(let i=0;i<4;i++)for(let step=0;step<72;step++){poseDroneRotor(pose,i,step*Math.PI/36);for(let v=0;v<rotor.attributes.position.count;v++){point.fromBufferAttribute(rotor.attributes.position,v).applyMatrix4(pose.matrix);assembly.expandByPoint(point);point.y+=DRONE_DOCK_HEIGHT_M;assert.ok(pointFits(point),'spinning rotor (blades and blur disc) stays inside finite rotor stock');}rotorChecks++;}
  assembly.translate(new Vector3(0,DRONE_DOCK_HEIGHT_M,0));assert.ok(fits(assembly),nation+': complete rotating airframe is inside the clearance envelope');
  assert.ok(Math.abs(assembly.min.y-.039)<.001,nation+': landing skids contact the actual cradle pads');
  assert.ok(!fits(assembly.clone().expandByScalar(.1)),'oversize airframe negative control fails');
- shapes.add(kit.body.getAttribute('position').count);colors.add(kit.equipmentMaterial.color.getHex());kit.dispose();
+ if(detail==='full'){shapes.add(kit.body.getAttribute('position').count);colors.add(kit.equipmentMaterial.color.getHex());}
+ kit.dispose();
 }
+// Counter-rotating diagonal pairs: each prop's twist faces its own airflow (mirrored blade set).
+assert.deepEqual([0,1,2,3].map(droneRotorDirection),[1,-1,-1,1],'diagonal rotors share a direction, neighbours oppose');
 assert.ok(shapes.size>=4,'four distinct structural airframes');assert.ok(colors.size>=12,'national service palettes');
 const root=new Group(),pool=createDronePresentation(root);pool.begin(1);
 for(let i=0;i<60;i++)pool.write(new Vector3(),new Vector3(),i,0,1,i%2?'China':'USA');pool.end();

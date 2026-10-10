@@ -1218,7 +1218,7 @@ bus.on('ui:battleStart', () => {
 
 let garagePreviewMode = 'standard';
 const garageModePreview = createGarageModePreviewRuntime({
-  load: () => import('./game/garageModePreview.ts').then(module => module.createGarageModePreview()),
+  load: () => import('./game/garageModePreview.ts').then(module => module.createGarageModePreview(engineCtx)),
   prepare: async (root, current) => {
     // Match the real Garage forward targets and light layers. A generic
     // composer compile can leave the revealed frame to link a new variant.

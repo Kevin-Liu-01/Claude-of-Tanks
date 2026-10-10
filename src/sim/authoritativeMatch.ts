@@ -1,5 +1,5 @@
 import type { ModeCheckpoint } from './matchModes.ts';
-import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, type AerialCheckpoint, type AerialView } from './aerialCombat.ts';
+import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
 import { setModeWeapon } from './modeLoadout.ts';
 import { packSmokeScreen } from './smokeReceipt.ts';
 import { requestAuxiliary, stepRoofGun, auxiliaryShot, smokeBlocks, type SmokeScreen } from './auxiliarySystems.ts';
@@ -764,6 +764,17 @@ export function createAuthoritativeMatch({
   let nextShellId = 1;
   const nextAerialShellId = () => nextShellId++;
   const launchAerialShell = (shell: DamageShell) => { shells.push(shell); };
+  // Drones fly the match-owned collision lease (or the bare heightfield): the same query the shells sweep.
+  const _aerialFrom = new Vector3(), _aerialTo = new Vector3();
+  const aerialWorld: AerialWorldQuery = {
+    raycast(origin, direction, maxDist) {
+      _aerialFrom.set(origin.x, origin.y, origin.z);
+      _aerialTo.set(origin.x + direction.x * maxDist, origin.y + direction.y * maxDist, origin.z + direction.z * maxDist);
+      const hit = segmentWorldHit(worldCollision, heightField, _aerialFrom, _aerialTo);
+      return hit ? { dist: hit.t * maxDist, normal: hit.normal ?? null } : null;
+    },
+    tankAlong: (origin, direction, maxDist, ownerId) => droneTankAlong(entities, origin, direction, maxDist, ownerId),
+  };
   let timeS = 0;
   let modeTimeOffsetS = 0;
   let fireTickAcc = 0;
@@ -1903,7 +1914,8 @@ export function createAuthoritativeMatch({
       const localDistance = Math.max(0, worldHit.t * remaining);
       const distance = travelled + localDistance;
       if (distance >= tankDistance) return null;
-      if (!shellPassesThroughCollisionRecord(worldHit.record)) {
+      // A drone is an airframe, not a slug: light cover that a shell punches through stops it (it detonates there).
+      if (shell.spec.tracer === 'DRONE' || !shellPassesThroughCollisionRecord(worldHit.record)) {
         worldHit.t = distance / segmentLength;
         return worldHit;
       }
@@ -2356,7 +2368,7 @@ export function createAuthoritativeMatch({
     timeS += dt;
     refreshModeBotRoutes();
     updateEntityControls(dt, inputs);
-    for (const entity of entities) stepAerial(entity, timeS + modeTimeOffsetS, dt, nextAerialShellId, launchAerialShell);
+    for (const entity of entities) stepAerial(entity, timeS + modeTimeOffsetS, dt, nextAerialShellId, launchAerialShell, aerialWorld);
     advanceTankMovement(dt);
     advanceTankContacts(dt);
     advanceRollover(dt);

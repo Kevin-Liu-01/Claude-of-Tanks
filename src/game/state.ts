@@ -1,4 +1,4 @@
-import { initializeAerial, stepAerial, isGunship, type AerialView } from '../sim/aerialCombat.ts';
+import { initializeAerial, stepAerial, isGunship, droneTankAlong, type AerialView, type AerialWorldQuery } from '../sim/aerialCombat.ts';
 import { setModeWeapon } from '../sim/modeLoadout.ts';
 import { requestAuxiliary, stepRoofGun, auxiliaryShot, smokeBlocks, type SmokeScreen } from '../sim/auxiliarySystems.ts';
 import { bridgeBallFloor } from '../sim/bridgeBallSupport.ts';
@@ -2197,7 +2197,8 @@ function traceBlockingWorldShellHit(
     const localDistance = Math.max(0, hit.dist);
     const distance = travelled + localDistance;
     if (distance >= tankDistance) return null;
-    if (!shellPassesThroughCollisionRecord(hit.record)) return { hit, distance };
+    // A drone is an airframe, not a slug: light cover that a shell punches through stops it (it detonates there).
+    if (shell.spec.tracer === 'DRONE' || !shellPassesThroughCollisionRecord(hit.record)) return { hit, distance };
 
     crushWorldPropFromShell(world, bus, shell, hit);
     const advance = Math.min(
@@ -3008,6 +3009,14 @@ function silenceGunsAfterVerdict(game: SoloGameState): void {
   for (const entity of game.tanks) entity.input.fire = false;
 }
 
+let _aerialWorldGame: SoloGameState | null = null, _aerialWorldSource: SoloWorld | null = null;
+const _aerialWorld: AerialWorldQuery = {
+  raycast: (origin, direction, maxDist) => _aerialWorldSource?.raycast(origin, direction, maxDist) ?? null,
+  tankAlong: (origin, direction, maxDist, ownerId) => (
+    _aerialWorldGame ? droneTankAlong(_aerialWorldGame.tanks, origin, direction, maxDist, ownerId) : null
+  ),
+};
+
 /**
  * One fixed simulation step. Ordering is authoritative: sensing and AI write
  * input before movement; contacts resolve before weapons; projectiles resolve
@@ -3031,7 +3040,10 @@ export function simStep(
   silenceGunsAfterVerdict(game);
   applyBotSupportActions(game, bus);
   const aerialCallbacks = game.aerialCallbacks ??= { nextId: () => game.nextShellId++, launch: shell => { game.shells.push(shell); } };
-  for (const entity of game.tanks) stepAerial(entity, game.timeS, SIM_DT, aerialCallbacks.nextId, aerialCallbacks.launch);
+  // Drones fly the match-owned world collision (the shells' own raycast): look-ahead avoidance, never through it.
+  _aerialWorldGame = game; _aerialWorldSource = world;
+  for (const entity of game.tanks) stepAerial(entity, game.timeS, SIM_DT, aerialCallbacks.nextId, aerialCallbacks.launch, _aerialWorld);
+  _aerialWorldGame = null; _aerialWorldSource = null;
   stepTankMovement(game, bus, world, rig, collider);
   resolveTankBodyContacts(game.tanks, SIM_DT,
     (upper, lower, closing, nx, nz) =>

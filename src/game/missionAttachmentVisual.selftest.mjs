@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { Group, Vector3, Euler, Mesh, BoxGeometry, MeshBasicMaterial, InstancedMesh, Matrix4, Ray } from 'three';
 import { syncMissionAttachment, clearMissionAttachment } from './missionAttachmentVisual.ts';
-import { missionAttachmentFor, missionAttachmentTurretPivot, DRONE_DOCK_HEIGHT_M } from '../sim/missionAttachment.ts';
+import { missionAttachmentFor, missionAttachmentTurretPivot, missionCradleVolumes, DRONE_DOCK_HEIGHT_M } from '../sim/missionAttachment.ts';
 import {createTank} from '../vehicles/tankFactory.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 import {initializeAerial,stepAerial} from '../sim/aerialCombat.ts';
@@ -25,15 +25,23 @@ for(const id of ['m1a2','kf41_lynx_x','strv103'])for(const scale of [1,.8]){
  }
  const disposal=new Map();
  rail.traverse(o=>{if(!o.isMesh)return;for(const resource of [o.geometry,...(Array.isArray(o.material)?o.material:[o.material])]){if(disposal.has(resource))continue;disposal.set(resource,0);resource.addEventListener('dispose',()=>disposal.set(resource,disposal.get(resource)+1));}});
- const platform=rail.children.find(o=>o.isMesh);platform.geometry.computeBoundingBox();
+ const platform=rail.getObjectByName('Mission dock cradle');platform.geometry.computeBoundingBox();
  assert.ok(platform.geometry.boundingBox.max.y<.07,'low open cradle has no giant pedestal');
+ // Every welded member, saddle, latch, cable and foot lies inside the audited finite cradle stock.
+ const volumes=missionCradleVolumes(seat),p=[new Vector3(),new Vector3(),new Vector3()],pos=platform.geometry.attributes.position;
+ for(let i=0;i<pos.count;i+=3){for(let k=0;k<3;k++)p[k].fromBufferAttribute(pos,i+k);
+  assert.ok(volumes.some(v=>p.every(q=>[0,1,2].every(a=>q.getComponent(a)>=v.min[a]-1e-6&&q.getComponent(a)<=v.max[a]+1e-6))),id+': rendered cradle triangle inside certified stock');}
+ assert.ok(rail.getObjectByName('Mission dock cradle (far)'),'distant docks draw the audited stock itself');
  view.active=true;syncMissionAttachment(root,spec,view,false);assert.equal(drone.visible,false);
- syncMissionAttachment(root,spec,view,true);assert.equal(rail.visible,false);
+ // A wreck keeps its dock, charred with the hull; the payload is gone.
+ view.active=false;syncMissionAttachment(root,spec,view,true);assert.equal(rail.visible,true);assert.equal(drone.visible,false);
+ assert.ok(platform.material.color.getHex()<0x404040,'burnt-out carrier chars its dock');
+ syncMissionAttachment(root,spec,view,false);assert.equal(drone.visible,true);assert.equal(platform.material.color.getHex(),0xffffff,'a revived carrier restores the painted dock');
  root.dispatchEvent({type:'removed'});assert.equal(rail.parent,null);
  clearMissionAttachment(root);root.dispatchEvent({type:'removed'});
  assert.ok([...disposal.values()].every(count=>count===1),'every unique dock/airframe GPU resource disposed exactly once');
 }
-console.log('missionAttachmentVisual: turret/casemate ownership, rotation, scaled parents, launch alignment and disposal passed');
+console.log('missionAttachmentVisual: turret/casemate ownership, rotation, scaled parents, launch alignment, certified cradle stock, charred wreck and disposal passed');
 
 // Use real factory rigs, not a rig synthesized from the same armor pivot as the
 // authority. Legacy armor reference pivots differ from the visible owner.

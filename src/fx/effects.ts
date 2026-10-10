@@ -18,6 +18,7 @@ import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
 import * as THREE from 'three';
 import type { TrackSurface } from '../world/trackSurface.ts';
 import { createDronePresentation } from './dronePresentation.ts';
+import { configureDroneMaterials } from './droneModel.ts';
 import {missionAttachmentVisualFrame} from '../game/missionAttachmentVisual.ts';
 import { aerialTracerProfile, aerialTracerWidth, aerialTracerLength, type AerialTracerProfile } from './aerialTracers.ts';
 import { waterContactMaskAt } from '../world/waterContactMask.ts';
@@ -69,6 +70,9 @@ interface FxEngineContext {
   camera?: THREE.Camera;
   anisotropy?: number;
   scene?: THREE.Scene;
+  /** Lit-material registration for the cascaded shadows (drone airframes and docks are lit meshes). */
+  setupShadowMaterial?(material: THREE.Material): unknown;
+  releaseShadowMaterial?(material: THREE.Material): unknown;
 }
 
 interface FxHeightField {
@@ -1030,6 +1034,10 @@ function* createFxSteps(
   });
   const group = new THREE.Group();
   group.name = 'fx';
+  // Drone airframes and docks are lit meshes: they join the cascade setup like every vehicle material.
+  if (engineCtx?.setupShadowMaterial) {
+    configureDroneMaterials({ setup: (m) => engineCtx.setupShadowMaterial?.(m), release: (m) => engineCtx.releaseShadowMaterial?.(m) });
+  }
   const drones = createDronePresentation(group);
   group.matrixAutoUpdate = false;
   group.add(particles.group);
@@ -4204,7 +4212,7 @@ function* createFxSteps(
   }
 
   function writeLiveShellTracers(shells: LiveShell[], camera: THREE.Camera): number {
-    drones.begin(particles.getTime());
+    drones.begin(particles.getTime(), camera.position);
     tracers.begin(); // atmospherics lane
     let tracerCount = 0;
     liveAtgmCount = 0;
