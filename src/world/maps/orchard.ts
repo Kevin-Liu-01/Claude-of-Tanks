@@ -121,6 +121,47 @@ export default {
       { structure: 'marketRow', x: 27.07, z: -6.89, yawDeg: -38.04, terrace: true },
       { structure: 'granary', x: 31.34, z: 3.09, yawDeg: -127.7, terrace: true },
       { structure: 'cottage', x: 10.57, z: -11.5, yawDeg: 52.08, terrace: true },
+      // (the map-content lane, 2026-10-09; the owner: Orchard Valley "unfinished") the village filled out lot by lot in the
+      // Chouf kit (dar houses, the older flat-roofed houses, two souk rows, a store and a stable), the Chouf's church on the
+      // north side, and sixteen farmsteads out in the orchards and the terraces; each lot its own stream, after the plan
+      { structure: 'farmhouse', x: -92, z: -78, yawDeg: -63, terrace: true },
+      { structure: 'cottage', x: -120, z: -76, yawDeg: 117, terrace: true },
+      { structure: 'farmhouse', x: 106, z: -74, yawDeg: 21, terrace: true },
+      { structure: 'cottage', x: -54, z: -70, yawDeg: 92, terrace: true },
+      { structure: 'farmhouse', x: 82, z: -68, yawDeg: 8, terrace: true },
+      { structure: 'cottage', x: 142, z: -64, yawDeg: -157, terrace: true },
+      { structure: 'marketRow', x: -24, z: -46, yawDeg: -66, terrace: true },
+      { structure: 'farmhouse', x: 92, z: -46, yawDeg: -168, terrace: true },
+      { structure: 'cottage', x: -2, z: -44, yawDeg: 39, terrace: true },
+      { structure: 'granary', x: 130, z: -84, yawDeg: 23, terrace: true },
+      { structure: 'marketRow', x: 4, z: 22, yawDeg: 142, terrace: true },
+      { structure: 'cottage', x: 14, z: 28, yawDeg: 137, terrace: true },
+      { structure: 'farmhouse', x: 50, z: 46, yawDeg: -79, terrace: true },
+      { structure: 'cottage', x: 26, z: 58, yawDeg: 101, terrace: true },
+      { structure: 'farmhouse', x: 30, z: 80, yawDeg: 101, terrace: true },
+      { structure: 'cottage', x: 54, z: 82, yawDeg: -79, terrace: true },
+      { structure: 'barn', x: 34, z: 90, yawDeg: 101, terrace: true },
+      { structure: 'farmhouse', x: 58, z: 124, yawDeg: -94, terrace: true },
+      { structure: 'cottage', x: 60, z: 138, yawDeg: -21, terrace: true },
+      { structure: 'farmhouse', x: 96, z: 150, yawDeg: -21, terrace: true },
+      { structure: 'cottage', x: 8, z: 148, yawDeg: 21, terrace: true },
+      { structure: 'church', x: 100, z: 110, yawDeg: 20, terrace: true },
+      { structure: 'cottage', x: -350, z: -160, yawDeg: -180, terrace: true },
+      { structure: 'farmhouse', x: -390, z: 0, yawDeg: -133, terrace: true },
+      { structure: 'farmhouse', x: -200, z: -330, yawDeg: -86, terrace: true },
+      { structure: 'cottage', x: 130, z: -330, yawDeg: -39, terrace: true },
+      { structure: 'farmhouse', x: 330, z: -230, yawDeg: 8, terrace: true },
+      { structure: 'farmhouse', x: 390, z: 40, yawDeg: 55, terrace: true },
+      { structure: 'cottage', x: 300, z: 330, yawDeg: 102, terrace: true },
+      { structure: 'farmhouse', x: -150, z: 300, yawDeg: 149, terrace: true },
+      { structure: 'farmhouse', x: -380, z: 300, yawDeg: -164, terrace: true },
+      { structure: 'cottage', x: 120, z: 300, yawDeg: -117, terrace: true },
+      { structure: 'farmhouse', x: -260, z: -240, yawDeg: -70, terrace: true },
+      { structure: 'farmhouse', x: 250, z: -380, yawDeg: -23, terrace: true },
+      { structure: 'cottage', x: -300, z: 120, yawDeg: 24, terrace: true },
+      { structure: 'farmhouse', x: 200, z: 180, yawDeg: 71, terrace: true },
+      { structure: 'farmhouse', x: -60, z: -260, yawDeg: 118, terrace: true },
+      { structure: 'cottage', x: 60, z: 250, yawDeg: 165, terrace: true },
     ],
     // (round 2, wave 123: "leftover Western forms … wood barns"): the war's own light structures in place of the timber
     // huts and the longhouse — a checkpoint hut, sentry posts, command and aid tents
@@ -139,14 +180,14 @@ export default {
     wallRuns: [[-210, -112, -94, -84, 3], [-212, 22, -112, 48, 3], [92, 54, 242, 78, 3], [108, 110, 266, 130, 2], [-108, 90, -108, 142, 2], [122, -116, 262, -98, 3]],
     // (round 2, wave 123: hay bales and stacks are the Western farm's; the Chouf threshes on the roof and the floor)
     // (round 3, wave 208: "a storybook European well") no village well: the landmarks lane's Ottoman sabil is the square's water
-    well: false, hayCrates: false, fences: true, telegraph: false, carts: true, logs: true,
+    well: false, hayCrates: false, fences: true, telegraph: true, carts: true, logs: true,
     haystacks: 0, rocks: 138, outcrops: 20, craters: 48, rubblePiles: 10, cropFields: 7, sandbagLines: 12, hedgehogs: 8,
     // the map-vehicles lane (2026-10-06, the period ruling): Lebanon, 1982: the Merkava Mk 1, Magach (M60A1) and
     // Sho't (Centurion), Syria's T-62s and T-72M
     tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['merkava1b', 'm60a1', 'centurion5', 't62mv1', 't72m1_jaguar'] },
     // (round 2, wave 123: "picket and rail fencing"): dry stone walls along the lanes and round the yards; (round 3, wave
     // 208) no camps — no modern tarps in Deir el Qamar
-    inhabit: { stalls: 4, benches: 4, coreClutter: 22, bales: 0, stooks: 0, pots: 8, laundry: 4, troughs: 2, handcarts: 4, carts: 4, trucks: 4, jeeps: 3, drumClusters: 3, camps: 0, modernClutter: 18, looseClutter: 20, roadFence: 'wallstone', yardFence: 'wallstone' },
+    inhabit: { stalls: 4, benches: 4, coreClutter: 22, bales: 0, stooks: 0, pots: 8, laundry: 4, troughs: 2, handcarts: 4, carts: 4, trucks: 6, jeeps: 5, drumClusters: 3, camps: 0, modernClutter: 18, looseClutter: 20, roadFence: 'wallstone', yardFence: 'wallstone' },
   },
   // the map-revival lane (2026-10-05; the scenery lane's generators, world/scenery.ts): a Maronite cross at the village's
   // south entry and another on the western spur over the terraces, a cairn on the eastern flank's crest
