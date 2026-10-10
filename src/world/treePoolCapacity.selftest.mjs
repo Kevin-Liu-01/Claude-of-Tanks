@@ -16,7 +16,7 @@ import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { getMapConfig } from './maps/index.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
 import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags } from './crownShadowDapple.ts';
-import { treeBiomeArid, treeBiomeOpen, treeBiomeSlot, treeBiomeSnow, treeBiomeSnowPalette, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeOpen, treeBiomeSlot, treeBiomeSnagValue, treeBiomeSnow, treeBiomeSnowPalette, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
 import { TREE_GROWTH_PROFILES } from './treeGrowth.ts';
 import { markShadowOnly, setShadowCasterProfile } from '../engine/renderLayers.ts';
 import { deploymentClearings } from '../sim/matchPlacement.ts';
@@ -46,7 +46,9 @@ const dependencies = { THREE, mulberry32, TREE_ARCHETYPES, treeTrunkCollisionRad
   // symmetric deployments (modes lane 2026-10-08): the slots' clearings
   deploymentClearings,
   // (2026-10-08, wave 278: a place under snow lays its load on the slots' palettes)
-  treeBiomeSnow, treeBiomeSnowPalette };
+  treeBiomeSnow, treeBiomeSnowPalette,
+  // the trees lane (2026-10-06): a place's snag value (Monsoon's charred snags)
+  treeBiomeSnagValue };
 
 function compile(legacy) {
   const pools = legacy ? poolCode.replace(capacityLine, 'const capacity = trees.length;') : poolCode;

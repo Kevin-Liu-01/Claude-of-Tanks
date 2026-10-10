@@ -249,7 +249,9 @@ its fringe (world-anchored, the wood never opens, closing where a cascade's texe
 `treeBiomes.ts` (THREE-free) routes a map's species SLOTS to the regional FORMS of its real place on the desktop tiers
 (new profiles and tiles: beech, chestnut, holmOak, olive, canaryPine, aleppoPine, larch, the Arizona uplands' juniper and
 pinyon; round 5's map-revival forms: longleafPine (tufts on a long clear bole), lebanonCedar (the `shelf` envelope: level
-plates, a flat top), sugi, redPine; summer birches in leaf; a map's shrub form, Las Cañadas' and Wadi Rum's broom, a
+plates, a flat top), sugi, redPine; Kohima's khasiPine (the red pine's needles on a taller, straighter bole) and bamboo
+(a `clump`: unforked culms from a stub at the ground, bare at the foot, arching over the top; Monsoon Ridge plants no
+palm); summer birches in leaf; a map's shrub form, Las Cañadas' and Wadi Rum's broom, a
 cutover's longleafSeedling (a `fountain` profile: grass-stage needle fountains from the ground); a place's foliage
 colour where the map palette names none, the hyper-arid
 places' dust-dulled acacias; a form's own colour over the slot's palette, Dalmatia's silver olives and grey holm oaks)

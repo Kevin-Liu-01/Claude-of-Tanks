@@ -49,7 +49,7 @@ import { resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees, type AuthoredTreeFeature,
 } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeBare, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeSnow, treeBiomeSnowPalette, treeBiomeTransmission, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeBare, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeSnagValue, treeBiomeSnow, treeBiomeSnowPalette, treeBiomeTransmission, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -234,9 +234,12 @@ interface VegetationConfig {
    * A woodlot's centre stands only on the wood-zone ground — the share `zone` of the square ranked by height and slope
    * (the ridges, their slopes, ground steeper than `slopeDeg`, default 12°) — neighbouring stands may close into one wood
    * (their outlines overlapping by up to `merge` m, default 30), and a wood keeps no thin patches. Every stand keeps its
-   * count; the field trees keep the field law; unset, the woods stand as before.
+   * count; the field trees keep the field law; unset, the woods stand as before. The woods hold a tree budget, the target
+   * stands' mean count: stands are placed until they hold it, a quarter past the target at most. `budget` (default 1) is
+   * that budget's share for a map whose own woods seat fewer trees a stand than the mean (Monsoon Ridge's spurs, 0.81:
+   * its stands under the field law hold about 49 trees, the law's mean 60.75) — its woods hold its own count.
    */
-  landscapeWoods?: Readonly<{ zone: number; slopeDeg?: number; merge?: number }>;
+  landscapeWoods?: Readonly<{ zone: number; slopeDeg?: number; merge?: number; budget?: number }>;
   authoredTrees?: AuthoredTreeFeature[];
   /**
    * Trees lane (2026-10-05, Kestrel's dispersal stands): the authored stands may stand inside the settlement rect. The rect
@@ -2504,6 +2507,12 @@ export function grownFormSprayKind(growth: GrowthSpecies, palette: VegetationPal
   // the trees lane (2026-10-08, waves 282/283a): Wadi Rum's acacia paints the acacia's bipinnate leaflets (its own colour
   // from its biome slot, treeBiomes.ts)
   if (growth === 'tortilis') return 'acacia';
+  // trees lane (2026-10-06): a form that paints another form's sprays — the Khasi pine the red pine's long needle tufts,
+  // the bamboo the willow's narrow drooping lances (its own colour from its biome entry, treeBiomes.ts), the
+  // chestnut-oak the chestnut's
+  if (growth === 'khasiPine') return 'redPine';
+  if (growth === 'bamboo') return 'willow';
+  if (growth === 'castanopsis') return 'chestnut'; // (the chestnut's sprays on the Naga Hills' lighter frame)
   return growth as SprayKind;
 }
 
@@ -2718,10 +2727,17 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   // the tidal mangrove stands on the reviewed stilt roots (addRootButtresses' bent cones, tidalMangrove.ts) over the
   // two-ring eased collar; every other tree takes the fluted collar and its swept root tongues
   const tidal = species === 'mangrove';
-  parts.push(paintFlat(buildRootFlare(stemR, stemR * (tidal ? 1.13 : 1.36), 0.62, 10, rng() * Math.PI * 2, tidal ? 0 : 5), footColor, 0));
+  // (the trees lane, 2026-10-07: a clump — the bamboo's culms from one rootstock — has no stem foot to flare and no
+  // buttress roots: its flare and tongues are drawn and left out, every draw taken, so the clump's own stream keeps its
+  // seats; a quarter of its wood, and Monsoon Ridge's forms back inside their triangle budget)
+  const flare = paintFlat(buildRootFlare(stemR, stemR * (tidal ? 1.13 : 1.36), 0.62, 10, rng() * Math.PI * 2, tidal ? 0 : 5), footColor, 0);
+  if (!profile.clump) parts.push(flare);
+  else flare.dispose();
   const roots = profile.family === 'conifer' || profile.family === 'birch' ? 4 : 5;
   const rootFirst = parts.length;
-  addRootButtresses(parts, rng, footColor, tidal ? 0.38 : stemR * 1.28, roots, tidal);
+  const rootParts: THREE.BufferGeometry[] = profile.clump ? [] : parts;
+  addRootButtresses(rootParts, rng, footColor, tidal ? 0.38 : stemR * 1.28, roots, tidal);
+  for (const g of rootParts === parts ? [] : rootParts) g.dispose();
   const rootEnd = parts.length;
   if (tidal) {
     // the arches are drawn round the origin's axis: each joins the grown stem where it stands at the arch's collar
@@ -6038,9 +6054,10 @@ function* vegetationBuildSteps(
     // round 2b: more tries than the round-1 2600 — a woodlot of the round-1 footprint fits fewer ways on a crowded map
     // (the trees lane: a landscape map keeps its woods' tree budget — the target stands' mean count, a round-2b stand's
     // 24-57 trees half again — placing stands past the target, up to a quarter more, until its stands hold it)
-    const standBudget = landscape ? clusterTarget * (open ? 14.2 : 60.75) : 0;
+    const standBudget = landscape ? clusterTarget * (open ? 14.2 : 60.75) * Math.max(0, landscape.budget ?? 1) : 0;
     let standTrees = 0;
-    while ((landscape ? clusters.length < clusterTarget * 1.25 && (clusters.length < clusterTarget || standTrees < standBudget)
+    // (a budget's share under 1 may hold its count with fewer stands than the target: the stands stop once they hold it)
+    while ((landscape ? clusters.length < clusterTarget * 1.25 && standTrees < standBudget
       : clusters.length < clusterTarget) && attempts++ < 6000) {
       const wr = keyedPlacement ? keyedStream(1, attempts) : wrShared;
       // the stand's leading species first: a palm stand on a map that names its palm sites stands in one (the oasis,
@@ -6905,6 +6922,7 @@ function* vegetationBuildSteps(
   // decal. A snag is a look only: the obstacle and concealment records the simulation reads (collision, spotting,
   // the host's world) are the living tree's, the same on every tier and on `?legacyTrees=1` — the phones grow no
   // snags, and a mixed lobby must share one world.
+  const snagValueRange: readonly [number, number] = treeBiomeSnagValue(cfg?.id) ?? [0.62, 0.87];
   function convertSnags(): number {
     if (!(snagShare > 0)) return 0;
     const SNAG = { canopyCenterM: 3.4, canopyRadiusM: 1.4, fallHeightM: 5.4, fallRadiusM: 0.16, rootDecalRadiusM: 1.2 };
@@ -6923,7 +6941,8 @@ function* vegetationBuildSteps(
       t.fallH = SNAG.fallHeightM * sy;
       t.fallR = SNAG.fallRadiusM * sxz;
       t.dr = SNAG.rootDecalRadiusM * sxz;
-      const value = 0.62 + treePositionNoise(t.x, t.z, 10) * 0.25;
+      // (the trees lane: a place may char its snags darker — treeBiomes.ts snagValue — the hash and the count as before)
+      const value = snagValueRange[0] + treePositionNoise(t.x, t.z, 10) * (snagValueRange[1] - snagValueRange[0]);
       t.tint.setRGB(value, value * 0.96, value * 0.92);
       converted++;
     }
