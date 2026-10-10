@@ -267,10 +267,12 @@ const BACKPRESSURE_SOFT_BYTES = 64 * 1024;
 const BACKPRESSURE_HARD_BYTES = 512 * 1024;
 const BACKPRESSURE_SUSTAINED_MS = 2000;
 /**
- * 2026-10-10 (the black-screen lane; an ABBA under load ~110 dropped the host's own loopback seat and a peer during their
- * first entry, close BACKPRESSURE "sustained"): a client's covered entry runs synchronous steps of seconds under load (the
- * opening FX warm 4.3 s, the first shadow maps 2.9 s, a deferred shader link), and its link cannot drain meanwhile, so
- * 2 s of soft pressure dropped seats that were loading, not dead. The client streams neutral inputs from its WELCOME on
+ * 2026-10-10 (the black-screen lane; an ABBA under load ~110: the room found the creator's tab silent while its own entry
+ * blocked it and elected the next seat, whose actor then closed both peers, the demoted creator and the third seat, with
+ * BACKPRESSURE "sustained" about 26 s after their WELCOME, still in their first entry): a client's covered entry runs
+ * synchronous steps of seconds under load (the opening FX warm 4.3 s, the first shadow maps 2.9 s, a deferred shader link),
+ * and its link cannot drain meanwhile, so 2 s of soft pressure dropped seats that were loading, not dead. (The host's own
+ * loopback seat reports no pressure, so this rule only ever closes remote peers.) The client streams neutral inputs from its WELCOME on
  * (matchClient sampleInputs), so no wire signal marks the end of its cover: for ENTRY_BACKPRESSURE_GRACE_MS after the
  * WELCOME, soft pressure closes the link only after ENTRY_BACKPRESSURE_SUSTAINED_MS of continuous pressure (a dead link,
  * not a busy one: a loading client drains between its synchronous steps, which resets the clock). Stale snapshots are
