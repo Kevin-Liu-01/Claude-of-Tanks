@@ -1,4 +1,5 @@
 import { applyJuggernautScale } from '../sim/juggernautScale.ts';
+import { lodDistanceScale } from '../engine/lodDistanceScale.ts';
 import { syncTankEnergyVisual, clearJuggernautVisual, TANK_ENERGY, type TankEnergyStyle } from './juggernautVisual.ts';
 import type { MatchModePresentationState } from '../sim/matchModes.ts';
 import type { ArmorEnvelope } from '../vehicles/specHelpers.ts';
@@ -305,10 +306,12 @@ export function createBattlePresentationRuntime({
         if (module === 'trackL' || module === 'trackR') visual.setTrackState?.(module, damage.state === 'red');
         else visual.setWeaponModuleState?.(module, damage.state);
       }
+      // The detail hand-offs (battle detail groups, mobile detail, gear cadence) read the screen-equivalent distance
+      // (lodDistanceScale: the sniper sight's narrower view magnifies), so a scoped enemy keeps its near detail.
       visual.syncFromState(
         state,
         presentationDt,
-        viewDistanceM,
+        viewDistanceM * lodDistanceScale(camera),
         presented,
         detailVisible,
       );
