@@ -663,6 +663,59 @@ Round six (wave 241, October 7: the facade items an eye at the street reads on S
   - the ridge and hip caps, bedded in mortar, are darker and lichened;
   - the plain tiles carry the odd replaced or sooted tile, lichen rosettes and moss under the tails.
 
+Round seven (the media critics' 4K wave m1 on Steinburg, October 7: "coarse lumpy 'cork' bump noise", "coarse noisy
+stucco", "an aliasing roof-tile pattern"):
+- The cork was the render, not the brick: the PR head still shipped Plaster 007's own normal map (its rows of blocky
+  losses and trowel lumps at full strength) and its blotchy colour map. Rounds three and five replaced both
+  (`NormalGL-smooth`, `Color-even`). The Franconian render is now also a smooth lime coat, with the trowel lumps at half
+  their relief and shallower cavities (`surfaces.relief`: normal 0.5, occlusion 0.6, the tile's scale and every UV
+  unchanged).
+- A kit's tile sheet samples its maps half a mip level softer (`props.ts applyTileLodBias`, `ROOF_TILE_LOD_BIAS`). The
+  same sheet serves the base roofs on a kit's map. Close by, where the sheet is magnified, nothing changes. Further out,
+  where it is minified, the course lines are softer, so a 19-texel course at 40–80 m no longer crawls along the
+  screen's Nyquist. Desktop anisotropy is 8 already.
+
+Round eight (the media lane's blind critics on Steinburg, October 8: the stucco "speckled", high-frequency noise reading
+as dots, not render):
+- Measured at street distance (a 1600 x 900, 50-degree view at 10, 20 and 40 m; the albedo, normal and occlusion
+  minified to the screen pixel, then lit by sun and sky): the two procedural render families (plaster2 ochre and
+  plaster3 grey-green) put 6.1 % of their contrast into 1–3 px dots and 4.4 % into 3–10 px grain, against 2.5 % in the
+  mottling. The cause was the canvas's 6 cm noise, read through a normal map at 1.2. The photo render held its contrast
+  at about 1.4 % in each band, but its 2.4 m tile repeated a lichen motif down every wall.
+- The Franconian walls are now a hand-floated lime render, painted for the street (`regionalSurfaces.ts
+  paintLimeRender`, `franconian.ts surfaces.render`), across all three families under the map's tones:
+  - broad mottling 0.3–1.2 m across, from three fractal fields with their lattices turned 0, 45 and 27 degrees and
+    warped, so no cloud lines up with the tile;
+  - drifts where the last wash coat wore through, soft-edged and a shade warmer;
+  - the lime's own small clouds in tone only;
+  - as relief, only the float's slow undulation.
+- Dots now measure 0.2 % at 10 m and 0.6 % at 40 m; grain 0.5–1.1 %; mottling 1.2–1.4 %. The stains under the sills and
+  eaves remain the house kernel's, per vertex.
+- Each family keeps its mean colour: ochre lightness 0.385, grey-green 0.367, and the primary at the photo's cream
+  (lightness 0.58, Steinburg's `tones.plaster`). The photo render set is off for this kit. Round seven's relief is
+  retired.
+
+Round ten (gauntlet waves 296 and 301, both critics, October 8-9: houses "stand on bare dirt or lawn with a hard line",
+framing "thin painted red lines", "one repeating oversized brick tile", "blotchy brown staining", "pasted brick-patch
+decals"):
+- Wall grime: the props' grime hook darkened 1-3 m world blotches by up to a fifth over every wall. A kit's walls now
+  take `wallGrimeHook` (props.ts) instead: the tone clouds at ±5 % and the rain's runs 10-30 cm wide down the wall's
+  own horizontal. Verdant is excluded.
+- Render losses: no build draws them on a style with the ground craft (`ArchitectureStyle.groundCraft`, default on). The
+  weathering pass's damp band carries the wall foot.
+- The wall foot (`facadeGroundCraft`):
+  - a plinth's water table, 4.5 cm proud and a shade paler, its top the doors' threshold;
+  - an 80 cm apron with the grass held off it;
+  - 1.5 m door paths.
+- Fachwerk: members stand 5 cm proud (a member is set 2 cm into the wall, so 35 mm stood only 15 mm proud). Posts are
+  19 cm (corner posts 23 cm) and rails 16 cm. A 13 cm shade band sits under every rail and plate.
+- Dressed ashlar: courses of 18-28 cm and blocks of 36-73 cm. Its grime clouds are at two fifths and its runs at half.
+- Quoins: 33-34 cm courses of long and short stones. The Hessian Buntsandstein is a third less saturated. A Fachwerk
+  door's surround is paler than its wall.
+- The gate: `KIT_LEGACY_MAPS` (`maps/regional/index.ts`) takes a listed map's kit back to the older layers. That means no
+  strip, apron or water table; plain losses; roofs without their age; the straw print on thatch; and the props' grime.
+  It is the ruling for a map whose view drops against the release.
+
 **The skyline kit.** October 5, 2026 (facades & skyline lane). `src/world/maps/regional/skyline.ts` is a grammar of
 tall and big buildings a city kit puts in its builders map, each fitted to the plan plot it replaces: `decoTower` (the
 Bund's inter-war tower: a granite podium of tall openings, continuous piers over recessed spandrels in setbacks with

@@ -106,14 +106,15 @@ const townHouse: RegionalBuilder = (ctx) => {
         });
       }
     }
-    // rendered fronts: sandstone quoins and a cornice
+    // rendered fronts: sandstone quoins and a cornice (round 10; wave 301: quoins "about three times real size": 33 cm
+    // courses of long and short stones, 50 and 30 cm)
     if (!framed) {
       const b = frame.bodies[0];
       for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]] as const) {
         const x = sx > 0 ? b.x1 : b.x0, z = sz > 0 ? b.z1 : b.z0;
-        for (let y = 0.4, k = 0; y < frame.eaveY - 0.3; y += 0.42, k++) {
-          const lx = k % 2 ? 0.32 : 0.56, lz = k % 2 ? 0.56 : 0.32;
-          dressedQuoin(sink, 'stone', sx > 0 ? x - lx : x - 0.035, y, sz > 0 ? z - lz : z - 0.035, sx > 0 ? x + 0.035 : x + lx, y + 0.4, sz > 0 ? z + 0.035 : z + lz, sx, sz, { decor: true });
+        for (let y = 0.4, k = 0; y < frame.eaveY - 0.3; y += 0.35, k++) {
+          const lx = k % 2 ? 0.3 : 0.5, lz = k % 2 ? 0.5 : 0.3;
+          dressedQuoin(sink, 'stone', sx > 0 ? x - lx : x - 0.035, y, sz > 0 ? z - lz : z - 0.035, sx > 0 ? x + 0.035 : x + lx, y + 0.33, sz > 0 ? z + 0.035 : z + lz, sx, sz, { decor: true });
         }
       }
     }
@@ -209,7 +210,13 @@ export const FRANCONIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
     roof: { kind: 'beavertail', tint: [0.42, 0.28, 0.22] },
     // (wave 116: "oversized clean ashlar") the town's dressed stone smaller and soiled, the Hessian villages' kept
     stone: { kind: 'sandstone', tint: [0.64, 0.52, 0.42], dressed: true },
-    sourced: { plaster: true, wood: true },
+    // (the facades lane, 2026-10-08; the media lane's critics on Steinburg: the stucco "speckled", dots rather than render;
+    // round 7 had halved the photo render's relief) the walls are a hand-floated lime render, broadly mottled, painted
+    // for the street (regionalSurfaces.ts paintLimeRender), its three families under the map's tones; the photo render
+    // set is off here (its 2.4 m tile repeated a lichen motif down every wall), so is round 7's relief (the painter's own
+    // relief is the float's slow undulation)
+    sourced: { plaster: false, wood: true },
+    render: { kind: 'limeRender', seed: 0x5e1b },
   },
   builders: FRANCONIAN_BUILDERS,
   // the churchyard on the church's freest side but its front, walled in stone, its graves in place of the yards' beds

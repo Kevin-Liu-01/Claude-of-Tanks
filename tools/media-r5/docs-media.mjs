@@ -43,7 +43,9 @@ export const DOCS_STAGES = {
   review2: { src: (id) => `site50/review-r6/${id}.mp4`, size: null, crf: 26 },
   review3: { src: (id) => `site50/review-r7/${id}.mp4`, size: null, crf: 26 },
   // --final=deliver-r13 (launch night, 2026-10-09: each finals round delivers into its own folder)
-  final: { src: (id) => `site50/${arg('final') ?? 'deliver-r7'}/${id}/${id}.mp4`, size: [1920, 1080], crf: 24 },
+  // (launch day, 2026-10-09) the launch finals are grainy 4K renders: at CRF 24 alone their 6.6 s took 7-11 MB, over the
+  // page's 4.5 MB clip budget (filming.selftest.mjs), so the rate is capped at 4.4 Mbit/s (a VBV cap on the CRF encode)
+  final: { src: (id) => `site50/${arg('final') ?? 'deliver-r7'}/${id}/${id}.mp4`, size: [1920, 1080], crf: 24, maxrateM: 4.4 },
 };
 // The frames strip and the picker card come from the latest engine render a take has.
 export const ENGINE_LATEST = ['final', 'review3', 'review2', 'review1'];
@@ -85,8 +87,9 @@ function encodeStage(id, stage, spec, source) {
   const redo = force && (!stageFilter || stageFilter.includes(stage));
   if (redo || !existsSync(video)) {
     const scale = spec.size ? `scale=${spec.size[0]}:${spec.size[1]}:flags=lanczos,` : '';
+    const cap = spec.maxrateM ? ['-maxrate', `${spec.maxrateM}M`, '-bufsize', `${spec.maxrateM * 2}M`] : [];
     run('ffmpeg', ['-v', 'error', '-y', '-i', source, '-an', '-vf', `${scale}format=yuv420p`, '-c:v', 'libx264',
-      '-preset', 'slow', '-crf', String(spec.crf), '-profile:v', 'high', '-movflags', '+faststart', video]);
+      '-preset', 'slow', '-crf', String(spec.crf), ...cap, '-profile:v', 'high', '-movflags', '+faststart', video]);
   }
   if (redo || !existsSync(poster)) {
     const png = join(TMP, `${id}-${stage}.png`);

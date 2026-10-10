@@ -1,7 +1,6 @@
 import './ui/endScreenPresentation.css';
 import './ui/richTooltip.css';
-import { structureTopAt, SUPPORT_STEP_UP_M } from './sim/structureSupport.ts';
-import type { CollisionRecord } from './world/collision.ts';
+import { createVehicleGroundSampler } from './world/vehicleGroundSampler.ts';
 import './ui/battleUiVisibility.css';
 import './ui/hudCustomization.css';
 import type { RuntimeValue } from './runtimeTypes.ts';
@@ -132,7 +131,7 @@ import {
   CAMO_CATALOG_PATTERN_IDS, getCamoSelection, setCamoSelection,
   getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection,
   setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked,
-  clearCamoOverrides, warmWreckTextures, setCamoBattleSeed, camoSelectionSuitsTheatre,
+  clearCamoOverrides, warmWreckTextures,
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
 } from './vehicles/materials.ts';
 import './ui/motion.css';
@@ -268,6 +267,7 @@ import { createRosterPresentation } from './game/rosterPresentation.ts';
 import { tankTier, tierNumeral } from './vehicles/tier.ts';
 import { createTransition } from './ui/transition.ts';
 import type { DamagePanelController } from './ui/damagePanel.ts';
+import { prepareEntryPanelMasks } from './ui/damagePanelEntryMasks.ts';
 import type { HudMatchModeState, HudMode } from './ui/hud.ts';
 
 type DamagePanelSpec = Parameters<DamagePanelController['setTank']>[0];
@@ -732,13 +732,10 @@ function requireFxRuntime() {
 // Movement and wheels read the same cached triangles as the near terrain.
 // An analytic/bilinear approximation can sit above the visible ground at a
 // ridge or rut, leaving daylight below otherwise correctly conformed tracks.
-const debrisSupportCandidates: CollisionRecord[] = [];
-const groundSampler = (x: number, z: number, ceiling?: number) => {
-  const terrain = hfProxy.getContactHeightAt(x, z);
-  if (ceiling === undefined) return terrain;
-  const candidates = currentWorld()?.queryObstacles?.(x - .01, z - .01, x + .01, z + .01, debrisSupportCandidates);
-  return candidates ? Math.max(terrain, structureTopAt(candidates, candidates.length, x, z, ceiling - SUPPORT_STEP_UP_M)) : terrain;
-};
+// The wheels and track debris also stand on the standable collision tops the
+// movement solve stands hulls on (bridge decks, roofs, slabs): see
+// world/vehicleGroundSampler.ts (the vehicle-contact lane, 2026-10-09).
+const groundSampler = createVehicleGroundSampler((x, z) => hfProxy.getContactHeightAt(x, z), currentWorld);
 // PERF (performance_budget r4): pool visuals are lazy — remember the sampler
 // on the game state so ensureTankVisual applies it to visuals built later.
 game._groundSampler = groundSampler;
@@ -940,7 +937,6 @@ const battleIntent = createBattleIntentRuntime({
   anisotropy: engineCtx.anisotropy ?? 4,
   setCamoBiome,
   clearCamoOverrides,
-  setCamoBattleSeed,
   setCamoOverride,
   applyCamoPatterns: applyCamoPatternsChunked,
   preloadBattleVisuals: () => battleVisualStreamerAccess.preload(),
@@ -1574,6 +1570,10 @@ const frontline = createFrontlineAtmosphereAccess(() => ({
   getHeightField: () => currentWorld()?.heightField ?? null,
   getSpawns: () => currentWorld()?.spawnPoints ?? null,
 }));
+/** A covered entry revealed before the player's top-down masks linked; the damage panel's retry ladder finishes them. */
+function deferredPanelMasks(specId: string): void {
+  console.warn(`[battle] top-down view of ${specId} still linking at reveal; the damage panel retries it`);
+}
 function currentSceneWatchdogOptions() {
   if (game.phase !== 'battle') return {};
   if (battleAtmosphere.current?.weather?.timeOfDay === 'night') return { nightRadianceScale: battleWatchdogRadianceScale };
@@ -1965,9 +1965,8 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
       if (player?.aerial?.kind === 'gunship') return;
       const panel = currentDamagePanel();
       if (!player || !panel) throw new Error('Player damage panel was not prepared');
-      if (!await panel.prepareTankMasks(player.spec, player.visual)) {
-        throw new Error('Player top-down view could not be prepared');
-      }
+      // 2026-10-09 (the black-screen lane): a slow mask link never refuses the battle (damagePanelEntryMasks.ts)
+      await prepareEntryPanelMasks(panel, player.spec, player.visual, deferredPanelMasks);
     },
     prepareAtmosphere: async () => {
       await battleAtmosphere.prepare(game.battleCount, game.mapId, battlePreferences.times);
@@ -2201,8 +2200,7 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     },
     planCamoOverrides: (specId: string, mapId: string, randomRoster: boolean, campaignOperationId: string | null = null, gameMode: string | null = null) => {
       const plan = soloRosterPlan(gameMode, campaignOperationId, randomRoster);
-      return planBattleCamoOverrides(game, specId, mapId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.alliedSlots,
-        (botSpecId) => camoSelectionSuitsTheatre(getSpec(botSpecId), mapId));
+      return planBattleCamoOverrides(game, specId, mapId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.alliedSlots);
     },
     ensureTankBuilders,
     preloadSoloAuthority: preloadSoloBattleRuntime,
@@ -2461,9 +2459,8 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             if (!entity) return;
             const panel = currentDamagePanel();
             if (!panel) throw new Error('network panel warm requires the prepared battle HUD');
-            if (!await panel.prepareTankMasks(entity.spec, entity.visual)) {
-              throw new Error('Player top-down view could not be prepared');
-            }
+            // (2026-10-09) a slow mask link never refuses the round (damagePanelEntryMasks.ts)
+            await prepareEntryPanelMasks(panel, entity.spec, entity.visual, deferredPanelMasks);
           },
           openingEffects: async (fx: ReturnType<typeof requireFxRuntime>, bridge: MultiplayerWarmView, signal?: AbortSignal) => {
             const timing: ForwardProgramCompileTiming & {

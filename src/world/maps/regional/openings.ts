@@ -187,7 +187,7 @@ function paintedLeaf(sink: PartSink, face: Face, u: number, y: number, w: number
 export interface DoorStyle {
   leaf: Rgb;
   /** frame / surround: a timber frame colour or a masonry surround */
-  frame: { bucket: RegionalBucket; width: number; out: number; colour?: Rgb; arch?: boolean };
+  frame: { bucket: RegionalBucket; width: number; out: number; colour?: Rgb; arch?: boolean; tint?: Rgb };
   /** a glazed transom over the leaf */
   transom?: boolean;
   /** step treads */
@@ -219,7 +219,7 @@ export function doorUnit(sink: PartSink, face: Face, u: number, y: number, w: nu
     faceBox(sink, 'structureWood', face, u, y + leafH + 0.03, lo + 0.028, w, 0.06, 0.06, { colour: style.leaf, decor: true, fine: true });
   }
   const f = style.frame, fw = f.width;
-  const fo = { decor: true, fineSides: true, ...(f.colour ? { colour: f.colour } : {}) };
+  const fo = { decor: true, fineSides: true, ...(f.colour ? { colour: f.colour } : {}), ...(f.tint ? { tint: f.tint } : {}) };
   faceBox(sink, f.bucket, face, u - w / 2 - fw / 2, y + h / 2, f.out / 2, fw, h, f.out, fo);
   faceBox(sink, f.bucket, face, u + w / 2 + fw / 2, y + h / 2, f.out / 2, fw, h, f.out, fo);
   faceBox(sink, f.bucket, face, u, y + h + fw / 2, f.out / 2, w + 2 * fw, fw, f.out, fo);

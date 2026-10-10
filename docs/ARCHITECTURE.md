@@ -1328,8 +1328,11 @@ and objective glyphs stay upright; nothing nudges them apart.
 
 **Mask readiness and retry policy.** Solo and multiplayer covered entry await
 `prepareTankMasks` before revealing the battle. It joins the shared preparation
-and paints a matching active panel before reporting success; failure follows
-covered entry recovery. The private clone excludes shadow-only helpers
+and paints a matching active panel before reporting success. Masks that miss
+their programs' 5 s link cap (a loaded machine) no longer refuse the battle
+(2026-10-09, `src/ui/damagePanelEntryMasks.ts`): the reveal goes on and the
+panel's retry ladder paints them; a missing panel still follows covered entry
+recovery. The private clone excludes shadow-only helpers
 (including the live-owner articulated batch) and renders even when its source
 actor is staged/hidden. `setTank` asks `tankThumbs.getTopDownMasks` for the
 real layers; an unfinished schematic stays blank, never a generic vehicle.
@@ -1455,10 +1458,15 @@ live CSM shadows. `garageDressingAccess.ts` demand-loads one optimized modern
 maintenance layer after interactive readiness. Four bays—Burlak gantry, Abrams
 welding, T-90M armor service, and K2 teardown—surround every Garage and are
 recomposed by the destination layout. The K2 bay owner uses an explicit static
-half-turn into the Abrams's authored quadrant; the Abrams bay owner keeps its
-authored orientation and stands beside the Garage camera, outside the hero's
-silhouette from the default and close views (`ABRAMS_WELDING_BAY_PLACEMENT`),
-with the Verdant overhead work lamp following its repair choreography. The rolled K2 hull rests in a connected steel
+half-turn into the Abrams's authored quadrant. The Abrams bay owner takes its
+destination's placement (`getAbramsWeldingBayPlacement`): in Verdant it stands
+half-turned beside the east FLAMMABLE canisters (`ABRAMS_FLAMMABLE_BAY_OFFSET`,
+the owner's placement, restored 2026-10-09) with the overhead work lamp over its
+floor station; in the nine outdoor packs it keeps its authored orientation beside
+the Garage camera on its own terrain pad (`ABRAMS_WELDING_BAY_PLACEMENT`), since
+each pack seats its signature facility at the canister spot. That owner is a
+nested static display owner, so the shared optimization merges it alone and a
+Garage switch can still carry it. The rolled K2 hull rests in a connected steel
 rollover cradle with grounded skids, crossmembers, A-frames, a continuous spine,
 and rubber contact saddles instead of disconnected timber blocks. A connected
 freestanding field-record display shares that graph in every variant, remains

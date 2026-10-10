@@ -34,6 +34,14 @@ const api = new Function('THREE', 'initialTerrainLods', 'terrainLodForDistance',
   'chooseTerrainLodBuild', 'registerRetainedObject3DResources', 'performance', stripTypeScriptTypes(`
   const MAP_SIZE = 1024, HALF = 512;
   function* buildHorizonRingSteps() { return new THREE.Group(); }
+  // (the ring worker, perf/ring-deferred: the chunk section reaches the ring through its hook and asks it for a supplied
+  // build; here the ring is an empty group built where it stands, as terrainStreaming.selftest's sandbox has it)
+  const horizonRing = () => ({
+    HORIZON_SEGMENTS: 287,
+    buildHorizonRingSteps: function* () { return new THREE.Group(); },
+    horizonRingGeometrySteps: function* () { return null; },
+  });
+  function horizonRingSupplyFor() { return null; }
   function* createSplatMaterialSteps() {
     return { material: new THREE.MeshStandardMaterial(), textures: new Set() };
   }

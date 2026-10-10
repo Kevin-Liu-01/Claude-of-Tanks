@@ -114,9 +114,7 @@ import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { getStoredDifficulty } from './input.ts';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.ts';
-import {
-  hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns, camoSelectionSuitsTheatre, setCamoBattleSeed,
-} from '../vehicles/materials.ts';
+import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.ts';
 // EQUIPMENT SYSTEM (game/equipment.ts): per-tank loadouts — the player's
 // persisted picks, per-role AI defaults, and the equipMults record the
 // damage/movement/repair hooks read off CombatState.
@@ -698,12 +696,8 @@ function configureBattleCamo(
 ): void {
   clearCamoOverrides();
   if (options.random) {
-    // fleet lane (2026-10-08): bots keep their own paint only where it suits the map's theatre, and their AUTO draws
-    // re-seed per battle (the loading coordinator plans with the same ordinal, so its pre-paint matches)
-    setCamoBattleSeed(game.battleCount);
     for (const specId of autoCamoIdsForBattle(
       game.tanks, playerSpecId, game.mapId, true, game.battleCount,
-      (botSpecId) => camoSelectionSuitsTheatre(getSpec(botSpecId), game.mapId),
     )) {
       setCamoOverride(specId, 'auto');
     }

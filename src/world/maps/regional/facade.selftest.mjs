@@ -12,8 +12,8 @@
 import assert from 'node:assert/strict';
 import { ARCHITECTURE_STYLES, buildRegionalParts } from './index.ts';
 import { PartSink, streamFrom } from './geometry.ts';
-import { dressedQuoin, setFacadeCraft, withFacade } from './facade.ts';
-import { paintDressedStoneBuffers, paintLimewash, paintRegionalSurfaceBuffers } from '../../regionalSurfaces.ts';
+import { dressedQuoin, setFacadeCraft, thatchCourses, withFacade } from './facade.ts';
+import { paintDressedStoneBuffers, paintLimewash, paintNipaThatch, paintRegionalSurfaceBuffers } from '../../regionalSurfaces.ts';
 import { withGroundCoverHoles } from '../../sceneryPlan.ts';
 
 const BUDGET = 12000;
@@ -130,6 +130,54 @@ for (const seed of [0x11a1, 0x11a2]) {
   seamless('dressed stone', a.size, a.px);
 }
 console.log('facade surfaces: the lime-wash and the dressed stone deterministic, soft and seamless');
+
+// The nipa atap (facades lane, 2026-10-08; gauntlet wave 260 on Mangrove Reach: the Ca Mau hamlet's roofs read as "brown
+// shingle gable roofs"): the print is deterministic, in range and seamless, and its rows are a hand's width of leaf, not
+// shingle courses: down the slope (the tile's u) the mean light of a column swings sixteen times a tile, the strongest
+// period by far (the straw print's six 37 cm courses would put it at six)
+{
+  const a = paintNipaThatch(512, 0x7a7c4), b = paintNipaThatch(512, 0x7a7c4);
+  assert.deepEqual(Buffer.from(a.px.buffer), Buffer.from(b.px.buffer), 'nipa: deterministic pixels');
+  assert.ok(a.hgt.every((v) => v >= 0 && v <= 1), 'nipa: height in range');
+  seamless('nipa', 512, a.px);
+  const profile = new Float64Array(512);
+  for (let y = 0; y < 512; y++) for (let x = 0; x < 512; x++) { const j = (y * 512 + x) * 4; profile[x] += a.px[j] + a.px[j + 1] + a.px[j + 2]; }
+  const power = (k) => {
+    let re = 0, im = 0;
+    for (let x = 0; x < 512; x++) { re += profile[x] * Math.cos(2 * Math.PI * k * x / 512); im += profile[x] * Math.sin(2 * Math.PI * k * x / 512); }
+    return re * re + im * im;
+  };
+  const rows = power(16);
+  for (let k = 1; k <= 12; k++) assert.ok(rows > power(k) * 4, `nipa: the leaf rows (16 a tile) outweigh a ${k}-a-tile period fourfold`);
+  // a weathered leaf: a grey-tan of middling light, half the straw print's chroma (its ochre measures (r - b) / (r + b) 0.4)
+  let r = 0, g = 0, bl = 0;
+  for (let i = 0; i < a.px.length; i += 4) { r += a.px[i]; g += a.px[i + 1]; bl += a.px[i + 2]; }
+  const n = a.px.length / 4;
+  r /= n; g /= n; bl /= n;
+  assert.ok(r > 70 && r < 130 && (r - bl) / (r + bl) < 0.2, `nipa: a weathered grey-tan (mean ${r.toFixed(0)}, ${g.toFixed(0)}, ${bl.toFixed(0)})`);
+}
+// a nipa slope's thatch craft is its one frayed eave course: on a 4 m slope at 35 degrees the courses stay within its
+// lowest 0.45 m of rise (a 'rows' slope puts its lips up to two thirds of the way to the ridge)
+{
+  const courses = (opts) => {
+    const sink = new PartSink([0.3, 0.7]);
+    const n = [Math.sin(35 * Math.PI / 180), Math.cos(35 * Math.PI / 180), 0];
+    thatchCourses(sink, 'straw', [0, 0, 0], [0, 0, 6], [-3.277, 2.294, 0], [-3.277, 2.294, 6], n, opts);
+    let top = -Infinity, verts = 0;
+    for (const g of sink.finish().straw ?? []) {
+      const p = g.getAttribute('position');
+      for (let i = 0; i < p.count; i++) top = Math.max(top, p.getY(i));
+      verts += p.count;
+    }
+    return { top, verts };
+  };
+  const nipa = courses({ verges: true, nipa: true }), rows = courses({ verges: true, stepped: false });
+  assert.ok(nipa.verts > 0 && nipa.top < 0.45, `nipa: the eave course alone (its top ${nipa.top.toFixed(2)} m over the eave)`);
+  assert.ok(rows.top > 1.2, `rows: course lips up the slope (${rows.top.toFixed(2)} m)`);
+  const mekong = ARCHITECTURE_STYLES.find((st) => st.id === 'mekong');
+  assert.equal(mekong.surfaces.thatch?.kind, 'nipa', 'the Mekong kit prints its thatch as nipa');
+}
+console.log('facade surfaces: the nipa atap deterministic, seamless, sixteen leaf rows a tile; a nipa slope keeps one eave course');
 
 // (facades lane, 2026-10-06; wave 172: "corner stones built from brick strips instead of dressed sandstone") a dressed
 // quoin's two outer faces wrap one whole stone of the style's tile: every texel they map is inside one block of the
@@ -268,8 +316,8 @@ console.log('facade surfaces: the lime-wash and the dressed stone deterministic,
   assert.ok(skirted >= 8, `the kits' plinthed houses lay their strips on the ground (${skirted})`);
   for (const must of ['kolkhoz/cottage', 'franconian/rowhouse']) assert.ok(kinds.has(must), `${must} lays its strip on the ground`);
   // the runs follow the ground in pieces no longer than 1.5 m along the wall (a corner's mitre and a piece's diagonal
-  // are longer: the strip is 0.45 m across)
-  assert.ok(longest <= Math.hypot(1.5, 0.45) + 0.45 + 1e-3, `the strip's pieces stay short (${longest.toFixed(3)} m)`);
+  // are longer: the strip is 0.45 m across, round ten's apron 0.8 m on a style with the ground craft)
+  assert.ok(longest <= Math.hypot(1.5, 0.8) + 0.8 + 1e-3, `the strip's pieces stay short (${longest.toFixed(3)} m)`);
   // the admission: gridded (past 64 holes) and scanned answer alike, on and around every hole, at a blade's radii
   const scan = (x, z, radius) => allHoles.some((h) => (x - h.x) ** 2 + (z - h.z) ** 2 < (h.r + radius) ** 2);
   const holed = withGroundCoverHoles(() => false, allHoles), few = withGroundCoverHoles(() => false, allHoles.slice(0, 20));

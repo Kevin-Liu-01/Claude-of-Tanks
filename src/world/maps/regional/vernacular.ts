@@ -49,7 +49,7 @@ export function boardWall(sink: PartSink, face: Face, u0: number, u1: number, y0
 
 /** A veranda: a deck along a face, posts, a rail and a lean-to roof from the wall head. */
 export function veranda(sink: PartSink, face: Face, floorY: number, wallTop: number, width: number, depth: number, post: Rgb,
-  roof: { bucket: RegionalBucket; colour?: Rgb }, rail = true): void {
+  roof: { bucket: RegionalBucket; colour?: Rgb; thatch?: RoofSpec['thatch'] }, rail = true): void {
   faceBox(sink, 'structureWood', face, 0, floorY + 0.08, depth / 2, width, 0.16, depth, { colour: shade(post, 1.05), uv: UV_MEMBER });
   const n = Math.max(2, Math.round(width / 2.2) + 1);
   for (let i = 0; i < n; i++) {
@@ -66,7 +66,8 @@ export function veranda(sink: PartSink, face: Face, floorY: number, wallTop: num
   // the lean-to: a shed slab from the wall head out over the posts
   const rise = Math.max(0.25, wallTop - floorY - 2.1);
   const pitch = Math.atan2(rise, depth) * 180 / Math.PI;
-  const spec: RoofSpec = { kind: 'shed', pitchDeg: Math.max(6, pitch), eave: 0.3, verge: 0.2, thickness: 0.07, bucket: roof.bucket };
+  const spec: RoofSpec = { kind: 'shed', pitchDeg: Math.max(6, pitch), eave: 0.3, verge: 0.2, thickness: 0.07, bucket: roof.bucket,
+    ...(roof.thatch ? { thatch: roof.thatch } : {}) };
   const rg = roofGeometry(depth, width, wallTop - rise, spec);
   // a shed rises toward its local -x: turn it so the high side meets the wall
   // local +x (the low side) turned onto the face's outward normal

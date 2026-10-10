@@ -140,6 +140,12 @@ export class PartSink {
   paint: Rgb | null = null;
   constructor(uvOffset: readonly [number, number] = [0, 0]) { this.uvOffset = uvOffset; }
 
+  /** Emit `body` with its fine joinery drawn near the camera only (EmitOptions.fine 'near'; the facade craft). */
+  near<T>(body: () => T): T {
+    this.nearDepth++;
+    try { return body(); } finally { this.nearDepth--; }
+  }
+
   /**
    * Dressing a phone leaves out, drawn as the desktop draws it (docs/DESTRUCTION.md §8.4: a phone's collision is the
    * desktop's, index for index). On a desktop this is `body()`. On a phone `body` runs too, so every stream it draws
@@ -151,12 +157,6 @@ export class PartSink {
     const kept = this.groups, triangles = this.triangles;
     this.groups = new Map();
     try { body(); } finally { this.groups = kept; this.triangles = triangles; }
-  }
-
-  /** Emit `body` with its fine joinery drawn near the camera only (EmitOptions.fine 'near'; the facade craft). */
-  near<T>(body: () => T): T {
-    this.nearDepth++;
-    try { return body(); } finally { this.nearDepth--; }
   }
 
   /** Emit `body` with every point turned `yaw` about Y and moved by (x, y, z); UVs stay in the body's own frame. */

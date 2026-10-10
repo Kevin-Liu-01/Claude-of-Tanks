@@ -1,5 +1,4 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
-import { markCamoPanel } from '../camoPanels.ts';
 // US Pershing/Patton family — FROM-SCRATCH rebuild against the measured
 // profile curves in docs/references/profiles/<id>.json (mask-trace-1024 of the
 // repaired reference GLBs; world meters, +z forward, y from ground) plus the
@@ -3995,15 +3994,13 @@ function pattonSideCassette(
     ));
     // Fleet lane round 1 (2026-10-08; accessories wave 255: "a row of near-identical clean rectangles with no ...
     // missing corners or varied hinge heights"): each cassette's face plate takes its own seat (height within 1.5 cm,
-    // size within a few per cent), deterministic from its station, and its own window and paint batch as a camouflage
-    // panel (camoPanels.ts); the cassette bodies and the outer face line are unchanged (every face keeps the published
+    // size within a few per cent), deterministic from its station; the cassette bodies and the outer face line are unchanged (every face keeps the published
     // 1.8165 m line: an inset face moved the hull's outer extent, and with it the watertight census lattice under the
     // generated interior fills).
     const seed = Math.abs(Math.imul(Math.round(z * 1000) + (side > 0 ? 7919 : 0), 0x9e3779b1)) >>> 0;
     const u = (k: number): number => (((seed >>> (k * 8)) & 0xff) / 255);
     const faceX = side * 1.8165;
     const face = box(0.008, h * (0.74 + 0.06 * u(1)), len * (0.80 + 0.06 * u(2)));
-    markCamoPanel(face, `m60-cassette-${side > 0 ? 'r' : 'l'}-${Math.round(z * 100)}`);
     P.add('hullDetail', face, faceX, y + (u(3) - 0.5) * 0.03, z);
     return;
   }

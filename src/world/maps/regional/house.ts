@@ -7,7 +7,10 @@ import {
   LocalFrame, PartSink, bodyFaces, facePoint, faceBox, normalize3, UV_MEMBER,
   type Face, type RegionalBucket, type Rgb, type Vec3, type EmitOptions,
 } from './geometry.ts';
-import { carvedVerge, facadeGround, facadeOn, sillStreaks, thatchCourses, withFacade, type FacadeContext } from './facade.ts';
+import {
+  carvedVerge, facadeGround, facadeGroundCraft, facadeLegacy, facadeOn, sillStreaks, styleGroundCraft, thatchCourses, withFacade,
+  type FacadeContext,
+} from './facade.ts';
 import { withSillShadow } from './openings.ts';
 
 /** The walls whose occlusion the weathering pass paints (geometry.ts SHADED): a sill's shadow lies on them. */
@@ -37,9 +40,10 @@ export interface RoofSpec {
   decor?: boolean;
   /**
    * a straw roof's thatch craft (facade.ts thatchCourses, desktop): the eaves beaten into steps of butt ends and course
-   * lines up the slope ('stepped', the default), the course lines alone ('rows': a palm or grass thatch), or none
+   * lines up the slope ('stepped', the default), the course lines alone ('rows': a palm or grass thatch), a thick frayed
+   * eave course alone ('nipa': an atap of nipa leaf, whose fine rows are the print's), or none
    */
-  thatch?: 'stepped' | 'rows' | 'none';
+  thatch?: 'stepped' | 'rows' | 'nipa' | 'none';
 }
 
 export interface StoreySpec {
@@ -284,13 +288,21 @@ function damagedOpening(sink: PartSink, face: Face, o: Opening, y0: number, reve
  * the base, its outer edge a lip down into the ground. Decor.
  */
 const SKIRT_W = 0.45, SKIRT_RUN = 1.5, SKIRT_LIFT = 0.03;
+/**
+ * (the facades lane, round 10; gauntlet wave 301, both critics: "houses stand on bare dirt or lawn with a hard line", "no
+ * plinths, steps, yards"; the 45 cm strip lay under the grass cards' tips) the apron a style's ground craft lays
+ * (facadeGroundCraft): 80 cm of paving round the plinth, the grass held off it, and the door paths 1.5 m long
+ */
+const APRON_W = 0.8, APRON_PATH = 1.5;
 function groundSkirt(sink: PartSink, spec: HouseSpec, faces: Record<FaceName, Face>): void {
   // (a house on a plinth stands on the ground; one without may stand raised on piers, so it takes a strip only by name)
   const sk = spec.skirt === undefined ? (spec.plinth ? { bucket: spec.plinth.bucket } : null) : spec.skirt;
-  if (!sk) return;
+  // (round 10) a map gated back to the older craft lays no strip (KIT_LEGACY_MAPS)
+  if (!sk || facadeLegacy()) return;
   const o = spec.plinth ? spec.plinth.out : 0;
   const x0 = -spec.w / 2 - o, x1 = spec.w / 2 + o, z0 = -spec.d / 2 - o, z1 = spec.d / 2 + o;
-  const W = SKIRT_W, top = 0.04, ground = facadeGround();
+  const wide = facadeGroundCraft();
+  const W = wide ? APRON_W : SKIRT_W, top = 0.04, ground = facadeGround();
   // darkest against the wall; a level strip's lips (below its top) a little lighter
   const shadeOf = (p: Vec3): number => {
     if (!ground && p[1] < top - 0.01) return 0.8;
@@ -313,7 +325,7 @@ function groundSkirt(sink: PartSink, spec: HouseSpec, faces: Record<FaceName, Fa
   const X0 = x0 - W, X1 = x1 + W, Z0 = z0 - W, Z1 = z1 + W;
   // the doors' paths: a slab out to a metre from the plinth, as wide as the door and 18 cm either side
   const paths = spec.openings.filter((op) => op.storey === 0 && op.kind === 'door' && !op.state).map((op) => {
-    const f = faces[op.face], hw = op.w / 2 + 0.18, L = 1.0;
+    const f = faces[op.face], hw = op.w / 2 + 0.18, L = wide ? APRON_PATH : 1.0;
     const at = (du: number, out: number): [number, number] => [f.origin[0] + f.u[0] * (op.u + du) + f.out[0] * (out + o),
       f.origin[2] + f.u[2] * (op.u + du) + f.out[2] * (out + o)];
     return { f, hw, L, at };
@@ -410,7 +422,7 @@ function spallRender(sink: PartSink, spec: HouseSpec, wall: RegionalBucket, face
   const windows = own.filter((o) => o.kind === 'window' && !o.state);
   // (facade craft, desktop; wave 172: "a hard-edged texture-blend patch on the blank Steinburg gable") each loss in its
   // layers (layeredLoss); the losses keep their places and count, so the craft only adds to the plain build
-  const crafted = facadeOn() && !spec.spallTint;
+  const crafted = facadeOn() && !spec.spallTint && !facadeLegacy();
   const n = 1 + Math.floor(rng() * 3);
   for (let k = 0; k < n; k++) {
     const roll = rng(), a = rng(), b = rng(), c = rng();
@@ -451,6 +463,12 @@ function spallRender(sink: PartSink, spec: HouseSpec, wall: RegionalBucket, face
       ragged.push(p);
       lu = Math.min(lu, p[0]); hu = Math.max(hu, p[0]); ly = Math.min(ly, p[1]); hy = Math.max(hy, p[1]);
     }
+    // (the facades lane, round 10; gauntlet wave 301, both critics, eleven Steinburg frames: "pasted brick-patch decals",
+    // "circular", "diamond-shaped", "leaf-shaped", "stickers") a loss in the render reads as a decal at every range the
+    // game is seen at — the damp's ragged foot band as a lump at the wall foot (offline renders, the Frontier nave): on a
+    // style with the ground craft none is drawn, by any build (their draws kept, so a khata's keep their shapes); the
+    // weathering pass's damp band (weather.ts) and the plinth's water table carry the wall foot
+    if (styleGroundCraft()) continue;
     if (Math.max(Math.abs(lu), Math.abs(hu)) > half - 0.08 || ly < y0 + 0.02 || hy > y1 - 0.08) continue;
     if (keepOut.some((h) => hu > h.u0 && lu < h.u1 && hy > h.y0 && ly < h.y1)) continue;
     // (the bounds the rings below grow from: the outline's own extent about its centre)
@@ -645,7 +663,8 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
     if (bucket === 'straw' && !roof.decor && roof.thatch !== 'none' && facadeOn()) {
       const top = (p: Vec3): Vec3 => [p[0] + n[0] * t, p[1] + n[1] * t, p[2] + n[2] * t];
       thatchCourses(sink, bucket, top([side * (s + e), lo, side * D]), top([side * (s + e), lo, -side * D]),
-        top([0, ridgeY, side * ridgeHalf]), top([0, ridgeY, -side * ridgeHalf]), n, { verges: roof.kind === 'gable', stepped: roof.thatch !== 'rows' });
+        top([0, ridgeY, side * ridgeHalf]), top([0, ridgeY, -side * ridgeHalf]), n,
+        { verges: roof.kind === 'gable', stepped: roof.thatch !== 'rows' && roof.thatch !== 'nipa', nipa: roof.thatch === 'nipa' });
     }
   }
   if (roof.kind !== 'gable' && ridgeHalf < D - 1e-6) {
@@ -663,7 +682,8 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
       if (bucket === 'straw' && !roof.decor && roof.thatch !== 'none' && facadeOn()) {
         const top = (p: Vec3): Vec3 => [p[0] + n[0] * t, p[1] + n[1] * t, p[2] + n[2] * t];
         const apex = top([0, ridgeY, end * ridgeHalf]);
-        thatchCourses(sink, bucket, top([end * xC, yC, end * D]), top([-end * xC, yC, end * D]), apex, apex, n, { stepped: roof.thatch !== 'rows' });
+        thatchCourses(sink, bucket, top([end * xC, yC, end * D]), top([-end * xC, yC, end * D]), apex, apex, n,
+          { stepped: roof.thatch !== 'rows' && roof.thatch !== 'nipa', nipa: roof.thatch === 'nipa' });
       }
       // hip caps along both hip lines (round 6: bedded in mortar, lichened, as the ridge)
       for (const sx of [1, -1]) {
@@ -783,6 +803,15 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
   if (spec.plinth) {
     const p = spec.plinth;
     sink.span(p.bucket, -spec.w / 2 - p.out, -0.6, -spec.d / 2 - p.out, spec.w / 2 + p.out, p.h, spec.d / 2 + p.out);
+    // (the facades lane, round 10; wave 301: "walls go straight into the dirt with no plinth", "no plinth or step": a
+    // stone plinth under a stone ground storey, in the one stone print, read as the wall run down into the ground) the
+    // plinth's water table: a dressed course along its top, 4.5 cm proud of it and a shade paler, its underside the
+    // shadow line that parts the plinth from the wall, its top the doors' threshold. Decor (no collision), never cast
+    if (facadeGroundCraft() && p.h >= 0.2) {
+      const o = p.out + 0.045, t = Math.min(0.12, p.h * 0.3);
+      sink.span(p.bucket, -spec.w / 2 - o, p.h - t, -spec.d / 2 - o, spec.w / 2 + o, p.h + 0.005, spec.d / 2 + o,
+        { decor: true, tint: [1.1, 1.08, 1.05], shadeAt: (q: Vec3) => (q[1] < p.h - t + 0.001 ? 0.7 : 1) });
+    }
   }
   spec.storeys.forEach((storey) => {
     if (storey.jetty) for (let k = 0; k < 4; k++) jet[k] += storey.jetty[k];

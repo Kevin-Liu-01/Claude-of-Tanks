@@ -84,8 +84,8 @@ function khata(ctx: RegionalBuildContext, opts: { long?: boolean } = {}): Region
 }
 
 /** Clay under the whitewash: what a khata's worn render shows (a tint on the render, facade craft). */
-// (wave 199: the losses read as "grey blob decals") the daub's own ochre-brown, not a grey under the lime
-const CLAY: Rgb = [0.76, 0.6, 0.44];
+// (2026-10-09, the Verdant gate: the release's clay; wave 199 had asked for the daub's own ochre-brown, [0.76, 0.6, 0.44])
+const CLAY: Rgb = [0.8, 0.7, 0.58];
 const HOLLYHOCK: readonly Rgb[] = [0xc23a5e, 0xd8d0d6, 0x9a2a4a, 0xe08aa8, 0x7a2a6a].map(rgb);
 const RIDER = rgb(0x6e6254);
 /**
@@ -567,12 +567,15 @@ export const KOLKHOZ_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     tones: {
       plaster: limewash(whitewash, 0x11a1),
       plaster2: limewash((_h, s, l) => [0.11, Math.min(1, s * 0.3), Math.min(1, l * 1.2 + 0.1)], 0x11a2),
-      // (wave 150: the grey-blue read as granite) the blue lime-wash a light sky blue
-      plaster3: limewash((_h, s, l) => [0.57, Math.min(1, s * 0.2 + 0.12), Math.min(1, l * 1.18 + 0.14)], 0x11a2),
+      // (2026-10-09, the Verdant gate: the release's blue lime-wash; wave 150's light sky blue was [0.57, s * 0.2 + 0.12,
+      // l * 1.18 + 0.14])
+      plaster3: limewash((_h, s, l) => [0.58, Math.min(1, s * 0.2 + 0.03), Math.min(1, l * 1.15 + 0.1)], 0x11a2),
       straw: (h, s, l) => [h - 0.01, Math.min(1, s * 0.62), Math.min(1, l * 0.86)],
     },
   },
   builders: KOLKHOZ_BUILDERS,
   // the yards: a wattle fence (pleten) round the vegetable plot (ogorod) and the log granary (ambar), a gate (yards.ts)
   yard: { kinds: ['cottage', 'farmhouse'], fence: 'fencewattle', gate: 'gate', shed: 'granary', shedSize: [4.0, 6.5], garden: true },
+  // (round 10) Verdant's khatas keep their foot as it is: the owner's favourite village
+  groundCraft: false,
 });

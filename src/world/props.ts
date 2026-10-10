@@ -18,7 +18,7 @@ import {
   textureFromRgbaPixels as toTexture,
   tileableTorusNoise as torusN,
 } from './proceduralTexture.ts';
-import { paintLimewash } from './regionalSurfaces.ts'; // a kit's lime-wash render (makePlaster; the facades lane)
+import { paintLimeRender, paintLimewash, paintNipaThatch } from './regionalSurfaces.ts'; // a kit's render and thatch painters (the facades lane)
 import { graveParts } from './maps/regional/yards.ts'; // a churchyard's graves (placeYards; the facades lane)
 import type { YardStyle } from './maps/regional/types.ts';
 import { applyTone, terrainNearMeshHeightAt, type HeightField, type TerrainLayout } from './terrain.ts';
@@ -197,7 +197,7 @@ import type { UtilityNetwork } from './utilityNetwork.ts';
 import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildContext, type StructureDimensions } from './maps/exteriorDetailKit.ts';
 // regional-buildings lane (2026-10-03): the map's regional architecture kit replaces each placed building's geometry
 // after its placement is settled (maps/regional/index.ts) and paints the kit's roof and masonry (regionalSurfaces.ts)
-import { buildRegionalParts, rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
+import { buildRegionalParts, kitLegacy, rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
 import {
   bindStructureSpans, describeStructure, tagStructureVertices, type StructureMaterialEntry, type StructureSpan,
 } from './structureDamageSeam.ts';
@@ -350,6 +350,9 @@ interface InhabitSettings {
   jeeps?: number;
   drumClusters?: number;
   looseClutter?: number;
+  /** The loose roadside kinds, six of them (the Redrock lane, round 11e: a list of the default's length draws the same
+   *  sites and members, so only the kinds change). Absent: the map family's own mix. */
+  looseKinds?: readonly [string, string, string, string, string, string];
   camps?: number;
   carts?: number;
   modernClutter?: number | Record<string, number>;
@@ -1008,6 +1011,10 @@ const _col = new THREE.Color();
 /** (the time-to-battle lane, 2026-10-08) the untoned render a props build's noise paints: every render family paints the
  * same one (plaster, plaster2 and plaster3 differ only in tone), so it is painted once per build and copied */
 const plasterBases = new WeakMap<SimplexNoise, { px: Uint8ClampedArray; hgt: Float32Array }>();
+/** (the facades lane, 2026-10-08) and a kit painter's untoned canvas, by painter and seed: plaster2 and plaster3 share one */
+const paintedRenders = new WeakMap<SimplexNoise, Map<string, { px: Uint8ClampedArray; hgt: Float32Array }>>();
+/** The relief and surface of a painted render: lime-wash (brush ridges) a little deeper than a floated lime render. */
+const RENDER_RELIEF = { limewash: 0.8, limeRender: 0.6 } as const;
 
 function makePlaster(
   noi: SimplexNoise,
@@ -1017,14 +1024,20 @@ function makePlaster(
 ): GeneratedSurfaceTextures {
   const s = 256, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
   // the facades lane (2026-10-05): a kit's tone may name its render's painter — the khatas' lime-wash brushed over mud
-  // plaster (regionalSurfaces.ts paintLimewash), matt and soft where this canvas reads as pebble-dash
-  const paint = (tone as { paint?: { kind: 'limewash'; seed: number } } | null)?.paint;
-  if (paint?.kind === 'limewash') {
-    const lime = paintLimewash(s, paint.seed);
+  // plaster (regionalSurfaces.ts paintLimewash), matt and soft where this canvas reads as pebble-dash; (2026-10-08) a town's
+  // lime render (paintLimeRender; Steinburg's stucco read "speckled": this canvas's 6 cm bumps shade as dots from the street)
+  const paint = (tone as { paint?: { kind: 'limewash' | 'limeRender'; seed: number } } | null)?.paint;
+  if (paint) {
+    let byPaint = paintedRenders.get(noi);
+    if (!byPaint) paintedRenders.set(noi, byPaint = new Map());
+    const key = `${paint.kind}:${paint.seed}`;
+    let base = byPaint.get(key);
+    if (!base) byPaint.set(key, base = paint.kind === 'limeRender' ? paintLimeRender(s, paint.seed) : paintLimewash(s, paint.seed));
+    const lime = { px: base.px.slice(), hgt: base.hgt };
     applyTone(lime.px, tone);
     return {
       albedo: toTexture(lime.px, s, { srgb: true, anisotropy }),
-      normal: sharedSurface?.normal ?? normalFromHeight(lime.hgt, s, 0.8, anisotropy),
+      normal: sharedSurface?.normal ?? normalFromHeight(lime.hgt, s, RENDER_RELIEF[paint.kind], anisotropy),
       surface: sharedSurface?.surface ?? surfaceFromHeight(lime.hgt, s, anisotropy, { roughMin: 0.9, roughMax: 0.98, aoMin: 0.9 }),
     };
   }
@@ -1264,8 +1277,20 @@ function makeStraw(
  * The colour is the straw print's own family and mean (makeStraw's hue, saturation and lightness, under the map's
  * straw tone): the structure changes, not the palette. Every pattern is periodic in the tile (integer counts, wrapped
  * lattices), so it tiles without a seam.
+ * A kit may give its thatch its own print (ArchitectureSurfaces.thatch): 'nipa', the Mekong delta's atap of nipa-palm leaf
+ * (regionalSurfaces.ts paintNipaThatch; the facades lane, 2026-10-08, gauntlet wave 260: the Ca Mau hamlet's straw print
+ * read as "brown shingle gable roofs"), in the same tile convention under the same tone.
  */
-function makeThatch(anisotropy: number, tone: ToneFunction | null, seed: number): GeneratedSurfaceTextures {
+function makeThatch(anisotropy: number, tone: ToneFunction | null, seed: number, kind?: 'nipa'): GeneratedSurfaceTextures {
+  if (kind === 'nipa') {
+    const nipa = paintNipaThatch(512, seed);
+    applyTone(nipa.px, tone);
+    return {
+      albedo: toTexture(nipa.px, 512, { srgb: true, anisotropy }),
+      normal: normalFromHeight(nipa.hgt, 512, 2.0, anisotropy),
+      surface: surfaceFromHeight(nipa.hgt, 512, anisotropy, { roughMin: 0.84, roughMax: 1.0, aoMin: 0.66 }),
+    };
+  }
   const s = 512, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
   const hash = (a: number, b: number, c: number): number => {
     let h = (Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1) ^ Math.imul(c | 0, 0x9e3779b1) ^ seed) >>> 0;
@@ -1516,6 +1541,26 @@ function _mustReplace(src: string, anchor: string, replacement: string): string 
   const out = src.replace(anchor, replacement);
   if (out === src) throw new Error(`world/props: shader anchor missing: ${anchor}`);
   return out;
+}
+
+/**
+ * (facades lane, round 7, 2026-10-07; the media critics on Steinburg: "an aliasing roof-tile pattern", "a flat checker
+ * of tiles") A kit's tile sheet is fine and high in contrast — a course every ~19 texels, its shadow line near black —
+ * so at 40–80 m its courses sit near the screen's Nyquist and crawl as the camera moves, anisotropy (8 on a desktop) or
+ * not. The roof samples its maps half a mip level softer: no change where the sheet is magnified (a roof close by), a
+ * softer course line wherever it is minified. One chunk each, as three writes it, with the bias added.
+ */
+const ROOF_TILE_LOD_BIAS = 0.5;
+function applyTileLodBias(shader: MaterialShader, bias: number): void {
+  const b = bias.toFixed(2);
+  const chunk = (name: 'map_fragment' | 'normal_fragment_maps' | 'roughnessmap_fragment' | 'aomap_fragment', sampler: string, uv: string) => {
+    const biased = THREE.ShaderChunk[name].split(`texture2D( ${sampler}, ${uv} )`).join(`texture2D( ${sampler}, ${uv}, ${b} )`);
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, `#include <${name}>`, biased);
+  };
+  chunk('map_fragment', 'map', 'vMapUv');
+  chunk('normal_fragment_maps', 'normalMap', 'vNormalMapUv');
+  chunk('roughnessmap_fragment', 'roughnessMap', 'vRoughnessMapUv');
+  chunk('aomap_fragment', 'aoMap', 'vAoMapUv');
 }
 
 function cropAttributeNormal(shader: MaterialShader): void {
@@ -3650,6 +3695,20 @@ function* propsBuildSteps(
   // regional-buildings lane: the map's architecture kit (maps/regional/index.ts) — its default tones sit under the map's
   const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
   if (regionalArchitecture?.surfaces.tones) P.tones = { ...regionalArchitecture.surfaces.tones, ...(P.tones || {}) };
+  // the facades lane (2026-10-08): a kit's render painter (surfaces.render) paints each render family the map tones, under
+  // that tone — the primary on its seed, plaster2 and plaster3 on the next (plaster3 borrows plaster2's relief below)
+  const kitRender = regionalArchitecture?.surfaces.render;
+  if (kitRender && P.tones) {
+    const tones: Record<string, ToneFunction | null | undefined> = { ...P.tones };
+    for (const key of ['plaster', 'plaster2', 'plaster3'] as const) {
+      const own = tones[key] as (ToneFunction & { base?: ToneFunction }) | null | undefined;
+      if (!own) continue;
+      const base = own.base ?? own;
+      tones[key] = Object.assign((h: number, s: number, l: number) => base(h, s, l),
+        { base, paint: { kind: kitRender.kind, seed: kitRender.seed + (key === 'plaster' ? 0 : 1) } });
+    }
+    P.tones = tones;
+  }
   const T = P.tones || {};
   const plaster = makePlaster(noi, aniso, T.plaster || null);
   yield { fine: true };
@@ -3935,7 +3994,18 @@ function* propsBuildSteps(
   // wall tops, chimneys, carts, sourced baked models and rocks all carry a
   // slope-masked snow load, while vertical faces keep their material.
   const snowCap = mapId === 'winter' || !!P.snowCap;
-  const grimeHook: MaterialShaderHook = (shader) => {
+  // (the facades lane, round 10; gauntlet wave 301 on Steinburg's render: "blotchy brown staining", "cloud-like blotch
+  // noise standing in for lime render"; on its ashlar: "the same dark grime blotch in every block") a kit's walls keep the
+  // neighbourhood drift but not the props' grime: the 1-3 m blotches darkening a fifth (gB) and the clouds swinging the
+  // tone by 15 % (gA) were the stains, laid over the render's own mottling and the stone's own soiling. Their tone swings
+  // a twentieth, and the rain's runs streak the face instead: 10-30 cm wide, metres long, a few per cent darker. Not on
+  // Verdant (the owner's favourite village keeps its look).
+  const grimeHook: MaterialShaderHook = (shader) => grimeShader(shader, false);
+  const wallGrimeHook: MaterialShaderHook = (shader) => grimeShader(shader, true);
+  const wallGrime = !!regionalArchitecture && mapId !== 'verdant' && !kitLegacy(mapId);
+  const isKitWall = (kind: string) => wallGrime && (kind === 'regionalPlaster' || kind === 'regionalPlaster2'
+    || kind === 'regionalPlaster3' || kind === 'regionalStone');
+  function grimeShader(shader: MaterialShader, walls: boolean): void {
     shader.uniforms.uGrime = { value: grimeTex };
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
       '#include <common>\nvarying vec3 vGrimeW;\nvarying vec3 vGrimeN;');
@@ -3955,9 +4025,15 @@ function* propsBuildSteps(
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <map_fragment>', /* glsl */`#include <map_fragment>
 {
   float gA = texture2D(uGrime, vGrimeW.xz * 0.021 + vGrimeW.y * 0.013).r;
+${walls ? `
+  // (the runs along the wall's own horizontal, so a wall turned 45 degrees streaks as an axis-aligned one does)
+  vec2 gT = normalize(vec2(-vGrimeN.z, vGrimeN.x) + vec2(1e-3, 0.0));
+  float gR = texture2D(uGrime, vec2(dot(vGrimeW.xz, gT) * 0.7, vGrimeW.y * 0.05)).g;
+  diffuseColor.rgb *= 0.95 + gA * 0.10;
+  diffuseColor.rgb *= 1.0 - smoothstep(0.6, 0.92, gR) * 0.07 * (1.0 - abs(vGrimeN.y));` : `
   float gB = texture2D(uGrime, vec2(vGrimeW.x + vGrimeW.z, vGrimeW.y * 1.7) * 0.055).g;
   diffuseColor.rgb *= 0.84 + gA * 0.30;
-  diffuseColor.rgb *= 1.0 - smoothstep(0.58, 0.95, gB) * 0.20;
+  diffuseColor.rgb *= 1.0 - smoothstep(0.58, 0.95, gB) * 0.20;`}
   // r3 terrain_environment: smooth ~25-60 m warm/cool + value drift so
   // adjacent buildings stop sharing one identical facade/roof tone (the
   // "whole town shares 3-4 materials" tell). Low frequency = no seams
@@ -3995,7 +4071,7 @@ ${snowCap ? `
     diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.795, 0.835, 0.90), sw * 0.88);
   }` : ''}
 }`);
-  };
+  }
   // Round 75 item 6: the boulders' dressing (moss on wet maps, dust on arid ones, the soil skirt everywhere; the scenery
   // lane, 2026-10-04: the map's beds, lichen and varnish, the contact darkening)
   const rockDressing = rockDressingFor(mapId, P.rockSoilTone ?? null, snowCap);
@@ -4041,19 +4117,27 @@ ${snowCap ? `
   // shadow pass runs the same crown (its depth material).
   const mudShape: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3(1.2, 0.66, MUD_SLUMP_M) };
   const mudHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyMudWallHook(shader, mudShape); };
+  // (round 7) a kit's tile sheet — the regional roofs' and, on a kit's map, the base roofs' (the same sheet) — half a mip
+  // softer (applyTileLodBias)
+  const tileBiased = (kind: string) => kind === 'regionalRoof' || (kind === 'roof' && !!regionalArchitecture);
+  const roofHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyTileLodBias(shader, ROOF_TILE_LOD_BIAS); };
   function installSurfaceShaderHooks(): void {
     for (const [materialKind, material] of Object.entries(mats)) {
-      engineCtx.setupShadowMaterial(material,
+      // (round 7) a kit's tile sheet takes the biased roof hook; (round 10) a kit's walls the walls' grime
+      const kitHook = tileBiased(materialKind) ? roofHook : isKitWall(materialKind) ? wallGrimeHook : null;
+      engineCtx.setupShadowMaterial(material, kitHook ?? (
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
           : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook
             : materialKind === 'ballast' ? ballastHook
-            : materialKind === 'fieldMud' ? mudHook : grimeHook);
+            : materialKind === 'fieldMud' ? mudHook : grimeHook));
       // (the hessian is the canvas's shader with another map, and the hay the straw's: they share their programs; the
       // field print has its own, for the modules' shifted windows, and the mud print its own, for its world-space
       // weathering)
       const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind === 'hay' ? 'straw' : materialKind;
+      // (round 7: a biased roof is its own program, so a map without a kit never reuses a kit map's)
+      const biasKey = (tileBiased(materialKind) ? '-lodb' : '') + (isKitWall(materialKind) ? '-wall' : '');
       material.customProgramCacheKey = () =>
-        'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
+        'world-props-' + programKind + '-v7' + (snowCap ? 's' : '') + biasKey; // round 75: the weathering law
     }
   }
   installSurfaceShaderHooks();
@@ -4759,6 +4843,26 @@ ${snowCap ? `
     // court donors keep theirs: later passes re-seat those exact parts)
     const regionalDonor = (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery)
       || (!!foundryDonors && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === bi && site.kind === structureId));
+    // (the facades lane, 2026-10-08; gauntlet wave 260 on Mangrove Reach: its shed read as "Western clapboard") the wharf
+    // fishery stands its boards upright. The wharf keeps the base fishery's own parts and re-seats exactly them
+    // (mangroveFisheryWharf.ts), so the Mekong kit cannot rebuild it: only the texture of its timber walls and gables turns
+    // a quarter (u, v -> v, -u: a turn, not a mirror, so the planks' relief keeps its light) and the photo set's planks
+    // stand on end, a Ca Mau fish shed's boarding. Wall faces only: the roof, the deck's top and the short posts keep
+    // theirs (the wharf stretches the posts' v down to the mud). No position, normal, index or part changes.
+    if (regionalArchitecture?.id === 'mekong' && mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery) {
+      for (const g of tmp.wood ?? []) {
+        g.computeBoundingBox();
+        const box = g.boundingBox;
+        const uv = g.getAttribute('uv'), normal = g.getAttribute('normal');
+        if (!box || box.min.y < 0 || box.max.y - box.min.y < 1 || !uv || !normal) continue;
+        for (let i = 0; i < uv.count; i++) {
+          if (Math.abs(normal.getY(i)) >= 0.5) continue;
+          const u = uv.getX(i), v = uv.getY(i);
+          uv.setXY(i, v, -u);
+        }
+        uv.needsUpdate = true;
+      }
+    }
     let body: { minX: number; maxX: number; minZ: number; maxZ: number } | null = null;
     // a building that stands in a carriageway is packed for the move after every settlement building stands; whether it
     // stands there, and the footprint it moves with, are the base geometry's, so a kit never changes which buildings move
@@ -6153,7 +6257,7 @@ ${snowCap ? `
     const isIndustrial = mapId === 'urban' || mapId === 'railyard' || mapId === 'foundry' || mapId === 'caldera'
       || mapId === 'copper_mesa' || mapId === 'airfield' || mapId === 'whiteout';
     const isDry = mapId === 'desert' || mapId === 'badlands' || mapId === 'frontier' || mapId === 'oasis';
-    const looseKinds = isIndustrial ? industrialLoose : isDry ? dryLoose : ruralLoose;
+    const looseKinds: readonly string[] = inh.looseKinds ?? (isIndustrial ? industrialLoose : isDry ? dryLoose : ruralLoose);
     const looseCap = richCount(inh.looseClutter, P.streetRows ? 20 : P.plan.length >= 14 ? 18 : 14);
     const loosePlacement = { authoredSites: looseCap, acceptedSites: 0, placedMembers: 0, kinds: [] as string[] };
     const placedLooseKinds = new Set<string>();
@@ -9963,11 +10067,12 @@ ${snowCap ? `
   // their own. Its material is the straw's shader under the straw's program key, so it compiles nothing new: one draw
   // more on a map with thatch. The bales, stooks and stacks keep the straw print.
   {
-    const kitThatch = buckets.straw.filter((g) => g.userData.regional === true);
+    // (round 10) a map gated back to the older craft keeps the straw print on its thatch (KIT_LEGACY_MAPS)
+    const kitThatch = kitLegacy(mapId) ? [] : buckets.straw.filter((g) => g.userData.regional === true);
     if (kitThatch.length) {
       buckets.straw = buckets.straw.filter((g) => g.userData.regional !== true);
       buckets.thatch = kitThatch;
-      const thatch = makeThatch(aniso, T.straw || null, (seed ^ 0x7a7c4) >>> 0);
+      const thatch = makeThatch(aniso, T.straw || null, (seed ^ 0x7a7c4) >>> 0, regionalArchitecture?.surfaces.thatch?.kind);
       const material = new THREE.MeshStandardMaterial({ map: thatch.albedo, normalMap: thatch.normal,
         roughnessMap: thatch.surface, aoMap: thatch.surface, roughness: 1, metalness: 0 });
       material.aoMapIntensity = 0.82;
@@ -10088,8 +10193,10 @@ ${snowCap ? `
       // the batch draws through its own copy of the bucket's material: one material shared by a batched and a plain
       // mesh re-resolves its program at every switch between them (three's batching parameter), several times a frame
       const batchMaterial = mats[key].clone();
-      engineCtx.setupShadowMaterial(batchMaterial, grimeHook);
-      batchMaterial.customProgramCacheKey = () => 'world-props-' + key + '-v7' + (snowCap ? 's' : '') + '-batch';
+      // (round 10) a kit wall's batch wears its walls' grime (wallGrimeHook), as its plain mesh does
+      const wallBatch = isKitWall(key);
+      engineCtx.setupShadowMaterial(batchMaterial, wallBatch ? wallGrimeHook : grimeHook);
+      batchMaterial.customProgramCacheKey = () => 'world-props-' + key + '-v7' + (snowCap ? 's' : '') + '-batch' + (wallBatch ? '-wall' : '');
       retainedSurfaceMaterials.push(batchMaterial);
       const batch = new THREE.BatchedMesh(parts.length, vertices, Math.max(indices, 1), batchMaterial);
       batch.name = 'props-bucket-' + key + '-batch';

@@ -49,7 +49,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/nationalPolandProtection.selftest.mjs',
     'src/vehicles/nationalRoof.selftest.mjs',
     'src/sim/smokeBallistics.selftest.mjs',
+    'src/vehicles/smokeFan.selftest.mjs',
+    'src/sim/smokeScreenCover.selftest.mjs',
     'src/fx/auxiliaryPresentation.selftest.mjs',
+    'src/fx/projectileTracers.selftest.mjs',
     'src/ui/vehicleControlCooldown.selftest.mjs',
     'src/ui/vehicleSpecialAction.selftest.mjs',
     'src/vehicles/vehicleAuxiliaryGeometry.selftest.mjs',
@@ -274,6 +277,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/shellBurstColumn.selftest.mjs',
     // 2026-10-08 (destruction core lane, P2): the Studio films the sim's own holes and falls
     'src/game/studioDestruction.selftest.mjs',
+    // 2026-10-09 (destruction core lane): a Studio burst fells light props as a battle's does; strike rounds burst on the ground.
+    'src/game/studioBlastFell.selftest.mjs',
     'tools/studio-example-scenarios.selftest.mjs',
     'src/vehicles/spareTrackAttachment.selftest.mjs',
     'src/vehicles/turretBarrelCircularity.selftest.mjs',
@@ -570,6 +575,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/viteGlslMinify.selftest.mjs',
     'tools/telemetry-report.selftest.mjs',
     'tools/browser-failure-evidence.selftest.mjs',
+    'tools/battle-entry-sweep.selftest.mjs',
     'tools/multiplayer-frame-trace.selftest.mjs',
     'tools/terrain-stream-benchmark.selftest.mjs',
     'tools/terrain-fast-cache-benchmark.selftest.mjs',
@@ -697,6 +703,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/damagePanel.selftest.mjs',
     'src/ui/damagePanelMarkers.selftest.mjs',
     'src/ui/damagePanelMaskRetry.selftest.mjs',
+    'src/ui/damagePanelEntryMasks.selftest.mjs',
     'src/engine/rgba8Readback.selftest.mjs',
     'src/ui/topMaskProgramWarm.selftest.mjs',
     'src/ui/tankThumbs.selftest.mjs',
@@ -709,21 +716,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/runtimeStyles.selftest.mjs',
     'src/ui/topAccentBorders.selftest.mjs',
     'src/vehicles/camoPolicy.selftest.mjs',
-    // 2026-10-07 (tank-accessories round 3): AUTO paints each nation's own scheme for the battlefield's environment
-    'src/vehicles/autoCamoNational.selftest.mjs',
-    'src/vehicles/battleTheatreCamo.selftest.mjs',
+    // 2026-10-09 (fix/camo-defaults): production's camouflage system, row for row (R113; the owner's 10-09 messages)
+    'src/vehicles/camoCatalogProductionIndices.selftest.mjs',
     'src/vehicles/authoredPaintCatalog.selftest.mjs',
     'src/vehicles/customCamoCanvas.selftest.mjs',
     'src/vehicles/factoryCamo.selftest.mjs',
     'src/vehicles/camoPatternSeed.selftest.mjs',
     'src/vehicles/camoWorldScale.selftest.mjs',
-    // 2026-10-07 (tank-accessories round 4): bolted-on boxes, bins and sleeve sections as their own camouflage panels
-    'src/vehicles/camoPanels.selftest.mjs',
     'src/vehicles/brandCamo.selftest.mjs',
     'src/vehicles/catalogCamoPainter.selftest.mjs',
-    // 2026-10-04 (the vehicle-look lane): the field camouflages' boundaries at the tile's own resolution
-    'src/vehicles/camoFieldEdges.selftest.mjs',
-    'src/vehicles/camoPatchFields.selftest.mjs',
     'src/vehicles/vehicleMarkingsCanvas.selftest.mjs',
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
@@ -1069,6 +1070,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/impactPhysics.selftest.mjs',
     'src/sim/impactParity.selftest.mjs',
     'src/sim/structureSupport.selftest.mjs',
+    // 2026-10-09 (vehicle-contact lane, owner: "tracks shouldnt glitch through the bridge"): the drawn tracks rest on the
+    // bridge decks the hull stands on (Aegis Crossing's viaduct, Amberford, Suzhou Creek), driven and parked.
+    'src/world/vehicleGroundContact.selftest.mjs',
     'src/sim/rollover.selftest.mjs',
     'src/sim/tankBodyContacts.selftest.mjs',
     'src/sim/tankBodyRest.selftest.mjs',

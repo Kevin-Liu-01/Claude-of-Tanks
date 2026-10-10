@@ -48,7 +48,6 @@ import { mount as seat } from './fittingMount.ts';
 import { sampleArmorFace as sampleFace } from './armorFaceSampling.ts';
 import { oplotWing, oplotWingSeat, OPLOT_WING_ERA_SEATS } from './oplotWing.ts';
 import { symmetricSlab } from './facetedSlab.ts';
-import { markCamoPanel } from '../camoPanels.ts';
 
 type Vec3Tuple = [number, number, number];
 type ReadonlyVec3Tuple = readonly [number, number, number];
@@ -1271,11 +1270,9 @@ function buildUAOplotM(P: TankBuilderPort): void {
   // half of the fender. A segmented welded shelf now spans the remaining
   // channel to the Duplet side-skirt root, so the skirt is visibly carried
   // by the hull rather than floating outside the track run.
-  // 2026-10-07 (round 4, wave 214: "hull boxes" printed as one sticker with the armour): each bin is its own camouflage
-  // panel (camoPanels.ts), painted apart from the fender and from its neighbours.
   for (const s of [-1, 1]) for (let i = 0; i < 7; i++) {
     const z = 1.90 - i * 0.72;
-    P.add('hull', markCamoPanel(box(0.38, 0.11, 0.60)), s * 1.27, 1.30, z);
+    P.add('hull', box(0.38, 0.11, 0.60), s * 1.27, 1.30, z);
     P.add('hullDark', box(0.32, 0.026, 0.50), s * 1.27, 1.362, z);
   }
   {
@@ -1370,12 +1367,10 @@ function buildUAOplotM(P: TankBuilderPort): void {
   // slab spanning x 1.70..1.8875 (0.19 m deep: its plan columns at
   // +-1.71..1.85 read the full hull length), full-run at the published
   // face; heavy Duplet cassette lids dress the forward half.
-  // 2026-10-07 (round 4, wave 214: "no tonal break at panel seams"): every skirt panel between the seam strips is its
-  // own camouflage panel.
   for (const s of [-1, 1]) for (let i = 0; i < 9; i++) {
     const z0 = -3.30 + i * (5.60 / 9);
     const z = z0 + (5.60 / 18);
-    P.add('hull', markCamoPanel(box(0.185, 0.72, (5.60 / 9) * 0.94)), s * 1.7925, 0.94, z, 0, 0, -s * 0.006);
+    P.add('hull', box(0.185, 0.72, (5.60 / 9) * 0.94), s * 1.7925, 0.94, z, 0, 0, -s * 0.006);
     P.add('hullDark', box(0.048, 0.64, 0.02), s * 1.795, 0.94, z0 + 5.60 / 9 - 0.02, 0, 0, -s * 0.006);
   }
   for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
@@ -1397,7 +1392,7 @@ function buildUAOplotM(P: TankBuilderPort): void {
   // bow (the "mine-roller" read); the idler spinner itself is the smooth
   // dished idlerGeo, correctly toothless on the rear-drive T-84.
   for (const s of [-1, 1]) {
-    P.add('hull', markCamoPanel(box(0.185, 0.68, 0.74)), s * 1.7925, 0.96, 2.655, 0, 0, -s * 0.006);
+    P.add('hull', box(0.185, 0.68, 0.74), s * 1.7925, 0.96, 2.655, 0, 0, -s * 0.006);
     P.add('hullDark', box(0.048, 0.60, 0.02), s * 1.795, 0.96, 3.015, 0, 0, -s * 0.006);
     // raked tip wedge: inner face at 1.60 closes the head-on slit between
     // track band (1.553) and skirt plane (strict-audit receipt: the sweep

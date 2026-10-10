@@ -297,6 +297,10 @@ export default {
       stalls: 4, benches: 2, coreClutter: 26, drums: 12, pots: 7,
       trucks: 7, jeeps: 5, drumClusters: 8, camps: 5, modernClutter: 28,
       roadFence: 'fencerail', yardFence: 'fencewattle',
+      // (round 11e, the gauntlet's waves 298b and 314: "a giant blue bottle" in the south ravine's foreground, "tiny dark
+      // pill-shaped props on the sand read as chess pieces" — the dry maps' loose mix stood gas bottles, cones and bins
+      // alone on the open sand by every track) the Desert Patrol's tracks carry jerry cans, a drum, a lost wheel, a pail
+      looseKinds: ['jerrycan', 'drum', 'loosewheel', 'jerrycan', 'bucket', 'loosewheel'],
     },
   },
   // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): Wadi Rum's sandstone. Bedded
@@ -317,19 +321,21 @@ export default {
       { form: 'outcrop', geology: 'sandstone', tone: WADI_RUM_STONE, x: -54, z: 330, radius: 3.4, height: 7, yawDeg: 210, name: 'the north pillar rock' },
     ],
     rockFields: [
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -40, z: -318, radius: 58, count: 8, slopeBias: 0.85, size: [1.6, 5.5], forms: [['outcrop', 0.6], ['scree', 0.4]], name: 'the ledges round the south gate dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 56, z: 318, radius: 58, count: 8, slopeBias: 0.85, size: [1.6, 5.5], forms: [['outcrop', 0.6], ['scree', 0.4]], name: 'the ledges round the north gate dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -118, z: -128, radius: 58, count: 8, slopeBias: 0.85, size: [1.6, 5.5], forms: [['outcrop', 0.6], ['scree', 0.4]], name: 'the ledges round the south-west lane dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 134, z: 128, radius: 58, count: 8, slopeBias: 0.85, size: [1.6, 5.5], forms: [['outcrop', 0.6], ['scree', 0.4]], name: 'the ledges round the north-east lane dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 96, z: -112, radius: 58, count: 8, slopeBias: 0.85, size: [1.6, 5.5], forms: [['outcrop', 0.6], ['scree', 0.4]], name: 'the ledges round the south-east lane dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -80, z: 112, radius: 58, count: 8, slopeBias: 0.85, size: [1.6, 5.5], forms: [['outcrop', 0.6], ['scree', 0.4]], name: 'the ledges round the north-west lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -40, z: -318, radius: 58, count: 8, slopeBias: 0.85, size: [1.6, 5.5], forms: [['outcrop', 0.6], ['scree', 0.4]], leanUnder: 3, name: 'the ledges round the south gate dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 56, z: 318, radius: 58, count: 8, slopeBias: 0.85, size: [1.6, 5.5], forms: [['outcrop', 0.6], ['scree', 0.4]], leanUnder: 3, name: 'the ledges round the north gate dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -118, z: -128, radius: 58, count: 8, slopeBias: 0.85, size: [1.6, 5.5], forms: [['outcrop', 0.6], ['scree', 0.4]], leanUnder: 3, name: 'the ledges round the south-west lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 134, z: 128, radius: 58, count: 8, slopeBias: 0.85, size: [1.6, 5.5], forms: [['outcrop', 0.6], ['scree', 0.4]], leanUnder: 3, name: 'the ledges round the north-east lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 96, z: -112, radius: 58, count: 8, slopeBias: 0.85, size: [1.6, 5.5], forms: [['outcrop', 0.6], ['scree', 0.4]], leanUnder: 3, name: 'the ledges round the south-east lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -80, z: 112, radius: 58, count: 8, slopeBias: 0.85, size: [1.6, 5.5], forms: [['outcrop', 0.6], ['scree', 0.4]], leanUnder: 3, name: 'the ledges round the north-west lane dome' },
       // (round 11, the gauntlet's wave 282: "no fallen blocks or talus at its toe" — seven blocks a field, 1.5-7 m; the domes'
       // ledge fields eight, down to 1.6 m)
+      // (round 11e, the r11d cost hold: chase GPU +1.0 ms over round 10 with tris +3 % — the fields' stones under 3 m take
+      // the phones' facets (leanUnder), the big blocks keep theirs)
       // (round 10, the gauntlet's wave 270: the walls meet the plain "with no talus apron" — fallen blocks of the bedded
       // sandstone on the talus at four places along each wall, the east wall's and their turns about the outpost on the
       // west, 2.5-7 m stones and scree, kept to the talus by the field's own 35 degree law)
       ...[[257, -320], [260, -50], [251, 50], [348, 320]].flatMap(([x, z]) => pair({ geology: 'sandstone' as const, tone: WADI_RUM_STONE,
-        x, z, radius: 26, count: 7, slopeBias: 0.9, size: [1.5, 7] as [number, number],
+        x, z, radius: 26, count: 7, slopeBias: 0.9, size: [1.5, 7] as [number, number], leanUnder: 3,
         forms: [['outcrop', 0.55], ['scree', 0.45]] as [string, number][], name: 'the talus under the wall' })),
     ],
     landmarks: [

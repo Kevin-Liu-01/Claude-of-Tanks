@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { VOLUME_ATLAS, createVolumeMedia, makeVolumePuff, volumePositionAt } from './volumeMedia.ts';
 import { createDebrisChunks, makeChunkPiece, CHUNK_SHAPES } from './debrisChunks.ts';
 import { groundBurst, kineticStrike, muzzleBlast, killFireball, columnPuff, dustSurge, isExplosive, blastScale, craterEjecta,
-  trackSkirt, exhaustPuff } from './blastRecipes.ts';
+  trackSkirt, exhaustPuff, armorHit, plateBurst, smolderPuff, fragmentStrike } from './blastRecipes.ts';
 import { SURFACE_KINDS, SURFACE_LOOKS, classifyTerrain, surfaceForMaterial, linearHex } from './surfaceLooks.ts';
 import { mulberry32 } from './particles.ts';
 import { structureStageFx, propBreakFx, lookForStruckKind, breachBlowFor, lookFromAnatomy, wallStrike, sectionFallFx } from './structureFx.ts';
@@ -262,7 +262,7 @@ function captureContext(seed) {
   // no pale residue puff floating out of a soil burst (wave 276's "translucent blue-grey sphere"): its only cold smoke is
   // the column's own soil standing up the column (round 7c); a hard ground keeps a little pale smoke over it
   const lum0 = (m) => 0.2126 * m.r0 + 0.7152 * m.g0 + 0.0722 * m.b0;
-  const coldSmoke = (log) => log.media.filter((m) => m.medium === 'billow' && m.heat === 0);
+  const coldSmoke = (log) => log.media.filter((m) => m.medium === 'billow' && m.heat === 0 && m.aspect < 1.3);
   assert.ok(coldSmoke(a).length >= 3 && coldSmoke(a).every((m) => m.y > 1.5 && lum0(m) < 0.12),
     "no pale residue over soil: its cold smoke is the column's soil, standing up the column");
   const conc = he(5, 'he', 3.5, 'concrete');
@@ -275,9 +275,25 @@ function captureContext(seed) {
     assert.ok(sm.every((m) => lum0(m) < 0.1 && m.vy > 1.5), `${name}: its smoke is dark and climbs`);
     assert.ok(Math.max(...sm.map((m) => m.rise)) > 1.3 * Math.min(...sm.map((m) => m.rise)), `${name}: its upper puffs climb faster`);
   }
+  // (wave 293: "separate brown and blue-grey balls ... one lobed grey-brown cloud growing about eight-fold by +2 s") the
+  // HE smoke swells most in its first seconds, and all its smoke ages to one colour
+  {
+    const sm = a.media.filter((m) => m.medium === 'billow' && m.heat > 0 && m.heat < 1 && m.life >= 5);
+    const at = (m, t) => m.size0 + (m.size1 - m.size0) * (1 - Math.pow(1 - Math.min(1, t / m.life), m.growExp));
+    assert.ok(sm.every((m) => at(m, 2) - m.size0 > 0.4 * (m.size1 - m.size0)), 'the smoke swells early');
+    const aged = new Set([...sm, ...coldSmoke(a)].map((m) => [m.r1, m.g1, m.b1].map((v) => v.toFixed(4)).join()));
+    assert.equal(aged.size, 1, 'every smoke puff ages to one grey-brown');
+  }
+  // (wave 293: "the ATGM column a man's width across that stops growing") its spike keeps swelling past 4 s
+  for (const m of spike(atgmUp.log)) {
+    const at = (t) => m.size0 + (m.size1 - m.size0) * (1 - Math.pow(1 - Math.min(1, t / m.life), m.growExp));
+    assert.ok(m.life >= 5 && at(4.4) > 1.25 * at(1.4), 'the ATGM column keeps growing');
+  }
   // the footprint dust is a low wide haze, never a mound: wider than tall, at most ~0.6 dense, not lifting off
-  const haze = a.media.filter((m) => m.medium === 'burst' && m.aspect >= 1.3 && m.aspect < 1.9 && m.grav === 0);
-  assert.ok(haze.length >= 7 && haze.every((m) => m.density <= 0.62 && m.rise <= 0.15), `a low haze of ${haze.length} wide puffs`);
+  const haze = a.media.filter((m) => m.medium === 'billow' && m.aspect >= 1.3 && m.aspect < 1.9 && m.grav === 0);
+  assert.ok(haze.length >= 7 && haze.every((m) => m.density <= 0.45 && m.rise <= 0.15), `a low haze of ${haze.length} wide puffs`);
+  // (wave 293: "a tan haystack mound with a crisp rim") the soil's dark, in the soft-edged medium, gone within ~7 s
+  assert.ok(haze.every((m) => lum0(m) < 0.12 && m.life <= 7), 'the footprint haze is a thin dark soil-coloured sheet');
   assert.ok(a.media.filter((m) => m.medium === 'burst' && m.aspect >= 1 && m.aspect < 1.5 && m.grav === 0 && m.life > 5)
     .every((m) => m.rise <= 0.25), 'the dust cloud does not lift off');
   assert.ok(atgmLog.media.some((m) => m.medium === 'billow' && m.r0 < 0.06 && m.heat < 1), 'a shaped charge is born in its own dark smoke');
@@ -299,6 +315,27 @@ function captureContext(seed) {
   kineticStrike(k.ctx, { x: 0, y: 0, z: 0, dx: 1, dy: -0.1, dz: 0, caliberMm: 120, munition: 'kinetic', surface: 'soil' });
   assert.equal(k.log.flash + k.log.fire, 0, 'a kinetic strike neither flashes nor burns');
   assert.ok(k.log.media.length > 0 && k.log.chunk.length > 0, 'it throws soil and clods');
+  // (owner 2026-10-08: every effect on the media layer) a kinetic round on armour, past the caller's pop and sparks: a
+  // penetration's dark spall jet along the plate's normal that stalls and drifts, the armour-dust ring in the plate's
+  // plane, lit steel chips that fall and lie; a non-penetration's pale puff; ERA's dark blast and cassette fragments
+  {
+    const hit = (kind) => { const c = captureContext(11); armorHit(c.ctx, { x: 0, y: 1.5, z: 0, nx: 1, ny: 0, nz: 0, caliberMm: 120, kind }); return c.log; };
+    const lumOf = (m) => 0.2126 * m.r0 + 0.7152 * m.g0 + 0.0722 * m.b0;
+    const pen = hit('pen');
+    const jet = pen.media.filter((m) => m.vx > 4 && Math.hypot(m.vy - 0.3, m.vz) <= Math.tan(0.25) * m.vx + 1e-6);
+    assert.ok(jet.length >= 7 && jet.every((m) => lumOf(m) < 0.06 && m.drag >= 4 && m.life >= 1.5), `a penetration's dark spall jet (${jet.length})`);
+    const ring = pen.media.filter((m) => Math.abs(m.vx) < 1.2 && Math.hypot(m.vy, m.vz) > 2);
+    assert.equal(ring.length, 6, 'the armour-dust ring in the plate\'s plane');
+    assert.ok(pen.chunk.length >= 6 && pen.chunk.every((k) => k.life >= 8 && k.vx > 0), 'lit steel chips thrown off the plate that lie');
+    assert.ok(pen.chunk.filter((k) => k.heat > 0.5).length === 2, 'two of them hot');
+    const non = hit('nonpen');
+    assert.ok(non.media.length === 2 && non.media.every((m) => lumOf(m) > 0.1), 'a non-penetration\'s pale puff');
+    assert.ok(hit('ricochet').media.length === 1 && hit('ricochet').chunk.length === 0, 'a ricochet\'s faint scuff');
+    const era = hit('era');
+    assert.ok(era.media.length === 4 && era.media.every((m) => lumOf(m) < 0.06), 'ERA\'s dark blast');
+    assert.ok(era.chunk.length === 6 && era.chunk.some((k) => k.shape === 'brick'), 'and its cassette\'s fragments');
+    assert.deepEqual(hit('pen'), hit('pen'), 'seeded: the same hit twice');
+  }
   const mg = captureContext(9);
   kineticStrike(mg.ctx, { x: 0, y: 0, z: 0, dx: 1, dy: 0, dz: 0, caliberMm: 12.7, munition: 'small_arms', surface: 'soil' });
   assert.ok(mg.log.media.length <= 3 && Math.max(...mg.log.media.map((m) => m.size1)) < 1, 'a bullet kicks a fist of dust');
@@ -389,6 +426,34 @@ function captureContext(seed) {
   assert.ok(Math.max(...cs) / Math.min(...cs) > 1.8, 'column bodies of many sizes');
   assert.ok(Math.max(...cl) - Math.min(...cl) > 5, 'column bodies die at many heights');
   assert.ok(colLog.log.media.every((m) => m.drag < 0.45), 'column bodies take the wind slowly');
+}
+
+// (7e, wave 312's killcam) the killcam's ammunition cook-off is round 7c's to the last draw: the ground-burst rounds (7d)
+// never reach the kill path. Its full record on one seeded stream, in the scene's order (the hull's fireball and its skirt
+// of dust, an HE round bursting on the hull beside it, the column taking hold and burning on, the smoulder, the idling
+// exhaust, fragments on a plate, a plain kill's fireball), is pinned to 7c's: a change to the kill path is a deliberate
+// re-pin, never a ground-burst round's side effect.
+{
+  const calls = [];
+  let draws = 0;
+  const stream = mulberry32(5000);
+  const rec = (kind) => (...a) => calls.push([kind, JSON.parse(JSON.stringify(a))]);
+  const C = { ...captureContext(5000).ctx, rand: () => { draws++; return stream(); }, groundY: () => 3.019,
+    media: rec('media'), chunk: rec('chunk'), flash: rec('flash'), fire: rec('fire'), sparks: rec('sparks'), jet: rec('jet'),
+    shockRing: rec('ring'), lightPulse: rec('pulse'), glow: rec('glow') };
+  const G = 3.019;
+  killFireball(C, 190, G + 1.2, 390, true, 0);
+  dustSurge(C, 190, G, 390, 0.65 * Math.cbrt(14), 'soil', 0);
+  plateBurst(C, { x: 190.3, y: G + 1.2, z: 391.9, nx: 0, ny: 0.2, nz: 1, munition: 'he', chargeKg: 3.4, ground: 'soil', birthOffset: 0 });
+  for (let i = 0; i < 3; i++) columnPuff(C, 190, G, 390, 1, 1.3, 0.7 + i * 0.45);
+  columnPuff(C, 190, G, 390, 2, 1.3, 0);
+  smolderPuff(C, 190, G + 1, 390, 0.7, 0);
+  exhaustPuff(C, 187, G + 1.6, 390, 0, 0, 1, 0, 0.15, true, 0);
+  fragmentStrike(C, 190, G + 1, 390, 1, 0, 0, 0);
+  killFireball(C, 190, G + 1.2, 390, false, 0);
+  const digest = createHash('sha256').update(JSON.stringify(calls)).digest('hex').slice(0, 16);
+  assert.equal(`${calls.length} ${draws} ${digest}`, '131 1628 ff1a722a5e1070b2',
+    "the killcam's recipes are round 7c's to the last draw (re-pin only for a deliberate change to the kill path)");
 }
 
 // ---- 5. surfaces --------------------------------------------------------------------------------------------------

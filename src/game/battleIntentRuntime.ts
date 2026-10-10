@@ -41,8 +41,6 @@ interface BattleIntentRuntimeOptions {
   anisotropy: number;
   setCamoBiome(mapId: string): void;
   clearCamoOverrides(): void;
-  /** Fleet lane (2026-10-08): the bots' AUTO seed for the planned battle (materials.ts setCamoBattleSeed). */
-  setCamoBattleSeed?(seed: number | null): void;
   setCamoOverride(specId: string, patternId: 'auto'): void;
   applyCamoPatterns(options: {
     priorityIds: readonly string[];
@@ -94,7 +92,6 @@ export function createBattleIntentRuntime({
   anisotropy,
   setCamoBiome,
   clearCamoOverrides,
-  setCamoBattleSeed,
   setCamoOverride,
   applyCamoPatterns,
   preloadBattleVisuals,
@@ -254,9 +251,6 @@ export function createBattleIntentRuntime({
     await cancelTextureWarm();
     setCamoBiome(mapId);
     clearCamoOverrides();
-    // the planned battle's ordinal, the seed setupBattle will set after it commits (fleet lane 2026-10-08), so the
-    // pre-paint and the battle draw the same bot schemes
-    setCamoBattleSeed?.(getBattleCount() + 1);
     for (const id of autoCamoIds) setCamoOverride(id, 'auto');
     await applyCamoPatterns({ priorityIds: [specId], onlySpecIds: rosterIds });
     await warmRosterTextures(specId, rosterIds, yieldForBudget);
