@@ -33,7 +33,9 @@ export type LandmarkKind =
   // harbour works
   | 'lighthouse' | 'mole' | 'quay' | 'slipway'
   // wrecks
-  | 'aircraftWreck';
+  | 'aircraftWreck'
+  // a fjord farm's works (fjordWorks.ts)
+  | 'hayRack' | 'fishRack' | 'stabbur';
 
 /** A kind's parameters: numbers (metres, counts), choices (strings) and switches. */
 export type LandmarkParams = Readonly<Record<string, number | string | boolean>>;

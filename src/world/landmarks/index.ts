@@ -11,6 +11,7 @@ import { lighthouse, mole, quay, slipway } from './harbour.ts';
 import { khan, lavoir } from './village.ts';
 import { bandstand, churchyard, fountain, garden, parkGate, parkSquare, path } from './parks.ts';
 import { aircraftWreck } from './wrecks.ts';
+import { fishRack, hayRack, stabbur } from './fjordWorks.ts';
 import { belfry, campanile, fireLookout, valveTower, waterTower, windmill } from './towers.ts';
 import type { LandmarkBuilder, LandmarkKind } from './types.ts';
 
@@ -27,10 +28,12 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   columnMonument,
   equestrianStatue,
   fireLookout,
+  fishRack,
   fountain,
   garden,
   grainElevator,
   granary,
+  hayRack,
   khan,
   kolkhozArch,
   lavoir,
@@ -46,6 +49,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   quay,
   statue,
   slipway,
+  stabbur,
   stationHall,
   stoneArchBridge,
   tennisCourt,

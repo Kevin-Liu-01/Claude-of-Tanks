@@ -220,6 +220,15 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // a collective farm's grain store (zernosklad): a long single-storey store, its loading doors and ramps on the front
   granary: { family: 'civic', defaults: { length: 30, width: 11, walls: 'brick' },
     footprint: (p) => [num(p, 'length') / 2 + 0.8, num(p, 'width') / 2 + 2.6] },
+  // ------------------------------------------------------------------------------------------------ a fjord farm's works
+  // (fjordWorks.ts, the map-content lane, 2026-10-10): the hay rack is all dressing (low, a hull drives through it); the
+  // stockfish rack's frames are solid; the stabbur stands on its stilts
+  hayRack: { family: 'civic', drapes: true, dressing: () => true, defaults: { length: 24 },
+    footprint: (p) => [num(p, 'length') / 2 + 1.3, 0.6] },
+  fishRack: { family: 'harbour', drapes: true, defaults: { length: 15, height: 4 },
+    footprint: (p) => [num(p, 'length') / 2 + 0.4, num(p, 'height') * 0.42 + 0.3] },
+  stabbur: { family: 'civic', defaults: { width: 3.6, depth: 3.6 },
+    footprint: (p) => [num(p, 'width') / 2 + 1.0, num(p, 'depth') / 2 + 2.0] },
 });
 
 /** A placement's parameters over its kind's defaults. An unknown kind fails closed. */
