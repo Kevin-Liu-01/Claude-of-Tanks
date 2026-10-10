@@ -97,7 +97,14 @@ const SETS = {
   rock: acg(TT, 'Rock058'),
   rockWarm: acg(TT, 'Rock063'),
   cobble: acg(TT, 'PavingStones046'),
-  plaster: acg(TB, 'Plaster007'),
+  // (facades lane, 2026-10-06; wave 174 read the ksar walls' tile as "carved, pharaonic-looking glyphs") Plaster 007's
+  // normal map with its rows of blocky losses taken out — a first-party derivative (docs/ATTRIBUTION.md): the trowel
+  // undulation and the fine grain kept, the losses' relief replaced by the tile's own quiet grain, their long joint
+  // lines and broad bumps flattened; the losses a wall shows are the kits' own (house.ts spallRender)
+  // (facades lane: the normal map without the rows of blocky losses, 2026-10-06; the colour map with its broad blotching
+  // mostly out and its chroma pulled to the tile's mean, 2026-10-07, wave 199's "uniformly blotchy render": first-party
+  // derivatives, docs/ATTRIBUTION.md)
+  plaster: { ...acg(TB, 'Plaster007'), color: `${TB}/Plaster007_1K-JPG_Color-even.jpg`, normal: `${TB}/Plaster007_1K-JPG_NormalGL-smooth.jpg` },
   roof: acg(TB, 'RoofingTiles012A'),
   wood: acg(TB, 'Planks023A'),
   brick: acg(TB, 'Bricks097'),
@@ -129,6 +136,16 @@ const TERRAIN_PLAN = {
     // black earth's dark brown (~0.084 / 0.057 / 0.042, luminance ~0.06; the plough's 0.03–0.06 under it; hold 27: at
     // 0.42 / 0.40 / 0.42 it read a cool blue-black, chernozem is a warm one)
     D: { set: 'dirt', desat: 0.55, tint: [0.46, 0.40, 0.37], roughMul: 1.3 },
+    R: 'rock', M: null,
+  },
+  // ground lane (2026-10-07, wave 248, Tidegate Polders: the plough "jet-black, like cinder or asphalt", the banks "near-black,
+  // textureless slabs at the water's edge", the lanes "a uniform near-black tar strip" — all three were Verdant's black
+  // earth, which the polders borrowed with Verdant's palette): the Scheldt polders' marine clay. The dirt photo greyed by
+  // two thirds and tinted to a cool grey-brown (linear ~0.13 / 0.115 / 0.092, luminance ~0.115: twice the chernozem's),
+  // so the turned clay, the banks' mud and the clay lanes read as clay; the grass and the rock are Verdant's
+  polders: {
+    G: { set: 'grass', tint: [0.86, 0.91, 0.80], roughMul: 1.25 },
+    D: { set: 'dirt', desat: 0.65, tint: [0.74, 0.78, 0.745], roughMul: 1.3 },
     R: 'rock', M: null,
   },
   desert: {

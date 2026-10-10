@@ -59,7 +59,7 @@ KIT.jerryCan({
   },
 }, 'hullDetail', 1, 2, 3, 0.25);
 const jerryCanBodies = jerryCanParts.filter(
-  ({ geometry }) => geometry.userData.designFamily === 'cot-field-jerry-can-v2',
+  ({ geometry }) => geometry.userData.designFamily === 'cot-field-jerry-can-v3',
 );
 assert.equal(jerryCanBodies.length, 2, 'the core jerry-can primitive always emits a pair');
 assert.deepEqual(jerryCanBodies.map(({ geometry }) => geometry.userData.pairIndex), [0, 1]);

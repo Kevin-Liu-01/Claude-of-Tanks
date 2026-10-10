@@ -87,7 +87,7 @@ export default {
     { x: -34, z: 450 }, { x: -65, z: 398 }, { x: -3, z: 398 }, { x: -127, z: 398 },
     { x: 59, z: 398 }, { x: -96, z: 450 }, { x: 28, z: 450 },
   ] },
-  splat: { sourcedPalette: 'verdant',
+  splat: { sourcedPalette: 'polders', // (ground lane, wave 248: the polders' own clay, not Verdant's black earth)
     fieldPatch: 1.25, seaLake: true, seaFoam: 0.05, seaRamp: [0.12, 0.48], shoreDirt: true, iceDrift: 0.02,
     marshGloss: 0.82, iceSky: [0.30, 0.42, 0.43], midRelief: 0.64,
     tintA: [0.84, 1.01, 0.66], tintB: [0.60, 0.76, 0.51], tintC: [1.08, 1.08, 0.78], roadTint: [0.76, 0.72, 0.61],

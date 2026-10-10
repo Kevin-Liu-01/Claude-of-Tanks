@@ -112,6 +112,23 @@ const server = await createServer({
   server: { host: '127.0.0.1', port: 7600 + (process.pid % 200), strictPort: true, hmr: false, watch: null },
 });
 await server.listen();
+// Page load under machine load (CPU budget 2026-10-08, rule 5): COT_NAV_TIMEOUT_MS and COT_READY_TIMEOUT_MS raise the
+// icons page's navigation and ready waits from their defaults, and COT_NAV_RETRIES retries a load that timed out.
+const NAV_TIMEOUT_MS = Number(process.env.COT_NAV_TIMEOUT_MS) || 30000;
+const READY_TIMEOUT_MS = Number(process.env.COT_READY_TIMEOUT_MS) || 60000;
+const NAV_RETRIES = Math.max(0, Math.floor(Number(process.env.COT_NAV_RETRIES) || 0));
+async function loadIconsPage(page, url) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT_MS });
+      await page.waitForFunction('window.__ICONS_READY === true', { timeout: READY_TIMEOUT_MS });
+      return;
+    } catch (error) {
+      if (attempt >= NAV_RETRIES || !/timeout/i.test(String(error?.message ?? error))) throw error;
+      console.warn(`[tank-assets-check] icons page load timed out (attempt ${attempt + 1} of ${NAV_RETRIES + 1}); retrying`);
+    }
+  }
+}
 const browser = await puppeteer.launch({
   headless: 'new',
   protocolTimeout: 15 * 60 * 1000,
@@ -130,8 +147,7 @@ try {
   const address = server.httpServer.address();
   const port = typeof address === 'object' && address ? address.port : server.config.server.port;
   const url = `http://127.0.0.1:${port}/tools/icons-page.html`;
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await page.waitForFunction('window.__ICONS_READY === true', { timeout: 60000 });
+  await loadIconsPage(page, url);
   await page.evaluate((ids) => window.__WARM(ids), onlyTanks);
   await page.waitForFunction(
     () => {
@@ -220,8 +236,8 @@ try {
     // to save triangles): the census reports it as physicalRims instead of a fallback Rim mesh.
     const visibleRims = (bore.rims || 0) + (bore.physicalRims || 0);
     if (!skipBore && (bore.tagged !== expectedBores
-        || visibleRims !== expectedBores || bore.discs !== expectedBores)) {
-      failures.push(`${id}: cannon bore must have ${expectedBores} visible tagged rim/disc pair(s) (${JSON.stringify(bore)})`);
+        || visibleRims !== expectedBores || ((bore.discs || 0) + (bore.physicalFloors || 0)) !== expectedBores)) {
+      failures.push(`${id}: cannon bore must have ${expectedBores} visible tagged rim/recess pair(s) (${JSON.stringify(bore)})`);
     }
 
     if (liveOnly) continue;

@@ -134,10 +134,10 @@ function museum(ctx: RegionalBuildContext): RegionalParts {
         hole.push([dx - dr * 0.91 + Math.cos(t) * 0.12, top + 2.2 + dr * 0.36 + Math.sin(t) * r * dr / 3.3, Math.cos(t) * r * dr / 3.3]);
       }
       sink.polygon('dark', hole, { decor: true });
-      if (!mobile) {
+      sink.dressing(mobile, () => {
         shellPocks(sink, street, { u0: -W / 2 + 1, u1: W / 2 - 1, y0: 0.8, y1: eave - 1 }, 40 + Math.floor(look() * 30),
           openings.filter((o) => o.face === 'left').map((o) => ({ u0: o.u - o.w / 2 - 0.3, u1: o.u + o.w / 2 + 0.3, y0: frame.floors[o.storey] + o.y0 - 0.2, y1: frame.floors[o.storey] + o.y0 + o.h + 0.9 })), look, 'stone');
-      }
+      });
     }));
   });
   return sink.finish();
@@ -216,8 +216,8 @@ function vijecnica(ctx: RegionalBuildContext): RegionalParts {
       }
       sink.cylinder('structureMetal', [0, hy + 3.4, 0], 'y', 0.2, hr * 0.95, 8, { colour: CHAR, decor: true }, hr * 0.95, true, Math.PI / 8);
       const street = frame.faces.left;
-      if (!mobile) shellPocks(sink, street, { u0: -W / 2 + 1, u1: W / 2 - 1, y0: 0.6, y1: eave - 0.5 }, 30 + Math.floor(look() * 20),
-        openings.filter((o) => o.face === 'left').map((o) => ({ u0: o.u - o.w / 2 - 0.3, u1: o.u + o.w / 2 + 0.3, y0: frame.floors[o.storey] + o.y0 - 0.2, y1: frame.floors[o.storey] + o.y0 + o.h + o.w / 2 + 0.4 })), look, 'stone');
+      sink.dressing(mobile, () => shellPocks(sink, street, { u0: -W / 2 + 1, u1: W / 2 - 1, y0: 0.6, y1: eave - 0.5 }, 30 + Math.floor(look() * 20),
+        openings.filter((o) => o.face === 'left').map((o) => ({ u0: o.u - o.w / 2 - 0.3, u1: o.u + o.w / 2 + 0.3, y0: frame.floors[o.storey] + o.y0 - 0.2, y1: frame.floors[o.storey] + o.y0 + o.h + o.w / 2 + 0.4 })), look, 'stone'));
     });
   });
   return sink.finish();
@@ -327,10 +327,12 @@ const mosque: RegionalBuilder = (ctx) => {
     }
     const yz0 = Math.max(pz1 + 0.4, hz1 + 0.4), yz1 = zs;
     if (yz1 - yz0 > 1.2) {
-      const count = mobile ? 4 : 10 + Math.floor(look() * 8);
+      // (a phone keeps four of the stones, every stone drawn)
+      const count = 10 + Math.floor(look() * 8);
       for (let k = 0; k < count; k++) {
         const side = look() < 0.5 ? -1 : 1, x = side * (1.8 + look() * Math.max(0.2, W / 2 - 2.6)), z = yz0 + 0.3 + look() * Math.max(0.1, yz1 - yz0 - 0.9);
-        nisan(sink, x, z, 0.8 + look() * 0.8, look() < 0.6, (look() - 0.5) * 0.4);
+        const hh = 0.8 + look() * 0.8, turban = look() < 0.6, lean = (look() - 0.5) * 0.4;
+        if (!mobile || k < 4) nisan(sink, x, z, hh, turban, lean);
       }
     }
   });
@@ -399,7 +401,7 @@ const orthodoxChurch: RegionalBuilder = (ctx) => {
     }
     const top = dome(sink, 0, th, (tz0 + tz1) / 2, tw * 0.48, COPPER, 8);
     finial(sink, 0, top, (tz0 + tz1) / 2, 'cross', 0.8);
-    if (!mobile) shellPocks(sink, tf, { u0: -tw / 2 + 0.2, u1: tw / 2 - 0.2, y0: 3.6, y1: th - 3 }, 10 + Math.floor(look() * 12), [], look, 'stone');
+    sink.dressing(mobile, () => shellPocks(sink, tf, { u0: -tw / 2 + 0.2, u1: tw / 2 - 0.2, y0: 3.6, y1: th - 3 }, 10 + Math.floor(look() * 12), [], look, 'stone'));
   });
   return sink.finish();
 };
@@ -460,7 +462,7 @@ const catholicChurch: RegionalBuilder = (ctx) => {
     const spire = clampTo(th * 0.42, 5, 10);
     sink.cylinder('structureMetal', [0, th, tzc], 'y', spire, tw * 0.62, 8, { colour: rgb(0x4d5357) }, 0.04, true, Math.PI / 8);
     finial(sink, 0, th + spire - 0.1, tzc, 'cross', 0.8);
-    if (!mobile) shellPocks(sink, tf, { u0: -tw / 2 + 0.2, u1: tw / 2 - 0.2, y0: 4, y1: th - 3.5 }, 12 + Math.floor(look() * 14), [], look, 'plaster');
+    sink.dressing(mobile, () => shellPocks(sink, tf, { u0: -tw / 2 + 0.2, u1: tw / 2 - 0.2, y0: 4, y1: th - 3.5 }, 12 + Math.floor(look() * 14), [], look, 'plaster'));
   });
   return sink.finish();
 };
@@ -522,10 +524,10 @@ const marketHall: RegionalBuilder = (ctx) => {
     const clockY = hH + (rg.ridgeY - hH) * 0.42;
     sink.polygon('structureWood', Array.from({ length: 12 }, (_, j) => facePoint(ff, Math.cos(j / 12 * Math.PI * 2) * 0.75, clockY + Math.sin(j / 12 * Math.PI * 2) * 0.75, 0.04)), { decor: true, colour: rgb(0xe0dccc) });
     faceBox(sink, 'structureMetal', ff, 0, clockY + 0.2, 0.06, 0.05, 0.5, 0.02, { colour: IRON, decor: true });
-    if (!mobile) {
+    sink.dressing(mobile, () => {
       const side = frame.faces.left;
       for (let k = 0; k < 2; k++) shellHole(sink, side, (look() - 0.5) * D * 0.7, hH * (0.45 + look() * 0.1), 0.4 + look() * 0.3, look, 'stone');
-    }
+    });
   });
   return sink.finish();
 };

@@ -1922,7 +1922,12 @@ const CENTURION_HULL = {
   contactZF: 2.50, contactZR: -2.32,
 };
 
-export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
+/**
+ * `stowedLoaderMag` (default true): the Mk.3's low-stowed MAG. 2026-10-08 (the owner's field standard in main 6763d7cc0,
+ * the coordinator's ruling on the lane's audit): the Strv 81 mounts its one roof gun, the Ksp 58, on its Swedish
+ * commander's cupola, so it builds without the stowed MAG that would be a second roof gun for that crew.
+ */
+export function centurionBuild(P: UKCenturionPort, mk: 3 | 5, { stowedLoaderMag = true }: { stowedLoaderMag?: boolean } = {}): void {
   // r7 (combined tone round) — c5 O1 "expose the running gear": the Mk.5/2
   // raises its skirt hem to the ref's own exposed-disc line (outer-strip
   // band bottoms 0.81 per the r2 tables; wheels top 0.85) across panels
@@ -2660,7 +2665,7 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
         forwardFacing: true,
         armorEnvelopeExcluded: true,
       });
-    } else {
+    } else if (stowedLoaderMag) {
       const mg = FITTINGS.pintleMG({
         mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0, scale: 0.8, seed: 9,
       });
@@ -3531,7 +3536,8 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
   fv510PhotoBuildAssemblyStage7();
   // ---- pintle GPMG at the commander's station (§B3 decoration minimum;
   // sky-backed -> two-tone per MG PHYSICS) ----
-  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0.10, scale: 0.85, seed: 3 });
+  // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the turret roof behind the commander's station (feed-side collision census).
+  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0.10, scale: 0.85, seed: 3, feed: 'right' });
   const fv510PhotoBuildMarkingsStage1 = (): void => {
     mg.position.set(0.50, 0.50, -0.44);
     mg.rotation.y = Math.PI * 0.82;

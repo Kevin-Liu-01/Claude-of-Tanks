@@ -368,11 +368,23 @@ export function t90SourcePressedFaceLayers(r: number, halfWidth: number, zScale:
     const angle = i * Math.PI / 3;
     return cylX(.012, .025, 6).translate(0, Math.sin(angle) * r * .30, Math.cos(angle) * r * .30 * zScale);
   });
+  // Fleet lane round 2 (2026-10-08; waves 264-269 on the T-90M X: "flat dishes with one dome hub, no bolt ring"): the hub
+  // drum carries a low cap and a ring of eight hex nuts round it, painted with the wheel, so the hub reads as a
+  // bolted assembly from the Garage and from the battle chase camera (HIGH tier only; the hub stays within 2 cm of the
+  // tire's face plane plus the cap's 2 cm crown). Layers are placed by their outset alone, the same stock on both hull
+  // sides, so the cap and nuts are symmetric about the hub's face plane: the inboard half sits buried in the hub drum.
+  const hubCap = lathedWheelSection([[-.021, 0], [-.014, r * .115], [-.006, r * .148], [.006, r * .148], [.014, r * .115], [.021, 0]], 16)
+    .scale(1, 1, zScale);
+  const hubNuts = Array.from({ length: 8 }, (_, i) => {
+    const angle = (i + .5) * Math.PI / 4;
+    return cylX(.012, .024, 6).translate(0, Math.sin(angle) * r * .195, Math.cos(angle) * r * .195 * zScale);
+  });
   return [
     { geometry: disc, paint: 'dish', role: 'wheelDish', outset: halfWidth + .004, name: 'gearRoadWheelSourcePressedFaces' },
     { geometry: rim, paint: 'dish', role: 'wheelDish', outset: halfWidth + .010, name: 'gearRoadWheelSourceRims' },
     // 2026-09-14 owner: hub and bolt heads stood 3 cm proud of the tire; seated within 2 cm.
     { geometry: cylX(r * .24, .030, 20), paint: 'dish', role: 'wheelDish', outset: halfWidth + .004, name: 'gearRoadWheelSourceHubs' },
+    { geometry: mergeAll([hubCap, ...hubNuts]), paint: 'dish', role: 'wheelDish', outset: halfWidth + .019, name: 'gearRoadWheelSourceHubCaps' },
     { geometry: mergeAll(bolts), paint: 'dark', role: 'wheelInset', outset: halfWidth + .006, name: 'gearRoadWheelSourceBolts' },
   ];
 }

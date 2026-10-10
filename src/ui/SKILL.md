@@ -38,6 +38,8 @@ killcam-aware handoff to the after-action report;
 paint;
 `studioPanel.ts` owns the typed Scene Studio workspace, actor/effect/timeline
 controls, capture/export surface, and production archive;
+`studioPicturePanel.ts` owns its Picture section (look, grade/finish sliders,
+letterbox, depth of field), a thin view over `__STUDIO.setPicture()`;
 `settings.ts` and `touchControls.ts` own input-facing UI; `transition.ts`,
 `battleLoad.ts`, and `endScreen.ts` own flow beats.
 `i18n.ts` owns locale detection and runtime formatting; the paired
@@ -45,7 +47,8 @@ controls, capture/export surface, and production archive;
 General Translation CLI boundary documented in `docs/LOCALIZATION.md`.
 `i18nDictionaries.ts` ships no catalog: each document loads its own (the game the
 full catalogs, a public page the page catalog its HTML declares, built from
-`tools/i18n-page-catalogs.mjs`); a key a public page could show raw fails the build.
+`tools/i18n-page-catalogs.mjs`, and its lazy chunk before each module it reaches
+only through `import()`); a key a public page could show raw fails the build.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
