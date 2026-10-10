@@ -91,6 +91,7 @@ export function classifyRun(run, limits) {
   if (dark) return { verdict: 'black', why: `the sample at ${dark.at} s is black or flat (centre luma ${dark.mean}, sd ${dark.sd})`, notes };
   if (!(run.samples ?? []).length) notes.push('no picture sample');
   if (!w) notes.push('no battle watchdog row (the covered probe did not run)');
+  if (run.entryPromise) notes.push(`entry promise ${run.entryPromise}`);
   return { verdict: 'entered', why: '', notes };
 }
 
@@ -353,15 +354,37 @@ async function main() {
               (error) => { window.__SWEEP.done = true; window.__SWEEP.error = String(error?.stack ?? error).slice(0, 800); });
         }, tank, map);
         let entry = 'timeout';
-        try {
-          await page.waitForFunction('window.__SWEEP && window.__SWEEP.done === true', { timeout: entryTimeoutMs, polling: 250 });
-          const state = await page.evaluate(() => ({ phase: window.__DEBUG.game.phase, reveal: !!window.__BATTLE_REVEAL,
-            failed: (window.__SWEEP_ERRORS ?? []).find((e) => /\[battle\] entry failed/.test(e)) ?? null, error: window.__SWEEP.error }));
-          if (state.failed || state.error) { entry = 'failed'; row.reason = (state.failed ?? state.error).replace(/^\[battle\] entry failed\s*/, '').split('\n')[0].slice(0, 300); }
-          else if (state.phase === 'battle' && state.reveal) entry = 'revealed';
-          else { entry = 'failed'; row.reason = `the entry resolved in phase ${state.phase} without a reveal`; }
-        } catch (error) {
-          row.reason = `no reveal and no failure in ${entryTimeoutMs / 1000} s (${String(error?.message ?? error).slice(0, 120)})`;
+        // The entry is over when its promise settles, or when the battle has revealed, the loader is gone and the sim
+        // clock runs (a loaded machine can leave the promise unsettled for minutes after a playable reveal; seen at
+        // load 300-400 on 2026-10-10, both before and after the watchdog fix).
+        const entryState = () => page.evaluate(() => {
+          const D = window.__DEBUG, loader = document.querySelector('.cot-bl');
+          return { done: window.__SWEEP?.done === true, error: window.__SWEEP?.error ?? null, phase: D?.game?.phase ?? null,
+            reveal: !!window.__BATTLE_REVEAL, loaderOn: !!loader?.classList.contains('on'), timeS: D?.game?.timeS ?? null,
+            failed: (window.__SWEEP_ERRORS ?? []).find((e) => /\[battle\] entry failed/.test(e)) ?? null };
+        });
+        let state = null, playingSince = null, firstTimeS = null;
+        const deadline = Date.now() + entryTimeoutMs;
+        while (Date.now() < deadline) {
+          try { state = await entryState(); } catch { state = null; }
+          if (state?.failed || state?.error) break;
+          if (state?.done) break;
+          const playing = state && state.phase === 'battle' && state.reveal && !state.loaderOn && typeof state.timeS === 'number';
+          if (playing) {
+            playingSince ??= Date.now(); firstTimeS ??= state.timeS;
+            if (Date.now() - playingSince >= 3000 && state.timeS > firstTimeS) { row.entryPromise = 'unsettled (revealed and playing)'; break; }
+          } else { playingSince = null; firstTimeS = null; }
+          await sleep(500);
+        }
+        if (state?.failed || state?.error) {
+          entry = 'failed';
+          row.reason = (state.failed ?? state.error).replace(/^\[battle\] entry failed\s*/, '').split('\n')[0].slice(0, 300);
+        } else if (state && state.phase === 'battle' && state.reveal && (state.done || row.entryPromise)) {
+          entry = 'revealed';
+        } else if (state?.done) {
+          entry = 'failed'; row.reason = `the entry resolved in phase ${state.phase} without a reveal`;
+        } else {
+          row.reason = `no reveal and no failure in ${entryTimeoutMs / 1000} s (last state ${JSON.stringify(state)})`;
         }
         row.entry = entry;
         row.entryMs = Date.now() - t0;

@@ -61,6 +61,15 @@ for (const sample of [{ at: 2, mean: 3.1, sd: 9 }, { at: 5, mean: 48, sd: 0.4 },
 }
 
 {
+  // a loaded machine can leave the entry promise unsettled after a playable reveal: entered, with a note
+  const run = classifyRun({ entry: 'revealed', entryPromise: 'unsettled (revealed and playing)',
+    watchdog: watchdog({ before: 46, rescued: false }), samples: picture }, limits);
+  assert.equal(run.verdict, 'entered');
+  assert.deepEqual(run.notes, ['entry promise unsettled (revealed and playing)']);
+  passed++;
+}
+
+{
   const run = classifyRun({ entry: 'revealed', watchdog: null, samples: picture }, limits);
   assert.equal(run.verdict, 'entered');
   assert.ok(run.notes.some((note) => /no battle watchdog row/.test(note)), 'a missing probe is reported, not hidden');
