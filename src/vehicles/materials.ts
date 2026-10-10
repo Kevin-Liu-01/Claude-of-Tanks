@@ -3323,8 +3323,71 @@ export function makeBurnUniforms(seed: number) {
     uBurnHi: { value: 2.6 },
     uBurnGlow: { value: 0 },
     uBurnEmber: { value: 0 },
+    // the wreck's dents (destruction core, 2026-10-09; tankFactoryCore.ts planLiveCrumple): off until the kill plans them;
+    // the hull's and the turret's frames are the rig groups' world matrices, by reference, and a dent is (centre, R²) and
+    // (inward direction, depth) in that part's frame
+    uCrOn: { value: 0 },
+    uCrHullW: { value: new THREE.Matrix4() },
+    uCrTurW: { value: new THREE.Matrix4() },
+    uCrHull: { value: Array.from({ length: LIVE_HULL_DENTS }, () => new THREE.Vector4()) },
+    uCrHullDir: { value: Array.from({ length: LIVE_HULL_DENTS }, () => new THREE.Vector4()) },
+    uCrTur: { value: Array.from({ length: LIVE_TURRET_DENTS }, () => new THREE.Vector4()) },
+    uCrTurDir: { value: Array.from({ length: LIVE_TURRET_DENTS }, () => new THREE.Vector4()) },
   };
 }
+
+/** The dents a live wreck's hull and turret carry in the burn hook (wreckDents.ts plans them). */
+export const LIVE_HULL_DENTS = 6;
+export const LIVE_TURRET_DENTS = 4;
+
+/**
+ * The wreck's crumple in the vertex stage (destruction core, 2026-10-09; the owner: "destroyed vehicles should be crumpled
+ * not just turn rusty"): a mesh drawn in the hull's or the turret's own frame (its world matrix is the rig group's — the
+ * plates and fittings authored in that frame) takes that part's impact dents, (1 − r²/R²)² · depth along the dent's inward
+ * direction, growing in over the blast's first 0.35 s; its normal follows the field's Jacobian so a dent reads in the light.
+ * Instanced gear and meshes in frames of their own (wheels, track bands) are left as they are; the gun is bent on the CPU.
+ */
+const CRUMPLE_COMMON_GLSL = `
+uniform float uBurnT;
+uniform float uCrOn;
+uniform mat4 uCrHullW;
+uniform mat4 uCrTurW;
+uniform vec4 uCrHull[ ${LIVE_HULL_DENTS} ];
+uniform vec4 uCrHullDir[ ${LIVE_HULL_DENTS} ];
+uniform vec4 uCrTur[ ${LIVE_TURRET_DENTS} ];
+uniform vec4 uCrTurDir[ ${LIVE_TURRET_DENTS} ];
+bool crSameFrame( mat4 a, mat4 b ) {
+  vec4 d = abs( a[ 0 ] - b[ 0 ] ) + abs( a[ 1 ] - b[ 1 ] ) + abs( a[ 2 ] - b[ 2 ] ) + abs( a[ 3 ] - b[ 3 ] );
+  return max( max( d.x, d.y ), max( d.z, d.w ) ) < 1e-4;
+}
+`;
+
+const CRUMPLE_NORMAL_GLSL = `
+vec3 crD = vec3( 0.0 );
+#ifndef USE_INSTANCING
+if ( uBurnT >= 0.0 && uCrOn > 0.5 ) {
+  bool crHull = crSameFrame( modelMatrix, uCrHullW );
+  bool crTur = !crHull && crSameFrame( modelMatrix, uCrTurW );
+  if ( crHull || crTur ) {
+    float crK = smoothstep( 0.0, 0.35, uBurnT );
+    mat3 crJ = mat3( 0.0 );
+    for ( int i = 0; i < ${LIVE_HULL_DENTS}; i++ ) {
+      vec4 c = crHull ? uCrHull[ i ] : ( i < ${LIVE_TURRET_DENTS} ? uCrTur[ i ] : vec4( 0.0 ) );
+      if ( c.w <= 0.0 ) continue;
+      vec4 dd = crHull ? uCrHullDir[ i ] : uCrTurDir[ min( i, ${LIVE_TURRET_DENTS - 1} ) ];
+      vec3 e = position - c.xyz;
+      float r2 = dot( e, e );
+      if ( r2 >= c.w ) continue;
+      float q = 1.0 - r2 / c.w;
+      crD += dd.xyz * ( q * q * dd.w );
+      crJ += outerProduct( dd.xyz * dd.w, e * ( -4.0 * q / c.w ) );
+    }
+    crD *= crK;
+    objectNormal = normalize( transpose( inverse( mat3( 1.0 ) + crJ * crK ) ) * objectNormal );
+  }
+}
+#endif
+`;
 
 /**
  * Wrap `mat` IN PLACE with the burn mask, chaining its existing
@@ -3361,8 +3424,10 @@ export function applyBurnHook(
     if (prevHook) prevHook.call(this, shader, renderer);
     Object.assign(shader.uniforms, burnU);
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vBrnW;')
+      .replace('#include <common>', `#include <common>\nvarying vec3 vBrnW;\n${CRUMPLE_COMMON_GLSL}`)
+      .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>\n${CRUMPLE_NORMAL_GLSL}`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
+transformed += crD;
 {
   vec4 brnP = vec4( transformed, 1.0 );
   #ifdef USE_INSTANCING
@@ -3382,7 +3447,7 @@ export function applyBurnHook(
   // the wrapped shader string differs from unwrapped materials sharing the
   // old cache key — suffix it so the program cache never aliases them
   mat.customProgramCacheKey = function () {
-    return (typeof prevKey === 'function' ? prevKey.call(this) : '') + '|burn-r6';
+    return (typeof prevKey === 'function' ? prevKey.call(this) : '') + '|burn-r7';
   };
   mat.needsUpdate = true;
   return true;

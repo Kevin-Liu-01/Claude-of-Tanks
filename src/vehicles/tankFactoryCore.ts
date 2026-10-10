@@ -38,8 +38,9 @@ import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
 import { applyCamoPanels } from './camoPanels.ts';
 import {
   createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
-  setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial,
+  setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial, LIVE_HULL_DENTS, LIVE_TURRET_DENTS,
 } from './materials.ts';
+import { bendGeometry, dentSamples, planBend, planDents, wreckRandom, type WreckDent } from './wreckDents.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills } from './interiorFills.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
@@ -121,6 +122,8 @@ export type { TrackGuideProfile, TrackOutsoleDimensions } from './profiles/abram
 import type { SuspensionPatternId, SuspensionPattern } from './suspensionPatterns.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 
+/** A rig group's identity-placed child: its plates are authored in the group's frame (planLiveCrumple). */
+const _identity4 = new THREE.Matrix4();
 
 const D2R = Math.PI / 180;
 const SIM_STEP = 1 / 60;
@@ -8873,6 +8876,10 @@ function* createTankOwnedSteps(
   // across mesh seams, the front glows while it eats, and ~30% of panels
   // keep desaturated scorched paint.
   const burnU = makeBurnUniforms((Math.abs(Math.sin(emberPhase)) * 1e6) | 0);
+  // the wreck's crumple (destruction core, 2026-10-09; the owner: "destroyed vehicles should be crumpled not just turn
+  // rusty"): the hull's and the turret's dents ride the burn hook (materials.ts), the gun's bend is a bent copy of each of
+  // its meshes' geometry, swapped in at the kill and back at a rematch
+  const liveBentGun: [THREE.Mesh, THREE.BufferGeometry][] = [];
   // ammo-rack turret pop (physics arc + spin, settles askew on the hull)
   let popActive = false;
   let popT = 0;
@@ -8984,6 +8991,87 @@ function* createTankOwnedSteps(
         mesh.material = mats.burnt;
       }
     }
+  }
+
+  /** The largest identity-placed mesh of a rig group (its plates authored in the group's frame), for the dent plan. */
+  function partPlates(group: THREE.Object3D, name: string): THREE.Mesh | null {
+    let best: THREE.Mesh | null = null, most = 0;
+    for (const child of group.children) {
+      if (!(child instanceof THREE.Mesh) || child instanceof THREE.InstancedMesh || !child.geometry?.attributes?.position) continue;
+      if (!child.matrix.equals(_identity4)) continue;
+      const count = child.geometry.attributes.position.count + (child.name === name ? 1e9 : 0);
+      if (count > most) { most = count; best = child; }
+    }
+    return best;
+  }
+
+  function writeDents(dents: WreckDent[], centres: THREE.Vector4[], dirs: THREE.Vector4[]): void {
+    for (let i = 0; i < centres.length; i++) {
+      const d = dents[i];
+      if (d) { centres[i].set(d.cx, d.cy, d.cz, d.r2); dirs[i].set(d.dx, d.dy, d.dz, d.depth); }
+      else { centres[i].set(0, 0, 0, 0); dirs[i].set(0, 0, 0, 0); }
+    }
+  }
+
+  /**
+   * Plan the kill's crumple (wreckDents.ts) on the burn seed: the hull's and the turret's dents into the burn hook's
+   * uniforms, the gun's meshes swapped for bent copies. The bake's hulks take the same dents and bend on the CPU
+   * (world/wreckCrumple.ts).
+   */
+  function planLiveCrumple(pop: boolean): void {
+    if (geometryOnly) return;
+    const rng = wreckRandom(((burnU.uBurnSeed.value * 1000) | 0) ^ 0x7e3c11);
+    const box = new THREE.Box3();
+    const hullPlates = partPlates(hullG, 'hull'), turretPlates = partPlates(turretG, 'turret');
+    const hullDents: WreckDent[] = [], turretDents: WreckDent[] = [];
+    if (hullPlates) {
+      hullPlates.geometry.computeBoundingBox();
+      planDents(dentSamples(hullPlates.geometry, null), LIVE_HULL_DENTS, 0.45, 1.0, 0.08, 0.2, rng, hullDents,
+        box.copy(hullPlates.geometry.boundingBox!).getCenter(new THREE.Vector3()));
+    }
+    if (turretPlates) {
+      turretPlates.geometry.computeBoundingBox();
+      planDents(dentSamples(turretPlates.geometry, null), LIVE_TURRET_DENTS, 0.3, 0.7, 0.06, 0.15, rng, turretDents,
+        box.copy(turretPlates.geometry.boundingBox!).getCenter(new THREE.Vector3()));
+    }
+    writeDents(hullDents, burnU.uCrHull.value, burnU.uCrHullDir.value);
+    writeDents(turretDents, burnU.uCrTur.value, burnU.uCrTurDir.value);
+    // the frames by reference: the turret's moves with its pop
+    burnU.uCrHullW.value = hullG.matrixWorld;
+    burnU.uCrTurW.value = turretG.matrixWorld;
+    burnU.uCrOn.value = hullDents.length || turretDents.length ? 1 : 0;
+    // the gun: past a point along it the barrel bends (down, or any way on a turret the blast threw)
+    gunG.updateMatrixWorld(true);
+    const gunInv = gunG.matrixWorld.clone().invert();
+    let barrel: THREE.Mesh | null = null;
+    gunG.traverse((object) => { if (!barrel && object instanceof THREE.Mesh && object.name === 'gun') barrel = object; });
+    const bore = barrel as THREE.Mesh | null;
+    if (!bore?.geometry?.attributes?.position) return;
+    bore.geometry.computeBoundingBox();
+    const toGun = new THREE.Matrix4();
+    box.copy(bore.geometry.boundingBox!).applyMatrix4(toGun.multiplyMatrices(gunInv, bore.matrixWorld));
+    const bend = planBend(box.min.z, box.max.z, rng, pop);
+    if (!bend) return;
+    gunG.traverse((object) => {
+      if (!(object instanceof THREE.Mesh) || object instanceof THREE.InstancedMesh || !object.geometry?.attributes?.position) return;
+      toGun.multiplyMatrices(gunInv, object.matrixWorld);
+      const bent = object.geometry.clone();
+      bendGeometry(bent, bend, toGun, toGun.clone().invert());
+      bent.computeBoundingBox();
+      bent.computeBoundingSphere();
+      liveBentGun.push([object, object.geometry]);
+      object.geometry = bent;
+    });
+  }
+
+  function resetLiveCrumple(): void {
+    burnU.uCrOn.value = 0;
+    for (const [mesh, original] of liveBentGun) {
+      const bent = mesh.geometry;
+      mesh.geometry = original;
+      if (bent !== original) bent.dispose();
+    }
+    liveBentGun.length = 0;
   }
 
   function startWreckPresentation(ageS: number): void {
@@ -9692,6 +9780,7 @@ function* createTankOwnedSteps(
       // syncFromState), and ~30% of panels keep desaturated scorched paint.
       // Non-wrappable materials (rare) fall back to the shared burnt swap.
       applyWreckMaterials();
+      planLiveCrumple(!!(opts && opts.pop));
       const ageS0 = Math.max(0, (opts && opts.ageS) || 0);
       startWreckPresentation(ageS0);
       // r2: EVERY kill plays the pop arc — full ammo-rack toss (popScale 1)
@@ -9773,6 +9862,7 @@ function* createTankOwnedSteps(
     resetDestroyed() {
       equipmentDamage.reset();
       weaponDamage.reset();
+      resetLiveCrumple();
       if (destroyed) {
         destroyed = false;
         // restore the EXACT captured visibility (never a blanket `true` —
