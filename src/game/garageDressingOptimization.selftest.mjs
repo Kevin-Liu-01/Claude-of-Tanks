@@ -125,4 +125,52 @@ mergeMaterial.dispose();
 proxyMaterial.dispose();
 displayMaterial.dispose();
 
+{
+  // A display owner nested inside another merges alone and stays movable inside its parent owner (the Garage's Abrams
+  // bay, carried to each destination's placement after the shared optimization).
+  const workshop = new THREE.Group();
+  const shared = new THREE.Group();
+  shared.userData.variantSwitchOwner = true;
+  workshop.add(shared);
+  const paint = new THREE.MeshStandardMaterial();
+  const box = (x, z) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), paint);
+    mesh.position.set(x, 0.25, z);
+    return mesh;
+  };
+  const sharedA = box(-6, 0), sharedB = box(-4, 0);
+  shared.add(sharedA, sharedB);
+  const bay = new THREE.Group();
+  bay.userData.sourceVehicleId = 'bay_test';
+  bay.position.set(5, 0, 0);
+  const bayA = box(-1, 0), bayB = box(1, 0);
+  bay.add(bayA, bayB);
+  shared.add(bay);
+  const nestedReceipt = optimizeGarageDressing(workshop, { staticDisplayOwners: [shared, bay] });
+  assert.equal(nestedReceipt.displayMergeBatches, 2, 'the parent and the nested owner each keep one merged draw');
+  assert.equal(nestedReceipt.displayMeshesMerged, 4);
+  const sharedMerges = shared.children.filter((child) => child.userData.workshopStaticDisplayMerge);
+  const bayMerges = bay.children.filter((child) => child.userData.workshopStaticDisplayMerge);
+  assert.equal(sharedMerges.length, 1, 'the parent owner merges only its own leaves');
+  assert.equal(bayMerges.length, 1, 'the nested owner merges its leaves under itself');
+  assert.equal(bay.parent, shared, 'the nested owner stays inside its parent owner');
+  const center = (mesh) => {
+    mesh.geometry.computeBoundingBox();
+    return mesh.geometry.boundingBox.getCenter(new THREE.Vector3());
+  };
+  assert.ok(center(bayMerges[0]).distanceTo(new THREE.Vector3(0, 0.25, 0)) < 1e-6,
+    'the nested owner\'s merged vertices stay in its own frame');
+  assert.ok(center(sharedMerges[0]).distanceTo(new THREE.Vector3(-5, 0.25, 0)) < 1e-6,
+    'the parent owner\'s merged vertices exclude the nested owner');
+  bay.position.set(-20, 0, 7);
+  bay.rotation.y = Math.PI;
+  bay.updateMatrix();
+  workshop.updateMatrixWorld(true);
+  const moved = new THREE.Box3().setFromObject(bayMerges[0]).getCenter(new THREE.Vector3());
+  assert.ok(moved.distanceTo(new THREE.Vector3(-20, 0.25, 7)) < 1e-6,
+    'moving the nested owner after optimization carries its merged draw');
+  for (const geometry of workshop.userData.optimizationDisposables || []) geometry.dispose();
+  paint.dispose();
+}
+
 console.log('garageDressingOptimization.selftest: static transforms and proxy-safe shadow budget pass');

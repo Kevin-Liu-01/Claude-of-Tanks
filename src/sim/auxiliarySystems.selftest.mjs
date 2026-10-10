@@ -110,7 +110,8 @@ for (const [id, name] of [
   ['challenger2e', '7.62×51 mm M61 AP'],
   ['t14', '30×165 mm 3UBR6 AP-T'],
   ['abramsx', '30×113 mm M789 HEDP'],
-  // 2026-10-08: the TTS's roof weapon is its commander's M2 (the owner's field standard; it never carried a 30 mm)
+  // 2026-10-09 (owner order): the TTS carries its 30 mm station again and its M2 on the loader's ring; the M2 (its first
+  // gun) fires first here
   ['m551a1_tts', '12.7×99 mm M2 AP'],
   ['m1a2', '12.7×99 mm M2 AP'],
 ]) {
