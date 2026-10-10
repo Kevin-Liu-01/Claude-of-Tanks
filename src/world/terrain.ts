@@ -3988,6 +3988,7 @@ uniform vec4 uRoadFrame;
 vec2 gRoadAlong = vec2(1.0, 0.0);
 float gRoadS = 0.0;
 float gRoadY = 0.0; // the signed offset from the centreline (m, + left of the heading), exact where the frame holds
+float gRoadYOk = 0.0; // 1 where gRoadY agrees with the distance field (no pad stamp, no other road's texel)
 float gRoadFrameW = 0.0;
 vec2 gRoadDir = vec2(1.0, 0.0); // the styled path's heading here (world xz)
 vec4 maskAt(vec2 uv) {
@@ -4648,7 +4649,11 @@ void splatCompute() {
     float fArc = fc.r * 65280.0 + fc.g * 255.0;
     float fSide = fArc > 32767.5 ? -1.0 : 1.0;
     gRoadS = (fArc - (fSide < 0.0 ? 32768.0 : 0.0)) * (1.0 / 64.0) + dot(wp.xz - fC, gRoadAlong);
-    gRoadY = fSide * (1.0 - texelFetch(uMask, ft, 0).g) * 12.0 + dot(wp.xz - fC, vec2(-gRoadAlong.y, gRoadAlong.x));
+    float fDc = (1.0 - texelFetch(uMask, ft, 0).g) * 12.0;
+    gRoadY = fSide * fDc + dot(wp.xz - fC, vec2(-gRoadAlong.y, gRoadAlong.x));
+    // (the CPU twin, .qa-dev/frame-probe.mjs: within 2 m of a line a few centimetres off; a texel whose distance a pad's
+    // stamp cleared, or whose nearest line is another road's at a junction, disagrees with the pixel's own distance)
+    gRoadYOk = step(fDc, 11.9) * step(abs(abs(gRoadY) - dRoad), 1.2);
     gRoadFrameW = 1.0 - outsideRoadW;
   }
   float roadHalf = (roadHalfW > 0.05 ? roadHalfW : 3.85) + (n1hs - 0.5) * 1.1 + (n2 - 0.5) * 1.5;
@@ -6903,7 +6908,7 @@ void splatCompute() {
         // from the distance field's gradient), the world's axes on a square off any centreline
         bool fr = gRoadFrameW > 0.5 && onStreet > 0.5;
         vec2 al = fr ? gRoadAlong : vec2(1.0, 0.0), pr = vec2(-al.y, al.x);
-        vec2 rq = fr ? vec2(gRoadS, gRoadY) : wp.xz;
+        vec2 rq = fr ? vec2(gRoadS, gRoadYOk > 0.5 ? gRoadY : dRoad * (dot(gradD, pr) < 0.0 ? -1.0 : 1.0)) : wp.xz;
         float fwP = max(gFootM, 1e-3);
         // the wheel paths of a two-lane street: 0.85 m either side of each 3.2 m lane's middle
         float wpX = (abs(abs(rq.y) - 1.6) - 0.85) / 0.32;
@@ -7080,7 +7085,7 @@ void splatCompute() {
           }
           // a road's centre line (uPaveExtra.z, a map from the 1950s on): worn white paint, 6 m dashes with 12 m gaps along
           // the running length, flaked in patches — on the country roads (a kerbed town's streets carry none)
-          if (fr && uPaveExtra.z > 0.0 && paveTownW < 0.5) {
+          if (fr && uPaveExtra.z > 0.0 && paveTownW < 0.5 && gRoadYOk > 0.5) {
             float dash = step(fract(gRoadS / 18.0), 6.0 / 18.0);
             float lineW = 1.0 - smoothstep(0.06, 0.06 + fwP, abs(rq.y));
             float paint = dash * lineW * stripeVis(0.12, pr) * (0.55 + 0.45 * smoothstep(0.30, 0.60, nz(uv, 2.7, vec2(0.83, 0.19)).r))
