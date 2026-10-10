@@ -9,6 +9,7 @@
 import assert from 'node:assert/strict';
 import { createCanvas, ImageData } from '@napi-rs/canvas';
 import * as THREE from 'three';
+import { treeBiomeCanopyForm } from './treeBiomes.ts';
 import { createHeightField } from './terrain.ts';
 import { createVegetation, createGarageTreeKit } from './vegetation.ts';
 import {
@@ -167,8 +168,9 @@ try {
     assert.equal(world.group.children.filter(m => m.userData.treeLod === 'far' && !m.userData.treeImpostor && !m.userData.battleSnag).length, 0, `${id}: no lobe pool`);
     // (+ the battle snags' three near pools where the map has craters — vegetation.ts battleSnagShare)
     const nearSpecies = species.length + (world.group.userData.battleSnags?.share > 0 ? 1 : 0);
-    // (+ the trees lane's two open crowns a wood species' field trees draw, 2026-10-07: vegetation.ts FIELD_OPEN_ALTERNATES)
-    const fieldCrownPools = 2 * (world.group.userData.treeForms?.species.length ?? 0);
+    // (+ the trees lane's two open crowns a wood species' field trees draw, 2026-10-07: vegetation.ts FIELD_OPEN_ALTERNATES;
+    // the treescn lane, 2026-10-09: on a place with round 8's canopy form only, treeBiomes.ts canopyForm)
+    const fieldCrownPools = treeBiomeCanopyForm(id) ? 2 * (world.group.userData.treeForms?.species.length ?? 0) : 0;
     assert.equal(world.group.children.filter(m => m.userData.treeCanopyShadowProxy).length, nearSpecies * 3 + fieldCrownPools, `${id}: the near crown shadow proxies stay`);
     assert.equal(world.group.children.filter(m => m.userData.treeFoliage).length, nearSpecies * 3 + fieldCrownPools);
     for (const mesh of impostorMeshes) {
