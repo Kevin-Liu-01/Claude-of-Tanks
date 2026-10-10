@@ -70,6 +70,9 @@ import type { GroundCoverHole, SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
 import {
+  FORT_CONTACT_FLOOR_M, FORT_PRINT_MEAN, FORT_PRINT_SEED, buildPillbox, fortFor, pillboxBerm, pillboxFootprintGeometry, pillboxFooting,
+} from './maps/fortKit.ts'; // the fortifications lane: the pillbox
+import {
   FIELD_STONE_PRINT_SEED, liftFieldStoneMean, paintFieldStoneBuffers as paintFieldStoneBuffersInline, type FieldStoneBuffers,
   type FieldStoneLithology,
 } from './fieldStoneSurface.ts';
@@ -156,7 +159,8 @@ import {
 const HEDGEHOG_SLAB_M = 0.35;
 const _hedgehogBeam = new THREE.Matrix4(), _hedgehogTilt = new THREE.Matrix4();
 /** Pooled kinds whose shell records are the slabs of their own geometry (the hitbox lane, 2026-10-07). */
-export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall']);
+// (the fortifications lane, 2026-10-09, with the hitbox lane: and the pillbox, its berm's slope and its body met as drawn)
+export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall', 'bunker']);
 import {
   appendStructureCollisionBand, applyStructureCollisionBand,
   deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
@@ -575,9 +579,9 @@ interface PropsSettings {
   sandbagLines?: number;
   /** Field works between the spawns (breastwork + wire + pillbox); every map, default 3 (2026-09-17). */
   fieldWorks?: number;
-  /** The Redrock lane (2026-10-07): the field works' pillboxes keep their 8 m square off every trunk the vegetation
-   *  planted (a pillbox stood in Redrock's west spring with three palm trunks through its roof). Opt-in: the same overlap
-   *  stands on Alpine, Caldera, Delta, Frontier, Steppe and Verdant, whose shards and pacing move with it. */
+  /** The field works' pillboxes keep off the trunks the vegetation planted (the Redrock lane's rule, visual/redrock-smooth
+   *  ae7dcffa7, 2026-10-07; every map's default since the scenery lane's b40): a seat whose pillbox footprint, with
+   *  PILLBOX_TRUNK_BERTH_M round it, holds a trunk is passed for the work's next seat. false keeps the old seats. */
   pillboxClearOfTrees?: boolean;
   tankWrecks?: TankWreckSettings;
   /** The map-vehicles lane (P5): single vehicles the map authors at a spot (maps/vehicleSetPieces.ts), laid by the kits. */
@@ -2505,6 +2509,26 @@ const _quat = new THREE.Quaternion();
 // poles, each drawn into it every frame. A profile tells the router where the content stands (an InstancedMesh's
 // instances, a bucket's piece cells) and how tall it is (a shadow shorter than two texels of a map's PCF kernel
 // cannot read there); the router skips the cascades the content cannot touch.
+/** (b40) The berth a field-works pillbox keeps round its contact footprint from a trunk's own half-width: a crown's
+ *  low limbs and a conifer's skirt stay off its walls and roof. */
+const PILLBOX_TRUNK_BERTH_M = 1.5;
+/**
+ * The fortifications lane: the board-formed print lifted in place, in linear light, to the neutral mean the pillbox's
+ * vertex colours are authored over (fortKit.ts FORT_PRINT_MEAN), its colour cast taken out.
+ */
+function liftFortPrint(px: Uint8ClampedArray): void {
+  const toLin = (c: number) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const toSrgb = (c: number) => (c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055);
+  let mean = 0;
+  const n = px.length / 4;
+  for (let i = 0; i < px.length; i += 4) mean += (toLin(px[i] / 255) + toLin(px[i + 1] / 255) + toLin(px[i + 2] / 255)) / 3;
+  const k = FORT_PRINT_MEAN / Math.max(1e-4, mean / n);
+  for (let i = 0; i < px.length; i += 4) {
+    const v = (toLin(px[i] / 255) + toLin(px[i + 1] / 255) + toLin(px[i + 2] / 255)) / 3 * k;
+    const out = Math.round(Math.min(1, toSrgb(Math.min(1, v))) * 255);
+    px[i] = out; px[i + 1] = out; px[i + 2] = out;
+  }
+}
 const PROPS_SHADOW_CELL_M = 96;
 const _profileSphere = new THREE.Sphere();
 /** The content height of a geometry under the largest of `matrices` (metres). */
@@ -3765,6 +3789,11 @@ function* propsBuildSteps(
   yield { fine: true };
   const structureMetal = makeStructureDetail(noi, aniso, 'steel');
   yield { fine: true };
+  // the fortifications lane (2026-10-09): the pillbox's poured concrete, the board-formed print (its formwork's boards,
+  // lift lines and tie holes) lifted to a neutral mean the pillbox's vertex colours divide by (maps/fortKit.ts)
+  const fort = fortFor(mapId);
+  const fortPrint = fort ? yield* makeRegionalConcrete('boardFormed', liftFortPrint, aniso, FORT_PRINT_SEED) : null;
+  yield { fine: true };
   const vehiclePaint = makeVehiclePaint(noi, Math.min(aniso, 4));
   yield { fine: true };
 
@@ -3931,6 +3960,12 @@ function* propsBuildSteps(
       roughnessMap: structureMetal.surface, aoMap: structureMetal.surface,
       vertexColors: true, roughness: 1, metalness: 0.08,
     }),
+    // the fortifications lane: the pillbox's board-formed concrete under its weather (fortKit.ts); a map whose pillbox
+    // is not the kit's (the sangar's) owns none
+    ...(fortPrint ? { fortConcrete: new THREE.MeshStandardMaterial({
+      map: fortPrint.albedo, normalMap: fortPrint.normal, roughnessMap: fortPrint.surface, aoMap: fortPrint.surface,
+      vertexColors: true, roughness: 1, metalness: 0,
+    }) } : {}),
     // regional kits (maps/regional/weather.ts), on a map that adopted one: the same plaster, stone and roof textures
     // (a sourced swap replaces the shared Texture's source in place, so these follow it) under each building's
     // per-vertex tint and weathering. A map without a kit owns none of them.
@@ -3948,7 +3983,7 @@ function* propsBuildSteps(
   };
   function configureSurfaceMaterials(): void {
     for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'fieldMud', 'wood',
-      'straw', 'hay', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
+      'straw', 'hay', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof', 'fortConcrete']) {
       if (mats[key]) mats[key].aoMapIntensity = 0.82;
     }
     // the scenery lane (wave 52, Verdant's village wall: its face in shade "a flat extruded slab with a near-black blocky
@@ -4133,7 +4168,8 @@ ${snowCap ? `
       // (the hessian is the canvas's shader with another map, and the hay the straw's: they share their programs; the
       // field print has its own, for the modules' shifted windows, and the mud print its own, for its world-space
       // weathering)
-      const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind === 'hay' ? 'straw' : materialKind;
+      // (and the pillbox's concrete the canvas's too: the same maps, vertex colours and weathering)
+      const programKind = materialKind === 'burlap' || materialKind === 'fortConcrete' ? 'structureCanvas' : materialKind === 'hay' ? 'straw' : materialKind;
       // (round 7: a biased roof is its own program, so a map without a kit never reuses a kit map's)
       const biasKey = (tileBiased(materialKind) ? '-lodb' : '') + (isKitWall(materialKind) ? '-wall' : '');
       material.customProgramCacheKey = () =>
@@ -4265,6 +4301,16 @@ ${snowCap ? `
     // roadside kind that came into use after it in its period form, at the same seats (maps/periodClutterKit.ts); its
     // keys (barrier, roadsign, cone, transformer, cablespool) never meet the vehicle roles' on any map (batch 6 merge)
     ...periodClutterTypes(mapId),
+    // the fortifications lane (2026-10-09): the field works' pillbox as the map's period built it (maps/fortKit.ts), on
+    // the board-formed concrete; the old pillbox's draws spent first, so every pool after it keeps its shape. A map's
+    // own variant (the sangar) still wins below.
+    ...(fort ? { bunker: {
+      ...DESTRUCTIBLE_TYPES.bunker, mat: 'fortConcrete',
+      // the seat checks (roads, trunks) read the whole work's ground: the body and its static bank (placeFieldWorks)
+      footprintBuild: () => pillboxFootprintGeometry(fort.style, fort.tones, fort.seed),
+      build: (rng: () => number) => { DESTRUCTIBLE_TYPES.bunker.build(rng).dispose(); return buildPillbox(fort.style, fort.tones, fort.seed, false); },
+      broken: (rng: () => number) => { DESTRUCTIBLE_TYPES.bunker.broken!(rng).dispose(); return buildPillbox(fort.style, fort.tones, fort.seed, true); },
+    } } : {}),
     // (b16) and the map's own variants by name, last (the ksar gate post at Sirocco Wadi's and Redrock's gates)
     ...Object.fromEntries(Object.entries(P.structureVariants ?? {}).map(([key, name]) => {
       const variant = STRUCTURE_VARIANTS[name];
@@ -4355,7 +4401,8 @@ ${snowCap ? `
     let extents = destructibleFootprints.get(kind);
     if (!extents) {
       const meta = resolveDestructibleMeta(destructibleContext, kind);
-      const geometry = meta.build(mulberry32(0x0f0f7));
+      // (the fortifications lane: a pillbox's seat is its whole work's ground, the bank round the destructible body)
+      const geometry = meta.footprintBuild ? meta.footprintBuild() : meta.build(mulberry32(0x0f0f7));
       const band = deriveRuntimeStructureContactBand({ baked: [geometry] });
       geometry.dispose();
       const bounds = setCompoundShape({ min: [0, 0, 0], max: [0, 0, 0] }, band.parts);
@@ -8129,12 +8176,28 @@ ${snowCap ? `
       && heightField.getNormalAt(x, z).y >= 0.86 && !nearTrench(x, z)
       && ![player, ...enemies].some((spawn) => Math.hypot(x - spawn.x, z - spawn.z) < 45)
       && !placedB.some((building) => Math.hypot(x - building.x, z - building.z) < building.rr + 6);
-    const trunks = P.pillboxClearOfTrees ? (vegetation?.treeObstacles ?? []).map((tree) => ({
+    // (b40) a pillbox stood in Redrock's west spring with three palm trunks through its roof, and the same overlap stood
+    // on Alpine (4 trunks), Caldera (3), Delta (1), Frontier (1), Steppe (3) and Verdant (3): the pillbox's measured
+    // contact footprint, in its own frame, and a berth round it keep off every trunk planted before it
+    const trunks = P.pillboxClearOfTrees === false ? [] : (vegetation?.treeObstacles ?? []).map((tree) => ({
       x: (tree.min[0] + tree.max[0]) / 2, z: (tree.min[2] + tree.max[2]) / 2,
-      reach: Math.max(tree.max[0] - tree.min[0], tree.max[2] - tree.min[2]) / 2 + 6.2,
-    })) : [];
-    const pillboxOnTree = (x: number, z: number): boolean => trunks.some((t) => Math.abs(x - t.x) < t.reach
-      && Math.abs(z - t.z) < t.reach);
+      half: Math.max(tree.max[0] - tree.min[0], tree.max[2] - tree.min[2]) / 2,
+    }));
+    const pillboxClearOfTrunks = (x: number, z: number, yaw: number, berth = PILLBOX_TRUNK_BERTH_M): boolean => {
+      const [hw, hl] = destructibleFootprint('bunker');
+      const fx = Math.sin(yaw), fz = Math.cos(yaw);
+      // (the fortifications lane, 2026-10-09: and off the pieces already laid, another work's wire belt or a trench's
+      // parapet, which stood through the old pillbox's wall on Frosthollow; the same 'trunk' answer, so the work looks on)
+      if (fort && destructibles.some((d) => {
+        const dx = d.x - x, dz = d.z - z;
+        return Math.abs(dx * fz - dz * fx) < hw + 0.6 && Math.abs(dx * fx + dz * fz) < hl + 0.6;
+      })) return false;
+      if (!trunks.length) return true;
+      return !trunks.some((t) => {
+        const dx = t.x - x, dz = t.z - z;
+        return Math.abs(dx * fz - dz * fx) < hw + t.half + berth && Math.abs(dx * fx + dz * fz) < hl + t.half + berth;
+      });
+    };
     let placed = 0;
     for (let attempt = 0; attempt < target * 30 && placed < target; attempt++) {
       const along = 0.22 + wrng() * 0.56;
@@ -8174,21 +8237,184 @@ ${snowCap ? `
       // (on a map with pillboxClearOfTrees its 8 m square keeps off every trunk, as the landform boulders do)
       if (placed % 2 === 0) {
         const first = wrng() < 0.5 ? 1 : -1;
-        const reach = modules * 1.35 + 4.4;
-        for (const [ox, oz] of [[lx * first * reach, lz * first * reach], [-lx * first * reach, -lz * first * reach], [-fx * 4, -fz * 4]]) {
+        const reach = modules * 1.35 + 4.4, yawP = Math.atan2(fx, fz);
+        // the pillbox's whole footprint (an 8 m square) keeps out of the road core, not just its centre, and (b40) off
+        // the trunks: a seat the ground or the road refuses is null, one only the trunks refuse is 'trunk'
+        const seat = (ox: number, oz: number): readonly [number, number] | 'trunk' | null => {
           const px = cx + ox - fx * 3, pz = cz + oz - fz * 3;
-          // the pillbox's whole footprint (an 8 m square) keeps out of the road core, not just its centre
-          if (!clear(px, pz) || heightField.getNormalAt(px, pz).y < 0.9 || pillboxOnTree(px, pz)
-            || !destructibleClearOfRoad('bunker', px, pz, Math.atan2(fx, fz), 1)) continue;
-          addDestructible('bunker', px, heightField.getHeightAt(px, pz) - 0.08, pz, Math.atan2(fx, fz), 1);
+          if (!clear(px, pz) || heightField.getNormalAt(px, pz).y < 0.9
+            || !destructibleClearOfRoad('bunker', px, pz, yawP, 1)) return null;
+          return pillboxClearOfTrunks(px, pz, yawP) ? [px, pz] : 'trunk';
+        };
+        let at: readonly [number, number] | null = null, barred = false;
+        for (const [ox, oz] of [[lx * first * reach, lz * first * reach], [-lx * first * reach, -lz * first * reach], [-fx * 4, -fz * 4]]) {
+          const got = seat(ox, oz);
+          if (got === 'trunk') barred = true;
+          else if (got) { at = got; break; }
+        }
+        // (b40) where the trunks bar every seat the ground allows, the pillbox steps further along the line or back from
+        // it, so the work keeps its pillbox (on Caldera and Saltmere the trunks barred all three usual seats)
+        if (!at && barred) {
+          const far = reach + 3.5;
+          for (const [ox, oz] of [[lx * first * far, lz * first * far], [-lx * first * far, -lz * first * far], [-fx * 8, -fz * 8],
+            [lx * first * reach - fx * 4, lz * first * reach - fz * 4], [-lx * first * reach - fx * 4, -lz * first * reach - fz * 4]]) {
+            const got = seat(ox, oz);
+            if (got && got !== 'trunk') { at = got; break; }
+          }
+        }
+        // still barred (a palm grove's or an orchard's trunks every few metres round the work: Delta's two works, one of
+        // Orchard's): the seat nearest an end of the work, out to 20 m along the line either way and 20 m back from it,
+        // whose footprint the trunks leave clear by the berth, else by 0.3 m (no trunk in the box) — every work keeps its
+        // pillbox; no draw is taken, so nothing after it moves
+        if (!at && barred) {
+          let best: readonly [number, number] | null = null;
+          for (const berth of [PILLBOX_TRUNK_BERTH_M, 0.3]) {
+            let bestScore = Infinity;
+            for (let u = -20; u <= 20; u += 2.5) {
+              for (let v = 0; v <= 20; v += 2.5) {
+                const score = Math.min(Math.abs(u - first * reach), Math.abs(u + first * reach)) + v * 0.5;
+                if (score >= bestScore) continue;
+                const px = cx + lx * u - fx * (3 + v), pz = cz + lz * u - fz * (3 + v);
+                if (!clear(px, pz) || heightField.getNormalAt(px, pz).y < 0.9
+                  || !destructibleClearOfRoad('bunker', px, pz, yawP, 1) || !pillboxClearOfTrunks(px, pz, yawP, berth)) continue;
+                best = [px, pz]; bestScore = score;
+              }
+            }
+            if (best) break;
+          }
+          at = best;
+        }
+        if (at) {
+          const [px, pz] = at;
+          addDestructible('bunker', px, heightField.getHeightAt(px, pz) - 0.08, pz, yawP, 1);
           if (wrng() < 0.7) scatterDestructibles('ammobox', px - fx * 4.5, pz - fz * 4.5, 1, 1.5, 3);
-          break;
         }
       }
       placed++;
     }
   }
   placeFieldWorks();
+
+  // the fortifications lane (2026-10-09; gauntlet wave 315: pillboxes "on brown plinths or on flat brown patches that
+  // look pasted onto the grass", "weak footing", and their ask, "sand or earth banked against the pillboxes"): each
+  // pillbox stands in an earthwork, the bank of earth thrown up against its walls (fortKit.ts pillboxBerm). The bank is
+  // the battlefield's, not the destructible's: it outlives the concrete (a broken prop has no collider, so a bank that
+  // fell with it would be cover a hull drives through), keeps its own collision (pillboxEarthworks, laid once every
+  // placement pass is done, as the destructibles' own bands are refitted), and on desktop it is drawn with the ground's
+  // own material over the bank's exact form and out over the terrain past its toe, merged into the boulders' bed cells
+  // (one draw a 512 m cell), so it grows out of the ground round it; the phones draw it in its vertex colours on the
+  // plain baked material.
+  const fortSeats: Array<{ x: number; y: number; z: number; yaw: number }> = [];
+  if (fort && P.structureVariants?.bunker === undefined) {
+    for (const rec of destructibles) if (rec.kind === 'bunker') fortSeats.push({ x: rec.x, y: rec.y, z: rec.z, yaw: rec.yaw });
+  }
+  if (fort && fortSeats.length && mobileProps) {
+    const bank = pillboxBerm(fort.style, fort.tones, fort.seed, { forBaked: true });
+    for (const seat of fortSeats) {
+      const g = bank.clone();
+      g.rotateY(seat.yaw);
+      g.translate(seat.x, seat.y, seat.z);
+      buckets.baked.push(g);
+    }
+    bank.dispose();
+  }
+  if (fort && fortSeats.length && !mobileProps) {
+    const footing = pillboxFooting(fort.style, fort.tones, fort.seed);
+    const meshAt = (x: number, z: number): number => terrainNearMeshHeightAt(nearMeshVertexHeight, x, z);
+    const foldAt = (heightField as { _foldAt?: (x: number, z: number) => number })._foldAt;
+    const foldByte = (x: number, z: number): number => {
+      if (!foldAt) return 0;
+      const f = foldAt(x, z);
+      return Math.max(-127, Math.min(127, Math.round((f > 1 ? 1 : f < -1 ? -1 : f) * 127)));
+    };
+    const fillets: THREE.BufferGeometry[] = [];
+    for (const seat of fortSeats) {
+      const c = Math.cos(seat.yaw), sn = Math.sin(seat.yaw);
+      const toWorld = (p: readonly number[]): [number, number, number] => [seat.x + p[0] * c + p[2] * sn, seat.y + p[1], seat.z - p[0] * sn + p[2] * c];
+      const pos: number[] = [], fold: number[] = [], idx: number[] = [], share: number[] = [];
+      // per sample: the inner face (below grade up to the crest, inside the wall), the bank's rows from the wall to
+      // its toe (a hair over it), then out over the ground, the last ring tucked under it
+      const BANK_ROWS = 7;
+      const RINGS = 1 + BANK_ROWS + 3;
+      for (const f of footing) {
+        const ox = f.nx * c + f.nz * sn, oz = -f.nx * sn + f.nz * c;
+        const crest = toWorld(f.rows[0]);
+        const ring: Array<[number, number, number]> = [[crest[0], seat.y - 0.6, crest[2]]];
+        for (let r = 0; r < BANK_ROWS; r++) {
+          const q = toWorld(f.rows[r]);
+          ring.push([q[0], Math.max(q[1] + 0.02, meshAt(q[0], q[2]) + 0.02), q[2]]);
+        }
+        const toe = toWorld(f.rows[BANK_ROWS - 1]);
+        for (const [d, lift] of [[0.45, 0.025], [0.95, 0.01], [1.4, -0.05]] as const) {
+          const x = toe[0] + ox * d, z = toe[2] + oz * d;
+          ring.push([x, meshAt(x, z) + lift, z]);
+        }
+        ring.forEach((q, j) => { pos.push(q[0], q[1], q[2]); fold.push(foldByte(q[0], q[2])); share.push(j === 0 ? 1 : j <= BANK_ROWS ? 0.7 : 0.35); });
+      }
+      const K = footing.length;
+      for (let k = 0; k < K; k++) {
+        if (footing[k].h < 0.02 && footing[(k + 1) % K].h < 0.02) {
+          // no bank here (the open rear): the toe rings alone, a lip of ground against the wall's foot
+          const a = k * RINGS, b = ((k + 1) % K) * RINGS;
+          for (let j = BANK_ROWS - 1; j < RINGS - 1; j++) idx.push(a + j, a + j + 1, b + j, a + j + 1, b + j + 1, b + j);
+          continue;
+        }
+        const a = k * RINGS, b = ((k + 1) % K) * RINGS;
+        for (let j = 0; j < RINGS - 1; j++) idx.push(a + j, a + j + 1, b + j, a + j + 1, b + j + 1, b + j);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('fold', new THREE.BufferAttribute(Int8Array.from(fold), 1, true));
+      g.setIndex(idx);
+      g.computeVertexNormals();
+      // wound to face out of the bank, and the ground's slope laws fed a normal nearer the ground's own up (the b44
+      // fillet lesson: a fillet lit wholly by its own steep normal lost the fields and drew a tan ring): the bank keeps
+      // seven tenths of its own form, the ground past its toe a third
+      const nrm = g.getAttribute('normal') as THREE.BufferAttribute;
+      let up = 0;
+      for (let i = 0; i < nrm.count; i++) up += nrm.getY(i);
+      if (up < 0) {
+        for (let i = 0; i < idx.length; i += 3) { const t = idx[i + 1]; idx[i + 1] = idx[i + 2]; idx[i + 2] = t; }
+        g.setIndex(idx); g.computeVertexNormals();
+      }
+      for (let i = 0; i < nrm.count; i++) {
+        const k = share[i];
+        const nx = nrm.getX(i) * k, ny = nrm.getY(i) * k + (1 - k), nz = nrm.getZ(i) * k, l = Math.hypot(nx, ny, nz) || 1;
+        nrm.setXYZ(i, nx / l, ny / l, nz / l);
+      }
+      g.computeBoundingSphere();
+      fillets.push(g);
+    }
+    const beds = (group.userData.rockBeds as THREE.BufferGeometry[] | undefined) ?? [];
+    for (const g of fillets) {
+      const cg = g.boundingSphere!.center, key = bedCellKey(cg.x, cg.z);
+      const at = beds.findIndex((b) => { if (!b.boundingSphere) b.computeBoundingSphere(); return bedCellKey(b.boundingSphere!.center.x, b.boundingSphere!.center.z) === key; });
+      const host = at >= 0 ? beds[at] : null;
+      const merged = host && host.index && host.getAttribute('normal') && host.getAttribute('fold') && Object.keys(host.attributes).length === 3
+        ? mergeGeometries([host, g], false) : null;
+      if (host && merged) { host.dispose(); g.dispose(); merged.computeBoundingSphere(); beds[at] = merged; }
+      else beds.push(g);
+    }
+    group.userData.rockBeds = beds;
+  }
+  /** The pillboxes' earthworks' collision (above): the bank's movement footprint from where it stands FORT_CONTACT_FLOOR_M
+   * high, its shell record its own slabs. Laid after every placement pass (the passes saw the pillbox's box alone, as
+   * they did before the bank). */
+  function pillboxEarthworks(): void {
+    if (!fort || !fortSeats.length) return;
+    const clipped = pillboxBerm(fort.style, fort.tones, fort.seed, { clip: FORT_CONTACT_FLOOR_M });
+    const full = pillboxBerm(fort.style, fort.tones, fort.seed);
+    const contact = deriveRuntimeStructureContactBand({ baked: [clipped] });
+    const slabs = localShellSlabs(full);
+    clipped.dispose(); full.dispose();
+    for (const seat of fortSeats) {
+      const ob = appendStructureCollisionBand(obstacles, contact, seat.x, seat.y, seat.z, seat.yaw);
+      ob.kind = 'earthwork';
+      const col = cloneCollisionRecord(ob);
+      if (slabs?.length) placeLocalShellSlabs(col, slabs, seat.x, seat.y, seat.z, seat.yaw, 1);
+      colliders.push(col);
+    }
+  }
 
   // --- knocked-out TANK WRECKS: real roster vehicles, baked static ----------
   yield;
@@ -10649,6 +10875,9 @@ ${snowCap ? `
   // Construction-only spans are now sealed into matrices/support/colliders;
   // runtime destruction closures must not retain the placement graph.
   wallSpans.clear();
+  // the fortifications lane: the pillboxes' earthworks, once every pass has placed its pieces (above), before the
+  // runtime's broad phases index the records (the loose props meet the banks too)
+  pillboxEarthworks();
   // spatial hash over destructible records for the shell paths (8 m cells)
   // settlement pass 2 (2026-09-12): every placed building's chimney tops, world space (hearth smoke).
   const hearthAnchors = exteriorChimneyTops(buckets).map(([x, y, z]) => [x, y, z] as [number, number, number]);
