@@ -141,14 +141,20 @@ const isWeaponMesh = (o) => {
   }
   return false;
 };
-function uvDensityMedian(geometry) {
+// The camouflage density is a vehicle-frame quantity: a mesh inside a scaled group (the Griffin's reduced turret scales
+// its stations' groups by 0.81) carries UVs projected for its vehicle-frame size, so measure in the tank root's frame.
+function uvDensityMedian(mesh, root) {
+  const geometry = mesh.geometry;
+  root.updateMatrixWorld(true);
+  const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert().multiply(mesh.matrixWorld);
   const pos = geometry.getAttribute('position'), uv = geometry.getAttribute('uv'), index = geometry.index;
   const n = index ? index.count : pos.count, samples = [];
   const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
   let total = 0;
   for (let t = 0; t + 2 < n; t += 3) {
     const [i0, i1, i2] = [t, t + 1, t + 2].map((k) => (index ? index.getX(k) : k));
-    a.fromBufferAttribute(pos, i0); b.fromBufferAttribute(pos, i1); c.fromBufferAttribute(pos, i2);
+    a.fromBufferAttribute(pos, i0).applyMatrix4(toRoot); b.fromBufferAttribute(pos, i1).applyMatrix4(toRoot);
+    c.fromBufferAttribute(pos, i2).applyMatrix4(toRoot);
     const world = b.clone().sub(a).cross(c.clone().sub(a)).length() / 2;
     if (world < 1e-9) continue;
     const uvArea = Math.abs((uv.getX(i1) - uv.getX(i0)) * (uv.getY(i2) - uv.getY(i0)) - (uv.getX(i2) - uv.getX(i0)) * (uv.getY(i1) - uv.getY(i0))) / 2;
@@ -197,7 +203,7 @@ try {
         const uv = o.geometry.getAttribute('uv'), pos = o.geometry.getAttribute('position');
         assert.ok(uv && o.geometry.getAttribute('color'), `${id}/${o.name}: painted housings carry camouflage UVs and vertex colours`);
         // the camouflage density: the area-weighted median of sqrt(UV area / world area) is the fleet's repeats per metre
-        const density = uvDensityMedian(o.geometry);
+        const density = uvDensityMedian(o, visual.root);
         assert.ok(Math.abs(density - CAMO_UV_REPEATS_PER_M) < CAMO_UV_REPEATS_PER_M * 0.15,
           `${id}/${o.name}: camouflage projected at the fleet density (${density.toFixed(3)} per metre)`);
       } else {
@@ -212,7 +218,7 @@ try {
   const housing = t90ms.root.getObjectByName('t90msTagilTowerOpticHousing');
   assert.ok(housing, 't90ms: the Tagil optic housing exists');
   {
-    const density = uvDensityMedian(housing.geometry);
+    const density = uvDensityMedian(housing, t90ms.root);
     assert.ok(Math.abs(density - CAMO_UV_REPEATS_PER_M) < 0.05, `t90ms: the optic housing projects the camouflage at the fleet density (${density.toFixed(3)} per metre, was 4.6)`);
   }
 } finally {
