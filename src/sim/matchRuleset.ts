@@ -9,6 +9,7 @@
 // points lost), ammunition and equipment at spawn, and the play-menu rule cards.
 import type { GameModeId } from './matchModes.ts';
 import { shell } from './shellSpec.ts';
+import type { DestructionRules } from './destructionEvents.ts';
 
 /** Mode weapons are fictional gameplay loadouts; they never mutate the fleet catalog. */
 export const GUN_GAME_WEAPONS = Object.freeze([
@@ -39,8 +40,15 @@ interface AssaultRules {
   readonly initialActive: number;
   /** Extra defenders per sector from the operation's difficulty. */
   readonly extraDefenders: number;
-  /** Hit-point scale added per sector taken. */
+  /** Hit-point scale added per sector taken, up to the last sector. */
   readonly hpPerLine: number;
+  /**
+   * Hit-point scale of the last sector's counter-attack, in place of 1 + sectors taken × hpPerLine (1.32 on the third
+   * sector). Modes lane, 2026-10-08 (owner decision: the attackers should win 40–55 % of bot tests): the attack took
+   * the first two sectors every time and lost most matches at the third, where five fresh defenders at 1.32× met the
+   * four survivors; 1.15× is the decision's first knob.
+   */
+  readonly finalLineHp: number;
   /** Hit-point scale added by the operation's difficulty (applies to every defender). */
   readonly difficultyHp: number;
   /** Seconds the last sector must be held. */
@@ -283,6 +291,22 @@ export interface MatchRuleset {
   /** Enemy nation id the roster fills from first (co-op modes; null = mixed / the operation decides). */
   readonly enemyNation: string | null;
   readonly alliedNation?: 'player' | null;
+  /** Buildings that break and collapse, ground that craters (docs/DESTRUCTION.md §9). */
+  readonly destruction: DestructionRules;
+  /**
+   * The battlefield variant the mode plays on (null: the base map). Frontline Assault's 'assault-trenches' carves the
+   * trench system into the terrain and dresses its works; every client builds it and the authority plays exactly it
+   * (its own collision manifest, server/world-collision-manifests/<map>@assault-trenches.json).
+   */
+  readonly terrainVariant: TerrainVariant | null;
+}
+
+/** A battlefield variant a mode can play (the map built with that variant's config, its own collision manifest). */
+export type TerrainVariant = 'assault-trenches';
+export const TERRAIN_VARIANTS: readonly TerrainVariant[] = Object.freeze(['assault-trenches']);
+/** The variant `mode` plays on (null: the base map). */
+export function terrainVariantFor(mode: GameModeId | string | null | undefined): TerrainVariant | null {
+  return (BASE_RULESETS as Readonly<Record<string, MatchRuleset>>)[String(mode)]?.terrainVariant ?? null;
 }
 
 export interface CampaignRulesetInput {
@@ -298,11 +322,35 @@ export const ENDING_HOLD_LIMIT_S = 12;
 /** Whole-game post-verdict hold: long enough for the 2.5 s beats and the killcam's live wreck hold. */
 const ENDING_HOLD_S = 8;
 
+/**
+ * Destruction (owner 2026-10-07: "buildings should break and collapse ... after withstanding damage and ramming"; craters
+ * "esp from like the ac 130"): on in every mode but Turbo Ball, whose pitch an unlimited HE ladder would crater under
+ * the ball; the AC-130 digs its craters a quarter wider (docs/DESTRUCTION.md §9).
+ */
+/**
+ * The crater switch (destruction core lane, 2026-10-08; docs/DESTRUCTION.md §7, crater-render-spec §F): on, the
+ * simulation digs craters in every mode that plays destruction, and the drawn terrain (world/terrainCraterMesh.ts), the
+ * ground cover (world/groundCoverCraters.ts) and the crater's own surface (fx/craterMarks.ts) follow the dug ground.
+ * Off until the switch-on gates pass (pacing and fairness paired against craters off, both audits, cost with a
+ * barrage, the network's stamp-once and late join).
+ */
+const CRATERS_SWITCH = false;
+// sections (P2: holes, fallen walls, roofs and storeys that shells and sight lines pass) stay off until their gates pass
+// (docs/DESTRUCTION.md §3.4, §13): the receipts, the paired pacing and fairness, the cost runs and the motion strips
+const SECTIONS_SWITCH = false;
+const DESTRUCTION_ON: DestructionRules = Object.freeze({
+  structures: true, craters: CRATERS_SWITCH, sections: SECTIONS_SWITCH, structureDamageScale: 1, craterScale: 1, maxCraters: 160,
+});
+const DESTRUCTION_OFF: DestructionRules = Object.freeze({
+  structures: false, craters: false, sections: false, structureDamageScale: 0, craterScale: 0, maxCraters: 0,
+});
+
 const STANDARD: MatchRuleset = Object.freeze({
   mode: 'standard', gravityScale: 1, physics: STANDARD_PHYSICS, speedMultiplier: 1, hpScale: 1, damageScale: 1, reloadScale: 1,
   ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, jumpMps: null, recoilLaunchScale: 1, shellKnockScale: 0.3,
   respawnS: null, timeLimitS: 900, timeout: 'draw', endingHoldS: ENDING_HOLD_S,
   allies: null, enemies: null, assault: null, horde: null, enemyNation: null,
+  destruction: DESTRUCTION_ON, terrainVariant: null,
 });
 
 const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze({
@@ -318,6 +366,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     ...STANDARD, mode: 'turbo_ball', gravityScale: 0.6, physics: TURBO_PHYSICS, speedMultiplier: 1.85, hpScale: 1.5,
     damageScale: 0.5, reloadScale: 0.7, ammo: 'unlimited', equipmentSlots: 0, consumables: false,
     criticalDamage: false, jumpMps: 13, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
+    destruction: DESTRUCTION_OFF,
   }),
   // Horde: survival — the player with two allied bots on alpha (co-op humans join it), a pool of
   // fourteen hostile identities on the far side drawn afresh every wave (five on the first wave,
@@ -332,8 +381,8 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // costs the operation when it runs out; defenders escalate per sector and per difficulty.
   frontline_assault: Object.freeze({
     ...STANDARD, mode: 'frontline_assault', respawnS: null, timeLimitS: 720, timeout: 'defeat',
-    allies: 3, enemies: 10,
-    assault: Object.freeze({ initialActive: 3, extraDefenders: 0, hpPerLine: 0.16, difficultyHp: 0, holdS: 20 }),
+    allies: 3, enemies: 10, terrainVariant: 'assault-trenches',
+    assault: Object.freeze({ initialActive: 3, extraDefenders: 0, hpPerLine: 0.16, finalLineHp: 1.15, difficultyHp: 0, holdS: 20 }),
   }),
   // Mars mode (owner 2026-09-18): Olympus Basin's own physics — 0.38 g, a 6.5 m/s jump, +25 % speed, tougher
   // hulls, a lighter recoil launch than Turbo Ball — on the zone objective with 6 s respawns and a
@@ -351,7 +400,8 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     gunGame: Object.freeze({ killsPerWeapon: 2 }) }),
   drone: Object.freeze({ ...STANDARD, mode: 'drone', aerial: 'drone', respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
   ac130: Object.freeze({ ...STANDARD, mode: 'ac130', aerial: 'gunship', allies: 4, enemies: 12, alwaysVisible: true,
-    ammo: 'unlimited', consumables: false, timeLimitS: 480, timeout: 'defeat' }),
+    ammo: 'unlimited', consumables: false, timeLimitS: 480, timeout: 'defeat',
+    destruction: Object.freeze({ ...DESTRUCTION_ON, craterScale: 1.25 }) }),
 });
 
 /** Score targets the modes play to (kept here so rule cards and controller agree). */
@@ -522,6 +572,17 @@ export function matchRulesetFor(
   }
   if (ruleset.infection) ruleset = { ...ruleset, enemies: Math.max(3, arranged?.enemies ?? 4) };
   return ruleset === base ? base : Object.freeze(ruleset);
+}
+
+/**
+ * Hull scale a Frontline counter-attack arrives with on sector `line` (0-based) of `lines`: 1 + line × hpPerLine on
+ * the way in, finalLineHp on the last sector, plus the operation's difficulty on every one.
+ */
+export function assaultWaveHealthScale(rules: AssaultRules, line: number, lines: number): number {
+  const index = Math.max(0, Math.floor(line));
+  // the opening wave is never the counter-attack, even on a one-sector front
+  const base = index > 0 && index >= lines - 1 ? rules.finalLineHp : 1 + index * rules.hpPerLine;
+  return base + rules.difficultyHp;
 }
 
 /** Hostiles the Horde fields on a wave (1-based), before the pool caps it. */

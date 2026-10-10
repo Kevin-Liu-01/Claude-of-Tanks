@@ -107,6 +107,13 @@ const UKRAINE_SPECS = {
 // cycle rather than the inherited tier-IX T-84 values.
 {
   const spec = UKRAINE_SPECS.ua_t84_oplot_m;
+  // Owner-requested 10% larger chassis; the turret retains its local size.
+  const originalHullLength=spec.dims.hullLengthM;
+  spec.dims.hullLengthM*=1.10;spec.dims.widthM*=1.10;
+  spec.dims.overallLengthM+=originalHullLength*.05;spec.dims.heightM+=.142;
+  spec.armor.turretPivot=spec.armor.turretPivot.map(v=>v*1.10) as [number,number,number];
+  for(const plate of spec.armor.hullPlates)plate.verts=plate.verts.map(p=>p.map(v=>v*1.10) as [number,number,number]);
+
   spec.armor.hullPlates.push(
     reactivePlate('ua_t84_oplot_m_hull_era', 'front', {
       keReduction: 0.24, ceFlatMm: 500,

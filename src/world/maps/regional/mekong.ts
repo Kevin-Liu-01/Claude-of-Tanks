@@ -3,7 +3,8 @@
 // iron, with a front veranda, a rail and a ladder; ground houses of rendered brick painted pale blue, green or yellow
 // under sheet roofs with a columned porch; open boat shelters and shrimp-pond guard huts on stilts; tin-roofed market
 // halls; a collapsed stilt house where the shelling found it.
-import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
+import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { hash01 } from './facade.ts';
 import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, RUSTED, WEATHERED_PLANK, boardWall, ladder, stilts, veranda } from './vernacular.ts';
@@ -15,7 +16,9 @@ function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
 }
 
-const nipa = (pitch: number): RoofSpec => ({ kind: 'gable', pitchDeg: pitch, eave: 0.6, verge: 0.4, thickness: 0.26, bucket: 'straw', ridge: 'round', thatch: 'rows' });
+// (the facades lane, 2026-10-08; gauntlet wave 260: "brown shingle gable roofs") an atap of nipa leaf: the kit's thatch print
+// is the nipa's (surfaces.thatch), its eave one thick frayed course, no course lips up the slope
+const nipa = (pitch: number): RoofSpec => ({ kind: 'gable', pitchDeg: pitch, eave: 0.6, verge: 0.4, thickness: 0.26, bucket: 'straw', ridge: 'round', thatch: 'nipa' });
 const tole = (pitch: number, kind: RoofSpec['kind'] = 'gable'): RoofSpec => ({ kind, pitchDeg: pitch, eave: 0.5, verge: 0.35, thickness: 0.06, bucket: 'roof', ridge: 'saddle' });
 
 /** Board-shuttered window openings (no glass in the stilt houses): a dark opening, a frame, a propped shutter. */
@@ -62,7 +65,7 @@ function stiltHouse(ctx: RegionalBuildContext, opts: { lift?: number } = {}): Re
   const roof = thatched ? nipa(30 + rng() * 6) : tole(20 + rng() * 6);
   emitRoof(sink, roofGeometry(W, D, top, roof), roof);
   const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-  veranda(sink, front, lift, top - 0.05, W, 1.3, post, { bucket: thatched ? 'straw' : 'roof' });
+  veranda(sink, front, lift, top - 0.05, W, 1.3, post, thatched ? { bucket: 'straw', thatch: 'nipa' } : { bucket: 'roof' });
   ladder(sink, { ...front, origin: [0, 0, D / 2 + 1.3] }, W * 0.3, 0, lift + 0.16, shade(post, 0.9));
   wetYard(sink, ctx);
   return sink.finish();
@@ -70,20 +73,84 @@ function stiltHouse(ctx: RegionalBuildContext, opts: { lift?: number } = {}): Re
 
 /**
  * The wet yard under a house on stilts (gauntlet wave 15: "the stilt house stands on dry mown lawn"): a skin of dark
- * tidal mud over the plot and standing water in its hollows. Decor only (no collision), its pools drawn from the look
- * stream so the build stream never moves; a phone builds the same house without it. (A plank walkway to the bank was
- * tried here and dropped: the base plots end under the veranda, so it never fitted.)
+ * tidal mud under the house and round its posts, and standing water in its hollows. Decor only (no collision); its pools
+ * drawn from the look stream, as many draws as ever, so neither stream moves; a phone builds the same house without it.
+ * (A plank walkway to the bank was tried here and dropped: the base plots end under the veranda, so it never fitted.)
+ * The facades lane, 2026-10-08 (round nine; gauntlet wave 260 asks the delta for "mud rather than lawn"): the skin was a
+ * 33 cm slab in the timber bucket, which the structure wood's grain drew as a plank deck on a stand. It is laid on the
+ * ground now, as house.ts lays a wall-foot strip: every corner of the mud 3 cm over the terrain under it, of the water
+ * 4 cm (a bare build lays them level at 4 and 5 cm, the mud closed into a slab down to -0.3, as a bare strip's lips go
+ * down, so nothing sees its back from below). It is wet silt in the render bucket under a dark tint (the render's
+ * grit reads as silt), its edge an irregular blob inside the plot rather than the plot's rectangle, its puddles irregular
+ * too, and the world's grass kept off all of it (a grid of discs over everything it lays).
  */
 function wetYard(sink: PartSink, ctx: RegionalBuildContext): void {
-  if (ctx.tier === 'mobile') return;
-  const look = ctx.variant;
-  const mx = ctx.info.w / 2 - 0.15, mz = ctx.info.d / 2 - 0.15;
-  // the mud: a slab whose top stands 3 cm over the plot's ground, deep enough to show on its low side
-  sink.span('structureWood', -mx, -0.3, -mz, mx, 0.03, mz, { colour: rgb(0x3a3024), decor: true });
-  for (let k = 0; k < 3; k++) {
-    const x = (look() - 0.5) * mx * 1.4, z = (look() - 0.5) * mz * 1.2, a = 0.5 + look() * 0.9, b = 0.4 + look() * 0.7;
-    sink.span('glass', x - a, 0.03, z - b, x + a, 0.042, z + b, { decor: true });
-  }
+  sink.dressing(ctx.tier === 'mobile', () => {
+    const look = ctx.variant, ground = ctx.ground;
+    const rx = ctx.info.w / 2 - 0.15, rz = ctx.info.d / 2 - 0.15;
+    // the extent of everything laid (the ground cover's holes cover it)
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    const at = (x: number, z: number, lift: number): Vec3 => {
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z);
+      if (!ground) return [x, lift + 0.01, z];
+      const q = sink.framePoint([x, 0, z]);
+      return [x, ground.at(q[0], q[2]) - q[1] + lift, z];
+    };
+    // a triangle wound to face up (the ground under it need not be level)
+    const up = (a: Vec3, b: Vec3, c: Vec3): Vec3[] =>
+      (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]) > 0 ? [a, b, c] : [a, c, b];
+    const mud: EmitOptions = { decor: true, ...(ground ? { ground: true } : {}), tint: [0.42, 0.37, 0.3] };
+    // the blob: the plot's ellipse, its radius wandering 84-100 % round it in two slow harmonics (no stream draws)
+    const p1 = hash01(rx, rz, 1.1) * Math.PI * 2, p2 = hash01(rx, rz, 2.2) * Math.PI * 2;
+    const N = 20, rings = [0.34, 0.67, 1];
+    const ring = (r: number, k: number): Vec3 => {
+      const t = (k % N) / N * Math.PI * 2, e = 0.92 + 0.05 * Math.sin(2 * t + p1) + 0.03 * Math.sin(3 * t + p2);
+      return at(Math.cos(t) * rx * r * e, Math.sin(t) * rz * r * e, 0.03);
+    };
+    const centre = at(0, 0, 0.03);
+    for (let k = 0; k < N; k++) {
+      sink.polygon('plaster', up(centre, ring(rings[0], k), ring(rings[0], k + 1)), mud);
+      for (let r = 1; r < rings.length; r++) {
+        const a = ring(rings[r - 1], k), b = ring(rings[r - 1], k + 1), c = ring(rings[r], k + 1), d = ring(rings[r], k);
+        sink.polygon('plaster', up(a, b, c), mud);
+        sink.polygon('plaster', up(a, c, d), mud);
+      }
+    }
+    if (!ground) {
+      // a bare build: the blob closed into a slab, its underside and its rim down to -0.3
+      const low = (p: Vec3): Vec3 => [p[0], -0.3, p[2]];
+      const down = (a: Vec3, b: Vec3, c: Vec3): Vec3[] => { const t = up(a, b, c); return [t[0], t[2], t[1]]; };
+      const edge = (k: number) => ring(1, k);
+      for (let k = 0; k < N; k++) {
+        sink.polygon('plaster', down(low(centre), low(edge(k)), low(edge(k + 1))), mud);
+        // the rim's quad, wound to face out of the blob
+        const a = edge(k), b = edge(k + 1), c = low(b), d = low(a);
+        const nx = (b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]), nz = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+        sink.polygon('plaster', nx * (a[0] + b[0]) + nz * (a[2] + b[2]) >= 0 ? [a, b, c, d] : [d, c, b, a], mud);
+      }
+    }
+    // the puddles: irregular octagons a centimetre over the mud
+    const water: EmitOptions = { decor: true, ...(ground ? { ground: true } : {}) };
+    for (let k = 0; k < 3; k++) {
+      const x = (look() - 0.5) * rx * 1.4, z = (look() - 0.5) * rz * 1.2, a = 0.5 + look() * 0.9, b = 0.4 + look() * 0.7;
+      const corner = (j: number): Vec3 => {
+        const t = (j % 8) / 8 * Math.PI * 2, f = 0.72 + hash01(x, z, j % 8, 6.6) * 0.28;
+        return at(x + Math.cos(t) * a * f, z + Math.sin(t) * b * f, 0.04);
+      };
+      const c0 = at(x, z, 0.04);
+      for (let j = 0; j < 8; j++) sink.polygon('glass', up(c0, corner(j), corner(j + 1)), water);
+    }
+    // no grass through the mud or the water (a phone builds neither, so it keeps its grass): discs on a grid over their
+    // extent, each covering its grid cell (radius >= the cell's half diagonal)
+    if (ground?.hole && ctx.tier !== 'mobile' && x1 > x0) {
+      const nx = Math.max(2, Math.ceil((x1 - x0) / 1.6) + 1), nz = Math.max(2, Math.ceil((z1 - z0) / 1.6) + 1);
+      const dx = (x1 - x0) / (nx - 1), dz = (z1 - z0) / (nz - 1), r = Math.hypot(dx, dz) / 2 + 0.02;
+      for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+        const q = sink.framePoint([x0 + i * dx, 0, z0 + j * dz]);
+        ground.hole(q[0], q[2], r);
+      }
+    }
+  });
 }
 
 /**
@@ -254,6 +321,7 @@ export const MEKONG_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
     roof: { kind: 'sheet', tint: [0.62, 0.64, 0.65] },
     stone: { kind: 'block', tint: [0.62, 0.61, 0.58] },
     sourced: { plaster: false, wood: true },
+    thatch: { kind: 'nipa' },
     tones: {
       plaster: (_h, s, l) => [0.12, Math.min(1, s * 0.3 + 0.05), Math.min(1, l * 1.18 + 0.08)],
       plaster2: (_h, s, l) => [0.53, Math.min(1, s * 0.4 + 0.12), Math.min(1, l * 1.15 + 0.1)],

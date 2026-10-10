@@ -1,3 +1,4 @@
+import { weaponHitKind } from './weaponHitKind.ts';
 import { FiredRoundLedger } from './battleEventStats.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { getPlayerRecord } from './profile.ts';
@@ -605,7 +606,9 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
         battle.damageTaken += damage;
         const max = finite(event.targetMaxHp) || ctx.playerMaxHp() || 0;
         if (max > 0 && typeof event.targetHpAfter === 'number') battle.lastHpFraction = Math.max(0, event.targetHpAfter / max);
-      } else if (BLOCKED_KINDS.has(text(event.kind))) {
+      } else if (BLOCKED_KINDS.has(text(event.kind)) && weaponHitKind({
+        caliberMm: finite(event.caliberMm), guided: event.guided === true, shellType: text(event.shellType),
+      }) !== 'machineGun') {
         battle.blocked++;
         if (battle.blocked >= STEEL_WALL_BLOCKS) award('steel_wall');
       }

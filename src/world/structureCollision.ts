@@ -345,30 +345,93 @@ function combinedConvexHull(first: number[], second: number[]): number[] | null 
   return hullArea <= sourceArea + Math.max(1e-5, sourceArea * 1e-4) ? hull : null;
 }
 
-function mergeFirstProjectedPair(polygons: number[][], vertexKeys: Map<number[], Set<string>>): boolean {
-  for (let first = 0; first < polygons.length; first++) {
-    const firstKeys = projectedPolygonKeys(polygons[first], vertexKeys);
-    for (let second = first + 1; second < polygons.length; second++) {
-      if (sharedVertexCount(firstKeys, polygons[second], vertexKeys) < 2) continue;
-      const hull = combinedConvexHull(polygons[first], polygons[second]);
-      if (!hull) continue;
-      polygons[first] = hull;
-      polygons.splice(second, 1);
-      return true;
-    }
-  }
-  return false;
-}
-
+/**
+ * One solid's projected triangles merged into convex polygons: the first mergeable pair in list order — two polygons
+ * sharing at least two welded corners whose convex hull adds no area — becomes their hull in place of the first, the
+ * second leaves the list, and the search starts again from the top until no pair merges.
+ *
+ * (2026-10-08, the perf lane, time-to-battle: the same merges in the same order, without restarting the pair search
+ * from the top — it was cubic in the triangles, ~3 s of a Verdant props build. A polygon only becomes a hull in the
+ * place of the earlier of its pair, so after a merge at row f every row before f is still clean but for its pair with
+ * the new hull: those are checked first, in order (the restarted search would meet them first), then the search goes
+ * on from f, past every row found clean since — a row's pairs change only when a polygon after it becomes a hull,
+ * which that column check covers. The pairs come from a welded-corner index: a pair sharing fewer than two corners
+ * never merges, so it is never visited. structureCollisionMergeKeys.selftest.mjs holds it to the restarted search.)
+ */
 function mergeProjectedTriangles(triangles: number[][]) {
   const polygons = dedupeProjectedTriangles(triangles);
-  // Pair search restarts in the same order, but unchanged polygon arrays need
-  // not rebuild welded vertex strings for every comparison. Each accepted
-  // hull is a new array, so its keys cannot alias the replaced polygon's keys.
-  // This construction-local cache is discarded with this one merge call.
-  const vertexKeys = new Map<number[], Set<string>>();
-  while (mergeFirstProjectedPair(polygons, vertexKeys)) { /* restart after each exact merge */ }
-  return uniquePolygons(polygons);
+  const count = polygons.length;
+  const keys = polygons.map((polygon) => polygonVertexKeys(polygon));
+  const alive = new Uint8Array(count).fill(1);
+  const clean = new Uint8Array(count);
+  const slotsByKey = new Map<string, Set<number>>();
+  const index = (slot: number): void => {
+    for (const key of keys[slot]) {
+      let slots = slotsByKey.get(key);
+      if (!slots) slotsByKey.set(key, slots = new Set());
+      slots.add(slot);
+    }
+  };
+  const unindex = (slot: number): void => {
+    for (const key of keys[slot]) slotsByKey.get(key)!.delete(slot);
+  };
+  for (let slot = 0; slot < count; slot++) index(slot);
+  const shared = new Map<number, number>();
+  /** The live polygons sharing two or more welded corners with `slot`, before it or after it, in list order. */
+  const partners = (slot: number, before: boolean): number[] => {
+    shared.clear();
+    for (const key of keys[slot]) {
+      for (const other of slotsByKey.get(key)!) {
+        if (other === slot || (before ? other > slot : other < slot)) continue;
+        shared.set(other, (shared.get(other) ?? 0) + 1);
+      }
+    }
+    const out: number[] = [];
+    for (const [other, corners] of shared) if (corners >= 2) out.push(other);
+    return out.sort((a, b) => a - b);
+  };
+  const merge = (first: number, second: number, hull: number[]): void => {
+    unindex(second);
+    unindex(first);
+    alive[second] = 0;
+    polygons[first] = hull;
+    keys[first] = polygonVertexKeys(hull);
+    index(first);
+    clean[first] = 0;
+  };
+  let row = 0;
+  let column = -1;
+  for (;;) {
+    if (column >= 0) {
+      // a new hull at `column`: every row before it is clean but for its pair with the hull, in order
+      const hullAt = column;
+      column = -1;
+      for (const earlier of partners(hullAt, true)) {
+        const hull = combinedConvexHull(polygons[earlier], polygons[hullAt]);
+        if (!hull) continue;
+        merge(earlier, hullAt, hull);
+        column = earlier;
+        break;
+      }
+      if (column >= 0) continue;
+      row = hullAt;
+    }
+    let merged = false;
+    for (let first = row; first < count && !merged; first++) {
+      if (!alive[first] || clean[first]) continue;
+      for (const second of partners(first, false)) {
+        const hull = combinedConvexHull(polygons[first], polygons[second]);
+        if (!hull) continue;
+        merge(first, second, hull);
+        column = first;
+        merged = true;
+        break;
+      }
+      if (!merged) clean[first] = 1;
+    }
+    if (!merged) break;
+  }
+  return uniquePolygons(polygons.filter((_, slot) => alive[slot] === 1));
 }
 
 /** Sutherland-Hodgman clip of a flat x y z polygon to the horizontal slab y0 <= y <= y1. */
@@ -1040,6 +1103,24 @@ function collapseRuntimeFootprint(source: number[][]): number[][] {
   return [capConvexCorners(convexHull2(points))];
 }
 
+/**
+ * A merged geometry whose surface dressing is flagged per vertex (`userData.noCollisionVertices`: the map vehicles'
+ * seams, handles, trim and mirrors, maps/vehicleMesh.ts) seen without the triangles that lie wholly on flagged vertices,
+ * as a separate noCollision geometry's would be; any other geometry as it is.
+ */
+function withoutDressing(geometry: BufferGeometry): BufferGeometry {
+  const flags = geometry.userData?.noCollisionVertices as Uint8Array | undefined;
+  const index = geometry.getIndex();
+  if (!flags || !index) return geometry;
+  const kept: number[] = [];
+  for (let t = 0; t + 2 < index.count; t += 3) {
+    const a = index.getX(t), b = index.getX(t + 1), c = index.getX(t + 2);
+    if (!(flags[a] && flags[b] && flags[c])) kept.push(a, b, c);
+  }
+  const keptIndex = { count: kept.length, getX: (i: number) => kept[i] };
+  return { getAttribute: (name: string) => geometry.getAttribute(name), getIndex: () => keptIndex, userData: {} } as unknown as BufferGeometry;
+}
+
 function collectSolids(buckets: StructureGeometryBuckets) {
   const solids: LocalSolid[] = [];
   for (const [bucket, geometries] of Object.entries(buckets)) {
@@ -1048,7 +1129,7 @@ function collectSolids(buckets: StructureGeometryBuckets) {
       // regional kits (maps/regional/geometry.ts) finish their surface dressing — framing, joinery, shutters, gutters —
       // as separate geometries flagged noCollision: a member 3 cm proud of a wall is not a collision part
       if (geometry.userData?.noCollision) continue;
-      solids.push(...geometrySolids(geometry, bucket));
+      solids.push(...geometrySolids(withoutDressing(geometry), bucket));
     }
   }
   return solids;

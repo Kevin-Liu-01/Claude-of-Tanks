@@ -44,11 +44,17 @@ const b32Heavy=ammunition(heavy,'12.7×108 mm B-32 API');
 const b32Rifle=ammunition(rifle,'7.62×54R mm B-32 API');
 const type54=ammunition(heavy,'12.7×108 mm Type 54 API');
 const ubr6=ammunition(cannon,'30×165 mm 3UBR6 AP-T');
+// 2026-10-09 (owner order: the Griffin 50 mm's old roof M2 is back, now its working roof gun): the 1.28-scale gun's
+// 1.5 m barrel sweeps low over the roof's raised service plates from its elevated cradle, so it depresses 4.6 degrees,
+// not the heavy mount's 10.3 (fieldEquipment.selftest's 360-degree sweep: at 6.9 degrees and 320 degrees of traverse
+// the muzzle entered a plate by 32 mm; 4.6 degrees keeps the 8 mm clearance everywhere).
+const griffinRoofM2:AuxiliaryWeaponProfile={...heavy,depressionRad:.08};
 
 // The remaining authored stations use NATO M2/M61 or lightweight 30×113 mm
 // cannon ammunition. Keep this boot-light: no fleet builders or registry import.
 const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   t72b3m:b32Heavy,
+  ua_t84_oplot_m:b32Heavy,
   ua_t72b3m_hetman_ii:ubr6,
   pl_t72b3_zubr_ii:cannon,
   ua_t80u_modern:b32Heavy,
@@ -68,6 +74,7 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   t90sm_x:b32Heavy,t90ms_x:b32Heavy,
   t14_x:b32Rifle,t14:ubr6,
   vt4a1:type54,ztz100_x:type54,
+  griffin50_x:griffinRoofM2,
 };
 
 export function auxiliaryWeaponProfile(caliberMm:number,vehicleId=''): AuxiliaryWeaponProfile {

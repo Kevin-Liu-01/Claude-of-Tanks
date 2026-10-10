@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-05T19:02:28.166Z",
+ "generatedAt": "2026-10-10T11:37:11.225Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 66,
  "total": 170,
@@ -1905,6 +1905,19 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "griffin50_x",
+   "geoMin": 94.3,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 95,
+    "dims": 94.3,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "t90_x",
    "geoMin": 94.4,
    "requiredMinimum": 92,
@@ -1994,19 +2007,6 @@
    "components": {
     "wholeCurves": 94.8,
     "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "griffin50_x",
-   "geoMin": 95,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 95,
-    "dims": 99.4,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"

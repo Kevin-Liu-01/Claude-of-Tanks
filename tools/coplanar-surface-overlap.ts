@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { closedCircularCapOffsets } from './closed-circular-caps.ts';
 
 type Axis = 0 | 1 | 2;
 type Vec2Tuple = readonly [number, number];
@@ -9,6 +10,7 @@ interface AuditSettings {
   readonly normalEpsilon: number;
   readonly areaEpsilonM2: number;
   readonly includeSameObject: boolean;
+  readonly circularCapsOnly: boolean;
 }
 
 interface ProjectedTriangle {
@@ -25,10 +27,13 @@ interface SurfaceDescription {
   readonly material: string;
   readonly materialIndex: number;
   readonly depthLayer: number | null;
+  readonly triangleIndex: number;
 }
 
 interface SurfaceTriangle extends ProjectedTriangle {
+  readonly triangleIndex: number;
   readonly objectId: number;
+  readonly doubleSided: boolean;
   readonly surfaceId: string;
   readonly object: string;
   readonly path: string;
@@ -66,6 +71,7 @@ interface TriangleCollection {
   readonly groups: Map<string, SurfaceTriangle[]>;
   readonly skipped: { instancedMeshes: number; batchedMeshes: number; mitigatedMaterials: number };
   readonly rasterMeshes: THREE.Mesh[];
+  readonly capOffsets: Map<THREE.BufferGeometry, Set<number>>;
   objects: number;
   triangles: number;
 }
@@ -106,7 +112,8 @@ const DEFAULTS = Object.freeze({
   planeEpsilonM: 1e-5,
   normalEpsilon: 1e-5,
   areaEpsilonM2: 1e-6,
-  includeSameObject: false,
+  includeSameObject: true,
+  circularCapsOnly: false,
 });
 
 function objectPath(object: THREE.Object3D, root: THREE.Object3D): string {
@@ -128,18 +135,19 @@ function effectivelyVisible(object: THREE.Object3D, root: THREE.Object3D): boole
 
 function materialAt(object: THREE.Mesh, materialIndex: number): THREE.Material | undefined {
   return Array.isArray(object.material)
-    ? object.material[materialIndex] || object.material[0]
+    ? object.material[materialIndex]
     : object.material;
 }
 
-function materialIndexAt(geometry: THREE.BufferGeometry, offset: number): number {
-  if (!geometry.groups?.length) return 0;
+function materialIndexAt(object: THREE.Mesh, offset: number): number | null {
+  if (!Array.isArray(object.material)) return 0;
+  const geometry = object.geometry;
   for (const group of geometry.groups) {
     if (offset >= group.start && offset < group.start + group.count) {
       return group.materialIndex || 0;
     }
   }
-  return 0;
+  return null;
 }
 
 function materialIsRasterRelevant(
@@ -274,6 +282,7 @@ function surfaceDescription(triangle: SurfaceTriangle): SurfaceDescription {
     material: triangle.material,
     materialIndex: triangle.materialIndex,
     depthLayer: triangle.depthLayer,
+    triangleIndex: triangle.triangleIndex,
   };
 }
 
@@ -302,6 +311,30 @@ function liftPoint(
   return lifted;
 }
 
+// A single visible foreground hit is sufficient to prove a sample buried.
+// Stop there instead of gathering and sorting every hit from the whole tank
+// for each of the (up to 32) samples. Keep the exact same distance/material rule.
+function sampleIsExterior(
+  raycaster: THREE.Raycaster,
+  rasterMeshes: THREE.Object3D[],
+  finding: InternalFinding,
+  point: THREE.Vector3,
+  toleranceM: number,
+): boolean {
+  let targetHit = false;
+  for (const object of rasterMeshes) {
+    const hits = raycaster.intersectObject(object, false);
+    for (const hit of hits) {
+      if (hit.distance <= 1e-5
+        || !materialIsRasterRelevant(materialAt(hit.object as THREE.Mesh, hit.face?.materialIndex ?? 0))) continue;
+      if (hit.distance < 20 - toleranceM) return false;
+      if (finding._objectRefs.includes(hit.object as THREE.Mesh)
+        && hit.point.distanceTo(point) <= toleranceM) targetHit = true;
+    }
+  }
+  return targetHit;
+}
+
 function exteriorSamples(
   findings: InternalFinding[],
   rasterMeshes: THREE.Object3D[],
@@ -309,7 +342,7 @@ function exteriorSamples(
 ): number {
   const raycaster = new THREE.Raycaster();
   raycaster.near = 0;
-  raycaster.far = 100;
+  raycaster.far = 20 + toleranceM;
   const origin = new THREE.Vector3();
   const direction = new THREE.Vector3();
   const point = new THREE.Vector3();
@@ -323,10 +356,7 @@ function exteriorSamples(
       direction.negate();
       raycaster.set(origin, direction);
       raycasts += 1;
-      const hits = raycaster.intersectObjects(rasterMeshes, false);
-      const first = hits.find((hit) => hit.distance > 1e-5);
-      if (!first || !finding._objectRefs.some((object) => object === first.object)) continue;
-      if (first.point.distanceTo(point) > toleranceM) continue;
+      if (!sampleIsExterior(raycaster, rasterMeshes, finding, point, toleranceM)) continue;
       finding.exteriorSample = sample.point;
       break;
     }
@@ -365,8 +395,9 @@ function auditMesh(
 
 function triangleDepthKey(object: THREE.Mesh, material: THREE.Material): string {
   const layer = object.userData?.coplanarDepthLayer;
-  if (Number.isFinite(layer)) return `object:${layer}`;
-  if (material.polygonOffset) {
+  if (Number.isFinite(layer) && material.polygonOffset
+    && (material.polygonOffsetFactor || material.polygonOffsetUnits)) return `object:${layer}`;
+  if (material.polygonOffset && (material.polygonOffsetFactor || material.polygonOffsetUnits)) {
     return `material:${material.polygonOffsetFactor || 0}:${material.polygonOffsetUnits || 0}`;
   }
   return 'base:0';
@@ -384,7 +415,8 @@ function readSurfaceTriangle(
   const geometry = object.geometry;
   const position = geometry.getAttribute('position');
   const index = geometry.index;
-  const materialIndex = materialIndexAt(geometry, offset);
+  const materialIndex = materialIndexAt(object, offset);
+  if (materialIndex === null) return null;
   const material = materialAt(object, materialIndex);
   if (!materialIsRasterRelevant(material)) {
     collection.skipped.mitigatedMaterials += 1;
@@ -400,7 +432,7 @@ function readSurfaceTriangle(
   scratch.faceNormal.crossVectors(scratch.edgeA, scratch.edgeB);
   const twiceArea = scratch.faceNormal.length();
   if (twiceArea <= settings.areaEpsilonM2 * 2) return null;
-  scratch.faceNormal.multiplyScalar(1 / twiceArea);
+  scratch.faceNormal.multiplyScalar((material.side === THREE.BackSide ? -1 : 1) / twiceArea);
   const plane = canonicalPlane(
     scratch.faceNormal,
     scratch.a,
@@ -416,7 +448,9 @@ function readSurfaceTriangle(
   return {
     planeKey: plane.key,
     triangle: {
+      triangleIndex: offset / 3,
       objectId,
+      doubleSided: material.side === THREE.DoubleSide,
       surfaceId: `${objectId}:${materialIndex}`,
       object: object.name || '(unnamed)',
       path,
@@ -445,7 +479,7 @@ function collectMeshTriangles(
 ): void {
   const geometry = object.geometry;
   const position = geometry.getAttribute('position');
-  const fullCount = geometry.index?.count || position.count;
+  const fullCount = geometry.index?.count ?? position.count;
   const start = Math.max(0, geometry.drawRange?.start || 0);
   const requestedCount = geometry.drawRange?.count;
   const end = Number.isFinite(requestedCount)
@@ -455,7 +489,13 @@ function collectMeshTriangles(
   const materials = Array.isArray(object.material) ? object.material : [object.material];
   if (materials.some(materialIsRasterRelevant)) collection.rasterMeshes.push(object);
   const path = objectPath(object, root);
+  let caps: Set<number> | null = null;
+  if (settings.circularCapsOnly) {
+    caps = collection.capOffsets.get(geometry) ?? closedCircularCapOffsets(geometry);
+    collection.capOffsets.set(geometry, caps);
+  }
   for (let offset = start; offset + 2 < end; offset += 3) {
+    if (caps && !caps.has(offset)) continue;
     const result = readSurfaceTriangle(
       object, objectId, path, offset, settings, collection, scratch);
     if (!result) continue;
@@ -471,12 +511,26 @@ function collectSurfaceTriangles(root: THREE.Object3D, settings: AuditSettings):
     groups: new Map(),
     skipped: { instancedMeshes: 0, batchedMeshes: 0, mitigatedMaterials: 0 },
     rasterMeshes: [],
+    capOffsets: new Map(),
     objects: 0,
     triangles: 0,
   };
   const scratch = createTriangleScratch();
   root.updateMatrixWorld(true);
   root.traverse((object) => {
+    if (object instanceof THREE.InstancedMesh && effectivelyVisible(object, root)) {
+      if (object.userData?.vehicleMarking || object.userData?.authoredShadowProxy) return;
+      const local = new THREE.Matrix4();
+      for (let i = 0; i < object.count; i++) {
+        object.getMatrixAt(i, local);
+        const proxy = new THREE.Mesh(object.geometry, object.material);
+        proxy.name = `${objectPath(object, root)}[instance=${i}]`;
+        proxy.userData = object.userData;
+        proxy.matrixWorld.multiplyMatrices(object.matrixWorld, local);
+        collectMeshTriangles(proxy, proxy, settings, collection, scratch);
+      }
+      return;
+    }
     const mesh = auditMesh(object, root, collection);
     if (mesh) collectMeshTriangles(mesh, root, settings, collection, scratch);
   });
@@ -489,13 +543,13 @@ function preliminaryOverlap(
   settings: AuditSettings,
 ): boolean {
   if (!settings.includeSameObject && other.objectId === current.objectId) return false;
-  if (other.surfaceId === current.surfaceId) return false;
   if (other.maxV < current.minV - settings.planeEpsilonM) return false;
   if (current.maxV < other.minV - settings.planeEpsilonM) return false;
   const facingDot = other.normal[0] * current.normal[0]
     + other.normal[1] * current.normal[1]
     + other.normal[2] * current.normal[2];
-  return facingDot >= 1 - settings.normalEpsilon * 4;
+  return (other.doubleSided || current.doubleSided ? Math.abs(facingDot) : facingDot)
+    >= 1 - settings.normalEpsilon * 4;
 }
 
 function intersectionSample(
@@ -619,9 +673,9 @@ export function findCoplanarSurfaceOverlaps(
   const cleanFinding = (
     { _objectRefs: _discardedRefs, _samples: _discardedSamples, ...finding }: InternalFinding,
   ): CoplanarFinding => finding;
-  const findings = visibleFindings.filter((finding) => !finding.depthMitigated)
+  const findings = visibleFindings.filter((finding) => settings.circularCapsOnly || !finding.depthMitigated)
     .map(cleanFinding);
-  const mitigatedFindings = visibleFindings.filter((finding) => finding.depthMitigated)
+  const mitigatedFindings = visibleFindings.filter((finding) => !settings.circularCapsOnly && finding.depthMitigated)
     .map(cleanFinding);
   return {
     settings,

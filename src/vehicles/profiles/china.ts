@@ -11,11 +11,11 @@
 // frozen canonical Type-99A constructor — it is guard-held and unchanged.
 
 import {addChineseThroatStock,addChineseMovingMantlet} from './chineseGunOpening.ts';
+import {addChineseFuelDrum} from './chineseFuelDrum.ts';
 import { KIT, FITTINGS, MUDGUARDS, orientedSlab, muzzleBore } from './kit.ts';
 import {
-  chevronSurfacePanel,
+  chineseArrowCassette,
   closedIntegratedChevron,
-  interpolateChevronStation,
   type ChevronStation,
 } from './chineseChevron.ts';
 import {
@@ -25,8 +25,10 @@ import {
 } from './russia.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-import type { BufferGeometry } from 'three';
+import { Float32BufferAttribute, Vector3, type BufferGeometry } from 'three';
+import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { mount } from './fittingMount.ts';
+import { DRUM_ISSUE_PAINTS, fuelDrumParts, hash01, place } from '../accessoryPrimitives.ts';
 
 type Vec3Tuple = [number, number, number];
 type Vec2Tuple = [number, number];
@@ -101,7 +103,7 @@ export function addRearFuelDrums(
   seed: number,
   options: RearFuelDrumOptions = {},
 ): void {
-  const { cylX, cylY, box } = KIT;
+  const { cylY, box } = KIT;
   const radius = options.radius ?? 0.17;
   const length = options.length ?? 0.76;
   const centerX = options.centerX ?? 0.78;
@@ -115,18 +117,32 @@ export function addRearFuelDrums(
   // both barrel bellies and the rear plate, while four triangular-looking
   // feet carry that shelf back into the hull instead of leaving two floating
   // cylinders behind the transom.
+  // 2026-10-07 (tank-accessories round 4; wave 215: "the left rear fuel drum ends in a squared, flat block instead of
+  // a round cap", "a strap on the near cylinder is a flat colour band, not raised"): the shared fuel drum
+  // (accessoryPrimitives.fuelDrumParts): round heads recessed in rolled chimes with the bung caps on the outer head,
+  // the retaining straps raised 4.5 mm with a buckle each, and the drum in the scheme's solid matte equipment paint
+  // (FSP-06 fitting paint; equipment, never the hull armour shell) instead of the camouflaged armour bucket.
   P.add('hullDark', box(outerX * 2 + 0.10, 0.09, cradleDepth),
     0, y - radius * 0.76, z + radius * 0.55);
   for (const side of [-1, 1]) {
-    P.add('hull', cylX(radius, length, 20), side * centerX, y, z);
+    // Round 5 (2026-10-08; wave 255 on the Type 99A: "identical smooth tubes. Give them rims and ribs, rust at the
+    // straps, spill streaks and some variation"): bold chimes, hoops and swaged ribs; each drum its own issue paint
+    // (DRUM_ISSUE_PAINTS), rust baked where its straps chafe, a fuel stain from its bung, two dents, its straps a little
+    // off its twin's, all in the vertex-coloured matte draw the logs use (fuelDrumParts `paint`)
+    const k = side > 0 ? 1 : 0;
+    const paint = DRUM_ISSUE_PAINTS[(Math.floor(hash01(seed, 5) * 4) + k * 2) % DRUM_ISSUE_PAINTS.length];
+    const skew = (hash01(seed, 7, k) - 0.5) * 0.06;
+    const drum = fuelDrumParts({ r: radius, len: length, seg: 20, bold: true, paint, seed: seed + k * 31,
+      straps: [0.5 - bandOffset / length + skew, 0.5 + bandOffset / length + skew], buckleAt: 2.62 - k * 0.5,
+      bungHead: side > 0 ? 1 : -1 });
+    const alongX = (geometry: BufferGeometry): BufferGeometry => place(geometry, -length / 2, 0, 0, 0, 0, -Math.PI / 2);
+    P.add('hullBark', alongX(drum.body), side * centerX, y, z);
+    for (const part of [...drum.straps, ...drum.hardware]) P.add('hullDark', alongX(part), side * centerX, y, z);
     for (const bandX of [centerX - bandOffset, centerX + bandOffset]) {
-      P.add('hullDark', cylX(radius + 0.009, 0.050, 20), side * bandX, y, z);
       P.add('hullDark', box(0.060, radius * 0.92, cradleDepth),
         side * bandX, y - radius * 0.67, z + radius * 0.42);
     }
-    P.add('hullDark', cylX(radius + 0.012, 0.042, 20),
-      side * (centerX + length / 2 - 0.018), y, z);
-    P.add('hullDetail', cylY(0.045, 0.052, 0.062, 12),
+    P.add('hullFittingPaint', cylY(0.045, 0.052, 0.062, 12),
       side * centerX, y + radius + 0.025, z - radius * 0.08);
   }
   mount(P, 'hull', FITTINGS.stowageRack({
@@ -438,7 +454,7 @@ function buildZTZ85III(P: ChinaBuilderPort): void {
     { height: 0.02, inset: 1.0 },
     { height: 0.30, inset: 1.0 },
     { height: crown85, inset: inset85, centerHeight: 0.80 },
-  ]));
+  ], { convexSideQuads: true }));
   crownRimTrim(P, plan85, inset85, crown85);
   // ring skirt seats the shell on the deck at every yaw (§B2)
   P.add('turret', cylY(1.02, 1.08, 0.10, seg), 0, -0.03, -0.05);
@@ -494,8 +510,9 @@ function buildZTZ85III(P: ChinaBuilderPort): void {
   // its columns land inside the print's own 2.5-2.75 roof-cluster band —
   // heightM keeps the published 2.30 crown while silhouetteHeightM carries
   // the mounted-MG convention (t62mv1 precedent).
+  // 2026-10-08 (round 5, the coordinator: the right gun per nation): the QJC-88 (the W85's vehicle form) at true scale.
   mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'dshk', scale: 0.68, tone: 'two-tone', elev: 0.06,
+    mats: P.mats, cls: 'qjc88', scale: 1.0, tone: 'two-tone', elev: 0.06,
     ammo: true, rotation: [0, 0.55, 0], seed: 8560,
   }), 0.55, 0.845, -0.45);
 
@@ -654,8 +671,7 @@ function crownRimTrim(
 // DISTINCT from the resident type99a: longer/deeper cheek wedge, revised
 // roof optics, drum rack — and its own frame throughout.
 export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
-  const { box, cylX, cylY, cylZ, torus, buildRunningGear, headlight, periscope, towCable, liftEye } = KIT;
-  const seg = P.q ? 20 : 14;
+  const { box, cylY, cylZ, torus, buildRunningGear, headlight, periscope, towCable, liftEye } = KIT;
 
   // ---- six large-wheel stations, rear drive, covered return run.
   // owner 2026-09-22 ("vt 4a1, ztz 99a2 and ztz 99a2 proto … wheels too big … overlap each other"):
@@ -716,10 +732,16 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
       : shoulderPlanRight.map(([x, z]) => [-x, z] as Vec2Tuple).reverse();
     const shoulderLower = s > 0 ? shoulderLowerRight : [...shoulderLowerRight].reverse();
     const shoulderUpper = s > 0 ? shoulderUpperRight : [...shoulderUpperRight].reverse();
-    P.add('hull', KIT.polyMultiLoft(shoulderPlan, [
-      { height: shoulderLower, inset: 1 },
-      { height: shoulderUpper, inset: 1 },
+    // Finite welded support faces replace the concave center fan. The twelve
+    // authored perimeter corners still define the shoulder, including its
+    // fender/guard contacts; no invented center vertex dents either skin.
+    const shoulder = new ConvexGeometry(shoulderPlan.flatMap(([x,z],i) => [
+      new Vector3(x,shoulderLower[i],z),new Vector3(x,shoulderUpper[i],z),
     ]));
+    const positions=shoulder.getAttribute('position'),uv:number[]=[];
+    for(let i=0;i<positions.count;i++)uv.push(positions.getX(i),positions.getZ(i));
+    shoulder.setAttribute('uv',new Float32BufferAttribute(uv,2));
+    P.add('hull', shoulder);
   });
 
   // ---- glacis chevron armor: three raked panel courses with real seam
@@ -810,13 +832,13 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
     P.add('hullDetail', box(0.035, 0.44, 0.042), -1.00 + i * 0.286, 1.12, -4.07);
   });
   ([-1, 1] as const).forEach((s) => {
-    // drum + dark end caps + straps + twin angle brackets into the transom
+    // Single-ended drum stock with hollow end hoops, straps and twin angle
+    // brackets into the transom. Closed cap overlays previously duplicated
+    // the body's x=centre±.40 planes and visibly fought over those pixels.
     // (print band: y 1.5..2.1 hanging aft — the isolated aft-stretch A/B
     // measured +0.4 on the whole gate; the short-whip change in the same
     // batch was the regression and is reverted separately)
-    P.add('hullDetail', cylX(0.32, 0.80, seg), s * 0.76, 1.79, -4.56);
-    P.add('hullDark', cylX(0.325, 0.03, seg), s * (0.76 + 0.385), 1.79, -4.56);
-    P.add('hullDark', cylX(0.325, 0.03, seg), s * (0.76 - 0.385), 1.79, -4.56);
+    addChineseFuelDrum(P,s*.76,1.79,-4.56,.32,.80);
     for (const dx of [-0.24, 0.24]) {
       P.add('hullDark', box(0.05, 0.68, 0.05), s * (0.76 + dx), 1.77, -4.56);
       P.add('hullDark', box(0.05, 0.10, 0.46), s * (0.76 + dx), 1.52, -4.28, 0.22, 0, 0);
@@ -893,18 +915,20 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   }
   // deep add-on cheek cassettes following the wedge rake (the A2 tell):
   // two courses per side, seam battens between, gun channel kept open.
-  P.visualEraCluster('ztz99a2-cheek-era', 'turret', () => {
-  for (const s of [-1, 1]) {
-    addChineseThroatStock(P, orientedSlab(
-      [s * 0.34, 0.06, 1.52], [s * 0.94, 0.06, 0.90], [s * 0.80, 0.06, 0.62], [s * 0.30, 0.06, 1.18],
-      [s * 0.26, 0.62, 0.94], [s * 0.68, 0.60, 0.56], [s * 0.60, 0.56, 0.36], [s * 0.24, 0.58, 0.70]));
-    P.add('turret', orientedSlab(
-      [s * 0.94, 0.06, 0.90], [s * 1.55, 0.08, 0.16], [s * 1.36, 0.08, -0.06], [s * 0.80, 0.06, 0.62],
-      [s * 0.68, 0.60, 0.56], [s * 1.14, 0.62, 0.10], [s * 1.04, 0.58, -0.10], [s * 0.60, 0.56, 0.36]));
-    P.add('turretDark', box(0.035, 0.44, 0.035), s * 0.84, 0.32, 0.78, -0.42, s * 0.72, 0);
-    P.add('turretDark', box(1.06, 0.026, 0.045), s * 0.80, 0.625, 0.48, 0, s * 0.62, 0);
+  // Permanent shaped backing survives ERA loss; the new wide, shallow
+  // arrow cassettes wrap both rakes rather than becoming a second turret.
+  const prototypeChevron:readonly ChevronStation[]=[
+    {x:.34,upperX:.26,ridgeX:.34,lowerX:.34,upperY:.62,upperZ:.94,ridgeY:.29,ridgeZ:1.68,lowerY:.06,lowerZ:1.52},
+    {x:.94,upperX:.68,ridgeX:.94,lowerX:.94,upperY:.60,upperZ:.56,ridgeY:.29,ridgeZ:1.07,lowerY:.06,lowerZ:.90},
+    {x:1.55,upperX:1.14,ridgeX:1.55,lowerX:1.55,upperY:.62,upperZ:.10,ridgeY:.30,ridgeZ:.31,lowerY:.08,lowerZ:.16},
+  ];
+  for(const side of [-1,1] as const){
+    addChineseThroatStock(P,closedIntegratedChevron(prototypeChevron,side));
+    P.visualEraCluster('ztz99a2-cheek-era','turret',()=>{
+      for(const [a,b] of [[.44,.69],[.72,.99],[1.02,1.26],[1.29,1.47]])
+        addChineseThroatStock(P,chineseArrowCassette(prototypeChevron,side,a,b),'turretExternalArmor');
+    });
   }
-  });
   // nose beak walls flanking the OPEN gun channel: the print's wedge line
   // keeps falling 2.5 -> 2.06 out to +1.7 world — two raked prisms continue
   // the cheek slope past the crown lip; the channel stays clear through the
@@ -940,8 +964,9 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   periscope(P, 'turretDetail', 0.30, 0.955, -0.83);
   // the W-85 cluster sits over the print's own rear-right 2.9-class roof
   // band, sharing columns with the mast station behind it
+  // 2026-10-08 (round 5, the coordinator: the right gun per nation): the QJC-88 (the W85's vehicle form) at true scale.
   mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'dshk', scale: 0.76, tone: 'two-tone', elev: 0.12,
+    mats: P.mats, cls: 'qjc88', scale: 1.0, tone: 'two-tone', elev: 0.12,
     ammo: true, rotation: [0, 0.10, 0], seed: 9960,
   }), 0.52, 1.00, -0.79);
   P.add('turret', cylY(0.24, 0.25, 0.045, seg), -0.50, 0.9125, -0.55);
@@ -1103,11 +1128,7 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
           + (chevronStations.at(-1)!.x - chevronStations[0].x) * startT;
         const endX = chevronStations[0].x
           + (chevronStations.at(-1)!.x - chevronStations[0].x) * endT;
-        addChineseThroatStock(P, chevronSurfacePanel(
-          interpolateChevronStation(chevronStations, startX),
-          interpolateChevronStation(chevronStations, endX),
-          s,
-        ), 'turretExternalArmor');
+        addChineseThroatStock(P, chineseArrowCassette(chevronStations,s,startX,endX), 'turretExternalArmor');
       }
     }
   });
@@ -1145,8 +1166,9 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
   P.add('turret', cylY(0.26, 0.28, 0.065, seg), 0.52, 0.845, -0.88);
   P.add('turretDark', torus(0.265, 0.014, seg), 0.52, 0.885, -0.88);
   periscope(P, 'turretDetail', 0.30, 0.90, -0.88);
+  // 2026-10-08 (round 5, the coordinator: the right gun per nation): the QJC-88 (the W85's vehicle form) at true scale.
   mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'nsvt', scale: 0.72, tone: 'two-tone', elev: 0.08,
+    mats: P.mats, cls: 'qjc88', scale: 1.0, tone: 'two-tone', elev: 0.08,
     shield: true, ammo: true, ring: { r: 0.16, stubs: 3 }, seed: 9990,
   }), 0.52, 0.89, -0.88);
   for (const s of [-1, 1]) {

@@ -118,4 +118,62 @@ assert.match(post, /new LensFlarePass\(camera, scene, sceneDepth, lightFxTarget\
   assert.match(cloudSrc, /get historyTexture\(\): THREE\.Texture \| null \{\s*return this\.active && this\.dome\.visible && this\.historyValid \? this\.domeMaterial\.uniforms\.tClouds\.value as THREE\.Texture : null;/,
     'the resolved history the dome composites (alpha: the transmittance), only while the layer draws');
 }
-console.log('lensFlare.selftest: tap disc, visibility twin, easing, frame fade, moon share, disc radius, GLSL parts and chain wiring pinned; the ghosts and the halo turned down; the clouds\' transmittance gates the flare and the shafts');
+// 2026-10-08 (fifo2 twins: with the flare on, two runs of a clip whose smoke crossed the sun differed at 2.4 % of pixels
+// — the visibility eased on the wall clock, once per live render): on the Studio's export clock the visibility eases
+// once per timeline step whatever the renders between steps, the first render after the clock is set (or a snap)
+// jumps to its target, and released it eases on the wall clock again
+{
+  const THREE = await import('three');
+  const { LensFlarePass } = await import('./lensFlare.ts');
+  const camera = new THREE.PerspectiveCamera(55, 16 / 9, 0.1, 1000);
+  camera.position.set(0, 2, 0);
+  camera.lookAt(0, 3, -10);
+  camera.updateMatrixWorld(true);
+  const scene = new THREE.Scene();
+  scene.userData.sunDirWorld = new THREE.Vector3(0, 0.3, -1).normalize();
+  const pass = new LensFlarePass(camera, scene, new THREE.DepthTexture(4, 4), new THREE.WebGLRenderTarget(4, 4));
+  const renderer = { autoClear: true, getRenderTarget: () => null, setRenderTarget() {}, setClearColor() {}, clear() {}, render() {} };
+  // the CPU twin of the 1 x 1 ping-pong: v = mix(v, target, uBlend) per render (the sky taps all open)
+  const targets = [0.2, 0.9, 0.9, 0.4, 0.1, 0.1, 0.7, 1, 1, 1];
+  const film = (rendersPerStep) => {
+    let clock = 5000;
+    pass.setClock(() => clock);
+    let v = 0;
+    const out = [];
+    for (const t of targets) {
+      clock += 100;
+      for (let k = 0; k < rendersPerStep; k++) {
+        pass.update(true);
+        pass.target = t;
+        pass.render(renderer);
+        v += (t - v) * pass.visMaterial.uniforms.uBlend.value;
+      }
+      out.push(v);
+    }
+    return out;
+  };
+  const one = film(1);
+  assert.deepEqual(film(3), one, 'three live renders per step: the same visibility as one');
+  assert.deepEqual(film(7), one, 'seven: the same');
+  assert.equal(one[0], 0.2, 'the first render on the export clock snaps to its target (no history from the last clip)');
+  const k = 1 - Math.exp(-0.1 * LENS_FLARE_EASE_RATE);
+  assert.ok(near(one[1], 0.2 + (0.9 - 0.2) * k, 1e-12), 'a 100 ms step eases as 100 ms of wall time did');
+  // a snap (a clip's start or a seek) jumps the next render
+  pass.snap();
+  pass.update(true);
+  pass.target = 0.33;
+  pass.render(renderer);
+  assert.equal(pass.visMaterial.uniforms.uBlend.value, 1, 'a snap blends the whole way');
+  // released: the wall clock (a render's dt from performance.now, capped at 0.1 s)
+  pass.setClock(null);
+  pass.update(true); pass.render(renderer);
+  assert.equal(pass.visMaterial.uniforms.uBlend.value, 1, 'released: snaps once');
+  pass.update(true); pass.render(renderer);
+  const b = pass.visMaterial.uniforms.uBlend.value;
+  assert.ok(b > 0 && b < 1, `then eases on the wall clock (${b})`);
+  const studioSrc = readFileSync(new URL('../game/studio.ts', import.meta.url), 'utf8');
+  assert.match(studioSrc, /if \(!flareOnExportClock\) \{ flareOnExportClock = true; post\.lensFlare\?\.setClock\?\.\(\(\) => clockMs\); \}/,
+    'advanceFrame puts the flare on the export clock');
+  assert.match(studioSrc, /restoreLoadedPresentation\(json, fxMs\);\s*\/\/[^\n]*\n\s*post\.lensFlare\?\.snap\?\.\(\);/, 'a loaded clip starts snapped');
+}
+console.log('lensFlare.selftest: tap disc, visibility twin, easing, frame fade, moon share, disc radius, GLSL parts and chain wiring pinned; the ghosts and the halo turned down; the clouds\' transmittance gates the flare and the shafts; the Studio export clock eases it once per step');

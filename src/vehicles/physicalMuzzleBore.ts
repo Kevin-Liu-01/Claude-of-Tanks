@@ -150,3 +150,12 @@ function verifyWallStock(
   }
   return maximumWallErrorM;
 }
+
+/** A real cylinder viewed from its interior, with matching winding and normals. */
+export function inwardBoreWall(radius: number, depth: number, segments: number): THREE.BufferGeometry {
+  const geometry=new THREE.CylinderGeometry(radius,radius,depth,segments,1,true).rotateX(Math.PI/2);
+  const index=geometry.index!;
+  for(let i=0;i<index.count;i+=3){const b=index.getX(i+1);index.setX(i+1,index.getX(i+2));index.setX(i+2,b);}
+  geometry.computeVertexNormals();
+  return geometry;
+}

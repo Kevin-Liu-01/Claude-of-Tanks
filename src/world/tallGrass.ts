@@ -3,6 +3,7 @@ import { getDeviceTier, getPreset } from '../engine/quality.ts';
 import { createGroundPressureField, type GroundDisturbance, type GroundPressureField } from './groundPressure.ts';
 import { resolveGroundReduxProfile, tallGrassQualityScale, type TallGrassBiome } from './groundRedux.ts';
 import { createLandFieldSample, LAND_CROP, type LandFieldSample } from './landUse.ts';
+import { createCraterFollower, followCraters, type GroundCoverCraters } from './groundCoverCraters.ts';
 
 // Round 73 (2026-09-25, the ground redux; owner: "add tall grass that interacts with tanks"): the tall-grass tier.
 // The meadows carried a knee-high tuft carpet of alpha cards that nothing in the battle ever touched; this tier
@@ -25,6 +26,7 @@ interface TallGrassField {
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
   getNormalAt?(x: number, z: number): { x: number; y: number; z: number };
+  getContactNormalAt?<T extends { x: number; y: number; z: number }>(x: number, z: number, out: T): T;
   getGroundType?(x: number, z: number): 'hard' | 'medium' | 'soft';
   getWaterMaskAt?(x: number, z: number): number;
   _roadDist?(x: number, z: number): number;
@@ -38,6 +40,10 @@ interface TallGrassField {
   _landUseAt?(x: number, z: number, out: LandFieldSample): LandFieldSample;
   /** Ground lane (2026-10-03): the canopy's cover (0..1) — little sward grows in a stand's shade. */
   _woodsAt?(x: number, z: number): number;
+  /** Ground lane (2026-10-08): a cinder yard's weed clumps (groundRedux.ts cinderYardWeedsAt), on a map with one. */
+  _yardWeedsAt?(x: number, z: number): number;
+  /** Ground lane (2026-10-08): the sward follows its ground — the map's sun (unit xz) and the law's strength. */
+  _swardSlope?: readonly [number, number, number];
 }
 
 type TallGrassBlocked = (x: number, y: number, z: number, height: number, radius: number) => boolean;
@@ -100,6 +106,12 @@ export interface TallGrass {
   /** Sniper scope: fade the blades inside the corridor (0 = arcade, 1 = scoped). */
   setSniperFade(fraction: number, immediate?: boolean): void;
   getState(): TallGrassState;
+  /**
+   * Ground lane (crater-render-spec §C): follow the battle's craters — a blade inside a crater's cleared bowl stands at
+   * no height, the rest stand on base + offsetAt; the published cells a new stamp reaches are patched in place, a later
+   * publish applies the same law (map.ts calls this once a frame after the terrain's own sync).
+   */
+  followCraters(law: GroundCoverCraters): void;
   dispose(): void;
 }
 
@@ -437,6 +449,9 @@ interface Ring {
   truncated: number;
   readonly salt: number;
   readonly far: boolean;
+  /** The published cells in instance order (crater-render-spec §C: a stamp patches the cells it reaches). */
+  segments: Array<{ data: Float32Array; start: number; count: number; x0: number; z0: number }>;
+  segmentCount: number;
 }
 
 export function createTallGrass(field: TallGrassField, options: TallGrassOptions = {}): TallGrass {
@@ -445,6 +460,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
   // ground lane (2026-10-03): the map's field system (the height field's landUse.ts hook) — inside a field the sward
   // stands as its crop
   const _field = createLandFieldSample();
+  const _contactN = { x: 0, y: 1, z: 0 }; // (the rendered near terrain's normal, reused)
   const blocked = options.blocked ?? null;
   const tier = options.tier ?? getDeviceTier();
   // `?tallgrass=off` and `?ground=legacy` (the same-build A/B the round's captures compare against) keep the tier off
@@ -496,7 +512,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     return {
       cellM: spec.cellM, ring: spec.ring, perM2: spec.perM2, cap: spec.cap, mesh, blade, cache: new Map(),
       cellX: 0x7fffffff, cellZ: 0x7fffffff, pending: [], building: null, published: false, completedSincePublish: 0,
-      count: 0, builds: 0, publishes: 0, truncated: 0, salt, far,
+      count: 0, builds: 0, publishes: 0, truncated: 0, salt, far, segments: [], segmentCount: 0,
     };
   }
   const near = makeRing(TALL_GRASS.near, geometries[0], false, 0x1a2b);
@@ -551,7 +567,28 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       // marram: dense on the backshore (the strand's own wetness ramp, above the waterline), sparse inland
       if (b.kind === 'dune' && field._waterWetnessAt) keep *= 0.4 + 1.6 * smoothstep(0.03, 0.30, field._waterWetnessAt(x, z));
     }
-    if (field._villageMask && field._villageMask(x, z) > 0.35) keep *= b.kind === 'verge' ? 0.4 : 0.12;
+    let yardDry = 0, yardFringe = false;
+    if (field._villageMask && field._villageMask(x, z) > 0.35) {
+      if (field._yardWeedsAt) {
+        // (2026-10-08, the gauntlet's wave 260 on Cinder Junction: "evenly spaced, saturated green single-blade sprites
+        // … not weeds in a cinder yard") a cinder yard's weeds stand in their clumps (groundRedux.ts cinderYardWeedsAt),
+        // thick and tall at a clump's heart, ragged at its edge, nothing on the trodden cinder between; a clump in three
+        // gone over to straw, the rest a sooty green
+        const w = field._yardWeedsAt(x, z);
+        if (w > 0.02) {
+          keep *= 2.2 * w;
+          heightScale *= 0.75 + 0.85 * w;
+        } else {
+          // and along the walls: the metre of cinder round anything standing on the yard (a wall, a shed, a stack of
+          // sleepers, a platform's edge) no wheel or boot reaches grows its own ragged fringe — the sealed footprints'
+          // own probe at a metre, after the admission roll (the candidate's own footprint test keeps it out of them)
+          if (!blocked) return;
+          keep *= 0.45 * (0.5 + swardNoise(x, z, 0.8, 0x1f2e));
+          yardFringe = true;
+        }
+        yardDry = 0.8 * smoothstep(0.50, 0.68, swardNoise(x, z, 5.3, 0x3d9a));
+      } else keep *= b.kind === 'verge' ? 0.4 : 0.12;
+    }
     let grazed = 0;
     if (splatNoise) {
       const sn = splatNoise(x, z, _splat);
@@ -575,7 +612,10 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       keep *= (1 + 0.3 * hollow) * (1 - 0.3 * crest);
       heightScale *= (1 + 0.25 * hollow) * (1 - 0.15 * crest);
     }
-    const n = field.getNormalAt ? field.getNormalAt(x, z) : null;
+    // (the time-to-battle lane, 2026-10-08, with the ground lane: the rendered near terrain's slope, as the tufts read it
+    // — the land use's slope fade, the steep cut and the tundra lee alike; a stub field keeps the analytic normal)
+    const n = field.getContactNormalAt ? field.getContactNormalAt(x, z, _contactN)
+      : field.getNormalAt ? field.getNormalAt(x, z) : null;
     if (b.kind === 'tundra') {
       // round 73b: dead sedge keeps to the hollows and the lee sides, in clumps (the ~10–20 m patches of the terrain's
       // own n1 field) — a carpet of scattered sticks in the snow was the round-73 read; on open, windward ground a
@@ -590,6 +630,21 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     // thick, tall and gold, barley paler, a young green crop low and dense, stubble a sparse stubble of straw, a plough
     // bare; the field's grass margin grows rank and a little taller, its tracks thin out. The fields keep to the open,
     // level ground the terrain draws them on (off roads, villages, water and slopes) — the same layout (landUseAt).
+    // (2026-10-08, the gauntlet's wave 274 on Monsoon Ridge: "one uniform carpet of identical-height … grass with no thinning
+    // on the steeper upper slope … no dry stems") on a map whose sward follows its ground (groundRedux.ts swardSlope, the
+    // field's `_swardSlope`): thinner and shorter up a steep slope (from ~16°), drier and paler on one turned to the sun
+    let slopeDry = 0;
+    const swardSlope = field._swardSlope;
+    if (swardSlope && n && b.kind !== 'reed' && b.kind !== 'tundra') {
+      const slopeS = 1 - n.y;
+      const steep = smoothstep(0.04, 0.20, slopeS) * swardSlope[2];
+      keep *= 1 - 0.55 * steep;
+      heightScale *= 1 - 0.30 * steep;
+      const tilt = Math.hypot(n.x, n.z);
+      if (tilt > 1e-4) {
+        slopeDry = Math.max(0, (n.x * swardSlope[0] + n.z * swardSlope[1]) / tilt) * smoothstep(0.03, 0.16, slopeS) * 0.55 * swardSlope[2];
+      }
+    }
     let cropTint: readonly [number, number, number] | null = null;
     let pastureDry = -1;
     if (field._landUseAt && b.kind !== 'reed' && b.kind !== 'tundra') {
@@ -599,7 +654,13 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       // (an urban land use — Ruinspires — lies inside the village too: landUse.ts LandUseProfile.urban)
       const landW = (1 - smoothstep(0.05, 0.30, vm) * (1 - _field.urban)) * smoothstep(5.0, 8.0, roadD) * (1 - smoothstep(0.04, 0.10, slopeN))
         * (1 - smoothstep(0.02, 0.10, water));
-      if (landW > 0.5 && _field.active) {
+      // (2026-10-08, wave 274's Verdant slope: "a bald patch that steps hard from the dense tall grass", "hard density
+      // edges") the field's law and the wild sward's meet across the gate's own band — the slope's 2–6°, the village's
+      // and the road's feathers — not on its middle line: a candidate takes the field's law where the gate passes a
+      // clumpy draw of its own (a 1.1 m value noise between 0.15 and 0.85), as the terrain draws the field's colour over
+      // the same band by weight
+      const landDraw = 0.15 + 0.70 * swardNoise(x, z, 1.1, 0x6a1d);
+      if (landW > landDraw && _field.active) {
         if (_field.track > 0.5) {
           // a polder's ditch: water, its banks reed (olive, tall); a track: trodden, a quarter of the sward
           if (_field.boundary === 1) {
@@ -616,7 +677,15 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
             if (Math.abs(laneQ) < 1.15 + 0.35 * wR) return;
             if (laneQ < 0) { keep *= 0.55; heightScale *= 0.55; } else keep *= 0.70;
           }
-        } else if (_field.edgeM < _field.marginM) {
+        } else if (_field.boundary < 1.5
+          // (wave 274, the same slope: the bald band was a young crop's headland under the margin's rank grass — 2.3 m
+          // of blade a square metre against 0.4) a grass margin's rank grass meets the crop across the terrain's own
+          // ragged band (terrain.ts inField: a 4 m fade wandering ±2–3 m along the boundary), not on a line: a candidate
+          // takes the margin's law by a clumpy draw (a 0.9 m value noise) against a share falling from the margin's inner
+          // half to 2.6 m into the field, the line itself wandering ±1.5 m over ~5 m. A bund's and a wall's footing keep
+          // their own straight line
+          ? swardNoise(x, z, 0.9, 0x2b3c) < 1 - smoothstep(-1.6, 2.6, _field.edgeM - _field.marginM + (swardNoise(x, z, 5.0, 0x3d4e) - 0.5) * 3.0)
+          : _field.edgeM < _field.marginM) {
           if (_field.boundary === 3) { if (_field.edgeM < 0.62) return; keep *= 0.6; } // a dry stone wall and its foot
           else if (_field.boundary === 2) { keep *= 0.5; heightScale *= 0.6; } // a bund: short grass on its top
           else {
@@ -680,11 +749,12 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     if (roll > keep) return;
     if (n && n.y < TALL_GRASS.minSlopeY) return;
     const y = heightAt(x, z);
+    if (yardFringe && !blocked!(x, y, z, 0.3, 1.0)) return;
     const heightM = Math.min(1.9, b.heightM * heightScale * (1 + b.heightVar * (2 * hR - 1)));
     if (blocked && blocked(x, y, z, heightM, 0.12)) return;
     const widthM = b.widthM * (ring.far ? TALL_GRASS.farWidth : 1) * (0.8 + 0.4 * wR);
     // the tint: a per-clump luminance jitter, straw on the terrain's dry patches, deeper green in the hollows
-    const dry = Math.max(pastureDry >= 0 ? pastureDry : splatNoise ? smoothstep(0.55, 0.85, _splat.mA) : 0, grazed * 0.45);
+    const dry = Math.max(pastureDry >= 0 ? pastureDry : splatNoise ? smoothstep(0.55, 0.85, _splat.mA) : 0, grazed * 0.45, yardDry, slopeDry);
     const lum = 0.82 + 0.36 * tintR;
     const r = (b.tip[0] * (1 - dry) + b.dry[0] * dry) / b.tip[0];
     const g = (b.tip[1] * (1 - dry) + b.dry[1] * dry) / b.tip[1];
@@ -742,6 +812,52 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     }
   }
 
+  // ground lane (crater-render-spec §C): the battle's craters, followed once a frame (map.ts)
+  let craterLaw: GroundCoverCraters | null = null;
+  const craterFollower = createCraterFollower();
+  /**
+   * One published cell's blades in a box, re-read from the cell's base data by the crater law: inside a cleared bowl a
+   * blade stands at no height, elsewhere at base + offsetAt. Marks the cell's instance span for upload when `upload`.
+   */
+  function reseatSegment(ring: Ring, seg: Ring['segments'][number], x0: number, z0: number, x1: number, z1: number, upload: boolean): number {
+    const law = craterLaw!;
+    const matrices = ring.mesh.instanceMatrix.array as Float32Array;
+    const blades = ring.blade.array as Float32Array;
+    let moved = 0;
+    for (let k = 0; k < seg.count; k++) {
+      const at = k * PACK, i = seg.start + k;
+      const x = seg.data[at], z = seg.data[at + 2];
+      if (x < x0 || x > x1 || z < z0 || z > z1) continue;
+      if (law.holeAt(x, z)) { matrices[i * 16 + 13] = seg.data[at + 1]; blades[i * 4 + 1] = 0; }
+      // (a presentation hole's ring — the FX lane's explosive marks: the blast laid the stalks low out to 1.6 r, for good)
+      else { matrices[i * 16 + 13] = seg.data[at + 1] + law.liftAt(x, z); blades[i * 4 + 1] = seg.data[at + 4] * law.squashAt(x, z); }
+      moved++;
+    }
+    if (upload && moved) {
+      ring.mesh.instanceMatrix.addUpdateRange(seg.start * 16, seg.count * 16);
+      ring.mesh.instanceMatrix.needsUpdate = true;
+      ring.blade.addUpdateRange(seg.start * 4, seg.count * 4);
+      ring.blade.needsUpdate = true;
+    }
+    return moved;
+  }
+  function followCraterLaw(law: GroundCoverCraters): void {
+    craterLaw = law;
+    if (!enabled) return;
+    followCraters(law, craterFollower,
+      () => { for (const ring of [near, far]) ring.published = false; }, // a fresh publish from the base cells
+      (x0, z0, x1, z1) => {
+        for (const ring of [near, far]) {
+          if (!ring.published && ring.count === 0) continue;
+          for (let s = 0; s < ring.segmentCount; s++) {
+            const seg = ring.segments[s];
+            if (seg.x0 > x1 || seg.x0 + ring.cellM < x0 || seg.z0 > z1 || seg.z0 + ring.cellM < z0) continue;
+            reseatSegment(ring, seg, x0, z0, x1, z1, true);
+          }
+        }
+      });
+  }
+
   function publish(ring: Ring): void {
     const matrices = ring.mesh.instanceMatrix.array as Float32Array;
     const colors = ring.mesh.instanceColor!.array as Float32Array;
@@ -751,15 +867,25 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     const cells: Array<[number, number, number]> = [];
     for (let dz = -ring.ring; dz <= ring.ring; dz++) for (let dx = -ring.ring; dx <= ring.ring; dx++) cells.push([dx, dz, dx * dx + dz * dz]);
     cells.sort((a, b) => a[2] - b[2]);
+    ring.segmentCount = 0;
     for (const [dx, dz] of cells) {
-      const data = cellData(ring, ring.cellX + dx, ring.cellZ + dz);
+      const cx = ring.cellX + dx, cz = ring.cellZ + dz;
+      const data = cellData(ring, cx, cz);
       if (!data) continue;
+      const start = total;
       for (let at = 0; at + PACK <= data.length; at += PACK) {
         if (total >= ring.cap) { truncated++; continue; }
         const i = total++;
         matrices[i * 16 + 12] = data[at]; matrices[i * 16 + 13] = data[at + 1]; matrices[i * 16 + 14] = data[at + 2];
         blades[i * 4] = data[at + 3]; blades[i * 4 + 1] = data[at + 4]; blades[i * 4 + 2] = data[at + 5]; blades[i * 4 + 3] = data[at + 6];
         colors[i * 3] = data[at + 7]; colors[i * 3 + 1] = data[at + 8]; colors[i * 3 + 2] = data[at + 9];
+      }
+      const seg = ring.segments[ring.segmentCount] ??= { data, start: 0, count: 0, x0: 0, z0: 0 };
+      seg.data = data; seg.start = start; seg.count = total - start; seg.x0 = cx * ring.cellM; seg.z0 = cz * ring.cellM;
+      ring.segmentCount++;
+      // (crater-render-spec §C) a cell a stamp reaches takes the battle's craters as it is published
+      if (craterLaw?.active && craterLaw.touches(seg.x0, seg.z0, seg.x0 + ring.cellM, seg.z0 + ring.cellM)) {
+        reseatSegment(ring, seg, -Infinity, -Infinity, Infinity, Infinity, false);
       }
     }
     ring.mesh.count = total;
@@ -872,6 +998,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       if (immediate) shared.uSniperFade.value = sniperTarget;
     },
     getState,
+    followCraters: followCraterLaw,
     dispose,
   };
 }

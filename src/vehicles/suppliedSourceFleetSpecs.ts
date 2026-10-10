@@ -48,7 +48,7 @@ const sourceFrames: Readonly<Record<string, SourceFrame>> = Object.freeze({
   kurganets25_x: {
     turret: [0, 2.21, -1.27],
     gun: [-.004, 2.917, -.68],
-    muzzleZ: .857,
+    muzzleZ: 1.77,
   },
 });
 
@@ -74,6 +74,7 @@ function applySourceFrame(spec: FleetTankSpec, id: string): void {
     frame.gun[2] - frame.turret[2],
   ];
   spec.armor.gunBarrel.lengthM = frame.muzzleZ - frame.gun[2];
+  if (id === 'kurganets25_x') spec.armor.gunBarrel.radiusM = .069;
 }
 
 /** Game tuning starts from established fleet peers; the weapon family still

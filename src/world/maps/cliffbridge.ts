@@ -323,7 +323,9 @@ export default {
     // no overhead line along the main road: it runs over the viaduct and through the two old squares
     well: false, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
     haystacks: 14, rocks: 180, outcrops: 38, craters: 8, rubblePiles: 0, hedgehogs: 4, sandbagLines: 6, cropFields: 8,
-    tankWrecks: verdant.props.tankWrecks,
+    // the map-vehicles lane (2026-10-06, the period ruling): Andalusia in the 1970s: the Spanish Army's AMX-30E, M48
+    // and M47
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['amx30_x', 'm48', 'm47_patton'] },
     wallStyle: 'fieldstone',
     // round 3 (108c: "a white picket fence reads as American", "three blank coloured boards on posts like placeholder
     // swatches"): the yards fenced in cane (cañizo), the roads in post and rail where they are fenced at all, and no

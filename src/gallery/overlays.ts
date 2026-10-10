@@ -1,3 +1,4 @@
+import { addCombatHitboxes, createCombatFrames, type HitboxArmor } from './combatHitboxes.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import type { ExternalWeaponStock } from '../sim/armor.ts';
@@ -20,6 +21,7 @@ type OverlayResource = AnatomyResource;
 
 interface ArmorPlate extends ArmorPlatePort {
   era?: RuntimeValue;
+  moduleLink?: string | null;
   physicalMm?: number;
   keMm?: number;
   ceMm?: number;
@@ -28,13 +30,13 @@ interface ArmorPlate extends ArmorPlatePort {
 interface CollisionFace {
   internal?: boolean;
   plate?: ArmorPlate;
-  indices?: number[];
+  indices?: readonly number[];
 }
 
 interface CollisionCell {
   min: Vec3Tuple;
-  faces?: CollisionFace[];
-  vertices?: Vec3Tuple[];
+  faces?: readonly CollisionFace[];
+  vertices?: readonly Vec3Tuple[];
 }
 
 interface AnatomyModuleVolume extends InternalModuleVolumePort {
@@ -50,13 +52,13 @@ interface AnatomyCrewVolume extends InternalCrewVolumePort {
   layoutSources?: string[];
 }
 
-interface InspectionArmor extends InternalArmorModelPort {
+interface InspectionArmor extends InternalArmorModelPort, HitboxArmor {
   externalWeapons?: readonly ExternalWeaponStock[];
   hullPlates?: ArmorPlate[];
   turretPlates?: ArmorPlate[];
   modules?: AnatomyModuleVolume[];
   crew?: AnatomyCrewVolume[];
-  collisionShells?: { hull?: CollisionCell[]; turret?: CollisionCell[] };
+  collisionShells?: { hull?: readonly CollisionCell[]; turret?: readonly CollisionCell[] };
 }
 
 interface InspectionSpec {
@@ -73,6 +75,7 @@ interface InspectionOverlay {
   pickables: THREE.Mesh[];
   emphasize(object: THREE.Mesh | null): void;
   clear(): void;
+  update?(): void;
 }
 
 function overlayMaterial(object: THREE.Mesh): THREE.Material | null {
@@ -163,7 +166,7 @@ function collisionGeometry(
   return { plate, geometry };
 }
 
-function collisionPlateGeometry(cells?: CollisionCell[]): Array<{
+function collisionPlateGeometry(cells?: readonly CollisionCell[]): Array<{
   plate: ArmorPlate;
   geometry: THREE.BufferGeometry;
 }> {
@@ -239,6 +242,8 @@ function addPlate(
   mesh.renderOrder = 81;
   mesh.userData.inspection = {
     mode: 'armor',
+    plateName: plate.name,
+    module: plate.moduleLink,
     id: `${turretLocal ? 'T' : 'H'}${String(index + 1).padStart(2, '0')}`,
     title: String(plate.name || 'Armor plate').replaceAll('_', ' '),
     kind: String(plate.kind || 'main'),
@@ -330,6 +335,8 @@ function addVolumePicker(
   picker.name = `gallery_${mode}_${key}_${index}_${partIndex}`;
   picker.userData.inspection = {
     mode,
+    module: volume.module,
+    crew: volume.crew,
     id: `${mode === 'modules' ? 'M' : 'C'}${String(index + 1).padStart(2, '0')}`
       + (partCount > 1 ? `.${partIndex + 1}` : ''),
     title: key.replace(/([a-z])([A-Z])/g, '$1 $2').replaceAll('_', ' '),
@@ -539,6 +546,7 @@ export function createInspectionOverlay(
   spec: InspectionSpec | null | undefined,
   visual: InspectionVisual | null | undefined,
   mode: InspectionMode,
+  hitboxes = false,
 ): InspectionOverlay {
   const resources: OverlayResource[] = [];
   const pickables: THREE.Mesh[] = [];
@@ -564,13 +572,20 @@ export function createInspectionOverlay(
     gunContainer.position.set(-pivot[0], -pivot[1], -pivot[2]);
     containers.push(gunContainer);
   }
-  addInspectionModels(mode, spec, hullContainer, turretContainer, resources, pickables, gunContainer);
+  let update: (() => void) | undefined;
+  if (hitboxes && (mode === 'modules' || mode === 'crew')) {
+    const frames = createCombatFrames(root, spec.armor || {});
+    containers.push(frames.hull); update = frames.update;
+    addCombatHitboxes(mode, spec.armor || {}, frames.hull, frames.turret, frames.gun, resources, pickables);
+    if (mode === 'modules') addWeaponModels(mode, spec, frames.hull, frames.turret, resources, pickables, frames.gun);
+  } else addInspectionModels(mode, spec, hullContainer, turretContainer, resources, pickables, gunContainer);
 
   let emphasized: THREE.Mesh | null = null;
   return {
     mode,
     count: pickables.length,
     pickables,
+    update,
     emphasize(object: THREE.Mesh | null) {
       if (emphasized) restoreOverlayEmphasis(emphasized);
       emphasized = object || null;

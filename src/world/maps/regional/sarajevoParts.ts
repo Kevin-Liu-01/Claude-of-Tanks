@@ -79,9 +79,11 @@ export interface Keep { u0: number; u1: number; y0: number; y1: number }
  * `count`; each scar chips the render to the masonry (`under`, its outline torn) round a dark crater, kept clear of
  * the openings. Fanned polygons 14-16 mm proud (the depth buffer resolves them to ~280 m, where a pock is a pixel); the
  * scorch a fan whose shade darkens to its centre (the weathering pass multiplies it into the render), 12 mm proud.
+ * All `count` scars are drawn from the look stream; only the first `drawn` are emitted (a phone keeps fewer, and its
+ * look stream stands where the desktop's does after them).
  */
 export function shellPocks(sink: PartSink, face: Face, rect: Keep, count: number, keep: readonly Keep[], look: () => number,
-  under: RegionalBucket = 'stone'): void {
+  under: RegionalBucket = 'stone', drawn = count): void {
   const w = Math.max(0, rect.u1 - rect.u0), h = Math.max(0, rect.y1 - rect.y0);
   if (w < 0.4 || h < 0.4 || count <= 0) return;
   const bursts = Math.max(1, Math.round(count / 16));
@@ -119,7 +121,9 @@ export function shellPocks(sink: PartSink, face: Face, rect: Keep, count: number
       const lu = Math.cos(t) * rr * stretch, ly = Math.sin(t) * rr;
       ring.push([cu + lu * ca - ly * sa, cy + lu * sa + ly * ca]);
     }
-    sink.polygon(under, [[cu, cy], ...ring, ring[0]].map(([uu, yy]) => facePoint(face, uu, yy, 0.014)), { ...DECOR, shade: 0.74 + look() * 0.12 });
+    const shade = 0.74 + look() * 0.12;
+    if (k >= drawn) continue; // (the scar's draws made, the scar dropped: a phone's look stream stays the desktop's)
+    sink.polygon(under, [[cu, cy], ...ring, ring[0]].map(([uu, yy]) => facePoint(face, uu, yy, 0.014)), { ...DECOR, shade });
     const cr = r * 0.4;
     sink.polygon('dark', [0, 1, 2, 3, 4].map((j) => {
       const t = (j / 5) * Math.PI * 2 + 0.3;

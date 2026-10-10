@@ -17,6 +17,9 @@ import { addT90ASmokeTubes } from './t90AXSmoke.ts';
 import { addT90VRearGuards } from './t90VXRearGuards.ts';
 import { addT90VFrontGuard } from './t90VXFrontGuards.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { addPintleBarrel, addPintleFeed, addPintleReceiver, createPintleLayout, MG_AMMO_CAN_SLOT, MG_CARTRIDGE_SLOT, MG_CLASSES,
+  MG_TRUE_SCALE_FLOOR } from '../machineGunGeometry.ts';
+import { moldedBox, roundBar } from '../accessoryPrimitives.ts';
 import { addT90SMRearBasket } from './t90SMXRearBasket.ts';
 import { addT90ARearGuard } from './t90AXRearGuard.ts';
 import { addT90AXFenderClosures, addT90AXFrontGuard } from './t90AXFenderClosures.ts';
@@ -1277,12 +1280,52 @@ function modernSmRws(P: TankBuilderPort): void {
   smFoldedHood(P,.321,.519,.398,-1.621);
   smFoldedHood(P,.630,.790,.651,-1.595);
   weapon.add('turretDetail',box(.44,.30,.035),.555,2.633,-1.607);
-  weapon.add('turretDetail',box(.12,.30,.16),.711,2.827,-1.31);
   station.mark('yaw');
-  weapon.add('turretDark',box(.105,.166,.286),.581,2.987,-1.405);
-  weapon.add('turretDark',box(.125,.075,.800),.582,3.0505,-1.322);
-  weapon.add('turretDark',cylZ(.022,.603,16),.584,3.035,-.8345);
+  addSmRwsKord(weapon);
   station.attachPitch(weapon.finish());
+}
+
+/**
+ * 2026-10-08 (tank-accessories round 5; wave 257 on the T-72B3M: "a square-section bar lying on a tall slab housing,
+ * with no receiver, muzzle brake or ammunition box, so it does not read as a machine gun at all"): the station's 12.7 mm
+ * Kord is the fleet's Kord construction in its remote form (its receiver section with the feed cover and the electric
+ * trigger housing, the barrel with its gas tube and carrying handle, and the Kord's muzzle brake) instead of an 0.8 m
+ * bar and a tube. It keeps the station's datum: the bore on 3.035 at x 0.584 and the muzzle at z -0.533. Its receiver
+ * runs from the folded hoods' channel out over the housing, carried on a cradle floor with its column down to 2.904
+ * (the old block's foot) and the trunnion axle across the channel at the pivot; the belt box stands on the housing's
+ * roof against the right hood, on the gun's left, and its belt rises into the feed tray. The weapon's two stocks (dark
+ * and the box's paint) stay the station's two collision parts.
+ */
+function addSmRwsKord(weapon: ReturnType<typeof sourceMachineGun>): void {
+  const cls=MG_CLASSES.kord, s=Math.max(cls.s,MG_TRUE_SCALE_FLOOR.heavy);
+  const bore=[.584,3.035] as const, muzzleZ=-.533, trayZ=-1.15;
+  const off={x:bore[0],y:0,z:0};
+  const slot=(name:string)=>name===MG_AMMO_CAN_SLOT||name===MG_CARTRIDGE_SLOT?'turretDetail' as const:'turretDark' as const;
+  // the receiver's front face from the tray station; the barrel runs from it to the published muzzle
+  const recZ=.06*s, trunZ=recZ+cls.rec[2]*s/2, front=trayZ-(recZ+.12*s)+trunZ;
+  const kord=createPintleLayout({cls:'kord',scale:1,remote:true,ammo:false,mount:'external-cradle',feed:'left',
+    barrelLength:muzzleZ-front-.10*s-cls.flashL*s-.011},{
+    add(name,geometry,x=0,y=0,z=0,rx=0,ry=0,rz=0){
+      weapon.add(slot(name),KIT.xform(geometry,x,y,z,rx,ry,rz),off.x,off.y,off.z);
+    },
+  });
+  off.y=bore[1]-kord.trunY; off.z=front-kord.trunZ;
+  addPintleReceiver(kord);
+  addPintleBarrel(kord);
+  // the belt box on the housing roof against the right hood's front face, and its belt into the feed tray
+  const canW=.11, canH=.15, canD=.20, canX=bore[0]+kord.bodyW/2+.01+canW/2, canY=2.78+canH/2, canZ=-1.188+canD/2;
+  weapon.add('turretDetail',moldedBox(canW,canH,canD,.008,1,.005),canX,canY,canZ);
+  const mouthW=canW*.34, lidY=canY+canH/2;
+  weapon.add('turretDetail',moldedBox(canW*1.04-mouthW,.01,canD*1.025,.006,1,.003),canX+mouthW/2,lidY+.005,canZ);
+  weapon.add('turretDark',new THREE.BoxGeometry(mouthW*.86,.004,canD*.9),canX-canW/2+mouthW/2,lidY+.0005,canZ);
+  weapon.add('turretDark',roundBar([canX+canW*.52,lidY,canZ-canD*.42],[canX+canW*.52,lidY,canZ+canD*.42],.0045,6),0,0,0);
+  weapon.add('turretDark',new THREE.BoxGeometry(canW*.42,.034,.007),canX,lidY-.03,canZ+canD/2+.004);
+  addPintleFeed(kord,[canX-canW/2+mouthW/2-off.x,lidY-.02-off.y,trayZ-off.z],lidY-off.y,.04,13);
+  // the cradle floor under the receiver, its column down to the old block's foot, and the trunnion axle
+  const floorTop=off.y;
+  weapon.add('turretDark',new THREE.BoxGeometry(.094,.018,.30,1,1,3),.5805,floorTop-.009,-1.33);
+  weapon.add('turretDark',new THREE.BoxGeometry(.06,floorTop-.018-2.904,.08),.5805,(floorTop-.018+2.904)/2,-1.405);
+  weapon.add('turretDark',cylX(.02,.111,12),.5745,2.987,-1.405);
 }
 
 function smRwsHousing(P:TankBuilderPort):void {
@@ -1303,7 +1346,9 @@ function smRwsHousing(P:TankBuilderPort):void {
     onTurret(P,S,'turretDetail',sectionSolid([{z:-.85356,ring:cross(.15098)},{z:-.80725,ring:cross(.11518)}]),0,0,0);
   }
   for(const y of [2.535,2.7718])onTurret(P,S,'turretDetail',box(.2174,.007,.0463),x,y,-.8304);
-  onTurret(P,S,'turretDark',box(.212,.222,.006),x,2.653,-.8505);
+  // round 5 (2026-10-08; the coordinator: "a sensor window in dark smoked glass"): the optical recess is the station
+  // sight's window in the glass role (it was a flat dark panel), drawn in the station's one glass stock
+  onTurret(P,S,'turretGlass',box(.212,.222,.006),x,2.653,-.8505);
 }
 
 function smFoldedHood(P: TankBuilderPort,left:number,right:number,crown:number,rear:number): void {

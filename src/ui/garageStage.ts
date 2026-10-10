@@ -455,7 +455,7 @@ export function createGarageStage(
   // structure barely visible without flattening the keyed lighting.
   const floorTex = track(canvasTexture(makeFloorTexture(rng), { aniso }));
   const floorMat = shadowMat(new THREE.MeshStandardMaterial({
-    map: floorTex, roughness: 0.62, metalness: 0.08, envMapIntensity: 0.55,
+    map: floorTex, roughness: 0.62, metalness: 0.08, // (2026-10-08: the full sky light it always took; materialEnvIntensity.ts)
     emissive: 0x11151a, emissiveIntensity: 0.5,
   }));
   track(floorMat);
@@ -597,13 +597,17 @@ export function createGarageStage(
   }));
   addOutdoorSeed('horizon', horizonSeedMaterial);
 
-  // subtle contact-glow pool under the podium (fake bounce light)
+  // subtle contact-glow pool under the podium (fake bounce light). Fleet lane round 2 (2026-10-08; waves 264-269:
+  // "almost no contact shadow under the hull"): the pool peaked at its centre, exactly under the hull, and lit the floor
+  // where the vehicle's contact shadow falls. It is now a ring of bounce round the podium, dark under the tank.
   const poolC = document.createElement('canvas');
   poolC.width = poolC.height = 256;
   const pg = get2dContext(poolC);
   const pgrad = pg.createRadialGradient(128, 128, 10, 128, 128, 128);
-  pgrad.addColorStop(0, 'rgba(255,238,205,0.30)');
-  pgrad.addColorStop(0.55, 'rgba(255,238,205,0.10)');
+  pgrad.addColorStop(0, 'rgba(255,238,205,0)');
+  pgrad.addColorStop(0.3, 'rgba(255,238,205,0.02)');
+  pgrad.addColorStop(0.5, 'rgba(255,238,205,0.12)');
+  pgrad.addColorStop(0.7, 'rgba(255,238,205,0.08)');
   pgrad.addColorStop(1, 'rgba(255,238,205,0)');
   pg.fillStyle = pgrad;
   pg.fillRect(0, 0, 256, 256);
@@ -710,7 +714,7 @@ export function createGarageStage(
   paintPodiumTexture();
   const podTopMat = shadowMat(new THREE.MeshStandardMaterial({
     map: track(canvasTexture(podTopC, { aniso })),
-    color: 0xffffff, roughness: 0.64, metalness: 0.1, envMapIntensity: 0.5,
+    color: 0xffffff, roughness: 0.64, metalness: 0.1,
   }));
   track(podSideMat); track(podTopMat);
   const podium = new THREE.Mesh(
@@ -754,7 +758,7 @@ export function createGarageStage(
   const wallTexBase = makeWallTexture(rng);
   const wallMat = shadowMat(new THREE.MeshStandardMaterial({
     map: track(canvasTexture(wallTexBase, { aniso, repeat: [3, 1] })),
-    roughness: 0.78, metalness: 0.25, envMapIntensity: 0.35,
+    roughness: 0.78, metalness: 0.25,
     emissive: 0x0d1115, emissiveIntensity: 0.45,
   }));
   track(wallMat);
@@ -859,26 +863,39 @@ export function createGarageStage(
     // volumetric cone from every orbit angle.
     const coneMat = track(new THREE.ShaderMaterial({
       transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
-      side: THREE.DoubleSide,
+      // Fleet lane round 2 (2026-10-08; the veil probe: hiding the Garage's transparents turned a washed, evenly lit hero
+      // into a crisp one; waves 264-269 "washed out", "no contact shadow"): the cone's NEAR wall stood between the lens
+      // and the tank on every orbit and added its haze over the whole vehicle (the darks of the tracks, tyres and wheel
+      // holes lifted to mid grey). Only the far wall draws now: the beam glows behind and around the tank, and the tank
+      // occludes it.
+      side: THREE.BackSide,
       uniforms: { uColor: { value: new THREE.Color(1.0, 0.925, 0.784) } },
+      // Fleet lane 2026-10-08 (the fleet audit: every close, high Garage view of a vehicle sat INSIDE this cone, whose
+      // walls then faced the lens all round and laid a pale wash over the whole tank): the beam is a volume seen from
+      // outside; with the camera inside it (or within half a metre of its wall) it fades out.
       vertexShader: /* glsl */ `
-        varying float vV; varying vec3 vN; varying vec3 vE;
+        varying float vV; varying vec3 vN; varying vec3 vE; varying float vOutside;
         void main() {
           vV = uv.y;
           vec4 mv = modelViewMatrix * vec4(position, 1.0);
           vN = normalMatrix * normal;
           vE = -mv.xyz;
+          // the camera in the cone's own frame: open tube, radius 5.6 at y -3.45 to 0.68 at y +3.45
+          vec3 cam = (inverse(modelMatrix) * vec4(cameraPosition, 1.0)).xyz;
+          float wall = mix(5.6, 0.68, clamp((cam.y + 3.45) / 6.9, 0.0, 1.0));
+          float beyond = max(length(cam.xz) - wall, max(cam.y - 3.45, -3.45 - cam.y));
+          vOutside = smoothstep(-0.5, 0.5, beyond);
           gl_Position = projectionMatrix * mv;
         }`,
       fragmentShader: /* glsl */ `
-        uniform vec3 uColor; varying float vV; varying vec3 vN; varying vec3 vE;
+        uniform vec3 uColor; varying float vV; varying vec3 vN; varying vec3 vE; varying float vOutside;
         void main() {
           // silhouette feather: surface normal ⟂ view at the tube's edge
           float fres = abs(dot(normalize(vE), normalize(vN)));
           float edge = pow(fres, 1.8);
           // dense at the fixture (uv.y 1), fully dissolved toward the floor
           float grad = pow(clamp(vV, 0.0, 1.0), 1.7);
-          gl_FragColor = vec4(uColor, edge * grad * 0.22);
+          gl_FragColor = vec4(uColor, edge * grad * 0.22 * vOutside);
         }`,
     }));
     const cone = new THREE.Mesh(
@@ -1115,11 +1132,23 @@ export function createGarageStage(
   // second light pool: warm additive splash on the floor under the west-wall
   // flood housing (its lens is emissive) — fakes the third fixture being live
   // without adding a real light to every shader
+  // (a splash centred on the fixture's footprint, unlike the podium's ring: nothing stands under this one)
+  const splashC = document.createElement('canvas');
+  splashC.width = splashC.height = 256;
+  {
+    const sg = get2dContext(splashC);
+    const sgrad = sg.createRadialGradient(128, 128, 10, 128, 128, 128);
+    sgrad.addColorStop(0, 'rgba(255,238,205,0.30)');
+    sgrad.addColorStop(0.55, 'rgba(255,238,205,0.10)');
+    sgrad.addColorStop(1, 'rgba(255,238,205,0)');
+    sg.fillStyle = sgrad;
+    sg.fillRect(0, 0, 256, 256);
+  }
   const pool2 = new THREE.Mesh(track(new THREE.PlaneGeometry(14, 14)), poolMat);
   pool2.rotation.x = -Math.PI / 2;
   pool2.position.set(-15.5, 0.04, 4);
   pool2.material = track(new THREE.MeshBasicMaterial({
-    map: poolTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    map: track(canvasTexture(splashC)), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     opacity: 0.55,
   }));
   group.add(pool2);

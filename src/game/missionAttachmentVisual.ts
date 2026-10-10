@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { missionAttachmentFor, missionSurfaceAt, DRONE_DOCK_HEIGHT_M, type MissionCarrierSpec } from '../sim/missionAttachment.ts';
+import { missionAttachmentFor, missionCradleVolumes, DRONE_DOCK_HEIGHT_M, type MissionCarrierSpec } from '../sim/missionAttachment.ts';
 import { createDroneModelKit, poseDroneRotor } from '../fx/droneModel.ts';
 import { createCaptureFlag, type CaptureFlag } from '../fx/captureFlag.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
@@ -18,13 +18,16 @@ function createMount(tankRoot:THREE.Object3D,spec:MissionCarrierSpec,kind:'drone
   const box=(w:number,h:number,d:number,x:number,y:number,z:number)=>{
     parts.push(new THREE.BoxGeometry(w,h,d).translate(x,y,z));
   };
-  box(seat.width,.055,seat.depth,0,0,0);
-  for(const x of [-seat.footX,seat.footX]) {
-    box(.045,.055,.95,x,.055,0);
-    for(const z of [-seat.footZ,seat.footZ]){
-      const surface=missionSurfaceAt(spec,seat.x+x,seat.z+z);
-      const foot=Math.max(.06,seat.y-surface);
-      box(.1,foot,.13,x,-foot/2,z);
+  // Shared finite stock guarantees that the audited cradle is what renders.
+  for(const part of missionCradleVolumes(seat)){
+    if(part.brace){
+      const {start,end,thickness}=part.brace,a=new THREE.Vector3(...start),b=new THREE.Vector3(...end);
+      const direction=b.clone().sub(a),rotation=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),direction.clone().normalize());
+      const middle=a.add(b).multiplyScalar(.5);
+      parts.push(new THREE.BoxGeometry(thickness,direction.length(),thickness).applyQuaternion(rotation).translate(middle.x,middle.y,middle.z));
+    }else{
+      const {min,max}=part;box(max[0]!-min[0]!,max[1]!-min[1]!,max[2]!-min[2]!,
+        (max[0]!+min[0]!)/2,(max[1]!+min[1]!)/2,(max[2]!+min[2]!)/2);
     }
   }
   const railGeometry=mergeGeometries(parts);for(const part of parts)part.dispose();
@@ -34,7 +37,7 @@ function createMount(tankRoot:THREE.Object3D,spec:MissionCarrierSpec,kind:'drone
   if(flag){flag.root.position.y=.06;root.add(flag.root);}
   let propGeometry:THREE.BufferGeometry|undefined;
   if(kit){
-    drone.name='Docked FPV mission payload';drone.userData.variant=kit.name;drone.position.y=DRONE_DOCK_HEIGHT_M;
+    drone.name='Docked FPV mission payload';drone.userData.variant=kit.name;drone.position.set(seat.payloadOffset?.[0]??0,DRONE_DOCK_HEIGHT_M,seat.payloadOffset?.[1]??0);
     drone.add(new THREE.Mesh(kit.body,kit.bodyMaterial),new THREE.Mesh(kit.equipment,kit.equipmentMaterial),new THREE.Mesh(kit.lens,kit.lensMaterial));
     const propPose=new THREE.Object3D(),propParts:THREE.BufferGeometry[]=[];
     for(let i=0;i<4;i++){poseDroneRotor(propPose,i,0);propParts.push(kit.rotor.clone().applyMatrix4(propPose.matrix));}
@@ -43,7 +46,8 @@ function createMount(tankRoot:THREE.Object3D,spec:MissionCarrierSpec,kind:'drone
     root.add(drone);
   }
   parent.add(root);
-  const result={root,drone,kind,flag,dispose(){root.removeFromParent();railGeometry.dispose();propGeometry?.dispose();material.dispose();kit?.dispose();flag?.dispose();mounts.delete(tankRoot);tankRoot.removeEventListener('removed',result.dispose);}};
+  let disposed=false;
+  const result={root,drone,kind,flag,dispose(){if(disposed)return;disposed=true;root.removeFromParent();railGeometry.dispose();propGeometry?.dispose();material.dispose();kit?.dispose();flag?.dispose();mounts.delete(tankRoot);tankRoot.removeEventListener('removed',result.dispose);}};
   tankRoot.addEventListener('removed',result.dispose);return result;
 }
 /** Mode equipment is attached to the turret owner (or fixed casemate hull), so suspension and concealment apply. */
@@ -63,3 +67,6 @@ export function syncFlagAttachment(tankRoot:THREE.Object3D,spec:MissionCarrierSp
   mount.root.visible=true;mount.flag?.update(timeS);
 }
 export function clearMissionAttachment(tankRoot:THREE.Object3D):void { mounts.get(tankRoot)?.dispose(); }
+
+/** Shared live dock frame for the airborne handoff; no repeated scene search. */
+export function missionAttachmentVisualFrame(tankRoot:THREE.Object3D):THREE.Object3D|undefined {return mounts.get(tankRoot)?.drone;}

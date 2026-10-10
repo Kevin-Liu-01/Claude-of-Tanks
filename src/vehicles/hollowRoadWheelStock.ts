@@ -62,7 +62,9 @@ export function buildHollowPairedRoadWheel({ radiusM, high, fasteners = 10, axia
     steel.push(turnedGearStock(web, segments, side));
     for (let i = 0; i < (high ? fasteners : 0); i++) {
       const angle = i * Math.PI * 2 / fasteners;
-      (fastenersAsInsets ? insets : steel).push(xform(gearFastener(.008 * k, .013 * k, high), side * .040 * k,
+      // round 2 (2026-10-08, waves 264-269: "one dome hub, no bolt ring"): heads 22 mm across standing 8 mm off the web (were
+      // 16 mm and 6.5 mm, lost at any distance)
+      (fastenersAsInsets ? insets : steel).push(xform(gearFastener(.011 * k, .016 * k, high), side * .040 * k,
         Math.sin(angle) * .140 * k, Math.cos(angle) * .140 * k));
     }
   }

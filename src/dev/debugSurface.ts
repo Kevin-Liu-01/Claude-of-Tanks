@@ -1,5 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-import type { Object3D, PerspectiveCamera } from 'three';
+import type { Object3D, PerspectiveCamera, Scene, WebGLRenderer } from 'three';
 import type { FrameLoopDecisionObserver, FrameLoopObservation } from '../engine/frameLoopScheduler.ts';
 /**
  * Explicit browser diagnostics surface.
@@ -13,6 +13,7 @@ import type { BrowserLaunchRequest } from '../mp/session/browserComposition.ts';
 import { visitOwnedObject3DGeometries } from '../engine/resourceLifetime.ts';
 import { inspectNightHeadlight, inspectNightShtora, inspectNightWindow } from './nightWindowInspection.ts';
 import { inspectNightWorldFixture, type NightWorldFixtureKind } from './nightWorldFixtureInspection.ts';
+import type { ColliderOverlayHandle, ColliderOverlayOptions } from './colliderOverlay.ts';
 
 type UnknownAction = CallableFunction;
 
@@ -91,7 +92,19 @@ export function installDebugSurface(
   deps: DebugSurfaceDependencies,
   target: DebugInstallTarget = globalThis as DebugInstallTarget,
 ): RuntimeValue {
+  // the world's collider view (the hitbox lane, 2026-10-07): one overlay at a time, its module loaded on first use
+  let colliderOverlayHandle: ColliderOverlayHandle | null = null;
   const surface = {
+    /** Draw the collision records near (x, z) over the scene (orange movement, cyan shells); null removes it. */
+    colliderOverlay: async (options: ColliderOverlayOptions | null) => {
+      colliderOverlayHandle?.remove();
+      colliderOverlayHandle = null;
+      if (!options) return null;
+      const { showColliderOverlay } = await import('./colliderOverlay.ts');
+      colliderOverlayHandle = showColliderOverlay(deps.scene as Scene, deps.getWorld() as Parameters<typeof showColliderOverlay>[1],
+        deps.renderer as WebGLRenderer, options);
+      return { ...colliderOverlayHandle.records };
+    },
     scene: deps.scene,
     camera: deps.camera,
     renderer: deps.renderer,

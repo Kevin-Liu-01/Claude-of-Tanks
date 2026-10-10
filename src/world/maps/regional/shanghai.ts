@@ -183,7 +183,7 @@ function shikumenRow(ctx: RegionalBuildContext, bank: Bank | null): RegionalPart
       windowUnit(sink, back, u, s1 + 0.7, 0.9, 1.2, CASEMENT, look, 0.25);
     }
     sink.span(wall, -W / 2, backTop, -D / 2, W / 2, backTop + 0.95, -D / 2 + 0.22, SHADOWED);
-    if (!mobile && look() < 0.6) {
+    if (look() < 0.6) sink.dressing(mobile, () => {
       for (const dz of [0.9, 1.6]) {
         if (-D / 2 + dz > zb - 0.3) continue;
         sink.cylinder('structureWood', [-W / 2 + 0.4, backTop + 1.6, -D / 2 + dz], 'x', W - 0.8, 0.025, 4, { colour: rgb(0x8a7a52), decor: true, fine: true });
@@ -193,11 +193,11 @@ function shikumenRow(ctx: RegionalBuildContext, bank: Bank | null): RegionalPart
             { colour: choose(look(), AWNINGS), decor: true, fine: true });
         }
       }
-    }
+    });
     // the war: shell pocks over the court wall, a gate sandbagged, a breach; Zhabei's burnt lanes, a roof fallen in
-    if (!mobile) pocks(sink, front, -W / 2 + 0.3, W / 2 - 0.3, 0.4, courtH - 0.3, (bank === 'zhabei' ? 14 : 6) + Math.floor(look() * 10), look, keep);
+    sink.dressing(mobile, () => pocks(sink, front, -W / 2 + 0.3, W / 2 - 0.3, 0.4, courtH - 0.3, (bank === 'zhabei' ? 14 : 6) + Math.floor(look() * 10), look, keep));
     if (!burnt && look() < (bank === 'settlement' ? 0.22 : 0.08)) sandbags(sink, front, -W / 2 + uw / 2, 0, gw + 0.8, 1.05, look);
-    if (!mobile && look() < 0.12) breach(sink, front, (look() - 0.5) * (W - 3), 1.6, 0.6, look);
+    if (look() < 0.12) sink.dressing(mobile, () => breach(sink, front, (look() - 0.5) * (W - 3), 1.6, 0.6, look));
     if (burnt) {
       for (let k = 0; k < n; k++) soot(sink, front, -W / 2 + uw * (k + 0.5) - 0.9, -W / 2 + uw * (k + 0.5) + 0.9, gh, courtH);
       if (look() < 0.6) roofHole(sink, rg.ridgeTopY, zc, s, roof, (look() - 0.5) * (W - 2.4), look);
@@ -298,7 +298,7 @@ function shophouseRow(ctx: RegionalBuildContext, bank: Bank | null): RegionalPar
       doorUnit(sink, back, u - uw * 0.22, 0, 0.9, 2.1, { leaf: TEAK, frame: { bucket: 'plaster3', width: 0.1, out: 0.04 }, transom: false, steps: null, leafKind: 'plank' });
       windowUnit(sink, back, u + uw * 0.15, s1 + 0.8, 0.8, 1.1, CASEMENT, look, 0.25);
     }
-    if (!mobile) pocks(sink, up, -W / 2 + 0.3, W / 2 - 0.3, s1 + 0.2, eaveY - 0.2, (bank === 'zhabei' ? 12 : 4) + Math.floor(look() * 8), look, [], 'plaster3');
+    sink.dressing(mobile, () => pocks(sink, up, -W / 2 + 0.3, W / 2 - 0.3, s1 + 0.2, eaveY - 0.2, (bank === 'zhabei' ? 12 : 4) + Math.floor(look() * 8), look, [], 'plaster3'));
     if (burnt && look() < 0.7) roofHole(sink, rg.ridgeTopY, zc, s, roof, (look() - 0.5) * (W - 2.4), look);
   });
   return sink.finish();
@@ -400,7 +400,7 @@ function settlementBlock(ctx: RegionalBuildContext): RegionalParts {
       }
       if (look() < 0.3) sandbags(sink, front, u, 0, aw, 1.25, look);
     }
-    if (!mobile) pocks(sink, front, -W / 2 + 0.3, W / 2 - 0.3, s0 + 0.2, eaveY - 0.3, 3 + Math.floor(look() * 8), look, [], 'plaster');
+    sink.dressing(mobile, () => pocks(sink, front, -W / 2 + 0.3, W / 2 - 0.3, s0 + 0.2, eaveY - 0.3, 3 + Math.floor(look() * 8), look, [], 'plaster'));
     if (brick && !mobile) brickBands(sink, front, -W / 2, W / 2, [eaveY - 0.75], WHITE_TRIM);
   });
   return sink.finish();
@@ -504,7 +504,7 @@ const ruin: RegionalBuilder = (ctx) => {
       }
       rubble(1.6);
     }
-    if (!mobile) pocks(sink, front, -W / 2 + 0.3, W / 2 - 0.3, 0.3, 2.4, 6 + Math.floor(look() * 8), look, [], 'plaster3');
+    sink.dressing(mobile, () => pocks(sink, front, -W / 2 + 0.3, W / 2 - 0.3, 0.3, 2.4, 6 + Math.floor(look() * 8), look, [], 'plaster3'));
   });
   return sink.finish();
 };
@@ -576,7 +576,7 @@ const tramDepot: RegionalBuilder = (ctx) => {
         faceBox(sink, 'stone', face, -D / 2 + 0.3 + k * (D - 0.6) / Math.round(D / 2.9), (wallH + 0.4) / 2, 0.05, 0.42, wallH + 0.4, 0.1, { decor: true, fineSides: true });
       }
     }
-    if (!mobile) pocks(sink, frame.faces.front, -bw / 2 + 0.3, bw / 2 - 0.3, 0.5, wallH, 8 + Math.floor(look() * 10), look, [], 'plaster3');
+    sink.dressing(mobile, () => pocks(sink, frame.faces.front, -bw / 2 + 0.3, bw / 2 - 0.3, 0.5, wallH, 8 + Math.floor(look() * 10), look, [], 'plaster3'));
     if (look() < 0.5) roofHole(sink, rg.ridgeTopY, 0, bw / 2, roof, 0, look);
   });
   return sink.finish();
@@ -631,7 +631,7 @@ const godown: RegionalBuilder = (ctx) => {
       for (let k = 0; k <= n; k++) faceBox(sink, 'stone', face, -D / 2 + 0.3 + k * (D - 0.6) / n, eaveY / 2, 0.05, 0.45, eaveY, 0.1, { decor: true, fineSides: true });
     }
     if (look() < 0.6) sandbags(sink, front, 0, 0, 3.6, 1.3, look);
-    if (!mobile) pocks(sink, front, -W / 2 + 0.3, W / 2 - 0.3, 0.5, eaveY - 0.5, 8 + Math.floor(look() * 12), look, [{ u0: -1.6, u1: 1.6, y0: 0, y1: eaveY }]);
+    sink.dressing(mobile, () => pocks(sink, front, -W / 2 + 0.3, W / 2 - 0.3, 0.5, eaveY - 0.5, 8 + Math.floor(look() * 12), look, [{ u0: -1.6, u1: 1.6, y0: 0, y1: eaveY }]));
   });
   return sink.finish();
 };
@@ -679,7 +679,7 @@ const cottonMill: RegionalBuilder = (ctx) => {
     // the mill's name along the parapet of its street front
     facePanel(sink, 'plaster', frame.faces.front, 0, eaveY + 0.75, 0.015, Math.min(W - 2, 9), 0.8, DEC);
     faceBox(sink, 'structureMetal', frame.faces.front, 0, eaveY + 0.75, 0.025, Math.min(W - 2, 9) * 0.75, 0.36, 0.012, { colour: rgb(0x262422), decor: true, fine: true });
-    if (!mobile) pocks(sink, frame.faces.front, -W / 2 + 0.3, W / 2 - 0.3, 0.4, eaveY, 10 + Math.floor(look() * 12), look);
+    sink.dressing(mobile, () => pocks(sink, frame.faces.front, -W / 2 + 0.3, W / 2 - 0.3, 0.4, eaveY, 10 + Math.floor(look() * 12), look));
   });
   return sink.finish();
 };
@@ -748,7 +748,7 @@ const fireStation: RegionalBuilder = (ctx) => {
     }
     pyramid(sink, 'roof', cx, cz, half + 0.35, half + 0.35, tTop + 2.42, tTop + 3.9, SHADOWED);
     sink.cylinder('structureMetal', [cx, tTop + 3.85, cz], 'y', 2.4, 0.04, 4, { colour: IRON, decor: true, fine: true });
-    if (!mobile) pocks(sink, frame.faces.front, -W / 2 + tw + 0.4, W / 2 - 0.3, 0.4, eaveY, 6 + Math.floor(look() * 8), look);
+    sink.dressing(mobile, () => pocks(sink, frame.faces.front, -W / 2 + tw + 0.4, W / 2 - 0.3, 0.4, eaveY, 6 + Math.floor(look() * 8), look));
   });
   return sink.finish();
 };
@@ -828,7 +828,7 @@ const guildHall: RegionalBuilder = (ctx) => {
     nameBoard(sink, front, 0, 3.75, gw * 0.8, LACQUER);
     // an incense burner in the court
     sink.cylinder('structureMetal', [0, 0, (hz1 + D / 2 - t) / 2], 'y', 0.9, 0.42, 8, { colour: rgb(0x4a4136), decor: true }, 0.55);
-    if (!mobile) pocks(sink, front, -W / 2 + 0.3, W / 2 - 0.3, 0.4, wallH - 0.3, 6 + Math.floor(look() * 8), look, [{ u0: -gw / 2 - 0.6, u1: gw / 2 + 0.6, y0: 0, y1: wallH }]);
+    sink.dressing(mobile, () => pocks(sink, front, -W / 2 + 0.3, W / 2 - 0.3, 0.4, wallH - 0.3, 6 + Math.floor(look() * 8), look, [{ u0: -gw / 2 - 0.6, u1: gw / 2 + 0.6, y0: 0, y1: wallH }]));
   });
   return sink.finish();
 };

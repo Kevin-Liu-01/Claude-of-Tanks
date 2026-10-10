@@ -198,12 +198,18 @@ function machineGun(P:TankBuilderPort):void {
   gun.add('turretDetail',sectionSolid([
     {z:-.817,ring:shield},{z:-.775,ring:shield},
   ]),0,0,0);
+  // 2026-10-08 (tank-accessories round 5, the contact receipt: the open hatch touched nothing within 15 mm, its
+  // support block meeting only the middle of its lower edge): two hinge arms run from the hatch's lower corners to the
+  // cupola's wall, so the plate hangs on the cupola it closes.
+  for(const [x,front] of [[-.763,-.712],[-.418,-.702]] as const)
+    gun.add('turretDetail',box(.05,.084,front+.81),x,2.192,(front-.81)/2);
   gun.add('turretDark',box(.073,.129,.610),-.587,2.473,-.447);
   gun.add('turretDetail',box(.09,.088,.43),-.587,2.298,-.535);
   gun.add('turretDark',cylZ(.028,.63,20),-.587,2.443,.53);
   gun.add('turretDark',cylZ(.031,.367,20),-.587,2.444,.033);
   gun.add('turretDark',box(.245,.177,.079),-.741,2.38,-.394);
-  gun.add('turretDetail',box(.032,.134,.035),-.587,2.46,.548);
+  // round 5 (contact receipt): the front sight post stands on the barrel's crown instead of passing through it
+  gun.add('turretDetail',box(.032,.06,.035),-.587,2.497,.548);
   gun.finish();
 }
 

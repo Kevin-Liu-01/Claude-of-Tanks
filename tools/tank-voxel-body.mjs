@@ -7,7 +7,7 @@
 // (the grey panels the owner saw covering the cage). Open-lattice buckets (drone cages, slat screens, basket
 // frames) are exterior air here as they are for the standard check's continuity raster: a cage's bars never
 // enclose a body volume, so the generator must not fill one.
-export const DEFAULT_EXCLUDE = /^(gear|track|procShadow|vehicleMarking|utility|antenna|aerial|wire|cable|cloth|canvas|tarp|net|ghillie|mesh)|wheel|hub|sprocket|idler|roller|shoe|EndWheel|Skirt|skirt|Fender|fender|Mudguard|mudguard|ExternalArmor|ghillie|OpenLattice/;
+export const DEFAULT_EXCLUDE = /^(gear|track|procShadow|vehicleMarking|utility|antenna|aerial|wire|cable|cloth|canvas|tarp|net|ghillie|mesh)|wheel|hub|sprocket|idler|roller|shoe|EndWheel|Skirt|skirt|Fender|fender|Mudguard|mudguard|ExternalArmor|ghillie|OpenLattice|^turretMissionReceiver$/;
 
 /** Conservative voxelisation: every voxel a triangle passes through becomes shell (owner = first writer). */
 export function voxelise(tris, meshes, { voxel = 0.025, exclude = DEFAULT_EXCLUDE } = {}) {

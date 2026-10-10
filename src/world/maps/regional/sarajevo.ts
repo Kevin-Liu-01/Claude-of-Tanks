@@ -312,12 +312,16 @@ function ahBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
         sink.placed(Math.PI / 2, ex + 0.62, 0, dz, () => emitRoof(sink, roofGeometry(dw + 0.12, 1.45, eave + 1.5, cap), cap));
         windowUnit(sink, { origin: [ex - 0.05, 0, dz], u: [0, 0, 1], out: [-1, 0, 0], width: dw }, 0, eave + 0.32, 0.75, 0.95, { ...AH_WINDOW, surround: null, sill: null }, look, 0.1);
       }
-      if (!mobile && rg.kind !== 'flat' && look() < 0.4) tvAerial(sink, frame, (look() - 0.5) * len * 0.5, look);
+      if (rg.kind !== 'flat' && look() < 0.4) {
+        const at = (look() - 0.5) * len * 0.5;
+        sink.dressing(mobile, () => tvAerial(sink, frame, at, look));
+      }
     }
     // the siege on the street front: shell pocks, a shell hole in a pier, a burnt storey's soot
     const keeps = keepsOf(openings, 'left', frame);
-    const pocks = Math.round((mobile ? 0.4 : 1) * (8 + look() * 30));
-    shellPocks(sink, street, { u0: -len / 2 + 0.3, u1: len / 2 - 0.3, y0: 0.5, y1: eave - 0.7 }, pocks, keeps, look);
+    const pocks = 8 + look() * 30;
+    shellPocks(sink, street, { u0: -len / 2 + 0.3, u1: len / 2 - 0.3, y0: 0.5, y1: eave - 0.7 }, Math.round(pocks), keeps, look, 'stone',
+      Math.round((mobile ? 0.4 : 1) * pocks));
     if (look() < 0.22) {
       const hy = frame.floors[Math.min(n - 1, 1 + Math.floor(look() * (n - 1)))] + 1.2;
       const hu = (look() - 0.5) * len * 0.7;
@@ -378,12 +382,13 @@ function collapsedEnd(sink: PartSink, frame: HouseFrame, side: -1 | 1, cut: numb
   for (let i = 1; i < frame.floors.length; i++) {
     const y = frame.floors[i];
     faceBox(sink, 'stone', wallFace, 0, y - 0.1, 0.03, wallFace.width - 0.3, 0.24, 0.06, { decor: true });
-    if (mobile) continue;
-    const rooms = 1 + Math.floor(look() * 2);
-    for (let r = 0; r < rooms; r++) {
-      const w = (wallFace.width - 0.6) / rooms, u = -wallFace.width / 2 + 0.3 + w * (r + 0.5);
-      faceBox(sink, 'structureWood', wallFace, u, y + 1.45, 0.012, w - 0.15, 2.4, 0.01, { colour: choose(look(), paints), decor: true });
-    }
+    sink.dressing(mobile, () => {
+      const rooms = 1 + Math.floor(look() * 2);
+      for (let r = 0; r < rooms; r++) {
+        const w = (wallFace.width - 0.6) / rooms, u = -wallFace.width / 2 + 0.3 + w * (r + 0.5);
+        faceBox(sink, 'structureWood', wallFace, u, y + 1.45, 0.012, w - 0.15, 2.4, 0.01, { colour: choose(look(), paints), decor: true });
+      }
+    });
   }
   sootBand(sink, 'plaster', wallFace, -wallFace.width / 2, wallFace.width / 2, groundH + 2.4, groundH + 5.0);
 }
@@ -449,13 +454,17 @@ function yuBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
     // the lift room and the aerials on the roof
     const top = frame.eaveY + 0.3;
     sink.span('plaster3', -1.2, top, -1.4, 1.2, top + 2.3, 1.4, { decor: true });
-    if (!mobile) for (let k = 0; k < 2 + Math.floor(look() * 3); k++) {
-      const x = (look() - 0.5) * (b.x1 - b.x0 - 1.5), z = (look() - 0.5) * (W - 1.5);
-      sink.cylinder('structureMetal', [x, top - 0.05, z], 'y', 2.4 + look() * 1.6, 0.03, 5, { colour: rgb(0x8c9092), decor: true });
-      sink.member('structureMetal', [x - 0.6, top + 2.2, z], [x + 0.6, top + 2.2, z], 0.03, 0.03, [0, 1, 0], { colour: rgb(0x8c9092), decor: true, exposed: true }, 0);
-    }
+    sink.dressing(mobile, () => {
+      for (let k = 0; k < 2 + Math.floor(look() * 3); k++) {
+        const x = (look() - 0.5) * (b.x1 - b.x0 - 1.5), z = (look() - 0.5) * (W - 1.5);
+        sink.cylinder('structureMetal', [x, top - 0.05, z], 'y', 2.4 + look() * 1.6, 0.03, 5, { colour: rgb(0x8c9092), decor: true });
+        sink.member('structureMetal', [x - 0.6, top + 2.2, z], [x + 0.6, top + 2.2, z], 0.03, 0.03, [0, 1, 0], { colour: rgb(0x8c9092), decor: true, exposed: true }, 0);
+      }
+    });
     const keeps = keepsOf(openings, 'left', frame);
-    shellPocks(sink, street, { u0: -W / 2 + 0.3, u1: W / 2 - 0.3, y0: 0.6, y1: frame.eaveY - 0.4 }, Math.round((mobile ? 0.4 : 1) * (10 + look() * 26)), keeps, look, 'stone');
+    const pocks = 10 + look() * 26;
+    shellPocks(sink, street, { u0: -W / 2 + 0.3, u1: W / 2 - 0.3, y0: 0.6, y1: frame.eaveY - 0.4 }, Math.round(pocks), keeps, look, 'stone',
+      Math.round((mobile ? 0.4 : 1) * pocks));
     if (look() < 0.28) {
       const hy = frame.floors[1 + Math.floor(look() * (n - 1))] + 1.3, hu = (look() - 0.5) * W * 0.7;
       if (!keeps.some((k) => hu > k.u0 - 0.5 && hu < k.u1 + 0.5 && hy > k.y0 - 0.5 && hy < k.y1 + 0.5)) shellHole(sink, street, hu, hy, 0.4 + look() * 0.35, look);
@@ -576,15 +585,19 @@ function mahalaHouse(ctx: RegionalBuildContext): RegionalParts {
           const lenW = along ? x1 - x0 : z1 - z0;
           sink.placed(along ? Math.PI / 2 : 0, (x0 + x1) / 2, 0, (z0 + z1) / 2, () => emitRoof(sink, roofGeometry(t, lenW, wallH, cap), { ...cap, decor: true }));
         }
-        if (!mobile && look() < 0.6) {
+        if (look() < 0.6) {
           const wf: Face = { origin: [0, 0, ga + t], u: [1, 0, 0], out: [0, 0, 1], width: W - 0.4 };
-          woodpile(sink, wf, -W / 2 + 0.8, -W / 2 + 0.8 + Math.min(2.6, W * 0.3), 1.2, look);
+          sink.dressing(mobile, () => woodpile(sink, wf, -W / 2 + 0.8, -W / 2 + 0.8 + Math.min(2.6, W * 0.3), 1.2, look));
         }
-        if (!mobile) for (let k = 0; k < 3; k++) pottedPlant(sink, (look() - 0.5) * (W - 1.5), 0, ga + 1 + look() * Math.max(0.2, gb - ga - 2), 0.35 + look() * 0.2, look);
+        sink.dressing(mobile, () => {
+          for (let k = 0; k < 3; k++) pottedPlant(sink, (look() - 0.5) * (W - 1.5), 0, ga + 1 + look() * Math.max(0.2, gb - ga - 2), 0.35 + look() * 0.2, look);
+        });
       });
     }
     const keeps = keepsOf(openings, 'front', frame);
-    shellPocks(sink, frame.faces.front, { u0: -Wh / 2 + 0.2, u1: Wh / 2 - 0.2, y0: 0.4, y1: y1 - 0.2 }, Math.round((mobile ? 0.3 : 1) * (3 + look() * 12)), keeps, look, 'stone');
+    const pocks = 3 + look() * 12;
+    shellPocks(sink, frame.faces.front, { u0: -Wh / 2 + 0.2, u1: Wh / 2 - 0.2, y0: 0.4, y1: y1 - 0.2 }, Math.round(pocks), keeps, look, 'stone',
+      Math.round((mobile ? 0.3 : 1) * pocks));
   });
   });
   return sink.finish();
@@ -657,12 +670,15 @@ function ahShell(ctx: RegionalBuildContext): RegionalParts {
   // the heap of the fallen floors, a slab hanging from the front, charred joists
   sink.span('stone', -W / 2 + 0.5, 0.2, -D / 2 + 0.6, W / 2 - 0.5, 1.4 + rng(), zf - 0.6, { decor: true });
   sink.member('stone', [0, gH, zf - 0.1], [0.4, 1.2, zf - D * 0.45], W * 0.55, 0.22, [0, 1, 0.3], { decor: true, exposed: true });
-  if (!mobile) for (let k = 0; k < 4; k++) {
-    const x = (look() - 0.5) * (W - 1.2);
-    sink.member('structureWood', [x, 1.4, zf - 0.2 - look() * 2], [x + (look() - 0.5) * 1.5, 2.6 + look() * 2.4, zf - 0.1], 0.16, 0.2, [0, 0, 1], { colour: CHAR, decor: true, exposed: true }, 0);
-  }
+  sink.dressing(mobile, () => {
+    for (let k = 0; k < 4; k++) {
+      const x = (look() - 0.5) * (W - 1.2);
+      sink.member('structureWood', [x, 1.4, zf - 0.2 - look() * 2], [x + (look() - 0.5) * 1.5, 2.6 + look() * 2.4, zf - 0.1], 0.16, 0.2, [0, 0, 1], { colour: CHAR, decor: true, exposed: true }, 0);
+    }
+  });
+  const pocks = 10 + look() * 14;
   shellPocks(sink, { origin: [0, 0, zf + t], u: [1, 0, 0], out: [0, 0, 1], width: W }, { u0: -W / 2 + 0.2, u1: W / 2 - 0.2, y0: 0.6, y1: y - 0.8 },
-    Math.round((mobile ? 0.4 : 1) * (10 + look() * 14)), keeps, look, wall === 'stone' ? 'plaster' : 'stone');
+    Math.round(pocks), keeps, look, wall === 'stone' ? 'plaster' : 'stone', Math.round((mobile ? 0.4 : 1) * pocks));
   return sink.finish();
 }
 
@@ -707,13 +723,13 @@ function mahalaShell(ctx: RegionalBuildContext): RegionalParts {
   // the tiles fallen in, the charred posts and a beam of the upper floor
   sink.span('stone', -W / 2 + 0.6, 0.1, -D / 2 + 0.6, W / 2 - 0.6, 0.95, D / 2 - 0.6, { decor: true });
   sink.member('roof', [-W * 0.3, 0.7, -D * 0.2], [W * 0.25, 2.0, D * 0.15], Math.min(3.2, W * 0.5), 0.12, [0, 1, 0], { decor: true, exposed: true });
-  if (!mobile) {
+  sink.dressing(mobile, () => {
     for (let k = 0; k < 5; k++) {
       const x = (look() < 0.5 ? -1 : 1) * (W / 2 - 0.3), z = (look() - 0.5) * (D - 1);
       sink.member('structureWood', [x, gH * 0.7, z], [x + (look() - 0.5) * 0.4, gH + 0.8 + look() * 1.8, z + (look() - 0.5) * 0.4], 0.16, 0.16, [1, 0, 0], { colour: CHAR, decor: true, exposed: true }, 0);
     }
     sink.member('structureWood', [-W / 2 + 0.3, gH + 0.3, D / 2 - 0.3], [W / 2 - 0.3, gH * 0.6, D / 2 - 0.5], 0.18, 0.2, [0, 0, 1], { colour: CHAR, decor: true, exposed: true }, 0);
-  }
+  });
   return sink.finish();
 }
 
@@ -741,11 +757,13 @@ function frameShell(ctx: RegionalBuildContext): RegionalParts {
   // block infill stubs between the columns, the rubble
   for (const s of [-1, 1]) sink.span('stone', -W / 2 + c, 0.3, s * (D / 2 - c / 2) - 0.12, -W / 2 + c + (W - 2 * c) * (0.3 + rng() * 0.5), 0.9 + rng() * 1.5, s * (D / 2 - c / 2) + 0.12);
   sink.span('stone', -W / 2 + 0.5, 0.2, -D / 2 + 0.5, W / 2 - 0.5, 0.9, D / 2 - 0.5, { decor: true });
-  if (!mobile) for (let k = 0; k < 6; k++) {
-    const x = xs[Math.floor(look() * 3)], z = zs[Math.floor(look() * 2)];
-    sink.member('structureWood', [x, floors * fh, z], [x + (look() - 0.5) * 0.5, floors * fh + 0.4 + look() * 0.7, z + (look() - 0.5) * 0.5], 0.03, 0.03, [0, 0, 1],
-      { colour: rgb(0x5e4030), decor: true, exposed: true }, 0);
-  }
+  sink.dressing(mobile, () => {
+    for (let k = 0; k < 6; k++) {
+      const x = xs[Math.floor(look() * 3)], z = zs[Math.floor(look() * 2)];
+      sink.member('structureWood', [x, floors * fh, z], [x + (look() - 0.5) * 0.5, floors * fh + 0.4 + look() * 0.7, z + (look() - 0.5) * 0.5], 0.03, 0.03, [0, 0, 1],
+        { colour: rgb(0x5e4030), decor: true, exposed: true }, 0);
+    }
+  });
   return sink.finish();
 }
 

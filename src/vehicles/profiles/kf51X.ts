@@ -283,7 +283,7 @@ function pantherRoof(P: TankBuilderPort): void {
   ),0,0,0);
   fitting(P,'turretDark',box(.17,.20,.018),.3337,2.79,-2.077);
   fitting(P,'turretGlass',box(.12,.13,.009),.3337,2.805,-2.063);
-  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.84,tone:'two-tone',ammo:false,shield:false,ring:false,seed:51051});
+  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mg3',scale:.84,tone:'two-tone',ammo:false,shield:false,ring:false,seed:51051});
   mg.position.set(.10,2.712-RING_Y,-2.54-RING_Z);P.turretG.add(mg);
   // Source rear service plates sit on the tapered bustle, not at maximum
   // cheek width. Their actual footprints do not widen the aft turret.

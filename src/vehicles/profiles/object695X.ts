@@ -6,7 +6,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
-import { KIT, orientedSlab } from './kit.ts';
+import { KIT, orientedSlab, convexSlab } from './kit.ts';
 import { sectionSolid, type SolidSection, type SectionPoint } from './sectionSolid.ts';
 import { buildObject695MissileTurret } from './object695MissileTurret.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
@@ -111,7 +111,10 @@ function sideModules(P: TankBuilderPort): void {
     }
     for (const z of seams.slice(1, -1)) P.add('hullDark', part(box(0.02, height - 0.02, 0.024), 'module-seam'), s * (xOut + 0.004), yMid, z);
     // rear chamfer (measured x 1.99 at z −3.05 → 1.58 at the stern plate) and front chamfer (1.99 at z 3.05 → 1.66 at z 3.40)
-    P.addExternalArmor('hull', part(orientedSlab(
+    // The rear end narrows past the fixed inner side-wall datum. Its ring
+    // correspondence otherwise becomes a bow-tie; retain the eight datums
+    // as a finite convex return instead of crossing the two side faces.
+    P.addExternalArmor('hull', part(convexSlab(
       [s * xIn, H.skirtY0, -3.05], [s * xOut, H.skirtY0, -3.05], [s * 1.60, H.skirtY0, H.sternZ], [s * xIn, H.skirtY0, H.sternZ],
       [s * xIn, H.skirtY1, -3.05], [s * xOut, H.skirtY1, -3.05], [s * 1.60, H.skirtY1, H.sternZ], [s * xIn, H.skirtY1, H.sternZ]), 'module-rear-chamfer'));
     // measured prow: the module's front end is a forward-pointing wedge — z 2.90 at the hem, the apex z 3.40 at y 1.30,

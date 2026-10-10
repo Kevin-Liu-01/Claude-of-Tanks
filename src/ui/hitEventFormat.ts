@@ -7,6 +7,8 @@ import { RUNTIME_TANK_IDS, getSpec } from '../vehicles/specs.ts';
 import { t } from './i18n.ts';
 
 export interface HitEventPresentation {
+  readonly caliberMm?: number;
+  readonly guided?: boolean;
   readonly kind?: string;
   readonly damage?: number;
   readonly modulesHit?: readonly { readonly newState?: string }[];

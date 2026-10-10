@@ -6,6 +6,7 @@
 // Contract: docs/ARCHITECTURE.md §3.2; visuals per docs/research/graphics-aaa.md §8.
 
 import * as THREE from 'three';
+import { keepStreams } from './geometryStreams.ts';
 import { RAIL_CUTTING_SEED_NORMAL_Y, railCuttingSeedAdmits } from './railSpurs.ts';
 import { shapeFarTreeBase } from './farTreeBase.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -19,6 +20,7 @@ import {
   type TreeSpecies,
 } from './treeSpecies.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
+import { deploymentClearings } from '../sim/matchPlacement.ts';
 import { createStructureClearances, excludeStructureVegetation, excludeVegetation, overlapsStructureClearance,
   placedStructureClearances } from './vegetationClearance.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
@@ -49,6 +51,7 @@ import {
 } from './authoredTreePlacement.ts';
 import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
+import { createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees, type GroundCoverCraters } from './groundCoverCraters.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import type { PropsMapConfig } from './props.ts';
@@ -202,7 +205,46 @@ interface VegetationConfig {
    */
   palmSites?: readonly VegetationDisc[];
   palmFallback?: Species;
+  /**
+   * The Redrock lane (2026-10-07, owner: "redrock is really rough"; a tree stood on an inselberg's sheer-walled cap and
+   * trees on the jebels' tops): no tree grows on ground higher than this (m, absolute): the wadi's trees keep to its floor.
+   * Absent = no ceiling (every other map).
+   */
+  treeCeilingY?: number;
+  /**
+   * The Redrock lane (2026-10-07, the coordinator: the walls and domes changed which draws found ground, and the shared
+   * stream moved every tree after them — 136 trees in one half against 87 in the other, from 100/102): every candidate
+   * of the trees, the saplings and the bushes draws from its own stream, keyed by the map's seed, the placement's kind
+   * and the candidate's ordinal, so a site that newly refuses (or admits) a candidate moves no other one. Absent = the
+   * shared sequential streams, byte for byte (every other map).
+   */
+  keyedPlacement?: boolean;
+  /**
+   * The Redrock lane (2026-10-08, the fairness swap): the point the deployments turn about. The halves either side of it,
+   * across the deployments' axis, then hold the same tree and shrub cover: a stand or a lone tree whose seat lies in the
+   * playable half that already holds more trees waits for a seat in the other, and once the border's blocks, the
+   * saplings and the shrubs have grown (in runs along one half) the short half is evened with lone trees and field
+   * shrubs of its own (evenTreeHalves, evenBushHalves). With keyedPlacement, so a seat that waits moves no other
+   * candidate. Absent = no balance (every other map).
+   */
+  coverHalvesAbout?: { x: number; z: number };
+  /**
+   * The Redrock lane (round 10, 2026-10-08; the gauntlet's wave 270 on Redrock's low sand view: "tall, flat cross-card
+   * blades far out of scale", the nearest object a sprite): the map's tufts' height, a factor on every tuft's (a dry
+   * tuft stands half as tall again as a green one, and the hyper-arid floor's are all dry). A test on a drawn size, no
+   * draw: unset, every map's tufts are as before.
+   */
+  tuftHeight?: number;
   clusterScrub?: number;
+  /**
+   * Trees lane (2026-10-06, the coordinator's ruling on the gauntlet's wave 178: "the meadows are peppered with isolated
+   * trees and small clumps like a park or savanna ... the ridges should be wooded"): a map's woods follow its landscape.
+   * A woodlot's centre stands only on the wood-zone ground — the share `zone` of the square ranked by height and slope
+   * (the ridges, their slopes, ground steeper than `slopeDeg`, default 12°) — neighbouring stands may close into one wood
+   * (their outlines overlapping by up to `merge` m, default 30), and a wood keeps no thin patches. Every stand keeps its
+   * count; the field trees keep the field law; unset, the woods stand as before.
+   */
+  landscapeWoods?: Readonly<{ zone: number; slopeDeg?: number; merge?: number }>;
   authoredTrees?: AuthoredTreeFeature[];
   /**
    * Trees lane (2026-10-05, Kestrel's dispersal stands): the authored stands may stand inside the settlement rect. The rect
@@ -304,6 +346,8 @@ interface TreeRecord {
   wood?: boolean;
   /** Trees lane (2026-10-06): one of a map's hedge trees (vegetation.hedgeTrees, plantHedgeTrees). */
   hedgeRow?: boolean;
+  /** Ground lane (crater-render-spec §C): the placement before a crater re-seated the trunk (base + offsetAt). */
+  craterBase?: THREE.Matrix4;
   /** Trees round 5: one of the field trees (placeLoneTrees), the field law's (addFieldTree). */
   field?: boolean;
 }
@@ -354,6 +398,8 @@ export interface VegetationRuntime {
   /** Fell a trunk toward (dx, dz); `settled` lays it at its final pose at once (state that fell before this viewer looked). */
   crushTree(record: TreeObstacle, dx: number, dz: number, settled?: boolean): boolean;
   resetToppled(): void;
+  /** Step only the felled trunks' falls by `dt` (update runs them; the Scene Studio runs them on its timeline). */
+  advanceToppled(dt: number): void;
   _clusters: VegetationDisc[];
   /** Trees round 2: the fraction of a stand's own outline a point stands at (the receipts' woodlot law). */
   _standOutline(index: number, x: number, z: number): number;
@@ -379,6 +425,12 @@ export interface VegetationRuntime {
    * x, texel centres at -512 + (i + 0.5) × 4) — the terrain draws a forest floor under it and no field, the ground
    * tiers thin under it. Built once from the final tree records. */
   _woodsMask: Float32Array;
+  /**
+   * Ground lane (crater-render-spec §C): follow the battle's craters — the grass chunks', bushes' and understorey's
+   * instances in a crater's cleared bowl are hidden and the rest re-seated on base + offsetAt, the carpet rebuilds with
+   * the same law, standing trees root into the bowl's wall (map.ts calls this once a frame after the terrain's sync).
+   */
+  followCraters(law: GroundCoverCraters): void;
 }
 
 interface GarageTreeKit {
@@ -2825,7 +2877,7 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   const hue0 = pal.cardHue ?? hueBase, sat0 = pal.cardSat ?? satBase;
   // a palm's frond atlas holds one frond (makePalmFrondAtlas); its dead fronds (shade 0) are straw-brown
   const palm = profile.family === 'palm';
-  const cards = weldGrownGeometry(emitLeafCards(skeleton, {
+  let cards = weldGrownGeometry(emitLeafCards(skeleton, {
     tiles: palm ? 1 : SPRAY_ATLAS_TILES, rng: mulberry32((seed ^ 0x5eed) >>> 0), rows: growthCardRows(profile.family),
     stemWidth: GROWTH_CROWN_STEM_WIDTH,
     tint(shade, site, r) {
@@ -2844,7 +2896,9 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
     },
   }));
   // trees round 2: a palm's fronds keep their authored arch — no billboard frame (foliageWindHook COT_LEAF_BILLBOARD)
-  if (palm) { cards.deleteAttribute('aAxis'); cards.deleteAttribute('aLeaf'); }
+  // (built fresh without the frame's two streams, never trimmed with deleteAttribute: the cards are drawn every frame,
+  // and an attributes object that lost keys slows three's per-frame update of every geometry, geometryStreams.ts)
+  if (palm) cards = keepStreams(cards, Object.keys(cards.attributes).filter((name) => name !== 'aAxis' && name !== 'aLeaf'));
   // the crown's own shadow hull rides on the trunk (createTreeMeshPools builds the pool's proxy from it); a mangrove's
   // stilt arches cast with it
   // trees round 2: the hull's wood, then its crown masses, each with the share of the sun its sprays let through (the
@@ -3641,7 +3695,7 @@ export function createGarageTreeKit(
     roughness: 1,
     metalness: 0,
   });
-  foliageMaterial.envMapIntensity = 0.85;
+  // (2026-10-08: the leaves take the sky's full light, as the battlefield's do; materialEnvIntensity.ts)
   engineCtx.setupShadowMaterial?.(trunkMaterial);
   engineCtx.setupShadowMaterial?.(foliageMaterial);
   return {
@@ -3710,7 +3764,10 @@ export function buildGrassTuftGeometry(
 // than the authored per-map counts, restoring the density the road, structure and spawn
 // clearances trimmed since 1049e4e (verdant 899 -> 812 trees at the spawn pose). Mobile keeps
 // the authored counts. Read at build time, after the device tier is resolved.
-export function treeRichness(): number { return getDeviceTier() === 'mobile' ? 1 : 1.1; }
+// Layout identity (destruction core lane, 2026-10-08, the coordinator's ruling): every tier places what the desktop
+// places — a phone's trees are records (trunks block movement and shells, crowns hide), and the authority's indices are
+// the desktop's — so the phones' saving is in how a tree draws, never in which trees stand.
+export function treeRichness(): number { return 1.1; }
 
 /**
  * Trees round 2 (2026-10-03; Glacier Pass's census, gauntlet wave 4's "lone needle-like grass stalks" on Frosthollow):
@@ -4064,6 +4121,11 @@ function* vegetationBuildSteps(
   const _landScratch: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, sU: 0, sV: 0, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
     boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0, urban: 0 };
   const landUseAt = heightField._landUseAt ?? null;
+  // the time-to-battle lane (2026-10-08; the coordinator's ruling: grass follows the ground the player sees): a tuft's
+  // slope is the rendered near terrain's (the height field's contact surface: the triangle under it, its vertices kept
+  // for the field's life and shared with movement), not the analytic normal's four heights 1.2 m out; a field without
+  // one (the sandboxed harnesses' stubs) keeps the analytic normal
+  const _contactNormal = { x: 0, y: 1, z: 0 };
   // ground lane: the canopy's cover (set once the trees are placed; null before — a tuft built earlier ignores it)
   let woodsCoverAt: ((x: number, z: number) => number) | null = null;
   // r5 terrain_environment: map-authored no-vegetation discs (desert uses one
@@ -4084,8 +4146,24 @@ function* vegetationBuildSteps(
   const batterSeedAt = heightField._batterSeedAt ?? null;
   const batterAdmits = (x: number, z: number): boolean =>
     batterSeedAt !== null && railCuttingSeedAdmits(batterSeedAt(x, z), x, z);
+  // ground lane (2026-10-08, wave 274: "hard density edges"): a clumpy draw in [0, 1] (a 1.1 m value noise, inline — the
+  // grass harnesses compile this section without the module's helpers) the field gate and the margin line are read
+  // against, so the field's law and the wild sward's meet across the gate's band (tallGrass.ts admit: the same law)
+  const fieldDrawAt = (x: number, z: number): number => {
+    const fx = x / 1.1, fz = z / 1.1, ix = Math.floor(fx), iz = Math.floor(fz), tx = fx - ix, tz = fz - iz;
+    const sx = tx * tx * (3 - 2 * tx), sz = tz * tz * (3 - 2 * tz);
+    const h = (a: number, b: number): number => { const v = Math.sin(a * 127.1 + b * 311.7 + 74.7) * 43758.5453; return v - Math.floor(v); };
+    const a0 = h(ix, iz) + (h(ix + 1, iz) - h(ix, iz)) * sx, a1 = h(ix, iz + 1) + (h(ix + 1, iz + 1) - h(ix, iz + 1)) * sx;
+    return a0 + (a1 - a0) * sz;
+  };
+  // ground lane (2026-10-08, wave 274): the sward follows its ground on a map that asks it (the height field's hook,
+  // groundRedux.ts swardSlope: the sun in world xz and the strength) — absent on every other map
+  const swardSlopeK = heightField._swardSlope ?? null;
   const steepSeedOk = (normalY: number, x: number, z: number): boolean =>
     normalY >= 0.78 || (batterSeedAt !== null && normalY >= RAIL_CUTTING_SEED_NORMAL_Y && batterAdmits(x, z));
+  // ground lane (2026-10-08, the gauntlet's wave 260 on Cinder Junction): a cinder yard's weed clumps (the height field's
+  // hook, groundRedux.ts cinderYardWeedsAt) — absent on every other map, whose villages keep the old thinning
+  const yardWeedsAt = heightField._yardWeedsAt ?? null;
   function terrainDryness(
     x: number,
     z: number,
@@ -4100,8 +4178,11 @@ function* vegetationBuildSteps(
     const edgeHash = Math.sin(x * 12.9898 + z * 78.233 + 2678.049) * 43758.5453;
     if (groundType === 'hard' || heightField._roadDist(x, z) < 4.2 + (edgeHash - Math.floor(edgeHash)) * 1.6) return -1;
     if (groundType === 'soft' && roll > 0.3) return -1;
-    if (heightField._villageMask(x, z) > 0.35
-      && roll > (carpet ? 0.35 : 0.15)) return -1;
+    if (heightField._villageMask(x, z) > 0.35) {
+      // (a cinder yard: the tufts keep to the weeds' clumps, thickest at their hearts — none on the trodden cinder)
+      if (yardWeedsAt !== null) { if (roll > yardWeedsAt(x, z) * (carpet ? 0.9 : 0.45)) return -1; }
+      else if (roll > (carpet ? 0.35 : 0.15)) return -1;
+    }
     return groundType === 'soft' ? 0.5 : 0;
   }
   function rejectDenseScatter(
@@ -4163,6 +4244,7 @@ function* vegetationBuildSteps(
     let dry = terrainDryness(x, z, roll, carpet);
     if (dry < 0) return null;
     if (dry > 0) sy *= 1.5;
+    if (veg.tuftHeight !== undefined) sy *= veg.tuftHeight;
     // ground lane: little sward grows in a stand's shade — the forest floor is litter (the terrain draws it). The
     // carpet only: it always streams after the build (the clearance seal), while the midfield chunks are built partly
     // before the trees stand (the first-view ring, every chunk in a capture build) and partly after (the deferred
@@ -4191,15 +4273,15 @@ function* vegetationBuildSteps(
     // stray outliers between the clumps
     if (!resolveTuftScale(sn, clJ, roll, varJ)) return null;
     const sxzMul = _tuftScaleScratch[0], syMul = _tuftScaleScratch[1];
-    // PERF (performance_budget r6): slope test LAST — it is the expensive
-    // predicate (4 heightAt samples for the central-difference normal) and
-    // every cull above it is pure math over (x, z, the 8 pre-drawn rng
-    // values). All 8 rng draws happen unconditionally at the top of this
-    // function, so test ORDER cannot shift the rng stream: exactly the same
-    // candidate set is accepted with exactly the same appearance — the
-    // rejected majority just stops paying the 4-sample normal probe
-    // (measured: 1.26 M candidates per boot on verdant).
-    const normalY = heightField.getNormalAt(x, z).y;
+    // PERF (performance_budget r6): slope test LAST — it is the dearest
+    // predicate and every cull above it is pure math over (x, z, the 8
+    // pre-drawn rng values). All 8 rng draws happen unconditionally at the
+    // top of this function, so test ORDER cannot shift the rng stream
+    // (measured: 1.26 M candidates per boot on verdant). The slope is the
+    // rendered near terrain's (2026-10-08, _contactNormal above).
+    const normalY = heightField.getContactNormalAt
+      ? heightField.getContactNormalAt(x, z, _contactNormal).y
+      : heightField.getNormalAt(x, z).y;
     // ground lane: inside a cultivated field (past its grass margin) the tuft is the crop — none on a plough, a few on
     // a track, short straw on stubble, gold on ripe grain (crop ids: landUse.ts LAND_CROP). The fields keep to the
     // ground the terrain draws them on (its landW; tallGrass.ts admit reads the same gate): off the villages, the
@@ -4213,7 +4295,8 @@ function* vegetationBuildSteps(
         const fieldW = (1 - smoothstepJs(0.05, 0.30, heightField._villageMask(x, z)) * (1 - f.urban))
           * smoothstepJs(5.0, 8.0, heightField._roadDist(x, z)) * (1 - smoothstepJs(0.04, 0.10, 1 - normalY))
           * (1 - smoothstepJs(0.02, 0.10, heightField.getWaterMaskAt(x, z)));
-        if (fieldW > 0.5) {
+        // (wave 274: the field's law across the gate's band, a clumpy draw — tallGrass.ts admit: the same law)
+        if (fieldW > 0.15 + 0.70 * fieldDrawAt(x, z)) {
           // a ditch's water and a dry stone wall carry no sward, a bund half of one, a track a few tufts
           if (f.track > 0.5) {
             // (wave 79: no grass in a farm track's wheel lanes — tallGrass.ts admit: the same law) a ditch's water and a
@@ -4225,7 +4308,11 @@ function* vegetationBuildSteps(
             if (laneQ < 0 ? clJ < 0.45 : clJ < 0.5) return null;
             if (laneQ < 0) sy *= 0.6;
           }
-          else if (f.edgeM < f.marginM) {
+          // (wave 274: a grass margin meets the crop across the terrain's ragged band, a bund's and a wall's on their line —
+          // tallGrass.ts admit: the same law)
+          else if (f.boundary < 1.5
+            ? fieldDrawAt(x * 1.22 + 17.3, z * 1.22 - 5.1) < 1 - smoothstepJs(-1.6, 2.6, f.edgeM - f.marginM + (fieldDrawAt(x * 0.22 + 3.1, z * 0.22 + 7.7) - 0.5) * 3.0)
+            : f.edgeM < f.marginM) {
             if (f.boundary === 3 && f.edgeM < 0.62) return null;
             if (f.boundary === 2 && f.edgeM < 0.55 && clJ < 0.5) return null;
           } else if (!f.sward) return null;
@@ -4247,6 +4334,17 @@ function* vegetationBuildSteps(
       }
     }
     if (!steepSeedOk(normalY, x, z)) return null;
+    // (wave 274: thinner and shorter up a steep slope, drier on one turned to the sun — tallGrass.ts admit: the same law)
+    if (swardSlopeK !== null && normalY < 0.999) {
+      const steepK = smoothstepJs(0.04, 0.20, 1 - normalY) * swardSlopeK[2];
+      if (clJ < 0.55 * steepK) return null;
+      sy *= 1 - 0.30 * steepK;
+      const nn = heightField.getNormalAt(x, z), tilt = Math.hypot(nn.x, nn.z);
+      if (tilt > 1e-4) {
+        dry = Math.max(dry, Math.max(0, (nn.x * swardSlopeK[0] + nn.z * swardSlopeK[1]) / tilt)
+          * smoothstepJs(0.03, 0.16, 1 - normalY) * 0.55 * swardSlopeK[2]);
+      }
+    }
     const vv = varJ < (0.75 - dry * 0.5) ? 0 : 1;
     const y = heightField.getHeightAt(x, z);
     const tuftHeight = sy * syMul * (veg.stubblePatches ? stubbleHeightScale(x, z) : 1);
@@ -4299,6 +4397,17 @@ function* vegetationBuildSteps(
     return t;
   }
 
+  // ---- ground lane (2026-10-08, crater-render-spec §C): the battle's craters in the ground cover ----
+  // One law (groundCoverCraters.ts): inside 0.9 R of a crater the cover is gone, elsewhere in the overlay's reach it
+  // stands on base + offsetAt. The static meshes (grass chunks, bushes, the understorey) go through one patcher.
+  let craterLaw: GroundCoverCraters | null = null;
+  const craterFollower = createCraterFollower();
+  const craterPatcher = createStaticCoverPatcher();
+  function reseatInstances(mesh: THREE.InstancedMesh, count: number, ax0: number, az0: number, size: number,
+    x0: number, z0: number, x1: number, z1: number): number {
+    return craterLaw ? craterPatcher.reseat(craterLaw, mesh as never, count, ax0, az0, size, x0, z0, x1, z1) : 0;
+  }
+
   yield { stage: 'grassPrep' }; // perf-r3: yield before scatter
   // ---- midfield grass scatter (map-wide chunks, unchanged system) ----
   interface GrassChunkMesh {
@@ -4346,7 +4455,15 @@ function* vegetationBuildSteps(
         if (!geometry.boundingSphere) geometry.computeBoundingSphere();
         return geometry.boundingSphere!;
       },
-      publish: buffers => publishGrassChunk(gc, buffers),
+      publish: buffers => {
+        publishGrassChunk(gc, buffers);
+        // (crater-render-spec §C) a chunk built after craters takes them as it is published
+        if (craterLaw?.active && gc.meshes && craterLaw.touches(gc.x0, gc.z0, gc.x0 + CHUNK_SIZE, gc.z0 + CHUNK_SIZE)) {
+          for (const entry of gc.meshes) {
+            reseatInstances(entry.mesh, entry.total, gc.x0, gc.z0, CHUNK_SIZE, gc.x0, gc.z0, gc.x0 + CHUNK_SIZE, gc.z0 + CHUNK_SIZE);
+          }
+        }
+      },
     });
   }
   function advanceGrassChunk(gc: GrassChunk, eager = false): boolean {
@@ -4493,6 +4610,8 @@ function* vegetationBuildSteps(
     random: mulberry32, makeTuft: (x, z, crng) => makeTuft(x, z, crng, true),
     targets: () => [inactiveCarpetBuffers(0), inactiveCarpetBuffers(1)],
     publish: publishCarpet,
+    // (crater-render-spec §C) a carpet tuft in a crater's cleared bowl is dropped, the rest stands on base + offsetAt
+    reseat: (x, z) => (craterLaw?.active ? (craterLaw.holeAt(x, z) ? NaN : craterLaw.liftAt(x, z)) : 0),
   });
   let _carpetCellX = 0x7fffffff;
   let _carpetCellZ = 0x7fffffff;
@@ -5041,7 +5160,10 @@ function* vegetationBuildSteps(
     vertexColors: true, roughness: 0.92, metalness: 0.0,
   });
   barkMat.normalScale.set(0.85, 0.85);
-  barkMat.envMapIntensity = 0.85;
+  // (2026-10-08, the world-ibl lane: bark, crowns, leaves and shrubs take the sky's full image-based light. Their trims —
+  // bark 0.85, far canopy 0.80, leaves and shrubs 0.75 — never applied (three overwrote them with the scene's intensity),
+  // so every approved crown was lit at the full sky; the shaded clusters' sky dim is cotLeafSky below.
+  // engine/materialEnvIntensity.ts now applies an authored value.)
   engineCtx.setupShadowMaterial(barkMat, barkHook);
   barkMat.customProgramCacheKey = () => 'world-tree-bark-v12'; // trees lane: the near dissolve only as the camera grazes bark (round 4: fine wood's reach; round 77: the wind law and the moss)
   barkMat.userData.cotWoodFineFar = uWoodFineFar; // the frame probe's same-page A/B (its wood-fine toggle)
@@ -5054,7 +5176,6 @@ function* vegetationBuildSteps(
   // FrontSide culled half of them at any azimuth (closed lobe canopies are
   // unaffected beyond a little overdraw)
   canopyFarMat.side = THREE.DoubleSide;
-  canopyFarMat.envMapIntensity = 0.80; // vista pass (2026-09-19): 1.35 read as pale mint at range; round 77: 1.08 → 0.80, the lobes' sphere normals now carry a shade side and the fill flattened it
   // r4 terrain_environment: the far-LOD lobes were SMOOTH-SHADED SOLIDS —
   // beyond 260 m every crown read as a "playdough broccoli" blob with a
   // clean round silhouette (the single loudest AAA failure in the critique).
@@ -5416,7 +5537,6 @@ function* vegetationBuildSteps(
         map: foliageTex[sp], alphaTest: 0.38, alphaToCoverage: true, side: THREE.DoubleSide,
         vertexColors: true, roughness: 1.0, metalness: 0.0,
       });
-      fm.envMapIntensity = 0.75; // keep ambient on shaded leaves — no black cards (round 77: 0.85 → 0.75, the cascades now shade the crowns)
       // Round 77b: the class's detail tile as the card's normal map (desktop; the mobile library returns null and the
       // phones keep the flat card program). The tile is a material property, so every species shares one program.
       // trees round 2: a slot grown as a form of another family takes that family's detail (grownDefinition)
@@ -5570,7 +5690,7 @@ function* vegetationBuildSteps(
   // r6: saplings draw from their OWN stream — consuming the shared placement
   // rng shifted every tree/bush placed after the first cluster and broke the
   // authored establishing-shot compositions (foreground framing oaks moved)
-  const sapRng = mulberry32((seed ^ 0x5a9) >>> 0);
+  const sapRngShared = mulberry32((seed ^ 0x5a9) >>> 0);
   const clusters: VegetationDisc[] = [];
   // Round 77b: the rim-forest blocks as discs (centre, half the block width) — the stands the rim understorey
   // feathers; recorded from the placement below, no RNG draw of their own
@@ -5583,6 +5703,12 @@ function* vegetationBuildSteps(
   const authoredTreeDonors = veg.authoredTrees || veg.tidalTrees ? new Set<TreeRecord>() : null;
   const treeObstacles: TreeObstacle[] = [];
   const protectedSpawns = [L.spawns.player, ...L.spawns.enemies];
+  // Symmetric deployments (modes lane, 2026-10-08): both sides' deployment slots keep the clearings the pads keep
+  // (sim/matchPlacement.ts deploymentClearings). The seeded passes still test the pads alone (a rejected candidate
+  // would shift every later draw); the trees standing within 26 m of a slot drop after every placement (excludeVegetation
+  // below), and the draw-free tests — the understorey's admission, the snags' hash — read the slots beside the pads.
+  const deploymentSlots = deploymentClearings(heightField);
+  const spawnClearings = [...protectedSpawns, ...deploymentSlots];
   /** Rim-forest clearance around every spawn: tank + chase camera, not a meadow (was 36 m, see placeRimForest). */
   const RIM_SPAWN_CLEARANCE_M = 20;
   // SPOTTING WIRING: concealment discs {x,z,r,add} sampled by the spotting
@@ -5624,9 +5750,59 @@ function* vegetationBuildSteps(
   // other options on siteOk's signature never read it by position)
   let placingTownBelts = false;
   /** `settled`: an opted-in map's authored station, admitted inside the settlement rect (`authoredInSettlement`). */
+  /** The Redrock lane: ground above the map's tree ceiling (veg.treeCeilingY) grows no tree. */
+  function overTreeCeiling(x: number, z: number): boolean {
+    return veg.treeCeilingY !== undefined && heightField.getHeightAt(x, z) > veg.treeCeilingY;
+  }
+  /** The Redrock lane: a candidate's own stream under veg.keyedPlacement (the seed, the placement's kind, its ordinal). */
+  const keyedPlacement = veg.keyedPlacement === true;
+  function keyedStream(kind: number, ordinal: number): RandomSource {
+    let h = Math.imul(seed | 0, 0x9e3779b1) ^ Math.imul(kind + 1, 0x85ebca77) ^ Math.imul(ordinal + 1, 0xc2b2ae3d);
+    h = Math.imul(h ^ (h >>> 16), 0x7feb352d);
+    h = Math.imul(h ^ (h >>> 15), 0x846ca68b);
+    return mulberry32((h ^ (h >>> 16)) >>> 0);
+  }
+  /** Each stand's key (its attempt's ordinal), for its saplings' and its fringe bushes' own streams. */
+  const clusterKeys: number[] = [];
+  // The Redrock lane: the halves' cover (veg.coverHalvesAbout) — the side of the line through the turning point a seat
+  // lies on (the map's north and south halves, or its east and west, whichever the deployments face across), and
+  // whether that half of the playable square already holds more trees
+  const halvesAbout = veg.coverHalvesAbout ?? null;
+  const halvesAxis = [0, 1];
+  if (halvesAbout) {
+    const ex = L.spawns.enemies.reduce((acc, e) => acc + e.x, 0) / L.spawns.enemies.length - L.spawns.player.x;
+    const ez = L.spawns.enemies.reduce((acc, e) => acc + e.z, 0) / L.spawns.enemies.length - L.spawns.player.z;
+    if (Math.abs(ex) > Math.abs(ez)) { halvesAxis[0] = Math.sign(ex); halvesAxis[1] = 0; } else halvesAxis[1] = Math.sign(ez) || 1;
+  }
+  function coverHalf(x: number, z: number): number {
+    return (x - halvesAbout!.x) * halvesAxis[0] + (z - halvesAbout!.z) * halvesAxis[1] < 0 ? 0 : 1;
+  }
+  const _coverHalves = [0, 0];
+  // (symmetric deployments: the last evening counts without the trees the deployment clearings drop after it)
+  function countTreeHalves(withoutClearings = false): void {
+    _coverHalves[0] = 0; _coverHalves[1] = 0;
+    for (const t of trees) {
+      if (Math.max(Math.abs(t.x), Math.abs(t.z)) > PLAYABLE_HALF_EXTENT_M) continue;
+      if (withoutClearings && !isClearOfSpawns(t.x, t.z, deploymentSlots, 26)) continue;
+      _coverHalves[coverHalf(t.x, t.z)]++;
+    }
+  }
+  function treeHalfAhead(x: number, z: number): boolean {
+    if (!halvesAbout || Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M) return false;
+    countTreeHalves();
+    const h = coverHalf(x, z);
+    return _coverHalves[h] > _coverHalves[1 - h];
+  }
+  /** A seat drawn in the other half, turned about the point into this one (veg.coverHalvesAbout). */
+  const _evenSeat = [0, 0];
+  function seatInHalf(x: number, z: number, half: number): number[] {
+    const turn = coverHalf(x, z) !== half;
+    _evenSeat[0] = turn ? 2 * halvesAbout!.x - x : x; _evenSeat[1] = turn ? 2 * halvesAbout!.z - z : z;
+    return _evenSeat;
+  }
   function siteOk(x: number, z: number, margin: number, settled = false): boolean {
     if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
-    if (inAvoid(x, z)) return false;
+    if (inAvoid(x, z) || overTreeCeiling(x, z)) return false;
     let inPark = false;
     if (veg.parks) {
       for (const p of veg.parks) {
@@ -5768,12 +5944,38 @@ function* vegetationBuildSteps(
     pushTree(x, z, species, 0.95, 1.7, true, r, spread); // wide size spread per stand
     return true;
   }
+  // the trees lane (2026-10-06): a landscape map's woods (VegetationConfig `landscapeWoods`) — the wood-zone score of a
+  // point (its height's quantile over the square, and half a point more at the zone's slope), the score a woodlot's
+  // centre needs (the share `zone` of the square's ground scores over it) and the overlap its stands may close by
+  const landscape = veg.landscapeWoods ?? null;
+  const landscapeHeights: number[] = [];
+  if (landscape) {
+    for (let z = -430; z <= 430; z += 24) for (let x = -430; x <= 430; x += 24) landscapeHeights.push(heightField.getHeightAt(x, z));
+    landscapeHeights.sort((a, b) => a - b);
+  }
+  const landscapeSlope = Math.tan(((landscape?.slopeDeg ?? 12) * Math.PI) / 180);
+  function woodZoneScore(x: number, z: number): number {
+    const h = heightField.getHeightAt(x, z);
+    let lo = 0, hi = landscapeHeights.length;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (landscapeHeights[mid] < h) lo = mid + 1; else hi = mid; }
+    const ny = Math.max(0.05, heightField.getNormalAt(x, z).y), grade = Math.sqrt(Math.max(0, 1 - ny * ny)) / ny;
+    return lo / Math.max(1, landscapeHeights.length) + 0.5 * Math.min(1, grade / landscapeSlope);
+  }
+  const landscapeThreshold: number = landscape ? (() => {
+    const scores: number[] = [];
+    for (let z = -430; z <= 430; z += 24) for (let x = -430; x <= 430; x += 24) scores.push(woodZoneScore(x, z));
+    scores.sort((a, b) => a - b);
+    return scores[Math.min(scores.length - 1, Math.floor(scores.length * (1 - Math.min(1, Math.max(0, landscape.zone)))))];
+  })() : 0;
+  const landscapeMerge = landscape ? (landscape.merge ?? 30) : null;
   function isSeparatedTreeCluster(x: number, z: number, r = 0): boolean {
     // trees round 2: a woodlot keeps clear of the others by a little of its own reach too (the round-1 stands by the
     // others' only). Round 2b: a tenth of it, not half — at half, the round-1-sized woodlots fitted a third fewer stands
     // on the crowded maps (Nordhavn Fjord 81 -> 49, Monsoon Ridge 120 -> 75) and their corridors lost their cover
     for (const c of clusters) {
-      if (Math.hypot(x - c.x, z - c.z) < c.r + 26 + r * 0.1) return false;
+      // (the trees lane: a landscape map's stands may close into one wood, their outlines overlapping by its merge)
+      const need = landscapeMerge !== null ? Math.max(6, c.r + r - landscapeMerge) : c.r + 26 + r * 0.1;
+      if (Math.hypot(x - c.x, z - c.z) < need) return false;
     }
     return true;
   }
@@ -5837,6 +6039,7 @@ function* vegetationBuildSteps(
    * after it (the lone trees, the belts, the rim, the bushes) keeps its seat; the woodlots then grow on their own stream.
    */
   function replayRoundOneStandDraws(): void {
+    if (keyedPlacement) return; // (keyed: no shared stream to keep in step)
     const t0 = trees.length, o0 = treeObstacles.length, c0 = concealers.length;
     const scratch: VegetationDisc[] = [];
     let attempts = 0;
@@ -5862,7 +6065,7 @@ function* vegetationBuildSteps(
   }
   function placeTreeClusters(): void {
     replayRoundOneStandDraws();
-    const wr = mulberry32((seed ^ 0x30d1a7) >>> 0);
+    const wrShared = mulberry32((seed ^ 0x30d1a7) >>> 0);
     // trees round 2b: a hyper-arid place's stands are open groves in the low ground (a third of a wood's trees over
     // three and a half times the ground each, seated in a wadi bed or a hollow); Las Cañadas' are open groves anywhere
     const arid = treeBiomeArid(cfg?.id), open = treeBiomeOpen(cfg?.id);
@@ -5873,7 +6076,13 @@ function* vegetationBuildSteps(
     let attempts = 0;
     const clusterTarget = Math.round(veg.clusterCount * treeRichness());
     // round 2b: more tries than the round-1 2600 — a woodlot of the round-1 footprint fits fewer ways on a crowded map
-    while (clusters.length < clusterTarget && attempts++ < 6000) {
+    // (the trees lane: a landscape map keeps its woods' tree budget — the target stands' mean count, a round-2b stand's
+    // 24-57 trees half again — placing stands past the target, up to a quarter more, until its stands hold it)
+    const standBudget = landscape ? clusterTarget * (open ? 14.2 : 60.75) : 0;
+    let standTrees = 0;
+    while ((landscape ? clusters.length < clusterTarget * 1.25 && (clusters.length < clusterTarget || standTrees < standBudget)
+      : clusters.length < clusterTarget) && attempts++ < 6000) {
+      const wr = keyedPlacement ? keyedStream(1, attempts) : wrShared;
       // the stand's leading species first: a palm stand on a map that names its palm sites stands in one (the oasis,
       // the wadi, the spring), any other anywhere on the field
       const species = pickSpecies(veg.clusterMix, wr());
@@ -5884,7 +6093,10 @@ function* vegetationBuildSteps(
         const a = wr() * Math.PI * 2, rr = site.r * Math.sqrt(wr());
         x = site.x + Math.cos(a) * rr; z = site.z + Math.sin(a) * rr;
       }
+      if (treeHalfAhead(x, z)) continue;
       if (!siteOk(x, z, 6)) continue;
+      // (the trees lane: a landscape map's woodlot stands on its wood-zone ground)
+      if (landscape && woodZoneScore(x, z) < landscapeThreshold) continue;
       if (arid && !palmStand && hollowDepthAt(x, z) < 0.8) continue;
       if (!uplandZoneOk(x, z, species)) continue;
       // the stand's trees and the ground each takes, so its area follows its count — a round-1 stand drew its radius
@@ -5919,14 +6131,16 @@ function* vegetationBuildSteps(
       const disc: VegetationDisc = { x, z, r };
       let cx = 0, cz = 0;
       if (clearing) { const p = standPoint(index, disc, clearing.a, clearing.k); cx = p[0]; cz = p[1]; }
-      for (let i = 0; i < n * 4 && placed < n; i++) {
+      // (the trees lane: a landscape map's stand, closing into its neighbours, tries twice as long to seat its count)
+      for (let i = 0; i < n * (landscape ? 8 : 4) && placed < n; i++) {
         // the margin is denser than the heart (k ~ u^0.42), the stand thins in patches, a clearing stays open
         const a = wr() * Math.PI * 2, k = Math.pow(wr(), 0.42), keep = wr();
         const sp = wr() < 0.8 ? species : pickSpecies(veg.loneMix, wr());
         const p = standPoint(index, disc, a, k);
         const px = p[0], pz = p[1];
         if (clearing && Math.hypot(px - cx, pz - cz) < clearing.r) continue;
-        if (k < 0.85 && keep > 0.5 + 0.8 * woodlotDensity(px, pz)) continue;
+        // (the trees lane: a landscape map's wood keeps no thin patches — the draw is made all the same)
+        if (!landscape && k < 0.85 && keep > 0.5 + 0.8 * woodlotDensity(px, pz)) continue;
         // a palm grove keeps to its water (wave 26: a palm stand's trees past the site grew as acacias round it, three
         // to each palm on Sirocco Wadi)
         if (palmStand && !palmSiteOk(px, pz)) continue;
@@ -5946,12 +6160,19 @@ function* vegetationBuildSteps(
         // add trees or change RNG.
         rememberAuthoredDonors(cb0, Math.floor(placed / 4));
         clusters.push(disc);
+        standTrees += placed;
+        clusterKeys.push(attempts);
       } else {
         // a stand that could not stand leaves no stray trees in the open (wave 26: the Caldera floor's attempts on its
         // steep cinder left a scatter of strays over it); its draws are spent as they were
         woodlotShapes.length = index;
         trees.length = cb0; treeObstacles.length = ob0; concealers.length = cc0;
       }
+    }
+    // (the trees lane: a landscape map's census — its stands against their target, the score a centre needed)
+    if (landscape) {
+      group.userData.landscapeWoods = { stands: clusters.length, target: clusterTarget, attempts: Math.min(attempts, 6000),
+        threshold: +landscapeThreshold.toFixed(3), standTrees, standBudget: Math.round(standBudget) };
     }
   }
   placeTreeClusters();
@@ -5997,6 +6218,7 @@ function* vegetationBuildSteps(
    * keeps its seat (the woodlots' rule, replayRoundOneStandDraws).
    */
   function replayRoundOneLoneDraws(): void {
+    if (keyedPlacement) return; // (keyed: no shared stream to keep in step)
     const t0 = trees.length, o0 = treeObstacles.length, c0 = concealers.length;
     for (let i = 0, placed = 0, loneTarget = Math.round(veg.loneCount * treeRichness()); i < 800 && placed < loneTarget; i++) {
       const x = (rng() * 2 - 1) * 460, z = (rng() * 2 - 1) * 460;
@@ -6199,7 +6421,8 @@ function* vegetationBuildSteps(
   function placeLoneTrees(): void {
     replayRoundOneLoneDraws();
     const loneFrom = trees.length;
-    const lr = mulberry32((seed ^ 0x1a0e5) >>> 0);
+    const lrShared = mulberry32((seed ^ 0x1a0e5) >>> 0);
+    let lr: RandomSource = lrShared;
     const arid = treeBiomeArid(cfg?.id), zoned = uplandBand !== null;
     const loneTarget = Math.round(veg.loneCount * treeRichness());
     let reach = 0;
@@ -6226,12 +6449,14 @@ function* vegetationBuildSteps(
       }
     };
     for (let i = 0; i < 2400 && placed < loneTarget; i++) {
+      if (keyedPlacement) lr = keyedStream(2, i);
       const roll = lr();
       let x = (lr() * 2 - 1) * 460, z = (lr() * 2 - 1) * 460;
       if (arid || zoned) {
         // a wadi bed or a hollow (or the form's zone, below), or nothing (try again); a tree and now and then a companion
         // (the companion drawn before the seat's test, as round 2b drew it: these places' trees stay where they stood)
         const companions = lr() < 0.4 ? 1 : 0;
+        if (treeHalfAhead(x, z)) continue;
         if (arid && hollowDepthAt(x, z) < 1.2) continue;
         const species = pickSpecies(veg.loneMix, lr());
         if (!uplandZoneOk(x, z, species)) continue;
@@ -6378,22 +6603,24 @@ function* vegetationBuildSteps(
   yield { stage: 'treeLoneAndBelts' };
   function placeRimForest(): void {
     for (let c = 0; c < veg.rimCount; c++) {
-      const slot = (c + (rng() - 0.5)) / Math.max(1, veg.rimCount);
-      const a = slot * Math.PI * 2 + (rng() - 0.5) * 0.22;
-      const rad = 442 + rng() * 52;
+      const br = keyedPlacement ? keyedStream(4, c) : rng;
+      const slot = (c + (br() - 0.5)) / Math.max(1, veg.rimCount);
+      const a = slot * Math.PI * 2 + (br() - 0.5) * 0.22;
+      const rad = 442 + br() * 52;
       const cx = Math.cos(a) * rad, cz = Math.sin(a) * rad;
       if (Math.max(Math.abs(cx), Math.abs(cz)) > 502) continue;
-      const species = pickSpecies(veg.rimMix, rng());
-      const bw = 26 + rng() * 44;          // block width wanders 26-70 m
-      const dens = 0.55 + rng() * 0.95;    // per-block density wanders
-      const n = Math.max(6, Math.round((16 + rng() * 18) * dens));
-      const tb = rng();
-      _standTint.setRGB(0.88 + tb * 0.24, 0.94 + (rng() - 0.5) * 0.10,
+      const species = pickSpecies(veg.rimMix, br());
+      const bw = 26 + br() * 44;          // block width wanders 26-70 m
+      const dens = 0.55 + br() * 0.95;    // per-block density wanders
+      const n = Math.max(6, Math.round((16 + br() * 18) * dens));
+      const tb = br();
+      _standTint.setRGB(0.88 + tb * 0.24, 0.94 + (br() - 0.5) * 0.10,
         0.88 + (1 - tb) * 0.22);
       const b0 = trees.length;
       let placed = 0;
       for (let i = 0; i < n; i++) {
-        const x = cx + (rng() - 0.5) * bw, z = cz + (rng() - 0.5) * bw;
+        const tr = keyedPlacement ? keyedStream(5, c * 128 + i) : rng;
+        const x = cx + (tr() - 0.5) * bw, z = cz + (tr() - 0.5) * bw;
         if (Math.max(Math.abs(x), Math.abs(z)) > 506) continue;
         // maps r1: the rim ring can cross open WATER now (coastal bay fills the
         // east rim) — no forest wading in the sea. noVeg is false along every
@@ -6405,9 +6632,9 @@ function* vegetationBuildSteps(
         // cleared the whole forest the reference build (1049e4e) had around the
         // Fjord and Alpine spawns; 20 m still clears the tank and the camera
         // (which sits ~12 m behind the spawn) and keeps the stand in view.
-        if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M)) continue;
+        if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M) || overTreeCeiling(x, z)) continue;
         // (a hyper-arid border's trees are field trees in its hollows, not a forest ring's giants: round 3)
-        pushTree(x, z, rng() < 0.85 ? species : pickSpecies(veg.rimMix, rng()), aridRim ? 0.95 : 1.35, aridRim ? 1.5 : 2.2, false);
+        pushTree(x, z, tr() < 0.85 ? species : pickSpecies(veg.rimMix, tr()), aridRim ? 0.95 : 1.35, aridRim ? 1.5 : 2.2, false, tr);
         placed++;
         if (dropRimTreeOutsideWoods(x, z)) continue;
         trees[trees.length - 1].wood = true;
@@ -6421,14 +6648,15 @@ function* vegetationBuildSteps(
   // saddle emergents between the rim blocks
   function placeSaddleTrees(): void {
     for (let i = 0, nSad = Math.round(veg.rimCount * 1.5); i < nSad; i++) {
-      const a = rng() * Math.PI * 2;
-      const rad = 446 + rng() * 48;
-      const x = Math.cos(a) * rad + (rng() - 0.5) * 18;
-      const z = Math.sin(a) * rad + (rng() - 0.5) * 18;
+      const sr = keyedPlacement ? keyedStream(6, i) : rng;
+      const a = sr() * Math.PI * 2;
+      const rad = 446 + sr() * 48;
+      const x = Math.cos(a) * rad + (sr() - 0.5) * 18;
+      const z = Math.sin(a) * rad + (sr() - 0.5) * 18;
       if (Math.max(Math.abs(x), Math.abs(z)) > 506) continue;
       if (noVeg(x, z)) continue; // maps r1: see the rim-block note (sea rim)
-      if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M)) continue;
-      pushTree(x, z, pickSpecies(veg.rimMix, rng()), aridRim ? 0.9 : 1.2, aridRim ? 1.4 : 1.9, false);
+      if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M) || overTreeCeiling(x, z)) continue;
+      pushTree(x, z, pickSpecies(veg.rimMix, sr()), aridRim ? 0.9 : 1.2, aridRim ? 1.4 : 1.9, false, sr);
       if (dropRimTreeOutsideWoods(x, z)) continue;
       trees[trees.length - 1].wood = true;
       rimTrees.push(trees[trees.length - 1]);
@@ -6446,6 +6674,7 @@ function* vegetationBuildSteps(
   function placeSaplings(): void {
     for (let ci = 0; ci < clusters.length; ci++) {
       const c = clusters[ci];
+      const sapRng = keyedPlacement ? keyedStream(7, clusterKeys[ci]) : sapRngShared;
       const nSap = 3 + (sapRng() * 4) | 0;
       for (let sIt = 0; sIt < nSap; sIt++) {
         const sa = sapRng() * Math.PI * 2;
@@ -6501,6 +6730,28 @@ function* vegetationBuildSteps(
     }
   }
   placeSaplings();
+  /**
+   * The Redrock lane (veg.coverHalvesAbout): the halves' trees evened at the last. The border's blocks and a stand's
+   * saplings grow in runs along one half, so where they leave a half short a lone tree is seated in it — each its own
+   * keyed draws, a seat drawn in the other half turned about the point, a hyper-arid place's in a bed or a hollow — until
+   * the halves stand within a tree of each other.
+   */
+  function evenTreeHalves(): void {
+    if (!halvesAbout) return;
+    const arid = treeBiomeArid(cfg?.id);
+    for (let i = 0; i < 2400; i++) {
+      countTreeHalves(true);
+      if (Math.abs(_coverHalves[0] - _coverHalves[1]) <= 1) return;
+      const r = keyedStream(13, i);
+      const seat = seatInHalf((r() * 2 - 1) * 460, (r() * 2 - 1) * 460, _coverHalves[0] < _coverHalves[1] ? 0 : 1);
+      const x = seat[0], z = seat[1], species = pickSpecies(veg.loneMix, r());
+      if (arid && hollowDepthAt(x, z) < 1.2) continue;
+      if (!isClearOfSpawns(x, z, deploymentSlots, 26)) continue;
+      if (!uplandZoneOk(x, z, species)) continue;
+      if (addTree(x, z, species, r)) trees[trees.length - 1].field = true;
+    }
+  }
+  evenTreeHalves();
 
   /**
    * Trees lane (2026-10-06): a map's hedge trees (VegetationConfig `hedgeTrees`). The playable ground is read on a
@@ -6664,15 +6915,28 @@ function* vegetationBuildSteps(
   }
   placeTidalTrees();
   let rootDecalOrdinals: Map<TreeRecord,number> | null = null;
-  if (placementAdmission || roadBlockedRimTrees.size) {
+  const inDeploymentClearing = (tree: TreeRecord): boolean => !isClearOfSpawns(tree.x, tree.z, deploymentSlots, 26);
+  const clearsDeployment = trees.some(inDeploymentClearing);
+  const clearedHedgeTrees = clearsDeployment ? trees.reduce((n, t) => n + (t.hedgeRow && inDeploymentClearing(t) ? 1 : 0), 0) : 0;
+  if (placementAdmission || roadBlockedRimTrees.size || clearsDeployment) {
     rootDecalOrdinals=new Map(trees.map((tree,index)=>[tree,index]));
+  }
+  if (placementAdmission || roadBlockedRimTrees.size) {
     group.userData.roadPlacementClearance={rejectedTrees:excludeVegetation(
       trees,treeObstacles,concealers,tree=>roadBlockedRimTrees.has(tree)
         || newlyUnsafeRoadSite(tree.x,tree.z,9,.82),group.userData.tidalMangroves)};
   }
+  // symmetric deployments: the trees within a deployment slot's clearing, after every seeded pass (the root decals keep
+  // their stream through rootDecalOrdinals, as for the road clearance)
+  group.userData.deploymentClearance = { slots: deploymentSlots.length, rejectedTrees: clearsDeployment
+    ? excludeVegetation(trees, treeObstacles, concealers, inDeploymentClearing, group.userData.tidalMangroves) : 0 };
   roadBlockedRimTrees.clear();
-  // (trees lane: the hedge trees still standing once the structure, road and tidal passes have taken theirs)
-  if (group.userData.hedgeTrees) group.userData.hedgeTrees.standing = trees.reduce((n, t) => n + (t.hedgeRow ? 1 : 0), 0);
+  // (trees lane: the hedge trees still standing once the structure, road and tidal passes have taken theirs; the
+  // deployment clearings' share counted apart)
+  if (group.userData.hedgeTrees) {
+    group.userData.hedgeTrees.standing = trees.reduce((n, t) => n + (t.hedgeRow ? 1 : 0), 0);
+    group.userData.hedgeTrees.clearings = clearedHedgeTrees;
+  }
   // Each LOD is a trunk mesh (opaque bark) + a card mesh (alpha foliage) sharing
   // the same instance matrices.
   const _whiteScratch = new THREE.Color(1, 1, 1);
@@ -6691,7 +6955,7 @@ function* vegetationBuildSteps(
     for (let i = 0; i < trees.length; i++) {
       const t = trees[i];
       if (t.species === 'palm' || (t.species === 'willow' && veg.willowForm === 'tidalMangrove')) continue;
-      if (!isClearOfSpawns(t.x, t.z, protectedSpawns, 45)) continue;
+      if (!isClearOfSpawns(t.x, t.z, spawnClearings, 45)) continue;
       const middle = 1 - smoothstepJs(180, 470, Math.hypot(t.x, t.z));
       if (treePositionNoise(t.x, t.z, 9) >= snagShare * (0.35 + 1.3 * middle)) continue;
       const e = t.mat.elements;
@@ -7089,7 +7353,6 @@ function* vegetationBuildSteps(
     const material = new THREE.MeshStandardMaterial({
       map, alphaTest: 0.38, alphaToCoverage: true, side: THREE.DoubleSide, vertexColors: true, roughness: 1.0, metalness: 0.0,
     });
-    material.envMapIntensity = 0.75;
     const tile = leafDetail.texture(leafDetail.classOf('oak', pal));
     if (tile) { material.normalMap = tile; material.normalScale.set(LEAF_DETAIL_NORMAL_SCALE, LEAF_DETAIL_NORMAL_SCALE); }
     material.defines = { ...(material.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: GROWN_CROWN_TRANSMISSION.toFixed(2),
@@ -7115,8 +7378,16 @@ function* vegetationBuildSteps(
     const shrubGrowth: GrowthSpecies = bushSpecies === 'willow' && veg.willowForm === 'tidalMangrove' ? 'mangrove'
       : shrubForm ?? (grownTrees ? formOf(bushSpecies)?.form : null) ?? bushSpecies;
     // (trees lane, 2026-10-05: on a bare map a deciduous shrub stands bare, its winter twigs or canes)
+    // (trees lane, 2026-10-08, the gauntlet's wave 260 on Hostomel's handcart: the near bush "flat olive-brown leaf cards
+    // with dark outlines, a heap of paper cut-outs"): a shrub grown as its bush slot's own leafy form takes that form's
+    // leaves as the slot's trees do (grownDefinition: treeBiomePalette's leafy form) — the birch slot's leafy birch on
+    // Hostomel and the reservoir drew its leaf sprays in the bare winter birch's twig brown (grownTintLaw's birch without
+    // leaves); a map's own shrub form keeps its own palette, and the place's shrub colour still wins
+    const bushSlotLeaves = grownTrees && !shrubForm && formOf(bushSpecies)?.leaves === true;
+    const bushFormTerms = bushSlotLeaves || shrubColour
+      ? { ...(bushSlotLeaves ? { leaves: true } : {}), ...(shrubColour ? { colour: shrubColour } : {}) } : null;
     const bushPal = grownTrees
-      ? bareFormPalette(treeBiomePalette(palOf(bushSpecies), shrubColour ? { colour: shrubColour } : null, false, treeBiomeColour(cfg?.id)),
+      ? bareFormPalette(treeBiomePalette(palOf(bushSpecies), bushFormTerms, false, treeBiomeColour(cfg?.id)),
         shrubGrowth, bareMap)
       : palOf(bushSpecies);
     const shrubMats = shrubMaterials(shrubForm, bushPal);
@@ -7166,10 +7437,12 @@ function* vegetationBuildSteps(
       : [buildBushCards(mulberry32(seed + 31), bushPal), buildBushCards(mulberry32(seed + 32), bushPal)];
     const bushPlacements: [THREE.Matrix4[], THREE.Matrix4[]] = [[], []];
     const bushKeep: [boolean[],boolean[]]=[[],[]];
-    function addBush(x: number, z: number, hedge = false): void {
+    function addBush(x: number, z: number, hedge = false, br: RandomSource = rng): void {
       if (Math.max(Math.abs(x), Math.abs(z)) > 470) return;
       if (inAvoid(x, z)) return;
-      if (rng() > veg.bushCount) return; // per-map density scale
+      if (br() > veg.bushCount) return; // per-map density scale
+      // (the Redrock lane: no shrub on a dome's cap or a jebel's top either; veg.treeCeilingY, absent on every other map)
+      if (overTreeCeiling(x, z)) return;
       if (admission()._roadDist(x, z) < 6) return;
       if (admission().getGroundType(x, z) === 'soft' || (noVeg(x, z) && !batterAdmits(x, z))) return;
       if (!steepSeedOk(admission().getNormalAt(x, z).y, x, z)) return;
@@ -7182,7 +7455,7 @@ function* vegetationBuildSteps(
         const biome = smoothstepJs(0.42, 0.70, sb.n2);
         const thicket = smoothstepJs(0.44, 0.78, sb.n1);
         clump = biome * (0.12 + 0.88 * thicket);
-        if (rng() > clump * 0.95 + 0.05) return;
+        if (br() > clump * 0.95 + 0.05) return;
       }
       // ground lane (2026-10-03): a field bush on a map with a field system grows in the nearest boundary's margin
       // (hedgeSite, as the lone trees) — decided where its candidate was drawn, so every seeded draw is unchanged
@@ -7216,16 +7489,16 @@ function* vegetationBuildSteps(
       // hull-height concealers: foliage reaches ~2.5-3 m so a parked tank is
       // genuinely occluded (knee-high shrubs sold zero visual concealment)
       // r5: size keyed to the clump core — 2-3x spread, big growth at centers
-      const sc = (1.6 + rng() * 1.6) * (0.7 + clump * 0.45);
-      _q.setFromAxisAngle(_up, rng() * Math.PI * 2);
+      const sc = (1.6 + br() * 1.6) * (0.7 + clump * 0.45);
+      _q.setFromAxisAngle(_up, br() * Math.PI * 2);
       // ground lane (2026-10-03, the gauntlet: bushes were "near-identical round green balls"): each shrub its own shape —
       // an oval footprint (the across axis 72–100 % of the cover axis, so it never leaves its cover disc), a crown a
       // little lower or taller, and a lean of up to 6° about its own long axis; position-hashed, no seeded draw
       const hz = treePositionNoise(x, z, 41), hy = treePositionNoise(x, z, 43), ht = treePositionNoise(x, z, 47);
       _qLean.setFromAxisAngle(_axLean.set(1, 0, 0), (ht - 0.5) * 0.21);
       _q.multiply(_qLean);
-      _m4.compose(_pv.set(x, y - 0.05, z), _q, _sv.set(sc, sc * (1.05 + rng() * 0.35) * (0.80 + 0.30 * hy), sc * (0.72 + 0.28 * hz)));
-      const variant=(rng()*2)|0,keep=!newlyUnsafeRoadSite(x,z,6,.78);
+      _m4.compose(_pv.set(x, y - 0.05, z), _q, _sv.set(sc, sc * (1.05 + br() * 0.35) * (0.80 + 0.30 * hy), sc * (0.72 + 0.28 * hz)));
+      const variant=(br()*2)|0,keep=!newlyUnsafeRoadSite(x,z,6,.78);
       // a placed structure's clear ground takes no bush either: dropped after its draws, so every later bush stays
       if (placedClearances.length && overlapsStructureClearance(placedClearances, x, z, 2.5 * sc + 0.3)) return;
       bushPlacements[variant].push(_m4.clone());bushKeep[variant].push(keep);
@@ -7234,7 +7507,8 @@ function* vegetationBuildSteps(
     // 2026-09-14 environment richness: desktop tiers seed 30 % more field bushes, clumps and
     // cluster fringe scrub than the authored counts (mobile keeps them). Read at build time,
     // after the device tier is resolved. Per-map veg.bushCount still gates what survives.
-    const bushRichness = getDeviceTier() === 'mobile' ? 1 : 1.3;
+    // (every tier since 2026-10-08: a bush is a concealer, a record the phones must stand where the desktop's does)
+    const bushRichness = 1.3;
     function placeBushFringes(): void {
       // fringe bushes around each tree cluster. r3 terrain_environment: maps
       // can raise veg.clusterScrub (desert oases) — extra shrubs land INSIDE
@@ -7243,32 +7517,37 @@ function* vegetationBuildSteps(
       const scrubMul = (veg.clusterScrub ?? 1) * bushRichness;
       for (let ci = 0; ci < clusters.length; ci++) {
         const c = clusters[ci];
-        const n = Math.round((5 + (rng() * 6) | 0) * scrubMul);
+        const fr = keyedPlacement ? keyedStream(8, clusterKeys[ci]) : rng;
+        const n = Math.round((5 + (fr() * 6) | 0) * scrubMul);
         for (let i = 0; i < n; i++) {
-          const a = rng() * Math.PI * 2;
-          const inside = scrubMul > 1 && rng() < 0.55;
+          const br = keyedPlacement ? keyedStream(9, clusterKeys[ci] * 256 + i) : rng;
+          const a = br() * Math.PI * 2;
+          const inside = scrubMul > 1 && br() < 0.55;
           // trees round 2: round the woodlot's own outline (standPoint)
-          const p = standPoint(ci, c, a, inside ? 0.25 + rng() * 0.6 : 1.05 + rng() * 0.5);
-          addBush(p[0], p[1]);
+          const p = standPoint(ci, c, a, inside ? 0.25 + br() * 0.6 : 1.05 + br() * 0.5);
+          addBush(p[0], p[1], false, br);
         }
       }
     }
     function placeFieldBushes(): void {
       for (let i = 0, cap = Math.round(470 * bushRichness); i < cap; i++) { // scattered field bushes, mild roadside bias
-        const x = (rng() * 2 - 1) * 455, z = (rng() * 2 - 1) * 455;
+        const br = keyedPlacement ? keyedStream(10, i) : rng;
+        const x = (br() * 2 - 1) * 455, z = (br() * 2 - 1) * 455;
         const rd = admission()._roadDist(x, z);
-        if (rd > 26 && rng() > 0.55) continue;
-        addBush(x, z, true);
+        if (rd > 26 && br() > 0.55) continue;
+        addBush(x, z, true, br);
       }
     }
     function placeBushClumps(): void {
       // midfield concealment clumps: 4-6 bushes over a ~10-12 m spread so a
       // parked tank is at least half-occluded from ground level
       for (let c = 0, cap = Math.round(58 * bushRichness); c < cap; c++) {
-        const x = (rng() * 2 - 1) * 420, z = (rng() * 2 - 1) * 420;
-        const n = 4 + (rng() * 3) | 0;
+        const cr = keyedPlacement ? keyedStream(11, c) : rng;
+        const x = (cr() * 2 - 1) * 420, z = (cr() * 2 - 1) * 420;
+        const n = 4 + (cr() * 3) | 0;
         for (let i = 0; i < n; i++) {
-          addBush(x + (rng() - 0.5) * 11, z + (rng() - 0.5) * 11);
+          const br = keyedPlacement ? keyedStream(12, c * 16 + i) : rng;
+          addBush(x + (br() - 0.5) * 11, z + (br() - 0.5) * 11, false, br);
         }
       }
     }
@@ -7392,7 +7671,7 @@ function* vegetationBuildSteps(
         if (heightField._roadDist(x, z) < 6 || admission()._roadDist(x, z) < 6) return false;
         if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
         if (admission().getNormalAt(x, z).y < 0.78 || heightField.getNormalAt(x, z).y < 0.78) return false;
-        if (!isClearOfSpawns(x, z, protectedSpawns, 20)) return false;
+        if (!isClearOfSpawns(x, z, spawnClearings, 20)) return false;
         if (x > v.x0 - 12 && x < v.x1 + 12 && z > v.z0 - 12 && z < v.z1 + 12) return false;
         return !overlapsStructureClearance(structureClearances, x, z, 1.4 * sc);
       };
@@ -7456,9 +7735,23 @@ function* vegetationBuildSteps(
       m.computeBoundingSphere();
       group.add(m);
     }
+    // (the Redrock lane, veg.coverHalvesAbout: the halves' shrubs evened at the last, as the trees are — field shrubs of
+    // their own keyed draws in the short half until the halves stand within a shrub)
+    function evenBushHalves(): void {
+      if (!halvesAbout) return;
+      for (let i = 0; i < 2400; i++) {
+        _coverHalves[0] = 0; _coverHalves[1] = 0;
+        for (const list of bushPlacements) for (const m of list) _coverHalves[coverHalf(m.elements[12], m.elements[14])]++;
+        if (Math.abs(_coverHalves[0] - _coverHalves[1]) <= 1) return;
+        const br = keyedStream(14, i);
+        const seat = seatInHalf((br() * 2 - 1) * 455, (br() * 2 - 1) * 455, _coverHalves[0] < _coverHalves[1] ? 0 : 1);
+        addBush(seat[0], seat[1], true, br);
+      }
+    }
     placeBushFringes();
     placeFieldBushes();
     placeBushClumps();
+    evenBushHalves();
     createBushMeshes();
     placeUnderstorey();
     createUnderstoreyMesh();
@@ -8248,8 +8541,36 @@ function* vegetationBuildSteps(
     }
   }
   rimTrees.length = 0;
-  return { group, update, dispose, getGrassWorkState, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
-    crushTree, resetToppled, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
+  // ---- ground lane (crater-render-spec §C): following the battle's craters ----
+  let craterDressing: THREE.InstancedMesh[] | null = null;
+  const writeCraterTree = (t: TreeRecord): void => {
+    if (t.slot >= 0) writeTreeSlot(nearMeshes[t.species][t.variant], t.slot, t, t.fade);
+    if (t.fslot >= 0) writeTreeSlot(farMeshes[t.species][t.fv], t.fslot, t, 0);
+  };
+  function followCraterLaw(law: GroundCoverCraters): void {
+    craterLaw = law;
+    craterDressing ??= group.children.filter((c): c is THREE.InstancedMesh =>
+      (c as THREE.InstancedMesh).isInstancedMesh === true && (c.userData.bush === true || c.userData.understorey === true));
+    followCraters(law, craterFollower, () => {
+      craterPatcher.restore();
+      restoreCraterTrees(trees, writeCraterTree);
+      carpetWork.refresh();
+    }, (x0, z0, x1, z1) => {
+      for (const gc of grassChunks) {
+        if (!gc.meshes || gc.x0 > x1 || gc.x0 + CHUNK_SIZE < x0 || gc.z0 > z1 || gc.z0 + CHUNK_SIZE < z0) continue;
+        for (const entry of gc.meshes) reseatInstances(entry.mesh, entry.total, gc.x0, gc.z0, CHUNK_SIZE, x0, z0, x1, z1);
+      }
+      for (const mesh of craterDressing!) reseatInstances(mesh, mesh.count, -HALF, -HALF, HALF * 2, x0, z0, x1, z1);
+      reseatCraterTrees(law, trees, x0, z0, x1, z1, writeCraterTree); // trunks root into the bowl's wall
+      // the carpet rebuilds (its inactive half, as ever) when the reach meets its ring
+      if (_carpetCellX !== 0x7fffffff) {
+        const reach = (CARPET_RING + 1) * CARPET_CELL, cx = (_carpetCellX + 0.5) * CARPET_CELL, cz = (_carpetCellZ + 0.5) * CARPET_CELL;
+        if (x1 >= cx - reach && x0 <= cx + reach && z1 >= cz - reach && z0 <= cz + reach) carpetWork.refresh();
+      }
+    });
+  }
+  return { group, update, dispose, getGrassWorkState, followCraters: followCraterLaw, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
+    crushTree, resetToppled, advanceToppled: (dt: number) => { if (treeCrushAnims.length) updateTreeCrush(dt); }, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _woodsMask: woodsMask,
     _rimMix: veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,
     warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false) };

@@ -117,7 +117,7 @@ try {
     cheekEraCassettes: 32,
     turretSideEraCassettes: 48,
     totalEraCassettes: 198,
-    autocannonStations: 2,
+    autocannonStations: 0,
     radarArrays: 1,
     searchlights: 1,
     bustleCageRails: 16,

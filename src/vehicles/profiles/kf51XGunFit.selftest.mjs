@@ -1,3 +1,4 @@
+import {assertHollowMuzzle} from '../../../tools/physical-muzzle.test-support.mjs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
@@ -38,38 +39,16 @@ for(const quality of ['high','low']) {
     near(top(gun,6.86),1.944111335,.000002,`${quality}: retained reduced neck radius`);
 
     const bore=tank.root.getObjectByName('muzzleBoreShadowFallback');
-    const rim=tank.root.getObjectByName('muzzleBoreShadowFallbackRim')
-      ??bore.children.find(part=>part.userData.mobileStaticBatch);
-    const annulus=tank.root.getObjectByName('muzzleBoreShadowFallbackAnnulus');
-    assert.ok(rim?.isMesh,`${quality}: real assembled muzzle parts exist`);
-    assert.equal(bore.userData.cannonBore,true,`${quality}: actual bore owner is retained`);
-    // Low quality physically merges the fallback parts into one bore-owned dark
-    // mesh. Inspect that actual buffer instead of demanding high-LOD names.
-    assert.equal(rim.parent,bore,`${quality}: full physical lip stays recoil-owned through its bore frame`);
-    // 2026-09-22 (owner: holes are added, not carved, to save triangles): the flat dark ring is the lip
-    // and the annular face in one mesh; no separate annulus exists at either quality any more.
-    assert.equal(annulus,undefined,`${quality}: the separate annulus mesh is gone`);
-    for(const part of [rim,annulus].filter(Boolean)) {
-      assert.equal(part.visible,true,`${quality}: native muzzle is visibly rendered`);
-      assert.ok(part.userData.cannonBorePrimaryPart||part.userData.mobileStaticBatch,
-        `${quality}: primary bore furniture or its actual merged low-LOD geometry`);
-      assert.notEqual(part.userData.shadowOnly,true,`${quality}: name does not make a real rim shadow-only`);
-      assert.equal(part.material.colorWrite,true,`${quality}: muzzle contributes real color/depth`);
-    }
+    assertHollowMuzzle(tank.root,6.87969993);
+    const rim=bore.getObjectByName('muzzleBoreInnerWallAndBackstop');
+    assert.equal(rim.parent,bore,'recess stays recoil-owned');
     const seat=bore.userData.muzzleSeatReceipt;
-    near(seat.supportOuterRadiusM,.0892,.000002,`${quality}: rim seats on source neck radius`);
-    assert.equal(seat.supportSource,'terminal-cap',`${quality}: native bore uses real physical neck face`);
+    near(seat.supportOuterRadiusM,.0892,.000002,'native neck radius');
     const tubeEnd=new THREE.Box3().setFromObject(gun).max.z;
     const rimBox=new THREE.Box3().setFromObject(rim);
-    near(tubeEnd,6.87969993,.000002,`${quality}: intentional final native lip allowance retained`);
-    near(rimBox.max.z,6.899749978,.003,`${quality}: complete assembled source endpoint within 3 mm`);
-    // 2026-09-22 (owner: holes are added, not carved, to save triangles): the lip is a flat ring at the
-    // marker and a throat sleeve carries it back to the neck, so the assembled fallback (ring + sleeve +
-    // disc), not the ring alone, must seat on the tube end without a detached extension.
-    const seatBox=new THREE.Box3().setFromObject(bore);
-    assert.ok(Math.abs(seatBox.min.z-tubeEnd)<.003,
-      `${quality}: native lip assembly seats on the neck within 3 mm, without a detached extension (${seatBox.min.z-tubeEnd})`);
-    near(rim.getWorldPosition(new THREE.Vector3()).y,1.85491175,.000001,`${quality}: centered bore`);
+    near(tubeEnd,6.87969993,.000002,'native barrel endpoint');
+    near(rimBox.max.z,tubeEnd,.000002,'recess wall joins the native face');
+    near(bore.getWorldPosition(new THREE.Vector3()).y,1.85491175,.000001,'centered bore');
     recoil.position.z-=.10;tank.root.updateMatrixWorld(true);
     near(top(gun,5.40),1.962635992,.000003,`${quality}: physical collar follows 100 mm recoil`);
     near(new THREE.Box3().setFromObject(rim).max.z,rimBox.max.z-.10,.000001,

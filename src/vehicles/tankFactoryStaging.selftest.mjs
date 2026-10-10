@@ -92,8 +92,8 @@ function receipt(visual) {
     detailGroups: visual.root.userData.battleDetailGroupCount, detailCount: visual.root.userData.battleDetailObjectCount,
   };
 }
-// Canonical shoes take their colour from the instance palette over an exactly white base; a dark
-// multiplier or a missing vertex-colour request would blacken them in every staged/sync build.
+// Canonical shoes take their colour from the instance palette over an exactly white base, times their own worn-steel
+// vertex colours; a dark multiplier or a stream without the colours would blacken them in every staged/sync build.
 const TRACK_SHOE_NAMES = ['gearTrackPads', 'gearTrackPadsSimplified'];
 function assertShoeMaterial(visual) {
   const shoes = [];
@@ -114,12 +114,17 @@ function assertShoeMaterial(visual) {
   assert.equal(material.userData.appearanceRole, 'trackPad');
   assert.equal(material.userData.appearanceColorSource, 'instance-palette');
   assert.deepEqual(material.color.toArray(), [1, 1, 1], 'actual shoe base must remain exactly white');
-  assert.equal(material.vertexColors, false, 'actual shoes must not request missing vertex colors');
+  // Fleet lane round 1 (2026-10-07): the shoes read their worn-steel vertex colours (tankFactoryCore bakeTrackShoeWear)
+  // under the instance palette, so the material requests vertex colours and BOTH shoe streams must carry them; a
+  // stream without the attribute would multiply the palette by black.
+  assert.equal(material.vertexColors, true, 'actual shoes read their worn-steel vertex colours');
   for (const mesh of shoes) {
     assert.equal(mesh.material, material, 'near and far shoes share the actual material');
     assert.equal(mesh.isInstancedMesh, true);
     assert.ok(mesh.count > 0 && mesh.instanceColor?.count >= mesh.count);
-    assert.equal(mesh.geometry.getAttribute('color'), undefined, 'shoe stock has no vertex-color multiplier');
+    const wear = mesh.geometry.getAttribute('color');
+    assert.ok(wear && wear.count === mesh.geometry.getAttribute('position').count,
+      'every shoe stream must carry its worn-steel vertex colours');
   }
   visual.root.traverse(mesh => {
     if (!mesh.isMesh) return;
@@ -138,9 +143,14 @@ function verifyShoeMaterialGuards(visual) {
     assert.throws(() => assertShoeMaterial(visual), /actual shoe base must remain exactly white/);
   } finally { material.color.copy(color); }
   try {
-    material.vertexColors = true;
-    assert.throws(() => assertShoeMaterial(visual), /must not request missing vertex colors/);
-  } finally { material.vertexColors = false; }
+    material.vertexColors = false;
+    assert.throws(() => assertShoeMaterial(visual), /read their worn-steel vertex colours/);
+  } finally { material.vertexColors = true; }
+  const wear = shoe.geometry.getAttribute('color');
+  try {
+    shoe.geometry.deleteAttribute('color');
+    assert.throws(() => assertShoeMaterial(visual), /must carry its worn-steel vertex colours/);
+  } finally { shoe.geometry.setAttribute('color', wear); }
   const unrelated = new THREE.Mesh(shoe.geometry, material);
   unrelated.name = 'unrelated-material-user';
   visual.root.add(unrelated);

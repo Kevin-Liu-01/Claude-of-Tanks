@@ -7,6 +7,8 @@ interface OrbitalKit {
   cylinder(top: number, bottom: number, h: number, segments?: number): THREE.BufferGeometry;
   colored(out: THREE.BufferGeometry[], geometry: THREE.BufferGeometry, color: number, rng: Rng, jitter?: number): THREE.BufferGeometry;
   mergeConnectedStructure(id: string, parts: THREE.BufferGeometry[]): THREE.BufferGeometry;
+  /** a plain merge (a broken state lies where it fell: no grounded-structure certificate) */
+  merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry;
 }
 const WHITE = 0xe7e7df, FRAME = 0x66727a, DARK = 0x263846;
 const ORANGE = 0xd87736, GLASS = 0x52849a, GOLD = 0xb99a55;
@@ -16,7 +18,7 @@ const ORANGE = 0xd87736, GLASS = 0x52849a, GOLD = 0xb99a55;
  * night-emission owner. Connectivity is certified before merging each kit.
  */
 export function createOrbitalStructures(kit: OrbitalKit) {
-  const { box, cylinder, colored, mergeConnectedStructure } = kit;
+  const { box, cylinder, colored, mergeConnectedStructure, merge } = kit;
   function assembly(rng: Rng) {
     const out: THREE.BufferGeometry[] = [];
     const add = (g: THREE.BufferGeometry, color = WHITE) => colored(out, g, color, rng, .025);
@@ -126,5 +128,56 @@ export function createOrbitalStructures(kit: OrbitalKit) {
     }
     return mergeConnectedStructure('rovergarage', a.out);
   }
-  return { missioncontrol, greenhouse, ascentlander, rovergarage };
+  /**
+   * The greenhouse broken (the facades lane, 2026-10-08; the scenery lane's broken-state audit scored the shared debris
+   * 2/5). Its glazing is gone from the frame: the base and the lower walls stand, and the ribs stand bent (a few down
+   * to half their height, one fallen across), with a strip of the shell still hanging at one eave. The panes lie in
+   * shards round it and the ridge rails are down. The airlock and the side module stand, the airlock's window broken
+   * out.
+   */
+  function greenhouseBroken(rng: Rng): THREE.BufferGeometry {
+    const a = assembly(rng);
+    a.block(8.4, .7, 16, 0, .35, 0, FRAME);
+    a.block(7.6, 1.3, 15.6, 0, 1.3, 0);
+    const zs = [-7.7, -5.15, -2.58, 0, 2.58, 5.15, 7.7];
+    const fallen = Math.floor(rng() * zs.length);
+    zs.forEach((z, k) => {
+      a.block(.24, 1.6, .24, -3.83, 1.15, z);
+      a.block(.24, 1.6, .24, 3.83, 1.15, z);
+      if (k === fallen) {
+        const rib = new THREE.TorusGeometry(3.83, .11, 5, 18, Math.PI);
+        rib.rotateX(Math.PI / 2 - .25).translate(0, 2.25, z + (rng() < .5 ? 1.4 : -1.4));
+        a.add(rib);
+        return;
+      }
+      const rib = new THREE.TorusGeometry(3.83, .11, 5, 18, Math.PI);
+      rib.scale(1 + rng() * .06, .55 + rng() * .45, 1).rotateZ((rng() - .5) * .16);
+      a.add(rib.translate(0, 1.94, z));
+    });
+    // a strip of the shell still hanging at one eave
+    const side = rng() < .5 ? 1 : -1;
+    const strip = new THREE.CylinderGeometry(3.8, 3.8, 5 + rng() * 4, 16, 1, false, 0, Math.PI * .22);
+    strip.rotateZ(Math.PI / 2).rotateY(Math.PI / 2);
+    if (side < 0) strip.rotateZ(Math.PI * .78);
+    a.add(strip.translate(0, 1.94, (rng() - .5) * 6), GLASS);
+    // the panes in shards round it, the ridge rails down
+    for (let i = 0; i < 26; i++) {
+      const ang = rng() * Math.PI * 2, r = 3.4 + rng() * 2.8;
+      const shard = box(.4 + rng() * .9, .03, .3 + rng() * .7);
+      shard.rotateY(rng() * Math.PI).rotateX((rng() - .5) * .5);
+      a.add(shard.translate(Math.cos(ang) * r, .06 + rng() * .1, Math.sin(ang) * r * 1.9), GLASS);
+    }
+    for (const s of [-1, 1]) {
+      const rail = box(.16, .16, 15.6);
+      rail.rotateZ((rng() - .5) * .3).rotateY((rng() - .5) * .08);
+      a.add(rail.translate(s * (3.2 + rng() * 1.4), .12, (rng() - .5) * 1.2), FRAME);
+    }
+    a.block(2.6, 2.8, 1.4, 0, 1.65, 8.1);
+    a.block(1.6, 2.0, .08, 0, 1.65, 8.84, DARK);
+    a.block(2.2, .28, .14, 0, 2.85, 8.86, ORANGE);
+    a.block(1.9, 1.6, 3.0, 4.65, .8, -3, WHITE);
+    return merge(a.out);
+  }
+
+  return { missioncontrol, greenhouse, greenhouseBroken, ascentlander, rovergarage };
 }

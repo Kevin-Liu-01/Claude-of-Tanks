@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
-  collisionManifestCounts, readCollisionManifest, readCollisionManifestIndex,
+  collisionManifestCounts, collisionManifestShardName, readCollisionManifest, readCollisionManifestIndex,
 } from '../server/collisionManifestFormat.ts';
 import { isMapId, MAP_IDS } from '../src/world/maps/catalog.ts';
 import { encodeCollisionManifest } from '../server/collisionManifestCodec.ts';
@@ -19,7 +19,7 @@ function assertCollisionCaptureArgs(args) {
 /** Resolve CLI intent before opening a browser or touching any shard. */
 export function collisionCaptureOptions(args) {
   assertCollisionCaptureArgs(args);
-  let session = null, selected = null, headless = false, cacheDir = null, node = false, check = false;
+  let session = null, selected = null, headless = false, cacheDir = null, node = false, check = false, variant = null, tier = null;
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--maps' || arg.startsWith('--maps=')) {
@@ -41,6 +41,18 @@ export function collisionCaptureOptions(args) {
       // 2026-10-01: compare a fresh Node build with the committed shards and write nothing (exit 1 on drift)
       if (check) throw new Error('--check may be supplied only once');
       check = true;
+    } else if (arg.startsWith('--variant=')) {
+      // 2026-10-08 (destruction core lane): a mode's battlefield variant ('assault-trenches': Frontline's carved trenches
+      // and their works), built in Node from the variant's config into its own `<map>@<variant>.json` shards
+      if (variant !== null) throw new Error('--variant may be supplied only once');
+      variant = arg.slice('--variant='.length);
+      if (variant !== 'assault-trenches') throw new Error(`--variant names an unknown battlefield variant: ${variant}`);
+    } else if (arg.startsWith('--tier=')) {
+      // 2026-10-08 (destruction core lane, layout identity): build at a device tier ('mobile') and compare with the
+      // committed shards, which are the desktop's — a phone must place every blocking record where the desktop does
+      if (tier !== null) throw new Error('--tier may be supplied only once');
+      tier = arg.slice('--tier='.length);
+      if (tier !== 'mobile') throw new Error(`--tier names an unknown device tier to check: ${tier}`);
     } else if (arg.startsWith('--cache-dir=')) {
       // a warm vite optimizer cache of the caller's own (headless mode; default: a fresh temporary directory)
       if (cacheDir !== null) throw new Error('--cache-dir may be supplied only once');
@@ -53,8 +65,13 @@ export function collisionCaptureOptions(args) {
   if (headless && session !== null) throw new Error('--headless takes no agent-browser session');
   if (!headless && cacheDir !== null) throw new Error('--cache-dir applies to --headless captures only');
   if (check) node = true;
+  if (variant !== null) node = true;
+  // a phone's build is only ever checked against the desktop's shards, never written
+  if (tier !== null) { if (variant !== null) throw new Error('--tier checks the base maps only'); node = true; check = true; }
   if (node && (headless || session !== null)) throw new Error('--node builds without a browser session');
   return { session: session || 'cot-manifest', partial: selected !== null, headless, cacheDir, node, check,
+    ...(variant !== null ? { variant } : {}),
+    ...(tier !== null ? { tier } : {}),
     mapIds: selected === null ? MAP_IDS : MAP_IDS.filter((id) => selected.includes(id)) };
 }
 
@@ -90,8 +107,15 @@ function writeAtomic(url, text) {
   renameSync(temporary, url);
 }
 
-/** Stream one captured map to disk; retain only its tiny receipt in the generator. */
-export function writeCollisionManifestShard(mapId, data, directory = collisionManifestDirectory) {
+/** The committed index's variants (kept by every base capture, extended by a variant capture). */
+export function readCollisionManifestVariants(directory = collisionManifestDirectory) {
+  try {
+    return readCollisionManifestIndex(JSON.parse(readFileSync(new URL('index.json', directory), 'utf8'))).variants ?? {};
+  } catch { return {}; }
+}
+
+/** Stream one captured map to disk (a variant's as `<map>@<variant>.json`); retain only its tiny receipt. */
+export function writeCollisionManifestShard(mapId, data, directory = collisionManifestDirectory, variant = null) {
   if (!isMapId(mapId)) throw new Error(`invalid collision map id: ${mapId}`);
   const manifest = readCollisionManifest(data);
   const text = JSON.stringify(encodeCollisionManifest(manifest));
@@ -101,14 +125,15 @@ export function writeCollisionManifestShard(mapId, data, directory = collisionMa
     ...collisionManifestCounts(manifest),
   };
   mkdirSync(directory, { recursive: true });
-  writeAtomic(new URL(`${mapId}.json`, directory), text);
+  writeAtomic(new URL(`${collisionManifestShardName(mapId, variant)}.json`, directory), text);
   return entry;
 }
 
-/** Publish the index last, after every selected map has been captured successfully. */
-export function writeCollisionManifestIndex(maps, directory = collisionManifestDirectory) {
+/** Publish the index last, after every selected map has been captured successfully (the variants are kept). */
+export function writeCollisionManifestIndex(maps, directory = collisionManifestDirectory, variants = readCollisionManifestVariants(directory)) {
   const index = readCollisionManifestIndex({
     version: 2, terrainSeed: 1337, propsSeed: 2002, vegetationSeed: 2001, maps,
+    ...(Object.keys(variants).length ? { variants } : {}),
   });
   mkdirSync(directory, { recursive: true });
   writeAtomic(new URL('index.json', directory), JSON.stringify(index, null, 2) + '\n');

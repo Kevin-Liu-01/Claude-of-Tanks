@@ -123,7 +123,7 @@ export function buildBorderHedgerows(options: BorderHedgerowOptions): THREE.Mesh
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geometry.computeBoundingSphere();
   const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0, side: THREE.DoubleSide });
-  material.envMapIntensity = 0.85;
+  // (2026-10-08: the full sky, as the battlefield's shrubs take it; the 0.85 it authored never applied, materialEnvIntensity.ts)
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = 'border-hedgerows';
   mesh.userData.borderHedgerows = { triangles: positions.length / 9 };

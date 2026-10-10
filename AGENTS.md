@@ -125,6 +125,10 @@ worktree and never stage generated tank work wholesale.
   consumables, respawn, clock, roster split, assault escalation, score targets) lives in
   `src/sim/matchRuleset.ts`; the mode controller, `state.ts`, the authority, the HUD and the
   rule cards read that table. Never add a mode literal elsewhere.
+- Both sides deploy through one function: `src/sim/deployment.ts` (each bravo slot the 180° rotation of
+  its alpha slot about the anchors' midpoint), resolved on the world by `sim/matchPlacement.ts`
+  `deploymentSlot`, which the authority, the browser host and the solo sim all call; the world keeps
+  its spawn clearings round those slots (`deploymentClearings`). Never seat a side anywhere else.
 - Objective markers (spawns, flags, zones, sectors, goals, caches) come from one derivation,
   `src/ui/minimapObjectives.ts`, and one glyph set, `src/ui/objectiveGlyphs.ts`; the HUD
   minimap and `src/game/matchModeWorldPresentation.ts` both consume them. A new objective

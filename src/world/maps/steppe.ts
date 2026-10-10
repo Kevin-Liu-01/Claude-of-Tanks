@@ -353,10 +353,9 @@ export default {
     haystacks: 44, rocks: 230, outcrops: 34, craters: 42, rubblePiles: 0,
     // Legacy-map quality backport: modern hulks scattered on the open
     // plain (baked roster tanks, paired duel beats), tank-trap lines
-    tankWrecks: {
-      era: 'modern', count: 5, debris: true,
-      ids: ['pl01', 'pt91m', 't72b3m', 'type99a', 't90m'],
-    },
+    // the map-vehicles lane (2026-10-06, the period ruling): the Virgin Lands in the 1950s: the T-54 (its Type 59
+    // copy)
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['type59'] },
     sandbagLines: 10,
     hedgehogs: 6,
     cropFields: 5,

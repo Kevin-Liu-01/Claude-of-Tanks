@@ -156,8 +156,9 @@ export default {
     wallRuns: [[-180, -40, -180, 22, 2], [-178, 124, -116, 124, 2], [-78, 48, -14, 48, 3], [-78, -40, -14, -40, 2], [270, 78, 270, 148, 3], [-58, -268, -58, -204, 2]],
     well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
     haystacks: 8, rocks: 114, outcrops: 12, craters: 48, rubblePiles: 10, cropFields: 4, sandbagLines: 14, hedgehogs: 6,
-    tankWrecks: { era: 'modern', count: 5, debris: true,
-      ids: ['bmp3', 'm2a2_bradley', 'type99a', 'k1a1', 'm551_sheridan'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): Vietnam: the People's Army's T-55s (the Type 59 copy),
+    // BMPs and T-62s, a captured M48
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['type59', 'bmp2', 't62mv1', 'm48'] },
     inhabit: { stalls: 4, benches: 3, coreClutter: 20, pots: 8, laundry: 4, handcarts: 4, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 3, modernClutter: 18, looseClutter: 20, roadFence: 'fencewattle', yardFence: 'fencewattle' },
   },
   // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Mekong delta's family

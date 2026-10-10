@@ -1,3 +1,4 @@
+import {inwardBoreWall} from '../physicalMuzzleBore.ts';
 // Preserved photo-draft fixture, not the actual supplied-file X runtime.
 // Independent Strv 122 construction from FMV envelope data and dated Army
 // photographs. The supplied TRIPO mesh supplies no metric/topology/runtime data.
@@ -270,11 +271,11 @@ function gun(P: TankBuilderPort): void {
     P.add('gun', torus(r, .006, 20, 6), 0, 0, z - D.trunnion[2], Math.PI / 2);
   }
   P.add('gun', new THREE.RingGeometry(.060, .081, 40), 0, 0, D.muzzleZ - D.trunnion[2]);
-  P.add('gunDark', new THREE.CylinderGeometry(.060, .060, .29, 40, 1, true)
-    .rotateX(Math.PI / 2), 0, 0, D.muzzleZ - .145 - D.trunnion[2]);
+  P.add('gunDark', inwardBoreWall(.060, .29, 40), 0, 0, D.muzzleZ - .145 - D.trunnion[2]);
   P.add('gunDark', cylZ(.061, .003, 32), 0, 0, D.muzzleZ - .291 - D.trunnion[2]);
   P.add('gun', box(.073, .092, .057), .064, .079, 5.96 - D.trunnion[2]);
   P.muzzleZ = D.muzzleZ - D.trunnion[2];
+  P.physicalMuzzleBore = { outerRadiusM: 0.081, innerRadiusM: .060, depthM: 0.2895 };
 }
 
 export function buildStrv122X(P: TankBuilderPort): void {

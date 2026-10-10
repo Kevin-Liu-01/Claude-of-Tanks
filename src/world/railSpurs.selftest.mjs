@@ -245,7 +245,11 @@ let junctionSummary = '';
       }
     }
     assert.equal(built.obstacles.filter((record) => record.kind === 'tunnel-portal').length, 0, 'no tunnel portal');
-    assert.equal(built.obstacles.length, coal.length, 'nothing else on the line publishes collision');
+    // P5 (the map-vehicles lane): the standing rolling stock carries one solid record a vehicle, nothing else does
+    const stock = built.obstacles.filter((record) => record.kind === 'rolling-stock');
+    assert.equal(stock.length, authored.reduce((n, spur) => n + (spur.stock ?? []).reduce((m, cut) => m + cut.kinds.length, 0), 0),
+      'one record for each standing vehicle');
+    assert.equal(built.obstacles.length, coal.length + stock.length, 'nothing else on the line publishes collision');
     junctionSummary = `Cinder Junction ${authored.length} spurs / ${built.parts.slab.length} slabs / ${coal.length} coal heaps`;
   } finally { dispose(built); dispose(again); }
 }

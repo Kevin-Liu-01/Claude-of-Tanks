@@ -193,8 +193,9 @@ export default {
     well: true, hayCrates: false, fences: true, telegraph: true, carts: false, logs: false,
     rocks: 342, outcrops: 92, craters: 82, rubblePiles: 34,
     hedgehogs: 24, sandbagLines: 26,
-    tankWrecks: { era: 'modern', count: 8, debris: true,
-      ids: ['m60a2', 'merkava4b', 'm60a3', 'ariete', 't72b3m', 'm1a2', 'bmp3', 't90m'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): the American West in the 1960s: the M60A1, M48, M551
+    // and M47
+    tankWrecks: { era: 'cold-war', count: 8, debris: true, ids: ['m60a1', 'm48', 'm551_sheridan', 'm47_patton'] },
     inhabit: {
       stalls: 3, benches: 1, coreClutter: 24, drums: 14, pots: 7,
       trucks: 8, jeeps: 6, drumClusters: 8, camps: 6, modernClutter: 30,

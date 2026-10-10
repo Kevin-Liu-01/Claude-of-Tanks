@@ -97,7 +97,14 @@ const SETS = {
   rock: acg(TT, 'Rock058'),
   rockWarm: acg(TT, 'Rock063'),
   cobble: acg(TT, 'PavingStones046'),
-  plaster: acg(TB, 'Plaster007'),
+  // (facades lane, 2026-10-06; wave 174 read the ksar walls' tile as "carved, pharaonic-looking glyphs") Plaster 007's
+  // normal map with its rows of blocky losses taken out — a first-party derivative (docs/ATTRIBUTION.md): the trowel
+  // undulation and the fine grain kept, the losses' relief replaced by the tile's own quiet grain, their long joint
+  // lines and broad bumps flattened; the losses a wall shows are the kits' own (house.ts spallRender)
+  // (facades lane: the normal map without the rows of blocky losses, 2026-10-06; the colour map with its broad blotching
+  // mostly out and its chroma pulled to the tile's mean, 2026-10-07, wave 199's "uniformly blotchy render": first-party
+  // derivatives, docs/ATTRIBUTION.md)
+  plaster: { ...acg(TB, 'Plaster007'), color: `${TB}/Plaster007_1K-JPG_Color-even.jpg`, normal: `${TB}/Plaster007_1K-JPG_NormalGL-smooth.jpg` },
   roof: acg(TB, 'RoofingTiles012A'),
   wood: acg(TB, 'Planks023A'),
   brick: acg(TB, 'Bricks097'),
@@ -129,6 +136,16 @@ const TERRAIN_PLAN = {
     // black earth's dark brown (~0.084 / 0.057 / 0.042, luminance ~0.06; the plough's 0.03–0.06 under it; hold 27: at
     // 0.42 / 0.40 / 0.42 it read a cool blue-black, chernozem is a warm one)
     D: { set: 'dirt', desat: 0.55, tint: [0.46, 0.40, 0.37], roughMul: 1.3 },
+    R: 'rock', M: null,
+  },
+  // ground lane (2026-10-07, wave 248, Tidegate Polders: the plough "jet-black, like cinder or asphalt", the banks "near-black,
+  // textureless slabs at the water's edge", the lanes "a uniform near-black tar strip" — all three were Verdant's black
+  // earth, which the polders borrowed with Verdant's palette): the Scheldt polders' marine clay. The dirt photo greyed by
+  // two thirds and tinted to a cool grey-brown (linear ~0.13 / 0.115 / 0.092, luminance ~0.115: twice the chernozem's),
+  // so the turned clay, the banks' mud and the clay lanes read as clay; the grass and the rock are Verdant's
+  polders: {
+    G: { set: 'grass', tint: [0.86, 0.91, 0.80], roughMul: 1.25 },
+    D: { set: 'dirt', desat: 0.65, tint: [0.74, 0.78, 0.745], roughMul: 1.3 },
     R: 'rock', M: null,
   },
   desert: {
@@ -310,9 +327,16 @@ const TERRAIN_PLAN = {
     // (Copper Mesa round 2, wave 117: still "orange-tan sand"): the sand set half desaturated under a cooler pink-grey,
     // and the steep ground — the rills' walls, the benches' risers — the grey rock set warmed toward the conglomerate's
     // pink, lifted off black (round 47)
-    G: { set: 'sand', desat: 0.5, tint: [0.80, 0.72, 0.78], roughMul: 1.26 },
-    D: { set: 'sand', desat: 0.5, tint: [0.70, 0.62, 0.68], roughMul: 1.3 },
-    R: { set: 'rock', desat: 0.55, tint: [1.22, 1.08, 1.06], lift: 0.04, roughMul: 1.2 }, M: null,
+    // (Copper Mesa round 3, wave 132: "a near-white lilac that reads as snow or a salt pan", "wind-ripple striations",
+    // no pink, ochre or grey conglomerate): the sand set's photographed ripples were the striations, and its pink-grey
+    // under the overcast's blue fill the lilac. The hills' gravel is the dirt set (grit and clods, no ripples) toned to
+    // a pale pink-buff, mean ≈ 0.62/0.53/0.48 (luma 0.55, the old floor's brightness); the worn ground, the scree and
+    // the rills' sides — the D layer on the 26°–47° slopes, the benches' risers — the iron-stained ochre gravel the rain
+    // washes down them, ≈ 0.62/0.44/0.30; the steep faces the rock set warmed to the conglomerate's mauve-grey,
+    // ≈ 0.47/0.42/0.43, its orange veins kept
+    G: { set: 'dirt', desat: 0.45, tint: [1.46, 1.36, 1.49], lift: 0.05, roughMul: 1.26 },
+    D: { set: 'dirt', desat: 0.15, tint: [1.43, 1.18, 0.95], lift: 0.03, roughMul: 1.3 },
+    R: { set: 'rock', desat: 0.35, tint: [1.45, 1.12, 1.10], lift: 0.04, roughMul: 1.2 }, M: null,
   },
   ruinspires: {
     // grey ruined capital between the Ironworks and Steinburg registers: ash-muted city turf (≈ 0.32/0.34/0.23),

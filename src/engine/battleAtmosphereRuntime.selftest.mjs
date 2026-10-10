@@ -215,6 +215,47 @@ try {
     fixture.geometry.dispose(); for (const material of fixture.materials) material.dispose();
   }
 }
+// 2026-10-08 (the nightsky lane; the owner: "on sunsets and nights, the far skybox is still like glowing"): every far
+// panorama under the root re-bakes under the light just applied (horizonPanorama.ts relight), inside this covered prepare
+// and on the owner's renderer; a relit shell carries the night itself and keeps its colour, a shell that could not relight
+// keeps the fifth-dim, and without a renderer nothing is asked.
+{
+  const root = new THREE.Group(), geometry = new THREE.BoxGeometry();
+  const calls = [], applied = [], noted = [];
+  const shell = (ok, tag) => {
+    const ring = new THREE.Object3D(), mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    ring.name = 'horizon-ring'; mesh.name = 'horizon-far-range'; mesh.userData.horizonPanorama = true;
+    ring.userData.horizonPanorama = { mesh, relight: (r) => { calls.push([tag, r, applied.length]); return ok; },
+      noteDaySky: () => { noted.push([tag, applied.length]); return true; } };
+    ring.add(mesh); root.add(ring);
+    return mesh;
+  };
+  const relitShell = shell(true, 'relit'), staleShell = shell(false, 'stale');
+  const renderer = { tag: 'the renderer' };
+  const owner = createBattleAtmosphereRuntime({ getAuthoredPreset: () => base, getWorldRoot: () => root,
+    applyPreset: (p) => applied.push(p), getRenderer: () => renderer });
+  try {
+    owner.prepare(5, 'winter', ['night']);
+    assert.deepEqual(noted, [['relit', 0], ['stale', 0]], 'each far panorama notes the day sky before the night is applied');
+    assert.deepEqual(calls.map((c) => c[0]).sort(), ['relit', 'stale'], 'every far panorama under the root is asked to relight');
+    assert.ok(calls.every((c) => c[1] === renderer && c[2] === applied.length && applied.length > 0),
+      'on the owner\'s renderer, after the preset is applied');
+    assert.deepEqual(relitShell.material.color.toArray(), [1, 1, 1], 'a relit shell carries the night itself: no dim');
+    assert.deepEqual(staleShell.material.color.toArray(), [0.2, 0.2, 0.2], 'a shell that could not relight keeps the fifth');
+    owner.prepare(5, 'winter', ['sunset']);
+    assert.equal(calls.length, 4, 'a new time relights again');
+    assert.deepEqual(staleShell.material.color.toArray(), [1, 1, 1], 'and sunset restores the dim it took');
+  } finally { owner.dispose(); }
+  const bare = createBattleAtmosphereRuntime({ getAuthoredPreset: () => base, getWorldRoot: () => root, applyPreset() {} });
+  try {
+    calls.length = 0;
+    bare.prepare(7, 'winter', ['night']);
+    assert.equal(calls.length, 0, 'no renderer: no relight');
+    assert.deepEqual(relitShell.material.color.toArray(), [0.2, 0.2, 0.2], 'and the fifth-dim stands for every shell');
+  } finally { bare.dispose(); }
+  assert.deepEqual(relitShell.material.color.toArray(), [1, 1, 1], 'the Garage return restores it');
+  geometry.dispose();
+}
 // Every playable map gets the exact Olympus atmosphere in Mars mode, including
 // a legacy server with no weather seed. Same-map mode switches invalidate the
 // prepared key and return to the untouched authored preset on reset.

@@ -104,6 +104,12 @@ export interface SkyPreset {
    * diffuse light, the ground's albedo and the subtle grade; null = every value from the model.
    */
   lighting: LightingConfig | null;
+  /**
+   * Media r5 (Scene Studio only): the radiance scale the environment-validity probe normalises by when the dome is
+   * dim for a reason other than skyIntensity (a set sun's twilight). Omitted (every battle and Garage preset) = the
+   * preset's skyIntensity, exactly as before.
+   */
+  envValidityScale?: number | null;
 }
 
 interface CloudBakePixels {
@@ -1883,7 +1889,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       withEnvironmentRenderState(renderer, () => environments.install(
         environmentKey(renderer, sunDir, preset, atmosphereKeySuffix), bakeProceduralEnvironment,
         environmentIntensityFor(),
-        () => enforceEnvValidity(renderer, scene, preset.skyIntensity),
+        () => enforceEnvValidity(renderer, scene, preset.envValidityScale ?? preset.skyIntensity),
       ));
     },
 

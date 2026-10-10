@@ -1,6 +1,6 @@
 import { Vector3 } from 'three';
-import { createObstacleGrid, rayCollisionRecord } from './collision.ts';
-import type { CollisionRecord } from './collision.ts';
+import { convexOutlineInPlace, createObstacleGrid, nearestColliderHit as nearestRecordHit } from './collision.ts';
+import type { ColliderRayHit, CollisionRecord } from './collision.ts';
 import type { HeightField } from './terrain.ts';
 
 /**
@@ -27,6 +27,9 @@ export interface PackedCollisionRecord {
   k?: string | null;
   t?: number | null;
   p?: number | null;
+  /** The structure group (docs/DESTRUCTION.md §3.1) and its role (1 setpiece, 2 fixed); absent before 2026-10-07. */
+  g?: number | null;
+  gr?: number | null;
 }
 
 interface ConcealmentRecord {
@@ -87,7 +90,8 @@ function unpackRecord(packed: PackedCollisionRecord): CollisionRecord {
     };
     const ranged = value[0] === 'w';
     const extent = ranged ? { y0: value[1] as number, y1: value[2] as number } : {};
-    const points = value.slice(ranged ? 3 : 1) as number[];
+    // (the hitbox lane, 2026-10-08) a part's quantised corners convex in fact, as every builder's are (collision.ts)
+    const points = convexOutlineInPlace(value.slice(ranged ? 3 : 1) as number[]);
     let cx = 0;
     let cz = 0;
     for (let index = 0; index < points.length; index += 2) {
@@ -118,6 +122,9 @@ function unpackRecord(packed: PackedCollisionRecord): CollisionRecord {
   }
   if (packed.t != null) record.treeIdx = packed.t;
   if (packed.p != null) record.propIdx = packed.p;
+  if (packed.g != null) record.structureIdx = packed.g;
+  if (packed.gr === 1) record.structureRole = 'setpiece';
+  else if (packed.gr === 2) record.structureRole = 'fixed';
   return record;
 }
 
@@ -148,8 +155,8 @@ export function createHeadlessCollisionWorld(
   const candidates: CollisionRecord[] = [];
   const point = new Vector3();
   const bisectPoint = new Vector3();
-  const hitNormal = new Vector3();
   const bestNormal = new Vector3();
+  const nearestHit: ColliderRayHit = { distance: Infinity, record: null };
   const fastHeightAt = worldHeightField.getHeightAtFast || worldHeightField.getHeightAt;
 
   function nearestColliderHit(
@@ -157,8 +164,6 @@ export function createHeadlessCollisionWorld(
     direction: Vector3,
     maxDistance: number,
   ): { distance: number; record: CollisionRecord | null } {
-    let bestDistance = Infinity;
-    let bestRecord: CollisionRecord | null = null;
     const endX = origin.x + direction.x * maxDistance;
     const endZ = origin.z + direction.z * maxDistance;
     queryColliders(
@@ -166,18 +171,9 @@ export function createHeadlessCollisionWorld(
       Math.max(origin.x, endX), Math.max(origin.z, endZ),
       candidates,
     );
-    for (const collider of candidates) {
-      if (collider.dead) continue;
-      const distance = rayCollisionRecord(
-        origin, direction, collider, Math.min(maxDistance, bestDistance), hitNormal,
-      );
-      if (distance >= 0 && distance < bestDistance) {
-        bestDistance = distance;
-        bestRecord = collider;
-        bestNormal.copy(hitNormal);
-      }
-    }
-    return { distance: bestDistance, record: bestRecord };
+    // the rendered world's narrow phase (world/collision.ts): dead records skipped, a structure with openings as a whole
+    nearestRecordHit(candidates, origin, direction, maxDistance, bestNormal, nearestHit);
+    return { distance: nearestHit.distance, record: nearestHit.record };
   }
 
   function terrainHitDistance(

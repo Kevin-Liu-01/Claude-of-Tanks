@@ -298,7 +298,7 @@ function buildK21Hull(P: TankBuilderPort): void {
     ].map(({ z, ring: r }) => ({ z, ring: [r[0], r[1], r[2], between(r[2], r[3], .45),
             between(r[2], r[3], .75), r[3], between(r[3], r[4], .5), r[4], r[5],
             between(r[5], r[6], .5), r[6], between(r[6], r[7], .25), between(r[6], r[7], .55), r[7]] }));
-    const body = sectionSolid([{ z: -3.690, ring: rearRing }, { z: -.98, ring: rearRing }, ...frontStations]);
+    const body = sectionSolid([{ z: -3.690, ring: rearRing }, { z: -.98, ring: rearRing }, ...frontStations], { sideQuadDiagonal: 'convex', preserveCapBoundary: true });
     // The physical rear wall slopes forward toward its floor. Only vertices
     // on the authored rear section move; this is a scalar construction rule.
     const p = body.attributes.position;
@@ -428,7 +428,7 @@ function buildK21Turret(P: TankBuilderPort): void {
         turretStation(P, -.41, .94, 1.18, .82, 1.98, 2.40, 2.606),
         turretStation(P, .46, .68, .87, .42, 2.02, 2.35, 2.54),
         turretStation(P, .79, .42, .53, .31, 2.07, 2.32, 2.48),
-    ]));
+    ], { sideQuadDiagonal: 'convex' }));
     for (const side of [-1, 1])
         smokeBank(P, side, .76, 2.24, .47, 4, .145);
     for (const [x, z] of [[-.49, -.82], [.43, -1.00]]) {

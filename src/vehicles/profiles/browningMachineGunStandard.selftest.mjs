@@ -4,7 +4,7 @@ import { FITTINGS } from './kit.ts';
 
 const materialSlots = [
   'dark', 'detail', 'shadow', 'hull', 'gunmetalAmmo', 'glass',
-  'canvasCloth', 'wood', 'spareTrack', 'barrel', 'rubber',
+  'canvasCloth', 'canvasPale', 'wood', 'spareTrack', 'barrel', 'rubber',
 ];
 const mats = Object.fromEntries(materialSlots.map((slot) => [
   slot,
@@ -19,6 +19,9 @@ const CLASSES = Object.freeze({
   kord: Object.freeze({ name: 'Kord-pattern HMG', caliberMm: 12.7 }),
   mag: Object.freeze({ name: 'Browning-derived GPMG', caliberMm: 7.62 }),
   mag58: Object.freeze({ name: 'MAG 58 GPMG', caliberMm: 7.62 }),
+  // 2026-10-08 (round 5, the coordinator: the right gun per nation): the German MG3 and the Chinese QJC-88
+  mg3: Object.freeze({ name: 'MG3 GPMG', caliberMm: 7.62 }),
+  qjc88: Object.freeze({ name: 'QJC-88 HMG', caliberMm: 12.7 }),
 });
 
 function triangleCount(root) {
@@ -92,10 +95,16 @@ try {
     assert.equal(body.userData.fittingSlot, 'dark', `${weaponClass}: weapon remains gunmetal`);
     assert.equal(body.userData.appearanceRole, 'machineGun');
 
-    const ammo = weapon.children.find((node) => node.userData.fittingSlot === 'gunmetalAmmo');
-    assert.ok(ammo?.isMesh, `${weaponClass}: exposes a connected neutral ammunition assembly`);
-    assert.equal(ammo.material, mats.dark,
-      `${weaponClass}: ammunition resolves to the gunmetal material, never host camouflage`);
+    // 2026-10-06 (tank-accessories round 2): the critics could not read the gunmetal can against the gunmetal gun, so
+    // the can and the belt's rounds take a lighter, never-camouflage material. 2026-10-07 (round 3): the solid fitting
+    // paint (FSP-06 small painted accessories); the pale issue canvas stays the desert/IDF soft-kit role.
+    const ammo = weapon.children.find((node) => node.userData.fittingSlot === 'ammoCan');
+    assert.ok(ammo?.isMesh, `${weaponClass}: exposes a connected ammunition can`);
+    assert.equal(ammo.material, mats.detail,
+      `${weaponClass}: the ammunition can resolves to the fitting paint, never host camouflage`);
+    const rounds = weapon.children.find((node) => node.userData.fittingSlot === 'cartridge');
+    assert.ok(rounds?.isMesh, `${weaponClass}: the belt carries its rounds`);
+    assert.equal(rounds.material, mats.detail, `${weaponClass}: the rounds resolve to the fitting paint`);
 
     for (const node of weapon.children) {
       assert.equal(node.userData.combatHitboxRole, 'equipment',

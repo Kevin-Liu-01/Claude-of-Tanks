@@ -44,7 +44,8 @@ for(const rigid of [false,true])for(const height of [()=>0,(x,z)=>.1*x+.05*z]) {
   const source=readFileSync(new URL('./studio.ts',import.meta.url),'utf8');
   const start=source.indexOf('  function applyStoryboardActorSample('),end=source.indexOf('  function applyStoryboardFrame(',start);
   const make=new Function('actors','sampleActorTrack','conformStudioActor','actorTrackFor','actorRootPosition','_v3','hfProxy',`
-    const DEG=Math.PI/180,SIM_DT=1/60,_actorSample={},clampGunDeg=(spec,v)=>v;
+    const DEG=Math.PI/180,SIM_DT=1/60,_actorSample={},clampGunDeg=(spec,v)=>v,actorSupport=()=>hfProxy;
+    const filming=false; // the film renderer's latch (live timeline here)
     ${stripTypeScriptTypes(source.slice(start,end))}
     return applyStoryboardActors;
   `);
@@ -91,3 +92,20 @@ for(const rigid of [false,true])for(const height of [()=>0,(x,z)=>.1*x+.05*z]) {
 }
 
 console.log('studioActorSupport.selftest: real support, authored motion, fixed cadence, reverse replay and hydraulic staging pass');
+
+// Media r5: a hull staged over a bridge seats on the deck (the height field there is the gorge floor); other
+// primitives keep the battle rule, so a tank beside a wall or building never jumps onto its top.
+{
+  const {studioSupportBelly} = await import('./studioActorSupport.ts');
+  const {setCompoundShape, setObbShape} = await import('../world/collision.ts');
+  const deck = setCompoundShape({min:[0,-38,0],max:[0,1.2,0],kind:'bridge'}, [
+    {kind:'obb',cx:0,cz:0,hw:9,hl:100,yaw:0,y0:-2,y1:0},
+    {kind:'obb',cx:8.6,cz:0,hw:0.4,hl:100,yaw:0,y0:0,y1:1.2},
+  ]);
+  const wall = setObbShape({min:[0,0,0],max:[0,3,0],kind:'wallstone'}, 20, 0, 3, 3, 0);
+  assert.equal(studioSupportBelly([deck], 0, -40, -37), 0.25, 'over the deck the belly starts on the deck');
+  assert.equal(studioSupportBelly([deck, wall], 0, -40, -37), 0.25, 'only bridge records lift the seat');
+  assert.equal(studioSupportBelly([wall], 20, 0, 0.2), 0.2, 'a wall never lifts a staged hull');
+  assert.equal(studioSupportBelly([deck], 40, 0, -37), -37, 'beside the bridge the battle rule stands');
+  assert.equal(studioSupportBelly([deck], 0, -40, 5), 5, 'a hull already above the deck keeps its belly');
+}

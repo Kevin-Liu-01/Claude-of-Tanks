@@ -184,7 +184,7 @@ function parliament(ctx: RegionalBuildContext): RegionalParts {
       facePanel(sink, 'glass', wf, 0, 2.0, 0.02, W - 1.6, 2.6, { decor: true, window: [0, 0, 1] });
       facePanel(sink, look() < 0.5 ? 'dark' : 'glass', wf, 0, 5.6, 0.02, W - 1.6, 2.2, { decor: true, window: [0, 0, 1] });
       faceBox(sink, concrete, wf, 0, 8.0, 0.2, W + 0.2, 0.5, 0.4, { decor: true });
-      if (!mobile) shellPocks(sink, wf, { u0: -W / 2 + 0.6, u1: W / 2 - 0.6, y0: 3.4, y1: 4.6 }, 10 + Math.floor(look() * 14), [], look, 'stone');
+      sink.dressing(mobile, () => shellPocks(sink, wf, { u0: -W / 2 + 0.6, u1: W / 2 - 0.6, y0: 3.4, y1: 4.6 }, 10 + Math.floor(look() * 14), [], look, 'stone'));
     }
   });
   return sink.finish();
@@ -252,7 +252,7 @@ function estateTower(ctx: RegionalBuildContext): RegionalParts {
           } else panelWindow(sink, face, u, y + 0.85, 1.3, 1.3, look, 0.06);
         }
       }
-      if (!mobile && look() < 0.35) shellHole(sink, face, (look() - 0.5) * face.width * 0.5, 1.0 + fh * (2 + look() * (floors - 4)), 0.5 + look() * 0.4, look, 'stone');
+      if (look() < 0.35) sink.dressing(mobile, () => shellHole(sink, face, (look() - 0.5) * face.width * 0.5, 1.0 + fh * (2 + look() * (floors - 4)), 0.5 + look() * 0.4, look, 'stone'));
     });
     // the ground storey: the entrance's glazed screen under a canopy
     const entry = faces[0].face;
@@ -311,10 +311,10 @@ const holidayInn: RegionalBuilder = (ctx) => {
         // the panel joint between the storeys
         faceBox(sink, 'plaster', face, 0, y + fh - 0.02, 0.02, face.width - 0.1, 0.06, 0.03, { decor: true, colour: shade(yellow, 0.72), fine: true });
       }
-      if (shelled && !mobile) {
+      if (shelled) sink.dressing(mobile, () => {
         shellPocks(sink, face, { u0: -face.width / 2 + 0.3, u1: face.width / 2 - 0.3, y0: podH + 0.3, y1: top - 0.5 }, 30 + Math.floor(look() * 30), [], look, 'stone');
         for (let k = 0; k < 2; k++) shellHole(sink, face, (look() - 0.5) * face.width * 0.6, podH + fh * (1 + look() * (floors - 2)) + 2.6, 0.5 + look() * 0.5, look, 'stone');
-      }
+      });
     });
     // the sign frame on the roof: posts and the board (its green lettering a dark panel at this range)
     const sy = top + 3.0;
@@ -357,7 +357,7 @@ const slabBlock: RegionalBuilder = (ctx) => {
           faceBox(sink, 'structureMetal', af, u, 3.2, 0.05, uw + 0.4, 0.55, 0.08, { decor: true, colour: shade(paint, 0.9) });
         }
       }
-      if (!mobile) shellPocks(sink, af, { u0: -W / 2 + 0.3, u1: W / 2 - 0.3, y0: 0.3, y1: ah - 0.3 }, 12 + Math.floor(look() * 16), [], look, 'stone');
+      sink.dressing(mobile, () => shellPocks(sink, af, { u0: -W / 2 + 0.3, u1: W / 2 - 0.3, y0: 0.3, y1: ah - 0.3 }, 12 + Math.floor(look() * 16), [], look, 'stone'));
     }
     sink.span(concrete, -W / 2 - 0.1, top, z0 - 0.1, W / 2 + 0.1, top + 0.7, z1 + 0.1);
     for (const x of [-W * 0.28, W * 0.28]) sink.span(concrete, x - 1.3, top + 0.7, z0 + sd * 0.25, x + 1.3, top + 3.0, z1 - sd * 0.25, { decor: true });
@@ -387,10 +387,10 @@ const slabBlock: RegionalBuilder = (ctx) => {
       }
     }
     for (let k = 2; k < bays; k += 4) facePanel(sink, 'glass', back, -W / 2 + bw * (k + 0.5), (gH + top) / 2, 0.02, 1.4, top - gH - 1, { decor: true, window: [0, 0, -1] });
-    if (!mobile) {
+    sink.dressing(mobile, () => {
       shellPocks(sink, back, { u0: -W / 2 + 0.4, u1: W / 2 - 0.4, y0: 1, y1: top - 1 }, 20 + Math.floor(look() * 30), [], look, 'stone');
       for (let k = 0; k < 2; k++) shellHole(sink, back, (look() - 0.5) * W * 0.8, gH + fh * (1 + look() * (floors - 2)) + 2.4, 0.45 + look() * 0.4, look, 'stone');
-    }
+    });
   });
   return sink.finish();
 };
@@ -442,10 +442,12 @@ const oslobodjenje: RegionalBuilder = (ctx) => {
         const inner: Face = faces.find((f) => f.out[0] === -side) ?? faces[0];
         if (look() < 0.55) faceBox(sink, concrete, inner, 0, y, 0.6 + look() * 1.2, cs * 0.9, 0.26, 1.2 + look() * 2.4, { decor: true });
       }
-      if (!mobile) for (let k = 0; k < 6; k++) {
-        const x = cx + (look() - 0.5) * cs, z = cz + (look() - 0.5) * cs;
-        sink.member('structureWood', [x, h, z], [x + (look() - 0.5) * 0.6, h + 0.6 + look() * 0.9, z + (look() - 0.5) * 0.6], 0.035, 0.035, [0, 0, 1], { colour: rgb(0x5e4030), decor: true, exposed: true }, 0);
-      }
+      sink.dressing(mobile, () => {
+        for (let k = 0; k < 6; k++) {
+          const x = cx + (look() - 0.5) * cs, z = cz + (look() - 0.5) * cs;
+          sink.member('structureWood', [x, h, z], [x + (look() - 0.5) * 0.6, h + 0.6 + look() * 0.9, z + (look() - 0.5) * 0.6], 0.035, 0.035, [0, 0, 1], { colour: rgb(0x5e4030), decor: true, exposed: true }, 0);
+        }
+      });
       if (side > 0) {
         sink.cylinder('structureMetal', [cx, h, cz], 'y', 7.5, 0.12, 6, { colour: rgb(0xb4b2aa), decor: true }, 0.06);
         for (const k of [0.4, 0.7]) sink.member('structureMetal', [cx - 0.9, h + 7.5 * k, cz], [cx + 0.9, h + 7.5 * k, cz], 0.05, 0.05, [0, 0, 1], { colour: rgb(0xb4b2aa), decor: true, exposed: true }, 0);
@@ -459,11 +461,13 @@ const oslobodjenje: RegionalBuilder = (ctx) => {
       sink.member(concrete, a, b, cs * 0.9, 0.26, normalize3([0.2, 1, 0]), { decor: true, exposed: true });
     }
     sink.span('stone', -span / 2 - 0.5, -0.3, cz - cs, span / 2 + 0.5, 2.2, Math.min(D / 2, cz + cs * 1.4), { decor: true });
-    for (let k = 0; k < (mobile ? 2 : 6); k++) {
+    // (a phone keeps two of the six slabs, every slab drawn)
+    for (let k = 0; k < 6; k++) {
       const x = (look() - 0.5) * span, z = cz + (look() - 0.3) * cs;
-      sink.member(concrete, [x, 0.8, z], [x + (look() - 0.5) * 3, 2.2 + look() * 2, z + (look() - 0.5) * 3], 2 + look() * 2, 0.24, [0, 1, 0], { decor: true, exposed: true });
+      const dx = (look() - 0.5) * 3, topY = 2.2 + look() * 2, dz = (look() - 0.5) * 3, wide = 2 + look() * 2;
+      if (!mobile || k < 2) sink.member(concrete, [x, 0.8, z], [x + dx, topY, z + dz], wide, 0.24, [0, 1, 0], { decor: true, exposed: true });
     }
-    if (!mobile) shellPocks(sink, pf, { u0: -W / 2 + 0.4, u1: W / 2 - 0.4, y0: 0.6, y1: bh - 0.6 }, 30, [], look, 'stone');
+    sink.dressing(mobile, () => shellPocks(sink, pf, { u0: -W / 2 + 0.4, u1: W / 2 - 0.4, y0: 0.6, y1: bh - 0.6 }, 30, [], look, 'stone'));
   });
   return sink.finish();
 };

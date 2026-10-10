@@ -1,20 +1,55 @@
 import assert from 'node:assert/strict';
+import { Ray, Vector3 } from 'three';
 import { createTank } from '../tankFactory.ts';
 import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
+import { shellPart } from '../../../tools/base-shell-audit-math.mjs';
 
-// Owner-directed 1.05 T-90 family size (2026-10-02, main 245aa4e4e): the factory bakes the source-frame build into the
-// installed turret frame, so the source-frame stations and part spans below map by `f`. The builder's layout receipts
-// are source-frame records and stay exact.
-const f = VEHICLE_SIZE_FACTORS.t90ms ?? 1;
+// The 0.10/1.62 envelope and all chevron dimensions below describe the
+// original authoring frame (f90de613b). The owner-directed 5% enlargement
+// added by 245aa4e4e is baked into vertices, not an Object3D scale.
+function authoredEnvelope(geometry, factor) {
+  geometry.computeBoundingBox();
+  const bounds = geometry.boundingBox.clone();
+  bounds.min.divideScalar(factor); bounds.max.divideScalar(factor);
+  assert.ok(bounds.min.y >= 0.10,
+    `t90ms: turret armor stays above the ring instead of hanging below it (${bounds.min.y})`);
+  assert.ok(bounds.max.z <= 1.62,
+    `t90ms: nose cassettes remain seated on the welded arrowhead (${bounds.max.z})`);
+  return bounds;
+}
+
+const emitted = [];
 
 const tank = createTank('t90ms', null, {
   proceduralOnly: true,
   quality: 'high',
   camoSeed: 4242,
   geometryReceipt: true,
+  partCensus(bucket, geometry, source) {
+    if (source !== 'add') return;
+    const fitted = String(geometry.userData.nativeArmorSkinRole).startsWith('t90ms-welded-');
+    const carrier = bucket === 'turret' && geometry.getAttribute('position').count === 312
+      && new Error().stack.includes('rebuildT90MSTurretExact (');
+    if (fitted || carrier) emitted.push({ geometry, carrier,
+      authoredPositions: Float32Array.from(geometry.getAttribute('position').array) });
+  },
 });
 
 try {
+  const factor = VEHICLE_SIZE_FACTORS.t90ms;
+  assert.equal(factor, 1.05, 't90ms: retains the owner-directed whole-vehicle enlargement');
+  assert.deepEqual(tank.root.getObjectByName('rig_hull')?.userData.vehicleSize,
+    { factor, baked: true }, 't90ms: installed frame explicitly records the baked scale');
+  // Observe source stock before the bake and compare every installed vertex.
+  // A stale, missing, doubled or nonuniform bake cannot be hidden by dividing
+  // arbitrary final bounds by a convenient value.
+  for (const { geometry, authoredPositions } of emitted) {
+    const installed = geometry.getAttribute('position').array;
+    assert.equal(installed.length, authoredPositions.length);
+    for (let i = 0; i < installed.length; i++) assert.ok(
+      Math.abs(installed[i] - Math.fround(authoredPositions[i] * factor)) < 0.0000003,
+      't90ms: measured stock follows exactly the declared uniform scale');
+  }
   const receipt = tank.root.userData.eraFinishReceipt;
   assert.ok(receipt, 't90ms: publishes its layered armor receipt');
   assert.equal(receipt.semanticBucket, 'externalArmor',
@@ -30,29 +65,24 @@ try {
 
   const turretArmor = tank.root.getObjectByName('turretExternalArmor');
   assert.ok(turretArmor?.isMesh, 't90ms: merges turret armor into one draw bucket');
-  const seated = () => {
-    turretArmor.geometry.computeBoundingBox();
-    const bounds = turretArmor.geometry.boundingBox;
-    assert.ok(bounds.min.y >= 0.10 * f,
-      `t90ms: turret armor stays above the ring instead of hanging below it (${bounds.min.y})`);
-    assert.ok(bounds.max.z <= 1.62 * f,
-      `t90ms: nose cassettes remain seated on the welded arrowhead (${bounds.max.z})`);
-  };
-  seated();
-  // Seeded defects: armor pushed 20 mm off the arrowhead, or dropped 20 mm below the ring, must fail.
-  for (const offset of [[0, 0, 0.02], [0, -0.02 - turretArmor.geometry.boundingBox.min.y + 0.10 * f, 0]]) {
-    turretArmor.geometry.translate(...offset);
-    assert.throws(seated, assert.AssertionError, `t90ms: displaced turret armor ${offset} is rejected`);
-    turretArmor.geometry.translate(...offset.map((v) => -v));
-  }
-  seated();
+  const bounds = authoredEnvelope(turretArmor.geometry, factor);
+  const protruding = turretArmor.geometry.clone().translate(0, 0, (1.621 - bounds.max.z) * factor);
+  const sagging = turretArmor.geometry.clone().translate(0, (0.099 - bounds.min.y) * factor, 0);
+  try {
+    assert.throws(() => authoredEnvelope(protruding, factor), /nose cassettes/,
+      'a native nose displaced beyond the unchanged 1.62 m authoring limit is rejected');
+    assert.throws(() => authoredEnvelope(sagging, factor), /above the ring/,
+      'native armor displaced below the unchanged 0.10 m authoring limit is rejected');
+  } finally { protruding.dispose(); sagging.dispose(); }
 
-  const mainChevrons = tank.root.userData.combatGeometryParts.filter((part) => {
+  const mainChevrons = tank.root.userData.combatGeometryParts.map(part => ({ ...part,
+    min: part.min.map(value => value / factor), max: part.max.map(value => value / factor),
+  })).filter((part) => {
     if (part.bucket !== 'turretExternalArmor') return false;
     const spanX = part.max[0] - part.min[0];
     const spanY = part.max[1] - part.min[1];
     const spanZ = part.max[2] - part.min[2];
-    return spanX >= 0.65 * f && spanY <= 0.30 * f && spanZ >= 0.60 * f && part.max[2] >= 1.0 * f;
+    return spanX >= 0.65 && spanY <= 0.30 && spanZ >= 0.60 && part.max[2] >= 1.0;
   });
   assert.equal(mainChevrons.length, 8,
     't90ms: exposes upper and lower ERA rows on both diagonal cheeks');
@@ -70,7 +100,7 @@ try {
       `t90ms: side ${side} outer lower and upper rows meet at one ridge`);
     const innerZ = (inner[0].min[2] + inner[0].max[2]) * 0.5;
     const outerZ = (outer[0].min[2] + outer[0].max[2]) * 0.5;
-    assert.ok(outerZ < innerZ - 0.40 * f,
+    assert.ok(outerZ < innerZ - 0.40,
       `t90ms: side ${side} ERA follows the rearward-sloping / or \\ cheek`);
   }
 
@@ -89,7 +119,7 @@ try {
 
   const flankSeat = turretRig?.userData.t90MSFlankEraSeatReceipt;
   assert.deepEqual(flankSeat, {
-    revision: 'outer-skin-projected-r1',
+    revision: 'emitted-welded-facets-r2',
     projectedParts: 54,
     flankCarriers: 3,
     lowerCassettes: 8,
@@ -97,6 +127,47 @@ try {
     roofPlates: 5,
     maxBackGapM: 0.004,
   }, 't90ms: every non-frontal turret ERA part is projected onto its carrier facet');
+
+  // Check actual back faces against the actual emitted carrier independently
+  // of its receipt. Both are returned to the historical authoring frame.
+  const carriers = emitted.filter(part => part.carrier);
+  const plates = emitted.filter(part => !part.carrier);
+  assert.equal(carriers.length, 1, 't90ms: one complete welded carrier is present');
+  assert.equal(plates.length, 54, 't90ms: every fitted flank/shoulder/roof solid is tested');
+  const carrierGeometry = carriers[0].geometry.clone().scale(1 / factor, 1 / factor, 1 / factor);
+  try {
+    const carrier = shellPart(carrierGeometry);
+    let backFaces = 0;
+    for (const { geometry } of plates) {
+      const local = geometry.clone().scale(1 / factor, 1 / factor, 1 / factor);
+      try {
+        const plate = shellPart(local), roof = geometry.userData.nativeArmorSkinRole.endsWith('roof');
+        const outward = new Vector3(roof ? 0 : Math.sign(plate.bounds.min.x + plate.bounds.max.x), roof ? 1 : 0, 0);
+        const assertSeat = point => {
+          const ray = new Ray(point.clone().addScaledVector(outward, 4), outward.clone().negate());
+          let distance = Infinity;
+          for (const face of carrier.triangles) {
+            const hit = ray.intersectTriangle(face.triangle.a, face.triangle.b, face.triangle.c, false, new Vector3());
+            if (hit) distance = Math.min(distance, hit.distanceTo(ray.origin));
+          }
+          const gap = distance - 4;
+          // Baked Float32 positions are divided back into the authoring
+          // frame; allow 0.3 micrometres of representation error at the seat.
+          assert.ok(gap >= 0.0009 - 0.0000003 && gap <= 0.004 + 0.0000003,
+            `t90ms: actual fitted back face has a finite carrier seat (${gap})`);
+        };
+        let count = 0;
+        for (const face of plate.triangles) if (face.triangle.getNormal(new Vector3()).dot(outward) < -0.05) {
+          const point = face.triangle.getMidpoint(new Vector3());
+          assertSeat(point); count++; backFaces++;
+          assert.throws(() => assertSeat(point.clone().addScaledVector(outward, 0.05)), /finite carrier seat/,
+            'a fitted back face displaced 50 mm off its real carrier is rejected');
+        }
+        assert.ok(count >= 2, 't90ms: each complete fitted solid has actual back faces');
+      } finally { local.dispose(); }
+    }
+    assert.ok(backFaces > 108, 't90ms: includes subdivided faces at the welded carrier ridges');
+  } finally { carrierGeometry.dispose(); }
 
   const towerReceipt = turretRig?.userData.t90msTagilWeaponTowerReceipt;
   assert.deepEqual(towerReceipt, {
@@ -117,4 +188,4 @@ try {
   tank.dispose();
 }
 
-console.log('t90MSTurretArmorSeat.selftest: dense cheek modules and 54 projected turret ERA parts pass');
+console.log('t90MSTurretArmorSeat.selftest: declared 1.05 bake, unchanged authoring-frame limits, chevrons and 54 actual carrier seats pass');

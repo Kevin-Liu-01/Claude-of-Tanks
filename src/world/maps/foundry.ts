@@ -173,8 +173,9 @@ export default {
     well: false, hayCrates: false, fences: true, telegraph: true, carts: false, logs: false,
     rocks: 142, outcrops: 12, craters: 86, rubblePiles: 48,
     hedgehogs: 36, sandbagLines: 28,
-    tankWrecks: { era: 'modern', count: 8, debris: true,
-      ids: ['m1a2_sepv3', 't72b3m', 'leclerc_xlr', 'bmpt_t90', 'm2a2_bradley', 'marder1a3', 'pt91m', 'pl01'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
+    // front's war; the war shows through the burnt period trucks and carts
+    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
     inhabit: {
       stalls: 1, benches: 5, coreClutter: 42, drums: 24,
       trucks: 10, jeeps: 6, drumClusters: 11, camps: 2, modernClutter: 46,

@@ -22,7 +22,9 @@ function visit(node) {
 visit(ast);
 const names = ['placeFenceRun', 'scatterDestructibles', 'fenceRun', 'placeRoadFenceLines',
   'placeRoadCarts', 'placeSandbagEmplacements', 'placeUtilityPoles', 'placeTownLampposts', 'placeStreetLamps',
-  'isRoadsideSpotClear', 'findRoadsideSpot', 'tryPlaceRoadWreck', 'placeRoadWrecks', 'richCount'];
+  'isRoadsideSpotClear', 'findRoadsideSpot', 'tryPlaceRoadWreck', 'placeRoadWrecks', 'richCount',
+  // (2026-10-07, the map-vehicles lane) a road cart's station refuses a seat past the carts' tilt cap
+  'cartGroundPose'];
 const definitions = names.map(name => {
   assert.ok(functions.has(name), `execute the actual production ${name}`);
   return functions.get(name);
@@ -31,7 +33,7 @@ const factory = new Function('deps', `
   const { L, heightField, rng, drng, wrng, mulberry32, addDestructible, P,
     authoredRoadStationCount, authoredRoadStationIndex, FENCE_SEG, planUtilityPoleStation,
     utilityPolePlacements, addUtilityPole, wreckRecords, fenceRuns, fixtureSeed, fixtureRoadFence,
-    buckets, box, distToOtherRoads } = deps;
+    buckets, box, distToOtherRoads, resolveDestructibleMeta, destructibleContext } = deps;
   // The extracted production richCount reads the tier multiplier through this hook; the station
   // parity checked here runs at the authored counts (the mobile tier's production value).
   const environmentRichness = () => 1;
@@ -125,6 +127,8 @@ function fixture(L, roadDistance = () => 20, options = {}) {
     authoredRoadStationCount, authoredRoadStationIndex, FENCE_SEG, planUtilityPoleStation,
     utilityPolePlacements, addUtilityPole: (post, station) => poles.push({ post, station }), wreckRecords, fenceRuns,
     distToOtherRoads: options.otherRoadDistance ?? (() => 20), buckets: { dark: fallenLamps },
+    // a cart's footprint (its seat's tilt is read off the fixture's gently sloping ground: never past the cap)
+    resolveDestructibleMeta: () => ({ r: 1, hw: 0.9, hl: 2 }), destructibleContext: null,
     box: (...dimensions) => Object.defineProperties({ dimensions }, {
       rotateY: { value(yaw) { this.yaw = yaw; } },
       translate: { value(...position) { this.position = position; } },

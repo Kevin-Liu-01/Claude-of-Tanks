@@ -97,12 +97,22 @@ function cageBar(P: TankBuilderPort, frame: Frame, a: [number,number,number], b:
 function chainCurtain(P: TankBuilderPort, frame: Frame, rear: number, half: number, railY: number, drop = .25): void {
   // Real separated rail-and-chain equipment; open space remains open.
   topPart(P,frame,'turretOpenLattice',box(half*2,.035,.035),0,railY,rear);
-  for(let i=0;i<23;i++){
-    const x=-half+.06+i*(half*2-.12)/22;
-    topPart(P,frame,'turretOpenLatticeDark',cylY(.009,drop,6),x,railY-drop/2-.015,rear);
-    // 2026-09-12: the balls are bare steel like their chains; painted spheres
-    // read as a white picket fence under the bustle on every study.
-    topPart(P,frame,'turretOpenLatticeDark',new THREE.SphereGeometry(.030,8,6),x,railY-drop-.033,rear);
+  // Fleet lane 2026-10-08 (accessories sweep: "the ball-and-chain fringe"): 23 identical rods at one pitch, one drop
+  // and one ball height read as a picket fence. A fringe hangs about 5 cm apart: each chain takes its own pitch, drop
+  // and sway, a few are missing, and the steel balls vary in size and height. Hashed from the index, so every build
+  // hangs the same fringe. (2026-09-12: chains and balls stay bare steel; painted spheres read as a white fence.)
+  const span=half*2-.10,n=Math.max(12,Math.round(span/.052))+1,pitch=span/(n-1);
+  const jit=(i:number,k:number):number=>{
+    let h=Math.imul(i+1,0x9e3779b1)^Math.imul(k+7,0x85ebca6b);
+    h^=h>>>15;h=Math.imul(h,0x2c1b3c6d);h^=h>>>12;
+    return (h>>>0)/4294967296-.5;
+  };
+  for(let i=0;i<n;i++){
+    if(i>0&&i<n-1&&jit(i,1)>.42)continue;
+    const x=-half+.05+i*pitch+jit(i,2)*pitch*.35,d=drop*(1+jit(i,3)*.3),lean=jit(i,4)*.07,z=rear+jit(i,5)*.012;
+    topPart(P,frame,'turretOpenLatticeDark',box(.008,d,.008),x+Math.sin(lean)*d/2,railY-.015-Math.cos(lean)*d/2,z,0,0,lean);
+    const r=.019*(1+jit(i,6)*.3);
+    topPart(P,frame,'turretOpenLatticeDark',new THREE.SphereGeometry(r,7,5),x+Math.sin(lean)*d,railY-.015-Math.cos(lean)*d-r*.8,z);
   }
 }
 
@@ -420,7 +430,14 @@ function merkava4HullDetails(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
     // The modern source rear openings replace the generic closed Mk.4 case.
     if(candidate!=='merkava4_trophy'&&candidate!=='merkava4_barak')
       P.addEquipment('hullDetail',box(.66,.36,.35),side*.66,1.37,-3.69);
-    for(const z of[-3.49,3.50])P.addEquipment('hullDetail',torus(.065,.019,12,6),side*.67,.79,z);
+    // Fleet lane 2026-10-08 (accessories sweep: "the rear tow eye"): the lower towing eyes were flat rings lying half
+    // inside the end plates, a washer pushed into the armour. Each is a pair of lugs welded to the plate, a transverse
+    // pin through them and an upright eye hanging on the pin (KIT.torus lies flat; rz turns it into the YZ plane).
+    for(const [plate,out] of[[-3.475,-1],[3.524,1]] as const){
+      for(const x of[.625,.715])P.addEquipment('hullDetail',box(.03,.08,.10),side*x,.80,plate+out*.045);
+      P.addEquipment('hullDetail',cylX(.016,.12,12),side*.67,.80,plate+out*.07);
+      P.addEquipment('hullDetail',torus(.046,.014,14,6),side*.67,.775,plate+out*.09,0,0,Math.PI/2);
+    }
     // Measured paired glacis tow lugs, with transverse pins and open eyes.
     for(const x of[.930,1.010])P.addEquipment('hullDetail',box(.033,.065,.105),side*x,1.1875,3.3065);
     P.addEquipment('hullDetail',cylX(.020,.117,16),side*.970,1.185,3.322);
@@ -488,10 +505,21 @@ function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trop
   const put=(slot:string,g:THREE.BufferGeometry,x:number,y:number,z:number,rx=0,ry=0,rz=0)=>topPart(P,MK4,slot,g,x,y,z,rx,ry,rz);
   P.addCupola('turret',cylY(.34,.25,8),-.635,2.550-MK4.y,.046-MK4.z);
   put('turretDetail',cylY(.31,.052,8),-.635,2.676,.046);
+  // Fleet lane round 2 (2026-10-08; wave 257: "the periscope blocks around the octagonal cupola stick out like stuck-on
+  // stubs"): each of the eight periscope heads sat on an octagon CORNER as a 2.7 cm slab turned edge-on, radially out.
+  // They now stand on the crown as one armoured periscope ring: eight housings meeting corner to corner round the
+  // hatch, inside the crown's outline, each with its window outboard (separate heads hung over the drum's oblique faces,
+  // or standing apart on the crown, closed voxel columns the watertight census then read as pockets).
+  const ringOuter=.285*Math.cos(Math.PI/8),ringSide=2*.285*Math.sin(Math.PI/8);
   for(let i=0;i<8;i++){
-    const a=i*Math.PI/4,x=-.635+Math.cos(a)*.31,z=.046+Math.sin(a)*.31;
-    put('turretDark',box(.13,.063,.027),x,2.645,z,0,-a);
+    const a=Math.PI/8+i*Math.PI/4,c=Math.cos(a),sn=Math.sin(a),ry=Math.PI/2-a;
+    const at=(r:number):[number,number]=>[-.635+c*r,.046+sn*r];
+    const [hx,hz]=at(ringOuter-.03),[gx,gz]=at(ringOuter+.0015);
+    put('turretDark',box(ringSide,.05,.06),hx,2.727,hz,0,ry);
+    put('turretGlass',box(.09,.028,.004),gx,2.729,gz,0,ry);
   }
+  // the hatch lid inside the ring, standing a little proud of the crown
+  put('turretDetail',cylY(.205,.03,16),-.635,2.717,.046);
   put('turretDetail',cylY(.23,.3015,24),.507,2.6823,-.516);
   put('turretDark',box(.26,.12,.016),.507,2.727,-.278);
   put('turretGlass',box(.20,.075,.009),.507,2.736,-.266);
@@ -569,7 +597,7 @@ function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trop
   }
   for(const x of[-.82038,.89347])put('turretDetail',box(.21,.29,.26),x,2.527,-3.015);
   merkava4Basket(P);
-  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:1.48,remoteControlled:true,seed:444,tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:candidate==='merkava4_trophy'});
+  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:1.0,remoteControlled:true,seed:444,tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:candidate==='merkava4_trophy'}); // true scale (round 3; was 1.48, a 115 % GPMG)
   const mgSeatY={merkava4_x:2.577,merkava4_trophy:2.400}[candidate];
   mg.position.set(-.83,mgSeatY-MK4.y,-.752-MK4.z);P.turretG.add(mg);
 }
@@ -617,18 +645,40 @@ function merkava4Basket(P: TankBuilderPort): void {
 }
 
 function merkava4CoaxMount(P: TankBuilderPort): void {
-  const put=(g:THREE.BufferGeometry,x:number,y:number,z:number)=>P.addEquipment('gunMount',g,x,y-1.9934619,z-1.93);
+  // 2026-10-08 (round 5, wave 257 on the Merkava 4: the over-gun M2 "perched on a stack of rounded camo-painted blocks
+  // instead of a cradle"; "standing on two stacked rounded slabs instead of a real pintle"): the mount is machined
+  // gunmetal with square edges (the gun mount's dark stock), and the gun lies in a cradle: the saddle, a floor plate
+  // under the receiver's forward half, a cheek either side with its bolt heads, and the trunnion pin through both. The
+  // cheeks stop under the feed tray, so the belt from the can on the gun's left runs over them into the feedway. Every
+  // block keeps its round-3 seat, and the dark stock keeps the painted blocks' place in the gun's shadow.
+  const put=(g:THREE.BufferGeometry,x:number,y:number,z:number)=>P.addEquipment('gunMountDark',g,x,y-1.9934619,z-1.93);
+  const block=(w:number,h:number,d:number,sz=1)=>new THREE.BoxGeometry(w,h,d,1,1,sz);
   // Source coax has a long receiver stock and an offset two-post cradle.
   // These parts move with the pitching mount, not with cannon recoil.
-  put(box(.0742,.11095,.58784),.02212,2.59413,1.31816);
-  put(box(.14716,.12013,.16549),.02212,2.59413,.94149);
-  for(const x of[-.03881,.08305])put(cylZ(.02583,.25099,14),x,2.71433,.88842);
-  put(box(.12537,.06696,.04155),.02212,2.69890,1.00530);
-  put(box(.27459,.13384,.07214),.02212,2.32365,1.37610);
+  // (round 3: the long receiver stock and the twin tubes over the rear block read as a second gun beside the M2,
+  // which now lies in this cradle itself; the cradle's rear block, posts and rails stay, and a saddle carries the
+  // receiver from the rail top (2.445) to its underside (2.539).)
+  put(block(.14716,.12013,.16549),.02212,2.59413,.94149);
+  put(block(.10,.10,.36,3),.02212,2.492,1.32);
+  put(block(.27459,.13384,.07214),.02212,2.32365,1.37610);
   put(cylY(.0226,.11067,14),.02212,2.36305,1.07010);
-  put(box(.13742,.05403,.43933),.02212,2.41759,1.19975);
+  put(block(.13742,.05403,.43933,4),.02212,2.41759,1.19975);
   put(cylY(.02061,.10961,14),.02212,2.46520,1.58029);
-  put(box(.16092,.09972,.26879),.06785,2.47435,1.44589);
+  put(block(.16092,.09972,.26879,2),.06785,2.47435,1.44589);
+  const cx=.02212, cheekX=.059+.004+.006;
+  put(block(.150,.014,.20,2),cx,2.532,1.44);
+  for(const side of[-1,1]){
+    put(block(.012,.09,.16,2),cx+side*cheekX,2.545,1.48);
+    for(const [dy,dz] of[[-.025,-.05],[-.025,.05],[.025,-.05],[.025,.05]])
+      put(cylX(.0065,.008,8),cx+side*(cheekX+.008),2.545+dy,1.48+dz);
+  }
+  put(cylX(.014,.168,12),cx,2.565,1.50);
+  const previous=P.postAssemble;
+  P.postAssemble=rig=>{
+    previous?.(rig);
+    const dark=rig.gunG.getObjectByName('gunMountDark');
+    if(dark)dark.userData.preserveRecoilShadowSource=true;
+  };
 }
 
 type TrophyConfiguration = 'mk4'|'barak'|'namer';
@@ -659,6 +709,15 @@ function addTrophySuite(P: TankBuilderPort, frame: Frame, configuration: TrophyC
     }
     const launcherZ=(frontZ+rearZ)*.5;
     put('turretDetail',box(.28,.20,.36),side*(sideX-.16),roof+.02,launcherZ);
+    if(configuration==='mk4'){
+      // 2026-10-07 (tank-accessories round 4, wave 217: "the six-tube launcher box hangs in mid-air above the
+      // commander's MG, with background visible between them"): the outboard launcher stood 0.36 m over the sloping
+      // turret side between the radar pedestals. A pedestal now carries it down into the side armour (its foot
+      // embedded where the side falls to 2.11-2.24) and a cantilever arm ties its inboard edge back to the roof
+      // shoulder; both stay 0.8 m outboard of the commander's gun and its elevation arc.
+      put('turretDetail',box(.14,.40,.24),side*1.52,roof-.25,launcherZ);
+      put('turretDetail',box(.28,.07,.16),side*1.37,roof-.115,launcherZ);
+    }
     for(let row=0;row<2;row++)for(let i=0;i<3;i++)
       put('turretDark',cylZ(.033,.20,12),side*(sideX-.16)+(i-1)*.075,roof+.055+row*.075,launcherZ+.14,0,side*.12);
   }
@@ -1070,8 +1129,17 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
     P.addEquipment('gunDark',cylX(.010,.125,10),.013,.112,worldZ-1.93);
   }
   if(candidate!=='merkava4_barak'){
-    const coax=FITTINGS.pintleMG({mats:P.mats,cls:'m2',scale:1.10,seed:445,tone:'two-tone',ammo:false,shield:false,ring:false});
-    coax.position.set(.0221,.26418,-.3127);P.gunG.add(coax);
+    // 2026-10-07 (tank-accessories round 3): the critics read "two full-size machine guns crowded onto a single shared
+    // pintle" over the mantlet: the M2's own pintle column stood on the mantlet in front of the source cradle's long
+    // receiver stock and its twin cradle tubes. The over-gun M2 is one weapon in the source cradle: no second pintle,
+    // its receiver laid where the stock was (underside y 2.539, centre z 1.318 world), true scale.
+    // 2026-10-08 (round 5; wave 257 on the Merkava 4 Trophy: "a plain dark-grey box receiver and smooth tube with no
+    // ammunition box, feed chute, cocking handle or barrel-jacket holes, perched on a stack of rounded camo-painted
+    // blocks instead of a cradle"): the M2 carries its can and belt on its left, and its cradle is machined gunmetal.
+    const coax=FITTINGS.pintleMG({mats:P.mats,cls:'m2',scale:1.0,seed:445,tone:'two-tone',ammo:true,shield:false,ring:false,
+      mount:'external-cradle'});
+    coax.name='merkava4OverGunM2';
+    coax.position.set(.0221,2.539-1.9934619,1.318-.06-1.93);P.gunG.add(coax);
   }
   if(candidate!=='merkava4_barak')merkava4CoaxMount(P);
   P.muzzleZ=2.8755;P.topY=2.75-MK4.y;

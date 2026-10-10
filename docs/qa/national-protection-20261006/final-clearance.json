@@ -1,0 +1,1443 @@
+{
+  "createdAt": "2026-10-07T06:26:23.199Z",
+  "before": {
+    "src/vehicles/profiles/nationalUkraine.ts": "793f6c1d029657f8ec73c76ab5797304e166086202c6ab612963a825f1fefedf",
+    "src/vehicles/profiles/nationalPoland.ts": "8c0834fc4d4e4529e29a52a3d5ce4fd96d418b4fb76f14015223de75e1767d6d",
+    "src/vehicles/profiles/hetmanII.ts": "c212df10367320898c086f11ed3daad50ff0d243b1c25ca91104e5c57461308d",
+    "src/vehicles/profiles/zubrII.ts": "fd6d2158cc6d88dc9f26f19237db4c05f5882a77744209480b65735e4860112e",
+    "src/vehicles/profiles/nationalUkraineProtection.ts": "ae1e70d58245d5040c4bb58b6386e5551d26fe4c7c3b9a734e7d7ecda001a0a3",
+    "src/vehicles/profiles/nationalPolandProtection.ts": "2f320f874ac808aeb823c904e7de04fa1e3aff560e60a18a38358b58909d4c0b",
+    "src/vehicles/nationalPolandProtectionConfig.ts": "9680e45ef3d36a7c002e0b3439a8f3999f13d8609c42c9d5abb392f3dbe3c56a",
+    "src/vehicles/ghillieSuit.ts": "3ea2c3bfc78bc01b0fa037b4efb514501619d21cb9cd7766bc6f4b1f450055dc"
+  },
+  "after": {
+    "src/vehicles/profiles/nationalUkraine.ts": "793f6c1d029657f8ec73c76ab5797304e166086202c6ab612963a825f1fefedf",
+    "src/vehicles/profiles/nationalPoland.ts": "8c0834fc4d4e4529e29a52a3d5ce4fd96d418b4fb76f14015223de75e1767d6d",
+    "src/vehicles/profiles/hetmanII.ts": "c212df10367320898c086f11ed3daad50ff0d243b1c25ca91104e5c57461308d",
+    "src/vehicles/profiles/zubrII.ts": "fd6d2158cc6d88dc9f26f19237db4c05f5882a77744209480b65735e4860112e",
+    "src/vehicles/profiles/nationalUkraineProtection.ts": "ae1e70d58245d5040c4bb58b6386e5551d26fe4c7c3b9a734e7d7ecda001a0a3",
+    "src/vehicles/profiles/nationalPolandProtection.ts": "2f320f874ac808aeb823c904e7de04fa1e3aff560e60a18a38358b58909d4c0b",
+    "src/vehicles/nationalPolandProtectionConfig.ts": "9680e45ef3d36a7c002e0b3439a8f3999f13d8609c42c9d5abb392f3dbe3c56a",
+    "src/vehicles/ghillieSuit.ts": "3ea2c3bfc78bc01b0fa037b4efb514501619d21cb9cd7766bc6f4b1f450055dc"
+  },
+  "sourceStable": true,
+  "limitations": "Native finite-triangle sample grid is not a continuum proof. New stock is independently subtracted from pre-upgrade native meshes; unchanged stock and existing generated fill excluded from gun collision comparison. Drone uses actual native full stock, generated fill freshness remains pending regeneration.",
+  "reports": [
+    {
+      "id": "ua_t80u_modern",
+      "quality": "high",
+      "dock": {
+        "authoredHint": false,
+        "seat": {
+          "frame": "turret",
+          "x": -0.9799999856948851,
+          "y": 0.7278513343088112,
+          "z": -0.060000057220458425,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "payloadOffset": [
+            -0.24,
+            0
+          ],
+          "supportY": [
+            0.6285683651341039,
+            0.6285683796382955,
+            0.6828513289787743,
+            0.6828513343088112
+          ],
+          "signature": "3162628e",
+          "geometryHash": "8bc3e61cc002ba7dfd74a97ffc65f2cdccd0abd5ea8678f87a803d7fe4d6816b"
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -0.9799999856948851,
+          "y": 0.7278513343088112,
+          "z": -0.060000057220458425,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "payloadOffset": [
+            -0.24,
+            0
+          ],
+          "supportY": [
+            0.6285683651341039,
+            0.6285683796382955,
+            0.6828513289787743,
+            0.6828513343088112
+          ],
+          "signature": "3162628e",
+          "geometryHash": "8bc3e61cc002ba7dfd74a97ffc65f2cdccd0abd5ea8678f87a803d7fe4d6816b"
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 16694,
+        "turret": 7448
+      },
+      "mainGun": {
+        "poses": 3168,
+        "pitches": [
+          -6,
+          0,
+          14,
+          14.802140913183152,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": []
+      },
+      "turretAgainstHull": {
+        "poses": 72,
+        "contacts": []
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    },
+    {
+      "id": "ua_t80u_modern",
+      "quality": "low",
+      "dock": {
+        "authoredHint": false,
+        "seat": {
+          "frame": "turret",
+          "x": -0.9799999856948851,
+          "y": 0.7278513343088112,
+          "z": -0.060000057220458425,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "payloadOffset": [
+            -0.24,
+            0
+          ],
+          "supportY": [
+            0.6285683651341039,
+            0.6285683796382955,
+            0.6828513289787743,
+            0.6828513343088112
+          ],
+          "signature": "3162628e",
+          "geometryHash": "8bc3e61cc002ba7dfd74a97ffc65f2cdccd0abd5ea8678f87a803d7fe4d6816b"
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -0.9799999856948851,
+          "y": 0.7278513343088112,
+          "z": -0.060000057220458425,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "payloadOffset": [
+            -0.24,
+            0
+          ],
+          "supportY": [
+            0.6285683651341039,
+            0.6285683796382955,
+            0.6828513289787743,
+            0.6828513343088112
+          ],
+          "signature": "3162628e",
+          "geometryHash": "8bc3e61cc002ba7dfd74a97ffc65f2cdccd0abd5ea8678f87a803d7fe4d6816b"
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 16694,
+        "turret": 7448
+      },
+      "mainGun": {
+        "poses": 3168,
+        "pitches": [
+          -6,
+          0,
+          14,
+          14.802140913183152,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": []
+      },
+      "turretAgainstHull": {
+        "poses": 72,
+        "contacts": []
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    },
+    {
+      "id": "ua_t72b3m_modern",
+      "quality": "high",
+      "dock": {
+        "authoredHint": false,
+        "seat": {
+          "frame": "turret",
+          "x": -0.8300000143051145,
+          "y": 0.7537500098347697,
+          "z": 0.5400000572204596,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.6839604613455812,
+            0.6582873598480035,
+            0.7087500098347697,
+            0.6862500098347688
+          ],
+          "signature": "1541006a",
+          "geometryHash": "bf61634c898d44f2424e741b2d91f731761b28f4e350cde08b992f0897c169c4"
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -0.8300000143051145,
+          "y": 0.7537500098347697,
+          "z": 0.5400000572204596,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.6839604613455812,
+            0.6582873598480035,
+            0.7087500098347697,
+            0.6862500098347688
+          ],
+          "signature": "1541006a",
+          "geometryHash": "bf61634c898d44f2424e741b2d91f731761b28f4e350cde08b992f0897c169c4"
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 18610,
+        "turret": 7850
+      },
+      "mainGun": {
+        "poses": 3168,
+        "pitches": [
+          -6,
+          0,
+          14,
+          14.802140913183152,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": []
+      },
+      "turretAgainstHull": {
+        "poses": 72,
+        "contacts": []
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    },
+    {
+      "id": "ua_t72b3m_modern",
+      "quality": "low",
+      "dock": {
+        "authoredHint": false,
+        "seat": {
+          "frame": "turret",
+          "x": -0.8300000143051145,
+          "y": 0.7537500098347697,
+          "z": 0.5400000572204596,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.6839604613455812,
+            0.6582873598480035,
+            0.7087500098347697,
+            0.6862500098347688
+          ],
+          "signature": "1541006a",
+          "geometryHash": "bf61634c898d44f2424e741b2d91f731761b28f4e350cde08b992f0897c169c4"
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -0.8300000143051145,
+          "y": 0.7537500098347697,
+          "z": 0.5400000572204596,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.6839604613455812,
+            0.6582873598480035,
+            0.7087500098347697,
+            0.6862500098347688
+          ],
+          "signature": "1541006a",
+          "geometryHash": "bf61634c898d44f2424e741b2d91f731761b28f4e350cde08b992f0897c169c4"
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 18610,
+        "turret": 7850
+      },
+      "mainGun": {
+        "poses": 3168,
+        "pitches": [
+          -6,
+          0,
+          14,
+          14.802140913183152,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": []
+      },
+      "turretAgainstHull": {
+        "poses": 72,
+        "contacts": []
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    },
+    {
+      "id": "ua_t72b3_modern",
+      "quality": "high",
+      "dock": {
+        "authoredHint": false,
+        "seat": {
+          "frame": "turret",
+          "x": -0.792,
+          "y": 0.7075369626889217,
+          "z": 0.5897042253521125,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.6435619030699584,
+            0.6180603821701247,
+            0.6625369626889217,
+            0.6400369626889244
+          ],
+          "signature": "45ed2a90",
+          "geometryHash": "49c5a3e5573b9987f309c379f9c031e9d1aecce57b80ebbf70c4047d85ec3063"
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -0.792,
+          "y": 0.7075369626889217,
+          "z": 0.5897042253521125,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.6435619030699584,
+            0.6180603821701247,
+            0.6625369626889217,
+            0.6400369626889244
+          ],
+          "signature": "45ed2a90",
+          "geometryHash": "49c5a3e5573b9987f309c379f9c031e9d1aecce57b80ebbf70c4047d85ec3063"
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 17654,
+        "turret": 6742
+      },
+      "mainGun": {
+        "poses": 3168,
+        "pitches": [
+          -6,
+          0,
+          14,
+          14.802140913183152,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": []
+      },
+      "turretAgainstHull": {
+        "poses": 72,
+        "contacts": []
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    },
+    {
+      "id": "ua_t72b3_modern",
+      "quality": "low",
+      "dock": {
+        "authoredHint": false,
+        "seat": {
+          "frame": "turret",
+          "x": -0.792,
+          "y": 0.7075369626889217,
+          "z": 0.5897042253521125,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.6435619030699584,
+            0.6180603821701247,
+            0.6625369626889217,
+            0.6400369626889244
+          ],
+          "signature": "45ed2a90",
+          "geometryHash": "49c5a3e5573b9987f309c379f9c031e9d1aecce57b80ebbf70c4047d85ec3063"
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -0.792,
+          "y": 0.7075369626889217,
+          "z": 0.5897042253521125,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.6435619030699584,
+            0.6180603821701247,
+            0.6625369626889217,
+            0.6400369626889244
+          ],
+          "signature": "45ed2a90",
+          "geometryHash": "49c5a3e5573b9987f309c379f9c031e9d1aecce57b80ebbf70c4047d85ec3063"
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 17654,
+        "turret": 6742
+      },
+      "mainGun": {
+        "poses": 3168,
+        "pitches": [
+          -6,
+          0,
+          14,
+          14.802140913183152,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": []
+      },
+      "turretAgainstHull": {
+        "poses": 72,
+        "contacts": []
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    },
+    {
+      "id": "ua_t72b3m_hetman_ii",
+      "quality": "high",
+      "dock": {
+        "authoredHint": false,
+        "seat": {
+          "frame": "turret",
+          "x": -1.1899999618530273,
+          "y": 0.7776666813525904,
+          "z": -1.0800000476837144,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.6570673057842527,
+            0.6604675388684242,
+            0.7326666813525904,
+            0.7326666813525904
+          ],
+          "signature": "ed6d90af",
+          "geometryHash": "4491da0b1382630ce0fbca147caf0facc7fbdb9e8d2afa110e9b5e706759db1b"
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -1.1899999618530273,
+          "y": 0.7776666813525904,
+          "z": -1.0800000476837144,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.6570673057842527,
+            0.6604675388684242,
+            0.7326666813525904,
+            0.7326666813525904
+          ],
+          "signature": "ed6d90af",
+          "geometryHash": "4491da0b1382630ce0fbca147caf0facc7fbdb9e8d2afa110e9b5e706759db1b"
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 16214,
+        "turret": 8556
+      },
+      "mainGun": {
+        "poses": 3168,
+        "pitches": [
+          -6,
+          0,
+          14,
+          14.802140913183152,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": []
+      },
+      "turretAgainstHull": {
+        "poses": 72,
+        "contacts": []
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    },
+    {
+      "id": "ua_t72b3m_hetman_ii",
+      "quality": "low",
+      "dock": {
+        "authoredHint": false,
+        "seat": {
+          "frame": "turret",
+          "x": -1.1899999618530273,
+          "y": 0.7776666813525904,
+          "z": -1.0800000476837144,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.6570673057842527,
+            0.6604675388684242,
+            0.7326666813525904,
+            0.7326666813525904
+          ],
+          "signature": "ed6d90af",
+          "geometryHash": "4491da0b1382630ce0fbca147caf0facc7fbdb9e8d2afa110e9b5e706759db1b"
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -1.1899999618530273,
+          "y": 0.7776666813525904,
+          "z": -1.0800000476837144,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.6570673057842527,
+            0.6604675388684242,
+            0.7326666813525904,
+            0.7326666813525904
+          ],
+          "signature": "ed6d90af",
+          "geometryHash": "4491da0b1382630ce0fbca147caf0facc7fbdb9e8d2afa110e9b5e706759db1b"
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 16214,
+        "turret": 8556
+      },
+      "mainGun": {
+        "poses": 3168,
+        "pitches": [
+          -6,
+          0,
+          14,
+          14.802140913183152,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": []
+      },
+      "turretAgainstHull": {
+        "poses": 72,
+        "contacts": []
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    },
+    {
+      "id": "pl_t80u_modern",
+      "quality": "high",
+      "dock": {
+        "authoredHint": false,
+        "seat": {
+          "frame": "turret",
+          "x": -0.9699999952316283,
+          "y": 0.857761991499217,
+          "z": 0.19000005245208795,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "payloadOffset": [
+            -0.48,
+            0
+          ],
+          "supportY": [
+            0.6816662397883348,
+            0.6684172061773381,
+            0.732761991499217,
+            0.7231816602059951
+          ],
+          "signature": "6d6385ce",
+          "geometryHash": "c58cfe37ffbf220eed7193a839dc56ac81569b75e90b400ef01bbf3d43cf9b15"
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -0.9699999952316283,
+          "y": 0.857761991499217,
+          "z": 0.19000005245208795,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "payloadOffset": [
+            -0.48,
+            0
+          ],
+          "supportY": [
+            0.6816662397883348,
+            0.6684172061773381,
+            0.732761991499217,
+            0.7231816602059951
+          ],
+          "signature": "6d6385ce",
+          "geometryHash": "c58cfe37ffbf220eed7193a839dc56ac81569b75e90b400ef01bbf3d43cf9b15"
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 20880,
+        "turret": 6398
+      },
+      "mainGun": {
+        "poses": 3168,
+        "pitches": [
+          -6,
+          0,
+          14,
+          14.802140913183152,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": []
+      },
+      "turretAgainstHull": {
+        "poses": 72,
+        "contacts": []
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    },
+    {
+      "id": "pl_t80u_modern",
+      "quality": "low",
+      "dock": {
+        "authoredHint": false,
+        "seat": {
+          "frame": "turret",
+          "x": -0.9699999952316283,
+          "y": 0.857761991499217,
+          "z": 0.19000005245208795,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "payloadOffset": [
+            -0.48,
+            0
+          ],
+          "supportY": [
+            0.6816662397883348,
+            0.6684172061773381,
+            0.732761991499217,
+            0.7231816602059951
+          ],
+          "signature": "6d6385ce",
+          "geometryHash": "c58cfe37ffbf220eed7193a839dc56ac81569b75e90b400ef01bbf3d43cf9b15"
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -0.9699999952316283,
+          "y": 0.857761991499217,
+          "z": 0.19000005245208795,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "payloadOffset": [
+            -0.48,
+            0
+          ],
+          "supportY": [
+            0.6816662397883348,
+            0.6684172061773381,
+            0.732761991499217,
+            0.7231816602059951
+          ],
+          "signature": "6d6385ce",
+          "geometryHash": "c58cfe37ffbf220eed7193a839dc56ac81569b75e90b400ef01bbf3d43cf9b15"
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 20880,
+        "turret": 6398
+      },
+      "mainGun": {
+        "poses": 3168,
+        "pitches": [
+          -6,
+          0,
+          14,
+          14.802140913183152,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": []
+      },
+      "turretAgainstHull": {
+        "poses": 72,
+        "contacts": []
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    },
+    {
+      "id": "pl_t72b3m_modern",
+      "quality": "high",
+      "dock": {
+        "authoredHint": true,
+        "seat": {
+          "frame": "turret",
+          "x": -1.51,
+          "z": -0.02,
+          "y": 0.8650000095367432,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "payloadOffset": [
+            0,
+            0
+          ],
+          "supportY": [
+            0.7400000095367396,
+            0.7400000095367396,
+            0.7400000095367432,
+            0.7400000095367432
+          ]
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -1.51,
+          "z": -0.02,
+          "y": 0.8650000095367432,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "payloadOffset": [
+            0,
+            0
+          ],
+          "supportY": [
+            0.7400000095367396,
+            0.7400000095367396,
+            0.7400000095367432,
+            0.7400000095367432
+          ]
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 19600,
+        "turret": 10896
+      },
+      "mainGun": {
+        "poses": 3168,
+        "pitches": [
+          -6,
+          0,
+          14,
+          14.802140913183152,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": []
+      },
+      "turretAgainstHull": {
+        "poses": 72,
+        "contacts": []
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    },
+    {
+      "id": "pl_t72b3m_modern",
+      "quality": "low",
+      "dock": {
+        "authoredHint": true,
+        "seat": {
+          "frame": "turret",
+          "x": -1.51,
+          "z": -0.02,
+          "y": 0.8650000095367432,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "payloadOffset": [
+            0,
+            0
+          ],
+          "supportY": [
+            0.7400000095367396,
+            0.7400000095367396,
+            0.7400000095367432,
+            0.7400000095367432
+          ]
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -1.51,
+          "z": -0.02,
+          "y": 0.8650000095367432,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "payloadOffset": [
+            0,
+            0
+          ],
+          "supportY": [
+            0.7400000095367396,
+            0.7400000095367396,
+            0.7400000095367432,
+            0.7400000095367432
+          ]
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 19600,
+        "turret": 10896
+      },
+      "mainGun": {
+        "poses": 3168,
+        "pitches": [
+          -6,
+          0,
+          14,
+          14.802140913183152,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": []
+      },
+      "turretAgainstHull": {
+        "poses": 72,
+        "contacts": []
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    },
+    {
+      "id": "pl_t72b3_modern",
+      "quality": "high",
+      "dock": {
+        "authoredHint": false,
+        "seat": {
+          "frame": "turret",
+          "x": -0.786,
+          "y": 0.6824757987565474,
+          "z": 0.6301936619718309,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.625754331471569,
+            0.6024193141405974,
+            0.6374757987565474,
+            0.6149757990844087
+          ],
+          "signature": "c9c55ff0",
+          "geometryHash": "56baf85a7db95ad48299f91b0a2cf7b49ed2cffd6318caf2cc9a39aef67b46ad"
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -0.786,
+          "y": 0.6824757987565474,
+          "z": 0.6301936619718309,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.625754331471569,
+            0.6024193141405974,
+            0.6374757987565474,
+            0.6149757990844087
+          ],
+          "signature": "c9c55ff0",
+          "geometryHash": "56baf85a7db95ad48299f91b0a2cf7b49ed2cffd6318caf2cc9a39aef67b46ad"
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 17890,
+        "turret": 6886
+      },
+      "mainGun": {
+        "poses": 3168,
+        "pitches": [
+          -6,
+          0,
+          14,
+          14.802140913183152,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": []
+      },
+      "turretAgainstHull": {
+        "poses": 72,
+        "contacts": []
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    },
+    {
+      "id": "pl_t72b3_modern",
+      "quality": "low",
+      "dock": {
+        "authoredHint": false,
+        "seat": {
+          "frame": "turret",
+          "x": -0.786,
+          "y": 0.6824757987565474,
+          "z": 0.6301936619718309,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.625754331471569,
+            0.6024193141405974,
+            0.6374757987565474,
+            0.6149757990844087
+          ],
+          "signature": "c9c55ff0",
+          "geometryHash": "56baf85a7db95ad48299f91b0a2cf7b49ed2cffd6318caf2cc9a39aef67b46ad"
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -0.786,
+          "y": 0.6824757987565474,
+          "z": 0.6301936619718309,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.625754331471569,
+            0.6024193141405974,
+            0.6374757987565474,
+            0.6149757990844087
+          ],
+          "signature": "c9c55ff0",
+          "geometryHash": "56baf85a7db95ad48299f91b0a2cf7b49ed2cffd6318caf2cc9a39aef67b46ad"
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 17890,
+        "turret": 6886
+      },
+      "mainGun": {
+        "poses": 3168,
+        "pitches": [
+          -6,
+          0,
+          14,
+          14.802140913183152,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": []
+      },
+      "turretAgainstHull": {
+        "poses": 72,
+        "contacts": []
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    },
+    {
+      "id": "pl_t72b3_zubr_ii",
+      "quality": "high",
+      "dock": {
+        "authoredHint": false,
+        "seat": {
+          "frame": "turret",
+          "x": -1.264,
+          "y": 0.8733095273714416,
+          "z": -1.4336661971830984,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.7793115909446016,
+            0.8189544285740418,
+            0.8154523845143018,
+            0.8283095273714416
+          ],
+          "signature": "22427fa5",
+          "geometryHash": "84c218d6cf093007a911c887cf5b33ef851aea0a126dc847edfe12cd19dd85b4"
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -1.264,
+          "y": 0.8733095273714416,
+          "z": -1.4336661971830984,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.7793115909446016,
+            0.8189544285740418,
+            0.8154523845143018,
+            0.8283095273714416
+          ],
+          "signature": "22427fa5",
+          "geometryHash": "84c218d6cf093007a911c887cf5b33ef851aea0a126dc847edfe12cd19dd85b4"
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 26668,
+        "turret": 9742
+      },
+      "mainGun": {
+        "poses": 3168,
+        "pitches": [
+          -6,
+          0,
+          14,
+          14.802140913183152,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": []
+      },
+      "turretAgainstHull": {
+        "poses": 72,
+        "contacts": []
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    },
+    {
+      "id": "pl_t72b3_zubr_ii",
+      "quality": "low",
+      "dock": {
+        "authoredHint": false,
+        "seat": {
+          "frame": "turret",
+          "x": -1.264,
+          "y": 0.8733095273714416,
+          "z": -1.4336661971830984,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.7793115909446016,
+            0.8189544285740418,
+            0.8154523845143018,
+            0.8283095273714416
+          ],
+          "signature": "22427fa5",
+          "geometryHash": "84c218d6cf093007a911c887cf5b33ef851aea0a126dc847edfe12cd19dd85b4"
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -1.264,
+          "y": 0.8733095273714416,
+          "z": -1.4336661971830984,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.7793115909446016,
+            0.8189544285740418,
+            0.8154523845143018,
+            0.8283095273714416
+          ],
+          "signature": "22427fa5",
+          "geometryHash": "84c218d6cf093007a911c887cf5b33ef851aea0a126dc847edfe12cd19dd85b4"
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 26668,
+        "turret": 9742
+      },
+      "mainGun": {
+        "poses": 3168,
+        "pitches": [
+          -6,
+          0,
+          14,
+          14.802140913183152,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": []
+      },
+      "turretAgainstHull": {
+        "poses": 72,
+        "contacts": []
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    }
+  ]
+}

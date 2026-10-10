@@ -55,7 +55,7 @@ function entity(id, specId, team, x, z, yaw = 0, hp = null) {
   };
 }
 
-function controller(bot, ground, enemies, obstacles = []) {
+function controller(bot, ground, enemies, obstacles = [], allies = []) {
   const ctl = createAI(bot, {
     difficulty: 'normal',
     rng: mulberry32(57),
@@ -63,7 +63,7 @@ function controller(bot, ground, enemies, obstacles = []) {
       heightField: ground,
       raycast: terrainRaycast(ground),
       getEnemies: () => enemies,
-      getAllies: () => [],
+      getAllies: () => allies,
       getObstacles: () => obstacles,
       spotting: { isSpotted: () => true },
     },
@@ -175,13 +175,16 @@ console.log('[2] three rounds in a row that do not reach the target give the spo
 }
 
 console.log('[3] an empty rack finishes a passive hull with a run no faster than the finishing speed');
+// The bot keeps a teammate with rounds aboard, out beyond support range: the retirement leaves the finish to it. With no
+// teammate left that can fire, a run the ram law refuses is the last run (ai.lastRun.selftest).
 function emptyRack(hostHp, moving = false) {
   const ground = field(false);
   const host = idleHost(hostHp);
   const bot = entity('bot', 'm1a2', 'enemy', 120, 0, -Math.PI / 2, 803);
   bot.combat.ammo = [0, 0, 0];
   bot.combat.ammoCapacity = [20, 12, 8];
-  const ctl = controller(bot, ground, [host]);
+  const teammate = entity('mate', 't90m', 'enemy', -450, 450); // 726 m off: no support to retire to
+  const ctl = controller(bot, ground, [host], [], [teammate]);
   let ramAt = null, contactSpeed = null, cap = null, maxDist = 0;
   drive(bot, ctl, ground, host, 70, { onTick: (t) => {
     if (moving) host.state.speed = 2;
@@ -203,7 +206,8 @@ function emptyRack(hostHp, moving = false) {
 }
 {
   const { ramAt, maxDist } = emptyRack(null);
-  ok(ramAt === null && maxDist > 200, `control: a full-health host is not rammed, the hull retires (${maxDist.toFixed(0)} m)`);
+  ok(ramAt === null && maxDist > 200,
+    `control: a full-health host is not rammed, the hull retires and leaves it to its team (${maxDist.toFixed(0)} m)`);
 }
 {
   const { ramAt } = emptyRack(320, true);

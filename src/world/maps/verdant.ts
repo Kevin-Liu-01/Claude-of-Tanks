@@ -151,10 +151,9 @@ export default {
     // paired duels (baked static via src/world/wrecks.ts), soft-vehicle and
     // military-clutter dressing, and more sandbag lines along the roads —
     // all destructible (drive-through, shell-breakable)
-    tankWrecks: {
-      era: 'modern', count: 5, debris: true,
-      ids: ['m551_sheridan', 'marder1a3', 'leo2a7v', 'm1a1', 't90a'],
-    },
+    // the map-vehicles lane (2026-10-06, the period ruling): Kursk, 1943: the KV-2, the fleet's one Soviet tank of
+    // the war
+    tankWrecks: { era: 'ww2', count: 5, debris: true, ids: ['kv2'] },
     sandbagLines: 12,
     hedgehogs: 6,
     // r6 terrain_environment: standing grain plots on the open farmland —

@@ -74,10 +74,13 @@ assert.deepEqual(bankCalls.filter(row => row[0] === 'origin').map(row => row.sli
 assert.equal(launcherMuzzleIndex(banks, { guided: true, launcherTubes: 0 }), -1,
   'a gun-fired missile never inherits an unrelated external rack');
 
-const effects = [], kicks = [], positions = [];
+const effects = [], kicks = [], positions = [], blasts = [];
 const fireMoment = privateFunction('./studio.ts', 'fireFiringMoment', {
   usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex,
   _v2: new Vector3(), _v3: new Vector3(), fx: { composeFiringMoment: value => effects.push(value) },
+  // Studio cinematic layer (fx.quality "cinematic"): one muzzle blast per firing moment
+  cinematicFor: params => params.quality === 'cinematic',
+  ensureCinematics: () => ({ muzzleBlast: (id, pos, dir, caliberMm, ageS) => blasts.push({ id, pos: pos.toArray(), caliberMm, ageS }) }),
 });
 const actor = { spec: { gun: { caliberMm: 30, launcherMuzzles: Array.from({ length: 8 }, () => ({ x: 0, y: 0, z: 1 })), shells: [
   { guided: true, caliberMm: 152, type: 'HEAT' },
@@ -99,6 +102,10 @@ assert.deepEqual(kicks.map(value => value.guided), [true, true, false]);
 fireMoment({ actor, params: { slot: 2, caliberMm: 40, shellType: 'HE', ageS: .2 } });
 assert.deepEqual([effects.at(-1).caliberMm, effects.at(-1).tracerType, effects.at(-1).ageS], [40, 'HE', .2],
   'explicit Studio artistic overrides remain supported');
+assert.equal(blasts.length, 0, 'battle quality adds no cinematic layer');
+fireMoment({ id: 'fx9', actor, params: { slot: 2, quality: 'cinematic', ageS: .1 } });
+assert.deepEqual(blasts.at(-1), { id: 'fx9', pos: [0, 2, 3], caliberMm: 30, ageS: .1 },
+  'a cinematic firing moment adds its muzzle blast at the same muzzle, calibre and age');
 console.log('missilePresentation: actual solo cursor isolation and Studio selected-shell FX PASS');
 
 actor.spec.gun.fixedLaunchCanisters = true;
@@ -107,6 +114,9 @@ fireMoment({ actor, params: {} });
 assert.equal(effects.at(-1).rocket, true, 'Studio exposes an unguided rocket firing presentation');
 assert.equal(effects.at(-1).velocityMps, 300);
 assert.deepEqual(positions.at(-1), { index: 4, guided: true }, 'fixed rockets use real launcher mouths without guidance');
+const blastCount = blasts.length;
+fireMoment({ id: 'fx10', actor, params: { quality: 'cinematic' } });
+assert.equal(blasts.length, blastCount, 'unguided rockets keep their own launch presentation (no cannon blast)');
 actor.spec.gun.fixedLaunchCanisters = false;
 fireMoment({ actor, params: {} });
 assert.equal(effects.at(-1).rocket, false, 'ordinary HE retains the cannon presentation');

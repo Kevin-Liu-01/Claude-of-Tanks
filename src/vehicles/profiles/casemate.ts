@@ -34,7 +34,7 @@ import {
   Group,
   MeshStandardMaterial,
 } from 'three';
-import { FITTINGS, KIT, muzzleBore, orientedSlab } from './kit.ts';
+import { FITTINGS, KIT, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
 
 interface LoftStation {
   readonly z: number;
@@ -144,7 +144,9 @@ const stations = (count: number, span: number, zc = 0): number[] => Array.from({
 // casemate tracks its measured reference polyline to gate tolerance.
 // ---------------------------------------------------------------------------
 function loft(P: CasemateBuilderPort, sts: readonly LoftStation[], bucket = 'hull'): void {
-  const slab = orientedSlab;                                // §C.1 winding guard
+  // Each welded bay keeps its eight boundary datums; its support facets
+  // replace the inward diagonal dents of twisted four-corner side panels.
+  const slab = convexSlab;
   for (let i = 0; i < sts.length - 1; i++) {
     const a = sts[i], c = sts[i + 1];
     const awt = a.wt ?? a.w, cwt = c.wt ?? c.w;

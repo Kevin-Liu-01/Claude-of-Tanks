@@ -17,6 +17,10 @@ export const WRECK_ROSTER_POOLS: Readonly<Record<VehicleEra, readonly string[]>>
     'type59', 'strv103', 'm1a1', 'bmp2', 'm60a2', 'm60a3',
     'm551_sheridan', 'marder1a3', 'bmp3', 'm2a2_bradley', 'type90',
     'amx30b2', 'centurion5', 'udes03',
+    // the map-vehicles lane (2026-10-06, the period ruling): the maps' own period casts — Fulda's T-80B, Hostomel's
+    // T-80BV, the 1960s M47 and AMX-30s, Lebanon's Merkava Mk 1 and T-62, Jordan's Challenger 1, Japan's Type 89,
+    // Franconia's Leopard 2
+    't80b', 't80bv', 'm47_patton', 'amx30', 'amx30_x', 'merkava1b', 't62mv1', 'challenger1', 'type89', 'leo2a4',
   ]),
   // Contemporary battlefield casts include surviving Cold War equipment and
   // the existing prototype vocabulary. Distinct light/IFV/tank silhouettes
@@ -27,6 +31,9 @@ export const WRECK_ROSTER_POOLS: Readonly<Record<VehicleEra, readonly string[]>>
     'm1a1', 't80u', 'm551_sheridan', 'm60a2', 'm60a3', 'marder1a3',
     'bmpt_t90', 'bmp3', 'm2a2_bradley', 'pl01', 'cv90', 'ua_t84_oplot_m',
     'leclerc_xlr', 'type90', 'm1a2_sepv3', 't72b3m', 'k1a1', 'merkava4b',
+    // the period ruling (2026-10-06): the T-72M1 of the Yugoslav wars (the M-84's parent), Hostomel's T-72B3 and the
+    // Ukrainian T-64BV
+    't72m1_jaguar', 't72b3_x', 'ua_t64bv',
   ]),
   [VEHICLE_ERAS.NEXT_GENERATION]: Object.freeze([
     'kf51', 't14', 'challenger_3', 'm1a3', 'abramsx', 'ariete_c2', 'pl01', 'cv90_mkiv',

@@ -3,9 +3,13 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addLeclercXRearTerrace} from './leclercXRearShoulders.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { fieldKitCensus, fieldKitFilter } from '../fieldKitSurface.test-support.mjs';
 
-const cast=(meshes,p,d,far=10)=>new THREE.Raycaster(new THREE.Vector3(...p),
- new THREE.Vector3(...d),0,far).intersectObjects(meshes,false)[0];
+// Source witnesses read the first source surface: main's field kit (5f8eefaa4) hangs a ghillie net and screens
+// outside these shoulders and pads a screen bracket onto the wall; the census filter skips them.
+let kit;
+const cast=(meshes,p,d,far=10)=>kit.hits(new THREE.Raycaster(new THREE.Vector3(...p),
+ new THREE.Vector3(...d),0,far),meshes)[0];
 
 // Complete-source Object29/30 first surfaces at held-out Z stations. These
 // scalars were measured independently of the procedural loft stations.
@@ -88,11 +92,16 @@ function closedSupportedTerrace() {
 
 closedSupportedTerrace();
 for(const quality of['high','low']) {
- const tank=createTank('leclerc_x',null,{quality,geometryReceipt:true,batchStatic:false,proceduralOnly:true});
+ const census=fieldKitCensus();
+ const tank=createTank('leclerc_x',null,{quality,geometryReceipt:true,batchStatic:false,proceduralOnly:true,partCensus:census.partCensus});
+ kit=fieldKitFilter(tank.root,census);
  try {
   tank.root.updateMatrixWorld(true);const all=[];
   tank.root.traverse(m=>{if(m.isMesh&&!m.name.startsWith('procShadow_')&&!m.userData.vehicleMarking)all.push(m);});
+  // The kit is real and really covers a witness: an unfiltered ray stops on the turret net first.
+  const covering=new THREE.Raycaster(new THREE.Vector3(2,1.8,-1.3),new THREE.Vector3(-1,0,0),0,10).intersectObjects(all,false)[0];
+  assert.ok(kit.kitObject(covering?.object),`${quality}: the field kit covers the shoulder wall witness`);
   sourceSurfaces(all);realAir(all);retainedGeometry(tank,all);
- }finally{tank.dispose();}
+ }finally{tank.dispose();kit.dispose();}
 }
 console.log('leclercXRearShoulders: actual high/low source crowns, folds, seams, outer air, terrace contact and non-target preservation pass');

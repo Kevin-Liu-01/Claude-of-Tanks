@@ -4203,6 +4203,15 @@ function mkShell(shellSpec, distM = 100) {
   near(blastRadiusM(122), 4.0884, 1e-3, 'HE: valid caliber blast radius is unchanged');
 }
 
+// Resolved metadata survives the JSON event boundary used by multiplayer.
+{
+  const hit = mkPlateHit(.4,mkPlate({name:'weapon_identity'}),0);
+  const guided = resolveShellHit(mkShell({...BR365K,guided:true}),mkTarget(),[hit],rngHalf);
+  const cannon = resolveShellHit(mkShell(BR365K),mkTarget(),[hit],rngHalf);
+  assert(JSON.parse(JSON.stringify(guided)).guided === true, 'missile identity is carried by resolved hits');
+  assert(cannon.guided === false, 'cannon hits do not inherit guided identity');
+}
+
 // ------------------------------------------------------------------ report --
 if (failures > 0) {
   console.error(`combat.selftest: ${failures}/${checks} assertions FAILED`);

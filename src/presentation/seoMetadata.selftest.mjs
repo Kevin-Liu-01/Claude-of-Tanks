@@ -28,6 +28,7 @@ const indexedPages = new Map([
   ['site/docs-audio.html', `${SITE}/docs/audio`],
   ['site/docs-interface.html', `${SITE}/docs/interface`],
   ['site/docs-studio.html', `${SITE}/docs/studio`],
+  ['site/docs-filming.html', `${SITE}/docs/filming`],
 ]);
 const socialCards = new Map([
   ['index.html', 'brand/og-image.png'],

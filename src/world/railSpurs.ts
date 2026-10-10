@@ -40,6 +40,58 @@ export interface RailSpurConfig {
    * clear-site law as the yards' heaps (roads, water, flat ground, no existing solid) and carries its convex record.
    */
   coalStage?: RailCoalStageConfig;
+  /**
+   * 2026-10-06 (the map-vehicles lane, P5): cuts of rolling stock standing on the spur (maps/rollingStock.ts), each
+   * vehicle buffer to buffer with the next. The kit lays them after the track and its stops; each carries a solid
+   * convex record (a hull does not drive through a wagon) and blocks shells.
+   */
+  stock?: readonly RailStockCut[];
+}
+
+/** A cut of coupled vehicles on a spur. */
+export interface RailStockCut {
+  /** Distance along the path from its first point to the cut's first buffer (m). */
+  atM: number;
+  /** The vehicles in order along the path (rollingStock.ts kinds). */
+  kinds: readonly string[];
+  /** The vehicles face back along the path (their +Z toward its start): a cut's 180-degree twin. */
+  facingBack?: boolean;
+}
+
+/**
+ * A spur's standing vehicles: each one's kind, the centre of its length on the centreline and the unit direction its
+ * +Z faces, from the cuts' distances along the path and the vehicles' lengths over buffers.
+ */
+export function railStockPlacements(spur: RailSpurConfig, lengths: Readonly<Record<string, number>>):
+{ kind: string; x: number; z: number; ux: number; uz: number }[] {
+  const out: { kind: string; x: number; z: number; ux: number; uz: number }[] = [];
+  if (!spur.stock?.length) return out;
+  // the path's edges with their cumulative distances
+  const edges: { ax: number; az: number; ux: number; uz: number; from: number; run: number }[] = [];
+  let walked = 0;
+  for (let i = 1; i < spur.path.length; i++) {
+    const [ax, az] = spur.path[i - 1], [bx, bz] = spur.path[i];
+    const run = railRunLength(bx - ax, bz - az);
+    if (!(run > 0)) continue;
+    edges.push({ ax, az, ux: (bx - ax) / run, uz: (bz - az) / run, from: walked, run });
+    walked += run;
+  }
+  const at = (s: number) => {
+    const e = edges.find((edge) => s <= edge.from + edge.run) ?? edges[edges.length - 1];
+    const t = s - e.from;
+    return { x: e.ax + e.ux * t, z: e.az + e.uz * t, ux: e.ux, uz: e.uz };
+  };
+  for (const cut of spur.stock) {
+    let s = cut.atM;
+    for (const kind of cut.kinds) {
+      const length = lengths[kind];
+      if (!(length > 0)) throw new Error(`railStockPlacements: unknown rolling stock ${kind}`);
+      const centre = at(s + length / 2);
+      out.push({ kind, x: centre.x, z: centre.z, ux: cut.facingBack ? -centre.ux : centre.ux, uz: cut.facingBack ? -centre.uz : centre.uz });
+      s += length;
+    }
+  }
+  return out;
 }
 
 export interface RailCoalStageConfig {

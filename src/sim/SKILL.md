@@ -27,7 +27,11 @@ and the reload event read;
 `terrainMobility.ts` owns the allocation-free drivetrain/grip capability math
 shared by movement and bot navigation;
 `botRoutePlanner.ts` builds one typed seeded traversability grid per match and feeds
-renderer-free openings into the game AI controller.
+renderer-free openings into the game AI controller;
+`deployment.ts` is the one symmetric deployment law (each bravo slot the rotation of its
+alpha slot about the anchors' midpoint) that `matchPlacement.ts` resolves on the ground
+(`terrainDeployment`, the world's `deploymentClearings`) and on the world (`deploymentSlot`)
+for the authority, the browser host and the solo sim alike.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
@@ -47,5 +51,8 @@ then edit. Run movement, combat, and spotting tests after shared-state changes.
 Render attitude has locked sign/order conventions. Do not introduce wall-clock
 time, frame-rate-dependent integration, or Three.js renderer dependencies.
 Run `node src/sim/authoritativeMatch.selftest.mjs` after changing match
-composition, snapshot visibility, or multiplayer identity seams. Bot route
+composition, snapshot visibility, or multiplayer identity seams. A change to the
+deployment law or its slot ground moves the world's spawn clearings: recapture the
+collision shards and run `node src/sim/deployment.selftest.mjs` and
+`node src/game/deploymentParity.selftest.mjs`. Bot route
 changes must also pass `node server/authoritativeBots.selftest.mjs` on all maps.

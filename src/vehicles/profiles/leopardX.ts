@@ -1,3 +1,5 @@
+import { captureAuxiliaryStock } from './auxiliaryStation.ts';
+import { addFieldRoofWeapon } from './fieldRoofWeapon.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Four additive, independently authored source-study Leopards. No donor
 // builder, source loader, external topology, or texture is used here.
@@ -328,10 +330,12 @@ function sightHousing(P: TankBuilderPort, d: Datum, x: number, bottom: number,
 }
 
 function mg(P: TankBuilderPort, d: Datum, x: number, y: number, z: number, remote = false,
-  lengthScale = 1, heightScale = 1): void {
+  lengthScale = 1, heightScale = 1, automatic = remote): void {
   equip(P, d, 'turretDetail', cylY(.12, .15, remote ? .23 : .105, 20), x, y + (remote ? .11 : .05), z);
-  const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: .76,
-    tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, seed: 260905 });
+  // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the source-measured roof stations beside these guns (feed-side collision census).
+  // 2026-10-08 (owner, 6763d7cc0): `automatic` makes the gun a working remote station (the 2A5M's original 7.62 mm)
+  const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: .76, sourceScale: true, remoteControlled: automatic,
+    tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, seed: 260905, feed: 'right' });
   weapon.name = `${P.spec.id}RoofMachineGun`;
   weapon.scale.set(1,heightScale,lengthScale);
   weapon.position.set(x-d.turretPivot[0], y+(remote ? .22 : .08)-d.turretPivot[1], z-d.turretPivot[2]);
@@ -999,7 +1003,7 @@ function a6LowHatchMG(P:TankBuilderPort,d:Datum): void {
   // Full, unscaled-height pintle seats directly on the hatch flank. The
   // source rail remains alongside the barrel, not pierced by it; there is
   // no added tall pedestal above the already complete pintle assembly.
-  const weapon=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.76,
+  const weapon=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.76,sourceScale:true,
     tone:'two-tone',elev:0,ammo:true,shield:false,ring:false,seed:260905});
   weapon.name='leo2a6m_xRoofMachineGun';
   weapon.scale.set(1,1,1.75);
@@ -1008,16 +1012,22 @@ function a6LowHatchMG(P:TankBuilderPort,d:Datum): void {
 }
 
 function a4RemoteMount(P:TankBuilderPort,d:Datum): void {
+  const finishSupport=captureAuxiliaryStock(P,`${P.spec.id}RoofMachineGun`);
   equip(P,d,'turretDetail',cylY(.12,.16,.36,20),.743,2.62,-.926);
   // Source crossbar is a broad low cradle, separate from the tall weapon
   // cheeks and from the outboard receiver/ammunition body.
   equip(P,d,'turretDetail',box(.55891,.12256,.40355),.73998,2.7160,-.9222);
   for(const x of [.634,.854]) equip(P,d,'turretDetail',box(.024,.185,.266),x,2.868,-.929);
-  mg(P,d,.766,2.79,-.969,false,1.713,.74);
+  // 2026-10-08 (owner, 6763d7cc0): the original 7.62 mm station is activated (automatic), its support captured. A remote
+  // station's gun has no crew butt, so the owner's own seat and stretch put its receiver back on the source stations
+  // (push 5's leopardX receipt: rear -1.214, barrel -0.087). The lane's round-4 forward shift (-0.925, stretch 1.609)
+  // corrected a crew gun's butt growth and does not apply to the activated station.
+  mg(P,d,.766,2.79,-.969,false,1.713,.74,true);
   a4OutboardReceiver(P,d);
   equip(P,d,'turretDetail',box(.257,.184,.306),.381,3.005,-1.055);
   equip(P,d,'turretDark',box(.204,.138,.014),.381,3.005,-.897);
   equip(P,d,'turretGlass',box(.151,.091,.008),.381,3.005,-.884);
+  finishSupport();
 }
 
 function a4OutboardReceiver(P:TankBuilderPort,d:Datum): void {
@@ -1113,8 +1123,11 @@ export function buildLeopard2A7VX(P: TankBuilderPort): void {
   equip(P,d,'turretDetail',cylY(.20,.22,.16,24),-.301,2.74,-.433);
   panorama(P,d,-.301,2.817,-.433);
   sightHousing(P,d,-.785,2.362,1.47,.54,.42);
-  equip(P,d,'turretDetail',cylY(.075,.10,.21,20),.965,2.81,-.15);
-  mg(P,d,.965,2.91,-.15,false,2.10,.82);
+  // 2026-10-07 (tank-accessories round 4): round 3's true-scale MAG grew its butt 4.2 cm (local) aft, which the 2.10
+  // length stretch carried to 7 cm and put the source rear station at -0.527 (source -0.455). The mount moves 4.7 cm
+  // forward and the stretch drops to 1.963, so the gun spans the source stations again (rear -0.455, muzzle 0.92).
+  equip(P,d,'turretDetail',cylY(.075,.10,.21,20),.965,2.81,-.103);
+  mg(P,d,.965,2.91,-.103,false,1.963,.82);
   a7CurvedWhip(P,d,-1.00,3.113,5.56);
   a7CurvedWhip(P,d,1.055,3.119,5.35);
   for(const x of [-1.00,1.055]) equip(P,d,'turretDetail',cylY(.037,.055,.48,12),x,2.89,-1.84);
@@ -1128,6 +1141,7 @@ export function buildLeopard2A7VX(P: TankBuilderPort): void {
   roofPlateEdges(P,d,2.77,1.72);
   hullDeckEdges(P,d,'a7v_upper_glacis_era');
   mainGun(P,d,.096,true);
+  addFieldRoofWeapon(P,[-.68,.882594,-1.10],30,'Leopard 2A7V remote 30 mm cannon',.54,.70);
 }
 
 // A6M CAN: clean low tub and compact central turret. The cage is genuine
@@ -1296,7 +1310,9 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
     roofHatch(P,d,x,2.566,z);
   }
   a5Optics(P,d);
-  mg(P,d,.954,2.612,-.161,false,1.92,1.077);
+  // 2026-10-07 (tank-accessories round 4): round 3's butt growth under the 1.92 stretch put the stock at -0.505 (source
+  // -0.437). The gun moves 4.6 cm forward and the stretch drops to 1.795: stock -0.437, muzzle 0.820 again.
+  mg(P,d,.954,2.612,-.115,false,1.795,1.077);
   equip(P,d,'turretDetail',box(.386,.036,.247),1.041,2.663,.013);
   equip(P,d,'turretDetail',box(.20,.13,.20),1.137,2.777,.030);
   equip(P,d,'turretDark',box(.20,.025,.22),1.137,2.854,.030);
@@ -1306,6 +1322,7 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
   hullDeckEdges(P,d);
   a5Gun(P,d);
   addLeopardA5XSourceDetails(P);
+  addFieldRoofWeapon(P,[-.65,.857,-1],30,'Leopard 2A5 remote 30 mm cannon',.43,.70);
 }
 
 export const LEOPARD_X_PROFILES = Object.freeze({

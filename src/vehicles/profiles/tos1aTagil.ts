@@ -36,7 +36,7 @@ function rotatingPlatform(P: TankBuilderPort): void {
     ring: [[-half, .05], [half, .05], [half, roof - .02], [half - .055, roof], [-half + .055, roof], [-half, roof - .02]],
   }))), 'load-platform'));
   P.addModuleVisual('gun', 'turretDetail', stock(box(.28, .17, .38), 'traverse-drive'), .91, .275, .26);
-  fitting(P, 'turretDark', 'drive-cover', cylY(.115, .115, .036, P.q ? 20 : 8), .91, .369, .26);
+  fitting(P, 'turretDark', 'drive-cover', cylY(.115, .115, .036, P.q ? 12 : 8), .91, .369, .26);
   fitting(P, 'turretDetail', 'service-lid', box(.58, .035, .40), 0, .231, .61);
   if (P.q) for (const x of [-.20, .20]) fitting(P, 'turretDark', 'service-hinge', cylX(.025, .13, 8), x, .26, .405);
 }
@@ -47,13 +47,13 @@ function cradle(P: TankBuilderPort): void {
     const x = side * 1.63;
     fitting(P, 'turret', 'cradle-foot', box(.24, .09, .49), x, .246, -1.27);
     fitting(P, 'turret', 'cradle-tower', box(.14, 1.07, .22), x, .745, -1.30);
-    fitting(P, 'turret', 'cradle-brace', beamBetween([side * 1.72, .25, -.37], [side * 1.72, 1.30, -1.30], .055, P.q ? 12 : 8), 0, 0, 0);
-    fitting(P, 'turretDark', 'fixed-trunnion', cylX(.225, .27, P.q ? 24 : 12), x, 1.30, -1.30);
-    fitting(P, 'turretDetail', 'bearing-cover', cylX(.174, .035, P.q ? 24 : 12), side * 1.778, 1.30, -1.30);
-    if (P.q) fitting(P, 'turretDark', 'bearing-boss', cylX(.072, .046, P.q ? 16 : 8), side * 1.806, 1.30, -1.30);
+    fitting(P, 'turret', 'cradle-brace', beamBetween([side * 1.72, .25, -.37], [side * 1.72, 1.30, -1.30], .055, 8), 0, 0, 0);
+    fitting(P, 'turretDark', 'fixed-trunnion', cylX(.225, .27, P.q ? 16 : 12), x, 1.30, -1.30);
+    fitting(P, 'turretDetail', 'bearing-cover', cylX(.174, .035, P.q ? 16 : 12), side * 1.778, 1.30, -1.30);
+    if (P.q) fitting(P, 'turretDark', 'bearing-boss', cylX(.072, .046, P.q ? 12 : 8), side * 1.806, 1.30, -1.30);
     // Coaxial closed stock is the real pitch joint. No rigid fake piston spans
     // the rotating interface, and no detached rod is used to imply contact.
-    P.add('gunMount', stock(cylX(.182, .35, P.q ? 24 : 12), 'pitch-pin'), side * 1.51, 0, 0);
+    P.add('gunMount', stock(cylX(.182, .35, 12), 'pitch-pin'), side * 1.51, 0, 0);
     if (P.q) for (const angle of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
       fitting(P, 'turretDark', 'bearing-bolt', cylX(.017, .024, 6), side * 1.800,
         1.30 + Math.sin(angle) * .137, -1.30 + Math.cos(angle) * .137);
@@ -79,11 +79,15 @@ function shell(P: TankBuilderPort): void {
   for (const { x, y } of MUZZLES) {
     const hole = new THREE.Path(); hole.absarc(x, y, .156, 0, Math.PI * 2, true); front.holes.push(hole);
   }
-  P.add('gunMount', stock(extrusion(front, 2.50, D.skinFrontZ, P.q ? 8 : 2), 'perforated-front'));
+  // fleet fix 2026-10-09 (owner triangle budget): every hole edge lies inside its tube's annular wall (hole r .156
+  // between the bore's .11 and the tube's .17), so the hidden hole walls take the square section at every quality.
+  P.add('gunMount', stock(extrusion(front, 2.50, D.skinFrontZ, 2), 'perforated-front'));
 }
 
 function launchCell(P: TankBuilderPort, axis: typeof MUZZLES[number]): void {
-  const n = P.q ? 20 : 12;
+  // fleet fix 2026-10-09 (owner triangle budget: the donor chassis grew to 94.3k): twelve smooth-shaded facets at HIGH,
+  // eight at LOW; a multiple of four keeps a lathe vertex on each axis (the bore and rim rays).
+  const n = P.q ? 12 : 8;
   // Closed annular material surrounds a genuinely open, deep launch mouth.
   // A separate dark breech face closes the rear, so there is no painted hole.
   const profile = [[.17, -.985], [.17, 2.60], [.11, 2.60], [.11, -.94], [.17, -.985]];
@@ -109,20 +113,20 @@ function packSideRibs(P: TankBuilderPort, side: number): void {
   }
 }
 function packSideAccess(P: TankBuilderPort, side: number): void {
-  if (P.q) fitting(P, 'gunMountDark', 'side-access-rim', cylX(.146, .025, P.q ? 24 : 12), side * 1.56, .09, -.52);
-  fitting(P, 'gunMount', 'side-access-cover', cylX(P.q ? .122 : .146, P.q ? .033 : .07, P.q ? 24 : 12), side * (P.q ? 1.583 : 1.57), .09, -.52);
+  if (P.q) fitting(P, 'gunMountDark', 'side-access-rim', cylX(.146, .025, 12), side * 1.56, .09, -.52);
+  fitting(P, 'gunMount', 'side-access-cover', cylX(P.q ? .122 : .146, P.q ? .033 : .07, 12), side * (P.q ? 1.583 : 1.57), .09, -.52);
 }
 function packLiftingEyes(P: TankBuilderPort, side: number): void {
   for (const z of [-.74, 2.30]) {
     fitting(P, 'gunMountDark', 'lifting-foot', box(.075, .035, .11), side * 1.565, .42, z);
-    fitting(P, 'gunMountDark', 'lifting-eye', KIT.torus(.052, .013, P.q ? 6 : 3, P.q ? 16 : 8).rotateY(Math.PI / 2), side * 1.608, .47, z);
+    fitting(P, 'gunMountDark', 'lifting-eye', KIT.torus(.052, .013, P.q ? 4 : 3, 8).rotateY(Math.PI / 2), side * 1.608, .47, z);
   }
 }
 function packFittings(P: TankBuilderPort): void {
   for (const side of [-1, 1]) {
     packSideRibs(P, side); packSideAccess(P, side);
   }
-  for (const x of P.q ? [-1.09, 0, 1.09] : [0]) fitting(P, 'gunMount', 'rear-hinge', cylX(.035, .22, P.q ? 12 : 8), x, -.51, -1.025);
+  for (const x of P.q ? [-1.09, 0, 1.09] : [0]) fitting(P, 'gunMount', 'rear-hinge', cylX(.035, .22, 8), x, -.51, -1.025);
 }
 
 function sight(P: TankBuilderPort, center: Point, size: Point, name: string): void {
@@ -144,11 +148,11 @@ function roofMachineGun(P: TankBuilderPort): void {
   // A small game-equipment station remains outside the pack sweep. It shares
   // the yaw platform and has a continuous pedestal/receiver/barrel assembly.
   fitting(P, 'turret', 'mg-foot', box(.22, .075, .27), -1.64, .246, .43);
-  fitting(P, 'turretDark', 'mg-pedestal', cylY(.046, .064, .49, P.q ? 16 : 8), -1.64, .512, .43);
+  fitting(P, 'turretDark', 'mg-pedestal', cylY(.046, .064, .49, P.q ? 12 : 8), -1.64, .512, .43);
   const mg = sourceMachineGun(P, [0, 0, 0]);
   mg.add('turretDark', box(.094, .11, .24), -1.64, .805, .43);
-  mg.add('turretDark', blindTube(.019, .004, .63, .10, P.q ? 16 : 10), -1.64, .826, .835);
-  mg.add('turretDark', cylZ(.013, .30, P.q ? 12 : 8), -1.64, .792, .67);
+  mg.add('turretDark', blindTube(.019, .004, .63, .10, P.q ? 12 : 10), -1.64, .826, .835);
+  mg.add('turretDark', cylZ(.013, .30, 8), -1.64, .792, .67);
   mg.add('turretDetail', box(.085, .14, .15), -1.723, .78, .42);
   mg.add('turretDark', box(.086, .040, .10), -1.682, .806, .43);
   mg.add('turretDark', box(.032, .14, .042), -1.64, .754, .304);

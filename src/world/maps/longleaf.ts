@@ -129,8 +129,9 @@ export default {
     wallRuns: [],
     well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
     haystacks: 8, rocks: 30, outcrops: 0, craters: 48, rubblePiles: 10, cropFields: 2, sandbagLines: 14, hedgehogs: 8,
-    tankWrecks: { era: 'modern', count: 5, debris: true,
-      ids: ['m1a1', 'm2a2_bradley', 'm551_sheridan', 'm60a3', 'm1a2_sepv3'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
+    // front's war; the war shows through the burnt period trucks and carts
+    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
     inhabit: { stalls: 1, benches: 3, coreClutter: 18, bales: 6, troughs: 2, laundry: 2, handcarts: 3, carts: 4, trucks: 6, jeeps: 4, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 22, roadFence: 'fenceplank', yardFence: 'fenceplank' },
   },
   // the map-revival lane (2026-10-05, round 2; gauntlet wave 124: "no log pond, lumber stacks or working mill yard"): the

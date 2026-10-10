@@ -3,20 +3,21 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // individual source-study profiles; no complete donor vehicle is assembled here.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
-import { sectionSolid } from './sectionSolid.ts';
+import { sectionSolid, type SectionSolidOptions } from './sectionSolid.ts';
 import { mirrorX } from '../runningGearPrimitives.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 export type ArmorStation = readonly [z: number, bellyHalf: number, shoulderHalf: number,
   roofHalf: number, floorY: number, shoulderY: number, roofY: number];
 
-export function armorLoft(rows: readonly ArmorStation[], originY = 0, originZ = 0): THREE.BufferGeometry {
+export function armorLoft(rows: readonly ArmorStation[], originY = 0, originZ = 0,
+  options: SectionSolidOptions = {}): THREE.BufferGeometry {
   return sectionSolid(rows.map(([z, belly, shoulder, roofHalf, floor, knee, roof]) => ({
     z: z - originZ,
     ring: [[-belly, floor - originY], [belly, floor - originY],
       [shoulder, knee - originY], [roofHalf, roof - originY],
       [-roofHalf, roof - originY], [-shoulder, knee - originY]],
-  })));
+  })), options);
 }
 
 export function turretEquipment(P: TankBuilderPort, bucket: string, geometry: THREE.BufferGeometry,
@@ -98,10 +99,11 @@ export function sideWall(P: TankBuilderPort, side: number, innerX: number, outer
 }
 
 /** Narrow lower chassis, vertical wheel-bay wall, and horizontal sponson return. */
-export function chassisLoft(rows: readonly ArmorStation[], innerWallHalf: number): THREE.BufferGeometry {
+export function chassisLoft(rows: readonly ArmorStation[], innerWallHalf: number,
+  options: SectionSolidOptions = {}): THREE.BufferGeometry {
   return sectionSolid(rows.map(([z, belly, shoulder, roofHalf, floor, knee, roof]) => ({ z,
     ring: [[-belly,floor],[belly,floor],[innerWallHalf,Math.min(floor+.17,knee-.025)],
       [innerWallHalf,knee],[shoulder,knee],[roofHalf,roof],[-roofHalf,roof],
       [-shoulder,knee],[-innerWallHalf,knee],[-innerWallHalf,Math.min(floor+.17,knee-.025)]],
-  })));
+  })),options);
 }

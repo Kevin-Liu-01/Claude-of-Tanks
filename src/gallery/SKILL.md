@@ -58,7 +58,8 @@ contract. `site/gallery.html` and `gallery.css` own the public surface;
 Importing `tankFactory.ts` registers the complete expansion fleet before the
 browser reads `ALL_TANK_IDS`; tests must reproduce that import order. Armor
 plates and internal volumes are diagnostic combat data, not visible-mesh
-extractions or real-world engineering claims. Turret-local overlays must remain
-children of `rig_turret` so live articulation cannot desynchronize them.
+extractions or real-world engineering claims. Anatomical turret overlays remain children of `rig_turret`. Exact combat
+hitboxes instead use `createCombatFrames`, updated with every articulation and
+frame: combat coordinates must not inherit presentation-only rig scaling.
 The legacy `/surface-studio` path is redirect-only; do not recreate a second
 viewer or authoring state owner.

@@ -5,6 +5,7 @@ import { normalizeSchematicPixels, finishSchematicPixels, bakeSchematicSteps, va
 import { legacySchematic } from './shotSchematicReference.test.ts';
 import { createSchematicClient, prepareSchematicFallback } from './shotSchematicClient.ts';
 import { createSchematicWorkerHandler } from './shotSchematicWorker.ts';
+import { MissileBlastLedger } from './shotReadoutPolicy.ts';
 import { createCanvas, loadImage, Image as RasterImage } from '@napi-rs/canvas';
 
 let checks = 0;
@@ -26,7 +27,7 @@ const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve()
   const warm = section('    warmSchematics(specIds:', '    root,');
   const reset = section('    reset() {', '  };\n  return api;');
   const frames = new Map(), requests = [], cancelled = [];
-  let nextFrame = 1, resets = 0, toastClears = 0; // main 54372f83d: reset() also clears the grouped incoming toasts
+  let nextFrame = 1, resets = 0, toastClears = 0, cardTimerClears = 0; // main 54372f83d: reset() also clears the grouped incoming toasts
   const surface = { classList: { remove() {} } };
   const bindings = {
     requestAnimationFrame(callback) { const id = nextFrame++; frames.set(id, callback); return id; },
@@ -36,6 +37,8 @@ const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve()
     clearReportBuffer() { resets++; }, clearToasts() { toastClears++; }, cardHost: { firstChild: null }, toastHost: { firstChild: null },
     // main 8c1ed73c9: reset() also clears the fired-round accuracy ledger and the battle kill ledger
     firedRounds: { clear() {} }, killLedger: { clear() {} },
+    // main 395305d45: the state holds the missile splash ledger and reset() also clears the primary card's timers
+    MissileBlastLedger, clearCardTimers() { cardTimerClears++; },
     shotLog: [], allShots: [], receivedLog: [], combatants: new Map(), tg: new Map(),
     endRoster: null, endInfo: null, spotWindow: new Map(), spottedSet: new Set(), spotAttributed: false,
     stats: {}, newStats: () => ({}), logOpen: false, logPanel: surface,
@@ -57,6 +60,7 @@ const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve()
   equal(requests, expected(['first']), 'only first tank starts before the next frame');
   api.reset();
   check(resets === 1, 'actual presentation reset executes');
+  check(cardTimerClears === 1, 'reset clears the primary card timers with its other battle state');
   drainFrames();
   equal(requests, expected(['first', 'second', 'third']), 'activation reset preserves every queued roster schematic');
 

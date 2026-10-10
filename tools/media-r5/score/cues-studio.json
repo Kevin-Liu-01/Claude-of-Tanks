@@ -1,0 +1,157 @@
+{
+ "title": "Scene Studio — 30 s feature",
+ "bpm": 96,
+ "durationSec": 30,
+ "lufs": -14,
+ "musicDb": -3,
+ "sfxDb": -2,
+ "fadeOutSec": 1.2,
+ "progression": [
+  "Dm",
+  "Bb",
+  "F",
+  "C",
+  "Dm",
+  "Bb",
+  "F",
+  "C",
+  "Gm",
+  "A",
+  "Dm",
+  "Dm"
+ ],
+ "motif": [
+  "A4",
+  "D5",
+  "C5",
+  "A4"
+ ],
+ "sections": [
+  {
+   "name": "intro",
+   "fromBar": 0,
+   "toBar": 1,
+   "layers": [
+    "drone",
+    "ticks",
+    "pad"
+   ],
+   "gainDb": -9
+  },
+  {
+   "name": "stage",
+   "fromBar": 2,
+   "toBar": 4,
+   "layers": [
+    "pulse",
+    "pad",
+    "hats",
+    "drone"
+   ],
+   "gainDb": -6
+  },
+  {
+   "name": "hours",
+   "fromBar": 5,
+   "toBar": 8,
+   "layers": [
+    "pulse16",
+    "taiko2",
+    "hats16",
+    "pad",
+    "open"
+   ],
+   "gainDb": -3
+  },
+  {
+   "name": "export",
+   "fromBar": 9,
+   "toBar": 10,
+   "layers": [
+    "pulse16",
+    "open",
+    "taiko2",
+    "toms",
+    "rim",
+    "hats16"
+   ],
+   "gainDb": -1
+  },
+  {
+   "name": "end",
+   "fromBar": 11,
+   "toBar": 11,
+   "layers": [
+    "drone",
+    "ticks"
+   ],
+   "gainDb": -5
+  }
+ ],
+ "hits": [
+  {
+   "kind": "swell",
+   "t": 0.625,
+   "sec": 1.8
+  },
+  {
+   "kind": "braam",
+   "t": 1.25,
+   "chord": "Dm",
+   "sec": 4.5,
+   "gain": 0.7
+  },
+  {
+   "kind": "riser",
+   "t": 12.5,
+   "sec": 3
+  },
+  {
+   "kind": "braam",
+   "t": 12.5,
+   "chord": "Dm",
+   "sec": 4
+  },
+  {
+   "kind": "boom",
+   "t": 12.5,
+   "sec": 3
+  },
+  {
+   "kind": "riser",
+   "t": 22.5,
+   "sec": 2.5
+  },
+  {
+   "kind": "braam",
+   "t": 22.5,
+   "chord": "Gm",
+   "sec": 4
+  },
+  {
+   "kind": "boom",
+   "t": 22.5,
+   "sec": 3,
+   "f0": 90,
+   "f1": 26,
+   "tau": 0.5
+  },
+  {
+   "kind": "braam",
+   "t": 27.5,
+   "chord": "Dm",
+   "sec": 5
+  },
+  {
+   "kind": "boom",
+   "t": 27.5,
+   "sec": 4
+  },
+  {
+   "kind": "stop",
+   "t": 29.4
+  }
+ ],
+ "ducks": [],
+ "sfx": []
+}

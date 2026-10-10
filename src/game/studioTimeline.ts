@@ -15,7 +15,7 @@ const STUDIO_MAX_CAMERA_SHOTS = 32;
 const STUDIO_MAX_CAMERA_CUES = 48;
 const STUDIO_MAX_ACTOR_KEYS = 64;
 
-type StudioTransition = 'smooth' | 'linear' | 'cut' | 'bezier' | 'drive';
+type StudioTransition = 'smooth' | 'linear' | 'cut' | 'bezier' | 'spline' | 'drive';
 type StudioVec2 = [number, number];
 type StudioVec3 = [number, number, number];
 
@@ -143,7 +143,7 @@ export interface ActorTrackSample {
   keyId?: string;
 }
 
-const CAMERA_TRANSITIONS = new Set<StudioTransition>(['bezier', 'smooth', 'linear', 'cut']);
+const CAMERA_TRANSITIONS = new Set<StudioTransition>(['bezier', 'spline', 'smooth', 'linear', 'cut']);
 const ACTOR_TRANSITIONS = new Set<StudioTransition>(['drive', 'smooth', 'linear', 'cut']);
 
 const finite = (value: RuntimeValue, fallback = 0): number => Number.isFinite(Number(value))
@@ -379,6 +379,23 @@ const bezier = (p0: number, p1: number, p2: number, p3: number, t: number): numb
   return p0 * mt * mt * mt + 3 * p1 * mt * mt * t + 3 * p2 * mt * t * t + p3 * t * t * t;
 };
 
+/**
+ * Time-aware Catmull-Rom: the Hermite segment p1 → p2 with each tangent taken from its neighbours over their own time
+ * span, so velocity stays continuous across unevenly spaced keys (the uniform form jumps there). An end key reuses
+ * itself as its missing neighbour, which makes that tangent the chord.
+ */
+const railSpline = (
+  p0: number, p1: number, p2: number, p3: number,
+  t0: number, t1: number, t2: number, t3: number, u: number,
+): number => {
+  const span = t2 - t1;
+  const m1 = (p2 - p0) / Math.max(1, t2 - t0) * span;
+  const m2 = (p3 - p1) / Math.max(1, t3 - t1) * span;
+  const u2 = u * u;
+  const u3 = u2 * u;
+  return (2 * u3 - 3 * u2 + 1) * p1 + (u3 - 2 * u2 + u) * m1 + (-2 * u3 + 3 * u2) * p2 + (u3 - u2) * m2;
+};
+
 function writeShot(out: CameraRailSample, shot: CameraShot): true {
   out.x = shot.pos[0]; out.y = shot.pos[1]; out.z = shot.pos[2];
   out.lookX = shot.lookAt[0]; out.lookY = shot.lookAt[1]; out.lookZ = shot.lookAt[2];
@@ -391,6 +408,9 @@ function writeShot(out: CameraRailSample, shot: CameraShot): true {
  * Sample the camera rail into a caller-owned object. Bezier uses the prior
  * outgoing and destination incoming handles, or a straight cubic when absent.
  * Smooth retains Catmull-Rom; linear/cut retain their original behavior.
+ * Spline runs a time-aware Catmull-Rom through every channel (position, aim,
+ * field of view, roll), so a dense rail of keys flies without the kinks of
+ * linear segments or the stop at every key of smooth's eased aim.
  */
 export function sampleCameraRail(
   shots: readonly CameraShot[],
@@ -405,6 +425,22 @@ export function sampleCameraRail(
   if (b.transition === 'cut') return writeShot(out, a);
   const span = Math.max(1, b.tMs - a.tMs);
   const rawT = clamp((timeMs - a.tMs) / span, 0, 1);
+  if (b.transition === 'spline') {
+    const s0 = shots[Math.max(0, index - 1)];
+    const s3 = shots[Math.min(shots.length - 1, index + 2)];
+    const t0 = s0.tMs, t1 = a.tMs, t2 = b.tMs, t3 = s3.tMs;
+    out.x = railSpline(s0.pos[0], a.pos[0], b.pos[0], s3.pos[0], t0, t1, t2, t3, rawT);
+    out.y = railSpline(s0.pos[1], a.pos[1], b.pos[1], s3.pos[1], t0, t1, t2, t3, rawT);
+    out.z = railSpline(s0.pos[2], a.pos[2], b.pos[2], s3.pos[2], t0, t1, t2, t3, rawT);
+    out.lookX = railSpline(s0.lookAt[0], a.lookAt[0], b.lookAt[0], s3.lookAt[0], t0, t1, t2, t3, rawT);
+    out.lookY = railSpline(s0.lookAt[1], a.lookAt[1], b.lookAt[1], s3.lookAt[1], t0, t1, t2, t3, rawT);
+    out.lookZ = railSpline(s0.lookAt[2], a.lookAt[2], b.lookAt[2], s3.lookAt[2], t0, t1, t2, t3, rawT);
+    out.fov = railSpline(s0.fov, a.fov, b.fov, s3.fov, t0, t1, t2, t3, rawT);
+    // roll is clamped to ±60° on every key, so it never wraps
+    out.rollDeg = railSpline(s0.rollDeg, a.rollDeg, b.rollDeg, s3.rollDeg, t0, t1, t2, t3, rawT);
+    out.shotId = a.id;
+    return true;
+  }
   if (b.transition === 'linear') {
     out.x = lerp(a.pos[0], b.pos[0], rawT);
     out.y = lerp(a.pos[1], b.pos[1], rawT);
@@ -433,8 +469,13 @@ export function sampleCameraRail(
   return true;
 }
 
-/** Deterministic local-axis camera impulses; sampling allocates no frame objects. */
-export function sampleCameraCues(cues: readonly CameraCue[], timeMs: number, out: CameraCueSample): boolean {
+/**
+ * Deterministic local-axis camera impulses; sampling allocates no frame objects.
+ * `attackMs` > 0 eases every impulse in over that time: a film camera cannot
+ * teleport, so a jolt that starts mid-shutter must smear rather than expose
+ * two camera poses. Live preview and stills keep the instantaneous kick (0).
+ */
+export function sampleCameraCues(cues: readonly CameraCue[], timeMs: number, out: CameraCueSample, attackMs = 0): boolean {
   out.rightM = 0; out.upM = 0; out.forwardM = 0; out.rollDeg = 0; out.fovKickDeg = 0;
   let active = false;
   for (const cue of cues) {
@@ -443,7 +484,11 @@ export function sampleCameraCues(cues: readonly CameraCue[], timeMs: number, out
     if (elapsedMs > cue.durationMs) continue;
     active = true;
     const progress = elapsedMs / cue.durationMs;
-    const envelope = (1 - progress) * (1 - progress);
+    let envelope = (1 - progress) * (1 - progress);
+    if (attackMs > 0 && elapsedMs < attackMs) {
+      const rise = elapsedMs / attackMs;
+      envelope *= rise * rise * (3 - 2 * rise);
+    }
     const angle = cue.seed * 0.754877666 + elapsedMs * cue.frequencyHz * Math.PI * 0.002;
     const amplitude = cue.amplitudeM * envelope;
     out.rightM += amplitude * (Math.sin(angle) * 0.72 + Math.sin(angle * 2.13 + 0.8) * 0.28);

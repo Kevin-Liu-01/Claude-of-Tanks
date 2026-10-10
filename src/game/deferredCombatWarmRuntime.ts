@@ -65,6 +65,7 @@ interface DeferredCombatWarmRuntimeOptions<
   renderer: ContextProgramRenderer;
   camera: { position: RuntimeValue };
   getBattleVisuals(): BattleVisualStreamer<Entity>;
+  warmVisionSteps?(): Generator<void>;
   combatWarm: CombatWarmCoordinator;
   warmBattleTerrainTiles(yieldForBudget: WorkYielder): Promise<RuntimeValue>;
   getWorld(): World | null;
@@ -101,6 +102,7 @@ export function createDeferredCombatWarmRuntime<
   camera,
   getBattleVisuals,
   combatWarm,
+  warmVisionSteps,
   warmBattleTerrainTiles,
   getWorld,
   getGeneration,
@@ -160,6 +162,10 @@ export function createDeferredCombatWarmRuntime<
         { isCurrent: () => generation === getGeneration() && game.phase === 'battle' },
       );
       trace.stages.enemyVisuals = Math.round(now() - enemyVisualsStartedAt);
+
+      const visionStartedAt = now();
+      if (warmVisionSteps) for (const _ of warmVisionSteps()) await guardedYield();
+      trace.stages.visionPrograms = Math.round(now() - visionStartedAt);
 
       const openingFxStartedAt = now();
       await combatWarm.warmOpeningChunked(6, guardedYield);

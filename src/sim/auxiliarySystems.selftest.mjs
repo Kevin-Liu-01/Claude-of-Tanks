@@ -110,7 +110,9 @@ for (const [id, name] of [
   ['challenger2e', '7.62×51 mm M61 AP'],
   ['t14', '30×165 mm 3UBR6 AP-T'],
   ['abramsx', '30×113 mm M789 HEDP'],
-  ['m551a1_tts', '30×113 mm M789 HEDP'],
+  // 2026-10-09 (owner order): the TTS carries its 30 mm station again and its M2 on the loader's ring; the M2 (its first
+  // gun) fires first here
+  ['m551a1_tts', '12.7×99 mm M2 AP'],
   ['m1a2', '12.7×99 mm M2 AP'],
 ]) {
   const namedShooter=entity('named','alpha',id), namedTarget=entity('named-target','bravo');

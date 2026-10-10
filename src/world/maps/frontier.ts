@@ -178,8 +178,9 @@ export default {
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     haystacks: 24, rocks: 150, outcrops: 20, craters: 48, rubblePiles: 10,
     cropFields: 9, hedgehogs: 10, sandbagLines: 14,
-    tankWrecks: { era: 'modern', count: 6, debris: true,
-      ids: ['m1a2', 't90m', 'm551_sheridan', 'm60a2', 'marder1a3', 'pl01'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): the Fulda Gap in the 1980s: V Corps' M60A3s and M1A1s,
+    // the Bundeswehr's Leopard 1A5 and Marder, the 8th Guards Army's T-80B and BMP-2
+    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['m60a3', 'm1a1', 'leo1a5', 'marder1a3', 't80b', 'bmp2'] },
     inhabit: {
       stalls: 2, benches: 3, coreClutter: 18, bales: 14, stooks: 12,
       troughs: 2, churns: 2, laundry: 2, handcarts: 3, carts: 4,

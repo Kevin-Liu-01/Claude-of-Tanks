@@ -85,7 +85,10 @@ function inBand(v: number, band: readonly [number, number], margin = 0.02): numb
  * Paint the print (`size` px square; 512 on desktop, 256 on phones: the same straw at half the texels). Deterministic
  * for a seed; sixteen rows per slice.
  */
-export function* paintHayBuffers(size = 512, seed = 0x4a7):
+/** The straw print's seed (the props build and the surface paint worker ask with it alike). */
+export const HAY_PRINT_SEED = 0x4a7;
+
+export function* paintHayBuffers(size = 512, seed = HAY_PRINT_SEED):
   Generator<HaySlice, HayBuffers, void> {
   const px = new Uint8ClampedArray(size * size * 4), hgt = new Float32Array(size * size);
   const rgb = new Float32Array(3);

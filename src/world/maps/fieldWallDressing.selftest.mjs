@@ -251,9 +251,17 @@ const attrs = (g) => Object.keys(g.attributes).sort().join(',');
   // the props wiring: asked on the mild, grassy, fieldstone maps' desktops; merged by cell into the ground beds
   const props = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
   assert.match(props, /const wallTurfOn = !mobileProps && !snowCap && rockDressing\.dust < 0\.5 && !sourcedStoneIsBrick\(mapId\);/, 'the turf on the mild, grassy maps\' dry-stone walls');
-  assert.match(props, /turf: wallTurfOn \? \{\n\s*meshAt: \(x, z\) => terrainNearMeshHeightAt\(\(px, pz\) => heightField\.getHeightAt\(px, pz\), x, z\), foldAt: turfFoldAt,/, 'on the nearest terrain mesh');
-  assert.match(props, /rockClutter\.clear\(\);\n\s*\/\/ \(b18\)[^\n]*\n\s*if \(wallDressing\.turfs\.length\) \{[\s\S]{0,900}group\.userData\.rockBeds = beds;\n\s*wallDressing\.turfs\.length = 0;/,
-    'merged by 256 m cell into the beds the world draws with the ground\'s material');
+  // (the time-to-battle lane, 2026-10-08: the near mesh's vertices through the props build's memo of the field's own
+  // heights, props.ts nearMeshVertexHeight; nearMeshVertexMemo.selftest holds it to the field's values)
+  assert.match(props, /turf: wallTurfOn \? \{\n\s*meshAt: \(x, z\) => terrainNearMeshHeightAt\(nearMeshVertexHeight, x, z\), foldAt: turfFoldAt,/, 'on the nearest terrain mesh');
+  assert.match(props, /if \(h === undefined\) row\.set\(pz, h = heightField\.getHeightAt\(px, pz\)\);/, 'of the field\'s own heights');
+  // (b37; the whole-PR census: a bed mesh and a turf mesh a 256 m cell, 9-21 colour-pass draws a view on the ground's
+  // heavy material) the turf merged into its cell's bed: one geometry a 512 m cell for both
+  assert.match(props, /rockClutter\.clear\(\);\n(\s*\/\/[^\n]*\n)+\s*if \(wallDressing\.turfs\.length\) \{[\s\S]{0,1400}group\.userData\.rockBeds = beds;\n\s*wallDressing\.turfs\.length = 0;/,
+    'merged into the beds the world draws with the ground\'s material');
+  assert.match(props, /const BED_CELL_M = 512;/, 'the beds\' and the turf\'s cells 512 m');
+  assert.match(props, /for \(const bed of \(group\.userData\.rockBeds as THREE\.BufferGeometry\[\] \| undefined\) \?\? \[\]\) add\(bed\);\n\s*for \(const turf of wallDressing\.turfs\) add\(turf\);/,
+    'a cell\'s bed and its turf one geometry');
 }
 
 console.log('fieldWallDressing self-test passed: the snow load on the module\'s top (lumpy, seamless, looking up), the foot stones sunk on both faces, the lee and windward drifts with wandering toes, the mud apron on its plain band, the tumbled ends, the run\'s owner, the turf at the dry-stone feet');

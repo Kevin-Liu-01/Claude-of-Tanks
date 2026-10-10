@@ -177,6 +177,13 @@ compound tube rather than stretching an unrelated existing barrel.
 
 Construct the muzzle annulus, interior wall and measured recessed termination;
 ray-test the complete visible factory output for a later fallback disc or cap.
+The fleet cutter in `src/vehicles/carvedMuzzleBore.ts` opens legacy stock rather
+than painting a dark disc over it. Its 12-sided interior costs 34 triangles;
+measure the complete before/after model before claiming net savings. Preserve
+verified authored bores and sealed missile canisters. Test retained native rim,
+inward-facing walls at several depths, and a single recessed backstop against
+the complete visible model, including interior fills. Flush contact is valid;
+a second exposed coplanar cap is not.
 Seat the mantlet in real receiving armor. [Type10's seat contract](../../src/vehicles/profiles/type10GunSeat.ts)
 is a model-specific example of mouth, moving housing and muzzle datums—not source-X
 coordinates to copy. Test neutral, elevation and depression after turret traverse.

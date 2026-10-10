@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { stripTypeScriptTypes } from 'node:module';
+import { registerHooks, stripTypeScriptTypes } from 'node:module';
+import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import { DoubleSide, Euler, Matrix4, Mesh, MeshBasicMaterial, Quaternion, Raycaster, Vector3 } from 'three';
 import { fitWallSpan, wallIslandEdges } from './wallSpanPlacement.ts';
@@ -11,6 +12,8 @@ import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
 import { rayCollisionRecord, setObbShape } from './collision.ts';
+import { SLAB_SHELL_KINDS } from './props.ts';
+import { localShellSlabs, placeLocalShellSlabs } from './rockCollision.ts';
 import { box, jitterUV } from './propGeometry.ts';
 import { prepareWorldStructureNightFixture, setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
 import { applyStructureCollisionBand, deriveRuntimeStructureCollisionProfile,
@@ -199,12 +202,14 @@ function collisionFixture(contact) {
   return new Function('deriveRuntimeStructureContactBand', 'applyStructureCollisionBand',
     'DESTRUCTIBLE_BUILDING_TYPES', 'deriveRuntimeStructureCollisionWithSolids', 'createGroundCoverSolidProfile',
     'attachGroundCoverSolidProfile', 'GROUND_COVER_PLACEMENT_BYTES',
+    // the hitbox lane (2026-10-08): a sandbag stack's shell record is its own slabs
+    'SLAB_SHELL_KINDS', 'localShellSlabs', 'placeLocalShellSlabs',
     `const groundCoverDetails = { families:0, solidCount:0, profileBytes:0, placements:0,
       placementBytes:0, unsupportedTransforms:0, buildMs:0 };
       ${refitSource}; return { refit:refitDestructibleColliders, seal:sealGroundCoverPlacements, groundCoverDetails };`)(
     contact, applyStructureCollisionBand, DESTRUCTIBLE_BUILDING_TYPES,
     deriveRuntimeStructureCollisionWithSolids, createGroundCoverSolidProfile, attachGroundCoverSolidProfile,
-    GROUND_COVER_PLACEMENT_BYTES);
+    GROUND_COVER_PLACEMENT_BYTES, SLAB_SHELL_KINDS, localShellSlabs, placeLocalShellSlabs);
 }
 const { refit, seal, groundCoverDetails } = collisionFixture(deriveRuntimeStructureContactBand);
 // Independent pre-change contact computation: the optimized contact-only path
@@ -571,6 +576,56 @@ for (const method of ['prepare', 'finalize']) {
 }
 assert.deepEqual(groundCoverDetails, { families:0, solidCount:0, profileBytes:0, placements:0,
   placementBytes:0, unsupportedTransforms:0, buildMs:0 }, 'walls retain the cheap collider path, without building-only solid profiles');
+
+// The column sampling (2026-10-08, the perf lane, time-to-battle): the ground under a module is sampled once per distinct
+// (x, z) of its vertices instead of once per vertex. The control is the module with the original per-vertex loop put
+// back (its source pinned by hash); both fit the same real kits over real height fields, and every matrix element, the
+// record's height, ground support and both colliders must come out bit for bit the same, with fewer ground samples.
+const originalSupportLoop = `  for (let index = 0; index < vertices.count; index++) {
+    point.fromBufferAttribute(vertices, index).applyMatrix4(matrix);
+    support(point.x, point.z);
+  }
+`;
+assert.equal(createHash('sha256').update(originalSupportLoop).digest('hex'),
+  '4fded179610b9f58045033dd2750e4a865901027f05b77d8756260b67b40264a', 'the original per-vertex support loop (wallSpanPlacement.ts before 2026-10-08), not a rewritten oracle');
+{
+  const moduleUrl = new URL('./wallSpanPlacement.ts', import.meta.url);
+  const text = await readFile(moduleUrl, 'utf8');
+  const start = text.indexOf('  // (2026-10-08, the perf lane, time-to-battle: the matrix turns about y alone');
+  const end = text.indexOf('    support(point.x, point.z);\n  }\n', start) + '    support(point.x, point.z);\n  }\n'.length;
+  assert.ok(start > 0 && end > start, 'the column loop is where the control puts the per-vertex loop back');
+  const hooks = registerHooks({ load(url, context, nextLoad) {
+    if (url !== `${moduleUrl.href}?per-vertex`) return nextLoad(url, context);
+    return { format: 'module-typescript', source: text.slice(0, start) + originalSupportLoop + text.slice(end), shortCircuit: true };
+  } });
+  let control;
+  try { control = await import(`${moduleUrl.href}?per-vertex`); } finally { hooks.deregister(); }
+  const bits = (value) => JSON.stringify(value, (_, v) => (typeof v === 'number' ? (Object.is(v, -0) ? '-0' : String(v)) : v));
+  let fits = 0, samples = { columns: 0, perVertex: 0 };
+  for (const [mapId, seed] of [['reservoir', 1337], ['verdant', 1337], ['alpine', 4242]]) {
+    const field = createHeightField(seed, getMapConfig(mapId));
+    const counted = (key) => ({ getHeightAt: (x, z) => { samples[key]++; return field.getHeightAt(x, z); } });
+    const random = seeded(seed ^ 0x5eed);
+    for (const kind of ['wallstone', 'walladobe']) {
+      const geometry = DESTRUCTIBLE_TYPES[kind].build(seeded(seed + kind.length));
+      for (let k = 0; k < 24; k++) {
+        const x0 = (random() - 0.5) * 700, z0 = (random() - 0.5) * 700, yaw = random() * Math.PI * 2, length = 1 + random() * 3.2;
+        const span = { x0, z0, x1: x0 + Math.sin(yaw) * length, z1: z0 + Math.cos(yaw) * length };
+        const sc = 0.85 + random() * 0.3;
+        const a = makeRecord(span, sc), b = makeRecord(span, sc);
+        const ma = new Matrix4(), mb = new Matrix4();
+        fitWallSpan(ma, geometry, counted('columns'), span, a, WALL_SEG);
+        control.fitWallSpan(mb, geometry, counted('perVertex'), span, b, WALL_SEG);
+        assert.equal(bits(ma.elements), bits(mb.elements), `${mapId} ${kind} ${k}: the same matrix, bit for bit`);
+        assert.equal(bits(a), bits(b), `${mapId} ${kind} ${k}: the same height, ground support and colliders`);
+        fits++;
+      }
+      geometry.dispose();
+    }
+  }
+  assert.ok(samples.columns < samples.perVertex / 2, 'the module columns take a fraction of the per-vertex ground samples');
+  console.log(JSON.stringify({ columnSampling: { fits, groundSamples: samples } }));
+}
 material.dispose();
 console.log(JSON.stringify({ seams, vertices, legacyMisses, sourceSlots, endpointRays, legacyEndpointMisses, lifecycleCycles,
   poolCheckpoints, cancelledPools,

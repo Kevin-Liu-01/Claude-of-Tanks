@@ -5,9 +5,21 @@ const SIZE = 1024, HALF = SIZE / 2, CHUNK = 128, SEGMENTS = 96;
 const CELLS = SIZE / CHUNK * SEGMENTS, N = CELLS + 1;
 const STEP = CHUNK / SEGMENTS;
 
+/** A point on the rendered near terrain: its height, and (normalAt) the face normal of the triangle it lies on. */
+export interface TerrainContactSampler {
+  (x: number, z: number): number;
+  /**
+   * The unit normal of the triangle the height comes from (the same cell, the same diagonal, the same Float32
+   * vertices) into `out`; straight up off the square. The time-to-battle lane (2026-10-08; the coordinator's ruling:
+   * grass follows the ground the player sees): the grass and tall grass slope tests read it instead of the analytic
+   * normal's four heights.
+   */
+  normalAt<T extends { x: number; y: number; z: number }>(x: number, z: number, out: T): T;
+}
+
 export function createTerrainContactSampler(
   heightAt: (x: number, z: number) => number,
-): (x: number, z: number) => number {
+): TerrainContactSampler {
   // Lazy vertices: bounded to 2.3 MiB per resident battlefield, no allocation
   // in the live query. Rendering and headless authority use the same grid.
   const heights = new Float32Array(N * N);
@@ -35,7 +47,7 @@ export function createTerrainContactSampler(
     else if (i < CELLS - 1 && value > coordinates[i + 1]) i++;
     return i;
   }
-  return (x, z) => {
+  const sample = ((x: number, z: number): number => {
     if (!Number.isFinite(x) || !Number.isFinite(z)) return 0;
     if (x < -HALF || x > HALF || z < -HALF || z > HALF) return heightAt(x, z);
     const ix = cell(x), iz = cell(z);
@@ -48,5 +60,27 @@ export function createTerrainContactSampler(
     }
     const d = vertex(ix + 1, iz + 1);
     return d + (c - d) * (1 - u) + (b - d) * (1 - v);
+  }) as TerrainContactSampler;
+  sample.normalAt = (x, z, out) => {
+    if (!Number.isFinite(x) || !Number.isFinite(z) || x < -HALF || x > HALF || z < -HALF || z > HALF) {
+      out.x = 0; out.y = 1; out.z = 0;
+      return out;
+    }
+    const ix = cell(x), iz = cell(z);
+    const dx = coordinates[ix + 1] - coordinates[ix], dz = coordinates[iz + 1] - coordinates[iz];
+    const u = (x - coordinates[ix]) / dx, v = (z - coordinates[iz]) / dz;
+    const b = vertex(ix + 1, iz), c = vertex(ix, iz + 1);
+    let sx: number, sz: number;
+    if (u + v <= 1) {
+      const a = vertex(ix, iz);
+      sx = (b - a) / dx; sz = (c - a) / dz;
+    } else {
+      const d = vertex(ix + 1, iz + 1);
+      sx = (d - c) / dx; sz = (d - b) / dz;
+    }
+    const inverse = 1 / Math.hypot(sx, 1, sz);
+    out.x = -sx * inverse; out.y = inverse; out.z = -sz * inverse;
+    return out;
   };
+  return sample;
 }

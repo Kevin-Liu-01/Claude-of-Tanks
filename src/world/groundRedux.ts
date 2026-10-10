@@ -88,6 +88,20 @@ export interface GroundReduxProfile {
    * black and red cinder streaked down the fall line on the cones' flanks, talus aprons at their feet — keyed to the
    * slopes and folds of the landforms, not to a wind (the material's uReduxFold.w). */
   volcanic?: number;
+  /** Ground lane (2026-10-08, the gauntlet's wave 260 on Cinder Junction): the map's village is a rail yard floored in
+   * cinder — the material draws ash, clinker, coal dust, rust and oil there (uYardCinder) and the tiers that grow on
+   * the ground come up in weed clumps (cinderYardWeedsAt, the height field's `_yardWeedsAt`) instead of a scatter.
+   * 0 = off (every other map), 1 = the yard. */
+  cinderYard?: number;
+  /** Ground lane (2026-10-08, the gauntlet's wave 274 on Monsoon Ridge: "one uniform carpet of identical-height grass with
+   * no thinning on the steeper upper slope … no dry stems"): the sward follows its ground — thinner and shorter up a
+   * steep slope, drier and paler on a slope turned to the sun (the hollows' lusher sward is the fold law's already). The
+   * height field publishes it with the map's sun (`_swardSlope`); the tall grass and the tufts read it. 0 = off. */
+  swardSlope?: number;
+  /** Ground lane (2026-10-08, wave 274's Monsoon foot: "a smooth, flat, saturated lawn-green surface with no soil, litter
+   * or dry thatch" under the sward): the ground under a thick sward near the camera is last season's thatch and the soil
+   * between the tussocks, not lawn (the material's uThatch). 0 = off. */
+  thatch?: number;
   /** The tall-grass biome, or null for a map with no sward (arid, Mars). */
   grass: TallGrassBiome | null;
 }
@@ -207,12 +221,15 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   // maps lane B (2026-10-03, gauntlet wave 28): the river's margin is a steady damp bank with a wrack line and reeds
   autumn: { ...STILL_WATER, scree: 0.3, grass: meadow(1.0, 0.9, { base: [0.135, 0.108, 0.042], tip: [0.26, 0.21, 0.08], dry: [0.30, 0.23, 0.08], reedMargin: 0.5 }) },
   steppe: { ...TEMPERATE, foldMoist: 0.5, scree: 0.2, grass: steppe(1.2) },
-  railyard: { ...TEMPERATE, scree: 0.15, grass: verge(0.55) },
+  railyard: { ...TEMPERATE, scree: 0.15, grass: verge(0.55), cinderYard: 1 },
   frontier: { ...TEMPERATE, foldMoist: 0.55, scree: 0.3, grass: savanna(0.85) },
   fjord: { ...COAST, swashPeriodS: 9.5, swashReachM: 4, swashStrength: 1.0, scree: 0.4, grass: dune(0.5) },
   delta: { ...STILL_WATER, rimTint: MOSS, grass: reed(0.75, 1.6, 0.85, 0.5) },
-  badlands: { ...ARID, grass: null },
-  monsoon: { ...STILL_WATER, swashStrength: 0.5, swashReachM: 3, scree: 0.3, rimTint: MOSS,
+  // (the Redrock lane, round 9, the gauntlet's wave 261: the walls meet the sand "with no talus, sand ramps or contact
+  // shadow" — the folds at the walls' feet and in the ravines take more of the sky's occlusion, as Copper Mesa's do)
+  badlands: { ...ARID, grass: null, foldAO: 0.68 },
+  // (2026-10-08, wave 274: the sward follows its slopes and stands on thatch and soil)
+  monsoon: { ...STILL_WATER, swashStrength: 0.5, swashReachM: 3, scree: 0.3, rimTint: MOSS, swardSlope: 1, thatch: 1,
     grass: meadow(0.9, 1.0, { base: [0.042, 0.090, 0.022], tip: [0.080, 0.180, 0.040], dry: [0.22, 0.22, 0.09], reedMargin: 0.55 }) },
   alpine: { ...SNOW, scree: 0.6, grass: tundra(0.3) },
   // (the map-revival lane, Caldera round 2: Aso's floor is farmed and its slopes grazed grassland on black volcanic soil —
@@ -237,7 +254,11 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   orchard: { ...TEMPERATE, scree: 0.2, grass: meadow(0.9, 0.8) },
   longleaf: { ...TEMPERATE, scree: 0.2, grass: savanna(0.7, 0.75) },
   mangrove: { ...COAST, swashPeriodS: 6.5, swashReachM: 3, swashStrength: 0.9, rimTint: MOSS, grass: reed(0.7, 1.5, 0.85, 0.45) },
-  saltwind: { ...COAST, swashPeriodS: 7.5, swashReachM: 4.5, swashStrength: 1.6, scree: 0.2, grass: dune(0.6) },
+  // (wave 177 and 2026-10-08's wave 287, Saltwind: "thick, evenly spaced and plastic-looking" blades over a "lush
+  // lawn-green carpet") the karst's sward is a garrigue's — the marram's backshore law (dense by the water, thin inland),
+  // its blades thinner and shorter, cured yellow-grey rather than grey-green
+  saltwind: { ...COAST, swashPeriodS: 7.5, swashReachM: 4.5, swashStrength: 1.6, scree: 0.2,
+    grass: { ...dune(0.5, 0.62), widthM: 0.032, base: [0.125, 0.115, 0.062], tip: [0.24, 0.22, 0.13], dry: [0.30, 0.26, 0.15] } },
   reservoir: { ...STILL_WATER, scree: 0.3, grass: meadow(0.8, 0.85, { reedMargin: 0.5 }) },
   mars: { ...ARID, foldMoist: 0, exposure: 0.5, grass: null },
   moon: { ...ARID, foldMoist: 0, exposure: 0, windRipple: 0, grass: null }, // airless regolith: no weathering follows the sun, no wind ripples
@@ -248,6 +269,37 @@ const DEFAULT_PROFILE: GroundReduxProfile = Object.freeze({ ...TEMPERATE, grass:
 
 export function groundReduxProfileIds(): string[] {
   return Object.keys(PROFILES);
+}
+
+/**
+ * Ground lane (2026-10-08, the gauntlet's wave 260 on Cinder Junction's yard: "evenly spaced, saturated green
+ * single-blade sprites that look like seedlings in a ploughed field, not weeds in a cinder yard"): a cinder yard's
+ * weeds come up in clumps — a metre or two across, a few to every ten metres, ragged at their edges — and nothing grows
+ * on the trodden cinder between them. The clump's weight at (x, z), 0..1: three value noises, 2.6 m, 1.7 m and 0.9 m,
+ * each on its own turned grid (no clump squared to the axes), summed and cut at 0.60–0.72 — about a seventh of the floor
+ * (an integer position hash: the client, the host and the receipts read the same field). The tall grass and the tufts
+ * keep to it inside the yard (the height field's `_yardWeedsAt` on a map whose profile has a cinder yard).
+ */
+export function cinderYardWeedsAt(x: number, z: number): number {
+  const v = yardValueNoise((0.799 * x - 0.602 * z) / 2.6, (0.602 * x + 0.799 * z) / 2.6, 0x5c1d) * 0.55
+    + yardValueNoise((0.934 * x + 0.358 * z) / 1.7, (-0.358 * x + 0.934 * z) / 1.7, 0x2b7e) * 0.30
+    + yardValueNoise((0.326 * x - 0.946 * z) / 0.9, (0.946 * x + 0.326 * z) / 0.9, 0x7d31) * 0.15;
+  const t = Math.min(1, Math.max(0, (v - 0.60) / 0.12));
+  return t * t * (3 - 2 * t);
+}
+function yardValueNoise(fx: number, fz: number, salt: number): number {
+  const ix = Math.floor(fx), iz = Math.floor(fz);
+  const tx = fx - ix, tz = fz - iz;
+  const sx = tx * tx * (3 - 2 * tx), sz = tz * tz * (3 - 2 * tz);
+  const h = (a: number, b: number): number => {
+    let k = Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1) ^ salt;
+    k = Math.imul(k ^ (k >>> 15), 0x85ebca6b);
+    k = Math.imul(k ^ (k >>> 13), 0xc2b2ae35);
+    return ((k ^ (k >>> 16)) >>> 0) / 4294967295;
+  };
+  const a = h(ix, iz) + (h(ix + 1, iz) - h(ix, iz)) * sx;
+  const b = h(ix, iz + 1) + (h(ix + 1, iz + 1) - h(ix, iz + 1)) * sx;
+  return a + (b - a) * sz;
 }
 
 /** The map's row, or the temperate defaults with no sward. */

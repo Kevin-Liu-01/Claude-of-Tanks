@@ -44,7 +44,13 @@ interface GlDiagnosticBag {
 }
 
 interface SceneBandProbe {
-  measure(scene: THREE.Scene, camera: THREE.Camera): number;
+  measure(scene: THREE.Scene, camera: THREE.Camera, radianceScale?: number): number;
+  /**
+   * Submit, without drawing, the programs a draw of `scene` into this probe's target needs (three keys a program by
+   * its target's colour path, so the probe target and the HDR scene pass share variants). False when the renderer has
+   * no compile (a test double).
+   */
+  submitPrograms(scene: THREE.Scene, camera: THREE.Camera): boolean;
   dispose(): void;
 }
 
@@ -99,13 +105,18 @@ export interface SceneWatchdogResult {
   measurements?: SceneBandTiming[];
   /** Probe-only normalization; live/night radiance is restored synchronously. */
   nightRadianceScale?: number;
+  /** The band under LIT_RESPONSE_GAIN times more diagnostic light, measured only after a dark first reading. */
+  response?: number;
+  /** The radiance scale that response band was drawn under (litResponseScale). */
+  responseScale?: number;
 }
 
 interface SceneWatchdogOptions {
   onRescue?: (result: SceneWatchdogResult) => void;
   /** Bounded operation timings for covered network entry, never a frame-loop probe. */
   measureTimings?: boolean;
-  /** Explicit known-night preset.skyIntensity; never infer night from dark pixels. */
+  /** Explicit known-night preset.skyIntensity, or a low-light battle's metered ratio (battleProbeRadianceScale);
+   * never inferred from dark pixels. */
   nightRadianceScale?: number;
 }
 
@@ -117,7 +128,9 @@ interface SceneWatchdogStage {
 }
 
 interface SceneWatchdogProbe {
-  measure(): number;
+  /** The lower band; `radianceScale` overrides the transaction's diagnostic scale for this one draw. */
+  measure(radianceScale?: number): number;
+  submitPrograms(): boolean;
   dispose(): void;
 }
 
@@ -129,7 +142,7 @@ declare global {
 
 const qs = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
 const DIAG_PARAM = qs ? qs.get('diag') : null;
-const FORCE = qs ? qs.get('diagforce') : null; // 'noshadow' | 'nolit' (test rig)
+const FORCE = qs ? qs.get('diagforce') : null; // 'noshadow' | 'nolit' | 'blackscene' | 'blackout' (test rig)
 
 /** Pure URL gate: diagnostics may run silently, but UI needs explicit opt-in. */
 export function diagUiRequested(search = (typeof location !== 'undefined' ? location.search : '')) {
@@ -477,6 +490,57 @@ function withSceneProbeRadiance<T>(scene: THREE.Scene, scale: number, render: ()
   }
 }
 
+/** The strongest diagnostic illumination a battle probe applies: the night preset's own sky scale (x12.5). */
+const MIN_BATTLE_PROBE_RADIANCE_SCALE = 0.08;
+
+/**
+ * 2026-10-09 (the MP-entry lane; R047's two-peer Verdant entries both failed "Battle graphics could not be verified"):
+ * the probe reads scene-linear radiance before the camera's exposure. Since the grounded light model (2026-10-01) the
+ * camera opens up wherever the horizontal light falls under the exposure law's reference: Verdant's sunset meters 0.49
+ * against 3.0 (exposure 2.78), and a healthy sunset frame read 3.7-4.7 against the black threshold 6, so every Verdant
+ * sunset network round threw at entry, and the covered solo entry refused it too (automation skips that probe). Night already
+ * draws the probe under diagnostic illumination, its authored sky scale. A battle below the reference now draws it under
+ * the ratio the light model metered, through the same radiance path: only broad lit inputs scale, so a failed lit
+ * pipeline stays dark and the threshold keeps its meaning. Null (no change) at or above the reference, or without a
+ * metered illuminance (the legacy rig reports the reference itself).
+ */
+export function battleProbeRadianceScale(illuminance: unknown, referenceIlluminance: number): number | null {
+  if (typeof illuminance !== 'number' || !Number.isFinite(illuminance) || illuminance <= 0) return null;
+  if (!Number.isFinite(referenceIlluminance) || referenceIlluminance <= 0) return null;
+  const ratio = illuminance / referenceIlluminance;
+  return ratio < 1 ? Math.max(MIN_BATTLE_PROBE_RADIANCE_SCALE, ratio) : null;
+}
+
+/**
+ * 2026-10-09 (the black-screen lane; the owner: "black screens ... one that flagged it for me is cinder junction"): the
+ * band is scene-linear radiance before the exposure, so a dark battlefield under low light reads "black" while the
+ * player sees a dim but sound frame. On the phone tier (the legacy rig meters the reference itself, so no low-light
+ * scale applies) production 207's sunset entries read Mangrove 4.7 (refused after a 53 s synchronous ladder) and a
+ * dozen maps 6.1-7.8, Cinder Junction 7.2, while their frames showed luma 45-60. Brightness alone cannot tell a dark
+ * scene from a broken pipeline; the response to light can: a working lit pipeline answers more light in proportion,
+ * a broken one (a poisoned environment, a failed shadow or fog injection: the black iPhone) stays black whatever the
+ * light. So a dark first reading is drawn once more under LIT_RESPONSE_GAIN times the diagnostic light, through the
+ * same broad-input radiance path (emissives, lamps, the sky and unlit surfaces never scale). Only a frame that stays
+ * under the threshold there is black; only then do the rescue stages run, under that same light.
+ */
+/** The band a lit frame must reach (mean 8-bit channel over the lower band). */
+const SCENE_BAND_HEALTHY = 6;
+const LIT_RESPONSE_GAIN = 8;
+/** The response draw's floor: night's own diagnostic scale (0.08) under the gain. */
+const MIN_LIT_RESPONSE_SCALE = 0.01;
+
+/** The radiance scale of the response draw for a transaction drawn under `scale` (1 = authored light). */
+export function litResponseScale(scale?: number): number {
+  const base = typeof scale === 'number' && Number.isFinite(scale) && scale > 0 && scale <= 1 ? scale : 1;
+  return Math.max(MIN_LIT_RESPONSE_SCALE, base / LIT_RESPONSE_GAIN);
+}
+
+/** A frame the watchdog refuses: dark, silent under the response light, and not cured by a rescue stage. */
+export function sceneWatchdogRefuses(result: Pick<SceneWatchdogResult, 'before' | 'response' | 'rescued'>): boolean {
+  return !(result.before >= SCENE_BAND_HEALTHY) && !((result.response ?? 0) >= SCENE_BAND_HEALTHY) && !result.rescued;
+}
+
+
 function copySceneBandTimings(rows: readonly SceneBandTiming[]): SceneBandTiming[] {
   return rows.slice(0, 8).map(row => ({ ...row,
     ...(row.readbackSteps ? { readbackSteps: { ...row.readbackSteps } } : {}) }));
@@ -600,7 +664,7 @@ function createSceneBandProbe(
   const buf = new Uint8Array(64 * 22 * 4);
   let disposed = false;
   return {
-    measure(scene: THREE.Scene, camera: THREE.Camera): number {
+    measure(scene: THREE.Scene, camera: THREE.Camera, radianceScale = nightRadianceScale): number {
       if (disposed) throw new Error('scene-band probe already disposed');
       const prev = renderer.getRenderTarget();
       const prevFace = renderer.getActiveCubeFace();
@@ -615,7 +679,7 @@ function createSceneBandProbe(
         });
         recordSceneProbePrograms(timing, renderer, 'programsBeforeRender');
         timedSceneProbeStep(timing, 'renderMs', () => withSceneProbeRadiance(
-          scene, nightRadianceScale, () => renderer.render(scene, camera)));
+          scene, radianceScale, () => renderer.render(scene, camera)));
         recordSceneProbePrograms(timing, renderer, 'programsAfterRender');
         timedSceneProbeStep(timing, 'readbackMs', () => {
           renderer.readRenderTargetPixels(rt, 0, 0, 64, 22, buf);
@@ -631,6 +695,20 @@ function createSceneBandProbe(
         } finally {
           finishSceneProbeTiming(timing);
         }
+      }
+    },
+    submitPrograms(scene: THREE.Scene, camera: THREE.Camera): boolean {
+      if (disposed) throw new Error('scene-band probe already disposed');
+      if (typeof renderer.compile !== 'function') return false;
+      const prev = renderer.getRenderTarget();
+      const prevFace = renderer.getActiveCubeFace();
+      const prevMip = renderer.getActiveMipmapLevel();
+      try {
+        renderer.setRenderTarget(rt);
+        renderer.compile(scene, camera);
+        return true;
+      } finally {
+        renderer.setRenderTarget(prev, prevFace, prevMip);
       }
     },
     dispose() {
@@ -664,19 +742,24 @@ function createWatchdogProbe(
   measurements?: SceneBandTiming[],
   nightRadianceScale = 1,
 ): SceneWatchdogProbe {
-  if (FORCE === 'blackscene') {
-    const simulated = [0, 0, 42, 42];
+  if (FORCE === 'blackscene' || FORCE === 'blackout') {
+    // blackscene: before, the response draw, +shadows-off, +environment-off cures it, the confirmation.
+    // blackout (2026-10-09, the black-screen lane): a lit pipeline black under any light and any stage, the negative
+    // control of the per-deploy entry sweep (tools/battle-entry-sweep.mjs --force-black): the entry must be refused.
+    const simulated = FORCE === 'blackout' ? [0] : [0, 0, 0, 42, 42];
     let index = 0;
     return {
       measure() {
         return simulated[Math.min(index++, simulated.length - 1)];
       },
+      submitPrograms: () => false,
       dispose() {},
     };
   }
   const probe = createSceneBandProbe(renderer, measurements, nightRadianceScale);
   return {
-    measure: () => probe.measure(scene, camera),
+    measure: (radianceScale?: number) => probe.measure(scene, camera, radianceScale),
+    submitPrograms: () => probe.submitPrograms(scene, camera),
     dispose: () => probe.dispose(),
   };
 }
@@ -698,6 +781,8 @@ function createWatchdogStages(
         recompileScene(scene);
       },
       revert() {
+        // Compare-and-swap: a rescue stage that spanned an await (the async ladder) never clobbers a newer owner's state.
+        if (renderer.shadowMap.enabled !== false) return;
         renderer.shadowMap.enabled = previousShadowEnabled;
         recompileScene(scene);
       },
@@ -711,6 +796,7 @@ function createWatchdogStages(
         recompileScene(scene);
       },
       revert() {
+        if (scene.environment !== null) return;
         scene.environment = previousEnvironment;
         recompileScene(scene);
       },
@@ -724,6 +810,7 @@ function createWatchdogStages(
         recompileScene(scene);
       },
       revert() {
+        if (scene.fog !== null) return;
         scene.fog = previousFog;
         recompileScene(scene);
       },
@@ -735,11 +822,14 @@ function keepRequiredWatchdogStages(
   applied: readonly SceneWatchdogStage[],
   probe: SceneWatchdogProbe,
   note: (message: string) => void,
+  radianceScale?: number,
 ): void {
+  // Reverting and reapplying reuse each material's cached programs (three keeps every variant a material has used),
+  // so the confirmation never compiles.
   const priorStages = applied.slice(0, -1);
   for (const stage of priorStages) stage.revert();
   if (priorStages.length === 0) return;
-  const confirm = probe.measure();
+  const confirm = probe.measure(radianceScale);
   if (confirm >= 6) return;
   for (const stage of priorStages) stage.apply();
   note(`watchdog: revert broke it (band ${confirm.toFixed(1)}) — keeping all stages`);
@@ -764,6 +854,7 @@ function tryWatchdogStages(
   out: SceneWatchdogResult,
   note: (message: string) => void,
   onRescue?: (result: SceneWatchdogResult) => void,
+  radianceScale?: number,
 ): boolean {
   const applied: SceneWatchdogStage[] = [];
   let confirmed = false;
@@ -772,10 +863,10 @@ function tryWatchdogStages(
       if (!stage.can()) continue;
       stage.apply();
       applied.push(stage);
-      const luminance = probe.measure();
+      const luminance = probe.measure(radianceScale);
       note(`watchdog: +${stage.label} -> band ${luminance.toFixed(1)}`);
       if (luminance < 6) continue;
-      keepRequiredWatchdogStages(applied, probe, note);
+      keepRequiredWatchdogStages(applied, probe, note, radianceScale);
       confirmed = true;
       markWatchdogRescued(out, stage, luminance, onRescue);
       return true;
@@ -784,6 +875,86 @@ function tryWatchdogStages(
   } finally {
     // A failed draw/read/confirmation must not leave tentative quality changes
     // installed. Once confirmed, consumer diagnostic callbacks cannot undo it.
+    if (!confirmed) {
+      for (let index = applied.length - 1; index >= 0; index--) applied[index].revert();
+    }
+  }
+}
+
+/** The whole rescue ladder's wall-clock allowance for preparing its stages' programs (the main thread stays free). */
+const LADDER_PREPARE_MS = 30000;
+const LADDER_POLL_MS = 16;
+
+/**
+ * 2026-10-09 (the black-screen lane): production 207's refused Mangrove entry spent 19.6 + 15.8 + 17.4 s inside three
+ * synchronous probe draws, each linking a whole stage's new program variants on the main thread (190 -> 389 programs),
+ * so the loader froze for 53 s. Here each stage's variants are submitted into the probe target first and awaited
+ * through KHR_parallel_shader_compile between tasks, so the draw that judges the stage finds them linked. Without the
+ * extension the draw links them itself (the only path such a driver allows). Throws on a lost context, the owner's
+ * cancellation, or the ladder's allowance.
+ */
+async function prepareStagePrograms(
+  renderer: THREE.WebGLRenderer,
+  probe: SceneWatchdogProbe,
+  deadline: number,
+  assertOwner: () => void,
+): Promise<void> {
+  const baseline = new Set<unknown>(renderer.info?.programs ?? []);
+  if (!probe.submitPrograms()) return;
+  const gl = renderer.getContext?.() as (WebGL2RenderingContext & { getExtension(name: string): unknown }) | undefined;
+  const parallel = gl?.getExtension?.('KHR_parallel_shader_compile') as { COMPLETION_STATUS_KHR: number } | null | undefined;
+  if (!gl || !parallel) return;
+  const pending: WebGLProgram[] = [];
+  for (const wrapper of renderer.info?.programs ?? []) {
+    const handle = (wrapper as { program?: WebGLProgram }).program;
+    if (!baseline.has(wrapper) && handle) pending.push(handle);
+  }
+  while (pending.length) {
+    if (gl.isContextLost()) throw new Error('rescue stage programs lost their context');
+    for (let index = pending.length - 1; index >= 0; index--) {
+      if (gl.getProgramParameter(pending[index], parallel.COMPLETION_STATUS_KHR) === true) pending.splice(index, 1);
+    }
+    if (!pending.length) return;
+    if (!(sceneProbeClock() < deadline)) throw new Error(`rescue stage programs still linking after ${LADDER_PREPARE_MS} ms`);
+    await new Promise<void>((resolve) => { setTimeout(resolve, LADDER_POLL_MS); });
+    assertOwner();
+  }
+}
+
+/** The rescue ladder of the covered (async) watchdog: tryWatchdogStages, with each stage's programs prepared off the main thread. */
+async function tryWatchdogStagesAsync(
+  renderer: THREE.WebGLRenderer,
+  stages: readonly SceneWatchdogStage[],
+  probe: SceneWatchdogProbe,
+  out: SceneWatchdogResult,
+  note: (message: string) => void,
+  radianceScale: number,
+  assertOwner: () => void,
+  onRescue?: (result: SceneWatchdogResult) => void,
+): Promise<boolean> {
+  const applied: SceneWatchdogStage[] = [];
+  let confirmed = false;
+  const startedAt = sceneProbeClock();
+  const deadline = Number.isFinite(startedAt) ? startedAt + LADDER_PREPARE_MS : Infinity;
+  try {
+    for (const stage of stages) {
+      if (!stage.can()) continue;
+      stage.apply();
+      applied.push(stage);
+      await prepareStagePrograms(renderer, probe, deadline, assertOwner);
+      assertOwner();
+      const luminance = probe.measure(radianceScale);
+      note(`watchdog: +${stage.label} -> band ${luminance.toFixed(1)}`);
+      if (luminance < 6) continue;
+      keepRequiredWatchdogStages(applied, probe, note, radianceScale);
+      confirmed = true;
+      markWatchdogRescued(out, stage, luminance, onRescue);
+      return true;
+    }
+    return false;
+  } finally {
+    // Unconfirmed stages come off even after a cancellation: the renderer and the shared scene outlive the entry. Each
+    // revert is compare-and-swap, so a newer owner's state stays.
     if (!confirmed) {
       for (let index = applied.length - 1; index >= 0; index--) applied[index].revert();
     }
@@ -868,13 +1039,64 @@ async function measureSceneBandAsync(
 /**
  * Network entry owns a covered, cancellable transaction. Queue the healthy
  * frame read into a PBO, restore all bindings before yielding, and settle its
- * bounded owner before disposal. No compatibility setting changes span awaits.
- * Rare black/error probes use the existing synchronous ladder from a fresh
- * measurement, so an old boot/reclaim callback cannot invalidate its diagnosis.
+ * bounded owner before disposal. No compatibility setting changes span the PBO
+ * wait. A dark or error probe is judged again from fresh measurements
+ * (judgeSceneAsync), so an old boot/reclaim callback cannot invalidate its
+ * diagnosis; only a frame that does not answer diagnostic light reaches the
+ * rescue ladder, whose stages prepare their programs between tasks and come off
+ * compare-and-swap when unconfirmed or cancelled.
  */
 function assertSceneWatchdogOwner(signal?: AbortSignal, isCurrent?: () => boolean): void {
   signal?.throwIfAborted();
   if (isCurrent && !isCurrent()) throw new Error('Scene watchdog owner changed');
+}
+
+/**
+ * The covered watchdog's judgment of a dark (or changed) first reading, from fresh measurements on one probe target:
+ * the band, then the response draw (a working lit pipeline answers light; litResponseScale), and only for a frame
+ * that stays black, the rescue ladder with every stage's programs prepared off the main thread
+ * (tryWatchdogStagesAsync). A draw or readback failure fails closed; the owner's cancellation rejects after the
+ * unconfirmed stages come off.
+ */
+async function judgeSceneAsync(
+  renderer: THREE.WebGLRenderer,
+  scene: THREE.Scene,
+  camera: THREE.Camera,
+  { onRescue, measureTimings = false, nightRadianceScale }: SceneWatchdogOptions,
+  signal?: AbortSignal,
+  isCurrent?: () => boolean,
+): Promise<SceneWatchdogResult> {
+  const measurements: SceneBandTiming[] | undefined = measureTimings ? [] : undefined;
+  const probe = createWatchdogProbe(renderer, scene, camera, measurements, nightRadianceScale);
+  const stages = createWatchdogStages(renderer, scene);
+  const out: SceneWatchdogResult = {
+    before: 0, after: null, rescued: false, stage: null,
+    ...(nightRadianceScale === undefined ? {} : { nightRadianceScale }),
+    ...(measurements ? { measurements } : {}),
+  };
+  const bag = window.__GL_DIAG;
+  const note = (message: string) => {
+    if (bag && bag.errors.length < 8) bag.errors.push(message);
+  };
+  const assertOwner = () => assertSceneWatchdogOwner(signal, isCurrent);
+  try {
+    out.before = probe.measure();
+    if (out.before >= SCENE_BAND_HEALTHY) return out;
+    const responseScale = litResponseScale(nightRadianceScale);
+    out.responseScale = responseScale;
+    out.response = probe.measure(responseScale);
+    if (out.response >= SCENE_BAND_HEALTHY) return out;
+    if (await tryWatchdogStagesAsync(renderer, stages, probe, out, note, responseScale, assertOwner, onRescue)) return out;
+    note(`watchdog: black scene (band ${out.before.toFixed(1)}, ${out.response.toFixed(1)} under ${LIT_RESPONSE_GAIN}x light) — no ladder stage cured it`);
+    if (bag && bag._showOverlay) bag._showOverlay();
+  } catch (error) {
+    if (signal?.aborted || (isCurrent && !isCurrent())) throw error;
+    const message = error instanceof Error ? error.message : String(error);
+    note(`watchdog threw: ${message.slice(0, 160)}`);
+  } finally {
+    probe.dispose();
+  }
+  return out;
 }
 
 export async function runSceneBlackWatchdogAsync(
@@ -891,9 +1113,9 @@ export async function runSceneBlackWatchdogAsync(
   let observedMeasurements = measurements;
   try {
     assertSceneWatchdogOwner(signal, isCurrent);
-    if (FORCE === 'blackscene') {
+    if (FORCE === 'blackscene' || FORCE === 'blackout') {
       const forced = runSceneBlackWatchdog(renderer, scene, camera, options);
-      if (forced.before < 6 && !forced.rescued) forced.failed = true;
+      if (sceneWatchdogRefuses(forced)) forced.failed = true;
       observedMeasurements = forced.measurements;
       return forced;
     }
@@ -912,8 +1134,8 @@ export async function runSceneBlackWatchdogAsync(
       return { before, after: null, rescued: false, stage: null,
         ...radianceReceipt, ...(measurements ? { measurements } : {}) };
     }
-    const result = runSceneBlackWatchdog(renderer, scene, camera, options);
-    if (result.before < 6 && !result.rescued) result.failed = true;
+    const result = await judgeSceneAsync(renderer, scene, camera, options, signal, isCurrent);
+    if (sceneWatchdogRefuses(result)) result.failed = true;
     if (measurements) result.measurements = [...measurements, ...(result.measurements ?? [])].slice(0, 8);
     observedMeasurements = result.measurements;
     return result;
@@ -998,9 +1220,14 @@ export function runSceneBlackWatchdog(
     // The unchanged day threshold also judges explicitly normalized night
     // lit-scene radiance. Authored night pixels alone may legitimately be
     // below 6; a failed lit pipeline stays dark under diagnostic illumination.
-    if (out.before >= 6) return out;
-    if (tryWatchdogStages(stages, probe, out, note, onRescue)) return out;
-    note(`watchdog: black scene (band ${out.before.toFixed(1)}) — no ladder stage cured it`);
+    if (out.before >= SCENE_BAND_HEALTHY) return out;
+    // A dark frame is black only if it does not answer more light (litResponseScale).
+    const responseScale = litResponseScale(nightRadianceScale);
+    out.responseScale = responseScale;
+    out.response = probe.measure(responseScale);
+    if (out.response >= SCENE_BAND_HEALTHY) return out;
+    if (tryWatchdogStages(stages, probe, out, note, onRescue, responseScale)) return out;
+    note(`watchdog: black scene (band ${out.before.toFixed(1)}, ${out.response.toFixed(1)} under ${LIT_RESPONSE_GAIN}x light) — no ladder stage cured it`);
     if (bag && bag._showOverlay) bag._showOverlay();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

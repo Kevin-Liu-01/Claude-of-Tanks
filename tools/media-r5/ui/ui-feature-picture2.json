@@ -1,0 +1,57 @@
+{
+ "map": "badlands",
+ "scene": "/Users/kevinliu/.codex/worktrees/cot-restore-1049-visuals-20260911/shots/media-r5/final/resolved/t36-canyon-orbit.resolved.json",
+ "fps": 30,
+ "frames": 150,
+ "viewport": [
+  1920,
+  1080
+ ],
+ "actions": [
+  {
+   "frame": 0,
+   "do": "click",
+   "text": "Timeline"
+  },
+  {
+   "frame": 2,
+   "do": "scroll",
+   "text": "Picture"
+  },
+  {
+   "frame": 2,
+   "do": "picture",
+   "patch": {
+    "preset": "cinematic"
+   }
+  },
+  {
+   "frame": 30,
+   "do": "picture",
+   "patch": {
+    "preset": "noir"
+   }
+  },
+  {
+   "frame": 60,
+   "do": "picture",
+   "patch": {
+    "preset": "ember"
+   }
+  },
+  {
+   "frame": 90,
+   "do": "picture",
+   "patch": {
+    "preset": "bleach-bypass"
+   }
+  },
+  {
+   "frame": 120,
+   "do": "picture",
+   "patch": {
+    "preset": "golden-hour"
+   }
+  }
+ ]
+}

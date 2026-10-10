@@ -1328,8 +1328,11 @@ and objective glyphs stay upright; nothing nudges them apart.
 
 **Mask readiness and retry policy.** Solo and multiplayer covered entry await
 `prepareTankMasks` before revealing the battle. It joins the shared preparation
-and paints a matching active panel before reporting success; failure follows
-covered entry recovery. The private clone excludes shadow-only helpers
+and paints a matching active panel before reporting success. Masks that miss
+their programs' 5 s link cap (a loaded machine) no longer refuse the battle
+(2026-10-09, `src/ui/damagePanelEntryMasks.ts`): the reveal goes on and the
+panel's retry ladder paints them; a missing panel still follows covered entry
+recovery. The private clone excludes shadow-only helpers
 (including the live-owner articulated batch) and renders even when its source
 actor is staged/hidden. `setTank` asks `tankThumbs.getTopDownMasks` for the
 real layers; an unfinished schematic stays blank, never a generic vehicle.
@@ -1455,10 +1458,15 @@ live CSM shadows. `garageDressingAccess.ts` demand-loads one optimized modern
 maintenance layer after interactive readiness. Four bays—Burlak gantry, Abrams
 welding, T-90M armor service, and K2 teardown—surround every Garage and are
 recomposed by the destination layout. The K2 bay owner uses an explicit static
-half-turn into the Abrams's authored quadrant; the Abrams bay owner keeps its
-authored orientation and stands beside the Garage camera, outside the hero's
-silhouette from the default and close views (`ABRAMS_WELDING_BAY_PLACEMENT`),
-with the Verdant overhead work lamp following its repair choreography. The rolled K2 hull rests in a connected steel
+half-turn into the Abrams's authored quadrant. The Abrams bay owner takes its
+destination's placement (`getAbramsWeldingBayPlacement`): in Verdant it stands
+half-turned beside the east FLAMMABLE canisters (`ABRAMS_FLAMMABLE_BAY_OFFSET`,
+the owner's placement, restored 2026-10-09) with the overhead work lamp over its
+floor station; in the nine outdoor packs it keeps its authored orientation beside
+the Garage camera on its own terrain pad (`ABRAMS_WELDING_BAY_PLACEMENT`), since
+each pack seats its signature facility at the canister spot. That owner is a
+nested static display owner, so the shared optimization merges it alone and a
+Garage switch can still carry it. The rolled K2 hull rests in a connected steel
 rollover cradle with grounded skids, crossmembers, A-frames, a continuous spine,
 and rubber contact saddles instead of disconnected timber blocks. A connected
 freestanding field-record display shares that graph in every variant, remains
@@ -1557,28 +1565,6 @@ Tracer colors/widths per shells doc §10 table. Dynamic light budget: ≤2 Point
 (muzzle 20 ms, explosion 300 ms). Tree/prop destruction: on HitEvent kind 'terrain'
 near a tree — SKIP for v1 unless cheap (props are static; do not add cross-module
 coupling for it).
-
-#### 3.8.3 `combat/` (the combat media layer, 2026-10-05)
-`effects.ts` composes `src/fx/combat/combatFx.ts` and delegates the media of its ground and water impacts
-(`dirtPlume`, `waterSplash`), the muzzle blast's gas, cloud and ground dust (`spawnMuzzleFlash` after its flash
-cards and jets), a kill's fireball, cook-off, early column and ground shock (`spawnDestruction`), and the wreck
-column, deck flames and smoulder (`emitColumnPuff`, `emitSmolderPuff`). The layer owns:
-- two instanced media pools on the late-FX layer (`mediaPool.ts`, `mediaShader.ts`): every puff relaxes from its
-  launch velocity toward the scene wind x its coupling plus a terminal rise (its own drag; a ballistic term for
-  soil and spray), grows on an ease-out curve, flattens along world-up, smears along its screen-space velocity and
-  is domain-warped, so it deforms rather than scaling one sprite; lit by the published rig (sun, sky / environment,
-  ground pole, the pooled explosion light) from the normal-mapped lobed sheets (`mediaAtlas.ts`, baked once from the
-  fx seed in `warmTextures`), with optional blackbody heat: the heat x the lobe structure x the puff's side toward
-  the blast (back along its launch), so a cooling fireball's outer shell turns to smoke first and its heart glows on;
-- thrown clods in the ground's colour (`clods.ts`, a recorded landing point and time) and one crater batch
-  (`craters.ts`);
-- the surface classifier (`surface.ts`: soil, sand, snow, mud, rock, water from the height field's water mask,
-  track surface, ground type and slope).
-Recipes (`impactBurst.ts`, `muzzleBlast.ts`, `killBlast.ts`) draw from the runtime's seeded stream, so Studio's
-`resetSeed` and frozen captures stay deterministic; the clock rebase, `resetAll` and the late pass's activity cover
-the layer. The wind is the cloud layer's, slowed to the ground, until the world publishes
-`scene.userData.surfaceWind` (a world-XZ velocity, m/s). The mobile tier halves the counts and the pools and draws
-the media without the warp and frame cross-fade. Receipt: `src/fx/combat/combatFx.selftest.mjs`.
 
 `src/fx/fxRuntimeAccess.ts` owns the browser lifecycle around this API. Module
 preload is permitted on explicit intent, while `createFx` remains a singleton

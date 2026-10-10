@@ -175,10 +175,8 @@ export default {
     well: false, hayCrates: false, fences: false, telegraph: false, carts: false, logs: false,
     haystacks: 0, rocks: 380, outcrops: 72, craters: 128,
     rubblePiles: 10,
-    tankWrecks: {
-      era: 'modern', count: 5, debris: true,
-      ids: ['m60a3', 'merkava4b', 'm1a2', 'type99a', 'ariete'],
-    },
+    // the map-vehicles lane (2026-10-06, the period ruling): Olympus Basin: the next generation's hulls
+    tankWrecks: { era: 'next-generation', count: 5, debris: true, ids: ['abramsx', 't14', 'challenger_3', 'm1a3', 'kf51'] },
     // 2026-09-19: the station perimeter keeps a ring of steel anti-tank
     // hedgehogs (every map fields complete three-beam compounds).
     sandbagLines: 0,

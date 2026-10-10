@@ -13,8 +13,10 @@
 import type * as THREE from 'three';
 import { getDeviceTier } from '../../../engine/quality.ts';
 import { hashSeed, streamFrom, REGIONAL_BUCKETS, type RegionalParts } from './geometry.ts';
-import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts } from './weather.ts';
-import { withWear } from './house.ts';
+import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts, type WeatherTints } from './weather.ts';
+import { withHousePlans, withWear, type HousePlan } from './house.ts';
+import { registerHouseDamageKits } from './damage.ts';
+import { setKitPlanReader } from '../../destructionKit.ts';
 import { HESSIAN_STYLE } from './hessian.ts';
 import { SAVOYARD_STYLE } from './savoyard.ts';
 import { DALMATIAN_STYLE } from './dalmatian.ts';
@@ -39,9 +41,23 @@ import { SHANGHAI_STYLE } from './shanghai.ts';
 import { LONGLEAF_STYLE } from './longleaf.ts';
 import { SARAJEVO_STYLE } from './sarajevo.ts';
 import { ANDALUSIAN_STYLE } from './andalusian.ts';
-import type { ArchitectureStyle, BaseBounds, RegionalBuildContext } from './types.ts';
+import { CHOUF_STYLE } from './chouf.ts';
+import type { ArchitectureStyle, BaseBounds, RegionalBuildContext, RegionalGround } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
+
+/**
+ * (the facades lane, round 10, 2026-10-09) the maps whose kit is gated back to the craft's older layers: no wall-foot
+ * apron, strip or water table, the plain render losses, the roofs weathered without their age, the straw print on the
+ * thatch, and the props' own grime on the walls (facade.ts facadeLegacy; props.ts, weather.ts). A map lands here when
+ * its view drops in a gauntlet wave against the release; empty, every kit map takes the whole craft
+ */
+// (2026-10-09, the release's wave: the owner's favourite village keeps the look it ships with) Verdant
+export const KIT_LEGACY_MAPS: ReadonlySet<string> = new Set<string>(['verdant']);
+/** True when a map's kit is gated back (KIT_LEGACY_MAPS). */
+export function kitLegacy(mapId: string): boolean {
+  return KIT_LEGACY_MAPS.has(mapId);
+}
 
 const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   hessian: HESSIAN_STYLE,
@@ -69,11 +85,16 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   longleaf: LONGLEAF_STYLE,
   sarajevo: SARAJEVO_STYLE,
   andalusian: ANDALUSIAN_STYLE,
+  chouf: CHOUF_STYLE,
 });
 
 export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLES));
 /** Every registered kit (receipts iterate it). */
 export const ARCHITECTURE_STYLES: readonly ArchitectureStyle[] = Object.freeze(Object.values(STYLES));
+// the destruction seam (docs/DESTRUCTION.md §16): every style's damage kit, its anatomy read from the house plan, and
+// the plan's reader the world's describe call sites use (kitPlanFor: the world builder imports no kit)
+registerHouseDamageKits(ARCHITECTURE_STYLES);
+setKitPlanReader((parts) => regionalKitPlanOf(parts));
 
 /** The kit a map authored (`props.architecture`), or null. An unknown id fails closed. */
 export function resolveRegionalArchitecture(id: string | null | undefined): ArchitectureStyle | null {
@@ -105,6 +126,26 @@ function measure(buckets: Buckets): BaseBounds {
 }
 
 /**
+ * A regional build's plan, handed back beside its parts for the destruction seam (docs/DESTRUCTION.md §16.2
+ * StructureDescribeInput.kitPlan; damage.ts describe reads it): the style and builder, every house body the builder
+ * built (house.ts HousePlan: its spec, frame, placement, uv offset and Fachwerk members), the building's weather tints
+ * and its plan footprint. A builder that builds no house body hands back an empty `houses` (the default kit reads it).
+ */
+export interface RegionalKitPlan {
+  kind: 'regional-house';
+  style: string;
+  builder: string;
+  houses: HousePlan[];
+  tints: WeatherTints;
+  info: { w: number; d: number; h: number };
+}
+const KIT_PLANS = new WeakMap<object, RegionalKitPlan>();
+/** The plan a regional build (buildRegionalParts, rebuildRegionalStructure) handed back beside these parts. */
+export function regionalKitPlanOf(parts: object): RegionalKitPlan | undefined {
+  return KIT_PLANS.get(parts);
+}
+
+/**
  * A kit's whole build of one structure: the builder's parts, then the building's own tint and weathering
  * (weather.ts) drawn from `weatherRng` (never the build stream). Receipts build through this too.
  */
@@ -116,10 +157,20 @@ export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildC
   const wearSeed = Math.floor(weatherRng() * 4294967296);
   // (and the facade craft's slot, house.ts withWear: window heads, thatch courses, gutter brackets ... on desktop builds, its
   // choices from a stream of its own forked from the same seed — the build, look, wear and weather streams draw as before)
+  const legacy = kitLegacy(ctx.mapId);
   const wear = { amount: style.wear ?? 0.2, rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0),
-    facade: { tier: ctx.tier, rng: streamFrom((wearSeed ^ 0x6a09e667) >>> 0) } };
+    facade: { tier: ctx.tier, rng: streamFrom((wearSeed ^ 0x6a09e667) >>> 0), stone: style.surfaces.stone, ground: ctx.ground,
+      groundCraft: style.groundCraft !== false && !legacy, legacy } };
   const tints = pickWeatherTints(palette, weatherRng);
-  const parts = weatherRegionalParts(withWear(wear, () => builder(ctx)), tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
+  // (the facades lane, round 6) the sun's horizontal direction in the building's frame: the slopes turned from it
+  // weather greener (a world direction turned back through the building's yaw, as props.ts places it)
+  const sun = ctx.sunAzimuthDeg !== undefined ? (() => {
+    const a = ctx.sunAzimuthDeg * Math.PI / 180, wx = Math.sin(a), wz = Math.cos(a), yaw = ctx.yaw ?? 0, c = Math.cos(yaw), s = Math.sin(yaw);
+    return [wx * c - wz * s, wx * s + wz * c] as const;
+  })() : null;
+  const [built, houses] = withHousePlans(() => withWear(wear, () => builder(ctx)));
+  const parts = weatherRegionalParts(built, tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint, sun, legacy });
+  KIT_PLANS.set(parts, { kind: 'regional-house', style: style.id, builder: ctx.structureId, houses, tints, info: ctx.info });
   // map revival lane 2 (2026-10-05): a style's finer render (surfaces.relief) — the walls' tile repeats plasterUv times as
   // often; absent, every UV stays as it was
   const relief = style.surfaces.relief;
@@ -148,6 +199,10 @@ interface RebuildContext {
   mapId: string;
   snowCap: boolean;
   seed: number;
+  /** the ground the building is seated on, in its frame (RegionalBuildContext.ground) */
+  ground?: RegionalGround;
+  /** the map's sun azimuth, degrees (RegionalBuildContext.sunAzimuthDeg) */
+  sunAzimuthDeg?: number;
 }
 
 /**
@@ -168,6 +223,8 @@ export function rebuildRegionalStructure(
     mapId: context.mapId, snowCap: context.snowCap, tier: getDeviceTier() === 'mobile' ? 'mobile' : 'desktop',
     // the world pose, for look and form choices only (types.ts RegionalBuildContext)
     x, z, yaw,
+    ...(context.ground ? { ground: context.ground } : {}),
+    ...(context.sunAzimuthDeg !== undefined ? { sunAzimuthDeg: context.sunAzimuthDeg } : {}),
   };
   // the walls and roofs take the building's own tints and weathering (weather.ts), from a stream of their own
   const parts = buildRegionalParts(style, ctx,
@@ -175,5 +232,7 @@ export function rebuildRegionalStructure(
   for (const list of Object.values(base)) if (Array.isArray(list)) for (const geometry of list) geometry.dispose();
   const out = {} as PropsLikeBuckets;
   for (const name of REGIONAL_BUCKETS) out[name] = parts[name] ?? [];
+  const plan = KIT_PLANS.get(parts);
+  if (plan) KIT_PLANS.set(out, plan);
   return out;
 }

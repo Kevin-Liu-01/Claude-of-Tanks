@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { PerspectiveCamera, Scene } from 'three';
+import { PerspectiveCamera, Scene, Vector3 } from 'three';
 
 import { createMainFrameRuntime } from './mainFrameRuntime.ts';
 import { createGarageFramePacer } from '../engine/garageFramePacer.ts';
+import { createLighting } from '../engine/lighting.ts';
 
 function createFixture({
   phase = 'garage', shotMode = false, studioActive = false, trace = null,
-  densityChanged = false, contextLost = false, useRealGaragePacer = false, modePreview = null,
+  densityChanged = false, contextLost = false, useRealGaragePacer = false, modePreview = null, lighting: lightingPort = null,
 } = {}) {
   const calls = [];
   const frameRequests = [];
@@ -26,7 +27,7 @@ function createFixture({
   const realGaragePacer = createGarageFramePacer();
   const fx = { update: dt => { calls.push('fx'); fxFrames.push(dt); } };
   const world = { update: () => calls.push('world') };
-  const lighting = {
+  const lighting = lightingPort ?? {
     updateFov: () => calls.push('lighting:fov'),
     setStaticPresentationDormant: (value) => calls.push(`lighting:dormant:${value}`),
     update: (force) => calls.push(`lighting:update:${force}`),
@@ -168,8 +169,42 @@ const shot = createFixture({ shotMode: true });
 shot.runtime.tick(1000);
 assert.deepEqual(shot.calls, [
   'schedule', 'viewport:sync', 'world', 'sniper', 'fx', 'night-lights', 'hud:frozen',
-  'lighting:update:true', 'post',
+  'lighting:dormant:false', 'lighting:update:true', 'post',
 ]);
+
+// The Garage -> shot latch (2026-10-08, the clouds lane's F2c forensics; the perf lane's fix): the Garage GPU warm leaves
+// lighting's static-presentation dormancy latch set in its `finally` (garageGpuWarmRuntime.ts) and can finish after a
+// capture has staged its battlefield. A shot frame releases the latch as a battle frame does, so a capture tool sampling
+// the live, unforced update (the cost probes' costLiveLighting) still renders every cascade. The real lighting owner.
+{
+  const lighting = createLighting(new Scene(), new PerspectiveCamera(60, 16 / 9, 0.5, 4000), new Vector3(1, 1, 1).normalize());
+  const allCascades = (1 << lighting.csm.lights.length) - 1;
+  try {
+    lighting.update(true);
+    lighting.setStaticPresentationDormant(true); // the Garage warm's `finally`
+    // the capture tool's live sampling: the shot frame's forced update made unforced, as costLiveLighting does
+    const sampled = {
+      updateFov: () => lighting.updateFov(),
+      setStaticPresentationDormant: (on) => lighting.setStaticPresentationDormant(on),
+      update: () => lighting.update(false, 1 / 60),
+    };
+    sampled.update();
+    assert.equal(lighting.scheduledMask, 0,
+      'negative: on a latched lighting an unforced update renders no shadow map (F2c\'s page: -193 calls, -2.3 M triangles)');
+    const shotPage = createFixture({ shotMode: true, lighting: sampled });
+    shotPage.runtime.tick(1000);
+    assert.equal(lighting.getShadowTelemetry().staticPresentationDormant, false, 'a shot frame releases the Garage latch');
+    assert.equal(lighting.scheduledMask, allCascades, 'every cascade renders on a shot page after a Garage warm');
+    lighting.setStaticPresentationDormant(true); // a warm finishing after the staging
+    shotPage.runtime.tick(1016);
+    assert.equal(lighting.scheduledMask, allCascades, 'a late Garage warm cannot freeze the next shot frame\'s cascades');
+    lighting.update(false, 1 / 60);
+    assert.ok(lighting.scheduledMask > 0, 'and the live schedule resumes between shot frames');
+  } finally {
+    lighting.csm.remove();
+    lighting.csm.dispose();
+  }
+}
 
 const studio = createFixture({ studioActive: true });
 studio.runtime.tick(1000);

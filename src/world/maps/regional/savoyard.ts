@@ -192,10 +192,10 @@ const maison: RegionalBuilder = (ctx) => {
     if (ctx.snowCap) drifts(sink, frame, openings, look);
     const f = frame.faces.front;
     gallery(sink, f, frame.floors[1], W - 0.4, 0.95, frame.eaveY + 0.2, shade(LARCH, 0.95), true);
-    if (!st.mobile) {
+    sink.dressing(st.mobile, () => {
       const side = rng() < 0.5 ? frame.faces.right : frame.faces.left;
       woodpile(sink, side, -side.width / 2 + 0.6, side.width / 2 - 0.6, 1.3 + look() * 0.4, look);
-    }
+    });
   });
   return sink.finish();
 };
@@ -303,10 +303,10 @@ function bucherBody(sink: PartSink, ctx: RegionalBuildContext, look: () => numbe
   for (const sz of [-1, 0, 1]) sink.span('structureWood', W / 2 - 0.16, -0.2, sz * (D / 2 - 0.1) - 0.08, W / 2, hLo, sz * (D / 2 - 0.1) + 0.08, c);
   const lean: RoofSpec = { kind: 'shed', pitchDeg: pitch, eave: 0.4, verge: 0.3, thickness: 0.18, bucket: 'roof' };
   emitRoof(sink, roofGeometry(W, D, hLo, lean), lean);
-  if (ctx.tier !== 'mobile') {
+  sink.dressing(ctx.tier === 'mobile', () => {
     const back: Face = { origin: [-W / 2 + 0.1, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
     woodpile(sink, back, -D / 2 + 0.2, D / 2 - 0.2, 1.4 + look() * 0.4, look);
-  }
+  });
 }
 
 // ------------------------------------------------------------------------------------------------ the pass's buildings

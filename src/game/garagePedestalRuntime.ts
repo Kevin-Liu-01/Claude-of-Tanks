@@ -116,6 +116,13 @@ interface GaragePedestalRuntimeOptions {
   createBudgetYield(budgetMs: number): BudgetYield;
   /** Install dormant presentation shaders before the first ordinary warm; no second compile on mode click. */
   prepareVisual?(visual: GaragePedestalVisual, spec: GaragePedestalSpec): void;
+  /**
+   * End those dormant shaders when the visual becomes the battle's (lendToBattle), on every entry path: the battle's
+   * own warm then compiles the paint the battle draws. (The time-to-battle lane, 2026-10-08: an entry that did not pass
+   * the Garage BATTLE button's ui:battleStart — a campaign launch, the debug entry — took the skin into battle, where
+   * the first battle frame disposed it and linked the restored paint's programs synchronously, 17 of them.)
+   */
+  releaseVisual?(visual: GaragePedestalVisual): void;
   compilePrograms(root: Object3D): void;
   /**
    * Optional strict first-use preparation of the hero's forward programs:
@@ -200,6 +207,7 @@ export function createGaragePedestalRuntime({
   createBudgetYield,
   compilePrograms,
   prepareVisual,
+  releaseVisual,
   prepareProgramSteps,
   nextFrame,
   getDeviceTier,
@@ -874,6 +882,7 @@ export function createGaragePedestalRuntime({
     } catch (_) {
       return false;
     }
+    releaseVisual?.(visual);
     entity.visual = visual;
     // A slow Garage selection must not finish after the current hero has
     // been handed to simulation and move that actor back onto the podium.

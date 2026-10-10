@@ -10,7 +10,8 @@ import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { setCircleShape } from './collision.ts';
 import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
-import { createStructureClearances, excludeStructureVegetation, overlapsStructureClearance, placedStructureClearances } from './vegetationClearance.ts';
+import { createStructureClearances, excludeStructureVegetation, excludeVegetation, overlapsStructureClearance, placedStructureClearances } from './vegetationClearance.ts';
+import { deploymentClearings } from '../sim/matchPlacement.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { authoredTreeStations, insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees } from './authoredTreePlacement.ts';
 import { SHORELINE_SEGMENTS, shorelineDistance, shorelineRadiusAt } from './shoreline.ts';
@@ -38,7 +39,9 @@ const dependencies = { THREE, mulberry32, treeRichness, TREE_ARCHETYPES, treeTru
   // trees round 5: the field law's conifer forms (vegetation.ts coniferForm)
   treeBiomeSlot, TREE_GROWTH_PROFILES,
   // trees lane (2026-10-05): an opted-in map's stands inside its settlement rect (vegetation.ts authoredInSettlement)
-  insideClearPolygon, plannedSiteClearances };
+  insideClearPolygon, plannedSiteClearances,
+  // symmetric deployments (modes lane 2026-10-08): the slots' clearings, the trees in them dropped after placement
+  deploymentClearings, excludeVegetation };
 const builder = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* placement(heightField, cfg) {
   const seed = 2001, rng = mulberry32(seed), group = new THREE.Group();
   // trees round 5: the field law's constants (vegetation.ts module scope), read from the source

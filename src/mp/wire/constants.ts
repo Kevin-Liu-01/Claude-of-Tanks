@@ -8,7 +8,9 @@ import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
  */
 
 // Vehicle controls widen action words and add auxiliary state plus smoke envelopes.
-export const WIRE_VERSION = 3;
+// 4 (destruction, 2026-10-07): snapshots carry the destruction log (SNAPSHOT_FLAGS.HAS_DESTRUCTION, destructionLog.ts)
+// and the event kinds gain structure_stage, structure_breach and terrain_crater.
+export const WIRE_VERSION = 4;
 /**
  * 2 (P3b, 2026-09-29): entity rows carry the authority tick they were captured at (`EntityRow.tick`, ROW_GROUP.AGE on the
  * wire when it predates the packet) so the host's interest tiers may hold a far entity's row across snapshots and the
@@ -166,6 +168,8 @@ export const SNAPSHOT_FLAGS = Object.freeze({
   HAS_VIEWER: 1 << 1,
   HAS_MODE_STATE: 1 << 2,
   HAS_VERDICT: 1 << 3,
+  /** The packet carries destruction log entries (docs/DESTRUCTION.md §8.2). */
+  HAS_DESTRUCTION: 1 << 4,
 } as const);
 
 /** Entity row groups (a varint mask, low bits are the motion groups that change every interval). */
@@ -233,5 +237,7 @@ export const EVENT_KIND_NAMES = Object.freeze([
   'special_action_denied', 'tank_self_right', 'tank_autoflip',
   // v2 server-originated
   'chat', 'roster', 'admin',
+  // destruction (2026-10-07, wire 4): world state every viewer receives (docs/DESTRUCTION.md §8.1)
+  'structure_stage', 'structure_breach', 'terrain_crater',
 ] as const);
 export const EVENT_KIND_OTHER = 255;

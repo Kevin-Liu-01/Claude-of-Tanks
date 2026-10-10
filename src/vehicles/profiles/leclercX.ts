@@ -1,6 +1,9 @@
 // Independent Leclerc reconstruction from the owner-supplied Char Leclerc
 // scalar study. The older same-author model is supplementary, not a variant.
 import * as THREE from 'three';
+import { addRearFieldStowage } from './rearFieldStowage.ts';
+import { addFieldRoofWeapon } from './fieldRoofWeapon.ts';
+import { addLeclercFieldProtection } from './fieldProtectionPack.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
@@ -294,14 +297,11 @@ function weapons(P: TankBuilderPort): void {
     }) };
   }));
   P.add('gun', local(sleeve, D.trunnion));
-  const muzzle = new THREE.CylinderGeometry(.118123, .128740, .099, 32, 1, true);
+  const muzzle = new THREE.CylinderGeometry(.118123, .128740, .099, 32);
   muzzle.rotateX(Math.PI / 2);
   P.add('gun', muzzle, 0, 0, 6.189735 - gz);
-  const bore = new THREE.CylinderGeometry(.060, .060, .30, 32, 1, true);
-  bore.rotateX(Math.PI / 2);
-  P.add('gunDark', bore, 0, 0, P.muzzleZ - .15);
-  P.add('gun', new THREE.RingGeometry(.060, .118123, 32), 0, 0, P.muzzleZ);
-  P.add('gunDark', cylZ(.060, .006, 32), 0, 0, P.muzzleZ - .303);
+  // One terminal stock surface; the shared bore cutter opens this face and
+  // the sleeve behind it together, avoiding nested closed caps and sleeves.
   P.add('gun', box(.067, .041, .22), .01843 - gx, 1.99617 - gy, 6.0881 - gz);
   for (const x of [-.006, .042]) P.add('gun', box(.013, .048, .074),
     x - gx, 2.0363 - gy, 6.0881 - gz);
@@ -324,6 +324,9 @@ export function buildLeclercX(P: TankBuilderPort): void {
   roofEquipment(P);
   rearRack(P);
   weapons(P);
+  addFieldRoofWeapon(P,[-.82,.67123545,-.38],30,'Leclerc XLR remote 30 mm cannon');
+  addLeclercFieldProtection(P);
+  addRearFieldStowage(P);
 }
 
 export const LECLERC_X_PROFILES = Object.freeze({ leclerc_x: { build: buildLeclercX } });

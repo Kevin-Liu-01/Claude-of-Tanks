@@ -864,14 +864,19 @@ for (const mapId of MAP_IDS) {
     x: center.x + enemy.x / spawns.enemies.length,
     z: center.z + enemy.z / spawns.enemies.length,
   }), { x: 0, z: 0 });
-  // All Alpha formation columns inherit the player-zone yaw. A one-player
-  // Bravo roster occupies the first authored pad, which may be far out on a
-  // flank: that array entry is not the center of the opposing deployment.
-  const zoneDx = enemyCenter.x - spawns.player.x, zoneDz = enemyCenter.z - spawns.player.z;
-  const zoneDistance = Math.hypot(zoneDx, zoneDz);
-  const alphaDot = Math.sin(alpha.yaw) * zoneDx / zoneDistance + Math.cos(alpha.yaw) * zoneDz / zoneDistance;
-  assert.ok(alphaDot > 1 - 1e-9, `${mapId}: Alpha yaw faces the exact opposing deployment centroid`);
-  assert.equal(alpha.yaw, spawns.player.yaw, `${mapId}: authority preserves the canonical Alpha formation yaw`);
+  // Symmetric deployments (modes lane, 2026-10-08; sim/deployment.ts): each side's first vehicle stands on its first
+  // slot, the rotation of the other side's about the anchors' midpoint, and faces the opposing anchor (the player pad,
+  // the enemy pads' centroid) from its own seat, the two facings exactly opposite.
+  const pivot = { x: (spawns.player.x + enemyCenter.x) / 2, z: (spawns.player.z + enemyCenter.z) / 2 };
+  assert.ok(Math.hypot(alpha.pos.x + bravo.pos.x - 2 * pivot.x, alpha.pos.z + bravo.pos.z - 2 * pivot.z) < 0.5,
+    `${mapId}: the sides' first seats are rotations of each other about the anchors' midpoint`);
+  const facing = (state, target) => {
+    const tx = target.x - state.pos.x, tz = target.z - state.pos.z, td = Math.hypot(tx, tz);
+    return Math.sin(state.yaw) * tx / td + Math.cos(state.yaw) * tz / td;
+  };
+  assert.ok(facing(alpha, enemyCenter) > 0.999, `${mapId}: Alpha faces the opposing deployment's anchor`);
+  assert.ok(facing(bravo, spawns.player) > 0.999, `${mapId}: Bravo faces the opposing deployment's anchor`);
+  assert.ok(Math.abs(Math.cos(alpha.yaw - bravo.yaw) + 1) < 1e-9, `${mapId}: the sides face exactly opposite ways`);
   // Retain an independent actual-entity check, so a second PI rotation at
   // the authority seam would still fail even if layout tests remained green.
   const dx = alpha.pos.x - bravo.pos.x, dz = alpha.pos.z - bravo.pos.z;

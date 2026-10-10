@@ -534,6 +534,25 @@ function isShadowOnlyMaskObject(object: THREE.Object3D): boolean {
   return object.userData.shadowOnly === true;
 }
 
+/**
+ * Object3D.copy deep-copies userData through JSON (JSON.parse(JSON.stringify(source.userData))), and a built vehicle's
+ * root keeps live objects there (nearVehicleShadowDetail.ts: its near shadow details and proxies), so cloning it
+ * serialized every one of them through three's toJSON — geometry, materials and each canvas texture encoded to PNG:
+ * 0.8 s of start-battle's uiAndCamera (the time-to-battle lane, 2026-10-08). The masks read names, transforms and
+ * geometry, never userData: the clone is taken with every userData set aside (restored at once) and carries none.
+ */
+function cloneWithoutUserData(source: THREE.Object3D, recursive: boolean): THREE.Object3D {
+  const saved: [THREE.Object3D, THREE.Object3D['userData']][] = [];
+  const setAside = (object: THREE.Object3D): void => { saved.push([object, object.userData]); object.userData = {}; };
+  if (recursive) source.traverse(setAside);
+  else setAside(source);
+  try {
+    return source.clone(recursive);
+  } finally {
+    for (const [object, userData] of saved) object.userData = userData;
+  }
+}
+
 /** Shadow-only helpers can retain live owners and require constructor arguments.
  * Clone only the presentation hierarchy; never invoke those helpers' clone hooks.
  */
@@ -547,8 +566,8 @@ function cloneMaskPresentation(root: THREE.Object3D): THREE.Object3D {
     }
   });
   const cloneBranch = (source: THREE.Object3D): THREE.Object3D => {
-    if (!filteredBranches.has(source)) return source.clone(true);
-    const clone = source.clone(false);
+    if (!filteredBranches.has(source)) return cloneWithoutUserData(source, true);
+    const clone = cloneWithoutUserData(source, false);
     try {
       for (const child of source.children) {
         if (!isShadowOnlyMaskObject(child)) clone.add(cloneBranch(child));

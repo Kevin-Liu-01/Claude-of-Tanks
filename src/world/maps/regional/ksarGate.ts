@@ -14,6 +14,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { DESTRUCTIBLE_BUILDING_TYPES } from '../structureKit.ts';
+import { DESERT_SANGAR } from './desertSangar.ts';
+import { BEDOUIN_CAMP_TENT, BEDOUIN_TENT, RUM_BARRACK, RUM_POST, RUM_SHED } from './wadiRumPosts.ts';
 
 type Rng = () => number;
 
@@ -178,5 +180,9 @@ export const KSAR_GATE_POST = Object.freeze({
   broken: (rng: Rng) => { HUT.broken(rng).dispose(); return buildKsarGatePostBroken(mulberry32(0x6a7e6)); },
 });
 
-/** The structure variants a map may name in place of a generic kind (props structureVariants). */
-export const STRUCTURE_VARIANTS = Object.freeze({ ksargate: KSAR_GATE_POST });
+/** The structure variants a map may name in place of a generic kind (props structureVariants; the Redrock lane's round 9:
+ * the desert post's sangar for the field works' pillbox, desertSangar.ts; round 10: the Desert Patrol's rendered barrack
+ * and fuel post for the Quonset hut and the checkpoint hut, the Bedouin's goat-hair tents for the desert and camp tents,
+ * wadiRumPosts.ts). */
+export const STRUCTURE_VARIANTS = Object.freeze({ ksargate: KSAR_GATE_POST, sangar: DESERT_SANGAR, rumbarrack: RUM_BARRACK,
+  rumpost: RUM_POST, rumshed: RUM_SHED, bedouintent: BEDOUIN_TENT, bedouincamp: BEDOUIN_CAMP_TENT });

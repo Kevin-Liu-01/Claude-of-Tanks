@@ -126,8 +126,10 @@ for (const station of receipt.remoteStations) {
     'merged RWS geometry retains the authored roof-contact ring');
 }
 
+// 2026-10-05 (tank-accessories lane): the suit's garnish is one spray-card 'leaves' layer on the trees lane's atlases
+// (vehicleFoliage.ts) instead of the light and dark flap layers; the net carrier is unchanged.
 for (const owner of ['hull', 'turret', 'gun']) {
-  for (const layer of ['net', 'light', 'dark']) {
+  for (const layer of ['net', 'leaves']) {
     const mesh = tank.root.getObjectByName(`${id}_ghillie_${owner}_${layer}`);
     assert.ok(mesh?.isMesh, `dense ${owner} ghillie ${layer} layer exists`);
     assert.ok(mesh.geometry.getAttribute('position').count > 120,
@@ -135,32 +137,48 @@ for (const owner of ['hull', 'turret', 'gun']) {
   }
 }
 
+// 2026-10-08 (tank-accessories round 5; the coordinator after wave 269, 2/10 on the hero, gear and mantlet views: "a
+// box-shaped shell of bristling leaf shards encloses the turret and runs down the full gun barrel", "leaf polygons ...
+// cutting through the cage bars"; the ruling: replace the approach): the roof net is draped over the roof and its basket
+// rails (no seat gap: it rests on the armour and sags off what holds it up), the cheeks inside the front cage carry no
+// net, the only face net hangs over the bustle's rear cage, and the flank drapes stop part way down the flank cage.
 const ghillie = GHILLIE_SUIT_CONFIGS[id].turret;
 assert.equal(ghillie.top.length, 4,
   'turret ghillie is split across bustle, main roof and both crown cheeks');
 assert.equal(ghillie.top[0].holes.length, 1,
   'the obsolete aft cutout is closed after moving the lighter RWS forward');
 for (const panel of ghillie.top) {
-  assert.ok(panel.seatGapM <= 0.026,
-    `${panel.seat} net carrier stays within 26 mm of its authored roof surface`);
+  assert.equal(panel.seatGapM, undefined, 'the roof net is draped over the roof and its rails, not seated on the plate');
 }
-assert.equal(ghillie.face.length, 2, 'front ghillie is split around the moving gun channel');
-for (const panel of ghillie.face) {
-  assert.equal(typeof panel.zAt, 'function', 'front net follows the ruled cheek instead of a flat plane');
-  assert.ok(panel.seatGapM <= 0.065, 'front net clears only the seated ERA depth');
-}
+assert.ok((ghillie.face ?? []).every((panel) => panel.z < -3),
+  'no net on the cheeks inside the front cage: the only face net is over the bustle');
 assert.ok(ghillie.top[0].yAt(0, -3.2) < 0.70,
   'bustle net no longer floats at the former .98 m blanket height');
 assert.ok(ghillie.top[1].yAt(0, 0) < 0.82,
   'main roof net hugs the wedge roof below its equipment line');
-assert.ok(ghillie.face[1].zAt(1.20, 0.40) < 2.10,
-  'outboard front net follows the swept cheek instead of the old z=2.72 plane');
+{
+  const toTurret = new THREE.Matrix4().copy(turret.matrixWorld).invert();
+  const net = tank.root.getObjectByName(`${id}_ghillie_turret_net`), at = net.geometry.getAttribute('position');
+  const local = Array.from({ length: at.count }, (_, i) => new THREE.Vector3().fromBufferAttribute(at, i)
+    .applyMatrix4(net.matrixWorld).applyMatrix4(toTurret));
+  assert.ok(local.every((v) => v.y > 0.38), 'the flank drapes stop part way down the flank cage; the lower flanks are bare');
+  assert.ok(local.every((v) => v.z < 1.36), 'the cheeks and their front cage carry no net');
+}
 
 const gunNet = tank.root.getObjectByName(`${id}_ghillie_gun_net`);
 const gunBounds = new THREE.Box3().setFromObject(gunNet);
 const muzzleWorld = muzzle.getWorldPosition(new THREE.Vector3());
 assert.ok(gunBounds.max.z < muzzleWorld.z - 0.08,
   'barrel ghillie stops behind the open bore and muzzle/FX anchor');
+// round 5 (wave 269: "runs down the full gun barrel"; real crews wrap only short sections): two short wraps
+{
+  const toGun = new THREE.Matrix4().copy(gun.matrixWorld).invert(), at = gunNet.geometry.getAttribute('position');
+  const covered = new Set();
+  for (let i = 0; i < at.count; i++) {
+    covered.add(Math.floor(new THREE.Vector3().fromBufferAttribute(at, i).applyMatrix4(gunNet.matrixWorld).applyMatrix4(toGun).z / 0.05));
+  }
+  assert.ok(covered.size * 0.05 <= 1.4, `the barrel carries short wraps, not a sleeve (${(covered.size * 0.05).toFixed(2)} m wrapped)`);
+}
 
 const markings = [];
 tank.root.traverse((object) => {

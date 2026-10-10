@@ -1,3 +1,4 @@
+import { createVisionWarmSteps } from './visionWarm.ts';
 /**
  * post.ts — the full post-processing chain.
  *
@@ -1752,6 +1753,18 @@ function requireDepthTexture(
  * smoke column. This pass avoids that category error and gives the shaders a
  * resolved scene-depth source for soft intersections.
  */
+/** CopyShader's copy with a finite guard (NaN and +-Inf to 0; comparisons with NaN are false under fast math too). */
+const LATE_FX_FINITE_COPY_FRAGMENT = /* glsl */ `
+uniform float opacity;
+uniform sampler2D tDiffuse;
+varying vec2 vUv;
+void main() {
+  vec4 c = texture2D( tDiffuse, vUv );
+  c = vec4( abs( c.r ) < 6.0e4 ? c.r : 0.0, abs( c.g ) < 6.0e4 ? c.g : 0.0, abs( c.b ) < 6.0e4 ? c.b : 0.0,
+    abs( c.a ) < 6.0e4 ? c.a : 1.0 );
+  gl_FragColor = opacity * c;
+}`;
+
 export class LateFxPass extends Pass {
   readonly scene: THREE.Scene;
   readonly camera: THREE.PerspectiveCamera;
@@ -1766,7 +1779,8 @@ export class LateFxPass extends Pass {
   readonly copyQuad: FullScreenQuad;
   directColorSource: SceneAerialPass | null = null;
   sceneMatrixSource: SceneAAPass | null = null;
-  private readonly renderSceneView: LateFxSceneView;
+  /** Also the Studio cinema lens's FX coverage view (cinemaPost.ts): one stateless view of the same scene. */
+  readonly renderSceneView: LateFxSceneView;
 
   constructor(
     scene: THREE.Scene,
@@ -1791,7 +1805,9 @@ export class LateFxPass extends Pass {
       name: 'LateFxPass.Copy',
       uniforms: THREE.UniformsUtils.clone(CopyShader.uniforms),
       vertexShader: CopyShader.vertexShader,
-      fragmentShader: CopyShader.fragmentShader,
+      // (2026-10-08, the owner's black screens) the late composite passes finite values only: one NaN or Inf fragment of
+      // a transparent effect must not reach bloom or the grade
+      fragmentShader: LATE_FX_FINITE_COPY_FRAGMENT,
       depthTest: false,
       depthWrite: false,
       blending: THREE.NoBlending,
@@ -2290,7 +2306,10 @@ export function createPost(
     const hp = bloom.materialHighPassFilter;
     const patched = hp.fragmentShader.replace(
       HIGH_PASS_ANCHOR,
-      `gl_FragColor = mix( outputColor, vec4( min( texel.rgb, vec3( ${BLOOM_INPUT_CLAMP.toFixed(2)} ) ), texel.a ), alpha );`,
+      // (2026-10-08, the owner's black screens) a NaN or Inf pixel never enters the blur pyramid (it would spread over
+      // the whole frame): finite values only, then the clamp
+      `vec3 bloomIn = vec3( abs( texel.r ) < 6.0e4 ? texel.r : 0.0, abs( texel.g ) < 6.0e4 ? texel.g : 0.0, abs( texel.b ) < 6.0e4 ? texel.b : 0.0 );
+      gl_FragColor = mix( outputColor, vec4( min( max( bloomIn, vec3( 0.0 ) ), vec3( ${BLOOM_INPUT_CLAMP.toFixed(2)} ) ), texel.a ), alpha );`,
     );
     if (patched === hp.fragmentShader) {
       throw new Error('post.ts: bloom high-pass clamp anchor not found in LuminosityHighPassShader');
@@ -2965,9 +2984,20 @@ export function createPost(
             await yieldBeforePass(label);
           }
           const startedAt = performance.now();
-          pass.enabled = true;
-          composer.render(1 / 60);
-          pass.enabled = false;
+          if (pass === grade) {
+            const visionSteps = createVisionWarmSteps(grade.uniforms.uThermal, () => {
+              pass.enabled = true;
+              try { composer.render(1 / 60); }
+              finally { pass.enabled = false; }
+            });
+            for (const mode of visionSteps) {
+              if (yieldBeforePass) await yieldBeforePass(`vision-${mode}`);
+            }
+          } else {
+            pass.enabled = true;
+            composer.render(1 / 60);
+            pass.enabled = false;
+          }
           timings.push({
             label: pass.constructor?.name || `post-pass-${index + 1}`,
             ms: Math.round(performance.now() - startedAt),

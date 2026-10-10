@@ -209,14 +209,17 @@ for (const [specA, specB, gap, offset] of [['m1a2', 'm1a2', 28, 0], ['type99a', 
 
 console.log('[4] a rack that cannot hurt the target stops pressing it');
 // Frontier Basin 7v7 seed 88677: the last bravo Challenger 2 held only L34 WP smoke rounds against the idle M1A2
-// and pressed for six minutes without firing until the 900 s cap.
+// and pressed for six minutes without firing until the 900 s cap. The bot keeps a teammate with rounds aboard, out
+// beyond support range, which the retirement leaves the finish to; with no teammate left that can fire a run the ram
+// law refuses is the last run (ai.lastRun.selftest).
 function smokeOnly(hp, ammo = [0, 0, 12]) {
   const bot = entity('bot', 'challenger2', 'enemy', 0, 0, 0, hp);
   bot.combat.ammo = ammo.slice();
   bot.combat.ammoCapacity = [16, 16, 12];
   const host = entity('host', 'm1a2', 'player', 8, 80, Math.PI);
   host.isPlayer = true;
-  const ctl = controller(bot, { enemies: [host], seed: 91 });
+  const teammate = entity('mate', 't90m', 'enemy', -450, -450); // 636 m off: no support to retire to
+  const ctl = controller(bot, { enemies: [host], allies: [teammate], seed: 91 });
   return { bot, host, ctl };
 }
 {

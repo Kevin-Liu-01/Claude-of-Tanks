@@ -369,3 +369,24 @@ body[data-cot-input='coarse'] .gallery-select-trigger,
 body[data-cot-input='coarse'] .gallery-select-option,
 body[data-cot-input='coarse'] .mode-dock>button,
 body[data-cot-input='coarse'] .view-controls>button{min-height:44px}
+
+/* The damage workbench shares dossier controls and stays out of the orbit canvas. */
+.damage-workbench-host{display:contents}
+.damage-workbench{min-width:0}
+.damage-help{color:var(--muted);font-size:11px;line-height:1.6;margin:0 0 12px}
+.damage-kinds,.damage-actions,.damage-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.damage-workbench button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px;min-width:0;padding:8px;border:1px solid var(--line-strong);background:var(--panel-raised);font-size:11px;line-height:1.4;overflow-wrap:anywhere}
+.damage-workbench button svg{flex:none;color:var(--amber)}
+.damage-workbench button[aria-pressed=true]{border-color:var(--amber);background:#382918;color:var(--amber-pale)}
+.damage-workbench button:disabled{opacity:.4;cursor:default}
+.damage-targets{display:grid;gap:4px;max-height:200px;overflow:auto;margin:10px 0;scrollbar-width:thin;overscroll-behavior:contain}
+.damage-targets button{justify-content:space-between;text-align:left}
+.damage-targets button>span{min-width:0}.damage-targets small{flex:none;color:var(--muted);font-size:10px}
+.damage-targets [data-condition=yellow] small{color:var(--amber)}.damage-targets :is([data-condition=red],[data-condition=removed]) small{color:var(--red)}
+.damage-condition{padding:10px;border:1px solid var(--line);color:var(--amber-pale);line-height:1.5;overflow-wrap:anywhere}
+.damage-actions{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:12px}
+.damage-actions button{flex-direction:column;gap:4px}
+.damage-tools{padding-top:12px;border-top:1px solid var(--line)}
+.damage-ray{padding-left:18px;color:var(--muted);font-size:11px;max-height:220px;overflow:auto;overflow-wrap:anywhere;line-height:1.6;scrollbar-width:thin}
+.damage-ray:empty{display:none}.damage-ray li+li{margin-top:6px}
+body[data-cot-width='phone'] .damage-workbench{padding:16px}

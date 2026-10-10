@@ -592,7 +592,7 @@ export class MatchSession {
       if (retained.keyframe) {
         const keyframe = decodeMigrationKeyframe(await openMigrationBlob(key, retained.keyframe.blob));
         // the newer of the keyframe and this viewer's newest frame, and every prop this seat was told fell (migrationState.ts)
-        const { state, baseTick, baseAtMs } = resumeStateFromRetained(keyframe, retained.keyframe.receivedAtMs, retained.latestFrame, retained.latestFrameAtMs, retained.fallen);
+        const { state, baseTick, baseAtMs } = resumeStateFromRetained(keyframe, retained.keyframe.receivedAtMs, retained.latestFrame, retained.latestFrameAtMs, retained.fallen, retained.destruction ?? []);
         const elapsedTicks = Math.max(0, Math.ceil((this.clock() - baseAtMs) / TICK_MS));
         resume = { ...state, resumeTick: Math.max(change.resumeTick, baseTick + elapsedTicks) };
       }

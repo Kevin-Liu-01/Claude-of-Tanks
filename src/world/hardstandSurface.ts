@@ -13,6 +13,11 @@ export interface HardstandConfig {
    * ground standing metres off the apron's plane at a slope a tank can climb (the apron bank law,
    * tools/hardstand-banks.mjs). */
   bankM?: number;
+  /** The painted surfacing (stampHardstandRoadMask): its strength over the apron (cover, default 1: the whole apron
+   * compacted) and a mottle of worn and drifted patches across it (0..1, default 0). The Redrock lane (2026-10-07): a
+   * desert outpost's yard is graded sand the wind keeps drifting back over, not a ruled brown rectangle from the air.
+   * Paint only: the apron's level, grade and every road query are the same. */
+  paint?: { cover?: number; mottle?: number };
 }
 
 /** The road blend's own bank: the ground holds an apron's plane to 3.8 m and is back on its own height by 14 m. */
@@ -146,10 +151,17 @@ export function stampHardstandRoadMask(
   const step = mapSize / size, halfMap = mapSize * 0.5;
   for (const strip of prepare(strips, () => 0)) {
     const [x0, x1, z0, z1] = bounds(strip, step, size, halfMap, 2 + HARDSTAND_PAINT_SPILL_M);
+    const cover = strip.paint?.cover ?? 1, mottle = strip.paint?.mottle ?? 0;
     for (let iz = z0; iz <= z1; iz++) for (let ix = x0; ix <= x1; ix++) {
       const edge = signedDistance(strip, (ix + 0.5) * step - halfMap, (iz + 0.5) * step - halfMap);
-      const coverage = 1 - smooth(-0.75, 1.25, edge - paintSpill((ix + 0.5) * step - halfMap, (iz + 0.5) * step - halfMap));
+      const x = (ix + 0.5) * step - halfMap, z = (iz + 0.5) * step - halfMap;
+      let coverage = 1 - smooth(-0.75, 1.25, edge - paintSpill(x, z));
       if (coverage <= 0) continue;
+      if (cover < 1 || mottle > 0) {
+        // worn and drifted patches: smooth fields at ~9 m and ~3.5 m, the apron's own surfacing between them
+        const n = paintNoise(x / 9 + 17.1, z / 9 - 3.3) * 0.65 + paintNoise(x / 3.5 - 5.2, z / 3.5 + 8.4) * 0.35;
+        coverage *= cover * (1 - mottle * (1 - smooth(0.3, 0.7, n)));
+      }
       const at = (iz * size + ix) * 4;
       pixels[at] = Math.max(pixels[at], coverage * 255);
       pixels[at + 1] *= 1 - coverage;

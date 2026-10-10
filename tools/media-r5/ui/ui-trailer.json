@@ -1,0 +1,15 @@
+{
+  "map": "coastal",
+  "scene": "/Users/kevinliu/.codex/worktrees/cot-restore-1049-visuals-20260911/shots/media-r5/final/resolved/t15-strand-follow.resolved.json",
+  "fps": 30,
+  "frames": 120,
+  "viewport": [1920, 1080],
+  "actions": [
+    { "frame": 0, "do": "scroll", "text": "Storyboard" },
+    { "frame": 34, "do": "scroll", "text": "Picture" },
+    { "frame": 40, "do": "picture", "patch": { "preset": "noir" } },
+    { "frame": 62, "do": "picture", "patch": { "preset": "ember" } },
+    { "frame": 84, "do": "time", "time": "dusk" },
+    { "frame": 92, "do": "picture", "patch": { "preset": "steel" } }
+  ]
+}

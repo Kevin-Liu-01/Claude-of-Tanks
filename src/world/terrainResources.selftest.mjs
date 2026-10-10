@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { buildTerrainMeshes, createLayout } from './terrain.ts';
+import './maps/horizon.ts'; // installs the ring terrain meshes are built with (horizonRingHook.ts)
 import { getMapConfig } from './maps/index.ts';
 import { disposeObject3DResources, releaseObject3DGpuResources } from '../engine/resourceLifetime.ts';
 

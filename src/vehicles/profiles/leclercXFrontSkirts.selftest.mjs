@@ -2,19 +2,28 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { nearStrict as near } from '../../../tools/receipt-kit.test-support.mjs';
+import { fieldKitCensus, fieldKitFilter } from '../fieldKitSurface.test-support.mjs';
 
-const ray = (meshes, p, d, far = 5) => new THREE.Raycaster(new THREE.Vector3(...p),
-  new THREE.Vector3(...d), 0, far).intersectObjects(meshes, false)[0];
+// Source witnesses read the first source surface: main's field kit (5f8eefaa4: screens, pads, ghillie, roof
+// weapon, rear stowage) hangs outside the reconstructed armor and is skipped by the census filter.
+let kit;
+const ray = (meshes, p, d, far = 5) => kit.hits(new THREE.Raycaster(new THREE.Vector3(...p),
+  new THREE.Vector3(...d), 0, far), meshes)[0];
 
 for (const quality of ['high', 'low']) {
+  const census = fieldKitCensus();
   const tank = createTank('leclerc_x', null, { quality, proceduralOnly: true,
-    geometryReceipt: true, batchStatic: false });
+    geometryReceipt: true, batchStatic: false, partCensus: census.partCensus });
+  kit = fieldKitFilter(tank.root, census);
   try {
     tank.root.updateMatrixWorld(true);
     const all = [];
     tank.root.traverse(m => {
       if (m.isMesh && !m.name.startsWith('procShadow_') && !m.userData.vehicleMarking) all.push(m);
     });
+    // The kit is real and really covers a witness: an unfiltered ray stops on its net first.
+    const covering = new THREE.Raycaster(new THREE.Vector3(-2, 1.10, 1.5), new THREE.Vector3(1, 0, 0), 0, 5).intersectObjects(all, false)[0];
+    assert.ok(kit.kitParts > 0 && kit.kitObject(covering?.object), `${quality}: field kit covers the outer armor witness`);
     // Independent complete-source rays, including held-out roof crease and
     // tapered toe stations. These are not imported builder measurements.
     for (const side of [-1, 1]) {
@@ -48,6 +57,6 @@ for (const quality of ['high', 'low']) {
     near(tank.root.getObjectByName('gearTrackBandR').position.x, 1.2727975, .000001, 'right source lane unchanged');
     near(tank.root.getObjectByName('rig_muzzle').getWorldPosition(new THREE.Vector3()).z,
       6.239235, .000001, 'non-target muzzle remains source-fixed');
-  } finally { tank.dispose(); }
+  } finally { tank.dispose(); kit.dispose(); }
 }
 console.log('leclercXFrontSkirts: high/low source folded crowns, underside/toe, air, carrier engagement and unchanged datums pass');

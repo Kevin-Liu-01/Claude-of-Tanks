@@ -144,6 +144,13 @@ export interface BotNavigationGrid {
   readonly hullClearance?: NavigationClearance;
   /** Wrecks narrow streets after the grid is built (navigationWrecks below): the edges they close or bend. */
   readonly wreckOverlay?: WreckOverlay;
+  /**
+   * Re-read the grid round a footprint that changed after the build (destruction, docs/DESTRUCTION.md §6: a structure
+   * collapsed, its rubble raised the ground): the cells near it (blocked, height, ground, liquid), their edges' grade
+   * and liquid, the hull edges and bends within reach of it, and the components. The authority and the solo step call
+   * it with the same footprint; returns how many cells it re-read.
+   */
+  readonly refreshArea?: (minX: number, minZ: number, maxX: number, maxZ: number) => number;
   /** Per cell and NEIGHBOR_STEPS direction, the steepest uphill stretch of that edge, or the steepest side slope across
    * its line at its interior samples when that is steeper (percent grade, capped at 255): the route search holds every
    * edge to it both ways, as it holds the cell-to-cell grade. */
@@ -172,6 +179,8 @@ interface WreckOverlay {
   bends: Float32Array | null;
   /** Re-test the edges round changed wrecks; false when nothing moved more than the sync tolerance. */
   sync(wrecks: readonly NavigationWreck[], count: number): boolean;
+  /** The cover under the overlay changed (a collapse): the next sync re-tests every wreck's edges. */
+  invalidate(): void;
 }
 
 interface BotNavigationGridOptions<T extends NavigationObstacle = NavigationObstacle> {
@@ -338,32 +347,48 @@ function sampleNavigationRow<T extends NavigationObstacle>(
   positions: Float32Array | undefined,
 ): void {
   for (let ix = 0; ix < GRID_N; ix++) {
-    const index = cellIndex(ix, iz);
-    let x = worldCoord(ix);
-    let z = worldCoord(iz);
-    if (positions) {
-      // round 61: a cell within half a cell of a bridge crossing's road axis routes through that axis — over an
-      // approach it is sampled there like any road cell; over the span it IS the deck: the deck's height, stone, and
-      // the deck's own record is its floor, not an obstacle
-      const snap = snapToBridgeDeck(heightField.bridgeDecks!, x, z, CELL_M / 2, _deckSnap);
-      if (snap !== BRIDGE_SNAP_NONE) { x = _deckSnap.x; z = _deckSnap.z; }
-      positions[index * 2] = x;
-      positions[index * 2 + 1] = z;
-      if (snap === BRIDGE_SNAP_DECK) {
-        heights[index] = _deckSnap.y;
-        groundTypes[index] = GROUND_HARD;
-        blocked[index] = 0;
-        continue;
-      }
-    }
-    heights[index] = heightField.getHeightAt(x, z);
-    const ground = driveGroundTypeAt(heightField, x, z);
-    groundTypes[index] = encodeGroundType(ground);
-    const nearby = queryObstacles
-      ? queryObstacles(x - 4.5, z - 4.5, x + 4.5, z + 4.5, candidates)
-      : obstacles;
-    blocked[index] = isSolidObstacleAt(nearby, x, z) ? 1 : 0;
+    sampleNavigationCell(ix, iz, heightField, queryObstacles, obstacles, candidates, heights, groundTypes, blocked, positions);
   }
+}
+
+/** One cell of the grid (the build's row pass, and a refresh round a changed footprint). */
+function sampleNavigationCell<T extends NavigationObstacle>(
+  ix: number,
+  iz: number,
+  heightField: NavigationHeightField,
+  queryObstacles: ObstacleQuery<T> | null,
+  obstacles: readonly T[],
+  candidates: T[],
+  heights: Float32Array,
+  groundTypes: Uint8Array,
+  blocked: Uint8Array,
+  positions: Float32Array | undefined,
+): void {
+  const index = cellIndex(ix, iz);
+  let x = worldCoord(ix);
+  let z = worldCoord(iz);
+  if (positions) {
+    // round 61: a cell within half a cell of a bridge crossing's road axis routes through that axis — over an
+    // approach it is sampled there like any road cell; over the span it IS the deck: the deck's height, stone, and
+    // the deck's own record is its floor, not an obstacle
+    const snap = snapToBridgeDeck(heightField.bridgeDecks!, x, z, CELL_M / 2, _deckSnap);
+    if (snap !== BRIDGE_SNAP_NONE) { x = _deckSnap.x; z = _deckSnap.z; }
+    positions[index * 2] = x;
+    positions[index * 2 + 1] = z;
+    if (snap === BRIDGE_SNAP_DECK) {
+      heights[index] = _deckSnap.y;
+      groundTypes[index] = GROUND_HARD;
+      blocked[index] = 0;
+      return;
+    }
+  }
+  heights[index] = heightField.getHeightAt(x, z);
+  const ground = driveGroundTypeAt(heightField, x, z);
+  groundTypes[index] = encodeGroundType(ground);
+  const nearby = queryObstacles
+    ? queryObstacles(x - 4.5, z - 4.5, x + 4.5, z + 4.5, candidates)
+    : obstacles;
+  blocked[index] = isSolidObstacleAt(nearby, x, z) ? 1 : 0;
 }
 
 /**
@@ -704,10 +729,13 @@ function createWreckOverlay<T extends NavigationObstacle>(
   const candidates: T[] = [];
   const lists: (readonly NavigationObstacle[])[] = [[], []];
   const margin = NAV_LEG_CLEARANCE_M, reach = margin + NAV_BEND_OFFSETS_M[NAV_BEND_OFFSETS_M.length - 1];
+  let stale = false;
   const overlay: WreckOverlay = {
     footprints: [], records: [], count: 0, blockedEdges: null, bends: null,
+    invalidate() { stale = true; },
     sync(wrecks, count) {
-      let changed = count !== overlay.count;
+      let changed = count !== overlay.count || stale;
+      stale = false;
       for (let i = 0; !changed && i < count; i++) {
         const a = wrecks[i], b = overlay.footprints[i];
         changed = Math.hypot(a.x - b.x, a.z - b.z) > WRECK_SYNC_MOVE_M
@@ -891,42 +919,49 @@ function edgeSteepnessPass(field: NavigationHeightField, decks: readonly Navigat
   const samples = new Float64Array(EDGE_STEEP_SAMPLES + 2);
   for (let index = 0; index < blocked.length; index++) {
     if (blocked[index]) continue;
-    const ix = index % GRID_N, iz = Math.floor(index / GRID_N);
-    const ax = cellX(positions, index), az = cellZ(positions, index);
     for (const direction of FORWARD_STEPS) {
-      const [dx, dz] = NEIGHBOR_STEPS[direction];
-      if (isOutsideGrid(ix + dx, iz + dz)) continue;
-      const next = cellIndex(ix + dx, iz + dz);
-      if (blocked[next]) continue;
-      const bx = cellX(positions, next), bz = cellZ(positions, next);
-      const intervals = EDGE_STEEP_SAMPLES + 1, span = Math.hypot(bx - ax, bz - az) / intervals;
-      samples[0] = heights[index];
-      samples[intervals] = heights[next];
-      // the side slope across the edge's line at each interior sample: the terrain's own (a deck's sides are the deck's
-      // rules; under a deck the gorge floor is read, not the deck above it)
-      const sideScale = EDGE_SIDE_HALF_M / (span * intervals);
-      const sideX = (bz - az) * sideScale, sideZ = -(bx - ax) * sideScale;
-      let across = 0;
-      for (let k = 1; k < intervals; k++) {
-        const x = ax + (bx - ax) * k / intervals, z = az + (bz - az) * k / intervals;
-        const deck = deckOver(decks, x, z);
-        samples[k] = deck ? deck.deckY : field.getHeightAt(x, z);
-        if (deck) continue;
-        const side = Math.abs(field.getHeightAt(x + sideX, z + sideZ) - field.getHeightAt(x - sideX, z - sideZ))
-          / (2 * EDGE_SIDE_HALF_M);
-        if (side > across) across = side;
-      }
-      let up = across, down = across;
-      for (let k = 0; k < intervals; k++) {
-        const grade = (samples[k + 1] - samples[k]) / span;
-        if (grade > up) up = grade;
-        if (-grade > down) down = -grade;
-      }
-      steep[index * 8 + direction] = Math.min(255, Math.round(up * 100));
-      steep[next * 8 + OPPOSITE_STEP[direction]] = Math.min(255, Math.round(down * 100));
+      edgeSteepness(field, decks, blocked, heights, positions, steep, samples, index, direction);
     }
   }
   return steep;
+}
+
+/** One forward edge's steepest stretch, both ways (the build's pass, and a refresh round a changed footprint). */
+function edgeSteepness(field: NavigationHeightField, decks: readonly NavigationBridgeDeck[] | null,
+  blocked: Uint8Array, heights: Float32Array, positions: Float32Array | undefined, steep: Uint8Array,
+  samples: Float64Array, index: number, direction: number): void {
+  const ix = index % GRID_N, iz = Math.floor(index / GRID_N);
+  const [dx, dz] = NEIGHBOR_STEPS[direction];
+  if (isOutsideGrid(ix + dx, iz + dz)) return;
+  const next = cellIndex(ix + dx, iz + dz);
+  if (blocked[index] || blocked[next]) return;
+  const ax = cellX(positions, index), az = cellZ(positions, index);
+  const bx = cellX(positions, next), bz = cellZ(positions, next);
+  const intervals = EDGE_STEEP_SAMPLES + 1, span = Math.hypot(bx - ax, bz - az) / intervals;
+  samples[0] = heights[index];
+  samples[intervals] = heights[next];
+  // the side slope across the edge's line at each interior sample: the terrain's own (a deck's sides are the deck's
+  // rules; under a deck the gorge floor is read, not the deck above it)
+  const sideScale = EDGE_SIDE_HALF_M / (span * intervals);
+  const sideX = (bz - az) * sideScale, sideZ = -(bx - ax) * sideScale;
+  let across = 0;
+  for (let k = 1; k < intervals; k++) {
+    const x = ax + (bx - ax) * k / intervals, z = az + (bz - az) * k / intervals;
+    const deck = deckOver(decks, x, z);
+    samples[k] = deck ? deck.deckY : field.getHeightAt(x, z);
+    if (deck) continue;
+    const side = Math.abs(field.getHeightAt(x + sideX, z + sideZ) - field.getHeightAt(x - sideX, z - sideZ))
+      / (2 * EDGE_SIDE_HALF_M);
+    if (side > across) across = side;
+  }
+  let up = across, down = across;
+  for (let k = 0; k < intervals; k++) {
+    const grade = (samples[k + 1] - samples[k]) / span;
+    if (grade > up) up = grade;
+    if (-grade > down) down = -grade;
+  }
+  steep[index * 8 + direction] = Math.min(255, Math.round(up * 100));
+  steep[next * 8 + OPPOSITE_STEP[direction]] = Math.min(255, Math.round(down * 100));
 }
 
 /** Build the immutable terrain/cover grid once for every bot in a match. */
@@ -954,8 +989,10 @@ export function createBotNavigationGrid<T extends NavigationObstacle>({
   const edgeSteepness = edgeSteepnessPass(heightField, decks, blocked, heights, cellPositions);
   const liquidField = heightField.navigationWaterPolicy === 'avoid-liquid'
     && typeof heightField.getWaterMaskAt === 'function' ? heightField : null;
-  const { blockedEdges: hullBlockedEdges, bends: hullBends } = hullEdgePass(decks, queryObstacles, obstacles,
+  const { blockedEdges: hullBlockedEdges, bends: builtBends } = hullEdgePass(decks, queryObstacles, obstacles,
     candidates, blocked, heights, cellPositions, liquidField);
+  // allocated whether or not the build needed a bend: a later refresh (refreshArea) may store one
+  const hullBends = builtBends ?? new Float32Array(GRID_N * GRID_N * WAY_STRIDE).fill(NaN);
   const legCandidates: T[] = [];
   const wreckOverlay = createWreckOverlay(decks, queryObstacles, obstacles, blocked, heights, cellPositions,
     hullBlockedEdges, liquidField);
@@ -979,15 +1016,117 @@ export function createBotNavigationGrid<T extends NavigationObstacle>({
     }, cellPositions);
     const hullComponents = hullComponentLabels(grid.blocked, grid.waterBlockedEdges, bridgeBlockedEdges,
       hullBlockedEdges);
+    const refreshArea = createNavigationRefresh({ heightField, queryObstacles, obstacles, decks, liquidField,
+      heights, blocked, groundTypes, cellPositions, waterBlockedEdges: grid.waterBlockedEdges, bridgeBlockedEdges,
+      hullBlockedEdges, hullBends, hullComponents, edgeSteepness, wreckOverlay });
     return Object.freeze({ ...grid, ...(bridgeBlockedEdges ? { bridgeBlockedEdges } : {}), hullBlockedEdges,
-      ...(hullBends ? { hullBends } : {}), hullComponents, hullClearance, wreckOverlay, edgeSteepness });
+      hullBends, hullComponents, hullClearance, wreckOverlay, edgeSteepness, refreshArea });
   }
   if (heightField.navigationWaterPolicy !== undefined) {
     throw new TypeError('unknown navigation water policy');
   }
   const hullComponents = hullComponentLabels(blocked, undefined, bridgeBlockedEdges, hullBlockedEdges);
+  const refreshArea = createNavigationRefresh({ heightField, queryObstacles, obstacles, decks, liquidField,
+    heights, blocked, groundTypes, cellPositions, waterBlockedEdges: undefined, bridgeBlockedEdges,
+    hullBlockedEdges, hullBends, hullComponents, edgeSteepness, wreckOverlay });
   return Object.freeze({ heights, blocked, groundTypes, ...(cellPositions ? { cellPositions, bridgeBlockedEdges } : {}),
-    hullBlockedEdges, ...(hullBends ? { hullBends } : {}), hullComponents, hullClearance, wreckOverlay, edgeSteepness });
+    hullBlockedEdges, hullBends, hullComponents, hullClearance, wreckOverlay, edgeSteepness, refreshArea });
+}
+
+interface NavigationRefreshInputs<T extends NavigationObstacle> {
+  heightField: NavigationHeightField;
+  queryObstacles: ObstacleQuery<T> | null;
+  obstacles: readonly T[];
+  decks: readonly NavigationBridgeDeck[] | null;
+  liquidField: NavigationHeightField | null;
+  heights: Float32Array;
+  blocked: Uint8Array;
+  groundTypes: Uint8Array;
+  cellPositions: Float32Array | undefined;
+  waterBlockedEdges: Uint8Array | undefined;
+  bridgeBlockedEdges: Uint8Array | undefined;
+  hullBlockedEdges: Uint8Array;
+  hullBends: Float32Array;
+  hullComponents: Int32Array;
+  edgeSteepness: Uint8Array;
+  wreckOverlay: WreckOverlay;
+}
+
+/**
+ * The grid's refresh round a changed footprint (destruction, docs/DESTRUCTION.md §6), from the build's own per-cell,
+ * per-edge and hull-edge rules: what the build would have read had the footprint been so from the start.
+ */
+function createNavigationRefresh<T extends NavigationObstacle>(inputs: NavigationRefreshInputs<T>) {
+  const candidates: T[] = [];
+  const samples = new Float64Array(EDGE_STEEP_SAMPLES + 2);
+  const lists: (readonly NavigationObstacle[])[] = [[]];
+  const { heightField, queryObstacles, obstacles, decks, liquidField, heights, blocked, groundTypes, cellPositions,
+    waterBlockedEdges, bridgeBlockedEdges, hullBlockedEdges, hullBends, hullComponents } = inputs;
+  const margin = NAV_LEG_CLEARANCE_M, bendReach = NAV_BEND_OFFSETS_M[NAV_BEND_OFFSETS_M.length - 1];
+  const cellFrom = (value: number) => clamp(Math.ceil((value - WORLD_MIN) / CELL_M), 0, GRID_N - 1);
+  const cellTo = (value: number) => clamp(Math.floor((value - WORLD_MIN) / CELL_M), 0, GRID_N - 1);
+  return (minX: number, minZ: number, maxX: number, maxZ: number): number => {
+    // cells whose sample point a footprint within 3.5 m (isSolidObstacleAt) or a raised ground could have moved
+    const x0 = cellFrom(minX - 3.5), x1 = cellTo(maxX + 3.5), z0 = cellFrom(minZ - 3.5), z1 = cellTo(maxZ + 3.5);
+    let cells = 0;
+    for (let iz = z0; iz <= z1; iz++) for (let ix = x0; ix <= x1; ix++) {
+      sampleNavigationCell(ix, iz, heightField, queryObstacles, obstacles, candidates, heights, groundTypes, blocked,
+        cellPositions);
+      if (waterBlockedEdges && navigationSampleIsLiquid(heightField, cellX(cellPositions, cellIndex(ix, iz)),
+        cellZ(cellPositions, cellIndex(ix, iz)))) blocked[cellIndex(ix, iz)] = 1;
+      cells++;
+    }
+    // the grade and the liquid of every edge out of those cells and their neighbours
+    for (let iz = Math.max(0, z0 - 1); iz <= Math.min(GRID_N - 1, z1 + 1); iz++) {
+      for (let ix = Math.max(0, x0 - 1); ix <= Math.min(GRID_N - 1, x1 + 1); ix++) {
+        const index = cellIndex(ix, iz);
+        for (const direction of FORWARD_STEPS) {
+          edgeSteepness(heightField, decks, blocked, heights, cellPositions, inputs.edgeSteepness, samples, index, direction);
+          if (!waterBlockedEdges) continue;
+          const [dx, dz] = NEIGHBOR_STEPS[direction];
+          if (isOutsideGrid(ix + dx, iz + dz)) continue;
+          const next = cellIndex(ix + dx, iz + dz);
+          waterBlockedEdges[index] &= ~(1 << direction);
+          waterBlockedEdges[next] &= ~(1 << OPPOSITE_STEP[direction]);
+          if (blocked[index] || blocked[next]) continue;
+          if (!navigationEdgeCrossesLiquid(heightField, ix, iz, NEIGHBOR_STEPS[direction], cellPositions)) continue;
+          waterBlockedEdges[index] |= 1 << direction;
+          waterBlockedEdges[next] |= 1 << OPPOSITE_STEP[direction];
+        }
+      }
+    }
+    // the hull edges within reach of the footprint: their clearance and their bends, as the build's hull pass reads them
+    const reach = margin + bendReach + CELL_M;
+    const hx0 = cellFrom(minX - reach), hx1 = cellTo(maxX + reach), hz0 = cellFrom(minZ - reach), hz1 = cellTo(maxZ + reach);
+    for (let iz = Math.max(0, hz0 - 1); iz <= hz1; iz++) for (let ix = Math.max(0, hx0 - 1); ix <= hx1; ix++) {
+      const index = cellIndex(ix, iz);
+      const ax = cellX(cellPositions, index), az = cellZ(cellPositions, index), ah = heights[index];
+      for (let slot = 0; slot < FORWARD_STEPS.length; slot++) {
+        const direction = FORWARD_STEPS[slot], [dx, dz] = NEIGHBOR_STEPS[direction];
+        if (isOutsideGrid(ix + dx, iz + dz)) continue;
+        const next = cellIndex(ix + dx, iz + dz);
+        hullBlockedEdges[index] &= ~(1 << direction);
+        hullBlockedEdges[next] &= ~(1 << OPPOSITE_STEP[direction]);
+        hullBends.fill(NaN, index * WAY_STRIDE + slot * WAY_FLOATS, index * WAY_STRIDE + (slot + 1) * WAY_FLOATS);
+        if (blocked[index] || blocked[next]) continue;
+        const bx = cellX(cellPositions, next), bz = cellZ(cellPositions, next), bh = heights[next];
+        lists[0] = queryObstacles
+          ? queryObstacles(Math.min(ax, bx) - margin - bendReach, Math.min(az, bz) - margin - bendReach,
+            Math.max(ax, bx) + margin + bendReach, Math.max(az, bz) + margin + bendReach, candidates) : obstacles;
+        if (!legMeetsSolid(lists[0], decks, ax, az, ah, bx, bz, bh, margin)) continue;
+        if (evaluateHullEdge(lists, decks, ax, az, ah, bx, bz, bh, liquidField, _edgeBend) === 1) {
+          storeWay(hullBends, index, slot, _edgeBend);
+          continue;
+        }
+        hullBlockedEdges[index] |= 1 << direction;
+        hullBlockedEdges[next] |= 1 << OPPOSITE_STEP[direction];
+      }
+    }
+    lists[0] = [];
+    hullComponents.set(hullComponentLabels(blocked, waterBlockedEdges, bridgeBlockedEdges, hullBlockedEdges));
+    inputs.wreckOverlay.invalidate();
+    return cells;
+  };
 }
 
 function isValidNavigationGrid(navigation: BotNavigationGrid): boolean {

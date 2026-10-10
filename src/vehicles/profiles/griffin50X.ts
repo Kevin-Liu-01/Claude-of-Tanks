@@ -1,3 +1,4 @@
+import { beginAuxiliaryStation } from './auxiliaryStation.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
@@ -66,8 +67,10 @@ function hull(P: TankBuilderPort): void {
       wing(-2.418,1.1833),wing(-2.2656,1.6335)];
     P.add('hull',sectionSolid(wings));
     P.addEquipment('hullDetail',deckPlate(.829,.664,.025),side*1.282,2.122,-2.666);
-    for(const [lampX,lampY,r] of [[1.419,1.299,.072],[1.256,1.261,.072]]) {
-      P.addEquipment('hullDetail',cylZ(r+.016,.062,P.q?20:12),side*lampX,lampY,3.444);
+    // fleet lane 2026-10-08 (circular-cap audit): the two pods touch, so their front rings were one coplanar overlap;
+    // the inboard pod sits 2 mm further back
+    for(const [lampX,lampY,r,dz] of [[1.419,1.299,.072,0],[1.256,1.261,.072,-.002]]) {
+      P.addEquipment('hullDetail',cylZ(r+.010,.062,P.q?20:12),side*lampX,lampY,3.444+dz);
       P.addEquipment('hullGlass',markVehicleNightLens(cylZ(r,.009,P.q?20:12), 'headlight'),side*lampX,lampY,3.477);
     }
     // The source towing eyes stand in the YZ plane: only 55 mm across X.
@@ -153,8 +156,9 @@ function turret(P:TankBuilderPort):void {
       const a=i*Math.PI*2/(P.q?24:12);return[Math.cos(a)*rx,y-2.6+Math.sin(a)*ry] as const;
     })}))));
   P.addGunExtra(cylX(.147,.405,P.q?24:14),0,0,-.096);
-  P.add('gun',cylZ(.067,2.93194,P.q?32:18),0,0,1.46597);
-  P.add('gunDark',cylZ(.061,.19,P.q?32:18),0,0,2.83694);
+  // The muzzle is a physical annulus; its dark bore floor sits inside it.
+  P.add('gun',lathedWheelSection([[0,.061],[0,.067],[2.93194,.067],[2.93194,.061]],P.q?32:18).rotateY(-Math.PI/2));
+  P.add('gunDark',cylZ(.061,.17,P.q?32:18),0,0,2.82694);
   if(P.q)for(let i=0;i<4;i++)P.add('gunDark',torus(.061,.006,20,5).rotateX(Math.PI/2),0,0,2.765+i*.04);
   P.muzzleZ=2.93194;
 }
@@ -390,8 +394,48 @@ function turretOpticalReceivers(P: TankBuilderPort, add: EquipmentAdder): void {
   }
 }
 
-function turretRoofEquipment(P: TankBuilderPort, add: EquipmentAdder): void {
+/**
+ * The Griffin's roof M2 on its elevated open-fork cradle, the 10-07 assembly exactly (5f8eefaa4^), as the working roof
+ * weapon. 2026-10-09 (owner order: "give the griffin 50 mm its old machine gun back"): the field roof 30 mm that replaced
+ * it on 10-07 is gone. The cradle's foot block stays on the roof; the cradle above it turns with the gun on the foot
+ * block's centre, and the gun (the shared M2 rig at the same class, scale, tone and seed) pitches about its barrel axis
+ * over its pintle, so at rest every solid stands where the static assembly stood. Gameplay: one functional roof gun
+ * (30 -> 12.7 mm).
+ */
+function griffinRoofM2(P: TankBuilderPort, add: EquipmentAdder): void {
   const p=P.turretG.position;
+  // Elevated weapon cradle retains the real open fork and the shared M2 rig.
+  add('turretDetail',box(.198,.090,.203),0,3.042,-.239);
+  const roofGun=FITTINGS.pintleMG({mats:P.mats,cls:'m2',scale:1.28,tone:'two-tone',ammo:false,seed:5017});
+  roofGun.position.set(-p.x,3.32-p.y,-.37-p.z);
+  // the barrel axis: the height of the barrel's own vertices at its muzzle (fitting-local, unscaled fitting)
+  const body=roofGun.getObjectByName('browningDerivedMachineGunBody') as THREE.Mesh;
+  const position=body.geometry.getAttribute('position');
+  let tipZ=-Infinity;
+  for(let i=0;i<position.count;i++)tipZ=Math.max(tipZ,position.getZ(i));
+  let axisSum=0,axisCount=0;
+  for(let i=0;i<position.count;i++)if(position.getZ(i)>tipZ-.02){axisSum+=position.getY(i);axisCount++;}
+  const axisY=roofGun.position.y+axisSum/axisCount;
+  const station=beginAuxiliaryStation(P,{name:'griffin50RoofM2',caliberMm:12.7,
+    // the turntable sits on the roof under the foot block (the block spans y 2.997..3.087 on the 3.01 m roof)
+    yaw:[-p.x,3.0-p.y,-.239-p.z],
+    pivot:[roofGun.position.x,axisY,roofGun.position.z],
+    muzzle:[roofGun.position.x,axisY,roofGun.position.z+tipZ]});
+  add('turretDetail',box(.445,.153,.240),0,3.163,-.239);
+  for(const x of [-.165,.162])add('turretDetail',box(.104,.40,.240),x,3.437,-.239);
+  for(const x of [-.238,.236])add('turretDetail',box(.045,.428,.488),x,3.493,-.034);
+  add('turretDetail',box(.330,.207,.123),0,3.476,-.056);
+  station.mark('yaw');
+  // one physical gun is one weapon fitting: the station root carries it
+  delete roofGun.userData.fittingRoot;
+  delete roofGun.userData.fitting;
+  delete roofGun.userData.fittingExact;
+  const stock=new THREE.Group();
+  stock.add(roofGun);
+  station.attachPitch(stock);
+}
+
+function turretRoofEquipment(P: TankBuilderPort, add: EquipmentAdder): void {
   // Source roof service plates follow its sloped rear roof instead of discs.
   for(const side of [-1,1]) {
     add('turretDetail',deckPlate(.476,.433,.016),side*.931,3.021,-.276);
@@ -401,15 +445,7 @@ function turretRoofEquipment(P: TankBuilderPort, add: EquipmentAdder): void {
       for(const dx of [-.17,.17])add('turretDetail',cylY(.079,.079,.035,P.q?18:10),side*.375+dx,y+.07,z);
     }
   }
-  // Elevated weapon cradle retains the real open fork and the shared M2 rig.
-  add('turretDetail',box(.198,.090,.203),0,3.042,-.239);
-  add('turretDetail',box(.445,.153,.240),0,3.163,-.239);
-  for(const x of [-.165,.162])add('turretDetail',box(.104,.40,.240),x,3.437,-.239);
-  for(const x of [-.238,.236])add('turretDetail',box(.045,.428,.488),x,3.493,-.034);
-  add('turretDetail',box(.330,.207,.123),0,3.476,-.056);
-  const roofGun=FITTINGS.pintleMG({mats:P.mats,cls:'m2',scale:1.28,tone:'two-tone',ammo:false,seed:5017});
-  roofGun.position.set(-p.x,3.32-p.y,-.37-p.z);
-  P.turretG.add(roofGun);
+  griffinRoofM2(P,add);
   for(const [x,top] of [[-.696,4.702],[.696,4.399]]) {
     add('turretDetail',cylY(.084,.111,.397,P.q?18:10),x,2.938,-1.698);
     add('turretDetail',cylY(.010,.017,top-3.1365,8),x,(top+3.1365)/2,-1.698);

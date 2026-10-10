@@ -100,11 +100,19 @@ for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
         `${id} high-roof cap at x=${x} has a structural return into the autoloader roof`);
     }
 
+    // 2026-10-08 (the owner's field standard, main 6763d7cc0; the coordinator's ruling): one roof 7.62 per Leclerc. The S2
+    // keeps its ANF1; the S1 and the XLR carry the owner's roof RWS instead, activated as their working station, and no
+    // Leclerc keeps the second roof gun (the old §5.14 M2, latterly a GPMG).
     const anf1 = turretRig.getObjectByName('leclercRoofAnf1');
-    assert.ok(anf1?.userData.barrelBridge,
-      `${id} ANF1 barrel has a receiver-to-barrel bridge`);
-    assert.ok(near(anf1.position.y, 0.610) && near(anf1.userData.roofContactY, 0.610),
-      `${id} ANF1 pintle foot is seated on the mid roof`);
+    if (id === 'leclerc_xlr' || id === 'amx56') {
+      assert.equal(anf1, undefined, `${id} carries no ANF1: its roof RWS takes the roof 7.62's place`);
+    } else {
+      assert.ok(anf1?.userData.barrelBridge,
+        `${id} ANF1 barrel has a receiver-to-barrel bridge`);
+      assert.ok(near(anf1.position.y, 0.610) && near(anf1.userData.roofContactY, 0.610),
+        `${id} ANF1 pintle foot is seated on the mid roof`);
+    }
+    assert.equal(turretRig.getObjectByName('leclercRoofGpmg'), undefined, `${id} carries no second roof gun`);
 
     if (id === 'leclerc_xlr' || id === 'amx56') {
       assert.deepEqual(turretRig.userData.leclercVariantRoofStations, {
@@ -142,6 +150,8 @@ for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
       'Leclerc XLR weapon is centered over the left pad and advanced into its shield');
       assert.ok(near(rwsGun.userData.mountContactY, 0.987),
         'Leclerc XLR weapon foot records its RWS body-crown contact');
+      assert.ok(rwsGun.userData.remoteControlled && rwsGun.userData.firingAxis === '+Z',
+        'Leclerc XLR roof RWS is its working station (the owner\'s 2A5M precedent)');
     }
 
     if (id === 'amx56') {
@@ -168,6 +178,8 @@ for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
       'AMX 56 heavy weapon is centered on the marked pad and meets the RWS body crown');
       assert.ok(near(rwsGun.userData.mountContactY, 1.012),
         'AMX 56 heavy weapon records its structural mount contact');
+      assert.ok(rwsGun.userData.remoteControlled && rwsGun.userData.firingAxis === '+Z',
+        'AMX 56 roof RWS is its working station (the owner\'s 2A5M precedent)');
     }
   } finally {
     tank.dispose();

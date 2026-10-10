@@ -82,6 +82,8 @@ function fixture({ closeThrows = false } = {}) {
     const LOD_SEGS = [96,48,24], SPLAT_COMMON_FRAG = '', SPLAT_NORMAL_FRAG = '', SNOW_ROCK_HOLD_LINE = '';
     let _splatFields = null;
     function* buildHorizonRingSteps() { return new THREE.Group(); }
+    // (2026-10-08, the ring worker) no ring supply in a sandbox build: the ring builds where it stands
+    function horizonRingSupplyFor() { return null; }
     function* buildFineGridSteps() { return {}; }
     function* buildChunkGeometrySteps() { state.chunks++; return new THREE.BufferGeometry(); }
     const registerRetainedObject3DResources = () => {};

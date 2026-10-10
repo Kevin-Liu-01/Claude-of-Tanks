@@ -1,3 +1,4 @@
+import {assertHollowMuzzle} from '../../../tools/physical-muzzle.test-support.mjs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
@@ -39,23 +40,8 @@ function checkFrames(tank){
 function checkBore(tank){
   const cannon=tank.root.getObjectByName('gun'),all=visibleMeshes(tank.root);
   near(new THREE.Box3().setFromObject(cannon).max.z,SOURCE.muzzle,.000002,'physical metal tip');
-  for(const [dx,dy]of [[0,0],[.03,0],[-.03,0],[0,.03],[0,-.03]]){
-    const ray=new THREE.Raycaster(new THREE.Vector3(SOURCE.gun[0]+dx,SOURCE.gun[1]+dy,SOURCE.muzzle+.2),new THREE.Vector3(0,0,-1),0,2);
-    // 2026-09-22 (owner: "the point of adding holes instead of carving them into the barrel is that
-    // we save on triangles"): the metal tube is closed at its source tip (cappedTube). The measured
-    // 1.293 m source bore (SOURCE.floor 4.505949855, radius .0625) stays recorded here and in
-    // docs/references/tanks/t72b3_x.source-measurements.json as the fidelity evidence; the fallback
-    // disc below is the visible dark mouth, and the former recess sat entirely behind it.
-    near(ray.intersectObject(cannon,false)[0]?.point.z,SOURCE.muzzle,.00002,`metal tube closed at the source tip (recorded bore floor ${SOURCE.floor})`);
-    const first=ray.intersectObjects(all,false)[0];
-    assert.equal(first?.object.name,'muzzleBoreShadowFallbackDisc');
-    // The physical bore stays the source's 1.293 m tube (asserted above), but
-    // the visible mouth disc now seats at the tube edge instead of the floor:
-    // the owner rejected hollow throats whose dark hole sat far inside the
-    // barrel (2026-09-11). The disc leads the metal tip by the fleet 1.2 mm.
-    near(first?.point.z,SOURCE.muzzle+.0003,.00002,'opaque mouth disc seats at the tube edge, not the deep floor');
-  }
-  const result=measureTurretBarrelCircularity(tank,{requireMeasurement:true});
+  assertHollowMuzzle(tank.root,SOURCE.muzzle);
+    const result=measureTurretBarrelCircularity(tank,{requireMeasurement:true});
   assert.ok(result.pass,'source stock spans with physically circular centered125mm bore');
   near(result.muzzleZ,SOURCE.muzzle-SOURCE.gun[2],.000002,'circularity actually samples full stock length');
 }

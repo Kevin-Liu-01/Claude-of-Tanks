@@ -1,6 +1,7 @@
 /* Service Record content uses the shared modal shell, button and icon primitives. */
 .cot-modal-root.cot-service-record{padding:clamp(8px,2vh,24px);place-items:center}
-.cot-modal-root.cot-service-record .cot-modal{width:min(1120px,100%);height:min(880px,96dvh);max-height:calc(100dvh - 16px)}
+.cot-modal-root.cot-service-record .cot-modal{width:min(1120px,100%);height:min(880px,96dvh);max-height:calc(100dvh - 16px);border-top-color:rgba(165,183,198,.28)}
+.cot-modal-root.cot-service-record .cot-modal::before{display:none}
 .cot-modal-root.cot-service-record .cot-modal__body{padding:0;display:flex;flex-direction:column;flex:1;overflow:hidden}
 .cot-modal-root.cot-service-record .cot-modal__footer{padding:10px 24px;flex-wrap:nowrap}
 .cot-modal-root.cot-service-record .cot-modal__button{min-height:44px;font-size:11px}

@@ -91,7 +91,7 @@ function markings(tank,quality){
   // 2026-09-22 (owner: holes are added, not carved, to save triangles): the fleet fallback mouth is a
   // flat ring + disc, so at low quality the standalone Rim is the physical non-paint mesh the control uses.
   if(quality==='low'){
-    let rim;tank.root.traverse(m=>{if(!rim&&m.isMesh&&!paint.has(m)&&m.name==='muzzleBoreShadowFallbackRim')rim=m;});
+    let rim;tank.root.traverse(m=>{if(!rim&&m.isMesh&&!paint.has(m)&&m.userData.carvedBoreStock)rim=m;});
     assert.ok(rim,'physical non-paint control mesh exists');
     assert.throws(()=>verifiedPaintBuffer(rim),assert.AssertionError,
       'the complete original non-paint batch cannot qualify for the paint exclusion');

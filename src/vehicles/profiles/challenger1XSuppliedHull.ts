@@ -44,7 +44,7 @@ function sponson(P:TankBuilderPort,side:number):void{
       [w-.5,outer],[50.7,Math.max(inner,outer)],[37,inner],[31.2,inner]];
     const ring=coords.map(([x,y])=>[p(side*x,0,0)[0],p(0,y,0)[1]] as [number,number]);
     if(side<0)ring.reverse();return{z:p(0,0,z)[2],ring};
-  })));
+  }),{sideQuadDiagonal:'convex'}));
 }
 function engineRoof(P:TankBuilderPort):void{
   P.add('hull',slab([[-194.8425,50.72,49.5,68.65],[-125,50.72,49.5,69.0],

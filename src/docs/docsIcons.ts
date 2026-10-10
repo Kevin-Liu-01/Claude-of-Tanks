@@ -25,6 +25,7 @@ export const DOCS_ICON_SPECS = Object.freeze({
   performance: { id: 'performance', tone: 'green' },
   mobile: { id: 'autoAim', tone: 'cyan' },
   studio: { id: 'pixels', tone: 'violet' },
+  filming: { id: 'studio', tone: 'amber' },
   gallery: { id: 'scope', tone: 'amber' },
   verification: { id: 'check', tone: 'green' },
   authority: { id: 'shield', tone: 'green' },

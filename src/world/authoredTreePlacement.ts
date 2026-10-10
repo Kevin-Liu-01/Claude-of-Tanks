@@ -12,6 +12,10 @@ export interface AuthoredTreeFeature {
   count: number;
   /** Small lateral staggering in metres, not random scatter discs. */
   width?: number;
+  /** The map-revival lane (2026-10-05, Orchard Valley's terraces): a row on terraced ground — each station slides along
+   * the hillside's fall line (up to `searchM` either way, nearest first) to the first ground a tree's root stands level
+   * on, so the row keeps to the benches whatever the terrain seed. Absent: stations stand where the path puts them. */
+  bench?: { searchM: number };
 }
 
 export interface AuthoredTreeRecord {
@@ -124,6 +128,34 @@ function supportedRoot(tree: AuthoredTreeRecord, x: number, z: number, terrain: 
   return true;
 }
 
+/** A terraced row's station slid along the hillside's fall line (a 6 m baseline reads the slope, not the bench under it)
+ * to the nearest ground within `searchM` that a root stands level on (16 points 3.2 m out within 0.9 m of the station's
+ * height) and `admit` passes (the site rules, no two trunks already there); the station itself where none does.
+ * Deterministic: no RNG. */
+function benchStation(station: { x: number; z: number }, searchM: number, terrain: PlacementTerrain,
+  admit: (x: number, z: number) => boolean): { x: number; z: number } {
+  const h = (x: number, z: number) => terrain.getHeightAt(x, z);
+  const gx = h(station.x + 6, station.z) - h(station.x - 6, station.z), gz = h(station.x, station.z + 6) - h(station.x, station.z - 6);
+  const g = Math.hypot(gx, gz);
+  if (g < 1e-6) return station;
+  const ux = gx / g, uz = gz / g;
+  const level = (x: number, z: number) => {
+    const y = h(x, z);
+    for (let i = 0; i < 16; i++) {
+      const a = i * Math.PI / 8;
+      if (Math.abs(h(x + Math.cos(a) * 3.2, z + Math.sin(a) * 3.2) - y) > 0.9) return false;
+    }
+    return true;
+  };
+  for (let k = 0; k <= Math.round(searchM * 2); k++) {
+    for (const sign of k === 0 ? [1] : [1, -1]) {
+      const x = station.x + ux * sign * k * 0.5, z = station.z + uz * sign * k * 0.5;
+      if (admit(x, z) && level(x, z)) return { x, z };
+    }
+  }
+  return station;
+}
+
 function targetClear(tree: AuthoredTreeRecord, x: number, z: number,
   terrain: PlacementTerrain,
   structures: readonly StructureClearance[], walls: readonly AuthoredWallRun[]): boolean {
@@ -211,7 +243,10 @@ export function redistributeAuthoredTrees<T extends AuthoredTreeRecord>(
   const used = new Set<T>();
   return features.map(feature => {
     const receipt = { id: feature.id, attempted: feature.count, accepted: 0, unsafe: 0, noDonor: 0, displaced: 0 };
-    for (const point of authoredTreeStations(feature)) {
+    for (const station of authoredTreeStations(feature)) {
+      const point = feature.bench
+        ? benchStation(station, feature.bench.searchM, terrain, (x, z) => siteOk(x, z, 0) && stationOccupant(trees, x, z) !== -2)
+        : station;
       if (!siteOk(point.x, point.z, 0)) { receipt.unsafe++; continue; }
       // Once per station, not a quadratic scan for every possible donor.
       const occupied = stationOccupant(trees, point.x, point.z);

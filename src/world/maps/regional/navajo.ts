@@ -287,13 +287,13 @@ const hogan: RegionalBuilder = (ctx) => {
   hoganBody(sink, rng, look, { r: R, door });
   endStacks(sink, ctx.bounds, 0, R, door, look, 1.15);
   // the woodpile behind the hogan and a water drum beside the door, kept inside the plot (dressing, not on phones)
-  if (ctx.tier !== 'mobile') {
+  sink.dressing(ctx.tier === 'mobile', () => {
     const clampX = (v: number, m: number) => Math.max(-ctx.info.w / 2 + m, Math.min(ctx.info.w / 2 - m, v));
     const clampZ = (v: number, m: number) => Math.max(-ctx.info.d / 2 + m, Math.min(ctx.info.d / 2 - m, v));
     const back = (door + 4) * OCT, side = (door + 1.5) * OCT;
     woodpile(sink, clampX(Math.cos(back) * (R + 0.8), 0.8), clampZ(Math.sin(back) * (R + 0.8), 0.8), Math.PI / 2 - back, look);
     drum(sink, clampX(Math.cos(side) * (R + 0.45), 0.35), clampZ(Math.sin(side) * (R + 0.45), 0.35), look);
-  }
+  });
   return sink.finish();
 };
 
@@ -522,10 +522,10 @@ const camp: RegionalBuilder = (ctx) => {
   if (Math.abs(cx1 - cx0) > 3) stockade(sink, [[cx0, zb, cx1, zb], [cx1, zb, cx1, za], [cx1, za, cx0, za], [cx0, za, cx0, zb]], look, 1.6);
   // a cord of juniper along the front by the hogan
   woodStack(sink, hx - flip * 0.4, cz + D / 2 - 0.45, 0, Math.min(2.6, A * 0.9), 1.15, look, 0.6);
-  if (ctx.tier !== 'mobile') {
+  sink.dressing(ctx.tier === 'mobile', () => {
     drum(sink, hx - flip * (A + 0.35), hz + A * 0.6, look);
     drum(sink, hx - flip * (A + 0.95), hz + A * 0.7, look);
-  }
+  });
   return sink.finish();
 };
 
@@ -1015,10 +1015,10 @@ const equipmentShed: RegionalBuilder = (ctx) => {
     sink.placed(Math.PI, x0 + W + lw / 2, 0, 0, () => emitRoof(sink, roofGeometry(lw, D, H - 1.05, lean), lean));
   }
   // inside: loose bales and a stack of fence posts
-  if (ctx.tier !== 'mobile') {
+  sink.dressing(ctx.tier === 'mobile', () => {
     for (let k = 0; k < 4; k++) for (let r = 0; r < 3 - (k % 2); r++) sink.span('straw', x0 + 0.4, r * 0.45, -D / 2 + 0.6 + k * 1.05, x0 + 1.3, r * 0.45 + 0.45, -D / 2 + 1.6 + k * 1.05, { decor: true });
     for (let k = 0; k < 8; k++) sink.cylinder('structureWood', [x0 + 0.5, 0.08 + (k % 3) * 0.14, D / 2 - 3.6 + k * 0.17], 'z', 0.05, 0.07, 5, { colour: pick(look, JUNIPER), decor: true }, 0.07, true);
-  }
+  });
   });
   return sink.finish();
 };
@@ -1123,10 +1123,10 @@ const hayShed: RegionalBuilder = (ctx) => {
     const x0 = -L / 2 + 0.4 + (L - 0.3) * k / n, h = 2 + Math.floor(ctx.rng() * 4), x1 = x0 + Math.min(2.6, (L - 0.8) / n - 0.3);
     sink.span('straw', x0, 0, -0.9, x1, h * 0.46, 1.2);
     // the courses' joints and a loose bale on top (dressing)
-    if (ctx.tier !== 'mobile') {
+    sink.dressing(ctx.tier === 'mobile', () => {
       for (let r = 1; r < h; r++) sink.span('straw', x0 - 0.02, r * 0.46 - 0.015, -0.92, x1 + 0.02, r * 0.46 + 0.015, 1.22, { decor: true });
       if (look() < 0.5) sink.span('straw', x0 + 0.3, h * 0.46, -0.4, x0 + 1.3, h * 0.46 + 0.46, 0.5, { decor: true });
-    }
+    });
   }
   });
   return sink.finish();

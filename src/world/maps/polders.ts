@@ -87,7 +87,7 @@ export default {
     { x: -34, z: 450 }, { x: -65, z: 398 }, { x: -3, z: 398 }, { x: -127, z: 398 },
     { x: 59, z: 398 }, { x: -96, z: 450 }, { x: 28, z: 450 },
   ] },
-  splat: { sourcedPalette: 'verdant',
+  splat: { sourcedPalette: 'polders', // (ground lane, wave 248: the polders' own clay, not Verdant's black earth)
     fieldPatch: 1.25, seaLake: true, seaFoam: 0.05, seaRamp: [0.12, 0.48], shoreDirt: true, iceDrift: 0.02,
     marshGloss: 0.82, iceSky: [0.30, 0.42, 0.43], midRelief: 0.64,
     tintA: [0.84, 1.01, 0.66], tintB: [0.60, 0.76, 0.51], tintC: [1.08, 1.08, 0.78], roadTint: [0.76, 0.72, 0.61],
@@ -124,8 +124,9 @@ export default {
     wallRuns: [[-174, -40, -174, 16, 2], [-168, 90, -108, 90, 2], [-54, -88, 10, -88, 3], [246, 58, 246, 126, 2], [-84, 250, -14, 250, 3], [-76, 198, -76, 264, 2]],
     well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
     haystacks: 18, rocks: 112, outcrops: 12, craters: 48, rubblePiles: 10, cropFields: 10, sandbagLines: 14, hedgehogs: 8,
-    tankWrecks: { era: 'modern', count: 5, debris: true,
-      ids: ['leo2a7v', 'marder1a3', 'strv122', 'leclerc', 'cv90'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
+    // front's war; the war shows through the burnt period trucks and carts
+    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
     inhabit: { stalls: 2, benches: 3, coreClutter: 18, bales: 12, stooks: 12, troughs: 2, laundry: 3, handcarts: 3, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 2, modernClutter: 18, looseClutter: 18, roadFence: 'fenceplank', yardFence: 'fencepicket' },
   },
   // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the drainage machinery of a

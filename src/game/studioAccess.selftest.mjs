@@ -113,7 +113,7 @@ const tickSource = stripTypeScriptTypes(studioSource.slice(tickStart, tickEnd));
 const frameCalls = [];
 const tick = new Function('calls', `
   let poolSweepAcc = 0, lastFov = 55, frameDirty = true;
-  const recording = null, timeScale = 1, clockMs = 0, _fwd = {};
+  const recording = null, timeScale = 1, clockMs = 0, _fwd = {}, filming = false;
   const perf = { skippedFrames: 0, renderedFrames: 0 }, storyboard = { durationMs: 1000 };
   const updateCamera = dt => { calls.push(['camera', dt]); return true; };
   const panel = { tick: dt => calls.push(['panel', dt]) }, getWorld = () => null;

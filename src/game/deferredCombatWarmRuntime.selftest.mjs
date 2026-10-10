@@ -25,6 +25,7 @@ const owner = createDeferredCombatWarmRuntime({
       await yieldForBudget(true);
     },
   }),
+  *warmVisionSteps() { events.push('vision'); yield; },
   combatWarm: {
     cancelRare() { events.push('cancel-rare'); },
     async warmOpeningChunked(_budget, yieldForBudget) {
@@ -62,7 +63,7 @@ assert.equal(owner.schedule(3), first, 'one battle generation owns one warm prom
 await first;
 assert.equal(pending, false, 'completed deployment warm releases rollout gate');
 assert.equal(owner.isActive(), false, 'completed queue releases its ownership slot');
-assert.deepEqual(events.slice(0, 4), ['first-frame', 'enemy-visuals', 'yield', 'opening']);
+assert.deepEqual(events.slice(0, 6), ['first-frame', 'enemy-visuals', 'yield', 'vision', 'yield', 'opening']);
 assert.equal(events.filter((event) => event === 'route').length, 3,
   'route preparation drains until the first empty job');
 assert.equal(events.filter((event) => event === 'terrain-lookahead').length, 3,

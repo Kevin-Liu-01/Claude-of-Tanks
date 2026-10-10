@@ -1,8 +1,6 @@
-// Visual proof for the fleet-wide muzzle-bore fallback. Structural coverage is
-// enforced by tank-assets-check; this probe also renders representative main
-// gun, autocannon and howitzer mouths straight-on, checks dark-center read,
-// and certifies that every visible fallback lip is sized/seated from a real
-// terminal cap or an authored rim rather than a donor-wide guessed radius.
+// Render actual main-gun, autocannon, and howitzer openings. Structural rays
+// verify native rim seating, inward walls, and recessed floors; image probes
+// verify that the real recess reads clearly under the gallery lighting.
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -89,6 +87,7 @@ try {
     }
     const path = resolve(outDir, `${id}.png`);
     writeFileSync(path, Buffer.from(shot.image.split(',')[1], 'base64'));
+    if (shot.obliqueImage) writeFileSync(resolve(outDir, `${id}-oblique.png`), Buffer.from(shot.obliqueImage.split(',')[1], 'base64'));
     const contrast = shot.surroundLuma - shot.innerLuma;
     const expectedBores = expectedMuzzleBoreCount(getSpec(id));
     if (!all) {
@@ -102,7 +101,7 @@ try {
     // A verified physical recess is its own rim (2026-09-22, owner: holes are added, not carved,
     // to save triangles): the census reports it as physicalRims instead of a fallback Rim mesh.
     const visibleRims = shot.muzzleBore.rims + (shot.muzzleBore.physicalRims || 0);
-    if (visibleRims !== expectedBores || shot.muzzleBore.discs !== expectedBores) {
+    if (visibleRims !== expectedBores || ((shot.muzzleBore.discs || 0) + (shot.muzzleBore.physicalFloors || 0)) !== expectedBores) {
       failures.push(`${id}: expected ${expectedBores} visible rim/disc pair(s), found ${JSON.stringify(shot.muzzleBore)}`);
     }
     if (expectedBores === 0) {
@@ -145,7 +144,7 @@ try {
     const seatAxialFit = seatReceipts.every(muzzleSeatAxialFit);
     const pass = shot.muzzleBore.tagged === expectedBores
       && visibleRims === expectedBores
-      && shot.muzzleBore.discs === expectedBores
+      && ((shot.muzzleBore.discs || 0) + (shot.muzzleBore.physicalFloors || 0)) === expectedBores
       && firstHitIsBore
       && innerSamplesPass
       && rimSamplesPass

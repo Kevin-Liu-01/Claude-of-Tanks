@@ -50,11 +50,27 @@ export interface LandformGeology {
    * edge) and the wall drops from there to the apron within the rest of the width, near-vertical over most of the
    * height (inselbergSection). Without it the crown rounds down into the wall as before. */
   rim?: number;
-  /** inselberg with a rim: rounded bosses breaking the cap, how many and how high in metres. */
-  bosses?: { count: number; heightM: number };
+  /** inselberg with a rim: the cap's fall from its centre to its edge, as a share of the height (default 0.08; the
+   * Redrock lane's round 9: a higher crown over the sheer wall, so the jebel's top is a dome and not a drum's lid). */
+  capDrop?: number;
+  /** inselberg with a rim: rounded bosses breaking the cap, how many and how high in metres, and (optional) the least
+   * radius as a share of the cap (default 0.3; each boss takes up to 0.16 more). */
+  bosses?: { count: number; heightM: number; radius?: number };
   /** inselberg with a rim: vertical flutes down the wall, how many round the jebel and how far each sets the wall back,
-   * as a share of the wall's width (default 0.5). */
-  flutes?: { count: number; depth?: number };
+   * as a share of the wall's width (default 0.5). `joints` (the Redrock lane, round 10: "drip folds", "melted-candle
+   * grooves"): each a V-shaped joint, sharp at its root, at an irregular bearing (jittered within its slot) and of its
+   * own depth, instead of an evenly spaced rounded notch. */
+  flutes?: { count: number; depth?: number; joints?: boolean };
+  /** inselberg with a rim: the wall in this many bedding tiers (the Redrock lane, round 10: "no bedding, no ledges") —
+   * each a steep riser under a narrow ledge, the ledges a share of the wall's width (`ledge`, default 0.3 of a tier's
+   * run). Absent: one smooth wall (the horizon's far jebels and every other inselberg). */
+  tiers?: { count: number; ledge?: number };
+  /**
+   * The Redrock lane (round 11, the gauntlet's wave 282: "earth heaps", "Play-Doh lumps"): Wadi Rum's beehive banding —
+   * `bands` horizontal bands over the inselberg's height above its apron, each a rounded step where the profile steepens
+   * and eases (strength 0..1 of the most a monotonic profile allows). Absent: no banding.
+   */
+  beehive?: { bands: number; strength?: number };
   /** cone: the crater's rim as a fraction of the radius, its depth in metres and an optional breach bearing in
    * degrees (0 = local +x, counter-clockwise towards local +z). */
   crater?: { rim: number; depthM: number; breachDeg?: number };
@@ -267,14 +283,29 @@ const JEBEL_CAP_DROP = 0.08;
  *   steepest 1.5 x (1 - 0.08 - apron) / ((1 - rim) x foot), near-vertical over most of the height;
  * then a concave talus apron `apron` high at the foot thinning to the plain at the toe.
  */
-export function inselbergSection(q: number, foot: number, apron: number, crown = 4, rim = 0): number {
+export function inselbergSection(q: number, foot: number, apron: number, crown = 4, rim = 0,
+  capDrop = JEBEL_CAP_DROP, tiers = 0, ledge = 0.3, bands = 0, bandStrength = 0.8): number {
   if (q >= 1) return 0;
+  if (bands >= 2) {
+    // the beehive bands: over the height above the apron, h' = h - A (1 - cos(2 pi n u)) / 2 with A pi n < 1, so the profile
+    // stays monotonic while its slope swings band by band (a rounded step every 1/n of the height)
+    const h = inselbergSection(q, foot, apron, crown, rim, capDrop, tiers, ledge);
+    if (h <= apron) return h;
+    const u = (h - apron) / (1 - apron), amp = Math.min(0.95, Math.max(0, bandStrength)) / (Math.PI * bands);
+    return apron + (1 - apron) * (u - amp * 0.5 * (1 - Math.cos(2 * Math.PI * bands * u)));
+  }
   if (rim > 0) {
     const top = foot * rim;
-    if (q <= top) return 1 - JEBEL_CAP_DROP * (q / top) ** 2;
+    if (q <= top) return 1 - capDrop * (q / top) ** 2;
     if (q <= foot) {
       const t = (q - top) / (foot - top);
-      return apron + (1 - JEBEL_CAP_DROP - apron) * (1 - t * t * (3 - 2 * t));
+      if (tiers >= 2) {
+        // the bedding tiers: from the top down, each tier's run a ledge (level) then a riser (a smoothstep)
+        const n = Math.round(tiers), k = Math.min(n - 1, Math.floor(t * n)), f = t * n - k;
+        const r = f < ledge ? 0 : (f - ledge) / (1 - ledge), e = r * r * (3 - 2 * r);
+        return apron + (1 - capDrop - apron) * (1 - (k + e) / n);
+      }
+      return apron + (1 - capDrop - apron) * (1 - t * t * (3 - 2 * t));
     }
   } else if (q <= foot) return 1 - (1 - apron) * (q / foot) ** crown;
   const t = (1 - q) / (1 - foot);
@@ -291,10 +322,25 @@ function inselbergFoot(geology: LandformGeology, theta: number, salt: number): [
   const rim = jebelRim(geology);
   if (rim > 0 && geology.flutes && geology.flutes.count >= 1) {
     const count = Math.round(geology.flutes.count), depth = Math.max(0, Math.min(1, geology.flutes.depth ?? 0.5));
-    // a groove where cos peaks: a rounded notch half a flute wide, the wall standing at its line between the grooves
-    const phase = (theta / TAU) * count + hash2(count, 3, salt + 37);
-    const notch = Math.max(0, Math.cos(phase * TAU)) ** 2;
-    wall -= notch * depth * (1 - rim) * wall;
+    if (geology.flutes.joints) {
+      // a joint in each of `count` slots round the bearing, at a jittered place in its slot: a V notch (its half-width
+      // 0.12-0.27 of a slot, its depth 0.45-1 of the flutes' depth), the nearest two slots' joints read so it wraps
+      const u = (theta / TAU + 1) * count, i = Math.floor(u);
+      let notch = 0;
+      for (let k = i - 1; k <= i + 1; k++) {
+        const slot = ((k % count) + count) % count;
+        const at = k + 0.5 + 0.7 * (hash2(slot, 5, salt + 37) - 0.5), half = 0.12 + 0.15 * hash2(slot, 6, salt + 37);
+        notch = Math.max(notch, Math.max(0, 1 - Math.abs(u - at) / half) * (0.45 + 0.55 * hash2(slot, 7, salt + 37)));
+      }
+      // (round 11: a jointed wall's clefts bite into the cap as well — the loaves of a beehive massif — the rim taking at
+      // most two fifths of their depth, where a fluted wall's grooves keep to the wall below the rim)
+      wall -= notch * depth * (1 - 0.4 * rim) * wall;
+    } else {
+      // a groove where cos peaks: a rounded notch half a flute wide, the wall standing at its line between the grooves
+      const phase = (theta / TAU) * count + hash2(count, 3, salt + 37);
+      const notch = Math.max(0, Math.cos(phase * TAU)) ** 2;
+      wall -= notch * depth * (1 - rim) * wall;
+    }
   }
   return [wall, apron * (1 + 0.5 * lobe(theta, salt + 31))];
 }
@@ -312,7 +358,7 @@ function jebelBosses(geology: LandformGeology, nx: number, nz: number, top: numb
   let best = 0;
   for (let k = 0; k < Math.round(bosses.count); k++) {
     const a = hash2(k, 1, salt + 41) * TAU, r = Math.sqrt(hash2(k, 2, salt + 41)) * top * 0.62;
-    const radius = top * (0.3 + 0.16 * hash2(k, 3, salt + 41));
+    const radius = top * (Math.max(0.15, Math.min(0.6, bosses.radius ?? 0.3)) + 0.16 * hash2(k, 3, salt + 41));
     const d = Math.hypot(nx - Math.cos(a) * r, nz - Math.sin(a) * r) / radius;
     if (d >= 1) continue;
     const dome = (1 - d * d) ** 2 * (0.6 + 0.4 * hash2(k, 4, salt + 41));
@@ -324,7 +370,11 @@ function jebelBosses(geology: LandformGeology, nx: number, nz: number, top: numb
 function profileOf(q: number, geology: LandformGeology, height: number, fallback: (q: number) => number,
   foot: readonly [number, number] | null = null): number {
   const profile = geology.profile ?? 'dome';
-  if (profile === 'inselberg' && foot) return inselbergSection(q, foot[0], foot[1], Math.max(1.5, geology.crown ?? 4), jebelRim(geology));
+  if (profile === 'inselberg' && foot) {
+    return inselbergSection(q, foot[0], foot[1], Math.max(1.5, geology.crown ?? 4), jebelRim(geology),
+      Math.max(0, Math.min(0.4, geology.capDrop ?? JEBEL_CAP_DROP)), geology.tiers?.count ?? 0,
+      Math.max(0, Math.min(0.6, geology.tiers?.ledge ?? 0.3)), geology.beehive?.bands ?? 0, geology.beehive?.strength ?? 0.8);
+  }
   if (profile === 'butte') return butteProfile(q, geology);
   if (profile === 'cone') return coneProfile(q, geology, height);
   if (profile === 'flow') return flowProfile(q);

@@ -28,7 +28,8 @@
  * or aiming hull, the overview, a held sniper view.
  *
  * The cache is armed per frame by `lighting.update()` (`beginFrame`) and each cascade is consumed once: a second
- * render in the same frame, the deployment warm, the covered shadow prime and every path that does not run the
+ * render in the same frame, the deployment warm, the covered shadow prime, a forced lighting update (every cascade
+ * redrawn, so the copies are stale: a shot-mode page forces every frame) and every path that does not run the
  * lighting update renders the ordinary way. Off: the phones (memory), `__SHADOW_DEBUG.noStaticCache`, no
  * frozen world root in the scene, a failed blit (fails open for the session).
  */
@@ -155,6 +156,10 @@ export function casterSignature(object: CasterLike): number {
   if (staticMask !== null) h = mix(h, staticMask);
   const dynamicMask = shadowCasterDynamicMaskOf(object);
   if (dynamicMask !== null) h = mix(h, dynamicMask);
+  // a shape the GPU changes and nothing above shows (destruction: the structure mask reshaping a props bucket through
+  // its aDamage tags): the owner bumps this epoch on every frame it changes (world structureDamage(id).touchShadows())
+  const epoch = object.userData.cotShadowEpoch;
+  if (typeof epoch === 'number') h = mix(h, epoch);
   return h;
 }
 
@@ -189,6 +194,8 @@ interface ShadowStaticCacheTelemetry {
   copies: number;
   /** Ordinary renders of an armed cascade whose pose had not held STATIC_SHADOW_SETTLE_FRAMES yet. */
   unsettled: number;
+  /** Forced lighting updates: every cascade rendered the ordinary way, the copies left for one re-render after. */
+  forcedFrames: number;
   fullRenders: number;
   contentChanges: number;
   promoted: number;
@@ -250,7 +257,7 @@ export function createShadowStaticCache(): ShadowStaticCache {
   const hidden: THREE.Object3D[] = [];
   const muted: THREE.Object3D[] = [];
   const stats: ShadowStaticCacheTelemetry = {
-    enabled: false, frames: 0, rebuilds: [], reuses: [], copies: 0, unsettled: 0, fullRenders: 0, contentChanges: 0,
+    enabled: false, frames: 0, rebuilds: [], reuses: [], copies: 0, unsettled: 0, forcedFrames: 0, fullRenders: 0, contentChanges: 0,
     promoted: 0, promotions: 0, demotions: 0, staticCasters: 0, hashMs: 0, lastRebuildReason: '', failed: null, targetBytes: 0,
   };
   let rebuildReason = 'cold';
@@ -409,6 +416,18 @@ export function createShadowStaticCache(): ShadowStaticCache {
       if (contentStamp >= 0) { contentStamp++; rebuildReason = 'disabled'; }
       return;
     }
+    if (forced) {
+      // a forced frame re-renders every cascade the ordinary way (2026-10-08, the perf lane): its copies are stale, and
+      // re-rendering them through the cache (the static pass, the copy, the dynamic pass) pays the copy and a second pass
+      // for a layer the next forced frame throws away — a shot-mode page forces every frame (mainFrameRuntime
+      // renderShotFrame: lighting.update(true)), and there the cache cost 4.4 ms of GPU a frame over the plain render
+      // (the map-vehicles lane's hold 12, Railyard and Alpine). The cache takes the cascades back once the frames are no
+      // longer forced, with one re-render.
+      contentStamp++;
+      rebuildReason = 'forced';
+      stats.forcedFrames++;
+      return;
+    }
     staticRoots.length = 0;
     dynamicTop.length = 0;
     for (const child of scene.children) {
@@ -428,7 +447,6 @@ export function createShadowStaticCache(): ShadowStaticCache {
       stats.contentChanges++;
       rebuildReason = 'content';
     }
-    if (forced) { contentStamp++; rebuildReason = 'forced'; }
     stats.frames++;
     for (let i = 0; i < lights.length; i++) slotFor(i).armed = true;
   }

@@ -75,6 +75,8 @@ function fixture({ text = source, observe = null } = {}) {
     const registerRetainedObject3DResources = () => {};
     const terrainIndexPoolReceipt = () => ({});
     function* buildHorizonRingSteps() { return new THREE.Group(); }
+    // (2026-10-08, the ring worker) no ring supply in a sandbox build: the ring builds where it stands
+    function horizonRingSupplyFor() { return null; }
     function* buildFineGridSteps() { return {}; }
     function* buildChunkGeometrySteps() { state.chunks++; return new THREE.BufferGeometry(); }
     ${declarations}

@@ -220,7 +220,9 @@ const newMapPalettes = {
   blackglass: ['blackglass', null],
   titan_gorge: ['titan_gorge', null],
   skybridge: ['skybridge', null],
-  polders: ['verdant', 'coastal'],
+  // (2026-10-07, ground lane, wave 248: the polders' own marine clay — Verdant's black earth made the plough, the banks and
+  // the lanes near-black; its grass and rock stay Verdant's)
+  polders: ['polders', 'coastal'],
   copper_mesa: ['copper_mesa', 'foundry'],
   airfield: ['railyard', 'railyard'],
   oasis: ['desert', 'desert'],

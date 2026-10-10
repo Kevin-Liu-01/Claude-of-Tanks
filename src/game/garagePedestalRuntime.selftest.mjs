@@ -37,6 +37,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   let programPrepared = 0;
   let programClosures = 0;
   const prepared = new WeakSet();
+  const releasedForBattle = [];
 
   const makeVisual = (specId, options) => {
     visualOptions.push(options);
@@ -80,6 +81,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   const runtime = createGaragePedestalRuntime({
     scene,
     prepareVisual(visual) { prepared.add(visual.root); },
+    releaseVisual(visual) { releasedForBattle.push(visual.specId); },
     compilePrograms(root) {
       assert.ok(prepared.has(root),'dormant presentation materials precede the first GPU submission');
       assert.ok(root);
@@ -176,6 +178,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
     visualOptions,
     disposed,
     releasedResources,
+    releasedForBattle,
     makeVisual,
     prebakes,
     ensured,
@@ -558,6 +561,7 @@ async function flushMicrotasks() { for (let i = 0; i < 12; i++) await Promise.re
   const geometry = hero.root.children[0].geometry;
   h.entities.set('bravo', {});
   assert.equal(h.runtime.lendToBattle('bravo'), false);
+  assert.deepEqual(h.releasedForBattle, [], 'a hero that is not lent keeps its dormant presentation');
   assert.equal(hero.root.parent, null, 'a different battle selection detaches the unborrowed podium hero');
   assert.equal(hero.root.visible, false);
   assert.equal(h.runtime.current, hero, 'detachment retains the cache identity for return');
@@ -577,6 +581,8 @@ async function flushMicrotasks() { for (let i = 0; i < 12; i++) await Promise.re
   h.entities.set('alpha', {});
   assert.equal(h.runtime.lendToBattle('alpha'), true);
   assert.equal(h.entities.get('alpha').visual, hero, 'matching handoff still lends the visible actor');
+  assert.deepEqual(h.releasedForBattle, ['alpha'],
+    'the lent hero leaves its dormant presentation before the battle warm (every entry path, not only ui:battleStart)');
   assert.equal(hero.root.parent, h.scene);
   h.runtime.dispose();
 }

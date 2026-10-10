@@ -217,6 +217,7 @@ type CrewHit = ArmorCrewIntersection;
 type ArmorHit = ArmorIntersection;
 
 export interface HitEvent {
+  guided?: boolean;
   kind: string;
   shellId: number;
   shellType: string;
@@ -774,6 +775,7 @@ function baseEvent(shell: DamageShell, targetId: string | null): HitEvent {
     kind: 'nonpen',
     shellId: shell.id,
     shellType: shell.spec.type,
+    guided: shell.spec.guided === true,
     caliberMm: shell.spec.caliberMm,
     attackerId: shell.shooterId,
     targetId,

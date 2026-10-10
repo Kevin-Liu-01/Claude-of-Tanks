@@ -7775,6 +7775,99 @@ QA knobs of the same names (1 / 1200 / 0: the plain law). Receipt: `hazeLaw.self
 through the GLSL subset with the law's own chunk — the plain law at w0 1, less veil near the camera, the whole law from
 1200 m, the law's chromaticity on the luminance rule, every branch).
 
+### 2026-10-07 — snow faces: couloirs and ledges on the steep band, the snow maps' wall basis unsheared (the skies lane)
+
+**The gauntlet** (waves 127–128 and the before side of wave 182): Glacier's and Frosthollow's ring faces "a featureless,
+vertically smeared grey sheet"; "a smooth grey-white ramp with soft vertical streaks dripping from the crest to the
+treeline — no buttresses, strata, ledges or couloirs" (Glacier's establishing view); "grey vertical smears running down its
+face from the crest" (Frosthollow's).
+
+**The causes** (`terrain.ts`, the snow-on-rock branch the snow maps' splat selects, `uReduxD.y > 1.5`: Glacier, Frosthollow,
+Whiteout):
+- *the wall basis sheared by the height:* the strata's stretch and swell multiply the absolute height, so their gradients
+  along the wall shear its v by the height itself — about 2 m of v per metre along the wall at 50 m up, 7 at 150 m, 11 at
+  250 m. The snow maps' steep ring faces stand 50–390 m up: every wall projection there was squeezed into vertical slivers;
+- *the gullies:* one field stretched 8:1 down the height at a 22 m repeat, and a steep face lies wholly inside the hold's
+  45–64° band, so the face printed it as fine vertical hatching with a fringe of snow tongues under every crest.
+
+**The fix** (the snow branch only; the hold line stays the ground lane's law, `snowRockHoldLine`):
+- the snow maps' walls keep the per-cliff offset and the beds' wander, and no stretch (they carry no strata);
+- *couloirs:* the crests of a coarse 3:1 field down the fall line (~25 m across, ~80 m long), only in the systems the slow
+  wall field picks; the hold's own breakup at a quarter of its swing; from ~48° a lean to bare rock outside the couloirs;
+- *ledges:* snow on the shelves of round 35's warped height ladder (beds ~14–30 m apart, the per-cliff phase, ±2 m of
+  along-wall wander), in runs where the slow wall field is high, on the steep band only and gone from the sheerest faces;
+- the exposed rock keeps its beds at full strength, so the seams between the ledges stay dark rock.
+
+**Measured:**
+- *the pair* (the PR head against the branch; Glacier's establishing, street and hospice views, Frosthollow's
+  establishing and bird; `$SP/p2/snow/pair1`): wave 182 +0.34. "Grey vertical smears" leave the after frames' largest
+  defects; the after side's are the buildings and the far peaks over a white band (the shell's, the far-air lane).
+- *no harm off the snow maps* (Verdant, Titan Gorge, Caldera and Saltwind; Whiteout seen): the frames equal but for the ±1
+  dither and the clouds' motion; `snowFaces.selftest` proves the branch selects exactly alpine, whiteout and winter.
+- *cost* (v3: Glacier's establishing view, desktop high), re-measured after the merge at nice 0 on a priority ticket
+  (2026-10-07; the merged tree with the change reverted against the merged tree, against a twin of the revert; the other
+  hulls hidden, with the near-shadow-detail fix; load 102–142): 8 cycles, GPU p25 +0.10 ± 0.29 ms (null −0.10), CPU p50
+  +0.00 ± 0.25 ms — ACCEPT; the census identical (4,061,091 triangles, 476 draws). The first holds (13 cycles, GPU p25
+  −0.30 ± 0.74 ms, CPU p50 +0.00 ± 0.15 ms; 5,466,742 triangles, 724 draws with the hulls shown) ran niced and are void.
+
+### 2026-10-07 — the ground bounce no longer counts a face's self-shade twice (the skies lane)
+
+**The trace** (the scenery lane's, wave 174; Saltwind's walls "slate blue" in wave 177): Verdant's chalk yard wall cream in
+the sun (B/R 0.84) and grey-blue in its shade (87, 95, 99; B/R 1.13) in front of sunlit grass.
+
+**The cause** (`groundBounce.ts`): the bounce's receiver factor read the raw CSM visibility, `mix(0.4, 1, cotSunVis)`. A face
+turned from the sun lies in its own shadow (`cotSunVis` ≈ 0), so its bounce took the shadowed receiver's 0.4 on top of the
+self-shade the term already applies (`cotSide`, 1 − 0.6 · away · low). It was counted twice, and once the hemisphere's
+ground pole is taken off it often reached zero, leaving those faces only the sky's blue light.
+
+**The fix:** the receiver reads `cotAmbVis`, the visibility the ambient dims already correct for facing (`lighting.ts`,
+`uCotShadowFacing`). A face toward the sun inside a cast shadow keeps the cascade's 0.4 (its ground is shaded too); a face
+turned from the sun keeps its whole bounce. The cost of the rule: a back face that also stands in another object's cast
+shadow takes a little too much bounce (the CSM cannot tell the two shadows apart there). The legacy rig reads
+`cotAmbVis = cotSunVis`, so it is unchanged.
+
+**Measured:**
+- *the look* (the facades lane's r3c fill check, the PR head against the branch on Steinburg and Verdant's wall views):
+  shaded walls +1.8–3.9 % and warmer; nothing else moved.
+- *cost* (v3: Steinburg's shops-eye, desktop high), re-measured after the merge at nice 0 on a priority ticket (2026-10-07;
+  the merged tree with the change reverted against the merged tree, against a twin of the revert; the other hulls hidden,
+  with the near-shadow-detail fix; load 100–110): 8 cycles, GPU p25 +0.34 ± 1.14 ms (null −0.17), CPU p50 −0.21 ± 0.12 ms —
+  ACCEPT; the census identical (4,326,639 triangles, 414 draws). The first hold (GPU p25 +0.42 ± 1.04 ms, CPU p50
+  −0.09 ± 0.17 ms; 4,664,349 triangles, 495 draws with the hulls shown) ran niced and is void.
+
+### 2026-10-09 — the clouds' grain: per-pixel jitter, a longer memory that follows the wind, stills settled to the rest (the clouds lane)
+
+**Why.** The owner: "clouds will look terrible and look super grainy instead of proper". The gauntlet never saw it: every
+still settled the clouds 64 frames (four samples a history pixel against the live layer's sixteen), and nobody judged the
+sky at 1:1 in play.
+
+**What it was.** A grain meter (`.qa-dev/cloud-grain3.mjs`, in-page: a ~200-sample running average at the same pose as the
+reference, dt 0 so nothing drifts, the error read inside the cloud mask from the history's transmittance) and 2× crops of
+full-resolution frames at rest and after a camera turn (`.qa-dev/cloud-grain2.mjs`: dt pinned at 1/60 a frame, a frame
+every 100 ms) found:
+- a speckle at rest along cloud edges, thin parts and fragments, worst on Monsoon's broken front, stronger at rest after a
+  turn than during it (the turn's Catmull-Rom reprojection blurs the history; the rest refills it with noisy samples);
+- a regular diagonal hatching along thin edges: the trace's jitter was the blue noise of the trace texel, so the sixteen
+  history pixels of a 4 × 4 block took one start offset a cycle;
+- part of it is the detail octave aliasing at history resolution — the 200-sample reference keeps a little speckle on the
+  fragments — so no amount of accumulation alone makes it vanish.
+
+**What changed** (`volumetricClouds.ts`, no new pass): the jitter keys on the history pixel; the floor on a fresh sample's
+weight is 0.06 (`CLOUD_HISTORY_MIN_ALPHA`, was 0.12: about thirty-three samples a pixel against sixteen) and the reprojection
+is carried by the frame's wind step (`uWindStep`), so the longer memory follows a drifting cloud instead of trailing it; a
+capture settles 512 frames (`CLOUD_CAPTURE_SETTLE_FRAMES`, was 64). Measured against the reference: stills −12 to −24 %,
+steady rest −6 to −14 % on Monsoon, Verdant, Redrock and Frosthollow, no blur.
+
+**Lessons.**
+- A temporally accumulated effect must be judged where a player sees it: at 1:1, at rest and after a turn. A capture settle
+  shorter than the live steady state shows a different (grainier) picture than play; a settle longer than it hides the
+  motion. The gauntlet's stills now settle to the live rest; motion goes to pinned strips.
+- A whole-frame high-pass metric cannot rank grain fixes (all within 2 %): structure swamps the noise. Measure against a
+  long-accumulation reference at the same pose, inside the effect's own mask.
+- RMSE does not see structure: the per-pixel jitter left the error unchanged and removed the hatching the eye locks onto.
+- A smoother composite filter (a B-spline in place of Catmull-Rom) cuts Monsoon's speckle 11 % and blurs crisp cumulus
+  (Verdant +15 %, Redrock +14 % against the sharp reference): reconstruction is not where to buy smoothness on this sky.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

@@ -9,6 +9,7 @@ import {tankPoseFromState,traceTank} from '../sim/armor.ts';
 import {createShell} from '../sim/ballistics.ts';
 import {createCombatState,resolveShellHit} from '../sim/damage.ts';
 import { near } from '../../tools/receipt-kit.test-support.mjs';
+import { fieldKitCensus, fieldKitFilter } from './fieldKitSurface.test-support.mjs';
 const DONORS={k1a1_x:'k1a1',amx30_x:'amx30',leclerc_x:'leclerc',leclerc_classic_x:'leclerc',type10_x:'type10',type90_x:'type90',amx40_x:'amx40'};
 // 2026-10-01 (owner: retire frozen pins): the fourteen pinned whole-model digests, the historical
 // finish/gear/tint inverses that reached them and their oracle-only negative controls are gone; the
@@ -25,8 +26,9 @@ function assertNightMasks(root){
   });
 }
 // Canonical shoes take their colour from the instance palette over an exactly
-// white base; a second dark multiplier or a missing vertex-colour request would
-// blacken them. Actual surface/ballistics tests always use this white base.
+// white base, times their own worn-steel vertex colours; a second dark multiplier
+// or a stream without the colours would blacken them. Actual surface/ballistics
+// tests always use this white base.
 const SHOE_NAMES=['gearTrackPads','gearTrackPadsSimplified'];
 function trackShoeMaterial(root){
   const shoes=[];
@@ -46,12 +48,17 @@ function trackShoeMaterial(root){
   assert.equal(material.userData.appearanceRole,'trackPad');
   assert.equal(material.userData.appearanceColorSource,'instance-palette');
   assert.deepEqual(material.color.toArray(),[1,1,1],'actual shoe base must remain exactly white');
-  assert.equal(material.vertexColors,false,'missing vertex colors must not blacken instance-colored shoes');
+  // Fleet lane round 1 (2026-10-07): the shoes read worn-steel vertex colours under the palette (bakeTrackShoeWear);
+  // both streams must carry them or the palette would multiply by black.
+  assert.equal(material.vertexColors,true,'canonical shoes read their worn-steel vertex colours');
+  for(const mesh of shoes)assert.ok(mesh.geometry.getAttribute('color')?.count===mesh.geometry.getAttribute('position').count,
+    `${mesh.name} carries its worn-steel vertex colours`);
   for(const mesh of shoes){
     assert.equal(mesh.material,material,'near and far shoes share their actual material');
     assert.equal(mesh.isInstancedMesh,true);
     assert.ok(mesh.count>0&&mesh.instanceColor?.count>=mesh.count,'every shoe has an instance palette entry');
-    assert.equal(mesh.geometry.getAttribute('color'),undefined,'shoe stock has no vertex-color multiplier');
+    assert.equal(mesh.geometry.getAttribute('color')?.count,mesh.geometry.getAttribute('position').count,
+      'shoe stock carries exactly one worn-steel colour per vertex');
   }
   root.traverse(mesh=>{
     if(!mesh.isMesh)return;
@@ -83,6 +90,9 @@ function preservation(id,donor){
   assert.equal(original.armor.hullPlates,originalPlateArray,'original production helper no-op');
   assert.equal(JSON.stringify(original),bytes,'original complete spec immutable');
 }
+// Field kit (main 5f8eefaa4: Leclerc X screens, pads and ghillie) hangs outside the source skirts; the physical
+// outer face is the first source surface behind it (fieldKitSurface.test-support.mjs).
+let kit;
 function facets(id,spec,meshes){
   const plates=spec.armor.hullPlates.filter(p=>p.name.includes('_source_'));
   if(['k1a1_x','amx30_x'].includes(id)){assert.equal(plates.length,0);return;}
@@ -93,7 +103,7 @@ function facets(id,spec,meshes){
     catch(error){console.log(JSON.stringify({id,name:p.name,verts:p.verts,openEdges:p.openEdges}));throw error;}
     const point=p.verts.map(vec).reduce((a,b)=>a.add(b),new THREE.Vector3()).multiplyScalar(1/p.verts.length),side=Math.sign(point.x);
     const from=point.clone().add(new THREE.Vector3(side*.20,0,0));
-    const nativeHits=new THREE.Raycaster(from,new THREE.Vector3(-side,0,0),0,.23).intersectObjects(meshes,false);
+    const nativeHits=kit.hits(new THREE.Raycaster(from,new THREE.Vector3(-side,0,0),0,.23),meshes);
     // Fascia sits behind separate unarmored U straps. Verify the outward
     // physical sheet at its own depth, not an unrelated protruding fastener.
     let native=id==='type10_x'?nativeHits.find(h=>Math.abs(h.point.x-point.x)<=.003
@@ -216,7 +226,9 @@ const selected=process.argv.find(a=>a.startsWith('--ids='))?.slice(6).split(',')
 for(const[id,donor]of Object.entries(DONORS).filter(([id])=>!selected||selected.includes(id))){
   preservation(id,donor);
   for(const quality of['high','low']){
-    const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+    const census=fieldKitCensus();
+    const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242,partCensus:census.partCensus});
+    kit=fieldKitFilter(tank.root,census);
     try{
       tank.root.updateMatrixWorld(true);
       const shoeMaterial=trackShoeMaterial(tank.root);
@@ -248,6 +260,6 @@ for(const[id,donor]of Object.entries(DONORS).filter(([id])=>!selected||selected.
       if(id==='type10_x')type10HeldOut(spec,meshes);
       actualProtection(spec);
       console.log(`sourceXOtherAuxArmor: ${id}/${quality} physical panels, air, donor values, ${count} seams/${halfOpen} owned edges, shoe material and night masks PASS`);
-    }finally{tank.dispose();}
+    }finally{tank.dispose();kit.dispose();}
   }
 }

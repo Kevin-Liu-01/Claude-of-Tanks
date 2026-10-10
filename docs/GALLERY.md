@@ -34,6 +34,9 @@ the canonical `src/vehicles/` sources.
 - read normalized operational ratings and a generated technical brief for
   every playable vehicle;
 - inspect dimensions, mobility, weapon, protection, and ammunition data;
+- detonate individual ERA clusters, remove bound armor accessories, and repair them;
+- damage or disable modules and crew, break tracks, and preview an ammo-rack wreck;
+- toggle exact combat hitboxes, probe a shot line, reset the specimen, and copy its damage report;
 - copy a shareable vehicle/layer URL;
 - copy a versioned normalized data record;
 - open the shared 88-frame field archive to inspect the same procedural rigs
@@ -125,6 +128,38 @@ open mouths and spaces between pods, follow their turret/gun articulation, and
 link to the existing missile-rack or gun damage state. Selecting a stock part
 does not create another logical module. The inspection readout identifies it
 as exterior stock, rather than an internal kill-cam model.
+
+### Damage workbench
+
+The damage workbench operates on the loaded specimen only. It never changes the
+fleet registry, battle state, or saved progression. Loading another vehicle starts
+intact. ERA and removable equipment are offered only when the procedural model
+publishes a matching destruction binding; removal changes the real geometry and
+removes that named plate from the specimen's diagnostic query. Repairing one
+cluster preserves damage to the others.
+
+Module damage uses the battle module state and weapon damage visuals. Broken
+tracks advance the real running-gear simulation against the Gallery floor. Crew
+stations can be disabled and restored. Ammo-rack wreck previews use the existing
+destruction presentation; diagnostic layers and articulation are disabled until
+reset because the detached wreck is no longer an intact combat specimen.
+
+**Combat hitboxes** replaces the illustrative module/crew anatomy with canonical
+ellipsoids, capsules, cylinders, compound boxes, and track prisms. These shapes
+follow the combat turret and trunnion frames independently of presentation-only
+rig scaling. Damage colors distinguish damaged and disabled parts. Exterior
+weapon stock remains selectable in module view.
+
+**Ray probe** traces a click through the current articulated specimen and reports
+ordered geometry contacts, plate thickness, and incidence angle. Dragging still
+orbits. This is a geometry inspection tool, not a shell penetration probability or
+damage-roll simulator. Removed plates no longer appear in its contacts. **Copy
+damage report** exports the vehicle, pose, selected part, and specimen condition.
+
+Implementation: `damageLab.ts` owns isolated combat state, `damageWorkbench.ts`
+owns controls, `combatHitboxes.ts` owns exact shape/frame presentation, and
+`damageBurst.ts` owns a bounded, reusable ERA detonation effect. Transient state,
+overlays, and ground callbacks are cleared when replacing the vehicle.
 
 ### Surface markup
 
@@ -224,11 +259,13 @@ window.__TANK_GALLERY.setMode('markup')
 window.__TANK_GALLERY.setMarkupOperation('reshape')
 window.__TANK_GALLERY.selectSurface(640, 420, false)
 window.__TANK_GALLERY.exportMarkupJSON()
+window.__TANK_GALLERY.damageAction('disable', 'module:trackL')
+window.__TANK_GALLERY.resetDamage()
 window.__TANK_GALLERY.getState()
 ```
 
 `getState()` returns selected ID, active mode, overlay count, camera pose, and
-a serializable markup-state snapshot. It does not expose the mutable Three.js
+serializable markup and damage-state snapshots. It does not expose the mutable Three.js
 scene.
 
 ## Keyboard and accessibility
@@ -286,3 +323,17 @@ For user-facing verification, open `/gallery`, select multiple vehicles, test
 all five layers and camera presets, select at least one overlay volume, create
 single and additive surface annotations, exercise undo/focus/export, copy a
 link and data record, and repeat the layout at desktop and mobile widths.
+
+## Damage-workbench verification
+
+`src/gallery/damageLab.selftest.mjs` verifies isolated state, individual ERA
+repair, real T-90M geometry removal/restoration, tracks, crew, and wreck reset.
+`src/gallery/combatHitboxes.selftest.mjs` verifies exact primitive dimensions,
+compound gaps, track prisms, and articulated frames with scaled presentation rigs.
+Both are registered in the selftest suite. The existing overlay fleet audit also
+covers every registered vehicle.
+
+`tools/gallery-damage.browser.mjs` exercises the controls and viewport fitting
+at desktop, phone portrait, and short phone landscape sizes. Run it through the
+shared browser capture lease. The initial October 7 run timed out waiting for
+that lease, so desktop/mobile visual verification remains outstanding.

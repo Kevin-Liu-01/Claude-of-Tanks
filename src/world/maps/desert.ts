@@ -454,10 +454,9 @@ export default {
     rubblePiles: 14,
     // DESTRUCTIBLES r1: modern-era hulks on the wadi routes (baked roster
     // tanks), convoy dressing + defended-crossroads clutter
-    tankWrecks: {
-      era: 'modern', count: 5, debris: true,
-      ids: ['m60a3', 'merkava4b', 'm1a2', 'type99a', 'ariete'],
-    },
+    // the map-vehicles lane (2026-10-06, the period ruling): the Maghreb: Tunisia's M60A3s and M48s, the T-55s and
+    // T-62s over the Libyan border
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['m60a3', 'type59', 'm48', 't62mv1'] },
     sandbagLines: 12,
     hedgehogs: 8,
     // world-dressing r1: adobe boundary walls + souk inhabitants — stall

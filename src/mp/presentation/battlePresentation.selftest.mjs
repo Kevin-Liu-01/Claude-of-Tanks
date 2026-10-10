@@ -483,7 +483,59 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   props.dispose();
 }
 
-console.log('mp battle presentation: roster → hidden visuals, frames → game state/visuals/combat/ERA/wrecks/shells/props, events → bus vocabulary, predicted own shots, settled destroyed lists vs live prop falls, verdicts, disconnect, spectator perspective, prediction world pass');
+// ------------------------------------------------------------ the authority's detonations as munition:blast (destruction §11, 2026-10-07)
+// A world impact raises one blast before the round expires (its structure mapped to this world's, open water by this
+// world's mask); a round bursting on a hull raises one from its direct hit's event before the hit, none from splash; a
+// cook-off and a fuel fire raise theirs before the death — the solo step's order.
+{
+  const { setCompoundShape, setObbShape } = await import('../../world/collision.ts');
+  const blastBus = [];
+  const houseObstacles = [setObbShape({ min: [0, 0, 0], max: [0, 1.8, 0], kind: 'structure', structureIdx: 0 }, 40, 40, 6, 4, 0)];
+  const houseColliders = [setCompoundShape({ min: [0, 0, 0], max: [0, 6, 0], kind: 'structure', structureIdx: 0 },
+    [{ kind: 'obb', cx: 40, cz: 40, hw: 6, hl: 4, yaw: 0 }])];
+  const blastWorld = {
+    heightField: { getHeightAt: () => 0, getHeightAtFast: () => 0, getContactHeightAt: () => 0, getGroundType: () => 'hard',
+      getWaterMaskAt: (x) => (x < -100 ? 1 : 0) },
+    getObstacles: () => houseObstacles, getColliders: () => houseColliders, crushObstacle() {},
+  };
+  const blastGame = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0,
+    result: null, resultReason: null, mapId: 'winter' };
+  const p = createBattlePresentation({ engineCtx: { scene, anisotropy: 1 }, game: blastGame,
+    bus: { emit(type, payload) { blastBus.push({ type, payload }); } }, worldCollision: blastWorld, createTankVisual: fakeVisual,
+    prepareVisualTextures: async () => {}, clock: () => nowMs });
+  const quiet = { own: false, feedbackPredicted: false };
+  const types = () => blastBus.map((event) => event.type);
+  p.applyEvent({ kind: 'shell_impact', payload: { munition: 'he', chargeKg: 3.5, structureId: 0, shellId: 900, shooterId: 'foe',
+    kind: 'prop', surfaceKind: 'structure', x: 40, y: 2, z: 36, nx: 0, ny: 0, nz: -1, shellType: 'HE', caliberMm: 125 } }, quiet);
+  assert.deepEqual(types(), ['munition:blast', 'shell:expired'], 'the blast before the round expires');
+  assert.deepEqual(blastBus[0].payload, { munition: 'he', chargeKg: 3.5, x: 40, y: 2, z: 36, nx: 0, ny: 0, nz: -1,
+    surface: 'structure', structureId: 0 }, 'the struck structure is this world\'s');
+  blastBus.length = 0;
+  p.applyEvent({ kind: 'shell_impact', payload: { munition: 'howitzer', chargeKg: 6.8, shellId: 901, kind: 'terrain', surfaceKind: 'terrain',
+    x: -150, y: 0, z: 0, nx: 0, ny: 1, nz: 0, craterId: 3 } }, quiet);
+  assert.equal(blastBus[0].payload.surface, 'water', 'open water by this world\'s mask');
+  assert.equal(blastBus[0].payload.craterId, 3, 'the crater it dug rides the blast');
+  assert.equal('structureId' in blastBus[0].payload, false);
+  blastBus.length = 0;
+  p.applyEvent({ kind: 'shell_impact', payload: { munition: 'kinetic', chargeKg: 0, shellId: 902, kind: 'terrain', x: 0, y: 0, z: 0 } }, quiet);
+  assert.deepEqual(types(), ['shell:expired'], 'a penetrator raises no blast');
+  blastBus.length = 0;
+  const hitBase = { shellId: 903, shooterId: 'foe', attackerId: 'foe', targetId: 'me', pos: [1, 1, 1], normal: [0, 1, 0], munition: 'heat', chargeKg: 1.6 };
+  p.applyEvent({ kind: 'shell_hit', payload: { ...hitBase, kind: 'he_pen', blast: [5, 1.5, 6, 1, 0, 0] } }, quiet);
+  p.applyEvent({ kind: 'shell_hit', payload: { ...hitBase, kind: 'he_splash', targetId: 'bot-3', pos: [9, 1, 9] } }, quiet);
+  assert.deepEqual(types(), ['munition:blast', 'shell:hit', 'shell:hit'], 'one blast, from the direct hit, before it');
+  assert.deepEqual(blastBus[0].payload, { munition: 'heat', chargeKg: 1.6, x: 5, y: 1.5, z: 6, nx: 1, ny: 0, nz: 0, surface: 'tank' });
+  blastBus.length = 0;
+  p.applyEvent({ kind: 'tank_destroyed', payload: { id: 'ghost', killerId: 'foe', cause: 'fire', x: 3, y: 0.5, z: 4 } }, quiet);
+  assert.deepEqual(types(), ['munition:blast', 'tank:destroyed'], 'a fuel fire bursts before the death');
+  assert.deepEqual(blastBus[0].payload, { munition: 'fuel', chargeKg: 4, x: 3, y: 1.5, z: 4, nx: 0, ny: 1, nz: 0, surface: 'tank' });
+  blastBus.length = 0;
+  p.applyEvent({ kind: 'tank_destroyed', payload: { id: 'ghost-2', killerId: 'foe', cause: 'shot', x: 3, y: 0.5, z: 4 } }, quiet);
+  assert.deepEqual(types(), ['tank:destroyed'], 'a plain kill raises no blast');
+  p.dispose();
+}
+
+console.log('mp battle presentation: roster → hidden visuals, frames → game state/visuals/combat/ERA/wrecks/shells/props, events → bus vocabulary, predicted own shots, settled destroyed lists vs live prop falls, verdicts, disconnect, spectator perspective, prediction world, the authority\'s detonations as munition:blast pass');
 
 {
  const state={tanks:[],tankById:new Map(),player:null,shells:[],spotting:null,allTanks:[],timeS:0};

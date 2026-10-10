@@ -5,10 +5,13 @@
 // deep-bustle VT turret authored in the game's native +Z-forward frame.
 
 import {addChineseThroatStock,addChineseMovingMantlet} from './chineseGunOpening.ts';
+import { sectionSolid } from './sectionSolid.ts';
+import { latheY, place } from '../accessoryPrimitives.ts';
 import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, muzzleTipDot } from './kit.ts';
 import {
   chevronSurfacePanel,
+  chineseArrowCassette,
   closedIntegratedChevron,
   interpolateChevronStation,
   type ChevronStation,
@@ -67,6 +70,63 @@ function addChinese125Gun(
   P.add('gunDark', cylZ(0.080, 0.22, 18), 0, 0, config.length - 0.11);
   muzzleTipDot(P, 0, 0, config.length + 0.012, 0.057, { parent: 'gunG' });
   P.muzzleZ = config.length;
+}
+
+/**
+ * Type 99A gun throat (2026-10-07, tank-accessories round 3). The narrow-channel chevrons keep their x 0.21 inner
+ * stations, so between the shell's front face (z 0.35) and the chevrons' sloping back faces the throat stood open to
+ * the sky down to the ring plate, 0.65 m deep: the blind critics read the generated interior fill inside it as "a dark
+ * serrated block beside the mantlet" (a gear wheel, not a boot) and the hole itself as "pure-black unmodeled cavities".
+ * A welded throat deck closes the pocket at the chevrons' upper-edge height, lapping 30 mm under every upper edge and
+ * 50 mm into the shell roof, and a pleated canvas dust boot (the fleet's mantlet-boot skin) wraps the gun root from
+ * under the deck's front edge onto the collar, so the channel between the chevrons shows the boot's soft folds.
+ */
+function addType99AGunThroatClosure(P: FrontlinePort, stations: readonly ChevronStation[]): void {
+  const upperEdge = stations.slice(0, 4).map((station) => [station.upperX ?? station.x, station.upperZ] as const);
+  // the chevrons' upper-edge x at a given z (the edge runs outboard as it runs aft)
+  const edgeX = (z: number): number => {
+    for (let index = 0; index < upperEdge.length - 1; index++) {
+      const [xa, za] = upperEdge[index], [xb, zb] = upperEdge[index + 1];
+      if (z <= za && z >= zb) return xa + (xb - xa) * (za - z) / Math.max(1e-6, za - zb);
+    }
+    return z > upperEdge[0][1] ? upperEdge[0][0] : upperEdge.at(-1)![0];
+  };
+  const lap = 0.03;
+  const deckTop = stations[0].upperY + 0.012, deckBottom = stations[0].upperY - 0.022;
+  const channelHalf = upperEdge[0][0] - 0.006;
+  const frontZ = upperEdge[0][1] + 0.052;
+  const deckSection = (z: number, half: number) => ({ z, ring: [[-half, deckBottom], [half, deckBottom], [half, deckTop], [-half, deckTop]] as [number, number][] });
+  P.add('turret', sectionSolid([
+    deckSection(0.30, edgeX(0.30 - lap) + lap),
+    deckSection(0.40, edgeX(0.40 - lap) + lap),
+    deckSection(0.50, edgeX(0.50 - lap) + lap),
+    deckSection(0.58, edgeX(0.58 - lap) + lap),
+    deckSection(upperEdge[0][1] + lap, upperEdge[0][0] + lap),
+    deckSection(frontZ, channelHalf),
+  ]));
+  // Pleated boot in the gun frame: troughs on the collar's rear radius, crests just under the deck, five soft folds
+  // tapering toward the collar; the rear rim tucks under the deck and the front cuff into the collar (gun-local z 0
+  // is the collar's rear face, radius 0.273).
+  const gunY = P.gunG.position.y, gunZ = P.gunG.position.z;
+  const crest = deckBottom - gunY - 0.004, trough = 0.296;
+  const rearZ = frontZ - gunZ - 0.12;
+  const foldStart = rearZ + 0.012, foldEnd = 0.012, folds = 5;
+  const profile: Array<readonly [number, number]> = [[0.24, rearZ], [trough, rearZ + 0.004]];
+  const samples = folds * 6;
+  for (let index = 1; index <= samples; index++) {
+    const t = index / samples;
+    const z = foldStart + (foldEnd - foldStart) * t;
+    const amplitude = (crest - trough) * (1 - 0.35 * t);
+    profile.push([trough + amplitude * (0.5 - 0.5 * Math.cos(2 * Math.PI * folds * t)), z]);
+  }
+  profile.push([0.278, 0.024], [0.262, 0.034]);
+  P.add('gunMountCanvasSkin', place(latheY(profile, P.q ? 24 : 14), 0, 0, 0, Math.PI / 2, 0, 0));
+  P.add('gunMountDark', KIT.torus(0.276, 0.007, P.q ? 24 : 14), 0, 0, 0.018, Math.PI / 2, 0, 0);   // the cuff's clamp band
+  P.turretG.userData.type99aGunThroatReceipt = Object.freeze({
+    deckTopLocalY: deckTop, deckBottomLocalY: deckBottom, deckFrontLocalZ: frontZ, lapM: lap,
+    bootFolds: folds, bootCrestRadiusM: crest, bootTroughRadiusM: trough, bootBucket: 'gunMountCanvasSkin',
+    closesInteriorPocket: true,
+  });
 }
 
 function addSmokeAndWarningSuite(
@@ -290,7 +350,7 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
           chevronStations.at(-1)!.x, startT);
         const endX = THREE.MathUtils.lerp(chevronStations[0].x,
           chevronStations.at(-1)!.x, endT);
-        const panel=chevronSurfacePanel(
+        const panel=variant==='vt4a1'?chineseArrowCassette(chevronStations,side,startX,endX):chevronSurfacePanel(
           interpolateChevronStation(chevronStations, startX),
           interpolateChevronStation(chevronStations, endX),
           side,
@@ -306,6 +366,7 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
     sleeveStart: variant === 'type99a' ? 1.68 : 1.55,
     sleeveEnd: variant === 'type99a' ? 3.86 : 3.62,
   });
+  if (variant === 'type99a') addType99AGunThroatClosure(P, chevronStations);
 
   // The bustle is structural volume, not a detached basket. These overlapping
   // armored panniers continue the primary shell to a deep rear service wall;
@@ -347,8 +408,25 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
   }), [0, rearBottomY(0.14, -2.78), rearZ(-2.78)]);
 }
 
+/**
+ * A flat-faced machined ring race (rectangular section with chamfered top edges) seated with its underside at `y`, in
+ * the fitting paint, with `bolts` dark bolt heads round its face (tank-accessories round 4, 2026-10-07).
+ */
+function addMachinedRace(P: FrontlinePort, rIn: number, rOut: number, h: number, x: number, y: number, z: number,
+  bolts: number): void {
+  const c = Math.min(0.004, (rOut - rIn) * 0.3);
+  const race = new THREE.LatheGeometry([[rIn, 0], [rOut, 0], [rOut, h - c], [rOut - c, h], [rIn + c, h], [rIn, h - c], [rIn, 0]]
+    .map(([r, yy]) => new THREE.Vector2(r, yy)), P.q ? 32 : 18);
+  P.add('turretDetail', race, x, y, z);
+  const rm = (rIn + rOut) / 2;
+  for (let k = 0; k < bolts; k++) {
+    const a = (k + 0.5) * (Math.PI * 2 / bolts);
+    P.add('turretDark', KIT.cylY(0.006, 0.006, 0.006, 6), x + Math.cos(a) * rm, y + h + 0.002, z + Math.sin(a) * rm);
+  }
+}
+
 function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig): void {
-  const { box, cylY, torus } = KIT;
+  const { box, cylY } = KIT;
   const { variant, heightScale, widthScale, depthScale } = config;
   const heightRatio = heightScale / 0.75;
   const roofLift = 0.89 * heightScale - 0.6675;
@@ -377,8 +455,12 @@ function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig):
   P.addModuleVisual('optics', 'turretGlass', box(0.25, 0.17, 0.020),
     sightX, 0.85 + roofLift, sightZ + 0.21, 0, -0.05, 0);
   P.addEquipment('turret', box(0.48, 0.18, 0.43), 0.47, 0.78 + roofLift, -0.02);
-  P.add('turretDark', torus(0.22, 0.016, 18), 0.47, 0.88 + roofLift, -0.02,
-    Math.PI / 2, 0, 0);
+  // KIT.torus already lies flat; the extra quarter turn stood this hatch ring on edge as a 0.44 m hoop over the roof
+  // (round 3, 2026-10-07: it framed the commander's gun in the critics' stow view and trapped interior-fill boxes)
+  // 2026-10-07 (round 4, wave 215: "the dark rings on the hatch and round the MG pedestal read as loose rubber hoses,
+  // not machined ring mounts"): the round dark tube becomes a flat machined race seated on the hatch block, in the
+  // fitting paint, with its bolt circle.
+  addMachinedRace(P, 0.178, 0.208, 0.014, 0.47, 0.87 + roofLift, -0.02, 10);
   addSmokeAndWarningSuite(P, {
     warningX: sx(variant === 'type99a' ? 1.08 : 1.02),
     warningZ: sz(variant === 'type99a' ? -1.38 : -1.52),
@@ -391,7 +473,7 @@ function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig):
     mount(P, 'turret', FITTINGS.openYokeRws({
       mats: P.mats, bodySlot: 'turret', sizeStandard: 'k2b-compact-tower',
       scale: 0.70, towerRise: 0.08, variant: 'korean-twin', sensorHead: true,
-      sensorMount: 'roof', weapon: true, caliberMm: 12.7,
+      sensorMount: 'roof', weapon: true, caliberMm: 12.7, cls: 'qjc88',
       weaponName: 'QJC-88 remote weapon station', seed: 430,
     }), [0.38, 0.73 + roofLift, -0.86], [0, 0.03, 0]);
     P.addEquipment('turret', box(0.38, 0.15, 0.32), 0.38, 0.69 + roofLift, -0.86);
@@ -401,10 +483,13 @@ function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig):
     // cap are one continuous seated stack; this restores the Type 99A's tall
     // command silhouette without reintroducing its discarded legacy turret.
     P.addEquipment('turret', box(0.42, 0.12, 0.40), 0.48, 0.75 + roofLift, -0.72);
-    P.add('turretDark', torus(0.19, 0.014, 18), 0.48, 0.83 + roofLift, -0.72,
-      Math.PI / 2, 0, 0);
+    // round 4 (2026-10-07, wave 215): a flat machined race seated on the pedestal (the round tube floated 6 mm over it)
+    addMachinedRace(P, 0.158, 0.19, 0.014, 0.48, 0.81 + roofLift, -0.72, 10);
+    // 2026-10-08 (round 5; wave 255 on the Type 99A: "a long barrel on a plain block receiver with no ammunition box,
+    // belt or feed"; the coordinator: the right gun per nation, at true size): the QJC-88 (the W85's vehicle form) at
+    // true scale, its 50-round box and belt on the left, instead of a 0.72 NSVT.
     mount(P, 'turret', FITTINGS.pintleMG({
-      mats: P.mats, cls: 'nsvt', tone: 'two-tone', scale: 0.72,
+      mats: P.mats, cls: 'qjc88', tone: 'two-tone', scale: 1.0,
       ammo: true, elev: 0.03, rotation: [0, 0.08, 0], seed: 9944,
     }), [0.48, 0.82 + roofLift, -0.62]);
     P.addEquipment('turret', box(0.48, 0.30, 0.44), 0.72, 0.82 + roofLift, -1.06);

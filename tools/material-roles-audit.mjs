@@ -50,7 +50,7 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CAMO_KEYS = new Set(['hull', 'barrel']);
 const FINISH_OF_KEY = Object.freeze({
   hull: 'camo', barrel: 'camo', wheels: 'scheme-paint', detail: 'solid-paint', canvasCloth: 'cloth', canvasPale: 'cloth',
-  dark: 'metal', rubber: 'rubber', glass: 'glass', wood: 'wood', spareTrack: 'metal', shadow: 'shadow',
+  dark: 'metal', rubber: 'rubber', glass: 'glass', wood: 'wood', bark: 'wood', spareTrack: 'metal', shadow: 'shadow',
 });
 
 // ---- lexicon: words on the authoring line -> the finish the part asks for ----------------------------------

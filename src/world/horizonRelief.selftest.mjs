@@ -32,12 +32,13 @@ for (const character of HORIZON_RELIEF_CHARACTERS) {
   assert.ok(s.far && s.far.ampM >= 250 && s.far.ampM <= 1100 && s.far.hazeIn < s.far.hazeOut && s.far.hazeOut <= 0.86,
     `${character}: the far range's peaks and haze are bounded`);
 }
-// the per-map keys: identity first, the style second, the authored key over both
+// the per-map keys: identity first, the style second, the authored key over both (2026-10-05, the map-revival lane:
+// Orchard Valley's ring rolls as Mount Lebanon's rounded ridges over its alpine border, gauntlet wave 123)
 // (Suzhou Creek, blackglass's id, authors the delta's coastal relief over its old volcanic identity: the map-revival lane)
 const expectedCharacter = {
   // (2026-10-05, the map-revival lane's Caldera round 2: Aso's rim is a wooded, grassy wall, authored `relief: 'rolling'`)
   whiteout: 'polar', winter: 'polar', caldera: 'rolling', blackglass: 'coastal', mars: 'martian', monsoon: 'karst', mangrove: 'karst',
-  coastal: 'coastal', saltwind: 'coastal', polders: 'coastal', fjord: 'alpine', alpine: 'alpine', orchard: 'alpine', reservoir: 'rolling',
+  coastal: 'coastal', saltwind: 'coastal', polders: 'coastal', fjord: 'alpine', alpine: 'alpine', orchard: 'rolling', reservoir: 'rolling',
   // (batch 4: Copper Mesa is Queenstown under the West Coast Range, its ring style 'alpine' — the map-revival lane)
   desert: 'mesa', badlands: 'mesa', titan_gorge: 'mesa', skybridge: 'mesa', copper_mesa: 'alpine',
   verdant: 'rolling', urban: 'rolling', railyard: 'rolling', oasis: 'rolling',

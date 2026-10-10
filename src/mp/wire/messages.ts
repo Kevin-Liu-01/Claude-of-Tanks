@@ -3,6 +3,7 @@
  * quantized integer that travels on the wire (see constants.ts and
  * quantize.ts); the simulation-unit conversions are the caller's.
  */
+import type { DestructionLogEntry } from '../../sim/destructionEvents.ts';
 import type { CloseReasonId, MESSAGE_TYPE, PhaseId, TeamId, VerdictId } from './constants.ts';
 
 export interface HelloMessage {
@@ -246,6 +247,10 @@ export interface SnapshotPacket {
   meta: SnapshotMeta;
   /** Keyframe: the whole destroyed list; delta: indices destroyed since the baseline. */
   destroyed: number[];
+  /** Keyframe: the whole destruction log; delta: the entries after the baseline's `destructionBase` (destructionLog.ts). */
+  destruction: DestructionLogEntry[];
+  /** The log length the entries follow (0 in a keyframe). */
+  destructionBase: number;
   entities: EntityRowPatch[];
   /** Entity ids present in the baseline but hidden now (delta only). */
   removed: number[];
@@ -266,6 +271,8 @@ export interface SnapshotFrame {
   meta: SnapshotMeta;
   /** Sorted destroyed obstacle indices (persistent within the round). */
   destroyed: number[];
+  /** The destruction log so far (persistent within the round, append-only; absent reads as empty). */
+  destruction?: DestructionLogEntry[];
   entities: EntityRow[];
   shells: ShellRow[];
   viewer: ViewerState | null;

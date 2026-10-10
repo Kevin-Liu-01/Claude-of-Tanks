@@ -1,0 +1,3858 @@
+{
+ "map": "urban",
+ "timeOfDay": "day",
+ "productionFormat": "landscape",
+ "fx": {
+  "quality": "cinematic"
+ },
+ "seed": 422,
+ "actors": [
+  {
+   "id": "challenger_3",
+   "name": "hero",
+   "pos": [
+    -10,
+    -150
+   ],
+   "facingDeg": -37.43,
+   "turretDeg": -3.27,
+   "gunDeg": 1,
+   "camo": "sig_challenger_3x",
+   "camoSeed": 2954,
+   "state": "intact"
+  },
+  {
+   "id": "challenger2e",
+   "name": "ally1",
+   "pos": [
+    -1.9,
+    -165.1
+   ],
+   "facingDeg": -33.3,
+   "turretDeg": -2.74,
+   "gunDeg": 1,
+   "camo": "sig_challenger_3x",
+   "camoSeed": 2955,
+   "state": "intact"
+  },
+  {
+   "id": "t72b_1987_x",
+   "name": "foe0",
+   "pos": [
+    -54,
+    10
+   ],
+   "facingDeg": 176.73,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "sig_t72m1_jaguar",
+   "camoSeed": 5486,
+   "state": "wrecked-burnt",
+   "stateAgeS": 30,
+   "smoking": true,
+   "burning": true,
+   "authoredSmoking": false,
+   "authoredBurning": false
+  },
+  {
+   "id": "t72b3_x",
+   "name": "foe1",
+   "pos": [
+    -65,
+    14.5
+   ],
+   "facingDeg": 168.62,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "sig_t72m1_jaguar",
+   "camoSeed": 5487,
+   "state": "burning",
+   "stateAgeS": 30,
+   "authoredBurning": false
+  }
+ ],
+ "effects": [
+  {
+   "id": "fx1",
+   "type": "burning",
+   "actor": "foe0",
+   "params": {},
+   "tMs": 0
+  },
+  {
+   "id": "fx2",
+   "type": "engine_smoke",
+   "actor": "foe0",
+   "params": {},
+   "tMs": 0
+  },
+  {
+   "id": "fx3",
+   "type": "embers",
+   "actor": "foe0",
+   "params": {
+    "radiusM": 4,
+    "rate": 40,
+    "durationS": 20,
+    "rise": 3
+   },
+   "tMs": 0
+  },
+  {
+   "id": "fx4",
+   "type": "burning",
+   "actor": "foe1",
+   "params": {},
+   "tMs": 0
+  },
+  {
+   "id": "fx5",
+   "type": "fire",
+   "actor": "hero",
+   "params": {
+    "slot": 0,
+    "tracer": true,
+    "recoil": true
+   },
+   "tMs": 1300
+  },
+  {
+   "id": "fx6",
+   "type": "explosion",
+   "at": [
+    -19.31,
+    -156.68
+   ],
+   "params": {
+    "size": "huge",
+    "cause": "shot"
+   },
+   "tMs": 2400
+  },
+  {
+   "id": "fx7",
+   "type": "fire",
+   "actor": "ally1",
+   "params": {
+    "slot": 0,
+    "tracer": true,
+    "recoil": true
+   },
+   "tMs": 3300
+  },
+  {
+   "id": "fx8",
+   "type": "barrage",
+   "at": [
+    -22.4,
+    -162.82
+   ],
+   "params": {
+    "count": 5,
+    "radiusM": 12,
+    "size": "mixed",
+    "durationS": 3.5
+   },
+   "tMs": 3900
+  }
+ ],
+ "storyboard": {
+  "version": 2,
+  "durationMs": 6600,
+  "shots": [
+   {
+    "id": "cam-0",
+    "label": "t0",
+    "tMs": 0,
+    "pos": [
+     -9.839086001107692,
+     8.015011235175372,
+     -118.00040458560514
+    ],
+    "lookAt": [
+     -10.305845565017462,
+     6.204952995338484,
+     -149.60445165863177
+    ],
+    "fov": 16,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-1",
+    "label": "t240",
+    "tMs": 240,
+    "pos": [
+     -11.35626661909134,
+     7.941828111233427,
+     -116.79401703356947
+    ],
+    "lookAt": [
+     -11.623936883609751,
+     6.301651580272468,
+     -147.89325433444068
+    ],
+    "fov": 16.363335837716004,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-2",
+    "label": "t480",
+    "tMs": 480,
+    "pos": [
+     -12.884139331140126,
+     7.8646865010826845,
+     -115.72547745848573
+    ],
+    "lookAt": [
+     -12.955724309580134,
+     6.377881684873199,
+     -146.1927024911439
+    ],
+    "fov": 16.79495116453794,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-3",
+    "label": "t720",
+    "tMs": 720,
+    "pos": [
+     -14.411181403819608,
+     7.782336480674281,
+     -114.77261263888674
+    ],
+    "lookAt": [
+     -14.294951327284666,
+     6.412528374283876,
+     -144.49802666289864
+    ],
+    "fov": 17.28907588279489,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-4",
+    "label": "t960",
+    "tMs": 960,
+    "pos": [
+     -15.89534491980095,
+     7.647343301205012,
+     -113.9123472080426
+    ],
+    "lookAt": [
+     -15.634870805304011,
+     6.551421532061731,
+     -142.80394611196618
+    ],
+    "fov": 17.839939894815927,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-5",
+    "label": "t1200",
+    "tMs": 1200,
+    "pos": [
+     -17.331928779149457,
+     7.511156285299659,
+     -113.12183230594069
+    ],
+    "lookAt": [
+     -16.96927195296956,
+     6.559568132355421,
+     -141.1055729875106
+    ],
+    "fov": 18.441773102930128,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-6",
+    "label": "t1440",
+    "tMs": 1440,
+    "pos": [
+     -18.728446028828234,
+     7.371637923083551,
+     -112.3786384007497
+    ],
+    "lookAt": [
+     -18.29193281433667,
+     6.475123490181957,
+     -139.3980899633061
+    ],
+    "fov": 19.088805409466566,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-7",
+    "label": "t1680",
+    "tMs": 1680,
+    "pos": [
+     -20.098728110985746,
+     7.224161759336395,
+     -111.66108170576145
+    ],
+    "lookAt": [
+     -19.596882703073156,
+     6.357069850227593,
+     -137.6770560125865
+    ],
+    "fov": 19.77526671675432,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-8",
+    "label": "t1920",
+    "tMs": 1920,
+    "pos": [
+     -21.434994348687624,
+     7.070618618805934,
+     -110.94692126276412
+    ],
+    "lookAt": [
+     -20.877276359168647,
+     6.203185357320303,
+     -135.93767612906225
+    ],
+    "fov": 20.49538692712246,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-9",
+    "label": "t2160",
+    "tMs": 2160,
+    "pos": [
+     -22.727152829127146,
+     6.9064403819196265,
+     -110.21439325416925
+    ],
+    "lookAt": [
+     -22.126427167615468,
+     6.034798720723774,
+     -134.17570345309258
+    ],
+    "fov": 21.243395942900072,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-10",
+    "label": "t2400",
+    "tMs": 2400,
+    "pos": [
+     -23.996971431029557,
+     6.737825738129185,
+     -109.442640373512
+    ],
+    "lookAt": [
+     -23.33694151957365,
+     5.858530242225575,
+     -132.38691614949224
+    ],
+    "fov": 22.01352366641623,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-11",
+    "label": "t2640",
+    "tMs": 2640,
+    "pos": [
+     -25.227884602531848,
+     6.576268660091155,
+     -108.60299760250184
+    ],
+    "lookAt": [
+     -24.488723672023674,
+     5.685650843456722,
+     -130.55968277973463
+    ],
+    "fov": 22.8,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-12",
+    "label": "t2880",
+    "tMs": 2880,
+    "pos": [
+     -26.437575888484517,
+     6.428404051458785,
+     -107.68436651535667
+    ],
+    "lookAt": [
+     -25.586557810934025,
+     5.54189993432945,
+     -128.69940715968625
+    ],
+    "fov": 23.597054845980463,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-13",
+    "label": "t3120",
+    "tMs": 3120,
+    "pos": [
+     -27.660038993542877,
+     6.284497751801254,
+     -106.68200821640639
+    ],
+    "lookAt": [
+     -26.64606611853986,
+     5.3973811893258095,
+     -126.81703687665319
+    ],
+    "fov": 24.3989181066867,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-14",
+    "label": "t3300",
+    "tMs": 3300,
+    "pos": [
+     -28.585968608025496,
+     6.163416148643735,
+     -105.87131309706534
+    ],
+    "lookAt": [
+     -27.42537885375473,
+     5.251491677925971,
+     -125.396785679441
+    ],
+    "fov": 25,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-15",
+    "label": "t3360",
+    "tMs": 3360,
+    "pos": [
+     -28.899981320818704,
+     6.075007932592445,
+     -105.59298650865146
+    ],
+    "lookAt": [
+     -27.68361974398597,
+     5.111921342164903,
+     -124.92254845004847
+    ],
+    "fov": 25.203419984973703,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-16",
+    "label": "t3600",
+    "tMs": 3600,
+    "pos": [
+     -30.181453597214023,
+     5.959920597421672,
+     -104.4914032592553
+    ],
+    "lookAt": [
+     -28.71518645625031,
+     4.971778643920259,
+     -123.02490324951937
+    ],
+    "fov": 26.080390683696468,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-17",
+    "label": "t3840",
+    "tMs": 3840,
+    "pos": [
+     -31.51271783107346,
+     5.8549065419730395,
+     -103.41200503885035
+    ],
+    "lookAt": [
+     -29.75700508344971,
+     4.8452548810501535,
+     -121.13298476155295
+    ],
+    "fov": 27.043912847483096,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-18",
+    "label": "t4080",
+    "tMs": 4080,
+    "pos": [
+     -32.885243200274644,
+     5.767715912855495,
+     -102.35710389774735
+    ],
+    "lookAt": [
+     -30.824883674589042,
+     4.732834498316966,
+     -119.25573037686038
+    ],
+    "fov": 28.074368144252446,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-19",
+    "label": "t4320",
+    "tMs": 4320,
+    "pos": [
+     -34.3163243034304,
+     5.69629828793177,
+     -101.33235081044886
+    ],
+    "lookAt": [
+     -31.93533415876972,
+     4.6214163637883345,
+     -117.40339734735612
+    ],
+    "fov": 29.152138241923364,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-20",
+    "label": "t4560",
+    "tMs": 4560,
+    "pos": [
+     -35.79666065679784,
+     5.654129637226758,
+     -100.33980158053446
+    ],
+    "lookAt": [
+     -33.10286899618045,
+     4.554783240167563,
+     -115.58646731015057
+    ],
+    "fov": 30.257604808414726,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-21",
+    "label": "t4800",
+    "tMs": 4800,
+    "pos": [
+     -37.31882517142496,
+     5.634317104580161,
+     -99.3813288759998
+    ],
+    "lookAt": [
+     -34.34182677775843,
+     4.533082572925471,
+     -113.81732427100613
+    ],
+    "fov": 31.37114951164538,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-22",
+    "label": "t5040",
+    "tMs": 5040,
+    "pos": [
+     -38.85997563208968,
+     5.630415894198942,
+     -98.44635659217305
+    ],
+    "lookAt": [
+     -35.649773605624915,
+     4.544972765301422,
+     -112.09828001960358
+    ],
+    "fov": 32.473154019534185,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-23",
+    "label": "t5280",
+    "tMs": 5280,
+    "pos": [
+     -40.423567185846224,
+     5.635635322784832,
+     -97.52185838437353
+    ],
+    "lookAt": [
+     -37.01200515932414,
+     4.589717029547355,
+     -110.4216865234392
+    ],
+    "fov": 33.544000000000004,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-24",
+    "label": "t5520",
+    "tMs": 5520,
+    "pos": [
+     -41.978455714402116,
+     5.6463819146793535,
+     -96.58333092416254
+    ],
+    "lookAt": [
+     -38.41180295412132,
+     4.6711299457030835,
+     -108.77622581382076
+    ],
+    "fov": 34.56406912096168,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-25",
+    "label": "t5760",
+    "tMs": 5760,
+    "pos": [
+     -43.520461492419464,
+     5.651469546591926,
+     -95.61248405243039
+    ],
+    "lookAt": [
+     -39.83508663168851,
+     4.773785063704713,
+     -107.15101232547954
+    ],
+    "fov": 35.51374305033809,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-26",
+    "label": "t6000",
+    "tMs": 6000,
+    "pos": [
+     -45.02986403303179,
+     5.647996799863497,
+     -94.58519703767952
+    ],
+    "lookAt": [
+     -41.267409067239825,
+     4.887303247255381,
+     -105.53385008148985
+    ],
+    "fov": 36.37340345604808,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-27",
+    "label": "t6240",
+    "tMs": 6240,
+    "pos": [
+     -46.490213043640765,
+     5.632276717206572,
+     -93.47763712485519
+    ],
+    "lookAt": [
+     -42.694870125694095,
+     4.955845405337752,
+     -103.9125558242916
+    ],
+    "fov": 37.12343200601052,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-28",
+    "label": "t6480",
+    "tMs": 6480,
+    "pos": [
+     -47.90418027361059,
+     5.611916738160459,
+     -92.27356542935915
+    ],
+    "lookAt": [
+     -44.104128646119904,
+     5.0302483731235625,
+     -102.27556239960107
+    ],
+    "fov": 37.74421036814425,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   },
+   {
+    "id": "cam-29",
+    "label": "t6600",
+    "tMs": 6600,
+    "pos": [
+     -48.581703884709,
+     5.6018767833709715,
+     -91.6255165769301
+    ],
+    "lookAt": [
+     -44.79705623812102,
+     5.101957160019252,
+     -101.44716717710568
+    ],
+    "fov": 38,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "spline"
+   }
+  ],
+  "cameraCues": [],
+  "actorTracks": [
+   {
+    "actor": "hero",
+    "keys": [
+     {
+      "id": "hero-0",
+      "tMs": 0,
+      "pos": [
+       -10,
+       -150
+      ],
+      "facingDeg": -37.42866246685103,
+      "turretDeg": 22.05,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-1",
+      "tMs": 110,
+      "pos": [
+       -10.602154105710435,
+       -149.21418315898205
+      ],
+      "facingDeg": -37.59583696263694,
+      "turretDeg": 22.35,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-2",
+      "tMs": 220,
+      "pos": [
+       -11.207930395778577,
+       -148.4311548686598
+      ],
+      "facingDeg": -37.848959809218925,
+      "turretDeg": 22.73,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-3",
+      "tMs": 330,
+      "pos": [
+       -11.816953238963414,
+       -147.65064861822881
+      ],
+      "facingDeg": -38.055660549262996,
+      "turretDeg": 23.08,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-4",
+      "tMs": 440,
+      "pos": [
+       -12.428408509051687,
+       -146.87204621841033
+      ],
+      "facingDeg": -38.218557307750906,
+      "turretDeg": 23.38,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-5",
+      "tMs": 550,
+      "pos": [
+       -13.041816900207396,
+       -146.094981382014
+      ],
+      "facingDeg": -38.33535533245668,
+      "turretDeg": 23.63,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-6",
+      "tMs": 660,
+      "pos": [
+       -13.656477860740994,
+       -145.3189068069296
+      ],
+      "facingDeg": -38.40836573964701,
+      "turretDeg": 23.85,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-7",
+      "tMs": 770,
+      "pos": [
+       -14.271831570576094,
+       -144.54338131454867
+      ],
+      "facingDeg": -38.43556488957828,
+      "turretDeg": 24.02,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-8",
+      "tMs": 880,
+      "pos": [
+       -14.887255749180985,
+       -143.7679117326296
+      ],
+      "facingDeg": -38.41885610085986,
+      "turretDeg": 24.15,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-9",
+      "tMs": 990,
+      "pos": [
+       -15.5021342081133,
+       -142.9920094458266
+      ],
+      "facingDeg": -38.356533351414896,
+      "turretDeg": 24.23,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-10",
+      "tMs": 1100,
+      "pos": [
+       -16.11588661937311,
+       -142.21521625913627
+      ],
+      "facingDeg": -38.250068057913786,
+      "turretDeg": 24.27,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-11",
+      "tMs": 1210,
+      "pos": [
+       -16.72786451945202,
+       -141.43702455029938
+      ],
+      "facingDeg": -38.098059386310446,
+      "turretDeg": 24.27,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-12",
+      "tMs": 1320,
+      "pos": [
+       -17.337493947717867,
+       -140.65699195630864
+      ],
+      "facingDeg": -37.90160279973627,
+      "turretDeg": 24.22,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-13",
+      "tMs": 1430,
+      "pos": [
+       -17.94411709602443,
+       -139.8746195750784
+      ],
+      "facingDeg": -37.659533867480484,
+      "turretDeg": 24.13,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-14",
+      "tMs": 1540,
+      "pos": [
+       -18.547133214196005,
+       -139.0894640620795
+      ],
+      "facingDeg": -37.372699755033324,
+      "turretDeg": 24,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-15",
+      "tMs": 1650,
+      "pos": [
+       -19.145896011945755,
+       -138.30106080733685
+      ],
+      "facingDeg": -37.04006225208878,
+      "turretDeg": 23.81,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-16",
+      "tMs": 1760,
+      "pos": [
+       -19.739748638692888,
+       -137.50895290566527
+      ],
+      "facingDeg": -36.66239913679804,
+      "turretDeg": 23.59,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-17",
+      "tMs": 1870,
+      "pos": [
+       -20.328074718499895,
+       -136.71273252315598
+      ],
+      "facingDeg": -36.23867457967738,
+      "turretDeg": 23.31,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-18",
+      "tMs": 1980,
+      "pos": [
+       -20.91013670436405,
+       -135.91192200106997
+      ],
+      "facingDeg": -35.76979371281158,
+      "turretDeg": 22.99,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-19",
+      "tMs": 2090,
+      "pos": [
+       -21.485364530377485,
+       -135.1061895188676
+      ],
+      "facingDeg": -35.25462664355813,
+      "turretDeg": 22.62,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-20",
+      "tMs": 2200,
+      "pos": [
+       -22.052920035174886,
+       -134.29503496476823
+      ],
+      "facingDeg": -34.69437299596125,
+      "turretDeg": 22.21,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-21",
+      "tMs": 2310,
+      "pos": [
+       -22.6122956162114,
+       -133.47821931692758
+      ],
+      "facingDeg": -34.05819991279339,
+      "turretDeg": 21.72,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-22",
+      "tMs": 2420,
+      "pos": [
+       -23.161219484973234,
+       -132.654351746167
+      ],
+      "facingDeg": -33.200625634502295,
+      "turretDeg": 21,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-23",
+      "tMs": 2530,
+      "pos": [
+       -23.696394113162295,
+       -131.82148859762486
+      ],
+      "facingDeg": -32.26140286730483,
+      "turretDeg": 20.2,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-24",
+      "tMs": 2640,
+      "pos": [
+       -24.218285798187136,
+       -130.98023403272856
+      ],
+      "facingDeg": -31.423942221165106,
+      "turretDeg": 19.5,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-25",
+      "tMs": 2750,
+      "pos": [
+       -24.728827701589722,
+       -130.13204134370798
+      ],
+      "facingDeg": -30.68876842363047,
+      "turretDeg": 18.89,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-26",
+      "tMs": 2860,
+      "pos": [
+       -25.229027610282582,
+       -129.27770587129325
+      ],
+      "facingDeg": -30.06291620685222,
+      "turretDeg": 18.39,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-27",
+      "tMs": 2970,
+      "pos": [
+       -25.720851210488824,
+       -128.41851934620558
+      ],
+      "facingDeg": -29.538848229625415,
+      "turretDeg": 17.99,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-28",
+      "tMs": 3080,
+      "pos": [
+       -26.205413166243734,
+       -127.5552146664101
+      ],
+      "facingDeg": -29.123054322448663,
+      "turretDeg": 17.7,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-29",
+      "tMs": 3190,
+      "pos": [
+       -26.684631925791603,
+       -126.68893150458553
+      ],
+      "facingDeg": -28.807911455235317,
+      "turretDeg": 17.51,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-30",
+      "tMs": 3300,
+      "pos": [
+       -27.159758961112583,
+       -125.82039643548099
+      ],
+      "facingDeg": -28.600336490219522,
+      "turretDeg": 17.42,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-31",
+      "tMs": 3410,
+      "pos": [
+       -27.632580239489556,
+       -124.9506035362727
+      ],
+      "facingDeg": -28.492324633176224,
+      "turretDeg": 17.44,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-32",
+      "tMs": 3520,
+      "pos": [
+       -28.10454431911253,
+       -124.08034501034642
+      ],
+      "facingDeg": -28.49175413617087,
+      "turretDeg": 17.56,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-33",
+      "tMs": 3630,
+      "pos": [
+       -28.577229249875405,
+       -123.2104779475057
+      ],
+      "facingDeg": -28.59066626936709,
+      "turretDeg": 17.79,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-34",
+      "tMs": 3740,
+      "pos": [
+       -29.052304814314578,
+       -122.34191478921937
+      ],
+      "facingDeg": -28.79662850731722,
+      "turretDeg": 18.12,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-35",
+      "tMs": 3850,
+      "pos": [
+       -29.531140735052308,
+       -121.47541978504754
+      ],
+      "facingDeg": -29.103047011602367,
+      "turretDeg": 18.56,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-36",
+      "tMs": 3960,
+      "pos": [
+       -30.01556026590293,
+       -120.6120353691991
+      ],
+      "facingDeg": -29.516880020989174,
+      "turretDeg": 19.11,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-37",
+      "tMs": 4070,
+      "pos": [
+       -30.50679451462425,
+       -119.75251139237277
+      ],
+      "facingDeg": -30.032387016523675,
+      "turretDeg": 19.77,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-38",
+      "tMs": 4180,
+      "pos": [
+       -31.00673189411277,
+       -118.89802270130129
+      ],
+      "facingDeg": -30.656265510751155,
+      "turretDeg": 20.54,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-39",
+      "tMs": 4290,
+      "pos": [
+       -31.516510507638987,
+       -118.04937035967897
+      ],
+      "facingDeg": -31.382733217113294,
+      "turretDeg": 21.42,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-40",
+      "tMs": 4400,
+      "pos": [
+       -32.03800349897885,
+       -117.20786941536203
+      ],
+      "facingDeg": -32.21853800396097,
+      "turretDeg": 22.42,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-41",
+      "tMs": 4510,
+      "pos": [
+       -32.57226840312727,
+       -116.37442123675801
+      ],
+      "facingDeg": -33.156893066744665,
+      "turretDeg": 23.53,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-42",
+      "tMs": 4620,
+      "pos": [
+       -33.121083987537446,
+       -115.55048685224715
+      ],
+      "facingDeg": -34.20357788354762,
+      "turretDeg": 24.76,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-43",
+      "tMs": 4730,
+      "pos": [
+       -33.68536154938483,
+       -114.73706575207576
+      ],
+      "facingDeg": -35.31504791007337,
+      "turretDeg": 26.07,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-44",
+      "tMs": 4840,
+      "pos": [
+       -34.265557171443575,
+       -113.93492005824051
+      ],
+      "facingDeg": -36.38936368033884,
+      "turretDeg": 27.34,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-45",
+      "tMs": 4950,
+      "pos": [
+       -34.85974731982088,
+       -113.14307934586618
+      ],
+      "facingDeg": -37.35460471432673,
+      "turretDeg": 28.52,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-46",
+      "tMs": 5060,
+      "pos": [
+       -35.466749843940114,
+       -112.36101427616502
+      ],
+      "facingDeg": -38.21957273385237,
+      "turretDeg": 29.61,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-47",
+      "tMs": 5170,
+      "pos": [
+       -36.08450618559479,
+       -111.58741163663831
+      ],
+      "facingDeg": -38.975898547994554,
+      "turretDeg": 30.59,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-48",
+      "tMs": 5280,
+      "pos": [
+       -36.71198462831096,
+       -110.821671124356
+      ],
+      "facingDeg": -39.63024356219257,
+      "turretDeg": 31.49,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-49",
+      "tMs": 5390,
+      "pos": [
+       -37.347242307153884,
+       -110.06236931205093
+      ],
+      "facingDeg": -40.180062635364855,
+      "turretDeg": 32.28,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-50",
+      "tMs": 5500,
+      "pos": [
+       -37.98928653083194,
+       -109.30879537627104
+      ],
+      "facingDeg": -40.62725931999333,
+      "turretDeg": 32.98,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-51",
+      "tMs": 5610,
+      "pos": [
+       -38.636358327608,
+       -108.55953258280735
+      ],
+      "facingDeg": -40.97363839322055,
+      "turretDeg": 33.59,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-52",
+      "tMs": 5720,
+      "pos": [
+       -39.28741174465452,
+       -107.81372572490758
+      ],
+      "facingDeg": -41.217112401479916,
+      "turretDeg": 34.1,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-53",
+      "tMs": 5830,
+      "pos": [
+       -39.94089797640497,
+       -107.07004895969338
+      ],
+      "facingDeg": -41.36257010933201,
+      "turretDeg": 34.51,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-54",
+      "tMs": 5940,
+      "pos": [
+       -40.595644966497744,
+       -106.32748156448565
+      ],
+      "facingDeg": -41.404545870200636,
+      "turretDeg": 34.83,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-55",
+      "tMs": 6050,
+      "pos": [
+       -41.25031267244503,
+       -105.58484428791326
+      ],
+      "facingDeg": -41.34972567072029,
+      "turretDeg": 35.06,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-56",
+      "tMs": 6160,
+      "pos": [
+       -41.903542500729316,
+       -104.84094236573651
+      ],
+      "facingDeg": -41.19121944627807,
+      "turretDeg": 35.18,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-57",
+      "tMs": 6270,
+      "pos": [
+       -42.55418069518023,
+       -104.09477334229192
+      ],
+      "facingDeg": -40.934985751921666,
+      "turretDeg": 35.21,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-58",
+      "tMs": 6380,
+      "pos": [
+       -43.20065208814641,
+       -103.34499261379399
+      ],
+      "facingDeg": -40.575297554445214,
+      "turretDeg": 35.13,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-59",
+      "tMs": 6490,
+      "pos": [
+       -43.84193449164184,
+       -102.5907704486321
+      ],
+      "facingDeg": -40.1149882898749,
+      "turretDeg": 34.96,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-60",
+      "tMs": 6600,
+      "pos": [
+       -44.47623353291954,
+       -101.83066788352902
+      ],
+      "facingDeg": -39.551920373332855,
+      "turretDeg": 34.68,
+      "gunDeg": 1,
+      "transition": "linear"
+     }
+    ]
+   },
+   {
+    "actor": "ally1",
+    "keys": [
+     {
+      "id": "ally1-0",
+      "tMs": 0,
+      "pos": [
+       -1.8999999999999986,
+       -165.1
+      ],
+      "facingDeg": -33.29905221717354,
+      "turretDeg": 13.94,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-1",
+      "tMs": 110,
+      "pos": [
+       -2.4792878225011745,
+       -164.21707296816996
+      ],
+      "facingDeg": -33.1662336619958,
+      "turretDeg": 13.88,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-2",
+      "tMs": 220,
+      "pos": [
+       -3.0554301343642685,
+       -163.33209006040047
+      ],
+      "facingDeg": -32.97645629994777,
+      "turretDeg": 13.77,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-3",
+      "tMs": 330,
+      "pos": [
+       -3.628948174329316,
+       -162.44540389568292
+      ],
+      "facingDeg": -32.823403523518564,
+      "turretDeg": 13.7,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-4",
+      "tMs": 440,
+      "pos": [
+       -4.200330121901935,
+       -161.55733955827765
+      ],
+      "facingDeg": -32.70783107478664,
+      "turretDeg": 13.66,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-5",
+      "tMs": 550,
+      "pos": [
+       -4.770231749012817,
+       -160.6683244237448
+      ],
+      "facingDeg": -32.62846748194131,
+      "turretDeg": 13.65,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-6",
+      "tMs": 660,
+      "pos": [
+       -5.339187087015868,
+       -159.77870328730344
+      ],
+      "facingDeg": -32.58571816168621,
+      "turretDeg": 13.69,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-7",
+      "tMs": 770,
+      "pos": [
+       -5.90776293636574,
+       -158.88883953269232
+      ],
+      "facingDeg": -32.58043308253214,
+      "turretDeg": 13.76,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-8",
+      "tMs": 880,
+      "pos": [
+       -6.476537095093857,
+       -157.99910253717178
+      ],
+      "facingDeg": -32.61132435912463,
+      "turretDeg": 13.87,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-9",
+      "tMs": 990,
+      "pos": [
+       -7.046069805063507,
+       -157.10985096600123
+      ],
+      "facingDeg": -32.67880030303441,
+      "turretDeg": 14.02,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-10",
+      "tMs": 1100,
+      "pos": [
+       -7.616964785240083,
+       -156.22147348139893
+      ],
+      "facingDeg": -32.78378757094677,
+      "turretDeg": 14.21,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-11",
+      "tMs": 1210,
+      "pos": [
+       -8.189734935779208,
+       -155.3343040154278
+      ],
+      "facingDeg": -32.925000887652644,
+      "turretDeg": 14.43,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-12",
+      "tMs": 1320,
+      "pos": [
+       -8.764979658657136,
+       -154.4487372149138
+      ],
+      "facingDeg": -33.10282054966215,
+      "turretDeg": 14.69,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-13",
+      "tMs": 1430,
+      "pos": [
+       -9.343297733244027,
+       -153.56517474879206
+      ],
+      "facingDeg": -33.31827775573199,
+      "turretDeg": 15,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-14",
+      "tMs": 1540,
+      "pos": [
+       -9.92515040672013,
+       -152.68393624155254
+      ],
+      "facingDeg": -33.57005351154113,
+      "turretDeg": 15.34,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-15",
+      "tMs": 1650,
+      "pos": [
+       -10.5111858011011,
+       -151.80547394283096
+      ],
+      "facingDeg": -33.85843369886116,
+      "turretDeg": 15.72,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-16",
+      "tMs": 1760,
+      "pos": [
+       -11.101957793883345,
+       -150.93019068495846
+      ],
+      "facingDeg": -34.18459654362602,
+      "turretDeg": 16.14,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-17",
+      "tMs": 1870,
+      "pos": [
+       -11.697886307609599,
+       -150.05841042086234
+      ],
+      "facingDeg": -34.54710887530643,
+      "turretDeg": 16.6,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-18",
+      "tMs": 1980,
+      "pos": [
+       -12.29967296763438,
+       -149.19066390162334
+      ],
+      "facingDeg": -34.9461039129211,
+      "turretDeg": 17.1,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-19",
+      "tMs": 2090,
+      "pos": [
+       -12.907788218357352,
+       -148.32734173457305
+      ],
+      "facingDeg": -35.38288361535145,
+      "turretDeg": 17.64,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-20",
+      "tMs": 2200,
+      "pos": [
+       -13.522648827729618,
+       -147.46881121210134
+      ],
+      "facingDeg": -35.91887661507635,
+      "turretDeg": 18.29,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-21",
+      "tMs": 2310,
+      "pos": [
+       -14.1472613670296,
+       -146.6173552236711
+      ],
+      "facingDeg": -36.628488763385675,
+      "turretDeg": 19.11,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-22",
+      "tMs": 2420,
+      "pos": [
+       -14.782629950316586,
+       -145.77389449413468
+      ],
+      "facingDeg": -37.315898665367904,
+      "turretDeg": 19.92,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-23",
+      "tMs": 2530,
+      "pos": [
+       -15.427286561109373,
+       -144.9375078812691
+      ],
+      "facingDeg": -37.91751987243024,
+      "turretDeg": 20.65,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-24",
+      "tMs": 2640,
+      "pos": [
+       -16.080253968029343,
+       -144.10759111466948
+      ],
+      "facingDeg": -38.42943032364074,
+      "turretDeg": 21.29,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-25",
+      "tMs": 2750,
+      "pos": [
+       -16.739911534381218,
+       -143.28298128576859
+      ],
+      "facingDeg": -38.856205661146944,
+      "turretDeg": 21.85,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-26",
+      "tMs": 2860,
+      "pos": [
+       -17.40500915887512,
+       -142.46275104425524
+      ],
+      "facingDeg": -39.19780601136386,
+      "turretDeg": 22.33,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-27",
+      "tMs": 2970,
+      "pos": [
+       -18.074483841783714,
+       -141.64608846990424
+      ],
+      "facingDeg": -39.45109060709294,
+      "turretDeg": 22.72,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-28",
+      "tMs": 3080,
+      "pos": [
+       -18.746898734116847,
+       -140.83184453644512
+      ],
+      "facingDeg": -39.62024232809929,
+      "turretDeg": 23.04,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-29",
+      "tMs": 3190,
+      "pos": [
+       -19.42111164004013,
+       -140.01908827893556
+      ],
+      "facingDeg": -39.704397338356436,
+      "turretDeg": 23.27,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-30",
+      "tMs": 3300,
+      "pos": [
+       -20.095908180523015,
+       -139.20681638965024
+      ],
+      "facingDeg": -39.70152112130546,
+      "turretDeg": 23.42,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-31",
+      "tMs": 3410,
+      "pos": [
+       -20.770077344340944,
+       -138.3940238759786
+      ],
+      "facingDeg": -39.61486034576756,
+      "turretDeg": 23.48,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-32",
+      "tMs": 3520,
+      "pos": [
+       -21.442406016173024,
+       -137.57970866813272
+      ],
+      "facingDeg": -39.442408090564136,
+      "turretDeg": 23.46,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-33",
+      "tMs": 3630,
+      "pos": [
+       -22.111627292415236,
+       -136.76283868272444
+      ],
+      "facingDeg": -39.183426163037524,
+      "turretDeg": 23.35,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-34",
+      "tMs": 3740,
+      "pos": [
+       -22.776626238561438,
+       -135.94252869509313
+      ],
+      "facingDeg": -38.84002865979929,
+      "turretDeg": 23.16,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-35",
+      "tMs": 3850,
+      "pos": [
+       -23.435992712925582,
+       -135.11768553493468
+      ],
+      "facingDeg": -38.40946199536162,
+      "turretDeg": 22.88,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-36",
+      "tMs": 3960,
+      "pos": [
+       -24.08850234897243,
+       -134.28740984386457
+      ],
+      "facingDeg": -37.8919546315152,
+      "turretDeg": 22.52,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-37",
+      "tMs": 4070,
+      "pos": [
+       -24.733017353749535,
+       -133.45091420489473
+      ],
+      "facingDeg": -37.28896477636135,
+      "turretDeg": 22.06,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-38",
+      "tMs": 4180,
+      "pos": [
+       -25.36782562639166,
+       -132.60703025663062
+      ],
+      "facingDeg": -36.59780062588481,
+      "turretDeg": 21.52,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-39",
+      "tMs": 4290,
+      "pos": [
+       -25.991832094334214,
+       -131.75513220834142
+      ],
+      "facingDeg": -35.81923193831272,
+      "turretDeg": 20.89,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-40",
+      "tMs": 4400,
+      "pos": [
+       -26.603793785728627,
+       -130.89454130563902
+      ],
+      "facingDeg": -34.96228491729938,
+      "turretDeg": 20.17,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-41",
+      "tMs": 4510,
+      "pos": [
+       -27.202051872685903,
+       -130.02436825376077
+      ],
+      "facingDeg": -34.10303337531369,
+      "turretDeg": 19.45,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-42",
+      "tMs": 4620,
+      "pos": [
+       -27.787899927625464,
+       -129.14579208224234
+      ],
+      "facingDeg": -33.31970649515841,
+      "turretDeg": 18.8,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-43",
+      "tMs": 4730,
+      "pos": [
+       -28.36249840528698,
+       -128.25981343024185
+      ],
+      "facingDeg": -32.62454469023585,
+      "turretDeg": 18.23,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-44",
+      "tMs": 4840,
+      "pos": [
+       -28.926724642488193,
+       -127.36719164864216
+      ],
+      "facingDeg": -32.01918344822623,
+      "turretDeg": 17.75,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-45",
+      "tMs": 4950,
+      "pos": [
+       -29.48233877853756,
+       -126.46918310088853
+      ],
+      "facingDeg": -31.50044895629089,
+      "turretDeg": 17.36,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-46",
+      "tMs": 5060,
+      "pos": [
+       -30.030515975463306,
+       -125.56661335730979
+      ],
+      "facingDeg": -31.0693893506003,
+      "turretDeg": 17.05,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-47",
+      "tMs": 5170,
+      "pos": [
+       -30.57247613922396,
+       -124.66029586913817
+      ],
+      "facingDeg": -30.727072505410995,
+      "turretDeg": 16.83,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-48",
+      "tMs": 5280,
+      "pos": [
+       -31.109783692060162,
+       -123.75121155722388
+      ],
+      "facingDeg": -30.47027680336743,
+      "turretDeg": 16.7,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-49",
+      "tMs": 5390,
+      "pos": [
+       -31.64367979867076,
+       -122.84011876697888
+      ],
+      "facingDeg": -30.30074481501477,
+      "turretDeg": 16.65,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-50",
+      "tMs": 5500,
+      "pos": [
+       -32.17556260018358,
+       -121.92784882432761
+      ],
+      "facingDeg": -30.218532776884416,
+      "turretDeg": 16.69,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-51",
+      "tMs": 5610,
+      "pos": [
+       -32.70682196987629,
+       -121.01521556025713
+      ],
+      "facingDeg": -30.221206276002867,
+      "turretDeg": 16.82,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-52",
+      "tMs": 5720,
+      "pos": [
+       -33.23882818605027,
+       -120.10301759353077
+      ],
+      "facingDeg": -30.31168197144623,
+      "turretDeg": 17.03,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-53",
+      "tMs": 5830,
+      "pos": [
+       -33.77296952518523,
+       -119.19206868658064
+      ],
+      "facingDeg": -30.48867550135813,
+      "turretDeg": 17.34,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-54",
+      "tMs": 5940,
+      "pos": [
+       -34.31052492890063,
+       -118.28313080394793
+      ],
+      "facingDeg": -30.750937246976314,
+      "turretDeg": 17.74,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-55",
+      "tMs": 6050,
+      "pos": [
+       -34.85306259541469,
+       -117.37715886377242
+      ],
+      "facingDeg": -31.102339072179017,
+      "turretDeg": 18.23,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-56",
+      "tMs": 6160,
+      "pos": [
+       -35.40177017505187,
+       -116.4749121603178
+      ],
+      "facingDeg": -31.54046760689816,
+      "turretDeg": 18.81,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-57",
+      "tMs": 6270,
+      "pos": [
+       -35.95790403452268,
+       -115.57722451088563
+      ],
+      "facingDeg": -32.06452466632126,
+      "turretDeg": 19.48,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-58",
+      "tMs": 6380,
+      "pos": [
+       -36.523206702822705,
+       -114.68528421960126
+      ],
+      "facingDeg": -32.67992208996185,
+      "turretDeg": 20.25,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-59",
+      "tMs": 6490,
+      "pos": [
+       -37.09855550206014,
+       -113.79979443948366
+      ],
+      "facingDeg": -33.38229736039217,
+      "turretDeg": 21.11,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "ally1-60",
+      "tMs": 6600,
+      "pos": [
+       -37.68527951129927,
+       -112.92180101791959
+      ],
+      "facingDeg": -34.10595018276805,
+      "turretDeg": 22.01,
+      "gunDeg": 1,
+      "transition": "linear"
+     }
+    ]
+   },
+   {
+    "actor": "foe0",
+    "keys": [
+     {
+      "id": "foe0-0",
+      "tMs": 0,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-1",
+      "tMs": 110,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-2",
+      "tMs": 220,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-3",
+      "tMs": 330,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-4",
+      "tMs": 440,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-5",
+      "tMs": 550,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-6",
+      "tMs": 660,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-7",
+      "tMs": 770,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-8",
+      "tMs": 880,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-9",
+      "tMs": 990,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-10",
+      "tMs": 1100,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-11",
+      "tMs": 1210,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-12",
+      "tMs": 1320,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-13",
+      "tMs": 1430,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-14",
+      "tMs": 1540,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-15",
+      "tMs": 1650,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-16",
+      "tMs": 1760,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-17",
+      "tMs": 1870,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-18",
+      "tMs": 1980,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-19",
+      "tMs": 2090,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-20",
+      "tMs": 2200,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-21",
+      "tMs": 2310,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-22",
+      "tMs": 2420,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-23",
+      "tMs": 2530,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-24",
+      "tMs": 2640,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-25",
+      "tMs": 2750,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-26",
+      "tMs": 2860,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-27",
+      "tMs": 2970,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-28",
+      "tMs": 3080,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-29",
+      "tMs": 3190,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-30",
+      "tMs": 3300,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-31",
+      "tMs": 3410,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-32",
+      "tMs": 3520,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-33",
+      "tMs": 3630,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-34",
+      "tMs": 3740,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-35",
+      "tMs": 3850,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-36",
+      "tMs": 3960,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-37",
+      "tMs": 4070,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-38",
+      "tMs": 4180,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-39",
+      "tMs": 4290,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-40",
+      "tMs": 4400,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-41",
+      "tMs": 4510,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-42",
+      "tMs": 4620,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-43",
+      "tMs": 4730,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-44",
+      "tMs": 4840,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-45",
+      "tMs": 4950,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-46",
+      "tMs": 5060,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-47",
+      "tMs": 5170,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-48",
+      "tMs": 5280,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-49",
+      "tMs": 5390,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-50",
+      "tMs": 5500,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-51",
+      "tMs": 5610,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-52",
+      "tMs": 5720,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-53",
+      "tMs": 5830,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-54",
+      "tMs": 5940,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-55",
+      "tMs": 6050,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-56",
+      "tMs": 6160,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-57",
+      "tMs": 6270,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-58",
+      "tMs": 6380,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-59",
+      "tMs": 6490,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-60",
+      "tMs": 6600,
+      "pos": [
+       -54,
+       10
+      ],
+      "facingDeg": 176.72951207681643,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     }
+    ]
+   },
+   {
+    "actor": "foe1",
+    "keys": [
+     {
+      "id": "foe1-0",
+      "tMs": 0,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-1",
+      "tMs": 110,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-2",
+      "tMs": 220,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-3",
+      "tMs": 330,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-4",
+      "tMs": 440,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-5",
+      "tMs": 550,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-6",
+      "tMs": 660,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-7",
+      "tMs": 770,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-8",
+      "tMs": 880,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-9",
+      "tMs": 990,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-10",
+      "tMs": 1100,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-11",
+      "tMs": 1210,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-12",
+      "tMs": 1320,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-13",
+      "tMs": 1430,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-14",
+      "tMs": 1540,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-15",
+      "tMs": 1650,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-16",
+      "tMs": 1760,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-17",
+      "tMs": 1870,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-18",
+      "tMs": 1980,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-19",
+      "tMs": 2090,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-20",
+      "tMs": 2200,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-21",
+      "tMs": 2310,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-22",
+      "tMs": 2420,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-23",
+      "tMs": 2530,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-24",
+      "tMs": 2640,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-25",
+      "tMs": 2750,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-26",
+      "tMs": 2860,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-27",
+      "tMs": 2970,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-28",
+      "tMs": 3080,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-29",
+      "tMs": 3190,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-30",
+      "tMs": 3300,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-31",
+      "tMs": 3410,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-32",
+      "tMs": 3520,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-33",
+      "tMs": 3630,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-34",
+      "tMs": 3740,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-35",
+      "tMs": 3850,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-36",
+      "tMs": 3960,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-37",
+      "tMs": 4070,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-38",
+      "tMs": 4180,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-39",
+      "tMs": 4290,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-40",
+      "tMs": 4400,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-41",
+      "tMs": 4510,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-42",
+      "tMs": 4620,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-43",
+      "tMs": 4730,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-44",
+      "tMs": 4840,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-45",
+      "tMs": 4950,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-46",
+      "tMs": 5060,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-47",
+      "tMs": 5170,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-48",
+      "tMs": 5280,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-49",
+      "tMs": 5390,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-50",
+      "tMs": 5500,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-51",
+      "tMs": 5610,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-52",
+      "tMs": 5720,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-53",
+      "tMs": 5830,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-54",
+      "tMs": 5940,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-55",
+      "tMs": 6050,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-56",
+      "tMs": 6160,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-57",
+      "tMs": 6270,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-58",
+      "tMs": 6380,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-59",
+      "tMs": 6490,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "foe1-60",
+      "tMs": 6600,
+      "pos": [
+       -65,
+       14.5
+      ],
+      "facingDeg": 168.61613752892788,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "transition": "linear"
+     }
+    ]
+   }
+  ]
+ },
+ "camera": {
+  "mode": "fly",
+  "pos": [
+   -9.84,
+   8.02,
+   -118
+  ],
+  "yawDeg": 0.85,
+  "pitchDeg": -3.28,
+  "rollDeg": 0,
+  "fov": 16,
+  "lookAt": [
+   -10.13,
+   6.87,
+   -137.97
+  ]
+ },
+ "fxTime": 0,
+ "timeScale": 0,
+ "film": {
+  "fps": 30,
+  "shutterDeg": 60,
+  "samples": 8,
+  "maxSamples": 48
+ },
+ "picture": {
+  "preset": "cinematic",
+  "dof": {
+   "enabled": false
+  },
+  "chromaticAberration": 0,
+  "vignette": {
+   "amount": 0.22,
+   "roundness": 0.55,
+   "softness": 0.65
+  },
+  "grain": {
+   "amount": 0.05,
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
+  "exposure": 0.05,
+  "streaks": {
+   "amount": 0.22,
+   "length": 0.6
+  }
+ },
+ "meta": {
+  "n": 17,
+  "id": "s17-crossroads-fire",
+  "kind": "battle",
+  "title": "Fire at the Steinburg crossroads at noon",
+  "set": "steinburg-day-crossroads",
+  "map": "urban",
+  "time": "day",
+  "hero": "challenger_3",
+  "heroName": "Challenger 3 Prototype",
+  "loopMs": 6000,
+  "xfadeMs": 600,
+  "still": {
+   "tMs": 1380,
+   "exposureMs": 2
+  },
+  "stillsExtra": [
+   6200
+  ],
+  "paint": {
+   "unit": "sig_challenger_3x",
+   "enemy": "sig_t72m1_jaguar"
+  },
+  "turrets": {
+   "style": "sectors",
+   "plan": [
+    "stabilised: hero on foe0, ally1 on foe1"
+   ]
+  }
+ },
+ "crushes": [
+  {
+   "tMs": 5300,
+   "kind": "fenceplank",
+   "speedMps": 9,
+   "pos": [
+    -40.72,
+    3.16,
+    -107.76
+   ],
+   "heightM": 1.12
+  },
+  {
+   "tMs": 5467,
+   "kind": "fenceplank",
+   "speedMps": 9,
+   "pos": [
+    -40.63,
+    3.27,
+    -105.42
+   ],
+   "heightM": 1.12
+  },
+  {
+   "tMs": 5667,
+   "kind": "fenceplank",
+   "speedMps": 9,
+   "pos": [
+    -40.53,
+    3.39,
+    -103.08
+   ],
+   "heightM": 1.09
+  },
+  {
+   "tMs": 6483,
+   "kind": "fenceplank",
+   "speedMps": 9.6,
+   "pos": [
+    -40.91,
+    2.97,
+    -112.44
+   ],
+   "heightM": 1.11
+  },
+  {
+   "tMs": 6500,
+   "kind": "fenceplank",
+   "speedMps": 9.6,
+   "pos": [
+    -40.81,
+    3.06,
+    -110.1
+   ],
+   "heightM": 1.09
+  }
+ ],
+ "still": {
+  "tMs": 1380,
+  "exposureMs": 2
+ },
+ "stillsExtra": [
+  6200
+ ]
+}

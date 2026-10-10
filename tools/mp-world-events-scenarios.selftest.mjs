@@ -307,11 +307,15 @@ const felledTrees = new Set(falls.map((event) => authorityRecords[event.obstacle
 const works = manifest.obstacles.slice(0, 144).map((record) => ({ ...record, b: [record.b[0] + 3, record.b[1], record.b[2], record.b[3] + 3, record.b[4], record.b[5]], p: undefined, s: undefined }));
 const build = (obstacles, extra = {}) => Object.assign(createHeadlessCollisionWorld({ mapId: MAP_ID, heightField, manifest: { obstacles, colliders: [], concealers: [] } }), extra);
 const layouts = {
-  // the mobile tier's shape: a fifth of the props ahead of the trees missing (every later index shifts down) and half
-  // of the trees this match fells never planted
+  // the mobile tier's old shape (before its placement split): a fifth of the props ahead of the trees missing (every later
+  // index shifts down) and half of the trees this match fells never planted. Since 19bf255ae a phone places what the
+  // desktop places and shares the authority's indices, so a phone world laid out otherwise no longer announces itself:
+  // like 'unannounced', only a fall's identity (or the authority's identities, for a late joiner) gives it away
   lighter: () => build(manifest.obstacles.filter((record, index) => (index >= firstTree || index % 5 !== 1)
     && !(record.t != null && felledTrees.has(record.t) && record.t % 2 === 0)), { layoutTier: 'mobile' }),
-  // Frontline Assault's shape: trench works ahead of everything (every index shifts up)
+  // Frontline Assault's shape: trench works ahead of everything (every index shifts up). Since 2026-10-08 the authority
+  // plays the variant's own manifest, so a desktop variant world shares its indices; this one stands against an
+  // authority still on the base manifest (a host from before), which only the identities expose, as 'unannounced'
   variant: () => build([...works, ...manifest.obstacles], { terrainVariant: 'assault-trenches' }),
   // laid out otherwise but claiming the base layout: the first fall's identity gives it away
   unannounced: () => build([...works, ...manifest.obstacles]),
@@ -329,7 +333,7 @@ for (const [name, layout] of Object.entries(layouts)) {
 
   // live: every fall as the wire delivers it
   const live = clientPresentation(probe);
-  assert.equal(live.presentation.sharesAuthorityIndices, name === 'base' || name === 'unannounced', `${name}: its layout says whether it shares the authority's indices`);
+  assert.equal(live.presentation.sharesAuthorityIndices, true, `${name}: every world starts on the authority's indices (19bf255ae: a phone's too), until a fall proves otherwise`);
   for (const event of falls) live.presentation.applyEvent(wire(event), OTHER);
   const crunches = live.bus.filter(({ type }) => type === 'prop:crushed');
   const strangers = crunches.filter(({ payload, felled }) => !isAuthorityProp(records[felled], payload.obstacleIndex));
@@ -338,13 +342,13 @@ for (const [name, layout] of Object.entries(layouts)) {
   assert.equal(new Set(crunches.map(({ payload }) => payload.obstacleIndex)).size, crunches.length, `${name}: one crunch per fall`);
   const unfelled = held.filter((event) => !records.some((record) => isAuthorityProp(record, event.obstacleIndex) && record.crushed));
   assert.deepEqual(unfelled.map((event) => event.obstacleIndex), [], `${name}: every fall whose prop this world has fells it`);
-  if (name === 'unannounced') assert.equal(live.presentation.sharesAuthorityIndices, false, 'unannounced: a fall whose record at its index is another prop proves the layout differs');
+  if (name !== 'base') assert.equal(live.presentation.sharesAuthorityIndices, false, `${name}: a fall whose record at its index is another prop proves the layout differs`);
   live.presentation.dispose();
 
   // a late joiner on a fresh world: the persistent list alone, then with the authority's identities (a layout that does
   // not announce itself is only known by them: they come first there)
   const late = clientPresentation(layout());
-  if (name === 'unannounced') late.presentation.setAuthorityObstacles(authorityIdentity);
+  if (name !== 'base') late.presentation.setAuthorityObstacles(authorityIdentity);
   const listFrame = {
     tick: 900, renderTimeMs: 15_000, entities: [], shells: [],
     meta: { phase: PHASE.PLAYING, countdownMs: 0, battleTimeMs: 15_000, verdict: VERDICT.NONE, verdictReason: '', destructibleRevision: finalList.length },
@@ -354,10 +358,9 @@ for (const [name, layout] of Object.entries(layouts)) {
   };
   late.presentation.applyFrame(listFrame);
   const byIndex = late.crushes.length;
-  if (name === 'lighter' || name === 'variant') assert.equal(byIndex, 0, `${name}: the list (indices only) lays nothing down on a world laid out otherwise`);
   late.presentation.setAuthorityObstacles(authorityIdentity);
   late.presentation.applyFrame(listFrame);
-  if (name === 'unannounced') assert.equal(late.presentation.sharesAuthorityIndices, false, 'unannounced: the authority\'s identities expose the layout');
+  if (name !== 'base') assert.equal(late.presentation.sharesAuthorityIndices, false, `${name}: the authority's identities expose the layout`);
   const laid = late.crushes.map(({ index }) => index);
   assert.ok(late.crushes.every(({ settled }) => settled), `${name}: the list lays props down settled`);
   assert.equal(late.bus.filter(({ type }) => type === 'prop:crushed').length, 0, `${name}: and crunches nothing`);

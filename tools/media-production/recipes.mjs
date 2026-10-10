@@ -1,15 +1,33 @@
 import { resolveSeaOpenings, seaSectorWeightAt, seaSectorBlend, SEA_APRON_OUTER_RADIUS_M } from '../../src/world/edgeWater.ts';
 
+/** Sun bearings against a camera (degrees added to the camera's bearing): `map` keeps the battlefield's own sun. */
+const SUN_OFFSETS = Object.freeze({ back: 0, rim: 32, side: 90, front: 180 });
+export const MAP_SUN_MODES = Object.freeze(['map', ...Object.keys(SUN_OFFSETS)]);
+
+/**
+ * The Studio `light` block that puts the sun at a bearing relative to a camera (the sky preset convention: 0 = +Z,
+ * 90 = +X). `back` faces the camera into the sun (backlit subjects, bright rims), `rim` keeps the sun just off the
+ * axis, `side` crosses the frame, `front` puts the sun behind the camera. `map` returns null (the authored sun).
+ */
+export function sunForCamera(camera, mode = 'map') {
+  if (!MAP_SUN_MODES.includes(mode)) throw new RangeError(`Unknown sun mode: ${mode}`);
+  if (mode === 'map') return null;
+  const bearing = Math.atan2(camera.lookAt[0] - camera.pos[0], camera.lookAt[2] - camera.pos[2]) * 180 / Math.PI;
+  return { sunAzimuthDeg: Math.round((((bearing + SUN_OFFSETS[mode]) % 360) + 360) % 360 * 100) / 100 };
+}
+
 /** Capture plans use the live authored world. Saved absolute cameras are the review/reproduction contract. */
-export function mapScene(world, timeOfDay = 'day') {
+export function mapScene(world, timeOfDay = 'day', sun = 'map') {
   // Saltwind's old inland-facing overview cropped its defining bay out of the
   // picture. Look seaward from the village ridge for public map artwork.
   const { pos, look } = world.mapId === 'saltwind'
     ? { pos: [120, 170, 280], look: [-260, 2, -15] }
     : world.config.shot;
   const seat = ([x, y, z]) => [x, world.heightField.getHeightAt(x, z) + y, z];
-  return { map: world.mapId, timeOfDay, seed: 5000, actors: [], effects: [], fxTime: 2000, timeScale: 0,
-    camera: { pos: seat([pos[0],pos[1]+24,pos[2]]), lookAt: seat(look), fov: 55 } };
+  const camera = { pos: seat([pos[0],pos[1]+24,pos[2]]), lookAt: seat(look), fov: 55 };
+  const light = sunForCamera(camera, sun);
+  return { map: world.mapId, timeOfDay, ...(light ? { light } : {}), seed: 5000, actors: [], effects: [], fxTime: 2000, timeScale: 0,
+    camera };
 }
 
 /** Read the rendered ring, whose distant ridges differ from the playable height field. */

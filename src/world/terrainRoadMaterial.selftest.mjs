@@ -59,9 +59,13 @@ assert.match(terrainSource, /float laneFar = smoothstep\(0\.08, 0\.28, gFootM\) 
   'the lanes hand over to the trodden middle as they shrink under three pixels');
 assert.match(terrainSource, /a\.a = mix\(a\.a, a\.a \* 0\.86, rut \* \(1\.0 - gRoadTex\)\);/,
   'compacted lanes run slightly less rough (damp) on dirt roads only');
+// (the Redrock lane, round 10: a map's wheel lanes' relief gain, splat.roadRuts x — 1 unless a map authors it; Redrock's
+// worn-deep tracks 2.6)
 assert.match(terrainSource,
-  /n\.xy \+= gradD \* laneSlope \* 0\.14 \* roadCore \* rutAmp \* \(1\.0 - df \* 0\.72\);/,
+  /n\.xy \+= gradD \* laneSlope \* 0\.14 \* roadCore \* rutAmp \* \(1\.0 - df \* 0\.72\) \* uRoadRuts\.x;/,
   'lane relief comes from the analytic lane slope along the field gradient and stays shallow');
+assert.match(terrainSource, /shader\.uniforms\.uRoadRuts = \{ value: new THREE\.Vector3\(\.\.\.\(S\.roadRuts \?\? \[1, 0, 0\]\)\) \};/,
+  'the relief gain is 1 and the darkening and gravel nil unless a map authors splat.roadRuts');
 assert.match(terrainSource, /\(streak - 0\.5\) \* 0\.16 \* max\(lane, 0\.35 \* crown\) \* roadCore \* \(1\.0 - df\)/,
   'tyre streaks are an along-lane modulation bounded to +/-8%');
 assert.doesNotMatch(terrainSource, /rutG/, 'the mask-gradient emboss of the old rut bytes is gone');

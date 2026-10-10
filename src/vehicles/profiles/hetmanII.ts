@@ -9,6 +9,7 @@ import {buildT72B3MXHull} from './t72b3mX.ts';
 import {eraCassette,supportedSensor,strappedPack,attachedCage} from './modernizationFittings.ts';
 import {markSmokeTube} from '../vehicleAuxiliaryGeometry.ts';
 import {addVehicleGhillieSuit} from '../ghillieSuit.ts';
+import {addNationalUkraineProtection,NATIONAL_UKRAINE_GHILLIE,ukrainianSkirtEra} from './nationalUkraineProtection.ts';
 import {HETMAN_II_DESIGN as D} from '../hetmanIIDesign.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {box,cylX,cylY,cylZ,torus}=KIT;
@@ -79,10 +80,11 @@ function turretEra(P:TankBuilderPort):void {
   const stock:THREE.BufferGeometry[]=[];
   P.forEachBucketPart(['turret','turretExternalArmor'],g=>stock.push(g.clone()));
   const material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
-  for(const side of [-1,1])for(const [x,y,z,w]of [
+  for(const side of [-1,1])for(const [x,baseY,z,w]of [
     [1.50,.43,.31,.32],[1.29,.43,.79,.34],[1.03,.42,1.16,.31],[.77,.40,1.46,.24],
     [1.49,.44,-.34,.29],[1.38,.44,-.82,.29],
-  ]){
+  ])for(const dy of [-.08,.08]){
+    const y=baseY+dy;
     const dir=new THREE.Vector3(side*x,0,z).normalize(),origin=dir.clone().multiplyScalar(4);origin.y=y;
     dir.negate();const ray=new THREE.Raycaster(origin,dir,0,8);let hit:THREE.Intersection|undefined;
     for(const g of stock){const mesh=new THREE.Mesh(g,material);mesh.updateMatrixWorld(true);const h=ray.intersectObject(mesh)[0];if(h&&(!hit||h.distance<hit.distance))hit=h;}
@@ -90,7 +92,7 @@ function turretEra(P:TankBuilderPort):void {
     const n=hit.face.normal.clone();if(n.dot(dir)>0)n.negate();
     const rotation=new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),n));
     const p=hit.point.clone().addScaledVector(n,.039);
-    eraCassette(P,'turret',`turret_era_${side<0?'L':'R'}`,p.toArray(),[w,.092,.25],[rotation.x,rotation.y,rotation.z]);
+    eraCassette(P,'turret',`turret_era_${side<0?'L':'R'}`,p.toArray(),[Math.min(.15,w*.55),.092,.25],[rotation.x,rotation.y,rotation.z]);
   }
   material.dispose();for(const g of stock)g.dispose();
 }
@@ -99,11 +101,13 @@ function hullPackage(P:TankBuilderPort):void {
   const span=5.04,count=6,step=span/count;
   for(const side of [-1,1]){
     // Fitted closed shoulder follows the actual native front curve and deck.
+    // Across changing deck-seat heights, outward roof/floor facets keep the
+    // 37–56 mm courses finite instead of crossing opposite quad diagonals.
     const zs=[-3.10,-2.80,-2.40,-.50,1.65,2.40,2.70,3.06,3.23,3.40];
     P.addExternalArmor('hull',sectionSolid(zs.map(z=>{
       const y=seatY(P,'hull',side*1.729,z),t=Math.max(0,(Math.abs(z)-2.50)/.90),outer=2.095-.07*t,oy=1.442-.095*t;
       return {z,ring:mirrorContour(side,[[1.729,y-.007],[outer,oy-.028],[outer,oy+.028],[1.729,y+.030]])};
-    })));
+    }),{sideQuadDiagonal:'convex'}));
     P.addExternalArmor('hull',box(.12,.105,5.31),side*1.98,1.405,0);
     // Recessed joint stock bridges the service seams between the separate
     // outer panels. The 50 mm face gaps remain readable, but expose 180 mm
@@ -126,7 +130,7 @@ function hullPackage(P:TankBuilderPort):void {
         [z-step/2+.025,1.94,2.125,.87,1.405],[z-step/2+.09,1.94,2.15,.78,1.45],
         [z+step/2-.09,1.94,2.15,.78,1.45],[z+step/2-.025,1.94,2.125,.87,1.405],
       ]));
-      eraCassette(P,'hull',`skirt_era_${side<0?'L':'R'}`,[side*2.178,1.11,z],[.075,.46,step-.14]);
+      ukrainianSkirtEra(P,side,z,step,2.15);
       P.addEquipment('hullDetail',box(.050,.050,.26),side*2.12,1.449,z);
     }
     P.addExternalArmor('hull',bank(side,[[-3.10,1.91,2.05,1.02,1.32],[-2.77,1.93,2.15,.89,1.405],[-2.45,1.94,2.15,.80,1.45]]));
@@ -212,21 +216,13 @@ function fieldCamouflage(P:TankBuilderPort):void {
     const a=seatY(P,'turret',side*.38,-2.51),b=seatY(P,'turret',side*.38,-1.91);
     P.addEquipment('turretDetail',beamBetween([side*.38,a+.043,-2.51],[side*.38,b+.043,-1.91],.014,8));
   }
-  addVehicleGhillieSuit(P,{
-    id:D.id,seed:1902,style:'leafy',density:.79,leafScale:.58,
-    light:0x687b4d,dark:0x344a2e,netColor:'rgba(39,54,31,0.8)',
-    turret:{top:[-1,1].map(side=>({x0:side<0?-.62:.30,x1:side<0?-.30:.62,z0:-2.51,z1:-1.91,nx:5,nz:9,
-      yAt:(x,z)=>seatY(P,'turret',x,z)+.044}))},
-    hull:{side:[-1,1].map(side=>({side,z0:-2.30,z1:2.28,nz:30,ny:6,seed:102+side,
-      topAt:z=>1.375-.018*Math.sin(z*3.1)**2,bottomAt:z=>.94+.042*Math.cos(z*4.7),
-      outAt:(z,t)=>2.252+.021*Math.sin(z*3.2)**2+.022*t}))},
-  });
 }
 
 export function buildHetmanII(P:TankBuilderPort):void {
   buildT72B3MXHull(P);
   P.turretG.position.set(.008,D.y,D.z);
   weldedTurret(P);turretEra(P);hullPackage(P);equipment(P);fieldCamouflage(P);
+  addNationalUkraineProtection(P,D.id);addVehicleGhillieSuit(P,NATIONAL_UKRAINE_GHILLIE[D.id]);
   P.topY=D.roofY;
   P.hullG.userData.familyRebuild={donor:'t72b3m_x',turret:'hetman-ii-custom-welded',revision:1,concept:true,
     lineage:'original-hetman-t90sm-era-command-modernization'};

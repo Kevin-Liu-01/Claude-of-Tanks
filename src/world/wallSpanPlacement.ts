@@ -95,8 +95,13 @@ export function fitWallSpan(
     min = Math.min(min, residual); max = Math.max(max, residual);
     groundMin = Math.min(groundMin, ground); groundMax = Math.max(groundMax, ground);
   };
-  for (let index = 0; index < vertices.count; index++) {
-    point.fromBufferAttribute(vertices, index).applyMatrix4(matrix);
+  // (2026-10-08, the perf lane, time-to-battle: the matrix turns about y alone, so a vertex's ground depends on its x
+  // and z only and every vertex of one column — the courses above and below it, the faces meeting at its corner —
+  // reads the same sample: one per column, the first vertex of each, the same minimum and maximum; ~2.8 s of ground
+  // samples in a Verdant props build)
+  const columns = distinctColumns(vertices);
+  for (let index = 0; index < columns.length; index += 3) {
+    point.set(columns[index], columns[index + 1], columns[index + 2]).applyMatrix4(matrix);
     support(point.x, point.z);
   }
   // Include interior terrain, not only corners: a shallow hollow below a
@@ -113,6 +118,27 @@ export function fitWallSpan(
   matrix.elements[9] += shear * scale.z;
   refitWallSpanCollision(matrix, geometry, instance);
   instance.groundSupport = { mode: 'pitched', min: groundMin, max: groundMax, spread: groundMax - groundMin };
+}
+
+type PositionAttribute = ReturnType<BufferGeometry['getAttribute']>;
+const columnsOf = new WeakMap<PositionAttribute, { version: number; count: number; columns: Float64Array }>();
+
+/** A module's vertex columns: the first vertex (x, y, z) of each distinct (x, z), in vertex order (one per wall pool). */
+function distinctColumns(vertices: PositionAttribute): Float64Array {
+  const version = (vertices as { version?: number }).version ?? 0;
+  const cached = columnsOf.get(vertices);
+  if (cached && cached.version === version && cached.count === vertices.count) return cached.columns;
+  const seen = new Set<string>();
+  const columns: number[] = [];
+  for (let index = 0; index < vertices.count; index++) {
+    const x = vertices.getX(index), z = vertices.getZ(index), key = `${x},${z}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    columns.push(x, vertices.getY(index), z);
+  }
+  const result = Float64Array.from(columns);
+  columnsOf.set(vertices, { version, count: vertices.count, columns: result });
+  return result;
 }
 
 /** The steepest fall a module is sheared to (rise over run); past it the module stretches, as the terraced fit did. */

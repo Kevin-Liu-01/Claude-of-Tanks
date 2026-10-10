@@ -1,3 +1,4 @@
+import {assertHollowMuzzle} from '../../../tools/physical-muzzle.test-support.mjs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
@@ -58,7 +59,9 @@ function checkLaunchers(meshes, yaw) {
         undefined, 'no carrier, armor or adjacent launcher fills the actual bore');
       const rim = turretRay(meshes, yaw, mouth.clone().addScaledVector(radial, .040).toArray(),
         axis.clone().negate().toArray());
-      assert.equal(rim?.object.name, 'turretDetail', 'closed metal annulus surrounds every mouth');
+      // 2026-10-08 (tank-accessories round 4): discharger tubes authored into turretDetail merge into the matte fitting
+      // paint (tankFactoryCore SMOKE_TUBE_PAINT_BUCKET, after the profile build), so the annulus is that bucket's
+      assert.equal(rim?.object.name, 'turretFittingPaint', 'closed metal annulus surrounds every mouth');
       near(rim?.distance, .050, 2e-6, 'actual forward annular face');
     }
     const lowerStock = turretRay(meshes, yaw, [side * 1.548, 2.12, z - .051], [0, 1, 0]);
@@ -138,13 +141,7 @@ for (const quality of ['high', 'low']) {
     });
     assert.equal(ray(turretOnly, [1.42, 1.85, -3], [0, 0, 1], .70), undefined,
       'photo-supported rear bustle undercut remains open');
-    // Fleet mouth standard (2026-09-11): the lining seats 0.3 mm ahead of the
-    // tube edge; the bored backing stays behind it as metal.
-    const mouth = ray(all, [0, 2.08, 6], [0, 0, -1]);
-    assert.equal(mouth?.object.name, 'muzzleBoreShadowFallbackDisc', 'visible mouth is the fleet lining');
-    near(mouth?.point.z, 5.8753, .001, 'lining seats on the tube edge');
-    near(ray(all.filter(mesh => !/muzzleBoreShadowFallback/.test(mesh.name)), [0, 2.08, 6], [0, 0, -1])?.point.z, 5.5955, .002,
-      'bored main muzzle reaches recessed inner backing, not a flush solid cap');
+    assertHollowMuzzle(tank.root,5.875);
     const census = all.map(mesh => [mesh, mesh.geometry.attributes.position.count]);
     const detail = get('turretDetail');
     checkLaunchers(all, yaw);

@@ -3,6 +3,9 @@ import * as THREE from 'three';
 import { partitionEraCover } from './abramsSourceXCover.ts';
 import { partitionEraCover as legacyPartition } from './sourceEraCover.ts';
 import { sectionSolid } from './sectionSolid.ts';
+import { planeBoundedArmor } from './abramsSourceXGeometry.ts';
+import { shellPart } from '../../../tools/base-shell-audit-math.mjs';
+import { properSurfaceCrossings } from '../../../tools/base-shell-integrity.mjs';
 import { authoredEraSurfaces } from '../eraAuthoredFaces.ts';
 
 const material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
@@ -81,5 +84,39 @@ rejected.backing.dispose();rejected.cover.dispose();
 assert.ok(quantized.cover);
 assert.doesNotThrow(()=>authoredEraSurfaces(quantized.cover),'Float32-clipped ERA faces remain nondegenerate');
 for(const g of [quantized.backing,quantized.cover])g.dispose();
+// The actual native Abrams cheek has an upward-rising lower bevel. A
+// constant-depth copy of its roof used to cross that bevel nine times even
+// though both resulting meshes had closed edges and positive signed volume.
+const cheek=planeBoundedArmor([[-.86164,.507521,0,2.276882],[0,1,0,2.360795],
+  [0,-1,0,-1.574195],[1,0,0,-.410028],[0,0,-1,-.376045],
+  [-.363382,.515021,.776342,2.888263],[-.063661,.991288,.115304,2.397732],
+  [-.070708,-.991558,.108686,-1.300549]]);
+const cheekMask=[[-1.70,.42],[-.45,.42],[-.45,1.95],[-1.70,1.95]];
+const oldCheek=legacyPartition(cheek,cheekMask,.012),fixedCheek=partitionEraCover(cheek,cheekMask,.012);
+assert.ok(properSurfaceCrossings(shellPart(oldCheek.backing)).length>0,'fixed-depth native cheek is a real crossing control');
+for(const g of [fixedCheek.backing,fixedCheek.cover]){
+  assert.ok(g);exactClosed(g);assert.equal(properSurfaceCrossings(shellPart(g)).length,0,'partition stays inside native bevel');
+  assert.ok(volume(g)>0,'finite outward cheek partition');
+}
+assert.ok(Math.abs(volume(fixedCheek.backing)+volume(fixedCheek.cover)-volume(cheek))<.000005,'native cheek volume conserved');
+const native=new THREE.Mesh(cheek,material),permanent=new THREE.Mesh(fixedCheek.backing,material),removable=new THREE.Mesh(fixedCheek.cover,material);
+for(const mesh of [native,permanent,removable])mesh.updateMatrixWorld(true);
+cheek.computeBoundingBox();const bb=cheek.boundingBox;
+let exteriorRays=0,bevelRays=0,layerRays=0;
+for(let x=bb.min.x+.006;x<bb.max.x;x+=.024)for(let z=bb.min.z+.006;z<bb.max.z;z+=.026){
+  const before=cast([native],x,z),after=cast([permanent,removable],x,z);
+  if(!before){assert.equal(after,undefined);continue;}
+  assert.ok(after&&before.point.distanceTo(after.point)<.000002,'native cheek exterior is unchanged');
+  assert.ok(before.face.normal.dot(after.face.normal)>1-.000001,'native cheek outer normals are unchanged');
+  const top=cast([permanent],x,z),bottom=cast([permanent],x,z,0,1);
+  assert.ok(top&&bottom&&top.point.y>=bottom.point.y,'native backing has no inverted thickness');
+  if(cast([removable],x,z)){
+    layerRays++;assert.ok(top.point.y-bottom.point.y>=.000999,'cover always retains finite backing');
+    assert.ok(Math.abs(before.point.y-top.point.y-.012)<.000002,'safe cover retains its authored depth');
+  }else if(before.point.y-bottom.point.y<.013&&x>=-1.70&&x<=-.45&&z>=.42&&z<=1.95)bevelRays++;
+  exteriorRays++;
+}
+assert.ok(exteriorRays>2500&&layerRays>1800&&bevelRays>5,'dense rays exercise both cover and permanent thin bevel');
+for(const g of [cheek,oldCheek.backing,oldCheek.cover,fixedCheek.backing,fixedCheek.cover])g.dispose();
 for(const g of [shape,backing,cover])g.dispose();material.dispose();
-console.log(`sourceEraCover: ${sampled} exact exterior rays, ${covered} physical cover/backing rays and closed-volume conservation pass`);
+console.log(`sourceEraCover: ${sampled} exact exterior rays, ${covered} physical cover/backing rays, ${exteriorRays} native cheek rays and closed-volume conservation pass`);

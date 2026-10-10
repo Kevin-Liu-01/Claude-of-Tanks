@@ -11,9 +11,9 @@
     { "source": "/surface-studio", "destination": "/gallery?layer=markup", "permanent": true },
     { "source": "/cn/surface-studio", "destination": "/cn/gallery?layer=markup", "permanent": true },
     { "source": "/:page(home|docs|gallery|studio)/", "destination": "/:page", "permanent": true },
-    { "source": "/docs/:topic(build|models|simulation|vehicles|rendering|performance|worlds|ai|multiplayer|audio|interface|studio)/", "destination": "/docs/:topic", "permanent": true },
+    { "source": "/docs/:topic(build|models|simulation|vehicles|rendering|performance|worlds|ai|multiplayer|audio|interface|studio|filming)/", "destination": "/docs/:topic", "permanent": true },
     { "source": "/cn/:page(home|docs|gallery|studio)/", "destination": "/cn/:page", "permanent": true },
-    { "source": "/cn/docs/:topic(build|models|simulation|vehicles|rendering|performance|worlds|ai|multiplayer|audio|interface|studio)/", "destination": "/cn/docs/:topic", "permanent": true }
+    { "source": "/cn/docs/:topic(build|models|simulation|vehicles|rendering|performance|worlds|ai|multiplayer|audio|interface|studio|filming)/", "destination": "/cn/docs/:topic", "permanent": true }
   ],
   "headers": [
     {
@@ -33,10 +33,10 @@
   ],
   "rewrites": [
     { "source": "/:page(home|docs|gallery)", "destination": "/:page.html" },
-    { "source": "/docs/:topic(build|models|simulation|vehicles|rendering|performance|worlds|ai|multiplayer|audio|interface|studio)", "destination": "/docs-:topic.html" },
+    { "source": "/docs/:topic(build|models|simulation|vehicles|rendering|performance|worlds|ai|multiplayer|audio|interface|studio|filming)", "destination": "/docs-:topic.html" },
     { "source": "/studio", "destination": "/index.html" },
     { "source": "/cn", "destination": "/cn/index.html" },
     { "source": "/cn/:page(home|docs|gallery|studio|404)", "destination": "/cn/:page.html" },
-    { "source": "/cn/docs/:topic(build|models|simulation|vehicles|rendering|performance|worlds|ai|multiplayer|audio|interface|studio)", "destination": "/cn/docs-:topic.html" }
+    { "source": "/cn/docs/:topic(build|models|simulation|vehicles|rendering|performance|worlds|ai|multiplayer|audio|interface|studio|filming)", "destination": "/cn/docs-:topic.html" }
   ]
 }

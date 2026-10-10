@@ -46,7 +46,7 @@ the fictional map reproduces a particular real-world location.
 | airfield | Open approach sectors and distant low hills; restrained perimeter berms. |
 | oasis | Siwa (settlement 2026-10-05): asymmetric dune arms and sparse distant rock around a protected spring basin; old Shali's kershef town. |
 | whiteout | Exposed snowy plain with broad low glacial rises and wind-shaped snow shoulders. |
-| orchard | Long unequal upland valley sides with cultivated shelves and drainage folds. |
+| orchard | The Chouf on Mount Lebanon below the Barouk cedars (Beiteddine, Deir el Qamar; the map-revival lane, 2026-10-05): long unequal valley sides with cultivated shelves and drainage folds, olive terraces held by dry stone walls, and the mountain village in the chouf kit — the sandstone dar under red tiles with its triple arch, the earth-roofed houses, the hammam's domes, the souk, the sabil. |
 | longleaf | Longleaf, Louisiana: the Crowell Long Leaf Lumber Company's sawmill town in the pine flatwoods, crossed by the Louisiana Maneuvers of 1941 (the map-revival lane, 2026-10-05): interlocking wooded logging-country ridges, creek spurs and clearcut shoulders under longleaf pine; the town in the longleaf kit — the sawmill and its wigwam burner, the commissary, the engine shed and water tank, shotgun and dogtrot houses on brick piers under tin. |
 | mangrove | Open estuary sectors, low islands and elongated natural levees. |
 | saltwind | Western limestone bay with an open sea sector and stepped scrub headlands. |

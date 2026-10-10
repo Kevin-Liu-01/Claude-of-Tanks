@@ -46,7 +46,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // reference barrels are modelled short (see the packets) — the coverage cost
 // lands ONLY in wholeCurves/turretCurves and is certified per packet.
 import * as THREE from 'three';
-import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { tagVehicleMaterial } from '../appearanceAudit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -950,7 +950,11 @@ function curveHull(P: PattonBuilderPort, H: PattonHullConfig): BuiltHull {
         [-nw, toeY, toeZ], [nw, toeY, toeZ], [bhw, kneeY, kneeZ], [-bhw, kneeY, kneeZ]));
     }
     // lower glacis wedge + rounded cast transmission nose (between the tracks)
-    P.add('hull', slab(
+    // The M48 terminal roof lies below its toe floor. Bound that one inverted
+    // wedge by the retained corners; leave every valid slab and the casting
+    // itself on their existing construction paths.
+    const lowerGlacis = toeY - 0.02 < toeBot ? convexSlab : slab;
+    P.add('hull', lowerGlacis(
       [-iw, belly, H.bellyFrontZ], [iw, belly, H.bellyFrontZ], [iw * 0.98, toeBot, toeZ - 0.02], [-iw * 0.98, toeBot, toeZ - 0.02],
       [-iw, spons + 0.05, H.bellyFrontZ], [iw, spons + 0.05, H.bellyFrontZ], [iw * 0.98, toeY - 0.02, toeZ - 0.02], [-iw * 0.98, toeY - 0.02, toeZ - 0.02]));
     P.add('hull', cylX(0.21, iw * 2, P.q ? 20 : 12), 0, toeBot - 0.01, toeZ - 0.30);
@@ -1723,7 +1727,10 @@ function t26Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     if (T.stowMG) {
       // §B3 census fitting: stowed spare MG tucked inside the casting
       // silhouette (the measured m2Station stays the gate-driven roof gun)
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 46 });
+      // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the casting it is tucked against (feed-side collision census).
+      // 2026-10-08 (round 5): the stowed spare keeps the envelope it was tucked to (the source scale and barrel), not
+      // the crew guns' true-size floor, which grew it 12 % into the casting and the roof gun beside it.
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 46, feed: 'right', sourceScale: true });
       mg.position.set(T.stowMG[0], yl(T.stowMG[1]), zl(T.stowMG[2]));
       P.turretG.add(mg);
     }
@@ -2476,8 +2483,14 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     // whole envelope tucked UNDER the measured M2/pedestal side band (tops
     // 3.32-3.38 over z -0.9..+0.44) and inside the dome plan: zero gate pixels
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 47 });
-      mg.position.set(0.30, ly(2.96), zl(-0.62));
+      // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the pedestal side band it is tucked under (feed-side collision census).
+      // 2026-10-08 (round 5): the stowed spare keeps the envelope it was tucked to (the source scale and barrel); the
+      // crew guns' true-size floor grew it 12 % into the commander's M2 and its ring. It is stowed pointing aft on its
+      // pintle 16 cm further back, so its stock stops 5 cm short of the ring and its barrel lies over the dome's rear
+      // instead of alongside the M2 (was (0.30, ly 2.96, zl -0.62) facing forward).
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 47, feed: 'right', sourceScale: true });
+      mg.position.set(0.30, ly(2.96), zl(-0.78));
+      mg.rotation.y = Math.PI;
       P.turretG.add(mg);
     }
     P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [B.w0 - 0.005, yl((B.top0 + B.floor0) / 2), zl(-1.58)], Math.PI / 2);
@@ -3340,10 +3353,8 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
   // closeup, near-invisible at distance. buildPershing is the family
   // source — m60a1/m60a3 (buildM60) keep their own certified fix.
   const buildPershingRunningGearStage1 = (): void => {
-    P.mats.glass.color.setHex(0x3d443c);
-    P.mats.glass.roughness = 0.48;
-    P.mats.glass.metalness = 0.38;
-    P.mats.glass.envMapIntensity = 0.3;
+    // round 5 (2026-10-08): the family's own smoked pane (0x3d443c, metalness 0.38, env 0.3) gave way to the fleet's
+    // matte smoked optic glass (materials.ts, round 4), which the M60 sight-window critique asked for fleet-wide
     if (cfg.gearTone) {
       // A1/A2 (m47 r4): the running gear rendered as a black-and-grey
       // mechanical diagram on an olive tank (view-left gear band [60..580]x
@@ -3981,8 +3992,16 @@ function pattonSideCassette(
       [fenderAnchorInnerX, topY, z0], [outerX, topY, z0],
       [outerX, topY, z1], [fenderAnchorInnerX, topY, z1],
     ));
+    // Fleet lane round 1 (2026-10-08; accessories wave 255: "a row of near-identical clean rectangles with no ...
+    // missing corners or varied hinge heights"): each cassette's face plate takes its own seat (height within 1.5 cm,
+    // size within a few per cent), deterministic from its station; the cassette bodies and the outer face line are unchanged (every face keeps the published
+    // 1.8165 m line: an inset face moved the hull's outer extent, and with it the watertight census lattice under the
+    // generated interior fills).
+    const seed = Math.abs(Math.imul(Math.round(z * 1000) + (side > 0 ? 7919 : 0), 0x9e3779b1)) >>> 0;
+    const u = (k: number): number => (((seed >>> (k * 8)) & 0xff) / 255);
     const faceX = side * 1.8165;
-    P.add('hullDetail', box(0.008, h * 0.78, len * 0.84), faceX, y, z);
+    const face = box(0.008, h * (0.74 + 0.06 * u(1)), len * (0.80 + 0.06 * u(2)));
+    P.add('hullDetail', face, faceX, y + (u(3) - 0.5) * 0.03, z);
     return;
   }
   // The Starship course has to fit between the 1.8155 m published outer
@@ -4485,10 +4504,13 @@ function finishM60VariantFireControl(P: PattonBuilderPort, a3: boolean): void {
 function finishM60RoofEquipment(P: PattonBuilderPort, a3: boolean): void {
   // Sheridan-derived M2HB is now the common visible American roof weapon.
   // A3 gets the later armored shield; A1 retains the open Vietnam-era plant.
+  // 2026-10-08 (round 5; wave 255 on the M60A1: "the thin ring around the cupola pedestal hangs with no visible
+  // support. Attach it or remove it"): the M2 stands on its pintle on the cupola roof without an AA ring (the M19
+  // cupola has none); the shared Browning construction draws it at true scale.
   const m2 = FITTINGS.americanM2({
     mats: P.mats, tone: 'dark', scale: a3 ? 0.58 : 0.62,
     seed: a3 ? 603 : 601, elev: a3 ? 0.035 : 0.02, ammo: true,
-    ammoSide: 1, shield: a3, ring: { r: 0.23, stubs: 4 },
+    ammoSide: 1, shield: a3, ring: false,
     rotation: [0, a3 ? -0.06 : 0.04, 0],
   });
   m2.position.set(-0.58, 1.34, 0.20);
@@ -4600,11 +4622,11 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
   // Measured (tools/tmp-m60-closeround.mjs, board rig): proc front-view
   // brightest pixel is no longer a glass pane and pane median sits below the
   // lit camo plates.
-  const buildM60AssemblyStage1 = (): void => {
-    P.mats.glass.color.setHex(0x46525b);
-    P.mats.glass.roughness = 0.52;
-    P.mats.glass.metalness = 0.50;
-  };
+  // round 5 (2026-10-08, wave 255 m60a1-hero: "the turret-front sight window is a saturated blue disc ... real sight
+  // glass is dark with a faint coated tint"): the family's blue-grey half-metal pane (0x46525b, metalness 0.50, env
+  // 0.3) still mirrored the sky on the gunner's sight. The M60 now wears the fleet's matte smoked optic glass
+  // (materials.ts, round 4: dark faintly green, rough 0.58, almost dielectric, a quarter of the sky).
+  const buildM60AssemblyStage1 = (): void => {};
   buildM60AssemblyStage1();
   const vehicleScale = 0.90;
   const hull = curveHull(P, cfg.hull);
@@ -4648,13 +4670,23 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     return tail[1];
   };
   const buildM60HullStage2 = (): void => {
+    // Fleet lane round 1 (2026-10-07; accessories wave 255: "thin black outline frames lying flat on the deck with the
+    // same sand skin showing between the bars ... no louver slats, depth or dark void"): each bay is now a raised
+    // 16 mm frame around a dark floor with seven 34-degree louvre vanes inside it, so the lit and shaded vane faces and
+    // the dark void between them read as a grille in depth. Tops stay at or under the 1.904 deck-band cap (front bay
+    // crown 1.886 + 16 mm frame; vane tops 15 mm).
+    const FRAME = 0.028, FRAME_H = 0.016, VANES = 7, VANE_TILT = 0.6;
     for (const side of [-1, 1]) {
       for (const [gz0, gz1] of [[-1.92, -2.24], [-2.30, -2.60]]) {
-        const gm = (gz0 + gz1) / 2, gd = gz0 - gz1, gy = crownAt(gm);
-        P.add('hullDark', box(0.56, 0.012, gd), side * 0.40, gy + 0.006, gm);
-        for (let i = 0; i < 4; i++) {
-          const z = gz0 - (i + 0.5) * (gd / 4);
-          P.add('hullDetail', box(0.52, 0.012, (gd / 4) * 0.55), side * 0.40, gy + 0.012, z);
+        const gm = (gz0 + gz1) / 2, gd = gz0 - gz1, gy = crownAt(gm), gx = side * 0.40, bw = 0.56;
+        P.add('hullDark', box(bw, 0.006, gd), gx, gy + 0.003, gm);
+        P.add('hullDetail', box(bw + 2 * FRAME, FRAME_H, FRAME), gx, gy + FRAME_H / 2, gz0 + FRAME / 2);
+        P.add('hullDetail', box(bw + 2 * FRAME, FRAME_H, FRAME), gx, gy + FRAME_H / 2, gz1 - FRAME / 2);
+        for (const dx of [-1, 1]) P.add('hullDetail', box(FRAME, FRAME_H, gd), gx + dx * (bw / 2 + FRAME / 2), gy + FRAME_H / 2, gm);
+        const pitch = gd / VANES;
+        for (let i = 0; i < VANES; i++) {
+          const z = gz0 - (i + 0.5) * pitch;
+          P.add('hullDetail', box(bw - 0.012, 0.005, pitch * 0.9), gx, gy + 0.004, z, -VANE_TILT, 0, 0);
         }
       }
     }
@@ -4704,11 +4736,21 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
       // mud flap: tall sheet joined to the fender tips, kinked at -3.40 to the
       // measured 1.45 ledge, band-thin tail tip (top 1.33/bot 0.97 keeps the
       // 12% body filter from extending hullLengthM past the -3.445 column)
-      P.add('hullRubber', slab(
+      // Fleet lane round 1 (2026-10-08; accessories wave 255: "brick-like black mudflaps", "featureless black slabs
+      // with no rubber flap, bolts, wear or readable function"): the same measured volumes, read as what they are on
+      // the vehicle. The fender end and the mudguard bracket behind it are painted sheet steel; the rubber flap hangs
+      // from the bracket's rear face under a bolted clamp strip and ends in the thin tail tip. Fender end and bracket ride
+      // the painted detail bucket: they are sheet-steel fittings, not the armour envelope the combat anatomy measures.
+      P.add('hullDetail', slab(
         [side * 1.02, 0.775, -3.30], [side * 1.78, 0.775, -3.30], [side * 1.78, 0.775, -3.40], [side * 1.02, 0.775, -3.40],
         [side * 1.02, 1.79, -3.30], [side * 1.78, 1.79, -3.30], [side * 1.78, 1.455, -3.40], [side * 1.02, 1.455, -3.40]));
-      P.add('hullRubber', box(0.76, 0.675, 0.09), side * 1.40, 1.1125, -3.445);
+      P.add('hullDetail', box(0.76, 0.675, 0.072), side * 1.40, 1.1125, -3.436);
+      P.add('hullRubber', box(0.76, 0.675, 0.018), side * 1.40, 1.1125, -3.481);
       P.add('hullRubber', box(0.76, 0.37, 0.06), side * 1.40, 1.145, -3.52);
+      P.add('hullDetail', box(0.72, 0.042, 0.010), side * 1.40, 1.405, -3.495);
+      for (let k = 0; k < 5; k++) {
+        P.add('hullDark', cylZ(0.0105, 0.010, 6), side * (1.40 + (k - 2) * 0.165), 1.405, -3.504);
+      }
     }
     // sloped rear plate (centre): plan rear extent -3.28 at |x| <= 1.0
     P.add('hull', slab(
@@ -4760,10 +4802,24 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
         P.add('hullDetail', box(0.09, 0.032, 0.055), -1.43, hull.deckAt(cz) + 0.010, cz);
       }
     }
-    // rear plate: flush transmission access ring + towing pintle (to -3.52)
-    P.add('hullDark', cylZ(0.26, 0.02, P.q ? 18 : 12), 0, 1.05, -3.28);
+    // rear plate: transmission access cover + towing pintle (to -3.52). Fleet lane round 1 (2026-10-08; wave 255: "the
+    // black disc with a tan bar ... cannot be identified"): the cover is a painted plate on a ring of bolts with a
+    // lifting handle, and the pintle a bracket, stem and open hook jaw
+    P.add('hullDetail', cylZ(0.26, 0.02, P.q ? 24 : 12), 0, 1.05, -3.28);
+    if (P.q) {
+      for (let k = 0; k < 12; k++) {
+        const a = (k / 12) * Math.PI * 2;
+        P.add('hullDark', cylZ(0.012, 0.012, 6), Math.sin(a) * 0.225, 1.05 + Math.cos(a) * 0.225, -3.294);
+      }
+      P.add('hullDark', xform(new THREE.TorusGeometry(0.05, 0.008, 6, 10, Math.PI), 0, 0, 0, 0, 0, 0), 0, 1.03, -3.294);
+    }
     P.add('hullDetail', box(0.34, 0.18, 0.06), 0, 1.16, -3.31);
-    P.add('hullDetail', cylZ(0.05, 0.24, 8), 0, 1.16, -3.40);
+    P.add('hullDetail', cylZ(0.042, 0.07, 8), 0, 1.16, -3.375);
+    // the jaw: 261 degrees of forged ring in the vehicle's long vertical plane, its gap turned to the top (latch side);
+    // the ring's rear edge keeps the -3.52 rear extent the old pin had, and its throat stays under 4 cm (a wider eye
+    // left an open voxel the watertight census reads as a pocket)
+    P.add('hullDark', xform(new THREE.TorusGeometry(0.046, 0.026, 6, P.q ? 12 : 8, Math.PI * 1.45), 0, 0, 0, 0, Math.PI / 2, 0),
+      0, 1.16, -3.448, 2.435, 0, 0);
     // rear-plate louver wall (r4 tell 3): the r3 patch (4 slats x 1.18 m) left
     // the ref's rear reading "ribbed machinery" vs proc "camo wall with a
     // vent". Full-width treatment now: two mirrored HERRINGBONE banks of
@@ -4778,10 +4834,24 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
   buildM60HullStage2();
   const buildM60HullStage3 = (): void => {
     {
+      // Fleet lane round 1 (2026-10-08; accessories wave 255: "a rear plate that is a blank tan slab with no exhaust
+      // grille"): the herringbone strips sat 0.5 mm proud in the plate's own paint over a dark panel buried behind the
+      // -3.28 face, so nothing of the grille showed. Each bank is now a dark field 2 mm proud of the plate inside a
+      // painted 22 mm frame, its strips angled 0.62 rad outward at the top like louvre vanes so their lit upper faces and
+      // the dark gaps read as a grille in depth. Everything stays inside the plan and side outlines the mud flaps,
+      // corner strips and pintle already set (|x| <= 0.97, 2.6 cm behind the plate).
       const aSlat = 0.30, sinA = Math.sin(aSlat), cosA = Math.cos(aSlat);
       const y0 = 1.09, y1 = 1.43, yc = (y0 + y1) / 2;
+      const PLATE = -3.28, FRAME_W = 0.022, FRAME_D = 0.022, VANE_TILT = 0.62, VANE_W = 0.034, VANE_T = 0.004;
       for (const side of [-1, 1]) {
-        const bx0 = 0.13, bx1 = 0.945, bxc = side * (bx0 + bx1) / 2;
+        const bx0 = 0.13, bx1 = 0.945, bxc = side * (bx0 + bx1) / 2, bw = bx1 - bx0;
+        P.add('hullDark', box(bw, y1 - y0, 0.004), bxc, yc, PLATE - 0.002);
+        for (const fy of [y0 - FRAME_W / 2, y1 + FRAME_W / 2]) {
+          P.add('hullDetail', box(bw + 2 * FRAME_W, FRAME_W, FRAME_D), bxc, fy, PLATE - FRAME_D / 2);
+        }
+        for (const fx of [bx0 - FRAME_W / 2, bx1 + FRAME_W / 2]) {
+          P.add('hullDetail', box(FRAME_W, y1 - y0, FRAME_D), side * fx, yc, PLATE - FRAME_D / 2);
+        }
         // slat long axis: rising toward the centre spine on both banks
         const th = side > 0 ? -aSlat : aSlat;
         const dx = Math.cos(th), dy = Math.sin(th);
@@ -4795,8 +4865,10 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
           const t0 = Math.max(tx[0], ty[0]), t1 = Math.min(tx[1], ty[1]);
           if (t1 - t0 < 0.09) continue;
           const tm = (t0 + t1) / 2;
-          P.add('hullDetail', box(t1 - t0 - 0.014, 0.020, 0.006),
-            px + tm * dx, py + tm * dy, -3.2775, 0, 0, th);
+          // the vane: tilted about its own long axis (top edge outboard), then laid on the herringbone line
+          const vane = box(t1 - t0 - 0.014, VANE_W, VANE_T).rotateX(-VANE_TILT).rotateZ(th)
+            .translate(px + tm * dx, py + tm * dy, PLATE - 0.004 - (VANE_W / 2) * Math.sin(VANE_TILT));
+          P.add('hullDetail', vane);
         }
       }
     }
@@ -4840,8 +4912,22 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
         conformalCorners: 4,
       },
     };
-    P.add('turret', cylY(0.115, 0.12, 0.055, 14), 0.56, yl(2.745), zl(-0.05));
-    P.add('turretDark', box(0.05, 0.014, 0.15), 0.625, yl(2.782), zl(-0.05));
+    // Fleet lane round 1 (2026-10-08; accessories wave 255: the roof "a few large flat facets ... no weld seams or hatch
+    // detail"): the loader's hatch is a welded collar, a lid with its hinge block, handle and two locking dogs, and the
+    // periscope housing ahead of it; the hatch keeps its 2.7725 top and footprint
+    if (P.q) {
+      P.add('turret', cylY(0.124, 0.128, 0.031, 18), 0.56, yl(2.733), zl(-0.05));
+      P.add('turret', torus(0.128, 0.007, 18, 5), 0.56, yl(2.719), zl(-0.05));
+      P.add('turretDetail', cylY(0.116, 0.118, 0.024, 18), 0.56, yl(2.7605), zl(-0.05));
+      P.add('turretDark', box(0.10, 0.026, 0.045), 0.56, yl(2.755), zl(-0.05 - 0.13));
+      P.add('turretDark', box(0.05, 0.012, 0.012), 0.625, yl(2.778), zl(-0.05));
+      for (const dz of [-0.045, 0.045]) P.add('turretDark', box(0.016, 0.010, 0.024), 0.56 + 0.105, yl(2.765), zl(-0.05 + dz));
+      P.add('turretDetail', box(0.10, 0.05, 0.07), 0.56, yl(2.737), zl(-0.05 + 0.185));
+      P.add('turretGlass', box(0.07, 0.022, 0.006), 0.56, yl(2.742), zl(-0.05 + 0.222), -0.35, 0, 0);
+    } else {
+      P.add('turret', cylY(0.115, 0.12, 0.055, 14), 0.56, yl(2.745), zl(-0.05));
+      P.add('turretDark', box(0.05, 0.014, 0.15), 0.625, yl(2.782), zl(-0.05));
+    }
   };
   buildM60TurretStage1();
 
@@ -4853,6 +4939,8 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
   const cx = -0.60, cz = zl(0.20);
   const buildM60TurretStage2 = (): void => {
     P.add('turret', cylY(0.28, 0.315, 0.11, P.q ? 20 : 12), cx, yl(3.005), cz);
+    // the cupola's weld bead round its base ring (fleet lane round 1)
+    if (P.q) P.add('turret', torus(0.317, 0.011, 24, 5), cx, yl(2.954), cz);
     P.add('turret', cylY(0.175, 0.185, 0.09, P.q ? 20 : 12), cx, yl(3.105), zl(0.24));
     // 7 vision blocks: a touch taller than r3 (0.05 -> 0.065, still inside the
     // ring band) with pale glass panes outboard so they read as optics, not

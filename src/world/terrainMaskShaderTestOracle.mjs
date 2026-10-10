@@ -31,7 +31,9 @@ function compileConsumer(source) {
   // map pass 2026-09-12: the shoulder term carries an authored scale (uShoulderDirt, default 1).
   // (the ground lane, wave 71: the soil's coverage is the worn patch's trodden core — wornCore, the whole patch on the arid
   // and snow maps — terrain.ts; the grazed rim keeps its turf)
-  const coverage = new Function('mk', 'uTownWear', 'n1', 'wornCore', 'shoulder', 'uWornDirtStrength', 'uShoulderDirt', 'clamp', 'max', `return ${expression};`);
+  // (2026-10-07, the ground lane's pads: the shoulder's dirt stands down over a hardstand pad's stamp — apronRim, 0 off a
+  // pad; hardstandSurface pins the pad)
+  const coverage = new Function('mk', 'uTownWear', 'n1', 'wornCore', 'shoulder', 'uWornDirtStrength', 'uShoulderDirt', 'apronRim', 'clamp', 'max', `return ${expression};`);
   // terrain v2 (2026-10-01, the cost pass): the soil sample is taken once inside its coverage branch (vec4 aD = …) and
   // the albedo consumer mixes it by the same coverage; the normal consumer is unchanged (behind the far-band switch)
   const sample = unique(code, /\bvec4\s+aD\s*=\s*(groundSamp\(uAlbD,[^;]+\));/g, 'D albedo sample')[1];
@@ -40,7 +42,7 @@ function compileConsumer(source) {
   const output = new Function('a', 'n', 'uv', 'df', 'mipB', 'uAlbD', 'uNrmD', 'uMeanD', 'fD', 'groundSamp', 'groundNrm', 'mix',
     `const aD = ${sample};\n${albedo}\n${normal}\nreturn [a,n];`);
   return {
-    coverage: (mk, town, noise) => coverage(mk, town, noise, 0, 0, .84, 1, clamp, Math.max),
+    coverage: (mk, town, noise) => coverage(mk, town, noise, 0, 0, .84, 1, 0, clamp, Math.max),
     output: weight => output(.2, .4, 3, .5, 1, 'albedo-D', 'normal-D', 'mean-D', weight,
       (layer, mean) => { assert.equal(layer, 'albedo-D'); assert.equal(mean, 'mean-D'); return .8; },
       layer => { assert.equal(layer, 'normal-D'); return .9; }, mix),

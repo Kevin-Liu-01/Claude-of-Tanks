@@ -1,3 +1,6 @@
+import type { DamageLab, DamageLabVisual } from './damageLab.ts';
+import { createDamageWorkbench } from './damageWorkbench.ts';
+import { createDamageBurst } from './damageBurst.ts';
 import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
@@ -32,8 +35,8 @@ type GalleryMode = InspectionMode | 'markup';
 type GalleryView = 'hero' | 'front' | 'left' | 'right' | 'rear' | 'top'
   | 'elevated-left' | 'elevated-right';
 
-interface GalleryVisual {
-  root: THREE.Object3D;
+interface GalleryVisual extends DamageLabVisual {
+  root: THREE.Group;
   dispose(): void;
   centerOnPresentationPoint?(x: number, z: number): void;
   seatOnFloor?(floorY: number): void;
@@ -247,6 +250,10 @@ const viewDirection = new THREE.Vector3();
 const presentationCenter = new THREE.Vector3();
 
 let visual: GalleryVisual | null = null;
+let damageLab: DamageLab | null = null;
+const damageBurst = createDamageBurst(scene);
+const damagePoint = new THREE.Vector3();
+const damageEnd = new THREE.Vector3();
 let overlay = createInspectionOverlay(null, null, 'appearance');
 let selectedId: string | null = null;
 let activeMode: GalleryMode = 'appearance';
@@ -254,6 +261,75 @@ let filteredRecords: GalleryRecord[] = records;
 let pointerStart: { x: number; y: number } | null = null;
 let loadVersion = 0;
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
+const damageHost = document.createElement('div');
+damageHost.className = 'damage-workbench-host';
+$('#articulationHeading').closest('section')!.after(damageHost);
+const damageWorkbench = createDamageWorkbench(damageHost, {
+  select(target) {
+    setMode(target.plate ? 'armor' : target.kind === 'crew' ? 'crew' : 'modules', false);
+    emphasizeDamageTarget();
+  },
+  change(action) {
+    if (action === 'detonate') {
+      const picker = overlay.pickables.find(object => object.userData.inspection?.plateName === damageLab?.selected.slice(6));
+      if (picker) { new THREE.Box3().setFromObject(picker).getCenter(damagePoint); damageBurst.play(damagePoint); }
+    }
+    for (const id of ['hullYaw', 'turretYaw', 'gunPitch']) $("#" + id).disabled = !!damageLab?.combat.destroyed;
+    if (action === 'reset') { damageBurst.clear(); updateArticulation(); }
+    setMode(activeMode, false);
+    emphasizeDamageTarget();
+  },
+  overlay() {
+    if (activeMode === 'appearance' || activeMode === 'markup') setMode('modules', false);
+    else setMode(activeMode, false);
+  },
+  copy() { if (damageLab) writeClipboard(JSON.stringify({ vehicleId: selectedId, ...damageLab.snapshot() }, null, 2), t('gallery.damage.copied')); },
+});
+// The damage lab is the gallery's heaviest graph — the sim's damage, movement and armour and the auxiliary weapons table,
+// about 495 kB raw in 9 requests (main 395305d45) — so it loads after the first tank is on screen (2026-10-07, push 3b:
+// the owner's load-time priority). The workbench shows a short loading state when the module takes more than 200 ms; a
+// failed load is retried by the next tank load.
+type DamageLabModule = typeof import('./damageLab.ts');
+let damageLabModule: Promise<DamageLabModule> | null = null;
+function loadDamageLab(): Promise<DamageLabModule> {
+  if (damageLabModule) return damageLabModule;
+  const pending = document.createElement('section');
+  pending.className = 'dossier-section damage-workbench';
+  pending.setAttribute('aria-busy', 'true');
+  pending.innerHTML = `<div class="section-label"><span>${t('gallery.damage.heading')}</span></div><p class="damage-help" role="status">…</p>`;
+  const slow = setTimeout(() => damageHost.append(pending), 200);
+  damageLabModule = import('./damageLab.ts').then(
+    (module) => { clearTimeout(slow); pending.remove(); return module; },
+    (error: unknown) => { clearTimeout(slow); pending.remove(); damageLabModule = null; throw error; },
+  );
+  return damageLabModule;
+}
+function inspectionTarget(object: THREE.Object3D): string {
+  const data = object.userData.inspection;
+  if (data?.plateName && damageLab?.targets.some(target => target.key === `plate:${data.plateName}`)) return `plate:${data.plateName}`;
+  if (data?.module) return `module:${data.module}`;
+  if (data?.crew) return `crew:${data.crew}`;
+  return '';
+}
+function emphasizeDamageTarget(): void {
+  const picker = overlay.pickables.find(object => inspectionTarget(object) === damageLab?.selected);
+  overlay.emphasize(picker || null);
+}
+function colorDamageOverlay(): void {
+  if (!damageLab) return;
+  for (const picker of overlay.pickables) {
+    const target = damageLab.targets.find(part => part.key === inspectionTarget(picker));
+    if (!target) continue;
+    const state = damageLab.condition(target); if (state === 'ok') continue;
+    const model = picker.userData.inspectionVisual || picker;
+    model.traverse((object: THREE.Object3D) => {
+      if (!(object instanceof THREE.Mesh) && !(object instanceof THREE.LineSegments)) return;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of materials) if (material instanceof THREE.MeshBasicMaterial || material instanceof THREE.LineBasicMaterial) material.color.set(state === 'yellow' ? '#ffc457' : '#ed6254');
+    });
+  }
+}
 
 const VIEW_DIRECTIONS: Readonly<Record<GalleryView, readonly [number, number, number]>> = Object.freeze({
   hero: [-1, 0.45, 1],
@@ -382,7 +458,9 @@ function updateUrl(): void {
 
 function renderLegend(): void {
   const root = $('#overlayLegend');
-  const legend: ReadonlyArray<readonly [string, string]> = activeMode === 'markup'
+  const legend: ReadonlyArray<readonly [string, string]> = damageWorkbench.hitboxes && (activeMode === 'modules' || activeMode === 'crew')
+    ? [[t(activeMode === 'modules' ? 'gallery.legend.module' : 'gallery.legend.crew'), activeMode === 'modules' ? '#e9a346' : '#64cfdb'], [t('gallery.damage.state.yellow'), '#ffc457'], [t('gallery.damage.state.red'), '#ed6254']]
+    : activeMode === 'markup'
     ? [
         [t('gallery.legend.markup.selected'), '#ff5a5f'],
         [t('gallery.legend.markup.hover'), '#65a9ff'],
@@ -556,11 +634,13 @@ function updateArticulation(): void {
   const gun = visual.root.getObjectByName('rig_gun');
   if (turret) turret.rotation.y = THREE.MathUtils.degToRad(turretYaw);
   if (gun) gun.rotation.x = -THREE.MathUtils.degToRad(gunPitch);
+  overlay.update?.();
   visual.root.updateMatrixWorld(true);
   $('#hullYawValue').textContent = `${hullYaw}°`;
   $('#turretYawValue').textContent = `${turretYaw}°`;
   $('#gunPitchValue').textContent = `${Number(gunPitch.toFixed(2))}°`;
   surfaceMarkup.updatePose();
+  damageLab?.syncPose();
 }
 
 function configureArticulation(spec: GalleryVehicleSpec): void {
@@ -579,18 +659,20 @@ function configureArticulation(spec: GalleryVehicleSpec): void {
 }
 
 function setMode(requestedMode: string | undefined, announce = true): void {
-  const nextMode: GalleryMode = ['appearance', 'armor', 'modules', 'crew', 'markup']
+  const nextMode: GalleryMode = !damageLab?.combat.destroyed && ['appearance', 'armor', 'modules', 'crew', 'markup']
     .includes(requestedMode || '') ? requestedMode as GalleryMode : 'appearance';
   activeMode = nextMode;
   overlay.clear();
   const spec = selectedId ? getSpec(selectedId) : null;
   overlay = createInspectionOverlay(
-    spec,
+    spec && damageLab ? { ...spec, armor: damageLab.armor() } : spec,
     visual,
     activeMode === 'markup' ? 'appearance' : activeMode,
+    damageWorkbench.hitboxes,
   );
+  colorDamageOverlay();
   surfaceMarkup.setActive(activeMode === 'markup');
-  modeButtons.forEach((button) => button.classList.toggle('active', button.dataset.mode === activeMode));
+  modeButtons.forEach((button) => { button.classList.toggle('active', button.dataset.mode === activeMode); button.disabled = !!damageLab?.combat.destroyed && button.dataset.mode !== 'appearance'; });
   $('#inspectionReadout').hidden = true;
   $('#viewerHelp').innerHTML = activeMode === 'markup'
     ? `${viewerHelpItem('rematch', t('gallery.view.modeDockHelp'))}${viewerHelpItem('check', t('gallery.view.modeDockHelpShift'))}${viewerHelpItem('autoAim', t('gallery.view.modeDockHelpMarkup'))}`
@@ -609,6 +691,8 @@ function setMode(requestedMode: string | undefined, announce = true): void {
 }
 
 function disposeTank(): void {
+  damageWorkbench.attach(null);
+  damageLab?.dispose(); damageLab = null; damageBurst.clear();
   surfaceMarkup.detachTank();
   overlay.clear();
   overlay = createInspectionOverlay(null, null, 'appearance');
@@ -631,6 +715,7 @@ async function loadTank(
   if (!id || !recordById.has(id)) id = records[0]?.id;
   if (!id) return;
   const version = ++loadVersion;
+  window.__TANK_GALLERY_READY = false;
   loadingState.classList.remove('hidden');
   await nextFrame();
   if (version !== loadVersion) return;
@@ -658,6 +743,8 @@ async function loadTank(
   visual.root.updateMatrixWorld(true);
   surfaceMarkup.attachTank(visual.root, id);
   renderDossier(record);
+  visual.setGroundSampler(() => GALLERY_FLOOR_Y_M); // the lab's floor from the first frame (the lab sets it again)
+  for (const input of [$('#hullYaw'), $('#turretYaw'), $('#gunPitch')]) input.disabled = false;
   configureArticulation(spec);
   renderRoster();
   frameView(options.view || 'hero');
@@ -665,6 +752,12 @@ async function loadTank(
   updateUrl();
   await nextFrame();
   loadingState.classList.add('hidden');
+  const { createDamageLab } = await loadDamageLab();
+  if (version !== loadVersion || !visual) return;
+  damageLab = createDamageLab(getSpec(id), visual, GALLERY_FLOOR_Y_M);
+  damageLab.syncPose();
+  damageWorkbench.attach(damageLab);
+  setMode(activeMode, false); // the overlays read the lab's armour from here on
   window.__TANK_GALLERY_READY = true;
 }
 
@@ -677,6 +770,7 @@ function renderInspection(hit: THREE.Intersection<THREE.Object3D> | undefined): 
     return;
   }
   overlay.emphasize(hit.object as THREE.Mesh);
+  damageWorkbench.select(inspectionTarget(hit.object), false);
   $('#inspectionId').textContent = String(data.id || '');
   $('#inspectionOwner').textContent = String(data.owner || '');
   $('#inspectionTitle').textContent = String(data.title || '');
@@ -961,6 +1055,14 @@ renderer.domElement.addEventListener('pointerup', (event) => {
   const moved = Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y);
   pointerStart = null;
   if (moved >= 5) return;
+  if (damageWorkbench.probe && damageLab) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointerNdc.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+    raycaster.setFromCamera(pointerNdc, camera);
+    damageEnd.copy(raycaster.ray.direction).multiplyScalar(300).add(raycaster.ray.origin);
+    damageWorkbench.showTrace(damageLab.trace(raycaster.ray.origin, damageEnd));
+    return;
+  }
   if (activeMode === 'markup') surfaceMarkup.selectScreen(event.clientX, event.clientY, event.shiftKey);
   else pickInspection(event.clientX, event.clientY);
 });
@@ -1006,7 +1108,10 @@ window.addEventListener('popstate', () => {
 });
 new ResizeObserver(resize).observe(viewport);
 
+let previousFrameTime = performance.now();
 function animate() {
+  const time = performance.now(), dt = Math.min(.05, (time - previousFrameTime) / 1000); previousFrameTime = time;
+  damageLab?.update(dt); damageBurst.update(dt); overlay.update?.();
   controls.update();
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
@@ -1034,9 +1139,16 @@ window.__TANK_GALLERY = {
     selectedId,
     mode: activeMode,
     overlayCount: overlay.count,
+    damage: damageLab?.snapshot(),
     markup: surfaceMarkup.getState(),
     camera: { position: camera.position.toArray(), target: controls.target.toArray() },
   }),
+  damageAction: (action: string, key?: string) => {
+    const changed = damageLab?.apply(action as import('./damageLab.ts').DamageAction, key);
+    if (changed) { setMode(activeMode, false); damageWorkbench.refresh(); }
+    return changed;
+  },
+  resetDamage: () => { damageLab?.reset(); updateArticulation(); setMode(activeMode, false); damageWorkbench.refresh(); },
   setMarkupOperation: surfaceMarkup.setOperation,
   selectSurface: surfaceMarkup.selectScreen,
   exportMarkupJSON: surfaceMarkup.exportRecord,

@@ -109,7 +109,7 @@ fractions alone:
 |---|---|---|---|
 | cupola | ring / drum / split-open | all | vision-block ring, lens blocks |
 | hatch | round / rect | all | hinge blocks, grab ring, periscope stub |
-| aamg | M2 / M2+shield / DShK / DShK+ring | all | pintle or ring, stowed +7° |
+| aamg | M2 / M2+shield / DShK / DShK+ring | all | pintle or ring, stowed +7°; Garage dressing only since 2026-10-08: the vehicle decor seats no weapon (`DECOR_RETIRED_KITS`, the owner's field standard in 6763d7cc0) |
 | light | IR large / IR small / convoy | cw, mod | yoke, rim, glass face |
 | antenna | whip short / long / star / +helmet | all | command star, US helmet gag |
 | sight | periscope / doghouse | cw, mod | brow rail, lens slit |

@@ -162,7 +162,7 @@ const cargoHangar = (ctx: RegionalBuildContext): RegionalParts => {
     // purlins along the hole and flaps of sheet bent down into it
     const mid = arc(v, -v.half, v.half, n, t + 0.18);
     for (let i = h.i0; i <= h.i1; i += 2) sink.member('structureMetal', [mid[i][0], mid[i][1], h.za], [mid[i][0], mid[i][1], h.zb], 0.12, 0.12, [0, 1, 0], { colour: TRUSS, decor: true, exposed: true }, 0);
-    if (!mobile) {
+    sink.dressing(mobile, () => {
       // dressing: its draws come from the look stream, so a phone's build keeps the desktop's geometry after it
       const look = ctx.variant, edge = arc(v, -v.half, v.half, n);
       for (let k = 0; k < 4; k++) {
@@ -173,7 +173,7 @@ const cargoHangar = (ctx: RegionalBuildContext): RegionalParts => {
         if (dir < 0) flap.reverse();
         sink.quad('roof', ...flap, { decor: true });
       }
-    }
+    });
   }
   // the crown's ridge vent, a dark monitor between the holes
   for (let z = zb + 3; z < zf - 3; z += 6) {
@@ -235,12 +235,12 @@ const cargoHangar = (ctx: RegionalBuildContext): RegionalParts => {
     const u = -Wd / 2 + (k + 0.5) * lw, track = k % 2 ? 0.75 : 0.32;
     if (k === missing) continue;
     faceBox(sink, 'structureMetal', front, u, Hd / 2 - 0.05, track, lw + 0.12, Hd + 0.1, 0.22, { colour: doorLivery });
-    if (!mobile) {
+    sink.dressing(mobile, () => {
       for (const f of [0.25, 0.5, 0.75]) faceBox(sink, 'structureMetal', front, u - lw / 2 + lw * f, Hd / 2, track + 0.14, 0.12, Hd - 0.3, 0.06, { colour: shade(doorLivery, 0.78), decor: true });
       faceBox(sink, 'structureMetal', front, u, Hd * 0.42, track + 0.14, lw - 0.2, 0.14, 0.06, { colour: shade(doorLivery, 0.78), decor: true });
       // a row of small lights at two thirds of the leaf
       for (const f of [0.3, 0.7]) facePanel(sink, paneBucket(ctx.variant, 0.2), front, u - lw / 2 + lw * f, Hd * 0.7, track + 0.115, Math.min(1.2, lw * 0.28), 0.8, { decor: true, window: [0, 0, 1] });
-    }
+    });
   }
   // the bottom track along the apron and the scorched apron edge under a burnt leaf
   faceBox(sink, 'structureMetal', front, 0, 0.03, 0.55, Wd + 2 * pocket, 0.06, 0.9, { colour: TRUSS, decor: true });
@@ -435,10 +435,12 @@ const officeBlock: RegionalBuilder = (ctx) => {
     // the plant on the roof, and the terminal's sign frame over the apron front
     const top = frame.eaveY + 0.3;
     const look = ctx.variant;
-    if (!mobile) for (let k = 0; k < 2 + Math.floor(look() * 2); k++) {
-      const x = (look() - 0.5) * (W - 3), z = (look() - 0.5) * (D - 3);
-      sink.span('structureMetal', x - 0.8, top, z - 0.6, x + 0.8, top + 1.0, z + 0.6, { colour: rgb(0x8a8e8c), decor: true });
-    }
+    sink.dressing(mobile, () => {
+      for (let k = 0; k < 2 + Math.floor(look() * 2); k++) {
+        const x = (look() - 0.5) * (W - 3), z = (look() - 0.5) * (D - 3);
+        sink.span('structureMetal', x - 0.8, top, z - 0.6, x + 0.8, top + 1.0, z + 0.6, { colour: rgb(0x8a8e8c), decor: true });
+      }
+    });
     if (W >= 12) {
       const sw = Math.min(W * 0.6, 12), sy = top + 0.7;
       for (const dx of [-sw / 2 + 0.3, 0, sw / 2 - 0.3]) sink.member('structureMetal', [dx, top, D / 2 - 0.6], [dx, sy + 1.6, D / 2 - 0.6], 0.08, 0.08, [0, 0, 1], { colour: MULLION, decor: true, exposed: true }, 0);

@@ -258,6 +258,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
       if (panel === 'fail') throw new Error('player panel failed');
       calls.push(['playerPanelReady']);
     },
+    *warmVisionSteps() { calls.push(['visionWarm']); yield; },
     prepareNightLighting: async () => {
       calls.push(['nightLighting']);
       if (pauseNight) await nightGate;
@@ -462,7 +463,8 @@ for (const [before, after] of [
   ['terrain', 'camera'],
   ['camera', 'groundCover'],
   ['groundCoverReady', 'shadowWarm'],
-  ['shadowWarm', 'postWarm'],
+  ['shadowWarm', 'visionWarm'],
+  ['visionWarm', 'postWarm'],
   ['postWarm', 'postYielded'],
   ['postYielded', 'watchdog'],
   ['watchdogSettled', 'reveal'],

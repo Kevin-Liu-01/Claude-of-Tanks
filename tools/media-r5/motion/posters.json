@@ -1,0 +1,144 @@
+[
+ {
+  "id": "copper-mine",
+  "treatment": "cinema",
+  "formats": [
+   "land",
+   "square"
+  ],
+  "art": "shots/media-r5/final/keyart/copper-golden-mine--worm/stills/copper_mesa-landscape-2160p-still-2460ms.png"
+ },
+ {
+  "id": "viaduct",
+  "treatment": "cinema",
+  "formats": [
+   "land"
+  ],
+  "art": "shots/media-r5/final/keyart/aegis-morning-viaduct--deck-worm/stills/cliffbridge-landscape-2160p-still-700ms.png"
+ },
+ {
+  "id": "strand",
+  "treatment": "cinema",
+  "formats": [
+   "land"
+  ],
+  "art": "shots/media-r5/final/keyart/saltmere-sunset-strand--hero34/stills/coastal-landscape-2160p-still-920ms.png"
+ },
+ {
+  "id": "village-night",
+  "treatment": "cinema",
+  "formats": [
+   "land"
+  ],
+  "art": "shots/media-r5/final/keyart/frosthollow-night-village--hero34/stills/winter-landscape-2160p-still-2480ms.png"
+ },
+ {
+  "id": "crossroads",
+  "treatment": "cinema",
+  "formats": [
+   "land"
+  ],
+  "art": "shots/media-r5/final/keyart/steinburg-day-crossroads--worm/stills/urban-landscape-2160p-still-2480ms.png"
+ },
+ {
+  "id": "towers",
+  "treatment": "cinema",
+  "formats": [
+   "land"
+  ],
+  "art": "shots/media-r5/final/keyart/blackglass-day-towers--hero34/stills/blackglass-landscape-2160p-still-2480ms.png"
+ },
+ {
+  "id": "wadi",
+  "treatment": "keyart",
+  "formats": [
+   "square"
+  ],
+  "art": "shots/media-r5/final/keyart/sirocco-noon-village--worm/stills/desert-landscape-2160p-still-2460ms.png"
+ },
+ {
+  "id": "fjord",
+  "treatment": "cinema",
+  "formats": [
+   "land",
+   "square"
+  ],
+  "art": "shots/media-r5/final/keyart/nordhavn-dusk-fjord--worm/stills/fjord-landscape-2160p-still-800ms.png"
+ },
+ {
+  "id": "runway",
+  "treatment": "keyart",
+  "formats": [
+   "square"
+  ],
+  "art": "shots/media-r5/final/keyart/kestrel-dawn-runway--worm/stills/airfield-landscape-2160p-still-900ms.png"
+ },
+ {
+  "id": "mars",
+  "treatment": "cinema",
+  "formats": [
+   "land"
+  ],
+  "art": "shots/media-r5/final/keyart/olympus-mars-convoy--hero34/stills/mars-landscape-2160p-still-900ms.png"
+ },
+ {
+  "id": "pan-runway",
+  "treatment": "cinema",
+  "formats": [
+   "land"
+  ],
+  "art": "shots/media-r5/final/blur/b01-pan-runway/stills/airfield-landscape-2160p-still-1500ms-e66ms.png"
+ },
+ {
+  "id": "track-ice",
+  "treatment": "cinema",
+  "formats": [
+   "land",
+   "square"
+  ],
+  "art": "shots/media-r5/final/blur/b05-track-ice/stills/alpine-landscape-2160p-still-1600ms-e33ms.png"
+ },
+ {
+  "id": "track-strand",
+  "treatment": "keyart",
+  "formats": [
+   "square"
+  ],
+  "art": "shots/media-r5/final/blur/b06-track-strand/stills/coastal-landscape-2160p-still-1500ms-e40ms.png"
+ },
+ {
+  "id": "earthrise",
+  "treatment": "cinema",
+  "formats": [
+   "land"
+  ],
+  "art": "shots/media-r5/final/blur/b49-earthrise/stills/moon-landscape-2160p-still-1400ms-e33ms.png"
+ },
+ {
+  "id": "earthrise-p",
+  "treatment": "keyart",
+  "formats": [
+   "port"
+  ],
+  "art_port": "shots/media-r5/final/keyart-port/earthrise-moon--rear-earth/stills/moon-portrait-2160p-still-800ms.png",
+  "art": "shots/media-r5/final/keyart-port/earthrise-moon--rear-earth/stills/moon-portrait-2160p-still-800ms.png"
+ },
+ {
+  "id": "glacier-p",
+  "treatment": "keyart",
+  "formats": [
+   "port"
+  ],
+  "art_port": "shots/media-r5/final/keyart-port/glacier-dawn-lake--ice-worm/stills/alpine-portrait-2160p-still-900ms.png",
+  "art": "shots/media-r5/final/keyart-port/glacier-dawn-lake--ice-worm/stills/alpine-portrait-2160p-still-900ms.png"
+ },
+ {
+  "id": "lighthouse-p",
+  "treatment": "keyart",
+  "formats": [
+   "port"
+  ],
+  "art_port": "shots/media-r5/final/keyart-port/saltmere-sunset-lighthouse--worm/stills/coastal-portrait-2160p-still-900ms.png",
+  "art": "shots/media-r5/final/keyart-port/saltmere-sunset-lighthouse--worm/stills/coastal-portrait-2160p-still-900ms.png"
+ }
+]

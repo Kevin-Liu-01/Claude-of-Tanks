@@ -33,7 +33,15 @@ function face(side: -1 | 1, segments: number): THREE.BufferGeometry {
     [.040905, 0], [.040905, .08959], [.10362, .0838], [.10362, .0609],
     [.12758, .0575], [.14697, .0443], [.156835, .0205], [.156835, 0],
   ];
-  const mesh = combine([turned([...inner].reverse(), segments), turned(outer, segments), turned(hub, segments)]);
+  // Fleet lane round 2 (2026-10-08; waves 264-269 on the Leopard 2A6 UA: "flat dishes with one dome hub, no bolt ring"):
+  // a ring of eight hex nuts stands 14 mm proud of the outboard dish floor between the hub and the dish wall.
+  const nuts = Array.from({ length: 8 }, (_, i) => {
+    const angle = (i + .5) * Math.PI / 4;
+    return new THREE.CylinderGeometry(.014, .014, .028, 6).rotateZ(Math.PI / 2)
+      .translate(.04147, Math.sin(angle) * .122, Math.cos(angle) * .122);
+  });
+  const mesh = combine([turned([...inner].reverse(), segments), turned(outer, segments), turned(hub, segments),
+    ...nuts]);
   // A proper half-turn mirrors the rotational solid axially without negative
   // determinants or reversing its triangle winding.
   if (side < 0) mesh.rotateY(Math.PI);

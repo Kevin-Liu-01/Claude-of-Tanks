@@ -26,16 +26,26 @@ assert.equal(rack.userData.mountingFeet, 2);
 assert.ok(rack.userData.softBundleCount >= 2);
 assert.deepEqual(rack.userData.fabricProfiles, ['rolled-tarp', 'duffel', 'ruck-with-flap']);
 assert.deepEqual(rack.userData.rackEnvelope, { widthM: 1.6, depthM: 0.52, heightM: 0.36 });
+// v3 load (2026-10-05): sewn duffels and bedrolls, nailed crates, a strapped tarp roll — not ellipsoids under boards
+assert.equal(rack.userData.loadFamily, 'cot-sewn-rack-load-v3');
 let rackMeshes = 0;
+let canvasTriangles = 0;
+const rackBox = new THREE.Box3();
 rack.traverse((object) => {
   if (!object.isMesh) return;
   rackMeshes++;
   assert.equal(object.userData.combatHitboxRole, 'equipment');
+  object.geometry.computeBoundingBox();
+  rackBox.union(object.geometry.boundingBox);
+  if (object.material === mats.canvasCloth) canvasTriangles += object.geometry.getAttribute('position').count / 3;
 });
 assert.ok(rackMeshes >= 2, 'open rack keeps separate material families after merge');
+assert.ok(canvasTriangles > 400, `the soft load is lofted fabric (${canvasTriangles} canvas triangles)`);
+assert.ok(rackBox.max.x <= 0.8 + 1e-6 && rackBox.min.x >= -0.8 - 1e-6, 'the load stays inside the rack width');
+assert.ok(rackBox.max.y <= 0.36 * 0.9 + 0.085 * 1.5, 'the tarp roll rides over the load, not above the rack');
 
 const cans = FITTINGS.jerryCans({ mats, count: 3, seed: 11 });
-assert.equal(cans.userData.designFamily, 'cot-jerry-can-rack-v2');
+assert.equal(cans.userData.designFamily, 'cot-jerry-can-rack-v3');
 assert.equal(cans.userData.requestedCanCount, 3);
 assert.equal(cans.userData.canCount, 4, 'odd requests round up to a complete pair');
 assert.equal(cans.userData.paired, true);
@@ -139,17 +149,26 @@ KIT.ammoCan(primitiveBuilder, 'turretDark', 0, 0, 0, -0.2);
 assert.ok(equipmentRows.length >= 30, 'deepened cargo kit emits modeled hardware, not four marker solids');
 assert.ok(equipmentRows.every((row) => row.geometry.userData.combatHitboxRole === 'equipment'));
 const primitiveFamilies = new Set(equipmentRows.map((row) => row.geometry.userData.designFamily));
+// v3 (2026-10-05, tank-accessories lane): sewn fabric lofts, pressed cans and a molded ammo can replace the
+// box-and-sphere v2 forms inside the same envelopes; the receipts below stay the contract.
 for (const family of [
-  'cot-soft-stowage-v2', 'cot-field-jerry-can-v2',
-  'cot-rolled-fabric-v2', 'cot-ammo-can-v2',
+  'cot-soft-stowage-v3', 'cot-webbing-strap-v3', 'cot-field-jerry-can-v3',
+  'cot-rolled-fabric-v3', 'cot-ammo-can-v3',
 ]) assert.ok(primitiveFamilies.has(family), `${family} receipt is present`);
+// the soft kit is a smooth-shaded fabric loft seated on its authored envelope, never a box or a sphere
+const softBody = equipmentRows.find((row) => row.geometry.userData.designFamily === 'cot-soft-stowage-v3').geometry;
+assert.equal(softBody.userData.fabricProfile, 'field-ruck', 'the seeded style picks the ruck at rng 0.75');
+softBody.computeBoundingBox();
+assert.ok(Math.abs(softBody.boundingBox.min.y + 0.17) < 0.006, 'the bag rests on the floor of its 0.34 m envelope');
+assert.ok(softBody.boundingBox.max.y <= 0.18 && softBody.boundingBox.max.y > 0.12, 'and fills its height without overflowing');
+assert.ok(softBody.getAttribute('position').count / 3 > 60, 'a lofted fabric body, not a 12-triangle box');
 const jerryBody = equipmentRows.find((row) =>
-  row.geometry.userData.designFamily === 'cot-field-jerry-can-v2').geometry;
+  row.geometry.userData.designFamily === 'cot-field-jerry-can-v3').geometry;
 assert.equal(jerryBody.userData.stampedRibs, 4);
 assert.equal(jerryBody.userData.bridgeHandles, 3);
 assert.equal(jerryBody.userData.threadedSpout, true);
 const ammoBody = equipmentRows.find((row) =>
-  row.geometry.userData.designFamily === 'cot-ammo-can-v2').geometry;
+  row.geometry.userData.designFamily === 'cot-ammo-can-v3').geometry;
 assert.equal(ammoBody.userData.latches, 2);
 assert.equal(ammoBody.userData.hinges, 2);
 assert.equal(ammoBody.userData.carryHandle, true);

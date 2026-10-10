@@ -136,7 +136,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // markings move to the turret cheek like the T-72B 1987 X; the right cheek is the clear one (the
   // left carries the smoke launchers).
   t72b3m_x: anchor('turret', 'right', .34, .34, .24, 1),
-  challenger1_x: anchor('turret', 'left', .29, .40, .24, 1),
+  challenger1_x: anchor('turret', 'left', .60, .40, .24, 1),
   t72bu_x: anchor('turret', 'right', .31, .32, .24, -1),
   chieftain5_x: anchor('turret', 'left', .33, .40, .24, -1),
   t90_x: anchor('turret', 'right', .40, .26, .24, 1),

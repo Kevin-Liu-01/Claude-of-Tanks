@@ -1,0 +1,349 @@
+{
+ "title": "Around the Clock — hero trailer score (draft cue sheet)",
+ "bpm": 96,
+ "durationSec": 80,
+ "lufs": -14,
+ "musicDb": -3,
+ "sfxDb": -1,
+ "fadeOutSec": 1.5,
+ "progression": [
+  "Dm",
+  "Dm",
+  "Bb",
+  "Bb",
+  "F",
+  "F",
+  "C",
+  "C"
+ ],
+ "motif": [
+  "A4",
+  "D5",
+  "C5",
+  "A4"
+ ],
+ "sections": [
+  {
+   "name": "cold-open",
+   "fromBar": 0,
+   "toBar": 2,
+   "layers": [
+    "drone",
+    "ticks"
+   ],
+   "gainDb": -13
+  },
+  {
+   "name": "title",
+   "fromBar": 3,
+   "toBar": 3,
+   "layers": [
+    "drone"
+   ],
+   "gainDb": -6
+  },
+  {
+   "name": "dawn",
+   "fromBar": 4,
+   "toBar": 7,
+   "layers": [
+    "drone",
+    "ticks",
+    "pulse",
+    "pad",
+    "taiko"
+   ],
+   "gainDb": -9
+  },
+  {
+   "name": "morning",
+   "fromBar": 8,
+   "toBar": 11,
+   "layers": [
+    "pulse",
+    "open",
+    "pad",
+    "taiko",
+    "hats",
+    "toms",
+    "ticks8"
+   ],
+   "gainDb": -6
+  },
+  {
+   "name": "noon",
+   "fromBar": 12,
+   "toBar": 15,
+   "layers": [
+    "pulse16",
+    "open",
+    "taiko2",
+    "toms",
+    "hats",
+    "rim",
+    "drone"
+   ],
+   "gainDb": -3
+  },
+  {
+   "name": "golden",
+   "fromBar": 16,
+   "toBar": 18,
+   "layers": [
+    "pulse16",
+    "open",
+    "taiko2",
+    "hats16",
+    "toms",
+    "rim",
+    "pad"
+   ],
+   "gainDb": -1.5
+  },
+  {
+   "name": "slow-motion",
+   "fromBar": 19,
+   "toBar": 19,
+   "layers": [
+    "heartbeat",
+    "drone"
+   ],
+   "gainDb": -9
+  },
+  {
+   "name": "dusk-studio",
+   "fromBar": 20,
+   "toBar": 23,
+   "layers": [
+    "pad",
+    "motif",
+    "pulse",
+    "ticks",
+    "taiko"
+   ],
+   "gainDb": -6
+  },
+  {
+   "name": "night",
+   "fromBar": 24,
+   "toBar": 27,
+   "layers": [
+    "taiko2",
+    "toms",
+    "hats16",
+    "rim",
+    "pulse16",
+    "open",
+    "drone"
+   ],
+   "gainDb": 0
+  },
+  {
+   "name": "beyond",
+   "fromBar": 28,
+   "toBar": 28,
+   "layers": [
+    "shimmer"
+   ],
+   "gainDb": -15
+  },
+  {
+   "name": "end",
+   "fromBar": 29,
+   "toBar": 31,
+   "layers": [
+    "drone",
+    "ticks"
+   ],
+   "gainDb": -4
+  }
+ ],
+ "hits": [
+  {
+   "kind": "swell",
+   "t": 7.5,
+   "sec": 3
+  },
+  {
+   "kind": "braam",
+   "t": 7.5,
+   "chord": "Dm",
+   "sec": 5
+  },
+  {
+   "kind": "boom",
+   "t": 7.5,
+   "sec": 3.5
+  },
+  {
+   "kind": "braam",
+   "t": 10,
+   "chord": "Dm",
+   "sec": 4,
+   "gain": 0.45,
+   "bright": 0.5
+  },
+  {
+   "kind": "riser",
+   "t": 30,
+   "sec": 4
+  },
+  {
+   "kind": "braam",
+   "t": 30,
+   "chord": "Bb",
+   "sec": 4.5
+  },
+  {
+   "kind": "boom",
+   "t": 30,
+   "sec": 3
+  },
+  {
+   "kind": "braam",
+   "t": 40,
+   "chord": "F",
+   "sec": 4.5
+  },
+  {
+   "kind": "boom",
+   "t": 40,
+   "sec": 3
+  },
+  {
+   "kind": "riser",
+   "t": 47.5,
+   "sec": 3
+  },
+  {
+   "kind": "boom",
+   "t": 47.5,
+   "sec": 4,
+   "f0": 90,
+   "f1": 26,
+   "tau": 0.5
+  },
+  {
+   "kind": "swell",
+   "t": 50,
+   "sec": 2.2
+  },
+  {
+   "kind": "riser",
+   "t": 60,
+   "sec": 5
+  },
+  {
+   "kind": "braam",
+   "t": 60,
+   "chord": "Dm",
+   "sec": 5
+  },
+  {
+   "kind": "boom",
+   "t": 60,
+   "sec": 3.5
+  },
+  {
+   "kind": "braam",
+   "t": 65,
+   "chord": "C",
+   "sec": 4.5
+  },
+  {
+   "kind": "boom",
+   "t": 65,
+   "sec": 3
+  },
+  {
+   "kind": "riser",
+   "t": 70,
+   "sec": 2.5,
+   "gain": 0.8
+  },
+  {
+   "kind": "swell",
+   "t": 72.5,
+   "sec": 2.5
+  },
+  {
+   "kind": "braam",
+   "t": 72.5,
+   "chord": "Dm",
+   "sec": 6
+  },
+  {
+   "kind": "boom",
+   "t": 72.5,
+   "sec": 4
+  },
+  {
+   "kind": "stop",
+   "t": 78.4
+  }
+ ],
+ "ducks": [],
+ "sfx": [
+  {
+   "kind": "cannon",
+   "t": 6.6,
+   "cls": "huge",
+   "gain": 0.9,
+   "pan": 0.15
+  },
+  {
+   "kind": "cannon",
+   "t": 33.2,
+   "cls": "large",
+   "gain": 0.8,
+   "pan": -0.3
+  },
+  {
+   "kind": "pen",
+   "t": 33.9,
+   "gain": 0.6,
+   "pan": 0.2
+  },
+  {
+   "kind": "kill",
+   "t": 47.5,
+   "gain": 1,
+   "pop": true
+  },
+  {
+   "kind": "cannon",
+   "t": 61.2,
+   "cls": "huge",
+   "gain": 0.9,
+   "pan": 0.35
+  },
+  {
+   "kind": "he",
+   "t": 62.4,
+   "gain": 0.7,
+   "pan": -0.4
+  },
+  {
+   "kind": "cannon",
+   "t": 64.1,
+   "cls": "large",
+   "gain": 0.7,
+   "pan": -0.2,
+   "dist": 0.5
+  },
+  {
+   "kind": "kill",
+   "t": 66.3,
+   "gain": 0.9,
+   "pop": false
+  },
+  {
+   "kind": "ricochet",
+   "t": 68,
+   "gain": 0.5,
+   "pan": 0.5,
+   "alt": 1
+  }
+ ],
+ "rampSec": 0.5
+}

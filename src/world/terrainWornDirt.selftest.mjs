@@ -30,13 +30,15 @@ function compileCoverage(text) {
   const shoulderScale = new Function('S', 'clamp', `return ${shoulderUniform[1]};`);
   // (wave 71, the ground lane: the ambient term is the worn patch's soil weight — wornCore, the whole patch on the arid
   // and snow maps, its trodden core on a meadow — so the policy below runs with that weight as its `worn`)
-  const blend = new Function('wornCore', 'shoulder', 'mk', 'uTownWear', 'n1', 'uWornDirtStrength', 'uShoulderDirt', 'clamp', 'max',
+  // (2026-10-07, the ground lane's pads: a hardstand pad is the carriageway's packed ground, so the shoulder's dirt stands
+  // down over its stamp — apronRim, 0 off a pad; every case below runs off a pad, and the pad's own case after them)
+  const blend = new Function('wornCore', 'shoulder', 'mk', 'uTownWear', 'n1', 'uWornDirtStrength', 'uShoulderDirt', 'apronRim', 'clamp', 'max',
     `return ${scalar(text, 'fD')};`);
   return {
     strength: settings => strength(settings, clamp),
     shoulderScale: settings => shoulderScale(settings, clamp),
-    blend: (settings, worn, shoulder, town, wear, noise) =>
-      blend(worn, shoulder, { a: town }, wear, noise, strength(settings, clamp), shoulderScale(settings, clamp), clamp, Math.max),
+    blend: (settings, worn, shoulder, town, wear, noise, rim = 0) =>
+      blend(worn, shoulder, { a: town }, wear, noise, strength(settings, clamp), shoulderScale(settings, clamp), rim, clamp, Math.max),
   };
 }
 
@@ -69,6 +71,10 @@ function checkCoverage(text) {
   assert.equal(actual.strength({ wornDirtStrength: 2 }), 1);
   assert.equal(actual.blend({ wornDirtStrength: .22 }, 1, 0, 0, 1, .5), .22,
     'unrelated inland wear cannot become almost pure pale beach sand');
+  // a pad's stamp: the shoulder term stands down (no ring of bare ground round the pad); the worn and town terms stay
+  assert.equal(actual.blend({}, 0, 1, 0, 1, .5, 1), 0, 'a pad carries no shoulder dirt');
+  assert.equal(actual.blend({}, 0, 1, 0, 1, .5, .5), .5, 'its feather half of it');
+  assert.equal(actual.blend({}, .5, 1, 1, 1, 1, 1), 1, 'the town\'s wear and the worn patch are the pad\'s own');
   for (const worn of [0, .1, .5, .8, 1]) for (const shoulder of [0, .1, .22, .4, .84, 1]) {
     for (const town of [0, .3, 1]) for (const wear of [0, .8, 1]) for (const noise of [0, .5, 1]) {
       checkCoverageCase(actual, worn, shoulder, town, wear, noise);
@@ -85,14 +91,16 @@ assert.throws(() => checkCoverage(source.replace(scalar(source, 'fD'),
   scalar(source, 'fD') + ' * uWornDirtStrength')), 'scaling road/town coverage after max must fail');
 
 function checkMapScope(resolve) {
-  assert.deepEqual(MAP_IDS.filter(id => resolve(id).splat?.wornDirtStrength !== undefined), ['coastal', 'saltwind']);
+  // (the Redrock lane, round 10: Redrock Divide authors 0.3 — the gauntlet's wave 270 read its worn sand patches as
+  // "swirly red blotches like painted decals")
+  assert.deepEqual(MAP_IDS.filter(id => resolve(id).splat?.wornDirtStrength !== undefined), ['coastal', 'badlands', 'saltwind']);
   assert.deepEqual(MAP_IDS.filter(id => resolve(id).splat?.shoulderDirt !== undefined), ['alpine'],
     'map pass 2026-09-12: only Glacier Pass authors a snowy road shoulder');
   assert.equal(resolve('alpine').splat.shoulderDirt, .3);
   for (const id of MAP_IDS) {
     // map pass 2026-09-12: the coastal wear breakup returns toward the reference (.32,
     // short of the .45 that opened beach-sand islands); Saltwind inherits the coastal splat.
-    assert.equal(actual.strength(resolve(id).splat ?? {}), id === 'coastal' || id === 'saltwind' ? .32 : .84);
+    assert.equal(actual.strength(resolve(id).splat ?? {}), id === 'coastal' || id === 'saltwind' ? .32 : id === 'badlands' ? .3 : .84);
   }
 }
 checkMapScope(getMapConfig);

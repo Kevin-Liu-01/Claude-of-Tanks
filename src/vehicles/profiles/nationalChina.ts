@@ -2,6 +2,8 @@
 // glacis, curved track guards and gear remain visible underneath the upgrades.
 import * as THREE from 'three';
 import {KIT} from './kit.ts';
+import {addChineseChevronBank} from './chineseChevronEra.ts';
+import {addChineseFuelDrum} from './chineseFuelDrum.ts';
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
 import {beamBetween,blindTube,roofSheet} from './measuredPrimitives.ts';
 import {castModernizedTurret} from './nationalDonorCore.ts';
@@ -22,6 +24,7 @@ function cheekModule(P:TankBuilderPort,side:number,rows:readonly CheekRow[]):voi
   const g=weldedFlankHousing(rows,side,.035);
   // Permanent armor wedge remains in place beneath the small ERA face tiles.
   P.addExternalArmor('turret',g);
+  addChineseChevronBank(P,side,rows,P.spec.id==='cn_t72b3m_modern'?.115:P.spec.id==='cn_t80u_modern'?.10:.09);
 }
 
 function bustle(P:TankBuilderPort,back:number,half:number,bottom:number,top:number):void {
@@ -76,7 +79,8 @@ function turretWrap(P:TankBuilderPort,c:NationalModernizationConfig):void {
 function yun(P:TankBuilderPort,c:NationalModernizationConfig):void {
   castModernizedTurret(P,{halfWidth:1.36,roofY:.70,rearZ:-1.42,frontZ:1.26,shoulderY:.49,crownHalf:.68});
   for(const side of [-1,1]){
-    cheekModule(P,side,[[-.12,.73,1.35,.26,.63],[.58,.66,1.46,.23,.63],[1.43,.39,.77,.28,.48]]);
+    cheekModule(P,side,[[-.12,.73,1.40,.26,.65],[.53,.69,1.61,.23,.65],
+      [1.12,.43,1.20,.26,.55],[1.48,.39,.66,.28,.46]]);
   }
   bustle(P,-1.64,.70,.32,.58);
   coolingPanel(P,-.51,-2.38,.76,.91,8);
@@ -92,8 +96,8 @@ function kunlun(P:TankBuilderPort,c:NationalModernizationConfig):void {
   castModernizedTurret(P,{halfWidth:1.42,roofY:.77,rearZ:-1.46,frontZ:1.30,shoulderY:.52,crownHalf:.68});
   for(const side of [-1,1]){
     // A two-piece Type-96/VT-inspired brow surrounds visible round stock.
-    cheekModule(P,side,[[-.21,.82,1.39,.29,.69],[.40,.73,1.55,.25,.68],[.84,.58,1.28,.26,.60]]);
-    cheekModule(P,side,[[.77,.62,1.25,.28,.60],[1.34,.39,.88,.27,.51],[1.50,.39,.68,.29,.45]]);
+    cheekModule(P,side,[[-.21,.82,1.46,.29,.72],[.34,.76,1.66,.25,.72],[.85,.58,1.43,.26,.64]]);
+    cheekModule(P,side,[[.78,.61,1.43,.28,.64],[1.26,.40,1.05,.27,.56],[1.52,.39,.68,.29,.46]]);
   }
   bustle(P,-1.91,.84,.32,.63);
   for(const side of [-1,1])coolingPanel(P,side*.52,-2.49,.85,.88,9);
@@ -105,7 +109,8 @@ function qilin(P:TankBuilderPort,c:NationalModernizationConfig):void {
   castModernizedTurret(P,{halfWidth:1.30,roofY:.69,rearZ:-1.36,frontZ:1.19,shoulderY:.46,crownHalf:.68});
   for(const side of [-1,1]){
     // Small triangular blocks expose the rounded front/side casting below.
-    cheekModule(P,side,[[.14,.77,1.25,.26,.60],[.59,.65,1.38,.24,.57],[1.32,.39,.73,.27,.44]]);
+    cheekModule(P,side,[[.14,.77,1.24,.26,.60],[.53,.70,1.43,.24,.59],
+      [.91,.50,1.05,.25,.50],[1.32,.39,.70,.27,.44]]);
   }
   bustle(P,-1.53,.61,.34,.53);
   coolingPanel(P,-.46,-2.49,.73,.83,7);
@@ -126,13 +131,10 @@ function turretEra(P:TankBuilderPort,c:NationalModernizationConfig):void {
   const parts=permanentParts(P,['turretExternalArmor']);
   for(const side of [-1,1]){
     if(c.model===0){
-      for(const z of [.38,.76,1.06])seatCheekTile(P,parts,side,z,.43,[.29,.06,.28]);
       for(const z of [-1.04,-.65,-.27])seatCheekTile(P,parts,side,z,.43,[.27,.075,.30]);
     }else if(c.model===1){
-      for(const z of [.13,.51,.88,1.17])seatCheekTile(P,parts,side,z,.45,[.25,.075,.26]);
       for(const z of [-1.30,-.89,-.47])seatCheekTile(P,parts,side,z,.48,[.32,.085,.30]);
     }else{
-      for(const z of [.46,.89])seatCheekTile(P,parts,side,z,.40,[.35,.065,.26]);
       for(const z of [-.98,-.53,-.10])seatCheekTile(P,parts,side,z,.40,[.25,.07,.31]);
     }
   }
@@ -166,8 +168,24 @@ function skirts(P:TankBuilderPort,c:NationalModernizationConfig,count:number,fro
       [outer,top-.06],[outer-.055,top],[inner,top-.020]];
     const oriented=side>0?ring:ring.map(([xx,yy])=>[-xx,yy] as const).reverse();
     P.addExternalArmor('hull',sectionSolid([{z:z-length*.47,ring:oriented},{z:z+length*.47,ring:oriented}]));
-    eraCassette(P,'hull',`skirt_era_${side<0?'L':'R'}`,[side*(outer+.035),(top+low)/2,z],
-      [.080,top-low-.085,length*.84]);
+    const sector=`skirt_era_${side<0?'L':'R'}`;
+    if(c.model===0){
+      // Yun's turbine retrofit has two horizontal reactive courses, exposing
+      // a narrow permanent carrier belt between the long shallow cassettes.
+      for(const row of [-1,1])eraCassette(P,'hull',sector,
+        [side*(outer+.035),(top+low)/2+row*(top-low)*.235,z],
+        [.080,(top-low)*.39,length*.84]);
+    }else if(c.model===1){
+      // Kunlun retains large staggered full-height heavy modules.
+      eraCassette(P,'hull',sector,[side*(outer+.035),(top+low)/2,z],
+        [.080,top-low-.085,length*.84]);
+    }else{
+      // Qilin's smaller retrofit uses paired narrow replaceable tiles on
+      // each broad ribbed skirt bay rather than the other packages' courses.
+      for(const dz of [-length*.22,length*.22])eraCassette(P,'hull',sector,
+        [side*(outer+.035),(top+low)/2,z+dz],
+        [.080,top-low-.085,length*.38]);
+    }
     // The second visible layer is inset from the shell's bevels; every panel
     // has a permanent carrier beneath the removable reactive armor face.
     if(c.model===2)P.addEquipment('hullDetail',box(.035,.055,length*.77),side*(outer+.089),top-.053,z);
@@ -391,8 +409,17 @@ function equipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
     P.addEquipment('hullDetail',roofSheet([
       [front-.12,x-.13,x+.13,y0+.025,y0+.025],[front+.12,x-.13,x+.13,y1+.025,y1+.025],
     ],.030));
-    P.addEquipment('hullDark',cylZ(.078,.10,12),x,y+.097,front+.01);
-    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.063,.014,12),'headlight'),x,y+.097,front+.068);
+    if(c.model===0){
+      // Yun's low paired rectangular driving lamps share an armored brow.
+      P.addEquipment('hullDetail',box(.238,.105,.11),x,y+.091,front+.014);
+      for(const dx of [-.061,.061])P.addEquipment('hullGlass',markVehicleNightLens(box(.089,.045,.012),'headlight'),x+dx,y+.092,front+.074);
+    }else if(c.model===1){
+      P.addEquipment('hullDetail',box(.242,.14,.13),x,y+.11,front+.004);
+      for(const dx of [-.059,.059])P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.043,.016,16),'headlight'),x+dx,y+.112,front+.074);
+    }else{
+      P.addEquipment('hullDark',cylZ(.078,.10,16),x,y+.097,front+.01);
+      P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.063,.014,16),'headlight'),x,y+.097,front+.068);
+    }
     for(const dx of [-.12,.12])P.addEquipment('hullDetail',beamBetween([x+dx,y-.005,front],[x+dx,y+.175,front],.012));
     P.addEquipment('hullDetail',box(.265,.020,.16),x,y+.18,front);
   }
@@ -417,10 +444,92 @@ function equipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
   }
 }
 
+/** Turbine Yun, heavy Kunlun and compact Qilin carry different rear layouts.
+ * Every rack attaches to permanent hull/turret stock, not to removable ERA. */
+function modernizationEquipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
+  const turret=permanentParts(P,['turret','turretExternalArmor']);
+  // Independent welded rear cages: horizontal Chinese-style slats on Yun,
+  // the deep Kunlun maintenance extension, and Qilin's smaller tool basket.
+  const cage=c.model===0?{half:.72,join:-1.59,rear:-1.98,bottom:.40,top:.76,rows:3}:
+    c.model===1?{half:1.00,join:-2.01,rear:-2.35,bottom:.46,top:.78,rows:2}:
+    {half:.52,join:-1.67,rear:-1.96,bottom:.43,top:.69,rows:2};
+  const put=(g:THREE.BufferGeometry,role:string)=>{
+    g.userData.chineseModernization={model:c.model,role};
+    P.addEquipment('turretOpenLattice',g);
+  };
+  for(const side of [-1,1]){
+    const x=side*cage.half;
+    // Embedded root strut ties directly into the existing rear armor beam.
+    put(beamBetween([x,cage.bottom,cage.join+.035],[x,cage.bottom,cage.rear],.021),'cage-root');
+    put(beamBetween([x,cage.bottom,cage.rear],[x,cage.top,cage.rear],.018),'cage-post');
+    put(beamBetween([x,cage.top,cage.rear],[x,cage.top,cage.join],.017),'cage-side-rail');
+    put(beamBetween([x,cage.bottom,cage.join],[x,cage.top,cage.join],.018),'cage-front-post');
+  }
+  for(let row=0;row<=cage.rows;row++){
+    const y=cage.bottom+(cage.top-cage.bottom)*row/cage.rows;
+    put(beamBetween([-cage.half,y,cage.rear],[cage.half,y,cage.rear],row===0||row===cage.rows?.020:.012),'cage-rear-rail');
+  }
+  for(const ratio of [-.50,0,.50]){
+    const x=cage.half*ratio;
+    put(beamBetween([x,cage.bottom,cage.join],[x,cage.bottom,cage.rear],.014),'cage-floor');
+  }
+  if(c.model===0){
+    // Wide angular side electronics remain outboard of the low cast crown.
+    for(const side of [-1,1])lowOptic(P,turret,side*1.29,.09,.22,.085,.20,false);
+  }else if(c.model===1){
+    // A three-cell armored rear maintenance console is supported by the
+    // existing lintel; it stays below the rotating roof weapon's gun plane.
+    for(const x of [-.57,0,.57]){
+      P.addEquipment('turretDetail',box(.43,.11,.10),x,.755,-2.01);
+      P.addEquipment('turretDark',box(.34,.054,.012),x,.752,-2.066);
+      for(const dx of [-.14,.14])P.addEquipment('turretDetail',box(.032,.022,.030),x+dx,.807,-2.01);
+    }
+  }else{
+    // Qilin's inexpensive retrofit keeps a compact central basket and a
+    // field-service carrier instead of the other two electronics banks.
+    const base=equipmentFoot(P,turret,-1.14,-.60,.18,.33);
+    P.addEquipment('turretDetail',box(.19,.08,.34),-1.14,base+.033,-.60);
+    for(const z of [-.70,-.60,-.50])P.addEquipment('turretDark',box(.13,.008,.017),-1.14,base+.078,z);
+  }
+  addConceptFuelDrums(P,c);
+}
+
+function addConceptFuelDrums(P:TankBuilderPort,c:NationalModernizationConfig):void {
+  const stock=permanentParts(P,['hull']),mat=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
+  const meshes=stock.map(g=>{const m=new THREE.Mesh(g,mat);m.updateMatrixWorld();return m;});
+  const radius=c.model===0?.235:c.model===1?.285:.245,length=c.model===1?.97:.85,center=c.model===1?.70:.65;
+  // Low rear cradles keep every fitting below the main gun's complete
+  // depressed/recoiling sweep, including intermediate rearward turret yaw.
+  const y=c.model===0?.90:c.model===1?.86:.82;
+  const roots:THREE.Vector3[]=[];
+  for(const side of [-1,1])for(const offset of [-length*.30,length*.30]){
+    const x=side*center+offset;
+    const ray=new THREE.Raycaster(new THREE.Vector3(x,1.00,-6),new THREE.Vector3(0,0,1),0,6);
+    const hit=ray.intersectObjects(meshes,false)[0];
+    if(!hit)throw new Error(`${c.id}: auxiliary drum has no native rear hull receiver at ${x}`);
+    roots.push(hit.point.clone());
+  }
+  mat.dispose();
+  const z=Math.min(...roots.map(p=>p.z))-radius-.10;
+  for(const side of [-1,1])addChineseFuelDrum(P,side*center,y,z,radius,length);
+  for(const root of roots){
+    const foot=new THREE.Vector3(root.x,y-radius*.73,z+radius*.38);
+    const g=beamBetween(root.clone().add(new THREE.Vector3(0,0,.035)).toArray() as [number,number,number],foot.toArray() as [number,number,number],.038,8);
+    g.userData.chineseFuelCradle={root:root.toArray(),foot:foot.toArray()};
+    P.addEquipment('hullDetail',g);
+    // A short upright meets the retaining band at its lower quadrant.
+    const upright=box(.058,.095,.058);
+    upright.userData.chineseFuelCradle={role:'upright',root:root.toArray(),foot:foot.toArray()};
+    P.addEquipment('hullDark',upright,root.x,foot.y+.010,foot.z);
+  }
+  P.hullG.userData.chineseConceptFuelDrums={centers:[[-center,y,z],[center,y,z]],radius,length,roots:roots.map(r=>r.toArray())};
+}
+
 export function buildNationalChina(P:TankBuilderPort,c:NationalModernizationConfig):void {
   if(c.model===0)yun(P,c);else if(c.model===1)kunlun(P,c);else qilin(P,c);
   turretWrap(P,c);
   turretEra(P,c);
   equipment(P,c);
   nationalRoofEquipment(P,c);
+  modernizationEquipment(P,c);
 }

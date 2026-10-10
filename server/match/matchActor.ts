@@ -10,12 +10,14 @@
  * loads the roster's combat anatomy first (`ensureAuthorityFleet`: the browser host at boot, the Node service at
  * start); the actor refuses a roster whose calibration groups never loaded.
  */
+import type { DestructionLogEntry } from '../../src/sim/destructionEvents.ts';
+import { quantizeDestructionEntry } from '../../src/mp/wire/destructionLog.ts';
 import { requireAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
 import { createAuthoritativeMatch } from '../../src/sim/authoritativeMatch.ts';
 import type {
   AuthoritativeEntity, AuthoritativeMatch, AuthoritativePlayerInput, AuthoritativePlayerRecord, AuthoritativeWorldCollision,
 } from '../../src/sim/authoritativeMatch.ts';
-import { matchRulesetFor, type MatchRuleset } from '../../src/sim/matchRuleset.ts';
+import { matchRulesetFor, terrainVariantFor, type MatchRuleset } from '../../src/sim/matchRuleset.ts';
 import { normalizeGameMode, type GameModeId } from '../../src/sim/matchModes.ts';
 import { SIM_DT } from '../../src/sim/movement.ts';
 import { createDedicatedWorldCollision } from '../dedicatedWorldCollision.ts';
@@ -340,7 +342,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
 
   // ---- authority and world
   const collision: ActorWorldCollision | null = typeof world === 'object' && world !== null ? world
-    : world === 'dedicated' ? createDedicatedWorldCollision(mapId, { retain: true }) : null;
+    : world === 'dedicated' ? createDedicatedWorldCollision(mapId, { retain: true, variant: terrainVariantFor(mode) }) : null;
   const releaseWorld = () => { if (collision && typeof collision.release === 'function') collision.release(); };
   let authority: AuthoritativeMatch;
   let lagComp: LagCompensation;
@@ -374,6 +376,8 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   let rowCacheTick = -1;
   let sortedDestroyed: number[] = [];
   let destroyedRevision = -1;
+  // destruction (docs/DESTRUCTION.md §8.2): the authority's log, copied for the frames whenever it grows
+  let destructionFrameLog: DestructionLogEntry[] = [];
   const totals = { bytesOut: 0, bytesIn: 0, snapshots: 0, keyframes: 0, droppedSnapshots: 0, backpressureCloses: 0, events: 0, malformed: 0, rejectedInputs: 0 };
   // the migration seed (P3b): what each entity was restored from, and whether its own seat's hint was taken
   const restoredTicks = new Int32Array(MAX_ENTITIES + 1).fill(-1);
@@ -630,6 +634,13 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     return row;
   }
 
+  /** The frames' copy of the authority's destruction log (append-only: a longer log is a new copy, the wire's entries). */
+  function destructionLog(meta: Record<string, unknown> | null): DestructionLogEntry[] {
+    const log = Array.isArray(meta?.destructionLog) ? meta.destructionLog as DestructionLogEntry[] : null;
+    if (log && log.length !== destructionFrameLog.length) destructionFrameLog = log.map(quantizeDestructionEntry);
+    return destructionFrameLog;
+  }
+
   function destroyedList(meta: Record<string, unknown> | null): number[] {
     const revision = Number(meta?.destructibleRevision) || 0;
     if (revision !== destroyedRevision) {
@@ -694,6 +705,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       inputMarginTicks: margin == null ? INPUT_MARGIN_UNKNOWN : Math.max(-128, Math.min(126, margin)),
       meta: captureMeta(metaWithResumedClock(meta), ended),
       destroyed: destroyedList(meta),
+      destruction: destructionLog(meta),
       entities,
       shells,
       viewer: client.entity ? captureViewerState(client.entityId, meta?.localPrediction, snapshotIndex % checkpointEverySnapshots === 0) : null,

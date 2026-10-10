@@ -1,0 +1,37 @@
+{
+ "map": "alpine",
+ "scene": "/Users/kevinliu/.codex/worktrees/cot-restore-1049-visuals-20260911/shots/media-r5/final/resolved/t04-lake-pan.resolved.json",
+ "fps": 30,
+ "frames": 150,
+ "viewport": [
+  1920,
+  1080
+ ],
+ "actions": [
+  {
+   "frame": 0,
+   "do": "click",
+   "text": "Scene"
+  },
+  {
+   "frame": 0,
+   "do": "time",
+   "time": "dawn"
+  },
+  {
+   "frame": 38,
+   "do": "time",
+   "time": "day"
+  },
+  {
+   "frame": 76,
+   "do": "time",
+   "time": "golden"
+  },
+  {
+   "frame": 114,
+   "do": "time",
+   "time": "night"
+  }
+ ]
+}

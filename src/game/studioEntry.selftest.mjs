@@ -47,6 +47,7 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   const camera = new THREE.PerspectiveCamera();
   const ports = {
     timeOfDay: time,
+    studioLight: null, // media r5: the scene's sun override, forwarded with the time
     ctx: { prepareStudioAtmosphere: async (selected) => calls.push(['atmosphere', selected]) },
     window: { __GAME_READY: !directBoot }, game, camera,
     resolveMapId: (id) => id, urlParam: () => null, getMapConfig: (id) => ({ name: id }),
@@ -63,10 +64,16 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     transition: { run: async (work) => { calls.push('transition'); return work(noop); } },
     syncRoute: noop, docBrand: noop, marker: { group: { visible: true } }, keys: new Set(),
     clearActors: () => calls.push('actors-cleared'), shells: [], effectLog: [], activeEffectIds: new Set(),
+    releaseCrushes: () => calls.push('crushes-released'),
     fx: { resetAll: noop, setFrozen: noop }, normalizeStoryboard: () => ({}),
+    releaseStudioFx: () => calls.push('studio-fx-released'),
     rail: { rebuild: noop, updateVisibility: noop }, unsweepPool: noop,
     enterGarage: async () => { calls.push('enter-garage'); game.phase = 'garage'; presentation.setSunTrim(true); },
     stopRecording: noop,
+    disposePicture: () => calls.push('picture-disposed'),
+    applyPictureRuntime: () => calls.push('picture-applied'),
+    // the destruction stages the Studio played and its own dug ground (fx lane, destruction core lane, 2026-10-08)
+    studioStages: new Map(), resetStudioGround: noop, flareToWallClock: noop,
   };
   const code = stripTypeScriptTypes(`
     function makeStudioEntry(ports) {
@@ -99,10 +106,19 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   assert.deepEqual(calls[sunIndex - 1], ['atmosphere', time],
     'the selected atmosphere is prepared after world activation and before restoring its sun');
   assert.equal(calls.includes('covered-frame'), directBoot);
+  assert.ok(calls.indexOf('picture-applied') > calls.indexOf('world-activated'),
+    'a picture set before entry applies once the Studio owns the frame');
   await studio.doExit();
   assert.equal(game.phase, 'garage');
   assert.equal(studio.active(), false);
   assert.ok(calls.indexOf('actors-cleared') < calls.indexOf('enter-garage'));
+  assert.ok(calls.includes('crushes-released') && calls.indexOf('crushes-released') < calls.indexOf('enter-garage'),
+    'the props the Studio\'s hulls crushed stand again before the Garage returns (studioCrush.ts)');
+  assert.ok(calls.includes('picture-disposed') && calls.indexOf('picture-disposed') < calls.indexOf('enter-garage'),
+    'Studio picture passes leave the composer before the Garage renders');
+  assert.ok(calls.indexOf('studio-fx-released') > calls.indexOf('actors-cleared')
+    && calls.indexOf('studio-fx-released') < calls.indexOf('enter-garage'),
+  'exit releases the cinematic layer (borrowed light, battle shaders) before the Garage returns');
   assert.equal(calls.at(-1)[1].sunIntensity, garageSky.sunIntensity * 0.55,
     'actual Studio exit restores the Garage trim after its teardown');
 }

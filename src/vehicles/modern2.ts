@@ -946,12 +946,28 @@ function buildType99ABaseHull(P: Modern2BuilderPort) {
     [-1.08, 1.50, 2.02], [1.08, 1.50, 2.02], [1.08, 1.50, 1.84], [-1.08, 1.50, 1.84]));
   // Raised outer shoulder skins continue the same glacis visually while
   // leaving the terminal track lanes physically open underneath.
+  // 2026-10-07 (tank-accessories round 3): the skins' rear faces rose at 49 deg
+  // straight at the turret, so from behind they caught the sun only at grazing
+  // and read as "a black void" under the chevron wings. The rear top corner moves
+  // from (2.02, 1.68) to (2.20, 1.658) on the unchanged top line, turning the
+  // face into a 28 deg ramp that takes the sky; it stays 6.5 cm or more under
+  // the turret's side-belt and bustle sweeps (1.565 m at r 1.60-1.65 and 2.10).
   P.add('hull', slab(
     [1.08, 1.50, 2.90], [1.70, 1.50, 2.90], [1.70, 1.47, 1.84], [1.08, 1.47, 1.84],
-    [1.08, 1.56, 3.02], [1.70, 1.56, 3.02], [1.70, 1.68, 2.02], [1.08, 1.68, 2.02]));
+    [1.08, 1.56, 3.02], [1.70, 1.56, 3.02], [1.70, 1.658, 2.20], [1.08, 1.658, 2.20]));
   P.add('hull', slab(
     [-1.70, 1.50, 2.90], [-1.08, 1.50, 2.90], [-1.08, 1.47, 1.84], [-1.70, 1.47, 1.84],
-    [-1.70, 1.56, 3.02], [-1.08, 1.56, 3.02], [-1.08, 1.68, 2.02], [-1.70, 1.68, 2.02]));
+    [-1.70, 1.56, 3.02], [-1.08, 1.56, 3.02], [-1.08, 1.658, 2.20], [-1.70, 1.658, 2.20]));
+  // Inner cheeks of the raised shoulders: from the centre lane's sloping top
+  // up into the skin and the bow wedge, so the stepped glacis no longer shows
+  // the track lane's void (and the interior fill above the shoes) under the
+  // skins' inner edges (the critics' "loose grey interior parts").
+  for (const s of [-1, 1]) {
+    const xi = s * 1.052, xo = s * 1.100;                                     // straddles the skin's 1.08 inner edge
+    P.add('hull', slab(
+      [xi, 1.48, 2.00], [xo, 1.48, 2.00], [xo, 1.206, 2.98], [xi, 1.206, 2.98],
+      [xi, 1.495, 2.00], [xo, 1.495, 2.00], [xo, 1.50, 2.98], [xi, 1.50, 2.98]));
+  }
   P.add('hull', slab(                                                          // 62-deg nose plate inside the
     [-1.08, 0.70, 3.30], [1.08, 0.70, 3.30], [1.08, 0.70, 3.18], [-1.08, 0.70, 3.18], // terminal shoe lanes
     [-1.08, 1.215, 3.02], [1.08, 1.215, 3.02], [1.08, 1.215, 2.86], [-1.08, 1.215, 2.86]));
@@ -1021,13 +1037,21 @@ function buildType99ABaseHull(P: Modern2BuilderPort) {
   // -4.242 m extremum, but it cannot be a free silhouette whisker.
   P.add('hull', box(1.76, 0.040, 0.68), 0, 1.45, -3.91);                       // backs the complete cable trough to z -4.25
   {
+    // Round 3 (2026-10-07, critics: "a stiff bent tube hanging across the stowage with neither end secured"): the
+    // loop lies flat in its tray (top 1.47) instead of arching 14 cm over it. The -4.24 m rear extremum is unchanged.
+    // Round 4 (2026-10-07, wave 215: "the tow cable passes through a strap band on the stowage drum"): the type99a's
+    // rear fuel drums (china.ts addRearFuelDrums: axis y 1.56, z -3.68, r 0.25) fill the tray's forward half, so the
+    // loop runs in the strip behind them, its ends turned outboard along the tray's rear lip so each eye lies on the
+    // tray (x <= 0.86) 5 cm clear of the drum skins; the eyes and the run are clipped down.
     const rearCable = FITTINGS.towCable({ mats: P.mats, r: 0.024, seed: 12,
       pts: [
-        [-0.84, 1.55, -3.52], [-0.67, 1.61, -3.82], [-0.34, 1.58, -4.10],
-        [0, 1.48, -4.24], [0.34, 1.58, -4.10], [0.67, 1.61, -3.82],
-        [0.84, 1.55, -3.52],
+        [-0.70, 1.494, -4.10], [-0.55, 1.494, -4.135], [-0.30, 1.494, -4.205],
+        [0, 1.494, -4.24], [0.30, 1.494, -4.205], [0.55, 1.494, -4.135],
+        [0.70, 1.494, -4.10],
       ] });
     P.hullG.add(rearCable);
+    for (const x of [-0.78, 0.78]) P.add('hullDetail', box(0.06, 0.03, 0.06), x, 1.484, -4.085); // eye clips
+    for (const x of [-0.42, 0.42]) P.add('hullDetail', box(0.05, 0.03, 0.05), x, 1.484, -4.18);  // run clips
   }
   // ---- glacis furniture ON the 16.3-deg plane: center driver hatch +
   // periscopes, splash V, mirror stalks, lights, tow cable -----------------
@@ -1047,6 +1071,10 @@ function buildType99ABaseHull(P: Modern2BuilderPort) {
     lc.position.set(s * 0.88, 1.33, 2.78);
     P.hullG.add(lc);
     P.add('hullDetail', box(0.26, 0.03, 0.03), s * 0.88, 1.39, 2.72, -16.3 * D2R, 0, 0); // guard bar hugging the pods
+    // 2026-10-07 (round 3): the guard's sheet web under the bar, from the glacis
+    // to the bar and back over the pods' rear halves. The open pocket behind
+    // the pods held interior-fill boxes that showed from above as loose grey parts.
+    P.add('hullDetail', box(0.27, 0.075, 0.10), s * 0.88, 1.343, 2.715, -16.3 * D2R, 0, 0);
   }
   {
     const tc = FITTINGS.towCable({ mats: P.mats, r: 0.020, seed: 11,
@@ -1083,19 +1111,23 @@ function buildType99AHullDeckAndArmor(P: Modern2BuilderPort) {
   // panel run (print skirt band y 0.39..1.47), FULL-DEPTH FY-4 TILE WALL
   // over the front two-thirds (print tile band y 0.47..1.34 z -2.06..2.70,
   // armor-linked bricks — faces ±1.85 EXACT), rubber rear, bow panels ------
+  // Fleet lane 2026-10-08 (wave 269 chase frames: "the thin rear-corner plates splay outward from the hull"): the rear
+  // skirt run and its fringe went on to z -3.55 and -3.62, past the track's rear wrap (-3.48) and 40 cm past the top
+  // band (-3.15), so from behind their last stretch stood as bare 1 cm fins at the corners. The run, its fringe and
+  // the band now end together at the track's rear (z -3.45).
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.02, 0.24, 6.40), s * 1.845, 1.345, 0.05);              // skirt top band at the oracle's
+    P.add('hull', box(0.02, 0.24, 6.70), s * 1.845, 1.345, -0.10);             // skirt top band at the oracle's
                                                                                //   ±1.855 face; inner face 1.835
                                                                                //   clears the native shoe envelope
     P.add('hull', box(0.01, 1.04, 0.56), s * 1.855, 0.94, 3.00);               // deep bow panel (thin outer sheet;
     P.add('hull', box(0.01, 0.35, 0.26), s * 1.855, 1.075, 3.34);              //   inner face clears terminal shoes)
                                                                                //   (drops to the print tip line)
     P.add('hullDark', box(0.01, 0.90, 0.024), s * 1.855, 0.92, 2.73);          // bow panel seam
-    P.add('hull', box(0.01, 0.66, 1.49), s * 1.855, 0.84, -2.805);             // source-painted rear skirt run;
+    P.add('hull', box(0.01, 0.66, 1.39), s * 1.855, 0.84, -2.755);             // source-painted rear skirt run;
                                                                                // only its flexible lower fringe is
                                                                                // dark rubber, not the whole panel
     for (let k = 0; k < 3; k++) P.add('hullDark', box(0.01, 0.56, 0.02), s * 1.855, 0.82, -2.32 - k * 0.52);
-    P.add('hullRubber', box(0.01, 0.12, 1.54), s * 1.855, 0.50, -2.85);        // lower fringe
+    P.add('hullRubber', box(0.01, 0.12, 1.39), s * 1.855, 0.50, -2.755);       // lower fringe
   }
   // Eight full-height FY-4 side cassettes per side.  The previous 3×11 field
   // rendered as a solid Minecraft wall and hid the characteristic six-wheel
@@ -1411,8 +1443,11 @@ function buildType99ATurretRoofAndGun(P: Modern2BuilderPort) {
     // carried just ahead of the hatch while the aft spade grips overlap the
     // cupola rim, so a standing commander can actually reach the weapon.
     P.add('turretDetail', box(0.20, 0.035, 0.22), 0.52, 1.097, -0.22);
+    // 2026-10-08 (round 5; wave 255: "a long barrel on a plain block receiver with no ammunition box, belt or feed";
+    // the coordinator: the right gun per nation): the QJC-88's own construction at true scale, its 50-round box and
+    // belt on the left.
     const mg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'nsvt', tone: 'dark', scale: 1.08, ammo: true,
+      mats: P.mats, cls: 'qjc88', tone: 'dark', scale: 1.0, ammo: true,
       elev: 0.02, rotation: [0, 0, 0], seed: 18,
     });
     mg.position.set(0.52, 1.11, -0.17);
@@ -1593,7 +1628,10 @@ function buildMBT70(P: Modern2BuilderPort) {
   };
   P.add('turret', polyMultiLoft(turretPlan, [
     { height: turretFloorHeight, inset: 1.00 },
-    { height: 0.22, inset: rearBiasedInset(0.88, 0.96, 0.99) },
+    // The raked aft floor reaches .23 m: carry the lower belt above it
+    // instead of letting a constant .22 m ring cross through that floor.
+    { height: (point: readonly [number, number]) => Math.max(0.22, turretFloorHeight(point) + 0.025),
+      inset: rearBiasedInset(0.88, 0.96, 0.99) },
     { height: 0.52, inset: rearBiasedInset(0.70, 0.89, 0.95) },
     { height: TH, inset: rearBiasedInset(0.52, 0.84, 0.91) },
   ]));

@@ -18,7 +18,7 @@ for (const key of placeholders) {
   assert.ok(Object.hasOwn(DOCS_ICON_SPECS, key), `Docs placeholder ${key} has a typed icon mapping`);
 }
 
-assert.equal((docs.match(/class="docs-chapter-media"/g) || []).length, 12,
+assert.equal((docs.match(/class="docs-chapter-media"/g) || []).length, 13,
   'all focused field manuals have a visual icon plate');
 assert.equal((docs.match(/class="doc-section-icon"/g) || []).length, 12,
   'all overview chapters have a section icon');

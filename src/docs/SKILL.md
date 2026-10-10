@@ -17,6 +17,11 @@ game-rendered evidence, without booting the playable world.
 `docsIcons.ts` maps manual concepts to the shared typed icon vocabulary.
 `battleReels.ts` owns selectable recorded battle clips; `docs.css` styles the
 manual. `site/docs.html` and `site/docs-*.html` are the corresponding page entries.
+`filming.ts` fills the Filming manual's second and third sections with the take
+viewer (each take at every stage of the media rounds) and the process; its media
+is `public/media/filming-r1`, built by `tools/media-r5/docs-media.mjs`, and
+`filming.selftest.mjs` holds the viewer, the manifest and the page's numbers to
+the pipeline.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

@@ -113,6 +113,7 @@ globalThis.document = {
 let terrainUnits = null, unswappedUnits = null;
 try {
   const { buildTerrainMeshes, createLayout } = await import('../world/terrain.ts');
+  await import('../world/maps/horizon.ts'); // installs the ring terrain meshes are built with (horizonRingHook.ts)
   const { getMapConfig } = await import('../world/maps/index.ts');
   const { createLighting } = await import('./lighting.ts');
   const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(60, 16 / 9, 0.5, 4000);

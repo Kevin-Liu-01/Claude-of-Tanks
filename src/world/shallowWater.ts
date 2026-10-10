@@ -338,8 +338,10 @@ export function createShallowWaterSurface(
     // Water 2026-09-12: 0.28 -> 0.55 — the surface mirrors more sky at grazing
     // angles (the 1049e4e bay carried visible sky and sun glints).
     // Water pass 3 (2026-09-12): 0.55 -> 0.9 now that the sheet is lit once
-    // (cascade setup) instead of by four suns.
-    envMapIntensity: 0.9,
+    // (cascade setup) instead of by four suns. 2026-10-08 (the world-ibl lane): none of these ever applied — three
+    // overwrote them with the scene's intensity — and the sea's sky reflection is uWaterQa's grazing law, tuned live at
+    // the full sky; 1 keeps that look now that an authored value applies (engine/materialEnvIntensity.ts).
+    envMapIntensity: 1,
     transparent: true, opacity: profile.opacity, depthWrite: false,
     side: THREE.DoubleSide,
   });

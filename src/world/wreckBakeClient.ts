@@ -19,7 +19,15 @@ interface WreckBakeClient {
   dispose(): void;
 }
 
-/** One lazy worker per map construction, never a retained fleet-wide cache. */
+/**
+ * One lazy worker per map construction, never a retained fleet-wide cache.
+ *
+ * (the wreck-worker lane, 2026-10-09) `timeoutMs` bounds the worker's silence, not the caller's wall time: only the
+ * client's own waits for a reply count, never the time spent inside `checkpoint` (the world build's pacing — a garage
+ * lull, a background lease, a hidden tab's frame), so a build that is paused cannot time its worker out. A reply with
+ * requestId 0 is the worker's own failure report (wreckBakeWorker.ts: an unhandled rejection outside a request) and
+ * fails the request in flight.
+ */
 export function createWreckBakeClient(
   makeWorker: () => WorkerPort = () => new Worker(new URL('./wreckBakeWorker.ts', import.meta.url), {
     type: 'module', name: 'cot-static-wreck-bake',
@@ -64,7 +72,8 @@ export function createWreckBakeClient(
       let wake: (() => void) | null = null;
       const fail = (message: string): void => { error = new Error(message); wake?.(); };
       cancelPending = () => fail('Wreck worker disposed');
-      const started = performance.now();
+      // the worker's silence: the client's own waits for a reply, never the caller's checkpoints (see above)
+      let silentMs = 0;
       try {
         if (startupError) {
           const failure = startupError;
@@ -73,7 +82,7 @@ export function createWreckBakeClient(
         }
         worker ??= makeWorker();
         worker.onmessage = (event: MessageEvent<WreckBakeReply>) => {
-          if (event.data?.requestId !== requestId) return;
+          if (event.data?.requestId !== requestId && event.data?.requestId !== 0) return;
           reply = event.data;
           wake?.();
         };
@@ -85,13 +94,15 @@ export function createWreckBakeClient(
         // Keep the wire unhydrated until the final check so cancellation cannot
         // strand an off-tree BufferGeometry while the scheduler is awaiting.
         while (!reply && !error) {
+          const waitStarted = performance.now();
           await new Promise<void>(resolve => {
             const finish = (): void => { clearTimeout(timer); wake = null; resolve(); };
             const timer = setTimeout(finish, 30);
             wake = finish;
           });
+          silentMs += performance.now() - waitStarted;
           await checkpoint();
-          if (!reply && !error && performance.now() - started >= timeoutMs) {
+          if (!reply && !error && silentMs >= timeoutMs) {
             fail('Wreck worker timed out');
           }
         }

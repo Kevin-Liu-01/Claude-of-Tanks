@@ -8,6 +8,7 @@ import {sectionSolid, type SectionPoint} from './sectionSolid.ts';
 import {buildT72B3XHullCore, buildT72B3XRunningGear, buildT72B3XFenders} from './t72b3X.ts';
 import {eraCassette, glacisEraCassette, strappedPack, attachedCage} from './modernizationFittings.ts';
 import {mount} from './fittingMount.ts';
+import {addPolishProtection} from './nationalPolandProtection.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
 import {ZUBR_II_DESIGN} from '../zubrIIDesign.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -41,7 +42,7 @@ function interpolate(rows:readonly (readonly [number,number])[],z:number):number
 
 function hullEquipment(P:TankBuilderPort):void {
   for(const side of [-1,1])for(const z of [2.15,2.41,2.67,2.91])for(const x of [.23,.56,.86])
-    glacisEraCassette(P,`glacis_era_${side<0?'L':'R'}`,side*x,z,[.235,.052,.215]);
+    glacisEraCassette(P,`glacis_era_${side<0?'L':'R'}`,side*x,z,[.265,.088,.23]);
   const hatchY=topOn(P,'hull',0,1.59);
   P.addHatch('hull',cylY(.29,.29,.034,24),0,hatchY+.014,1.59);
   for(const x of [-.16,0,.16]){
@@ -83,7 +84,7 @@ function deckCabinet(P:TankBuilderPort,x:number,z:number,w:number,d:number,h:num
 }
 
 /** Distinct deep Polish side modules: real .24m stock, upper attachment rail,
- * three ERAWA courses and chamfered returns outside the native track sweep. */
+ * four ERAWA courses and chamfered returns outside the native track sweep. */
 function skirts(P:TankBuilderPort):void {
   const inside=1.86,outside=2.10,low=.67,count=7,length=5.40,rear=-2.58,front=2.82,pitch=length/count;
   const bevel=(a:number,b:number,lo:number,hi:number):SectionPoint[]=>[
@@ -99,8 +100,8 @@ function skirts(P:TankBuilderPort):void {
         {z:z+half-.07,ring:mirror(bevel(inside,outside,low,high),side)},
         {z:z+half,ring:mirror(bevel(inside+.018,outside-.021,low+.025,high-.016),side)}]));
       P.addEquipment('hullDetail',box(.065,.15,pitch+.024),side*(inside+.038),high-.061,z);
-      for(let row=0;row<3;row++)for(const dz of [-.17,.17])
-        eraCassette(P,'hull',`skirt_era_${side<0?'L':'R'}`,[side*(outside+.024),low+.13+row*.195,z+dz],[.059,.174,.305]);
+      for(let row=0;row<4;row++)for(const dz of [-.236,0,.236])
+        eraCassette(P,'hull',`skirt_era_${side<0?'L':'R'}`,[side*(outside+.043),low+.105+row*.162,z+dz],[.095,.139,.211]);
       for(const dz of [-pitch*.32,pitch*.32])P.addEquipment('hullDark',cylZ(.025,.030,8).rotateY(Math.PI/2),side*(outside+.01),high-.035,z+dz);
     }
     const rearClear=-2.98,rearEnd=-3.31,frontClear=3.35,frontEnd=3.58;
@@ -175,8 +176,8 @@ function armorEra(P:TankBuilderPort,stock:readonly THREE.BufferGeometry[],seed:P
   mat.dispose();if(!best?.face)throw new Error(`Zubr II ERA has no backing at ${seed}`);
   const normal=best.face.normal.clone();if(normal.dot(direction)>0)normal.negate();
   const rotation=new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(side,0,0),normal));
-  const center=best.point.clone().addScaledVector(normal,.020);
-  eraCassette(P,'turret',`turret_era_${side<0?'L':'R'}`,center.toArray(),[.054,h,d],[rotation.x,rotation.y,rotation.z]);
+  const center=best.point.clone().addScaledVector(normal,.039);
+  eraCassette(P,'turret',`turret_era_${side<0?'L':'R'}`,center.toArray(),[.092,h,d],[rotation.x,rotation.y,rotation.z]);
 }
 
 function seatedCase(P:TankBuilderPort,stock:readonly THREE.BufferGeometry[],x:number,z:number,w:number,d:number,h:number):void {
@@ -253,6 +254,7 @@ export function buildZubrII(P:TankBuilderPort):void {
   buildT72B3XHullCore(P);buildT72B3XRunningGear(P);buildT72B3XFenders(P);
   hullEquipment(P);skirts(P);turretShell(P);
   const armor=armorShell(P);turretEquipment(P,armor);
+  addPolishProtection(P,3,armor);
   for(const g of armor)g.dispose();
   P.topY=ZUBR_II_DESIGN.roofY;
 }

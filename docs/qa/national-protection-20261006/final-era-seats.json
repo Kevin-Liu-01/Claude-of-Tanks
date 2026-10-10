@@ -1,0 +1,145 @@
+{
+  "before": {
+    "src/vehicles/profiles/nationalUkraineProtection.ts": "ae1e70d58245d5040c4bb58b6386e5551d26fe4c7c3b9a734e7d7ecda001a0a3",
+    "src/vehicles/profiles/nationalPolandProtection.ts": "2f320f874ac808aeb823c904e7de04fa1e3aff560e60a18a38358b58909d4c0b",
+    "src/vehicles/nationalPolandProtectionConfig.ts": "9680e45ef3d36a7c002e0b3439a8f3999f13d8609c42c9d5abb392f3dbe3c56a"
+  },
+  "after": {
+    "src/vehicles/profiles/nationalUkraineProtection.ts": "ae1e70d58245d5040c4bb58b6386e5551d26fe4c7c3b9a734e7d7ecda001a0a3",
+    "src/vehicles/profiles/nationalPolandProtection.ts": "2f320f874ac808aeb823c904e7de04fa1e3aff560e60a18a38358b58909d4c0b",
+    "src/vehicles/nationalPolandProtectionConfig.ts": "9680e45ef3d36a7c002e0b3439a8f3999f13d8609c42c9d5abb392f3dbe3c56a"
+  },
+  "sourceStable": true,
+  "toleranceM": 0.00015,
+  "limitations": "Native-corresponding finite part graph; verifies a path to permanent base armor, not load strength. Cloth net fabric itself is not a load-bearing root.",
+  "reports": [
+    {
+      "id": "ua_t80u_modern",
+      "quality": "high",
+      "eraBodies": 84,
+      "unmatched": 0,
+      "directPermanentContacts": 84,
+      "unsupported": []
+    },
+    {
+      "id": "ua_t80u_modern",
+      "quality": "low",
+      "eraBodies": 84,
+      "unmatched": 0,
+      "directPermanentContacts": 84,
+      "unsupported": []
+    },
+    {
+      "id": "ua_t72b3m_modern",
+      "quality": "high",
+      "eraBodies": 100,
+      "unmatched": 0,
+      "directPermanentContacts": 100,
+      "unsupported": []
+    },
+    {
+      "id": "ua_t72b3m_modern",
+      "quality": "low",
+      "eraBodies": 100,
+      "unmatched": 0,
+      "directPermanentContacts": 100,
+      "unsupported": []
+    },
+    {
+      "id": "ua_t72b3_modern",
+      "quality": "high",
+      "eraBodies": 86,
+      "unmatched": 0,
+      "directPermanentContacts": 86,
+      "unsupported": []
+    },
+    {
+      "id": "ua_t72b3_modern",
+      "quality": "low",
+      "eraBodies": 86,
+      "unmatched": 0,
+      "directPermanentContacts": 86,
+      "unsupported": []
+    },
+    {
+      "id": "ua_t72b3m_hetman_ii",
+      "quality": "high",
+      "eraBodies": 118,
+      "unmatched": 0,
+      "directPermanentContacts": 118,
+      "unsupported": []
+    },
+    {
+      "id": "ua_t72b3m_hetman_ii",
+      "quality": "low",
+      "eraBodies": 118,
+      "unmatched": 0,
+      "directPermanentContacts": 118,
+      "unsupported": []
+    },
+    {
+      "id": "pl_t80u_modern",
+      "quality": "high",
+      "eraBodies": 190,
+      "unmatched": 0,
+      "directPermanentContacts": 190,
+      "unsupported": []
+    },
+    {
+      "id": "pl_t80u_modern",
+      "quality": "low",
+      "eraBodies": 190,
+      "unmatched": 0,
+      "directPermanentContacts": 190,
+      "unsupported": []
+    },
+    {
+      "id": "pl_t72b3m_modern",
+      "quality": "high",
+      "eraBodies": 200,
+      "unmatched": 0,
+      "directPermanentContacts": 200,
+      "unsupported": []
+    },
+    {
+      "id": "pl_t72b3m_modern",
+      "quality": "low",
+      "eraBodies": 200,
+      "unmatched": 0,
+      "directPermanentContacts": 200,
+      "unsupported": []
+    },
+    {
+      "id": "pl_t72b3_modern",
+      "quality": "high",
+      "eraBodies": 164,
+      "unmatched": 0,
+      "directPermanentContacts": 164,
+      "unsupported": []
+    },
+    {
+      "id": "pl_t72b3_modern",
+      "quality": "low",
+      "eraBodies": 164,
+      "unmatched": 0,
+      "directPermanentContacts": 164,
+      "unsupported": []
+    },
+    {
+      "id": "pl_t72b3_zubr_ii",
+      "quality": "high",
+      "eraBodies": 254,
+      "unmatched": 0,
+      "directPermanentContacts": 254,
+      "unsupported": []
+    },
+    {
+      "id": "pl_t72b3_zubr_ii",
+      "quality": "low",
+      "eraBodies": 254,
+      "unmatched": 0,
+      "directPermanentContacts": 254,
+      "unsupported": []
+    }
+  ]
+}

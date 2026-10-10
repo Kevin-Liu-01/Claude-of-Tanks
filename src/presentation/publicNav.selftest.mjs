@@ -26,6 +26,7 @@ const pages = [
   ['site/docs-audio.html', '/docs'],
   ['site/docs-interface.html', '/docs'],
   ['site/docs-studio.html', '/docs'],
+  ['site/docs-filming.html', '/docs'],
 ];
 const expectedLinks = [
   ['/home', 'Home'],

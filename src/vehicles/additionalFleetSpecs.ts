@@ -2,6 +2,7 @@
 // the nearest researched donor and applies explicit identity/balance changes;
 // visual geometry remains in the demand-loaded procedural family builders.
 import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
+import {T72BU_X_SOURCE_DATUMS,createT72BUXArmorZones} from './t72buXArmor.ts';
 import { REVOLUTION_PROTO_FRAME } from './profiles/leopardRevolutionPrototypeFrame.ts';
 import {
   LEOPARD_IMPROVED_AUTHORED_WIDTH_M,
@@ -194,6 +195,38 @@ function merkavaArmor({ glacis, lower, wedge, notch, side }: MerkavaArmorOptions
 DONOR_SPECS.t72b_1987 = make('t72b3', 't72b_1987', 'T-72B obr. 1985', 'USSR/Russia',
   { hp: 1950, weightTons: 44.5, topSpeedKmh: 60, reverseSpeedKmh: 12, gun: { reloadS: 7.2 } });
 
+function makePendekar():FleetTankSpec {
+const spec=make('t72b3', 'pt91m', 'PT-91M Pendekar', 'Poland',
+    { hp: 2150, weightTons: 48.5, topSpeedKmh: 70, reverseSpeedKmh: 20,
+      gun: {
+        reloadS: 7.0,
+        shells: requireFleetSpec('t72b3').gun.shells.map((round, index) => ({
+          ...round,
+          ...(index === 0 ? { dmg: 520, pen100Mm: 720, pen1000Mm: 665, pen2000Mm: 590 }
+            : index === 1 ? { dmg: 480 } : { dmg: 585 }),
+        })),
+      },
+      visual: {
+        scheme: 'stripes', base: '#394b3c', weather: '#53604a',
+        patches: ['#202820', '#4a3b30', '#70634a'], camoScale: 0.42,
+        marking: 'number', number: '312', trackWidthM: .56169,
+      },
+      dims: { ...T72BU_X_SOURCE_DATUMS.dims, widthM:3.66 } });
+  // Owner-selected first-party T-72BU shape; retain Pendekar combat balance.
+  spec.variantOf='t72bu_x';spec.publicVisualFallback=null;
+  const {turretPivot,trunnion,muzzleZ}=T72BU_X_SOURCE_DATUMS;
+  spec.armor.turretPivot=[...turretPivot];
+  spec.armor.gunPivot=[trunnion[0]-turretPivot[0],trunnion[1]-turretPivot[1],trunnion[2]-turretPivot[2]];
+  spec.armor.gunBarrel.lengthM=muzzleZ-trunnion[2];spec.armor.gunBarrel.radiusM=.129446;
+  // The rendered rectangular arrays use these semantic fields; exact native
+  // triangles and the rebuilt permanent shell are regenerated into anatomy.
+  spec.armor.hullPlates=spec.armor.hullPlates.filter(p=>!p.era);
+  spec.armor.turretPlates=spec.armor.turretPlates.filter(p=>!p.era);
+  const zones=createT72BUXArmorZones();
+  spec.armor.hullPlates.push(...zones.hullPlates);spec.armor.turretPlates.push(...zones.turretPlates);
+  return spec;
+}
+
 const SPECS: FleetTankSpec[] = [
   make('challenger2', 'challenger1', 'Challenger 1 Mk.3', 'UK',
     {
@@ -302,22 +335,7 @@ const SPECS: FleetTankSpec[] = [
       },
       publicVisualFallback: null, community: null,
       dims: { hullLengthM: 6.946, overallLengthM: 9.436, widthM: 3.631, heightM: 3.27 } }),
-  make('t72b3', 'pt91m', 'PT-91M Pendekar', 'Poland',
-    { hp: 2150, weightTons: 48.5, topSpeedKmh: 70, reverseSpeedKmh: 20,
-      gun: {
-        reloadS: 7.0,
-        shells: requireFleetSpec('t72b3').gun.shells.map((round, index) => ({
-          ...round,
-          ...(index === 0 ? { dmg: 520, pen100Mm: 720, pen1000Mm: 665, pen2000Mm: 590 }
-            : index === 1 ? { dmg: 480 } : { dmg: 585 }),
-        })),
-      },
-      visual: {
-        scheme: 'stripes', base: '#394b3c', weather: '#53604a',
-        patches: ['#202820', '#4a3b30', '#70634a'], camoScale: 0.42,
-        marking: 'number', number: '312', trackWidthM: 0.50,
-      },
-      dims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.59, heightM: 2.19 } }),
+  makePendekar(),
   make('merkava4', 'merkava1b', 'Merkava Mk.1B', 'Israel',
     { hp: 1900, weightTons: 60, topSpeedKmh: 46, gun: { reloadS: 7.8 },
       dims: { hullLengthM: 7.45, overallLengthM: 8.63, widthM: 3.70, heightM: 2.65 } }),

@@ -30,7 +30,13 @@ rig). The physical sun is derived on every preset from its elevation,
 atmosphere and cloudscape (a map's authored `sunIntensity`/`sunColorHex` light
 only the legacy rig and the night's moon); a sky block's `lighting` block holds
 the map levers (ground albedo, exposure EV, grade); the output pass tone-maps
-with AgX. `temporalAoPolicy.ts` owns the
+with AgX. `cinemaPost.ts` is the Studio-only picture stack (depth of field, HDR
+highlights/exposure/white balance, display grade, per-output-frame finish)
+inserted into post.ts' composer at runtime only while a stage is non-neutral and
+removed on Studio exit; `filmAccumulation.ts` is the Studio-only float
+accumulation pass the film renderer inserts after late FX for the length of a
+film (never constructed in battle or Garage), and `LensFlarePass.fixedDt` lets it
+ease the flare on the film clock. `temporalAoPolicy.ts` owns the
 asymmetric stale-dark release used by temporal GTAO; `renderLayers.ts` owns
 presentation/shadow-only routing for authored proxy casters;
 `phaseSceneResidency.ts` detaches mutually exclusive Garage and battlefield
@@ -60,6 +66,9 @@ Do not dispose inactive-phase materials merely to lower the live program count:
 returning can create a larger cache of light-count variants and a visible
 compile spike. Gate programs, buffers, textures, heap, objects, calls and
 triangles independently with `npm run perf:resources:gate`.
+Studio picture passes must stay out of the battle composer: never import
+`cinemaPost.ts` from boot or battle modules, and keep its stage gating in
+`game/studioPicture.ts` so the neutral picture stays byte-identical.
 Keep each rate-capped far-cascade projection paired with the depth map rendered
 from that pose. Do not move its light fit on an unscheduled frame. Shadow visual
 changes must pass both the raw CSM motion comparison and composed temporal-AO
@@ -77,3 +86,8 @@ GTAO/post composition before changing quality or refresh policy.
 Garage and battle have different active worlds/lights. A lower draw count is
 not a win if it causes first-use shader or transition spikes. Passive Garage
 dwell must not construct a battlefield or retain resources without a ceiling.
+A material's `envMapIntensity` only reaches the screen through
+`setupShadowMaterial` (`materialEnvIntensity.ts`): three overwrites the uniform
+with `scene.environmentIntensity` for every material that reads the scene
+environment. Below 1 it takes a share of the sky light, which is 80–99 % of a
+shaded matte face's light, so a trim is a visible change, not a no-op.

@@ -182,8 +182,9 @@ export default {
     well: false, hayCrates: false, fences: true, telegraph: true, carts: false, logs: true,
     rocks: 310, outcrops: 76, craters: 92, rubblePiles: 36,
     sandbagLines: 22, hedgehogs: 26,
-    tankWrecks: { era: 'modern', count: 7, debris: true,
-      ids: ['m1a1', 't80u', 'm60a2', 'bmpt_t90', 'pt91m', 'ua_t84_oplot_m', 'm60a3'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): Kyushu: the Ground Self-Defense Force's Types 10, 90
+    // and 74 and the Type 89 IFV
+    tankWrecks: { era: 'modern', count: 7, debris: true, ids: ['type10', 'type90', 'type74', 'type89'] },
     inhabit: {
       stalls: 0, benches: 1, coreClutter: 30, drums: 16,
       trucks: 8, jeeps: 5, drumClusters: 9, camps: 3, modernClutter: 34,

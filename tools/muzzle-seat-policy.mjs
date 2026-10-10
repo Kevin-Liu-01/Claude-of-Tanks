@@ -7,6 +7,20 @@ export function sampleMuzzleRingSeams(sample) {
 
 /** Retained legacy seating, or a ray-verified physical recess at the same mouth. */
 export function muzzleSeatAxialFit(receipt) {
+  if (['physical-recess-r2', 'carved-physical-recess-r1'].includes(receipt.revision)) {
+    const depth=receipt.physicalBoreDepthM, radius=receipt.physicalInnerRadiusM;
+    const projection=receipt.physicalRimProjectionM??0;
+    return [depth,radius,projection,receipt.measuredMinimumDepthM,receipt.measuredMaximumDepthM,
+      receipt.measuredMaximumWallErrorM,receipt.measuredMaximumRimOffsetM].every(Number.isFinite)
+      && depth>=.01 && depth<=.5 && radius>0 && receipt.supportOuterRadiusM>radius
+      && projection>=0 && projection<=.1
+      && Math.abs(receipt.measuredMinimumDepthM-depth)<.001
+      && Math.abs(receipt.measuredMaximumDepthM-depth)<.001
+      && receipt.measuredMaximumWallErrorM>=0
+      && receipt.measuredMaximumWallErrorM<=radius*(1-Math.cos(Math.PI/12))+.0001
+      && receipt.measuredMaximumRimOffsetM>=0 && receipt.measuredMaximumRimOffsetM<=projection+.004
+      && receipt.lipFrontM===0 && receipt.annulusForwardM===0 && receipt.discForwardM===-depth;
+  }
   if (![receipt.lipAdvanceM, receipt.annulusForwardM, receipt.discForwardM,
     receipt.lipFrontM, receipt.markerGapM].every(Number.isFinite)
     || receipt.lipFrontM <= 0 || receipt.lipFrontM > receipt.markerGapM + .001
@@ -33,7 +47,7 @@ export function muzzleSeatAxialFit(receipt) {
  * flush annulus (projection 0) is accepted as well as a source-authored projecting lip, which can hide
  * the finish ring but never the aperture. Either extent must agree with the measured assembled stock. */
 export function physicalMuzzleRimSample(receipt, sample) {
-  if (receipt?.revision !== 'physical-recess-r1' || !sample?.gunOwned) return false;
+  if (!['physical-recess-r1','physical-recess-r2','carved-physical-recess-r1'].includes(receipt?.revision) || !sample?.gunOwned) return false;
   const {radiusM, zM} = sample;
   const inner = receipt.physicalInnerRadiusM, outer = receipt.measuredOuterRadiusM;
   const projection = receipt.physicalRimProjectionM;
@@ -49,7 +63,7 @@ export function physicalMuzzleRimSample(receipt, sample) {
  * legacy sampling window for other mouths and the same luminance thresholds. */
 export function muzzleBoreLuminance(data, width, height, radiusPx, receipt = null) {
   let innerRatio = .38;
-  if (receipt?.revision === 'physical-recess-r1') {
+  if (['physical-recess-r1','physical-recess-r2','carved-physical-recess-r1'].includes(receipt?.revision)) {
     const inner = receipt.physicalInnerRadiusM, outer = receipt.outerRadiusM;
     if (![inner, outer].every(Number.isFinite) || inner <= 0 || outer <= inner) {
       throw new Error('Physical bore luminance requires a valid measured aperture');

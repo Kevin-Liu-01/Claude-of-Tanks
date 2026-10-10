@@ -223,6 +223,27 @@ vec3 toneCap( vec3 c ) {
 }
 `;
 
+// Scene Studio light response (FX_LIGHT_TINT is never defined in battle):
+// normal-blended media multiply by the scene's ambient tint, and a puff
+// flagged self-lit (negative peak alpha, see PUFF_VERT) adds its fading
+// emission — fire-lit smoke undersides and flare-lit trails keep glowing in a
+// dark night tint. Without the define the helper is exactly the historical
+// `color * light` expression and no varying or uniform is declared.
+const LIGHT_TINT_PARS = `
+#ifdef FX_LIGHT_TINT
+uniform vec3 uLightTint;
+#endif
+`;
+const LIGHT_TINT_PUFF_F = `
+${LIGHT_TINT_PARS}
+#ifdef FX_LIGHT_TINT
+varying vec3 vEmit;
+vec3 fxLit( vec3 color, float light ) { return color * light * uLightTint + vEmit; }
+#else
+vec3 fxLit( vec3 color, float light ) { return color * light; }
+#endif
+`;
+
 // --- puff (smoke / fire / dust) --------------------------------------------
 
 const PUFF_VERT = `
@@ -243,6 +264,9 @@ varying vec4 vColor;
 varying float vT;
 varying vec2 vShade;
 varying float vParticleDepth;
+#ifdef FX_LIGHT_TINT
+varying vec3 vEmit;
+#endif
 ${FOG_PARS_V}
 ${DISPLACE_GLSL}
 ${NEARFADE_GLSL}
@@ -253,6 +277,9 @@ void main() {
     vUv = uv; vUvA = uv; vUvB = uv; vFMix = 0.0;
     vColor = vec4( 0.0 ); vT = 0.0; vShade = vec2( 0.0 );
     vParticleDepth = 1e9;
+    #ifdef FX_LIGHT_TINT
+      vEmit = vec3( 0.0 );
+    #endif
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
     ${FOG_V.replace('-mvPosition.z','1.0')}
     return;
@@ -282,10 +309,21 @@ void main() {
   // texture's TOP band: a frame's row counts down from v = 1 (counting up played the rows last-first: 12-15, 8-11, ...)
   vUvA = ( vec2( mod( f0, uTiles ), uTiles - 1.0 - floor( f0 / uTiles ) ) + uv ) / uTiles;
   vUvB = ( vec2( mod( f1, uTiles ), uTiles - 1.0 - floor( f1 / uTiles ) ) + uv ) / uTiles;
+  float peak = aC1.w;
+  #ifdef FX_LIGHT_TINT
+    // Studio self-lit puff: a negative peak alpha flags col0 as emission that
+    // fades over life above the constant col1 albedo (never sent in battle).
+    float selfLit = step( peak, 0.0 );
+    peak = abs( peak );
+    vEmit = selfLit * aC0.rgb * ( 1.0 - t ) * ( 1.0 - t );
+  #endif
   // tier-1 soft handling: alpha-in at birth, long fade-out (+ lens fade)
-  float alpha = aC1.w * smoothstep( 0.0, 0.12, t ) * ( 1.0 - smoothstep( 0.5, 1.0, t ) )
+  float alpha = peak * smoothstep( 0.0, 0.12, t ) * ( 1.0 - smoothstep( 0.5, 1.0, t ) )
     * nearFade( wpos );
   vColor = vec4( mix( aC0.rgb, aC1.rgb, smoothstep( 0.0, 1.0, t ) ), alpha );
+  #ifdef FX_LIGHT_TINT
+    if ( selfLit > 0.5 ) vColor.rgb = aC1.rgb;
+  #endif
   vUv = uv;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   vParticleDepth = -mvPosition.z;
@@ -305,6 +343,7 @@ varying float vT;
 varying vec2 vShade;
 ${FOG_PARS_F}
 ${SOFT_DEPTH_GLSL}
+${LIGHT_TINT_PUFF_F}
 void main() {
   float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
   // edges thin out with age so old puffs wisp away instead of popping
@@ -317,7 +356,7 @@ void main() {
   vec2 p = vUv * 2.0 - 1.0;
   float sun = clamp( 0.5 + 0.8 * dot( p, vShade ), 0.0, 1.0 );
   float light = 0.52 + 0.72 * sun + 0.35 * sun * ( 1.0 - tex );
-  vec3 col = vColor.rgb * light;
+  vec3 col = fxLit( vColor.rgb, light );
   ${FOG_SCALE_F}
   #ifdef USE_FOG
     col = mix( col, fogColor, fogFactor );
@@ -416,6 +455,7 @@ varying float vT;
 varying vec2 vShade;
 ${FOG_PARS_F}
 ${SOFT_DEPTH_GLSL}
+${LIGHT_TINT_PUFF_F}
 void main() {
   float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
   // r2 anti-static: screen-space hash jitter removed (see PUFF_FRAG_ADDITIVE
@@ -462,6 +502,9 @@ void main() {
   vec2 p = vUv * 2.0 - 1.0;
   float sun = clamp( 0.5 + 0.8 * dot( p, vShade ), 0.0, 1.0 );
   col *= mix( 0.58 + 0.62 * sun, 1.0, smoothstep( 0.12, 0.5, h2 ) );
+  #ifdef FX_LIGHT_TINT
+    col = mix( col * uLightTint, col, smoothstep( 0.12, 0.5, h2 ) );
+  #endif
   ${FOG_SCALE_F}
   #ifdef USE_FOG
     col = mix( col, fogColor, fogFactor );
@@ -490,6 +533,7 @@ varying float vT;
 varying vec2 vShade;
 ${FOG_PARS_F}
 ${SOFT_DEPTH_GLSL}
+${LIGHT_TINT_PUFF_F}
 void main() {
   float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
   // erosion dissolve: threshold rises with age, band widens so late edges go
@@ -503,7 +547,7 @@ void main() {
   vec2 p = vUv * 2.0 - 1.0;
   float sun = clamp( 0.5 + 0.8 * dot( p, vShade ), 0.0, 1.0 );
   float light = 0.46 + 0.60 * sun + 0.28 * sun * ( 1.0 - tex );
-  vec3 col = vColor.rgb * light;
+  vec3 col = fxLit( vColor.rgb, light );
   ${FOG_SCALE_F}
   #ifdef USE_FOG
     col = mix( col, fogColor, fogFactor );
@@ -523,9 +567,9 @@ float screenNoise(vec2 p) {
              mix(screenHash(i+vec2(0,1)),screenHash(i+vec2(1,1)),f.x),f.y);
 }
 void main() {`).replace(
-  'vec3 col = vColor.rgb * light;',
+  'vec3 col = fxLit( vColor.rgb, light );',
   `float folds=.65*screenNoise(p*3.8+vT*.25)+.35*screenNoise(p*8.3-vT*.18);
-   vec3 col=vColor.rgb*(.54+.40*sun-.16*tex+.32*(folds-.5));`,
+   vec3 col=fxLit(vColor.rgb,(.54+.40*sun-.16*tex+.32*(folds-.5)));`,
 );
 
 // --- streak (sparks / ricochet) --------------------------------------------
@@ -791,6 +835,7 @@ varying vec3 vLocal;
 varying float vSeed;
 varying vec3 vWorldPos;
 ${FOG_PARS_F}
+${LIGHT_TINT_PARS}
 void main() {
   if ( vFade <= 0.001 ) discard;
   vec3 n = normalize( vNormalW );
@@ -813,6 +858,9 @@ void main() {
   // orange pockets and cold chips keep only a whisper of sky rim.
   col += vec3( 0.30, 0.32, 0.35 ) * rim * ( 0.10 + 0.16 * ( n.y * 0.5 + 0.5 ) )
     * ( 1.0 - clamp( vHot * 2.0, 0.0, 0.85 ) );
+  #ifdef FX_LIGHT_TINT
+    col *= uLightTint;
+  #endif
   // cooling ember glow (bloom feed): NOT a flat face tint — SMOOTH seeded
   // noise blotches so irregular PATCHES of the scorched chunk glow orange
   // while the rest stays charred black. r1: the old floor()-cell hash read as
@@ -1389,6 +1437,30 @@ class Pool {
 // Public factory
 // ---------------------------------------------------------------------------
 
+/** Clock, soft-depth uniforms and sprite sheets a companion system can share. */
+interface ParticleSharing {
+  readonly uTime: { value: number };
+  readonly uSceneDepth: { value: THREE.DepthTexture | null };
+  readonly uSoftViewport: { value: THREE.Vector2 };
+  readonly uCameraNear: { value: number };
+  readonly uCameraFar: { value: number };
+  /** Ambient tint for FX_LIGHT_TINT shading (Studio only; white otherwise). */
+  readonly uLightTint: { value: THREE.Color };
+  readonly textures: Readonly<Record<'smoke' | 'fire' | 'prop' | 'dust' | 'flash' | 'jet', THREE.Texture>>;
+}
+
+interface ParticleSystemOptions {
+  seed?: number;
+  /**
+   * Scene Studio companion pools (src/fx/cinematicFx.ts): age on the battle
+   * system's clock, read its copied scene depth and sample its sprite sheets.
+   * A companion never advances, freezes or bakes anything itself.
+   */
+  share?: ParticleSharing;
+  /** Per-pool capacity overrides for a companion system. */
+  poolSizes?: Partial<Record<ParticlePoolName, number>>;
+}
+
 /**
  * Create the pooled instanced particle system.
  * @param {object} engineCtx render bundle (§2.8)
@@ -1397,18 +1469,22 @@ class Pool {
  */
 export function createParticleSystem(
   engineCtx: ParticleEngineContext,
-  { seed = 5000 }: { seed?: number } = {},
+  { seed = 5000, share, poolSizes }: ParticleSystemOptions = {},
 ) {
   const texRng = mulberry32(seed);
   const group = new THREE.Group();
   group.name = 'fx-particles';
   group.matrixAutoUpdate = false;
+  const sizes = poolSizes ? { ...POOL_SIZES, ...poolSizes } : POOL_SIZES;
 
-  const uTime = { value: 0 };
-  const uSceneDepth = { value: null };
-  const uSoftViewport = { value: new THREE.Vector2(1, 1) };
-  const uCameraNear = { value: 0.5 };
-  const uCameraFar = { value: 4000 };
+  const uTime = share ? share.uTime : { value: 0 };
+  const uSceneDepth: { value: THREE.DepthTexture | null } = share ? share.uSceneDepth : { value: null };
+  const uSoftViewport = share ? share.uSoftViewport : { value: new THREE.Vector2(1, 1) };
+  const uCameraNear = share ? share.uCameraNear : { value: 0.5 };
+  const uCameraFar = share ? share.uCameraFar : { value: 4000 };
+  const uLightTint = share ? share.uLightTint : { value: new THREE.Color(1, 1, 1) };
+  // Normal-blended media that honour FX_LIGHT_TINT (setLightTintShading).
+  const tintMaterials: THREE.ShaderMaterial[] = [];
   let lateFxUntil = -Infinity;
   let frozen = false;
 
@@ -1444,18 +1520,19 @@ export function createParticleSystem(
     tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
     return tex;
   };
-  const smokeTex = lazyTex();
-  const fireTex = lazyTex();
-  const propTex = lazyTex();
-  const dustTex = lazyTex();
-  const flashTex = lazyTex();
-  const jetTex = lazyTex();
-  let texturesBaked = false;
+  const smokeTex = share ? share.textures.smoke : lazyTex();
+  const fireTex = share ? share.textures.fire : lazyTex();
+  const propTex = share ? share.textures.prop : lazyTex();
+  const dustTex = share ? share.textures.dust : lazyTex();
+  const flashTex = share ? share.textures.flash : lazyTex();
+  const jetTex = share ? share.textures.jet : lazyTex();
+  // A companion samples the owner's sheets; the owner alone bakes them.
+  let texturesBaked = !!share;
   let textureBakeGen: Generator<void, void, void> | null = null;
   let textureAssetImages: Record<keyof typeof PARTICLE_TEXTURE_ASSETS, HTMLImageElement> | null = null;
   let textureAssetPromise: Promise<boolean> | null = null;
 
-  function installBakedTexture(tex: THREE.CanvasTexture, baked: THREE.CanvasTexture): void {
+  function installBakedTexture(tex: THREE.Texture, baked: THREE.CanvasTexture): void {
     // STUDIO selftest fix: the 4×4 placeholder HAS usually been uploaded by
     // now — pool meshes render every frame at instanceCount 0, and a zero-
     // instance draw still binds the material and allocates the sampler's GL
@@ -1528,7 +1605,7 @@ export function createParticleSystem(
 
   function* warmTextureSteps(): Generator<void, void, void> {
     // Exact original bake order — the shared RNG stream must not shift.
-    const flipbookJobs: ReadonlyArray<readonly [THREE.CanvasTexture, FlipbookStyle]> = [
+    const flipbookJobs: ReadonlyArray<readonly [THREE.Texture, FlipbookStyle]> = [
       [smokeTex, 'smoke'],
       [fireTex, 'fire'],
       [propTex, 'prop'],
@@ -1624,6 +1701,7 @@ export function createParticleSystem(
         uSoftViewport,
         uCameraNear,
         uCameraFar,
+        uLightTint,
       }),
       transparent: true,
       depthWrite: false,
@@ -1631,6 +1709,7 @@ export function createParticleSystem(
       blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
       fog: true,
     });
+    if (!additive) tintMaterials.push(mat);
     return mat;
   }
 
@@ -1640,44 +1719,44 @@ export function createParticleSystem(
   const JET_LAYOUT = { aPB: 4, aAL: 4, aWL: 4, aC: 4 };
 
   const pools: Record<ParticlePoolName, Pool> = {
-    smoke: new Pool('smoke', makeQuadGeometry(POOL_SIZES.smoke),
-      puffMaterial(smokeTex, false, 0.9, 1, 4), PUFF_LAYOUT, POOL_SIZES.smoke, 'aVL', 3),
-    fire: new Pool('fire', makeQuadGeometry(POOL_SIZES.fire),
+    smoke: new Pool('smoke', makeQuadGeometry(sizes.smoke),
+      puffMaterial(smokeTex, false, 0.9, 1, 4), PUFF_LAYOUT, sizes.smoke, 'aVL', 3),
+    fire: new Pool('fire', makeQuadGeometry(sizes.fire),
       // intensity 1.05: hot enough to bloom where sprites overlap without the
       // stacked-additive HDR clipping the fireball core to a featureless sheet.
       // Additive pools carry a longer lens fade (r7 scope flood): a fire card
       // 3 m from the eye is a screen-filling wash, not feedback.
-      puffMaterial(fireTex, true, 1.6, 0.66, 4, [1.2, 4.6]), PUFF_LAYOUT, POOL_SIZES.fire, 'aVL', 3),
-    billow: new Pool('billow', makeQuadGeometry(POOL_SIZES.billow),
+      puffMaterial(fireTex, true, 1.6, 0.66, 4, [1.2, 4.6]), PUFF_LAYOUT, sizes.fire, 'aVL', 3),
+    billow: new Pool('billow', makeQuadGeometry(sizes.billow),
       // normal-blended fireball body (see PUFF_FRAG_BILLOW): occluding
       // fire-in-smoke lobes that give the blast a rolling silhouette
       (() => {
         const m = puffMaterial(fireTex, false, 1.4, 1.0, 4, [1.2, 4.6]);
         m.fragmentShader = PUFF_FRAG_BILLOW;
         return m;
-      })(), PUFF_LAYOUT, POOL_SIZES.billow, 'aVL', 3),
-    psmoke: new Pool('psmoke', makeQuadGeometry(POOL_SIZES.psmoke),
+      })(), PUFF_LAYOUT, sizes.billow, 'aVL', 3),
+    psmoke: new Pool('psmoke', makeQuadGeometry(sizes.psmoke),
       // muzzle propellant mass (see PUFF_FRAG_PROP): erosion-masked cold grey
       // powder smoke — torn billow structure instead of gaussian cotton balls
       (() => {
         const m = puffMaterial(propTex, false, 0.9, 1.0, 4, [0.8, 3.0]);
         m.fragmentShader = PUFF_FRAG_PROP;
         return m;
-      })(), PUFF_LAYOUT, POOL_SIZES.psmoke, 'aVL', 3),
+      })(), PUFF_LAYOUT, sizes.psmoke, 'aVL', 3),
     // Dedicated obscurant budget: the cloud cannot evict cannon smoke or fire.
     // Eroded flipbook lobes carry stable billow detail, without screen-space noise.
-    screen: new Pool('screen', makeQuadGeometry(POOL_SIZES.screen),
+    screen: new Pool('screen', makeQuadGeometry(sizes.screen),
       (() => {
         const m = puffMaterial(propTex, false, .35, 1.0, 4, [.35,1.5]);
         m.fragmentShader = PUFF_FRAG_SCREEN;
         return m;
-      })(), PUFF_LAYOUT, POOL_SIZES.screen, 'aVL', 3),
-    dust: new Pool('dust', makeQuadGeometry(POOL_SIZES.dust),
-      puffMaterial(dustTex, false, 1.4, 1, 4), PUFF_LAYOUT, POOL_SIZES.dust, 'aVL', 3),
-    flash: new Pool('flash', makeQuadGeometry(POOL_SIZES.flash),
+      })(), PUFF_LAYOUT, sizes.screen, 'aVL', 3),
+    dust: new Pool('dust', makeQuadGeometry(sizes.dust),
+      puffMaterial(dustTex, false, 1.4, 1, 4), PUFF_LAYOUT, sizes.dust, 'aVL', 3),
+    flash: new Pool('flash', makeQuadGeometry(sizes.flash),
       // 1.7: bright enough to bloom without clipping to a featureless sheet
-      puffMaterial(flashTex, true, 0.6, 1.7, 1, [1.2, 4.6]), PUFF_LAYOUT, POOL_SIZES.flash, 'aVL', 3),
-    jet: new Pool('jet', makeQuadGeometry(POOL_SIZES.jet),
+      puffMaterial(flashTex, true, 0.6, 1.7, 1, [1.2, 4.6]), PUFF_LAYOUT, sizes.flash, 'aVL', 3),
+    jet: new Pool('jet', makeQuadGeometry(sizes.jet),
       new THREE.ShaderMaterial({
         vertexShader: JET_VERT,
         fragmentShader: JET_FRAG,
@@ -1690,8 +1769,8 @@ export function createParticleSystem(
         blending: THREE.AdditiveBlending,
         side: THREE.DoubleSide,   // cone quad winding flips with view direction
         fog: true,
-      }), JET_LAYOUT, POOL_SIZES.jet, 'aAL', 3),
-    sparks: new Pool('sparks', makeQuadGeometry(POOL_SIZES.sparks),
+      }), JET_LAYOUT, sizes.jet, 'aAL', 3),
+    sparks: new Pool('sparks', makeQuadGeometry(sizes.sparks),
       new THREE.ShaderMaterial({
         vertexShader: STREAK_VERT,
         fragmentShader: STREAK_FRAG,
@@ -1706,7 +1785,7 @@ export function createParticleSystem(
         blending: THREE.AdditiveBlending,
         side: THREE.DoubleSide,   // streak ribbon winding flips with view direction
         fog: true,
-      }), STREAK_LAYOUT, POOL_SIZES.sparks, 'aVL', 3),
+      }), STREAK_LAYOUT, sizes.sparks, 'aVL', 3),
     // LOADING PERF (boot r9): the chunk shards get a DEDICATED stream — they
     // used to pull texRng AFTER the six texture bakes, and with those bakes
     // deferred (warmTextures) this call would otherwise consume texRng FIRST
@@ -1714,18 +1793,35 @@ export function createParticleSystem(
     // deferred bakes read the exact values the old boot-path bakes read
     // (textures ran first, values 1..K); only the shard silhouettes re-roll
     // once, at identical distribution/quality.
-    debris: new Pool('debris', makeChunkGeometry(POOL_SIZES.debris, mulberry32((seed ^ 0x51ed) | 0)),
+    debris: new Pool('debris', makeChunkGeometry(sizes.debris, mulberry32((seed ^ 0x51ed) | 0)),
       new THREE.ShaderMaterial({
         vertexShader: DEBRIS_VERT,
         fragmentShader: DEBRIS_FRAG,
         uniforms: Object.assign(fogUniforms(), {
           uTime,
           uSunDir: { value: sunDirW },
+          uLightTint,
         }),
         fog: true,
-      }), DEBRIS_LAYOUT, POOL_SIZES.debris, 'aVL', 3),
+      }), DEBRIS_LAYOUT, sizes.debris, 'aVL', 3),
   };
   const poolList = Object.values(pools);
+  tintMaterials.push(pools.debris.mesh.material as THREE.ShaderMaterial);
+
+  /** Studio cinematic shading: toggle FX_LIGHT_TINT on the normal-blended media. */
+  function setLightTintShading(on: boolean): void {
+    for (const mat of tintMaterials) {
+      const has = mat.defines !== undefined && 'FX_LIGHT_TINT' in mat.defines;
+      if (has === on) continue;
+      if (on) mat.defines = { ...(mat.defines ?? {}), FX_LIGHT_TINT: '' };
+      else if (mat.defines) {
+        const next: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(mat.defines)) if (key !== 'FX_LIGHT_TINT') next[key] = value;
+        mat.defines = next;
+      }
+      mat.needsUpdate = true;
+    }
+  }
 
   // Draw order: opaque debris first (default), then dust → smoke → billow →
   // fire → sparks (the occluding billow body draws over the smoke mass; the
@@ -1825,10 +1921,21 @@ export function createParticleSystem(
     debris: (o: DebrisOptions) => emitDebris(pools.debris, o),
   };
 
+  // Studio companion seam (see ParticleSystemOptions.share): the exact
+  // uniform objects and sprite sheets, never copies.
+  const sharing: ParticleSharing = Object.freeze({
+    uTime, uSceneDepth, uSoftViewport, uCameraNear, uCameraFar, uLightTint,
+    textures: Object.freeze({
+      smoke: smokeTex, fire: fireTex, prop: propTex, dust: dustTex, flash: flashTex, jet: jetTex,
+    }),
+  });
+
   return {
     group,
     pools,
     softParticles,
+    sharing,
+    setLightTintShading,
 
     /**
      * Bake the real sprite sheets into the placeholder textures (idempotent).
@@ -1847,7 +1954,8 @@ export function createParticleSystem(
      * @param {number} dt seconds
      */
     update(dt: number): void {
-      if (!frozen) uTime.value += dt;
+      // A companion ages on the owner's clock; only the owner advances it.
+      if (!frozen && !share) uTime.value += dt;
       const liveSun = engineCtx?.scene?.userData?.sunDirWorld;
       if (liveSun && liveSun.lengthSq() > 1e-8) sunDirW.copy(liveSun).normalize();
       for (const pool of poolList) pool.flush();

@@ -321,10 +321,9 @@ export default {
     haystacks: 12, rocks: 270, outcrops: 32, craters: 36, rubblePiles: 0,
     // Legacy-map quality backport: snow-bound modern hulks (the
     // snow-cap shader dusts them like every prop), frozen supply columns
-    tankWrecks: {
-      era: 'modern', count: 5, debris: true,
-      ids: ['cv90', 'strv122', 'k2', 'type10', 't80u'],
-    },
+    // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
+    // front's war; the war shows through the burnt period trucks and carts
+    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
     sandbagLines: 10,
     hedgehogs: 8,
     // world-dressing r1: winter inhabitants — sleds on the snowfield, firewood

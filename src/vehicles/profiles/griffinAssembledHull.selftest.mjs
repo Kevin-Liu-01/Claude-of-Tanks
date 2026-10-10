@@ -1,3 +1,4 @@
+import {assertHollowMuzzle} from '../../../tools/physical-muzzle.test-support.mjs';
 // Measure historical source witnesses in their original metre frame.
 // Installed 0.90 size and unit-scale rigs are checked by vehicleSize.selftest.
 import assert from 'node:assert/strict';
@@ -94,10 +95,7 @@ for(const filled of [false,true]){
         const mesh=root.getObjectByName(name),bounds=new THREE.Box3().setFromObject(mesh);
         assert(bounds.max.z<GRIFFIN_TURRET_PIVOT[2]+(1.10+2.93194)*S+.002,'barrel rings must not extend beyond the source muzzle');checks++;
       }
-      for(const[x,y]of[[.004,.006],[-.006,.004]]){
-        const hit=firstHit(root,[x,2.07+.53*S+y,3.9],[0,0,-1]);
-        assert.equal(hit?.object.name,'muzzleBoreShadowFallbackDisc','first visible bore remains open through the aligned rings');checks++;
-      }
+      assertHollowMuzzle(root);checks++;
       const rubber=root.getObjectByName('hullRubber'),saved=rubber.position.z;
       try{rubber.position.z-=.1;root.updateMatrixWorld(true);assert.throws(()=>verifyRearGuards(root),/source bend station/);checks++;}
       finally{rubber.position.z=saved;root.updateMatrixWorld(true);}

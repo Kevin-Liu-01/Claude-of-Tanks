@@ -7,6 +7,7 @@
 // derives technical diagrams from the same armor/module data used in combat.
 import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.ts';
+import { verifyCarvedMuzzleBore } from '/src/vehicles/carvedMuzzleBore.ts';
 import { ensureInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { physicalMuzzleRimSample, muzzleBoreLuminance, sampleMuzzleRingSeams } from '/tools/muzzle-seat-policy.mjs';
 import { ALL_TANK_IDS, DEVELOPMENT_TANK_IDS, getSpec } from '/src/vehicles/specs.ts';
@@ -691,14 +692,18 @@ function muzzleBoreCensus(root) {
   // physicalRims (2026-09-22, owner: holes are added, not carved, to save triangles): a verified
   // physical recess is its own rim, so its mouth carries only the shadow disc and counts here instead
   // of through a fallback Rim mesh. Checks compare rims + physicalRims against the expected mouths.
-  const result = { tagged: 0, rims: 0, physicalRims: 0, discs: 0, authored: 0, fallback: 0 };
+  const result = { tagged: 0, rims: 0, physicalRims: 0, physicalFloors: 0, discs: 0, authored: 0, fallback: 0 };
   root.traverse((object) => {
     for (let current = object; current; current = current.parent) {
       if (!current.visible) return;
       if (current === root) break;
     }
     if (object.userData && object.userData.cannonBore) result.tagged++;
-    if (object.userData && object.userData.cannonBore && object.userData.physicalMouth) result.physicalRims++;
+    if (object.userData && object.userData.cannonBore && object.userData.physicalMouth) {
+      const evidence=verifyCarvedMuzzleBore(root,object);
+      object.userData.muzzleSeatReceipt=Object.freeze({...object.userData.muzzleSeatReceipt,...evidence});
+      result.physicalRims++; result.physicalFloors++;
+    }
     if (/muzzleBoreShadow(?:Fallback)?Rim/i.test(object.name || '')) result.rims++;
     if (/muzzleBoreShadow(?:Fallback)?Disc/i.test(object.name || '')) result.discs++;
     if (object.name === 'muzzleBoreShadowDisc') result.authored++;
@@ -886,7 +891,10 @@ function boreCaptureCamera(root, muzzle, spec, fallback, primaryRim, primaryDisc
   // A verified physical recess carries no fallback Rim (2026-09-22): frame its mouth
   // from the measured outer radius its seat receipt publishes.
   const seat = fallback?.userData?.muzzleSeatReceipt;
-  if (!primaryRim && Number.isFinite(seat?.outerRadiusM) && seat.outerRadiusM > 0.004) radius = seat.outerRadiusM;
+  if (!primaryRim && Number.isFinite(seat?.outerRadiusM) && seat.outerRadiusM > 0.004) {
+    const scale=fallback.getWorldScale(new THREE.Vector3());
+    radius=seat.outerRadiusM*Math.max(Math.abs(scale.x),Math.abs(scale.y));
+  }
   if (primaryRim?.geometry) {
     primaryRim.geometry.computeBoundingSphere();
     const scale = primaryRim.getWorldScale(new THREE.Vector3());
@@ -907,7 +915,7 @@ function boreCaptureCamera(root, muzzle, spec, fallback, primaryRim, primaryDisc
   return { direction, radius, distance, fov, cam };
 }
 
-function boreCenterHits(root, cam, direction, distance) {
+function boreCenterHits(root, cam, direction, distance, mouth) {
   const ray = new THREE.Raycaster(cam.position, direction.clone().negate(), 0, distance * 4);
   const centerHits = ray.intersectObject(root, true).filter((hit) => {
     for (let node = hit.object; node; node = node.parent) {
@@ -917,7 +925,12 @@ function boreCenterHits(root, cam, direction, distance) {
     const materials = Array.isArray(hit.object.material) ? hit.object.material : [hit.object.material];
     return !materials.length || materials.some((material) => !material || material.colorWrite !== false);
   }).slice(0, 6).map((hit) => {
-    let bore = /muzzleBoreShadow/i.test(hit.object.name || '');
+    const local=mouth?.worldToLocal(hit.point.clone());
+    const seat=mouth?.userData.muzzleSeatReceipt;
+    let bore = !!(mouth?.userData.physicalMouth && local
+      && Math.abs(local.z+seat.physicalBoreDepthM)<.001
+      && Math.hypot(local.x,local.y)<seat.physicalInnerRadiusM);
+    bore ||= /muzzleBoreShadow/i.test(hit.object.name || '');
     for (let node = hit.object; node && !bore; node = node.parent) {
       bore = !!(node.userData && node.userData.cannonBore);
     }
@@ -940,14 +953,17 @@ function boreCenterHits(root, cam, direction, distance) {
 }
 
 function boreRingSampleResult(hit, muzzle, fallback, pattern, allowPhysicalRim) {
-  const local = hit ? muzzle.worldToLocal(hit.point.clone()) : null;
+  const local = hit ? (fallback || muzzle).worldToLocal(hit.point.clone()) : null;
   let gunOwned = false;
   for (let part=hit?.object; part; part=part.parent) {
     if (part===muzzle.parent) { gunOwned=true; break; }
   }
   const physicalWitness = local ? { radiusM:Math.hypot(local.x,local.y),zM:local.z,gunOwned } : null;
   return {
-    pass: !!hit && (pattern.test(hit.object.name || '') || (allowPhysicalRim
+    pass: !!hit && (pattern.test(hit.object.name || '')
+      || (!allowPhysicalRim && fallback?.userData.physicalMouth && gunOwned && local
+        && Math.abs(local.z+fallback.userData.muzzleSeatReceipt.physicalBoreDepthM)<.001)
+      || (allowPhysicalRim
       && physicalMuzzleRimSample(fallback?.userData.muzzleSeatReceipt,physicalWitness))),
     physicalWitness: allowPhysicalRim ? physicalWitness : null,
     name: hit?.object.name || null,
@@ -980,7 +996,7 @@ function boreShotOne(id) {
     const primaryRim = visibleBorePart(root, /muzzleBoreShadow(?:Fallback)?Rim$/i);
     const primaryDisc = visibleBorePart(root, /muzzleBoreShadow(?:Fallback)?Disc$/i);
     const { direction, radius, distance, fov, cam } = boreCaptureCamera(root, muzzle, spec, fallback, primaryRim, primaryDisc);
-    const centerHits = boreCenterHits(root, cam, direction, distance);
+    const centerHits = boreCenterHits(root, cam, direction, distance, fallback);
     const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0).normalize();
     const up = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 1).normalize();
     const sampleBoreRing = (normalizedRadius, count, pattern, allowPhysicalRim = false, phaseOverride = null) => {
@@ -989,7 +1005,7 @@ function boreShotOne(id) {
         // Physical rings have coplanar radial seams; keep rays off those
         // seams without reducing sample count or the full angular coverage.
         const angle = i * Math.PI * 2 / count
-          + (phaseOverride ?? (fallback?.userData.muzzleSeatReceipt?.revision === 'physical-recess-r1' ? .173 : 0));
+          + (phaseOverride ?? (fallback?.userData.physicalMouth ? .173 : 0));
         const origin = cam.position.clone()
           .addScaledVector(right, Math.cos(angle) * radius * normalizedRadius)
           .addScaledVector(up, Math.sin(angle) * radius * normalizedRadius);
@@ -1004,7 +1020,7 @@ function boreShotOne(id) {
       }
       return samples;
     };
-    const physicalReceipt = fallback?.userData.muzzleSeatReceipt?.revision === 'physical-recess-r1'
+    const physicalReceipt = fallback?.userData.physicalMouth
       ? fallback.userData.muzzleSeatReceipt : null;
     // An autocannon inside a wide brake may have a bore narrower than 30%
     // of that brake. Sample the verified aperture, not the surrounding metal.
@@ -1026,18 +1042,23 @@ function boreShotOne(id) {
     // inner law that the fixed 0.83 R sample assumes. Sample such a ring at its own mid-radius; every
     // fitted mouth keeps the 0.83 R sample.
     const declaredSeat = fallback?.userData.muzzleSeatReceipt;
-    const rimSampleRadius = declaredSeat?.mouthSource === 'declared-bore'
-      && Number.isFinite(declaredSeat.innerRadiusM) && Number.isFinite(declaredSeat.outerRadiusM)
-      && declaredSeat.outerRadiusM > 0
-      ? (declaredSeat.innerRadiusM + declaredSeat.outerRadiusM) / (2 * declaredSeat.outerRadiusM)
-      : 0.83;
+    // Cut apertures may sit in rectangular or chamfered stock. Prove the
+    // continuous native metal immediately outside the aperture; an arbitrary
+    // fraction of the rectangular face's corner radius can lie outside it.
+    const rimSampleRadius = physicalReceipt
+      ? (physicalReceipt.physicalInnerRadiusM + Math.min(.002,
+          (physicalReceipt.supportOuterRadiusM-physicalReceipt.physicalInnerRadiusM)*.15)) / physicalReceipt.outerRadiusM
+      : declaredSeat?.mouthSource === 'declared-bore'
+        ? (declaredSeat.innerRadiusM + declaredSeat.outerRadiusM) / (2 * declaredSeat.outerRadiusM)
+        : .83;
     const rimProof = sampleMuzzleRingSeams(phase => sampleBoreRing(rimSampleRadius, 16,
       /muzzleBoreShadow(?:Fallback)?(?:Rim|Annulus)$/i, true, phase));
     const rimSamples = rimProof.required;
     // A verified physical recess carries no fallback Rim mesh (2026-09-22): its own annular face
     // is the rim, and the bore group sits on the same axis, so concentricity is read against it.
     const rimWorld = (primaryRim || (physicalReceipt ? fallback : null))?.getWorldPosition(new THREE.Vector3()) || null;
-    const discWorld = primaryDisc?.getWorldPosition(new THREE.Vector3()) || null;
+    const discWorld = primaryDisc?.getWorldPosition(new THREE.Vector3())
+      || (physicalReceipt ? fallback.localToWorld(new THREE.Vector3(0,0,-physicalReceipt.physicalBoreDepthM)) : null);
     let concentricOffsetM = null;
     if (rimWorld && discWorld) {
       const delta = discWorld.clone().sub(rimWorld);
@@ -1048,11 +1069,19 @@ function boreShotOne(id) {
     const oldAlpha = renderer.getClearAlpha();
     renderer.setClearColor(0xaebac2, 1);
     const canvas = capture(cam, 256, 256);
+    // A second view exposes real inner walls; a front-facing black mask can
+    // resemble a hole head-on but cannot provide this parallax.
+    const oblique=cam.clone();
+    oblique.position.addScaledVector(right,distance*.32).addScaledVector(up,distance*.16);
+    oblique.lookAt((fallback||muzzle).getWorldPosition(new THREE.Vector3()));
+    oblique.updateMatrixWorld(true);
+    const obliqueCanvas=capture(oblique,256,256);
     renderer.setClearColor(oldColor, oldAlpha);
 
     const luminance = boreLuminance(canvas, radius, distance, fov, physicalReceipt);
     return {
       image: canvas.toDataURL('image/png'),
+      obliqueImage: obliqueCanvas.toDataURL('image/png'),
       ...luminance,
       muzzleBore: muzzleBoreCensus(root),
       boreDebug: {
@@ -1064,6 +1093,7 @@ function boreShotOne(id) {
         muzzleSeatReceipts: fallbackMouths.map((mouth) => ({
           name: mouth.name,
           ...(mouth.userData.muzzleSeatReceipt || {}),
+          ...(mouth.userData.physicalMouth ? verifyCarvedMuzzleBore(root,mouth) : {}),
           // Independent assembled-position witness, not the authored declaration.
           physicalDiscDepthM: (() => {
             const disc = mouth.children.find(part => /FallbackDisc/.test(part.name));

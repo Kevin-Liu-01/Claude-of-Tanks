@@ -123,6 +123,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // coastal plain's longleaf pine flatwoods — tall, straight, clear boles under small tufted crowns, in open groves over
   // the wiregrass, the cutover's young pines in their grass stage (the map's bushes)
   longleaf: B('the Gulf coastal plain longleaf flatwoods', { pine: { form: 'longleafPine' } }, 'longleafSeedling', undefined, undefined, true),
+  // the Chouf on Mount Lebanon (the map-revival lane, 2026-10-05): the cedars of the Barouk, the Mediterranean pines of the
+  // valley sides, olives on the terraces (the map's contour-planted orchard rows)
+  orchard: B('the Chouf, Mount Lebanon', { cedar: { form: 'lebanonCedar' }, pine: { form: 'aleppoPine' },
+    oak: { form: 'olive', colour: OLIVE_FOLIAGE } }),
   // the Breton bocage: oak and sweet chestnut along the hedgebanks (the maritime pine stays a pine)
   coastal: B('the Breton bocage, Brittany', { cedar: { form: 'chestnut' } }),
   // the Fulda Gap: beech woods with spruce, oak and birch

@@ -1,3 +1,4 @@
+import {assertHollowMuzzle} from '../../../tools/physical-muzzle.test-support.mjs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
@@ -38,28 +39,7 @@ function checkFrames(tank,id,source){
   near(box.max.z,source.muzzle,.004,`${id}: measured physical muzzle plane`);
   assert.ok(tank.root.getObjectByName('gunMount')?.geometry,`${id}: real pitching trunnion seat`);
   assert.ok(measureTurretBarrelCircularity(tank,{requireMeasurement:true}).pass,`${id}: circular physical stock and centered firing axis`);
-  // Test the authored opaque stock, not a black fallback-disc visual cue.
-  for(const [dx,dy]of [[0,0],[.03,0],[-.03,0],[0,.03],[0,-.03]]){
-    const from=new THREE.Vector3(source.gun[0]+dx,source.gun[1]+dy,source.muzzle+.2);
-    const hit=new THREE.Raycaster(from,new THREE.Vector3(0,0,-1),0,.6).intersectObject(cannon,false)[0];
-    // 2026-09-22 (owner: "the point of adding holes instead of carving them into the barrel is that
-    // we save on triangles"): the metal tube is closed at its source tip (cappedTube); the measured
-    // source bore depth stays recorded as boreFloor/boreRadius above as the fidelity evidence, and the
-    // fallback disc below is the visible dark mouth. The former recess sat entirely behind that disc.
-    near(hit?.point.z,source.muzzle,.00002,`${id}: metal tube closed at the source tip (recorded bore floor ${source.boreFloor}) ${dx}/${dy}`);
-    const opaque=[];
-    tank.root.traverseVisible(object=>{if(!object.isMesh||object.userData.shadowOnly)return;
-      const materials=Array.isArray(object.material)?object.material:[object.material];
-      if(materials.some(material=>material.visible&&material.colorWrite!==false&&!material.transparent))opaque.push(object);
-    });
-    const complete=new THREE.Raycaster(from,new THREE.Vector3(0,0,-1),0,.6).intersectObjects(opaque,false)[0];
-    // The existing shared opaque lining is seated 1.2mm proud of the real
-    // metal floor. Pin it separately, without excluding it from the ray.
-    assert.equal(complete?.object.name,'muzzleBoreShadowFallbackDisc');
-    // Visible mouth disc seats at the tube edge (owner direction 2026-09-11);
-    // the physical source bore depth is asserted separately above.
-    near(complete?.point.z,source.muzzle+.0003,.00002,`${id}: complete visible bore seats its mouth lining at the tube edge ${dx}/${dy}`);
-  }
+  assertHollowMuzzle(tank.root,source.muzzle,.004);
   const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');
   for(const yaw of [-1.3,.8])for(const pitch of [-.08,.18]){
     turret.rotation.y=yaw;gun.rotation.x=pitch;tank.root.updateMatrixWorld(true);

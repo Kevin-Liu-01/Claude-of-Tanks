@@ -22,7 +22,7 @@ export function buildMarder2(P: TankBuilderPort): void {
   ].map(([z,belly,shoulder,roofHalf,floor,knee,roof])=>({z,ring:[
     [-belly,floor],[belly,floor],[belly,knee],[shoulder,knee],
     [roofHalf,roof],[-roofHalf,roof],[-shoulder,knee],[-belly,knee],
-  ]}))));
+  ]})), {sideQuadDiagonal:'convex'}));
   P.gear=KIT.buildRunningGear(P,{
     style:'rubber',dishR:.72,wheelR:.385,wheelW:.25,wheelY:.49,xc:1.47,
     wheelZs:[2.32,1.52,.72,-.08,-.88,-1.68,-2.48],
@@ -77,7 +77,7 @@ export function buildMarder2(P: TankBuilderPort): void {
     [-1.55,.85,1.09,1.04,.08,.44,.85],
     [-1.25,.90,1.12,1.06,.04,.44,.89],
     [.20,.92,1.12,1.01,.04,.43,.90],
-  ]));
+  ],0,0,{sideQuadDiagonal:'convex'}));
   // Separate cheek solids leave the real elevation bay open around the mask.
   // A solid front loft would swallow the canvas collar when the gun pitches.
   for (const side of [-1,1]) {
@@ -85,7 +85,7 @@ export function buildMarder2(P: TankBuilderPort): void {
       {z:.18,ring:[[.39,.04],[.92,.04],[1.12,.43],[1.01,.90],[.39,.90]]},
       {z:.82,ring:[[.39,.06],[.83,.06],[1.00,.37],[.62,.89],[.39,.89]]},
       {z:1.25,ring:[[.39,.08],[.57,.08],[.74,.29],[.42,.59],[.39,.59]]},
-    ]);
+    ], {sideQuadDiagonal:'convex'});
     P.add('turret',side<0?mirrorX(cheek):cheek);
     P.add('turret',cylX(.15,.18,20),side*.39,.54,1.12);
   }

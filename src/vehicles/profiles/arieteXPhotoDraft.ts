@@ -1,3 +1,4 @@
+import {inwardBoreWall} from '../physicalMuzzleBore.ts';
 // HISTORICAL PHOTO DRAFT — test-only, not a playable registry entry or current
 // X acceptance target. Superseded by the owner's supplied-file instruction.
 // First-party C1 Ariete reconstruction. Envelope: original CIO technical sheet;
@@ -222,13 +223,13 @@ function gun(P: TankBuilderPort): void {
     const r = z < 3.45 ? .122 : z < 4.12 ? .164 : .104;
     P.add('gun', torus(r, .008, 20, 6), 0, 0, z - D.trunnion[2], Math.PI / 2);
   }
-  const bore = new THREE.CylinderGeometry(.060, .060, .28, 40, 1, true);
-  bore.rotateX(Math.PI / 2);
+  const bore = inwardBoreWall(.060, .28, 40);
   P.add('gunDark', bore, 0, 0, D.muzzleZ - .14 - D.trunnion[2]);
   P.add('gun', new THREE.RingGeometry(.060, .085, 40), 0, 0, D.muzzleZ - D.trunnion[2]);
   P.add('gunDark', cylZ(.061, .003, 32), 0, 0, D.muzzleZ - .281 - D.trunnion[2]);
   P.add('gun', box(.082, .089, .065), -.073, .092, 5.69 - D.trunnion[2]);
   P.muzzleZ = D.muzzleZ - D.trunnion[2];
+  P.physicalMuzzleBore = { outerRadiusM: 0.085, innerRadiusM: .060, depthM: 0.2795 };
 }
 
 export function buildArieteX(P: TankBuilderPort): void {

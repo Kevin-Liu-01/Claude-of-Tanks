@@ -18,8 +18,10 @@ const SOURCE = [[.075,1.440958141,1.410661378],[.10,1.437824855,1.413864798],
 const material=new T.MeshBasicMaterial({side:T.DoubleSide});
 const hash=value=>createHash('sha256').update(value).digest('hex');
 function bytes(a){return Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength);}
+// The shoe's baked wear tint (fleet lane round 1, tankFactoryCore.ts bakeTrackShoeWear: vertex colours graded over the
+// whole shoe's height) is paint, not stock: the guide comparison reads the shape attributes only.
 function triangles(g){
-  const result=[],keys=Object.keys(g.attributes).sort(),count=g.index?.count??g.attributes.position.count;
+  const result=[],keys=Object.keys(g.attributes).filter(key=>key!=='color').sort(),count=g.index?.count??g.attributes.position.count;
   for(let i=0;i<count;i+=3){const corners=[0,1,2].map(k=>{const v=g.index?g.index.getX(i+k):i+k;return keys.map(key=>{const a=g.attributes[key];return[key,...Array.from({length:a.itemSize},(_,c)=>a.getComponent(v,c))];});});
     result.push([0,1,2].map(k=>JSON.stringify([...corners.slice(k),...corners.slice(0,k)])).sort()[0]);}
   return result.sort();

@@ -74,6 +74,12 @@ uniform mat4 uInvViewProj, uPrevViewProj;
 uniform vec2 uTexel, uNearFar;
 uniform float uHistoryWeight, uSeed;
 varying vec2 vUv;
+// (2026-10-08, the owner's black screens) a NaN or an Inf pixel (a half-float overflow) never reaches the history: Inf
+// turns NaN in tmw (Inf / (1 + Inf)), and a NaN history pixel stays NaN through mix() for good (NaN x 0 is NaN), which
+// bloom then spreads over the frame. Comparisons with NaN are false, so this survives fast-math compilers.
+vec3 finite3(vec3 c) {
+  return vec3(abs(c.r) < 6.0e4 ? c.r : 0.0, abs(c.g) < 6.0e4 ? c.g : 0.0, abs(c.b) < 6.0e4 ? c.b : 0.0);
+}
 // luminance weighting (Karis): bright HDR sparkles blend as bounded values
 vec3 tmw(vec3 c) { return c / (1.0 + max(c.r, max(c.g, c.b))); }
 vec3 itmw(vec3 c) { return c / max(1e-4, 1.0 - max(c.r, max(c.g, c.b))); }
@@ -84,12 +90,12 @@ float linearDepth01(float d) {
   return lin / uNearFar.y;
 }
 void main() {
-  vec3 now = tmw(max(texture2D(tNow, vUv).rgb, vec3(0.0)));
+  vec3 now = tmw(max(finite3(texture2D(tNow, vUv).rgb), vec3(0.0)));
   float depth = texture2D(tDepth, vUv).x;
   vec3 m1 = vec3(0.0), m2 = vec3(0.0), mn = vec3(1e9), mx = vec3(-1e9);
   for (int y = -1; y <= 1; y++) {
     for (int x = -1; x <= 1; x++) {
-      vec3 c = tmw(max(texture2D(tNow, vUv + vec2(float(x), float(y)) * uTexel).rgb, vec3(0.0)));
+      vec3 c = tmw(max(finite3(texture2D(tNow, vUv + vec2(float(x), float(y)) * uTexel).rgb), vec3(0.0)));
       m1 += c; m2 += c * c; mn = min(mn, c); mx = max(mx, c);
     }
   }
@@ -105,12 +111,13 @@ void main() {
   bool off = depth >= 1.0 || pc.w <= 0.0
     || any(lessThan(prevUv, vec2(0.0))) || any(greaterThan(prevUv, vec2(1.0)));
   vec4 hs = texture2D(tHistory, prevUv);
+  hs = vec4(finite3(hs.rgb), abs(hs.a) < 6.0e4 ? hs.a : 0.0);
   float expectedPrevLinear = linearDepth01((pc.z / pc.w) * 0.5 + 0.5);
   bool depthMismatch = abs(hs.a - expectedPrevLinear)
     > max(${TAA_DEPTH_REJECT_MIN.toFixed(4)}, expectedPrevLinear * ${TAA_DEPTH_REJECT_RELATIVE.toFixed(3)});
   vec3 hist = clamp(tmw(max(hs.rgb, vec3(0.0))), lo, hi);
   float w = (off || depthMismatch || uSeed > 0.5) ? 0.0 : uHistoryWeight;
-  gl_FragColor = vec4(itmw(mix(now, hist, w)), linearDepth01(depth));
+  gl_FragColor = vec4(finite3(itmw(mix(now, hist, w))), linearDepth01(depth));
 }`;
 
 const COPY_FRAGMENT = /* glsl */`

@@ -205,6 +205,16 @@ straight at the hull. Its own contact does not count as the target moving, and
 the empty rack's probe does not scoot the run away. Runs that cannot finish the
 target alone keep the full-speed judgement.
 
+The retirement leaves the finish to the team, so it holds only while a teammate
+with rounds aboard lives. With no teammate left that can fire (wrecks and empty
+racks do not count), an empty or spent rack whose ram the law refuses takes the
+last run at a passive target anyway, at full speed: the target will never come
+to it, and the run ends the match one way or the other. On the scenery lane's
+stone-free Polders, pacing tail seed 41000, the last bravo bot (an AFT-10 at 8 %
+of its hull, its eight HJ-10s spent) retired 248 m from the idle host and faced
+it from 330 s to the 900 s cap; it now runs at the host after its last missile
+and the match ends at 231 s. A target that moves or fires keeps the retirement.
+
 A press point given up (masked, missed out, pinned or unreached) stays out of
 the picks for 120 seconds, with three more held beside it. One veto slot let two
 unreachable points take turns: on the track-contact parity tree, Reservoir
@@ -321,6 +331,11 @@ search cannot drive a hull.
   aspects do not take turns (they alternated before). The arc limit's leg
   starts with the press running and leaves the bank in under 2 s with no
   back-up.
+- `src/game/ai.lastRun.selftest.mjs`: the Polders seed 41000 standoff, an
+  empty AFT-10 at 163 hp 248 m from the idle M1A2 with a wrecked teammate,
+  runs at the host (it held its distance for the whole run before). A teammate
+  with an empty rack is no one to leave the finish to; an armed teammate, a
+  moving host and a firing host keep the retirement.
 - `src/game/ai.underFire.selftest.mjs`: a BMP-3 that has never fired keeps
   moving when it sights an enemy (no settled-shot halt); a settle holds no scout
   hit in the open but still halts one behind a berm (with an unhit control); a

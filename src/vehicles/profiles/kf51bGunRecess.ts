@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const KF51B_GUN_RECESS = Object.freeze({ halfWidthM: 0.43, backZM: 0.88 });
 
@@ -33,6 +32,8 @@ function closedSlice(
   source: THREE.BufferGeometry, axis: 'x' | 'z', limit: number, below: boolean,
 ): THREE.BufferGeometry {
   const positions = source.getAttribute('position');
+  const indices = source.getIndex();
+  const cornerCount = indices?.count ?? positions.count;
   const output: number[] = [];
   const boundary = new Map<string, THREE.Vector3>();
   const sign = below ? 1 : -1;
@@ -41,8 +42,10 @@ function closedSlice(
       output.push(...a.toArray(), ...b.toArray(), ...c.toArray());
     }
   };
-  for (let i = 0; i < positions.count; i += 3) {
-    const face = [0, 1, 2].map(offset => new THREE.Vector3().fromBufferAttribute(positions, i + offset));
+  for (let i = 0; i < cornerCount; i += 3) {
+    const face = [0, 1, 2].map(offset => new THREE.Vector3().fromBufferAttribute(
+      positions, indices ? indices.getX(i + offset) : i + offset,
+    ));
     const clipped = clipFace(face, axis, limit, sign, boundary);
     for (let j = 1; j < clipped.length - 1; j++) triangle(clipped[0], clipped[j], clipped[j + 1]);
   }
@@ -66,16 +69,78 @@ function closedSlice(
   return geometry;
 }
 
+// The three clipped volumes touch along the two x cut planes. Keep only
+// the exposed portion of those walls ahead of the recess back: buried caps
+// would leave coincident inward faces and four-way edges inside the armor.
+function joinRecess(geometries: readonly THREE.BufferGeometry[], halfWidthM: number, backZM: number): THREE.BufferGeometry {
+  const faces: THREE.Vector3[][] = [];
+  for (const geometry of geometries) {
+    const position = geometry.getAttribute('position');
+    for (let i = 0; i < position.count; i += 3) {
+      const face = [0, 1, 2].map(offset => new THREE.Vector3().fromBufferAttribute(position, i + offset));
+      const onPartition = [-halfWidthM, halfWidthM].some(x => face.every(p => Math.abs(p.x - x) < 1e-6));
+      const polygon = onPartition ? clipFace(face, 'z', backZM, -1, new Map()) : face;
+      if (polygon.length >= 3) faces.push(polygon);
+    }
+  }
+  // Sequential clipping subdivides the two sides of a shared edge differently.
+  // Insert the same boundary vertices on both sides before triangulation, so
+  // the finished U is one closed surface instead of a set of touching solids.
+  const points = new Map<string, THREE.Vector3>();
+  const key = (p: THREE.Vector3): string => p.toArray().map(v => v.toFixed(6)).join(',');
+  for (const face of faces) for (const p of face) if (!points.has(key(p))) {
+    const existing = [...points.values()].find(v => v.distanceToSquared(p) < 1e-10);
+    points.set(key(p), existing ?? p);
+  }
+  const vertices = [...new Set(points.values())];
+  const output: number[] = [];
+  const triangle = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3): void => {
+    if (b.clone().sub(a).cross(c.clone().sub(a)).lengthSq() > 1e-16) output.push(...a.toArray(), ...b.toArray(), ...c.toArray());
+  };
+  for (const face of faces) {
+    const boundary: THREE.Vector3[] = [];
+    for (let i = 0; i < face.length; i++) {
+      const a = points.get(key(face[i]))!, b = points.get(key(face[(i + 1) % face.length]))!;
+      const edge = b.clone().sub(a), lengthSq = edge.lengthSq();
+      if (lengthSq < 1e-14) continue;
+      const along = [{ p: a, t: 0 }];
+      for (const p of vertices) {
+        const t = p.clone().sub(a).dot(edge) / lengthSq;
+        if (t <= 1e-6 || t >= 1 - 1e-6) continue;
+        if (a.clone().addScaledVector(edge, t).distanceToSquared(p) < 1e-10) along.push({ p, t });
+      }
+      along.sort((l, r) => l.t - r.t);
+      boundary.push(...along.map(entry => entry.p));
+    }
+    if (boundary.length === 3) triangle(boundary[0], boundary[1], boundary[2]);
+    else if (boundary.length > 3) {
+      const center = boundary.reduce((sum, p) => sum.add(p), new THREE.Vector3()).divideScalar(boundary.length);
+      for (let i = 0; i < boundary.length; i++) triangle(center, boundary[i], boundary[(i + 1) % boundary.length]);
+    }
+  }
+  const result = new THREE.BufferGeometry();
+  result.setAttribute('position', new THREE.Float32BufferAttribute(output, 3));
+  result.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(output.length / 3 * 2), 2));
+  result.computeVertexNormals();
+  return result;
+}
+
 /** Consumes the original closed loft; returns one closed mesh with a front U recess. */
-export function recessKF51BTurret(source: THREE.BufferGeometry): THREE.BufferGeometry {
-  const { halfWidthM, backZM } = KF51B_GUN_RECESS;
+export function recessClosedTurret(source: THREE.BufferGeometry,
+  { halfWidthM, backZM }: { readonly halfWidthM: number; readonly backZM: number },
+): THREE.BufferGeometry {
   const left = closedSlice(source, 'x', -halfWidthM, true);
   const right = closedSlice(source, 'x', halfWidthM, false);
   const middleRight = closedSlice(source, 'x', -halfWidthM, false);
   const middle = closedSlice(middleRight, 'x', halfWidthM, true);
   const rear = closedSlice(middle, 'z', backZM, true);
-  const result = mergeGeometries([left, right, rear]);
+  const result = joinRecess([left, right, rear], halfWidthM, backZM);
   for (const geometry of [source, left, right, middleRight, middle, rear]) geometry.dispose();
-  if (!result) throw new Error('KF51-U closed turret recess could not be assembled');
+  result.userData.closedGunRecess = { halfWidthM, backZM };
   return result;
+}
+
+/** Preserve the Panther's installed gun opening. */
+export function recessKF51BTurret(source: THREE.BufferGeometry): THREE.BufferGeometry {
+  return recessClosedTurret(source, KF51B_GUN_RECESS);
 }

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 import { penAtDistanceMm } from '../sim/ballistics.ts';
+import { shouldShowShotReadout } from './shotReadoutPolicy.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import {
   hitOutcomeFor, incomingHitFeedbackFor, nominalPenFor, shellDisplayName, zoneLabel,
@@ -73,6 +74,16 @@ for (const [event, kind, outcomeId, label, color, numeric, critical, mergeKey] o
     { kind, outcomeId, label, color, numeric, critical, mergeKey },
     `${event.kind} must retain its canonical incoming-hit presentation`,
   );
+}
+
+// Suppressing rapid-fire cards must never suppress incoming directional feedback.
+for (const caliberMm of [7.62, 12.7, 30]) {
+  const hit = { kind: 'nonpen', damage: 0, caliberMm, shellType: 'AP' };
+  assert.equal(shouldShowShotReadout(hit), false, 'blocked rapid fire stays out of the main card');
+  const incoming = incomingHitFeedbackFor(hit);
+  assert.equal(incoming.label, 'BLOCKED', 'incoming rapid fire retains a visible outcome');
+  assert.equal(incoming.kind, 'bounce', 'blocked rounds keep the directional deflection arc');
+  assert.equal(incoming.numeric, false, 'show BLOCKED rather than a zero-damage number');
 }
 
 const killcamSource = await readFile(new URL('../game/killcam.ts', import.meta.url), 'utf8');

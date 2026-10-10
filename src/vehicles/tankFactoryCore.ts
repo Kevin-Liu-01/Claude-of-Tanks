@@ -1,4 +1,5 @@
 import { WeaponDamageVisuals } from './weaponDamageVisuals.ts';
+import { casemateGunYaw } from './casemateGunPose.ts';
 import type { ModuleStateName } from '../sim/damage.ts';
 import { DetachedGear } from './detachedGear.ts';
 import { vehicleAuthoringSpec, VEHICLE_SIZE_FACTORS } from './vehicleSizePolicy.ts';
@@ -14,6 +15,7 @@ import { markSmokeTube, alignSmokeBanks, transferSmokeSockets } from './vehicleA
 // independent (see docs/SYSTEMS.md).
 
 import * as THREE from 'three';
+import { installCarvedMuzzleBore, verifyCarvedMuzzleBore } from './carvedMuzzleBore.ts';
 import { vehicleProvenance } from '../authorship.ts';
 import { isBattleShareableMesh, shareBattleGeometry } from './battleGeometrySharing.ts';
 import { mergeContiguousStaticRuns, type CoplanarLayerRecord } from './staticDrawMerge.ts';
@@ -71,6 +73,14 @@ import {
 import { deduplicateEraSurfaces } from './eraSurfaceDeduplication.ts';
 import { createInvocationEraWholeReuse } from './eraWholeFitReuse.ts';
 import { EquipmentDamage, markEquipmentLid, type EquipmentDamageEvent } from './equipmentDamage.ts';
+import {
+  block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndLayers, rolledEndSpiral, roundBar, sweptTube,
+  type FabricSpec,
+} from './accessoryPrimitives.ts';
+import { jerrycanParts } from './accessoryKits.ts';
+import {
+  addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, createPintleLayout,
+} from './machineGunGeometry.ts';
 import { disposeOwnedFittingGeometry } from './ownedFittingGeometry.ts';
 import { presentationAnchorFor } from './presentationAnchors.generated.ts';
 import {
@@ -127,6 +137,7 @@ interface TankMaterials {
   wheels: THREE.MeshStandardMaterial;
   wheelsRecessed: THREE.MeshStandardMaterial;
   rubber: THREE.MeshStandardMaterial;
+  rubberCavity?: THREE.MeshStandardMaterial;
   detail: THREE.MeshStandardMaterial;
   dark: THREE.MeshStandardMaterial;
   shadow: THREE.MeshStandardMaterial;
@@ -138,6 +149,8 @@ interface TankMaterials {
   /** FSP-06: pale sand-khaki canvas for desert / IDF soft kit (materials.ts). */
   canvasPale: THREE.MeshStandardMaterial;
   wood: THREE.MeshStandardMaterial;
+  /** Round 4 (2026-10-07): vertex-coloured log wood (bark, sawn ends, rings) for unditching logs (materials.ts). */
+  bark: THREE.MeshStandardMaterial;
   burnt: THREE.MeshStandardMaterial;
   trackL: THREE.MeshStandardMaterial;
   trackR: THREE.MeshStandardMaterial;
@@ -301,6 +314,8 @@ interface SuspensionEntry {
   anchorY: number;
   anchorZ: number;
   x: number;
+  /** A paired bogie's second arm: its hull pivot is an earlier entry's, which already draws the boss. */
+  sharedAnchor?: boolean;
 }
 
 interface WheelSpinner {
@@ -624,7 +639,19 @@ interface TankPoseState {
   _swayEst?: number;
 }
 
-type GroundSampler = (x: number, z: number, ceiling?: number) => number;
+/**
+ * The drawn ground under a point. `ceiling`, when given, is the highest standable collision top the caller admits there
+ * (a bridge deck, a roof, a slab): the integration's sampler returns the higher of the terrain's contact surface and the
+ * standable tops at or under it, the structure-support rule the movement solve stands hulls on (sim/structureSupport.ts
+ * structureTopAt). Without it the sampler returns the terrain alone. `prepareHull`, when the sampler has one, gathers the
+ * standable tops within `reachM` of a hull once before its wheels sample (one candidate query per hull per conform).
+ */
+export type GroundSampler = ((x: number, z: number, ceiling?: number) => number) & {
+  prepareHull?(x: number, z: number, reachM: number): void;
+};
+/** A wheel stands on a collision top at most this far above its contact plane: the hull step-up the movement solve's
+ * standing rule admits (world/collision.ts HULL_STEP_UP_M; tankFactoryContact.selftest pins the two together). */
+export const WHEEL_STANDABLE_STEP_M = 0.55;
 
 interface WheelConformFrame {
   cb: number;
@@ -718,14 +745,20 @@ function sampleWheelGroundDeviation(
   // Compare every footprint sample with the height of that same point on
   // the tilted contact plane. Comparing the uphill edge to the centre's Y
   // counted hull tilt twice and lifted an already slope-aligned track.
-  let ground = sampler(wx, wz);
-  let sample = sampler(wx + gxX * halfWheelWidth, wz + gxZ * halfWheelWidth) - gxY * halfWheelWidth;
+  // The vehicle-contact lane (2026-10-09, owner: "tracks shouldnt glitch through the bridge or textures, like how they do
+  // on the bridge in aegis crossing"): every sample admits the standable collision tops within a step of the contact
+  // plane, so a wheel on a bridge deck, a roof or a slab rests on the deck the hull stands on. Sampling the terrain alone
+  // read the gorge bed 30 m under Aegis Crossing's viaduct: every wheel fell to its droop and the tracks were drawn
+  // 21-32 cm inside the deck.
+  const ceiling = wy + WHEEL_STANDABLE_STEP_M;
+  let ground = sampler(wx, wz, ceiling);
+  let sample = sampler(wx + gxX * halfWheelWidth, wz + gxZ * halfWheelWidth, ceiling) - gxY * halfWheelWidth;
   if (sample > ground) ground = sample;
-  sample = sampler(wx - gxX * halfWheelWidth, wz - gxZ * halfWheelWidth) + gxY * halfWheelWidth;
+  sample = sampler(wx - gxX * halfWheelWidth, wz - gxZ * halfWheelWidth, ceiling) + gxY * halfWheelWidth;
   if (sample > ground) ground = sample;
-  sample = sampler(wx + gzX * halfRadius, wz + gzZ * halfRadius) - gzY * halfRadius - 0.17 * wheel.r;
+  sample = sampler(wx + gzX * halfRadius, wz + gzZ * halfRadius, ceiling) - gzY * halfRadius - 0.17 * wheel.r;
   if (sample > ground) ground = sample;
-  sample = sampler(wx - gzX * halfRadius, wz - gzZ * halfRadius) + gzY * halfRadius - 0.17 * wheel.r;
+  sample = sampler(wx - gzX * halfRadius, wz - gzZ * halfRadius, ceiling) + gzY * halfRadius - 0.17 * wheel.r;
   if (sample > ground) ground = sample;
   return (ground - wy) * frame.invHsy;
 }
@@ -924,6 +957,12 @@ export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, Cupola
   topY: number;
   fixedMount: boolean;
   postAssemble: ((rig: TankRig) => void) | null;
+  /**
+   * Steps that run after postAssemble, in the order they were added (round 5, 2026-10-08): equipment laid against the
+   * finished armour (a camouflage suit, ghillieSuit.ts) adds itself here, so no profile's own postAssemble chain is
+   * wrapped or replaced, and it always runs after them.
+   */
+  readonly afterAssemble: Array<(rig: TankRig) => void>;
   addMudguard(
     label: string,
     bucket: string,
@@ -1017,9 +1056,10 @@ function isolatedGearMaterial<M extends THREE.Material>(
  * paint carries the wheel-paint floor, so the insets read against it in every scheme. */
 function wheelInsetMaterialFor(
   _dishMaterial: THREE.Material,
-  mats: { rubber: THREE.Material; wheels: THREE.Material },
+  mats: { rubber: THREE.Material; rubberCavity?: THREE.Material; wheels: THREE.Material },
 ): THREE.Material {
-  return mats.rubber;
+  // fleet lane 2026-10-08: the rubber with a cavity's light (materials.ts COT_GEAR_CAVITY) where the set has it
+  return mats.rubberCavity ?? mats.rubber;
 }
 
 function buildRunningGearPublic(builder: object, options: object): RunningGearUnit {
@@ -1223,7 +1263,7 @@ interface AuthoredRange {
 }
 
 type RigGroupKey = 'hullG' | 'turretG' | 'recoilG' | 'gunG' | 'barrel0G' | 'barrel1G';
-type TankMaterialKey = 'hull' | 'rubber' | 'detail' | 'dark' | 'wood' | 'canvasCloth' | 'canvasPale'
+type TankMaterialKey = 'hull' | 'rubber' | 'detail' | 'dark' | 'wood' | 'bark' | 'canvasCloth' | 'canvasPale'
   | 'glass' | 'barrel' | 'spareTrack' | 'shadow' | 'wheels';
 type BucketDefinition = readonly [RigGroupKey, TankMaterialKey];
 type OriginalMaterialRecord = [VehicleMesh, THREE.Material | THREE.Material[], boolean];
@@ -2604,9 +2644,20 @@ function idlerGeo(
       0, Math.sin(a) * r * 0.48, Math.cos(a) * r * 0.48));
   }
   const boltCount = pattern?.endFasteners ?? 8;
+  // Keep the heads on the exposed dish, outside the raised hub's 0.26r
+  // footprint. A fixed 22 mm head crossed that edge on small idlers and
+  // competed with the hub cap in the same plane. Preserve the flush plane.
+  const boltRadius = Math.min(0.022, r * 0.035);
   for (let k = 0; k < boltCount; k++) {                  // dark bolt heads on the dish
     const a = (k / boltCount) * Math.PI * 2 + 0.2;
-    dark.push(xform(cylX(0.022, w + hD * 1.6, 6),
+    // Fleet lane round 1 (2026-10-07): the heads stand 6 mm proud of the hub drum's end face. Ending in its plane,
+    // each overlapped the drum's cap disc (r 0.26·r vs heads at 0.30·r ± 22 mm): two coplanar filled caps that fought
+    // in depth on every idler (the inherited fleetPass circularCapOverlap red, 157 hulls at LOW).
+    // and on a small idler (or a many-bolt pattern) the heads keep a gap: neighbours at 0.30·r used to overlap
+    // edge to edge in one plane (Leopard 2A6 UA's front idler).
+    // (push 7 RC: main's a28e4d8e6 bounds the head by the dish, boltRadius above; the head takes the smaller of the two)
+    const headR = Math.min(boltRadius, (Math.PI * 2 * r * 0.30 / boltCount) * 0.42);
+    dark.push(xform(cylX(headR, w + hD * 1.6 + 0.012, 6),
       0, Math.sin(a) * r * 0.30, Math.cos(a) * r * 0.30));
   }
   return { body: mergeAll(body), dark: mergeAll(dark) };
@@ -2747,7 +2798,9 @@ function sprocketGeo(
   const boltCount = pattern?.endFasteners ?? 8;
   for (let k = 0; k < (stock ? 0 : boltCount); k++) {     // dark bolt ring on the hub boss
     const a = (k / boltCount) * Math.PI * 2;
-    dark.push(xform(cylX(0.02, w * 1.06, 6),
+    // fleet lane round 1: neighbouring heads never overlap in their shared end plane (see idlerGeo)
+    const headR = Math.min(0.02, (Math.PI * 2 * r * 0.44 / boltCount) * 0.42);
+    dark.push(xform(cylX(headR, w * 1.06, 6),
       0, Math.sin(a) * r * 0.44, Math.cos(a) * r * 0.44));
   }
   const mergedBody = mergeAll(body), mergedDark = mergeAll(dark);
@@ -2860,6 +2913,46 @@ function appendTrackShoePins(
       ));
     }
   }
+}
+
+// Fleet lane round 1 (2026-10-07; media wave m1 and the owner's X-standard track ask: "track runs drawn as smooth grey
+// slabs with no links"): one shoe colour per link made the run one tone, so links only separated where a shadow fell.
+// Each shoe now carries a worn-steel read in its own vertex colours, multiplied with the per-link palette: the link
+// ends that face the next shoe across the gap fall dark, the inner web and guide stay in shadow tone, and the outward
+// contact face is road-polished on all-steel shoes (crests a third brighter; round 2: the 1.7x crests read as pale
+// planks) or dark rubber on padded ones (steel shoulders brighter). Geometry and the instance palette are unchanged; the shoe material reads the colours (vertexColors).
+const RUBBER_PAD_SURFACES = new Set(['paired-pad', 'rubber-block', 'split-chevron', 'fine-rib', 'staggered-rib']);
+function bakeTrackShoeWear(geometry: THREE.BufferGeometry, pattern: { surface?: string }): void {
+  if (geometry.getAttribute('color')) return;
+  if (!geometry.getAttribute('normal')) geometry.computeVertexNormals();
+  const position = geometry.getAttribute('position'), normal = geometry.getAttribute('normal');
+  if (!position || !normal) return;
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox;
+  if (!box) return;
+  const y0 = box.min.y, span = Math.max(box.max.y - y0, 1e-6);
+  const halfW = Math.max(box.max.x, -box.min.x, 1e-6);
+  const rubber = RUBBER_PAD_SURFACES.has(String(pattern.surface || ''));
+  const colors = new Float32Array(position.count * 3);
+  for (let i = 0; i < position.count; i++) {
+    const h = (position.getY(i) - y0) / span; // 0 at the guide tips (inward), 1 at the crests (outward)
+    const ny = normal.getY(i), nx = Math.abs(normal.getX(i)), nz = Math.abs(normal.getZ(i));
+    const outer = Math.abs(position.getX(i)) / halfW;
+    let k = 0.62 + 0.38 * h;
+    let warm = 0;
+    if (ny > 0.55) {
+      const crest = Math.min(1, Math.max(0, (h - 0.55) / 0.45));
+      if (!rubber) { k *= 1 + 0.32 * crest * crest; warm = crest; }
+      else if (outer > 0.82) { k *= 1 + 0.35 * crest; warm = 0.5 * crest; }
+      else k *= 1 - 0.18 * crest;
+    }
+    if (nz > 0.55) k *= 0.58;
+    else if (nx > 0.55) k *= rubber && outer > 0.82 ? 1.08 : 0.86;
+    colors[i * 3] = k * (1 + 0.05 * warm);
+    colors[i * 3 + 1] = k;
+    colors[i * 3 + 2] = k * (1 - 0.06 * warm);
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 }
 
 function trackShoeGeometry(
@@ -4047,6 +4140,20 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   };
   const buildRunningGearRunningGearStage14 = (): void => {
     buildRunningGearAssemblyStage7();
+    // Fleet lane round 1 (2026-10-07): paired bogies (Horstmann, Chieftain) hang two arms from one hull pivot. Each
+    // arm used to draw its own pivot boss at the same spot, two coincident forgings whose end caps fought in depth
+    // (the circularCapOverlap finding on chieftain5 / chieftain_mk10). The second arm's pivot boss now collapses.
+    for (let i = 0; i < suspensionEntries.length; i++) {
+      const link = suspensionEntries[i];
+      for (let j = 0; j < i; j++) {
+        const earlier = suspensionEntries[j];
+        if (earlier.side === link.side && !earlier.sharedAnchor && Math.abs(earlier.x - link.x) < 1e-3
+          && Math.abs(earlier.anchorY - link.anchorY) < 1e-3 && Math.abs(earlier.anchorZ - link.anchorZ) < 1e-3) {
+          link.sharedAnchor = true;
+          break;
+        }
+      }
+    }
   };
   buildRunningGearRunningGearStage14();
   // Local +Z points from the hull pivot to the wheel axle. A slightly wider
@@ -4101,10 +4208,24 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     cylX(bossRadius * 0.67, bossWidth, Math.max(8, suspensionPattern.armSegments)),
     cylX(bossRadius * 0.30, bossWidth * 1.12, 8),
   ]);
+  // Paired arms may share one fixed hull bearing. Emit that physical boss
+  // once; each moving axle still owns its independent instance.
+  const anchorBosses = new Map<string, number>();
+  let jointCount = 0;
+  const suspensionJointIndices = suspensionEntries.map(link => {
+    const x = suspensionDimensions ? link.side * suspensionDimensions.anchorBossCenterAbsXM : link.x;
+    const key = `${x},${link.anchorY},${link.anchorZ}`;
+    let anchor = anchorBosses.get(key);
+    if (anchor === undefined) {
+      anchor = jointCount++;
+      anchorBosses.set(key, anchor);
+    }
+    return { anchor, axle: jointCount++ };
+  });
   const suspensionJointIM = new THREE.InstancedMesh(
     suspensionJointGeo,
     mats.dark || mats.spareTrack || mats.wheelsRecessed,
-    suspensionEntries.length * 2,
+    jointCount,
   );
   const buildRunningGearReceiptStage6 = (): void => {
     suspensionJointIM.name = 'gearSuspensionJointBosses';
@@ -4138,6 +4259,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       _s.set(width, radius, radius);
       _v.x = link.side * center;
     }
+    if (!axle && link.sharedAnchor) _s.set(0, 0, 0);
     _m.compose(_v, _q, _s);
     suspensionJointIM.setMatrixAt(index, _m);
   }
@@ -4158,8 +4280,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       _m.compose(_v, _q, _s);
       suspensionIM.setMatrixAt(i, _m);
 
-      placeSuspensionBoss(i * 2, link, false, link.anchorY, link.anchorZ);
-      placeSuspensionBoss(i * 2 + 1, link, true, axleY, axleZ);
+      placeSuspensionBoss(suspensionJointIndices[i].anchor, link, false, link.anchorY, link.anchorZ);
+      placeSuspensionBoss(suspensionJointIndices[i].axle, link, true, axleY, axleZ);
     }
     suspensionIM.instanceMatrix.needsUpdate = true;
     suspensionJointIM.instanceMatrix.needsUpdate = true;
@@ -4571,6 +4693,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     trackW, lp, trackPattern, shoeRadialScale, shoeWidthScale,
     cfg.trackLinkCrossSection, pinCapOuter,
   );
+  bakeTrackShoeWear(integratedShoe, trackPattern);
+  bakeTrackShoeWear(simplifiedShoe, trackPattern);
   const buildRunningGearAssemblyStage15 = (): void => {
     if (cfg.trackShoeBuilder) {
       validateNativeGearSolid(integratedShoe, 'Native near shoe');
@@ -4594,10 +4718,9 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   const padMat = cloneVehicleMaterial(mats.trackLink || mats.dark);
   const buildRunningGearReceiptStage10 = (): void => {
     padMat.color=new THREE.Color(0xffffff);
-    // Shoes use instanceColor, which Three enables independently. Neither
-    // shoe geometry has a vertex-color attribute; enabling vertexColors would
-    // multiply the palette by the missing attribute's black default.
-    padMat.vertexColors = false;
+    // Shoes use instanceColor, which Three enables independently, multiplied by the worn-steel vertex colours both
+    // shoe streams carry (bakeTrackShoeWear, fleet lane round 1).
+    padMat.vertexColors = true;
     padMat.roughness=0.97;
     padMat.metalness=0.08;
     padMat.userData = { ...(padMat.userData || {}), appearanceRole: 'trackPad',
@@ -4952,6 +5075,23 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     const travel = (dev: number): number => (dev > suspensionCompressionM ? suspensionCompressionM : dev);
     const t = (e.z - conformWheels[aft].z) / Math.max(conformWheels[fore].z - conformWheels[aft].z, 1e-4);
     return travel(conformDevs[aft]) * (1 - t) + travel(conformDevs[fore]) * t;
+  };
+  // The hull-local radius the canonical road wheels' footprints reach from the hull origin (measured on the first
+  // conform: the gear is complete by then): the sampler's standable-top query covers it once per conform.
+  let conformReachLocalM = -1;
+  const conformReachLocal = (): number => {
+    if (conformReachLocalM >= 0) return conformReachLocalM;
+    let reach = 0;
+    for (const { list } of made) {
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (!e.road) continue;
+        const r = Math.hypot(Math.abs(e.x) + 0.5 * wheelW, Math.abs(e.z) + e.r);
+        if (r > reach) reach = r;
+      }
+    }
+    conformReachLocalM = reach;
+    return reach;
   };
   // Reused on every conformance update. Keeping this frame outside the hot
   // method avoids allocating a transform object per render cadence.
@@ -5519,6 +5659,12 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       // either side of it that reach their ground, not dropped to its full droop. The band runs taut between those
       // supported wheels and the wheel rides on it, so it follows the line between their travels. Without a supported
       // wheel on one side it keeps the droop, as before. Flat ground supports every wheel, so nothing at rest changes.
+      // One standable-top query for the whole wheel train (vehicle-contact lane, 2026-10-09): the footprints reach at
+      // most conformReachLocal() from the hull origin at the largest presentation scale, plus the hullG seat offset.
+      if (sampler.prepareHull) {
+        sampler.prepareHull(frame.px, frame.pz, conformReachLocal() * Math.max(Math.abs(frame.hsx), Math.abs(frame.hsz))
+          + Math.hypot(frame.hpx, frame.hpz) + 0.25);
+      }
       let conformed = 0;
       for (const { list } of made) {
         for (let i = 0; i < list.length; i++) {
@@ -5870,6 +6016,58 @@ function buildGunStrict(builder: object, cfg: GunBuildConfig): void {
 // ---------------------------------------------------------------------------
 // Small shared detail assemblies
 // ---------------------------------------------------------------------------
+// Fleet lane round 1 (2026-10-07; media wave m1 and the brief: sights read as "floating blue screen boxes" and
+// "desktop monitors"): a broad flat glass pane authored as a plain box sat proud on its housing like a screen. Every
+// such pane (window at least 8 x 7 cm, at most 35 mm thick, upright) is cut into an armoured frame and a window: four
+// painted bars in the housing's fitting bucket take the outer ring of the pane's own box, flush with both faces, and the
+// glass keeps the inner window. The frame is cut from the authored box rather than added round it (2026-10-08, the
+// watertight census: a lip standing proud of the glass or a hood over it formed exterior pockets the census reads as
+// leaks on 55 hulls, and a hood reaching past a hull side moved the census lattice under every generated interior
+// fill), so the vehicle's shell, silhouette and envelopes are exactly the authored box. Source-measured panes (not
+// BoxGeometry), horizontal panes and small slits are untouched.
+const GLASS_FRAME_W = 0.016;
+const GLASS_SURROUND_BUCKET: Readonly<Record<string, string>> = Object.freeze({
+  turretGlass: 'turretDetail', hullGlass: 'hullDetail', gunMountGlass: 'gunMount',
+});
+/** Insets a broad box pane (in place, before its placement transform) and returns the frame bars that take its outer
+ * ring in the pane's own box frame, or nothing for a pane that keeps its whole face. */
+function armouredGlassSurround(bucket: string, geometry: THREE.BufferGeometry): THREE.BufferGeometry[] {
+  const target = GLASS_SURROUND_BUCKET[bucket];
+  const params = (geometry as THREE.BufferGeometry & { parameters?: { width: number; height: number; depth: number } }).parameters;
+  // an aperture whose authored housing already frames it (a radar panel in its box) keeps its whole face
+  if (!target || geometry.type !== 'BoxGeometry' || !params || geometry.userData.apertureFrame === 'housing') return [];
+  const dims = [params.width, params.height, params.depth];
+  const thin = Math.min(...dims);
+  const thinAxis = dims.indexOf(thin);
+  if (thinAxis === 1) return [];
+  const faceW = dims[thinAxis === 0 ? 2 : 0], faceH = dims[1];
+  if (thin > 0.035 || faceW < 0.08 || faceH < 0.07) return [];
+  // only a pane still in its own box frame (a caller may have moved or turned the box before adding it)
+  geometry.computeBoundingBox();
+  const bb = geometry.boundingBox;
+  if (!bb || Math.abs(bb.max.x + bb.min.x) > 1e-6 || Math.abs(bb.max.y + bb.min.y) > 1e-6
+    || Math.abs(bb.max.z + bb.min.z) > 1e-6 || Math.abs(bb.max.x - bb.min.x - params.width) > 1e-6
+    || Math.abs(bb.max.y - bb.min.y - params.height) > 1e-6 || Math.abs(bb.max.z - bb.min.z - params.depth) > 1e-6) return [];
+  const fw = Math.min(GLASS_FRAME_W, 0.18 * Math.min(faceW, faceH));
+  const innerW = faceW - 2 * fw, innerH = faceH - 2 * fw;
+  // (u across the window, v up, n through the pane) in the pane's own box frame
+  const part = (du: number, dv: number, su: number, sv: number): THREE.BufferGeometry => (thinAxis === 2
+    ? xform(new THREE.BoxGeometry(su, sv, thin), du, dv, 0)
+    : xform(new THREE.BoxGeometry(thin, sv, su), 0, dv, du));
+  const frames = [
+    part(0, faceH / 2 - fw / 2, faceW, fw),
+    part(0, -(faceH / 2 - fw / 2), faceW, fw),
+    part(faceW / 2 - fw / 2, 0, fw, innerH),
+    part(-(faceW / 2 - fw / 2), 0, fw, innerH),
+  ];
+  // the glass keeps the inner window (its parameters follow, so a rebuild from them stays inside the frame)
+  const scale: [number, number, number] = thinAxis === 2 ? [innerW / faceW, innerH / faceH, 1] : [1, innerH / faceH, innerW / faceW];
+  geometry.scale(...scale);
+  Object.assign(params, { width: params.width * scale[0], height: params.height * scale[1], depth: params.depth * scale[2] });
+  geometry.computeBoundingBox();
+  return frames;
+}
+
 function cupola(
   builder: object,
   bucket: string,
@@ -5950,64 +6148,22 @@ function periscope(
 
 function pintleMG(builder: object, x: number, y: number, z: number, big = true): void {
   const P = requireGeometryAddPort(builder);
-  const s = big ? 1 : 0.75;
-  const trunnionY = y + 0.235 * s;
-  const receiverY = trunnionY + 0.035 * s;
-  const receiverZ = z + 0.055 * s;
-
-  // Compact Browning-derived fallback used by the generic profile builder.
-  // It deliberately mirrors the authored fitting's bearing -> bridge -> fork
-  // -> trunnion load path so no tank falls back to the old block-on-a-stick.
-  P.add('turretDark', cylY(0.040 * s, 0.050 * s, 0.022 * s, 12), x, y + 0.011 * s, z);
-  P.add('turretDark', torus(0.041 * s, 0.007 * s, 16), x, y + 0.024 * s, z);
-  P.add('turretDark', cylY(0.020 * s, 0.026 * s, 0.155 * s, 10), x, y + 0.1015 * s, z);
-  P.add('turretDark', box(0.125 * s, 0.040 * s, 0.130 * s), x, y + 0.196 * s, z + 0.012 * s);
-  for (const side of [-1, 1]) {
-    P.add('turretDark', box(0.020 * s, 0.085 * s, 0.095 * s),
-      x + side * 0.048 * s, y + 0.217 * s, z + 0.044 * s, side * 0.05, 0, 0);
-  }
-  P.add('turretDark', cylX(0.026 * s, 0.130 * s, 10), x, trunnionY, z + 0.060 * s);
-
-  P.add('turretDark', box(0.115 * s, 0.095 * s, 0.46 * s), x, receiverY, receiverZ);
-  P.add('turretDark', box(0.106 * s, 0.018 * s, 0.405 * s),
-    x, receiverY + 0.0565 * s, receiverZ + 0.004 * s);
-  P.add('turretDark', box(0.020 * s, 0.065 * s, 0.245 * s),
-    x + 0.068 * s, receiverY, receiverZ - 0.025 * s);
-  P.add('turretDark', box(0.052 * s, 0.017 * s, 0.075 * s),
-    x - 0.083 * s, receiverY + 0.018 * s, receiverZ - 0.018 * s);
-  for (const side of [-1, 1]) {
-    P.add('turretDark', box(0.018 * s, 0.024 * s, 0.095 * s),
-      x + side * 0.035 * s, receiverY - 0.018 * s, receiverZ - 0.29 * s,
-      side * 0.08, 0, 0);
-  }
-
-  const jacketZ = receiverZ + 0.300 * s;
-  P.add('turretDark', cylZ(0.034 * s, 0.16 * s, 12),
-    x, receiverY + 0.005 * s, jacketZ, -0.08, 0, 0);
-  for (let index = 0; index < 4; index++) {
-    P.add('turretDark', torus(0.0345 * s, 0.004 * s, 10),
-      x, receiverY + (0.010 + index * 0.003) * s,
-      jacketZ - 0.050 * s + index * 0.038 * s, -0.08, 0, 0);
-  }
-  P.add('turretDark', cylZ(0.020 * s, 0.54 * s, 10),
-    x, receiverY + 0.030 * s, receiverZ + 0.650 * s, -0.08, 0, 0);
-  P.add('turretDark', cylZ(0.034 * s, 0.080 * s, 12),
-    x, receiverY + 0.052 * s, receiverZ + 0.960 * s, -0.08, 0, 0);
-
-  if (big) {
-    const ammoX = x - 0.125 * s;
-    P.add('turretDark', box(0.115 * s, 0.120 * s, 0.230 * s),
-      ammoX, receiverY - 0.010 * s, receiverZ - 0.005 * s);
-    P.add('turretDark', box(0.120 * s, 0.015 * s, 0.240 * s),
-      ammoX, receiverY + 0.057 * s, receiverZ - 0.005 * s);
-    for (let index = 0; index < 5; index++) {
-      const t = index / 4;
-      P.add('turretDark', box(0.018 * s, 0.026 * s, 0.024 * s),
-        ammoX + (0.020 + t * 0.072) * s,
-        receiverY + (0.025 + t * 0.010) * s,
-        receiverZ + (0.075 + t * 0.070) * s, 0, 0, -0.10 + t * 0.15);
-    }
-  }
+  // The generic profile builder's roof gun (profiles/kit.ts addTurretAccessories,
+  // reached only by a profile with no authored builder that sets `mg`; no
+  // shipping profile does today) is the fleet's one Browning-family
+  // construction (machineGunGeometry.ts, 2026-10-05): bearing -> spindle ->
+  // fork -> trunnion, pressed receiver, feed cover, grips, jacket and muzzle
+  // device, and (heavy) the can and belt, all in the turret's gunmetal bucket.
+  const parts = {
+    add(_slot: string, geometry: THREE.BufferGeometry, gx = 0, gy = 0, gz = 0, rx = 0, ry = 0, rz = 0) {
+      P.add('turretDark', xform(geometry, gx, gy, gz, rx, ry, rz), x, y, z);
+    },
+  };
+  const layout = createPintleLayout({ cls: big ? 'heavy' : 'mag', scale: big ? 1 : 0.96, ammo: big }, parts);
+  addPintleMount(layout);
+  addPintleReceiver(layout);
+  addPintleBarrel(layout);
+  addPintleAmmo(layout);
 }
 
 function smokeCluster(
@@ -6091,109 +6247,94 @@ function openRackGrid(
   return geometry;
 }
 
-function stowageBody(style: number, width: number, height: number, depth: number): THREE.BufferGeometry {
-  const body = style === 0
-    ? box(width, height, depth)
-    : xform(sph(0.5, 12), 0, 0, 0, 0, 0, 0, [
-      width * (style === 1 ? 0.98 : 0.92),
-      height * 0.94,
-      depth * (style === 1 ? 0.96 : 0.90),
-    ]);
-  body.userData.designFamily = 'cot-soft-stowage-v2';
-  body.userData.fabricProfile = ['folded-canvas', 'duffel', 'field-ruck'][style];
-  return body;
+// 2026-10-05 (tank-accessories lane): the profiles' soft stowage in the sewn grammar of the newest equipment
+// (accessoryPrimitives.ts): a folded canvas bundle, a duffel or a field ruck built as a fabric loft inside the
+// authored w x h x d envelope, seated on the envelope's base, its webbing straps cinching the fabric. Random draws
+// and the authored seats are unchanged.
+const STOWAGE_PROFILES = ['folded-canvas', 'duffel', 'field-ruck'] as const;
+
+function stowageFabricSpec(style: number, width: number, height: number, depth: number, seg = 10): FabricSpec {
+  const len = Math.max(width, depth), cross = Math.min(width, depth);
+  const shape = style === 0
+    ? { exponent: 6, endScale: 0.86, endLength: 0.08, flatten: 0.5, wrinkle: 0.03, cinch: [-len * 0.28, len * 0.28], cinchDepth: 0.07 }
+    : style === 1
+      ? { exponent: 2.6, endScale: 0.6, endLength: 0.14, flatten: 0.3, wrinkle: 0.05, cinch: [-len * 0.28, len * 0.28] }
+      : { exponent: 3.6, endScale: 0.72, endLength: 0.14, flatten: 0.38, wrinkle: 0.04, cinch: [-len * 0.18, len * 0.22], cinchDepth: 0.06 };
+  // a fabric section stands (2 + wrinkle - 0.82 flatten) half-heights tall on its pressed base; fill the authored height
+  const crossFill = style === 2 ? cross - 2 * stowagePocketHalf(cross) * 0.9 : cross;
+  return { len, hw: crossFill / 2 / (1 + shape.wrinkle), hh: height / (2 + shape.wrinkle - 0.82 * shape.flatten),
+    seg, stations: 5, seed: 11 + style * 7, ...shape };
 }
 
-function addStowageFlap(
-  P: EquipmentBuilderPort,
-  bucket: string,
-  style: number,
-  x: number,
-  y: number,
-  z: number,
-  width: number,
-  height: number,
-  depth: number,
-  yaw: number,
-): void {
-  const isRuck = style === 2;
-  const flapDepth = isRuck ? depth * 0.64 : depth * 1.04;
-  P.addEquipment(
-    bucket,
-    box(width * (isRuck ? 0.76 : 1.04), height * 0.16, flapDepth),
-    x, y + height * 0.46, z + (isRuck ? depth * 0.08 : 0), 0, yaw, -0.025,
-  );
+function stowagePocketHalf(cross: number): number { return Math.min(0.05, cross * 0.11); }
+
+/** Orient a +Z fabric part to the envelope's long axis and lift it so the bag's base sits on the envelope's floor. */
+function seatStowagePart(geometry: THREE.BufferGeometry, alongX: boolean, lift: number): THREE.BufferGeometry {
+  if (alongX) place(geometry, 0, 0, 0, 0, Math.PI / 2, 0);
+  geometry.translate(0, lift, 0);
+  return geometry;
 }
 
-function addStowageStyleDetails(
-  P: EquipmentBuilderPort,
-  bucket: string,
-  darkBucket: string,
-  style: number,
-  x: number,
-  y: number,
-  z: number,
-  width: number,
-  height: number,
-  depth: number,
-  yaw: number,
-): void {
-  if (style === 2) {
-    for (const side of [-1, 1]) {
-      addEquipmentLocal(P, bucket, box(width * 0.18, height * 0.42, depth * 0.34),
-        x, y, z, yaw, side * width * 0.46, -height * 0.08, -depth * 0.02);
-    }
-  } else if (style === 1) {
-    P.addEquipment(darkBucket, box(width * 0.34, 0.026, 0.026),
-      x, y + height * 0.50, z - depth * 0.02, 0, yaw, 0);
-  }
+/**
+ * Soft goods never take the hull's camouflage projection (2026-10-07, tank-accessories round 4; wave 217 on the
+ * T-72B3M: "the bedrolls wear the hull's camo decal"): a pack, bedroll or tarp authored into a camouflaged bucket
+ * rides the owner's canvas bucket instead (FSP-06 cloth role); every other bucket is kept as authored.
+ */
+function softGoodsBucket(bucket: string): string {
+  if (!CAMO_BUCKETS.has(bucket)) return bucket;
+  return bucket.startsWith('turret') ? 'turretCloth' : bucket.startsWith('gun') ? 'gunMountCloth' : 'hullCloth';
 }
-
-function addStowageStraps(
-  P: EquipmentBuilderPort,
-  darkBucket: string,
-  x: number,
-  y: number,
-  z: number,
-  width: number,
-  height: number,
-  depth: number,
-  yaw: number,
-): void {
-  const along = depth >= width;
-  for (const fraction of [-0.28, 0.28]) {
-    const strap = along
-      ? box(width * 1.06, height * 1.04, 0.028)
-      : box(0.028, height * 1.04, depth * 1.06);
-    strap.userData.designFamily = 'cot-webbing-strap-v2';
-    addEquipmentLocal(P, darkBucket, strap, x, y + height * 0.02, z, yaw,
-      along ? 0 : fraction * width, 0, along ? fraction * depth : 0);
-    addEquipmentLocal(P, darkBucket, box(0.07, 0.018, 0.055),
-      x, y + height * 0.54, z, yaw,
-      along ? fraction * width * 0.10 : fraction * width,
-      0,
-      along ? fraction * depth : fraction * depth * 0.10);
-  }
-}
-
 function stowage(
   builder: object,
-  bucket: string,
+  authoredBucket: string,
   rngSource: RuntimeValue,
   spots: readonly StowageSpot[],
 ): void {
   const P = requireEquipmentBuilderPort(builder);
   const rng = requireRng(rngSource);
+  const bucket = softGoodsBucket(authoredBucket);
   // Shared soft-kit vocabulary. Seeded shape selection keeps fleet-wide
   // variation deterministic while preserving each authored cargo envelope.
   const dark = bucket.startsWith('turret') ? 'turretDark' : 'hullDark';
   for (const [x, y, z, w, h, d] of spots) {
     const yaw = (rng() - 0.5) * 0.12;
     const style = Math.min(2, Math.floor(rng() * 3));
-    P.addEquipment(bucket, stowageBody(style, w, h, d), x, y, z, 0, yaw, 0);
-    addStowageFlap(P, bucket, style, x, y, z, w, h, d, yaw);
-    addStowageStyleDetails(P, bucket, dark, style, x, y, z, w, h, d, yaw);
-    addStowageStraps(P, dark, x, y, z, w, h, d, yaw);
+    // 2026-10-07 (round 3): fourteen sides at full geometry quality (ten read as facets up close); the low tier keeps ten
+    const spec = stowageFabricSpec(style, w, h, d, P.q === false ? 10 : 14);
+    const alongX = w >= d;
+    const body = fabricBody(spec);
+    body.computeBoundingBox();
+    const lift = -h / 2 - body.boundingBox!.min.y;
+    const top = lift + body.boundingBox!.max.y;
+    seatStowagePart(body, alongX, lift);
+    body.userData.designFamily = 'cot-soft-stowage-v3';
+    body.userData.fabricProfile = STOWAGE_PROFILES[style];
+    P.addEquipment(bucket, body, x, y, z, 0, yaw, 0);
+    for (const station of spec.cinch ?? []) {
+      const strap = seatStowagePart(fabricStrap(spec, station), alongX, lift);
+      strap.userData.designFamily = 'cot-webbing-strap-v3';
+      P.addEquipment(dark, strap, x, y, z, 0, yaw, 0);
+    }
+    if (style === 2) {
+      // the ruck's lid: a thin pad over its top end; and two side pockets half sunk into its flanks
+      const flap: FabricSpec = { len: spec.hw * 1.8, hw: spec.len * 0.16, hh: h * 0.07, exponent: 3, endScale: 0.8,
+        endLength: 0.1, flatten: 0.6, wrinkle: 0.03, seg: 8, stations: 4, seed: spec.seed! + 3 };
+      const flapGeometry = place(fabricBody(flap), 0, top - 0.02, spec.len * 0.3, 0, Math.PI / 2, 0);
+      P.addEquipment(bucket, seatStowagePart(flapGeometry, alongX, 0), x, y, z, 0, yaw, 0);
+      const pocketHalf = stowagePocketHalf(Math.min(w, d));
+      for (const side of [-1, 1]) {
+        const pocket: FabricSpec = { len: spec.len * 0.36, hw: pocketHalf, hh: h * 0.24, exponent: 3.4,
+          endScale: 0.7, endLength: 0.2, flatten: 0.3, wrinkle: 0.03, seg: 6, stations: 3, seed: spec.seed! + 7 + side };
+        const pocketGeometry = place(fabricBody(pocket), side * (spec.hw + pocketHalf * 0.25), -h * 0.12, -spec.len * 0.02);
+        P.addEquipment(bucket, seatStowagePart(pocketGeometry, alongX, 0), x, y, z, 0, yaw, 0);
+      }
+    } else if (style === 1) {
+      // the duffel's carry handle: a flattened webbing loop on top
+      const span = spec.len * 0.3, foot = top - 0.012;
+      const handle = sweptTube([[0, foot, -span / 2], [0, foot + 0.022, -span * 0.3],
+        [0, foot + 0.022, span * 0.3], [0, foot, span / 2]], 0.006, 4, 6);
+      P.addEquipment(dark, seatStowagePart(handle, alongX, 0), x, y, z, 0, yaw, 0);
+    }
   }
 }
 
@@ -6230,94 +6371,104 @@ function jerryCan(
   // Fuel cans are issued and restrained as a close pair. Keep that invariant
   // in the lowest-level prop primitive so older hand-authored placements and
   // newer fitting/decor manifests cannot silently reintroduce a lone can.
+  // 2026-10-05: the fleet's one pressed 20 L can (accessoryKits.ts jerrycanParts: filleted body, the
+  // stamped X on the outer broad face, the three-grip handle comb, the spout) on two cradle rails; the
+  // same seats and footprint, inside the old shoulder line.
+  // 2026-10-07 (round 3): the low geometry tier takes the shared can's coarse level (body and handle block)
   for (const [pairIndex, localX] of [-0.095, 0.095].entries()) {
-    const body = box(0.16, 0.40, 0.34);
-    body.userData.designFamily = 'cot-field-jerry-can-v2';
-    body.userData.stampedRibs = 4;
-    body.userData.bridgeHandles = 3;
-    body.userData.threadedSpout = true;
-    body.userData.paired = true;
-    body.userData.pairSize = 2;
-    body.userData.pairIndex = pairIndex;
-    addEquipmentLocal(P, bucket, body, x, y - 0.02, z, yaw, localX, 0, 0);
-    addEquipmentLocal(P, bucket, box(0.145, 0.08, 0.29), x, y + 0.20, z, yaw,
-      localX, 0, 0);                                                          // pressed shoulder
-    for (const face of [-1, 1]) {
-      for (const diagonal of [-1, 1]) {
-        addEquipmentLocal(P, dark, box(0.026, 0.31, 0.014), x, y - 0.02, z, yaw,
-          localX, 0, face * 0.174, 0, 0, diagonal * 0.42);                    // stamped X ribs
-      }
+    const can = jerrycanParts(1, [localX < 0 ? -1 : 1], P.q !== false);
+    can.body.userData.designFamily = 'cot-field-jerry-can-v3';
+    can.body.userData.stampedRibs = 4;
+    can.body.userData.bridgeHandles = 3;
+    can.body.userData.threadedSpout = true;
+    can.body.userData.paired = true;
+    can.body.userData.pairSize = 2;
+    can.body.userData.pairIndex = pairIndex;
+    for (const part of [can.body, ...can.stamps, can.spine, ...can.grips]) {
+      addEquipmentLocal(P, bucket, part, x, y - 0.24, z, yaw, localX, 0, 0);
     }
-    for (const hx of [-0.048, 0.048]) {
-      addEquipmentLocal(P, dark, box(0.024, 0.075, 0.026), x, y, z, yaw,
-        localX + hx, 0.245, -0.015);
+    if (can.spout) addEquipmentLocal(P, dark, can.spout, x, y - 0.24, z, yaw, localX, 0, 0); // spout and cap
+    for (const rail of [-0.105, 0.105]) {
+      addEquipmentLocal(P, dark, block(0.19, 0.022, 0.045), x, y - 0.231, z, yaw, localX, 0, rail); // cradle rails
     }
-    addEquipmentLocal(P, dark, box(0.12, 0.024, 0.026), x, y, z, yaw,
-      localX, 0.282, -0.015);                                                 // bridge handle
-    addEquipmentLocal(P, dark, cylY(0.025, 0.028, 0.045, 10), x, y, z, yaw,
-      localX + 0.045, 0.275, 0.09);                                           // threaded cap
-    addEquipmentLocal(P, dark, box(0.18, 0.025, 0.22), x, y - 0.23, z, yaw,
-      localX, 0, 0);                                                          // retaining foot / cradle contact
   }
 }
 function tarpRoll(
-  builder: object, bucket: string, x: number, y: number, z: number,
+  builder: object, authoredBucket: string, x: number, y: number, z: number,
   len: number, r = 0.1, alongX = true, seg = 10,
 ): void {
   const P = requireEquipmentBuilderPort(builder);
-  const roll = alongX ? cylX(r, len, seg) : cylZ(r, len, seg);
-  roll.userData.designFamily = 'cot-rolled-fabric-v2';
+  const bucket = softGoodsBucket(authoredBucket);
+  // 2026-10-05: a firm rolled tarp loft (round sections, flat rolled ends) cinched by
+  // two webbing straps, the rolled spiral showing at each end; same axis and envelope.
+  // 2026-10-07 (tank-accessories round 3: "rolls with eight visible facets"): at full geometry quality a roll draws
+  // at least eighteen sides and its rolled ends wind as a spiral; the low tier keeps its authored count and layers.
+  const full = P.q !== false;
+  const spec: FabricSpec = { len, hw: r, hh: r, exponent: 2.1, endScale: 0.92, endLength: 0.04, flatten: 0,
+    wrinkle: 0.03, seg: full ? Math.max(18, seg) : Math.max(8, seg), stations: 4, cinch: [-len * 0.3, len * 0.3],
+    cinchDepth: 0.1, seed: 71 };
+  const orient = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => (alongX ? place(geometry, 0, 0, 0, 0, Math.PI / 2, 0) : geometry);
+  const roll = orient(fabricBody(spec));
+  roll.userData.designFamily = 'cot-rolled-fabric-v3';
   roll.userData.endSeams = 2;
   roll.userData.cinchStraps = 2;
   P.addEquipment(bucket, roll, x, y, z);
   const dark = bucket.startsWith('turret') ? 'turretDark' : 'hullDark';
-  for (const f of [-0.3, 0.3]) {
-    P.addEquipment(dark, alongX
-      ? xform(cylX(r * 1.06, 0.03, seg), 0, 0, 0)
-      : xform(cylZ(r * 1.06, 0.03, seg), 0, 0, 0),
-      x + (alongX ? f * len : 0), y, z + (alongX ? 0 : f * len));    // straps
+  for (const station of spec.cinch ?? []) P.addEquipment(dark, orient(fabricStrap(spec, station)), x, y, z); // straps
+  if (full) {
+    for (const end of [-1, 1] as const) P.addEquipment(dark, orient(rolledEndSpiral(r * 0.92, end * len / 2, end, 20)), x, y, z);
+  } else {
+    for (const layer of rolledEndLayers(r, len)) P.addEquipment(dark, orient(layer), x, y, z);  // rolled layers at the ends
   }
-  for (const end of [-1, 1]) {
-    P.addEquipment(dark, alongX ? cylX(r * 0.80, 0.014, seg) : cylZ(r * 0.80, 0.014, seg),
-      x + (alongX ? end * len * 0.505 : 0), y,
-      z + (alongX ? 0 : end * len * 0.505));                                 // rolled end seam
-  }
-  P.addEquipment(dark, box(alongX ? len * 0.34 : 0.024, 0.018,
-    alongX ? 0.024 : len * 0.34), x, y + r * 0.88, z);                        // folded flap / tied edge
 }
 function ammoCan(
   builder: object, bucket: string, x: number, y: number, z: number, yaw = 0,
 ): void {
   const P = requireEquipmentBuilderPort(builder);
   const dark = bucket.startsWith('turret') ? 'turretDark' : 'hullDark';
-  const body = box(0.14, 0.20, 0.30);
-  body.userData.designFamily = 'cot-ammo-can-v2';
+  // 2026-10-05: a pressed can (filleted corners), gasketed lid, over-centre latches,
+  // hinge barrels, folding handle and pressed side ribs; same seat and footprint.
+  const body = moldedBox(0.14, 0.20, 0.30, 0.012, 1, 0.007);
+  body.userData.designFamily = 'cot-ammo-can-v3';
   body.userData.latches = 2;
   body.userData.hinges = 2;
   body.userData.carryHandle = true;
   P.addEquipment(bucket, body, x, y, z, 0, yaw, 0);
-  P.addEquipment(bucket, markEquipmentLid(box(0.155, 0.028, 0.315)), x, y + 0.11, z, 0, yaw, 0); // rolled lid lip
-  for (const side of [-1, 1]) {
-    addEquipmentLocal(P, dark, box(0.026, 0.075, 0.024), x, y, z, yaw,
-      side * 0.045, 0.035, 0.158);                                            // twin over-center latches
-    addEquipmentLocal(P, dark, cylX(0.014, 0.04, 8), x, y, z, yaw,
-      side * 0.045, 0.08, -0.158);                                            // rear hinge barrels
+  // The lid stays a plain box: equipment damage folds marked lids by a BoxGeometry's vertex layout (equipmentDamage.ts).
+  P.addEquipment(bucket, markEquipmentLid(box(0.155, 0.028, 0.315)), x, y + 0.11, z, 0, yaw, 0); // gasketed lid
+  // 2026-10-07 (round 3: the critics read flush latches and hinges as molded-on texture): the over-centre levers stand
+  // two centimetres off their base plates with keepers on the lid, and the hinge barrels ride on leaves; the low
+  // geometry tier keeps its lighter latch blocks and barrels
+  if (P.q === false) {
+    for (const side of [-1, 1]) {
+      addEquipmentLocal(P, dark, block(0.024, 0.072, 0.02), x, y, z, yaw, side * 0.045, 0.035, 0.158); // latches
+      addEquipmentLocal(P, dark, roundBar([-0.02, 0, 0], [0.02, 0, 0], 0.012, 6), x, y, z, yaw,
+        side * 0.045, 0.08, -0.158);                                                                  // hinge barrels
+      addEquipmentLocal(P, bucket, block(0.01, 0.15, 0.22), x, y, z, yaw, side * 0.072, -0.005, 0); // pressed side ribs
+    }
+  } else for (const side of [-1, 1]) {
+    addEquipmentLocal(P, dark, block(0.034, 0.05, 0.006), x, y, z, yaw, side * 0.045, 0.03, 0.153);    // latch plates
+    addEquipmentLocal(P, dark, moldedBox(0.024, 0.07, 0.016, 0.005, 0, 0.004), x, y, z, yaw,
+      side * 0.045, 0.04, 0.165);                                                                      // latch levers
+    addEquipmentLocal(P, dark, block(0.03, 0.02, 0.014), x, y, z, yaw, side * 0.045, 0.112, 0.163);    // lid keepers
+    addEquipmentLocal(P, dark, roundBar([-0.024, 0, 0], [0.024, 0, 0], 0.014, 8), x, y, z, yaw,
+      side * 0.045, 0.098, -0.166);                                                                    // hinge barrels
+    addEquipmentLocal(P, dark, block(0.042, 0.04, 0.005), x, y, z, yaw, side * 0.045, 0.072, -0.153); // hinge leaves
+    addEquipmentLocal(P, bucket, block(0.012, 0.15, 0.22), x, y, z, yaw, side * 0.073, -0.005, 0); // pressed side ribs
   }
-  for (const side of [-1, 1]) {
-    addEquipmentLocal(P, dark, box(0.018, 0.06, 0.018), x, y, z, yaw,
-      side * 0.046, 0.16, 0);
-  }
-  addEquipmentLocal(P, dark, box(0.11, 0.018, 0.018), x, y, z, yaw,
-    0, 0.19, 0);                                                              // folding carry handle
-  for (const side of [-1, 1]) {
-    addEquipmentLocal(P, dark, box(0.012, 0.17, 0.24), x, y, z, yaw,
-      side * 0.071, -0.005, 0);                                               // pressed side ribs
-  }
+  addEquipmentLocal(P, dark, sweptTube([[0, 0.125, -0.045], [0, 0.15, -0.03], [0, 0.15, 0.03], [0, 0.125, 0.045]], 0.007, 4, 6),
+    x, y, z, yaw, 0, 0.03, 0);                                                                       // folding carry handle
 }
 function shovelTool(builder: object, x: number, y: number, z: number, len = 0.95): void {
   const P = requireGeometryAddPort(builder);
-  P.add('hullWood', box(0.035, 0.025, len), x, y, z);
-  P.add('hullDark', box(0.11, 0.03, 0.22), x, y, z + len * 0.55);
+  // 2026-10-05: a round ash shaft ending in its D-grip and a dished, pointed blade; the same run and seat.
+  const grip = 0.075, gripEnd = -len / 2 + 0.02;
+  P.add('hullWood', roundBar([0, 0, gripEnd + grip], [0, 0, len / 2], 0.016, P.q ? 6 : 4), x, y, z);
+  P.add('hullWood', sweptTube([[-0.012, 0, gripEnd + grip], [-0.045, 0, gripEnd + grip * 0.55], [-0.04, 0, gripEnd],
+    [0.04, 0, gripEnd], [0.045, 0, gripEnd + grip * 0.55], [0.012, 0, gripEnd + grip]], 0.011, 4, 8), x, y, z);
+  const blade = latheY([[0.0005, 0], [0.055, 0.02], [0.058, 0.14], [0.036, 0.2], [0.0005, 0.22]], P.q ? 8 : 5);
+  blade.scale(1, 1, 0.14);
+  P.add('hullDark', place(blade, 0, 0.004, len * 0.55 - 0.11, Math.PI / 2, 0, 0), x, y, z);
 }
 function spareTrackStrip(
   builder: object, bucket: string, x: number, y: number, z: number,
@@ -6610,6 +6761,8 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   // fitting paint for small painted steel accessories (jerry cans) that a projected camouflage tile would
   // splash at hull scale. Greeble-class like the other cloth buckets.
   hullCanvasPale: ['hullG', 'canvasPale'], hullFittingPaint: ['hullG', 'detail'],
+  // Round 4 (2026-10-07): unditching logs in their own vertex-coloured wood (bark, sawn ends and rings in one draw).
+  hullBark: ['hullG', 'bark'],
   turret: ['turretG', 'hull'], turretCupola: ['turretG', 'hull'], turretHatch: ['turretG', 'hull'],
   turretExternalArmor: ['turretG', 'hull'], turretEquipment: ['turretG', 'hull'],
   turretDetail: ['turretG', 'hull'], turretDark: ['turretG', 'dark'],
@@ -6623,7 +6776,7 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   // the flat detail tone read as bare grey primer on every X study.
   turretOpenLattice: ['turretG', 'hull'], turretOpenLatticeDark: ['turretG', 'dark'],
   turretCloth: ['turretG', 'canvasCloth'], turretGlass: ['turretG', 'glass'],
-  turretCanvasPale: ['turretG', 'canvasPale'], turretFittingPaint: ['turretG', 'detail'],
+  turretCanvasPale: ['turretG', 'canvasPale'], turretFittingPaint: ['turretG', 'detail'], turretBark: ['turretG', 'bark'],
   gun: ['recoilG', 'barrel'], gunDark: ['recoilG', 'dark'], gunMount: ['gunG', 'hull'],
   gunMountDark: ['gunG', 'dark'], gunMountCloth: ['gunG', 'canvasCloth'],
   // Continuous mantlet boots are silhouette skin, not distant-LOD stowage.
@@ -6686,6 +6839,11 @@ const CAMO_BUCKETS = new Set([
   'turret', 'turretCupola', 'turretHatch', 'turretExternalArmor',
   'turretEquipment', 'gun', 'gunMount',
 ]);
+/** Round 4 (2026-10-07): the matte fitting-paint bucket a smoke discharger tube in a paint-only camo bucket rides. */
+const SMOKE_TUBE_PAINT_BUCKET: Readonly<Record<string, string>> = Object.freeze({
+  hullDetail: 'hullFittingPaint', hullPaintedDetail: 'hullFittingPaint',
+  turretDetail: 'turretFittingPaint', turretPaintedDetail: 'turretFittingPaint',
+});
 /** FSP-06 (tools/material-roles-audit.mjs): the material key a bucket merges into, or null for an unknown bucket.
  * `hull`/`barrel` carry the camouflage map; `wheels`/`detail`/`canvasCloth` are scheme-tinted solids; the rest are
  * fixed non-camouflage finishes. Read-only view of BUCKET_DEF for diagnostics. */
@@ -6854,6 +7012,7 @@ function createNonRenderingTankMaterials(camoUvScale = CAMO_UV_REPEATS_PER_M): T
     canvasCloth: make(0x41452f),
     canvasPale: make(0x66604a),
     wood: make(0x5b4732),
+    bark: make(0x4a3c2e),
     burnt: make(0x171713),
     trackL: make(0x2d302b),
     trackR: make(0x2d302b),
@@ -7076,8 +7235,27 @@ function* createTankOwnedSteps(
   gunG.add(recoilG);
 
   const buckets: Record<string, THREE.BufferGeometry[]> = {};
+  // Discharger tubes add() sends to the owner's fitting paint once the profile is done (SMOKE_TUBE_PAINT_BUCKET).
+  const smokeTubesForFittingPaint = new Set<THREE.BufferGeometry>();
   const mudguardParts: MudguardPart[] = [];
   const moduleVisualParts = new Map<THREE.BufferGeometry, string>();
+  // The frame bars cut from a sight pane (armouredGlassSurround) ride the housing's painted fitting bucket; each
+  // remembers the pane's own bucket, and the pane remembers its bars, so the pane's combat receipt still covers the whole
+  // authored box (one part, its module's) while the bars stay plain fittings.
+  const addGlassFrames = (bucket: string, pane: THREE.BufferGeometry, frames: readonly THREE.BufferGeometry[],
+    x: number, y: number, z: number, rx: number, ry: number, rz: number, s: GeometryScale): void => {
+    const frameBucket = GLASS_SURROUND_BUCKET[bucket];
+    if (!frameBucket || !frames.length) return;
+    const placed: THREE.BufferGeometry[] = [];
+    for (const surround of frames) {
+      const frame = xform(surround, x, y, z, rx, ry, rz, s);
+      frame.userData.glassSurround = bucket;
+      (buckets[frameBucket] || (buckets[frameBucket] = [])).push(frame);
+      partCensus?.(frameBucket, frame, 'add');
+      placed.push(frame);
+    }
+    pane.userData.glassFrames = placed;
+  };
   const eraClusters = new Map<string, EraClusterRange>();
   const eraPlacements: EraPlacementRecord[] = [];
   // Most historical ERA uses one shared instanced brick. Native fleet
@@ -7127,8 +7305,8 @@ function* createTankOwnedSteps(
     // that need to regroup their own authored pieces without touching the
     // shared articulation rig (gunG remains independently pitchable).
     postAssemble: null,
+    afterAssemble: [],
     add(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
-      const part = xform(geo, x, y, z, rx, ry, rz, s);
       // Destructible clusters are gameplay ERA. Route every authored layer
       // (body, inset lid and small face furniture) through the continuous
       // vehicle-scale camouflage projection instead of allowing a profile to
@@ -7138,11 +7316,21 @@ function* createTankOwnedSteps(
         ?? (activeDestructibleCluster
           ? (bucket.startsWith('turret') ? 'turret' : 'hull')
           : null);
-      const targetBucket = eraOwner
-        ? `${eraOwner}ExternalArmor`
-        : bucket;
+      // a sight pane's armoured frame is cut from its own box (never inside an armour cluster)
+      const glassSurround = eraOwner ? [] : armouredGlassSurround(bucket, geo);
+      const part = xform(geo, x, y, z, rx, ry, rz, s);
+      // 2026-10-07 (tank-accessories round 4; wave 217 on the Merkava 4: "the smoke-grenade tubes render as bright
+      // polished chrome pipes"): a discharger tube authored into a camouflaged paint-only bucket takes the scheme's
+      // solid matte fitting paint (the camo bucket's clearcoat and 1.3 normal scale on a 4 cm tube read as chrome);
+      // armour and equipment-role buckets keep their tubes (hit roles and equipment damage are unchanged). The tube
+      // stays in its authored bucket until the profile is done (smokeTubesForFittingPaint, moved after the builder):
+      // a rebuild that clears, offsets or scales that bucket by name must still find it there.
+      const smokeTube = !eraOwner && (part.userData.smokeAperture || part.userData.openSmokeAperture);
+      const targetBucket = eraOwner ? `${eraOwner}ExternalArmor` : bucket;
       (buckets[targetBucket] || (buckets[targetBucket] = [])).push(part);
-      partCensus?.(targetBucket, part, 'add');
+      const paintBucket = smokeTube ? SMOKE_TUBE_PAINT_BUCKET[bucket] : undefined;
+      if (paintBucket) smokeTubesForFittingPaint.add(part);
+      partCensus?.(paintBucket ?? targetBucket, part, 'add');
       if (activeDestructibleCluster) {
         destructiblePartCluster.set(part, activeDestructibleCluster);
         const destructibleOwner = bucket.startsWith('turret') ? 'turret' : 'hull';
@@ -7178,6 +7366,7 @@ function* createTankOwnedSteps(
       // affine legacy box. Hull glass also owns headlight lenses, so fixed
       // hull periscopes are tagged explicitly by the shared helper below.
       if (bucket === 'turretGlass') moduleVisualParts.set(part, 'optics');
+      addGlassFrames(bucket, part, glassSurround, x, y, z, rx, ry, rz, s);
     },
     // Mudguards and hanging mudflaps are still ordinary hull geometry, but
     // they carry a semantic receipt until bucket merge.  The seating audit
@@ -7233,10 +7422,12 @@ function* createTankOwnedSteps(
       rx = 0, ry = 0, rz = 0, s = 1) {
       const visualBucket = bucket === 'hull' ? 'hullEquipment'
         : bucket === 'turret' ? 'turretEquipment' : bucket;
+      const glassSurround = armouredGlassSurround(bucket, geo);
       const part = xform(geo, x, y, z, rx, ry, rz, s);
       (buckets[visualBucket] || (buckets[visualBucket] = [])).push(part);
       moduleVisualParts.set(part, module);
       partCensus?.(visualBucket, part, 'moduleVisual');
+      addGlassFrames(bucket, part, glassSurround, x, y, z, rx, ry, rz, s);
     },
     // Variant builders may replace a canonical family's turret, mantlet or
     // cannon while retaining its detailed hull and suspension. Clearing an
@@ -7424,6 +7615,20 @@ function* createTankOwnedSteps(
     resizeAuthoredVehicle(P, sizeFactor);
   } else if (builder) Reflect.apply(builder, undefined, [P]);
   else buildCommunityPlaceholder(P);
+  // Round 4 (2026-10-07): the discharger tubes add() marked for the matte fitting paint move now, once the profile
+  // is done. Moved at add() time they escaped every later bucket operation: the Chieftain Mk 5 and Mk 10 rebuild
+  // clears turretDetail before its upper turret and squashes the turret's height by bucket, so the donor bank
+  // survived beside the new one (24 launch sockets, not 12) and the new bank escaped the squash.
+  if (smokeTubesForFittingPaint.size) {
+    for (const [source, target] of Object.entries(SMOKE_TUBE_PAINT_BUCKET)) {
+      const list = buckets[source];
+      if (!list?.some((part) => smokeTubesForFittingPaint.has(part))) continue;
+      const tubes = list.filter((part) => smokeTubesForFittingPaint.has(part));
+      buckets[source] = list.filter((part) => !smokeTubesForFittingPaint.has(part));
+      (buckets[target] || (buckets[target] = [])).push(...tubes);
+    }
+    smokeTubesForFittingPaint.clear();
+  }
   const coreAuthoredFinishedAt = performance.now();
 
   // Native profiles often author visible ERA as irregular wedges, lids and
@@ -7633,9 +7838,20 @@ function* createTankOwnedSteps(
             indices: part.index ? Array.from(part.index.array)
               : Array.from({ length: position.count }, (_, i) => i) });
         }
+        // a sight pane cut into a window and frame bars reports its whole authored box, its bars nothing of their own
+        // (armouredGlassSurround)
+        if (part.userData.glassSurround) continue;
         if (!part.boundingBox) part.computeBoundingBox();
-        const box = part.boundingBox;
+        let box = part.boundingBox;
         if (!box || box.isEmpty()) continue;
+        const glassFrames = part.userData.glassFrames as THREE.BufferGeometry[] | undefined;
+        if (glassFrames?.length) {
+          box = box.clone();
+          for (const frame of glassFrames) {
+            if (!frame.boundingBox) frame.computeBoundingBox();
+            if (frame.boundingBox) box.union(frame.boundingBox);
+          }
+        }
         root.userData.combatGeometryParts.push({
           bucket,
           parent: def[0],
@@ -7866,11 +8082,27 @@ function* createTankOwnedSteps(
     if (LOD0_KEEP.has(bucket)) parent.add(mesh);
     else lodWrap(parent, mesh, geometryQuality === 'low' ? 64 : LOD1_DIST);
   };
+  const stationKey=(part:THREE.BufferGeometry):string=>{
+    const station=part.userData.auxiliaryStation;
+    return station?station.name+':'+station.stage:'';
+  };
+  // a sight's armoured frame merges into a painted mesh its owner already draws; frames that would open a mesh of their
+  // own (a remote station without painted detail) stay glass in the pane's own mesh instead of costing a draw call, so
+  // that pane keeps its whole authored face (fleet lane round 1)
+  for (const [bucket, list] of Object.entries(buckets)) {
+    const painted=new Set(list.filter((part)=>!part.userData.glassSurround).map(stationKey));
+    const kept=list.filter((part)=>{
+      const paneBucket=part.userData.glassSurround as string|undefined;
+      if(!paneBucket||painted.has(stationKey(part)))return true;
+      (buckets[paneBucket]||(buckets[paneBucket]=[])).push(part);
+      return false;
+    });
+    if(kept.length!==list.length)buckets[bucket]=kept;
+  }
   for (const [bucket, list] of Object.entries(buckets)) {
     const groups=new Map<string,THREE.BufferGeometry[]>();
     for(const part of list){
-      const station=part.userData.auxiliaryStation;
-      const key=station?station.name+':'+station.stage:'';
+      const key=stationKey(part);
       const group=groups.get(key)??[];group.push(part);groups.set(key,group);
     }
     for(const group of groups.values())mergeBucket(bucket,group);
@@ -8003,6 +8235,7 @@ function* createTankOwnedSteps(
   if (typeof P.postAssemble === 'function') {
     P.postAssemble({ root, hullG, turretG, gunG, recoilG });
   }
+  for (const step of P.afterAssemble) step({ root, hullG, turretG, gunG, recoilG });
 
   // ---- physically seated vehicle markings ----
   // Resolve these after all profile-owned regrouping so the support ray sees
@@ -8087,17 +8320,10 @@ function* createTankOwnedSteps(
   muzzle.name = 'rig_muzzle';
   muzzle.position.set(0, 0, P.muzzleZ);
   recoilG.add(muzzle);
-  // Fleet muzzle-bore fallback. Profile-authored lips stay authoritative;
-  // older solid-cap builds receive a mask-neutral dark throat attached to
-  // the recoil/FX anchor, and sourced GLB swaps re-seat the same fallback
-  // from their real tube-tip vertices.
-  // Normalize profile-authored bore furniture before installing the fleet
-  // mouth. A few composite family builders inherit the same muzzle helper
-  // twice, while many older helpers bury their disc partly behind a retained
-  // solid cap. Rendering those pieces directly causes z-fighting, clipped
-  // crescents, or a black plate apparently floating in front of the tube.
-  // Their nearest pair still supplies an exact per-profile seating anchor,
-  // but the one universal annulus/disc assembly owns the visible mouth.
+  // Fleet physical bores preserve verified authored interiors. Legacy solid
+  // tips are opened at their measured terminal face, with an inward wall and
+  // recessed backstop. Old rim/disc helpers provide seating datums only:
+  // retaining their front masks would cap the aperture or cause z-fighting.
   root.updateMatrixWorld(true);
   const muzzleWorld = recoilG.localToWorld(new THREE.Vector3(0, 0, P.muzzleZ));
   const authoredRims: THREE.Object3D[] = [];
@@ -8154,13 +8380,9 @@ function* createTankOwnedSteps(
   if (physicalBore) root.userData.physicalMuzzleBore = { ...physicalBore, frame: recoilG.name, muzzleZ: P.muzzleZ };
   const nominalMuzzleOuterR = Math.max(0.014, (armor.gunBarrel.radiusM || 0.04) * 0.92);
   const caliberRadius = Math.max(0.004, (spec.gun.caliberMm || 20) / 2000);
-  const authoredBoreSegments = Number(spec.gun.muzzleBoreSegments);
-  const boreSegments = Number.isInteger(authoredBoreSegments)
-    ? THREE.MathUtils.clamp(authoredBoreSegments, 12, 32)
-    : spec.gun.caliberMm <= 40 ? 12 : 18;
   // TWIN-BORE KNOB (owner order 2026-08-17, "2 shooting holes for both its
   // barrels"): `spec.gun.muzzles = [{x,y}, ...]` (recoil-local lateral
-  // offsets at the muzzle plane) installs one rim/annulus/disc assembly PER
+  // offsets at the muzzle plane) installs one physical aperture PER
   // barrel tip, each measured and seated independently at its own axis.
   // ABSENT => one assembly is still created on the authored/center axis, but
   // it now inherits the physical terminal tube/brake radius and lip plane.
@@ -8173,6 +8395,7 @@ function* createTankOwnedSteps(
   // mid-stroke sample rides the recoiled tube. gunMuzzleWorld(out, i) reads
   // them; the absent-knob fleet keeps the exact legacy center anchor.
   const muzzleTips: THREE.Object3D[] = [];
+  const carvedMuzzleFrames: THREE.Object3D[] = [];
   root.updateMatrixWorld(true);
   const muzzleCourseContext = (index: number) => {
     const def = muzzleDefs[index];
@@ -8290,7 +8513,7 @@ function* createTankOwnedSteps(
         // Several source-study barrels model an open sleeve around an inner
         // bore tube whose floor disc sits 25-32 cm behind the mouth. That
         // floor is a center-spanning cap, but the visible mouth is the tube
-        // edge: seating the bore at the floor left a deep hollow throat.
+        // edge: the floor is a depth datum, not the terminal mouth plane.
         // Prefer the edge whenever the cap lies deeper than a real
         // counterbore behind it.
         const edgeWorld = surface.localToWorld(new THREE.Vector3(axisLocal.x, axisLocal.y, profile.z));
@@ -8348,7 +8571,7 @@ function* createTankOwnedSteps(
     // instead of the fitted radius. The M60A2's 152 mm launcher inside a .158 collar read the
     // donor 105 mm tube's 118 mm hole (radialRatio .37) under the nominal clamp, and the 0.94
     // face fit would have painted .1485 of the collar dark. The declaration is still clamped
-    // inside the measured face and the ring keeps its 2 % overlap over the disc.
+    // inside the measured face, retaining native metal around the aperture.
     const muzzleOuterR = physicalBore?.outerRadiusM ?? Math.max(0.006, Math.min(
       capFitOuterR,
       declaredMouth?.outerRadiusM ?? (validAuthoredOuterR || nominalMuzzleOuterR),
@@ -8356,170 +8579,59 @@ function* createTankOwnedSteps(
     const muzzleInnerR = physicalBore?.innerRadiusM ?? (declaredMouth
       ? Math.min(declaredMouth.innerRadiusM, muzzleOuterR * 0.98)
       : Math.max(muzzleOuterR * 0.46, Math.min(muzzleOuterR * 0.72, caliberRadius)));
-    const muzzleRimR = physicalBore
-      ? Math.min(muzzleOuterR * .12, (muzzleOuterR-muzzleInnerR) * .4)
-      : Math.max(0.001, muzzleOuterR * 0.12);
-    // Owner 2026-09-22 ("the point of adding holes instead of carving them into
-    // the barrel is that we save on triangles ... make sure were saving the
-    // triangles here"): the added hole is the minimal construction. One flat
-    // dark ring is both the lip and the annular face (2N) at the lip front, the
-    // near-black disc (N) sits just behind it, and an open throat sleeve (2N)
-    // is added only when the authored tube stops short of the marker: 3N–5N
-    // per mouth instead of the former 13N–15N (a 10N torus lip plus a separate
-    // 2N annulus). The ring starts at the disc radius so the two overlap by
-    // 2 %: a hairline gap between separate meshes can expose legacy solid-cap
-    // triangles on small-caliber, low-segment barrels. A verified physical
-    // recess keeps only the shadow disc at its floor: its own annulus and
-    // inward wall are the visible mouth, so the barrel-paint duplicates that
-    // used to sit 0.5 mm ahead of them are gone.
-    const boreDiscGeo = new THREE.CircleGeometry(muzzleInnerR * 1.02, boreSegments);
-    const boreRimGeo = physicalBore
-      ? null
-      : new THREE.RingGeometry(muzzleInnerR, muzzleOuterR, boreSegments);
-    disposables.push(boreDiscGeo);
-    if (boreRimGeo) disposables.push(boreRimGeo);
-
-    // terminal-surface-fit-r2: the visible mouth ends at the ballistic
-    // muzzle marker. Authored tubes that stop short of it (the fleet lip
-    // has completed a 20 mm shortfall on many X tubes) are finished by the
-    // dark lip and, beyond one lip radius, a dark throat sleeve; tubes that
-    // already reach the marker keep the lip 0.9 mm proud, so no vehicle
-    // grows past its authored/official envelope. The annulus and disc sit
-    // a fraction of a millimetre behind the lip front, depth-safe.
-    const seatedFaceParentZ = physicalBore ? boreBaseZ : (capSelection.faceParentZ
-      ?? authoredFaceParentZ
-      ?? boreBaseZ);
-    const markerGapM = Math.min(0.06, Math.max(0, -seatedFaceParentZ));
-    // Three seats. A tube already at the marker keeps its lip mostly
-    // inside itself, 0.9 mm proud, with the mouth on that face. A tube
-    // that stops short (the fleet's 0.28 R lip convention, typically
-    // 20 mm) keeps the published r1 lip: rear 0.04 R ahead of the tube
-    // end, front no further than the marker, mouth 1.2 mm inside. A tube
-    // that stops further short than that lip can reach is completed by a
-    // dark throat sleeve so the lip and mouth still finish at the marker.
-    const lipRimR = muzzleRimR;
-    const classicLipAdvanceM = THREE.MathUtils.clamp(muzzleOuterR * 0.16, 0.0035, 0.016);
-    let lipAdvanceM: number, annulusForwardM: number, discForwardM: number;
-    if (markerGapM < 0.003) {
-      lipAdvanceM = 0.0009 - lipRimR;
-      annulusForwardM = 0.0006;
-      discForwardM = 0.0003;
-    } else if (classicLipAdvanceM + lipRimR >= markerGapM - 0.003) {
-      // Capped at 0.9 mm past the marker so a lip that meets the marker
-      // still stands proud of a tube whose true face is that plane.
-      lipAdvanceM = Math.min(classicLipAdvanceM, markerGapM + 0.0009 - lipRimR);
-      annulusForwardM = 0.0022;
-      discForwardM = 0.0012;
-    } else {
-      lipAdvanceM = markerGapM - lipRimR;
-      annulusForwardM = markerGapM - 0.0004;
-      discForwardM = markerGapM - 0.0008;
+    if (!physicalBore) {
+      // Preserve the actual terminal stock and cut its aperture. The old
+      // front-mounted black disc/ring/sleeve is replaced by one recessed wall.
+      const faceZ = capSelection.faceParentZ ?? authoredFaceParentZ ?? boreBaseZ;
+      const depth = THREE.MathUtils.clamp(muzzleInnerR * 3, .06, .20);
+      const bore = new THREE.Group();
+      bore.name = `muzzleBoreShadowFallback${suffix}`;
+      bore.position.set(boreX, boreY, faceZ);
+      bore.userData.cannonBore = true;
+      bore.userData.physicalMouth = true;
+      boreParent.add(bore);
+      root.updateMatrixWorld(true);
+      const cost = installCarvedMuzzleBore([primarySurfaceRoot, hullG], bore, muzzleInnerR, depth, mats.dark, disposables, mats.shadow);
+      carvedMuzzleFrames.push(bore);
+      bore.userData.muzzleSeatReceipt = Object.freeze({
+        revision: 'carved-physical-recess-r1', supportSource,
+        supportOuterRadiusM: supportOuterR, outerRadiusM: muzzleOuterR,
+        innerRadiusM: muzzleInnerR, physicalInnerRadiusM: muzzleInnerR,
+        physicalBoreDepthM: depth, radialRatio: muzzleOuterR / supportOuterR,
+        physicalRimProjectionM: 0, measuredProjectionM: 0, measuredOuterRadiusM: supportOuterR,
+        lipFrontM: 0, lipAdvanceM: 0, annulusForwardM: 0, discForwardM: -depth,
+        markerGapM: boreBaseZ - faceZ, ...cost,
+      });
+      if (def) {
+        const tip = new THREE.Object3D(); tip.name = `rig_muzzle_tip_${mi}`;
+        tip.position.set(boreX, boreY, boreBaseZ + capOffset);
+        boreParent.add(tip); muzzleTips.push(tip);
+      }
+      continue;
     }
-    // A verified physical tube retains its actual depth. The black finish
-    // sits 0.5 mm ahead of its real backstop, avoiding coplanar flicker.
-    if (physicalBore) discForwardM = -physicalBore.depthM + .0005;
-    const lipFrontM = lipAdvanceM + lipRimR;
-    // The flat ring replaced the former torus (owner 2026-09-22); lipRimR now
-    // only names the lip-front offset the r2 seats were published with, so
-    // every seat keeps its receipt values. The dark ring is the annular face
-    // too, so the annulus plane is the lip front (terminal-surface-fit-r3).
-    if (!physicalBore) annulusForwardM = lipFrontM;
-    // Open-ended sleeve from the authored tube end to the ring whenever the
-    // tube stops short of the marker; a flush tube's 0.9 mm proud ring needs
-    // none. It never caps the dark disc behind it.
-    const boreThroatGeo = !physicalBore && lipFrontM > 0.003
-      ? new THREE.CylinderGeometry(muzzleOuterR, muzzleOuterR,
-        lipFrontM, boreSegments, 1, true).rotateX(Math.PI / 2)
-      : null;
-    if (boreThroatGeo) disposables.push(boreThroatGeo);
-    const fallbackBore = new THREE.Group();
-    fallbackBore.name = `muzzleBoreShadowFallback${suffix}`;
-    fallbackBore.userData.cannonBore = true;
-    // A verified physical recess is its own rim: the census counts this
-    // mouth as a physical bore instead of demanding a fallback Rim mesh.
-    fallbackBore.userData.physicalMouth = !!physicalBore;
-    fallbackBore.userData.caliberMm = spec.gun.caliberMm;
-    fallbackBore.userData.capOffsetM = capOffset;
-    fallbackBore.userData.muzzleSeatDebug = {
-      supportSource: capSelection.supportSource, recoilZ: capSelection.recoilZ,
-      faceParentZ: capSelection.faceParentZ, authoredFaceParentZ, muzzleZ: P.muzzleZ,
-    };
-    fallbackBore.userData.muzzleSeatReceipt = Object.freeze({
-      revision: physicalBore ? 'physical-recess-r1' : 'terminal-surface-fit-r3',
-      ...(physicalBore && physicalBoreEvidence ? {
-        physicalBoreDepthM: physicalBore.depthM,
-        measuredMinimumDepthM: physicalBoreEvidence.minimumDepthM,
-        measuredMaximumRimOffsetM: physicalBoreEvidence.maximumRimOffsetM,
-        measuredOuterRadiusM: physicalBoreEvidence.measuredOuterRadiusM,
-        physicalInnerRadiusM: physicalBore.innerRadiusM,
-        physicalRimProjectionM: physicalBore.rimProjectionM ?? 0,
-        measuredProjectionM: physicalBoreEvidence.measuredProjectionM,
-      } : {}),
-      supportSource,
-      ...(declaredMouth ? {
-        mouthSource: 'declared-bore',
-        declaredOuterRadiusM: declaredMouth.outerRadiusM,
-        declaredInnerRadiusM: declaredMouth.innerRadiusM,
-        innerRadiusM: muzzleInnerR,
-      } : {}),
-      supportOuterRadiusM: supportOuterR,
-      outerRadiusM: muzzleOuterR,
-      radialRatio: muzzleOuterR / supportOuterR,
-      lipAdvanceM,
-      rimRadiusM: lipRimR,
-      lipFrontM,
-      markerGapM,
-      annulusForwardM,
-      discForwardM,
+    // An authored physical barrel already owns its rim, wall and floor.
+    // Keep only its receipt frame; do not draw a second black floor over it.
+    const bore = new THREE.Group();
+    bore.name = `muzzleBoreShadowFallback${suffix}`;
+    bore.position.set(boreX, boreY, boreBaseZ);
+    bore.userData.cannonBore = true;
+    bore.userData.physicalMouth = true;
+    bore.userData.muzzleSeatReceipt = Object.freeze({
+      revision: 'physical-recess-r2', supportSource,
+      physicalBoreDepthM: physicalBore.depthM,
+      measuredMinimumDepthM: physicalBoreEvidence?.minimumDepthM,
+      measuredMaximumRimOffsetM: physicalBoreEvidence?.maximumRimOffsetM,
+      measuredOuterRadiusM: physicalBoreEvidence?.measuredOuterRadiusM,
+      measuredProjectionM: physicalBoreEvidence?.measuredProjectionM,
+      physicalRimProjectionM: physicalBore.rimProjectionM ?? 0,
+      physicalInnerRadiusM: physicalBore.innerRadiusM,
+      supportOuterRadiusM: supportOuterR, outerRadiusM: muzzleOuterR,
+      radialRatio: 1, lipAdvanceM: 0, rimRadiusM: 0, lipFrontM: 0,
+      markerGapM: 0, annulusForwardM: 0, discForwardM: -physicalBore.depthM,
     });
-    fallbackBore.position.set(boreX, boreY, seatedFaceParentZ + lipAdvanceM);
-    fallbackBore.visible = true;
-
-    const boreRim = boreRimGeo ? new THREE.Mesh(boreRimGeo, mats.dark) : null;
-    if (boreRim) {
-      boreRim.name = `muzzleBoreShadowFallbackRim${suffix}`;
-      boreRim.userData.cannonBoreFallbackPart = true;
-      boreRim.userData.cannonBorePrimaryPart = true;
-      // The flat ring is the lip front and the annular face in one plane.
-      boreRim.position.z = annulusForwardM - lipAdvanceM;
-      boreRim.visible = true;
-    }
-    if (boreThroatGeo) {
-      // Dark sleeve from the authored tube end to the ring: the completed
-      // muzzle reads as one tube instead of a floating ring.
-      const boreThroat = new THREE.Mesh(boreThroatGeo, mats.dark);
-      boreThroat.name = `muzzleBoreShadowFallbackThroat${suffix}`;
-      boreThroat.userData.cannonBoreFallbackPart = true;
-      boreThroat.position.z = (lipRimR - lipAdvanceM) / 2;
-      boreThroat.castShadow = false;
-      boreThroat.receiveShadow = true;
-      fallbackBore.add(boreThroat);
-    }
-    const boreDisc = new THREE.Mesh(boreDiscGeo, mats.shadow);
-    boreDisc.name = `muzzleBoreShadowFallbackDisc${suffix}`;
-    boreDisc.userData.cannonBoreFallbackPart = true;
-    boreDisc.userData.cannonBorePrimaryPart = true;
-    // Keep the dark disc barely proud of retained legacy cap triangles while
-    // recessing it behind the lip. This removes the former 32 mm floating
-    // plate without introducing z-fighting or depth-test leakage.
-    boreDisc.position.z = discForwardM - lipAdvanceM;
-    boreDisc.visible = true;
-    for (const part of [boreRim, boreDisc]) {
-      if (!part) continue;
-      part.castShadow = false;
-      part.receiveShadow = true;
-      fallbackBore.add(part);
-    }
-    boreParent.add(fallbackBore);
-    fallbackBore.visible = true;
-    if (def) {
-      const tip = new THREE.Object3D();
-      tip.name = `rig_muzzle_tip_${mi}`;
-      tip.position.set(boreX, boreY, boreBaseZ + capOffset);
-      boreParent.add(tip);
-      muzzleTips.push(tip);
-    }
+    boreParent.add(bore);
   }
+
   const turretTop = new THREE.Object3D();
   turretTop.position.set(0, P.topY, 0);
   turretG.add(turretTop);
@@ -9383,6 +9495,10 @@ function* createTankOwnedSteps(
         }
       };
       syncFromStateAssemblyStage8();
+      // The stabilized sight direction may exceed a fixed casemate's bearing
+      // under cosmetic roll/flinch. Keep its actual trunnion inside the same
+      // mechanical traverse window used by movement; never change state aim.
+      if (!destroyed && spec.armor.turretless) turretG.rotation.y = casemateGunYaw(spec, turretG.rotation.y);
     },
 
     /**
@@ -9836,7 +9952,7 @@ function* createTankOwnedSteps(
     const tailDecorStartedAt = performance.now();
     yield* prepareTankDecorationSteps({
       root, hullG, turretG, spec, engineCtx, disposables,
-      opts: { proceduralOnly, decor: opts.decor },
+      opts: { proceduralOnly, decor: opts.decor, geometryQuality },
       isDestroyed: () => destroyed,
     }, legacyDecoration);
     const tailDecorFinishedAt = performance.now();
@@ -9848,6 +9964,10 @@ function* createTankOwnedSteps(
       // Final stock includes generated gun fills and fixed pitch-owned parts.
       // Neither may re-cap the recoil-owned aperture that was verified earlier.
       root.userData.physicalMuzzleBoreVerification = verifyPhysicalMuzzleBore(gunG, P.muzzleZ, physicalBore);
+    }
+    if (opts.geometryReceipt) for (const frame of carvedMuzzleFrames) {
+      const evidence = verifyCarvedMuzzleBore(root, frame);
+      frame.userData.muzzleSeatReceipt = Object.freeze({...frame.userData.muzzleSeatReceipt, ...evidence});
     }
     const tailFillsFinishedAt = performance.now();
 

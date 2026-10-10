@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import './tankFactory.ts';
 import { getSpec } from './specs.ts';
 import { camoPatternStreamSeed, resolveCamoVisual } from './materials.ts';
+import { safeHullNumber } from './materialPainter.ts';
 
 // Round 32 (owner 2026-09-21): "when i switch tanks the camo seeding literally changes, which is wasteful". The noise
 // stream a pattern paints with is keyed by the visible recipe and the pattern id — never by the hull — so one shared
@@ -39,4 +40,15 @@ assert.match(source, /camoStreamSeed: camoPatternStreamSeed\(vis, camoPatternIdH
 const painterSource = readFileSync(fileURLToPath(new URL('./materialPainter.ts', import.meta.url)), 'utf8');
 assert.match(painterSource, /request\.camoStreamSeed != null \? mulberry32\(request\.camoStreamSeed\) : rng/,
   'bakeBaseSteps paints the camo from the pattern stream when the request carries one');
-console.log('camoPatternSeed.selftest: shared patterns paint from one hull-independent stream');
+// launch night 2026-10-08 (the coordinator's markings audit): a random hull number never comes out 14, 18 or 88; only
+// those three move (to the next number) and every other drawn value is kept, with no extra draw from the stream
+for (let n = 1; n <= 998; n++) {
+  const safe = safeHullNumber(n);
+  if ([14, 18, 88].includes(n)) assert.equal(safe, n + 1, `${n} moves to the next number`);
+  else assert.equal(safe, n, `${n} is kept`);
+  assert.ok(![14, 18, 88].includes(safe), `${n} never paints a coded number`);
+}
+const drawn = painterSource.match(/String\((?:safeHullNumber\()?\d+ \+ \(\(rng\(\) \* \d+\) \| 0\)\)?\)/g) || [];
+assert.ok(drawn.length >= 3, `random hull-number draws (${drawn.length})`);
+for (const call of drawn) assert.match(call, /^String\(safeHullNumber\(/, `the hull number passes the coded-number skip: ${call}`);
+console.log('camoPatternSeed.selftest: shared patterns paint from one hull-independent stream; random hull numbers skip 14, 18 and 88');

@@ -59,6 +59,9 @@ assert.equal(shellPassesThroughCollisionRecord({
 assert.equal(shellPassesThroughCollisionRecord({
   min: [-1, 0, -0.4], max: [1, 1.2, 0.4], crushable: true, kind: 'wallstone',
 }), false, 'dense crushable fortifications remain hard ballistic cover');
+assert.equal(shellPassesThroughCollisionRecord({
+  min: [-1, 0, -1], max: [1, 1.1, 1], crushable: true, kind: 'small-rock',
+}), false, 'a crushable stone is still stone to a shell (the hitbox lane, 2026-10-07)');
 
 // Tank interaction boxes are true oriented hull rectangles. The old capsule
 // rounded each shoulder by half the tank width, producing contact where both

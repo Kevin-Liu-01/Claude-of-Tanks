@@ -6,7 +6,7 @@ import {
   matchRulesetFor, rulesetLines, rulesetAmmoCapacity, rulesetReloadMultiplier, RULESET_SCORE_TARGETS,
   applyRulesetToCombat, rulesetLoadout, refillUnlimitedAmmunition, rulesetAllyCap,
   FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, TEAM_ARRANGEMENT_LIMITS, normalizeTeamArrangement,
-  acceptsTeamArrangement, hordeWaveSize, BATTLE_FIELD_LIMIT, SIDES_PRESETS, STANDARD_SIDES, isWaveMode, rulesetSides, sidesPresetOf,
+  acceptsTeamArrangement, hordeWaveSize, assaultWaveHealthScale, BATTLE_FIELD_LIMIT, SIDES_PRESETS, STANDARD_SIDES, isWaveMode, rulesetSides, sidesPresetOf,
   MARS_CACHE_IDS, MARS_DEFAULT_RULES, MARS_GRAVITY_IDS, ENDING_HOLD_LIMIT_S, endingHoldExpired, STANDARD_PHYSICS, rulesetPhysicsAt,
 } from './matchRuleset.ts';
 
@@ -115,7 +115,14 @@ const assault = matchRulesetFor('frontline_assault');
 assert.equal(assault.timeout, 'defeat', 'an expired assault clock loses the operation');
 assert.equal(assault.timeLimitS, 720); assert.equal(assault.allies, 3); assert.equal(assault.respawnS, null);
 assert.equal(assault.enemies, 10, 'ten defenders in the formation pool'); assert.equal(assault.enemyNation, null, 'a free sortie names no nation unless arranged');
-assert.deepEqual(assault.assault, { initialActive: 3, extraDefenders: 0, hpPerLine: 0.16, difficultyHp: 0, holdS: 20 });
+assert.deepEqual(assault.assault, { initialActive: 3, extraDefenders: 0, hpPerLine: 0.16, finalLineHp: 1.15, difficultyHp: 0, holdS: 20 });
+// Frontline's last line (modes lane 2026-10-08, owner decision: attackers win 40-55 % of bot tests): the third sector's
+// counter-attack arrives at 1.15x instead of the ramp's 1.32x; the first two sectors keep 1 + sectors taken x 0.16.
+const near = (a, b) => Math.abs(a - b) < 1e-9;
+assert.ok(near(assaultWaveHealthScale(assault.assault, 0, 3), 1), 'the opening wave arrives at full hull');
+assert.ok(near(assaultWaveHealthScale(assault.assault, 1, 3), 1.16), 'the second sector keeps the ramp');
+assert.ok(near(assaultWaveHealthScale(assault.assault, 2, 3), 1.15), 'the last sector takes finalLineHp, not 1.32');
+assert.ok(near(assaultWaveHealthScale(assault.assault, 0, 1), 1), 'a one-sector front opens at full hull');
 const op4 = matchRulesetFor('frontline_assault', { difficulty: 4, enemy: 'russia' });
 assert.equal(op4.assault.extraDefenders, 1, 'operation 4 fields one extra defender per sector');
 assert.equal(op4.enemyNation, 'russia', 'the operation names the formation');
@@ -125,6 +132,7 @@ assert.equal(matchRulesetFor('frontline_assault', { difficulty: 4, enemy: 'russi
   'but the ally count is the player\'s');
 assert.equal(matchRulesetFor('frontline_assault', null, { enemyNation: 'china' }).enemyNation, 'china', 'a free sortie takes the nation setting');
 assert.ok(Math.abs(op4.assault.difficultyHp - 0.18) < 1e-9, 'operation 4 defenders carry +18 % hull');
+assert.ok(near(assaultWaveHealthScale(op4.assault, 2, 3), 1.33), 'the operation\'s difficulty adds to the last line too');
 const op4Short = matchRulesetFor('frontline_assault', { difficulty: 4, timeLimitS: 600 });
 assert.equal(op4Short.timeLimitS, 600, 'an operation may shorten the clock');
 assert.equal(matchRulesetFor('standard', { difficulty: 4 }), standard, 'difficulty only folds into Frontline Assault');

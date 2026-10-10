@@ -21,7 +21,9 @@ import {
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalette, sourcedTerrainLayerPlanned, sourcedTerrainLayerSet,
   type TerrainPaletteId, type TerrainSourcePreparation } from './sourcedTextures.ts';
-import { HORIZON_SEGMENTS, buildHorizonRingSteps, type HorizonMapConfig } from './maps/horizon.ts';
+import type { HorizonMapConfig, HorizonRingPipeline } from './maps/horizon.ts';
+// The visual horizon installs its ring (horizonRingHook.ts); the authority's height field must not carry it.
+import { horizonRing, horizonRingSupplyFor, type HorizonRing } from './horizonRingHook.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { onPresetChange, resolvePresetName, texSize } from '../engine/quality.ts';
 import { terrainWallSkyLift } from '../engine/groundBounce.ts';
@@ -60,13 +62,21 @@ import { oceanSpectrumSteps, resolveOceanState, type OceanConfig, type OceanSpec
 import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
 import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
-import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
+import { cinderYardWeedsAt, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { LAND_BAKE_LAYERS, LAND_USE_GLSL, applyUrbanParcelWear, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
   tileableTorusNoise as torusNoise,
 } from './proceduralTexture.ts';
+
+/** The installed horizon ring's builder (horizonRingHook.ts): this module never imports the visual horizon. It sits
+ * above the chunk section on purpose: receipts that compile the chunk section on its own (from the CHUNKS constant to
+ * the end) supply their own buildHorizonRingSteps stub, which a later declaration would override. Keep the chunk
+ * constant's declaration text out of this note: those receipts find the section by its first occurrence. */
+function buildHorizonRingSteps(...args: Parameters<HorizonRing['buildHorizonRingSteps']>): ReturnType<HorizonRing['buildHorizonRingSteps']> {
+  return horizonRing().buildHorizonRingSteps(...args);
+}
 
 type GroundType = 'hard' | 'medium' | 'soft';
 type RoadPoint = [number, number];
@@ -226,6 +236,34 @@ interface LakeConfig {
   boats?: number;
 }
 
+/** One terrace zone (TerrainSettings.terraces). */
+export interface TerraceZoneConfig {
+  /** The zone's outline (x, z), metres: the steps come in over `feather` m inside it. */
+  polygon: readonly (readonly [number, number])[];
+  feather?: number;
+  /** A riser's height, metres (a bench every `stepM` of ground height). */
+  stepM: number;
+  /** The steepest a riser stands (rise per run, default 0.6): on steeper ground the risers take more of the slope. */
+  riserGrade?: number;
+  /** The ground grade (of the smooth relief) under which the steps fade out, and over which they are whole (defaults
+   * 0.05 and 0.1): level ground keeps its own shape instead of breaking into islands at a bench's level. */
+  minGrade?: number;
+  fullGrade?: number;
+}
+
+/** A splat's two-formation bedrock (TerrainSplatConfig.formation). */
+interface TerrainFormation {
+  atFrac: number; wobbleM?: number; pale?: number; red?: number;
+  /** The Redrock lane (2026-10-07): the boundary's absolute height (m) in place of atFrac's share of the height span. */
+  atY?: number;
+  /** Each formation's colour: a tint on the rock's own luminance (rgb) and how far the rock takes it (w, 0..1) — by
+   * default the lower one paled by `pale` toward buff, the upper one reddened by `red`. */
+  lowerTint?: readonly [number, number, number, number];
+  upperTint?: readonly [number, number, number, number];
+  /** The boundary's half-width (m; default 1.2). */
+  edgeM?: number;
+}
+
 interface LandformConfig {
   kind: string;
   x: number;
@@ -248,6 +286,10 @@ interface LandformConfig {
   /** Geological structure of a knoll, basin or ridge: outline, profile, gullies, strata, roughness
    * (landformGeology.ts). Without it a landform keeps its smooth shape exactly. */
   geology?: LandformGeology;
+  /** The Redrock lane (2026-10-07, owner: "redrock is really rough"): landforms marked `union` stand as one rock — the
+   * terrain takes the greatest of their heights at a point, not their sum (a massif and the lobe against its flank summed
+   * into a horn where the lobe's cap met the massif's wall). Every other landform still adds; absent on every other map. */
+  union?: boolean;
   /** Gorges only (map revival lane 2, 2026-10-05): the wall's foot and its top as fractions of the half-width — the
    * floor runs level out to the foot and the wall climbs from there to the rim (default [0.65, 1], the smooth trough);
    * a narrow band is a sheer wall. Absent = the trough exactly as before. */
@@ -304,6 +346,10 @@ interface TerrainSettings {
   /** Use authored activity footprints instead of blanket settlement wear; 'plots' lays the village's ground out in
    * garden plots running back from its streets (makeMaskTexture villagePlotWear). */
   villageWear?: 'activity-patches' | 'plots';
+  /** The map-revival lane (2026-10-05, Orchard Valley's terraces): contour terraces stepped into the ground inside each
+   * zone (applyTerraces) — level benches, risers `stepM` high and no steeper than `riserGrade` — before the roads and pads
+   * are graded, so a road cuts its graded way through them. Absent: none, and every other map's field is unchanged. */
+  terraces?: readonly TerraceZoneConfig[];
   quarryBenches?: boolean;
   /** Authored Redrock regional ground participates in initial road/pad seating. */
   redrockCanyon?: boolean;
@@ -332,7 +378,7 @@ interface SplatConfig {
   /** Ground lane (2026-10-03, Redrock's inselbergs "like extruded clay"): a two-formation bedrock — the beds under the
    * boundary (at `atFrac` of the field's height span, wandering ±`wobbleM`) paler by `pale`, those above it redder by
    * `red` (Wadi Rum: the Umm Ishrin's red over the paler Disi). Absent = one formation. */
-  formation?: { atFrac: number; wobbleM?: number; pale?: number; red?: number };
+  formation?: TerrainFormation;
   iceLake?: boolean;
   seaLake?: boolean;
   /** Round 42: sky light on steep faces turned from the sun, as a fraction of the horizon sky colour (default 2.0). */
@@ -383,6 +429,19 @@ interface SplatConfig {
    * bedded walls sets this: the ring's ground more than this many metres above the field's highest ground is caprock
    * (the rock layer on its ledges and tops, a little sand in its hollows), ramping in over 14 m. Absent = off. */
   ringCaprockM?: number;
+  /** The Redrock lane (2026-10-07, owner: "redrock is really rough"; the inselbergs' level caps took the sand and read as
+   * cakes with frosting): inside the square too, ground above this absolute height band [from, to] (m) is caprock — the
+   * rock layer whatever its slope, a little sand in its hollows. Absent = off (every other map). */
+  caprockY?: readonly [number, number];
+  /** The Redrock lane (2026-10-07: a sheer face lit head-on went flat salmon): the joint blocks' tone step and the
+   * varnish streaks' darkening on the bedded cliffs (default [0.26, 0.50]). */
+  wallWeather?: readonly [number, number];
+  /** The Redrock lane, round 9 (2026-10-08, the gauntlet's wave 261: the faces "smooth salmon plaster with painted
+   * horizontal bands", "contour lines like a topographic map"; owner: the bedding as relief, not paint): Wadi Rum's jebel
+   * faces — [flutes, tafoni, varnish], each 0..1. With it the painted beds, partings and far ledge ladder drop to under a
+   * third, the caprock is bare rock whatever its hollows, and the face carries vertical flutes of three widths in its
+   * normal, honeycomb pits low on the near faces and desert-varnish streaks of every width down it. Absent = off. */
+  jebelFace?: readonly [number, number, number];
   /** Ground lane (2026-10-05, mr2's Glacier round 2: "the col's steep and convex ground stays white"): on a snow map the
    * snow lies on the rock layer up to this slope (degrees), fading out by snowRockFadeDeg, and a crest (the fold
    * attribute's −1) loses it snowRockCrest of slope (1 − n.y) sooner, a hollow keeps it as much longer. Absent = today's
@@ -399,6 +458,13 @@ interface SplatConfig {
   midReliefFar?: number;
   rippleDir?: readonly [number, number];
   rippleAmp?: number;
+  /** The Redrock lane (round 10, the gauntlet's wave 270: "a featureless sand plane with no ripples"): the near ripple
+   * trains' own strength (the 0.38 m crests to ~45 m and the 11 m megaripples), apart from the dune bedforms rippleAmp
+   * also sets. Absent = rippleAmp's (every other map, unchanged). */
+  rippleNear?: number;
+  /** The Redrock lane (round 10: the roads "a soft, low-resolution smear with no ruts, stones or eroded edges"): [the wheel
+   * lanes' relief gain, their darkening, gravel strewn on the carriageway]. Absent = [1, 0, 0] (unchanged). */
+  roadRuts?: readonly [number, number, number];
   /** Mixed grassy coasts: sand relief follows the existing beach blend only. */
   rippleShoreOnly?: boolean;
   /** Noise-driven dirt blend only; authored road/town/shore coverage is separate. */
@@ -477,6 +543,8 @@ export interface HeightField {
   getHeightAtFast(x: number, z: number): number;
   /** Near-mesh triangle surface shared by movement and visible suspension. */
   getContactHeightAt?(x: number, z: number): number;
+  /** That triangle's unit normal into `out` (terrainContactSurface.ts normalAt): the slope the player sees. */
+  getContactNormalAt?<T extends { x: number; y: number; z: number }>(x: number, z: number, out: T): T;
   warmFastTilesAround(points: readonly TerrainWarmPoint[]): Generator<number, void, void>;
   getNormalAt(x: number, z: number): THREE.Vector3;
   getGroundType(x: number, z: number): GroundType;
@@ -517,9 +585,15 @@ export interface HeightField {
   _landUseAt?(x: number, z: number, out: LandFieldSample): LandFieldSample;
   /** Ground lane (2026-10-03): the canopy's cover (0..1) once the vegetation is placed (terrain applyWoodsMask). */
   _woodsAt?(x: number, z: number): number;
+  /** Ground lane (2026-10-08): a cinder yard's weed clumps (groundRedux.ts cinderYardWeedsAt, 0..1) — present only on a
+   * map whose ground profile floors its village in cinder; the tall grass and the tufts keep to them inside the yard. */
+  _yardWeedsAt?(x: number, z: number): number;
   /** The maps-and-layouts lane (2026-10-03): the authored landforms' geological zones at (x, z), each 0..1 —
    * [lava flow, cinder cone, talus fan] (landformGeology.ts geologyZoneWeights); absent on a map without them. */
   _geologyZoneAt?(x: number, z: number, out: GeologyZones): GeologyZones;
+  /** Ground lane (2026-10-08, wave 274): the sward follows its ground (groundRedux.ts swardSlope) — the map's sun in world
+   * xz (unit) and the law's strength; present only on a map whose profile has it. */
+  _swardSlope?: readonly [number, number, number];
   /** The map-borders lane (2026-10-03): the ring's carriageway attribute — [signed offset from a road exit line (m), presence]. */
   _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
   /** The map-borders lane: the roads that leave the square, as their exit lines past the edge (40 m steps, ~720 m). */
@@ -638,6 +712,58 @@ export function mulberry32(a: number): () => number {return function(){a|=0;a=a+
 
 const HALF = 512;
 const MAP_SIZE = 1024;
+
+/** A prepared terrace zone: its outline, bounds and defaults (TerraceZoneConfig). */
+interface TerraceZone {
+  xs: Float64Array; zs: Float64Array;
+  minX: number; maxX: number; minZ: number; maxZ: number;
+  feather: number; stepM: number; riserGrade: number; minGrade: number; fullGrade: number;
+}
+interface TerraceZoneHit { zone: TerraceZone; weight: number }
+
+function prepareTerraceZones(zones: readonly TerraceZoneConfig[] | undefined): TerraceZone[] {
+  return (zones ?? []).filter((z) => z.polygon.length >= 3 && z.stepM > 0).map((z) => {
+    const xs = Float64Array.from(z.polygon.map((p) => p[0])), zs = Float64Array.from(z.polygon.map((p) => p[1]));
+    return {
+      xs, zs, minX: Math.min(...xs), maxX: Math.max(...xs), minZ: Math.min(...zs), maxZ: Math.max(...zs),
+      feather: Math.max(1, z.feather ?? 24), stepM: z.stepM, riserGrade: z.riserGrade ?? 0.6,
+      minGrade: z.minGrade ?? 0.05, fullGrade: Math.max((z.minGrade ?? 0.05) + 0.01, z.fullGrade ?? 0.1),
+    };
+  });
+}
+
+/** The material's terrace uniforms (T2): each zone's bounding rect (up to four) and the riser band — a face whose slope
+ * (1 − n.y) passes 0.035 → 0.09 (a grade of ~0.27 → ~0.44: a riser, smoothed or not by the far mesh; the benches lie under
+ * it) takes the rock layer. Count 0 without terraces: the shader's branch stays dark. */
+function terrainTerraceUniforms(zones: readonly TerraceZoneConfig[] | undefined): { uTerraceRect: { value: THREE.Vector4[] }; uTerraceParam: { value: THREE.Vector4 } } {
+  const rects = Array.from({ length: 4 }, () => new THREE.Vector4());
+  const prepared = prepareTerraceZones(zones).slice(0, 4);
+  prepared.forEach((zone, i) => rects[i].set(zone.minX, zone.minZ, zone.maxX, zone.maxZ));
+  const feather = prepared.reduce((m, zone) => Math.max(m, zone.feather), 1);
+  return { uTerraceRect: { value: rects }, uTerraceParam: { value: new THREE.Vector4(prepared.length, feather, 0.035, 0.09) } };
+}
+
+/** The strongest terrace zone over (x, z) and its weight — 1 deeper than `feather` inside the outline, easing to 0 at it. */
+function terraceZoneWeight(zones: readonly TerraceZone[], x: number, z: number): TerraceZoneHit | null {
+  let best: TerraceZoneHit | null = null;
+  for (const zone of zones) {
+    if (x < zone.minX || x > zone.maxX || z < zone.minZ || z > zone.maxZ) continue;
+    const { xs, zs } = zone, n = xs.length;
+    let inside = false, d2 = Infinity;
+    for (let i = 0, j = n - 1; i < n; j = i++) {
+      const xi = xs[i], zi = zs[i], xj = xs[j], zj = zs[j];
+      if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+      const ex = xj - xi, ez = zj - zi, len2 = ex * ex + ez * ez;
+      const t = len2 > 0 ? Math.max(0, Math.min(1, ((x - xi) * ex + (z - zi) * ez) / len2)) : 0;
+      const dx = x - xi - ex * t, dz = z - zi - ez * t;
+      d2 = Math.min(d2, dx * dx + dz * dz);
+    }
+    if (!inside) continue;
+    const weight = smoothstep(0, zone.feather, Math.sqrt(d2));
+    if (!best || weight > best.weight) best = { zone, weight };
+  }
+  return best && best.weight > 0 ? best : null;
+}
 
 function smoothstep(a: number, b: number, x: number): number {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -1051,6 +1177,7 @@ function* heightFieldBuildSteps(
   let railCuttingsOn = false, railCuttingsSuspended = false;
   const _VILLAGE = layout.village;
   const _MARSHES = layout.marshes;
+  const terraceZones = prepareTerraceZones(T.terraces);
   // maps lane B (2026-10-03): a sor pan's bank — the outer share of each station's radius over which its dig deepens to
   // `dip`, as (t / SOR_BANK)² (t = 1 − distance in radii): no slope at the rim, so the bank leaves the ground smoothly,
   // and its steepest where the floor's level meets it, so the shoreline is crisp.
@@ -1456,6 +1583,7 @@ function* heightFieldBuildSteps(
       h += (wall + tier2 * tierScale) * T.mesas.amp * capNoise
         * corridorProtect * (1 - settlementWeight) * (1 - marshWeight) * spawnClear;
     }
+    let unionTop = 0;
     for (let li = 0; li < T.landforms.length; li++) {
       const form = T.landforms[li];
       const corridorScale = form.corridorScale ?? 0.62;
@@ -1464,9 +1592,11 @@ function* heightFieldBuildSteps(
       const protect = (1 - corridorWeight * (1 - corridorScale))
         * (1 - settlementWeight * (1 - settlementScale))
         * (1 - marshWeight * (1 - wetScale));
-      h += sampleLandformHeight(form, x, z, landformPhase) * spawnClear * protect;
+      const add = sampleLandformHeight(form, x, z, landformPhase) * spawnClear * protect;
+      // (the Redrock lane: a union's members stand as one rock, the greatest of them; unionTop stays 0 on every other map)
+      if (form.union) { if (add > unionTop) unionTop = add; } else h += add;
     }
-    return h;
+    return h + unionTop;
   }
 
   function applyHeightConstraints(
@@ -1919,7 +2049,11 @@ function* heightFieldBuildSteps(
       let micro = smoothstep(0.42, 0.92, crest) * (2.1 + f2 * 0.8) // berms/ridgelines
         - smoothstep(0.55, 0.92, f2) * 1.5;                        // shallow depressions
       micro *= (1 - cw * 0.55) * (1 - vm) * (1 - Math.max(marshW, sorCalmW)) * T.microScale;
+      // the map-revival lane (2026-10-05): a terrace zone's benches are level — its berms and scrapes stand down
+      const tz = terraceZones.length ? terraceZoneWeight(terraceZones, x, z) : null;
+      if (tz) micro *= 1 - 0.85 * tz.weight;
       h += micro;
+      if (tz) h = applyTerraces(tz, x, z, h, cw, vm, marshW);
     }
     // r3 terrain_environment: near-field micro-relief — 3-8 m humps, scrapes
     // and settling (~10-25 cm) so the ground stops reading as a smooth
@@ -2008,6 +2142,29 @@ function* heightFieldBuildSteps(
       h = railCuttingHeight(railCuttings!, railCuttingPortalYs, x, z, h, railOpenLines);
     }
     return h;
+  }
+
+  /**
+   * The map-revival lane (2026-10-05, Orchard Valley's terraces): the ground inside a terrace zone stepped into contour
+   * benches. The levels are absolute (a bench every `stepM` of height), so the benches follow the contours; each riser
+   * takes the share of its step the slope needs to stand no steeper than `riserGrade` (a smoothstep through the top of the
+   * step), so on a gentle slope the benches are wide and on a steep one narrow. The steps fade on level ground (the smooth
+   * relief's grade, base and landforms, under `minGrade`) and where the landforms are held back — the drive corridors, the
+   * settlement, the marshes.
+   */
+  function applyTerraces(tz: TerraceZoneHit, x: number, z: number, h: number, cw: number, vm: number, marshW: number): number {
+    const zone = tz.zone;
+    const protect = (1 - cw * 0.85) * (1 - vm) * (1 - marshW);
+    if (protect <= 0.001) return h;
+    const smooth = (px: number, pz: number) => applyMacroTerrain(px, pz, baseTerrainHeight(px, pz, cw, vm), cw, vm, marshW);
+    const h0 = smooth(x, z);
+    const grade = Math.hypot(smooth(x + 2, z) - h0, smooth(x, z + 2) - h0) / 2;
+    const w = tz.weight * protect * smoothstep(zone.minGrade, zone.fullGrade, grade);
+    if (w <= 0.001) return h;
+    const r = clamp(grade / zone.riserGrade, 0.12, 0.85);
+    const t = h / zone.stepM, k = Math.floor(t), f = t - k;
+    const stepped = (k + smoothstep(1 - r, 1, f)) * zone.stepM;
+    return h + (stepped - h) * w;
   }
 
   function baseTerrainHeight(x: number, z: number, corridorWeight: number, settlementWeight: number): number {
@@ -2638,6 +2795,7 @@ function* heightFieldBuildSteps(
     : outlandHeightAt;
   return {
     getHeightAt, getHeightAtFast, getContactHeightAt, warmFastTilesAround, getNormalAt, getGroundType, getDriveGroundType,
+    getContactNormalAt: getContactHeightAt.normalAt,
     getOutlandHeightAt: publicOutlandHeightAt,
     ...(railCuttings !== null ? { getOutlandSeatWeightAt: (x: number, z: number): number =>
       railCuttingSeatWeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt, railOpenLines) } : {}),
@@ -2667,12 +2825,21 @@ function* heightFieldBuildSteps(
     // `?ground=legacy` draws no fields and grows no crops
     ...(landUseProfile && !legacyGroundLanes ? { _landUseAt: (x: number, z: number, out: LandFieldSample): LandFieldSample =>
       landUseAt(landUseProfile, x, z, out) } : {}),
+    // ground lane (2026-10-08, the gauntlet's wave 260): a cinder yard's weeds in clumps, on the map whose ground profile
+    // floors its village so (Cinder Junction); `?ground=legacy` grows the old scatter
+    ...((resolveGroundReduxProfile(cfg?.id).cinderYard ?? 0) > 0 && !legacyGroundLanes ? { _yardWeedsAt: cinderYardWeedsAt } : {}),
     // Frontline Assault trenches (assault-trenches variant), null on the standard field.
     assaultTrenchLines: trenchPlan(),
     // Field trenches on every standard field (2026-09-17), also on the assault variant clear of its sector lines.
     fieldTrenchLines: fieldTrenchPlan(),
     // Keep pavement clear without excluding vegetation along unrelated roads.
     _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,
+    // ground lane (2026-10-08, wave 274's Monsoon slope): the sward follows its slopes and the map's sun, on a map whose
+    // ground profile asks it; `?ground=legacy` keeps the even carpet
+    ...((resolveGroundReduxProfile(cfg?.id).swardSlope ?? 0) > 0 && !legacyGroundLanes ? { _swardSlope: ((): readonly [number, number, number] => {
+      const sun = skySunDirection(cfg?.sky), l = Math.hypot(sun.x, sun.z) || 1;
+      return Object.freeze([sun.x / l, sun.z / l, Math.min(1, resolveGroundReduxProfile(cfg?.id).swardSlope ?? 0)] as const);
+    })() } : {}),
     // round 67: the cut faces' seeding weight, read on the uncut ground like the exclusion
     ...(railCuttings !== null ? { _batterSeedAt: (x: number, z: number): number =>
       railCuttingFaceSeedAt(railCuttings, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8, railOpenLines) } : {}),
@@ -2833,9 +3000,9 @@ export function terrainBedWobbleAt(x: number, z: number): number {
  * min/max heights and the row's atFrac and wobbleM). Below it the paler formation, above it the redder one.
  */
 export function terrainFormationBoundaryY(x: number, z: number, minY: number, maxY: number,
-  formation: { atFrac: number; wobbleM?: number }): number {
+  formation: { atFrac: number; wobbleM?: number; atY?: number }): number {
   const b = fieldSample(splatFields().b, wrapUnit(x * 0.0071 + 0.83), wrapUnit(z * 0.0071 + 0.41));
-  return minY + (maxY - minY) * formation.atFrac - b * (formation.wobbleM ?? 2.5);
+  return (formation.atY ?? minY + (maxY - minY) * formation.atFrac) - b * (formation.wobbleM ?? 2.5);
 }
 
 const _col = new THREE.Color();
@@ -3769,14 +3936,24 @@ uniform vec3 uTintA, uTintB, uTintC, uRoadTint;
 uniform vec3 uSoilTint; // ground lane (wave 79): the land's soil where the dirt layer is drawn as soil (SplatConfig soilTint)
 uniform float uPloughLift; // ground lane (wave 83): a turned field's tone over the darkened soil (SplatConfig ploughLift)
 uniform float uMarshGloss;
-uniform vec4 uFormation; // ground lane: (boundary y, its wander m, the lower formation's paling, the upper's reddening); x < -1e8 = one formation
+uniform vec4 uFormation; // ground lane: (boundary y, its wander m, the boundary's half-width m, -); x < -1e8 = one formation
+uniform vec4 uFormationLow; // the lower formation: a tint on the rock's luminance (rgb) and the share it takes (w)
+uniform vec4 uFormationUp;  // the upper formation: likewise
 uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoulderDirt, uLaneK, uIceDrift, uMidRelief, uFieldPatch;
+uniform vec2 uWallWeather; // the Redrock lane: the joint blocks' tone step and the varnish streaks' darkening (default 0.26, 0.50)
+uniform vec4 uJebelFace;   // the Redrock lane, round 9: x on (1) / off (0); y flutes, z tafoni, w varnish (splat.jebelFace)
+uniform float uRippleNear; // the Redrock lane, round 10: the near ripple trains' strength (splat.rippleNear; rippleAmp's by default)
+uniform vec3 uRoadRuts;    // the Redrock lane, round 10: the wheel lanes' relief gain, darkening and the carriageway's gravel
 uniform float uRoadPuddle; // ground lane: the map's share of the ruts' puddles and their mud (splat.roadPuddles, default 1)
 // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving (a cobble set: Cinder Junction, Steinburg,
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
 uniform float uPavedRock;
 uniform vec4 uPaveSlab;   // maps lane B (2026-10-03): airfield concrete (slab m, joint half-width m, stains, tyres); x 0 = off
 uniform vec4 uTownPave;   // map revival lane 2 (2026-10-05): the paved town rect (centre xz, half-size xz); z 0 = off
+// ground lane (2026-10-08): the village is a rail yard floored in cinder (groundRedux.ts cinderYard, Cinder Junction); 0 = off
+uniform float uYardCinder;
+// ground lane (2026-10-08, wave 274): the thatch and soil under a thick sward near the camera (groundRedux.ts thatch); 0 = off
+uniform float uThatch;
 uniform vec4 uSaltCrust;  // maps lane B (2026-10-03): a sor's salt crust (on, polygon cell m, damp margin, unused)
 uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
@@ -3785,6 +3962,7 @@ uniform float uMidFar;    // r3: far edge of the mid-relief dapple band (m)
 uniform float uSlopeGrassHold; // round 45: shifts the slope→rock thresholds (tropical hills hold turf longer)
 uniform vec2 uRingRock;        // round 49: slope band over which a ring face past the square becomes landform rock
 uniform vec2 uRingCap;         // ground lane (wave 65): the height band over which the ring's ground becomes caprock (x > 1e8: off)
+uniform vec2 uCaprockY;        // the Redrock lane: the height band over which the square's ground becomes caprock (x > 1e8: off)
 uniform float uBeddedR;        // round 55: 1 when the R layer is the procedural bedded sandstone tile (no sourced R)
 uniform vec3 uSunDirW;    // round 42: world direction toward the sun (the vista ring's uSunDirW)
 uniform float uWallSkyLift; // round 42: sky light a steep face turned from the sun receives (0 = off)
@@ -3804,6 +3982,20 @@ float gRingAo = 1.0; float gRingSun = 1.0; vec2 gRingGrad = vec2(0.0);
 // the sun visibility keep their full weight). (2, 3) = no fade.
 uniform vec2 uRingReliefWall;
 uniform float uRockGate;  // r6: 1 = slope-rock takeover keyed to the mask-B landform weight (desert mesas)
+// the map-revival lane (2026-10-05): the terrace zones' bounding rects (x0, z0, x1, z1) and (count, feather m, the riser
+// slope band's low and high edge) — terrainTerraceUniforms; count 0 on every map without terraces
+uniform vec4 uTerraceRect[4];
+uniform vec4 uTerraceParam;
+float terraceZoneW(vec2 p) {
+  float w = 0.0;
+  for (int i = 0; i < 4; i++) {
+    if (float(i) >= uTerraceParam.x) break;
+    vec4 r = uTerraceRect[i];
+    vec2 d = min(p - r.xy, r.zw - p);
+    w = max(w, smoothstep(0.0, uTerraceParam.y, min(d.x, d.y)));
+  }
+  return w;
+}
 uniform float uSea;       // maps r1: 1 = M layer is OPEN WATER (sea/river), 0 = legacy mud/ice
 uniform float uSeaFoam;   // maps r1: surf/whitecap strength (0 disables)
 uniform vec2 uSeaRamp;    // maps r1: fM band that ramps to open water (sea wide, river tight)
@@ -3842,8 +4034,11 @@ float gStrandFoam = 0.0;     // round 73b: the foam line the last run-up left (m
 float gRoadPuddle = 0.0;     // ground lane: water standing in a road's ruts (smooth in the roughness stage)
 float gFieldWater = 0.0;     // ground lane: a flooded paddy's or a polder ditch's water (smooth in the roughness stage)
 float gCropW = 0.0;          // ground lane: a sown field's weight (not pasture or hay): the sward's own relief stands down there
+float gCropReliefW = 0.0;    // ground lane (wave 274): gCropW for the sward's relief — none on a young green crop (a short sward)
 float gSoilW = 0.0;          // ground lane: a bare field's weight (plough, terra rossa, a vineyard's earth, slag, ballast, gravel)
+float gJebelMatte = 0.0;     // the Redrock lane, round 11b: a jebel face's weight (its sheen cut in the aomap stage)
 float gLaneSheen = 0.0;      // ground lane (wave 86): a field track's pressed lane floor (its faint satin in the roughness stage)
+float gYardOil = 0.0;        // ground lane (2026-10-08): a cinder yard's oil stains (a satin in the roughness stage)
 vec3 gMeadowTint = vec3(1.0); // ground lane: the meadow's macro tint the base took (a field divides it back out)
 varying float vFold;         // round 73: the baked fold attribute (−1 crest .. +1 hollow) the chunk vertices carry
 float gFoldAO = 1.0;         // round 73: indirect occlusion in the folds, read by the aomap hook
@@ -4093,6 +4288,85 @@ float wallCragField(vec2 q, float ph) {
 vec2 wallCragTilt(vec2 q, float ph) {
   float h0 = wallCragField(q, ph);
   return -vec2(wallCragField(q + vec2(0.5, 0.0), ph) - h0, wallCragField(q + vec2(0.0, 0.5), ph) - h0) * 1.1;
+}
+// The Redrock lane, round 10 (the gauntlet's wave 270: "a single-tone maroon curtain with soft, blurred vertical streaks
+// of identical width and spacing"; "thin wavy lines drawn over a soft surface read as texture overlay"): Wadi Rum's faces
+// as relief in the normal. Hoskins' hash11 for the beds' and joints' draws.
+float jh1(float p) { p = fract(p * 0.1031); p *= p + 33.33; p *= p + p; return fract(p); }
+// One wall projection of a jebel face: u along the wall and y the bed height (both metres), ph the cliff's slow phase;
+// returns (tilt along the wall, tilt up, albedo factor). The beds ~6.5 m (±35 %) parted by grooves (the upper lip facing
+// down, the floor up, faintly dark in the groove, some partings near gone), each bed a shade of its own and cross-bedded
+// (inclined laminae at ±30°); the joints vertical fractures through the beds, 6.5-13.5 m apart and wandering a little,
+// a crack showing where a bed still holds it (two beds in three) — never offset bed by bed, which laid the face in a
+// running bond — each a V (its walls turned a little into the crack, dark at its root); each column between two joints a
+// face of its own; and low on the near faces the honeycomb (tafoni), bowl pits 0.4-1.2 m across in patches. footM is the
+// pixel's footprint (m): the partings and cracks never narrow under about two pixels.
+vec3 jebelFaceV2(float u, float y, float ph, float nearW, float tafW, float footM) {
+  float yb = y + 1.6 * sin(u * 0.011 + ph * 6.0);
+  float T = 6.5, k = floor(yb / T);
+  float b0 = (k + 0.35 * (jh1(k * 1.7 + 3.1) - 0.5)) * T;
+  if (yb < b0) { k -= 1.0; b0 = (k + 0.35 * (jh1(k * 1.7 + 3.1) - 0.5)) * T; }
+  float b1 = (k + 1.0 + 0.35 * (jh1((k + 1.0) * 1.7 + 3.1) - 0.5)) * T;
+  if (yb >= b1) { k += 1.0; b0 = b1; b1 = (k + 1.0 + 0.35 * (jh1((k + 1.0) * 1.7 + 3.1) - 0.5)) * T; }
+  float dBot = yb - b0, dTop = b1 - yb, f = dBot / max(b1 - b0, 0.1);
+  float w = max(0.24, 2.0 * footM);
+  float sk = 0.15 + 0.85 * jh1(k * 2.3 + 0.7), sk1 = 0.15 + 0.85 * jh1((k + 1.0) * 2.3 + 0.7);
+  float gB = clamp(1.0 - dBot / w, 0.0, 1.0), gT = clamp(1.0 - dTop / w, 0.0, 1.0);
+  float tv = -0.6 * sk * gB + 0.6 * sk1 * gT;
+  float shade = (1.0 - 0.2 * sk * gB * gB) * (1.0 - 0.2 * sk1 * gT * gT);
+  // the bed's own shade, and its cross-bedding near
+  shade *= 0.94 + 0.12 * jh1(k * 5.1 + 2.0);
+  float ang = (jh1(k * 3.7 + 1.1) - 0.5) * 1.05, sp = 0.35 + 0.45 * jh1(k * 4.3 + 9.2);
+  float lam = fract((u * sin(ang) + yb * cos(ang)) / sp);
+  shade *= 1.0 - 0.11 * nearW * smoothstep(0.80, 0.97, lam) * (1.0 - smoothstep(0.78, 1.0, f));
+  // the joints: vertical through the beds (their lines shared by every bed, wandering a metre down the face)
+  float W = 10.0, uj = u + 1.1 * sin(yb * 0.045 + ph * 5.0), j = floor(uj / W);
+  float c0 = (j + 0.7 * (jh1(j * 1.37 + 8.0) - 0.5)) * W;
+  if (uj < c0) { j -= 1.0; c0 = (j + 0.7 * (jh1(j * 1.37 + 8.0) - 0.5)) * W; }
+  float c1 = (j + 1.0 + 0.7 * (jh1((j + 1.0) * 1.37 + 8.0) - 0.5)) * W;
+  if (uj >= c1) { j += 1.0; c0 = c1; c1 = (j + 1.0 + 0.7 * (jh1((j + 1.0) * 1.37 + 8.0) - 0.5)) * W; }
+  // (round 11, the gauntlet's wave 282: "hairline drawn cracks" — the terrain's own clefts carry the joints now: here a
+  // soft dark seam half a metre to a metre wide on about half the beds' stretches of each line, turned a little)
+  float dl = uj - c0, dr = c1 - uj, hw = max(0.5, 3.0 * footM);
+  float pl = step(0.55, jh1(j * 7.7 + k * 1.3)), pr = step(0.55, jh1((j + 1.0) * 7.7 + k * 1.3));
+  float vl = pl * clamp(1.0 - dl / hw, 0.0, 1.0), vr = pr * clamp(1.0 - dr / hw, 0.0, 1.0);
+  float tu = -0.35 * pl * step(dl, hw) + 0.35 * pr * step(dr, hw);
+  shade *= (1.0 - 0.3 * vl * vl) * (1.0 - 0.3 * vr * vr);
+  // the column's own face: a lean and a shade per column, whole down the cliff
+  tu += (jh1(j * 3.3 + 1.9) - 0.5) * 0.22;
+  // (round 11, the gauntlet's wave 282: "no fluting") its flutes: one to three rounded grooves across the column, each
+  // column its own count, depth and phase, in the red below the pale formation (whose domes are not fluted)
+  float fu = clamp((uj - c0) / max(c1 - c0, 0.5), 0.0, 1.0), fn = 1.0 + floor(3.0 * jh1(j * 4.9 + 0.3));
+  float fA = 0.3 * jh1(j * 8.3 + 2.6) * (1.0 - smoothstep(46.0, 60.0, y)) * smoothstep(0.0, 0.12, fu) * smoothstep(0.0, 0.12, 1.0 - fu);
+  tu += fA * sin(6.2831853 * (fn * fu + 0.5 * jh1(j * 2.2 + 5.1)));
+  tv += (jh1(j * 5.9 + 0.4) - 0.5) * 0.05;
+  shade *= 0.95 + 0.10 * jh1(j * 2.9 + 6.1);
+  // the honeycomb: pits in 1.3 m cells, in patches
+  if (tafW > 0.003) {
+    // (round 11, the gauntlet's wave 282: "a stamped pattern of evenly sized, evenly spaced elliptical pits, like Swiss
+    // cheese", "pale decals" — each stretch of rock its own cell size, 1-2.2 m; a pit in two cells of five; most pits
+    // small, a few large; dark in their hollows; in patches)
+    float cs = 1.0 + 1.2 * jh1(floor(u / 13.0) * 5.7 + floor(yb / 9.0) * 3.3 + 0.7);
+    vec2 p = vec2(u, yb) / cs, cell = floor(p);
+    // (not 'patch': a word GLSL ES 3.00 reserves for future use, so the program would not compile)
+    float pitPatch = smoothstep(0.45, 0.8, jh1(floor(u / 7.0) * 3.1 + floor(yb / 5.0) * 7.3 + 1.9));
+    for (int i = -1; i <= 1; i++) for (int m = -1; m <= 1; m++) {
+      vec2 c = cell + vec2(float(i), float(m));
+      float hc = jh1(c.x * 12.9 + c.y * 78.2);
+      if (hc < 0.6) continue;
+      vec2 ctr = c + 0.5 + 0.8 * (vec2(jh1(c.x * 3.9 + c.y * 1.7), jh1(c.x * 5.3 + c.y * 9.1)) - 0.5);
+      float rk = jh1(c.x * 7.1 + c.y * 2.3), R = 0.1 + 0.42 * rk * rk;
+      vec2 dpv = p - ctr;
+      float r = length(dpv) / R;
+      if (r < 1.0) {
+        float wpit = tafW * pitPatch;
+        tu -= dpv.x / R * 0.9 * wpit;
+        tv -= dpv.y / R * 0.9 * wpit;
+        shade *= 1.0 - wpit * 0.78 * (1.0 - r * r);
+      }
+    }
+  }
+  return vec3(tu, tv, shade);
 }
 // Round 40 (2026-09-22, AAA program check 13 "water at the edge: same level and shader beyond"): the horizon ring's
 // faces inside a sea opening (edgeWater.ts) render with this material as the square's own open water — the same
@@ -4347,7 +4621,46 @@ void splatCompute() {
   // patch). The arid maps' sand patches and the snow maps' scoured crests keep the whole patch.
   float wornCore = (uSandMacro > 0.001 || uReduxD.y > 1.5) ? worn : smoothstep(0.78, 1.0, n2w + (n1w - 0.5) * 0.45);
   float grazeT = worn - wornCore;
-  float fD = clamp(max(wornCore * uWornDirtStrength, max(shoulder * uShoulderDirt, mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
+  // Ground lane (2026-10-07, wave 182's Frosthollow bird view: "dark untextured rectangles" — the two 56 m graded
+  // hardstands the zone discs sit on): a hardstand is stamped as the carriageway's full coverage (R) with no centreline
+  // near it (G 0, hardstandSurface.ts), so the whole pad was shoulder and none of it road — the dirt layer laid bare
+  // over 56 m, which a snow map's wear lets through as bare ground. A pad is graded road ground: the carriageway's own
+  // packed surface (dW below: the map's packed earth, or on a snow map packed, trodden snow) with no wheel lanes, ruts
+  // or crown (they follow a centreline), and its feather the ground around it — the shoulder's dirt stands down over the
+  // whole pad (a ring of bare ground outlined it). A paved map's pads stay paved; a road crossing a pad keeps its own
+  // paint (its centreline's G)
+  float padK = (1.0 - smoothstep(0.05, 0.25, mk.g)) * (1.0 - step(0.5, gRoadTex));
+  float apronK = smoothstep(0.50, 0.90, mk.r) * padK;
+  float apronRim = smoothstep(0.04, 0.50, mk.r) * padK;
+  // (2026-10-07, wave 235's Monsoon chase: "a flat, uniform brown dirt plane … cut by a ruler-straight edge against a flat
+  // green strip"; Whiteout's "no … tracks") a pad's edge is broken into the turf in tongues within its feather (the
+  // stamp's own spill already wanders 0–4 m out), and the pad is worked ground: the tracks of the vehicles that formed up
+  // on it — pairs of ruts 0.6 m wide, 2.9 m apart, along two families of gently curving lines that come and go across it.
+  // Its ruts are the road's ruts: darkened as a road's wheel lanes are, puddled on a wet map, slush on a snow map
+  float apronN = nz(uv, 0.21, vec2(0.13, 0.71)).r * 0.6 + n1h * 0.4;
+  apronK = smoothstep(0.30, 0.85, mk.r + (apronN - 0.5) * 0.60 * tileVis(4.8)) * padK; // (into the stamp's spill: its tongues)
+  float padRut = 0.0;
+  vec2 padRutN = vec2(0.0);
+  if (apronK > 0.003) {
+    float th = 0.6 + 2.4 * nz(uv, 0.006, vec2(0.31, 0.77)).r;
+    float rutVis = smoothstep(0.12, 0.40, 0.30 / max(gFootM, 1e-3)); // gone as the footprint outgrows a rut
+    for (int k = 0; k < 2; k++) {
+      float t = th + float(k) * 1.15;
+      vec2 dP = vec2(-sin(t), cos(t)); // across the family's lines
+      float q = dot(wp.xz, dP) + 5.0 * (nz(uv, 0.017, vec2(0.53 + float(k) * 0.21, 0.29)).g - 0.5);
+      float per = 6.0 + 1.5 * float(k); // (a vehicle every few metres: the lab's 9.5 m read as two thin lines)
+      float f = fract(q / per) * per;
+      float r1 = (f - 3.0) / 0.30, r2 = (f - 5.9) / 0.30;
+      float pres = smoothstep(0.34, 0.58, nz(uv, 0.043, vec2(0.11 + float(k) * 0.37, 0.83)).r) * rutVis;
+      float e1 = exp(-r1 * r1), e2 = exp(-r2 * r2);
+      padRut = max(padRut, (e1 + e2) * pres);
+      padRutN += dP * (r1 * e1 + r2 * e2) * pres;
+    }
+    padRut *= apronK;
+    padRutN *= apronK;
+    rut = max(rut, padRut * rutAmp * 1.2);
+  }
+  float fD = clamp(max(wornCore * uWornDirtStrength, max(shoulder * uShoulderDirt * (1.0 - apronRim), mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
   float fM = mkB;
   // marsh/ice sheets only live on near-flat ground: without this the graded
   // banks around a frozen lake inherit the sheet's glossy blue ice response
@@ -4409,8 +4722,22 @@ void splatCompute() {
   // "pink contour marbling on sand" (desert critique). Rock now takes over
   // from ~37 deg; the 30-37 deg band stays sand (ripples own it).
   fR = max(fR, smoothstep(0.20, 0.42, slopeR) * (1.0 - mkB * 0.85) * 0.95 * rockGate);
+  // (the Redrock lane, round 11, the gauntlet's wave 282: the talus "a painted triangle laid on the wall with a seam where
+  // it meets the sand" — on a jebel-face map the talus band under the walls, below 13-20 m, is sand drifted between its
+  // blocks: the rock gives way to sand in ragged patches 4-20 m across, so the rock's edge wanders up and down the slope)
+  if (uJebelFace.x > 0.0) {
+    float talusBand = smoothstep(0.16, 0.26, slopeR) * (1.0 - smoothstep(0.40, 0.55, slopeR)) * (1.0 - smoothstep(13.0, 20.0, wp.y));
+    float drift = nz(wp.xz, 0.11, vec2(0.27, 0.61)).b * 0.6 + n1h * 0.4;
+    fR *= 1.0 - talusBand * (1.0 - smoothstep(0.38, 0.62, drift)) * 0.85;
+  }
   // ground lane (wave 65): the caprock is rock whatever its slope — its ledges and tops — a little sand in its hollows
   fR = max(fR, gRingCap * rockGate * (0.72 + 0.28 * smoothstep(0.30, 0.70, n1h)));
+  // the Redrock lane: the square's own caprock (splat.caprockY) — the jebels' and domes' tops are bare rock, not sand
+  // (past the square too: the canyon's heads and plateau are the same massifs — their ring rows took sand on every
+  // facet flatter than the rock band, a patchwork of triangles on the north head)
+  // (round 9, the gauntlet: "sand caked on their tops like icing": with the jebel faces on, bare rock in the hollows too)
+  if (uCaprockY.x < 1e8) fR = max(fR, smoothstep(uCaprockY.x, uCaprockY.y, wp.y) * rockGate * (1.0 - roadCore)
+    * mix(0.72 + 0.28 * smoothstep(0.30, 0.70, n1h), 1.0, uJebelFace.x));
   // triplanar side projection on steep faces: planar XZ UVs smear vertically
   // down cliff walls (the classic heightmap-stretch tell on the mesa cliffs)
   // — resample the rock layer in the wall's own plane and take it over as
@@ -4441,6 +4768,10 @@ void splatCompute() {
     fR *= rockKeep;
     steepW *= rockKeep;
   }
+  // the map-revival lane (2026-10-05, Orchard Valley's terraces T2): a terrace zone's risers are its dry-stone walls — the
+  // faces the steps stand steeper than the benches (applyTerraces) take the rock layer whatever the turf's hold, the
+  // benches keep their ground; the carriageways stay road
+  if (uTerraceParam.x > 0.5) fR = max(fR, terraceZoneW(wp.xz) * (1.0 - roadCore) * smoothstep(uTerraceParam.z, uTerraceParam.w, slope));
   // Ground lane (2026-10-03, Caldera's gauntlet: the lava shelves' fronts "read as long dark trenches"): on a volcanic
   // basin (groundRedux VOLCANIC) a lava flow — the landform channel, the maps lane's flowCover in the mask — is basalt
   // over its whole surface, its top, levees and front alike, not only where it is steep
@@ -4574,9 +4905,79 @@ void splatCompute() {
     float sunSide = smoothstep(0.15, 0.65, dot(wn, uSunDirW));
     fD = smoothstep(0.70, 0.95, fD) * mix(0.45, 1.0, sunSide);
   }
+  // ground lane (2026-10-08, the gauntlet's wave 260 on Cinder Junction's yard: "a dead-flat plane of dark mulch with
+  // evenly spaced identical grass blades" — the dirt photo's forest litter, its twigs and leaf, on a rail yard): a yard's
+  // floor is cinder, the engines' ash and clinker spread and trodden, in its own patches — coal dust black where the coal
+  // was handled, the spent ash a paler grey where it lay and dried, rust off the scrap and the brake blocks — with oil
+  // where the engines stood, and its clinker near the camera (the works' slag grain). The yard is the village mask's on a
+  // map whose ground profile floors it so (groundRedux.ts cinderYard); 0 everywhere else, and the block is skipped.
+  float yardW = uYardCinder * smoothstep(0.10, 0.55, mk.a);
+  float cinN = 0.5, cinVis = 0.0;
   if (fD > 0.002 && keepM * (1.0 - seaSand) > 0.002) {
     vec4 aD = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);
     aD.rgb *= uSoilTint; // (wave 79: the place's own soil, not the strand's sand)
+    if (yardW > 0.002) {
+      vec3 dM = uMeanD.rgb * uSoilTint;
+      // the photo's litter at a sixth of its contrast near the camera, where its twigs read as twigs (the grain below
+      // takes their place), and at four fifths of it from ~8 m, where what is left of them is the ground's texture (the
+      // anisotropic tap keeps it across a grazing view, where no procedural term of this block survives the footprint);
+      // most of its brown taken out, a shade darker
+      // (the lab's second and third frames, the yard's low view: a sixth, then a half, left the floor from 5 m on one flat
+      // grey plane)
+      vec3 cin = dM + (aD.rgb - dM) * mix(0.16, 0.80, smoothstep(0.012, 0.035, gFootM));
+      // (a cinder's grey is a little warm — the lab's cold grey read as asphalt)
+      cin = mix(cin, vec3(reduxLuma(cin)), 0.6) * vec3(0.88, 0.85, 0.83);
+      // the floor's own lumps and hollows, trodden and spread: ~25 cm and ~60 cm of tone (the noise with no period), a
+      // twelfth each way, faded before they can shimmer; and its ~3 m spreads, darker and paler by a sixth, which still
+      // read at a grazing 30 m where the finer terms are gone
+      vec2 yL = nzq(uv, 0.90, vec2(0.41, 0.19));
+      vec2 yM = nzq(uv, 0.071, vec2(0.67, 0.31));
+      cin *= 1.0 + ((yL.x - 0.5) * 0.34 * tileVis(0.25) + (yL.y - 0.5) * 0.30 * tileVis(0.6) + (yM.x - 0.5) * 0.36 * tileVis(3.0));
+      // the patches (~8 m, the noise with no period): coal dust, dried ash, rust
+      vec2 yP = nzq(uv, 0.021, vec2(0.17, 0.43));
+      float coal = smoothstep(0.56, 0.78, yP.x);
+      float ash = smoothstep(0.58, 0.80, 1.0 - yP.x) * smoothstep(0.30, 0.62, yP.y);
+      float rust = smoothstep(0.62, 0.82, yP.y) * (1.0 - coal);
+      cin *= mix(1.0, 0.48, coal);
+      cin = mix(cin, vec3(reduxLuma(dM) * 1.65) * vec3(1.0, 0.98, 0.95), ash * 0.62);
+      cin *= mix(vec3(1.0), vec3(1.30, 0.98, 0.76), rust * 0.55);
+      // the oil: stains a metre or two across where the engines stood — kept to some stretches of the yard (the ~14 m
+      // field), ragged at their edges (a 16 cm read), black and a little smooth, faded before their edges can shimmer
+      float oilY = smoothstep(0.70, 0.82, nz(uv, 0.083, vec2(0.61, 0.29)).g + (nz(uv, 0.61, vec2(0.23, 0.77)).r - 0.5) * 0.22)
+        * smoothstep(0.42, 0.66, n1) * tileVis(1.5);
+      cin *= 1.0 - 0.5 * oilY;
+      // the grain near the camera: cinder and ash in ~3 cm grains, each its own tone (a few rusty, a few pale ash), the
+      // gaps between them dark and each grain's face its own tilt (the clinker's relief, below) — the nearest of a
+      // jittered cell grid's points by an integer hash (exact anywhere on the map), faded to the pattern's mean while a
+      // grain still spans two or three pixels
+      cinVis = 1.0 - smoothstep(0.012, 0.028, gFootM);
+      if (cinVis > 0.001) {
+        vec2 gq = uv / 0.03, gc = floor(gq), gf = gq - gc;
+        float d1 = 9.0, d2 = 9.0;
+        vec2 h1 = vec2(0.5);
+        for (int j = -1; j <= 1; j++) {
+          for (int i = -1; i <= 1; i++) {
+            vec2 o = vec2(float(i), float(j));
+            uvec2 q = uvec2(ivec2(gc + o) + ivec2(1 << 20)) * uvec2(1597334673u, 3812015801u);
+            uint hn = (q.x ^ q.y) * 1597334673u;
+            vec2 h = vec2(uvec2(hn, hn * 16807u) >> 8u) * (1.0 / 16777216.0);
+            vec2 r = o + 0.15 + 0.70 * h - gf;
+            float d = dot(r, r);
+            if (d < d1) { d2 = d1; d1 = d; h1 = h; } else if (d < d2) { d2 = d; }
+          }
+        }
+        // (the lab's second frames: every grain one size, packed edge to edge, read as a mosaic) a third of the cells are
+        // the fines between the grains — the ash's own tone, no edge, no face
+        float fines = step(0.10, h1.y) * step(h1.y, 0.42);
+        float gap = (1.0 - smoothstep(0.03, 0.10 + 0.12 * h1.x, sqrt(d2) - sqrt(d1))) * (1.0 - fines);
+        vec3 gTone = vec3(mix(0.68 + 0.64 * h1.x, 0.97, fines)) * (1.0 - 0.50 * gap);
+        gTone *= h1.y > 0.88 ? vec3(1.28, 0.96, 0.74) : h1.y < 0.10 ? vec3(1.30) : vec3(1.0);
+        cin *= mix(vec3(1.0), gTone / 0.95, cinVis);
+        cinN = mix(h1.x * 0.5 + h1.y * 0.5, 0.5, fines);
+      }
+      aD.rgb = mix(aD.rgb, cin, yardW);
+      gYardOil = oilY * yardW;
+    }
     // ground lane: under thin snow the ground that shows is the winter sward — flattened straw and heather, a dull
     // khaki — not the photo's brown mud
     if (uReduxD.y > 1.5) {
@@ -4592,6 +4993,12 @@ void splatCompute() {
     }
     a = mix(a, aD, fD);
     if (nrmOn) n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), fD);
+    // (the cinder yard: the photo's twig relief mostly flattened, the grains' faces in its place)
+    if (nrmOn && yardW > 0.002) {
+      float yd = yardW * fD;
+      n.xy = mix(n.xy, vec2(0.5), 0.7 * yd) + vec2(cinN - 0.5, fract(cinN * 7.31) - 0.5) * 0.45 * cinVis * yd;
+    }
+    gYardOil *= fD;
   }
   if (seaSand > 0.003) { // maps r1: bare shoreline apron under the surf line
     a = mix(a, groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB), seaSand);
@@ -4658,12 +5065,17 @@ void splatCompute() {
         if (nrmOn) nR = mix(nR, wallNrm(uNrmD, 0.210, df, mipB), triW);
       }
     } else {
+      // (the Redrock lane, round 10, the gauntlet's wave 270: the domes' "crumbly speckled skin" — on Redrock the rock tile
+      // reads a level and a third coarser, its sand-grain speckle gone, and the jebel faces' beds and joints carry the
+      // rock's detail instead: jebelFaceV2; the bias is the rock's alone, taken off again after it)
+      mipB += 1.3 * uJebelFace.x;
       aR = groundSamp(uAlbR, uMeanR, uv * 0.155, df, mipB);
       if (nrmOn) nR = groundNrm(uNrmR, uv * 0.155, df, mipB);
       if (triW > 0.003) {
         aR = mix(aR, wallSamp(uAlbR, uMeanR, 0.155, df, mipB), triW);
         if (nrmOn) nR = mix(nR, wallNrm(uNrmR, 0.155, df, mipB), triW);
       }
+      mipB -= 1.3 * uJebelFace.x;
     }
     // round 73: the rock border is a height transition too — the outcrop's high faces clear the turf or the snow,
     // its seams stay buried
@@ -4682,7 +5094,7 @@ void splatCompute() {
       a = mix(a, wallSamp(uAlbD, uMeanD, 0.210, df, mipB), steepW);
       if (nrmOn) n = mix(n, wallNrm(uNrmD, 0.210, df, mipB), steepW);
     } else {
-      vec4 aS = wallSamp(uAlbR, uMeanR, 0.155, df, mipB);
+      vec4 aS = wallSamp(uAlbR, uMeanR, 0.155, df, mipB + 1.3 * uJebelFace.x);
       a = mix(a, aS, steepW);
       if (nrmOn) n = mix(n, wallNrm(uNrmR, 0.155, df, mipB), steepW);
     }
@@ -4784,6 +5196,23 @@ void splatCompute() {
     * mix(vec3(1.0), uTintC, smoothstep(0.52, 0.9, meadowC) * (0.21 + 0.16 * n1) * meadowG)
     * mix(0.93 + meadowC * 0.14, 1.0, projW);
   a.rgb *= gMeadowTint;
+  // ground lane (2026-10-08, the gauntlet's wave 274 on Monsoon Ridge's foot: "a smooth, flat, saturated lawn-green surface
+  // with no soil, litter or dry thatch" between the tufts): under a thick sward the ground is last season's thatch — dead
+  // blades lying flat, a dull straw-brown — and the dark soil between the tussocks, not lawn. Where the sward stands thick
+  // (the tall grass's own density field: n1), in patches of ~0.5–1.5 m; at a distance the blades' tops carry the
+  // hillside's green and the ground between them shows less, so it eases to under half by 120 m (never to nothing: a
+  // ring of brown round the camera would follow it)
+  if (uThatch > 0.001 && meadowG > 0.002) {
+    vec2 thQ = nzq(uv, 0.55, vec2(0.21, 0.67));
+    float thW = uThatch * meadowG * mix(1.0, 0.45, smoothstep(30.0, 120.0, camDist)) * (0.35 + 0.65 * smoothstep(0.30, 0.75, n1))
+      * (1.0 - fR) * (1.0 - roadCore);
+    if (thW > 0.002) {
+      vec3 thatchCol = vec3(0.118, 0.098, 0.052) * (0.85 + 0.30 * thQ.y);
+      vec3 soilCol = uMeanD.rgb * uSoilTint * 0.80;
+      vec3 under = mix(thatchCol, soilCol, smoothstep(0.58, 0.82, thQ.x));
+      a.rgb = mix(a.rgb, under, thW * (0.50 + 0.35 * smoothstep(0.30, 0.70, thQ.x)));
+    }
+  }
   // ground lane: the earthworks' bank — patchy dug soil between the turf the bank keeps (bankSoil, above), in the
   // ground plane on a gentle bank and the walls' projection on a steep one, so its texels never stretch downslope
   if (bankSoil > 0.003) {
@@ -4920,7 +5349,11 @@ void splatCompute() {
       // pixel or two, so a field ends on its edge seen from the ridge
       // (never wider than the near field's 4 m: the interior's exact skip below holds at every footprint)
       float fadeM = min(4.0, mix(4.0, max(0.6, 1.5 * gFootM), smoothstep(0.12, 0.60, gFootM)));
-      float inField = bnd > 1.5 ? smoothstep(bnd > 2.5 ? 0.95 : 0.50, bnd > 2.5 ? 1.45 : 0.85, edgeM)
+      // (2026-10-08, wave 287, Saltwind: the red field "a flat decal with hard edges") a karst field's red earth ends
+      // raggedly against its margin — ±0.4 m by the breaker and the metre noise, over 0.9 m — where no wall stands over
+      // the line (most of a wall's line is hidden under it where one does); a paddy's bund keeps its line
+      float inField = bnd > 2.5 ? smoothstep(0.85, 1.75, edgeM + (n1h - 0.5) * 0.45 + (n1 - 0.5) * 0.40)
+                    : bnd > 1.5 ? smoothstep(0.50, 0.85, edgeM)
                                 : smoothstep(marginM, marginM + fadeM, edgeW);
       // (2026-10-05, Ruinspires' lab: an urban land use's lots are 8–24 m across, and a field's 4 m ragged thinning into
       // its margin left most of a lot the margin's — its hardstanding showed nowhere) a lot ends on its line, as a kerb,
@@ -4977,6 +5410,16 @@ void splatCompute() {
       if (crop < 0.5) {
         // pasture: half the meadows are hay — mown in stripes up and down the field
         rows = jit > 0.5 ? sin(across * 2.094) * 0.06 * tileVis(3.0) : 0.0;
+        // (wave 177 and 2026-10-08's wave 287, Saltwind: "a lush lawn-green carpet", "patchy dry grass and scrub") a
+        // karst's grazing is garrigue, never mown: cured yellow-grey grass in tussocks over the thin red-brown soil, which
+        // shows between them in patches of decimetres (a fifth of its far mean)
+        if (bnd > 2.5) {
+          rows = 0.0;
+          float bareVis = tileVis(1.5);
+          float bareG = uLandTier > 0.5 ? smoothstep(0.52, 0.72, nzq(uvW, 0.29, vec2(0.61, 0.17)).x) : 0.0;
+          vec3 redSoil = soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(2.11, 1.24, 1.04) * 0.095 * bright;
+          cropCol = mix(vec3(2.30, 2.10, 1.30) * baseL * bright, redSoil, bareG * 0.70 * bareVis + 0.20 * (1.0 - bareVis));
+        }
       } else if (crop < 1.5) {
         // albedo calibration (with the light lane): a ripe crop is cured straw, 0.20–0.25 against the sward's ~0.075
         cropCol = vec3(1.375, 0.994, 0.399) * baseL * 2.8 * bright; // ripe wheat
@@ -5013,7 +5456,11 @@ void splatCompute() {
         float kP = 0.86 + 0.28 * fract(jit * 5.77 + 0.29);
         // (2026-10-06, the cost trim: the furrows' wander along their run and their depth's stretches — four sines a
         // fragment, wave 86's — are gone again; the rows keep their field-by-field widths and phase)
-        float acrossP = (across + (n1 - 0.5) * 0.9 + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kP + jit * 9.7;
+        // (2026-10-08, waves 285–286a on Amberford and Steinburg: "wavy, meandering black ripples like wind-blown sand
+        // rather than straight furrows", "dune corduroy") the phase took ±0.45 m of the material's n1 noise, whose power
+        // sits at 0.7–2.7 m — more than half a 0.8 m furrow, so every furrow meandered along its run every metre or two.
+        // A plough's line is straight over metres; it bends only with the field (the rows' bend above, tens of metres).
+        float acrossP = (across + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kP + jit * 9.7;
         float furrowVis = uLandTier > 0.5 ? stripeAA(0.8 * kP, acrossDir) : 0.0;
         rows = sin(acrossP * 7.854) * 0.16 * furrowVis + sin(acrossP * 3.927 + jit * 2.0) * 0.07 * stripeAA(1.6 * kP, acrossDir)
           + bandAA(acrossP * 1.963 + jit * 3.0, 3.2 * kP, acrossDir) * 0.11
@@ -5072,12 +5519,30 @@ void splatCompute() {
         // limestone"; the coordinator: the calibrated red "reads too light and desaturated from above") the red earth
         // deeper and redder (~0.22 / 0.064 / 0.032 over the sand's hue, luminance ~0.095), its stones' grey a smaller
         // share of its far mean
-        cropCol = soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(1.75, 0.62, 0.45) * 0.105 * bright;
-        float karstStone = uLandTier > 0.5 ? smoothstep(0.62, 0.80, nzq(uvW, 0.61, vec2(0.37, 0.71)).x) * smoothstep(0.35, 0.70, nzq(uvW, 0.043, vec2(0.13, 0.29)).y) : 0.0;
-        cropCol = mix(cropCol, vec3(0.17, 0.165, 0.155) * bright, karstStone * 0.65 * tileVis(0.8));
-        cropCol = mix(cropCol, mix(cropCol, vec3(reduxLuma(cropCol)), 0.12), 1.0 - tileVis(0.8)); // the stones' grey in the far average
+        // (2026-10-08, waves 286b–287 on Saltwind: "a flat, saturated red or vermilion decal", "one flat, saturated
+        // orange-red in every frame"; it rendered ~104 / 49 / 29 sRGB, saturation 0.72 — red 3.4× its green in albedo)
+        // Dalmatian terra rossa is a deeper rust or brick red-brown, dulled by dust and broken by limestone: the base a
+        // dusty brick (~0.265 / 0.128 / 0.074 over the sand's hue: red 2.1× its green, green 1.7× its blue — never the
+        // bluer mauve of wave 83, 1.6 / 1.33), its dry crust paler and a third greyer on the crowns of the noise and the
+        // damp ground a shade darker (decimetres to metres), and the plough's limestone over about a third of the field
+        // near the camera — pale cream-grey clasts in drifts — and a fifth of its far mean. No new reads: the crust is
+        // the breaker's and n2's, the clasts the two noise reads the stones always took.
+        cropCol = soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(2.11, 1.24, 1.04) * 0.105 * bright;
+        float crust = smoothstep(0.42, 0.78, n1h);
+        cropCol = mix(cropCol * (0.88 + 0.10 * n2), mix(cropCol, vec3(reduxLuma(cropCol)), 0.32) * 1.14, crust);
+        vec3 clast = vec3(0.215, 0.205, 0.182) * bright;
+        float karstStone = 0.0;
+        if (uLandTier > 0.5) {
+          vec2 sq = nzq(uvW, 0.61, vec2(0.37, 0.71));
+          float drift = smoothstep(0.20, 0.60, nzq(uvW, 0.043, vec2(0.13, 0.29)).y);
+          karstStone = max(smoothstep(0.50, 0.66, sq.x) * (0.40 + 0.60 * drift), smoothstep(0.64, 0.74, sq.y) * 0.65);
+        }
+        float clastVis = tileVis(0.8);
+        cropCol = mix(cropCol, clast, karstStone * 0.85 * clastVis);
+        cropCol = mix(cropCol, clast, 0.18 * (1.0 - clastVis)); // the clasts' share of the far mean
         float kR = 0.86 + 0.28 * fract(jit * 5.77 + 0.29);
-        float acrossR = (across + (n1 - 0.5) * 0.9 + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kR + jit * 9.7;
+        // (2026-10-08: the plough's law — the furrows straight along their run, no metre-scale meander from n1)
+        float acrossR = (across + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kR + jit * 9.7;
         rows = sin(acrossR * 7.854) * 0.10 * tileVis(0.8 * kR) + sin(acrossR * 0.483 + jit * 6.0) * 0.06 * tileVis(13.0 * kR);
         // the turned red earth's relief is its furrows, not the sward's blade strokes (as the plough's, a little softer)
         // (a breath of relief, broken along its run: wave 8's "unnaturally regular striped banding" was this field's)
@@ -5089,7 +5554,8 @@ void splatCompute() {
         // (the saltwind sky-w pair, wave 5 and hold 3: "a red-and-green striped crop texture" — a lawn-green canopy band
         // over bare red earth, half and half: a vine's canopy is a dusty olive, about 0.7 m of a 2.2 m row, the
         // inter-row carries its weeds and dust, and the canopy shades a strip of it)
-        vec3 earth = bnd > 2.5 ? soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(1.80, 0.62, 0.45) * 0.105 : soilF * 0.85;
+        // (2026-10-08: the karst's red earth the terra rossa's dusty brick, as above)
+        vec3 earth = bnd > 2.5 ? soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(2.11, 1.24, 1.04) * 0.105 : soilF * 0.85;
         earth = mix(earth, aF * vec3(1.10, 1.02, 0.80), 0.30);
         vec3 vine = vec3(0.860, 1.300, 0.560) * baseL * bright;
         float vf = fract(across / 2.2 + jit);
@@ -5209,6 +5675,10 @@ void splatCompute() {
       // (the verdant establishing pair, hold 3: a turned field read as gravel or crumpled paper — the meadow's blade,
       // tussock and coarse-turf relief and their photo tone ran on under the soil; a sown field carries its own rows)
       gCropW = (crop > 0.5 && (crop < 12.5 || crop > 13.5)) ? inField * landW : 0.0;
+      // (wave 274, Verdant's slope: a young crop's "bald, flat olive ground" between its tufts) a young green crop is a
+      // short leafy sward: its ground keeps the sward's own blade, tussock and turf relief (a pasture's and a hay meadow's
+      // do); its meadow patches, worn lips and sheet stay down with every sown field's (gCropW)
+      gCropReliefW = (crop > 2.5 && crop < 3.5) ? 0.0 : gCropW;
       gSoilW = ((crop > 3.5 && crop < 4.5) || (crop > 10.5 && crop < 12.5) || (crop > 14.5 && crop < 16.5) || (crop > 18.5 && crop < 19.5))
         ? inField * landW : 0.0;
       gFieldWater = water * inField * landW;
@@ -5239,10 +5709,17 @@ void splatCompute() {
         // places, its foot shaded on the field side (the round-2 chase frame: a pale unbroken strip read as a painted
         // path — the walls themselves are the scenery lane's to raise on this grid)
         // (wave 8: "separated by uniform pale-gray lines") a shade darker, more broken, grown over in more places
-        float wall = (1.0 - smoothstep(0.30, 0.52, edgeM)) * (1.0 - track) * (0.25 + 0.75 * smoothstep(0.38, 0.62, n1h));
-        vec3 stone = vec3(0.195, 0.190, 0.180) * (0.70 + 0.40 * fract(n1h * 7.3)) * (1.0 - 0.35 * smoothstep(0.55, 0.80, n1));
-        a.rgb = mix(a.rgb, stone, wall * landW);
-        a.rgb *= 1.0 - 0.22 * (smoothstep(0.55, 0.75, edgeM) * (1.0 - smoothstep(0.85, 1.35, edgeM))) * landW;
+        // (2026-10-08, wave 287, Saltwind's close view: "a grey seam strip along its front edge") the scenery lane's walls
+        // keep off the boulders, their aprons, the roads and the objective discs (fieldWorks.ts), so on many lines no wall
+        // stands over this footing, and its unbroken band (a quarter strength at its weakest) read as a seam. It is the
+        // clearance stones a karst field's edge carries with or without its wall: rubble in clumps with gaps between
+        // them (about half the line bare, over decimetres and metres), the field's clasts' cream-grey, and the foot's
+        // shade only where the stones lie
+        float rubble = smoothstep(0.46, 0.66, n1h) * (0.45 + 0.55 * smoothstep(0.30, 0.70, n1));
+        float wall = (1.0 - smoothstep(0.30, 0.55, edgeM + (n1h - 0.5) * 0.25)) * (1.0 - track) * rubble;
+        vec3 stone = vec3(0.215, 0.205, 0.182) * (0.72 + 0.36 * fract(n1h * 7.3)) * (1.0 - 0.30 * smoothstep(0.55, 0.80, n1));
+        a.rgb = mix(a.rgb, stone, wall * landW * 0.85);
+        a.rgb *= 1.0 - 0.18 * (smoothstep(0.55, 0.75, edgeM) * (1.0 - smoothstep(0.85, 1.35, edgeM))) * rubble * landW;
       }
       if (track > 0.01 && uLandTier > 0.5) {
         if (bnd > 0.5 && bnd < 1.5) {
@@ -5302,14 +5779,19 @@ void splatCompute() {
           // catches the sun. A sun at the horizon or below shades no wall.
           float sA = dot(uSunDirW.xz, vW);
           float sunW = smoothstep(0.02, 0.15, uSunDirW.y);
-          float wallT = smoothstep(0.45, 0.65, aq) * (1.0 - smoothstep(0.92, 1.08, aq));
+          // (2026-10-08, waves 285–286a: "two hard black lines run edge to edge", "the wheel ruts are two hard black crack
+          // lines rather than soft muddy tracks") the wall turned from the sun was darkened twice — by its relief normal
+          // (below: a ~19° tilt off the sun) and by 0.45 of its colour here — over a band of 0.2 half-widths, so it drew an
+          // ink line one or two pixels wide. The relief now carries the wall's own shade over a wider wall (0.40–1.05 of
+          // a half-width), its colour a quarter darker at most, and the floor's shadow has a soft penumbra.
+          float wallT = smoothstep(0.35, 0.70, aq) * (1.0 - smoothstep(0.90, 1.15, aq));
           float faceSun = -sign(qx) * sA;
-          float wallDark = wallT * smoothstep(0.0, 0.5, -faceSun) * 0.45; // (wave 88: "only a hairline edge" at 0.30)
+          float wallDark = wallT * smoothstep(0.0, 0.5, -faceSun) * 0.22;
           float wallLit = wallT * smoothstep(0.0, 0.5, faceSun) * 0.08;
           float sLq = 0.10 * abs(sA) / max(uSunDirW.y, 0.08) / lw;
-          float sh = (sA > 0.0 ? smoothstep(1.0 - sLq - 0.30, 1.0 - sLq + 0.10, qx) : 1.0 - smoothstep(-1.0 + sLq - 0.10, -1.0 + sLq + 0.30, qx))
-            * (1.0 - smoothstep(0.85, 1.05, aq));
-          float shade = mix(min(0.25 * sLq, 0.32), max(sh * 0.34, wallDark), wallVis) * brk * sunW; // unresolved: its mean
+          float sh = (sA > 0.0 ? smoothstep(1.0 - sLq - 0.40, 1.0 - sLq + 0.25, qx) : 1.0 - smoothstep(-1.0 + sLq - 0.25, -1.0 + sLq + 0.40, qx))
+            * (1.0 - smoothstep(0.85, 1.10, aq));
+          float shade = mix(min(0.22 * sLq, 0.26), max(sh * 0.28, wallDark), wallVis) * brk * sunW; // unresolved: its mean
           vec3 laneCol = mix(trodden * 0.86, damp, floorM * wetF) * (1.0 - shade) * (1.0 + wallLit * wallVis * brk * sunW);
           float laneW = bandT * landW * laneM * use;
           // the band: the trodden soil on the lanes' verges (the crown between them keeps its grass), then the lanes;
@@ -5320,11 +5802,12 @@ void splatCompute() {
           a.a = mix(a.a, a.a * mix(0.86, 0.70, floorM), laneW);
           gLaneSheen = laneW * floorM; // (wave 86: "no compacted sheen") the pressed floor's faint satin, in the roughness stage
           if (nrmOn && bandT * landW > 0.01 && wallVis > 0.001) {
-            // the cross-section's slope along vW (m per m): the walls rise 8 cm over half a half-width, the berm 2 cm — a
-            // breath of it in the relief (the walls' light is the sun's own, above), broken with the walls
-            float tw = clamp((aq - 0.5) * 2.0, 0.0, 1.0);
+            // the cross-section's slope along vW (m per m): the walls rise 8 cm over 0.65 of a half-width (2026-10-08: was
+            // half a half-width — a steeper, narrower wall that drew as a line), the berm 2 cm — a breath of it in the
+            // relief (the walls' light is the sun's own, above), broken with the walls
+            float tw = clamp((aq - 0.40) / 0.65, 0.0, 1.0);
             float tb1 = clamp((qx - 0.95) * 5.0, 0.0, 1.0), tb2 = clamp((qx - 1.35) * 2.5, 0.0, 1.0);
-            float hx = (sign(qx) * 0.08 * 12.0 * tw * (1.0 - tw) + 0.02 * (30.0 * tb1 * (1.0 - tb1) - 15.0 * tb2 * (1.0 - tb2))) / lw;
+            float hx = (sign(qx) * 0.08 * 9.23 * tw * (1.0 - tw) + 0.02 * (30.0 * tb1 * (1.0 - tb1) - 15.0 * tb2 * (1.0 - tb2))) / lw;
             n.xy = mix(n.xy, vec2(0.5), 0.6 * laneW) - vW * (0.32 * hx * wallVis * bandT * landW * use * brk);
           }
         }
@@ -5544,6 +6027,26 @@ void splatCompute() {
     n.xyz += dnR * rockRelW; // relief pass 2: 0.24 -> 0.6 (1049e4e ran 0.9), craggy rock at range
     }
   }
+  // The Redrock lane, round 10 (uJebelFace.y): the jebel faces' beds, cross-bedding, joints, column facets and honeycomb in
+  // the normal and the albedo (jebelFaceV2) — on the walls and the domes alike, to ~600 m
+  if (uJebelFace.y > 0.0 && steepW > 0.0) {
+    float jw = steepW * fR * (1.0 - gSnowRock) * (1.0 - smoothstep(380.0, 640.0, camDist));
+    gJebelMatte = steepW * fR * (1.0 - gSnowRock);
+    if (jw > 0.002) {
+      // (its own slow phase field, not the crag's read: a cliff's joints and its buttresses wander independently)
+      float fpx = nz(gWallUVx, 0.0031, vec2(0.29, 0.83)).r, fpz = nz(gWallUVz, 0.0031, vec2(0.29, 0.83)).r;
+      float nearJ = 1.0 - smoothstep(30.0, 80.0, camDist);
+      // (round 11: the honeycomb low on the walls and the domes' feet, where the salts work — not over whole domes)
+      float tafJ = uJebelFace.z * (1.0 - smoothstep(40.0, 85.0, camDist)) * (1.0 - smoothstep(9.0, 17.0, wp.y));
+      float yJ = wp.y - gBedWob;
+      vec3 jx = vec3(0.0, 0.0, 1.0), jz = vec3(0.0, 0.0, 1.0);
+      if (gWallW < 0.997) jx = jebelFaceV2(gWallUVx.x, yJ, fpx, nearJ, tafJ, gFootM);
+      if (gWallW > 0.003) jz = jebelFaceV2(gWallUVz.x, yJ, fpz, nearJ, tafJ, gFootM);
+      n.xyz += vec3(-gWallSigns.y * jz.x * gWallW, gWallSigns.x * jx.x * (1.0 - gWallW), mix(jx.y, jz.y, gWallW))
+        * jw * uJebelFace.y * 0.5;
+      a.rgb *= mix(1.0, mix(jx.z, jz.z, gWallW), jw);
+    }
+  }
   // horizontal strata banding on steep faces (mesa cliff walls), world-Y driven
   // r4 terrain_environment: band start 0.24 -> 0.36 slope (~31 deg -> ~40 deg)
   // — moderate DUNE flanks fell inside the old band and carried the sin-bed
@@ -5571,7 +6074,8 @@ void splatCompute() {
       // nearly massive rock.
       float bedF = 0.76 + gCliffJ * 0.60;
       // (ground lane: the beds weather away on the sheerest faces — the clefts and the joints' walls run massive)
-      float bedAmp = uStrata * steep * (0.65 + gCliffJ * 0.7) * (1.0 - 0.6 * smoothstep(0.80, 0.97, slope));
+      float bedAmp = uStrata * steep * (0.65 + gCliffJ * 0.7) * (1.0 - 0.6 * smoothstep(0.80, 0.97, slope))
+        * (1.0 - 0.72 * uJebelFace.x); // (round 9: a jebel face's bedding is its relief, the paint under a third)
       // (2026-10-06, Titan's zigzag strata: bedF multiplied the absolute height as the wall basis's stretch did — the beds
       // tilted by y · ∇bedF, ~0.85 at 250 m) the per-cliff frequency as a bed-set stretch on the same 48 m band of the height,
       // the beds' phases at the mean frequency: a cliff's sets still thicken and thin by its own ±28 %, the shear bounded
@@ -5598,16 +6102,33 @@ void splatCompute() {
       pale = smoothstep(0.55, 0.90, bedB) * (1.0 - rust);
       float parting = smoothstep(0.84, 0.97, -bedA) * (1.0 - smoothstep(300.0, 700.0, effDist));
       a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.68, 0.62), rust * min(bedAmp * 2.6, 0.7));
-      a.rgb = mix(a.rgb, a.rgb * vec3(1.16, 1.12, 1.04), pale * steep * 0.40);
+      a.rgb = mix(a.rgb, a.rgb * vec3(1.16, 1.12, 1.04), pale * steep * 0.40 * (1.0 - 0.72 * uJebelFace.x));
       a.rgb *= 1.0 - parting * min(bedAmp * 1.6, 0.35);
     }
     // ground lane: two formations — under the boundary (wandering with the beds and its own ±m) the paler, harder
     // sandstone, above it the redder; the step is one bed thick, and it reads on the rock wherever the rock shows
     if (uFormation.x > -1e8 && max(fR, steep) > 0.0) {
-      float fy = bedY - uFormation.x + (nz(wp.xz, 0.0071, vec2(0.83, 0.41)).g - 0.5) * 2.0 * uFormation.y;
-      float upper = smoothstep(-1.2, 1.2, fy);
-      vec3 formCol = mix(a.rgb * vec3(1.0 + uFormation.z, 1.0 + uFormation.z * 0.9, 1.0 + uFormation.z * 0.75),
-                         a.rgb * vec3(1.0 + uFormation.w * 0.4, 1.0 - uFormation.w * 0.35, 1.0 - uFormation.w * 0.55), upper);
+      float fy = bedY - uFormation.x + (nz(wp.xz, 0.0071, vec2(0.83, 0.41)).g - 0.5) * 2.0 * uFormation.y
+        + (nz(wp.xz, 0.031, vec2(0.17, 0.53)).g - 0.5) * 0.7 * uFormation.y;
+      float upper = smoothstep(-uFormation.z, uFormation.z, fy);
+      // (round 11, the gauntlet's wave 282: "one hard, smeared horizontal band running straight across every wall segment
+      // at the same height" — the contact ragged at a 140 m and a 32 m wander, and on the walls the pale formation's wash
+      // hanging below it in drips, a metre or two wide and 3-14 m long, down the fall line)
+      if (steep > 0.0 && fy < 0.0 && fy > -16.0) {
+        float lodP = max(0.0, gNoiseLog + log2(0.09));
+        float drip = mix(textureLod(uNoise, gWallUVx * vec2(0.09, 0.0) + vec2(0.41, 0.77), lodP).r,
+                         textureLod(uNoise, gWallUVz * vec2(0.09, 0.0) + vec2(0.41, 0.77), lodP).r, gWallW);
+        float dlen = 3.0 + 11.0 * mix(textureLod(uNoise, gWallUVx * vec2(0.023, 0.0) + vec2(0.63, 0.12), lodP).g,
+                                      textureLod(uNoise, gWallUVz * vec2(0.023, 0.0) + vec2(0.63, 0.12), lodP).g, gWallW);
+        upper = max(upper, smoothstep(0.62, 0.84, drip) * (1.0 - smoothstep(0.3 * dlen, dlen, -fy)) * steep * 0.85);
+      }
+      // (the Redrock lane, 2026-10-07: each formation is a colour on the rock's own luminance — a pale sandstone a buff or
+      // cream, not a lighter red; Redrock, the one map with a formation, sets both)
+      // (round 10, the gauntlet's wave on Redrock: the tiers' ledges, sunlit over a shadowed face, took the pale tint on
+      // their bright planar sample to near white — the luminance the tint reads is capped at a red sandstone's)
+      float formL = min(dot(a.rgb, vec3(0.30, 0.59, 0.11)), 0.2);
+      vec3 formCol = mix(mix(a.rgb, formL * uFormationLow.rgb, uFormationLow.w),
+                         mix(a.rgb, formL * uFormationUp.rgb, uFormationUp.w), upper);
       a.rgb = mix(a.rgb, formCol, max(fR, steep));
     }
     if (steep > 0.0) {
@@ -5622,13 +6143,33 @@ void splatCompute() {
         float block = mix(textureLod(uNoise, floor(gWallUVx / vec2(9.0, 5.0) + gCliffJ * 3.0) * vec2(0.373, 0.617) + vec2(0.31, 0.77), 0.0).r,
                           textureLod(uNoise, floor(gWallUVz / vec2(9.0, 5.0) + gCliffJ * 3.0) * vec2(0.373, 0.617) + vec2(0.31, 0.77), 0.0).r, gWallW);
         block = clamp((block - 0.5) * 2.4, -0.5, 0.5);
-        a.rgb *= 1.0 + block * 0.26 * jointAmp;
+        a.rgb *= 1.0 + block * uWallWeather.x * jointAmp;
         // varnish: along-wall noise stretched ~17:1 down the face, darkest under the pale caprock beds
         float lodS = max(0.0, gNoiseLog + log2(0.010));
         float streak = mix(textureLod(uNoise, gWallUVx * vec2(0.010, 0.0006) + vec2(0.61, 0.29), lodS).g,
                            textureLod(uNoise, gWallUVz * vec2(0.010, 0.0006) + vec2(0.61, 0.29), lodS).g, gWallW);
         streak = smoothstep(0.50, 0.80, streak) * (0.5 + 0.5 * pale);
-        a.rgb = mix(a.rgb, a.rgb * vec3(0.66, 0.64, 0.66), streak * 0.50 * jointAmp);
+        a.rgb = mix(a.rgb, a.rgb * vec3(0.66, 0.64, 0.66), streak * uWallWeather.y * jointAmp);
+      }
+      // The Redrock lane, round 10 (uJebelFace.w; the gauntlet's wave 270: "desert-varnish streaks running down from the
+      // rim, dark and patchy"): the run-off from the pale Disi over the red cliffs — streaks of every width (narrow
+      // 0.4-1.5 m, broad 2-8 m), each starting at the formation's contact and running 8-60 m down its own length, dark
+      // brown-black, patchy along it; under the contact only (the Disi above stays pale)
+      if (uJebelFace.w > 0.0) {
+        float lodV1 = max(0.0, gNoiseLog + log2(0.040)), lodV2 = max(0.0, gNoiseLog + log2(0.011));
+        float v1 = mix(textureLod(uNoise, gWallUVx * vec2(0.040, 0.0016) + vec2(0.17, 0.41), lodV1).r,
+                       textureLod(uNoise, gWallUVz * vec2(0.040, 0.0016) + vec2(0.17, 0.41), lodV1).r, gWallW);
+        float v2 = mix(textureLod(uNoise, gWallUVx * vec2(0.011, 0.00055) + vec2(0.53, 0.07), lodV2).g,
+                       textureLod(uNoise, gWallUVz * vec2(0.011, 0.00055) + vec2(0.53, 0.07), lodV2).g, gWallW);
+        float vl = mix(textureLod(uNoise, gWallUVx * vec2(0.021, 0.0) + vec2(0.71, 0.23), lodV2).b,
+                       textureLod(uNoise, gWallUVz * vec2(0.021, 0.0) + vec2(0.71, 0.23), lodV2).b, gWallW);
+        float below = (uFormation.x > -1e8 ? uFormation.x : 60.0) - bedY;
+        float len = 8.0 + 52.0 * vl;
+        float run = smoothstep(-1.5, 2.0, below) * (1.0 - smoothstep(len * 0.55, len, below));
+        float varn = max(smoothstep(0.54, 0.80, v1) * 0.8, smoothstep(0.48, 0.74, v2)) * run;
+        a.rgb = mix(a.rgb, a.rgb * vec3(0.42, 0.37, 0.36), varn * uJebelFace.w * steep * 0.85);
+        float wash = (1.0 - smoothstep(0.10, 0.24, v2)) * (1.0 - varn) * smoothstep(0.0, 6.0, below);
+        a.rgb = mix(a.rgb, a.rgb * vec3(1.10, 1.06, 1.02), wash * uJebelFace.w * steep * 0.25);
       }
       // r8 per-cliff color drift: warm iron-stained faces vs paler washed faces
       // r4: 0.5 -> 0.30 and flush 0.22 -> 0.12 — the stacked warm shifts were
@@ -5681,6 +6222,7 @@ void splatCompute() {
         // (skies lane, 2026-10-06: a snow map's exposed rock keeps its beds at full strength — the snow ledges above lie on
         // these shelves, the seams between them stay dark rock)
         if (uReduxD.y > 1.5) ledgeAmp = wallFar;
+        ledgeAmp *= 1.0 - 0.75 * uJebelFace.x; // (round 9: the jebel faces' far ladder too)
         a.rgb *= 1.0 + (smoothstep(0.35, 0.9, ledge) * 0.10 - smoothstep(0.35, 0.9, -ledge) * 0.16) * ledgeAmp;
       }
       vec3 rn = vec3(texture2D(uNrmR, uv * 0.019).xy * 2.0 - 1.0, 0.0);
@@ -5714,7 +6256,7 @@ void splatCompute() {
     vec2 wind0 = uRipple.xy;
     float rMod = 0.55 + 0.9 * nz(uv, 0.0064, vec2(0.83, 0.41)).g;
     float sinuosity = nz(uv, 0.019, vec2(0.0)).r * 1.6;
-    float rw = uRipple.z * (1.0 - fR) * (1.0 - triW * 0.9) * (1.0 - fMs) * sandCoverage;
+    float rw = uRippleNear * (1.0 - fR) * (1.0 - triW * 0.9) * (1.0 - fMs) * sandCoverage;
     // (wave 11, Sunscar Oasis: the ring's mesas striped by the floor's ripple trains) a gate-less sand map keeps its trains
     // and bedforms on the battlefield: past the edge its ring is a backdrop of mesas and dunes at 0.5–3 km
     float ringNoTrains = uRockGate < 0.5 && uRipple.w < 0.5 ? 1.0 - outsideW : 1.0;
@@ -5848,9 +6390,20 @@ void splatCompute() {
     // ground lane (farmland): on turned earth the clods are a near read — a little stronger beside the tank, gone by
     // 32 m, where at a grazing view the tile smeared into the establishing frames' "brush-stroke smear"
     float dnW = mix(openNear, (1.0 - smoothstep(12.0, 32.0, camDist)) * 1.45 * (1.0 - roadCore), gSoilW);
-    n.xy += dn.xy * 0.85 * dnW * (1.0 - fMs); // relief pass 2 (2026-09-12): the full 1049e4e clod relief
+    // The Redrock lane, round 9 (the gauntlet's wave 261 at cistern-west: "a blurry, vertically smeared texture ...
+    // brushed plastic"): this pass's planar projection runs down a wall as vertical streaks; on a jebel face it stands
+    // down by the face's steepness, and the rock tile and the grain, projected in the wall's own plane, carry the near
+    // relief instead (uJebelFace; absent, wallNear is 0 and the pass is unchanged)
+    float wallNear = steepW * uJebelFace.x;
+    n.xy += dn.xy * 0.85 * dnW * (1.0 - fMs) * (1.0 - wallNear); // relief pass 2 (2026-09-12): the full 1049e4e clod relief
     float micro = texture2D(uNoise, uv * 0.171).r;
-    a.rgb *= 1.0 + (micro - 0.5) * 0.40 * openNear * uMicroAmp * (1.0 - fMs);
+    a.rgb *= 1.0 + (micro - 0.5) * 0.40 * openNear * uMicroAmp * (1.0 - fMs) * (1.0 - wallNear);
+    if (wallNear > 0.002) {
+      vec3 dw = wallNrm(uNrmR, 0.62, df, mipB).xyz * 2.0 - 1.0;
+      n.xyz += dw * 0.6 * openNear * wallNear;
+      float wm = wallNoiseG(0.171, vec2(0.21, 0.49)), wm2 = wallNoiseG(0.43, vec2(0.67, 0.13));
+      a.rgb *= 1.0 + ((wm - 0.5) * 0.30 + (wm2 - 0.5) * 0.18) * openNear * wallNear;
+    }
     // Compacted gravel grain on the carriageway: a CLAMPED zero-mean luminance
     // high-pass of the rock tile, so grit resolves under the hull while the
     // tile's dark cavities cannot return as repeated black marks.
@@ -5872,7 +6425,7 @@ void splatCompute() {
       // Detail belongs to the remaining base layer. Reapplying turf after
       // the dirt/rock blend made worked yards inherit the meadow's grain.
       // The same coverage also keeps base snow/sand off exposed soil/rock.
-      float nearG = openNear2 * meadowG * (1.0 - fR) * (1.0 - max(gSoilW, 0.6 * gCropW)); // ground lane: no blades on a turned field
+      float nearG = openNear2 * meadowG * (1.0 - fR) * (1.0 - max(gSoilW, 0.6 * gCropReliefW)); // ground lane: no blades on a turned field
       n.xy += dn2.xy * 0.75 * nearG; // relief pass 2 (2026-09-12): the full 1049e4e blade/clod relief
       // zero-mean albedo octave: deep-mip sample = local tile mean, so the
       // modulation is exposure-neutral on every map palette (sand vs turf)
@@ -5886,7 +6439,7 @@ void splatCompute() {
   // ~1.1 m carries the 26–150 m band (open ground, off the carriageway), fading out before the far band's own relief.
   {
     float dMidN = smoothstep(20.0, 40.0, camDist) * (1.0 - smoothstep(110.0, 190.0, camDist)) * uReduxA.y; // round 73b: 26–150 → 20–190 m
-    dMidN *= 1.0 - max(0.85 * gCropW, gSoilW); // ground lane: the tussock octave is the sward's (none on turned earth)
+    dMidN *= 1.0 - max(0.85 * gCropReliefW, gSoilW); // ground lane: the tussock octave is the sward's (none on turned earth)
     dMidN *= tileVis(1.075); // ground lane: its 1.08 m tile, seen from a raised camera, was the gauntlet's moiré
     if (dMidN > 0.003) {
       vec3 dnM = texture2D(uNrmG, uv * 0.93).xyz * 2.0 - 1.0;
@@ -5906,7 +6459,7 @@ void splatCompute() {
     // dark wheel ruts, damp borders. uRoadTex (0..1) cross-fades to PAVED
     // town streets: the rock layer (cobble/sett) laid across the full
     // carriageway at every distance, ruts nearly gone.
-    float dW = roadCore * 0.9 * (1.0 - gRoadTex);
+    float dW = max(roadCore, apronK) * 0.9 * (1.0 - gRoadTex); // (a pad is the carriageway's packed ground too)
     // Build the compacted core from a deliberately low-frequency dirt
     // sample. Keeping only a quarter of the underlying terrain preserves
     // local variation without baking the source texture's AO/cavity blobs
@@ -5926,10 +6479,23 @@ void splatCompute() {
       // wheel tracks and spattered between them
       if (uReduxD.y > 1.5) {
         vec3 packedSnow = uMeanG.rgb * vec3(0.84, 0.85, 0.87) * (0.94 + 0.12 * n1h);
-        float slush = clamp(lane * rutAmp * 1.25 + crown * 0.10 + (roadBite.y + 0.5) * 0.18, 0.0, 1.0);
+        float slush = clamp(lane * rutAmp * 1.25 + padRut * 1.10 + crown * 0.10 + (roadBite.y + 0.5) * 0.18, 0.0, 1.0);
         roadCol = mix(packedSnow, roadCol * 1.05, slush);
       }
       a.rgb = mix(a.rgb, roadCol, dW);
+      // (the Redrock lane, round 10, splat.roadRuts: the wheel lanes darker where they are worn deep, and gravel strewn on
+      // the crown between them near the camera — the carriageway's own stones, not a smooth smear)
+      if (uRoadRuts.y + uRoadRuts.z > 0.0) {
+        a.rgb *= 1.0 - uRoadRuts.y * lane * rutAmp * dW;
+        float grit = nz(uv, 2.3, vec2(0.71, 0.13)).r;
+        float gritW = uRoadRuts.z * dW * (1.0 - 0.7 * lane) * (1.0 - smoothstep(25.0, 70.0, camDist)) * tileVis(0.43);
+        a.rgb *= 1.0 - 0.30 * smoothstep(0.66, 0.88, grit) * gritW + 0.14 * (1.0 - smoothstep(0.04, 0.22, grit)) * gritW;
+      }
+      // (a pad's vehicle ruts darken its packed ground here: a road's own wheel lanes give way to their trodden middle
+      // past a 0.08 m footprint, which a pad seen low across its 30-60 m loses at once)
+      a.rgb *= 1.0 - padRut * 0.36;
+      // (and the ground the tracks churned: darker, damper patches along them)
+      a.rgb *= 1.0 - 0.14 * apronK * smoothstep(0.50, 0.80, nzq(uv, 0.12, vec2(0.37, 0.61)).x) * (1.0 - gRoadTex);
       // The sourced dirt normal contains deep clod/pothole forms intended for
       // open ground. Repeating it at full strength down a road produced the
       // alternating chain of black ovals visible in Verdant. Use a strongly
@@ -6132,6 +6698,8 @@ void splatCompute() {
       a.rgb = mix(a.rgb, gravE.rgb * vec3(1.02, 0.97, 0.88), gravSpill * 0.5);
     }
   }
+  // (a pad's ruts: two grooves across each line, their walls turned to the light)
+  if (nrmOn && padRut > 0.003) n.xy -= padRutN * 0.35;
   // wheel-lane relief and tyre streaks from the distance field: its gradient
   // is the across-road direction and the lane profile's analytic slope shapes
   // two smooth grooves, so a straight road carries no per-texel bumps.
@@ -6142,7 +6710,7 @@ void splatCompute() {
     gradD.y = maskAt(mUV - vec2(0.0, texel)).g - maskAt(mUV + vec2(0.0, texel)).g;
     gradD *= 6.0; // byte ramp over a 2 m baseline -> metres per metre, ~unit across the road
     float laneSlope = -2.0 * laneD * uLaneK * lane;
-    n.xy += gradD * laneSlope * 0.14 * roadCore * rutAmp * (1.0 - df * 0.72);
+    n.xy += gradD * laneSlope * 0.14 * roadCore * rutAmp * (1.0 - df * 0.72) * uRoadRuts.x;
     vec2 along = vec2(-gradD.y, gradD.x);
     float streak = texture2D(uNoise, vec2(dot(uv, along) * 0.31, dot(uv, gradD) * 2.7)).r;
     a.rgb *= 1.0 + (streak - 0.5) * 0.16 * max(lane, 0.35 * crown) * roadCore * (1.0 - df);
@@ -6399,7 +6967,7 @@ void splatCompute() {
     }
     // coarse turf relief at range (all maps): the far band keeps macro
     // normal structure where the per-texel detail normals have faded out
-    float farG = farM * (1.0 - fR) * meadowG * (1.0 - roadCore) * (1.0 - max(0.85 * gCropW, gSoilW)); // ground lane: nor the coarse turf
+    float farG = farM * (1.0 - fR) * meadowG * (1.0 - roadCore) * (1.0 - max(0.85 * gCropReliefW, gSoilW)); // ground lane: nor the coarse turf
     if (farG > 0.003) {
       // Coarse turf is low relief, not another giant clod normal. Albedo
       // retains the source detail while the actual hills own broad shading.
@@ -6528,6 +7096,8 @@ void splatCompute() {
   gSplatRough = mix(gSplatRough, 0.92, gStrandFoam); // round 73b: the foam line is matte
   gSplatRough = mix(gSplatRough, 0.62, gScour * 0.55); // round 73b: the wind-scoured crust takes a satin sheen
   gSplatRough = mix(gSplatRough, 0.74, gLaneSheen * 0.6); // ground lane (wave 86): a track lane's pressed floor, a faint satin
+  // ground lane (2026-10-08): a cinder yard's oil, a satin (never a mirror), off the roads and the hardstands laid over it
+  gSplatRough = mix(gSplatRough, 0.58, gYardOil * 0.8 * (1.0 - fR) * (1.0 - fMs) * (1.0 - roadCore));
   gSplatRough = mix(gSplatRough, gSplatRough * 0.93, hollow * uReduxFold.x * (1.0 - fMs));
   gSplatRough = mix(gSplatRough, 1.0, gCinderW); // ground lane (wave 62): the cinder's glitter was a sheen on black — none
   // (and the "white specular glints" on the cone's lower third were the detail normals' sun-facing facets lit full on a
@@ -6593,8 +7163,13 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
   // sun goes now — the perturbation's component along the sun's heading, where it is positive — so no grain catches the
   // sun its slope is turned from, while every other tilt still shades the sky's and the bounce's light
   vec3 pN = vec3(dN.x, dN.z, dN.y) * dk; // the detail perturbation in world axes (horizontal: the third channel is unused)
-  if (uReduxFold.w > 0.001) {
-    float avert = (1.0 - smoothstep(-0.06, 0.32, dot(gN, uSunDirW))) * uReduxFold.w;
+  // (the Redrock lane, round 11b, the gauntlet's wave 298b: "bright white jagged flecks" on the backlit jebel faces —
+  // the joints' and honeycomb's detail facets tilted to a sun the face is turned from: a jebel face takes the same law)
+  // (round 11f, wave 324: "white spikes and flecks along the wall toes" — the sand aprons' ripple crests and grains on
+  // the toes' shaded slopes, lit full; on Redrock (uJebelFace.x) every surface turned from the sun takes it)
+  float avertW = max(max(uReduxFold.w, gJebelMatte), uJebelFace.x);
+  if (avertW > 0.001) {
+    float avert = (1.0 - smoothstep(-0.06, 0.32, dot(gN, uSunDirW))) * avertW;
     vec2 sH = uSunDirW.xz / max(length(uSunDirW.xz), 1e-4);
     pN.xz -= sH * max(dot(pN.xz, sH), 0.0) * avert;
   }
@@ -6669,6 +7244,9 @@ function* createSplatMaterialSteps(
   const snowHold = snowRockHoldLine(S);
   // ground lane: the two-formation bedrock's boundary — the build sets it from the field's height span (S.formation)
   const formationUniform = { value: new THREE.Vector4(-1e9, 0, 0, 0) };
+  // the Redrock lane: the formations' own tints (set by the build with the boundary; inert while uFormation.x is off)
+  const formationLowUniform = { value: new THREE.Vector4(1.40, 1.14, 0.82, 0.32) };
+  const formationUpUniform = { value: new THREE.Vector4(1.50, 0.92, 0.66, 0.18) };
   const ringCapUniform = { value: new THREE.Vector2(1e9, 1e9 + 1) }; // ground lane (wave 65): off until the build sets it
   const rockMask = selectTerrainLandformMask(S, landformW);
   // r6 terrain_environment: the mesa/rim landform weight rides the MASK's
@@ -6765,12 +7343,18 @@ function* createSplatMaterialSteps(
   // strength on a map without a row)
   const landUseProfile = resolveLandUseProfile(mapId);
   const landUse = landUseUniformValues(landUseProfile);
+  // ground lane (2026-10-08): the village floored in cinder (groundRedux.ts cinderYard: Cinder Junction's yard)
+  let yardCinder = Math.min(1, Math.max(0, groundProfile.cinderYard ?? 0));
+  // ground lane (2026-10-08, wave 274): the thatch under a thick sward (groundRedux.ts thatch)
+  let thatchV = Math.min(1, Math.max(0, groundProfile.thatch ?? 0));
   // `?ground=legacy`: every redux term at zero on the same build — the round's before / after captures A/B against it
   if (typeof location !== 'undefined' && /[?&]ground=legacy(&|$)/.test(location.search ?? '')) {
+    thatchV = 0;
     redux.reduxA.fill(0); redux.reduxFold.fill(0); redux.reduxSwash.fill(0); redux.reduxSnow.fill(0);
     redux.reduxB.fill(0); redux.reduxC.fill(0); // round 73b
     redux.reduxD.fill(0); // terrain v2
     landUse.landA[0] = 0; // ground lane: no fields
+    yardCinder = 0;
   }
   // ground lane (2026-10-03, the GPU fix): the land use baked once from its CPU twin at the interior mask's texel scale
   // (landUse.ts bakeLandUseSteps), stacked under the ground mask below (stackLandUseBake) — 64 rows a build step
@@ -6850,12 +7434,20 @@ function* createSplatMaterialSteps(
     shader.uniforms.uMicroAmp = { value: S.microAmp ?? 1 };
     shader.uniforms.uRoadPuddle = { value: S.roadPuddles ?? 1 }; // ground lane: the ruts' puddles and their mud (1 = every vegetated map's today)
     shader.uniforms.uStrata = { value: S.strata ?? 0 };
+    // the Redrock lane: a sheer wall's weathering under a grazing sun (splat.wallWeather; absent = today's 0.26, 0.50)
+    shader.uniforms.uWallWeather = { value: new THREE.Vector2(...(S.wallWeather ?? [0.26, 0.50])) };
+    // the Redrock lane, round 9: Wadi Rum's jebel faces (splat.jebelFace; absent = off)
+    shader.uniforms.uJebelFace = { value: S.jebelFace ? new THREE.Vector4(1, ...S.jebelFace) : new THREE.Vector4(0, 0, 0, 0) };
     shader.uniforms.uFormation = formationUniform; // ground lane: set by the build from the field's height span
+    shader.uniforms.uFormationLow = formationLowUniform; // the Redrock lane
+    shader.uniforms.uFormationUp = formationUpUniform;
     shader.uniforms.uRoadTex = { value: S.pavedRoads ? 1 : clamp(S.roadTexMix ?? 0, 0, 1) };
     const town = layout.village; // map revival lane 2: the paved town rect (townPaving), off unless the map authors it
     shader.uniforms.uTownPave = { value: S.townPaving ? new THREE.Vector4((town.x0 + town.x1) / 2, (town.z0 + town.z1) / 2,
       (town.x1 - town.x0) / 2, (town.z1 - town.z0) / 2) : new THREE.Vector4(0, 0, 0, 0) };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
+    shader.uniforms.uYardCinder = { value: yardCinder };
+    shader.uniforms.uThatch = { value: thatchV };
     shader.uniforms.uWornDirtStrength = { value: clamp(S.wornDirtStrength ?? 0.84, 0, 1) };
     shader.uniforms.uShoulderDirt = { value: clamp(S.shoulderDirt ?? 1, 0, 1) };
     shader.uniforms.uLaneK = { value: roadLaneSharpness(mask.image.width) }; // road pass 2026-09-12
@@ -6927,6 +7519,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uSlopeGrassHold = { value: S.slopeGrassHold ?? 0 }; // round 45
     shader.uniforms.uRingRock = { value: new THREE.Vector2(...(S.ringRockSlope ?? [0.22, 0.48])) }; // round 49
     shader.uniforms.uRingCap = ringCapUniform; // ground lane (wave 65): set by the build from the field's highest ground
+    shader.uniforms.uCaprockY = { value: new THREE.Vector2(...(S.caprockY ?? [1e9, 1e9 + 1])) }; // the Redrock lane
     // round 55: the bedded sandstone R (no sourced R in the map's plan) carries the noise wall crag, not the tile's beds
     shader.uniforms.uBeddedR = { value: S.sandstone && !sourcedTerrainLayerPlanned(mapId, S, 'R') ? 1 : 0 };
     shader.uniforms.uPavedRock = { value: sourcedTerrainLayerSet(mapId, S, 'R') === 'cobble' ? 1 : 0 }; // the map-borders lane
@@ -6950,14 +7543,26 @@ function* createSplatMaterialSteps(
     // r6: landform rock gate — 1 = rock/strata keyed to the mask-B landform
     // weight (desert), 0 = slope-only legacy behavior (B stays marsh/ice)
     shader.uniforms.uRockGate = { value: rockMask ? 1 : 0 };
+    // the map-revival lane (2026-10-05): the terrace zones' rects and riser band (T2; count 0 without terraces)
+    const terraceUniforms = terrainTerraceUniforms(layout.terrain.terraces);
+    shader.uniforms.uTerraceRect = terraceUniforms.uTerraceRect;
+    shader.uniforms.uTerraceParam = terraceUniforms.uTerraceParam;
     const rd = S.rippleDir || [0.8, 0.6];
     const rl = Math.hypot(rd[0], rd[1]) || 1;
     shader.uniforms.uRipple = {
       // terrain v2: the wind's share of the authored ripples (groundRedux windRipple: 0 on an airless map)
       value: new THREE.Vector4(rd[0] / rl, rd[1] / rl, (S.rippleAmp ?? 0) * Math.max(0, groundProfile.windRipple ?? 1), S.rippleShoreOnly ? 1 : 0),
     };
+    // the Redrock lane, round 10: the near trains' own strength (rippleAmp's on every map that sets none) and the roads' ruts
+    shader.uniforms.uRippleNear = { value: (S.rippleNear ?? S.rippleAmp ?? 0) * Math.max(0, groundProfile.windRipple ?? 1) };
+    shader.uniforms.uRoadRuts = { value: new THREE.Vector3(...(S.roadRuts ?? [1, 0, 0])) };
     // round 42: the sun the vista ring shades with, and the sky-light weight for steep faces turned from it
     shader.uniforms.uSunDirW = { value: skySunDirection(sky) };
+    // media r5: the first compile's sun uniform is shared by every later program variant (a light-count recompile
+    // included), so Scene Studio can turn the wall sky light with a moved sun and restore it; battles keep the
+    // authored value in it, exactly as each compile computed before
+    if (mat.userData.sunDirUniform) Object.assign(shader.uniforms, { uSunDirW: mat.userData.sunDirUniform });
+    else mat.userData.sunDirUniform = shader.uniforms.uSunDirW;
     // (2026-10-04: the light rig's live gain — round 42's on the legacy rig, none on the grounded rig, groundBounce.ts
     // WALL_SKY_LIFT_LEGACY; a map's own splat.wallSkyLift stays its own on both)
     shader.uniforms.uWallSkyLift = S.wallSkyLift != null ? { value: S.wallSkyLift } : terrainWallSkyLift;
@@ -7020,7 +7625,11 @@ function* createSplatMaterialSteps(
       // own colour; a turned field's clods mask most of that sheen, so its specular light keeps three tenths (wave 88: at
       // half the sky's blue still turned the warm earth maroon) — gSoilW: the plough, the terra rossa, a vineyard's earth,
       // slag and ballast
-      + '\nreflectedLight.directSpecular *= 1.0 - 0.7 * gSoilW; reflectedLight.indirectSpecular *= 1.0 - 0.7 * gSoilW;');
+      + '\nreflectedLight.directSpecular *= 1.0 - 0.7 * gSoilW; reflectedLight.indirectSpecular *= 1.0 - 0.7 * gSoilW;'
+      // the Redrock lane, round 11b (the gauntlet's wave 298b: "white smears down its fins" on the backlit walls): a fin's
+      // side seen edge-on against the sun took the grazing Fresnel sheen of the sun and the bright sky by it, near white
+      // over the red; dry sandstone is matte — a jebel face keeps a tenth of its specular light (gJebelMatte)
+      + '\nreflectedLight.directSpecular *= 1.0 - 0.9 * gJebelMatte; reflectedLight.indirectSpecular *= 1.0 - 0.9 * gJebelMatte;');
     if (seaOpenings.length) shader.fragmentShader = fadeDistantCoastShadows(shader.fragmentShader, 'vWPos');
   };
   // the scenery lane (visual/shadow-bias, 2026-10-04): the ground casts no shadow (its chunks and the horizon ring that
@@ -7032,6 +7641,8 @@ function* createSplatMaterialSteps(
   mat.customProgramCacheKey = () => `world-terrain-splat-v54-${seaOpenings.length ? 'coast' : 'land'}${snowHold ? `-${snowHold.replace(/[^0-9.]+/g, '_')}` : ''}`; // terrain v3 (2026-10-02): v54
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   mat.userData.formationUniform = formationUniform;
+  mat.userData.formationLowUniform = formationLowUniform;
+  mat.userData.formationUpUniform = formationUpUniform;
   mat.userData.ringCapUniform = ringCapUniform;
   mat.userData.groundClock = groundClock; // round 73: advanced with the water sheet's clock (terrainBuildSteps)
   mat.userData.reduxUniforms = reduxUniforms; // round 73: the probes' term isolation (zero a vector, recapture)
@@ -7201,6 +7812,62 @@ function terrainIndexPoolReceipt(pool: TerrainIndexPool): {
   };
 }
 
+/** The Redrock lane, round 11d (the gauntlet's waves 298b and 314: "bright white streaks and smears running down" the
+ * shaded ravine wall, "white flecks along its crest"): a joint's V side or a ledge's tread turned to a sun its wall is turned
+ * from lies in the wall's own shadow — the sun reaches it only through the rock — but the shadow map's texels, metres wide
+ * at a ravine's range, cannot see a 2 m notch, and the vertex normal lit it full: a sunlit sliver down every joint of a
+ * backlit wall, near white at the backlit exposure. Where the wall's 8 m normal (the folds' heights) is turned from the
+ * sun or grazing it, a vertex keeps no more of the sun than its wall: the normal's sun-ward excess over the wall's is
+ * dropped. A sunlit wall's notches, the domes and the floor are untouched; the joints keep their shade from the sky. */
+interface JebelLit { clamp(x: number, z: number, nrm: Float32Array, o: number): void }
+function makeJebelLit(heights: Float32Array, fold: Float32Array, n: number, origin: number, step: number,
+  sun: THREE.Vector3): JebelLit {
+  const gx = new Float32Array(n * n), gz = new Float32Array(n * n);
+  const h = (i: number, j: number) => heights[Math.max(0, Math.min(n - 1, j)) * n + Math.max(0, Math.min(n - 1, i))];
+  for (let j = 0; j < n; j++) {
+    for (let i = 0; i < n; i++) {
+      gx[j * n + i] = (h(i + 1, j) - h(i - 1, j)) / (2 * step);
+      gz[j * n + i] = (h(i, j + 1) - h(i, j - 1)) / (2 * step);
+    }
+  }
+  const lx = sun.x, ly = sun.y, lz = sun.z;
+  const bilerp = (g: Float32Array, i0: number, j0: number, fu: number, fv: number) => {
+    const a = g[j0 * n + i0], b = g[j0 * n + i0 + 1], c = g[(j0 + 1) * n + i0], d = g[(j0 + 1) * n + i0 + 1];
+    return (a + (b - a) * fu) * (1 - fv) + (c + (d - c) * fu) * fv;
+  };
+  return {
+    clamp(x, z, nrm, o) {
+      const fy = nrm[o + 1];
+      const u = (x - origin) / step, v = (z - origin) / step;
+      const i0 = Math.max(0, Math.min(n - 2, Math.floor(u))), j0 = Math.max(0, Math.min(n - 2, Math.floor(v)));
+      const fu = Math.max(0, Math.min(1, u - i0)), fv = Math.max(0, Math.min(1, v - j0));
+      // (round 11e, wave 314's "white flecks along its crest": the notches' floors at a backlit crest, near flat and lit
+      // full) a near-flat facet counts as the wall's on its convex edge — the folds' crest — never at its foot or on a top
+      const fv0 = bilerp(fold, i0, j0, fu, fv);
+      const c = Math.max(0, Math.min(1, (-fv0 - 0.08) / 0.22)), crest = c * c * (3 - 2 * c);
+      // (round 11f, wave 324's "white spikes along the wall toes": a coarse toe triangle spanning floor and wall carried
+      // its floor vertex's up-facing normal, sun-lit through the shadow map's leak at the foot — a pale spike of lit sand
+      // up the wall) the wall's foot, the folds' hollow under it, lies in its shadow too: its vertices take the clamp
+      const k = Math.max(0, Math.min(1, (fv0 - 0.08) / 0.22)), foot = k * k * (3 - 2 * k);
+      if (fy >= 0.92 && crest <= 0 && foot <= 0) return; // the floor, the domes' tops and the benches: untouched
+      const mx = -bilerp(gx, i0, j0, fu, fv), mz = -bilerp(gz, i0, j0, fu, fv);
+      const ml = 1 / Math.sqrt(mx * mx + 1 + mz * mz);
+      // the wall: an 8 m normal steeper than ~30 degrees; turned from the sun or grazing it (its sun cosine under 0.2)
+      const wall = 1 - Math.max(0, Math.min(1, (ml - 0.72) / 0.16));
+      const dM = (mx * lx + ly + mz * lz) * ml;
+      const t = Math.max(0, Math.min(1, (dM + 0.05) / 0.25)), backlit = 1 - t * t * (3 - 2 * t);
+      const fx = nrm[o], fz = nrm[o + 2];
+      const f = Math.min(1, Math.max(0, (fy - 0.8) / 0.12));
+      const steep = Math.max(1 - f * f * (3 - 2 * f), crest, foot); // eased out from ~37 to ~23 degrees, but for the crest's and the foot's
+      const excess = (fx * lx + fy * ly + fz * lz - Math.max(dM, 0)) * wall * backlit * steep;
+      if (excess <= 0) return;
+      const ax = fx - lx * excess, ay = fy - ly * excess, az = fz - lz * excess;
+      const al = 1 / Math.sqrt(ax * ax + ay * ay + az * az);
+      nrm[o] = ax * al; nrm[o + 1] = ay * al; nrm[o + 2] = az * al;
+    },
+  };
+}
+
 function* buildChunkGeometrySteps(
   hf: HeightField,
   cx0: number,
@@ -7212,6 +7879,7 @@ function* buildChunkGeometrySteps(
   rowsPerSlice = 8,
   foldAt: ((x: number, z: number) => number) | null = null,
   shoreAt: ((x: number, z: number) => number) | null = null,
+  jebelLit: JebelLit | null = null,
 ): Generator<TerrainBuildProgress, THREE.BufferGeometry, void> {
   const n = segs + 1, step = CHUNK_SIZE / segs;
   const stride = FINE_SEGS / segs;
@@ -7253,6 +7921,7 @@ function* buildChunkGeometrySteps(
       const nx = (hl - hr) * inv2e, nz = (hd - hu) * inv2e;
       const il = 1 / Math.sqrt(nx * nx + 1 + nz * nz);
       nrm[vi * 3] = nx * il; nrm[vi * 3 + 1] = il; nrm[vi * 3 + 2] = nz * il;
+      if (jebelLit) jebelLit.clamp(wx, wz, nrm, vi * 3);
       vi++;
     }
     return vi;
@@ -7308,9 +7977,10 @@ function* buildChunkGeometrySteps(
 // ---------------------------------------------------------------------------
 // Horizon mountain ring — per-map styled skylines with baked sun shading,
 // altitude-banded rock detail texture, snow caps and aerial perspective.
-// Lives in ./maps/horizon.ts (imported above); do NOT reintroduce the old
-// inline low-poly ring here — the map configs (cfg.horizon.style/snowline/
-// banding/treeline) target the styled builder.
+// Lives in ./maps/horizon.ts, which installs it through horizonRingHook.ts
+// (never imported here: the authority's height field must not carry it); do
+// NOT reintroduce the old inline low-poly ring here — the map configs
+// (cfg.horizon.style/snowline/banding/treeline) target the styled builder.
 // ---------------------------------------------------------------------------
 
 /**
@@ -7329,6 +7999,14 @@ export function buildTerrainMeshes(
   const g = terrainBuildSteps(heightField, engineCtx, cfg);
   let r = g.next();
   while (!r.done) r = g.next();
+  // (2026-10-08) a supplied build left its horizon ring for the world build's end (finishHorizonRingAsync); a synchronous
+  // build has no such end, so it finishes the ring here
+  const stage = r.value.userData.finishHorizonRing as (() => Generator<TerrainBuildProgress, void, void>) | undefined;
+  if (stage) {
+    delete r.value.userData.finishHorizonRing;
+    const steps = stage();
+    while (!steps.next().done) { /* drained */ }
+  }
   return r.value;
 }
 
@@ -7375,6 +8053,40 @@ export async function buildTerrainMeshesAsync(
   }
 }
 
+/**
+ * The world build's last terrain step (2026-10-08, the time-to-battle lane): the horizon ring a supplied build left on
+ * the terrain group (terrainBuildSteps: userData.finishHorizonRing), drained with the build's pacing; a no-op for any
+ * other group.
+ */
+export async function finishHorizonRingAsync(
+  group: THREE.Group, tick: TerrainBuildTick | null = null, fineSlices = false,
+): Promise<void> {
+  const stage = group.userData.finishHorizonRing as (() => Generator<TerrainBuildProgress, void, void>) | undefined;
+  if (!stage) return;
+  delete group.userData.finishHorizonRing;
+  const steps = stage();
+  let completed = false;
+  try {
+    let step = steps.next();
+    while (!step.done) {
+      if (tick && (fineSlices || step.value[2])) await tick(step.value[0], step.value[1]);
+      step = steps.next();
+    }
+    completed = true;
+  } finally {
+    // a cancelled build (its pacing threw): close the stage's private continuations
+    if (!completed) { try { steps.return?.(); } catch { /* preserve the original failure */ } }
+  }
+}
+
+// (buildHorizonRingSteps, the installed ring's builder, sits above the chunk section: d6103be04)
+/** The installed ring's geometry pipeline (the perf lane, 2026-10-08): the ring built where it stands. */
+function horizonRingGeometrySteps(
+  ...args: Parameters<HorizonRing['horizonRingGeometrySteps']>
+): ReturnType<HorizonRing['horizonRingGeometrySteps']> {
+  return horizonRing().horizonRingGeometrySteps(...args);
+}
+
 function* terrainBuildSteps(
   heightField: HeightField,
   engineCtx: TerrainEngineContext,
@@ -7384,15 +8096,6 @@ function* terrainBuildSteps(
 ): Generator<TerrainBuildProgress, THREE.Group, void> {
   const group = new THREE.Group();
   group.name = 'terrain';
-  // every ring face draws with this battlefield's terrain material (bindAutumnHorizonGround below, continuousGround)
-  const horizonSteps = buildHorizonRingSteps(engineCtx, cfg, 1337, heightField, { terrainBound: true });
-  let horizonStep = horizonSteps.next();
-  while (!horizonStep.done) {
-    yield [0, CHUNKS * CHUNKS + 2, false];
-    horizonStep = horizonSteps.next();
-  }
-  group.add(horizonStep.value);
-  yield [0, CHUNKS * CHUNKS + 2, true]; // horizon ring built — splat bake gets its own slice
   // round 40: where the square's water reaches the edge the ring opens to a sea apron (edgeWater.ts); the terrain
   // material renders those ring faces as open water and the shallow-water sheet continues over them
   const seaOpenings = cfg?.splat?.seaLake && !heightField._layout.terrain.frozenMarshes
@@ -7422,12 +8125,22 @@ function* terrainBuildSteps(
       try { pending.return?.(); } catch { /* preserve the original pacing failure */ }
     }
   }
-  const { material: mat, textures: splatTextures } = materialStep.value;
+  const { material: mat, textures: splatTextures, sourcedReady } = materialStep.value;
   // ground lane: the two-formation bedrock's boundary at its share of the field's height span (S.formation)
   {
-    const form = (cfg?.splat as { formation?: { atFrac: number; wobbleM?: number; pale?: number; red?: number } } | undefined)?.formation;
-    const u = (mat.userData as { formationUniform?: { value: THREE.Vector4 } }).formationUniform;
-    if (form && u) u.value.set(heightField.minY + (heightField.maxY - heightField.minY) * form.atFrac, form.wobbleM ?? 2.5, form.pale ?? 0.16, form.red ?? 0.12);
+    const form = (cfg?.splat as { formation?: TerrainFormation } | undefined)?.formation;
+    const userData = mat.userData as { formationUniform?: { value: THREE.Vector4 }; formationLowUniform?: { value: THREE.Vector4 };
+      formationUpUniform?: { value: THREE.Vector4 } };
+    const u = userData.formationUniform;
+    if (form && u) {
+      const pale = form.pale ?? 0.16, red = form.red ?? 0.12;
+      u.value.set(form.atY ?? heightField.minY + (heightField.maxY - heightField.minY) * form.atFrac, form.wobbleM ?? 2.5,
+        form.edgeM ?? 1.2, 0);
+      const low = form.lowerTint ?? [1.40, 1.14, 0.82, Math.min(1, pale * 2)];
+      userData.formationLowUniform?.value.set(low[0], low[1], low[2], low[3]);
+      const up = form.upperTint ?? [1.50, 0.92, 0.66, Math.min(1, red * 1.5)];
+      userData.formationUpUniform?.value.set(up[0], up[1], up[2], up[3]);
+    }
     // (wave 65) the ring's caprock above the field's highest ground (S.ringCaprockM)
     const capM = (cfg?.splat as { ringCaprockM?: number } | undefined)?.ringCaprockM;
     const cap = (mat.userData as { ringCapUniform?: { value: THREE.Vector2 } }).ringCapUniform;
@@ -7440,6 +8153,7 @@ function* terrainBuildSteps(
   // chunk vertex carries as its `fold` byte and the tall-grass tier reads through `_foldAt`; a height field without
   // heights (receipt sandboxes) bakes nothing and the vertices carry zeros.
   let foldAt: ((x: number, z: number) => number) | null = null;
+  let jebelLit: JebelLit | null = null;
   if (typeof heightField.getHeightAt === 'function') {
     const FOLD_STEP = 8, FOLD_MARGIN = 3;
     const FOLD_N = MAP_SIZE / FOLD_STEP + 1 + 2 * FOLD_MARGIN;
@@ -7472,6 +8186,9 @@ function* terrainBuildSteps(
       return (a + (b - a) * fu) * (1 - fv) + (c + (d - c) * fu) * fv;
     };
     heightField._foldAt = foldAt;
+    if (cfg?.splat?.jebelFace) {
+      jebelLit = makeJebelLit(foldHeights, foldGrid, FOLD_N, FOLD_ORIGIN, FOLD_STEP, skySunDirection(cfg.sky));
+    }
   }
   // Ground lane (2026-10-03): the vegetation's woods mask (vegetation.ts _woodsMask, 256² over the square) lands in the
   // noise texture's free blue channel — one 4 m texel per mask cell, the field read at the square's own scale — and on
@@ -7532,101 +8249,6 @@ function* terrainBuildSteps(
       };
     }
   }
-  // The continued coast uses the same strand distances as the playable shore.
-  // Leaving the ring's default attribute at zero made the sand/wrack band stop
-  // on an exact square even when the bank geometry was continuous.
-  if (shoreAt && horizonStep.value.userData.horizonRing) {
-    const geometry = horizonStep.value.geometry;
-    const position = geometry.getAttribute('position');
-    const shore = new Uint8Array(position.count);
-    for (let i = 0; i < position.count; i++) {
-      const metres = shoreAt(position.getX(i), position.getZ(i));
-      shore[i] = metres >= 32 ? 0 : 255 - Math.round(Math.max(0, metres) * (255 / 32));
-    }
-    geometry.setAttribute('shore', new THREE.BufferAttribute(shore, 1, true));
-  }
-  // The map-borders lane (2026-10-03): the roads that leave the square run on across the ring — the carriageway rides
-  // the ring's vertices as [signed offset from the exit line, presence] (terrain.ts roadExits); set before the seam's
-  // refinement, which carries every attribute into its new vertices
-  if (heightField._roadExitAt && horizonStep.value.userData.horizonRing) {
-    const geometry = horizonStep.value.geometry;
-    const position = geometry.getAttribute('position');
-    const exitAttr = new Float32Array(position.count * 2);
-    const hit: [number, number] = [0, 0];
-    // the exits as they lie on this ring (horizon.ts: each runs out at the foot of the ranges unless they open a pass)
-    const ringExits = (horizonStep.value.userData.horizonRing as { roadExits?: RoadExitsOnRing | null }).roadExits;
-    const exitAt = ringExits ? ringExits.at : heightField._roadExitAt;
-    let any = false;
-    for (let i = 0; i < position.count; i++) {
-      exitAt(position.getX(i), position.getZ(i), hit);
-      exitAttr[i * 2] = hit[0]; exitAttr[i * 2 + 1] = hit[1];
-      if (hit[1] > 0) any = true;
-    }
-    if (any) geometry.setAttribute('roadExit', new THREE.BufferAttribute(exitAttr, 2));
-  }
-  // The map-borders lane (2026-10-03, owner: "rolling ground with field patterns"): the farmland past the edge in
-  // parcels between the hedgerows — each ring vertex carries its field's crop, premultiplied (borderLandform.ts parcelTintAt)
-  if (heightField._borderParcelAt && horizonStep.value.userData.horizonRing) {
-    const geometry = horizonStep.value.geometry;
-    const position = geometry.getAttribute('position');
-    const tintAttr = new Float32Array(position.count * 4);
-    const tint: [number, number, number, number] = [0, 0, 0, 1];
-    let any = false;
-    for (let i = 0; i < position.count; i++) {
-      heightField._borderParcelAt(position.getX(i), position.getZ(i), tint);
-      tintAttr.set(tint, i * 4);
-      if (tint[3] < 1) any = true;
-    }
-    if (any) geometry.setAttribute('borderTint', new THREE.BufferAttribute(tintAttr, 4));
-  }
-  // ... and a railway's open line past the edge (terrain.ts railExitAt): its ballast rides the ring's vertices as
-  // [signed offset from the line, presence]
-  if (heightField._railExitAt && horizonStep.value.userData.horizonRing) {
-    const geometry = horizonStep.value.geometry;
-    const position = geometry.getAttribute('position');
-    const railAttr = new Float32Array(position.count * 2);
-    const hit: [number, number] = [0, 0];
-    let any = false;
-    for (let i = 0; i < position.count; i++) {
-      heightField._railExitAt(position.getX(i), position.getZ(i), hit, position.getY(i));
-      railAttr[i * 2] = hit[0]; railAttr[i * 2 + 1] = hit[1];
-      if (hit[1] > 0) any = true;
-    }
-    if (any) geometry.setAttribute('railExit', new THREE.BufferAttribute(railAttr, 2));
-  }
-  // ... and the farm tracks down some of the field boundaries (borderLandform.ts trackAt): per family the metres from the
-  // nearest track and its boundary, so the shader draws a 3 m dirt track beside the hedge
-  if (heightField._borderTrackAt && horizonStep.value.userData.horizonRing) {
-    const geometry = horizonStep.value.geometry;
-    const position = geometry.getAttribute('position');
-    const trackAttr = new Float32Array(position.count * 4);
-    const track: [number, number, number, number] = [0, 0, 0, 0];
-    let any = false;
-    for (let i = 0; i < position.count; i++) {
-      heightField._borderTrackAt(position.getX(i), position.getZ(i), track);
-      trackAttr.set(track, i * 4);
-      if (track[0] > 0) any = true;
-    }
-    if (any) geometry.setAttribute('borderTrack', new THREE.BufferAttribute(trackAttr, 4));
-  }
-  // All surrounding ground shares the live terrain material. Its distant
-  // detail is controlled by screen footprint, not a map-boundary switch.
-  {
-    const horizonMesh = horizonStep.value;
-    const ringInfo = horizonMesh.userData.horizonRing as { columns?: number; ridgeRow?: number } | undefined;
-    // only a real ring reports its topology; a horizon-less build (receipt sandboxes, headless audits) has no bands
-    if (ringInfo) {
-      bindAutumnHorizonGround(horizonMesh, mat, splatTextures, {
-        columns: ringInfo.columns ?? HORIZON_SEGMENTS, bands: Math.max(2, ringInfo.ridgeRow ?? 3),
-        continuousGround: true, ground: heightField,
-      });
-      // Curvature also controls turf moisture and ambient light. A missing
-      // attribute reset both at the map edge even with identical materials.
-      if (foldAt) continueHorizonFold(horizonMesh.geometry, foldAt);
-      // ground albedo mean → meadow tint (round 29); rock albedo mean → rock and scree tints (round 35)
-      void materialStep.value.sourcedReady?.then(() => refreshHorizonGroundTone(horizonMesh, splatTextures[0], splatTextures[4]));
-    }
-  }
   // Alternative LOD geometries are retained in `chunks` even when another
   // level is mounted on the mesh. Register the complete live set so world
   // eviction releases uploaded dormant buffers as well as the visible tree.
@@ -7662,7 +8284,7 @@ function* terrainBuildSteps(
       const lods: Array<THREE.BufferGeometry | null> = [null, null, null];
       for (const level of initialLevels) {
         const geometry = yield* buildChunkGeometrySteps(
-          heightField, cx0, cz0, LOD_SEGS[level], fine, progress, terrainIndexPool, 8, foldAt, shoreAt,
+          heightField, cx0, cz0, LOD_SEGS[level], fine, progress, terrainIndexPool, 8, foldAt, shoreAt, jebelLit,
         );
         lods[level] = geometry;
         retainedLodGeometries.add(geometry);
@@ -7684,6 +8306,147 @@ function* terrainBuildSteps(
     }
   }
   for (let cz = 0; cz < CHUNKS; cz++) yield* buildTerrainRow(cz);
+  // (the time-to-battle lane, 2026-10-08) the horizon ring: its geometry pipeline (maps/horizon.ts horizonRingGeometrySteps),
+  // then its material half, its attribute passes and its binding. A world build that supplies the ring through its hook
+  // (map.ts, horizonRingHook.ts: a worker started with the build, or the kept ring of a rematch — horizonRingPrefetch.ts)
+  // finishes it last, after the vegetation and the props (finishHorizonRingAsync), so the worker has the whole build to
+  // answer; nothing waits for it — the pipeline is built here meanwhile when it has not answered, and its answer is taken
+  // the moment it arrives. Any other build makes the ring here, after the chunks. The ring reads nothing the chunks, the
+  // water, the vegetation or the props write, and stays the terrain's first child: the same ring.
+  const ringSource = horizonRingSupplyFor(cfg);
+  function* horizonRingStage(): Generator<TerrainBuildProgress, void, void> {
+    let ringPipeline: HorizonRingPipeline | null = ringSource ? ringSource.take() : null;
+    if (ringSource && !ringPipeline) {
+      const pipelineSteps = horizonRingGeometrySteps(cfg, 1337, heightField, {
+        vista: ringSource.request.vista, debugColors: ringSource.request.debugColors,
+      });
+      let pipelineStep = pipelineSteps.next();
+      while (!pipelineStep.done) {
+        yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
+        // the worker answered meanwhile: its pipeline (the same arrays; the steps made here are dropped)
+        ringPipeline = ringSource.take();
+        if (ringPipeline) break;
+        pipelineStep = pipelineSteps.next();
+      }
+      if (!ringPipeline) {
+        ringPipeline = (pipelineStep as IteratorReturnResult<HorizonRingPipeline>).value;
+        ringSource.remember(ringPipeline);
+      }
+    }
+    // every ring face draws with this battlefield's terrain material (bindAutumnHorizonGround below, continuousGround)
+    const horizonSteps = buildHorizonRingSteps(engineCtx, cfg, 1337, heightField, { terrainBound: true, geometry: ringPipeline });
+    let horizonStep = horizonSteps.next();
+    while (!horizonStep.done) {
+      yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
+      horizonStep = horizonSteps.next();
+    }
+    group.add(horizonStep.value);
+    // (the terrain's first child, where it stood when it was built before the chunks)
+    group.children.unshift(group.children.pop()!);
+    yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, true]; // horizon ring built
+    // The continued coast uses the same strand distances as the playable shore.
+    // Leaving the ring's default attribute at zero made the sand/wrack band stop
+    // on an exact square even when the bank geometry was continuous.
+    if (shoreAt && horizonStep.value.userData.horizonRing) {
+      const geometry = horizonStep.value.geometry;
+      const position = geometry.getAttribute('position');
+      const shore = new Uint8Array(position.count);
+      for (let i = 0; i < position.count; i++) {
+        const metres = shoreAt(position.getX(i), position.getZ(i));
+        shore[i] = metres >= 32 ? 0 : 255 - Math.round(Math.max(0, metres) * (255 / 32));
+      }
+      geometry.setAttribute('shore', new THREE.BufferAttribute(shore, 1, true));
+    }
+    // The map-borders lane (2026-10-03): the roads that leave the square run on across the ring — the carriageway rides
+    // the ring's vertices as [signed offset from the exit line, presence] (terrain.ts roadExits); set before the seam's
+    // refinement, which carries every attribute into its new vertices
+    if (heightField._roadExitAt && horizonStep.value.userData.horizonRing) {
+      const geometry = horizonStep.value.geometry;
+      const position = geometry.getAttribute('position');
+      const exitAttr = new Float32Array(position.count * 2);
+      const hit: [number, number] = [0, 0];
+      // the exits as they lie on this ring (horizon.ts: each runs out at the foot of the ranges unless they open a pass)
+      const ringExits = (horizonStep.value.userData.horizonRing as { roadExits?: RoadExitsOnRing | null }).roadExits;
+      const exitAt = ringExits ? ringExits.at : heightField._roadExitAt;
+      let any = false;
+      for (let i = 0; i < position.count; i++) {
+        exitAt(position.getX(i), position.getZ(i), hit);
+        exitAttr[i * 2] = hit[0]; exitAttr[i * 2 + 1] = hit[1];
+        if (hit[1] > 0) any = true;
+      }
+      if (any) geometry.setAttribute('roadExit', new THREE.BufferAttribute(exitAttr, 2));
+    }
+    // The map-borders lane (2026-10-03, owner: "rolling ground with field patterns"): the farmland past the edge in
+    // parcels between the hedgerows — each ring vertex carries its field's crop, premultiplied (borderLandform.ts parcelTintAt)
+    if (heightField._borderParcelAt && horizonStep.value.userData.horizonRing) {
+      const geometry = horizonStep.value.geometry;
+      const position = geometry.getAttribute('position');
+      const tintAttr = new Float32Array(position.count * 4);
+      const tint: [number, number, number, number] = [0, 0, 0, 1];
+      let any = false;
+      for (let i = 0; i < position.count; i++) {
+        heightField._borderParcelAt(position.getX(i), position.getZ(i), tint);
+        tintAttr.set(tint, i * 4);
+        if (tint[3] < 1) any = true;
+      }
+      if (any) geometry.setAttribute('borderTint', new THREE.BufferAttribute(tintAttr, 4));
+    }
+    // ... and a railway's open line past the edge (terrain.ts railExitAt): its ballast rides the ring's vertices as
+    // [signed offset from the line, presence]
+    if (heightField._railExitAt && horizonStep.value.userData.horizonRing) {
+      const geometry = horizonStep.value.geometry;
+      const position = geometry.getAttribute('position');
+      const railAttr = new Float32Array(position.count * 2);
+      const hit: [number, number] = [0, 0];
+      let any = false;
+      for (let i = 0; i < position.count; i++) {
+        heightField._railExitAt(position.getX(i), position.getZ(i), hit, position.getY(i));
+        railAttr[i * 2] = hit[0]; railAttr[i * 2 + 1] = hit[1];
+        if (hit[1] > 0) any = true;
+      }
+      if (any) geometry.setAttribute('railExit', new THREE.BufferAttribute(railAttr, 2));
+    }
+    // ... and the farm tracks down some of the field boundaries (borderLandform.ts trackAt): per family the metres from the
+    // nearest track and its boundary, so the shader draws a 3 m dirt track beside the hedge
+    if (heightField._borderTrackAt && horizonStep.value.userData.horizonRing) {
+      const geometry = horizonStep.value.geometry;
+      const position = geometry.getAttribute('position');
+      const trackAttr = new Float32Array(position.count * 4);
+      const track: [number, number, number, number] = [0, 0, 0, 0];
+      let any = false;
+      for (let i = 0; i < position.count; i++) {
+        heightField._borderTrackAt(position.getX(i), position.getZ(i), track);
+        trackAttr.set(track, i * 4);
+        if (track[0] > 0) any = true;
+      }
+      if (any) geometry.setAttribute('borderTrack', new THREE.BufferAttribute(trackAttr, 4));
+    }
+    // All surrounding ground shares the live terrain material. Its distant
+    // detail is controlled by screen footprint, not a map-boundary switch.
+    {
+      const horizonMesh = horizonStep.value;
+      const ringInfo = horizonMesh.userData.horizonRing as { columns?: number; ridgeRow?: number } | undefined;
+      // only a real ring reports its topology; a horizon-less build (receipt sandboxes, headless audits) has no bands
+      if (ringInfo) {
+        bindAutumnHorizonGround(horizonMesh, mat, splatTextures, {
+          columns: ringInfo.columns ?? horizonRing().HORIZON_SEGMENTS, bands: Math.max(2, ringInfo.ridgeRow ?? 3),
+          continuousGround: true, ground: heightField,
+        });
+        // Curvature also controls turf moisture and ambient light. A missing
+        // attribute reset both at the map edge even with identical materials.
+        if (foldAt) continueHorizonFold(horizonMesh.geometry, foldAt);
+        // ground albedo mean → meadow tint (round 29); rock albedo mean → rock and scree tints (round 35)
+        // (the ring's stage is a hoisted generator: it reads the material's promise, not the narrowed step)
+        void sourcedReady?.then(() => refreshHorizonGroundTone(horizonMesh, splatTextures[0], splatTextures[4]));
+      }
+    }
+  }
+  if (ringSource) group.userData.finishHorizonRing = horizonRingStage;
+  else yield* horizonRingStage();
+  // ground lane (2026-10-08, crater-render-spec §B): the chunks for the battle's ground overlay — the world installs
+  // terrainCraterMesh.ts on them (syncGroundOverlay / adoptTerrainGeometry hooks below; its lattice constants are this
+  // file's, pinned by terrainCraterMesh.selftest)
+  group.userData.terrainChunks = chunks;
   if (cfg?.splat?.seaLake && !heightField._layout.terrain.frozenMarshes) {
     const waterSteps = shallowWaterGeometrySteps(heightField);
     let step = waterSteps.next();
@@ -7785,11 +8548,14 @@ function* terrainBuildSteps(
       c.fine = yield* buildFineGridSteps(heightField, c.cx0, c.cz0, null, 1);
     }
     const geometry = yield* buildChunkGeometrySteps(
-      heightField, c.cx0, c.cz0, LOD_SEGS[job.level], c.fine, null, terrainIndexPool, 1, foldAt, shoreAt,
+      heightField, c.cx0, c.cz0, LOD_SEGS[job.level], c.fine, null, terrainIndexPool, 1, foldAt, shoreAt, jebelLit,
     );
     // Publish only a complete geometry. Skirts, topology and bounds stay exact;
     // a camera move while rows were being built cannot mount an obsolete LOD.
     c.lods[job.level] = geometry;
+    // ground lane (crater-render-spec §B): a level built after stamps is patched by the stamps that reach its chunk
+    // before it can be mounted — it then equals one patched in place, bit for bit
+    (group.userData.adoptTerrainGeometry as ((index: number, level: number) => void) | undefined)?.(job.index, job.level);
     retainedLodGeometries.add(geometry);
     if (c.lods.every(Boolean)) c.fine = null;
     streamStats.streamedGeometryCount++;
@@ -7828,6 +8594,9 @@ function* terrainBuildSteps(
     return completed;
   };
   group.userData.updateLOD = (camPos: THREE.Vector3): void => {
+    // ground lane (crater-render-spec §B): the battle's ground overlay first — its new stamps reach the drawn ground in
+    // the frame they land, before any decal or dressing reads it (an O(1) check when nothing moved)
+    (group.userData.syncGroundOverlay as (() => void) | undefined)?.();
     for (const c of chunks) {
       const d = Math.hypot(camPos.x - c.cx, camPos.z - c.cz);
       const want = terrainLodForDistance(d, c.level);

@@ -1,3 +1,6 @@
+import { lathedWheelSection } from './lathedWheelStock.ts';
+import { addModernFieldCage } from './modernFieldCage.ts';
+import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Leopard 2 lineage + KF51 procedural profiles (fidelity oracles:
 // leo2a6_buh, recovered leo2a5 / leo2a7v / leo2_revolution / leopard2_proto,
@@ -34,11 +37,13 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // hull z-extents below replicate each oracle's frame.
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
-import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { addMissionAttachmentReceiver } from '../missionAttachmentReceiver.ts';
 import { buildLeopardRevolution } from './leopardRevolution.ts';
-import { recessKF51BTurret, KF51B_GUN_RECESS } from './kf51bGunRecess.ts';
+import { recessClosedTurret, recessKF51BTurret, KF51B_GUN_RECESS } from './kf51bGunRecess.ts';
+import { addLeo2PrototypeMantlet, convexCrownedStock, leopardThermalSkin } from './leopardStructuralRepairs.ts';
 import { buildLeopardRevolutionPrototypeTurret } from './leopardRevolutionPrototypeTurret.ts';
 import { LEOPARD_IMPROVED_HULL_WIDTH_SCALE } from './leopardImprovedHull.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -52,7 +57,6 @@ type Vec3Tuple = readonly [number, number, number];
 type MutableVec3 = [number, number, number];
 type FourPointRing = readonly [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
 type VehicleMaterial = THREE.MeshStandardMaterial;
-type Polygon2D = readonly Vec2Tuple[];
 type Side = -1 | 1;
 type VehicleOwner = 'hull' | 'turret';
 type NumericSeries = number | readonly number[];
@@ -234,44 +238,12 @@ interface LeopardRemoteWeaponStationOptions {
   readonly towerTop?: number | null;
   readonly towerW?: number;
   readonly towerZ?: number;
-}
-
-interface GhillieTopClothOptions {
-  readonly x0: number;
-  readonly x1: number;
-  readonly z0: number;
-  readonly z1: number;
-  readonly nx: number;
-  readonly nz: number;
-  readonly yAt: (x: number, z: number) => number;
-  readonly outline?: Polygon2D | null;
-  readonly holes?: readonly Polygon2D[];
-  readonly seed?: number;
-}
-
-interface GhillieSideClothOptions {
-  readonly side: Side;
-  readonly z0: number;
-  readonly z1: number;
-  readonly nz: number;
-  readonly ny: number;
-  readonly topAt: (z: number) => number;
-  readonly bottomAt: (z: number) => number;
-  readonly outAt: (z: number, fraction: number) => number;
-  readonly seed?: number;
-}
-
-interface GhillieFaceClothOptions {
-  readonly z: number;
-  readonly x0: number;
-  readonly x1: number;
-  readonly y0: number;
-  readonly y1: number;
-  readonly nx: number;
-  readonly ny: number;
-  readonly outline?: Polygon2D | null;
-  readonly holes?: readonly Polygon2D[];
-  readonly seed?: number;
+  /**
+   * The station is the hull's working roof weapon (2026-10-08): its M2 is remote-controlled and every piece of the
+   * station is its stock. Owner order §5.09-5 (2026-08-07) put the FLW 200 on these Leopards; his 2A5M precedent
+   * (main 6763d7cc0, 2026-10-08) activates such an original station rather than removing it.
+   */
+  readonly automatic?: boolean;
 }
 
 interface EraCassetteScale {
@@ -2776,7 +2748,13 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
           // a6 print's loader lid rides higher than the commander's.
           const wedgeTurretV3TurretCourse5 = (): void => {
             const hT = (lo && hatchTopL) ? hatchTopL : hatchTop;
-            P.add('turret', cylY(lo ? 0.15 : 0.19, lo ? 0.13 : 0.17, hT - h - 0.05, P.q ? 20 : 12), st.x, (h + 0.05 + hT) / 2, st.z);
+            // 2026-10-07 (sealed gate): where the roof rises within 5 cm of the lid line (the 2A6 commander, both
+            // 2A6M stations) the drum's height goes negative and three.js builds the same band inside out, its
+            // walls facing in (the sealed check's hatch-line "holes"). The identical solid is built right side out:
+            // the same span and centre with the radius order swapped, so the silhouette and every mask hold.
+            const drumH = hT - h - 0.05, drumR0 = lo ? 0.15 : 0.19, drumR1 = lo ? 0.13 : 0.17;
+            P.add('turret', drumH >= 0 ? cylY(drumR0, drumR1, drumH, P.q ? 20 : 12) : cylY(drumR1, drumR0, -drumH, P.q ? 20 : 12),
+              st.x, (h + 0.05 + hT) / 2, st.z);
             if (T.hatchRound) {
               // owner circularity law (shaded-parity r2 #7): RAISED true circular
               // ring readable from straight top — proud rim torus at the certified
@@ -3817,7 +3795,7 @@ function buildLeo2A6(P: TankBuilderPort) {
     // silhouette replaces the old collection of unmarked hand-built pieces.
     {
       const mg = FITTINGS.pintleMG({
-        mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 6,
+        mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 6,
         rotation: [0, Math.PI, 0],
       });
       // Sink the canonical foot 12 cm into the sloped plate: its post still
@@ -5084,58 +5062,74 @@ export function buildLeo2A5(builder: object) {
   const buildLeo2A5MarkingsStage2 = (): void => {
     {
       const { box, cylY, cylZ } = KIT;
-      P.add('turretDetail', cylY(0.018, 0.018, 0.10, 8), -0.52, 0.815, -0.10);  // pintle post on the loader ring
-      // VISUAL r6 3a (owner-law-mandatory MG READ): the r5 verdict measured the
-      // barrel at 1.5 px — no gun read in any view. Upscaled to the MG-physics
-      // floor (barrel Ø 0.038 = 2.1 px at the 54 px/m side rigs, receiver
-      // MASS): every top stays under the certified 2.638/2.653 lines (receiver
-      // 2.635w, barrel 2.645w, hider ends 0.49L inside the 0.79w col).
-      // The loader gun predates KIT.fittings, but its source-measured receiver
-      // is already the real visible load-bearing core of the assembly.  Keep
-      // that exact certified mesh and register it as the fitting root instead
-      // of adding a second generic gun or a marker-only escape hatch.
-      {
-        const exactLoaderMg = new THREE.Group();
-        const receiverGeometry = box(0.075, 0.062, 0.46);
-        const receiver = new THREE.Mesh(receiverGeometry, P.mats.dark);
-        receiver.position.set(-0.50, 0.824, 0.02);
-        receiver.castShadow = true;
-        receiver.receiveShadow = true;
-        receiver.userData.appearanceRole = 'machineGun';
-        exactLoaderMg.add(receiver);
-        exactLoaderMg.userData.hasConnectedFeed = true;
-        exactLoaderMg.userData.hasEngineeredCradle = true;
-        exactLoaderMg.userData.weaponClass = 'mag58';
-        FITTINGS.markExact(exactLoaderMg, 'pintleMG');
-        exactLoaderMg.name = 'leo2a5_loader_machine_gun';
-        P.turretG.add(exactLoaderMg);
-        P.disposables.push(receiverGeometry);
+      // 2026-10-08 (the owner's field standard in main 6763d7cc0 and his 2A5M precedent: activate the original station,
+      // don't remove it; the coordinator's ruling on the lane's audit): on leo2a5_a5nl the loader's gun is the hull's
+      // working roof weapon, a remote-controlled MAG on its loader-ring pintle with the post as its stock, and the A5NL's
+      // duplicate open-yoke tower is gone. Gameplay: functional roof guns stay 1 (12.7 -> 7.62 mm). Every other A5 keeps
+      // the certified exact loader gun below.
+      if (P.spec.id === 'leo2a5_a5nl') {
+        const finishLoaderStation = captureAuxiliaryStock(P, 'leo2a5_loader_machine_gun');
+        P.add('turretDetail', cylY(0.030, 0.034, 0.05, 12), -0.50, 0.79, -0.06);     // pintle socket on the loader ring
+        const loaderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag58', tone: 'two-tone', elev: 0.03, ammo: true,
+          remoteControlled: true, seed: 5087 });
+        loaderMg.name = 'leo2a5_loader_machine_gun';
+        loaderMg.position.set(-0.50, 0.81, -0.06);
+        P.turretG.add(loaderMg);
+        finishLoaderStation();
+      } else {
+        P.add('turretDetail', cylY(0.018, 0.018, 0.10, 8), -0.52, 0.815, -0.10);  // pintle post on the loader ring
+        // VISUAL r6 3a (owner-law-mandatory MG READ): the r5 verdict measured the
+        // barrel at 1.5 px — no gun read in any view. Upscaled to the MG-physics
+        // floor (barrel Ø 0.038 = 2.1 px at the 54 px/m side rigs, receiver
+        // MASS): every top stays under the certified 2.638/2.653 lines (receiver
+        // 2.635w, barrel 2.645w, hider ends 0.49L inside the 0.79w col).
+        // The loader gun predates KIT.fittings, but its source-measured receiver
+        // is already the real visible load-bearing core of the assembly.  Keep
+        // that exact certified mesh and register it as the fitting root instead
+        // of adding a second generic gun or a marker-only escape hatch.
+        {
+          const exactLoaderMg = new THREE.Group();
+          const receiverGeometry = box(0.075, 0.062, 0.46);
+          const receiver = new THREE.Mesh(receiverGeometry, P.mats.dark);
+          receiver.position.set(-0.50, 0.824, 0.02);
+          receiver.castShadow = true;
+          receiver.receiveShadow = true;
+          receiver.userData.appearanceRole = 'machineGun';
+          exactLoaderMg.add(receiver);
+          exactLoaderMg.userData.hasConnectedFeed = true;
+          exactLoaderMg.userData.hasEngineeredCradle = true;
+          exactLoaderMg.userData.weaponClass = 'mag58';
+          FITTINGS.markExact(exactLoaderMg, 'pintleMG');
+          exactLoaderMg.name = 'leo2a5_loader_machine_gun';
+          P.turretG.add(exactLoaderMg);
+          P.disposables.push(receiverGeometry);
+        }
+        // barrel flat-forward (an AA-elevated cut was tried and REVERTED: a
+        // diagonal rod above the 2.6564 anchor lights a STAIRCASE of side
+        // columns — p95 anchor slid to 2.70, dims -10; the r5 anchor law
+        // generalizes: any above-anchor member must fit ONE column of z).
+        P.add('turretDark', cylZ(0.019, 0.40, 8), -0.50, 0.846, 0.27);            // barrel to 0.77w (clear of the 0.86 col)
+        for (const z of [0.12, 0.20, 0.28]) {
+          P.add('turretDark', cylZ(0.023, 0.018, 12), -0.50, 0.846, z);           // jacket reinforcing rings
+        }
+        P.add('turretDark', box(0.045, 0.045, 0.07), -0.50, 0.846, 0.455);        // flash hider (stays inside 0.79w)
+        P.add('turretDark', box(0.068, 0.012, 0.39), -0.50, 0.861, 0.02);         // hinged receiver top cover
+        P.add('turretDark', box(0.012, 0.045, 0.25), -0.457, 0.824, 0.01);        // removable receiver side plate
+        P.add('turretDark', box(0.11, 0.09, 0.14), -0.615, 0.822, -0.02);         // neutral gunmetal ammo box
+        P.add('turretDark', box(0.10, 0.010, 0.13), -0.615, 0.872, -0.02);        // ammo lid
+        for (let i = 0; i < 5; i++) {
+          const t = i / 4;
+          P.add('turretDark', box(0.022, 0.020, 0.018),
+            -0.590 + t * 0.070, 0.850 - Math.sin(t * Math.PI) * 0.010,
+            0.030 + t * 0.035, 0, 0, -0.10 + t * 0.14);                           // connected feed
+        }
+        P.add('turretDark', box(0.024, 0.11, 0.18), -0.50, 0.80, -0.21);          // grip frame + stock
+        for (const side of [-1, 1]) {
+          P.add('turretDark', box(0.018, 0.060, 0.018), -0.50 + side * 0.034,
+            0.798, -0.305, -0.18, 0, side * 0.08);                                // paired spade grips
+        }
+        P.add('turretDark', box(0.03, 0.032, 0.03), -0.50, 0.852, 0.10);          // rear sight block (top 0.868L < the 0.873 anchor line)
       }
-      // barrel flat-forward (an AA-elevated cut was tried and REVERTED: a
-      // diagonal rod above the 2.6564 anchor lights a STAIRCASE of side
-      // columns — p95 anchor slid to 2.70, dims -10; the r5 anchor law
-      // generalizes: any above-anchor member must fit ONE column of z).
-      P.add('turretDark', cylZ(0.019, 0.40, 8), -0.50, 0.846, 0.27);            // barrel to 0.77w (clear of the 0.86 col)
-      for (const z of [0.12, 0.20, 0.28]) {
-        P.add('turretDark', cylZ(0.023, 0.018, 12), -0.50, 0.846, z);           // jacket reinforcing rings
-      }
-      P.add('turretDark', box(0.045, 0.045, 0.07), -0.50, 0.846, 0.455);        // flash hider (stays inside 0.79w)
-      P.add('turretDark', box(0.068, 0.012, 0.39), -0.50, 0.861, 0.02);         // hinged receiver top cover
-      P.add('turretDark', box(0.012, 0.045, 0.25), -0.457, 0.824, 0.01);        // removable receiver side plate
-      P.add('turretDark', box(0.11, 0.09, 0.14), -0.615, 0.822, -0.02);         // neutral gunmetal ammo box
-      P.add('turretDark', box(0.10, 0.010, 0.13), -0.615, 0.872, -0.02);        // ammo lid
-      for (let i = 0; i < 5; i++) {
-        const t = i / 4;
-        P.add('turretDark', box(0.022, 0.020, 0.018),
-          -0.590 + t * 0.070, 0.850 - Math.sin(t * Math.PI) * 0.010,
-          0.030 + t * 0.035, 0, 0, -0.10 + t * 0.14);                           // connected feed
-      }
-      P.add('turretDark', box(0.024, 0.11, 0.18), -0.50, 0.80, -0.21);          // grip frame + stock
-      for (const side of [-1, 1]) {
-        P.add('turretDark', box(0.018, 0.060, 0.018), -0.50 + side * 0.034,
-          0.798, -0.305, -0.18, 0, side * 0.08);                                // paired spade grips
-      }
-      P.add('turretDark', box(0.03, 0.032, 0.03), -0.50, 0.852, 0.10);          // rear sight block (top 0.868L < the 0.873 anchor line)
       // VISUAL r6 3a STOWED MG3 on the certified mount (top 2.55w) — the ref's
       // own spare gun reads from rear/left. Laid TRANSVERSE (along x) so the
       // rear/top rigs see the full 0.55 m run at 146 px/m while the side rig
@@ -5306,7 +5300,8 @@ export function buildLeo2A5(builder: object) {
     // 2.077..1.909 — the bare tube end AA-faded to 2.049..1.881, and a first
     // round cylZ collar overshot to 2.105. Asymmetric box: authored
     // 1.92..2.085 reads exactly the ref band (inside the ref box lid 6.031)
-    P.add('gun', KIT.box(0.19, 0.165, 0.11), 0, 0.0225, 4.51);
+    // Keep the full face around the bore: the generic box bevel cut into its lower rim.
+    P.add('gun', new THREE.BoxGeometry(0.19, 0.165, 0.11), 0, 0.0225, 4.51);
     // §B3.1 MUZZLE BORE (shadow-named mechanism, 3fca39b): rim + shadow disc
     // on the face-block front plane (4.565), riding the +0.012 tube axis.
     muzzleBore(P, { z: 4.565, r: 0.095, y: 0.012 });
@@ -5532,11 +5527,11 @@ export function buildLeo2A5(builder: object) {
               // r 0.32/0.315 — a 0.355 first cut bottomed 0.735 and cost 4 front
               // columns 0.08 each vs the ref's 0.787 line; 0.32 bottoms 0.77.
               [KIT.xform(KIT.cylX(0.320, 0.012, P.q ? 26 : 18), s * 1.730, 1.09, -3.19), discFace],   // sprocket face disc
-              [KIT.xform(KIT.cylX(0.290, 0.004, P.q ? 24 : 16), s * 1.7365, 1.09, -3.19), discDark],  // rim seam ring
+              [KIT.xform(lathedWheelSection([[-.002, .130], [-.002, .290], [.002, .290], [.002, .130]], P.q ? 24 : 16), s * 1.7365, 1.09, -3.19), discDark],  // rim seam ring
               [KIT.xform(KIT.cylX(0.130, 0.014, 12), s * 1.7315, 1.09, -3.19), discDark],             // hub cap
               [KIT.xform(KIT.cylX(0.315, 0.012, P.q ? 26 : 18), s * 1.7315, 1.11, 3.48), discFace],   // idler face disc
               [KIT.xform(KIT.cylX(0.285, 0.004, P.q ? 24 : 16), s * 1.738, 1.11, 3.48), discDark],
-              [KIT.xform(KIT.cylX(0.125, 0.014, 12), s * 1.733, 1.11, 3.48), discDark],
+              [KIT.xform(KIT.cylX(0.125, 0.014, 12), s * 1.735, 1.11, 3.48), discDark],
             ];
             for (const [g, mat] of runningGearFaces) {
               const mesh = new THREE.Mesh(g, mat);
@@ -6291,13 +6286,9 @@ function buildLeo2A5A5NL(builder: object) {
   P.addEquipment('turretGlass', box(0.23, 0.12, 0.016), 0.48, 1.07, -0.548);
   P.addEquipment('turretGlass', box(0.08, 0.07, 0.017), 0.61, 1.13, -0.548);
 
-  // Compact automated MG tower: visibly more capable than the donor pintle,
-  // but smaller than the already reduced A6M station requested by the owner.
-  const auxiliaryOpenYokeRws = addLeopardOpenYokeAuxRws(P, {
-    x: -0.62, y: 0.759, z: -1.35,
-    variant: 'a5nl-low', ammoSide: -1, sensorSide: 1,
-    yaw: 0, scale: 0.86, towerRise: 0.08,
-  });
+  // 2026-10-08 (the owner's field standard in main 6763d7cc0; the coordinator's ruling on the lane's audit): no
+  // open-yoke tower. A 2A4M carries no RWS, and the tower stood 0.98 m from the loader's gun, which is now the hull's
+  // working station (buildLeo2A5's leo2a5_a5nl branch, the owner's 2A5M precedent).
 
   // Roof electronics, warning beacons and whip bases add the requested
   // modern-service density while remaining attached to broad roof stations.
@@ -6322,7 +6313,7 @@ function buildLeo2A5A5NL(builder: object) {
       skirtEraSectors: Object.freeze(['a5nl_skirt_era_R', 'a5nl_skirt_era_L']),
       skirtEraTilesPerSide: 30,
       skirtEraSeats: Object.freeze(skirtEraSeats),
-      auxiliaryOpenYokeRws,
+      roofWeapon: 'leo2a5_loader_machine_gun',
       panoramicSight: true,
       awarenessPodsPerSide: 1,
       smokeLaunchersPerSide: 4,
@@ -6359,6 +6350,8 @@ function buildLeo2A5A5NL(builder: object) {
 // ---------------------------------------------------------------------------
 function leoFLW200(P: TankBuilderPort, o: LeopardRemoteWeaponStationOptions) {
   const { box, cylY, cylZ } = KIT;
+  const gunName = `${P.spec.id}Flw200Gun`;
+  const finishStation = o.automatic ? captureAuxiliaryStock(P, gunName) : null;
   const s = o.s ?? 1.0;
   const ws = o.widthScale ?? s;
   const X = o.x, Y = o.y, Z = o.z;
@@ -6427,7 +6420,9 @@ function leoFLW200(P: TankBuilderPort, o: LeopardRemoteWeaponStationOptions) {
   // station bin above is the feed.
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone',
-      scale: o.gunScale ?? (1.05 * s), elev: o.elev ?? 0.03, ammo: false, seed: o.seed ?? 13 });
+      scale: o.gunScale ?? (1.05 * s), elev: o.elev ?? 0.03, ammo: false, seed: o.seed ?? 13,
+      remoteControlled: o.automatic === true });
+    if (o.automatic) mg.name = gunName;
     mg.position.set(X, o.gunY, Z);
     P.turretG.add(mg);
   }
@@ -6445,6 +6440,7 @@ function leoFLW200(P: TankBuilderPort, o: LeopardRemoteWeaponStationOptions) {
     P.add('turretGlass', box(0.13 * s, 0.055 * s, 0.010), X + 0.02, headTop - headH / 2, tz + tw / 2 - 0.002);
     P.add('turretDark', cylZ(0.016 * s, 0.012, 8), X + 0.02 - 0.08 * s, headTop - headH / 2, tz + tw / 2 - 0.010); // head LRF (recessed INTO the face — stays inside the tower's z-window)
   }
+  finishStation?.();
 }
 
 // ---------------------------------------------------------------------------
@@ -6462,546 +6458,9 @@ function leoFLW200(P: TankBuilderPort, o: LeopardRemoteWeaponStationOptions) {
 // ---------------------------------------------------------------------------
 function leo2A4FullGhillie(P: TankBuilderPort) {
   if (P.spec.id !== 'leo2a4') return;
-  const { xform, mergeAll, slab } = KIT;
-  const hullNet: THREE.BufferGeometry[] = [];
-  const turretNet: THREE.BufferGeometry[] = [];
-  const hullLight: THREE.BufferGeometry[] = [];
-  const hullDark: THREE.BufferGeometry[] = [];
-  const turretLight: THREE.BufferGeometry[] = [];
-  const turretDark: THREE.BufferGeometry[] = [];
-  const noise01 = (n: number, salt = 0): number => {
-    const v = Math.sin((n + 1) * 12.9898 + (salt + 1) * 78.233) * 43758.5453;
-    return v - Math.floor(v);
-  };
-
-  const makeCloth = (hex: number, _key: string): VehicleMaterial => {
-    const mat = P.mats.canvasCloth.clone();
-    mat.color.setHex(hex);
-    mat.roughness = 1;
-    mat.metalness = 0;
-    mat.envMapIntensity = 0.08;
-    mat.onBeforeCompile = vehicleAmbientFloorHook;
-    mat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-    return mat;
-  };
-  const makeNet = () => {
-    const mat = makeCloth(0xffffff, 'cut-net');
-    let texture = null;
-    if (typeof document !== 'undefined') {
-      const canvas = document.createElement('canvas');
-      canvas.width = canvas.height = 128;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Leopard ghillie texture requires a 2D canvas context');
-      ctx.clearRect(0, 0, 128, 128);
-      ctx.strokeStyle = 'rgba(34,48,27,0.72)';
-      ctx.lineWidth = 1.25;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      // A deterministic, irregular knot network replaces the wallpaper-like
-      // diamond lattice.  Long wandering strands cross and share nodes, so
-      // every cloth section reads as one connected carrier.
-      for (let row = 0; row < 12; row++) {
-        const baseY = (row + 0.55) * 128 / 12 + (noise01(row, 1) - 0.5) * 5;
-        ctx.beginPath(); ctx.moveTo(-4, baseY);
-        for (let step = 0; step <= 12; step++) {
-          const x = step * 11;
-          const y = baseY + (noise01(row * 17 + step, 2) - 0.5) * 9
-            + Math.sin(step * 0.8 + row) * 2;
-          ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-      }
-      for (let col = 0; col < 11; col++) {
-        const baseX = (col + 0.5) * 128 / 11 + (noise01(col, 3) - 0.5) * 6;
-        ctx.beginPath(); ctx.moveTo(baseX, -4);
-        for (let step = 0; step <= 12; step++) {
-          const y = step * 11;
-          const x = baseX + (noise01(col * 19 + step, 4) - 0.5) * 10
-            + Math.cos(step * 0.7 + col) * 2;
-          ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-      }
-      ctx.fillStyle = 'rgba(27,40,23,0.82)';
-      for (let knot = 0; knot < 38; knot++) {
-        ctx.beginPath();
-        ctx.arc(noise01(knot, 5) * 128, noise01(knot, 6) * 128,
-          0.7 + noise01(knot, 7) * 0.8, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      const colors = ['rgba(60,81,47,0.78)', 'rgba(82,105,58,0.72)', 'rgba(44,63,40,0.76)'];
-      // The texture is only the sparse carrier web.  Physical leaf strips
-      // below own the mass and broken outline; keeping this mostly open is
-      // what prevents the carrier from reading as a printed cuboid.
-      for (let i = 0; i < 34; i++) {
-        const x = (17 + i * 47) % 128;
-        const y = (31 + i * 73) % 128;
-        const w = 2 + (i % 3);
-        const h = 1 + (i % 2);
-        ctx.fillStyle = colors[i % colors.length];
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate((i * 0.91) % Math.PI);
-        ctx.fillRect(-w, -h, w * 2, h * 2);
-        ctx.restore();
-      }
-      texture = new THREE.CanvasTexture(canvas);
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-      texture.anisotropy = 4;
-      mat.map = texture;
-      mat.alphaTest = 0.12;
-      mat.side = THREE.DoubleSide;
-      mat.needsUpdate = true;
-    }
-    return { mat, texture };
-  };
-  const addMerged = (
-    parent: THREE.Object3D,
-    geos: readonly THREE.BufferGeometry[],
-    mat: VehicleMaterial,
-    name: string,
-    extra: Array<THREE.Texture | null> = [],
-  ): void => {
-    if (!geos.length) return;
-    const geo = mergeAll(geos);
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.name = name;
-    mesh.castShadow = mesh.receiveShadow = true;
-    parent.add(mesh);
-    const liveExtra = extra.filter((item): item is THREE.Texture => item !== null);
-    P.disposables.push(geo, mat, ...liveExtra);
-  };
-  const leaf = (w: number, d: number, h = 0.018, seed = 0): THREE.BufferGeometry => {
-    const skew = ((seed % 7) - 3) * 0.035;
-    const bite = 0.58 + (seed % 5) * 0.055;
-    return slab(
-      [-w * (0.32 + bite * 0.12), 0, -d], [w, 0, -d * (0.22 + skew)],
-      [w * (0.18 + skew), 0, d], [-w * bite, 0, d * (0.08 - skew)],
-      [-w * (0.32 + bite * 0.12), h, -d], [w, h, -d * (0.22 + skew)],
-      [w * (0.18 + skew), h, d], [-w * bite, h, d * (0.08 - skew)]);
-  };
-  const topLeaf = (
-    out: THREE.BufferGeometry[],
-    x: number,
-    y: number,
-    z: number,
-    s: number,
-    seed: number,
-  ): void => {
-    out.push(xform(leaf(0.075 * s, 0.15 * s, 0.024, seed), x, y, z,
-      (seed % 3 - 1) * 0.08, seed * 0.67, (seed % 2 ? 1 : -1) * 0.06));
-    out.push(xform(leaf(0.058 * s, 0.13 * s, 0.020, seed + 13),
-      x + Math.sin(seed * 1.7) * 0.075 * s, y + 0.012,
-      z + Math.cos(seed * 1.3) * 0.070 * s,
-      (seed % 4 - 1.5) * 0.06, seed * 0.43 + 0.8, 0));
-    out.push(xform(leaf(0.038 * s, 0.18 * s, 0.017, seed + 29),
-      x - Math.cos(seed * 0.9) * 0.060 * s, y + 0.020,
-      z + Math.sin(seed * 1.1) * 0.055 * s,
-      0, seed * 0.31 - 0.6, (seed % 3 - 1) * 0.07));
-  };
-  const sideLeaf = (
-    out: THREE.BufferGeometry[],
-    side: Side,
-    x: number,
-    y: number,
-    z: number,
-    s: number,
-    seed: number,
-  ): void => {
-    out.push(xform(leaf(0.070 * s, 0.15 * s, 0.018, seed), side * x, y, z,
-      seed * 0.29, 0, side * Math.PI / 2));
-    out.push(xform(leaf(0.055 * s, 0.13 * s, 0.016, seed + 17), side * x,
-      y + Math.sin(seed) * 0.065 * s, z + Math.cos(seed * 1.4) * 0.060 * s,
-      seed * 0.41 + 0.7, 0, side * (Math.PI / 2 + 0.11)));
-    out.push(xform(leaf(0.036 * s, 0.18 * s, 0.014, seed + 31), side * x,
-      y - 0.075 * s, z - Math.sin(seed * 0.8) * 0.050 * s,
-      seed * 0.23 - 0.4, 0, side * (Math.PI / 2 - 0.09)));
-  };
-
-  // A real cloth carrier needs its own offset silhouette.  Build a single
-  // subdivided sheet with deterministic low-amplitude ripples rather than
-  // painting flat boxes directly onto the armor.  Cells are removed around
-  // articulated/fitted equipment, producing physical openings in the net.
-  const insidePoly = (x: number, z: number, poly: Polygon2D): boolean => {
-    let inside = false;
-    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-      const [xi, zi] = poly[i], [xj, zj] = poly[j];
-      if (((zi > z) !== (zj > z)) && (x < ((xj - xi) * (z - zi)) / (zj - zi) + xi)) inside = !inside;
-    }
-    return inside;
-  };
-  const clothTop = ({ x0, x1, z0, z1, nx, nz, yAt, outline = null, holes = [], seed = 0 }: GhillieTopClothOptions): THREE.BufferGeometry => {
-    const positions: number[] = [], uvs: number[] = [];
-    const vertex = (x: number, z: number): Vec3Tuple => {
-      const ripple = Math.sin(x * 8.3 + z * 5.7 + seed) * 0.010
-        + Math.cos(x * 3.9 - z * 7.1 + seed * 0.7) * 0.006;
-      return [x, yAt(x, z) + ripple, z];
-    };
-    const pushTri = (a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple): void => {
-      for (const p of [a, b, c]) {
-        positions.push(...p);
-        uvs.push(p[0] * 0.72, p[2] * 0.72);
-      }
-    };
-    for (let iz = 0; iz < nz; iz++) {
-      const za = z0 + (z1 - z0) * iz / nz;
-      const zb = z0 + (z1 - z0) * (iz + 1) / nz;
-      for (let ix = 0; ix < nx; ix++) {
-        const xa = x0 + (x1 - x0) * ix / nx;
-        const xb = x0 + (x1 - x0) * (ix + 1) / nx;
-        const probes = [[(xa + xb) / 2, (za + zb) / 2], [xa, za], [xb, za], [xb, zb], [xa, zb]];
-        if (outline && !insidePoly(probes[0][0], probes[0][1], outline)) continue;
-        if (holes.some((hole) => probes.some(([x, z]) => insidePoly(x, z, hole)))) continue;
-        const a = vertex(xa, za), b = vertex(xb, za), c = vertex(xb, zb), d = vertex(xa, zb);
-        pushTri(a, c, b); // upward winding
-        pushTri(a, d, c);
-      }
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    geo.computeVertexNormals();
-    return geo;
-  };
-  const clothSide = ({ side, z0, z1, nz, ny, topAt, bottomAt, outAt, seed = 0 }: GhillieSideClothOptions): THREE.BufferGeometry => {
-    const positions: number[] = [], uvs: number[] = [];
-    const vertex = (z: number, t: number): Vec3Tuple => {
-      const top = topAt(z), bottom = bottomAt(z);
-      const y = bottom + (top - bottom) * t
-        + Math.sin(z * 7.1 + t * 5.3 + seed) * 0.008;
-      const x = side * (outAt(z, t)
-        + Math.sin(z * 5.9 + t * 8.1 + seed * 0.4) * 0.008);
-      return [x, y, z];
-    };
-    const tri = (a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple): void => {
-      for (const p of [a, b, c]) {
-        positions.push(...p);
-        uvs.push(p[2] * 0.72, p[1] * 0.72);
-      }
-    };
-    for (let iz = 0; iz < nz; iz++) {
-      const za = z0 + (z1 - z0) * iz / nz;
-      const zb = z0 + (z1 - z0) * (iz + 1) / nz;
-      for (let iy = 0; iy < ny; iy++) {
-        const ta = iy / ny, tb = (iy + 1) / ny;
-        const a = vertex(za, ta), b = vertex(zb, ta), c = vertex(zb, tb), d = vertex(za, tb);
-        if (side > 0) { tri(a, b, c); tri(a, c, d); } else { tri(a, c, b); tri(a, d, c); }
-      }
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    geo.computeVertexNormals();
-    return geo;
-  };
-  const clothFace = ({ z, x0, x1, y0, y1, nx, ny, outline = null, holes = [], seed = 0 }: GhillieFaceClothOptions): THREE.BufferGeometry => {
-    const positions: number[] = [], uvs: number[] = [];
-    const vertex = (x: number, y: number): Vec3Tuple => [x, y,
-      z + Math.sin(x * 7.7 + y * 6.1 + seed) * 0.010
-        + Math.cos(x * 4.3 - y * 8.7 + seed * 0.5) * 0.006];
-    const tri = (a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple): void => {
-      for (const p of [a, b, c]) {
-        positions.push(...p);
-        uvs.push(p[0] * 0.72, p[1] * 0.72);
-      }
-    };
-    for (let iy = 0; iy < ny; iy++) {
-      const ya = y0 + (y1 - y0) * iy / ny;
-      const yb = y0 + (y1 - y0) * (iy + 1) / ny;
-      for (let ix = 0; ix < nx; ix++) {
-        const xa = x0 + (x1 - x0) * ix / nx;
-        const xb = x0 + (x1 - x0) * (ix + 1) / nx;
-        const probes = [[(xa + xb) / 2, (ya + yb) / 2], [xa, ya], [xb, ya], [xb, yb], [xa, yb]];
-        if (outline && !insidePoly(probes[0][0], probes[0][1], outline)) continue;
-        if (holes.some((hole) => probes.some(([x, y]) => insidePoly(x, y, hole)))) continue;
-        const a = vertex(xa, ya), b = vertex(xb, ya), c = vertex(xb, yb), d = vertex(xa, yb);
-        tri(a, b, c); tri(a, c, d);
-      }
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    geo.computeVertexNormals();
-    return geo;
-  };
-  const faceLeaf = (
-    out: THREE.BufferGeometry[],
-    x: number,
-    y: number,
-    z: number,
-    s: number,
-    seed: number,
-  ): void => {
-    out.push(xform(leaf(0.070 * s, 0.15 * s, 0.020, seed), x, y, z,
-      Math.PI / 2, 0, (seed % 5 - 2) * 0.17));
-    out.push(xform(leaf(0.052 * s, 0.13 * s, 0.017, seed + 19),
-      x + Math.sin(seed) * 0.065 * s, y + Math.cos(seed * 1.3) * 0.055 * s, z,
-      Math.PI / 2, seed * 0.19, (seed % 4 - 1.5) * 0.14));
-    out.push(xform(leaf(0.035 * s, 0.18 * s, 0.015, seed + 37),
-      x - Math.cos(seed * 0.8) * 0.055 * s, y - 0.060 * s, z,
-      Math.PI / 2, seed * 0.27, (seed % 3 - 1) * 0.12));
-  };
-
-  // HULL TOP: one rippled blanket floats 5-7 cm above the entire deck and
-  // follows the glacis down to the beak.  The turret rises through a tailored
-  // central aperture instead of intersecting a surface-applied texture.
-  const hullTurretOpening: Vec2Tuple[] = [[-1.39, -2.12], [-1.39, 1.58], [1.39, 1.58], [1.39, -2.12]];
-  const hullBlanketY = (_x: number, z: number): number => {
-    if (z <= 2.20) return 1.765;
-    if (z <= 2.40) return 1.765 - (z - 2.20) * 0.45;
-    if (z <= 2.96) return 1.675 - (z - 2.40) * 0.33;
-    if (z <= 3.52) return 1.490 - (z - 2.96) * 0.18;
-    return 1.389 - (z - 3.52) * 0.44;
-  };
-  const hullBlanketOutline: Vec2Tuple[] = [
-    [-0.94, -3.80], [0.94, -3.80], [1.02, -3.42], [1.68, -3.12],
-    // Pull the bow shoulders in before the idler arc; the previous 0.96 m
-    // station left seven cloth voxels inside the animated terminal shoes.
-    [1.71, -2.62], [1.72, 2.18], [1.57, 2.72], [0.84, 3.42],
-    [0.88, 3.82], [-0.88, 3.82], [-0.84, 3.42], [-1.57, 2.72],
-    [-1.72, 2.18], [-1.71, -2.62], [-1.68, -3.12], [-1.02, -3.42],
-  ];
-  const leo2A4FullGhillieAssemblyStage1 = (): void => {
-    hullNet.push(clothTop({
-      x0: -1.72, x1: 1.72, z0: -3.80, z1: 3.82, nx: 30, nz: 60,
-      yAt: hullBlanketY, outline: hullBlanketOutline, holes: [hullTurretOpening], seed: 4,
-    }));
-  };
-  leo2A4FullGhillieAssemblyStage1();
-
-  // HULL SIDES: one rippled net carrier follows the real skirt shoulder and
-  // tapered nose at each side.  Its irregular hem stays above the native
-  // linked track.  The visible mass is made from individual leaves below,
-  // never from rectangular curtain panels.
-  const hullSideWidth = (z: number): number => {
-    if (z > 2.25) return THREE.MathUtils.lerp(1.71, 1.06, (z - 2.25) / 1.53);
-    if (z < -3.20) return THREE.MathUtils.lerp(1.71, 1.33, (-z - 3.20) / 0.58);
-    return 1.71;
-  };
-  const hullSideTop = (z: number): number => hullBlanketY(0, z) - 0.015;
-  // The physical skirt course moved up 100 mm, so its tailored camouflage
-  // carrier must follow that supported hem instead of remaining in the old
-  // shoe sweep.  Preserve the same irregular drape, simply re-seat it on the
-  // new 0.62/0.64 m armor bottoms with a safe cloth offset.
-  const hullSideBottom = (z: number): number => 0.725
-    + Math.sin(z * 3.1) * 0.035 + Math.cos(z * 5.7) * 0.020;
-  const leo2A4FullGhillieAssemblyStage2 = (): void => {
-    const leo2A4FullGhillieAssemblyStage10 = (): void => {
-      for (const side of [-1, 1] as const) {
-        const leo2A4FullGhillieAssemblyStage10Iteration1 = (): void => {
-          hullNet.push(clothSide({
-            // Stop the hanging skirt where the sprocket/idler arcs begin.  The
-            // center blanket and tailored end faces continue the suit across the
-            // bow and stern, while this side carrier remains outside the straight
-            // shoe course instead of slicing through the animated wrap.
-            side, z0: -3.12, z1: 2.24, nz: 44, ny: 10,
-            topAt: hullSideTop, bottomAt: hullSideBottom,
-            outAt: (z: number, t: number): number => hullSideWidth(z) + 0.025 + (1 - t) * 0.075,
-            seed: 11 + side,
-          }));
-          for (let iz = 0; iz < 24; iz++) {
-            const z = -3.55 + iz * 0.30 + (noise01(iz + (side > 0 ? 80 : 0), 11) - 0.5) * 0.16;
-            if (z < -3.10 || z > 2.22) continue;
-            const bottom = hullSideBottom(z), top = hullSideTop(z);
-            for (let row = 0; row < 3; row++) {
-              const seed = iz * 3 + row + (side > 0 ? 90 : 0);
-              const y = bottom + (top - bottom) * (0.17 + row * 0.31
-                + (noise01(seed, 12) - 0.5) * 0.14);
-              const target = (iz + row + (side > 0 ? 1 : 0)) % 3 ? hullDark : hullLight;
-              sideLeaf(target, side, Math.min(1.826, hullSideWidth(z) + 0.095), y, z,
-                0.64 + noise01(seed, 13) * 0.34, seed + 11);
-            }
-          }
-        };
-        leo2A4FullGhillieAssemblyStage10Iteration1();
-      }
-    };
-    leo2A4FullGhillieAssemblyStage10();
-  };
-  leo2A4FullGhillieAssemblyStage2();
-  const hullFrontOutline: Vec2Tuple[] = [[-0.86, 0.69], [0.86, 0.69], [1.04, 0.88], [0.91, 1.40],
-    [0.67, 1.55], [-0.67, 1.55], [-0.91, 1.40], [-1.04, 0.88]];
-  const hullRearOutline: Vec2Tuple[] = [[-1.31, 0.66], [1.31, 0.66], [1.46, 0.92], [1.37, 1.62],
-    [0.98, 1.72], [-0.98, 1.72], [-1.37, 1.62], [-1.46, 0.92]];
-  const hullFrontHoles: Vec2Tuple[][] = [
-    [[-0.72, 1.09], [-0.46, 1.09], [-0.46, 1.34], [-0.72, 1.34]],
-    [[0.46, 1.09], [0.72, 1.09], [0.72, 1.34], [0.46, 1.34]],
-  ];
-  const leo2A4FullGhillieAssemblyStage3 = (): void => {
-    hullNet.push(clothFace({ z: 3.895, x0: -1.05, x1: 1.05, y0: 0.66, y1: 1.57,
-      nx: 16, ny: 9, outline: hullFrontOutline, holes: hullFrontHoles, seed: 23 }));
-    hullNet.push(clothFace({ z: -3.825, x0: -1.48, x1: 1.48, y0: 0.64, y1: 1.74,
-      nx: 20, ny: 10, outline: hullRearOutline, seed: 29 }));
-
-    // The native A4 front mudguard has a narrow supported corner shelf where
-    // its outer post meets the forward lip.  Seat one irregular cloth tongue
-    // over each shelf so the drape follows that real surface continuously;
-    // keeping these high and forward also leaves the complete idler/shoe orbit
-    // untouched.  Without the tongues, the net edge and mudguard lip enclosed
-    // a pair of one-cell sky pinholes in the top-down continuity audit.
-    for (const side of [-1, 1] as const) {
-      const seed = side > 0 ? 207 : 203;
-      hullDark.push(xform(leaf(0.13, 0.15, 0.020, seed), side * 1.64, 1.515, 3.92,
-        0.02, side * 0.08, side * 0.025));
-    }
-  };
-  leo2A4FullGhillieAssemblyStage3();
-
-  const leo2A4FullGhillieAssemblyStage4 = (): void => {
-    for (let iz = 0; iz < 20; iz++) {
-      const z = -3.56 + iz * 0.37 + (noise01(iz, 14) - 0.5) * 0.13;
-      for (let ix = 0; ix < 9; ix++) {
-        const seed = iz * 9 + ix + 2;
-        const x = -1.48 + ix * 0.37 + (noise01(seed, 15) - 0.5) * 0.18;
-        if (!insidePoly(x, z, hullBlanketOutline) || insidePoly(x, z, hullTurretOpening)) continue;
-        // End courses sit between the live track lanes; leaves are wider than
-        // their carrier cells, so keep their centers one leaf-width inboard.
-        if ((z > 3.18 || z < -3.18) && Math.abs(x) > 0.72) continue;
-        const y = hullBlanketY(x, z) + 0.025;
-        topLeaf(seed % 3 ? hullDark : hullLight, x, y, z,
-          0.61 + noise01(seed, 16) * 0.37, seed);
-      }
-    }
-  };
-  leo2A4FullGhillieAssemblyStage4();
-  const leo2A4FullGhillieAssemblyStage5 = (): void => {
-    for (let ix = 0; ix < 9; ix++) {
-      const seed = ix + 211;
-      const x = -0.78 + ix * 0.195 + (noise01(seed, 17) - 0.5) * 0.10;
-      faceLeaf(ix % 3 ? hullDark : hullLight, x, 0.86 + noise01(seed, 18) * 0.40, 3.91,
-        0.62 + noise01(seed, 19) * 0.30, seed);
-    }
-    for (let ix = 0; ix < 12; ix++) {
-      const seed = ix + 227;
-      const x = -1.18 + ix * 0.215 + (noise01(seed, 20) - 0.5) * 0.12;
-      faceLeaf(ix % 2 ? hullLight : hullDark, x, 0.82 + noise01(seed, 21) * 0.62, -3.84,
-        0.60 + noise01(seed, 22) * 0.34, seed);
-    }
-  };
-  leo2A4FullGhillieAssemblyStage5();
-
-  // TURRET FACE: a tailored brow/cheek carrier follows the welded face and
-  // has a literal opening for the complete gun/mantlet/recoil assembly.
-  const turretFaceOutline: Vec2Tuple[] = [[-1.18, 0.10], [1.18, 0.10], [1.11, 0.72],
-    [0.74, 0.79], [-0.74, 0.79], [-1.11, 0.72]];
-  const turretGunOpening: Vec2Tuple[] = [[-0.47, 0.04], [0.47, 0.04], [0.47, 0.73], [-0.47, 0.73]];
-  const leo2A4FullGhillieGunStage1 = (): void => {
-    turretNet.push(clothFace({ z: 1.292, x0: -1.20, x1: 1.20, y0: 0.06, y1: 0.80,
-      nx: 20, ny: 9, outline: turretFaceOutline, holes: [turretGunOpening], seed: 37 }));
-  };
-  leo2A4FullGhillieGunStage1();
-
-  // TURRET FLANKS / REAR: curved-in-plan side carriers land just outside the
-  // welded armor and narrow into the bustle.  There are no box-side panels.
-  const turretSideWidth = (z: number): number => {
-    if (z > 0.55) return THREE.MathUtils.lerp(1.31, 1.05, (z - 0.55) / 0.55);
-    if (z < -1.45) return THREE.MathUtils.lerp(1.28, 1.03, (-z - 1.45) / 1.28);
-    return z < -0.50 ? 1.28 : 1.31;
-  };
-  const turretSideTop = (z: number): number => 0.755 - Math.max(0, -z - 1.55) * 0.045;
-  const turretSideBottom = (z: number): number => 0.10 + Math.sin(z * 4.7) * 0.028;
-  const leo2A4FullGhillieAssemblyStage6 = (): void => {
-    for (const side of [-1, 1] as const) {
-      const leo2A4FullGhillieAssemblyCourse1 = (): void => {
-        turretNet.push(clothSide({
-          side, z0: -2.73, z1: 1.08, nz: 38, ny: 9,
-          topAt: turretSideTop, bottomAt: turretSideBottom,
-          outAt: (z: number, t: number): number => turretSideWidth(z) + 0.018 + (1 - t) * 0.028,
-          seed: 43 + side,
-        }));
-        for (let iz = 0; iz < 15; iz++) {
-          const z = 0.92 - iz * 0.245
-            + (noise01(iz + (side > 0 ? 60 : 0), 23) - 0.5) * 0.12;
-          for (let row = 0; row < 3; row++) {
-            const seed = 300 + iz * 3 + row + (side > 0 ? 70 : 0);
-            const bottom = turretSideBottom(z), top = turretSideTop(z);
-            const y = bottom + (top - bottom) * (0.17 + row * 0.31
-              + (noise01(seed, 24) - 0.5) * 0.13);
-            const target = (seed + (side > 0 ? 1 : 0)) % 3 ? turretDark : turretLight;
-            sideLeaf(target, side, Math.min(1.36, turretSideWidth(z) + 0.047), y, z,
-              0.58 + noise01(seed, 25) * 0.38, seed);
-          }
-        }
-      };
-      leo2A4FullGhillieAssemblyCourse1();
-    }
-  };
-  leo2A4FullGhillieAssemblyStage6();
-  const turretRearOutline: Vec2Tuple[] = [[-0.98, 0.10], [0.98, 0.10], [1.09, 0.28],
-    [0.91, 0.69], [-0.91, 0.69], [-1.09, 0.28]];
-  const leo2A4FullGhillieAssemblyStage7 = (): void => {
-    turretNet.push(clothFace({ z: -2.755, x0: -1.10, x1: 1.10, y0: 0.08, y1: 0.70,
-      nx: 18, ny: 8, outline: turretRearOutline, seed: 47 }));
-  };
-  leo2A4FullGhillieAssemblyStage7();
-
-  // TURRET CROWN: a subdivided cloth shell floats 6-9 cm over the welded
-  // roof.  Its rippled vertices and the side drops above create a separate
-  // silhouette and visible air layer; it is not a material applied to the
-  // armor.  The concave outline opens around the mantlet and EMES, while
-  // physical cells are omitted for every remaining working station.
-  const turretRoofOutline: Vec2Tuple[] = [
-    [-0.81, 1.06], [-0.48, 1.06], [-0.48, 0.80], [0.18, 0.80],
-    [0.18, 0.30], [1.05, 0.30], [1.09, 0.69], [1.06, -0.72],
-    [0.99, -1.58], [0.91, -2.28], [-0.91, -2.28], [-0.99, -1.58],
-    [-1.06, -0.72], [-1.09, 0.69],
-  ];
-  const turretRoofHoles: Vec2Tuple[][] = [
-    [[-1.00, -0.98], [-1.00, 0.34], [-0.14, 0.34], [-0.14, -0.98]],
-    [[0.19, -0.52], [0.19, -0.10], [0.53, -0.10], [0.53, -0.52]],
-    [[0.28, -0.52], [0.91, -0.52], [0.91, -0.62], [0.96, -0.62],
-      [0.96, -1.58], [0.38, -1.65], [0.38, -1.06], [0.28, -1.06]],
-    [[-0.90, -2.25], [-0.90, -1.78], [-0.73, -1.78], [-0.73, -2.25]],
-  ];
-  const leo2A4FullGhillieAssemblyStage8 = (): void => {
-    turretNet.push(clothTop({
-      x0: -1.10, x1: 1.10, z0: -2.30, z1: 1.08, nx: 22, nz: 34,
-      yAt: () => 0.758, outline: turretRoofOutline, holes: turretRoofHoles, seed: 19,
-    }));
-    for (let iz = 0; iz < 12; iz++) {
-      const z = -2.14 + iz * 0.265 + (noise01(iz, 26) - 0.5) * 0.10;
-      for (let ix = 0; ix < 9; ix++) {
-        const seed = 411 + iz * 9 + ix;
-        const x = -0.96 + ix * 0.24 + (noise01(seed, 27) - 0.5) * 0.13;
-        if (!insidePoly(x, z, turretRoofOutline)
-          || turretRoofHoles.some((hole) => insidePoly(x, z, hole))) continue;
-        topLeaf(seed % 3 ? turretDark : turretLight, x, 0.790, z,
-          0.56 + noise01(seed, 28) * 0.38, seed);
-      }
-    }
-  };
-  leo2A4FullGhillieAssemblyStage8();
-  const leo2A4FullGhillieAssemblyStage9 = (): void => {
-    for (let side = -1; side <= 1; side += 2) {
-      for (let row = 0; row < 3; row++) {
-        const seed = 531 + row + side;
-        const x = side * (0.58 + row * 0.20 + noise01(seed, 29) * 0.05);
-        const y = 0.16 + row * 0.18 + noise01(seed, 30) * 0.10;
-        faceLeaf((row + (side > 0 ? 1 : 0)) % 2 ? turretLight : turretDark,
-          x, y, 1.31, 0.60 + noise01(seed, 31) * 0.32, seed);
-      }
-    }
-    for (let ix = 0; ix < 10; ix++) {
-      const seed = ix + 549;
-      const x = -0.88 + ix * 0.195 + (noise01(seed, 32) - 0.5) * 0.10;
-      faceLeaf(ix % 3 ? turretDark : turretLight, x, 0.18 + noise01(seed, 33) * 0.40, -2.77,
-        0.57 + noise01(seed, 34) * 0.36, seed);
-    }
-  };
-  leo2A4FullGhillieAssemblyStage9();
-
-  const hullNetPack = makeNet();
-  const turretNetPack = makeNet();
-  const leo2A4FullGhillieHullStage1 = (): void => {
-    addMerged(P.hullG, hullNet, hullNetPack.mat, 'leo2a4_ghillie_hull_net', [hullNetPack.texture]);
-    addMerged(P.turretG, turretNet, turretNetPack.mat, 'leo2a4_ghillie_turret_net', [turretNetPack.texture]);
-    addMerged(P.hullG, hullLight, makeCloth(0x64794a, 'hull-light'), 'leo2a4_ghillie_hull_light');
-    addMerged(P.hullG, hullDark, makeCloth(0x34462d, 'hull-dark'), 'leo2a4_ghillie_hull_dark');
-    addMerged(P.turretG, turretLight, makeCloth(0x64794a, 'turret-light'), 'leo2a4_ghillie_turret_light');
-    addMerged(P.turretG, turretDark, makeCloth(0x34462d, 'turret-dark'), 'leo2a4_ghillie_turret_dark');
-  };
-  leo2A4FullGhillieHullStage1();
+  // 2026-10-05 (tank-accessories lane): the suit's authored carriers now live in the shared builder
+  // (ghillieSuit.ts GHILLIE_SUIT_CONFIGS.leo2a4) with its spray-card garnish and cascade-registered cloth.
+  addVehicleGhillieSuit(P);
 }
 
 // ---------------------------------------------------------------------------
@@ -7030,7 +6489,7 @@ function leo2A4FullGhillie(P: TankBuilderPort) {
 // ---------------------------------------------------------------------------
 export function buildLeo2A4(builder: object) {
   const P = requireTankBuilderPort(builder);
-  const { box, cylY, cylZ, torus, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip, polyMultiLoft } = KIT;
+  const { box, cylY, cylZ, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip, polyMultiLoft } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const buildLeo2A4AssemblyStage1 = (): void => {
     leoHullV3(P, {
@@ -7270,7 +6729,11 @@ export function buildLeo2A4(builder: object) {
       // Supported top cap over the outboard post/lip junction.  This closes
       // the enclosed plan pocket at the front corner while staying outboard
       // of the terminal shoes and above their upper orbit.
-      P.add('hull', box(0.19, 0.030, 0.38), s * 1.680, 1.49, 3.80);
+      // round 5 (2026-10-07, wave 253 leo2a4-rear: "small pale slivers hang in mid-air ... off the right-hand hull corner"):
+      // the cap reached 19 cm inboard over the idler, 21 cm above its post and 30 cm ahead of the fore-fender's end, with
+      // only a 1.5 cm lap on the skirt's top edge, so from behind it read as a loose plate. It now rides the skirt and
+      // post as their top flange (|x| 1.70..1.85, 6 cm inboard of the skirt face, clear of the 1.69 m track band).
+      P.add('hull', box(0.15, 0.030, 0.38), s * 1.775, 1.49, 3.80);
       // wing band FULLY past the shoe-orbit far edge (idler orbit r 0.425 ->
       // z 3.905; a first cut at z 3.84..3.92 ate 126 shoe voxels x -1.54..
       // +1.54 y 1.06..1.12 — the exact-audit box). Widened to the post so
@@ -7385,7 +6848,10 @@ export function buildLeo2A4(builder: object) {
     P.add('turretDetail', box(0.035, 0.31, 0.026), 0.695, 0.61, 1.062);          // aperture divider
     P.add('turretDark', cylZ(0.080, 0.075, 14), 0.79, 0.39, 1.035);              // round rangefinder well
     P.add('turretGlass', cylZ(0.057, 0.016, 14), 0.79, 0.39, 1.082);
-    P.add('turretDetail', torus(0.080, 0.011, 14), 0.79, 0.39, 1.085, Math.PI / 2, 0, 0);
+    // 2026-10-07 (tank-accessories round 3: the round torus round the window read as "a coiled-cable prop"): a
+    // flat-faced machined bezel round the rangefinder window
+    P.add('turretDetail', KIT.lathe([[0.091, 0], [0.091, 0.018], [0.06, 0.018], [0.06, 0], [0.091, 0]], 16),
+      0.79, 0.39, 1.074, Math.PI / 2, 0, 0);
     P.add('turretDark', box(0.78, 0.025, 0.66), 0.64, 0.325, 0.75);              // roof attachment flange
     // PERI R17 panoramic periscope (commander, fwd-right of the hatch) — the
     // tallest fixed point (top 2.79w = the published-height spike budget).
@@ -7412,9 +6878,9 @@ export function buildLeo2A4(builder: object) {
     }
     periscope(P, 'turretDetail', 0.60, 0.65, -0.40);
     // loader MG3 on its pintle at the hatch rim — the §B3 census fitting
-    // (mag class = the 7.62 GPMG family; two-tone per MG PHYSICS).
+    // (the mg3 class since 2026-10-08, round 5: the MG3's perforated jacket and muzzle booster; two-tone per MG PHYSICS).
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0] });
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0] });
       mg.position.set(-0.42, 0.70, -0.38);
       P.turretG.add(mg);
     }
@@ -7531,7 +6997,9 @@ export function buildLeo2A4(builder: object) {
     // ratified §5.09 build carried. §5.07 CROWS-FORWARD rest; receiver
     // ~2.74-2.92w / cap ~3.02w over the 2.48 roof = the real ~0.6 m FLW ride
     // height (no oracle; §5.73-1 P95-envelope heightM datum note in packet).
-    leoFLW200(P, { x: 0.78, y: 0.69, z: -1.12, s: 0.54, widthScale: 0.12, gunY: 0.77, shields: true, seed: 13 });
+    // 2026-10-08: the station is the A4's working roof weapon (owner order §5.09-5 put it here; his 2A5M precedent in
+    // main 6763d7cc0 activates such a station). Gameplay change: functional roof guns 0 -> 1 on leo2a4 and leo2a4_otco.
+    leoFLW200(P, { x: 0.78, y: 0.69, z: -1.12, s: 0.54, widthScale: 0.12, gunY: 0.77, shields: true, seed: 13, automatic: true });
     // ---- Rh 120 L/44 (§B3.1: tube cylinder + thermal sleeve segments with
     // clamp rings + mid-tube bore evacuator + MRS collar; plate mantlet on a
     // trunnion roll — never a prism). The complete gun rig is seated 90 mm
@@ -7990,23 +7458,18 @@ function buildLeo2A7V(P: TankBuilderPort) {
     // alone owns the above-grace budget (<=3 cols -> p95 = the 2.66 class).
     // The real FLW 200 sits low-slung on the A7V bustle; the published
     // "~3.0 over sights" band is the PERI's.
+    // 2026-10-08 (owner order §5.09-5 put the FLW 200 here; his 2A5M precedent in main 6763d7cc0 activates the original
+    // station; the coordinator's ruling on the lane's audit): the FLW 200 is the 2A7V's working roof weapon, and the
+    // open-yoke tower that stood 0.89 m from it on the outboard bustle (with its pedestal) is gone. Functional roof
+    // guns stay 1.
     leoFLW200(P, { x: -0.12, y: 0.70, z: -1.35, s: 0.90, gunY: 0.71, gunScale: 0.90,
-      drumH: 0.07, podY: 0.89, podH: 0.16, shields: true, elev: 0.08, seed: 21 });
-    // The sharper A7V crown plan falls a few millimetres beneath this outboard
-    // station. A shallow armored slew pedestal is buried through the crown and
-    // meets the fitting's exact 0.67 m foot, preventing a daylight slit without
-    // moving the weapon from its authored bustle position.
-    P.add('turret', box(0.24, 0.055, 0.26), 0.72, 0.6425, -1.48);
-    P.turretG.userData.auxiliaryOpenYokeRwsReceipt = addLeopardOpenYokeAuxRws(P, {
-      x: 0.72, y: 0.67, z: -1.48,
-      variant: 'a7v-low', ammoSide: 1, sensorSide: -1, yaw: -0.035,
-    });
+      drumH: 0.07, podY: 0.89, podH: 0.16, shields: true, elev: 0.08, seed: 21, automatic: true });
     // loader MG3 — the §I census fitting, FITTING-SUNK (revolution law):
     // foot below the roof through a mount collar so the pale cap stays
     // under the 2.6664 grace line (EMES hood keeps the anchor).
     P.add('turret', cylY(0.075, 0.095, 0.055, P.q ? 16 : 12), -0.40, 0.795, -0.05); // mount collar
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 6, rotation: [0, -0.3, 0] });
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 6, rotation: [0, -0.3, 0] });
       mg.position.set(-0.40, 0.70, -0.05);
       P.turretG.add(mg);
     }
@@ -8212,7 +7675,7 @@ function addLeo2PrototypeSponsonRails(P: TankBuilderPort): void {
 // build rode the V1 hull as a playable fallback). Identity (PT 1972-74,
 // 105 mm-smoothbore turret): LOW slab welded turret WITHOUT wedge appliqué,
 // rounded-in-plan cheek front, stereoscopic rangefinder blisters on BOTH
-// cheeks, base ring bulge wider than the walls, ROUNDED cast gun mantlet,
+// cheeks, base ring bulge wider than the walls, owner-revised faceted mantlet,
 // bare slim 105 (no thermal sleeve), plain flat full-length prototype
 // skirts, production Leopard 2 hull with the early nose fit. Bergman
 // oracle is a certified melted tub (whole print tops y 2.14 — no turret,
@@ -8220,7 +7683,7 @@ function addLeo2PrototypeSponsonRails(P: TankBuilderPort): void {
 // dims + floaters MUST hold 100. The visual bar is the §B8 photo class.
 // ---------------------------------------------------------------------------
 function buildLeo2Proto(P: TankBuilderPort) {
-  const { box, cylY, cylZ, openRackGrid, sph, xform, periscope, liftEye,
+  const { box, cylY, openRackGrid, sph, xform, periscope, liftEye,
     smokeCluster, stowage, tarpRoll, ammoCan, polyMultiLoft } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   leoHullV3(P, {
@@ -8334,18 +7797,18 @@ function buildLeo2Proto(P: TankBuilderPort) {
     [-0.44, 1.18], [0.44, 1.18], [0.94, 0.78], [1.22, 0.16], [1.18, -1.18],
     [1.10, -2.75], [-1.10, -2.75], [-1.18, -1.18], [-1.22, 0.16], [-0.94, 0.78],
   ];
-  P.add('turret', polyMultiLoft(PT_PLAN, [
+  P.add('turret', recessClosedTurret(polyMultiLoft(PT_PLAN, [
     { height: 0.015, inset: 1.00 },
     { height: 0.40, inset: 0.995 },
     { height: 0.65, inset: 0.92 },
-  ]));
-  P.add('turret', polyMultiLoft([                                             // buried fore apron: no ring/deck slit
+  ]), { halfWidthM: .43, backZM: .68 }));
+  P.add('turret', recessClosedTurret(polyMultiLoft([                          // buried fore apron with real gun clearance
     [-0.44, 1.18], [0.44, 1.18], [0.94, 0.78], [1.22, 0.16], [1.22, 0.08],
     [-1.22, 0.08], [-1.22, 0.16], [-0.94, 0.78],
   ], [
     { height: -0.035, inset: 1.00 },
     { height: 0.11, inset: 0.985 },
-  ]));
+  ]), { halfWidthM: .43, backZM: .68 }));
   // weld seams down the cheek knuckle lines (on the facet joints; mirrored
   // with the corner-swap law — orientedSlab re-guards winding)
   P.add('turretDark', slab(
@@ -8354,23 +7817,20 @@ function buildLeo2Proto(P: TankBuilderPort) {
   P.add('turretDark', slab(
     [-0.915, 0.02, 0.6845], [-0.885, 0.02, 0.7055], [-0.885, 0.02, 0.6895], [-0.915, 0.02, 0.6685],
     [-0.915, 0.58, 0.6845], [-0.885, 0.58, 0.7055], [-0.885, 0.58, 0.6895], [-0.915, 0.58, 0.6685]));
-  // center front: mantlet slot bay (armored embrasure grammar, §B3).
-  // §SRCFIX-0808: bay widened (back wall 0.88, cheeks ±0.448) to seat the
-  // REAL wide rounded cast mantlet (the brief's "distinctive rounded/
-  // angular cast-look mantlet area" — the old 0.56 dome floated in an
-  // oversized slot and read as a pin head).
-  P.add('turret', box(0.88, 0.675, 0.24), 0, 0.3125, 0.96);                    // slot back wall (top 0.65 = the roof plane)
-  P.add('turret', box(0.92, 0.16, 0.16), 0, 0.57, 1.06);                       // brow strip (flush to the roof line)
-  P.add('turret', box(0.92, 0.08, 0.16), 0, 0.045, 1.06);                      // chin plate
-  for (const s of [-1, 1] as const) P.add('turretDark', box(0.028, 0.42, 0.18), s * 0.448, 0.29, 1.055);
+  // Closed side reveals carry the journals. The center stays open through
+  // the pitched shield's full swept volume instead of concealing a cube.
+  for (const side of [-1, 1])
+    P.add('turret', box(.09, .40, .36), side * .455, .26, 1.00);
   // roof = the wall solids' own top faces at 0.65 (2.37w one plane — a
   // rectangular cap plate overhung the tapered plan as ledge corners in
   // the top view); ring plinth (§B2 slit closure, yaws with the mass)
-  P.add('turret', cylY(1.00, 1.04, 0.09, P.q ? 26 : 16), 0, -0.02, -0.35);
+  P.add('turret', recessClosedTurret(xform(cylY(1.00, 1.04, 0.09, P.q ? 26 : 16), 0, -0.02, -0.35),
+    { halfWidthM: .43, backZM: .68 }));
   // base ring bulge — wider than the turret walls (the PT tell); bottom
   // 1.69w clears the 1.71 aft deck to a 1.4 cm extreme-arc dip (family
   // margin class).
-  P.add('turret', cylY(1.24, 1.30, 0.12, P.q ? 26 : 16, false), 0, 0.03, -0.28, 0, 0, 0, [1, 1, 1.18]);
+  P.add('turret', recessClosedTurret(xform(cylY(1.24, 1.30, 0.12, P.q ? 26 : 16, false), 0, 0.03, -0.28, 0, 0, 0, [1, 1, 1.18]),
+    { halfWidthM: .43, backZM: .68 }));
   // stereoscopic rangefinder housings on BOTH cheek shoulders — the
   // walkaround reads them as ARMOURED BLOCKS ("both ends of the range
   // finder are hidden behind the armoured blocks at the turret sides"):
@@ -8425,9 +7885,9 @@ function buildLeo2Proto(P: TankBuilderPort) {
     whip.position.set(s * 1.09, 0.50, -1.55);
     P.turretG.add(whip);
   }
-  // loader MG3 pintle at the hatch rim (§B3 census weapon, mag class)
+  // loader MG3 pintle at the hatch rim (§B3 census weapon, the mg3 class since 2026-10-08, round 5)
   {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 9, rotation: [0, -0.30, 0] });
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 9, rotation: [0, -0.30, 0] });
     // mount LOW (0.54): the mag receiver band spans several side columns —
     // at a 0.65 mount it wrote heightM p95 2.59 (dims -27.7); at 0.54 the
     // receiver rides ~2.48 and the p95 falls back to the cupola crown.
@@ -8505,20 +7965,10 @@ function buildLeo2Proto(P: TankBuilderPort) {
     drumH: 0.05, podY: 0.70, podH: 0.16, shields: false, elev: 0.07,
     towerTop: 1.06, towerZ: -1.52, towerW: 0.16, seed: 17 });
 
-  // ---- 105 mm smoothbore (§B3.1): ROUNDED cast mantlet — trunnion roll +
-  // domed collar shoulders + tapered boot, never a prism; bare slim tube
-  // (no thermal sleeve), mid-tube evacuator, muzzle bore. Axis y 1.98;
-  // muzzle world +6.81 = the spec 10.67 overall over the -3.86 tail.
-  // §SRCFIX-0808: the cast dome WIDENS to the real casting (x radius 0.41
-  // filling the 0.448 slot — the old 0.28 dome read as a pin head in an
-  // oversized bay); trunnion roll follows (0.70); evacuator slimmed
-  // 1.8x -> 1.45x tube (the fat mid-bulge read 20-pdr/Centurion, not the
-  // slim Rheinmetall prototype tube).
+  // Owner-directed replacement: a finite, clipped welded shield with a
+  // real recoil passage and split journals, seated in the original gun frame.
   P.gunG.position.set(0, 0.26, 1.00);
-  P.addGunExtra(KIT.cylX(0.23, 0.70, P.q ? 16 : 12), 0, 0, 0);                 // trunnion roll
-  P.addGunExtra(xform(sph(0.215, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1.90, 1.08, 1.15]), 0, 0, 0.14); // rounded cast mantlet
-  P.addGunExtra(cylZ(0.165, 0.30, P.q ? 16 : 12, 0.115), 0, 0, 0.36);          // tapered mantlet boot
-  P.addGunExtraDark(cylZ(0.026, 0.10, 8), 0.20, 0.055, 0.24);                  // coax port (right)
+  addLeo2PrototypeMantlet(P);
   KIT.buildGun(P, { len: 5.26, r: 0.064, sleeve: false, evac: 0.55, evacR: 1.45, collar: false, baseR: 0.105 });
   muzzleBore(P, { len: 5.26, r: 0.064 });                                      // §B3.1 (shadow-named, 3fca39b)
   P.topY = 1.24;
@@ -12060,7 +11510,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   // the aft panels do not remain stranded at the widest cheek datum.
   const turretPanelWallXAt = (z: number): number => turretWallHalfWidthAt(z) * (0.945 + Math.max(0, -z) * 0.006);
   const buildKF51OwnerExactMarkingsStage1 = (): void => {
-    P.add('turret', recessKF51BTurret(polyMultiLoft(turretPlan, [
+    const structuralShell = recessKF51BTurret(convexCrownedStock(polyMultiLoft(turretPlan, [
       { height: -0.01, inset: 0.93 },
       { height: 0.24, inset: 1.00 },
       {
@@ -12074,6 +11524,8 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
         centerHeight: turretRoofCenterHeightM,
       },
     ])));
+    structuralShell.userData.primaryStockRole = 'kf51u-recessed-shell';
+    P.add('turret', structuralShell);
     P.turretG.userData.kf51bGunRecess = { ...KF51B_GUN_RECESS, closedCheeks: true };
     P.turretG.userData.kf51bTurretRoofReceipt = Object.freeze({
       profile: 'convex-crowned-wedge',
@@ -12508,9 +11960,11 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
     // z=1.50 and exposed a second upper-glacis plane from y=.74..1.54. This
     // compact wedge ends at the shallow glacis' forward edge, sharing its
     // x=±.80, y=1.04, z=3.54 seam without duplicating the long outer skin.
-    P.add('hull', slab(
+    const lowerBow = convexSlab(
       [-0.78, 0.48, 3.24], [0.78, 0.48, 3.24], [0.78, 0.48, 2.92], [-0.78, 0.48, 2.92],
-      [-0.80, 1.04, 3.54], [0.80, 1.04, 3.54], [0.80, 0.74, 3.30], [-0.80, 0.74, 3.30]));
+      [-0.80, 1.04, 3.54], [0.80, 1.04, 3.54], [0.80, 0.74, 3.30], [-0.80, 0.74, 3.30]);
+    lowerBow.userData.primaryStockRole = 'leo1a5-lower-bow';
+    P.add('hull', lowerBow);
     P.add('hull', slab(
       [-1.05, 1.34, upperGlacisRearZ], [1.05, 1.34, upperGlacisRearZ],
       [1.05, 1.34, -3.34], [-1.05, 1.34, -3.34],
@@ -12799,9 +12253,12 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
       P.add('turret', sideSlab(s,
         [0.28, 0.10, 0.80], [1.18, 0.16, 0.35], [1.20, 0.44, 0.17], [0.30, 0.40, 0.62],
         [0.26, 0.42, 1.28], [0.98, 0.44, 0.68], [0.90, 0.62, 0.44], [0.27, 0.67, 1.04]));
-      P.add('turret', sideSlab(s,
+      const rearApplique = convexSlab(...([
         [1.02, 0.16, 0.24], [1.31, 0.20, -0.72], [1.22, 0.56, -0.86], [0.96, 0.45, 0.12],
-        [0.91, 0.46, 0.45], [1.16, 0.49, -0.63], [1.05, 0.73, -0.72], [0.85, 0.70, 0.27]));
+        [0.91, 0.46, 0.45], [1.16, 0.49, -0.63], [1.05, 0.73, -0.72], [0.85, 0.70, 0.27],
+      ] as const).map(p => mirror(s, p)));
+      rearApplique.userData.primaryStockRole = 'leo1a5-rear-applique';
+      P.add('turret', rearApplique);
       P.addEquipment('turret', box(0.025, 0.035, 0.64), s * 1.18, 0.52, -0.28, 0, 0, s * 0.24);
       liftEye(P, 'turretDetail', s * 0.72, 0.79, 0.20, s * 0.45);
       liftEye(P, 'turretDetail', s * 0.76, 0.78, -1.10, s * 2.65);
@@ -12840,7 +12297,7 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
       P.addEquipment('turret', cylY(0.12, 0.14, 0.13, P.q ? 16 : 10), -0.45, 0.86, -0.30);
       P.addEquipment('turret', box(0.24, 0.08, 0.20), -0.45, 0.91, -0.30);
       const mg = FITTINGS.pintleMG({
-        mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0.05,
+        mats: P.mats, cls: 'mg3', tone: 'two-tone', elev: 0.05,
         scale: 0.96, seed: 15, shield: true, ammo: true,
       });
       mg.position.set(-0.45, 0.91, -0.30);
@@ -13347,8 +12804,10 @@ function addLeo2A6MRoofRCWS(P: TankBuilderPort) {
   // The shared Browning-family receiver now carries its complete top cover,
   // sight and feed furniture.  Sink the mounting feet into the RCWS bridge so
   // that richer crown remains below the A6M PERI silhouette budget while the
-  // gun still bears directly on the station housing.
-  const weaponFootY = 0.945;
+  // gun still bears directly on the station housing. 2026-10-06: the loaded
+  // feed's belt arcs 1 cm over the old crown (0.303 vs 0.293 at this scale),
+  // so the feet sink 1 cm further (crown 1.238 under the 1.24 budget).
+  const weaponFootY = 0.930;
   const remoteMachineGun = FITTINGS.pintleMG({ remoteControlled: true,
     mats: P.mats,
     cls: 'm2',
@@ -13852,9 +13311,9 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     for (const s of [-1, 1] as const) {
       // Upper thermal skin follows the inner arrow plane and overlaps the
       // helper-owned plate by 12 mm at its rear edge.
-      P.add('turret', slab(
-        [s * 0.37, 0.300, 2.47], [s * 0.91, 0.310, 2.02], [s * 0.91, 0.405, 1.73], [s * 0.40, 0.430, 2.18],
-        [s * 0.37, 0.318, 2.46], [s * 0.91, 0.328, 2.01], [s * 0.91, 0.423, 1.72], [s * 0.40, 0.448, 2.17]));
+      P.add('turret', leopardThermalSkin([
+        [s * 0.37, 0.318, 2.46], [s * 0.91, 0.328, 2.01], [s * 0.91, 0.423, 1.72], [s * 0.40, 0.448, 2.17],
+      ], [0, -0.018, 0.010]));
       // Outboard skin follows the falling crest and terminates before the
       // real 2A6 tip pad so the characteristic arrow point remains visible.
       P.add('turret', slab(
@@ -13986,7 +13445,7 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     P.add('turretDetail', box(0.08, 0.05, 0.10), -0.86, 0.645, -2.62);
     {
       const mg = FITTINGS.pintleMG({
-        mats: P.mats, cls: 'mag', remoteControlled: P.spec.id==='leo2a6_ua', tone: 'two-tone', scale: 0.66, elev: 0,
+        mats: P.mats, cls: P.spec.id==='leo2a6_ua' ? 'mag' : 'mg3', remoteControlled: P.spec.id==='leo2a6_ua', tone: 'two-tone', scale: 0.66, elev: 0,
         shield: false, ammo: true, seed: 3450, rotation: [0, Math.PI / 2, 0],
       });
       mg.position.set(-0.58, 0.67, -2.62);
@@ -14044,17 +13503,15 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
       const eraReceipt = addLeo2A6MFrontalERA(P, 'a6m');
       const cheekCage = addLeo2A6MCheekCage(P);
       const roofRemoteWeapon = addLeo2A6MRoofRCWS(P);
-      const auxiliaryOpenYokeRws = addLeopardOpenYokeAuxRws(P, {
-        x: -0.72, y: 0.795, z: -1.52,
-        variant: 'a6m-arctic', ammoSide: -1, sensorSide: 1, yaw: 0.030,
-        scale: 0.92, towerRise: 0.10,
-      });
+      // 2026-10-08 (the owner's field standard in main 6763d7cc0: no duplicate weapons; the coordinator's ruling on the
+      // lane's audit): the RCWS is this mark's one roof station. The open-yoke tower stood 0.79 m from it as a second
+      // working 12.7, and it is gone. Gameplay change: functional roof guns 2 -> 1.
+
       if (P.geometryReceipt) {
         P.turretG.userData.leopard2A6MERAReceipt = Object.freeze({
           ...eraReceipt,
           cheekCage,
           roofRemoteWeapon,
-          auxiliaryOpenYokeRws,
         });
       }
     }
@@ -14349,6 +13806,8 @@ function buildLeopard2A6UA(P: TankBuilderPort) {
   // Roof basket rails give the net a believable stand-off support without
   // closing the hatch, sight or weapon-station service lanes.
   addLeopardUaRoofBasket(P);
+  addMissionAttachmentReceiver(P, 'leo2a6_ua');
+  addModernFieldCage(P);
 
   const remoteStations = [
     // Each min/max pair brackets the authored armor under the full pedestal,
@@ -14516,7 +13975,7 @@ function wrapRearSlat(P: TankBuilderPort, width: number, y0: number, y1: number,
 // package re-seated at the old turret's trunnion face (muzzle world 6.24,
 // overall 9.96 — bore-mouth law receipts in src/vehicles/germany.ts).
 function buildLeo2A4M(P: TankBuilderPort) {
-  const { box, cylX, cylY, cylZ, torus, xform, sph, periscope, liftEye, smokeCluster, shovelTool, towCable, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip, polyMultiLoft } = KIT;
+  const { box, cylX, cylY, cylZ, xform, sph, periscope, liftEye, smokeCluster, shovelTool, towCable, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip, polyMultiLoft } = KIT;
   const buildLeo2A4MHullStage1 = (): void => {
     leoHullV3(P, {
       bodyHW: 1.58, sponsonY: 1.30, trackW: 0.635, xc: 1.31,
@@ -14884,7 +14343,10 @@ function buildLeo2A4M(P: TankBuilderPort) {
     P.add('turretDetail', box(0.035, 0.31, 0.026), 0.695, 0.61, 1.062);          // aperture divider
     P.add('turretDark', cylZ(0.080, 0.075, 14), 0.79, 0.39, 1.035);              // round rangefinder well
     P.add('turretGlass', cylZ(0.057, 0.016, 14), 0.79, 0.39, 1.082);
-    P.add('turretDetail', torus(0.080, 0.011, 14), 0.79, 0.39, 1.085, Math.PI / 2, 0, 0);
+    // 2026-10-07 (tank-accessories round 3: the round torus round the window read as "a coiled-cable prop"): a
+    // flat-faced machined bezel round the rangefinder window
+    P.add('turretDetail', KIT.lathe([[0.091, 0], [0.091, 0.018], [0.06, 0.018], [0.06, 0], [0.091, 0]], 16),
+      0.79, 0.39, 1.074, Math.PI / 2, 0, 0);
     P.add('turretDark', box(0.78, 0.025, 0.66), 0.64, 0.325, 0.75);              // roof attachment flange
     // PERI R17 panoramic periscope (commander, fwd-right of the hatch).
     // §5.311: head compacted in z (box 0.19→0.14, cap r 0.08→0.065) and the
@@ -14916,7 +14378,9 @@ function buildLeo2A4M(P: TankBuilderPort) {
       }
     }
     periscope(P, 'turretDetail', 0.60, 0.65, -0.40);
-    // loader MG3 on its pintle at the hatch rim (§B3 census fitting).
+    // loader's C6 on its pintle at the hatch rim (§B3 census fitting). 2026-10-08 (the owner's field standard in main
+    // 6763d7cc0: true to calibre and reference): Canada's C6 is the FN MAG, so this gun takes the MAG class (round 5 had
+    // given the German crew guns' MG3 class to this Canadian mark too).
     {
       const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0] });
       mg.position.set(-0.42, 0.70, -0.38);
@@ -15010,7 +14474,9 @@ function buildLeo2A4M(P: TankBuilderPort) {
     // squat-fit mode (trough 2.68→2.63, RWS gun 2.66→2.61 world — the era
     // WORLD seat class over the 1.62 donor ring; at this 1.70 ring the
     // as-copied seat broke the 2.62/2.64 hardware line).
-    leoFLW200(P, { x: 0.78, y: 0.64, z: -1.12, s: 0.54, widthScale: 0.12, gunY: 0.72, shields: true, seed: 13 });
+    // 2026-10-08: activated as on the A4 (owner order §5.09-5 covers "other leopards too"; the 2A5M precedent).
+    // Gameplay change: functional roof guns 0 -> 1.
+    leoFLW200(P, { x: 0.78, y: 0.64, z: -1.12, s: 0.54, widthScale: 0.12, gunY: 0.72, shields: true, seed: 13, automatic: true });
     // ---- wrapper-era A4M turret package (pre-wave germany.js addA4MPackage,
     // TURRET-owned rows verbatim via the wrap* helpers). The matching hull
     // armor/cage course was restored above over the current two-band inner
@@ -15036,18 +14502,9 @@ function buildLeo2A4M(P: TankBuilderPort) {
     // with a shallow collar; the MG is the §5.248-certified low side-swing
     // C6 (mass at/below the 2.62/2.64 hardware line — receipt: buildLeo2A4M
     // HEAD text, gate 89.5/dims 100 ×2 bit-identical).
-    P.add('turret', box(0.50, 0.075, 0.46), -0.48, 0.7175, -0.66);            // station plate, bottom on the roof
-    P.add('turretDark', box(0.39, 0.020, 0.35), -0.48, 0.765, -0.66);         // dark inset
-    P.add('turret', cylY(0.20, 0.22, 0.030, 18), -0.48, 0.770, -0.66);        // shallow ring collar
-    {
-      const mg = FITTINGS.pintleMG({
-        mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.70, elev: 0.06,
-        shield: false, ammo: true, ring: { r: 0.13, stubs: 3 }, seed: 2470,
-      });
-      mg.position.set(-0.86, 0.66, -0.66);                                    // foot buried 0.02 in the roof, side-swung beside the station
-      mg.rotation.set(0, -0.04, 0);
-      P.turretG.add(mg);
-    }
+    // 2026-10-08 (the owner's field standard in main 6763d7cc0: no duplicate weapons; the coordinator's ruling on the
+    // lane's audit): the station plate's side-swung C6 is gone with its plate, inset and collar. The 2A4M CAN's roof
+    // C6 is the loader's, on the hatch rim above, and the activated FLW 200 is its working station.
     // §5.311 hardware-line rework of the era radioPair: its whips (tips
     // 3.26-3.38 world) spent p95 columns the 2.62 budget does not have
     // (PERI ×2 + SEM spike = 3/3 spent); the era's -2.36 drums also floated

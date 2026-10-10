@@ -180,4 +180,32 @@ const lakeField = createHeightField(1337, { ...airfield,
   terrain: { ...airfield.terrain, lakes: [{ x: 300, z: 280, r: 35 }], marshes: [], softLakes: true } });
 assert.equal(lakeField._noVeg(300, 280), true, 'existing liquid-water exclusion is retained');
 assert.equal(lakeField._noVeg(300, 340), false);
-console.log('hardstandSurface.selftest: local rotated exclusions, remote road controls and additive water passed');
+// 2026-10-07 (wave 182, Frosthollow's "dark untextured rectangles"): the material knows a pad by its stamp — the
+// carriageway's coverage with no centreline near (R high, G 0) — and draws it as the carriageway's packed ground (packed
+// snow on a snow map) without lanes, ruts or crown; a paved map's pads paved; the shoulder's own dirt stands down on it
+{
+  const { readFileSync } = await import('node:fs');
+  const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  assert.ok(terrain.includes('float padK = (1.0 - smoothstep(0.05, 0.25, mk.g)) * (1.0 - step(0.5, gRoadTex));')
+    && terrain.includes('float apronK = smoothstep(0.50, 0.90, mk.r) * padK;') && terrain.includes('float apronRim = smoothstep(0.04, 0.50, mk.r) * padK;'),
+    'a pad is the stamp\'s coverage away from any centreline, on an unpaved map — its body and its feather');
+  assert.ok(terrain.includes('shoulder * uShoulderDirt * (1.0 - apronRim)'), 'the shoulder\'s dirt stands down over the whole pad');
+  assert.ok(terrain.includes('float dW = max(roadCore, apronK) * 0.9 * (1.0 - gRoadTex);'),
+    'the pad takes the carriageway\'s packed ground — earth, or on a snow map packed snow');
+  const strip = readFileSync(new URL('./hardstandSurface.ts', import.meta.url), 'utf8');
+  assert.ok(strip.includes('pixels[at] = Math.max(pixels[at], coverage * 255);') && strip.includes('pixels[at + 1] *= 1 - coverage;'),
+    'the stamp the material reads: full coverage in R, the centreline distance cleared in G');
+}
+// 2026-10-07 (wave 235's Monsoon chase: "a flat, uniform brown dirt plane … cut by a ruler-straight edge"; Whiteout's "no
+// tracks"): a pad's edge reaches into the stamp's spill tongues and is broken by a ragged threshold, and the pad is worked
+// ground — two families of vehicle ruts across it, darkening its packed ground, puddled as a road's ruts are (on a wet map),
+// slush on a snow map, grooved in the light — with churned patches along them
+{
+  const { readFileSync } = await import('node:fs');
+  const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  assert.ok(terrain.includes('apronK = smoothstep(0.30, 0.85, mk.r + (apronN - 0.5) * 0.60 * tileVis(4.8)) * padK;'), 'the pad\'s edge: into the spill, ragged');
+  assert.ok(terrain.includes('rut = max(rut, padRut * rutAmp * 1.2);'), 'its ruts are the road\'s for the puddles');
+  assert.ok(terrain.includes('a.rgb *= 1.0 - padRut * 0.36;') && terrain.includes('n.xy -= padRutN * 0.35;'), 'they darken its ground and groove it');
+  assert.ok(terrain.includes('lane * rutAmp * 1.25 + padRut * 1.10'), 'and on snow they are slush');
+}
+console.log('hardstandSurface.selftest: local rotated exclusions, remote road controls, additive water and the pads\' worn ground passed');

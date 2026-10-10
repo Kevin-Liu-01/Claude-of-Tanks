@@ -33,6 +33,19 @@ const forwardProgramWarm = {
   *linkerBreathingSlices() {},
   invalidate() { calls.forwardInvalidate += 1; },
 };
+const hiddenRoot = new THREE.Group();
+hiddenRoot.visible = false;
+const sourceMaterial = new THREE.MeshStandardMaterial();
+const hiddenMesh = new THREE.Mesh(new THREE.BoxGeometry(), sourceMaterial);
+hiddenRoot.add(hiddenMesh);
+game.tanks.push({ team: 'enemy', networkVisible: false, visual: { root: hiddenRoot } });
+let warmCalls = 0;
+forwardProgramWarm.initializeSteps = function* (root) {
+  assert.equal(root.parent, scene, 'detached enemies warm with the real scene');
+  assert.equal(root.visible, true);
+  assert.notEqual(hiddenMesh.material, sourceMaterial);
+  warmCalls++; yield;
+};
 let studioTrace = null;
 const owner = createCombatWarmComposition({
   game,
@@ -62,6 +75,19 @@ const owner = createCombatWarmComposition({
   publishStudioTrace: (trace) => { studioTrace = trace; },
 });
 
+for (const _ of owner.warmVisionSteps()) {
+  assert.equal(hiddenRoot.parent, null, 'unspotted enemies stay detached between warm slices');
+  assert.equal(hiddenRoot.visible, false);
+  assert.equal(hiddenMesh.material, sourceMaterial);
+}
+assert.equal(warmCalls, 1);
+assert.equal([...owner.warmVisionSteps()].length, 0, 'owner reuses prepared roster');
+scene.add(hiddenRoot); hiddenRoot.visible = true; game.tanks[0].networkVisible = true;
+owner.thermalVehicles.begin(game.tanks, true, 'player');
+assert.notEqual(hiddenMesh.material, sourceMaterial, 'live frame uses warmed owner');
+owner.thermalVehicles.end();
+scene.remove(hiddenRoot); hiddenRoot.visible = false;
+
 await owner.warmStudioPipeline();
 assert.equal(calls.studio, 1, 'Studio warm delegates through the shared typed owner');
 assert.deepEqual(studioTrace, { totalMs: 1, stages: {} });
@@ -90,5 +116,6 @@ await owner.scheduleDeferred(-1);
 assert.equal(calls.pending.at(-1), false,
   'stale generations cannot start a deferred renderer warm');
 owner.dispose();
+sourceMaterial.dispose(); hiddenMesh.geometry.dispose();
 
 console.log('combatWarmComposition.selftest: shared warm ownership and reset passed');

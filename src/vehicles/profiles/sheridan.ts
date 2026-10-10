@@ -1452,9 +1452,64 @@ function addSheridanCommanderStation(
   P.turretG.add(m2);
 }
 
+/** The TTS loader-ring M2's pintle (turret frame): the post on the hatch ring, and the gun's foot on the post's arm. */
+const TTS_LOADER_M2_POST: readonly [number, number] = [0.121, -0.168];
+const TTS_LOADER_M2_FOOT: readonly [number, number, number] = [0.38, 1.16, -0.168];
+
+/**
+ * 2026-10-09 (owner order: "give the tts its old machine gun back, except put the new machine gun you added on it
+ * somewhere else"; the coordinator's reading): the remote 30 mm station is back on the commander's rear ring
+ * (sheridanTtsAutocannon, restored exactly from before a0b6b3a64), and the commander's shielded M2 that a0b6b3a64
+ * activated on the cupola moves, with its ring, to the loader's hatch ring, where the loader's MAG stood. The same gun
+ * (FITTINGS.americanM2: its shield, ring, tone and seed) rides a pintle arm on a post clamped to the hatch ring's inboard
+ * side, the one stretch of the ring that is free (the roof ERA row covers its front, the roof sight's housing its rear).
+ * The arm carries the gun outboard and high enough that the whole gun clears the roof sight's window behind the hatch
+ * (glass y 0.945-1.075 m, x 0.30-0.58 m, looking forward) and its housing, its shield stays right of the 30 mm
+ * station's sight head and that head's forward apertures, and the post stays left of the window. Both roof weapons work:
+ * functional roof guns 1 -> 2 (the 30 mm and this M2).
+ */
+function addTtsLoaderM2Station(P: SheridanBuilderPort): void {
+  const { box, cylY } = KIT;
+  const [px, pz] = TTS_LOADER_M2_POST;
+  const [x, y, z] = TTS_LOADER_M2_FOOT;
+  // The clamp straddles the hatch ring (ring top 0.782 m); the tapered post rises from it to the arm, which carries the
+  // socket collar the gun's own pintle bearing sits in.
+  const armBottom = y - 0.060;
+  P.add('turretDetail', box(0.095, 0.040, 0.105), px, 0.792, pz);
+  P.add('turretDark', cylY(0.034, 0.042, armBottom - 0.800, P.q ? 14 : 10), px, (armBottom + 0.800) / 2, pz);
+  P.add('turretDark', box(x - px + 0.090, 0.045, 0.075), (x + px) / 2, armBottom + 0.0225, pz);
+  P.add('turretDark', cylY(0.052, 0.052, 0.020, P.q ? 18 : 12), x, y - 0.010, z);
+  const m2 = FITTINGS.americanM2({
+    mats: P.mats,
+    tone: 'dark',
+    ammoSide: 1,
+    barrelLength: 0.42,
+    elev: 0,
+    ring: { r: 0.235, stubs: 4 },
+    seed: 551,
+    shield: true,
+  });
+  m2.position.set(x, y, z);
+  m2.userData.sourceVehicle = 'm551_sheridan';
+  // The station pivots at the gun's receiver and fires along its barrel (as on the commander's cupola).
+  m2.updateMatrixWorld(true);
+  const gunBox = new THREE.Box3().setFromObject(m2.getObjectByName('americanM2HBBody') ?? m2);
+  const axisY = (gunBox.min.y + gunBox.max.y) / 2;
+  const gunStation = beginAuxiliaryStation(P, { name: 'm551a1TtsLoaderM2', caliberMm: 12.7,
+    yaw: [x, y, z], pivot: [x, axisY, z], muzzle: [x, axisY, gunBox.max.z] });
+  // one physical gun is one weapon fitting: the station root carries it
+  delete m2.userData.fittingRoot;
+  delete m2.userData.fitting;
+  delete m2.userData.fittingExact;
+  const stock = new THREE.Group();
+  stock.add(m2);
+  gunStation.attachPitch(stock);
+}
+
 function addSheridanLoaderStation(
   P: SheridanBuilderPort,
   station: SheridanRoofStation,
+  isTts = false,
 ): void {
   const { box, cylY, torus } = KIT;
   P.addHatch('turret', nonUniformXform(
@@ -1465,6 +1520,10 @@ function addSheridanLoaderStation(
     torus(0.205, 0.010, P.q ? 24 : 16),
     0, 0, 0, 0, 0, 0, [1, 1, 1.271]),
     station.x, 0.7720, station.z);
+  if (isTts) {
+    addTtsLoaderM2Station(P);
+    return;
+  }
   const mg = FITTINGS.pintleMG({
     mats: P.mats,
     cls: station.mg,
@@ -1499,7 +1558,7 @@ function addSheridanRoofStations(P: SheridanBuilderPort, isTts: boolean): void {
     x: 0.32622, z: -0.16774, mg: 'mag', scale: 0.72, ammo: false,
   };
   addSheridanCommanderStation(P, commander, isTts);
-  addSheridanLoaderStation(P, loader);
+  addSheridanLoaderStation(P, loader, isTts);
   for (const [x, z, yaw] of [[0.18, 0.64, 0], [0.56, 0.32, -0.20], [-0.58, 0.30, 0.20]]) {
     // The cast crown at these stations is Y=0.772 m. The previous 0.960 m
     // center left a 153 mm air gap below every optic; at 90° traverse their
