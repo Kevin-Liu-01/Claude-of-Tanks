@@ -7886,9 +7886,15 @@ ${snowCap ? `
       half: Math.max(tree.max[0] - tree.min[0], tree.max[2] - tree.min[2]) / 2,
     }));
     const pillboxClearOfTrunks = (x: number, z: number, yaw: number, berth = PILLBOX_TRUNK_BERTH_M): boolean => {
-      if (!trunks.length) return true;
       const [hw, hl] = destructibleFootprint('bunker');
       const fx = Math.sin(yaw), fz = Math.cos(yaw);
+      // (the fortifications lane, 2026-10-09: and off the pieces already laid, another work's wire belt or a trench's
+      // parapet, which stood through the old pillbox's wall on Frosthollow; the same 'trunk' answer, so the work looks on)
+      if (fort && destructibles.some((d) => {
+        const dx = d.x - x, dz = d.z - z;
+        return Math.abs(dx * fz - dz * fx) < hw + 0.6 && Math.abs(dx * fx + dz * fz) < hl + 0.6;
+      })) return false;
+      if (!trunks.length) return true;
       return !trunks.some((t) => {
         const dx = t.x - x, dz = t.z - z;
         return Math.abs(dx * fz - dz * fx) < hw + t.half + berth && Math.abs(dx * fx + dz * fz) < hl + t.half + berth;
