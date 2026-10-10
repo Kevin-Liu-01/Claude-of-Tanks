@@ -381,6 +381,8 @@ interface ShellExpiredEvent {
   shellType?: string;
   /** what it struck: 'water', a collision record kind ('structure', 'wallstone' ...) or 'terrain' */
   surfaceKind?: string;
+  /** the building it struck (2026-10-10: a round with no charge raises no blast to name it), when it struck one */
+  structureId?: number;
 }
 
 interface TankDestroyedEvent {
@@ -5464,18 +5466,22 @@ function* createFxSteps(
             // destruction-fx lane: the round bursts on (or chips) the wall in the wall's own material
             const m = info ?? munitionOfExpiry(e);
             const explosive = isExplosive(m.munition) && m.chargeKg > 0;
-            // the building the blast named (munition:blast, raised just before this event), else the struck kind
-            const struckId = lastBlast.structureId >= 0 && Math.abs(lastBlast.x - _v3.x) + Math.abs(lastBlast.z - _v3.z) < 2
-              ? lastBlast.structureId : -1;
+            // the building the event names (any round), else the one the blast named (munition:blast, raised just before
+            // this event), else the struck kind
+            const struckId = typeof e.structureId === 'number' && e.structureId >= 0 ? e.structureId
+              : lastBlast.structureId >= 0 && Math.abs(lastBlast.x - _v3.x) + Math.abs(lastBlast.z - _v3.z) < 2
+                ? lastBlast.structureId : -1;
             const named = struckId >= 0 ? lookOf(struckId) : null;
             lastBlast.structureId = -1;
             wallStrike(blast, _v3.x, _v3.y, _v3.z, _v4.x, _v4.y, _v4.z, explosive,
               explosive ? blastScale(m.chargeKg) : (m.caliberMm || 90) / 120, named ?? lookForStruckKind(e.surfaceKind));
             // (dcore 2026-10-09, waves 294a/b: a hit read as a light on an intact wall) the burst punches its hole there,
-            // in the building's own courses (structureStages.strike: P1's presentation, as its breach stage's hole)
-            if (explosive && struckId >= 0 && stages) {
+            // in the building's own courses (structureStages.strike: P1's presentation, as its breach stage's hole); and
+            // (2026-10-10, the owner: "shooting buildings should cause destruction too") so does an armour-piercing round,
+            // its own smaller hole, spalled (machine-gun and autocannon rounds chip the wall: wallStrike above)
+            if ((explosive || m.munition === 'kinetic') && struckId >= 0 && stages) {
               const dx = arrival ? arrival.x : -_v4.x, dz = arrival ? arrival.z : -_v4.z;
-              stages.strike(struckId, seamOf(struckId), _v3.x, _v3.y, _v3.z, dx, dz, m.munition, m.chargeKg);
+              stages.strike(struckId, seamOf(struckId), _v3.x, _v3.y, _v3.z, dx, dz, m.munition, m.chargeKg, m.caliberMm);
             }
             if (e.shellId != null) burstDrawn.add(e.shellId);
             return;

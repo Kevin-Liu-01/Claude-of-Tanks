@@ -918,6 +918,8 @@ export function createBattlePresentation({
           shellId: payload.shellId, shooterId: payload.shooterId, hitTerrain: payload.kind === 'terrain', hitKind: payload.kind,
           surfaceKind: payload.surfaceKind || payload.kind, normal: [payload.nx || 0, payload.ny ?? 1, payload.nz || 0],
           shellType: payload.shellType, caliberMm: payload.caliberMm, pos: [payload.x, payload.y, payload.z],
+          // the building the authority's round struck (any round: its hole, 2026-10-10)
+          ...(typeof payload.structureId === 'number' ? { structureId: payload.structureId } : {}),
         });
         return;
       case 'tank_destroyed': {
