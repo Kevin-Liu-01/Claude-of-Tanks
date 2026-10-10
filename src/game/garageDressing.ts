@@ -889,7 +889,15 @@ export function createGarageDressing(
     root.rotation.y = frame.yaw;
     root.userData.crewTask = scene.task;
     root.userData.crewRoles = scene.members.map((member) => member.role);
-    for (const prop of scene.props ?? []) addCrewWorkStand(root, prop.at[0], prop.at[2], prop.yaw, prop.deckY);
+    for (const prop of scene.props ?? []) {
+      addCrewWorkStand(root, prop.at[0], prop.at[2], prop.yaw, prop.deckY);
+      // the fitter's open tool tray on the deck rail side
+      const tray = put(track(new THREE.BoxGeometry(0.46, 0.09, 0.24)), mat.redCab,
+        prop.at[0] + 0.24, prop.deckY + 0.045, prop.at[2] + 0.42, 0, 0, 0, 1, root);
+      tray.name = 'garage_crew_stand_tool_tray';
+      put(track(new THREE.BoxGeometry(0.3, 0.02, 0.05)), mat.steelBright,
+        prop.at[0] + 0.24, prop.deckY + 0.1, prop.at[2] + 0.42, 0.3, 0, 0, 1, root, false);
+    }
     const build = buildCrewSceneGeometry(scene);
     const figures = new THREE.Mesh(track(build.geometry), crewMaterial);
     figures.name = `garage_crew_${scene.id}_figures`;
@@ -957,6 +965,55 @@ export function createGarageDressing(
     const stringerGeometry = track(new THREE.BoxGeometry(0.05, 0.08, stringerLength));
     for (const px of [-W / 2 + 0.08, W / 2 - 0.08]) {
       put(stringerGeometry, mat.safety, px, deckY / 2, -L / 2 - 0.47, 0, -Math.atan2(deckY, 0.95), 0, 1, stand);
+    }
+  }
+
+  /**
+   * A MIG welding set on its trolley: the power unit with dials and a wire-feed door, a shielding-gas bottle strapped
+   * to the back, the torch lead leaving the front. Every welding cable in the workshop starts at one.
+   */
+  function addWeldingSet(parent: THREE.Object3D, x: number, z: number, yaw: number): THREE.Group {
+    const set = new THREE.Group();
+    set.name = 'garage_crew_welding_set';
+    set.position.set(x, 0, z);
+    set.rotation.y = yaw;
+    parent.add(set);
+    put(track(new THREE.BoxGeometry(0.62, 0.05, 0.9)), mat.steelDark, 0, 0.16, 0, 0, 0, 0, 1, set);
+    put(track(new THREE.BoxGeometry(0.5, 0.62, 0.68)), mat.blueSteel, 0, 0.5, 0.04, 0, 0, 0, 1, set);
+    put(track(new THREE.BoxGeometry(0.42, 0.24, 0.02)), mat.steelDark, 0, 0.62, 0.39, 0, 0, 0, 1, set, false);
+    for (const dx of [-0.11, 0.11]) {
+      put(track(new THREE.CylinderGeometry(0.035, 0.035, 0.03, 10)), mat.steelBright, dx, 0.66, 0.405,
+        0, Math.PI / 2, 0, 1, set, false);
+    }
+    put(track(new THREE.CylinderGeometry(0.11, 0.11, 1.15, 12)), mat.bottleGreen, 0, 0.75, -0.42, 0, 0, 0, 1, set);
+    put(track(new THREE.CylinderGeometry(0.035, 0.05, 0.12, 8)), mat.brass, 0, 1.38, -0.42, 0, 0, 0, 1, set, false);
+    put(track(new THREE.BoxGeometry(0.05, 0.05, 0.36)), mat.steelMid, 0.2, 1.0, -0.26, 0, 0, 0, 1, set, false);
+    for (const [cx, cz] of [[-0.25, 0.36], [0.25, 0.36], [-0.25, -0.36], [0.25, -0.36]]) {
+      put(G.caster, mat.rubber, cx, 0.07, cz, 0, 0, Math.PI / 2, 1, set, false);
+    }
+    set.userData.servicePurpose = 'welding-power-and-gas';
+    return set;
+  }
+
+  /** An air impact wrench and its coiled hose on the floor, with a tray of road-arm bolts beside it. */
+  function addImpactWrenchKit(parent: THREE.Object3D, x: number, z: number, yaw: number): void {
+    const kit = new THREE.Group();
+    kit.name = 'garage_crew_impact_wrench_kit';
+    kit.position.set(x, 0, z);
+    kit.rotation.y = yaw;
+    parent.add(kit);
+    put(track(new THREE.BoxGeometry(0.62, 0.07, 0.4)), mat.redCabDark, 0, 0.035, 0, 0, 0, 0, 1, kit);
+    const bolt = track(new THREE.CylinderGeometry(0.022, 0.022, 0.12, 6));
+    for (let i = 0; i < 9; i++) {
+      put(bolt, mat.steelBright, -0.22 + (i % 3) * 0.2, 0.09, -0.12 + Math.floor(i / 3) * 0.12,
+        0, 0, Math.PI / 2, 1, kit, false);
+    }
+    put(track(new THREE.BoxGeometry(0.1, 0.14, 0.24)), mat.steelDark, 0.62, 0.07, 0.1, 0.4, 0, 0, 1, kit);
+    put(track(new THREE.CylinderGeometry(0.03, 0.03, 0.2, 8)), mat.steelMid, 0.62, 0.09, -0.08, 0.4, Math.PI / 2, 0, 1, kit, false);
+    const hose = new THREE.TorusGeometry(0.22, 0.014, 5, 22);
+    for (let loop = 0; loop < 3; loop++) {
+      put(track(hose), mat.rubber, 1.05 + loop * 0.03, 0.016 + loop * 0.028, 0.32 - loop * 0.02,
+        0, Math.PI / 2, 0, 1, kit, false);
     }
   }
 
@@ -2716,6 +2773,7 @@ export function createGarageDressing(
       const c = Math.cos(abramsFrame.yaw), sn = Math.sin(abramsFrame.yaw);
       return new THREE.Vector3(abramsFrame.x + x * c + z * sn, 0.05, abramsFrame.z - x * sn + z * c);
     };
+    addWeldingSet(legacyVerdantRoot, 11.25, 19.95, -2.03 + Math.PI / 2 + 0.3);
     const cable = new THREE.CatmullRomCurve3([
       new THREE.Vector3(11.6, 0.22, 19.6),
       cableFloor(2.2, 4.75),
@@ -2932,6 +2990,7 @@ export function createGarageDressing(
       track(removedDiscs);
     }
     const leopardCrew = addCrewScene(GARAGE_CREW_SCENES.leopard, mobilityBay);
+    addImpactWrenchKit(mobilityBay, -2.25, -3.15, 0.35);
     addCarriedRoadWheel(leopardCrew, GARAGE_CREW_SCENES.leopard, [0, 1], roadWheelTires, roadWheelDiscs);
     mobilityBay.userData.wheelServiceMode = 'running-gear-removed-to-connected-rack';
     mobilityBay.userData.paintSquareOccupied = true;
@@ -3023,7 +3082,22 @@ export function createGarageDressing(
     cassettes.receiveShadow = true;
     rack.add(cassettes);
     track(cassettes);
-    addCrewScene(GARAGE_CREW_SCENES.t90m, legacyVerdantRoot, Array.isArray(reliktMaterial) ? mat.olive : reliktMaterial);
+    const cassetteMaterial = Array.isArray(reliktMaterial) ? mat.olive : reliktMaterial;
+    addCrewScene(GARAGE_CREW_SCENES.t90m, legacyVerdantRoot, cassetteMaterial);
+    {
+      // the next cassettes waiting on a pallet between the rack and the turret
+      const pallet = new THREE.Group();
+      pallet.name = 'garage_crew_relikt_pallet';
+      pallet.position.set(-10.15, 0, 19.15);
+      pallet.rotation.y = 0.25;
+      legacyVerdantRoot.add(pallet);
+      put(track(new THREE.BoxGeometry(1.2, 0.13, 1.0)), mat.timberDark, 0, 0.065, 0, 0, 0, 0, 1, pallet);
+      const box = track(new THREE.BoxGeometry(0.44, 0.32, 0.4));
+      for (const [bx, by, bz, ry] of [[-0.27, 0.29, -0.22, 0.05], [0.25, 0.29, -0.21, -0.04], [-0.26, 0.29, 0.23, 0.02],
+        [0.24, 0.29, 0.22, 0.06], [-0.02, 0.61, -0.02, 0.18]] as const) {
+        put(box, cassetteMaterial, bx, by, bz, ry, 0, 0, 1, pallet);
+      }
+    }
     wallSign('T-90M / RELIKT', -8.7, 3.25, 22.86,
       Math.PI, 2.8, 0.9, '', legacyVerdantRoot);
   });
