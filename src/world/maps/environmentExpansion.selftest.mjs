@@ -36,8 +36,8 @@ const authoredBudgets = {
   // apart, 38 in the two rows; wave 125 passed and its cost accepted)
   oasis: { roadNodes: 152, wallM: 421, beltTrees: 38, trees: [32, 28, 30], grass: 0.5, rocks: 144, outcrops: 24, plan: 18 },
   // (2026-10-10, the map-content lane's round 1c, gauntlet wave 358a: the plateau's glacial erratics and frost-shattered
-  // outcrops, 240 rocks and 38 outcrops where the snow plain stood empty; the passing wave and the v3 cost probe hold it)
-  whiteout: { roadNodes: 150, wallM: 420, beltTrees: 0, trees: [8, 12, 20], grass: 0.2, rocks: 240, outcrops: 38, plan: 16 },
+  // outcrops, 224 rocks and 38 outcrops where the snow plain stood empty, within the geological ceiling below)
+  whiteout: { roadNodes: 150, wallM: 420, beltTrees: 0, trees: [8, 12, 20], grass: 0.2, rocks: 224, outcrops: 38, plan: 16 },
   orchard: { roadNodes: 156, wallM: 884, beltTrees: 61, trees: [42, 38, 88], grass: 0.95, rocks: 138, outcrops: 20, plan: 18 },
   // (batch 4: maps-longleaf round 2, e90520dbf: the creek bottom's hardwoods planted along the basin's two banks, two more
   // rows: 118 seats before their skips; wave 144 passed and its cost accepted on census)

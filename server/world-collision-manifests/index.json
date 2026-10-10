@@ -173,10 +173,10 @@
       "concealers": 784
     },
     "whiteout": {
-      "bytes": 1424369,
-      "sha256": "83860f6ddfa3d27e887aaf8e8d315ba9369d47415d38c4fb119fa175f5b50e50",
-      "obstacles": 1200,
-      "colliders": 1347,
+      "bytes": 1618861,
+      "sha256": "8bb167e2f053a7cbfcbb73a721dff6d1ecbfd40abe74a9815a468ba77eb7c349",
+      "obstacles": 1189,
+      "colliders": 1203,
       "concealers": 0
     },
     "orchard": {
@@ -407,10 +407,10 @@
         "concealers": 784
       },
       "whiteout": {
-        "bytes": 1596737,
-        "sha256": "7665dede0d4204fd52a61c541c0ae250a7187ce2e82208b2819b5c69a247bb0a",
-        "obstacles": 1337,
-        "colliders": 1395,
+        "bytes": 1894951,
+        "sha256": "b43c5622a17679b13b1880a8a048cf0e5ff28dde131cbdb3b9060facabb5cc53",
+        "obstacles": 1327,
+        "colliders": 1252,
         "concealers": 0
       },
       "orchard": {
