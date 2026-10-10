@@ -36,6 +36,8 @@ const SCREEN_AGED: Rgb = linearHex(0xc9c5be);
 const BURST_WHITE: Rgb = linearHex(0xefece4);
 /** The launch wisp behind a grenade in flight: the fuse's thin grey-white smoke. */
 const WISP_GREY: Rgb = linearHex(0xbcb9b2);
+/** (fx 8m) the dust a grenade knocks off a wall it strikes: masonry, plaster and render, a light warm grey. */
+const MASONRY_DUST: Rgb = linearHex(0xa59c90);
 const FLASH_WARM: readonly [number, number, number] = [1, 0.9, 0.7];
 const FLASH_DEEP: readonly [number, number, number] = [1, 0.55, 0.2];
 const PELLET: readonly [number, number, number] = [1, 0.82, 0.55];
@@ -59,6 +61,13 @@ export function slotSeed(born: number, x: number, z: number, bank: number, slot:
   return (h ^ (h >>> 15)) | 0;
 }
 
+const _tone0: [number, number, number] = [0, 0, 0], _tone1: [number, number, number] = [0, 0, 0];
+/** A colour at `k` of its brightness (into a scratch triple: no allocation). */
+function toned(out: [number, number, number], c: Rgb, k: number): Rgb {
+  out[0] = c[0] * k; out[1] = c[1] * k; out[2] = c[2] * k;
+  return out;
+}
+
 function look(C: BlastContext, c0: Rgb, c1: Rgb, density: number, fadeIn: number, fadeOut: number): void {
   const m = C.m;
   m.r0 = c0[0]; m.g0 = c0[1]; m.b0 = c0[2]; m.r1 = c1[0]; m.g1 = c1[1]; m.b1 = c1[2];
@@ -75,16 +84,21 @@ function book(C: BlastContext, R: () => number, medium: 'billow' | 'burst', play
 // The grenade in flight and its burst
 // ---------------------------------------------------------------------------------------------------------------
 
-/** One thin wisp behind a grenade in flight (the caller spaces them along the arc). */
+/**
+ * One thin wisp behind a grenade in flight (the caller spaces them along the arc). (fx 8m, wave 337: "strings of
+ * hard-edged near-white balls" tracing the arcs over the house) small, faint puffs left closer together than their own
+ * size, swelling within a few tenths of a second and gone within a second: the arc reads as one fading thread of the
+ * fuse's smoke, never a dotted line of balls.
+ */
 export function smokeGrenadeWisp(C: BlastContext, R: () => number, x: number, y: number, z: number, bo: number): void {
   const m = C.m;
   m.x = x; m.y = y; m.z = z; m.birthOffset = bo;
-  m.vx = (R() - 0.5) * 0.3; m.vy = 0.2 + R() * 0.2; m.vz = (R() - 0.5) * 0.3;
-  m.drag = 1.5; m.rise = 0.15; m.windK = 0.6; m.grav = 0;
-  m.life = 1.1 + R() * 0.5; m.size0 = 0.25; m.size1 = 1.0 + R() * 0.5; m.growExp = 1.8;
+  m.vx = (R() - 0.5) * 0.2; m.vy = 0.1 + R() * 0.15; m.vz = (R() - 0.5) * 0.2;
+  m.drag = 1.5; m.rise = 0.12; m.windK = 0.6; m.grav = 0;
+  m.life = 0.8 + R() * 0.35; m.size0 = 0.5; m.size1 = 0.9 + R() * 0.3; m.growExp = 3.0;
   m.rot = (R() - 0.5) * 0.7; m.spin = (R() - 0.5) * 0.1;
-  look(C, WISP_GREY, WISP_GREY, 0.3, 0.02, 0.35);
-  book(C, R, 'billow', 1.6, 18 + Math.floor(R() * 12), 1);
+  look(C, WISP_GREY, WISP_GREY, 0.16, 0.04, 0.3);
+  book(C, R, 'billow', 1.2, 18 + Math.floor(R() * 12), 1);
   C.media(m);
 }
 
@@ -123,23 +137,23 @@ export function smokeGrenadeBurst(C: BlastContext, R: () => number, x: number, g
   lp.col1[0] = FLASH_DEEP[0]; lp.col1[1] = FLASH_DEEP[1]; lp.col1[2] = FLASH_DEEP[2];
   lp.alpha = 0.55; lp.grav = 0; lp.birthOffset = bo;
   C.flash(lp);
-  // the pop: four lobes of dense white thrown out and up, stalling within a second, already a body three to five
-  // metres across (the 'burst' book: a smooth ball that develops lobes as it swells)
-  // (fx 8l, wave 354a: "cotton-ball lobes" early in the bloom) six lobes of mixed sizes, a little thinner, half of them in
-  // the turbulent billow medium: a ragged cauliflower pop, never four round balls
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * TAU + (R() - 0.5) * 1.1, v = 2.6 + R() * 3.6;
-    m.x = x + Math.cos(a) * 0.3; m.y = y + R() * 0.4; m.z = z + Math.sin(a) * 0.3; m.birthOffset = bo - R() * 0.03;
-    m.vx = Math.cos(a) * v; m.vy = 1.8 + R() * 3.0; m.vz = Math.sin(a) * v;
+  // the pop: a dense white ball thrown out in lobes, stalling within a second. (fx 8l, wave 354a: "cotton-ball lobes";
+  // fx 8m, wave 337: "a necklace of balls round partial blobs") one ragged mass: five lobes of mixed size born already
+  // overlapping and thrown out slowly (each stalls within a metre), all in the turbulent billow medium; the wall's lobes
+  // swell out of it (smokeBankLobe), so no ball ever travels out on its own
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * TAU + (R() - 0.5) * 1.2, v = 1.0 + R() * 1.8;
+    m.x = x + Math.cos(a) * 0.25; m.y = y + R() * 0.35; m.z = z + Math.sin(a) * 0.25; m.birthOffset = bo - R() * 0.03;
+    m.vx = Math.cos(a) * v; m.vy = 1.2 + R() * 1.8; m.vz = Math.sin(a) * v;
     m.drag = 2.4; m.rise = 0.12; m.windK = 0.15; m.grav = 0;
-    m.life = 2.6 + R() * 0.9; m.size0 = 0.6; m.size1 = (i % 3 === 0 ? 3.8 : 2.4) + R() * 1.4; m.growExp = 3.2;
+    m.life = 2.4 + R() * 0.8; m.size0 = 1.0; m.size1 = (i % 2 === 0 ? 3.9 : 2.9) + R() * 1.0; m.growExp = 3.6;
     m.rot = (R() - 0.5) * 0.8; m.spin = (R() - 0.5) * 0.12;
-    look(C, BURST_WHITE, SCREEN_WHITE, 0.86, 0.0, 0.6);
-    book(C, R, i % 2 === 0 ? 'burst' : 'billow', 3.0, Math.floor(R() * 6), 1.0 + R() * 0.35);
+    look(C, BURST_WHITE, SCREEN_WHITE, 0.72, 0.03, 0.55);
+    book(C, R, 'billow', 2.8, Math.floor(R() * 6), 1.0 + R() * 0.3);
     C.media(m);
   }
   // burning pellets thrown out on arcs, each leaving a white streamer: the burst's tell at a distance
-  const pellets = Math.max(2, Math.round(6 * k));
+  const pellets = Math.max(1, Math.round(4 * k));
   const ls = C.ls;
   for (let i = 0; i < pellets; i++) {
     const a = R() * TAU, up = 0.45 + R() * 0.45, v = 7 + R() * 6;
@@ -150,19 +164,51 @@ export function smokeGrenadeBurst(C: BlastContext, R: () => number, x: number, g
     ls.col[0] = PELLET[0]; ls.col[1] = PELLET[1]; ls.col[2] = PELLET[2]; ls.alpha = 0.8; ls.seed = R();
     ls.birthOffset = bo;
     C.sparks(ls);
-    // the streamer: small puffs left along the pellet's arc (born where it passes, as it passes), drifting a little
-    for (let j = 1; j <= 3; j++) {
-      const t = j * 0.12;
+    // the streamer: small puffs left along the pellet's arc (born where it passes, as it passes), drifting a little.
+    // (fx 8m, wave 337: "strings of hard-edged near-white balls") a soft rope, not beads: thin puffs left closer together
+    // than their own size, swelling and fraying within a second and a half
+    for (let j = 1; j <= 6; j++) {
+      const t = j * 0.045;
       m.x = x + vx * t; m.y = y + 0.2 + vy * t - 4.9 * t * t; m.z = z + vz * t; m.birthOffset = bo + t;
-      m.vx = vx * 0.08; m.vy = 0.25; m.vz = vz * 0.08;
-      m.drag = 1.2; m.rise = 0.2; m.windK = 0.5; m.grav = 0;
-      m.life = 1.8 + R() * 0.9; m.size0 = 0.35; m.size1 = 1.3 + R() * 0.7 + 0.25 * j; m.growExp = 2.2;
+      m.vx = vx * 0.06; m.vy = 0.2; m.vz = vz * 0.06;
+      m.drag = 1.2; m.rise = 0.18; m.windK = 0.5; m.grav = 0;
+      m.life = 1.1 + R() * 0.5; m.size0 = 0.38; m.size1 = 0.8 + R() * 0.3 + 0.08 * j; m.growExp = 2.8;
       m.rot = (R() - 0.5) * 0.7; m.spin = (R() - 0.5) * 0.1;
-      look(C, BURST_WHITE, SCREEN_AGED, 0.62, 0.0, 0.45);
-      book(C, R, 'billow', 2.2, 10 + Math.floor(R() * 14), 1);
+      look(C, BURST_WHITE, SCREEN_AGED, 0.4, 0.0, 0.4);
+      book(C, R, 'billow', 1.5, 10 + Math.floor(R() * 14), 1);
       C.media(m);
     }
   }
+}
+
+/**
+ * (fx 8m, wave 337: "no visible strike or bounce at the wall") a grenade striking a wall on its way (x, y, z where it
+ * struck; nx, ny, nz the wall's normal, out of the face): a little of the face's dust knocked off it and a small white
+ * puff of the grenade's own smoke shaken out at the knock, both stalling within a metre; the grenade drops back off the
+ * wall and bursts below (sim/smokeBallistics.ts flies it on).
+ */
+export function smokeCanisterStrike(C: BlastContext, R: () => number, x: number, y: number, z: number, nx: number,
+  ny: number, nz: number, bo: number): void {
+  const m = C.m;
+  for (let i = 0; i < 2; i++) {
+    const v = 1.6 + R() * 1.4;
+    m.x = x + nx * 0.1; m.y = y + ny * 0.1; m.z = z + nz * 0.1; m.birthOffset = bo;
+    m.vx = nx * v + (R() - 0.5) * 0.8; m.vy = ny * v + (R() - 0.3) * 0.8; m.vz = nz * v + (R() - 0.5) * 0.8;
+    m.drag = 2.6; m.rise = 0.05; m.windK = 0.4; m.grav = -0.4;
+    m.life = 1.1 + R() * 0.6; m.size0 = 0.25; m.size1 = 1.0 + R() * 0.5; m.growExp = 2.6;
+    m.rot = R() * TAU; m.spin = (R() - 0.5) * 0.1;
+    look(C, MASONRY_DUST, MASONRY_DUST, 0.5, 0.0, 0.4);
+    book(C, R, 'burst', 1.6, Math.floor(R() * 8), 1.0 + R() * 0.3);
+    C.media(m);
+  }
+  m.x = x + nx * 0.15; m.y = y + ny * 0.15; m.z = z + nz * 0.15; m.birthOffset = bo;
+  m.vx = nx * 0.9; m.vy = 0.3 + ny * 0.9; m.vz = nz * 0.9;
+  m.drag = 1.8; m.rise = 0.15; m.windK = 0.45; m.grav = 0;
+  m.life = 1.4 + R() * 0.5; m.size0 = 0.35; m.size1 = 1.5 + R() * 0.5; m.growExp = 2.4;
+  m.rot = R() * TAU; m.spin = (R() - 0.5) * 0.1;
+  look(C, BURST_WHITE, WISP_GREY, 0.55, 0.0, 0.4);
+  book(C, R, 'billow', 1.8, 6 + Math.floor(R() * 10), 1.0);
+  C.media(m);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -195,11 +241,23 @@ export function smokeBankLobe(C: BlastContext, R: () => number, I: SmokeLobeInpu
   m.x = I.x0; m.y = I.y0; m.z = I.z0; m.birthOffset = I.bo;
   m.vx = (I.tx - I.x0) * k; m.vy = (I.ty - I.y0) * k + rise; m.vz = (I.tz - I.z0) * k;
   m.drag = k; m.rise = rise; m.windK = 0; m.grav = 0;
-  m.life = I.life; m.size0 = 1.4; m.size1 = I.size; m.growExp = 4.2;
+  // (fx 8m, wave 337: "a necklace of balls round partial blobs" until ~4 s) the lobe swells with the simulation's own
+  // growth, ~88 % of its size 2.4 s after its birth whatever its long life (its growth law runs on the life's fraction:
+  // 4.2 over a 17 s life left it a 3-4 m ball for two seconds), from a body already two metres and more across that fades
+  // in out of the pop: the bloom is one swelling mass, never a string of small balls travelling out along the row
+  m.life = I.life; m.size0 = I.crown ? 2.0 : 2.6; m.size1 = I.size;
+  m.growExp = Math.log(0.12) / Math.log(1 - Math.min(0.85, 2.4 / Math.max(I.life, 0.5)));
   m.rot = (R() - 0.5) * 0.5; m.spin = (R() - 0.5) * 0.03;
-  look(C, I.crown ? BURST_WHITE : SCREEN_WHITE, SCREEN_AGED, I.crown ? 0.9 : 0.95, 0.0, I.fadeOut);
-  // the billow book over the whole life: it keeps rolling slowly (a 12 s life plays its 64 frames once)
-  book(C, R, 'billow', I.life * (0.9 + R() * 0.2), Math.floor(R() * 8), I.crown ? 1.0 + R() * 0.15 : 1.15 + R() * 0.25);
+  // (fx 8m, wave 337: "a flat grey mass with little billow or lit and shaded modelling") each lobe its own tone: the
+  // crowns the sunlit white of the wall's top, the feet a shade greyer (the mass above shades them) and every lobe a
+  // little apart from its neighbours, so the cauliflower reads lobe by lobe
+  const tone = I.crown ? 0.97 + R() * 0.03 : 0.84 + R() * 0.1;
+  look(C, toned(_tone0, I.crown ? BURST_WHITE : SCREEN_WHITE, tone), toned(_tone1, SCREEN_AGED, tone),
+    I.crown ? 0.9 : 0.95, 0.35, I.fadeOut);
+  // the billow book: it keeps rolling (fx 8m: over at most 11 s, churning twice as fast as over the whole life; it
+  // rests on its widest frame as the lobe erodes)
+  book(C, R, 'billow', Math.min(I.life, 11) * (0.9 + R() * 0.2), Math.floor(R() * 8),
+    I.crown ? 1.0 + R() * 0.15 : 1.15 + R() * 0.25);
   C.media(m);
 }
 
@@ -212,8 +270,10 @@ export function smokeBankBody(C: BlastContext, R: () => number, x: number, y: nu
   m.drag = 0.8; m.rise = 0.07; m.windK = 0; m.grav = 0;
   m.life = life; m.size0 = size * 0.35; m.size1 = size; m.growExp = 2.4;
   m.rot = (R() - 0.5) * 0.6; m.spin = (R() - 0.5) * 0.03;
-  // fades in from inside the wall, never popping on at its edge
-  look(C, SCREEN_WHITE, SCREEN_AGED, 0.9, 0.7, fadeOut);
+  // fades in from inside the wall, never popping on at its edge; (fx 8m) the wall's inside a shade under its sunlit
+  // lobes, so their rims stand off it
+  const tone = 0.86 + R() * 0.1;
+  look(C, toned(_tone0, SCREEN_WHITE, tone), toned(_tone1, SCREEN_AGED, tone), 0.9, 0.7, fadeOut);
   book(C, R, 'billow', life * (0.9 + R() * 0.2), Math.floor(R() * 16), 1.1 + R() * 0.3);
   C.media(m);
 }
@@ -244,12 +304,13 @@ export function smokeScreenHaze(C: BlastContext, R: () => number, x: number, y: 
  * simulation still blocks and lingering 10-20 s after it stops (the gameplay duration is matchRuleset's, untouched).
  */
 export function smokeDecayHaze(C: BlastContext, R: () => number, x: number, y: number, z: number, life: number,
-  bo: number): void {
+  bo: number, maxSize = Infinity): void {
   const m = C.m;
   m.x = x; m.y = y; m.z = z; m.birthOffset = bo;
   m.vx = (R() - 0.5) * 0.4; m.vy = 0.15 + R() * 0.2; m.vz = (R() - 0.5) * 0.4;
   m.drag = 0.5; m.rise = 0.12 + R() * 0.08; m.windK = 0.6 + R() * 0.3; m.grav = 0;
-  m.life = life; m.size0 = 7 + R() * 2; m.size1 = 15 + R() * 5; m.growExp = 1.5;
+  // (fx 8m) `maxSize`: a veil born by a wall is no wider than the caller's room there (fix/smoke-collision's walls)
+  m.life = life; m.size1 = Math.min(15 + R() * 5, maxSize); m.size0 = Math.min(7 + R() * 2, m.size1 * 0.6); m.growExp = 1.5;
   m.rot = (R() - 0.5) * 0.6; m.spin = (R() - 0.5) * 0.02;
   look(C, SCREEN_AGED, SCREEN_AGED, 0.18 + R() * 0.06, 1.6, 0.3);
   book(C, R, 'billow', life * 1.05, 16 + Math.floor(R() * 24), 1.3 + R() * 0.4);

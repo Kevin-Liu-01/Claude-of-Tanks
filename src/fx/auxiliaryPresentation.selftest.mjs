@@ -39,7 +39,8 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
     const C = {
       rand: Math.random, groundY: () => 0,
       media: (m) => puffs.push({ birth: clock.now + m.birthOffset, x: m.x, y: m.y, z: m.z, vx: m.vx, vy: m.vy, vz: m.vz,
-        drag: m.drag, windK: m.windK, life: m.life, size1: m.size1, density: m.density, medium: m.medium }),
+        drag: m.drag, windK: m.windK, life: m.life, size0: m.size0, size1: m.size1, growExp: m.growExp, density: m.density,
+        r0: m.r0, medium: m.medium }),
       chunk() {}, flash: (o) => flashes.push(clock.now + o.birthOffset), fire() {}, sparks: (o) => sparks.push(clock.now + o.birthOffset),
       jet() {}, shockRing() {}, lightPulse() {}, glow() {}, distBoost: () => 1, tier: 1,
       m: makeVolumePuff(), k: {},
@@ -161,6 +162,48 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
       assert.ok(inside, 'the tail is born inside the drifting envelope');
     }
   }
+  // (fx 8m, wave 337: "strings of hard-edged near-white balls", "a necklace of balls round partial blobs" until ~4 s, "a
+  // flat grey mass", "no visible strike or bounce at the wall")
+  {
+    // the trails are threads: every wisp in flight and every streamer puff along a pellet's arc has a neighbour of its
+    // own trail closer than its own full size
+    const near = (list, gap) => list.every((p) => list.some((q) => q !== p && Math.abs(q.birth - p.birth) <= gap
+      && Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) <= p.size1));
+    const wisps = at60.puffs.filter((p) => p.windK === 0.6 && p.drag === 1.5);
+    const streamers = at60.puffs.filter((p) => p.windK === 0.5 && p.drag === 1.2);
+    assert.ok(wisps.length > 0 && near(wisps, 0.061), `the grenades' trails are threads, not dotted lines (${wisps.length} wisps)`);
+    assert.ok(streamers.length > 0 && near(streamers, 0.046), `the pellets' streamers are ropes, not beads (${streamers.length})`);
+    // the bloom swells with the simulation's growth: every lobe is at 85 % of its size 2.4 s after its birth, from a
+    // body already two metres across, fading in out of the pop
+    const lobes = at60.puffs.filter((p) => p.windK === 0 && p.drag >= 1);
+    for (const p of lobes) {
+      const g = 1 - Math.pow(1 - Math.min(1, 2.4 / p.life), p.growExp);
+      assert.ok(p.size0 >= 2 && p.size0 + (p.size1 - p.size0) * g >= 0.85 * p.size1, `a lobe swells with the bank (${p.size0} m at birth, growth ${g.toFixed(2)} by 2.4 s)`);
+    }
+    // the wall is modelled: its crowns (settling over 3.5 m) the sunlit white, brighter than any of its feet (under 2.5 m)
+    const settle = (p) => p.y + p.vy / p.drag;
+    const crowns = lobes.filter((p) => settle(p) > 3.5), feet = lobes.filter((p) => settle(p) < 2.5);
+    assert.ok(crowns.length >= banks && feet.length >= banks, `crowns and feet in every bank (${crowns.length}, ${feet.length})`);
+    assert.ok(Math.min(...crowns.map((p) => p.r0)) > Math.max(...feet.map((p) => p.r0)), 'the crowns are brighter than the feet');
+    // a grenade striking a wall: a receipt with one bounce (sim/smokeBallistics.ts: the launch's seven numbers, then the
+    // time it left the wall, where and its velocity after) strikes once, there, then; the dust leaves the face
+    const g = 9.81, tb = 0.6, src = screen.canisters[0];
+    const bx = src[0] + src[3] * tb, by = src[1] + src[4] * tb - 0.5 * g * tb * tb, bz = src[2] + src[5] * tb;
+    const ivx = src[3], ivy = src[4] - g * tb, ivz = src[5], ih = Math.hypot(ivx, ivz);
+    const nx = -ivx / ih, nz = -ivz / ih, into = ivx * nx + ivz * nz;
+    const avx = 0.7 * (ivx - into * nx) - 0.35 * into * nx, avz = 0.7 * (ivz - into * nz) - 0.35 * into * nz;
+    const bounced = [...src.slice(0, 7), tb, bx, by, bz, avx, ivy * 0.7, avz];
+    const struck = { ...screen, canisters: [bounced, ...screen.canisters.slice(1)] };
+    const r = run(struck, 1 / 60);
+    const strikes = r.puffs.filter((p) => p.windK === 0.4 || p.windK === 0.45);
+    assert.equal(strikes.length, 3, `one strike at the wall: a dust kick and the grenade's own puff (${strikes.length} puffs)`);
+    for (const p of strikes) {
+      assert.ok(Math.abs(p.birth - (struck.born + tb)) < 1e-6, 'the strike is born when the grenade leaves the wall');
+      assert.ok(Math.hypot(p.x - bx, p.y - by, p.z - bz) < 0.3, 'and where it struck');
+      if (p.windK === 0.4) assert.ok(p.vx * nx + p.vz * nz > 0, 'its dust is thrown off the face, never into the wall');
+    }
+    assert.ok(at60.puffs.every((p) => p.windK !== 0.4 && p.windK !== 0.45), 'a screen whose grenades struck nothing strikes nothing');
+  }
   // reset forgets the screens: a rematch draws nothing old
   const clock = { now: screen.born + 2 };
   const rec = recorder(clock);
@@ -170,5 +213,5 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
   const before = rec.puffs.length;
   fx.reset(); clock.now += 1; fx.update();
   assert.equal(rec.puffs.length, before, 'reset drops every screen');
-  console.log(`auxiliaryPresentation media: ${at60.puffs.length} puffs for a ${banks}-bank screen, frame-rate independent (20/60/144 fps), inside the envelope, late join, crowd share (${crowded.puffs.length} for 14 banks), launch puffs, one continuous wall, fade to the blocking floor with a haze tail, reset passed`);
+  console.log(`auxiliaryPresentation media: ${at60.puffs.length} puffs for a ${banks}-bank screen, frame-rate independent (20/60/144 fps), inside the envelope, late join, crowd share (${crowded.puffs.length} for 14 banks), launch puffs, one continuous wall, fade to the blocking floor with a haze tail, threads and ropes, the swelling bloom, sunlit crowns, the wall strike, reset passed`);
 }
