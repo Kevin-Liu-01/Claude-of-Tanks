@@ -93,6 +93,12 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
   let localDone = false;
   let track: Float32Array | null = null;
   let trackLength = 0;
+  /** The wreck age the local track's first sample stands at (0 for a launch, later for a continuation). */
+  let localStartAge = 0;
+  // the last two authoritative poses and their ages: a continuation starts from the newest with their velocity
+  const extLast = new Float64Array(7), extPrev = new Float64Array(7);
+  let extLastAge = -1, extPrevAge = -1;
+  const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion();
   const framePose = new Float64Array(7);
   // placement scratch
   const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3();
@@ -116,28 +122,63 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
     return out;
   }
 
-  function ensureLocal(): void {
+  /**
+   * The local body. A launch starts at the turret's seat at the kill with the battle's launch law drawn from the
+   * visual's own stream; a continuation (the authority stopped speaking mid-flight: a killcam froze the simulation)
+   * starts from the newest authoritative pose with the velocity of the last two, at that pose's age.
+   */
+  function startLocal(continuation: boolean, ageS: number): void {
     if (world || !profile?.shape) return;
     world = createRigidWorld({ capacity: 1, kinematicCapacity: 1, spherePool: 128, velocityIterations: 8, positionIterations: 3 });
     const sampler = o.ground();
-    deathRoot.decompose(_p, _q, _s);
+    const hullFrame = continuation ? rootWorld(_rootWorld) : deathRoot;
+    hullFrame.decompose(_p, _q, _s);
     const floorY = _p.y;
     world.bindEnvironment({ groundAt: sampler ? (x, z) => sampler(x, z) : () => floorY });
-    // the hull's own box at the kill (static: the wreck's hull does not move in a composition)
+    // the hull's own box (static: in a composition or a frozen replay the wreck's hull does not move)
     const hc = profile.hullCenter, hh = profile.hullHalf;
-    const c = new THREE.Vector3(hc[0], hc[1], hc[2]).applyMatrix4(deathRoot);
+    const c = new THREE.Vector3(hc[0], hc[1], hc[2]).applyMatrix4(hullFrame);
     world.setKinematicCount(1);
     world.setKinematic(0, 1, c.x, c.y, c.z, _q.x, _q.y, _q.z, _q.w, hh[0] * scale, hh[1] * scale, hh[2] * scale, 0, 0, 0, 0, 0, 0);
-    // the launch, from the visual's own stream: the battle's law and profile
-    const draws: number[] = [];
-    for (let n = 0; n < 40; n++) draws.push(o.random());
-    let cursor = 0;
-    turretLaunchVelocity(pop ? 'ammorack' : 'shot', (o.spec.weightTons ?? 40) * scale ** 3, () => draws[(cursor++) % draws.length], hv);
-    localSlot = world.spawn(profile.shape, {
-      x: startPos.x, y: startPos.y, z: startPos.z, qx: startQuat.x, qy: startQuat.y, qz: startQuat.z, qw: startQuat.w,
-      vx: hv[0], vy: hv[1], vz: hv[2], wx: hv[3], wy: hv[4], wz: hv[5], owner: 1,
-      ignoreOwnerSteps: pop ? 8 : 0,
-    });
+    if (continuation) {
+      // velocity from the last two authoritative poses (linear, and the rotation between them)
+      const dt = extLastAge - extPrevAge;
+      const ok = extPrevAge >= 0 && dt > 1e-4;
+      hv[0] = ok ? (extLast[0] - extPrev[0]) / dt : 0;
+      hv[1] = ok ? (extLast[1] - extPrev[1]) / dt : 0;
+      hv[2] = ok ? (extLast[2] - extPrev[2]) / dt : 0;
+      hv[3] = hv[4] = hv[5] = 0;
+      if (ok) {
+        _qa.set(extPrev[3], extPrev[4], extPrev[5], extPrev[6]);
+        _qb.set(extLast[3], extLast[4], extLast[5], extLast[6]);
+        // dq = qb · qa⁻¹ as an axis-angle rate
+        _qb.multiply(_qa.invert());
+        if (_qb.w < 0) { _qb.x = -_qb.x; _qb.y = -_qb.y; _qb.z = -_qb.z; _qb.w = -_qb.w; }
+        const s = Math.sqrt(_qb.x * _qb.x + _qb.y * _qb.y + _qb.z * _qb.z);
+        if (s > 1e-9) {
+          const angle = 2 * Math.atan2(s, _qb.w) / dt;
+          hv[3] = (_qb.x / s) * angle; hv[4] = (_qb.y / s) * angle; hv[5] = (_qb.z / s) * angle;
+        }
+      }
+      localSlot = world.spawn(profile.shape, {
+        x: extLast[0], y: extLast[1], z: extLast[2], qx: extLast[3], qy: extLast[4], qz: extLast[5], qw: extLast[6],
+        vx: hv[0], vy: hv[1], vz: hv[2], wx: hv[3], wy: hv[4], wz: hv[5], owner: 1,
+      });
+      // the frame pose is the authoring frame: spawn takes it as such
+      localStartAge = extLastAge >= 0 ? extLastAge : ageS;
+    } else {
+      // the launch, from the visual's own stream: the battle's law and profile
+      const draws: number[] = [];
+      for (let n = 0; n < 40; n++) draws.push(o.random());
+      let cursor = 0;
+      turretLaunchVelocity(pop ? 'ammorack' : 'shot', (o.spec.weightTons ?? 40) * scale ** 3, () => draws[(cursor++) % draws.length], hv);
+      localSlot = world.spawn(profile.shape, {
+        x: startPos.x, y: startPos.y, z: startPos.z, qx: startQuat.x, qy: startQuat.y, qz: startQuat.z, qw: startQuat.w,
+        vx: hv[0], vy: hv[1], vz: hv[2], wx: hv[3], wy: hv[4], wz: hv[5], owner: 1,
+        ignoreOwnerSteps: pop ? 8 : 0,
+      });
+      localStartAge = 0;
+    }
     track ??= new Float32Array((LOCAL_MAX_STEPS + 1) * 7);
     trackLength = 0;
     localSteps = 0;
@@ -156,7 +197,7 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
   /** Step the local body until its track covers `ageS`. */
   function advanceLocal(ageS: number): void {
     if (!world || localDone) return;
-    const need = Math.min(LOCAL_MAX_STEPS, Math.ceil(ageS / LOCAL_DT) + 1);
+    const need = Math.min(LOCAL_MAX_STEPS, Math.ceil((ageS - localStartAge) / LOCAL_DT) + 1);
     while (localSteps < need && !localDone) {
       world.step(LOCAL_DT);
       localSteps++;
@@ -168,7 +209,7 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
   /** The local track at `ageS` into framePose (lerp, nlerp). */
   function sampleLocal(ageS: number): boolean {
     if (!track || trackLength === 0) return false;
-    const t = Math.max(0, ageS / LOCAL_DT);
+    const t = Math.max(0, (ageS - localStartAge) / LOCAL_DT);
     const i = Math.min(trackLength - 1, Math.floor(t));
     const j = Math.min(trackLength - 1, i + 1);
     const u = j === i ? 0 : t - i;
@@ -207,7 +248,8 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
       pop = popped;
       externalFresh = false;
       externalSeen = false;
-      world = null; localSlot = -1; localDone = false; trackLength = 0; localSteps = 0;
+      extLastAge = -1; extPrevAge = -1;
+      world = null; localSlot = -1; localDone = false; trackLength = 0; localSteps = 0; localStartAge = 0;
       trailAcc = 0; prevY = NaN; prevVy = 0; landingCooldown = 0; lastAge = -1; hasPlaced = false;
       gunStart = o.gun.rotation.x; gunAge = 0;
       if (!active || !profile) return;
@@ -226,7 +268,7 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
       lastPos.copy(startPos);
       if (explicitAge !== null) {
         // a composer's age: the local body now, to that age
-        ensureLocal();
+        startLocal(false, explicitAge);
         advanceLocal(explicitAge);
         if (sampleLocal(explicitAge)) place();
         o.gun.rotation.x = WRECK_GUN_DROOP_RAD;
@@ -247,9 +289,22 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
         for (let k = 0; k < 7; k++) framePose[k] = external[k];
         externalFresh = false;
         have = true;
+        // the authority speaks again: any continuation of ours gives way to it
+        if (world) { world = null; localSlot = -1; trackLength = 0; }
+        if (ageS > extLastAge + 1e-6) {
+          for (let k = 0; k < 7; k++) extPrev[k] = extLast[k];
+          extPrevAge = extLastAge;
+          for (let k = 0; k < 7; k++) extLast[k] = external[k];
+          extLastAge = ageS;
+        }
       } else if (!externalSeen) {
         // no authority speaks for this turret: the local body (lazy: the first frame without one)
-        ensureLocal();
+        startLocal(false, ageS);
+        advanceLocal(ageS);
+        have = sampleLocal(ageS);
+      } else if (extLastAge >= 0 && ageS > extLastAge + 1e-6 && adv > 0) {
+        // the authority went quiet while our clock runs (a killcam froze the simulation): carry its motion on
+        startLocal(true, ageS);
         advanceLocal(ageS);
         have = sampleLocal(ageS);
       }

@@ -1080,6 +1080,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // the game's own rigid bodies, and a dead hull's turret as one.
     'src/sim/rigidBody.selftest.mjs',
     'src/sim/wreckTurrets.selftest.mjs',
+    'src/vehicles/wreckTurretDriver.selftest.mjs',
     // 2026-10-09 (vehicle-contact lane, owner: "tracks shouldnt glitch through the bridge"): the drawn tracks rest on the
     // bridge decks the hull stands on (Aegis Crossing's viaduct, Amberford, Suzhou Creek), driven and parked.
     'src/world/vehicleGroundContact.selftest.mjs',
