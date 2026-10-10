@@ -503,8 +503,14 @@ const grainStore = (ctx: RegionalBuildContext): RegionalParts => {
   return sink.finish();
 };
 
-/** The warehouse lots: the elevator on the widest (16 m and more), else the repair shop or a grain store. */
-const warehouse: RegionalBuilder = (ctx) => (ctx.info.w >= 16 ? elevator(ctx) : ctx.rng() < 0.5 ? workshop(ctx) : grainStore(ctx));
+/**
+ * The warehouse lots: the widest (16 m and more) is the station's long grain store, laid along the lot's long side
+ * (onLot), else the repair shop or a grain store. (2026-10-10, the facades lane's ruling on the Tarkhan landing: the
+ * station's elevator is the landmark's, landmarks grainElevator on the siding, and this lot is its long store across the
+ * track — one elevator, not two. The width is tested before any draw, so the store builds from the lot's own stream like
+ * any store lot; the kit's elevator stays a builder of its own, `elevator`, for an authored site that asks for one.)
+ */
+const warehouse: RegionalBuilder = (ctx) => (ctx.info.w >= 16 ? grainStore(ctx) : ctx.rng() < 0.5 ? workshop(ctx) : grainStore(ctx));
 
 /**
  * The conveyor gallery: the intake shed where the lorries tip at one end, the enclosed belt gallery rising on two steel
@@ -856,6 +862,8 @@ export const TSELINA_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Objec
   farmhouse: twoFamilyHouse,
   cornershop: club,
   warehouse,
+  // (no plan site asks for it: the station's elevator is the landmark's; see warehouse)
+  elevator,
   gantry: conveyor,
   depot: mtsGarage,
   shed: implementShed,
