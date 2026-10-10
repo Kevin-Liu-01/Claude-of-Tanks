@@ -85,7 +85,7 @@ export default {
     destructibleBuildings: ['deserttent', 'commandtent', 'checkpointhut', 'guardpost'],
     // (the map-content lane, 2026-10-09; the census: Siwa a dozen buildings on the caravan road, 39 % of the playable square
     // more than 30 m from anything standing) the town filled out lot by lot in the kit's kershef: houses along the caravan
-    // street and the souk lane, three shop rows, a second watch tower; nine lots each side of the town's middle. They stand
+    // street and the souk lane, three shop rows, a second watch tower, every footprint outside the zone-control discs. They stand
     // after the roadside plan (every plan building where it was) and each draws from its own stream (terrace)
     plannedSitesAfterPlan: true,
     plannedSites: [
@@ -99,7 +99,6 @@ export default {
       { structure: 'adobe', x: 126.0, z: -86.0, yawDeg: 3, plot: { w: 9, d: 9 }, terrace: true },
       { structure: 'adobe', x: 102.0, z: -84.0, yawDeg: -134, plot: { w: 9, d: 9 }, terrace: true },
       { structure: 'adobe', x: 84.0, z: 4.0, yawDeg: -83, plot: { w: 9, d: 9 }, terrace: true },
-      { structure: 'adobe', x: 64.0, z: 8.0, yawDeg: 97, plot: { w: 9, d: 9 }, terrace: true },
       { structure: 'marketRow', x: 94.0, z: 14.0, yawDeg: -29, plot: { w: 12, d: 5.2 }, terrace: true },
       { structure: 'adobe', x: 106.0, z: 18.0, yawDeg: -22, plot: { w: 9, d: 9 }, terrace: true },
       { structure: 'adobe', x: 64.0, z: 20.0, yawDeg: 114, plot: { w: 9, d: 9 }, terrace: true },
@@ -107,11 +106,12 @@ export default {
       { structure: 'tower', x: 134.0, z: 88.0, yawDeg: 94, plot: { w: 9, d: 9 }, terrace: true },
       { structure: 'adobe', x: 156.0, z: 90.0, yawDeg: -86, plot: { w: 9, d: 9 }, terrace: true },
       { structure: 'adobe', x: 134.0, z: 102.0, yawDeg: 94, plot: { w: 9, d: 9 }, terrace: true },
-      // old Shali's heaped blocks on the compound plots behind the streets, three each side of the middle
+      // old Shali's heaped blocks on the compound plots behind the streets, three each side of the middle (every footprint
+      // 4 m or more outside the zone-control discs, on ground within the plan's 1.7 m spread)
       { structure: 'compound', x: 130.0, z: -38.0, yawDeg: -177, plot: { w: 20, d: 20 }, terrace: true },
-      { structure: 'compound', x: 184.0, z: -22.0, yawDeg: 145, plot: { w: 20, d: 20 }, terrace: true },
+      { structure: 'compound', x: 202.0, z: -74.0, yawDeg: -35, plot: { w: 20, d: 20 }, terrace: true },
       { structure: 'compound', x: 12.0, z: -124.0, yawDeg: 4, plot: { w: 20, d: 20 }, terrace: true },
-      { structure: 'compound', x: 178.0, z: 48.0, yawDeg: -77, plot: { w: 20, d: 20 }, terrace: true },
+      { structure: 'compound', x: 216.0, z: 16.0, yawDeg: 178, plot: { w: 20, d: 20 }, terrace: true },
       { structure: 'compound', x: 84.0, z: 64.0, yawDeg: 158, plot: { w: 20, d: 20 }, terrace: true },
       { structure: 'compound', x: 106.0, z: 114.0, yawDeg: 94, plot: { w: 20, d: 20 }, terrace: true },
       // the gardens' farmsteads out in the palms and on the dune edges, seven each side of the middle
