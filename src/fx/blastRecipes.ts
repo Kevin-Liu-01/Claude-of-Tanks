@@ -293,10 +293,12 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // (wave 293 and the critics after 7d/7e: "the HE cloud splitting into brown balls and separate blue-grey balls") ONE
   // palette for every smoke puff of the burst — the explosive's, the column's fine soil, the shaped charge's spike —
   // born a dark grey-brown (the explosive's grey residue with the soil in it) and ageing to one warm grey
-  const smokeC0: Rgb = shaped || thermobaric ? mixInto(_e, SOOT, soilC, 0.2)
-    : mixInto(_e, mixInto(_e, SOOT, soilC, 0.3), BLAST_RESIDUE, 0.25);
-  const smokeAged: Rgb = snowy ? mixInto(_f, SMOKE_AGED, soilC, 0.2)
-    : mixInto(_f, mixInto(_f, SMOKE_AGED, L.dust, 0.25), soilC, 0.08);
+  // (fx 8i, wave 334a, both critics: "the caramel cloud never greys or thins") the soil's share is a tint, not the body:
+  // the explosive's grey residue carries it, and it ages to a neutral grey (DVIDS 954922's cloud is grey by +2 s)
+  const smokeC0: Rgb = shaped || thermobaric ? mixInto(_e, SOOT, soilC, 0.12)
+    : mixInto(_e, mixInto(_e, SOOT, soilC, 0.15), BLAST_RESIDUE, 0.35);
+  const smokeAged: Rgb = snowy ? mixInto(_f, SMOKE_AGED, soilC, 0.12)
+    : mixInto(_f, SMOKE_AGED, L.dust, 0.1);
   for (let i = 0; i < smokeN; i++) {
     const u = (i + R()) / smokeN;
     const a = R() * TAU, r = R() * 0.3 * D;
@@ -312,7 +314,8 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     // (wave 293 and fx 8: the real cloud has grown about eight-fold in area by +2 s) born at a third of the fireball's
     // width and swelling fast: most of its growth in its first two seconds
     shape(m, life, 0.4 * D * dk, (1.6 + 0.4 * u + 0.35 * R()) * D * dk, 6, R);
-    look(m, smokeC0, smokeAged, 0.9, 0.0, 0.55);
+    // (fx 8i: "never thins") its erosion starts at a third of its life (~3-4 s), so the cloud thins as it climbs
+    look(m, smokeC0, smokeAged, 0.9, 0.0, 0.33);
     book(m, 'billow', R, life);
     heat(m, 0.3, 4.5);
     C.media(m);
@@ -384,7 +387,30 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
       const life = 6.0 + R() * 2.0;
       const size1 = (4.2 + R() * 1.6) * s * dk;
       shape(m, life, size1 * 0.35, size1, 2.6, R);
-      look(m, smokeC0, smokeAged, 0.85, 0.2, 0.5);
+      // (fx 8i, wave 334a: "a blue-grey ball hanging off it") dense enough that no sky shows through, born dark
+      look(m, mix3b(smokeC0, L.ejecta, 0.15), smokeAged, 1.0, 0.1, 0.45);
+      book(m, 'billow', R, life);
+      heat(m, 0, 1);
+      C.media(m);
+    }
+    // (fx 8i, wave 334a: "still a rigid narrow totem of stacked brown balls at 0.7-1.4 s ... never becomes one turbulent
+    // widening plume") the sheath: soft billows born up the column as the spike passes each height (its puffs reach h at
+    // t = -ln(1 - h / H) / k, H = vMax / k), already a body as wide as the spike and rolling out sideways, so the lumps
+    // merge into one ragged column that widens with height and with time
+    const sheathN = fpv ? 6 : 9;
+    const kS = 2.8, Hs = vMax / kS;
+    for (let i = 0; i < sheathN; i++) {
+      const u = (i + 0.3 + 0.4 * R()) / sheathN;
+      const h = u * 0.82 * Hs;
+      const tH = -Math.log(Math.max(0.05, 1 - h / Hs)) / kS;
+      const a = R() * TAU;
+      place(m, I.x + ax * h * 0.3 + Math.cos(a) * 0.3, by + 0.25 + h, I.z + az * h * 0.3 + Math.sin(a) * 0.3, bo + tH);
+      const out = (1.4 + 1.6 * R()) * sq * (0.6 + 0.6 * u);
+      move(m, Math.cos(a) * out, 0.4 + R() * 0.4, Math.sin(a) * out, 1.1, 0.25 + 0.15 * u, 0.95, 0);
+      const life = 5.5 + R() * 2.0;
+      const size1 = (3.2 + 2.2 * u + R() * 0.8) * s * dk;
+      shape(m, life, size1 * 0.45, size1, 3.0, R);
+      look(m, mix3b(smokeC0, L.ejecta, 0.2 + 0.15 * R()), smokeAged, 0.92, 0.06, 0.4);
       book(m, 'billow', R, life);
       heat(m, 0, 1);
       C.media(m);
@@ -424,7 +450,8 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
       const v = vTop * (0.35 + 0.65 * u);
       const st = Math.sin(tilt), ct = Math.cos(tilt);
       place(m, I.x + (R() - 0.5) * 0.4 * s, by + 0.4, I.z + (R() - 0.5) * 0.4 * s, bo + R() * 0.02);
-      move(m, Math.cos(a) * st * v, ct * v, Math.sin(a) * st * v, 1.6, 0, 0.35, -9.8);
+      // (fx 8i, wave 334a: "no dark earth column (only black chips)") less drag: the core stands up out of the cloud
+      move(m, Math.cos(a) * st * v, ct * v, Math.sin(a) * st * v, 1.15, 0, 0.35, -9.8);
       const life = 1.7 + R() * 0.7 + (heavy ? 0.4 : 0);
       const size1 = (1.9 + 1.2 * u + R() * 0.6) * Math.pow(s, 0.85) * dk * (heavy ? 1.2 : 1);
       shape(m, life, size1 * 0.45, size1, 3.2, R);
@@ -523,10 +550,13 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   for (let i = 0; i < sheetN; i++) {
     const a = (i / sheetN) * TAU + (R() - 0.5) * (TAU / sheetN) * 1.4, r = (0.4 + 0.8 * R()) * s;
     const size1 = (1.3 + R() * 0.6) * s * Math.sqrt(dustK) * dk * (heavy ? 1.25 : 1);
-    place(m, I.x + Math.cos(a) * r, by + 0.22 * size1, I.z + Math.sin(a) * r, bo + 0.03 + R() * 0.08);
+    // (fx 8i, wave 334a: "a crisp hard-rimmed tan doughnut painted on the soil that never spreads past its 1.0 s width.
+    // No low airborne dust sheet") it stands a little off the ground and keeps running out and drifting for seconds
+    // (light drag: ~10-16 m of travel) instead of stalling at the ring's width
+    place(m, I.x + Math.cos(a) * r, by + 0.28 * size1, I.z + Math.sin(a) * r, bo + 0.03 + R() * 0.08);
     const v = (5 + 3 * R()) * sq;
-    move(m, Math.cos(a) * v, 0.15 + R() * 0.1, Math.sin(a) * v, 1.3, 0.02 + R() * 0.03, 1.0, 0);
-    const life = (4.5 + R() * 2) * Math.min(1.4, sq) * L.hang;
+    move(m, Math.cos(a) * v, 0.2 + R() * 0.15, Math.sin(a) * v, 0.6, 0.04 + R() * 0.02, 1.0, 0);
+    const life = (5 + R() * 2.5) * Math.min(1.2, sq) * L.hang;
     shape(m, life, size1 * 0.4, size1, 2.0, R);
     look(m, mix3(L.ejecta, L.dust, 0.45), hazeC1, Math.min(0.3, 0.18 * dustK + 0.08), 0.05, 0.4);
     book(m, 'billow', R, life);
