@@ -6755,7 +6755,7 @@ void splatCompute() {
         vec3 packedSnow = uMeanG.rgb * vec3(0.84, 0.85, 0.87) * (0.94 + 0.12 * n1h);
         // (R3, wave 341's Frosthollow pads: "a smooth grey sheen") past the Low tier a pad's snow is trodden, not glazed — a
         // shade off the field's white, its prints carrying the grey
-        if (uLandTier > 0.5) packedSnow *= 1.0 + 0.07 * apronK;
+        if (uLandTier > 0.5) packedSnow *= 1.0 + 0.12 * apronK;
         // (roads lane, wave 341's packing note: the pads' ruts "dark brown stripes on white snow") a pad's vehicle tracks
         // are snow pressed hard — greyer, glazed — with slush churned through to the ground only in stretches
         float padSlush = padRut * smoothstep(0.55, 0.80, nz(uv, 0.05, vec2(0.61, 0.17)).g);
@@ -7050,7 +7050,7 @@ void splatCompute() {
     float trampleW = uLandTier > 0.5 ? clamp(apronRim - apronK, 0.0, 1.0) * (1.0 - gRoadTex) : 0.0;
     if (trampleW > 0.003) {
       float tN = nzq(uv, 0.18, vec2(0.33, 0.57)).x;
-      if (uReduxD.y > 1.5) a.rgb = mix(a.rgb, a.rgb * vec3(0.86, 0.87, 0.90), trampleW * 0.7);
+      if (uReduxD.y > 1.5) a.rgb = mix(a.rgb, a.rgb * vec3(0.93, 0.935, 0.95), trampleW * (0.5 + 0.5 * tN));
       else if (uReduxD.y > 0.5) a.rgb = mix(a.rgb, a.rgb * vec3(0.93, 0.91, 0.88), trampleW * 0.6);
       else {
         a.rgb = mix(a.rgb, a.rgb * vec3(1.10, 1.03, 0.80), trampleW * 0.6);
