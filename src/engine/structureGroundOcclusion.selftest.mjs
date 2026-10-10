@@ -132,7 +132,8 @@ assert.match(post, /updateContactShadowUniforms\(aerial\.uniforms, camera, scene
   'the rig uniforms it reads are refreshed whenever it runs');
 const map = read('../world/map.ts');
 assert.match(map, /createStructureGroundOcclusion\(props\.obstacles, \{ group, scale: groundOcclusionScale \}\)/, 'the world bakes its obstacles');
-assert.match(map, /const groundOcclusion: StructureGroundOcclusionHandle \| null = groundOcclusionScale > 0\s*&& \(engineCtx/, 'baked on every tier (overhaul r5: the phones too; their preset decides whether it is read)');
+assert.match(map, /const groundOcclusionRead = getDeviceTier\(\) !== 'mobile' \|\| getPreset\(\)\.groundOcclusion === true;\s*const groundOcclusion: StructureGroundOcclusionHandle \| null = groundOcclusionScale > 0 && groundOcclusionRead\s*&& \(engineCtx/,
+  'baked on the desktop tiers and, overhaul r5, on the phones under a preset that reads it');
 assert.match(map, /groundOcclusion\.update\(dt\);/, 'the world polls its destroyed solids');
 assert.match(map, /groundOcclusion\.dispose\(\);/);
 const main = read('../main.ts');

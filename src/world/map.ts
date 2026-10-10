@@ -41,7 +41,7 @@ import { createGroundCoverClearance } from './groundCoverClearance.ts';
 import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
 import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
-import { getDeviceTier } from '../engine/quality.ts';
+import { getDeviceTier, getPreset } from '../engine/quality.ts';
 import { createStructureGroundOcclusion, type StructureGroundOcclusionHandle } from '../engine/structureGroundOcclusion.ts';
 import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
 import { supplyHorizonRing, withdrawHorizonRing } from './horizonRingHook.ts';
@@ -518,7 +518,9 @@ function assembleWorld(
   // warms, read by the aerial pass (the desktop tiers; 2026-10-10, overhaul r5: Low and the phones too, under their
   // presets' own lever); a map's sky.lighting.groundOcclusion scales it (0: off)
   const groundOcclusionScale = (config.sky as { lighting?: { groundOcclusion?: number } } | undefined)?.lighting?.groundOcclusion ?? 1;
-  const groundOcclusion: StructureGroundOcclusionHandle | null = groundOcclusionScale > 0
+  // (the phones bake it only under a preset that reads it: their Performance level keeps the memory and the worker's time)
+  const groundOcclusionRead = getDeviceTier() !== 'mobile' || getPreset().groundOcclusion === true;
+  const groundOcclusion: StructureGroundOcclusionHandle | null = groundOcclusionScale > 0 && groundOcclusionRead
     && (engineCtx as { renderer?: THREE.WebGLRenderer }).renderer
     ? createStructureGroundOcclusion(props.obstacles, { group, scale: groundOcclusionScale }) : null;
   if (groundOcclusion) engineCtx.scene.userData.structureGroundOcclusion = groundOcclusion;
