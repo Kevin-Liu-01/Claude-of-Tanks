@@ -21,7 +21,7 @@ import { acquireTerrainChunkIndex, terrainNearMeshHeightAt } from './terrain.ts'
 import {
   BED_SECTION_BINS, BED_SECTION_LEVELS, BOULDER_KINDS, BOULDER_SEAT_Y, ROCK_SHADOW_INSET_M, applyRockShaderHook, bedHash, beddingParting,
   boulderKindFor, boulderSectionRadius, boulderSections, boulderVariantForms, buildBoulderForm, createRockDepthMaterial, legacyRockVariant,
-  makeRockDetail, paintBoulder, projectsInsideHull, rockAngularityFor, rockDressingFor, rockLithologyFor,
+  makeRockDetail, paintBoulder, projectsInsideHull, rockAngularityFor, rockBaseToneFor, rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts';
 import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
@@ -72,7 +72,10 @@ function closedWelded(position, index) {
 
 // --- the forms
 assert.deepEqual([...BOULDER_KINDS], ['block', 'rounded', 'slab']);
-const LITHOLOGIES = ['granite', 'gneiss', 'sandstone', 'limestone', 'slate', 'basalt', 'chalk'];
+const LITHOLOGIES = ['granite', 'gneiss', 'sandstone', 'limestone', 'slate', 'basalt', 'chalk', 'conglomerate', 'breccia'];
+// (2026-10-10, the map-revival lane) the bedded stones: the sedimentary rocks' beds, the conglomerate's thick ones and
+// the slate's steep cleavage
+const BEDDED = ['sandstone', 'limestone', 'slate', 'conglomerate'];
 const tri = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), centroid = new THREE.Vector3();
 const meanLuma = {};
 /** The weathered mass, every rock and tier: a welded cube-sphere (closed, unfolded, its normals the surface's own and
@@ -163,7 +166,7 @@ for (const lithology of LITHOLOGIES) {
         // (b14) the bedding rides the sedimentary rocks only: several beds up a stone, none on the rest
         let bedLo = Infinity, bedHi = -Infinity;
         for (let i = 0; i < p.count; i++) if (p.getY(i) > BOULDER_SEAT_Y) { bedLo = Math.min(bedLo, face.getX(i)); bedHi = Math.max(bedHi, face.getX(i)); }
-        if (['sandstone', 'limestone'].includes(lithology)) assert.ok(bedHi - bedLo > 2, `${label}: beds up the stone (${(bedHi - bedLo).toFixed(2)})`);
+        if (BEDDED.includes(lithology)) assert.ok(bedHi - bedLo > (lithology === 'conglomerate' ? 1 : 2), `${label}: beds up the stone (${(bedHi - bedLo).toFixed(2)})`);
         else assert.ok(bedLo === 0 && bedHi === 0, `${label}: no bedding on ${lithology}`);
         const g = form.geometry;
         // broad faces and rounded arrises, both (the corestone is all arris)
@@ -334,7 +337,7 @@ assert.notDeepEqual(rockDressingFor('coastal', null).lichenA, rockDressingFor('v
 // (b14) the bedding and the honeycomb: the sedimentary stone's partings and beds, the arid sandstone's tafoni
 for (const mapId of MAP_IDS) {
   const d = rockDressingFor(mapId, null), [partings, tones, tafoni, depth] = d.beds;
-  const bedded = ['sandstone', 'limestone'].includes(d.lithology);
+  const bedded = BEDDED.includes(d.lithology);
   assert.ok(bedded ? partings > 0 && tones > 0 : partings === 0 && tones === 0, `${mapId}: partings and beds on bedded stone only (${d.lithology})`);
   assert.ok(tafoni >= 0 && tafoni <= 1 && (d.lithology === 'sandstone' || tafoni === 0), `${mapId}: a honeycomb in sandstone only`);
   assert.ok(depth > 0 && depth <= 0.03, `${mapId}: a parting a couple of centimetres deep`);
@@ -350,8 +353,24 @@ for (const mapId of MAP_IDS) {
   assert.ok(d.fabric.length === 4 && d.fabric.every((v) => v >= 0 && v <= 1), `${mapId}: a bounded fabric`);
   assert.ok(!(laminae > 0) || (d.lithology === 'sandstone' && d.beds[0] > 0), `${mapId}: laminae inside a sandstone's beds only`);
   assert.equal(foliation > 0 || veins > 0, d.lithology === 'gneiss', `${mapId}: the foliation and its veins the gneiss's`);
-  if (!['sandstone', 'gneiss', 'chalk'].includes(d.lithology)) assert.deepEqual([...d.fabric], [0, 0, 0, 0], `${mapId}: no new fabric on ${d.lithology}`);
+  if (!['sandstone', 'gneiss', 'chalk', 'conglomerate', 'breccia'].includes(d.lithology)) assert.deepEqual([...d.fabric], [0, 0, 0, 0], `${mapId}: no new fabric on ${d.lithology}`);
 }
+// (2026-10-10, the map-revival lane; gauntlet wave 346 on the rock cover: "Owen conglomerate needs rounded quartzite
+// pebbles and cobbles in a darker matrix", "lunar breccia", Eifel slate's "cleavage planes", Chouf limestone "fluted and
+// pitted") the second fabric: the conglomerate's rounded clasts, the breccia's angular ones, the slate's cleavage, the
+// limestone's karren — each its own stone's, none on the rest; and each map's own stone
+const FABRIC2 = { conglomerate: [1, 0, 0, 0], breccia: [0, 1, 0, 0], slate: [0, 0, 1, 0], limestone: [0, 0, 0, 1] };
+for (const mapId of MAP_IDS) {
+  const d = rockDressingFor(mapId, null);
+  assert.ok(d.fabric2.length === 4 && d.fabric2.every((v) => v >= 0 && v <= 1), `${mapId}: a bounded second fabric`);
+  assert.deepEqual([...d.fabric2], FABRIC2[d.lithology] ?? [0, 0, 0, 0], `${mapId}: the second fabric is its ${d.lithology}'s`);
+}
+assert.deepEqual(['copper_mesa', 'moon', 'orchard', 'reservoir', 'mars'].map((m) => rockLithologyFor(m)),
+  ['conglomerate', 'breccia', 'limestone', 'slate', 'basalt'], 'Queenstown\'s Owen conglomerate, the highland breccia, the Chouf\'s limestone, the Eifel\'s slate, the Tharsis basalt');
+assert.ok(['conglomerate', 'breccia'].every((l) => [0, 1, 2].every((v) => BOULDER_KINDS[boulderKindFor(l, v)] !== 'rounded')),
+  'the clastic rocks break as blocks and slabs (wave 346: "no egg domes")');
+assert.ok(rockBaseToneFor('reservoir')[0] < 0.15 && rockBaseToneFor('orchard')[2] > 0.45 && rockBaseToneFor('verdant') === null,
+  'the Eifel\'s brown-grey slate, the Chouf\'s pale limestone; a map without its own stone takes its lithology\'s');
 assert.deepEqual([...rockDressingFor('desert', null).fabric], [1, 0, 0, 1], 'Dahar\'s sandstone: its laminae and its grain');
 assert.deepEqual([...rockDressingFor('fjord', null).fabric], [0, 1, 1, 0], 'Fjord\'s gneiss: its foliation and its quartz veins');
 assert.ok(rockDressingFor('verdant', null).fabric[3] > 0, 'the chalk\'s grain');
@@ -411,8 +430,9 @@ const grimed = {
 const tile = new THREE.DataTexture(new Uint8Array(4), 1, 1);
 const shader = { uniforms: {}, vertexShader: grimed.vertexShader, fragmentShader: grimed.fragmentShader };
 applyRockShaderHook(shader, rockDressingFor('verdant', null), tile);
-assert.deepEqual(Object.keys(shader.uniforms).sort(), ['uRockBeds', 'uRockDust', 'uRockFabric', 'uRockLichen', 'uRockLichenA', 'uRockLichenB', 'uRockLichenTile', 'uRockMoss', 'uRockPhoto', 'uRockSoil', 'uRockStoneMean', 'uRockSurface', 'uRockVarnish']);
+assert.deepEqual(Object.keys(shader.uniforms).sort(), ['uRockBeds', 'uRockDust', 'uRockFabric', 'uRockFabric2', 'uRockLichen', 'uRockLichenA', 'uRockLichenB', 'uRockLichenTile', 'uRockMoss', 'uRockPhoto', 'uRockSoil', 'uRockStoneMean', 'uRockSurface', 'uRockVarnish']);
 assert.deepEqual(shader.uniforms.uRockFabric.value.toArray(), [...rockDressingFor('verdant', null).fabric], 'the lithology\'s fabric (b18)');
+assert.deepEqual(shader.uniforms.uRockFabric2.value.toArray(), [...rockDressingFor('verdant', null).fabric2], 'the lithology\'s second fabric (2026-10-10)');
 assert.deepEqual(shader.uniforms.uRockBeds.value.toArray(), [...rockDressingFor('verdant', null).beds], 'the lithology\'s bedding and honeycomb');
 assert.deepEqual(shader.uniforms.uRockSurface.value.toArray(), [...rockDressingFor('verdant', null).surface], 'the lithology\'s own surface');
 assert.deepEqual(shader.uniforms.uRockStoneMean.value.toArray(), [0.214, 0.214, 0.214], 'the stand-in\'s mid grey until the stone lands');
@@ -477,6 +497,19 @@ assert.match(shader.vertexShader, /vRockFace = aRockFace;/);
   assert.ok(frag.indexOf('if (uRockBeds.x > 0.0) {') < frag.indexOf('if (uRockFabric.w > 0.0) {')
     && frag.indexOf('if (uRockFabric.w > 0.0) {') < frag.indexOf('float varnish =') && frag.indexOf('if (uRockFabric.w > 0.0) {') < frag.indexOf('float lichen ='),
     'after the beds, under the varnish and the lichen');
+}
+// (2026-10-10) the second fabric: after the first, under the varnish and the lichen; the clasts faded to their mean past
+// the near ground and where a cell crowds under a few pixels, the cleavage and the karren where their lines crowd
+{
+  const clasts = frag.slice(frag.indexOf('if (uRockFabric2.x > 0.0 || uRockFabric2.y > 0.0) {'), frag.indexOf('// desert varnish'));
+  assert.ok(clasts.length > 1500, 'the second fabric\'s block');
+  assert.ok(frag.indexOf('if (uRockFabric.w > 0.0) {') < frag.indexOf('if (uRockFabric2.x > 0.0 || uRockFabric2.y > 0.0) {')
+    && frag.indexOf('if (uRockFabric2.x > 0.0 || uRockFabric2.y > 0.0) {') < frag.indexOf('float varnish ='), 'after the first fabric, under the varnish');
+  assert.match(clasts, /float clastNear = \(1\.0 - smoothstep\(22\.0, 55\.0, length\(vViewPosition\)\)\) \* \(1\.0 - smoothstep\(0\.3, 0\.7, clastW\)\);/, 'the clasts near the eye, faded where they crowd');
+  assert.match(clasts, /diffuseColor\.rgb = mix\(diffuseColor\.rgb, mix\(clastFarC, clastNearC, clastNear\), clastK\);/, 'their mean past the near ground');
+  assert.match(clasts, /\* \(1\.0 - smoothstep\(0\.25, 0\.55, cleaveW\)\)/, 'the cleavage gone where it crowds');
+  assert.match(clasts, /\* \(1\.0 - smoothstep\(0\.3, 0\.6, karstW\)\)/, 'and the karren');
+  assert.match(frag, /vec3 cotClast\(vec2 p, float angular\) \{/, 'the clast field');
 }
 // (b14; wave 97: "no … varnish streaks") the varnish hung from the crown in streaks, darkest high, none on a break
 assert.match(frag, /float hang = smoothstep\(0\.05, 0\.75, vRockFace\.y\);/, 'the streaks darkest high');

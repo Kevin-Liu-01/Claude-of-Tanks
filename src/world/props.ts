@@ -62,7 +62,7 @@ import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructu
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import {
   applyRockShaderHook, boulderSectionRadius, boulderSections, boulderVariantForms, createRockDepthMaterial, legacyRockVariant, makeRockDetail,
-  paintBoulder, rockAngularityFor, rockDressingFor, rockLithologyFor,
+  paintBoulder, rockAngularityFor, rockBaseToneFor, rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts'; // round 75 item 6
 import { applyPoleTimberHook, markPoleTimber } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
 import { applyRailBallastHook } from './railBallast.ts'; // the ground lane (wave 234): the rail kit's crushed-stone bed
@@ -7448,13 +7448,13 @@ ${snowCap ? `
     const legacy = legacyRockVariant(vi, noi);
     rockHulls.push(legacy.hull); // the collision proxy of the placement laws (the road core, the talus, the no-overlap law); the colliders are the stone's own (rockCollision.ts)
     const forms = boulderVariantForms(vi, noi, () => mulberry32(seed + 60 + vi), legacy.hull, legacy.top, lithology, angular, mobileProps);
-    paintBoulder(forms.drawn, P.rockTone, lithology);
+    paintBoulder(forms.drawn, P.rockTone, lithology, rockBaseToneFor(mapId));
     rockGeos.push(forms.drawn.geometry);
     // (the desktop form on every tier, so every host derives the same colliders)
     rockForms.push(rockFormOf(forms.collision));
     if (forms.collision !== forms.drawn.geometry) forms.collision.dispose();
     if (forms.far) {
-      paintBoulder(forms.far, P.rockTone, lithology);
+      paintBoulder(forms.far, P.rockTone, lithology, rockBaseToneFor(mapId));
       rockGeosFar.push(forms.far.geometry);
     }
   }
