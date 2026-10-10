@@ -3641,8 +3641,7 @@ export function makeMaskTexture(
         const z0 = clamp(Math.floor((Math.min(az, bz) - 14 + HALF) * T), 0, s - 1);
         const z1 = clamp(Math.ceil((Math.max(az, bz) + 14 + HALF) * T), 0, s - 1);
         for (let tz = z0; tz <= z1; tz++) for (let tx = x0; tx <= x1; tx++) {
-          const px0 = (tx + 0.5) / T - HALF, pz0 = (tz + 0.5) / T - HALF;
-          const { d, t: along } = segDist(px0, pz0, ax, az, bx, bz);
+          const { d, t: along } = segDist((tx + 0.5) / T - HALF, (tz + 0.5) / T - HALF, ax, az, bx, bz);
           const i = tz * s + tx;
           if (d < dist[i]) {
             dist[i] = d;
@@ -3650,7 +3649,10 @@ export function makeMaskTexture(
             if (nearestHeading) nearestHeading[i] = heading;
             if (nearestArc) nearestArc[i] = arc0 + along * segLen;
             // (the side of the line the texel centre stands on: + left of the heading)
-            if (nearestSide) nearestSide[i] = (bx - ax) * (pz0 - az) - (bz - az) * (px0 - ax) >= 0 ? 1 : -1;
+            if (nearestSide) {
+              const px0 = (tx + 0.5) / T - HALF, pz0 = (tz + 0.5) / T - HALF;
+              nearestSide[i] = (bx - ax) * (pz0 - az) - (bz - az) * (px0 - ax) >= 0 ? 1 : -1;
+            }
           }
         }
       }
