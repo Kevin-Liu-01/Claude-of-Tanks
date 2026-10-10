@@ -306,7 +306,9 @@ function captureContext(seed) {
   {
     const sm = a.media.filter((m) => m.medium === 'billow' && m.heat > 0 && m.heat < 1 && m.life >= 5);
     const at = (m, t) => m.size0 + (m.size1 - m.size0) * (1 - Math.pow(1 - Math.min(1, t / m.life), m.growExp));
-    assert.ok(sm.every((m) => at(m, 2) - m.size0 > 0.4 * (m.size1 - m.size0)), 'the smoke swells early');
+    // (fx 8f: the probe of 8a's cloud read 4.3x its event-frame area at +2 s against the real ~8x) most of its growth by +2 s
+    assert.ok(sm.every((m) => at(m, 2) - m.size0 > 0.6 * (m.size1 - m.size0)), 'the smoke swells early');
+    assert.ok(sm.length >= 12 && sm.every((m) => m.size1 >= 1.3 * ball(a)), 'into a cloud well past the fireball\'s width');
     const aged = new Set([...sm, ...coldSmoke(a)].map((m) => [m.r1, m.g1, m.b1].map((v) => v.toFixed(4)).join()));
     assert.equal(aged.size, 1, 'every smoke puff ages to one grey-brown');
   }
