@@ -8271,37 +8271,40 @@ ${snowCap ? `
         yield { fine: true, tankBuilder: specId };
         const baked = yield* bakeFor(specId, pop);
         if (!baked) return false;
+        // The hulk's placement footprint (wrecks.ts placeHx/placeHz: its burnt-away camouflage suit keeps the seat it
+        // always had, so every map seats its hulks where it did; hx/hz are the visible geometry's own envelope).
+        const footHx = baked.placeHx ?? baked.hx, footHz = baked.placeHz ?? baked.hz;
         // The whole hulk keeps out of the road core, not just its centre: a hull that reaches into the carriageway
         // moves straight off the road (up to 8 m), and one that cannot is not placed here.
         const seat = shiftClearOfRoadCore(heightField, x, z,
-          (px, pz) => boxClearOfRoadCore(heightField, px, pz, baked.hx + 0.2, baked.hz + 0.2, yaw));
+          (px, pz) => boxClearOfRoadCore(heightField, px, pz, footHx + 0.2, footHz + 0.2, yaw));
         if (!seat) return false;
         if (seat[0] !== x || seat[1] !== z) {
           [x, z] = seat;
           if (Math.max(Math.abs(x), Math.abs(z)) > 440
             || placedB.some((building) => Math.hypot(x - building.x, z - building.z) < building.rr + 2)) return false;
         }
-        if (!boxClearOfPoints(sharpBends, x, z, baked.hx + 0.2, baked.hz + 0.2, yaw, 10)) return false;
+        if (!boxClearOfPoints(sharpBends, x, z, footHx + 0.2, footHz + 0.2, yaw, 10)) return false;
         // the map-vehicles lane (2026-10-08, the placement audit over the merge): a hulk never stands inside a building,
         // a hut, a garage, a wall, a fence, a barrier or a boulder placed before it (Orchard's Merkava stood in a
         // checkpoint hut, Airfield's hulks in a quonset hut and a motor pool, Urban's T-72 2 m through a plank fence):
         // its footprint against every solid over half a metre tall, a hand's breadth of slack, nor with a tree through
         // it (Verdant's KV-2s); such a seat is refused and the donor tried at the next site (a hulk may still lie
         // against the low things, a kerb, a log, a crate on its side)
-        if (hulkMeetsTallSolid(x, z, baked.hx, baked.hz, yaw)) return false;
+        if (hulkMeetsTallSolid(x, z, footHx, footHz, yaw)) return false;
         // nor on a match objective's disc (the authored zone hints, 30 m, and the kickoff, 12 m, each with 3 m of margin,
         // as the field works keep them: scenery.ts fieldWorksKeepOut). Both authorities relocate a blocked hint by a
         // bounded search: a hulk seated 25 m from Steinburg's eastern zone sent it 280 m away and broke the layout's
         // symmetry (matchPlacement, mapLayoutBrief)
-        if (hulkOnObjective(x, z, Math.hypot(baked.hx, baked.hz))) return false;
+        if (hulkOnObjective(x, z, Math.hypot(footHx, footHz))) return false;
         const support = planGroundedObbPose(
-          heightField, x, z, baked.hx, baked.hz, yaw, 0.14,
+          heightField, x, z, footHx, footHz, yaw, 0.14,
         );
         // A rigid hulk cannot conform to a cliff lip or deep ditch. Reject
         // those candidates and let the seeded road pass find a supported
         // site instead of either floating a track or burying half the tank.
         if (support.maxEmbed > (wCfg?.maxGroundEmbed ?? 1.1)) return false;
-        bakedTris += baked.tris; // budget counts PLACED tris (clones render too)
+        bakedTris += baked.budgetTris ?? baked.tris; // budget counts PLACED tris (clones render too; wrecks.ts budgetTris)
         const y = support.y;
         _quat.setFromUnitVectors(_upAxis,
           _posv.set(support.normalX, support.normalY, support.normalZ));

@@ -48,7 +48,9 @@ interface RoleBox {
  * footprint (roleFootprint) is what collides. */
 const ROLE_BOXES: Readonly<Record<CivilianVehicleKind, RoleBox>> = {
   truck: { lane: 'heavy', halfWidth: 1.29, halfLength: 3.30, height: 2.30, rise: 1.05, triangleBudget: 9000 },
-  jeep: { lane: 'light', halfWidth: 0.94, halfLength: 1.88, height: 1.73, rise: 0.35, triangleBudget: 7000 },
+  // sealed lane 2026-10-10: 7000 -> 7100 for the tub's end caps and the wheels' back discs (the France 2020s jeep went
+  // 6,940 -> 7,036; the open ends and hollow wheels showed the sky through every jeep)
+  jeep: { lane: 'light', halfWidth: 0.94, halfLength: 1.88, height: 1.73, rise: 0.35, triangleBudget: 7100 },
   sedan: { lane: 'light', halfWidth: 1.01, halfLength: 2.13, height: 1.61, rise: 0.2, triangleBudget: 8500 },
   wagon: { lane: 'light', halfWidth: 1.01, halfLength: 2.13, height: 1.69, rise: 0.2, triangleBudget: 8500 },
   pickup: { lane: 'light', halfWidth: 1.11, halfLength: 2.47, height: 1.77, rise: 0.3, triangleBudget: 8500 },

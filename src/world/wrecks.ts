@@ -55,8 +55,15 @@ export interface WreckBake {
   hx: number;
   hz: number;
   h: number;
-  /** The props placement budget's count for this hulk (wrecks.ts budgetTriDelta: unchanged by the sealed lane's fixes). */
   tris: number;
+  /** The props placement budget's triangle count: the bake as that budget has always counted it (burnt-away suits in,
+   * second canvas faces and kept muzzle walls out; budgetTriDelta), so every map seats the hulks it seated before the
+   * sealed lane's bake fixes. `tris` stays the geometry's own count. */
+  budgetTris?: number;
+  /** The props placement footprint (half extents): the visible envelope with its burnt-away parts, the seat the hulk
+   * has always taken. hx/hz/h are the visible geometry's own envelope. */
+  placeHx?: number;
+  placeHz?: number;
 }
 
 type TankWreckVisual = ReturnType<typeof createTank>;
@@ -463,11 +470,13 @@ function wreckBakeResult(
   for (const solid of shellSolids ?? []) for (let i = 1; i < solid.length; i += 3) solid[i] -= baseY;
   merged.translate(0, -baseY, 0);
   shadowGeo?.translate(0, -baseY, 0);
-  // the translate recomputed the geometry's own box from its float positions; the burnt-away parts join it exactly as
-  // their translated float positions would have (fround(y - baseY)), so every placement field is the one it was
-  const bounds = merged.boundingBox!.clone();
+  // the translate recomputed the geometry's own box from its float positions (the visible envelope); the burnt-away
+  // parts join it exactly as their translated float positions would have (fround(y - baseY)) for the placement
+  // footprint, so every map seats its hulks where it did
+  const bounds = merged.boundingBox!;
+  const footprint = bounds.clone();
   if (burnt) {
-    bounds.union(new THREE.Box3(
+    footprint.union(new THREE.Box3(
       new THREE.Vector3(burnt.min.x, Math.fround(burnt.min.y - baseY), burnt.min.z),
       new THREE.Vector3(burnt.max.x, Math.fround(burnt.max.y - baseY), burnt.max.z),
     ));
@@ -480,7 +489,9 @@ function wreckBakeResult(
     hx: (bounds.max.x - bounds.min.x) / 2,
     hz: (bounds.max.z - bounds.min.z) / 2,
     h: bounds.max.y - bounds.min.y,
-    tris: (((merged.index?.count ?? merged.attributes.position.count) / 3) | 0) + budgetTriDelta,
+    ...(burnt ? { placeHx: (footprint.max.x - footprint.min.x) / 2, placeHz: (footprint.max.z - footprint.min.z) / 2 } : {}),
+    tris: ((merged.index?.count ?? merged.attributes.position.count) / 3) | 0,
+    budgetTris: (((merged.index?.count ?? merged.attributes.position.count) / 3) | 0) + budgetTriDelta,
   };
 }
 
