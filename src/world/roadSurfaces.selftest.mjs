@@ -61,7 +61,13 @@ assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.airfield, town).cls.sli
   const styles = field._layout.roadStyles;
   assert.ok(styles && styles.length === field._layout.roads.length, 'Tidegate: a style per road line');
   const want = MAP_PATH_SURFACES.polders;
-  for (let i = 0; i < want.length; i++) assert.deepEqual(styles[i], want[i] ? { surface: want[i] } : null, `Tidegate path ${i}`);
+  for (let i = 0; i < want.length; i++) assert.deepEqual(styles[i], want[i] ? { surface: want[i], catalogue: true } : null, `Tidegate path ${i}`);
+  // the road layer marks a catalogued class with bit 7, so the Low tier draws the path as the map's own road
+  const texture = makeMaskTexture(new SimplexNoise({ random: mulberry32(3010) }), field._layout, null, field._waterWetnessAt, null);
+  const layer = texture.userData.roadLayer, n = texture.image.width;
+  const [x0, z0] = field._layout.roads[0][1];
+  const t = (Math.floor((z0 + 512) * n / 1024) * n + Math.floor((x0 + 512) * n / 1024)) * 4;
+  assert.equal(layer.data[t], 128 | ROAD_SURFACE_CODE.clinker, 'Tidegate\'s mill lane: clinker, marked as the catalogue\'s');
 }
 
 assert.equal(65536 / ROAD_FRAME_ARC_UNITS, 1024, 'the running length wraps at 1024 m, a whole number of every pattern\'s periods');
@@ -121,7 +127,8 @@ for (const line of [
   'const roadWork = roadSurfaceUniforms(mapId, groundProfile.climate, S.roadSurface);',
   'const pavedCfg: PavedSurfaceConfig | undefined = S.pavedSurface ?? MAP_PAVED_SURFACES[mapId];',
   'if (gRoadClass > 0.5) gRoadTex = abs(gRoadClass - 4.0) < 0.5 ? 0.0 : 1.0;',
-  'float roadFloorL = uRoadSurfB.y * dot(a.rgb, vec3(0.34, 0.45, 0.21));',
+  'if (gRoadClass > 127.5) gRoadClass = uLandTier > 0.5 ? gRoadClass - 128.0 : 0.0;',
+  'float roadFloorL = floorK * dot(a.rgb, vec3(0.34, 0.45, 0.21));',
   'a.rgb *= 1.0 - min(mix(rut * rutShade, trodMid * 0.55, laneFar), 1.0) * mix(0.34, 0.26, gRoadTex);',
 ]) assert.ok(source.includes(line.replace(/\s+/g, ' ')), `the material: ${line}`);
 // (the old law, exactly, where every gain is 0: the worked carriageway's block is skipped, the floor clamps to 1, the old
@@ -129,6 +136,21 @@ for (const line of [
 assert.ok(source.includes('if (dW > 0.002 && wR > 0.002 && uRoadSurf.x + uRoadSurf.y + uRoadSurf.z + uRoadSurfB.x > 0.0 && uLandTier > 0.5) {'),
   'the worked carriageway runs only where a gain is set, and never on the Low tier (the phones keep the old law)');
 assert.ok(source.includes('if (uLandTier < 0.5) pCls = gRoadClass > 0.5 && gRoadClass < 3.5 ? gRoadClass : 0.0;'), 'Low paves by the old law');
-assert.ok(source.includes('uRoadSurfB.y > 0.0 ? 0.12 : 0.26'), 'the old grey pull without a tone floor');
+// the Low tier (the phones' default) keeps every old road term: the styled paths' old code verbatim, no kerbed pave-out, no
+// square wear, the old tone and lane swing (the phone pair checks the frames)
+{
+  const main = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const lowAt = main.indexOf('} else if (uLandTier < 0.5) {');
+  assert.ok(lowAt > 0, 'the Low branch of the paved surfaces');
+  const lowBlock = main.slice(lowAt, main.indexOf('\n      } else {\n', lowAt));
+  for (const line of ["float course = rq.x / 0.16, ci = floor(course);", "vec3 asph = vec3(0.068, 0.068, 0.072) * (0.92 + 0.16 * agg);",
+    "vec2 pc = vec2(rq.x / 4.2, rq.y / 2.4), pcI = floor(pc), pcF = fract(pc);"]) {
+    assert.ok(lowBlock.includes(line), `the Low branch keeps the old styled law: ${line}`);
+  }
+  for (const line of ['if (uPaveTown.z > 0.0 && uLandTier > 0.5) {', 'if (!fr && uLandTier > 0.5) {',
+    'float floorK = uLandTier > 0.5 ? uRoadSurfB.y : 0.0;',
+    'float laneWob = uRoadSurf.x > 0.0 && uLandTier > 0.5 ?']) assert.ok(main.includes(line), `Low keeps the old law: ${line}`);
+}
+assert.ok(source.includes('floorK > 0.0 ? 0.12 : 0.26'), 'the old grey pull without a tone floor');
 
 console.log('roadSurfaces: the catalogue\'s classes and maps, the protected maps\' old law, the layout\'s catalogued paths, the road frame layer\'s running length and heading, its stack address and the material\'s reads PASS; no GPU/art claim');

@@ -45,7 +45,7 @@ assert.match(terrainSource,
   /float roadCore = 1\.0 - smoothstep\(roadHalf - 0\.55, roadHalf \+ 0\.55, dRoad\);/,
   'the compacted core ends on an analytic gauge, not on a filtered byte threshold');
 assert.match(terrainSource,
-  /float laneWob = uRoadSurf\.x > 0\.0 \? \(nz\(uv, 0\.004, vec2\(0\.37, 0\.11\)\)\.g - 0\.5\) \* 0\.55 : \(n1 - 0\.5\) \* 0\.55;\s*float laneD = \(dRoad - 1\.55 - laneWob\) \* uLaneK;[\s\S]{0,120}float lane = uLaneK > 0\.0 \? exp\(-laneD \* laneD\) : 1\.0 - smoothstep\(2\.6, 3\.6, dRoad\);/,
+  /float laneWob = uRoadSurf\.x > 0\.0 && uLandTier > 0\.5 \? \(nz\(uv, 0\.004, vec2\(0\.37, 0\.11\)\)\.g - 0\.5\) \* 0\.55 : \(n1 - 0\.5\) \* 0\.55;\s*float laneD = \(dRoad - 1\.55 - laneWob\) \* uLaneK;[\s\S]{0,120}float lane = uLaneK > 0\.0 \? exp\(-laneD \* laneD\) : 1\.0 - smoothstep\(2\.6, 3\.6, dRoad\);/,
   'twin wheel lanes sit 1.55 m either side of the centreline on the 2 m mask, swinging a quarter metre along the road (wave 69) on the slow field b (roads lane 2026-10-09: past 16 m, no metre-scale wriggle); a coarse mask gets one bead-free plateau');
 assert.match(terrainSource,
   /float rutAmp = \(0\.22 \+ 0\.78 \* smoothstep\(0\.28, 0\.70, n2 \* 0\.55 \+ n1 \* 0\.45\)\) \* \(0\.72 \+ 0\.28 \* n1hs\);/,

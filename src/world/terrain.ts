@@ -123,6 +123,9 @@ export interface RoadPathStyle {
   surface?: RoadSurface;
   /** The carriageway's full width (m), 4–18; absent: the map's ~7.7 m gauge. */
   widthM?: number;
+  /** Roads lane (2026-10-09): set on a style the period catalogue gave (roadSurfaces.ts MAP_PATH_SURFACES), never
+   * authored — the road layer marks it so the Low tier draws the path as the map's own road. */
+  catalogue?: boolean;
 }
 /** The road frame layer's running-length unit (texel value per metre): 16 bits wrap at 1024 m, a whole number of every
  * along-road pattern's periods (0.16 m tread, 0.128 m chevrons, 0.8 m washboard, 0.16 m sett courses). */
@@ -1023,7 +1026,7 @@ export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads 
         if (!Array.isArray(path) || path.length < 2) return;
         const own = t.roads !== 'country' ? t.roads?.pathStyles?.[i] ?? null : null;
         const surface = catalogue?.[i] ?? null;
-        roadStyles!.push(own ?? (surface ? { surface } : null));
+        roadStyles!.push(own ?? (surface ? { surface, catalogue: true } : null));
       });
     }
   }
@@ -3752,7 +3755,7 @@ export function makeMaskTexture(
       if (ri < 0 || dist[i] >= 11.9) continue; // (inside the distance ramp: G > 0 wherever a class is)
       const style = roadStyles![ri];
       if (!style) continue;
-      road[i * 4] = style.surface ? ROAD_SURFACE_CODE[style.surface] ?? 0 : 0;
+      road[i * 4] = (style.surface ? ROAD_SURFACE_CODE[style.surface] ?? 0 : 0) | (style.catalogue ? 128 : 0);
       road[i * 4 + 1] = Math.round(roadStyleHalfWidth(style) * 10);
       const turn = nearestHeading![i] / (2 * Math.PI);
       const code = Math.round((turn - Math.floor(turn)) * 65536) & 65535;
@@ -4614,6 +4617,8 @@ void splatCompute() {
     ivec2 rt = clamp(ivec2(floor((wp.xz / 1024.0 + 0.5) * rn)), ivec2(0), ivec2(int(rn) - 1));
     vec4 rc = texelFetch(uMask, rt + ivec2(0, int(uRoadClass.y + 0.5)), 0);
     gRoadClass = floor(rc.r * 255.0 + 0.5);
+    // (roads lane: a class the period catalogue gave a path carries bit 7 — the Low tier draws that path as the map's own)
+    if (gRoadClass > 127.5) gRoadClass = uLandTier > 0.5 ? gRoadClass - 128.0 : 0.0;
     roadHalfW = floor(rc.g * 255.0 + 0.5) * 0.1;
     float rTurn = (rc.b * 65280.0 + rc.a * 255.0) * (6.2831853 / 65536.0);
     gRoadDir = vec2(cos(rTurn), sin(rTurn));
@@ -4643,7 +4648,7 @@ void splatCompute() {
   // (roads lane, 2026-10-09: the swing reads field b at a 250 m tile — features past 16 m. n1's field a carries half its
   // power at metre scale, which the soft lanes hid and the crisp grooves below drew as a wriggle)
   // (a map on the old road law — uRoadSurf.x 0, the owner's protected maps — keeps the old swing exactly)
-  float laneWob = uRoadSurf.x > 0.0 ? (nz(uv, 0.004, vec2(0.37, 0.11)).g - 0.5) * 0.55 : (n1 - 0.5) * 0.55;
+  float laneWob = uRoadSurf.x > 0.0 && uLandTier > 0.5 ? (nz(uv, 0.004, vec2(0.37, 0.11)).g - 0.5) * 0.55 : (n1 - 0.5) * 0.55;
   float laneD = (dRoad - 1.55 - laneWob) * uLaneK;
   // uLaneK == 0 marks a coarse (4 m) mask: one bead-free compaction plateau.
   float lane = uLaneK > 0.0 ? exp(-laneD * laneD) : 1.0 - smoothstep(2.6, 3.6, dRoad);
@@ -6575,9 +6580,11 @@ void splatCompute() {
       // (roads lane, 2026-10-09: the gauntlet's "flat grey or near-black roads") a dry packed road is never darker than the
       // field it crosses — the traffic's dust and the cleared surface reflect more than the soil or the sward beside it;
       // only its wet ruts and puddles go darker (below) — and it keeps more of its soil's hue than the old grey pull
-      float roadFloorL = uRoadSurfB.y * dot(a.rgb, vec3(0.34, 0.45, 0.21));
+      // (the tier: Low keeps the old law)
+      float floorK = uLandTier > 0.5 ? uRoadSurfB.y : 0.0;
+      float roadFloorL = floorK * dot(a.rgb, vec3(0.34, 0.45, 0.21));
       roadCol *= clamp(roadFloorL / max(dot(roadCol, vec3(0.34, 0.45, 0.21)), 1e-4), 1.0, 2.2);
-      roadCol = mix(roadCol, vec3(dot(roadCol, vec3(0.34, 0.45, 0.21))), uRoadSurfB.y > 0.0 ? 0.12 : 0.26);
+      roadCol = mix(roadCol, vec3(dot(roadCol, vec3(0.34, 0.45, 0.21))), floorK > 0.0 ? 0.12 : 0.26);
       // ground lane (2026-10-03, the gauntlet: the winter road was "a flat chocolate-brown slab laid into pristine
       // snow"): a winter road is packed snow, greyer and smoother than the field, with brown slush churned into the two
       // wheel tracks and spattered between them
@@ -6787,7 +6794,7 @@ void splatCompute() {
       // centreline), else the R layer's print as before (and the airfield's slabs) — each drawn in the road's frame
       // a kerbed town's streets paved out to the kerbs' face (props.ts KERB_OFFSET_M 5.05: splat.pavedSurface.kerbs)
       float paveTownW = 0.0;
-      if (uPaveTown.z > 0.0) {
+      if (uPaveTown.z > 0.0 && uLandTier > 0.5) {
         vec2 tq = abs(wp.xz - uPaveTown.xy) - uPaveTown.zw;
         paveTownW = 1.0 - smoothstep(0.0, 6.0, max(tq.x, tq.y));
         paveCore = max(paveCore, paveTownW * (1.0 - smoothstep(4.95, 5.10, dRoad)) * gRoadTex * step(dRoad, 11.9));
@@ -6830,6 +6837,52 @@ void splatCompute() {
           conc *= 1.0 - joint * 0.55;
           pav = vec4(conc, mix(0.86, 0.60, stain));
           pnn = NRM_MEAN;
+        }
+      } else if (uLandTier < 0.5) {
+        // (the Low tier — the phones' default — draws a styled path by the law before the roads lane, verbatim)
+        // (2026-10-05) a styled path's own surface (terrain.ts RoadPathStyle), in the road's frame: setts in courses
+        // across it, or asphalt — dark and even, the wheel paths polished paler, oil down the lanes' middles — and, patched,
+        // its repairs (newer darker, older paler and greyer, their seams sealed) and the old surface's cracks
+        if (gRoadClass > 0.5 && gRoadClass < 3.5) {
+          vec2 rq = vec2(dot(wp.xz, gRoadDir), dot(wp.xz, vec2(-gRoadDir.y, gRoadDir.x)));
+          if (gRoadClass > 1.5 && gRoadClass < 2.5) {
+            // setts: courses 0.16 m along the road, setts 0.18–0.26 m across, the joints staggered course to course
+            float course = rq.x / 0.16, ci = floor(course);
+            vec2 cr = cellHash2(vec2(ci, 17.0));
+            float sw = 0.18 + 0.08 * cr.y;
+            float sc = (rq.y + cr.x * sw) / sw, si = floor(sc);
+            vec2 sh = cellHash2(vec2(ci, si + 311.0));
+            vec2 sf = vec2(fract(course) * 0.16, fract(sc) * sw);
+            float edgeD = min(min(sf.x, 0.16 - sf.x), min(sf.y, sw - sf.y));
+            float settVis = tileVis(0.35);
+            float jointS = (1.0 - smoothstep(0.010, 0.018 + 0.5 * gFootM, edgeD)) * settVis;
+            vec3 sett = vec3(0.128, 0.125, 0.119) * (0.78 + 0.44 * sh.x) * vec3(1.0 + 0.08 * (sh.y - 0.5), 1.0, 1.0 - 0.06 * (sh.y - 0.5));
+            pav = vec4(mix(mix(vec3(0.112, 0.109, 0.104), sett, settVis), vec3(0.040, 0.036, 0.031), jointS), 0.88);
+            // a sett's worn, rounded top
+            vec2 st2 = vec2(sf.x / 0.16 - 0.5, sf.y / sw - 0.5);
+            pnn = vec4(vec2(0.5) + (st2.x * gRoadDir + st2.y * vec2(-gRoadDir.y, gRoadDir.x)) * 0.45 * settVis * (1.0 - jointS), 0.5, 1.0);
+          } else {
+            float agg = nz(uv, 1.9, vec2(0.31, 0.57)).r;
+            vec3 asph = vec3(0.068, 0.068, 0.072) * (0.92 + 0.16 * agg);
+            float laneP = abs(fract(rq.y / 3.5) - 0.5) * 3.5; // metres from a 3.5 m lane's middle
+            float wheelP = (laneP - 0.95) / 0.35;
+            asph *= 1.0 + 0.10 * exp(-wheelP * wheelP) * tileVis(1.0);
+            asph *= 1.0 - 0.18 * (1.0 - smoothstep(0.0, 0.45, laneP)) * smoothstep(0.55, 0.80, nz(uv, 0.21, vec2(0.13, 0.71)).g);
+            if (gRoadClass > 2.5) {
+              vec2 pc = vec2(rq.x / 4.2, rq.y / 2.4), pcI = floor(pc), pcF = fract(pc);
+              vec2 ph = cellHash2(pcI + vec2(53.0, 7.0));
+              float inPatch = step(ph.x, 0.38);
+              vec2 pe = min(pcF, 1.0 - pcF) * vec2(4.2, 2.4);
+              float seam = (1.0 - smoothstep(0.03, 0.06 + gFootM, min(pe.x, pe.y))) * inPatch * tileVis(0.6);
+              asph = mix(asph, ph.y > 0.5 ? asph * 0.78 : mix(asph, vec3(0.13, 0.128, 0.122), 0.55), inPatch);
+              asph *= 1.0 - 0.45 * seam;
+              float crack = (1.0 - smoothstep(0.0, 0.02 + gFootM, abs(nz(uv, 0.9, vec2(0.71, 0.29)).r - 0.5) * 0.12))
+                * (1.0 - inPatch) * tileVis(0.5) * 0.5;
+              asph *= 1.0 - crack;
+            }
+            pav = vec4(asph, 0.80);
+            pnn = NRM_MEAN;
+          }
         }
       } else {
         // the road's own frame on a street (along: the running length; across: signed metres off the centreline, its side
@@ -7060,7 +7113,7 @@ void splatCompute() {
           pav.rgb *= 1.0 - 0.24 * kg * (0.7 + 0.3 * nz(uv, 0.9, vec2(0.37, 0.53)).r);
           pav.rgb = mix(pav.rgb, uMeanD.rgb * 0.5, 0.25 * kg * smoothstep(0.55, 0.8, nz(uv, 2.6, vec2(0.11, 0.91)).r) * tileVis(0.2));
         }
-        if (!fr) {
+        if (!fr && uLandTier > 0.5) {
           float edgeG = 1.0 - smoothstep(0.55, 0.95, mk.r);
           pav.rgb *= 1.0 - 0.18 * edgeG;
           pav.rgb = mix(pav.rgb, uMeanG.rgb * 0.7, 0.30 * edgeG * smoothstep(0.55, 0.80, nz(uv, 0.31, vec2(0.71, 0.23)).g) * tileVis(0.3));
@@ -7087,7 +7140,8 @@ void splatCompute() {
         // (maps lane B: an airfield's concrete keeps a straight edge — no setts to lose)
         float paveKept = smoothstep(0.15, 0.24, mk.r + (n1hs - 0.5) * 0.025
           + (paveN - 0.5) * 0.20 * paveVis * (1.0 - step(0.001, uPaveSlab.x))
-          * (abs(pCls - 1.0) < 0.5 || abs(pCls - 3.0) < 0.5 || abs(pCls - 6.0) < 0.5 ? (paveTownW > 0.5 ? 0.0 : 0.35) : 1.0)) * gRoadTex;
+          * (uLandTier < 0.5 ? (gRoadClass > 0.5 && gRoadClass < 3.5 && abs(gRoadClass - 2.0) > 0.5 ? 0.0 : 1.0)
+            : (abs(pCls - 1.0) < 0.5 || abs(pCls - 3.0) < 0.5 || abs(pCls - 6.0) < 0.5 ? (paveTownW > 0.5 ? 0.0 : 0.35) : 1.0))) * gRoadTex;
         paveCore = min(paveCore, paveKept);
         float outer = paveCore * (1.0 - smoothstep(0.24, 0.46, mk.r));
         float pavL = dot(pav.rgb, vec3(0.34, 0.45, 0.21)) / max(dot(uMeanR.rgb, vec3(0.34, 0.45, 0.21)) * 0.8, 1e-3);
@@ -7100,7 +7154,7 @@ void splatCompute() {
       // (a procedural surface carries its own albedo, a third of the map's road hue over it; the map's tint calibrates its
       // sett print)
       vec3 paveHue = mix(vec3(1.0), uRoadTint / max(dot(uRoadTint, vec3(0.34, 0.45, 0.21)), 0.05), 0.33);
-      a.rgb = mix(a.rgb, pav.rgb * (pCls > 0.5 ? paveHue : uRoadTint), paveCore * 0.94);
+      a.rgb = mix(a.rgb, pav.rgb * (pCls > 0.5 ? (uLandTier < 0.5 ? vec3(1.0) : paveHue) : uRoadTint), paveCore * 0.94);
       a.a = mix(a.a, pav.a, paveCore * 0.85);
       n = mix(n, pnn, paveCore * 0.85);
       // gutter shading: a darkened seam just inside the pavement edge gives
