@@ -6610,8 +6610,9 @@ function rebuildT90MSTurretExact(P: T90BuilderPort): void {
     }
     // 2026-10-09 (fleet-weapons census): a painted part projects the fleet's metre-scale camouflage like every other
     // fitting; the optic housing's stock box UVs squeezed the whole tile onto each 0.2 m face (density 4.6 per metre).
+    // (rendered builds: receipt builds keep the geometry byte-identical)
     const camoUvScale = Number(material.userData?.camoUvScale);
-    if (Number.isFinite(camoUvScale) && camoUvScale > 0) KIT.boxUV(geometry, camoUvScale);
+    if (P.mats.weaponSteel && Number.isFinite(camoUvScale) && camoUvScale > 0) KIT.boxUV(geometry, camoUvScale);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = name;
     mesh.position.set(x, y, z);

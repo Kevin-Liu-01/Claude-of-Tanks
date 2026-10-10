@@ -16,14 +16,15 @@ export function sourceMachineGun(P: TankBuilderPort, yaw: Point, datum?: Station
   // 2026-10-09 (fleet-weapons lane): the gun's steel is weapon steel (weaponFinish.ts) and the station's painted solids
   // (shields, housings, cradles, lids) carry the hull's camouflage on the vehicle-scale box UV, as the real stations are
   // painted with the vehicle; they were the flat hardware gunmetal and the scheme's flat fitting paint. Non-rendering
-  // builds have no weapon steel and keep the gunmetal.
+  // (receipt) builds have no weapon steel and keep their materials and geometry byte-identical.
+  const rendered = Boolean(P.mats.weaponSteel);
   const material = (slot:Slot): THREE.Material => slot==='turretDark' ? (P.mats.weaponSteel ?? P.mats.dark)
-    : slot==='turretGlass' ? P.mats.glass : P.mats.hull;
+    : slot==='turretGlass' ? P.mats.glass : rendered ? P.mats.hull : P.mats.detail;
   const finish = (slot:Slot, geometry:THREE.BufferGeometry): THREE.BufferGeometry => {
     const m = material(slot);
     if (m.userData?.weaponUvScale) return prepareWeaponFinishGeometry(geometry, KIT.boxUV);
     const camoUvScale = Number(m.userData?.camoUvScale);
-    if (Number.isFinite(camoUvScale) && camoUvScale > 0) {
+    if (rendered && Number.isFinite(camoUvScale) && camoUvScale > 0) {
       KIT.boxUV(geometry, camoUvScale);
       // the camouflage paint samples vertex colours: a missing attribute renders black (fitAssemble's precedent)
       geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(geometry.getAttribute('position').count * 3).fill(1), 3));
