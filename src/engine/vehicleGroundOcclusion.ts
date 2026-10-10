@@ -107,9 +107,25 @@ const GROUND_AO_LANE_MARGIN_M = 0.02;
  * lies GROUND_AO_CONTACT_GAP_M under it.
  */
 export const GROUND_AO_CONTACT_FULL_M = 0.02;
-export const GROUND_AO_CONTACT_GAP_M = 0.08;
-/** The contact lane's edges soften from this far (m) outside the shoes' faces to as far inside them. */
+export const GROUND_AO_CONTACT_GAP_M = 0.1;
+/** The contact's ends soften over this far (m) inside the hull's ends. */
 export const GROUND_AO_CONTACT_EDGE_M = 0.05;
+/**
+ * 2026-10-09 (the costland lane, contact round 3; the owner on production 207: "also see these super super dark
+ * rectangular shadows under tracks?? fix this"). The contact hid the receiver's whole sky: the ground it reached under a
+ * run went near black (the belly's strength over the whole share: 0.1–0.15 of the shaded ground), well past the hull
+ * solid's own share there (0.5–0.6 at the footprint's edge, where the runs stand), so the lane read as a pasted dark slab
+ * — on production a ruled rectangle (a 5 mm edge, black at any depth, 0.3 m past the run's ends). The contact is now a
+ * soft rim hugging the drawn run: at most GROUND_AO_CONTACT_MAX of the sky; whole inside the shoes' lane and falling to
+ * nothing GROUND_AO_CONTACT_SPREAD_M outside its faces (squared: the crease at the track's foot, never a band); by the
+ * receiver's height against the run's drawn lower edge — the ground under a lifted run gone GROUND_AO_CONTACT_GAP_M under
+ * it, a grass blade or the ground standing into a sunk run gone GROUND_AO_CONTACT_RISE_M over it; its ends at the hull's.
+ * It joins the solid's share by the larger of the two, never their sum (no stacking), and like it dims only the pixel's
+ * ambient share (sunlit ground beside the track keeps its sun).
+ */
+export const GROUND_AO_CONTACT_MAX = 0.7;
+export const GROUND_AO_CONTACT_SPREAD_M = 0.15;
+export const GROUND_AO_CONTACT_RISE_M = 0.25;
 /** The drawn run's travel reaches the shader at this many knots evenly along each ground run (linear between; two vec4). */
 export const GROUND_AO_RUN_KNOTS = 8;
 /** At most this many road wheels a side are read from the gear (runningGearGroundRun; two units a side on a four-track). */
@@ -299,20 +315,22 @@ export function isRunShoe(q: Vec3Like, h: VehicleGroundHull, card: boolean, runs
 }
 
 /**
- * The ground a track covers where its run meets it (its shoes' gaps, their foot): by the ground's gap under the run's
- * lower edge as it is drawn — the floor raised by the run's travel, the wraps' ramp past the ground run — whole within
- * GROUND_AO_CONTACT_FULL_M of it (or where the ground stands into the run), gone GROUND_AO_CONTACT_GAP_M under it; the
- * lane's edges soft over
- * ± GROUND_AO_CONTACT_EDGE_M of the shoes' faces, its ends at the hull's.
+ * The track's contact (its shoes' foot, their gaps): a soft rim hugging the run as it is drawn — whole inside the shoes'
+ * lane, gone GROUND_AO_CONTACT_SPREAD_M outside its faces (squared); by the receiver's height against the run's lower
+ * edge (the floor raised by the run's travel, the wraps' ramp past the ground run): the ground under a lifted run whole
+ * within GROUND_AO_CONTACT_FULL_M of it and gone GROUND_AO_CONTACT_GAP_M under it, a blade or the ground standing into
+ * the run gone GROUND_AO_CONTACT_RISE_M over it; its ends at the hull's; at most GROUND_AO_CONTACT_MAX (round 3).
  */
 export function underTrackOcclusion(q: Vec3Like, h: VehicleGroundHull, runs?: VehicleGroundRuns | null): number {
   const laneD = 0.5 * (h.xo - h.xi) - Math.abs(Math.abs(q.x) - 0.5 * (h.xi + h.xo));
-  const lane = smoothstep(-GROUND_AO_CONTACT_EDGE_M, GROUND_AO_CONTACT_EDGE_M, laneD)
-    * smoothstep(0, GROUND_AO_CONTACT_EDGE_M, Math.min(q.z - h.fz0, h.fz1 - q.z));
+  const out = 1 - smoothstep(0, GROUND_AO_CONTACT_SPREAD_M, -laneD);
+  const lane = out * out * smoothstep(0, GROUND_AO_CONTACT_EDGE_M, Math.min(q.z - h.fz0, h.fz1 - q.z));
   if (lane <= 0) return 0;
   const past = Math.max(h.cz0 - q.z, q.z - h.cz1, 0);
-  const edge = h.y0 + runTravelAt(q.x, q.z, h, runs) + (q.z < h.cz0 ? h.sr : h.sf) * past;
-  return lane * (1 - smoothstep(GROUND_AO_CONTACT_FULL_M, GROUND_AO_CONTACT_GAP_M, edge - q.y));
+  const dv = q.y - (h.y0 + runTravelAt(q.x, q.z, h, runs) + (q.z < h.cz0 ? h.sr : h.sf) * past);
+  const vert = dv >= 0 ? 1 - smoothstep(0, GROUND_AO_CONTACT_RISE_M, dv)
+    : 1 - smoothstep(GROUND_AO_CONTACT_FULL_M, GROUND_AO_CONTACT_GAP_M, -dv);
+  return GROUND_AO_CONTACT_MAX * lane * vert;
 }
 
 /**
@@ -827,15 +845,20 @@ ${GLSL_HULL_EDGES}
           ho += gap * mix( 1.0, smoothstep( 0.0, ${f(GROUND_AO_GAP_FADE_M)}, b2.z - abs( q.x ) ), wrap );
         }
         ho *= 1.0 - smoothstep( H * ${f(GROUND_AO_REACH[0])}, H * ${f(GROUND_AO_REACH[1])}, dOut );
-        // the ground a track covers where its run meets it (its shoes' gaps, their foot): by the ground's gap under the
-        // run's lower edge as drawn (the wraps' ramp past the ground run), full at contact, soft at the lane's edges
-        // (only a pixel in the lane reads the run: ho is never negative, so outside it the max keeps ho as it was)
-        float lane = smoothstep( ${f(-GROUND_AO_CONTACT_EDGE_M)}, ${f(GROUND_AO_CONTACT_EDGE_M)}, laneD )
-          * smoothstep( 0.0, ${f(GROUND_AO_CONTACT_EDGE_M)}, min( q.z - b1.x, b1.y - q.z ) );
+        // the track's contact (2026-10-09, round 3): a soft rim hugging the drawn run — whole in the shoes' lane, gone a
+        // spread outside its faces (squared), by the receiver's height against the run's lower edge as drawn (the wraps'
+        // ramp past the ground run): the ground under a lifted run gone a gap under it, a blade or the ground standing into
+        // a sunk run gone a rise over it; at most the contact's cap, joined to the solid's share by the larger, never the
+        // sum (only a pixel near a lane reads the run: ho is never negative, so elsewhere the max keeps ho as it was)
+        float lane = 1.0 - smoothstep( 0.0, ${f(GROUND_AO_CONTACT_SPREAD_M)}, -laneD );
+        lane *= lane * smoothstep( 0.0, ${f(GROUND_AO_CONTACT_EDGE_M)}, min( q.z - b1.x, b1.y - q.z ) );
         if ( lane > 0.0 ) {
           float run = cotVgRun( uVehGroundR[ rk ], uVehGroundR[ rk + 1 ], q.z, b3 );
           float ramp = ( q.z < b3.z ? b3.x : b3.y ) * max( max( b3.z - q.z, q.z - b3.w ), 0.0 );
-          ho = max( ho, lane * ( 1.0 - smoothstep( ${f(GROUND_AO_CONTACT_FULL_M)}, ${f(GROUND_AO_CONTACT_GAP_M)}, b0.w + run + ramp - q.y ) ) );
+          float dv = q.y - ( b0.w + run + ramp );
+          float vert = dv >= 0.0 ? 1.0 - smoothstep( 0.0, ${f(GROUND_AO_CONTACT_RISE_M)}, dv )
+            : 1.0 - smoothstep( ${f(GROUND_AO_CONTACT_FULL_M)}, ${f(GROUND_AO_CONTACT_GAP_M)}, -dv );
+          ho = max( ho, ${f(GROUND_AO_CONTACT_MAX)} * lane * vert );
         }
         // the belly's strength under the hull, the walls' beside it, blended across the footprint's edge
         float sd = dOut + min( max( dd.x, dd.y ), 0.0 );
