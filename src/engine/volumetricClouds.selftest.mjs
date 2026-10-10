@@ -24,7 +24,7 @@ import { CLOUD_CONTRAIL_MAX } from './cloudWeatherLayers.ts';
 // the count a map authors (what the layer derives with the contrail switch on)
 const authoredContrails = (id) => Math.round(Math.min(1, Math.max(0, getMapConfig(id)?.clouds?.contrails ?? 0)) * CLOUD_CONTRAIL_MAX);
 import {
-  VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
+  VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_CAPTURE_SETTLE_FRAMES, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
 } from './volumetricClouds.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
@@ -69,7 +69,7 @@ assert.equal(cloudCameraCut(0, .36, 1, 1), true, 'large camera turn rebuilds');
     else layer.since++;
   };
   assert.equal(layer.settleForCapture(camera),true);
-  assert.equal(traces,67);assert.equal(layer.captureFramesRemaining,0);
+  assert.equal(traces,3+CLOUD_CAPTURE_SETTLE_FRAMES);assert.ok(CLOUD_CAPTURE_SETTLE_FRAMES>=256,'a still settles to near the live steady state');assert.equal(layer.captureFramesRemaining,0);
   assert.equal(layer.settleForCapture(camera),false,'settled movie frames do no extra traces');
   layer.rebuild=0;layer.since=0;layer.frozen=true;
   assert.equal(layer.settleForCapture(camera),false,'capture respects an intentionally frozen layer');
