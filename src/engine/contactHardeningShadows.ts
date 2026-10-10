@@ -21,9 +21,12 @@
  *     at most PCSS_MAX_TEXELS) filtered with PCSS_FILTER_TAPS Vogel taps (three's own five under PCSS_SMALL_TEXELS), each
  *     cascade's disk at one fixed rotation (lighting.ts: no screen noise, nothing to crawl — the game runs without TAA).
  *
- * The receiver's depth takes a slope-scaled bias for the disk it filters (radius × texel × tan of the sun's incidence,
- * clamped): a wide disk on a sloping receiver reaches texels of the receiver itself, and the cascade's depth bias
- * (shadowStability.ts) is solved for three's 1.25-texel disk only.
+ * Every tap compares against the receiver's own plane (a receiver-plane depth bias: the tap's light-space offset × the
+ * plane's depth gradient, its slope clamped at PCSS_MAX_SLOPE_TAN): a wide disk on a sloping receiver reaches texels of
+ * the receiver itself, and the cascade's depth bias (shadowStability.ts) is solved for three's 1.25-texel disk only. The
+ * plane is the surface's geometric normal (three's nonPerturbedNormal: the interpolated vertex normal, before any normal
+ * or bump map) — a mapped normal tilts the plane by its bumps, and a wrong plane on a wide disk compares the receiver
+ * against itself: speckled acne on lit brick, plaster and hulls.
  *
  * The light's size: PCSS_LIGHT_DEG of sun by day (the sun is 0.53°; aerosol, the game's scale and the screen want
  * more), widened under a deck by PCSS_OVERCAST_K × the light model's overcast (a stratus diffuses the sun into a bright
@@ -168,4 +171,4 @@ export const COT_PCF_GET_SHADOW_DEF = 'float cotGetShadowPCF( sampler2DShadow sh
 /** The head of three's non-CSM directional block in the CSM chunk: its site is left unset (cascade −1). */
 export const CSM_NON_CSM_HEAD = '#if ( NUM_DIR_LIGHTS > 0 ) && defined( RE_Direct ) && !defined( USE_CSM ) && !defined( CSM_CASCADES )';
 /** What each CSM directional site sets just before its shadow call. */
-export const CSM_SITE_SETUP = 'cotShadowCascade = UNROLLED_LOOP_INDEX; cotShadowN = geometryNormal; cotShadowNdotL = clamp( dot( geometryNormal, directLight.direction ), 0.0, 1.0 );';
+export const CSM_SITE_SETUP = 'cotShadowCascade = UNROLLED_LOOP_INDEX; cotShadowN = nonPerturbedNormal; cotShadowNdotL = clamp( dot( nonPerturbedNormal, directLight.direction ), 0.0, 1.0 );';
