@@ -10,10 +10,16 @@ export const MARS_SKY_PRESET = Object.freeze({
   // dimmed with the dome, so they carry a dark rust tint and read as dust bands occluding the stars — a low 700 m
   // veil of long 4200 m streaks and a thinner high sheet — and the haze they melt into is a shade more rust
   // (0x3b2a33 -> 0x46302c: the dust band along the horizon); dust casts no shadow (cloudShadowAmp 0.05)
-  fogDensity: 0.00022, fogTintHex: 0x46302c, fogMix: 0.72, envIntensity: 0.34,
+  // (2026-10-09, the skies lane: envIntensity 0.34 → 0.24 with the fill below — see sunIntensity)
+  fogDensity: 0.00022, fogTintHex: 0x46302c, fogMix: 0.72, envIntensity: 0.24,
   cloudOpacity: 0.3, cloudOpacity2: 0.15, cloudTintHex: 0x2c1c1e,
   cloudAltM: 700, cloudHazeK: 0.0002, cloudUvM: 4200, cloudShadowAmp: 0.05,
-  sunIntensity: 3.2, sunColorHex: 0xe4ebff, hemiIntensity: 0.56, fillIntensity: 0.36,
+  // 2026-10-09 (the skies lane; the owner's brief: keep the galaxy sky, light the ground consistently with it): under a
+  // dark starry dome the shade had a daylight sky's fill — hemisphere 0.56, fill 0.36, environment 0.34 — so the basin read
+  // as a sunny day pasted under a night sky. The key stays; the sky's share of the shade drops (hemisphere 0.34, fill 0.20,
+  // environment 0.24), its hue still the dust's butterscotch (lighting.ts takes the hemisphere's colour from the dust sky's
+  // irradiance): hard sunlit faces over deeper, warmer shade, as under a thin dusty sky
+  sunIntensity: 3.2, sunColorHex: 0xe4ebff, hemiIntensity: 0.34, fillIntensity: 0.20,
   postExposure: 1.04,
   // round 65 (2026-09-24): Olympus Basin keeps its thin CO2 atmosphere under the physically based sky —
   // Rayleigh at 3 % of Earth's (0.6 % of the pressure, CO2's 2.5× cross-section, the taller scale height),
