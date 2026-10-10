@@ -1043,13 +1043,13 @@ export function buildGarageEnvironment(
     const toward = garageViewPoint(approachSide, approachDepth);
     const yardMaterial = plainMaterial({
       map: yardWear, transparent: true, depthWrite: false, roughness: 0.96, metalness: 0,
-      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
     });
     const yard = new THREE.Mesh(track(new THREE.PlaneGeometry(GARAGE_YARD_WEAR.widthM, GARAGE_YARD_WEAR.depthM)), yardMaterial);
     yard.name = 'garage_service_yard_wear';
     yard.rotation.order = 'YXZ';
     yard.rotation.set(-Math.PI / 2, Math.atan2(-toward.x, -toward.z), 0);
-    yard.position.y = GARAGE_PLATFORM_GEOMETRY.groundSurfaceYM + 0.004;
+    yard.position.y = GARAGE_PLATFORM_GEOMETRY.groundSurfaceYM + 0.006;
     yard.receiveShadow = true;
     yard.castShadow = false;
     yard.renderOrder = 1;

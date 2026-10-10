@@ -13,9 +13,10 @@ const YARD_DEPTH_M = 24;
 const CANVAS_W = 1024;
 const CANVAS_H = Math.round((CANVAS_W * YARD_DEPTH_M) / YARD_WIDTH_M);
 const PX_PER_M = CANVAS_W / YARD_WIDTH_M;
-/** Everything the decal paints fades out by this radius, inside the hardstand's 12 m half-depth in any yaw. */
-const YARD_RADIUS_M = 11.8;
-const YARD_FADE_START_M = 10.2;
+/** Everything the decal paints fades out by this radius: inside the hardstand in any yaw and close to the
+ * podium's terrain-clear ring (9.8 m), so no feathered battlefield edge ever rises through or dips under the paint. */
+const YARD_RADIUS_M = 10.6;
+const YARD_FADE_START_M = 9.2;
 
 let sharedTexture: THREE.CanvasTexture | null = null;
 
@@ -110,7 +111,7 @@ function drawYardWear(g: CanvasRenderingContext2D): void {
     }
     g.restore();
   };
-  const half = 7.9;
+  const half = 7.0;
   paint('rgb(206,170,52)', 0.5, () => {
     const [x0, y0] = px(-half, half);
     g.lineWidth = 0.16 * PX_PER_M;

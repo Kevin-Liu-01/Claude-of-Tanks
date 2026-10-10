@@ -19,9 +19,11 @@ assert.ok(Math.abs(GARAGE_YARD_WEAR.canvasH / GARAGE_YARD_WEAR.canvasW - 24 / 29
 const kit = await readFile(new URL('./garageEnvironmentKit.ts', import.meta.url), 'utf8');
 const wear = await readFile(new URL('./garageYardWear.ts', import.meta.url), 'utf8');
 assert.match(kit, /const yardWear = garageYardWearTexture\(/, 'each outdoor pack lays the yard wear');
-assert.match(kit, /yard\.position\.y = GARAGE_PLATFORM_GEOMETRY\.groundSurfaceYM \+ 0\.004;/,
+assert.match(kit, /yard\.position\.y = GARAGE_PLATFORM_GEOMETRY\.groundSurfaceYM \+ 0\.006;/,
   'the decal lies on the hardstand top, below the turntable base');
-assert.ok(GARAGE_PLATFORM_GEOMETRY.groundSurfaceYM + 0.004 < 0, 'below the platform bottom (y = 0)');
+assert.ok(GARAGE_PLATFORM_GEOMETRY.groundSurfaceYM + 0.006 < 0, 'below the platform bottom (y = 0)');
+assert.ok(GARAGE_YARD_WEAR.radiusM <= GARAGE_PLATFORM_GEOMETRY.terrainClearRadiusM + 1,
+  'the paint stays near the podium\'s terrain-clear ring, where no battlefield edge crosses the hardstand');
 assert.match(kit, /yard\.receiveShadow = true;\s*yard\.castShadow = false;/, 'the decal receives the settled shadow, casts none');
 assert.match(kit, /plainMaterial\(\{\s*map: yardWear, transparent: true, depthWrite: false/,
   'one transparent shadow-set-up material on the shared texture');

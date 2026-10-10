@@ -540,6 +540,49 @@ export function createGarageDressing(
     map: poolTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     opacity: 0.5,
   }));
+  // Heavy-bay grime: the oil, hydraulic fluid and tyre-dust a working service square collects, drawn once and laid
+  // under the bays (2026-10-10: the floor under the Burlak gantry read as a blown-out clean slab).
+  let bayGrimeMaterial: THREE.MeshBasicMaterial | null = null;
+  function makeBayGrimeTexture(): HTMLCanvasElement {
+    const S = 512;
+    const c = document.createElement('canvas');
+    c.width = c.height = S;
+    const g = c.getContext('2d')!;
+    // a private stream: the shared workshop rng keeps its sequence for every other authored placement
+    const grimeRng = mulberry32(20261010);
+    const blot = (x: number, y: number, r: number, a0: number, a1: number, squash: number): void => {
+      g.save(); g.translate(x, y); g.rotate(grimeRng() * Math.PI); g.scale(1, squash);
+      const grad = g.createRadialGradient(0, 0, 0, 0, 0, r);
+      grad.addColorStop(0, `rgba(16,15,14,${a0})`); grad.addColorStop(0.6, `rgba(18,17,15,${a1})`); grad.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = grad; g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fill(); g.restore();
+    };
+    for (let i = 0; i < 70; i++) {
+      const a = grimeRng() * Math.PI * 2, d = Math.sqrt(grimeRng()) * S * 0.36;
+      blot(S / 2 + Math.cos(a) * d, S / 2 + Math.sin(a) * d, 18 + grimeRng() * 70, 0.3 + grimeRng() * 0.14, 0.12, 0.5 + grimeRng() * 0.5);
+    }
+    for (let i = 0; i < 26; i++) {
+      const a = grimeRng() * Math.PI * 2, d = Math.sqrt(grimeRng()) * S * 0.3;
+      blot(S / 2 + Math.cos(a) * d, S / 2 + Math.sin(a) * d, 6 + grimeRng() * 22, 0.5, 0.22, 0.6 + grimeRng() * 0.4);
+    }
+    g.save();
+    g.globalCompositeOperation = 'destination-in';
+    const edge = g.createRadialGradient(S / 2, S / 2, S * 0.3, S / 2, S / 2, S * 0.5);
+    edge.addColorStop(0, 'rgba(0,0,0,1)'); edge.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = edge; g.fillRect(0, 0, S, S);
+    g.restore();
+    return c;
+  }
+  function addBayGrime(parent: THREE.Object3D, x: number, z: number, sizeM: number, ry: number): void {
+    bayGrimeMaterial ||= track(new THREE.MeshBasicMaterial({
+      map: track(canvasTexture(makeBayGrimeTexture())), transparent: true, depthWrite: false,
+    }));
+    const grime = new THREE.Mesh(track(new THREE.PlaneGeometry(sizeM, sizeM)), bayGrimeMaterial);
+    grime.name = 'garage_bay_grime';
+    grime.rotation.set(-Math.PI / 2, 0, ry);
+    grime.position.set(x, 0.019, z);
+    grime.renderOrder = 1;
+    parent.add(grime);
+  }
   const stainC = makePoolTexture('rgba(13,13,15,0.5)', 'rgba(13,13,15,0.2)');
   const stainMat = track(new THREE.MeshBasicMaterial({
     map: track(canvasTexture(stainC)), transparent: true, depthWrite: false,
@@ -2673,6 +2716,7 @@ export function createGarageDressing(
       12.4, -15.0, -0.55 + Math.PI / 2,
     );
 
+    addBayGrime(legacyVerdantRoot, 15.6, -13.2, 13, 0.4);
     const burlakCrew = addCrewScene(GARAGE_CREW_SCENES.burlak, legacyVerdantRoot);
     addCarriedRoadWheel(burlakCrew, GARAGE_CREW_SCENES.burlak, [2, 3], roadWheelTires, roadWheelDiscs);
 
