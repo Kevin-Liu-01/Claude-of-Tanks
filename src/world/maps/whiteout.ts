@@ -101,11 +101,14 @@ export default {
     yardDressing: 60, // round 75: a snowed-in station keeps its yards sparse
     snowCap: true, extraKits: ['winterLake'], wallStyle: 'fieldstone', wallStoneChance: 0.78,
     wallRuns: [[-148, -76, -148, -16, 2], [-148, 20, -148, 84, 3], [-66, -58, -4, -58, 2], [-66, 52, -4, 52, 3], [-26, 296, 56, 296, 2], [316, 0, 316, 74, 2]],
-    well: false, hayCrates: false, fences: true, telegraph: false, carts: false, logs: true,
-    rocks: 136, outcrops: 22, craters: 50, rubblePiles: 12, sandbagLines: 16, hedgehogs: 12,
+    well: false, hayCrates: false, fences: true,
+    // (the map-content lane's round 1c, 2026-10-09) the station's pole line along its service roads; the glacial erratics
+    // and frost-shattered outcrops of the plateau (was 136 rocks, 22 outcrops)
+    telegraph: true, carts: false, logs: true,
+    rocks: 240, outcrops: 38, craters: 50, rubblePiles: 12, sandbagLines: 16, hedgehogs: 12,
     // the map-vehicles lane (2026-10-06, the period ruling): the Arctic north in the 1980s: Norway's Leopard 1 and
     // M48, Sweden's Strv 103, the Soviet T-80B and BMP-2
-    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['leo1a5', 'm48', 'strv103', 't80b', 'bmp2'] },
+    tankWrecks: { era: 'cold-war', count: 7, debris: true, ids: ['leo1a5', 'm48', 'strv103', 't80b', 'bmp2'] },
     inhabit: { stalls: 0, benches: 2, coreClutter: 20, sleds: 10, drums: 8, trucks: 5, jeeps: 4, drumClusters: 5, camps: 2, modernClutter: 20, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
     // the map-content lane (2026-10-09; owner: "some maps like whiteout crossing and mesa mines look unfinished and so
     // empty"; the census: 67 % of the playable square more than 30 m from anything standing, the station one strip along
@@ -166,6 +169,15 @@ export default {
       { kind: 'fuelTankFarm', x: -330, z: -330, yawDeg: 0, params: { tanks: 2, radius: 4, height: 6 }, ground: 'veto', name: 'the dump tanks' },
       { kind: 'jamesway', x: 200, z: 60, yawDeg: 90, ground: 'veto', name: 'the melt pan hut' },
       { kind: 'drumCache', x: 210, z: 40, yawDeg: 0, ground: 'veto', name: 'the melt pan drums' },
+      // (round 1c) four more camps and two drum dumps out in the voids the census still found
+      { kind: 'jamesway', x: -392, z: 250, yawDeg: 15, ground: 'veto', name: 'the lake camp' },
+      { kind: 'drumCache', x: -410, z: 230, yawDeg: 15, ground: 'veto', name: 'the lake camp drums' },
+      { kind: 'jamesway', x: 404, z: -262, yawDeg: -20, ground: 'veto', name: 'the south-east trail camp' },
+      { kind: 'jamesway', x: 150, z: -332, yawDeg: 85, ground: 'veto', name: 'the south survey camp' },
+      { kind: 'drumCache', x: 172, z: -318, yawDeg: 85, ground: 'veto', name: 'the south survey drums' },
+      { kind: 'jamesway', x: 424, z: 40, yawDeg: 0, ground: 'veto', name: 'the east outpost' },
+      { kind: 'drumCache', x: 380, z: -160, yawDeg: 30, params: { rows: 5, columns: 12 }, ground: 'veto', name: 'the east drum dump' },
+      { kind: 'drumCache', x: -424, z: 290, yawDeg: 70, params: { rows: 4, columns: 12 }, ground: 'veto', name: 'the lake drum dump' },
       // the drift fences across the wind, windward of the station's roads
       { kind: 'snowFence', x: 0, z: -200, yawDeg: 0, ground: 'veto', name: 'the south drift fence' },
       { kind: 'snowFence', x: 160, z: -210, yawDeg: 10, ground: 'veto', name: 'the south-east drift fence' },
@@ -184,10 +196,17 @@ export default {
       { kind: 'snocat', x: -344, z: 62, yawDeg: 20 }, { kind: 'd8h', x: 168, z: 206, yawDeg: 120 },
       { kind: 'bv206', x: -248, z: 208, yawDeg: 0 }, { kind: 'snocat', x: 318, z: 316, yawDeg: 110 },
       { kind: 'bv206', x: 300, z: -350, yawDeg: -20 },
-      { kind: 'snocat', x: -400, z: -250, yawDeg: 40 }, { kind: 'bv206', x: -368, z: 166, yawDeg: 160 },
+      { kind: 'snocat', x: -392, z: -264, yawDeg: 40 }, { kind: 'bv206', x: -368, z: 166, yawDeg: 160 },
       { kind: 'd8h', x: 230, z: 300, yawDeg: 60 }, { kind: 'snocat', x: 200, z: -380, yawDeg: 20 },
       { kind: 'bv206', x: 290, z: -60, yawDeg: 180 }, { kind: 'snocat', x: 100, z: -330, yawDeg: 300 },
       { kind: 'd8h', x: -300, z: -300, yawDeg: 30 },
+      // (round 1c) the stripped trail south-east of the station, its abandoned machines; more working machines out in the voids
+      { kind: 'bv206', x: 206, z: -196, yawDeg: 130, wrecked: true }, { kind: 'snocat', x: 262, z: -246, yawDeg: 140, wrecked: true },
+      { kind: 'bv206', x: 330, z: -296, yawDeg: 120, wrecked: true }, { kind: 'snocat', x: 392, z: -340, yawDeg: 150, wrecked: true },
+      { kind: 'bv206', x: 432, z: -404, yawDeg: 135, wrecked: true },
+      { kind: 'snocat', x: 290, z: 104, yawDeg: 10 }, { kind: 'bv206', x: -306, z: 218, yawDeg: 60 },
+      { kind: 'd8h', x: 128, z: -300, yawDeg: 200 }, { kind: 'bv206', x: -62, z: 318, yawDeg: 95 },
+      { kind: 'snocat', x: 406, z: 22, yawDeg: 300 }, { kind: 'd8h', x: 398, z: -182, yawDeg: 20 },
       // the dump's burnt-out carrier
       { kind: 'bv206', x: -410, z: -380, yawDeg: 70, wrecked: true },
     ],
@@ -196,6 +215,22 @@ export default {
   // gneiss — tors and outcrops standing out of the snow on the knolls, the ridges and the esker, a field in each quarter
   // and on each flank, mirrored north and south of the station so neither deployment gains cover
   scenery: {
+    // (round 1c) inuksuit, the Inuit's stone figures that mark a route across the land, beside the service roads and on two
+    // knolls (scenery cairns of the plateau's gneiss)
+    landmarks: [
+      { kind: 'cairn', x: 286, z: -280, height: 2.0, scale: 0.9, geology: 'granite', name: 'an inuksuk on the east road (south)' },
+      { kind: 'cairn', x: 268, z: -180, height: 1.8, scale: 0.8, geology: 'granite', name: 'an inuksuk on the east road' },
+      { kind: 'cairn', x: 268, z: -20, height: 2.1, scale: 0.9, geology: 'granite', name: 'an inuksuk by the relay' },
+      { kind: 'cairn', x: 274, z: 150, height: 1.9, scale: 0.85, geology: 'granite', name: 'an inuksuk on the east road (north)' },
+      { kind: 'cairn', x: 304, z: 236, height: 2.0, scale: 0.9, geology: 'granite', name: 'an inuksuk at the east fork' },
+      { kind: 'cairn', x: -258, z: -200, height: 1.9, scale: 0.85, geology: 'granite', name: 'an inuksuk on the west road (south)' },
+      { kind: 'cairn', x: -258, z: -14, height: 2.1, scale: 0.9, geology: 'granite', name: 'an inuksuk by the motor pool' },
+      { kind: 'cairn', x: -262, z: 176, height: 1.8, scale: 0.8, geology: 'granite', name: 'an inuksuk on the west road (north)' },
+      { kind: 'cairn', x: -270, z: 330, height: 2.0, scale: 0.9, geology: 'granite', name: 'an inuksuk by the lake' },
+      { kind: 'cairn', x: -84, z: -206, height: 1.9, scale: 0.85, geology: 'granite', name: 'an inuksuk on the south road' },
+      { kind: 'cairn', x: 432, z: 76, height: 2.2, scale: 1.0, geology: 'granite', name: 'an inuksuk on the east knoll' },
+      { kind: 'cairn', x: -432, z: 330, height: 2.2, scale: 1.0, geology: 'granite', name: 'an inuksuk on the west knoll' },
+    ],
     rockFields: [
       { geology: 'granite', x: -380, z: -60, radius: 70, count: 9, slopeBias: 0.4, size: [3, 6], name: 'the west knoll tors' },
       { geology: 'granite', x: 210, z: 130, radius: 80, count: 10, slopeBias: 0.5, size: [3, 6.5], name: 'the east ridge rock' },
@@ -205,6 +240,8 @@ export default {
       { geology: 'granite', x: 360, z: 330, radius: 70, count: 8, size: [3, 6], name: 'the north-east tor' },
       { geology: 'granite', x: 40, z: -290, radius: 70, count: 8, slopeBias: 0.5, size: [2.5, 5.5], name: 'the south ridge rock' },
       { geology: 'granite', x: 110, z: 320, radius: 70, count: 8, size: [2.5, 5.5], name: 'the north berm rock' },
+      // (round 1c) the east flank's tors beyond the relay
+      { geology: 'granite', x: 410, z: -110, radius: 60, count: 8, size: [2.5, 5.5], name: 'the east flank tors' },
     ],
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the flattest ring's tone grain 0.35 -> 0.60
