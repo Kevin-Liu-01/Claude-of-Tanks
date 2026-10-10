@@ -3960,12 +3960,6 @@ function* propsBuildSteps(
       roughnessMap: structureMetal.surface, aoMap: structureMetal.surface,
       vertexColors: true, roughness: 1, metalness: 0.08,
     }),
-    // the fortifications lane: the pillbox's board-formed concrete under its weather (fortKit.ts); a map whose pillbox
-    // is not the kit's (the sangar's) owns none
-    ...(fortPrint ? { fortConcrete: new THREE.MeshStandardMaterial({
-      map: fortPrint.albedo, normalMap: fortPrint.normal, roughnessMap: fortPrint.surface, aoMap: fortPrint.surface,
-      vertexColors: true, roughness: 1, metalness: 0,
-    }) } : {}),
     // regional kits (maps/regional/weather.ts), on a map that adopted one: the same plaster, stone and roof textures
     // (a sourced swap replaces the shared Texture's source in place, so these follow it) under each building's
     // per-vertex tint and weathering. A map without a kit owns none of them.
@@ -3983,7 +3977,7 @@ function* propsBuildSteps(
   };
   function configureSurfaceMaterials(): void {
     for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'fieldMud', 'wood',
-      'straw', 'hay', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof', 'fortConcrete']) {
+      'straw', 'hay', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
       if (mats[key]) mats[key].aoMapIntensity = 0.82;
     }
     // the scenery lane (wave 52, Verdant's village wall: its face in shade "a flat extruded slab with a near-black blocky
@@ -4168,8 +4162,7 @@ ${snowCap ? `
       // (the hessian is the canvas's shader with another map, and the hay the straw's: they share their programs; the
       // field print has its own, for the modules' shifted windows, and the mud print its own, for its world-space
       // weathering)
-      // (and the pillbox's concrete the canvas's too: the same maps, vertex colours and weathering)
-      const programKind = materialKind === 'burlap' || materialKind === 'fortConcrete' ? 'structureCanvas' : materialKind === 'hay' ? 'straw' : materialKind;
+      const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind === 'hay' ? 'straw' : materialKind;
       // (round 7: a biased roof is its own program, so a map without a kit never reuses a kit map's)
       const biasKey = (tileBiased(materialKind) ? '-lodb' : '') + (isKitWall(materialKind) ? '-wall' : '');
       material.customProgramCacheKey = () =>
@@ -4185,6 +4178,21 @@ ${snowCap ? `
     // (the phones keep the rail bed on the baked material: no ballast program there)
     ...(mobileProps ? {} : { ballast: [] }),
   };
+  // the fortifications lane (2026-10-09): the pillbox's concrete (maps/fortKit.ts), made here, outside the shared material
+  // stage (whose receipts evaluate it over their own atlas families): the board-formed print under the kit's vertex
+  // weather, the props' weathering hook, its own program, owned with the rest. A map whose pillbox is not the kit's (the
+  // sangar's) owns none.
+  if (fortPrint) {
+    const fortConcrete = new THREE.MeshStandardMaterial({
+      map: fortPrint.albedo, normalMap: fortPrint.normal, roughnessMap: fortPrint.surface, aoMap: fortPrint.surface,
+      vertexColors: true, roughness: 1, metalness: 0,
+    });
+    fortConcrete.aoMapIntensity = 0.82;
+    engineCtx.setupShadowMaterial(fortConcrete, grimeHook);
+    fortConcrete.customProgramCacheKey = () => 'world-props-fortConcrete-v7' + (snowCap ? 's' : '');
+    mats.fortConcrete = fortConcrete;
+    retainedSurfaceMaterials.push(fortConcrete);
+  }
   // the scenery lane (2026-10-03): a map whose field walls are its own rock tints their rubble print (Saltwind: the
   // karst limestone of its outcrops, for its dry-stone walls and their posts). Never the stone print: a regional kit
   // paints its own masonry there (the Dalmatian limestone under the tint burned out white)
