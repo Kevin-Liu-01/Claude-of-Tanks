@@ -39,6 +39,8 @@ import { createCrewRadio, type CrewRadio } from './crewRadio.ts';
 import { createAmbienceDirector, sceneAssets, type AmbienceDirector, type BellTower } from './ambienceDirector.ts';
 import { BELL_TOWERS, FLYOVER_BY_AIRCRAFT, GARAGE_SCENE, sceneForMap, type EnvironmentScene } from './environmentScenes.ts';
 import { propSoundAssets, propSoundRecipe } from './propSounds.ts';
+import { DESTRUCTION_SOUND_IDS, blastSoundCaliberMm, munitionExplodes, munitionFromType, structureStageSounds } from './destructionSounds.ts';
+import type { MunitionClass, StructureStageEvent } from '../sim/destructionEvents.ts';
 import { BUDGETS, BUS_LEVELS, CONCUSSION, SNAPSHOTS, VEHICLE_LOD, type DeviceTier, type SettingsChannel } from './mixPolicy.ts';
 import { createVehicleRig, fillVehicleInput, type RigFrame, type RigLod, type VehicleRig } from './vehicleRig.ts';
 import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.ts';
@@ -221,7 +223,9 @@ interface ShellHitEvent {
   eraActivations?: readonly { plate: string; pos?: Vec3 }[];
 }
 
-interface ShellExpiredEvent { shellId?: number; shooterId?: string; hitTerrain?: boolean; hitKind?: string; surfaceKind?: string; caliberMm?: number; pos?: Vec3 }
+interface ShellExpiredEvent { shellId?: number; shooterId?: string; hitTerrain?: boolean; hitKind?: string; surfaceKind?: string; caliberMm?: number; pos?: Vec3;
+  /** the round's type, and the destruction catalog's class and charge when published (destruction-fx lane) */
+  shellType?: string; munition?: MunitionClass; chargeKg?: number }
 interface TankDestroyedEvent { id: string; killerId?: string | null; pos: Vec3; cause?: string }
 interface ModuleStateEvent { id: string; module: string; state: string; source?: string; repaired?: boolean }
 interface TankImpactEvent { id?: string; pos: Vec3; speedMps: number }
@@ -282,6 +286,7 @@ const CORE_BATTLE = [
   'ac_far_light', 'ac_far_heavy', 'mg_far', 'mg_rifle_close', 'mg_heavy_close', 'smoke_launcher', 'smoke_burst',
   'radio_interference', 'ui_alert',
   'blast_punch_light', 'blast_punch_medium', 'blast_punch_heavy', 'blast_sub',
+  ...DESTRUCTION_SOUND_IDS,
   'gear_whine_loop', 'electric_drive_loop', 'turbo_whistle_loop',
   'sting_battle', 'distant_artillery', 'distant_flak', 'distant_mg', 'jet_flyover',
 ];
@@ -1009,14 +1014,21 @@ export function createAudio({
     const water = event.surfaceKind === 'water';
     // Our own round landing short or wide is heard like our hits are.
     const focus = !small && listenerShot(event.shooterId);
+    // destruction-fx lane: an explosive round detonates where it lands (the HE bank by its charge); a kinetic round or a
+    // bullet only strikes (before, an HE shell on open ground played the AP round's dirt thud alone)
+    const munition = event.munition ?? munitionFromType(event.shellType, caliber);
+    const blastCal = munitionExplodes(munition)
+      ? blastSoundCaliberMm(Number.isFinite(event.chargeKg) ? event.chargeKg as number : 1.8 * (caliber / 100) ** 3) : 0;
+    if (blastCal > 0 && event.hitKind !== 'prop') explosion(x, y, z, blastCal, undefined, focus);
     if (small) {
       play(water ? 'bullet_water' : 'bullet_dirt', { x, y, z });
     } else if (water) {
-      play(caliber >= 61 ? 'water_big' : 'water_small', { x, y, z, focus });
+      play(caliber >= 61 ? 'water_big' : 'water_small', { x, y, z, focus, ...(blastCal > 0 ? { gainDb: -4 } : {}) });
     } else if (event.hitKind === 'prop') {
       play(propImpactAsset(String(event.surfaceKind || '')), { x, y, z, focus });
     } else {
-      play(groundImpactAsset(surfaceAt(x, z).surface, x, z), { x, y, z, focus, rate: clamp(1.1 - caliber / 900, 0.9, 1.08) });
+      play(groundImpactAsset(surfaceAt(x, z).surface, x, z), { x, y, z, focus, rate: clamp(1.1 - caliber / 900, 0.9, 1.08),
+        ...(blastCal > 0 ? { gainDb: -4 } : {}) });
     }
     if (!small && listenerValid && playerEntityInfo()?.alive && distanceTo(x, y, z) < 10) {
       play('hull_debris_patter', hullOptions({ bus: 'ownCombat', delayS: 0.25, gainDb: -3 }));
@@ -1949,6 +1961,13 @@ export function createAudio({
     on<TankImpactEvent>('tank:impact', onTankImpact);
     on<TankRamEvent>('tank:ram', (e) => onTankRam(e));
     on<PropEvent>('prop:crushed', (e) => onProp(e, false));
+    // destruction-fx lane: a building crossing a stage (DESTRUCTION.md §11); a settled stage is laid down silently
+    on<StructureStageEvent>('structure:stage', (e) => {
+      if (!e || e.settled) return;
+      for (const l of structureStageSounds(e.stage)) {
+        play(l.id, { x: e.x, y: e.y, z: e.z, delayS: l.delayS + (l.jitterS > 0 ? random() * l.jitterS : 0), gainDb: l.gainDb });
+      }
+    });
     on<PropEvent>('prop:destroyed', (e) => onProp(e, true));
     on<{ id: string; burning?: boolean }>('tank:fire', (e) => {
       const rig = rigs.get(e.id);
@@ -2369,6 +2388,8 @@ export function createAudio({
       get snapshot() { return mixer?.snapshot ?? null; },
       get tier() { return tier; },
       library: () => library?.stats() ?? null,
+      /** Resolves when every sound and voice load in flight has settled (receipts await the real load, never ticks). */
+      libraryIdle: () => library?.idle() ?? Promise.resolve(),
       limiterReduction: () => mixer?.limiterReduction() ?? 0,
       ambientState: () => ambience?.state() ?? { active: false },
       listenerState: () => ({ x: frame.x, y: frame.y, z: frame.z, fx: frame.fx, fz: frame.fz, kind: listenerKind, ownerId: listenerOwnerId, scoped: listenerScoped }),

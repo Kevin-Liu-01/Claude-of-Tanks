@@ -31,7 +31,7 @@ function fixture() {
     let poolSweepAcc=0,frameDirty=false,lastFov=60;
     const camera={fov:60,position:{},getWorldDirection(){}},_fwd={},perf={skippedFrames:0,renderedFrames:0};
     const updateCamera=()=>false,sweepPool=()=>{},advanceTimeline=ms=>{clockMs+=ms;},syncCrushPlan=()=>{};
-    const invalidate=()=>{frameDirty=true;},stepFx=()=>{},seekTimeline=t=>{clockMs=t;},getWorld=()=>({mapId:'test',update(){}});
+    const invalidate=()=>{frameDirty=true;},stepFx=()=>{},seekTimeline=t=>{clockMs=t;},getWorld=()=>({mapId:'test',update(){}}),flareToWallClock=()=>{};
     ${functions}
     ${tickFunction}
     return {recordVideo,stopRecording,frame:(dt=1/60,wall=dt)=>tick(dt,wall),perf,clockValue:()=>clockMs,state:()=>({active:!!recording,timeScale}),clock:t=>{clockMs=t;}};
