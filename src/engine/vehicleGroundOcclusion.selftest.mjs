@@ -538,7 +538,7 @@ assert.ok(g.includes(`float ambShare = mix( ${f4(GROUND_AO_CARD_AMBIENT_SHARE)},
 assert.match(g, /ambShare = A \/ max\( T \+ A, 1e-4 \);/, 'only the ambient share darkens');
 // (round 4) the ambient share darkens by the occlusion, the sun share by the band's shadow and the berm's slopes
 assert.ok(g.includes('return 1.0 - occ * ambShare - ( 1.0 - ambShare ) * sunCut;'), 'the shade: ambient by the occlusion, sun by the cut');
-assert.ok(g.includes(`float occ = max( min( 1.0 - vis, ${f4(GROUND_AO_OCC_MAX)} ), occCore ) * fade;`), 'the hulls\' joint share capped once; the core past it');
+assert.ok(g.includes('float occ = max( min( 1.0 - vis, uVehGroundR5.z ), occCore ) * fade;'), 'the hulls\' joint share capped once (the cap a lever, GROUND_AO_OCC_MAX shipped); the core past it');
 assert.ok(g.includes('float cotVgSunShadow( vec3 q, vec3 s, vec4 b0, vec4 b1, vec4 b2 ) {')
   && g.includes('? cotVgSunShadow( q, vec3( dot( m0.xyz, uSunDir ), dot( m1.xyz, uSunDir ), dot( m2.xyz, uSunDir ) ), b0, b1, b2 )')
   && !g.includes('under = max( under, inside * step( q.y, b0.y ) );'), 'a card all ambient only in the hull\'s own shadow');
@@ -697,7 +697,7 @@ updateVehicleGroundOcclusionUniforms(u4, [], true, 0.8);
 assert.deepEqual(u4.uVehGroundR4.value.toArray(), [1, 1, 1, 0], 'snow: the berm, no grime');
 updateVehicleGroundOcclusionUniforms(u4, [], true, 0.25);
 assert.deepEqual(u4.uVehGroundR4.value.toArray(), [1, 1, 0, 1], 'grass: the grime, no berm');
-assert.deepEqual(u4.uVehGroundR5.value.toArray(), [GROUND_AO_WALL_SOFT, 1, 0, 0], 'the softening and the guard');
+assert.deepEqual(u4.uVehGroundR5.value.toArray(), [GROUND_AO_WALL_SOFT, 1, GROUND_AO_OCC_MAX, 0], 'the softening, the guard and the shipped cap');
 // the wiring: the grime on the hulls' own pixels after their cavities, before the ground's
 const grimeAt = post.indexOf('texel.rgb *= cotVehicleGrime( uCamPos + ray * rayT );');
 assert.ok(grimeAt > vehAt && grimeAt < groundAt, 'the grime after the cavities, before the ground');

@@ -567,7 +567,7 @@ export interface VehicleGroundOcclusionUniforms {
   uVehGroundLight: THREE.IUniform<THREE.Vector4>;
   /** Round 4: (the contact core's scale, the shoe band's shadow, the snow berm's weight, the run's grime: 0 on snow). */
   uVehGroundR4: THREE.IUniform<THREE.Vector4>;
-  /** Round 4: (the broad share's softening outside the footprint, the gap normal's guard 0/1, 0, 0). */
+  /** Round 4: (the broad share's softening outside the footprint, the gap normal's guard 0/1, the joint cap, 0). */
   uVehGroundR5: THREE.IUniform<THREE.Vector4>;
 }
 
@@ -580,7 +580,7 @@ export function createVehicleGroundOcclusionUniforms(): VehicleGroundOcclusionUn
     uVehGroundR: { value: Array.from({ length: GROUND_AO_MAX_HULLS * 4 }, () => new THREE.Vector4(0, 0, 0, 0)) },
     uVehGroundLight: { value: new THREE.Vector4(GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_HULL_ALBEDO, GROUND_AO_BELLY_VIEW, GROUND_AO_UNDER_GROUND) },
     uVehGroundR4: { value: new THREE.Vector4(1, 1, 0, 1) },
-    uVehGroundR5: { value: new THREE.Vector4(GROUND_AO_WALL_SOFT, 1, 0, 0) },
+    uVehGroundR5: { value: new THREE.Vector4(GROUND_AO_WALL_SOFT, 1, GROUND_AO_OCC_MAX, 0) },
   };
 }
 
@@ -862,12 +862,13 @@ export function updateVehicleGroundOcclusionUniforms(
   bellyView = lightTune('GROUND_AO_BELLY_VIEW', GROUND_AO_BELLY_VIEW),
 ): void {
   u.uVehGroundLight.value.set(Math.min(Math.max(groundAlbedo, 0), 0.95), clamp01(hullAlbedo), clamp01(bellyView), GROUND_AO_UNDER_GROUND);
-  // (round 4; QA: __LIGHT_TUNE.GROUND_AO_CORE / _BAND / _BERM / _GRIME / _WALL_SOFT / _NORMAL_GUARD compare the round's terms
-  // on one frame)
+  // (round 4; QA: __LIGHT_TUNE.GROUND_AO_CORE / _BAND / _BERM / _GRIME / _WALL_SOFT / _NORMAL_GUARD / _OCC_CAP compare the
+  // round's terms and the joint cap on one frame)
   const snow = snowWeight(groundAlbedo);
   u.uVehGroundR4.value.set(Math.max(lightTune('GROUND_AO_CORE', 1), 0), lightTune('GROUND_AO_BAND', 1) > 0 ? 1 : 0,
     snow * Math.max(lightTune('GROUND_AO_BERM', 1), 0), (1 - snow) * Math.max(lightTune('GROUND_AO_GRIME', 1), 0));
-  u.uVehGroundR5.value.set(clamp01(lightTune('GROUND_AO_WALL_SOFT', GROUND_AO_WALL_SOFT)), lightTune('GROUND_AO_NORMAL_GUARD', 1) > 0 ? 1 : 0, 0, 0);
+  u.uVehGroundR5.value.set(clamp01(lightTune('GROUND_AO_WALL_SOFT', GROUND_AO_WALL_SOFT)), lightTune('GROUND_AO_NORMAL_GUARD', 1) > 0 ? 1 : 0,
+    clamp01(lightTune('GROUND_AO_OCC_CAP', GROUND_AO_OCC_MAX)), 0);
   let n = 0;
   if (enabled && roots) {
     for (let i = 0; i < roots.length && n < GROUND_AO_MAX_HULLS; i++) {
@@ -1106,7 +1107,7 @@ ${GLSL_HULL_EDGES}
       }
       // (2026-10-10, round 3) the hulls' joint share capped: the ground keeps a part of its sky under any belly; (round 4)
       // the contact line's core by the larger, past the cap (a few centimetres wide: a line, never a slab)
-      float occ = max( min( 1.0 - vis, ${f(GROUND_AO_OCC_MAX)} ), occCore ) * fade;
+      float occ = max( min( 1.0 - vis, uVehGroundR5.z ), occCore ) * fade;
       // (round 4) the sun share's loss: the band's shadow, the berm's slopes (a lit lip gains: negative)
       float sunCut = ( 1.0 - ( 1.0 - band ) * bermGain ) * fade;
       if ( occ <= 0.003 && abs( sunCut ) <= 0.003 ) return 1.0;

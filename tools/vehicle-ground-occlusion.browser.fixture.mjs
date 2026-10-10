@@ -61,7 +61,7 @@ void main() {
   gl.uniform4fv(at('uVehGroundLight'), new Float32Array(input.light));
   // (contact round 4) the round's levers as the module packs them
   gl.uniform4fv(at('uVehGroundR4'), new Float32Array(input.r4 ?? [1, 1, 0, 1]));
-  gl.uniform4fv(at('uVehGroundR5'), new Float32Array(input.r5 ?? [0.7, 1, 0, 0]));
+  gl.uniform4fv(at('uVehGroundR5'), new Float32Array(input.r5 ?? [0.7, 1, 0.55, 0]));
   gl.uniform4fv(at('uContactAmb'), new Float32Array(input.amb));
   gl.uniform1f(at('uContactSunLum'), input.sunLum);
   gl.uniform3fv(at('uSunDir'), new Float32Array(input.sunDir));
