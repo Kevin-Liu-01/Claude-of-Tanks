@@ -23,7 +23,7 @@ import {
 import {
   BOX_FACE, STEEL_ATLAS_STRIP_M, STEEL_BLANK_END_U, STEEL_DOOR_U, STEEL_STRIP_V, mapBoxFaceUv, type SteelStrip,
 } from '../propsSteelAtlas.ts'; // round 75
-import { precedesIsoContainer, pushPeriodFreight } from './periodFreight.ts';
+import { drawsPeriodFreight, pushPeriodFreight } from './periodFreight.ts';
 
 const gablePrism = (width: number, height: number, depth: number): THREE.BufferGeometry => (
   createGablePrism(width, height, depth, 0.5)
@@ -374,8 +374,9 @@ export function makeContainerRow(
   const target = buckets.steel || buckets.baked || buckets.dark;
   const context = structureBuildContext(buckets);
   const liveries = containerLiveries(context);
-  // the map-revival lane (2026-10-09): before the ISO box (periodFreight.ts) the seats hold the period's freight
-  const freightMap = context && precedesIsoContainer(context.mapId) ? context.mapId : null;
+  // the map-revival lane (2026-10-09): before the ISO box (periodFreight.ts) the seats hold the period's freight, on a
+  // map with its own mix (a kit that rebuilds the row keeps the base row's bounds: drawsPeriodFreight)
+  const freightMap = context && drawsPeriodFreight(context.mapId) ? context.mapId : null;
   const n = 5 + ((rng() * 2) | 0);
   const CL = CONTAINER_L, CW = CONTAINER_W, CH = CONTAINER_H;
   let x = -((n - 1) * (CW + 0.5)) / 2;
