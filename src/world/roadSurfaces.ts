@@ -21,14 +21,14 @@ export const ROAD_SURFACE_CODE: Readonly<Record<RoadSurface, number>> = Object.f
 
 /**
  * A paved map's own surfaces in place of the R layer's sett print — its streets' class and, off any centreline, its
- * squares' (each a RoadSurface but dirt), setts laid in segmental arcs ('fan', the German street's Segmentbogenpflaster)
+ * squares' (each a RoadSurface but dirt; 'print' keeps the squares' own print or slabs), setts laid in segmental arcs ('fan', the German street's Segmentbogenpflaster)
  * or straight courses, a kerbed town's sett gutter (gutterM wide; kerbs: the props' kerbed streets, paved out to the
  * kerbs' face), paving only inside the town rect (townOnly: the works town's setts, the country roads past it earth), and
  * the wear: patches, cracks and iron covers (gains, 1 = a town street's).
  */
 export interface PavedSurfaceConfig {
   street?: Exclude<RoadSurface, 'dirt'>;
-  square?: Exclude<RoadSurface, 'dirt'>;
+  square?: Exclude<RoadSurface, 'dirt'> | 'print';
   setts?: 'courses' | 'fan';
   kerbs?: boolean;
   gutterM?: number;
@@ -36,21 +36,25 @@ export interface PavedSurfaceConfig {
   patches?: number;
   cracks?: number;
   covers?: number;
+  /** standing water in the gutters and wheel paths (0 dry, the default; times the splat's roadPuddles) */
+  puddles?: number;
 }
 
 /** Each paved map's surfaces (the period rulings above). Absent: the map's own splat (its R print, or none). */
 export const MAP_PAVED_SURFACES: Readonly<Record<string, PavedSurfaceConfig>> = Object.freeze({
   // Steinburg, 1984: the town's streets an old asphalt patched over its trenches, sett gutters at the kerbs; the market
   // square in setts laid in arcs
-  urban: Object.freeze({ street: 'patched', square: 'cobble', setts: 'fan', kerbs: true, gutterM: 0.36, patches: 1, cracks: 1, covers: 1 }),
+  urban: Object.freeze({ street: 'patched', square: 'cobble', setts: 'fan', kerbs: true, gutterM: 0.36, patches: 1, cracks: 1, covers: 1, puddles: 0.6 }),
   // Ruinspires (Sarajevo, 1992–96): the shelled city's asphalt, patched and cracked; its styled paths keep their own classes
-  ruinspires: Object.freeze({ street: 'patched', square: 'patched', kerbs: true, gutterM: 0.24, patches: 1.5, cracks: 1.3, covers: 1 }),
+  ruinspires: Object.freeze({ street: 'patched', square: 'patched', kerbs: true, gutterM: 0.24, patches: 1.5, cracks: 1.3, covers: 1, puddles: 0.15 }),
   // Suzhou Creek, 1937: tar macadam streets (map revival's pathStyles style them), the squares in setts
-  blackglass: Object.freeze({ street: 'asphalt', square: 'cobble', kerbs: true, gutterM: 0.24, patches: 0.8, cracks: 0.8, covers: 0.6 }),
+  blackglass: Object.freeze({ street: 'asphalt', square: 'cobble', kerbs: true, gutterM: 0.24, patches: 0.8, cracks: 0.8, covers: 0.6, puddles: 0.5 }),
   // Ironworks (Völklingen, 1945): the works town's streets in setts, the roads beyond it cinder and earth
   foundry: Object.freeze({ street: 'cobble', square: 'cobble', townOnly: true }),
   // Aegis Crossing (Ronda, 1972): the old towns' streets and squares in setts
-  cliffbridge: Object.freeze({ street: 'cobble', square: 'cobble' }),
+  cliffbridge: Object.freeze({ street: 'cobble', square: 'cobble', townOnly: true }),
+  // Kestrel Airfield (Hostomel, 2022): the roads in concrete lane slabs; the aprons and the runway keep their square slabs
+  airfield: Object.freeze({ street: 'concrete', square: 'print', cracks: 0.6, patches: 0.4 }),
 });
 
 /** Each map's roads by path index where a path's surface differs from the map's own (a map's own pathStyles win). */
@@ -102,17 +106,17 @@ export function roadSurfaceUniforms(mapId: string, climate: 'vegetated' | 'arid'
   return { a: [w.relief, w.stones, w.potholes, w.treads], b: [w.washboard, w.toneFloor, w.laneTone, w.windrow] };
 }
 
-/** The paved surfaces' shader vectors: (street, square, arcs, gutter), (patches, cracks, covers, 0) and the kerbed town
+/** The paved surfaces' shader vectors: (street, square, arcs, gutter), (patches, cracks, covers, puddles) and the kerbed town
  * rect (centre xz, half-size xz; z 0 without kerbs). */
 export function pavedSurfaceUniforms(paved: PavedSurfaceConfig | undefined,
   town: { x0: number; x1: number; z0: number; z1: number }): { cls: [number, number, number, number];
   wear: [number, number, number, number]; town: [number, number, number, number] } {
   if (!paved) return { cls: [0, 0, 0, 0], wear: [1, 1, 1, 0], town: [0, 0, 0, 0] };
   const street = paved.street ? ROAD_SURFACE_CODE[paved.street] : 0;
-  const square = paved.square ? ROAD_SURFACE_CODE[paved.square] : street;
+  const square = paved.square === 'print' ? 0 : paved.square ? ROAD_SURFACE_CODE[paved.square] : street;
   return {
     cls: [street, square, paved.setts === 'fan' ? 1 : 0, paved.kerbs ? Math.max(0, paved.gutterM ?? 0) : 0],
-    wear: [paved.patches ?? 1, paved.cracks ?? 1, paved.covers ?? 1, 0],
+    wear: [paved.patches ?? 1, paved.cracks ?? 1, paved.covers ?? 1, paved.puddles ?? 0],
     town: paved.kerbs ? [(town.x0 + town.x1) / 2, (town.z0 + town.z1) / 2, (town.x1 - town.x0) / 2, (town.z1 - town.z0) / 2] : [0, 0, 0, 0],
   };
 }

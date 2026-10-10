@@ -22,6 +22,7 @@ for (const [id, paved] of Object.entries(MAP_PAVED_SURFACES)) {
   assert.ok(!PROTECTED.includes(id), `${id} is not one of the owner's protected maps`);
   for (const key of ['street', 'square']) {
     if (paved[key] === undefined) continue;
+    if (key === 'square' && paved[key] === 'print') continue; // (the squares' own print or slabs)
     assert.ok(ROAD_SURFACE_CODE[paved[key]] > 0 && paved[key] !== 'dirt', `${id}'s ${key} is a paved class`);
   }
 }
@@ -47,9 +48,11 @@ assert.deepEqual(roadSurfaceUniforms('badlands', 'arid', { stones: 0.5 }).a,
 // the paved uniforms: classes by code, the town rect only with kerbs, the old print without a config
 const town = { x0: -100, x1: 60, z0: -40, z1: 80 };
 assert.deepEqual(pavedSurfaceUniforms(undefined, town).cls, [0, 0, 0, 0], 'no config: the R print');
+assert.deepEqual(pavedSurfaceUniforms(undefined, town).wear, [1, 1, 1, 0], 'no config: town wear, dry');
 assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.urban, town).cls, [3, 2, 1, 0.36], 'Steinburg: patched streets, a sett square in arcs, 0.36 m gutters');
 assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.urban, town).town, [-20, 20, 80, 60], 'its kerbed town rect');
 assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.cliffbridge, town).town, [0, 0, 0, 0], 'no kerbs: no town rect');
+assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.airfield, town).cls.slice(0, 2), [6, 0], 'Kestrel: concrete roads, its aprons\' own slabs');
 
 // the layout: a catalogued path takes its surface where the map's own pathStyles leave it unstyled
 {

@@ -6783,8 +6783,6 @@ void splatCompute() {
       // Suzhou Creek's "navy-black asphalt plane", Ruinspires' "featureless blue-grey asphalt"): the surface here is a
       // styled path's own, else the map's paved class (splat.pavedSurface: its streets, and its squares off any
       // centreline), else the R layer's print as before (and the airfield's slabs) — each drawn in the road's frame
-      float onStreet = 1.0 - smoothstep(roadHalf + 0.6, roadHalf + 2.4, dRoad);
-      float pCls = gRoadClass > 0.5 && abs(gRoadClass - 4.0) > 0.5 ? gRoadClass : (onStreet > 0.5 ? uPaveClass.x : uPaveClass.y);
       // a kerbed town's streets paved out to the kerbs' face (props.ts KERB_OFFSET_M 5.05: splat.pavedSurface.kerbs)
       float paveTownW = 0.0;
       if (uPaveTown.z > 0.0) {
@@ -6792,6 +6790,8 @@ void splatCompute() {
         paveTownW = 1.0 - smoothstep(0.0, 6.0, max(tq.x, tq.y));
         paveCore = max(paveCore, paveTownW * (1.0 - smoothstep(4.95, 5.10, dRoad)) * gRoadTex * step(dRoad, 11.9));
       }
+      float onStreet = max(1.0 - smoothstep(roadHalf + 0.6, roadHalf + 2.4, dRoad), paveTownW * (1.0 - smoothstep(5.1, 5.4, dRoad)));
+      float pCls = gRoadClass > 0.5 && abs(gRoadClass - 4.0) > 0.5 ? gRoadClass : (onStreet > 0.5 ? uPaveClass.x : uPaveClass.y);
       vec4 pav = vec4(0.0), pnn = NRM_MEAN;
       if (pCls < 0.5) {
         pav = splatSamp(uAlbR, uv * 0.31, df, mipB, uMeanR);
@@ -6863,8 +6863,10 @@ void splatCompute() {
           float mossy = (1.0 - wheelW) * smoothstep(0.45, 0.75, nz(uv, 0.08, vec2(0.21, 0.63)).g);
           vec3 jointC = mix(mix(stone * 0.42, uMeanD.rgb * 0.55, 0.5), uMeanG.rgb * 0.62, mossy * 0.6);
           float lost = step(0.989, sh.y) * sv;
-          vec3 settMean = mix(vec3(0.150, 0.147, 0.140), jointC, 0.22);
+          vec3 settMean = mix(vec3(0.150, 0.147, 0.140), jointC, 0.22) * (1.0 + 0.08 * wheelW);
           vec3 col = mix(settMean, mix(stone, jointC, jointS), sv);
+          // relaid stretches (a trench filled, a patch reset): rectangles of setts a shade off their neighbours, read at range
+          col *= 0.92 + 0.16 * cellHash2(floor(sq / vec2(3.1, 2.3)) + 77.0).x;
           col = mix(col, jointC * 0.6, lost);
           pav = vec4(col, mix(0.86, 0.68, wheelW * (1.0 - jointS)));
           vec2 st2 = vec2(sf.x / 0.17 - 0.5, sf.y / swd - 0.5);
@@ -6995,7 +6997,7 @@ void splatCompute() {
         float gutW = uPaveClass.w;
         if (gutW > 0.0 && fr && abs(pCls - 2.0) > 0.5) {
           float gIn = dRoad - (5.0 - gutW);
-          float gutB = smoothstep(-0.01, 0.01 + fwP, gIn) * paveTownW;
+          float gutB = smoothstep(-0.01, 0.01 + fwP, gIn) * (1.0 - smoothstep(5.1, 5.3, dRoad)) * paveTownW;
           if (gutB > 0.001) {
             float row = floor(gIn / 0.12), colI = floor(gRoadS / 0.12 + row * 0.5);
             vec2 gh2 = cellHash2(vec2(colI, row + 61.0));
@@ -7011,8 +7013,16 @@ void splatCompute() {
             pN = mix(pN, ((gf.y / 0.12 - 0.5) * pr * 0.35 + (gf.x / 0.12 - 0.5) * al * 0.35) * (1.0 - gJ) * gv, gutB);
           }
         }
+        // standing water (uPaveWear.w, a wet town's): in the gutters and the worn wheel paths' low spots, dark and smooth
+        if (uPaveWear.w > 0.0 && fr) {
+          float lowSpot = max(smoothstep(4.3, 4.9, dRoad) * paveTownW, wheelW * 0.7);
+          float pond = smoothstep(0.62, 0.80, nzq(uv, 0.06, vec2(0.29, 0.83)).x + 0.12 * lowSpot) * lowSpot * uPaveWear.w * uRoadPuddle;
+          pav.rgb = mix(pav.rgb, pav.rgb * 0.45, pond);
+          pav.a = mix(pav.a, 0.08, pond);
+          pN *= 1.0 - pond;
+          gRoadPuddle = max(gRoadPuddle, pond * paveCore);
+        }
         pnn = vec4(vec2(0.5) + pN, 0.5, 1.0);
-      }
       }
       // ground lane (2026-10-03, the gauntlet: the cobble road "meets meadow at a knife edge with no verge, mud or broken
       // stones"): a country sett road's margin is broken — setts lost in runs along the edge with soil in the gaps (the
