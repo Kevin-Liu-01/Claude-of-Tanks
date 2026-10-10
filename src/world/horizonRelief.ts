@@ -567,6 +567,11 @@ interface HorizonReliefBakeInput {
    * resolveTreeWind): the forest climbs higher on the lee faces and holds back on the windward shoulders. Absent: no aspect.
    */
   windDir?: readonly [number, number] | null;
+  /**
+   * The costland lane (2026-10-09): true keeps the stands' treeline and snow limits as main drew them before the borders
+   * lane's batch 6 (no hollow/lee reach, no overSnow) — a map that keeps main's edge (borderLandform.ts batch6 not opted in).
+   */
+  legacyStands?: boolean;
 }
 
 export interface HorizonReliefBake {
@@ -646,6 +651,7 @@ interface DrainageInput {
   treelineM: number | null; snowlineM: number | null;
   woodsAt: ((x: number, z: number) => number) | null; fields: boolean;
   windDir: readonly [number, number] | null;
+  legacyStands: boolean;
 }
 
 /**
@@ -828,11 +834,17 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
         // the borders lane (2026-10-08): a ragged treeline — tongues of forest up the gullies and the lee faces, the
         // spurs and the windward shoulders bare below it (±10 % and ±6 % of its altitude), its 160 m field breaking it
         // into fingers and islands as well as the 45 m one
-        if (top !== null) {
-          const reach = h0 - (0.10 * hollow + 0.06 * lee) * top + (nC * 0.06 + nB * 0.05) * top;
-          stand *= 1 - smoothstep(top * 0.82, top * 1.02, reach);
+        if (input.legacyStands) {
+          // (a map that keeps main's edge: the limits as they stood)
+          if (top !== null) stand *= 1 - smoothstep(top * 0.86, top * 1.02, h0 + nC * 0.06 * top);
+          if (snow !== null) stand *= 1 - smoothstep(snow - 60, snow - 10, h0 + nB * 20);
+        } else {
+          if (top !== null) {
+            const reach = h0 - (0.10 * hollow + 0.06 * lee) * top + (nC * 0.06 + nB * 0.05) * top;
+            stand *= 1 - smoothstep(top * 0.82, top * 1.02, reach);
+          }
+          if (snow !== null && !c.overSnow) stand *= 1 - smoothstep(snow - 60, snow - 10, h0 + nB * 20);
         }
-        if (snow !== null && !c.overSnow) stand *= 1 - smoothstep(snow - 60, snow - 10, h0 + nB * 20);
         const forestW = stand * nearW * land;
         // (the stand itself, before the canopy's own fade-in under the range trees and the seam's: the one woods field past
         // the border's hand-over that the parcels, the hedges and the ring's trees all keep to)
@@ -943,6 +955,7 @@ export function* bakeHorizonReliefSteps(
       W, H, r0, dr, macro, marine, settings: s, seed: (input.seed ?? 0x5eed) >>> 0,
       treelineM: input.treelineM ?? null, snowlineM: input.snowlineM ?? null,
       woodsAt: input.woodsAt ?? null, fields: input.fields !== false, windDir: input.windDir ?? null,
+      legacyStands: input.legacyStands === true,
     }, fine);
     canopyLight = surface.canopyLight; canopyH = surface.canopyH; canopyW = surface.canopyW;
     for (let idx = 0; idx < W * H; idx++) { const v = fine[idx]; if (v < fineMin) fineMin = v; if (v > fineMax) fineMax = v; }

@@ -3,6 +3,7 @@ import { getDeviceTier, getPreset } from '../engine/quality.ts';
 import { createGroundPressureField, type GroundDisturbance, type GroundPressureField } from './groundPressure.ts';
 import { resolveGroundReduxProfile, tallGrassQualityScale, type TallGrassBiome } from './groundRedux.ts';
 import { createLandFieldSample, LAND_CROP, type LandFieldSample } from './landUse.ts';
+import { borderBatch6 } from './borderLandform.ts';
 
 // Round 73 (2026-09-25, the ground redux; owner: "add tall grass that interacts with tanks"): the tall-grass tier.
 // The meadows carried a knee-high tuft carpet of alpha cards that nothing in the battle ever touched; this tier
@@ -527,6 +528,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
   const heightAt = (x: number, z: number): number =>
     field.getHeightAtFast ? field.getHeightAtFast(x, z) : field.getHeightAt(x, z);
   // the borders lane: scratch for the queries past the square, and the ring surface's normal (its slope 2 m either way)
+  const batch6 = borderBatch6(options.mapId);
   const _exitScratch: [number, number] = [0, 0];
   const _parcelScratch: [number, number, number, number] = [0, 0, 0, 1];
   const _ringNormal = { x: 0, y: 1, z: 0 };
@@ -552,6 +554,9 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     const b = biome!;
     const roll = rng(), yawR = rng(), hR = rng(), wR = rng(), tintR = rng(), rnd = rng();
     const edgeR = Math.max(Math.abs(x), Math.abs(z));
+    // (the costland lane, 2026-10-09) a map that keeps main's edge (borderLandform.ts batch6 not opted in) keeps the old
+    // rim-band cull: no sward past 474 m
+    if (!batch6 && edgeR > 474) return;
     // the borders lane (2026-10-08): the sward stopped 4 m past the playable edge (474 m), a line where the grass ended
     // across every view out of the square. The square's last band grows it as the rest of the square does and, where the
     // field carries the drawn ring's surface, the ring's near band past the edge does too: the square's own queries end

@@ -4208,6 +4208,10 @@ function* vegetationBuildSteps(
     }
     return scale;
   }
+  // (the costland lane, 2026-10-09) the tufts' edge cull: the square's edge, or the old rim band (474 m) on a map that keeps
+  // main's edge (terrain.ts sets the height field's _tuftEdgeM from borderLandform.ts batch6, opt-in); read off the
+  // height field so the grass harnesses that compile this section need no import
+  const tuftEdgeM = (heightField as { _tuftEdgeM?: number })._tuftEdgeM ?? 511;
   function makeTuft(
     x: number,
     z: number,
@@ -4219,7 +4223,8 @@ function* vegetationBuildSteps(
     // (the borders lane, 2026-10-08: the border landform lowered the rim, so the cull moves to the square's edge — the
     // tufts stopped 4 m past the playable edge, a line where the grass ended in every view out of the square; the slope
     // test below keeps them off what steep rim face is left, and tallGrass.ts carries the sward on over the ring)
-    if (Math.max(Math.abs(x), Math.abs(z)) > 511 && !(batterSeedAt !== null && batterSeedAt(x, z) > 0)) return null;
+    // (the costland lane, 2026-10-09: a map that keeps main's edge, borderLandform.ts batch6 not opted in — keeps the 474 m cull)
+    if (Math.max(Math.abs(x), Math.abs(z)) > tuftEdgeM && !(batterSeedAt !== null && batterSeedAt(x, z) > 0)) return null;
     if (inAvoid(x, z)) return null;
     const roll = crng(), yaw = crng() * Math.PI * 2;
     const sxz = 0.74 + crng() * 0.62;

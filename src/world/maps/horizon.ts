@@ -50,7 +50,7 @@ import { type MassifSettings, carveMassifRingSteps, createMassifField, cutMassif
 import { type EscarpmentSettings, carveEscarpmentRingSteps, createEscarpmentField } from '../horizonEscarpment.ts';
 import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloudShadeUniforms } from '../horizonCloudShade.ts';
 import { continuedGroundAt, continuedGroundSampler } from '../horizonSurface.ts';
-import { resolveBorderLandform, type BorderLandformSettings } from '../borderLandform.ts';
+import { borderBatch6, resolveBorderLandform, type BorderLandformSettings } from '../borderLandform.ts';
 import { buildBorderFarmsteads, farmsteadTreesAt, resolveBorderArchitecture, ringSurfaceSampler, selectFarmsteadSites, type BorderFarmsteadOptions } from '../borderFarmsteads.ts';
 import { buildBorderHedgerows } from '../borderHedgerows.ts';
 import { type HorizonDamSettings, buildHorizonDam, carveHorizonDamCanyon, floodHorizonDamReservoir } from '../horizonDam.ts';
@@ -2230,7 +2230,9 @@ export function sampleHorizonGeometry(
   continueHorizonGround(ring, ground, canyonOutland);
   // (the borders lane, round 5) the country past the near band rises on an inland map (waves 286a-d)
   if (!canyonOutland && !openings.length) {
-    liftFarCountry(ring, resolveBorderLandform(style, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border, mapId).farRiseM ?? 0);
+    // (the costland lane, 2026-10-09: none on a map that keeps main's edge, borderLandform.ts batch6)
+    const border = resolveBorderLandform(style, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border, mapId);
+    liftFarCountry(ring, borderBatch6(mapId, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border) ? border.farRiseM ?? 0 : 0);
   }
   if (canyonOutland) drainSteps(carveHorizonEscarpmentsSteps(ring, horizon, mapId, style, seed));
   if (horizon.roadPasses !== false) openRoadPasses(ring, ground);
@@ -3742,7 +3744,9 @@ export function* horizonRingGeometrySteps(
   continueHorizonGround(ring, ground, canyonOutland);
   // (the borders lane, round 5) the country past the near band rises on an inland map (waves 286a-d)
   if (!canyonOutland && !seaOpenings.length) {
-    liftFarCountry(ring, resolveBorderLandform(style, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border, mapId).farRiseM ?? 0);
+    // (the costland lane, 2026-10-09: none on a map that keeps main's edge, borderLandform.ts batch6)
+    const border = resolveBorderLandform(style, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border, mapId);
+    liftFarCountry(ring, borderBatch6(mapId, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border) ? border.farRiseM ?? 0 : 0);
   }
   if (canyonOutland) yield* carveHorizonEscarpmentsSteps(ring, H, mapId, style, seed);
   if (H.roadPasses !== false) openRoadPasses(ring, ground);
@@ -3767,10 +3771,13 @@ export function* horizonRingGeometrySteps(
   // border landform's `forest`, the share its near outland is wooded; from 0.3 up the character's cover stands, below it
   // the cover's forest scales with the share: the stands past 880 m then cover about 1.3 x the share, as Verdant's 36 %
   // woods carry 48 % stands — Tarkhan's 7 % takes 9 %, Ironworks' 20 % 27 %, Sunscar's 2 % none)
+  // (the costland lane, 2026-10-09) a map that keeps main's edge (borderLandform.ts batch6, opt-in) bakes main's stands:
+  // no sparse-woods share, no lee faces, the old treeline and snow limits
+  const edgeBatch6 = borderBatch6(mapId, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border);
   const reliefCoverBase: Partial<HorizonReliefCover> | null | undefined = H.reliefCover === false ? null
     : H.reliefCover ? { forest: 0, canopy: 0.5, fields: 0, ...reliefSettings.cover, ...H.reliefCover } : undefined;
   const coverForest = (reliefCoverBase === undefined ? reliefSettings.cover : reliefCoverBase)?.forest ?? 0;
-  const borderForestShare = borderLand?.getBorderWoodsAt
+  const borderForestShare = edgeBatch6 && borderLand?.getBorderWoodsAt
     ? resolveBorderLandform(style, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border, mapId).forest : null;
   const reliefCover = borderForestShare !== null && coverForest > 0 && borderForestShare < 0.3
     ? { ...(reliefCoverBase ?? reliefSettings.cover), forest: coverForest * borderForestShare / 0.3 } : reliefCoverBase;
@@ -3785,7 +3792,8 @@ export function* horizonRingGeometrySteps(
     woodsAt: borderLand?.getBorderWoodsAt ? (x: number, z: number) => (borderLand.getBorderWoodsAt as (x: number, z: number) => number)(x, z) : null,
     fields: !borderLand?._borderParcelAt,
     // the borders lane (2026-10-08): the forest climbs the lee faces (the map's prevailing wind, the one its trees sway in)
-    windDir: (() => { const wind = resolveTreeWind(cfg as Parameters<typeof resolveTreeWind>[0]); return [wind.dirX, wind.dirZ] as const; })(),
+    windDir: edgeBatch6 ? (() => { const wind = resolveTreeWind(cfg as Parameters<typeof resolveTreeWind>[0]); return [wind.dirX, wind.dirZ] as const; })() : null,
+    legacyStands: !edgeBatch6,
   }, bakeField, [lx, ly, lz]) : null;
   // detail-texture UVs: u wraps the ring, v = absolute altitude fraction so
   // strata/snow features in the texture land at constant world height
@@ -4029,7 +4037,10 @@ export function* buildHorizonRingSteps(
   const borderWoodsAt = ground?.getBorderWoodsAt;
   const parcelTintAt = (ground as { _borderParcelAt?: (x: number, z: number, out: [number, number, number, number], woods?: number)
     => [number, number, number, number] } | undefined)?._borderParcelAt ?? null;
-  const standAt = reliefBake?.canopy ? horizonCanopySampler(reliefBake) : null;
+  // (the costland lane, 2026-10-09: a map that keeps main's edge — borderLandform.ts batch6 not opted in — has no one woods
+  // field past the hand-over, no lone-tree crop law and no face trees: everything below falls back to the border's woods)
+  const edgeBatch6 = borderBatch6(mapId, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border);
+  const standAt = edgeBatch6 && reliefBake?.canopy ? horizonCanopySampler(reliefBake) : null;
   mesh.userData.horizonRing.standAt = standAt;
   const woodsPastHandOver = standAt && borderWoodsAt ? (x: number, z: number): number =>
     (Math.hypot(x, z) > HORIZON_STAND_HANDOVER_M[0] ? standAt(x, z) : borderWoodsAt(x, z)) : borderWoodsAt;
@@ -4087,7 +4098,7 @@ export function* buildHorizonRingSteps(
     ...(ground?.getBorderHedgeAt ? { hedgeAt: ground.getBorderHedgeAt } : {}),
     // (the borders lane, 2026-10-08: Verdant's and Tarkhan's lone trees stood evenly over their crops — parkland — where
     // the square's field trees keep to the boundaries) a lone tree keeps out of a crop's interior
-    ...(parcelTintAt ? { loneAt: (() => {
+    ...(parcelTintAt && edgeBatch6 ? { loneAt: (() => {
       const tint: [number, number, number, number] = [0, 0, 0, 1];
       return (x: number, z: number): number => parcelTintAt(x, z, tint,
         standAt && Math.hypot(x, z) > HORIZON_STAND_HANDOVER_M[0] ? standAt(x, z) : undefined)[3];
@@ -4143,7 +4154,9 @@ export function* buildHorizonRingSteps(
       .map(([species]) => vegetation?.palettes?.[species]?.canopy).find((canopy) => canopy);
     const hedges = buildBorderHedgerows({
       seed: ((seed ^ 0x4ED9) ^ idHash(mapId)) >>> 0, lines: hedgeLines, groundAt: ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs),
-      palette: horizonBroadleafPalette(hedgeCanopy),
+      // (the costland lane, 2026-10-09: a map that keeps main's edge keeps main's hedges — their old bodies and palette)
+      palette: horizonBroadleafPalette(edgeBatch6 ? hedgeCanopy : rimBroadleaf ? vegetation?.palettes?.[rimBroadleaf]?.canopy : undefined),
+      ...(edgeBatch6 ? {} : { legacy: true }),
     });
     if (hedges) {
       const setup = (_engineCtx as { setupShadowMaterial?: (material: THREE.Material, extraHook?: null) => THREE.Material } | null)?.setupShadowMaterial;

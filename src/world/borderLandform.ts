@@ -132,6 +132,14 @@ export interface BorderLandformSettings {
    */
   farRiseM?: number;
   /**
+   * The costland lane (2026-10-09; the light-touch rule after gauntlet waves 330/331 against main): true when the map's
+   * edge takes the borders lane's batch 6 — the sward past the old rim-band cull (474 m), the ranges' face trees, one
+   * woods field past the hand-over with its lone-tree crop law, lee-face stands, the hedges as strings of crowned bushes,
+   * the far rise. A map passes a wave against main before it opts in; every other map keeps the edge main drew (Verdant's
+   * north-east corner dropped with the lower critic in wave 330, Saltwind's east edge in 331). Read through borderBatch6.
+   */
+  batch6?: boolean;
+  /**
    * The rim as it stood before the border landform (the classic S-curve and the plateau rimH over the geology past the
    * edge, the old 140–460 m ring hand-over, no woods field): the receipts that replay a pre-landform failure build
    * their predecessor and current fields with it. Not a map setting.
@@ -157,12 +165,12 @@ const MAP_BORDERS: Readonly<Record<string, Partial<BorderLandformSettings>>> = {
   desert: { forest: 0.03, enclosure: 0.5, hedgerows: 0, fields: 0, farms: 4, buildings: 'arid' },
   winter: { forest: 0.44, hedgerows: 0.2, fields: 0.1, farms: 6, buildings: 'winter' },
   urban: { forest: 0.28, hedgerows: 0.5, fields: 0.45, farms: 14 },
-  coastal: { forest: 0.24, enclosure: 0.36, hedgerows: 0.55, fields: 0.5, farms: 9 },
+  coastal: { forest: 0.24, enclosure: 0.36, hedgerows: 0.55, fields: 0.5, farms: 9, batch6: true },
   autumn: { forest: 0.42, enclosure: 0.5, hedgerows: 0.9, fields: 0.8, farms: 12 },
   steppe: { enclosure: 0.12, hillHeight: 1.25, reachM: 340, rimFloor: 0.18, wavelengthM: 760, forest: 0.07, hedgerows: 0.55, fields: 0.85, crops: 'steppe', farms: 10, buildings: 'steppe' },
   railyard: { forest: 0.22, hedgerows: 0.55, fields: 0.6, farms: 9 },
   frontier: { forest: 0.36, enclosure: 0.5, hedgerows: 0.6, fields: 0.6, farms: 10 },
-  fjord: { forest: 0.42, fields: 0.1, farms: 5, buildings: 'nordic' },
+  fjord: { forest: 0.42, fields: 0.1, farms: 5, buildings: 'nordic', batch6: true },
   delta: { enclosure: 0.08, hillHeight: 0.6, reachM: 360, rimFloor: 0.15, wavelengthM: 700, forest: 0.26, hedgerows: 0.35, fields: 0.55, crops: 'polder', farms: 10, buildings: 'tropical', erosion: 0 },
   monsoon: { forest: 0.6, fields: 0.25, farms: 6, buildings: 'tropical' },
   alpine: { forest: 0.32, fields: 0.05 },
@@ -186,6 +194,15 @@ const MAP_BORDERS: Readonly<Record<string, Partial<BorderLandformSettings>>> = {
   moon: { forest: 0, hillHeight: 1.6, hedgerows: 0, fields: 0, farms: 0 },
   cliffbridge: { forest: 0.36, hedgerows: 0.7, fields: 0.65, farms: 9 },
 };
+
+/**
+ * Whether a map's edge takes the borders lane's batch 6 (BorderLandformSettings.batch6, opt-in; its map config's
+ * terrain.border overrides the table). A field with no map (a receipt's fixture) takes it.
+ */
+export function borderBatch6(mapId?: string | null, authored?: Partial<BorderLandformSettings> | null): boolean {
+  if (authored?.batch6 !== undefined) return authored.batch6 === true;
+  return mapId ? MAP_BORDERS[mapId]?.batch6 === true : true;
+}
 
 export function resolveBorderLandform(
   style: string | undefined, authored?: Partial<BorderLandformSettings> | null, mapId?: string,

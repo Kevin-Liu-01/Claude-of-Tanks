@@ -608,6 +608,8 @@ export interface HeightField {
   /** The borders lane (2026-10-08): the drawn horizon ring's surface height past the square (NaN off the ring), set
    * once the ring is built (terrain.ts terrainBuildSteps); absent on a field without a built ring. */
   _ringSurfaceAt?(x: number, z: number): number;
+  /** The costland lane (2026-10-09): the tufts' edge cull (m) on a map that keeps main's edge (batch6 not opted in); absent: 511. */
+  _tuftEdgeM?: number;
   _layout: TerrainLayout;
   /** Frontline Assault trench plan carved into this field (assault-trenches variant), else null. */
   assaultTrenchLines?: AssaultTrenchPlan | null;
@@ -2806,6 +2808,9 @@ function* heightFieldBuildSteps(
     getWaterMaskAt, getWaterDepthAt, getTrackSurfaceAt,
     // the map-borders lane: where the near ring hands its continued ground over to the authored ranges
     getBorderHandOverAt: border.handOverAt,
+    // (the costland lane, 2026-10-09) a map that keeps main's edge (borderLandform.ts batch6 not opted in) keeps the
+    // tufts' old rim-band cull (vegetation.ts makeTuft)
+    ...(cfg?.id && border.settings.batch6 !== true ? { _tuftEdgeM: 474 } : {}),
     // (a receipt's classic border — the rim before the landform — publishes no woods, hedges or parcels)
     ...(border.settings.classic ? {} : { getBorderWoodsAt: border.woodsAt, getBorderHedgeAt: border.hedgeAt, _borderParcelAt: border.parcelTintAt,
       _borderTrackAt: border.trackAt,

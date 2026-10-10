@@ -1456,6 +1456,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/borderLandform.selftest.mjs',
     // ... and past its near band the country rises into view behind a crest (the far rise: Verdant, wave 288)
     'src/world/horizonFarRise.selftest.mjs',
+    'src/world/borderBatch6.selftest.mjs',
     // ... and its villages string along the exit roads from 110 m, each with its church (Frosthollow's north)
     'src/world/borderFarmsteads.selftest.mjs',
     'src/world/maps/snowDrift.selftest.mjs',
