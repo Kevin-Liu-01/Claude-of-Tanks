@@ -148,7 +148,6 @@ export const radomeTower: LandmarkBuilder = (ctx) => {
 export const troposcatter: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const bw = num(ctx, 'width', 8), H = Math.max(6, Math.min(Number(ctx.params.height), bw * 0.9)), clear = num(ctx, 'clearance', 1.2);
-  const mobile = ctx.tier === 'mobile';
   const gl = (lx: number, lz: number) => ctx.ground?.(lx, lz) ?? 0;
   const SAG = Math.max(2.0, bw / 6);
   const rearZ = -sagDepth(bw) / 2 + 3.1, back = rearZ + 2.2;
@@ -210,10 +209,9 @@ export const troposcatter: LandmarkBuilder = (ctx) => {
         const y2 = levels[l + 1];
         sink.member('structureMetal', [xa, y, rearZ], [xb, y2, rearZ], 0.09, 0.09, [0, 0, 1], light);
         sink.member('structureMetal', [xb, y, rearZ], [xa, y2, rearZ], 0.09, 0.09, [0, 0, 1], light);
-        if (!mobile) {
-          const xs = (j + l) % 2 === 0 ? xa : xb, ts = (j + l) % 2 === 0 ? ta : tb;
-          sink.member('structureMetal', [xs, y, rearZ], [xs, y2, front(ts)], 0.08, 0.08, [1, 0, 0], light);
-        }
+        // (the depth diagonals are fine joinery: a phone leaves them out, its coarse share the desktop's)
+        const xs = (j + l) % 2 === 0 ? xa : xb, ts = (j + l) % 2 === 0 ? ta : tb;
+        sink.member('structureMetal', [xs, y, rearZ], [xs, y2, front(ts)], 0.08, 0.08, [1, 0, 0], { ...light, fine: true });
       }
     }
   }
@@ -232,10 +230,10 @@ export const troposcatter: LandmarkBuilder = (ctx) => {
     sink.member('structureMetal', [legAt(ox, g - 0.3), Math.min(g - 0.3, -0.6), tz + legAt(oz, g - 0.3)], [legAt(ox, legTop), legTop, tz + legAt(oz, legTop)],
       0.16, 0.16, [1, 0, 0], { colour: GALV, exposed: true });
   }
-  if (!mobile) for (let y = gt + 0.6; y + 2.4 < legTop; y += 2.4) {
+  for (let y = gt + 0.6; y + 2.4 < legTop; y += 2.4) {
     for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]] as const) {
       sink.member('structureMetal', [legAt(ax, y), y, tz + legAt(az, y)], [legAt(bx, y + 2.4), y + 2.4, tz + legAt(bz, y + 2.4)],
-        0.06, 0.06, [0, 1, 0], { colour: GALV, decor: true, exposed: true });
+        0.06, 0.06, [0, 1, 0], { colour: GALV, decor: true, fine: true, exposed: true });
     }
   }
   sink.span('structureMetal', -0.8, legTop - 0.1, tz - 0.8, 0.8, legTop + 0.05, tz + 0.8, { colour: GALV });
