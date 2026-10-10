@@ -49,7 +49,7 @@ export interface CollapseBodiesEvent {
   dirZ: number;
 }
 
-export interface CollapseBodiesOptions {
+interface CollapseBodiesOptions {
   pool: DebrisPhysics;
   /** Where the pieces and the remnant are drawn (the fx group). */
   group: THREE.Group;
@@ -72,7 +72,7 @@ export interface CollapseBodiesOptions {
 }
 
 /** A wall panel the blow's failure reached (CollapsePiece.shatterS): its building and its place on its face. */
-export type CollapseShatterHandler = (seam: StructureDamageSeam, piece: CollapsePiece, e: CollapseBodiesEvent) => void;
+type CollapseShatterHandler = (seam: StructureDamageSeam, piece: CollapsePiece, e: CollapseBodiesEvent) => void;
 
 export interface CollapseBodies {
   /**

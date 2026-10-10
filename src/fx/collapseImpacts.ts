@@ -5,9 +5,9 @@
  */
 
 /** What a piece is made of, as its sound is chosen (a wall's core, a roof's covering, a floor's structure). */
-export type CollapseImpactMaterial = string;
+type CollapseImpactMaterial = string;
 
-export type CollapseImpactListener = (x: number, y: number, z: number, speedMps: number, massKg: number,
+type CollapseImpactListener = (x: number, y: number, z: number, speedMps: number, massKg: number,
   material: CollapseImpactMaterial) => void;
 
 const listeners: CollapseImpactListener[] = [];
