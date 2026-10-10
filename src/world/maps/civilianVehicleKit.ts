@@ -25,6 +25,7 @@ import {
 } from './vehicleFleets.ts';
 import { LEGACY_DRAWS } from './civilianVehicleLegacy.ts';
 import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
+import { crumpleBurntVehicle } from '../wreckCrumple.ts';
 
 type Rng = () => number;
 type Builder = (rng: Rng) => THREE.BufferGeometry;
@@ -95,6 +96,10 @@ function buildRole(entry: FleetEntry, role: CivilianVehicleKind, ctx: BuildConte
     rust: ctx.fleet.age, burnt, wheels: modelWheels(entry.model), seed, voxelAo: !ctx.coarse,
   }));
   fitToRole(geometry, ROLE_BOXES[role]);
+  // (destruction core, 2026-10-09; the owner: "destroyed vehicles should be crumpled not just turn rusty") the burnt body
+  // deformed: its roof pressed in, dented flanks, on some an end pushed in (wreckCrumple.ts; collision is the intact
+  // coarse build's, canonicalSolid)
+  if (burnt) crumpleBurntVehicle(geometry, seed);
   delete geometry.userData.outboard;
   return geometry;
 }
