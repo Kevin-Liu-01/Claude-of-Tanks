@@ -538,6 +538,41 @@ export function nightAmount(skyIntensity: number): number {
 const NIGHT_SKY_FULL_INTENSITY = 0.08;
 /** Dome intensity from which no night sky shows (daylight presets run 1.0). */
 const NIGHT_SKY_FULL_INTENSITY_TOP = 0.30;
+/**
+ * 2026-10-09 (the skies lane; the gauntlet's wave 295, every night frame on six maps: "a sky packed with oversized,
+ * uniformly bright white star dots", "large snowflake-like stars", "each the size of a small window light", "stars show
+ * straight through the dark cloud bank", "stars shine right inside the moon's glare"). Round 22's cell law lit 11 % of
+ * the 0.55° cells (about 1,100 stars in a 55° frame), each a Gaussian 0.075–0.185 cells wide (1.3–3.3 px at 1600 × 900)
+ * at 0.09–1.54 radiance: a carpet of equal grey dots that the night camera (exposure ≈ 3.3) and the bloom made into
+ * window lights. The pixel law: [presence, the faint carpet's radiance, the brightest star's extra, law 1].
+ */
+export const STAR_LAW_PIXEL: readonly [number, number, number] = Object.freeze([0.045, 0.012, 0.55]);
+/** Round 22's cell law, kept for a galaxy sky (the space maps: the owner's Olympus Basin order). */
+const STAR_LAW_CELL: readonly [number, number, number] = Object.freeze([0.11, 0.09, 1.45]);
+/**
+ * The pixel law's shape: [radius in pixels at the faintest, the brightest's extra pixels, the moon glare's share at the
+ * disc (falling off over 14°), the magnitude exponent (higher: fewer bright stars)].
+ */
+export const STAR_SHAPE_PIXEL: readonly [number, number, number, number] = Object.freeze([0.55, 0.45, 0.92, 10]);
+/** The cloud layer's transmittance over which the stars fade out (below the first value none show). */
+export const STAR_CLOUD_CUT: readonly [number, number] = Object.freeze([0.55, 0.97]);
+/** The preset's starfield law on a configured Sky (after configureSkyUniforms): a galaxy sky — a forced night sky, the
+ * space maps — keeps round 22's cell law, every terrestrial night the pixel law (QA: __LIGHT_TUNE.STAR_*). */
+function applyStarLaw(sky: Sky, preset: Readonly<SkyPreset>): void {
+  const u = sky.material.uniforms;
+  writeStarLaw(u.uStarLaw.value as THREE.Vector4, u.uStarShape.value as THREE.Vector4, (preset.nightSky ?? 0) > 0.5);
+}
+function writeStarLaw(law: THREE.Vector4, shape: THREE.Vector4, galaxySky: boolean): void {
+  if (galaxySky) {
+    law.set(STAR_LAW_CELL[0], STAR_LAW_CELL[1], STAR_LAW_CELL[2], 0);
+    shape.set(0, 0, 0, 8);
+    return;
+  }
+  law.set(lightTune('STAR_PRESENCE', STAR_LAW_PIXEL[0]), lightTune('STAR_CARPET', STAR_LAW_PIXEL[1]),
+    lightTune('STAR_BRIGHT', STAR_LAW_PIXEL[2]), 1);
+  shape.set(lightTune('STAR_PX', STAR_SHAPE_PIXEL[0]), lightTune('STAR_PX_MAG', STAR_SHAPE_PIXEL[1]),
+    lightTune('STAR_MOON_GLARE', STAR_SHAPE_PIXEL[2]), lightTune('STAR_MAG_POW', STAR_SHAPE_PIXEL[3]));
+}
 // Night sky (round 22, owner 2026-09-18 "skyboxes … should be so good"): the night preset used to dim the
 // Preetham dome to .08 and leave it at that — a featureless dark gradient. The dome now carries a
 // deterministic starfield (hash-seeded star cells on a lat-long grid: a few hundred bright stars over a
@@ -559,8 +594,19 @@ float cotValueNoise( vec3 p ) {
 	float h = fract( sin( n + 170.0 ) * 43758.5453 ), k = fract( sin( n + 171.0 ) * 43758.5453 );
 	return mix( mix( mix( a, b, f.x ), mix( c, d, f.x ), f.y ), mix( mix( e, g, f.x ), mix( h, k, f.x ), f.y ), f.z );
 }
-vec3 cotNightSky( vec3 dn, vec3 moonDir, float galaxy, vec3 nebula, float planetR, vec3 planetTint, float earth ) {
+vec3 cotNightSky( vec3 dn, vec3 moonDir, float galaxy, vec3 nebula, float planetR, vec3 planetTint, float earth, float starVis ) {
 	float horizonFade = smoothstep( 0.012, 0.15, dn.y );
+	// 2026-10-09 (the skies lane; the gauntlet's wave 295 on every night frame: "a sky packed with oversized, uniformly
+	// bright white star dots", "stars show straight through the dark cloud bank", "stars shine right inside the moon's
+	// glare"): a terrestrial night draws the pixel law (uStarLaw.w 1) — a sparser field of pixel-wide stars, most of them
+	// faint and a few bright, dimmed by the air toward the horizon, washed out in the moon's glare and hidden by cloud
+	// (starVis: the cloud layer's transmittance along the ray, steepened). A galaxy sky (the space maps) keeps the
+	// round-22 cell law (uStarLaw.w 0), the owner's Olympus Basin order.
+	float pixelLaw = uStarLaw.w;
+	starVis = mix( 1.0, starVis, pixelLaw );
+	float md = dot( dn, moonDir );
+	// one pixel's angle at this direction (radians; continuous across the lat-long seam, unlike the cell coordinates)
+	float pxAngle = max( length( fwidth( dn ) ), 1e-5 );
 	// galactic band: a great circle tilted off the zenith, denser and faintly luminous along it; a galaxy
 	// preset widens it and paints nebula clouds along it with three octaves of value noise
 	vec3 bandN = normalize( vec3( 0.47, 0.88, -0.10 ) );
@@ -573,26 +619,37 @@ vec3 cotNightSky( vec3 dn, vec3 moonDir, float galaxy, vec3 nebula, float planet
 		nebulaW = exp( -bandD * bandD * 12.0 ) * smoothstep( 0.42, 0.78, cloud ) * galaxy;
 	}
 	// star cells on a lat-long grid (about 0.55 deg at the equator)
-	vec2 sc = vec2( atan( dn.z, dn.x ), asin( clamp( dn.y, -1.0, 1.0 ) ) ) * 104.0;
+	float lat = asin( clamp( dn.y, -1.0, 1.0 ) );
+	vec2 sc = vec2( atan( dn.z, dn.x ), lat ) * 104.0;
 	vec2 cell = floor( sc );
 	vec2 f = sc - cell;
+	// the pixel law: offsets in arc (a longitude cell narrows with the latitude's cosine) and the radius in pixels
+	vec2 arcK = mix( vec2( 1.0 ), vec2( max( cos( lat ), 0.05 ), 1.0 ), pixelLaw );
+	float pxCells = pxAngle * 104.0;
 	vec3 stars = vec3( 0.0 );
 	for ( int oy = -1; oy <= 1; oy++ ) {
 		for ( int ox = -1; ox <= 1; ox++ ) {
 			vec2 c = cell + vec2( float( ox ), float( oy ) );
 			vec3 h = cotHash3( c );
-			float presence = step( 1.0 - ( 0.11 + band * 0.42 ), h.z );
-			vec2 offs = vec2( float( ox ), float( oy ) ) + h.xy - f;
-			float mag = pow( fract( h.z * 7.31 ), 8.0 );
-			float radius = 0.075 + mag * 0.11;
+			float presence = step( 1.0 - ( uStarLaw.x + band * mix( 0.42, 0.20, pixelLaw ) ), h.z );
+			vec2 offs = ( vec2( float( ox ), float( oy ) ) + h.xy - f ) * arcK;
+			// the magnitude's draw: the cell law's from the presence hash (a present star's h.z sits in the top 11 %, so its
+			// draws cluster), the pixel law's from the position hashes — a continuous spread of faint to bright
+			float magU = mix( fract( h.z * 7.31 ), fract( ( h.x + h.y ) * 17.13 ), pixelLaw );
+			float mag = pow( magU, mix( 8.0, uStarShape.w, pixelLaw ) );
+			float radius = mix( 0.075 + mag * 0.11, pxCells * ( uStarShape.x + uStarShape.y * mag ), pixelLaw );
 			float pointW = presence * exp( -dot( offs, offs ) / ( radius * radius ) );
 			vec3 tint = mix( vec3( 0.78, 0.86, 1.00 ), vec3( 1.00, 0.90, 0.70 ), fract( h.x * 3.7 ) );
-			stars += tint * pointW * ( 0.09 + mag * 1.45 );
+			stars += tint * pointW * ( uStarLaw.y + mag * uStarLaw.z );
 		}
 	}
+	// the pixel law's air and glare: a star near the horizon looks through more air, and the moon's glow drowns the
+	// faint ones around it (uStarShape.z: the share it takes at the disc)
+	stars *= mix( 1.0, ( 0.30 + 0.70 * smoothstep( 0.0, 0.45, dn.y ) )
+		* ( 1.0 - uStarShape.z * smoothstep( 0.9703, 0.9994, md ) ), pixelLaw );
+	stars *= starVis;
 	// moon (or a preset's planet): a disc at the night key-light direction, gibbous phase, maria mottle,
 	// compact glow
-	float md = dot( dn, moonDir );
 	float moonR = max( planetR, 0.002 );
 	float moonCos = cos( moonR );
 	float disc = smoothstep( moonCos - 0.00010, moonCos + 0.00005, md );
@@ -634,7 +691,7 @@ vec3 cotNightSky( vec3 dn, vec3 moonDir, float galaxy, vec3 nebula, float planet
 	// the compact glow scales with the disc (a 3 deg planet keeps a ~4 deg halo, never a quarter-sky wash)
 	float glowPow = max( 900.0 * 0.0070 / moonR, 160.0 );
 	float glow = (1.0 - earth) * (pow( max( md, 0.0 ), glowPow ) * 0.24 + pow( max( md, 0.0 ), 48.0 ) * 0.030);
-	return (1.0 - earth * disc) * ( stars * 0.90 + band * vec3( 0.16, 0.19, 0.28 ) * 0.18 + nebula * nebulaW * 0.55 ) * horizonFade
+	return (1.0 - earth * disc) * ( stars * 0.90 + ( band * vec3( 0.16, 0.19, 0.28 ) * 0.18 + nebula * nebulaW * 0.55 ) * starVis ) * horizonFade
 		+ moonCol * disc * 1.7 + planetTint * glow * horizonFade;
 }`;
 
@@ -689,6 +746,12 @@ uniform vec3 uNebula;
 uniform float uPlanetR;
 uniform vec3 uPlanetTint;
 uniform float uEarth;
+uniform vec4 uStarLaw;
+uniform vec4 uStarShape;
+uniform sampler2D tStarClouds;
+uniform vec4 uStarClouds;
+uniform vec2 uStarCloudCut;
+uniform float uStarCloudsOn;
 ${ATMOSPHERE_SKY_GLSL}
 ${NIGHT_SKY_GLSL}
 varying vec3 vWorldPosition;
@@ -741,7 +804,17 @@ void main() {
 	skyCol += sunGlowCol * ( 1.0 - uSunSpot.z );
 	skyCol += ( fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) - 0.5 ) * ${SKY_DITHER.toFixed(4)};
 	vec3 nightCol = vec3( 0.0 );
-	if ( uNight > 0.001 ) nightCol = cotNightSky( direction, uSunDirection, uGalaxy, uNebula, uPlanetR, uPlanetTint, uEarth ) * uNight;
+	if ( uNight > 0.001 ) {
+		// 2026-10-09 (the skies lane): the stars behind the cloud layer — its resolved transmittance at this pixel (the
+		// history the cloud composite draws this frame), steepened, so a thin bank already hides them; the composite's own
+		// premultiplied blend then dims what is left as before (uStarClouds: the viewport's origin and inverse size, on)
+		float starVis = 1.0;
+		if ( uStarCloudsOn > 0.5 ) {
+			float cloudT = texture2D( tStarClouds, ( gl_FragCoord.xy - uStarClouds.xy ) * uStarClouds.zw ).a;
+			starVis = smoothstep( uStarCloudCut.x, uStarCloudCut.y, cloudT );
+		}
+		nightCol = cotNightSky( direction, uSunDirection, uGalaxy, uNebula, uPlanetR, uPlanetTint, uEarth, starVis ) * uNight;
+	}
 	gl_FragColor = vec4( max( skyCol, vec3( 0.0 ) ) * uSkyIntensity + nightCol, 1.0 );
 }`;
 
@@ -825,6 +898,10 @@ function configureSkyUniforms(
   u.uPlanetR.value = preset.planetDeg * Math.PI / 360;
   u.uPlanetTint ??= { value: new THREE.Color(0xedf2ff) };
   u.uPlanetTint.value.setHex(preset.planetHex);
+  // 2026-10-09 (the skies lane): the starfield's law — round 22's cell law until applyStarLaw writes the preset's (this
+  // function's source is evaluated on its own by the environment-cache receipt: literals only)
+  u.uStarLaw ??= { value: new THREE.Vector4(0.11, 0.09, 1.45, 0) };
+  u.uStarShape ??= { value: new THREE.Vector4(0, 0, 0, 8) };
   u.turbidity.value = preset.turbidity;
   u.rayleigh.value = preset.rayleigh;
   // r4 ran a x1.5 Mie response so the sun registered off-azimuth; r5 pulled it
@@ -850,6 +927,8 @@ function configureSkyUniforms(
     shader.uniforms.uEarth = u.uEarth;
     shader.uniforms.uPlanetR = u.uPlanetR;
     shader.uniforms.uPlanetTint = u.uPlanetTint;
+    shader.uniforms.uStarLaw = u.uStarLaw;
+    shader.uniforms.uStarShape = u.uStarShape;
     const patched = shader.fragmentShader.replace(
       SKY_FRAG_ANCHOR,
       `vec3 skyCol = texColor * ${SKY_RADIANCE_SCALE.toFixed(4)};
@@ -893,14 +972,14 @@ function configureSkyUniforms(
 	// break up gradient banding on the low-frequency sky ramps
 	skyCol += ( fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) - 0.5 ) * ${SKY_DITHER.toFixed(4)};
 	vec3 nightCol = vec3( 0.0 );
-	if ( uNight > 0.001 ) nightCol = cotNightSky( normalize( direction ), vSunDirection, uGalaxy, uNebula, uPlanetR, uPlanetTint, uEarth ) * uNight;
+	if ( uNight > 0.001 ) nightCol = cotNightSky( normalize( direction ), vSunDirection, uGalaxy, uNebula, uPlanetR, uPlanetTint, uEarth, 1.0 ) * uNight;
 	gl_FragColor = vec4( max( skyCol, vec3( 0.0 ) ) * uSkyIntensity + nightCol, 1.0 );`,
     );
     if (patched === shader.fragmentShader) {
       throw new Error('sky.ts: radiance-scale injection anchor not found in Sky shader');
     }
     shader.fragmentShader = `uniform float uSkyIntensity;\nuniform float uNight;\nuniform float uGalaxy;\nuniform vec3 uNebula;\nuniform float uPlanetR;\nuniform vec3 uPlanetTint;
-uniform float uEarth;\n${NIGHT_SKY_GLSL}\n${patched}`;
+uniform float uEarth;\nuniform vec4 uStarLaw;\nuniform vec4 uStarShape;\n${NIGHT_SKY_GLSL}\n${patched}`;
   };
   sky.material.needsUpdate = true;
 }
@@ -1097,6 +1176,7 @@ export function sampleHorizonColor(
   const sampleSky = new Sky();
   sampleSky.scale.setScalar(ENV_SKY_SCALE);
   configureSkyUniforms(sampleSky, sunDir, preset);
+  applyStarLaw(sampleSky, preset);
   sampleScene.add(sampleSky);
 
   // Horizontal camera looking directly away from the sun's azimuth, at the horizon.
@@ -1204,6 +1284,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   const sky = new Sky();
   sky.scale.setScalar(SKY_DOME_SCALE);
   configureSkyUniforms(sky, sunDir, preset);
+  applyStarLaw(sky, preset);
   scene.add(sky);
   // Publish the live sun direction for post.ts's directional aerial scatter
   // (same Vector3 instance — applyPreset mutates it in place, so the post
@@ -1239,6 +1320,10 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       // shared by reference with the Preetham dome: configureSkyUniforms refreshes both at once
       uSkyIntensity: skyUniforms.uSkyIntensity, uNight: skyUniforms.uNight, uGalaxy: skyUniforms.uGalaxy,
       uNebula: skyUniforms.uNebula, uEarth: skyUniforms.uEarth, uPlanetR: skyUniforms.uPlanetR, uPlanetTint: skyUniforms.uPlanetTint,
+      uStarLaw: skyUniforms.uStarLaw, uStarShape: skyUniforms.uStarShape,
+      // 2026-10-09: the cloud layer's resolved history (its transmittance hides the stars), bound per draw below
+      tStarClouds: { value: null }, uStarClouds: { value: new THREE.Vector4(0, 0, 1, 1) },
+      uStarCloudCut: { value: new THREE.Vector2(STAR_CLOUD_CUT[0], STAR_CLOUD_CUT[1]) }, uStarCloudsOn: { value: 0 },
     },
     side: THREE.BackSide,
     depthWrite: false,
@@ -1250,6 +1335,25 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   atmosphereDome.visible = false;
   sky.visible = true;
   scene.add(atmosphereDome);
+  // 2026-10-09 (the skies lane): at night the dome hides its stars behind the cloud layer. The layer resolves its history
+  // before the scene draws and composites it in this same pass (screen uv over the scene target), so the dome samples it
+  // at its own fragment through the current viewport; off by day, off for any other draw (the environment bake shares
+  // the material: onAfterRender clears the binding).
+  const starViewport = new THREE.Vector4();
+  atmosphereDome.onBeforeRender = (r) => {
+    const u = atmosphereMaterial.uniforms;
+    const history = (u.uNight.value as number) > 0.001 ? volumetricClouds?.historyTexture ?? null : null;
+    u.uStarCloudsOn.value = history ? 1 : 0;
+    if (!history) return;
+    u.tStarClouds.value = history;
+    r.getCurrentViewport(starViewport);
+    (u.uStarClouds.value as THREE.Vector4).set(starViewport.x, starViewport.y, 1 / Math.max(1, starViewport.z), 1 / Math.max(1, starViewport.w));
+    (u.uStarCloudCut.value as THREE.Vector2).set(lightTune('STAR_CLOUD_FROM', STAR_CLOUD_CUT[0]), lightTune('STAR_CLOUD_TO', STAR_CLOUD_CUT[1]));
+  };
+  atmosphereDome.onAfterRender = () => {
+    atmosphereMaterial.uniforms.uStarCloudsOn.value = 0;
+    atmosphereMaterial.uniforms.tStarClouds.value = null;
+  };
   const atmosphereState: AtmospherePublishedState = {
     active: false, skyView: atmosphereLuts?.skyView.texture ?? null, viewHeightKm: 0.05, sunDir,
     knee: new THREE.Vector3(SKY_KNEE, SKY_KNEE_RANGE, SKY_KNEE_FALLOFF), skyIntensity: 1, horizonLum: 0.45,
@@ -1948,6 +2052,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
         THREE.MathUtils.degToRad(preset.sunAzimuthDeg),
       );
       configureSkyUniforms(sky, sunDir, preset);
+      applyStarLaw(sky, preset);
       if (refreshAtmosphere()) horizonColor.copy(capColorLuminance(atmosphereLuts!.summary.horizon.clone(), HORIZON_LUM_CAP));
       else horizonColor.copy(sampleHorizonColor(renderer, sunDir, preset));
       atmosphereKeySuffix = environmentKeySuffix();
