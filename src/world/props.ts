@@ -10703,6 +10703,8 @@ ${snowCap ? `
       const meta = dPools.get(kind)?.meta;
       return !!meta && meta.cls === 'break' && (meta.mat === 'vehicle' || !!DESTRUCTIBLE_BUILDING_TYPES[kind] || kind === 'stall' || kind === 'tent');
     },
+    // canvas drapes and drags as cloth (wave 352: "canvas never reads as cloth")
+    cloth: (kind) => kind === 'tent' || (dPools.get(kind)?.meta.mat as string | undefined) === 'canvas',
   });
 
   // Loose bodies can cross the shell hash's 8 m cells. Re-key only on a cell

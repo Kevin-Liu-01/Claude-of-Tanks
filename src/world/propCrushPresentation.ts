@@ -44,6 +44,8 @@ export interface PropCrushHost {
   near(minX: number, minZ: number, maxX: number, maxZ: number, out: number[]): number[];
   /** Whether a kind gives under a hull as its own copy (the map vehicles, the small buildings, the stalls, the tents). */
   eligible(kind: string): boolean;
+  /** Whether a kind is canvas (a tent: it drapes and drags as cloth under the hull). */
+  cloth?(kind: string): boolean;
 }
 
 /** A crush event the presentation never pressed sweeps a hull across the prop over this long (s). */
@@ -145,7 +147,7 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     source.mesh.instanceMatrix.needsUpdate = true;
     const target: CrushTarget = {
       index, kind: rec.kind, mesh, geometry, rest: (src.getAttribute('position') as THREE.BufferAttribute).array as Float32Array,
-      field: createCrushField(hw, hl, box.max.y), inverse: new THREE.Matrix4().copy(matrix).invert(), fromBroken: source.broken,
+      field: createCrushField(hw, hl, box.max.y, undefined, host.cloth?.(rec.kind) ?? false), inverse: new THREE.Matrix4().copy(matrix).invert(), fromBroken: source.broken,
       hw, hl, dirty: false, idle: 0, frozen: false, sweep: null,
     };
     targets.set(index, target);

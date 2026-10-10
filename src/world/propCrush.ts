@@ -35,10 +35,15 @@ const SIDE_M = 0.5;
 const SPLAY_M = 0.22;
 /** The droop: no cell stands higher than its neighbour's cap plus this much a metre between them. */
 const DROOP_SLOPE = 1.15;
-/** What is left of the height over a cap (the pancake: the body above it squashed into this share of itself). */
-const SQUASH = 0.11;
-/** The crumple's breakup of a pressed surface (m). */
-const NOISE_M = 0.07;
+/** What is left of the height over a cap (the pancake: the body above it squashed into this share of itself; wave 352:
+ *  "a tidy flat heap" — a crushed body keeps some of its bulk). */
+const SQUASH = 0.17;
+/** The crumple's breakup of a pressed surface (m), and how far a pressed body's sides bulge out as it flattens (m). */
+const NOISE_M = 0.1;
+const BULGE_M = 0.14;
+/** Canvas (wave 352: "canvas never reads as cloth"): it lies flat, folds in soft waves, drapes down wide and is dragged on
+ *  with the hull. */
+const CLOTH = { squash: 0.06, noise: 0.03, fold: 0.07, foldK: 5.5, droop: 0.65, push: 0.55, lift: 1 };
 
 /** One prop's field. */
 export interface CrushField {
@@ -59,17 +64,19 @@ export interface CrushField {
   /** Pressed at all, and whether the droop is stale. */
   touched: boolean;
   stale: boolean;
+  /** Canvas: it drapes and drags (CLOTH). */
+  readonly cloth: boolean;
 }
 
 /** A field over a footprint of half extents (hw, hl) about the prop's origin, its rest top `top`. */
-export function createCrushField(hw: number, hl: number, top: number, cell = CRUSH_CELL_M): CrushField {
+export function createCrushField(hw: number, hl: number, top: number, cell = CRUSH_CELL_M, cloth = false): CrushField {
   const x0 = -hw - MARGIN_M, z0 = -hl - MARGIN_M;
   const nx = Math.max(2, Math.ceil((2 * (hw + MARGIN_M)) / cell) + 1);
   const nz = Math.max(2, Math.ceil((2 * (hl + MARGIN_M)) / cell) + 1);
   const n = nx * nz;
   const cap = new Float32Array(n).fill(Infinity);
   return { x0, z0, nx, nz, cell, top: Math.max(0.2, top), cap, eff: new Float32Array(n).fill(Infinity),
-    pushX: new Float32Array(n), pushZ: new Float32Array(n), touched: false, stale: false };
+    pushX: new Float32Array(n), pushZ: new Float32Array(n), touched: false, stale: false, cloth };
 }
 
 /** Whether a hull rectangle (centre, unit forward, half extents; the prop's frame) meets the prop's box (half extents
@@ -108,14 +115,16 @@ export function pressField(f: CrushField, cx: number, cz: number, fx: number, fz
       const k = j * f.nx + i;
       let cap = Infinity, push = 0, lat = 0;
       if (av <= halfWidth && u <= halfLength) {
-        // under the hull: pressed to the floor, the ramp of its front edge letting a little more stand there
+        // under the hull: pressed to the floor, the ramp of its front edge letting a little more stand there (canvas is
+        // dragged under the tracks too: it keeps being pulled on along the hull's travel)
         const s = halfLength - u;
         cap = FLOOR_M + RAMP_H * Math.max(0, 1 - s / RAMP_M);
+        if (f.cloth) push = CLOTH.push * Math.max(0, 1 - s / (2 * halfLength)) * 0.8;
       } else if (av <= halfWidth) {
         // the band ahead of its front: the glacis meets it, shoves it on and bends it down a little
         const w = 1 - (u - halfLength) / AHEAD_M;
         cap = f.top * (1 - AHEAD_SAG * w);
-        push = PUSH_M * w;
+        push = (f.cloth ? CLOTH.push : PUSH_M) * w;
       } else if (u <= halfLength) {
         // beside the tracks: splayed outward and pressed partway
         const w = 1 - (av - halfWidth) / SIDE_M;
@@ -143,7 +152,8 @@ export function pressField(f: CrushField, cx: number, cz: number, fx: number, fz
 export function settleField(f: CrushField): void {
   const { nx, nz, cap, eff } = f;
   eff.set(cap);
-  const d1 = DROOP_SLOPE * f.cell, d2 = DROOP_SLOPE * f.cell * Math.SQRT2;
+  const slope = f.cloth ? CLOTH.droop : DROOP_SLOPE;
+  const d1 = slope * f.cell, d2 = slope * f.cell * Math.SQRT2;
   for (let j = 0; j < nz; j++) {
     for (let i = 0; i < nx; i++) {
       const k = j * nx + i;
@@ -204,13 +214,21 @@ export function deformPositions(f: CrushField, rest: ArrayLike<number>, out: Flo
     let cap = sample(f, f.eff, x, z, high);
     let ny = y, nx = x, nz = z;
     if (cap < high) {
-      // the crumple's breakup where it is pressed (more where it was pressed further)
+      // the crumple's breakup where it is pressed (more where it was pressed further); canvas in soft folds instead
       const pressed = Math.max(0, Math.min(1, (f.top - cap) / f.top));
-      cap += hash3(x, y, z) * NOISE_M * pressed;
-      if (y > cap) ny = cap + (y - cap) * SQUASH;
+      if (f.cloth) cap += (Math.sin(x * CLOTH.foldK + z * 1.7) * 0.7 + Math.sin(z * CLOTH.foldK * 0.8 - x) * 0.3) * CLOTH.fold * pressed
+        + hash3(x, y, z) * CLOTH.noise * pressed;
+      else cap += hash3(x, y, z) * NOISE_M * pressed;
+      if (y > cap) {
+        ny = cap + (y - cap) * (f.cloth ? CLOTH.squash : SQUASH);
+        // a body pressed flat bulges out at its sides (its roof and doors spread), canvas spreads more
+        const spread = (f.cloth ? 1.5 : 1) * BULGE_M * pressed * Math.min(1, (y - cap) / Math.max(0.3, f.top * 0.6));
+        const r = Math.hypot(x, z) || 1;
+        nx += (x / r) * spread * Math.min(1, Math.abs(x) * 2); nz += (z / r) * spread * 0.35;
+      }
       const px = sample(f, f.pushX, x, z, 0), pz = sample(f, f.pushZ, x, z, 0);
       if (px !== 0 || pz !== 0) {
-        const lift = Math.max(0.25, Math.min(1, (y - FLOOR_M) / Math.max(0.4, f.top * 0.75)));
+        const lift = f.cloth ? CLOTH.lift : Math.max(0.25, Math.min(1, (y - FLOOR_M) / Math.max(0.4, f.top * 0.75)));
         nx += px * lift; nz += pz * lift;
       }
     }
