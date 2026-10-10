@@ -277,7 +277,8 @@ function sampleSupport(field,row) {
 }
 function verifySupport(donor,receipt,field) {
   const parts=partsOf(donor),thresholds=parts.filter(g=>g.userData.structureSupport?.part==='entry-threshold');
-  const roles={containerRow:{container:6},gantry:{foot:2},stack:{plinth:1},shed:{platform:1},
+  // (the map-revival lane, 2026-10-09: Ironworks is 1945, so its row's six seats are period freight on their cores)
+  const roles={containerRow:{freight:6},gantry:{foot:2},stack:{plinth:1},shed:{platform:1},
     factory:{plinth:1,threshold:thresholds.length},warehouse:{plinth:1,dock:1,threshold:thresholds.length}};
   const counts={};for(const row of receipt.support.supports)counts[row.role]=(counts[row.role]??0)+1;
   assert.deepEqual(counts,roles[donor.kind],'actual foundation/foot/threshold census, not complete collision-band height');
@@ -287,7 +288,7 @@ function verifySupport(donor,receipt,field) {
     used.add(matchingSupport(parts,used,row,epsilon));
     const {min,max}=sampleSupport(field,row);
     assert.ok(row.min[1]-min<=-.03+epsilon,'whole sampled foot bottom embedded, not floating');
-    if(row.role==='container')assert.ok(max-row.min[1]<=.12+epsilon,'container is not buried using its2.6m wall height');
+    if(row.role==='container'||row.role==='freight')assert.ok(max-row.min[1]<=.12+epsilon,'container is not buried using its2.6m wall height');
     else assert.ok(row.max[1]-max>=.03-epsilon,'actual support/entry top remains exposed');
   }
   for(const g of thresholds)assert.ok(used.has(g),'every actual entry threshold checked');
@@ -417,7 +418,7 @@ try {
     // exact) and every other row keeps the exact contract.
     const yardOf=(state,row)=>Object.values(state.yard?.perMaterial??{}).find(y=>'props-bucket-'+y.bucket===row.name)??null;
     const rows=(state)=>property==='inventory'?state.inventory.map(row=>{const y=yardOf(state,row);if(!y)return row;
-      assert.ok(row.budget.vertices>y.vertices&&y.vertices>0,`${row.name} carries the yard's ${y.vertices} vertices`);
+      assert.ok(row.budget.vertices>=y.vertices&&y.vertices>0,`${row.name} carries the yard's ${y.vertices} vertices`); // (2026-10-09: the steel bucket may hold only the yard's drums now the 1945 row is period freight)
       return {...row,budget:{parts:row.budget.parts,vertices:row.budget.vertices-y.vertices,indices:row.budget.indices}};}):state[property];
     assert.deepEqual(rows(results[1]),rows(results[0]),`${property}: exact enabled/opt-out full producer contract`);
     if(property==='inventory') {
