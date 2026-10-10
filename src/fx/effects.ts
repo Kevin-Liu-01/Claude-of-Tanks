@@ -45,7 +45,7 @@ import { battleLightTintFromRig } from './sceneLightTint.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
 import {
   armorHit, blastScale, columnPuff as mediaColumnPuff, exhaustPuff, craterEjecta, dustSurge, fragmentStrike, groundBurst, isExplosive,
-  kineticStrike, killFireball, muzzleBlast as mediaMuzzleBlast, plateBurst, smolderPuff as mediaSmolderPuff, trackSkirt,
+  kineticStrike, killDust, killFireball, muzzleBlast as mediaMuzzleBlast, plateBurst, smolderPuff as mediaSmolderPuff, trackSkirt,
   waterBurst,
   type BlastContext,
 } from './blastRecipes.ts';
@@ -3069,8 +3069,11 @@ function* createFxSteps(
     burn: boolean,
     dk: number,
     birthOffset: number,
+    plain = false,
   ): void {
-    const count = burn ? 1 : 3;
+    // (fx 8o, wave 356) a plain kill (no ammunition explosion): two small flashes, not the cook-off's bulb
+    const count = burn ? 1 : plain ? 2 : 3;
+    if (plain) dk *= 0.55;
     for (let i = 0; i < count; i++) {
       const a = rng() * Math.PI * 2, b = rng() * Math.PI;
       const v = 2 + rng() * 4;
@@ -3129,8 +3132,11 @@ function* createFxSteps(
     fireS: number,
     dk: number,
     birthOffset: number,
+    plain = false,
   ): void {
-    const count = rack ? 12 : (burn ? 6 : 9);
+    // (fx 8o, wave 356: "a flat orange hit-flash disc at 0.20-0.50 s" on a plain kill) a plain kill licks three short
+    // tongues out of its media fireball, whose own heat and inner glow carry the flash with volume and falloff
+    const count = rack ? 12 : (burn ? 6 : plain ? 3 : 9);
     for (let i = 0; i < count; i++) {
       const a = rng() * Math.PI * 2, b = rng() * Math.PI;
       const v = (3.0 + rng() * 4.2) * fireS;
@@ -3142,7 +3148,7 @@ function* createFxSteps(
       _puffO.vel[2] = Math.sin(a) * Math.sin(b) * v;
       // (fx 8i, wave 334a killcam: "a cream-salmon exposure wash at 0.4 s") smaller, shorter tongues: the media
       // fireball carries the body, these only lick out of it
-      _puffO.life = 0.45 + rng() * 0.6;
+      _puffO.life = plain ? 0.18 + rng() * 0.2 : 0.45 + rng() * 0.6;
       _puffO.size0 = (1.4 + rng() * 0.8) * fireS * dk; _puffO.size1 = (3.0 + rng() * 1.5) * fireS * dk;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 4;
       col3(0xffd865, _puffO.col0); col3(0xd8420a, _puffO.col1);
@@ -3265,20 +3271,24 @@ function* createFxSteps(
     rack: boolean,
     burn: boolean,
     birthOffset: number,
+    plain = false,
   ): void {
-    const skirtCount = burn ? 4 : 10;
+    // (fx 8o, wave 356: "a flat orange hit-flash disc at 0.20-0.50 s" on a plain kill) a plain kill's fire licks out of
+    // the hull in three short tongues, not a cook-off's ring of flame jetting along the ground
+    const skirtCount = burn ? 4 : plain ? 3 : 10;
+    const skirtK = plain ? 0.6 : 1;
     for (let i = 0; i < skirtCount; i++) {
       const a = rng() * Math.PI * 2;
       const r = 1.2 + rng() * 1.0;
       _puffO.pos[0] = pos.x + Math.cos(a) * r; _puffO.pos[1] = gy + 0.9 + rng() * 0.4; _puffO.pos[2] = pos.z + Math.sin(a) * r;
-      _puffO.vel[0] = Math.cos(a) * (3.5 + rng() * 3);
+      _puffO.vel[0] = Math.cos(a) * (3.5 + rng() * 3) * skirtK;
       _puffO.vel[1] = 1.2 + rng() * 1.2;
-      _puffO.vel[2] = Math.sin(a) * (3.5 + rng() * 3);
-      _puffO.life = 0.55 + rng() * 0.5;
-      _puffO.size0 = 0.8 + rng() * 0.4; _puffO.size1 = 2.2 + rng() * 0.8;
+      _puffO.vel[2] = Math.sin(a) * (3.5 + rng() * 3) * skirtK;
+      _puffO.life = (0.55 + rng() * 0.5) * skirtK;
+      _puffO.size0 = (0.8 + rng() * 0.4) * skirtK; _puffO.size1 = (2.2 + rng() * 0.8) * skirtK;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 4;
       col3(0xffc040, _puffO.col0); col3(0xff4a08, _puffO.col1);
-      _puffO.alpha = 0.55; _puffO.grav = 1.5; _puffO.birthOffset = birthOffset - rng() * 0.15;
+      _puffO.alpha = plain ? 0.4 : 0.55; _puffO.grav = 1.5; _puffO.birthOffset = birthOffset - rng() * 0.15;
       particles.emit('fire', _puffO);
     }
     const ringFireCount = rack ? 4 : 0;
@@ -3491,8 +3501,10 @@ function* createFxSteps(
     rack: boolean,
     burn: boolean,
     birthOffset: number,
+    plain = false,
   ): void {
-    const count = rack ? 30 : (burn ? 5 : 14);
+    // (fx 8o) a plain kill throws a few small pieces, not a cook-off's shower
+    const count = rack ? 30 : (burn ? 5 : plain ? 6 : 14);
     for (let i = 0; i < count; i++) {
       const a = rng() * Math.PI * 2;
       const tilt = 0.25 + rng() * 0.85;
@@ -3522,8 +3534,9 @@ function* createFxSteps(
     rack: boolean,
     burn: boolean,
     birthOffset: number,
+    plain = false,
   ): void {
-    const count = rack ? 5 : (burn ? 0 : 2);
+    const count = rack ? 5 : (burn || plain ? 0 : 2);
     for (let i = 0; i < count; i++) {
       const a = rng() * Math.PI * 2;
       const tilt = 0.25 + rng() * 0.5;
@@ -3709,26 +3722,33 @@ function* createFxSteps(
   ): void {
     const rack = cause === 'ammorack';
     const burn = cause === 'fire';
+    // (fx 8o, wave 356's critics: a plain kill's blast "far too big for a kill without an ammunition explosion") a plain
+    // kill on the media tier: a short flash venting from the hull, no blast wave, a few small pieces; the Studio's shell
+    // burst on open ground (cause 'shot', shellBurst) keeps its blast
+    const plain = cause === 'shot' && !shellBurst && !!blast;
     const gy = groundY(pos.x, pos.z);
     const cy = Math.max(pos.y, gy) + 1.2;
     // distance-compensated spectacle (r7: a 244 m kill read as a ~40 px
     // orange puff) — scale the big volumetric cards up with camera distance
     const dk = distBoost(pos.x, cy, pos.z);
-    emitDestructionFlash(pos, cy, burn, dk, birthOffset);
+    emitDestructionFlash(pos, cy, burn, dk, birthOffset, plain);
     if (blast) {
       // destruction-fx lane: the fireball body, the eruption and the column's first seconds are simulated media; the
       // additive fire, the hull fire, the debris and the light stay the battle's
-      emitDestructionFirePockets(pos, cy, rack, burn, burn ? 0.7 : 1, dk, birthOffset);
-      killFireball(blast, pos.x, cy, pos.z, rack, birthOffset);
-      emitDestructionHullFire(pos, gy, cy, rack, burn, birthOffset);
-      // a hull's blast goes up more than out: a modest skirt (round 2's ring hid the hull for seconds)
-      dustSurge(blast, pos.x, gy, pos.z, burn ? 0.6 : 0.65 * Math.cbrt(cookOffChargeKg(55)), classifyTerrain(heightField, pos.x, pos.z),
-        birthOffset);
-      spawnScorch(pos.x, pos.z, (burn ? 3.6 : 5.4) + rng() * 1.4);
-      if (!burn) spawnShockRing(pos.x, pos.z, Math.max(0, -birthOffset));
-      sparkFan(_sv.set(pos.x, cy, pos.z), _UP, rack ? 16 : (burn ? 5 : 10), 18, 0.85, 0xffc470, 0.55, 0.05, 0.034, birthOffset, 0.35);
-      emitDestructionDebrisShower(pos, gy, cy, rack, burn, birthOffset);
-      emitDestructionLargeChunks(pos, gy, cy, rack, burn, birthOffset);
+      emitDestructionFirePockets(pos, cy, rack, burn, burn ? 0.7 : plain ? 0.55 : 1, dk, birthOffset, plain);
+      killFireball(blast, pos.x, cy, pos.z, rack ? 'ammorack' : burn ? 'fire' : plain ? 'shot' : 'burst', birthOffset);
+      emitDestructionHullFire(pos, gy, cy, rack, burn, birthOffset, plain);
+      // a hull's blast goes up more than out: a modest skirt (round 2's ring hid the hull for seconds); (fx 8o, wave 356:
+      // "a flat, lingering dust sheet at 3-4 s") a kill's dust rolls up into billows and thins (killDust); the shell
+      // burst's stays the ground burst's skirt
+      const surface = classifyTerrain(heightField, pos.x, pos.z);
+      if (shellBurst) dustSurge(blast, pos.x, gy, pos.z, 0.65 * Math.cbrt(cookOffChargeKg(55)), surface, birthOffset);
+      else killDust(blast, pos.x, gy, pos.z, rack ? 0.65 * Math.cbrt(cookOffChargeKg(55)) : burn ? 0.6 : 0.8, surface, birthOffset);
+      spawnScorch(pos.x, pos.z, (burn ? 3.6 : plain ? 3.4 : 5.4) + rng() * 1.4);
+      if (rack || shellBurst) spawnShockRing(pos.x, pos.z, Math.max(0, -birthOffset));
+      sparkFan(_sv.set(pos.x, cy, pos.z), _UP, rack ? 16 : (burn ? 5 : plain ? 6 : 10), 18, 0.85, 0xffc470, 0.55, 0.05, 0.034, birthOffset, 0.35);
+      emitDestructionDebrisShower(pos, gy, cy, rack, burn, birthOffset, plain);
+      emitDestructionLargeChunks(pos, gy, cy, rack, burn, birthOffset, plain);
       if (rack) emitDestructionHatchSlab(pos, gy, cy, birthOffset);
       // (wave 266: a flat orange disc flooded the ground round the hull, five times the sun under the light) the fireball
       // is what glows; the light it throws on the ground is a warm pool that dies with it
@@ -3736,8 +3756,8 @@ function* createFxSteps(
       // fireball's own heat — under a second, a warm yellow-orange — instead of the kill light's 1.9 s orange decay; the
       // hull fire's own flicker carries the light after it
       flashLight(lightStates[1], _sv.set(pos.x, cy + 3.2, pos.z),
-        EXPLOSION_LIGHT_PEAK * (burn ? 0.2 : rack ? 0.42 : 0.3), Math.max(0, -birthOffset), burn ? 0.9 : 0.7, 2.2,
-        KILL_POOL_LIGHT_HEX);
+        EXPLOSION_LIGHT_PEAK * (burn || plain ? 0.2 : rack ? 0.42 : 0.3), Math.max(0, -birthOffset),
+        burn ? 0.9 : plain ? 0.5 : 0.7, 2.2, KILL_POOL_LIGHT_HEX);
       // the column takes hold out of the fireball's soot over the first seconds (round 2 backdated it, so a column stood
       // over the hull in the kill's first frame; wave 266: six bodies on a fixed beat rose as a chain of beads)
       const colScale = (burn ? 1.45 : 1.3) * dk;

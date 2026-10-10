@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { VOLUME_ATLAS, createVolumeMedia, makeVolumePuff, volumePositionAt } from './volumeMedia.ts';
 import { createDebrisChunks, makeChunkPiece, CHUNK_SHAPES } from './debrisChunks.ts';
-import { groundBurst, kineticStrike, muzzleBlast, killFireball, columnPuff, dustSurge, isExplosive, blastScale, craterEjecta,
+import { groundBurst, kineticStrike, muzzleBlast, killFireball, killDust, columnPuff, dustSurge, isExplosive, blastScale, craterEjecta,
   trackSkirt, exhaustPuff, armorHit, plateBurst, smolderPuff, fragmentStrike } from './blastRecipes.ts';
 import { SURFACE_KINDS, SURFACE_LOOKS, classifyTerrain, surfaceForMaterial, linearHex } from './surfaceLooks.ts';
 import { mulberry32 } from './particles.ts';
@@ -395,7 +395,7 @@ function captureContext(seed) {
   muzzleBlast(mzHigh.ctx, { x: 0, y: 9, z: 0, dx: 1, dy: 0, dz: 0, caliberMm: 120, surface: 'sand' });
   assert.ok(!mzHigh.log.media.some((m) => m.medium === 'burst'), 'a high muzzle lifts none');
   const kf = captureContext(4);
-  killFireball(kf.ctx, 0, 1, 0, true, 0);
+  killFireball(kf.ctx, 0, 1, 0, 'ammorack', 0);
   columnPuff(kf.ctx, 0, 0, 0, 1, 1.3, 0);
   dustSurge(kf.ctx, 0, 0, 0, 2, 'soil', 0);
   assert.ok(kf.log.media.some((m) => m.heat > 1), 'the fireball burns inside its media');
@@ -408,6 +408,27 @@ function captureContext(seed) {
   assert.ok(fire.length >= 5 && Math.max(...fire.map((m) => m.size1)) >= 12, 'an ammo rack fireball outgrows the hull');
   assert.ok(fire.every((m) => m.cool >= 0.9), 'its glow is gone within a second or two (a long dull glow read brown)');
   assert.ok(fire.every((m) => m.heat <= 1.4), 'orange-yellow at the heart, never white (b5: heat ~2 saturated the ramp)');
+  assert.ok(kf.log.glows === 1 && kf.log.glowR >= 6, 'a cook-off\'s flash lights the media round the hull from inside');
+  // (fx 8o, wave 356's critics on a plain kill: "far too big for a kill without an ammunition explosion", "a flat orange
+  // hit-flash disc at 0.20-0.50 s", "a flat, lingering dust sheet at 3-4 s") a plain kill's fire is a short flash about
+  // the hull's width that burns out within half a second and lights the media round it from inside; its dust rolls up
+  // into billows that thin out within a few seconds
+  {
+    const pk = captureContext(4);
+    killFireball(pk.ctx, 0, 1, 0, 'shot', 0);
+    const pf = pk.log.media.filter((m) => m.heat > 1);
+    assert.ok(pf.length <= 3 && Math.max(...pf.map((m) => m.size1)) <= 6, `a plain kill's fire is about the hull's width (${pf.length} lobes, ${Math.max(...pf.map((m) => m.size1)).toFixed(1)} m)`);
+    assert.ok(pf.every((m) => m.cool >= 3 && m.life <= 2.4), 'and burns out fast');
+    assert.ok(Math.max(...pf.map((m) => m.size1)) < 0.5 * Math.max(...fire.map((m) => m.size1)), 'the big fireball is the cook-off\'s');
+    assert.ok(pk.log.chunk.length <= 5 && pk.log.chunk.every((k) => k.scale <= 0.25), `a few small pieces (${pk.log.chunk.length})`);
+    assert.ok(pk.log.glows === 1 && pk.log.glowR <= 3.5 && pk.log.glowDur <= 0.5, 'its flash lights the media round the hull from inside');
+    const dust = (s) => { const c = captureContext(6); killDust(c.ctx, 0, 0, 0, s, 'soil', 0); return c.log.media; };
+    const kd = dust(0.8), cd = dust(0.65 * Math.cbrt(14));
+    assert.ok(kd.every((m) => m.medium === 'billow' && m.aspect <= 1.5), 'a kill\'s dust billows: round cards in the turbulent medium, no flat sheet');
+    assert.ok(kd.every((m) => m.vy >= 0.8 && m.rise >= 0.35), 'it rolls up as it stalls');
+    assert.ok(kd.every((m) => m.density <= 0.5 && m.fadeOut <= 0.35 && m.life <= 5.5), 'thin, thinning from a third of its life, gone within five seconds');
+    assert.ok(kd.length < cd.length && Math.max(...kd.map((m) => m.size1)) < Math.max(...cd.map((m) => m.size1)), 'a plain kill raises less than a cook-off');
+  }
   const soot = kf.log.media.filter((m) => m.heat < 1 && m.birthOffset > 0.15 && m.r0 < 0.1);
   assert.ok(soot.length >= 4, 'black soot rolls out of the fire after it');
   for (const m of kf.log.media.filter((q) => q.medium === 'billow')) {
@@ -496,22 +517,25 @@ function captureContext(seed) {
     media: rec('media'), chunk: rec('chunk'), flash: rec('flash'), fire: rec('fire'), sparks: rec('sparks'), jet: rec('jet'),
     shockRing: rec('ring'), lightPulse: rec('pulse'), glow: rec('glow') };
   const G = 3.019;
-  killFireball(C, 190, G + 1.2, 390, true, 0);
-  dustSurge(C, 190, G, 390, 0.65 * Math.cbrt(14), 'soil', 0);
+  killFireball(C, 190, G + 1.2, 390, 'ammorack', 0);
+  killDust(C, 190, G, 390, 0.65 * Math.cbrt(14), 'soil', 0);
   plateBurst(C, { x: 190.3, y: G + 1.2, z: 391.9, nx: 0, ny: 0.2, nz: 1, munition: 'he', chargeKg: 3.4, ground: 'soil', birthOffset: 0 });
   for (let i = 0; i < 3; i++) columnPuff(C, 190, G, 390, 1, 1.3, 0.7 + i * 0.45);
   columnPuff(C, 190, G, 390, 2, 1.3, 0);
   smolderPuff(C, 190, G + 1, 390, 0.7, 0);
   exhaustPuff(C, 187, G + 1.6, 390, 0, 0, 1, 0, 0.15, true, 0);
   fragmentStrike(C, 190, G + 1, 390, 1, 0, 0, 0);
-  killFireball(C, 190, G + 1.2, 390, false, 0);
+  killFireball(C, 190, G + 1.2, 390, 'shot', 0);
   const digest = createHash('sha256').update(JSON.stringify(calls)).digest('hex').slice(0, 16);
   // (fx 8, re-pinned deliberately: the killcam critics after 7d/7e — "a flat salmon wash over the tank at 0.6-1.8 s",
   // "black smoke hanging in front of the camera instead of climbing away" — the kill fireball cools within a second and
   // its soot climbs away; the HE hit's light on the hull is the flash's quarter second. Same calls, same draws.)
   // (fx 8h, re-pinned deliberately: the burning column leaves the hull at 3.2-4.8 m/s and starts narrower, so it climbs
   // out of the killcam's frame instead of standing round it)
-  assert.equal(`${calls.length} ${draws} ${digest}`, '131 1628 f4ef2bbd29813e8e',
+  // (fx 8o, re-pinned deliberately: wave 356's critics on a plain kill — "far too big for a kill without an ammunition
+  // explosion", "a flat orange hit-flash disc", "a flat, lingering dust sheet" — the plain kill's fireball is a short
+  // flash about the hull's width, every kill's flash glows inside the media, and a kill's dust is killDust's billows)
+  assert.equal(`${calls.length} ${draws} ${digest}`, '117 1408 4ff1c6a1a5d80f34',
     "the killcam's recipes are round 8's to the last draw (re-pin only for a deliberate change to the kill path)");
 }
 
