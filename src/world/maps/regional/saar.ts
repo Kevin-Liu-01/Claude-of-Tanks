@@ -327,7 +327,8 @@ function sawtoothHall(ctx: RegionalBuildContext, wallH: number, toothMax: number
       // shattered pane or two gone to the dark behind
       for (let u = -W / 2 + 1.2; u < W / 2 - 0.8; u += 1.2) faceBox(sink, 'structureWood', up, u, y0 + rise * 0.5, 0.03, 0.08, rise * 0.75, 0.06, { colour: IRON, decor: true });
       for (const yy of [y0 + rise * 0.125, y0 + rise * 0.875]) faceBox(sink, 'structureWood', up, 0, yy, 0.04, W - 0.8, 0.09, 0.08, { colour: IRON, decor: true });
-      if (!mobile) for (let n2 = Math.floor(look() * 3); n2 > 0; n2--) facePanel(sink, 'dark', up, (look() - 0.5) * (W - 3), y0 + rise * 0.5, 0.02, 1.0, rise * 0.7, { decor: true });
+      // (the phones draw the same look stream: the panes' draws made and the panes dropped there, DESTRUCTION.md §8.4)
+      sink.dressing(mobile, () => { for (let n2 = Math.floor(look() * 3); n2 > 0; n2--) facePanel(sink, 'dark', up, (look() - 0.5) * (W - 3), y0 + rise * 0.5, 0.02, 1.0, rise * 0.7, { decor: true }); });
     }
     // the blue-black engineering brick of the plinth, the downpipes from the parapet's hoppers, the works' soot run down
     // the long walls from the eaves (wave 176: "no soot, downpipes or plinth")
@@ -631,7 +632,9 @@ const saarWaterTower: RegionalBuilder = (ctx) => {
   // the shaft on its plinth stand as the Ruhr kit's tower stood (its radius, its octagonal plinth, its 11.5 m head): the
   // ground contact a tower's base offers the battle (structureCollision.ts) is unchanged, only the tank house's look is
   // the Saar's (a 60-seed pacing control: the taller, narrower first draft's contact shortened the median 194 -> 170 s)
-  const T = Math.max(1.6, half - 0.35), R = Math.max(1.5, Math.min(2.2, half - 0.75)), H = 11.5, SEG = 16, turn = Math.PI / SEG;
+  // (the tank house's drum at most 7.2 m across: a shaft the damage kit topples (shell.ts readShaft, 8 m at most); the
+  // map's 5.4 m tower lot draws a 4.7 m drum, as before)
+  const T = Math.min(3.6, Math.max(1.6, half - 0.35)), R = Math.max(1.5, Math.min(2.2, half - 0.75)), H = 11.5, SEG = 16, turn = Math.PI / SEG;
   sink.cylinder('stone', [0, -0.4, 0], 'y', 0.9, R + 0.25, 8, {}, R + 0.2, true, Math.PI / 8);
   sink.cylinder('stone', [0, 0.5, 0], 'y', H - 0.5, R, SEG, {}, R * 0.94, true, turn);
   for (const y of [3.4, 7.0, 10.6]) {

@@ -5637,7 +5637,8 @@ void splatCompute() {
         if (nrmOn) n.xy += vec2(stoneN - 0.5, 0.5 - stoneN) * 0.40 * stoneVis * inField * landW;
         // (round 4, wave 223: "flat … plates") a works' slag lot is tipped and trodden ground, not a sheet: its relief in
         // the light at ~0.7 and ~2 m (two octaves, gone as the footprint outgrows them)
-        if (nrmOn && uLandE.w > 1.5) {
+        // (2026-10-10, the landing: High only, and read only where they show — tileVis(0.8) is 0 past a 0.2 m footprint)
+        if (nrmOn && uLandE.w > 1.5 && uLandTier > 1.5 && gFootM < 0.2) {
           vec2 tr = nz(uv, 0.53, vec2(0.37, 0.19)).rg * 0.6 + nz(uv, 1.37, vec2(0.83, 0.47)).rg * 0.4 - 0.5;
           n.xy += tr * 0.55 * tileVis(0.8) * inField * landW;
         }
