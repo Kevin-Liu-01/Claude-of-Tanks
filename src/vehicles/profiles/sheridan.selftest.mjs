@@ -339,7 +339,7 @@ try {
   const receipt = hull?.userData.sheridanReceipt;
   assert.equal(receipt?.roadWheelsPerSide, 5);
   assert.equal(receipt?.roofMachineGuns, 1,
-    'the TTS carries one roof weapon: the commander\'s shielded M2 station');
+    'the TTS carries one roof machine gun (the shielded M2 on the loader\'s ring) beside its remote 30 mm');
   assert.equal(receipt?.rearFuelDrums, 0,
     'the TTS engine-deck extension replaces the donor rear drum cradle');
   assert.deepEqual(receipt?.ttsUpgrade, {
@@ -381,27 +381,81 @@ try {
   assert.deepEqual(ttsRunningGearContract, baseRunningGearContract,
     'M551A1 TTS reuses the Sheridan wheels and complete closed track loop exactly');
 
-  // 2026-10-08 (the owner's field standard in main 6763d7cc0 and his 2A5M precedent: activate the original station; the
-  // coordinator's ruling on the tank-accessories lane's audit): the M551A1 TTS never carried a 30 mm. Its roof weapon is
-  // the commander's M2 behind a ballistic shield on the cupola, here the working remote station (beginAuxiliaryStation),
-  // and the loader's hatch carries no gun. The 2026-09-30 30 mm station and its pins are gone.
-  const commanderStation = ttsTank.root.getObjectByName('m551a1TtsCommanderM2');
-  assert.ok(commanderStation?.userData.remoteControlled && commanderStation.userData.caliberMm === 12.7
-    && commanderStation.userData.fittingExact && commanderStation.parent?.name === 'rig_turret',
-  'TTS commander M2 is one exact turret-mounted working station');
-  assert.equal(ttsTank.root.getObjectByName('m551a1TtsRemoteAutocannon'), undefined, 'TTS carries no 30 mm station');
-  const commanderGun = commanderStation.getObjectByName('americanM2HBBody');
+  // 2026-10-09 (owner order: "give the tts its old machine gun back, except put the new machine gun you added on it
+  // somewhere else"; the coordinator's reading): the 2026-09-30 remote 30 mm station is back on the commander's rear ring
+  // exactly as before a0b6b3a64 (its pins below are that commit's predecessor's), and the commander's shielded M2 that
+  // a0b6b3a64 activated moved, with its ring, to the loader's hatch ring on a pintle arm. Both are working stations.
+  // (2026-09-30, 884384729 controls integration, 4c34b3e8b remote roof weapons: the TTS 30 mm station is the shared
+  // remote auxiliary station; its stock lives in yaw and pitch meshes under rig_turret/m551a1TtsRemoteAutocannon, and the
+  // barrel is measured on the actual pitching geometry.)
+  const remoteAutocannon = ttsTank.root.getObjectByName('m551a1TtsRemoteAutocannon');
+  assert.ok(remoteAutocannon?.userData.remoteControlled && remoteAutocannon.userData.caliberMm === 30
+    && remoteAutocannon.userData.fittingExact && remoteAutocannon.parent?.name === 'rig_turret',
+  'TTS 30 mm remote station is one exact turret-mounted fitting');
+  const remoteAutocannonMechanism = remoteAutocannon.getObjectByName('m551a1TtsRemoteAutocannon_pitch_turretDark');
+  assert.ok(remoteAutocannonMechanism?.isMesh && remoteAutocannonMechanism.parent?.name === 'auxiliaryWeaponPitch',
+    'TTS breech, barrel and muzzle pitch with the station');
+  ttsTank.root.updateMatrixWorld(true);
+  const { auxiliaryPivot, barrelAxisLocalY, muzzleLocalZ } = remoteAutocannon.userData;
+  const barrelAxis = remoteAutocannonMechanism.parent.localToWorld(new THREE.Vector3(
+    0, barrelAxisLocalY - auxiliaryPivot[1], muzzleLocalZ - auxiliaryPivot[2] - 0.4));
+  const barrelFace = (sign) => new THREE.Raycaster(barrelAxis.clone().add(new THREE.Vector3(sign * 0.5, 0, 0)),
+    new THREE.Vector3(-sign, 0, 0), 0, 0.5).intersectObject(remoteAutocannonMechanism, false)[0]?.point.x ?? NaN;
+  const barrelDiameterM = barrelFace(1) - barrelFace(-1);
+  assert.ok(Math.abs(barrelDiameterM - 0.094) < 1e-3,
+    `TTS 30 mm barrel keeps a lean remote-weapon silhouette (${barrelDiameterM} m)`);
+  assert.equal(remoteAutocannon.getObjectByName('m551a1TtsRemoteAutocannon_pitch_turretEquipment')?.material,
+    ttsTank.root.getObjectByName('turretEquipment')?.material,
+    'remote-station armor shares the vehicle-scale camouflage material');
+  assert.equal(remoteAutocannon.getObjectByName('m551a1TtsRemoteAutocannon_pitch_turretGlass')?.material,
+    ttsTank.root.getObjectByName('turretGlass')?.material,
+    'remote-station apertures share the canonical optics material');
+  const insideAutocannon = (name) => {
+    const found = ttsTank.root.getObjectByName(name);
+    for (let node = found; node; node = node.parent) if (node === remoteAutocannon) return true;
+    return false;
+  };
+  assert.equal(insideAutocannon('sheridanCommanderM2AmmoBox'), false,
+    'the M2 and its ammunition rack do not survive inside the 30 mm station');
+  const loaderStation = ttsTank.root.getObjectByName('m551a1TtsLoaderM2');
+  assert.ok(loaderStation?.userData.remoteControlled && loaderStation.userData.caliberMm === 12.7
+    && loaderStation.userData.fittingExact && loaderStation.parent?.name === 'rig_turret',
+  'TTS loader-ring M2 is one exact turret-mounted working station');
+  const loaderGun = loaderStation.getObjectByName('americanM2HBBody');
   let pitches = false;
-  for (let node = commanderGun; node; node = node.parent) if (node.name === 'auxiliaryWeaponPitch') pitches = true;
-  assert.ok(commanderGun?.isMesh && pitches, 'the commander M2 pitches with its station');
-  assert.equal(commanderStation.getObjectByName('fitting_americanM2HB')?.userData.shieldVariant, 'standard',
-    'the commander M2 stands behind its ballistic shield');
+  for (let node = loaderGun; node; node = node.parent) if (node.name === 'auxiliaryWeaponPitch') pitches = true;
+  assert.ok(loaderGun?.isMesh && pitches, 'the loader-ring M2 pitches with its station');
+  assert.equal(loaderStation.getObjectByName('fitting_americanM2HB')?.userData.shieldVariant, 'standard',
+    'the moved M2 keeps its ballistic shield');
+  assert.equal(ttsTank.root.getObjectByName('m551a1TtsCommanderM2'), undefined,
+    'no gun stays on the commander\'s cupola under the 30 mm barrel');
+  // the M2 clears the roof sight's window behind the hatch (it looks forward over the hatch) and stays off the 30 mm
+  // station's sight head: every vertex of the gun stands above the window's top or outside its lane
+  {
+    const turret = ttsTank.root.getObjectByName('rig_turret');
+    const toTurret = new THREE.Matrix4().copy(turret.matrixWorld).invert();
+    const v = new THREE.Vector3();
+    let inWindowLane = 0, inSightHead = 0, vertices = 0;
+    loaderStation.traverse((mesh) => {
+      if (!mesh.isMesh) return;
+      const position = mesh.geometry.getAttribute('position');
+      const toLocal = new THREE.Matrix4().multiplyMatrices(toTurret, mesh.matrixWorld);
+      for (let i = 0; i < position.count; i++) {
+        v.fromBufferAttribute(position, i).applyMatrix4(toLocal); vertices++;
+        if (v.x > 0.29 && v.x < 0.60 && v.y > 0.94 && v.y < 1.08 && v.z > -0.27) inWindowLane++;
+        if (v.x < 0.07 && v.y > 1.26 && v.y < 1.70 && v.z > -0.29 && v.z < 2.0) inSightHead++;
+      }
+    });
+    assert.ok(vertices > 1000, `the loader-ring M2 was measured (${vertices} vertices)`);
+    assert.equal(inWindowLane, 0, 'the loader-ring M2 leaves the roof sight\'s window clear');
+    assert.equal(inSightHead, 0, 'the loader-ring M2 stays off the 30 mm station\'s sight head and its view');
+  }
   const fittings = [];
   ttsTank.root.traverse((object) => {
     if (object.userData?.fittingRoot) fittings.push(object.userData.fitting);
   });
-  assert.equal(fittings.filter((kind) => kind === 'pintleMG').length, 1,
-    'TTS has one roof gun fitting: the commander\'s M2 station');
+  assert.equal(fittings.filter((kind) => kind === 'pintleMG').length, 2,
+    'TTS has two roof gun fittings: the remote 30 mm station and the loader-ring M2 station');
 
   const era = ttsTank.root.userData.eraFinishReceipt;
   assert.equal(era?.camoProjection, 'vehicle-scale-box-uv');
