@@ -256,18 +256,23 @@ function buildSabraCupola(P: TankBuilderPort, py: number, pz: number): void {
   optic(P,-.5758,2.972,-.0975,.326,.1406,.1509);
 }
 
+/** The cupola M2's pintle socket (hull frame): its top, where the gun's own pintle stands, on the cap's forward slope. */
+export const SABRA_CUPOLA_M2_SOCKET: readonly [number, number, number] = [-.5059, 2.875, .45];
+
 function buildSabraCupolaWeapon(P: TankBuilderPort, py: number, pz: number): void {
   // Source cupola weapon and receiver, seated to the raised structural cupola.
   turretEquipment(P,'turretDetail',box(.12,.11,.33),-.5059,2.778,.36);
   // 2026-10-10 (fleet-weapons lane; the owner: "its changes need to be combined with your primitive updates like
-  // updating machine guns and stuff"): the cupola's M2 is the fleet's Browning construction (machineGunGeometry.ts,
-  // receiver with its feed cover and spade grips, perforated barrel support and flash hider) in place of the source
-  // study's receiver box and plain tube, carried by the cupola's own painted supports (the external cradle: no second
-  // pintle), at Codex's mount: on the source barrel's axis (x -0.5059, y 2.7738) with its receiver's back where the
-  // source receiver's back stood (z 0.28); the true-length M2 barrel reaches 0.54 m past the study's short tube. One gun,
-  // one fitting.
-  const roofGun=FITTINGS.seatMuzzle(FITTINGS.pintleMG({mats:P.mats,cls:'m2',mount:'external-cradle',tone:'two-tone',
-    ammo:false,seed:2741}),[-.5059,2.7738-py,1.8411-pz]);
+  // updating machine guns and stuff"): the cupola's M2 is the fleet's Browning construction (machineGunGeometry.ts).
+  // Round 3 (wave 345's critics: the receiver "parked on the shoulder of the dome" with "no pintle or cradle under it, no
+  // spade grips or charging handle behind it and no ammunition can beside it"): the crew M2 stands on its own pintle and
+  // cradle, with its spade grips, charging handle and ammunition can, in a socket boss on the cap's forward slope on the
+  // source barrel's line (x -0.5059). The pintle lifts the gun clear of the dome and the barrel clear of the smoke-tube
+  // banks below the turret front. One gun, one fitting.
+  const socket=SABRA_CUPOLA_M2_SOCKET;
+  turretEquipment(P,'turretDetail',cylY(.047,.056,.05,P.q?16:10),socket[0],socket[1]-.025,socket[2]);
+  const roofGun=FITTINGS.pintleMG({mats:P.mats,cls:'m2',tone:'two-tone',ammo:true,seed:2741});
+  roofGun.position.set(socket[0],socket[1]-py,socket[2]-pz);
   roofGun.name='sabraSourceCupolaWeapon';
   P.turretG.add(roofGun);
   turretEquipment(P,'turretDetail',box(.22,.10,.24),-.7259,2.783,.34);

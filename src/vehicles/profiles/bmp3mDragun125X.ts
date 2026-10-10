@@ -352,26 +352,23 @@ function buildDragunGear(P: TankBuilderPort): void {
 }
 /** Closed first-party receiver, barrel and mount from the source roof study.
  * Measurements are scalar dimensions only; no source mesh data is reused. */
+/** The roof GPMG's pintle socket (source frame): its top, where the gun's own pintle stands, on the mount housing's top. */
+export const DRAGUN_ROOF_GPMG_SOCKET: readonly [number, number, number] = [.415, 3.14, -2.34];
+
 function buildDragunRoofWeapon(P: TankBuilderPort): void {
     equipment(P, 'turret', 'Detail', cylY(.09, .10, .105, 12), .413, 2.684, -2.278);
     equipment(P, 'turret', 'Detail', box(.285, .40, .335), .364, 2.91, -2.303);
     // 2026-10-10 (fleet-weapons lane; the owner: "its changes need to be combined with your primitive updates like
     // updating machine guns and stuff"): the module's 7.62 mm gun is the fleet's GPMG construction (machineGunGeometry.ts:
-    // receiver with its feed cover, gas cylinder and flash hider, the remote solenoid instead of crew grips) carried by
-    // the source's own mount housing (the external cradle above), in place of the receiver box and plain tube, at Codex's
-    // mount: its muzzle on the source muzzle's x and z (0.415, -1.806). The gun rests on the housing (its lowest point on
-    // the housing top, y 3.11): on the source barrel's own height (y 3.084) the slimmer receiver sank into the box and
-    // read as a barrel stuck in its face plus a loose feed cover on its roof (wave 345's packing check). One gun, one
-    // fitting.
+    // receiver with its feed cover, gas cylinder and flash hider, the remote solenoid instead of crew grips) on the
+    // source's own mount housing. Round 3 (wave 345's critics: the gun "simply set down on top of a featureless camo cube
+    // with no cradle, arm or ammunition box"): it stands in its own cradle and pintle, with its ammunition box, in a socket
+    // boss on the housing's top, on the source muzzle's line (x 0.415). One gun, one fitting.
     const t = P.turretG.position;
-    const housingTop = 2.91 + .40 / 2;
-    const group = FITTINGS.seatMuzzle(FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', mount: 'external-cradle',
-        remoteWeapon: true, ammo: false, tone: 'two-tone', seed: 1253 }), [.415, 3.084 - t.y, -1.806 - t.z]);
-    const body = group.getObjectByName('browningDerivedMachineGunBody') as THREE.Mesh;
-    const bodyBottom = new THREE.Box3().setFromBufferAttribute(body.geometry.getAttribute('position') as THREE.BufferAttribute).min.y;
-    const lift = (housingTop - t.y) - (group.position.y + bodyBottom);
-    group.position.y += lift;
-    group.userData.seatedMuzzle = [.415, 3.084 + lift - t.y, -1.806 - t.z];
+    const [sx, sy, sz] = DRAGUN_ROOF_GPMG_SOCKET;
+    equipment(P, 'turret', 'Dark', cylY(.034, .040, .03, P.q ? 14 : 10), sx, sy - .015, sz);
+    const group = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', remoteWeapon: true, ammo: true, tone: 'two-tone', seed: 1253 });
+    group.position.set(sx, sy - t.y, sz - t.z);
     group.name = 'dragunSourceRoofWeapon';
     group.userData.sourceOwner = 'Object_14';
     P.turretG.add(group);
