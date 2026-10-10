@@ -87,7 +87,7 @@ const BUDGET = {
   church: 16000, stationHall: 13000, townHall: 10000, marketHall: 8000, grainElevator: 9000, granary: 2500,
   waterTower: 6000, windmill: 8000, belfry: 4000, campanile: 4000, fireLookout: 5000, valveTower: 4000,
   obelisk: 4500, statue: 1500, columnMonument: 1500, memorialWall: 2000, equestrianStatue: 1500,
-  fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000, churchyard: 4500, path: 1500, garden: 2500,
+  fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000, churchyard: 4500, path: 1500, garden: 2500, stairway: 9000,
   townGate: 4000, triumphalArch: 7000, kolkhozArch: 2500, torii: 1000,
   stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000, liftBridge: 6000,
   aircraftWreck: 20000, colonialBungalow: 14000, tennisCourt: 5000, bengalTemple: 9000, lighthouse: 3500, mole: 5000,
@@ -105,6 +105,7 @@ const VARIANTS = {
   kolkhozArch: [{ wings: 6, sign: 'СОВХОЗ «ЦЕЛИННЫЙ»', span: 13.2 }, { sign: '' }],
   churchyard: [{ holyGate: false, tradition: 'latin', fence: 'wallstone', graves: 8, back: 'fence' }, { graves: 0, path: 0 }, { tradition: 'latin', fence: 'wallstone', gate: 'right', width: 14, depth: 26 }],
   path: [{ surface: 'gravel', length: 30, width: 2.4 }, { surface: 'earth', length: 6 }],
+  stairway: [{ steps: 'cordonata', surface: 'earth', width: 2.6, rise: 0.14, steep: 0.04, length: 30 }, { surface: 'gravel', kerbs: false, length: 6 }],
   garden: [{ back: 'fence', width: 20, depth: 12 }],
   tennisCourt: [{ damage: 1, steps: -1 }],
   colonialBungalow: [{ damage: 0.5 }],
@@ -248,6 +249,54 @@ check('kolkhozArch lettering', () => {
     'the wings: picket modules on the arch line, outside the pillars');
   const [hw] = landmarkFootprint({ kind: 'kolkhozArch', x: 0, z: 0, params: { wings: 6 } });
   assert.ok(destructibles.every((d) => Math.abs(d.x) + 1.25 * (d.scale ?? 1) <= hw + 1e-6), 'the wings inside the footprint');
+});
+
+// the stairway (the map-revival lane, 2026-10-07: Orchard round 5's village lanes, "places a person would walk, with
+// treads, risers and landings"): over a terrace's riser it lays one flight at its rise — every step's top a rise over the
+// last, its back at the ground and its nosing a rise over it — and paves the landings either side; a mule stair climbs a
+// graded ramp in curbs and long treads of the landing's surface; on level ground it is all landing (no step, no stone)
+check('stairway flights', () => {
+  const tops = (parts, bucket) => {
+    const out = new Map();
+    for (const g of parts[bucket] ?? []) {
+      const p = g.getAttribute('position');
+      for (let i = 0; i < p.count; i += 3) {
+        const y = p.getY(i);
+        if (Math.abs(p.getY(i + 1) - y) > 1e-6 || Math.abs(p.getY(i + 2) - y) > 1e-6) continue;
+        const ax = p.getX(i + 1) - p.getX(i), az = p.getZ(i + 1) - p.getZ(i), bx = p.getX(i + 2) - p.getX(i), bz = p.getZ(i + 2) - p.getZ(i);
+        if (az * bx - ax * bz <= 0) continue; // an upward face (counter-clockwise from above)
+        const key = Math.round(y * 1000) / 1000;
+        out.set(key, Math.max(out.get(key) ?? -Infinity, p.getZ(i), p.getZ(i + 1), p.getZ(i + 2)));
+      }
+    }
+    return out;
+  };
+  // a 24 m lane along +z: level to z -4, a 2.6 m riser over 4.3 m (the grade of Orchard's terraces), level beyond
+  const riser = (lx, lz) => (lz < -4 ? 0 : lz > 0.3 ? 2.6 : ((lz + 4) / 4.3) * 2.6);
+  const block = build('stairway', { length: 24, surface: 'gravel', kerbs: false }, { ground: riser });
+  const steps = [...tops(block.parts, 'stone').entries()].sort((a, b) => a[0] - b[0]);
+  const n = Math.round(2.6 / 0.17), r = 2.6 / n;
+  assert.equal(steps.length, n, `one flight of ${n} steps (${steps.map(([y]) => y).join(', ')})`);
+  steps.forEach(([y, back], k) => {
+    assert.ok(Math.abs(y - (k + 1) * r) < 2e-3, `step ${k + 1} a rise over the last (${y})`);
+    assert.ok(Math.abs(riser(0, back) - y) < 0.12, `step ${k + 1}'s back at the ground (${riser(0, back).toFixed(3)} under ${y})`);
+  });
+  const landings = tops(block.parts, 'plaster3');
+  assert.ok([...landings.keys()].some((y) => Math.abs(y - 0.045) < 1e-3) && [...landings.keys()].some((y) => Math.abs(y - 2.645) < 1e-3),
+    'the landings below and above the flight paved over the ground');
+  assert.ok(triangles(block.parts) <= BUDGET.stairway, `a riser's lane within its budget (${triangles(block.parts)})`);
+  // a mule stair up a 24 m ramp graded at 0.12 (2.88 m): stone curbs and earth treads, a rise apart
+  const ramp = (lx, lz) => (lz + 12) * 0.12;
+  const mule = build('stairway', { length: 24, steps: 'cordonata', surface: 'earth', rise: 0.14, steep: 0.04, kerbs: false }, { ground: ramp });
+  const curbs = [...tops(mule.parts, 'stone').keys()].sort((a, b) => a - b), treads = [...tops(mule.parts, 'plaster3').keys()].sort((a, b) => a - b);
+  const m = Math.round(2.88 / 0.14);
+  assert.equal(curbs.length, m, `a curb at every one of the ${m} risers`);
+  assert.ok(treads.length === m && treads.every((y, k) => Math.abs(y - curbs[k] + 0.02) < 1e-3), 'a tread behind every curb, of the landing\'s surface');
+  assert.ok(triangles(mule.parts) <= BUDGET.stairway, `a mule stair within its budget (${triangles(mule.parts)})`);
+  // level ground: all landing
+  const flat = build('stairway', { length: 24, surface: 'gravel' });
+  assert.equal(triangles({ stone: flat.parts.stone ?? [] }), 0, 'no step on level ground');
+  for (const g of [...geometries(block.parts), ...geometries(mule.parts), ...geometries(flat.parts)]) g.dispose();
 });
 
 // the churchyard: its fence modules and gate inside its footprint, the graves inside the fence and off the path, the

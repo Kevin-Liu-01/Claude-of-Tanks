@@ -112,6 +112,13 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // it leaves (no road margin) and stands on nothing.
   path: { family: 'park', roadMargin: 0, drapes: true, open: true, dressing: () => true, defaults: { length: 12, width: 1.6, surface: 'stone' },
     footprint: (p) => [num(p, 'width') / 2 + 0.2, num(p, 'length') / 2 + 0.2] },
+  // a stepped lane from the piece's origin along its +z (`length` m, `width` wide): its landings paved over the ground and
+  // a flight of steps set into every stretch steeper than `steep` (stone blocks, or a mule stair's curbs and treads:
+  // `steps: 'cordonata'`), risers near `rise` m, low stone kerbs either side (0.22 m past the width). It meets the road it
+  // leaves (no road margin) and stands on nothing (the map-revival lane, 2026-10-07: Orchard's village lanes).
+  stairway: { family: 'park', roadMargin: 0, drapes: true, open: true, dressing: () => true,
+    defaults: { length: 12, width: 2.4, surface: 'stone', steps: 'block', rise: 0.17, steep: 0.25, kerbs: true },
+    footprint: (p) => [num(p, 'width') / 2 + 0.35, num(p, 'length') / 2 + 0.2] },
   // ------------------------------------------------------------------------------------------------ gates and arches
   // (`wallsLeft` / `wallsRight`: each stub's own length, -x / +x of the passage, where the road crosses a gap in the wall
   // off its middle; a negative value takes `walls`)

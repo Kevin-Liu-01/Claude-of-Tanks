@@ -199,7 +199,15 @@ for (const config of [polders, mangrove, orchard]) for (const seed of config.id 
     assert.ok(hf._roadDist(b.x, b.z) >= 9); assert.ok(hf.getNormalAt(b.x, b.z).y > 0.82);
     assert.notEqual(hf.getGroundType(b.x, b.z), 'soft');
     const v = hf._layout.village;
-    assert.equal(b.x > v.x0 - 24 && b.x < v.x1 + 24 && b.z > v.z0 - 24 && b.z < v.z1 + 24, false);
+    // (the map-revival lane, 2026-10-07) a map that opts its stands into its settlement (vegetation.authoredInSettlement:
+    // Orchard round 5's olive grove on the village hill's north flank) keeps them off its planned sites and the polygons
+    // it names instead of off the rect (the law the Kestrel section below holds on its own stands)
+    const settled = config.vegetation.authoredInSettlement;
+    if (settled) {
+      const envelope = b.cr + Math.sin(TREE_ARCHETYPES[b.species].leanMaxRad) * b.fallH;
+      assert.equal(overlapsStructureClearance(plannedSiteClearances(config.props.plannedSites ?? []), b.x, b.z, envelope), false);
+      assert.equal(insideClearPolygon(settled.clear ?? [], b.x, b.z), false);
+    } else assert.equal(b.x > v.x0 - 24 && b.x < v.x1 + 24 && b.z > v.z0 - 24 && b.z < v.z1 + 24, false);
     assert.ok(isClearOfSpawns(b.x, b.z, [hf._layout.spawns.player, ...hf._layout.spawns.enemies], 26));
     assert.equal(overlapsStructureClearance(structures, b.x, b.z,
       b.cr + Math.sin(TREE_ARCHETYPES[b.species].leanMaxRad) * b.fallH), false);
