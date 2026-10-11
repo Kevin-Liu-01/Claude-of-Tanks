@@ -5885,22 +5885,33 @@ void splatCompute() {
   if (uReduxSnow.x > 0.001) {
     float scour = smoothstep(0.55, 0.85, n2w + (n1w - 0.5) * 0.30) * meadowG * (1.0 - fR);
     float powder = smoothstep(0.60, 0.92, meadowC) * meadowG * (1.0 - fR);
-    a.rgb = mix(a.rgb, a.rgb * vec3(0.90, 0.93, 0.98), scour * 0.55 * uReduxSnow.x);
+    // (2026-10-10, the map-revival lane, Whiteout: the critics' "blue-grey snow" under the thin overcast) a map on one
+    // prevailing wind (uReduxSnow.z) scours to a neutral crust, a breath cool, not the blue-grey one
+    a.rgb = mix(a.rgb, a.rgb * (uReduxSnow.z > 0.5 ? vec3(0.95, 0.955, 0.965) : vec3(0.90, 0.93, 0.98)), scour * 0.55 * uReduxSnow.x);
     a.rgb *= 1.0 + powder * 0.035 * uReduxSnow.x;
     gScour = scour * uReduxSnow.x; // round 73b: the crust is hard and takes a satin sheen
   }
   if (uReduxSnow.y > 0.001) {
-    vec2 swind = normalize(vec2(0.62, 0.78) + (nz(uv, 0.0025, vec2(0.37, 0.91)).rg - 0.5) * 0.9);
-    float sph = dot(uv, swind);
+    // (2026-10-10, the map-revival lane, Whiteout, wave 355: "visibly tiled swirl-contour pattern", "marbled paper") a
+    // heading that turns with the noise bends a world-space stripe by |uv| x its turn — at a few hundred metres from the
+    // origin a few degrees swing the phase through whole wavelengths, and the trains marble into swirls; so does a
+    // wavelength that scales the whole phase. A map on one prevailing wind (uReduxSnow.z) keeps the heading and lets the
+    // crests meander by a bounded offset in metres, the drift's wavelength by a bounded phase, and its trains come and
+    // go in patches (no flat sheets between); every other snow map draws as before
+    vec4 sWarp = uReduxSnow.z > 0.5 ? nz(uv, 0.0042, vec2(0.37, 0.91)) : vec4(0.5);
+    vec2 swind = uReduxSnow.z > 0.5 ? vec2(0.6220, 0.7830) : normalize(vec2(0.62, 0.78) + (nz(uv, 0.0025, vec2(0.37, 0.91)).rg - 0.5) * 0.9);
+    float sph = dot(uv, swind) + (uReduxSnow.z > 0.5 ? (sWarp.r - 0.5) * 14.0 + (n1h - 0.5) * 1.6 : 0.0);
     float sast = sin(sph * 3.4 + n1h * 5.0) * (1.0 - smoothstep(30.0, 120.0, camDist));
     sast *= tileVis(1.85); // ground lane: the 1.85 m sastrugi wave
     // round 73b: the drift is a sawtooth — a long stoss slope climbing to a sharp lee crest that drops in a fifth of
     // the wavelength — so the drifts carry an EDGE (a shaded lee face under the lit crest line) that reads at range in
     // albedo where the normal has mipped away; round 73's sine was one more soft undulation
-    float dwave = fract(sph * 0.0669 * (0.78 + 0.44 * n2) + n1 * 0.9 + n2w * 0.5); // the wavelength swings ±22 % per ~320 m cell, the phase on two fields
+    float dwave = uReduxSnow.z > 0.5 ? fract(sph * 0.0669 + (n2 - 0.5) * 0.9 + n1 * 0.6) // (the prevailing wind's train: its wavelength in a bounded phase)
+      : fract(sph * 0.0669 * (0.78 + 0.44 * n2) + n1 * 0.9 + n2w * 0.5); // the wavelength swings ±22 % per ~320 m cell, the phase on two fields
     float drift = (dwave < 0.8 ? dwave / 0.8 : (1.0 - dwave) / 0.2) * 2.0 - 1.0;
     float driftD = 1.0 - smoothstep(120.0, 420.0, effDist);
     float sw = uReduxSnow.y * meadowG * (1.0 - fR) * (1.0 - triW) * (1.0 - roadCore);
+    if (uReduxSnow.z > 0.5) sw *= 0.55 + 0.9 * smoothstep(0.30, 0.70, sWarp.g); // the trains in patches, never a flat sheet
     n.xy += swind * clamp(sast * 0.5 + drift * driftD * 0.9, -0.3, 0.3) * sw;
     float lee = smoothstep(0.78, 0.84, dwave) * (1.0 - smoothstep(0.88, 0.98, dwave));
     a.rgb *= 1.0 + drift * 0.05 * sw * smoothstep(40.0, 120.0, effDist) * driftD;

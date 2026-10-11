@@ -1388,6 +1388,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/steelAtlasDemand.selftest.mjs',
     'src/world/loggingYard.selftest.mjs',
     'src/world/foundryServiceCourt.selftest.mjs',
+    // the map-revival lane (round 2, 2026-10-09): Whiteout's drifts against its buildings and windrows along its roads
+    'src/world/maps/buildingSnowDrifts.selftest.mjs',
     // the map-revival lane (2026-10-09): no ISO box before 1966; the pre-container yards hold period freight
     'src/world/maps/periodFreight.selftest.mjs',
     'src/world/autumnHeadlands.selftest.mjs',
