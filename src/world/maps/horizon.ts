@@ -3900,6 +3900,7 @@ export function* buildHorizonRingSteps(
     const farRange = buildHorizonFarRange({
       seed: ((seed ^ 0x4A72) ^ idHash(mapId)) >>> 0, settings: reliefSettings.far, character: reliefCharacter,
       deckBaseM, sun: [lx, ly, lz], base, rock: rockC, snow: snowC, forest: forestC, fog: fogC, gains: resolveHorizonLightingGains(farLighting),
+      airless: (cfg?.sky as { fogDensity?: number } | undefined)?.fogDensity === 0,
       treeline: treeline > 0 && treeline < 1.5 ? treeline : 0, seaOpenings, nearMaxHeight: maxH,
       nearEdge: { columns: HORIZON_SEGMENTS, positions: pos, heights: hs },
       detailTexture: mat.userData.horizonDetail2 as THREE.Texture | undefined,

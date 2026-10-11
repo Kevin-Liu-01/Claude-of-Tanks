@@ -1408,6 +1408,7 @@ uniform sampler2D uEdge;
 uniform vec4 uShore;      // the far shore's height share (0: open sea), the channel's distance (m), its coastal range's share
 uniform vec4 uTrees;      // the far field's canopy (m), the forest's slope limit, a dry coast's scrub
 uniform vec4 uAir;        // the far path's share of the law's σ, the fill's law (0 / 1), the bare rock's floor (a share of the relief)
+uniform float uAirless;   // 1 on an airless map (fogDensity 0, Earthrise Basin): the bake's own air toward the fog tint is off
 uniform vec4 uHaze;       // the shared haze law (hazeLaw.ts): σ (1/m), 1 / the layer's scale height, the datum (m), on
 uniform vec3 uHazeChroma; // its per-channel extinction
 uniform vec3 uHazeAnti, uHazeToward; // its in-scatter target at the horizon away from the sun and toward it
@@ -1629,10 +1630,10 @@ void main() {
         vec3 TF = hazeTransmittance(uHaze.x * uAir.x, 800.0 * recede, fillLayer, uHazeChroma);
         fill = cover * TF + lawTarget * (1.0 - TF);
       } else {
-        fill = mix(cover, uFog * 0.95, 1.0 - exp(-800.0 * recede / 13000.0));
+        fill = mix(cover, uFog * 0.95, (1.0 - exp(-800.0 * recede / 13000.0)) * (1.0 - uAirless));
       }
     } else {
-      fill = mix(fill, uFog * 1.05, 0.25 + 0.35 * recede);
+      fill = mix(fill, uFog * 1.05, (0.25 + 0.35 * recede) * (1.0 - uAirless));
     }
     // (not over a jebel's wall: the march past the ring meets the massif's own lower wall there, not grazing ground —
     // painted with the fill, the near massifs stood on a flat band of it from the elevated views, v3b)
@@ -1664,7 +1665,7 @@ void main() {
     vec3 T = hazeTransmittance(uHaze.x * uAir.x, max(0.0, rr - uFrame.z), layer, uHazeChroma);
     col = col * T + target * (1.0 - T);
   } else {
-    col = mix(col, uFog * 0.95, 1.0 - exp(-max(0.0, rr - uFrame.z) / 13000.0));
+    col = mix(col, uFog * 0.95, (1.0 - exp(-max(0.0, rr - uFrame.z) / 13000.0)) * (1.0 - uAirless));
   }
   // into the cloud: a soft, broken fade over the deck's lowest 140 m
   float alpha = (1.0 - smoothstep(uChar4.y - 140.0, uChar4.y + 20.0, wp.y + 60.0 * noised(wp.xz / 260.0 + vec2(4.4, -2.9)).x)) * (1.0 - open);
@@ -2021,6 +2022,8 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       uShore: { value: new THREE.Vector4(ch.shore, ch.shoreM, ch.shoreRange, 0) },
       uTrees: { value: new THREE.Vector4(ch.trees, ch.forestSlope, ch.scrub, 0) },
       uAir: { value: new THREE.Vector4(ch.air, ch.fillLaw, ch.rockFloor, 0) },
+      // (2026-10-11, the map-revival lane; gauntlet wave 380 on Earthrise Basin: "an airless sky can't have blue haze")
+      uAirless: { value: options.fogDensity === 0 ? 1 : 0 },
       uMesa: { value: new THREE.Vector4(ch.mesaTalusM, ch.mesaTalusShare, ch.mesaCliffM, ch.mesaFluteM) },
       uPeaks: { value: new THREE.Vector4(ch.peakShare, ch.peakM, ch.peakRadiusM, ch.peakSharp) },
       uJebel: { value: new THREE.Vector4(ch.jebelShare, ch.jebelM, ch.jebelRadiusM, ch.jebelBossM) },
