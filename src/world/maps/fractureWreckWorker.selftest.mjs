@@ -152,6 +152,28 @@ const fake = (react) => {
   assert.equal(port.terminated, 1);
 }
 await assert.rejects(createFractureWreckClient(() => { throw new Error('no workers here'); }).build(cases[0].make.job), /no workers here/);
+{
+  // a worker left without a job (a world gone mid-warm sends no more) goes by itself, and the next job starts another
+  const wire = (() => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3));
+    return packFractureWreck(g).wire;
+  })();
+  const ports = [];
+  const idleClient = createFractureWreckClient(() => {
+    const port = fake((p, data) => queueMicrotask(() => p.onmessage({ data: { requestId: data.requestId, ok: true, wire } })));
+    ports.push(port);
+    return port;
+  }, 1000, 40);
+  (await idleClient.build(cases[0].make.job)).dispose();
+  assert.equal(ports[0].terminated, 0, 'busy a moment ago: still up');
+  await new Promise((resolve) => setTimeout(resolve, 90));
+  assert.equal(ports[0].terminated, 1, 'idle past its time: terminated');
+  (await idleClient.build(cases[0].make.job)).dispose();
+  assert.equal(ports.length, 2, 'the next job starts a new worker');
+  idleClient.dispose();
+  assert.equal(ports[1].terminated, 1);
+}
 
 // the wire: plain streams transferred once each, index and groups carried, an instanced attribute refused
 {
@@ -185,9 +207,8 @@ await assert.rejects(createFractureWreckClient(() => { throw new Error('no worke
   assert.match(props, /brokenWarmClient\.build\(make\.job\)\.then\(\(geoB\) => \{\n\s*brokenWarmBusy = false;\n\s*if \(target\.makeBroken === make && !brokenWarmDone\) installBrokenGeometry\(target, geoB\);\n\s*else geoB\.dispose\(\);/,
     'a reply installs only into a pool still waiting for it');
   assert.match(props, /if \(typeof Worker === 'undefined'\) \{ stopBrokenWarm\(\); return; \}/, 'no worker: the first break builds it');
-  assert.match(props, /return \(\) => \{ unregister\(\); stopBrokenWarm\(\); \};/, 'the worker goes with the world (map.ts dispose)');
   assert.match(props, /if \(!pool\.imB\) return;\n\s*ensureBrokenGeometry\(pool\);\n\s*const bi = pool\.nBroken\+\+;/,
     'a copy that breaks first (or a late joiner\'s) builds its wreck on the page before its broken slot draws');
   assert.match(props, /if \(stepDestruction\(dt\)\) updatePoleLod\(cameraPos\);\n\s*warmBrokenPools\(dt\);/, 'the warm runs from the live frame');
 }
-console.log(`fractureWreckWorker.selftest: ${cases.length} deferred wrecks (field hut, lean-to, Regelbau, DOT, hex, log and earth, ${SETTLED.length} part-built light kinds) built in the worker equal the page's, in the intact's layout; one job in flight; silent, refusing, failing and disposed workers end their job; the wire carries views, index and groups and refuses instanced streams; props.ts warms through it and lets it go with the world`);
+console.log(`fractureWreckWorker.selftest: ${cases.length} deferred wrecks (field hut, lean-to, Regelbau, DOT, hex, log and earth, ${SETTLED.length} part-built light kinds) built in the worker equal the page's, in the intact's layout; one job in flight; silent, refusing, failing and disposed workers end their job; an idle worker goes by itself; the wire carries views, index and groups and refuses instanced streams; props.ts warms through it`);

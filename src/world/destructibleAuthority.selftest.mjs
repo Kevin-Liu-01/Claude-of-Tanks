@@ -97,6 +97,9 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
     updatePoleLod() {},
     // and so are the boulders: their near/far repartition (the scenery lane's cascade trim) is inert here too
     updateRockLod() {},
+    // (the destructible-kits lane, 2026-10-11) the deferred broken states (built before this runtime, at the pools):
+    // none here, so the first break's build and the battle's worker warm are inert
+    ensureBrokenGeometry() {}, warmBrokenPools() {},
     _quat: new THREE.Quaternion(), _upAxis: new THREE.Vector3(0, 1, 0),
     _mat4: new THREE.Matrix4(), _posv: new THREE.Vector3(), _zeroScale: new THREE.Vector3(),
     // settlement pass 2 (2026-09-12): the runtime reads chimney tops for hearth smoke; none here.

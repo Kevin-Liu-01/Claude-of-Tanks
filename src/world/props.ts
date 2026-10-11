@@ -10963,8 +10963,9 @@ ${snowCap ? `
   /**
    * The deferred broken states built off this thread once the battle runs (maps/fractureWreckWorker.ts): after
    * BROKEN_WARM_AFTER_S of live frames, one job in flight, each reply swapped in (wrappers only); the worker goes when
-   * every pool is built or the world does (registerDestructibles). A pool broken first keeps the wreck it built itself
-   * (the reply for it is dropped). Without a worker (Node, a failed start) a pool builds its wreck when it first breaks.
+   * every pool is built, or by itself once no job has come for a while (a world gone mid-warm stops sending them:
+   * fractureWreckClient's idle stop). A pool broken first keeps the wreck it built itself (the reply for it is dropped).
+   * Without a worker (Node, a failed start) a pool builds its wreck when it first breaks.
    */
   const BROKEN_WARM_AFTER_S = 3;
   let brokenWarmClock = 0, brokenWarmBusy = false, brokenWarmDone = false;
@@ -11569,21 +11570,17 @@ ${snowCap ? `
       }
     }
   }
-  const registerDestructibles = (): (() => void) => {
-    const unregister = registerWorldDestructibles({
-      key: mapId,
-      isActive: () => {
-        for (let o: THREE.Object3D | null = group; o; o = o.parent) {
-          if (o.visible === false) return false;
-        }
-        return !!group.parent; // only once assembled into a scene
-      },
-      sweep: shellSweep,
-      impact: shellImpact,
-    });
-    // (the world's dispose, map.ts) the wreck worker goes with the world
-    return () => { unregister(); stopBrokenWarm(); };
-  };
+  const registerDestructibles = (): (() => void) => registerWorldDestructibles({
+    key: mapId,
+    isActive: () => {
+      for (let o: THREE.Object3D | null = group; o; o = o.parent) {
+        if (o.visible === false) return false;
+      }
+      return !!group.parent; // only once assembled into a scene
+    },
+    sweep: shellSweep,
+    impact: shellImpact,
+  });
 
   // DESTRUCTIBLES r1: tossed-prop pose — ballistic arc along the impact
   // direction with tumble, composed about the prop's own center against the
