@@ -198,6 +198,19 @@ function tarpStack(parts: StackParts, local: Rng, mapId: string, upper: boolean)
       down.rotateZ(s * 0.025);
       down.translate(s * ((w + 0.06) / 2 + 0.012), BEARER_H + (h - 0.02) / 2, z);
       parts.baked.push(fresh(down));
+      // (2026-10-11, round 3; wave 396b: "smooth olive tarp slabs with no folds or lashings") the rope as it reads: 5 x 6 cm,
+      // standing 3 cm off the sheet over the lashing above (which stays the stack's shell) — dressing, its own stream
+      const rope = caseDressStream(s * halfTop, h, z, w, l);
+      const overR = paint(box(run, 0.05, 0.06, 0.5), rope, ROPE, 0.08);
+      overR.rotateZ(-s * slope);
+      overR.translate(s * halfTop / 2, h + BEARER_H + ridge / 2 + 0.03, z);
+      overR.userData.noCollision = true;
+      parts.baked.push(fresh(overR));
+      const downR = paint(box(0.05, h - 0.04, 0.06, 0.5), rope, ROPE, 0.08);
+      downR.rotateZ(s * 0.025);
+      downR.translate(s * ((w + 0.06) / 2 + 0.03), BEARER_H + (h - 0.04) / 2, z);
+      downR.userData.noCollision = true;
+      parts.baked.push(fresh(downR));
     }
   }
 }
@@ -247,14 +260,24 @@ function crateStack(parts: StackParts, local: Rng, upper: boolean): void {
         seam.userData.noCollision = true;
         parts.structureWood.push(fresh(seam));
       }
+      // (2026-10-11, round 3; wave 396b: "painted-on battens") the corner battens 3 cm proud of the faces (were 1 cm), and a
+      // cleat up the middle of each face, so each casts its own shadow line
       for (const cx of [-1, 1]) for (const cz of [-1, 1]) {
-        const post = paint(box(0.07, hh - 0.04, 0.07, 0.55), dress, 0x6a5840, 0.06);
-        const px = cx * (ww / 2 - 0.025), pz = cz * (ll / 2 - 0.025);
+        const post = paint(box(0.085, hh - 0.03, 0.085, 0.55), dress, 0x6a5840, 0.06);
+        const px = cx * (ww / 2 - 0.012), pz = cz * (ll / 2 - 0.012);
         post.translate(px, 0, pz);
         post.rotateY(yaw);
         post.translate(x, y + hh / 2, z);
         post.userData.noCollision = true;
         parts.structureWood.push(fresh(post));
+      }
+      for (const [fx, fz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const cleat = paint(box(fx ? 0.03 : 0.09, hh - 0.12, fz ? 0.03 : 0.09, 0.55), dress, 0x5e4e39, 0.06);
+        cleat.translate(fx * (ww / 2 + 0.013), 0, fz * (ll / 2 + 0.013));
+        cleat.rotateY(yaw);
+        cleat.translate(x, y + hh / 2, z);
+        cleat.userData.noCollision = true;
+        parts.structureWood.push(fresh(cleat));
       }
     }
     y += ch;
@@ -304,8 +327,19 @@ function lumberStack(parts: StackParts, local: Rng, upper: boolean): void {
     for (let p = 0; p < planks; p++) {
       const pw = w / planks - 0.015, pl = l - (c === courses - 1 ? local() * 1.2 : local() * 0.25);
       const board = paint(box(pw, courseH, pl, 0.55), local, DEAL, 0.1);
-      board.translate(-w / 2 + (p + 0.5) * (w / planks), y + courseH / 2, (local() - 0.5) * 0.18);
+      const bx = -w / 2 + (p + 0.5) * (w / planks), bz = (local() - 0.5) * 0.18;
+      board.translate(bx, y + courseH / 2, bz);
       parts.structureWood.push(fresh(board));
+      // (2026-10-11, round 3; wave 396b: "grainless timber") the sawn ends: each board's end grain a darker, warmer face
+      // proud by a few millimetres — the cut deal's rings read as a tone, its sapwood paler (dressing, the board's own
+      // stream: the stack's draws are untouched)
+      const ends = caseDressStream(bx, y, bz, pw, pl);
+      for (const s of [-1, 1]) {
+        const cut = paint(box(pw - 0.012, courseH - 0.012, 0.008, 0.5), ends, ends() < 0.3 ? 0xa48a64 : 0x8c7050, 0.08);
+        cut.translate(bx, y + courseH / 2, bz + s * (pl / 2 + 0.004));
+        cut.userData.noCollision = true;
+        parts.structureWood.push(fresh(cut));
+      }
     }
     if (c === courses - 1) break;
     for (const z of [-l * 0.42, -l * 0.14, l * 0.14, l * 0.42]) {
