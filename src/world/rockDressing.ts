@@ -334,6 +334,14 @@ const LITHOLOGY_CUTS: Readonly<Record<BoulderLithology, {
   fractures: readonly [number, number]; notch: number; notches: number; bed: readonly [number, number] | null;
   /** (2026-10-10) the beds stand steep — a slate's cleavage, 60 to 80 degrees off the level — not laid flat. */
   steep?: boolean;
+  /**
+   * (2026-10-11, the rock round's final: "Reservoir slate needs real plate geometry") the stone built as a stack of
+   * plates on its cleavage: each plate (`beds` partings thick) stands out or back of the mass by up to `reach` of the
+   * radius on its own hash, the step to the next over `step` of a plate, a shallow groove (`groove` of the radius) on
+   * the parting between them — ragged plate ends along the flanks and a crest of plates at their own heights, the
+   * cleavage faces themselves left plane. No draw: the hash of the plate's index and the bedding's salt.
+   */
+  plates?: { beds: number; reach: number; step: number; groove: number };
 }>> = Object.freeze({
   granite: { fractures: [2, 3], notch: 0.35, notches: 1, bed: null },
   gneiss: { fractures: [2, 3], notch: 0.4, notches: 1, bed: null },
@@ -342,7 +350,9 @@ const LITHOLOGY_CUTS: Readonly<Record<BoulderLithology, {
   limestone: { fractures: [2, 3], notch: 0.65, notches: 2, bed: [0.18, 0.28] },
   // (2026-10-10, wave 346: "steeply dipping stacks of thin plates with ragged edges") the slate's cleavage: thin plates
   // standing steep, the form stepped down at three of them (was no bedding, one notch at 0.45)
-  slate: { fractures: [2, 3], notch: 0.9, notches: 3, bed: [0.075, 0.12], steep: true },
+  // (2026-10-11) built as plates: a plate two partings thick, its end up to 17 per cent of the radius out or in
+  slate: { fractures: [2, 3], notch: 0.9, notches: 3, bed: [0.075, 0.12], steep: true,
+    plates: { beds: 2, reach: 0.17, step: 0.14, groove: 0.03 } },
   chalk: { fractures: [2, 3], notch: 0.5, notches: 1, bed: null },
   // (2026-10-10) the conglomerate's thick beds (its clasts the material's) and its rough breaks; the breccia broken all
   // round, no bedding
@@ -705,6 +715,21 @@ interface BoulderForm {
   hollow: Float32Array;
 }
 
+/**
+ * A plated stone's relief at a point of its mass (unit space): the factor its radius takes there (LITHOLOGY_CUTS
+ * plates) — the plate's own reach, ramped from the plate before it over the law's step, less the parting's groove.
+ */
+function plateRelief(law: NonNullable<(typeof LITHOLOGY_CUTS)[BoulderLithology]['plates']>,
+  bedding: NonNullable<BoulderCuts['bedding']>, x: number, y: number, z: number): number {
+  const s = (bedding.n[0] * x + bedding.n[1] * y + bedding.n[2] * z) / (bedding.thickness * law.beds) + bedding.salt * 0.37;
+  const k = Math.floor(s), f = s - k;
+  const q = Math.min(1, f / law.step), ramp = q * q * (3 - 2 * q);
+  const before = bedHash(k - 1, bedding.salt + 101), own = bedHash(k, bedding.salt + 101);
+  const reach = (before + (own - before) * ramp) * 2 - 1;
+  const g = Math.max(0, 1 - Math.min(f, 1 - f) / 0.12), groove = g * g * (3 - 2 * g);
+  return 1 + law.reach * reach - law.groove * groove;
+}
+
 /** The ground line in the form's unit space: above it the form keeps inside the legacy hull. */
 export const BOULDER_SEAT_Y = 0;
 
@@ -763,7 +788,10 @@ export function buildBoulderForm(
   const [sx, sy, sz] = shape.size;
   // the grid: eight cells a face on the desktop, five on a phone, whose coarser rows round the arrises a third wider
   // (a cell must not straddle an arris's whole turn)
-  const n = subdiv >= 6 ? 8 : 5;
+  const plateLaw = LITHOLOGY_CUTS[lithology].plates ?? null;
+  // (a plated stone's grid half as fine again — 12 cells a face on the desktop, 7 on a phone — so a plate takes three or
+  // four rows: the plates are its form, not a texture)
+  const n = plateLaw ? (subdiv >= 6 ? 12 : 7) : subdiv >= 6 ? 8 : 5;
   // (an angular map's arrises a third as round, down to the grid's own floor: RockClimate.angular)
   const round = Math.max(n < 8 ? 0.11 : 0.08, shape.round * LITHOLOGY_FORMS[lithology].soft * (n < 8 ? 1.35 : 1))
     * (1 - 0.66 * angular);
@@ -773,7 +801,8 @@ export function buildBoulderForm(
   const all: readonly JointPlane[] = [...planes, ...cuts.fractures, ...cuts.notches.flat()];
   const tones = all.map(() => rng() * 2 - 1);
   const salt = variant * 11.3 + rng() * 40;
-  const lumpK = 1 - 0.6 * angular, [lumpA, lumpB, lumpC] = shape.lumps.map((v) => v * lumpK);
+  // (a plated stone's weather half as lumpy again: its plates are its relief)
+  const lumpK = (1 - 0.6 * angular) * (plateLaw ? 0.5 : 1), [lumpA, lumpB, lumpC] = shape.lumps.map((v) => v * lumpK);
   const out = [0, 0, 0];
   const scratch = new Float64Array(all.length);
   let lumpAt = 0;
@@ -786,6 +815,10 @@ export function buildBoulderForm(
     for (let i = planes.length; i < all.length; i++) breakShare += w[i] * all[i][4];
     const weather = 1 - 0.7 * Math.min(1, breakShare);
     let x = ux * t, y = uy * t, z = uz * t;
+    if (plateLaw && cuts.bedding) {
+      const m = plateRelief(plateLaw, cuts.bedding, x, y, z);
+      x *= m; y *= m; z *= m;
+    }
     lumpAt = (noise.noise3d(x * 1.15 + salt, y * 1.15, z * 1.15 - salt) * lumpA
       + noise.noise3d(x * 2.7 - salt, y * 2.7 + salt, z * 2.7) * lumpB) * weather;
     const f = 1 + lumpAt + noise.noise3d(x * 6.3 + salt * 0.5, y * 6.3 - salt, z * 6.3 + 7) * lumpC;
