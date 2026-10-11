@@ -1512,6 +1512,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/landmarks/landmarks.selftest.mjs',
     'src/world/mangroveFisheryWharf.selftest.mjs',
     'src/world/structureConnectivity.selftest.mjs',
+    // the buildings and landmarks lane (2026-10-10, the owner's relay mast): exact member contact in every assembled kit
+    'src/world/kitConnectivity.selftest.mjs',
     'src/world/structureCollision.selftest.mjs',
     'src/world/structureCollisionVertexCache.selftest.mjs',
     'src/world/structureCollisionReuse.selftest.mjs',
