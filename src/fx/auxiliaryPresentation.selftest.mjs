@@ -40,7 +40,7 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
       rand: Math.random, groundY: () => 0,
       media: (m) => puffs.push({ birth: clock.now + m.birthOffset, x: m.x, y: m.y, z: m.z, vx: m.vx, vy: m.vy, vz: m.vz,
         drag: m.drag, windK: m.windK, life: m.life, size0: m.size0, size1: m.size1, growExp: m.growExp, density: m.density,
-        r0: m.r0, medium: m.medium }),
+        r0: m.r0, medium: m.medium, aspect: m.aspect, fadeIn: m.fadeIn, heat: m.heat, cool: m.cool }),
       chunk() {}, flash: (o) => flashes.push(clock.now + o.birthOffset), fire() {}, sparks: (o) => sparks.push(clock.now + o.birthOffset),
       jet() {}, shockRing() {}, lightPulse() {}, glow() {}, distBoost: () => 1, tier: 1,
       m: makeVolumePuff(), k: {},
@@ -199,10 +199,52 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
     assert.equal(strikes.length, 3, `one strike at the wall: a dust kick and the grenade's own puff (${strikes.length} puffs)`);
     for (const p of strikes) {
       assert.ok(Math.abs(p.birth - (struck.born + tb)) < 1e-6, 'the strike is born when the grenade leaves the wall');
-      assert.ok(Math.hypot(p.x - bx, p.y - by, p.z - bz) < 0.3, 'and where it struck');
+      // (fx 8r, the w5 film: "white puffs sit against the house face") born off the face, in front of it, never half inside
+      const off = (p.x - bx) * nx + (p.z - bz) * nz;
+      assert.ok(Math.hypot(p.x - bx, p.y - by, p.z - bz) < 0.7 && off > 0.3, `and where it struck, off the face (${off.toFixed(2)} m out)`);
       if (p.windK === 0.4) assert.ok(p.vx * nx + p.vz * nz > 0, 'its dust is thrown off the face, never into the wall');
     }
     assert.ok(at60.puffs.every((p) => p.windK !== 0.4 && p.windK !== 0.45), 'a screen whose grenades struck nothing strikes nothing');
+  }
+  // (fx 8r, the w5 film: "a row of separate white puffs along the line before it merges", "white puffs against the house
+  // face") the pops are low, wide and fade in; a skirt of low puffs closes each bank's stretch within a second of its
+  // landing; nothing in the open asks for a wider soft-depth feather; by a wall the puffs fade into it more softly
+  {
+    const pops = at60.puffs.filter((p) => p.windK === 0.15);
+    assert.ok(pops.length > 0 && pops.every((p) => p.vy <= 1.6 && p.aspect >= 1.3 && p.fadeIn >= 0.1),
+      'a grenade\'s pop spreads low and wide and fades in: no round white ball');
+    const skirts = at60.puffs.filter((p) => p.windK === 0.1);
+    for (let b = 0; b < banks; b++) {
+      smokeVolume(screen, screen.born + 6, b - 2, vol, () => 0);
+      const mine = skirts.filter((p) => Math.hypot(p.x - vol.x, p.z - vol.z) <= vol.radius + 1.5);
+      assert.ok(mine.length >= 1, `every bank's stretch has its skirt (bank ${b}: ${mine.length})`);
+    }
+    assert.ok(skirts.length >= banks, `the row's skirt (${skirts.length} puffs over ${banks} banks)`);
+    for (const p of skirts) {
+      const g = 1 - Math.pow(1 - Math.min(1, 1 / p.life), p.growExp);
+      assert.ok(g >= 0.79 && p.size1 >= 1.6, `a skirt swells to most of its size within a second (${g.toFixed(2)})`);
+      assert.ok(p.y >= 0.9 && p.y <= 1.5 && p.life <= 4.7 && p.density <= 0.85, 'low, brief and soft');
+    }
+    // the skirt is born within half a second of each landing: the row closes before the lobes have travelled out to it
+    const firstLobe = Math.min(...at60.puffs.filter((p) => p.windK === 0 && p.drag >= 1).map((p) => p.birth));
+    const firstSkirt = Math.min(...skirts.map((p) => p.birth));
+    assert.ok(firstSkirt - firstLobe < 0.5, 'the skirt comes with the bloom');
+    assert.ok(at60.puffs.every((p) => !(p.heat === 0 && p.cool < 0)), 'in the open no puff asks for a wider feather');
+    // by a house's wall (the smoke-collision staging: x 10..18, z -4..4, walls to 5 m; a Leopard 8 m short of it)
+    const { createHeadlessCollisionWorld } = await import('../world/headlessCollisionWorld.ts');
+    const UP = new THREE.Vector3(0, 1, 0);
+    const flat = { getHeightAt: () => 0, getHeightAtFast: () => 0, getNormalAt: () => UP, maxY: 0, minY: 0 };
+    const box = { b: [10, 0, -4, 18, 5, 4], k: 'structure' };
+    const world = createHeadlessCollisionWorld({ heightField: flat, manifest: { obstacles: [box], colliders: [box] } });
+    const t = { id: 'leo2a6', team: 'player', spec: { id: 'leo2a6', dims: { heightM: 2.6 }, armor: { turretPivot: [0, 1.5, 0] } },
+      state: { pos: { x: 2, y: 0, z: 0 }, yaw: Math.PI / 2, turretYaw: 0, visualPitch: 0, visualRoll: 0 }, combat: {} };
+    assert.ok(requestAuxiliary(t, 'smoke', 3, () => 0, world), 'a salvo at a house');
+    const walled = run(t.combat.auxiliary.smoke, 1 / 60);
+    const byWall = walled.puffs.filter((p) => p.heat === 0 && p.cool < 0);
+    assert.ok(byWall.length >= 4 && byWall.every((p) => -p.cool > 1 && -p.cool <= 3),
+      `by the wall the puffs fade into it more softly (${byWall.length} puffs, feather x${Math.max(...byWall.map((p) => -p.cool)).toFixed(1)})`);
+    const far = walled.puffs.filter((p) => p.windK === 0 && p.drag >= 1 && Math.max(10 - (p.x + p.vx / p.drag), 0) > 5);
+    assert.ok(far.every((p) => p.cool >= 0), 'away from it, the feather they always had');
   }
   // reset forgets the screens: a rematch draws nothing old
   const clock = { now: screen.born + 2 };
@@ -213,5 +255,5 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
   const before = rec.puffs.length;
   fx.reset(); clock.now += 1; fx.update();
   assert.equal(rec.puffs.length, before, 'reset drops every screen');
-  console.log(`auxiliaryPresentation media: ${at60.puffs.length} puffs for a ${banks}-bank screen, frame-rate independent (20/60/144 fps), inside the envelope, late join, crowd share (${crowded.puffs.length} for 14 banks), launch puffs, one continuous wall, fade to the blocking floor with a haze tail, threads and ropes, the swelling bloom, sunlit crowns, the wall strike, reset passed`);
+  console.log(`auxiliaryPresentation media: ${at60.puffs.length} puffs for a ${banks}-bank screen, frame-rate independent (20/60/144 fps), inside the envelope, late join, crowd share (${crowded.puffs.length} for 14 banks), launch puffs, one continuous wall, fade to the blocking floor with a haze tail, threads and ropes, the swelling bloom, sunlit crowns, the wall strike, low wide pops and the row's skirt, wall feathers, reset passed`);
 }
