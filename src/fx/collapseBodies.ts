@@ -776,14 +776,14 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
    * edge is shoved over once, across its thin side at its top: panels lie down on the heap. `half`: its extent from its
    * frame's origin along its own axes. True when it was tipped.
    */
-  function tipIfStanding(handle: number, half: readonly number[], massKg: number, salt: number): boolean {
+  function tipIfStanding(handle: number, half: readonly number[], massKg: number, salt: number, maxThinY = 0.4): boolean {
     if (!pool.framePoseAt(handle, pose)) return false;
     let thin = 0;
     for (let k = 1; k < 3; k++) if (half[k] < half[thin]) thin = k;
     _q.set(pose[3], pose[4], pose[5], pose[6]);
     _o.set(thin === 0 ? 1 : 0, thin === 1 ? 1 : 0, thin === 2 ? 1 : 0).applyQuaternion(_q);
     // lying: its thin side faces up or down
-    if (Math.abs(_o.y) > 0.4) return false;
+    if (Math.abs(_o.y) > maxThinY) return false;
     // standing: how high it reaches over its centre (its extents up the world's vertical)
     let up = 0;
     for (let k = 0; k < 3; k++) { _l.set(k === 0 ? 1 : 0, k === 1 ? 1 : 0, k === 2 ? 1 : 0).applyQuaternion(_q); up += half[k] * Math.abs(_l.y); }
@@ -1074,7 +1074,9 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
               const spec = p.piece.parts[k];
               if (!part.tipped && spec && pool.asleep(part.handle) && age > p.piece.releaseS + 0.5) {
                 part.tipped = true;
-                tipIfStanding(part.handle, spec.half, spec.massKg, c.structureIdx * 131 + p.piece.index * 16 + k);
+                // (wave 407: roof sheets "propped at steep angles like an open book") a roof sheet propped steeper than
+                // about 53 degrees goes down onto the heap too
+                tipIfStanding(part.handle, spec.half, spec.massKg, c.structureIdx * 131 + p.piece.index * 16 + k, p.piece.kind === 'roof' ? 0.6 : 0.4);
               }
             }
           }
