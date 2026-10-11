@@ -62,8 +62,9 @@ export function addFieldRoofWeapon(P:TankBuilderPort,seat:Point,caliber:12.7|30,
   addPintleBarrel(layout);
  }
  g.add('turretDetail',boxSections([[z-.33,cheek,y+.16,y-.12],[z+.17,cheek,y+.16,y-.12],[z+front,.12,y+.085,y-.085]]),x,0,0);
- g.add('turretDetail',box(.24,.30,.39),x-.67,y+.03,z-.10);
- g.add('turretDetail',box(.255,.021,.405),x-.67,y+.18+seatGap+.0105,z-.10);
+ // round 4 (the critics: station ammunition boxes "camo-painted instead of issue drab"): the box and its lid are issue drab
+ g.add('turretAmmo',box(.24,.30,.39),x-.67,y+.03,z-.10);
+ g.add('turretAmmo',box(.255,.021,.405),x-.67,y+.18+seatGap+.0105,z-.10);
  const chute0=.67-.12-seatGap,chute1=.10+seatGap;
  g.add('turretDark',box(chute0-chute1,.06,.11),x-(chute0+chute1)/2,y+.105,z-.10);
  g.add('turretDetail',box(.15,.23,.23),x+.285,y+.15,z+.035);

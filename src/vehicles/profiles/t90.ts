@@ -6595,14 +6595,16 @@ function rebuildT90MSTurretExact(P: T90BuilderPort): void {
     // rendered builds: the cradle weapon steel, the ammunition coffin, lid and retainer the issue drab, the belt links
     // brass; the brow and the work light's housing are painted with the vehicle. Non-rendering builds keep their
     // authored materials and geometry.
-    const ammo = P.mats.ammoDrab && /AmmoBox|AmmoLid|AmmoRetainer|FeedLink/.test(name) ? P.mats.ammoDrab : undefined;
-    const steel = P.mats.weaponSteel && /Cradle/.test(name) ? P.mats.weaponSteel : undefined;
+    // round 4 (2026-10-11; wave 386's critics: "loose orange-tan tabs stuck on the cradle", "orange rods"): the feed
+    // links are the steel links of one chute, no longer seven brass blocks
+    const ammo = P.mats.ammoDrab && /AmmoBox|AmmoLid|AmmoRetainer/.test(name) ? P.mats.ammoDrab : undefined;
+    const steel = P.mats.weaponSteel && /Cradle|FeedLink/.test(name) ? P.mats.weaponSteel : undefined;
     const paint = P.mats.weaponSteel && /Brow|LightHousing/.test(name) ? P.mats.hull : undefined;
     const material = ammo ?? steel ?? paint ?? authoredMaterial;
     const geometry = authored;
     if (ammo || steel) {
       prepareWeaponFinishGeometry(geometry, KIT.boxUV);
-      if (ammo) paintAmmoVertexColours(geometry, ammo, /FeedLink/.test(name));
+      if (ammo) paintAmmoVertexColours(geometry, ammo, false);
     }
     if (material.vertexColors && !geometry.getAttribute('color')) {
       geometry.setAttribute('color', new THREE.BufferAttribute(
@@ -6662,13 +6664,29 @@ function rebuildT90MSTurretExact(P: T90BuilderPort): void {
     -0.255, 1.221, -0.035);
   towerPart('t90msTagilTowerAmmoRetainer', box(0.025, 0.23, 0.31), P.mats.dark,
     -0.385, 1.105, -0.035);
-  for (let index = 0; index < 7; index++) {
-    const t = index / 6;
-    towerPart(`t90msTagilTowerFeedLink${index + 1}`, box(0.032, 0.038, 0.026), P.mats.detail,
-      -0.25 + 0.18 * t, 1.225 + 0.035 * t, 0.09 + 0.10 * t, 0, 0, -0.18);
+  // 2026-10-11 (fleet-weapons lane, round 4; wave 386's critics: "a thin barrel ... sticking out of a crude black bracket
+  // frame on a green box, with loose orange-tan tabs and no readable receiver, feed or ammunition box"): the seven feed
+  // links are one articulated chute, each hinged link overlapping the next, rising from the coffin's lid over the cradle
+  // into the Kord's feedway; and the remote Kord carries no crew shield (nobody stands behind it), so its receiver and
+  // feed cover show. The links keep their names and count for the Gallery.
+  {
+    const p0 = [-0.245, 1.236, 0.06], p3 = [-0.06, 1.262, 0.19], apex = 1.30;
+    const at = (t: number): number[] => {
+      const u = 1 - t, p1 = [p0[0], apex, p0[2]], p2 = [p3[0] - 0.05, apex, p3[2]];
+      return [0, 1, 2].map((k) => u * u * u * p0[k] + 3 * u * u * t * p1[k] + 3 * u * t * t * p2[k] + t * t * t * p3[k]);
+    };
+    for (let index = 0; index < 7; index++) {
+      const a = at(index / 7), b = at((index + 1) / 7);
+      const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], run = Math.hypot(d[0], d[2]);
+      // non-indexed, so the weapon finish bakes its edge wear (an indexed solid takes the grain only)
+      const link = box(0.05, 0.026, Math.hypot(run, d[1]) + 0.012).toNonIndexed()
+        .rotateX(-Math.atan2(d[1], run)).rotateY(Math.atan2(d[0], d[2]));
+      towerPart(`t90msTagilTowerFeedLink${index + 1}`, link, P.mats.dark,
+        (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+    }
   }
   {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'kord', remoteControlled: true, tone: 'dark', elev: -0.10, ammo: true, shield: true, scale: 1.16 });
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'kord', remoteControlled: true, tone: 'dark', elev: -0.10, ammo: true, shield: false, scale: 1.16 });
     // The Kord is carried by the top yoke, not buried beside the bustle.  Its
     // foot enters the faceted station above and the receiver/barrel now own
     // the reference-height horizontal combat silhouette.

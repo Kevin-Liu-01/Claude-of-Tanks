@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import { KIT, FITTINGS } from './kit.ts';
 import { beginAuxiliaryStation, type StationDatum } from './auxiliaryStation.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-import { prepareWeaponFinishGeometry } from '../weaponFinish.ts';
+import { paintAmmoVertexColours, prepareWeaponFinishGeometry } from '../weaponFinish.ts';
 
-type Slot = 'turretDark' | 'turretDetail' | 'turretGlass';
+type Slot = 'turretDark' | 'turretDetail' | 'turretGlass' | 'turretAmmo';
 type Point = readonly [number, number, number];
 
 /** Preserve an authored weapon's actual solids while giving it one fitting owner. */
@@ -12,16 +12,25 @@ export function sourceMachineGun(P: TankBuilderPort, yaw: Point, datum?: Station
   const local = (point: Point): [number,number,number] => point.map((v,i)=>v-yaw[i]) as [number,number,number];
   const station = datum && beginAuxiliaryStation(P, {...datum,
     yaw: local(datum.yaw), pivot: local(datum.pivot), muzzle: local(datum.muzzle)});
-  const parts: Record<Slot, THREE.BufferGeometry[]> = { turretDark: [], turretDetail: [], turretGlass: [] };
+  const parts: Record<Slot, THREE.BufferGeometry[]> = { turretDark: [], turretDetail: [], turretGlass: [], turretAmmo: [] };
   // 2026-10-09 (fleet-weapons lane): the gun's steel is weapon steel (weaponFinish.ts) and the station's painted solids
   // (shields, housings, cradles, lids) carry the hull's camouflage on the vehicle-scale box UV, as the real stations are
   // painted with the vehicle; they were the flat hardware gunmetal and the scheme's flat fitting paint. Non-rendering
   // (receipt) builds have no weapon steel and keep their materials and geometry byte-identical.
   const rendered = Boolean(P.mats.weaponSteel);
+  // 2026-10-11 (fleet-weapons lane, round 4; waves 345-386's critics: station ammunition boxes "wear hull camo instead
+  // of issue drab"): a station's ammunition box and drum take the army's issue drab on rendered builds ('turretAmmo').
+  // Receipt builds have no drab and file those parts with the painted solids, so their geometry stays byte-identical.
+  const drab = rendered && P.mats.ammoDrab ? P.mats.ammoDrab : null;
   const material = (slot:Slot): THREE.Material => slot==='turretDark' ? (P.mats.weaponSteel ?? P.mats.dark)
-    : slot==='turretGlass' ? P.mats.glass : rendered ? P.mats.hull : P.mats.detail;
+    : slot==='turretGlass' ? P.mats.glass : slot==='turretAmmo' && drab ? drab : rendered ? P.mats.hull : P.mats.detail;
   const finish = (slot:Slot, geometry:THREE.BufferGeometry): THREE.BufferGeometry => {
     const m = material(slot);
+    if (slot==='turretAmmo' && drab) {
+      prepareWeaponFinishGeometry(geometry, KIT.boxUV);
+      paintAmmoVertexColours(geometry, drab, false);
+      return geometry;
+    }
     if (m.userData?.weaponUvScale) return prepareWeaponFinishGeometry(geometry, KIT.boxUV);
     const camoUvScale = Number(m.userData?.camoUvScale);
     if (rendered && Number.isFinite(camoUvScale) && camoUvScale > 0) {
@@ -35,7 +44,8 @@ export function sourceMachineGun(P: TankBuilderPort, yaw: Point, datum?: Station
   return {
     stage(value: 'yaw'|'pitch'): void { stage=value; },
     markSupport(): void { station?.mark('yaw'); },
-    add(slot: Slot, geometry: THREE.BufferGeometry, x: number, y: number, z: number, rx=0, ry=0, rz=0): void {
+    add(authored: Slot, geometry: THREE.BufferGeometry, x: number, y: number, z: number, rx=0, ry=0, rz=0): void {
+      const slot: Slot = authored==='turretAmmo' && !drab ? 'turretDetail' : authored;
       const part=KIT.xform(geometry, x-yaw[0], y-yaw[1], z-yaw[2], rx, ry, rz);
       if (station && stage==='yaw') {
         const finished=finish(slot, part);
@@ -47,7 +57,7 @@ export function sourceMachineGun(P: TankBuilderPort, yaw: Point, datum?: Station
     },
     finish(): THREE.Group {
       const group = new THREE.Group();
-      for (const slot of ['turretDark', 'turretDetail', 'turretGlass'] as const) {
+      for (const slot of ['turretDark', 'turretDetail', 'turretGlass', 'turretAmmo'] as const) {
         if (!parts[slot].length) continue;
         const geometry = finish(slot, KIT.mergeAll(parts[slot]));
         // mergeAll owns flattened intermediates, but indexed authored inputs
