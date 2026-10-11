@@ -392,7 +392,9 @@ const LITHOLOGY_FORMS: Readonly<Record<BoulderLithology, { kinds: readonly [Boul
   chalk: { kinds: ['block', 'rounded', 'slab'], soft: 0.95 },
   // (2026-10-10, wave 346: "no egg domes") the clastic rocks break as blocks and slabs, never a corestone
   conglomerate: { kinds: ['block', 'slab', 'block'], soft: 0.8 },
-  breccia: { kinds: ['block', 'block', 'slab'], soft: 0.7 },
+  // (2026-10-11, gauntlet wave 380 on the Moon: "rims read as snow drifts capped by card-like slabs") three blocks, no
+  // slab — the thin slab stood on the crater rims as a card
+  breccia: { kinds: ['block', 'block', 'block'], soft: 0.7 },
 });
 
 /** The kind (an index into BOULDER_KINDS) a map's variant is built as. */
