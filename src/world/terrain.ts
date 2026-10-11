@@ -4033,6 +4033,7 @@ float gScour = 0.0;          // round 73b: the wind-scoured crust (a satin sheen
 float gStrandFoam = 0.0;     // round 73b: the foam line the last run-up left (matte in the roughness stage)
 float gRoadPuddle = 0.0;     // ground lane: water standing in a road's ruts (smooth in the roughness stage)
 float gFieldWater = 0.0;     // ground lane: a flooded paddy's or a polder ditch's water (smooth in the roughness stage)
+float gPaddyWater = 0.0;     // (Caldera round 4) a flooded paddy's alone: its planted sheet satin, not a ditch's mirror
 float gCropW = 0.0;          // ground lane: a sown field's weight (not pasture or hay): the sward's own relief stands down there
 float gCropReliefW = 0.0;    // ground lane (wave 274): gCropW for the sward's relief — none on a young green crop (a short sward)
 float gSoilW = 0.0;          // ground lane: a bare field's weight (plough, terra rossa, a vineyard's earth, slag, ballast, gravel)
@@ -5502,8 +5503,14 @@ void splatCompute() {
       } else if (crop < 8.5) {
         // a flooded paddy: muddy water over the soil, the young rice a faint green haze in it (the roughness stage
         // makes it a mirror of the sky)
-        cropCol = mix(vec3(0.040, 0.046, 0.040), vec3(0.060, 0.095, 0.035), 0.25 + 0.20 * jit);
-        water = 1.0;
+        // (Caldera round 4, the map-revival lane; gauntlet wave 359: "glittering blue-white noise", "the water wants muddy
+        // reflections or paddy surfaces") a planted paddy: brown water between the rows of young rice — the rows a green
+        // stripe near the eye with the water between them, past it a green haze over the water; its sheen satin (the
+        // roughness stage, gPaddyWater), so the clouds it mirrors blur into the sky's tone instead of glittering
+        float seedRow = smoothstep(0.35, 0.75, 0.5 + 0.5 * sin(across * 20.94)) * tileVis(0.3);
+        cropCol = mix(vec3(0.050, 0.050, 0.036), vec3(0.070, 0.105, 0.040), 0.45 + 0.20 * jit);
+        cropCol = mix(cropCol, vec3(1.333, 3.067, 0.600) * baseL * bright * 0.7, seedRow * 0.55);
+        water = 1.0 - seedRow * 0.5;
       } else if (crop < 9.5) {
         cropCol = vec3(1.333, 3.067, 0.600) * baseL * bright; // growing rice: one even, bright green
         rows = sin(across * 20.94) * 0.05 * tileVis(0.3);
@@ -5682,6 +5689,7 @@ void splatCompute() {
       gSoilW = ((crop > 3.5 && crop < 4.5) || (crop > 10.5 && crop < 12.5) || (crop > 14.5 && crop < 16.5) || (crop > 18.5 && crop < 19.5))
         ? inField * landW : 0.0;
       gFieldWater = water * inField * landW;
+      gPaddyWater = gFieldWater;
       if (water > 0.5 && nrmOn) n = mix(n, NRM_MEAN, gFieldWater);
       if (uLandTier < 0.5) {
         // (Low draws no boundary feature: the field's crop meets the sward of its margin and nothing else)
@@ -7086,6 +7094,7 @@ void splatCompute() {
   // ground (a damp matte by ~36 m), only a near puddle holding the sky
   gSplatRough = mix(gSplatRough, mix(0.12, 0.62, smoothstep(16.0, 36.0, camDist)), gRoadPuddle);
   gSplatRough = mix(gSplatRough, 0.08, gFieldWater); // ... and so is a paddy's or a ditch's
+  gSplatRough = mix(gSplatRough, 0.26, gPaddyWater); // (Caldera round 4) a planted paddy's sheet satin, a ditch's a mirror
   // Round 73: micro-roughness. Wet sand glosses (the swash band above), a hollow's damp ground a step less matte, and
   // snow sparkles — sparse near texels of a high-frequency noise drop to a tight lobe, so under a grazing sun a few
   // glints light per square metre and move with the camera; gone by 42 m, where a glint would be a shimmer.
