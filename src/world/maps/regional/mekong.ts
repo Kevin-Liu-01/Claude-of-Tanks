@@ -26,11 +26,18 @@ function shutterWindow(sink: PartSink, face: Face, u: number, y: number, w: numb
   faceBox(sink, 'dark', face, u, y + h / 2, 0.005, w, h, 0.02, { decor: true });
   faceBox(sink, 'structureWood', face, u, y + h + 0.05, 0.04, w + 0.16, 0.1, 0.06, { colour: shade(colour, 0.8), decor: true });
   faceBox(sink, 'structureWood', face, u, y - 0.05, 0.04, w + 0.16, 0.1, 0.06, { colour: shade(colour, 0.8), decor: true });
-  // the top-hung shutter propped open on a stick
+  // the top-hung shutter propped open on a stick (the connectivity sweep: the leaf floated level 7 cm off the wall under
+  // its hinge, and the stick was never drawn): the leaf hung from the hinge rail at the head and swung out sixty degrees
+  // from the wall, the stick from the sill up under its lip
   const leaf = { colour, decor: true };
-  sink.member('structureWood', [face.origin[0] + face.u[0] * (u - w / 2), y + h + 0.02, face.origin[2] + face.u[2] * (u - w / 2)],
-    [face.origin[0] + face.u[0] * (u + w / 2), y + h + 0.02, face.origin[2] + face.u[2] * (u + w / 2)], 0.05, 0.04, face.out, { ...leaf, exposed: true });
-  faceBox(sink, 'structureWood', face, u, y + h - 0.1, 0.38, w, 0.035, 0.62, leaf);
+  const P = (uu: number, yy: number, o: number): Vec3 => [face.origin[0] + face.u[0] * uu + face.out[0] * o, yy, face.origin[2] + face.u[2] * uu + face.out[2] * o];
+  sink.member('structureWood', P(u - w / 2, y + h + 0.02, 0), P(u + w / 2, y + h + 0.02, 0), 0.05, 0.04, face.out, { ...leaf, exposed: true });
+  const swing = Math.PI / 3, len = h * 0.95, hy = y + h + 0.02, along = (t: number) => P(u, hy - len * t * Math.cos(swing), 0.01 + len * t * Math.sin(swing));
+  const nrm: Vec3 = [face.out[0] * Math.cos(swing), Math.sin(swing), face.out[2] * Math.cos(swing)];
+  sink.member('structureWood', along(0), along(1), w, 0.035, nrm, { ...leaf, exposed: true }, 0.0175);
+  const stick = along(0.85);
+  sink.member('structureWood', P(u + w * 0.3, y, 0.05), [stick[0] + face.u[0] * w * 0.3, stick[1], stick[2] + face.u[2] * w * 0.3], 0.025, 0.025, face.u,
+    { colour: shade(colour, 0.7), decor: true, exposed: true, fine: true }, 0.0125);
 }
 
 /** The stilt house: plank or mat walls on a deck over posts, nipa or sheet roof, veranda, ladder. */

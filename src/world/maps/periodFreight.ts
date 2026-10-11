@@ -93,6 +93,18 @@ function paint(geo: THREE.BufferGeometry, rng: Rng, hex: number, jitter = 0.06):
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   return geo;
 }
+/** A case's own dressing stream (mulberry32 seeded by a hash of its place and size): its board seams and battens draw
+ * from it and never from the stack's. */
+function caseDressStream(x: number, y: number, z: number, w: number, h: number): Rng {
+  let a = (Math.imul(Math.round(x * 100) | 0, 73856093) ^ Math.imul(Math.round(y * 100) | 0, 19349663)
+    ^ Math.imul(Math.round(z * 100) | 0, 83492791) ^ Math.imul(Math.round((w + h) * 100) | 0, 2654435761)) >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 /** A part new to the stream (props.ts jitterBuildingUvs leaves it alone). */
 function fresh<T extends THREE.BufferGeometry>(geo: T): T {
   geo.userData.uvJitter = 'none';
@@ -186,6 +198,19 @@ function tarpStack(parts: StackParts, local: Rng, mapId: string, upper: boolean)
       down.rotateZ(s * 0.025);
       down.translate(s * ((w + 0.06) / 2 + 0.012), BEARER_H + (h - 0.02) / 2, z);
       parts.baked.push(fresh(down));
+      // (2026-10-11, round 3; wave 396b: "smooth olive tarp slabs with no folds or lashings") the rope as it reads: 5 x 6 cm,
+      // standing 3 cm off the sheet over the lashing above (which stays the stack's shell) — dressing, its own stream
+      const rope = caseDressStream(s * halfTop, h, z, w, l);
+      const overR = paint(box(run, 0.05, 0.06, 0.5), rope, ROPE, 0.08);
+      overR.rotateZ(-s * slope);
+      overR.translate(s * halfTop / 2, h + BEARER_H + ridge / 2 + 0.03, z);
+      overR.userData.noCollision = true;
+      parts.baked.push(fresh(overR));
+      const downR = paint(box(0.05, h - 0.04, 0.06, 0.5), rope, ROPE, 0.08);
+      downR.rotateZ(s * 0.025);
+      downR.translate(s * ((w + 0.06) / 2 + 0.03), BEARER_H + (h - 0.04) / 2, z);
+      downR.userData.noCollision = true;
+      parts.baked.push(fresh(downR));
     }
   }
 }
@@ -219,6 +244,40 @@ function crateStack(parts: StackParts, local: Rng, upper: boolean): void {
         batten.rotateY(yaw);
         batten.translate(x, y + by, z);
         parts.structureWood.push(fresh(batten));
+      }
+      // (2026-10-11, the map-revival lane; gauntlet wave 362: the cases' faces "a scribbled diagonal hatch ... with no plank
+      // seams"; "the loads need modelled board seams, battens and corner irons") the boards: a dark seam between each
+      // course of boards up the case's sides (0.15-0.2 m boards), and an upright corner batten at each corner; dressing
+      // only (noCollision: the stack's solid is its core, its shells the cases), from the case's own stream (hashed from
+      // its place and size), so the stack's stream keeps its draws — every later case, its shape and the row's solid
+      const dress = caseDressStream(x, y, z, ww, hh);
+      const boardH = 0.15 + dress() * 0.05, seams = Math.max(1, Math.floor((hh - 0.2) / boardH));
+      for (let k = 1; k <= seams; k++) {
+        const sy = y + 0.1 + ((hh - 0.2) * k) / (seams + 1);
+        const seam = paint(box(ww + 0.006, 0.014, ll + 0.006, 0.55), dress, 0x2e271f, 0.05);
+        seam.rotateY(yaw);
+        seam.translate(x, sy, z);
+        seam.userData.noCollision = true;
+        parts.structureWood.push(fresh(seam));
+      }
+      // (2026-10-11, round 3; wave 396b: "painted-on battens") the corner battens 3 cm proud of the faces (were 1 cm), and a
+      // cleat up the middle of each face, so each casts its own shadow line
+      for (const cx of [-1, 1]) for (const cz of [-1, 1]) {
+        const post = paint(box(0.085, hh - 0.03, 0.085, 0.55), dress, 0x6a5840, 0.06);
+        const px = cx * (ww / 2 - 0.012), pz = cz * (ll / 2 - 0.012);
+        post.translate(px, 0, pz);
+        post.rotateY(yaw);
+        post.translate(x, y + hh / 2, z);
+        post.userData.noCollision = true;
+        parts.structureWood.push(fresh(post));
+      }
+      for (const [fx, fz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const cleat = paint(box(fx ? 0.03 : 0.09, hh - 0.12, fz ? 0.03 : 0.09, 0.55), dress, 0x5e4e39, 0.06);
+        cleat.translate(fx * (ww / 2 + 0.013), 0, fz * (ll / 2 + 0.013));
+        cleat.rotateY(yaw);
+        cleat.translate(x, y + hh / 2, z);
+        cleat.userData.noCollision = true;
+        parts.structureWood.push(fresh(cleat));
       }
     }
     y += ch;
@@ -268,8 +327,19 @@ function lumberStack(parts: StackParts, local: Rng, upper: boolean): void {
     for (let p = 0; p < planks; p++) {
       const pw = w / planks - 0.015, pl = l - (c === courses - 1 ? local() * 1.2 : local() * 0.25);
       const board = paint(box(pw, courseH, pl, 0.55), local, DEAL, 0.1);
-      board.translate(-w / 2 + (p + 0.5) * (w / planks), y + courseH / 2, (local() - 0.5) * 0.18);
+      const bx = -w / 2 + (p + 0.5) * (w / planks), bz = (local() - 0.5) * 0.18;
+      board.translate(bx, y + courseH / 2, bz);
       parts.structureWood.push(fresh(board));
+      // (2026-10-11, round 3; wave 396b: "grainless timber") the sawn ends: each board's end grain a darker, warmer face
+      // proud by a few millimetres — the cut deal's rings read as a tone, its sapwood paler (dressing, the board's own
+      // stream: the stack's draws are untouched)
+      const ends = caseDressStream(bx, y, bz, pw, pl);
+      for (const s of [-1, 1]) {
+        const cut = paint(box(pw - 0.012, courseH - 0.012, 0.008, 0.5), ends, ends() < 0.3 ? 0xa48a64 : 0x8c7050, 0.08);
+        cut.translate(bx, y + courseH / 2, bz + s * (pl / 2 + 0.004));
+        cut.userData.noCollision = true;
+        parts.structureWood.push(fresh(cut));
+      }
     }
     if (c === courses - 1) break;
     for (const z of [-l * 0.42, -l * 0.14, l * 0.14, l * 0.42]) {

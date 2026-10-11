@@ -27,6 +27,12 @@ export interface RailSpurConfig {
   /** Ballast slab width; omitted = RAIL_SPUR_BALLAST_M. */
   ballast?: number;
   /**
+   * The map-revival lane (2026-10-11; gauntlet waves 362 and 396b on Cinder Junction: "a 1962 coalfield yard sits on black
+   * cinder and coal-dust ballast"; from above the sidings "pale, ruler-straight ribbons"): the bed's and shoulders' tone as
+   * a share of the kit's crushed stone (a yard's cinder and coal-dust ballast well under 1). Omitted = 1.
+   */
+  ballastShade?: number;
+  /**
    * Buffer stops: 'end' closes the last point of the path, 'start' the first, 'both' closes both ends; omitted leaves
    * the ends open (round 63: a spur that leaves the square through a cutting closes only its stub).
    */
