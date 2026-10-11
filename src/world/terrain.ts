@@ -7527,7 +7527,8 @@ void splatCompute() {
             float sd = length(max(bd, 0.0)) + min(max(bd.x, bd.y), 0.0) - 0.12;
             vec2 bd2 = abs(pdq - hs * vec2(0.9, 0.7) * (vec2(ph.y, ph2.x) - 0.5) * 2.0) - hs * 0.55;
             sd = min(sd, length(max(bd2, 0.0)) + min(max(bd2.x, bd2.y), 0.0) - 0.10);
-            sd += (nz(uv, 1.4, vec2(0.19, 0.73)).g - 0.5) * 0.50 + (nz(uv, 4.1, vec2(0.61, 0.07)).r - 0.5) * 0.10;
+            sd += (nz(uv, 1.4, vec2(0.19, 0.73)).g - 0.5) * 0.50
+              + (tileVis(0.25) > 0.01 ? (nz(uv, 4.1, vec2(0.61, 0.07)).r - 0.5) * 0.10 : 0.0); // (R4 cost: the fine wander's tap while it resolves)
             float inPatch = 1.0 - smoothstep(-0.01, 0.01 + fwP, sd);
             float newer = step(0.45, ph.y);
             seam = (1.0 - smoothstep(0.012, 0.024 + fwP, abs(sd))) * tileVis(0.4) * newer;
