@@ -6835,10 +6835,12 @@ void splatCompute() {
       float braidC = workedR ? uRoadSurfC.y : 0.0;
       float fieldK = workedR ? max(uRoadSurfD.w, braidC) : 0.0;
       if (fieldK > 0.0) {
-        // (R3d: as a ratio of the smooth estimate, so the ground's own detail holds through the field's tone)
-        vec3 fieldT = mix(roadS, uMeanG.rgb * vec3(1.03, 1.02, 1.0) * (0.97 + 0.06 * n2w), fieldK);
-        roadCol *= fieldT / max(roadS, vec3(1e-3));
-        roadS = fieldT;
+        // (R3d: the field's tone with the ground's own detail riding on it as a brightness ratio of the smooth estimate —
+        // a per-channel ratio would blow a channel the soil lacks up into a tint)
+        vec3 fieldC = uMeanG.rgb * vec3(1.03, 1.02, 1.0) * (0.97 + 0.06 * n2w);
+        float detR = clamp(dot(roadCol, vec3(0.34, 0.45, 0.21)) / max(dot(roadS, vec3(0.34, 0.45, 0.21)), 1e-4), 0.5, 2.0);
+        roadCol = mix(roadCol, fieldC * detR, fieldK);
+        roadS = mix(roadS, fieldC, fieldK);
       }
       // ground lane (2026-10-03, the gauntlet: the winter road was "a flat chocolate-brown slab laid into pristine
       // snow"): a winter road is packed snow, greyer and smoother than the field, with brown slush churned into the two
