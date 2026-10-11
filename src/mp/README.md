@@ -110,9 +110,11 @@ client may hang, against the local actor, wrangler dev or the deployed Worker; i
 `npm run test:net:v2:rooms:lifecycle` with the slow budgets);
 `npm run test:net:v2:p2p` runs the same flow in three headless Chromes with real WebRTC (`--rooms=wss://…` for the real
 room service; the two tabs still rendering draw at 320×200 while the old host re-enters, so its program compile is not
-starved by two full battle frames on the shared headless GPU). The v2 entry itself extends a shader preparation that ran
-out of its wall-clock budget once (a fresh deadline, a `slow_reveal` beacon `compile_extended`, a `compileRetry` stage)
-before failing — docs/MULTIPLAYER-V2.md §13.6 "Entry resilience".
+starved by two full battle frames on the shared headless GPU). The v2 entry itself keeps a shader preparation that runs
+out of its wall-clock window going while programs keep linking (a `slow_reveal` beacon `compile_extended`, a
+`compileRetry` stage), lets the covered reveal link the rest at its last resort (`compile_deferred`) and refuses only a
+preparation that cannot succeed; after any refused entry the loader clears and the room's lobby opens again with
+Rejoin battle — docs/MULTIPLAYER-V2.md §13.6 "Entry resilience" and "A slow compile never refuses entry".
 
 The certification of the peer-to-peer match (§13.8, P3 lane 2026-09-28) drives N seats as tabs of the peer harness
 `tools/mp-p2p-peer/` (this session composition with no renderer, the browser host, real WebRTC, prediction against the
