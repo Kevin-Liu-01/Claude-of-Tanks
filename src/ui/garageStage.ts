@@ -20,6 +20,7 @@ import {
   type GarageArchitectureStats,
 } from './garageArchitecture.ts';
 import { getDeviceTier } from '../engine/quality.ts';
+import { VERDANT_WELD_LIGHT } from '../game/garageWorkshopLayout.ts';
 
 type RandomSource = () => number;
 type SignWear = [boolean, number, number, number, number];
@@ -696,6 +697,10 @@ export function createGarageStage(
       wall.rotation.set(rx, ry, 0);
       wall.position.set(x, WALL_H / 2, z);
       wall.receiveShadow = true;
+      // The walls stop the garage sun (2026-10-10): without them it lit the floor straight through the shell, a
+      // blown-out slab at the Burlak bay (floor mean 101 -> 83). Its ray to the hero clears the wall tops, and the
+      // ceiling still casts nothing, so the turntable keeps its key and contact shadow.
+      wall.castShadow = true;
       group.add(wall);
       baseWalls.push(wall);
     }
@@ -1024,12 +1029,15 @@ export function createGarageStage(
   sign2.position.set(-HW + 0.075, 3.4, -6);
   group.add(halo2, plate2, sign2);
 
-  // low hangar fill (hud_ui r2): the west-wall props (tool chest, bench,
-  // tires, pipes) crushed to near-black under the podium-keyed lighting. One
-  // wide dim point light lifts that corner ~a stop without flattening the
-  // key — finite range keeps it out of the battlefield shaders' hot path.
-  const fill = new THREE.PointLight(0xc2cedd, 13, 32, 1.7);
-  fill.position.set(-15, 5.6, -1);
+  // The weld light (2026-10-10, the owner's free hand, wave 338: "the weld gives off no real light"). This was the
+  // low west-wall fill (hud_ui r2), which lit nothing that mattered once the room turned; it now stands at the rolled
+  // K2's belly weld, blue-white and short-ranged. Same light count, so no shader program changes. The indoor set is
+  // half-turned, hence the negated Garage-frame point. It flickers only while Verdant frames draw (the floor's
+  // onBeforeRender below), so the settled Garage never wakes for it.
+  const fill = new THREE.PointLight(0xb9d3ff, 9, 8, 2);
+  fill.name = 'garage_verdant_weld_light';
+  fill.position.set(-VERDANT_WELD_LIGHT.x, VERDANT_WELD_LIGHT.y, -VERDANT_WELD_LIGHT.z);
+  fill.castShadow = false;
   verdantLights.push(fill);
   group.add(fill);
 
@@ -1361,6 +1369,13 @@ export function createGarageStage(
   const verdantLightIntensities = new Map(
     verdantLights.map((light) => [light, light.intensity] as const),
   );
+  // The weld light's arc flicker rides the floor's own draw (Verdant only: the floor is part of the indoor set), so it
+  // costs a few multiplies per drawn frame and nothing while the Garage is settled or outdoors.
+  floor.onBeforeRender = () => {
+    const base = verdantLightIntensities.get(fill) ?? 0;
+    const t = performance.now() * 0.001;
+    fill.intensity = base * (0.72 + 0.28 * (0.5 + 0.3 * Math.sin(t * 41.3) + 0.2 * Math.sin(t * 67.9 + 0.7)));
+  };
   let variantPresentationGeneration = 0;
   const ENVIRONMENT_REVEAL_ATTEMPTS = 3;
   const waitForEnvironmentRetry = (attempt: number): Promise<void> => (
