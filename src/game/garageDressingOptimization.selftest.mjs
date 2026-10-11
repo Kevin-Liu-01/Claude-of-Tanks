@@ -173,4 +173,30 @@ displayMaterial.dispose();
   paint.dispose();
 }
 
+{
+  // A mesh flagged keepDisplayMesh (a workshop crew, already merged in its own frame) keeps its own draw inside a
+  // display owner, so the frustum culls each crew on its own instead of drawing every bay's crew in every view.
+  const workshop = new THREE.Group();
+  const shared = new THREE.Group();
+  shared.userData.variantSwitchOwner = true;
+  workshop.add(shared);
+  const paint = new THREE.MeshStandardMaterial();
+  const crewA = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.7, 0.3), paint);
+  crewA.userData.keepDisplayMesh = true;
+  crewA.position.set(10, 0.85, 0);
+  const crewB = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.7, 0.3), paint);
+  crewB.userData.keepDisplayMesh = true;
+  crewB.position.set(-10, 0.85, 0);
+  const propA = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), paint);
+  const propB = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.5), paint);
+  propB.position.set(1, 0, 0);
+  shared.add(crewA, crewB, propA, propB);
+  const kept = optimizeGarageDressing(workshop, { staticDisplayOwners: [shared] });
+  assert.equal(kept.displayMeshesMerged, 2, 'only the plain props merge');
+  assert.equal(crewA.parent, shared, 'a kept crew mesh stays its own draw');
+  assert.equal(crewB.parent, shared, 'every kept crew mesh stays its own draw');
+  for (const geometry of workshop.userData.optimizationDisposables || []) geometry.dispose();
+  crewA.geometry.dispose(); crewB.geometry.dispose(); paint.dispose();
+}
+
 console.log('garageDressingOptimization.selftest: static transforms and proxy-safe shadow budget pass');
