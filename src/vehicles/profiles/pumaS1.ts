@@ -480,7 +480,7 @@ function addTurret(P: PumaS1BuilderPort): void {
   P.addEquipment('turret', KIT.cylY(0.25, 0.27, 0.075, 18), 0.62, 0.855, 0.52);
   const pumaRoofOptics = FITTINGS.openYokeRws({
     mats: P.mats,
-    bodySlot: 'turret',
+    bodySlot: 'hull',
     sizeStandard: 'k2b-compact-tower',
     scale: 0.80,
     towerRise: 0.10,
@@ -512,7 +512,7 @@ function addTurret(P: PumaS1BuilderPort): void {
   // cannon, while the arrow brow and faceted yoke are unique to Puma S1.
   const pumaRoofRws = FITTINGS.openYokeRws({
     mats: P.mats,
-    bodySlot: 'turret',
+    bodySlot: 'hull',
     sizeStandard: 'puma-s1-compact-rws',
     scale: 0.68,
     towerRise: 0.08,
