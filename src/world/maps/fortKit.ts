@@ -29,6 +29,10 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { sandbagBag } from './sceneryKit.ts';
+import type { DamageMeshWriter, FractureMaterial } from '../destructionKit.ts';
+import type {
+  FractureFace, FractureLink, FractureLinkKind, FracturePiece, FractureRole, KitFractureAnatomy,
+} from '../fractureAnatomy.ts';
 
 type Rng = () => number;
 type V3 = [number, number, number];
@@ -1025,7 +1029,7 @@ function placeBag(m: Mesh, rng: Rng, x: number, y: number, z: number, yaw: numbe
  * edge, gently uneven, in patches of grass, dry grass and bare earth, and tufts standing in it. Its normals are the
  * surface's own (area-weighted over the triangles round each vertex), so no wedge of the fan reads as a fold.
  */
-function roofCover(m: Mesh, plan: Plan, y: number, thick: number, inset: number, T: FortTones, seed: number): void {
+function roofCover(m: Mesh, plan: Plan, y: number, thick: number, inset: number, T: FortTones, seed: number, quadrant?: [number, number]): void {
   if (thick <= 0.02) return;
   const inner = grow(plan, -inset + (inset === 0 ? 0.18 : 0));
   const samples = perimeter(inner, 0.2, 0);
@@ -1078,13 +1082,20 @@ function roofCover(m: Mesh, plan: Plan, y: number, thick: number, inset: number,
     if (T.arid) c = mix(c, T.earth, 0.55);
     return mul(c, 0.8 + fine * 0.35);
   };
-  for (const [ia, ra, ib, rb, ic, rc] of tris) m.triN(grid[ia][ra], nrm[ia][ra], grid[ib][rb], nrm[ib][rb], grid[ic][rc], nrm[ic][rc], shade);
+  for (const [ia, ra, ib, rb, ic, rc] of tris) {
+    if (!quadrant) { m.triN(grid[ia][ra], nrm[ia][ra], grid[ib][rb], nrm[ib][rb], grid[ic][rc], nrm[ic][rc], shade); continue; }
+    // (round 2: a slab plate's share, the triangles cut on the plates' joints)
+    const poly = clipPN(clipPN([{ p: grid[ia][ra], n: nrm[ia][ra] }, { p: grid[ib][rb], n: nrm[ib][rb] }, { p: grid[ic][rc], n: nrm[ic][rc] }],
+      quadrant[0], 0), 0, quadrant[1]);
+    for (let q = 1; q + 1 < poly.length; q++) m.triN(poly[0].p, poly[0].n, poly[q].p, poly[q].n, poly[q + 1].p, poly[q + 1].n, shade);
+  }
   // tufts of grass in it (dry on an arid map: thin, few)
   const tufts = T.barren ? 0 : T.arid ? 20 : 90;
   for (let k = 0; k < tufts; k++) {
     const si = Math.floor(hash3(k, 1, 2, seed) * K), t = Math.sqrt(hash3(k, 3, 4, seed)) * 0.86;
     const s0 = samples[si];
     const x = cx + (s0.x - cx) * t, z = cz + (s0.z - cz) * t, base = y + heightAt(x, z, t) - 0.02;
+    if (quadrant && !(x * quadrant[0] > 0.3 && z * quadrant[1] > 0.3)) continue;
     tuft(m, x, base, z, 0.14 + hash3(k, 5, 6, seed) * 0.26, mix(T.crest, T.turf, hash3(k, 7, 8, seed) * 0.7), seed + k * 13);
   }
 }
@@ -1302,6 +1313,683 @@ function buildLogEarthPillbox(O: BuildOpts): THREE.BufferGeometry {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// the pieces (round 2, the destructible-buildings lane: the destruction core's fracture contract, fractureAnatomy.ts;
+// the owner, 2026-10-10: "the destruction of buildings needs to be a lot better too, rn its way to sporadic and ugly
+// instead of behaving like it would with physics")
+//
+// The intact concrete work is drawn as the pieces a blow takes it apart into: per wall the stub a breach leaves
+// standing (an anchor, as tall as the destroyed state's razed walls) and above it the wall's lift with its embrasures;
+// the door between its jambs' lifts under its lintel, the steel leaf in the gap (a piece in a hole would have its box
+// round the hole's); the corners as blocks squared to both their walls (the casemate's and the DOT's walls meet at
+// right angles; their chamfers and splayed faces lie inside the blocks); the slab in four plates with the roof's earth
+// and turf on each; the blast wall's stub and its upper lift; every sandbag; the floor. Every piece is closed (its
+// inner face, top and bottom, the cut faces in the broken concrete's fresh grey), so a piece that falls is concrete
+// all round. The boxes start apart, save the hexagon's corners (two walls meeting at 120 degrees cannot both be squared
+// to a box: their cast joints overlap by the mitre, linked).
+
+type Quat = [number, number, number, number];
+interface BoxAxes { o: V3; x: V3; y: V3; z: V3 }
+const AX: BoxAxes = { o: [0, 0, 0], x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] };
+const dot3 = (a: V3, b: V3): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+/** The broken walls' stub: what a breach leaves standing (the destroyed state's razed walls, under BROKEN_CAP). */
+const STUB_TOP = 0.45;
+const FORT_REBAR = { pitchM: 0.2, diaM: 0.016 } as const;
+const FORT_DENSITY: Partial<Record<FractureMaterial, number>> = { concrete: 2400, metal: 7850, earth: 1600, timber: 600, rubble: 1800 };
+
+function quatOfAxes(f: BoxAxes): Quat {
+  const m00 = f.x[0], m01 = f.y[0], m02 = f.z[0];
+  const m10 = f.x[1], m11 = f.y[1], m12 = f.z[1];
+  const m20 = f.x[2], m21 = f.y[2], m22 = f.z[2];
+  const tr = m00 + m11 + m22;
+  let x: number, y: number, z: number, w: number;
+  if (tr > 0) {
+    const s = Math.sqrt(tr + 1) * 2;
+    w = s / 4; x = (m21 - m12) / s; y = (m02 - m20) / s; z = (m10 - m01) / s;
+  } else if (m00 > m11 && m00 > m22) {
+    const s = Math.sqrt(1 + m00 - m11 - m22) * 2;
+    w = (m21 - m12) / s; x = s / 4; y = (m01 + m10) / s; z = (m02 + m20) / s;
+  } else if (m11 > m22) {
+    const s = Math.sqrt(1 + m11 - m00 - m22) * 2;
+    w = (m02 - m20) / s; x = (m01 + m10) / s; y = s / 4; z = (m12 + m21) / s;
+  } else {
+    const s = Math.sqrt(1 + m22 - m00 - m11) * 2;
+    w = (m10 - m01) / s; x = (m02 + m20) / s; y = (m12 + m21) / s; z = s / 4;
+  }
+  const l = Math.hypot(x, y, z, w) || 1;
+  return [x / l, y / l, z / l, w / l];
+}
+/** A wall edge's axes: x along it, y up, z out of the wall. */
+function edgeAxes(o: V3, u: V3): BoxAxes { return { o, x: u, y: [0, 1, 0], z: norm(cross(u, [0, 1, 0])) }; }
+
+interface FortPieceSpec {
+  role: FractureRole;
+  material: FractureMaterial;
+  face?: FractureFace;
+  anchor?: boolean;
+  axes: BoxAxes;
+  scoreAxis?: 0 | 1 | 2;
+  /** coordinates along scoreAxis in the axes' frame */
+  scores?: readonly number[];
+  rebar?: boolean;
+  /** m3: the mass is this at the material's density */
+  volume: number;
+}
+
+/** The anatomy's recorder over a Mesh: a piece is the triangles written between begin and end. */
+class FortPieces {
+  readonly pieces: FracturePiece[] = [];
+  readonly links: FractureLink[] = [];
+  private open: { spec: FortPieceSpec; tri0: number } | null = null;
+  readonly m: Mesh;
+  constructor(m: Mesh) { this.m = m; }
+  begin(spec: FortPieceSpec): number {
+    if (this.open) throw new Error('fortKit: piece begun inside another');
+    this.open = { spec, tri0: this.m.p.length / 9 };
+    return this.pieces.length;
+  }
+  end(): number {
+    const o = this.open;
+    if (!o) throw new Error('fortKit: piece ended without a begin');
+    this.open = null;
+    const tri1 = this.m.p.length / 9, P = this.m.p, ax = o.spec.axes;
+    if (tri1 <= o.tri0) throw new Error(`fortKit: empty ${o.spec.role} piece`);
+    const axes = [ax.x, ax.y, ax.z];
+    const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+    for (let i = o.tri0 * 9; i < tri1 * 9; i += 3) {
+      const d: V3 = [P[i] - ax.o[0], P[i + 1] - ax.o[1], P[i + 2] - ax.o[2]];
+      for (let k = 0; k < 3; k++) {
+        const s = dot3(d, axes[k]);
+        if (s < lo[k]) lo[k] = s;
+        if (s > hi[k]) hi[k] = s;
+      }
+    }
+    const mid = [0, 1, 2].map((k) => (lo[k] + hi[k]) / 2), h = [0, 1, 2].map((k) => (hi[k] - lo[k]) / 2 + 0.0002);
+    const c: V3 = [0, 1, 2].map((j) => ax.o[j] + axes[0][j] * mid[0] + axes[1][j] * mid[1] + axes[2][j] * mid[2]) as V3;
+    const axis = o.spec.scoreAxis ?? (h[0] >= h[1] && h[0] >= h[2] ? 0 : h[1] >= h[2] ? 1 : 2);
+    const scores = (o.spec.scores ?? []).map((s) => s - mid[axis]).filter((s) => Math.abs(s) < h[axis] - 0.06)
+      .sort((a, b) => a - b).slice(0, 6).map((s) => Math.round(s * 1000) / 1000);
+    const r = (v: number): number => Math.round(v * 10000) / 10000;
+    this.pieces.push({
+      role: o.spec.role, material: o.spec.material, bucket: 'fortConcrete', tri0: o.tri0, triN: tri1 - o.tri0,
+      c: c.map(r) as unknown as V3, h: h.map(r) as unknown as V3, q: quatOfAxes(ax),
+      massKg: Math.max(1, Math.round(o.spec.volume * (FORT_DENSITY[o.spec.material] ?? 2000) * 10) / 10),
+      ...(o.spec.anchor ? { anchor: true as const } : {}),
+      ...(o.spec.face ? { face: o.spec.face } : {}),
+      ...(scores.length ? { scoreAxis: axis, scores } : {}),
+      ...(o.spec.rebar ? { rebar: FORT_REBAR } : {}),
+    });
+    return this.pieces.length - 1;
+  }
+  link(a: number, b: number, kind: FractureLinkKind): void {
+    if (a === b || a < 0 || b < 0) return;
+    if (this.links.some((l) => (l.a === a && l.b === b) || (l.a === b && l.b === a))) return;
+    this.links.push({ a, b, kind });
+  }
+  anatomy(kind: string): KitFractureAnatomy {
+    if (this.open) throw new Error('fortKit: unfinished piece');
+    return { kind, pieces: this.pieces.slice(), links: this.links.slice() };
+  }
+}
+
+/** A flat polygon (xz, either winding) at height y, facing up or down, ear-clipped (it may be concave). */
+function capPolygon(m: Mesh, poly: Array<[number, number]>, y: number, shade: Shade, up: boolean, printed: boolean): void {
+  let area = 0;
+  for (let i = 0; i < poly.length; i++) { const [x0, z0] = poly[i], [x1, z1] = poly[(i + 1) % poly.length]; area += x0 * z1 - x1 * z0; }
+  const idx = poly.map((_, i) => i);
+  if (area < 0) idx.reverse();
+  const P = (i: number): [number, number] => poly[i];
+  const crossZ = (a: [number, number], b: [number, number], c: [number, number]): number => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+  const inside = (p: [number, number], a: [number, number], b: [number, number], c: [number, number]): boolean =>
+    crossZ(a, b, p) > 1e-9 && crossZ(b, c, p) > 1e-9 && crossZ(c, a, p) > 1e-9;
+  const n: V3 = up ? [0, 1, 0] : [0, -1, 0];
+  let guard = 0;
+  while (idx.length > 3 && guard++ < 500) {
+    let clipped = false;
+    for (let k = 0; k < idx.length; k++) {
+      const ia = idx[(k + idx.length - 1) % idx.length], ib = idx[k], ic = idx[(k + 1) % idx.length];
+      const a = P(ia), b = P(ib), c = P(ic);
+      if (crossZ(a, b, c) <= 1e-9) continue;
+      if (idx.some((j) => j !== ia && j !== ib && j !== ic && inside(P(j), a, b, c))) continue;
+      m.tri([a[0], y, a[1]], [b[0], y, b[1]], [c[0], y, c[1]], shade, printed, n);
+      idx.splice(k, 1);
+      clipped = true;
+      break;
+    }
+    if (!clipped) break;
+  }
+  if (idx.length === 3) { const [a, b, c] = idx.map(P); m.tri([a[0], y, a[1]], [b[0], y, b[1]], [c[0], y, c[1]], shade, printed, n); }
+}
+
+/** A wall face without the weather's grid (an inner or cut face: the same board print) from a along u, `w` wide, y0..y1,
+ * facing `n`, `holes` cut out. */
+function plainFace(m: Mesh, a: V3, u: V3, w: number, y0: number, y1: number, n: V3, holes: Opening[], shade: Shade): void {
+  const ss = [0, w, ...holes.flatMap((h) => [h.s0, h.s1])].filter((s) => s >= 0 && s <= w).sort((p, q) => p - q);
+  const ts = [y0, y1, ...holes.flatMap((h) => [h.t0, h.t1])].filter((t) => t >= y0 && t <= y1).sort((p, q) => p - q);
+  const P = (s: number, t: number): V3 => [a[0] + u[0] * s, t, a[2] + u[2] * s];
+  for (let i = 0; i + 1 < ss.length; i++) {
+    const s0 = ss[i], s1 = ss[i + 1];
+    if (s1 - s0 < 1e-5) continue;
+    for (let j = 0; j + 1 < ts.length; j++) {
+      const t0 = ts[j], t1 = ts[j + 1];
+      if (t1 - t0 < 1e-5) continue;
+      const sm = (s0 + s1) / 2, tm = (t0 + t1) / 2;
+      if (holes.some((h) => sm > h.s0 && sm < h.s1 && tm > h.t0 && tm < h.t1)) continue;
+      m.quad(P(s0, t0), P(s1, t0), P(s1, t1), P(s0, t1), shade, true, n);
+    }
+  }
+}
+
+/**
+ * A straight wall block on a plan edge (outer line from `o` along `u`, its outward normal n = u x up): the outer
+ * stretch s0..s1, the inner stretch i0..i1 (equal to it where the ends are square cuts; the inner corners where they are
+ * mitred), y0..y1, `t` deep. Its outer face is the print and the weather with `openings` (edge coordinates) cut, its
+ * inner face plain with `inner` holes, its top and bottom and two end faces closing it.
+ */
+function wallBlock(m: Mesh, o: V3, u: V3, s0: number, s1: number, i0: number, i1: number, y0: number, y1: number, t: number,
+  openings: Opening[], inner: Opening[], out: Shade, inn: Shade, cut: Shade, ends: [Shade, Shade], top: Shade | null, bottom: Shade | null): void {
+  const n = norm(cross(u, [0, 1, 0]));
+  const P = (s: number, y: number, d: number): V3 => [o[0] + u[0] * s - n[0] * d, y, o[2] + u[2] * s - n[2] * d];
+  wallFace(m, P(s0, 0, 0), u, s1 - s0, y0, () => y1, openings.map((op) => ({ s0: op.s0 - s0, s1: op.s1 - s0, t0: op.t0, t1: op.t1 })), out);
+  plainFace(m, P(i1, 0, t), scl(u, -1), i1 - i0, y0, y1, scl(n, -1), inner.map((op) => ({ s0: i1 - op.s1, s1: i1 - op.s0, t0: op.t0, t1: op.t1 })), inn);
+  const quadXZ = (a: V3, b: V3, c: V3, d: V3, y: number, shade: Shade, up: boolean) =>
+    m.quad([a[0], y, a[2]], [b[0], y, b[2]], [c[0], y, c[2]], [d[0], y, d[2]], shade, true, up ? [0, 1, 0] : [0, -1, 0]);
+  if (top) quadXZ(P(s0, 0, 0), P(s1, 0, 0), P(i1, 0, t), P(i0, 0, t), y1, top, true);
+  if (bottom) quadXZ(P(s0, 0, 0), P(s1, 0, 0), P(i1, 0, t), P(i0, 0, t), y0, bottom, false);
+  // the ends: from the outer end to the inner end (square or along the mitre)
+  const endFace = (so: number, si: number, shade: Shade, hint: V3) =>
+    m.quad(P(so, y0, 0), P(so, y1, 0), P(si, y1, t), P(si, y0, t), shade, true, undefined, hint);
+  endFace(s0, i0, ends[0], scl(u, -1));
+  endFace(s1, i1, ends[1], u);
+  void cut;
+}
+
+/**
+ * A corner block between two plan edges at right angles (and any short edges between them: a chamfer, a splayed face),
+ * squared to the first: its region is the wall between the cut across the first edge at `outer[0]` and the cut across
+ * the last at `outer[outer.length - 1]`, its outer chain `outer` (the cut points and the corners between), its inner
+ * chain `inner` (the same run `t` in). Faces: the outer chain printed (its segments' openings cut), the inner chain
+ * plain, the two cut faces, the top and the bottom.
+ */
+function cornerBlock(m: Mesh, outer: Array<[number, number]>, inner: Array<[number, number]>, y0: number, y1: number,
+  openings: Opening[][], innerHoles: Opening[][], out: Shade, inn: Shade, cut: Shade, top: Shade | null, bottom: Shade | null): void {
+  for (let i = 0; i + 1 < outer.length; i++) {
+    const a = outer[i], b = outer[i + 1], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (len < 1e-4) continue;
+    const u: V3 = [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len];
+    wallFace(m, [a[0], 0, a[1]], u, len, y0, () => y1, openings[i] ?? [], out);
+  }
+  for (let i = 0; i + 1 < inner.length; i++) {
+    const a = inner[i], b = inner[i + 1], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (len < 1e-4) continue;
+    const u: V3 = [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len];
+    // the inner chain runs the same way as the outer: its face looks in (against the outer's outward normal)
+    const nIn: V3 = scl(norm(cross(u, [0, 1, 0])), -1);
+    plainFace(m, [b[0], 0, b[1]], scl(u, -1), len, y0, y1, nIn,
+      (innerHoles[i] ?? []).map((h) => ({ s0: len - h.s1, s1: len - h.s0, t0: h.t0, t1: h.t1 })), inn);
+  }
+  const o0 = outer[0], i0 = inner[0], o1 = outer[outer.length - 1], i1 = inner[inner.length - 1];
+  const c0: V3 = [(o0[0] + i0[0]) / 2, 0, (o0[1] + i0[1]) / 2], c1: V3 = [(o1[0] + i1[0]) / 2, 0, (o1[1] + i1[1]) / 2];
+  const mid: V3 = [(c0[0] + c1[0]) / 2, 0, (c0[2] + c1[2]) / 2];
+  m.quad([o0[0], y0, o0[1]], [o0[0], y1, o0[1]], [i0[0], y1, i0[1]], [i0[0], y0, i0[1]], cut, true, undefined, sub(c0, mid));
+  m.quad([o1[0], y0, o1[1]], [o1[0], y1, o1[1]], [i1[0], y1, i1[1]], [i1[0], y0, i1[1]], cut, true, undefined, sub(c1, mid));
+  const ring = [...outer, ...inner.slice().reverse()];
+  if (top) capPolygon(m, ring, y1, top, true, true);
+  if (bottom) capPolygon(m, ring, y0, bottom, false, true);
+}
+
+/** The intersection of two lines (point + direction) in xz, or null when parallel. */
+function meet(p: [number, number], d: [number, number], q: [number, number], e: [number, number]): [number, number] | null {
+  const den = d[0] * e[1] - d[1] * e[0];
+  if (Math.abs(den) < 1e-9) return null;
+  const t = ((q[0] - p[0]) * e[1] - (q[1] - p[1]) * e[0]) / den;
+  return [p[0] + d[0] * t, p[1] + d[1] * t];
+}
+
+/** Clip a convex polygon (xz) to the half-plane a·x + b·z >= c (Sutherland-Hodgman). */
+function clipHalf(poly: Array<[number, number]>, a: number, b: number, c: number): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i], q = poly[(i + 1) % poly.length];
+    const fp = a * p[0] + b * p[1] - c, fq = a * q[0] + b * q[1] - c;
+    if (fp >= 0) out.push(p);
+    if ((fp >= 0) !== (fq >= 0)) { const t = fp / (fp - fq); out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]); }
+  }
+  return out;
+}
+
+/** Clip a polygon of (point, normal) to the half-plane a·x + b·z >= 0 (the slab's quadrants). */
+function clipPN(poly: Array<{ p: V3; n: V3 }>, a: number, b: number): Array<{ p: V3; n: V3 }> {
+  const out: Array<{ p: V3; n: V3 }> = [];
+  for (let i = 0; i < poly.length; i++) {
+    const P = poly[i], Q = poly[(i + 1) % poly.length];
+    const fp = a * P.p[0] + b * P.p[2], fq = a * Q.p[0] + b * Q.p[2];
+    if (fp >= 0) out.push(P);
+    if ((fp >= 0) !== (fq >= 0)) {
+      const t = fp / (fp - fq);
+      out.push({ p: add(P.p, scl(sub(Q.p, P.p), t)), n: norm(add(P.n, scl(sub(Q.n, P.n), t))) });
+    }
+  }
+  return out;
+}
+
+/** The plan's inside `t` in (each edge's line moved in; convex plans, short edges may vanish), as a polygon. */
+function insetPlan(plan: Plan, t: number): Array<[number, number]> {
+  let poly: Array<[number, number]> = [[-20, -20], [20, -20], [20, 20], [-20, 20]];
+  const k = plan.length;
+  for (let i = 0; i < k; i++) {
+    const a = plan[i], b = plan[(i + 1) % k], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const nx = -(b[1] - a[1]) / len, nz = (b[0] - a[0]) / len;
+    // inside: (p - a)·n <= -t, i.e. -n·p >= t - n·a
+    poly = clipHalf(poly, -nx, -nz, t - (nx * a[0] + nz * a[1]));
+  }
+  return poly;
+}
+
+/**
+ * The intact concrete work in pieces (regelbau, dot, hex): the same faces, prints and weather as the r1 build, every
+ * piece closed. Returns the geometry with its anatomy on userData.fracture.
+ */
+function buildConcretePillboxPieces(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): THREE.BufferGeometry {
+  const m = new Mesh();
+  const F = new FortPieces(m);
+  const T = O.tones;
+  const L = concreteLayout(style);
+  const { plan, wallTop, slab, overhang, slits, slitList, doorEdge, doorS } = L;
+  const k = plan.length;
+  const W: Weather = { tones: T, drip: wallTop, slits, grade: GRADE, seed: (O.seed * 31) ^ 0x51ab, burn: 0 };
+  const conc = concreteShade(W);
+  const reveal = revealShade(W, conc);
+  const plateTone: Rgb = mix([0.05, 0.052, 0.055], [0.09, 0.05, 0.03], T.age * 0.6);
+  const inner: Shade = (p) => mul(T.concrete, 0.3 + vnoise(p[0], p[1], p[2], 0.4, O.seed + 73) * 0.1);
+  const cut: Shade = (p) => mix(T.concrete, [0.36, 0.34, 0.3], 0.5 + vnoise(p[0], p[1], p[2], 0.15, O.seed + 71) * 0.3);
+  const doorW = 0.88, doorH = 1.66;
+  const t = style === 'dot' ? 1.05 : 0.9;
+
+  // ---- the plan's edges
+  interface Edge { i: number; a: [number, number]; b: [number, number]; len: number; u: V3; n: V3; face: FractureFace }
+  const edges: Edge[] = plan.map((a, i) => {
+    const b = plan[(i + 1) % k], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const u: V3 = [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len], n: V3 = [-u[2], 0, u[0]];
+    const role = edgeRole(n[0], n[2]);
+    return { i, a, b, len, u, n, face: role === 'front' ? 'front' : role === 'rear' ? 'back' : n[0] > 0 ? 'right' : 'left' };
+  });
+  const slitsOf = (i: number) => slitList.filter((sl) => sl.edge === i);
+  const outerOpening = (sl: ConcreteSlit): Opening => ({ s0: sl.s - sl.w / 2, s1: sl.s + sl.w / 2, t0: sl.y - sl.h / 2, t1: sl.y + sl.h / 2 });
+  const throatOf = (sl: ConcreteSlit): { hw: number; hh: number } => ({ hw: sl.w / 2 - sl.steps * sl.w * 0.11, hh: sl.h / 2 - sl.steps * sl.h * 0.1 });
+  /** The embrasures of an edge drawn into the open piece; the DOT's main one under its visor. */
+  const drawSlits = (e: Edge, list: ConcreteSlit[]): void => {
+    for (const sl of list) {
+      const c: V3 = [e.a[0] + e.u[0] * sl.s, sl.y, e.a[1] + e.u[2] * sl.s];
+      embrasure(m, c, e.u, sl.w, sl.h, sl.steps, sl.w * 0.11, sl.h * 0.1, 0.16, t, reveal, sl.plate ? plateTone : null, sl.w * 0.32, 0.1);
+      if (style === 'dot' && sl.w > 1) {
+        const vy = sl.y + sl.h / 2 + 0.03, depth = 0.3, vw = sl.w + 0.36;
+        solid(m, c[0] + e.n[0] * depth / 2, vy, c[2] + e.n[2] * depth / 2, vw, 0.14, depth, Math.atan2(e.n[0], e.n[2]), conc, true);
+      }
+    }
+  };
+  /** An edge's throat holes in its inner face, in edge coordinates on the inner line (the outer s, the line is parallel). */
+  const throatHoles = (list: ConcreteSlit[]): Opening[] => list.map((sl) => {
+    const th = throatOf(sl);
+    return { s0: sl.s - th.hw, s1: sl.s + th.hw, t0: sl.y - th.hh, t1: sl.y + th.hh };
+  });
+  const vol = (len: number, h: number) => len * h * t;
+
+  // ---- the walls: [piece index] per span, for the links
+  interface Span { edge: number; s0: number; s1: number; upper: number; stub: number }
+  const spans: Span[] = [];
+  const corners: Array<{ upper: number; stub: number; a: number; b: number }> = [];
+  let lintel = -1, threshold = -1, doorLeft = -1, doorRight = -1;
+  const door = doorEdge >= 0 ? { s0: doorS - doorW / 2, s1: doorS + doorW / 2 } : null;
+
+  /** A straight span of an edge: its upper lift and its stub (the door's edge in its two sides and lintel). */
+  const straight = (e: Edge, s0: number, s1: number, i0: number, i1: number, endA: Shade, endB: Shade): void => {
+    if (s1 - s0 < 0.05) return;
+    const list = slitsOf(e.i).filter((sl) => sl.s > s0 && sl.s < s1);
+    const ax = edgeAxes([e.a[0], 0, e.a[1]], e.u);
+    const scores = [s0 + (s1 - s0) / 3, s0 + (2 * (s1 - s0)) / 3];
+    const upper = F.begin({ role: 'wall', material: 'concrete', face: e.face, axes: ax, scoreAxis: 0, scores, rebar: true, volume: vol(s1 - s0, wallTop - STUB_TOP) });
+    wallBlock(m, [e.a[0], 0, e.a[1]], e.u, s0, s1, i0, i1, STUB_TOP, wallTop, t, list.map(outerOpening), throatHoles(list), conc, inner, cut, [endA, endB], cut, cut);
+    drawSlits(e, list);
+    F.end();
+    const stub = F.begin({ role: 'wall', material: 'concrete', face: e.face, anchor: true, axes: ax, rebar: true, volume: vol(s1 - s0, STUB_TOP - FOOT) });
+    wallBlock(m, [e.a[0], 0, e.a[1]], e.u, s0, s1, i0, i1, FOOT, STUB_TOP, t, [], [], conc, inner, cut, [endA, endB], cut, null);
+    F.end();
+    F.link(upper, stub, 'cast');
+    spans.push({ edge: e.i, s0, s1, upper, stub });
+  };
+  /** An edge's middle stretch from s0 to s1 (its ends square cuts, or mitred to the inner i0/i1): split round the door. */
+  const middle = (e: Edge, s0: number, s1: number, i0: number, i1: number): void => {
+    if (!door || e.i !== doorEdge) { straight(e, s0, s1, i0, i1, cut, cut); return; }
+    const ax = edgeAxes([e.a[0], 0, e.a[1]], e.u);
+    // the door's two sides: their ends at the gap are its reveal
+    if (door.s0 - s0 > 0.05) { straight(e, s0, door.s0, i0, door.s0, cut, reveal); doorLeft = spans[spans.length - 1].upper; }
+    if (s1 - door.s1 > 0.05) { straight(e, door.s1, s1, door.s1, i1, reveal, cut); doorRight = spans[spans.length - 1].upper; }
+    // the lintel over it, the threshold under it
+    const top = GRADE + doorH;
+    lintel = F.begin({ role: 'wall', material: 'concrete', face: e.face, axes: ax, rebar: true, volume: vol(doorW, wallTop - top) });
+    wallBlock(m, [e.a[0], 0, e.a[1]], e.u, door.s0, door.s1, door.s0, door.s1, top, wallTop, t, [], [], conc, inner, cut, [cut, cut], cut, reveal);
+    F.end();
+    threshold = F.begin({ role: 'wall', material: 'concrete', face: e.face, anchor: true, axes: ax, rebar: true, volume: vol(doorW, GRADE - FOOT) });
+    wallBlock(m, [e.a[0], 0, e.a[1]], e.u, door.s0, door.s1, door.s0, door.s1, FOOT, GRADE, t, [], [], conc, inner, cut, [cut, cut], reveal, null);
+    F.end();
+  };
+
+  {
+    // the major edges: the casemate's four sides (its chamfers fall in the corner blocks), the DOT's rear and sides (its
+    // splayed front with the main embrasure one block between the sides, squared to both: they are parallel), every
+    // side of the hexagon (its corner blocks squared to the incoming side; the outgoing side's cut sits askew in them)
+    const major = edges.filter((e) => style === 'hex' ? true
+      : style === 'dot' ? (Math.abs(e.u[2]) > 0.995 || e.face === 'back')
+      : Math.abs(e.u[0]) > 0.995 || Math.abs(e.u[2]) > 0.995).map((e) => e.i);
+    const cutsOn = new Map<number, { start: number; end: number }>();
+    for (const i of major) cutsOn.set(i, { start: 0, end: edges[i].len });
+    const blocks: Array<{ outer: Array<[number, number]>; inner: Array<[number, number]>; chain: number[]; A: number; B: number }> = [];
+    for (let j = 0; j < major.length; j++) {
+      const A = edges[major[j]], B = edges[major[(j + 1) % major.length]];
+      const chain: number[] = [];
+      for (let q = (A.i + 1) % k; q !== B.i; q = (q + 1) % k) chain.push(q);
+      // the inner corners: the lines t in, met in turn; a short edge whose inner stretch would be negative drops out
+      let run = [A.i, ...chain, B.i];
+      const line = (i: number): { p: [number, number]; d: [number, number] } =>
+        ({ p: [edges[i].a[0] - edges[i].n[0] * t, edges[i].a[1] - edges[i].n[2] * t], d: [edges[i].u[0], edges[i].u[2]] });
+      let pts: Array<[number, number]> = [];
+      for (let guard = 0; guard < 8; guard++) {
+        pts = [];
+        for (let q = 0; q + 1 < run.length; q++) {
+          const l0 = line(run[q]), l1 = line(run[q + 1]);
+          pts.push(meet(l0.p, l0.d, l1.p, l1.d)!);
+        }
+        const drop = run.findIndex((ei, q) => q > 0 && q < run.length - 1
+          && (pts[q][0] - pts[q - 1][0]) * edges[ei].u[0] + (pts[q][1] - pts[q - 1][1]) * edges[ei].u[2] <= 0.01);
+        if (drop < 0) break;
+        run = run.filter((_, q) => q !== drop);
+      }
+      const proj = (e: Edge, p: [number, number]) => (p[0] - e.a[0]) * e.u[0] + (p[1] - e.a[1]) * e.u[2];
+      let sA = proj(A, pts[0]) - 0.12, sB = proj(B, pts[pts.length - 1]) + 0.12;
+      // a door next to the corner: the block's cut is the door's reveal
+      if (door && A.i === doorEdge && door.s1 > sA - 0.4 && door.s1 <= proj(A, pts[0]) - 0.02) sA = door.s1;
+      if (door && B.i === doorEdge && door.s0 < sB + 0.4 && door.s0 >= proj(B, pts[pts.length - 1]) + 0.02) sB = door.s0;
+      cutsOn.get(A.i)!.end = sA;
+      cutsOn.get(B.i)!.start = sB;
+      const outer: Array<[number, number]> = [[A.a[0] + A.u[0] * sA, A.a[1] + A.u[2] * sA], A.b];
+      for (const q of chain) outer.push(edges[q].b);
+      outer.push([B.a[0] + B.u[0] * sB, B.a[1] + B.u[2] * sB]);
+      const innerChain: Array<[number, number]> = [[outer[0][0] - A.n[0] * t, outer[0][1] - A.n[2] * t], ...pts,
+        [outer[outer.length - 1][0] - B.n[0] * t, outer[outer.length - 1][1] - B.n[2] * t]];
+      blocks.push({ outer, inner: innerChain, chain, A: A.i, B: B.i });
+    }
+    // the middle stretches (and the door's) between the blocks
+    for (const i of major) {
+      const c = cutsOn.get(i)!;
+      const doorAtStart = door && i === doorEdge && Math.abs(c.start - door.s0) < 1e-6;
+      const doorAtEnd = door && i === doorEdge && Math.abs(c.end - door.s1) < 1e-6;
+      if (doorAtEnd || doorAtStart) {
+        // the door's gap runs on to a corner block: the remaining side and the lintel and threshold
+        const e = edges[i];
+        middle(e, c.start, c.end, c.start, c.end);
+      } else middle(edges[i], c.start, c.end, c.start, c.end);
+    }
+    // the corner blocks: their upper lift with the short edges' embrasures, and their stubs
+    for (const b of blocks) {
+      const A = edges[b.A];
+      // squared to its incoming side, or to its outgoing side where that holds the door (the askew cut keeps off the leaf)
+      const sq = door && b.B === doorEdge ? edges[b.B] : A;
+      const ax = edgeAxes([sq.a[0], 0, sq.a[1]], sq.u);
+      // the openings by outer segment: the chain's edges are the segments 1..chain.length
+      const ops: Opening[][] = b.outer.slice(0, -1).map(() => []), holes: Opening[][] = b.inner.slice(0, -1).map(() => []);
+      const drawn: ConcreteSlit[] = [];
+      b.chain.forEach((q, ci) => {
+        for (const sl of slitsOf(q)) {
+          ops[ci + 1].push(outerOpening(sl));
+          drawn.push(sl);
+          // the throat on the inner chain: the segment whose stretch holds the slit's centre carried t in
+          const e = edges[q], cx = e.a[0] + e.u[0] * sl.s - e.n[0] * t, cz = e.a[1] + e.u[2] * sl.s - e.n[2] * t;
+          for (let s = 0; s + 1 < b.inner.length; s++) {
+            const p = b.inner[s], r = b.inner[s + 1], len = Math.hypot(r[0] - p[0], r[1] - p[1]);
+            const along = ((cx - p[0]) * (r[0] - p[0]) + (cz - p[1]) * (r[1] - p[1])) / len;
+            const off = Math.abs((cx - p[0]) * (r[1] - p[1]) - (cz - p[1]) * (r[0] - p[0])) / len;
+            if (along > 0 && along < len && off < 0.05) { const th = throatOf(sl); holes[s].push({ s0: along - th.hw, s1: along + th.hw, t0: sl.y - th.hh, t1: sl.y + th.hh }); break; }
+          }
+        }
+      });
+      const area = Math.abs(b.outer.concat(b.inner.slice().reverse()).reduce((sum, p, i, all) => { const q = all[(i + 1) % all.length]; return sum + p[0] * q[1] - q[0] * p[1]; }, 0)) / 2;
+      const upper = F.begin({ role: 'wall', material: 'concrete', face: A.face, axes: ax, rebar: true, volume: area * (wallTop - STUB_TOP) });
+      cornerBlock(m, b.outer, b.inner, STUB_TOP, wallTop, ops, holes, conc, inner, cut, cut, cut);
+      for (const q of b.chain) drawSlits(edges[q], drawn.filter((sl) => sl.edge === q));
+      F.end();
+      const stub = F.begin({ role: 'wall', material: 'concrete', face: A.face, anchor: true, axes: ax, rebar: true, volume: area * (STUB_TOP - FOOT) });
+      cornerBlock(m, b.outer, b.inner, FOOT, STUB_TOP, [], [], conc, inner, cut, cut, null);
+      F.end();
+      F.link(upper, stub, 'cast');
+      corners.push({ upper, stub, a: b.A, b: b.B });
+    }
+  }
+
+  // ---- the door's steel leaf in its gap (hinged on the left side)
+  let leaf = -1;
+  if (door) {
+    const e = edges[doorEdge];
+    const c: V3 = [e.a[0] + e.u[0] * doorS, GRADE, e.a[1] + e.u[2] * doorS];
+    const P = (du: number, y: number, dep: number): V3 => [c[0] + e.u[0] * du - e.n[0] * dep, y, c[2] + e.u[2] * du - e.n[2] * dep];
+    const hw = doorW / 2, D = 0.32;
+    const leafShade: Shade = (p) => mix(plateTone, [0.1, 0.045, 0.02], smooth(0.55, 0.8, vnoise(p[0], p[1], p[2], 0.3, O.seed + 81)) * (0.3 + T.age));
+    leaf = F.begin({ role: 'door', material: 'metal', face: e.face, axes: edgeAxes(P(-hw, 0, 0), e.u), volume: doorW * doorH * 0.012 });
+    m.quad(P(-hw, GRADE, D), P(hw, GRADE, D), P(hw, GRADE + doorH, D), P(-hw, GRADE + doorH, D), leafShade, false, e.n);
+    m.quad(P(hw, GRADE, D + 0.012), P(-hw, GRADE, D + 0.012), P(-hw, GRADE + doorH, D + 0.012), P(hw, GRADE + doorH, D + 0.012), leafShade, false, scl(e.n, -1));
+    for (const y of [GRADE + 0.3, GRADE + doorH - 0.3]) {
+      solid(m, c[0] + e.u[0] * (-hw + 0.05) - e.n[0] * (D - 0.03), y, c[2] + e.u[2] * (-hw + 0.05) - e.n[2] * (D - 0.03), 0.06, 0.12, 0.05, Math.atan2(e.u[0], e.u[2]) - Math.PI / 2, leafShade, false);
+    }
+    F.end();
+  }
+
+  // ---- the floor of the room (an anchor: what falls in lies on it)
+  const floorPoly = insetPlan(plan, t + 0.002);
+  const floor = F.begin({ role: 'slab', material: 'concrete', face: 'floor', anchor: true, axes: AX, volume: 0.2 });
+  capPolygon(m, floorPoly, PIT, inner, true, true);
+  F.end();
+
+  // ---- the roof slab in four plates, each with its earth and turf (and the vent on its rear-left plate)
+  const sPlan = grow(plan, overhang), chamf = 0.07, sTop = wallTop + slab;
+  const cPlan = grow(plan, overhang - chamf);
+  const plates: number[] = [];
+  const coverThick = style === 'dot' ? 0.5 : style === 'hex' ? 0.12 : 0.24, coverInset = style === 'dot' ? 0.1 : 0.38;
+  for (const [qx, qz] of [[1, 1], [-1, 1], [-1, -1], [1, -1]] as Array<[number, number]>) {
+    const clip = (poly: Array<[number, number]>) => clipHalf(clipHalf(poly, qx, 0, 0), 0, qz, 0);
+    const sQ = clip(sPlan), cQ = clip(cPlan);
+    const area = Math.abs(sQ.reduce((sum, p, i) => { const q = sQ[(i + 1) % sQ.length]; return sum + p[0] * q[1] - q[0] * p[1]; }, 0)) / 2;
+    const ex = Math.max(...sQ.map((p) => Math.abs(p[0]))), ez = Math.max(...sQ.map((p) => Math.abs(p[1])));
+    const idx = F.begin({ role: 'slab', material: 'concrete', face: 'roof', axes: AX, rebar: true, volume: area * slab,
+      scoreAxis: ex >= ez ? 0 : 2, scores: [ex >= ez ? qx * ex / 2 : qz * ez / 2] });
+    capPolygon(m, sQ, wallTop, conc, false, true);
+    // its edges (the plan's, not the cuts), up to the chamfer, and the chamfer in to the top
+    for (let i = 0; i < sPlan.length; i++) {
+      const a = sPlan[i], b = sPlan[(i + 1) % sPlan.length], c2 = cPlan[(i + 1) % cPlan.length], d = cPlan[i];
+      let seg: Array<[number, number]> = [a, b];
+      // clip the segment to the quadrant
+      for (const [hx, hz] of [[qx, 0], [0, qz]] as Array<[number, number]>) {
+        const fa = hx * seg[0][0] + hz * seg[0][1], fb = hx * seg[1][0] + hz * seg[1][1];
+        if (fa < 0 && fb < 0) { seg = []; break; }
+        if (fa < 0) { const tt = fa / (fa - fb); seg[0] = [seg[0][0] + (seg[1][0] - seg[0][0]) * tt, seg[0][1] + (seg[1][1] - seg[0][1]) * tt]; }
+        else if (fb < 0) { const tt = fa / (fa - fb); seg[1] = [seg[0][0] + (seg[1][0] - seg[0][0]) * tt, seg[0][1] + (seg[1][1] - seg[0][1]) * tt]; }
+      }
+      if (seg.length < 2) continue;
+      const len = Math.hypot(seg[1][0] - seg[0][0], seg[1][1] - seg[0][1]);
+      if (len < 1e-3) continue;
+      const u: V3 = [(seg[1][0] - seg[0][0]) / len, 0, (seg[1][1] - seg[0][1]) / len];
+      wallFace(m, [seg[0][0], 0, seg[0][1]], u, len, wallTop, () => sTop - chamf, [], conc, 0.3);
+      // the chamfer quad of this edge, clipped (vertical cut planes: clip in plan)
+      let quad: Array<{ p: V3; n: V3 }> = [[a[0], sTop - chamf, a[1]], [b[0], sTop - chamf, b[1]], [c2[0], sTop, c2[1]], [d[0], sTop, d[1]]]
+        .map((p) => ({ p: p as V3, n: [0, 1, 0] as V3 }));
+      quad = clipPN(clipPN(quad, qx, 0), 0, qz);
+      const el = Math.hypot(b[0] - a[0], b[1] - a[1]), hint: V3 = [-(b[1] - a[1]) / el, 1, (b[0] - a[0]) / el];
+      for (let q = 1; q + 1 < quad.length; q++) m.tri(quad[0].p, quad[q].p, quad[q + 1].p, conc, true, undefined, hint);
+    }
+    capPolygon(m, cQ, sTop, conc, true, true);
+    // the two cut faces through the slab (on x = 0 and z = 0), its section with the chamfer
+    for (const [onX, sign] of [[true, qz], [false, qx]] as Array<[boolean, number]>) {
+      const reach = (poly: Array<[number, number]>) => Math.max(0, ...poly.filter((p) => Math.abs(onX ? p[0] : p[1]) < 1e-6).map((p) => (onX ? p[1] : p[0]) * sign));
+      const rs = reach(sQ), rc = reach(cQ);
+      const Pt = (r: number, y: number): V3 => (onX ? [0, y, r * sign] : [r * sign, y, 0]);
+      const nCut: V3 = onX ? [-qx, 0, 0] : [0, 0, -qz];
+      const sec = [Pt(0, wallTop), Pt(rs, wallTop), Pt(rs, sTop - chamf), Pt(rc, sTop), Pt(0, sTop)];
+      for (let q = 1; q + 1 < sec.length; q++) m.tri(sec[0], sec[q], sec[q + 1], cut, true, nCut);
+    }
+    roofCover(m, plan, sTop, coverThick, coverInset, T, O.seed + 101, [qx, qz]);
+    if (qx < 0 && qz < 0 && style !== 'dot') {
+      const vent: Shade = () => mix([0.06, 0.06, 0.062], [0.11, 0.05, 0.025], 0.4 + T.age * 0.5);
+      const vx = -1.35, vz = -1.05;
+      log(m, [vx, sTop - 0.05, vz], [vx, sTop + 0.48, vz], 0.075, 8, vent, vent);
+      solid(m, vx, sTop + 0.48, vz, 0.26, 0.05, 0.26, 0.3, vent, false);
+    }
+    F.end();
+    plates.push(idx);
+  }
+  for (let q = 0; q < 4; q++) F.link(plates[q], plates[(q + 1) % 4], 'cast');
+
+  // ---- the blast wall before the door: its stub and its upper lift, the return the same; the sandbags
+  let blastMainStub = -1, blastMainUpper = -1;
+  const bags: number[] = [];
+  if (door) {
+    const e = edges[doorEdge];
+    const u = e.u, n = e.n;
+    const c: V3 = [e.a[0] + u[0] * doorS, GRADE, e.a[1] + u[2] * doorS];
+    const bwDist = 1.25, bwLen = 2.5, bwT = 0.36, bwH = style === 'hex' ? 1.62 : 1.72;
+    const bcx = c[0] + n[0] * (bwDist + bwT / 2) + u[0] * 0.35, bcz = c[2] + n[2] * (bwDist + bwT / 2) + u[2] * 0.35;
+    const rx = c[0] + u[0] * (0.35 + bwLen / 2 - bwT / 2) + n[0] * (bwDist / 2), rz = c[2] + u[2] * (0.35 + bwLen / 2 - bwT / 2) + n[2] * (bwDist / 2);
+    const lift = (cx: number, cz: number, wu: V3, wn: V3, len: number, y0: number, y1: number, anchor: boolean): number => {
+      const idx = F.begin({ role: 'wall', material: 'concrete', face: e.face, anchor, axes: { o: [cx, 0, cz], x: wu, y: [0, 1, 0], z: wn }, rebar: true, volume: len * bwT * (y1 - y0) });
+      blastWall(m, [cx, 0, cz], wu, wn, len, bwT, y0, y1, conc, O);
+      if (!anchor) {
+        const p = (du: number, dn: number): V3 => [cx + wu[0] * du + wn[0] * dn, y0, cz + wu[2] * du + wn[2] * dn];
+        m.quad(p(-len / 2, -bwT / 2), p(len / 2, -bwT / 2), p(len / 2, bwT / 2), p(-len / 2, bwT / 2), cut, true, [0, -1, 0]);
+      }
+      F.end();
+      return idx;
+    };
+    blastMainStub = lift(bcx, bcz, u, n, bwLen, FOOT, STUB_TOP, true);
+    blastMainUpper = lift(bcx, bcz, u, n, bwLen, STUB_TOP, bwH, false);
+    const retStub = lift(rx, rz, n, scl(u, -1), bwDist + 0.02, FOOT, STUB_TOP, true);
+    const retUpper = lift(rx, rz, n, scl(u, -1), bwDist + 0.02, STUB_TOP, bwH, false);
+    F.link(blastMainUpper, blastMainStub, 'cast'); F.link(retUpper, retStub, 'cast'); F.link(retUpper, blastMainUpper, 'cast');
+    F.link(retStub, blastMainStub, 'cast');
+    // the return meets the body beside the door
+    for (const sp of spans) if (sp.edge === doorEdge && sp.upper === doorRight) { F.link(retUpper, sp.upper, 'cast'); F.link(retStub, sp.stub, 'cast'); }
+    // sandbags at the mouth (each its own body) and a course on the blast wall's top
+    const mouthX = c[0] + u[0] * (0.35 - bwLen / 2 - 0.45) + n[0] * (bwDist + 0.3), mouthZ = c[2] + u[2] * (0.35 - bwLen / 2 - 0.45) + n[2] * (bwDist + 0.3);
+    const brng = mulberry32(O.seed + 91);
+    const byCourse: number[][] = [];
+    for (let course = 0; course < 3; course++) {
+      byCourse.push([]);
+      for (let j = 0; j < 3 - course; j++) {
+        const along = (j - (2 - course) / 2) * 0.58;
+        const x = mouthX + n[0] * along, z = mouthZ + n[2] * along, y = GRADE + 0.1 + course * 0.19;
+        const bag = F.begin({ role: 'bag', material: 'earth', axes: AX, volume: 0.034 });
+        placeBag(m, brng, x, y, z, Math.atan2(n[0], n[2]), T.bag, course);
+        F.end();
+        bags.push(bag); byCourse[course].push(bag);
+        if (course === 0) F.link(bag, blastMainStub, 'rest');
+        else { F.link(bag, byCourse[course - 1][j], 'rest'); F.link(bag, byCourse[course - 1][j + 1], 'rest'); }
+      }
+    }
+    for (let j = 0; j < 4; j++) {
+      const along = (j - 1.5) * 0.6;
+      const bag = F.begin({ role: 'bag', material: 'earth', axes: AX, volume: 0.034 });
+      placeBag(m, brng, bcx + u[0] * along, bwH + 0.1, bcz + u[2] * along, Math.atan2(u[0], u[2]), T.bag, 2);
+      F.end();
+      bags.push(bag);
+      F.link(bag, blastMainUpper, 'rest');
+    }
+  }
+
+  // ---- the links: along the walls (cast), the slab on the walls, the door's leaf on its hinges
+  const allWalls: Array<{ upper: number; stub: number }> = [...spans, ...corners];
+  for (let a = 0; a < allWalls.length; a++) for (let b = a + 1; b < allWalls.length; b++) {
+    F.link(allWalls[a].stub, allWalls[b].stub, 'cast');
+  }
+  // neighbours touch: their pieces' boxes meet (checked on the pieces themselves)
+  const P = F.pieces;
+  const touching = (i: number, j: number): boolean => {
+    const a = P[i], b = P[j];
+    const r = Math.hypot(...a.h) + Math.hypot(...b.h);
+    return Math.hypot(a.c[0] - b.c[0], a.c[1] - b.c[1], a.c[2] - b.c[2]) < r * 0.98;
+  };
+  const uppers = allWalls.map((w) => w.upper).concat(lintel >= 0 ? [lintel] : []);
+  for (let a = 0; a < uppers.length; a++) for (let b = a + 1; b < uppers.length; b++) if (touching(uppers[a], uppers[b])) F.link(uppers[a], uppers[b], 'cast');
+  for (const pl of plates) for (const up of uppers) if (touching(pl, up)) F.link(pl, up, 'cast');
+  if (lintel >= 0) { if (doorLeft >= 0) F.link(lintel, doorLeft, 'cast'); if (doorRight >= 0) F.link(lintel, doorRight, 'cast'); }
+  if (leaf >= 0) { if (doorLeft >= 0) F.link(leaf, doorLeft, 'bolt'); if (threshold >= 0) F.link(leaf, threshold, 'rest'); }
+  if (threshold >= 0) for (const w of allWalls) F.link(threshold, w.stub, 'cast');
+  for (const w of allWalls) F.link(floor, w.stub, 'cast');
+  void bags; void blastMainUpper;
+
+  const g = m.geometry();
+  g.userData.fracture = F.anatomy('bunker');
+  return g;
+}
+
+/**
+ * The broken face a concrete piece shows where it snaps at a score (the destruction core calls it once a kind a map and
+ * caches the halves): two runs, the half toward -scoreAxis first (facing +), then the other; each a ragged cap of fresh
+ * grey across the piece's section, standing out of its own half, and the bars of its mesh bent out of it.
+ */
+export function fortFractureEdge(material: FractureMaterial, piece: FracturePiece, score: number | 'whole', seed: number,
+  out: DamageMeshWriter): void {
+  if (score === 'whole' || material !== 'concrete') return;
+  const axis = piece.scoreAxis ?? 0;
+  const rot = (v: V3): V3 => {
+    const [x, y, z, w] = piece.q;
+    const tt: V3 = [2 * (y * v[2] - z * v[1]), 2 * (z * v[0] - x * v[2]), 2 * (x * v[1] - y * v[0])];
+    return [v[0] + w * tt[0] + (y * tt[2] - z * tt[1]), v[1] + w * tt[1] + (z * tt[0] - x * tt[2]), v[2] + w * tt[2] + (x * tt[1] - y * tt[0])];
+  };
+  const unit = (k: number): V3 => rot(k === 0 ? [1, 0, 0] : k === 1 ? [0, 1, 0] : [0, 0, 1]);
+  const A = unit(axis), U = unit((axis + 1) % 3), V = unit((axis + 2) % 3);
+  const hu = piece.h[(axis + 1) % 3], hv = piece.h[(axis + 2) % 3];
+  const base = add([piece.c[0], piece.c[1], piece.c[2]], scl(A, score));
+  let state = seed >>> 0;
+  const rnd = (): number => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let x = state;
+    x = Math.imul(x ^ (x >>> 15), x | 1);
+    x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+  const n = 5, rough = Math.min(0.12, Math.min(hu, hv) * 0.5);
+  const fresh: Rgb = [0.42, 0.4, 0.36], rust: Rgb = [0.12, 0.05, 0.025];
+  for (const side of [1, -1] as const) {
+    if (!out.begin(piece.bucket, 'rim')) return;
+    const idx: number[] = [];
+    for (let j = 0; j <= n; j++) for (let i = 0; i <= n; i++) {
+      const edge = i === 0 || j === 0 || i === n || j === n;
+      const d = (edge ? rnd() * 0.3 : 0.2 + rnd() * 0.8) * rough * side;
+      const p = add(add(add(base, scl(U, (i / n * 2 - 1) * hu)), scl(V, (j / n * 2 - 1) * hv)), scl(A, d));
+      const k = 0.8 + rnd() * 0.35;
+      idx.push(out.vertex(p[0], p[1], p[2], A[0] * side, A[1] * side, A[2] * side, FLAT_UV[0], FLAT_UV[1],
+        fresh[0] * k / FORT_PRINT_MEAN, fresh[1] * k / FORT_PRINT_MEAN, fresh[2] * k / FORT_PRINT_MEAN));
+    }
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+      const a = idx[j * (n + 1) + i], b = idx[j * (n + 1) + i + 1], c = idx[(j + 1) * (n + 1) + i + 1], d = idx[(j + 1) * (n + 1) + i];
+      if (side > 0) { out.triangle(a, b, c); out.triangle(a, c, d); } else { out.triangle(a, c, b); out.triangle(a, d, c); }
+    }
+    // the bars: a few of each mat's, bent out of the break
+    if (piece.rebar) {
+      const bars = 3 + Math.floor(rnd() * 3);
+      for (let q = 0; q < bars; q++) {
+        const pu = (rnd() * 2 - 1) * hu * 0.8, pv = (q % 2 ? 1 : -1) * hv * 0.75;
+        const root = add(add(base, scl(U, pu)), scl(V, pv));
+        const len = 0.12 + rnd() * 0.22;
+        const tip = add(add(root, scl(A, side * len)), add(scl(U, (rnd() - 0.5) * len * 0.8), scl(V, (rnd() - 0.5) * len * 0.5)));
+        const w = 0.012, side2 = norm(cross(sub(tip, root), U));
+        const v0 = out.vertex(root[0] + side2[0] * w, root[1] + side2[1] * w, root[2] + side2[2] * w, U[0], U[1], U[2], FLAT_UV[0], FLAT_UV[1], rust[0] / FORT_PRINT_MEAN, rust[1] / FORT_PRINT_MEAN, rust[2] / FORT_PRINT_MEAN);
+        const v1 = out.vertex(root[0] - side2[0] * w, root[1] - side2[1] * w, root[2] - side2[2] * w, U[0], U[1], U[2], FLAT_UV[0], FLAT_UV[1], rust[0] / FORT_PRINT_MEAN, rust[1] / FORT_PRINT_MEAN, rust[2] / FORT_PRINT_MEAN);
+        const v2 = out.vertex(tip[0], tip[1], tip[2], U[0], U[1], U[2], FLAT_UV[0], FLAT_UV[1], rust[0] / FORT_PRINT_MEAN, rust[1] / FORT_PRINT_MEAN, rust[2] / FORT_PRINT_MEAN);
+        out.triangle(v0, v1, v2); out.triangle(v0, v2, v1);
+      }
+    }
+    out.end();
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // public
 
 function mulberry32(a: number): Rng {
@@ -1311,7 +1999,8 @@ function mulberry32(a: number): Rng {
 /** A map's pillbox: its intact and destroyed states (one geometry each, in the bunker's frame). */
 export function buildPillbox(style: PillboxStyle, tones: FortTones, seed: number, broken: boolean): THREE.BufferGeometry {
   const O = { tones, seed, broken };
-  const g = style === 'logearth' ? buildLogEarthPillbox(O) : buildConcretePillbox(style, O);
+  // (round 2: the intact concrete work in the destruction core's pieces; the destroyed state is the settled heap)
+  const g = style === 'logearth' ? buildLogEarthPillbox(O) : broken ? buildConcretePillbox(style, O) : buildConcretePillboxPieces(style, O);
   return g;
 }
 
