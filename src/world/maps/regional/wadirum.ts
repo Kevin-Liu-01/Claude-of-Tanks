@@ -29,6 +29,9 @@ function rooftop(sink: PartSink, W: number, D: number, top: number, rng: () => n
   for (let k = 0; k < n; k++) {
     const x = (k - (n - 1) / 2) * 1.4 + (rng() - 0.5) * W * 0.2, z = (rng() - 0.5) * D * 0.3;
     for (const [dx, dz] of [[-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45], [0.45, 0.45]]) sink.span('structureMetal', x + dx - 0.03, top, z + dz - 0.03, x + dx + 0.03, top + 0.6, z + dz + 0.03, { colour: rgb(0x6a6e70), decor: true });
+    // the stand's frame on the legs' heads, the tank on it (the connectivity sweep: the round tank sat inside the
+    // square of legs, touching none)
+    sink.span('structureMetal', x - 0.48, top + 0.55, z - 0.48, x + 0.48, top + 0.6, z + 0.48, { colour: rgb(0x6a6e70), decor: true });
     sink.cylinder('structureMetal', [x, top + 0.6, z], 'y', 1.1, 0.55, 10, { colour: TANK, decor: true });
   }
 }

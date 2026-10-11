@@ -457,6 +457,8 @@ const fishStore: RegionalBuilder = (ctx) => {
   const f = frame.faces.front, top = frame.eaveY - 0.25;
   faceBox(sink, 'structureWood', f, 0, top, 0.55, 0.18, 0.2, 1.1, { colour: rgb(0x5a4632), decor: true, uv: UV_MEMBER });
   faceBox(sink, 'dark', f, 0, top - 0.32, 0.98, 0.12, 0.28, 0.1, { decor: true });
+  // the block's strap up to the beam (the connectivity sweep: it hung 8 cm under the beam's end on nothing)
+  faceBox(sink, 'dark', f, 0, top - 0.135, 0.98, 0.03, 0.1, 0.03, { decor: true });
   // the quay apron to the water with three bollards
   const qz0 = D / 2, qz1 = Math.max(qz0 + 1.6, Math.min(ctx.info.d / 2 - 0.2, D / 2 + 3.2));
   sink.span('stone', -W / 2 - 1.2, -0.5, qz0, W / 2 + 1.2, 0.24, qz1);
@@ -591,9 +593,12 @@ const customsHouse: RegionalBuilder = (ctx) => {
   faceBox(sink, 'stone', f, 0, y1 - 0.09, 0.45, 2.1, 0.16, 0.9, { decor: true });
   for (const u of [-0.8, 0.8]) faceBox(sink, 'stone', f, u, y1 - 0.38, 0.25, 0.18, 0.42, 0.5, { decor: true });
   const iron = rgb(0x2e3032);
+  // (the connectivity sweep: the railing stood 3 cm over its slab and its side rails stopped 6 cm off the wall) the
+  // balusters on the slab, the side rails to the wall with balusters of their own
   faceBox(sink, 'structureMetal', f, 0, y1 + 0.93, 0.86, 2.0, 0.05, 0.05, { colour: iron, decor: true });
-  for (const u of [-1, 1]) faceBox(sink, 'structureMetal', f, u * 0.98, y1 + 0.93, 0.47, 0.05, 0.05, 0.82, { colour: iron, decor: true });
-  for (let u = -0.95; u <= 0.96; u += 0.13) faceBox(sink, 'structureMetal', f, u, y1 + 0.47, 0.86, 0.025, 0.9, 0.025, { colour: iron, decor: true });
+  for (const u of [-1, 1]) faceBox(sink, 'structureMetal', f, u * 0.98, y1 + 0.93, 0.45, 0.05, 0.05, 0.9, { colour: iron, decor: true });
+  for (let u = -0.95; u <= 0.96; u += 0.13) faceBox(sink, 'structureMetal', f, u, y1 + 0.455, 0.86, 0.025, 0.93, 0.025, { colour: iron, decor: true });
+  for (const u of [-1, 1]) for (const o of [0.2, 0.42, 0.64]) faceBox(sink, 'structureMetal', f, u * 0.98, y1 + 0.455, o, 0.025, 0.93, 0.025, { colour: iron, decor: true });
   return sink.finish();
 };
 

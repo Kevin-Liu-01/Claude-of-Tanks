@@ -187,7 +187,7 @@ function khataDressing(sink: PartSink, frame: HouseFrame, st: KolkhozState, craf
   if (thatched && rg.kind === 'hip' && f() < 0.7) {
     const half = rg.ridgeHalf, n = Math.min(2, Math.max(0, Math.round(2 * half / 2.6)));
     const zs = n === 0 ? [0] : Array.from({ length: n + 1 }, (_, k) => -half * 0.8 + 1.6 * half * k / n);
-    ridgeRiders(sink, zs, rg.ridgeTopY + 0.06, rg.tanP, RIDER);
+    ridgeRiders(sink, zs, rg.ridgeTopY + 0.06, rg.tanP, RIDER, rg.topAt);
   }
   // hollyhocks against the long front (the porch's face), clear of its windows and the porch
   if (f() < 0.65) {
@@ -337,8 +337,16 @@ const postMill: RegionalBuilder = (ctx) => {
     }
   }
   // the tail pole down to the ground and the ladder to the door
+  // (the connectivity sweep: the pole's foot hung a third of a metre over the ground and the ladder stopped short of the
+  // door, without rungs) the pole's foot on its stone, the ladder's stiles up to the door's sill and its rungs
   sink.member('structureWood', [0, lift + 0.3, -bd / 2], [0, 0.4, -bd / 2 - 4.6], 0.2, 0.2, [1, 0, 0], { colour: dark, exposed: true, decor: true });
-  for (const sx of [-0.45, 0.45]) sink.member('structureWood', [sx, lift, -bd / 2 - 0.1], [sx, 0.05, -bd / 2 - 2.6], 0.12, 0.1, [1, 0, 0], { colour: dark, exposed: true, decor: true });
+  sink.span('stone', -0.3, -0.3, -bd / 2 - 4.85, 0.4, 0.34, -bd / 2 - 4.25, { decor: true });
+  const lt: Vec3 = [0, lift + 0.02, -bd / 2 - 0.02], lb: Vec3 = [0, 0.05, -bd / 2 - 2.6];
+  for (const sx of [-0.45, 0.45]) sink.member('structureWood', [sx, lt[1], lt[2]], [sx, lb[1], lb[2]], 0.12, 0.1, [1, 0, 0], { colour: dark, exposed: true, decor: true });
+  for (let t = 0.1; t < 0.96; t += 0.1) {
+    const y = lt[1] + (lb[1] - lt[1]) * t, z = lt[2] + (lb[2] - lt[2]) * t;
+    sink.member('structureWood', [-0.44, y, z], [0.5, y, z], 0.06, 0.05, [0, 1, 0], { colour: dark, exposed: true, decor: true, fine: true }, 0.025);
+  }
   return sink.finish();
 };
 
@@ -525,9 +533,12 @@ const burnt: RegionalBuilder = (ctx) => {
     const z = side < 2 ? (t - 0.5) * D * 0.8 : (side === 2 ? -1 : 1) * (D / 2 - 0.15);
     sink.span('structureWood', x - 0.12, 0.4, z - 0.12, x + 0.12, 0.4 + h, z + 0.12, { colour: char });
   }
+  // the fallen beams (the connectivity sweep: they lay 8 cm over the floor): one end on the floor, the other up on a
+  // charred stub of the frame
   for (let k = 0; k < 4; k++) {
-    const a: Vec3 = [(rng() - 0.5) * W, 0.5, (rng() - 0.5) * D], b: Vec3 = [a[0] + (rng() - 0.5) * 3, 0.5 + rng() * 0.7, a[2] + (rng() - 0.5) * 3];
+    const a: Vec3 = [(rng() - 0.5) * W, 0.42, (rng() - 0.5) * D], b: Vec3 = [a[0] + (rng() - 0.5) * 3, 0.42 + rng() * 0.7, a[2] + (rng() - 0.5) * 3];
     sink.member('structureWood', a, b, 0.16, 0.16, [0, 1, 0], { colour: char, decor: true, exposed: true });
+    if (b[1] > 0.5) sink.span('structureWood', b[0] - 0.09, 0.4, b[2] - 0.09, b[0] + 0.09, b[1] + 0.02, b[2] + 0.09, { colour: char, decor: true });
   }
   return sink.finish();
 };

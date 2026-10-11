@@ -159,8 +159,8 @@ export function woodpile(sink: PartSink, face: Face, u0: number, u1: number, hei
       u += len;
     }
   }
-  // a little roof of boards over the pile
-  faceBox(sink, 'structureWood', face, (u0 + u1) / 2, rows * row + 0.08, depth / 2 + 0.05, u1 - u0 + 0.2, 0.04, depth + 0.16, { ...DECOR, colour: [0.32, 0.27, 0.22] });
+  // a little roof of boards laid on the pile (the connectivity sweep: it floated 6 cm over the top course)
+  faceBox(sink, 'structureWood', face, (u0 + u1) / 2, rows * row + 0.012, depth / 2 + 0.05, u1 - u0 + 0.2, 0.04, depth + 0.16, { ...DECOR, colour: [0.32, 0.27, 0.22] });
 }
 
 /**

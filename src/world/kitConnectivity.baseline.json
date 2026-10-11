@@ -23,22 +23,6 @@
   "floating": 170,
   "dangling": 0
  },
- "kit:andalusian:tavern": {
-  "floating": 1,
-  "dangling": 0
- },
- "kit:andalusian:woodshed": {
-  "floating": 1,
-  "dangling": 0
- },
- "kit:bengal:ruin": {
-  "floating": 3,
-  "dangling": 0
- },
- "kit:breton:chapel": {
-  "floating": 1,
-  "dangling": 0
- },
  "kit:chouf:bathhouse": {
   "floating": 4,
   "dangling": 0
@@ -67,108 +51,12 @@
   "floating": 1,
   "dangling": 0
  },
- "kit:dalmatian:bathhouse": {
-  "floating": 18,
-  "dangling": 0
- },
- "kit:dalmatian:fishery": {
-  "floating": 1,
-  "dangling": 0
- },
- "kit:eifel:ruin": {
-  "floating": 0,
-  "dangling": 4
- },
- "kit:franconian:ruin": {
-  "floating": 0,
-  "dangling": 4
- },
- "kit:glencanyon:arcology": {
-  "floating": 4,
-  "dangling": 8
- },
- "kit:glencanyon:broadcasttower": {
-  "floating": 1,
-  "dangling": 0
- },
- "kit:glencanyon:needletower": {
-  "floating": 24,
-  "dangling": 0
- },
- "kit:glencanyon:parkingdeck": {
-  "floating": 42,
-  "dangling": 0
- },
- "kit:glencanyon:ruin": {
-  "floating": 3,
-  "dangling": 0
- },
- "kit:glencanyon:terracetower": {
-  "floating": 24,
-  "dangling": 0
- },
- "kit:glencanyon:watertower": {
-  "floating": 4,
-  "dangling": 0
- },
- "kit:hessian:mill": {
-  "floating": 2,
-  "dangling": 0
- },
- "kit:hessian:ruin": {
-  "floating": 0,
-  "dangling": 4
- },
  "kit:hostomel:ruin": {
   "floating": 0,
   "dangling": 1
  },
  "kit:hostomel:tower": {
   "floating": 4,
-  "dangling": 0
- },
- "kit:kohima:farmhouse": {
-  "floating": 0,
-  "dangling": 2
- },
- "kit:kohima:ruin": {
-  "floating": 1,
-  "dangling": 0
- },
- "kit:kolkhoz:cottage": {
-  "floating": 0,
-  "dangling": 4
- },
- "kit:kolkhoz:farmhouse": {
-  "floating": 0,
-  "dangling": 6
- },
- "kit:kolkhoz:mill": {
-  "floating": 0,
-  "dangling": 3
- },
- "kit:kolkhoz:ruin": {
-  "floating": 2,
-  "dangling": 0
- },
- "kit:ksar:caravanserai": {
-  "floating": 27,
-  "dangling": 0
- },
- "kit:ksar:compound": {
-  "floating": 27,
-  "dangling": 0
- },
- "kit:ksar:compoundSouk": {
-  "floating": 27,
-  "dangling": 0
- },
- "kit:ksar:market": {
-  "floating": 21,
-  "dangling": 0
- },
- "kit:ksar:marketRow": {
-  "floating": 9,
   "dangling": 0
  },
  "kit:kyushu:factory": {
@@ -181,14 +69,6 @@
  },
  "kit:kyushu:watertower": {
   "floating": 4,
-  "dangling": 0
- },
- "kit:longleaf:warehouse": {
-  "floating": 1,
-  "dangling": 0
- },
- "kit:mekong:cottage": {
-  "floating": 3,
   "dangling": 0
  },
  "kit:navajo:caravanserai": {
@@ -206,26 +86,6 @@
  "kit:navajo:watertower": {
   "floating": 12,
   "dangling": 0
- },
- "kit:polder:farmhouse": {
-  "floating": 4,
-  "dangling": 0
- },
- "kit:queenstown:gantry": {
-  "floating": 1,
-  "dangling": 0
- },
- "kit:queenstown:ruin": {
-  "floating": 2,
-  "dangling": 0
- },
- "kit:ruhr:shed": {
-  "floating": 0,
-  "dangling": 5
- },
- "kit:ruhr:warehouse": {
-  "floating": 0,
-  "dangling": 7
  },
  "kit:sarajevo:broadcasttower": {
   "floating": 12,
@@ -269,18 +129,6 @@
  },
  "kit:shanghai:warehouse": {
   "floating": 1,
-  "dangling": 0
- },
- "kit:siwa:market": {
-  "floating": 21,
-  "dangling": 0
- },
- "kit:siwa:marketRow": {
-  "floating": 43,
-  "dangling": 0
- },
- "kit:wadirum:containerRow": {
-  "floating": 2,
   "dangling": 0
  },
  "landmark:aircraftWreck": {

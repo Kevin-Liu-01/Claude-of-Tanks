@@ -129,9 +129,14 @@ const goodsShed: RegionalBuilder = (ctx) => {
     sink.span('stone', W / 2, -0.4, -D / 2, W / 2 + 2.4, 1.1, D / 2);
     const canopy: RoofSpec = { kind: 'shed', pitchDeg: 7, eave: 0.1, verge: 0.3, thickness: 0.08, bucket: 'roof' };
     const cw = plot.turned ? 2.6 : 3.0;
-    sink.placed(Math.PI, W / 2 + cw / 2, 0, 0, () => emitRoof(sink, roofGeometry(cw, D + 0.4, 4.9, canopy), canopy));
+    const crg = roofGeometry(cw, D + 0.4, 4.9, canopy);
+    sink.placed(Math.PI, W / 2 + cw / 2, 0, 0, () => emitRoof(sink, crg, canopy));
+    // (the connectivity sweep: the brackets stopped 0.3 m under the canopy, which rises from the wall) each bracket up to
+    // the canopy's underside, and an iron ledger along the wall under its inner edge
+    const under = (x: number) => (crg.topAt(cw / 2 - (x - W / 2), 0) ?? 4.9) - canopy.thickness;
+    sink.span('structureWood', W / 2, under(W / 2 + 0.06) - 0.14, -D / 2, W / 2 + 0.1, under(W / 2 + 0.06) + 0.01, D / 2, { colour: IRON, decor: true });
     for (let z = -D / 2 + 1; z < D / 2; z += 3.2) {
-      sink.member('structureWood', [W / 2 + 0.05, 3.8, z], [W / 2 + 2.4, 4.85, z], 0.12, 0.12, [0, 0, 1], { colour: IRON, decor: true, exposed: true });
+      sink.member('structureWood', [W / 2 + 0.05, 3.8, z], [W / 2 + 2.4, under(W / 2 + 2.4) - 0.05, z], 0.12, 0.12, [0, 0, 1], { colour: IRON, decor: true, exposed: true });
     }
   }), 1);
   return sink.finish();

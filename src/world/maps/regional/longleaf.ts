@@ -454,7 +454,8 @@ function millShed(sink: PartSink, W: number, D: number, h: number, monitor: bool
       const r = s.recess, go = r > 0 ? -r + 0.04 : 0.02;
       faceBox(s, 'structureWood', face, o.u - o.w / 4, y0 + o.y0 + o.h / 2, go, o.w / 2, o.h, 0.06, { colour: shade(WEATHERED, 0.85) });
       faceBox(s, 'dark', face, o.u + o.w / 4, y0 + o.y0 + o.h / 2, go, o.w / 2, o.h, 0.02, {});
-      faceBox(s, 'structureMetal', face, o.u, y0 + o.y0 + o.h + 0.12, 0.08, o.w + 1.2, 0.1, 0.1, { colour: IRON, decor: true });
+      // the sliding door's track on the wall over the opening (the connectivity sweep: it stood 3 cm off the wall)
+      faceBox(s, 'structureMetal', face, o.u, y0 + o.y0 + o.h + 0.12, 0.05, o.w + 1.2, 0.1, 0.1, { colour: IRON, decor: true });
     },
   });
   battenHouse(sink, frame, 0.6, 0.6 + h * 0.5, 0.75);

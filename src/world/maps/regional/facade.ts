@@ -306,20 +306,32 @@ function orient4(a: Vec3, b: Vec3, c: Vec3, d: Vec3, toward: Vec3): [Vec3, Vec3,
 
 /**
  * The riders (kozly) holding a thatch ridge down: pairs of poles crossed over the ridge at `zs`, their feet on the
- * slopes, their heads standing over the ridge. `ridgeTop` is the ridge's top line height, `tanP` the slope.
+ * slopes, their heads standing over the ridge. `ridgeTop` is the ridge's top line height, `tanP` the slope. Given the
+ * roof's `surface` (RoofGeometry.topAt), each foot stands on the thatch where it is and the pair cross on the ridge's
+ * top (the connectivity sweep: over a rolled, hipped ridge the feet, set from the ridge line down the slope, stood up
+ * to a quarter metre clear of the thatch).
  */
-export function ridgeRiders(sink: PartSink, zs: readonly number[], ridgeTop: number, tanP: number, colour: Rgb): void {
+export function ridgeRiders(sink: PartSink, zs: readonly number[], ridgeTop: number, tanP: number, colour: Rgb,
+  surface?: (x: number, z: number) => number | null): void {
   const foot = 0.6, head = 0.2, lift = 0.05;
   for (const z of zs) {
     const tone = 0.86 + hash01(z, ridgeTop, 3.3) * 0.22;
     const c: Rgb = [colour[0] * tone, colour[1] * tone, colour[2] * tone];
+    const cross = surface ? ridgeTop - 0.02 : ridgeTop + lift + 0.04;
     for (const side of [1, -1]) {
-      const a: Vec3 = [side * foot, ridgeTop - foot * tanP + lift, z];
-      const b: Vec3 = [-side * head, ridgeTop + head * tanP * 0.9 + lift + 0.06, z];
+      let a: Vec3, b: Vec3;
+      if (surface) {
+        const fy = (surface(side * foot, z) ?? ridgeTop - foot * tanP) + 0.02;
+        a = [side * foot, fy, z];
+        b = [-side * head, cross + (cross - fy) * head / foot, z];
+      } else {
+        a = [side * foot, ridgeTop - foot * tanP + lift, z];
+        b = [-side * head, ridgeTop + head * tanP * 0.9 + lift + 0.06, z];
+      }
       sink.member('structureWood', a, b, 0.06, 0.06, [0, 0, 1], { ...DECOR, colour: c, exposed: true }, 0);
     }
     // the withy binding the pair where they cross
-    sink.member('structureWood', [0, ridgeTop + lift + 0.04, z - 0.05], [0, ridgeTop + lift + 0.04, z + 0.05], 0.09, 0.09, [1, 0, 0],
+    sink.member('structureWood', [0, cross, z - 0.05], [0, cross, z + 0.05], 0.09, 0.09, [1, 0, 0],
       { ...DECOR, colour: [c[0] * 0.8, c[1] * 0.8, c[2] * 0.8], exposed: true, fine: true }, 0);
   }
 }

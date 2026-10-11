@@ -798,6 +798,8 @@ const ruin: RegionalBuilder = (ctx) => {
     const x = (rng() - 0.5) * W * 0.8, z = (rng() - 0.5) * D * 0.7;
     const a: Vec3 = [x - 1.6, 0.62, z], b: Vec3 = [x + 1.4, 1.4 + rng() * 1.5, z + (rng() - 0.5) * 1.2];
     sink.member(SW, a, b, 0.14, 0.16, [0, 0, 1], { colour: k % 2 ? charred : burnt, decor: true, exposed: true });
+    // the stud still standing that holds its raised end (the connectivity sweep: the rafters' heads leant on air)
+    sink.span(SW, b[0] - 0.08, 0.55, b[2] - 0.02, b[0] + 0.08, b[1] + 0.02, b[2] + 0.14, { colour: charred, decor: true });
   }
   // a fallen gable of tiles in a heap inside
   sink.span('roof', -W * 0.3, 0.5, -D * 0.2, W * 0.25, 1.05, D * 0.25, { decor: true });
@@ -927,7 +929,8 @@ const mill: RegionalBuilder = (ctx) => {
   }
   for (let k = 0; k < 18; k++) {
     const a = k / 18 * Math.PI * 2;
-    const y = cy + Math.cos(a) * (R - 0.16), z = Math.sin(a) * (R - 0.16);
+    // (the connectivity sweep: at 16 cm in, the boards at the rims' corners stood clear of them)
+    const y = cy + Math.cos(a) * (R - 0.09), z = Math.sin(a) * (R - 0.09);
     sink.member(SW, [cxw - 0.55, y, z], [cxw + 0.55, y, z], 0.3, 0.05, [0, Math.cos(a), Math.sin(a)], { colour: shade(wood, 0.85), decor: true, exposed: true }, 0.025);
   }
   sink.cylinder('wood', [W / 2 - 0.1, cy, 0], 'x', cxw + 0.75 - (W / 2 - 0.1), 0.16, 8, { decor: true });
