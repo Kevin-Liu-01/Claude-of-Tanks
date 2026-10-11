@@ -9020,14 +9020,34 @@ function* createTankOwnedSteps(
     }
   }
 
-  function startWreckPresentation(ageS: number): void {
+  /** (fx 8p, wave 356's critic on a plain kill: the burn read "a material swap, not fire damage") the kill's char waits
+   *  for the fire to take hold, then spreads out of the turret ring across the hull, a cook-off's fire faster than a
+   *  plain kill's or a burn-out's (materials.ts BURN_DIFFUSE_GLSL reads uBurnO and uBurnK) */
+  const BURN_CHAR_DELAY_S = 1.0, BURN_SPREAD_COOKOFF_S = 5.0, BURN_SPREAD_PLAIN_S = 8.0;
+  /** The hull's reach from the turret ring (m): its footprint's farthest corner. */
+  const burnReachM = Math.hypot(0.5 * spec.dims.hullLengthM + Math.abs(armor.turretPivot[2]),
+    0.5 * spec.dims.widthM + Math.abs(armor.turretPivot[0]));
+  /** The burn's heat (after dcore's wave 350 fix: "embers should glow and fade, not sit as static dots"): none until the
+   *  fire takes hold, up as the char comes, then cooling to nothing (no floor: a cold wreck has no glowing specks). */
+  function emberHeat(ageS: number): number {
+    const t = ageS - BURN_CHAR_DELAY_S;
+    if (!(t > 0)) return 0;
+    return 0.95 * Math.min(1, t / 0.8) * Math.exp(-t / 7);
+  }
+
+  function startWreckPresentation(ageS: number, pop: boolean): void {
     burnU.uBurnLo.value = root.position.y + 0.15;
     burnU.uBurnHi.value = root.position.y + spec.dims.heightM + 0.35;
     for (const decal of decalMeshes) decal.visible = false;
     wreckAge = ageS;
     burnU.uBurnT.value = ageS;
+    // (fx 8p) the fire: the turret ring at the kill (before a cook-off throws the turret); the char's reach from it, its
+    // start and its spread
+    turretG.getWorldPosition(burnU.uBurnO.value);
+    burnU.uBurnK.value.set(burnReachM * Math.abs(root.scale.x || 1), BURN_CHAR_DELAY_S,
+      pop ? BURN_SPREAD_COOKOFF_S : BURN_SPREAD_PLAIN_S, 0);
     burnU.uBurnGlow.value = Math.exp(-ageS / 0.9) * 1.35;
-    burnU.uBurnEmber.value = 0.10 + 0.85 * Math.exp(-ageS / 8);
+    burnU.uBurnEmber.value = emberHeat(ageS);
     mats.burnt.emissiveIntensity = 0.035 + 0.55 * Math.exp(-ageS / 8);
     gunG.rotation.x = 0.12;
     wreckSeat.copy(turretG.position);
@@ -9298,10 +9318,11 @@ function* createTankOwnedSteps(
           // captures catch the arc mid-air and the char mid-spread.
           if (popActive) { popT += adv; applyPop(); }
           // r6 burn-front + ember drive: the whole wreck's char/glow rides the
-          // shared burn uniforms (see burnU note) — the front sweeps for
-          // ~2.1 s, its ignition edge glows hot while it eats (uBurnGlow, also
-          // the "fireball lights the tumbling turret" warm term), and the
-          // finished char keeps a throbbing, cooling ember pulse in its seams.
+          // shared burn uniforms (see burnU note); (fx 8p) the front spreads out
+          // of the turret ring over seconds once the fire has taken hold
+          // (uBurnO/uBurnK, set at the kill), its edge glowing only near the
+          // fire, and its ember cracks flare as it reaches them and cool while
+          // the hull's heat (emberHeat) cools to nothing.
           if (wreckAge >= 0) {
             wreckAge += adv;
             burnU.uBurnT.value = wreckAge;
@@ -9310,8 +9331,7 @@ function* createTankOwnedSteps(
             // the fireball; at 1.5 s it held the whole darker char uniform
             // orange into the 2-3 s window (probe destroy_2_5s flood).
             burnU.uBurnGlow.value = Math.exp(-wreckAge / 0.9) * (popActive ? 1.35 : 1.0);
-            burnU.uBurnEmber.value = 0.10 + 0.85 * decay *
-              (0.55 + 0.45 * Math.sin(wreckAge * 2.4 + emberPhase));
+            burnU.uBurnEmber.value = emberHeat(wreckAge) * (0.65 + 0.35 * Math.sin(wreckAge * 2.4 + emberPhase));
             // legacy shared-burnt fallback (non-standard materials only)
             mats.burnt.emissiveIntensity = 0.035 + 0.55 * decay *
               (0.55 + 0.45 * Math.sin(wreckAge * 2.4 + emberPhase));
@@ -9727,7 +9747,7 @@ function* createTankOwnedSteps(
       // Non-wrappable materials (rare) fall back to the shared burnt swap.
       applyWreckMaterials();
       const ageS0 = Math.max(0, (opts && opts.ageS) || 0);
-      startWreckPresentation(ageS0);
+      startWreckPresentation(ageS0, !!(opts && opts.pop));
       // r2: EVERY kill plays the pop arc — full ammo-rack toss (popScale 1)
       // or a low ~20% jolt on plain kills that unseats the turret and drops
       // it askew. GLB and procedural tanks share the exact same sequence

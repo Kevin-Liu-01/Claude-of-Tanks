@@ -318,8 +318,9 @@ assert.equal(equipmentDamageStats().activeVehicles, 0);
       getImageData(_x, _y, width, height) { return { data: new Uint8ClampedArray(width * height * 4) }; },
       createImageData(width, height) { return { data: new Uint8ClampedArray(width * height * 4) }; },
     };
+    // (fx 9c, 2026-10-09: the impact atlas's ragged pen holes and gouges are paths) moveTo/lineTo/closePath too
     for (const method of ['beginPath', 'clearRect', 'ellipse', 'fill', 'fillRect', 'putImageData',
-      'restore', 'rotate', 'save', 'translate', 'arc', 'clip', 'rect', 'scale', 'stroke']) {
+      'restore', 'rotate', 'save', 'translate', 'arc', 'clip', 'rect', 'scale', 'stroke', 'moveTo', 'lineTo', 'closePath']) {
       context[method] = () => {};
     }
     return { width: 0, height: 0, getContext: () => context };
