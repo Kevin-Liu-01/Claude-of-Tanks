@@ -244,6 +244,10 @@ export function createGarageDressing(
   let pendingTankReveal: THREE.Object3D | null = null;
   let abramsServiceFloorRoot: THREE.Group | null = null;
   let abramsBayRoot: THREE.Group | null = null;
+  // The two freestanding battle-archive monitors stand in Verdant's hall only (2026-10-11, the redesign; waves 393 and
+  // 398: "a battle-footage monitor on stands in every yard", "blank navy wall panels"): their own owner, shown there.
+  const battleScreenOwner = new THREE.Group();
+  battleScreenOwner.name = 'garage_battle_archive_displays';
   const hidePendingTankReveal = (): void => {
     if (pendingTankReveal) pendingTankReveal.visible = false;
   };
@@ -1278,7 +1282,7 @@ export function createGarageDressing(
       // The garage phase owner removes this whole root from the scene during
       // battle. Stop here instead of polling; onBeforeRender restarts the
       // archive on the first garage-return frame, preserving zero battle cost.
-      if (!group.parent || !group.visible || document.hidden) return;
+      if (!group.parent || !group.visible || !battleScreenOwner.visible || document.hidden) return;
       void advanceBattleScreen();
     }, delay);
   }
@@ -1408,12 +1412,13 @@ export function createGarageDressing(
     // this tiny layout pose shifts/rotates the complete set against each
     // environment's landmark. Verdant alone keeps wall-mounted interior
     // clutter because only its enclosed shell provides real supporting walls;
-    // the freestanding archive display and all four authored service bays are
-    // part of this shared root and remain visible in every Garage.
+    // all four authored service bays are part of this shared root and remain
+    // visible in every Garage. The archive monitors stand in Verdant only.
     legacyVerdantRoot.visible = true;
     verdantInteriorRoot.visible = isVerdant;
-    group.userData.battleScreenVisible = true;
-    if (battleScreenCurrentTexture) scheduleBattleScreenAdvance();
+    battleScreenOwner.visible = isVerdant;
+    group.userData.battleScreenVisible = isVerdant;
+    if (isVerdant && battleScreenCurrentTexture) scheduleBattleScreenAdvance();
     group.userData.verdantOriginalVisible = legacyVerdantRoot.children.length > 0;
     group.userData.workshopTriangleCount = group.userData.verdantOriginalTriangleCount || 0;
     group.userData.activeWorkshopTriangleCount =
@@ -1441,13 +1446,15 @@ export function createGarageDressing(
   ): void {
     if (turret) turret.visible = false;
     if (hull) {
-      // Only the tracks come off (2026-10-10, wave 377: with every wheel gone the rolled hull read as "an anonymous
-      // dark-green box with a few bolt-on blocks"): road wheels, idlers, sprockets, return rollers and suspension stay
-      // on, so the hull keeps its tank anatomy in the rotisserie; the shoes lie on their pallet.
+      // The tracks and road wheels come off before a hull goes in the rotisserie (wave 393: "its road wheels still
+      // bolted on along both edges, which no depot would do"); the suspension arms, hubs, idlers and sprockets stay, so
+      // the hull keeps its anatomy (wave 377: "an anonymous dark-green box"). The wheels lie stacked beside the rig and
+      // the shoes on their pallet.
       const removedGear: THREE.Object3D[] = [];
       hull.traverse((object) => {
         const name = object.name || '';
-        if (/^(gearTrack|gearThrownLinks|gearShadow|hullRunningGearTrack|k2_track_rubber)/.test(name)) {
+        if (/^(gearTrack|gearThrownLinks|gearShadow|hullRunningGearTrack|k2_track_rubber)/.test(name)
+          || (/^gearRoadWheel/.test(name) && !/Hub/.test(name))) {
           removedGear.push(object);
         }
       });
@@ -1727,8 +1734,9 @@ export function createGarageDressing(
     screenRoot.name = 'garage_battle_archive_monitor';
     screenRoot.position.set(0, 4.15, -18.25);
     screenRoot.rotation.y = 0;
-    screenRoot.userData.mountMode = 'freestanding-shared';
-    legacyVerdantRoot.add(screenRoot);
+    screenRoot.userData.mountMode = 'freestanding-verdant';
+    legacyVerdantRoot.add(battleScreenOwner);
+    battleScreenOwner.add(screenRoot);
 
     put(track(new THREE.BoxGeometry(6.8, 3.82, 0.22)), mat.steelDark,
       0, 0, 0, 0, 0, 0, 1, screenRoot, false);
@@ -1860,7 +1868,7 @@ export function createGarageDressing(
     secondaryRoot.userData.mountMode = 'freestanding-west-shared';
     secondaryRoot.userData.displayFacing = 'inward-to-hero';
     group.userData.battleScreenSecondaryFacing = 'inward-to-hero';
-    legacyVerdantRoot.add(secondaryRoot);
+    battleScreenOwner.add(secondaryRoot);
     put(track(new THREE.BoxGeometry(6.8, 3.82, 0.22)), mat.steelDark,
       0, 0, 0, 0, 0, 0, 1, secondaryRoot, false);
     put(track(new THREE.BoxGeometry(6.26, 3.50, 0.08)), mat.rubber,
@@ -3260,96 +3268,95 @@ export function createGarageDressing(
     tank.position.set(-16.25, 0, -16.85);
     tank.rotation.set(0, 0.35, THREE.MathUtils.degToRad(68));
     legacyVerdantRoot.add(tank);
-    seatVisibleRoot(tank, 0.20);
-    // after seating, so the exposed parts never lift the hull off its saddles or the weld off the belly
-    addK2StrippedAnatomy(tank, hull);
-
-    const cradle = markModernPart(new THREE.Group(), 'k2', 'hull_support');
-    cradle.position.set(-16.25, 0, -16.85);
-    cradle.rotation.y = 0.35;
-    legacyVerdantRoot.add(cradle);
-    cradle.userData.supportMode = 'connected-steel-rollover-cradle';
-    cradle.userData.contactPadCount = 2;
-    const baseRailGeometry = track(new THREE.BoxGeometry(0.28, 0.20, 5.55));
-    const crossmemberGeometry = track(new THREE.BoxGeometry(3.45, 0.18, 0.30));
-    const groundFootGeometry = track(new THREE.BoxGeometry(0.72, 0.08, 0.72));
-    for (const x of [-1.42, 1.42]) {
-      const rail = put(baseRailGeometry, mat.steelDark, x, 0.14, 0,
-        0, 0, 0, 1, cradle);
-      rail.name = 'k2_cradle_base_rail';
-      for (const z of [-2.46, 2.46]) {
-        const foot = put(groundFootGeometry, mat.steelDark, x, 0.04, z,
-          0, 0, 0, 1, cradle);
-        foot.name = 'k2_cradle_ground_foot';
-      }
-    }
-    for (const z of [-2.46, 2.46]) {
-      const crossmember = put(crossmemberGeometry, mat.steelMid, 0, 0.20, z,
-        0, 0, 0, 1, cradle);
-      crossmember.name = 'k2_cradle_crossmember';
-    }
-
-    const frameBraceGeometry = track(new THREE.BoxGeometry(0.20, 1.92, 0.28));
-    const saddleGeometry = track(new THREE.BoxGeometry(1.12, 0.16, 0.50));
-    const contactPadGeometry = track(new THREE.BoxGeometry(0.88, 0.09, 0.42));
-    for (const z of [-1.72, 1.72]) {
-      for (const [x, roll] of [[-0.66, -0.72], [0.66, 0.72]] as const) {
-        const brace = put(frameBraceGeometry, mat.safety, x, 0.88, z,
-          0, 0, roll, 1, cradle);
-        brace.name = 'k2_cradle_a_frame_brace';
-      }
-      const saddle = put(saddleGeometry, mat.steelMid, 0, 1.53, z,
-        0, 0, 0, 1, cradle);
-      saddle.name = 'k2_cradle_contact_saddle';
-      const pad = put(contactPadGeometry, mat.rubber, 0, 1.65, z,
-        0, 0, -0.12, 1, cradle);
-      pad.name = 'k2_cradle_rubber_contact_pad';
-    }
-    const spine = put(track(new THREE.BoxGeometry(0.22, 0.22, 3.72)), mat.steelMid,
-      0, 1.40, 0, 0, 0, 0, 1, cradle);
-    spine.name = 'k2_cradle_connected_spine';
-
     addK2RoadWheelStacks(tires, discs);
     addK2TrackShoePallet(pads);
 
-    // The hull rolled for belly access stands in a two-ring rotisserie (2026-10-10, wave 338: "a K2 tipped
-    // nose-down off its stand" read as an accident): each ring circles the hull's section on its long axis and rides
-    // two floor rollers, so the roll reads as a fixture setting.
+    // One fixture holds the hull (2026-10-11, wave 398: "the K2 sits in rotisserie rings and on a scissor lift at once;
+    // the rings never clamp"): a two-ring rollover rotisserie. Each ring is sized to the stripped hull's section, its
+    // four clamp arms reach in to the hull's corners and bolt on with pads, and it rides on a floor stand of two
+    // rollers; nothing else touches the hull. The rings and arms are built in the hull's own frame so they roll with it.
     {
-      legacyVerdantRoot.updateMatrixWorld(true);
-      const toAuthored = (local: THREE.Vector3): THREE.Vector3 => legacyVerdantRoot.worldToLocal(tank.localToWorld(local));
-      const hullAxis = toAuthored(new THREE.Vector3(0, 1.078, 1)).sub(toAuthored(new THREE.Vector3(0, 1.078, 0))).normalize();
-      // rings that clear the hull's section with its wheels on (wave 377: "the ring clips it", "thin hoops")
-      const ringRadius = 2.4;
-      const ringGeometry = track(new THREE.TorusGeometry(ringRadius, 0.12, 8, 56));
-      const rollerGeometry = track(new THREE.CylinderGeometry(0.085, 0.085, 0.16, 12));
+      tank.updateMatrixWorld(true);
+      const inverse = tank.matrixWorld.clone().invert();
+      const section = new THREE.Box3();
+      const piece = new THREE.Box3();
+      (hull ?? tank).traverse((object) => {
+        const mesh = object as THREE.Mesh;
+        if (!mesh.isMesh || !mesh.geometry) return;
+        for (let p: THREE.Object3D | null = mesh; p && p !== tank; p = p.parent) if (!p.visible) return;
+        if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+        piece.copy(mesh.geometry.boundingBox!).applyMatrix4(inverse.clone().multiply(mesh.matrixWorld));
+        section.union(piece);
+      });
+      const cx = (section.min.x + section.max.x) / 2;
+      const cy = (section.min.y + section.max.y) / 2;
+      const halfW = (section.max.x - section.min.x) / 2;
+      const halfH = (section.max.y - section.min.y) / 2;
+      const length = section.max.z - section.min.z;
+      const tube = 0.13;
+      const ringRadius = Math.hypot(halfW, halfH) + 0.22;
+      // lift the hull so its section centre is the rings' axle, the rings' feet on their rollers
+      const axleY = ringRadius + tube + 0.42;
+      const centreNow = tank.localToWorld(new THREE.Vector3(cx, cy, 0));
+      tank.position.y += legacyVerdantRoot.worldToLocal(new THREE.Vector3(0, axleY, 0)).y
+        - legacyVerdantRoot.worldToLocal(centreNow.clone()).y;
+      tank.updateMatrixWorld(true);
+      // after placing, so the exposed parts sit on the hull where it ends up
+      addK2StrippedAnatomy(tank, hull);
+
       const rotisserie = markModernPart(new THREE.Group(), 'k2', 'hull_rotisserie');
       rotisserie.name = 'k2_hull_rotisserie';
       rotisserie.userData.supportMode = 'two-ring-hull-rotisserie';
+      rotisserie.position.copy(tank.position);
+      rotisserie.rotation.copy(tank.rotation);
       legacyVerdantRoot.add(rotisserie);
-      for (const station of [-2.75, 2.45]) {
-        const centre = toAuthored(new THREE.Vector3(0, 1.078, station));
-        centre.y = ringRadius + 0.12 + 0.02;
-        const ring = put(ringGeometry, mat.safety, centre.x, centre.y, centre.z, 0, 0, 0, 1, rotisserie);
+      const ringGeometry = track(new THREE.TorusGeometry(ringRadius, tube, 10, 64));
+      const stations = [section.min.z + length * 0.24, section.max.z - length * 0.24];
+      for (const station of stations) {
+        const ring = put(ringGeometry, mat.safety, cx, cy, station, 0, 0, 0, 1, rotisserie);
         ring.name = 'k2_rotisserie_ring';
-        ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), hullAxis);
-        const lateral = new THREE.Vector3().crossVectors(hullAxis, new THREE.Vector3(0, 1, 0)).normalize();
-        // the ring's clamp arms reach in to the hull at four points
+        // a flat web inside the tube stiffens the ring where the clamps bolt on
         for (let arm = 0; arm < 4; arm += 1) {
-          const angle = Math.PI / 4 + arm * Math.PI / 2;
-          const radial = new THREE.Vector3(Math.cos(angle), Math.sin(angle), 0).applyQuaternion(ring.quaternion);
-          const armMesh = put(track(new THREE.BoxGeometry(0.12, 0.62, 0.14)), mat.steelDark,
-            centre.x + radial.x * (ringRadius - 0.38), centre.y + radial.y * (ringRadius - 0.38),
-            centre.z + radial.z * (ringRadius - 0.38), 0, 0, 0, 1, rotisserie);
-          armMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), radial.normalize());
+          const angle = Math.PI / 4 + arm * (Math.PI / 2);
+          const dx = Math.cos(angle), dy = Math.sin(angle);
+          const reach = Math.min(halfW / Math.abs(dx), halfH / Math.abs(dy));
+          const inner = reach - 0.02, outer = ringRadius - tube * 0.6;
+          const armLength = outer - inner;
+          const mid = (inner + outer) / 2;
+          const clamp = put(track(new THREE.BoxGeometry(0.16, armLength, 0.2)), mat.steelDark,
+            cx + dx * mid, cy + dy * mid, station, 0, 0, angle - Math.PI / 2, 1, rotisserie);
+          clamp.name = 'k2_rotisserie_clamp_arm';
+          // the clamp's pad bolted to the hull, a screw jack at the ring
+          const pad = put(track(new THREE.BoxGeometry(0.34, 0.06, 0.34)), mat.rubber,
+            cx + dx * (inner + 0.03), cy + dy * (inner + 0.03), station, 0, 0, angle - Math.PI / 2, 1, rotisserie);
+          pad.name = 'k2_rotisserie_clamp_pad';
+          put(track(new THREE.CylinderGeometry(0.07, 0.07, 0.3, 10)), mat.steelBright,
+            cx + dx * (outer - 0.22), cy + dy * (outer - 0.22), station, 0, 0, angle - Math.PI / 2, 1, rotisserie, false);
         }
-        const base = put(track(new THREE.BoxGeometry(1.5, 0.08, 0.36)), mat.steelDark,
-          centre.x, 0.04, centre.z, 0, 0, 0, 1, rotisserie);
-        base.rotation.y = Math.atan2(lateral.x, lateral.z) - Math.PI / 2;
-        for (const side of [-0.42, 0.42]) {
-          const roller = put(rollerGeometry, mat.steelMid,
-            centre.x + lateral.x * side, 0.095, centre.z + lateral.z * side, 0, 0, 0, 1, rotisserie);
-          roller.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), hullAxis);
+      }
+      // each ring's floor stand, in the authored frame: a base frame, two pedestals and the rollers under the ring
+      legacyVerdantRoot.updateMatrixWorld(true);
+      rotisserie.updateMatrixWorld(true);
+      const toAuthored = (local: THREE.Vector3): THREE.Vector3 => legacyVerdantRoot.worldToLocal(rotisserie.localToWorld(local));
+      const axis = toAuthored(new THREE.Vector3(cx, cy, 1)).sub(toAuthored(new THREE.Vector3(cx, cy, 0))).setY(0).normalize();
+      const across = new THREE.Vector3(-axis.z, 0, axis.x);
+      const standYaw = Math.atan2(across.x, across.z);
+      const rollerGeometry = track(new THREE.CylinderGeometry(0.16, 0.16, 0.22, 16));
+      for (const station of stations) {
+        const centre = toAuthored(new THREE.Vector3(cx, cy, station));
+        const stand = markModernPart(new THREE.Group(), 'k2', 'rotisserie_roller_stand');
+        stand.name = 'k2_rotisserie_roller_stand';
+        stand.position.set(centre.x, 0, centre.z);
+        stand.rotation.y = standYaw;
+        legacyVerdantRoot.add(stand);
+        put(track(new THREE.BoxGeometry(0.42, 0.16, 2.1)), mat.steelDark, 0, 0.08, 0, 0, 0, 0, 1, stand);
+        for (const side of [-0.62, 0.62]) {
+          const ringY = centre.y - Math.sqrt(ringRadius * ringRadius - side * side) - tube;
+          const rollerY = ringY - 0.16;
+          put(track(new THREE.BoxGeometry(0.34, Math.max(0.05, rollerY - 0.16), 0.3)), mat.safety,
+            0, 0.16 + (rollerY - 0.16) / 2, side, 0, 0, 0, 1, stand);
+          const roller = put(rollerGeometry, mat.steelMid, 0, rollerY, side, 0, 0, 0, 1, stand);
+          roller.rotation.set(0, 0, Math.PI / 2);
         }
       }
     }
@@ -3427,7 +3434,8 @@ export function createGarageDressing(
     optimizeGarageDressing(group, {
       // The Abrams bay owner nests inside the shared root but merges alone, so
       // each destination can still carry it to its own placement.
-      staticDisplayOwners: [legacyVerdantRoot, verdantInteriorRoot, ...(abramsBayRoot ? [abramsBayRoot] : [])],
+      staticDisplayOwners: [legacyVerdantRoot, verdantInteriorRoot, ...(abramsBayRoot ? [abramsBayRoot] : []),
+        battleScreenOwner],
       additionalResourceRoots: [legacyVerdantRoot, verdantInteriorRoot],
       bakedMaterialLifecycle: engineCtx?.setupShadowMaterial && engineCtx.releaseShadowMaterial ? {
         // Variant accents stay on the shared mutable palette.

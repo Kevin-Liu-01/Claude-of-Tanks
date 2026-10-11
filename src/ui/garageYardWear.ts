@@ -739,3 +739,113 @@ export function garageFacilityAlbedo(kind: 'steel' | 'panel' | 'concrete', aniso
   sharedFacilityAlbedos.set(kind, texture);
   return texture;
 }
+
+/** The corrugated sheet's repeat in metres: eight trapezoidal ribs across, one sheet length down. */
+export const GARAGE_SHEETING_TILE_M = 2;
+const sharedSheeting = new Map<'albedo' | 'normal', THREE.CanvasTexture>();
+
+/**
+ * Trapezoidal steel sheeting for shelter roofs and wall cladding (the redesign, 2026-10-11: "halls, shelters ... built
+ * like real buildings"): a tileable 2 x 2 m sheet, eight ribs across, ribs running along V. The albedo carries only its
+ * weathering (rain streaks down the pans, rust at the laps and fixings, dust in the troughs) so the pack's paint tints
+ * it; the normal map carries the rib profile. Shared by every Garage and never disposed by a pack.
+ */
+export function garageSheeting(kind: 'albedo' | 'normal', anisotropy = 4): THREE.CanvasTexture | null {
+  const cached = sharedSheeting.get(kind);
+  if (cached) return cached;
+  if (typeof document === 'undefined') return null;
+  const S = 256;
+  const RIBS = 8;
+  const pitch = S / RIBS;
+  // the rib profile across one pitch: crest 0..5, down-slope 5..9, pan 9..27, up-slope 27..31 (px of 32)
+  const profileSlope = (x: number): number => {
+    const t = ((x % pitch) + pitch) % pitch;
+    if (t < 5) return 0;
+    if (t < 9) return 1;
+    if (t < 27) return 0;
+    return -1;
+  };
+  const canvas = document.createElement('canvas');
+  canvas.width = S;
+  canvas.height = S;
+  const g = canvas.getContext('2d');
+  if (!g) return null;
+  const rng = mulberry(kind === 'albedo' ? 811 : 812);
+  if (kind === 'normal') {
+    const image = g.createImageData(S, S);
+    for (let y = 0; y < S; y++) {
+      for (let x = 0; x < S; x++) {
+        const slope = profileSlope(x);
+        // slopes tilt the normal across the sheet; the lap at the sheet's head is a small step
+        const nx = slope * 0.62;
+        const lap = y < 3 ? 0.5 : y < 5 ? -0.25 : 0;
+        const len = Math.hypot(nx, lap, 1);
+        const i = (y * S + x) * 4;
+        image.data[i] = Math.round(((nx / len) * 0.5 + 0.5) * 255);
+        image.data[i + 1] = Math.round(((lap / len) * 0.5 + 0.5) * 255);
+        image.data[i + 2] = Math.round(((1 / len) * 0.5 + 0.5) * 255);
+        image.data[i + 3] = 255;
+      }
+    }
+    g.putImageData(image, 0, 0);
+  } else {
+    g.fillStyle = 'rgb(232,232,230)';
+    g.fillRect(0, 0, S, S);
+    // the slopes catch less paint wear than the crests and pans: a faint tone per facet
+    for (let rib = 0; rib < RIBS; rib++) {
+      const x0 = rib * pitch;
+      g.fillStyle = 'rgba(255,255,255,0.10)'; g.fillRect(x0, 0, 5, S);
+      g.fillStyle = 'rgba(30,30,30,0.08)'; g.fillRect(x0 + 5, 0, 4, S); g.fillRect(x0 + 27, 0, 4, S);
+    }
+    // rain streaks down the pans, from fixings and the lap
+    for (let i = 0; i < 70; i++) {
+      const rib = Math.floor(rng() * RIBS);
+      const x = rib * pitch + 10 + rng() * 15, w = 1 + rng() * 2.5, y0 = rng() * S, len = S * (0.15 + rng() * 0.6);
+      const grad = g.createLinearGradient(0, y0, 0, y0 + len);
+      const dark = rng() < 0.7;
+      const color = dark ? '52,46,40' : '128,74,40';
+      grad.addColorStop(0, `rgba(${color},${(0.08 + rng() * 0.12).toFixed(3)})`);
+      grad.addColorStop(1, `rgba(${color},0)`);
+      g.fillStyle = grad;
+      for (const wrap of [0, -S]) g.fillRect(x, y0 + wrap, w, len);
+    }
+    // fixings: a pair of screw heads on every crest at the lap and mid-sheet, each with a rust halo
+    for (const y of [12, S / 2 + 12]) {
+      for (let rib = 0; rib < RIBS; rib++) {
+        const x = rib * pitch + 2.5;
+        const halo = g.createRadialGradient(x, y, 0, x, y, 6);
+        halo.addColorStop(0, `rgba(120,64,30,${(0.18 + rng() * 0.2).toFixed(2)})`);
+        halo.addColorStop(1, 'rgba(120,64,30,0)');
+        g.fillStyle = halo; g.fillRect(x - 6, y - 6, 12, 12);
+        g.fillStyle = 'rgba(70,70,70,0.7)'; g.fillRect(x - 1, y - 1, 2, 2);
+      }
+    }
+    // the lap: a darker band where the next sheet overlaps, rust bleeding from it
+    g.fillStyle = 'rgba(40,36,32,0.22)'; g.fillRect(0, 0, S, 4);
+    for (let i = 0; i < 22; i++) {
+      const x = rng() * S, len = 6 + rng() * 26;
+      const grad = g.createLinearGradient(0, 4, 0, 4 + len);
+      grad.addColorStop(0, 'rgba(126,66,30,0.3)');
+      grad.addColorStop(1, 'rgba(126,66,30,0)');
+      g.fillStyle = grad; g.fillRect(x, 4, 1.5 + rng() * 3, len);
+    }
+    // blotchy weathering at two scales
+    for (let i = 0; i < 40; i++) {
+      const x = rng() * S, y = rng() * S, r = 10 + rng() * 40;
+      const grad = g.createRadialGradient(x, y, 0, x, y, r);
+      const light = rng() < 0.4;
+      grad.addColorStop(0, light ? 'rgba(255,255,250,0.07)' : 'rgba(46,42,38,0.08)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = grad;
+      for (const [dx, dy] of [[0, 0], [S, 0], [-S, 0], [0, S], [0, -S]]) g.fillRect(x - r + dx, y - r + dy, r * 2, r * 2);
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  if (kind === 'albedo') texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.anisotropy = anisotropy;
+  texture.userData.sharedGarageSheeting = kind;
+  sharedSheeting.set(kind, texture);
+  return texture;
+}

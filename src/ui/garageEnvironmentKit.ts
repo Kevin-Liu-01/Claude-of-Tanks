@@ -37,10 +37,12 @@ import {
 } from './garageFacilityDetails.ts';
 import {
   GARAGE_HARDSTAND_STYLES,
+  GARAGE_SHEETING_TILE_M,
   garageFacilityAlbedo,
   garageHardstandAlbedo,
   garageHardstandNormal,
   garageHardstandNormalKind,
+  garageSheeting,
 } from './garageYardWear.ts';
 import {
   addGarageApproachDetails,
@@ -1416,6 +1418,12 @@ export function buildGarageEnvironment(
           )) as Parameters<typeof addGarageFacilityDetails>[0]['surfaceMaps'],
           groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
           variant,
+          // building surfaces at their real size: trapezoidal sheeting (render and planks join the pack's own plaster and
+          // wood buckets, so they add no draw)
+          surfaces: {
+            sheeting: { color: garageSheeting('albedo', anisotropy), normal: garageSheeting('normal', anisotropy) },
+          },
+          sheetingTileM: GARAGE_SHEETING_TILE_M,
         });
     const approachDetails: GarageApproachStats = variant.architecture === 'field_shed'
       ? Object.freeze({
