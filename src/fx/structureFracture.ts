@@ -125,6 +125,9 @@ interface LiveBody {
   parts: Array<{ material: THREE.Material; geometry: THREE.BufferGeometry }>;
   /** From the body frame to its own (its box's) frame: a mesh's matrix is its pose times this. */
   fromBody: THREE.Matrix4;
+  /** Its cells (face, cell pairs) and whether it has cracked on a landing (a chunk of courses breaks into clumps). */
+  cells: number[];
+  cracked: boolean;
 }
 
 interface Live {
@@ -155,6 +158,10 @@ interface Live {
 const BAKE_STILL_S = 2.5;
 const BAKE_AGE_S = 30;
 const SOUND_GAP_S = 0.06;
+/** (dcore 2026-10-11, wave 388a: "carton-like sections need chipping") a fallen chunk of four cells or more cracks on a
+ *  landing this hard (m/s) into clumps of two or three cells along its courses, while the pool has room for them. */
+const CRACK_MPS = 3;
+const CRACK_MIN_CELLS = 4;
 const CAP_UV_DENSITY = 0.55;
 
 function neutral(name: string): number {
@@ -168,12 +175,15 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   const bodiesPerStrike = Math.max(1, o.bodiesPerStrike ?? 10);
   const outcome = createWallStrikeOutcome();
   let lastSoundS = -1;
+  /** Chunks that landed hard this step (cracked after it: no body is spawned inside the pool's report). */
+  const cracking: LiveBody[] = [];
   let lastUpdateS = o.now();
   let bakedCount = 0;
 
   o.pool.onImpact((x, y, z, speed, mass, handle) => {
     const b = bodies.get(handle);
     if (!b) return;
+    if (!b.cracked && b.cells.length >= CRACK_MIN_CELLS * 2 && speed >= CRACK_MPS) { b.cracked = true; cracking.push(b); }
     o.onLanding?.(x, y, z, speed, mass, b.structureIdx);
     const t = o.now();
     if (b.sounds >= 3 || t - lastSoundS < SOUND_GAP_S) return;
@@ -829,7 +839,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
    * A body of cells (face, cell pairs; every cell of one face stack, so one face frame): its triangles and its caps in
    * its own frame, its box parts, spawned with the given velocity (world, m/s) and spin.
    */
-  function spawnCells(live: Live, cells: number[], vx: number, vy: number, vz: number, spin: number, seed: number): boolean {
+  function spawnCells(live: Live, cells: number[], vx: number, vy: number, vz: number, spin: number, seed: number,
+    at: THREE.Matrix4 | null = null): boolean {
     if (!cells.length) return false;
     const g0 = live.wall.faces[cells[0]];
     // the body's frame: the cells' centre, axes along the face (u, up, out)
@@ -984,10 +995,17 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       o.group.add(mesh);
       meshes.push(mesh);
     }
-    // spawn: the body frame's pose to the world
-    toWorld(live, centre[0], centre[1], centre[2], _v);
-    const yawQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), live.seam.anatomy.placement.yaw);
-    const qWorld = yawQ.multiply(qBody);
+    // spawn: the body frame's pose to the world (a cracked chunk's clumps: through where the chunk lies now)
+    let qWorld: THREE.Quaternion;
+    if (at) {
+      _v.set(centre[0], centre[1], centre[2]).applyMatrix4(at);
+      at.decompose(_atP, _atQ, _atS);
+      qWorld = _atQ.clone().multiply(qBody);
+    } else {
+      toWorld(live, centre[0], centre[1], centre[2], _v);
+      const yawQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), live.seam.anatomy.placement.yaw);
+      qWorld = yawQ.multiply(qBody);
+    }
     const rng = mulberry(seed);
     const handle = o.pool.spawn(shape, {
       x: _v.x, y: _v.y, z: _v.z, qx: qWorld.x, qy: qWorld.y, qz: qWorld.z, qw: qWorld.w,
@@ -998,14 +1016,60 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       return false;
     }
     const body: LiveBody = { structureIdx: live.seam.structureIdx, handle, meshes, massKg: mass, material: g0.material, still: 0, age: 0, sounds: 0,
-      pose: new Float64Array(7).fill(NaN), parts: partsOut,
-      fromBody: new THREE.Matrix4().compose(_v.set(frame.c[0], frame.c[1], frame.c[2]), frame.q, _s).invert() };
+      pose: new Float64Array(7).fill(NaN), parts: partsOut, cells: cells.slice(), cracked: cells.length < CRACK_MIN_CELLS * 2,
+      fromBody: new THREE.Matrix4().compose(_atP.set(frame.c[0], frame.c[1], frame.c[2]), frame.q, _s).invert() };
     bodies.set(handle, body);
     _pose[0] = _v.x; _pose[1] = _v.y; _pose[2] = _v.z; _pose[3] = qWorld.x; _pose[4] = qWorld.y; _pose[5] = qWorld.z; _pose[6] = qWorld.w;
     writePose(body, _pose);
     return true;
   }
   const _pose = new Float64Array(7);
+  const _atP = new THREE.Vector3(), _atQ = new THREE.Quaternion(), _atS = new THREE.Vector3(), _atM = new THREE.Matrix4();
+  const _crackVel = new Float64Array(6);
+  /**
+   * A chunk that landed hard breaks along its courses into clumps of two or three cells, each a body where its cells lie
+   * in the chunk now, with the chunk's motion and a tumble of its own; the chunk leaves the pool. Skipped without room.
+   */
+  function crackBody(b: LiveBody): void {
+    const live = lives.get(b.structureIdx);
+    if (!live || !bodies.has(b.handle)) return;
+    // its cells by face and row, along the row: runs of two or three (a single left over joins the last)
+    const byRow = new Map<string, number[]>();
+    for (let i = 0; i < b.cells.length; i += 2) {
+      const f = b.cells[i], c = b.cells[i + 1], g = live.wall.faces[f];
+      let r = 0;
+      while (r + 1 < g.rowStart.length && g.rowStart[r + 1] <= c) r++;
+      const key = `${f}:${r}`;
+      const list = byRow.get(key) ?? [];
+      list.push(f, c);
+      byRow.set(key, list);
+    }
+    const clumps: number[][] = [];
+    let k = 0;
+    for (const key of [...byRow.keys()].sort()) {
+      const run = byRow.get(key)!;
+      for (let i = 0; i < run.length;) {
+        const take = (2 + (Math.imul(b.handle + 1, 0x9e3779b1) + k++) % 2) * 2;
+        const clump = run.slice(i, i + take);
+        i += take;
+        if (clump.length === 2 && clumps.length && i >= run.length) clumps[clumps.length - 1].push(...clump); else clumps.push(clump);
+      }
+    }
+    if (clumps.length < 2) return;
+    const capacity = (o.pool.world as { capacity?: number }).capacity ?? 128;
+    if (capacity - o.pool.world.awakeCount + 1 < clumps.length) return;
+    if (!o.pool.framePoseAt(b.handle, _pose)) return;
+    o.pool.velocity(b.handle, _crackVel);
+    // where its cells lie now: the chunk's pose through its body frame
+    _atM.compose(_atP.set(_pose[0], _pose[1], _pose[2]), _atQ.set(_pose[3], _pose[4], _pose[5], _pose[6]), _s).multiply(b.fromBody);
+    const at = _atM.clone();
+    bodies.delete(b.handle);
+    o.pool.release(b.handle);
+    for (const m of b.meshes) { o.group.remove(m); m.geometry.dispose(); }
+    clumps.forEach((clump, i) => {
+      spawnCells(live, clump, _crackVel[0] * 0.8, _crackVel[1] * 0.8 + 0.6, _crackVel[2] * 0.8, 4, damageSeed(b.handle * 31 + 7, i), at);
+    });
+  }
   function writePose(b: LiveBody, src: ArrayLike<number>): void {
     let same = true;
     for (let k = 0; k < 7; k++) if (b.pose[k] !== src[k]) { same = false; b.pose[k] = src[k]; }
@@ -1234,6 +1298,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const t = o.now();
       const dt = Math.max(0, Math.min(0.25, t - lastUpdateS));
       lastUpdateS = t;
+      while (cracking.length) crackBody(cracking.pop()!);
       if (!bodies.size) return;
       // (a Map tolerates deleting the entry being visited: no list a frame)
       for (const b of bodies.values()) {
@@ -1248,6 +1313,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     reset() {
       for (const b of bodies.values()) { o.pool.release(b.handle); for (const m of b.meshes) { o.group.remove(m); m.geometry.dispose(); } }
       bodies.clear();
+      cracking.length = 0;
       for (const live of lives.values()) {
         for (const d of live.faces.values()) for (const m of d.meshes) { o.group.remove(m); m.geometry.dispose(); }
         for (const m of [...live.room, ...live.baked]) { o.group.remove(m); m.geometry.dispose(); }
