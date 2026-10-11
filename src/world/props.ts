@@ -5850,6 +5850,9 @@ ${snowCap ? `
   // brick-print one (its coursed module), nor the phones
   const wallTurfOn = !mobileProps && !snowCap && rockDressing.dust < 0.5 && !sourcedStoneIsBrick(mapId);
   const turfFoldAt = (heightField as { _foldAt?: (x: number, z: number) => number })._foldAt ?? null;
+  // (sealed lane 2026-10-11: a Sirocco Wadi hand cart stood in a wall breach's rubble) a breach's stubs and blocks carry no
+  // record: each stands in the parked vehicles' and carts' seat passes as drawn (crushableFootprints)
+  const breachRubbleFootprints: CollisionRecord[] = [];
   const wallDressing = createWallDressing({
     ground: heightField, snow: snowCap, mobile: mobileProps, adobeBucket: adobeWallBucket, mudUv: ADOBE_UV_PER_M,
     plainV: adobeWallBucket === 'fieldMud' ? FIELD_MUD_PLAIN_V : undefined,
@@ -5937,6 +5940,8 @@ ${snowCap ? `
         if (wallB === 'fieldStone') wallDressing.stoneUv(stub, rng); else jitterUV(stub, rng);
         stub.rotateY(yaw);
         buckets[wallB].push(stub.translate(x, y + height / 2, z));
+        const drawn = drawnPlanRecord([stub], y + 0.15, 0.05);
+        if (drawn) breachRubbleFootprints.push(drawn);
       }
       for (let blockIndex = 0; blockIndex < 5; blockIndex++) {
         const breachT = 0.2 + rng() * 0.6;
@@ -5948,8 +5953,11 @@ ${snowCap ? `
         );
         if (wallB === 'fieldStone') wallDressing.stoneUv(block, rng); else jitterUV(block, rng);
         block.rotateY(rng() * Math.PI);
-        block.translate(x, heightField.getHeightAt(x, z) + size * 0.3, z);
+        const groundY = heightField.getHeightAt(x, z);
+        block.translate(x, groundY + size * 0.3, z);
         buckets[wallB].push(block);
+        const drawn = drawnPlanRecord([block], groundY, 0.05);
+        if (drawn) breachRubbleFootprints.push(drawn);
       }
     }
     function isGapModule(center: number): boolean {
@@ -8892,6 +8900,9 @@ ${snowCap ? `
   yield { fine: true, stage: 'street-details' };
 
   // --- ground-blend decals: dirt/AO ring under buildings + shell craters ---
+  // (sealed lane 2026-10-11: an Alpine sled stood on a crater's clod) the clods thrown round a battle scar carry no record:
+  // each stands in the parked vehicles' and carts' seat passes as drawn (crushableFootprints)
+  const craterClodFootprints: CollisionRecord[] = [];
   function* placeGroundBlendDecals(): Generator<PropsBuildSlice, void, void> {
     // r5 terrain_environment: TRACK-TEAR strip texture — churned dark earth
     // with two ragged tread lanes running along V; laid as conformed strips
@@ -9240,8 +9251,11 @@ ${snowCap ? `
         clod.rotateY(rng() * Math.PI);
         const clodX = x + Math.cos(angle) * distance;
         const clodZ = z + Math.sin(angle) * distance;
-        clod.translate(clodX, heightField.getHeightAt(clodX, clodZ) + size * 0.25, clodZ);
+        const groundY = heightField.getHeightAt(clodX, clodZ);
+        clod.translate(clodX, groundY + size * 0.25, clodZ);
         buckets.stone.push(clod);
+        const drawn = drawnPlanRecord([clod], groundY, 0.05);
+        if (drawn) craterClodFootprints.push(drawn);
       }
     }
     function randomCraterCenter(corridors: DriveCorridor[]): [number, number] {
@@ -9749,7 +9763,8 @@ ${snowCap ? `
     return [...crushables.filter((c) => !c.toppled).map((c) => circle(c.x, c.y, c.z, c.r, c.h)),
       ...destructibles.filter((d) => d.state === 0 && !d.dropped && d.ob && drawnWider(d.kind))
         .map((d) => circle(d.x, d.y, d.z, d.r + MIRROR_REACH_M, d.h)),
-      ...wreckDrawnFootprints, ...rubbleDrawnFootprints, ...felledPoleFootprints, ...railBeds, ...streetKerbFootprints];
+      ...wreckDrawnFootprints, ...rubbleDrawnFootprints, ...felledPoleFootprints, ...breachRubbleFootprints,
+      ...craterClodFootprints, ...railBeds, ...streetKerbFootprints];
   }
   function separateParkedVehicleRecords(): void {
     const roles = new Set(Object.keys(CIVILIAN_VEHICLE_RECEIPTS));
@@ -9895,8 +9910,8 @@ ${snowCap ? `
       }
       return [{ ob: ob ?? { min: [sx0, seat.y, sz0], max: [sx1, top, sz1] }, poly: poly as FootprintPolygon, sx0, sx1, sz0, sz1 }];
     };
-    const risenStones = rockSeats.filter((seat) => seat.added && seat.profile && seat.rec).flatMap((seat) => stonePlan(seat, seat.rec));
-    const lowStones = rockSeats.filter((seat) => !seat.profile && !seat.rec).flatMap((seat) => stonePlan(seat, null));
+    // (the stones that keep their legacy records here too: the census's Alpine sled met one past its record)
+    const stones = rockSeats.flatMap((seat) => stonePlan(seat, seat.rec));
     const nearOf = new Map<DestructibleRecord, Near[]>();
     const crushRecords = crushableFootprints();
     for (const cart of carts) {
@@ -9911,7 +9926,7 @@ ${snowCap ? `
           near.push({ ob, polys: owner ? null : buildings.has(ob) ? buildingPolys(ob) : prop ? bandPolys(ob, prop) : shapePolygons(ob), parked: owner });
         }
       }
-      for (const stone of [...risenStones, ...lowStones]) {
+      for (const stone of stones) {
         if (stone.sx1 < x0 || stone.sx0 > x1 || stone.sz1 < z0 || stone.sz0 > z1) continue;
         near.push({ ob: stone.ob, polys: [stone.poly], parked: null, stone: true });
       }
