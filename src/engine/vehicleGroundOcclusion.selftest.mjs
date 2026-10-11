@@ -22,7 +22,7 @@ import {
   GROUND_AO_SNOW_ALBEDO, GROUND_AO_WALL_SOFT, contactCoreOcclusion, shoeBandSunShadow, snowBermGain, snowWeight, vehicleGrime,
   GROUND_AO_OCC_MAX_SNOW, groundOcclusionCap, groundWallSoft,
   GROUND_AO_BLEND_H_M, GROUND_AO_BLEND_H_SNOW_M, GROUND_AO_BLEND_MAX, GROUND_AO_BLEND_MAX_SNOW, GROUND_AO_GEAR_CAP, GROUND_AO_SNOW_COOL,
-  contactBlendWeight, gearCap, gearWeight,
+  contactBlendWeight, gearCap, gearWeight, GROUND_AO_BLEND_SNOW_SOLID, GROUND_AO_BLEND_SNOW_VARY, snowBlendNoise,
 } from './vehicleGroundOcclusion.ts';
 import { CONTACT_NORMAL_BREAK_PX, CONTACT_SHADOW_GLSL, contactNormalBroken } from './contactShadows.ts';
 import { T90M, T90M_RUN_TOP, UNION_POINTS } from './vehicleGroundOcclusion.test-support.mjs';
@@ -751,7 +751,16 @@ assert.ok(BW(0.05, 0, 1) > 0 && BW(0.05) === 0, 'and higher on snow');
 assert.equal(BW(0, T.cz0 - 0.2), 0, 'only along the ground run'); assert.equal(BW(0, 0, 0, T.xo + 0.05), 0, 'only in the lane');
 const lifted5 = { left: new Array(8).fill(0), right: new Array(8).fill(0.13) };
 near(contactBlendWeight({ x: 1.5, y: 0.13, z: 0 }, T, 0, lifted5), GROUND_AO_BLEND_MAX, 1e-9, 'the blend rides the drawn run');
-assert.ok(GROUND_AO_BLEND_H_M <= 0.04 && GROUND_AO_BLEND_H_SNOW_M <= 0.08 && GROUND_AO_BLEND_MAX_SNOW <= 0.9, 'a few centimetres, never the whole track');
+assert.ok(GROUND_AO_BLEND_H_M <= 0.04 && GROUND_AO_BLEND_H_SNOW_M * (1 + GROUND_AO_BLEND_SNOW_VARY) <= 0.09, 'a few centimetres, never the whole track');
+// on snow: packed snow — opaque over the solid share of its height, an uneven line along the ground (smooth, world-anchored)
+near(BW(0.5 * GROUND_AO_BLEND_SNOW_SOLID * GROUND_AO_BLEND_H_SNOW_M, 0, 1), GROUND_AO_BLEND_MAX_SNOW, 1e-12, 'opaque low on the shoe');
+assert.ok(BW(0.5 * GROUND_AO_BLEND_SNOW_SOLID * GROUND_AO_BLEND_H_M, 0, 0) < GROUND_AO_BLEND_MAX, 'on grass a gradient from the foot');
+const snowN = []; for (let z = -2; z <= 2; z += 0.05) snowN.push(snowBlendNoise(0.3, z));
+assert.ok(Math.min(...snowN) < 0.3 && Math.max(...snowN) > 0.7, `the snow line is uneven along a run (${Math.min(...snowN).toFixed(2)}..${Math.max(...snowN).toFixed(2)})`);
+for (let i = 1; i < snowN.length; i++) assert.ok(Math.abs(snowN[i] - snowN[i - 1]) < 0.15, 'and smooth (5 cm steps)');
+const wLow = contactBlendWeight({ x: 1.5, y: 0.04, z: 0 }, T, 1, null, 1, { x: 0, z: -1.75 });
+const wHigh = contactBlendWeight({ x: 1.5, y: 0.04, z: 0 }, T, 1, null, 1, { x: 0, z: 0 });
+assert.ok(Math.abs(wHigh - wLow) > 0.2, `the line's height follows the world point (${wLow.toFixed(2)} vs ${wHigh.toFixed(2)})`);
 // (d) the snow's cool cast: blue over red, within a few per cent of luminance
 const lumCool = 0.2126 * GROUND_AO_SNOW_COOL[0] + 0.7152 * GROUND_AO_SNOW_COOL[1] + 0.0722 * GROUND_AO_SNOW_COOL[2];
 assert.ok(GROUND_AO_SNOW_COOL[2] > GROUND_AO_SNOW_COOL[0] && Math.abs(lumCool - 1) < 0.05, `blue over red, luminance ${lumCool.toFixed(3)}`);
@@ -763,6 +772,8 @@ for (const piece of [
   `return s * mix( vec3( 1.0 ), vec3( ${GROUND_AO_SNOW_COOL.map(f4).join(', ')} ), ( 1.0 - s ) * uVehGroundR6.x );`,
   'vec3 cotVehicleContactBlend( vec3 rgb, vec3 P ) {', 'vec4 c = uContactViewProj * vec4( Pg, 1.0 );',
   'if ( g.a >= 3.5000 ) continue;', 'vec3 gc = g.rgb * cotVehicleGroundShadeRgb( guv, cotWorldAtDepth( guv, gd ), g.a, gd );',
+  'float sn = clamp( 0.5 + 0.22 * sin( 1.9 * P.z + 0.7 * P.x + 1.7 ) + 0.16 * sin( 4.7 * P.z - 1.3 * P.x + 0.4 )',
+  `float solid = ${f4(GROUND_AO_BLEND_SNOW_SOLID)} * snow * height;`, 'float w = ( 1.0 - smoothstep( solid, height, dv ) )',
   'return mix( rgb, gc, w );',
 ]) assert.ok(g.includes(piece), piece);
 assert.ok(g.indexOf('vec3 cotVehicleContactBlend(') > g.indexOf('float cotVehicleGrime('), 'the new functions after the shade and the grime');

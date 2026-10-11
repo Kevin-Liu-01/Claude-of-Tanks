@@ -181,10 +181,24 @@ export const GROUND_AO_GEAR_CAP = 0.75;
  * pixel's colour: a sample that lands on a hull is skipped. Presentation only.
  */
 export const GROUND_AO_BLEND_H_M = 0.03;
-export const GROUND_AO_BLEND_H_SNOW_M = 0.07;
+export const GROUND_AO_BLEND_H_SNOW_M = 0.06;
 export const GROUND_AO_BLEND_MAX = 0.6;
-export const GROUND_AO_BLEND_MAX_SNOW = 0.85;
+export const GROUND_AO_BLEND_MAX_SNOW = 1;
 export const GROUND_AO_BLEND_OUT_M = 0.06;
+/**
+ * Round 5 (the lane's own frames, 2026-10-11 13:00: a translucent 0.85 gradient over 7 cm read as a pale film painted over the
+ * shoes, not snow): on snow the blend is packed snow round the track's foot — opaque over GROUND_AO_BLEND_SNOW_SOLID of its
+ * height, a soft edge above, and an uneven line: its height runs GROUND_AO_BLEND_SNOW_VARY either side along the ground
+ * (snowBlendNoise, smooth and world-anchored, so a moving hull drives through a fixed snow line).
+ */
+export const GROUND_AO_BLEND_SNOW_SOLID = 0.55;
+export const GROUND_AO_BLEND_SNOW_VARY = 0.45;
+
+/** Round 5: the snow line's unevenness at a world point, 0..1 — three smooth sines along the ground (no per-pixel noise). */
+export function snowBlendNoise(x: number, z: number): number {
+  return clamp01(0.5 + 0.22 * Math.sin(1.9 * z + 0.7 * x + 1.7) + 0.16 * Math.sin(4.7 * z - 1.3 * x + 0.4)
+    + 0.12 * Math.sin(9.3 * z + 2.1 * x + 2.2));
+}
 export const GROUND_AO_CONTACT_SPREAD_M = 0.15;
 export const GROUND_AO_CONTACT_RISE_M = 0.25;
 /**
@@ -549,14 +563,19 @@ export function gearCap(cap: number, gear: number, gearMax = GROUND_AO_GEAR_CAP)
  * drawn lower edge (squared off by a smoothstep), in its lane (its faces widened GROUND_AO_GRIME_LANE_M) along the ground run
  * (soft over its ends), at most the blend's share — on snow (`snow`, snowWeight) the snow's height and share. `scale`: the lever.
  */
-export function contactBlendWeight(q: Vec3Like, h: VehicleGroundHull, snow: number, runs?: VehicleGroundRuns | null, scale = 1): number {
+export function contactBlendWeight(q: Vec3Like, h: VehicleGroundHull, snow: number, runs?: VehicleGroundRuns | null, scale = 1,
+  world: { x: number; z: number } | null = null): number {
   const laneD = 0.5 * (h.xo - h.xi) - Math.abs(Math.abs(q.x) - 0.5 * (h.xi + h.xo));
   if (laneD < -GROUND_AO_GRIME_LANE_M || q.z < h.cz0 - 0.1 || q.z > h.cz1 + 0.1) return 0;
   const s = clamp01(snow);
-  const height = GROUND_AO_BLEND_H_M + (GROUND_AO_BLEND_H_SNOW_M - GROUND_AO_BLEND_H_M) * s;
+  // on snow: packed snow, an uneven opaque line (its height along the ground from the world point; mid-height without one)
+  const n = world ? snowBlendNoise(world.x, world.z) : 0.5;
+  const snowH = GROUND_AO_BLEND_H_SNOW_M * (1 - GROUND_AO_BLEND_SNOW_VARY + 2 * GROUND_AO_BLEND_SNOW_VARY * n);
+  const height = GROUND_AO_BLEND_H_M + (snowH - GROUND_AO_BLEND_H_M) * s;
   const dv = q.y - (h.y0 + runTravelAt(q.x, q.z, h, runs));
   if (dv > height || dv < -0.05) return 0;
-  return (1 - smoothstep(0, height, dv)) * smoothstep(h.cz0 - 0.1, h.cz0 + 0.05, q.z) * (1 - smoothstep(h.cz1 - 0.05, h.cz1 + 0.1, q.z))
+  return (1 - smoothstep(GROUND_AO_BLEND_SNOW_SOLID * s * height, height, dv))
+    * smoothstep(h.cz0 - 0.1, h.cz0 + 0.05, q.z) * (1 - smoothstep(h.cz1 - 0.05, h.cz1 + 0.1, q.z))
     * (GROUND_AO_BLEND_MAX + (GROUND_AO_BLEND_MAX_SNOW - GROUND_AO_BLEND_MAX) * s) * Math.max(scale, 0);
 }
 
@@ -1258,7 +1277,11 @@ ${GLSL_HULL_EDGES}
     vec3 cotVehicleContactBlend( vec3 rgb, vec3 P ) {
       if ( uVehGroundR6.w <= 0.0 ) return rgb;
       float snow = clamp( uVehGroundR6.x, 0.0, 1.0 );
-      float height = mix( ${f(GROUND_AO_BLEND_H_M)}, ${f(GROUND_AO_BLEND_H_SNOW_M)}, snow );
+      // on snow: packed snow round the foot — an uneven opaque line, its height along the ground (snowBlendNoise, world space)
+      float sn = clamp( 0.5 + 0.22 * sin( 1.9 * P.z + 0.7 * P.x + 1.7 ) + 0.16 * sin( 4.7 * P.z - 1.3 * P.x + 0.4 )
+        + 0.12 * sin( 9.3 * P.z + 2.1 * P.x + 2.2 ), 0.0, 1.0 );
+      float height = mix( ${f(GROUND_AO_BLEND_H_M)}, ${f(GROUND_AO_BLEND_H_SNOW_M)} * ( ${f(1 - GROUND_AO_BLEND_SNOW_VARY)} + ${f(2 * GROUND_AO_BLEND_SNOW_VARY)} * sn ), snow );
+      float solid = ${f(GROUND_AO_BLEND_SNOW_SOLID)} * snow * height;
       float share = mix( ${f(GROUND_AO_BLEND_MAX)}, ${f(GROUND_AO_BLEND_MAX_SNOW)}, snow ) * uVehGroundR6.w;
       for ( int i = 0; i < ${GROUND_AO_MAX_HULLS}; i++ ) {
         if ( float( i ) >= uVehGround ) break;
@@ -1271,7 +1294,7 @@ ${GLSL_HULL_EDGES}
         float foot = b0.w + cotVgRun( uVehGroundR[ rk ], uVehGroundR[ rk + 1 ], q.z, b3 );
         float dv = q.y - foot;
         if ( dv > height || dv < -0.05 ) continue;
-        float w = ( 1.0 - smoothstep( 0.0, height, dv ) ) * smoothstep( b3.z - 0.1, b3.z + 0.05, q.z )
+        float w = ( 1.0 - smoothstep( solid, height, dv ) ) * smoothstep( b3.z - 0.1, b3.z + 0.05, q.z )
           * ( 1.0 - smoothstep( b3.w - 0.05, b3.w + 0.1, q.z ) ) * share;
         if ( w <= 0.003 ) continue;
         // the ground beyond the outer face at the foot: rows m0, m1 are the hull's world→root rows, so the world step
