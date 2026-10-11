@@ -152,11 +152,11 @@
       "concealers": 3513
     },
     "copper_mesa": {
-      "bytes": 1780412,
-      "sha256": "922bad7e0708e88d2aa419a5491b692143afc05b4e057885f6d7df04c7424d24",
-      "obstacles": 1868,
-      "colliders": 2328,
-      "concealers": 964
+      "bytes": 1816327,
+      "sha256": "216adbb9ec21c2bb17398f3fded1de50cdc925157336d8377838c5a915f83c01",
+      "obstacles": 1862,
+      "colliders": 2318,
+      "concealers": 958
     },
     "airfield": {
       "bytes": 985967,
@@ -173,10 +173,10 @@
       "concealers": 784
     },
     "whiteout": {
-      "bytes": 1812410,
-      "sha256": "1e41da61f8f3b984dc0dda9718d9b08b1c7520aec0fe55fdc3560458aec43842",
+      "bytes": 1928891,
+      "sha256": "765bee2f81d3cd8e3084ca4c3afa00e49766be9fde9679ce5c567cfaca5fd0cf",
       "obstacles": 1179,
-      "colliders": 1193,
+      "colliders": 1251,
       "concealers": 0
     },
     "orchard": {
