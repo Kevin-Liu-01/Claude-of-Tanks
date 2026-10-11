@@ -10,6 +10,9 @@
 import winter from './winter.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 import { roundRoadBends } from './roadBends.ts';
+// (the map-content lane's R6; gauntlet wave 358a: "flat orange-brown boulder blobs", "the cairn's warm brown should be
+// desaturated to frost-shattered grey") the plateau's granite as Baffin's is under the frost: cool grey, lichen-dark
+const FROST_GRANITE: readonly [number, number, number] = [0.58, 0.05, 0.42];
 export default {
   id: 'whiteout', name: 'Whiteout Station',
   blurb: 'A remote polar station, frozen melt pans and snow-berm service corridors beneath a pale sky',
@@ -248,30 +251,30 @@ export default {
     // (round 1c) inuksuit, the Inuit's stone figures that mark a route across the land, beside the service roads and on two
     // knolls (scenery cairns of the plateau's gneiss)
     landmarks: [
-      { kind: 'cairn', x: 286, z: -280, height: 2.0, scale: 0.9, geology: 'granite', name: 'an inuksuk on the east road (south)' },
-      { kind: 'cairn', x: 268, z: -180, height: 1.8, scale: 0.8, geology: 'granite', name: 'an inuksuk on the east road' },
-      { kind: 'cairn', x: 268, z: -20, height: 2.1, scale: 0.9, geology: 'granite', name: 'an inuksuk by the relay' },
-      { kind: 'cairn', x: 274, z: 150, height: 1.9, scale: 0.85, geology: 'granite', name: 'an inuksuk on the east road (north)' },
-      { kind: 'cairn', x: 304, z: 236, height: 2.0, scale: 0.9, geology: 'granite', name: 'an inuksuk at the east fork' },
-      { kind: 'cairn', x: -258, z: -200, height: 1.9, scale: 0.85, geology: 'granite', name: 'an inuksuk on the west road (south)' },
-      { kind: 'cairn', x: -258, z: -14, height: 2.1, scale: 0.9, geology: 'granite', name: 'an inuksuk by the motor pool' },
-      { kind: 'cairn', x: -262, z: 176, height: 1.8, scale: 0.8, geology: 'granite', name: 'an inuksuk on the west road (north)' },
-      { kind: 'cairn', x: -270, z: 330, height: 2.0, scale: 0.9, geology: 'granite', name: 'an inuksuk by the lake' },
-      { kind: 'cairn', x: -84, z: -206, height: 1.9, scale: 0.85, geology: 'granite', name: 'an inuksuk on the south road' },
-      { kind: 'cairn', x: 432, z: 76, height: 2.2, scale: 1.0, geology: 'granite', name: 'an inuksuk on the east knoll' },
-      { kind: 'cairn', x: -432, z: 330, height: 2.2, scale: 1.0, geology: 'granite', name: 'an inuksuk on the west knoll' },
+      { kind: 'cairn', x: 286, z: -280, height: 2.0, scale: 0.9, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk on the east road (south)' },
+      { kind: 'cairn', x: 268, z: -180, height: 1.8, scale: 0.8, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk on the east road' },
+      { kind: 'cairn', x: 268, z: -20, height: 2.1, scale: 0.9, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk by the relay' },
+      { kind: 'cairn', x: 274, z: 150, height: 1.9, scale: 0.85, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk on the east road (north)' },
+      { kind: 'cairn', x: 304, z: 236, height: 2.0, scale: 0.9, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk at the east fork' },
+      { kind: 'cairn', x: -258, z: -200, height: 1.9, scale: 0.85, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk on the west road (south)' },
+      { kind: 'cairn', x: -258, z: -14, height: 2.1, scale: 0.9, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk by the motor pool' },
+      { kind: 'cairn', x: -262, z: 176, height: 1.8, scale: 0.8, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk on the west road (north)' },
+      { kind: 'cairn', x: -270, z: 330, height: 2.0, scale: 0.9, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk by the lake' },
+      { kind: 'cairn', x: -84, z: -206, height: 1.9, scale: 0.85, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk on the south road' },
+      { kind: 'cairn', x: 432, z: 76, height: 2.2, scale: 1.0, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk on the east knoll' },
+      { kind: 'cairn', x: -432, z: 330, height: 2.2, scale: 1.0, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk on the west knoll' },
     ],
     rockFields: [
-      { geology: 'granite', x: -380, z: -60, radius: 70, count: 9, slopeBias: 0.4, size: [3, 6], name: 'the west knoll tors' },
-      { geology: 'granite', x: 210, z: 130, radius: 80, count: 10, slopeBias: 0.5, size: [3, 6.5], name: 'the east ridge rock' },
-      { geology: 'granite', x: -320, z: -330, radius: 80, count: 9, size: [2.5, 5.5], name: 'the esker boulder field' },
-      { geology: 'granite', x: -380, z: 370, radius: 70, count: 9, size: [2.5, 5.5], name: 'the north-west boulder field' },
-      { geology: 'granite', x: 330, z: -270, radius: 70, count: 8, size: [3, 6], name: 'the south-east tor' },
-      { geology: 'granite', x: 360, z: 330, radius: 70, count: 8, size: [3, 6], name: 'the north-east tor' },
-      { geology: 'granite', x: 40, z: -290, radius: 70, count: 8, slopeBias: 0.5, size: [2.5, 5.5], name: 'the south ridge rock' },
-      { geology: 'granite', x: 110, z: 320, radius: 70, count: 8, size: [2.5, 5.5], name: 'the north berm rock' },
+      { geology: 'granite', tone: FROST_GRANITE, x: -380, z: -60, radius: 70, count: 9, slopeBias: 0.4, size: [3, 6], name: 'the west knoll tors' },
+      { geology: 'granite', tone: FROST_GRANITE, x: 210, z: 130, radius: 80, count: 10, slopeBias: 0.5, size: [3, 6.5], name: 'the east ridge rock' },
+      { geology: 'granite', tone: FROST_GRANITE, x: -320, z: -330, radius: 80, count: 9, size: [2.5, 5.5], name: 'the esker boulder field' },
+      { geology: 'granite', tone: FROST_GRANITE, x: -380, z: 370, radius: 70, count: 9, size: [2.5, 5.5], name: 'the north-west boulder field' },
+      { geology: 'granite', tone: FROST_GRANITE, x: 330, z: -270, radius: 70, count: 8, size: [3, 6], name: 'the south-east tor' },
+      { geology: 'granite', tone: FROST_GRANITE, x: 360, z: 330, radius: 70, count: 8, size: [3, 6], name: 'the north-east tor' },
+      { geology: 'granite', tone: FROST_GRANITE, x: 40, z: -290, radius: 70, count: 8, slopeBias: 0.5, size: [2.5, 5.5], name: 'the south ridge rock' },
+      { geology: 'granite', tone: FROST_GRANITE, x: 110, z: 320, radius: 70, count: 8, size: [2.5, 5.5], name: 'the north berm rock' },
       // (round 1c) the east flank's tors beyond the relay
-      { geology: 'granite', x: 410, z: -110, radius: 60, count: 8, size: [2.5, 5.5], name: 'the east flank tors' },
+      { geology: 'granite', tone: FROST_GRANITE, x: 410, z: -110, radius: 60, count: 8, size: [2.5, 5.5], name: 'the east flank tors' },
     ],
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the flattest ring's tone grain 0.35 -> 0.60

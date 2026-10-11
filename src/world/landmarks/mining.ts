@@ -145,6 +145,41 @@ export const headframe: LandmarkBuilder = (ctx) => {
     bar(sink, 'structureMetal', [sx * 0.9, hubY - R * 0.2, zs + R * 0.9], [sx * 0.9, g0 + 1.3, zs + 0.6], 0.05, { colour: IRON, decor: true });
   }
   for (const sx of [-1, 1]) sink.quad('structureMetal', [sx * 0.9 - 0.3, hy + 4.0, hz1 + 0.04], [sx * 0.9 + 0.3, hy + 4.0, hz1 + 0.04], [sx * 0.9 + 0.3, hy + 4.6, hz1 + 0.04], [sx * 0.9 - 0.3, hy + 4.6, hz1 + 0.04], { colour: SHAFT, decor: true });
+  // (R6, gauntlet wave 358a: "no mullock heaps, rails, timber stacks, tracks or fences round the shaft"; "clutter
+  // concentrated at the works") the shaft yard on the collar's open side: the skip road (rails on their sleepers, laid on
+  // the ground) out from the collar with a side-tipping skip standing on it, the stack of mine timber beside it under its
+  // dunnage, the drums of the winder's oil; all dressing, so the yard's ground stays the hulls' (the waste rock the
+  // map lays beside the collar, its own scree: copperMesa.ts)
+  {
+    const rz = zs, x0 = -2.7, x1 = -9.5, gauge = 0.6;
+    for (let x = x0 - 0.3; x > x1; x -= 0.65) {
+      const g = gl(x, rz);
+      sink.span('structureWood', x - 0.09, g - 0.06, rz - 0.55, x + 0.09, g + 0.06, rz + 0.55, { colour: shade(TIMBER, 0.7), decor: true, fine: true });
+    }
+    for (const dz of [-gauge / 2, gauge / 2]) {
+      const ga = gl(x0, rz + dz), gb = gl(x1, rz + dz);
+      bar(sink, 'structureMetal', [x0, ga + 0.1, rz + dz], [x1, gb + 0.1, rz + dz], 0.06, { colour: RUST, decor: true });
+    }
+    const kx = -6.0, gk = gl(kx, rz);
+    sink.span('structureMetal', kx - 0.75, gk + 0.12, rz - 0.42, kx + 0.75, gk + 0.3, rz + 0.42, { colour: IRON, decor: true });
+    for (const wx of [kx - 0.45, kx + 0.45]) for (const dz of [-gauge / 2, gauge / 2]) {
+      sink.cylinder('structureMetal', [wx, gk + 0.22, rz + dz - 0.04], 'z', 0.08, 0.2, 8, { colour: IRON, decor: true });
+    }
+    sink.span('structureMetal', kx - 0.8, gk + 0.3, rz - 0.55, kx + 0.8, gk + 1.25, rz + 0.55, { colourAt: rusting(STEEL, gk + 0.3, gk + 1.25, 0.6), decor: true });
+    sink.span('structureMetal', kx - 0.7, gk + 1.1, rz - 0.45, kx + 0.7, gk + 1.22, rz + 0.45, { colour: ORE, decor: true });
+    // the mine timber, square sets in a stack on its dunnage
+    const tx = -6.5, tz = zs + 3.4, gt = Math.min(gl(tx - 1.6, tz), gl(tx + 1.6, tz));
+    for (let row = 0; row < 3; row++) for (let k = 0; k < 5 - row; k++) {
+      const z = tz - 1.0 + (k + row * 0.5) * 0.42;
+      sink.span('structureWood', tx - 1.6, gt + 0.12 + row * 0.36, z - 0.17, tx + 1.6, gt + 0.46 + row * 0.36, z + 0.17, { colour: shade(TIMBER, 0.9 + 0.1 * ((k + row) % 2)), decor: true });
+    }
+    for (const dx of [-1.2, 1.2]) sink.span('structureWood', tx + dx - 0.1, gt - 0.05, tz - 1.3, tx + dx + 0.1, gt + 0.12, tz + 1.0, { colour: shade(TIMBER, 0.6), decor: true });
+    // the winder's oil drums
+    for (const [dx, dz] of [[0, 0], [0.62, 0.1], [0.3, 0.6]]) {
+      const x = -5.2 + dx, z = zs - 3.6 + dz;
+      sink.cylinder('structureMetal', [x, gl(x, z) - 0.02, z], 'y', 0.88, 0.29, 10, { colour: dz > 0.5 ? rgb(0x7a2a1e) : IRON, decor: true });
+    }
+  }
   // the ladder up the front leg
   for (let y = g0 + 1.6; y < H; y += 0.4) bar(sink, 'structureMetal', [half - 0.1, y, zs + half + 0.25], [half - 0.6, y, zs + half + 0.25], 0.03, { colour: IRON, decor: true, fine: true });
   // the ore bin on the legs' front and its chute, its two front legs footed on the ground

@@ -251,6 +251,13 @@ export default {
       { form: 'blocks', geology: 'breccia', x: -58, z: 20, radius: 6, height: 2.6, yawDeg: 25, tone: CONGLOMERATE, name: 'the conglomerate blocks on the pit\'s west lip' },
       { form: 'blocks', geology: 'breccia', x: -20, z: -8, radius: 6, height: 2.5, yawDeg: 140, tone: CONGLOMERATE, name: 'the conglomerate blocks in the pit\'s mouth' },
       { form: 'blocks', geology: 'breccia', x: -70, z: 8, radius: 5.5, height: 2.4, yawDeg: 60, tone: CONGLOMERATE, name: 'the conglomerate blocks west of the lip' },
+      // (the map-content lane's R6; gauntlet wave 358a: "no mullock heaps ... round the shaft") the waste rock tipped beside
+      // each shaft's collar, on its open side (mining.ts: the skip road runs out the other way): loose stone a hull rolls over
+      { form: 'scree', geology: 'breccia', x: 9, z: 190, radius: 5, height: 1.4, yawDeg: 180, tone: CONGLOMERATE, name: 'the North Lyell mullock' },
+      { form: 'scree', geology: 'breccia', x: 31, z: -200, radius: 5, height: 1.4, yawDeg: 0, tone: CONGLOMERATE, name: 'the Prince Lyell mullock' },
+      { form: 'scree', geology: 'breccia', x: 309, z: -151, radius: 4.5, height: 1.3, yawDeg: 90, tone: CONGLOMERATE, name: 'the east shaft mullock' },
+      { form: 'scree', geology: 'breccia', x: -293, z: -305, radius: 4.5, height: 1.3, yawDeg: 200, tone: CONGLOMERATE, name: 'the south-west old shaft mullock' },
+      { form: 'scree', geology: 'breccia', x: -391, z: 249, radius: 4.5, height: 1.3, yawDeg: 90, tone: CONGLOMERATE, name: 'the north-west old shaft mullock' },
     ],
   },
   horizon: { baseHex: 0x6a625c, amp: 1.35, style: 'alpine', treeline: 0.38, snowline: 2, bareRock: 0.7, outcrops: 0.5,
