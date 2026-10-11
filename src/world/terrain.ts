@@ -4952,7 +4952,10 @@ void splatCompute() {
       // grey plane)
       vec3 cin = dM + (aD.rgb - dM) * mix(0.16, 0.80, smoothstep(0.012, 0.035, gFootM));
       // (a cinder's grey is a little warm — the lab's cold grey read as asphalt)
-      cin = mix(cin, vec3(reduxLuma(cin)), 0.6) * vec3(0.88, 0.85, 0.83);
+      // (2026-10-11, the map-revival lane; gauntlet wave 362: the yard floor "the same uniform brown noise as the open
+      // ground"; "a 1962 coalfield yard sits on black cinder and coal-dust ballast") the yard's cinder a dark warm grey —
+      // four fifths of the dirt photo's brown taken out and its tone two thirds (was three fifths of the brown, 0.85)
+      cin = mix(cin, vec3(reduxLuma(cin)), 0.8) * vec3(0.62, 0.60, 0.58);
       // the floor's own lumps and hollows, trodden and spread: ~25 cm and ~60 cm of tone (the noise with no period), a
       // twelfth each way, faded before they can shimmer; and its ~3 m spreads, darker and paler by a sixth, which still
       // read at a grazing 30 m where the finer terms are gone
@@ -4961,10 +4964,11 @@ void splatCompute() {
       cin *= 1.0 + ((yL.x - 0.5) * 0.34 * tileVis(0.25) + (yL.y - 0.5) * 0.30 * tileVis(0.6) + (yM.x - 0.5) * 0.36 * tileVis(3.0));
       // the patches (~8 m, the noise with no period): coal dust, dried ash, rust
       vec2 yP = nzq(uv, 0.021, vec2(0.17, 0.43));
-      float coal = smoothstep(0.56, 0.78, yP.x);
+      // (2026-10-11: the coal dust over more of the floor and blacker — the yard handled coal)
+      float coal = smoothstep(0.48, 0.72, yP.x);
       float ash = smoothstep(0.58, 0.80, 1.0 - yP.x) * smoothstep(0.30, 0.62, yP.y);
       float rust = smoothstep(0.62, 0.82, yP.y) * (1.0 - coal);
-      cin *= mix(1.0, 0.48, coal);
+      cin *= mix(1.0, 0.42, coal);
       cin = mix(cin, vec3(reduxLuma(dM) * 1.65) * vec3(1.0, 0.98, 0.95), ash * 0.62);
       cin *= mix(vec3(1.0), vec3(1.30, 0.98, 0.76), rust * 0.55);
       // the oil: stains a metre or two across where the engines stood — kept to some stretches of the yard (the ~14 m
