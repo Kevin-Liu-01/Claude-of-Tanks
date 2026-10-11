@@ -20,10 +20,11 @@ export interface TerraceLayout {
   /** the street wall (+z) stands `stepDepth` inside the plot's front edge: the doorsteps sit on the pavement line */
   front: number;
   stepDepth: number;
-  /** the two-storey block's depth and its back wall */
+  /** the two-storey block's depth and its back wall: 8.2 m deep with wash-houses behind it, else to the plot's back edge */
   depth: number;
   back: number;
-  /** one-storey wash-houses behind the block, reaching the plot's back edge, when the plot is deep enough for them */
+  /** one-storey wash-houses behind the block, reaching the plot's back edge, when the plot is deep enough for them (0 deep
+   * without them) */
   washhouses: boolean;
   washDepth: number;
 }
@@ -38,10 +39,13 @@ export function terraceLayout(plot: TerracePlot | undefined): TerraceLayout {
   const w = Math.max(11, Math.min(44, plot?.w ?? TERRACE_DEFAULT_PLOT.w));
   const d = Math.max(9, Math.min(13, plot?.d ?? TERRACE_DEFAULT_PLOT.d));
   const units = Math.max(2, Math.min(8, Math.round(w / TERRACE_UNIT_M)));
-  const stepDepth = 0.45, depth = 8.2;
-  const front = d / 2 - stepDepth, back = front - depth;
-  const washDepth = Math.max(0, back + d / 2);
-  return { w, d, units, unitW: w / units, front, stepDepth, depth, back, washhouses: washDepth >= 2.1, washDepth };
+  const stepDepth = 0.45, front = d / 2 - stepDepth;
+  // the block is 8.2 m deep, the wash-houses taking what the plot leaves behind it when that is 2.1 m or more; a
+  // shallower plot (under 10.75 m) deepens the block to its back edge instead, so the row reaches the plot's back edge
+  // either way and no lane opens behind it (the map-revival lanes' footprint coverage, regionalArchitecture.selftest)
+  const spare = d - stepDepth - 8.2, washhouses = spare >= 2.1;
+  const depth = washhouses ? 8.2 : d - stepDepth, back = front - depth;
+  return { w, d, units, unitW: w / units, front, stepDepth, depth, back, washhouses, washDepth: washhouses ? spare : 0 };
 }
 
 /**
