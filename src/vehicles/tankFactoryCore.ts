@@ -1651,9 +1651,6 @@ function installCoplanarDepthLayers(root: THREE.Object3D, records: readonly Copl
 // shells, wheels and track band carry the silhouette. The renderer drives
 // THREE.LOD automatically, so articulation (turret yaw) is unaffected.
 const LOD1_DIST = 150;
-/** The painted far fill's shade (sealed lane, wave 371b): a recess behind a louvre in deep shade, near the dark backstop's
- * value (the M1A2 TUSK's grille gaps measured 60 / 143 / 102 sRGB on main / the lit fill / 0.42) but camo-tinted. */
-const FAR_FILL_CAVITY = 0.15;
 function lodWrap(
   parent: THREE.Object3D,
   obj: THREE.Object3D,
@@ -7956,7 +7953,7 @@ function* createTankOwnedSteps(
 
   // ---- merge buckets into meshes ----
   const gunYOff = armor.turretPivot[1] + armor.gunPivot[1];
-  // The horizon every non-silhouette bucket culls at (mergeBucket) and the interior fills' painted far level takes.
+  // The horizon every non-silhouette bucket culls at (mergeBucket).
   const detailLodDistM = geometryQuality === 'low' ? 64 : LOD1_DIST;
   const DIRT_Y: Record<RigGroupKey, number> = {
     hullG: 0, turretG: armor.turretPivot[1], recoilG: gunYOff, gunG: gunYOff,
@@ -9968,29 +9965,7 @@ function* createTankOwnedSteps(
 
     // Interior fills 2026-09-13 (owner: every hull and turret must hold water):
     // generated buried solids for this tank, if its fleet group is resident.
-    // Rendered builds (sealed lane 2026-10-10) give them a painted far level on
-    // the detail buckets' own LOD horizon (mergeBucket's lodWrap), so a part
-    // culled there leaves painted body behind it instead of a dark gap.
-    const fillDirtY: Record<'hull' | 'turret' | 'gun', number> = { hull: DIRT_Y.hullG, turret: DIRT_Y.turretG, gun: DIRT_Y.gunG };
-    applyInteriorFills({
-      specId, hullG, turretG, gunG, material: mats.dark, disposables,
-      far: usesSharedMaterialTextures ? {
-        material: mats.hull,
-        distance: detailLodDistM,
-        hysteresis: 0.1,
-        paint: (geometry, component) => {
-          boxUV(geometry, CAMO_UV_REPEATS_PER_M);
-          bakeDirt(geometry, fillDirtY[component], component === 'hull' ? 1 : 0.5, !!spec.visual.bakeDirtDeckEq);
-          // Wave 371b (both critics: the M1A2 TUSK's rear grille "reads flatter" than the before's dark slats): the fill
-          // stands BEHIND the openings it closes, a recess in its own shade, so its camo is baked to FAR_FILL_CAVITY of
-          // the plate's: a louvre or a grille keeps its depth and never reads as a hole to the world, as the bare dark
-          // backstop did where a culled closure left a whole panel open
-          const color = geometry.getAttribute('color') as THREE.BufferAttribute;
-          for (let i = 0; i < color.array.length; i++) color.array[i] *= FAR_FILL_CAVITY;
-          color.needsUpdate = true;
-        },
-      } : null,
-    });
+    applyInteriorFills({ specId, hullG, turretG, gunG, material: mats.dark, disposables });
     if (physicalBore) {
       // Final stock includes generated gun fills and fixed pitch-owned parts.
       // Neither may re-cap the recoil-owned aperture that was verified earlier.
