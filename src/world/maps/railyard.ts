@@ -318,6 +318,8 @@ export default {
     // round 2: a plan building the new streets leave standing in a carriageway steps clear of it; the colonies' gardens
     gardenFences: { kind: 'fenceplank', lines: COLONY_GARDENS },
     roadBuildingClearance: true,
+    // the crossing roads' corners with the service roads: a long roadside shed seated there reached into both roads
+    roadBuildingKeepouts: [{ x: 252, z: 96, r: 16 }, { x: -252, z: -96, r: 16 }],
     destructibleBuildings: ['quonsethut', 'transformershed', 'motorpool', 'guardpost'],
     // Rotational pairs about the station square, each at least 180 m from every other: a post covering each level
     // crossing from the open field beyond it, a gate at each works, a camp at the outer foot of each spoil bank.
