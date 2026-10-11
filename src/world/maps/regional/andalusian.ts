@@ -572,7 +572,9 @@ const posada: RegionalBuilder = (ctx) => {
         faceBox(sink, 'structureWood', f, du + (look() - 0.5) * 2.4, frame.floors[0] + 2.6 + look() * 0.25, 0.2 + look() * 1.3,
           0.4 + look() * 0.4, 0.22 + look() * 0.2, 0.35 + look() * 0.3, { colour: shade(leaf, 0.75 + look() * 0.45), decor: true, shadow: true });
       }
-      faceBox(sink, 'stone', f, gu + (gw / 2 + 1.0) * -gateSide, frame.floors[0] + 0.3, 0.45, 1.5, 0.55, 0.6, { decor: true, shadow: true });
+      // the trough on the street against the wall's foot (the connectivity sweep: it stood at the ground floor's level,
+      // a third of a metre over the street)
+      faceBox(sink, 'stone', f, gu + (gw / 2 + 1.0) * -gateSide, 0.24, 0.36, 1.5, 0.62, 0.6, { decor: true, shadow: true });
       wallLantern(sink, f, du + 0.9 * gateSide, 2.6);
     });
   });
