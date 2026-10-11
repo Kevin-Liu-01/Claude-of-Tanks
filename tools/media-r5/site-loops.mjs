@@ -87,26 +87,31 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
   const D = probe(master), X = XFADE_MS / 1000;
   L = +(D - X).toFixed(3); uhd = heightOf(master) >= 2160;
   if (!(L >= 2)) throw new Error(`${id}: take of ${D}s is too short for a ${X}s crossfade`);
-  // tail (L..D) dissolves into head (0..X); then the body (X..L): out(L-) = clip(L-) and out(0) = clip(L), so the wrap is continuous
-  const loop = `[0:v]split=3[a][b][c];[a]trim=start=0:end=${X},setpts=PTS-STARTPTS[head];[b]trim=start=${X}:end=${L},setpts=PTS-STARTPTS[body];` +
-    `[c]trim=start=${L}:end=${D},setpts=PTS-STARTPTS[tail];[tail][head]xfade=transition=fade:duration=${X}:offset=0[blend];[blend][body]concat=n=2:v=1:a=0[loop]`;
+  // tail (L..D) dissolves into head (0..X); then the body (X..L): out(L-) = clip(L-) and out(0) = clip(L), so the wrap is continuous.
+  // The tail comes from a second, seeked read of the master: from one read, the graph had to hold every frame until
+  // the tail arrived, the whole take at 4K (an encode held 7.6 GB with the machine's swap full, 2026-10-10). Now
+  // only the head's span waits for the body. The frames are the same: the head and body from input 0, the tail from
+  // input 1 seeked to L (frame-exact: L is a whole number of frames).
+  const loop = `[0:v]split=2[a][b];[a]trim=start=0:end=${X},setpts=PTS-STARTPTS[head];[b]trim=start=${X}:end=${L},setpts=PTS-STARTPTS[body];` +
+    `[1:v]trim=start=0:end=${X},setpts=PTS-STARTPTS[tail];[tail][head]xfade=transition=fade:duration=${X}:offset=0[blend];[blend][body]concat=n=2:v=1:a=0[loop]`;
+  const inputs = ['-i', master, '-ss', String(L), '-i', master];
   for (const [key, suffix, post, enc, needsUhd] of VIDEO) {
     if (key === 'master' && !flags.has('--loop-master')) continue;
     if (needsUhd && !uhd) continue;
-    ff('-i', master, '-filter_complex', `${loop};[loop]${post}[v]`, '-map', '[v]', '-an', ...enc, join(out, `${id}${suffix}`));
+    ff(...inputs, '-filter_complex', `${loop};[loop]${post}[v]`, '-map', '[v]', '-an', ...enc, join(out, `${id}${suffix}`));
     files[key] = `${id}/${id}${suffix}`;
   }
   for (const [key, suffix, pre, gen, use] of GIF) {
-    ff('-i', master, '-filter_complex', `${loop};[loop]${pre},split[g1][g2];[g1]${gen}[p];[g2][p]${use}[v]`, '-map', '[v]', '-loop', '0', join(out, `${id}${suffix}`));
+    ff(...inputs, '-filter_complex', `${loop};[loop]${pre},split[g1][g2];[g1]${gen}[p];[g2][p]${use}[v]`, '-map', '[v]', '-loop', '0', join(out, `${id}${suffix}`));
     files[key] = `${id}/${id}${suffix}`;
   }
   // the share GIF must fit common upload limits: step down size and rate until it is under SHARE_GIF_MAX
   for (const [w, fps, dither] of SHARE_LADDER) {
     if (statSync(join(out, `${id}-share.gif`)).size <= SHARE_GIF_MAX) break;
-    ff('-i', master, '-filter_complex', `${loop};[loop]hqdn3d=3:2.5:6:5,fps=${fps},${DOWN(w)},split[g1][g2];[g1]palettegen=max_colors=256:stats_mode=diff[p];[g2][p]paletteuse=dither=${dither}:diff_mode=rectangle[v]`,
+    ff(...inputs, '-filter_complex', `${loop};[loop]hqdn3d=3:2.5:6:5,fps=${fps},${DOWN(w)},split[g1][g2];[g1]palettegen=max_colors=256:stats_mode=diff[p];[g2][p]paletteuse=dither=${dither}:diff_mode=rectangle[v]`,
       '-map', '[v]', '-loop', '0', join(out, `${id}-share.gif`));
   }
-  ff('-i', master, '-filter_complex', `${loop};[loop]${DOWN(1920)}[v]`, '-map', '[v]', '-frames:v', '1', '-q:v', '2', join(out, `${id}.jpg`));
+  ff(...inputs, '-filter_complex', `${loop};[loop]${DOWN(1920)}[v]`, '-map', '[v]', '-frames:v', '1', '-q:v', '2', join(out, `${id}.jpg`));
   files.poster = `${id}/${id}.jpg`;
   } else {
     if (!existsSync(join(out, `${id}.mp4`))) { console.log(`${id}: no formats delivered yet (--stills-only)`); continue; }
