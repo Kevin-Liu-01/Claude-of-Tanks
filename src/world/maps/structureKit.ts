@@ -1888,8 +1888,8 @@ function makeRelayStation(rng: Rng): THREE.BufferGeometry {
   // the guys' anchorages (wave 389: "its guys end on the light hut roof"): under each guy a steel post at the wall head,
   // up through the eaves, bolted over the head flashing to a strap that runs down the wall's face into the concrete
   // plinth, so each guy's pull goes to the ground. The mast is turned a twelfth of a turn so the three straps fall clear
-  // of the vents, the door and the corners. The straps and their plates are dressing (no collision record).
-  const mastYaw = Math.PI / 12, postTop = roofTop + 0.42, dressing: number[] = [];
+  // of the vents, the door and the corners. (The straps lie flat on the walls, their foot plates 3 cm proud.)
+  const mastYaw = Math.PI / 12, postTop = roofTop + 0.42;
   const anchors = [0, 1, 2].map((i) => {
     const a = mastYaw + Math.PI / 2 + (i * 2 * Math.PI) / 3, c = Math.cos(a), s = Math.sin(a);
     const onX = (w / 2) / Math.abs(c) <= (d / 2) / Math.abs(s), t = onX ? (w / 2) / Math.abs(c) : (d / 2) / Math.abs(s);
@@ -1898,9 +1898,7 @@ function makeRelayStation(rng: Rng): THREE.BufferGeometry {
       (onX ? box(sx, sy, sz) : box(sz, sy, sx)).translate(x + nx * o, cy, z + nz * o);
     put(along(-0.06, 0.1, postTop - (h - 0.3), 0.1, (postTop + h - 0.3) / 2), 0x4c5156, piece, 0.02);
     put(along(-0.04, 0.14, 0.18, 0.12, h - 0.21), 0x4c5156, piece, 0.02);
-    dressing.push(out.length);
     put(along(0.008, 0.012, h - 0.14, 0.09, (h - 0.12) / 2 + 0.01), 0x4c5156, piece, 0.02);
-    dressing.push(out.length);
     put(along(0.017, 0.03, 0.15, 0.16, 0.075), 0x3e4448, piece, 0.02);
     return [x - nx * 0.06, postTop, z - nz * 0.06] as const;
   });
@@ -1910,21 +1908,9 @@ function makeRelayStation(rng: Rng): THREE.BufferGeometry {
     guys: { anchors, levels: [0.5, 0.94] },
     dish: { leg: 1, level: 0.72, radius: 0.42 },
   }, (geo, color, piece) => put(geo, color, piece, 0.025));
-  const flags = dressingVertexFlags(out, dressing);
   const geometry = mergeConnectedStructure('relaystation', out);
-  geometry.userData.noCollisionVertices = flags;
   geometry.userData.fracture = relayFractureHooks(out, pieces);
   return geometry;
-}
-
-/** A merged kit's per-vertex dressing flags (structureCollision.ts noCollisionVertices) for the parts at `dressing`. */
-function dressingVertexFlags(parts: readonly THREE.BufferGeometry[], dressing: readonly number[]): Uint8Array {
-  const counts = parts.map((g) => (g.index ? g.index.count : g.getAttribute('position').count));
-  const flags = new Uint8Array(counts.reduce((a, b) => a + b, 0));
-  const marked = new Set(dressing);
-  let offset = 0;
-  counts.forEach((count, i) => { if (marked.has(i)) flags.fill(1, offset, offset + count); offset += count; });
-  return flags;
 }
 
 /** The relay's fracture hooks for the destructible lane's anatomy: each piece's run, and what holds it to what. */
