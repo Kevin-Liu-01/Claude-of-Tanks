@@ -655,6 +655,10 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const mesh = new THREE.Mesh(interleavedOf(fg.layout, buf, faceSphere(g)), fg.material);
       mesh.matrixAutoUpdate = false;
       bodyToWorld(live, mesh.matrix);
+      // (dcore 2026-10-11: a face drawn in the body frame was never carried to the world — a matrix set by hand under a
+      // static group is left out of the world update unless flagged, so the redrawn front stood at the world's origin and
+      // the house showed a hole where its face was)
+      mesh.matrixWorldNeedsUpdate = true;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.userData.structureFractureFace = true;
@@ -720,6 +724,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     const mesh = new THREE.Mesh(interleavedOf(layout, Float32Array.from(list)), material);
     mesh.matrixAutoUpdate = false;
     bodyToWorld(live, mesh.matrix);
+    mesh.matrixWorldNeedsUpdate = true;
     mesh.receiveShadow = true;
     o.group.add(mesh);
     live.room.push(mesh);

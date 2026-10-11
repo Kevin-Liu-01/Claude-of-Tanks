@@ -158,6 +158,8 @@ interface LivePart {
   offsetM: THREE.Matrix4 | null;
   handle: number;
   pose: Float64Array;
+  /** Landings that kicked dust once it broke off (each part its own, not its piece's). */
+  dusts: number;
 }
 
 interface LivePiece {
@@ -225,7 +227,7 @@ const ROOF_BREAK_MPS = 2;
 const SHAFT_BREAK_TILT = 0.6;
 /** What a break adds to each part's own motion: a drum's tumble and sideways scatter, a roof sheet's buckle (rad/s,
  *  m/s), so the parts never lie on in a neat row or one plane. */
-const DRUM_SPIN = 1.4, DRUM_SCATTER = 0.9, ROOF_SPIN = 1.7, ROOF_SAG = 0.6;
+const DRUM_SPIN = 2.6, DRUM_SCATTER = 1.8, ROOF_SPIN = 1.7, ROOF_SAG = 0.6;
 /** The share of a cracking piece's spin its parts keep (the physics lane's: a break costs energy). */
 const CRACK_KEEP = 0.7;
 
@@ -330,8 +332,11 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       breaking.push({ c, p });
     }
     if (!(speed >= 2.2)) return;
-    if (p.dusts < DUSTS_PER_PIECE && clockS - c.lastDustS >= DUST_GAP_S) {
-      p.dusts++;
+    // (dcore 2026-10-11, the decisive wave: a shaft's drums landed in silence after its first three) a broken-off part
+    // kicks its own dust, twice at most; a whole piece three times
+    const part = hit.part >= 0 ? p.parts[hit.part] : null;
+    if ((part ? part.dusts < 2 : p.dusts < DUSTS_PER_PIECE) && clockS - c.lastDustS >= DUST_GAP_S) {
+      if (part) part.dusts++; else p.dusts++;
       c.lastDustS = clockS;
       o.onLanding?.(x, y, z, speed, mass, c.structureIdx);
     }
@@ -719,7 +724,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
           .map(({ material, geometry }) => meshOf(geometry, material, `fx-collapse-${piece.kind}-${anatomy.structureIdx}-${piece.index}.${k}`));
         const offset = new THREE.Vector3(off[0], off[1], off[2]);
         parts.push({ meshes, offset, offsetM: offset.lengthSq() > 0 ? new THREE.Matrix4().makeTranslation(off[0], off[1], off[2]) : null,
-          handle: -1, pose: new Float64Array(7).fill(NaN) });
+          handle: -1, pose: new Float64Array(7).fill(NaN), dusts: 0 });
       }
       if (!parts.some((pp) => pp.meshes.length)) continue;
       const spawn = pieceSpawn(piece, placement);
@@ -780,7 +785,8 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         if (kind === 'drum') {
           const push = (hash01(sid, pid * 16 + k, 4) * 2 - 1) * DRUM_SCATTER;
           vx += sx * push; vz += sz * push;
-          vy += hash01(sid, pid * 16 + k, 5) * 0.8;
+          // every other drum thrown up off the break (the shaft snaps as it bends), so they tumble over one another
+          vy += (k % 2 === 0 ? 1.2 : 0) + hash01(sid, pid * 16 + k, 5) * 1.0;
         } else vy -= hash01(sid, pid * 16 + k, 6) * ROOF_SAG;
       }
       const h = pool.spawn(partShape(spec), {

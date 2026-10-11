@@ -111,6 +111,9 @@ assert.ok(after.flat > whole.flat + 20, `the face left the bucket (${after.flat 
 assert.ok(after.sum < whole.sum * 0.99 && after.sum > whole.sum * 0.6, `only the face: the rest of the building stands in the bucket (${(100 * (1 - after.sum / whole.sum)).toFixed(1)} % taken)`);
 const faceMeshes = r.fracture.standing(7);
 assert.ok(faceMeshes.length >= 1, 'the face is drawn again from its cells');
+// (2026-10-11: the redrawn faces stood at the world's origin in the browser — a matrix set by hand under a static group
+// is skipped by the world update unless flagged) every face drawn in the body frame is carried to the world
+for (const m of faceMeshes) assert.ok(m.matrixAutoUpdate || m.matrixWorldNeedsUpdate, 'a face mesh with a hand-set matrix is flagged for the world update');
 const drawn = faceMeshes.reduce((s, m) => s + area(m.geometry).sum, 0);
 const taken = whole.sum - after.sum;
 // the face drawn again carries less wall than it had (the hole), plus its reveals and recesses
