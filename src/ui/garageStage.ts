@@ -10,6 +10,7 @@
 // This replaces the bare pad + apron discs. The two integration-owned
 // showcase spotlights can stay — the stage's own fixtures complement them.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { getGarageVariant } from '../game/garageVariants.ts';
 import {
   GARAGE_HERO_HEADING_RAD,
@@ -828,46 +829,43 @@ export function createGarageStage(
   }));
   track(trussMat);
   const skylightMat = track(new THREE.MeshBasicMaterial({ color: 0xc9d4dc }));
-  const roofTrusses: THREE.Mesh[] = [];
+  // The roof structure merges into one geometry (trusses, webs and purlins) and the skylights into another: two draws
+  // for the whole roof.
   function addRoofTrusses(): void {
-    const chordGeo = track(new THREE.BoxGeometry(HW * 2, 0.24, 0.22));
+    const parts: THREE.BufferGeometry[] = [];
+    const place = (geometry: THREE.BufferGeometry, x: number, y: number, z: number, rotationZ = 0): void => {
+      const placed = geometry.clone();
+      if (rotationZ) placed.rotateZ(rotationZ);
+      placed.translate(x, y, z);
+      parts.push(placed);
+    };
+    const chordGeo = new THREE.BoxGeometry(HW * 2, 0.24, 0.22);
     const panel = 2.3;
     const depth = 1.1;
-    const webLength = Math.hypot(panel, depth);
-    const webGeo = track(new THREE.BoxGeometry(0.11, webLength, 0.11));
-    const purlinGeo = track(new THREE.BoxGeometry(0.16, 0.2, HW * 2));
+    const webGeo = new THREE.BoxGeometry(0.11, Math.hypot(panel, depth), 0.11);
+    const purlinGeo = new THREE.BoxGeometry(0.16, 0.2, HW * 2);
     const roofTop = WALL_H - 0.12;
+    const panels = Math.floor((HW * 2) / panel);
     for (let index = -2; index <= 2; index++) {
       const z = index * 9;
-      for (const y of [roofTop - 0.12, roofTop - 0.12 - depth]) {
-        const chord = new THREE.Mesh(chordGeo, trussMat);
-        chord.position.set(0, y, z);
-        group.add(chord);
-        roofTrusses.push(chord);
-      }
+      for (const y of [roofTop - 0.12, roofTop - 0.12 - depth]) place(chordGeo, 0, y, z);
       // Warren web: diagonals alternating across each 2.3 m panel
-      const panels = Math.floor((HW * 2) / panel);
       for (let k = 0; k < panels; k++) {
-        const web = new THREE.Mesh(webGeo, trussMat);
-        web.position.set(-HW + (k + 0.5) * panel, roofTop - 0.12 - depth / 2, z);
-        web.rotation.z = (k % 2 ? 1 : -1) * Math.atan2(panel, depth);
-        group.add(web);
-        roofTrusses.push(web);
+        place(webGeo, -HW + (k + 0.5) * panel, roofTop - 0.12 - depth / 2, z, (k % 2 ? 1 : -1) * Math.atan2(panel, depth));
       }
     }
-    for (let x = -HW + 1.5; x < HW; x += 3) {
-      const purlin = new THREE.Mesh(purlinGeo, trussMat);
-      purlin.position.set(x, roofTop + 0.02, 0);
-      group.add(purlin);
-      roofTrusses.push(purlin);
-    }
-    const skylightGeo = track(new THREE.PlaneGeometry(2.4, HW * 2 - 2));
-    for (const x of [-11.5, 0, 11.5]) {
-      const skylight = new THREE.Mesh(skylightGeo, skylightMat);
-      skylight.rotation.x = Math.PI / 2;
-      skylight.position.set(x, WALL_H - 0.02, 0);
-      group.add(skylight);
-    }
+    for (let x = -HW + 1.5; x < HW; x += 3) place(purlinGeo, x, roofTop + 0.02, 0);
+    const roof = new THREE.Mesh(track(mergeGeometries(parts, false)!), trussMat);
+    roof.name = 'garage_verdant_roof_structure';
+    group.add(roof);
+    for (const part of parts) part.dispose();
+    chordGeo.dispose(); webGeo.dispose(); purlinGeo.dispose();
+    const skylightParts = [-11.5, 0, 11.5].map((x) => new THREE.PlaneGeometry(2.4, HW * 2 - 2)
+      .rotateX(Math.PI / 2).translate(x, WALL_H - 0.02, 0));
+    const skylights = new THREE.Mesh(track(mergeGeometries(skylightParts, false)!), skylightMat);
+    skylights.name = 'garage_verdant_roof_skylights';
+    group.add(skylights);
+    for (const part of skylightParts) part.dispose();
   }
   addRoofTrusses();
   const architecture = createGarageArchitectureController(engineCtx || {}, group, requestRender);
