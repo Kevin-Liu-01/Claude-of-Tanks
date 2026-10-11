@@ -10,6 +10,9 @@ import { material, linearHex, type VehicleMesh, type VehicleMaterial, type Vec3 
 
 /** (sealed lane, round 2) A truck's wheels in dirty steel: a light grey hub read as an untextured part at range. */
 const TRUCK_RIM = material('steel', [0.14, 0.138, 0.132], 0.58, 0.4, 0, 1);
+/** (sealed lane, round 2) A truck's fuel tank: painted steel gone dull and dirty, not a bright metal drum (the dirty-steel
+ *  rim read light grey in the sun on the tanks). */
+const FUEL_TANK = material('steel', [0.045, 0.044, 0.042], 0.72, 0.12, 0, 1);
 import {
   PAINT, GLASS, CHROME, BRIGHT, TRIM, UNDER, INTERIOR, LAMP, LAMP_RED, LAMP_AMBER, STEEL, RIM_STEEL, WOOD, CANVAS, RUBBER,
   WOOD_GREY,
@@ -833,7 +836,7 @@ export function buildTruck(mesh: VehicleMesh, m: TruckModel, o: BuildOptions): v
     // (the lathe turns about x; the old extra rotateZ stood it on end), on two straps from the rail
     const z = m.cab.zB - 0.5;
     mesh.push().translate(m.frameHW + 0.26, m.frameY - 0.26, z).rotateY(Math.PI / 2);
-    mesh.lathe([[0.0001, -0.45], [0.19, -0.44], [0.23, -0.4], [0.23, 0.4], [0.19, 0.44], [0.0001, 0.45]], coarse ? 8 : 12, () => TRUCK_RIM);
+    mesh.lathe([[0.0001, -0.45], [0.19, -0.44], [0.23, -0.4], [0.23, 0.4], [0.19, 0.44], [0.0001, 0.45]], coarse ? 8 : 12, () => FUEL_TANK);
     mesh.pop();
     if (!coarse) for (const dz of [-0.24, 0.24]) mesh.box(m.frameHW + 0.24, m.frameY - 0.2, z + dz, 0.5, 0.06, 0.05, UNDER);
   }
@@ -895,7 +898,7 @@ function wheelbaseKit(mesh: VehicleMesh, m: TruckModel, coarse: boolean): void {
     // the right side: a box tank (when the model draws no cylinder), then a pair of air tanks
     if (m.fuelTank !== 'side') {
       const L = Math.min(1.0, (zFront - zRear) * 0.5), D = 0.46;
-      mesh.box(railOut + D / 2 + 0.01, top - h / 2, right - L / 2, D, h, L, TRUCK_RIM, coarse ? 0 : 0.04);
+      mesh.box(railOut + D / 2 + 0.01, top - h / 2, right - L / 2, D, h, L, FUEL_TANK, coarse ? 0 : 0.04);
       if (!coarse) for (const dz of [-L * 0.3, L * 0.3]) mesh.box(railOut + D / 2 + 0.01, top - h / 2, right - L / 2 + dz, D + 0.016, h + 0.016, 0.04, UNDER);
       right -= L + 0.1;
     } else right = m.cab.zB - 1.1;
