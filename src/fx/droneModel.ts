@@ -104,19 +104,24 @@ function boxProjectedUV(geometry:THREE.BufferGeometry, repeats:number):void {
 }
 /** Carbon twill, 2/2: four rounded tows each way per tile, the over-and-under stepping one tow per row. Built from
  * data (no canvas), mipmapped so it averages to an even sheen at a distance. */
-function createCarbonTwill():THREE.DataTexture {
+function createCarbonTwill(sheen = false):THREE.DataTexture {
  const size = 32, data = new Uint8Array(size * size * 4);
  for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
   const warp = (((i >> 3) + (j >> 3)) & 3) < 2, across = warp ? (j & 7) : (i & 7);
   // Round 4b (critics: the light plates read as grey plastic): dark carbon carries its weave in the sheen — the tows
   // differ strongly here, and the plates read this map as both albedo and roughness.
-  const crown = Math.sin((across + .5) / 8 * Math.PI), value = Math.round((warp ? 255 : 150) * (.72 + .28 * crown));
+  // The sheen copy (the roughness map) spans a narrow band (about .6 to .8 of the material's roughness): tows that
+  // catch the light differently, never a lacquer mirror (round 4b review: the full range glared white in the Garage).
+  const crown = Math.sin((across + .5) / 8 * Math.PI), weave = (warp ? 1 : 0) * .6 + .4 * crown;
+  const value = sheen ? Math.round(195 + 60 * weave) : Math.round((warp ? 255 : 150) * (.72 + .28 * crown));
   const o = (j * size + i) * 4; data[o] = data[o + 1] = data[o + 2] = value; data[o + 3] = 255;
  }
  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
  texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.magFilter = THREE.LinearFilter;
- texture.minFilter = THREE.LinearMipmapLinearFilter; texture.generateMipmaps = true; texture.colorSpace = THREE.SRGBColorSpace;
- texture.name = 'FPV carbon twill'; texture.needsUpdate = true;
+ texture.minFilter = THREE.LinearMipmapLinearFilter; texture.generateMipmaps = true;
+ // colour in sRGB; the sheen copy is data (roughness), read linear
+ texture.colorSpace = sheen ? THREE.NoColorSpace : THREE.SRGBColorSpace;
+ texture.name = sheen ? 'FPV carbon twill sheen' : 'FPV carbon twill'; texture.needsUpdate = true;
  return texture;
 }
 /** The landing spin-down's disc strengths, strongest first (droneArrival.ts steps through them). */
@@ -471,8 +476,8 @@ function buildDroneModelKit(design:DroneDesign):DroneModelKit {
  // without mirroring the sky (a bright bell or belly read as chrome).
  const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .74, metalness: .03 });
  // The frame plates' twill under a thin lacquer: a little more sheen than the printed and wrapped parts.
- const twill = createCarbonTwill();
- const plateMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, map: twill, roughnessMap: twill, roughness: .58, metalness: .04 });
+ const twill = createCarbonTwill(), twillSheen = createCarbonTwill(true);
+ const plateMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, map: twill, roughnessMap: twillSheen, roughness: .8, metalness: .04 });
  const equipmentMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .8, metalness: .02 });
  const metalMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .6, metalness: .35 });
  const lensMaterial = new THREE.MeshStandardMaterial({ color: 0x2f4a56, emissive: 0x0b1f28, roughness: .08, metalness: .55 });
@@ -485,7 +490,7 @@ function buildDroneModelKit(design:DroneDesign):DroneModelKit {
   dispose() {
    for (const geometry of [body, plateGeometry, equipment, metal, lens, rotor, rotorBlur, rotorBlurFaint, ...rotorBlurSteps]) geometry.dispose();
    for (const material of [bodyMaterial, plateMaterial, equipmentMaterial, metalMaterial, lensMaterial, rotorMaterial, blurMaterial]) material.dispose();
-   twill.dispose();
+   twill.dispose(); twillSheen.dispose();
   } };
 }
 /** Engine lit-material registration (cascaded shadows), installed once by the battle FX and the Garage preview. */
