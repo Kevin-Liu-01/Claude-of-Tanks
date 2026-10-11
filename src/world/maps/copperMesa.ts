@@ -127,7 +127,15 @@ export default {
     sandstone: false, strata: 0.12, sandMacro: 0, midRelief: 0.8,
     // (round 3, wave 132: the mud pan "a flat matte stain rather than reflective water or wet tailings") the pit's pan is
     // the mine's tailings: wet, glossy silt stained rust by the acid water (the Queen River's orange) — was matte
-    mudTone: (h: number, s: number, l: number) => [0.055, clamp01(s * 0.5 + 0.25), clamp01(l * 0.5 + 0.08)], marshGloss: 0.8,
+    // (2026-10-10, the map-revival lane; gauntlet wave 346, site 10: "a dark blue-black glittering scale-noise surface like
+    // wet tarmac", and from 80 m "white tinfoil glitter"; "the local water runs rust-coloured from mine drainage") the
+    // tailings a wet ochre-orange silt under a satin sheen, not a mirror: the silt lifted to the Queen River's orange
+    // (lightness ~0.16-0.21 -> 0.36-0.44, saturation ~0.33-0.39 -> 0.44-0.51) and its gloss halved (roughness ~0.14 -> ~0.5),
+    // so the pan's fine ripples stop glittering and the sky's blue no longer stands in for its colour (was l * 0.5 + 0.08,
+    // s * 0.5 + 0.25 at hue 0.055, gloss 0.8)
+    // (cap8's look: the first cut read a saturated brick orange in the near view and a pale glare from 80 m) a muted ochre
+    // silt, its sheen a damp one: saturation ~0.32-0.37, lightness ~0.33-0.41, gloss 0.22 (roughness ~0.66)
+    mudTone: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.4 + 0.26), clamp01(l * 0.75 + 0.24)], marshGloss: 0.22,
     // (round 3, wave 132: "no pink, ochre or grey conglomerate") the gravel's patches: salmon-pink fields at ~80 m, the
     // grey-mauve weathered stretches at ~230 m, ochre washes at ~600 m (was a pale pink, a dark mauve and a buff)
     tintA: [1.08, 0.86, 0.80], tintB: [0.80, 0.76, 0.80], tintC: [1.10, 0.90, 0.62], roadTint: [0.62, 0.56, 0.54],
