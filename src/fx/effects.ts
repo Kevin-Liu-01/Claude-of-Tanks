@@ -17,7 +17,8 @@ import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
  */
 import * as THREE from 'three';
 import type { TrackSurface } from '../world/trackSurface.ts';
-import { createDronePresentation } from './dronePresentation.ts';
+import { createDronePresentation, droneHiddenFromCamera } from './dronePresentation.ts';
+import { configureDroneMaterials } from './droneModel.ts';
 import {missionAttachmentVisualFrame} from '../game/missionAttachmentVisual.ts';
 import { aerialTracerProfile, aerialTracerWidth, aerialTracerLength, type AerialTracerProfile } from './aerialTracers.ts';
 import { waterContactMaskAt } from '../world/waterContactMask.ts';
@@ -75,6 +76,9 @@ interface FxEngineContext {
   camera?: THREE.Camera;
   anisotropy?: number;
   scene?: THREE.Scene;
+  /** Lit-material registration for the cascaded shadows (drone airframes and docks are lit meshes). */
+  setupShadowMaterial?(material: THREE.Material): unknown;
+  releaseShadowMaterial?(material: THREE.Material): unknown;
 }
 
 interface FxHeightField {
@@ -1071,6 +1075,10 @@ function* createFxSteps(
   });
   const group = new THREE.Group();
   group.name = 'fx';
+  // Drone airframes and docks are lit meshes: they join the cascade setup like every vehicle material.
+  if (engineCtx?.setupShadowMaterial) {
+    configureDroneMaterials({ setup: (m) => engineCtx.setupShadowMaterial?.(m), release: (m) => engineCtx.releaseShadowMaterial?.(m) });
+  }
   const drones = createDronePresentation(group);
   group.matrixAutoUpdate = false;
   group.add(particles.group);
@@ -4277,7 +4285,7 @@ function* createFxSteps(
   }
 
   function writeLiveShellTracers(shells: LiveShell[], camera: THREE.Camera): number {
-    drones.begin(particles.getTime());
+    drones.begin(particles.getTime(), camera.position);
     tracers.begin(); // atmospherics lane
     let tracerCount = 0;
     liveAtgmCount = 0;
@@ -4287,9 +4295,9 @@ function* createFxSteps(
       const shell = shells[index];
       if (shell.dead) continue;
       if (shell.spec?.tracer === 'DRONE') {
-        // The FPV camera sits inside its airframe; retain the launch/remote silhouette.
-        if (shell.pos.distanceToSquared(camera.position) > 4) {
-          const owner=decalEntityFor(shell.shooterId),flyer=owner?.aerial;
+        // The pilot's FPV lens sits inside its own airframe; every other view keeps the silhouette, however close.
+        const owner=decalEntityFor(shell.shooterId),flyer=owner?.aerial;
+        if (!droneHiddenFromCamera(shell.pos, shell.shooterId, flyer?.active === true, camera)) {
           drones.write(shell.pos,shell.vel,shell.id,flyer?.active?flyer.yaw:undefined,shell.ageS,owner?.spec?.nation,owner?.visual?.root?missionAttachmentVisualFrame(owner.visual.root):undefined);
         }
         continue;

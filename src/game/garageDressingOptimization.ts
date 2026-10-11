@@ -146,6 +146,9 @@ function isVisibleWithin(object: THREE.Object3D, owner: THREE.Object3D): boolean
 
 function canMergeStaticDisplayMesh(mesh: THREE.Mesh, owner: THREE.Object3D): boolean {
   if (isSpecializedMesh(mesh)) return false;
+  // An already-merged local composition (a workshop crew) keeps its own draw so the frustum culls it on its own;
+  // folded into a workshop-wide batch it would draw every bay's crew in every view.
+  if (mesh.userData.keepDisplayMesh === true) return false;
   if (!mesh.geometry || Array.isArray(mesh.material) || !mesh.material) return false;
   if (mesh.children.length > 0 || mesh.morphTargetInfluences) return false;
   if (!isVisibleWithin(mesh, owner) || mesh.material.transparent || mesh.material.visible === false) {
