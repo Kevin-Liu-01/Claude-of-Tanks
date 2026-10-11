@@ -29,7 +29,7 @@ the fictional map reproduces a particular real-world location.
 | autumn | Norman / English river-ford market town (round 48): a SW→NE river in a sculpted valley crossed by a stone bridge and a ford, the walled town on the north-bank rise, weir and mill, orchards and hedged fields, the wooded escarpment, the manor park and lake. |
 | steppe | Open skyline, isolated distant rises and long shallow folds through grassland. |
 | railyard | Graded brownfield with low distant uplands and broad drainage grades. |
-| frontier | Farming basin with branching ridges; carry the playable watershed language into the outland. |
+| frontier | The Fulda Gap's Hünfeld basin in eastern Hesse (the map-revival lane, 2026-10-05): a Haufendorf of Hofreiten at the river crossing — closed farm courts packed along the four lanes, the Fachwerk farmhouse gable-on to the lane, its barn across the back of the court, a granary on the far side of some, the sandstone wall with its gate on the lane, the kitchen garden and woodshed behind the barn — the cottages, school, inn and shop between them, the Rathaus and church on the square; the Gewannflur's long strips, the river floor's water meadows with its alder line, the lynchet banks' oaks, the mills with their ponds. |
 | fjord | Open eastern water axis between unequal glacial walls; retain cliff-road supports. |
 | delta | Low braided floodplain, elongated levees and islands; limited distant uplands. |
 | badlands | Redrock canyon: a continuous north–south valley floor between unequal red-rock walls, connected side ravines and open canyon mouths. |
