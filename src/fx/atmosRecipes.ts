@@ -220,13 +220,13 @@ export function smokeBankBody(C: BlastContext, R: () => number, x: number, y: nu
  * and fraying away by the screen's end. Its density hides nothing: the simulation stops blocking sight by then.
  */
 export function smokeScreenHaze(C: BlastContext, R: () => number, x: number, y: number, z: number, wx: number,
-  wz: number, life: number, bo: number): void {
+  wz: number, life: number, bo: number, maxSize = Infinity): void {
   const m = C.m;
   m.x = x; m.y = y; m.z = z; m.birthOffset = bo;
   // a near-constant drift (drag 0.05 keeps ~90 % of it over the tail's few seconds)
   m.vx = wx * 1.1 + (R() - 0.5) * 0.15; m.vy = 0.05 + R() * 0.06; m.vz = wz * 1.1 + (R() - 0.5) * 0.15;
   m.drag = 0.05; m.rise = 0.04; m.windK = 0; m.grav = 0;
-  m.life = life; m.size0 = 9; m.size1 = 13 + R() * 2.5; m.growExp = 1.4;
+  m.life = life; m.size1 = Math.min(13 + R() * 2.5, maxSize); m.size0 = Math.min(9, m.size1 * 0.7); m.growExp = 1.4;
   m.rot = (R() - 0.5) * 0.6; m.spin = (R() - 0.5) * 0.02;
   look(C, SCREEN_AGED, SCREEN_AGED, 0.34, 1.0, 0.5);
   book(C, R, 'billow', life * 1.1, 24 + Math.floor(R() * 20), 1.45 + R() * 0.3);
@@ -237,12 +237,12 @@ export function smokeScreenHaze(C: BlastContext, R: () => number, x: number, y: 
  * A wisp torn off the wall's top: thin, taking the scene's wind and rising a little faster, it streams away downwind
  * and frays. Visual only (above the blocking envelope's crown), it is what makes the wall read as smoke in a breeze.
  */
-export function smokeBankWisp(C: BlastContext, R: () => number, x: number, y: number, z: number, bo: number): void {
+export function smokeBankWisp(C: BlastContext, R: () => number, x: number, y: number, z: number, bo: number, maxSize = Infinity): void {
   const m = C.m;
   m.x = x; m.y = y; m.z = z; m.birthOffset = bo;
   m.vx = (R() - 0.5) * 0.4; m.vy = 0.3 + R() * 0.3; m.vz = (R() - 0.5) * 0.4;
   m.drag = 0.6; m.rise = 0.28; m.windK = 0.75; m.grav = 0;
-  m.life = 4.5 + R() * 2.0; m.size0 = 2.0; m.size1 = 6.0 + R() * 2.5; m.growExp = 1.6;
+  m.life = 4.5 + R() * 2.0; m.size1 = Math.min(6.0 + R() * 2.5, maxSize); m.size0 = Math.min(2.0, m.size1 * 0.5); m.growExp = 1.6;
   m.rot = (R() - 0.5) * 0.6; m.spin = (R() - 0.5) * 0.05;
   look(C, SCREEN_WHITE, SCREEN_AGED, 0.42, 0.6, 0.35);
   book(C, R, 'billow', 6.0, 20 + Math.floor(R() * 20), 1.3 + R() * 0.4);
