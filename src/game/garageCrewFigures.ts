@@ -826,6 +826,8 @@ interface CrewSceneBuild {
   readonly roles: Uint8Array;
   /** Per vertex: the member it belongs to. */
   readonly memberOf: Uint8Array;
+  /** Per vertex: the baked sky-occlusion factor its colour carries (a region repaint multiplies it in again). */
+  readonly shade: Float32Array;
 }
 
 /** Every member of a scene, posed and merged into one vertex-coloured geometry in the scene frame. */
@@ -888,7 +890,19 @@ export function buildCrewSceneGeometry(scene: CrewScene, options: { readonly win
   const memberOf = new Uint8Array(vertexCount);
   let offset = 0;
   roleParts.forEach((part, index) => { roles.set(part, offset); memberOf.set(memberParts[index], offset); offset += part.length; });
-  return { geometry, skeletons, triangles, roles, memberOf };
+  // Baked sky occlusion (2026-10-10, wave 377: "mannequins"): faces turned down and the last half metre to the floor
+  // fall into shade, so a figure reads as a lit form rather than flat-coloured blocks, on the same vertex-colour program.
+  const skyShade = new Float32Array(vertexCount);
+  const normals = geometry.getAttribute('normal');
+  const positions = geometry.getAttribute('position');
+  const colours = geometry.getAttribute('color');
+  for (let v = 0; v < vertexCount; v++) {
+    const up = normals ? THREE.MathUtils.clamp(normals.getY(v) * 0.5 + 0.5, 0, 1) : 0.5;
+    const floor = THREE.MathUtils.clamp(positions.getY(v) / 0.5, 0, 1);
+    skyShade[v] = (0.7 + 0.3 * up) * (0.86 + 0.14 * floor);
+    colours.setXYZ(v, colours.getX(v) * skyShade[v], colours.getY(v) * skyShade[v], colours.getZ(v) * skyShade[v]);
+  }
+  return { geometry, skeletons, triangles, roles, memberOf, shade: skyShade };
 }
 
 /**
@@ -917,7 +931,7 @@ export const CREW_REGION_DRESS: Readonly<Record<GarageVariant['architecture'], {
  */
 export function paintCrewRegion(base: Float32Array, roles: Uint8Array, memberOf: Uint8Array,
   region: { readonly coverall: readonly number[]; readonly head: number; readonly stripe?: number } | null,
-  out: Float32Array): void {
+  out: Float32Array, shade: Float32Array | null = null): void {
   if (!region) { out.set(base); return; }
   const cloth = region.coverall.map((hex) => new THREE.Color().setHex(hex));
   const head = new THREE.Color().setHex(region.head);
@@ -927,7 +941,7 @@ export function paintCrewRegion(base: Float32Array, roles: Uint8Array, memberOf:
     const at = v * 3;
     if (role === 0) { out[at] = base[at]; out[at + 1] = base[at + 1]; out[at + 2] = base[at + 2]; continue; }
     const c = role === 4 ? head : role === 5 && stripe ? stripe : cloth[memberOf[v] % cloth.length];
-    const k = role === 2 ? 0.8 : role === 3 ? 1.45 : role === 5 && !stripe ? 1.03 : 1;
+    const k = (role === 2 ? 0.8 : role === 3 ? 1.45 : role === 5 && !stripe ? 1.03 : 1) * (shade ? shade[v] : 1);
     out[at] = Math.min(1, c.r * k); out[at + 1] = Math.min(1, c.g * k); out[at + 2] = Math.min(1, c.b * k);
   }
 }

@@ -928,7 +928,7 @@ export function createGarageDressing(
   // the bay owner captures its children, so the crew moves with its bay. The mobile tier keeps the essential scenes.
   let crewMaterial: THREE.MeshStandardMaterial | null = null;
   const crewPaintables: Array<{ mesh: THREE.Mesh; base: Float32Array; roles: Uint8Array; memberOf: Uint8Array;
-    winter: boolean }> = [];
+    shade: Float32Array; winter: boolean }> = [];
   let crewPaintedFor = '';
   function paintCrewsFor(variant: GarageVariant): void {
     const key = `${variant.architecture}:${crewPaintables.length}`;
@@ -939,7 +939,7 @@ export function createGarageDressing(
     for (const crew of crewPaintables) {
       crew.mesh.visible = crew.winter === winter;
       const colours = crew.mesh.geometry.getAttribute('color') as THREE.BufferAttribute;
-      paintCrewRegion(crew.base, crew.roles, crew.memberOf, region, colours.array as Float32Array);
+      paintCrewRegion(crew.base, crew.roles, crew.memberOf, region, colours.array as Float32Array, crew.shade);
       colours.needsUpdate = true;
     }
   }
@@ -992,6 +992,7 @@ export function createGarageDressing(
       base: (build.geometry.getAttribute('color').array as Float32Array).slice(),
       roles: build.roles,
       memberOf: build.memberOf,
+      shade: build.shade,
       winter: false,
     });
     // the same crew dressed for the snow Garages (fur hats, parkas), shown there in place of this one
@@ -1008,6 +1009,7 @@ export function createGarageDressing(
       base: (winterBuild.geometry.getAttribute('color').array as Float32Array).slice(),
       roles: winterBuild.roles,
       memberOf: winterBuild.memberOf,
+      shade: winterBuild.shade,
       winter: true,
     });
     figures.castShadow = true;
