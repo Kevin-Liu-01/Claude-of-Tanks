@@ -761,8 +761,10 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
       let ru: number[] = [], rv: number[] = [];
       if (rects.length === 1) {
         const [ea, eb, fa, fb] = rects[0];
-        ru = spanCuts(ea, eb, eb - ea > 3.5 ? 2 : 1);
-        rv = spanCuts(fa, fb, fb - fa > 4.5 ? 2 : 1);
+        // (dcore 2026-10-11, waves 385/388a: "one flat, unbroken roof slab laid dead level") sheets of two metres and a
+        // half or so: a barn's roof breaks into six to nine, never one lid
+        ru = spanCuts(ea, eb, eb - ea > 5 ? 3 : eb - ea > 2.4 ? 2 : 1);
+        rv = spanCuts(fa, fb, fb - fa > 5.5 ? 3 : fb - fa > 2.6 ? 2 : 1);
         const us = [ea, ...ru, eb], vs = [fa, ...rv, fb];
         if (us.length > 2 || vs.length > 2) for (let iv = 0; iv + 1 < vs.length; iv++) for (let iu = 0; iu + 1 < us.length; iu++) {
           const u0 = us[iu], u1 = us[iu + 1], v0 = vs[iv], v1 = vs[iv + 1];
@@ -879,12 +881,14 @@ function planShaft(anatomy: StructureDamageAnatomy, blow: CollapseBlow, crown: S
   const bl = Math.hypot(blow.dirX, blow.dirZ);
   const ang = rng() * Math.PI * 2;
   const tx = bl > 1e-6 ? -blow.dirX / bl : Math.cos(ang), tz = bl > 1e-6 ? -blow.dirZ / bl : Math.sin(ang);
-  // the drums: a couple of its widths each, two to six (the building's cut: its own stream)
+  // the drums: a width and a quarter each, three to seven, of uneven lengths (the building's cut: its own stream)
+  // (dcore 2026-10-11, waves 385/388a: "breaks into a neat stepped row of five or six clean boxes", "lands as one
+  // unbroken box": two drums of two widths read as one stiff box with a joint)
   const span = Math.max(0.5, topWall - stumpY);
   const width = Math.max(anatomy.w, anatomy.d);
-  const n = Math.max(2, Math.min(6, Math.round(span / Math.max(2.5, 2.2 * width))));
+  const n = Math.max(3, Math.min(7, Math.round(span / Math.max(1.8, 1.25 * width))));
   const bounds = [stumpY];
-  for (let k = 1; k < n; k++) bounds.push(stumpY + span * (k + (geo() - 0.5) * 0.3) / n);
+  for (let k = 1; k < n; k++) bounds.push(stumpY + span * (k + (geo() - 0.5) * 0.45) / n);
   bounds.push(topWall);
   const bandAt = (y: number) => bands.find((b) => y >= b.y0 && y <= b.y1) ?? bands[bands.length - 1];
   // its parts, drum by drum, then the crown; the body's frame at its foot's centre over the stump

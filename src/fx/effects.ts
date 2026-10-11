@@ -47,7 +47,7 @@ import { craterWobblePhases } from '../sim/terrainDeformation.ts';
 import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, markKindFor, type CraterClimate, type CraterMarks } from './craterMarks.ts';
-import { lookForStruckKind, lookFromAnatomy, pieceLandingFx, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
+import { breakShardsFx, lookForStruckKind, lookFromAnatomy, pieceLandingFx, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
 import { createStructureMask, type StructureMask } from './structureMask.ts';
 import { createStructureStages, structureTopple, type StructureStages } from './structureStages.ts';
 import { createStructureScars, type StructureScars } from './structureScars.ts';
@@ -1154,6 +1154,7 @@ function* createFxSteps(
       return bodiesEnv;
     },
     onLanding: (x, y, z, speed, mass, id) => { if (blast) pieceLandingFx(blast, x, y, z, speed, mass, lookOf(id)); },
+    onShards: (x, y, z, vx, vy, vz, mass, id) => { if (blast) breakShardsFx(blast, x, y, z, vx, vy, vz, mass, lookOf(id)); },
     hulls: auxiliaryEntities ? () => auxiliaryEntities() as Iterable<unknown> : undefined,
   }) : null;
   const stages: StructureStages | null = structMask && structDebris

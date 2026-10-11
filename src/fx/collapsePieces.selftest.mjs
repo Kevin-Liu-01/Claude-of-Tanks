@@ -232,11 +232,16 @@ function settle(a, blow) {
       if (h < 0) continue;
       pool.framePoseAt(h, pose); pool.velocity(h, vel);
       pool.release(h); pieceOfHandle.delete(h); handles[i] = -1;
+      // (as collapseBodies cracks it: levers from the body's centre of mass, the break spending 30 % of the spin)
+      const q = [pose[3], pose[4], pose[5], pose[6]];
+      const com = rot(q, Array.from(pieceShape(p).com));
+      const K = 0.7;
       partHandles[i] = p.parts.map((part) => {
-        const [ox, oy, oz] = rot([pose[3], pose[4], pose[5], pose[6]], part.center);
-        const vx = vel[0] + (vel[4] * oz - vel[5] * oy), vy = vel[1] + (vel[5] * ox - vel[3] * oz), vz = vel[2] + (vel[3] * oy - vel[4] * ox);
+        const [ox, oy, oz] = rot(q, part.center);
+        const rx = ox - com[0], ry = oy - com[1], rz = oz - com[2];
+        const vx = vel[0] + K * (vel[4] * rz - vel[5] * ry), vy = vel[1] + K * (vel[5] * rx - vel[3] * rz), vz = vel[2] + K * (vel[3] * ry - vel[4] * rx);
         return pool.spawn(partShape(part), { x: pose[0] + ox, y: pose[1] + oy, z: pose[2] + oz, qx: pose[3], qy: pose[4], qz: pose[5], qw: pose[6],
-          vx, vy, vz, wx: vel[3], wy: vel[4], wz: vel[5] });
+          vx, vy, vz, wx: K * vel[3], wy: K * vel[4], wz: K * vel[5] });
       });
       breaks++;
     }

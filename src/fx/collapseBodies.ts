@@ -61,6 +61,9 @@ interface CollapseBodiesOptions {
   environment(): RigidEnvironment | null;
   /** A hard landing (its dust): world point, speed, mass, the building. */
   onLanding?(x: number, y: number, z: number, speedMps: number, massKg: number, structureIdx: number): void;
+  /** A piece breaking apart where it struck (a shaft's drums, a roof's sheets): the broken masonry and grit it throws,
+   *  at a world point with the break's velocity there and the mass that broke. */
+  onShards?(x: number, y: number, z: number, vx: number, vy: number, vz: number, massKg: number, structureIdx: number): void;
   /** Pieces at most per collapse (default: the plan's, 24 and 12 a shed). */
   cap?: number;
   /** The vehicles drawn this frame: their hulls and turrets shove the pieces (kinematic boxes in the pool). */
@@ -159,6 +162,8 @@ interface LivePart {
 
 interface LivePiece {
   piece: CollapsePiece;
+  /** Its body's centre of mass in its frame (a crack's levers run from it, not from the frame's origin). */
+  com: readonly [number, number, number];
   /** The whole piece's body (−1 once it has broken or burst, or was given up). */
   handle: number;
   parts: LivePart[];
@@ -213,6 +218,23 @@ const DUST_GAP_S = 0.05;
  *  this (a step costs ~0.016 ms an awake body; at most four steps a frame). */
 const BREAK_MPS = 3.4;
 const BREAK_AWAKE_MAX = 72;
+/** (dcore 2026-10-11, waves 385/388a: "the roof lies as one flat intact lid"; "the tower lands whole") a roof slab
+ *  cracks on any real landing, whatever else is awake, and a shaft breaks into its drums at its first touch of the
+ *  ground once it leans this far (rad): the impact report alone missed both. */
+const ROOF_BREAK_MPS = 2;
+const SHAFT_BREAK_TILT = 0.6;
+/** What a break adds to each part's own motion: a drum's tumble and sideways scatter, a roof sheet's buckle (rad/s,
+ *  m/s), so the parts never lie on in a neat row or one plane. */
+const DRUM_SPIN = 1.4, DRUM_SCATTER = 0.9, ROOF_SPIN = 1.7, ROOF_SAG = 0.6;
+/** The share of a cracking piece's spin its parts keep (the physics lane's: a break costs energy). */
+const CRACK_KEEP = 0.7;
+
+/** A deterministic hash of three integers to [0, 1) (the presentation's own: a break looks the same on every client). */
+function hash01(a: number, b: number, c: number): number {
+  let h = Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul((b | 0) + 0x165667b1, 0x85ebca6b) ^ Math.imul((c | 0) + 0x9e3779b9, 0xc2b2ae35);
+  h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d); h ^= h >>> 12; h = Math.imul(h, 0x297a2d39); h ^= h >>> 15;
+  return (h >>> 0) / 4294967296;
+}
 const CAP_UV_DENSITY = 0.55;
 /** Triangles a preparation takes at a time (between budget checks), and the cuts kept laid at most. */
 const PREPARE_CHUNK = 192;
@@ -292,13 +314,22 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     const hit = byHandle.get(handle);
     if (!hit) return;
     const { c, p } = hit;
-    if (!(speed >= 2.2)) return;
-    // a panel landing hard cracks into its parts (after this step: no body is spawned inside the pool's report)
-    // (a busy pool — a barrage's collapses at once — keeps its panels whole: each crack adds bodies to step)
-    if (!p.broken && p.parts.length > 1 && speed >= BREAK_MPS && hit.part < 0 && pool.world.awakeCount < BREAK_AWAKE_MAX) {
+    // a shaft leaning over breaks into its drums at its first touch, however soft the report
+    if (!p.broken && p.piece.kind === 'drum' && hit.part < 0 && p.parts.length > 1 && leanOf(p.handle) > SHAFT_BREAK_TILT) {
       p.broken = true;
       breaking.push({ c, p });
     }
+    if (!(speed >= 2.2) && p.piece.kind !== 'roof') return;
+    // a panel landing hard cracks into its parts (after this step: no body is spawned inside the pool's report)
+    // (a busy pool — a barrage's collapses at once — keeps its panels whole: each crack adds bodies to step; a roof's
+    // sheets crack whatever else is awake)
+    const roof = p.piece.kind === 'roof';
+    if (!p.broken && p.parts.length > 1 && hit.part < 0
+      && (roof ? speed >= ROOF_BREAK_MPS : speed >= BREAK_MPS && pool.world.awakeCount < BREAK_AWAKE_MAX)) {
+      p.broken = true;
+      breaking.push({ c, p });
+    }
+    if (!(speed >= 2.2)) return;
     if (p.dusts < DUSTS_PER_PIECE && clockS - c.lastDustS >= DUST_GAP_S) {
       p.dusts++;
       c.lastDustS = clockS;
@@ -335,6 +366,31 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     const names = [...a.names], sizes = [...a.sizes];
     b.names.forEach((name, i) => { if (!names.includes(name)) { names.push(name); sizes.push(b.sizes[i]); } });
     return names.length === a.names.length ? a : { names, sizes, stride: 6 + sizes.reduce((x, y) => x + y, 0) };
+  }
+
+  const _lean = new Float64Array(7);
+  const _l = new THREE.Vector3();
+  /** How far a whole piece leans from upright (rad: its body's up axis against the world's). */
+  function leanOf(handle: number): number {
+    if (!pool.framePoseAt(handle, _lean)) return 0;
+    const qx = _lean[3], qz = _lean[5];
+    // the body's +y in the world: its y component is 1 - 2(qx² + qz²)
+    return Math.acos(Math.max(-1, Math.min(1, 1 - 2 * (qx * qx + qz * qz))));
+  }
+  /** A leaning shaft's lowest part over the ground (its drums but the one on the stump): within a hand of it, it has
+   *  touched down (the pose is the body's, the parts glued in it). */
+  function shaftTouches(p: LivePiece, src: ArrayLike<number>): boolean {
+    _q.set(src[3], src[4], src[5], src[6]);
+    const upY = 1 - 2 * (src[3] * src[3] + src[5] * src[5]);
+    const side = Math.sqrt(Math.max(0, 1 - upY * upY));
+    for (let k = 1; k < p.piece.parts.length; k++) {
+      const spec = p.piece.parts[k];
+      _o.set(spec.center[0], spec.center[1], spec.center[2]).applyQuaternion(_q);
+      const x = src[0] + _o.x, y = src[1] + _o.y, z = src[2] + _o.z;
+      const reach = Math.abs(upY) * spec.half[1] + side * Math.max(spec.half[0], spec.half[2]);
+      if (y - reach - env.groundAt(x, z) < 0.25) return true;
+    }
+    return false;
   }
 
   /** A glued piece's pose onto all its parts' meshes. */
@@ -529,6 +585,10 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         for (let j = 0; j < size; j++) extra[a][i * size + j] = list[k++];
       }
     }
+    // (dcore 2026-10-11, wave 388a: "carton-like sections", "clean, saturated debris") a falling piece wears the grit of
+    // its own break: its colour a quarter of the way to a greyed dust of itself (the remnant keeps the building's)
+    const ci = layout.names.indexOf('color');
+    if (piece && ci >= 0 && layout.sizes[ci] >= 3) dustCoat(extra[ci], layout.sizes[ci], 0.25);
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geometry.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
@@ -663,14 +723,15 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       }
       if (!parts.some((pp) => pp.meshes.length)) continue;
       const spawn = pieceSpawn(piece, placement);
-      const handle = pool.spawn(pieceShape(piece), { ...spawn, asleep: true }, piece.releaseS);
+      const shape = pieceShape(piece);
+      const handle = pool.spawn(shape, { ...spawn, asleep: true }, piece.releaseS);
       if (handle < 0) {
         // the pool is full (a barrage's collapses at once): this piece bursts where it stands rather than hang there
         for (const pp of parts) for (const m of pp.meshes) { m.removeFromParent(); m.geometry.dispose(); }
         if (piece.face) shatterHandler?.(seam, piece, e);
         continue;
       }
-      const lp: LivePiece = { piece, handle, parts, broken: false, still: 0, sounds: 0, dusts: 0, kicked: false, shattered: false,
+      const lp: LivePiece = { piece, com: [shape.com[0], shape.com[1], shape.com[2]], handle, parts, broken: false, still: 0, sounds: 0, dusts: 0, kicked: false, shattered: false,
         pose: new Float64Array(7).fill(NaN) };
       writeWhole(lp, [spawn.x, spawn.y, spawn.z, spawn.qx, spawn.qy, spawn.qz, spawn.qw]);
       lc.pieces.push(lp);
@@ -683,6 +744,11 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
   /** A panel's parts each into its own body: at their places on the panel now, with the panel's motion there. */
   function breakApart(c: LiveCollapse, p: LivePiece): void {
     if (p.handle < 0) return;
+    const kind = p.piece.kind;
+    const keen = kind === 'drum' || kind === 'roof';
+    // room for its parts (sleepers give way; awake bodies do not): a panel without it stays whole rather than lose parts
+    const capacity = (pool.world as { capacity?: number }).capacity ?? 128;
+    if (!keen && capacity - pool.world.awakeCount + 1 < p.parts.length) { p.broken = false; return; }
     pool.framePoseAt(p.handle, pose);
     pool.velocity(p.handle, vel);
     byHandle.delete(p.handle);
@@ -690,16 +756,44 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     p.handle = -1;
     _q.set(pose[3], pose[4], pose[5], pose[6]);
     _w.set(vel[3], vel[4], vel[5]);
+    // the shaft's axis in the world (a drum's scatter is across it)
+    _p.set(0, 1, 0).applyQuaternion(_q);
+    const ax = _p.x, az = _p.z, al = Math.hypot(ax, az) || 1;
+    const sx = -az / al, sz = ax / al;
+    const sid = c.structureIdx, pid = p.piece.index;
     for (let k = 0; k < p.parts.length; k++) {
       const part = p.parts[k], spec = p.piece.parts[k];
       if (!spec || !part.meshes.length) continue;
       _o.copy(part.offset).applyQuaternion(_q);
-      // v at the part = v + w × r
-      const vx = vel[0] + (_w.y * _o.z - _w.z * _o.y), vy = vel[1] + (_w.z * _o.x - _w.x * _o.z), vz = vel[2] + (_w.x * _o.y - _w.y * _o.x);
+      // (the physics lane, 2026-10-11) v at the part = v + K w × r, r from the body's centre of mass (pool.velocity is the
+      // centre's), and the break spends a share of the spin (K): the parts never whip off at the full rim speed
+      _l.set(part.offset.x - p.com[0], part.offset.y - p.com[1], part.offset.z - p.com[2]).applyQuaternion(_q);
+      let vx = vel[0] + CRACK_KEEP * (_w.y * _l.z - _w.z * _l.y), vy = vel[1] + CRACK_KEEP * (_w.z * _l.x - _w.x * _l.z);
+      let vz = vel[2] + CRACK_KEEP * (_w.x * _l.y - _w.y * _l.x);
+      let wx = CRACK_KEEP * vel[3], wy = CRACK_KEEP * vel[4], wz = CRACK_KEEP * vel[5];
+      if (keen) {
+        // each part its own tumble (a drum's sideways scatter, a sheet's sag), so they never lie on in a row or a plane
+        const spin = kind === 'drum' ? DRUM_SPIN : ROOF_SPIN;
+        wx += (hash01(sid, pid * 16 + k, 1) * 2 - 1) * spin;
+        wy += (hash01(sid, pid * 16 + k, 2) * 2 - 1) * spin * 0.5;
+        wz += (hash01(sid, pid * 16 + k, 3) * 2 - 1) * spin;
+        if (kind === 'drum') {
+          const push = (hash01(sid, pid * 16 + k, 4) * 2 - 1) * DRUM_SCATTER;
+          vx += sx * push; vz += sz * push;
+          vy += hash01(sid, pid * 16 + k, 5) * 0.8;
+        } else vy -= hash01(sid, pid * 16 + k, 6) * ROOF_SAG;
+      }
       const h = pool.spawn(partShape(spec), {
         x: pose[0] + _o.x, y: pose[1] + _o.y, z: pose[2] + _o.z, qx: pose[3], qy: pose[4], qz: pose[5], qw: pose[6],
-        vx, vy, vz, wx: vel[3], wy: vel[4], wz: vel[5],
+        vx, vy, vz, wx, wy, wz,
       });
+      if (keen && h >= 0) {
+        // its landing's dust where it lies along the fall, and the broken masonry thrown off its broken ends
+        const x = pose[0] + _o.x, y = pose[1] + _o.y, z = pose[2] + _o.z;
+        const speed = Math.max(3, Math.hypot(vx, vy, vz));
+        if (kind === 'drum') o.onLanding?.(x, env.groundAt(x, z) + 0.2, z, speed, spec.massKg, sid);
+        if (kind === 'drum' || k % 2 === 0) o.onShards?.(x, y, z, vx, vy, vz, spec.massKg, sid);
+      }
       part.handle = h;
       if (h >= 0) {
         byHandle.set(h, { c, p, part: k });
@@ -811,6 +905,9 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         for (const p of c.pieces) {
           if (p.handle >= 0) {
             if (pool.framePoseAt(p.handle, pose)) writeWhole(p, pose);
+            // a leaning shaft touching down breaks into its drums (with the next frame's breaks)
+            if (!p.broken && p.piece.kind === 'drum' && p.parts.length > 1 && age > p.piece.releaseS + 0.2
+              && leanOf(p.handle) > SHAFT_BREAK_TILT && shaftTouches(p, pose)) { p.broken = true; breaking.push({ c, p }); }
             // the failure reaching a wall that held: it bursts where it stands and whatever rested on it is woken
             if (!p.shattered && p.piece.shatterS > 0 && age >= p.piece.shatterS) {
               p.shattered = true;
@@ -883,6 +980,19 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       return { collapses: live.length, pieces, meshes, vertices, baked: bakedCount, prepared: prepared.size };
     },
   };
+}
+
+/** A dust coat on vertex colours in place: each colour `share` of the way to a pale greyed dust of itself (its luminance,
+ *  lifted a little and warmed: masonry grit). Shared with the wall fracture's bodies. */
+export function dustCoat(colors: Float32Array, size: number, share: number, from = 0, to = colors.length): void {
+  for (let i = from; i + 2 < to; i += size) {
+    const r = colors[i], g = colors[i + 1], b = colors[i + 2];
+    const dust = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    const d = dust * 0.85 + 0.1;
+    colors[i] = r + (d * 1.02 - r) * share;
+    colors[i + 1] = g + (d - g) * share;
+    colors[i + 2] = b + (d * 0.93 - b) * share;
+  }
 }
 
 /** Non-indexed geometries with the same attributes into one (null when they disagree or are empty). */

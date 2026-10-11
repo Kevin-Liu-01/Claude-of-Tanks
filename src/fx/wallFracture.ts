@@ -38,6 +38,9 @@ export const CELL_GONE = 3;
 export const CELL_FALLEN = 4;
 /** An opening (a window, a door): never drawn by the field, never bears; the lintel over it carries. */
 export const CELL_OPENING = 5;
+/** Outside the wall: a gable face's cells over its sloping edges (dcore 2026-10-11) — nothing there, never drawn,
+ *  never struck, never bears, no reveal against it. */
+export const CELL_VOID = 6;
 
 /** Damage a cell takes before it cracks, spalls and goes. */
 const CRACK_AT = 0.25;
@@ -85,7 +88,13 @@ export interface FaceGrid {
   readonly u: Vec3;
   readonly out: Vec3;
   readonly width: number;
+  /** The grid's height: the storey's face, and over a gable end the gable to its apex. */
   readonly height: number;
+  /** The storey's own face height (under a gable: where the gable starts). */
+  readonly wallHeight: number;
+  /** A gable end's outline (dcore 2026-10-11, wave 388a: "the gable hangs over a blown-out wall: the load path has to
+   *  drop it"): its top edge over the face's floor at GABLE_SAMPLES even steps along u, or null. */
+  readonly gableTop: Float32Array | null;
   /** The wall behind the face (its layers' sum) and the skin a spall takes off (its outermost layer). */
   readonly thickness: number;
   readonly skinM: number;
@@ -156,12 +165,80 @@ function faceMaterial(face: DamageFace): FractureMaterial {
   return structural.material;
 }
 
+/** Samples of a gable's top edge along its face. */
+export const GABLE_SAMPLES = 33;
+
+/** A gable's top edge at u along its face (m over the face's floor), from its samples. */
+export function gableTopAt(g: FaceGrid, u: number): number {
+  const top = g.gableTop;
+  if (!top) return g.wallHeight;
+  const t = Math.max(0, Math.min(GABLE_SAMPLES - 1, ((u + g.width / 2) / g.width) * (GABLE_SAMPLES - 1)));
+  const i = Math.min(GABLE_SAMPLES - 2, Math.floor(t));
+  return top[i] + (top[i + 1] - top[i]) * (t - i);
+}
+
+/**
+ * The gable over a top storey's face (a gable or half-hipped roof's end wall: the slopes fall along it, not off it):
+ * its top edge sampled along u — under each slab's plane where the face's line passes beneath it — or null when the face
+ * carries no gable a metre high.
+ */
+function gableOver(anatomy: StructureDamageAnatomy, storeyIndex: number, face: DamageFace): Float32Array | null {
+  const roof = anatomy.roof;
+  if (!roof || (roof.kind !== 'gable' && roof.kind !== 'halfhip') || storeyIndex !== anatomy.storeys.length - 1) return null;
+  if (!roof.slabs.length) {
+    // a kit that gives no slabs (the default kit's gable): the ridge along the building's length, its ends the gables, the
+    // outline a plain triangle from the eaves at the corners to the ridge over the middle
+    if (roof.kind !== 'gable') return null;
+    const alongX = anatomy.w >= anatomy.d;
+    if (Math.abs(alongX ? face.out[0] : face.out[2]) < 0.9) return null;
+    const eave = Math.max(face.height, roof.eaveY - face.origin[1]), apex = roof.ridgeY - face.origin[1];
+    if (!(apex - face.height > 0.8)) return null;
+    const top = new Float32Array(GABLE_SAMPLES);
+    for (let i = 0; i < GABLE_SAMPLES; i++) {
+      const t = Math.abs((2 * i) / (GABLE_SAMPLES - 1) - 1);
+      top[i] = Math.max(face.height, eave + (apex - eave) * (1 - t));
+    }
+    return top;
+  }
+  const slabs = roof.slabs.map((slab) => {
+    const [c0, c1, , c3] = slab.corners;
+    const a = [c1[0] - c0[0], c1[1] - c0[1], c1[2] - c0[2]], b = [c3[0] - c0[0], c3[1] - c0[1], c3[2] - c0[2]];
+    let nx = a[1] * b[2] - a[2] * b[1], ny = a[2] * b[0] - a[0] * b[2], nz = a[0] * b[1] - a[1] * b[0];
+    const l = Math.hypot(nx, ny, nz) || 1;
+    nx /= l; ny /= l; nz /= l;
+    if (ny < 0) { nx = -nx; ny = -ny; nz = -nz; }
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (const c of slab.corners) { minX = Math.min(minX, c[0]); maxX = Math.max(maxX, c[0]); minZ = Math.min(minZ, c[2]); maxZ = Math.max(maxZ, c[2]); }
+    return { p: c0, nx, ny, nz, minX, maxX, minZ, maxZ };
+  });
+  // the slopes fall across the face's normal (a gable end), never toward it (an eaves wall)
+  const along = slabs.every((sl) => sl.ny < 0.999 && Math.abs(face.out[0] * sl.nx + face.out[2] * sl.nz) < 0.35 * Math.hypot(sl.nx, sl.nz) + 1e-6);
+  if (!along) return null;
+  const top = new Float32Array(GABLE_SAMPLES);
+  let apex = 0;
+  for (let i = 0; i < GABLE_SAMPLES; i++) {
+    const u = -face.width / 2 + (face.width * i) / (GABLE_SAMPLES - 1);
+    const x = face.origin[0] + face.u[0] * u, z = face.origin[2] + face.u[2] * u;
+    let y = Infinity;
+    for (const sl of slabs) {
+      if (!(sl.ny > 0.2) || x < sl.minX - 0.6 || x > sl.maxX + 0.6 || z < sl.minZ - 0.6 || z > sl.maxZ + 0.6) continue;
+      y = Math.min(y, sl.p[1] - (sl.nx * (x - sl.p[0]) + sl.nz * (z - sl.p[2])) / sl.ny);
+    }
+    top[i] = Number.isFinite(y) ? Math.max(face.height, y - face.origin[1]) : face.height;
+    apex = Math.max(apex, top[i]);
+  }
+  return apex - face.height > 0.8 ? top : null;
+}
+
 function layGrid(anatomy: StructureDamageAnatomy, storeyIndex: number, faceIndex: number): FaceGrid {
   const storey = anatomy.storeys[storeyIndex];
   const face = storey.faces[faceIndex];
   const material = faceMaterial(face);
   const law = cellLaw(material);
-  const height = Math.max(0.3, face.height);
+  const wallHeight = Math.max(0.3, face.height);
+  const gableTop = gableOver(anatomy, storeyIndex, face);
+  let height = wallHeight;
+  if (gableTop) for (let i = 0; i < gableTop.length; i++) height = Math.max(height, gableTop[i]);
   // the face's own joints, from the building's seed (every peer lays the same)
   const rand = seeded((anatomy.seed ^ Math.imul(storeyIndex * 8 + faceIndex + 1, 0x9e3779b1)) >>> 0);
   // rows: the masonry's courses grouped to the law's height where the kit gave them, else even rows
@@ -169,13 +246,18 @@ function layGrid(anatomy: StructureDamageAnatomy, storeyIndex: number, faceIndex
   const courses = face.masonry?.courses;
   if (courses && courses.length > 2) {
     let last = 0;
-    for (const c of courses) if (c - last >= law.h * 0.85 && height - c >= law.h * 0.5) { rowsY.push(c); last = c; }
+    for (const c of courses) if (c - last >= law.h * 0.85 && wallHeight - c >= law.h * 0.5) { rowsY.push(c); last = c; }
   } else {
     // even rows, each line nudged up or down a little (a cast or framed wall breaks in uneven bands, not a grid)
-    const rows = Math.max(1, Math.round(height / law.h));
-    for (let r = 1; r < rows; r++) rowsY.push((height * (r + (rand() - 0.5) * (law.bonded ? 0.15 : 0.35))) / rows);
+    const rows = Math.max(1, Math.round(wallHeight / law.h));
+    for (let r = 1; r < rows; r++) rowsY.push((wallHeight * (r + (rand() - 0.5) * (law.bonded ? 0.15 : 0.35))) / rows);
   }
-  rowsY.push(height);
+  rowsY.push(wallHeight);
+  // the gable's courses over the wall, even to its apex
+  if (height > wallHeight + 0.05) {
+    const rows = Math.max(1, Math.round((height - wallHeight) / law.h));
+    for (let r = 1; r <= rows; r++) rowsY.push(wallHeight + ((height - wallHeight) * r) / rows);
+  }
   const cols = Math.max(1, Math.round(face.width / law.w));
   const cw = face.width / cols;
   const rowStart: number[] = [];
@@ -212,12 +294,21 @@ function layGrid(anatomy: StructureDamageAnatomy, storeyIndex: number, faceIndex
         if (du > 0 && dy > 0) covered += du * dy;
       }
       if (covered > area * 0.5) state[c] = CELL_OPENING;
+      // over the gable's sloping edges: nothing there
+      if (gableTop && y0 >= wallHeight - 1e-4) {
+        const gtop = (u: number) => {
+          const t = Math.max(0, Math.min(GABLE_SAMPLES - 1, ((u + face.width / 2) / face.width) * (GABLE_SAMPLES - 1)));
+          const i = Math.min(GABLE_SAMPLES - 2, Math.floor(t));
+          return gableTop[i] + (gableTop[i + 1] - gableTop[i]) * (t - i);
+        };
+        if (y0 >= Math.max(gtop(u0), gtop(u1), gtop((u0 + u1) / 2)) - 0.02) state[c] = CELL_VOID;
+      }
     }
   }
   const skin = face.layers.length > 1 ? Math.max(0.02, face.layers[0].thicknessM || 0.03) : Math.min(0.06, faceWallThickness(face) * 0.3);
   return {
     storey: storeyIndex, faceIndex, section: face.section, name: face.name,
-    origin: face.origin, u: face.u, out: face.out, width: face.width, height,
+    origin: face.origin, u: face.u, out: face.out, width: face.width, height, wallHeight, gableTop,
     thickness: faceWallThickness(face), skinM: skin, material, bonded: law.bonded,
     rowY: Float32Array.from(rowsY), rowStart: Int32Array.from(rowStart), cellU: Float32Array.from(cellU),
     state, opening: Uint8Array.from(state, (v) => (v === CELL_OPENING ? 1 : 0)), damage: new Float32Array(n), sag: new Float32Array(n),
@@ -258,7 +349,7 @@ export function struckFace(wall: WallFracture, x: number, y: number, z: number):
 /** Raise a cell's damage and its state with it (never back: a gone cell stays gone). */
 function hurt(grid: FaceGrid, cell: number, amount: number): number {
   const was = grid.state[cell];
-  if (was === CELL_OPENING || was === CELL_GONE || was === CELL_FALLEN) return was;
+  if (was === CELL_OPENING || was === CELL_GONE || was === CELL_FALLEN || was === CELL_VOID) return was;
   const d = (grid.damage[cell] += amount);
   const next = d >= GONE_AT ? CELL_GONE : d >= SPALL_AT ? CELL_SPALLED : d >= CRACK_AT ? CELL_CRACKED : CELL_INTACT;
   if (next > was) grid.state[cell] = next;
@@ -287,7 +378,7 @@ export function strikeWall(wall: WallFracture, strike: WallStrike, out: WallStri
     const dv = vc - hit.v;
     if (Math.abs(dv) > R * cracks * 1.15) continue;
     for (let c = grid.rowStart[r]; c < grid.rowStart[r + 1]; c++) {
-      if (grid.state[c] === CELL_OPENING) continue;
+      if (grid.state[c] === CELL_OPENING || grid.state[c] === CELL_VOID) continue;
       const uc = (grid.cellU[2 * c] + grid.cellU[2 * c + 1]) / 2;
       const du = uc - hit.u;
       const k = holeOutlineK(Math.atan2(dv, du), strike.seed);
@@ -531,6 +622,6 @@ export function createWallStrikeOutcome(): WallStrikeOutcome {
 export function wallFractureCensus(wall: WallFracture): Record<'intact' | 'cracked' | 'spalled' | 'gone' | 'fallen' | 'opening', number> {
   const census = { intact: 0, cracked: 0, spalled: 0, gone: 0, fallen: 0, opening: 0 };
   const names = ['intact', 'cracked', 'spalled', 'gone', 'fallen', 'opening'] as const;
-  for (const g of wall.faces) for (let i = 0; i < g.state.length; i++) census[names[g.state[i]]]++;
+  for (const g of wall.faces) for (let i = 0; i < g.state.length; i++) if (g.state[i] !== CELL_VOID) census[names[g.state[i]]]++;
   return census;
 }

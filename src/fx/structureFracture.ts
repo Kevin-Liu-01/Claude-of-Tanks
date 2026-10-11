@@ -25,8 +25,8 @@ import type { StructureDamageSeam, StructureSpan } from '../world/structureDamag
 import type { DebrisPhysics } from './debrisPhysics.ts';
 import { emitCollapseImpact } from './collapseImpacts.ts';
 import {
-  CELL_CRACKED, CELL_FALLEN, CELL_GONE, CELL_OPENING, CELL_SPALLED, cellRect, createWallFracture, createWallStrikeOutcome, strikeWall,
-  type FaceGrid, type WallFracture, type WallStrikeKind,
+  CELL_CRACKED, CELL_FALLEN, CELL_GONE, CELL_OPENING, CELL_SPALLED, CELL_VOID, cellRect, createWallFracture, createWallStrikeOutcome,
+  gableTopAt, strikeWall, type FaceGrid, type WallFracture, type WallStrikeKind,
 } from './wallFracture.ts';
 
 export interface StructureFractureOptions {
@@ -227,6 +227,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       if (v < -0.06 || v > g.height + 0.06) continue;
       const along = dx * g.u[0] + dz * g.u[2];
       if (Math.abs(along) > g.width / 2 + 0.06) continue;
+      // over the storey's wall only the gable itself (under its sloping edges: never the roof's verge over them)
+      if (v > g.wallHeight + 0.06 && v > gableTopAt(g, along) + 0.06) continue;
       const depth = dx * g.out[0] + dz * g.out[2];
       if (depth < -g.thickness - 0.15 || depth > 0.4) continue;
       const facing = nx * g.out[0] + ny * g.out[1] + nz * g.out[2];
@@ -397,7 +399,9 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     const ou = grid.origin[0] * ux + grid.origin[2] * uz;
     const front: Poly = [], back: Poly = [];
     const tris = Math.min(to, soup.length / (3 * stride));
-    const listOf = (cell: number): number[] => {
+    const listOf = (cell0: number): number[] => {
+      // (a gable's void cells over its sloping edges hold nothing: what reaches into one stands with the face)
+      const cell = cell0 !== STATIC_CELL && grid.state[cell0] === CELL_VOID ? STATIC_CELL : cell0;
       let list = cells.get(cell);
       if (!list) { list = []; cells.set(cell, list); }
       return list;
@@ -737,7 +741,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     const gaps: Array<[FaceGrid, number, number]> = [];
     live.wall.faces.forEach((g) => {
       if (g.storey !== top) return;
-      const r = g.rowY.length - 2;
+      let r = g.rowY.length - 2;
+      while (r > 0 && g.rowY[r + 1] > g.wallHeight + 1e-4) r--;
       let run0 = NaN;
       for (let c = g.rowStart[r]; c <= g.rowStart[r + 1]; c++) {
         const gone = c < g.rowStart[r + 1] && (g.state[c] === CELL_GONE || g.state[c] === CELL_FALLEN);
@@ -928,6 +933,19 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       let at = 0;
       for (const a of e.arrays) { list.set(a, at); at += a.length; }
       for (let i = 0; i < e.list.length; i++) list[at + i] = e.list[i];
+      // (dcore 2026-10-11, wave 388a: "clean whole bricks") what broke off wears its break's grit: its colours a quarter
+      // of the way to a greyed dust of themselves (the standing face keeps its own)
+      const ci = e.layout.names.indexOf('color');
+      if (ci >= 0 && e.layout.sizes[ci] >= 3) {
+        let off = 6;
+        for (let a = 0; a < ci; a++) off += e.layout.sizes[a];
+        const stride = e.layout.stride;
+        for (let i = off; i + 2 < list.length; i += stride) {
+          const r = list[i], gg = list[i + 1], b = list[i + 2];
+          const d = (0.2126 * r + 0.7152 * gg + 0.0722 * b) * 0.85 + 0.1;
+          list[i] = r + (d * 1.02 - r) * 0.25; list[i + 1] = gg + (d - gg) * 0.25; list[i + 2] = b + (d * 0.93 - b) * 0.25;
+        }
+      }
       merged.set(material, { layout: e.layout, list });
     }
     // (receipts: every drawn corner inside one of the parts, else it sinks into what it lands on)
@@ -1045,18 +1063,32 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       cellRect(g, b, rect); const db = Math.hypot((rect[0] + rect[1]) / 2 - hitU, (rect[2] + rect[3]) / 2 - hitV);
       return da - db || a - b;
     });
-    // a third of the cells fly as chunks (at most the budget), the rest are pulverized
-    const chunks = Math.min(budget, Math.max(1, Math.round(order.length / 3)));
+    // (dcore 2026-10-11, waves 385/388a: "a spray of near-identical clean brick blocks") a few of the cells fly as
+    // mortared clumps of two or three (at most the budget); the rest are pulverized into the burst's broken bits
+    const chunks = Math.min(budget, Math.max(1, Math.round(order.length / 5)));
     const dir = dirToWorld(live, dirBX, dirBZ, new THREE.Vector3());
+    const used = new Set<number>();
+    const centre = (cell: number): [number, number] => { cellRect(g, cell, rect); return [(rect[0] + rect[1]) / 2, (rect[2] + rect[3]) / 2]; };
+    let made = 0;
     for (let i = 0; i < chunks; i++) {
       const cell = order[Math.floor(i * order.length / chunks)];
+      if (used.has(cell)) continue;
+      used.add(cell);
+      const cells = [face, cell];
+      const [cu, cv] = centre(cell);
+      const want = 1 + (rng() < 0.5 ? 1 : 0);
+      // its nearest knocked neighbours, edge to edge (within a cell and a half)
+      const near = order.filter((c) => !used.has(c)).map((c) => { const [u, v] = centre(c); return [Math.hypot(u - cu, v - cv), c] as [number, number]; })
+        .filter(([d]) => d < 0.75).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      for (let k = 0; k < want && k < near.length; k++) { used.add(near[k][1]); cells.push(face, near[k][1]); }
       const speed = kind === 'kinetic' ? 7 + rng() * 6 : 4 + rng() * 6;
       // a blast throws inward along the round and some back out of the wall; a penetrator's spall goes in
       const back = kind === 'blast' && rng() < 0.3 ? -0.6 : 1;
       const vx = (dir.x * back + (rng() - 0.5) * 0.6) * speed, vz = (dir.z * back + (rng() - 0.5) * 0.6) * speed;
-      out.push({ cells: [face, cell], vx, vy: 0.8 + rng() * 2.2, vz, spin: 9, seed: damageSeed(seed, i) });
+      out.push({ cells, vx, vy: 0.8 + rng() * 2.2, vz, spin: 9, seed: damageSeed(seed, i) });
+      made++;
     }
-    return chunks;
+    return made;
   }
 
   /**

@@ -27,7 +27,8 @@ export interface ChunkPiece {
   ax: number; ay: number; az: number; spin: number;
   /** size (m, longest axis), the ground the piece stops on (m), drag (1/s) */
   scale: number; groundY: number; drag: number;
-  /** linear albedo, heat at birth (0..1: an ember-hot piece glows and cools) */
+  /** linear albedo, heat at birth (0..1: an ember-hot piece glows and cools; below 0: a dust coat — a landed piece
+   *  darkens by that share, lying in the heap's shade under its grit, so a chip never reads as a lit dot) */
   r: number; g: number; b: number; heat: number;
   seed: number;
 }
@@ -97,8 +98,11 @@ void main() {
   }
   vec3 wpos = center + p;
   vNormalW = rot * normal;
-  vAlbedo = aCH.rgb * ( 0.85 + 0.3 * h2 );
-  vHeat = aCH.w * exp( -age * 1.6 ) * ( 1.0 - grounded * 0.6 );
+  // (dcore 2026-10-11, waves 385/388a: "glowing orange-yellow dots" over a ruin for 8 s — unshadowed chips lit as if in
+  // full sun inside the heap's shade) a negative heat is a dust coat: a landed piece darkens by that share
+  float coat = max( -aCH.w, 0.0 );
+  vAlbedo = aCH.rgb * ( 0.85 + 0.3 * h2 ) * ( 1.0 - coat * grounded );
+  vHeat = max( aCH.w, 0.0 ) * exp( -age * 1.6 ) * ( 1.0 - grounded * 0.6 );
   vWorldPos = wpos;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   #ifdef USE_FOG
@@ -175,14 +179,27 @@ function shapeGeometry(shape: ChunkShape, rand: () => number): THREE.BufferGeome
     case 'clod': return roughen(new THREE.IcosahedronGeometry(0.5, 0), rand, 0.5, 1.25).scale(1, 0.78, 0.92);
     case 'stone': return roughen(new THREE.OctahedronGeometry(0.5, 0), rand, 0.55, 1.2).scale(1, 0.75, 0.85);
     case 'brick': {
-      // a brick with a broken end: a box, one end's corners pulled in
-      const g = new THREE.BoxGeometry(1, 0.32, 0.48).toNonIndexed();
+      // (dcore 2026-10-11, waves 385/388a: "a spray of near-identical clean brick blocks", "whole bricks") a broken lump of
+      // brick and mortar, not a whole brick: a short block, both ends snapped off unevenly and its corners knocked off
+      const g = new THREE.BoxGeometry(0.8, 0.42, 0.56, 2, 1, 1);
       const p = g.getAttribute('position');
+      const disp = new Map<string, [number, number, number]>();
       for (let i = 0; i < p.count; i++) {
-        if (p.getX(i) > 0.4) p.setXYZ(i, p.getX(i) - rand() * 0.25, p.getY(i) * (0.7 + rand() * 0.3), p.getZ(i) * (0.7 + rand() * 0.3));
+        const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+        const key = `${x.toFixed(3)}|${y.toFixed(3)}|${z.toFixed(3)}`;
+        let d = disp.get(key);
+        if (!d) {
+          // the ends broken back by uneven amounts, the corners knocked in, the middle ridge left proud
+          const end = Math.abs(x) > 0.3;
+          d = [end ? -Math.sign(x) * rand() * 0.22 : (rand() - 0.5) * 0.06, (end ? 0.7 + rand() * 0.3 : 0.92 + rand() * 0.12),
+            (end ? 0.62 + rand() * 0.38 : 0.9 + rand() * 0.15)];
+          disp.set(key, d);
+        }
+        p.setXYZ(i, x + d[0], y * d[1], z * d[2]);
       }
-      g.computeVertexNormals();
-      return g;
+      const flat = g.toNonIndexed();
+      flat.computeVertexNormals();
+      return flat;
     }
     case 'splinter': {
       const g = new THREE.BoxGeometry(1, 0.08, 0.16, 3, 1, 1).toNonIndexed();

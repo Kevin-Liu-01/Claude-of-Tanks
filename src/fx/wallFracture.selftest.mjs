@@ -3,10 +3,11 @@
 // behaving like it would with physics"). A two-storey brick house: a round breaks its wall at its point (knocked
 // through, the skin's recess round it, cracks further out), nothing breaks away from the point, damage adds up, the
 // brickwork over a breach falls in a triangle, a window loses its lintel when a jamb goes, a breach at the foot of a wall
-// brings the storey over it down, and every outcome is the same twice.
+// brings the storey over it down, a gable end's grid runs up to its apex and falls with the wall blown out under it, and
+// every outcome is the same twice.
 import assert from 'node:assert/strict';
 import {
-  CELL_CRACKED, CELL_FALLEN, CELL_GONE, CELL_INTACT, CELL_OPENING, CELL_SPALLED, cellRect, createWallFracture,
+  CELL_CRACKED, CELL_FALLEN, CELL_GONE, CELL_INTACT, CELL_OPENING, CELL_SPALLED, CELL_VOID, cellRect, createWallFracture,
   createWallStrikeOutcome, strikeWall, struckFace, wallFractureCensus,
 } from './wallFracture.ts';
 
@@ -158,6 +159,30 @@ const centreOf = (grid, c) => { cellRect(grid, c, rect); return [(rect[0] + rect
   assert.ok(census.fallen > 10 && census.gone > 10, `${JSON.stringify(census)}`);
 }
 
+// ---- a gable end: its grid runs up to the apex, and a wall blown out under it drops it (wave 388a: "the gable can't
+//      hang over a blown-out wall: the load path has to drop it") -----------------------------------------------------
+{
+  const gabled = () => ({ ...house(), roof: { kind: 'gable', section: 8, pitchDeg: 32, eaveY: 6, ridgeY: 8.5, thicknessM: 0.2,
+    covering: brick, structure: brick, battenPitchM: 0.35, rafterPitchM: 0.9, slabs: [] } });
+  const wall = createWallFracture(gabled());
+  const g = wall.faces[front1];
+  assert.ok(g.gableTop && g.height > 5.4 && g.wallHeight === 3, `the front's top storey runs up its gable (${g.height.toFixed(2)} m)`);
+  assert.ok(!wall.faces[front1 + 1].gableTop, 'an eaves wall carries no gable');
+  const gableCells = [];
+  let voids = 0;
+  for (let r = 0; r + 1 < g.rowY.length; r++) for (let c = g.rowStart[r]; c < g.rowStart[r + 1]; c++) {
+    if (g.state[c] === CELL_VOID) { voids++; assert.ok(g.rowY[r] >= g.wallHeight - 1e-4, 'only over the wall is anything void'); }
+    else if (g.rowY[r] >= g.wallHeight - 1e-4) gableCells.push(c);
+  }
+  assert.ok(voids > 10 && gableCells.length > 20, `its sloping edges void, its triangle cells (${voids} void, ${gableCells.length} cells)`);
+  assert.equal(struckFace(wall, 0.2, 7.4, 5.1)?.face, front1, 'a round on the gable strikes it');
+  // the wall's top two metres blown out from end to end: the gable over it has nothing left to stand on
+  const out = createWallStrikeOutcome();
+  for (const x of [-3.4, -2, -0.6, 0.8, 2.2, 3.5]) strikeWall(wall, { x, y: 4.6, z: 5.05, dirX: 0, dirZ: -1, radiusM: 1.2, kind: 'blast', seed: 40 + Math.round(x * 10) }, out);
+  const left = gableCells.filter((c) => g.state[c] !== CELL_FALLEN && g.state[c] !== CELL_GONE);
+  assert.equal(left.length, 0, `nothing of the gable hangs over the blown-out wall (${left.length} of ${gableCells.length} still up)`);
+}
+
 // ---- the same twice -------------------------------------------------------------------------------------------
 {
   const run = () => {
@@ -173,4 +198,5 @@ const centreOf = (grid, c) => { cellRect(grid, c, rect); return [(rect[0] + rect
   assert.deepEqual(run(), run(), 'deterministic in the anatomy and the strikes');
 }
 console.log('wallFracture.selftest: a round breaks its wall at its point (through, recess, cracks), damage adds up, the courses '
-  + 'over a breach fall in a triangle, a lintel goes with its jamb, a breach at the foot drops the storey over it, the same twice');
+  + 'over a breach fall in a triangle, a lintel goes with its jamb, a breach at the foot drops the storey over it, a gable falls '
+  + 'with the wall under it, the same twice');
