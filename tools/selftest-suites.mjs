@@ -1531,6 +1531,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/wreckFleet.selftest.mjs',
     // 2026-10-09 (destruction core lane): crumpled wrecks — the baked hulks, the burnt map vehicles, the live kill.
     'src/world/wreckCrumple.selftest.mjs',
+    // (dcore 2026-10-10) a prop gives where a hull meets it: pressed from contact, pancaked, never rising, the same twice;
+    // the presentation's copy keeps its livery, the sim's crush swaps nothing, unseen crushes sweep, heaps flatten again.
+    'src/world/propCrush.selftest.mjs',
     'src/world/wrecksSteps.selftest.mjs',
     'src/world/wreckPaintDedup.selftest.mjs',
     'src/world/wreckDiscardedPaint.selftest.mjs',
