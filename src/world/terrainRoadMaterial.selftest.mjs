@@ -62,7 +62,7 @@ assert.match(terrainSource, /a\.a = mix\(a\.a, a\.a \* 0\.86, rut \* \(1\.0 - gR
 // (the Redrock lane, round 10: a map's wheel lanes' relief gain, splat.roadRuts x — 1 unless a map authors it; Redrock's
 // worn-deep tracks 2.6)
 assert.match(terrainSource,
-  /n\.xy \+= gradD \* laneSlope \* 0\.14 \* roadCore \* rutAmp \* \(1\.0 - df \* 0\.72\) \* uRoadRuts\.x \* \(1\.0 - grooveRel\);/,
+  /n\.xy \+= gradD \* laneSlope \* 0\.14 \* roadCore \* rutAmp \* \(1\.0 - df \* 0\.72\) \* uRoadRuts\.x \* \(1\.0 - grooveRel\)\s*\* \(1\.0 - gRoadTex \* step\(0\.5, uLandTier\)\);/,
   'lane relief comes from the analytic lane slope along the field gradient and stays shallow');
 assert.match(terrainSource, /shader\.uniforms\.uRoadRuts = \{ value: new THREE\.Vector3\(\.\.\.\(S\.roadRuts \?\? \[1, 0, 0\]\)\) \};/,
   'the relief gain is 1 and the darkening and gravel nil unless a map authors splat.roadRuts');

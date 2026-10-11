@@ -7587,9 +7587,12 @@ void splatCompute() {
           float rlN = nzq(uv, 0.035, vec2(0.83, 0.47)).x;
           float rlW = 0.12 * fwP + 0.002;
           float rlK = min(uPaveWear.x, 1.0);
-          float relaid = smoothstep(0.66 - rlW, 0.66 + rlW, rlN) * rlK;
+          // (the lab's square: still "a vast empty plain of one regular stamp") a square — no wheel paths of its own — relaid
+          // in more and larger patches
+          float rlT = fr ? 0.66 : 0.60;
+          float relaid = smoothstep(rlT - rlW, rlT + rlW, rlN) * rlK;
           pav.rgb *= mix(1.0, 0.76 + 0.44 * nz(uv, 0.012, vec2(0.17, 0.93)).g, relaid);
-          pav.rgb *= 1.0 - 0.30 * (1.0 - smoothstep(0.0, 1.5 * rlW, abs(rlN - 0.66))) * tileVis(0.25) * rlK;
+          pav.rgb *= 1.0 - 0.30 * (1.0 - smoothstep(0.0, 1.5 * rlW, abs(rlN - rlT))) * tileVis(0.25) * rlK;
           if (fr && abs(pCls - 2.0) < 0.5 && uPaveWear.x > 0.0) {
             float apN = nzq(uv + vec2(37.0, 11.0), 0.06, vec2(0.21, 0.67)).x;
             float apW = 0.20 * fwP + 0.002;
@@ -7670,7 +7673,8 @@ void splatCompute() {
             }
           }
           // the lip: the paving's outer face proud of the verge, turned to the light or away from it
-          pN += outE * 0.30 * (1.0 - smoothstep(0.0, 0.03 + fwE, abs(ayE - (asphE ? edgeY : paveEdgeY)))) * tileVis(0.2);
+          // (the lab's frames: at 0.30 the lip read as a painted white edge line) a faint highlight on the edge's face
+          pN += outE * 0.12 * (1.0 - smoothstep(0.0, 0.03 + fwE, abs(ayE - (asphE ? edgeY : paveEdgeY)))) * tileVis(0.2);
         }
         // the gutter: rows of small setts along the kerb, the street's dirt and leaves gathered in them (a kerbed street,
         // uPaveClass.w its width)
@@ -7786,7 +7790,11 @@ void splatCompute() {
   // two smooth grooves, so a straight road carries no per-texel bumps.
   if (roadCore > 0.002) {
     float laneSlope = -2.0 * laneD * uLaneK * lane;
-    n.xy += gradD * laneSlope * 0.14 * roadCore * rutAmp * (1.0 - df * 0.72) * uRoadRuts.x * (1.0 - grooveRel);
+    // (R4, the lab's Steinburg frames and the gauntlet's Monsoon: "two broad, soft black tyre bands that read like painted
+    // shadows", Steinburg's "wear stripes like a motorway") an earth road's wheel grooves shaded every paved street too —
+    // past the Low tier a paved surface keeps its own relief (its courses, its sunk wheel paths)
+    n.xy += gradD * laneSlope * 0.14 * roadCore * rutAmp * (1.0 - df * 0.72) * uRoadRuts.x * (1.0 - grooveRel)
+      * (1.0 - gRoadTex * step(0.5, uLandTier));
     vec2 along = vec2(-gradD.y, gradD.x);
     float streak = texture2D(uNoise, vec2(dot(uv, along) * 0.31, dot(uv, gradD) * 2.7)).r;
     a.rgb *= 1.0 + (streak - 0.5) * 0.16 * max(lane, 0.35 * crown) * roadCore * (1.0 - df) * (1.0 - gRoadTex * step(0.5, uLandTier));
