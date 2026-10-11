@@ -148,6 +148,15 @@ export default {
       { form: 'blocks' as const, geology: 'breccia' as const, x: -x, z: -z, radius: 6, height: 2.6, yawDeg: yawDeg + 180, tone: LUNAR_BRECCIA,
         name: `the ejecta blocks ${['south-west of the outpost', 'on the west floor', 'on the west floor, north'][i]}` },
     ]),
+    // (2026-10-11, the map-revival lane; gauntlet wave 380: a crater rim "a smooth ... billowing drift with no strata,
+    // blocks or talus ... it reads as a snowbank") the four big craters' rims (and their rotations) carry the breccia their
+    // impact threw out — blocks and scree on the rim's steeper ground, none in the bowl
+    rockFields: ([[-230, -150, 56], [205, -190, 40], [320, -150, 46], [-70, -230, 34]] as const).flatMap(([x, z, r], i) => [
+      { geology: 'breccia' as const, x, z, radius: Math.round(r * 1.45), count: 4, slopeBias: 0.85, size: [1.6, 3.4] as const,
+        avoid: [[x, z, Math.round(r * 0.7)]] as const, tone: LUNAR_BRECCIA, name: `the rim blocks of crater ${i + 1}` },
+      { geology: 'breccia' as const, x: -x, z: -z, radius: Math.round(r * 1.45), count: 4, slopeBias: 0.85, size: [1.6, 3.4] as const,
+        avoid: [[-x, -z, Math.round(r * 0.7)]] as const, tone: LUNAR_BRECCIA, name: `the rim blocks of crater ${i + 5}` },
+    ]),
   },
   // (2026-10-11, the map-revival lane; gauntlet wave 380: "an airless sky can't have blue haze"; "a notched black skyline
   // wall at the far edge"; "a flat-topped slab cut into its left skyline"; "fluted, streak-banded mountains"; "the
