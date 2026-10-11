@@ -1572,6 +1572,15 @@ export function buildShedFieldHut(st: ShedStyle, rng: Rng, detail: ShedDetail = 
     w.end();
   }
 
+  // --- the winter's firewood stacked against the back gable, its split ends out
+  {
+    const zb = -(FH.gableZ + 0.032) - 0.012;
+    const idx = w.begin({ role: 'fitting', material: 'timber', anchor: true, face: 'back', axes: AXES, scoreAxis: 0, scores: [-0.9] });
+    firewoodStack(w, -1.62, -0.2, zb - 0.46, zb, 1.04, -1);
+    w.end();
+    for (const pi of back.pieces) w.link(idx, pi, 'rest');
+  }
+
   // --- the stovepipe out of the back of the left slope: its foot cut to the covering (or the snow) on a lead plate,
   // its rain cap (its box lies along the slope, so it stands on the section and not in it)
   {
@@ -1828,9 +1837,11 @@ export function buildShedLeanTo(st: ShedStyle, rng: Rng, detail: ShedDetail = 'f
   return w.finish('leanto', 48);
 }
 
-/** A stack of split firewood: the stack's body, its face of split ends (wedges and quarters), round logs on top. */
-function firewoodStack(w: ShedWriter, x0: number, x1: number, z0: number, z1: number, h: number): void {
-  w.box(AXES, [x0 + 0.03, 0.0, z0], [x1 - 0.03, h - 0.06, z1 - 0.05], { tone: mulc(BARK, 0.9), uv: w.plankUv(0.2, 0), seg: 2 });
+/** A stack of split firewood: the stack's body, its face of split ends (wedges and quarters) toward +z (or −z with
+ * `face` −1), round logs on top. */
+function firewoodStack(w: ShedWriter, x0: number, x1: number, z0: number, z1: number, h: number, face: 1 | -1 = 1): void {
+  if (face > 0) w.box(AXES, [x0 + 0.03, 0.0, z0], [x1 - 0.03, h - 0.06, z1 - 0.05], { tone: mulc(BARK, 0.9), uv: w.plankUv(0.2, 0), seg: 2 });
+  else w.box(AXES, [x0 + 0.03, 0.0, z0 + 0.05], [x1 - 0.03, h - 0.06, z1], { tone: mulc(BARK, 0.9), uv: w.plankUv(0.2, 0), seg: 2 });
   const rowH = 0.155;
   let row = 0;
   for (let y = 0.03; y < h - 0.1; y += rowH, row++) {
@@ -1844,8 +1855,10 @@ function firewoodStack(w: ShedWriter, x0: number, x1: number, z0: number, z1: nu
         : kind < 0.8
           ? [[-wd / 2, -rowH * 0.42], [wd / 2, -rowH * 0.42], [wd / 2, rowH * 0.1], [-wd * 0.05, rowH * 0.45], [-wd / 2, rowH * 0.2]]
           : [[-wd / 2, -rowH * 0.3], [0, -rowH * 0.45], [wd / 2, -rowH * 0.3], [wd / 2, rowH * 0.3], [0, rowH * 0.45], [-wd / 2, rowH * 0.3]];
-      const f = frame([x + wd / 2, y + rowH / 2, z1 - 0.06], [1, 0, 0], [0, 1, 0]);
-      w.prism(f, poly, 0, 0.02 + w.rng() * 0.05, { tone: mulc(LOG_END, 0.85 + w.rng() * 0.3), uv: 'flat', weather: 0.5, endDark: 1 }, false);
+      const f = face > 0 ? frame([x + wd / 2, y + rowH / 2, z1 - 0.06], [1, 0, 0], [0, 1, 0])
+        : frame([x + wd / 2, y + rowH / 2, z0 + 0.06], [-1, 0, 0], [0, 1, 0]);
+      w.prism(f, face > 0 ? poly : poly.map(([px, py]) => [-px, py] as [number, number]).reverse(), 0, 0.02 + w.rng() * 0.05,
+        { tone: mulc(LOG_END, 0.85 + w.rng() * 0.3), uv: 'flat', weather: 0.5, endDark: 1 }, false);
       x += wd + 0.01;
     }
   }
@@ -1989,6 +2002,7 @@ export function buildShedFar(kind: 'fieldhut' | 'leanto', st: ShedStyle): THREE.
     w.box(AXES, [-0.5, 0, 3.52], [0.5, 0.15, 3.9], stone);
     w.box(AXES, [1.35, 0, 3.07], [1.85, 0.84, 3.57], { tone: mulc(st.wood, 0.75), uv: 'flat' });
     w.box(AXES, [-2.05, 0.42, 2.95], [-1.3, 0.47, 3.29], { tone: st.wood, uv: 'flat' });
+    w.box(AXES, [-1.59, 0, -FH.gableZ - 0.5], [-0.23, 1.0, -FH.gableZ - 0.05], { tone: mix(BARK, LOG_END, 0.55), uv: 'flat', weather: 0.5 }, 1 << 2);
     w.box(AXES, [-1.13, fhRafterTop(1.05), -1.93], [-0.97, 4.42, -1.77], { tone: hexLin(0x3c3a37), uv: 'flat', weather: 0.5, rust: true });
   } else {
     const cosS = Math.cos(LT.slope), sinS = Math.sin(LT.slope);
@@ -2046,6 +2060,7 @@ export function buildShedShadow(kind: 'fieldhut' | 'leanto'): THREE.BufferGeomet
     w.box(AXES, [-1.32, P.beamTop - 0.11, P.postZ - 0.04], [1.32, P.beamTop - 0.01, P.postZ + 0.04], look);
     w.box(AXES, [-0.56, 0, FH.hz + FH_FRONT_OUT + 0.03], [0.56, P.stoopTop - 0.03, 3.46], look);
     w.box(AXES, [1.42, 0, 3.14], [1.78, 0.8, 3.5], look);
+    w.box(AXES, [-1.55, 0.02, -FH.gableZ - 0.46], [-0.27, 0.92, -FH.gableZ - 0.12], look);
     w.box(AXES, [-1.1, 3.4, -1.9], [-1.0, 4.38, -1.8], look);
   } else {
     const cosS = Math.cos(LT.slope), sinS = Math.sin(LT.slope);

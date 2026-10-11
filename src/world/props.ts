@@ -10325,7 +10325,7 @@ ${snowCap ? `
     // Reuse this extraction only for building families. Crates, moving props,
     // walls (including their later terrain fit) and trees retain the cheap path.
     // (the destructible-kits lane, 2026-10-10) a fracture-ready kind derives it from its envelopes (meta.collisionBuild)
-    const collisionSource = pool.meta.collisionBuild?.() ?? null;
+    const collisionSource = DESTRUCTIBLE_BUILDING_TYPES[kind] ? (pool.meta.collisionBuild?.() ?? null) : null;
     const source = DESTRUCTIBLE_BUILDING_TYPES[kind]
       ? deriveRuntimeStructureCollisionWithSolids({ baked: [collisionSource ?? geometry] }) : null;
     collisionSource?.dispose();
