@@ -255,8 +255,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // a mine's works (mining.ts): the headframe stands over its shaft with its winding house behind (the piece centred on
   // both); the conveyor's bents and end houses are its movement record, so it spans the ground between them
   headframe: { family: 'works', drapes: true, defaults: { height: 20, paint: 'oxide' },
-    // (R6) the shaft 3 m further forward, the winding house 6 m further back (mining.ts headframeShaftZ)
-    footprint: (p) => [5.2, 0.25 * num(p, 'height') + 12.3] },
+    // (R6) the shaft 3 m further forward, the winding house 6 m further back (mining.ts headframeShaftZ), its roof's
+    // eaves past the back; the shaft yard's skip road and timber stack out to the collar's side
+    footprint: (p) => [9.9, 0.25 * num(p, 'height') + 12.45] },
   oreBin: { family: 'works', drapes: true, defaults: { width: 7, depth: 6, clearance: 5.4, height: 13 },
     footprint: (p) => [num(p, 'width') / 2 + 0.7, num(p, 'depth') / 2 + 0.7] },
   conveyor: { family: 'works', drapes: true, defaults: { length: 56, width: 2.6, head: 10, tail: 2.2 },
