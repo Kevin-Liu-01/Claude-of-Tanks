@@ -130,6 +130,17 @@ export default {
       'boatshed', 'market', 'cottage', 'farmhouse', 'granary', 'marketRow', 'depot', 'ruin',
       'boatshed', 'cornershop', 'farmhouse', 'woodshed'],
     destructibleBuildings: ['stilthouse', 'longhouse', 'fishershack', 'fieldhospital'],
+    // (2026-10-11, the map-revival lane; gauntlet wave 361: the temple "stands alone on a bare lawn"; "plinth homesteads for
+    // the delta") the temple's court among the char's homesteads: tin houses on their earthen plinths west and south of
+    // it and a gola granary, fronts to the court, clear of the market square's zone disc (each 49 m or more from it).
+    // After the roadside plan, each on its own stream (terrace).
+    plannedSitesAfterPlan: true,
+    plannedSites: [
+      { structure: 'farmhouse', x: -70, z: -4, yawDeg: 90, terrace: true },
+      { structure: 'cottage', x: -64, z: -27, yawDeg: 45, terrace: true },
+      { structure: 'granary', x: -47, z: -35, yawDeg: 0, terrace: true },
+      { structure: 'cottage', x: -26, z: -31, yawDeg: -30, terrace: true },
+    ],
     tacticalBeats: [
       { id: 'western-levee-fort', role: 'brawl', x: -286, z: -72, yawDeg: -34,
         structure: 'longhouse', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -14 },
