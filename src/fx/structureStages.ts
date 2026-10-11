@@ -91,6 +91,10 @@ function dampPieces(out: DamageWriters, k: number, maxY = Infinity): DamageWrite
   return Object.assign(Object.create(Object.getPrototypeOf(out) as object) as DamageWriters, out, { pieces });
 }
 
+/** Whether a collapse as bodies also lays the kit's settled heap, its fine rubble and its falling bits under its pieces
+ *  (off: the bodies and the wall fracture's pieces are the heap). */
+const KIT_HEAP_UNDER_BODIES = false;
+
 /** Strike holes a standing building takes (the mask keeps MAX_HOLES; three are left for the stages' own cuts). 2026-10-10
  *  (the owner: "shooting buildings should cause destruction too"): every burst and every armour-piercing round leaves its
  *  hole, a dozen hits a building before it falls (it went from three, the rest of a battle's hits showing nothing). */
@@ -977,11 +981,13 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           o.scars?.clearStructure(e.structureId);
           seam.touchShadows();
           // the kit's heap, its fine rubble and its falling bits; its stubs, its whole wall and roof sections are the bodies'
+          // (dcore 2026-10-11, the coordinator: "no preset rubble", "no decal disc"; the decisive wave's head: the kit's
+          // fine rubble lay over the ruin as lit orange specks for eight seconds) not with bodies: the heap is what fell
           const eaveY = a.roof ? a.roof.eaveY : Infinity;
-          const made = run(seam, 0, false, (out) => {
+          const made = KIT_HEAP_UNDER_BODIES ? run(seam, 0, false, (out) => {
             (out as DamageWriters & { bodies?: boolean }).bodies = true;
             return seam.collapse(damageSeed(a.seed, 3), dampPieces(out, 0.55, eaveY));
-          }, false);
+          }, false) : [];
           if (made.length) {
             const depth = (a.mound ? a.mound.heightM : 1) + 0.6;
             for (const m of made) { m.matrix.makeTranslation(0, -depth, 0); m.matrixWorldNeedsUpdate = true; }
