@@ -96,7 +96,10 @@ function mouths(root,gun,recoil) {
       near(Math.hypot(v.x-x,v.y-y),.115,.005,'canister bore including LOW chord');
     }
   }
-  const bore=cast(root,recoil,[0,0,2.365],[0,0,-1],.3);assert.ok(bore);
+  // 2026-10-10: sampled off the axis (angle .173, inside the bore). The fleet's front shadow disc met the axial ray until
+  // a28e4d8e6; since then the ray reaches the authored floor fan exactly on its centre vertex and misses it through
+  // rounding at some poses. Same floor, same depth.
+  const bore=cast(root,recoil,[.008*Math.cos(.173),.008*Math.sin(.173),2.365],[0,0,-1],.3);assert.ok(bore,'open 30 mm muzzle floor');
   near(recoil.worldToLocal(bore.point.clone()).z/sizeFactor,2.15,.001,'open 30 mm muzzle depth');
   // 2026-09-22 (owner: holes are added, not carved, to save triangles): the fleet fallback no longer lays a barrel-paint
   // duplicate annulus 0.5 mm ahead of a verified physical mouth, so this probe reads the authored openTube ring itself.
