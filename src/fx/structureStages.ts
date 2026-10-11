@@ -395,6 +395,23 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     }
     return dropped;
   }
+  /** The kit's runs on the faces a fracture took (a damaged stage's patches, an earlier breach's rim and room): the
+   *  fracture redraws those faces, so whatever the kit laid on them would hang over its holes. [storey, face] pairs. */
+  function dropFaceRuns(seam: StructureDamageSeam, faces: readonly number[]): void {
+    for (let i = 0; i < faces.length; i += 2) {
+      const face = seam.anatomy.storeys[faces[i]]?.faces[faces[i + 1]];
+      if (!face) continue;
+      const t = Math.max(0.12, face.layers.reduce((sum, layer) => sum + (layer.thicknessM || 0), 0));
+      const y0 = face.origin[1] - 0.1, y1 = face.origin[1] + face.height + 0.1;
+      const onFace = (bx: number, by: number, bz: number): boolean => {
+        if (by < y0 || by > y1) return false;
+        const ox = bx - face.origin[0], oz = bz - face.origin[2];
+        const along = ox * face.out[0] + oz * face.out[2];
+        return along <= 0.4 && along >= -t - 0.4 && Math.abs(ox * face.u[0] + oz * face.u[2]) <= face.width / 2 + 0.2;
+      };
+      dropRuns(seam, onFace, (owner) => owner.section === face.section);
+    }
+  }
   /** A dropped storey's neighbours among the structure's standing runs (its own are gone) settle by the clamp's law, per
    *  vertex over the footprint: over the band down by the storey's height, in it onto the floor line (a fallen roof's
    *  wreckage rides down and its hanging rafters lie on the line; an upper storey's heap rides down onto it). */
@@ -445,10 +462,12 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       // (the same burst's breach stage struck here already: its round is that one)
       const recent = struckAt.get(structureId);
       if (recent && o.now() - recent[3] < 1 && Math.hypot(recent[0] - x, recent[1] - y, recent[2] - z) < 0.5) return;
-      if (fracture.strike(seam, x, y, z, p.dirX, p.dirZ, p.munition, p.chargeKg, p.caliberMm)) {
+      const faces = fracture.strike(seam, x, y, z, p.dirX, p.dirZ, p.munition, p.chargeKg, p.caliberMm);
+      if (faces) {
         finishFalls(structureId);
         notePunched(structureId, x, y, z);
         o.bodies?.forget(seam.structureIdx);
+        dropFaceRuns(seam, faces);
         return;
       }
     }
@@ -1004,10 +1023,13 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       // (the fracture: a live breach is a round that breaks the wall where it struck, sized as the stage's blow)
       if (e.stage === 'breached' && !sections && !settled && fracture && !nearPunched(e.structureId, e.x, e.y, e.z, 2)) {
         const blow = breachBlowFor(e);
-        if (fracture.strike(seam, blow.x, blow.y, blow.z, e.dirX, e.dirZ, e.munition ?? 'he', 1, 0, e.cause === 'ram' ? Math.max(blow.radiusM, 1.6) : blow.radiusM)) {
+        const faces = fracture.strike(seam, blow.x, blow.y, blow.z, e.dirX, e.dirZ, e.munition ?? 'he', 1, 0,
+          e.cause === 'ram' ? Math.max(blow.radiusM, 1.6) : blow.radiusM);
+        if (faces) {
           notePunched(e.structureId, e.x, e.y, e.z);
           struckAt.set(e.structureId, [e.x, e.y, e.z, o.now()]);
           o.bodies?.forget(seam.structureIdx);
+          dropFaceRuns(seam, faces);
         }
       }
       if (e.stage === 'breached' && !sections && (settled || !nearPunched(e.structureId, e.x, e.y, e.z, 2))) {

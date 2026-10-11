@@ -103,7 +103,8 @@ assert.ok(pick !== null, 'a stretch of wall clear of the openings');
 
 const r = rig(seam);
 const [x, y, z] = at(pick, 1.4);
-assert.equal(r.fracture.strike(seam, x, y, z, into[0], into[1], 'he', 1.2, 125), true, 'a round on a wall breaks it');
+const took = r.fracture.strike(seam, x, y, z, into[0], into[1], 'he', 1.2, 125);
+assert.ok(Array.isArray(took) && took.length >= 2 && took[0] === 0, `a round on a wall breaks it and names the face it took (${took})`);
 const after = area(bucket);
 assert.ok(after.flat > whole.flat + 20, `the face left the bucket (${after.flat - whole.flat} triangles flattened)`);
 assert.ok(after.sum < whole.sum * 0.99 && after.sum > whole.sum * 0.6, `only the face: the rest of the building stands in the bucket (${(100 * (1 - after.sum / whole.sum)).toFixed(1)} % taken)`);
@@ -152,7 +153,7 @@ const log = () => {
 };
 assert.equal(log(), log(), 'deterministic');
 // a point off every wall breaks nothing
-assert.equal(r.fracture.strike(seam, 40, 1, 40, 1, 0, 'he', 1.2, 125), false, 'a burst off the building breaks no face');
+assert.equal(r.fracture.strike(seam, 40, 1, 40, 1, 0, 'he', 1.2, 125), null, 'a burst off the building breaks no face');
 console.log = log0;
 assert.deepEqual(outside, [], 'every body draws inside its parts');
 console.log(`structureFracture.selftest: a round on a cottage's front face took it out of the bucket (${after.flat - whole.flat} triangles), `
