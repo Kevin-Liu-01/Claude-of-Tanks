@@ -1480,8 +1480,12 @@ function collectMobileDetailObjects(
     if (combatObjects.has(object)) return;
     if (!(object instanceof THREE.Group)) return;
     const name = object.name || '';
+    // A carved muzzle (carvedMuzzleBore.ts) cut its aperture out of the barrel's own face: its wall and backstop
+    // close that hole, so hiding them with distance would let the player see through the gun (sealed lane).
+    const carvedMouth = name.startsWith('muzzleBoreShadowFallback')
+      && object.children.some((child) => child.userData?.carvedBoreStock);
     if (name.startsWith('rig_decor_') || name.startsWith('fitting_')
-        || name.startsWith('muzzleBoreShadowFallback')) managedGroups.add(object);
+        || (name.startsWith('muzzleBoreShadowFallback') && !carvedMouth)) managedGroups.add(object);
   });
   const underManagedGroup = (object: THREE.Object3D): boolean => {
     for (let parent = object.parent; parent; parent = parent.parent) {
@@ -8001,6 +8005,8 @@ function* createTankOwnedSteps(
 
   // ---- merge buckets into meshes ----
   const gunYOff = armor.turretPivot[1] + armor.gunPivot[1];
+  // The horizon every non-silhouette bucket culls at (mergeBucket).
+  const detailLodDistM = geometryQuality === 'low' ? 64 : LOD1_DIST;
   const DIRT_Y: Record<RigGroupKey, number> = {
     hullG: 0, turretG: armor.turretPivot[1], recoilG: gunYOff, gunG: gunYOff,
     barrel0G: gunYOff, barrel1G: gunYOff,
@@ -8137,7 +8143,7 @@ function* createTankOwnedSteps(
     }
     if (!parent) throw new Error(`${specId}: bucket ${bucket} requires authored twin barrels`);
     if (LOD0_KEEP.has(bucket)) parent.add(mesh);
-    else lodWrap(parent, mesh, geometryQuality === 'low' ? 64 : LOD1_DIST);
+    else lodWrap(parent, mesh, detailLodDistM);
   };
   const stationKey=(part:THREE.BufferGeometry):string=>{
     const station=part.userData.auxiliaryStation;
