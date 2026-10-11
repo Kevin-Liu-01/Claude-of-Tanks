@@ -37,9 +37,9 @@ import type { RoomHostChangedPayload, RoomMatchStartPayload, RoomMatchStatusPayl
 import { createMatchHost } from '../host/matchHost.ts';
 import type { MatchHost } from '../host/matchHost.ts';
 import { planFromRoster, planHostBoot } from '../host/hostPlan.ts';
-import type { HostBootConfig, HostPort, HostToWorkerMessage, WorkerToHostMessage } from '../host/hostProtocol.ts';
+import type { HostBootConfig, HostCoreStats, HostPort, HostToWorkerMessage, WorkerToHostMessage } from '../host/hostProtocol.ts';
 import type { HostBootPlan } from '../host/hostPlan.ts';
-import { decodeBootConfig, decodeMigrationKeyframe, deriveMigrationKey, openMigrationBlob, resumeStateFromRetained } from '../host/migrationState.ts';
+import { decodeBootConfig, decodeMigrationKeyframe, deriveMigrationKey, openMigrationBlob, resumeHoldSeats, resumeStateFromRetained } from '../host/migrationState.ts';
 
 export type SessionPhase = 'lobby' | 'loading' | 'match' | 'ended' | 'lost';
 
@@ -118,6 +118,8 @@ export interface SessionP2pStatus {
   /** Signals the peer transport refused as stale (another host's or generation's) and offers it sent (P3b diagnostics; 0 as a host). */
   staleSignals: number;
   offersSent: number;
+  /** As a migrated host: how long the world held still for the seats that were playing, and why it moved (null otherwise). */
+  resumeHold: HostCoreStats['resumeHold'];
 }
 
 export interface MatchSessionOptions {
@@ -184,13 +186,15 @@ export class MatchSession {
   private hostSecret: string | null = null;
   private migrationActive = false;
   private migrationHostId: string | null = null;
+  /** The host this seat's match runs on (the match_start's, then each election's): an election's previous host. */
+  private servingHostId: string | null = null;
   private migrationsSeen = 0;
   private declinedHosting = false;
   /** The host generation this seat's link (or host) runs; an election with a newer one is a migration (P1: compare generations, never the reason). */
   private runningGeneration = 0;
   private readonly p2pStatus: SessionP2pStatus = {
     role: null, generation: 0, hostId: null, migrating: false, migrationHostId: null, candidateType: null, viaTurn: false,
-    peersConnected: 0, relayed: 0, uplinkBytesPerS: 0, hostState: null, snapshotSkips: 0, staleSignals: 0, offersSent: 0,
+    peersConnected: 0, relayed: 0, uplinkBytesPerS: 0, hostState: null, snapshotSkips: 0, staleSignals: 0, offersSent: 0, resumeHold: null,
   };
 
   constructor({
@@ -246,6 +250,7 @@ export class MatchSession {
     status.snapshotSkips = this.host?.snapshotSkips ?? 0;
     status.staleSignals = this.peerTransport?.staleSignals ?? 0;
     status.offersSent = this.peerTransport?.signalStats.sent ?? 0;
+    status.resumeHold = this.host?.resumeHold ?? null;
     return status;
   }
   /** True when this seat may host (a host thread is available, the tier is not mobile, the switch is off). */
@@ -437,6 +442,7 @@ export class MatchSession {
     // The room's newest election wins over the payload: a seat re-entering after a Garage return holds the match_start it
     // was sent when it hosted, while the room may have elected another host since (its host_changed is newer).
     const hostId = this.room.hostId ?? payload.hostId ?? null;
+    this.servingHostId = hostId;
     const secret = (payload as { hostSecret?: unknown }).hostSecret;
     this.hostSecret = typeof secret === 'string' && secret.length >= 16 ? secret : null;
     let inner: Transport;
@@ -534,11 +540,14 @@ export class MatchSession {
     this.runningGeneration = change.generation;
     this.migrationsSeen++;
     this.migrationActive = true;
+    // the host that went (the resume hold does not wait for it: a silent host may still hold its room socket)
+    const previousHostId = this.servingHostId;
+    this.servingHostId = change.hostId;
     this.migrationHostId = change.hostId;
     this.p2pListeners.emit({ kind: 'migration', phase: 'begin', hostId: change.hostId, generation: change.generation, role: this.role, detail: change.reason });
     if (change.hostId === me) {
       if (this.host && this.host.state !== 'stopped' && this.host.state !== 'failed') { this.endMigration('already hosting'); return; }
-      await this.becomeHost(client, round, change, migrating);
+      await this.becomeHost(client, round, change, migrating, previousHostId);
       return;
     }
     if (this.host) {
@@ -554,7 +563,7 @@ export class MatchSession {
     this.peerTransport?.retarget('host changed');
   }
 
-  private async becomeHost(client: MatchClient, round: SessionRound, change: RoomHostChangedPayload, migrating: MigratingTransport): Promise<void> {
+  private async becomeHost(client: MatchClient, round: SessionRound, change: RoomHostChangedPayload, migrating: MigratingTransport, previousHostId: string | null = null): Promise<void> {
     const me = this.room.playerId;
     const secret = change.hostSecret ?? this.hostSecret;
     if (!this.canHost || !secret) {
@@ -603,6 +612,8 @@ export class MatchSession {
     if (!plan) {
       plan = welcome ? planFromRoster(welcome.roster, this.room.room) : planHostBoot(round.room, round.matchStart, me);
     }
+    // the resume hold: the world stays still until the seats that were in the match are back (matchHostCore.ts RESUME_HOLD_MS)
+    if (resume) resume = { ...resume, holdForSeats: resumeHoldSeats(this.room.room?.players ?? [], plan.seats, previousHostId) };
     const config: HostBootConfig = {
       roomId: round.room.roomCode, matchId: round.matchStart.matchId, generation: change.generation, mapId: round.matchStart.mapId, mode: round.matchStart.mode,
       seed: welcome ? welcome.seed : round.matchStart.seed, seats: plan.seats, bots: plan.bots, countdownS: resume ? 0 : this.p2pOptions?.countdownS ?? 5, battleLimitS, hostSecret: secret,

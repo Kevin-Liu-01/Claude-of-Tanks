@@ -298,8 +298,11 @@ function assertTimberFrontage(buckets) {
 function assertExistingVillageBuckets(seed) {
   const buckets = emptyBuckets();
   try {
+    // (the map-revival lane, 2026-10-07, Orchard round 5: the village on its hill is authored as planned sites; the plan
+    // keeps the hammam's seat alone)
+    const village = getMapConfig('orchard').props;
     for (const id of ['farmhouse', 'granary']) {
-      assert.ok(getMapConfig('orchard').props.plan.includes(id));
+      assert.ok([...village.plan, ...(village.plannedSites ?? []).map((site) => site.structure)].includes(id));
       VILLAGE_BUILDERS[id](mulberry32(seed), buckets);
     }
     for (const name of names.filter(name => frontageCounts[name] > 0)) assert.ok(buckets[name].length,

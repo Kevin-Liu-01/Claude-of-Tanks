@@ -16,7 +16,7 @@ const digest = (g) => {
   return hash.digest('hex');
 };
 
-const BUILT = ['lrv', 'k2tram', 'stz3', 'an26'];
+const BUILT = ['lrv', 'k2tram', 'stz3', 'an26', 'bv206', 'snocat', 'd8h', 'haulpak'];
 let worst = 0;
 for (const kind of BUILT) {
   const size = SET_PIECE_SIZE[kind];

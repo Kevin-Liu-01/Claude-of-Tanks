@@ -6,7 +6,7 @@ import {
 import { applySnapshotPacket, decodeMessage, encodeMessage } from '../../src/mp/wire/codec.ts';
 import { quantizeAimDistance, quantizeAngle } from '../../src/mp/wire/quantize.ts';
 import { createLoopbackLink } from './link.ts';
-import { SNAPSHOT_SKIP_BYTES, createMatchActor } from './matchActor.ts';
+import { ENTRY_BACKPRESSURE_GRACE_MS, ENTRY_BACKPRESSURE_SUSTAINED_MS, SNAPSHOT_SKIP_BYTES, createMatchActor } from './matchActor.ts';
 import { ensureAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
 
 // The actor reads finalized combat anatomy; production hosts load their roster's groups first (Node: all).
@@ -85,8 +85,11 @@ async function advanceTicks(actor, ticks, perTick = null) {
 const verdicts = [];
 // This receipt's cadence arithmetic (90 snapshots in 3 s, 15 skipped in 30 ticks) is written at 30 Hz: the rate is the
 // actor's option (P3b; the default is SNAPSHOT_HZ = 20, covered by snapshotRate.selftest).
+// (2026-10-10) the room's clients re-attach seconds before the backpressure case: no entry grace here, the steady rule
+// alone (the grace has its own section below)
 const actor = createMatchActor({
   roomId: 'room-actor-test', mapId: 'verdant', seed: 4242, countdownS: 0.5, world: 'terrain', now, schedule, snapshotHz: 30,
+  entryBackpressureGraceMs: 0,
   seats: [
     { seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a2' },
     { seat: 1, playerId: 'p2', name: 'Two', team: 'alpha', specId: 'm1a2' },
@@ -306,6 +309,60 @@ actor.stop();
 await flush();
 assert.equal(actor.stopped, true);
 assert.ok(p1.closed && p1.closed.reason === CLOSE_REASON.ROOM_CLOSED, 'stop closes the remaining clients with ROOM_CLOSED');
+
+// ---------------------------------------------------------------- 2026-10-10: a client still in its covered entry is busy, not dead
+// An ABBA under load ~110 dropped the host's own loopback seat and a peer during their first entry (BACKPRESSURE
+// "sustained" after 2 s): the entry's synchronous steps ran for seconds and the links could not drain meanwhile. For the
+// entry grace after its WELCOME a client's soft pressure closes only after the long continuous limit; the stale snapshot
+// is still dropped and the hard bound still closes at once; after the grace the steady 2 s rule is back.
+{
+  assert.equal(ENTRY_BACKPRESSURE_GRACE_MS, 120_000, 'a client is in its entry grace for 120 s after its WELCOME');
+  assert.equal(ENTRY_BACKPRESSURE_SUSTAINED_MS, 60_000, 'where only 60 s of continuous pressure closes it');
+  const base = { roomId: 'room-entry-grace', mapId: 'verdant', seed: 11, countdownS: 0, world: 'terrain', now, schedule, snapshotHz: 30,
+    seats: [
+      { seat: 0, playerId: 'g1', name: 'G1', team: 'alpha', specId: 'm1a2' },
+      { seat: 1, playerId: 'g2', name: 'G2', team: 'alpha', specId: 'm1a2' },
+      { seat: 2, playerId: 'g3', name: 'G3', team: 'bravo', specId: 't90m' },
+      { seat: 3, playerId: 'g4', name: 'G4', team: 'bravo', specId: 't90m' },
+    ] };
+  assert.throws(() => createMatchActor({ ...base, entryBackpressureSustainedMs: 1000 }), /entry backpressure/,
+    'the entry limit is never shorter than the steady one');
+  // short limits keep the receipt fast: a 10 s grace, 5 s of continuous pressure
+  const graceActor = createMatchActor({ ...base, entryBackpressureGraceMs: 10_000, entryBackpressureSustainedMs: 5_000 });
+  const [busy, dead, hard, late] = ['g1', 'g2', 'g3', 'g4'].map((id, seat) => createHeadlessClient(graceActor, seat, id));
+  await flush();
+  for (const client of [busy, dead, hard, late]) assert.ok(client.welcome, `${client.playerId} welcomed`);
+  const dropped = (id) => graceActor.clientStats().find((entry) => entry.playerId === id)?.droppedSnapshots ?? 0;
+  // a loading client: pressure for 4 s (its synchronous steps), drains for a tick, then 4 s more — busy, never dead
+  busy.link.client.pressure = 100 * 1024;
+  dead.link.client.pressure = 100 * 1024;
+  await advanceTicks(graceActor, 240);
+  assert.ok(!busy.closed && !dead.closed, 'four seconds of pressure in the entry grace closes no one (the steady rule closed at 2 s)');
+  assert.ok(dropped('g1') >= 100, `stale snapshots are still dropped, never queued (${dropped('g1')})`);
+  busy.link.client.pressure = 0;
+  await advanceTicks(graceActor, 2);
+  busy.link.client.pressure = 100 * 1024;
+  hard.link.client.pressure = 600 * 1024;
+  await advanceTicks(graceActor, 2);
+  assert.ok(hard.closed && hard.closed.reason === CLOSE_REASON.BACKPRESSURE, 'the hard bound closes at once, grace or not');
+  await advanceTicks(graceActor, 90);
+  assert.ok(dead.closed && dead.closed.reason === CLOSE_REASON.BACKPRESSURE, `a link that never drains still closes in the grace (${dead.closed?.detail})`);
+  assert.equal(dead.closed.detail, 'sustained');
+  await advanceTicks(graceActor, 150);
+  assert.ok(!busy.closed, 'a client that drained between its steps is busy, not dead: its pressure clock restarted');
+  busy.link.client.pressure = 0;
+  // past the grace the steady rule is back: 2 s of pressure closes
+  await advanceTicks(graceActor, 240);
+  assert.ok(!late.closed);
+  late.link.client.pressure = 100 * 1024;
+  await advanceTicks(graceActor, 150);
+  assert.ok(late.closed && late.closed.reason === CLOSE_REASON.BACKPRESSURE && late.closed.detail === 'sustained', 'after the grace, 2.5 s of pressure closes as before');
+  assert.ok(!busy.closed, 'the drained client stays');
+  assert.equal(graceActor.stats().backpressureCloses, 3);
+  graceActor.stop();
+  await flush();
+  console.log('matchActor.selftest: in the entry grace soft pressure is a loading client (stale snapshots dropped, 4 s busy runs kept, a never-draining link closed at the long limit, the hard bound at once); after it the steady 2 s rule');
+}
 
 // ---------------------------------------------------------------- verdict: the clock ends the match, the callback fires, the actor lingers then stops
 {

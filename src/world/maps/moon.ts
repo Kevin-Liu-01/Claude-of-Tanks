@@ -18,7 +18,11 @@
 // (also the turbo-ball kickoff) and on two crater-free stretches of the floor either side of it.
 import mars from './mars.ts';
 import type { MapCompositionConfig } from './contracts.ts';
-const grey = (_h: number, _s: number, l: number): [number, number, number] => [0.60, .025, .30 + l * .35];
+// (2026-10-10, the map-revival lane; wave 346: "icy-blue crater-free regolith") the regolith a neutral, faintly warm grey,
+// not a blue one: hue 0.60 -> 0.09, saturation 0.025 -> 0.012
+const grey = (_h: number, _s: number, l: number): [number, number, number] => [0.09, .012, .30 + l * .35];
+/** The ejecta blocks' breccia (sceneryRocks.ts 'breccia'): a neutral grey a shade under the regolith, dust at the foot. */
+const LUNAR_BRECCIA: readonly [number, number, number] = [0.09, 0.04, 0.33];
 export default {
   id: 'moon', name: 'Earthrise Basin',
   blurb: 'Lunar crater rims, a research outpost and long shadows beneath a vast blue Earth',
@@ -71,7 +75,8 @@ export default {
   },
   splat: { ...mars.splat, sourcedPalette: 'moon', sandstone: false,
     grassTone: grey, dirtTone: grey, rockTone: grey, mudTone: grey,
-    tintA: [.94,.96,1], tintB: [.82,.84,.88], tintC: [1,1,1], roadTint: [.76,.78,.82], rippleAmp: .05, strata: 0,
+    // (wave 346) the macro tints neutral (they leaned blue: B/R 1.06-1.07), each at its luminance
+    tintA: [.957,.957,.955], tintB: [.838,.838,.836], tintC: [1,1,1], roadTint: [.776,.776,.774], rippleAmp: .05, strata: 0,
   },
   vegetation: { ...mars.vegetation },
   props: { ...mars.props, sourcedPalette: 'winter', plan: [],
@@ -96,19 +101,6 @@ export default {
         outcrop: { count: 4, radius: 8 } },
     ],
     rockTone: grey, rocks: 260, outcrops: 48, craters: 90, rubblePiles: 0, hedgehogs: 0,
-    // The hitbox lane (2026-10-08): the stones' own colliders took from the brief's cover the empty corners their legacy
-    // records had counted, and the valley's middle band fell under its band (coverMidShare 0.308 -> 0.296 of 0.30).
-    // Three pairs of outcrops of the valley's own boulders, each pair the other's rotation about the landing field and
-    // clear of the zone-control discs, each a crescent bulging toward the side it shelters from, put real hull-down cover
-    // back on the open floor where the layout metric found it short.
-    coverOutcrops: [
-      { x: 106, z: 88, towardDeg: -108, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders north-east of the outpost' },
-      { x: -106, z: -88, towardDeg: 72, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders south-west of the outpost' },
-      { x: 244, z: -26, towardDeg: -128, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders on the east floor' },
-      { x: -244, z: 26, towardDeg: 52, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders on the west floor' },
-      { x: -224, z: 58, towardDeg: -71, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders on the west floor, north' },
-      { x: 224, z: -58, towardDeg: 109, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders on the east floor, south' },
-    ],
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
     tankWrecks: { era: 'cold-war', count: 0, debris: true, ids: [] },
@@ -136,16 +128,33 @@ export default {
       ]),
     ],
   },
+  // The hitbox lane (2026-10-08; round 2): the stones' own colliders took from the brief's cover the empty corners their
+  // legacy records had counted, and the valley's middle band fell under its band (coverMidShare 0.308 -> 0.296 of
+  // 0.30). Three pairs of block fields on the floor, each pair the other's rotation about the landing field and clear of
+  // the zone-control discs: the breccia a crater threw out, as round Shorty and Camelot — angular blocks of every size,
+  // sunk in the regolith banked against them, chips round their feet (gauntlet wave 272 read the boulder crescents first
+  // put there as smooth pale domes).
+  scenery: {
+    rocks: ([[106, 88, 20], [244, -26, 70], [224, -58, 140]] as const).flatMap(([x, z, yawDeg], i) => [
+      { form: 'blocks' as const, geology: 'breccia' as const, x, z, radius: 6, height: 2.6, yawDeg, tone: LUNAR_BRECCIA,
+        name: `the ejecta blocks ${['north-east of the outpost', 'on the east floor', 'on the east floor, south'][i]}` },
+      { form: 'blocks' as const, geology: 'breccia' as const, x: -x, z: -z, radius: 6, height: 2.6, yawDeg: yawDeg + 180, tone: LUNAR_BRECCIA,
+        name: `the ejecta blocks ${['south-west of the outpost', 'on the west floor', 'on the west floor, north'][i]}` },
+    ]),
+  },
   horizon: { baseHex: 0x686b73, rockHex: 0x858a94, amp: 1.35, style: 'rolling', treeline: 0,
     treelineLayers: 0, ground: 'sand', relief: 'martian', haze: 0, grain: .7, farRange: true,
     // the mountains lane (2026-10-02): the moon keeps its own walls — the carved landform drew straight-flanked
     // pyramids on these airless ranges (the skyline cone measure, horizonMassif.selftest.mjs: 0 -> 13 over three seeds)
     massif: false },
   sky: { skyIntensity: 0, nightSky: 1, galaxy: .35, nebulaHex: 0, earth: 1, planetDeg: 18, planetHex: 0x8abdff,
-    sunElevationDeg: 28, sunAzimuthDeg: 48, turbidity: 1, rayleigh: 0, mieCoefficient: 0,
-    fogDensity: 0, fogMix: 0, envIntensity: .3, cloudOpacity: 0, cloudOpacity2: 0, cloudShadowAmp: 0,
-    sunIntensity: 3.5, sunColorHex: 0xf1f4ff, hemiIntensity: .38, fillIntensity: .16, postExposure: .98,
-    atmosphere: { rayleighScale: 0, mieScale: 0, ozoneScale: 0, groundAlbedoHex: 0x676b73 },
+    // (2026-10-10, the map-revival lane; wave 346: "flat shadowless light") an airless sky gives the sun no help: the sky's
+    // fill and the bounce come down (hemi .38 -> .12, fill .16 -> .05, environment .3 -> .15), so the shadows are the hard
+    // black of the photographs, and a lower sun (28 -> 20 deg) draws them long across the crater floors and rims
+    sunElevationDeg: 20, sunAzimuthDeg: 48, turbidity: 1, rayleigh: 0, mieCoefficient: 0,
+    fogDensity: 0, fogMix: 0, envIntensity: .15, cloudOpacity: 0, cloudOpacity2: 0, cloudShadowAmp: 0,
+    sunIntensity: 3.5, sunColorHex: 0xf1f4ff, hemiIntensity: .12, fillIntensity: .05, postExposure: .98,
+    atmosphere: { rayleighScale: 0, mieScale: 0, ozoneScale: 0, groundAlbedoHex: 0x6b6a68 },
   },
   minimap: { ...mars.minimap, base: [108,111,118], hard: [145,148,155], soft: [90,93,100],
     roadFill: 'rgba(180,185,195,.95)', roadCasing: 'rgba(60,65,75,.9)' },

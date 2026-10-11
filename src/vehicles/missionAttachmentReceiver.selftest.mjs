@@ -8,7 +8,7 @@ import {DRONE_DOCK_CRADLE,missionAttachmentMotionClear,missionAttachmentVolumesC
 import {collectMissionStock,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision} from '../../tools/mission-attachment-geometry.mjs';
 
 const ids=['pt91_twardy','leo2a6_ua','ua_m1a1','ua_t80u_modern'];
-const counts={pt91_twardy:6,leo2a6_ua:4,ua_m1a1:8,ua_t80u_modern:2};
+const counts={pt91_twardy:24,leo2a6_ua:22,ua_m1a1:32,ua_t80u_modern:2};
 const ray=new Ray(new Vector3(),new Vector3(0,-1,0)),hit=new Vector3();
 function nativeRows(stock){const rows=new Map();for(const bucket of stock.grid.values())for(const row of bucket)rows.set(row.id,row);return [...rows.values()];}
 function nativeParts(mesh,turret){
@@ -19,7 +19,8 @@ function nativeParts(mesh,turret){
   const box=new Box3();for(let v=i*36;v<(i+1)*36;v++)box.expandByPoint(new Vector3().fromBufferAttribute(p,v).applyMatrix4(transform));return box;
  });
 }
-function anchorIndexes(id){return id==='pt91_twardy'?[0,1,2,3]:id==='leo2a6_ua'||id==='ua_t80u_modern'?[0,1]:[0,4];}
+// Anchors lead each part list: the welded feet, rail posts, rail sockets or seated bearers (bearerParts in the source).
+function anchorIndexes(id){return id==='pt91_twardy'?[0,1,2,3]:[0,1];}
 function anchorStock(id,row){
  if(row.solidBox)return false;
  if(id==='pt91_twardy')return row.name==='turret';

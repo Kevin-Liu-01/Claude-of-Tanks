@@ -70,6 +70,9 @@ export interface DestructiblePropType {
   /** Round 3 (cartKit.ts): a sled's runner tracks on a snowbound map, in the placed copy's frame; the props press them
    * into the ground (vehicleContactShadow.ts buildRunnerTracks). */
   runners?: RunnerTrack;
+  /** (the map-content lane, 2026-10-10) seated as the carts are, on the plane through the ground at its footprint's
+   * corners (hw, hl), pitched and rolled to it (props.ts cartGroundPose): a polar station's drum works on a slope. */
+  groundPose?: boolean;
 }
 
 export const FENCE_SEG = 2.4; // fence-kit module pitch, meters

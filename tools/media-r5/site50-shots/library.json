@@ -113,6 +113,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r13",
+     "sceneVersion": "v14",
+     "sceneSha256": "fa95bbdefe937a781626df7a2a0d0baa0f7c4fc1c3e933cece2a08d6e300fda7",
+     "renderer": "666ca64f8",
+     "at": "2026-10-10T23:06:35.260Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
     }
    ],
    "title": "A Leopard 2A6 pushes up the main street of burning Steinburg",
@@ -500,6 +509,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r13",
+     "sceneVersion": "v14",
+     "sceneSha256": "7d2c47bf6bc0f236995184a95448505e4ce1e644a476a27107642b0e11f75c9d",
+     "renderer": "a8bb20742",
+     "at": "2026-10-10T23:06:36.223Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
     }
    ],
    "title": "A T-90M column drives into the fight on the country road",
@@ -629,6 +647,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r13",
+     "sceneVersion": "v14",
+     "sceneSha256": "3e4f8fbc2ce517cc813e9514e6930ce40e997b6a4a31f3b600b68bb397a3afca",
+     "renderer": "a8bb20742",
+     "at": "2026-10-10T23:06:36.223Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
     }
    ],
    "title": "A T-14 Armata advances past the barns of Verdant Fields",
@@ -758,6 +785,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r13",
+     "sceneVersion": "v14",
+     "sceneSha256": "c1747164a099c4486af9475ee6c11f137c6ffb40f460c8cf8d63f709135d84f9",
+     "renderer": "a583c4e06",
+     "at": "2026-10-10T23:06:36.873Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
     }
    ],
    "title": "A KF51 Panther charges past the farmhouse through artillery",
@@ -1233,6 +1269,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r13",
+     "sceneVersion": "v14",
+     "sceneSha256": "656994d7b574cf620c3fcbfe4ed8bfaaed2eab798c43d075c7ddb7d5847e9a8b",
+     "renderer": "a583c4e06",
+     "at": "2026-10-10T23:06:36.873Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
     }
    ],
    "title": "A ZTZ-100 fords the river as shells land around it",
@@ -1348,6 +1393,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r13",
+     "sceneVersion": "v14",
+     "sceneSha256": "151d02a92801880640d3460eb0dbe0d7983f1ddffe4639e5bc8c30329f4590e7",
+     "renderer": "a8bb20742",
+     "at": "2026-10-10T23:06:36.223Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
     }
    ],
    "title": "A Challenger 1 column pushes through the rail yard at Cinder Junction",
@@ -1572,6 +1626,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r13",
+     "sceneVersion": "v14",
+     "sceneSha256": "4098955c06b3fdd0b387ec9a104bc88fea2f755bc521141f22657552525388f8",
+     "renderer": "a8bb20742",
+     "at": "2026-10-10T23:06:36.223Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
     }
    ],
    "title": "A K2 Black Panther races past the red-roofed farm at sunset",
@@ -1899,6 +1962,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r13",
+     "sceneVersion": "v14",
+     "sceneSha256": "f167a3ce44a819c3ea3c3f96d712d7b3bd09ac356d087a686fe9c1d3fe24ea0d",
+     "renderer": "a583c4e06",
+     "at": "2026-10-10T23:06:36.873Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
     }
    ],
    "title": "Street duel at night: a Griffin trades fire with a T-80U down a Steinburg street",
@@ -2008,6 +2080,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r13",
+     "sceneVersion": "v14",
+     "sceneSha256": "fa5d735d27ce79860ba83e0bb7b5caf49e9b15425f8da2b48b5b0f7d77e85083",
+     "renderer": "a583c4e06",
+     "at": "2026-10-10T23:06:36.873Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
     }
    ],
    "title": "Fire at the Steinburg crossroads at noon",
@@ -2111,6 +2192,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r13",
+     "sceneVersion": "v14",
+     "sceneSha256": "2dea579d014986b62203f7c0ed04bf440462258b42044610c1b525c1745dddda",
+     "renderer": "a583c4e06",
+     "at": "2026-10-10T23:06:36.873Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
     }
    ],
    "title": "A T-90A is knocked out at the end of a Steinburg street at night",
@@ -2426,6 +2516,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r13",
+     "sceneVersion": "v14",
+     "sceneSha256": "133fd10e757eb397994310383556992472ea0d8e6d5452294b4bbdf507ce2edc",
+     "renderer": "a8bb20742",
+     "at": "2026-10-10T23:06:36.223Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
     }
    ],
    "title": "A T-90SM wedge assaults through the burning fields",
@@ -2529,6 +2628,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r13",
+     "sceneVersion": "v14",
+     "sceneSha256": "bb8789a44e462ad64a28cc2e113435adb9a5a855e535ef8cfea509fbec2fcf34",
+     "renderer": "a8bb20742",
+     "at": "2026-10-10T23:06:36.223Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
     }
    ],
    "title": "Artillery walks across the fields toward the wedge at night",
@@ -2953,6 +3061,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r13",
+     "sceneVersion": "v14",
+     "sceneSha256": "080f72ab582a2cc84a81648b582c82cb647585439acde0a56fdc0f781ecae3fb",
+     "renderer": "a583c4e06",
+     "at": "2026-10-10T23:06:36.873Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
     }
    ],
    "title": "A Merkava Mk 3D fires at Sunscar Oasis",
@@ -3050,6 +3167,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r13",
+     "sceneVersion": "v14",
+     "sceneSha256": "30398e0a4f3590807f5aa5883421f74d7b54d21c246ac680993fee9394016618",
+     "renderer": "a583c4e06",
+     "at": "2026-10-10T23:06:36.873Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
     }
    ],
    "title": "A T-62MV-1 is knocked out by the caravanserai",
@@ -3807,6 +3933,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r13",
+     "sceneVersion": "v14",
+     "sceneSha256": "b7d16dbd4d9c724989f736517e7b7081555fd5e5bed9edc5e81cab2c00112fff",
+     "renderer": "a583c4e06",
+     "at": "2026-10-10T23:06:36.873Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
     }
    ],
    "title": "TOS-1A launchers fire a rippling salvo in the Ironworks yard at night",
@@ -4237,6 +4372,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r13",
+     "sceneVersion": "v14",
+     "sceneSha256": "46244db3313c33bd53b5fc31ec78a6cce412eb65e75b6de576818ad31b7650d9",
+     "renderer": "a583c4e06",
+     "at": "2026-10-10T23:06:36.873Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
     }
    ],
    "title": "A Leopard 2A6 is knocked out beside the onion-domed church at night",
@@ -4842,6 +4986,12 @@
      "sha256": "efec3b31e1fa7ee2b1dfc0f0efc09b1b5138a3760733ee21b165b347e2174ecf",
      "at": "2026-10-09T23:32:31.795Z",
      "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
+    },
+    {
+     "version": "v15",
+     "sha256": "99a0e920f97e7c43bde5f07667540040da4bbaa8fd148aca757b8c773fcd8562",
+     "at": "2026-10-10T23:06:39.357Z",
+     "note": "round 14: all fifty resolved afresh on the night tree (integ/night fe5621644, deploy 208): FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage"
     }
    ],
    "renders": [
@@ -4880,6 +5030,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r13",
+     "sceneVersion": "v14",
+     "sceneSha256": "efec3b31e1fa7ee2b1dfc0f0efc09b1b5138a3760733ee21b165b347e2174ecf",
+     "renderer": "b185829cb",
+     "at": "2026-10-10T23:06:38.121Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
     }
    ],
    "title": "Sunscar Oasis at sunset: smoke over the palms and the minaret",
@@ -4963,6 +5122,12 @@
      "sha256": "0d7b54998c330bb3bf7bcd7e75baffbde1a7af11aab6e92c08a411d8f59403a4",
      "at": "2026-10-09T23:32:31.795Z",
      "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
+    },
+    {
+     "version": "v15",
+     "sha256": "9acd40a210945e4d69e1f7a7eda5aa159fa20e0556d80a249ddca659e504d0e2",
+     "at": "2026-10-10T23:06:39.357Z",
+     "note": "round 14: all fifty resolved afresh on the night tree (integ/night fe5621644, deploy 208): FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage"
     }
    ],
    "renders": [
@@ -5201,6 +5366,12 @@
      "sha256": "ccf1fd56944a4553a294b3d7ee82f69bdf5c52bc917e1ab36013ad65fe3f9449",
      "at": "2026-10-09T23:32:31.795Z",
      "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
+    },
+    {
+     "version": "v15",
+     "sha256": "62cabe9528b3948fdc25c7ad9c67d2a46f776a67ffb2e25ae695aea4290dc5d3",
+     "at": "2026-10-10T23:06:39.357Z",
+     "note": "round 14: all fifty resolved afresh on the night tree (integ/night fe5621644, deploy 208): FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage"
     }
    ],
    "renders": [
@@ -5239,6 +5410,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r13",
+     "sceneVersion": "v14",
+     "sceneSha256": "ccf1fd56944a4553a294b3d7ee82f69bdf5c52bc917e1ab36013ad65fe3f9449",
+     "renderer": "b185829cb",
+     "at": "2026-10-10T23:06:38.121Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
     }
    ],
    "title": "Ironworks at night: the yard burns between the smoke stacks",
@@ -5547,6 +5727,12 @@
      "sha256": "e2a027f7d0dc7dba8d46832d38490327edc12aedb29c3c5c48361532b06a1e3b",
      "at": "2026-10-09T23:32:31.795Z",
      "note": "Round thirteen (2026-10-09, launch day): the launch finals' scenes on push 6 (its map vehicles, clearings and scenery), wave s3's beat placement, the clouds from scene time and the look carried from the reviews; the 4K finals render from these"
+    },
+    {
+     "version": "v15",
+     "sha256": "85fa053c0465da77fa19c271084b17ec2f302036c13bda4e432b5af9a6b61af1",
+     "at": "2026-10-10T23:06:39.357Z",
+     "note": "round 14: all fifty resolved afresh on the night tree (integ/night fe5621644, deploy 208): FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage"
     }
    ],
    "renders": [

@@ -8,6 +8,7 @@ import { createGarageArchitectureController } from './garageArchitecture.ts';
 import { GARAGE_ENVIRONMENT_RECIPES } from './garageEnvironmentRecipes.ts';
 import {
   GARAGE_FACILITY_AXIS_YAW_RAD,
+  garageTerraceAtDatum,
   getGarageFacilityTerraces,
 } from './garageFacilityDetails.ts';
 
@@ -95,8 +96,8 @@ for (const variant of GARAGE_VARIANTS) {
           (a.side - b.side) / (a.radiusSide + b.radiusSide),
           (a.depth - b.depth) / (a.radiusDepth + b.radiusDepth),
         );
-        assert.ok(clearance >= 1,
-          `${variant.id}: ${a.label} must not overlap ${b.label}`);
+        assert.ok(clearance >= 1 || (garageTerraceAtDatum(a, terraces) && garageTerraceAtDatum(b, terraces)),
+          `${variant.id}: ${a.label} must not overlap ${b.label} unless both stand at the datum`);
       }
     }
   }

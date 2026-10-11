@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
 import { createGunshipBattleVisual, syncGunshipVisual } from './gunshipVisual.ts';
+import { rosterVisualAttempts } from './rosterVisualFallback.ts';
 
 const candidateSource = readFileSync(new URL('./rosterState.ts', import.meta.url), 'utf8');
 const names = ['ensureStagedVisuals', 'ensureStagedVisualsSteps', 'nextStagedBake',
@@ -14,8 +15,8 @@ function load(source, ports) {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
   }).outputText;
   return new Function('createTank', 'createTankSteps', 'getDeviceTier', 'HERO_TEX_SPECS', 'createGunshipBattleVisual',
-    `${code}\nreturn {${functions.map(node => node.name.text).join(',')}};`)(
-    ports.sync, ports.steps, ports.tier, new Set(['m1a2', 't90m']), createGunshipBattleVisual);
+    'rosterVisualAttempts', `${code}\nreturn {${functions.map(node => node.name.text).join(',')}};`)(
+    ports.sync, ports.steps, ports.tier, new Set(['m1a2', 't90m']), createGunshipBattleVisual, rosterVisualAttempts);
 }
 function fixture({ mobile = false, player = false, pooled = false, fail = null } = {}) {
   const scene = new THREE.Scene(), trace = [], created = [], ground = () => 0;
@@ -38,6 +39,7 @@ function fixture({ mobile = false, player = false, pooled = false, fail = null }
     trace.push('scene'); if (fail === 'scene') throw Error('scene failed');
   });
   const builds = [];
+  let stepCalls = 0;
   const ports = {
     tier: () => mobile ? 'mobile' : 'desktop',
     sync(id, engine, options) { builds.push({ mode: 'sync', id, engine, options }); return make(); },
@@ -46,7 +48,8 @@ function fixture({ mobile = false, player = false, pooled = false, fail = null }
       const visual = make(); let complete = false;
       try {
         yield;
-        if (fail === 'factory') throw Error('factory failed');
+        stepCalls++;
+        if (fail === 'factory' || (fail === 'first' && stepCalls === 1)) throw Error('factory failed');
         yield;
         complete = true; return visual;
       } finally { if (!complete) visual.dispose(); }
@@ -140,7 +143,22 @@ for (const fail of ['factory', 'scene', 'ground', 'pose']) {
   f.ent.visual = null;
   assert.throws(() => f.api.ensureTankVisual(f.game, f.ent), /context is unavailable/);
 }
-console.log('roster staging: PASS recorded synchronous policy parity, private graph publication, cancellation, stale lifetimes, pools and failure cleanup');
+// Fail-soft (2026-10-10): a failed build retries at the other geometry tier and binds that visual; the failed attempt's
+// private graph is disposed exactly once and the battle never sees the error.
+{
+  const f = fixture({ fail: 'first' }), errors = [], logged = console.error;
+  console.error = (...a) => errors.push(a.join(' '));
+  let visual;
+  try { visual = drain(f.api.ensureTankVisualSteps(f.game, f.ent)); } finally { console.error = logged; }
+  assert.equal(visual, f.ent.visual, 'the retried visual is bound');
+  assert.deepEqual(f.builds.map(({ id, options }) => [id, options.geometryQuality]), [['merkava1b', 'low'], ['merkava1b', 'high']],
+    'authored tier first, then the other tier');
+  assert.equal(f.created[0].disposed, 1, 'the failed attempt disposed once');
+  assert.equal(f.created[1].disposed, 0, 'the bound visual is live');
+  assert.equal(visual.root.parent, f.scene);
+  assert.ok(errors.some(line => /merkava1b visual \(authored merkava1b\) failed/.test(line)), 'the failure is logged');
+}
+console.log('roster staging: PASS recorded synchronous policy parity, private graph publication, cancellation, stale lifetimes, pools, failure cleanup and fail-soft retry');
 
 for (const staged of [false, true]) {
   const f = fixture({ player: true }); f.game.ruleset = { aerial: 'gunship' };

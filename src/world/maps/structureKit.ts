@@ -6,6 +6,7 @@
 
 import * as THREE from 'three';
 import { createOrbitalStructures } from './orbitalStructures.ts';
+import { bar, buildFallenMast, buildLatticeMast, corrugatedFace, fractureRuns } from './mastKit.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { INDUSTRIAL_CLADDING, addConnectedExterior, structureBuildContext } from './exteriorDetailKit.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
@@ -1391,6 +1392,15 @@ function gableLight({
   return out;
 }
 
+/**
+ * Seat a wreck piece on the ground (the buildings and landmarks lane, 2026-10-10; the owner's "monstrosity" sweep found
+ * every light kit's debris hovering up to a third of a metre in the air): its lowest point `sink` metres into it.
+ */
+function groundOn<T extends THREE.BufferGeometry>(geo: T, sink: number): T {
+  geo.computeBoundingBox();
+  return geo.translate(0, -(geo.boundingBox?.min.y ?? 0) - sink, 0);
+}
+
 function debris(
   meta: Pick<DestructibleBuildingType, 'hw' | 'hl' | 'h'>,
   pal: Palette,
@@ -1406,14 +1416,16 @@ function debris(
     const piece = material === 'canvas'
       ? slab(long, 0.045, 0.45 + rng() * 0.8)
       : box(0.16 + rng() * 0.22, 0.08 + rng() * 0.10, long);
-    piece.rotateY(a + rng()); piece.rotateX((rng() - 0.5) * 0.24);
-    piece.translate(Math.cos(a) * radius, 0.08 + rng() * 0.25, Math.sin(a) * radius);
+    // (lying nearly flat on the ground, not hovering: the tilt and the height draws keep their seats in the stream)
+    piece.rotateY(a + rng()); piece.rotateX((rng() - 0.5) * 0.08);
+    const lift = rng();
+    groundOn(piece.translate(Math.cos(a) * radius, 0, Math.sin(a) * radius), 0.01 + lift * 0.025);
     colored(out, piece, i % 4 === 0 ? trim : base, rng, 0.14);
   }
   // Recognizable collapsed roof sheet and surviving stove/utility block.
   const roof = slab(meta.hw * 1.35, 0.08, meta.hl * 0.95);
   roof.rotateY((rng() - 0.5) * 0.8); roof.rotateX(0.12 + rng() * 0.18);
-  colored(out, roof.translate(meta.hw * 0.18, 0.18, -meta.hl * 0.08), dark, rng, 0.12);
+  colored(out, groundOn(roof.translate(meta.hw * 0.18, 0, -meta.hl * 0.08), 0.02), dark, rng, 0.12);
   // Building-scale persistent wreckage: collapsed wall leaves, a snapped
   // frame and a buckled service panel keep the broken state recognizable as
   // the exact structure that stood here instead of a generic debris sprinkle.
@@ -1422,19 +1434,19 @@ function debris(
     const panel = slab(meta.hw * 1.15, 0.09, Math.min(meta.h * 0.46, meta.hl * 1.20));
     panel.rotateY(side * (0.34 + rng() * 0.18));
     panel.rotateX(0.08 + rng() * 0.14);
-    colored(out, panel.translate(side * meta.hw * 0.28, 0.14, side * meta.hl * 0.22),
+    colored(out, groundOn(panel.translate(side * meta.hw * 0.28, 0, side * meta.hl * 0.22), 0.02),
       panelColor, rng, 0.11);
   }
   const frameH = Math.min(1.55, meta.h * 0.30);
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     const post = box(0.16, frameH * (0.65 + rng() * 0.35), 0.16);
     post.rotateZ((rng() - 0.5) * 0.22);
-    colored(out, post.translate(sx * meta.hw * 0.64, frameH * 0.42, sz * meta.hl * 0.58),
+    colored(out, groundOn(post.translate(sx * meta.hw * 0.64, 0, sz * meta.hl * 0.58), 0.06),
       dark, rng, 0.10);
   }
   const service = box(0.12, 0.62, 0.86);
   service.rotateZ(Math.PI / 2 - 0.16);
-  colored(out, service.translate(-meta.hw * 0.42, 0.22, meta.hl * 0.28), dark, rng, 0.08);
+  colored(out, groundOn(service.translate(-meta.hw * 0.42, 0, meta.hl * 0.28), 0.02), dark, rng, 0.08);
   return merge(out.map(ensureWorldNightEmissionMask));
 }
 
@@ -1742,29 +1754,187 @@ function makeServiceGarage(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('servicegarage', out);
 }
 
+/**
+ * Keep a light kit's stream seat while its build changes: draw exactly what the old build drew from the kit's stream
+ * (props.ts builds every pool from one shared stream, so a build that drew more or fewer values would repaint every pool
+ * built after it), then paint the new parts from those draws in turn.
+ */
+function seatedStream(rng: Rng, draws: number): Rng {
+  const values = new Float64Array(draws);
+  for (let i = 0; i < draws; i++) values[i] = rng();
+  let k = 0;
+  return () => values[k++ % draws];
+}
+
+/** A small stable hash of integers to [0, 1) (per-sheet tone variety without a stream draw). */
+function cellHash(a: number, b: number): number {
+  let h = Math.imul(a * 73856093 ^ b * 19349663, 0x9e3779b1) >>> 0;
+  h ^= h >>> 15; h = Math.imul(h, 0x85ebca6b) >>> 0; h ^= h >>> 13;
+  return (h >>> 0) / 4294967296;
+}
+
+// The old relay build painted 260 vertices from the kit's stream (walls 24, roof 24, door 24, roof block 24, two legs 48,
+// the pole 52, the beacon 64): the new build draws the same count, so every pool after it keeps its paint and debris.
+const RELAY_STREAM_DRAWS = 260;
+const RELAY_W = 6.2, RELAY_D = 6.8, RELAY_H = 4.2, RELAY_PLINTH_TOP = 0.15;
+const RELAY_CONCRETE = 0x83847f, RELAY_ROOF = 0x70777b, RELAY_ROOF_RIB = 0x7d8488;
+
+/**
+ * The relay station (the buildings and landmarks lane, 2026-10-10; the owner flagged its roof mast, two legs splaying
+ * apart with rungs and a pole floating between them): a corrugated steel hut on a concrete plinth reaching below the
+ * ground, its trapezoidal sheets in flat facets with corner flashings, its louvred vents in frames, a framed steel door
+ * with its hinges, handle, kick plate and canopy, a ribbed roof deck with its eaves and fascia, and on the roof a guyed
+ * galvanised lattice mast (maps/mastKit.ts) on its concrete pad, its beacon on the pole and a dish on its arm, the cable
+ * tray down to the hut's entry box. The near-ground parts keep the old contact band's extents (±3.1 across, ±3.52
+ * along), so no placement moves; the destructible lane supersedes the hut with a fracture-ready one later, and every
+ * piece's triangles stay one run for it (userData.fracture).
+ */
 function makeRelayStation(rng: Rng): THREE.BufferGeometry {
-  const out: THREE.BufferGeometry[] = [], p = PAL.urbanSteel, w = 6.2, d = 6.8, h = 4.2;
-  colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
-  colored(out, slab(w + 0.5, 0.24, d + 0.5).translate(0, h + 0.10, 0), p[2], rng);
+  const paint = seatedStream(rng, RELAY_STREAM_DRAWS);
+  const out: THREE.BufferGeometry[] = [], pieces: string[] = [];
+  const p = PAL.urbanSteel, w = RELAY_W, d = RELAY_D, h = RELAY_H, y0 = RELAY_PLINTH_TOP;
+  const put = (geo: THREE.BufferGeometry, color: number, piece: string, jitter = 0.04): THREE.BufferGeometry => {
+    colored(out, geo, color, paint, jitter);
+    pieces.push(piece);
+    return geo;
+  };
+  // the plinth: concrete from 0.6 m under the ground to a curb, flush with the walls' planes (its UVs drawn small, so the
+  // sheet tile's ribs blur into a cast surface's mottle)
+  put(scaleUV(box(w, 0.6 + y0, d), 0.08, 0.08).translate(0, (y0 - 0.6) / 2, 0), RELAY_CONCRETE, 'hut-plinth', 0.05);
+  // the wall core behind the sheets, and the trapezoidal sheets with their crests on the walls' planes
+  put(box(w - 0.06, h - y0, d - 0.06).translate(0, y0 + (h - y0) / 2, 0), p[0], 'hut-walls');
+  const sheetBase = new THREE.Color(), tone = new THREE.Color();
+  sheetBase.set(p[0]);
+  const faces: Array<{ width: number; turn: number; x: number; z: number }> = [
+    { width: w, turn: 0, x: 0, z: d / 2 }, { width: w, turn: Math.PI, x: 0, z: -d / 2 },
+    { width: d, turn: Math.PI / 2, x: w / 2, z: 0 }, { width: d, turn: -Math.PI / 2, x: -w / 2, z: 0 },
+  ];
+  faces.forEach((face, faceIndex) => {
+    const skin = corrugatedFace({
+      width: face.width, y0, y1: h - 0.04, pitch: 0.2, depth: 0.03, crest: 0.05,
+      colourAt: (x, y) => {
+        // each 0.95 m sheet its own shade; the foot splashed darker, the head under the eaves shaded
+        const sheet = Math.floor((x + face.width / 2) / 0.95);
+        const shade = 1 + (cellHash(faceIndex, sheet) - 0.5) * 0.1;
+        const foot = 0.8 + 0.2 * Math.min(1, Math.max(0, (y - y0) / 1.2));
+        const head = y > h - 0.45 ? 0.94 : 1;
+        return tone.copy(sheetBase).multiplyScalar(shade * foot * head);
+      },
+    });
+    skin.rotateY(face.turn);
+    skin.translate(face.x, 0, face.z);
+    out.push(skin); pieces.push('hut-walls');
+  });
+  // the corner flashings: an angle over each corner, its faces on the walls' planes
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    put(box(0.16, h - y0, 0.012).translate(sx * (w / 2 - 0.08), y0 + (h - y0) / 2, sz * (d / 2 - 0.006)), p[1], 'hut-walls', 0.02);
+    put(box(0.012, h - y0, 0.16).translate(sx * (w / 2 - 0.006), y0 + (h - y0) / 2, sz * (d / 2 - 0.08)), p[1], 'hut-walls', 0.02);
+  }
+  // the head flashing round the walls' tops under the eaves
+  for (const sz of [-1, 1]) put(box(w + 0.02, 0.1, 0.02).translate(0, h - 0.05, sz * (d / 2 + 0.01)), p[1], 'hut-walls', 0.02);
+  for (const sx of [-1, 1]) put(box(0.02, 0.1, d + 0.02).translate(sx * (w / 2 + 0.01), h - 0.05, 0), p[1], 'hut-walls', 0.02);
+  // the front's three louvred vents: a dark recess, the frame and seven blades tipped out and down
   for (const x of [-1.85, 0, 1.85]) {
-    for (let y = 1.0; y <= 2.9; y += 0.38) {
-      colored(out, box(1.05, 0.08, 0.10).translate(x, y, d / 2 + 0.07), p[1], _detailRng);
+    const cy = 2.0, vw = 1.1, vh = 1.7, fz = d / 2;
+    put(box(vw - 0.06, vh - 0.06, 0.02).translate(x, cy, fz + 0.01), p[2], 'hut-vents', 0.03);
+    for (const side of [-1, 1]) put(box(0.07, vh + 0.04, 0.05).translate(x + side * (vw / 2 - 0.0), cy, fz + 0.025), p[1], 'hut-vents', 0.02);
+    for (const side of [-1, 1]) put(box(vw + 0.07, 0.07, 0.05).translate(x, cy + side * (vh / 2), fz + 0.025), p[1], 'hut-vents', 0.02);
+    for (let b = 0; b < 7; b++) {
+      const blade = box(vw - 0.08, 0.11, 0.012);
+      blade.rotateX(-0.62);
+      put(blade.translate(x, cy - vh / 2 + 0.16 + b * ((vh - 0.3) / 6), fz + 0.04), p[1], 'hut-vents', 0.02);
     }
   }
-  colored(out, box(2.0, 2.9, 0.12).translate(0, 1.45, -d / 2 - 0.06), p[2], rng);
-  colored(out, box(2.1, 0.72, 2.1).translate(0, h + 0.48, 0), p[1], rng);
-  const mastY = h + 0.80;
+  // the door at the back: the leaf on its sill, the frame, its stiffeners, kick plate, hinges, handle and lock, the
+  // canopy on its two knee braces and the lamp beside it (the frame's face at the old door's 3.52 m)
+  const dz = -d / 2, doorW = 1.86, doorH = 2.3;
+  put(box(doorW, doorH, 0.05).translate(0, y0 + doorH / 2, dz - 0.025), p[2], 'hut-door', 0.03);
+  for (const side of [-1, 1]) put(box(0.11, doorH + 0.17, 0.12).translate(side * (doorW / 2 + 0.055), y0 + (doorH + 0.17) / 2, dz - 0.06), p[1], 'hut-door', 0.02);
+  put(box(doorW + 0.22, 0.12, 0.12).translate(0, y0 + doorH + 0.11, dz - 0.06), p[1], 'hut-door', 0.02);
+  put(box(doorW + 0.22, 0.05, 0.12).translate(0, y0 + 0.025, dz - 0.06), p[1], 'hut-door', 0.02);
+  for (const y of [0.85, 1.75]) put(box(doorW - 0.24, 0.05, 0.014).translate(0, y0 + y, dz - 0.057), p[1], 'hut-door', 0.02);
+  put(box(doorW - 0.16, 0.22, 0.006).translate(0, y0 + 0.17, dz - 0.053), 0x7b8285, 'hut-door', 0.02);
+  for (const y of [0.32, 1.15, 1.98]) put(box(0.035, 0.14, 0.05).translate(-doorW / 2 + 0.03, y0 + y, dz - 0.07), p[2], 'hut-door', 0.02);
+  put(box(0.05, 0.17, 0.012).translate(doorW / 2 - 0.16, y0 + 1.05, dz - 0.056), p[1], 'hut-door', 0.02);
+  put(box(0.13, 0.024, 0.03).translate(doorW / 2 - 0.2, y0 + 1.08, dz - 0.077), 0xb3b8b9, 'hut-door', 0.02);
+  put(box(0.06, 0.09, 0.03).translate(doorW / 2 - 0.16, y0 + 0.92, dz - 0.065), p[2], 'hut-door', 0.02);
+  const canopy = pitchSkillionRoof(slab(doorW + 0.6, 0.06, 0.62), 'z', -1, 0.12);
+  put(canopy.translate(0, y0 + doorH + 0.42, dz - 0.31), p[1], 'hut-door', 0.03);
   for (const side of [-1, 1]) {
-    const leg = box(0.14, 5.4, 0.14); leg.rotateZ(side * -0.075);
-    colored(out, leg.translate(side * 0.36, mastY + 2.65, 0), p[2], rng);
+    const x = side * (doorW / 2 + 0.2);
+    put(bar([x, y0 + doorH + 0.02, dz - 0.01], [x, y0 + doorH + 0.4, dz - 0.56], 0.05, 0.05), p[2], 'hut-door', 0.02);
   }
-  for (let i = 0; i < 4; i++) {
-    colored(out, box(0.92 - i * 0.12, 0.12, 0.22)
-      .translate(0, mastY + i * 1.45, 0), p[1], _detailRng);
+  put(box(0.06, 0.06, 0.16).translate(doorW / 2 + 0.42, y0 + doorH + 0.06, dz - 0.07), p[2], 'hut-door', 0.02);
+  put(box(0.16, 0.14, 0.11).translate(doorW / 2 + 0.42, y0 + doorH + 0.06, dz - 0.2), 0x4b5156, 'hut-door', 0.02);
+  // the roof: the deck with its eaves 0.3 m out, its ribs along the fall, the fascia round the edge
+  const roofTop = h + 0.1;
+  put(slab(w + 0.6, 0.1, d + 0.6).translate(0, h + 0.05, 0), RELAY_ROOF, 'hut-roof', 0.05);
+  const ribs = 25;
+  for (let r = 0; r < ribs; r++) {
+    const x = -(w + 0.6) / 2 + 0.15 + r * ((w + 0.3) / (ribs - 1));
+    put(box(0.06, 0.035, d + 0.6).translate(x, roofTop + 0.0175, 0), RELAY_ROOF_RIB, 'hut-roof', 0.03);
   }
-  colored(out, cylinder(0.10, 0.13, 2.7, 8).translate(0, mastY + 6.55, 0), p[2], rng);
-  colored(out, markWorldBeacon(cylinder(0.28, 0.28, 0.20, 10)).translate(0, mastY + 7.84, 0), 0xa66d31, rng);
-  return mergeConnectedStructure('relaystation', out);
+  for (const sz of [-1, 1]) put(box(w + 0.65, 0.17, 0.025).translate(0, h + 0.04, sz * (d / 2 + 0.3125)), p[1], 'hut-roof', 0.02);
+  for (const sx of [-1, 1]) put(box(0.025, 0.17, d + 0.65).translate(sx * (w / 2 + 0.3125), h + 0.04, 0), p[1], 'hut-roof', 0.02);
+  // the cable tray from the mast's pad to the front eave, the conduit down the front to the entry box
+  put(box(2.0, 0.05, 0.14).translate(1.75, roofTop + 0.06, 0.55), 0x5b6165, 'hut-cable', 0.02);
+  put(box(0.14, 0.05, d / 2 - 0.42).translate(2.75, roofTop + 0.06, 0.55 + (d / 2 - 0.42) / 2 - 0.07), 0x5b6165, 'hut-cable', 0.02);
+  put(box(0.07, h - 2.72, 0.07).translate(2.75, 2.72 + (h - 2.72) / 2, d / 2 + 0.035), 0x4f5559, 'hut-cable', 0.02);
+  put(box(0.32, 0.34, 0.14).translate(2.75, 2.55, d / 2 + 0.07), 0x4f5559, 'hut-cable', 0.02);
+  // the mast's concrete pad on the deck, then the mast itself
+  put(scaleUV(box(1.4, 0.3, 1.4), 0.1, 0.1).translate(0, roofTop + 0.15, 0), RELAY_CONCRETE, 'mast-pad', 0.04);
+  const anchorR = 2.75;
+  const anchors = [0, 1, 2].map((i) => {
+    const a = Math.PI / 2 + (i * 2 * Math.PI) / 3;
+    return [Math.cos(a) * anchorR, roofTop, Math.sin(a) * anchorR] as const;
+  });
+  buildLatticeMast({
+    x: 0, z: 0, baseY: roofTop + 0.3, height: 6.75, face: 0.42, section: 1.75, pole: 1.25,
+    beacon: (lens) => markWorldBeacon(lens),
+    guys: { anchors, levels: [0.5, 0.94] },
+    dish: { leg: 1, level: 0.72, radius: 0.42 },
+  }, (geo, color, piece) => put(geo, color, piece, 0.025));
+  const geometry = mergeConnectedStructure('relaystation', out);
+  geometry.userData.fracture = relayFractureHooks(out, pieces);
+  return geometry;
+}
+
+/** The relay's fracture hooks for the destructible lane's anatomy: each piece's run, and what holds it to what. */
+function relayFractureHooks(parts: readonly THREE.BufferGeometry[], pieces: readonly string[]) {
+  const runs = fractureRuns(parts, pieces);
+  const has = new Set(runs.map((run) => run.piece));
+  const links: Array<[string, string, 'rest' | 'bolt' | 'cast' | 'weld']> = [
+    ['hut-walls', 'hut-plinth', 'bolt'], ['hut-vents', 'hut-walls', 'bolt'], ['hut-door', 'hut-walls', 'bolt'],
+    ['hut-roof', 'hut-walls', 'bolt'], ['hut-cable', 'hut-roof', 'bolt'], ['mast-pad', 'hut-roof', 'cast'],
+    ['mast-base', 'mast-pad', 'bolt'],
+  ];
+  const sections = runs.filter((run) => run.piece.startsWith('mast-section-')).length;
+  if (sections) links.push(['mast-section-0', 'mast-base', 'bolt']);
+  for (let s = 1; s < sections; s++) links.push([`mast-section-${s}`, `mast-section-${s - 1}`, 'bolt']);
+  if (sections) links.push(['mast-head', `mast-section-${sections - 1}`, 'weld']);
+  for (const run of runs) {
+    if (run.piece.startsWith('mast-anchor-')) links.push([run.piece, 'hut-roof', 'bolt']);
+    if (run.piece === 'mast-dish') links.push(['mast-dish', `mast-section-${Math.min(sections - 1, Math.floor(sections * 0.72))}`, 'bolt']);
+  }
+  // each guy pulls between its anchor (two guys to an anchor, in order) and the section holding its leg's attachment
+  const guys = runs.filter((run) => run.piece.startsWith('mast-guy-'));
+  guys.forEach((run, g) => {
+    links.push([run.piece, `mast-anchor-${Math.floor(g / 2)}`, 'bolt']);
+    links.push([run.piece, `mast-section-${g % 2 === 0 ? Math.floor(sections * 0.5) : sections - 1}`, 'bolt']);
+  });
+  return { version: 0, owner: 'relaystation', anchor: ['hut-plinth'], runs, links: links.filter(([a, b]) => has.has(a) && has.has(b)) };
+}
+
+/** The relay wrecked: the shared debris (its stream unchanged), the plinth's curb and the mast fallen across it. */
+function makeRelayStationBroken(rng: Rng): THREE.BufferGeometry {
+  const wreck = debris({ hw: 3.38, hl: 3.68, h: 12.9 }, PAL.urbanSteel, rng, 'metal');
+  const own = forkedRng(0.6180339887), parts: THREE.BufferGeometry[] = [];
+  colored(parts, scaleUV(box(RELAY_W, 0.65, RELAY_D), 0.08, 0.08).translate(0, -0.33, 0), RELAY_CONCRETE, own, 0.05);
+  buildFallenMast({ x: 0.6, z: -0.4, heading: 0.95, face: 0.42, sections: 2, section: 1.75, kink: 0.24 },
+    (geo, color) => colored(parts, geo, color, own, 0.03));
+  const geometry = merge([wreck, ...parts.map(ensureWorldNightEmissionMask)]);
+  wreck.dispose();
+  return geometry;
 }
 
 function makeCornerOffice(rng: Rng): THREE.BufferGeometry {
@@ -1944,7 +2114,7 @@ export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingTyp
   checkpointhut: lightMeta('checkpointhut', 'military', 2.40, 3.7, 3.3, PAL.steel, makeCheckpointHut, 'metal'),
   securityoffice: lightMeta('securityoffice', 'urban', 3.95, 5.1, 5.2, PAL.urbanSteel, makeSecurityOffice, 'metal'),
   servicegarage: lightMeta('servicegarage', 'urban-industrial', 5.23, 6.3, 6.2, PAL.urbanSteel, makeServiceGarage, 'metal'),
-  relaystation: lightMeta('relaystation', 'urban-industrial', 3.38, 3.68, 12.9, PAL.urbanSteel, makeRelayStation, 'metal'),
+  relaystation: lightMeta('relaystation', 'urban-industrial', 3.38, 3.68, 12.9, PAL.urbanSteel, makeRelayStation, 'metal', makeRelayStationBroken),
   corneroffice: lightMeta('corneroffice', 'urban', 4.48, 4.73, 7.5, PAL.urbanSteel, makeCornerOffice, 'metal'),
   // Mars bases (round 23, 2026-09-18) — footprints follow the visible geometry (propPlacement receipt)
   missioncontrol: lightMeta('missioncontrol', 'orbital', 7.5, 6.2, 12.6, PAL.orbital, orbital.missioncontrol, 'metal'),
@@ -1981,6 +2151,8 @@ const REGIONAL_PAL = {
   // Siwa's kershef (salt-crusted mud): the wall, its paler crust, the palm-trunk timber
   kershef: [0x9a8a74, 0xb3a58d, 0x5e5243],
   concrete: [0x8f8d86, 0xa9a79f, 0x55544f],
+  // the Maurienne's larch, weathered silver-brown (the Savoyard kit's mazot)
+  larch: [0x6b5a48, 0x857055, 0x3d3329],
 } as const satisfies Record<string, Palette>;
 
 /** A light gable roof built at the origin and moved: the shared roof helper lays its planes out centred on x = 0. */
@@ -2087,6 +2259,35 @@ function makeSavoyardCasemate(rng: Rng): THREE.BufferGeometry {
   colored(out, box(3.2, 2.2, 0.5).translate(-1.0, 1.1, z0 - d / 2 - 1.05), c[0], rng, 0.05);
   colored(out, box(0.5, 2.2, 1.1).translate(-2.85, 1.1, z0 - d / 2 - 0.55), c[0], rng, 0.05);
   return mergeConnectedStructure('alpinerefuge', out);
+}
+
+/**
+ * The mazot on its staddle stones (the Savoyard kit's hunting blind, map revival lane 2, round 4; gauntlet wave 188:
+ * the base blind read as "a tall plank box on four long timber stilts ... a hunting hide or water tower" where the
+ * hamlet's granary should stand): a squat box of larch logs, their ends crossing at the corners, raised on four stone
+ * mushrooms (a post and a round cap slab against the rats), a plank door with iron straps, a stone step, a lauze roof
+ * with deep verges under the snow. The family's footprint and class as the blind's; 3.6 m to the ridge.
+ */
+function makeSavoyardMazot(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], wd = REGIONAL_PAL.larch;
+  const w = 2.9, d = 2.6, lift = 0.6, course = 0.25, courses = 8, top = lift + course * courses;
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    colored(out, box(0.26, lift - 0.1, 0.26).translate(sx * 1.1, (lift - 0.1) / 2, sz * 0.95), 0x7b7d7e, rng, 0.06);
+    colored(out, cylinder(0.36, 0.36, 0.1, 10).translate(sx * 1.1, lift - 0.05, sz * 0.95), 0x8a8c8c, rng, 0.05);
+  }
+  // the logs, course on course, the ends crossing at the corners (a course long in x, the next in z)
+  for (let k = 0; k < courses; k++) {
+    const y = lift + course * (k + 0.5);
+    colored(out, (k % 2 ? box(w, course * 0.96, d + 0.4) : box(w + 0.4, course * 0.96, d)).translate(0, y, 0), wd[k % 3 === 2 ? 2 : k % 2], rng, 0.1);
+  }
+  // the door with its strap hinges, the step before it
+  colored(out, box(0.8, 1.4, 0.06).translate(0, lift + 0.75, d / 2 + 0.03), 0x3a2f25, rng, 0.04);
+  for (const t of [0.35, 1.1]) colored(out, box(0.55, 0.05, 0.02).translate(-0.1, lift + t, d / 2 + 0.07), 0x2b2c2d, rng, 0.02);
+  colored(out, box(0.9, lift - 0.15, 0.5).translate(0, (lift - 0.15) / 2, d / 2 + 0.25), 0x7b7d7e, rng, 0.06);
+  // the lauzes in a thick slab roof, the snow lying on them, the slabs' dark edge showing at the eaves
+  colored(out, gable(3.8, 0.95, 3.5).translate(0, top, 0), 0x5c5f63, rng, 0.05);
+  colored(out, gable(3.7, 0.9, 3.4).translate(0, top + 0.12, 0), 0xe6eaee, rng, 0.02);
+  return mergeConnectedStructure('huntingblind', out);
 }
 
 /**
@@ -2361,6 +2562,8 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
     // the Col du Mont-Cenis, 1945: the pass's refuge is a casemate of the Vallo Alpino
     savoyard: Object.freeze({
       alpinerefuge: variant('alpinerefuge', REGIONAL_PAL.concrete, makeSavoyardCasemate, 'metal'),
+      // (round 4) the blind on its stilts is the hamlet's mazot on its staddle stones
+      huntingblind: variant('huntingblind', REGIONAL_PAL.larch, makeSavoyardMazot),
     }),
   });
 })();

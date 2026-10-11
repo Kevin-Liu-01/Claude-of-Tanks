@@ -162,8 +162,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // oak's dark leaf (no 'snag' for the fume-killed stumps: its slot would keep a concealing crown it does not draw);
   // the placement stays the map's
   copper_mesa: B('Queenstown under Mount Lyell, Tasmania', { acacia: { form: 'eucalyptus' }, cedar: { form: 'eucalyptus' } }, 'holmOak'),
-  // the Scheldt polders: poplar and willow rows (the map's own slots already)
-  polders: B('the Scheldt polders, Zeeland', {}),
+  // the Scheldt polders: poplar and willow rows (the map's own slots already); the trees lane (2026-10-07, the gauntlet's
+  // wave 205: "an agave-like plant" on a dyke crest — the willow's long lances fanned from the ground as a shrub read as a
+  // yucca rosette): the dykes' and ditches' scrub the oak's small lobed leaves, a hawthorn's thicket
+  polders: B('the Scheldt polders, Zeeland', {}, 'oak'),
   // Glen Canyon and Page, Arizona (the map-revival lane, 2026-10-05, Skybridge round 2; look only: the slots keep their
   // seats): the plateau's Utah juniper (the cedar slot) and Colorado pinyon (the pine slot) in the Arizona uplands'
   // dusty greens, the Fremont cottonwoods and the town's planted poplars staying poplars, the scrub between them the

@@ -10,6 +10,7 @@
 // This replaces the bare pad + apron discs. The two integration-owned
 // showcase spotlights can stay — the stage's own fixtures complement them.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { getGarageVariant } from '../game/garageVariants.ts';
 import {
   GARAGE_HERO_HEADING_RAD,
@@ -20,6 +21,7 @@ import {
   type GarageArchitectureStats,
 } from './garageArchitecture.ts';
 import { getDeviceTier } from '../engine/quality.ts';
+import { getGarageWorkshopLayoutPose, VERDANT_WELD_LIGHT } from '../game/garageWorkshopLayout.ts';
 
 type RandomSource = () => number;
 type SignWear = [boolean, number, number, number, number];
@@ -160,18 +162,9 @@ function makeFloorTexture(rng: RandomSource): HTMLCanvasElement {
     g.moveTo(0, (S / 4) * i + 2); g.lineTo(S, (S / 4) * i + 2);
   }
   g.stroke();
-  // painted service-bay box around the podium (worn yellow)
-  g.strokeStyle = 'rgba(196,164,44,0.55)';
-  g.lineWidth = 9;
-  g.setLineDash([46, 26]);
-  g.strokeRect(S * 0.22, S * 0.22, S * 0.56, S * 0.56);
-  g.setLineDash([]);
-  // white guide line leading to the bay door
-  g.strokeStyle = 'rgba(208,212,216,0.4)';
-  g.lineWidth = 7;
-  g.beginPath();
-  g.moveTo(S / 2, S * 0.78); g.lineTo(S / 2, S * 0.98);
-  g.stroke();
+  // No painted bay box or guide line (2026-10-10, wave 357: "white road-lane dashes like a car park") and no painted
+  // track lanes (main 4bbb0e5c1: the track's ground contact follows the drawn run): the hall's history is its joints
+  // and stains.
   // speckle
   for (let i = 0; i < 2600; i++) {
     const v = rng();
@@ -182,14 +175,47 @@ function makeFloorTexture(rng: RandomSource): HTMLCanvasElement {
   return c;
 }
 
+// --- roof deck: corrugated sheeting seen from below, with lap seams and grime -------------------------------------
+function makeRoofDeckTexture(rng: RandomSource): HTMLCanvasElement {
+  const S = 256;
+  const c = document.createElement('canvas');
+  c.width = S; c.height = S;
+  const g = get2dContext(c, { willReadFrequently: true });
+  g.fillStyle = '#4b535a';
+  g.fillRect(0, 0, S, S);
+  for (let x = 0; x < S; x += 16) {
+    const lg = g.createLinearGradient(x, 0, x + 16, 0);
+    lg.addColorStop(0, 'rgba(255,255,255,0.10)');
+    lg.addColorStop(0.4, 'rgba(255,255,255,0.0)');
+    lg.addColorStop(0.7, 'rgba(0,0,0,0.16)');
+    lg.addColorStop(1, 'rgba(255,255,255,0.05)');
+    g.fillStyle = lg;
+    g.fillRect(x, 0, 16, S);
+  }
+  // sheet laps across the ribs and soot from the heaters
+  for (const y of [S * 0.5, S]) {
+    g.fillStyle = 'rgba(12,14,16,0.45)';
+    g.fillRect(0, y - 3, S, 3);
+  }
+  for (let i = 0; i < 18; i++) {
+    const x = rng() * S, y = rng() * S, r = 20 + rng() * 60;
+    const bg = g.createRadialGradient(x, y, 0, x, y, r);
+    bg.addColorStop(0, 'rgba(14,16,18,0.18)');
+    bg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = bg;
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  }
+  return c;
+}
+
 // --- corrugated steel wall texture (vertical ribs + girders + grime) --------
 function makeWallTexture(rng: RandomSource): HTMLCanvasElement {
   const W = 512, H = 256;
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
   const g = get2dContext(c, { willReadFrequently: true });
-  // base panel color
-  g.fillStyle = '#3d4349';
+  // base panel color: a painted grey-blue sheet that reads as a wall (2026-10-10, wave 357: "near-black navy walls")
+  g.fillStyle = '#58616a';
   g.fillRect(0, 0, W, H);
   // vertical corrugation ribs (light/shadow pairs, 16px pitch)
   for (let x = 0; x < W; x += 16) {
@@ -696,13 +722,22 @@ export function createGarageStage(
       wall.rotation.set(rx, ry, 0);
       wall.position.set(x, WALL_H / 2, z);
       wall.receiveShadow = true;
+      // The walls stop the garage sun (2026-10-10): without them it lit the floor straight through the shell, a
+      // blown-out slab at the Burlak bay (floor mean 101 -> 83). Its ray to the hero clears the wall tops, and the
+      // ceiling still casts nothing, so the turntable keeps its key and contact shadow.
+      wall.castShadow = true;
       group.add(wall);
       baseWalls.push(wall);
     }
   }
   addHangarWalls();
+  // The roof (2026-10-10, wave 357: "the hall has no roof: a flat, featureless navy void with no trusses, purlins or
+  // skylights"): corrugated roof sheeting on purlins over five parallel-chord trusses, with three skylight strips the
+  // daylight comes through. The roof casts nothing, so the sun's key through the skylights is unchanged.
+  const roofDeck = makeRoofDeckTexture(rng);
   const ceilMat = shadowMat(new THREE.MeshStandardMaterial({
-    color: 0x1e2124, roughness: 0.95, metalness: 0.1,
+    map: track(canvasTexture(roofDeck, { aniso, repeat: [4, 4] })),
+    roughness: 0.82, metalness: 0.3,
     emissive: 0x151b22, emissiveIntensity: 0.65,
   }));
   track(ceilMat);
@@ -710,21 +745,49 @@ export function createGarageStage(
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = WALL_H;
   group.add(ceiling);
-  // roof trusses (slight self-lift so they silhouette against the ceiling)
   const trussMat = shadowMat(new THREE.MeshStandardMaterial({
-    color: 0x33383d, roughness: 0.6, metalness: 0.5,
+    color: 0x4a5056, roughness: 0.6, metalness: 0.5,
     emissive: 0x171c22, emissiveIntensity: 0.45,
   }));
   track(trussMat);
-  const trussGeo = track(new THREE.BoxGeometry(HW * 2, 0.5, 0.22));
-  const roofTrusses: THREE.Mesh[] = [];
+  const skylightMat = track(new THREE.MeshBasicMaterial({ color: 0xc9d4dc }));
+  // The roof structure merges into one geometry (trusses, webs and purlins) and the skylights into another: two draws
+  // for the whole roof.
   function addRoofTrusses(): void {
-    for (let index = -1; index <= 1; index++) {
-      const truss = new THREE.Mesh(trussGeo, trussMat);
-      truss.position.set(0, WALL_H - 0.35, index * 12);
-      group.add(truss);
-      roofTrusses.push(truss);
+    const parts: THREE.BufferGeometry[] = [];
+    const place = (geometry: THREE.BufferGeometry, x: number, y: number, z: number, rotationZ = 0): void => {
+      const placed = geometry.clone();
+      if (rotationZ) placed.rotateZ(rotationZ);
+      placed.translate(x, y, z);
+      parts.push(placed);
+    };
+    const chordGeo = new THREE.BoxGeometry(HW * 2, 0.24, 0.22);
+    const panel = 2.3;
+    const depth = 1.1;
+    const webGeo = new THREE.BoxGeometry(0.11, Math.hypot(panel, depth), 0.11);
+    const purlinGeo = new THREE.BoxGeometry(0.16, 0.2, HW * 2);
+    const roofTop = WALL_H - 0.12;
+    const panels = Math.floor((HW * 2) / panel);
+    for (let index = -2; index <= 2; index++) {
+      const z = index * 9;
+      for (const y of [roofTop - 0.12, roofTop - 0.12 - depth]) place(chordGeo, 0, y, z);
+      // Warren web: diagonals alternating across each 2.3 m panel
+      for (let k = 0; k < panels; k++) {
+        place(webGeo, -HW + (k + 0.5) * panel, roofTop - 0.12 - depth / 2, z, (k % 2 ? 1 : -1) * Math.atan2(panel, depth));
+      }
     }
+    for (let x = -HW + 1.5; x < HW; x += 3) place(purlinGeo, x, roofTop + 0.02, 0);
+    const roof = new THREE.Mesh(track(mergeGeometries(parts, false)!), trussMat);
+    roof.name = 'garage_verdant_roof_structure';
+    group.add(roof);
+    for (const part of parts) part.dispose();
+    chordGeo.dispose(); webGeo.dispose(); purlinGeo.dispose();
+    const skylightParts = [-11.5, 0, 11.5].map((x) => new THREE.PlaneGeometry(2.4, HW * 2 - 2)
+      .rotateX(Math.PI / 2).translate(x, WALL_H - 0.02, 0));
+    const skylights = new THREE.Mesh(track(mergeGeometries(skylightParts, false)!), skylightMat);
+    skylights.name = 'garage_verdant_roof_skylights';
+    group.add(skylights);
+    for (const part of skylightParts) part.dispose();
   }
   addRoofTrusses();
   const architecture = createGarageArchitectureController(engineCtx || {}, group, requestRender);
@@ -744,6 +807,7 @@ export function createGarageStage(
   const shadeGeo = track(new THREE.CylinderGeometry(0.16, 0.85, 0.6, 20));
   const glowGeo = track(new THREE.CylinderGeometry(0.66, 0.66, 0.06, 20));
   const cableGeo = track(new THREE.CylinderGeometry(0.02, 0.02, 1.6, 6));
+  const highbayPools: Array<[number, number]> = [];
   function addHighbayLamps(): void {
     for (const [x, z] of [[-4.5, -3.5], [5, 2.5]]) {
       const shade = new THREE.Mesh(shadeGeo, housingMat);
@@ -758,6 +822,8 @@ export function createGarageStage(
       pointLight.position.set(x, 7.1, z);
       verdantLights.push(pointLight);
       group.add(pointLight);
+      // the pool it throws on the floor (wave 357: "the lamps light no pools on the floor"), on the shared pool program
+      highbayPools.push([x, z]);
     }
   }
   addHighbayLamps();
@@ -1024,12 +1090,16 @@ export function createGarageStage(
   sign2.position.set(-HW + 0.075, 3.4, -6);
   group.add(halo2, plate2, sign2);
 
-  // low hangar fill (hud_ui r2): the west-wall props (tool chest, bench,
-  // tires, pipes) crushed to near-black under the podium-keyed lighting. One
-  // wide dim point light lifts that corner ~a stop without flattening the
-  // key — finite range keeps it out of the battlefield shaders' hot path.
-  const fill = new THREE.PointLight(0xc2cedd, 13, 32, 1.7);
-  fill.position.set(-15, 5.6, -1);
+  // The weld light (2026-10-10, the owner's free hand, wave 338: "the weld gives off no real light"). This was the
+  // low west-wall fill (hud_ui r2), which lit nothing that mattered once the room turned; it now stands at the rolled
+  // K2's belly weld, blue-white and short-ranged. Same light count, so no shader program changes. The indoor set is
+  // half-turned, hence the negated Garage-frame point. It flickers only while Verdant frames draw (the floor's
+  // onBeforeRender below), so the settled Garage never wakes for it.
+  const fill = new THREE.PointLight(0xb9d3ff, 9, 8, 2);
+  const OUTDOOR_WELD_LIGHT_INTENSITY = 14;
+  fill.name = 'garage_verdant_weld_light';
+  fill.position.set(-VERDANT_WELD_LIGHT.x, VERDANT_WELD_LIGHT.y, -VERDANT_WELD_LIGHT.z);
+  fill.castShadow = false;
   verdantLights.push(fill);
   group.add(fill);
 
@@ -1073,6 +1143,13 @@ export function createGarageStage(
     opacity: 0.55,
   }));
   group.add(pool2);
+  for (const [x, z] of highbayPools) {
+    const lampPool = new THREE.Mesh(track(new THREE.PlaneGeometry(9, 9)), pool2.material);
+    lampPool.rotation.x = -Math.PI / 2;
+    lampPool.position.set(x, 0.038, z);
+    lampPool.name = 'garage_verdant_highbay_pool';
+    group.add(lampPool);
+  }
 
   // --- props: crates, barrels, tires, tool cabinet, workbench ----------------
   const addWorkshopProps = (): void => {
@@ -1234,18 +1311,16 @@ export function createGarageStage(
   //   4. wheel chocks + a traffic cone at the frame's lower corners.
   // Decals are depthWrite-false quads a few mm over the floor plane.
   const addForegroundStaging = (): void => {
-    // 1. painted ring decal (dashed, worn)
+    // 1. painted keep-clear ring, one continuous worn line (2026-10-10, wave 357: dashes read as a car park)
     const ringC = document.createElement('canvas');
     ringC.width = ringC.height = 512;
     const rg = get2dContext(ringC);
     rg.translate(256, 256);
-    rg.strokeStyle = 'rgba(202,170,52,0.6)';
-    rg.lineWidth = 9;
-    rg.setLineDash([34, 22]);
+    rg.strokeStyle = 'rgba(196,166,54,0.5)';
+    rg.lineWidth = 7;
     rg.beginPath();
     rg.arc(0, 0, 232, 0, Math.PI * 2);
     rg.stroke();
-    rg.setLineDash([]);
     // wear: chip the paint with floor-colored nicks
     for (let i = 0; i < 220; i++) {
       const a = rng() * Math.PI * 2, rr = 232 + (rng() - 0.5) * 10;
@@ -1361,6 +1436,15 @@ export function createGarageStage(
   const verdantLightIntensities = new Map(
     verdantLights.map((light) => [light, light.intensity] as const),
   );
+  // The weld light's arc flicker rides a draw that happens anyway (Verdant's floor indoors, the turntable outdoors),
+  // so it costs a few multiplies per drawn frame and nothing while the Garage is settled.
+  let weldBaseIntensity = verdantLightIntensities.get(fill) ?? 0;
+  const flickerWeld = (): void => {
+    const t = performance.now() * 0.001;
+    fill.intensity = weldBaseIntensity * (0.72 + 0.28 * (0.5 + 0.3 * Math.sin(t * 41.3) + 0.2 * Math.sin(t * 67.9 + 0.7)));
+  };
+  floor.onBeforeRender = flickerWeld;
+  podium.onBeforeRender = flickerWeld;
   let variantPresentationGeneration = 0;
   const ENVIRONMENT_REVEAL_ATTEMPTS = 3;
   const waitForEnvironmentRetry = (attempt: number): Promise<void> => (
@@ -1379,6 +1463,18 @@ export function createGarageStage(
     for (const light of verdantLights) {
       light.visible = true;
       light.intensity = isVerdant ? (verdantLightIntensities.get(light) || 0) : 0;
+    }
+    // Every Garage welds at the rolled K2's belly (2026-10-10, the coordinator: a weld light in every garage with a
+    // weld bay, same light count, no new program): the weld light follows the shared exhibit's layout pose into each
+    // pack and burns at a daylight strength outdoors.
+    {
+      const [layoutX, layoutZ, layoutYaw] = getGarageWorkshopLayoutPose(getGarageVariant(variantId));
+      const c = Math.cos(layoutYaw), sn = Math.sin(layoutYaw);
+      const weldX = layoutX + VERDANT_WELD_LIGHT.x * c + VERDANT_WELD_LIGHT.z * sn;
+      const weldZ = layoutZ - VERDANT_WELD_LIGHT.x * sn + VERDANT_WELD_LIGHT.z * c;
+      fill.position.set(-weldX, VERDANT_WELD_LIGHT.y, -weldZ);
+      weldBaseIntensity = isVerdant ? (verdantLightIntensities.get(fill) || 0) : OUTDOOR_WELD_LIGHT_INTENSITY;
+      fill.intensity = weldBaseIntensity;
     }
     architecture.group.visible = !isVerdant;
     group.userData.garageSceneMode = isVerdant ? 'verdant-workshop' : 'authentic-scene-pack';
