@@ -429,13 +429,14 @@ function facesAt(cx: number, cz: number, w: number, d: number): Record<FaceName,
  * openings (archedFace: a reveal back to a dark backing), the top closed. Returns the faces for the dressing.
  */
 export function archedBody(sink: PartSink, bucket: RegionalBucket, cx: number, cz: number, w: number, d: number, y0: number, y1: number,
-  holes: Partial<Record<FaceName, ArchHole[]>>, reveal: number, opts: EmitOptions = {}): Record<FaceName, Face> {
+  holes: Partial<Record<FaceName, ArchHole[]>>, reveal: number, opts: EmitOptions & { through?: boolean } = {}): Record<FaceName, Face> {
   const faces = facesAt(cx, cz, w, d);
   for (const name of FACE_NAMES) {
     const face = faces[name];
     archedFace(sink, bucket, face, { u0: -face.width / 2, u1: face.width / 2, y0, y1 }, holes[name] ?? [], reveal, opts);
   }
-  sink.quad(bucket, [cx - w / 2, y1, cz + d / 2], [cx + w / 2, y1, cz + d / 2], [cx + w / 2, y1, cz - d / 2], [cx - w / 2, y1, cz - d / 2], opts);
+  const { through: _through, ...emit } = opts;
+  sink.quad(bucket, [cx - w / 2, y1, cz + d / 2], [cx + w / 2, y1, cz + d / 2], [cx + w / 2, y1, cz - d / 2], [cx - w / 2, y1, cz - d / 2], emit);
   return faces;
 }
 

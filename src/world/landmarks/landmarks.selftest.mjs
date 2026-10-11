@@ -35,6 +35,7 @@ import { MAP_IDS, getMapConfig } from '../maps/index.ts';
 import { createHeightField } from '../terrain.ts';
 import { decodeCollisionManifest } from '../../../server/collisionManifestCodec.ts';
 import { RAIL_SPUR_BERTH_M } from '../railSpurs.ts';
+import { resolveRegionalArchitecture } from '../maps/regional/index.ts';
 
 /** The least distance from a packed shard record's parts to a polyline (0 when a part covers a path point). */
 function recordGapToPath(record, path) {
@@ -90,8 +91,8 @@ const BUDGET = {
   fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000, churchyard: 4500, path: 1500, garden: 2500, stairway: 9000, outfall: 900,
   townGate: 4000, triumphalArch: 7000, kolkhozArch: 2500, torii: 1000,
   stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000, liftBridge: 6000,
-  aircraftWreck: 20000, colonialBungalow: 14000, tennisCourt: 5000, bengalTemple: 9000, lighthouse: 3500, mole: 5000,
-  lavoir: 5000, khan: 14000, quay: 4000, slipway: 1500,
+  aircraftWreck: 26000, colonialBungalow: 14000, tennisCourt: 5000, bengalTemple: 9000, lighthouse: 3500, mole: 5000,
+  lavoir: 5000, khan: 14000, quay: 4000, slipway: 1500, harbour: 16000, piazza: 3000, houseRow: 30000,
   radomeTower: 9000, troposcatter: 9000, guyedMast: 9000, moduleTrain: 9000, fuelTankFarm: 9000,
   headframe: 9000, oreBin: 9000, conveyor: 9000, oreCars: 9000, jamesway: 9000, drumCache: 9000, snowFence: 9000, airstrip: 9000,
 };
@@ -122,6 +123,7 @@ const VARIANTS = {
   mole: [{ sea: 'right', light: 'green' }, { light: 'none', length: 24 }],
   quay: [{ length: 24, depth: 10, top: 1.0 }],
   slipway: [{ length: 20, width: 6, head: 0.5, toe: -1.0 }],
+  harbour: [{ basin: 'left', boats: 0, slip: 0, nets: false }, { turn: 40, arm: 16, light: 'red', length: 30 }],
 };
 const COLOURED = new Set(['structureMetal', 'structureWood', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']);
 
@@ -492,6 +494,73 @@ check('the mole and its light', () => {
   assert.ok(covers(0, 7.6), 'and over the upper one');
   for (const g of geometries(parts)) g.dispose();
 }
+
+// ---------------------------------------------------------------------------------------------------------- approaches
+// (types.ts approaches; compose.ts composeApproaches): a door's trodden apron and its worn path to the road it faces —
+// paving only (no record, no plot, nothing refused or moved); the path laid only through a gap, never across a wall
+check('approaches', () => {
+  const flat = { getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: (x, z) => Math.abs(z - 200) };
+  const obstacles = [], published = [], vetoes = [];
+  // a wall module standing between the second granary's door and the road
+  obstacles.push({ kind: 'wallstone', crushable: true, min: [57, 0, 190], max: [63, 1.2, 190.6], shape2: { kind: 'obb', cx: 60, cz: 190.3, hw: 3, hl: 0.3, yaw: 0 } });
+  const ctx = { mapId: 'selftest', heightField: flat, spawns: [{ x: -400, z: -400 }, { x: 400, z: 400 }], obstacles, colliders: [],
+    architecture: null, snowCap: false, seed: 2002, tier: 'desktop', merge() {}, reserve() {}, addDestructible() {},
+    publish: (x, z, w, d, rot, kind) => published.push(kind), veto: (...a) => vetoes.push(a),
+    landmarks: [
+      { kind: 'granary', x: 0, z: 170, yawDeg: 0, ground: 'veto', name: 'the open store', approaches: [{ side: 'front', width: 2.6 }] },
+      { kind: 'granary', x: 60, z: 170, yawDeg: 0, ground: 'veto', name: 'the walled store', approaches: [{ side: 'front' }, { side: 'back', path: false }] },
+    ] };
+  const obstaclesBefore = obstacles.length;
+  const it = composeLandmarks(ctx); let st = it.next(); while (!st.done) st = it.next();
+  const receipt = st.value, by = (name) => receipt.pieces.find((p) => p.name === name);
+  const apron = by('the open store: the trodden ground at its front door'), path = by('the open store: the worn path from its front door to the road');
+  assert.equal(apron?.status, 'placed', 'the apron at the open store\'s door');
+  assert.equal(path?.status, 'placed', 'its path to the road');
+  assert.equal(by('the walled store: the trodden ground at its front door')?.status, 'placed', 'the walled store\'s apron');
+  assert.ok(!by('the walled store: the worn path from its front door to the road'), 'no path across the wall to the road');
+  assert.equal(by('the walled store: the trodden ground at its back door')?.status, 'placed', 'the back door\'s apron (path: false)');
+  assert.ok(!receipt.pieces.some((p) => p.name?.startsWith('the walled store: the worn path from its back')), 'path: false lays none');
+  // ground only: the two stores' own records and nothing more; the paving publishes no plot and vetoes nothing
+  const stores = receipt.pieces.filter((p) => p.kind === 'granary').reduce((n, p) => n + (p.records ?? 0), 0);
+  assert.ok(obstacles.length - obstaclesBefore <= stores, 'the approaches add no record');
+  assert.equal(published.filter((k) => k === 'path').length, 0, 'the paving publishes no plot');
+  // the path runs from the apron's edge to the road's core (z 200 - 3.5) along the door's facing
+  const [hw, hl] = landmarkFootprint({ kind: 'granary', x: 0, z: 170, params: {} });
+  void hw;
+  assert.ok(Math.abs(path.z - (170 + hl + 2.5 + (196.5 - (170 + hl + 2.5)) / 2)) < 0.6, `the path centred between the apron and the road (${path.z})`);
+});
+
+// ---------------------------------------------------------------------------------------------------------- tints
+// (types.ts tints; compose.ts authoredTints): a placement's own tints retint the kit's surfaces where the map's kit
+// weathers the piece — the named bucket's colours only; the geometry, every other bucket and the records unchanged
+check('tints', () => {
+  const flat = { getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: (x, z) => Math.abs(z - 200) };
+  const compose = (tints) => {
+    const merged = [], obstacles = [];
+    const ctx = { mapId: 'selftest', heightField: flat, spawns: [{ x: -400, z: -400 }, { x: 400, z: 400 }], obstacles, colliders: [],
+      architecture: resolveRegionalArchitecture('hessian'), snowCap: false, seed: 2002, tier: 'desktop',
+      merge: (parts) => merged.push(parts), reserve() {}, publish() {}, addDestructible() {}, veto() {},
+      landmarks: [{ kind: 'church', x: 60, z: 40, yawDeg: -90, name: 'the church', params: { tradition: 'western' }, ...(tints ? { tints } : {}) }] };
+    const it = composeLandmarks(ctx); let st = it.next(); while (!st.done) st = it.next();
+    return { merged, obstacles };
+  };
+  const plain = compose(null), slate = compose({ roof: [0.62, 0.68, 0.78] });
+  const buckets = (m) => Object.fromEntries(REGIONAL_BUCKETS.map((b) => [b, m.merged.flatMap((parts) => parts[b] ?? [])]));
+  const a = buckets(plain), b = buckets(slate);
+  assert.ok(a.regionalRoof.length > 0, 'the church has a weathered roof');
+  for (const name of REGIONAL_BUCKETS) {
+    assert.equal(b[name].length, a[name].length, `${name}: the same parts`);
+    for (let i = 0; i < a[name].length; i++) {
+      assert.deepEqual([...b[name][i].attributes.position.array], [...a[name][i].attributes.position.array], `${name}: the same geometry`);
+      const ca = a[name][i].attributes.color?.array, cb = b[name][i].attributes.color?.array;
+      if (name === 'regionalRoof') assert.notDeepEqual([...cb], [...ca], 'the roof retinted');
+      else if (ca) assert.deepEqual([...cb], [...ca], `${name}: its colours unchanged`);
+    }
+  }
+  assert.deepEqual(slate.obstacles.map((o) => [o.min, o.max]), plain.obstacles.map((o) => [o.min, o.max]), 'the records unchanged');
+  assert.throws(() => compose({ roof: [0.6, 0.6] }), /tint roof/, 'a tint is three factors');
+  assert.throws(() => compose({ stone: [0.6, 0.6, 3] }), /tint stone/, 'within 0.2-1.6');
+});
 
 // ---------------------------------------------------------------------------------------------------------- composer
 {

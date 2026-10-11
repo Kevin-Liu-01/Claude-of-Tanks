@@ -1,5 +1,5 @@
 // src/world/landmarks/village.ts — a village's working buildings (the landmarks lane, 2026-10-06): the Lorraine lavoir
-// and the Levantine khan.
+// and the Levantine khan; and (2026-10-07) a row of the map kit's houses, the fronts a square is enclosed by.
 //
 // The lavoir is the covered communal wash-house of a Lorraine village (the Meuse's and the Moselle's, rebuilt through the
 // nineteenth century beside the stream or the fountain that feeds it): rendered rubble walls on three sides with sandstone
@@ -11,7 +11,8 @@
 // tall pointed gate with its studded doors, and inside, the deep pointed arcades of the ground floor's stores and the
 // upper gallery's, under flat roofs behind a parapet. Its gate is shut: the court is closed to a hull. `form: 'arcade'`
 // builds only its street range, the arcade open to the street, as a market's row of shops.
-import { PartSink, bodyFaces, facePoint, rgb, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
+import { PartSink, REGIONAL_BUCKETS, bodyFaces, facePoint, newRegionalParts, rgb, streamFrom, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
+import { buildRegionalParts, resolveRegionalArchitecture } from '../maps/regional/index.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import { archedFace, archedSlab, bar, cornerPilasters, extrude, moulding, type ArchHole } from './kit.ts';
 import { ageWall } from './age.ts';
@@ -186,4 +187,38 @@ export const khan: LandmarkBuilder = (ctx) => {
   const fore = Math.max(0, Number(ctx.params.forecourt) || 0);
   if (fore > 0) drapedRect(sink, wall, ctx.ground, { cx: 0, cz: depth / 2 + fore / 2, hw: W / 2 + 0.6, hd: fore / 2 }, { lift: 0.05 });
   return { parts: sink.finish(), tints: { stone: [1.04, 0.96, 0.82] } };
+};
+
+// ---------------------------------------------------------------------------------------------------------- house row
+
+/**
+ * A row of the map kit's houses (the landmarks lane, 2026-10-07, Saltwind round 4: the campanile's piazza needs "house
+ * fronts enclosing it"): `count` houses side by side along the piece's x, each about `width` wide (a hand either way,
+ * the row's length kept at count × width) and `depth` deep, their street fronts toward +z — each the kit's own build of
+ * `structure` (its walls and openings, roof, weathering and wear: maps/regional/index.ts buildRegionalParts) drawn from a
+ * stream of the piece's. The houses abut: their party walls face each other, the eaves meeting over them.
+ */
+export const houseRow: LandmarkBuilder = (ctx) => {
+  const style = resolveRegionalArchitecture(String(ctx.params.kit));
+  if (!style) throw new Error('houseRow: no architecture kit');
+  const structure = String(ctx.params.structure || 'cottage');
+  const count = Math.max(1, Math.min(6, Math.round(Number(ctx.params.count)))), W = Math.max(4.5, Number(ctx.params.width));
+  const D = Math.max(6, Number(ctx.params.depth));
+  const widths = Array.from({ length: count }, () => W + (ctx.variant() - 0.5) * 1.2);
+  const sum = widths.reduce((a, b) => a + b, 0);
+  const parts = newRegionalParts();
+  let x = -count * W / 2;
+  for (const raw of widths) {
+    const w = raw * count * W / sum, seed = Math.floor(ctx.rng() * 4294967296);
+    const house = buildRegionalParts(style, {
+      structureId: structure, info: { w, d: D, h: 8 }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -D / 2, maxZ: D / 2, maxY: 8 },
+      wallBucket: ctx.variant() < 0.75 ? 'stone' : 'plaster', rng: streamFrom(seed), variant: streamFrom((seed ^ 0x5bd1e995) >>> 0),
+      // (built as the desktop's: the composer leaves the fine joinery out on a phone, so its coarse parts and its
+      // collision are the desktop's, as every piece's are)
+      mapId: ctx.mapId, snowCap: ctx.snowCap, tier: 'desktop',
+    }, streamFrom((seed ^ 0x27d4eb2f) >>> 0));
+    for (const name of REGIONAL_BUCKETS) for (const g of house[name] ?? []) { g.translate(x + w / 2, 0, 0); parts[name].push(g); }
+    x += w;
+  }
+  return { parts };
 };
