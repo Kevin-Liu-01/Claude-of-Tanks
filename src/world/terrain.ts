@@ -4676,7 +4676,8 @@ void splatCompute() {
   // (roads lane, 2026-10-09: the swing reads field b at a 250 m tile — features past 16 m. n1's field a carries half its
   // power at metre scale, which the soft lanes hid and the crisp grooves below drew as a wriggle)
   // (a map on the old road law — uRoadSurf.x 0, the owner's protected maps — keeps the old swing exactly)
-  float laneWob = uRoadSurf.x > 0.0 && uLandTier > 0.5 ? (nz(uv, 0.004, vec2(0.37, 0.11)).g - 0.5) * 0.55 : (n1 - 0.5) * 0.55;
+  // (roads lane R1 cost, 2026-10-10: the swing reads n2 — the slow field already sampled, features past ~20 m — not a tap of its own)
+  float laneWob = uRoadSurf.x > 0.0 && uLandTier > 0.5 ? (n2 - 0.5) * 0.55 : (n1 - 0.5) * 0.55;
   float laneD = (dRoad - 1.55 - laneWob) * uLaneK;
   // uLaneK == 0 marks a coarse (4 m) mask: one bead-free compaction plateau.
   float lane = uLaneK > 0.0 ? exp(-laneD * laneD) : 1.0 - smoothstep(2.6, 3.6, dRoad);
@@ -6797,8 +6798,8 @@ void splatCompute() {
       }
       // (5) washboard: corrugations across an arid track every 0.8 m, in stretches, strongest in the wheel paths
       if (uRoadSurfB.x > 0.0 && gRoadFrameW > 0.5 && uLandTier > 1.5) {
-        float wv = stripeVis(0.8, gRoadAlong) * uRoadSurfB.x * gRoadFrameW * wR
-          * smoothstep(0.42, 0.62, nz(uv, 0.011, vec2(0.27, 0.59)).g) * (0.55 + 0.45 * lane);
+        float wv = stripeVis(0.8, gRoadAlong) * uRoadSurfB.x * gRoadFrameW * wR * (0.55 + 0.45 * lane);
+        if (wv > 0.01) wv *= smoothstep(0.42, 0.62, nz(uv, 0.011, vec2(0.27, 0.59)).g);
         if (wv > 0.01) {
           float wph = 6.2831853 * gRoadS / 0.8;
           if (nrmOn) n.xy += 0.5 * 0.025 * (6.2831853 / 0.8) * sin(wph) * gRoadAlong * wv;
@@ -7077,13 +7078,18 @@ void splatCompute() {
           float agg = nz(uv, 1.9, vec2(0.31, 0.57)).r;
           float big = nz(uv, 0.021, vec2(0.17, 0.83)).g;
           vec3 asph = vec3(0.118, 0.116, 0.111) * (0.90 + 0.16 * agg) * (0.88 + 0.24 * big);
-          float aggF = nz(uv, 6.1, vec2(0.13, 0.77)).r;
-          asph *= 1.0 + (smoothstep(0.62, 0.86, aggF) * 0.45 - smoothstep(0.30, 0.10, aggF) * 0.18) * tileVis(0.06);
+          // (roads lane R1 cost, 2026-10-10: each fine term's taps only while it can resolve — the v3 series measured the
+          // procedural paving on wide views)
+          float aggV = tileVis(0.06);
+          if (aggV > 0.01) {
+            float aggF = nz(uv, 6.1, vec2(0.13, 0.77)).r;
+            asph *= 1.0 + (smoothstep(0.62, 0.86, aggF) * 0.45 - smoothstep(0.30, 0.10, aggF) * 0.18) * aggV;
+          }
           // (R2: the first frames' asphalt "smooth plastic") the aggregate's second octave, the binder bled dark in blotches
           // of a few metres, and on a country road its edge ravelled — the binder gone, the stone paler and broken — before
           // the verge
-          float aggG = nz(uv, 13.0, vec2(0.53, 0.29)).r;
-          asph *= 1.0 + (aggG - 0.5) * 0.22 * tileVis(0.03);
+          float aggGV = tileVis(0.03);
+          if (aggGV > 0.01) asph *= 1.0 + (nz(uv, 13.0, vec2(0.53, 0.29)).r - 0.5) * 0.22 * aggGV;
           asph *= 1.0 - 0.13 * smoothstep(0.56, 0.84, nzq(uv, 0.09, vec2(0.71, 0.37)).x);
           if (fr) {
             float ravel = smoothstep(roadHalf - 1.0, roadHalf - 0.15, dRoad) * (1.0 - paveTownW)
@@ -7095,7 +7101,7 @@ void splatCompute() {
           if (fr) asph *= 1.0 - 0.16 * (1.0 - smoothstep(0.0, 0.45, laneP)) * smoothstep(0.50, 0.78, nz(uv, 0.21, vec2(0.13, 0.71)).g);
           float rough = mix(0.82, 0.66, wheelW);
           float crk = 0.0;
-          if (fr) {
+          if (fr && gFootM < 0.4) {
             float wv = (nz(vec2(rq.x, 0.0), 0.37, vec2(0.71, 0.29)).r - 0.5) * 0.10;
             crk = (1.0 - smoothstep(0.018, 0.018 + fwP, abs(rq.y + wv))) * step(0.5, uPaveWear.y);
             float tci = floor(rq.x / 7.0);
@@ -7103,10 +7109,13 @@ void splatCompute() {
             float tx = (tci + 0.15 + 0.7 * th.x) * 7.0 + (nz(vec2(0.0, rq.y), 0.6, vec2(0.11, 0.47)).r - 0.5) * 0.25;
             crk = max(crk, (1.0 - smoothstep(0.008, 0.008 + fwP, abs(rq.x - tx))) * step(0.35, th.y) * step(abs(rq.y), 1.0 + 3.0 * th.y) * uPaveWear.y);
           }
-          vec2 cq = rq / 0.26 + (vec2(nz(uv, 0.7, vec2(0.3, 0.1)).g, nz(uv, 0.7, vec2(0.6, 0.9)).g) - 0.5) * 0.9;
-          vec2 cf = fract(cq);
-          float cE = min(min(cf.x, 1.0 - cf.x), min(cf.y, 1.0 - cf.y)) * 0.26;
-          crk = max(crk, (1.0 - smoothstep(0.003, 0.003 + fwP, cE)) * wheelW * smoothstep(0.55, 0.75, big) * uPaveWear.y * tileVis(0.26));
+          float netV = wheelW * smoothstep(0.55, 0.75, big) * uPaveWear.y * tileVis(0.26);
+          if (netV > 0.01) {
+            vec2 cq = rq / 0.26 + (vec2(nz(uv, 0.7, vec2(0.3, 0.1)).g, nz(uv, 0.7, vec2(0.6, 0.9)).g) - 0.5) * 0.9;
+            vec2 cf = fract(cq);
+            float cE = min(min(cf.x, 1.0 - cf.x), min(cf.y, 1.0 - cf.y)) * 0.26;
+            crk = max(crk, (1.0 - smoothstep(0.003, 0.003 + fwP, cE)) * netV);
+          }
           crk *= tileVis(0.12);
           asph *= 1.0 - 0.55 * crk;
           rough = mix(rough, 0.45, crk * 0.6);
@@ -7124,7 +7133,7 @@ void splatCompute() {
             vec2 pc0 = (pcI + 0.5) * cellS + (ph2 - 0.5) * max(cellS - 2.0 * hs, vec2(0.0)) * vec2(1.0, 0.8);
             vec2 bd = abs(rq - pc0) - hs;
             float sd = length(max(bd, 0.0)) + min(max(bd.x, bd.y), 0.0) - 0.12;
-            sd += (nz(uv, 1.4, vec2(0.19, 0.73)).g - 0.5) * 0.30 + (nz(uv, 4.1, vec2(0.61, 0.07)).r - 0.5) * 0.06;
+            sd += (nz(uv, 1.4, vec2(0.19, 0.73)).g - 0.5) * 0.30 + (tileVis(0.25) > 0.01 ? (nz(uv, 4.1, vec2(0.61, 0.07)).r - 0.5) * 0.06 : 0.0);
             float inPatch = 1.0 - smoothstep(-0.01, 0.01 + fwP, sd);
             float newer = step(0.45, ph.y);
             seam = (1.0 - smoothstep(0.012, 0.024 + fwP, abs(sd))) * tileVis(0.4) * newer;
