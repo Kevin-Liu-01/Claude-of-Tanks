@@ -396,9 +396,10 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     const lx = (R() * 2 - 1) * e.hw * 0.75, lz = (R() * 2 - 1) * e.hd * 0.75;
     const wx = e.cx + lx * cosY + lz * sinY, wz = e.cz - lx * sinY + lz * cosY;
     if (bodies) {
-      const life = 13 + R() * 3;
-      puff(C, wx, e.baseY + 0.5, wz, (R() - 0.5) * 1.4, 0.45 + R() * 0.35, (R() - 0.5) * 1.4,
-        1.3, 0.32 + R() * 0.2, 1.0, life, 0.4 * low * dk, (1.15 + R() * 0.3) * low * dk, tintDark, tinted, 0.3, life, 2,
+      // (wave 397: "smoke balls lingering") low and spreading: it drifts over the ruin and thins, never climbs into a ball
+      const life = 9 + R() * 2.5;
+      puff(C, wx, e.baseY + 0.5, wz, (R() - 0.5) * 1.6, 0.3 + R() * 0.25, (R() - 0.5) * 1.6,
+        1.3, 0.16 + R() * 0.12, 1.0, life, 0.4 * low * dk, (1.15 + R() * 0.3) * low * dk, tintDark, tinted, 0.26, life, 2,
         2.3 + (i / massN) * 1.6 + R() * 0.4, 1.2, 4.5);
       continue;
     }
@@ -621,7 +622,7 @@ export function sectionFallFx(C: BlastContext, e: SectionFallEvent, look: Struct
  * face's dust and a few pieces). `look` is the building's anatomy reduced to its rubble shares, or null.
  */
 export function wallStrike(C: BlastContext, x: number, y: number, z: number, nx: number, ny: number, nz: number,
-  explosive: boolean, scale: number, look: StructureLook | null, bo = 0): void {
+  explosive: boolean, scale: number, look: StructureLook | null, bo = 0, dustK = 1): void {
   const L = look ?? FALLBACK_LOOK;
   const R = C.rand;
   const dust = dustOf(L, _dust);
@@ -656,9 +657,10 @@ export function wallStrike(C: BlastContext, x: number, y: number, z: number, nx:
     // (round 7, wave 277: a grey ball hid the building at the moment it came down) the detonation's smoke goes up off
     // the face in the wall's own dust, one puff
     {
-      const life = 4 + R() * 1.5;
+      // (dcore 2026-10-11, wave 397: "no smoke balls lingering after the last hit") its residue gone within three seconds
+      const life = 2.4 + R() * 0.8;
       hot(C, x + nx * 1.0, y + 0.8, z + nz * 1.0, nx * 0.6 + (R() - 0.5) * 0.6, 1.6 + R() * 0.6, nz * 0.6 + (R() - 0.5) * 0.6,
-        1.2, 0.9 + R() * 0.3, 1, life, 1.0 * k * dk, (2.2 + R()) * k * dk, dark, dust, 0.3, 0, 1, bo + 0.15 + R() * 0.2);
+        1.2, 0.9 + R() * 0.3, 1, life, 1.0 * k * dk, (2.2 + R()) * k * dk, dark, dust, 0.3 * dustK, 0, 1, bo + 0.15 + R() * 0.2);
     }
   }
   // (wave 266: a struck house vanished in opaque dust for seconds) the strike's cloud bursts off the face dense and
@@ -674,8 +676,8 @@ export function wallStrike(C: BlastContext, x: number, y: number, z: number, nx:
     // fall) each burst's cloud thinner and briefer: a barrage's stays dense at the face while the building shows behind
     const life = (explosive ? 2.7 : 2.6) + R() * 1.2;
     puff(C, x + nx * 0.3, y + ny * 0.3, z + nz * 0.3, (nx * 0.7 + tx * side) * sp, ny * sp + 0.8 + R(), (nz * 0.7 + tz * side) * sp,
-      2.4, 0.3, 0.9, life, 0.45 * k * dk, (explosive ? 2.3 : 2) * k * dk, i === 0 ? dark : dust, dust,
-      explosive ? 0.44 : 0.6, life, 2, R() * 0.04);
+      2.4, 0.3, 0.9, life, 0.45 * k * dk, (explosive ? 2.3 : 2) * k * dk * (0.6 + 0.4 * dustK), i === 0 ? dark : dust, dust,
+      (explosive ? 0.44 : 0.6) * dustK, life, 2, R() * 0.04);
   }
   const pieces = Math.round((explosive ? 14 : 5) * Math.min(2, k));
   for (let i = 0; i < pieces; i++) {

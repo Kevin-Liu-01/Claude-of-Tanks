@@ -378,7 +378,8 @@ export function strikeWall(wall: WallFracture, strike: WallStrike, out: WallStri
     const dv = vc - hit.v;
     if (Math.abs(dv) > R * cracks * 1.15) continue;
     for (let c = grid.rowStart[r]; c < grid.rowStart[r + 1]; c++) {
-      if (grid.state[c] === CELL_OPENING || grid.state[c] === CELL_VOID) continue;
+      if (grid.state[c] === CELL_VOID) continue;
+      const opening = grid.state[c] === CELL_OPENING;
       const uc = (grid.cellU[2 * c] + grid.cellU[2 * c + 1]) / 2;
       const du = uc - hit.u;
       const k = holeOutlineK(Math.atan2(dv, du), strike.seed);
@@ -389,6 +390,14 @@ export function strikeWall(wall: WallFracture, strike: WallStrike, out: WallStri
       const d = reach / k;
       // the rings round the hole follow its lobes only a little (the cracks run on past a lobe's notch)
       const dr = reach / (0.75 + 0.25 * k);
+      // (dcore 2026-10-11, wave 397: "some AP darts still leave puffs on unbroken brick": three of fr-barn-ap's six darts
+      // struck the barn's door, whose cells a round left be) a penetrator goes through a door's leaf or a window's sash
+      // where it strikes; a burst tears out the middle of its hole, and what is left of the leaf hangs in its jambs or
+      // falls with them (the rings round a hole leave an opening be)
+      if (opening) {
+        if (d <= (strike.kind === 'kinetic' ? R : R * 0.5)) { grid.state[c] = CELL_GONE; out.knocked.push(c); }
+        continue;
+      }
       const before = grid.state[c];
       let after = before;
       // through inside the outline; the recess ring spalls (0.7 at its inner edge, 0.45 at its outer: most of it loses
@@ -531,13 +540,17 @@ function floorCarries(below: FaceGrid, u0: number, u1: number): number {
   return u1 <= -half || u0 >= half ? u1 - u0 : 0;
 }
 
-/** Whether [u0, u1] over row `r` stands on an opening whose lintel's two jambs bear (cells beside it in that row). */
+/**
+ * Whether [u0, u1] over row `r` stands on an opening whose lintel's two jambs bear (cells beside it in that row). The
+ * opening is its frame as built (`grid.opening`): a leaf or a sash shot through under it carries nothing, so its lintel
+ * still spans from jamb to jamb.
+ */
 function overOpening(grid: FaceGrid, sup: Uint8Array, r: number, u0: number, u1: number): boolean {
   let left = -1, right = -1, onOpening = false;
   for (let c = grid.rowStart[r]; c < grid.rowStart[r + 1]; c++) {
     const a = grid.cellU[2 * c], b = grid.cellU[2 * c + 1];
     if (b <= u0 || a >= u1) continue;
-    if (grid.state[c] !== CELL_OPENING) return false;
+    if (grid.opening[c] !== 1) return false;
     onOpening = true;
     if (left < 0) left = c;
     right = c;
@@ -545,9 +558,9 @@ function overOpening(grid: FaceGrid, sup: Uint8Array, r: number, u0: number, u1:
   if (!onOpening) return false;
   // walk out to the jambs: the first non-opening cell each side
   let l = left - 1;
-  while (l >= grid.rowStart[r] && grid.state[l] === CELL_OPENING) l--;
+  while (l >= grid.rowStart[r] && grid.opening[l] === 1) l--;
   let rr = right + 1;
-  while (rr < grid.rowStart[r + 1] && grid.state[rr] === CELL_OPENING) rr++;
+  while (rr < grid.rowStart[r + 1] && grid.opening[rr] === 1) rr++;
   const jambL = l >= grid.rowStart[r] && standing(grid.state[l]) && sup[l] === 1;
   const jambR = rr < grid.rowStart[r + 1] && standing(grid.state[rr]) && sup[rr] === 1;
   // a face's end is a corner: it bears as a jamb

@@ -3,8 +3,8 @@
 // behaving like it would with physics"). A two-storey brick house: a round breaks its wall at its point (knocked
 // through, the skin's recess round it, cracks further out), nothing breaks away from the point, damage adds up, the
 // brickwork over a breach falls in a triangle, a window loses its lintel when a jamb goes, a breach at the foot of a wall
-// brings the storey over it down, a gable end's grid runs up to its apex and falls with the wall blown out under it, and
-// every outcome is the same twice.
+// brings the storey over it down, a gable end's grid runs up to its apex and falls with the wall blown out under it, a
+// dart goes through a door's leaf under a lintel that still spans, and every outcome is the same twice.
 import assert from 'node:assert/strict';
 import {
   CELL_CRACKED, CELL_FALLEN, CELL_GONE, CELL_INTACT, CELL_OPENING, CELL_SPALLED, CELL_VOID, cellRect, createWallFracture,
@@ -148,6 +148,34 @@ const centreOf = (grid, c) => { cellRect(grid, c, rect); return [(rect[0] + rect
   assert.ok(windowCells.every((c) => g.opening[c] === 1), 'a fallen opening is still known for one (its frame carries no caps)');
 }
 
+// ---- a dart through a door: the leaf is shot through where it strikes, its lintel still spans (wave 397: "some AP darts
+//      still leave puffs on unbroken brick"; three of fr-barn-ap's six struck the barn's door) --------------------------
+{
+  const wall = createWallFracture(house());
+  const out = createWallStrikeOutcome();
+  const g = wall.faces[front0];
+  const doorCells = [];
+  for (let c = 0; c < g.state.length; c++) if (g.state[c] === CELL_OPENING && Math.abs(centreOf(g, c)[0] + 2.5) < 0.5) doorCells.push(c);
+  const over = [];
+  for (let c = 0; c < g.state.length; c++) { const [u, v] = centreOf(g, c); if (Math.abs(u + 2.5) < 0.35 && v > 2.1 && v < 2.7) over.push(c); }
+  assert.ok(doorCells.length >= 6 && over.length >= 1, `the door's cells (${doorCells.length}) and its lintel's (${over.length})`);
+  // a 120 mm dart (structureFracture's hole for it: 0.39 m) in the middle of the leaf
+  strikeWall(wall, { x: -2.5, y: 1.3, z: 5.05, dirX: 0, dirZ: -1, radiusM: 0.39, kind: 'kinetic', seed: 31 }, out);
+  const holed = doorCells.filter((c) => g.state[c] === CELL_GONE);
+  assert.ok(holed.length >= 1 && holed.every((c) => out.knocked.includes(c)), `the dart goes through the leaf (${holed.length} cells knocked)`);
+  assert.ok(holed.length < doorCells.length, 'and leaves the rest of it in its frame');
+  assert.ok(over.every((c) => g.state[c] !== CELL_FALLEN && g.state[c] !== CELL_GONE), 'the lintel over the door still spans its jambs');
+  assert.equal(out.fallen.length, 0, 'nothing falls for a hole in a door');
+  // a burst tears out only the middle of its hole in a leaf: the window struck square by a light burst keeps its edges
+  const wall2 = createWallFracture(house());
+  const g2 = wall2.faces[front0];
+  const win = [];
+  for (let c = 0; c < g2.state.length; c++) if (g2.state[c] === CELL_OPENING && Math.abs(centreOf(g2, c)[0] - 2) < 0.6) win.push(c);
+  strikeWall(wall2, { x: 2.0, y: 1.5, z: 5.05, dirX: 0, dirZ: -1, radiusM: 0.5, kind: 'blast', seed: 32 }, out);
+  const torn = win.filter((c) => g2.state[c] === CELL_GONE).length;
+  assert.ok(torn >= 1 && torn < win.length, `a burst on a window tears out its middle (${torn} of ${win.length})`);
+}
+
 // ---- a breach at the foot brings the storey over it down -------------------------------------------------------
 {
   const wall = createWallFracture(house());
@@ -198,5 +226,5 @@ const centreOf = (grid, c) => { cellRect(grid, c, rect); return [(rect[0] + rect
   assert.deepEqual(run(), run(), 'deterministic in the anatomy and the strikes');
 }
 console.log('wallFracture.selftest: a round breaks its wall at its point (through, recess, cracks), damage adds up, the courses '
-  + 'over a breach fall in a triangle, a lintel goes with its jamb, a breach at the foot drops the storey over it, a gable falls '
+  + 'over a breach fall in a triangle, a lintel goes with its jamb, a dart holes a door under its lintel, a breach at the foot drops the storey over it, a gable falls '
   + 'with the wall under it, the same twice');
