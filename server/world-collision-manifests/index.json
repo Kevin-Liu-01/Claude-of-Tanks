@@ -131,11 +131,11 @@
       "concealers": 1916
     },
     "titan_gorge": {
-      "bytes": 1589475,
-      "sha256": "9300a4df2a6593e5c4ee23718918743d600451955637f2db5743057916899ff1",
-      "obstacles": 2812,
-      "colliders": 2639,
-      "concealers": 1228
+      "bytes": 1514557,
+      "sha256": "7c106ec7eb3d1208018dedf48bef2637f561c109406ee1355af8b08d7db4f8cf",
+      "obstacles": 2369,
+      "colliders": 2193,
+      "concealers": 787
     },
     "skybridge": {
       "bytes": 1674619,
@@ -365,11 +365,11 @@
         "concealers": 1916
       },
       "titan_gorge": {
-        "bytes": 1760145,
-        "sha256": "8d3ee92da8afa69d807e925c5df7450da555e695cd8da33f60378beef020d1dc",
-        "obstacles": 2938,
-        "colliders": 2685,
-        "concealers": 1228
+        "bytes": 1675305,
+        "sha256": "3d13c6d0f130df9ad98586f4025731c5578cef4e2bcb9a603ac7eaaab3a1d2df",
+        "obstacles": 2496,
+        "colliders": 2240,
+        "concealers": 787
       },
       "skybridge": {
         "bytes": 1762456,
