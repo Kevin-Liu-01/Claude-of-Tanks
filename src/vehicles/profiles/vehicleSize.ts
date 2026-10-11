@@ -1,5 +1,6 @@
 import type * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { scaledGroundSampler } from '../scaledGroundSampler.ts';
 
 /** Bake one complete vehicle before bucket merge. Articulation parents keep
  * unit scale, and the original suspension solves in its own authoring frame. */
@@ -54,7 +55,7 @@ export function resizeAuthoredVehicle(P: TankBuilderPort, factor: number): void 
     const conform = gear.conform.bind(gear);
     let frame: Parameters<typeof conform>[0] | null = null;
     let ground: Parameters<typeof conform>[1];
-    const sourceGround = (x: number, z: number): number => ground(x * factor, z * factor) / factor;
+    const sourceGround = scaledGroundSampler(factor, () => ground);
     gear.update = (left, right, dt) => update(left / factor, right / factor, dt);
     if (surface) gear.updateSurface = (left, right) => surface(left / factor, right / factor);
     gear.conform = (state, sampler, pitch, roll, dt) => {

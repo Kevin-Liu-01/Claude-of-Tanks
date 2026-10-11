@@ -88,7 +88,7 @@ const steelStore: RegionalBuilder = (ctx) => {
  * fort was a blank box in a harsh cork print). Rendered stone (round 9), the render fallen away in patches to the coursed
  * sandstone under it, a stone footing at the foot, sand drifted against the walls, sand-scoured at the foot;
  * a parapet of merlons on a coping over the wall walk; corner towers with arrow slits; a gate tower with an arched
- * gateway, its doors set back in the arch, the flag over it; an inner court ringed by the post's rooms, their doors and
+ * gateway, its doors set back in the arch, a plain pennant over it; an inner court ringed by the post's rooms, their doors and
  * windows on the court, and a cistern head in it. The footprint is the old fort's (walls inset from the plot by a metre,
  * the towers half a tower out from the corners, the gate tower 0.7 m proud of the front).
  */
@@ -278,25 +278,14 @@ const fort: RegionalBuilder = (ctx) => {
   const doorFace: Face = { origin: [0, 0, D / 2 - t + 0.2], u: [1, 0, 0], out: [0, 0, 1], width: gateW };
   gateUnit(sink, doorFace, 0, 0, gateW - 0.1, gateH - 0.05, rgb(0x4a3a2c), { bucket: 'structureWood', width: 0.1, out: 0.04, colour: rgb(0x3a2e24) });
   sink.span(wall, -gateW / 2, -0.3, D / 2 - t - 0.6, gateW / 2, gateH, D / 2 - t + 0.2, { tint: lot() });
-  // the gate tower's merlons and the flag over the gate
+  // the gate tower's merlons and the pennant over the gate
   for (let x = -gx + 0.2; x < gx - 0.5; x += 1.45) merlon(x, gz - 0.5, x + 0.8, gz, gth);
   sink.span('structureMetal', -0.05, gth, gz - 1.0, 0.05, gth + 6.5, gz - 0.9, { colour: rgb(0x8a8e90), decor: true });
-  // Jordan's flag (round 10, the coordinator: the old red rectangle at the hoist made it the Emirates'): black, white and
-  // green bands, and at the hoist a red triangle reaching half the fly with a white seven-pointed star in it
-  const flag: Array<[number, Rgb]> = [[0, rgb(0x1a1a1a)], [1, rgb(0xeeece6)], [2, rgb(0x14753c)]];
-  // (round 11, the gauntlet's wave 282: the flag "lacks the Jordanian red chevron" at the fort's distance — half as large
-  // again: 2.9 x 1.8 m, its bands 0.6 m)
-  for (const [band, colour] of flag) sink.span('structureWood', 0.06, gth + 6.3 - band * 0.6 - 0.6, gz - 0.97, 2.96, gth + 6.3 - band * 0.6, gz - 0.95, { colour, decor: true });
+  // (the facades lane, 2026-10-09; the owner: the fort "uses a country flag that we shouldn't use") no nation's flag: a
+  // plain pennant of sun-faded khaki cloth on the gate tower's mast, 2.4 m to the fly, 0.9 m at the hoist
   {
-    const fz = gz - 0.976, mid = gth + 5.4, red = rgb(0xc4142c), white = rgb(0xf4f2ec);
-    sink.prism('structureWood', [[0.06, gth + 4.5, fz], [1.51, mid, fz], [0.06, gth + 6.3, fz]], [0, 0, 1], 0.032, { colour: red, decor: true });
-    const sx = 0.06 + 1.45 / 3, sz = fz - 0.002, ro = 0.19, ri = 0.085;
-    const star = (k: number, r: number): Vec3 => [sx + r * Math.sin((k * Math.PI) / 7), mid + r * Math.cos((k * Math.PI) / 7), sz];
-    const inner = Array.from({ length: 7 }, (_, i) => star(2 * i + 1, ri));
-    sink.prism('structureWood', inner.slice().reverse(), [0, 0, 1], 0.036, { colour: white, decor: true });
-    for (let i = 0; i < 7; i++) {
-      sink.prism('structureWood', [inner[(i + 6) % 7], star(2 * i, ro), inner[i]].reverse(), [0, 0, 1], 0.036, { colour: white, decor: true });
-    }
+    const fz = gz - 0.976, cloth = rgb(0xb9a98a);
+    sink.prism('structureWood', [[0.06, gth + 5.4, fz], [2.46, gth + 5.9, fz], [0.06, gth + 6.3, fz]], [0, 0, 1], 0.032, { colour: cloth, decor: true });
   }
   // the court: rooms along the back and the west wall, flat roofs behind a low parapet, doors and windows on the court
   const ri = -D / 2 + t, rd = Math.min(4.2, D * 0.28), rh = 3.4;

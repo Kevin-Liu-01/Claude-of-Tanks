@@ -1,3 +1,4 @@
+import type { DestructionLogEntry } from '../../sim/destructionEvents.ts';
 import { usesLauncherMuzzles } from '../../sim/launcherPolicy.ts';
 /**
  * MatchClient: the browser-side match layer of Multiplayer v2 (charter §3
@@ -106,6 +107,12 @@ export interface MatchFrame {
    * it, but its fall belongs to the event, not to the list (world state audit, 2026-10-01).
    */
   destroyedPending: (index: number) => boolean;
+  /** The destruction log (from the newest frame; append-only) and whether a structure's stage event is still owed to
+   * the presentation (its stage belongs to the event, not to the log). */
+  destruction: readonly DestructionLogEntry[];
+  destructionPending: (structureId: number) => boolean;
+  /** Whether a crater's `terrain_crater` event is still owed to the presentation (P3: the crater belongs to it). */
+  craterPending: (craterId: number) => boolean;
   viewer: ViewerFrame;
   /** This frame's budgeted reliable events (array reused between frames). */
   events: WireEvent[];
@@ -129,6 +136,9 @@ export interface RetainedMigrationState {
    * never this.
    */
   fallen: readonly number[];
+  /** Every destruction entry a `structure_stage` (later a breach or a crater) named this round: like `fallen`, a link
+   * reset clears the queue, never this. */
+  destruction?: readonly DestructionLogEntry[];
 }
 
 export interface MatchClientStats {
@@ -264,6 +274,9 @@ export class MatchClient {
   private latestRevision = 0;
   /** Every obstacle a `world_prop_destroyed` named this round (RetainedMigrationState.fallen). */
   private readonly fallenObstacles = new Set<number>();
+  /** Every stage a `structure_stage` named this round (RetainedMigrationState.destruction). */
+  private readonly retainedDestruction: DestructionLogEntry[] = [];
+  private latestDestruction: readonly DestructionLogEntry[] = [];
   private matchPhase: PhaseId | null = null;
   private verdict: VerdictId | null = null;
   private decodeErrors = 0;
@@ -324,6 +337,9 @@ export class MatchClient {
       meta: { phase: 0, countdownMs: 0, battleTimeMs: 0, verdict: 0, verdictReason: '', destructibleRevision: 0 },
       modeStateJson: null, destroyed: [], destructibleRevision: 0,
       destroyedPending: (index) => this.events.isObstaclePending(index),
+      destruction: [],
+      destructionPending: (structureId) => this.events.isStructurePending(structureId),
+      craterPending: (craterId) => this.events.isCraterPending(craterId),
       viewer: {
         entityId: NO_ENTITY, playerId: '', state: null, row: null, viewer: null, authorityTick: -1,
         authorityReceivedAtMs: null, predictedShot: null,
@@ -366,6 +382,7 @@ export class MatchClient {
     return {
       keyframe: this.migration.keyframe, config: this.migration.config, latestFrame: this.snapshots.latest, latestFrameAtMs: this.lastAuthorityAtMs,
       fallen: [...this.fallenObstacles],
+      destruction: this.retainedDestruction.slice(),
     };
   }
 
@@ -447,6 +464,7 @@ export class MatchClient {
     frame.extrapolatedMs = sample.extrapolatedMs;
     frame.destroyed = this.latestDestroyed;
     frame.destructibleRevision = this.latestRevision;
+    frame.destruction = this.latestDestruction;
     frame.phase = this.recovery.current;
     if (this.predictor) this.predictor.present(elapsedS, this.displayTick);
     const viewer = frame.viewer;
@@ -743,6 +761,7 @@ export class MatchClient {
     this.interpolator.push(frame, serverTimeMs, nowMs, this.snapshots.lastGapTick === frame.tick);
     this.latestDestroyed = frame.destroyed;
     this.latestRevision = frame.meta.destructibleRevision;
+    this.latestDestruction = frame.destruction ?? [];
     this.matchPhase = frame.meta.phase;
     this.verdict = frame.meta.verdict;
     this.pendingSpectatorAck = frame.tick;
@@ -803,6 +822,25 @@ export class MatchClient {
       if (event.kind === 'world_prop_destroyed') {
         const index = Number(event.payload.obstacleIndex);
         if (Number.isSafeInteger(index) && index >= 0) this.fallenObstacles.add(index);
+      } else if (event.kind === 'structure_stage') {
+        const structureId = Number(event.payload.structureId), stage = event.payload.stage;
+        if (Number.isSafeInteger(structureId) && structureId >= 0
+          && (stage === 'damaged' || stage === 'breached' || stage === 'collapsed')) {
+          const cx = Number(event.payload.cx), cz = Number(event.payload.cz);
+          this.retainedDestruction.push(Number.isFinite(cx) && Number.isFinite(cz)
+            ? { kind: 'stage', structureId, stage, cx, cz } : { kind: 'stage', structureId, stage });
+        }
+      } else if (event.kind === 'structure_breach') {
+        // a hole or a fall (P2), as the log carries it (its footprint centre with it)
+        const p = event.payload;
+        const structureId = Number(p.structureId), section = Number(p.section), hole = Number(p.hole);
+        const x = Number(p.x), y = Number(p.y), z = Number(p.z), radiusM = Number(p.radiusM);
+        if (Number.isSafeInteger(structureId) && structureId >= 0 && Number.isSafeInteger(section) && Number.isSafeInteger(hole)
+          && Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z) && Number.isFinite(radiusM)) {
+          const cx = Number(p.cx), cz = Number(p.cz);
+          const entry = { kind: 'breach' as const, structureId, section, hole, x, y, z, radiusM, sectionDown: p.sectionDown === true };
+          this.retainedDestruction.push(Number.isFinite(cx) && Number.isFinite(cz) ? { ...entry, cx, cz } : entry);
+        }
       }
     }
     if (!game) return;

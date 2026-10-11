@@ -11,7 +11,8 @@
 // and the beds are checked on their own and left out where they do not fit. The planner is pure (numbers in,
 // placements out): props.ts places the modules as destructibles, builds the outbuilding with the kit and merges the
 // beds as dressing.
-import { PartSink, rgb, shade, type RegionalParts, type Rgb } from './geometry.ts';
+import { PartSink, rgb, shade, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { mound, ridge } from './dressing.ts';
 import { ROAD_FRONTAGE_CLEARANCE } from '../../roadBuildingFrontage.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../../../sim/matchObjectiveLayouts.ts';
 import { matchPlacementAnchors } from '../../../sim/matchPlacement.ts';
@@ -188,6 +189,8 @@ export function planYard(house: YardPlot, world: YardWorld, style: YardStyle, rn
   SIDES.forEach((sd, k) => {
     const { length, offset, shift } = sideOf(sd);
     const n = dirW(sd.n), t = dirW(sd.t);
+    // a churchyard keeps off the church's front (+z, its door's side: the approach)
+    if (style.keepFront && sd.side === '+z') return;
     for (let depth = YARD_MAX; depth >= YARD_MIN; depth -= 1) {
       const [ox, oz] = toWorld(house, shift[0] + sd.n[0] * (offset + depth / 2), shift[1] + sd.n[1] * (offset + depth / 2));
       if (!rectClear(world, house, ox, oz, t, n, length / 2, depth / 2, ROAD_FRONTAGE_CLEARANCE, BLOCKING_R)) continue;
@@ -252,7 +255,7 @@ export function planYard(house: YardPlot, world: YardWorld, style: YardStyle, rn
       plan.shed = { x, z, yaw: yawAlong([-n[0], -n[1]]), w: sw, d: sdp };
     }
   }
-  if (style.garden) {
+  if (style.garden || style.graves) {
     const room = length - (plan.shed ? sw + 1.2 : 0.8);
     const gw = Math.min(4.2, room - 0.4), gd = Math.min(3.2, depth - 1.1);
     if (gw >= 1.8 && gd >= 1.4) {
@@ -269,6 +272,8 @@ export function planYard(house: YardPlot, world: YardWorld, style: YardStyle, rn
 
 const SOIL: readonly Rgb[] = [0x4a3a2a, 0x54402e, 0x3f3226].map(rgb);
 const CROP: readonly Rgb[] = [0x4f6b2e, 0x5f7f34, 0x6b8a3a, 0x3e5a2a, 0x7a8a3e].map(rgb);
+/** a cabbage's waxy blue-green */
+const CABBAGE: Rgb = rgb(0x7f9a74);
 
 /**
  * The kitchen garden (dressing): a bed of dug soil edged with boards, rows of crops along its width (cabbage and
@@ -278,30 +283,90 @@ export function gardenParts(w: number, d: number, look: () => number, drop = 0):
   const sink = new PartSink([look() * 5.3, look() * 3.1]);
   const dec = { decor: true } as const;
   const soil = SOIL[Math.floor(look() * SOIL.length) % SOIL.length];
-  // on a slope the bed is raised to its high side, its soil and board edging carried down to the ground (`drop`)
+  // the dug ground a few centimetres over the yard's; on a slope the bed is raised to its high side, its soil carried
+  // down to the ground (`drop`) behind a board edging (wave 199 read a level bed's edging as "a plank tray")
   sink.span('structureWood', -w / 2, -0.12 - drop, -d / 2, w / 2, 0.05, d / 2, { ...dec, colour: soil });
   const board = shade(rgb(0x7a6a52), 0.8 + look() * 0.3);
-  for (const sz of [-1, 1]) sink.span('structureWood', -w / 2 - 0.03, -drop, sz * d / 2 - 0.03, w / 2 + 0.03, 0.12, sz * d / 2 + 0.03, { ...dec, colour: board });
-  for (const sx of [-1, 1]) sink.span('structureWood', sx * w / 2 - 0.03, -drop, -d / 2 + 0.03, sx * w / 2 + 0.03, 0.12, d / 2 - 0.03, { ...dec, colour: board });
+  if (drop > 0.12) {
+    for (const sz of [-1, 1]) sink.span('structureWood', -w / 2 - 0.03, -drop, sz * d / 2 - 0.03, w / 2 + 0.03, 0.08, sz * d / 2 + 0.03, { ...dec, colour: board });
+    for (const sx of [-1, 1]) sink.span('structureWood', sx * w / 2 - 0.03, -drop, -d / 2 + 0.03, sx * w / 2 + 0.03, 0.08, d / 2 - 0.03, { ...dec, colour: board });
+  }
   const rows = Math.max(2, Math.floor((d - 0.3) / 0.55));
+  const X: Vec3 = [1, 0, 0], Z: Vec3 = [0, 0, 1];
   for (let r = 0; r < rows; r++) {
     const z = -d / 2 + 0.3 + (d - 0.6) * (r + 0.5) / rows;
     const crop = CROP[Math.floor(look() * CROP.length) % CROP.length];
-    if (look() < 0.18) {
-      // beans on canes: a line of canes and the green climbing up them
+    const kind = look();
+    if (kind < 0.18) {
+      // beans on canes: a line of canes and the leaves climbing up them, thinning toward the tops
+      let last = -w / 2 + 0.3;
       for (let x = -w / 2 + 0.3; x < w / 2 - 0.2; x += 0.45) {
         sink.span('structureWood', x - 0.015, 0.05, z - 0.015, x + 0.015, 1.5, z + 0.015, { ...dec, colour: rgb(0x8a7a5a) });
+        last = x;
       }
-      sink.span('structureWood', -w / 2 + 0.25, 0.4, z - 0.09, w / 2 - 0.25, 1.3, z + 0.09, { ...dec, colour: shade(crop, 0.9) });
+      // the leaves a wall along the canes, thinner and lower than their tops
+      ridge(sink, [-w / 2 + 0.22, 0.05, z], [last + 0.08, 0.05, z], 0.3, 1.25, shade(crop, 0.85 + look() * 0.2), dec);
       continue;
     }
-    // a ridge of crops in two or three runs with gaps where a plant failed or was cut
+    if (kind < 0.5) {
+      // (wave 199: "cabbages as flat green cubes on a plank tray") cabbages: a head every 0.4-0.5 m, each a pale
+      // blue-green mound with the dark outer leaves at its foot, now and then one cut
+      for (let x = -w / 2 + 0.32; x < w / 2 - 0.25; x += 0.42 + look() * 0.1) {
+        if (look() < 0.1) continue;
+        const rr = 0.13 + look() * 0.05;
+        mound(sink, [x, 0.05, z], X, Z, rr * 1.25, rr * 1.25, rr * 0.55, shade(CABBAGE, 0.72), dec, look() * 6);
+        mound(sink, [x, 0.07, z], X, Z, rr * 0.75, rr * 0.75, rr * 1.05, shade(CABBAGE, 1.05 + look() * 0.15), dec, look() * 6, 4);
+      }
+      continue;
+    }
+    // a ridge of leafy crop (potatoes, beets, carrots) in two or three runs, gaps where a plant failed or was cut: each run
+    // a low rounded ridge, darker at its foot
     let x = -w / 2 + 0.2;
     while (x < w / 2 - 0.4) {
       const run = Math.min(w / 2 - 0.2 - x, 0.8 + look() * 1.6);
       const h = 0.16 + look() * 0.14;
-      sink.span('structureWood', x, 0.05, z - 0.13, x + run, 0.05 + h, z + 0.13, { ...dec, colour: shade(crop, 0.85 + look() * 0.3) });
+      ridge(sink, [x, 0.05, z], [x + run, 0.05, z], 0.34, h * 1.2, shade(crop, 0.85 + look() * 0.3), dec);
       x += run + 0.15 + look() * 0.35;
+    }
+  }
+  return sink.finish();
+}
+
+const IRON: Rgb = rgb(0x1e1c1a);
+
+/**
+ * A churchyard's graves (dressing, in the area the planner keeps for a yard's beds): rows of graves, each a low kerbed
+ * bed with its marker at the head — a slab with a shouldered top, a stone cross on a plinth, or an iron cross — and an
+ * empty plot here and there; the paths between the rows left as the yard's ground. The stone takes the kit's masonry.
+ */
+export function graveParts(w: number, d: number, look: () => number, drop = 0): RegionalParts {
+  const sink = new PartSink([look() * 5.3, look() * 3.1]);
+  const dec = { decor: true } as const;
+  const rows = Math.max(1, Math.floor((d - 0.4) / 2.1)), per = Math.max(1, Math.floor((w - 0.4) / 1.15));
+  for (let r = 0; r < rows; r++) {
+    const z = -d / 2 + 0.2 + (d - 0.4) * (r + 0.5) / rows;
+    for (let k = 0; k < per; k++) {
+      if (look() < 0.12) continue; // an empty plot in the row
+      const x = -w / 2 + 0.2 + (w - 0.4) * (k + 0.5) / per;
+      // the bed: a low stone kerb round a mound of earth
+      sink.span('stone', x - 0.36, -0.05 - drop, z - 0.9, x + 0.36, 0.1, z + 0.75, dec);
+      sink.span('structureWood', x - 0.3, 0.05, z - 0.84, x + 0.3, 0.14, z + 0.66, { ...dec, colour: shade(SOIL[k % SOIL.length], 0.9) });
+      const kind = look(), rise = (look() - 0.5) * 0.12, hz = z - 0.92;
+      if (kind < 0.55) {
+        // a slab headstone, a shoulder cut at its top
+        const hw = 0.24 + look() * 0.1, hh = 0.55 + look() * 0.35;
+        sink.span('stone', x - hw, -0.05 - drop, hz - 0.07, x + hw, hh, hz + 0.07, dec);
+        sink.span('stone', x - hw * 0.7, hh, hz - 0.06, x + hw * 0.7, hh + 0.08, hz + 0.06, dec);
+      } else if (kind < 0.8) {
+        // a stone cross on a plinth
+        sink.span('stone', x - 0.2, -0.05 - drop, hz - 0.12, x + 0.2, 0.25, hz + 0.12, dec);
+        sink.span('stone', x - 0.05, 0.25, hz - 0.05, x + 0.05, 1.05 + rise, hz + 0.05, dec);
+        sink.span('stone', x - 0.22, 0.72, hz - 0.05, x + 0.22, 0.82, hz + 0.05, dec);
+      } else {
+        // an iron cross
+        sink.span('structureMetal', x - 0.025, -drop, hz - 0.025, x + 0.025, 1.0, hz + 0.025, { ...dec, colour: IRON });
+        sink.span('structureMetal', x - 0.18, 0.7, hz - 0.02, x + 0.18, 0.74, hz + 0.02, { ...dec, colour: IRON });
+      }
     }
   }
   return sink.finish();

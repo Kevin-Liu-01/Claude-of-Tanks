@@ -39,11 +39,18 @@ interface GrassCarpetWorkOptions {
   /** Returns the inactive halves only; called once per requested rebuild. */
   targets(): readonly [GrassCarpetTarget, GrassCarpetTarget];
   publish(counts: readonly [number, number], cellX: number, cellZ: number, generation: number): void;
+  /**
+   * Ground lane (crater-render-spec §C): a tuft's height change at its root (x, z) as it is written — NaN drops it (a
+   * crater's cleared bowl), a number lifts it (the overlay there). The cached cells stay the base. Absent: unchanged.
+   */
+  reseat?(x: number, z: number): number;
 }
 
 interface GrassCarpetWork {
   readonly complete: boolean;
   request(cellX: number, cellZ: number): void;
+  /** Rebuild the requested ring once more from the cache (a crater changed the ground under it). */
+  refresh(): void;
   step(): void;
   cancel(): void;
   getState(): GrassCarpetWorkState;
@@ -117,14 +124,25 @@ export function createGrassCarpetWork(options: GrassCarpetWorkOptions): GrassCar
     random = null; phase = 'write';
   }
 
+  const reseated = new Float32Array(10);
   function writeInstance(): void {
     if (offset >= cell!.length) { cell = null; cellIndex++; phase = 'cell'; return; }
     const variant = cell![offset + 9];
+    let source: Float32Array = cell!, at = offset;
+    if (options.reseat) {
+      const lift = options.reseat(cell![offset], cell![offset + 2]);
+      if (Number.isNaN(lift)) { offset += 10; return; }
+      if (lift !== 0) {
+        for (let k = 0; k < 10; k++) reseated[k] = cell![offset + k];
+        reseated[1] += lift;
+        source = reseated; at = 0;
+      }
+    }
     if (counts[variant] < options.capacity) {
       const target = targets![variant];
       const index = counts[variant]++;
-      if (index === 0) writeGrassTuftData(firstMatrices[variant], firstColors[variant], 0, cell!, offset);
-      else writeGrassTuftData(target.matrices, target.colors, index, cell!, offset);
+      if (index === 0) writeGrassTuftData(firstMatrices[variant], firstColors[variant], 0, source, at);
+      else writeGrassTuftData(target.matrices, target.colors, index, source, at);
     }
     offset += 10;
   }
@@ -147,6 +165,11 @@ export function createGrassCarpetWork(options: GrassCarpetWorkOptions): GrassCar
       if (requestedGeneration > 0 && desiredX === x && desiredZ === z) return;
       desiredX = x; desiredZ = z; requestedGeneration++;
       // Record pending immediately, but do no hidden candidate work in request.
+      if (phase === 'idle' || phase === 'complete') phase = 'cell';
+    },
+    refresh() {
+      if (phase === 'cancelled' || requestedGeneration === 0) return;
+      requestedGeneration++;
       if (phase === 'idle' || phase === 'complete') phase = 'cell';
     },
     step() {

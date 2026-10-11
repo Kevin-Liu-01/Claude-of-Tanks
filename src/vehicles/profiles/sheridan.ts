@@ -450,6 +450,76 @@ function pointOnArmorFrame(
 }
 
 
+// Purpose-built remote 30 mm station for the M551A1 TTS. This deliberately
+// does not reuse the AbramsX XM914 silhouette: a low hexagonal turntable,
+// split asymmetric shield, side ammunition coffin and separate sight head
+// give the Sheridan demonstrator its own compact airborne-vehicle solution.
+// The group remains one exact fitting for equipment census purposes.
+function sheridanTtsAutocannon(P: SheridanBuilderPort): THREE.Group {
+  const station=beginAuxiliaryStation(P,{name:'m551a1TtsRemoteAutocannon',caliberMm:30,
+    yaw:[-.49,.942,-.43],pivot:[-.49,1.205,-.28],muzzle:[-.49,1.345,1.51]});
+  const body: THREE.BufferGeometry[] = [];
+  const dark: THREE.BufferGeometry[] = [];
+  const detail: THREE.BufferGeometry[] = [];
+  const glass: THREE.BufferGeometry[] = [];
+  const { box, cylX, cylY, cylZ, frustum, torus, xform } = KIT;
+
+  // Foundation is buried through the commander's roof ring so the station
+  // has a visible load path instead of hovering over the old manned mount.
+  body.push(xform(cylY(0.285, 0.335, 0.185, P.q ? 20 : 14), -0.49, 0.846, -0.43));
+  dark.push(xform(torus(0.275, 0.030, P.q ? 22 : 16), -0.49, 0.942, -0.43));
+  body.push(xform(frustum(0.31, 0.27, -0.28, 0.27, 0.24, -0.24, 0.93, 1.16),
+    -0.49, 0, -0.43));
+  dark.push(xform(cylX(0.085, 0.66, P.q ? 18 : 12), -0.49, 1.205, -0.28));
+
+  for(const g of body)P.addEquipment('turret',g);
+  for(const g of dark)P.add('turretDark',g);
+  body.length=0;dark.length=0;station.mark('yaw');
+
+  // Breech and recoil cradle. Angled cheek plates leave a service gap below
+  // the weapon while the top bridge joins both halves along a straight line.
+  body.push(xform(box(0.46, 0.25, 0.58), -0.49, 1.30, -0.06));
+  for (const side of [-1, 1]) {
+    body.push(xform(box(0.115, 0.49, 0.66), -0.49 + side * 0.285, 1.34, -0.06,
+      0, 0, side * 0.18));
+    dark.push(xform(box(0.040, 0.30, 0.48), -0.49 + side * 0.215, 1.31, -0.02));
+  }
+  body.push(xform(box(0.62, 0.09, 0.62), -0.49, 1.59, -0.06));
+  detail.push(xform(box(0.54, 0.025, 0.54), -0.49, 1.648, -0.06));
+
+  // 30 mm barrel, articulated sleeve and block muzzle all face vehicle +Z.
+  dark.push(xform(cylZ(0.047, 1.18, P.q ? 20 : 14), -0.49, 1.345, 0.80));
+  body.push(xform(cylZ(0.083, 0.28, P.q ? 20 : 14), -0.49, 1.345, 0.30));
+  dark.push(xform(cylZ(0.062, 0.12, P.q ? 18 : 12), -0.49, 1.345, 1.43));
+  dark.push(xform(cylZ(0.021, 0.020, P.q ? 14 : 10), -0.49, 1.345, 1.50));
+  for (const z of [0.45, 0.67, 0.89]) {
+    dark.push(xform(torus(0.055, 0.008, P.q ? 18 : 12), -0.49, 1.345, z));
+  }
+
+  // Asymmetric ammunition coffin and protected feed bridge distinguish the
+  // TTS station from the AbramsX's open feed-wheel architecture.
+  body.push(xform(box(0.36, 0.42, 0.54), -0.88, 1.34, -0.16, 0, -0.08, 0));
+  detail.push(xform(box(0.38, 0.035, 0.56), -0.88, 1.565, -0.16, 0, -0.08, 0));
+  dark.push(xform(box(0.16, 0.13, 0.28), -0.70, 1.42, 0.10, 0, -0.28, 0));
+  for (const y of [1.23, 1.43]) {
+    detail.push(xform(box(0.025, 0.025, 0.46), -1.07, y, -0.16, 0, -0.08, 0));
+  }
+
+  // Independent gun-right EO head with two apertures and a laser-warning
+  // crown. It is armored, but remains visibly separate from the feed box.
+  body.push(xform(box(0.28, 0.34, 0.30), -0.11, 1.43, -0.12, 0, 0.10, 0));
+  dark.push(xform(box(0.245, 0.27, 0.028), -0.095, 1.43, 0.045, 0, 0.10, 0));
+  glass.push(xform(box(0.095, 0.105, 0.024), -0.145, 1.48, 0.066, 0, 0.10, 0));
+  glass.push(xform(box(0.060, 0.060, 0.024), -0.035, 1.37, 0.075, 0, 0.10, 0));
+  detail.push(xform(cylY(0.045, 0.055, 0.085, P.q ? 14 : 10), -0.11, 1.645, -0.12));
+
+  for(const g of body)P.addEquipment('turret',g);
+  for(const g of dark)P.add('turretDark',g);
+  for(const g of detail)P.add('turretDetail',g);
+  for(const g of glass)P.add('turretGlass',g);
+  station.mark('pitch');
+  return station.root;
+}
 
 function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   const { box, cylY, xform } = KIT;
@@ -666,8 +736,7 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   P.add('turretDetail', cylY(0.014, 0.014, 1.42, P.q ? 12 : 8),
     -0.96, 2.04, -1.48);
 
-  // 2026-10-08: the remote 30 mm station (sheridanTtsAutocannon) is gone; the commander's shielded M2 is the TTS's working
-  // roof weapon (addSheridanCommanderStation)
+  P.turretG.add(sheridanTtsAutocannon(P));
   };
   buildTtsOpticsAndAutocannon();
   return {
@@ -1368,6 +1437,7 @@ function addSheridanCommanderStation(
     P.add('turretDetail', box(0.080, 0.100, 0.150),
       x, 0.980, 0.072, -0.30, 0, 0);
   }
+  if (isTts) return;
   const m2 = FITTINGS.americanM2({
     mats: P.mats,
     tone: 'dark',
@@ -1376,24 +1446,57 @@ function addSheridanCommanderStation(
     elev: 0,
     ring: { r: 0.235, stubs: 4 },
     seed: 551,
-    ...(isTts ? { shield: true } : {}),
   });
   m2.position.set(-0.498, 0.965, 0.290);
   m2.userData.sourceVehicle = 'm551_sheridan';
-  if (!isTts) {
-    P.turretG.add(m2);
-    return;
-  }
-  // 2026-10-08 (the owner's field standard in main 6763d7cc0 and his 2A5M precedent: activate the original station; the
-  // coordinator's ruling on the lane's audit): the M551A1 TTS's roof weapon is the commander's M2 behind its ballistic
-  // shield on the cupola, here the working station. It replaces the remote 30 mm the TTS never carried. Gameplay: functional
-  // roof guns stay 1 (30 -> 12.7 mm). The station pivots at the gun's receiver and fires along its barrel.
+  P.turretG.add(m2);
+}
+
+/** The TTS loader-ring M2's pintle (turret frame): the post on the hatch ring, and the gun's foot on the post's arm. */
+const TTS_LOADER_M2_POST: readonly [number, number] = [0.121, -0.168];
+const TTS_LOADER_M2_FOOT: readonly [number, number, number] = [0.38, 1.16, -0.168];
+
+/**
+ * 2026-10-09 (owner order: "give the tts its old machine gun back, except put the new machine gun you added on it
+ * somewhere else"; the coordinator's reading): the remote 30 mm station is back on the commander's rear ring
+ * (sheridanTtsAutocannon, restored exactly from before a0b6b3a64), and the commander's shielded M2 that a0b6b3a64
+ * activated on the cupola moves, with its ring, to the loader's hatch ring, where the loader's MAG stood. The same gun
+ * (FITTINGS.americanM2: its shield, ring, tone and seed) rides a pintle arm on a post clamped to the hatch ring's inboard
+ * side, the one stretch of the ring that is free (the roof ERA row covers its front, the roof sight's housing its rear).
+ * The arm carries the gun outboard and high enough that the whole gun clears the roof sight's window behind the hatch
+ * (glass y 0.945-1.075 m, x 0.30-0.58 m, looking forward) and its housing, its shield stays right of the 30 mm
+ * station's sight head and that head's forward apertures, and the post stays left of the window. Both roof weapons work:
+ * functional roof guns 1 -> 2 (the 30 mm and this M2).
+ */
+function addTtsLoaderM2Station(P: SheridanBuilderPort): void {
+  const { box, cylY } = KIT;
+  const [px, pz] = TTS_LOADER_M2_POST;
+  const [x, y, z] = TTS_LOADER_M2_FOOT;
+  // The clamp straddles the hatch ring (ring top 0.782 m); the tapered post rises from it to the arm, which carries the
+  // socket collar the gun's own pintle bearing sits in.
+  const armBottom = y - 0.060;
+  P.add('turretDetail', box(0.095, 0.040, 0.105), px, 0.792, pz);
+  P.add('turretDark', cylY(0.034, 0.042, armBottom - 0.800, P.q ? 14 : 10), px, (armBottom + 0.800) / 2, pz);
+  P.add('turretDark', box(x - px + 0.090, 0.045, 0.075), (x + px) / 2, armBottom + 0.0225, pz);
+  P.add('turretDark', cylY(0.052, 0.052, 0.020, P.q ? 18 : 12), x, y - 0.010, z);
+  const m2 = FITTINGS.americanM2({
+    mats: P.mats,
+    tone: 'dark',
+    ammoSide: 1,
+    barrelLength: 0.42,
+    elev: 0,
+    ring: { r: 0.235, stubs: 4 },
+    seed: 551,
+    shield: true,
+  });
+  m2.position.set(x, y, z);
+  m2.userData.sourceVehicle = 'm551_sheridan';
+  // The station pivots at the gun's receiver and fires along its barrel (as on the commander's cupola).
   m2.updateMatrixWorld(true);
   const gunBox = new THREE.Box3().setFromObject(m2.getObjectByName('americanM2HBBody') ?? m2);
   const axisY = (gunBox.min.y + gunBox.max.y) / 2;
-  const gunStation = beginAuxiliaryStation(P, { name: 'm551a1TtsCommanderM2', caliberMm: 12.7,
-    yaw: [m2.position.x, m2.position.y, m2.position.z], pivot: [m2.position.x, axisY, m2.position.z],
-    muzzle: [m2.position.x, axisY, gunBox.max.z] });
+  const gunStation = beginAuxiliaryStation(P, { name: 'm551a1TtsLoaderM2', caliberMm: 12.7,
+    yaw: [x, y, z], pivot: [x, axisY, z], muzzle: [x, axisY, gunBox.max.z] });
   // one physical gun is one weapon fitting: the station root carries it
   delete m2.userData.fittingRoot;
   delete m2.userData.fitting;
@@ -1406,7 +1509,7 @@ function addSheridanCommanderStation(
 function addSheridanLoaderStation(
   P: SheridanBuilderPort,
   station: SheridanRoofStation,
-  withGun = true,
+  isTts = false,
 ): void {
   const { box, cylY, torus } = KIT;
   P.addHatch('turret', nonUniformXform(
@@ -1417,7 +1520,10 @@ function addSheridanLoaderStation(
     torus(0.205, 0.010, P.q ? 24 : 16),
     0, 0, 0, 0, 0, 0, [1, 1, 1.271]),
     station.x, 0.7720, station.z);
-  if (!withGun) return;
+  if (isTts) {
+    addTtsLoaderM2Station(P);
+    return;
+  }
   const mg = FITTINGS.pintleMG({
     mats: P.mats,
     cls: station.mg,
@@ -1452,9 +1558,7 @@ function addSheridanRoofStations(P: SheridanBuilderPort, isTts: boolean): void {
     x: 0.32622, z: -0.16774, mg: 'mag', scale: 0.72, ammo: false,
   };
   addSheridanCommanderStation(P, commander, isTts);
-  // 2026-10-08 (the owner's field standard, main 6763d7cc0): the TTS's one roof weapon is the commander's M2; its loader
-  // hatch keeps no gun
-  addSheridanLoaderStation(P, loader, !isTts);
+  addSheridanLoaderStation(P, loader, isTts);
   for (const [x, z, yaw] of [[0.18, 0.64, 0], [0.56, 0.32, -0.20], [-0.58, 0.30, 0.20]]) {
     // The cast crown at these stations is Y=0.772 m. The previous 0.960 m
     // center left a 153 mm air gap below every optic; at 90° traverse their

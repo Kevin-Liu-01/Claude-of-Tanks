@@ -7,6 +7,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { mergePropsMaterialGeometrySteps, PROPS_CONVERSION_BATCH_LIMIT,
   PROPS_CONVERSION_BUDGET_MS } from './propsMaterialGeometry.ts';
 import { setShadowCasterProfile, shadowCasterProfileOf } from '../engine/renderLayers.ts';
+import { bindStructureSpans, tagStructureVertices } from './structureDamageSeam.ts';
 
 const owned = new Set();
 const own = geometry => { owned.add(geometry); return geometry; };
@@ -141,15 +142,24 @@ const bucketShadowProfile = new Function('THREE',
 function materialFixture(buckets, events = []) {
   const group = new THREE.Group(), material = new THREE.MeshBasicMaterial();
   const mats = Object.fromEntries(Object.keys(buckets).map(key => [key, material]));
+  // destruction (2026-10-07, docs/DESTRUCTION.md §16.4): the merge tags structures and records their spans, materials
+  // and depth materials through the seam's real helpers
+  const structureSpans = new Map(), structureMaterials = [], depthMaterials = new Map();
+  const structureDepthMaterial = (key) => {
+    if (!depthMaterials.has(key)) depthMaterials.set(key, new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }));
+    return depthMaterials.get(key);
+  };
   const prepare = new Function('buckets', 'mats', 'group', 'THREE', 'ensureWorldNightEmissionMask',
     'prepareWorldStaticNightFixture', 'mergePropsMaterialGeometrySteps', 'bucketShadowProfile', 'setShadowCasterProfile', 'bindClutterBatch',
+    'tagStructureVertices', 'bindStructureSpans', 'structureSpans', 'structureMaterials', 'structureDepthMaterial',
     `${mergeCode}\nreturn mergeMaterialBuckets;`)(
     buckets, mats, group, THREE,
     geometry => { events.push(['curtain', geometry]); },
     geometries => { events.push(['glass', geometries]); },
     (sources, key) => mergePropsMaterialGeometrySteps(sources, key, () => 0),
-    bucketShadowProfile, setShadowCasterProfile, bindClutterBatch);
-  return { group, material, prepare };
+    bucketShadowProfile, setShadowCasterProfile, bindClutterBatch,
+    tagStructureVertices, bindStructureSpans, structureSpans, structureMaterials, structureDepthMaterial);
+  return { group, material, prepare, structureSpans, structureMaterials };
 }
 const wrapperStart = propsSource.indexOf('export async function createPropsAsync(');
 const wrapperEnd = propsSource.indexOf('\nfunction* propsBuildSteps(', wrapperStart);
@@ -187,8 +197,30 @@ function profileCase() {
   for (const mesh of f.group.children) mesh.geometry.dispose();
   f.material.dispose();
 }
+// Destruction (2026-10-07): a bucket holding a structure part is tagged (aDamage), its part's span recorded, and it casts
+// through a depth material handed to the patch; a bucket without one is untouched.
+function structureCase() {
+  const wall = new THREE.BoxGeometry(4, 3, 0.4).translate(0, 1.5, 0);
+  wall.userData.structureIdx = 3;
+  const crate = new THREE.BoxGeometry(1, 1, 1).translate(9, 0.5, 9);
+  const buckets = { stone: [crate.clone(), wall], wood: [crate] };
+  const f = materialFixture(buckets);
+  const it = f.prepare(); while (!it.next().done) { /* drain */ }
+  const [stone, wood] = f.group.children;
+  const tag = stone.geometry.getAttribute('aDamage');
+  assert.ok(tag && tag.array instanceof Uint16Array, 'the structure bucket is tagged');
+  assert.equal(tag.getX(0), 0, 'the crate is no structure');
+  assert.equal(tag.getX(36), 4, 'the wall is structure 3 (+1)');
+  assert.deepEqual(f.structureSpans.get(3).map(s => [s.mesh, s.first, s.count, s.partClass]), [[stone, 36, 36, 'wall']]);
+  assert.ok(stone.customDepthMaterial instanceof THREE.MeshDepthMaterial, 'it casts through a structure depth material');
+  assert.equal(wood.geometry.getAttribute('aDamage'), undefined, 'a bucket without a structure is untouched');
+  assert.equal(wood.customDepthMaterial, undefined);
+  assert.deepEqual(f.structureMaterials.map(e => [e.bucket, e.role]), [['stone', 'surface'], ['stone', 'depth'], ['wood', 'surface']]);
+  for (const mesh of f.group.children) { setShadowCasterProfile(mesh, null); mesh.geometry.dispose(); }
+  f.material.dispose();
+}
 try {
-  parityCase(); boundedCase(); cleanupCase(); profileCase();
+  parityCase(); boundedCase(); cleanupCase(); profileCase(); structureCase();
   for (const values of [[], [fixture(2, false)], [fixture(2), fixture(4)]]) {
     const before = values.map(receipt);
     if (!values.length) {

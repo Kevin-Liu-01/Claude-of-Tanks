@@ -123,9 +123,11 @@ const rewriteRoutes = (documentRoot: string): Connect.NextHandleFunction => (req
  * The peer-to-peer host's collision manifests (Multiplayer v2 §13, P2 client lane 2026-09-28): the browser host builds
  * its world from the same `server/world-collision-manifests/<map>.json` the match container loads, served under
  * `/mp-collision/` — the index as `index.json` and every map as `<map>.<sha256[0..12]>.json` (content-addressed: the
- * host reads the index, then fetches the map's file by its hash; `src/mp/host/worldCollision.ts`). Dev serves them
+ * host reads the index, then fetches the map's file by its hash; `src/mp/host/worldCollision.ts`), and a mode's
+ * battlefield variant as `<map>@<variant>.<sha256[0..12]>.json` (Frontline's trenches, 2026-10-08). Dev serves them
  * from the source directory; the build emits them beside the page (never through the boot chunk, never under
- * `/assets/`: the immutable routes stay the bundle's). 56 MB of JSON, fetched one map at a time and only when hosting.
+ * `/assets/`: the immutable routes stay the bundle's). About 105 MB of JSON, fetched one map at a time and only when
+ * hosting.
  */
 const COLLISION_MANIFEST_DIR = resolve(dirname(fileURLToPath(import.meta.url)), 'server/world-collision-manifests');
 const COLLISION_MANIFEST_ROUTE = '/mp-collision';

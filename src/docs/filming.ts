@@ -40,14 +40,14 @@ export interface FilmingTake {
 
 /** The featured takes and the stages each has shipped (tools/media-r5/docs-media.mjs DOCS_TAKES, same order). */
 export const FILMING_TAKES: readonly FilmingTake[] = Object.freeze([
-  { id: 's05-barn-advance', n: 5, title: t('docs.filming.take.s05.title'), place: t('map.verdant'), time: t('docs.filming.time.day'), story: t('docs.filming.take.s05.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3'], frames: 'review3' },
-  { id: 's22-walking-barrage', n: 22, title: t('docs.filming.take.s22.title'), place: t('map.verdant'), time: t('docs.filming.time.night'), story: t('docs.filming.take.s22.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3'], frames: 'review3' },
-  { id: 's21-fields-assault', n: 21, title: t('docs.filming.take.s21.title'), place: t('map.verdant'), time: t('docs.filming.time.day'), story: t('docs.filming.take.s21.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3'], frames: 'review3' },
+  { id: 's05-barn-advance', n: 5, title: t('docs.filming.take.s05.title'), place: t('map.verdant'), time: t('docs.filming.time.day'), story: t('docs.filming.take.s05.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3', 'final'], frames: 'final' },
+  { id: 's22-walking-barrage', n: 22, title: t('docs.filming.take.s22.title'), place: t('map.verdant'), time: t('docs.filming.time.night'), story: t('docs.filming.take.s22.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3', 'final'], frames: 'final' },
+  { id: 's21-fields-assault', n: 21, title: t('docs.filming.take.s21.title'), place: t('map.verdant'), time: t('docs.filming.time.day'), story: t('docs.filming.take.s21.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3', 'final'], frames: 'final' },
   { id: 's47-ironworks-crane', n: 47, title: t('docs.filming.take.s47.title'), place: t('map.foundry'), time: t('docs.filming.time.night'), story: t('docs.filming.take.s47.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3'], frames: 'review3' },
-  { id: 's04-column-under-fire', n: 4, title: t('docs.filming.take.s04.title'), place: t('map.verdant'), time: t('docs.filming.time.day'), story: t('docs.filming.take.s04.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3'], frames: 'review3' },
-  { id: 's13-farm-race', n: 13, title: t('docs.filming.take.s13.title'), place: t('map.frontier'), time: t('docs.filming.time.sunset'), story: t('docs.filming.take.s13.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3'], frames: 'review3' },
-  { id: 's44-oasis-sunset', n: 44, title: t('docs.filming.take.s44.title'), place: t('map.oasis'), time: t('docs.filming.time.sunset'), story: t('docs.filming.take.s44.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3'], frames: 'review3' },
-  { id: 's11-container-rows', n: 11, title: t('docs.filming.take.s11.title'), place: t('map.railyard'), time: t('docs.filming.time.day'), story: t('docs.filming.take.s11.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3'], frames: 'review3' },
+  { id: 's04-column-under-fire', n: 4, title: t('docs.filming.take.s04.title'), place: t('map.verdant'), time: t('docs.filming.time.day'), story: t('docs.filming.take.s04.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3', 'final'], frames: 'final' },
+  { id: 's13-farm-race', n: 13, title: t('docs.filming.take.s13.title'), place: t('map.frontier'), time: t('docs.filming.time.sunset'), story: t('docs.filming.take.s13.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3', 'final'], frames: 'final' },
+  { id: 's44-oasis-sunset', n: 44, title: t('docs.filming.take.s44.title'), place: t('map.oasis'), time: t('docs.filming.time.sunset'), story: t('docs.filming.take.s44.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3', 'final'], frames: 'final' },
+  { id: 's11-container-rows', n: 11, title: t('docs.filming.take.s11.title'), place: t('map.railyard'), time: t('docs.filming.time.day'), story: t('docs.filming.take.s11.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3', 'final'], frames: 'final' },
 ] satisfies readonly FilmingTake[]);
 
 export const filmingVideo = (take: FilmingTake, stage: FilmingStage): string => `${MEDIA_ROOT}/${take.id}-${stage}.mp4`;

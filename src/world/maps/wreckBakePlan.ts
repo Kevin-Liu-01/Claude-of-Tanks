@@ -40,25 +40,8 @@ export const WRECK_BAKE_PLAN: Readonly<Record<string, WreckBakeRows>> = {
 };
 /** Where a variant's requests differ from its fallback (resolveWreckBakeRows): <map>@mobile, @assault, @assault-mobile. */
 export const WRECK_BAKE_PLAN_VARIANTS: Readonly<Record<string, WreckBakeRows>> = {
-  'airfield@mobile': [['t72b3_x', 2002, 1], ['t72b3_x', 2133, 0], ['t80bv', 2264, 1], ['t80bv', 2395, 0]],
-  'badlands@mobile': [['challenger1', 2002, 1], ['m60a3', 2133, 1]],
-  'caldera@mobile': [['type10', 2002, 1], ['type90', 2133, 0]],
-  'cliffbridge@mobile': [['amx30_x', 2002, 1], ['m48', 2133, 0]],
   'coastal@assault': [['leclerc', 2002, 1], ['t90m', 2133, 1], ['cv90', 2264, 1], ['bmp3', 2395, 1], ['bmp3', 2526, 0], ['leo2a7v', 2657, 1]],
-  'coastal@mobile': [['leclerc', 2002, 1], ['t90m', 2133, 1]],
-  'desert@mobile': [['m60a3', 2002, 1], ['type59', 2133, 1]],
-  'frontier@mobile': [['m60a3', 2002, 1], ['m1a1', 2133, 1]],
-  'mangrove@mobile': [['type59', 2002, 1], ['type59', 2133, 0], ['bmp2', 2264, 1]],
-  'mars@mobile': [['abramsx', 2002, 1], ['t14', 2133, 0]],
-  'oasis@mobile': [['m60a3', 2002, 1], ['m60a3', 2133, 0], ['m1a1', 2264, 1]],
+  'coastal@assault-mobile': [['leclerc', 2002, 1], ['t90m', 2133, 1], ['cv90', 2264, 1], ['bmp3', 2395, 1], ['bmp3', 2526, 0], ['leo2a7v', 2657, 1]],
   'orchard@assault': [['merkava1b', 2002, 1], ['merkava1b', 2133, 0], ['m60a1', 2264, 1], ['centurion5', 2395, 1], ['t62mv1', 2526, 0], ['t72m1_jaguar', 2657, 1]],
-  'orchard@mobile': [['merkava1b', 2002, 1], ['merkava1b', 2133, 0], ['m60a1', 2264, 1]],
-  'railyard@mobile': [['m48', 2002, 1], ['centurion5', 2133, 1]],
-  'ruinspires@mobile': [['t72m1_jaguar', 2002, 1], ['type59', 2133, 1]],
-  'saltwind@mobile': [['t72m1_jaguar', 2002, 1], ['t72m1_jaguar', 2133, 0], ['type59', 2264, 1]],
-  'skybridge@mobile': [['m48', 2002, 1], ['m60a1', 2133, 1], ['m60a1', 2264, 0]],
-  'titan_gorge@mobile': [['m60a1', 2002, 1], ['m48', 2133, 0]],
-  'urban@mobile': [['leo2a4', 2002, 1], ['t72m1_jaguar', 2133, 1], ['t72m1_jaguar', 2264, 0]],
-  'verdant@mobile': [['kv2', 2002, 1]],
-  'whiteout@mobile': [['leo1a5', 2002, 1], ['leo1a5', 2133, 0], ['m48', 2264, 0]],
+  'orchard@assault-mobile': [['merkava1b', 2002, 1], ['merkava1b', 2133, 0], ['m60a1', 2264, 1], ['centurion5', 2395, 1], ['t62mv1', 2526, 0], ['t72m1_jaguar', 2657, 1]],
 };
