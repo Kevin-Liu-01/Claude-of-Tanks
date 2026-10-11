@@ -11,6 +11,7 @@ import {
 } from './garageCrewFigures.ts';
 import { GARAGE_VARIANTS } from './garageVariants.ts';
 import {
+  VERDANT_WELD_LIGHT,
   BURLAK_SCAFFOLD_CLEARANCE_OFFSET,
   getAbramsWeldingBayPlacement,
   getGarageWorkshopLayoutPose,
@@ -41,7 +42,8 @@ assert.equal(standing.geometry.getAttribute('uv'), undefined, 'figures drop UVs 
 
 // --- every scene: hands on tools, soles on surfaces, bounded triangles -------------------------------------------
 const sceneIds = Object.keys(GARAGE_CREW_SCENES);
-assert.deepEqual(sceneIds, ['burlak', 'abrams', 'leopard', 't90m', 'k2'], 'one crew per exhibit');
+assert.deepEqual(sceneIds, ['burlak', 'abrams', 'leopard', 't90m', 'k2', 'mezzanine', 'yard'],
+  'one crew per exhibit, the Verdant mezzanine crew above the hero, and a yard crew in the opening frame\'s free band');
 let members = 0, essentialMembers = 0, triangles = 0;
 for (const scene of Object.values(GARAGE_CREW_SCENES)) {
   assert.ok(scene.members.length >= 2, `${scene.id}: a crew works in a pair or a group`);
@@ -73,7 +75,7 @@ for (const scene of Object.values(GARAGE_CREW_SCENES)) {
     const held = grips.some((grip) => near(grip, first, 0.02)) || (middle !== null && near(middle, first, 0.04));
     assert.ok(held, `${scene.id}: the ${tool.kind} sits in its holder's hand`);
   }
-  for (const prop of scene.props ?? []) {
+  for (const prop of (scene.props ?? []).filter((candidate) => candidate.kind === 'work-stand')) {
     const onDeck = scene.members.filter((member) => Math.abs(member.at[1] - prop.deckY) < 1e-6);
     assert.ok(onDeck.length > 0, `${scene.id}: a work stand carries the member standing at its deck height`);
     for (const member of onDeck) {
@@ -82,10 +84,13 @@ for (const scene of Object.values(GARAGE_CREW_SCENES)) {
     }
   }
 }
-assert.equal(members, 15, 'fifteen workers across the five bays');
-assert.ok(triangles <= 30000, `the crews stay inside 30k triangles (${triangles})`);
-assert.ok(essentialMembers * 2 >= members - 1 && essentialMembers * 2 <= members + 1,
-  `the mobile tier keeps about half the crew (${essentialMembers} of ${members})`);
+assert.equal(members, 24, 'twenty-four workers: seventeen in the five bays, three on the mezzanine, four in the yard');
+// about 1.8k triangles a worker (fingered hands and faces since round 2; cheekbones, glasses, beards and arm swell in
+// round 3); each crew is its own culled draw, so a view carries one or two crews (the opening Verdant frame: the yard
+// and mezzanine crews, about 12k triangles, 3 % of the workshop's 374k)
+assert.ok(triangles <= 46000, `the crews stay inside 46k triangles (${triangles})`);
+assert.ok(essentialMembers >= 6 && essentialMembers * 2 <= members + 1,
+  `the mobile tier keeps at most about half the crew (${essentialMembers} of ${members})`);
 
 // --- the crews stand clear of the podium and the canonical camera in all ten destinations ------------------------
 // Bay-owner transforms as garageDressing.ts applies them (the Burlak forward offset, the Abrams destination placement,
@@ -94,6 +99,10 @@ const rotate = (x, z, yaw) => ({ x: x * Math.cos(yaw) + z * Math.sin(yaw), z: -x
 function sceneToWorkshop(scene, point, variant) {
   let p = rotate(point.x, point.z, scene.frame.yaw);
   p = { x: p.x + scene.frame.x, z: p.z + scene.frame.z };
+  if (scene.frame.parent === 'verdant-interior') {
+    // Verdant's interior turns half a turn about the podium (garageDressing.ts verdantInteriorRoot)
+    return variant.id === 'verdant_motor_pool' ? { x: -p.x, z: -p.z } : null;
+  }
   if (scene.frame.parent === 'leopard-bay') {
     p = rotate(p.x, p.z, -0.55); p = { x: p.x + 18.05, z: p.z - 11.95 };
     p = rotate(p.x, p.z, Math.PI); p = { x: p.x + LEOPARD_MOBILITY_BAY_OFFSET.x, z: p.z + LEOPARD_MOBILITY_BAY_OFFSET.z };
@@ -116,6 +125,7 @@ for (const variant of GARAGE_VARIANTS) {
     for (const member of scene.members) {
       const local = crewPointInScene(member, [0, 0, 0]);
       const p = sceneToWorkshop(scene, { x: local.x, z: local.z }, variant);
+      if (!p) continue;
       const radius = Math.hypot(p.x, p.z);
       assert.ok(radius > keepClear, `${variant.id}/${scene.id}/${member.role}: outside the podium keep-clear (${radius.toFixed(1)} m)`);
       assert.ok(Math.hypot(p.x - camX, p.z - camZ) > 4, `${variant.id}/${scene.id}/${member.role}: clear of the canonical camera`);
@@ -126,6 +136,32 @@ for (const variant of GARAGE_VARIANTS) {
   }
 }
 void camY;
+
+// --- hot work only where it is safe (wave 338: "welding beside fuel drums and live rounds under a FLAMMABLE sign") ---
+const abrams = GARAGE_CREW_SCENES.abrams;
+assert.ok(!abrams.weldTip && !abrams.tools.some((tool) => tool.kind === 'torch'),
+  'the Abrams by the FLAMMABLE canisters gets cold work only');
+assert.ok(abrams.members.some((member) => member.role === 'track-tensioner')
+  && abrams.members.some((member) => member.role === 'wheel-changer'),
+  'the Abrams crew tensions the track and changes a road wheel');
+const k2 = GARAGE_CREW_SCENES.k2;
+assert.ok(k2.weldTip && k2.tools.some((tool) => tool.kind === 'torch'), 'the welding moved to the rolled K2\'s belly');
+assert.ok(k2.props?.some((prop) => prop.kind === 'weld-curtain'), 'a welding curtain screens the hot work');
+assert.ok(k2.members.some((member) => member.role === 'fire-watch')
+  && k2.tools.some((tool) => tool.kind === 'extinguisher'), 'a fire watch with an extinguisher stands by the weld');
+assert.ok(!k2.tools.some((tool) => tool.kind === 'sledgehammer'), 'nobody swings a sledge at the rolled hull');
+{
+  // the weld light (Verdant's repurposed fill) stands just off the K2 torch tip in the Garage frame
+  const verdant = GARAGE_VARIANTS.find((variant) => variant.id === 'verdant_motor_pool');
+  const torch = k2.tools.find((tool) => tool.kind === 'torch');
+  const tip = crewPointInScene(k2.members[torch.member], torch.points[1]);
+  const tipWorld = sceneToWorkshop(k2, { x: tip.x, z: tip.z }, verdant);
+  const gap = Math.hypot(VERDANT_WELD_LIGHT.x - tipWorld.x, VERDANT_WELD_LIGHT.y - tip.y, VERDANT_WELD_LIGHT.z - tipWorld.z);
+  assert.ok(gap > 0.15 && gap < 0.6, `the weld light stands 0.15-0.6 m off the torch tip (${gap.toFixed(2)} m)`);
+  const weldTip = k2.weldTip;
+  assert.ok(Math.hypot(weldTip[0] - tip.x, weldTip[1] - tip.y, weldTip[2] - tip.z) < 0.05,
+    'the scene\'s weld tip is the welder\'s torch tip');
+}
 
 // --- the dressing adds each crew inside its bay owner, lazily, on the seeded vertex-colour program -----------------
 const dressing = await readFile(new URL('./garageDressing.ts', import.meta.url), 'utf8');
@@ -150,6 +186,17 @@ for (const [scene, owner] of [
 assert.match(dressing, /addCrewScene\(GARAGE_CREW_SCENES\.t90m, legacyVerdantRoot/, 'the T-90M crew joins its components');
 assert.match(dressing, /const weldTip = put\([\s\S]{0,160}torchTip\.x, torchTip\.y, torchTip\.z/, 'the weld glow sits at the welder\'s torch tip');
 assert.match(dressing, /torchGrip,\s*\]\);/, 'the welding cable ends in the welder\'s hand');
+assert.match(dressing, /addK2TrackShoePallet\(pads\);[\s\S]*k2_hull_rotisserie[\s\S]*addWeldStation\(legacyVerdantRoot, grip, tip,[\s\S]*placeAuthoredServiceBay\(firstBayChildIndex, 'rolled_k2', 'k2'\)/,
+  'the rotisserie and the weld station join the K2 bay before its owner captures it');
+assert.doesNotMatch(dressing.slice(dressing.indexOf('async function buildAbramsAndOriginalVerdantBay'),
+  dressing.indexOf('async function buildLeopardA5NlMobilityTeardown')), /addWeldStation|addWeldingSet|weld_glow/,
+  'no welding gear in the Abrams bay by the canisters');
+assert.match(dressing, /verdant_burlak_turret_sling/, 'slings from the gantry hook take the lifted turret\'s weight');
+assert.match(dressing, /removed_road_wheel_disc_fill/, 'the Leopard\'s removed road wheels are solid discs, not hoops');
+const stage = await readFile(new URL('../ui/garageStage.ts', import.meta.url), 'utf8');
+assert.match(stage, /fill\.position\.set\(-VERDANT_WELD_LIGHT\.x, VERDANT_WELD_LIGHT\.y, -VERDANT_WELD_LIGHT\.z\)/,
+  'Verdant\'s former fill is the weld light (no added light, no new shader program)');
+assert.match(stage, /wall\.castShadow = true;/, 'the hangar walls stop the garage sun');
 assert.match(dressing, /figures\.userData\.keepDisplayMesh = true;/,
   'each crew keeps its own draw, so the frustum culls the crews one by one');
 const optimization = await readFile(new URL('./garageDressingOptimization.ts', import.meta.url), 'utf8');

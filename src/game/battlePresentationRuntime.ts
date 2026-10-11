@@ -261,7 +261,7 @@ export function createBattlePresentationRuntime({
       syncTankEnergyVisual(visual.root,entity.spec.dims,modeAura?1.12:state.modeScale??1,
         entity.combat?.destroyed?0:entity.combat?.hp??1,entity.combat?.maxHp??1,dtFrame??0,!modeAura,style);
     } else clearJuggernautVisual(visual.root);
-    if (syncMissionAttachment) syncMissionAttachment(visual.root,entity.spec,entity.aerial,!!entity.combat?.destroyed);
+    if (syncMissionAttachment) syncMissionAttachment(visual.root,entity.spec,entity.aerial,!!entity.combat?.destroyed,dtFrame ?? 0);
     else if (entity.aerial) void loadMissionAttachmentVisual();
     if (entity.aerial?.kind === 'gunship') syncGunshipVisual(visual.root, state.pos, state.yaw, dtFrame ?? 0, !entity.isPlayer && visual.root.visible);
     else hideGunshipVisual(visual.root);

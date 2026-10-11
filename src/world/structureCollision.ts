@@ -660,6 +660,12 @@ function bandProjection(solid: LocalSolid, bandMin: number, bandMax: number): { 
       for (const triangle of triangulateLoop(loop)) pieces.push({ points: triangle, y0: slabMin, y1: slabMax });
     }
   }
+  // (the hitbox lane, 2026-10-08) a dense authored body — a regional house's walls cut round their windows and doors,
+  // over the dense limit for their openings alone — closes no section loop where its reveals are open; in a band whose
+  // only non-vertical faces are horizontal (sills, lintels, a floor's underside) its pieces are zero-height slivers
+  // that stop nothing, and level shells crossed the walls under the eaves (Polders' farmhouse at 1.0-1.5 m and
+  // 2.0-2.5 m). Such a band takes the hull stand-in a light body gets; the slivers lie inside it.
+  if (!loops && dense && pieces.length && pieces.every((piece) => piece.y1 - piece.y0 <= 1e-3)) pieces.length = 0;
   if (!pieces.length || (!loops && !dense)) {
     // no section loop closed (an open sloped surface, or the band planes miss the solid): the hull of the clipped
     // vertices stands in for the slab — a planar strip's hull is the strip itself

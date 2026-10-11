@@ -286,7 +286,7 @@ function buildCv90Turret(P: CvBuilderPort): void {
   P.addModuleVisual('optics', 'turretGlass', box(0.21, 0.14, 0.014),
     0.48, 0.69, 0.715, 0, -0.08, 0);
   const rws = FITTINGS.openYokeRws({
-    mats: P.mats, bodySlot: 'turret', sizeStandard: 'k2b-compact-tower',
+    mats: P.mats, bodySlot: 'hull', sizeStandard: 'k2b-compact-tower',
     scale: 0.80, towerRise: 0.09, variant: 'korean-twin', ammoSide: 1,
     sensorSide: -1, elev: 0.055, caliberMm: 12.7,
     weaponName: 'CV90 Ksp 88 RWS', seed: 934,
@@ -591,7 +591,7 @@ function buildCv90MkivTurret(P: CvBuilderPort): void {
   P.addModuleVisual('optics', 'turretGlass', box(0.27, 0.19, 0.015),
     0.55, 0.78, 0.832, 0, -0.08, 0);
   const rws = FITTINGS.openYokeRws({
-    mats: P.mats, bodySlot: 'turret', sizeStandard: 'k2b-compact-tower',
+    mats: P.mats, bodySlot: 'hull', sizeStandard: 'k2b-compact-tower',
     scale: 0.90, towerRise: 0.11, variant: 'korean-twin', ammoSide: 1,
     sensorSide: -1, elev: 0.055, caliberMm: 12.7,
     weaponName: 'CV90 Mk IV Ksp 88 RWS', seed: 944,

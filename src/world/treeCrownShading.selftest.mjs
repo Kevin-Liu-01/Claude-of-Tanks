@@ -378,6 +378,12 @@ assert.equal(treeBiomeSlot('verdant', 'oak'), null, 'a slot the table leaves alo
     'open groves: a place\'s own flag or an arid place');
 }
 {
+  // the trees lane (2026-10-07, the gauntlet's wave 205: "an agave-like plant" on a Zeeland dyke): the polders' scrub is a
+  // broadleaf thicket of small lobed leaves (the oak's sprays, a hawthorn's), never the willow's lances fanned as a rosette
+  assert.equal(treeBiomeShrub('polders'), 'oak', "the polders' dyke scrub");
+  assert.equal(TREE_GROWTH_PROFILES[treeBiomeShrub('polders')].family, 'broadleaf');
+}
+{
   // a form's own colour wins over the map palette's (tuned for the slot's species): Dalmatia's olives silver-grey, its
   // holm oaks a dull grey-green (wave 26 on Saltwind Narrows: "uniform mid-green oak type with no olive-grey tone")
   const olive = treeBiomeSlot('saltwind', 'acacia');
