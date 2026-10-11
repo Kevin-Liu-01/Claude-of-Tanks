@@ -123,6 +123,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // coastal plain's longleaf pine flatwoods — tall, straight, clear boles under small tufted crowns, in open groves over
   // the wiregrass, the cutover's young pines in their grass stage (the map's bushes)
   longleaf: B('the Gulf coastal plain longleaf flatwoods', { pine: { form: 'longleafPine' } }, 'longleafSeedling', undefined, undefined, true),
+  // the Jamuna char, Bangladesh (the map-revival lane, the fabric round 2, 2026-10-11; gauntlet wave 396c: "no ... bamboo
+  // and banana groves binding them"): the willow slot — the banks' and the yards' trees — grows as the homesteads' bamboo
+  // clumps; the palms and the mango (the oak slot) stay
+  delta: B('the Jamuna char, Bangladesh', { willow: { form: 'bamboo' } }),
   // the Chouf on Mount Lebanon (the map-revival lane, 2026-10-05): the cedars of the Barouk, the Mediterranean pines of the
   // valley sides, olives on the terraces (the map's contour-planted orchard rows)
   orchard: B('the Chouf, Mount Lebanon', { cedar: { form: 'lebanonCedar' }, pine: { form: 'aleppoPine' },

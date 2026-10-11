@@ -31,11 +31,13 @@ export type SprayKind = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus' | 
   // the winter kinds (a map's `vegetation.bare`): the oak's and the poplar's bare twigs, the buddleia's winter canes
   | 'oak-bare' | 'poplar-bare' | 'buddleia-bare'
   // the Streuobst meadow orchard's fruit trees (one form: apple, pear and plum sprays on its tiles)
-  | 'apple';
+  | 'apple'
+  // the map-revival lane (the fabric round 2): the Bengal char's bamboo
+  | 'bamboo';
 export const SPRAY_KINDS: readonly SprayKind[] = Object.freeze(['oak', 'poplar', 'willow', 'acacia', 'eucalyptus',
   'birch', 'aspen', 'birch-bare', 'spruce', 'fir', 'pine', 'cedar', 'cypress', 'mangrove',
   'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'broom', 'juniper', 'pinyon',
-  'longleafPine', 'longleafSeedling', 'lebanonCedar', 'sugi', 'redPine', 'buddleia', 'oak-bare', 'poplar-bare', 'buddleia-bare', 'apple']);
+  'longleafPine', 'longleafSeedling', 'lebanonCedar', 'sugi', 'redPine', 'buddleia', 'oak-bare', 'poplar-bare', 'buddleia-bare', 'apple', 'bamboo']);
 /** Tiles per side of every spray atlas. */
 export const SPRAY_ATLAS_TILES = 2;
 // the winter kinds' opaque shares (measured as the table's)
@@ -56,7 +58,7 @@ export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.
   broom: 0.125, juniper: 0.256, pinyon: 0.074,
   longleafPine: 0.169, longleafSeedling: 0.216, lebanonCedar: 0.21, sugi: 0.187, redPine: 0.099, buddleia: 0.133,
   'oak-bare': OAK_BARE_COVERAGE, 'poplar-bare': POPLAR_BARE_COVERAGE, 'buddleia-bare': BUDDLEIA_BARE_COVERAGE,
-  apple: APPLE_COVERAGE,
+  apple: APPLE_COVERAGE, bamboo: 0.221,
 });
 
 /**
@@ -119,6 +121,8 @@ const LEAF_COLOR: Readonly<Record<SprayKind, LeafColor>> = Object.freeze({
   // dark blue-green, sugi's deep green awl needles, the Japanese red pine's slender bright needles
   longleafPine: { hue: 0.265, sat: 0.42, light: 0.2 },
   longleafSeedling: { hue: 0.265, sat: 0.4, light: 0.21 },
+  // the map-revival lane (the fabric round 2): the bamboo's fresh yellow-green, narrow leaves
+  bamboo: { hue: 0.235, sat: 0.36, light: 0.25 },
   // the buddleia's grey-green, felted leaves
   buddleia: { hue: 0.25, sat: 0.2, light: 0.21 },
   // the winter kinds: the oak's grey-brown twigs, the poplar's olive-brown shoots, the buddleia's dry rust-brown
@@ -353,6 +357,8 @@ interface BroadleafRecipe {
 const BROADLEAF_RECIPES: Readonly<Record<string, BroadleafRecipe>> = Object.freeze({
   oak: { shape: 'lobed', leafLen: 0.105, leafAspect: 0.38, petiole: 0.08, spacing: 0.036, leafAngle: 0.85, twigs: [5, 7], twigLen: [0.24, 0.38], twigAngle: 0.75, hang: 0, droop: 0.15, stemWidth: 3.0 },
   poplar: { shape: 'deltoid', leafLen: 0.085, leafAspect: 0.48, petiole: 0.5, spacing: 0.034, leafAngle: 0.95, twigs: [4, 6], twigLen: [0.22, 0.34], twigAngle: 0.55, hang: 0, droop: 0.35, stemWidth: 2.4 },
+  // the map-revival lane (the fabric round 2): the bamboo's long narrow leaves in drooping sprays along slim branchlets
+  bamboo: { shape: 'lance', leafLen: 0.14, leafAspect: 0.13, petiole: 0.03, spacing: 0.028, leafAngle: 0.65, twigs: [4, 6], twigLen: [0.32, 0.5], twigAngle: 0.55, hang: 0.55, droop: 0.45, stemWidth: 1.4 },
   willow: { shape: 'lance', leafLen: 0.125, leafAspect: 0.12, petiole: 0.04, spacing: 0.02, leafAngle: 0.45, twigs: [5, 7], twigLen: [0.45, 0.68], twigAngle: 0.28, hang: 1, droop: 0.4, stemWidth: 1.8 },
   acacia: { shape: 'pinnate', leafLen: 0.13, leafAspect: 0.15, petiole: 0.10, spacing: 0.044, leafAngle: 0.9, twigs: [5, 7], twigLen: [0.24, 0.38], twigAngle: 0.95, hang: 0, droop: 0.05, stemWidth: 2.2 },
   eucalyptus: { shape: 'falcate', leafLen: 0.15, leafAspect: 0.17, petiole: 0.10, spacing: 0.044, leafAngle: 0.55, twigs: [4, 6], twigLen: [0.30, 0.46], twigAngle: 0.45, hang: 0.7, droop: 0.7, stemWidth: 2.0 },

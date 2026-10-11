@@ -27,6 +27,8 @@ export type GrowthSpecies = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus
   | 'longleafPine' | 'lebanonCedar' | 'sugi' | 'redPine'
   // the trees lane (2026-10-05): the Streuobst meadow orchard's fruit tree (Frontier Basin; its variants apple, pear, plum)
   | 'apple'
+  // the map-revival lane (the fabric round 2, 2026-10-11): the Bengal char's bamboo clump (Jade River Delta's willow slot)
+  | 'bamboo'
   // shrub-only forms (treeBiomes.ts `shrub`): the broom scrub of a volcanic upland; trees round 5: the longleaf's
   // grass-stage seedlings on a cutover — never a tree slot
   | 'broom' | 'longleafSeedling' | 'buddleia';
@@ -35,7 +37,7 @@ type Rng = () => number;
 export const GROWTH_SPECIES: readonly GrowthSpecies[] = Object.freeze([
   'oak', 'poplar', 'willow', 'acacia', 'eucalyptus', 'pine', 'spruce', 'fir', 'cedar', 'cypress', 'birch', 'aspen', 'palm', 'snag',
   'mangrove', 'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'juniper', 'pinyon',
-  'longleafPine', 'lebanonCedar', 'sugi', 'redPine', 'apple',
+  'longleafPine', 'lebanonCedar', 'sugi', 'redPine', 'apple', 'bamboo',
 ]);
 
 /** How a crown envelope narrows from its base (t = 0) to its top (t = 1): the radius fraction at t. */
@@ -514,6 +516,19 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
       { height: 4.8, crownR: 1.85, scaffoldAngle: [0.3, 0.75], forkAt: [0.19, 0.25] },
     ],
     variantTiles: [[3], [0, 1], [2]],
+  }),
+  // the map-revival lane (the fabric round 2, 2026-10-11; gauntlet wave 396c: "no ... bamboo and banana groves binding
+  // them"): a Bengal homestead's bamboo clump (bansh-jhar) — a dozen culms from one stool at the ground, nearly upright
+  // and splaying a little, arching over at their tops under their leaf, the narrow leaves in drooping sprays along the
+  // culms' upper two thirds; green-gold culms (the tree's own grower: a decurrent stem forking at the ground into culms)
+  bamboo: P({
+    family: 'broadleaf', height: 9.0, heightSpread: 0.16, trunkR: 0.07, form: 'decurrent',
+    forkAt: [0.035, 0.06], scaffolds: [11, 15], scaffoldAngle: [0.14, 0.48], crownBase: 0.3, crownR: 2.8,
+    envelope: 'flame', whorled: false, perWhorl: [1, 1], spacing: 0.5, angleLow: 1.0, angleHigh: 0.6,
+    droop: 0.75, upturn: 0.0, sidePerM: 1.8, sideAngle: 1.05, sideRatio: 0.32, sideDroop: 1.3, twigPerM: 0,
+    leafOrder: 1, leafPerM: 3.2, leafFrom: 0.34, spray: [0.75, 1.05], aspect: 0.55, habit: 'hanging', tipSprays: 2,
+    cardBend: 0.18, flatRoll: 0.6, flatDroop: 0.0, bark: 3, barkTint: [0.50, 0.56, 0.30], barkTopTint: [0.44, 0.54, 0.28],
+    foliageValue: 1.05,
   }),
   // the longleaf's grass stage (shrub-only, Longleaf Crossing's cutover): a seedling of its first years is no stem at
   // all, a dense fountain of long needles from the ground like a bunchgrass, a few to a clump; the tree fields mirror the
