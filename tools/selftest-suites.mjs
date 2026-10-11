@@ -969,6 +969,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/listenerPoseRuntime.selftest.mjs',
     'src/mp/wire/wire.selftest.mjs',
     'src/mp/wire/wireFuzz.selftest.mjs',
+    // 2026-10-10 (physics lane): wire 5's WRECK_BODY group — a wreck's turret body on the rows.
+    'src/mp/wire/wreckBody.selftest.mjs',
     'src/mp/transport/transport.selftest.mjs',
     'src/mp/transport/webRtcTransport.selftest.mjs',
     'src/mp/match/clock.selftest.mjs',
@@ -998,6 +1000,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-08 (destruction core lane, crater-render-spec §F): craters across the network — stamped once on a live view
     // (the log held for an owed event), settled once for a late joiner, restored without an event on a migrated host
     'src/mp/presentation/craterSync.selftest.mjs',
+    // 2026-10-10 (physics lane): the host's turret body through the rows, the peer's interpolated pose, a migrated host.
+    'src/mp/presentation/wreckTurretSync.selftest.mjs',
     'tools/mp-client-soak.selftest.mjs',
     'src/mp/room/roomPolicy.selftest.mjs',
     'src/mp/room/p2pMatchHost.selftest.mjs',
@@ -1086,6 +1090,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // the game's own rigid bodies, and a dead hull's turret as one.
     'src/sim/rigidBody.selftest.mjs',
     'src/sim/wreckTurrets.selftest.mjs',
+    'src/vehicles/wreckTurretDriver.selftest.mjs',
     // 2026-10-09 (vehicle-contact lane, owner: "tracks shouldnt glitch through the bridge"): the drawn tracks rest on the
     // bridge decks the hull stands on (Aegis Crossing's viaduct, Amberford, Suzhou Creek), driven and parked.
     'src/world/vehicleGroundContact.selftest.mjs',

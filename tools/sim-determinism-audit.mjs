@@ -54,6 +54,8 @@ function stateDigest(match, events) {
   hash.update(`destroyed ${JSON.stringify(snapshot.meta.destroyedObstacleIndices)} rev ${snapshot.meta.destructibleRevision}\n`);
   // destruction (2026-10-07): the structures' log (stages, breaches, craters) is authoritative state too
   hash.update(`destruction ${JSON.stringify(snapshot.meta.destructionLog ?? [])}\n`);
+  // physics lane (2026-10-10): the wrecks' turret bodies are authoritative state too (their rows, their shell collision)
+  hash.update(`turrets ${match.wreckTurretDigest ? match.wreckTurretDigest() : ''}\n`);
   hash.update(`events ${events.length} ${events.map((e) => `${e.type}:${JSON.stringify(e).length}`).join(',')}\n`);
   return hash.digest('hex').slice(0, 16);
 }
@@ -63,7 +65,11 @@ function stateDigest(match, events) {
  * ruleset's switch says, and h2 fires its HE round down at the ground near it, so the dug ground and its log are in the
  * hash.
  */
-export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7, every = 60, log = () => {}, craters = false } = {}) {
+/**
+ * `kills` (physics lane, 2026-10-10): the two scripted hulls catch fire on a hit point's breadth at ticks 240 and 420 and burn out, so
+ * their turrets come off their rings as bodies the authority steps (sim/wreckTurrets.ts) — the turret poses in the hash.
+ */
+export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7, every = 60, log = () => {}, craters = false, kills = false } = {}) {
   const standard = matchRulesetFor('standard');
   const ruleset = craters ? { ...standard, destruction: { ...standard.destruction, craters: true } } : undefined;
   const heSlot = (specId) => Math.max(0, getSpec(specId).gun.shells.findIndex((shell) => isHeClass(shell?.type)));
@@ -87,9 +93,19 @@ export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7,
     let hits = 0;
     let stages = 0;
     let dug = 0;
+    let turretKills = 0;
     const inputs = new Map();
     const h2Slot = craters ? heSlot('t90m') : 0;
     for (let tick = 1; tick <= ticks; tick++) {
+      if (kills && (tick === 240 || tick === 420)) {
+        // the scripted hulls (a bot would put its fire out with its extinguisher)
+        const victim = match.entities.find((entity) => entity.id === (tick === 240 ? 'h2' : 'h1'));
+        if (victim && !victim.combat.destroyed) {
+          victim.combat.hp = Math.min(victim.combat.hp, 1);
+          victim.combat.fire.burning = true;
+          victim.combat.fire.ticksLeft = Math.max(victim.combat.fire.ticksLeft ?? 0, 4);
+        }
+      }
       inputs.set('h1', scriptedInput(0, tick));
       inputs.set('h2', craters ? scriptedInput(1, tick, h2Slot, -0.03) : scriptedInput(1, tick));
       match.step({ dt: SIM_DT, inputs });
@@ -101,12 +117,14 @@ export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7,
         else if (event.type === 'shell_hit') hits++;
         else if (event.type === 'structure_stage') stages++;
         else if (event.type === 'terrain_crater') dug++;
+        else if (event.type === 'tank_destroyed') turretKills++;
       }
       match.afterEventBroadcast();
       if (tick % every === 0) digests.push([tick, stateDigest(match, events)]);
     }
     world.release?.();
-    return { digests, counts: { events: events.length, crushes, impacts, hits, stages, craters: dug }, final: stateDigest(match, events) };
+    return { digests, counts: { events: events.length, crushes, impacts, hits, stages, craters: dug, kills: turretKills,
+      turretBodies: match.wreckTurretDigest ? match.wreckTurretDigest().split('\n').filter(Boolean).length : 0 }, final: stateDigest(match, events) };
   };
   const started = performance.now();
   const a = run();
@@ -124,7 +142,7 @@ export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7,
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const report = runDeterminismAudit({ mapId: arg('map', 'verdant'), ticks: Number(arg('ticks', 3600)), seed: Number(arg('seed', 7)),
-    craters: process.argv.includes('--craters') });
+    craters: process.argv.includes('--craters'), kills: process.argv.includes('--kills') });
   console.log(`sim determinism: ${report.mapId} seed ${report.seed}, ${report.ticks} ticks × 2 runs in ${report.wallMs} ms — ${report.identical ? 'IDENTICAL' : `DIVERGED at tick ${report.firstDiffTick}`}; run A ${JSON.stringify(report.countsA)}, run B ${JSON.stringify(report.countsB)}; final ${report.finalA} / ${report.finalB}`);
   process.exitCode = report.identical ? 0 : 1;
 }

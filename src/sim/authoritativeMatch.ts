@@ -82,6 +82,7 @@ import type {
   SpottingVector3,
 } from './spotting.ts';
 import { captureWorldSnapshot } from './worldSnapshot.ts';
+import { createWreckEnvironment, createWreckTurrets, wreckGroundSampler } from './wreckTurrets.ts';
 import { capturePredictionAuthorityState } from './predictionAuthorityState.ts';
 import type {
   SnapshotEntitySource,
@@ -233,6 +234,11 @@ export interface AuthoritativeEntity {
   modeShellKnockScale?: number;
   /** Ruleset impact physics block (matchRuleset.ts) the movement reads for the landing rebound. */
   modePhysics?: RulesetPhysics | null;
+  /**
+   * A wreck's turret body (physics lane; sim/wreckTurrets.ts), published every step: the turret frame's world pose
+   * [x, y, z, qx, qy, qz, qw] and 1 when it sleeps at [7]; null while the hull has none. The rows carry it (WRECK_BODY).
+   */
+  _wreckTurret?: Float64Array | null;
   _modeTargetX?: number;
   _modeTargetZ?: number;
   _deniedShellSlot?: number;
@@ -376,6 +382,13 @@ export interface AuthoritativeMatch {
    * match's log, so every peer's settled reading converges. Returns the entries this world applied.
    */
   restoreDestruction(entries: readonly DestructionLogEntry[]): { applied: number };
+  /**
+   * A resumed match (physics lane): a wreck's turret body where the previous authority's newest row had it — asleep
+   * where it lay, or awake to fall on from there. False for an unknown hull or a vehicle without a turret.
+   */
+  restoreWreckTurret(id: string, pose: { x: number; y: number; z: number; qx: number; qy: number; qz: number; qw: number; asleep: boolean }): boolean;
+  /** Every turret body's pose, rounded to the millimetre (the determinism audit hashes it). */
+  wreckTurretDigest(): string;
 }
 
 interface SharedTerrain {
@@ -665,6 +678,19 @@ function segmentTerrainHit(
   return null;
 }
 
+/** A wreck's turret off its ring: the reach of its plates and gun from its frame (m), and its frame as a matrix. */
+const WRECK_TURRET_REACH_M = 6.5;
+const _wreckTurretMatrix = new Matrix4();
+const _wreckTurretPos = new Vector3();
+const _wreckTurretQuat = new Quaternion();
+const _wreckTurretScale = new Vector3();
+function wreckTurretMatrix(body: Float64Array, scale: number): Matrix4 {
+  _wreckTurretPos.set(body[0], body[1], body[2]);
+  _wreckTurretQuat.set(body[3], body[4], body[5], body[6]);
+  _wreckTurretScale.setScalar(scale);
+  return _wreckTurretMatrix.compose(_wreckTurretPos, _wreckTurretQuat, _wreckTurretScale);
+}
+
 function firstTankTrace(
   shell: DamageShell,
   entities: readonly AuthoritativeEntity[],
@@ -678,8 +704,12 @@ function firstTankTrace(
     const radius = finite(target.spec.armor && target.spec.armor.boundingRadiusM,
       target.spec.dims.hullLengthM * 0.65);
     const centerDistance = target.state.pos.distanceTo(shell.prevPos);
-    if (centerDistance > segmentLength + radius + 2) continue;
+    // physics lane: a wreck whose turret came off its ring is traced with the turret where its body lies
+    const body = target.combat.destroyed ? target._wreckTurret : null;
+    if (centerDistance > segmentLength + radius + 2 && !(body && Math.hypot(body[0] - shell.prevPos.x, body[1] - shell.prevPos.y,
+      body[2] - shell.prevPos.z) <= segmentLength + WRECK_TURRET_REACH_M)) continue;
     const pose = tankPoseFromState(target.state);
+    if (body) pose.turretWorld = wreckTurretMatrix(body, target.state.modeScale ?? 1);
     const hits = traceTank(shell.prevPos, shell.pos, pose, target.spec.armor,
       target.combat.eraSpent, shell.spec.tracer === 'DRONE');
     if (!hits.length) continue;
@@ -799,6 +829,12 @@ export function createAuthoritativeMatch({
     // the map's walls price a ram (§4.4: timber and mudbrick give sooner than masonry and concrete)
     wallMaterial: wallMaterialForStyle(architectureStyleOf(getMapConfig(String(mapId || 'verdant')))),
   });
+  // physics lane (2026-10-10): a dead hull's turret flies or comes off its ring as a rigid body this authority owns
+  // (sim/wreckTurrets.ts) — the deformed ground, the shard's solid records, the hulls; the rows carry its pose
+  const wreckTurrets = createWreckTurrets({ seed, capacity: 64,
+    gravity: 9.81 * (Number.isFinite(ruleset.gravityScale) ? ruleset.gravityScale : 1) });
+  wreckTurrets.bind(createWreckEnvironment(wreckGroundSampler(heightField), staticObstacles,
+    worldCollision && typeof worldCollision.getColliders === 'function' ? worldCollision.getColliders() : []));
   /** The tick's blasts (x, y, z, kg), felling their light props at the end of the step (advanceDestruction). */
   const pendingBlasts: number[] = [];
   const destructionEvents: StructureStageEvent[] = [];
@@ -1000,6 +1036,11 @@ export function createAuthoritativeMatch({
   function emit(type: string, payload: Record<string, RuntimeValue>): void {
     if (type === 'tank_destroyed') modeController.recordDestruction(String(payload.id),
       typeof payload.killerId==='string'?payload.killerId:null);
+    if (type === 'tank_destroyed') {
+      // the turret flies (a cook-off) or comes off its ring (any other death), seeded by the kill
+      const dead = entityById.get(String(payload.id));
+      if (dead) wreckTurrets.launch(dead, String(payload.cause ?? ''), Math.round(timeS / SIM_DT));
+    }
     if (type === 'tank_destroyed' && destruction.enabled) {
       // a cook-off or a fuel fire bursts on the structures beside the hull (never on the tanks)
       const dead = entityById.get(String(payload.id));
@@ -2360,12 +2401,28 @@ export function createAuthoritativeMatch({
     advanceTankMovement(dt);
     advanceTankContacts(dt);
     advanceRollover(dt);
+    advanceWreckTurrets();
     advanceWeapons(dt);
     advanceFires(dt);
     advanceRepairs(dt);
     advanceDestruction();
     updateVisibility();
     determineResult(modeController.step(dt, timeS + modeTimeOffsetS));
+  }
+
+  /** The turret bodies after the hulls moved and before any shell is traced; each hull's row reads its turret's pose. */
+  const _wreckPose = new Float64Array(7);
+  function advanceWreckTurrets(): void {
+    wreckTurrets.step(entities);
+    for (const entity of entities) {
+      if (!wreckTurrets.framePose(entity.id, _wreckPose)) {
+        if (entity._wreckTurret) entity._wreckTurret = null;
+        continue;
+      }
+      const out = entity._wreckTurret ??= new Float64Array(8);
+      for (let k = 0; k < 7; k++) out[k] = _wreckPose[k];
+      out[7] = wreckTurrets.settled(entity.id) ? 1 : 0;
+    }
   }
 
   /** Destruction's end of step: queued collapses swap their collision, stage events go out (every viewer). */
@@ -2548,6 +2605,18 @@ export function createAuthoritativeMatch({
     restoreDestruction(entries: readonly DestructionLogEntry[]): { applied: number } {
       return { applied: destruction.restore(entries) };
     },
+    restoreWreckTurret(id, pose) {
+      const entity = entityById.get(id);
+      if (!entity) return false;
+      const ok = wreckTurrets.restore(entity, pose);
+      if (ok) {
+        const out = entity._wreckTurret ??= new Float64Array(8);
+        out[0] = pose.x; out[1] = pose.y; out[2] = pose.z; out[3] = pose.qx; out[4] = pose.qy; out[5] = pose.qz; out[6] = pose.qw;
+        out[7] = pose.asleep ? 1 : 0;
+      }
+      return ok;
+    },
+    wreckTurretDigest: () => wreckTurrets.digest(),
   };
   updateVisibility();
   return simulation;

@@ -24,20 +24,47 @@ const strv = getSpec('strv103');
   assert.ok(wreckTurretProfile(strv).hullHalf[2] > 2, 'but stands as a hull box for the others');
 }
 
-// --- launch velocities: a cook-off throws (up 6–10 m/s, off to a side, tumbling); a plain death unseats
+// --- launch velocities: a cook-off throws high over its fireball (an MBT's turret 6–14 m over the ring), well off to a
+// side, tumbling end over end; the speed is the charge's work on the turret's mass; a plain death unseats
 {
   const out = new Float64Array(6);
   let seed = 1;
   const random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
   for (let n = 0; n < 50; n++) {
     turretLaunchVelocity('ammorack', 66.8, random, out);
-    assert.ok(out[1] > 5.4 && out[1] < 9.4, `cook-off up ${out[1].toFixed(2)}`);
-    assert.ok(Math.hypot(out[0], out[2]) >= 0.99 && Math.hypot(out[0], out[2]) <= 2.61, 'thrown off to a side');
-    assert.ok(Math.hypot(out[3], out[4], out[5]) > 0.6, 'tumbling');
+    assert.ok(out[1] > 10.4 && out[1] < 16.6, `cook-off up ${out[1].toFixed(2)} (apex ${(out[1] ** 2 / 19.62).toFixed(1)} m)`);
+    assert.ok(Math.hypot(out[0], out[2]) >= 1.79 && Math.hypot(out[0], out[2]) <= 4.41, 'thrown well off to a side');
+    assert.ok(Math.hypot(out[3], out[4], out[5]) > 1.3, 'tumbling');
     turretLaunchVelocity('shot', 66.8, random, out);
     assert.ok(out[1] > 1.5 && out[1] < 2.7 && Math.hypot(out[0], out[2]) < 0.81, 'a plain kill unseats it');
   }
+  // the same rack throws a light turret higher than a heavy one, never past the cap
+  const draws = (k) => { let i = 0; return () => [0.5, 0.5, 0.5, 0.5, 0.5, k, 0.5, 0.5, 0.5][i++ % 9]; };
+  turretLaunchVelocity('ammorack', 66.8, draws(0.5), out, 16000);
+  const heavy = out[1];
+  turretLaunchVelocity('ammorack', 66.8, draws(0.5), out, 9000);
+  assert.ok(out[1] > heavy * 1.25, `a lighter turret flies faster (${heavy.toFixed(1)} → ${out[1].toFixed(1)} m/s)`);
+  turretLaunchVelocity('ammorack', 66.8, draws(1), out, 1500);
+  assert.ok(out[1] <= 19 + 1e-9, 'capped');
 }
+
+// --- the outline: a turret meets the world where its armour reaches, not on its box's faces. Its base is a face (it
+// sits on its ring plane), its side is no face (it does not stand on it "like a coin")
+{
+  const profile = wreckTurretProfile(m1);
+  const s = profile.shape;
+  const outline = [];
+  for (let i = 0; i < s.sphereCount; i++) {
+    if (s.sphereSolid[i] === 0) outline.push([s.spheres[i * 4] + s.com[0], s.spheres[i * 4 + 1] + s.com[1], s.spheres[i * 4 + 2] + s.com[2]]);
+  }
+  assert.ok(outline.length >= 12 && outline.length <= 60, `outline points (${outline.length})`);
+  const c = profile.turretCenter, h = profile.turretHalf;
+  for (const p of outline) for (let k = 0; k < 3; k++) assert.ok(Math.abs(p[k] - c[k]) <= h[k] + 1e-6, 'inside the turret box');
+  const near = (k, sign) => { const ext = Math.max(...outline.map((p) => sign * p[k])); return outline.filter((p) => sign * p[k] >= ext - 0.03).length; };
+  assert.ok(near(1, -1) >= 6, 'the base is a face');
+  assert.ok(near(0, 1) <= 3 && near(0, -1) <= 3, 'a side is an edge at most');
+}
+
 
 // a hull standing on flat ground, at rest
 function hull(id = 'h1', yaw = 0.3) {
@@ -75,6 +102,41 @@ function lowestOverGround(turrets, id) {
     low = Math.min(low, pose[1] + v.y - shape.spheres[k * 4 + 3]);
   }
   return low;
+}
+
+// --- set down on its side an M1A2's turret lies on it (its armour's flank is a face) and rocks to rest; set upright on
+// its bustle, gun to the sky, it has no footing there (an end's upper points stand back from it) and goes over at once
+// (a 3.4 m column still takes a second or two to come down from upright; a landing turret rarely stands there at all)
+function setDown(rotation, lift) {
+  const turrets = createWreckTurrets({ seed: 5 });
+  turrets.bind(flat);
+  const tank = hull('h9', 0);
+  tank.state.pos = { x: 40, y: 0, z: 40 }; // far from the body: the hull box plays no part
+  assert.equal(turrets.restore(tank, { x: 0, y: lift, z: 0, qx: rotation.x, qy: rotation.y, qz: rotation.z, qw: rotation.w, asleep: false }), true);
+  const up = new Vector3();
+  const tilts = [];
+  for (let n = 0; n < 360; n++) {
+    turrets.step([tank]);
+    turrets.framePose(tank.id, pose);
+    up.set(0, 1, 0).applyQuaternion(new Quaternion(pose[3], pose[4], pose[5], pose[6]));
+    tilts.push(Math.acos(Math.max(-1, Math.min(1, up.y))) * 57.2958);
+  }
+  return tilts;
+}
+{
+  // on its right side (+x down), a hair off square
+  const side = setDown(new Quaternion().setFromEuler(new (await import('three')).Euler(0.02, 0, Math.PI / 2 + 0.03)), 1.95);
+  const still = side.slice(300).every((t) => Math.abs(t - side[359]) < 0.02);
+  assert.ok(still && Math.abs(side[359] - 90) < 3, `at rest on its flank by 5 s (${side[300].toFixed(2)}° → ${side[359].toFixed(2)}°)`);
+  // upright on its bustle, gun to the sky, leaning 6°
+  const bustle = setDown(new Quaternion().setFromEuler(new (await import('three')).Euler(-Math.PI / 2 + 0.105, 0, 0)), 3.45);
+  const down = bustle.findIndex((t) => Math.abs(t - 90) > 45);
+  assert.ok(down > 0 && down < 240, `off its bustle within 4 s (${down < 0 ? 'never' : (down / 60).toFixed(2) + ' s'})`);
+  // set exactly upright on its bustle it has no footing there: it starts over at once instead of standing
+  const upright = setDown(new Quaternion().setFromEuler(new (await import('three')).Euler(-Math.PI / 2, 0, 0)), 3.45);
+  const over = upright.findIndex((t) => Math.abs(t - 90) > 45);
+  assert.ok(Math.abs(upright[48] - 90) > 2.5, `upright on its bustle it is going over within 0.8 s (${upright[48].toFixed(1)}°)`);
+  assert.ok(over > 0 && over < 180, `and down within 3 s (${over < 0 ? 'never' : (over / 60).toFixed(2) + ' s'})`);
 }
 
 // --- a cook-off: the turret flies, tumbles and lies on the ground beside its hull (or on it), asleep — never seated
@@ -185,4 +247,4 @@ function cookOff(tick = 120) {
   assert.ok(Math.abs(out[0] - ref.x) < 1e-12 && Math.abs(out[1] - ref.y) < 1e-12 && Math.abs(out[2] - ref.z) < 1e-12 && Math.abs(out[3] - ref.w) < 1e-12);
 }
 
-console.log('wreckTurrets.selftest: profiles, seeded launches, cook-off flight to rest, bit-identical reruns, plain-kill unseat on the deck, shoves and respawns, frame matrix and restore');
+console.log('wreckTurrets.selftest: profiles, seeded launches scaled by charge and turret mass, the armour outline, set-down flank and bustle, cook-off flight to rest, bit-identical reruns, plain-kill unseat on the deck, shoves and respawns, frame matrix and restore');

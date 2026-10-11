@@ -103,6 +103,125 @@ function boundsOf(plates: readonly PlateLike[] | undefined, cells: readonly Cell
 }
 
 /**
+ * Directions for the turret armour's extreme points: an icosahedron's 12 vertices and its 30 edge midpoints (42 unit
+ * vectors, the six axis directions among them).
+ */
+const ENVELOPE_DIRECTIONS: readonly Vec3[] = (() => {
+  const phi = (1 + Math.sqrt(5)) / 2;
+  const vertices: [number, number, number][] = [];
+  for (const a of [-1, 1]) for (const b of [-1, 1]) vertices.push([0, a, b * phi], [a, b * phi, 0], [b * phi, 0, a]);
+  const unit = (x: number, y: number, z: number): Vec3 => { const l = Math.hypot(x, y, z); return [x / l, y / l, z / l]; };
+  const out: Vec3[] = vertices.map((v) => unit(v[0], v[1], v[2]));
+  for (let i = 0; i < vertices.length; i++) for (let j = i + 1; j < vertices.length; j++) {
+    const a = vertices[i], b = vertices[j];
+    if (Math.abs(Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) - 2) < 1e-9) out.push(unit(a[0] + b[0], a[1] + b[1], a[2] + b[2]));
+  }
+  return out;
+})();
+/** The contact spheres' radius on the turret's outline (m, before the vehicle's scale). */
+const ENVELOPE_RADIUS_M = 0.04;
+
+/**
+ * The turret's contact points: where its armour really reaches (plates and collision cells, floored on the ring
+ * plane), not its box. The extreme point along each direction, inset by the sphere radius along it, and a grid inside
+ * the ring-plane footprint (it sits flat on its base over rubble). A real turret's cheeks slope, its bustle is smaller
+ * than its box's end, a sight stands on its roof: on the box it rested on faces it does not have (on its side "like a
+ * coin", upright on its bustle with the gun skyward); on its outline it rests where a turret can.
+ */
+function envelopePoints(plates: readonly PlateLike[] | undefined, cells: readonly CellLike[] | undefined, s: number): Vec3[] {
+  const cloud: [number, number, number][] = [];
+  for (const plate of plates ?? []) for (const v of plate.verts) cloud.push([v[0] * s, Math.max(0.02, v[1]) * s, v[2] * s]);
+  for (const cell of cells ?? []) {
+    for (let k = 0; k < 8; k++) {
+      cloud.push([
+        (k & 1 ? cell.max[0] : cell.min[0]) * s,
+        Math.max(0.02, k & 2 ? cell.max[1] : cell.min[1]) * s,
+        (k & 4 ? cell.max[2] : cell.min[2]) * s,
+      ]);
+    }
+  }
+  if (cloud.length < 4) return [];
+  const e = ENVELOPE_RADIUS_M * s;
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (const p of cloud) for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], p[k]); hi[k] = Math.max(hi[k], p[k]); }
+  // a sphere stays inside the outline: inset along the direction that found its point, and off every face of the
+  // bounds it lies on (a point on the base's rim found sideways must not hang below the base)
+  const inset = (v: number, k: number): number => (hi[k] - lo[k] > 2 * e ? Math.min(hi[k] - e, Math.max(lo[k] + e, v)) : (lo[k] + hi[k]) / 2);
+  const points: Vec3[] = [];
+  const taken = new Set<number>();
+  for (const d of ENVELOPE_DIRECTIONS) {
+    let best = -Infinity, at = -1;
+    for (let i = 0; i < cloud.length; i++) {
+      const q = cloud[i][0] * d[0] + cloud[i][1] * d[1] + cloud[i][2] * d[2];
+      if (q > best + 1e-9) { best = q; at = i; }
+    }
+    if (at < 0 || taken.has(at)) continue;
+    taken.add(at);
+    const c = cloud[at];
+    points.push([inset(c[0] - d[0] * e, 0), inset(c[1] - d[1] * e, 1), inset(c[2] - d[2] * e, 2)]);
+  }
+  // the ends are no footings: a bustle's top slopes or rounds into the roof and its stowage racks crush, a turret's
+  // face is its mantlet and wedges. The upper points of either end stand back from it, so a turret come down on an end
+  // stands on that end's lower edge alone, out of balance toward its roof, and goes over instead of balancing gun-up
+  const mid = (lo[1] + hi[1]) / 2, back = Math.max(0.2 * s, 0.07 * (hi[2] - lo[2]));
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    if (p[1] <= mid) continue;
+    if (p[2] <= lo[2] + e + 0.1 * s) points[i] = [p[0], p[1], Math.max(p[2], lo[2] + e + back)];
+    else if (p[2] >= hi[2] - e - 0.1 * s) points[i] = [p[0], p[1], Math.min(p[2], hi[2] - e - back)];
+  }
+  // the footprint on the ring plane: a grid inside the hull of the floored points
+  const floor = 0.02 * s + 1e-6;
+  const base = cloud.filter((p) => p[1] <= floor).map((p) => [p[0], p[2]] as [number, number]);
+  const hull = convexHull2d(base);
+  if (hull.length >= 3) {
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (const [x, z] of hull) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+    const spacing = Math.max(0.9 * s, Math.max(x1 - x0, z1 - z0) / 4);
+    const nx = Math.max(1, Math.round((x1 - x0) / spacing)), nz = Math.max(1, Math.round((z1 - z0) / spacing));
+    for (let i = 1; i < nx; i++) {
+      for (let j = 1; j < nz; j++) {
+        const x = x0 + ((x1 - x0) * i) / nx, z = z0 + ((z1 - z0) * j) / nz;
+        if (insideConvex2d(hull, x, z, e)) points.push([x, 0.02 * s + e, z]);
+      }
+    }
+  }
+  return points;
+}
+
+/** A convex hull (counter-clockwise, monotone chain) of 2D points. */
+function convexHull2d(input: readonly [number, number][]): [number, number][] {
+  const pts = input.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (pts.length < 3) return pts;
+  const cross = (o: [number, number], a: [number, number], b: [number, number]): number =>
+    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lower: [number, number][] = [], upper: [number, number][] = [];
+  for (const p of pts) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 1e-12) lower.pop();
+    lower.push(p);
+  }
+  for (let i = pts.length - 1; i >= 0; i--) {
+    const p = pts[i];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 1e-12) upper.pop();
+    upper.push(p);
+  }
+  return lower.slice(0, -1).concat(upper.slice(0, -1));
+}
+
+/** Whether (x, z) lies inside a counter-clockwise convex polygon by at least `margin`. */
+function insideConvex2d(hull: readonly [number, number][], x: number, z: number, margin: number): boolean {
+  for (let i = 0; i < hull.length; i++) {
+    const a = hull[i], b = hull[(i + 1) % hull.length];
+    const ex = b[0] - a[0], ez = b[1] - a[1];
+    const len = Math.hypot(ex, ez);
+    if (len < 1e-9) continue;
+    // left of each edge (inside) by the margin
+    if ((ex * (z - a[1]) - ez * (x - a[0])) / len < margin) return false;
+  }
+  return true;
+}
+
+/**
  * A vehicle's boxes and turret body: the hull's box from its hull armour (its top on the ring plane), the turret's box
  * from its turret armour (plates and collision cells, floored on the ring plane) and the body — that box and the gun
  * barrel (a capsule, drooped), the mass a share of the vehicle's by the boxes' volumes. A turretless vehicle has a
@@ -149,8 +268,12 @@ function buildProfile(spec: WreckTurretSpec, s: number): WreckTurretProfile {
   const hullVolume = 8 * hullHalf[0] * hullHalf[1] * hullHalf[2] * s * s * s;
   const share = Math.max(0.18, Math.min(0.34, 0.18 + 0.25 * turretVolume / Math.max(1, turretVolume + hullVolume)));
   const mass = Math.max(400, tons * 1000 * share * s * s * s);
+  // the turret meets the world where its armour reaches (its box keeps the mass, the inertia and the solid)
+  const outline = envelopePoints(armor!.turretPlates, armor!.collisionShells?.turret, s);
   const parts: Parameters<typeof createRigidShape>[0][number][] = [
-    { kind: 'box', center, half, mass: mass * 0.86 },
+    outline.length >= 8
+      ? { kind: 'box', center, half, mass: mass * 0.86, points: outline, edgeRadius: ENVELOPE_RADIUS_M * s }
+      : { kind: 'box', center, half, mass: mass * 0.86 },
   ];
   const barrel = armor!.gunBarrel;
   if (barrel && barrel.collision !== false && barrel.lengthM > 0.4) {
@@ -198,16 +321,27 @@ function hashLaunch(seed: number, id: string, tick: number): number {
 /** The way a hull died, as the launch reads it. */
 export type WreckTurretCause = 'ammorack' | 'ammo_rack' | 'shot' | 'fire' | 'ram' | string;
 
+/** The cook-off's work on the turret per kilogram of its charge (J/kg): a 66.8 t M1A2's 10 kg throws its 16.6 t
+ * turret at about 14 m/s, some 10 m over the ring (6–14 m by the draw). */
+const COOK_OFF_J_PER_KG = 160_000;
+const COOK_OFF_MIN_MPS = 8;
+const COOK_OFF_MAX_MPS = 19;
+
 /**
- * The launch of a turret (world frame velocities, m/s and rad/s): a cook-off throws it up and off to a side, tumbling;
- * any other death unseats it (a jolt that lifts it off the ring and drops it askew on the deck). The charge scales
- * the throw (munitionBlast.ts cookOffChargeKg: 0.15 kg a tonne, 3–12 kg).
+ * The launch of a turret (world frame velocities, m/s and rad/s): a cook-off throws it high over its fireball and well
+ * off its hull, tumbling end over end; any other death unseats it (a jolt that lifts it off the ring and drops it
+ * askew on the deck). The cook-off's speed is its work on the turret's mass: the charge (munitionBlast.ts
+ * cookOffChargeKg: 0.15 kg a tonne, 3–12 kg) against the turret body's own mass (a quarter of the vehicle's when the
+ * caller has none), so a light tank's turret flies higher than a heavy's on the same rack.
  */
-export function turretLaunchVelocity(cause: WreckTurretCause, weightTons: number, random: () => number, out: Float64Array): void {
+export function turretLaunchVelocity(
+  cause: WreckTurretCause, weightTons: number, random: () => number, out: Float64Array, turretKg = 0,
+): void {
   const rack = cause === 'ammorack' || cause === 'ammo_rack';
   const burn = cause === 'fire';
   const tons = Number.isFinite(weightTons) && weightTons > 0 ? weightTons : 40;
   const charge = Math.max(3, Math.min(12, 0.15 * tons));
+  const mass = Number.isFinite(turretKg) && turretKg > 0 ? turretKg : 250 * tons;
   // a horizontal direction from the stream (rejection keeps it uniform without trigonometry)
   let dx = 0, dz = 0, d2 = 0;
   for (let n = 0; n < 16 && !(d2 > 0.04 && d2 <= 1); n++) { dx = random() * 2 - 1; dz = random() * 2 - 1; d2 = dx * dx + dz * dz; }
@@ -220,11 +354,13 @@ export function turretLaunchVelocity(cause: WreckTurretCause, weightTons: number
   ax *= al; ay *= al; az *= al;
   let up: number, side: number, tumble: number, spin: number;
   if (rack) {
-    // an MBT's 10 kg rack: 7.4–8.6 m/s (2.8–3.8 m over the ring); a light tank's 6 kg: 6.4–7.6 m/s
-    up = Math.max(6.0, Math.min(8.6, 4.4 + 0.36 * charge)) * (0.92 + 0.16 * random());
-    side = 1.0 + 1.6 * random();
-    tumble = 0.7 + 1.2 * random();
-    spin = (random() * 2 - 1) * 2.4;
+    // v = sqrt(2 E / m), the work 0.6–1.4 of the mean: 6–14 m over the ring for an MBT, 2.5–3.8 s in the air, landing
+    // 5–15 m off its hull with one or two turns in it
+    const work = COOK_OFF_J_PER_KG * charge * (0.6 + 0.8 * random());
+    up = Math.max(COOK_OFF_MIN_MPS, Math.min(COOK_OFF_MAX_MPS, Math.sqrt((2 * work) / mass)));
+    side = 1.8 + 2.6 * random();
+    tumble = 1.4 + 2.2 * random();
+    spin = (random() * 2 - 1) * 3.0;
   } else if (burn) {
     up = 0.9 + 0.5 * random();
     side = 0.1 + 0.25 * random();
@@ -404,7 +540,7 @@ export function createWreckTurrets(options: WreckTurretOptions = {}): WreckTurre
       if (!profile.shape) return false;
       turretSeat(tank, profile, seatPos, seatQ);
       const random = launchRandom(hashLaunch(seed, tank.id, tick));
-      turretLaunchVelocity(cause, (tank.spec.weightTons ?? 40) * profile.scale ** 3, random, v);
+      turretLaunchVelocity(cause, (tank.spec.weightTons ?? 40) * profile.scale ** 3, random, v, profile.shape.mass);
       const state = tank.state;
       // the hull's own motion carries into the throw
       const hvx = Math.sin(state.yaw) * state.speed, hvz = Math.cos(state.yaw) * state.speed;

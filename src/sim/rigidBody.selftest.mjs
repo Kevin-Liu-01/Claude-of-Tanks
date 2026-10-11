@@ -269,6 +269,85 @@ function slopeRun() {
 }
 
 // --- 12. no allocation per step (heap stays flat across many steps once warm)
+// --- a box balanced on an edge a hair off its balance tips over in the rigid fall's own time: it never falls asleep up
+// there (the sleep window sees it speeding up), and a box set square on its face sleeps at once
+{
+  const fallTime = (theta0, a) => { // the inverted pendulum about the edge, numerically
+    const d = a / Math.SQRT2, inertia = (2 / 3) * a * a;
+    let th = theta0, w = 0, t = 0;
+    while (th < Math.PI / 4 && t < 20) { w += (9.81 * d / inertia) * Math.sin(th) * 1e-4; th += w * 1e-4; t += 1e-4; }
+    return t;
+  };
+  for (const tiltDeg of [0.5, 2]) {
+    const world = createRigidWorld({ capacity: 1, kinematicCapacity: 0 });
+    world.bindEnvironment(flat);
+    const t = tiltDeg * Math.PI / 180, ang = Math.PI / 4 + t, d = Math.SQRT2;
+    const slot = world.spawn(createRigidBox(1, 1, 1, 2000), { x: -Math.sin(t) * d, y: Math.cos(t) * d + 0.001, z: 0, qz: Math.sin(ang / 2), qw: Math.cos(ang / 2) });
+    let flatAt = -1;
+    for (let n = 1; n <= 480 && flatAt < 0; n++) {
+      world.step();
+      assert.ok(!world.asleep[slot] || flatAt >= 0, `asleep on its edge at ${(n / 60).toFixed(2)} s (${tiltDeg}°)`);
+      if (Math.abs(2 * Math.atan2(world.qz[slot], world.qw[slot]) - Math.PI / 4) >= Math.PI / 4 - 0.02) flatAt = n / 60;
+    }
+    const expected = fallTime(t, 2);
+    assert.ok(flatAt > 0 && Math.abs(flatAt - expected) < 0.15, `${tiltDeg}° off its edge it lands flat at ${flatAt.toFixed(2)} s (rigid fall ${expected.toFixed(2)} s)`);
+  }
+  const world = createRigidWorld({ capacity: 1, kinematicCapacity: 0 });
+  world.bindEnvironment(flat);
+  const slot = world.spawn(createRigidBox(1, 1, 1, 2000), { x: 0, y: 1.0005, z: 0 });
+  const asleepAt = stepUntilAsleep(world, slot, 120);
+  assert.ok(asleepAt > 0 && asleepAt <= 40, `square on its face it sleeps at once (${asleepAt} steps)`);
+}
+
+// --- a box's own contact points (a turret's outline) replace its face grid: it meets the ground where they are
+{
+  const points = [[-0.9, -0.46, -1.4], [0.9, -0.46, -1.4], [0.9, -0.46, 1.4], [-0.9, -0.46, 1.4], [-0.5, 0.46, -1], [0.5, 0.46, -1], [0.5, 0.46, 1], [-0.5, 0.46, 1]];
+  const shape = createRigidShape([{ kind: 'box', center: [0, 0, 0], half: [1, 0.5, 1.5], mass: 9000, points, edgeRadius: 0.04 }]);
+  assert.equal(shape.sphereCount, 8, 'one sphere a point');
+  const world = createRigidWorld({ capacity: 1, kinematicCapacity: 0 });
+  world.bindEnvironment(flat);
+  const slot = world.spawn(shape, { x: 0, y: 1, z: 0 });
+  assert.ok(stepUntilAsleep(world, slot) > 0, 'it settles on its base');
+  world.framePose(slot, pose);
+  assert.ok(Math.abs(pose[1] - 0.5) < 0.01, `it sits on its points' footprint (centre ${pose[1].toFixed(3)} m; its box's face is 0.04 lower)`);
+}
+
+// --- thin pieces (dcore's field hut, 2026-10-11): two rafters crossed between their spheres rest on each other (the
+// boxes' manifold, never through), a heavy slab on two light beams comes to rest (no bounce read off the warm starts),
+// and a rafter's least inertia is floored at a twentieth of its greatest
+{
+  const rafter = createRigidBox(1.43, 0.03, 0.07, 17 / (2.86 * 0.06 * 0.14), { restitution: 0.15, friction: 0.7 });
+  const I = Array.from(rafter.invInertia, (x) => 1 / x);
+  assert.ok(Math.max(...I) / Math.min(...I) <= 20 + 1e-9, `inertia ratio floored (${(Math.max(...I) / Math.min(...I)).toFixed(1)})`);
+  for (const [dx, dz, yawDeg] of [[0.35, 0.35, 90], [0.5, -0.4, 35], [1.0, 0.2, 80]]) {
+    const world = createRigidWorld({ capacity: 2, kinematicCapacity: 0, spherePool: 256 });
+    world.bindEnvironment(flat);
+    world.spawn(rafter, { x: 0, y: 0.031, z: 0 });
+    const r = yawDeg * Math.PI / 180;
+    const b = world.spawn(rafter, { x: dx, y: 0.14, z: dz, qy: Math.sin(r / 2), qw: Math.cos(r / 2) });
+    run(world, 300);
+    // resting across A (0.090), tipped onto the ground at an end (no lower than about 0.07): never through A (0.030)
+    assert.ok(world.py[b] > 0.065, `crossed at (${dx}, ${dz}) ${yawDeg}°: B rests on A (centre ${world.py[b].toFixed(3)} m)`);
+  }
+  for (const [slabKg, beamKg] of [[600, 17], [2000, 60]]) {
+    const world = createRigidWorld({ capacity: 3, kinematicCapacity: 0, spherePool: 256, velocityIterations: 8, positionIterations: 3 });
+    world.bindEnvironment(flat);
+    const beam = createRigidBox(1.43, 0.03, 0.07, beamKg / (2.86 * 0.06 * 0.14), { restitution: 0.15, friction: 0.7 });
+    const slab = createRigidBox(0.5, 0.04, 0.5, slabKg / 0.08, { restitution: 0.15, friction: 0.7 });
+    const a = world.spawn(beam, { x: 0, y: 0.0305, z: -0.3 });
+    const c = world.spawn(beam, { x: 0, y: 0.0305, z: 0.3 });
+    const s2 = world.spawn(slab, { x: 0.05, y: 0.102, z: 0.01 });
+    let spin = 0, slept = -1;
+    for (let n = 1; n <= 240; n++) {
+      world.step();
+      if (n > 30) for (const k of [a, c, s2]) spin = Math.max(spin, Math.hypot(world.wx[k], world.wy[k], world.wz[k]));
+      if (slept < 0 && world.asleep[a] && world.asleep[c] && world.asleep[s2]) slept = n;
+    }
+    assert.ok(spin < 0.5 && slept > 0, `a ${slabKg} kg slab on two ${beamKg} kg beams rests (spin ${spin.toFixed(2)} rad/s, asleep ${slept > 0 ? (slept / 60).toFixed(2) + ' s' : 'never'})`);
+    assert.ok(world.py[s2] > 0.075, `and stays on them (centre ${world.py[s2].toFixed(3)} m, on top 0.100)`);
+  }
+}
+
 if (typeof globalThis.gc === 'function') {
   const world = createRigidWorld({ capacity: 16 });
   world.bindEnvironment(slope);
@@ -283,4 +362,4 @@ if (typeof globalThis.gc === 'function') {
   assert.ok(grown < 512 * 1024, `the heap stays flat across 4,000 steps (${(grown / 1024).toFixed(0)} KB)`);
 }
 
-console.log('rigidBody.selftest: drop + sleep, impact reports, slope tumble, bit-identical reruns, rolling drum, static walls and vanished roofs, kinematic decks and shoves, stacks, compound turret with gun, interpolation, wedged piles at rest');
+console.log('rigidBody.selftest: drop + sleep, impact reports, slope tumble, bit-identical reruns, rolling drum, static walls and vanished roofs, kinematic decks and shoves, stacks, compound turret with gun, interpolation, wedged piles at rest, edges tip in the rigid fall time, box contact points, crossed thin boxes, heavy slabs on light beams');
