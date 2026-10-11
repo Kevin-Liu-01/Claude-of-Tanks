@@ -104,6 +104,7 @@ assert.ok(pick !== null, 'a stretch of wall clear of the openings');
 const r = rig(seam);
 const [x, y, z] = at(pick, 1.4);
 const took = r.fracture.strike(seam, x, y, z, into[0], into[1], 'he', 1.2, 125);
+r.fracture.flush();
 assert.ok(Array.isArray(took) && took.length >= 2 && took[0] === 0, `a round on a wall breaks it and names the face it took (${took})`);
 const after = area(bucket);
 assert.ok(after.flat > whole.flat + 20, `the face left the bucket (${after.flat - whole.flat} triangles flattened)`);
@@ -135,6 +136,7 @@ for (const m of r.group.children) {
 // damage adds up: a second round beside the first widens the break
 const [x2, y2, z2] = at(pick + 0.7, 1.6);
 r.fracture.strike(seam, x2, y2, z2, into[0], into[1], 'he', 1.2, 125);
+r.fracture.flush();
 const drawn2 = r.fracture.standing(7).reduce((s, m) => s + area(m.geometry).sum, 0);
 assert.ok(Math.abs(drawn2 - drawn) > 0.05, 'a second round changes the face again');
 // the reset stands it up byte for byte
@@ -147,6 +149,7 @@ const log = () => {
   bucket.attributes.position.array.set(before);
   const q = rig(seam);
   q.fracture.strike(seam, x, y, z, into[0], into[1], 'he', 1.2, 125);
+  q.fracture.flush();
   const out = q.fracture.standing(7).map((m) => area(m.geometry).sum.toFixed(5)).join(',');
   q.fracture.reset(); q.restore();
   return out;
