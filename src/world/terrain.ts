@@ -6799,8 +6799,11 @@ void splatCompute() {
         vec3 lifted = roadCol * clamp(fieldL * 1.05 / rL, 1.0, 2.2);
         roadCol = mix(roadCol, mix(lifted, vec3(dot(lifted, vec3(0.34, 0.45, 0.21))) * vec3(1.06, 1.0, 0.86), 0.45), dustK);
         if (padLiftK > 0.0) {
+          // (the lab's second Frontier pad: still a dark slab — a pad inside the village's worn ground stands on the dirt
+          // layer, so the floor above read the dark soil: its target is the sward's own tone, a fifth over the grass tile's
+          // mean, whatever lies under it)
           rL = max(dot(roadCol, vec3(0.34, 0.45, 0.21)), 1e-4);
-          vec3 padC = roadCol * clamp(fieldL * 1.12 / rL, 1.0, 2.6);
+          vec3 padC = roadCol * clamp(max(fieldL * 1.20, roadFloorL) / rL, 1.0, 3.0);
           roadCol = mix(roadCol, mix(padC, vec3(dot(padC, vec3(0.34, 0.45, 0.21))) * vec3(1.07, 1.0, 0.84), 0.33), padLiftK);
         }
       }
@@ -7121,13 +7124,19 @@ void splatCompute() {
         // (the lab's first margin read as the field: the sward flattened and yellowed over the whole margin, worn through to
         // the soil in ragged tongues that are thickest by the pad, its tussocks pressed flat)
         a.rgb = mix(a.rgb, a.rgb * vec3(1.12, 1.04, 0.78), trampleW * 0.7);
-        float wornT = smoothstep(0.42, 0.68, tN * 0.7 + trampleW * 0.5) * trampleW;
-        a.rgb = mix(a.rgb, uMeanD.rgb * uRoadSurfD.rgb * 0.95, wornT * 0.8);
+        // (the lab's third frames: the soil tongues ran together into a dark ring) worn through to the pad's own dusty
+        // earth in patches, thickest by the pad — the place's soil lifted to the sward's tone and greyed, not the raw dirt
+        vec3 soilT = uMeanD.rgb * uRoadSurfD.rgb;
+        float soilL = max(dot(soilT, vec3(0.34, 0.45, 0.21)), 1e-4);
+        soilT *= clamp(dot(uMeanG.rgb, vec3(0.34, 0.45, 0.21)) * 1.10 / soilL, 1.0, 3.0);
+        soilT = mix(soilT, vec3(dot(soilT, vec3(0.34, 0.45, 0.21))) * vec3(1.06, 1.0, 0.86), 0.40);
+        float wornT = smoothstep(0.52, 0.76, tN * 0.75 + trampleW * 0.35) * trampleW;
+        a.rgb = mix(a.rgb, soilT, wornT * 0.65);
         n.xy = mix(n.xy, vec2(0.5), trampleW * 0.4);
       }
       a.rgb *= 1.0 - (uReduxD.y > 1.5 ? 0.10 : 0.12) * padRut * trampleW + 0.05 * padBerm * trampleW;
       // (the tracks leave across it: on turf their floors cut through the sward to the soil, on sand scuffed paler)
-      if (uReduxD.y < 0.5) a.rgb = mix(a.rgb, uMeanD.rgb * uRoadSurfD.rgb * 0.9, padRut * trampleW * 0.55);
+      if (uReduxD.y < 0.5) a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.76, 0.66), padRut * trampleW * 0.55);
       else if (uReduxD.y < 1.5) a.rgb *= 1.0 + 0.06 * padRut * trampleW;
     }
     // Keep compacted wheel lanes legible without painting near-black marks
