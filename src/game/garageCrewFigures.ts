@@ -737,7 +737,8 @@ interface CrewMember {
 
 type CrewToolKind = 'torch' | 'extinguisher' | 'pendant' | 'sledgehammer' | 'pry-bar' | 'torque-wrench'
   | 'clipboard' | 'flashlight' | 'cassette' | 'crate' | 'breaker-bar' | 'impact-wrench' | 'punch' | 'hammer'
-  | 'track-section' | 'lance' | 'filter' | 'shovel' | 'brush' | 'plate' | 'battery' | 'leads' | 'towbar' | 'sandbag';
+  | 'track-section' | 'lance' | 'filter' | 'shovel' | 'brush' | 'plate' | 'battery' | 'leads' | 'towbar' | 'sandbag'
+  | 'skirt';
 
 /** A hand tool in a member's figure frame (points: the grips first, then the working end). */
 interface CrewTool {
@@ -1216,7 +1217,40 @@ export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard'
  * a second checks them off from the side; at the rolled K2, cold work only: an inspector on the stand with a lamp and
  * a check sheet, a spotter steadying the stand, the track-pin man at his pallet.
  */
-export const GARAGE_BAY_ALTERNATE_SCENES: Readonly<Record<'leopard' | 'k2', CrewScene>> = Object.freeze({
+export const GARAGE_BAY_ALTERNATE_SCENES: Readonly<Record<'leopard' | 'k2' | 'abrams', CrewScene>> = Object.freeze({
+  // at the Abrams: the side skirts go back on, two men carrying the next plate on edge, a fitter torquing the
+  // hangers with an impact wrench, the creeper man still under the bow
+  abrams: scene({
+    id: 'abrams-alt', task: 'the side skirts refitted: a plate carried on edge, the hangers torqued', essential: false,
+    frame: { parent: 'workshop', x: 16.9, z: 17.7, yaw: -2.03 },
+    members: [
+      { role: 'skirt-carrier', dress: D('us', 45), at: [3.3, 0, 4.45], yaw: Math.PI,
+        pose: { pelvis: [0, 0.86, -0.04], spine: [0.14, 0.05, 0], head: [0.1, 0.05],
+          leftHand: [0.07, 0.98, 0.32], rightHand: [-0.06, 0.74, 0.3], leftGrip: 'fist', rightGrip: 'fist',
+          leftPalm: [-1, 0, 0], rightPalm: [-1, 0, 0.2],
+          leftFoot: [0.15, A, 0.08], rightFoot: [-0.15, A, -0.12] } },
+      { role: 'skirt-carrier', dress: D('us', 46), at: [3.3, 0, 2.65], yaw: 0,
+        pose: { pelvis: [0, 0.85, -0.05], spine: [0.16, -0.05, 0], head: [0.12, -0.05],
+          leftHand: [0.07, 0.98, 0.32], rightHand: [-0.06, 0.74, 0.3], leftGrip: 'fist', rightGrip: 'fist',
+          leftPalm: [-1, 0, 0], rightPalm: [-1, 0, 0.2],
+          leftFoot: [0.15, A, 0.08], rightFoot: [-0.15, A, -0.12] } },
+      { role: 'hanger-fitter', dress: D('us', 47), at: [2.45, 0, 1.2], yaw: -Math.PI / 2,
+        pose: { pelvis: [0, HIP - 0.04, -0.03], spine: [0.22, 0.04, 0], head: [0.15, 0],
+          rightHand: [-0.05, 1.04, 0.38], leftHand: [0.08, 1.11, 0.44],
+          leftFoot: [0.14, A, 0.1], rightFoot: [-0.13, A, -0.14] } },
+      { role: 'creeper-mechanic', dress: D('us', 3, 'bare'), at: [0.55, 0.115, 3.55], yaw: 0,
+        pose: { pelvis: [0, 0.11, 0], hips: [0, -Math.PI / 2, 0], head: [-0.12, 0],
+          leftHand: [0.2, 0.36, -0.42], rightHand: [-0.18, 0.37, -0.4],
+          leftElbow: [0.6, 0.0, -0.1], rightElbow: [-0.6, 0.0, -0.1],
+          leftFoot: [0.16, A - 0.115, 0.72], rightFoot: [-0.18, A - 0.115, 0.66],
+          leftKnee: [0.2, 0.9, 0.35], rightKnee: [-0.2, 0.9, 0.3] } },
+    ],
+    tools: [
+      { kind: 'skirt', member: 0, points: [[0.07, 0.98, 0.32], [-0.06, 0.74, 0.3]] },
+      { kind: 'impact-wrench', member: 2, points: [[-0.05, 1.04, 0.38], [0.08, 1.11, 0.44], [0.0, 1.07, 0.64]] },
+      { kind: 'flashlight', member: 3, points: [[0.2, 0.36, -0.42], [0.22, 0.42, -0.6]] },
+    ],
+  }),
   leopard: scene({
     id: 'leopard-alt', task: 'road-arm housings inspected from a creeper under the lifted hull', essential: false,
     frame: { parent: 'leopard-bay', x: 0, z: 0, yaw: 0 },
@@ -1868,6 +1902,21 @@ export function buildCrewTools(scene: CrewScene, materials: CrewToolMaterials): 
         eye.position.copy(b).addScaledVector(along, -0.12);
         eye.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), side);
         meshes.push(eye);
+        break;
+      }
+      case 'skirt': {
+        // a side-skirt plate carried on edge between this carrier and his partner (the next member): it hangs from
+        // their hands, its top edge at the upper fists
+        const partner = scene.members[tool.member + 1];
+        const a = p[0].clone().add(p[1]).multiplyScalar(0.5);
+        const b = crewPointInScene(partner, [0, (tool.points[0][1] + tool.points[1][1]) / 2, tool.points[0][2]]);
+        const along = new THREE.Vector3().subVectors(b, a);
+        const length = along.length() + 0.1;
+        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), along.setY(0).normalize());
+        const top = Math.max(p[0].y, p[1].y) + 0.03;
+        const centre = a.clone().lerp(b, 0.5).setY(top - 0.31);
+        meshes.push(boxAt(centre, [length, 0.62, 0.045], q, materials.cassette));
+        meshes.push(boxAt(centre.clone().setY(top - 0.04), [length, 0.06, 0.06], q, materials.steelDark));
         break;
       }
       case 'cassette': {

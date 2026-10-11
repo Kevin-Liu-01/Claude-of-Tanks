@@ -124,7 +124,7 @@ assert.ok(triangles <= 48000, `the crews stay inside 48k triangles (${triangles}
     const shownScenes = [...Object.values(GARAGE_CREW_SCENES).filter((scene) => !(regional && scene.id === 'carry')
       && !alternates[scene.id] && (variant.id === 'verdant_motor_pool' || scene.frame.parent !== 'verdant-interior')),
       ...(regional && variant.id !== 'verdant_motor_pool' ? [regional] : []),
-      ...['leopard', 'k2'].filter((bay) => alternates[bay]).map((bay) => GARAGE_BAY_ALTERNATE_SCENES[bay])];
+      ...['leopard', 'k2', 'abrams'].filter((bay) => alternates[bay]).map((bay) => GARAGE_BAY_ALTERNATE_SCENES[bay])];
     const shown = shownScenes.reduce((sum, scene) => sum + buildCrewSceneGeometry(scene, { winter }).triangles, 0);
     assert.ok(shown <= 48000, `${variant.id}: the Garage's crews stay inside 48k triangles (${shown})`);
   }
@@ -143,7 +143,9 @@ assert.ok(triangles <= 48000, `the crews stay inside 48k triangles (${triangles}
   assert.equal(winterDress(crewDress('kr', 1, 'welding-hood')).headgear, 'welding-hood', 'the welder keeps his hood');
   assert.ok(Object.values(GARAGE_BAY_ALTERNATES).some((a) => a.leopard) && Object.values(GARAGE_BAY_ALTERNATES).some((a) => a.k2),
     'some Garages work the Leopard and K2 bays their own way');
-  assert.deepEqual(GARAGE_BAY_ALTERNATES.field_shed, { leopard: false, k2: false }, 'Verdant keeps its ruled bay stories');
+  assert.deepEqual(GARAGE_BAY_ALTERNATES.field_shed, { leopard: false, k2: false, abrams: false },
+    'Verdant keeps its ruled bay stories');
+  assert.ok(Object.values(GARAGE_BAY_ALTERNATES).some((a) => a.abrams), 'some Garages refit the Abrams skirts instead');
 }
 assert.ok(essentialMembers >= 6 && essentialMembers * 2 <= members + 1,
   `the mobile tier keeps at most about half the crew (${essentialMembers} of ${members})`);
@@ -164,7 +166,7 @@ function sceneToWorkshop(scene, point, variant) {
     p = rotate(p.x, p.z, Math.PI); p = { x: p.x + LEOPARD_MOBILITY_BAY_OFFSET.x, z: p.z + LEOPARD_MOBILITY_BAY_OFFSET.z };
   } else if (scene.id === 'burlak') {
     p = { x: p.x + BURLAK_SCAFFOLD_CLEARANCE_OFFSET.x, z: p.z + BURLAK_SCAFFOLD_CLEARANCE_OFFSET.z };
-  } else if (scene.id === 'abrams') {
+  } else if (scene.id === 'abrams' || scene.id === 'abrams-alt') {
     const placement = getAbramsWeldingBayPlacement(variant);
     p = rotate(p.x, p.z, placement.rotationRad); p = { x: p.x + placement.x, z: p.z + placement.z };
   } else if (scene.id === 'k2' || scene.id === 'k2-alt') {
@@ -182,7 +184,7 @@ for (const variant of GARAGE_VARIANTS) {
   const shown = [...Object.values(GARAGE_CREW_SCENES).filter((scene) => !(regional && scene.id === 'carry')
     && !(alternates[scene.id])),
     ...(variant.id !== 'verdant_motor_pool' && regional ? [regional] : []),
-    ...['leopard', 'k2'].filter((bay) => alternates[bay]).map((bay) => GARAGE_BAY_ALTERNATE_SCENES[bay])];
+    ...['leopard', 'k2', 'abrams'].filter((bay) => alternates[bay]).map((bay) => GARAGE_BAY_ALTERNATE_SCENES[bay])];
   for (const scene of shown) {
     for (const member of scene.members) {
       const local = crewPointInScene(member, [0, 0, 0]);
@@ -247,7 +249,7 @@ assert.match(dressing, /if \(!scene\.essential && getDeviceTier\(\) === 'mobile'
   'the mobile tier keeps the essential crews');
 for (const [scene, owner] of [
   ['burlak', /addCrewScene\(GARAGE_CREW_SCENES\.burlak, legacyVerdantRoot\)[\s\S]*const burlakBayChildren = legacyVerdantRoot\.children\.slice\(firstBayChildIndex\)/],
-  ['abrams', /addCrewScene\(abramsCrew, legacyVerdantRoot\)[\s\S]*placeAuthoredServiceBay\(firstBayChildIndex, 'abrams_welding', 'm1a2'\)/],
+  ['abrams', /addCrewScene\(abramsCrew, bayTaskOwner\('abrams', 'a', legacyVerdantRoot\)\)[\s\S]*addCrewScene\(GARAGE_BAY_ALTERNATE_SCENES\.abrams, bayTaskOwner\('abrams', 'b', legacyVerdantRoot\)\)[\s\S]*placeAuthoredServiceBay\(firstBayChildIndex, 'abrams_welding', 'm1a2'\)/],
   ['leopard', /addCrewScene\(GARAGE_CREW_SCENES\.leopard, bayTaskOwner\('leopard', 'a', mobilityBay\)\)[\s\S]*addCrewScene\(GARAGE_BAY_ALTERNATE_SCENES\.leopard, bayTaskOwner\('leopard', 'b', mobilityBay\)\)/],
   ['k2', /const k2TaskA = bayTaskOwner\('k2', 'a', legacyVerdantRoot\);[\s\S]*addCrewScene\(GARAGE_CREW_SCENES\.k2, k2TaskA\);\s*addCrewScene\(GARAGE_BAY_ALTERNATE_SCENES\.k2, k2TaskB\);[\s\S]*placeAuthoredServiceBay\(firstBayChildIndex, 'rolled_k2', 'k2'\)/],
 ]) {

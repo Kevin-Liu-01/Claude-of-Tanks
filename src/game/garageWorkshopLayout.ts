@@ -204,17 +204,17 @@ export const GARAGE_SHELTER_FINISHES: Readonly<Record<GarageVariant['architectur
  * the ruled originals.
  */
 export const GARAGE_BAY_ALTERNATES: Readonly<Record<GarageVariant['architecture'],
-  { readonly leopard: boolean; readonly k2: boolean }>> = Object.freeze({
-  field_shed: { leopard: false, k2: false },
-  shade_depot: { leopard: true, k2: false },
-  repair_bunker: { leopard: false, k2: true },
-  brick_arsenal: { leopard: true, k2: false },
-  naval_drydock: { leopard: false, k2: true },
-  rail_roundhouse: { leopard: true, k2: false },
-  rain_canopy: { leopard: false, k2: true },
-  rock_cavern: { leopard: true, k2: false },
-  recovery_yard: { leopard: false, k2: true },
-  factory_line: { leopard: true, k2: false },
+  { readonly leopard: boolean; readonly k2: boolean; readonly abrams: boolean }>> = Object.freeze({
+  field_shed: { leopard: false, k2: false, abrams: false },
+  shade_depot: { leopard: true, k2: false, abrams: false },
+  repair_bunker: { leopard: false, k2: true, abrams: true },
+  brick_arsenal: { leopard: true, k2: false, abrams: true },
+  naval_drydock: { leopard: false, k2: true, abrams: false },
+  rail_roundhouse: { leopard: true, k2: false, abrams: false },
+  rain_canopy: { leopard: false, k2: true, abrams: true },
+  rock_cavern: { leopard: true, k2: false, abrams: true },
+  recovery_yard: { leopard: false, k2: true, abrams: false },
+  factory_line: { leopard: true, k2: false, abrams: true },
 });
 
 /** The rolled K2's belly is welded in this Garage (the weld light burns there). */

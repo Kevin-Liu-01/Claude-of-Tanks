@@ -263,10 +263,10 @@ export function createGarageDressing(
   let yardBandCarryRoot: THREE.Group | null = null;
   const regionalYardRoots = new Map<GarageVariant['architecture'], THREE.Group>();
   // The Leopard and K2 bays' standing tasks (a) and their alternates (b), one owner each, shown by setVariant.
-  const bayTaskOwners: Record<'leopard' | 'k2', { a: THREE.Group | null; b: THREE.Group | null }> = {
-    leopard: { a: null, b: null }, k2: { a: null, b: null },
+  const bayTaskOwners: Record<'leopard' | 'k2' | 'abrams', { a: THREE.Group | null; b: THREE.Group | null }> = {
+    leopard: { a: null, b: null }, k2: { a: null, b: null }, abrams: { a: null, b: null },
   };
-  function bayTaskOwner(bay: 'leopard' | 'k2', which: 'a' | 'b', parent: THREE.Object3D): THREE.Group {
+  function bayTaskOwner(bay: 'leopard' | 'k2' | 'abrams', which: 'a' | 'b', parent: THREE.Object3D): THREE.Group {
     const owner = new THREE.Group();
     owner.name = `garage_${bay}_bay_task_${which}`;
     parent.add(owner);
@@ -1672,8 +1672,8 @@ export function createGarageDressing(
     const regionalYard = regionalYardRoots.get(currentVariant.architecture) ?? null;
     for (const owner of regionalYardRoots.values()) owner.visible = owner === regionalYard;
     if (yardBandCarryRoot) yardBandCarryRoot.visible = regionalYard === null;
-    const alternates = GARAGE_BAY_ALTERNATES[currentVariant.architecture] ?? { leopard: false, k2: false };
-    for (const bay of ['leopard', 'k2'] as const) {
+    const alternates = GARAGE_BAY_ALTERNATES[currentVariant.architecture] ?? { leopard: false, k2: false, abrams: false };
+    for (const bay of ['leopard', 'k2', 'abrams'] as const) {
       if (bayTaskOwners[bay].a) bayTaskOwners[bay].a!.visible = !alternates[bay];
       if (bayTaskOwners[bay].b) bayTaskOwners[bay].b!.visible = alternates[bay];
     }
@@ -3231,8 +3231,9 @@ export function createGarageDressing(
       7.4,
       verdantInteriorRoot,
     );
-    const abramsCrewRoot = addCrewScene(abramsCrew, legacyVerdantRoot);
+    const abramsCrewRoot = addCrewScene(abramsCrew, bayTaskOwner('abrams', 'a', legacyVerdantRoot));
     addSceneWheels(abramsCrewRoot, abramsCrew, roadWheelTires, roadWheelDiscs);
+    addCrewScene(GARAGE_BAY_ALTERNATE_SCENES.abrams, bayTaskOwner('abrams', 'b', legacyVerdantRoot));
     if (!abramsServiceFloorRoot) {
       throw new Error('Abrams welding service floor was not constructed');
     }

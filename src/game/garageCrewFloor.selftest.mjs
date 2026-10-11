@@ -30,7 +30,7 @@ function sceneToWorkshop(scene, point, variant) {
   if (scene.frame.parent === 'leopard-bay') return leopardBayPointToWorkshop(variant, p.x, p.z);
   if (scene.id === 'burlak') {
     p = { x: p.x + BURLAK_SCAFFOLD_CLEARANCE_OFFSET.x, z: p.z + BURLAK_SCAFFOLD_CLEARANCE_OFFSET.z };
-  } else if (scene.id === 'abrams') {
+  } else if (scene.id === 'abrams' || scene.id === 'abrams-alt') {
     const placement = getAbramsWeldingBayPlacement(variant);
     p = rotate(p.x, p.z, placement.rotationRad);
     p = { x: p.x + placement.x, z: p.z + placement.z };
@@ -105,7 +105,7 @@ for (const variant of GARAGE_VARIANTS) {
   const shown = [...Object.values(GARAGE_CREW_SCENES).filter((crew) => !(regional && crew.id === 'carry')
     && !alternates[crew.id]),
     ...(regional ? [regional] : []),
-    ...['leopard', 'k2'].filter((bay) => alternates[bay]).map((bay) => GARAGE_BAY_ALTERNATE_SCENES[bay])];
+    ...['leopard', 'k2', 'abrams'].filter((bay) => alternates[bay]).map((bay) => GARAGE_BAY_ALTERNATE_SCENES[bay])];
   for (const crew of shown) {
     for (const member of crew.members) {
       if (member.at[1] > 0.05) continue; // on a stand's deck or a step, seated with the kit below
