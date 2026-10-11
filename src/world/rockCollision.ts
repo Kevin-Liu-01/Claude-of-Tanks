@@ -45,12 +45,13 @@ export const ROCK_CONTACT_TOP_M = 3;
  * The movement tiers (the hitbox lane, round 2, 2026-10-08; fit waves 263 and 271: "build the movement volume from the
  * same stepped slices"). One prism of the stone's widest girth to its top stood a hull a metre short of a dome's
  * shoulder, boxed the air over a ledge's low slabs and drew a hoodoo's flared foot up its whole stem. The first tier's
- * top this far over the lowest ground the stone leaves: past a hull's step-up (0.55 m) with 15 cm to spare, so a hull on
- * any side meets the stone's footprint (its hull over ROCK_TIER_FLOOR_M) as a wall and climbs onto the first tier only
- * from ground that rises toward it (a column is a floor within the step-up and is stood on by the same rule,
- * collision.ts hullPassesObstacleTop and structureSupport.ts). (2026-10-09 round 2 took it over the highest ground,
- * against an uphill leak of the eight-cornered tiers; round 3's twelve-cornered tiers from the lowest hold the stone
- * better than both: the boulder probe read band phantom 41.3 % against 45.2 %, uncovered 0.3 % against 0.8 %.)
+ * top this far over the highest ground the stone leaves (its uphill foot on a slope; 2026-10-09, the census found a top
+ * over its lowest point under the band uphill): past a hull's step-up (0.55 m) with 15 cm to spare, so a hull on any side
+ * meets the stone's footprint (its hull over ROCK_TIER_FLOOR_M) as a wall and climbs onto the first tier only from
+ * ground that rises toward it (a column is a floor within the step-up and is stood on by the same rule, collision.ts
+ * hullPassesObstacleTop and structureSupport.ts). (Round 3 tried the lowest and the middle ground: each added tiers in
+ * the contact band, and the census read a hair more stone uncovered than main; the taper above the band is the same
+ * from any of them, the boulder probe's air over 1.4 m 58.1-58.6 % against round 2's 61.1 %.)
  */
 export const ROCK_TIER_FIRST_M = 0.7;
 /** Each tier above the first (round 3, 2026-10-10; the critics of wave 344: "straight-walled prisms that do not narrow
@@ -514,7 +515,10 @@ function movementTiers(s: PlacedSurface, riseMax: number, step = ROCK_TIER_STEP_
   // ROCK_CONTACT_TOP_M over the stone's highest foot (the tallest hull's roof: a hoodoo's stem above it is the shells')
   const top = Math.min(s.top, s.high + ROCK_CONTACT_TOP_M);
   const floors: number[] = [s.low];
-  for (let y = s.low + ROCK_TIER_FIRST_M; y < top - ROCK_TIER_LAST_MIN_M; y += step) floors.push(y);
+  // (round 3, the coordinator: phantom AND uncovered stone at or under main) the first tier tops ROCK_TIER_FIRST_M over the
+  // highest ground the stone leaves, as round 2's did: from its lowest or middle ground the extra tiers in the contact band
+  // left a hair more stone uncovered than main (+0.031 and +0.004 points on the four rock maps' boulders)
+  for (let y = s.high + ROCK_TIER_FIRST_M; y < top - ROCK_TIER_LAST_MIN_M; y += step) floors.push(y);
   const tiers: RockBand[] = [];
   let under: number[] | null = null;
   for (let k = 0; k < floors.length; k++) {
@@ -692,8 +696,10 @@ export function applyRockCollisionProfile(
   if (profile.tiers.length === 1) setConvexShape(obstacle, profile.tiers[0].points.slice());
   else setCompoundShape(obstacle, tierParts(profile.tiers, floorY));
   obstacle.min[1] = floorY;
-  // (the movement stands to its last tier's top: the stone's own, or 3 m over its highest foot when it stands taller)
-  obstacle.max[1] = profile.tiers[profile.tiers.length - 1].y1;
+  // (the movement stands to the shells' top, as round 2's did — under a crown too thin for a slab — or to its last tier's
+  // top, 3 m over its highest foot, when the stone stands taller; 2026-10-11: to the last tier's own top, a crown's
+  // height over the shells', the census read Badlands' boulders +0.01 points of phantom over main)
+  obstacle.max[1] = Math.min(profile.top, profile.tiers[profile.tiers.length - 1].y1);
   setCompoundShape(collider, profile.bands.map((band) => rangedPart(band.points, band.y0, band.y1)));
   collider.min[1] = profile.bands[0].y0;
   collider.max[1] = profile.top;
@@ -867,7 +873,7 @@ export function applyFormationCollision(
   const recordFloor = Math.min(floorY, profile.low);
   setCompoundShape(obstacle, tierParts(profile.tiers, recordFloor));
   obstacle.min[1] = recordFloor;
-  obstacle.max[1] = Math.max(...profile.tiers.map((tier) => tier.y1));
+  obstacle.max[1] = Math.min(profile.top, Math.max(...profile.tiers.map((tier) => tier.y1)));
   setCompoundShape(collider, profile.bands.map((band) => rangedPart(band.points, band.y0, band.y1)));
   collider.min[1] = profile.low;
   collider.max[1] = profile.top;
