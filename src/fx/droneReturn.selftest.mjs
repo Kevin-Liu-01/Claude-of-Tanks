@@ -34,7 +34,9 @@ function scene({ blockColumn = false } = {}) {
     }
     return null;
   } };
+  const events = [];
   const pool = createDronePresentation(group, {
+    onReturnEvent: (id, event, reason) => events.push(`${id}:${event}:${reason.split(' (')[0]}`),
     world: () => world,
     resolveCarrier: (ownerId) => ownerId === 'p1'
       ? { frame: missionAttachmentVisualFrame(tank.root), destroyed: tank.destroyed, flying: tank.view.active } : null,
@@ -49,7 +51,7 @@ function scene({ blockColumn = false } = {}) {
     for (const w of writes) pool.write(w.pos, w.vel, w.id, undefined, w.ageS, 'USA', undefined, w.owner);
     pool.end();
   };
-  return { tank, group, pool, drawn, frame, rays: () => rays, columnRays: () => columnRays, now: () => time };
+  return { tank, group, pool, drawn, frame, events, rays: () => rays, columnRays: () => columnRays, now: () => time };
 }
 
 // 1. Recall over the battlefield: the airframe flies home at cruise height, descends the dock's column, hands over to
@@ -83,6 +85,7 @@ function scene({ blockColumn = false } = {}) {
   assert.equal(overlaps, 0, 'never two airframes: the flight copy stops the frame the dock takes the landing');
   assert.equal(gaps, 0, 'never none: the hand-over frame is drawn by the flight copy');
   Object.assign(measured, { homeS: +(handedOver * dt).toFixed(2), cruiseAboveDockM: +(minTransitY - dock.y).toFixed(1), landedS: +(frames * dt).toFixed(2) });
+  assert.deepEqual(s.events, ['7:start:owner p1', '7:end:handed over'], 'the diagnostics report the start and the hand-over');
   const detail = tank.root.getObjectByName('Docked FPV airframe detail');
   assert.ok(detail.visible && tank.root.getObjectByName('Docked FPV mission payload').visible, 'the airframe sits on its cradle after the landing');
   assert.ok(tank.view.cooldownS > 0, 'it landed inside the cooldown, which ran unchanged');
@@ -102,6 +105,7 @@ function scene({ blockColumn = false } = {}) {
   pool.markImpact(9); tank.view.active = false; tank.view.cooldownS = 25;
   s.frame(); s.frame();
   assert.equal(pool.returning().size, 0, 'an impact claims the airframe');
+  assert.deepEqual(s.events, ['9:skip:impact'], 'the diagnostics name the impact');
   assert.equal(s.drawn(), 0);
   clearMissionAttachment(tank.root);
 }

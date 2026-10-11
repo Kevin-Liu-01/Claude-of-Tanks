@@ -34,6 +34,8 @@ export interface DronePresentationOptions {
   /** The battle world's raycast, the one the shells and the authorities sweep: a flight home avoids what it hits. */
   world?(): Pick<AerialWorldQuery,'raycast'> | null | undefined;
   resolveCarrier?(ownerId: string | number): DroneCarrierView | null;
+  /** Diagnostics: each flight home's start and end, with the reason it ended (or never began). */
+  onReturnEvent?(id: string | number, event: 'start' | 'end' | 'skip', reason: string): void;
 }
 type ReturnPhase = 'grace' | 'transit' | 'descent' | 'handoff';
 interface ReturnFlight {
@@ -102,18 +104,24 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
     frame.getWorldQuaternion(handoffQuat).multiply(arrivalQuat);
   }
   function startReturn(id:string|number,track:Track):void {
-    if(track.ownerId==null||track.ageS<AERIAL_RULES.drone.launchS)return;
+    if(track.ownerId==null||track.ageS<AERIAL_RULES.drone.launchS){options.onReturnEvent?.(id,'skip',track.ownerId==null?'no owner':'never flew free');return;}
+    options.onReturnEvent?.(id,'start',`owner ${track.ownerId}`);
     const state=attitudes.get(id)??createDroneAttitude();
     returns.set(id,{id,ownerId:track.ownerId,nation:track.nation,phase:'grace',pos:track.pos.clone(),vel:track.vel.clone(),state,
       seed:typeof id==='number'?id*.71:id.length*.71,t:0,phaseT:0,cruiseY:track.pos.y,speed:DRONE_RETURN.minSpeed,descentFrom:0});
   }
   /** Advance one flight home by this frame's presentation dt and draw it; false when it ended (handed over or abandoned). */
   function stepReturn(r:ReturnFlight):boolean {
+    const ended=(reason:string)=>{options.onReturnEvent?.(r.id,'end',`${reason} (${r.phase}, ${r.t.toFixed(2)} s)`);return false;};
     const carrier=options.resolveCarrier?.(r.ownerId),frame=carrier?.frame;
-    if(!carrier||!frame||carrier.destroyed||carrier.flying||frame.parent?.visible===false)return false;
-    if(r.phase==='handoff'&&frame.userData.returnAck===true){frame.userData.returnAck=false;return false;}
+    if(!carrier)return ended('no carrier');
+    if(!frame)return ended('no dock frame');
+    if(carrier.destroyed)return ended('carrier destroyed');
+    if(carrier.flying)return ended('carrier flying again');
+    if(frame.parent?.visible===false)return ended('dock hidden');
+    if(r.phase==='handoff'&&frame.userData.returnAck===true){frame.userData.returnAck=false;return ended('handed over');}
     r.t+=dt;r.phaseT+=dt;
-    if(r.t>DRONE_RETURN.maxS+DRONE_RETURN.graceS)return false;
+    if(r.t>DRONE_RETURN.maxS+DRONE_RETURN.graceS)return ended('time bound');
     const world=options.world?.()??null;
     handoffPose(frame);
     frame.getWorldPosition(dockAt);
@@ -130,7 +138,7 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
       if(distance<=DRONE_RETURN.columnM&&Math.abs(r.pos.y-r.cruiseY)<2){
         // Straight down the column to the dock: abandoned if anything lies across it (a bough, a bridge over the carrier).
         rayDir.copy(handoffAt).sub(r.pos);const drop=rayDir.length();
-        if(world&&drop>1e-3&&world.raycast(r.pos,rayDir.multiplyScalar(1/drop),drop))return false;
+        if(world&&drop>1e-3&&world.raycast(r.pos,rayDir.multiplyScalar(1/drop),drop))return ended('column blocked');
         r.phase='descent';r.phaseT=0;r.descentFrom=Math.max(.5,r.pos.y-handoffAt.y);
       }else{
         // Home at cruise height over a moving carrier: climbs or glides to it on the way, lifted over what lies ahead.
@@ -152,7 +160,7 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
       }
     }
     if(r.phase==='handoff'){
-      if(r.phaseT>.5)return false;
+      if(r.phaseT>.5)return ended('hand-over not taken');
       r.pos.copy(handoffAt);
       pose.position.copy(handoffAt);pose.quaternion.copy(handoffQuat);pose.scale.set(1,1,1);pose.updateMatrix();
       drawAirframe(r.nation,pose.matrix,0,false);return true;
@@ -259,7 +267,9 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
       // home advances and draws into the same pools before they are committed.
       for(const [id,state] of attitudes)if(state.seen!==frame){
         const track=tracks.get(id);
-        if(track&&!impacted.has(id)&&options.resolveCarrier)startReturn(id,track);
+        if(!track)options.onReturnEvent?.(id,'skip','no track');
+        else if(impacted.has(id))options.onReturnEvent?.(id,'skip','impact');
+        else if(options.resolveCarrier)startReturn(id,track);
         attitudes.delete(id);launchFrames.delete(id);tracks.delete(id);
       }
       for(const [id,r] of returns)if(!stepReturn(r))returns.delete(id);

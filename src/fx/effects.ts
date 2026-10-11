@@ -1053,7 +1053,13 @@ function* createFxSteps(
       return { frame: owner.visual?.root ? missionAttachmentVisualFrame(owner.visual.root) : undefined,
         destroyed: !!owner.combat?.destroyed, flying: owner.aerial?.active === true };
     },
+    onReturnEvent: (id, event, reason) => {
+      const log = (group.userData.droneFlightsHomeLog ??= []) as { id: string | number; event: string; reason: string }[];
+      log.push({ id, event, reason }); if (log.length > 32) log.shift();
+    },
   });
+  // Diagnostics (films and probes): the flights home in progress, read off the FX group.
+  group.userData.droneFlightsHome = () => drones.returning();
   group.matrixAutoUpdate = false;
   group.add(particles.group);
   // destruction-fx lane (2026-10-07): the simulated media and the thrown material. Desktop tiers only: the phone tier
