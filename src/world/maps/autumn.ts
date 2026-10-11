@@ -165,6 +165,13 @@ export default {
       { kind: 'basin', x: -290, z: -246, rx: 55, rz: 50, height: -3.0, yawDeg: 30, wetScale: 1 },
       // the FORD: the wade's bed sits at the water plane so the lane dips to a wheel-deep crossing
       { kind: 'basin', x: 186, z: 30, rx: 60, rz: 45, height: -2.4, yawDeg: 68, wetScale: 1 },
+      // (2026-10-11, the map-revival lane; the coordinator's fairness ruling: in all-bot games the north team died on the
+      // open meadow north-west of the river knoll, x 0-200 m, z 0-150 m, to the south team on the knoll and the ridges
+      // behind it — alpha won 60-62 %, first blood 57 of 80; the north bank's mirabelle rows (try f1) gave it no cover a
+      // shell respects) the river's old terrace edge on the north bank: a low bank across the meadow, parallel to the
+      // river, its crest a hull-down line facing the knoll and its lee the north team's covered way to the ford (clear of
+      // the manor lane, the zones and the kickoff by 24 m and more)
+      { kind: 'ridge', x: 85, z: 80, length: 120, width: 40, height: 3.0, yawDeg: 22 },
     ],
   },
 
@@ -311,12 +318,6 @@ export default {
       { id: 'mid-orchard-upper', species: 'oak', path: [[-131, -197], [-61, -159]], count: 10, width: 0.15 },
       { id: 'east-orchard-lower', species: 'oak', path: [[40, -134], [106, -90]], count: 10, width: 0.15 },
       { id: 'east-orchard-upper', species: 'oak', path: [[35, -119], [101, -75]], count: 10, width: 0.15 },
-      // (2026-10-10, the map-revival lane; the coordinator's fairness ruling: in all-bot games the north team died on the
-      // open meadow before the ford, x 50-200 m, z 0-150 m, to the south team holding the ford's banks — alpha won 58-62 %,
-      // first blood 57 of 80 on main and the landing alike) mirabelle rows on the north bank's meadow, parallel to the
-      // river like the south bank's, the cover the north team crosses to the ford in
-      { id: 'north-orchard-lower', species: 'oak', path: [[60, 48], [150, 91]], count: 10, width: 0.15 },
-      { id: 'north-orchard-upper', species: 'oak', path: [[52, 64], [142, 107]], count: 10, width: 0.15 },
     ],
   },
 
