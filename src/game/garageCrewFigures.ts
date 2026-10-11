@@ -1563,6 +1563,9 @@ export const GARAGE_REGIONAL_YARD_SCENES: Readonly<Partial<Record<GarageVariant[
       { shape: 'box', at: [-0.17, 0.8035, -0.05], size: [0.02, 0.003, 0.36], mat: 'oily' },
 
       { shape: 'box', at: [0.4, 0.015, -0.95], size: [0.5, 0.03, 0.3], mat: 'steelDark' },
+      { shape: 'box', at: [1.35, 0.3, -0.95], size: [0.42, 0.42, 0.62], mat: 'steelDark' },
+      { shape: 'box', at: [1.35, 0.4, -0.63], size: [0.3, 0.12, 0.02], mat: 'steelMid' },
+      { shape: 'box', at: [1.35, 0.06, -0.95], size: [0.5, 0.12, 0.7], mat: 'steelMid' },
     ] }],
     members: [
       { role: 'plate-cutter', dress: D('ru', 37, 'welding-hood'), at: [-0.75, 0, -0.25], yaw: Math.PI / 2,

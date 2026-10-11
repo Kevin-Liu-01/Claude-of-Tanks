@@ -1267,9 +1267,9 @@ export function createGarageDressing(
    */
   function addWeldStation(
     parent: THREE.Object3D, torchGrip: THREE.Vector3, torchTip: THREE.Vector3, weldSet: THREE.Vector3,
-    weldSetYaw: number, via: readonly THREE.Vector3[], arcNormal: THREE.Vector3,
+    weldSetYaw: number, via: readonly THREE.Vector3[], arcNormal: THREE.Vector3, withWeldingSet = true,
   ): void {
-    addWeldingSet(parent, weldSet.x, weldSet.z, weldSetYaw);
+    if (withWeldingSet) addWeldingSet(parent, weldSet.x, weldSet.z, weldSetYaw);
     const cableMaterial = track(shadowMat(new THREE.MeshStandardMaterial({
       color: 0x141618, roughness: 0.88, metalness: 0.05,
     })));
@@ -3716,9 +3716,10 @@ export function createGarageDressing(
           const c = Math.cos(frame.yaw), sn = Math.sin(frame.yaw);
           return new THREE.Vector3(frame.x + x * c + z * sn, y, frame.z - x * sn + z * c);
         };
+        // the scene's own plasma unit (a 'parts' box) feeds the lead, so no second welding set's draws
         addWeldStation(owner, crewPoint(scene, torch.member, torch.points[0], frame),
           crewPoint(scene, torch.member, torch.points[1], frame), toFrame(1.35, 0, -0.95), frame.yaw,
-          [toFrame(0.9, 0.05, -0.75), toFrame(-0.5, 0.05, -0.6)], new THREE.Vector3(0, 1, 0));
+          [toFrame(0.9, 0.05, -0.75), toFrame(-0.5, 0.05, -0.6)], new THREE.Vector3(0, 1, 0), false);
       }
       regionalYardRoots.set(architecture, owner);
     }
