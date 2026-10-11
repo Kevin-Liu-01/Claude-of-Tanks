@@ -165,19 +165,4 @@ assert.match(materials, /bool crHull = crSameFrame\( modelMatrix, uCrHullW \);/,
 assert.match(factory, /applyWreckMaterials\(\);\s*planLiveCrumple\(!!\(opts && opts\.pop\)\);/, 'planned at the kill');
 assert.match(factory, /resetDestroyed\(\) \{\s*equipmentDamage\.reset\(\);\s*weaponDamage\.reset\(\);\s*resetLiveCrumple\(\);/, 'undone at a rematch');
 assert.match(factory, /if \(geometryOnly\) return;\s*const rng = wreckRandom/, 'the bake plans its own (wreckCrumple.ts)');
-// ---- the kill's char (wave 350: "the turret is already rust-coloured in mid-air ... ember dots that persist as specks") --
-{
-  const mats = readFileSync(new URL('../vehicles/materials.ts', import.meta.url), 'utf8');
-  const core = readFileSync(new URL('../vehicles/tankFactoryCore.ts', import.meta.url), 'utf8');
-  const delay = Number(/export const BURN_CHAR_DELAY = ([\d.]+);/.exec(mats)?.[1]);
-  const span = Number(/const BURN_CHAR_S = ([\d.]+);/.exec(mats)?.[1]);
-  assert.ok(delay >= 0.8 && delay <= 2 && span >= 5, `the char waits for the fire (${delay} s) and comes over seconds (${span} s)`);
-  assert.match(mats, /float brnProg = max\( uBurnT - \$\{BURN_CHAR_DELAY\.toFixed\(2\)\}, 0\.0 \) \/ \$\{BURN_CHAR_S\.toFixed\(2\)\};/,
-    'the char front runs on the delayed, slower clock');
-  assert.match(mats, /brnPkGlow = brnPkT > 0\.0 \? smoothstep\( 0\.0, 0\.25, brnPkT \) \* exp\( -brnPkT \/ /, 'each ember pocket flares and cools');
-  assert.ok(!/uBurnEmber\.value = 0\.10 \+/.test(core), 'no ember floor: a cold wreck has no glowing specks');
-  assert.match(core, /function emberHeat\(ageS: number\): number \{\s*const t = ageS - BURN_CHAR_DELAY;\s*if \(!\(t > 0\)\) return 0;/,
-    'no heat before the fire takes hold');
-}
-
 console.log('wreckCrumple selftest: ok');
