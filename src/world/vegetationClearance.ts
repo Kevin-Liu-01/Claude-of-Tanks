@@ -3,6 +3,7 @@ import type { RiverLandingAnchor } from './maps/riverLandings.ts';
 import { sceneryClearances, type SceneryConfig } from './sceneryPlan.ts';
 import { landmarkClearances } from './landmarks/plan.ts';
 import type { LandmarkPlacement } from './landmarks/types.ts';
+import { railSpurBerthClearances, type RailSpurConfig } from './railSpurs.ts';
 
 /** Construction-only clearance shared by every tree placement path. */
 export interface StructureClearance {
@@ -46,12 +47,15 @@ export function createStructureClearances(
  * wharf (maps-and-layouts lane, 2026-10-02). A map without such a structure gets none, and its vegetation is exact.
  */
 export function placedStructureClearances(mapId: string | undefined,
-  field: Parameters<typeof fisheryWharfClearance>[1], riverLandings: readonly RiverLandingAnchor[],
+  field: Parameters<typeof fisheryWharfClearance>[1] & { _layout?: { railSpurs?: readonly RailSpurConfig[] } },
+  riverLandings: readonly RiverLandingAnchor[],
   landmarks: readonly LandmarkPlacement[] | null = null, scenery: SceneryConfig | null = null): StructureClearance[] {
   const wharf = fisheryWharfClearance(mapId, field, riverLandings);
   // the scenery lane (2026-10-03): a map's rock formations and landmarks (sceneryPlan.ts), from its config alone; the
-  // landmarks lane (2026-10-05): its set pieces' footprints (landmarks/plan.ts), from the config alone too
-  return [...(wharf ? [wharf] : []), ...sceneryClearances(scenery), ...landmarkClearances(landmarks)];
+  // landmarks lane (2026-10-05): its set pieces' footprints (landmarks/plan.ts), from the config alone too, and a
+  // 'clearance' rail spur's berth (railSpurs.ts railSpurBerthClearances: the berth out of noVeg, no stream moves)
+  return [...(wharf ? [wharf] : []), ...sceneryClearances(scenery), ...landmarkClearances(landmarks),
+    ...railSpurBerthClearances(field._layout?.railSpurs)];
 }
 
 export function overlapsStructureClearance(

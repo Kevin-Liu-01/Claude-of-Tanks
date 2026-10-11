@@ -34,7 +34,7 @@ import { composeLakeHeight, type LakeHeightResult } from './lakeHeightCompositio
 import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness } from './liquidMarshIndex.ts';
 import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
 import {
-  RAIL_OPEN_RANGES_BACK_M, RAIL_OPEN_RUN_M, createRailSpurExclusion, railCuttingExcludes, railCuttingFaceSeedAt, railCuttingHeight,
+  RAIL_OPEN_RANGES_BACK_M, RAIL_OPEN_RUN_M, createRailSpurExclusion, railBerthField, railCuttingExcludes, railCuttingFaceSeedAt, railCuttingHeight,
   railCuttingSeatWeight, resolveRailCuttings, resolveRailOpenLine,
   type RailOpenLine, type RailSpurConfig,
 } from './railSpurs.ts';
@@ -612,6 +612,7 @@ export interface HeightField {
   _roadDist(x: number, z: number): number;
   _villageMask(x: number, z: number): number;
   _noVeg(x: number, z: number): boolean;
+  _railBerth?(x: number, z: number): boolean; // the landmarks lane: a 'clearance' rail spur's berth (railSpurs.ts)
   /** Round 67: the seeding weight of a railway cutting's batter face (railSpurs.ts railCuttingFaceSeedAt) — grass
    * and scrub take the upper part of a face where it is positive, thinned by railCuttingSeedAdmits, and relax their
    * slope gates to it; absent on a map without cuttings, so every other map's seeding is what it was. */
@@ -3017,6 +3018,7 @@ function* heightFieldBuildSteps(
     fieldTrenchLines: fieldTrenchPlan(),
     // Keep pavement clear without excluding vegetation along unrelated roads.
     _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,
+    ...railBerthField(T.railSpurs), // the landmarks lane (2026-10-05): a 'clearance' spur's berth, for the grass and litter
     // ground lane (2026-10-08, wave 274's Monsoon slope): the sward follows its slopes and the map's sun, on a map whose
     // ground profile asks it; `?ground=legacy` keeps the even carpet
     ...((resolveGroundReduxProfile(cfg?.id).swardSlope ?? 0) > 0 && !legacyGroundLanes ? { _swardSlope: ((): readonly [number, number, number] => {
