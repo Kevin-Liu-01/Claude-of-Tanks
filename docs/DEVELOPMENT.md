@@ -923,9 +923,10 @@ A stone's colliders come from its own mesh (`src/world/rockCollision.ts`, receip
 `rockCollision.selftest.mjs`): the movement record is the stone's tiers (round 2), nested columns
 from the record's floor, the first the hull of the stone standing 0.2 m or more over its ground (a
 formation's block 0.3 m: the toe under it is a track's to roll over, and the audit read the ground
-outline's toe as air over main's footprint) to 0.7 m over the highest ground it leaves, each next one the stone
-above it 0.4 m higher (round 3: twelve corners a tier, so a dome's tiers narrow with it), up to 3 m over the ground,
-the last stopping 3 m over the stone's highest foot (a hull's roof: a hoodoo's stem above it is the shells'), so its floor
+outline's toe as air over main's footprint) to 0.7 m over the highest ground it leaves, the next the stone above it
+0.6 m higher; above that contact band (1.3 m over the highest ground) each next one 0.4 m higher with twelve corners
+(round 3: a dome's tiers narrow with it), the last stopping 3 m over the stone's highest foot (a hull's roof: a hoodoo's
+stem above it is the shells'), so its floor
 on the stone steps as the stone does (a column within a hull's step-up is stood on and is a floor by
 the same rule); the shell and sight colliders are ranged slabs of the stone's sections ('w' parts,
 no format change) with a toe ring where the stone flares at its foot. A stone rising less than 0.45

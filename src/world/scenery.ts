@@ -461,8 +461,12 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
         placed++;
         continue;
       }
+      // (a formation under the field's lean size is lean on every tier: its own pieces are already both tiers', so it
+      // takes no desktop restream — the hitbox lane, 2026-10-11: with one, a lean formation drew the desktop's loose
+      // stones on the desktop too and stood its mass on stone it does not draw)
+      const lean = r < (field.leanUnder ?? 0);
       const built = buildRockFormation({ form, geology: field.geology, x, z, radius: r, height, yawDeg, tone: field.tone, shed: 0.6 },
-        ground, noise, mulberry32(stream), { mobile: ctx.mobile || r < (field.leanUnder ?? 0), restream: () => mulberry32(stream) });
+        ground, noise, mulberry32(stream), { mobile: ctx.mobile || lean, restream: lean ? undefined : () => mulberry32(stream) });
       if (!built.geometry) continue;
       rockPieces.push(built.geometry);
       for (const mass of built.masses) addMass(mass);

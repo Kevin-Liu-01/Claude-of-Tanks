@@ -54,9 +54,9 @@ export const ROCK_CONTACT_TOP_M = 3;
  * from any of them, the boulder probe's air over 1.4 m 58.1-58.6 % against round 2's 61.1 %.)
  */
 export const ROCK_TIER_FIRST_M = 0.7;
-/** Each tier above the first (round 3, 2026-10-10; the critics of wave 344: "straight-walled prisms that do not narrow
- * with the domes"): 0.4 m, where round 2's 0.6 m left a dome's shoulders boxed (the boulder probe: air over 1.4 m
- * 61.1 -> 58.1 %, 3.2 parts a stone). */
+/** Each tier above the contact band (round 3, 2026-10-10; the critics of wave 344: "straight-walled prisms that do not
+ * narrow with the domes"): 0.4 m, where round 2's 0.6 m left a dome's shoulders boxed (the boulder probe, with the band's
+ * tiers kept: air over 1.4 m 61.1 -> 57.3 %). */
 const ROCK_TIER_STEP_M = 0.4;
 /**
  * The first tier's rise floor (2026-10-09, round 2 on main): its outline is the hull of the stone that stands at least
@@ -73,9 +73,18 @@ export const ROCK_TIER_FLOOR_M = 0.2;
 const FORMATION_TIER_FLOOR_M = 0.3;
 /** A last tier thinner than this joins the one under it. */
 const ROCK_TIER_LAST_MIN_M = 0.25;
-/** Corners a tier above the first keeps at most, as the footprint keeps ROCK_HULL_POINTS (round 3: eight cut the stone's
- * rounded ends square and left 0.8-1.3 % of it uncovered; twelve leave 0.2-0.3 %). */
+/** Corners a tier above the contact band keeps at most, as the footprint keeps ROCK_HULL_POINTS (round 3: eight cut the
+ * stone's rounded ends square and boxed a dome's crown; twelve follow it). */
 const ROCK_TIER_POINTS = 12;
+/**
+ * The contact band's tiers (round 3, 2026-10-11): up to this height over the highest ground a stone leaves, its tiers
+ * are round 2's, ROCK_BAND_TIER_STEP_M apart with ROCK_BAND_TIER_POINTS corners, which the census holds to main's
+ * phantom and uncovered stone (the coordinator: both at or under main). Above it the finer, rounder tiers taper the
+ * stone where a hull's roof meets it and the eye reads the outline.
+ */
+const ROCK_BAND_TIER_TOP_M = 1.3;
+const ROCK_BAND_TIER_STEP_M = 0.6;
+const ROCK_BAND_TIER_POINTS = 8;
 /** The shells' toe ring: the stone up to this height over its lowest point (wave 263: a snow boulder's foot stood up to
  * 0.5 m outside its lowest slab, which takes the section 35 % up it)... */
 const ROCK_TOE_M = 0.25;
@@ -515,15 +524,19 @@ function movementTiers(s: PlacedSurface, riseMax: number, step = ROCK_TIER_STEP_
   // ROCK_CONTACT_TOP_M over the stone's highest foot (the tallest hull's roof: a hoodoo's stem above it is the shells')
   const top = Math.min(s.top, s.high + ROCK_CONTACT_TOP_M);
   const floors: number[] = [s.low];
-  // (round 3, the coordinator: phantom AND uncovered stone at or under main) the first tier tops ROCK_TIER_FIRST_M over the
-  // highest ground the stone leaves, as round 2's did: from its lowest or middle ground the extra tiers in the contact band
-  // left a hair more stone uncovered than main (+0.031 and +0.004 points on the four rock maps' boulders)
-  for (let y = s.high + ROCK_TIER_FIRST_M; y < top - ROCK_TIER_LAST_MIN_M; y += step) floors.push(y);
+  // (round 3, the coordinator: phantom AND uncovered stone at or under main) in the contact band the tiers are round 2's —
+  // the first to ROCK_TIER_FIRST_M over the highest ground the stone leaves, the next ROCK_BAND_TIER_STEP_M higher, with
+  // ROCK_BAND_TIER_POINTS corners — and only above ROCK_BAND_TIER_TOP_M do they step `step` with ROCK_TIER_POINTS: every
+  // finer band tier the census tried stood a hair over main (the lowest ground +0.031, the middle +0.004 points of
+  // boulders' stone uncovered; twelve corners from the highest +0.001 points of boulder phantom, one Badlands boulder's
+  // overhang that eight corners cut away)
+  const bandTop = s.high + ROCK_BAND_TIER_TOP_M - 1e-9;
+  for (let y = s.high + ROCK_TIER_FIRST_M; y < top - ROCK_TIER_LAST_MIN_M; y += y < bandTop ? ROCK_BAND_TIER_STEP_M : step) floors.push(y);
   const tiers: RockBand[] = [];
   let under: number[] | null = null;
   for (let k = 0; k < floors.length; k++) {
     gatherBox(s, floors[k], Infinity, k === 0 ? riseFloor : 0, riseMax);
-    let points = scratchHullOf(k === 0 ? ROCK_HULL_POINTS : ROCK_TIER_POINTS);
+    let points = scratchHullOf(k === 0 ? ROCK_HULL_POINTS : floors[k] < bandTop ? ROCK_BAND_TIER_POINTS : ROCK_TIER_POINTS);
     if (points && under) points = clipConvexTo(points, under);
     if (!points) break;
     tiers.push({ points, y0: Math.round(floors[k] * 100) / 100, y1: Math.round((k + 1 < floors.length ? floors[k + 1] : top) * 100) / 100 });

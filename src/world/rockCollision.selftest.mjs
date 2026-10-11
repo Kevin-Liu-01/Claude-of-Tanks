@@ -289,8 +289,8 @@ let stops = 0;
   const stone = rockCollisionProfile(sphere, new THREE.Matrix4().makeTranslation(0, 0.4, 0).elements, flat);
   const rec = { min: [0, 0, 0], max: [0, 0, 0] }, col = { min: [0, 0, 0], max: [0, 0, 0] };
   applyRockCollisionProfile(rec, col, stone, -0.3);
-  // (round 3: the first to 0.7 m, then 0.4 m steps, the last to the top: 0.7, 1.1, 1.4)
-  assert.ok(rec.shape2.kind === 'compound' && rec.shape2.parts.length === 3, `three tiers (${rec.shape2.parts.length})`);
+  // (the contact band keeps round 2's tiers: the first to 0.7 m, the last to the top)
+  assert.ok(rec.shape2.kind === 'compound' && rec.shape2.parts.length === 2, `two tiers (${rec.shape2.parts.length})`);
   // level ground: a hull driven at it from eight sides stops where its front meets the first tier (the stone's widest
   // girth over the ground), never short of it or into it
   const halfL = 3.4, halfW = 1.75, first = stone.tiers[0].points;
