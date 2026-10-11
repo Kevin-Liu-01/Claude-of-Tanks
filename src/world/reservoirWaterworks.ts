@@ -716,6 +716,11 @@ function buildBodies(plan: Plan, field: WaterworksTerrain, palette: WeatherPalet
     bank.x, bank.top + 0.06, bank.z + z);
   for (const z of [-4.7, 4.7]) piece(out, 'stone', 'bank-stop', 2.8, 0.22, 0.25,
     bank.x, bank.top + 0.06, bank.z + z);
+  // (round 5, wave 389: the bank "a roofless box") its parapets along both long edges and its landward end, the coping
+  // course a hand proud round its head
+  for (const sz of [-1, 1]) piece(out, 'stone', 'bank-parapet', bank.width, 0.62, 0.32, bank.x, bank.top + 0.31, bank.z + sz * (bank.depth / 2 - 0.16));
+  piece(out, 'stone', 'bank-parapet', 0.32, 0.62, bank.depth - 0.64, bank.x - bank.width / 2 + 0.16, bank.top + 0.31, bank.z);
+  piece(out, 'stone', 'bank-coping', bank.width + 0.12, 0.14, bank.depth + 0.12, bank.x, bank.top - 0.22, bank.z);
 }
 
 /**
@@ -804,7 +809,8 @@ function buildIronPenstock(plan: Plan, out: Piece[]): void {
 }
 
 function buildBraces(plan: Plan, field: WaterworksTerrain, out: Piece[]): void {
-  for (const index of [1, 3, 5, 6]) {
+  // (round 5, wave 389: "unsupported pipes") a pier under every inner ring, and over each the iron saddle strap
+  for (const index of [1, 2, 3, 4, 5, 6]) {
     const [x, y, z] = plan.pipe[index];
     let ground = Infinity;
     for (const dx of [-0.42, 0.42]) for (const dz of [-0.42, 0.42]) {
@@ -812,6 +818,7 @@ function buildBraces(plan: Plan, field: WaterworksTerrain, out: Piece[]): void {
     }
     const top = y - 0.26, bottom = ground - 0.10;
     piece(out, 'stone', 'penstock-support', 0.84, top - bottom, 0.84, x, (top + bottom) / 2, z);
+    piece(out, 'dark', 'penstock-strap', 0.12, 0.62, 0.9, x, y, z);
   }
 }
 
