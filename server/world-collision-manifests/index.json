@@ -54,10 +54,10 @@
       "concealers": 812
     },
     "railyard": {
-      "bytes": 2113538,
-      "sha256": "d0a5119c11fccc17431594e1eded847ffd21b0f8d3dc95ac31469c251475e439",
-      "obstacles": 2698,
-      "colliders": 2695,
+      "bytes": 2193255,
+      "sha256": "d7fa8b54c3e23507a8307f582959bdaf42a937b2cd11cd54cfdfffa2b849f175",
+      "obstacles": 2724,
+      "colliders": 2798,
       "concealers": 1242
     },
     "frontier": {
@@ -288,10 +288,10 @@
         "concealers": 842
       },
       "railyard": {
-        "bytes": 2269617,
-        "sha256": "785382c9f6afcd64a12d498300e8cba3349b30dc5374b08d816262faaa0c6e10",
-        "obstacles": 2826,
-        "colliders": 2739,
+        "bytes": 2329335,
+        "sha256": "cb69e4c1f424d9ec02261a974e053bd8542025248b43dea19aec249b6022b6bb",
+        "obstacles": 2853,
+        "colliders": 2843,
         "concealers": 1242
       },
       "frontier": {
