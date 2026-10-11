@@ -138,7 +138,7 @@ for (const mapId of maps) {
     assert.ok(lite.getAttribute('position').count < intact.getAttribute('position').count * 0.8, `${mapId}/${id}: the lite build is lighter`);
     // the stand-ins: a few hundred triangles inside the build's bounds; the far one lit like the build at night
     const far = buildShedFar(id, shedStyleFor(mapId)), shadow = buildShedShadow(id);
-    assert.ok(far.getAttribute('position').count / 3 <= 360 && shadow.getAttribute('position').count / 3 <= 220,
+    assert.ok(far.getAttribute('position').count / 3 <= 420 && shadow.getAttribute('position').count / 3 <= 220,
       `${mapId}/${id}: stand-ins of ${far.getAttribute('position').count / 3} and ${shadow.getAttribute('position').count / 3} triangles`);
     for (const name of ['normal', 'uv', 'color', NIGHT_EMISSION_ATTRIBUTE]) assert.equal(far.getAttribute(name)?.count, far.getAttribute('position').count, `${mapId}/${id}: the far stand-in's ${name}`);
     for (const [label, g, slack] of [['far', far, 0.05], ['shadow', shadow, 0]]) {

@@ -1953,6 +1953,11 @@ export function buildShedFar(kind: 'fieldhut' | 'leanto', st: ShedStyle): THREE.
       const eaveB = -(FH.eaveX + 0.03) / cosP;
       roofBox(w, rp, -FH.gableZ, FH.gableZ, eaveB, 0.01, -0.21, top, roof);
       if (st.snow) roofBox(w, rp, -FH.gableZ + 0.05, FH.gableZ - 0.05, eaveB + 0.06, -0.04, top, top + 0.12, snow);
+      // the barge boards down both gables' rakes (a white trim reads from far off)
+      for (const zs of [-1, 1]) {
+        const za = zs * FH.gableZ, zb = za + zs * 0.032;
+        roofBox(w, rp, Math.min(za, zb), Math.max(za, zb), eaveB - 0.04, 0, -0.21, top + 0.012, { tone: st.trim, uv: 'flat' });
+      }
     }
     const front = FH.hz + OUT, door = FH.door, fw = FH.frontWindow, sw = FH.sideWindow;
     w.box(AXES, [door.u0, door.y0, front], [door.u1, door.y1, front + 0.012], { tone: st.wood, paint: st.door, uv: 'flat' });
@@ -1960,6 +1965,9 @@ export function buildShedFar(kind: 'fieldhut' | 'leanto', st: ShedStyle): THREE.
     w.pane(AXES, [fw.u0, fw.y0, front - 0.004], [fw.u1, fw.y1, front + 0.006], [0, 0, 1]);
     const side = frame([-FH.hx - OUT, 0, 0], [0, 0, 1], [0, 1, 0]);
     w.pane(side, [sw.u0, sw.y0, -0.004], [sw.u1, sw.y1, 0.006], [-1, 0, 0]);
+    // the casings round them
+    w.box(AXES, [fw.u0 - 0.075, fw.y0 - 0.05, front - 0.002], [fw.u1 + 0.075, fw.y1 + 0.095, front + 0.004], { tone: st.trim, uv: 'flat' });
+    w.box(side, [sw.u0 - 0.075, sw.y0 - 0.05, -0.002], [sw.u1 + 0.075, sw.y1 + 0.095, 0.004], { tone: st.trim, uv: 'flat' });
     for (const [f, o] of [[AXES, fw], [side, sw]] as const) {
       const z0 = f === AXES ? front : 0;
       w.box(f, [o.u0 - 0.07, o.y0 - 0.05, z0], [o.u1 + 0.07, o.y0, z0 + 0.05], { tone: st.trim, uv: 'flat' });
