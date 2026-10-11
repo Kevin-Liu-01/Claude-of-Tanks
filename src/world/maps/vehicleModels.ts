@@ -1256,6 +1256,7 @@ export const ISUZU_FTR: TruckModel = {
   cab: { ...TAM_BASE.cab, r: 0.18, roofR: 0.16, rake: 0.14 },
   frontFace: { lamps: [{ shape: 'rect', x: 0.86, y: 0.95, w: 0.28, h: 0.14, bezel: 'black' }, { shape: 'rect', x: 1.02, y: 1.18, w: 0.08, h: 0.1, lens: 'amber' }],
     grille: { y: 1.45, w: 1.4, h: 0.26, style: 'hbars', bars: 3, chrome: true, frame: 'body' }, bumper: { y: 0.75, h: 0.22, style: 'painted' } },
+  guards: true,
 };
 
 /** Isuzu Elf / N-series (1990s-) with a box: Asia's and the Gulf's delivery lorry. */
@@ -1400,7 +1401,7 @@ export const KIA_K190: TruckModel = {
 };
 
 /** Hyundai Mighty (2000s-) with a tilt. */
-export const HYUNDAI_MIGHTY: TruckModel = { ...ISUZU_ELF_BOX, body: { type: 'tilt', zF: 1.05, zB: -2.7, hw: 0.97, floorY: 1.0, sideH: 0.45, top: 2.65, wood: false } };
+export const HYUNDAI_MIGHTY: TruckModel = { ...ISUZU_ELF_BOX, guards: true, body: { type: 'tilt', zF: 1.05, zB: -2.7, hw: 0.97, floorY: 1.0, sideH: 0.45, top: 2.65, wood: false } };
 /** Thaco Ollin (2010s-) with drop sides. */
 export const THACO_DROPSIDE: TruckModel = { ...CABOVER_LIGHT };
 
@@ -1636,4 +1637,5 @@ export const RENAULT_TRUCKS_D: TruckModel = {
   frontFace: { lamps: [{ shape: 'rect', x: 0.95, y: 0.98, w: 0.3, h: 0.14, bezel: 'black' }],
     grille: { y: 1.55, w: 1.6, h: 0.4, style: 'hbars', bars: 3, chrome: false, frame: 'black' }, bumper: { y: 0.8, h: 0.3, style: 'black' } },
   body: { type: 'tilt', zF: 1.65, zB: -3.6, hw: 1.24, floorY: 1.35, sideH: 0.6, top: 3.3, wood: false },
+  guards: true,
 };
