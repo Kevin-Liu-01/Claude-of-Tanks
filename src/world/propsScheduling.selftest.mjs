@@ -471,6 +471,9 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     mapId: 'fixture', MATCH_OBJECTIVE_LAYOUTS: {},
     // nor one in a deployment slot's clearing (2026-10-08, a10a37b37): the fixture's map has no deployment slots
     deploymentSlots: [], DEPLOYMENT_CLEAR_M: 20,
+    // (sealed lane 2026-10-10) a placed hulk's drawn footprint for the parked vehicles' seat passes (props.ts
+    // wreckDrawnFootprints): the fixture runs no seat pass
+    pushWreckDrawnFootprint() {},
   };
   const api = new Function('dependencies', `
     const { ${Object.keys(dependencies).join(', ')} } = dependencies;

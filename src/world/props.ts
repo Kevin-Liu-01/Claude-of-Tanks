@@ -8704,6 +8704,10 @@ ${snowCap ? `
   }
   placeRegionalYards();
   yield { fine: true, progress: false, stage: 'regional-yards' };
+  // (sealed lane 2026-10-11: Ruinspires and Blackglass trucks stood with their wheels in a pavement) each kerb piece and
+  // the pavement behind it in plan, for the parked vehicles' and carts' seat passes (crushableFootprints; placeStreetCurbs
+  // fills it). Declared ahead of the street block, whose scheduling text propsScheduling.selftest replays as plain JS.
+  const streetKerbFootprints: CollisionRecord[] = [];
 
   // --- street rubble piles (urban): heaped masonry chunks + broken beams ---
   // r6: every 4th candidate may land in a 90 m OUTSKIRT band around the town
@@ -8761,9 +8765,6 @@ ${snowCap ? `
 
   // --- street curbs (town maps): raised stone kerb lines along both sides of
   // every street inside the town rect, broken at crossings ---
-  // (sealed lane 2026-10-11: Ruinspires and Blackglass trucks stood with their wheels in a pavement) each kerb piece and
-  // the pavement behind it in plan, for the parked vehicles' and carts' seat passes (crushableFootprints)
-  const streetKerbFootprints: CollisionRecord[] = [];
   function placeStreetCurbs(): void {
     if (!P.curbs) return;
     // r6: urban kerbs/pavements read as CONCRETE, not planks — the urban
