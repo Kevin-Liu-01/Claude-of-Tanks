@@ -1,6 +1,8 @@
 import {AERIAL_RULES} from './matchRuleset.ts';
-/** Motors spool on the cradle before the airframe unloads its skids. */
-export const DRONE_SPOOL_S = .35;
+/** Motors spool on the cradle before the airframe unloads its skids: the clamps flip clear and the props run up to a
+ * disc first, a readable beat before the lift (round 4b, 2026-10-11; coordinator-approved, launch time, height and
+ * endpoints unchanged). */
+export const DRONE_SPOOL_S = .6;
 /**
  * The launch climb's thrust profile (round 4, 2026-10-11; coordinator-approved sim curve, launch time and height
  * unchanged): the airframe punches off the skids, climbs at a near-constant rate and brakes to the launch height,

@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { missionAttachmentFor, missionCradleVolumes, DRONE_DOCK_HEIGHT_M, type MissionAttachment, type MissionCarrierSpec } from '../sim/missionAttachment.ts';
 import { acquireDroneModelKit, droneMaterialHooks, droneNation, poseDroneRotor, DRONE_DOCK_PAINT, DRONE_LITE_DISTANCE_M, type DroneKitLease, type DroneModelKit } from '../fx/droneModel.ts';
 import { createMissionCradleGeometry, createMissionHoldDownGeometry, missionHoldDownPivots, missionHoldDownMatrix } from './missionCradleGeometry.ts';
-import { DRONE_ARRIVAL, droneArrivalAttitude, droneArrivalHeight, droneSpinDownAngle, droneSpinDownPhase } from '../fx/droneArrival.ts';
+import { DRONE_ARRIVAL, droneArrivalAttitude, droneArrivalHeight, droneSpinDownAngle, droneSpinDownFadeStep, droneSpinDownPhase } from '../fx/droneArrival.ts';
 import { createCaptureFlag, type CaptureFlag } from '../fx/captureFlag.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 interface MissionVisual {
@@ -22,22 +22,22 @@ interface MissionVisual {
  * on the cradle through the rest of the cooldown and is the ready one, with no second landing. A launch in the middle
  * hands straight to the flight from the dock datum.
  */
-interface Arrival { group: THREE.Group; rotors: THREE.Mesh[]; blurs: THREE.Mesh[]; faint: THREE.Mesh[] }
+interface Arrival { group: THREE.Group; rotors: THREE.Mesh[]; blurs: THREE.Mesh[]; kit: DroneModelKit }
 function createArrival(kit: DroneModelKit): Arrival {
-  const group = new THREE.Group(), rotors: THREE.Mesh[] = [], blurs: THREE.Mesh[] = [], faint: THREE.Mesh[] = [];
+  const group = new THREE.Group(), rotors: THREE.Mesh[] = [], blurs: THREE.Mesh[] = [];
   group.name = 'Docked FPV arrival'; group.rotation.order = 'YXZ'; group.visible = false;
   for (const part of kit.parts) group.add(new THREE.Mesh(part.geometry, part.material));
   for (let i = 0; i < 4; i++) {
+    // One disc per rotor: the full disc in the air, then the kit's fading discs in turn as the blades slow beneath.
     const rotor = new THREE.Mesh(kit.rotor, kit.rotorMaterial), blur = new THREE.Mesh(kit.rotorBlur, kit.blurMaterial);
-    const fade = new THREE.Mesh(kit.rotorBlurFaint, kit.blurMaterial);
-    rotor.name = 'FPV arrival blades'; blur.name = 'FPV arrival disc'; fade.name = 'FPV arrival fading disc';
-    rotor.matrixAutoUpdate = blur.matrixAutoUpdate = fade.matrixAutoUpdate = false; blur.renderOrder = fade.renderOrder = 2;
-    rotors.push(rotor); blurs.push(blur); faint.push(fade); group.add(rotor, blur, fade);
+    rotor.name = 'FPV arrival blades'; blur.name = 'FPV arrival disc';
+    rotor.matrixAutoUpdate = blur.matrixAutoUpdate = false; blur.renderOrder = 2;
+    rotors.push(rotor); blurs.push(blur); group.add(rotor, blur);
   }
   // Shade like the parked airframe it hands over to, so a dock in shadow never brightens for the landing.
   // Shadows follow the sun from every solid part; the translucent discs cast none.
-  for (const mesh of group.children as THREE.Mesh[]) { mesh.receiveShadow = true; mesh.castShadow = !blurs.includes(mesh) && !faint.includes(mesh); }
-  return { group, rotors, blurs, faint };
+  for (const mesh of group.children as THREE.Mesh[]) { mesh.receiveShadow = true; mesh.castShadow = !blurs.includes(mesh); }
+  return { group, rotors, blurs, kit };
 }
 const attitude = { pitch: 0, yaw: 0, roll: 0 };
 function poseArrival(arrival: Arrival, t: number): void {
@@ -48,8 +48,9 @@ function poseArrival(arrival: Arrival, t: number): void {
     droneArrivalAttitude(u, attitude);
     group.rotation.set(attitude.pitch, attitude.yaw, attitude.roll);
     for (let i = 0; i < 4; i++) {
-      arrival.rotors[i]!.visible = false; arrival.faint[i]!.visible = false; arrival.blurs[i]!.visible = true;
-      poseDroneRotor(arrival.blurs[i]!, i, t * 9 + i);
+      const blur = arrival.blurs[i]!;
+      arrival.rotors[i]!.visible = false; blur.visible = true; blur.geometry = arrival.kit.rotorBlur;
+      poseDroneRotor(blur, i, t * 9 + i);
     }
     return;
   }
@@ -57,11 +58,13 @@ function poseArrival(arrival: Arrival, t: number): void {
   // angle (droneArrival.ts: about a second and a half).
   const s = t - descentS, phase = droneSpinDownPhase(s);
   const spin = droneSpinDownAngle((s - DRONE_ARRIVAL.discS) / (spoolS - DRONE_ARRIVAL.discS));
+  const steps = arrival.kit.rotorBlurSteps, disc = phase === 'discs' ? arrival.kit.rotorBlur : phase === 'blend' ? steps[droneSpinDownFadeStep(s, steps.length)]! : null;
   group.position.set(0, 0, 0); group.rotation.set(0, 0, 0);
   for (let i = 0; i < 4; i++) {
-    arrival.blurs[i]!.visible = phase === 'discs'; arrival.faint[i]!.visible = phase === 'blend'; arrival.rotors[i]!.visible = phase !== 'discs';
-    if (phase === 'discs') poseDroneRotor(arrival.blurs[i]!, i, t * 9 + i);
-    else { poseDroneRotor(arrival.rotors[i]!, i, spin); if (phase === 'blend') poseDroneRotor(arrival.faint[i]!, i, t * 9 + i); }
+    const blur = arrival.blurs[i]!, rotor = arrival.rotors[i]!;
+    blur.visible = !!disc; rotor.visible = phase !== 'discs';
+    if (disc) { blur.geometry = disc; poseDroneRotor(blur, i, t * 9 + i); }
+    if (rotor.visible) poseDroneRotor(rotor, i, spin);
   }
 }
 /** The quick-release clamps share one head geometry across every dock. */
@@ -71,8 +74,9 @@ function acquireHoldDown():{geometry:THREE.BufferGeometry;release():void} {
   const owned=holdDownShared;owned.users++;let released=false;
   return {geometry:owned.geometry,release(){if(released)return;released=true;if(--owned.users>0)return;if(holdDownShared===owned)holdDownShared=null;owned.geometry.dispose();}};
 }
-/** Seconds for a clamp arm to flip between holding the skid and standing clear. */
-const HOLD_SWING_S = .3;
+/** Seconds for a clamp arm to flip between holding the skid and standing clear (round 4b: long enough to read in
+ * 0.1 s stills; a launch's clamps are clear before the 0.6 s lift). */
+const HOLD_SWING_S = .45;
 const holdMatrix = new THREE.Matrix4();
 function poseHoldDowns(mount:MissionVisual):void {
   if(!mount.holdDowns||!mount.holdPivots||mount.holdPosed===mount.hold)return;

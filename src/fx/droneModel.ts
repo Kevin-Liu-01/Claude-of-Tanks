@@ -48,7 +48,7 @@ const MOTOR_OFFSET = .48, ROTOR_Y = .137, SKID_Y = -.2, SKID_R = .0189, PROP_R =
 const ARM_Y0 = .029, ARM_Y1 = .045, MOUNT_Y = .021;
 const MOTORS = [[-1,-1],[-1,1],[1,-1],[1,1]] as const;
 // Matte black carbon and printed TPU, anodised metal and glass share four merged materials; colour rides in vertex colours.
-const CARBON_PLATE = 0x3a3e44, TPU = 0x18191b, PCB = 0x1c3a2b, WIRE = 0x141516, WIRE_RED = 0x6e1f17,
+const CARBON_PLATE = 0x25282c, TPU = 0x18191b, PCB = 0x1c3a2b, WIRE = 0x141516, WIRE_RED = 0x6e1f17,
  WIRE_WHITE = 0xcfccc2, RUBBER = 0x121314, STRAP = 0x151617, BUCKLE = 0x8e3024, COPPER = 0x5a3a24, STEEL = 0x7d8084,
  BLACK_ANODE = 0x1b1d20, BELL = 0x2b2e33, BELL_RING = 0x8f9399, VENT = 0x0a0b0c, FIBER = 0xd8d4c6, HAZARD = 0xb8902a,
  PROP = 0x3a3f45, PROP_TIP = 0xb0b4b8;
@@ -108,7 +108,9 @@ function createCarbonTwill():THREE.DataTexture {
  const size = 32, data = new Uint8Array(size * size * 4);
  for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
   const warp = (((i >> 3) + (j >> 3)) & 3) < 2, across = warp ? (j & 7) : (i & 7);
-  const crown = Math.sin((across + .5) / 8 * Math.PI), value = Math.round((warp ? 238 : 188) * (.8 + .2 * crown));
+  // Round 4b (critics: the light plates read as grey plastic): dark carbon carries its weave in the sheen — the tows
+  // differ strongly here, and the plates read this map as both albedo and roughness.
+  const crown = Math.sin((across + .5) / 8 * Math.PI), value = Math.round((warp ? 255 : 150) * (.72 + .28 * crown));
   const o = (j * size + i) * 4; data[o] = data[o + 1] = data[o + 2] = value; data[o + 3] = 255;
  }
  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
@@ -117,6 +119,8 @@ function createCarbonTwill():THREE.DataTexture {
  texture.name = 'FPV carbon twill'; texture.needsUpdate = true;
  return texture;
 }
+/** The landing spin-down's disc strengths, strongest first (droneArrival.ts steps through them). */
+export const DRONE_ROTOR_FADE_STEPS = Object.freeze([.82, .64, .46, .3, .16]);
 /** One twill tile every 10 mm of finished airframe. */
 const TWILL_REPEATS = DRONE_AIRFRAME_SCALE / .01;
 
@@ -374,6 +378,8 @@ export interface DroneModelKit {
  rotor:THREE.BufferGeometry; rotorBlur:THREE.BufferGeometry;
  /** The disc at under half strength: shown over the blades while they spool up or slow down. */
  rotorBlurFaint:THREE.BufferGeometry;
+ /** The disc fading in five steps (strength .82 to .16): a landing's spin-down shows a different disc every frame. */
+ rotorBlurSteps:readonly THREE.BufferGeometry[];
  bodyMaterial:THREE.MeshStandardMaterial; plateMaterial:THREE.MeshStandardMaterial; equipmentMaterial:THREE.MeshStandardMaterial; metalMaterial:THREE.MeshStandardMaterial;
  lensMaterial:THREE.MeshStandardMaterial; rotorMaterial:THREE.MeshStandardMaterial; blurMaterial:THREE.MeshStandardMaterial;
  /** Rigid airframe parts in draw order, each a merged mesh with its own material. */
@@ -453,19 +459,20 @@ function buildDroneModelKit(design:DroneDesign):DroneModelKit {
  // Field wear before scaling (authoring units): dust on what faces up, the charge's belly grimy. The gear stays dark
  // (round 4: dusted legs read pale, a camera drone's).
  weatherVertexColors(body, .3, -1, 1, MUD);
- weatherVertexColors(plateGeometry, .26, -1);
+ weatherVertexColors(plateGeometry, .12, -1);
  weatherVertexColors(equipment, .3, -.14);
  weatherVertexColors(metal, .2, -1, 1, MUD);
  for (const geometry of [body, plateGeometry, equipment, metal, lens]) geometry.scale(DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE);
  const rotor = createRotor(PROP_R).scale(DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE);
  const rotorBlur = createRotorBlur(PROP_R).scale(DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE);
  const rotorBlurFaint = createRotorBlur(PROP_R, .42).scale(DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE);
+ const rotorBlurSteps = DRONE_ROTOR_FADE_STEPS.map(strength => createRotorBlur(PROP_R, strength).scale(DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE));
  // Matte composite and matte anodised metal: carbon and printed parts scatter; the metal keeps a soft machined highlight
  // without mirroring the sky (a bright bell or belly read as chrome).
  const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .74, metalness: .03 });
  // The frame plates' twill under a thin lacquer: a little more sheen than the printed and wrapped parts.
  const twill = createCarbonTwill();
- const plateMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, map: twill, roughness: .5, metalness: .06 });
+ const plateMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, map: twill, roughnessMap: twill, roughness: .58, metalness: .04 });
  const equipmentMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .8, metalness: .02 });
  const metalMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .6, metalness: .35 });
  const lensMaterial = new THREE.MeshStandardMaterial({ color: 0x2f4a56, emissive: 0x0b1f28, roughness: .08, metalness: .55 });
@@ -473,10 +480,10 @@ function buildDroneModelKit(design:DroneDesign):DroneModelKit {
  const blurMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, transparent: true, depthWrite: false, roughness: .7, metalness: 0, side: THREE.DoubleSide });
  for (const [material, label] of [[bodyMaterial,'composite'],[plateMaterial,'carbon plate'],[equipmentMaterial,'paint'],[metalMaterial,'metal'],[lensMaterial,'glass'],[rotorMaterial,'propellers'],[blurMaterial,'rotor blur']] as const) material.name = `FPV ${design.name} ${label}`;
  const parts = [{ geometry: body, material: bodyMaterial },{ geometry: plateGeometry, material: plateMaterial },{ geometry: equipment, material: equipmentMaterial },{ geometry: metal, material: metalMaterial },{ geometry: lens, material: lensMaterial }];
- return { body, plate: plateGeometry, equipment, metal, lens, rotor, rotorBlur, rotorBlurFaint, bodyMaterial, plateMaterial, equipmentMaterial, metalMaterial, lensMaterial, rotorMaterial, blurMaterial, parts,
+ return { body, plate: plateGeometry, equipment, metal, lens, rotor, rotorBlur, rotorBlurFaint, rotorBlurSteps, bodyMaterial, plateMaterial, equipmentMaterial, metalMaterial, lensMaterial, rotorMaterial, blurMaterial, parts,
   name: design.name,
   dispose() {
-   for (const geometry of [body, plateGeometry, equipment, metal, lens, rotor, rotorBlur, rotorBlurFaint]) geometry.dispose();
+   for (const geometry of [body, plateGeometry, equipment, metal, lens, rotor, rotorBlur, rotorBlurFaint, ...rotorBlurSteps]) geometry.dispose();
    for (const material of [bodyMaterial, plateMaterial, equipmentMaterial, metalMaterial, lensMaterial, rotorMaterial, blurMaterial]) material.dispose();
    twill.dispose();
   } };
