@@ -75,6 +75,22 @@
   "floating": 1,
   "dangling": 0
  },
+ "kit:arctic:firestation": {
+  "floating": 6,
+  "dangling": 2
+ },
+ "kit:arctic:foundryoffice": {
+  "floating": 21,
+  "dangling": 4
+ },
+ "kit:arctic:ruin": {
+  "floating": 2,
+  "dangling": 6
+ },
+ "kit:arctic:watertower": {
+  "floating": 4,
+  "dangling": 0
+ },
  "kit:bengal:cornershop": {
   "floating": 0,
   "dangling": 2
@@ -100,7 +116,7 @@
   "dangling": 0
  },
  "kit:chouf:bathhouse": {
-  "floating": 25,
+  "floating": 27,
   "dangling": 0
  },
  "kit:chouf:church": {
@@ -599,6 +615,10 @@
   "floating": 0,
   "dangling": 6
  },
+ "kit:savoyard:warehouse": {
+  "floating": 1,
+  "dangling": 1
+ },
  "kit:shanghai:firestation": {
   "floating": 16,
   "dangling": 0
@@ -639,6 +659,10 @@
   "floating": 14,
   "dangling": 30
  },
+ "landmark:airstrip": {
+  "floating": 2,
+  "dangling": 0
+ },
  "landmark:belfry": {
   "floating": 4,
   "dangling": 0
@@ -664,12 +688,28 @@
   "dangling": 0
  },
  "landmark:fireLookout": {
+  "floating": 76,
+  "dangling": 2
+ },
+ "landmark:fuelTankFarm": {
   "floating": 4,
-  "dangling": 0
+  "dangling": 8
  },
  "landmark:grainElevator": {
   "floating": 0,
   "dangling": 1
+ },
+ "landmark:guyedMast": {
+  "floating": 2,
+  "dangling": 7
+ },
+ "landmark:headframe": {
+  "floating": 39,
+  "dangling": 74
+ },
+ "landmark:jamesway": {
+  "floating": 1,
+  "dangling": 0
  },
  "landmark:liftBridge": {
   "floating": 80,
@@ -687,6 +727,10 @@
   "floating": 3,
   "dangling": 2
  },
+ "landmark:moduleTrain": {
+  "floating": 42,
+  "dangling": 4
+ },
  "landmark:mole": {
   "floating": 4,
   "dangling": 2
@@ -694,6 +738,18 @@
  "landmark:obelisk": {
   "floating": 1,
   "dangling": 0
+ },
+ "landmark:oreBin": {
+  "floating": 22,
+  "dangling": 34
+ },
+ "landmark:oreCars": {
+  "floating": 91,
+  "dangling": 4
+ },
+ "landmark:radomeTower": {
+  "floating": 4,
+  "dangling": 8
  },
  "landmark:stationHall": {
   "floating": 28,
@@ -717,6 +773,10 @@
  },
  "landmark:triumphalArch": {
   "floating": 2,
+  "dangling": 0
+ },
+ "landmark:troposcatter": {
+  "floating": 4,
   "dangling": 0
  },
  "landmark:trussBridge": {
