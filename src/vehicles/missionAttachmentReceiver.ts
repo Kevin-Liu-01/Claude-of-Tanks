@@ -148,6 +148,16 @@ interface ReceiverBuilder {
   postAssemble: TankBuilderPort['postAssemble'];
 }
 
+/** Darken the up-facing vertices' shade (vertex colour) by `factor`. */
+function grimeTopFaces(geometry: THREE.BufferGeometry, factor: number): void {
+  const normal = geometry.getAttribute('normal'), colour = geometry.getAttribute('color');
+  for (let index = 0; index < normal.count; index++) {
+    if (normal.getY(index) <= .5) continue;
+    colour.setXYZ(index, colour.getX(index) * factor, colour.getY(index) * factor, colour.getZ(index) * factor);
+  }
+  colour.needsUpdate = true;
+}
+
 /** Permanent equipment, separate from the armor shell and removable drone.
  * Keep its stable semantic mesh after material-bucket assembly so the native
  * support audit can identify these exact load-bearing pads without allowing
@@ -173,6 +183,9 @@ export function addMissionAttachmentReceiver(P: ReceiverBuilder, id: ReceiverId)
     boxUV(geometry, CAMO_UV_REPEATS_PER_M);
     paintedSurfaceShade(geometry);
     const onDarkCage = id === 'ua_m1a1' && !!P.mats.dark;
+    // Round 4 (critics: "pale planks or a bench"): the bearers' wide tops caught the overhead light far brighter than
+    // the cage's thin bars; they carry the cage's grime instead, so the bracket reads as one dark steel structure.
+    if (onDarkCage) grimeTopFaces(geometry, .62);
     const receiver = new THREE.Mesh(geometry, onDarkCage ? P.mats.dark! : P.mats.hull);
     receiver.name = 'turretMissionReceiver';
     receiver.castShadow = receiver.receiveShadow = true;
