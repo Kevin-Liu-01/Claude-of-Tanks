@@ -369,6 +369,12 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
   parts.push(finish(collar, dress.trim, _m));
   // a tool pouch on the right hip
   block(parts, inHips(-0.168, 0.04, 0.035), [0.045 * scale, 0.1 * scale, 0.09 * scale], hipQ, dress.trim);
+  // reflective bands round the chest and shins (2026-10-10): drawn in a hair-lighter coverall tone, so they vanish in
+  // plain work dress and a regional palette can paint them as hi-vis tape (paintCrewRegion, role 5)
+  const stripe = shade(dress.coverall, 1.03);
+  const chestBand = new THREE.CylinderGeometry(1, 1, 0.05, 16, 1, true);
+  _m.compose(inChest(0, 0.3, 0.017), chestQ, _s.set(0.186 * scale * build, scale, 0.132 * scale * girth));
+  parts.push(finish(chestBand, stripe, _m));
 
   // neck and head
   const neckBase = inChest(0, NECK_BASE_Y, 0.0);
@@ -438,6 +444,8 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
     ball(parts, hem, 0.06 * scale, dress.coverall, [1, 0.55, 1], null, [6, 3]);
     const patch = knee.clone().addScaledVector(new THREE.Vector3(0, 0, 1).applyQuaternion(hipQ), 0.045 * scale);
     block(parts, patch, [0.085 * scale, 0.09 * scale, 0.014 * scale], kneeQ, dress.trim);
+    limb(parts, knee.clone().lerp(ankle, 0.3), knee.clone().lerp(ankle, 0.38), 0.066 * scale * girth,
+      0.064 * scale * girth, stripe, 8);
     // boot: heel under the ankle, toe forward along the foot heading, pitched for kneeling or tiptoe
     const footYaw = (sideName === 'left' ? pose.leftFootYaw : pose.rightFootYaw) ?? (sign * 0.12);
     const footPitch = (sideName === 'left' ? pose.leftFootPitch : pose.rightFootPitch) ?? 0;
@@ -794,7 +802,8 @@ interface CrewSceneBuild {
   readonly geometry: THREE.BufferGeometry;
   readonly skeletons: readonly CrewSkeleton[];
   readonly triangles: number;
-  /** Per vertex: what the colour dresses (0 skin, boots, gloves and kit; 1 coverall; 2 trim; 3 pocket flap; 4 headgear). */
+  /** Per vertex: what the colour dresses (0 skin, boots, gloves and kit; 1 coverall; 2 trim; 3 pocket flap; 4 headgear;
+   * 5 reflective bands). */
   readonly roles: Uint8Array;
   /** Per vertex: the member it belongs to. */
   readonly memberOf: Uint8Array;
@@ -816,6 +825,7 @@ export function buildCrewSceneGeometry(scene: CrewScene): CrewSceneBuild {
     // tag each vertex with the dress colour it carries, so a Garage can repaint the crew's cloth without a rebuild
     const dressColours: Array<[number, number]> = [
       [1, member.dress.coverall], [2, member.dress.trim], [3, shade(member.dress.coverall, 1.45)], [4, member.dress.headColor],
+      [5, shade(member.dress.coverall, 1.03)],
     ];
     const keys = dressColours.map(([role, hex]) => { probe.setHex(hex); return [role, probe.r, probe.g, probe.b] as const; });
     const colours = build.geometry.getAttribute('color');
@@ -850,17 +860,17 @@ export function buildCrewSceneGeometry(scene: CrewScene): CrewSceneBuild {
  * the members cycle through and their headgear colour. Verdant keeps the national work dress authored per member.
  */
 export const CREW_REGION_DRESS: Readonly<Record<GarageVariant['architecture'], { readonly coverall: readonly number[];
-  readonly head: number } | null>> = Object.freeze({
+  readonly head: number; readonly stripe?: number } | null>> = Object.freeze({
   field_shed: null,
   shade_depot: { coverall: [0x9a8360, 0x8c7554, 0xa08a66], head: 0x8a7a5a }, // desert tan, sun caps
   repair_bunker: { coverall: [0xb4b8b3, 0xa5aaa5, 0x8f9590], head: 0x3b3631 }, // winter smocks, fur hats
   brick_arsenal: { coverall: [0x2f3a4c, 0x37424f, 0x2a3442], head: 0x262d38 }, // navy arsenal overalls
-  naval_drydock: { coverall: [0xb0632a, 0xa35a26, 0x965226], head: 0xd6d6ce }, // dock orange, white hard hats
-  rail_roundhouse: { coverall: [0x34506e, 0x3d5875, 0x2f4864], head: 0x343434 }, // railway blue
+  naval_drydock: { coverall: [0xb0632a, 0xa35a26, 0x965226], head: 0xd6d6ce, stripe: 0xd8dcd6 }, // dock orange, white hard hats
+  rail_roundhouse: { coverall: [0x34506e, 0x3d5875, 0x2f4864], head: 0x343434, stripe: 0xc9cdc8 }, // railway blue
   rain_canopy: { coverall: [0x3c4a35, 0x45523b, 0x36432f], head: 0x2c3729 }, // rain ponchos
-  rock_cavern: { coverall: [0x8e3328, 0x9a5a22, 0x7d2e26], head: 0xd5d0c6 }, // alpine shells, helmets
+  rock_cavern: { coverall: [0x8e3328, 0x9a5a22, 0x7d2e26], head: 0xd5d0c6, stripe: 0xcfd2cf }, // alpine shells, helmets
   recovery_yard: { coverall: [0x8a7b5a, 0x7d6e50, 0x948463], head: 0x6c6046 }, // khaki recovery crews
-  factory_line: { coverall: [0x4a4d50, 0x55585b, 0x404346], head: 0xc49c34 }, // mill greys, yellow hard hats
+  factory_line: { coverall: [0x4a4d50, 0x55585b, 0x404346], head: 0xc49c34, stripe: 0xc8c26a }, // mill greys, yellow hard hats
 });
 
 /**
@@ -868,16 +878,18 @@ export const CREW_REGION_DRESS: Readonly<Record<GarageVariant['architecture'], {
  * colour array as built, `out` the live colour array. Skin, boots, gloves and kit keep their colours.
  */
 export function paintCrewRegion(base: Float32Array, roles: Uint8Array, memberOf: Uint8Array,
-  region: { readonly coverall: readonly number[]; readonly head: number } | null, out: Float32Array): void {
+  region: { readonly coverall: readonly number[]; readonly head: number; readonly stripe?: number } | null,
+  out: Float32Array): void {
   if (!region) { out.set(base); return; }
   const cloth = region.coverall.map((hex) => new THREE.Color().setHex(hex));
   const head = new THREE.Color().setHex(region.head);
+  const stripe = region.stripe !== undefined ? new THREE.Color().setHex(region.stripe) : null;
   for (let v = 0; v < roles.length; v++) {
     const role = roles[v];
     const at = v * 3;
     if (role === 0) { out[at] = base[at]; out[at + 1] = base[at + 1]; out[at + 2] = base[at + 2]; continue; }
-    const c = role === 4 ? head : cloth[memberOf[v] % cloth.length];
-    const k = role === 2 ? 0.8 : role === 3 ? 1.45 : 1;
+    const c = role === 4 ? head : role === 5 && stripe ? stripe : cloth[memberOf[v] % cloth.length];
+    const k = role === 2 ? 0.8 : role === 3 ? 1.45 : role === 5 && !stripe ? 1.03 : 1;
     out[at] = Math.min(1, c.r * k); out[at + 1] = Math.min(1, c.g * k); out[at + 2] = Math.min(1, c.b * k);
   }
 }

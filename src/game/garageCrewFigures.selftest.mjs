@@ -108,10 +108,10 @@ for (const scene of [...Object.values(GARAGE_CREW_SCENES), ...regionalScenes.map
 assert.equal(members, 25, 'twenty-five workers: eighteen in the five bays, three on the mezzanine, four in the yard');
 assert.ok(GARAGE_CREW_SCENES.burlak.members.some((member) => member.role === 'tag-line-guide'),
   'a tag-line man guides the slung Burlak turret');
-// about 1.8k triangles a worker (fingered hands and faces since round 2; cheekbones, glasses, beards and arm swell in
-// round 3); each crew is its own culled draw, so a view carries one or two crews (the opening Verdant frame: the yard
-// and mezzanine crews, about 12k triangles, 3 % of the workshop's 374k)
-assert.ok(triangles <= 46000, `the crews stay inside 46k triangles (${triangles})`);
+// about 1.9k triangles a worker (fingered hands and faces since round 2; cheekbones, glasses, beards and arm swell in
+// round 3; reflective bands in round 4); each crew is its own culled draw, so a view carries one or two crews (the
+// opening Verdant frame: the yard and mezzanine crews, about 13k triangles, 3.5 % of the workshop's 374k)
+assert.ok(triangles <= 48000, `the crews stay inside 48k triangles (${triangles})`);
 {
   // a Garage shows the shared crews with its own left-band task in place of the track carry
   const carry = buildCrewSceneGeometry(GARAGE_CREW_SCENES.carry).triangles;
@@ -124,7 +124,7 @@ assert.ok(triangles <= 46000, `the crews stay inside 46k triangles (${triangles}
     for (const bay of ['leopard', 'k2']) {
       if (alternates[bay]) shown += regionalTriangles.get(`${bay}-alt`) - bayTriangles(bay);
     }
-    assert.ok(shown <= 46000, `${variant.id}: the Garage's crews stay inside 46k triangles (${shown})`);
+    assert.ok(shown <= 48000, `${variant.id}: the Garage's crews stay inside 48k triangles (${shown})`);
   }
   assert.ok(Object.values(GARAGE_BAY_ALTERNATES).some((a) => a.leopard) && Object.values(GARAGE_BAY_ALTERNATES).some((a) => a.k2),
     'some Garages work the Leopard and K2 bays their own way');
