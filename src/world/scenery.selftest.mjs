@@ -61,6 +61,8 @@ const FORMS = [
   ['cairn', 'limestone', 4.2, 2.6, 6000, 1400, true],
   ['calvary', 'granite', 1.6, 5.6, 1200, 400, true],
   ['hoodoo', 'sandstone', 3.2, 6, 3000, 1500, true],
+  // (the hitbox lane, round 2: a field of fractured blocks, the cover a map places on open ground)
+  ['blocks', 'breccia', 6, 2.6, 4500, 2000, true],
 ];
 for (const [form, geology, radius, height, capDesktop, capMobile, standing] of FORMS) {
   for (const mobile of [false, true]) {

@@ -535,6 +535,8 @@ function assembleWorld(
     ...((props.group.userData.regionalYardHoles as GroundCoverHole[] | undefined) ?? []),
     // the map-vehicles lane (2026-10-08): nor through the mud a landing's hauled-out boat lies in (props.ts)
     ...((props.group.userData.boatMudHoles as GroundCoverHole[] | undefined) ?? []),
+    // the landmarks lane (2026-10-07): nor through a set piece's paving (landmarks/compose.ts GROUND_HOLE_KINDS)
+    ...((props.group.userData.landmarkGroundHoles as GroundCoverHole[] | undefined) ?? []),
   ];
   // the hitbox lane (2026-10-07): the stones' colliders are their own now (props.ts refitRockColliders); the ground cover
   // keeps the footprints it was sealed against through their cosmetic twins, so no tuft, stone or shrub moves with them

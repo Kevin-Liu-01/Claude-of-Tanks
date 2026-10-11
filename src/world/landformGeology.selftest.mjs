@@ -511,7 +511,30 @@ assert.ok(noseApronDrop < cutApronDrop * 0.5,
 assert.equal(geologyRockWeight(noseRidge, ...atLocal(noseRidge, 133, 33)), 0, 'a nose\'s rock footprint turns round its end');
 assert.equal(geologyRockWeight(cutRidge, ...atLocal(cutRidge, 133, 33)), 1, 'a cut end\'s footprint runs square');
 
+// a dyke (the map-revival lane, 2026-10-06, the Polders): a level crest out to `crest` of the half-width, a batter that
+// never rises outward, reaching 0 at the toe, its steepest grade the straight batter's own (height over the batter's
+// run, a little more where the rounded shoulder and toe hand the slope on), continuous across the crest's edge and the toe
+let dykeSteepest = 0;
+{
+  const dyke = { kind: 'ridge', x: 0, z: 0, length: 400, width: 16, height: 4.8, yawDeg: 0, geology: { profile: 'dyke', crest: 0.25 } };
+  const h = (lz) => sampleLandformHeight(dyke, 0, lz);
+  for (const lz of [0, 1, 2, 3.9]) assert.ok(Math.abs(h(lz) - 4.8) < 1e-9 && Math.abs(h(-lz) - 4.8) < 1e-9, `a dyke's crest is level (${lz} m: ${h(lz)})`);
+  assert.ok(h(16) === 0 && h(17) === 0, 'a dyke ends at its toe');
+  let prev = h(4);
+  for (let lz = 4.05; lz <= 16; lz += 0.05) {
+    const v = h(lz);
+    assert.ok(v <= prev + 1e-9, `a dyke's batter never rises outward (${lz.toFixed(2)} m)`);
+    assert.ok(prev - v < 4.8 * 0.05 / (12 * 0.875) + 1e-6, `no step in a dyke's batter at ${lz.toFixed(2)} m (${(prev - v).toFixed(4)})`);
+    dykeSteepest = Math.max(dykeSteepest, (prev - v) / 0.05);
+    prev = v;
+  }
+  const straight = 4.8 / 12;
+  assert.ok(dykeSteepest > straight && dykeSteepest < straight / 0.875 + 1e-6, `the batter's grade is the straight batter's (${dykeSteepest.toFixed(3)} vs ${straight.toFixed(3)})`);
+  // the profile is the analytic one with or without the dome's fields: a dyke is never rock and names no zone
+  assert.equal(isRockLandform(dyke), false, 'a dyke is earth, not rock');
+}
+
 console.log(`landformGeology.selftest: ${smoothForms} smooth landforms unchanged; cone flank ${steepest.toFixed(3)} `
   + `(predicted ${predicted.toFixed(3)}), ${notches} rills, lobed reach ${Math.min(...reach)}-${Math.max(...reach)} m, `
   + `${benches} benches on ${benchedBearings} of 12 bearings, `
-  + `flow margin ${Math.min(...edges)}-${Math.max(...edges)} m, ${seamSamples} seam samples continuous (${wallSamples} on an inselberg's wall), ${fanPeaks} talus fans, flow levee ${(levee - channel).toFixed(2)} m front ${frontSlope.toFixed(2)} vent ${ventSlope.toFixed(2)}; zones: flow ${flowInside} inside, ${flowFaded} faded, cone ${coneInside} inside, fans ${fanPositive} of ${fanSamples} toe samples, sampler ${samplerPoints} points; Caldera's mask = its flow zone at ${maskPoints} points (${onFlows} on flows); inselberg wall ${steepestWall.toFixed(2)}, foot ${Math.min(...breaks)}-${Math.max(...breaks)} m, ${nearFoot} of ${boulderSites} boulder sites near the foot; rock: ${onRock} of ${rockPoints} sampler points on rock, cliff end ${cliffDrop.toFixed(2)} m per m, the rock gate matches at ${gatePoints} points; sheer jebel wall ${sheerWall.toFixed(1)} m per m, flutes ${(Math.max(...fluteRadii) - Math.min(...fluteRadii)).toFixed(2)} m, bosses ${bossRise.toFixed(2)} m, clefts ${cleftBite.toFixed(2)} m; nose apron ${noseApronDrop.toFixed(2)} m per m (a cut end ${cutApronDrop.toFixed(2)})`);
+  + `flow margin ${Math.min(...edges)}-${Math.max(...edges)} m, ${seamSamples} seam samples continuous (${wallSamples} on an inselberg's wall), ${fanPeaks} talus fans, flow levee ${(levee - channel).toFixed(2)} m front ${frontSlope.toFixed(2)} vent ${ventSlope.toFixed(2)}; zones: flow ${flowInside} inside, ${flowFaded} faded, cone ${coneInside} inside, fans ${fanPositive} of ${fanSamples} toe samples, sampler ${samplerPoints} points; Caldera's mask = its flow zone at ${maskPoints} points (${onFlows} on flows); inselberg wall ${steepestWall.toFixed(2)}, foot ${Math.min(...breaks)}-${Math.max(...breaks)} m, ${nearFoot} of ${boulderSites} boulder sites near the foot; rock: ${onRock} of ${rockPoints} sampler points on rock, cliff end ${cliffDrop.toFixed(2)} m per m, the rock gate matches at ${gatePoints} points; sheer jebel wall ${sheerWall.toFixed(1)} m per m, flutes ${(Math.max(...fluteRadii) - Math.min(...fluteRadii)).toFixed(2)} m, bosses ${bossRise.toFixed(2)} m, clefts ${cleftBite.toFixed(2)} m; nose apron ${noseApronDrop.toFixed(2)} m per m (a cut end ${cutApronDrop.toFixed(2)}); dyke batter ${dykeSteepest.toFixed(3)} per m`);

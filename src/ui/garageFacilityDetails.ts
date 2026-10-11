@@ -9,6 +9,9 @@ import {
 } from '../game/garagePresentationPose.ts';
 import {
   getGarageWorkshopBayPoses,
+  getGarageYardCrewFloors,
+  leopardBayPointToWorkshop,
+  LEOPARD_MOBILITY_FLOOR,
   type GarageWorkshopBayPose,
 } from '../game/garageWorkshopLayout.ts';
 
@@ -139,6 +142,24 @@ function facilityLayout(variant: GarageVariant): GarageFacilityLayout {
   return FACILITY_LAYOUTS[variant.architecture] || FACILITY_LAYOUTS.field_shed;
 }
 
+/**
+ * The fleet service pads and the crews' floors stand at the Garage datum (y = 0), the plane the shared exhibit and its
+ * crews stand on. A facility terrace that reaches one of them shares that datum, so the two never fight over a floor
+ * (2026-10-10: Ironworks' rail-fed line runs beside the yard track carry).
+ */
+export function garageTerraceAtDatum(
+  terrace: GarageFacilityTerrace,
+  terraces: readonly GarageFacilityTerrace[],
+): boolean {
+  const datumFloor = (candidate: GarageFacilityTerrace): boolean => candidate.label.startsWith('fleet-service-')
+    || candidate.label.startsWith('crew-floor-');
+  if (datumFloor(terrace)) return true;
+  return terraces.some((other) => other !== terrace && datumFloor(other) && Math.hypot(
+    (other.side - terrace.side) / (other.radiusSide + terrace.radiusSide),
+    (other.depth - terrace.depth) / (other.radiusDepth + terrace.radiusDepth),
+  ) < 1);
+}
+
 /** Flat, feathered service pads used before terrain geometry is emitted. */
 export function getGarageFacilityTerraces(variant: GarageVariant): readonly GarageFacilityTerrace[] {
   const layout = facilityLayout(variant);
@@ -158,8 +179,28 @@ export function getGarageFacilityTerraces(variant: GarageVariant): readonly Gara
       radiusDepth: abrams ? 6.6 : 5.4,
     }));
   }
+  // The Leopard mobility bay's floor is a datum pad too (2026-10-10, ground audit of the ten Garages: on raw terrain its
+  // crew floated up to 1.44 m at Saltmere and stood buried to 0.79 m at Steinburg, the lift and the wheel rack with it).
+  const leopardFloor = leopardBayPointToWorkshop(variant, LEOPARD_MOBILITY_FLOOR.x, LEOPARD_MOBILITY_FLOOR.z);
+  const leopardView = garageWorldPointToView(leopardFloor.x, leopardFloor.z);
+  serviceBays.push(Object.freeze({
+    label: `fleet-service-${serviceBays.length + 1}`,
+    side: leopardView.side,
+    depth: leopardView.depth,
+    radiusSide: LEOPARD_MOBILITY_FLOOR.radiusM,
+    radiusDepth: LEOPARD_MOBILITY_FLOOR.radiusM,
+  }));
+  // the yard crews' datum floors (the track carry and the power-pack pair beside the hero)
+  const crewFloors = getGarageYardCrewFloors(variant).map((floor) => {
+    const view = garageWorldPointToView(floor.x, floor.z);
+    return Object.freeze({
+      label: `crew-floor-${floor.id}`, side: view.side, depth: view.depth,
+      radiusSide: floor.radiusM, radiusDepth: floor.radiusM,
+    });
+  });
   return Object.freeze([
     ...serviceBays,
+    ...crewFloors,
     ...layout.logistics.map(([side, depth], index) => Object.freeze({
       label: `logistics-${index + 1}`, side, depth, radiusSide: 4.3, radiusDepth: 3.5,
     })),
@@ -643,6 +684,8 @@ export function addGarageFacilityDetails({
     }
   };
 
+  // A roll-cab tool chest (2026-10-10, wave 338: "a blank maroon box"): drawer fronts with pulls on both long faces,
+  // a top tray lip, a push bar on one end and four casters.
   const addToolCart = (side: number, depth: number, tint = primer): void => {
     const cluster = fixedCluster(side, depth);
     clusterBox(cluster, 0, 0, 0.66, 1.05, 1.24, 0.56, tint, 'painted');
@@ -650,8 +693,17 @@ export function addGarageFacilityDetails({
       clusterCylinder(cluster, x, z, 0.12, 0.10, 0.12,
         rubber, Math.PI / 2, 8);
     }
-    for (const y of [0.42, 0.68, 0.94]) {
-      clusterBox(cluster, 0, -0.30, y, 0.86, 0.04, 0.03, dark, 'equipment');
+    const face = tint.clone().multiplyScalar(1.18);
+    for (const longitudinal of [-0.292, 0.292]) {
+      for (const [y, height] of [[0.3, 0.2], [0.53, 0.2], [0.76, 0.2], [0.98, 0.18], [1.16, 0.14]] as const) {
+        clusterBox(cluster, 0, longitudinal, y, 0.97, height - 0.025, 0.018, face, 'painted');
+        clusterBox(cluster, 0, longitudinal * 1.06, y + height * 0.22, 0.42, 0.022, 0.024, steel, 'equipment');
+      }
+    }
+    clusterBox(cluster, 0, 0, 1.3, 1.09, 0.035, 0.6, dark, 'equipment');
+    clusterCylinder(cluster, 0.6, 0, 1.0, 0.016, 0.5, steel, Math.PI / 2, 8);
+    for (const longitudinal of [-0.2, 0.2]) {
+      clusterBox(cluster, 0.56, longitudinal, 1.0, 0.08, 0.03, 0.03, steel, 'equipment');
     }
   };
 

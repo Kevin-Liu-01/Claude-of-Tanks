@@ -20,6 +20,7 @@ import {
   type GarageArchitectureStats,
 } from './garageArchitecture.ts';
 import { getDeviceTier } from '../engine/quality.ts';
+import { VERDANT_WELD_LIGHT } from '../game/garageWorkshopLayout.ts';
 
 type RandomSource = () => number;
 type SignWear = [boolean, number, number, number, number];
@@ -28,17 +29,6 @@ interface CanvasTextureOptions {
   srgb?: boolean;
   aniso?: number;
   repeat?: readonly [number, number] | null;
-}
-
-interface TrackScuffLaneOptions {
-  centerX: number;
-  y0: number;
-  y1: number;
-  pixelsPerMeter: number;
-  bodyAlpha: number;
-  edgeAlpha: number;
-  cleatAlpha: number;
-  phaseY: number;
 }
 
 interface GarageStageEngineContext {
@@ -64,17 +54,21 @@ function get2dContext(
   return context;
 }
 
-// Keep the restored floor and podium guides locked to the single canonical
-// three-quarter hero heading owned by garagePresentationPose.ts.
+// The hero stands on the single canonical three-quarter heading owned by garagePresentationPose.ts; the podium's
+// painted datum turns with it.
+//
+// 2026-10-08 (the contact-shadow lane; the owner: "fix the contact shadows for tracks on ground which are staticly on
+// ground and look bad"): the floor and the podium no longer carry painted track scuff lanes. They were baked at one
+// gauge (centres ±1.55 m, 0.78 m wide) along this heading whatever the hero — the fleet's tracks run 0.37–0.64 m wide,
+// the KV-2's centred at ±1.29 m, the M1A2's at ±1.43 m, the T-90M's at ±1.51 m — so they showed beside narrower or
+// closer-set tracks and across the open podium ahead of and behind the hull, a static print that no tank made. The hero's own contact is live: it is
+// one of the near hulls whose ground occlusion the aerial pass draws (vehicleGroundOcclusion.ts), on the podium as in
+// battle, measured from its real shoes and following its drawn runs.
 export const GARAGE_TRACK_AXIS_YAW_RAD = GARAGE_HERO_HEADING_RAD;
 export const GARAGE_PODIUM_TOP_Y_M = GARAGE_PLATFORM_GEOMETRY.topYM;
 const PODIUM_TREAD_UV_YAW_OFFSET_RAD = -Math.PI / 2;
 const GARAGE_FLOOR_SIZE_M = 46;
 const GARAGE_PODIUM_RADIUS_M = GARAGE_PLATFORM_GEOMETRY.deckRadiusM;
-const GARAGE_TRACK_CENTER_OFFSET_M = 1.55;
-const GARAGE_TRACK_SCUFF_WIDTH_M = 0.78;
-const GARAGE_TRACK_CLEAT_PITCH_M = 0.32;
-const GARAGE_TRACK_CLEAT_THICKNESS_M = 0.065;
 
 // deterministic PRNG (mulberry32) so the hangar is identical every boot
 // (exported: garageDressing.ts shares the stage's texture/prop language)
@@ -119,45 +113,7 @@ export function dither(
   c2d.putImageData(img, 0, 0);
 }
 
-/** Draw one straight, dimensioned tread lane in texture space. */
-function drawTrackScuffLane(g: CanvasRenderingContext2D, {
-  centerX, y0, y1, pixelsPerMeter, bodyAlpha, edgeAlpha, cleatAlpha, phaseY,
-}: TrackScuffLaneOptions): void {
-  const top = Math.min(y0, y1);
-  const bottom = Math.max(y0, y1);
-  const width = GARAGE_TRACK_SCUFF_WIDTH_M * pixelsPerMeter;
-  const half = width / 2;
-  const edge = Math.max(1, 0.055 * pixelsPerMeter);
-  const pitch = GARAGE_TRACK_CLEAT_PITCH_M * pixelsPerMeter;
-  const cleatH = Math.max(1, GARAGE_TRACK_CLEAT_THICKNESS_M * pixelsPerMeter);
-
-  // Feathered rubber body: crisp enough to read as a guide, soft enough to
-  // remain a worn floor contact patch instead of painted UI geometry.
-  const body = g.createLinearGradient(centerX - half, 0, centerX + half, 0);
-  body.addColorStop(0, 'rgba(20,24,28,0)');
-  body.addColorStop(0.14, `rgba(20,24,28,${bodyAlpha * 0.72})`);
-  body.addColorStop(0.32, `rgba(20,24,28,${bodyAlpha})`);
-  body.addColorStop(0.68, `rgba(20,24,28,${bodyAlpha})`);
-  body.addColorStop(0.86, `rgba(20,24,28,${bodyAlpha * 0.72})`);
-  body.addColorStop(1, 'rgba(20,24,28,0)');
-  g.fillStyle = body;
-  g.fillRect(centerX - half, top, width, bottom - top);
-
-  // Parallel contact edges keep the floor and podium lanes visually locked.
-  g.fillStyle = `rgba(14,18,22,${edgeAlpha})`;
-  g.fillRect(centerX - half * 0.72, top, edge, bottom - top);
-  g.fillRect(centerX + half * 0.72 - edge, top, edge, bottom - top);
-
-  // Identical world-space pitch on both canvases makes every cleat continue
-  // through the platform seam instead of changing scale or slant.
-  const first = phaseY + Math.ceil((top - phaseY) / pitch) * pitch;
-  g.fillStyle = `rgba(10,14,18,${cleatAlpha})`;
-  for (let y = first; y <= bottom; y += pitch) {
-    g.fillRect(centerX - half * 0.82, y - cleatH / 2, width * 0.82, cleatH);
-  }
-}
-
-// --- concrete floor texture: grime, expansion joints, painted bay, treads ---
+// --- concrete floor texture: grime, expansion joints, painted bay ---
 function makeFloorTexture(rng: RandomSource): HTMLCanvasElement {
   // 512² keeps the same authored grime/marking language while cutting the
   // synchronous boot canvas work and upload footprint to one quarter.
@@ -217,24 +173,6 @@ function makeFloorTexture(rng: RandomSource): HTMLCanvasElement {
   g.beginPath();
   g.moveTo(S / 2, S * 0.78); g.lineTo(S / 2, S * 0.98);
   g.stroke();
-  // Straight approach scuffs share the podium's real-world spacing, width,
-  // and cleat pitch. They overlap beneath the disc so no gap can open at its
-  // edge, even at grazing camera angles.
-  const floorPxPerM = S / GARAGE_FLOOR_SIZE_M;
-  const floorTrackOffsetPx = GARAGE_TRACK_CENTER_OFFSET_M * floorPxPerM;
-  const floorTrackTop = S / 2 - (GARAGE_PODIUM_RADIUS_M + 0.5) * floorPxPerM;
-  for (const side of [-1, 1]) {
-    drawTrackScuffLane(g, {
-      centerX: S / 2 + side * floorTrackOffsetPx,
-      y0: floorTrackTop,
-      y1: S,
-      pixelsPerMeter: floorPxPerM,
-      bodyAlpha: 0.28,
-      edgeAlpha: 0.28,
-      cleatAlpha: 0.36,
-      phaseY: S / 2,
-    });
-  }
   // speckle
   for (let i = 0; i < 2600; i++) {
     const v = rng();
@@ -629,8 +567,9 @@ export function createGarageStage(
   // clipped the whole turntable to a uniform white disc with a hard edge.
   // r4: the bare disc read as "featureless charcoal with one soft blob"
   // (critique) — the top now carries painted turntable markings: a worn
-  // alignment ring with radial ticks, a center datum cross, twin tread wear
-  // bands where the tanks drive on, and grime speckle.
+  // alignment ring with radial ticks, a center datum cross and grime speckle
+  // (2026-10-08: its twin tread wear bands went with the floor's, see
+  // GARAGE_TRACK_AXIS_YAW_RAD: the hero's live ground occlusion is its contact).
   const podTopC = document.createElement('canvas');
   const podiumTextureSize = 512;
   podTopC.width = podTopC.height = podiumTextureSize;
@@ -649,22 +588,6 @@ export function createGarageStage(
       grad.addColorStop(1, 'rgba(0,0,0,0)');
       g.fillStyle = grad;
       g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
-    }
-    // Twin podium lanes use the exact same physical dimensions and cleat
-    // phase as the surrounding floor scuffs.
-    const podiumPxPerM = podiumTextureSize / (GARAGE_PODIUM_RADIUS_M * 2);
-    const podiumTrackOffsetPx = GARAGE_TRACK_CENTER_OFFSET_M * podiumPxPerM;
-    for (const side of [-1, 1]) {
-      drawTrackScuffLane(g, {
-        centerX: C + side * podiumTrackOffsetPx,
-        y0: 0,
-        y1: podiumTextureSize,
-        pixelsPerMeter: podiumPxPerM,
-        bodyAlpha: 0.34,
-        edgeAlpha: 0.34,
-        cleatAlpha: 0.42,
-        phaseY: C,
-      });
     }
     // worn painted alignment ring + radial ticks
     g.strokeStyle = 'rgba(188,192,198,0.34)';
@@ -727,9 +650,8 @@ export function createGarageStage(
     [podSideMat, podTopMat, podTopMat],
   );
   podium.position.y = GARAGE_PODIUM_TOP_Y_M / 2;
-  // Cylinder cap UVs lay the baked tread guides along local X, 90 degrees
-  // across tank-forward. Offset the podium so its guides continue the two
-  // world-Z tread scuffs painted onto the surrounding garage floor.
+  // Cylinder cap UVs lay the texture's vertical along local X, 90 degrees across tank-forward: the podium turns by the
+  // hero's heading and that offset, so its painted datum stays square to the hull.
   podium.rotation.y = GARAGE_TRACK_AXIS_YAW_RAD + PODIUM_TREAD_UV_YAW_OFFSET_RAD;
   podium.receiveShadow = true;
   podium.castShadow = true;
@@ -775,6 +697,10 @@ export function createGarageStage(
       wall.rotation.set(rx, ry, 0);
       wall.position.set(x, WALL_H / 2, z);
       wall.receiveShadow = true;
+      // The walls stop the garage sun (2026-10-10): without them it lit the floor straight through the shell, a
+      // blown-out slab at the Burlak bay (floor mean 101 -> 83). Its ray to the hero clears the wall tops, and the
+      // ceiling still casts nothing, so the turntable keeps its key and contact shadow.
+      wall.castShadow = true;
       group.add(wall);
       baseWalls.push(wall);
     }
@@ -1103,12 +1029,15 @@ export function createGarageStage(
   sign2.position.set(-HW + 0.075, 3.4, -6);
   group.add(halo2, plate2, sign2);
 
-  // low hangar fill (hud_ui r2): the west-wall props (tool chest, bench,
-  // tires, pipes) crushed to near-black under the podium-keyed lighting. One
-  // wide dim point light lifts that corner ~a stop without flattening the
-  // key — finite range keeps it out of the battlefield shaders' hot path.
-  const fill = new THREE.PointLight(0xc2cedd, 13, 32, 1.7);
-  fill.position.set(-15, 5.6, -1);
+  // The weld light (2026-10-10, the owner's free hand, wave 338: "the weld gives off no real light"). This was the
+  // low west-wall fill (hud_ui r2), which lit nothing that mattered once the room turned; it now stands at the rolled
+  // K2's belly weld, blue-white and short-ranged. Same light count, so no shader program changes. The indoor set is
+  // half-turned, hence the negated Garage-frame point. It flickers only while Verdant frames draw (the floor's
+  // onBeforeRender below), so the settled Garage never wakes for it.
+  const fill = new THREE.PointLight(0xb9d3ff, 9, 8, 2);
+  fill.name = 'garage_verdant_weld_light';
+  fill.position.set(-VERDANT_WELD_LIGHT.x, VERDANT_WELD_LIGHT.y, -VERDANT_WELD_LIGHT.z);
+  fill.castShadow = false;
   verdantLights.push(fill);
   group.add(fill);
 
@@ -1440,6 +1369,13 @@ export function createGarageStage(
   const verdantLightIntensities = new Map(
     verdantLights.map((light) => [light, light.intensity] as const),
   );
+  // The weld light's arc flicker rides the floor's own draw (Verdant only: the floor is part of the indoor set), so it
+  // costs a few multiplies per drawn frame and nothing while the Garage is settled or outdoors.
+  floor.onBeforeRender = () => {
+    const base = verdantLightIntensities.get(fill) ?? 0;
+    const t = performance.now() * 0.001;
+    fill.intensity = base * (0.72 + 0.28 * (0.5 + 0.3 * Math.sin(t * 41.3) + 0.2 * Math.sin(t * 67.9 + 0.7)));
+  };
   let variantPresentationGeneration = 0;
   const ENVIRONMENT_REVEAL_ATTEMPTS = 3;
   const waitForEnvironmentRetry = (attempt: number): Promise<void> => (

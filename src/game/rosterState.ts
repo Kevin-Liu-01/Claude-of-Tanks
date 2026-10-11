@@ -8,6 +8,7 @@ import { createGunshipBattleVisual } from './gunshipVisual.ts';
 import { Vector3, type Object3D, type Scene } from 'three';
 import { getSpec, PRODUCTION_TANK_IDS, TANK_IDS } from '../vehicles/specs.ts';
 import { createTank, createTankSteps, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
+import { rosterVisualAttempts } from './rosterVisualFallback.ts';
 import { ERA_NEIGHBOURS, isBotTankId, rankMatchCandidates } from './matchmaking.ts';
 import { ENEMY_NATION_OPTIONS } from './teamArrangement.ts';
 import { getDeviceTier } from '../engine/quality.ts';
@@ -336,9 +337,23 @@ function* buildRosterVisual(
       // geometric audit. Keep the detailed fitted-surface report in authoring.
       eraVisualBindingReceipt: false,
     };
-    visual = cooperative
-      ? yield* createTankSteps(specId, engineCtx, options)
-      : createTank(specId, engineCtx, options);
+    // One bad build never aborts the battle: the other geometry tier, the variant's donor, then the first participant's
+    // own tank (rosterVisualFallback.ts). A superseded build is closed through return(), never caught here.
+    let failure: unknown = null;
+    const variantOf = typeof ent.spec?.variantOf === 'string' ? ent.spec.variantOf : undefined;
+    for (const attempt of rosterVisualAttempts(specId, options, variantOf, firstParticipant?.specId)) {
+      try {
+        visual = cooperative
+          ? yield* createTankSteps(attempt.specId, engineCtx, attempt.options)
+          : createTank(attempt.specId, engineCtx, attempt.options);
+        if (failure) console.error(`[battle roster] ${specId} visual built as ${attempt.reason} ${attempt.specId}`);
+        return;
+      } catch (error) {
+        failure = error;
+        console.error(`[battle roster] ${specId} visual (${attempt.reason} ${attempt.specId}) failed`, error);
+      }
+    }
+    throw failure;
   };
   try {
     if (!visual) {
