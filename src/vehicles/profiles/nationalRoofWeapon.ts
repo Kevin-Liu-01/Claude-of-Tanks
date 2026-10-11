@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {KIT,orientedSlab} from './kit.ts';
 import {boxSections,blindTube,beamBetween} from './measuredPrimitives.ts';
-import {MG_CLASSES,addPintleBarrel,addPintleReceiver,createPintleLayout,type MgClassKey} from '../machineGunGeometry.ts';
+import {MG_CLASSES,addPintleBarrel,addPintleReceiver,createPintleLayout,machinedRing,type MgClassKey} from '../machineGunGeometry.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
 import type {NationalRoofLoadout} from '../nationalRoofConfig.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -60,16 +60,21 @@ function nationalMachineGun(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:numb
  const sink:{add(slot:string,geometry:THREE.BufferGeometry,px?:number,py?:number,pz?:number,rx?:number,ry?:number,rz?:number):void}={
   add(){},
  };
- const probe=createPintleLayout({cls,scale:1,remote:true,ammo:false,mount:'external-cradle',feed:l.feedSide>0?'left':'right'},sink);
+ // the Kord at 102 %: its ported brake's mouth (29.7 mm in radius at the class's scale) then meets the station's 30 mm
+ // muzzle-rim receipt, as the NSV's and the QJC-88's wider devices already do
+ const scale=cls==='kord'?1.02:1;
+ const probe=createPintleLayout({cls,scale,remote:true,ammo:false,mount:'external-cradle',feed:l.feedSide>0?'left':'right'},sink);
  const recCentreZ=z-.08, dz=recCentreZ-probe.recZ, dy=y-probe.trunY;
  const flash=def.flashL*probe.s;
- const barrelLength=z+l.muzzleZ-dz-probe.trunZ-.10*probe.s-flash-.011;
+ // the muzzle device's front on the loadout's firing socket, with a real 70 mm recessed bore behind it (the station's
+ // bore receipt looks into it from the socket, as it did into the old station gun's blind tube)
+ const barrelLength=z+l.muzzleZ-dz-probe.trunZ-.10*probe.s-flash;
  const parts={add(slot:string,geometry:THREE.BufferGeometry,px=0,py=0,pz=0,rx=0,ry=0,rz=0):void{
   if(slot==='shadow')return;
   g.add(slot==='glass'?'turretGlass':'turretDark',KIT.xform(geometry,px,py,pz,rx,ry,rz),x,dy,dz);
  }};
- const layout=createPintleLayout({cls,scale:1,remote:true,ammo:false,mount:'external-cradle',
-  feed:l.feedSide>0?'left':'right',barrelLength},parts);
+ const layout=createPintleLayout({cls,scale,remote:true,ammo:false,mount:'external-cradle',
+  feed:l.feedSide>0?'left':'right',barrelLength,muzzleBoreDepth:.07},parts);
  addPintleReceiver(layout);
  addPintleBarrel(layout);
  // the open cradle: a tray under the receiver and two side rails the trunnion, the sight foot and the feed bridge bear on
@@ -90,7 +95,8 @@ function nationalCannon(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w
  g.add('turretDark',cylZ(.016,gasEnd-barrelStart,16),x,y-.058,z+(barrelStart+gasEnd)/2);
  g.add('turretDark',box(.022,.04,.03),x,y-.038,z+gasEnd-.015);
  g.add('turretDark',blindTube(.050,l.caliber/2000,brakeL,.070,24),x,y,z+tip-brakeL/2);
- for(const at of [-.115,-.07,-.025])g.add('turretDark',cylZ(.058,.014,24),x,y,z+tip+at);
+ // the brake's baffles are rings round its body (round 4: solid discs closed the bore the station receipt looks into)
+ for(const at of [-.115,-.07,-.025])g.add('turretDark',machinedRing(.048,.058,.014,.003,24).rotateX(Math.PI/2),x,y,z+tip+at-.007);
 }
 
 function housing(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
@@ -137,8 +143,10 @@ function sight(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):
  const half=supportHalfWidth(l,w);
  const side=-l.feedSide,sx=x+side*(half+.16);
  // This foot enters the actual receiver; a high transverse bracket alone
- // leaves daylight above the round drum housing.
- g.add('turretDetail',box(.065,.15,.12),x+side*(w/2-.025),y+.135,z+.015);
+ // leaves daylight above the round drum housing. Beside the fleet 12.7 mm receiver (narrower than the old block) the
+ // foot runs on down the receiver's flank to the cradle's level, so its column carries no air gap (round 4).
+ if(l.caliber===30)g.add('turretDetail',box(.065,.15,.12),x+side*(w/2-.025),y+.135,z+.015);
+ else g.add('turretDetail',box(.065,.19,.12),x+side*(w/2-.025),y+.115,z+.015);
  g.add('turretDetail',box(.15,.07,.12),x+side*(half+.02),y+.17,z+.03);
  g.add('turretDetail',box(.155,.19,.23),sx,y+.20,z+.075);
  for(const dy of [-.043,.046])g.add('turretGlass',cylZ(dy<0?.035:.047,.015,20),sx,y+.20+dy,z+.196);
