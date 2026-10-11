@@ -134,7 +134,8 @@ export interface PlayMenuRuntime {
   attachActiveRoom(adapter: ActiveRoomAdapter): void;
   updateActiveRoom(state: SerializedLobby): boolean;
   detachActiveRoom(): void;
-  showActiveRoom(): boolean;
+  /** The held room's lobby again; `notice` (why the last battle entry failed) takes the status line. */
+  showActiveRoom(notice?: string | null): boolean;
   showCurrentRoom(): boolean;
   showRoomFailure(reason: string, mode?: PlayMode): void;
   syncGarageSelection(): boolean;
@@ -2055,7 +2056,13 @@ export function createPlayMenu({
     command({ type: 'set_ready', ready: !!ready });
     return true;
   }
-  const showActiveRoom = showCurrentRoom;
+  // 2026-10-10 (the MP shader-prep lane): the composition opens the held room after a refused entry, with the reason;
+  // the lobby's Rejoin battle shows while the match still runs (canRejoinBattle).
+  function showActiveRoom(notice?: string | null): boolean {
+    if (!showCurrentRoom()) return false;
+    if (notice) setStatus(notice, true);
+    return true;
+  }
   return {
     root, show, hide, dispose,
     attachActiveRoom, updateActiveRoom, detachActiveRoom, showRoomFailure,

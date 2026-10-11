@@ -734021,72 +734021,72 @@
             "name": "roofGun",
             "min": [
               -0.2855,
-              -0.2215,
+              -0.2202,
               -0.29
             ],
             "max": [
               0.2855,
-              0.2795,
+              0.2782,
               1.271
             ],
             "parts": [
               {
                 "min": [
                   -0.2855,
-                  -0.2215,
+                  -0.2202,
                   -0.29
                 ],
                 "max": [
                   0.2855,
-                  0.2215,
+                  0.2202,
                   1.271
                 ]
               },
               {
                 "min": [
                   0.073,
-                  -0.0275,
+                  -0.0288,
                   -0.0932
                 ],
                 "max": [
                   0.1974,
-                  0.1525,
+                  0.1512,
                   0.1733
                 ]
               },
               {
                 "min": [
                   0.0562,
-                  0.1026,
+                  0.1013,
                   0.122
                 ],
                 "max": [
                   0.1026,
-                  0.196,
+                  0.1947,
                   0.26
                 ]
               },
               {
                 "min": [
                   -0.2734,
-                  -0.0567,
+                  -0.0579,
                   0.3263
                 ],
                 "max": [
                   0.2734,
-                  0.2795,
+                  0.2782,
                   0.4045
                 ]
               },
               {
                 "min": [
                   -0.1928,
-                  0.1345,
+                  0.1333,
                   0.3924
                 ],
                 "max": [
                   0.1928,
-                  0.1705,
+                  0.1692,
                   0.4116
                 ]
               }
@@ -734157,8 +734157,8 @@
           }
         ]
       },
-      "geometryHash": "12c5d13c",
-      "metadataHash": "5bb1c40e",
+      "geometryHash": "953d45d5",
+      "metadataHash": "7014e2f8",
       "presentationAnchor": {
         "xM": -0.0003,
         "zM": -0.2261
@@ -734219,15 +734219,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 38226,
-          "sha256": "399bea31fcb689573fb0d74fa1438582b4cc274fc84c9c589512d59a76bce1c3",
+          "bytes": 38250,
+          "sha256": "82f73af42ccfd7a74266ba601376dfb23991fdf1a8448d75b36d60550b60ff82",
           "thumbnail": {
             "file": "thumbs/m551a1_tts_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
             "bytes": 15046,
-            "sha256": "20ff65de35a28eb6f42cc55233b2a1656be452a16f620ab53050df6c52159f5a"
+            "sha256": "4b71edda9d766aab1c2cf102f63b36a08c4f908a6e9bb67c12ac9219b1bb8054"
           }
         },
         "top": {
@@ -734235,16 +734235,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24280,
-          "sha256": "18526562e8d3ba46bbcfc571b53c1398c644cc9bd16433245156e42ace7a5bce"
+          "bytes": 23926,
+          "sha256": "a3a4f93eb0125bc7c8df700df86a765af17123d2c2e8b513898cde8b76928246"
         },
         "side": {
           "file": "m551a1_tts_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 18460,
-          "sha256": "eeed814083855347cb5f1f15d12acbf0b1cbfd3724b81f9bdcde7ddee3d86f15"
+          "bytes": 18558,
+          "sha256": "7b8a99e5ff5bd86c1cb091806cec307726158264604c2a94c151986575606d50"
         },
         "topSilhouette": {
           "file": "m551a1_tts_top_silhouette.png",
@@ -734259,32 +734259,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5554,
-          "sha256": "967c5de22be24c47e7965034b2f70c410df772ad1632c07052a76e01a6e835ee"
+          "bytes": 5556,
+          "sha256": "292b1b58736231228383313d128821d209167ceb625289a5439fa04be74bdec1"
         },
         "armorSide": {
           "file": "m551a1_tts_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 123144,
-          "sha256": "94a02dfc56c67f2115b6647b703ec692e51a77ea2a2ef959ff1fd8dffb2119bb"
+          "bytes": 123489,
+          "sha256": "e81addfce9b10ed7458780a93bfce9369e0f74df7b8d273ead17ac49bc0eb4d7"
         },
         "modulesSide": {
           "file": "m551a1_tts_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 126459,
-          "sha256": "ee2eb4a0fec73049a42a89cd4a53a458720bdfa03d7229e867a50737aec86771"
+          "bytes": 126639,
+          "sha256": "3b8c4aacd5d8236ebf5eeb4f1f0173aea0759aabe5012f6f5abdeffed2f66eb3"
         },
         "crewSide": {
           "file": "m551a1_tts_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 115121,
-          "sha256": "29a7b5b0586eea35926db2ff0b663b2100fe2f98ac32bd464e0282eaeb2b895f"
+          "bytes": 115447,
+          "sha256": "4de82ed162ecec7fca5f51c7c6d6a8eb6dfd501ed11468b2feeca0ced49624df"
         },
         "markings": {
           "file": "m551a1_tts_markings.png",

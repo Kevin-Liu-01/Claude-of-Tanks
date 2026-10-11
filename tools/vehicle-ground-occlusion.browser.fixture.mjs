@@ -4,7 +4,7 @@
 // 1 − shade per receiver. page.evaluate serializes this function: it must not reference anything outside itself.
 
 /**
- * @param {{ glsl: string, hullCount: number, rows: number[], solids: number[], light: number[], amb: number[],
+ * @param {{ glsl: string, hullCount: number, rows: number[], solids: number[], runs?: number[], light: number[], amb: number[],
  *   sunLum: number, sunDir: number[], fillDir: number[], points: number[][], normals: number[][], alphas: number[] }} input
  * @returns {{ values: number[], renderer: string | null }}
  */
@@ -54,6 +54,8 @@ void main() {
   gl.uniform1f(at('uVehGround'), input.hullCount);
   gl.uniform4fv(at('uVehGroundM'), new Float32Array(input.rows));
   gl.uniform4fv(at('uVehGroundB'), new Float32Array(input.solids));
+  // (2026-10-08) the runs as drawn, eight knots a side; zero (the rest pose) when the case packs none
+  gl.uniform4fv(at('uVehGroundR'), new Float32Array(input.runs ?? new Array(input.solids.length).fill(0)));
   gl.uniform4fv(at('uVehGroundLight'), new Float32Array(input.light));
   gl.uniform4fv(at('uContactAmb'), new Float32Array(input.amb));
   gl.uniform1f(at('uContactSunLum'), input.sunLum);
