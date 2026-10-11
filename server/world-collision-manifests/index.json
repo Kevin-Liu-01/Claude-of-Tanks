@@ -152,10 +152,10 @@
       "concealers": 3381
     },
     "copper_mesa": {
-      "bytes": 1780412,
-      "sha256": "922bad7e0708e88d2aa419a5491b692143afc05b4e057885f6d7df04c7424d24",
-      "obstacles": 1868,
-      "colliders": 2328,
+      "bytes": 1788836,
+      "sha256": "ecf55ab43c1f32064540f650b4959181bbb9cf0d1fa5e93f7f210655199df3b8",
+      "obstacles": 1871,
+      "colliders": 2331,
       "concealers": 964
     },
     "airfield": {
@@ -180,10 +180,10 @@
       "concealers": 0
     },
     "orchard": {
-      "bytes": 2066015,
-      "sha256": "e62e33a47b83129ed420afb6bd34287f812eab3b1b4a6d9b995ff42c35b6a072",
-      "obstacles": 4503,
-      "colliders": 4516,
+      "bytes": 2071767,
+      "sha256": "d0b08b116cde4d3108d421293a909122391797254bd8375114072503dd4678de",
+      "obstacles": 4504,
+      "colliders": 4517,
       "concealers": 4807
     },
     "longleaf": {
@@ -208,24 +208,24 @@
       "concealers": 4103
     },
     "reservoir": {
-      "bytes": 1900754,
-      "sha256": "616eba91a5020e43cc93326fa924eb3fd624c8f3ff22b4e26ccf16ddb45f81ae",
-      "obstacles": 6314,
-      "colliders": 6281,
+      "bytes": 1894432,
+      "sha256": "342530b10748a99ae5a138a41b344bccda262cefe86848b2c995dbc7b42fbea2",
+      "obstacles": 6304,
+      "colliders": 6271,
       "concealers": 7024
     },
     "mars": {
-      "bytes": 900762,
-      "sha256": "1405ce0a2c722dbc661d9d7419f25d2dba8045e177637ed701e02c6a1b775c2a",
+      "bytes": 918471,
+      "sha256": "c3c89bee65d844ddd6e7d84bf47b533d291413025a3555b05bf4c7fa58219f6b",
       "obstacles": 861,
       "colliders": 868,
       "concealers": 0
     },
     "moon": {
-      "bytes": 772132,
-      "sha256": "454486e9f9b3bf5510d66f46837841cee91e71aaded115825b1f7a1c800666ff",
-      "obstacles": 688,
-      "colliders": 585,
+      "bytes": 771192,
+      "sha256": "54173fa32f6bf33ce04905d3d56890a80643340a828496ff766d4045caea67f5",
+      "obstacles": 689,
+      "colliders": 586,
       "concealers": 0
     },
     "cliffbridge": {
@@ -386,10 +386,10 @@
         "concealers": 3550
       },
       "copper_mesa": {
-        "bytes": 2010949,
-        "sha256": "0ef069f179014aff754841441752e5b8df76fbc9e65d4da7b8d0bfb08e31e17e",
-        "obstacles": 2043,
-        "colliders": 2370,
+        "bytes": 2018759,
+        "sha256": "5a094900350c150a9403a089e03587c7c51c31f0ae8a376c9a18d4f825b0a1bd",
+        "obstacles": 2047,
+        "colliders": 2374,
         "concealers": 944
       },
       "airfield": {
@@ -414,10 +414,10 @@
         "concealers": 0
       },
       "orchard": {
-        "bytes": 1832784,
-        "sha256": "99390c1c99e14344dfb63a472dde4dc86b95c218b0988cd5b888707231d5986f",
-        "obstacles": 4569,
-        "colliders": 4497,
+        "bytes": 1838532,
+        "sha256": "7cb1feaa54dec80507e003b77411a4e3754dc0ec868c694c1a7c731f24bf500a",
+        "obstacles": 4570,
+        "colliders": 4498,
         "concealers": 4705
       },
       "longleaf": {
@@ -442,22 +442,22 @@
         "concealers": 3979
       },
       "reservoir": {
-        "bytes": 2020090,
-        "sha256": "0110716ca56593ef8516d77c9e4ef647018f217fa7265dc19915a3baca33768b",
-        "obstacles": 6470,
-        "colliders": 6382,
+        "bytes": 2013399,
+        "sha256": "b066cd054ee03886c5e6ec804da539615e03bbf0c961c23068d2cf8a83d2a100",
+        "obstacles": 6460,
+        "colliders": 6372,
         "concealers": 7086
       },
       "mars": {
-        "bytes": 1061079,
-        "sha256": "94414b3a9d0752d584d99e11414bb1cea2f0c3769fa055bbf46ee3a3eb3f1523",
-        "obstacles": 982,
-        "colliders": 907,
+        "bytes": 1078845,
+        "sha256": "3fe78064b5c720f32f411173af4113bdce47df853a2f44f30aa2efa1a82aa86a",
+        "obstacles": 980,
+        "colliders": 905,
         "concealers": 0
       },
       "moon": {
-        "bytes": 936864,
-        "sha256": "c8b367448cd5960b6d58520cbcf303e349e0a7e1b89ec8f04c48605e063371a6",
+        "bytes": 934813,
+        "sha256": "d0ba37935d94c6ec7ade9b4887e787ad6d67cf1aebb6e9532a53dc860e10df90",
         "obstacles": 819,
         "colliders": 622,
         "concealers": 0
