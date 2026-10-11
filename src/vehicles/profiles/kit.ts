@@ -1848,13 +1848,26 @@ function addAmericanRwsSensorHead(context: AmericanRwsBuildContext): void {
 }
 
 function addAmericanRwsWeaponSystem(context: AmericanRwsBuildContext): void {
-  const { box, cylZ } = KIT;
-  const { body, headY, parts, recY, s } = context;
-  // M2 receiver is nested into the head roof; side coffin and feed are one
-  // connected protected assembly rather than a floating generic gun.
-  parts.add('dark', box(0.235 * s, 0.145 * s, 0.46 * s), 0, recY, 0.16 * s);
-  parts.add('dark', box(0.215 * s, 0.018 * s, 0.41 * s),
-    0, recY + 0.080 * s, 0.16 * s);
+  const { box } = KIT;
+  const { body, headY, headH, parts, recY, s } = context;
+  // 2026-10-11 (fleet-weapons lane, round 3b; wave 348b's critics on the SEPv3's station: "flat untextured grey boxes
+  // with a plain rod barrel"): the M2 is the fleet's Browning construction in its remote form (receiver with feed cover
+  // and feedway, solenoid at the back plate, perforated barrel support, heavy barrel, flash hider), its receiver centred
+  // where the receiver block stood (z 0.16 s) on the station's bore line, its muzzle at the published 1.223 s, carried by
+  // a cradle saddle on the head's roof; it was a receiver box, a cover plate and two plain tubes.
+  const probe = createPintleLayout({cls:'m2',scale:s,remote:true,ammo:false,mount:'external-cradle',feed:'left'},{add(){}});
+  const dz = 0.16 * s - probe.recZ, dy = recY - probe.trunY;
+  const barrelLength = 1.223 * s - dz - probe.trunZ - 0.10 * probe.s - MG_CLASSES.m2.flashL * probe.s - 0.011;
+  const gun = createPintleLayout({cls:'m2',scale:s,remote:true,ammo:false,mount:'external-cradle',feed:'left',barrelLength},{
+    add(slot:string,geometry:THREE.BufferGeometry,x=0,y=0,z=0,rx=0,ry=0,rz=0){
+      parts.add(slot === 'shadow' ? 'shadow' : 'dark',KIT.xform(geometry,x,y,z,rx,ry,rz),0,dy,dz);
+    },
+  });
+  addPintleReceiver(gun);
+  addPintleBarrel(gun);
+  const headTop = headY + headH / 2, receiverBottom = dy + gun.bodyBottom;
+  parts.add('dark', box(0.16 * s, receiverBottom - headTop + 0.004, 0.40 * s),
+    0, (receiverBottom + headTop) / 2, 0.16 * s);
   parts.add(body, box(0.25 * s, 0.28 * s, 0.34 * s),
     -0.29 * s, headY + 0.02 * s, -0.01 * s);
   parts.add('dark', box(0.10 * s, 0.10 * s, 0.18 * s),
@@ -1890,12 +1903,6 @@ function addAmericanRwsWeaponSystem(context: AmericanRwsBuildContext): void {
     0.205 * s, serviceY + 0.113 * s, -0.065 * s);
   parts.add('glass', box(0.095 * s, 0.070 * s, 0.018 * s),
     0.205 * s, serviceY + 0.025 * s, 0.027 * s);
-  parts.add('dark', cylZ(0.030 * s, 0.72 * s, 14),
-    0, recY, 0.74 * s);
-  parts.add('dark', cylZ(0.050 * s, 0.105 * s, 14),
-    0, recY, 1.1525 * s);
-  parts.add('dark', cylZ(0.017 * s, 0.018 * s, 10),
-    0, recY, 1.214 * s);
 }
 
 function addAmericanRwsVariantArmor(context: AmericanRwsBuildContext): void {
