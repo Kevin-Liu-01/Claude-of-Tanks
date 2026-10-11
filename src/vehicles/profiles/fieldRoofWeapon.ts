@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { KIT } from './kit.ts';
+import { KIT, orientedSlab } from './kit.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
 import { boxSections } from './measuredPrimitives.ts';
 import { MG_CLASSES, addPintleBarrel, createPintleLayout } from '../machineGunGeometry.ts';
@@ -13,9 +13,20 @@ export function addFieldRoofWeapon(P:TankBuilderPort,seat:Point,caliber:12.7|30,
  const g=sourceMachineGun(P,[0,0,0],{name,caliberMm:caliber,yaw:seat,pivot:[x,y,z],muzzle:[x,y,z+tip]});
  const {box,cylY,cylX,cylZ}=KIT;
  g.stage('yaw');
- g.add('turretDetail',cylY(.19,.235,.09,24),x,b+.037,z);
- g.add('turretDetail',cylY(.10,.15,.22,20),x,b+.18,z);
- g.add('turretDetail',box(.84,.07,.24),x,b+.30,z);
+ // 2026-10-11 (fleet-weapons lane, round 3b; wave 348's critics on the Leopard 2A7V: the station "perched on a thin stick
+ // high above the roof ... reads as a box on a pole rather than a seated station"): a lifted station stands on a tapered
+ // armoured pedestal from the roof up to the yoke's cross-beam (half a millimetre under it), in place of the base ring
+ // and post, and the yoke's arms keep their own height above the beam. The lift itself stays the owner's (6763d7cc0).
+ if(mastLift>0){
+  const pb=b-.008,pt=b+.265+mastLift-.0005;
+  g.add('turretDetail',orientedSlab(
+   [x-.26,pb,z-.25],[x+.26,pb,z-.25],[x+.26,pb,z+.25],[x-.26,pb,z+.25],
+   [x-.16,pt,z-.11],[x+.16,pt,z-.11],[x+.16,pt,z+.11],[x-.16,pt,z+.11]),0,0,0);
+ } else {
+  g.add('turretDetail',cylY(.19,.235,.09,24),x,b+.037,z);
+  g.add('turretDetail',cylY(.10,.15,.22,20),x,b+.18,z);
+ }
+ g.add('turretDetail',box(.84,.07,.24),x,b+.30+mastLift,z);
  // 2026-10-09 (launch RC; accessoryContact.selftest, leo2_revolution "touch only by crossing another piece's surface"):
  // every part is seated on the face it meets, half a millimetre off it, instead of running through it. The trunnions
  // run from the post to the cradle shroud's cheek; the barrel from the shroud's muzzle face to the sleeve's breech
@@ -24,7 +35,7 @@ export function addFieldRoofWeapon(P:TankBuilderPort,seat:Point,caliber:12.7|30,
  // the overlaps the Oplot-M's 12.7 mm station had too.
  const seatGap=.0005,cheek=.20,front=.30;
  for(const s of[-1,1]){
-  g.add('turretDetail',box(.047,.29+mastLift,.20),x+s*.40,y-.13-mastLift/2,z);
+  g.add('turretDetail',box(.047,.29,.20),x+s*.40,y-.13,z);
   g.add('turretDark',cylX(.065,.425-cheek-seatGap,20),x+s*(.425+cheek+seatGap)/2,y,z);
  }
  g.stage('pitch');

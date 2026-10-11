@@ -214,6 +214,8 @@ interface FittingOptions {
   // the complete weapon/trunnion assembly, never on barrel vertices alone.
   elev?: number;
   ring?: boolean | { r?: number; stubs?: number };
+  /** The American M2's mount ring and its brackets: 'detail' paints them with the vehicle (default 'dark'). */
+  ringSlot?: 'dark' | 'detail';
   ammo?: boolean;
   ammoSlot?: string;
   ammoSide?: number;
@@ -1564,11 +1566,15 @@ function addAmericanM2Ring(context: AmericanM2BuildContext): void {
   const ring = fittingRing(opts);
   if (ring) {
     const rr = (ring.r || 0.235) * s;
+    // 2026-10-11 (fleet-weapons lane, round 3b; wave 348's critics on the M1A1: "a flat dark grey ring that does not
+    // match the tan hull", "the roof gun's toothed ring and cradle ... share none of the hull's paint"): a host can paint
+    // the race and its brackets with the vehicle, as a mount is painted; the gun stays weapon steel.
+    const ringSlot = opts.ringSlot === 'detail' ? 'detail' : 'dark';
     // 2026-10-07 (round 4): a flat machined race on its brackets, not a round dark tube (the critics' "rubber hose")
-    parts.add('dark', machinedRing(rr - 0.015 * s, rr + 0.015 * s, 0.018 * s, 0.005 * s, 28), 0, 0.023 * s, 0);
+    parts.add(ringSlot, machinedRing(rr - 0.015 * s, rr + 0.015 * s, 0.018 * s, 0.005 * s, 28), 0, 0.023 * s, 0);
     for (let index = 0; index < (ring.stubs || 4); index++) {
       const a = 0.55 + index * Math.PI * 2 / (ring.stubs || 4);
-      parts.add('dark', box(0.030 * s, 0.045 * s, 0.030 * s),
+      parts.add(ringSlot, box(0.030 * s, 0.045 * s, 0.030 * s),
         Math.cos(a) * rr, 0.020 * s, Math.sin(a) * rr);
       }
   }
