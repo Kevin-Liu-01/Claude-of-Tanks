@@ -238,9 +238,10 @@ const DRUM_SPIN = 1.0, DRUM_SCATTER = 2.6, DRUM_YAW = 1.8, ROOF_SPIN = 1.7, ROOF
 const DRUM_THROW_MAX = 4.5;
 /** The share of a cracking piece's spin its parts keep (the physics lane's: a break costs energy). */
 const CRACK_KEEP = 0.7;
-/** A slab at rest counts as standing on its edge when it reaches this many times its half thickness up; the shove that
- *  tips it over (m/s at its top across its thin side, times its mass). */
-const STAND_TALL = 2.5, STAND_TIP_MPS = 0.9;
+/** A slab at rest counts as standing on its edge when it reaches this many times its half thickness up (a door, a sheet,
+ *  an infill panel; a thick brick chunk standing on its own end is left as it lies); the shove that tips it over (m/s at
+ *  its top across its thin side, times its mass). */
+const STAND_TALL = 3, STAND_TIP_MPS = 1.2;
 
 /** A deterministic hash of three integers to [0, 1) (the presentation's own: a break looks the same on every client). */
 function hash01(a: number, b: number, c: number): number {

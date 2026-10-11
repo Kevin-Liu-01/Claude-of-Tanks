@@ -1142,9 +1142,9 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     if (Math.abs(_tipA.y) > 0.4) return false;
     let up = 0;
     for (let k = 0; k < 3; k++) { _tipB.set(k === 0 ? 1 : 0, k === 1 ? 1 : 0, k === 2 ? 1 : 0).applyQuaternion(_q); up += h[k] * Math.abs(_tipB.y); }
-    if (up < 2.5 * h[thin]) return false;
+    if (up < 3 * h[thin]) return false;
     const hl = Math.hypot(_tipA.x, _tipA.z) || 1;
-    const j = b.massKg * 0.9 * ((Math.imul(b.handle + 7, 0x9e3779b1) >>> 0) % 2 ? 1 : -1) / hl;
+    const j = b.massKg * 1.2 * ((Math.imul(b.handle + 7, 0x9e3779b1) >>> 0) % 2 ? 1 : -1) / hl;
     o.pool.impulse(b.handle, _tipA.x * j, 0, _tipA.z * j, pose[0], pose[1] + up * 0.8, pose[2]);
     return true;
   }
