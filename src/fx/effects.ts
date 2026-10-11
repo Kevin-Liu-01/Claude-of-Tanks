@@ -1102,8 +1102,12 @@ function* createFxSteps(
   // presentation's debris pool (fx/collapseBodies.ts over fx/debrisPhysics.ts); the phone keeps the mask's crumble
   let bodiesWorld: FxWorldSeam | null = null;
   let bodiesEnv: RigidEnvironment | null = null;
-  const bodies: CollapseBodies | null = mediaTier && structMask && structDebris ? createCollapseBodies({
-    pool: createDebrisPhysics({ capacity: 128 }),
+  // one pool for a building's falling pieces: its collapse's and its walls' broken cells (structureFracture.ts)
+  const debrisPool = mediaTier && structMask && structDebris ? createDebrisPhysics({ capacity: 128 }) : null;
+  let stagesRef: StructureStages | null = null;
+  const bodies: CollapseBodies | null = debrisPool ? createCollapseBodies({
+    pool: debrisPool,
+    alsoLive: () => (stagesRef?.liveBodies() ?? 0) > 0,
     group,
     materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null,
     groundAt: (x, z) => deformedGroundY(x, z),
@@ -1120,8 +1124,11 @@ function* createFxSteps(
   }) : null;
   const stages: StructureStages | null = structMask && structDebris
     ? createStructureStages({ mask: structMask, debris: structDebris, now: () => particles.getTime(),
-      materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null, scars, crumble: mediaTier ? 1 : 0.15, bodies })
+      materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null, scars, crumble: mediaTier ? 1 : 0.15, bodies,
+      pool: debrisPool,
+      onPieceLanding: (x, y, z, speed, mass, id) => { if (blast) pieceLandingFx(blast, x, y, z, speed, mass, lookOf(id)); } })
     : null;
+  stagesRef = stages;
   /** The last detonation on a structure (munition:blast), for the shell event that follows it. */
   const lastBlast = { x: 0, y: 0, z: 0, structureId: -1 };
   let patchedWorld: FxWorldSeam | null = null;

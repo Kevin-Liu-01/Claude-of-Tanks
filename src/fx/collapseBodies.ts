@@ -65,6 +65,9 @@ interface CollapseBodiesOptions {
   cap?: number;
   /** The vehicles drawn this frame: their hulls and turrets shove the pieces (kinematic boxes in the pool). */
   hulls?(): Iterable<unknown> | null;
+  /** Another owner's bodies in the same pool (fx/structureFracture.ts: a wall's knocked and fallen cells): the pool
+   *  steps while either has any. */
+  alsoLive?(): boolean;
   /** The preparation's budget a frame (ms of wall clock; default 2). */
   prepareBudgetMs?: number;
   /** A clock for that budget (default performance.now). */
@@ -96,6 +99,9 @@ export interface CollapseBodies {
   took(structureIdx: number): boolean;
   /** Who bursts a shattered panel into the kit's pieces and dust (structureStages). */
   onShatter(handler: CollapseShatterHandler | null): void;
+  /** A building's cut laid ahead is stale (its walls were redrawn as they broke: structureFracture): it is laid again
+   *  from what stands. */
+  forget(structureIdx: number): void;
   reset(): void;
   stats(): { collapses: number; pieces: number; meshes: number; vertices: number; baked: number; prepared: number };
 }
@@ -770,7 +776,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
           if (now() >= deadline) break;
         }
       }
-      if (!live.length) return;
+      if (!live.length && !o.alsoLive?.()) return;
       bind();
       clockS += Math.max(0, dtS);
       // a heap rising under its pieces wakes those lying on it
@@ -839,6 +845,12 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     get active() { return live.filter((c) => !c.done).length; },
     took: (structureIdx) => live.some((c) => c.structureIdx === structureIdx) || waiting.some((w) => w.seam.structureIdx === structureIdx),
     onShatter(handler) { shatterHandler = handler; },
+    forget(structureIdx) {
+      const job = prepared.get(structureIdx);
+      if (!job) return;
+      prepared.delete(structureIdx);
+      disposeBuilt(job);
+    },
     reset() {
       for (const c of live) {
         for (const p of c.pieces) for (const part of p.parts) for (const m of part.meshes) { m.removeFromParent(); m.geometry.dispose(); }

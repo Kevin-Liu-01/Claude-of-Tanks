@@ -654,6 +654,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // (dcore 2026-10-10) the same end to end in collapseBodies with a building's own triangles: a shaft (one glued body)
     // and a house taken, standing in their place, brought down; a building with no storeys left to the scripted collapse.
     'src/fx/collapseBodies.selftest.mjs',
+    'src/fx/wallFracture.selftest.mjs',
+    'src/fx/structureFracture.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
     'src/gallery/overlays.selftest.mjs',
     'src/gallery/damageLab.selftest.mjs',
