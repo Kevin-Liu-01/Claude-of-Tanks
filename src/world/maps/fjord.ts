@@ -129,6 +129,9 @@ export default {
     // headland's crest, 21 m over the water 20 m below it, where the roadside plan had put it 300 m inland.
     town: { x0: 170, x1: 254, z0: -236, z1: 166, cx: 214, cz: -40 },
     plannedSites: [{ structure: 'lighthouse', x: 392, z: -32, yawDeg: 270 }],
+    // the buildings lane's round 4 (a landmark per map; the seat agreed with the map-revival lane): the stave church of
+    // Borgund's type at the harbour town's north end, its porch toward the east road (landmarks/stave.ts)
+    landmarks: [{ kind: 'staveChurch', x: 180, z: 150, yawDeg: 90, ground: 'veto', name: 'the stave church above the harbour' }],
     blockFill: true,
     extraKits: ['coastal'], wallStyle: 'fieldstone', wallStoneChance: 0.72,
     wallRuns: [

@@ -251,6 +251,9 @@ export default {
       'logcabin', 'ruin', 'depot', 'woodshed'],
     destructibleBuildings: ['saunahut', 'alpinerefuge', 'fieldhospital', 'huntingblind', 'leanto'],
     buildingLat: [12, 3], sideSkip: 0.10,
+    // the buildings lane's round 4 (a landmark per map; the seat agreed with the map-revival lane): the Boyko wooden
+    // tserkva at the street village's south-west end, its door toward the village (landmarks/carpathian.ts)
+    landmarks: [{ kind: 'woodenTserkva', x: -200, z: -140, yawDeg: 30, ground: 'veto', name: 'the wooden tserkva at the village end' }],
     // round 48: the three strongpoints follow the new lanes — the brawl in
     // the terrace village, the scout on the north-east moraine knoll, the
     // support on the saddle shoulder above the pass road

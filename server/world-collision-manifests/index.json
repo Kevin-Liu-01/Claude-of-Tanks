@@ -19,10 +19,10 @@
       "concealers": 1289
     },
     "winter": {
-      "bytes": 1985798,
-      "sha256": "1f5a1bd209f774a8f3927eb058c94413d93630a588f77245c62e6249f64e3fff",
-      "obstacles": 6683,
-      "colliders": 6591,
+      "bytes": 2011113,
+      "sha256": "0eea33706bd68e86ff4656d1fc5075b22e990158cc3bb1c68a754a594653b41d",
+      "obstacles": 6684,
+      "colliders": 6619,
       "concealers": 5626
     },
     "urban": {
@@ -68,11 +68,11 @@
       "concealers": 8087
     },
     "fjord": {
-      "bytes": 2158497,
-      "sha256": "e54e893d12fda3fbf8182ea718e6390f1527e7366ebbf0cb2257cabda1f4eab6",
-      "obstacles": 6764,
-      "colliders": 6733,
-      "concealers": 6836
+      "bytes": 2187743,
+      "sha256": "106b9b6e7faf4ebd91a1dc02602456d04c28aba97c1c3f633416ab9743f9fcc7",
+      "obstacles": 6765,
+      "colliders": 6771,
+      "concealers": 6835
     },
     "delta": {
       "bytes": 2049496,
@@ -253,10 +253,10 @@
         "concealers": 1289
       },
       "winter": {
-        "bytes": 2062243,
-        "sha256": "f207ffd554c8a1d137abf1342a1dd78162d989c8e85583e0e7e014d6ca168aeb",
-        "obstacles": 6806,
-        "colliders": 6686,
+        "bytes": 2087558,
+        "sha256": "1096786499d04fcb8ab5dde9551a68ccb78985213cec07875b0e092e43ce327b",
+        "obstacles": 6807,
+        "colliders": 6714,
         "concealers": 5695
       },
       "urban": {
@@ -302,11 +302,11 @@
         "concealers": 8058
       },
       "fjord": {
-        "bytes": 2263263,
-        "sha256": "3611ef5c9513200034402d5502815006caf1db73204b3370aaaa760fbe18dcbd",
-        "obstacles": 6836,
-        "colliders": 6757,
-        "concealers": 6836
+        "bytes": 2292509,
+        "sha256": "cd49b5f0f7ce1a32125f28c4a6b6080b6c48e378f8282825f7f6987bcc17d0d5",
+        "obstacles": 6837,
+        "colliders": 6795,
+        "concealers": 6835
       },
       "delta": {
         "bytes": 2208383,
