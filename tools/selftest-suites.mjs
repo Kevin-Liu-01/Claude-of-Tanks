@@ -981,6 +981,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/matchHost.selftest.mjs',
     // 2026-10-10 (MP lane): a migrated host holds its world still until the seats that were playing are back
     'src/mp/host/resumeHold.selftest.mjs',
+    // 2026-10-11 (MP lane): a late HELLO is admitted; a seat closed with "hello timeout" says hello again
+    'src/mp/host/helloGate.selftest.mjs',
     'src/mp/host/worldCollision.selftest.mjs',
     // 2026-10-08 (destruction core lane): Frontline's authority plays the trench variant every client builds
     'src/mp/host/frontlineVariant.selftest.mjs',
