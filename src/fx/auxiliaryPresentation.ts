@@ -5,8 +5,8 @@ import {smokeVolume, smokeBankCount, smokeBankBase, smokeHoldInside, smokeWallRo
 import { smokeCanisterPosition, smokeCanisterVelocity, SMOKE_GRAVITY_MPS2, SMOKE_SEGMENT, type SmokeCanister } from '../sim/smokeBallistics.ts';
 import type { BlastContext } from './blastRecipes.ts';
 import {
-  puffRandom, slotSeed, smokeBankBody, smokeBankLobe, smokeBankWisp, smokeCanisterStrike, smokeDecayHaze, smokeGrenadeBurst,
-  smokeGrenadeWisp, smokeLaunchPuff, smokeScreenHaze, type SmokeLobeInput,
+  puffRandom, slotSeed, smokeBankBody, smokeBankLobe, smokeBankSkirt, smokeBankWisp, smokeCanisterStrike, smokeDecayHaze,
+  smokeGrenadeBurst, smokeGrenadeWisp, smokeLaunchPuff, smokeScreenHaze, type SmokeLobeInput,
 } from './atmosRecipes.ts';
 
 export interface AuxiliaryVisualEntity {
@@ -76,6 +76,15 @@ const CROWD_M = 12;
  *  at most WALL_REACH_M: never past what its envelope covers; the row's ends reach WALL_END_M), one lobe per
  *  WALL_PITCH_M, so a bank beside a wide gap fills it and a bank among close neighbours does not pile up */
 const WALL_REACH_M = 7, WALL_END_M = 6, WALL_PITCH_M = 2.2;
+/** (fx 8r, the w5 film: "a row of separate white puffs ... before it merges") the skirt: one low puff per this much of a
+ *  bank's stretch, born this long after its landing (one after another), living this long */
+const SKIRT_PITCH_M = 3.0, SKIRT_START_S = 0.15, SKIRT_EVERY_S = 0.07, SKIRT_LIFE_S = [3.6, 4.6] as const;
+/** (fx 8r) a puff this near a wall fades into it more softly (the media's feather scale, 1 in the open) */
+function wallFeather(room:number):number{
+  if(!(room<4))return 1;
+  const t=Math.min(1,Math.max(0,(room-1)/3));
+  return 1+1.2*(1-t*t*(3-2*t));
+}
 
 interface MediaScreenState {
   /** the screen age (s) the schedule has been emitted up to */
@@ -199,7 +208,7 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
   const blast=ports.blast??null;
   const mediaScreens=new Map<SmokeScreen,MediaScreenState>();
   const landing={x:0,y:0,z:0};
-  const lobe:SmokeLobeInput={x0:0,y0:0,z0:0,tx:0,ty:0,tz:0,size:1,life:1,fadeOut:.5,crown:false,bo:0};
+  const lobe:SmokeLobeInput={x0:0,y0:0,z0:0,tx:0,ty:0,tz:0,size:1,life:1,fadeOut:.5,crown:false,bo:0,feather:1};
 
   /** A bank's lead grenade and where it lands (`landing`), or null for a receipt without flights (the legacy arc). */
   function bankLanding(screen:SmokeScreen,bank:number):SmokeCanister|null{
@@ -293,6 +302,21 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     const cx=volume.x,cz=volume.z;
     // the bank's stretch of the wall (wallStretches): back toward one neighbour, ahead toward the other
     const w=st.wall,o=bank*6,back=w[o+2]!,ahead=w[o+5]!,span=back+ahead;
+    // 2b. (fx 8r) the skirt: low wide puffs born along the bank's stretch right after its landing, swelling within a
+    //     second, so the row closes before the lobes have travelled out to it (held off the walls as the lobes are)
+    const skirts=Math.max(1,Math.round(span/SKIRT_PITCH_M));
+    for(let k=0;k<skirts;k++){
+      const t=tLand+SKIRT_START_S+k*SKIRT_EVERY_S;
+      const life=SKIRT_LIFE_S[0]+(SKIRT_LIFE_S[1]-SKIRT_LIFE_S[0])*((k*0.618)%1);
+      if(!(t>from&&t<=to)||t+life<to)continue;
+      const R=puffRandom(slotSeed(born,lx,lz,bank,700+k));
+      spot(w,o,-back+(k+.5)*span/skirts+(R()-.5)*.8,(R()-.5)*1.2,lx,lz);
+      smokeVolume(screen,born+tLand+2.2,bank-2,volume,ports.ground);
+      smokeHoldInside(screen,bank-2,volume,at);
+      const x=at.x,z=at.z,room=smokeWallRoom(screen,bank-2,x,z);
+      const size=Math.min(5.2+R()*1.6,Math.max(1.6,2*(room+1)));
+      smokeBankSkirt(C,R,x,smokeBankBase(screen,bank-2,x,z,ports.ground)+1.0+R()*.4,z,size,life,.55,t-to,wallFeather(room));
+    }
     // 3. the bloom: lobes out of the burst to their places along the bank's stretch of the wall, crowns over its middle
     const feet=Math.max(1,Math.round(span/WALL_PITCH_M)),crowns=Math.max(1,Math.round(2*share)),lobes=feet+crowns;
     for(let j=0,foot=0,crowned=0;j<lobes;j++){
@@ -315,7 +339,9 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       lobe.size=crown?5.2+R()*1.2:7.2+R()*2.0;
       // (2026-10-10) a lobe by a wall no wider than its room there and a metre (it neither spreads through the wall nor
       // over the roof); the open field keeps every size
-      lobe.size=Math.min(lobe.size,Math.max(1.6,2*(smokeWallRoom(screen,bank-2,lobe.tx,lobe.tz)+1)));
+      const lobeRoom=smokeWallRoom(screen,bank-2,lobe.tx,lobe.tz);
+      lobe.size=Math.min(lobe.size,Math.max(1.6,2*(lobeRoom+1)));
+      lobe.feather=wallFeather(lobeRoom);
       lobe.life=(crown?CROWN_END_S:LOBE_END_S)-t;
       lobe.fadeOut=Math.min(.9,Math.max(.25,((crown?CROWN_ERODE_S:LOBE_ERODE_S)-t)/lobe.life));
       lobe.crown=crown;lobe.bo=t-to;
@@ -333,8 +359,9 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       spot(w,o,-back+R()*span,(R()-.5)*.3*volume.radius,volume.x,volume.z);
       smokeHoldInside(screen,bank-2,volume,at);
       const x=at.x,z=at.z;
-      const y=smokeBankBase(screen,bank-2,x,z,ports.ground)+1.5+R()*2.0,size=Math.min(8+R()*2.5,Math.max(1.6,2*(smokeWallRoom(screen,bank-2,x,z)+1)));
-      smokeBankBody(C,R,x,y,z,size,life,Math.min(.75,Math.max(.25,(BODY_ERODE_S-t)/life)),t-to);
+      const bodyRoom=smokeWallRoom(screen,bank-2,x,z);
+      const y=smokeBankBase(screen,bank-2,x,z,ports.ground)+1.5+R()*2.0,size=Math.min(8+R()*2.5,Math.max(1.6,2*(bodyRoom+1)));
+      smokeBankBody(C,R,x,y,z,size,life,Math.min(.75,Math.max(.25,(BODY_ERODE_S-t)/life)),t-to,wallFeather(bodyRoom));
     }
     // 5. wisps torn off its top into the scene's wind
     const tops=Math.max(1,Math.round(TOPS*share)),topEvery=TOP_EVERY_S*TOPS/tops;

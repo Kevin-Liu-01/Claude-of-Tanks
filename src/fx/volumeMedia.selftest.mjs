@@ -456,23 +456,31 @@ function captureContext(seed) {
     assert.match(mat.vertexShader, /\* \( 0\.050 \* size \* min\( age, 4\.0 \) \);/, 'eddies push a puff about by its size as it ages');
     assert.match(mat.fragmentShader, /vec2 warp = wn \* tileSize \* uWarpK \* \( 0\.5 \+ 0\.8 \* vT \);/, 'the lookup is warped: no clean round ball');
     assert.match(mat.fragmentShader, /float core = smoothstep\( 0\.3, 0\.85, tb \);/, 'a hot core inside a sooty shell');
-    // (fx 8c) the media take the lit world's light: the clouds' shade on the sun (one fetch per vertex at the puff's
-    // centre, through the same uniform objects the ground reads), and a bright medium's shade lit by the ground as by the
-    // sky (the critics: "a cool white wall in the desert that ignores warm light")
-    assert.match(mat.vertexShader, /vSunVis = cotCloudSun\( center \);/, 'the clouds shade the sun on every puff');
-    assert.match(mat.fragmentShader, /\* \( 0\.88 \+ 0\.24 \* dn \) \* vSunVis;/, 'the cloud shade dims the sun term');
-    assert.match(mat.fragmentShader, /vec3 amb = mix\( amb0, amb1 \* \( lum0 \/ max\( lum1, 1e-5 \) \), bright \* warmG \* uGrade2\.x \);/,
-      'a bright medium takes the ground light\'s hue at the shade\'s own luminance, from a warm ground only (fx 8k)');
+    // (fx 8c) a bright medium's shade lit by the ground as by the sky (the critics: "a cool white wall in the desert that
+    // ignores warm light"); (fx 8q, wave 381's pack: the same collapse and strike puffs rendered dark olive-brown in B
+    // against sunlit walls on Caldera and urban scenes) the media take NO cloud shade on their sun (8c's per-vertex fetch
+    // took the sun off them where the world stayed lit), and only the near-white media take the ground's hue: masonry
+    // powder (held under 0.4) and earth shade exactly as the reference
+    assert.ok(!/cotCloudSun|vSunVis|tCotCloudShade/.test(mat.vertexShader + mat.fragmentShader), 'no cloud shade on the media\'s sun');
+    assert.match(mat.fragmentShader, /float sunL = \( vW\.x \* R \+ vW\.y \* L \+ vW\.z \* U \+ vW\.w \* D \+ vWfb\.x \* front \+ vWfb\.y \* back \* uGrade\.z \)\s*\* \( 0\.88 \+ 0\.24 \* dn \);/,
+      'the sun term is the reference\'s');
+    assert.ok(!('tCotCloudShade' in mat.uniforms), 'no cloud-shade sampler on the media');
+    // (fx 8r) an unheated puff by a wall asks for a wider soft-depth feather (a negative cool, its scale 1-3); a heated one
+    // keeps its cooling, and every puff that asks nothing keeps the feather it had
+    assert.match(mat.vertexShader, /vHeat = aHT\.x > 0\.0 \? aHT\.x \* exp\( -aHT\.y \* age \) : 0\.0;/, 'only a heated puff burns');
+    assert.match(mat.vertexShader, /float featherK = aHT\.x > 0\.0 \? 1\.0 : clamp\( -aHT\.y, 1\.0, 3\.0 \);\s*vFeather = clamp\( size \* 0\.22 \* featherK, 0\.5, 6\.0 \* featherK \);/,
+      'the wall feather, opt-in');
+    assert.match(mat.fragmentShader, /vec3 amb = mix\( amb0, amb1 \* \( lum0 \/ max\( lum1, 1e-5 \) \), smoothstep\( 0\.45, 0\.65, albedoL \) \* warmG \* uGrade2\.x \);/,
+      'a near-white medium takes the ground light\'s hue at the shade\'s own luminance, from a warm ground only (fx 8k, 8q)');
     assert.match(mat.fragmentShader, /float warmG = smoothstep\( 0\.02, 0\.16, \( uGroundCol\.r - uGroundCol\.g \)/,
       'never from green turf (wave 354a: "murky olive")');
-    const shared = { tCotCloudShade: { value: null }, uCotCloudShade: { value: new THREE.Vector4() },
-      uCotCloudSun: { value: new THREE.Vector4() } };
-    const sceneU = new THREE.Scene();
-    sceneU.userData.cloudShadeUniforms = shared;
-    const matS = createVolumeMedia({ soft: softU, now: () => 0, capacity: 16, scene: sceneU }).group.children[0].material;
-    assert.ok(matS.uniforms.tCotCloudShade === shared.tCotCloudShade && matS.uniforms.uCotCloudShade === shared.uCotCloudShade
-      && matS.uniforms.uCotCloudSun === shared.uCotCloudSun, 'the cloud shade is the scene\'s own uniform objects (one update reaches the media)');
-    assert.equal(mat.uniforms.uCotCloudShade.value.w, 0, 'no published shade: the media stand in full sun');
+    {
+      // the weight by albedo: the smoke screens' whites take the hue, masonry powder (dustOf caps it at 0.4) never does
+      const sm = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+      const lumOf = (h) => { const c = [(h >> 16) & 255, (h >> 8) & 255, h & 255].map((v) => v / 255).map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+      assert.ok(sm(0.45, 0.65, lumOf(0xdfdcd5)) > 0.95 && sm(0.45, 0.65, lumOf(0xc9c5be)) > 0.5, 'a smoke screen creams over sand, fresh and aged');
+      assert.equal(sm(0.45, 0.65, 0.4), 0, 'masonry powder keeps the reference\'s shade');
+    }
     // the CPU twin carries the shear (the sort's depth)
     const rec = new Float32Array(32);
     rec[1] = 2; rec[5] = 4; rec[8] = 1; rec[9] = 1; rec[10] = 1;

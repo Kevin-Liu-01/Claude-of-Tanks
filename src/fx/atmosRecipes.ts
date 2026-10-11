@@ -68,6 +68,12 @@ function toned(out: [number, number, number], c: Rgb, k: number): Rgb {
   return out;
 }
 
+/** (fx 8r) a puff meeting a wall fades into it more softly: the feather scale (1 in the open, up to 3), carried in an
+ *  unheated puff's cool as a negative (volumeMedia.ts VolumePuff); call after book(), which resets heat and cool */
+function feathered(C: BlastContext, feather: number): void {
+  if (feather > 1) C.m.cool = -Math.min(3, feather);
+}
+
 function look(C: BlastContext, c0: Rgb, c1: Rgb, density: number, fadeIn: number, fadeOut: number): void {
   const m = C.m;
   m.r0 = c0[0]; m.g0 = c0[1]; m.b0 = c0[2]; m.r1 = c1[0]; m.g1 = c1[1]; m.b1 = c1[2];
@@ -141,15 +147,17 @@ export function smokeGrenadeBurst(C: BlastContext, R: () => number, x: number, g
   // fx 8m, wave 337: "a necklace of balls round partial blobs") one ragged mass: five lobes of mixed size born already
   // overlapping and thrown out slowly (each stalls within a metre), all in the turbulent billow medium; the wall's lobes
   // swell out of it (smokeBankLobe), so no ball ever travels out on its own
+  // (fx 8r, the w5 film: "a row of separate white puffs ... the necklace") low and wide, faded in over a tenth of a
+  // second: a ragged burst spreading along the ground, never a round white ball
   for (let i = 0; i < 5; i++) {
-    const a = (i / 5) * TAU + (R() - 0.5) * 1.2, v = 1.0 + R() * 1.8;
-    m.x = x + Math.cos(a) * 0.25; m.y = y + R() * 0.35; m.z = z + Math.sin(a) * 0.25; m.birthOffset = bo - R() * 0.03;
-    m.vx = Math.cos(a) * v; m.vy = 1.2 + R() * 1.8; m.vz = Math.sin(a) * v;
+    const a = (i / 5) * TAU + (R() - 0.5) * 1.2, v = 1.2 + R() * 2.0;
+    m.x = x + Math.cos(a) * 0.3; m.y = y + R() * 0.25; m.z = z + Math.sin(a) * 0.3; m.birthOffset = bo - R() * 0.03;
+    m.vx = Math.cos(a) * v; m.vy = 0.6 + R() * 1.0; m.vz = Math.sin(a) * v;
     m.drag = 2.4; m.rise = 0.12; m.windK = 0.15; m.grav = 0;
-    m.life = 2.4 + R() * 0.8; m.size0 = 1.0; m.size1 = (i % 2 === 0 ? 3.9 : 2.9) + R() * 1.0; m.growExp = 3.6;
+    m.life = 2.4 + R() * 0.8; m.size0 = 1.3; m.size1 = (i % 2 === 0 ? 3.9 : 2.9) + R() * 1.0; m.growExp = 3.6;
     m.rot = (R() - 0.5) * 0.8; m.spin = (R() - 0.5) * 0.12;
-    look(C, BURST_WHITE, SCREEN_WHITE, 0.72, 0.03, 0.55);
-    book(C, R, 'billow', 2.8, Math.floor(R() * 6), 1.0 + R() * 0.3);
+    look(C, BURST_WHITE, SCREEN_WHITE, 0.66, 0.12, 0.55);
+    book(C, R, 'billow', 2.8, Math.floor(R() * 6), 1.3 + R() * 0.4);
     C.media(m);
   }
   // burning pellets thrown out on arcs, each leaving a white streamer: the burst's tell at a distance
@@ -190,24 +198,51 @@ export function smokeGrenadeBurst(C: BlastContext, R: () => number, x: number, g
 export function smokeCanisterStrike(C: BlastContext, R: () => number, x: number, y: number, z: number, nx: number,
   ny: number, nz: number, bo: number): void {
   const m = C.m;
+  // (fx 8r, the w5 film: "white puffs sit against the house face") born off the face and thrown out of it, never half
+  // inside the wall, and fading softly where they meet it
   for (let i = 0; i < 2; i++) {
     const v = 1.6 + R() * 1.4;
-    m.x = x + nx * 0.1; m.y = y + ny * 0.1; m.z = z + nz * 0.1; m.birthOffset = bo;
+    m.x = x + nx * 0.45; m.y = y + ny * 0.45; m.z = z + nz * 0.45; m.birthOffset = bo;
     m.vx = nx * v + (R() - 0.5) * 0.8; m.vy = ny * v + (R() - 0.3) * 0.8; m.vz = nz * v + (R() - 0.5) * 0.8;
     m.drag = 2.6; m.rise = 0.05; m.windK = 0.4; m.grav = -0.4;
     m.life = 1.1 + R() * 0.6; m.size0 = 0.25; m.size1 = 1.0 + R() * 0.5; m.growExp = 2.6;
     m.rot = R() * TAU; m.spin = (R() - 0.5) * 0.1;
     look(C, MASONRY_DUST, MASONRY_DUST, 0.5, 0.0, 0.4);
     book(C, R, 'burst', 1.6, Math.floor(R() * 8), 1.0 + R() * 0.3);
+    feathered(C, 2.2);
     C.media(m);
   }
-  m.x = x + nx * 0.15; m.y = y + ny * 0.15; m.z = z + nz * 0.15; m.birthOffset = bo;
+  m.x = x + nx * 0.6; m.y = y + ny * 0.6; m.z = z + nz * 0.6; m.birthOffset = bo;
   m.vx = nx * 0.9; m.vy = 0.3 + ny * 0.9; m.vz = nz * 0.9;
   m.drag = 1.8; m.rise = 0.15; m.windK = 0.45; m.grav = 0;
   m.life = 1.4 + R() * 0.5; m.size0 = 0.35; m.size1 = 1.5 + R() * 0.5; m.growExp = 2.4;
   m.rot = R() * TAU; m.spin = (R() - 0.5) * 0.1;
   look(C, BURST_WHITE, WISP_GREY, 0.55, 0.0, 0.4);
   book(C, R, 'billow', 1.8, 6 + Math.floor(R() * 10), 1.0);
+  feathered(C, 2.2);
+  C.media(m);
+}
+
+/**
+ * (fx 8r, the w5 film: "a row of separate white puffs along the line before it merges") the wall's skirt: low wide puffs
+ * born along a bank's stretch of the wall right after its grenade lands (x, y, z the place on the stretch, y over the
+ * ground there), swelling to most of their size within a second, so the row closes before the lobes have travelled out;
+ * the lobes take over by ~3 s and the skirt thins away. Visual only, inside the blocking envelope's lower half.
+ */
+export function smokeBankSkirt(C: BlastContext, R: () => number, x: number, y: number, z: number, size: number,
+  life: number, fadeOut: number, bo: number, feather = 1): void {
+  const m = C.m;
+  m.x = x; m.y = y; m.z = z; m.birthOffset = bo;
+  m.vx = (R() - 0.5) * 0.4; m.vy = 0.12 + R() * 0.12; m.vz = (R() - 0.5) * 0.4;
+  m.drag = 1.4; m.rise = 0.05; m.windK = 0.1; m.grav = 0;
+  m.life = life; m.size0 = Math.min(1.8, size * 0.4); m.size1 = size;
+  // ~80 % of its size a second after its birth, whatever its life
+  m.growExp = Math.log(0.2) / Math.log(1 - Math.min(0.85, 1.0 / Math.max(life, 0.5)));
+  m.rot = (R() - 0.5) * 0.5; m.spin = (R() - 0.5) * 0.03;
+  const tone = 0.86 + R() * 0.08;
+  look(C, toned(_tone0, SCREEN_WHITE, tone), toned(_tone1, SCREEN_AGED, tone), 0.8, 0.12, fadeOut);
+  book(C, R, 'billow', Math.min(life, 8) * (0.9 + R() * 0.2), Math.floor(R() * 12), 1.45 + R() * 0.35);
+  feathered(C, feather);
   C.media(m);
 }
 
@@ -226,6 +261,8 @@ export interface SmokeLobeInput {
   /** a crown lobe sits on the wall's top: rounder, a little taller, catching the most sun */
   crown: boolean;
   bo: number;
+  /** (fx 8r) the soft-depth feather scale where the lobe meets a wall (1 in the open) */
+  feather?: number;
 }
 
 /**
@@ -258,12 +295,13 @@ export function smokeBankLobe(C: BlastContext, R: () => number, I: SmokeLobeInpu
   // rests on its widest frame as the lobe erodes)
   book(C, R, 'billow', Math.min(I.life, 11) * (0.9 + R() * 0.2), Math.floor(R() * 8),
     I.crown ? 1.0 + R() * 0.15 : 1.15 + R() * 0.25);
+  feathered(C, I.feather ?? 1);
   C.media(m);
 }
 
 /** A body puff: born inside the bank (already where the drifting bank is), swelling in from small to fill it. */
 export function smokeBankBody(C: BlastContext, R: () => number, x: number, y: number, z: number, size: number,
-  life: number, fadeOut: number, bo: number): void {
+  life: number, fadeOut: number, bo: number, feather = 1): void {
   const m = C.m;
   m.x = x; m.y = y; m.z = z; m.birthOffset = bo;
   m.vx = (R() - 0.5) * 0.5; m.vy = 0.15 + R() * 0.15; m.vz = (R() - 0.5) * 0.5;
@@ -275,6 +313,7 @@ export function smokeBankBody(C: BlastContext, R: () => number, x: number, y: nu
   const tone = 0.86 + R() * 0.1;
   look(C, toned(_tone0, SCREEN_WHITE, tone), toned(_tone1, SCREEN_AGED, tone), 0.9, 0.7, fadeOut);
   book(C, R, 'billow', life * (0.9 + R() * 0.2), Math.floor(R() * 16), 1.1 + R() * 0.3);
+  feathered(C, feather);
   C.media(m);
 }
 
