@@ -5953,9 +5953,10 @@ void splatCompute() {
           // (2026-10-11, the map-revival lane; the sealed lane's vehicle frames on Tidegate Polders: "a drainage stream's
           // water surface runs down the dike face", the ditch's still water drawn up a 1 in 3 batter — the field gate lets
           // a field climb to ~16 degrees) still water lies only on level ground: the ditch and its wet banks fade out past
-          // ~4 degrees and are gone by ~8, so a boundary that meets a dyke ends at its foot (a polder's ditches never climb
-          // its dykes)
-          float ditchLevel = 1.0 - smoothstep(0.003, 0.010, slope);
+          // ~3 degrees and are gone by ~5 (cap10: at ~4-8 degrees the toe of a dyke still drew a strip of the ditch up its
+          // foot), so a boundary that meets a dyke ends at its foot (a polder's ditches never climb its dykes; its fields
+          // lie under 1 degree)
+          float ditchLevel = 1.0 - smoothstep(0.0013, 0.004, slope);
           float ditch = (1.0 - smoothstep(0.55, 0.85, edgeM)) * ditchLevel;
           float bank = (1.0 - smoothstep(0.85, 1.9, edgeM)) * (1.0 - ditch) * ditchLevel;
           a.rgb = mix(a.rgb, a.rgb * vec3(0.72, 0.82, 0.70), bank * track * landW);
