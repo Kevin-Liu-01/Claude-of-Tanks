@@ -961,7 +961,7 @@ export function createGarageDressing(
     root.userData.crewRoles = scene.members.map((member) => member.role);
     for (const prop of scene.props ?? []) {
       if (prop.kind === 'weld-curtain') {
-        addWeldCurtain(root, prop.at[0], prop.at[2], prop.yaw);
+        addWeldCurtain(root, prop.at[0], prop.at[2], prop.yaw, prop.screen);
         continue;
       }
       if (prop.kind === 'power-pack') {
@@ -1177,6 +1177,36 @@ export function createGarageDressing(
     crewRoot.userData.carriedRoadWheel = centre.toArray().map((value) => Number(value.toFixed(3)));
   }
 
+  /**
+   * A tag line from a slung load to the guide's fists (scene frame of `crewRoot`): it leaves the load's nearest point,
+   * runs taut to his leading fist, between his fists, and its tail drops to a coil on the floor.
+   */
+  function addTagLine(crewRoot: THREE.Group | null, scene: CrewScene, memberIndex: number,
+    load: THREE.Object3D | undefined): void {
+    const member = scene.members[memberIndex];
+    if (!crewRoot || !load || !member?.pose.leftHand || !member.pose.rightHand) return;
+    legacyVerdantRoot.updateMatrixWorld(true);
+    const lead = crewPointInScene(member, member.pose.leftHand);
+    const trail = crewPointInScene(member, member.pose.rightHand);
+    const box = new THREE.Box3().setFromObject(load);
+    if (box.isEmpty()) return;
+    const anchor = crewRoot.worldToLocal(box.clampPoint(crewRoot.localToWorld(lead.clone()), new THREE.Vector3()));
+    const tail = new THREE.Vector3(trail.x, 0.03, trail.z).add(new THREE.Vector3().subVectors(trail, lead).setY(0).normalize()
+      .multiplyScalar(0.35));
+    for (const [a, b] of [[anchor, lead], [lead, trail], [trail, tail]] as const) {
+      const length = a.distanceTo(b);
+      if (length < 1e-3) continue;
+      const rope = put(track(new THREE.CylinderGeometry(0.011, 0.011, length, 6)), mat.safety,
+        (a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2, 0, 0, 0, 1, crewRoot);
+      rope.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3().subVectors(b, a).normalize());
+      rope.name = 'garage_crew_tag_line';
+    }
+    put(track(new THREE.TorusGeometry(0.16, 0.02, 4, 14)), mat.safety, tail.x, 0.025, tail.z, 0, Math.PI / 2, 0, 1, crewRoot);
+    put(track(new THREE.TorusGeometry(0.035, 0.01, 4, 10)), mat.steelBright, anchor.x, anchor.y, anchor.z, 0, 0, 0, 1,
+      crewRoot, false);
+    crewRoot.userData.tagLineAnchor = anchor.toArray().map((value) => Number(value.toFixed(3)));
+  }
+
   let leopardDiscFillGeometry: THREE.BufferGeometry | null = null;
   /** A Leopard 2 road-wheel disc (axle along X) to fill the fleet wheel's tyre round its hub. */
   function leopardDiscFill(): THREE.BufferGeometry {
@@ -1293,14 +1323,15 @@ export function createGarageDressing(
   }
 
   /** A welding curtain on its frame: two posts on feet, a top rail, an orange screen (scene frame of `root`). */
-  function addWeldCurtain(root: THREE.Object3D, x: number, z: number, yaw: number): void {
+  function addWeldCurtain(root: THREE.Object3D, x: number, z: number, yaw: number,
+    screen: readonly [number, number] = [2.0, 1.95]): void {
     const frame = new THREE.Group();
     frame.name = 'garage_weld_curtain';
     frame.position.set(x, 0, z);
     frame.rotation.y = yaw;
     frame.userData.servicePurpose = 'hot-work-screen';
     root.add(frame);
-    const W = 2.0, H = 1.95;
+    const [W, H] = screen;
     for (const px of [-W / 2, W / 2]) {
       put(track(new THREE.BoxGeometry(0.045, H, 0.045)), mat.steelDark, px, H / 2, 0, 0, 0, 0, 1, frame);
       put(track(new THREE.BoxGeometry(0.06, 0.04, 0.62)), mat.steelDark, px, 0.02, 0, 0, 0, 0, 1, frame);
@@ -3069,6 +3100,8 @@ export function createGarageDressing(
     addBayGrime(legacyVerdantRoot, 15.6, -13.2, 13, 0.4);
     const burlakCrew = addCrewScene(GARAGE_CREW_SCENES.burlak, legacyVerdantRoot);
     addCarriedRoadWheel(burlakCrew, GARAGE_CREW_SCENES.burlak, [2, 3], roadWheelTires, roadWheelDiscs);
+    addTagLine(burlakCrew, GARAGE_CREW_SCENES.burlak,
+      GARAGE_CREW_SCENES.burlak.members.findIndex((member) => member.role === 'tag-line-guide'), turret);
 
     // This bay used to be six independent root children, which made a safe
     // clearance correction impossible: moving only the tank detached it from

@@ -732,6 +732,8 @@ interface CrewProp {
   readonly deckY: number;
   /** For 'parts': primitive kit in the scene frame (boxes and cylinders on the workshop's shared materials). */
   readonly parts?: readonly CrewPart[];
+  /** For 'weld-curtain': screen width and height (m); default 2.0 x 1.95. */
+  readonly screen?: readonly [number, number];
 }
 
 /** One primitive of a scene's kit: a box ([w, h, d]) or an upright cylinder ([radius, height]), turned by yaw/tilt/roll. */
@@ -939,6 +941,13 @@ export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard'
           leftFoot: [0.15, A, 0.1], rightFoot: [-0.14, A, -0.12] } },
       { role: 'road-wheel-carrier', dress: D('ru', 3), at: [-3.6, 0, 4.1], yaw: 0, pose: wheelCarrierPose(1) },
       { role: 'road-wheel-carrier', dress: D('ru', 4), at: [-3.6, 0, 5.46], yaw: Math.PI, pose: wheelCarrierPose(-1) },
+      // the tag-line man (2026-10-10, wave 357: "nobody guides the load"): braced, leaning back on a line from the slung
+      // turret so it cannot swing into the gantry (garageDressing.ts runs the line to the turret)
+      { role: 'tag-line-guide', dress: D('ru', 5), at: [-2.65, 0, 1.85], yaw: Math.PI / 2 - 0.35,
+        pose: { pelvis: [0, HIP - 0.05, -0.1], spine: [-0.12, 0.06, 0], head: [-0.32, 0.05],
+          leftHand: [0.06, 1.25, 0.42], rightHand: [-0.06, 1.06, 0.18], leftGrip: 'fist', rightGrip: 'fist',
+          leftPalm: [-0.6, 0, 0.8], rightPalm: [0.6, 0, 0.8],
+          leftFoot: [0.13, A, 0.22], rightFoot: [-0.15, A, -0.32] } },
     ],
     tools: [
       { kind: 'pendant', member: 0, points: [[0, 1.235, 0.305]], anchor: [0, 3.72, 0.4] },
@@ -1036,6 +1045,9 @@ export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard'
     props: [
       { kind: 'work-stand', at: [0.62, 0, 0.25], yaw: 0, deckY: 0.9 },
       { kind: 'weld-curtain', at: [0.95, 0, -1.2], yaw: 0, deckY: 0 },
+      // and a tall translucent screen across the stand's open end, between the raised arc and the open hall (wave 357:
+      // "the orange screen stands behind the welder rather than between his arc and the open bay")
+      { kind: 'weld-curtain', at: [0.55, 0, 1.3], yaw: 0, deckY: 0, screen: [1.9, 2.5] },
     ],
     weldTip: [-0.22, 2.18, 0.25],
     members: [
