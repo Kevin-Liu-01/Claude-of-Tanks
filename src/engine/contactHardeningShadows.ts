@@ -28,9 +28,12 @@
  * or bump map) — a mapped normal tilts the plane by its bumps, and a wrong plane on a wide disk compares the receiver
  * against itself: speckled acne on lit brick, plaster and hulls.
  *
- * The light's size: PCSS_LIGHT_DEG of sun by day (the sun is 0.53°; aerosol, the game's scale and the screen want
- * more), widened under a deck by PCSS_OVERCAST_K × the light model's overcast (a stratus diffuses the sun into a bright
- * patch: Whiteout's thin-deck sun, r1, casts soft shadows). The tiers: Ultra, High and Medium (quality.ts `pcss`); Low and
+ * The light's size: PCSS_LIGHT_DEG of sun by day (the sun is 0.53°; skylight, aerosol, the game's scale and the screen
+ * want more: the contact rounds' critics on waves 372 and 400 read a hull's 1.2° shadow on grass and snow as "stencil-
+ * straight, penumbra-free", and the contact lane's measured spec — about 3 cm at the hull's base, about 25 cm where the
+ * edge lands 4 m out — is 3° on this law: 5.2 cm of penumbra per metre of light ray), widened under a deck by
+ * PCSS_OVERCAST_K × the light model's overcast (a stratus diffuses the sun into a bright patch: Whiteout's thin-deck
+ * sun casts soft shadows; × 2 at a closed deck, the Whiteout round's own factor on the far cascades' filter). The tiers: Ultra, High and Medium (quality.ts `pcss`); Low and
  * the phones keep three's five taps: the phones never install the law (lighting.ts), and a material set up at a preset
  * without it compiles it out (COT_NO_PCSS), so no dead branch holds registers on the weakest GPUs. The first PCSS_CASCADES cascades: past them the penumbra is under a
  * texel or two of their maps anyway.
@@ -39,9 +42,9 @@
  */
 
 /** Angular size of the sun the penumbra is drawn for, by day (degrees). */
-export const PCSS_LIGHT_DEG = 1.2;
+export const PCSS_LIGHT_DEG = 3;
 /** Widening under a deck: × (1 + this × the light model's overcast). */
-export const PCSS_OVERCAST_K = 3;
+export const PCSS_OVERCAST_K = 1;
 /** The tallest blocker height the search provisions for (m). */
 export const PCSS_REACH_M = 12;
 /** The blocker ladder's levels (m above the receiver along the light ray). */
